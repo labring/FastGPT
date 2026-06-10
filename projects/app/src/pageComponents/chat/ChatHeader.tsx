@@ -205,6 +205,7 @@ const MobileDrawer = ({ onCloseDrawer, appId }: { onCloseDrawer: () => void; app
               myApps.map((item) => (
                 <Flex justify={'center'} key={item.appId}>
                   <Flex
+                    gap={2}
                     py={2.5}
                     px={2}
                     width={'100%'}
@@ -220,7 +221,7 @@ const MobileDrawer = ({ onCloseDrawer, appId }: { onCloseDrawer: () => void; app
                         })}
                   >
                     <Avatar src={item.avatar} w={'24px'} borderRadius={'sm'} />
-                    <Box ml={2} className={'textEllipsis'}>
+                    <Box className={'textEllipsis'}>
                       {item.name}
                     </Box>
                   </Flex>
@@ -276,10 +277,10 @@ const MobileHeader = ({
         />
       )}
       <Flex px={3} alignItems={'center'} flex={'1 0 0'} w={0} justifyContent={'center'}>
-        <Flex alignItems={'center'} onClick={toggleDrawer}>
+        <Flex alignItems={'center'} gap={1} onClick={toggleDrawer}>
           <Avatar borderRadius={'sm'} src={avatar} w={'1rem'} />
 
-          <Box ml={1} className="textEllipsis">
+          <Box overflow={'hidden'} whiteSpace={'nowrap'} textOverflow={'clip'}>
             {name}
           </Box>
 
@@ -314,23 +315,23 @@ export const PcHeader = ({
 
   return (
     <>
-      <MyTooltip label={chatId ? t('common:chat_chatId', { chatId }) : ''}>
-        <Box
-          mr={3}
-          maxW={'200px'}
-          className="textEllipsis"
-          color={'myGray.900'}
-          cursor={'pointer'}
-          onClick={() => {
-            copyData(chatId);
-          }}
-        >
-          {title}
-        </Box>
-      </MyTooltip>
-      <MyTag>
+      <Box pr={3} maxW={'200px'} minW={0}>
+        <MyTooltip label={chatId ? t('common:chat_chatId', { chatId }) : ''}>
+          <Box
+            className="textEllipsis"
+            color={'myGray.900'}
+            cursor={'pointer'}
+            onClick={() => {
+              copyData(chatId);
+            }}
+          >
+            {title}
+          </Box>
+        </MyTooltip>
+      </Box>
+      <MyTag gap={1}>
         <MyIcon name={'history'} w={'14px'} />
-        <Box ml={1}>
+        <Box>
           {totalRecordsCount === 0
             ? t('common:core.chat.New Chat')
             : t('common:core.chat.History Amount', { amount: totalRecordsCount })}
@@ -338,12 +339,14 @@ export const PcHeader = ({
       </MyTag>
       {!!chatModels && chatModels.length > 0 && (
         <MyTooltip label={chatModels.join(',')}>
-          <MyTag ml={2} colorSchema={'green'}>
-            <MyIcon name={'core/chat/chatModelTag'} w={'14px'} />
-            <Box ml={1} maxW={'200px'} className="textEllipsis">
-              {chatModels.join(',')}
-            </Box>
-          </MyTag>
+          <Box pl={2}>
+            <MyTag gap={1} colorSchema={'green'}>
+              <MyIcon name={'core/chat/chatModelTag'} w={'14px'} />
+              <Box maxW={'200px'} className="textEllipsis">
+                {chatModels.join(',')}
+              </Box>
+            </MyTag>
+          </Box>
         </MyTooltip>
       )}
     </>

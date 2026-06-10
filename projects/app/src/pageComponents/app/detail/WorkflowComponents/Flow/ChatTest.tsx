@@ -1,9 +1,6 @@
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import React, { useMemo } from 'react';
-import { SmallCloseIcon } from '@chakra-ui/icons';
-import { Box, Flex, IconButton } from '@chakra-ui/react';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { Box, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 
@@ -21,11 +18,10 @@ import ChatRecordContextProvider, {
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
-import VariablePopover from '@/components/core/chat/ChatContainer/components/VariablePopover';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
-import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
 import { getAppChatConfig, getGuideModule } from '@fastgpt/global/core/workflow/utils';
+import RunPreviewHeader from './RunPreviewHeader';
 
 type Props = {
   isOpen: boolean;
@@ -63,7 +59,6 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
 
-  const isVariableVisible = useContextSelector(ChatItemContext, (v) => v.isVariableVisible);
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
 
   // Sandbox: Status Hook 负责网络同步，UI Hook 负责弹窗渲染
@@ -136,53 +131,18 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
             <CloseIcon mt={1} onClick={onClose} />
           </Flex>
         ) : (
-          <Flex
-            py={2.5}
-            px={5}
-            whiteSpace={'nowrap'}
-            bg={'myGray.25'}
-            borderBottom={'1px solid #F4F4F7'}
-          >
-            <Flex fontSize={'16px'} fontWeight={'bold'} alignItems={'center'} mr={3}>
-              <MyIcon name={'common/paused'} w={'14px'} mr={2.5} />
-              <MyTooltip label={chatId ? t('common:chat_chatId', { chatId }) : ''}>
-                <Box
-                  cursor={'pointer'}
-                  onClick={() => {
-                    copyData(chatId);
-                  }}
-                >
-                  {t('common:core.chat.Run test')}
-                </Box>
-              </MyTooltip>
-            </Flex>
-            {!isVariableVisible && <VariablePopover chatType={ChatTypeEnum.test} />}
-            <Box flex={1} />
-
-            <SandboxEntryIcon mr={2} onOpen={onOpenSandboxModal} />
-            <MyTooltip label={t('common:core.chat.Restart')}>
-              <IconButton
-                mr={2}
-                className="chat"
-                size={'smSquare'}
-                icon={<MyIcon name={'common/clearLight'} w={'14px'} />}
-                variant={'whiteDanger'}
-                borderRadius={'md'}
-                aria-label={'delete'}
-                onClick={restartChat}
-              />
-            </MyTooltip>
-            <MyTooltip label={t('common:Close')}>
-              <IconButton
-                icon={<SmallCloseIcon fontSize={'22px'} />}
-                variant={'grayBase'}
-                size={'smSquare'}
-                aria-label={''}
-                onClick={onClose}
-                bg={'none'}
-              />
-            </MyTooltip>
-          </Flex>
+          <RunPreviewHeader
+            title={t('common:core.chat.Run test')}
+            chatId={chatId}
+            chatIdLabel={chatId ? t('common:chat_chatId', { chatId }) : ''}
+            restartLabel={t('common:core.chat.Restart')}
+            closeLabel={t('common:Close')}
+            SandboxEntryIcon={SandboxEntryIcon}
+            onCopyChatId={() => copyData(chatId)}
+            onOpenSandboxModal={onOpenSandboxModal}
+            onRestart={restartChat}
+            onClose={onClose}
+          />
         )}
 
         <Flex flex={'1 0 0'} alignItems={'end'} h={'100%'}>

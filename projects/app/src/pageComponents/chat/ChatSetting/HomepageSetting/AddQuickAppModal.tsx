@@ -175,7 +175,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
               minW={0}
             >
               <Flex h="100%" direction="column" minH={0} py={4} overflow="hidden">
-                <Box mb={2} px={4}>
+                <Box pb={2} px={4}>
                   <SearchInput
                     placeholder={t('chat:setting.favourite.search_placeholder')}
                     value={searchAppName}
@@ -187,7 +187,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
                   />
                 </Box>
 
-                <Box mb={2} py={1} px={4} fontSize="sm" minH={8} display="flex" alignItems="center">
+                <Box pb={2} py={1} px={4} fontSize="sm" minH={8} display="flex" alignItems="center">
                   {searchAppName && (
                     <Box
                       w="100%"
@@ -201,7 +201,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
                     </Box>
                   )}
                   {!searchAppName && paths.length === 0 && (
-                    <Flex flex={1} alignItems="center">
+                    <Flex flex={1} alignItems="center" gap={1}>
                       <Box
                         fontSize={['xs', 'sm']}
                         py={0.5}
@@ -217,7 +217,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
                       >
                         {t('common:root_folder')}
                       </Box>
-                      <MyIcon name="common/line" color="myGray.500" mx={1} w="5px" />
+                      <MyIcon name="common/line" color="myGray.500" w="5px" />
                     </Flex>
                   )}
                   {!searchAppName && paths.length > 0 && (
@@ -246,6 +246,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
                       <Flex
                         align="center"
                         minW={0}
+                        gap={2.5}
                         pr={2}
                         pl={4}
                         py={1.5}
@@ -279,8 +280,6 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
                           w={7}
                           h={7}
                           borderRadius="sm"
-                          ml={3}
-                          mr={2.5}
                           flexShrink={0}
                         />
 
@@ -299,7 +298,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
                         </Box>
 
                         {item.type === AppTypeEnum.folder && (
-                          <Box mr={10} flexShrink={0}>
+                          <Box pr={10} flexShrink={0}>
                             <ChevronRightIcon w={5} h={5} color="myGray.500" strokeWidth="1px" />
                           </Box>
                         )}
@@ -312,7 +311,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
 
             <GridItem minH={0} minW={0}>
               <VStack spacing={2} alignItems="stretch" h="100%" minH={0} minW={0}>
-                <Box mb={3} px={4} pt={4} fontSize="sm" color="myGray.600">
+                <Box pb={3} px={4} pt={4} fontSize="sm" color="myGray.600">
                   {t('chat:setting.favourite.selected_list', {
                     num: `${checkedQuickApps.length} / 4`
                   })}
@@ -371,7 +370,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
                                       w={'16px'}
                                     />
                                   </Box>
-                                  <Flex alignItems="center" flex={1} minW={0}>
+                                  <Flex alignItems="center" gap={2} flex={1} minW={0}>
                                     <Avatar
                                       src={app.avatar}
                                       borderRadius={'sm'}
@@ -383,7 +382,6 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
                                       minW={0}
                                       className="textEllipsis"
                                       userSelect="none"
-                                      ml={2}
                                     >
                                       {app.name}
                                     </Box>

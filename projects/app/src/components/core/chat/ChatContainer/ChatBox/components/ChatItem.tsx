@@ -1,6 +1,6 @@
 import { Box, type BoxProps, Button, Flex } from '@chakra-ui/react';
 import React, { useMemo, useState, useRef } from 'react';
-import ChatController, { type ChatControllerProps } from './ChatController';
+import { type ChatControllerProps } from './ChatController';
 import styles from '../index.module.scss';
 import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatBoxContext } from '../Provider';
@@ -10,19 +10,17 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { type AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import {
-  ChatItemContext,
-  type OnOpenCiteModalProps
-} from '@/web/core/chat/context/chatItemContext';
+import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 import { useMemoizedFn, useSize } from 'ahooks';
-import ChatBoxDivider from '../../../Divider';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import HumanChatBubble from './HumanChatBubble';
 import AIChatBubble, { shouldFilterAiValue } from './AIChatBubble';
 import type { ChatBoxInputType } from '../type';
 import { hasAiAnswerContent } from './AIChatBubble/utils';
+import ChatErrorCard from './ChatErrorCard';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 const colorMap = {
   [ChatStatusEnum.loading]: {
@@ -89,6 +87,25 @@ const ChatItem = (props: Props) => {
     () => addStatisticalDataToHistoryItem(chat),
     [chat]
   );
+  const inlineErrorInfo = useMemo(() => {
+    if (!chat.errorMsg && !errorText) return;
+
+    const moduleName =
+      errorText?.moduleName ||
+      chat.moduleName ||
+      t('common:core.module.template.ai_chat', { defaultValue: 'AI 对话' });
+    const errorReason = errorText?.errorText || '';
+    const noOutputText = t('chat:no_output', '无输出');
+    const isNoOutputError =
+      !errorReason ||
+      errorReason === 'chat:LLM_model_response_empty' ||
+      errorReason === t('chat:LLM_model_response_empty');
+
+    return {
+      title: `${t('chat:log.error.error_prefix')} - ${t(moduleName)}`,
+      message: isNoOutputError ? noOutputText : t(getErrText(errorReason))
+    };
+  }, [chat.errorMsg, chat.moduleName, errorText, t]);
 
   const isChatLog = chatType === 'log';
 
@@ -211,32 +228,37 @@ const ChatItem = (props: Props) => {
   );
 
   return (
-    <Box data-chat-id={chat.dataId}>
+    <Flex data-chat-id={chat.dataId} direction={'column'} gap={4}>
       {/* Workflow status */}
-      {!isHumanMessage && isChatLog && !!chatStatusMap && statusBoxData && isLastChild && showRunningStatus && (
-        <Flex w={'100%'} alignItems={'center'} gap={2} justifyContent={styleMap.justifyContent}>
-          <Flex
-            alignItems={'center'}
-            px={3}
-            py={'1.5px'}
-            borderRadius="md"
-            bg={chatStatusMap.bg}
-            fontSize={'sm'}
-          >
-            <Box
-              className={styles.statusAnimation}
-              bg={chatStatusMap.color}
-              w="8px"
-              h="8px"
-              borderRadius={'50%'}
-              mt={'1px'}
-            />
-            <Box ml={2} color={'myGray.600'}>
-              {statusBoxData.name}
-            </Box>
+      {!isHumanMessage &&
+        isChatLog &&
+        !!chatStatusMap &&
+        statusBoxData &&
+        isLastChild &&
+        showRunningStatus && (
+          <Flex w={'100%'} alignItems={'center'} gap={2} justifyContent={styleMap.justifyContent}>
+            <Flex
+              alignItems={'center'}
+              px={3}
+              py={'1.5px'}
+              borderRadius="md"
+              bg={chatStatusMap.bg}
+              fontSize={'sm'}
+            >
+              <Box
+                className={styles.statusAnimation}
+                bg={chatStatusMap.color}
+                w="8px"
+                h="8px"
+                borderRadius={'50%'}
+                mt={'1px'}
+              />
+              <Box ml={2} color={'myGray.600'}>
+                {statusBoxData.name}
+              </Box>
+            </Flex>
           </Flex>
-        </Flex>
-      )}
+        )}
 
       {/* User Feedback Content: Admin log show */}
       {isChatLog &&
@@ -278,12 +300,9 @@ const ChatItem = (props: Props) => {
           i === splitAiResponseResults.length - 1 ? (
             <>
               {/* error message */}
-              {!!chat.errorMsg && (
-                <Box mt={2}>
-                  <ChatBoxDivider icon={'common/errorFill'} text={t('chat:error_message')} />
-                  <Box fontSize={'xs'} color={'myGray.500'}>
-                    {chat.errorMsg}
-                  </Box>
+              {inlineErrorInfo && (
+                <Box mt={4}>
+                  <ChatErrorCard title={inlineErrorInfo.title} message={inlineErrorInfo.message} />
                 </Box>
               )}
               {children}
@@ -294,7 +313,6 @@ const ChatItem = (props: Props) => {
           return (
             <Box
               key={i}
-              mt={['6px', 2]}
               className="chat-box-card"
               w={'100%'}
               maxW={isPc ? '700px' : 'calc(100% - 25px)'}
@@ -315,7 +333,6 @@ const ChatItem = (props: Props) => {
         return (
           <Box
             key={i}
-            mt={['6px', 2]}
             className="chat-box-card"
             w={'100%'}
             maxW={isPc ? '700px' : 'calc(100% - 25px)'}
@@ -417,7 +434,7 @@ const ChatItem = (props: Props) => {
           )}
         </Box>
       )}
-    </Box>
+    </Flex>
   );
 };
 

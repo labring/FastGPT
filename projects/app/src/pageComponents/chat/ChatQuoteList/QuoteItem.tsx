@@ -46,10 +46,10 @@ const QuoteItem = ({
       }}
       onClick={onClick}
     >
-      <Flex gap={2} alignItems={'center'} mb={'8px'}>
+      <Flex gap={2} alignItems={'center'} pb={'8px'}>
         <Box alignItems={'center'} fontSize={'10px'} fontWeight={500} display={'inline-flex'}>
-          <Flex>
-            <MyIcon name={icon as any} mr={1} flexShrink={0} w={'12px'} />
+          <Flex gap={1}>
+            <MyIcon name={icon as any} flexShrink={0} w={'12px'} />
             <Box
               className={'textEllipsis'}
               wordBreak={'break-all'}
@@ -72,6 +72,7 @@ const QuoteItem = ({
         </>
       ) : (
         <Flex
+          gap={1}
           justifyContent={'center'}
           alignItems={'center'}
           h={'full'}
@@ -79,7 +80,7 @@ const QuoteItem = ({
           bg={'#FAFAFA'}
           color={'myGray.500'}
         >
-          <MyIcon name="common/info" w={'14px'} mr={1} color={'myGray.500'} />
+          <MyIcon name="common/info" w={'14px'} color={'myGray.500'} />
           {t('chat:chat.quote.deleted')}
         </Flex>
       )}

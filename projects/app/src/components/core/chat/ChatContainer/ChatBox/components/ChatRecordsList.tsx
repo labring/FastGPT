@@ -177,11 +177,16 @@ const ChatRecordsList = ({
                 }}
               >
                 <Box
-                  pt={
-                    item.hideInUI ? 0 : item.obj === ChatRoleEnum.Human ? 0 : '8px'
-                  }
-                  pb={
-                    item.hideInUI ? 0 : item.obj === ChatRoleEnum.Human ? '4px' : '32px'
+                  pt={0}
+                  pb={item.hideInUI ? 0 : item.obj === ChatRoleEnum.Human ? '40px' : '32px'}
+                  _hover={
+                    item.obj === ChatRoleEnum.Human
+                      ? {
+                          '& .chat-controller-hover': {
+                            display: 'flex'
+                          }
+                        }
+                      : undefined
                   }
                 >
                   {item.obj === ChatRoleEnum.Human && !item.hideInUI && (
@@ -261,7 +266,6 @@ const ChatRecordsList = ({
           </Box>
         );
       })}
-      {records.length > 0 && <Box h={'24px'} />}
     </Box>
   );
 };

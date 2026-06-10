@@ -39,10 +39,14 @@ const RenderReasoningContent = React.memo(function RenderReasoningContent({
 
   return (
     <Accordion allowToggle defaultIndex={defaultExpanded ? 0 : undefined}>
-      <AccordionItem borderTop={'none'} borderBottom={'none'}>
+      <AccordionItem borderTop={'none'} borderBottom={'none'} lineHeight={'24px'}>
         <AccordionButton
-          w={'auto'}
-          display={'inline-flex'}
+          w={'fit-content'}
+          h={'24px'}
+          minH={'24px'}
+          display={'flex'}
+          alignItems={'center'}
+          lineHeight={'24px'}
           p={0}
           bg={'transparent'}
           border={'none'}
@@ -51,17 +55,33 @@ const RenderReasoningContent = React.memo(function RenderReasoningContent({
           _hover={{ color: 'myGray.600', bg: 'transparent' }}
           _expanded={{ color: 'myGray.600' }}
         >
-          <HStack mr={1} spacing="0">
-            <Flex w="24px" h="24px" alignItems="center" justifyContent="flex-start">
-              <MyIcon name={'core/chat/deepThinking'} fill={'myGray.500'} />
+          <HStack h={'24px'} lineHeight={'24px'} mr={1} spacing="0">
+            <Flex
+              w="24px"
+              h="24px"
+              flexShrink={0}
+              alignItems="center"
+              justifyContent="center"
+              lineHeight={0}
+            >
+              <MyIcon
+                name={'core/chat/deepThinking'}
+                w={'20px'}
+                h={'20px'}
+                fill={'myGray.500'}
+                display={'block'}
+                verticalAlign={'middle'}
+              />
             </Flex>
-            <Box fontSize={'16px'}>{t('chat:ai_reasoning')}</Box>
+            <Box fontSize={'16px'} lineHeight={'24px'}>
+              {t('chat:ai_reasoning')}
+            </Box>
           </HStack>
 
-          <AccordionIcon ml={1} color={'myGray.500'} />
+          <AccordionIcon ml={1} w={'16px'} h={'16px'} color={'myGray.500'} />
         </AccordionButton>
         <AccordionPanel py={0} pr={0} pl={0} mt={2} color={'myGray.500'}>
-          <Box position={'relative'} ml={1.5}>
+          <Box position={'relative'} ml={3}>
             <Box
               pl={3}
               borderLeft={'1px solid'}

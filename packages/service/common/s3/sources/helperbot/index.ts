@@ -10,7 +10,7 @@ import {
 import { differenceInHours } from 'date-fns';
 import { S3Buckets } from '../../config/constants';
 import path from 'path';
-import { getFileS3Key } from '../../utils';
+import { getFileS3Key, parseHelperBotFileS3Key } from '../../utils';
 
 export class S3HelperBotSource extends S3PrivateBucket {
   private static instance: S3HelperBotSource;
@@ -54,8 +54,7 @@ export class S3HelperBotSource extends S3PrivateBucket {
   }
 
   parseKey(key: string) {
-    const [type, chatId, userId, filename] = key.split('/');
-    return { type, chatId, userId, filename };
+    return parseHelperBotFileS3Key(key);
   }
 
   async createGetFileURL(params: {

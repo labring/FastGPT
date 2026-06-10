@@ -197,7 +197,7 @@ const ChatContextProvider = ({
   const { runAsync: onDelHistory, loading: isDeletingHistory } = useRequest(
     (chatId: string) =>
       delChatHistoryById({
-        appId: historyAppId,
+        ...(historyAppId ? { appId: historyAppId } : {}),
         chatId,
         ...outLinkAuthData
       }),
@@ -213,7 +213,7 @@ const ChatContextProvider = ({
   const { runAsync: onClearHistories, loading: isClearingHistory } = useRequest(
     () =>
       delClearChatHistories({
-        appId: historyAppId,
+        ...(historyAppId ? { appId: historyAppId } : {}),
         ...outLinkAuthData
       }),
     {
@@ -280,7 +280,8 @@ const ChatContextProvider = ({
     }
 
     if (scopedHistories.length > 0) {
-      onChangeChatId(scopedHistories[0].chatId, true);
+      // 跨应用恢复历史时必须重新拉 init，否则 chatBoxData 会停留在上一个应用。
+      onChangeChatId(scopedHistories[0].chatId);
     }
   }, [historyAppId, histories, isPaginationLoading, onChangeChatId]);
 

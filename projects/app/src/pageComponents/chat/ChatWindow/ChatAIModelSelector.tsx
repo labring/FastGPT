@@ -53,17 +53,17 @@ const ModelOptionLabel = React.memo(function ModelOptionLabel({
   noOfLines?: ResponsiveValue<number>;
 }) {
   return (
-    <Flex alignItems={'center'} flex={'1 1 0'} minW={0} overflow={'hidden'}>
+    <Flex alignItems={'center'} gap={1} flex={'1 1 0'} minW={0} overflow={'hidden'}>
       <Box noOfLines={noOfLines ?? 1} flex={'1 1 0'} minW={0} overflow={'hidden'}>
         {name}
       </Box>
       {showTestModeTip && (
-        <Box ml={1} flexShrink={0} pointerEvents={'auto'}>
+        <Box flexShrink={0} pointerEvents={'auto'}>
           <TestModeBetaTag />
         </Box>
       )}
       {showMultimodalTip && (
-        <Box ml={1} flexShrink={0} pointerEvents={'auto'}>
+        <Box flexShrink={0} pointerEvents={'auto'}>
           <MultimodalTag />
         </Box>
       )}
@@ -83,10 +83,9 @@ const SelectedModelLabel = React.memo(function SelectedModelLabel({
   noOfLines?: ResponsiveValue<number>;
 }) {
   return (
-    <Flex alignItems={'center'} py={1} minW={0} overflow={'hidden'} w={'100%'}>
+    <Flex alignItems={'center'} gap={2} py={1} minW={0} overflow={'hidden'} w={'100%'}>
       <Avatar
         borderRadius={'0'}
-        mr={2}
         src={avatar || HUGGING_FACE_ICON}
         w={avatarSize}
         fallbackSrc={HUGGING_FACE_ICON}
@@ -164,10 +163,9 @@ const OneRowSelector = ({
         return {
           value: item.value,
           label: (
-            <Flex alignItems={'center'} py={1} w={'100%'} minW={0}>
+            <Flex alignItems={'center'} gap={2} py={1} w={'100%'} minW={0}>
               <Avatar
                 borderRadius={'0'}
-                mr={2}
                 src={avatar || HUGGING_FACE_ICON}
                 w={avatarSize}
                 fallbackSrc={HUGGING_FACE_ICON}
@@ -289,10 +287,9 @@ const MultipleRowSelector = ({
       children: { label: string | React.ReactNode; value: string }[];
     }>((provider) => ({
       label: (
-        <Flex alignItems={'center'} py={1}>
+        <Flex alignItems={'center'} gap={2} py={1}>
           <Avatar
             borderRadius={'0'}
-            mr={2}
             src={provider?.avatar || HUGGING_FACE_ICON}
             fallbackSrc={HUGGING_FACE_ICON}
             w={avatarSize}

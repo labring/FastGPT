@@ -14,8 +14,6 @@ import { useSize } from 'ahooks';
 import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../Provider';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
-import { useSandboxEditor } from '@/pageComponents/chat/SandboxEditor/hook';
-import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 
 export type CitationRenderItem = {
   type: 'dataset' | 'link';
@@ -215,15 +213,11 @@ const ResponseTags = ({
   const dataId = historyItem.dataId;
 
   const durationSeconds = historyItem.durationSeconds || 0;
-  const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
-  const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
-  const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
   const isShowCite = useContextSelector(ChatItemContext, (v) => v.isShowCite);
   const showWholeResponse = useContextSelector(ChatItemContext, (v) => v.showWholeResponse ?? true);
   const {
     totalQuoteList: quoteList = [],
     toolCiteLinks = [],
-    useAgentSandbox
   } = useMemo(() => {
     return {
       ...addStatisticalDataToHistoryItem(historyItem),
@@ -244,12 +238,6 @@ const ResponseTags = ({
     onOpen: onOpenWholeModal,
     onClose: onCloseWholeModal
   } = useDisclosure();
-
-  const { onOpenSandboxModal, SandboxEditorModal } = useSandboxEditor({
-    appId,
-    chatId,
-    outLinkAuthData
-  });
 
   const citationRenderList: CitationRenderItem[] = useMemo(() => {
     if (!isShowCite) return [];
@@ -299,7 +287,6 @@ const ResponseTags = ({
 
   const notEmptyTags =
     (showFooterMeta && notSharePage) ||
-    useAgentSandbox ||
     (showFooterMeta && isPc && durationSeconds > 0);
 
   return !showTags ? null : (
@@ -321,20 +308,6 @@ const ResponseTags = ({
                 {durationSeconds.toFixed(2)}s
               </MyTag>
             </MyTooltip>
-          )}
-
-          {useAgentSandbox && (
-            <>
-              <MyTag
-                colorSchema="green"
-                type="borderSolid"
-                cursor={'pointer'}
-                onClick={onOpenSandboxModal}
-              >
-                {t('chat:sandbox_files')}
-              </MyTag>
-              <SandboxEditorModal />
-            </>
           )}
 
           {showFooterMeta && notSharePage && showWholeResponse && (

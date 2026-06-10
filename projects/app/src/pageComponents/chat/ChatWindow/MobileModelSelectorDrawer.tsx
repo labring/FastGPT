@@ -104,6 +104,7 @@ const MobileModelSelectorDrawer = ({ isOpen, modelList, value, onChange, onClose
                     key={provider.id}
                     h="44px"
                     alignItems="center"
+                    gap="4px"
                     px={2}
                     borderRadius="6px"
                     onClick={() => setActiveProviderId(provider.id)}
@@ -113,7 +114,6 @@ const MobileModelSelectorDrawer = ({ isOpen, modelList, value, onChange, onClose
                       fallbackSrc={HUGGING_FACE_ICON}
                       w="24px"
                       borderRadius="0"
-                      mr="4px"
                     />
                     <Box flex="1" fontSize="16px" color="myGray.900">
                       {provider.name}

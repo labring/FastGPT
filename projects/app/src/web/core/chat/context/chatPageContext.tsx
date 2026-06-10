@@ -70,7 +70,14 @@ export const ChatPageContextProvider = ({
 }) => {
   const router = useRouter();
   const { feConfigs } = useSystemStore();
-  const { setSource, setAppId, setLastPane, setLastChatAppId, lastPane } = useChatStore();
+  const {
+    appId: activeAppId,
+    setSource,
+    setAppId,
+    setLastPane,
+    setLastChatAppId,
+    lastPane
+  } = useChatStore();
   const { userInfo } = useUserStore();
 
   const { pane = lastPane || ChatSidebarPaneEnum.HOME } = router.query as {
@@ -80,6 +87,8 @@ export const ChatPageContextProvider = ({
   const [collapse, setCollapse] = useState<CollapseStatusType>(defaultCollapseStatus);
   const [recentlyUsedAppPlaceholders, setRecentlyUsedAppPlaceholders] =
     useState<GetRecentlyUsedAppsResponseType>([]);
+  // Home App 是门户页背后的隐藏应用；缓存它的 id，避免移动/桌面切换时被最近使用列表短暂暴露。
+  const [cachedHomeAppId, setCachedHomeAppId] = useState('');
 
   // Get recently used apps
   const { data: myApps = [], refresh: refreshRecentlyUsed } = useRequest(
@@ -96,8 +105,8 @@ export const ChatPageContextProvider = ({
 
   // Initialize chat page state
   useMount(async () => {
-    if (routeAppId) setAppId(routeAppId);
     setSource('online');
+    if (routeAppId) setAppId(routeAppId);
   });
 
   // Sync appId to store as route/appId changes
@@ -135,7 +144,24 @@ export const ChatPageContextProvider = ({
     }
   );
 
-  const homeAppId = chatSettings?.appId;
+  const homeAppId =
+    chatSettings?.appId ||
+    cachedHomeAppId ||
+    (feConfigs.isPlus && pane === ChatSidebarPaneEnum.HOME ? activeAppId : '');
+
+  useEffect(() => {
+    if (!feConfigs.isPlus) {
+      setCachedHomeAppId('');
+      return;
+    }
+
+    const nextHomeAppId = chatSettings?.appId;
+
+    if (!nextHomeAppId) return;
+
+    setCachedHomeAppId((current) => (current === nextHomeAppId ? current : nextHomeAppId));
+  }, [chatSettings?.appId, feConfigs.isPlus]);
+
   const upsertRecentlyUsedAppPlaceholder = useCallback(
     (app: RecentlyUsedAppPlaceholderInput) => {
       const { appId, name, avatar } = app;
@@ -186,14 +212,18 @@ export const ChatPageContextProvider = ({
         setAppId(_id);
       }
 
-      await router.replace({
-        query: {
-          ...router.query,
-          appId: _id,
-          pane: newPane,
-          tab
-        }
-      });
+      await router.replace(
+        {
+          query: {
+            ...router.query,
+            appId: _id,
+            pane: newPane,
+            tab
+          }
+        },
+        undefined,
+        { shallow: true }
+      );
 
       setLastPane(newPane);
       setLastChatAppId(_id);
@@ -202,10 +232,18 @@ export const ChatPageContextProvider = ({
   );
 
   useEffect(() => {
-    if (!Object.values(ChatSidebarPaneEnum).includes(pane)) {
-      handlePaneChange(ChatSidebarPaneEnum.HOME);
+    if (Object.values(ChatSidebarPaneEnum).includes(pane)) return;
+
+    handlePaneChange(feConfigs.isPlus ? ChatSidebarPaneEnum.HOME : ChatSidebarPaneEnum.ALL_APPS);
+  }, [feConfigs.isPlus, handlePaneChange, pane]);
+
+  useEffect(() => {
+    if (feConfigs.isPlus) return;
+
+    if (![ChatSidebarPaneEnum.ALL_APPS, ChatSidebarPaneEnum.RECENTLY_USED_APPS].includes(pane)) {
+      handlePaneChange(ChatSidebarPaneEnum.ALL_APPS);
     }
-  }, [handlePaneChange, pane]);
+  }, [feConfigs.isPlus, handlePaneChange, pane]);
 
   const logos: Pick<ChatSettingType, 'wideLogoUrl' | 'squareLogoUrl'> = useMemo(
     () => ({

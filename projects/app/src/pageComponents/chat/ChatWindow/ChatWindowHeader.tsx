@@ -8,11 +8,13 @@ import type { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/
 const ChatWindowHeader = ({
   title,
   history,
-  chatType
+  chatType,
+  rightActions
 }: {
   title?: string;
   history: ChatItemMiniType[];
   chatType: ChatTypeEnum;
+  rightActions?: React.ReactNode;
 }) => {
   const hasHistory = history.length > 0;
 
@@ -31,6 +33,7 @@ const ChatWindowHeader = ({
       <Flex position="absolute" right={5} alignItems="center" gap={2}>
         <ChatVariableButton chatType={chatType} />
         {hasHistory && <MarkdownExportButton history={history} />}
+        {rightActions}
       </Flex>
     </Flex>
   );

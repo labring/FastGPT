@@ -277,7 +277,7 @@ const ChatFavouriteApp = ({ hideMobileHeader = false, mobileSearchKey }: Props) 
 
                 <Box
                   flex={['1 0 60px', '1 0 72px']}
-                  mt={3}
+                  pt={3}
                   pr={8}
                   textAlign={'justify'}
                   wordBreak={'break-all'}

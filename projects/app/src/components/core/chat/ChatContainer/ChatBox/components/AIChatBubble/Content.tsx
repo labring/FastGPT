@@ -87,23 +87,24 @@ const AIChatBubbleContent = ({
     const group = processingGroup;
     processingGroup = [];
     const previewItem = group[group.length - 1];
+    const hasFinishedContent = group.some(
+      ({ value }) => hasAiAnswerContent(value) || hasAiInteractiveContent(value)
+    );
     const isProcessing =
-      isChatting && isLastChild && group.some(({ index }) => index === chatValue.length - 1);
+      isChatting &&
+      isLastChild &&
+      !hasFinishedContent &&
+      group.some(({ index }) => index === chatValue.length - 1);
 
     contentBlocks.push(
-      <Box key={`${dataId}-processing-${group[0].index}`} _notFirst={{ mt: 2 }}>
+      <Box key={`${dataId}-processing-${group[0].index}`}>
         <RenderProcessingCollapse
           isProcessing={isProcessing}
           label={previewItem ? getProcessingPreviewLabelKey(previewItem.value) : undefined}
           preview={
-            previewItem
-              ? (
-                  <RenderProcessingPreview
-                    value={previewItem.value}
-                    showAnimation={isProcessing}
-                  />
-                )
-              : undefined
+            previewItem ? (
+              <RenderProcessingPreview value={previewItem.value} showAnimation={isProcessing} />
+            ) : undefined
           }
         >
           {group.map(({ value, index }) => (
@@ -146,7 +147,7 @@ const AIChatBubbleContent = ({
     flushProcessingGroup();
 
     contentBlocks.push(
-      <Box key={`${dataId}-ai-${index}`} _notFirst={{ mt: 2 }}>
+      <Box key={`${dataId}-ai-${index}`}>
         {renderValue({
           value,
           index,
@@ -161,7 +162,7 @@ const AIChatBubbleContent = ({
   flushProcessingGroup();
 
   return (
-    <Flex flexDirection={'column'} fontSize={'16px'} lineHeight={1.75}>
+    <Flex flexDirection={'column'} gap={4} fontSize={'16px'} lineHeight={1.75}>
       {contentBlocks}
     </Flex>
   );

@@ -603,6 +603,8 @@ export const useChatGenerate = ({
           );
           syncSidebarChatGenerateStatus(ChatGenerateStatusEnum.generating, {
             hasBeenRead: false,
+            targetAppId: appId,
+            targetChatId: chatId,
             title: temporaryHistoryTitle
           });
 
@@ -656,12 +658,15 @@ export const useChatGenerate = ({
                 if (!abortSignal?.signal?.aborted) {
                   const uncaughtErr = responseData.find((r) => r.error)?.error;
                   const err = uncaughtErr ?? responseData[responseData.length - 1]?.errorText;
-                  if (err) {
-                    toast({
-                      title: t(getErrText(err)),
-                      status: 'warning'
-                    });
-                  }
+                  const errorMsg = err ? t(getErrText(err)) : undefined;
+
+                  return {
+                    ...item,
+                    status: ChatStatusEnum.finish,
+                    time: new Date(),
+                    responseData,
+                    errorMsg
+                  };
                 }
 
                 return {
@@ -685,7 +690,7 @@ export const useChatGenerate = ({
                 createQuestionGuide();
               }
 
-              generatingScroll(true);
+              generatingScroll();
               if (isPc) {
                 TextareaDom.current?.focus();
               }
@@ -698,6 +703,8 @@ export const useChatGenerate = ({
             finishChatGenerateStatus({
               status: ChatGenerateStatusEnum.done,
               finishedInActiveChat,
+              targetAppId: appId,
+              targetChatId: chatId,
               shouldUpdateChatBoxData: (state) => state.appId === appId && state.chatId === chatId
             });
           } catch (err: any) {
@@ -705,12 +712,7 @@ export const useChatGenerate = ({
               return;
             }
 
-            toast({
-              title: t(getErrText(err, t('common:core.chat.error.Chat error') as any)),
-              status: 'error',
-              duration: 5000,
-              isClosable: true
-            });
+            const errorMsg = t(getErrText(err, t('common:core.chat.error.Chat error') as any));
 
             setChatRecords((state) =>
               state.map((item, index) => {
@@ -718,20 +720,22 @@ export const useChatGenerate = ({
                 return {
                   ...item,
                   time: new Date(),
-                  status: ChatStatusEnum.finish
+                  status: ChatStatusEnum.finish,
+                  errorMsg
                 };
               })
             );
 
             if (!err?.responseText) {
               resetInputVal({ text, files });
-              setChatRecords(newChatList.slice(0, newChatList.length - 2));
             }
 
             const finishedInActiveChat = activeChatIdRef.current === chatId;
             finishChatGenerateStatus({
               status: ChatGenerateStatusEnum.error,
               finishedInActiveChat,
+              targetAppId: appId,
+              targetChatId: chatId,
               shouldUpdateChatBoxData: (state) => state.appId === appId && state.chatId === chatId
             });
           }

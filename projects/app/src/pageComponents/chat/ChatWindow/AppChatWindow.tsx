@@ -32,6 +32,7 @@ import ChatWindowHeader from './ChatWindowHeader';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import ToolMenu from '@/pageComponents/chat/ToolMenu';
 import { mobileChatHeaderIconButtonStyle } from './headerIconButtonStyle';
+import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
@@ -51,15 +52,24 @@ const AppChatWindow = () => {
   const showSkillReferences = useContextSelector(ChatItemContext, (v) => v.showSkillReferences);
   const onChangeChatId = useContextSelector(ChatContext, (v) => v.onChangeChatId);
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
+  const isCurrentChatReady = chatBoxData.appId === appId && chatBoxData.chatId === chatId;
   const chatWindowTitle =
-    chatBoxData.title?.trim() || t('common:core.chat.New Chat', { defaultValue: '新对话' });
+    isCurrentChatReady && chatBoxData.title?.trim()
+      ? chatBoxData.title
+      : t('common:core.chat.New Chat', { defaultValue: '新对话' });
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
+  const clearChatRecords = useContextSelector(ChatItemContext, (v) => v.clearChatRecords);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
 
-  const isCurrentChatReady = chatBoxData.appId === appId && chatBoxData.chatId === chatId;
+  const { SandboxEntryIcon } = useSandboxStatus({ appId, chatId, outLinkAuthData });
+  const { SandboxEditorModal, onOpenSandboxModal } = useSandboxEditor({
+    appId,
+    chatId,
+    outLinkAuthData
+  });
 
   const chatSettings = useContextSelector(ChatPageContext, (v) => v.chatSettings);
   const pane = useContextSelector(ChatPageContext, (v) => v.pane);
@@ -144,10 +154,14 @@ const AppChatWindow = () => {
       const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats({ messages: histories })[0]);
 
       onUpdateHistoryTitle({ chatId, newTitle });
-      setChatBoxData((state) => ({
-        ...state,
-        title: newTitle
-      }));
+      setChatBoxData((state) =>
+        state.appId === appId && state.chatId === chatId
+          ? {
+              ...state,
+              title: newTitle
+            }
+          : state
+      );
 
       refreshRecentlyUsed();
 
@@ -171,7 +185,10 @@ const AppChatWindow = () => {
   return (
     <Flex h={'100%'} flexDirection={['column', 'row']}>
       {/* set window title and icon */}
-      <NextHead title={chatBoxData.app.name} icon={chatBoxData.app.avatar} />
+      <NextHead
+        title={isCurrentChatReady ? chatBoxData.app.name : undefined}
+        icon={isCurrentChatReady ? chatBoxData.app.avatar : undefined}
+      />
 
       {/* show history slider */}
       {isPc ? (
@@ -203,6 +220,7 @@ const AppChatWindow = () => {
             title={chatWindowTitle}
             history={chatRecords}
             chatType={ChatTypeEnum.chat}
+            rightActions={<SandboxEntryIcon onOpen={onOpenSandboxModal} />}
           />
         ) : (
           <Flex
@@ -226,7 +244,9 @@ const AppChatWindow = () => {
                 fontSize="16px"
                 fontWeight={500}
                 color="myGray.900"
-                className="textEllipsis"
+                overflow="hidden"
+                whiteSpace="nowrap"
+                textOverflow="clip"
               >
                 {chatWindowTitle}
               </Box>
@@ -244,7 +264,10 @@ const AppChatWindow = () => {
               appId={appId}
               chatId={chatId}
               outLinkAuthData={outLinkAuthData}
-              onNewChat={() => onChangeChatId(getNanoid())}
+              onNewChat={() => {
+                clearChatRecords();
+                onChangeChatId(getNanoid());
+              }}
               onStartChat={onStartChat}
             />
           ) : (
@@ -260,6 +283,7 @@ const AppChatWindow = () => {
             />
           )}
         </Box>
+        <SandboxEditorModal />
       </Flex>
     </Flex>
   );

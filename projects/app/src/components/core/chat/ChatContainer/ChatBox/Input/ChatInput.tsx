@@ -178,10 +178,10 @@ const ChatInput = ({
             }
             resize={'none'}
             rows={1}
-            height={[5, 6]}
-            lineHeight={[5, 6]}
+            height={textareaMinH}
+            lineHeight={textareaMinH}
             maxHeight={[24, 32]}
-            minH={'50px'}
+            minH={textareaMinH}
             mb={0}
             maxLength={-1}
             overflowY={'hidden'}
@@ -191,7 +191,7 @@ const ChatInput = ({
             boxShadow={'none !important'}
             color={'myGray.900'}
             fontWeight={400}
-            fontSize={'1rem'}
+            fontSize={'16px'}
             letterSpacing={'0.5px'}
             w={'100%'}
             _placeholder={{
@@ -426,7 +426,7 @@ const ChatInput = ({
       w={'100%'}
       maxW={['100%', '780px']}
       mx={'auto'}
-      pb={0}
+      pb={['calc(16px + env(safe-area-inset-bottom))', 4]}
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
         e.preventDefault();
@@ -523,7 +523,7 @@ const ChatInput = ({
 
         {!mobilePreSpeak && <Box>{RenderButtonGroup}</Box>}
       </Flex>
-      <ComplianceTip type={'chat'} pt={4} pb={['calc(12px + env(safe-area-inset-bottom))', 3]} />
+      <ComplianceTip type={'chat'} pt={4} pb={0} />
     </Box>
   );
 };

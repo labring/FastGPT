@@ -296,8 +296,14 @@ const FavouriteAppSetting = ({ Header }: Props) => {
                           </Box>
 
                           {/* 名称列 */}
-                          <Box w={[3 / 10, 2.5 / 10]} display="flex" alignItems="center" pr={4}>
-                            <Avatar src={row.avatar} borderRadius={'xs'} w={'20px'} mr={2} />
+                          <Box
+                            w={[3 / 10, 2.5 / 10]}
+                            display="flex"
+                            alignItems="center"
+                            gap={2}
+                            pr={4}
+                          >
+                            <Avatar src={row.avatar} borderRadius={'xs'} w={'20px'} />
                             <Box
                               fontWeight={'medium'}
                               whiteSpace={'nowrap'}

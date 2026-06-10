@@ -11,6 +11,12 @@ import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../../Provider';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import AIChatLoading from '../AIChatLoading';
+import {
+  hasAiAnswerContent,
+  hasAiInteractiveContent,
+  hasAiProcessingContent
+} from './utils';
+import { useTranslation } from 'next-i18next';
 
 const ResponseTags = dynamic(() => import('../ResponseTags'));
 const WholeResponseModal = dynamic(() => import('../../../../components/WholeResponseModal'));
@@ -44,6 +50,7 @@ const AIChatBubble = ({
   chatControllerProps,
   children
 }: AIChatBubbleProps) => {
+  const { t } = useTranslation();
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
   const showWholeResponse = useContextSelector(ChatItemContext, (v) => v.showWholeResponse ?? true);
   const {
@@ -54,6 +61,12 @@ const AIChatBubble = ({
   const showFooterActions = isLastValueGroup && (!isLastChild || !isChatting);
   const canShowWholeResponse = chatType !== 'share' && showWholeResponse;
   const showLoading = isLastChild && isLastValueGroup && isChatting;
+  const hasFinalOutput = chatValue.some(
+    (item) => hasAiAnswerContent(item) || hasAiInteractiveContent(item)
+  );
+  const hasProcessingContent = chatValue.some((item) => hasAiProcessingContent(item));
+  const showNoOutputTip =
+    isLastValueGroup && !isChatting && !chat.errorMsg && !chat.errorText && !hasFinalOutput;
 
   return (
     <Box position={'relative'} w={'100%'} maxW={'100%'}>
@@ -72,6 +85,16 @@ const AIChatBubble = ({
           isChatting={isChatting}
           onOpenCiteModal={onOpenCiteModal}
         />
+        {showNoOutputTip && (
+          <Box
+            mt={hasProcessingContent ? 4 : 0}
+            fontSize="14px"
+            lineHeight="20px"
+            color="myGray.500"
+          >
+            {t('chat:no_output_content', '应用无输出内容')}
+          </Box>
+        )}
         {isLastValueGroup && (
           <ResponseTags
             showTags={!isLastChild || !isChatting}
@@ -90,6 +113,7 @@ const AIChatBubble = ({
       {showFooterActions && (
         <AIChatBubbleActions
           chatControllerProps={chatControllerProps}
+          historyItem={chat}
           questionGuides={isLastChild ? questionGuides : []}
           showWholeResponse={canShowWholeResponse}
           onOpenWholeModal={onOpenWholeModal}

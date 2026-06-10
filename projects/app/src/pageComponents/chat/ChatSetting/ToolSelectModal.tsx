@@ -137,7 +137,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
       </Box>
       {/* Tag filter */}
       {allTags.length > 0 && (
-        <Box mt={3} mb={-1} px={[3, 6]}>
+        <Box pt={3} mb={-1} px={[3, 6]}>
           <ToolTagFilterBox
             size="sm"
             tags={allTags}
@@ -148,11 +148,11 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
       )}
       {/* route components */}
       {!searchKey && parentId && (
-        <Flex mt={2} px={[3, 6]}>
+        <Flex pt={2} px={[3, 6]}>
           <FolderPath paths={paths} FirstPathDom={null} onClick={onUpdateParentId} />
         </Flex>
       )}
-      <MyBox isLoading={isLoading} mt={2} pb={3} flex={'1 0 0'} h={0}>
+      <MyBox isLoading={isLoading} pt={2} pb={3} flex={'1 0 0'} h={0}>
         <Box px={[3, 6]} overflow={'overlay'} height={'100%'}>
           <RenderList
             templates={templates}
@@ -286,7 +286,7 @@ const RenderList = React.memo(function RenderList({
     return (
       <>
         {templates.length > 0 ? (
-          <Grid gridTemplateColumns={gridStyle.gridTemplateColumns} rowGap={3} columnGap={3} mt={3}>
+          <Grid gridTemplateColumns={gridStyle.gridTemplateColumns} rowGap={3} columnGap={3} pt={3}>
             {templates.map((template) => {
               const selected = selectedTools.some((tool) => tool.pluginId === template.id);
 
@@ -296,21 +296,21 @@ const RenderList = React.memo(function RenderList({
                   placement={'right'}
                   label={
                     <Box py={2}>
-                      <Flex alignItems={'center'}>
+                      <Flex alignItems={'center'} gap={3}>
                         <MyAvatar
                           src={template.avatar}
                           w={'1.75rem'}
                           objectFit={'contain'}
                           borderRadius={'sm'}
                         />
-                        <Box fontWeight={'bold'} ml={3} color={'myGray.900'} flex={'1'}>
+                        <Box fontWeight={'bold'} color={'myGray.900'} flex={'1'}>
                           {template.name}
                         </Box>
                         <Box color={'myGray.500'}>
                           By {template.author || feConfigs?.systemTitle}
                         </Box>
                       </Flex>
-                      <Box mt={2} color={'myGray.500'} maxH={'100px'} overflow={'hidden'}>
+                      <Box pt={2} color={'myGray.500'} maxH={'100px'} overflow={'hidden'}>
                         {template.intro || t('common:core.workflow.Not intro')}
                       </Box>
                       <CostTooltip cost={template.currentCost} hasTokenFee={template.hasTokenFee} />
@@ -318,6 +318,7 @@ const RenderList = React.memo(function RenderList({
                   }
                 >
                   <Flex
+                    gap={3}
                     alignItems={'center'}
                     py={gridStyle.py}
                     px={3}
@@ -332,7 +333,7 @@ const RenderList = React.memo(function RenderList({
                       borderRadius={'sm'}
                       flexShrink={0}
                     />
-                    <Box flex={'1 0 0'} ml={3}>
+                    <Box flex={'1 0 0'}>
                       <Box
                         color={'myGray.900'}
                         fontWeight={'500'}

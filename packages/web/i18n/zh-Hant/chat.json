@@ -2,6 +2,7 @@
   "AI_input_is_empty": "傳送至 AI 節點的內容為空",
   "Delete_all": "清除所有詞彙",
   "LLM_model_response_empty": "模型響應為空，請查看模型詳情請求",
+  "no_output_content": "應用無輸出內容",
   "Next": "下一個",
   "Previous": "上一個",
   "agent_plan_generating": "正在生成計畫",

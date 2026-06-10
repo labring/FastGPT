@@ -142,7 +142,16 @@ const EditorContent = ({
       if (language === 'markdown') {
         const { metadata, bodyContent, hasMetadata } = parseMarkdownFrontmatter(content);
         return (
-          <Box h="full" overflowY="auto" bg="white" px={4} py={4}>
+          <Box
+            h="full"
+            overflowY="auto"
+            bg="white"
+            px={4}
+            py={4}
+            display="flex"
+            flexDir="column"
+            gap={6}
+          >
             {hasMetadata && <MarkdownMetadataCard metadata={metadata} />}
             <Markdown source={bodyContent} />
           </Box>

@@ -13,6 +13,7 @@ const ChatSliderMobileNewChatButton = () => {
   const { t } = useTranslation();
   const onChangeChatId = useContextSelector(ChatContext, (v) => v.onChangeChatId);
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
+  const clearChatRecords = useContextSelector(ChatItemContext, (v) => v.clearChatRecords);
 
   return (
     <Button
@@ -31,6 +32,7 @@ const ChatSliderMobileNewChatButton = () => {
       _active={{ bg: '#3370FF' }}
       leftIcon={<MyIcon name="core/chat/chatLight" w="16px" h="16px" color="white" fill="white" />}
       onClick={() => {
+        clearChatRecords();
         onChangeChatId();
         setCiteModalData(undefined);
       }}

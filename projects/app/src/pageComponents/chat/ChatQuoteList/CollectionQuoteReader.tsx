@@ -232,6 +232,7 @@ const CollectionReader = ({
           w={'full'}
           h={'56px'}
           px={4}
+          gap={3}
           alignItems={'center'}
           borderBottom={'1px solid'}
           borderColor={'myGray.150'}
@@ -251,7 +252,7 @@ const CollectionReader = ({
 
           {isDeleted ? (
             <Flex
-              ml={3}
+              gap={1}
               borderRadius={'sm'}
               py={1}
               px={2}
@@ -260,7 +261,7 @@ const CollectionReader = ({
               alignItems={'center'}
               fontSize={'11px'}
             >
-              <MyIcon name="common/info" w={'14px'} mr={1} color={'red.600'} />
+              <MyIcon name="common/info" w={'14px'} color={'red.600'} />
               {t('chat:chat.quote.deleted')}
             </Flex>
           ) : null}

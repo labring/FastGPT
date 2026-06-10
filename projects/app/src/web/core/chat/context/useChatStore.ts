@@ -102,24 +102,43 @@ const createCustomStorage = () => {
 export const useChatStore = create<State>()(
   devtools(
     persist(
-      immer((set, get) => ({
+      immer((set) => ({
         source: undefined,
         setSource(e) {
           set((state) => {
-            // 分享会话的恢复必须依赖 shareId + outLinkUid，不能只靠 lastChatId 的 source 前缀。
-            if (
-              e !== ChatSourceEnum.share &&
-              !state.chatId &&
-              state.lastChatId &&
-              state.lastChatId.startsWith(e)
-            ) {
-              state.chatId = state.lastChatId.split('-')[1];
-            } else if (e !== get().source) {
-              // 来源改变，强制重置 chatId
-              state.chatId = getNanoid(24);
+            if (state.source === e) {
+              state.source = e;
+              return;
             }
 
+            // source 切换但 appId 不变时，setAppId 不会触发，必须在这里按 source + appId 归档和恢复 chatId。
+            const currentCacheKey = getAppChatIdCacheKey({
+              source: state.source,
+              appId: state.appId,
+              outLinkAuthData: state.outLinkAuthData
+            });
+            if (currentCacheKey && state.chatId) {
+              state.appChatIdMap[currentCacheKey] = state.chatId;
+            }
+
+            const nextCacheKey = getAppChatIdCacheKey({
+              source: e,
+              appId: state.appId,
+              outLinkAuthData: state.outLinkAuthData
+            });
+            const restoredAppChatId = nextCacheKey
+              ? state.appChatIdMap[nextCacheKey]
+              : undefined;
+            // 分享会话的恢复必须依赖 shareId + outLinkUid，不能只靠 lastChatId 的 source 前缀。
+            const lastChatPrefix = `${e}-`;
+            const restoredLastChatId =
+              e !== ChatSourceEnum.share && state.lastChatId?.startsWith(lastChatPrefix)
+                ? state.lastChatId.slice(lastChatPrefix.length)
+                : undefined;
+
+            state.chatId = restoredAppChatId || restoredLastChatId || getNanoid(24);
             state.source = e;
+            state.lastChatId = `${e}-${state.chatId}`;
           });
         },
         appId: '',

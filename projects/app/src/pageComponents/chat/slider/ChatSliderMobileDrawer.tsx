@@ -1,4 +1,4 @@
-import { Drawer, DrawerOverlay, DrawerContent, useTheme } from '@chakra-ui/react';
+import { Box, Drawer, DrawerOverlay, DrawerContent, useTheme } from '@chakra-ui/react';
 import React from 'react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import ChatSliderHeader from '@/pageComponents/chat/slider/ChatSliderHeader';
@@ -63,7 +63,9 @@ const ChatSliderMobileDrawer = ({
           {showHeader && <ChatSliderHeader title={title} banner={banner} />}
 
           {showMenu && (
-            <MyDivider h="0.5px" bg="myGray.100" my="16px" mx={2} w="calc(100% - 16px)" />
+            <Box px={2} py="16px">
+              <MyDivider h="0.5px" bg="myGray.100" />
+            </Box>
           )}
           {showMenu && <ChatSliderMenu menuConfirmButtonText={menuConfirmButtonText} />}
 

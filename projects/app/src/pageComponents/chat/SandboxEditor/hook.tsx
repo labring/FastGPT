@@ -242,7 +242,22 @@ export const useSandboxStatus = ({
           <IconButton
             variant={'whiteBase'}
             size={'smSquare'}
-            icon={<MyIcon name={'core/app/sandbox/file'} w={'16px'} />}
+            color={'myGray.600'}
+            _hover={{
+              color: 'primary.600'
+            }}
+            icon={
+              <MyIcon
+                name={'core/chat/monitor'}
+                w={'16px'}
+                color={'currentColor'}
+                sx={{
+                  '& path': {
+                    fill: 'currentColor'
+                  }
+                }}
+              />
+            }
             onClick={onOpen}
             {...props}
             aria-label={t('chat:sandbox_entry_tooltip')}

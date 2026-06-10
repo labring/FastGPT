@@ -52,6 +52,7 @@ import ChatWindowHeader from './ChatWindowHeader';
 import ToolMenu from '@/pageComponents/chat/ToolMenu';
 import MobileModelSelectorDrawer from './MobileModelSelectorDrawer';
 import { mobileChatHeaderIconButtonStyle } from './headerIconButtonStyle';
+import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
 
 const defaultFileSelectConfig: AppFileSelectConfigType = {
   maxFiles: 20,
@@ -100,6 +101,12 @@ const HomeChatWindow = () => {
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
 
   const isCurrentChatReady = chatBoxData.appId === appId && chatBoxData.chatId === chatId;
+  const { SandboxEntryIcon } = useSandboxStatus({ appId, chatId, outLinkAuthData });
+  const { SandboxEditorModal, onOpenSandboxModal } = useSandboxEditor({
+    appId,
+    chatId,
+    outLinkAuthData
+  });
 
   const availableModels = useMemo(
     () => llmModelList.map((model) => ({ value: model.model, label: model.name })),
@@ -274,10 +281,14 @@ const HomeChatWindow = () => {
       const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats({ messages: histories })[0]);
 
       onUpdateHistoryTitle({ chatId, newTitle });
-      setChatBoxData((state) => ({
-        ...state,
-        title: newTitle
-      }));
+      setChatBoxData((state) =>
+        state.appId === appId && state.chatId === chatId
+          ? {
+              ...state,
+              title: newTitle
+            }
+          : state
+      );
 
       refreshRecentlyUsed();
 
@@ -359,10 +370,12 @@ const HomeChatWindow = () => {
                     _notLast={{ mb: 1 }}
                     borderRadius={'md'}
                   >
-                    <Checkbox size={'sm'} isChecked={isSelected} mr={3} />
-                    <Flex alignItems="center" gap={2}>
-                      <Avatar src={tool.avatar} w={5} borderRadius="xs" />
-                      <Box fontSize="sm">{tool.name}</Box>
+                    <Flex alignItems="center" gap={3} minW={0}>
+                      <Checkbox size={'sm'} isChecked={isSelected} />
+                      <Flex alignItems="center" gap={2} minW={0}>
+                        <Avatar src={tool.avatar} w={5} borderRadius="xs" />
+                        <Box fontSize="sm">{tool.name}</Box>
+                      </Flex>
                     </Flex>
                   </MenuItem>
                 );
@@ -423,6 +436,7 @@ const HomeChatWindow = () => {
             title={chatBoxData?.title}
             history={chatRecords}
             chatType={ChatTypeEnum.home}
+            rightActions={<SandboxEntryIcon onOpen={onOpenSandboxModal} />}
           />
         ) : (
           <Flex
@@ -440,7 +454,7 @@ const HomeChatWindow = () => {
               {...mobileChatHeaderIconButtonStyle}
               onClick={onOpenSlider}
             />
-            <Flex alignItems="center" minW={0} onClick={onOpenModelDrawer}>
+            <Flex alignItems="center" gap={1} minW={0} onClick={onOpenModelDrawer}>
               <Box
                 fontSize="16px"
                 fontWeight={500}
@@ -450,7 +464,7 @@ const HomeChatWindow = () => {
               >
                 {selectedModelData?.name || selectedModel}
               </Box>
-              <MyIcon name="core/chat/chevronDown" w="16px" h="16px" color="myGray.500" ml={1} />
+              <MyIcon name="core/chat/chevronDown" w="16px" h="16px" color="myGray.500" />
             </Flex>
             <Box minW="36px">
               <ToolMenu history={chatRecords} chatType={ChatTypeEnum.home} />
@@ -485,6 +499,7 @@ const HomeChatWindow = () => {
             onSwitchQuickApp={handleSwitchQuickApp}
           />
         </Box>
+        <SandboxEditorModal />
       </Flex>
     </Flex>
   );

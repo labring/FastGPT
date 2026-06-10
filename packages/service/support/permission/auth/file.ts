@@ -1,43 +1,55 @@
 import { type AuthModeType, type AuthResponseType } from '../type';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { OwnerPermissionVal, ReadRoleVal } from '@fastgpt/global/support/permission/constant';
-import { Permission } from '@fastgpt/global/support/permission/controller';
+import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { FileTokenQuery } from '@fastgpt/global/common/file/type';
-import { addMinutes } from 'date-fns';
-import { parseHeaderCert } from './common';
 import jwt from 'jsonwebtoken';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
-import { isS3ObjectKey } from '../../../common/s3/utils';
+import { parseDatasetFileS3Key } from '../../../common/s3/utils';
 import { serviceEnv } from '../../../env';
+import { authDataset } from '../dataset/auth';
 
-export const authCollectionFile = async ({
+/**
+ * 校验来自请求的 dataset S3 object key 是否属于调用者有权限访问的数据集。
+ *
+ * 该函数会从 `dataset/<datasetId>/...` 中解析 datasetId，并复用数据集权限体系完成
+ * team/成员/协作者校验。S3 对象存在性只能作为最后的文件存在检查，不能作为权限依据。
+ */
+export const authDatasetFileKey = async ({
   fileId,
   per = OwnerPermissionVal,
   ...props
 }: AuthModeType & {
   fileId: string;
 }): Promise<AuthResponseType> => {
-  const authRes = await parseHeaderCert(props);
-
-  if (isS3ObjectKey(fileId, 'dataset')) {
-    const exists = await getS3DatasetSource().isObjectExists(fileId);
-    if (!exists) return Promise.reject(CommonErrEnum.fileNotFound);
-  } else {
+  const parsedKey = parseDatasetFileS3Key(fileId);
+  if (!parsedKey) {
     return Promise.reject('Invalid dataset file key');
   }
 
-  const permission = new Permission({ role: ReadRoleVal, isOwner: true });
+  // 先按 key 内的 datasetId 做权限校验，再检查对象是否存在，避免用存在性绕过团队边界。
+  const authRes = await authDataset({
+    ...props,
+    datasetId: parsedKey.datasetId,
+    per
+  });
 
-  if (!permission.checkPer(per)) {
+  const exists = await getS3DatasetSource().isObjectExists(fileId);
+  if (!exists) {
+    return Promise.reject(CommonErrEnum.fileNotFound);
+  }
+
+  if (!authRes.permission.checkPer(per)) {
     return Promise.reject(CommonErrEnum.unAuthFile);
   }
 
   return {
     ...authRes,
-    permission
+    permission: authRes.permission
   };
 };
+
+export const authCollectionFile = authDatasetFileKey;
 
 export const authFileToken = (token?: string) =>
   new Promise<FileTokenQuery>((resolve, reject) => {

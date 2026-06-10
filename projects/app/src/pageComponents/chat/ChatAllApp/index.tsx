@@ -10,6 +10,7 @@ import { useContextSelector } from 'use-context-selector';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
 import ChatSliderMobileDrawer from '@/pageComponents/chat/slider/ChatSliderMobileDrawer';
 import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 enum ChatAllAppTabEnum {
   FAVOURITE_APPS = 'favouriteApps',
@@ -23,7 +24,10 @@ enum ChatAllAppTabEnum {
 const ChatAllApp = () => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
+  const { feConfigs } = useSystemStore();
+  const showFavouriteApps = !!feConfigs.isPlus;
   const [tab, setTab] = useState(ChatAllAppTabEnum.FAVOURITE_APPS);
+  const activeTab = showFavouriteApps ? tab : ChatAllAppTabEnum.TEAM_APPS;
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [mobileSearchKey, setMobileSearchKey] = useState('');
 
@@ -32,16 +36,20 @@ const ChatAllApp = () => {
 
   const tabOptions = useMemo(
     () => [
-      {
-        label: t('chat:sidebar.favourite_apps'),
-        value: ChatAllAppTabEnum.FAVOURITE_APPS
-      },
+      ...(showFavouriteApps
+        ? [
+            {
+              label: t('chat:sidebar.favourite_apps'),
+              value: ChatAllAppTabEnum.FAVOURITE_APPS
+            }
+          ]
+        : []),
       {
         label: t('chat:sidebar.team_apps'),
         value: ChatAllAppTabEnum.TEAM_APPS
       }
     ],
-    [t]
+    [showFavouriteApps, t]
   );
 
   if (!isPc) {
@@ -94,7 +102,7 @@ const ChatAllApp = () => {
         <Box px="16px" py="8px" flexShrink={0}>
           <FillRowTabs<ChatAllAppTabEnum>
             list={tabOptions}
-            value={tab}
+            value={activeTab}
             onChange={setTab}
             outerPadding="4px"
             outerHeight="40px"
@@ -140,10 +148,10 @@ const ChatAllApp = () => {
         )}
 
         <Box flex="1 0 0" h={0} overflow="hidden">
-          {tab === ChatAllAppTabEnum.FAVOURITE_APPS && (
+          {showFavouriteApps && activeTab === ChatAllAppTabEnum.FAVOURITE_APPS && (
             <ChatFavouriteApp hideMobileHeader mobileSearchKey={mobileSearchKey} />
           )}
-          {tab === ChatAllAppTabEnum.TEAM_APPS && (
+          {activeTab === ChatAllAppTabEnum.TEAM_APPS && (
             <ChatTeamApp hideMobileHeader mobileSearchKey={mobileSearchKey} />
           )}
         </Box>
@@ -156,7 +164,7 @@ const ChatAllApp = () => {
       <Box px={[4, 6]} pt={[4, 6]}>
         <FillRowTabs<ChatAllAppTabEnum>
           list={tabOptions}
-          value={tab}
+          value={activeTab}
           onChange={setTab}
           outerPadding="4px"
           outerHeight="40px"
@@ -166,8 +174,10 @@ const ChatAllApp = () => {
       </Box>
 
       <Box flex="1 0 0" h={0}>
-        {tab === ChatAllAppTabEnum.FAVOURITE_APPS && <ChatFavouriteApp />}
-        {tab === ChatAllAppTabEnum.TEAM_APPS && <ChatTeamApp />}
+        {showFavouriteApps && activeTab === ChatAllAppTabEnum.FAVOURITE_APPS && (
+          <ChatFavouriteApp />
+        )}
+        {activeTab === ChatAllAppTabEnum.TEAM_APPS && <ChatTeamApp />}
       </Box>
     </Flex>
   );

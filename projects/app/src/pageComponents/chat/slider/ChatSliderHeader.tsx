@@ -21,7 +21,7 @@ type Props = {
 const ChatSliderHeader = ({ title, banner }: Props) => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
-  const { setChatId } = useChatStore();
+  const { appId: activeAppId, setChatId } = useChatStore();
 
   const pane = useContextSelector(ChatPageContext, (v) => v.pane);
   const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
@@ -31,15 +31,16 @@ const ChatSliderHeader = ({ title, banner }: Props) => {
   const appName = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app.name);
   const appAvatar = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.app.avatar);
   const currentAppId = useContextSelector(ChatItemContext, (v) => v.chatBoxData?.appId);
+  const isCurrentAppReady = currentAppId === activeAppId;
 
   const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
 
-  const isHomePane = pane === ChatSidebarPaneEnum.HOME && currentAppId === homeAppId;
+  const isHomePane = pane === ChatSidebarPaneEnum.HOME && activeAppId === homeAppId;
   const isAllAppsPane = pane === ChatSidebarPaneEnum.ALL_APPS;
 
   return isPc ? (
     <Flex py={4} px={[2, 2]} gap={2} alignItems={'center'} fontSize={'sm'}>
-      {!title && <Avatar src={appAvatar} borderRadius={'md'} />}
+      {!title && <Avatar src={isCurrentAppReady ? appAvatar : undefined} borderRadius={'md'} />}
 
       <Box
         flex={'1 0 0'}
@@ -49,7 +50,7 @@ const ChatSliderHeader = ({ title, banner }: Props) => {
         color={title ? 'myGray.900' : 'inherit'}
         className={'textEllipsis'}
       >
-        {title || appName}
+        {title || (isCurrentAppReady ? appName : '')}
       </Box>
     </Flex>
   ) : (

@@ -34,7 +34,7 @@ export const defaultResponseShow = {
   canDownloadSource: true
 };
 type AuthChatCommonProps = {
-  appId: string;
+  appId?: string;
   shareId?: string;
   outLinkUid?: string;
   teamId?: string;
@@ -54,7 +54,8 @@ export async function authChatCrud({
 }: AuthModeType &
   AuthChatCommonProps & {
     chatId?: string;
-  }): Promise<{
+}): Promise<{
+  appId?: string;
   teamId: string;
   tmbId: string; // 本轮鉴权的 uid
   uid: string; // chat 里的实际的 uid（outlinkUid??tmbId)
@@ -66,9 +67,9 @@ export async function authChatCrud({
   canDownloadSource: boolean;
   authType?: `${AuthUserTypeEnum}`;
 }> {
-  if (!appId) return Promise.reject(ChatErrEnum.unAuthChat);
-
   if (spaceTeamId && teamToken) {
+    if (!appId) return Promise.reject(ChatErrEnum.unAuthChat);
+
     const { uid, tmbId, tags } = await authTeamSpaceToken({
       teamId: spaceTeamId,
       teamToken
@@ -132,10 +133,12 @@ export async function authChatCrud({
       appId: shareChatAppId
     } = await authOutLink({ shareId, outLinkUid });
 
-    if (String(shareChatAppId) !== appId) return Promise.reject(ChatErrEnum.unAuthChat);
+    const resolvedAppId = String(shareChatAppId);
+    if (appId && resolvedAppId !== appId) return Promise.reject(ChatErrEnum.unAuthChat);
 
     if (!chatId) {
       return {
+        appId: resolvedAppId,
         teamId: String(outLinkConfig.teamId),
         tmbId: String(outLinkConfig.tmbId),
         uid,
@@ -149,10 +152,11 @@ export async function authChatCrud({
       };
     }
 
-    const chat = await MongoChat.findOne({ appId, chatId }).lean();
+    const chat = await MongoChat.findOne({ appId: resolvedAppId, chatId }).lean();
 
     if (!chat) {
       return {
+        appId: resolvedAppId,
         teamId: String(outLinkConfig.teamId),
         tmbId: String(outLinkConfig.tmbId),
         uid,
@@ -168,6 +172,7 @@ export async function authChatCrud({
     return {
       teamId: String(outLinkConfig.teamId),
       tmbId: String(outLinkConfig.tmbId),
+      appId: resolvedAppId,
       chat,
       uid,
       showCite: outLinkConfig.showCite ?? false,
@@ -180,6 +185,8 @@ export async function authChatCrud({
   }
 
   // Cookie
+  if (!appId) return Promise.reject(ChatErrEnum.unAuthChat);
+
   const { teamId, tmbId, permission, authType } = await authApp({
     req: props.req,
     authToken: true,

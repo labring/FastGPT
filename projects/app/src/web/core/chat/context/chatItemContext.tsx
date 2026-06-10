@@ -190,23 +190,6 @@ const ChatItemContextProvider = ({
     [variablesForm]
   );
 
-  const clearChatRecords = useCallback(() => {
-    const variables = chatBoxData?.app?.chatConfig?.variables || [];
-    const values = variablesForm.getValues();
-
-    variables.forEach((item) => {
-      if (item.defaultValue !== undefined) {
-        values.variables[item.key] = item.defaultValue;
-      } else {
-        values.variables[item.key] = '';
-      }
-    });
-    variablesForm.reset(values);
-
-    ChatBoxRef.current?.restartChat?.();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chatBoxData?.app?.chatConfig?.variables]);
-
   const [datasetCiteData, setCiteModalData] = useState<QuoteDataType>();
 
   const resetUIState = useCallback(() => {
@@ -214,6 +197,25 @@ const ChatItemContextProvider = ({
     setIsVariableVisible(true);
     setPluginRunTab(PluginRunBoxTabEnum.input);
   }, []);
+
+  const clearChatRecords = useCallback(() => {
+    const variables = chatBoxData?.app?.chatConfig?.variables || [];
+    const values = variablesForm.getValues();
+    const nextVariables: Record<string, any> = {};
+
+    variables.forEach((item) => {
+      nextVariables[item.key] = item.defaultValue ?? '';
+    });
+    variablesForm.reset({
+      ...values,
+      variables: nextVariables,
+      chatStarted: false
+    });
+
+    resetUIState();
+    ChatBoxRef.current?.restartChat?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatBoxData?.app?.chatConfig?.variables, resetUIState]);
 
   const contextValue = useMemo(() => {
     return {

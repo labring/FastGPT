@@ -134,7 +134,7 @@ const AddFavouriteAppModal = ({ onClose, onRefresh }: Props) => {
               minH={0}
             >
               <Flex h="100%" direction="column" minH={0} py={4} overflow="hidden">
-                <Box mb={2} px={4}>
+                <Box pb={2} px={4}>
                   <SearchInput
                     placeholder={t('chat:setting.favourite.search_placeholder')}
                     value={searchAppNameValue}
@@ -143,7 +143,7 @@ const AddFavouriteAppModal = ({ onClose, onRefresh }: Props) => {
                   />
                 </Box>
 
-                <Box mb={2} py={1} px={4} fontSize="sm" minH={8} display="flex" alignItems="center">
+                <Box pb={2} py={1} px={4} fontSize="sm" minH={8} display="flex" alignItems="center">
                   {searchAppNameValue && (
                     <Box
                       w="100%"
@@ -157,7 +157,7 @@ const AddFavouriteAppModal = ({ onClose, onRefresh }: Props) => {
                     </Box>
                   )}
                   {!searchAppNameValue && paths.length === 0 && (
-                    <Flex flex={1} alignItems="center">
+                    <Flex flex={1} alignItems="center" gap={1}>
                       <Box
                         fontSize={['xs', 'sm']}
                         py={0.5}
@@ -173,7 +173,7 @@ const AddFavouriteAppModal = ({ onClose, onRefresh }: Props) => {
                       >
                         {t('common:root_folder')}
                       </Box>
-                      <MyIcon name="common/line" color="myGray.500" mx={1} w="5px" />
+                      <MyIcon name="common/line" color="myGray.500" w="5px" />
                     </Flex>
                   )}
                   {!searchAppNameValue && paths.length > 0 && (
@@ -201,6 +201,7 @@ const AddFavouriteAppModal = ({ onClose, onRefresh }: Props) => {
                     <Box key={item._id} userSelect={'none'}>
                       <Flex
                         align="center"
+                        gap={2.5}
                         pr={2}
                         pl={4}
                         py={1.5}
@@ -229,7 +230,7 @@ const AddFavouriteAppModal = ({ onClose, onRefresh }: Props) => {
                           )}
                         </Box>
 
-                        <Avatar src={item.avatar} w={7} h={7} borderRadius="sm" ml={3} mr={2.5} />
+                        <Avatar src={item.avatar} w={7} h={7} borderRadius="sm" />
 
                         <Box flex={1} minW={0}>
                           <Box fontSize="sm" color={'myGray.900'} lineHeight={1}>
@@ -241,7 +242,7 @@ const AddFavouriteAppModal = ({ onClose, onRefresh }: Props) => {
                         </Box>
 
                         {item.type === AppTypeEnum.folder && (
-                          <Box mr={10}>
+                          <Box pr={10}>
                             <ChevronRightIcon w={5} h={5} color="myGray.500" strokeWidth="1px" />
                           </Box>
                         )}
@@ -254,7 +255,7 @@ const AddFavouriteAppModal = ({ onClose, onRefresh }: Props) => {
 
             <GridItem minH={0}>
               <VStack spacing={2} alignItems="stretch">
-                <Box mb={3} px={4} pt={4} fontSize="sm" color="myGray.600">
+                <Box pb={3} px={4} pt={4} fontSize="sm" color="myGray.600">
                   {t('chat:setting.favourite.selected_list', {
                     num: selectedApps.length
                   })}

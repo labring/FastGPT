@@ -64,14 +64,14 @@ export type UpdateHistoryBodyType = z.infer<typeof UpdateHistoryBodySchema>;
 
 // Delete single chat history schema
 export const DelChatHistorySchema = OutLinkChatAuthSchema.extend({
-  appId: ObjectIdSchema.describe('应用ID'),
+  appId: ObjectIdSchema.optional().describe('应用ID'),
   chatId: z.string().min(1).describe('对话ID')
 });
 export type DelChatHistoryType = z.infer<typeof DelChatHistorySchema>;
 
 // Clear all chat histories schema
 export const ClearChatHistoriesSchema = OutLinkChatAuthSchema.extend({
-  appId: ObjectIdSchema.describe('应用ID')
+  appId: ObjectIdSchema.optional().describe('应用ID')
 });
 export type ClearChatHistoriesType = z.infer<typeof ClearChatHistoriesSchema>;
 

@@ -75,9 +75,8 @@ const ChatSetting = () => {
       <Flex flexDir="column" h="100%">
         {!isPc && (
           <>
-            <Flex borderBottom="sm" color="myGray.900" py={2} flexShrink="0">
+            <Flex borderBottom="sm" color="myGray.900" py={2} px={3} flexShrink="0">
               <MyIcon
-                ml={3}
                 w="20px"
                 color="myGray.900"
                 name="core/chat/sidebar/menu"

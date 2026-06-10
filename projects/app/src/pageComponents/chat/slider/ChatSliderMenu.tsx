@@ -88,11 +88,11 @@ const MobileClearHistoryConfirm = ({
             </Box>
           </HStack>
 
-          <Box mt="24px" fontSize="14px" lineHeight="22px" color="myGray.900">
+          <Box pt="24px" fontSize="14px" lineHeight="22px" color="myGray.900">
             {t('chat:mobile_clear_history_confirm_tip')}
           </Box>
 
-          <HStack mt="24px" justifyContent="flex-end" spacing="12px">
+          <HStack pt="24px" justifyContent="flex-end" spacing="12px">
             <Button
               minH="32px"
               px="14px"
@@ -133,6 +133,7 @@ const ChatSliderMenu = ({ menuConfirmButtonText }: Props) => {
   const onChangeChatId = useContextSelector(ChatContext, (v) => v.onChangeChatId);
 
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
+  const clearChatRecords = useContextSelector(ChatItemContext, (v) => v.clearChatRecords);
 
   const ClearHistoryTrigger = (
     <Box h={'100%'}>
@@ -163,8 +164,6 @@ const ChatSliderMenu = ({ menuConfirmButtonText }: Props) => {
       px={0}
       minH={'36px'}
       pb={['12px', 0]}
-      mt={isPc ? 2 : 0}
-      mb={isPc ? 3 : 0}
       justify={['space-between', '']}
       alignItems={'center'}
       gap={isPc ? 2 : 0}
@@ -200,6 +199,7 @@ const ChatSliderMenu = ({ menuConfirmButtonText }: Props) => {
           }
           overflow={'hidden'}
           onClick={() => {
+            clearChatRecords();
             onChangeChatId();
             setCiteModalData(undefined);
           }}
@@ -210,7 +210,10 @@ const ChatSliderMenu = ({ menuConfirmButtonText }: Props) => {
         histories.length > 0 && (
           <MobileClearHistoryConfirm
             Trigger={ClearHistoryTrigger}
-            onConfirm={() => onClearHistory()}
+            onConfirm={() => {
+              clearChatRecords();
+              return onClearHistory();
+            }}
           />
         )
       )}
@@ -220,7 +223,10 @@ const ChatSliderMenu = ({ menuConfirmButtonText }: Props) => {
           Trigger={ClearHistoryTrigger}
           type="delete"
           content={menuConfirmButtonText || t('common:Delete')}
-          onConfirm={() => onClearHistory()}
+          onConfirm={() => {
+            clearChatRecords();
+            return onClearHistory();
+          }}
         />
       )}
     </Flex>

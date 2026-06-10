@@ -16,12 +16,11 @@ const ScoreTag = (score: { primaryScore?: ScoreItemType; secondaryScore: ScoreIt
               <Flex flexDir={'column'} gap={4}>
                 {score.secondaryScore.map((item, i) => (
                   <Box fontSize={'sm'} key={i}>
-                    <Flex alignItems={'flex-start'} lineHeight={1.2} mb={1}>
+                    <Flex alignItems={'flex-start'} gap={'2px'} lineHeight={1.2} pb={1}>
                       <Box
                         px={'5px'}
                         borderWidth={'1px'}
                         borderRadius={'sm'}
-                        mr={'2px'}
                         {...(scoreTheme[i] && scoreTheme[i])}
                       >
                         <Box transform={'scale(0.9)'}>#{item.index + 1}</Box>
