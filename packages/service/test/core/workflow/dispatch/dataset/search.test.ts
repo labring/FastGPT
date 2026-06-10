@@ -136,7 +136,7 @@ describe('dispatchDatasetSearch', () => {
         textOutput: 'origin\nexpanded'
       })
     ]);
-    expect(nodeResponse?.childTotalPoints).toBe(0.15);
+    expect(nodeResponse?.childTotalPoints).toBeUndefined();
     expect(usagePushMock).toHaveBeenCalledWith(
       expect.arrayContaining([
         expect.objectContaining({

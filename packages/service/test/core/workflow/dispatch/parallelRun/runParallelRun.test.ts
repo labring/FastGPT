@@ -121,7 +121,8 @@ describe('dispatchParallelRun', () => {
             totalPoints: 1,
             loopOutputValue: 'done'
           })
-        ]
+        ],
+        flowUsages: [{ moduleName: 'parallel', totalPoints: 3 }] as any
       })
     );
 
@@ -143,9 +144,13 @@ describe('dispatchParallelRun', () => {
     expect(nodeResponseWriter.recordWithParent.mock.calls[0][0][0]).toMatchObject({
       id: 'parallel-parent-response_task_0',
       childResponseCount: 2,
-      childTotalPoints: 6,
       childrenResponses: undefined
     });
+    expect(
+      nodeResponseWriter.recordWithParent.mock.calls[0][0][0].childTotalPoints
+    ).toBeUndefined();
+    expect(nodeResponse.totalPoints).toBe(3);
+    expect(nodeResponse.childTotalPoints).toBeUndefined();
     expect(nodeResponse.parallelDetail).toBeUndefined();
   });
 

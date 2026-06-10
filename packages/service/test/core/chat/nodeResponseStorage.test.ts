@@ -6,7 +6,7 @@ import {
   WorkflowNodeResponseWriter,
   composeNodeResponseDetail,
   createChatItemResponseRows,
-  getNodeResponseChildStats
+  getNodeResponseChildResponseCount
 } from '@fastgpt/service/core/chat/nodeResponseStorage';
 
 const base = {
@@ -79,11 +79,10 @@ describe('createChatItemResponseRows', () => {
         id: 'root',
         nodeId: 'root',
         moduleType: FlowNodeTypeEnum.agent,
-        childTotalPoints: 6,
         childResponseCount: 3
       }
     });
-    expect(rows[0].data.childTotalPoints).toBe(6);
+    expect(rows[0].data.childTotalPoints).toBeUndefined();
     expect(rows[0].data.childResponseCount).toBe(3);
     expect(rows[0].data.childrenResponses?.map((item) => item.id)).toEqual(['child']);
     expect(rows[0].data.toolDetail?.map((item) => item.id)).toEqual(['tool-child']);
@@ -93,11 +92,38 @@ describe('createChatItemResponseRows', () => {
       a: 'answer'
     });
   });
+
+  it('does not write childTotalPoints in response rows', () => {
+    const rows = createChatItemResponseRows({
+      ...base,
+      nodeResponses: [
+        makeResponse({
+          id: 'loop',
+          moduleType: FlowNodeTypeEnum.loopRun,
+          totalPoints: 1,
+          childTotalPoints: 999,
+          childrenResponses: [makeResponse({ id: 'loop-child', totalPoints: 2 })]
+        }),
+        makeResponse({
+          id: 'batch',
+          moduleType: FlowNodeTypeEnum.parallelRun,
+          totalPoints: 3,
+          childTotalPoints: 888,
+          childrenResponses: [makeResponse({ id: 'batch-child', totalPoints: 4 })]
+        })
+      ]
+    });
+
+    expect(rows[0].data.childTotalPoints).toBeUndefined();
+    expect(rows[0].data.childResponseCount).toBe(1);
+    expect(rows[1].data.childTotalPoints).toBeUndefined();
+    expect(rows[1].data.childResponseCount).toBe(1);
+  });
 });
 
-describe('getNodeResponseChildStats', () => {
-  it('keeps legacy child responses without id in child stats', () => {
-    const stats = getNodeResponseChildStats([
+describe('getNodeResponseChildResponseCount', () => {
+  it('keeps legacy child responses without id in child response count', () => {
+    const count = getNodeResponseChildResponseCount([
       {
         nodeId: 'legacy-child-a',
         moduleName: 'legacy-child-a',
@@ -114,14 +140,11 @@ describe('getNodeResponseChildStats', () => {
       }
     ] as ChatHistoryItemResType[]);
 
-    expect(stats).toEqual({
-      childTotalPoints: 6,
-      childResponseCount: 3
-    });
+    expect(count).toBe(3);
   });
 
   it('normalizes flat parentId children before counting to avoid double counting descendants', () => {
-    const stats = getNodeResponseChildStats([
+    const count = getNodeResponseChildResponseCount([
       makeResponse({
         id: 'task-wrapper',
         totalPoints: 3,
@@ -140,10 +163,7 @@ describe('getNodeResponseChildStats', () => {
       })
     ]);
 
-    expect(stats).toEqual({
-      childTotalPoints: 7,
-      childResponseCount: 3
-    });
+    expect(count).toBe(3);
   });
 });
 
@@ -248,10 +268,10 @@ describe('WorkflowNodeResponseWriter', () => {
     expect(streamedRoot).toHaveLength(1);
     expect(streamedRoot[0]).toMatchObject({
       id: 'root',
-      childTotalPoints: 1,
       childResponseCount: 1,
       childrenResponses: [expect.objectContaining({ id: 'child' })]
     });
+    expect(streamedRoot[0].childTotalPoints).toBeUndefined();
 
     await writer.record([makeResponse({ id: 'second' })]);
     expect(create).not.toHaveBeenCalled();
@@ -579,7 +599,6 @@ describe('WorkflowNodeResponseWriter', () => {
     expect(create.mock.calls[3][0].map((doc: any) => doc.data.id)).toEqual(['root']);
     expect(create.mock.calls[3][0][0]).toMatchObject({
       data: {
-        childTotalPoints: 2,
         childResponseCount: 1
       }
     });
@@ -593,7 +612,45 @@ describe('WorkflowNodeResponseWriter', () => {
       inputTokens: 10,
       outputTokens: 20,
       totalPoints: 6,
-      childTotalPoints: 2,
+      childResponseCount: 1
+    });
+    expect(writer.isFullyFlushed).toBe(true);
+  });
+
+  it('drops childTotalPoints from slim fallback rows for loop and batch containers', async () => {
+    const create = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('invalid payload 1'))
+      .mockRejectedValueOnce(new Error('invalid payload 2'))
+      .mockRejectedValueOnce(new Error('invalid payload 3'))
+      .mockResolvedValueOnce(undefined);
+    const writer = new WorkflowNodeResponseWriter({
+      ...base,
+      batchSize: 1,
+      model: {
+        create,
+        deleteMany: vi.fn()
+      }
+    });
+
+    await writer.record([
+      makeResponse({
+        id: 'loop',
+        moduleType: FlowNodeTypeEnum.loopRun,
+        totalPoints: 6,
+        childTotalPoints: 999,
+        childResponseCount: 1,
+        childrenResponses: [makeResponse({ id: 'child', totalPoints: 2 })]
+      })
+    ]);
+
+    expect(create).toHaveBeenCalledTimes(4);
+    expect(create.mock.calls[3][0][0].data).toEqual({
+      nodeId: 'loop',
+      id: 'loop',
+      moduleType: FlowNodeTypeEnum.loopRun,
+      moduleName: 'loop',
+      totalPoints: 6,
       childResponseCount: 1
     });
     expect(writer.isFullyFlushed).toBe(true);

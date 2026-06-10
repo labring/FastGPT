@@ -200,7 +200,6 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     const runtimeSummary = getRuntimeNodeResponseSummary({
       runtimeNodeResponseSummary
     });
-    const childTotalPoints = runtimeSummary.childTotalPoints;
     const childResponseCount = runtimeSummary.childResponseCount;
 
     return {
@@ -225,7 +224,6 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
         totalPoints: usagePoints,
         query: userChatInput,
         textOutput: text,
-        childTotalPoints,
         childResponseCount,
         mergeSignId: props.node.nodeId
       },

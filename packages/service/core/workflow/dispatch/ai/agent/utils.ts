@@ -383,10 +383,6 @@ export const getExecuteTool = ({
       if (!nodeResponse) return undefined;
 
       const subInfo = getSubAppInfo(toolId);
-      const childTotalPoints = (nodeResponse.childrenResponses || []).reduce(
-        (sum, item) => sum + (item.totalPoints || 0),
-        0
-      );
       const childResponseCount =
         nodeResponse.childResponseCount ??
         (nodeResponse.childrenResponses?.length
@@ -401,11 +397,6 @@ export const getExecuteTool = ({
         id: callId,
         runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
         totalPoints: usages?.reduce((sum, item) => sum + item.totalPoints, 0),
-        ...(childTotalPoints > 0
-          ? { childTotalPoints }
-          : nodeResponse.childTotalPoints !== undefined
-            ? { childTotalPoints: nodeResponse.childTotalPoints }
-            : {}),
         ...(childResponseCount !== undefined ? { childResponseCount } : {})
       };
     })();

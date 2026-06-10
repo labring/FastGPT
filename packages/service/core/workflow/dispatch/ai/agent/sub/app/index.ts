@@ -145,7 +145,6 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
         ...customAppVariables
       },
       toolRes: text,
-      childTotalPoints: runtimeSummary.childTotalPoints,
       childResponseCount: runtimeSummary.childResponseCount
     }
   };
@@ -288,7 +287,6 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
       moduleLogo: app.avatar,
       toolInput: customAppVariables,
       toolRes: pluginOutput || {},
-      childTotalPoints: runtimeSummary.childTotalPoints,
       childResponseCount: runtimeSummary.childResponseCount
     }
   };

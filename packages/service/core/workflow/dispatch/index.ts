@@ -27,7 +27,7 @@ import type {
 } from '@fastgpt/global/core/workflow/runtime/type';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
-import { filterNodeResponseTreeData } from '@fastgpt/global/core/chat/utils';
+import { filterNodeResponseTreeData, stripChildTotalPoints } from '@fastgpt/global/core/chat/utils';
 import {
   filterWorkflowEdges,
   getReferenceVariableValue,
@@ -76,7 +76,7 @@ import { runWithContext } from '../utils/context';
 import { createClientAbortTracker } from './utils/clientAbort';
 import type { IncomingMessage } from 'node:http';
 import type { WorkflowNodeResponseWriter } from '../../chat/nodeResponseStorage';
-import { getNodeResponseChildStats } from '../../chat/nodeResponseStorage';
+import { getNodeResponseChildResponseCount } from '../../chat/nodeResponseStorage';
 import {
   createWorkflowEntryNodeResponseWriter,
   type WorkflowNodeResponseWriteConfig
@@ -996,7 +996,8 @@ export class WorkflowQueue {
             }))
           : childResponses;
       const nodeResponsesForWrite = [...childResponsesForWrite];
-      const currentNodeChildStats = getNodeResponseChildStats(childResponsesForWrite);
+      const currentNodeChildResponseCount =
+        getNodeResponseChildResponseCount(childResponsesForWrite);
       // format response data. Add modulename and module type
       const formatResponseData: ChatHistoryItemResType | undefined = (() => {
         if (!nodeResponse) return undefined;
@@ -1005,13 +1006,9 @@ export class WorkflowQueue {
           moduleType: node.flowNodeType,
           moduleLogo: node.avatar,
           ...nodeResponse,
-          ...(nodeResponse?.childTotalPoints === undefined &&
-          currentNodeChildStats.childTotalPoints !== undefined
-            ? { childTotalPoints: currentNodeChildStats.childTotalPoints }
-            : {}),
           ...(nodeResponse?.childResponseCount === undefined &&
-          currentNodeChildStats.childResponseCount !== undefined
-            ? { childResponseCount: currentNodeChildStats.childResponseCount }
+          currentNodeChildResponseCount !== undefined
+            ? { childResponseCount: currentNodeChildResponseCount }
             : {}),
           id: nodeResponseId,
           ...(this.data.nodeResponseParentId ? { parentId: this.data.nodeResponseParentId } : {}),
@@ -1051,7 +1048,7 @@ export class WorkflowQueue {
         filteredResponses.forEach((item) => {
           this.data.workflowStreamResponse?.({
             event: SseResponseEventEnum.flowNodeResponse,
-            data: item
+            data: stripChildTotalPoints(item)
           });
         });
       }

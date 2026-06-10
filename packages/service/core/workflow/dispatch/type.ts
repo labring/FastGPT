@@ -53,7 +53,7 @@ export type RuntimeNodeResponseSummary = {
   runningTime: number;
   /** 子 workflow 顶层节点自身 totalPoints 总和。当前主要用于兜底统计。 */
   totalPoints?: number;
-  /** 子 workflow 所有响应的积分总和，包含嵌套 childTotalPoints。父节点展示 child usage 用。 */
+  /** 子 workflow 所有响应的积分总和，仅作为运行期费用聚合中间态，不写入 responseData。 */
   childTotalPoints?: number;
   /** 子 workflow 响应数量，包含嵌套 childResponseCount。父节点展示 child 数量用。 */
   childResponseCount?: number;

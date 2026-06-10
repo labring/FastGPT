@@ -488,7 +488,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     expect(nodeResponse.loopRunHistory).toEqual([]);
     expect(nodeResponse.loopRunDetail).toBeUndefined();
     expect(nodeResponse.childResponseCount).toBe(2);
-    expect(nodeResponse.childTotalPoints).toBe(0);
+    expect(nodeResponse.childTotalPoints).toBeUndefined();
   });
 
   it('lastInteractive 恢复 → 从中断轮次续跑, 保留已累积 loopHistory', async () => {
@@ -540,6 +540,72 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     expect(history).toHaveLength(2);
     expect(history[0]).toMatchObject({ iteration: 1, success: true });
     expect(history[1]).toMatchObject({ iteration: 2, success: true });
+  });
+
+  it('lastInteractive 恢复 → 只累计恢复后的增量 child 统计', async () => {
+    const nodeResponseWriter = {
+      recordWithParent: vi.fn().mockResolvedValue([])
+    };
+    runWorkflowMock.mockImplementationOnce(() =>
+      Promise.resolve(
+        makeDispatchFlowResponse({
+          nodeResponses: [
+            makeResponseItem('userSelectNode', { totalPoints: 2 }),
+            makeResponseItem('chatNode', { totalPoints: 3, childTotalPoints: 4 })
+          ],
+          flowUsages: [
+            {
+              moduleName: 'resume',
+              totalPoints: 5
+            }
+          ] as any
+        })
+      )
+    );
+
+    const preInterruptSummary = summarizeRuntimeNodeResponses(undefined, [
+      makeResponseItem('startNode', { totalPoints: 1 })
+    ]);
+    const runtimeNodes = makeRuntimeNodes();
+    const node = runtimeNodes[0];
+    const props = {
+      params: {
+        [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.array,
+        [NodeInputKeyEnum.loopRunInputArray]: ['a'],
+        [NodeInputKeyEnum.childrenNodeIdList]: ['startNode', 'userSelectNode', 'chatNode']
+      },
+      node,
+      runtimeNodes,
+      runtimeNodesMap: new Map(runtimeNodes.map((n) => [n.nodeId, n])),
+      runtimeEdges: [],
+      variableState: makeVariableState(),
+      usagePush: vi.fn(),
+      lastInteractive: {
+        type: 'loopRunInteractive',
+        params: {
+          loopHistory: [],
+          iteration: 1,
+          childrenResponse: { entryNodeIds: ['userSelectNode'] },
+          pendingIterationSummary: preInterruptSummary
+        }
+      },
+      nodeResponseWriter,
+      nodeResponseParentId: 'loop-parent-response',
+      checkIsStopping: () => false
+    } as any;
+
+    const result: any = await dispatchLoopRun(props);
+    const nodeResponse = result[DispatchNodeResponseKeyEnum.nodeResponse];
+
+    expect(nodeResponse.totalPoints).toBe(5);
+    expect(nodeResponse.childTotalPoints).toBeUndefined();
+    expect(nodeResponse.childResponseCount).toBe(3);
+    expect(nodeResponseWriter.recordWithParent).toHaveBeenCalledTimes(1);
+    expect(nodeResponseWriter.recordWithParent.mock.calls[0][0][0]).toMatchObject({
+      id: 'loopRun1_iter_1',
+      totalPoints: 6,
+      childResponseCount: 2
+    });
   });
 
   it('lastInteractive 恢复后续跑多轮 → 恢复后非终止轮不应再携带 lastInteractive', async () => {
@@ -692,7 +758,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     const nodeResponse = result[DispatchNodeResponseKeyEnum.nodeResponse];
     expect(nodeResponse.loopRunDetail).toBeUndefined();
     expect(nodeResponse.childResponseCount).toBe(6);
-    expect(nodeResponse.childTotalPoints).toBe(0);
+    expect(nodeResponse.childTotalPoints).toBeUndefined();
     expect(nodeResponse.loopRunHistory).toHaveLength(2);
   });
 
@@ -706,7 +772,8 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
           nodeResponses: [
             makeResponseItem('startNode', { totalPoints: 1 }),
             makeResponseItem('chatNode', { totalPoints: 2, childTotalPoints: 3 })
-          ]
+          ],
+          flowUsages: [{ moduleName: 'loop', totalPoints: 3 }] as any
         })
       )
     );
@@ -729,13 +796,17 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     expect(nodeResponseWriter.recordWithParent.mock.calls[0][1]).toBe('loop-parent-response');
     expect(nodeResponseWriter.recordWithParent.mock.calls[0][0][0]).toMatchObject({
       id: 'loopRun1_iter_1',
-      childResponseCount: 2,
-      childTotalPoints: 6
+      childResponseCount: 2
     });
+    expect(
+      nodeResponseWriter.recordWithParent.mock.calls[0][0][0].childTotalPoints
+    ).toBeUndefined();
     expect(
       nodeResponseWriter.recordWithParent.mock.calls[0][0][0].childrenResponses
     ).toBeUndefined();
     expect(nodeResponse.loopRunDetail).toBeUndefined();
+    expect(nodeResponse.totalPoints).toBe(3);
+    expect(nodeResponse.childTotalPoints).toBeUndefined();
   });
 
   it('失败轮不内嵌 loopRunDetail，父响应保留错误和 child 统计', async () => {

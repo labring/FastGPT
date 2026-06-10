@@ -154,7 +154,6 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       totalPoints: totalPointsUsage,
       toolCallInputTokens,
       toolCallOutputTokens,
-      childTotalPoints: toolRuntimeSummary.childTotalPoints ?? toolTotalPoints,
       childResponseCount: toolRuntimeSummary.childResponseCount,
       model: modelName,
       query: userChatInput,

@@ -335,7 +335,6 @@ describe('filterNodeResponseTreeData', () => {
         moduleName: 'Agent',
         moduleType: FlowNodeTypeEnum.agent,
         totalPoints: 2,
-        childTotalPoints: 1,
         childResponseCount: 1,
         childrenResponses: [
           {
@@ -373,7 +372,6 @@ describe('filterNodeResponseTreeData', () => {
         moduleName: 'Agent',
         moduleType: FlowNodeTypeEnum.agent,
         totalPoints: 2,
-        childTotalPoints: 1,
         childResponseCount: 1,
         childrenResponses: [
           {
@@ -826,8 +824,212 @@ describe('mergeChatResponseData', () => {
     const result = mergeChatResponseData(responseDataList);
 
     expect(result).toHaveLength(1);
-    expect(result[0].childTotalPoints).toBe(3);
+    expect(result[0].childTotalPoints).toBeUndefined();
     expect(result[0].childrenResponses?.map((item) => item.id)).toEqual(['child-1', 'child-2']);
+  });
+
+  it('should merge accumulated tool call fields by mergeSignId', () => {
+    const responseDataList: ChatHistoryItemResType[] = [
+      {
+        id: 'tool-call-before-interactive',
+        nodeId: 'tool-call-node',
+        moduleName: 'ToolCall',
+        moduleType: FlowNodeTypeEnum.toolCall,
+        mergeSignId: 'tool-call-node',
+        runningTime: 1.2,
+        totalPoints: 0.3,
+        childTotalPoints: 0.2,
+        childResponseCount: 1,
+        tokens: 10,
+        inputTokens: 6,
+        outputTokens: 4,
+        toolCallInputTokens: 20,
+        toolCallOutputTokens: 8,
+        embeddingTokens: 7,
+        reRankInputTokens: 5,
+        extensionTokens: 3,
+        llmRequestIds: ['req-1', 'req-2'],
+        datasetQueries: ['old-query'],
+        quoteList: [
+          {
+            id: 'quote-old',
+            q: 'old query',
+            a: 'old answer',
+            datasetId: 'dataset-old',
+            collectionId: 'collection-old',
+            sourceName: 'old source',
+            chunkIndex: 0,
+            score: []
+          }
+        ],
+        compressTextAgent: {
+          inputTokens: 4,
+          outputTokens: 2,
+          totalPoints: 0.1
+        },
+        deepSearchResult: {
+          model: 'Qwen-plus',
+          inputTokens: 11,
+          outputTokens: 5
+        }
+      },
+      {
+        id: 'tool-call-after-interactive',
+        nodeId: 'tool-call-node',
+        moduleName: 'ToolCall',
+        moduleType: FlowNodeTypeEnum.toolCall,
+        mergeSignId: 'tool-call-node',
+        runningTime: 2.34,
+        totalPoints: 0.4,
+        childTotalPoints: 0.6,
+        childResponseCount: 2,
+        tokens: 15,
+        inputTokens: 9,
+        outputTokens: 6,
+        toolCallInputTokens: 30,
+        toolCallOutputTokens: 12,
+        embeddingTokens: 8,
+        reRankInputTokens: 6,
+        extensionTokens: 4,
+        llmRequestIds: ['req-2', 'req-3'],
+        datasetQueries: ['latest-query'],
+        quoteList: [
+          {
+            id: 'quote-latest',
+            q: 'latest query',
+            a: 'latest answer',
+            datasetId: 'dataset-latest',
+            collectionId: 'collection-latest',
+            sourceName: 'latest source',
+            chunkIndex: 0,
+            score: []
+          }
+        ],
+        compressTextAgent: {
+          inputTokens: 8,
+          outputTokens: 3,
+          totalPoints: 0.2
+        },
+        deepSearchResult: {
+          model: 'Qwen-plus',
+          inputTokens: 13,
+          outputTokens: 7
+        }
+      }
+    ];
+
+    const result = mergeChatResponseData(responseDataList);
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toEqual(
+      expect.objectContaining({
+        id: 'tool-call-after-interactive',
+        runningTime: 3.54,
+        totalPoints: 0.7,
+        childResponseCount: 3,
+        tokens: 25,
+        inputTokens: 15,
+        outputTokens: 10,
+        toolCallInputTokens: 50,
+        toolCallOutputTokens: 20,
+        embeddingTokens: 15,
+        reRankInputTokens: 11,
+        extensionTokens: 7,
+        llmRequestIds: ['req-1', 'req-2', 'req-3'],
+        datasetQueries: ['latest-query'],
+        quoteList: [
+          {
+            id: 'quote-latest',
+            q: 'latest query',
+            a: 'latest answer',
+            datasetId: 'dataset-latest',
+            collectionId: 'collection-latest',
+            sourceName: 'latest source',
+            chunkIndex: 0,
+            score: []
+          }
+        ],
+        compressTextAgent: {
+          inputTokens: 12,
+          outputTokens: 5,
+          totalPoints: expect.closeTo(0.3)
+        },
+        deepSearchResult: {
+          model: 'Qwen-plus',
+          inputTokens: 24,
+          outputTokens: 12
+        }
+      })
+    );
+    expect(result[0].childTotalPoints).toBeUndefined();
+  });
+
+  it('should merge duplicated children under a non-duplicated parent', () => {
+    const responseDataList: ChatHistoryItemResType[] = [
+      {
+        id: 'loop-task-1',
+        nodeId: 'loop-task-1',
+        moduleName: 'Task 1',
+        moduleType: FlowNodeTypeEnum.loopRun,
+        childrenResponses: [
+          {
+            id: 'tool-call-before-interactive',
+            nodeId: 'tool-call-node',
+            moduleName: 'ToolCall',
+            moduleType: FlowNodeTypeEnum.toolCall,
+            mergeSignId: 'tool-call-node',
+            runningTime: 10.02,
+            childrenResponses: [
+              {
+                id: 'reply-before-interactive',
+                nodeId: 'reply-node',
+                moduleName: 'Reply',
+                moduleType: FlowNodeTypeEnum.answerNode
+              }
+            ]
+          },
+          {
+            id: 'tool-call-after-interactive',
+            nodeId: 'tool-call-node',
+            moduleName: 'ToolCall',
+            moduleType: FlowNodeTypeEnum.toolCall,
+            mergeSignId: 'tool-call-node',
+            runningTime: 1.66,
+            childrenResponses: [
+              {
+                id: 'user-select',
+                nodeId: 'user-select-node',
+                moduleName: 'User Select',
+                moduleType: FlowNodeTypeEnum.userSelect
+              },
+              {
+                id: 'reply-after-interactive',
+                nodeId: 'reply-node-2',
+                moduleName: 'Reply 2',
+                moduleType: FlowNodeTypeEnum.answerNode
+              }
+            ]
+          }
+        ]
+      }
+    ];
+
+    const result = mergeChatResponseData(responseDataList);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].childrenResponses).toHaveLength(1);
+    expect(result[0].childrenResponses?.[0]).toEqual(
+      expect.objectContaining({
+        id: 'tool-call-after-interactive',
+        mergeSignId: 'tool-call-node',
+        runningTime: 11.68
+      })
+    );
+    expect(result[0].childrenResponses?.[0].childrenResponses?.map((item) => item.id)).toEqual([
+      'reply-before-interactive',
+      'user-select',
+      'reply-after-interactive'
+    ]);
   });
 
   it('should merge legacy childrenResponses and childResponseCount', () => {

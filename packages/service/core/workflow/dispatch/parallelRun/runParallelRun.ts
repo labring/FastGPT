@@ -10,7 +10,7 @@ import {
 import { serviceEnv } from '../../../../env';
 import { runWorkflow } from '..';
 import type { WorkflowNodeResponseWriter } from '../../../chat/nodeResponseStorage';
-import { getNodeResponseChildStats } from '../../../chat/nodeResponseStorage';
+import { getNodeResponseChildResponseCount } from '../../../chat/nodeResponseStorage';
 import {
   clampParallelConcurrency,
   clampParallelRetryTimes,
@@ -165,7 +165,7 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
     }
   );
   // 任务包装节点只通过 writer/event 输出；父 parallelRun 只保留轻量统计和业务摘要。
-  const rootChildStats = getNodeResponseChildStats(attemptResponseDetails);
+  const rootChildResponseCount = getNodeResponseChildResponseCount(attemptResponseDetails);
   if (props.nodeResponseWriter) {
     for (const detail of attemptResponseDetails) {
       await props.nodeResponseWriter.recordWithParent(
@@ -192,8 +192,7 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
       parallelInput: loopInputArray,
       parallelResult: filteredArray,
       parallelRunDetail: fullDetail,
-      childResponseCount: rootChildStats.childResponseCount,
-      childTotalPoints: rootChildStats.childTotalPoints,
+      childResponseCount: rootChildResponseCount,
       mergeSignId: node.nodeId
     },
     [DispatchNodeResponseKeyEnum.customFeedbacks]:

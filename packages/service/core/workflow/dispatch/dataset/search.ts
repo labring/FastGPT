@@ -289,10 +289,6 @@ export async function dispatchDatasetSearch(
       }
     }
     const totalPoints = nodeUsages.reduce((acc, item) => acc + item.totalPoints, 0);
-    const childTotalPoints = childrenResponses.reduce(
-      (sum, item) => sum + (item.totalPoints || 0),
-      0
-    );
     props.usagePush(nodeUsages);
 
     return {
@@ -318,7 +314,6 @@ export async function dispatchDatasetSearch(
         searchUsingReRank,
         deepSearchResult,
         ...(childrenResponses.length > 0 ? { childrenResponses } : {}),
-        ...(childTotalPoints > 0 ? { childTotalPoints } : {}),
         // Results
         quoteList: searchRes
       },

@@ -108,12 +108,19 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
   const assistantResponses: AIChatItemValueItemType[] = [];
   const customFeedbacks: string[] = [];
   let totalPoints = 0;
-  let childTotalPoints = 0;
   let childResponseCount = 0;
   let interactiveResponse: WorkflowInteractiveResponseType | undefined;
   // Pre-interrupt runtime summary survives across resume here, so loopRun can still
   // calculate finished nodes, child stats and wall time without retaining full child details.
   let pendingIterationSummary = interactiveData?.pendingIterationSummary;
+  const getIncrementalChildResponseCount = (
+    summary: ReturnType<typeof getRuntimeNodeResponseSummary>,
+    preInterruptSummary: typeof pendingIterationSummary
+  ) => {
+    if (!preInterruptSummary) return summary.childResponseCount;
+
+    return (summary.childResponseCount || 0) - (preInterruptSummary.childResponseCount || 0);
+  };
 
   const resumeIteration = interactiveData?.iteration;
   let iteration = resumeIteration ?? 1;
@@ -182,6 +189,10 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
           getRuntimeNodeResponseSummary(response)
         )
       : getRuntimeNodeResponseSummary(response);
+    const iterationChildResponseCount = getIncrementalChildResponseCount(
+      iterationSummary,
+      isResumeIteration ? pendingIterationSummary : undefined
+    );
     const iterationRunningTime = iterationSummary.runningTime;
     assistantResponses.push(...response.assistantResponses);
     const iterationTotalPoints = pushSubWorkflowUsage({
@@ -190,6 +201,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       name,
       iteration
     });
+    const iterationDetailTotalPoints = iterationSummary.totalPoints ?? iterationTotalPoints;
     totalPoints += iterationTotalPoints;
     collectResponseFeedbacks(response, customFeedbacks);
 
@@ -216,14 +228,12 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
         moduleName: i18nT('workflow:parallel_task'),
         moduleNameArgs: { index: iteration },
         runningTime: Math.round(iterationRunningTime * 100) / 100,
-        totalPoints: iterationTotalPoints,
+        totalPoints: iterationDetailTotalPoints,
         loopInputValue: mode === LoopRunModeEnum.array ? currentItem : undefined,
         loopOutputValue: customOutputs,
         error: opts.error,
-        childResponseCount: iterationSummary.childResponseCount,
-        childTotalPoints: iterationSummary.childTotalPoints
+        childResponseCount: iterationChildResponseCount
       };
-      childTotalPoints += (wrapper.totalPoints || 0) + (wrapper.childTotalPoints || 0);
       childResponseCount += 1 + (wrapper.childResponseCount || 0);
       if (props.nodeResponseWriter) {
         await props.nodeResponseWriter.recordWithParent([wrapper], props.nodeResponseParentId);
@@ -305,7 +315,6 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       loopRunIterations: loopHistory.length,
       loopRunHistory: loopHistory,
       childResponseCount,
-      childTotalPoints,
       mergeSignId: node.nodeId,
       ...(errorText ? { errorText } : {})
     },

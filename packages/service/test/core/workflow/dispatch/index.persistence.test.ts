@@ -325,9 +325,9 @@ describe('runWorkflow node response persistence', () => {
       expect(detail).toHaveLength(1);
       expect(detail[0]).toMatchObject({
         nodeId: 'parent_text_editor',
-        childResponseCount: 1,
-        childTotalPoints: 2
+        childResponseCount: 1
       });
+      expect(detail[0].childTotalPoints).toBeUndefined();
       expect(detail[0].childrenResponses).toEqual([
         expect.objectContaining({
           id: 'module-child-response',
@@ -606,6 +606,15 @@ describe('runWorkflow node response persistence', () => {
     expect(rootRow.data.parentId).toBeUndefined();
     expect(rootRow.data.childrenResponses).toBeUndefined();
     expect(rootRow.data.childResponseCount).toBe(loopItems.length * 4);
+    expect(rootRow.data.childTotalPoints).toBeUndefined();
+
+    rows
+      .filter(
+        (row) => row.data.moduleType === FlowNodeTypeEnum.loopRun && row.data.id !== rootRow.data.id
+      )
+      .forEach((row) => {
+        expect(row.data.childTotalPoints).toBeUndefined();
+      });
 
     const detail = await getChatItemResponseData({
       appId: '67e0d5535c02d1d5cdede71f',
@@ -619,6 +628,7 @@ describe('runWorkflow node response persistence', () => {
       loopRunIterations: loopItems.length,
       childResponseCount: loopItems.length * 4
     });
+    expect(detail[0].childTotalPoints).toBeUndefined();
     expect(detail[0].childrenResponses).toHaveLength(loopItems.length);
     expect(detail[0].childrenResponses?.map((item) => item.moduleType)).toEqual(
       Array(loopItems.length).fill(FlowNodeTypeEnum.loopRun)

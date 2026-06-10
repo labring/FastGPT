@@ -5,7 +5,12 @@ import type {
 } from '@fastgpt/global/core/chat/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { getChildrenResponses, mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
+import {
+  getChildrenResponses,
+  mergeChatResponseData,
+  stripChildTotalPoints,
+  stripChildTotalPointsFromResponseData
+} from '@fastgpt/global/core/chat/utils';
 import { MongoChatItemResponse } from './chatItemResponseSchema';
 import { getLogger, LogCategories } from '../../common/logger';
 import { writePrimary } from '../../common/mongo/utils';
@@ -133,20 +138,20 @@ const slimNodeResponseData = (response: ChatHistoryItemResType): ChatHistoryItem
     keepString(data, source, key)
   );
 
-  [
+  const numberKeys = [
     'runningTime',
     'tokens',
     'inputTokens',
     'outputTokens',
     'contextTotalLen',
     'totalPoints',
-    'childTotalPoints',
     'childResponseCount',
     'embeddingTokens',
     'reRankInputTokens',
     'toolCallInputTokens',
     'toolCallOutputTokens'
-  ].forEach((key) => keepNumber(data, source, key));
+  ];
+  numberKeys.forEach((key) => keepNumber(data, source, key));
 
   return data as ChatHistoryItemResType;
 };
@@ -170,11 +175,6 @@ const dedupeRowsById = (rows: ChatItemResponseStorageRow[]) => {
   });
 
   return rows.filter((row, index) => latestIndexById.get(getRowResponseId(row)) === index);
-};
-
-type ChildStats = {
-  childTotalPoints?: number;
-  childResponseCount?: number;
 };
 
 /**
@@ -242,56 +242,38 @@ const normalizeChildResponseTree = (children: ChatHistoryItemResType[]) => {
   return rootResponses;
 };
 
-const getChildStats = (
+const getChildResponseCount = (
   children: ChatHistoryItemResType[],
   countedIds = new Set<string>()
-): ChildStats => {
-  if (children.length === 0) {
-    return {
-      childTotalPoints: undefined,
-      childResponseCount: undefined
-    };
-  }
+): number | undefined => {
+  if (children.length === 0) return undefined;
 
-  return children.reduce(
-    (stats, child) => {
-      if (child.id && countedIds.has(child.id)) {
-        return stats;
-      }
-      if (child.id) {
-        countedIds.add(child.id);
-      }
-
-      const childChildren = normalizeChildResponseTree(getChildrenResponses(child));
-      const childStats = getChildStats(childChildren, countedIds);
-      // 如果 child 本身还带嵌套 child，则以现场递归结果为准；否则兼容已统计好的 child 字段。
-      const nestedTotalPoints =
-        childChildren.length > 0 ? childStats.childTotalPoints || 0 : child.childTotalPoints || 0;
-      const nestedResponseCount =
-        childChildren.length > 0
-          ? childStats.childResponseCount || 0
-          : child.childResponseCount || 0;
-
-      return {
-        childTotalPoints: stats.childTotalPoints + (child.totalPoints || 0) + nestedTotalPoints,
-        childResponseCount: stats.childResponseCount + 1 + nestedResponseCount
-      };
-    },
-    {
-      childTotalPoints: 0,
-      childResponseCount: 0
+  return children.reduce((count, child) => {
+    if (child.id && countedIds.has(child.id)) {
+      return count;
     }
-  );
+    if (child.id) {
+      countedIds.add(child.id);
+    }
+
+    const childChildren = normalizeChildResponseTree(getChildrenResponses(child));
+    // 如果 child 本身还带嵌套 child，则以现场递归结果为准；否则兼容已统计好的 count 字段。
+    const nestedResponseCount =
+      childChildren.length > 0
+        ? getChildResponseCount(childChildren, countedIds) || 0
+        : child.childResponseCount || 0;
+
+    return count + 1 + nestedResponseCount;
+  }, 0);
 };
 
 /**
- * 递归统计 child 节点的费用和数量。
- *
- * 父节点自身的 `totalPoints` 仍由调用方单独展示；这里仅统计 child 树，避免父子费用
- * 在详情页和 chat log 里重复累加。
+ * 递归统计 child 节点数量。积分由客户端基于 childrenResponses 计算，后端不再写
+ * childTotalPoints。
  */
-export const getNodeResponseChildStats = (children: ChatHistoryItemResType[] = []): ChildStats =>
-  getChildStats(normalizeChildResponseTree(children));
+export const getNodeResponseChildResponseCount = (
+  children: ChatHistoryItemResType[] = []
+): number | undefined => getChildResponseCount(normalizeChildResponseTree(children));
 
 const collectCiteCollectionIds = (
   response: ChatHistoryItemResType,
@@ -310,19 +292,14 @@ const collectCiteCollectionIds = (
   return Array.from(collectionIds);
 };
 
-const getResponseChildStats = (
+const getResponseChildResponseCount = (
   response: ChatHistoryItemResType,
   children: ChatHistoryItemResType[]
 ) => {
   // 新写入优先根据现场 children 计算；没有 children 时保留已有统计，兼容调用方已聚合的节点。
-  if (children.length > 0) return getChildStats(children);
+  if (children.length > 0) return getChildResponseCount(children);
 
-  return {
-    childTotalPoints:
-      typeof response.childTotalPoints === 'number' ? response.childTotalPoints : undefined,
-    childResponseCount:
-      typeof response.childResponseCount === 'number' ? response.childResponseCount : undefined
-  };
+  return typeof response.childResponseCount === 'number' ? response.childResponseCount : undefined;
 };
 
 /**
@@ -338,16 +315,16 @@ export const createChatItemResponseRows = ({
   ...base
 }: CreateRowsParams): ChatItemResponseStorageRow[] => {
   return nodeResponses.map((response) => {
+    const responseForStorage = stripChildTotalPoints(response);
     const id = getResponseId(response);
     const currentParentId = getParentId(response);
     const children = getChildrenResponses(response);
-    const { childTotalPoints, childResponseCount } = getResponseChildStats(response, children);
+    const childResponseCount = getResponseChildResponseCount(response, children);
     // data 是当前 nodeResponse 本身：保留 childrenResponses，仅读取时再与 parentId child rows 合并。
     const data = slimQuoteListForStorage({
-      ...response,
+      ...responseForStorage,
       id,
       ...(currentParentId ? { parentId: currentParentId } : {}),
-      ...(childTotalPoints !== undefined ? { childTotalPoints } : {}),
       ...(childResponseCount !== undefined ? { childResponseCount } : {})
     });
 
@@ -402,7 +379,7 @@ export const composeNodeResponseDetail = (
   });
 
   // 最后统一跑 mergeChatResponseData，保留交互节点 mergeSignId 等历史合并语义。
-  return mergeChatResponseData(rootResponses);
+  return stripChildTotalPointsFromResponseData(mergeChatResponseData(rootResponses));
 };
 
 export const composeChatItemResponseData = ({ rows = [] }: { rows?: ChatItemResponseRowLike[] }) =>
@@ -429,7 +406,9 @@ export const getChatItemResponseData = async ({
    * 新数据优先来自 chat_item_responses 平铺表；如果调用方传入旧链路的内存/内联详情，
    * 只有在独立表没有 rows 时才回退，避免新数据被空旧字段或空 flowResponses 覆盖。
    */
-  return rows.length > 0 ? composeChatItemResponseData({ rows }) : fallbackResponseData || [];
+  return rows.length > 0
+    ? composeChatItemResponseData({ rows })
+    : stripChildTotalPointsFromResponseData(fallbackResponseData || []);
 };
 
 export const getChatItemResponseRows = async ({
@@ -894,7 +873,7 @@ export class WorkflowNodeResponseWriter {
 
   /** 返回本轮请求内保留的 flat nodeResponses。未开启 retainInMemory 时恒为空数组。 */
   getFlatNodeResponses(): ChatHistoryItemResType[] {
-    return this.flatResponseRows.map((row) => row.data);
+    return stripChildTotalPointsFromResponseData(this.flatResponseRows.map((row) => row.data));
   }
 }
 

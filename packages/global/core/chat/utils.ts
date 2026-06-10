@@ -34,6 +34,37 @@ export const getChildrenResponses = (item: ChatHistoryItemResType) =>
   childrenResponseFields.flatMap((key) => item[key] || []);
 
 /**
+ * 对外 responseData 不再携带 childTotalPoints。
+ *
+ * 子节点积分展示统一由客户端基于 childrenResponses 现场计算；后端只保留 totalPoints 和
+ * childResponseCount 这类节点自身消耗/结构字段，避免存储值和展示计算值产生双口径。
+ */
+export const stripChildTotalPoints = (item: ChatHistoryItemResType): ChatHistoryItemResType => {
+  const { childTotalPoints, ...rest } = item;
+  const strippedChildren = childrenResponseFields.reduce<Partial<ChatHistoryItemResType>>(
+    (acc, field) => {
+      const children = item[field] as ChatHistoryItemResType[] | undefined;
+      if (!children?.length) return acc;
+
+      return {
+        ...acc,
+        [field]: children.map(stripChildTotalPoints)
+      };
+    },
+    {}
+  );
+
+  return {
+    ...rest,
+    ...strippedChildren
+  } as ChatHistoryItemResType;
+};
+
+export const stripChildTotalPointsFromResponseData = (
+  responseData: ChatHistoryItemResType[] = []
+): ChatHistoryItemResType[] => responseData.map(stripChildTotalPoints);
+
+/**
  * 合并同一个 nodeResponse 的增量数据。
  *
  * SSE、恢复生成、旧会话 append 都可能多次收到相同 `id` 的节点结果：标量字段以后
@@ -324,7 +355,6 @@ const treeNodeResponseFields: Record<string, boolean> = {
   parentId: true,
   moduleNameArgs: true,
   totalPoints: true,
-  childTotalPoints: true,
   childResponseCount: true,
   errorText: true
 };
@@ -550,7 +580,100 @@ export const mergeChatResponseData = (
   const result: ChatHistoryItemResType[] = [];
   const mergeMap = new Map<string, number>(); // mergeSignId -> result index
 
-  for (const item of responseDataList) {
+  const numberMergeFields = [
+    'totalPoints',
+    'childResponseCount',
+    'tokens',
+    'inputTokens',
+    'outputTokens',
+    'toolCallInputTokens',
+    'toolCallOutputTokens',
+    'embeddingTokens',
+    'reRankInputTokens',
+    'extensionTokens'
+  ] as const;
+
+  const sumNumberFields = (
+    existing: ChatHistoryItemResType,
+    incoming: ChatHistoryItemResType
+  ): Partial<ChatHistoryItemResType> => {
+    return numberMergeFields.reduce<Partial<ChatHistoryItemResType>>((acc, field) => {
+      const total = (existing[field] || 0) + (incoming[field] || 0);
+      if (total !== 0) {
+        acc[field] = total;
+      }
+
+      return acc;
+    }, {});
+  };
+
+  const mergeRequestIds = (existing: ChatHistoryItemResType, incoming: ChatHistoryItemResType) => {
+    const ids = [...(existing.llmRequestIds || []), ...(incoming.llmRequestIds || [])].filter(
+      Boolean
+    );
+    return ids.length > 0 ? { llmRequestIds: Array.from(new Set(ids)) } : {};
+  };
+
+  const mergeCompressTextAgent = (
+    existing: ChatHistoryItemResType,
+    incoming: ChatHistoryItemResType
+  ) => {
+    if (!existing.compressTextAgent && !incoming.compressTextAgent) return {};
+
+    return {
+      compressTextAgent: {
+        inputTokens:
+          (existing.compressTextAgent?.inputTokens || 0) +
+          (incoming.compressTextAgent?.inputTokens || 0),
+        outputTokens:
+          (existing.compressTextAgent?.outputTokens || 0) +
+          (incoming.compressTextAgent?.outputTokens || 0),
+        totalPoints:
+          (existing.compressTextAgent?.totalPoints || 0) +
+          (incoming.compressTextAgent?.totalPoints || 0)
+      }
+    };
+  };
+
+  const mergeDeepSearchResult = (
+    existing: ChatHistoryItemResType,
+    incoming: ChatHistoryItemResType
+  ): Partial<ChatHistoryItemResType> => {
+    const model = incoming.deepSearchResult?.model || existing.deepSearchResult?.model;
+    if (!model) return {};
+
+    return {
+      deepSearchResult: {
+        ...(existing.deepSearchResult || {}),
+        ...(incoming.deepSearchResult || {}),
+        model,
+        inputTokens:
+          (existing.deepSearchResult?.inputTokens || 0) +
+          (incoming.deepSearchResult?.inputTokens || 0),
+        outputTokens:
+          (existing.deepSearchResult?.outputTokens || 0) +
+          (incoming.deepSearchResult?.outputTokens || 0)
+      }
+    };
+  };
+
+  const mergeChildrenFields = (item: ChatHistoryItemResType): ChatHistoryItemResType => {
+    const mergedChildren = childrenResponseFields.reduce<Partial<ChatHistoryItemResType>>(
+      (acc, field) => {
+        const children = item[field] as ChatHistoryItemResType[] | undefined;
+        if (!children?.length) return acc;
+
+        const merged = mergeChatResponseData(children);
+        return merged.length > 0 ? { ...acc, [field]: merged } : acc;
+      },
+      {}
+    );
+
+    return Object.keys(mergedChildren).length > 0 ? { ...item, ...mergedChildren } : item;
+  };
+
+  for (const rawItem of responseDataList) {
+    const item = stripChildTotalPoints(mergeChildrenFields(rawItem));
     if (item.mergeSignId && mergeMap.has(item.mergeSignId)) {
       // Merge with existing item
       const existingIndex = mergeMap.get(item.mergeSignId)!;
@@ -559,10 +682,10 @@ export const mergeChatResponseData = (
       result[existingIndex] = {
         ...item,
         runningTime: +((existing.runningTime || 0) + (item.runningTime || 0)).toFixed(2),
-        totalPoints: (existing.totalPoints || 0) + (item.totalPoints || 0),
-        childTotalPoints: (existing.childTotalPoints || 0) + (item.childTotalPoints || 0),
-        childResponseCount:
-          (existing.childResponseCount || 0) + (item.childResponseCount || 0) || undefined,
+        ...sumNumberFields(existing, item),
+        ...mergeRequestIds(existing, item),
+        ...mergeCompressTextAgent(existing, item),
+        ...mergeDeepSearchResult(existing, item),
         ...childrenResponseFields.reduce<Partial<ChatHistoryItemResType>>((acc, field) => {
           const mergedChildren = mergeChatResponseData([
             ...((existing[field] || []) as ChatHistoryItemResType[]),

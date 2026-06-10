@@ -165,8 +165,7 @@ export const parseTaskResponse = (params: {
     };
   }
 
-  // 保持 main 分支旧口径：成功任务的 totalPoints 是子流程各 nodeResponse.totalPoints 之和，
-  // 不包含这些节点已聚合的 childTotalPoints；child 统计只用于 wrapper 展示。
+  // 保持 main 分支旧口径：成功任务的 totalPoints 是子流程各 nodeResponse.totalPoints 之和。
   const totalPoints = runtimeNodeResponseSummary.totalPoints ?? 0;
   return { success: true, index, data: nestedEndOutput, response, totalPoints };
 };
@@ -240,8 +239,7 @@ const buildParallelTaskWrapper = ({
     loopInputValue: input,
     loopOutputValue: result.success ? result.data : undefined,
     error: result.success ? undefined : result.error,
-    childResponseCount: runtimeSummary?.childResponseCount,
-    childTotalPoints: runtimeSummary?.childTotalPoints
+    childResponseCount: runtimeSummary?.childResponseCount
   };
 };
 
@@ -252,7 +250,7 @@ const buildParallelTaskWrapper = ({
  * - totalPoints, responseDetails, assistantResponses, customFeedbacks: merged from successful tasks
  *
  * responseDetails 返回"按任务聚合"的虚拟节点列表：每次任务包装成一个
- * ChatHistoryItemResType，并只保留 childResponseCount/childTotalPoints 等轻量统计。
+ * ChatHistoryItemResType，并只保留 childResponseCount 等轻量结构统计。
  * 完整子节点详情由 writer 写入 DB，详情接口再按 parentId 拼回 childrenResponses。
  */
 export const aggregateParallelResults = (

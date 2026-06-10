@@ -266,7 +266,6 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         totalPoints: usagePoints
       }
     ]);
-    const childTotalPoints = runtimeSummary.childTotalPoints;
     const childResponseCount = runtimeSummary.childResponseCount;
 
     return {
@@ -281,7 +280,6 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         totalPoints: usagePoints,
         toolInput: data,
         pluginOutput,
-        childTotalPoints,
         childResponseCount
       },
       [DispatchNodeResponseKeyEnum.toolResponse]: pluginOutput
