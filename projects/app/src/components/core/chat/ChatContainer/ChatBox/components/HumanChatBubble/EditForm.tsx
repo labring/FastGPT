@@ -1,5 +1,5 @@
 import { Box, Button, Flex, Textarea } from '@chakra-ui/react';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -12,6 +12,11 @@ import { ChatBoxContext } from '../../Provider';
 import type { ChatBoxInputFormType, ChatBoxInputType, UserInputFileItemType } from '../../type';
 import { useFileUpload } from '../../hooks/useFileUpload';
 import VoiceInput, { type VoiceInputComponentRef } from '../../Input/VoiceInput';
+
+const textareaLineHeight = 24;
+const textareaVisibleRows = 4;
+const textareaPaddingY = 10;
+const textareaHeight = `${textareaLineHeight * textareaVisibleRows + textareaPaddingY * 2}px`;
 
 type HumanChatBubbleEditFormProps = {
   defaultValue: string;
@@ -86,6 +91,14 @@ const HumanChatBubbleEditForm = ({
     showSelectAudio ||
     showSelectCustomFileExtension;
   const canSubmit = !hasFileUploading && trimmedValue.length > 0;
+  const handleSubmit = useCallback(() => {
+    if (!canSubmit) return;
+
+    onSubmit?.({
+      text: trimmedValue,
+      files: fileList
+    });
+  }, [canSubmit, fileList, onSubmit, trimmedValue]);
 
   useRequest(uploadFiles, {
     manual: false,
@@ -142,16 +155,22 @@ const HumanChatBubbleEditForm = ({
           ref={textareaRef}
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          h={'116px'}
-          rows={4}
+          onKeyDown={(e) => {
+            if (e.key !== 'Enter' || e.shiftKey || e.nativeEvent.isComposing) return;
+
+            e.preventDefault();
+            handleSubmit();
+          }}
+          h={textareaHeight}
+          rows={textareaVisibleRows}
           resize={'none'}
           px={'12px'}
-          pt={'10px'}
-          pb={'10px'}
+          pt={`${textareaPaddingY}px`}
+          pb={`${textareaPaddingY}px`}
           border={'none'}
           bg={'white'}
           color={'myGray.900'}
-          fontSize={['md', '20px']}
+          fontSize={'16px'}
           lineHeight={'24px'}
           fontWeight={400}
           _focusVisible={{
@@ -235,13 +254,7 @@ const HumanChatBubbleEditForm = ({
             variant={'primary'}
             fontSize={'14px'}
             isDisabled={!canSubmit}
-            onClick={() => {
-              if (!canSubmit) return;
-              onSubmit?.({
-                text: trimmedValue,
-                files: fileList
-              });
-            }}
+            onClick={handleSubmit}
           >
             {t('common:Update')}
           </Button>

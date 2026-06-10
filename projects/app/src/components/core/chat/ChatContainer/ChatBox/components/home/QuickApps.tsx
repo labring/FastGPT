@@ -15,7 +15,6 @@ const QuickApps = ({ variant = 'desktop' }: QuickAppsProps) => {
 
   return quickAppList && quickAppList.length > 0 ? (
     <Flex
-      mb={isMobile ? 0 : '2'}
       mx={isMobile ? 0 : 2}
       alignItems={isMobile ? 'flex-start' : 'center'}
       gap={isMobile ? '12px' : 2}
@@ -26,21 +25,21 @@ const QuickApps = ({ variant = 'desktop' }: QuickAppsProps) => {
         <Flex
           key={q._id}
           alignItems="center"
-          gap={isMobile ? '8px' : 1}
-          h={isMobile ? '44px' : undefined}
+          gap="8px"
+          h="44px"
           border="sm"
           borderRadius="md"
-          px={isMobile ? '16px' : 2}
-          py={isMobile ? 0 : 1}
+          px="16px"
+          py="8px"
           maxW={isMobile ? '100%' : undefined}
           cursor="pointer"
-          _hover={{ bg: 'myGray.50' }}
+          _hover={{ bg: '#F0F4FF', borderColor: '#C5D7FF', color: 'primary.600' }}
           bg="white"
           color="myGray.600"
           borderColor="myGray.200"
           onClick={() => onSwitchQuickApp?.(q._id)}
         >
-          <Avatar src={q.avatar} w={isMobile ? '24px' : 4} borderRadius="xs" />
+          <Avatar src={q.avatar} w="24px" borderRadius="xs" />
           <Box
             fontSize={isMobile ? '14px' : 'xs'}
             fontWeight="500"

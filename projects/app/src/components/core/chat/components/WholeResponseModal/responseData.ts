@@ -40,3 +40,14 @@ export const getSideTabItems = (response: ChatHistoryItemResType[]): SideTabItem
     };
   });
 };
+
+export const getSideTabMaxDepth = (items: SideTabItemType[], depth = 1): number => {
+  if (items.length === 0) return 0;
+
+  return items.reduce((maxDepth, item) => {
+    const childDepth =
+      item.children.length > 0 ? getSideTabMaxDepth(item.children, depth + 1) : depth;
+
+    return Math.max(maxDepth, childDepth);
+  }, depth);
+};

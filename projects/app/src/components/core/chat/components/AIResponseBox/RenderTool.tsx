@@ -38,9 +38,15 @@ const RenderTool = React.memo(
 
     return (
       <Accordion allowToggle>
-        <AccordionItem borderTop={'none'} borderBottom={'none'}>
+        <AccordionItem borderTop={'none'} borderBottom={'none'} lineHeight={'24px'}>
           <AccordionButton
             {...accordionButtonStyle}
+            h={'24px'}
+            minH={'24px'}
+            w={'fit-content'}
+            display={'flex'}
+            alignItems={'center'}
+            lineHeight={'24px'}
             p={0}
             bg={'transparent'}
             border={'none'}
@@ -50,8 +56,8 @@ const RenderTool = React.memo(
             _hover={{ bg: 'transparent', color: 'myGray.600' }}
             _expanded={{ color: 'myGray.600' }}
           >
-            <HStack mr={1} spacing="0">
-              <Flex w="24px" h="24px" alignItems="center" justifyContent="flex-start">
+            <HStack h={'24px'} lineHeight={'24px'} mr={1} spacing="0">
+              <Flex w="24px" h="24px" alignItems="center" justifyContent="center">
                 <Avatar src={tool.toolAvatar} w="16px" h="16px" borderRadius="sm" />
               </Flex>
               <Box fontSize="16px" lineHeight="24px" color="myGray.600">
@@ -61,12 +67,12 @@ const RenderTool = React.memo(
             {showAnimation && tool.response === undefined && (
               <MyIcon name={'common/loading'} w={'14px'} color="myGray.500" />
             )}
-            <AccordionIcon ml={1} color={'myGray.500'} />
+            <AccordionIcon ml={1} w={'16px'} h={'16px'} color={'myGray.500'} />
           </AccordionButton>
           <AccordionPanel
             py={0}
             px={0}
-            mt={3}
+            mt={2}
             borderRadius={'md'}
             overflow={'hidden'}
             maxH={'500px'}

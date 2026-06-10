@@ -76,8 +76,7 @@ const NormalSideTabItem = ({
       _hover={{ background: 'myGray.100' }}
       py={'6px'}
       pl={leftPad}
-      // 只有可展开节点才有右侧箭头，叶子节点不预留空按钮位，尽量把宽度还给名称。
-      pr={children ? `${SIDE_TAB_ACTION_SLOT_WIDTH}px` : '4px'}
+      pr={'8px'}
       width={'100%'}
       cursor={'pointer'}
       borderRadius={'6px'}
@@ -94,15 +93,16 @@ const NormalSideTabItem = ({
         h={`${SIDE_TAB_AVATAR_SIZE}px`}
         borderRadius={'4px'}
       />
-      <Box ml={2} minW={0} flex={'1 1 auto'}>
+      <Box ml={2} flex={'1 1 0'} minW={0}>
         <Box
           fontSize={'12px'}
           lineHeight={'16px'}
           fontWeight={500}
           color={'myGray.900'}
           letterSpacing={'0.5px'}
-          noOfLines={3}
-          wordBreak={'break-all'}
+          overflow={'hidden'}
+          whiteSpace={'nowrap'}
+          textOverflow={'ellipsis'}
         >
           {t(sideBarItem.moduleName as any, sideBarItem.moduleNameArgs)}
         </Box>
@@ -112,22 +112,24 @@ const NormalSideTabItem = ({
           fontWeight={500}
           color={'myGray.500'}
           letterSpacing={'0.5px'}
-          noOfLines={1}
+          overflow={'hidden'}
+          whiteSpace={'nowrap'}
+          textOverflow={'ellipsis'}
         >
           {t(sideBarItem.runningTime as any) + 's'}
         </Box>
       </Box>
       {children && (
-        <Box
-          h={`${SIDE_TAB_AVATAR_SIZE}px`}
-          w={`${SIDE_TAB_AVATAR_SIZE}px`}
-          position={'absolute'}
-          right={'4px'}
-          top={'50%'}
-          transform={'translateY(-50%)'}
+        <Flex
+          h={'24px'}
+          w={'20px'}
+          flexShrink={0}
+          alignItems={'center'}
+          justifyContent={'center'}
+          ml={1}
         >
           {children}
-        </Box>
+        </Flex>
       )}
     </Flex>
   );

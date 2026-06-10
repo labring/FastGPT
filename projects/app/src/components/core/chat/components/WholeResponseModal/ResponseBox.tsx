@@ -13,9 +13,12 @@ import {
   WholeResponseSideTab
 } from './SideTab';
 import { WholeResponseContent } from './WholeResponseContent';
-import { flattenResponse, getSideTabItems } from './responseData';
+import { flattenResponse, getSideTabItems, getSideTabMaxDepth } from './responseData';
 
 const RequestIdDetailModal = dynamic(() => import('@/components/core/ai/requestId'));
+const sideTabBaseWidth = 204;
+const sideTabDeepTreeExtraWidth = 50;
+const sideTabDeepTreeMinDepth = 4;
 
 export const ResponseBox = React.memo(function ResponseBox({
   response,
@@ -51,6 +54,10 @@ export const ResponseBox = React.memo(function ResponseBox({
   );
 
   const sliderResponseList = useMemo(() => getSideTabItems(response), [response]);
+  const sideTabWidth = useMemo(() => {
+    const maxDepth = getSideTabMaxDepth(sliderResponseList);
+    return `${sideTabBaseWidth + (maxDepth >= sideTabDeepTreeMinDepth ? sideTabDeepTreeExtraWidth : 0)}px`;
+  }, [sliderResponseList]);
 
   const {
     isOpen: isOpenMobileModal,
@@ -70,7 +77,7 @@ export const ResponseBox = React.memo(function ResponseBox({
           borderRadius={'12px'}
         >
           <Box
-            w={`${WHOLE_RESPONSE_SIDE_TAB_WIDTH}px`}
+            w={sideTabWidth}
             flexShrink={0}
             borderRight={'1px solid'}
             borderColor={'myGray.200'}

@@ -2,6 +2,7 @@
   "AI_input_is_empty": "The content passed to the AI ​​node is empty",
   "Delete_all": "Clear All Lexicon",
   "LLM_model_response_empty": "The model response is empty, please check the model details request",
+  "no_output_content": "The app returned no output",
   "Next": "Next",
   "Previous": "Previous",
   "agent_plan_generating": "Creating plan",

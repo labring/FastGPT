@@ -235,7 +235,9 @@ const AppChatWindow = () => {
                 fontSize="16px"
                 fontWeight={500}
                 color="myGray.900"
-                className="textEllipsis"
+                overflow="hidden"
+                whiteSpace="nowrap"
+                textOverflow="clip"
               >
                 {chatWindowTitle}
               </Box>

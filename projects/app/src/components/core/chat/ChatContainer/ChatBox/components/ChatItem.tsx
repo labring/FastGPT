@@ -1,6 +1,6 @@
 import { Box, type BoxProps, Button, Flex } from '@chakra-ui/react';
 import React, { useMemo, useState, useRef } from 'react';
-import ChatController, { type ChatControllerProps } from './ChatController';
+import { type ChatControllerProps } from './ChatController';
 import styles from '../index.module.scss';
 import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatBoxContext } from '../Provider';
@@ -10,10 +10,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { type AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import {
-  ChatItemContext,
-  type OnOpenCiteModalProps
-} from '@/web/core/chat/context/chatItemContext';
+import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 import { useMemoizedFn, useSize } from 'ahooks';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
@@ -23,6 +20,7 @@ import AIChatBubble, { shouldFilterAiValue } from './AIChatBubble';
 import type { ChatBoxInputType } from '../type';
 import { hasAiAnswerContent } from './AIChatBubble/utils';
 import ChatErrorCard from './ChatErrorCard';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 const colorMap = {
   [ChatStatusEnum.loading]: {
@@ -89,6 +87,25 @@ const ChatItem = (props: Props) => {
     () => addStatisticalDataToHistoryItem(chat),
     [chat]
   );
+  const inlineErrorInfo = useMemo(() => {
+    if (!chat.errorMsg && !errorText) return;
+
+    const moduleName =
+      errorText?.moduleName ||
+      chat.moduleName ||
+      t('common:core.module.template.ai_chat', { defaultValue: 'AI 对话' });
+    const errorReason = errorText?.errorText || '';
+    const noOutputText = t('chat:no_output', '无输出');
+    const isNoOutputError =
+      !errorReason ||
+      errorReason === 'chat:LLM_model_response_empty' ||
+      errorReason === t('chat:LLM_model_response_empty');
+
+    return {
+      title: `${t('chat:log.error.error_prefix')} - ${t(moduleName)}`,
+      message: isNoOutputError ? noOutputText : t(getErrText(errorReason))
+    };
+  }, [chat.errorMsg, chat.moduleName, errorText, t]);
 
   const isChatLog = chatType === 'log';
 
@@ -283,11 +300,10 @@ const ChatItem = (props: Props) => {
           i === splitAiResponseResults.length - 1 ? (
             <>
               {/* error message */}
-              {!!chat.errorMsg && (
-                <ChatErrorCard
-                  title={`${t('chat:log.error.error_prefix')}- ${t('common:core.module.template.ai_chat')}`}
-                  message={chat.errorMsg}
-                />
+              {inlineErrorInfo && (
+                <Box mt={4}>
+                  <ChatErrorCard title={inlineErrorInfo.title} message={inlineErrorInfo.message} />
+                </Box>
               )}
               {children}
             </>

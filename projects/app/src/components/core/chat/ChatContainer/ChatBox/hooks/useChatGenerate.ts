@@ -688,7 +688,7 @@ export const useChatGenerate = ({
                 createQuestionGuide();
               }
 
-              generatingScroll(true);
+              generatingScroll();
               if (isPc) {
                 TextareaDom.current?.focus();
               }

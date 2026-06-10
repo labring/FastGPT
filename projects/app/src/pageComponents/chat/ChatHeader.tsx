@@ -280,7 +280,7 @@ const MobileHeader = ({
         <Flex alignItems={'center'} gap={1} onClick={toggleDrawer}>
           <Avatar borderRadius={'sm'} src={avatar} w={'1rem'} />
 
-          <Box className="textEllipsis">
+          <Box overflow={'hidden'} whiteSpace={'nowrap'} textOverflow={'clip'}>
             {name}
           </Box>
 

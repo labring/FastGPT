@@ -102,14 +102,9 @@ const AIChatBubbleContent = ({
           isProcessing={isProcessing}
           label={previewItem ? getProcessingPreviewLabelKey(previewItem.value) : undefined}
           preview={
-            previewItem
-              ? (
-                  <RenderProcessingPreview
-                    value={previewItem.value}
-                    showAnimation={isProcessing}
-                  />
-                )
-              : undefined
+            previewItem ? (
+              <RenderProcessingPreview value={previewItem.value} showAnimation={isProcessing} />
+            ) : undefined
           }
         >
           {group.map(({ value, index }) => (

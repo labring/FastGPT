@@ -242,11 +242,15 @@ export const useSandboxStatus = ({
           <IconButton
             variant={'whiteBase'}
             size={'smSquare'}
+            color={'myGray.600'}
+            _hover={{
+              color: 'primary.600'
+            }}
             icon={
               <MyIcon
                 name={'core/chat/monitor'}
                 w={'16px'}
-                color={'myGray.600'}
+                color={'currentColor'}
                 sx={{
                   '& path': {
                     fill: 'currentColor'
