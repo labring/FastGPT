@@ -603,6 +603,8 @@ export const useChatGenerate = ({
           );
           syncSidebarChatGenerateStatus(ChatGenerateStatusEnum.generating, {
             hasBeenRead: false,
+            targetAppId: appId,
+            targetChatId: chatId,
             title: temporaryHistoryTitle
           });
 
@@ -701,6 +703,8 @@ export const useChatGenerate = ({
             finishChatGenerateStatus({
               status: ChatGenerateStatusEnum.done,
               finishedInActiveChat,
+              targetAppId: appId,
+              targetChatId: chatId,
               shouldUpdateChatBoxData: (state) => state.appId === appId && state.chatId === chatId
             });
           } catch (err: any) {
@@ -730,6 +734,8 @@ export const useChatGenerate = ({
             finishChatGenerateStatus({
               status: ChatGenerateStatusEnum.error,
               finishedInActiveChat,
+              targetAppId: appId,
+              targetChatId: chatId,
               shouldUpdateChatBoxData: (state) => state.appId === appId && state.chatId === chatId
             });
           }

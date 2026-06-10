@@ -76,6 +76,7 @@ export const useSidebarChatGenerateStatus = () => {
           h.chatId === targetChatId && h.appId === targetAppId
             ? {
                 ...h,
+                ...(options?.title ? { title: options.title } : {}),
                 chatGenerateStatus: status,
                 updateTime: new Date(),
                 ...(options?.hasBeenRead !== undefined ? { hasBeenRead: options.hasBeenRead } : {})

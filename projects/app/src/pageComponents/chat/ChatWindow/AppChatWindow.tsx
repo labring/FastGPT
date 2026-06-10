@@ -154,10 +154,14 @@ const AppChatWindow = () => {
       const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats({ messages: histories })[0]);
 
       onUpdateHistoryTitle({ chatId, newTitle });
-      setChatBoxData((state) => ({
-        ...state,
-        title: newTitle
-      }));
+      setChatBoxData((state) =>
+        state.appId === appId && state.chatId === chatId
+          ? {
+              ...state,
+              title: newTitle
+            }
+          : state
+      );
 
       refreshRecentlyUsed();
 
