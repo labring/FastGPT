@@ -41,7 +41,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import RadioGroup from '@fastgpt/web/components/common/Radio/RadioGroup';
-import { DatasetSelectModal } from '@/components/core/app/DatasetSelectModal';
+import { SfDatasetSelectModal } from '@/components/core/app/sfDatasetSelectModal';
 import type { EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
@@ -1149,7 +1149,7 @@ const InputTypeConfig = ({
               </Flex>
             </Flex>
             {isOpenDatasetSelect && (
-              <DatasetSelectModal
+              <SfDatasetSelectModal
                 defaultSelectedDatasets={datasetOptions.map((item: SelectedDatasetType) => ({
                   datasetId: item.datasetId,
                   name: item.name,

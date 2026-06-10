@@ -55,7 +55,7 @@ import AccordionSection from '@/components/core/app/AccordionSection';
 import TagFilterSection from '../../SmartCustomerService/TagFilterSection';
 import { DEFAULT_VALUES } from '../../SmartCustomerService/constants';
 
-const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
+const DatasetSelectModal = dynamic(() => import('@/components/core/app/sfDatasetSelectModal'));
 
 // ===== FormItem =====
 const FormItem: React.FC<{

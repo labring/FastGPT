@@ -12,7 +12,8 @@ export const SelectedDatasetSchema = z.object({
   name: z.string(),
   vectorModel: z
     .object({
-      id: z.string()
+      id: z.string(),
+      name: z.string().optional()
     })
     .optional(),
   dataCount: z.number().optional(),

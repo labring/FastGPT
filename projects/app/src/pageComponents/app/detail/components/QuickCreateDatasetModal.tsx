@@ -204,7 +204,7 @@ const QuickCreateDatasetModal = ({
     >
       <ModalBody py={6} minH={'500px'}>
         <Box mb={6}>
-          <FormLabel mb={2}>{t('common:input_name')}</FormLabel>
+          <FormLabel mb={2}>{t('app:icon_and_name')}</FormLabel>
           <Flex alignItems={'center'}>
             <MyTooltip label={t('common:set_avatar')}>
               <Box w={9} h={9} mr={4}>
@@ -341,7 +341,7 @@ const QuickCreateDatasetModal = ({
             isDisabled={successFiles.length === 0 || uploading}
             onClick={handleSubmit(onCreate)}
           >
-            {t('common:Create')}
+            {t('common:Confirm')}
           </Button>
         </Flex>
       </ModalFooter>
