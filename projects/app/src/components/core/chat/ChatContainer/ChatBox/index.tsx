@@ -90,6 +90,7 @@ type Props = OutLinkChatAuthProps &
     onStopChat?: () => Promise<StopChatFnResult>;
     /** 覆盖默认已读接口；不传则使用普通 App Chat 的 postMarkChatRead。 */
     onMarkChatRead?: (data: MarkChatReadBodyType) => Promise<unknown>;
+    EmptyState?: React.ReactNode;
   };
 
 const ChatBox = ({
@@ -109,6 +110,7 @@ const ChatBox = ({
   onMarkChatRead,
   boxBodyProps,
   inputBodyProps,
+  EmptyState,
   ...props
 }: Props) => {
   const { t } = useTranslation();
@@ -547,7 +549,7 @@ const ChatBox = ({
           onStop={() => abortRequest('stop')}
           onStopChat={requestStopChat}
           onStopSettled={handleStopSettled}
-          disableSend={isRoundPending}
+          disableSend={isRoundPending || !isReady}
           TextareaDom={TextareaDom}
           resetInputVal={resetInputVal}
           chatForm={chatForm}
@@ -594,6 +596,11 @@ const ChatBox = ({
             recordsListProps={recordsListProps}
             maxW={props.maxW}
             boxBodyProps={boxBodyProps}
+            EmptyState={
+              chatRecords.length === 0 && isChatRecordsLoaded && !isLoadingRecords
+                ? EmptyState
+                : undefined
+            }
           />
           {canRenderChatInput && (
             <Box {...ChatInputWrapperStyle} {...inputBodyProps}>

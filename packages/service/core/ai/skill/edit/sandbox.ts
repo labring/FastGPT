@@ -1,3 +1,4 @@
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { ISandbox, SandboxCreateSpec } from '@fastgpt-sdk/sandbox-adapter';
 import { MongoAgentSkills } from '../model/schema';
 import { MongoAgentSkillsVersion } from '../version/schema';
@@ -299,7 +300,7 @@ export async function createEditDebugSandbox(
     } catch (error) {
       addLog.error('[Sandbox] Existing sandbox is unavailable, recreating edit-debug sandbox', {
         sandboxId: instance.sandboxId,
-        error: error instanceof Error ? error.message : String(error),
+        error: getErrText(error),
         stack: error instanceof Error ? error.stack : undefined
       });
 
@@ -456,7 +457,7 @@ export async function createEditDebugSandbox(
           '[Sandbox] Mismatched sandbox is offline or unavailable, falling back to full recreation',
           {
             sandboxId: existingInstance.sandboxId,
-            error: error instanceof Error ? error.message : String(error),
+            error: getErrText(error),
             stack: error instanceof Error ? error.stack : undefined
           }
         );

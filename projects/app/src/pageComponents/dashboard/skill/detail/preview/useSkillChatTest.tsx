@@ -14,6 +14,8 @@ import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import React from 'react';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
+import { Flex } from '@chakra-ui/react';
+import { useTranslation } from 'next-i18next';
 
 const fileSelectConfig: AppFileSelectConfigType = {
   maxFiles: 10,
@@ -39,6 +41,7 @@ export const useSkillChatTest = ({
   isReady: boolean;
   InputLeftComponent?: React.ReactNode;
 }) => {
+  const { t } = useTranslation('skill');
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
 
   // Set chat box data
@@ -106,9 +109,32 @@ export const useSkillChatTest = ({
         maxW={'100%'}
         boxBodyProps={{ px: 0, maxW: '100%', mx: 0 }}
         inputBodyProps={{ maxW: '100%', mx: 0, pl: 0, pr: 0 }}
+        EmptyState={
+          <Flex
+            flex={1}
+            alignItems="center"
+            justifyContent="center"
+            color="myGray.500"
+            fontSize="sm"
+            textAlign="center"
+            lineHeight="20px"
+            whiteSpace="pre-wrap"
+          >
+            {t('empty_state_tip')}
+          </Flex>
+        }
       />
     ),
-    [skillId, chatId, isReady, startChat, handleDeleteChatItem, handleStopChat, InputLeftComponent]
+    [
+      skillId,
+      chatId,
+      isReady,
+      startChat,
+      handleDeleteChatItem,
+      handleStopChat,
+      InputLeftComponent,
+      t
+    ]
   );
 
   return {

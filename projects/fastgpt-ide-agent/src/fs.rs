@@ -9,12 +9,13 @@ use notify::event::ModifyKind;
 use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tokio_tungstenite::tungstenite::protocol::frame::CloseFrame;
 use tokio_tungstenite::tungstenite::Message;
+use tokio_tungstenite::tungstenite::protocol::frame::CloseFrame;
 
 use crate::protocol::{JsonRpcError, JsonRpcNotification, JsonRpcRequest, JsonRpcResponse};
 use crate::workspace::{
-    get_workspace_root, is_workspace_root_path, normalize_workspace_relative_path, sanitize_path,
+    get_workspace_root, is_workspace_root_path, normalize_workspace_relative_path,
+    sanitize_create_path, sanitize_path,
 };
 
 const DEFAULT_EXCLUDED_NAMES: &[&str] = &["node_modules", ".git", ".next", "dist", "build", ".bun"];
@@ -254,7 +255,7 @@ async fn handle_write_file(params: Option<serde_json::Value>) -> Result<serde_js
         .and_then(|v| v.as_str())
         .ok_or("content param required")?;
 
-    let clean_path = sanitize_path(path_str).await?;
+    let clean_path = sanitize_create_path(path_str).await?;
 
     if clean_path.exists() {
         let metadata = tokio::fs::metadata(&clean_path)
@@ -477,7 +478,7 @@ async fn handle_mkdir(params: Option<serde_json::Value>) -> Result<serde_json::V
         .get("path")
         .and_then(|v| v.as_str())
         .ok_or("path param required")?;
-    let clean_path = sanitize_path(path_str).await?;
+    let clean_path = sanitize_create_path(path_str).await?;
 
     tokio::fs::create_dir_all(&clean_path)
         .await
@@ -520,7 +521,7 @@ async fn handle_move(params: Option<serde_json::Value>) -> Result<serde_json::Va
         .ok_or("to param required")?;
 
     let clean_from = sanitize_path(from_str).await?;
-    let clean_to = sanitize_path(to_str).await?;
+    let clean_to = sanitize_create_path(to_str).await?;
     if is_workspace_root_path(&clean_from) {
         return Err("Refusing to move workspace root".to_string());
     }
@@ -729,6 +730,20 @@ mod tests {
         let mtime = resp.result.unwrap().get("mtime").unwrap().as_u64();
         assert!(mtime.is_some());
 
+        // 2.1 测试写入嵌套缺失父目录时会自动创建父目录
+        let nested_write_req = JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: serde_json::Value::Number(21.into()),
+            method: "fs/write_file".to_string(),
+            params: Some(json!({
+                "path": "missing_parent/a/hello.txt",
+                "content": "SGVsbG8gUnVzdCE="
+            })),
+        };
+        let resp = handle_fs_request(nested_write_req, "write").await;
+        assert!(resp.error.is_none());
+        assert!(temp_workspace.join("missing_parent/a/hello.txt").exists());
+
         // 3. 测试读取文件 (fs/read_file)
         let read_req = JsonRpcRequest {
             jsonrpc: "2.0".to_string(),
@@ -772,6 +787,40 @@ mod tests {
         let err = resp.error.unwrap();
         assert_eq!(err.code, -32601);
         assert!(err.message.contains("Method not found"));
+    }
+
+    #[tokio::test]
+    async fn test_create_and_move_to_nested_missing_parent() {
+        let temp_workspace = init_test_workspace();
+        let _ = fs::remove_dir_all(temp_workspace.join("nested_create_test"));
+
+        let mkdir_req = JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: serde_json::Value::Number(1.into()),
+            method: "fs/mkdir".to_string(),
+            params: Some(json!({ "path": "nested_create_test/a/b" })),
+        };
+        let resp = handle_fs_request(mkdir_req, "write").await;
+        assert!(resp.error.is_none());
+        assert!(temp_workspace.join("nested_create_test/a/b").is_dir());
+
+        fs::write(temp_workspace.join("nested_create_test/source.txt"), "move").unwrap();
+        let move_req = JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: serde_json::Value::Number(2.into()),
+            method: "fs/move".to_string(),
+            params: Some(json!({
+                "from": "nested_create_test/source.txt",
+                "to": "nested_create_test/c/d/target.txt"
+            })),
+        };
+        let resp = handle_fs_request(move_req, "write").await;
+        assert!(resp.error.is_none());
+        assert!(
+            temp_workspace
+                .join("nested_create_test/c/d/target.txt")
+                .exists()
+        );
     }
 
     #[tokio::test]

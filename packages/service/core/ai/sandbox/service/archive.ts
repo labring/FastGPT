@@ -1,3 +1,4 @@
+import { getErrText } from '@fastgpt/global/common/error/utils';
 import { subDays } from 'date-fns';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import type { ISandbox, SandboxCreateSpec } from '@fastgpt-sdk/sandbox-adapter';
@@ -328,7 +329,18 @@ export async function archiveSandboxResource(
         provider: archivingDoc.provider,
         error
       });
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage = getErrText(error);
+      await getS3SandboxSource()
+        .deleteWorkspaceArchive({
+          sandboxId: archivingDoc.sandboxId
+        })
+        .catch((deleteError) => {
+          logger.error('Failed to delete sandbox archive after remote cleanup failure', {
+            sandboxId: archivingDoc.sandboxId,
+            provider: archivingDoc.provider,
+            error: deleteError
+          });
+        });
       await clearSandboxArchiveState(archivingDoc).catch((clearError) => {
         logger.error('Failed to clear archive state after remote cleanup failure', {
           sandboxId: archivingDoc.sandboxId,
@@ -359,10 +371,9 @@ export async function archiveSandboxResource(
         error: 'Sandbox record changed after remote resource deletion'
       };
     }
-
     return { success: true };
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorMessage = getErrText(error);
     if (remoteResourceDeleted) {
       await markSandboxArchived(archivingDoc).catch((markError) => {
         logger.error('Failed to mark sandbox archived after remote resource deletion', {

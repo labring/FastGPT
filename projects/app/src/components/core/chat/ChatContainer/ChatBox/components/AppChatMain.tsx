@@ -25,6 +25,7 @@ type AppChatMainProps = BoxProps & {
   chatType: ChatTypeEnum;
   recordsListProps: ChatRecordsListProps;
   boxBodyProps?: BoxProps;
+  EmptyState?: React.ReactNode;
 };
 
 /**
@@ -45,7 +46,8 @@ const AppChatMain = ({
   chatType,
   recordsListProps,
   maxW = ['100%', '92%'],
-  boxBodyProps
+  boxBodyProps,
+  EmptyState
 }: AppChatMainProps) => {
   return (
     <ScrollData
@@ -62,6 +64,8 @@ const AppChatMain = ({
         maxW={boxBodyProps?.maxW ?? maxW}
         h={'100%'}
         mx={boxBodyProps?.mx ?? boxBodyProps?.margin ?? 'auto'}
+        display={'flex'}
+        flexDirection={'column'}
       >
         {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
 
@@ -69,7 +73,11 @@ const AppChatMain = ({
           <VariableInputForm chatStarted={chatStarted} chatForm={chatForm} chatType={chatType} />
         </Box>
 
-        <ChatRecordsList {...recordsListProps} />
+        {recordsListProps.records.length === 0 && EmptyState ? (
+          EmptyState
+        ) : (
+          <ChatRecordsList {...recordsListProps} />
+        )}
       </Box>
     </ScrollData>
   );

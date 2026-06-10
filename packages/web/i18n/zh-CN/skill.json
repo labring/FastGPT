@@ -89,5 +89,6 @@
   "no_current_version": "Skill 暂无可用版本，请重新创建或导入后再编辑。",
   "permission.des.read": "可查看 Agent Skill",
   "permission.des.write": "可编辑 Agent Skill",
-  "permission.des.manage": "可管理 Agent Skill 和协作者"
+  "permission.des.manage": "可管理 Agent Skill 和协作者",
+  "empty_state_tip": "告诉 AI 如何修改 Skill，\n或让 AI 运行 Skill 查看效果"
 }

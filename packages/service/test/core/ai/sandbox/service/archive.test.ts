@@ -152,7 +152,7 @@ describe('sandbox archive service', () => {
     archiveMocks.deleteSessionVolume.mockResolvedValue(undefined);
     archiveMocks.uploadWorkspaceArchive.mockResolvedValue(undefined);
     archiveMocks.downloadWorkspaceArchive.mockResolvedValue(Buffer.from('zip'));
-    archiveMocks.deleteWorkspaceArchive.mockReturnValue(undefined);
+    archiveMocks.deleteWorkspaceArchive.mockResolvedValue(undefined);
     archiveMocks.disconnectSandbox.mockResolvedValue(undefined);
     archiveMocks.clearSandboxArchiveState.mockResolvedValue(undefined);
     archiveMocks.markSandboxArchived.mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
@@ -223,6 +223,9 @@ describe('sandbox archive service', () => {
     });
     expect(remoteResource.delete).toHaveBeenCalledTimes(1);
     expect(archiveMocks.markSandboxArchived).not.toHaveBeenCalled();
+    expect(archiveMocks.deleteWorkspaceArchive).toHaveBeenCalledWith({
+      sandboxId: resource.sandboxId
+    });
     expect(archiveMocks.clearSandboxArchiveState).toHaveBeenCalledWith(resource);
     expect(remoteResource.stop).toHaveBeenCalledTimes(1);
   });
