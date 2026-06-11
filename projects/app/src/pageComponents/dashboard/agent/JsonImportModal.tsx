@@ -23,7 +23,6 @@ import {
 import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
 import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 import {
-  isDashboardImportAppTypeAllowed,
   type JsonImportModalScene,
   parseDashboardImportConfig,
   resolveImportAppType
@@ -125,9 +124,7 @@ const JsonImportModal = ({ scene, onClose }: JsonImportModalProps) => {
     try {
       const workflow = JSON.parse(workflowStr);
       const type = resolveImportAppType(workflow);
-      if (type && isDashboardImportAppTypeAllowed({ appType: type, scene })) {
-        return createAppTypeMap[type].icon;
-      }
+      if (type) return createAppTypeMap[type].icon;
       return defaultVal;
     } catch {
       return defaultVal;

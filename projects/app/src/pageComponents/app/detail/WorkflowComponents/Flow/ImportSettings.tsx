@@ -10,6 +10,8 @@ import { removeUnauthModels } from '@fastgpt/global/core/workflow/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { WorkflowUtilsContext } from '../context/workflowUtilsContext';
 import { parseWorkflowImportConfig } from '@/pageComponents/dashboard/agent/utils/appTemplateParse';
+import { AppContext } from '../../context';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 const ImportAppConfigEditor = dynamic(() => import('@/pageComponents/app/ImportAppConfigEditor'), {
   ssr: false
@@ -23,6 +25,7 @@ const ImportSettings = ({ onClose }: Props) => {
   const { toast } = useToast();
 
   const initData = useContextSelector(WorkflowUtilsContext, (v) => v.initData);
+  const appType = useContextSelector(AppContext, (v) => v.appDetail.type);
   const { t } = useTranslation();
   const [value, setValue] = useState('');
   const { getMyModelList } = useSystemStore();
@@ -54,6 +57,10 @@ const ImportSettings = ({ onClose }: Props) => {
             try {
               const workflowConfig = parseWorkflowImportConfig({
                 config: JSON.parse(value),
+                appType:
+                  appType === AppTypeEnum.workflowTool
+                    ? AppTypeEnum.workflowTool
+                    : AppTypeEnum.workflow,
                 t
               });
               await removeUnauthModels({ modules: workflowConfig.nodes, allowedModels: myModels });
@@ -65,7 +72,8 @@ const ImportSettings = ({ onClose }: Props) => {
               onClose();
             } catch {
               toast({
-                title: t('app:import_configs_failed')
+                title: t('app:import_configs_failed'),
+                status: 'error'
               });
             }
           }}

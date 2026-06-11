@@ -32,8 +32,8 @@ const dashboardImportAppTypesByScene: Record<
   JsonImportModalScene,
   readonly SupportedImportAppType[]
 > = {
-  agent: [AppTypeEnum.simple, AppTypeEnum.workflow],
-  tool: [AppTypeEnum.workflowTool]
+  agent: supportedImportAppTypes,
+  tool: supportedImportAppTypes
 };
 
 const isSupportedImportAppType = (
@@ -182,15 +182,26 @@ export const parseDashboardImportConfig = ({
 };
 
 /**
- * 解析工作流详情内的 JSON 导入配置。
+ * 解析应用详情内的 JSON 导入配置。
  *
- * 该入口只允许导入 workflow 配置。导出的 `name`、`intro` 等应用元信息
- * 只用于工作台新建应用，工作流内部导入时会忽略。
+ * 详情页导入只允许覆盖当前应用同类型的编排配置，避免普通工作流与插件工作流
+ * 互相导入后缺少各自的入口节点。导出的 `name`、`intro` 等应用元信息只用于
+ * 工作台新建应用，详情内导入时会忽略。
  */
-export const parseWorkflowImportConfig = ({ config, t }: { config: unknown; t: any }) => {
-  const { workflow, appType } = parseDashboardImportConfig({ config, scene: 'agent', t });
+export const parseWorkflowImportConfig = ({
+  config,
+  appType: expectedAppType = AppTypeEnum.workflow,
+  t
+}: {
+  config: unknown;
+  appType?: AppTypeEnum.workflow | AppTypeEnum.workflowTool;
+  t: any;
+}) => {
+  const scene: JsonImportModalScene =
+    expectedAppType === AppTypeEnum.workflowTool ? 'tool' : 'agent';
+  const { workflow, appType } = parseDashboardImportConfig({ config, scene, t });
 
-  if (appType !== AppTypeEnum.workflow) {
+  if (appType !== expectedAppType) {
     throw new Error(t('app:type_not_recognized'));
   }
 

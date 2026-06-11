@@ -155,56 +155,37 @@ describe('parseDashboardImportConfig', () => {
     });
   });
 
-  it('should parse workflow tool JSON in tool dashboard', () => {
-    const result = parseDashboardImportConfig({
+  it('should parse all supported app JSON types in dashboard import', () => {
+    const workflowToolResult = parseDashboardImportConfig({
       config: {
         type: AppTypeEnum.workflowTool,
         nodes: [{ flowNodeType: 'pluginInput' }],
         edges: []
       },
+      scene: 'agent',
+      t
+    });
+    expect(workflowToolResult.appType).toBe(AppTypeEnum.workflowTool);
+
+    const simpleResult = parseDashboardImportConfig({
+      config: createSimpleConfig({
+        type: AppTypeEnum.simple
+      }),
       scene: 'tool',
       t
     });
+    expect(simpleResult.appType).toBe(AppTypeEnum.simple);
 
-    expect(result.appType).toBe(AppTypeEnum.workflowTool);
-  });
-
-  it('should reject workflow tool JSON in agent dashboard', () => {
-    expect(() =>
-      parseDashboardImportConfig({
-        config: {
-          type: AppTypeEnum.workflowTool,
-          nodes: [{ flowNodeType: 'pluginInput' }],
-          edges: []
-        },
-        scene: 'agent',
-        t
-      })
-    ).toThrow('app:type_not_recognized');
-  });
-
-  it('should reject simple and workflow JSON in tool dashboard', () => {
-    expect(() =>
-      parseDashboardImportConfig({
-        config: createSimpleConfig({
-          type: AppTypeEnum.simple
-        }),
-        scene: 'tool',
-        t
-      })
-    ).toThrow('app:type_not_recognized');
-
-    expect(() =>
-      parseDashboardImportConfig({
-        config: {
-          type: AppTypeEnum.workflow,
-          nodes: [{ flowNodeType: 'workflowStart' }],
-          edges: []
-        },
-        scene: 'tool',
-        t
-      })
-    ).toThrow('app:type_not_recognized');
+    const workflowResult = parseDashboardImportConfig({
+      config: {
+        type: AppTypeEnum.workflow,
+        nodes: [{ flowNodeType: 'workflowStart' }],
+        edges: []
+      },
+      scene: 'tool',
+      t
+    });
+    expect(workflowResult.appType).toBe(AppTypeEnum.workflow);
   });
 
   it('should reject chatAgent and unknown typed JSON with existing type_not_recognized text', () => {
@@ -265,7 +246,7 @@ describe('parseDashboardImportConfig', () => {
 });
 
 describe('isDashboardImportAppTypeAllowed', () => {
-  it('should match app type with dashboard scene', () => {
+  it('should allow every supported app type in dashboard import scenes', () => {
     expect(isDashboardImportAppTypeAllowed({ appType: AppTypeEnum.simple, scene: 'agent' })).toBe(
       true
     );
@@ -274,7 +255,13 @@ describe('isDashboardImportAppTypeAllowed', () => {
     );
     expect(
       isDashboardImportAppTypeAllowed({ appType: AppTypeEnum.workflowTool, scene: 'agent' })
-    ).toBe(false);
+    ).toBe(true);
+    expect(isDashboardImportAppTypeAllowed({ appType: AppTypeEnum.simple, scene: 'tool' })).toBe(
+      true
+    );
+    expect(isDashboardImportAppTypeAllowed({ appType: AppTypeEnum.workflow, scene: 'tool' })).toBe(
+      true
+    );
     expect(
       isDashboardImportAppTypeAllowed({ appType: AppTypeEnum.workflowTool, scene: 'tool' })
     ).toBe(true);
@@ -302,7 +289,28 @@ describe('parseWorkflowImportConfig', () => {
     });
   });
 
-  it('should reject non-workflow JSON in workflow detail import', () => {
+  it('should parse workflow tool JSON in workflow tool detail import', () => {
+    const result = parseWorkflowImportConfig({
+      config: {
+        type: AppTypeEnum.workflowTool,
+        name: 'Tool name',
+        intro: 'Tool intro',
+        nodes: [{ flowNodeType: 'pluginInput' }, { flowNodeType: 'pluginOutput' }],
+        edges: [],
+        chatConfig: { welcomeText: 'plugin hello' }
+      },
+      appType: AppTypeEnum.workflowTool,
+      t
+    });
+
+    expect(result).toEqual({
+      nodes: [{ flowNodeType: 'pluginInput' }, { flowNodeType: 'pluginOutput' }],
+      edges: [],
+      chatConfig: { welcomeText: 'plugin hello' }
+    });
+  });
+
+  it('should reject mismatched JSON in workflow detail import', () => {
     expect(() =>
       parseWorkflowImportConfig({
         config: {
@@ -310,6 +318,18 @@ describe('parseWorkflowImportConfig', () => {
           nodes: [{ flowNodeType: 'pluginInput' }],
           edges: []
         },
+        t
+      })
+    ).toThrow('app:type_not_recognized');
+
+    expect(() =>
+      parseWorkflowImportConfig({
+        config: {
+          type: AppTypeEnum.workflow,
+          nodes: [{ flowNodeType: 'workflowStart' }],
+          edges: []
+        },
+        appType: AppTypeEnum.workflowTool,
         t
       })
     ).toThrow('app:type_not_recognized');
