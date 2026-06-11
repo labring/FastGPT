@@ -153,6 +153,8 @@ describe('evaluateEmbeddingModelHelper', () => {
     expect(evalResult.detailed_results.embed_top5_map).toBeDefined();
     expect(evalResult.detailed_results.embed_top5_precision).toBeDefined();
     expect(evalResult.detailed_results.embed_top10_mrr).toBeDefined();
+    expect(evalResult.detailed_results.embed_top15_mrr).toBeDefined();
+    expect(evalResult.detailed_results.embed_top20_mrr).toBeDefined();
     expect(evalResult.detailed_results.overall_mrr).toBeDefined();
     expect(evalResult.retrieval_ranks).toBeDefined();
     expect(evalResult.mrr_scores).toBeDefined();
@@ -200,7 +202,12 @@ describe('evaluateEmbeddingModelHelper', () => {
   });
 
   test('dispatchDatasetSearch 调用时携带正确的 vectorModel', async () => {
-    const modelConfig = { id: 'bge-m3', model: 'bge-m3', baseUrl: 'http://test:8080/v1', apiKey: 'test-key' };
+    const modelConfig = {
+      id: 'bge-m3',
+      model: 'bge-m3',
+      baseUrl: 'http://test:8080/v1',
+      apiKey: 'test-key'
+    };
     (getEmbeddingModelById as any).mockReturnValue(modelConfig);
     (MongoEvalDatasetData.find as any).mockReturnValue({
       lean: () => Promise.resolve([makeEvalItem('query1', ['doc1'])])

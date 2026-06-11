@@ -149,7 +149,7 @@ describe('Dataset Search Helper', () => {
         expect.objectContaining({
           params: expect.objectContaining({
             similarity: 0.1, // TRAIN_SEARCH_SIMILARITY
-            limit: 10240, // TRAIN_SEARCH_LIMIT
+            limit: 51200, // TRAIN_SEARCH_LIMIT
             searchMode: 'embedding',
             usingReRank: false
           })

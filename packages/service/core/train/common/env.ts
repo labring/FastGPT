@@ -60,11 +60,11 @@ export const trainEnv = createEnv({
     SFT_BRIDGE_MOCK_EMBED_ENDPOINT_API_KEY: z.string().default('sk-test'),
 
     // ===== Evaluation Configuration =====
-    TRAIN_EVAL_CONCURRENCY: PositiveIntSchema.default(20),
+    TRAIN_EVAL_CONCURRENCY: PositiveIntSchema.default(5),
 
     // ===== Dataset Search Configuration =====
     TRAIN_SEARCH_SIMILARITY: NumSchema.min(0).max(1).default(0.1),
-    TRAIN_SEARCH_LIMIT: PositiveIntSchema.default(10240),
+    TRAIN_SEARCH_LIMIT: PositiveIntSchema.default(51200),
     TRAIN_MAX_SEARCH_RUN_TIMES: PositiveIntSchema.default(50),
     TRAIN_DATASET_SEARCH_CONCURRENCY: PositiveIntSchema.default(10),
 

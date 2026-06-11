@@ -176,13 +176,14 @@ describe('computeRankingMetrics', () => {
     test('返回所有 k 值的 detailed_results', () => {
       const result = computeRankingMetrics(
         [{ rankedIds: ['doc1'], expectedIds: ['doc1'] }],
-        [5, 10, 15],
+        [5, 10, 15, 20],
         'embed'
       );
 
       expect(result.detailed_results['embed_top5_mrr']).toBeDefined();
       expect(result.detailed_results['embed_top10_mrr']).toBeDefined();
       expect(result.detailed_results['embed_top15_mrr']).toBeDefined();
+      expect(result.detailed_results['embed_top20_mrr']).toBeDefined();
       expect(result.detailed_results['embed_top5_ndcg']).toBeDefined();
       expect(result.detailed_results['embed_top5_map']).toBeDefined();
       expect(result.detailed_results['embed_top5_precision']).toBeDefined();
@@ -287,21 +288,21 @@ describe('computeRankingMetrics', () => {
 
   describe('overall_* 指标对齐 DiTing（所有 K 值展平均值）', () => {
     test('overall_mrr = 所有 K 值 MRR 展平后的均值', () => {
-      // doc1 在 rank=8：MRR@5=0, MRR@10=1/8, MRR@15=1/8
-      // DiTing: overall = (0 + 1/8 + 1/8) / 3 ≈ 0.0833
-      // 旧行为（maxK=15）: overall = 1/8 = 0.125
+      // doc1 在 rank=8：MRR@5=0, MRR@10=1/8, MRR@15=1/8, MRR@20=1/8
+      // overall = (0 + 1/8 + 1/8 + 1/8) / 4 = 0.09375
+      // 旧行为（maxK=15）: overall = (0+1/8+1/8)/3 ≈ 0.0833
       const rankedIds = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'doc1', 'x', 'y'];
       const result = computeRankingMetrics(
         [{ rankedIds, expectedIds: ['doc1'] }],
-        [5, 10, 15],
+        [5, 10, 15, 20],
         'embed'
       );
 
-      const expected = (0 + 1 / 8 + 1 / 8) / 3;
+      const expected = (0 + 1 / 8 + 1 / 8 + 1 / 8) / 4;
       expect(result.detailed_results['overall_mrr']).toBeCloseTo(expected, 4);
-      // overall_mrr 必须小于 MRR@15（因为 MRR@5=0 拉低了均值）
+      // overall_mrr 必须小于 MRR@20（因为 MRR@5=0 拉低了均值）
       expect(result.detailed_results['overall_mrr']).toBeLessThan(
-        result.detailed_results['embed_top15_mrr']!
+        result.detailed_results['embed_top20_mrr']!
       );
     });
 
@@ -318,19 +319,19 @@ describe('computeRankingMetrics', () => {
     });
 
     test('多 query 时 overall_mrr = 所有 K×query 分数的总均值', () => {
-      // query1: doc 在 rank 1 → MRR@5=1, MRR@10=1, MRR@15=1
-      // query2: doc 在 rank 8 → MRR@5=0, MRR@10=1/8, MRR@15=1/8
-      // overall = (1+1+1+0+1/8+1/8) / 6 = (3.25) / 6 ≈ 0.5417
+      // query1: doc 在 rank 1 → MRR@5=1, MRR@10=1, MRR@15=1, MRR@20=1
+      // query2: doc 在 rank 8 → MRR@5=0, MRR@10=1/8, MRR@15=1/8, MRR@20=1/8
+      // overall = (1+1+1+1+0+1/8+1/8+1/8) / 8 = (4 + 3/8) / 8 = 4.375/8 ≈ 0.5469
       const result = computeRankingMetrics(
         [
           { rankedIds: ['doc1', 'x', 'y'], expectedIds: ['doc1'] },
           { rankedIds: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'doc1'], expectedIds: ['doc1'] }
         ],
-        [5, 10, 15],
+        [5, 10, 15, 20],
         'embed'
       );
 
-      const expected = (1 + 1 + 1 + 0 + 1 / 8 + 1 / 8) / 6;
+      const expected = (1 + 1 + 1 + 1 + 0 + 1 / 8 + 1 / 8 + 1 / 8) / 8;
       expect(result.detailed_results['overall_mrr']).toBeCloseTo(expected, 4);
     });
   });

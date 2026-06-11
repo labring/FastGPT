@@ -12,6 +12,7 @@ export type CreateSFTTaskRequest = {
     epochs?: number;
     batch_size?: number;
   };
+  evalDatasetFile?: Buffer | ReadStream;
 };
 
 /** Create SFT task response */
