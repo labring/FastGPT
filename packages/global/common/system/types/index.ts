@@ -166,6 +166,10 @@ export type SystemEnvType = {
   customPdfParse?: customPdfParseType;
   fileUrlWhitelist?: string[];
   customDomain?: customDomainType;
+  workflowHttpNode?: {
+    /** 是否允许工作流 HTTP 节点忽略 HTTPS 证书校验。 */
+    ignoreHttpsCertificate?: boolean;
+  };
 };
 
 export type customDomainType = {

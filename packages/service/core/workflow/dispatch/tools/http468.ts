@@ -19,6 +19,7 @@ import {
   replaceEditorVariable,
   valueTypeFormat
 } from '@fastgpt/global/core/workflow/runtime/utils';
+import type { AxiosRequestConfig } from 'axios';
 import json5 from 'json5';
 import { JSONPath } from 'jsonpath-plus';
 import { getSecretValue } from '../../../../common/secret/utils';
@@ -27,9 +28,36 @@ import { getLogger, LogCategories } from '../../../../common/logger';
 import { formatHttpError } from '../utils';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '../../../../common/system/utils';
 import { serviceRequestMaxContentLength } from '../../../../common/system/constants';
-import { axios } from '../../../../common/api/axios';
+import { axios, httpsCertificateIgnoreAgent } from '../../../../common/api/axios';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.TOOLS);
+
+/**
+ * 仅工作流 HTTP 节点允许按系统配置跳过 HTTPS 证书校验。
+ * 该配置不下沉到通用 axios,避免影响模型请求、HTTP 工具集等其它出站链路。
+ */
+export const getWorkflowHttpNodeHttpsAgentConfig = (
+  url: string
+): Pick<AxiosRequestConfig, 'httpsAgent'> => {
+  const ignoreHttpsCertificate =
+    global.systemEnv?.workflowHttpNode?.ignoreHttpsCertificate === true;
+
+  if (!ignoreHttpsCertificate) {
+    return {};
+  }
+
+  try {
+    if (new URL(url).protocol !== 'https:') {
+      return {};
+    }
+  } catch {
+    return {};
+  }
+
+  return {
+    httpsAgent: httpsCertificateIgnoreAgent
+  };
+};
 
 type PropsArrType = {
   key: string;
@@ -268,7 +296,11 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
         Object.keys(results).length > 0 ? results : rawResponse
     };
   } catch (error) {
-    logger.warn('HTTP tool request failed', { error, httpReqUrl: requestUrl });
+    logger.warn('HTTP tool request failed', {
+      error,
+      httpReqUrl: requestUrl,
+      ignoreHttpsCertificate: global.systemEnv?.workflowHttpNode?.ignoreHttpsCertificate === true
+    });
 
     // @adapt
     if (node.catchError === undefined) {
@@ -515,7 +547,8 @@ async function fetchData({
     },
     timeout: timeout * 1000,
     params: params,
-    data: ['POST', 'PUT', 'PATCH'].includes(method) ? body : undefined
+    data: ['POST', 'PUT', 'PATCH'].includes(method) ? body : undefined,
+    ...getWorkflowHttpNodeHttpsAgentConfig(url)
   });
 
   return {
