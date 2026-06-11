@@ -315,9 +315,14 @@ const CollectionCard = () => {
         }
 
         if (isApiDataset) {
-          const baseUrl = datasetDetail?.apiDatasetServer?.apiServer?.baseUrl || '';
-          const fullUrl = `${baseUrl.replace(/\/+$/, '')}${value}`;
-          window.open(fullUrl, '_blank');
+          // If value is an absolute URL, navigate directly; otherwise, resolve against API server base URL
+          if (/^https?:\/\//i.test(value)) {
+            window.open(value, '_blank');
+          } else {
+            const baseUrl = datasetDetail?.apiDatasetServer?.apiServer?.baseUrl || '';
+            const fullUrl = `${baseUrl.replace(/\/+$/, '')}${value.startsWith('/') ? value : `/${value}`}`;
+            window.open(fullUrl, '_blank');
+          }
           return;
         }
 

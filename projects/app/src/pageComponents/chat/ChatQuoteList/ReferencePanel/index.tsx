@@ -181,8 +181,13 @@ const ReferencePanel = ({ rawSearch, metadata, onClose }: Props) => {
       }
 
       if (isApiDataset && collectionMeta.apiDatasetBaseUrl) {
-        const fullUrl = `${collectionMeta.apiDatasetBaseUrl.replace(/\/+$/, '')}${value}`;
-        window.open(fullUrl, '_blank');
+        // If value is an absolute URL, navigate directly; otherwise, resolve against API server base URL
+        if (/^https?:\/\//i.test(value)) {
+          window.open(value, '_blank');
+        } else {
+          const fullUrl = `${collectionMeta.apiDatasetBaseUrl.replace(/\/+$/, '')}${value.startsWith('/') ? value : `/${value}`}`;
+          window.open(fullUrl, '_blank');
+        }
         return;
       }
 

@@ -22,7 +22,9 @@ export function getCollectionSourceAndOpen(
         throw new Error('No file found');
       }
 
-      if (url.startsWith('/')) {
+      if (/^https?:\/\//i.test(url)) {
+        window.open(url, '_blank');
+      } else if (url.startsWith('/')) {
         window.open(`${location.origin}${url}`, '_blank');
       } else {
         window.open(url, '_blank');

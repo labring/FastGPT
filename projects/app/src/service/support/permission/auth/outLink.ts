@@ -65,6 +65,7 @@ export async function authOutLinkChatStart({
     showFullText: outLinkConfig.showFullText,
     canDownloadSource: outLinkConfig.canDownloadSource,
     appId,
-    uid
+    uid,
+    hookUrl: outLinkConfig.limit?.hookUrl
   };
 }

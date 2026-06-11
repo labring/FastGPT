@@ -40,7 +40,10 @@ import {
   removeEmptyUserInput
 } from '@fastgpt/global/core/chat/utils';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
-import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
+import {
+  getRunningUserInfoByTmbId,
+  getTmbIdByUsername
+} from '@fastgpt/service/support/user/team/utils';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { type AuthOutLinkChatProps } from '@fastgpt/global/support/outLink/api';
@@ -607,7 +610,8 @@ const authShareChat = async ({
     showRunningStatus,
     showSkillReferences,
     uid,
-    sourceName
+    sourceName,
+    hookUrl
   } = await authOutLinkChatStart(data);
   const app = await MongoApp.findById(appId).lean();
 
@@ -631,6 +635,14 @@ const authShareChat = async ({
     }
   } catch {
     // 未登录，保持 undefined
+  }
+
+  // 如果未登录，且 outlink 配置了 hookUrl，尝试根据 uid 获取 team member
+  if (!userTmbId && hookUrl) {
+    const uidTmbId = await getTmbIdByUsername(uid, String(teamId));
+    if (uidTmbId) {
+      userTmbId = uidTmbId;
+    }
   }
 
   return {
