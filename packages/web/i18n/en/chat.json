@@ -182,6 +182,7 @@
   "step_summary": "Summary of steps",
   "stream_output": "Stream output",
   "task_has_continued": "Task has continued running",
+  "tool_call_process": "Tool call process",
   "tool_input": "tool input",
   "tool_output": "Tool output",
   "unsupported_file_type": "File type is not supported.",

@@ -180,6 +180,7 @@
   "step_summary": "步骤总结",
   "stream_output": "流输出",
   "task_has_continued": "任务已继续运行",
+  "tool_call_process": "工具调用过程",
   "tool_input": "工具输入",
   "tool_output": "工具输出",
   "unsupported_file_type": "不支持的文件类型",

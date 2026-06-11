@@ -3,7 +3,11 @@ import type {
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/llm/type';
 import { runAgentCall } from '../../../../../ai/llm/agentCall';
-import { chats2GPTMessages, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
+import {
+  chats2GPTMessages,
+  GPTMessages2Chats,
+  runtimePrompt2ChatsValue
+} from '@fastgpt/global/core/chat/adapt';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { addFilePrompt2Input, ReadFileToolSchema } from '../sub/file/utils';
 import { type AgentStepItemType } from '@fastgpt/global/core/ai/agent/type';
@@ -29,6 +33,7 @@ import type {
   ChatHistoryItemResType
 } from '@fastgpt/global/core/chat/type';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { i18nT } from '../../../../../../../global/common/i18n/utils';
 import { getMasterSystemPrompt } from './prompt';
@@ -747,6 +752,28 @@ export const masterCall = async ({
     totalPoints: llmTotalPoints
   };
   const childTotalPoints = childrenUsages.reduce((sum, item) => sum + item.totalPoints, 0);
+
+  // Extract answer text from assistant messages for textOutput
+  const answerText = assistantMessages
+    .map((item) => {
+      if (item.role === 'assistant' && item.content) {
+        if (typeof item.content === 'string') {
+          return item.content;
+        } else {
+          return item.content
+            .map((content) => (content.type === 'text' ? content.text : ''))
+            .join('\n');
+        }
+      }
+      return '';
+    })
+    .join('\n')
+    .trim();
+
+  // Generate history preview from complete messages
+  const chatCompleteMessages = GPTMessages2Chats({ messages: completeMessages });
+  const historyPreview = getHistoryPreview(chatCompleteMessages, 10000, aiChatVision);
+
   const nodeResponse: ChatHistoryItemResType = {
     nodeId: getNanoid(6),
     id: getNanoid(6),
@@ -761,6 +788,8 @@ export const masterCall = async ({
     childrenResponses,
     finishReason: finish_reason,
     llmRequestIds: requestIds,
+    textOutput: answerText || undefined,
+    historyPreview,
 
     // Step params
     stepQuery: step?.title
@@ -768,21 +797,6 @@ export const masterCall = async ({
 
   // Step call
   if (isStepCall && !checkIsStopping()) {
-    const answerText = assistantMessages
-      .map((item) => {
-        if (item.role === 'assistant' && item.content) {
-          if (typeof item.content === 'string') {
-            return item.content;
-          } else {
-            return item.content
-              .map((content) => (content.type === 'text' ? content.text : ''))
-              .join('\n');
-          }
-        }
-        return '';
-      })
-      .join('\n');
-
     // Get step response summary
     const {
       answerText: summary,

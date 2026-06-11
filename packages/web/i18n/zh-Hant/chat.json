@@ -176,6 +176,7 @@
   "step_summary": "步驟總結",
   "stream_output": "串流輸出",
   "task_has_continued": "任務已繼續運行",
+  "tool_call_process": "工具調用過程",
   "tool_input": "工具輸入",
   "tool_output": "工具輸出",
   "unsupported_file_type": "不支援的檔案類型",
