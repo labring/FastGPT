@@ -134,7 +134,7 @@ const JsonImportModal = ({ scene, onClose }: JsonImportModalProps) => {
     }
   }, [avatar, scene, workflowStr]);
 
-  const { runAsync: onSubmit, loading: isCreating } = useRequest(
+  const { run: onSubmit, loading: isCreating } = useRequest(
     async ({ name, intro, workflowStr }: FormType) => {
       if ((intro || '').length > 500) {
         throw new Error(t('app:app_intro_too_long'));
@@ -181,7 +181,7 @@ const JsonImportModal = ({ scene, onClose }: JsonImportModalProps) => {
       <MyModal
         isOpen
         onClose={handleCloseJsonImportModal}
-        isLoading={isCreating || isFetching}
+        isLoading={isFetching}
         title={t('app:type.Import from json')}
         size={'md'}
         isCentered
@@ -191,7 +191,11 @@ const JsonImportModal = ({ scene, onClose }: JsonImportModalProps) => {
             <Button size={'md'} variant={'whiteBase'} onClick={handleCloseJsonImportModal}>
               {t('common:Cancel')}
             </Button>
-            <Button size={'md'} onClick={handleSubmit(onSubmit)}>
+            <Button
+              size={'md'}
+              isLoading={isCreating}
+              onClick={handleSubmit((data) => onSubmit(data))}
+            >
               {t('common:Confirm')}
             </Button>
           </>

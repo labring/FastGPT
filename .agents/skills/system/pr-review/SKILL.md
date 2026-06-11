@@ -1,11 +1,13 @@
 ---
 name: pr-review
-description: 当用户传入一个 review 的 pr 链接时候，触发该 skill，对 pr 进行代码审查。
+description: 仅当用户明确手动指定使用 pr-review skill 时触发；不要因为用户传入 PR 链接、要求 review 或要求代码审查而自动触发。
 ---
 
 # PR Review 代码审查技能
 
 > 按阶段对 Pull Request 进行系统性审查，先验证需求理解与逻辑正确性，再并行进行多维度质量检测，最后提交审查报告。
+
+**触发约束**：本 skill 必须由用户明确点名 `pr-review`、`$pr-review` 或“使用 pr-review skill”才可使用。普通 PR 链接、`review 下这个 PR`、`帮我代码审查` 等请求不应自动触发本 skill。
 
 ---
 

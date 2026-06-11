@@ -209,9 +209,16 @@ const MyMenu = ({
 
   const formatTrigger = !isPc ? 'click' : trigger;
 
+  const isIgnoreOutsideClickTarget = (event: Event) => {
+    return event.composedPath().some((target) => {
+      return target instanceof HTMLElement && target.dataset.myMenuIgnoreOutsideClick !== undefined;
+    });
+  };
+
   useOutsideClick({
     ref: ref,
-    handler: () => {
+    handler: (event) => {
+      if (isIgnoreOutsideClickTarget(event)) return;
       setIsOpen(false);
     }
   });
@@ -245,7 +252,7 @@ const MyMenu = ({
           if (formatTrigger === 'hover') {
             closeTimer.current = setTimeout(() => {
               setIsOpen(false);
-            }, 100);
+            }, 250);
           }
         }}
       >
@@ -294,6 +301,7 @@ const MyMenu = ({
                   const menuItem = (
                     <MenuItem
                       key={index}
+                      w={'100%'}
                       borderRadius={'sm'}
                       isDisabled={child.disabled}
                       onClick={(e) => {

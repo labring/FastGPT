@@ -131,20 +131,38 @@ const ExportConfigPopover = ({
   return (
     <MyPopover
       placement={'right-start'}
-      offset={[0, 20]}
-      hasArrow
+      offset={[0, 0]}
+      hasArrow={false}
       trigger={'hover'}
+      flip={false}
+      zIndex={2000}
+      data-my-menu-ignore-outside-click
       w={'8.8rem'}
       Trigger={
-        <MyBox display={'flex'} cursor={'pointer'} onClick={(e) => e.stopPropagation()}>
-          <MyIcon name={'export'} w={'16px'} mr={2} />
-          <Box fontSize={'sm'}>{t('app:export_configs')}</Box>
+        <MyBox
+          display={'flex'}
+          alignItems={'center'}
+          w={'100%'}
+          cursor={'pointer'}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <MyIcon name={'export'} w={'16px'} mr={2} flexShrink={0} />
+          <Box flex={1} minW={0} fontSize={'sm'}>
+            {t('app:export_configs')}
+          </Box>
         </MyBox>
       }
     >
       {() => (
-        <Box p={1} onClick={(e) => e.stopPropagation()}>
+        <Box
+          p={1}
+          w={'100%'}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+        >
           <Flex
+            w={'100%'}
             py={'0.38rem'}
             px={1}
             color={'myGray.600'}
@@ -156,10 +174,13 @@ const ExportConfigPopover = ({
             borderRadius={'xs'}
             onClick={() => onExportWorkflow('copy')}
           >
-            <MyIcon name={'copy'} w={'1rem'} mr={2} />
-            <Box fontSize={'mini'}>{t('common:copy_to_clipboard')}</Box>
+            <MyIcon name={'copy'} w={'1rem'} mr={2} flexShrink={0} />
+            <Box flex={1} minW={0} fontSize={'mini'}>
+              {t('common:copy_to_clipboard')}
+            </Box>
           </Flex>
           <Flex
+            w={'100%'}
             py={'0.38rem'}
             px={1}
             color={'myGray.600'}
@@ -171,13 +192,16 @@ const ExportConfigPopover = ({
             borderRadius={'xs'}
             onClick={() => onExportWorkflow('json')}
           >
-            <MyIcon name={'configmap'} w={'1rem'} mr={2} />
-            <Box fontSize={'mini'}>{t('common:export_to_json')}</Box>
+            <MyIcon name={'configmap'} w={'1rem'} mr={2} flexShrink={0} />
+            <Box flex={1} minW={0} fontSize={'mini'}>
+              {t('common:export_to_json')}
+            </Box>
           </Flex>
 
-          <Divider />
+          <Divider my={1} />
 
           <Flex
+            w={'100%'}
             py={'0.38rem'}
             px={1}
             alignItems={'center'}

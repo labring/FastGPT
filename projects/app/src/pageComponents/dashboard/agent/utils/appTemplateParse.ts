@@ -22,6 +22,14 @@ type ParsedImportConfig = {
 
 type SupportedImportAppType = ParsedImportConfig['appType'];
 
+type ParseAppImportConfigOptions = {
+  config: unknown;
+  t: any;
+  resolveScene?: JsonImportModalScene;
+  allowedAppTypes?: readonly SupportedImportAppType[];
+  expectedAppType?: SupportedImportAppType;
+};
+
 const supportedImportAppTypes = [
   AppTypeEnum.simple,
   AppTypeEnum.workflow,
@@ -40,6 +48,16 @@ const isSupportedImportAppType = (
   type: unknown
 ): type is (typeof supportedImportAppTypes)[number] =>
   supportedImportAppTypes.includes(type as (typeof supportedImportAppTypes)[number]);
+
+const importAppTypeAliasMap: Record<string, SupportedImportAppType> = {
+  workflowTool: AppTypeEnum.workflowTool
+};
+
+const normalizeImportAppType = (type: unknown): SupportedImportAppType | '' => {
+  if (isSupportedImportAppType(type)) return type;
+  if (typeof type === 'string') return importAppTypeAliasMap[type] || '';
+  return '';
+};
 
 export const isDashboardImportAppTypeAllowed = ({
   appType,
@@ -81,19 +99,49 @@ export const normalizeSimpleImportForm = (config: Record<string, unknown>) => {
   return AppFormEditFormV1TypeSchema.safeParse(form);
 };
 
-export const resolveImportAppType = (config: Record<string, unknown>) => {
+const assertImportConfigObject = (config: unknown, t: any): Record<string, unknown> => {
+  if (!config || typeof config !== 'object') {
+    throw new Error(t('app:type_not_recognized'));
+  }
+
+  return config as Record<string, unknown>;
+};
+
+export const resolveImportAppType = (
+  config: Record<string, unknown>,
+  scene?: JsonImportModalScene
+) => {
   const metaType = config.type;
 
   if (metaType !== undefined) {
-    if (!isSupportedImportAppType(metaType)) {
+    const appType = normalizeImportAppType(metaType);
+    if (!appType) {
       return '';
     }
 
-    return metaType;
+    return appType;
   }
 
   if ('nodes' in config && !Array.isArray(config.nodes)) {
     return '';
+  }
+
+  if (Array.isArray(config.nodes)) {
+    const hasPluginInputNode = config.nodes.some(
+      (node) =>
+        !!node &&
+        typeof node === 'object' &&
+        (node as { flowNodeType?: unknown }).flowNodeType === 'pluginInput'
+    );
+    const hasWorkflowStartNode = config.nodes.some(
+      (node) =>
+        !!node &&
+        typeof node === 'object' &&
+        (node as { flowNodeType?: unknown }).flowNodeType === 'workflowStart'
+    );
+
+    if (scene === 'tool' && hasPluginInputNode) return AppTypeEnum.workflowTool;
+    if (scene === 'agent' && hasWorkflowStartNode) return AppTypeEnum.workflow;
   }
 
   try {
@@ -101,6 +149,113 @@ export const resolveImportAppType = (config: Record<string, unknown>) => {
   } catch {
     return '';
   }
+};
+
+const assertImportAppTypeAllowed = ({
+  appType,
+  allowedAppTypes,
+  expectedAppType,
+  t
+}: {
+  appType: SupportedImportAppType;
+  allowedAppTypes?: readonly SupportedImportAppType[];
+  expectedAppType?: SupportedImportAppType;
+  t: any;
+}) => {
+  if (expectedAppType && appType !== expectedAppType) {
+    throw new Error(t('app:type_not_recognized'));
+  }
+
+  if (allowedAppTypes && !allowedAppTypes.includes(appType)) {
+    throw new Error(t('app:type_not_recognized'));
+  }
+};
+
+const parseSimpleImportWorkflow = ({
+  config,
+  t
+}: {
+  config: Record<string, unknown>;
+  t: any;
+}): ImportWorkflowConfig => {
+  if (
+    !config.aiSettings ||
+    typeof config.aiSettings !== 'object' ||
+    Array.isArray(config.aiSettings)
+  ) {
+    throw new Error(t('app:type_not_recognized'));
+  }
+
+  const parsedForm = normalizeSimpleImportForm(config);
+  if (!parsedForm.success) {
+    throw new Error(t('app:type_not_recognized'));
+  }
+
+  return form2AppWorkflow(parsedForm.data as AppFormEditFormType, t);
+};
+
+const parseWorkflowLikeImportConfig = ({
+  config,
+  appType,
+  t
+}: {
+  config: Record<string, unknown>;
+  appType: Exclude<SupportedImportAppType, AppTypeEnum.simple>;
+  t: any;
+}): ImportWorkflowConfig => {
+  if (!Array.isArray(config.nodes)) {
+    throw new Error(t('app:type_not_recognized'));
+  }
+
+  const matchedStartNodeType = appType === AppTypeEnum.workflow ? 'workflowStart' : 'pluginInput';
+  const hasMatchedStartNode = config.nodes.some(
+    (node) =>
+      !!node &&
+      typeof node === 'object' &&
+      (node as { flowNodeType?: unknown }).flowNodeType === matchedStartNodeType
+  );
+
+  if (!hasMatchedStartNode) {
+    throw new Error(t('app:type_not_recognized'));
+  }
+
+  return {
+    nodes: config.nodes as StoreNodeItemType[],
+    edges: Array.isArray(config.edges) ? (config.edges as StoreEdgeItemType[]) : [],
+    chatConfig: (config.chatConfig || {}) as AppChatConfigType
+  };
+};
+
+/**
+ * 统一解析导入 JSON。
+ *
+ * 这个入口只处理通用导入流程：识别导入类型、应用调用方约束、按类型解析为
+ * workflow 数据。工作台导入和详情页导入只负责传入不同约束，避免把场景规则
+ * 和结构解析散落在多个入口里。
+ */
+export const parseAppImportConfig = ({
+  config,
+  t,
+  resolveScene,
+  allowedAppTypes,
+  expectedAppType
+}: ParseAppImportConfigOptions): ParsedImportConfig => {
+  const importConfig = assertImportConfigObject(config, t);
+  const appType = resolveImportAppType(importConfig, resolveScene);
+
+  if (!appType) {
+    throw new Error(t('app:type_not_recognized'));
+  }
+
+  assertImportAppTypeAllowed({ appType, allowedAppTypes, expectedAppType, t });
+
+  return {
+    workflow:
+      appType === AppTypeEnum.simple
+        ? parseSimpleImportWorkflow({ config: importConfig, t })
+        : parseWorkflowLikeImportConfig({ config: importConfig, appType, t }),
+    appType
+  };
 };
 
 /**
@@ -118,81 +273,38 @@ export const parseDashboardImportConfig = ({
   scene: JsonImportModalScene;
   t: any;
 }): ParsedImportConfig => {
-  if (!config || typeof config !== 'object') {
-    throw new Error(t('app:type_not_recognized'));
-  }
-
-  const workflowConfig = config as Record<string, unknown>;
-  const appType = resolveImportAppType(config as Record<string, unknown>);
-
-  if (!appType) {
-    throw new Error(t('app:type_not_recognized'));
-  }
-
-  if (!isDashboardImportAppTypeAllowed({ appType, scene })) {
-    throw new Error(t('app:type_not_recognized'));
-  }
-
-  if (appType === AppTypeEnum.simple) {
-    if (
-      !workflowConfig.aiSettings ||
-      typeof workflowConfig.aiSettings !== 'object' ||
-      Array.isArray(workflowConfig.aiSettings)
-    ) {
-      throw new Error(t('app:type_not_recognized'));
-    }
-
-    const parsedForm = normalizeSimpleImportForm(workflowConfig);
-    if (!parsedForm.success) {
-      throw new Error(t('app:type_not_recognized'));
-    }
-
-    return {
-      workflow: form2AppWorkflow(parsedForm.data as AppFormEditFormType, t),
-      appType
-    };
-  }
-
-  if (!Array.isArray(workflowConfig.nodes)) {
-    throw new Error(t('app:type_not_recognized'));
-  }
-
-  const matchedStartNodeType = appType === AppTypeEnum.workflow ? 'workflowStart' : 'pluginInput';
-  const hasMatchedStartNode = workflowConfig.nodes.some(
-    (node) =>
-      !!node &&
-      typeof node === 'object' &&
-      (node as { flowNodeType?: unknown }).flowNodeType === matchedStartNodeType
-  );
-
-  if (!hasMatchedStartNode) {
-    throw new Error(t('app:type_not_recognized'));
-  }
-
-  return {
-    workflow: {
-      nodes: workflowConfig.nodes as StoreNodeItemType[],
-      edges: Array.isArray(workflowConfig.edges)
-        ? (workflowConfig.edges as StoreEdgeItemType[])
-        : [],
-      chatConfig: (workflowConfig.chatConfig || {}) as AppChatConfigType
-    },
-    appType
-  };
+  return parseAppImportConfig({
+    config,
+    t,
+    resolveScene: scene,
+    allowedAppTypes: dashboardImportAppTypesByScene[scene]
+  });
 };
 
 /**
- * 解析工作流详情内的 JSON 导入配置。
+ * 解析应用详情内的 JSON 导入配置。
  *
- * 该入口只允许导入 workflow 配置。导出的 `name`、`intro` 等应用元信息
- * 只用于工作台新建应用，工作流内部导入时会忽略。
+ * 详情页导入只允许覆盖当前应用同类型的编排配置，避免普通工作流与插件工作流
+ * 互相导入后缺少各自的入口节点。导出的 `name`、`intro` 等应用元信息只用于
+ * 工作台新建应用，详情内导入时会忽略。
  */
-export const parseWorkflowImportConfig = ({ config, t }: { config: unknown; t: any }) => {
-  const { workflow, appType } = parseDashboardImportConfig({ config, scene: 'agent', t });
-
-  if (appType !== AppTypeEnum.workflow) {
-    throw new Error(t('app:type_not_recognized'));
-  }
+export const parseWorkflowImportConfig = ({
+  config,
+  appType: expectedAppType = AppTypeEnum.workflow,
+  t
+}: {
+  config: unknown;
+  appType?: AppTypeEnum.workflow | AppTypeEnum.workflowTool;
+  t: any;
+}) => {
+  const scene: JsonImportModalScene =
+    expectedAppType === AppTypeEnum.workflowTool ? 'tool' : 'agent';
+  const { workflow } = parseAppImportConfig({
+    config,
+    t,
+    resolveScene: scene,
+    expectedAppType
+  });
 
   return workflow;
 };
