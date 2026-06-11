@@ -28,7 +28,14 @@ import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/train
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import {
+  markParseStart,
+  markParseEnd,
+  markDataTrainingPhaseTrace
+} from '@fastgpt/service/core/dataset/training/utils';
 import { hashStr } from '@fastgpt/global/common/string/tools';
+import { createDataDrafts } from '@fastgpt/service/core/dataset/data/controller';
+import type { PushDataChunkType } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
@@ -192,7 +199,10 @@ const runParseQueue = async ({
         continue;
       }
       // Check team points and lock(No mistakes will be thrown here)
+      // NOTE: findOneAndUpdate has already locked this record. If balance check
+      // fails we MUST delete it immediately, otherwise it stays locked for 3 min.
       if (!(await checkTeamAiPointsAndLock(data.teamId))) {
+        await MongoDatasetTraining.deleteOne({ _id: data._id });
         continue;
       }
 
@@ -218,6 +228,16 @@ const runParseQueue = async ({
         collectionType: collection.type,
         trainingType: collection.trainingType
       });
+
+      // Set parseStartTime on first pickup so listV2 status can distinguish
+      // "truly queued" from "processing started (even if no worker is active right now)".
+      // Using { $exists: false } in the filter makes this an idempotent one-shot —
+      // retries won't overwrite the original timestamp.
+      // Capture the timestamp so Data-level phaseTimings can share the same value —
+      // the Data's parse phase starts when the worker picks up the parse task,
+      // not when the Data record is later created inside the session.
+      const parseStartTime = collection.parseStartTime || new Date();
+      await markParseStart({ collectionId: String(collection._id), startTime: parseStartTime });
 
       try {
         const trainingMode = getTrainingModeByCollection({
@@ -360,13 +380,15 @@ const runParseQueue = async ({
           insertLen: Math.round(predictDataLimitLength(trainingMode, chunks) * 0.7)
         });
 
-        const trainingData = chunks.map((item, index) => ({
-          ...item,
+        const parsedDatas: PushDataChunkType[] = chunks.map((item, index) => ({
+          q: item.q,
+          a: item.a,
           indexes: item.indexes?.map((text) => ({
             type: DatasetDataIndexTypeEnum.custom,
             text
           })),
-          chunkIndex: index
+          chunkIndex: index,
+          metadata: item.metadata
         }));
 
         await mongoSessionRun(async (session) => {
@@ -383,6 +405,26 @@ const runParseQueue = async ({
             { session }
           );
 
+          // 5.5 Create Data drafts after parsing completes.
+          //     Subsequent training stages (vector/image/auto etc.) only UPDATE these records.
+          const draftResults = await createDataDrafts({
+            items: parsedDatas.map((item, i) => ({
+              q: item.q || '',
+              a: item.a || '',
+              chunkIndex: i,
+              metadata: item.metadata
+            })),
+            teamId: data.teamId,
+            tmbId: data.tmbId,
+            datasetId: dataset._id,
+            collectionId: collection._id,
+            session
+          });
+          // Associate dataId with training records → generateVector uses UPDATE path
+          draftResults.forEach((result, i) => {
+            parsedDatas[i].id = String(result._id);
+          });
+
           // 6. Push to chunk queue
           await pushDataListToTrainingQueue({
             teamId: data.teamId,
@@ -395,7 +437,7 @@ const runParseQueue = async ({
             indexSize: collection.indexSize,
             mode: trainingMode,
             billId: data.billId,
-            data: trainingData,
+            data: parsedDatas,
             session
           });
 
@@ -412,11 +454,11 @@ const runParseQueue = async ({
           } catch (deleteErr: any) {
             // Session may have been aborted by server (e.g. transaction timeout).
             // Only safe to retry without session when pushDataListToTrainingQueue used its own
-            // independent transactions (large dataset path: trainingData.length > 10000).
+            // independent transactions (large dataset path: parsedDatas.length > 10000).
             // For small datasets, pushDataListToTrainingQueue reuses the outer session, so a
             // session abort means training data was also rolled back — rethrow to let the outer
             // error handler retry the entire parse task and avoid silent data loss.
-            const usedIndependentTransaction = trainingData.length > 10000;
+            const usedIndependentTransaction = parsedDatas.length > 10000;
             if (
               usedIndependentTransaction &&
               (deleteErr?.codeName === 'NoSuchTransaction' ||
@@ -429,6 +471,25 @@ const runParseQueue = async ({
             }
           }
         });
+
+        // Write parse phase trace on each newly created Data record
+        // (startTime + endTime in a single DB $push — 2 writes → 1 write).
+        const parsedDataIds = parsedDatas.map((p) => p.id).filter(Boolean);
+        if (parsedDataIds.length > 0) {
+          await Promise.all(
+            parsedDataIds.map((dataId) =>
+              markDataTrainingPhaseTrace({
+                dataId: String(dataId),
+                mode: TrainingModeEnum.parse,
+                startTime: parseStartTime
+              })
+            )
+          );
+        }
+
+        // Throttled parse completion check: once all parse tasks for this collection
+        // are done, markParseEnd sets parsingCompleteTime on the collection.
+        await markParseEnd({ collectionId: String(collection._id) });
 
         logger.debug(`[${queueName}] task finished`, {
           durationMs: Date.now() - startTime,

@@ -220,7 +220,7 @@ export const createTrainingUsage = async ({
   billSource,
   vectorModelId,
   agentModelId,
-  vllmModelId,
+  vlmModelId,
   rerankModelId,
   session
 }: {
@@ -230,7 +230,7 @@ export const createTrainingUsage = async ({
   billSource: UsageSourceEnum;
   vectorModelId: string;
   agentModelId?: string;
-  vllmModelId?: string;
+  vlmModelId?: string;
   rerankModelId?: string;
   session?: ClientSession;
 }) => {
@@ -292,14 +292,14 @@ export const createTrainingUsage = async ({
               }
             ]
           : []),
-        ...(vllmModelId
+        ...(vlmModelId
           ? [
               {
                 teamId,
                 usageId: result._id,
                 itemType: UsageItemTypeEnum.training_imageIndex,
                 name: i18nT('account_usage:image_index'),
-                modelId: vllmModelId,
+                modelId: vlmModelId,
                 amount: 0,
                 inputTokens: 0,
                 outputTokens: 0
@@ -309,7 +309,7 @@ export const createTrainingUsage = async ({
                 usageId: result._id,
                 itemType: UsageItemTypeEnum.training_imageParse,
                 name: i18nT('account_usage:image_parse'),
-                modelId: vllmModelId,
+                modelId: vlmModelId,
                 amount: 0,
                 inputTokens: 0,
                 outputTokens: 0

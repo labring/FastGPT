@@ -13,6 +13,7 @@ import {
   getVlmModelById
 } from '@fastgpt/service/core/ai/model';
 import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
+import { createDataDrafts } from '@fastgpt/service/core/dataset/data/controller';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -79,11 +80,31 @@ async function handler(req: ApiRequestProps): Promise<InsertImagesResponse> {
           billSource: UsageSourceEnum.training,
           vectorModelId: getEmbeddingModelById(dataset.vectorModelId)?.id,
           agentModelId: getLLMModelById(dataset.agentModelId)?.id,
-          vllmModelId: getVlmModelById(dataset.vlmModelId)?.id,
+          vlmModelId: getVlmModelById(dataset.vlmModelId)?.id,
           session
         });
         return usageId;
       })();
+
+      // Pre-create Data drafts for each image so Training records carry dataId.
+      // imageParseTraining will VLM-parse the images and sync q/DataText back to these drafts.
+      const draftResults = await createDataDrafts({
+        items: imageIds.map((imageId, index) => ({
+          q: '',
+          a: '',
+          imageId,
+          chunkIndex: index
+        })),
+        teamId,
+        tmbId,
+        datasetId: dataset._id,
+        collectionId,
+        session
+      });
+      const dataWithDrafts = draftResults.map((result, i) => ({
+        imageId: imageIds[i],
+        id: String(result._id)
+      }));
 
       await pushDataListToTrainingQueue({
         teamId,
@@ -95,9 +116,7 @@ async function handler(req: ApiRequestProps): Promise<InsertImagesResponse> {
         vlmModelId: dataset.vlmModelId,
         mode: TrainingModeEnum.imageParse,
         billId: traingBillId,
-        data: imageIds.map((item, index) => ({
-          imageId: item
-        })),
+        data: dataWithDrafts,
         session
       });
     });

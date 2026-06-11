@@ -131,6 +131,10 @@ TrainingDataSchema.virtual('data', {
 TrainingDataSchema.index({ teamId: 1, datasetId: 1 });
 // get training data and sort
 TrainingDataSchema.index({ mode: 1, retryCount: 1, lockTime: 1, weight: -1 });
+// check collection parse/indexing completion — filters out exhausted tasks
+// (retryCount <= 0) so they don't block the completion check.
+// Used by markParseEnd (mode: parse) and markIndexingEnd (mode: { $ne: parse }).
+TrainingDataSchema.index({ collectionId: 1, mode: 1, retryCount: 1 });
 TrainingDataSchema.index({ expireAt: 1 }, { expireAfterSeconds: 7 * 24 * 60 * 60 }); // 7 days
 
 export const MongoDatasetTraining = getMongoModel<DatasetTrainingSchemaType>(

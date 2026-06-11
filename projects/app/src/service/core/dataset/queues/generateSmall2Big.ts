@@ -12,7 +12,12 @@ import type {
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { text2Chunks } from '@fastgpt/service/worker/function';
 import { getTrainingModeByCollection } from '@fastgpt/service/core/dataset/collection/utils';
+import { checkTeamAiPointsAndLock } from './utils';
 import { DatasetCollectionDataProcessModeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  markIndexingStart,
+  markDataTrainingPhaseTrace
+} from '@fastgpt/service/core/dataset/training/utils';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.SMALL2BIG);
 
@@ -27,6 +32,7 @@ type PopulateType = {
     small2bigConfig?: small2bigConfigType;
     indexSize?: number;
     autoIndexes?: boolean;
+    indexingStartTime?: Date;
   };
 };
 
@@ -90,7 +96,7 @@ const chunkAnswerText = async ({
   }
 };
 
-const processSmall2BigTask = async (data: TrainingDataType) => {
+const processSmall2BigTask = async (data: TrainingDataType, phaseStartTime: Date) => {
   const startTime = Date.now();
   try {
     const answerText = data.a;
@@ -144,6 +150,13 @@ const processSmall2BigTask = async (data: TrainingDataType) => {
         nextMode
       });
     });
+    if (data.dataId) {
+      await markDataTrainingPhaseTrace({
+        dataId: data.dataId,
+        mode: TrainingModeEnum.small2Big,
+        startTime: phaseStartTime
+      });
+    }
   } catch (error) {
     logger.error('Small2Big processing task failed', {
       error,
@@ -154,7 +167,7 @@ const processSmall2BigTask = async (data: TrainingDataType) => {
       { _id: data._id },
       {
         errorMsg: getErrText(error, 'Small2Big processing error'),
-        lockTime: new Date('2000/1/1')
+        lockTime: addMinutes(new Date(), -9)
       }
     );
   }
@@ -193,7 +206,7 @@ export async function generateSmall2Big(): Promise<any> {
               },
               {
                 path: 'collection',
-                select: 'small2bigConfig indexSize autoIndexes'
+                select: 'small2bigConfig indexSize autoIndexes indexingStartTime'
               }
             ])
             .lean();
@@ -227,8 +240,21 @@ export async function generateSmall2Big(): Promise<any> {
         continue;
       }
 
+      // auth balance
+      // NOTE: findOneAndUpdate has already locked this record. If balance check
+      // fails we MUST delete it immediately, otherwise it stays locked for 3 min.
+      if (!(await checkTeamAiPointsAndLock(data.teamId))) {
+        await MongoDatasetTraining.deleteOne({ _id: data._id });
+        continue;
+      }
+
       logger.debug('Small2Big processing chunk', { chunkIndex: data.chunkIndex });
-      await processSmall2BigTask(data);
+      const phaseStartTime = data.collection?.indexingStartTime || new Date();
+      await markIndexingStart({
+        collectionId: String(data.collectionId),
+        startTime: phaseStartTime
+      });
+      await processSmall2BigTask(data, phaseStartTime);
       await delay(100);
     }
   } catch (error) {

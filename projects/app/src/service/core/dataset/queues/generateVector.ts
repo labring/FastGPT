@@ -1,8 +1,13 @@
-import { insertData2Dataset } from '@/service/core/dataset/data/controller';
+import { insertDataVector } from '@/service/core/dataset/data/controller';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import { checkTeamAiPointsAndLock } from './utils';
+import {
+  markIndexingStart,
+  markIndexingEnd,
+  markDataTrainingPhaseTrace
+} from '@fastgpt/service/core/dataset/training/utils';
 import { addMinutes } from 'date-fns';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
@@ -20,7 +25,6 @@ import type {
 } from '@fastgpt/global/core/dataset/type';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { delay } from '@fastgpt/service/common/bullmq';
-import { addLog } from '@fastgpt/service/common/system/log';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.EMBEDDING);
 
@@ -32,7 +36,12 @@ const reduceQueue = () => {
 
 type PopulateType = {
   dataset: { vectorModelId: string };
-  collection: { name: string; indexPrefixTitle: boolean; hypeIndexes: boolean };
+  collection: {
+    name: string;
+    indexPrefixTitle: boolean;
+    hypeIndexes: boolean;
+    indexingStartTime?: Date;
+  };
   data: { _id: string; q: string; a: string; indexes: DatasetDataSchemaType['indexes'] };
 };
 type TrainingDataType = DatasetTrainingSchemaType & PopulateType;
@@ -85,7 +94,7 @@ export async function generateVector(): Promise<any> {
               },
               {
                 path: 'collection',
-                select: 'name indexPrefixTitle hypeIndexes'
+                select: 'name indexPrefixTitle hypeIndexes indexingStartTime'
               },
               {
                 path: 'data',
@@ -136,7 +145,11 @@ export async function generateVector(): Promise<any> {
       }
 
       // auth balance
+      // NOTE: findOneAndUpdate has already locked this record (lockTime + retryCount
+      // decrement). If the balance check fails we MUST delete the record immediately,
+      // otherwise it stays locked for 3 minutes and wastes a retry.
       if (!(await checkTeamAiPointsAndLock(data.teamId))) {
+        await MongoDatasetTraining.deleteOne({ _id: data._id });
         continue;
       }
 
@@ -147,6 +160,15 @@ export async function generateVector(): Promise<any> {
         teamId: data.teamId,
         tmbId: data.tmbId,
         dataId: data.dataId
+      });
+
+      // Set indexingStartTime on collection (idempotent one-shot).
+      // Data-level phase timing is deferred to rebuildData/insertData so a single
+      // markDataTrainingPhaseTrace call can record both startTime and endTime.
+      const phaseStartTime = data.collection?.indexingStartTime || new Date();
+      await markIndexingStart({
+        collectionId: String(data.collectionId),
+        startTime: phaseStartTime
       });
 
       try {
@@ -176,6 +198,20 @@ export async function generateVector(): Promise<any> {
             throw new Error(`Unknown training mode: ${data.mode}`);
           }
         })();
+
+        // Write data phase trace (all modes: chunk rebuild/insert, synonym standardize/restore)
+        if (data.dataId) {
+          await markDataTrainingPhaseTrace({
+            dataId: data.dataId,
+            mode: data.mode,
+            startTime: phaseStartTime
+          });
+        }
+        // Throttled indexing completion check (all modes)
+        await markIndexingEnd({
+          collectionId: String(data.collectionId),
+          source: data.mode
+        });
 
         // push usage
         pushGenerateVectorUsage({
@@ -295,20 +331,30 @@ const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType })
       { _id: trainingData.data._id },
       {
         $set: {
-          indexes: trainingData.data.indexes
+          indexes: trainingData.data.indexes,
+          indexingCompleteTime: new Date()
         }
       },
       { session }
     );
     // 3. Delete the training data
     await MongoDatasetTraining.deleteOne({ _id: trainingData._id }, { session });
+  });
 
-    // 4. Delete old vector
+  // 4. Delete old vector — outside session so a vector-DB failure doesn't
+  //    roll back the already-committed MongoDB changes.
+  try {
     await deleteDatasetDataVector({
       teamId: trainingData.teamId,
       idList: deleteVectorIdList
     });
-  });
+  } catch (err) {
+    logger.warn('[rebuildData] Failed to delete old vectors (non-critical)', {
+      dataId: trainingData.dataId,
+      vectorCount: deleteVectorIdList.length,
+      error: err
+    });
+  }
 
   return { tokens: insertResult.tokens };
 };
@@ -316,33 +362,84 @@ const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType })
 const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) => {
   const vectorModel = getEmbeddingModelById(trainingData.dataset.vectorModelId);
 
-  return mongoSessionRun(async (session) => {
-    // insert new data to dataset
-    const { tokens, insertId } = await insertData2Dataset({
-      id: trainingData.dataId,
-      teamId: trainingData.teamId,
-      tmbId: trainingData.tmbId,
-      datasetId: trainingData.datasetId,
+  // Data must be pre-created before entering this queue (by datasetParse or API handlers).
+  // If dataId is missing, it's either an old training record from before the refactor or an
+  // upstream bug. The Training record is irrecoverable — delete immediately to avoid
+  // wasted retries (each retry decrements retryCount, producing 5 rounds of noise).
+  if (!trainingData.dataId) {
+    logger.error('[generateVector] Missing dataId — deleting orphaned training record', {
+      trainingId: trainingData._id,
+      mode: trainingData.mode,
       collectionId: trainingData.collectionId,
-      q: trainingData.q,
-      a: trainingData.a,
-      imageId: trainingData.imageId,
-      imageDescMap: trainingData.imageDescMap,
-      chunkIndex: trainingData.chunkIndex,
+      datasetId: trainingData.datasetId
+    });
+    await MongoDatasetTraining.deleteOne({ _id: trainingData._id });
+    return { tokens: 0 };
+  }
+
+  const dataId = trainingData.dataId;
+  // Use populated data when available (already fetched by findOneAndUpdate.populate)
+  // — avoids a redundant DB round-trip. Fall back to findById only when the populate
+  // virtual didn't resolve (e.g. Data doc was deleted after Training record creation).
+  const existingData =
+    (trainingData.data as {
+      _id: string;
+      q: string;
+      a: string;
+      indexes: DatasetDataSchemaType['indexes'];
+    } | null) ?? (await MongoDatasetData.findById(dataId, '_id q a indexes').lean());
+  if (!existingData) {
+    logger.error('[generateVector] Data not found for dataId — deleting orphaned training record', {
+      trainingId: trainingData._id,
+      dataId,
+      collectionId: trainingData.collectionId
+    });
+    await MongoDatasetTraining.deleteOne({ _id: trainingData._id });
+    return { tokens: 0 };
+  }
+
+  // Defensive check: this Data should have empty indexes (pre-created by createDataDrafts).
+  // If it already has indexes, it was either already processed or we have a duplicate
+  // Training record. Clean up old vectors before overwriting to prevent vector DB leaks.
+  if (existingData.indexes.length > 0) {
+    logger.warn('[generateVector] insertData: Data has existing indexes, cleaning up old vectors', {
+      dataId,
+      existingIndexCount: existingData.indexes.length,
+      trainingId: trainingData._id
+    });
+    try {
+      await deleteDatasetDataVector({
+        teamId: String(trainingData.teamId),
+        idList: existingData.indexes.map((i) => i.dataId)
+      });
+    } catch (err) {
+      logger.error('[generateVector] Failed to delete old vectors in insertData path', {
+        dataId,
+        error: err
+      });
+    }
+  }
+
+  let tokens = 0;
+  await mongoSessionRun(async (session) => {
+    const result = await insertDataVector({
+      dataId,
+      q: existingData.q,
+      a: existingData.a || '',
       indexSize: trainingData.indexSize || getMaxIndexSize(vectorModel),
       indexes: trainingData.indexes,
-      metadata: trainingData.dataMetadata,
       indexPrefix: trainingData.collection.indexPrefixTitle
         ? `# ${trainingData.collection.name}`
         : undefined,
       embeddingModelId: vectorModel.id,
+      teamId: String(trainingData.teamId),
+      datasetId: String(trainingData.datasetId),
+      collectionId: String(trainingData.collectionId),
       session
     });
+    tokens = result.tokens;
 
-    // ========== Check if Hype index enhancement is needed ==========
     if (trainingData.collection?.hypeIndexes && global.feConfigs?.isPlus) {
-      // Vector is completed, now we can safely push Hype task
-      logger.info(`[Vector Queue] Pushing Hype task for data: ${insertId}`);
       await MongoDatasetTraining.create(
         [
           {
@@ -351,10 +448,10 @@ const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) 
             datasetId: trainingData.datasetId,
             collectionId: trainingData.collectionId,
             mode: TrainingModeEnum.hype,
-            q: trainingData.q,
-            a: trainingData.a || '',
+            q: existingData.q,
+            a: existingData.a || '',
             chunkIndex: trainingData.chunkIndex,
-            dataId: insertId, // MongoDatasetData._id for later appending indexes
+            dataId,
             retryCount: 5,
             billId: trainingData.billId
           }
@@ -363,11 +460,7 @@ const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) 
       );
     }
 
-    // delete data from training
     await MongoDatasetTraining.deleteOne({ _id: trainingData._id }, { session });
-
-    return {
-      tokens
-    };
   });
+  return { tokens };
 };

@@ -29,7 +29,7 @@ async function handler(req: NextApiRequest) {
     billSource: UsageSourceEnum.training,
     vectorModelId: getEmbeddingModelById(dataset.vectorModelId)?.id || '',
     agentModelId: getLLMModelById(dataset.agentModelId)?.id,
-    vllmModelId: getVlmModelById(dataset.vlmModelId)?.id
+    vlmModelId: getVlmModelById(dataset.vlmModelId)?.id
   });
 
   return usageId;
