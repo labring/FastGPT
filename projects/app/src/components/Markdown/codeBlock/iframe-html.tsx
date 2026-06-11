@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import {
   Box,
@@ -18,6 +18,45 @@ import { useMarkdownWidth } from '../hooks';
 import type { IconNameType } from '@fastgpt/web/components/common/Icon/type';
 import { codeLight } from './CodeLight';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import styles from '../index.module.scss';
+
+type HtmlCodeBlockViewMode = 'source' | 'iframe';
+
+/**
+ * 管理 HTML 代码块的 Code/Preview 视图状态。
+ *
+ * 自动预览只服务聊天流式 HTML 输出：流式阶段保持源码，流式结束后切到预览；
+ * 用户主动选择 Code/Preview 后，后续流式状态变化不再覆盖用户选择。
+ */
+const useHtmlCodeBlockViewMode = ({
+  shouldAutoPreview,
+  showAnimation
+}: {
+  shouldAutoPreview: boolean;
+  showAnimation?: boolean;
+}) => {
+  const [viewMode, setViewMode] = useState<HtmlCodeBlockViewMode>(() =>
+    shouldAutoPreview && !showAnimation ? 'iframe' : 'source'
+  );
+  const hasUserSelectedViewRef = useRef(false);
+
+  useEffect(() => {
+    if (!shouldAutoPreview) return;
+    if (hasUserSelectedViewRef.current) return;
+
+    setViewMode(showAnimation ? 'source' : 'iframe');
+  }, [shouldAutoPreview, showAnimation]);
+
+  const selectViewMode = (mode: HtmlCodeBlockViewMode) => {
+    hasUserSelectedViewRef.current = true;
+    setViewMode(mode);
+  };
+
+  return {
+    viewMode,
+    selectViewMode
+  };
+};
 
 const StyledButton = ({
   label,
@@ -31,7 +70,7 @@ const StyledButton = ({
   iconName: IconNameType;
   onClick: () => void;
   isActive?: boolean;
-  viewMode: 'source' | 'iframe';
+  viewMode: HtmlCodeBlockViewMode;
   isMobile?: boolean;
 }) => {
   const isPreview = viewMode === 'iframe';
@@ -81,26 +120,72 @@ const StyledButton = ({
   );
 };
 
+const HtmlPreviewIframe = ({ code }: { code: string }) => (
+  <iframe
+    srcDoc={code}
+    sandbox="allow-popups"
+    referrerPolicy="no-referrer"
+    style={{
+      display: 'block',
+      width: '100%',
+      height: '100%',
+      border: 'none',
+      background: 'white'
+    }}
+  />
+);
+
 const IframeHtmlCodeBlock = ({
   children,
   className,
   codeBlock,
-  match
+  match,
+  showAnimation,
+  autoPreviewHtmlCodeBlock
 }: {
   children: React.ReactNode & React.ReactNode[];
   className?: string;
   codeBlock?: boolean;
   match: RegExpExecArray | null;
+  showAnimation?: boolean;
+  autoPreviewHtmlCodeBlock?: boolean;
 }) => {
   const { t } = useTranslation();
   const { copyData } = useCopyData();
-  const [viewMode, setViewMode] = useState<'source' | 'iframe'>('source');
+  const code = String(children);
+  const lang = match?.[1]?.toLowerCase();
+  const isHtmlBlock = lang === 'html' || lang === 'htm';
+  const shouldAutoPreview = !!autoPreviewHtmlCodeBlock && isHtmlBlock;
+  // 流式阶段仍展示源码高亮；只额外接管滚动，让最新输出保持可见。
+  const showStreamingSourceCode = !!autoPreviewHtmlCodeBlock && isHtmlBlock && showAnimation;
+  const { viewMode, selectViewMode } = useHtmlCodeBlockViewMode({
+    shouldAutoPreview,
+    showAnimation
+  });
+  const streamingCodeRef = useRef<HTMLPreElement | null>(null);
   const isPreview = viewMode === 'iframe';
 
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   const { width, Ref } = useMarkdownWidth();
   const isMobile = width <= 420;
+
+  const SourcePreTag = useMemo(
+    () =>
+      function SourcePreTag(props: React.HTMLAttributes<HTMLPreElement>) {
+        return (
+          <pre
+            {...props}
+            ref={(node) => {
+              if (showStreamingSourceCode) {
+                streamingCodeRef.current = node;
+              }
+            }}
+          />
+        );
+      },
+    [showStreamingSourceCode]
+  );
 
   const codeBoxName = useMemo(() => {
     const input = match?.['input'] || '';
@@ -110,27 +195,23 @@ const IframeHtmlCodeBlock = ({
     return splitInput[1] || match?.[1]?.toUpperCase();
   }, [match]);
 
-  const Iframe = useMemo(
-    () => (
-      <iframe
-        srcDoc={String(children)}
-        sandbox="allow-popups"
-        referrerPolicy="no-referrer"
-        style={{
-          width: '100%',
-          height: '100%',
-          border: 'none',
-          background: 'white'
-        }}
-      />
-    ),
-    [children]
-  );
+  useEffect(() => {
+    if (!showStreamingSourceCode) return;
+    if (isPreview) return;
+
+    const node = streamingCodeRef.current;
+    if (!node) return;
+
+    // 源码面板限制最大高度，流式写入时需要跟随到底部才能看到最新代码。
+    node.scrollTop = node.scrollHeight;
+  }, [code, isPreview, showStreamingSourceCode]);
 
   if (codeBlock) {
     return (
       <Box
         ref={Ref}
+        className={`${styles.htmlCodeBlock} code-block-wrapper`}
+        w="100%"
         my={3}
         borderRadius={'md'}
         overflow={'hidden'}
@@ -139,10 +220,13 @@ const IframeHtmlCodeBlock = ({
         }
       >
         <Flex
+          className="code-header"
           py={2}
           px={4}
           color={'white'}
           userSelect={'none'}
+          position="relative"
+          zIndex={2}
           alignItems="center"
           fontSize={'sm'}
           gap={1.5}
@@ -163,19 +247,14 @@ const IframeHtmlCodeBlock = ({
             color={isPreview ? 'myGray.800' : 'rgba(255, 255, 255, 0.9)'}
           >
             {codeBoxName}
-            <Flex
-              cursor="pointer"
-              onClick={() => copyData(String(children))}
-              alignItems="center"
-              ml={2}
-            >
+            <Flex cursor="pointer" onClick={() => copyData(code)} alignItems="center" ml={2}>
               <Icon name="copy" width="14px" />
             </Flex>
           </Box>
           <StyledButton
             label={t('common:Code')}
             iconName="code"
-            onClick={() => setViewMode('source')}
+            onClick={() => selectViewMode('source')}
             isActive={viewMode === 'source'}
             viewMode={viewMode}
             isMobile={isMobile}
@@ -183,7 +262,7 @@ const IframeHtmlCodeBlock = ({
           <StyledButton
             label={t('common:Preview')}
             iconName="preview"
-            onClick={() => setViewMode('iframe')}
+            onClick={() => selectViewMode('iframe')}
             isActive={viewMode === 'iframe'}
             viewMode={viewMode}
             isMobile={isMobile}
@@ -197,12 +276,19 @@ const IframeHtmlCodeBlock = ({
           />
         </Flex>
         {isPreview ? (
-          <Box w={width} h="60vh">
-            {Iframe}
+          <Box className="code-block-body" h={'60vh'}>
+            <HtmlPreviewIframe code={code} />
           </Box>
         ) : (
-          <SyntaxHighlighter style={codeLight as any} language={match?.[1]} PreTag="pre">
-            {String(children).replace(/&nbsp;/g, ' ')}
+          <SyntaxHighlighter
+            style={codeLight as any}
+            language={match?.[1]}
+            PreTag={SourcePreTag}
+            customStyle={{
+              margin: 0
+            }}
+          >
+            {code.replace(/&nbsp;/g, ' ')}
           </SyntaxHighlighter>
         )}
 
@@ -227,7 +313,7 @@ const IframeHtmlCodeBlock = ({
               </ModalHeader>
 
               <ModalBody p={0} flex="1">
-                {Iframe}
+                <HtmlPreviewIframe code={code} />
               </ModalBody>
             </ModalContent>
           </Modal>

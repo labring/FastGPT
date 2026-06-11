@@ -31,7 +31,7 @@ const WholeResponseModal = ({ onClose, dataId }: { onClose: () => void; dataId: 
       w={['90vw', '880px']}
       maxW={['90vw', '880px']}
       h={['90vh', '80vh']}
-      maxH={['90vh', '700px']}
+      maxH={['90vh', '80vh']}
       headerStyles={{
         px: [5, 8],
         pt: [6, 8]

@@ -1,8 +1,10 @@
+import { type CSSProperties } from 'react';
 import { Box, Flex, Grid, HStack } from '@chakra-ui/react';
 import dynamic from 'next/dynamic';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { getChildrenResponses } from '@fastgpt/global/core/chat/utils';
 import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constants';
+import styles from '@/components/Markdown/index.module.scss';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { completionFinishReasonMap } from '@fastgpt/global/core/ai/constants';
@@ -337,8 +339,25 @@ const ReadFilesRows = ({ activeModule }: { activeModule: ChatHistoryItemResType 
   );
 };
 
-export const WorkflowResultRows = ({ activeModule }: { activeModule: ChatHistoryItemResType }) => {
+export const WorkflowResultRows = ({
+  activeModule,
+  contentHeight
+}: {
+  activeModule: ChatHistoryItemResType;
+  contentHeight?: number;
+}) => {
   const { t } = useSafeTranslation();
+  const responseCodeBlockHeight = contentHeight
+    ? `${Math.floor(contentHeight * 0.8)}px`
+    : undefined;
+  const codeBlockContentBoxProps = responseCodeBlockHeight
+    ? {
+        className: styles.codeJsonConstrained,
+        style: {
+          '--response-code-block-height': responseCodeBlockHeight
+        } as CSSProperties
+      }
+    : undefined;
 
   return (
     <>
@@ -372,9 +391,21 @@ export const WorkflowResultRows = ({ activeModule }: { activeModule: ChatHistory
       />
       <Row label={t('chat:tool_input')} value={activeModule.toolInput} />
       <Row label={t('chat:tool_output')} value={activeModule.pluginOutput} />
-      <Row label={t('common:core.chat.response.text output')} value={activeModule.textOutput} />
-      <Row label={t('workflow:response.Custom inputs')} value={activeModule.customInputs} />
-      <Row label={t('workflow:response.Custom outputs')} value={activeModule.customOutputs} />
+      <Row
+        label={t('common:core.chat.response.text output')}
+        value={activeModule.textOutput}
+        contentBoxProps={codeBlockContentBoxProps}
+      />
+      <Row
+        label={t('workflow:response.Custom inputs')}
+        value={activeModule.customInputs}
+        contentBoxProps={codeBlockContentBoxProps}
+      />
+      <Row
+        label={t('workflow:response.Custom outputs')}
+        value={activeModule.customOutputs}
+        contentBoxProps={codeBlockContentBoxProps}
+      />
       <Row label={t('workflow:response.Code log')} value={activeModule.codeLog} />
       <ReadFilesRows activeModule={activeModule} />
       <Row
