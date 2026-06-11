@@ -317,8 +317,7 @@ export const GetSkillFolderPathResponseSchema = z.array(
 export type GetSkillFolderPathResponse = z.infer<typeof GetSkillFolderPathResponseSchema>;
 
 export const ExportSkillQuerySchema = z.object({
-  skillId: IdSchema,
-  source: z.enum(['version', 'workspace']).optional().default('version')
+  skillId: IdSchema
 });
 export type ExportSkillQuery = z.infer<typeof ExportSkillQuerySchema>;
 

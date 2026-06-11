@@ -17,8 +17,8 @@ const archiveMocks = vi.hoisted(() => ({
   getSessionVolumeConfig: vi.fn(),
   deleteSessionVolume: vi.fn(),
   clearSandboxArchiveState: vi.fn(),
+  createSandboxResourcesToArchiveCursor: vi.fn(),
   findSandboxInstanceArchiveState: vi.fn(),
-  findSandboxResourcesToArchive: vi.fn(),
   isSandboxStillArchiving: vi.fn(),
   markSandboxArchived: vi.fn(),
   markSandboxArchiving: vi.fn(),
@@ -68,8 +68,8 @@ vi.mock('@fastgpt/service/core/ai/sandbox/volume/service', () => ({
 
 vi.mock('@fastgpt/service/core/ai/sandbox/instance/repository', () => ({
   clearSandboxArchiveState: archiveMocks.clearSandboxArchiveState,
+  createSandboxResourcesToArchiveCursor: archiveMocks.createSandboxResourcesToArchiveCursor,
   findSandboxInstanceArchiveState: archiveMocks.findSandboxInstanceArchiveState,
-  findSandboxResourcesToArchive: archiveMocks.findSandboxResourcesToArchive,
   isSandboxStillArchiving: archiveMocks.isSandboxStillArchiving,
   markSandboxArchived: archiveMocks.markSandboxArchived,
   markSandboxArchiving: archiveMocks.markSandboxArchiving,
@@ -84,6 +84,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/provider/adapter', () => ({
 }));
 
 import {
+  archiveInactiveSandboxes,
   archiveSandboxResource,
   restoreArchivedSandboxBeforeUse
 } from '@fastgpt/service/core/ai/sandbox/service/archive';
@@ -135,6 +136,15 @@ const createSandbox = () =>
     ])
   }) as any;
 
+const createResourceCursor = (resources: ReturnType<typeof createResource>[]) => ({
+  async *[Symbol.asyncIterator]() {
+    for (const resource of resources) {
+      yield resource;
+    }
+  },
+  close: vi.fn(async () => undefined)
+});
+
 describe('sandbox archive service', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -178,6 +188,43 @@ describe('sandbox archive service', () => {
       delete: vi.fn(async () => undefined),
       stop: vi.fn(async () => undefined)
     });
+  });
+
+  it('runs archive cron against streamed archive resources in groups of 5', async () => {
+    const resources = Array.from({ length: 7 }).map((_, index) =>
+      createResource({ sandboxId: `archive-sandbox-${index}` })
+    );
+    const cursor = createResourceCursor(resources);
+    const events: string[] = [];
+
+    archiveMocks.createSandboxResourcesToArchiveCursor.mockReturnValue(cursor);
+    archiveMocks.markSandboxArchiving.mockImplementation(async (resource) => {
+      events.push(`start:${resource.sandboxId}`);
+      await Promise.resolve();
+      events.push(`finish:${resource.sandboxId}`);
+      return null;
+    });
+
+    await archiveInactiveSandboxes(new Date('2026-02-10T00:00:00.000Z'));
+
+    expect(archiveMocks.markSandboxArchiving).toHaveBeenCalledTimes(resources.length);
+    expect(events).toEqual([
+      'start:archive-sandbox-0',
+      'start:archive-sandbox-1',
+      'start:archive-sandbox-2',
+      'start:archive-sandbox-3',
+      'start:archive-sandbox-4',
+      'finish:archive-sandbox-0',
+      'finish:archive-sandbox-1',
+      'finish:archive-sandbox-2',
+      'finish:archive-sandbox-3',
+      'finish:archive-sandbox-4',
+      'start:archive-sandbox-5',
+      'start:archive-sandbox-6',
+      'finish:archive-sandbox-5',
+      'finish:archive-sandbox-6'
+    ]);
+    expect(cursor.close).toHaveBeenCalledTimes(1);
   });
 
   it('archives via provider lifecycle, deletes remote resource, then exposes archived state', async () => {

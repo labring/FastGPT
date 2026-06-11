@@ -169,7 +169,8 @@ export async function initSystemConfig() {
       show_agent_sandbox: hasAgentSandboxConfig(),
       payFormUrl: appEnv.PAY_FORM_URL || '',
 
-      agentSandboxFree: appEnv.AGENT_SANDBOX_FREE_TIP
+      agentSandboxFree: appEnv.AGENT_SANDBOX_FREE_TIP,
+      agentSandboxProxyUrl: appEnv.AGENT_SANDBOX_PROXY_URL || ''
     },
     systemEnv: {
       ...fileRes.systemEnv,

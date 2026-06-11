@@ -35,7 +35,7 @@ export async function uploadSkillPackage(
   params: UploadSkillPackageParams
 ): Promise<SkillStorageInfo> {
   const { teamId, skillId, packageObjectId, zipBuffer } = params;
-  const maxBytes = serviceEnv.AGENT_SANDBOX_ARCHIVE_MAX_SIZE * 1024 * 1024;
+  const maxBytes = serviceEnv.AGENT_SANDBOX_SKILL_MAX_SIZE * 1024 * 1024;
 
   if (zipBuffer.length > maxBytes) {
     throw new Error(SkillErrEnum.archiveTooLarge);
@@ -70,11 +70,11 @@ export async function removeSkillPackageTTL(
 /**
  * 从私有对象存储下载 Skill ZIP 包。
  *
- * 下载过程中按流式累计大小，超过 sandbox 配置的上限即中断，避免异常大包撑爆内存。
+ * 下载过程中按流式累计大小，超过 Skill sandbox 包大小上限即中断，避免异常大包撑爆内存。
  */
 export async function downloadSkillPackage(params: DownloadSkillPackageParams): Promise<Buffer> {
   const { storageKey } = params;
-  const maxBytes = serviceEnv.AGENT_SANDBOX_ARCHIVE_MAX_SIZE * 1024 * 1024;
+  const maxBytes = serviceEnv.AGENT_SANDBOX_SKILL_MAX_SIZE * 1024 * 1024;
 
   const bucket = getS3SkillSource();
 

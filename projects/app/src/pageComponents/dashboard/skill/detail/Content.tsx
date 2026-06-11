@@ -1,6 +1,5 @@
 import React from 'react';
 import { Box } from '@chakra-ui/react';
-import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { SkillDetailContext } from './context';
 import SandboxEditor from '@/pageComponents/chat/SandboxEditor/Editor';
@@ -8,15 +7,17 @@ import SandboxError from './config/SandboxError';
 import { RightHeader } from '@/pageComponents/dashboard/skill/detail/Header';
 
 const Content = () => {
-  const { t } = useTranslation();
-  const { sandboxState, skillId, handleSandboxError } = useContextSelector(
+  const { sandboxState, skillId, isSkillReady, handleSandboxError } = useContextSelector(
     SkillDetailContext,
     (v) => ({
       sandboxState: v.sandboxState,
       skillId: v.skillId,
+      isSkillReady: v.isSkillReady,
       handleSandboxError: v.handleSandboxError
     })
   );
+  const isSandboxReady = sandboxState === 'ready';
+  const canOperateSandbox = isSkillReady && isSandboxReady;
 
   return (
     <Box
@@ -39,10 +40,10 @@ const Content = () => {
           showFileOps={true}
           showDownload={false}
           defaultViewMode={'source'}
-          isPreparing={sandboxState !== 'ready'}
+          isPreparing={!isSandboxReady}
           showTerminal={true}
           onError={(err) => handleSandboxError(err.message)}
-          headerRight={<RightHeader />}
+          headerRight={canOperateSandbox ? <RightHeader /> : undefined}
         />
       )}
     </Box>

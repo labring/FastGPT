@@ -41,7 +41,7 @@ export const useSkillChatTest = ({
   isReady: boolean;
   InputLeftComponent?: React.ReactNode;
 }) => {
-  const { t } = useTranslation('skill');
+  const { t } = useTranslation(['skill', 'common']);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
 
   // Set chat box data
@@ -103,12 +103,12 @@ export const useSkillChatTest = ({
         onDeleteChatItem={handleDeleteChatItem}
         onStopChat={handleStopChat}
         InputLeftComponent={InputLeftComponent}
+        dialogTips={t('common:core.chat.Type a message')}
         pl={'16px'}
         pr={0}
-        pb={'16px'}
         maxW={'100%'}
         boxBodyProps={{ px: 0, maxW: '100%', mx: 0 }}
-        inputBodyProps={{ maxW: '100%', mx: 0, pl: 0, pr: 0 }}
+        inputBodyProps={{ maxW: '100%', mx: 0, px: 0, pl: 0, pr: 0 }}
         EmptyState={
           <Flex
             flex={1}

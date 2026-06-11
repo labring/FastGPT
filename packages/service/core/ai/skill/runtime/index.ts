@@ -7,7 +7,6 @@ import {
   shellQuote,
   joinSandboxPath,
   getSkillsRootPath,
-  getSafeSkillDirectoryName,
   getSkillTargetPath
 } from '../utils';
 import { getLogger, LogCategories } from '../../../../common/logger';
@@ -17,13 +16,6 @@ import { serviceEnv } from '../../../../env';
 export type { DeployedSkillInfo } from './types';
 
 const logger = getLogger(LogCategories.MODULE.AI.AGENT);
-const trimSandboxPathRight = (value: string) => (value === '/' ? '' : value.replace(/\/+$/, ''));
-const getSandboxParentPath = (path: string) => {
-  const normalizedPath = path.replace(/\/+$/, '');
-  const slashIndex = normalizedPath.lastIndexOf('/');
-  return slashIndex > 0 ? normalizedPath.slice(0, slashIndex) : '/';
-};
-
 const parseCommandOutputLines = (stdout: string) => stdout.trim().split('\n').filter(Boolean);
 
 type GetAgentSkillInfosParams = {
@@ -190,7 +182,7 @@ export const injectAgentSkillFilesToSandbox = async ({
     throw new Error(`Failed to create skill directories inside sandbox: ${mkdirResult.stderr}`);
   }
 
-  const maxPackageBytes = serviceEnv.AGENT_SANDBOX_ARCHIVE_MAX_SIZE * 1024 * 1024;
+  const maxPackageBytes = serviceEnv.AGENT_SANDBOX_SKILL_MAX_SIZE * 1024 * 1024;
   const results = await Promise.all(
     deployableSkills.map(async ({ skill, version, targetDir }) => {
       try {

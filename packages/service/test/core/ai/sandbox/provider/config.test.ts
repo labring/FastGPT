@@ -138,7 +138,7 @@ describe('sandbox provider config', () => {
 
     const { getSandboxAdapterConfig } = await loadSandboxConfigModule();
 
-    // 1. 无环境变量 Image 时，不携带 image 字段
+    // 1. 无环境变量 Image 时，传空 repository 让 Sealos 走默认 agent 镜像
     const result = getSandboxAdapterConfig({
       provider: 'sealosdevbox',
       runtime: true,
@@ -152,6 +152,9 @@ describe('sandbox provider config', () => {
     });
 
     expect(result.createConfig).toEqual({
+      image: {
+        repository: ''
+      },
       workingDir: '/home/devbox/workspace',
       upstreamID: 'session-1',
       env: {

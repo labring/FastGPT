@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Box } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { SkillDetailContext } from '../context';
@@ -18,8 +18,10 @@ const SkillPreview = () => {
     chatId: v.chatId
   }));
 
-  const { llmModelList } = useSystemStore();
-  const [selectedModel, setSelectedModel] = useState(llmModelList[0]?.model || '');
+  const { llmModelList, defaultModels } = useSystemStore();
+  const defaultModel = defaultModels.llm?.model || llmModelList[0]?.model || '';
+  const [selectedModel, setSelectedModel] = useState('');
+  const userSelectedModelRef = useRef(false);
 
   const modelSelectList = useMemo(
     () => llmModelList.map((item) => ({ label: item.name, value: item.model })),
@@ -27,6 +29,12 @@ const SkillPreview = () => {
   );
 
   const isReady = sandboxState === 'ready';
+
+  useEffect(() => {
+    if (!userSelectedModelRef.current && defaultModel && selectedModel !== defaultModel) {
+      setSelectedModel(defaultModel);
+    }
+  }, [defaultModel, selectedModel]);
 
   const ModelSelectorInput = useMemo(() => {
     return (
@@ -38,7 +46,10 @@ const SkillPreview = () => {
         rounded={'10px'}
         value={selectedModel}
         list={modelSelectList}
-        onChange={(val) => setSelectedModel(val)}
+        onChange={(val) => {
+          userSelectedModelRef.current = true;
+          setSelectedModel(val);
+        }}
       />
     );
   }, [selectedModel, modelSelectList]);
@@ -96,6 +107,7 @@ const Render = () => {
       showWholeResponse={false}
       showPoints={true}
       showAvatar={false}
+      showSandboxAction={false}
     >
       <ChatRecordContextProvider params={chatRecordProviderParams} fetchFn={skillFetchFn}>
         <SkillPreview />

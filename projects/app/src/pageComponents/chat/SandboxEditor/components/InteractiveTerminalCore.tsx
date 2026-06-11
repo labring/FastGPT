@@ -13,7 +13,6 @@ type Props = {
 };
 
 const InteractiveTerminalCore = ({ appId, chatId, outLinkAuthData, canWrite = true }: Props) => {
-  // 1. 挂载逻辑自适应终端 Hook
   const { containerRef } = useInteractiveTerminal({
     appId,
     chatId,
@@ -22,11 +21,10 @@ const InteractiveTerminalCore = ({ appId, chatId, outLinkAuthData, canWrite = tr
   });
 
   return (
-    <Flex flexDirection="column" h="100%" bg="white" borderTop="none" borderColor="transparent">
-      {/* Xterm 挂载容器 */}
-      <Box flex={1} ref={containerRef} overflow="hidden" p={2} position="relative" bg="white" />
+    <Flex position={'relative'} w={'100%'} h={'100%'}>
+      <Box ref={containerRef} w={'100%'} h={'100%'} bg={'#1e1e1e'} />
     </Flex>
   );
 };
 
-export default React.memo(InteractiveTerminalCore);
+export default InteractiveTerminalCore;

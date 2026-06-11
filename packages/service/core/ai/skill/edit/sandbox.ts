@@ -328,7 +328,7 @@ export async function createEditDebugSandbox(
     }
 
     const zipPath = joinSandboxPath(runtimeProfile.skillsRootPath, 'package.zip');
-    const maxPackageBytes = serviceEnv.AGENT_SANDBOX_ARCHIVE_MAX_SIZE * 1024 * 1024;
+    const maxPackageBytes = serviceEnv.AGENT_SANDBOX_SKILL_MAX_SIZE * 1024 * 1024;
 
     const writeResults = await sandbox.writeFiles([
       {
@@ -690,7 +690,7 @@ export async function packageSkillInSandbox(params: {
   workDirectory?: string;
 }): Promise<Buffer> {
   const { sandboxId, workDirectory } = params;
-  const maxBytes = serviceEnv.AGENT_SANDBOX_ARCHIVE_MAX_SIZE * 1024 * 1024;
+  const maxBytes = serviceEnv.AGENT_SANDBOX_SKILL_MAX_SIZE * 1024 * 1024;
 
   const providerConfig = getSandboxProviderConfig();
   const runtimeProfile = getSandboxRuntimeProfile(providerConfig.provider);
@@ -710,33 +710,28 @@ export async function packageSkillInSandbox(params: {
 
     let gitignoreContents: string[] = [];
     try {
-      const findIgnoreCmd = `find ${quotedTargetDir} -name '.gitignore' -type f`;
-      const findIgnoreResult = await newSandbox.execute(findIgnoreCmd);
-      if (findIgnoreResult.exitCode === 0 && findIgnoreResult.stdout.trim()) {
-        const ignorePaths = findIgnoreResult.stdout
-          .split('\n')
-          .map((p) => p.trim())
-          .filter(Boolean);
+      const rootGitignorePath = joinSandboxPath(targetDir, '.gitignore');
+      const [rootGitignore] = await newSandbox.readFiles([rootGitignorePath]);
 
-        if (ignorePaths.length > 0) {
-          const files = await newSandbox.readFiles(ignorePaths);
-          gitignoreContents = files
-            .filter((file) => file && !file.error)
-            .map((file) =>
-              typeof file.content === 'string'
-                ? file.content
-                : Buffer.from(file.content).toString('utf-8')
-            );
-        }
+      if (rootGitignore && !rootGitignore.error) {
+        gitignoreContents = [
+          typeof rootGitignore.content === 'string'
+            ? rootGitignore.content
+            : Buffer.from(rootGitignore.content).toString('utf-8')
+        ];
       }
     } catch (err: any) {
-      addLog.warn('[Sandbox] Failed to read custom .gitignore files', {
+      addLog.warn('[Sandbox] Failed to read root .gitignore file', {
         sandboxId,
         error: err.message
       });
     }
 
-    const { customExcludes, pruneClause } = parseGitignoreRules(gitignoreContents);
+    // 发布包必须始终套用系统默认忽略规则，避免没有 .gitignore 的工作区把 .venv/node_modules 打进版本包。
+    const { customExcludes, pruneClause } = parseGitignoreRules([
+      DEFAULT_GITIGNORE_CONTENT,
+      ...gitignoreContents
+    ]);
     const packageZipExcludes = ['package.zip', '*/package.zip'];
     const allExcludes = Array.from(new Set([...packageZipExcludes, ...customExcludes]));
     const packageZipNameExcludeClause = `! -name ${shellQuote('package.zip')}`;

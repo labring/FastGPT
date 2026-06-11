@@ -27,6 +27,35 @@ import { serviceEnv } from '@fastgpt/service/env';
 
 const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS.IMPORT);
 
+/**
+ * 归一化上传文件名。
+ *
+ * 浏览器或网关可能把 multipart filename 中的 UTF-8 字节按 latin1 传给 multer，
+ * 这里先兼容百分号编码，再在全量字符都属于 latin1 范围时尝试还原 UTF-8 中文名。
+ */
+const normalizeUploadedFilename = (filename: string) => {
+  const decoded = (() => {
+    try {
+      return decodeURIComponent(filename);
+    } catch {
+      return filename;
+    }
+  })();
+
+  const chars = Array.from(decoded);
+  if (chars.some((char) => char.charCodeAt(0) > 0xff)) {
+    return decoded;
+  }
+
+  const repaired = Buffer.from(decoded, 'latin1').toString('utf8');
+  return repaired.includes('\uFFFD') ? decoded : repaired;
+};
+
+const getSkillNameFromArchiveFilename = (filename: string) => {
+  const basename = filename.split(/[\\/]/).pop() || filename;
+  return basename.replace(/\.(zip|tar\.gz|tgz|tar)$/i, '').trim();
+};
+
 export const config = {
   api: {
     bodyParser: false
@@ -38,24 +67,25 @@ async function handler(req: ApiRequestProps<ImportSkillBody>): Promise<ImportSki
 
   try {
     // Read env limit before multer so both use the same value
-    const maxArchiveSize = serviceEnv.AGENT_SANDBOX_ARCHIVE_MAX_SIZE * 1024 * 1024;
+    const maxSkillPackageSize = serviceEnv.AGENT_SANDBOX_SKILL_MAX_SIZE * 1024 * 1024;
     // Convert bytes to MB for multer (multer expects MB)
-    const maxArchiveSizeMB = Math.ceil(maxArchiveSize / 1024 / 1024);
+    const maxSkillPackageSizeMB = Math.ceil(maxSkillPackageSize / 1024 / 1024);
 
     const result = await multer.resolveFormData<ImportSkillBody>({
       request: req,
-      maxFileSize: maxArchiveSizeMB
+      maxFileSize: maxSkillPackageSizeMB
     });
 
     filepaths.push(result.fileMetadata.path);
 
     const file = result.fileMetadata;
+    const normalizedOriginalName = normalizeUploadedFilename(file.originalname || '');
     const body = parseApiInput({
       req: { body: result.data },
       bodySchema: ImportSkillBodySchema
     }).body;
 
-    if (!file.originalname?.toLowerCase().endsWith('.zip')) {
+    if (!normalizedOriginalName.toLowerCase().endsWith('.zip')) {
       return Promise.reject(SkillErrEnum.invalidArchiveFormat);
     }
 
@@ -88,31 +118,31 @@ async function handler(req: ApiRequestProps<ImportSkillBody>): Promise<ImportSki
 
     // Check archive size (multer already enforces the limit, this is a secondary guard)
     const stats = await fs.stat(file.path);
-    if (stats.size > maxArchiveSize) {
+    if (stats.size > maxSkillPackageSize) {
       logger.warn('Archive file size exceeds maximum', {
         sizeMB: (stats.size / 1024 / 1024).toFixed(2),
-        maxMB: (maxArchiveSize / 1024 / 1024).toFixed(2)
+        maxMB: (maxSkillPackageSize / 1024 / 1024).toFixed(2)
       });
       return Promise.reject(SkillErrEnum.archiveTooLarge);
     }
-
-    // Derive package-level name from caller-supplied value or archive filename
-    const pkgName =
-      body.name ||
-      (file.originalname ?? 'package').replace(/\.(zip|tar\.gz|tgz|tar)$/i, '').trim() ||
-      'package';
-    const pkgDescription = body.description ?? '';
 
     // Directly read the ZIP archive buffer from disk without any in-memory decompression
     const zipBuffer = await fs.readFile(file.path);
 
     // Light-weight structure validation: the package must contain an exact SKILL.md entry.
     const validation = await validateZipStructure(zipBuffer, {
-      maxUncompressedBytes: maxArchiveSize
+      maxUncompressedBytes: maxSkillPackageSize
     });
     if (!validation.valid) {
       return Promise.reject(SkillErrEnum.invalidSkillPackage);
     }
+
+    // 用户未手动命名时，展示名严格来自上传 ZIP 文件名，不读取 SKILL.md 作为兜底。
+    const pkgName =
+      body.name?.trim() ||
+      getSkillNameFromArchiveFilename(normalizedOriginalName || 'package') ||
+      'package';
+    const pkgDescription = body.description?.trim() ?? '';
 
     // Build skill package using package-level metadata only
     const skillPackage: SkillPackageType = {

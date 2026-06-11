@@ -366,21 +366,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       }
     });
 
-    logger.debug('Skill debug workflow completed', { skillId, chatId, durationSeconds });
-
-    // Send finish signals
-    streamResponseContext.responseWrite({
-      event: SseResponseEventEnum.answer,
-      data: textAdaptGptResponse({ text: null, finish_reason: 'stop' })
-    });
-    streamResponseContext.responseWrite({
-      event: SseResponseEventEnum.answer,
-      data: '[DONE]'
-    });
-
-    // Save chat records (using skillId as virtual appId)
-    const newTitle = getChatTitleFromChatMessage(userQuestion);
-
     const computedFlowResponses = (flatNodeResponses || []).map((item) => {
       if (item.totalPoints && item.totalPoints > 0) return item;
 
@@ -403,6 +388,35 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       }
       return item;
     });
+
+    logger.debug('Skill debug workflow completed', { skillId, chatId, durationSeconds });
+
+    // 前端当前轮次依赖流式内存态展示积分；最终 nodeResponse 需要在 [DONE] 前推送。
+    computedFlowResponses.forEach((nodeResponse) => {
+      streamResponseContext?.responseWrite({
+        event: SseResponseEventEnum.flowNodeResponse,
+        data: nodeResponse
+      });
+    });
+    streamResponseContext.responseWrite({
+      event: SseResponseEventEnum.workflowDuration,
+      data: {
+        durationSeconds
+      }
+    });
+
+    // Send finish signals
+    streamResponseContext.responseWrite({
+      event: SseResponseEventEnum.answer,
+      data: textAdaptGptResponse({ text: null, finish_reason: 'stop' })
+    });
+    streamResponseContext.responseWrite({
+      event: SseResponseEventEnum.answer,
+      data: '[DONE]'
+    });
+
+    // Save chat records (using skillId as virtual appId)
+    const newTitle = getChatTitleFromChatMessage(userQuestion);
 
     const aiResponse: AIChatItemType & { dataId?: string } = {
       dataId: finalResponseChatItemId,

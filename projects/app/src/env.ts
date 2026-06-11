@@ -1,5 +1,6 @@
 import { createEnv } from '@t3-oss/env-core';
 import z from 'zod';
+import { isPhaseProductionBuild } from '@fastgpt/global/common/system/constants';
 import { BoolSchema, IntSchema, UrlSchema } from '@fastgpt/global/common/zod';
 import { hasAgentSandboxConfig } from '@fastgpt/global/core/ai/sandbox/env';
 
@@ -35,7 +36,7 @@ export const appEnv = createEnv({
   }
 });
 
-if (hasAgentSandboxConfig(process.env)) {
+if (!isPhaseProductionBuild && hasAgentSandboxConfig(process.env)) {
   if (!appEnv.AGENT_SANDBOX_PROXY_URL) {
     throw new Error(
       'AGENT_SANDBOX_PROXY_URL is required when Agent Sandbox is enabled. Please configure a browser-accessible ws:// or wss:// agent-sandbox-proxy URL.'

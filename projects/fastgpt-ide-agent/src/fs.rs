@@ -15,7 +15,7 @@ use tokio_tungstenite::tungstenite::protocol::frame::CloseFrame;
 use crate::protocol::{JsonRpcError, JsonRpcNotification, JsonRpcRequest, JsonRpcResponse};
 use crate::workspace::{
     get_workspace_root, is_workspace_root_path, normalize_workspace_relative_path,
-    sanitize_create_path, sanitize_path,
+    sanitize_create_path, sanitize_existing_workspace_entry_path, sanitize_path,
 };
 
 const DEFAULT_EXCLUDED_NAMES: &[&str] = &["node_modules", ".git", ".next", "dist", "build", ".bun"];
@@ -520,14 +520,14 @@ async fn handle_move(params: Option<serde_json::Value>) -> Result<serde_json::Va
         .and_then(|v| v.as_str())
         .ok_or("to param required")?;
 
-    let clean_from = sanitize_path(from_str).await?;
+    let clean_from = sanitize_existing_workspace_entry_path(from_str).await?;
     let clean_to = sanitize_create_path(to_str).await?;
     if is_workspace_root_path(&clean_from) {
         return Err("Refusing to move workspace root".to_string());
     }
 
-    // 检查源路径存在性，防止源路径不存在时残留空父目录
-    if !clean_from.exists() {
+    // 检查源目录项存在性；这里不能用 exists()，否则会跟随最后一个 symlink。
+    if tokio::fs::symlink_metadata(&clean_from).await.is_err() {
         return Err("Source path does not exist".to_string());
     }
 
@@ -821,6 +821,40 @@ mod tests {
                 .join("nested_create_test/c/d/target.txt")
                 .exists()
         );
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn test_move_renames_final_symlink_entry_without_following_target() {
+        let temp_workspace = init_test_workspace();
+        let outside = tempfile::tempdir().unwrap();
+        let link_path = temp_workspace.join("move_symlink_source");
+        let moved_link_path = temp_workspace.join("move_symlink_target");
+        let _ = fs::remove_file(&link_path);
+        let _ = fs::remove_file(&moved_link_path);
+        let _ = fs::remove_dir_all(&moved_link_path);
+        std::os::unix::fs::symlink(outside.path(), &link_path).unwrap();
+
+        let move_req = JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: serde_json::Value::Number(1.into()),
+            method: "fs/move".to_string(),
+            params: Some(json!({
+                "from": "move_symlink_source",
+                "to": "move_symlink_target"
+            })),
+        };
+        let resp = handle_fs_request(move_req, "write").await;
+
+        assert!(resp.error.is_none());
+        assert!(!link_path.exists());
+        assert!(
+            fs::symlink_metadata(&moved_link_path)
+                .unwrap()
+                .file_type()
+                .is_symlink()
+        );
+        assert!(outside.path().exists());
     }
 
     #[tokio::test]

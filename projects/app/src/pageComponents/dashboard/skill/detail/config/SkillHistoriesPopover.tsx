@@ -71,8 +71,16 @@ const SkillHistoriesPopover = ({ publishButton }: { publishButton: React.ReactNo
             boxShadow: '3.5'
           }}
         >
-          <PopoverBody p="24px" display="flex" flexDirection="column" flex={1} minH={0} gap="16px">
-            <Box fontSize="16px" fontWeight="500" color="black" lineHeight="24px">
+          <PopoverBody p={0} display="flex" flexDirection="column" flex={1} minH={0}>
+            <Box
+              px="24px"
+              pt="24px"
+              pb="16px"
+              fontSize="16px"
+              fontWeight="500"
+              color="black"
+              lineHeight="24px"
+            >
               {t('skill:history_versions')}
             </Box>
             <HistoryList onClose={onClose} />
@@ -139,11 +147,12 @@ const HistoryList = ({ onClose }: { onClose: () => void }) => {
       sx={{
         '& > *:last-child': {
           mt: 'auto !important',
-          pt: 4
+          pt: 4,
+          pb: '24px'
         }
       }}
     >
-      <Box display="flex" flexDirection="column" gap="8px">
+      <Box px="24px" display="flex" flexDirection="column" gap="8px">
         {versionList.map((item) => (
           <Flex
             key={item._id}

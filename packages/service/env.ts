@@ -79,9 +79,11 @@ export const serviceEnv = createEnv({
     AGENT_SANDBOX_ENABLE_VOLUME: BoolSchema.default(false),
     AGENT_SANDBOX_VOLUME_MANAGER_URL: UrlSchema.default('http://localhost:3005'),
     AGENT_SANDBOX_VOLUME_MANAGER_TOKEN: z.string().optional(),
-    AGENT_SANDBOX_ARCHIVE_MAX_SIZE: NumSchema.default(10).meta({
-      description:
-        'Agent sandbox 冷归档包及 Skill 包大小上限（MB），用于两类包的上传、下载和打包校验'
+    AGENT_SANDBOX_ARCHIVE_MAX_SIZE: NumSchema.default(50).meta({
+      description: 'Agent sandbox 冷归档包大小上限（MB），用于归档包的上传、下载和打包校验'
+    }),
+    AGENT_SANDBOX_SKILL_MAX_SIZE: NumSchema.default(10).meta({
+      description: 'Skill sandbox 包大小上限（MB），用于 Skill 包上传、下载和打包发布校验'
     }),
     AGENT_SANDBOX_MAX_FILE_SIZE: NumSchema.default(10).meta({
       description: 'Agent sandbox IDE 单文件读写和上传大小上限（MB）'

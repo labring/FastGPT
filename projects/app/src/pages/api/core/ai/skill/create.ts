@@ -29,7 +29,7 @@ import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { getDefaultLLMModel } from '@fastgpt/service/core/ai/model';
+import { getSkillCreationLLMModel } from '@fastgpt/service/core/ai/model';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS.CREATION);
@@ -74,7 +74,7 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
   if (requestedDescription.length > 500) {
     return Promise.reject(SkillErrEnum.invalidDescription);
   }
-  if (requestedRequirements && !getDefaultLLMModel()?.model) {
+  if (requestedRequirements && !getSkillCreationLLMModel()) {
     return Promise.reject(SkillErrEnum.missingModel);
   }
   if (requestedRequirements && requestedRequirements.length > 8000) {

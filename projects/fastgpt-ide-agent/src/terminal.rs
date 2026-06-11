@@ -5,8 +5,8 @@ use std::time::Duration;
 
 use futures_util::{SinkExt, StreamExt};
 use portable_pty::{CommandBuilder, PtySize, native_pty_system};
-use tokio_tungstenite::tungstenite::protocol::frame::CloseFrame;
 use tokio_tungstenite::tungstenite::Message;
+use tokio_tungstenite::tungstenite::protocol::frame::CloseFrame;
 
 use crate::workspace::get_workspace_root;
 

@@ -103,6 +103,46 @@ pub async fn sanitize_create_path(input_path: &str) -> Result<PathBuf, String> {
     Ok(current)
 }
 
+/**
+ * 校验已存在的 workspace 路径，并保留最后一个路径项本身。
+ *
+ * fs/move 需要重命名用户在文件树中看到的目录项；如果最后一个路径项是 symlink，
+ * 不能使用会跟随 symlink 的 canonicalize，否则会把“重命名 symlink”误变成
+ * “移动 symlink 指向的真实目录”，在真实目录位于另一个挂载点时触发 EXDEV。
+ * 因此这里复用 sanitize_path 校验父目录，只保留最后一级文件名原样参与 rename。
+ */
+pub async fn sanitize_existing_workspace_entry_path(input_path: &str) -> Result<PathBuf, String> {
+    let input = Path::new(input_path);
+    if input.is_absolute() {
+        return Err("Absolute workspace paths are not allowed".to_string());
+    }
+    if input.as_os_str().is_empty() || input == Path::new(".") {
+        return Ok(get_canonical_workspace_root().to_path_buf());
+    }
+
+    let file_name = input
+        .file_name()
+        .and_then(|name| name.to_str())
+        .ok_or_else(|| "Workspace source path is required".to_string())?;
+    let file_name = path_security::validate_filename(file_name).map_err(|e| e.to_string())?;
+    let parent = input.parent().unwrap_or_else(|| Path::new("."));
+    let parent = if parent.as_os_str().is_empty() {
+        Path::new(".")
+    } else {
+        parent
+    };
+    let parent_str = parent
+        .to_str()
+        .ok_or_else(|| "Invalid path encoding".to_string())?;
+    let clean_parent = sanitize_path(parent_str).await?;
+    let path = clean_parent.join(file_name);
+    tokio::fs::symlink_metadata(&path)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    Ok(path)
+}
+
 pub fn is_workspace_root_path(path: &Path) -> bool {
     path == get_workspace_root() || path == get_canonical_workspace_root()
 }
@@ -202,6 +242,23 @@ mod tests {
 
         let res = sanitize_create_path("nested/../../../etc/passwd").await;
         assert!(res.is_err());
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn test_sanitize_existing_workspace_entry_path_keeps_final_symlink() {
+        let temp_workspace = init_test_workspace();
+        let outside = tempfile::tempdir().unwrap();
+        let link_path = temp_workspace.join("move_source_link");
+        let _ = fs::remove_file(&link_path);
+        std::os::unix::fs::symlink(outside.path(), &link_path).unwrap();
+
+        let res = sanitize_existing_workspace_entry_path("move_source_link")
+            .await
+            .unwrap();
+
+        assert_eq!(res.file_name(), link_path.file_name());
+        assert_ne!(res, outside.path());
     }
 
     #[cfg(unix)]

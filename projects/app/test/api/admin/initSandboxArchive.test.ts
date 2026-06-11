@@ -14,7 +14,7 @@ vi.mock('@fastgpt/service/env', () => ({
 
 const adminMocks = vi.hoisted(() => ({
   authCert: vi.fn(),
-  archiveSandboxResource: vi.fn()
+  archiveSandboxResources: vi.fn()
 }));
 
 vi.mock('@/service/middleware/entry', () => ({
@@ -26,7 +26,7 @@ vi.mock('@fastgpt/service/support/permission/auth/common', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/service/archive', () => ({
-  archiveSandboxResource: adminMocks.archiveSandboxResource
+  archiveSandboxResources: adminMocks.archiveSandboxResources
 }));
 
 import { migrateSandboxArchiveData } from '@/pages/api/admin/initSandboxArchive';
@@ -36,7 +36,12 @@ describe('FastGPT Sandbox Archive Migration API', () => {
     vi.clearAllMocks();
     // 清理测试沙盒记录
     await MongoSandboxInstance.deleteMany({ sandboxId: /^test-sandbox-archive-/ });
-    adminMocks.archiveSandboxResource.mockResolvedValue({ success: true });
+    adminMocks.archiveSandboxResources.mockResolvedValue({
+      total: 0,
+      successCount: 0,
+      failCount: 0,
+      failures: []
+    });
   });
 
   it('successfully migrates status "stoped" -> "stopped" and fills missing lastActiveAt', async () => {
@@ -76,6 +81,61 @@ describe('FastGPT Sandbox Archive Migration API', () => {
     expect(updatedDoc2?.lastActiveAt).toBeDefined();
   });
 
+  it('migrates upstream/main nested edit-debug metadata and archives all matching records', async () => {
+    const inactiveDate = subDays(new Date(), 10);
+    const legacyDocId = new mongoose.Types.ObjectId();
+
+    await MongoSandboxInstance.collection.insertOne({
+      _id: legacyDocId,
+      provider: 'opensandbox',
+      sandboxId: 'test-sandbox-archive-legacy-metadata',
+      type: 'edit-debug',
+      status: 'stopped',
+      lastActiveAt: inactiveDate,
+      createdAt: inactiveDate,
+      metadata: {
+        metadata: new Map([
+          ['skillName', 'Legacy Skill'],
+          ['versionId', 'legacy-version']
+        ])
+      }
+    });
+
+    await MongoSandboxInstance.insertMany(
+      Array.from({ length: 25 }).map((_, index) => ({
+        provider: 'opensandbox',
+        sandboxId: `test-sandbox-archive-many-${index}`,
+        status: 'stopped',
+        lastActiveAt: inactiveDate,
+        createdAt: inactiveDate
+      }))
+    );
+
+    adminMocks.archiveSandboxResources.mockResolvedValue({
+      total: 26,
+      successCount: 26,
+      failCount: 0,
+      failures: []
+    });
+
+    const result = await migrateSandboxArchiveData({ runArchive: true, inactiveDays: 5 });
+
+    expect(result.legacyMetadataUpdatedCount).toBe(1);
+    expect(result.archiveResult?.total).toBe(26);
+    expect(result.archiveResult?.successCount).toBe(26);
+    expect(adminMocks.archiveSandboxResources).toHaveBeenCalledWith({
+      inactiveBefore: expect.any(Date),
+      providers: ['opensandbox']
+    });
+
+    const legacyDoc = await MongoSandboxInstance.findOne({ _id: legacyDocId }).lean();
+    expect(legacyDoc?.metadata).toMatchObject({
+      skillName: 'Legacy Skill',
+      versionId: 'legacy-version'
+    });
+    expect(legacyDoc?.metadata?.metadata).toBeUndefined();
+  });
+
   it('reports precise error details when archiving fails due to connection issues', async () => {
     const inactiveDate = subDays(new Date(), 10);
 
@@ -87,9 +147,16 @@ describe('FastGPT Sandbox Archive Migration API', () => {
       createdAt: inactiveDate
     });
 
-    adminMocks.archiveSandboxResource.mockResolvedValue({
-      success: false,
-      error: 'Mock connection timeout to Devbox'
+    adminMocks.archiveSandboxResources.mockResolvedValue({
+      total: 1,
+      successCount: 0,
+      failCount: 1,
+      failures: [
+        {
+          sandboxId: doc.sandboxId,
+          error: 'Mock connection timeout to Devbox'
+        }
+      ]
     });
 
     const result = await migrateSandboxArchiveData({ runArchive: true, inactiveDays: 5 });
@@ -106,11 +173,9 @@ describe('FastGPT Sandbox Archive Migration API', () => {
       }
     ]);
 
-    expect(adminMocks.archiveSandboxResource).toHaveBeenCalledWith(
-      expect.objectContaining({
-        sandboxId: 'test-sandbox-archive-err'
-      }),
-      expect.any(Date)
-    );
+    expect(adminMocks.archiveSandboxResources).toHaveBeenCalledWith({
+      inactiveBefore: expect.any(Date),
+      providers: ['opensandbox']
+    });
   });
 });

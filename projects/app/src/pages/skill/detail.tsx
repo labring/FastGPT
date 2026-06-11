@@ -21,7 +21,7 @@ const MainLayout = () => {
 
   return (
     <HeaderProvider>
-      <Flex h={'100%'} bg={'myGray.25'} overflow={'hidden'}>
+      <Flex h={'100%'} bg={'myGray.25'} overflow={'hidden'} gap={'8px'}>
         {/* 左栏: 488px 预览对话区域 */}
         <Flex
           w={'488px'}

@@ -3,7 +3,7 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/service/runtime';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { z } from 'zod';
-import { authAgentSandboxProxy } from '@/service/core/sandbox/proxyAuth';
+import { authAgentSandboxProxy } from '@/service/core/sandbox/auth';
 
 const KeepAliveBodySchema = z.object({
   appId: z.string(),

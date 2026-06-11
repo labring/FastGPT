@@ -22,6 +22,7 @@ type ContextProps = {
   showWholeResponse: boolean;
   showPoints?: boolean;
   showAvatar?: boolean;
+  showSandboxAction?: boolean;
 };
 type ChatBoxDataType = {
   chatId?: string;
@@ -107,6 +108,7 @@ export const ChatItemContext = createContext<ChatItemContextType>({
   showSkillReferences: true,
   showWholeResponse: true,
   showPoints: false,
+  showSandboxAction: true,
   ChatBoxRef: null,
   // @ts-ignore
   variablesForm: undefined,
@@ -150,7 +152,8 @@ const ChatItemContextProvider = ({
   showSkillReferences,
   showWholeResponse,
   showPoints = false,
-  showAvatar = true
+  showAvatar = true,
+  showSandboxAction = true
 }: {
   children: ReactNode;
 } & ContextProps) => {
@@ -240,6 +243,7 @@ const ChatItemContextProvider = ({
       showWholeResponse,
       showPoints,
       showAvatar,
+      showSandboxAction,
 
       datasetCiteData,
       setCiteModalData,
@@ -263,6 +267,7 @@ const ChatItemContextProvider = ({
     showWholeResponse,
     showPoints,
     showAvatar,
+    showSandboxAction,
     datasetCiteData,
     setCiteModalData,
     isVariableVisible,

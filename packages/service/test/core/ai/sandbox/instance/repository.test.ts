@@ -3,10 +3,10 @@ import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/instance/
 import {
   buildSandboxInstanceLookup,
   countRunningSandboxInstancesByType,
+  createSandboxResourcesToArchiveCursor,
   deleteSandboxInstanceRecord,
   deleteSandboxResourceRecord,
   findInactiveRunningSandboxResources,
-  findSandboxResourcesToArchive,
   findSandboxAppIdBySandboxId,
   findSandboxInstanceByAppChatType,
   findSandboxInstanceBySandboxId,
@@ -25,11 +25,29 @@ import {
   markSandboxRestoring,
   markSandboxResourceStopped,
   updateSandboxInstanceRecordBySandboxId,
-  upsertRunningSandboxInstance
+  upsertRunningSandboxInstance,
+  type SandboxResourceDoc
 } from '@fastgpt/service/core/ai/sandbox/instance/repository';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+
+const collectArchiveCursor = async (
+  params: Parameters<typeof createSandboxResourcesToArchiveCursor>[0]
+) => {
+  const cursor = createSandboxResourcesToArchiveCursor(params);
+  const resources: SandboxResourceDoc[] = [];
+
+  try {
+    for await (const resource of cursor) {
+      resources.push(resource);
+    }
+  } finally {
+    await cursor.close();
+  }
+
+  return resources;
+};
 
 describe('sandbox instance helpers', () => {
   beforeEach(async () => {
@@ -364,12 +382,9 @@ describe('sandbox instance helpers', () => {
       }
     });
 
-    await expect(
-      findSandboxResourcesToArchive({
-        inactiveBefore,
-        limit: 10
-      })
-    ).resolves.toEqual([expect.objectContaining({ sandboxId })]);
+    await expect(collectArchiveCursor({ inactiveBefore })).resolves.toEqual([
+      expect.objectContaining({ sandboxId })
+    ]);
 
     const archiving = await markSandboxArchiving(doc, inactiveBefore);
     expect(archiving).toMatchObject({
@@ -398,12 +413,9 @@ describe('sandbox instance helpers', () => {
       }
     });
 
-    await expect(
-      findSandboxResourcesToArchive({
-        inactiveBefore,
-        limit: 10
-      })
-    ).resolves.not.toContainEqual(expect.objectContaining({ sandboxId }));
+    await expect(collectArchiveCursor({ inactiveBefore })).resolves.not.toContainEqual(
+      expect.objectContaining({ sandboxId })
+    );
 
     const restoringDoc = await markSandboxRestoring(doc);
     expect(restoringDoc).toMatchObject({

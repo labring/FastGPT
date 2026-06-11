@@ -76,17 +76,6 @@ const FileTreeNode = ({
   // 完美VSCode拖放体验：只允许文件夹节点和根目录Box显示放置高亮
   const isOverNode = node.type === 'directory' && (isOver || realOverDestPath === node.path);
 
-  const iconColor = 'myGray.600';
-  const textColor = 'myGray.600';
-  const hoverBg = 'myGray.05';
-
-  const activeBg = isSelected ? 'primary.100' : isActive ? 'myGray.05' : 'transparent';
-
-  const bgValue = isOverNode ? 'rgba(56, 139, 253, 0.08)' : activeBg;
-
-  const nodeBorderRadius = 'xs';
-  const nodeBorder = isOverNode ? '1px dashed #2B5FD9' : '1px solid transparent';
-
   return (
     <Box>
       <Flex
@@ -99,10 +88,18 @@ const FileTreeNode = ({
         h="28px"
         cursor="pointer"
         opacity={isDragging ? 0.4 : 1}
-        _hover={{ bg: hoverBg }}
-        bg={bgValue}
-        border={nodeBorder}
-        borderRadius={nodeBorderRadius}
+        _hover={{ bg: 'myGray.05' }}
+        bg={
+          isOverNode
+            ? 'rgba(56, 139, 253, 0.08)'
+            : isSelected
+              ? 'primary.100'
+              : isActive
+                ? 'myGray.05'
+                : 'transparent'
+        }
+        border={isOverNode ? '1px dashed #2B5FD9' : '1px solid transparent'}
+        borderRadius="xs"
         onClick={() => {
           if (!node || !node.path) return;
           if (node.type === 'file') {
@@ -118,7 +115,7 @@ const FileTreeNode = ({
         }}
         align="center"
         fontSize="13px"
-        color={textColor}
+        color="myGray.600"
         transition="all 0.15s ease"
         userSelect={'none'}
         {...listeners}
@@ -148,7 +145,7 @@ const FileTreeNode = ({
                 h="16px"
                 transition="transform 0.15s ease"
                 transform={isExpanded ? 'rotate(90deg)' : 'none'}
-                color={iconColor}
+                color="myGray.600"
               />
             ))}
         </Flex>
@@ -169,7 +166,7 @@ const FileTreeNode = ({
             fill="none"
             w="16px"
             h="16px"
-            color={iconColor}
+            color="myGray.600"
             mr="8px"
             flexShrink={0}
           />

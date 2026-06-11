@@ -13,10 +13,10 @@ import { importSkill } from '@/web/core/skill/api';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
 import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
-import { type FieldErrors, useForm } from 'react-hook-form';
+import { type FieldErrors, useForm, useWatch } from 'react-hook-form';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
-const ACCEPT_TYPES = '.zip,.tar,.tar.gz';
+const ACCEPT_TYPES = '.zip';
 const DEFAULT_SKILL_AVATAR = 'core/skill/default';
 
 type ImportSkillFormType = {
@@ -37,14 +37,7 @@ type Props = {
 
 const isValidFile = (file: File) => {
   const name = file.name.toLowerCase();
-  return name.endsWith('.zip') || name.endsWith('.tar') || name.endsWith('.tar.gz');
-};
-
-const getFileExt = (file: File): string => {
-  const name = file.name.toLowerCase();
-  if (name.endsWith('.tar.gz')) return '.tar.gz';
-  const match = name.match(/\.[^.]+$/);
-  return match ? match[0] : '';
+  return name.endsWith('.zip');
 };
 
 const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
@@ -52,15 +45,15 @@ const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
   const { toast } = useToast();
   const { feConfigs } = useSystemStore();
   const [isDragging, setIsDragging] = useState(false);
-  const maxUploadBytes = feConfigs?.limit?.agentSandboxArchiveMaxBytes;
-  const { register, handleSubmit, setValue, watch } = useForm<ImportSkillFormType>({
+  const maxUploadBytes = feConfigs?.limit?.skillSandboxMaxBytes;
+  const { register, handleSubmit, setValue, control } = useForm<ImportSkillFormType>({
     defaultValues: {
       name: '',
       avatar: DEFAULT_SKILL_AVATAR
     }
   });
-  const avatar = watch('avatar');
-  const selectedFile = watch('file');
+  const avatar = useWatch({ control, name: 'avatar' });
+  const selectedFile = useWatch({ control, name: 'file' });
 
   useEffect(() => {
     register('file', { required: true });
@@ -123,7 +116,7 @@ const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
   const handleFile = useCallback(
     (file: File) => {
       if (!isValidFile(file)) {
-        const ext = getFileExt(file);
+        const ext = file.name.slice(file.name.lastIndexOf('.'));
         toast({
           status: 'warning',
           title: t('skill:unsupported_file_format', { ext })

@@ -123,7 +123,7 @@ export const useSandboxEditor = ({
  * 同步模式：
  *   1. 历史记录（ChatRecordContext）：useMemo 派生，无副作用。
  *   2. 网络请求：单一 useEffect，在参数变化时触发 1 次。
- *   3. API 结果已返回时以 API 为准；未返回前才使用历史记录兜底。
+ *   3. API 与本地历史取并集，避免首次 API=false 压住本轮对话新出现的 sandbox。
  */
 export const useSandboxStatus = ({
   appId,
@@ -181,9 +181,7 @@ export const useSandboxStatus = ({
     apiSandboxStatus.appId === appId &&
     apiSandboxStatus.chatId === chatId &&
     apiSandboxStatus.exists;
-  const hasApiSandboxStatus =
-    apiSandboxStatus.appId === appId && apiSandboxStatus.chatId === chatId;
-  const sandboxExists = hasApiSandboxStatus ? apiSandboxExists : hasSandboxInHistory;
+  const sandboxExists = apiSandboxExists || hasSandboxInHistory;
 
   const setSandboxExists = useCallback(
     (exists: boolean) => {

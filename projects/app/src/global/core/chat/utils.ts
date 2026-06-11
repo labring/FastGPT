@@ -87,16 +87,19 @@ const extractCitationIdsFromText = (text: string): string[] => {
 
 export function addStatisticalDataToHistoryItem(historyItem: ChatItemMiniType) {
   if (historyItem.obj !== ChatRoleEnum.AI) return historyItem;
-  if (historyItem.totalQuoteList !== undefined || historyItem.toolCiteLinks !== undefined)
-    return historyItem;
-  if (!historyItem.responseData) return historyItem;
+  const useAgentSandbox =
+    historyItem.useAgentSandbox === true || hasSandboxToolInChatValue(historyItem);
+  const hasResolvedTags =
+    historyItem.totalQuoteList !== undefined || historyItem.toolCiteLinks !== undefined;
+  if (hasResolvedTags || !historyItem.responseData)
+    return withUseAgentSandbox(historyItem, useAgentSandbox);
 
   // Flat children
   const flatResData = getFlatAppResponses(historyItem.responseData || []);
 
   // get llm module account and history preview length and total quote list and external link list and error text
   const {
-    useAgentSandbox,
+    useAgentSandbox: resolvedUseAgentSandbox,
     llmModuleAccount,
     historyPreviewLength,
     totalQuoteList,
@@ -146,7 +149,7 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemMiniType) {
       return acc;
     },
     {
-      useAgentSandbox: false,
+      useAgentSandbox,
       totalQuoteList: [] as SearchDataResponseQuoteListItemType[],
       toolCiteLinks: [] as ToolCiteLinksType[],
       linkDedupe: new Set<string>(),
@@ -169,7 +172,7 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemMiniType) {
 
   return {
     ...historyItem,
-    useAgentSandbox,
+    useAgentSandbox: resolvedUseAgentSandbox,
     totalQuoteList: filteredQuoteList,
     ...(toolCiteLinks.length ? { toolCiteLinks } : {}),
     ...(errorText ? { errorText } : {}),

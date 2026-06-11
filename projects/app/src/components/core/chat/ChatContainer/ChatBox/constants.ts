@@ -7,8 +7,7 @@ export const ChatInputDefaultHeight: BoxProps['h'] = '112px';
 export const HomeChatMobileBottomGap = 0;
 
 export const HomeChatContentWrapperStyle: BoxProps = {
-  pl: ['16px', 4],
-  pr: ['16px', 4],
+  px: ['16px', 4],
   pb: [HomeChatMobileBottomGap, 0],
   mx: 'auto',
   w: '100%',

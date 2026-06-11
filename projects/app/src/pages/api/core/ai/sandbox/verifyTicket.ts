@@ -7,7 +7,7 @@ import {
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
-import { authAgentSandboxProxy } from '@/service/core/sandbox/proxyAuth';
+import { authAgentSandboxProxy } from '@/service/core/sandbox/auth';
 import {
   SandboxChannelSchema,
   SandboxTicketPermissionSchema

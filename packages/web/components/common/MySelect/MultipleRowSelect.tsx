@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/refs */
 import React, { useRef, useCallback, useState, useMemo, useEffect } from 'react';
 import {
   Button,
@@ -173,17 +174,8 @@ export const MultipleRowSelect = ({
   const MenuRef = useRef<(HTMLDivElement | null)[]>([]);
   const SelectedItemRef = useRef<(HTMLDivElement | null)[]>([]);
 
-  const [menuWidth, setMenuWidth] = useState(0);
-  const [buttonWidth, setButtonWidth] = useState<number | undefined>();
-
   useEffect(() => {
     if (isOpen) {
-      if (MenuRef.current?.[0]) {
-        setMenuWidth(MenuRef.current[0].offsetWidth);
-      }
-      if (ButtonRef.current) {
-        setButtonWidth(ButtonRef.current.clientWidth);
-      }
       for (let i = 0; i < MenuRef.current.length; i++) {
         const menu = MenuRef.current[i];
         const selectedItem = SelectedItemRef.current[i];
@@ -194,7 +186,7 @@ export const MultipleRowSelect = ({
     }
   }, [isOpen]);
 
-  const minWidth = `${menuWidth || 0}px`;
+  const minWidth = `${MenuRef.current?.[0]?.offsetWidth || 0}px`;
 
   const onOpenSelect = useCallback(() => {
     setCloneValue(Array.isArray(value) ? value : []);
@@ -240,7 +232,13 @@ export const MultipleRowSelect = ({
             : {})}
         >
           <Flex alignItems={'center'} minW={0} overflow={'hidden'}>
-            <Box flex="1 1 0" minW={0} overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+            <Box
+              flex="1 1 0"
+              minW={0}
+              overflow="hidden"
+              textOverflow="ellipsis"
+              whiteSpace="nowrap"
+            >
               {label ?? placeholder}
             </Box>
             <MyIcon name={'core/chat/chevronDown'} w={4} flexShrink={0} color={'myGray.500'} />
@@ -249,8 +247,9 @@ export const MultipleRowSelect = ({
         <MenuList
           className={ButtonProps?.className}
           minW={(() => {
-            if (buttonWidth) {
-              return `${buttonWidth}px !important`;
+            const w = ButtonRef.current?.clientWidth;
+            if (w) {
+              return `${w}px !important`;
             }
 
             const width = ButtonProps?.width;

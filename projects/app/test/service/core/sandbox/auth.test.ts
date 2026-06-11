@@ -1,10 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { serviceEnv } from '@fastgpt/service/env';
-import {
-  AGENT_SANDBOX_PROXY_HEADER,
-  authAgentSandboxProxy
-} from '@/service/core/sandbox/proxyAuth';
+import { AGENT_SANDBOX_PROXY_HEADER, authAgentSandboxProxy } from '@/service/core/sandbox/auth';
 
 const originalSecret = serviceEnv.AGENT_SANDBOX_PROXY_SECRET;
 

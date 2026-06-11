@@ -12,8 +12,7 @@ import { parseImageSpec } from '@fastgpt-sdk/sandbox-adapter';
 export function buildSealosRuntimeProfile(): SandboxRuntimeProfile {
   const workDirectory = serviceEnv.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY || '/home/devbox/workspace';
 
-  const parsedDefaultImage = parseImageSpec(serviceEnv.AGENT_SANDBOX_SEALOS_IMAGE);
-  const defaultImage = parsedDefaultImage.repository ? parsedDefaultImage : undefined;
+  const defaultImage = parseImageSpec(serviceEnv.AGENT_SANDBOX_SEALOS_IMAGE);
 
   return {
     provider: 'sealosdevbox',

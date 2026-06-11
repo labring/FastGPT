@@ -478,7 +478,7 @@ function EditLinkModal({
               isChecked={canDownloadSource}
             />
           </Flex>
-          <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
+          {/* <Flex alignItems={'center'} mt={4} justify={'space-between'} height={'36px'}>
             <Flex alignItems={'center'}>
               <FormLabel>{t('publish:show_skill_reference')}</FormLabel>
               <QuestionTip ml={1} label={t('publish:show_skill_reference_tips')}></QuestionTip>
@@ -493,7 +493,7 @@ function EditLinkModal({
               })}
               isChecked={showSkillReferences}
             />
-          </Flex>
+          </Flex> */}
         </Box>
       </ModalBody>
 

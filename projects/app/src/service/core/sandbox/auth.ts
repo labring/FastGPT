@@ -5,6 +5,9 @@ import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { checkTeamSandboxPermission } from '@fastgpt/service/support/permission/teamLimit';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { serviceEnv } from '@fastgpt/service/env';
+import { timingSafeEqual } from 'crypto';
+import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 
 /**
  * 统一沙盒 API 会话访问控制鉴权。
@@ -74,4 +77,30 @@ export async function authSandboxSession({
   }
 
   return result;
+}
+
+export const AGENT_SANDBOX_PROXY_HEADER = 'x-proxy-token';
+
+/**
+ * 校验 agent-sandbox-proxy 调用主站内部 API 的共享密钥。
+ * 这层只服务 proxy 到 Next API 的反向通道，浏览器侧访问仍走 ticket 鉴权。
+ */
+export function authAgentSandboxProxy(req: ApiRequestProps): string {
+  const secret = serviceEnv.AGENT_SANDBOX_PROXY_SECRET;
+  if (!secret) {
+    throw new Error('AGENT_SANDBOX_PROXY_SECRET environment variable is missing');
+  }
+
+  const proxyToken = req.headers[AGENT_SANDBOX_PROXY_HEADER];
+  if (typeof proxyToken !== 'string') {
+    throw new Error(ERROR_ENUM.unAuthorization);
+  }
+
+  const expected = Buffer.from(secret);
+  const actual = Buffer.from(proxyToken);
+  if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) {
+    throw new Error(ERROR_ENUM.unAuthorization);
+  }
+
+  return secret;
 }

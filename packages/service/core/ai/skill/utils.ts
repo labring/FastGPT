@@ -284,7 +284,7 @@ export function parseGitignoreRules(gitignoreContents: string[]): GitignoreParse
     new Set(
       pruneDirs
         .map((p) => p.replace(/\/\*$/, '').replace(/^\*\//, ''))
-        .filter((p) => p && !p.includes('*') && !p.includes('.'))
+        .filter((p) => p && !p.includes('*'))
     )
   );
 

@@ -30,6 +30,7 @@ import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import dynamic from 'next/dynamic';
 import type { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
@@ -102,7 +103,7 @@ export const HeaderProvider = ({ children }: { children: React.ReactNode }) => {
   );
 
   const { runAsync: onExportSkill } = useRequest(
-    (skillId: string, skillName: string) => exportSkill(skillId, skillName, 'workspace'),
+    (skillId: string, skillName: string) => exportSkill(skillId, skillName),
     {
       successToast: t('skill:export_success'),
       errorToast: t('skill:export_failed')
@@ -276,16 +277,26 @@ export const LeftHeader = () => {
       h={'64px'}
       alignItems={'center'}
       justifyContent={'space-between'}
+      gap={'8px'}
       pl={'24px'}
       pr={0}
       bg={'transparent'}
       userSelect={'none'}
     >
-      <HStack spacing={'8px'}>
+      <HStack spacing={'8px'} minW={0} flex={'1 1 0'}>
         <MyBackButton onClick={() => router.push('/dashboard/skill')} />
         <Avatar src={skillDetail.avatar} w={'30px'} h={'30px'} borderRadius={'sm'} />
-        <Box color={'myGray.600'} fontSize={'16px'} fontWeight={'medium'} px={'4px'}>
-          {skillDetail.name}
+        <Box
+          minW={0}
+          flex={'1 1 0'}
+          color={'myGray.600'}
+          fontSize={'16px'}
+          fontWeight={'medium'}
+          px={'4px'}
+        >
+          <MyTooltip label={skillDetail.name} showOnlyWhenOverflow>
+            <Box className="textEllipsis">{skillDetail.name}</Box>
+          </MyTooltip>
         </Box>
         {isSkillReady && (
           <MyMenu
@@ -338,15 +349,7 @@ export const LeftHeader = () => {
 
 export const RightHeader = () => {
   const { t } = useTranslation();
-  const { isSkillReady, sandboxState } = useContextSelector(SkillDetailContext, (v) => ({
-    isSkillReady: v.isSkillReady,
-    sandboxState: v.sandboxState
-  }));
-  const canOperate = isSkillReady && sandboxState === 'ready';
-
   const { handlePublishClick, isSaving, savingAll } = useHeader();
-
-  if (!canOperate) return null;
 
   return (
     <SkillHistoriesPopover

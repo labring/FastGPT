@@ -2,11 +2,14 @@ import { NextAPI } from '@/service/middleware/entry';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/instance/schema';
-import { findSandboxResourcesToArchive } from '@fastgpt/service/core/ai/sandbox/instance/repository';
-import { archiveSandboxResource } from '@fastgpt/service/core/ai/sandbox/service/archive';
+import {
+  archiveSandboxResources,
+  type SandboxArchiveResult
+} from '@fastgpt/service/core/ai/sandbox/service/archive';
 import { getLogger } from '@fastgpt/service/common/logger';
 import { getConfiguredSandboxProvider } from '@fastgpt/service/core/ai/sandbox/provider/config';
 import type { SandboxProviderType } from '@fastgpt/service/core/ai/sandbox/type';
+import { SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { subDays } from 'date-fns';
 import z from 'zod';
 
@@ -18,23 +21,12 @@ const InitSandboxArchiveBodySchema = z.object({
   inactiveBefore: z.coerce.date().optional()
 });
 
-interface ArchiveFailure {
-  sandboxId: string;
-  error: string;
-}
-
-interface ArchiveResult {
-  total: number;
-  successCount: number;
-  failCount: number;
-  failures: ArchiveFailure[];
-}
-
 interface MigrationResult {
   statusUpdateCount: number;
   lastActiveUpdatedCount: number;
+  legacyMetadataUpdatedCount: number;
   archiveTriggered: boolean;
-  archiveResult: ArchiveResult | null;
+  archiveResult: SandboxArchiveResult | null;
   duration: number;
   activeProvider?: string;
 }
@@ -46,7 +38,9 @@ interface MigrationResult {
  * 1. 状态纠错（拼写错误）：由于历史版本中 sandbox 状态拼写为 `'stoped'`，将其批量修正为 `'stopped'`。
  * 2. 补全 `lastActiveAt`：对缺失 `lastActiveAt` 字段的历史沙盒数据，通过 MongoDB 聚合更新，
  *    默认采用实例的创建时间 `createdAt`。若 `createdAt` 也不存在，则使用当前运行时间填充。
- * 3. 触发即时归档（可选）：当 `runArchive` 为 true 时，针对时间条件超期的沙盒执行真正的归档处理。
+ * 3. 兼容 upstream/main 旧 edit-debug metadata：把 `metadata.metadata.versionId/skillName`
+ *    提升到当前代码读取的 `metadata.versionId/skillName`。
+ * 4. 触发即时归档（可选）：当 `runArchive` 为 true 时，针对时间条件超期的沙盒执行真正的归档处理。
  *
  * 完备性设计：迁移 API 只负责字段修正与执行结果汇总，真实归档流程复用核心 service，
  * 避免脚本层复制归档/恢复协议导致后续逻辑分叉。
@@ -97,9 +91,56 @@ export async function migrateSandboxArchiveData(params: {
     `Successfully filled lastActiveAt for ${lastActiveResult.modifiedCount} records (matched: ${lastActiveResult.matchedCount}).`
   );
 
-  // 3. 执行冷归档并收集明确指标
+  // 3. 将 upstream/main 写入的嵌套 edit-debug metadata 迁移为当前顶层字段
+  logger.info('Migrating legacy edit-debug sandbox metadata fields...');
+  const legacyEditDebugFilter = {
+    type: SandboxTypeEnum.editDebug
+  };
+  const legacyMetadataFilter = {
+    ...legacyEditDebugFilter,
+    $or: [
+      {
+        'metadata.versionId': { $exists: false },
+        'metadata.metadata.versionId': { $exists: true }
+      },
+      {
+        'metadata.skillName': { $exists: false },
+        'metadata.metadata.skillName': { $exists: true }
+      }
+    ]
+  };
+  const buildLegacyMetadataFieldExpression = (field: 'versionId' | 'skillName') => ({
+    $cond: [
+      { $ne: [{ $type: `$metadata.${field}` }, 'missing'] },
+      `$metadata.${field}`,
+      {
+        $cond: [
+          { $ne: [{ $type: `$metadata.metadata.${field}` }, 'missing'] },
+          `$metadata.metadata.${field}`,
+          '$$REMOVE'
+        ]
+      }
+    ]
+  });
+  const legacyMetadataResult = await MongoSandboxInstance.updateMany(legacyMetadataFilter, [
+    {
+      $set: {
+        'metadata.versionId': buildLegacyMetadataFieldExpression('versionId'),
+        'metadata.skillName': buildLegacyMetadataFieldExpression('skillName')
+      }
+    },
+    {
+      $unset: 'metadata.metadata'
+    }
+  ]);
+  logger.info('Successfully migrated legacy metadata fields', {
+    legacyMetadataUpdatedCount: legacyMetadataResult.matchedCount,
+    modifiedCount: legacyMetadataResult.modifiedCount
+  });
+
+  // 4. 执行冷归档并收集明确指标
   let archiveTriggered = false;
-  let archiveResult: ArchiveResult | null = null;
+  let archiveResult: SandboxArchiveResult | null = null;
   let activeProvider: SandboxProviderType | undefined;
 
   if (params.runArchive) {
@@ -108,37 +149,11 @@ export async function migrateSandboxArchiveData(params: {
     logger.info('Running immediate sandbox archiving task...');
     archiveTriggered = true;
 
-    const resources = await findSandboxResourcesToArchive({
+    archiveResult = await archiveSandboxResources({
       inactiveBefore: calculatedInactiveBefore,
-      limit: 20,
       providers: [activeProvider]
     });
 
-    logger.info(`Found ${resources.length} sandboxes to archive`);
-
-    let successCount = 0;
-    let failCount = 0;
-    const failures: ArchiveFailure[] = [];
-
-    for (const resource of resources) {
-      const res = await archiveSandboxResource(resource, calculatedInactiveBefore);
-      if (res.success) {
-        successCount++;
-      } else {
-        failCount++;
-        failures.push({
-          sandboxId: resource.sandboxId,
-          error: res.error || 'Unknown error'
-        });
-      }
-    }
-
-    archiveResult = {
-      total: resources.length,
-      successCount,
-      failCount,
-      failures
-    };
     logger.info('Archive task executed successfully', { archiveResult });
   }
 
@@ -151,6 +166,7 @@ export async function migrateSandboxArchiveData(params: {
   return {
     statusUpdateCount: statusUpdateResult.modifiedCount,
     lastActiveUpdatedCount: lastActiveResult.modifiedCount,
+    legacyMetadataUpdatedCount: legacyMetadataResult.matchedCount,
     archiveTriggered,
     archiveResult,
     duration,

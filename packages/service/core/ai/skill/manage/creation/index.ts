@@ -23,7 +23,7 @@ import { getLogger, LogCategories } from '../../../../../common/logger';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { AgentSkillCreationStatusEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { createSkillGenerationUsage } from './usage';
-import { getSkillCreationLLMModel } from './model';
+import { getSkillCreationLLMModel } from '../../../model';
 
 const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS.CREATION);
 

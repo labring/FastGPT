@@ -1,11 +1,35 @@
 import { describe, expect, it } from 'vitest';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
-import { SANDBOX_READ_FILE_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
+import {
+  SANDBOX_READ_FILE_TOOL_NAME,
+  SANDBOX_SHELL_TOOL_NAME
+} from '@fastgpt/global/core/ai/sandbox/tools';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 
 describe('addStatisticalDataToHistoryItem', () => {
+  it('marks sandbox usage from streaming tool call cards before responseData is loaded', () => {
+    const historyItem: ChatItemMiniType = {
+      obj: ChatRoleEnum.AI,
+      value: [
+        {
+          tools: [
+            {
+              id: 'call-sandbox',
+              toolName: 'Sandbox',
+              toolAvatar: '',
+              functionName: SANDBOX_SHELL_TOOL_NAME,
+              params: '{"cmd":"pwd"}'
+            }
+          ]
+        }
+      ]
+    };
+
+    expect(addStatisticalDataToHistoryItem(historyItem).useAgentSandbox).toBe(true);
+  });
+
   it('marks sandbox usage when a nested response calls any sandbox tool', () => {
     const historyItem: ChatItemMiniType = {
       obj: ChatRoleEnum.AI,

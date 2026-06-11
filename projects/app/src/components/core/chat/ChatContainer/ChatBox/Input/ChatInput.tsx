@@ -487,7 +487,7 @@ const ChatInput = ({
       w={'100%'}
       maxW={inputBodyProps?.maxW ?? ['100%', '780px']}
       mx={inputBodyProps?.mx ?? inputBodyProps?.margin ?? 'auto'}
-      pb={0}
+      pb={inputBodyProps?.pb ?? ['calc(16px + env(safe-area-inset-bottom))', 4]}
       {...props}
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {

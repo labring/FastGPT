@@ -112,6 +112,7 @@ export type FastGPTFeConfigsType = {
     agentSandboxMaxEditDebug?: number;
     agentSandboxMaxSessionRuntime?: number;
     agentSandboxArchiveMaxBytes?: number;
+    skillSandboxMaxBytes?: number;
     agentSandboxMaxFileBytes?: number;
     workflowParallelRunMaxConcurrency?: number;
     maxFolderDepth?: number;
@@ -149,6 +150,7 @@ export type FastGPTFeConfigsType = {
 
   // tmp
   agentSandboxFree?: boolean;
+  agentSandboxProxyUrl?: string;
 };
 
 export type SystemEnvType = {

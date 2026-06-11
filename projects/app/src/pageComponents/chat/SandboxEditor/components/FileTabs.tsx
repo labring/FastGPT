@@ -23,6 +23,18 @@ type Props = {
 };
 
 const FileTabs = ({ openedFiles, activeFilePath, setActiveFilePath, closeFile }: Props) => {
+  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    const canScrollX = el.scrollWidth > el.clientWidth;
+    if (!canScrollX) return;
+
+    const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+    if (delta === 0) return;
+
+    e.preventDefault();
+    el.scrollLeft += delta;
+  };
+
   return (
     <Box
       flexShrink={0}
@@ -31,21 +43,29 @@ const FileTabs = ({ openedFiles, activeFilePath, setActiveFilePath, closeFile }:
       py="4px"
       px="4px"
       w="100%"
-      overflowX="auto"
       overflowY="hidden"
+      onWheel={handleWheel}
       flexWrap="nowrap"
-      css={{
-        '&::-webkit-scrollbar': {
-          height: '2px'
-        },
-        '&::-webkit-scrollbar-thumb': {
-          background: '#E2E8F0',
-          borderRadius: '1px'
-        },
-        '&::-webkit-scrollbar-track': {
-          background: 'transparent'
+      css={`
+        /* overlay 是 Chromium/WebKit 的 legacy 值；先写标准回退，再用 overlay 保持滚动条不占位。 */
+        overflow-x: auto;
+        overflow-x: overlay;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(148, 163, 184, 0.6) transparent;
+
+        &::-webkit-scrollbar {
+          height: 2px;
         }
-      }}
+
+        &::-webkit-scrollbar-thumb {
+          background: rgba(148, 163, 184, 0.6);
+          border-radius: 999px;
+        }
+
+        &::-webkit-scrollbar-track {
+          background: transparent;
+        }
+      `}
     >
       <Flex h="full" gap="8px" alignItems={'center'}>
         {openedFiles.map((file) => {

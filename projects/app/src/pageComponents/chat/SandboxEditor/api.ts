@@ -9,7 +9,7 @@ import type {
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { parseContentDispositionFilename } from '@fastgpt/global/common/file/tools';
 import { POST } from '@/web/common/api/request';
-import { appClientEnv } from '@/web/common/system/env';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 /**
  * 生成浏览器直连 sandbox proxy 的 WebSocket 地址。
@@ -21,7 +21,8 @@ export const getSandboxProxyWsUrl = ({
   channel: 'fs' | 'terminal';
   ticket: string;
 }) => {
-  const proxyBaseUrl = appClientEnv.agentSandboxProxyUrl.replace(/\/+$/, '');
+  const { agentSandboxProxyUrl = '' } = useSystemStore.getState().feConfigs;
+  const proxyBaseUrl = agentSandboxProxyUrl.replace(/\/+$/, '');
 
   if (!proxyBaseUrl) {
     throw new Error('AGENT_SANDBOX_PROXY_URL is required but not configured');

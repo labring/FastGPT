@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Box, Center, Flex, Text, Tooltip, IconButton } from '@chakra-ui/react';
+import { Box, Center, Flex, Text, IconButton } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -73,7 +73,6 @@ const EditorWorkspace = ({
   const [workspaceHeight, setWorkspaceHeight] = useState<number>(0);
   const [terminalHeight, setTerminalHeight] = useState<number>(200);
   const hasInitializedHeight = useRef(false);
-  const canUseTerminal = showTerminalBtn && canWrite;
 
   useEffect(() => {
     if (!workspaceRef.current) return;
@@ -161,6 +160,9 @@ const EditorWorkspace = ({
     return lines;
   }, [isPreparing, isWsConnected, loadingRoot, filteredTree.length, t]);
 
+  const canUseTerminal = showTerminalBtn && canWrite && loadingLines.length === 0;
+  const showWorkspaceHeader = openedFiles.length > 0 || !!headerRight;
+
   const mainEditorNode = (
     <MyBox
       isLoading={delayedLoadingFile}
@@ -242,31 +244,34 @@ const EditorWorkspace = ({
   return (
     <Flex flex={1} display="flex" flexDirection="column" minH={0} w="100%" bg="transparent">
       {/* 1. 顶部行: 页签在左，历史记录和发布按钮在右 */}
-      <Flex
-        flexShrink={0}
-        h={'40px'}
-        alignItems={'center'}
-        justifyContent={'space-between'}
-        bg="transparent"
-        borderBottom="none"
-        mb={'8px'}
-      >
-        <Box flex={1} minW={0} h="full" display="flex" alignItems="center">
-          {openedFiles.length > 0 && (
-            <FileTabs
-              openedFiles={openedFiles}
-              activeFilePath={activeFilePath}
-              setActiveFilePath={setActiveFilePath}
-              closeFile={closeFile}
-            />
-          )}
-        </Box>
-        {headerRight && (
-          <Box pr={0} flexShrink={0}>
-            {headerRight}
+      {showWorkspaceHeader && (
+        <Flex
+          flexShrink={0}
+          h={'40px'}
+          alignItems={'center'}
+          justifyContent={'space-between'}
+          bg="transparent"
+          borderBottom="none"
+          mb={'8px'}
+          gap="12px"
+        >
+          <Box flex={1} minW={0} h="full" display="flex" alignItems="center">
+            {openedFiles.length > 0 && (
+              <FileTabs
+                openedFiles={openedFiles}
+                activeFilePath={activeFilePath}
+                setActiveFilePath={setActiveFilePath}
+                closeFile={closeFile}
+              />
+            )}
           </Box>
-        )}
-      </Flex>
+          {headerRight && (
+            <Box pr={0} flexShrink={0}>
+              {headerRight}
+            </Box>
+          )}
+        </Flex>
+      )}
 
       {/* 2. 主体部分与终端卡片 */}
       <Box

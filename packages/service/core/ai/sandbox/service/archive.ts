@@ -1,4 +1,5 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { batchRun } from '@fastgpt/global/common/system/utils';
 import { subDays } from 'date-fns';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import type { ISandbox, SandboxCreateSpec } from '@fastgpt-sdk/sandbox-adapter';
@@ -16,8 +17,8 @@ import {
 } from '../volume/service';
 import {
   clearSandboxArchiveState,
+  createSandboxResourcesToArchiveCursor,
   findSandboxInstanceArchiveState,
-  findSandboxResourcesToArchive,
   isSandboxStillArchiving,
   markSandboxArchived,
   markSandboxArchiving,
@@ -33,7 +34,7 @@ import type { SandboxInstanceSchemaType, SandboxProviderType } from '../type';
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
 export const SANDBOX_ARCHIVE_INACTIVE_DAYS = 7;
-export const SANDBOX_ARCHIVE_CRON_LIMIT = 20;
+const SANDBOX_ARCHIVE_BATCH_SIZE = 5;
 const SANDBOX_ARCHIVE_COMMAND_TIMEOUT_MS = 10 * 60 * 1000;
 
 const TEMP_ARCHIVE_FILE = '.fastgpt-sandbox-archive.zip';
@@ -49,6 +50,18 @@ export class SandboxArchiveStateError extends Error {
     super(message);
     this.name = 'SandboxArchiveStateError';
   }
+}
+
+export interface SandboxArchiveFailure {
+  sandboxId: string;
+  error: string;
+}
+
+export interface SandboxArchiveResult {
+  total: number;
+  successCount: number;
+  failCount: number;
+  failures: SandboxArchiveFailure[];
 }
 
 const shellQuote = (value: string): string => `'${value.replace(/'/g, `'\\''`)}'`;
@@ -411,18 +424,78 @@ export async function archiveSandboxResource(
 }
 
 /**
+ * 流式读取待归档 sandbox，并按固定批次执行实际归档。
+ *
+ * cursor 的 batchSize 控制 Mongo 单次返回量；归档 batch 控制远端资源同时拉起数量。
+ * 这里不设置总量上限，迁移脚本需要覆盖所有历史待归档记录。
+ */
+export async function archiveSandboxResources(params: {
+  inactiveBefore: Date;
+  providers?: SandboxProviderType[];
+}): Promise<SandboxArchiveResult> {
+  const { inactiveBefore, providers } = params;
+  const cursor = createSandboxResourcesToArchiveCursor({
+    inactiveBefore,
+    providers
+  });
+
+  let successCount = 0;
+  const failures: SandboxArchiveFailure[] = [];
+  let batch: SandboxResourceDoc[] = [];
+
+  const archiveBatch = async (resources: SandboxResourceDoc[]) => {
+    if (resources.length === 0) return;
+
+    const results = await batchRun(
+      resources,
+      async (resource) => ({
+        resource,
+        result: await archiveSandboxResource(resource, inactiveBefore)
+      }),
+      SANDBOX_ARCHIVE_BATCH_SIZE
+    );
+
+    for (const { resource, result } of results) {
+      if (result.success) {
+        successCount++;
+      } else {
+        failures.push({
+          sandboxId: resource.sandboxId,
+          error: result.error || 'Unknown error'
+        });
+      }
+    }
+  };
+
+  try {
+    for await (const resource of cursor) {
+      batch.push(resource);
+      if (batch.length >= SANDBOX_ARCHIVE_BATCH_SIZE) {
+        await archiveBatch(batch);
+        batch = [];
+      }
+    }
+    await archiveBatch(batch);
+  } finally {
+    await cursor.close().catch(() => undefined);
+  }
+
+  return {
+    total: successCount + failures.length,
+    successCount,
+    failCount: failures.length,
+    failures
+  };
+}
+
+/**
  * 批量归档超过 7 天未活跃的 sandbox。
  */
 export async function archiveInactiveSandboxes(now = new Date()) {
   const inactiveBefore = subDays(now, SANDBOX_ARCHIVE_INACTIVE_DAYS);
-  const resources = await findSandboxResourcesToArchive({
-    inactiveBefore,
-    limit: SANDBOX_ARCHIVE_CRON_LIMIT
+  await archiveSandboxResources({
+    inactiveBefore
   });
-
-  for (const resource of resources) {
-    await archiveSandboxResource(resource, inactiveBefore);
-  }
 }
 
 async function createRestoreSandbox(params: {

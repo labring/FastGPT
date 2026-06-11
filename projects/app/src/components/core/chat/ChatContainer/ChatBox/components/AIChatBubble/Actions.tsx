@@ -41,6 +41,7 @@ const AIChatBubbleActions = ({
   const { isPc } = useSystem();
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
   const showRetry = chatType !== ChatTypeEnum.log && !!onRetry;
+  const showSandboxAction = useContextSelector(ChatItemContext, (v) => v.showSandboxAction ?? true);
   const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
@@ -115,7 +116,7 @@ const AIChatBubbleActions = ({
             </Flex>
           )}
 
-          {isPc && useAgentSandbox && (
+          {showSandboxAction && isPc && useAgentSandbox && (
             <Flex
               alignItems={'center'}
               gap={'4px'}
@@ -184,7 +185,7 @@ const AIChatBubbleActions = ({
         </Flex>
       )}
 
-      <SandboxEditorModal />
+      {showSandboxAction && <SandboxEditorModal />}
     </Box>
   );
 };

@@ -9,7 +9,7 @@ vi.mock('@/service/middleware/entry', () => ({
   NextAPI: vi.fn((handler) => handler)
 }));
 
-vi.mock('@/service/core/sandbox/proxyAuth', () => ({
+vi.mock('@/service/core/sandbox/auth', () => ({
   authAgentSandboxProxy: mocks.authAgentSandboxProxy
 }));
 

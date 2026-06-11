@@ -4,6 +4,8 @@ import type { SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { MongoSandboxInstance } from './schema';
 import type { SandboxInstanceSchemaType, SandboxProviderType } from '../type';
 
+const SANDBOX_ARCHIVE_CURSOR_BATCH_SIZE = 100;
+
 /**
  * 可直接用于 stop/delete 的实例记录最小字段。
  *
@@ -34,6 +36,20 @@ const buildSandboxResourceRecordFilter = (resource: SandboxResourceRef) => {
     provider: resource.provider,
     sandboxId: resource.sandboxId
   };
+};
+
+const buildSandboxResourcesToArchiveQuery = (params: {
+  inactiveBefore: Date;
+  providers?: SandboxProviderType[];
+}) => {
+  const { inactiveBefore, providers = ['opensandbox', 'sealosdevbox'] } = params;
+
+  return MongoSandboxInstance.find({
+    provider: { $in: providers },
+    status: SandboxStatusEnum.stopped,
+    lastActiveAt: { $lt: inactiveBefore },
+    'metadata.archive.state': { $exists: false }
+  }).sort({ lastActiveAt: 1 });
 };
 
 /**
@@ -231,27 +247,18 @@ export async function findSandboxInstanceArchiveState(params: {
 }
 
 /**
- * 查询超过指定时间未活跃、尚未冷归档的 stopped sandbox。
+ * 流式读取待归档 sandbox，避免迁移脚本或 cron 一次性把历史全量记录拉进 Node.js 内存。
  *
  * 一周后的实例应先由 5 分钟 cron 标记为 stopped，再由归档任务统一处理。
  * 归档不直接抢 running 实例，避免和 stop cron 操作同一个远端资源。
  */
-export async function findSandboxResourcesToArchive(params: {
+export function createSandboxResourcesToArchiveCursor(params: {
   inactiveBefore: Date;
-  limit: number;
   providers?: SandboxProviderType[];
 }) {
-  const { inactiveBefore, limit, providers = ['opensandbox', 'sealosdevbox'] } = params;
-
-  return MongoSandboxInstance.find({
-    provider: { $in: providers },
-    status: SandboxStatusEnum.stopped,
-    lastActiveAt: { $lt: inactiveBefore },
-    'metadata.archive.state': { $exists: false }
-  })
-    .sort({ lastActiveAt: 1 })
-    .limit(limit)
-    .lean<SandboxResourceDoc[]>();
+  return buildSandboxResourcesToArchiveQuery(params)
+    .lean<SandboxResourceDoc>()
+    .cursor({ batchSize: SANDBOX_ARCHIVE_CURSOR_BATCH_SIZE });
 }
 
 /**
