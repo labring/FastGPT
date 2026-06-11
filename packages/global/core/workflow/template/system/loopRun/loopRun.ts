@@ -35,6 +35,7 @@ export const LoopRunNode: FlowNodeTemplateType = {
   name: i18nT('workflow:loop_run'),
   intro: i18nT('workflow:intro_loop_run'),
   showStatus: true,
+  courseUrl: '/guide/build/workflow/nodes/loop_run',
   catchError: false,
   inputs: [
     {
