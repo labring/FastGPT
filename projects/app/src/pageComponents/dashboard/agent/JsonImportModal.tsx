@@ -23,6 +23,7 @@ import {
 import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
 import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 import {
+  isDashboardImportAppTypeAllowed,
   type JsonImportModalScene,
   parseDashboardImportConfig,
   resolveImportAppType
@@ -124,14 +125,16 @@ const JsonImportModal = ({ scene, onClose }: JsonImportModalProps) => {
     try {
       const workflow = JSON.parse(workflowStr);
       const type = resolveImportAppType(workflow);
-      if (type) return createAppTypeMap[type].icon;
+      if (type && isDashboardImportAppTypeAllowed({ appType: type, scene })) {
+        return createAppTypeMap[type].icon;
+      }
       return defaultVal;
     } catch {
       return defaultVal;
     }
   }, [avatar, scene, workflowStr]);
 
-  const { runAsync: onSubmit, loading: isCreating } = useRequest(
+  const { run: onSubmit, loading: isCreating } = useRequest(
     async ({ name, intro, workflowStr }: FormType) => {
       if ((intro || '').length > 500) {
         throw new Error(t('app:app_intro_too_long'));
@@ -178,7 +181,7 @@ const JsonImportModal = ({ scene, onClose }: JsonImportModalProps) => {
       <MyModal
         isOpen
         onClose={handleCloseJsonImportModal}
-        isLoading={isCreating || isFetching}
+        isLoading={isFetching}
         title={t('app:type.Import from json')}
         size={'md'}
         isCentered
@@ -188,7 +191,11 @@ const JsonImportModal = ({ scene, onClose }: JsonImportModalProps) => {
             <Button size={'md'} variant={'whiteBase'} onClick={handleCloseJsonImportModal}>
               {t('common:Cancel')}
             </Button>
-            <Button size={'md'} onClick={handleSubmit(onSubmit)}>
+            <Button
+              size={'md'}
+              isLoading={isCreating}
+              onClick={handleSubmit((data) => onSubmit(data))}
+            >
               {t('common:Confirm')}
             </Button>
           </>

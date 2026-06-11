@@ -35,24 +35,22 @@ const emptyObjectToUndefined = (value: unknown) => {
   return value;
 };
 
+const appTypeValues = new Set(Object.values(AppTypeEnum));
+
 const preprocessListAppType = (value: unknown) => {
-  if (value === '') return undefined;
+  const isAppType = (item: unknown): item is AppTypeEnum =>
+    typeof item === 'string' && appTypeValues.has(item as AppTypeEnum);
 
-  const validAppTypes = new Set<string>(Object.values(AppTypeEnum));
-
-  if (Array.isArray(value)) {
-    const filteredTypes = value.filter(
-      (item): item is AppTypeEnum => typeof item === 'string' && validAppTypes.has(item)
-    );
-
-    return filteredTypes.length > 0 ? filteredTypes : undefined;
-  }
-
-  if (typeof value === 'string' && !validAppTypes.has(value)) {
+  if (value === '') {
     return undefined;
   }
 
-  return value;
+  if (Array.isArray(value)) {
+    const validTypes = value.filter(isAppType);
+    return validTypes.length > 0 ? validTypes : undefined;
+  }
+
+  return isAppType(value) ? value : undefined;
 };
 
 export const OpenAPIAppScheduledTriggerConfigSchema = z

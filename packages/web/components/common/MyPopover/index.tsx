@@ -22,6 +22,8 @@ interface Props extends PopoverContentProps {
   onCloseFunc?: () => void;
   onOpenFunc?: () => void;
   closeOnBlur?: boolean;
+  usePortal?: boolean;
+  flip?: boolean;
 }
 
 const MyPopover = ({
@@ -34,12 +36,21 @@ const MyPopover = ({
   onOpenFunc,
   onCloseFunc,
   closeOnBlur = false,
+  usePortal = true,
+  flip = true,
   onBackdropClick,
   ...props
 }: Props) => {
   const firstFieldRef = React.useRef(null);
 
   const { onOpen, onClose, isOpen } = useDisclosure();
+
+  const popoverContent = (
+    <PopoverContent zIndex={1001} {...props}>
+      {hasArrow && <PopoverArrow />}
+      {children({ onClose })}
+    </PopoverContent>
+  );
 
   return (
     <Popover
@@ -55,6 +66,7 @@ const MyPopover = ({
       }}
       placement={placement}
       offset={offset}
+      flip={flip}
       closeOnBlur={closeOnBlur}
       trigger={trigger}
       openDelay={100}
@@ -69,12 +81,7 @@ const MyPopover = ({
           <Box position="fixed" zIndex={1000} inset={0} onClick={() => onBackdropClick()} />
         </Portal>
       )}
-      <Portal>
-        <PopoverContent zIndex={1001} {...props}>
-          {hasArrow && <PopoverArrow />}
-          {children({ onClose })}
-        </PopoverContent>
-      </Portal>
+      {usePortal ? <Portal>{popoverContent}</Portal> : popoverContent}
     </Popover>
   );
 };

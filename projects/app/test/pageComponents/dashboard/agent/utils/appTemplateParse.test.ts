@@ -17,6 +17,7 @@ vi.mock('@/pageComponents/app/detail/Edit/SimpleApp/utils', () => ({
 
 const {
   normalizeSimpleImportForm,
+  parseAppImportConfig,
   parseDashboardImportConfig,
   parseWorkflowImportConfig,
   resolveImportAppType,
@@ -87,6 +88,10 @@ describe('resolveImportAppType', () => {
     expect(resolveImportAppType({ type: 'workflow' })).toBe('');
   });
 
+  it('should support legacy workflowTool type alias', () => {
+    expect(resolveImportAppType({ type: 'workflowTool' })).toBe(AppTypeEnum.workflowTool);
+  });
+
   it('should fall back to old JSON structure detection when type is missing', () => {
     expect(resolveImportAppType(createSimpleConfig())).toBe(AppTypeEnum.simple);
     expect(
@@ -101,6 +106,16 @@ describe('resolveImportAppType', () => {
         edges: []
       })
     ).toBe(AppTypeEnum.workflowTool);
+  });
+
+  it('should prefer plugin input in tool scene for old mixed workflow JSON', () => {
+    const config = {
+      nodes: [{ flowNodeType: 'workflowStart' }, { flowNodeType: 'pluginInput' }],
+      edges: []
+    };
+
+    expect(resolveImportAppType(config, 'tool')).toBe(AppTypeEnum.workflowTool);
+    expect(resolveImportAppType(config, 'agent')).toBe(AppTypeEnum.workflow);
   });
 
   it('should return empty type for malformed node list items', () => {
@@ -155,37 +170,83 @@ describe('parseDashboardImportConfig', () => {
     });
   });
 
-  it('should parse all supported app JSON types in dashboard import', () => {
-    const workflowToolResult = parseDashboardImportConfig({
+  it('should parse workflow tool JSON in tool dashboard', () => {
+    const result = parseDashboardImportConfig({
       config: {
         type: AppTypeEnum.workflowTool,
         nodes: [{ flowNodeType: 'pluginInput' }],
         edges: []
       },
-      scene: 'agent',
-      t
-    });
-    expect(workflowToolResult.appType).toBe(AppTypeEnum.workflowTool);
-
-    const simpleResult = parseDashboardImportConfig({
-      config: createSimpleConfig({
-        type: AppTypeEnum.simple
-      }),
       scene: 'tool',
       t
     });
-    expect(simpleResult.appType).toBe(AppTypeEnum.simple);
 
-    const workflowResult = parseDashboardImportConfig({
+    expect(result.appType).toBe(AppTypeEnum.workflowTool);
+  });
+
+  it('should parse legacy workflowTool alias JSON in tool dashboard', () => {
+    const result = parseDashboardImportConfig({
       config: {
-        type: AppTypeEnum.workflow,
-        nodes: [{ flowNodeType: 'workflowStart' }],
+        type: 'workflowTool',
+        nodes: [{ flowNodeType: 'pluginInput' }],
         edges: []
       },
       scene: 'tool',
       t
     });
-    expect(workflowResult.appType).toBe(AppTypeEnum.workflow);
+
+    expect(result.appType).toBe(AppTypeEnum.workflowTool);
+  });
+
+  it('should parse old mixed workflow JSON as workflow tool in tool dashboard', () => {
+    const result = parseDashboardImportConfig({
+      config: {
+        nodes: [{ flowNodeType: 'workflowStart' }, { flowNodeType: 'pluginInput' }],
+        edges: []
+      },
+      scene: 'tool',
+      t
+    });
+
+    expect(result.appType).toBe(AppTypeEnum.workflowTool);
+  });
+
+  it('should reject workflow tool JSON in agent dashboard', () => {
+    expect(() =>
+      parseDashboardImportConfig({
+        config: {
+          type: AppTypeEnum.workflowTool,
+          nodes: [{ flowNodeType: 'pluginInput' }],
+          edges: []
+        },
+        scene: 'agent',
+        t
+      })
+    ).toThrow('app:type_not_recognized');
+  });
+
+  it('should reject simple and workflow JSON in tool dashboard', () => {
+    expect(() =>
+      parseDashboardImportConfig({
+        config: createSimpleConfig({
+          type: AppTypeEnum.simple
+        }),
+        scene: 'tool',
+        t
+      })
+    ).toThrow('app:type_not_recognized');
+
+    expect(() =>
+      parseDashboardImportConfig({
+        config: {
+          type: AppTypeEnum.workflow,
+          nodes: [{ flowNodeType: 'workflowStart' }],
+          edges: []
+        },
+        scene: 'tool',
+        t
+      })
+    ).toThrow('app:type_not_recognized');
   });
 
   it('should reject chatAgent and unknown typed JSON with existing type_not_recognized text', () => {
@@ -246,7 +307,7 @@ describe('parseDashboardImportConfig', () => {
 });
 
 describe('isDashboardImportAppTypeAllowed', () => {
-  it('should allow every supported app type in dashboard import scenes', () => {
+  it('should match app type with dashboard scene', () => {
     expect(isDashboardImportAppTypeAllowed({ appType: AppTypeEnum.simple, scene: 'agent' })).toBe(
       true
     );
@@ -255,16 +316,49 @@ describe('isDashboardImportAppTypeAllowed', () => {
     );
     expect(
       isDashboardImportAppTypeAllowed({ appType: AppTypeEnum.workflowTool, scene: 'agent' })
-    ).toBe(true);
+    ).toBe(false);
     expect(isDashboardImportAppTypeAllowed({ appType: AppTypeEnum.simple, scene: 'tool' })).toBe(
-      true
+      false
     );
     expect(isDashboardImportAppTypeAllowed({ appType: AppTypeEnum.workflow, scene: 'tool' })).toBe(
-      true
+      false
     );
     expect(
       isDashboardImportAppTypeAllowed({ appType: AppTypeEnum.workflowTool, scene: 'tool' })
     ).toBe(true);
+  });
+});
+
+describe('parseAppImportConfig', () => {
+  it('should parse through the shared import entry with caller constraints', () => {
+    const result = parseAppImportConfig({
+      config: {
+        type: 'workflowTool',
+        nodes: [{ flowNodeType: 'pluginInput' }],
+        edges: []
+      },
+      resolveScene: 'tool',
+      expectedAppType: AppTypeEnum.workflowTool,
+      t
+    });
+
+    expect(result.appType).toBe(AppTypeEnum.workflowTool);
+    expect(result.workflow.nodes).toEqual([{ flowNodeType: 'pluginInput' }]);
+  });
+
+  it('should reject mismatched app type in the shared import entry', () => {
+    expect(() =>
+      parseAppImportConfig({
+        config: {
+          type: AppTypeEnum.workflow,
+          nodes: [{ flowNodeType: 'workflowStart' }],
+          edges: []
+        },
+        resolveScene: 'agent',
+        expectedAppType: AppTypeEnum.workflowTool,
+        t
+      })
+    ).toThrow('app:type_not_recognized');
   });
 });
 
