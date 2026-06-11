@@ -162,7 +162,7 @@ const Header = () => {
           <MyBackButton onClick={isSaved ? onBack : onOpenBackConfirm} />
 
           {/* app info */}
-          <Box ml={1} minW={0} w={['calc(100% - 48px)', 'min(520px, calc(50vw - 360px))']}>
+          <Box ml={1}>
             <AppCard isSaved={isSaved} showSaveStatus={isV2Workflow} />
           </Box>
 
