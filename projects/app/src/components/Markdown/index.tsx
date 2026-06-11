@@ -14,6 +14,7 @@ import { Box } from '@chakra-ui/react';
 import { CodeClassNameEnum, mdTextFormat } from './utils';
 import type { AProps } from './A';
 import MarkdownTable from '@fastgpt/web/components/common/Markdown/MarkdownTable';
+import { MarkdownRendererRuntimeContext } from './runtimeContext';
 
 const CodeLight = dynamic(() => import('./codeBlock/CodeLight'), { ssr: false });
 const MermaidCodeBlock = dynamic(() => import('./img/MermaidCodeBlock'), { ssr: false });
@@ -28,25 +29,15 @@ const ChatGuide = dynamic(() => import('./chat/Guide'), { ssr: false });
 const QuestionGuide = dynamic(() => import('./chat/QuestionGuide'), { ssr: false });
 const A = dynamic(() => import('./A'), { ssr: false });
 
-type MarkdownRenderContextValue = {
-  showAnimation?: boolean;
-  autoPreviewHtmlCodeBlock?: boolean;
-  markdownClassName?: string;
-  chatAuthData?: AProps['chatAuthData'];
-  onOpenCiteModal?: AProps['onOpenCiteModal'];
-};
-
-/** 通过 context 传递流式/样式等动态 props，避免 react-markdown components 引用变化导致代码块 remount。 */
-const MarkdownRenderContext = React.createContext<MarkdownRenderContextValue>({});
-
 function MarkdownImgRenderer(props: any) {
-  const { chatAuthData } = useContext(MarkdownRenderContext);
+  const { chatAuthData } = useContext(MarkdownRendererRuntimeContext);
   return <Image {...props} alt={props.alt} chatAuthData={chatAuthData} />;
 }
 
 function MarkdownCodeRenderer(props: any) {
-  const { showAnimation, autoPreviewHtmlCodeBlock, markdownClassName } =
-    useContext(MarkdownRenderContext);
+  const { showAnimation, autoPreviewHtmlCodeBlock, markdownClassName } = useContext(
+    MarkdownRendererRuntimeContext
+  );
 
   return (
     <Code
@@ -59,7 +50,9 @@ function MarkdownCodeRenderer(props: any) {
 }
 
 function MarkdownLinkRenderer(props: any) {
-  const { showAnimation, chatAuthData, onOpenCiteModal } = useContext(MarkdownRenderContext);
+  const { showAnimation, chatAuthData, onOpenCiteModal } = useContext(
+    MarkdownRendererRuntimeContext
+  );
 
   return (
     <A
@@ -128,7 +121,7 @@ const MarkdownRender = ({
   }, []);
 
   return (
-    <MarkdownRenderContext.Provider value={renderContextValue}>
+    <MarkdownRendererRuntimeContext.Provider value={renderContextValue}>
       <Box position={'relative'}>
         <ReactMarkdown
           className={`markdown ${styles.markdown}
@@ -146,7 +139,7 @@ const MarkdownRender = ({
           <Box position={'absolute'} top={0} right={0} left={0} bottom={0} zIndex={1} />
         )}
       </Box>
-    </MarkdownRenderContext.Provider>
+    </MarkdownRendererRuntimeContext.Provider>
   );
 };
 

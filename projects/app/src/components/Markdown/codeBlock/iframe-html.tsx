@@ -22,6 +22,42 @@ import styles from '../index.module.scss';
 
 type HtmlCodeBlockViewMode = 'source' | 'iframe';
 
+/**
+ * 管理 HTML 代码块的 Code/Preview 视图状态。
+ *
+ * 自动预览只服务聊天流式 HTML 输出：流式阶段保持源码，流式结束后切到预览；
+ * 用户主动选择 Code/Preview 后，后续流式状态变化不再覆盖用户选择。
+ */
+const useHtmlCodeBlockViewMode = ({
+  shouldAutoPreview,
+  showAnimation
+}: {
+  shouldAutoPreview: boolean;
+  showAnimation?: boolean;
+}) => {
+  const [viewMode, setViewMode] = useState<HtmlCodeBlockViewMode>(() =>
+    shouldAutoPreview && !showAnimation ? 'iframe' : 'source'
+  );
+  const hasUserSelectedViewRef = useRef(false);
+
+  useEffect(() => {
+    if (!shouldAutoPreview) return;
+    if (hasUserSelectedViewRef.current) return;
+
+    setViewMode(showAnimation ? 'source' : 'iframe');
+  }, [shouldAutoPreview, showAnimation]);
+
+  const selectViewMode = (mode: HtmlCodeBlockViewMode) => {
+    hasUserSelectedViewRef.current = true;
+    setViewMode(mode);
+  };
+
+  return {
+    viewMode,
+    selectViewMode
+  };
+};
+
 const StyledButton = ({
   label,
   iconName,
@@ -122,13 +158,10 @@ const IframeHtmlCodeBlock = ({
   const shouldAutoPreview = !!autoPreviewHtmlCodeBlock && isHtmlBlock;
   // 流式阶段仍展示源码高亮；只额外接管滚动，让最新输出保持可见。
   const showStreamingSourceCode = !!autoPreviewHtmlCodeBlock && isHtmlBlock && showAnimation;
-  const [viewMode, setViewMode] = useState<HtmlCodeBlockViewMode>(() => {
-    if (shouldAutoPreview && !showAnimation) return 'iframe';
-    return 'source';
+  const { viewMode, selectViewMode } = useHtmlCodeBlockViewMode({
+    shouldAutoPreview,
+    showAnimation
   });
-  const userOverrideRef = useRef(false);
-  // 自动切换只执行一次；用户主动点过 Tab 后不再覆盖他的选择。
-  const autoSwitchedRef = useRef(shouldAutoPreview && !showAnimation);
   const streamingCodeRef = useRef<HTMLPreElement | null>(null);
   const isPreview = viewMode === 'iframe';
 
@@ -161,33 +194,6 @@ const IframeHtmlCodeBlock = ({
     const splitInput = input.split('#');
     return splitInput[1] || match?.[1]?.toUpperCase();
   }, [match]);
-
-  const handleSelectViewMode = (mode: HtmlCodeBlockViewMode) => {
-    // Code/Preview 是用户明确选择，后续流式完成不应再强制跳 Tab。
-    userOverrideRef.current = true;
-    autoSwitchedRef.current = true;
-    setViewMode(mode);
-  };
-
-  useEffect(() => {
-    if (!shouldAutoPreview) return;
-    if (!showAnimation) return;
-    if (userOverrideRef.current) return;
-
-    autoSwitchedRef.current = false;
-    setViewMode('source');
-  }, [shouldAutoPreview, showAnimation]);
-
-  useEffect(() => {
-    if (!shouldAutoPreview) return;
-    if (showAnimation) return;
-    if (userOverrideRef.current) return;
-    if (autoSwitchedRef.current) return;
-
-    // 仅以上层流式结束信号为准，避免 HTML 结束标签提前出现时切走源码视图。
-    autoSwitchedRef.current = true;
-    setViewMode('iframe');
-  }, [shouldAutoPreview, showAnimation]);
 
   useEffect(() => {
     if (!showStreamingSourceCode) return;
@@ -248,7 +254,7 @@ const IframeHtmlCodeBlock = ({
           <StyledButton
             label={t('common:Code')}
             iconName="code"
-            onClick={() => handleSelectViewMode('source')}
+            onClick={() => selectViewMode('source')}
             isActive={viewMode === 'source'}
             viewMode={viewMode}
             isMobile={isMobile}
@@ -256,7 +262,7 @@ const IframeHtmlCodeBlock = ({
           <StyledButton
             label={t('common:Preview')}
             iconName="preview"
-            onClick={() => handleSelectViewMode('iframe')}
+            onClick={() => selectViewMode('iframe')}
             isActive={viewMode === 'iframe'}
             viewMode={viewMode}
             isMobile={isMobile}
