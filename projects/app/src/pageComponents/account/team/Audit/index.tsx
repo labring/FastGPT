@@ -26,9 +26,11 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import { getTeamMembers } from '@/web/support/user/team/api';
 import { specialProcessors } from './processors';
 import { defaultMetadataProcessor } from './processors/commonProcessor';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
   const { t } = useTranslation();
+  const { feConfigs } = useSystemStore();
   const [searchParams, setSearchParams] = useState<{
     tmbIds?: string[];
     events?: AuditEventEnum[];
@@ -51,11 +53,18 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
 
   const eventOptions = useMemo(
     () =>
-      Object.values(AuditEventEnum).map((event) => ({
-        label: t(auditLogMap[event].typeLabel),
-        value: event
-      })),
-    [t]
+      Object.values(AuditEventEnum)
+        .filter((event) => {
+          if (feConfigs?.show_evaluation === false && event.includes('EVALUATION')) {
+            return false;
+          }
+          return true;
+        })
+        .map((event) => ({
+          label: t(auditLogMap[event].typeLabel),
+          value: event
+        })),
+    [t, feConfigs?.show_evaluation]
   );
 
   const processMetadataByEvent = useCallback(
@@ -196,3 +205,4 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
 }
 
 export default AuditLog;
+
