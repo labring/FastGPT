@@ -17,6 +17,7 @@
     "variable_update",
     "sandbox-v2",
     "loop",
+    "loop_run",
     "parallel_run",
     "knowledge_base_search_merge",
     "coreferenceResolution",

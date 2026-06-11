@@ -59,6 +59,8 @@
   "content/guide/build/workflow/nodes/laf.mdx": "2026-05-07T15:06:40+08:00",
   "content/guide/build/workflow/nodes/loop.en.mdx": "2026-05-07T15:06:40+08:00",
   "content/guide/build/workflow/nodes/loop.mdx": "2026-05-07T15:06:40+08:00",
+  "content/guide/build/workflow/nodes/loop_run.en.mdx": "2026-06-11T13:33:07+08:00",
+  "content/guide/build/workflow/nodes/loop_run.mdx": "2026-06-11T13:33:07+08:00",
   "content/guide/build/workflow/nodes/parallel_run.en.mdx": "2026-05-07T15:06:40+08:00",
   "content/guide/build/workflow/nodes/parallel_run.mdx": "2026-05-07T15:06:40+08:00",
   "content/guide/build/workflow/nodes/question_classify.en.mdx": "2026-05-07T15:06:40+08:00",
@@ -273,7 +275,9 @@
   "content/self-host/upgrading/4-15/41503.en.mdx": "2026-05-28T16:21:09+08:00",
   "content/self-host/upgrading/4-15/41503.mdx": "2026-05-28T16:21:09+08:00",
   "content/self-host/upgrading/4-15/41504.en.mdx": "2026-06-10T19:02:59+08:00",
-  "content/self-host/upgrading/4-15/41504.mdx": "2026-06-10T19:02:59+08:00",
+  "content/self-host/upgrading/4-15/41504.mdx": "2026-06-11T17:42:15+08:00",
+  "content/self-host/upgrading/4-15/41505.en.mdx": "2026-06-11T23:20:26+08:00",
+  "content/self-host/upgrading/4-15/41505.mdx": "2026-06-11T23:20:26+08:00",
   "content/self-host/upgrading/outdated/40.en.mdx": "2026-04-26T21:08:47+08:00",
   "content/self-host/upgrading/outdated/40.mdx": "2026-04-26T21:08:47+08:00",
   "content/self-host/upgrading/outdated/41.en.mdx": "2026-04-26T21:08:47+08:00",
@@ -414,6 +418,6 @@
   "content/self-host/upgrading/outdated/499.mdx": "2026-05-07T15:06:40+08:00",
   "content/self-host/upgrading/upgrade-intruction.en.mdx": "2026-04-26T21:08:47+08:00",
   "content/self-host/upgrading/upgrade-intruction.mdx": "2026-04-26T21:08:47+08:00",
-  "content/toc.en.mdx": "2026-06-10T17:33:23+08:00",
-  "content/toc.mdx": "2026-06-10T17:33:23+08:00"
+  "content/toc.en.mdx": "2026-06-11T23:20:26+08:00",
+  "content/toc.mdx": "2026-06-11T23:20:26+08:00"
 }
