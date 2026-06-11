@@ -20,6 +20,7 @@ export const getFastGPTConfigFromDB = async (): Promise<{
     }).sort({
       createTime: -1
     }),
+
     MongoSystemConfigs.findOne({
       type: SystemConfigsTypeEnum.license
     }).sort({

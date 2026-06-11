@@ -1,5 +1,5 @@
 import _, { type AxiosInstance, type AxiosRequestConfig } from 'axios';
-import { ProxyAgent } from 'proxy-agent';
+import { ProxyAgent, type ProxyAgentOptions } from 'proxy-agent';
 import { isDevEnv } from '@fastgpt/global/common/system/constants';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '../system/utils';
 import { isAbsoluteUrl } from '../security/network';
@@ -26,8 +26,18 @@ const addSSRFInterceptor = (instance: AxiosInstance) => {
   return instance;
 };
 
+const createProxyAgent = (options?: ProxyAgentOptions) => new ProxyAgent(options);
+
+/**
+ * 工作流 HTTP 节点跳过 HTTPS 证书校验专用 agent。
+ * 仍复用 ProxyAgent,只调整目标站 TLS 校验策略,避免改变部署环境的代理语义。
+ */
+export const httpsCertificateIgnoreAgent = createProxyAgent({
+  rejectUnauthorized: false
+});
+
 export function createProxyAxios(config?: AxiosRequestConfig, ssrfCheck = true) {
-  const agent = new ProxyAgent();
+  const agent = createProxyAgent();
 
   const instance = isDevEnv
     ? _.create(config)
