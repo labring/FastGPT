@@ -157,6 +157,7 @@ export async function initSystemConfig() {
       show_aiproxy: hasAIProxyApiEndpoint(),
       show_coupon: appEnv.SHOW_COUPON,
       show_discount_coupon: appEnv.SHOW_DISCOUNT_COUPON,
+      show_enterprise_auth: !!serviceEnv.ENTERPRISE_AUTH_SERVICE_URL,
       show_dataset_enhance: licenseData?.functions?.datasetEnhance,
       show_batch_eval: licenseData?.functions?.batchEval,
       pluginRemoteDebug,

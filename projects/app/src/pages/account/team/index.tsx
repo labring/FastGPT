@@ -97,7 +97,7 @@ const Team = () => {
         }}
       />
     ),
-    [planContent, router, t, teamTab, toast]
+    [planContent, router, t, teamTab, toast, userInfo?.team.permission.hasManagePer]
   );
 
   return (

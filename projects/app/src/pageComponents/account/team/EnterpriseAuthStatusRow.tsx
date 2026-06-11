@@ -1,0 +1,282 @@
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import { Box, Button, Flex, Skeleton, useDisclosure, type BoxProps } from '@chakra-ui/react';
+import dynamic from 'next/dynamic';
+import { useTranslation } from 'next-i18next';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { getEnterpriseAuthStatus } from '@/web/support/user/team/enterpriseAuth/api';
+import {
+  TeamEnterpriseAuthStatusEnum,
+  TeamEnterpriseAuthTaskStatusEnum
+} from '@fastgpt/global/support/user/team/enterpriseAuth/constant';
+import {
+  canOpenEnterpriseAuthAmountStep,
+  shouldShowEnterpriseAuthContactBusinessModal
+} from './utils';
+
+const EnterpriseAuthModal = dynamic(() => import('./EnterpriseAuthModal'), { ssr: false });
+const EnterpriseAuthContactBusinessModal = dynamic(
+  () => import('./EnterpriseAuthContactBusinessModal'),
+  { ssr: false }
+);
+
+type EnterpriseAuthStatusRowProps = BoxProps & {
+  labelStyles?: BoxProps;
+  autoOpen?: boolean;
+  onAutoOpenFinish?: () => void;
+};
+
+const getStatusCopy = ({
+  t,
+  status,
+  taskStatus,
+  verifiedEnterpriseName,
+  hasTask
+}: {
+  t: (key: string, options?: Record<string, any>) => string;
+  status?: `${TeamEnterpriseAuthStatusEnum}`;
+  taskStatus?: `${TeamEnterpriseAuthTaskStatusEnum}`;
+  verifiedEnterpriseName?: string;
+  hasTask?: boolean;
+}) => {
+  if (status === TeamEnterpriseAuthStatusEnum.verified) {
+    return {
+      label: verifiedEnterpriseName || t('account_team:enterprise_auth_verified_label')
+    };
+  }
+
+  if (
+    taskStatus === TeamEnterpriseAuthTaskStatusEnum.starting ||
+    taskStatus === TeamEnterpriseAuthTaskStatusEnum.granting
+  ) {
+    return {
+      label: t('account_team:enterprise_auth_processing_label')
+    };
+  }
+
+  if (hasTask || status === TeamEnterpriseAuthStatusEnum.verifying) {
+    return {
+      label: t('account_team:enterprise_auth_pending_amount_label'),
+      buttonText: t('account_team:enterprise_auth_continue_button')
+    };
+  }
+
+  return {
+    label: t('account_team:enterprise_auth_unverified_label'),
+    buttonText: t('account_team:enterprise_auth_button')
+  };
+};
+
+const EnterpriseAuthStatusRow = ({
+  labelStyles,
+  autoOpen = false,
+  onAutoOpenFinish,
+  ...props
+}: EnterpriseAuthStatusRowProps) => {
+  const { t } = useTranslation();
+  const { feConfigs } = useSystemStore();
+  const { userInfo, initUserInfo } = useUserStore();
+  const { toast } = useToast();
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const {
+    isOpen: isOpenContactBusiness,
+    onOpen: onOpenContactBusiness,
+    onClose: onCloseContactBusiness
+  } = useDisclosure();
+  const autoOpenHandledRef = useRef(false);
+
+  const {
+    data,
+    loading,
+    error,
+    refresh: refreshStatus
+  } = useRequest(getEnterpriseAuthStatus, {
+    manual: false,
+    ready: !!feConfigs?.show_enterprise_auth && !!userInfo?.team?.teamId,
+    refreshDeps: [userInfo?.team?.teamId],
+    errorToast: ''
+  });
+
+  const statusCopy = useMemo(
+    () =>
+      getStatusCopy({
+        t,
+        status: data?.status,
+        taskStatus: data?.currentTask?.status,
+        verifiedEnterpriseName: data?.verifiedEnterpriseName,
+        hasTask: !!data?.currentTask
+      }),
+    [data?.currentTask, data?.status, data?.verifiedEnterpriseName, t]
+  );
+  const needContactBusiness = shouldShowEnterpriseAuthContactBusinessModal({
+    usedTimes: data?.usedTimes,
+    hasCurrentTask: !!data?.currentTask
+  });
+  const canOpenCurrentTask = canOpenEnterpriseAuthAmountStep(data?.currentTask?.status);
+
+  const handleOpen = useCallback(() => {
+    if (data?.status === TeamEnterpriseAuthStatusEnum.verified) return;
+
+    if (!data?.canManage) {
+      toast({
+        title: t('account_team:enterprise_auth_contact_admin_tip'),
+        status: 'warning'
+      });
+      return;
+    }
+    if (needContactBusiness) {
+      onOpenContactBusiness();
+      return;
+    }
+    if (data?.currentTask && !canOpenCurrentTask) {
+      return;
+    }
+    onOpen();
+  }, [
+    canOpenCurrentTask,
+    data?.canManage,
+    data?.currentTask,
+    data?.status,
+    needContactBusiness,
+    onOpen,
+    onOpenContactBusiness,
+    t,
+    toast
+  ]);
+
+  useEffect(() => {
+    if (!autoOpen || autoOpenHandledRef.current) return;
+    if (error) {
+      autoOpenHandledRef.current = true;
+      onAutoOpenFinish?.();
+      return;
+    }
+    if (!feConfigs?.show_enterprise_auth || data?.enabled === false) {
+      autoOpenHandledRef.current = true;
+      onAutoOpenFinish?.();
+      return;
+    }
+    if (loading || !data?.enabled) return;
+
+    autoOpenHandledRef.current = true;
+    if (data.status === TeamEnterpriseAuthStatusEnum.verified) {
+      onAutoOpenFinish?.();
+      return;
+    }
+    if (!data.canManage) {
+      toast({
+        title: t('account_team:enterprise_auth_contact_admin_tip'),
+        status: 'warning'
+      });
+      onAutoOpenFinish?.();
+      return;
+    }
+    if (needContactBusiness) {
+      onOpenContactBusiness();
+      onAutoOpenFinish?.();
+      return;
+    }
+    if (data.currentTask && !canOpenEnterpriseAuthAmountStep(data.currentTask.status)) {
+      onAutoOpenFinish?.();
+      return;
+    }
+
+    window.setTimeout(() => {
+      onOpen();
+      onAutoOpenFinish?.();
+    }, 0);
+  }, [
+    autoOpen,
+    data?.canManage,
+    data?.currentTask,
+    data?.enabled,
+    data?.status,
+    error,
+    feConfigs?.show_enterprise_auth,
+    loading,
+    needContactBusiness,
+    onAutoOpenFinish,
+    onOpen,
+    onOpenContactBusiness,
+    t,
+    toast
+  ]);
+
+  useEffect(() => {
+    if (autoOpen) return;
+    autoOpenHandledRef.current = false;
+  }, [autoOpen]);
+
+  if (!feConfigs?.show_enterprise_auth || data?.enabled === false) return null;
+
+  if (loading && !data) {
+    return <Skeleton mt={4} h={'32px'} borderRadius={'8px'} {...props} />;
+  }
+
+  if (!data?.enabled) return null;
+
+  return (
+    <>
+      <Flex mt={4} alignItems={'center'} minW={0} {...props}>
+        <Box {...labelStyles}>{t('account_team:enterprise_auth_title')}&nbsp;</Box>
+        <Flex flex={'1 1 auto'} minW={0} align={'center'}>
+          <Box
+            flex={'1 1 auto'}
+            minW={0}
+            color={'#383F50'}
+            fontFamily={'"PingFang SC"'}
+            fontSize={'14px'}
+            fontWeight={400}
+            lineHeight={'20px'}
+            letterSpacing={'0.25px'}
+            noOfLines={1}
+          >
+            {statusCopy.label}
+          </Box>
+          {data.status !== TeamEnterpriseAuthStatusEnum.verified && statusCopy.buttonText && (
+            <Button
+              flexShrink={0}
+              ml={3}
+              minW={'39px'}
+              h={'24px'}
+              minH={'24px'}
+              px={'8px'}
+              py={'4px'}
+              borderRadius={'4px'}
+              bg={'primary.600'}
+              boxShadow={'0px 1px 2px rgba(19, 51, 107, 0.05), 0px 0px 1px rgba(19, 51, 107, 0.08)'}
+              color={'white'}
+              fontFamily={'"PingFang SC"'}
+              fontSize={'11px'}
+              fontWeight={500}
+              lineHeight={'16px'}
+              letterSpacing={'0.5px'}
+              _hover={{ bg: 'primary.600' }}
+              _active={{ bg: 'primary.600' }}
+              onClick={handleOpen}
+            >
+              {statusCopy.buttonText}
+            </Button>
+          )}
+        </Flex>
+      </Flex>
+      {isOpen && (
+        <EnterpriseAuthModal
+          defaultStatus={data}
+          onClose={onClose}
+          onSuccess={() => {
+            refreshStatus();
+            initUserInfo();
+          }}
+        />
+      )}
+      {isOpenContactBusiness && (
+        <EnterpriseAuthContactBusinessModal onClose={onCloseContactBusiness} />
+      )}
+    </>
+  );
+};
+
+export default React.memo(EnterpriseAuthStatusRow);

@@ -340,6 +340,9 @@ export const serviceEnv = createEnv({
 
     // ==================== 第三方数据源 ====================
     FEISHU_BASE_URL: UrlSchema.default('https://open.feishu.cn'),
+    ENTERPRISE_AUTH_SERVICE_URL: UrlSchema.optional(),
+    ENTERPRISE_AUTH_SERVICE_API_KEY: z.string().optional(),
+    ENTERPRISE_AUTH_SERVICE_TIMEOUT_MS: IntSchema.default(30000),
     DINGTALK_BASE_URL: UrlSchema.default('https://api.dingtalk.com'),
     DINGTALK_OAPI_BASE_URL: UrlSchema.default('https://oapi.dingtalk.com'),
     YUQUE_DATASET_BASE_URL: UrlSchema.default('https://www.yuque.com')

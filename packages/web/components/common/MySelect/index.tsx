@@ -4,8 +4,7 @@ import React, {
   useMemo,
   useEffect,
   useImperativeHandle,
-  type ForwardedRef,
-  useState
+  type ForwardedRef
 } from 'react';
 import {
   Menu,
@@ -25,6 +24,8 @@ import MyDivider from '../MyDivider';
 import type { useScrollPagination } from '../../../hooks/useScrollPagination';
 import Avatar from '../Avatar';
 import EmptyTip from '../EmptyTip';
+import { useSearchMenu } from './useSearchMenu';
+import type { SelectOption } from './type';
 
 /** 选择组件 Props 类型
  * value: 选中的值
@@ -40,15 +41,8 @@ export type SelectProps<T = any> = Omit<ButtonProps, 'onChange' | 'value'> & {
   valueLabel?: string | React.ReactNode;
   placeholder?: string;
   isSearch?: boolean;
-  list: {
-    alias?: string | React.ReactNode;
-    icon?: string;
-    iconSize?: string;
-    label: string | React.ReactNode;
-    description?: string;
-    value: T;
-    showBorder?: boolean;
-  }[];
+  showAliasInValue?: boolean;
+  list: SelectOption<T>[];
   isLoading?: boolean;
   onChange?: (val: T) => any | Promise<any>;
   ScrollData?: ReturnType<typeof useScrollPagination>['ScrollData'];
@@ -80,6 +74,7 @@ const MySelect = <T = any,>(
     value,
     valueLabel,
     isSearch = false,
+    showAliasInValue = true,
     width = '100%',
     list = [],
     onChange,
@@ -104,27 +99,36 @@ const MySelect = <T = any,>(
   const { isOpen, onOpen: defaultOnOpen, onClose: defaultOnClose } = useDisclosure();
   const selectItem = useMemo(() => list.find((item) => item.value === value), [list, value]);
 
-  const onOpen = () => {
-    defaultOnOpen();
-    customOnOpen?.();
-  };
-
   const onClose = () => {
     defaultOnClose();
     customOnClose?.();
   };
 
-  const [search, setSearch] = useState('');
-  const filterList = useMemo(() => {
-    if (!isSearch || !search) {
-      return list;
-    }
-    return list.filter((item) => {
-      const text = `${item.label?.toString()}${item.alias}${item.value}`;
-      const regx = new RegExp(search, 'gi');
-      return regx.test(text);
-    });
-  }, [list, search, isSearch]);
+  const {
+    search,
+    setSearch,
+    resetSearch,
+    menuMinW,
+    fallbackMenuMinW,
+    handleSearchInputKeyDown,
+    handleSearchInputKeyUp,
+    filterList
+  } = useSearchMenu({
+    isSearch,
+    isOpen,
+    width,
+    list,
+    buttonRef: ButtonRef,
+    searchInputRef: SearchInputRef,
+    onClose,
+    focusButton: () => ButtonRef.current?.focus()
+  });
+
+  const onOpen = () => {
+    resetSearch();
+    defaultOnOpen();
+    customOnOpen?.();
+  };
 
   useImperativeHandle(ref, () => ({
     focus() {
@@ -138,12 +142,8 @@ const MySelect = <T = any,>(
       const menu = MenuListRef.current;
       const selectedItem = SelectedItemRef.current;
       menu.scrollTop = selectedItem.offsetTop - menu.offsetTop - 100;
-
-      if (isSearch) {
-        setSearch('');
-      }
     }
-  }, [isSearch, isOpen]);
+  }, [isOpen]);
 
   const { runAsync: onClickChange, loading } = useRequest((val: T) => onChange?.(val));
 
@@ -250,52 +250,23 @@ const MySelect = <T = any,>(
                 <>{valueLabel}</>
               ) : (
                 <>
-                  {isSearch && isOpen ? (
-                    <Input
-                      ref={SearchInputRef}
-                      autoFocus
-                      variant={'unstyled'}
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      placeholder={
-                        (typeof selectItem?.alias === 'string' ? selectItem?.alias : '') ||
-                        (typeof selectItem?.label === 'string' ? selectItem?.label : placeholder)
-                      }
-                      _placeholder={{
-                        color: 'myGray.500'
-                      }}
-                      size={'sm'}
-                      w={'100%'}
-                      color={'myGray.700'}
-                      onBlur={() => {
-                        setTimeout(() => {
-                          SearchInputRef?.current?.focus();
-                        }, 0);
-                      }}
-                    />
-                  ) : (
-                    <>
-                      {selectItem?.icon && (
-                        <Avatar
-                          mr={2}
-                          src={selectItem.icon as any}
-                          w={selectItem.iconSize ?? '1rem'}
-                        />
-                      )}
-                      {
-                        <Box
-                          noOfLines={1}
-                          {...(!selectItem
-                            ? {
-                                color: 'myGray.500'
-                              }
-                            : {})}
-                        >
-                          {selectItem?.alias || selectItem?.label || placeholder}
-                        </Box>
-                      }
-                    </>
+                  {selectItem?.icon && (
+                    <Avatar mr={2} src={selectItem.icon as any} w={selectItem.iconSize ?? '1rem'} />
                   )}
+                  {
+                    <Box
+                      noOfLines={1}
+                      {...(!selectItem
+                        ? {
+                            color: 'myGray.500'
+                          }
+                        : {})}
+                    >
+                      {(showAliasInValue ? selectItem?.alias : undefined) ||
+                        selectItem?.label ||
+                        placeholder}
+                    </Box>
+                  }
                 </>
               )}
             </Flex>
@@ -305,15 +276,7 @@ const MySelect = <T = any,>(
         <MenuList
           ref={MenuListRef}
           className={props.className}
-          minW={(() => {
-            const w = ButtonRef.current?.clientWidth;
-            if (w) {
-              return `${w}px !important`;
-            }
-            return Array.isArray(width)
-              ? width.map((item) => `${item} !important`)
-              : `${width} !important`;
-          })()}
+          minW={menuMinW ?? fallbackMenuMinW}
           w={'max-content'}
           px={'6px'}
           py={'6px'}
@@ -328,6 +291,30 @@ const MySelect = <T = any,>(
             e.stopPropagation();
           }}
         >
+          {isSearch && (
+            <Box position={'sticky'} top={0} bg={'white'} zIndex={1} pb={2}>
+              <Input
+                ref={SearchInputRef}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={
+                  (showAliasInValue && typeof selectItem?.alias === 'string'
+                    ? selectItem?.alias
+                    : '') ||
+                  (typeof selectItem?.label === 'string' ? selectItem?.label : placeholder)
+                }
+                size={'sm'}
+                w={'100%'}
+                color={'myGray.700'}
+                borderColor={'myGray.200'}
+                _placeholder={{
+                  color: 'myGray.500'
+                }}
+                onKeyDown={handleSearchInputKeyDown}
+                onKeyUp={handleSearchInputKeyUp}
+              />
+            </Box>
+          )}
           {ScrollData ? <ScrollData>{ListRender}</ScrollData> : ListRender}
         </MenuList>
       </Menu>

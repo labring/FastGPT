@@ -73,6 +73,14 @@ export const useInitApp = () => {
 
   const getPathWithoutMarketingParams = () => {
     const filteredQuery = { ...router.query };
+    const hasMarketingParams = MARKETING_PARAMS.some((param) =>
+      Object.prototype.hasOwnProperty.call(filteredQuery, param)
+    );
+
+    if (!hasMarketingParams) {
+      return;
+    }
+
     MARKETING_PARAMS.forEach((param) => {
       delete filteredQuery[param];
     });
@@ -88,7 +96,9 @@ export const useInitApp = () => {
       }
     });
 
-    return `${router.pathname}${newQuery.toString() ? `?${newQuery.toString()}` : ''}`;
+    return `${router.pathname}${newQuery.toString() ? `?${newQuery.toString()}` : ''}${
+      window.location.hash
+    }`;
   };
 
   const initFetch = useMemoizedFn(async () => {
@@ -167,7 +177,9 @@ export const useInitApp = () => {
     }
 
     const newPath = getPathWithoutMarketingParams();
-    router.replace(newPath);
+    if (newPath) {
+      router.replace(newPath);
+    }
   });
 
   return {

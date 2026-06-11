@@ -22,3 +22,13 @@ export type MultipleArraySelectProps = Omit<MultipleSelectProps, 'value'> & {
   value?: any[][];
   onSelect: (val: any[][]) => void;
 };
+
+export type SelectOption<T = any> = {
+  alias?: string | React.ReactNode;
+  icon?: string;
+  iconSize?: string;
+  label: string | React.ReactNode;
+  description?: string;
+  value: T;
+  showBorder?: boolean;
+};

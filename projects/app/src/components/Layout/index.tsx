@@ -16,6 +16,8 @@ import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useCheckCoupon } from './hooks/checkCoupon';
 import HelperBot from './HelperBot';
+import { getEnterpriseAuthStatus } from '@/web/support/user/team/enterpriseAuth/api';
+import { TeamEnterpriseAuthStatusEnum } from '@fastgpt/global/support/user/team/enterpriseAuth/constant';
 
 const Navbar = dynamic(() => import('./navbar'));
 const NavbarPhone = dynamic(() => import('./navbarPhone'));
@@ -30,6 +32,12 @@ const NotSufficientModal = dynamic(() => import('@/components/support/wallet/Not
 const SystemMsgModal = dynamic(() => import('@/components/support/user/inform/SystemMsgModal'), {
   ssr: false
 });
+const EnterpriseAuthNoticeModal = dynamic(
+  () => import('@/components/support/user/inform/EnterpriseAuthNoticeModal'),
+  {
+    ssr: false
+  }
+);
 const ImportantInform = dynamic(() => import('@/components/support/user/inform/ImportantInform'), {
   ssr: false
 });
@@ -88,7 +96,12 @@ const Layout = ({ children }: { children: JSX.Element }) => {
     setShowProModal
   } = useSystemStore();
   const { isPc } = useSystem();
-  const { userInfo, isUpdateNotification, setIsUpdateNotification } = useUserStore();
+  const {
+    userInfo,
+    isUpdateNotification,
+    setIsUpdateNotification,
+    enterpriseAuthNoticeReadTeamIds
+  } = useUserStore();
   const { setUserDefaultLng, setShareDefaultLng } = useI18nLng();
 
   // Auto redeem coupon
@@ -114,6 +127,25 @@ const Layout = ({ children }: { children: JSX.Element }) => {
     feConfigs?.bind_notification_method.length > 0 &&
     !userInfo?.contact &&
     !!userInfo?.team.permission.isOwner;
+  const shouldCheckEnterpriseAuthNotice =
+    router.pathname === '/dashboard/agent' &&
+    !!feConfigs?.show_enterprise_auth &&
+    !!userInfo?.team?.teamId &&
+    (userInfo.team.permission.isOwner || userInfo.team.permission.hasManagePer) &&
+    !enterpriseAuthNoticeReadTeamIds?.includes(userInfo.team.teamId);
+  const { data: enterpriseAuthStatus } = useQuery(
+    ['getEnterpriseAuthNoticeStatus', userInfo?.team?.teamId],
+    getEnterpriseAuthStatus,
+    {
+      enabled: shouldCheckEnterpriseAuthNotice,
+      staleTime: 30000
+    }
+  );
+  const showEnterpriseAuthNotice =
+    shouldCheckEnterpriseAuthNotice &&
+    enterpriseAuthStatus?.enabled !== false &&
+    !!enterpriseAuthStatus?.status &&
+    enterpriseAuthStatus.status !== TeamEnterpriseAuthStatusEnum.verified;
 
   useMount(() => {
     if (router.pathname === '/chat/share') {
@@ -133,13 +165,17 @@ const Layout = ({ children }: { children: JSX.Element }) => {
             status: 'warning',
             title: t('common:llm_model_not_config')
           });
-          router.pathname !== '/account/model' && router.push('/account/model');
+          if (router.pathname !== '/account/model') {
+            router.push('/account/model');
+          }
         } else if (embeddingModelList.length === 0) {
           toast({
             status: 'warning',
             title: t('common:embedding_model_not_config')
           });
-          router.pathname !== '/account/model' && router.push('/account/model');
+          if (router.pathname !== '/account/model') {
+            router.push('/account/model');
+          }
         }
       }
     },
@@ -152,7 +188,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   // Route watch
   useEffect(() => {
     setLastRoute(router.pathname);
-  }, [router.pathname]);
+  }, [router.pathname, setLastRoute]);
 
   return (
     <>
@@ -206,6 +242,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
           <HelperBot />
         </>
       )}
+      {showEnterpriseAuthNotice && <EnterpriseAuthNoticeModal />}
 
       <ManualCopyModal />
       <ActivityAdModal />
