@@ -115,8 +115,6 @@ const OutLink = (props: Props) => {
   const isChatRecordsLoaded = useContextSelector(ChatRecordContext, (v) => v.isChatRecordsLoaded);
   const chatWindowTitle =
     chatBoxData.title?.trim() || t('common:core.chat.New Chat', { defaultValue: '新对话' });
-  const mobileHeaderAppName = props.appName || data?.app?.name || chatBoxData.app.name;
-  const mobileHeaderAppAvatar = props.appAvatar || data?.app?.avatar || chatBoxData.app.avatar;
 
   const initSign = useRef(false);
   const { data, loading } = useRequest(
@@ -151,6 +149,9 @@ const OutLink = (props: Props) => {
       }
     }
   );
+  const mobileHeaderAppName = props.appName || data?.app?.name || chatBoxData.app.name;
+  const mobileHeaderAppAvatar = props.appAvatar || data?.app?.avatar || chatBoxData.app.avatar;
+
   useEffect(() => {
     if (initSign.current === false && data && isChatRecordsLoaded) {
       initSign.current = true;
