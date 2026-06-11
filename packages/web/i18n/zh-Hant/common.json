@@ -371,6 +371,7 @@
   "core.chat.Send Message": "傳送",
   "core.chat.Speaking": "我在聽，請說...",
   "core.chat.Type a message": "輸入問題，按 [Enter] 傳送 / 按 [Ctrl(Alt/Shift) + Enter] 換行",
+  "core.chat.Type a message to app": "傳送訊息給{{appName}}",
   "core.chat.Unpin": "取消釘選",
   "core.chat.error.Chat error": "對話發生錯誤",
   "core.chat.error.Messages empty": "API 內容為空，可能是文字過長",

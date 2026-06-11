@@ -11,13 +11,14 @@ import {
   type SendPromptFnType,
   type StopChatFnResult
 } from '../type';
-import { ChatInputDefaultHeight, textareaMinH } from '../constants';
+import { ChatInputDefaultHeight, ChatTypeEnum, textareaMinH } from '../constants';
 import { useFieldArray, type UseFormReturn } from 'react-hook-form';
 import { ChatBoxContext } from '../Provider';
 import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { documentFileType } from '@fastgpt/global/common/file/constants';
 import FilePreview from '../../components/FilePreview';
 import { useFileUpload } from '../hooks/useFileUpload';
@@ -82,6 +83,10 @@ const ChatInput = ({
   const fileSelectConfig = useContextSelector(ChatBoxContext, (v) => v.fileSelectConfig);
   const dialogTips = useContextSelector(ChatBoxContext, (v) => v.dialogTips);
   const autoTTSResponse = useContextSelector(ChatBoxContext, (v) => v.autoTTSResponse);
+  const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
+  const appName = useContextSelector(ChatItemContext, (v) => v.chatBoxData.app.name);
+  const placeholderAppName =
+    chatType === ChatTypeEnum.home ? 'FastGPT' : appName || 'FastGPT';
 
   const fileCtrl = useFieldArray({
     control,
@@ -174,7 +179,7 @@ const ChatInput = ({
             }}
             placeholder={
               dialogTips ||
-              (isPc ? t('common:core.chat.Type a message') : t('chat:input_placeholder_phone'))
+              t('common:core.chat.Type a message to app', { appName: placeholderAppName })
             }
             resize={'none'}
             rows={1}

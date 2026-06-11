@@ -46,6 +46,7 @@ import ChatWindowHeader from '@/pageComponents/chat/ChatWindow/ChatWindowHeader'
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import ToolMenu from '@/pageComponents/chat/ToolMenu';
 import { mobileChatHeaderIconButtonStyle } from '@/pageComponents/chat/ChatWindow/headerIconButtonStyle';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
@@ -114,6 +115,8 @@ const OutLink = (props: Props) => {
   const isChatRecordsLoaded = useContextSelector(ChatRecordContext, (v) => v.isChatRecordsLoaded);
   const chatWindowTitle =
     chatBoxData.title?.trim() || t('common:core.chat.New Chat', { defaultValue: '新对话' });
+  const mobileHeaderAppName = props.appName || data?.app?.name || chatBoxData.app.name;
+  const mobileHeaderAppAvatar = props.appAvatar || data?.app?.avatar || chatBoxData.app.avatar;
 
   const initSign = useRef(false);
   const { data, loading } = useRequest(
@@ -346,14 +349,33 @@ const OutLink = (props: Props) => {
                         <Box minW="36px" />
                       )}
 
-                      <Flex alignItems="center" minW={0} flex="1" justifyContent="center" px={3}>
+                      <Flex
+                        alignItems="center"
+                        minW={0}
+                        flex="1"
+                        justifyContent="center"
+                        px={3}
+                        gap={2}
+                      >
+                        {!!mobileHeaderAppAvatar && (
+                          <Avatar
+                            src={mobileHeaderAppAvatar}
+                            w="24px"
+                            h="24px"
+                            borderRadius="6px"
+                            flexShrink={0}
+                          />
+                        )}
                         <Box
+                          minW={0}
                           fontSize="16px"
                           fontWeight={500}
                           color="myGray.900"
-                          className="textEllipsis"
+                          overflow="hidden"
+                          whiteSpace="nowrap"
+                          textOverflow="clip"
                         >
-                          {chatWindowTitle}
+                          {mobileHeaderAppName}
                         </Box>
                       </Flex>
 
