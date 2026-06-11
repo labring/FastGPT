@@ -216,7 +216,7 @@ const Header = ({
             rootName={t('common:back')}
             paths={paths}
             showReturnIcon
-            hoverStyle={{ color: 'primary.600' }}
+            hoverStyle={{ bg: 'rgba(50, 136, 250, 0.06)' }}
             onClick={onClickRoute}
             fontSize={'14px'}
           />

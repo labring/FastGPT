@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Box,
   Flex,
@@ -23,11 +23,23 @@ import { useContextSelector } from 'use-context-selector';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import dynamic from 'next/dynamic';
+import { AppRoleList } from '@fastgpt/global/support/permission/app/constant';
+import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
+import {
+  deleteAppCollaborators,
+  getCollaboratorList,
+  postUpdateAppCollaborators
+} from '@/web/core/app/api/collaborator';
+import { type RequireOnlyOne } from '@fastgpt/global/common/type/utils';
+import { changeOwner, resumeInheritPer } from '@/web/core/app/api';
 import { postTransition2Workflow } from '@/web/core/app/api/app';
 import type { SimpleAppSnapshotType } from './useSnapshots';
 import ExportConfigPopover from '@/pageComponents/app/detail/ExportConfigPopover';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import type { Form2WorkflowFnType } from './type';
+
+const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
 
 const AppCard = ({
   appForm,
@@ -45,12 +57,27 @@ const AppCard = ({
   const onSaveApp = useContextSelector(AppContext, (v) => v.onSaveApp);
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const onOpenInfoEdit = useContextSelector(AppContext, (v) => v.onOpenInfoEdit);
-  const onDelApp = useContextSelector(AppContext, (v) => v.onDelApp);
 
   const appId = appDetail._id;
   const { feConfigs } = useSystemStore();
   const [TeamTagsSet, setTeamTagsSet] = useState<AppSchemaType>();
   const [filterSensitiveInfo, setFilterSensitiveInfo] = useState(true);
+
+  // permission
+  const [editPerAppId, setEditPerAppId] = useState<string>();
+  const editPerApp = useMemo(
+    () => (editPerAppId !== undefined ? appDetail : undefined),
+    [editPerAppId, appDetail]
+  );
+  const { runAsync: onResumeInheritPermission } = useRequest(
+    () => {
+      return resumeInheritPer(editPerApp!._id);
+    },
+    {
+      manual: true,
+      errorToast: t('common:permission.Resume InheritPermission Failed')
+    }
+  );
 
   // transition to workflow
   const [transitionCreateNew, setTransitionCreateNew] = useState<boolean>();
@@ -130,10 +157,19 @@ const AppCard = ({
                 }
               />
             </MyTooltip>
-            {appDetail.permission.isOwner && (
-              <>
-                {configToWorkflow ? (
-                  <MyMenu
+            {appDetail.permission.hasManagePer && (
+              <MyTooltip label={t('app:app_detail_permission')}>
+                <IconButton
+                  size={['smSquare', 'mdSquare']}
+                  variant={'whitePrimary'}
+                  icon={<MyIcon name={'key'} w={'16px'} />}
+                  aria-label={'permission'}
+                  onClick={() => setEditPerAppId(appDetail._id)}
+                />
+              </MyTooltip>
+            )}
+            {appDetail.permission.isOwner && configToWorkflow && (
+              <MyMenu
                     size={'xs'}
                     Button={
                       <IconButton
@@ -175,31 +211,9 @@ const AppCard = ({
                               ]
                             : [])
                         ]
-                      },
-                      {
-                        children: [
-                          {
-                            icon: 'delete',
-                            type: 'danger',
-                            label: t('common:Delete'),
-                            onClick: onDelApp
-                          }
-                        ]
                       }
                     ]}
                   />
-                ) : (
-                  <>
-                    <IconButton
-                      variant={'whiteDanger'}
-                      size={'mdSquare'}
-                      icon={<MyIcon name={'delete'} w={'18px'} />}
-                      aria-label={'settings'}
-                      onClick={onDelApp}
-                    />
-                  </>
-                )}
-              </>
             )}
           </HStack>
         </Flex>
@@ -217,6 +231,46 @@ const AppCard = ({
         </Box>
       </Box>
       {TeamTagsSet && <TagsEditModal onClose={() => setTeamTagsSet(undefined)} />}
+      {!!editPerApp && (
+        <ConfigPerModal
+          {...(editPerApp.permission.isOwner && {
+            onChangeOwner: (tmbId: string) =>
+              changeOwner({
+                appId: editPerApp._id,
+                ownerId: tmbId
+              })
+          })}
+          hasParent={false}
+          resumeInheritPermission={onResumeInheritPermission}
+          isInheritPermission={editPerApp.inheritPermission}
+          avatar={editPerApp.avatar}
+          name={editPerApp.name}
+          managePer={{
+            defaultRole: ReadRoleVal,
+            permission: editPerApp.permission,
+            onGetCollaboratorList: () => getCollaboratorList(editPerApp._id),
+            roleList: AppRoleList,
+            onUpdateCollaborators: (props) =>
+              postUpdateAppCollaborators({
+                ...props,
+                appId: editPerApp._id
+              }),
+            onDelOneCollaborator: async (
+              props: RequireOnlyOne<{
+                tmbId?: string;
+                groupId?: string;
+                orgId?: string;
+              }>
+            ) =>
+              deleteAppCollaborators({
+                ...props,
+                appId: editPerApp._id
+              }),
+            refreshDeps: [editPerApp.inheritPermission]
+          }}
+          onClose={() => setEditPerAppId(undefined)}
+        />
+      )}
       {transitionCreateNew !== undefined && (
         <MyModal isOpen title={t('app:transition_to_workflow')} iconSrc="core/app/type/workflow">
           <ModalBody>

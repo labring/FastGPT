@@ -82,14 +82,14 @@ const SkillPageContent = () => {
               />
             </Box>
           ) : (
-            <Box fontSize={'18px'} fontWeight={'bold'}>
+            <Box color={'myGray.900'} fontSize={'20px'} fontWeight={'medium'}>
               Skill
             </Box>
           )}
           <Flex flex={1} />
           <Flex alignItems={'center'} gap={3}>
             <SearchInput
-              w={'250px'}
+              w={'180px'}
               value={searchKey}
               bg={'white'}
               onChange={(e) => setSearchKey(e.target.value)}

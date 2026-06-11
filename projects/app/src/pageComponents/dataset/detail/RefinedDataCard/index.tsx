@@ -694,6 +694,7 @@ const RefinedDataCard = () => {
                           <MyTooltip label={t(isFolded ? 'common:Expand' : 'common:Collapse')}>
                             <Flex
                               alignItems={'center'}
+                              h={'24px'}
                               cursor={'pointer'}
                               borderRadius={'sm'}
                               _hover={{
