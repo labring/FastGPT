@@ -28,11 +28,9 @@ const reloadConfigWatch = () => {
       if (
         change.operationType === 'update' ||
         (change.operationType === 'insert' &&
-          [
-            SystemConfigsTypeEnum.fastgpt,
-            SystemConfigsTypeEnum.fastgptPro,
-            SystemConfigsTypeEnum.license
-          ].includes(change.fullDocument.type))
+          [SystemConfigsTypeEnum.fastgptPro, SystemConfigsTypeEnum.license].includes(
+            change.fullDocument.type
+          ))
       ) {
         await initSystemConfig();
         logger.info('System config refreshed via Mongo change stream');
