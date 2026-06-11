@@ -375,6 +375,7 @@
   "core.chat.Send Message": "发送",
   "core.chat.Speaking": "我在听，请说...",
   "core.chat.Type a message": "发消息给FastGPT",
+  "core.chat.Type a message to app": "发消息给{{appName}}",
   "core.chat.Unpin": "取消置顶",
   "core.chat.error.Chat error": "对话出现异常",
   "core.chat.error.Messages empty": "接口内容为空，可能文本超长了~",

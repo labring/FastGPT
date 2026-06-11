@@ -33,6 +33,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import ToolMenu from '@/pageComponents/chat/ToolMenu';
 import { mobileChatHeaderIconButtonStyle } from './headerIconButtonStyle';
 import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
+import Avatar from '@fastgpt/web/components/common/Avatar';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
@@ -57,6 +58,9 @@ const AppChatWindow = () => {
     isCurrentChatReady && chatBoxData.title?.trim()
       ? chatBoxData.title
       : t('common:core.chat.New Chat', { defaultValue: '新对话' });
+  const mobileHeaderTitle = isCurrentChatReady
+    ? chatBoxData.app.name
+    : t('common:core.chat.New Chat', { defaultValue: '新对话' });
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
@@ -239,8 +243,18 @@ const AppChatWindow = () => {
               onClick={onOpenSlider}
             />
 
-            <Flex alignItems="center" minW={0} flex="1" justifyContent="center" px={3}>
+            <Flex alignItems="center" minW={0} flex="1" justifyContent="center" px={3} gap={2}>
+              {isCurrentChatReady && (
+                <Avatar
+                  src={chatBoxData.app.avatar}
+                  w="24px"
+                  h="24px"
+                  borderRadius="6px"
+                  flexShrink={0}
+                />
+              )}
               <Box
+                minW={0}
                 fontSize="16px"
                 fontWeight={500}
                 color="myGray.900"
@@ -248,7 +262,7 @@ const AppChatWindow = () => {
                 whiteSpace="nowrap"
                 textOverflow="clip"
               >
-                {chatWindowTitle}
+                {mobileHeaderTitle}
               </Box>
             </Flex>
 
