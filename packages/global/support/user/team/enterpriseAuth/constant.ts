@@ -39,6 +39,13 @@ export const EnterpriseAuthPendingTaskStatuses = [
   TeamEnterpriseAuthTaskStatusEnum.amount_failed
 ] as const;
 
+export const EnterpriseAuthLockedTaskStatuses = [
+  TeamEnterpriseAuthTaskStatusEnum.starting,
+  TeamEnterpriseAuthTaskStatusEnum.pending_amount,
+  TeamEnterpriseAuthTaskStatusEnum.amount_failed,
+  TeamEnterpriseAuthTaskStatusEnum.verified
+] as const;
+
 const EnterpriseAuthErrValueSchema = z.enum([
   'enterpriseAuthDisabled',
   'enterpriseAuthServiceNotConfigured',
