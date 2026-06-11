@@ -41,6 +41,40 @@ export const sortStandPlans = (plans: TeamSubSchemaType[]) => {
       standardSubLevelMap[b.currentSubLevel].weight - standardSubLevelMap[a.currentSubLevel].weight
   );
 };
+
+/**
+ * 按套餐等级重新编排标准套餐的生效窗口。
+ *
+ * 最高等级套餐保留当前时间窗口，后续低等级套餐按原有时长依次接到上一档套餐之后。
+ * 只重排未过期套餐，避免历史过期套餐把新发放权益排到过去。
+ */
+export const reComputeStandPlans = async (teamId: string, session: ClientSession) => {
+  const plans = await MongoTeamSub.find({
+    teamId,
+    type: SubTypeEnum.standard,
+    expiredTime: { $gt: new Date() }
+  }).session(session);
+
+  sortStandPlans(plans);
+
+  for (let i = 1; i < plans.length; i++) {
+    const plan = plans[i];
+    const lastPlan = plans[i - 1];
+    const duration = Math.abs(plan.expiredTime.getTime() - plan.startTime.getTime());
+    plan.startTime = lastPlan.expiredTime;
+    plan.expiredTime = new Date(plan.startTime.getTime() + duration);
+  }
+
+  for await (const plan of plans) {
+    await plan.save({ session });
+  }
+};
+
+const isActiveStandardSub = (sub: TeamSubSchemaType, now: Date) =>
+  sub.type === SubTypeEnum.standard &&
+  !dayjs(sub.startTime).isAfter(now) &&
+  dayjs(sub.expiredTime).isAfter(now);
+
 export const buildStandardPlan = (
   standard: TeamSubSchemaType,
   standardConstants: TeamStandardSubPlanItemType
@@ -158,8 +192,30 @@ export const initTeamFreePlan = async ({
   );
 };
 
+const normalizeInitTeamFreePlanResult = (
+  plan: TeamSubSchemaType | TeamSubSchemaType[]
+): TeamSubSchemaType => (Array.isArray(plan) ? plan[0] : plan);
+
+const getStandardPlanConstants = (
+  standard: Pick<TeamSubSchemaType, 'currentSubLevel'> | undefined,
+  standardPlans: ReturnType<typeof getStandardPlansConfig>
+) =>
+  standard?.currentSubLevel && standardPlans
+    ? standardPlans[
+        standard.currentSubLevel === StandardSubLevelEnum.custom
+          ? StandardSubLevelEnum.advanced
+          : standard.currentSubLevel
+      ]
+    : undefined;
+
 // 获取团队标准套餐
-export const getTeamStandPlan = async ({ teamId }: { teamId: string }) => {
+export const getTeamStandPlan = async ({
+  teamId
+}: {
+  teamId: string;
+}): Promise<{
+  [SubTypeEnum.standard]: TeamPlanStandardType | undefined;
+}> => {
   const plans = await MongoTeamSub.find(
     {
       teamId,
@@ -170,19 +226,19 @@ export const getTeamStandPlan = async ({ teamId }: { teamId: string }) => {
       ...readFromSecondary
     }
   ).lean();
-  sortStandPlans(plans);
+  const activeStandardPlans = sortStandPlans(
+    plans.filter((plan) => isActiveStandardSub(plan, new Date()))
+  );
 
   const standardPlans = global.subPlans?.standard;
-  const standard = plans[0];
+  let standard = activeStandardPlans[0];
 
-  const standardConstants =
-    standard.currentSubLevel && standardPlans
-      ? standardPlans[
-          standard.currentSubLevel === StandardSubLevelEnum.custom
-            ? StandardSubLevelEnum.advanced
-            : standard.currentSubLevel
-        ]
-      : undefined;
+  if (!standard) {
+    logger.info('Initializing free standard plan for stand plan query', { teamId });
+    standard = normalizeInitTeamFreePlanResult(await initTeamFreePlan({ teamId }));
+  }
+
+  const standardConstants = getStandardPlanConstants(standard, standardPlans);
 
   return {
     [SubTypeEnum.standard]: standardConstants
@@ -204,11 +260,11 @@ export const getTeamPlanStatus = async ({
   const plans = await MongoTeamSub.find({ teamId }).lean();
 
   /* Get all standardPlans and active standardPlan */
-  const teamStandardPlans = sortStandPlans(
-    plans.filter((plan) => plan.type === SubTypeEnum.standard)
+  const activeStandardPlans = sortStandPlans(
+    plans.filter((plan) => isActiveStandardSub(plan, new Date()))
   );
   /** 数据库里的，用户目前 active 的套餐 */
-  const standardPlan = teamStandardPlans[0];
+  const standardPlan = activeStandardPlans[0];
 
   const extraDatasetSize = plans.filter((plan) => plan.type === SubTypeEnum.extraDatasetSize);
   const extraPoints = plans.filter((plan) => plan.type === SubTypeEnum.extraPoints);
@@ -219,7 +275,7 @@ export const getTeamPlanStatus = async ({
       standardPlan.expiredTime &&
       standardPlan.currentSubLevel === StandardSubLevelEnum.free &&
       dayjs(standardPlan.expiredTime).isBefore(new Date())) ||
-    teamStandardPlans.length === 0
+    activeStandardPlans.length === 0
   ) {
     logger.info('Initializing free standard plan', { teamId });
     await initTeamFreePlan({ teamId });

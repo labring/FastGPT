@@ -1,5 +1,5 @@
 'use client';
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Flex,
@@ -63,6 +63,10 @@ const ConversionModal = dynamic(() => import('@/pageComponents/account/info/Conv
 const UpdatePswModal = dynamic(() => import('@/pageComponents/account/info/UpdatePswModal'));
 const UpdateContact = dynamic(() => import('@/components/support/user/inform/UpdateContactModal'));
 const CommunityModal = dynamic(() => import('@/components/CommunityModal'));
+const EnterpriseAuthStatusRow = dynamic(
+  () => import('@/pageComponents/account/team/EnterpriseAuthStatusRow'),
+  { ssr: false }
+);
 
 const ModelPriceModal = dynamic(() =>
   import('@/components/core/ai/ModelTable').then((mod) => mod.ModelPriceModal)
@@ -111,7 +115,7 @@ const Info = () => {
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content, ['account', 'account_info', 'user']))
+      ...(await serviceSideProps(content, ['account', 'account_info', 'account_team', 'user']))
     }
   };
 }
@@ -120,7 +124,7 @@ export default React.memo(Info);
 
 const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const theme = useTheme();
-  const { feConfigs } = useSystemStore();
+  const { feConfigs, initd } = useSystemStore();
   const { t } = useTranslation();
   const { userInfo, updateUserInfo, teamPlanStatus, initUserInfo } = useUserStore();
   const { reset } = useForm<UserUpdateParams>({
@@ -129,6 +133,8 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
   const standardPlan = teamPlanStatus?.standard;
   const { isPc } = useSystem();
   const { toast } = useToast();
+  const [autoOpenEnterpriseAuth, setAutoOpenEnterpriseAuth] = useState(false);
+  const showEnterpriseAuth = feConfigs?.show_enterprise_auth;
 
   const {
     isOpen: isOpenConversionModal,
@@ -168,6 +174,46 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
     },
     [onClickSave, userInfo]
   );
+
+  /**
+   * 清除 URL 中的 #certification hash，避免刷新页面或重新进入时重复触发企业认证弹窗
+   */
+  const clearCertificationHash = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+  }, []);
+
+  /**
+   * 监听 URL hash 变化，当 hash 为 #certification 且系统初始化完成、开启企业认证功能时，
+   * 延迟设置 autoOpenEnterpriseAuth 为 true，以触发企业认证弹窗。
+   * 若未开启企业认证功能，则直接清除 hash。
+   */
+  const triggerEnterpriseAuthFromHash = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    if (window.location.hash !== '#certification') return;
+    if (!initd) return;
+
+    if (!showEnterpriseAuth) {
+      clearCertificationHash();
+      return;
+    }
+
+    // 使用 setTimeout 确保在 React 渲染周期后执行，避免状态更新冲突
+    window.setTimeout(() => {
+      setAutoOpenEnterpriseAuth(true);
+    }, 0);
+  }, [clearCertificationHash, initd, showEnterpriseAuth]);
+
+  useEffect(() => {
+    // 组件挂载时检查一次 hash
+    triggerEnterpriseAuthFromHash();
+    // 监听 hash 变化事件
+    window.addEventListener('hashchange', triggerEnterpriseAuthFromHash);
+
+    return () => {
+      window.removeEventListener('hashchange', triggerEnterpriseAuthFromHash);
+    };
+  }, [triggerEnterpriseAuthFromHash]);
   const { Component: AvatarUploader, handleFileSelectorOpen } = useUploadAvatar(
     getUploadAvatarPresignedUrl,
     {
@@ -344,6 +390,15 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
             </Flex>
           </Box>
         )}
+
+        <EnterpriseAuthStatusRow
+          labelStyles={labelStyles}
+          autoOpen={autoOpenEnterpriseAuth}
+          onAutoOpenFinish={() => {
+            clearCertificationHash();
+            setAutoOpenEnterpriseAuth(false);
+          }}
+        />
 
         <MyDivider my={6} />
       </Box>

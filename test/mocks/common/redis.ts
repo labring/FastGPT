@@ -21,10 +21,28 @@ const createRedisStorage = () => {
       if (isExpired(key)) return null;
       return storage.get(key) ?? null;
     },
-    set: (key: string, value: any, exMode?: string, exValue?: number, condition?: string) => {
-      if (condition === 'NX' && !isExpired(key) && storage.has(key)) {
+    set: (key: string, value: any, ...args: any[]) => {
+      let exMode: string | undefined;
+      let exValue: number | undefined;
+      let nx = false;
+
+      for (let i = 0; i < args.length; i++) {
+        const arg = String(args[i]).toUpperCase();
+        if (arg === 'NX') {
+          nx = true;
+          continue;
+        }
+        if ((arg === 'EX' || arg === 'PX') && args[i + 1] !== undefined) {
+          exMode = arg;
+          exValue = Number(args[i + 1]);
+          i++;
+        }
+      }
+
+      if (nx && !isExpired(key) && storage.has(key)) {
         return null;
       }
+
       storage.set(key, value);
       // Handle EX (seconds) and PX (milliseconds) options
       if (exMode === 'EX' && typeof exValue === 'number') {
@@ -60,6 +78,27 @@ const createRedisStorage = () => {
     clear: () => {
       storage.clear();
       expiryMap.clear();
+    },
+    eval: (_script: string, numberOfKeys: number, ...args: any[]) => {
+      const keys = args.slice(0, numberOfKeys);
+      const argv = args.slice(numberOfKeys);
+      const key = keys[0];
+      const expectedValue = argv[0];
+
+      if (isExpired(key) || storage.get(key) !== expectedValue) {
+        return 0;
+      }
+
+      const ttl = argv[1];
+      const ttlMilliseconds = Number(ttl);
+      if (ttl !== undefined && Number.isFinite(ttlMilliseconds)) {
+        expiryMap.set(key, Date.now() + ttlMilliseconds);
+        return 1;
+      }
+
+      storage.delete(key);
+      expiryMap.delete(key);
+      return 1;
     }
   };
 };
@@ -83,9 +122,8 @@ const createSharedMockRedisClient = () => {
     get: vi.fn().mockImplementation((key: string) => Promise.resolve(globalRedisStorage.get(key))),
     set: vi
       .fn()
-      .mockImplementation(
-        (key: string, value: any, exMode?: string, exValue?: number, condition?: string) =>
-          Promise.resolve(globalRedisStorage.set(key, value, exMode, exValue, condition))
+      .mockImplementation((key: string, value: any, ...args: any[]) =>
+        Promise.resolve(globalRedisStorage.set(key, value, ...args))
       ),
     del: vi
       .fn()
@@ -99,15 +137,6 @@ const createSharedMockRedisClient = () => {
       .fn()
       .mockImplementation((key: string, milliseconds: number) =>
         Promise.resolve(globalRedisStorage.pexpire(key, milliseconds))
-      ),
-    eval: vi
-      .fn()
-      .mockImplementation(
-        (_script: string, _keyCount: number, key: string, token: string, ttl?: number) => {
-          if (globalRedisStorage.get(key) !== token) return Promise.resolve(0);
-          if (typeof ttl === 'number') return Promise.resolve(globalRedisStorage.pexpire(key, ttl));
-          return Promise.resolve(globalRedisStorage.del(key));
-        }
       ),
     keys: vi.fn().mockResolvedValue([]),
     scan: vi.fn().mockImplementation((cursor) => {
@@ -142,6 +171,11 @@ const createSharedMockRedisClient = () => {
       globalRedisStorage.clear();
       return Promise.resolve('OK');
     }),
+    eval: vi
+      .fn()
+      .mockImplementation((script: string, numberOfKeys: number, ...args: any[]) =>
+        Promise.resolve(globalRedisStorage.eval(script, numberOfKeys, ...args))
+      ),
 
     // List operations
     lpush: vi.fn().mockResolvedValue(1),
