@@ -22,6 +22,7 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { deleteDatasetData } from '@/service/core/dataset/data/controller';
+import { createDataDrafts } from '@fastgpt/service/core/dataset/data/controller';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { UserError } from '@fastgpt/global/common/error/utils';
 
@@ -138,23 +139,45 @@ async function handler(req: ApiRequestProps): Promise<PushDataResponseType> {
         billSource: UsageSourceEnum.training,
         vectorModelId: getEmbeddingModelById(collection.dataset.vectorModelId)?.id,
         agentModelId: getLLMModelById(collection.dataset.agentModelId)?.id,
-        vllmModelId: getVlmModelById(collection.dataset.vlmModelId)?.id,
+        vlmModelId: getVlmModelById(collection.dataset.vlmModelId)?.id,
         session
       });
       return newUsageId;
     })();
 
-    return pushDataListToTrainingQueue({
-      ...body,
-      session,
-      billId: traingUsageId,
-      mode, // Use collection's training mode
+    // Pre-create Data drafts so Training records carry dataId → generateVector uses UPDATE path
+    const draftResults = await createDataDrafts({
+      items: data.map((item) => ({
+        ...(item.id && { id: item.id }),
+        q: item.q || '',
+        a: item.a || '',
+        imageId: item.imageId,
+        chunkIndex: item.chunkIndex ?? 0,
+        metadata: item.metadata
+      })),
       teamId,
       tmbId,
       datasetId: collection.datasetId,
+      collectionId,
+      session
+    });
+    draftResults.forEach((result, i) => {
+      data[i].id = String(result._id);
+    });
+
+    return pushDataListToTrainingQueue({
+      data,
+      session,
+      billId: traingUsageId,
+      mode,
+      teamId,
+      tmbId,
+      datasetId: collection.datasetId,
+      collectionId,
       vectorModelId: collection.dataset.vectorModelId,
       agentModelId: collection.dataset.agentModelId,
-      vlmModelId: collection.dataset.vlmModelId
+      vlmModelId: collection.dataset.vlmModelId,
+      ...(body.indexSize && { indexSize: body.indexSize })
     });
   });
 }

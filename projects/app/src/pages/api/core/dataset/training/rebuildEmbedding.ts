@@ -58,7 +58,7 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     billSource: UsageSourceEnum.training,
     vectorModelId: dataset.vectorModelId,
     agentModelId: dataset.agentModelId,
-    vllmModelId: dataset.vlmModelId
+    vlmModelId: dataset.vlmModelId
   });
 
   // update vector model and dataset.data rebuild field

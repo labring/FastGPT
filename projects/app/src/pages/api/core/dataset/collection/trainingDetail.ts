@@ -141,7 +141,9 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetai
     queuedCounts,
     trainingCounts,
     errorCounts,
-    trainedCount
+    trainedCount,
+    parsingCompleteTime: collection.parsingCompleteTime,
+    indexingCompleteTime: collection.indexingCompleteTime
   });
 }
 

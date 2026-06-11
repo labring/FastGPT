@@ -14,7 +14,7 @@ import { parsePiAgentSystemPrompt } from '../sub/plan/prompt';
 import { formatFileInput } from '../sub/file/utils';
 import { normalizeSkillIds } from '@fastgpt/global/core/app/formEdit/type';
 import { systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
-import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { i18nT, parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { getSubapps } from '../utils';
 import { createCapabilityToolCallHandler, type AgentCapability } from '../capability/type';
 import { createSandboxSkillsCapability } from '../capability/sandboxSkills';
@@ -28,10 +28,11 @@ import type { DispatchAgentModuleProps } from '..';
 import { resolveDatasetParams } from '../resolveDatasetParams';
 import { SANDBOX_SYSTEM_PROMPT } from '@fastgpt/global/core/ai/sandbox/constants';
 import { hashStr, getNanoid } from '@fastgpt/global/common/string/tools';
+import { getLLMModelById } from '../../../../../ai/model';
+import { formatModelChars2Points } from '../../../../../../support/wallet/usage/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
-import { i18nT } from '../../../../../../../global/common/i18n/utils';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -509,6 +510,57 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
     await agent.prompt(formatUserChatInput);
     clearInterval(stopPoller);
     getLogger(LogCategories.MODULE.AI.AGENT).debug(`[piAgent] Agent completed`);
+
+    // Record LLM usage from pi-agent-core assistant messages.
+    // pi-agent-core manages the LLM loop internally, so we extract token usage
+    // from AssistantMessage objects stored in agent.state.messages after completion.
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
+    for (const msg of agent.state.messages) {
+      if (msg.role === 'assistant' && 'usage' in msg) {
+        const assistantMsg = msg as import('@mariozechner/pi-ai').AssistantMessage;
+        if (
+          assistantMsg.stopReason !== 'error' &&
+          assistantMsg.stopReason !== 'aborted' &&
+          assistantMsg.usage
+        ) {
+          totalInputTokens += assistantMsg.usage.input;
+          totalOutputTokens += assistantMsg.usage.output;
+        }
+      }
+    }
+
+    if ((totalInputTokens > 0 || totalOutputTokens > 0) && usagePush) {
+      const modelData = getLLMModelById(modelId);
+      const totalPoints = props.externalProvider?.openaiAccount?.key
+        ? 0
+        : formatModelChars2Points({
+            modelId,
+            inputTokens: totalInputTokens,
+            outputTokens: totalOutputTokens
+          }).totalPoints;
+
+      usagePush([
+        {
+          moduleName: i18nT('account_usage:agent_call'),
+          modelId: modelData?.id,
+          totalPoints,
+          inputTokens: totalInputTokens,
+          outputTokens: totalOutputTokens
+        }
+      ]);
+
+      nodeResponses.push({
+        nodeId,
+        id: nodeId,
+        moduleType: FlowNodeTypeEnum.agent,
+        moduleName: i18nT('account_usage:agent_call'),
+        modelId: modelData?.id,
+        inputTokens: totalInputTokens,
+        outputTokens: totalOutputTokens,
+        totalPoints
+      });
+    }
 
     // Surface API errors that pi-agent-core stores instead of throwing
     if (agent.state.errorMessage) {

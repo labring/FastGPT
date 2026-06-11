@@ -37,55 +37,34 @@ const MyNumberInput = (props: Props) => {
     <NumberInput
       {...restProps}
       onBlur={(e) => {
-        const numE = e.target.value === '' ? '' : Number(e.target.value);
+        const numE = e.target.value === '' ? NaN : Number(e.target.value);
         if (onBlur) {
-          if (numE === '') {
-            // @ts-ignore
-            onBlur('');
-          } else {
-            onBlur(numE);
-          }
+          onBlur(numE);
         }
         if (onChange) {
-          if (numE === '') {
-            // @ts-ignore
-            onChange('');
-          } else {
-            onChange(numE);
-          }
+          onChange(numE);
         }
         if (register && name) {
-          const event = {
+          register(name).onBlur({
             target: {
               name,
-              value: numE,
-              valueAsNumber: numE === '' ? undefined : numE
+              value: numE
             }
-          };
-          register(name).onBlur(event);
+          });
         }
       }}
       onChange={(e) => {
-        const numE = e === '' ? '' : Number(e);
+        const numE = e === '' ? NaN : Number(e);
         if (onChange) {
-          if (numE === '') {
-            // @ts-ignore
-            onChange('');
-          } else {
-            // @ts-ignore
-            onChange(numE);
-          }
+          onChange(numE);
         }
         if (register && name) {
-          const event = {
+          register(name).onChange({
             target: {
               name,
-              value: numE,
-              valueAsNumber: numE === '' ? undefined : numE
+              value: numE
             }
-          };
-
-          register(name).onChange(event);
+          });
         }
       }}
     >

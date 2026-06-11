@@ -42,7 +42,8 @@ import React from 'react';
 enum TrainingStatus {
   NotStart = 'NotStart',
   Queued = 'Queued', // wait count>0
-  Running = 'Running', // wait count=0; training count>0.
+  Parsing = 'Parsing', // parse is running
+  Indexing = 'Indexing', // chunk/vector is running
   Ready = 'Ready',
   Error = 'Error'
 }
@@ -75,13 +76,21 @@ const ProgressView = ({
 
     const isContentParsing = trainingDetail.trainingCounts.parse > 0;
 
-    const getTrainingStatus = ({ errorCount }: { errorCount: number }) => {
-      if (isContentParsing) return TrainingStatus.NotStart;
+    const getTrainingStatus = ({
+      errorCount,
+      mode
+    }: {
+      errorCount: number;
+      mode: TrainingModeEnum;
+    }) => {
+      if (isContentParsing) {
+        return mode === TrainingModeEnum.parse ? TrainingStatus.Parsing : TrainingStatus.NotStart;
+      }
       if (isReady) return TrainingStatus.Ready;
       if (errorCount > 0) {
         return TrainingStatus.Error;
       }
-      return TrainingStatus.Running;
+      return TrainingStatus.Indexing;
     };
 
     // 只显示排队和处理中的数量
@@ -113,7 +122,8 @@ const ProgressView = ({
               label: t(TrainingProcess.parsing.label),
               statusText: getStatusText(TrainingModeEnum.parse),
               status: getTrainingStatus({
-                errorCount: trainingDetail.errorCounts.parse
+                errorCount: trainingDetail.errorCounts.parse,
+                mode: TrainingModeEnum.parse
               }),
               errorCount: trainingDetail.errorCounts.parse
             }
@@ -126,7 +136,8 @@ const ProgressView = ({
               label: t(TrainingProcess.parseImage.label),
               statusText: getStatusText(TrainingModeEnum.imageParse),
               status: getTrainingStatus({
-                errorCount: trainingDetail.errorCounts.imageParse
+                errorCount: trainingDetail.errorCounts.imageParse,
+                mode: TrainingModeEnum.imageParse
               })
             }
           ]
@@ -137,7 +148,8 @@ const ProgressView = ({
               label: t(TrainingProcess.getQA.label),
               statusText: getStatusText(TrainingModeEnum.qa),
               status: getTrainingStatus({
-                errorCount: trainingDetail.errorCounts.qa
+                errorCount: trainingDetail.errorCounts.qa,
+                mode: TrainingModeEnum.qa
               }),
               errorCount: trainingDetail.errorCounts.qa
             }
@@ -150,7 +162,8 @@ const ProgressView = ({
               label: t(TrainingProcess.small2bigIndex.label),
               statusText: getStatusText(TrainingModeEnum.small2Big),
               status: getTrainingStatus({
-                errorCount: trainingDetail.errorCounts.small2Big
+                errorCount: trainingDetail.errorCounts.small2Big,
+                mode: TrainingModeEnum.small2Big
               })
             }
           ]
@@ -162,7 +175,8 @@ const ProgressView = ({
               label: t(TrainingProcess.imageIndex.label),
               statusText: getStatusText(TrainingModeEnum.image),
               status: getTrainingStatus({
-                errorCount: trainingDetail.errorCounts.image
+                errorCount: trainingDetail.errorCounts.image,
+                mode: TrainingModeEnum.image
               })
             }
           ]
@@ -174,7 +188,8 @@ const ProgressView = ({
               label: t(TrainingProcess.autoIndex.label),
               statusText: getStatusText(TrainingModeEnum.auto),
               status: getTrainingStatus({
-                errorCount: trainingDetail.errorCounts.auto
+                errorCount: trainingDetail.errorCounts.auto,
+                mode: TrainingModeEnum.auto
               })
             }
           ]
@@ -184,7 +199,8 @@ const ProgressView = ({
         label: t(TrainingProcess.vectorizing.label),
         statusText: getStatusText(TrainingModeEnum.chunk),
         status: getTrainingStatus({
-          errorCount: trainingDetail.errorCounts.chunk
+          errorCount: trainingDetail.errorCounts.chunk,
+          mode: TrainingModeEnum.chunk
         })
       },
       ...(trainingDetail?.advancedTraining.hypeIndexes
@@ -194,7 +210,8 @@ const ProgressView = ({
               label: t(TrainingProcess.hypeIndex.label),
               statusText: getStatusText(TrainingModeEnum.hype),
               status: getTrainingStatus({
-                errorCount: trainingDetail.errorCounts.hype
+                errorCount: trainingDetail.errorCounts.hype,
+                mode: TrainingModeEnum.hype
               })
             }
           ]
@@ -239,7 +256,8 @@ const ProgressView = ({
             display={'flex'}
             alignItems={'center'}
             justifyContent={'center'}
-            {...((item.status === TrainingStatus.Running ||
+            {...((item.status === TrainingStatus.Parsing ||
+              item.status === TrainingStatus.Indexing ||
               item.status === TrainingStatus.Error) && {
               bg: 'primary.600',
               borderColor: 'primary.600',
@@ -271,7 +289,7 @@ const ProgressView = ({
             alignItems={'center'}
             w={'full'}
             bg={
-              item.status === TrainingStatus.Running
+              item.status === TrainingStatus.Parsing || item.status === TrainingStatus.Indexing
                 ? 'primary.50'
                 : item.status === TrainingStatus.Error
                   ? 'red.50'

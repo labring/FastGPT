@@ -13,12 +13,59 @@ import { getModelById } from '../../../core/ai/model';
 import { MongoUsageItem } from './usageItemSchema';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { getLogger, LogCategories } from '../../../common/logger';
+import { isProVersion } from '../../../common/system/constants';
 
 const logger = getLogger(LogCategories.MODULE.WALLET.USAGE);
 
 export async function createUsage(data: CreateUsageProps) {
   try {
-    return await global.createUsageHandler(data);
+    // Aggregate inputTokens/outputTokens from list items when not provided at top level.
+    // Many callers only pass tokens inside list items, but the usages collection stores
+    // them as top-level fields (queried by the frontend usage table).
+    const usageData = { ...data };
+    if (
+      usageData.inputTokens === undefined &&
+      usageData.outputTokens === undefined &&
+      usageData.list?.length
+    ) {
+      usageData.inputTokens = usageData.list.reduce(
+        (sum, item) => sum + (item.inputTokens || 0),
+        0
+      );
+      usageData.outputTokens = usageData.list.reduce(
+        (sum, item) => sum + (item.outputTokens || 0),
+        0
+      );
+    }
+
+    if (isProVersion()) {
+      return await global.createUsageHandler(usageData);
+    }
+
+    // Open-source: write directly to MongoDB
+    const { list, ...doc } = usageData;
+    const [{ _id: usageId }] = await MongoUsage.create([doc], { ordered: true });
+
+    if (list?.length) {
+      await MongoUsageItem.create(
+        list.map((item) => ({
+          teamId: usageData.teamId,
+          usageId,
+          name: item.moduleName,
+          amount: item.amount,
+          modelId: item.modelId,
+          inputTokens: item.inputTokens,
+          outputTokens: item.outputTokens,
+          charsLength: item.charsLength,
+          duration: item.duration,
+          pages: item.pages,
+          count: item.count
+        })),
+        { ordered: true }
+      );
+    }
+
+    return String(usageId);
   } catch (error) {
     logger.error('Failed to create usage', { error });
   }
@@ -173,7 +220,7 @@ export const createTrainingUsage = async ({
   billSource,
   vectorModelId,
   agentModelId,
-  vllmModelId,
+  vlmModelId,
   rerankModelId,
   session
 }: {
@@ -183,7 +230,7 @@ export const createTrainingUsage = async ({
   billSource: UsageSourceEnum;
   vectorModelId: string;
   agentModelId?: string;
-  vllmModelId?: string;
+  vlmModelId?: string;
   rerankModelId?: string;
   session?: ClientSession;
 }) => {
@@ -245,14 +292,14 @@ export const createTrainingUsage = async ({
               }
             ]
           : []),
-        ...(vllmModelId
+        ...(vlmModelId
           ? [
               {
                 teamId,
                 usageId: result._id,
                 itemType: UsageItemTypeEnum.training_imageIndex,
                 name: i18nT('account_usage:image_index'),
-                modelId: vllmModelId,
+                modelId: vlmModelId,
                 amount: 0,
                 inputTokens: 0,
                 outputTokens: 0
@@ -262,7 +309,7 @@ export const createTrainingUsage = async ({
                 usageId: result._id,
                 itemType: UsageItemTypeEnum.training_imageParse,
                 name: i18nT('account_usage:image_parse'),
-                modelId: vllmModelId,
+                modelId: vlmModelId,
                 amount: 0,
                 inputTokens: 0,
                 outputTokens: 0

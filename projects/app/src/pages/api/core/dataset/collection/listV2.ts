@@ -49,6 +49,7 @@ function getFileStatus(item: {
   tableSchemaExist?: boolean; // 数据库表是否存在（仅数据库类型知识库）
   hasActive?: boolean; // 是否有训练任务在近10分钟内被队列 worker 拉取（lockTime > now-10min）
   allParse?: boolean; // 是否所有训练记录都是 parse 模式（用于区分 parse 前排队 vs parse 后排队）
+  parseStartTime?: Date; // 持久化标记：parse 任务创建时设置，用于判断处理是否已启动
 }): CollectionStatusEnum {
   // 不存在状态：数据库知识库的表被删除
   if (item.tableSchemaExist === false) {
@@ -58,12 +59,17 @@ function getFileStatus(item: {
     return CollectionStatusEnum.error;
   }
   if (item.trainingAmount > 0) {
-    // 训练任务全部未被 worker 拉取 且 全部是 parse 模式 → 排队中（parse 之前）
-    if (!item.hasActive && item.allParse) {
+    // parseStartTime 是持久化标记，在 Worker 首次拉取任务时通过 { $exists: false } 原子设置。
+    // 一旦设置就不会因训练记录 deleteOne 而丢失，因此无需再依赖 hasActive 瞬态聚合值。
+    if (item.allParse && !item.parseStartTime) {
       return CollectionStatusEnum.queued;
     }
-    // 有任务正在执行 或 parse 已完成（已有 chunk 等后续任务）→ 处理中
-    return CollectionStatusEnum.training;
+    // 全部是 parse 模式 → 解析中（parseStartTime 已设置，或 worker 正在活跃处理）
+    if (item.allParse) {
+      return CollectionStatusEnum.parsing;
+    }
+    // 存在非 parse 模式任务（chunk/qa 等）→ 索引中
+    return CollectionStatusEnum.indexing;
   }
   // 没有训练任务时，无论是否有数据，都表示训练已完成
   // - 有数据：正常完成
@@ -90,6 +96,7 @@ type CollectionCacheItem = {
   _id: string;
   parentId: string | null;
   type: string;
+  parseStartTime?: Date;
   tableSchema?: { exist?: boolean };
 };
 
@@ -97,18 +104,19 @@ type CollectionCacheItem = {
 function getChildCollectionIdsFromCache(
   allCollections: CollectionCacheItem[],
   parentId: string
-): { id: Types.ObjectId; tableSchemaExist?: boolean }[] {
+): { id: Types.ObjectId; parseStartTime?: Date; tableSchemaExist?: boolean }[] {
   function findDescendantFileIds(
     pid: string
-  ): { id: Types.ObjectId; tableSchemaExist?: boolean }[] {
+  ): { id: Types.ObjectId; parseStartTime?: Date; tableSchemaExist?: boolean }[] {
     const children = allCollections.filter((c) => String(c.parentId) === pid);
-    const result: { id: Types.ObjectId; tableSchemaExist?: boolean }[] = [];
+    const result: { id: Types.ObjectId; parseStartTime?: Date; tableSchemaExist?: boolean }[] = [];
     for (const child of children) {
       if (child.type === DatasetCollectionTypeEnum.folder) {
         result.push(...findDescendantFileIds(String(child._id)));
       } else {
         result.push({
           id: new Types.ObjectId(String(child._id)),
+          parseStartTime: child.parseStartTime,
           tableSchemaExist: child.tableSchema?.exist
         });
       }
@@ -126,13 +134,14 @@ async function preloadAllCollections(
 ): Promise<CollectionCacheItem[]> {
   const collections = await MongoDatasetCollection.find(
     { teamId, datasetId, deleteTime: null },
-    { _id: 1, parentId: 1, type: 1, 'tableSchema.exist': 1 }
+    { _id: 1, parentId: 1, type: 1, parseStartTime: 1, 'tableSchema.exist': 1 }
   ).lean();
 
   return collections.map((c) => ({
     _id: String(c._id),
     parentId: c.parentId ? String(c.parentId) : null,
     type: c.type,
+    parseStartTime: c.parseStartTime,
     tableSchema: c.tableSchema
   }));
 }
@@ -153,10 +162,12 @@ async function computeFolderMatchingStatuses(
 
   const childIds = childItems.map((item) => item.id);
 
-  // 创建 tableSchemaExist 映射
+  // 创建 tableSchemaExist 和 parseStartTime 映射
   const tableSchemaExistMap = new Map<string, boolean | undefined>();
+  const parseStartTimeMap = new Map<string, Date | undefined>();
   childItems.forEach((item) => {
     tableSchemaExistMap.set(String(item.id), item.tableSchemaExist);
+    parseStartTimeMap.set(String(item.id), item.parseStartTime);
   });
 
   const [trainingResult, dataResult] = await Promise.all([
@@ -218,6 +229,7 @@ async function computeFolderMatchingStatuses(
     const training = trainingMap.get(idStr);
     const data = dataMap.get(idStr);
     const tableSchemaExist = tableSchemaExistMap.get(idStr);
+    const childParseStartTime = parseStartTimeMap.get(idStr);
 
     return getFileStatus({
       dataAmount: data?.count || 0,
@@ -225,6 +237,7 @@ async function computeFolderMatchingStatuses(
       hasError: training?.hasError || false,
       hasActive: training?.hasActive || false,
       allParse: training?.allParse || false,
+      parseStartTime: childParseStartTime,
       tableSchemaExist
     });
   });
@@ -418,6 +431,7 @@ async function handler(
     externalFileId: 1,
     inheritPermission: 1,
     permissionEffectScope: 1,
+    parseStartTime: 1,
     ...(isDatabaseDataset ? { tableSchema: 1 } : {}),
     ...(isStructureDocument ? { metadata: 1 } : {})
   };
@@ -452,13 +466,15 @@ async function handler(
               tags: item.tags
             }),
             dataAmount: 0,
+            processedCount: 0,
+            remainingCount: 0,
             indexAmount: 0,
             trainingAmount: 0,
             hasError: false,
             status:
               item.type === DatasetCollectionTypeEnum.folder
                 ? CollectionStatusEnum.ready
-                : CollectionStatusEnum.training,
+                : CollectionStatusEnum.queued,
             permission,
             ...(isDatabaseDataset && item.tableSchema
               ? { tableSchemaDescription: item.tableSchema.description }
@@ -499,13 +515,15 @@ async function handler(
             tags: item.tags
           }),
           dataAmount: 0,
+          processedCount: 0,
+          remainingCount: 0,
           indexAmount: 0,
           trainingAmount: 0,
           hasError: false,
           status:
             item.type === DatasetCollectionTypeEnum.folder
               ? CollectionStatusEnum.ready
-              : CollectionStatusEnum.training,
+              : CollectionStatusEnum.queued,
           permission: permissionsMap.get(String(item._id)) ?? parentFolderPermission,
           ...(isDatabaseDataset && item.tableSchema
             ? { tableSchemaDescription: item.tableSchema.description }
@@ -617,7 +635,7 @@ async function handleFieldSort({
     // 聚合数据量（仅分页后的数据）
     const [trainingAmountResult, dataAmountResult]: [
       { _id: string; count: number; hasError: boolean; hasActive: boolean; allParse: boolean }[],
-      { _id: string; count: number }[]
+      { _id: string; count: number; processedCount: number; remainingCount: number }[]
     ] = await Promise.all([
       MongoDatasetTraining.aggregate(
         [
@@ -654,7 +672,13 @@ async function handleFieldSort({
           {
             $group: {
               _id: '$collectionId',
-              count: { $sum: 1 }
+              count: { $sum: 1 },
+              processedCount: {
+                $sum: { $cond: [{ $ifNull: ['$indexingCompleteTime', false] }, 1, 0] }
+              },
+              remainingCount: {
+                $sum: { $cond: [{ $ifNull: ['$indexingCompleteTime', false] }, 0, 1] }
+              }
             }
           }
         ],
@@ -707,6 +731,8 @@ async function handleFieldSort({
 
       const trainingAmount = training?.count || 0;
       const dataAmount = data?.count || 0;
+      const processedCount = data?.processedCount || 0;
+      const remainingCount = data?.remainingCount || 0;
       const hasError = training?.hasError || false;
       const hasActive = training?.hasActive || false;
       const allParse = training?.allParse || false;
@@ -720,6 +746,8 @@ async function handleFieldSort({
           tags: tagResults[index] as any,
           trainingAmount,
           dataAmount,
+          processedCount,
+          remainingCount,
           hasError,
           matchingStatuses: Array.from(matchingStatuses),
           permission,
@@ -737,6 +765,7 @@ async function handleFieldSort({
           hasError,
           hasActive,
           allParse,
+          parseStartTime: item.parseStartTime,
           tableSchemaExist: item.tableSchema?.exist
         });
         return {
@@ -744,6 +773,8 @@ async function handleFieldSort({
           tags: tagResults[index] as any,
           trainingAmount,
           dataAmount,
+          processedCount,
+          remainingCount,
           hasError,
           status: fileStatus,
           permission,
@@ -791,7 +822,7 @@ async function handleFieldSort({
   // 4. 聚合数据量（仅分页后的数据）
   const [trainingAmountResult, dataAmountResult]: [
     { _id: string; count: number; hasError: boolean; hasActive: boolean; allParse: boolean }[],
-    { _id: string; count: number }[]
+    { _id: string; count: number; processedCount: number; remainingCount: number }[]
   ] = await Promise.all([
     MongoDatasetTraining.aggregate(
       [
@@ -828,7 +859,13 @@ async function handleFieldSort({
         {
           $group: {
             _id: '$collectionId',
-            count: { $sum: 1 }
+            count: { $sum: 1 },
+            processedCount: {
+              $sum: { $cond: [{ $ifNull: ['$indexingCompleteTime', false] }, 1, 0] }
+            },
+            remainingCount: {
+              $sum: { $cond: [{ $ifNull: ['$indexingCompleteTime', false] }, 0, 1] }
+            }
           }
         }
       ],
@@ -888,6 +925,8 @@ async function handleFieldSort({
 
     const trainingAmount = training?.count || 0;
     const dataAmount = data?.count || 0;
+    const processedCount = data?.processedCount || 0;
+    const remainingCount = data?.remainingCount || 0;
     const hasError = training?.hasError || false;
     const hasActive = training?.hasActive || false;
     const allParse = training?.allParse || false;
@@ -903,6 +942,8 @@ async function handleFieldSort({
         tags: tagResults[index] as any,
         trainingAmount,
         dataAmount,
+        processedCount,
+        remainingCount,
         hasError,
         matchingStatuses: Array.from(matchingStatuses),
         permission: itemPermission,
@@ -920,6 +961,7 @@ async function handleFieldSort({
         hasError,
         hasActive,
         allParse,
+        parseStartTime: item.parseStartTime,
         tableSchemaExist: item.tableSchema?.exist
       });
       return {
@@ -927,6 +969,8 @@ async function handleFieldSort({
         tags: tagResults[index] as any,
         trainingAmount,
         dataAmount,
+        processedCount,
+        remainingCount,
         hasError,
         status: fileStatus,
         permission: itemPermission,
@@ -1060,7 +1104,18 @@ async function handleDataAmountSortOrStatusFilter({
               }
             }
           },
-          { $count: 'count' }
+          {
+            $group: {
+              _id: null,
+              count: { $sum: 1 },
+              processedCount: {
+                $sum: { $cond: [{ $ifNull: ['$indexingCompleteTime', false] }, 1, 0] }
+              },
+              remainingCount: {
+                $sum: { $cond: [{ $ifNull: ['$indexingCompleteTime', false] }, 0, 1] }
+              }
+            }
+          }
         ],
         as: 'dataInfo'
       }
@@ -1071,6 +1126,8 @@ async function handleDataAmountSortOrStatusFilter({
       $addFields: {
         trainingAmount: { $ifNull: [{ $arrayElemAt: ['$trainingInfo.count', 0] }, 0] },
         dataAmount: { $ifNull: [{ $arrayElemAt: ['$dataInfo.count', 0] }, 0] },
+        processedCount: { $ifNull: [{ $arrayElemAt: ['$dataInfo.processedCount', 0] }, 0] },
+        remainingCount: { $ifNull: [{ $arrayElemAt: ['$dataInfo.remainingCount', 0] }, 0] },
         hasError: { $ifNull: [{ $arrayElemAt: ['$trainingInfo.hasError', 0] }, false] },
         hasActive: { $ifNull: [{ $arrayElemAt: ['$trainingInfo.hasActive', 0] }, false] },
         allParse: { $ifNull: [{ $arrayElemAt: ['$trainingInfo.allParse', 0] }, false] }
@@ -1098,10 +1155,19 @@ async function handleDataAmountSortOrStatusFilter({
                         then: {
                           $cond: {
                             if: {
-                              $and: [{ $eq: ['$hasActive', false] }, { $eq: ['$allParse', true] }]
+                              $and: [
+                                { $eq: ['$allParse', true] },
+                                { $not: { $ifNull: ['$parseStartTime', false] } }
+                              ]
                             },
                             then: CollectionStatusEnum.queued,
-                            else: CollectionStatusEnum.training
+                            else: {
+                              $cond: {
+                                if: { $eq: ['$allParse', true] },
+                                then: CollectionStatusEnum.parsing,
+                                else: CollectionStatusEnum.indexing
+                              }
+                            }
                           }
                         },
                         else: CollectionStatusEnum.ready
@@ -1299,7 +1365,12 @@ async function handleStatusFilterWithMemoryPagination({
       ],
       { ...readFromSecondary }
     ),
-    MongoDatasetData.aggregate<{ _id: string; count: number }>(
+    MongoDatasetData.aggregate<{
+      _id: string;
+      count: number;
+      processedCount: number;
+      remainingCount: number;
+    }>(
       [
         {
           $match: {
@@ -1308,7 +1379,18 @@ async function handleStatusFilterWithMemoryPagination({
             collectionId: { $in: allCollectionIds }
           }
         },
-        { $group: { _id: '$collectionId', count: { $sum: 1 } } }
+        {
+          $group: {
+            _id: '$collectionId',
+            count: { $sum: 1 },
+            processedCount: {
+              $sum: { $cond: [{ $ifNull: ['$indexingCompleteTime', false] }, 1, 0] }
+            },
+            remainingCount: {
+              $sum: { $cond: [{ $ifNull: ['$indexingCompleteTime', false] }, 0, 1] }
+            }
+          }
+        }
       ],
       { ...readFromSecondary }
     )
@@ -1349,6 +1431,8 @@ async function handleStatusFilterWithMemoryPagination({
 
     const trainingAmountVal = training?.count || 0;
     const dataAmountVal = data?.count || 0;
+    const processedCountVal = data?.processedCount || 0;
+    const remainingCountVal = data?.remainingCount || 0;
     const hasErrorVal = training?.hasError || false;
     const hasActiveVal = training?.hasActive || false;
     const allParseVal = training?.allParse || false;
@@ -1362,6 +1446,8 @@ async function handleStatusFilterWithMemoryPagination({
         ...item,
         trainingAmount: trainingAmountVal,
         dataAmount: dataAmountVal,
+        processedCount: processedCountVal,
+        remainingCount: remainingCountVal,
         hasError: hasErrorVal,
         matchingStatuses
       };
@@ -1372,12 +1458,15 @@ async function handleStatusFilterWithMemoryPagination({
         hasError: hasErrorVal,
         hasActive: hasActiveVal,
         allParse: allParseVal,
+        parseStartTime: item.parseStartTime,
         tableSchemaExist: item.tableSchema?.exist
       });
       return {
         ...item,
         trainingAmount: trainingAmountVal,
         dataAmount: dataAmountVal,
+        processedCount: processedCountVal,
+        remainingCount: remainingCountVal,
         hasError: hasErrorVal,
         status: fileStatus
       };

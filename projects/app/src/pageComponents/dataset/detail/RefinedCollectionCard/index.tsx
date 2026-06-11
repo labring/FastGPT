@@ -181,15 +181,22 @@ const CollectionCard = () => {
           if (collection.trainingAmount > 0) {
             if (collection.status === CollectionStatusEnum.queued) {
               return {
-                statusText: t('dataset:queued'),
+                statusText: `${t('common:core.dataset.collection.status.queued')}(${collection.processedCount ?? 0}/${collection.dataAmount ?? 0})`,
                 colorSchema: 'gray',
                 statusKey: 'queued'
               };
             }
+            if (collection.status === CollectionStatusEnum.parsing) {
+              return {
+                statusText: `${t('common:core.dataset.collection.status.parsing')}(${collection.processedCount ?? 0}/${collection.dataAmount ?? 0})`,
+                colorSchema: 'blue',
+                statusKey: 'parsing'
+              };
+            }
             return {
-              statusText: t('dataset:processing'),
+              statusText: `${t('common:core.dataset.collection.status.indexing')}(${collection.processedCount ?? 0}/${collection.dataAmount ?? 0})`,
               colorSchema: 'blue',
-              statusKey: 'processing'
+              statusKey: 'indexing'
             };
           }
           return {
@@ -401,7 +408,10 @@ const CollectionCard = () => {
   const hasProcessingCollections = useMemo(
     () =>
       !!formatCollections.find(
-        (item) => item.statusKey === 'processing' || item.statusKey === 'queued'
+        (item) =>
+          item.statusKey === 'parsing' ||
+          item.statusKey === 'indexing' ||
+          item.statusKey === 'queued'
       ),
     [formatCollections]
   );

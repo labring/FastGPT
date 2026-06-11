@@ -115,13 +115,25 @@ const CollectionCard = () => {
               statusKey: 'error'
             };
           }
-          if (collection.trainingAmount > 0) {
+          if (collection.status === 'parsing') {
             return {
-              statusText: t('common:dataset.collections.Collection Embedding', {
-                total: collection.trainingAmount
-              }),
+              statusText: `${t('common:core.dataset.collection.status.parsing')}(${collection.processedCount ?? 0}/${collection.dataAmount ?? 0})`,
               colorSchema: 'gray',
-              statusKey: 'processing'
+              statusKey: 'parsing'
+            };
+          }
+          if (collection.status === 'indexing' || collection.trainingAmount > 0) {
+            return {
+              statusText: `${t('common:core.dataset.collection.status.indexing')}(${collection.processedCount ?? 0}/${collection.dataAmount ?? 0})`,
+              colorSchema: 'gray',
+              statusKey: 'indexing'
+            };
+          }
+          if (collection.status === 'queued') {
+            return {
+              statusText: `${t('common:core.dataset.collection.status.queued')}(${collection.processedCount ?? 0}/${collection.dataAmount ?? 0})`,
+              colorSchema: 'gray',
+              statusKey: 'queued'
             };
           }
           return {
