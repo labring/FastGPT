@@ -210,6 +210,8 @@ export async function generateVector(): Promise<any> {
         // Throttled indexing completion check (all modes)
         await markIndexingEnd({
           collectionId: String(data.collectionId),
+          teamId: String(data.teamId),
+          datasetId: String(data.datasetId),
           source: data.mode
         });
 

@@ -15,6 +15,7 @@ import { removeS3TTL } from '../../../common/s3/utils';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import type { ClientSession } from '../../../common/mongo';
 import { addLog } from '../../../common/system/log';
+import { pushCollectionUpdateJob } from '../collection/mq';
 
 export const formatDatasetDataValue = ({
   q,
@@ -178,6 +179,13 @@ export async function createDataDraft({
     await removeS3TTL({ key: imageId, bucketName: 'private', session });
   }
 
+  // Trigger async collection stats update
+  pushCollectionUpdateJob({
+    collectionId: String(collectionId),
+    datasetId: String(datasetId),
+    teamId: String(teamId)
+  });
+
   return { _id };
 }
 
@@ -316,17 +324,30 @@ export async function createDataDrafts({
       allResults.push(...chunkResults);
     }
 
+    pushCollectionUpdateJob({
+      collectionId: String(collectionId),
+      datasetId: String(datasetId),
+      teamId: String(teamId)
+    });
+
     return allResults.map((doc) => ({ _id: doc._id }));
   }
 
   // Small dataset: use the caller's session if provided, otherwise create our own.
+  let results;
   if (session) {
-    const results = await insertChunk(items, session);
-    return results.map((doc) => ({ _id: doc._id }));
+    results = await insertChunk(items, session);
+  } else {
+    results = await mongoSessionRun(async (newSession) => {
+      return insertChunk(items, newSession);
+    });
   }
 
-  const results = await mongoSessionRun(async (newSession) => {
-    return insertChunk(items, newSession);
+  pushCollectionUpdateJob({
+    collectionId: String(collectionId),
+    datasetId: String(datasetId),
+    teamId: String(teamId)
   });
+
   return results.map((doc) => ({ _id: doc._id }));
 }

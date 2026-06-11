@@ -11,6 +11,7 @@ import { i18nT } from '../../../../global/common/i18n/utils';
 import { getLLMMaxChunkSize } from '../../../../global/core/dataset/training/utils';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { checkTimerLock, deleteTimerLock } from '../../../common/system/timerLock/utils';
+import { pushCollectionUpdateJob } from '../collection/mq';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.TRAINING);
 
@@ -234,21 +235,34 @@ export const pushDataListToTrainingQueue = async ({
 
     logger.info('Chunked transactions completed', { durationMs: Date.now() - start });
 
+    pushCollectionUpdateJob({
+      collectionId: String(collectionId),
+      datasetId: String(datasetId),
+      teamId: String(teamId)
+    });
+
     return { insertLen: totalInserted };
   }
 
   // 小数据量单事务处理
+  let insertedCount;
   if (session) {
-    const insertedCount = await insertDataIterative(data, session);
+    insertedCount = await insertDataIterative(data, session);
     logger.info('Single transaction completed', { durationMs: Date.now() - start });
-    return { insertLen: insertedCount };
   } else {
-    const insertedCount = await mongoSessionRun(async (session) => {
+    insertedCount = await mongoSessionRun(async (session) => {
       return insertDataIterative(data, session);
     });
     logger.info('Single transaction completed', { durationMs: Date.now() - start });
-    return { insertLen: insertedCount };
   }
+
+  pushCollectionUpdateJob({
+    collectionId: String(collectionId),
+    datasetId: String(datasetId),
+    teamId: String(teamId)
+  });
+
+  return { insertLen: insertedCount };
 };
 
 export const pushDatasetToParseQueue = async ({
@@ -282,4 +296,10 @@ export const pushDatasetToParseQueue = async ({
     ],
     { session, ordered: true }
   );
+
+  pushCollectionUpdateJob({
+    collectionId: String(collectionId),
+    datasetId: String(datasetId),
+    teamId: String(teamId)
+  });
 };

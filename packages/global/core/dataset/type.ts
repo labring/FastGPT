@@ -209,7 +209,16 @@ export const DatasetCollectionSchema = ChunkSettingsSchema.omit({
     .optional()
     .meta({ description: '训练类型' }),
   tableSchema: z.any().optional().meta({ description: '数据库表结构' }),
-  deleteTime: z.date().nullish().meta({ description: '软删除时间' })
+  deleteTime: z.date().nullish().meta({ description: '软删除时间' }),
+
+  // Precomputed statistics (updated asynchronously by collectionUpdate worker)
+  dataAmount: z.number().optional().meta({ description: '分片数据总量' }),
+  trainingAmount: z.number().optional().meta({ description: '训练任务总量' }),
+  processedCount: z.number().optional().meta({ description: '已完成索引的数据量' }),
+  remainingCount: z.number().optional().meta({ description: '未完成索引的数据量' }),
+  hasError: z.boolean().optional().meta({ description: '是否有训练任务报错' }),
+  allParse: z.boolean().optional().meta({ description: '是否所有训练任务都是 parse 模式' }),
+  statsUpdatedAt: z.coerce.date().optional().meta({ description: '统计数据最后更新时间' })
 });
 export type DatasetCollectionSchemaType = z.infer<typeof DatasetCollectionSchema>;
 
