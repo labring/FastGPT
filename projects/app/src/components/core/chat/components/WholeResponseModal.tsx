@@ -250,6 +250,11 @@ export const WholeResponseContent = ({
     [activeModule.moduleType, activeModule.appType]
   );
 
+  const isAgentModule = useMemo(
+    () => activeModule.moduleType === FlowNodeTypeEnum.agent,
+    [activeModule.moduleType]
+  );
+
   const datasetSearchChild = useMemo(() => {
     if (!isAssistantAppModule) return null;
     return (
@@ -423,6 +428,200 @@ export const WholeResponseContent = ({
           )}
           {/* 检索结果 */}
           {quoteListDom}
+        </>
+      ) : isAgentModule ? (
+        <>
+          {/* Agent node name */}
+          <Row
+            label={t('chat:response.node_name')}
+            value={t(activeModule.moduleName as any, activeModule.moduleNameArgs)}
+          />
+          {/* Step query */}
+          <Row label={t('chat:step_query')} value={activeModule?.stepQuery} />
+          {/* Model info */}
+          <Row
+            label={t('common:core.chat.response.module model')}
+            value={getModelDisplayName(activeModule?.modelId)}
+          />
+          {activeModule?.temperature !== undefined && (
+            <Row
+              label={t('common:core.chat.response.module temperature')}
+              value={activeModule?.temperature}
+            />
+          )}
+          {activeModule?.maxToken !== undefined && (
+            <Row
+              label={t('common:core.chat.response.module maxToken')}
+              value={activeModule?.maxToken}
+            />
+          )}
+          {/* Tokens */}
+          {(!!activeModule?.inputTokens || !!activeModule?.outputTokens) && (
+            <Row
+              label={t('chat:llm_tokens')}
+              value={`Input/Output = ${activeModule?.inputTokens || 0}/${activeModule?.outputTokens || 0}`}
+            />
+          )}
+          {activeModule?.totalPoints !== undefined && (
+            <Row
+              label={t('common:support.wallet.usage.Total points')}
+              value={formatNumber(activeModule.totalPoints)}
+            />
+          )}
+          {/* Child total points */}
+          {activeModule?.childrenResponses && activeModule.childrenResponses.length > 0 && (
+            <Row
+              label={t('chat:response.child total points')}
+              value={formatNumber(
+                activeModule.childrenResponses.reduce(
+                  (sum, item) => sum + (item.totalPoints || 0),
+                  0
+                )
+              )}
+            />
+          )}
+          {/* Finish reason */}
+          {activeModule?.finishReason && (
+            <Row
+              label={t('chat:completion_finish_reason')}
+              value={t(completionFinishReasonMap[activeModule?.finishReason])}
+            />
+          )}
+          {/* Reasoning text */}
+          <Row label={t('chat:reasoning_text')} value={activeModule?.reasoningText} />
+          {/* Compress context info */}
+          {activeModule?.compressTextAgent && (
+            <>
+              <Row
+                label={t('chat:compress_llm_usage_point')}
+                value={`${activeModule.compressTextAgent.totalPoints}`}
+              />
+              <Row
+                label={t('chat:compress_llm_usage')}
+                value={`${activeModule.compressTextAgent.inputTokens}/${activeModule.compressTextAgent.outputTokens}`}
+              />
+            </>
+          )}
+          {/* Text output (final answer) */}
+          <Row
+            label={t('common:core.chat.response.text output')}
+            value={activeModule?.textOutput}
+          />
+          {/* History preview */}
+          <Row
+            label={t('common:core.chat.response.module historyPreview')}
+            rawDom={
+              activeModule.historyPreview ? (
+                <Box px={3} py={2} border={'base'} borderRadius={'md'}>
+                  {activeModule.historyPreview?.map((item, i) => (
+                    <Box
+                      key={i}
+                      _notLast={{
+                        borderBottom: '1px solid',
+                        borderBottomColor: 'myWhite.700',
+                        mb: 2
+                      }}
+                      pb={2}
+                    >
+                      <Box fontWeight={'bold'}>{item.obj}</Box>
+                      <Box whiteSpace={'pre-wrap'}>{item.value}</Box>
+                    </Box>
+                  ))}
+                </Box>
+              ) : (
+                ''
+              )
+            }
+          />
+          {/* LLM Request IDs */}
+          {activeModule?.llmRequestIds &&
+            activeModule.llmRequestIds.length > 0 &&
+            onOpenRequestIdDetail && (
+              <Row
+                label={t('chat:llm_request_ids')}
+                rawDom={
+                  <Grid templateColumns={'repeat(2, minmax(0, 1fr))'} gap={2}>
+                    {activeModule.llmRequestIds.map((requestId, index) => (
+                      <Flex
+                        key={index}
+                        role={'group'}
+                        alignItems={'center'}
+                        gap={2}
+                        bg={'myGray.50'}
+                        borderRadius={'8px'}
+                        px={3}
+                        py={2}
+                        cursor={'pointer'}
+                        color={'myGray.900'}
+                        _hover={{ color: 'primary.600' }}
+                        onClick={() => onOpenRequestIdDetail(requestId)}
+                        title={t('common:Click_to_expand')}
+                      >
+                        <Box
+                          flex={'1 0 0'}
+                          w={0}
+                          fontSize={'12px'}
+                          lineHeight={'18px'}
+                          textOverflow={'ellipsis'}
+                          overflow={'hidden'}
+                          whiteSpace={'nowrap'}
+                        >
+                          {requestId}
+                        </Box>
+                        <MyIcon
+                          name={'common/upperRight'}
+                          w={'16px'}
+                          h={'16px'}
+                          color={'myGray.500'}
+                          _groupHover={{ color: 'primary.600' }}
+                        />
+                      </Flex>
+                    ))}
+                  </Grid>
+                }
+              />
+            )}
+          {/* Tool call children list */}
+          {activeModule?.childrenResponses && activeModule.childrenResponses.length > 0 && (
+            <Row
+              label={t('chat:tool_call_process')}
+              rawDom={
+                <Flex flexDirection={'column'} gap={2}>
+                  {activeModule.childrenResponses.map((child, i) => (
+                    <Box
+                      key={i}
+                      border={'1px solid'}
+                      borderColor={'myGray.200'}
+                      borderRadius={'md'}
+                      p={3}
+                    >
+                      <Flex alignItems={'center'} gap={2} mb={2}>
+                        {child.moduleLogo && (
+                          <Avatar src={child.moduleLogo} w={'20px'} h={'20px'} />
+                        )}
+                        <Box fontWeight={'bold'} fontSize={'sm'}>
+                          {t(child.moduleName as any) || child.moduleName}
+                        </Box>
+                        {child.totalPoints !== undefined && (
+                          <Box fontSize={'xs'} color={'myGray.500'}>
+                            {formatNumber(child.totalPoints)} points
+                          </Box>
+                        )}
+                      </Flex>
+                      {child.toolInput !== undefined && (
+                        <Row label={t('chat:tool_input')} value={child.toolInput} />
+                      )}
+                      {child.toolRes !== undefined && (
+                        <Row label={t('chat:tool_output')} value={child.toolRes} />
+                      )}
+                    </Box>
+                  ))}
+                </Flex>
+              }
+            />
+          )}
+          {/* Error info */}
+          <Row label={t('workflow:response.Error')} value={activeModule?.errorText} />
         </>
       ) : (
         <>

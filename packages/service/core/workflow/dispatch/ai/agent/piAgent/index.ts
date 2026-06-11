@@ -27,10 +27,12 @@ import { env } from '../../../../../../env';
 import type { DispatchAgentModuleProps } from '..';
 import { resolveDatasetParams } from '../resolveDatasetParams';
 import { SANDBOX_SYSTEM_PROMPT } from '@fastgpt/global/core/ai/sandbox/constants';
-import { hashStr } from '@fastgpt/global/common/string/tools';
+import { hashStr, getNanoid } from '@fastgpt/global/common/string/tools';
 import { getLLMModelById } from '../../../../../ai/model';
 import { formatModelChars2Points } from '../../../../../../support/wallet/usage/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
+import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -564,6 +566,49 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
     if (agent.state.errorMessage) {
       throw new Error(agent.state.errorMessage);
     }
+
+    // Build agent nodeResponse with textOutput and historyPreview
+    // Extract token usage from agent state messages
+    let inputTokens = 0;
+    let outputTokens = 0;
+    let totalTokens = 0;
+    const messageList = agent.state.messages as any[];
+    for (const msg of messageList) {
+      if (msg.usage) {
+        inputTokens += msg.usage.input_tokens || msg.usage.inputTokens || 0;
+        outputTokens += msg.usage.output_tokens || msg.usage.outputTokens || 0;
+        totalTokens += msg.usage.total_tokens || msg.usage.totalTokens || 0;
+      }
+    }
+
+    // Build history preview from agent state messages
+    const chatCompleteMessages = GPTMessages2Chats({
+      messages: messageList.map((msg: any) => ({
+        role: msg.role || 'assistant',
+        content: msg.content || ''
+      }))
+    });
+    const historyPreview = getHistoryPreview(chatCompleteMessages, 10000, true);
+
+    const agentNodeResponse: ChatHistoryItemResType = {
+      nodeId: getNanoid(6),
+      id: getNanoid(6),
+      moduleType: FlowNodeTypeEnum.agent,
+      moduleName: i18nT('chat:master_agent_call'),
+      modelId: modelId,
+      moduleLogo: 'core/app/type/agentFill',
+      inputTokens: inputTokens || undefined,
+      outputTokens: outputTokens || undefined,
+      totalPoints: 0, // Will be calculated by the dispatch layer
+      childrenResponses: nodeResponses.length > 0 ? [...nodeResponses] : undefined,
+      textOutput: answerText || undefined,
+      historyPreview
+      // Clear nodeResponses so we don't double-count — the nodeResponse itself carries childrenResponses
+    };
+
+    // Push the agent nodeResponse as the only top-level response
+    nodeResponses.length = 0;
+    nodeResponses.push(agentNodeResponse);
 
     return {
       data: {

@@ -269,7 +269,10 @@ function PermissionManage({
                   <Th bg="myGray.100">
                     <Box mx="auto" w="fit-content">
                       {t('account_team:permission_evaluationCreate')}
-                      <QuestionTip ml="1" label={t('account_team:permission_evaluationCreate_Tip')} />
+                      <QuestionTip
+                        ml="1"
+                        label={t('account_team:permission_evaluationCreate_Tip')}
+                      />
                     </Box>
                   </Th>
                 )}
@@ -552,4 +555,3 @@ export const Render = ({ Tabs }: { Tabs: React.ReactNode }) => {
 };
 
 export default Render;
-
