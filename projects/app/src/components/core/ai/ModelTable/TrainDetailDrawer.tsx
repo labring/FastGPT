@@ -725,6 +725,7 @@ const TrainDetailDrawer = ({
                             textOverflow={'ellipsis'}
                             whiteSpace={'nowrap'}
                             maxW={'160px'}
+                            lineHeight={'20px'}
                           >
                             {item.newModelName || '-'}
                           </Text>
@@ -742,6 +743,7 @@ const TrainDetailDrawer = ({
                             textOverflow={'ellipsis'}
                             whiteSpace={'nowrap'}
                             maxW={'130px'}
+                            lineHeight={'20px'}
                           >
                             {getTrainDatasetDisplay(item)}
                           </Text>
