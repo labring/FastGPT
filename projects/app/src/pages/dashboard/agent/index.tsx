@@ -124,8 +124,8 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
           overflowY={'auto'}
           overflowX={'hidden'}
         >
-          <Flex alignItems={'center'} position={'relative'}>
-            <Flex alignItems={'center'} flex={'1'}>
+          <Flex alignItems={'center'}>
+            <Flex alignItems={'center'}>
               {!isPc ? (
                 MenuIcon
               ) : paths.length > 0 ? (
@@ -151,7 +151,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
               )}
             </Flex>
             {isPc && paths.length === 0 && (
-              <Flex position={'absolute'} left={'50%'} transform={'translateX(-50%)'}>
+              <Box mx={'auto'}>
                 <MyTabs
                   tabs={agentTabList}
                   value={activeAgentTab}
@@ -162,10 +162,10 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                     });
                   }}
                 />
-              </Flex>
+              </Box>
             )}
             <Flex
-              ml={'auto'}
+              ml={!(isPc && paths.length === 0) ? 'auto' : undefined}
               alignItems={'center'}
               gap={2}
             >
