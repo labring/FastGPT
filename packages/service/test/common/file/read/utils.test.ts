@@ -581,4 +581,41 @@ describe('readFileContentByBuffer', () => {
     expect(result.rawText).toBe('text with');
     expect(result.rawText).not.toContain('data:image/png;base64');
   });
+  it('应将大写扩展名归一化为小写后再传给解析器（#6996）', async () => {
+    const buffer = Buffer.from('pdf content');
+
+    const result = await readFileContentByBuffer({
+      teamId,
+      tmbId,
+      extension: 'PDF',
+      buffer,
+      encoding: 'utf-8'
+    });
+
+    // 解析器应收到小写扩展名，从而命中对应分支而非报 "not supported"
+    expect(mockReadRawContentFromBuffer).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        extension: 'pdf'
+      })
+    );
+    expect(result.rawText).toBe('parsed-pdf-content');
+  });
+
+  it('应将混合大小写扩展名归一化为小写', async () => {
+    const buffer = Buffer.from('docx content');
+
+    await readFileContentByBuffer({
+      teamId,
+      tmbId,
+      extension: 'Docx',
+      buffer,
+      encoding: 'utf-8'
+    });
+
+    expect(mockReadRawContentFromBuffer).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        extension: 'docx'
+      })
+    );
+  });
 });
