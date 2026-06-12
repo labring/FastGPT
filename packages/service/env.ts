@@ -9,6 +9,7 @@ const defaultableIntSchema = (defaultValue: number) =>
     z.coerce.number<number>().int().nonnegative()
   );
 
+// 系统最大字符串处理长度
 const SYSTEM_STRING_LENGTH_UNIT = 1_000_000;
 
 /**
@@ -276,6 +277,9 @@ export const serviceEnv = createEnv({
     // ==================== 资源限制 ====================
     SERVICE_REQUEST_MAX_CONTENT_LENGTH: IntSchema.default(10).meta({
       description: '服务器接收请求的最大大小（MB）'
+    }),
+    FASTGPT_MAX_FOLDER_DEPTH: IntSchema.min(2).max(20).default(4).meta({
+      description: '允许的最深文件夹层级，默认 4（根目录下最多 4 层文件夹）'
     }),
     APP_FOLDER_MAX_AMOUNT: IntSchema.default(1000).meta({
       description: '应用文件夹最大数量'

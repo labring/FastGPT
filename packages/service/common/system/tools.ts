@@ -24,7 +24,8 @@ export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
   config.feConfigs.uploadFileMaxAmount = serviceEnv.UPLOAD_FILE_MAX_AMOUNT;
   config.feConfigs.limit = {
     ...config.feConfigs.limit,
-    agentSkillMaxUploadBytes: serviceEnv.AGENT_SKILL_MAX_UPLOAD_SIZE * 1024 * 1024
+    agentSkillMaxUploadBytes: serviceEnv.AGENT_SKILL_MAX_UPLOAD_SIZE * 1024 * 1024,
+    maxFolderDepth: serviceEnv.FASTGPT_MAX_FOLDER_DEPTH
   };
 
   global.feConfigs = config.feConfigs;

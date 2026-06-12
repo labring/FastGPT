@@ -30,6 +30,11 @@ import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import {
+  canCreateSubFolder,
+  normalizeParentId,
+  resolveMaxFolderDepth
+} from '@fastgpt/global/common/parentFolder/depth';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 
 const EditFolderModal = dynamic(
@@ -42,7 +47,7 @@ const Dataset = () => {
   const { isPc } = useSystem();
   const { t } = useTranslation();
   const router = useRouter();
-  const { parentId } = router.query as { parentId: string };
+  const parentId = normalizeParentId(router.query.parentId);
 
   const {
     myDatasets,
@@ -60,6 +65,8 @@ const Dataset = () => {
   } = useContextSelector(DatasetsContext, (v) => v);
   const { userInfo } = useUserStore();
   const { feConfigs } = useSystemStore();
+  const maxFolderDepth = resolveMaxFolderDepth(feConfigs?.limit?.maxFolderDepth);
+  const canCreateFolder = canCreateSubFolder(parentId, paths, maxFolderDepth);
   const { toast } = useToast();
   const [editFolderData, setEditFolderData] = useState<EditFolderFormType>();
   const [createDatasetType, setCreateDatasetType] = useState<CreateDatasetType>();
@@ -213,15 +220,19 @@ const Dataset = () => {
                         }
                       ]
                     },
-                    {
-                      children: [
-                        {
-                          icon: FolderIcon,
-                          label: t('common:Folder'),
-                          onClick: () => setEditFolderData({})
-                        }
-                      ]
-                    }
+                    ...(canCreateFolder
+                      ? [
+                          {
+                            children: [
+                              {
+                                icon: FolderIcon,
+                                label: t('common:Folder'),
+                                onClick: () => setEditFolderData({})
+                              }
+                            ]
+                          }
+                        ]
+                      : [])
                   ]}
                 />
               </Box>

@@ -14,6 +14,11 @@ import SkillListContextProvider, {
 } from '@/pageComponents/dashboard/skill/context';
 import List from '@/pageComponents/dashboard/skill/List';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import {
+  canCreateSubFolder,
+  resolveMaxFolderDepth
+} from '@fastgpt/global/common/parentFolder/depth';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { postCreateSkillFolder } from '@/web/core/skill/api';
 import dynamic from 'next/dynamic';
@@ -34,6 +39,7 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   const router = useRouter();
   const { isPc } = useSystem();
   const { userInfo } = useUserStore();
+  const { feConfigs } = useSystemStore();
   const [editFolder, setEditFolder] = useState<EditFolderFormType>();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -50,6 +56,8 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     paths,
     folderDetail
   } = useContextSelector(SkillListContext, (v) => v);
+  const maxFolderDepth = resolveMaxFolderDepth(feConfigs?.limit?.maxFolderDepth);
+  const canCreateFolder = canCreateSubFolder(parentId, paths, maxFolderDepth);
 
   const { runAsync: onCreateFolder } = useRequest(postCreateSkillFolder, {
     onSuccess() {
@@ -116,14 +124,16 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
 
               {hasCreatePer && (
                 <>
-                  <Button
-                    variant={'grayBase'}
-                    leftIcon={<MyIcon name={'common/addLight'} w={'18px'} mr={-1} />}
-                    onClick={() => setEditFolder({})}
-                    px={5}
-                  >
-                    {t('common:Folder')}
-                  </Button>
+                  {canCreateFolder && (
+                    <Button
+                      variant={'grayBase'}
+                      leftIcon={<MyIcon name={'common/addLight'} w={'18px'} mr={-1} />}
+                      onClick={() => setEditFolder({})}
+                      px={5}
+                    >
+                      {t('common:Folder')}
+                    </Button>
+                  )}
                   <Button
                     variant={'grayBase'}
                     leftIcon={<MyIcon name={'common/importLight'} w={'14px'} />}

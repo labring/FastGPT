@@ -11,6 +11,7 @@ import {
   type ParentIdType,
   type ParentTreePathItemType
 } from '@fastgpt/global/common/parentFolder/type';
+import { normalizeParentId } from '@fastgpt/global/common/parentFolder/depth';
 import { useRouter } from 'next/router';
 import React, { useCallback, useState } from 'react';
 import { createContext } from 'use-context-selector';
@@ -71,7 +72,7 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
   const [moveDatasetId, setMoveDatasetId] = useState<string>();
   const [searchKey, setSearchKey] = useState('');
-  const { parentId = null } = router.query as { parentId?: string | null };
+  const parentId = normalizeParentId(router.query.parentId);
 
   const {
     data: myDatasets = [],
@@ -99,10 +100,13 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
   );
 
   const { data: paths = [], runAsync: refetchPaths } = useRequest(
-    async () => getDatasetPaths({ sourceId: parentId, type: 'current' }),
+    async () => {
+      if (!parentId) return [];
+      return getDatasetPaths({ sourceId: parentId, type: 'current' });
+    },
     {
       manual: false,
-      refreshDeps: [folderDetail]
+      refreshDeps: [parentId]
     }
   );
 

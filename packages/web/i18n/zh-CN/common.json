@@ -789,6 +789,8 @@
   "error.fileNotFound": "文件找不到了~",
   "error.file_upload_disabled": "当前应用未开启文件上传",
   "error.inheritPermissionError": "权限继承错误",
+  "error.folderDepthLimit": "文件夹层级已满，无法在此创建子文件夹",
+  "error.folderMoveDepthLimit": "无法移入：该位置会使文件夹超出层级上限",
   "error.invalid_params": "参数无效",
   "error.llm_track_expired": "请求详情已过期",
   "error.missingParams": "参数缺失",

@@ -32,6 +32,7 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { isValidObjectId } from 'mongoose';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
+import { checkMoveFolderDepth } from '@fastgpt/service/common/parentFolder/depth';
 
 async function handler(req: ApiRequestProps<UpdateSkillBody>) {
   const { skillId, name, description, category, avatar, parentId } = parseApiInput({
@@ -100,6 +101,16 @@ async function handler(req: ApiRequestProps<UpdateSkillBody>) {
     if (!permission.hasWritePer) {
       return Promise.reject(SkillErrEnum.unAuthSkill);
     }
+  }
+
+  if (isMove) {
+    await checkMoveFolderDepth({
+      resourceId: skillId,
+      targetParentId: parentId,
+      teamId,
+      model: MongoAgentSkills,
+      isFolderType: (type) => type === AgentSkillTypeEnum.folder
+    });
   }
 
   if (!isMove) {

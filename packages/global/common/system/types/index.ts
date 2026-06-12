@@ -113,6 +113,7 @@ export type FastGPTFeConfigsType = {
     agentSandboxMaxSessionRuntime?: number;
     agentSkillMaxUploadBytes?: number;
     workflowParallelRunMaxConcurrency?: number;
+    maxFolderDepth?: number;
   };
 
   uploadFileMaxAmount: number;

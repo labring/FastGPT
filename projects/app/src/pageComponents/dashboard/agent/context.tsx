@@ -10,6 +10,7 @@ import {
   type ParentIdType,
   type ParentTreePathItemType
 } from '@fastgpt/global/common/parentFolder/type';
+import { normalizeParentId } from '@fastgpt/global/common/parentFolder/depth';
 import { type UpdateAppBodyType } from '@fastgpt/global/openapi/core/app/common/api';
 import dynamic from 'next/dynamic';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -60,10 +61,11 @@ export const AppListContext = createContext<AppListContextType>({
 const AppListContextProvider = ({ children }: { children: ReactNode }) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { parentId = null, type = 'all' } = router.query as {
+  const { type = 'all' } = router.query as {
     parentId?: string | null;
     type: AppTypeEnum;
   };
+  const parentId = normalizeParentId(router.query.parentId);
   const [searchKey, setSearchKey] = useState('');
 
   const {

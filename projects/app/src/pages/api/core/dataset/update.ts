@@ -42,6 +42,7 @@ import { computedCollectionChunkSettings } from '@fastgpt/global/core/dataset/tr
 import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/controller';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '@fastgpt/service/common/system/utils';
+import { checkMoveFolderDepth } from '@fastgpt/service/common/parentFolder/depth';
 
 // 更新知识库接口
 // 包括如下功能：
@@ -55,7 +56,7 @@ import { isInternalAddress, PRIVATE_URL_TEXT } from '@fastgpt/service/common/sys
 //  (2) 目标目录的管理权限
 //  (3) 如果从根目录移动或移动到根目录，需要有团队的应用创建权限
 async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
-  let {
+  const {
     id,
     parentId,
     name,
@@ -67,7 +68,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
     externalReadUrl,
     apiDatasetServer,
     autoSync,
-    chunkSettings
+    chunkSettings: rawChunkSettings
   } = UpdateDatasetBodySchema.parse(req.body);
 
   if (websiteConfig?.url) {
@@ -87,9 +88,9 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
 
   let targetName = '';
 
-  chunkSettings = chunkSettings
+  const chunkSettings = rawChunkSettings
     ? computedCollectionChunkSettings({
-        ...chunkSettings,
+        ...rawChunkSettings,
         llmModel: getLLMModel(dataset.agentModel),
         vectorModel: getEmbeddingModel(dataset.vectorModel)
       })
@@ -128,6 +129,16 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
   } else {
     // is not move
     if (!permission.hasWritePer) return Promise.reject(DatasetErrEnum.unAuthDataset);
+  }
+
+  if (isMove) {
+    await checkMoveFolderDepth({
+      resourceId: id,
+      targetParentId: parentId,
+      teamId: dataset.teamId,
+      model: MongoDataset,
+      isFolderType: (type) => type === DatasetTypeEnum.folder
+    });
   }
 
   const isFolder = dataset.type === DatasetTypeEnum.folder;
