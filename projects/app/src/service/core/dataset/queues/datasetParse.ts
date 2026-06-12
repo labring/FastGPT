@@ -489,7 +489,11 @@ const runParseQueue = async ({
 
         // Throttled parse completion check: once all parse tasks for this collection
         // are done, markParseEnd sets parsingCompleteTime on the collection.
-        await markParseEnd({ collectionId: String(collection._id) });
+        await markParseEnd({
+          collectionId: String(collection._id),
+          teamId: String(data.teamId),
+          datasetId: String(data.datasetId)
+        });
 
         logger.debug(`[${queueName}] task finished`, {
           durationMs: Date.now() - startTime,

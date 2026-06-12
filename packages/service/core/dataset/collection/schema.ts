@@ -167,6 +167,36 @@ const DatasetCollectionSchema = new Schema({
     default: null
   },
 
+  // Precomputed statistics for listV2 performance
+  // Updated asynchronously by the collectionUpdate worker
+  dataAmount: {
+    type: Number,
+    default: 0
+  },
+  trainingAmount: {
+    type: Number,
+    default: 0
+  },
+  processedCount: {
+    type: Number,
+    default: 0
+  },
+  remainingCount: {
+    type: Number,
+    default: 0
+  },
+  hasError: {
+    type: Boolean,
+    default: false
+  },
+  allParse: {
+    type: Boolean,
+    default: false
+  },
+  statsUpdatedAt: {
+    type: Date
+  },
+
   // Parse settings
   customPdfParse: Boolean,
   apiFileParentId: String,
@@ -237,6 +267,18 @@ try {
 
   // Soft delete cleanup
   DatasetCollectionSchema.index({ deleteTime: 1 });
+
+  // Backfill: find non-folder collections without stats
+  // Partial index: once statsUpdatedAt is set, the document drops out of the index
+  DatasetCollectionSchema.index(
+    { deleteTime: 1, type: 1, statsUpdatedAt: 1 },
+    {
+      partialFilterExpression: {
+        deleteTime: { $eq: null },
+        statsUpdatedAt: { $exists: false }
+      }
+    }
+  );
 } catch (error) {
   const logger = getLogger(LogCategories.INFRA.MONGO);
   logger.error('Failed to build dataset collection indexes', { error });

@@ -199,6 +199,15 @@ const CollectionCard = () => {
               statusKey: 'indexing'
             };
           }
+          // trainingAmount === 0 时，以 API 返回的 status 为准
+          // （新创建 / stats 未初始化的 collection 会返回 queued）
+          if (collection.status === CollectionStatusEnum.queued) {
+            return {
+              statusText: t('common:core.dataset.collection.status.queued'),
+              colorSchema: 'gray',
+              statusKey: 'queued'
+            };
+          }
           return {
             statusText: t('common:core.dataset.collection.status.active'),
             colorSchema: 'green',

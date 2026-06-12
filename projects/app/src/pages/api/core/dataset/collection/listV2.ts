@@ -6,8 +6,7 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import {
   DatasetCollectionTypeEnum,
   DatasetTypeEnum,
-  CollectionStatusEnum,
-  TrainingModeEnum
+  CollectionStatusEnum
 } from '@fastgpt/global/core/dataset/constants';
 import {
   authDataset,
@@ -23,16 +22,7 @@ import { collectionTagsToTagLabel } from '@fastgpt/service/core/dataset/collecti
 import { type PaginationResponse } from '@fastgpt/global/openapi/api';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { type DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
-import {
-  MongoDatasetData,
-  DatasetDataCollectionName
-} from '@fastgpt/service/core/dataset/data/schema';
-import {
-  MongoDatasetTraining,
-  DatasetTrainingCollectionName
-} from '@fastgpt/service/core/dataset/training/schema';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
-import { addMinutes } from 'date-fns';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
@@ -47,13 +37,17 @@ function getFileStatus(item: {
   trainingAmount: number;
   hasError?: boolean;
   tableSchemaExist?: boolean; // 数据库表是否存在（仅数据库类型知识库）
-  hasActive?: boolean; // 是否有训练任务在近10分钟内被队列 worker 拉取（lockTime > now-10min）
   allParse?: boolean; // 是否所有训练记录都是 parse 模式（用于区分 parse 前排队 vs parse 后排队）
   parseStartTime?: Date; // 持久化标记：parse 任务创建时设置，用于判断处理是否已启动
+  statsUpdatedAt?: Date; // stats 上次计算时间，undefined 表示尚未初始化
 }): CollectionStatusEnum {
   // 不存在状态：数据库知识库的表被删除
   if (item.tableSchemaExist === false) {
     return CollectionStatusEnum.notExist;
+  }
+  // stats 尚未被 worker 初始化（新创建的 collection），默认为排队中
+  if (!item.statsUpdatedAt) {
+    return CollectionStatusEnum.queued;
   }
   if (item.hasError) {
     return CollectionStatusEnum.error;
@@ -75,174 +69,6 @@ function getFileStatus(item: {
   // - 有数据：正常完成
   // - 无数据：空文档（训练完成但无内容可提取）
   return CollectionStatusEnum.ready;
-}
-
-// 根据子文件状态列表计算 folder 的匹配状态集合（递归聚合模式）
-// 返回 folder 下存在的所有状态类型的集合
-function getFolderMatchingStatuses(
-  childStatuses: CollectionStatusEnum[]
-): Set<CollectionStatusEnum> {
-  // 空 folder 默认匹配 ready 状态
-  if (childStatuses.length === 0) {
-    return new Set([CollectionStatusEnum.ready]);
-  }
-
-  // 收集所有子文件的状态类型（去重）
-  return new Set(childStatuses);
-}
-
-// Collection 数据类型（用于缓存）
-type CollectionCacheItem = {
-  _id: string;
-  parentId: string | null;
-  type: string;
-  parseStartTime?: Date;
-  tableSchema?: { exist?: boolean };
-};
-
-// 从预加载的 collection 列表中递归获取 folder 下所有子集合的 ID 和 tableSchema.exist 信息
-function getChildCollectionIdsFromCache(
-  allCollections: CollectionCacheItem[],
-  parentId: string
-): { id: Types.ObjectId; parseStartTime?: Date; tableSchemaExist?: boolean }[] {
-  function findDescendantFileIds(
-    pid: string
-  ): { id: Types.ObjectId; parseStartTime?: Date; tableSchemaExist?: boolean }[] {
-    const children = allCollections.filter((c) => String(c.parentId) === pid);
-    const result: { id: Types.ObjectId; parseStartTime?: Date; tableSchemaExist?: boolean }[] = [];
-    for (const child of children) {
-      if (child.type === DatasetCollectionTypeEnum.folder) {
-        result.push(...findDescendantFileIds(String(child._id)));
-      } else {
-        result.push({
-          id: new Types.ObjectId(String(child._id)),
-          parseStartTime: child.parseStartTime,
-          tableSchemaExist: child.tableSchema?.exist
-        });
-      }
-    }
-    return result;
-  }
-
-  return findDescendantFileIds(parentId);
-}
-
-// 预加载 dataset 下所有 collection 的基本信息（用于 folder 状态计算）
-async function preloadAllCollections(
-  teamId: Types.ObjectId,
-  datasetId: Types.ObjectId
-): Promise<CollectionCacheItem[]> {
-  const collections = await MongoDatasetCollection.find(
-    { teamId, datasetId, deleteTime: null },
-    { _id: 1, parentId: 1, type: 1, parseStartTime: 1, 'tableSchema.exist': 1 }
-  ).lean();
-
-  return collections.map((c) => ({
-    _id: String(c._id),
-    parentId: c.parentId ? String(c.parentId) : null,
-    type: c.type,
-    parseStartTime: c.parseStartTime,
-    tableSchema: c.tableSchema
-  }));
-}
-
-// 计算 folder 的匹配状态集合（基于其下所有子文件的状态）
-// 使用预加载的 collection 数据避免重复查询
-async function computeFolderMatchingStatuses(
-  teamId: Types.ObjectId,
-  datasetId: Types.ObjectId,
-  folderId: string,
-  allCollectionsCache: CollectionCacheItem[]
-): Promise<Set<CollectionStatusEnum>> {
-  const childItems = getChildCollectionIdsFromCache(allCollectionsCache, folderId);
-
-  if (childItems.length === 0) {
-    return new Set([CollectionStatusEnum.ready]);
-  }
-
-  const childIds = childItems.map((item) => item.id);
-
-  // 创建 tableSchemaExist 和 parseStartTime 映射
-  const tableSchemaExistMap = new Map<string, boolean | undefined>();
-  const parseStartTimeMap = new Map<string, Date | undefined>();
-  childItems.forEach((item) => {
-    tableSchemaExistMap.set(String(item.id), item.tableSchemaExist);
-    parseStartTimeMap.set(String(item.id), item.parseStartTime);
-  });
-
-  const [trainingResult, dataResult] = await Promise.all([
-    MongoDatasetTraining.aggregate([
-      {
-        $match: {
-          teamId,
-          datasetId,
-          collectionId: { $in: childIds }
-        }
-      },
-      {
-        $group: {
-          _id: '$collectionId',
-          count: { $sum: 1 },
-          hasError: {
-            $max: { $cond: [{ $ifNull: ['$errorMsg', false] }, true, false] }
-          },
-          hasActive: { $max: { $gt: ['$lockTime', addMinutes(new Date(), -10)] } },
-          allParse: { $min: { $eq: ['$mode', TrainingModeEnum.parse] } }
-        }
-      }
-    ]),
-    MongoDatasetData.aggregate([
-      {
-        $match: {
-          teamId,
-          datasetId,
-          collectionId: { $in: childIds }
-        }
-      },
-      {
-        $group: {
-          _id: '$collectionId',
-          count: { $sum: 1 }
-        }
-      }
-    ])
-  ]);
-
-  type TrainingAggResult = {
-    _id: string;
-    count: number;
-    hasError: boolean;
-    hasActive: boolean;
-    allParse: boolean;
-  };
-  type DataAggResult = { _id: string; count: number };
-
-  const trainingMap = new Map<string, TrainingAggResult>(
-    trainingResult.map((item: TrainingAggResult) => [String(item._id), item])
-  );
-  const dataMap = new Map<string, DataAggResult>(
-    dataResult.map((item: DataAggResult) => [String(item._id), item])
-  );
-
-  const childStatuses: CollectionStatusEnum[] = childIds.map((id: Types.ObjectId) => {
-    const idStr = String(id);
-    const training = trainingMap.get(idStr);
-    const data = dataMap.get(idStr);
-    const tableSchemaExist = tableSchemaExistMap.get(idStr);
-    const childParseStartTime = parseStartTimeMap.get(idStr);
-
-    return getFileStatus({
-      dataAmount: data?.count || 0,
-      trainingAmount: training?.count || 0,
-      hasError: training?.hasError || false,
-      hasActive: training?.hasActive || false,
-      allParse: training?.allParse || false,
-      parseStartTime: childParseStartTime,
-      tableSchemaExist
-    });
-  });
-
-  return getFolderMatchingStatuses(childStatuses);
 }
 
 /**
@@ -432,6 +258,13 @@ async function handler(
     inheritPermission: 1,
     permissionEffectScope: 1,
     parseStartTime: 1,
+    dataAmount: 1,
+    trainingAmount: 1,
+    processedCount: 1,
+    remainingCount: 1,
+    hasError: 1,
+    allParse: 1,
+    statsUpdatedAt: 1,
     ...(isDatabaseDataset ? { tableSchema: 1 } : {}),
     ...(isStructureDocument ? { metadata: 1 } : {})
   };
@@ -630,99 +463,32 @@ async function handleFieldSort({
     }
 
     const paginatedCollections = await query.lean();
-    const collectionIds = paginatedCollections.map((item) => new Types.ObjectId(item._id));
 
-    // 聚合数据量（仅分页后的数据）
-    const [trainingAmountResult, dataAmountResult]: [
-      { _id: string; count: number; hasError: boolean; hasActive: boolean; allParse: boolean }[],
-      { _id: string; count: number; processedCount: number; remainingCount: number }[]
-    ] = await Promise.all([
-      MongoDatasetTraining.aggregate(
-        [
-          {
-            $match: {
-              teamId: new Types.ObjectId(teamId),
-              datasetId: new Types.ObjectId(datasetId),
-              collectionId: { $in: collectionIds }
-            }
-          },
-          {
-            $group: {
-              _id: '$collectionId',
-              count: { $sum: 1 },
-              hasError: {
-                $max: { $cond: [{ $ifNull: ['$errorMsg', false] }, true, false] }
-              },
-              hasActive: { $max: { $gt: ['$lockTime', addMinutes(new Date(), -10)] } },
-              allParse: { $min: { $eq: ['$mode', TrainingModeEnum.parse] } }
-            }
-          }
-        ],
-        { ...readFromSecondary }
-      ),
-      MongoDatasetData.aggregate(
-        [
-          {
-            $match: {
-              teamId: new Types.ObjectId(teamId),
-              datasetId: new Types.ObjectId(datasetId),
-              collectionId: { $in: collectionIds }
-            }
-          },
-          {
-            $group: {
-              _id: '$collectionId',
-              count: { $sum: 1 },
-              processedCount: {
-                $sum: { $cond: [{ $ifNull: ['$indexingCompleteTime', false] }, 1, 0] }
-              },
-              remainingCount: {
-                $sum: { $cond: [{ $ifNull: ['$indexingCompleteTime', false] }, 0, 1] }
-              }
-            }
-          }
-        ],
-        { ...readFromSecondary }
-      )
-    ]);
-
-    const trainingMap = new Map(trainingAmountResult.map((item) => [String(item._id), item]));
-    const dataMap = new Map(dataAmountResult.map((item) => [String(item._id), item]));
-
-    const folders = paginatedCollections.filter(
-      (item) => item.type === DatasetCollectionTypeEnum.folder
+    // 从预计算字段构建 training/data Map（无需聚合查询）
+    const trainingMap = new Map(
+      paginatedCollections.map((item) => [
+        String(item._id),
+        {
+          count: item.trainingAmount || 0,
+          hasError: item.hasError || false,
+          allParse: item.allParse ?? false
+        }
+      ])
+    );
+    const dataMap = new Map(
+      paginatedCollections.map((item) => [
+        String(item._id),
+        {
+          count: item.dataAmount || 0,
+          processedCount: item.processedCount || 0,
+          remainingCount: item.remainingCount || 0
+        }
+      ])
     );
 
-    const allCollectionsCache =
-      folders.length > 0
-        ? await preloadAllCollections(new Types.ObjectId(teamId), new Types.ObjectId(datasetId))
-        : [];
-
-    const folderMatchingStatusesPromise =
-      folders.length > 0
-        ? Promise.all(
-            folders.map((folder) =>
-              computeFolderMatchingStatuses(
-                new Types.ObjectId(teamId),
-                new Types.ObjectId(datasetId),
-                String(folder._id),
-                allCollectionsCache
-              )
-            )
-          )
-        : Promise.resolve([]);
-
-    const [folderMatchingStatusesArray, tagResults] = await Promise.all([
-      folderMatchingStatusesPromise,
-      Promise.all(
-        paginatedCollections.map((item) => collectionTagsToTagLabel({ datasetId, tags: item.tags }))
-      )
-    ]);
-
-    const folderMatchingStatusesMap = new Map<string, Set<CollectionStatusEnum>>();
-    folders.forEach((folder, index) => {
-      folderMatchingStatusesMap.set(String(folder._id), folderMatchingStatusesArray[index]);
-    });
+    const tagResults = await Promise.all(
+      paginatedCollections.map((item) => collectionTagsToTagLabel({ datasetId, tags: item.tags }))
+    );
 
     const list = paginatedCollections.map((item, index) => {
       const itemId = String(item._id);
@@ -734,13 +500,11 @@ async function handleFieldSort({
       const processedCount = data?.processedCount || 0;
       const remainingCount = data?.remainingCount || 0;
       const hasError = training?.hasError || false;
-      const hasActive = training?.hasActive || false;
       const allParse = training?.allParse || false;
 
       const isFolder = item.type === DatasetCollectionTypeEnum.folder;
 
       if (isFolder) {
-        const matchingStatuses = folderMatchingStatusesMap.get(itemId)!;
         return {
           ...item,
           tags: tagResults[index] as any,
@@ -749,7 +513,6 @@ async function handleFieldSort({
           processedCount,
           remainingCount,
           hasError,
-          matchingStatuses: Array.from(matchingStatuses),
           permission,
           ...(isDatabaseDataset && item.tableSchema
             ? { tableSchemaDescription: item.tableSchema.description }
@@ -763,10 +526,10 @@ async function handleFieldSort({
           dataAmount,
           trainingAmount,
           hasError,
-          hasActive,
           allParse,
           parseStartTime: item.parseStartTime,
-          tableSchemaExist: item.tableSchema?.exist
+          tableSchemaExist: item.tableSchema?.exist,
+          statsUpdatedAt: item.statsUpdatedAt
         });
         return {
           ...item,
@@ -817,105 +580,33 @@ async function handleFieldSort({
   // 3. 内存分页
   const total = filteredCollections.length;
   const paginatedCollections = filteredCollections.slice(offset, offset + pageSize);
-  const collectionIds = paginatedCollections.map((item) => new Types.ObjectId(item._id));
 
-  // 4. 聚合数据量（仅分页后的数据）
-  const [trainingAmountResult, dataAmountResult]: [
-    { _id: string; count: number; hasError: boolean; hasActive: boolean; allParse: boolean }[],
-    { _id: string; count: number; processedCount: number; remainingCount: number }[]
-  ] = await Promise.all([
-    MongoDatasetTraining.aggregate(
-      [
-        {
-          $match: {
-            teamId: new Types.ObjectId(teamId),
-            datasetId: new Types.ObjectId(datasetId),
-            collectionId: { $in: collectionIds }
-          }
-        },
-        {
-          $group: {
-            _id: '$collectionId',
-            count: { $sum: 1 },
-            hasError: {
-              $max: { $cond: [{ $ifNull: ['$errorMsg', false] }, true, false] }
-            },
-            hasActive: { $max: { $gt: ['$lockTime', addMinutes(new Date(), -10)] } },
-            allParse: { $min: { $eq: ['$mode', TrainingModeEnum.parse] } }
-          }
-        }
-      ],
-      { ...readFromSecondary }
-    ),
-    MongoDatasetData.aggregate(
-      [
-        {
-          $match: {
-            teamId: new Types.ObjectId(teamId),
-            datasetId: new Types.ObjectId(datasetId),
-            collectionId: { $in: collectionIds }
-          }
-        },
-        {
-          $group: {
-            _id: '$collectionId',
-            count: { $sum: 1 },
-            processedCount: {
-              $sum: { $cond: [{ $ifNull: ['$indexingCompleteTime', false] }, 1, 0] }
-            },
-            remainingCount: {
-              $sum: { $cond: [{ $ifNull: ['$indexingCompleteTime', false] }, 0, 1] }
-            }
-          }
-        }
-      ],
-      { ...readFromSecondary }
-    )
-  ]);
-
-  // 使用 Map 优化查找效率 O(1)
-  const trainingMap = new Map(trainingAmountResult.map((item) => [String(item._id), item]));
-  const dataMap = new Map(dataAmountResult.map((item) => [String(item._id), item]));
-
-  // 分离 folder 和非 folder，并行计算所有 folder 的匹配状态集合
-  const folders = paginatedCollections.filter(
-    (item) => item.type === DatasetCollectionTypeEnum.folder
+  // 从预计算字段构建 training/data Map（无需聚合查询）
+  const trainingMap = new Map(
+    paginatedCollections.map((item) => [
+      String(item._id),
+      {
+        count: item.trainingAmount || 0,
+        hasError: item.hasError || false,
+        allParse: item.allParse ?? false
+      }
+    ])
+  );
+  const dataMap = new Map(
+    paginatedCollections.map((item) => [
+      String(item._id),
+      {
+        count: item.dataAmount || 0,
+        processedCount: item.processedCount || 0,
+        remainingCount: item.remainingCount || 0
+      }
+    ])
   );
 
-  // 预加载所有 collection 数据（仅在有 folder 时执行，避免重复查询）
-  const allCollectionsCache =
-    folders.length > 0
-      ? await preloadAllCollections(new Types.ObjectId(teamId), new Types.ObjectId(datasetId))
-      : [];
-
-  // 并行计算所有 folder 的匹配状态集合
-  const folderMatchingStatusesPromise =
-    folders.length > 0
-      ? Promise.all(
-          folders.map((folder) =>
-            computeFolderMatchingStatuses(
-              new Types.ObjectId(teamId),
-              new Types.ObjectId(datasetId),
-              String(folder._id),
-              allCollectionsCache
-            )
-          )
-        )
-      : Promise.resolve([]);
-
   // 同时并行处理 tags
-  const [folderMatchingStatusesArray, tagResults] = await Promise.all([
-    folderMatchingStatusesPromise,
-    Promise.all(
-      paginatedCollections.map((item) => collectionTagsToTagLabel({ datasetId, tags: item.tags }))
-    )
-  ]);
-
-  // 创建 folder 匹配状态映射
-  const folderMatchingStatusesMap = new Map<string, Set<CollectionStatusEnum>>();
-  folders.forEach((folder, index) => {
-    folderMatchingStatusesMap.set(String(folder._id), folderMatchingStatusesArray[index]);
-  });
+  const tagResults = await Promise.all(
+    paginatedCollections.map((item) => collectionTagsToTagLabel({ datasetId, tags: item.tags }))
+  );
 
   // 组装最终结果
   const list = paginatedCollections.map((item, index) => {
@@ -928,15 +619,12 @@ async function handleFieldSort({
     const processedCount = data?.processedCount || 0;
     const remainingCount = data?.remainingCount || 0;
     const hasError = training?.hasError || false;
-    const hasActive = training?.hasActive || false;
     const allParse = training?.allParse || false;
     const itemPermission = permissionsMap.get(itemId) ?? parentFolderPermission;
 
     const isFolder = item.type === DatasetCollectionTypeEnum.folder;
 
-    // folder 返回 matchingStatuses 数组，文件返回 status 字段
     if (isFolder) {
-      const matchingStatuses = folderMatchingStatusesMap.get(itemId)!;
       return {
         ...item,
         tags: tagResults[index] as any,
@@ -945,7 +633,6 @@ async function handleFieldSort({
         processedCount,
         remainingCount,
         hasError,
-        matchingStatuses: Array.from(matchingStatuses),
         permission: itemPermission,
         ...(isDatabaseDataset && item.tableSchema
           ? { tableSchemaDescription: item.tableSchema.description }
@@ -959,10 +646,10 @@ async function handleFieldSort({
         dataAmount,
         trainingAmount,
         hasError,
-        hasActive,
         allParse,
         parseStartTime: item.parseStartTime,
-        tableSchemaExist: item.tableSchema?.exist
+        tableSchemaExist: item.tableSchema?.exist,
+        statsUpdatedAt: item.statsUpdatedAt
       });
       return {
         ...item,
@@ -1050,141 +737,8 @@ async function handleDataAmountSortOrStatusFilter({
     });
   }
 
-  // 无状态筛选时，使用数据库聚合管道获取全量数据，再内存过滤分页
-  const basePipeline: any[] = [
-    { $match: match },
-
-    // 左连接 dataset_training 表
-    {
-      $lookup: {
-        from: DatasetTrainingCollectionName,
-        let: { collectionId: '$_id' },
-        pipeline: [
-          {
-            $match: {
-              $expr: {
-                $and: [
-                  { $eq: ['$collectionId', '$$collectionId'] },
-                  { $eq: ['$teamId', teamIdObj] },
-                  { $eq: ['$datasetId', datasetIdObj] }
-                ]
-              }
-            }
-          },
-          {
-            $group: {
-              _id: null,
-              count: { $sum: 1 },
-              hasError: {
-                $max: { $cond: [{ $ifNull: ['$errorMsg', false] }, true, false] }
-              },
-              hasActive: { $max: { $gt: ['$lockTime', addMinutes(new Date(), -10)] } },
-              allParse: { $min: { $eq: ['$mode', TrainingModeEnum.parse] } }
-            }
-          }
-        ],
-        as: 'trainingInfo'
-      }
-    },
-
-    // 左连接 dataset_datas 表
-    {
-      $lookup: {
-        from: DatasetDataCollectionName,
-        let: { collectionId: '$_id' },
-        pipeline: [
-          {
-            $match: {
-              $expr: {
-                $and: [
-                  { $eq: ['$collectionId', '$$collectionId'] },
-                  { $eq: ['$teamId', teamIdObj] },
-                  { $eq: ['$datasetId', datasetIdObj] }
-                ]
-              }
-            }
-          },
-          {
-            $group: {
-              _id: null,
-              count: { $sum: 1 },
-              processedCount: {
-                $sum: { $cond: [{ $ifNull: ['$indexingCompleteTime', false] }, 1, 0] }
-              },
-              remainingCount: {
-                $sum: { $cond: [{ $ifNull: ['$indexingCompleteTime', false] }, 0, 1] }
-              }
-            }
-          }
-        ],
-        as: 'dataInfo'
-      }
-    },
-
-    // 计算字段
-    {
-      $addFields: {
-        trainingAmount: { $ifNull: [{ $arrayElemAt: ['$trainingInfo.count', 0] }, 0] },
-        dataAmount: { $ifNull: [{ $arrayElemAt: ['$dataInfo.count', 0] }, 0] },
-        processedCount: { $ifNull: [{ $arrayElemAt: ['$dataInfo.processedCount', 0] }, 0] },
-        remainingCount: { $ifNull: [{ $arrayElemAt: ['$dataInfo.remainingCount', 0] }, 0] },
-        hasError: { $ifNull: [{ $arrayElemAt: ['$trainingInfo.hasError', 0] }, false] },
-        hasActive: { $ifNull: [{ $arrayElemAt: ['$trainingInfo.hasActive', 0] }, false] },
-        allParse: { $ifNull: [{ $arrayElemAt: ['$trainingInfo.allParse', 0] }, false] }
-      }
-    },
-
-    // 计算状态
-    {
-      $addFields: {
-        status: {
-          $cond: {
-            if: { $eq: ['$type', DatasetCollectionTypeEnum.folder] },
-            then: CollectionStatusEnum.ready,
-            else: {
-              $cond: {
-                if: { $eq: ['$tableSchema.exist', false] },
-                then: CollectionStatusEnum.notExist,
-                else: {
-                  $cond: {
-                    if: { $eq: ['$hasError', true] },
-                    then: CollectionStatusEnum.error,
-                    else: {
-                      $cond: {
-                        if: { $gt: ['$trainingAmount', 0] },
-                        then: {
-                          $cond: {
-                            if: {
-                              $and: [
-                                { $eq: ['$allParse', true] },
-                                { $not: { $ifNull: ['$parseStartTime', false] } }
-                              ]
-                            },
-                            then: CollectionStatusEnum.queued,
-                            else: {
-                              $cond: {
-                                if: { $eq: ['$allParse', true] },
-                                then: CollectionStatusEnum.parsing,
-                                else: CollectionStatusEnum.indexing
-                              }
-                            }
-                          }
-                        },
-                        else: CollectionStatusEnum.ready
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-
-    // 移除临时字段
-    { $project: { trainingInfo: 0, dataInfo: 0 } }
-  ];
+  // 无状态筛选时，直接从 collection 字段读取预计算的 stats（无需 $lookup 聚合）
+  const basePipeline: any[] = [{ $match: match }];
 
   // 排序
   if (sortBy === 'dataAmount') {
@@ -1225,43 +779,16 @@ async function handleDataAmountSortOrStatusFilter({
   const total = filteredCollections.length;
   const paginatedCollections = filteredCollections.slice(offset, offset + pageSize);
 
-  // 处理 folder 匹配状态集合
-  const folders = paginatedCollections.filter(
-    (item: any) => item.type === DatasetCollectionTypeEnum.folder
-  );
-  const folderMatchingStatusesMap = new Map<string, Set<CollectionStatusEnum>>();
-
-  if (folders.length > 0) {
-    const allCollectionsCache = await preloadAllCollections(teamIdObj, datasetIdObj);
-    const folderMatchingStatusesArray = await Promise.all(
-      folders.map((folder: any) =>
-        computeFolderMatchingStatuses(
-          teamIdObj,
-          datasetIdObj,
-          String(folder._id),
-          allCollectionsCache
-        )
-      )
-    );
-    folders.forEach((folder: any, index: number) => {
-      folderMatchingStatusesMap.set(String(folder._id), folderMatchingStatusesArray[index]);
-    });
-  }
-
   // 组装结果
   const list = await Promise.all(
     paginatedCollections.map(async (item: any) => {
       const isFolder = item.type === DatasetCollectionTypeEnum.folder;
       const itemPermission = permissionsMap.get(String(item._id)) ?? parentFolderPermission;
 
-      // folder 返回 matchingStatuses 数组，文件返回 status 字段
       if (isFolder) {
-        const matchingStatuses =
-          folderMatchingStatusesMap.get(String(item._id)) || new Set([CollectionStatusEnum.ready]);
         return {
           ...item,
           tags: await collectionTagsToTagLabel({ datasetId, tags: item.tags }),
-          matchingStatuses: Array.from(matchingStatuses),
           permission: isTeamOwner ? permission : itemPermission,
           ...(isDatabaseDataset && item.tableSchema
             ? { tableSchemaDescription: item.tableSchema.description }
@@ -1271,10 +798,19 @@ async function handleDataAmountSortOrStatusFilter({
             : {})
         };
       } else {
+        const fileStatus = getFileStatus({
+          dataAmount: item.dataAmount || 0,
+          trainingAmount: item.trainingAmount || 0,
+          hasError: item.hasError || false,
+          allParse: item.allParse ?? false,
+          parseStartTime: item.parseStartTime,
+          tableSchemaExist: item.tableSchema?.exist,
+          statsUpdatedAt: item.statsUpdatedAt
+        });
         return {
           ...item,
           tags: await collectionTagsToTagLabel({ datasetId, tags: item.tags }),
-          status: item.status,
+          status: fileStatus,
           permission: isTeamOwner ? permission : itemPermission,
           ...(isDatabaseDataset && item.tableSchema
             ? { tableSchemaDescription: item.tableSchema.description }
@@ -1332,96 +868,27 @@ async function handleStatusFilterWithMemoryPagination({
     ...readFromSecondary
   }).lean();
 
-  const allCollectionIds = allCollections.map((item) => new Types.ObjectId(String(item._id)));
-
-  // 聚合数据量
-  const [trainingAmount, dataAmount] = await Promise.all([
-    MongoDatasetTraining.aggregate<{
-      _id: string;
-      count: number;
-      hasError: boolean;
-      hasActive: boolean;
-      allParse: boolean;
-    }>(
-      [
-        {
-          $match: {
-            teamId: teamIdObj,
-            datasetId: datasetIdObj,
-            collectionId: { $in: allCollectionIds }
-          }
-        },
-        {
-          $group: {
-            _id: '$collectionId',
-            count: { $sum: 1 },
-            hasError: {
-              $max: { $cond: [{ $ifNull: ['$errorMsg', false] }, true, false] }
-            },
-            hasActive: { $max: { $gt: ['$lockTime', addMinutes(new Date(), -10)] } },
-            allParse: { $min: { $eq: ['$mode', TrainingModeEnum.parse] } }
-          }
-        }
-      ],
-      { ...readFromSecondary }
-    ),
-    MongoDatasetData.aggregate<{
-      _id: string;
-      count: number;
-      processedCount: number;
-      remainingCount: number;
-    }>(
-      [
-        {
-          $match: {
-            teamId: teamIdObj,
-            datasetId: datasetIdObj,
-            collectionId: { $in: allCollectionIds }
-          }
-        },
-        {
-          $group: {
-            _id: '$collectionId',
-            count: { $sum: 1 },
-            processedCount: {
-              $sum: { $cond: [{ $ifNull: ['$indexingCompleteTime', false] }, 1, 0] }
-            },
-            remainingCount: {
-              $sum: { $cond: [{ $ifNull: ['$indexingCompleteTime', false] }, 0, 1] }
-            }
-          }
-        }
-      ],
-      { ...readFromSecondary }
-    )
-  ]);
-
-  const trainingMap = new Map(trainingAmount.map((item) => [String(item._id), item]));
-  const dataMap = new Map(dataAmount.map((item) => [String(item._id), item]));
-
-  // 计算 folder 匹配状态集合
-  const folders = allCollections.filter((item) => item.type === DatasetCollectionTypeEnum.folder);
-  const allCollectionsCache =
-    folders.length > 0 ? await preloadAllCollections(teamIdObj, datasetIdObj) : [];
-
-  const folderMatchingStatusesArray =
-    folders.length > 0
-      ? await Promise.all(
-          folders.map((folder) =>
-            computeFolderMatchingStatuses(
-              teamIdObj,
-              datasetIdObj,
-              String(folder._id),
-              allCollectionsCache
-            )
-          )
-        )
-      : [];
-
-  const folderMatchingStatusesMap = new Map<string, Set<CollectionStatusEnum>>();
-  folders.forEach((folder, index) => {
-    folderMatchingStatusesMap.set(String(folder._id), folderMatchingStatusesArray[index]);
-  });
+  // 从预计算字段构建 training/data Map（无需聚合查询）
+  const trainingMap = new Map(
+    allCollections.map((item) => [
+      String(item._id),
+      {
+        count: item.trainingAmount || 0,
+        hasError: item.hasError || false,
+        allParse: item.allParse ?? false
+      }
+    ])
+  );
+  const dataMap = new Map(
+    allCollections.map((item) => [
+      String(item._id),
+      {
+        count: item.dataAmount || 0,
+        processedCount: item.processedCount || 0,
+        remainingCount: item.remainingCount || 0
+      }
+    ])
+  );
 
   // 组合数据并计算状态
   const collectionsWithData = allCollections.map((item) => {
@@ -1434,32 +901,28 @@ async function handleStatusFilterWithMemoryPagination({
     const processedCountVal = data?.processedCount || 0;
     const remainingCountVal = data?.remainingCount || 0;
     const hasErrorVal = training?.hasError || false;
-    const hasActiveVal = training?.hasActive || false;
     const allParseVal = training?.allParse || false;
 
     const isFolder = item.type === DatasetCollectionTypeEnum.folder;
 
-    // folder 使用匹配状态集合，文件使用单一状态
     if (isFolder) {
-      const matchingStatuses = folderMatchingStatusesMap.get(itemId)!;
       return {
         ...item,
         trainingAmount: trainingAmountVal,
         dataAmount: dataAmountVal,
         processedCount: processedCountVal,
         remainingCount: remainingCountVal,
-        hasError: hasErrorVal,
-        matchingStatuses
+        hasError: hasErrorVal
       };
     } else {
       const fileStatus = getFileStatus({
         dataAmount: dataAmountVal,
         trainingAmount: trainingAmountVal,
         hasError: hasErrorVal,
-        hasActive: hasActiveVal,
         allParse: allParseVal,
         parseStartTime: item.parseStartTime,
-        tableSchemaExist: item.tableSchema?.exist
+        tableSchemaExist: item.tableSchema?.exist,
+        statsUpdatedAt: item.statsUpdatedAt
       });
       return {
         ...item,
@@ -1489,12 +952,11 @@ async function handleStatusFilterWithMemoryPagination({
     );
   }
 
-  // 状态筛选：使用 Set 交集判断
+  // 状态筛选：folder 无法精确匹配（无 matchingStatuses），统一排除
   const filteredCollections = permissionFilteredCollections.filter((item) => {
     const isFolder = item.type === DatasetCollectionTypeEnum.folder;
     if (isFolder) {
-      // folder: 检查 matchingStatuses 集合是否与筛选条件有交集
-      return statusFilter.some((status) => (item as any).matchingStatuses.has(status));
+      return false;
     } else {
       // 文件: 直接检查 status 是否在筛选条件中
       return statusFilter.includes((item as any).status);
@@ -1548,14 +1010,10 @@ async function handleStatusFilterWithMemoryPagination({
         ? permission
         : permissionsMap.get(String(item._id)) ?? parentFolderPermission;
 
-      // folder 返回 matchingStatuses 数组，文件返回 status 字段
       if (isFolder) {
-        const matchingStatuses =
-          folderMatchingStatusesMap.get(String(item._id)) || new Set([CollectionStatusEnum.ready]);
         return {
           ...item,
           tags: await collectionTagsToTagLabel({ datasetId, tags: item.tags }),
-          matchingStatuses: Array.from(matchingStatuses),
           permission: itemPermission,
           ...(isDatabaseDataset && item.tableSchema
             ? { tableSchemaDescription: item.tableSchema.description }
