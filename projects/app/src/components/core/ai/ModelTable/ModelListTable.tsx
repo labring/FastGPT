@@ -14,6 +14,7 @@ import {
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
 import MyTag from '@fastgpt/web/components/common/Tag';
+import TableHeaderFilter from '@fastgpt/web/components/common/TableHeaderFilter';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import EllipsisTooltip from '@fastgpt/web/components/common/EllipsisTooltip';
@@ -29,6 +30,7 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import type { Dispatch, SetStateAction } from 'react';
 import { useState, useEffect, useMemo } from 'react';
 import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type';
+import type { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
 import type {
   ModelTabType,
   I18nT,
@@ -58,6 +60,9 @@ export type ModelListTableProps = {
   toggleTrainTimeSort?: () => void;
   handleOpenTrainDrawer: OpenTrainModelHandler;
   setTrainDetailDrawer: Dispatch<SetStateAction<TrainDetailModel | null>>;
+  modelType: ModelTypeEnum | '';
+  onModelTypeChange: (val: ModelTypeEnum | '') => void;
+  modelTypeList: { label: string; value: ModelTypeEnum | '' }[];
 };
 
 type DatasetInfo = {
@@ -106,7 +111,10 @@ const ModelListTable = ({
   trainTimeSortOrder,
   toggleTrainTimeSort,
   handleOpenTrainDrawer,
-  setTrainDetailDrawer
+  setTrainDetailDrawer,
+  modelType,
+  onModelTypeChange,
+  modelTypeList
 }: ModelListTableProps) => {
   const showTrainedModelColumns = tabType === modelTableTabValues.custom;
   const showTrainTaskColumn = tabType === modelTableTabValues.base;
@@ -189,7 +197,15 @@ const ModelListTable = ({
               </HStack>
             </Th>
             <Th fontSize={'xs'} w={showTrainedModelColumns ? '132px' : undefined}>
-              {t('common:model.model_type')}
+              <TableHeaderFilter
+                value={modelType || undefined}
+                onChange={(val) => onModelTypeChange((val as ModelTypeEnum) || '')}
+                options={modelTypeList
+                  .filter((item) => item.value !== '')
+                  .map((item) => ({ key: item.value, label: item.label }))}
+                label={t('common:model.model_type')}
+                allLabel={t('common:model.all_type')}
+              />
             </Th>
             {showTrainedModelColumns ? (
               <>

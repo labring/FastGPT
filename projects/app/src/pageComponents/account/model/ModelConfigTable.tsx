@@ -46,6 +46,7 @@ import { AddModelButton, getNewModelFormData } from './AddModelBox';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import PriceTiersLabel from '@/components/core/ai/PriceTiersLabel';
 import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
+import TableHeaderFilter from '@fastgpt/web/components/common/TableHeaderFilter';
 import { LazyCollaboratorProvider } from '@/components/support/permission/MemberManager/context';
 import { OwnerRoleVal, ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import { getModelCollaborators, updateModelCollaborators } from '@/web/common/system/api';
@@ -75,19 +76,10 @@ const ModelTable = () => {
     }))
   ]);
 
-  const [modelType, setModelType] = useState<ModelTypeEnum | ''>('');
-  const selectModelTypeList = useRef<{ label: string; value: ModelTypeEnum | '' }[]>([
-    { label: t('common:model.all_type'), value: '' },
-    ...modelTypeList.map((item) => ({ label: t(item.label), value: item.value }))
-  ]);
+  const [modelType, setModelType] = useState<ModelTypeEnum | undefined>(undefined);
 
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('');
-  const statusFilterList = useRef<{ label: string; value: string }[]>([
-    { label: t('account_model:model_status_all'), value: '' },
-    { label: t('account_model:enable_channel'), value: 'active' },
-    { label: t('account_model:forbid_channel'), value: 'inactive' }
-  ]);
+  const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
 
   const {
     data: systemModelList = [],
@@ -297,26 +289,6 @@ const ModelTable = () => {
             list={filterProviderList}
           />
         </HStack>
-        <HStack flexShrink={0}>
-          <MySelect
-            h={'36px'}
-            w={'150px'}
-            bg={'white'}
-            value={modelType}
-            onChange={setModelType}
-            list={selectModelTypeList.current}
-          />
-        </HStack>
-        <HStack flexShrink={0}>
-          <MySelect
-            h={'36px'}
-            w={'150px'}
-            bg={'white'}
-            value={statusFilter}
-            onChange={setStatusFilter}
-            list={statusFilterList.current}
-          />
-        </HStack>
         <Box flex={1} />
         <Box flex={'0 0 250px'}>
           <SearchInput
@@ -351,12 +323,32 @@ const ModelTable = () => {
                     <MyIcon name={'modal/changePer'} w={'1rem'} />
                   </HStack>
                 </Th>
-                <Th fontSize={'xs'}>{t('common:model.model_type')}</Th>
+                <Th fontSize={'xs'}>
+                  <TableHeaderFilter
+                    value={modelType}
+                    onChange={(val) => setModelType(val as ModelTypeEnum)}
+                    options={modelTypeList.map((item) => ({
+                      key: item.value,
+                      label: t(item.label)
+                    }))}
+                    label={t('common:model.model_type')}
+                    allLabel={t('common:model.all_type')}
+                  />
+                </Th>
                 {feConfigs?.isPlus && <Th fontSize={'xs'}>{t('common:model.billing')}</Th>}
                 <Th fontSize={'xs'}>{t('account:model.creator')}</Th>
                 <Th fontSize={'xs'}>{t('account:model.permission_label')}</Th>
                 <Th fontSize={'xs'}>
-                  {t('account:model.active')}({activeModelLength})
+                  <TableHeaderFilter
+                    label={`${t('account:model.active')}(${activeModelLength})`}
+                    value={statusFilter}
+                    onChange={setStatusFilter}
+                    options={[
+                      { key: 'active', label: t('account_model:enable_channel') },
+                      { key: 'inactive', label: t('account_model:forbid_channel') }
+                    ]}
+                    allLabel={t('account_model:model_status_all')}
+                  />
                 </Th>
                 <Th fontSize={'xs'}></Th>
               </Tr>

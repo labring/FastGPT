@@ -55,6 +55,9 @@ type FilterPanelProps = {
 
 type TablePanelProps = TableSharedProps & {
   modelList: ModelRow[];
+  modelType: import('@fastgpt/global/core/ai/model').ModelTypeEnum | '';
+  onModelTypeChange: (val: import('@fastgpt/global/core/ai/model').ModelTypeEnum | '') => void;
+  modelTypeList: { label: string; value: import('@fastgpt/global/core/ai/model').ModelTypeEnum | '' }[];
 };
 
 const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }) => {
@@ -140,7 +143,11 @@ const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }
           }}
           tableProps={{
             ...baseTableSharedProps,
-            modelList: sortedBaseModelList
+            modelList: sortedBaseModelList,
+            modelType: baseFilterState.modelType,
+            onModelTypeChange: (modelType) =>
+              setBaseFilterState((state) => ({ ...state, modelType })),
+            modelTypeList: selectModelTypeList
           }}
           FloatingActionBar={BaseFloatingActionBar}
         />
@@ -157,7 +164,11 @@ const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }
           }}
           tableProps={{
             ...customTableSharedProps,
-            modelList: sortedCustomModelList
+            modelList: sortedCustomModelList,
+            modelType: customFilterState.modelType,
+            onModelTypeChange: (modelType) =>
+              setCustomFilterState((state) => ({ ...state, modelType })),
+            modelTypeList: selectModelTypeList
           }}
           FloatingActionBar={CustomFloatingActionBar}
         />
