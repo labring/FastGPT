@@ -71,12 +71,12 @@ const EditForm = ({
     onDeleteTool: (id) => {
       setAppForm((state) => ({
         ...state,
-        selectedTools: state.selectedTools?.filter((item) => item.id !== id) || []
+        selectedTools: state.selectedTools?.filter((item) => item.pluginId !== id) || []
       }));
     },
     onUpdateOrAddTool: (tool) => {
       setAppForm((state) => {
-        const index = state.selectedTools.findIndex((item) => item.id === tool.id);
+        const index = state.selectedTools.findIndex((item) => item.pluginId === tool.pluginId);
 
         if (index === -1) {
           return {
@@ -87,7 +87,8 @@ const EditForm = ({
           return {
             ...state,
             selectedTools:
-              state.selectedTools?.map((item) => (item.id === tool.id ? tool : item)) || []
+              state.selectedTools?.map((item) => (item.pluginId === tool.pluginId ? tool : item)) ||
+              []
           };
         }
       });
@@ -143,14 +144,14 @@ const EditForm = ({
         return {
           ...option,
           onClick: async (toolId: string) => {
-            const skillId = await option.onClick?.(toolId);
+            const result = await option.onClick?.(toolId);
 
             // AgentV2 提示词 @虚拟机 时，同步打开下方虚拟机开关。
-            if (skillId === AGENT_SANDBOX_TOOLSET_ID && !appForm.aiSettings.useAgentSandbox) {
+            if (result?.id === AGENT_SANDBOX_TOOLSET_ID && !appForm.aiSettings.useAgentSandbox) {
               onChangeAgentSandbox(true);
             }
 
-            return skillId;
+            return result;
           }
         };
       }
@@ -415,7 +416,8 @@ const EditForm = ({
               setAppForm((state) => ({
                 ...state,
                 selectedTools:
-                  state.selectedTools?.map((item) => (item.id === e.id ? e : item)) || []
+                  state.selectedTools?.map((item) => (item.pluginId === e.pluginId ? e : item)) ||
+                  []
               }));
             }}
             onRemoveTool={(id) => {

@@ -1,5 +1,9 @@
 import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
-import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
+import {
+  getToolNameCandidates,
+  splitCombineToolId,
+  splitToolsetToolPluginId
+} from '@fastgpt/global/core/app/tool/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authAppByTmbId } from '../../../../../../../support/permission/app/auth';
@@ -274,11 +278,12 @@ export const getAgentRuntimeTools = async ({
     app: AppSchemaType;
     pluginId: string;
   }): Promise<AgentRuntimeNode> => {
-    const [, ...toolNameParts] = pluginId.split('/');
-    const toolName = toolNameParts.join('/');
+    const { toolName } = splitToolsetToolPluginId(pluginId);
     const version = await getVersionNodes({ app });
     const toolList = version.nodes[0]?.toolConfig?.mcpToolSet?.toolList ?? [];
-    const tool = toolList.find((item) => item.name === toolName);
+    const tool = getToolNameCandidates(toolName)
+      .map((name) => toolList.find((item) => item.name === name))
+      .find(Boolean);
     if (!tool) return Promise.reject(PluginErrEnum.unExist);
 
     const node = getMCPToolRuntimeNode({
@@ -308,12 +313,12 @@ export const getAgentRuntimeTools = async ({
     app: AppSchemaType;
     pluginId: string;
   }): Promise<AgentRuntimeNode> => {
-    const [, ...toolNameParts] = pluginId.split('/');
-    const toolName = toolNameParts.join('/');
+    const { toolName } = splitToolsetToolPluginId(pluginId);
     const version = await getVersionNodes({ app });
-    const tool = version.nodes[0]?.toolConfig?.httpToolSet?.toolList.find(
-      (item) => item.name === toolName
-    );
+    const toolList = version.nodes[0]?.toolConfig?.httpToolSet?.toolList ?? [];
+    const tool = getToolNameCandidates(toolName)
+      .map((name) => toolList.find((item) => item.name === name))
+      .find(Boolean);
     if (!tool) return Promise.reject(PluginErrEnum.unExist);
 
     const node = getHTTPToolRuntimeNode({
@@ -396,11 +401,7 @@ export const getAgentRuntimeTools = async ({
       }
     }
 
-    const description = JSON.stringify({
-      type: flowNodeType,
-      name: name,
-      intro: toolDescription || intro
-    });
+    const description = [name, toolDescription || intro].filter(Boolean).join(': ');
     // 仅数字开头的工具名需要补前缀，避免破坏 runtime 使用原始 tool id 反查工具。
     const formatToolId = /^\d/.test(toolId) ? `t${toolId}` : toolId;
 
@@ -522,6 +523,10 @@ export const getAgentRuntimeTools = async ({
         })();
 
         // toolset 展开后的子工具统一走 tool 执行；params 仍继承父工具配置。
+        const promptReference = {
+          id: tool.id,
+          name: toolNode.name
+        };
         const buildSubApp = (child: RuntimeNodeItemType, id = child.nodeId): SubAppInitType => ({
           type: 'tool',
           id,
@@ -529,6 +534,7 @@ export const getAgentRuntimeTools = async ({
           avatar: child.avatar,
           version: child.version,
           toolConfig: child.toolConfig,
+          promptReference,
           params: tool.config,
           requestSchema: formatSchema({
             toolId: id,
@@ -604,6 +610,7 @@ export const getAgentRuntimeTools = async ({
               avatar: toolNode.avatar,
               version: toolNode.version,
               toolConfig: toolNode.toolConfig,
+              promptReference,
               params: tool.config,
               requestSchema: formatSchema({
                 toolId: cleanedPluginId,

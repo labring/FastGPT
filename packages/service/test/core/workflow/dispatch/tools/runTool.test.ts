@@ -45,7 +45,6 @@ describe('parseToolId', () => {
       const result = parseToolId('mcp-507f1f77bcf86cd799439011/ignoredToolset/actualTool');
       expect(result.parentId).toBe('507f1f77bcf86cd799439011');
       expect(result.toolName).toBe('actualTool');
-      // toolsetName 应该被忽略
     });
 
     it('should handle toolset names with special characters', () => {
@@ -69,16 +68,15 @@ describe('parseToolId', () => {
     });
 
     it('should handle tool names with slashes in old format', () => {
-      // 注意: split('/') 只会分割成三个部分,所以第三个部分是 'tool'
       const result = parseToolId('mcp-507f1f77bcf86cd799439011/toolset/tool/extra');
       expect(result.parentId).toBe('507f1f77bcf86cd799439011');
-      // 实际上 split('/') 会得到 ['507f1f77bcf86cd799439011', 'toolset', 'tool/extra']
-      // 但由于解构赋值,legacyToolName 会是 'tool/extra'
-      // 等等,让我重新理解代码逻辑...
-      // formatId.split('/') 会得到 ['507f1f77bcf86cd799439011', 'toolset', 'tool', 'extra']
-      // 解构赋值只取前三个: parentId='507f1f77bcf86cd799439011', toolsetNameOrToolName='toolset', legacyToolName='tool'
-      // 所以 toolName 应该是 'tool',而不是 'tool/extra'
-      expect(result.toolName).toBe('tool');
+      expect(result.toolName).toBe('tool/extra');
+    });
+
+    it('should preserve leading slash in tool name', () => {
+      const result = parseToolId('http-69e20f48dbec7c6ece77556b//test');
+      expect(result.parentId).toBe('69e20f48dbec7c6ece77556b');
+      expect(result.toolName).toBe('/test');
     });
 
     it('should handle empty tool name', () => {
@@ -90,7 +88,7 @@ describe('parseToolId', () => {
     it('should handle empty toolset and tool name in old format', () => {
       const result = parseToolId('mcp-507f1f77bcf86cd799439011//');
       expect(result.parentId).toBe('507f1f77bcf86cd799439011');
-      expect(result.toolName).toBe('');
+      expect(result.toolName).toBe('/');
     });
   });
 
@@ -115,7 +113,6 @@ describe('parseToolId', () => {
       const oldResult = parseToolId(oldId);
       const newResult = parseToolId(newId);
 
-      // 两种格式应该解析出相同的 parentId 和 toolName
       expect(oldResult.parentId).toBe(newResult.parentId);
       expect(oldResult.toolName).toBe(newResult.toolName);
     });

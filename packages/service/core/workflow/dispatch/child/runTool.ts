@@ -19,7 +19,7 @@ import { getNodeErrResponse } from '../utils';
 import { getAppVersionById } from '../../../../core/app/version/controller';
 import { runHTTPTool } from '../../../app/http';
 import { getWorkflowContext } from '../../utils/context';
-import { getToolRawId } from '@fastgpt/global/core/app/tool/utils';
+import { getToolNameCandidates, getToolRawId } from '@fastgpt/global/core/app/tool/utils';
 import { pluginClient } from '../../../../thirdProvider/fastgptPlugin';
 import { SystemToolRepo } from '../../../app/tool/systemTool/systemTool.repo';
 import { InvokeProcessor } from '../../../../support/invoke/invoke';
@@ -168,9 +168,9 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
             error: res.error,
             moduleLogo: avatar
           },
-            [DispatchNodeResponseKeyEnum.toolResponse]: res.error
-          };
-        }
+          [DispatchNodeResponseKeyEnum.toolResponse]: res.error
+        };
+      }
 
       const usagePoints = (() => {
         if (
@@ -212,6 +212,10 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
     } else if (toolConfig?.mcpTool?.toolId) {
       // pluginId: toolSetAppId/toolsetName/toolName
       const { parentId, toolName } = parseToolId(toolConfig.mcpTool.toolId);
+      if (!parentId || !toolName) {
+        throw new Error(`Invalid MCP tool id: ${toolConfig.mcpTool.toolId}`);
+      }
+
       const tool = await getAppVersionById({
         appId: parentId,
         versionId: version
@@ -258,7 +262,9 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
 
       const { headerSecret, baseUrl, toolList, customHeaders } = toolSetData;
 
-      const httpTool = toolList?.find((tool: HttpToolConfigType) => tool.name === toolName);
+      const httpTool = getToolNameCandidates(toolName)
+        .map((name) => toolList?.find((tool: HttpToolConfigType) => tool.name === name))
+        .find(Boolean);
       if (!httpTool) {
         throw new Error(`HTTP tool ${toolName} not found`);
       }
@@ -358,11 +364,18 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
 
 export const parseToolId = (id: string) => {
   const formatId = id.split('-').slice(1).join('-');
-  const [parentId, toolsetNameOrToolName, legacyToolName] = formatId.split('/');
+  const [parentId, toolsetNameOrToolName, ...restToolNameParts] = formatId.split('/');
 
-  if (legacyToolName) {
+  if (restToolNameParts.length > 0) {
+    const toolName = restToolNameParts.join('/');
+
+    // 新版格式允许 toolName 以 `/` 开头，此时 ID 会表现为 source-appId//toolName。
+    if (!toolsetNameOrToolName) {
+      return { parentId, toolName: `/${toolName}` };
+    }
+
     // 旧版格式: source-appId/toolsetName/toolName
-    return { parentId, toolName: legacyToolName };
+    return { parentId, toolName };
   }
 
   // 新版格式: source-appId/toolName

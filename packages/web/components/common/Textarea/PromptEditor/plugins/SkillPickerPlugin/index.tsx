@@ -1,6 +1,5 @@
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { LexicalTypeaheadMenuPlugin } from '@lexical/react/LexicalTypeaheadMenuPlugin';
-import type { TextNode } from 'lexical';
 import {
   $createTextNode,
   $getSelection,
@@ -26,6 +25,7 @@ import { useMount } from 'ahooks';
 import { useRequest } from '../../../../../../hooks/useRequest';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { useTranslation } from 'next-i18next';
+import type { SkillLabelItemType } from '../SkillLabelPlugin';
 
 /* 
   两列渲染器
@@ -35,8 +35,13 @@ export type SkillOptionItemType = {
   description?: string;
   list: SkillItemType[];
   onSelect?: (id: string) => Promise<SkillOptionItemType | undefined>;
-  onClick?: (id: string) => Promise<string | undefined>;
+  onClick?: (id: string) => Promise<SkillClickResult | undefined>;
   onFolderLoad?: (id: string) => Promise<SkillItemType[]>;
+};
+
+export type SkillClickResult = {
+  id: string;
+  skill: SkillLabelItemType;
 };
 
 export type SkillItemType = {
@@ -62,21 +67,33 @@ export type SkillItemType = {
 
 export default function SkillPickerPlugin({
   skillOption,
-  isFocus
+  isFocus,
+  pendingSkillsRef
 }: {
   skillOption: SkillOptionItemType;
   isFocus: boolean;
+  pendingSkillsRef: React.MutableRefObject<Map<string, SkillLabelItemType>>;
 }) {
   const { t } = useTranslation();
   const [skillOptions, setSkillOptions] = useState<SkillOptionItemType[]>([skillOption]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const isMenuOpenRef = useRef(false);
+
+  const updateMenuOpen = useCallback((open: boolean) => {
+    isMenuOpenRef.current = open;
+    setIsMenuOpen(open);
+  }, []);
 
   useEffect(() => {
-    setSkillOptions((state) => {
-      const newOptions = [...state];
-      newOptions[0] = skillOption;
-      return newOptions;
-    });
+    const timer = window.setTimeout(() => {
+      setSkillOptions((state) => {
+        const newOptions = [...state];
+        newOptions[0] = skillOption;
+        return newOptions;
+      });
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, [skillOption]);
 
   const [editor] = useLexicalComposerContext();
@@ -92,27 +109,31 @@ export default function SkillPickerPlugin({
 
   // Scroll selected item into view
   const scrollIntoView = useCallback((columnIndex: number, rowIndex: number, retryCount = 0) => {
-    const itemKey = `${columnIndex}-${rowIndex}`;
-    const itemElement = itemRefs.current.get(itemKey);
-    if (itemElement) {
-      if (rowIndex === 0) {
-        const container = itemElement.parentElement;
-        if (container) {
-          container.scrollTop = 0;
+    const scroll = (currentRetryCount: number) => {
+      const itemKey = `${columnIndex}-${rowIndex}`;
+      const itemElement = itemRefs.current.get(itemKey);
+      if (itemElement) {
+        if (rowIndex === 0) {
+          const container = itemElement.parentElement;
+          if (container) {
+            container.scrollTop = 0;
+          }
+        } else {
+          itemElement.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+            inline: 'nearest'
+          });
         }
-      } else {
-        itemElement.scrollIntoView({
-          behavior: 'smooth',
-          block: 'nearest',
-          inline: 'nearest'
-        });
+      } else if (currentRetryCount < 5) {
+        // Retry if element not found yet (DOM not ready)
+        setTimeout(() => {
+          scroll(currentRetryCount + 1);
+        }, 20);
       }
-    } else if (retryCount < 5) {
-      // Retry if element not found yet (DOM not ready)
-      setTimeout(() => {
-        scrollIntoView(columnIndex, rowIndex, retryCount + 1);
-      }, 20);
-    }
+    };
+
+    scroll(retryCount);
   }, []);
 
   // Recursively collects all visible items including expanded folder children for keyboard navigation
@@ -177,48 +198,74 @@ export default function SkillPickerPlugin({
     }
   );
 
+  const insertSkillNodeText = useCallback(
+    (skillId: string, matchingString?: string | null) => {
+      let inserted = false;
+
+      editor.update(() => {
+        const selection = $getSelection();
+        if (!$isRangeSelection(selection)) return;
+
+        const anchorNode = selection.anchor.getNode();
+        const anchorOffset = selection.anchor.offset;
+
+        if ($isTextNode(anchorNode)) {
+          const text = anchorNode.getTextContent();
+          const triggerText = `@${matchingString ?? ''}`;
+          let atIndex = text.lastIndexOf(triggerText, anchorOffset);
+
+          if (atIndex === -1) {
+            atIndex = text.lastIndexOf('@', anchorOffset);
+          }
+
+          if (atIndex !== -1) {
+            const removeEnd = Math.max(anchorOffset, atIndex + triggerText.length, atIndex + 1);
+            const beforeAt = text.substring(0, atIndex);
+            const afterTrigger = text.substring(removeEnd);
+            anchorNode.setTextContent(beforeAt + afterTrigger);
+            anchorNode.select(beforeAt.length, beforeAt.length);
+          }
+        }
+
+        selection.insertNodes([$createTextNode(`{{@${skillId}@}}`)]);
+        inserted = true;
+      });
+
+      return inserted;
+    },
+    [editor]
+  );
+
+  const insertSkillResult = useCallback(
+    (result: SkillClickResult, matchingString?: string | null) => {
+      pendingSkillsRef.current.set(result.id, result.skill);
+      const inserted = insertSkillNodeText(result.id, matchingString);
+
+      if (!inserted) {
+        pendingSkillsRef.current.delete(result.id);
+      }
+    },
+    [insertSkillNodeText, pendingSkillsRef]
+  );
+
   // Handle item click (confirm selection)
   const itemClickLock = useRef(false);
   const [isItemClickLoading, setIsItemClickLoading] = useState(false);
   const { runAsync: handleItemClick } = useRequest(
     async ({ item, option }: { item: SkillItemType; option?: SkillOptionItemType }) => {
-      if (!item.canClick || !option?.onClick || itemClickLock.current) return;
+      if (!item.canClick || !option?.onClick || itemClickLock.current) {
+        return;
+      }
       itemClickLock.current = true;
       setIsItemClickLoading(true);
       try {
         // Step 1: Execute async onClick to get skillId (outside editor.update)
-        const skillId = await option.onClick(item.id);
+        const result = await option.onClick(item.id);
 
         // Step 2: Update editor with the skillId (inside a fresh editor.update)
-        if (skillId) {
-          console.log(skillId, 2222);
-          editor.update(() => {
-            // Re-acquire selection in this update cycle to avoid stale node references
-            const selection = $getSelection();
-            if (!$isRangeSelection(selection)) return;
-
-            // Re-acquire nodes in this update cycle
-            const nodes = selection.getNodes();
-            nodes.forEach((node) => {
-              if ($isTextNode(node)) {
-                const text = node.getTextContent();
-                const atIndex = text.lastIndexOf('@');
-                if (atIndex !== -1) {
-                  // Remove the '@' trigger character
-                  const beforeAt = text.substring(0, atIndex);
-                  const afterAt = text.substring(atIndex + 1);
-                  node.setTextContent(beforeAt + afterAt);
-
-                  // Move cursor to where '@' was
-                  const newOffset = beforeAt.length;
-                  node.select(newOffset, newOffset);
-                }
-              }
-            });
-
-            // Insert skill node text at current selection
-            selection.insertNodes([$createTextNode(`{{@${skillId}@}}`)]);
-          });
+        if (result) {
+          insertSkillResult(result);
+          updateMenuOpen(false);
         }
       } catch (error) {
         return Promise.reject(error);
@@ -228,7 +275,7 @@ export default function SkillPickerPlugin({
       }
     },
     {
-      refreshDeps: [editor]
+      refreshDeps: [insertSkillResult, updateMenuOpen]
     }
   );
 
@@ -338,7 +385,7 @@ export default function SkillPickerPlugin({
     const removeUpCommand = editor.registerCommand(
       KEY_ARROW_UP_COMMAND,
       (e: KeyboardEvent) => {
-        if (!isMenuOpen) return true;
+        if (!isMenuOpenRef.current) return false;
 
         e.preventDefault();
         e.stopPropagation();
@@ -376,7 +423,7 @@ export default function SkillPickerPlugin({
     const removeDownCommand = editor.registerCommand(
       KEY_ARROW_DOWN_COMMAND,
       (e: KeyboardEvent) => {
-        if (!isMenuOpen) return true;
+        if (!isMenuOpenRef.current) return false;
 
         e.preventDefault();
         e.stopPropagation();
@@ -414,7 +461,7 @@ export default function SkillPickerPlugin({
     const removeRightCommand = editor.registerCommand(
       KEY_ARROW_RIGHT_COMMAND,
       (e: KeyboardEvent) => {
-        if (!isMenuOpen) return true;
+        if (!isMenuOpenRef.current) return false;
 
         e.preventDefault();
         e.stopPropagation();
@@ -461,7 +508,7 @@ export default function SkillPickerPlugin({
     const removeLeftCommand = editor.registerCommand(
       KEY_ARROW_LEFT_COMMAND,
       (e: KeyboardEvent) => {
-        if (!isMenuOpen) return true;
+        if (!isMenuOpenRef.current) return false;
 
         e.preventDefault();
         e.stopPropagation();
@@ -503,10 +550,10 @@ export default function SkillPickerPlugin({
     const removeSpaceCommand = editor.registerCommand(
       KEY_SPACE_COMMAND,
       (e: KeyboardEvent) => {
+        if (!isMenuOpenRef.current) return false;
+
         e.preventDefault();
         e.stopPropagation();
-
-        if (!isMenuOpen) return true;
 
         setInteractionMode('keyboard');
 
@@ -531,10 +578,10 @@ export default function SkillPickerPlugin({
     const removeEnterCommand = editor.registerCommand(
       KEY_ENTER_COMMAND,
       (e: KeyboardEvent) => {
+        if (!isMenuOpenRef.current) return false;
+
         e.preventDefault();
         e.stopPropagation();
-
-        if (!isMenuOpen) return true;
 
         setInteractionMode('keyboard');
 
@@ -588,132 +635,148 @@ export default function SkillPickerPlugin({
       items: SkillItemType[],
       columnData: SkillOptionItemType,
       columnIndex: number,
+      onSelectOption?: (item: SkillItemType, option: SkillOptionItemType) => void,
       depth: number = 0,
       startFlatIndex: number = 0
     ): { elements: JSX.Element[]; nextFlatIndex: number } => {
-      const result: JSX.Element[] = [];
-      const activeRowIndex = selectedRowIndex[columnIndex];
-      let currentFlatIndex = startFlatIndex;
+      const renderItems = (
+        currentItems: SkillItemType[],
+        currentDepth: number,
+        currentStartFlatIndex: number
+      ): { elements: JSX.Element[]; nextFlatIndex: number } => {
+        const result: JSX.Element[] = [];
+        const activeRowIndex = selectedRowIndex[columnIndex];
+        let currentFlatIndex = currentStartFlatIndex;
 
-      items.forEach((item) => {
-        const flatIndex = currentFlatIndex;
-        currentFlatIndex++;
+        currentItems.forEach((item) => {
+          const flatIndex = currentFlatIndex;
+          currentFlatIndex++;
 
-        // 前面的列，才有激活态
-        const isActive = columnIndex < currentColumnIndex && flatIndex === activeRowIndex;
-        // 当前选中的东西
-        const isSelected = columnIndex === currentColumnIndex && flatIndex === currentRowIndex;
+          // 前面的列，才有激活态
+          const isActive = columnIndex < currentColumnIndex && flatIndex === activeRowIndex;
+          // 当前选中的东西
+          const isSelected = columnIndex === currentColumnIndex && flatIndex === currentRowIndex;
 
-        result.push(
-          <MyBox
-            key={item.id}
-            ref={(el) => {
-              if (el) {
-                itemRefs.current.set(`${columnIndex}-${flatIndex}`, el as HTMLDivElement);
-              } else {
-                itemRefs.current.delete(`${columnIndex}-${flatIndex}`);
-              }
-            }}
-            px={2}
-            py={1.5}
-            gap={2}
-            pl={1 + depth * 4}
-            borderRadius={'4px'}
-            cursor={'pointer'}
-            bg={isActive || isSelected ? 'myGray.100' : ''}
-            color={isSelected ? 'primary.700' : 'myGray.600'}
-            display={'flex'}
-            alignItems={'center'}
-            size={'sm'}
-            onMouseDown={(e) => {
-              e.preventDefault();
-            }}
-            onMouseMove={(e) => {
-              if (interactionMode === 'keyboard') {
-                setInteractionMode('mouse');
-              }
-            }}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (item.isFolder) {
-                handleFolderToggle({
+          result.push(
+            <MyBox
+              key={item.id}
+              ref={(el) => {
+                if (el) {
+                  itemRefs.current.set(`${columnIndex}-${flatIndex}`, el as HTMLDivElement);
+                } else {
+                  itemRefs.current.delete(`${columnIndex}-${flatIndex}`);
+                }
+              }}
+              px={2}
+              py={1.5}
+              gap={2}
+              pl={1 + currentDepth * 4}
+              borderRadius={'4px'}
+              cursor={'pointer'}
+              bg={isActive || isSelected ? 'myGray.100' : ''}
+              color={isSelected ? 'primary.700' : 'myGray.600'}
+              display={'flex'}
+              alignItems={'center'}
+              size={'sm'}
+              onMouseDown={(e) => {
+                e.preventDefault();
+              }}
+              onMouseMove={() => {
+                if (interactionMode === 'keyboard') {
+                  setInteractionMode('mouse');
+                }
+              }}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (item.isFolder) {
+                  handleFolderToggle({
+                    currentColumnIndex: columnIndex,
+                    item,
+                    option: columnData
+                  });
+                } else {
+                  if (onSelectOption) {
+                    onSelectOption(item, columnData);
+                  } else {
+                    handleItemClick({
+                      item,
+                      option: columnData
+                    });
+                  }
+                }
+              }}
+              onMouseEnter={(e) => {
+                e.preventDefault();
+
+                // Ignore mouse hover in keyboard mode
+                if (interactionMode === 'keyboard') {
+                  return;
+                }
+
+                if (columnIndex !== currentColumnIndex) {
+                  setSelectedRowIndex((state) => ({
+                    ...state,
+                    [currentColumnIndex]: currentRowIndex
+                  }));
+                }
+
+                setCurrentRowIndex(flatIndex);
+                setCurrentColumnIndex(columnIndex);
+                handleItemSelect({
                   currentColumnIndex: columnIndex,
                   item,
                   option: columnData
                 });
-              } else {
-                handleItemClick({
-                  item,
-                  option: columnData
-                });
-              }
-            }}
-            onMouseEnter={(e) => {
-              e.preventDefault();
+              }}
+            >
+              {item.isFolder && !(item.open && item.folderChildren?.length === 0) ? (
+                <MyIcon
+                  name={loadingFolderIds.has(item.id) ? 'common/loading' : 'core/chat/chevronRight'}
+                  w={4}
+                  color={'myGray.500'}
+                  transform={item.open ? 'rotate(90deg)' : 'none'}
+                  transition={'transform 0.2s'}
+                  mr={-1}
+                />
+              ) : columnData.onFolderLoad ? (
+                <Box w={3} flexShrink={0} />
+              ) : null}
 
-              // Ignore mouse hover in keyboard mode
-              if (interactionMode === 'keyboard') {
-                return;
-              }
-
-              if (columnIndex !== currentColumnIndex) {
-                setSelectedRowIndex((state) => ({
-                  ...state,
-                  [currentColumnIndex]: currentRowIndex
-                }));
-              }
-
-              setCurrentRowIndex(flatIndex);
-              setCurrentColumnIndex(columnIndex);
-              handleItemSelect({
-                currentColumnIndex: columnIndex,
-                item,
-                option: columnData
-              });
-            }}
-          >
-            {item.isFolder && !(item.open && item.folderChildren?.length === 0) ? (
-              <MyIcon
-                name={loadingFolderIds.has(item.id) ? 'common/loading' : 'core/chat/chevronRight'}
-                w={4}
-                color={'myGray.500'}
-                transform={item.open ? 'rotate(90deg)' : 'none'}
-                transition={'transform 0.2s'}
-                mr={-1}
-              />
-            ) : columnData.onFolderLoad ? (
-              <Box w={3} flexShrink={0} />
-            ) : null}
-
-            {item.icon && <Avatar src={item.icon} w={'1.2rem'} borderRadius={'xs'} />}
-            {/* Folder content */}
-            <Box fontSize={'sm'} fontWeight={'medium'} flex={'1 0 0'} className="textEllipsis">
-              {item.label}
-              {item.isFolder && item.open && item.folderChildren?.length === 0 && (
-                <Box as="span" color={'myGray.400'} fontSize={'xs'} ml={2}>
-                  {t('app:empty_folder')}
-                </Box>
-              )}
-            </Box>
-          </MyBox>
-        );
-
-        // render folderChildren
-        if (item.isFolder && item.open && !!item.folderChildren && item.folderChildren.length > 0) {
-          const { elements, nextFlatIndex } = renderItemList(
-            item.folderChildren,
-            columnData,
-            columnIndex,
-            depth + 1,
-            currentFlatIndex
+              {item.icon && <Avatar src={item.icon} w={'1.2rem'} borderRadius={'xs'} />}
+              {/* Folder content */}
+              <Box fontSize={'sm'} fontWeight={'medium'} flex={'1 0 0'} className="textEllipsis">
+                {item.label}
+                {item.isFolder && item.open && item.folderChildren?.length === 0 && (
+                  <Box as="span" color={'myGray.400'} fontSize={'xs'} ml={2}>
+                    {t('app:empty_folder')}
+                  </Box>
+                )}
+              </Box>
+            </MyBox>
           );
-          result.push(...elements);
-          currentFlatIndex = nextFlatIndex;
-        }
-      });
 
-      return { elements: result, nextFlatIndex: currentFlatIndex };
+          // render folderChildren
+          if (
+            item.isFolder &&
+            item.open &&
+            !!item.folderChildren &&
+            item.folderChildren.length > 0
+          ) {
+            const { elements, nextFlatIndex } = renderItems(
+              item.folderChildren,
+              currentDepth + 1,
+              currentFlatIndex
+            );
+            result.push(...elements);
+            currentFlatIndex = nextFlatIndex;
+          }
+        });
+
+        return { elements: result, nextFlatIndex: currentFlatIndex };
+      };
+
+      return renderItems(items, depth, startFlatIndex);
     },
     [
       selectedRowIndex,
@@ -729,7 +792,11 @@ export default function SkillPickerPlugin({
   );
   // Render single column
   const renderColumn = useCallback(
-    (columnData: SkillOptionItemType, columnIndex: number) => {
+    (
+      columnData: SkillOptionItemType,
+      columnIndex: number,
+      onSelectOption?: (item: SkillItemType, option: SkillOptionItemType) => void
+    ) => {
       const columnWidth = columnData.onFolderLoad ? '280px' : '200px';
 
       return (
@@ -751,7 +818,7 @@ export default function SkillPickerPlugin({
               {columnData.description}
             </Box>
           )}
-          {renderItemList(columnData.list, columnData, columnIndex).elements}
+          {renderItemList(columnData.list, columnData, columnIndex, onSelectOption).elements}
         </MyBox>
       );
     },
@@ -768,39 +835,21 @@ export default function SkillPickerPlugin({
     );
   }, [skillOptions]);
   const onSelectOption = useCallback(
-    async (selectedOption: any, nodeToRemove: TextNode | null, closeMenu: () => void) => {
+    async (
+      selectedOption: any,
+      nodeToRemove: unknown,
+      closeMenu: () => void,
+      matchingString: string | null
+    ) => {
+      void nodeToRemove;
+
       // Step 1: Call async onClick handler (outside editor.update)
-      const skillId = await selectedOption.onClick?.(selectedOption.id);
+      const result = await selectedOption.onClick?.(selectedOption.id);
 
       // Step 2: Update editor with the skill (inside a fresh editor.update)
-      if (skillId) {
-        editor.update(() => {
-          // Re-acquire selection in this update cycle to avoid stale node references
-          const selection = $getSelection();
-          if (!$isRangeSelection(selection)) return;
-
-          // Re-acquire nodes in this update cycle
-          const nodes = selection.getNodes();
-          nodes.forEach((node) => {
-            if ($isTextNode(node)) {
-              const text = node.getTextContent();
-              const atIndex = text.lastIndexOf('@');
-              if (atIndex !== -1) {
-                // Remove the '@' trigger character
-                const beforeAt = text.substring(0, atIndex);
-                const afterAt = text.substring(atIndex + 1);
-                node.setTextContent(beforeAt + afterAt);
-
-                // Move cursor to where '@' was
-                const newOffset = beforeAt.length;
-                node.select(newOffset, newOffset);
-              }
-            }
-          });
-
-          // Insert skill node text at current selection
-          selection.insertNodes([$createTextNode(`{{@${skillId}@}}`)]);
-        });
+      if (result) {
+        insertSkillResult(result, matchingString);
+        updateMenuOpen(false);
 
         // Close menu after editor update to avoid flushSync warning
         setTimeout(() => {
@@ -811,7 +860,7 @@ export default function SkillPickerPlugin({
         closeMenu();
       }
     },
-    [editor]
+    [insertSkillResult, updateMenuOpen]
   );
   const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('@', {
     minLength: 0
@@ -821,20 +870,13 @@ export default function SkillPickerPlugin({
     <LexicalTypeaheadMenuPlugin
       onQueryChange={(matchingString) => {
         // Update menu open state based on query
-        setIsMenuOpen(matchingString !== null);
+        updateMenuOpen(matchingString !== null);
       }}
       onSelectOption={onSelectOption}
       triggerFn={checkForTriggerMatch}
       options={menuOptions}
-      menuRenderFn={(anchorElementRef) => {
+      menuRenderFn={(anchorElementRef, { selectOptionAndCleanUp }) => {
         const shouldShow = skillOptions.length > 0 && anchorElementRef.current !== null && isFocus;
-
-        // Sync menu open state with render
-        if (!shouldShow && isMenuOpen) {
-          setIsMenuOpen(false);
-        } else if (shouldShow && !isMenuOpen) {
-          setIsMenuOpen(true);
-        }
 
         return ReactDOM.createPortal(
           <Flex
@@ -844,7 +886,14 @@ export default function SkillPickerPlugin({
             zIndex={99999}
           >
             {skillOptions.map((column, index) => {
-              return renderColumn(column, index);
+              return renderColumn(column, index, (item, option) => {
+                if (!option.onClick) return;
+                selectOptionAndCleanUp({
+                  key: item.id,
+                  ...item,
+                  onClick: option.onClick
+                } as any);
+              });
             })}
 
             {selectedTool && (

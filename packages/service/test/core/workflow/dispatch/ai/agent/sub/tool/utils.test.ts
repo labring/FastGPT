@@ -80,6 +80,11 @@ const mcpTool = {
   inputSchema: mcpInputSchema
 };
 
+const mcpToolWithLeadingSlash = {
+  ...mcpTool,
+  name: '/test'
+};
+
 const httpTool = {
   name: 'create',
   description: 'Create record',
@@ -91,6 +96,11 @@ const httpTool = {
     type: 'object',
     properties: {}
   }
+};
+
+const httpToolWithLeadingSlash = {
+  ...httpTool,
+  name: '/test'
 };
 
 const createToolsetApp = ({
@@ -158,6 +168,17 @@ describe('getAgentRuntimeTools schema loading', () => {
         }
       }
     }),
+    mcp_slash_app: createToolsetApp({
+      id: 'mcp_slash_app',
+      type: AppTypeEnum.mcpToolSet,
+      toolConfig: {
+        mcpToolSet: {
+          url: 'https://mcp.example.com',
+          headerSecret: {},
+          toolList: [mcpToolWithLeadingSlash]
+        }
+      }
+    }),
     '123_app': createToolsetApp({
       id: '123_app',
       type: AppTypeEnum.mcpToolSet,
@@ -179,6 +200,17 @@ describe('getAgentRuntimeTools schema loading', () => {
           toolList: [httpTool]
         }
       }
+    }),
+    http_slash_app: createToolsetApp({
+      id: 'http_slash_app',
+      type: AppTypeEnum.httpToolSet,
+      toolConfig: {
+        httpToolSet: {
+          baseUrl: 'https://api.example.com',
+          headerSecret: {},
+          toolList: [httpToolWithLeadingSlash]
+        }
+      }
     })
   };
 
@@ -190,8 +222,13 @@ describe('getAgentRuntimeTools schema loading', () => {
 
     expect(tools).toHaveLength(1);
     expect(tools[0].requestSchema.function.name).toBe('mcp_app0');
+    expect(tools[0].requestSchema.function.description).toBe('mcp_app name/search: Search docs');
     expect(tools[0].requestSchema.function.parameters).toEqual(mcpInputSchema);
     expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
+    expect(tools[0].promptReference).toEqual({
+      id: 'mcp_app',
+      name: 'mcp_app name'
+    });
   });
 
   it('loads a selected MCP tool with its input schema', async () => {
@@ -204,8 +241,21 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].id).toBe('mcp_appsearch');
     expect(tools[0].name).toBe('search');
     expect(tools[0].requestSchema.function.name).toBe('mcp_appsearch');
+    expect(tools[0].requestSchema.function.description).toBe('search: Search docs');
     expect(tools[0].requestSchema.function.parameters).toEqual(mcpInputSchema);
     expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
+  });
+
+  it('loads a selected MCP tool whose name starts with slash', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'mcp-mcp_slash_app//test', config: {} }]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].id).toBe('mcp_slash_apptest');
+    expect(tools[0].name).toBe('/test');
+    expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_slash_app//test');
   });
 
   it('prefixes tool function name only when the runtime tool id starts with a number', async () => {
@@ -228,9 +278,14 @@ describe('getAgentRuntimeTools schema loading', () => {
 
     expect(tools).toHaveLength(1);
     expect(tools[0].requestSchema.function.name).toBe('http_app0');
+    expect(tools[0].requestSchema.function.description).toBe('http_app name/create: Create record');
     expect(tools[0].requestSchema.function.parameters).toEqual(httpRequestSchema);
     expect(tools[0].requestSchema.function.parameters).not.toEqual(httpInputSchema);
     expect(tools[0].toolConfig?.httpTool?.toolId).toBe('http-http_app/create');
+    expect(tools[0].promptReference).toEqual({
+      id: 'http_app',
+      name: 'http_app name'
+    });
   });
 
   it('loads a selected HTTP tool with its request schema', async () => {
@@ -243,9 +298,69 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].id).toBe('http_appcreate');
     expect(tools[0].name).toBe('create');
     expect(tools[0].requestSchema.function.name).toBe('http_appcreate');
+    expect(tools[0].requestSchema.function.description).toBe('create: Create record');
     expect(tools[0].requestSchema.function.parameters).toEqual(httpRequestSchema);
     expect(tools[0].requestSchema.function.parameters).not.toEqual(httpInputSchema);
     expect(tools[0].toolConfig?.httpTool?.toolId).toBe('http-http_app/create');
+  });
+
+  it('loads a selected HTTP tool whose name starts with slash', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'http-http_slash_app//test', config: {} }]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].id).toBe('http_slash_apptest');
+    expect(tools[0].name).toBe('/test');
+    expect(tools[0].toolConfig?.httpTool?.toolId).toBe('http-http_slash_app//test');
+  });
+
+  it('loads system toolset children with parent prompt reference name', async () => {
+    getSystemToolDetailMock.mockResolvedValue({
+      id: 'systemTool-metaso',
+      name: '秘塔搜索',
+      avatar: 'metaso.png',
+      intro: '搜索工具集',
+      toolDescription: '搜索工具集',
+      status: 'active',
+      source: 'system',
+      isToolSet: true,
+      hasSystemSecret: false,
+      systemSecretStatus: 'none',
+      currentCost: 0,
+      systemKeyCost: 0,
+      hasTokenFee: false,
+      tags: [],
+      author: '',
+      version: '1.0.0',
+      isLatestVersion: true,
+      outputs: [],
+      inputs: [],
+      children: [
+        {
+          id: 'search',
+          name: '搜索网页',
+          description: '搜索网页内容',
+          currentCost: 0,
+          systemKeyCost: 0,
+          inputs: [],
+          outputs: []
+        }
+      ]
+    });
+
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'systemTool-metaso', config: {} }]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].name).toBe('搜索网页');
+    expect(tools[0].promptReference).toEqual({
+      id: 'systemTool-metaso',
+      name: '秘塔搜索'
+    });
   });
 
   it('loads system tool params from standard JSON schema description', async () => {

@@ -32,6 +32,7 @@ import { useLatest } from 'ahooks';
 import { SubAppIds, systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { AGENT_SANDBOX_TOOLSET_ID } from '@fastgpt/global/core/ai/sandbox/tools';
+import type { SkillClickResult } from '@fastgpt/web/components/common/Textarea/PromptEditor/plugins/SkillPickerPlugin';
 
 const ConfigToolModal = dynamic(() => import('../../component/ConfigToolModal'));
 
@@ -45,10 +46,19 @@ const isSubApp = (flowNodeType: FlowNodeTypeEnum) => {
   return subAppTypeMap[flowNodeType];
 };
 
+const toSkillLabelItem = (
+  tool: SelectedToolItemType,
+  configStatus: SkillLabelItemType['configStatus']
+): SkillLabelItemType => ({
+  ...tool,
+  id: tool.pluginId!,
+  name: tool.name,
+  configStatus
+});
+
 export const useSkillManager = ({
   selectedTools,
   onUpdateOrAddTool,
-  onDeleteTool,
   canUploadFile,
   hasSelectedDataset,
   useAgentSandbox
@@ -96,6 +106,17 @@ export const useSkillManager = ({
           label: parseI18nString(datasetSearchInfo.name, i18n.language),
           icon: datasetSearchInfo.avatar,
           description: datasetSearchInfo.toolDescription,
+          canClick: true
+        });
+      }
+
+      const readFilesInfo = systemSubInfo[SubAppIds.readFiles];
+      if (readFilesInfo) {
+        apiTools.unshift({
+          id: SubAppIds.readFiles,
+          label: parseI18nString(readFilesInfo.name, i18n.language),
+          icon: readFilesInfo.avatar,
+          description: readFilesInfo.toolDescription,
           canClick: true
         });
       }
@@ -176,17 +197,57 @@ export const useSkillManager = ({
 
   const lastSelectedTools = useLatest(selectedTools);
   const onAddAppOrTool = useCallback(
-    async (toolId: string) => {
-      console.log('Add tool', toolId);
+    async (toolId: string): Promise<SkillClickResult | undefined> => {
       // Check tool exists, if exists, not update/add tool
       const existsTool = lastSelectedTools.current?.find((tool) => tool.pluginId === toolId);
       if (existsTool) {
-        return existsTool.pluginId;
+        const skill = toSkillLabelItem(existsTool, existsTool.configStatus || 'waitingForConfig');
+
+        return {
+          id: skill.id,
+          skill
+        };
       }
 
       // Check if it's a sub agent tool
       if (toolId in systemSubInfo) {
-        return toolId;
+        const subToolInfo = systemSubInfo[toolId as keyof typeof systemSubInfo];
+
+        if (!subToolInfo) return;
+
+        const configStatus: SkillLabelItemType['configStatus'] = (() => {
+          if (toolId === SubAppIds.datasetSearch) {
+            return hasSelectedDataset ? 'configured' : 'invalid';
+          }
+
+          if (toolId === SubAppIds.readFiles) {
+            return canUploadFile ? 'configured' : 'invalid';
+          }
+
+          if (toolId === AGENT_SANDBOX_TOOLSET_ID) {
+            return useAgentSandbox ? 'noConfig' : 'invalid';
+          }
+
+          return 'noConfig';
+        })();
+
+        const skill: SkillLabelItemType = {
+          id: toolId,
+          pluginId: toolId,
+          name: parseI18nString(subToolInfo.name, i18n.language),
+          avatar: subToolInfo.avatar,
+          intro: subToolInfo.toolDescription,
+          flowNodeType: FlowNodeTypeEnum.tool,
+          templateType: FlowNodeTemplateTypeEnum.tools,
+          inputs: [],
+          outputs: [],
+          configStatus
+        };
+
+        return {
+          id: skill.id,
+          skill
+        };
       }
 
       const toolTemplate = await getToolPreviewNode({ appId: toolId, versionId: '' });
@@ -207,15 +268,29 @@ export const useSkillManager = ({
         ...toolTemplate,
         id: toolTemplate.pluginId!
       };
+      const configStatus = getToolConfigStatus({ tool }).status;
+      const skill = toSkillLabelItem(tool, configStatus);
 
       onUpdateOrAddTool({
         ...tool,
-        configStatus: getToolConfigStatus({ tool }).status
+        configStatus
       });
 
-      return tool.id;
+      return {
+        id: skill.id,
+        skill
+      };
     },
-    [canUploadFile, lastSelectedTools, onUpdateOrAddTool, t, toast]
+    [
+      canUploadFile,
+      hasSelectedDataset,
+      i18n.language,
+      lastSelectedTools,
+      onUpdateOrAddTool,
+      t,
+      toast,
+      useAgentSandbox
+    ]
   );
 
   /* ===== Skill option ===== */
@@ -305,6 +380,22 @@ export const useSkillManager = ({
       });
     }
 
+    const readFilesInfo = systemSubInfo[SubAppIds.readFiles];
+    if (readFilesInfo) {
+      tools.push({
+        id: SubAppIds.readFiles,
+        pluginId: SubAppIds.readFiles,
+        name: parseI18nString(readFilesInfo.name, i18n.language),
+        avatar: readFilesInfo.avatar,
+        intro: readFilesInfo.toolDescription,
+        flowNodeType: FlowNodeTypeEnum.tool,
+        templateType: FlowNodeTemplateTypeEnum.tools,
+        inputs: [],
+        outputs: [],
+        configStatus: canUploadFile ? 'configured' : 'invalid'
+      });
+    }
+
     // Merge sandbox tool
     const sandboxToolInfo = systemSubInfo[AGENT_SANDBOX_TOOLSET_ID];
     if (sandboxToolInfo) {
@@ -328,7 +419,7 @@ export const useSkillManager = ({
   const [configTool, setConfigTool] = useState<SelectedToolItemType>();
   const onClickSkill = useCallback(
     (id: string) => {
-      const tool = selectedTools.find((tool) => tool.id === id);
+      const tool = selectedTools.find((tool) => tool.pluginId === id);
       if (!tool) return;
 
       if (isSubApp(tool.flowNodeType)) {
@@ -338,19 +429,11 @@ export const useSkillManager = ({
         }
 
         setConfigTool(tool);
-      } else {
-        console.log('onClickSkill', tool);
       }
     },
     [selectedTools]
   );
-  const onRemoveSkill = useCallback(
-    (id: string) => {
-      console.log('onRemoveSkill', id);
-      onDeleteTool(id);
-    },
-    [onDeleteTool]
-  );
+  const onRemoveSkill = useCallback(() => {}, []);
 
   const SkillModal = useCallback(() => {
     return (

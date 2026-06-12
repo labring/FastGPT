@@ -1,0 +1,7 @@
+interface:
+  display_name: "PR Change Analysis"
+  short_description: "梳理 PR 或本地分支的需求、影响范围、质量与风格"
+  default_prompt: "Use $pr-change-analysis to summarize what this PR or current branch changed and whether the scope, quality, and style fit the requirement."
+
+policy:
+  allow_implicit_invocation: false

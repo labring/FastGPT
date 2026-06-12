@@ -129,7 +129,7 @@ describe('runUnifiedAgentLoop', () => {
     expect(result.activePlan).toBeUndefined();
     expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
     expect(createLLMResponseMock.mock.calls[0][0].body.messages[0].content).toContain(
-      '你是 FastGPT Main Agent'
+      '你是 Master Agent'
     );
   });
 

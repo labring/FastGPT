@@ -1,7 +1,7 @@
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import type { DispatchSubAppResponse } from '../../type';
-import { getToolRawId } from '@fastgpt/global/core/app/tool/utils';
+import { getToolNameCandidates, getToolRawId } from '@fastgpt/global/core/app/tool/utils';
 import { getSecretValue } from '../../../../../../../common/secret/utils';
 import type {
   ChatDispatchProps,
@@ -192,6 +192,10 @@ export const dispatchTool = async ({
       };
     } else if (toolConfig?.mcpTool?.toolId) {
       const { parentId, toolName } = parseToolId(toolConfig.mcpTool.toolId);
+      if (!parentId || !toolName) {
+        return Promise.reject(`Invalid MCP tool id: ${toolConfig.mcpTool.toolId}`);
+      }
+
       const tool = await getAppVersionById({
         appId: parentId,
         versionId: version
@@ -236,7 +240,9 @@ export const dispatchTool = async ({
 
       const { headerSecret, baseUrl, toolList, customHeaders } = toolSetData;
 
-      const httpTool = toolList?.find((tool) => tool.name === toolName);
+      const httpTool = getToolNameCandidates(toolName)
+        .map((name) => toolList?.find((tool) => tool.name === name))
+        .find(Boolean);
       if (!httpTool) {
         return Promise.reject(`HTTP tool ${toolName} not found`);
       }

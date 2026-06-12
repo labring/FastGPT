@@ -1,20 +1,13 @@
 import type { FlexProps } from '@chakra-ui/react';
 import { Box, Flex, Textarea, useBoolean } from '@chakra-ui/react';
-import React, { useRef, useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import {
-  type ChatBoxInputFormType,
-  type ChatBoxInputType,
-  type SendPromptFnType
-} from '../ChatContainer/ChatBox/type';
-import { textareaMinH } from '../ChatContainer/ChatBox/constants';
+import { type ChatBoxInputFormType } from '../ChatContainer/ChatBox/type';
+import { ChatInputDefaultHeight, textareaMinH } from '../ChatContainer/ChatBox/constants';
 import { useFieldArray, type UseFormReturn } from 'react-hook-form';
-import { ChatBoxContext } from '../ChatContainer/ChatBox/Provider';
-import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowRuntimeContext } from '../ChatContainer/context/workflowRuntimeContext';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { documentFileType } from '@fastgpt/global/common/file/constants';
 import FilePreview from '../ChatContainer/components/FilePreview';
@@ -91,6 +84,7 @@ const ChatInput = ({
     showSelectVideo ||
     showSelectAudio ||
     showSelectCustomFileExtension;
+  const isDefaultInputHeight = !inputValue && fileList.length === 0;
 
   /* on send */
   const handleSend = useCallback(
@@ -116,9 +110,11 @@ const ChatInput = ({
           <Textarea
             ref={TextareaDom}
             py={0}
-            mx={[2, 4]}
-            px={2}
+            mx={0}
+            px={0}
             border={'none'}
+            borderRadius={0}
+            appearance={'none'}
             _focusVisible={{
               border: 'none'
             }}
@@ -127,10 +123,10 @@ const ChatInput = ({
             }
             resize={'none'}
             rows={1}
-            height={[5, 6]}
-            lineHeight={[5, 6]}
+            height={textareaMinH}
+            lineHeight={textareaMinH}
             maxHeight={[24, 32]}
-            minH={'50px'}
+            minH={textareaMinH}
             mb={0}
             maxLength={-1}
             overflowY={'hidden'}
@@ -140,12 +136,14 @@ const ChatInput = ({
             boxShadow={'none !important'}
             color={'myGray.900'}
             fontWeight={400}
-            fontSize={'1rem'}
+            fontSize={'16px'}
             letterSpacing={'0.5px'}
             w={'100%'}
             _placeholder={{
-              color: '#707070',
-              fontSize: 'sm'
+              color: 'myGray.400',
+              fontSize: 'inherit',
+              lineHeight: 'inherit',
+              letterSpacing: 'inherit'
             }}
             value={inputValue}
             onChange={(e) => {
@@ -167,26 +165,28 @@ const ChatInput = ({
             onKeyDown={(e) => {
               // enter send.(pc or iframe && enter and unPress shift)
               const isEnter = e.key === 'Enter';
-              if (isEnter && TextareaDom.current && (e.ctrlKey || e.altKey)) {
+              const textarea = e.currentTarget;
+              if (isEnter && (e.ctrlKey || e.altKey)) {
                 // Add a new line
-                const index = TextareaDom.current.selectionStart;
-                const val = TextareaDom.current.value;
-                TextareaDom.current.value = `${val.slice(0, index)}\n${val.slice(index)}`;
-                TextareaDom.current.selectionStart = index + 1;
-                TextareaDom.current.selectionEnd = index + 1;
+                const index = textarea.selectionStart;
+                const val = textarea.value;
+                textarea.value = `${val.slice(0, index)}\n${val.slice(index)}`;
+                textarea.selectionStart = index + 1;
+                textarea.selectionEnd = index + 1;
 
-                TextareaDom.current.style.height = textareaMinH;
-                TextareaDom.current.style.height = `${TextareaDom.current.scrollHeight}px`;
+                textarea.style.height = textareaMinH;
+                textarea.style.height = `${textarea.scrollHeight}px`;
 
                 return;
               }
 
               // Select all content
-              // @ts-ignore
-              e.key === 'a' && e.ctrlKey && e.target?.select();
+              if (e.key === 'a' && e.ctrlKey) {
+                textarea.select();
+              }
 
               if ((isPc || window !== parent) && e.keyCode === 13 && !e.shiftKey) {
-                handleSend();
+                handleSend(textarea.value);
                 e.preventDefault();
               }
             }}
@@ -230,8 +230,8 @@ const ChatInput = ({
 
   const RenderButtonGroup = useMemo(() => {
     const iconSize = {
-      w: isPc ? '20px' : '16px',
-      h: isPc ? '20px' : '16px'
+      w: '20px',
+      h: '20px'
     };
 
     return (
@@ -240,23 +240,22 @@ const ChatInput = ({
         justifyContent={'space-between'}
         w={'100%'}
         mt={0}
-        pr={[3, 4]}
-        pl={[3, 4]}
-        h={[8, 9]}
+        h={9}
         gap={[0, 1]}
       >
-        <Box flex={1} />
-        {/* Right button group */}
+        <Flex alignItems={'center'} gap={2} flex={'1 1 0'} minW={0} w={0} />
+
+        {/* 右侧按钮组 */}
         <Flex alignItems={'center'} gap={[0, 1]}>
           {/* Attachment Group */}
-          <Flex alignItems={'center'} h={[8, 9]}>
+          <Flex alignItems={'center'} h={9}>
             {/* file selector button */}
             {canUploadFile && (
               <Flex
                 alignItems={'center'}
                 justifyContent={'center'}
-                w={[8, 9]}
-                h={[8, 9]}
+                w={9}
+                h={9}
                 p={[1, 2]}
                 borderRadius={'sm'}
                 cursor={'pointer'}
@@ -267,7 +266,7 @@ const ChatInput = ({
                 }}
               >
                 <MyTooltip label={selectFileLabel}>
-                  <MyIcon name={selectFileIcon as any} {...iconSize} color={'#707070'} />
+                  <MyIcon name={selectFileIcon as any} {...iconSize} color={'myGray.500'} />
                 </MyTooltip>
                 <File onSelect={(files) => onSelectFile({ files })} />
               </Flex>
@@ -282,12 +281,12 @@ const ChatInput = ({
           )}
 
           {/* Send Button Container */}
-          <Flex alignItems={'center'} w={[8, 9]} h={[8, 9]} borderRadius={'lg'}>
+          <Flex alignItems={'center'} w={9} h={9} borderRadius={'lg'}>
             <Flex
               alignItems={'center'}
               justifyContent={'center'}
-              w={[7, 9]}
-              h={[7, 9]}
+              w={9}
+              h={9}
               p={[1, 2]}
               bg={
                 isChatting ? 'primary.50' : canSendMessage ? 'primary.500' : 'rgba(17, 24, 36, 0.1)'
@@ -315,7 +314,6 @@ const ChatInput = ({
       </Flex>
     );
   }, [
-    isPc,
     canUploadFile,
     selectFileLabel,
     selectFileIcon,
@@ -331,11 +329,16 @@ const ChatInput = ({
 
   const activeStyles: FlexProps = {
     boxShadow: '0px 5px 20px -4px rgba(19, 51, 107, 0.13)',
-    border: '0.5px solid rgba(0, 0, 0, 0.24)'
+    border: '1px solid',
+    borderColor: 'myGray.250'
   };
 
   return (
     <Box
+      w={'100%'}
+      maxW={['100%', '780px']}
+      mx={'auto'}
+      pb={['calc(16px + env(safe-area-inset-bottom))', 4]}
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
         e.preventDefault();
@@ -364,9 +367,10 @@ const ChatInput = ({
       {/* Real Chat Input */}
       <Flex
         direction={'column'}
-        minH={['96px', '120px']}
-        pt={fileList.length > 0 ? '0' : [3, 4]}
-        pb={3}
+        h={isDefaultInputHeight ? ChatInputDefaultHeight : undefined}
+        minH={ChatInputDefaultHeight}
+        p={4}
+        mb={0}
         position={'relative'}
         borderRadius={['xl', 'xxl']}
         bg={'white'}
@@ -375,15 +379,16 @@ const ChatInput = ({
           ? activeStyles
           : {
               _hover: activeStyles,
-              border: '0.5px solid rgba(0, 0, 0, 0.18)',
+              border: '1px solid',
+              borderColor: 'myGray.200',
               boxShadow: `0px 5px 16px -4px rgba(19, 51, 107, 0.08)`
             })}
         onClick={() => TextareaDom?.current?.focus()}
       >
         <Box flex={1}>
           {/* file preview */}
-          <Box px={[2, 3]}>
-            <FilePreview fileList={fileList} removeFiles={removeFiles} />
+          <Box>
+            <FilePreview fileList={fileList} removeFiles={removeFiles} pt={0} />
           </Box>
 
           {RenderTextarea}
@@ -391,7 +396,7 @@ const ChatInput = ({
 
         <Box>{RenderButtonGroup}</Box>
       </Flex>
-      <ComplianceTip type={'chat'} />
+      <ComplianceTip type={'chat'} pt={4} pb={0} />
     </Box>
   );
 };

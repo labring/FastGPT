@@ -13,6 +13,10 @@ export type SubAppInitType = {
   version?: string;
   toolConfig?: RuntimeNodeItemType['toolConfig'];
   requestSchema: ChatCompletionTool;
+  promptReference?: {
+    id: string;
+    name: string;
+  };
   params: {
     [NodeInputKeyEnum.systemInputConfig]?: {
       type: SystemToolSecretInputTypeEnum;
