@@ -68,7 +68,7 @@ const SearchParamsTip = ({
         }
       }}
     >
-      <Table fontSize={'xs'} overflow={'overlay'}>
+      <Table fontSize={'xs'} overflow={'overlay'} sx={{ 'th, td': { textAlign: 'center' } }}>
         <Thead>
           <Tr bg={'transparent !important'}>
             {!onlyDatabase && (
@@ -95,14 +95,7 @@ const SearchParamsTip = ({
             {!onlyDatabase && (
               <>
                 <Td pt={0} pb={2}>
-                  <Flex alignItems={'center'}>
-                    <MyIcon
-                      name={DatasetSearchModeMap[searchMode]?.icon as any}
-                      w={'12px'}
-                      mr={'1px'}
-                    />
-                    {t(DatasetSearchModeMap[searchMode]?.title as any)}
-                  </Flex>
+                  {t(DatasetSearchModeMap[searchMode]?.title as any)}
                 </Td>
                 <Td pt={0} pb={2}>
                   {limit}
@@ -112,13 +105,25 @@ const SearchParamsTip = ({
                 </Td>
                 {hasReRankModel && (
                   <Td pt={0} pb={2}>
-                    {usingReRank ? '✅' : '❌'}
+                    {usingReRank ? (
+                      <MyIcon name={'check'} w={'14px'} />
+                    ) : (
+                      <MyIcon name={'close'} w={'14px'} />
+                    )}
                   </Td>
                 )}
                 <Td pt={0} pb={2} fontSize={'mini'}>
-                  {extensionModelName ? extensionModelName : '❌'}
+                  {extensionModelName ? extensionModelName : <MyIcon name={'close'} w={'14px'} />}
                 </Td>
-                {hasEmptyResponseMode && <Th>{responseEmptyText !== '' ? '✅' : '❌'}</Th>}
+                {hasEmptyResponseMode && (
+                  <Th>
+                    {responseEmptyText !== '' ? (
+                      <MyIcon name={'check'} w={'14px'} />
+                    ) : (
+                      <MyIcon name={'close'} w={'14px'} />
+                    )}
+                  </Th>
+                )}
               </>
             )}
             {hasDatabaseKnowledge && (
