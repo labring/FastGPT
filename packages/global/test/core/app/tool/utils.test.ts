@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { splitCombineToolId, getToolRawId } from '@fastgpt/global/core/app/tool/utils';
+import {
+  getToolNameCandidates,
+  getToolRawId,
+  parseToolsetToolId,
+  splitCombineToolId,
+  splitToolsetToolPluginId
+} from '@fastgpt/global/core/app/tool/utils';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 
 describe('splitCombineToolId', () => {
@@ -145,5 +151,46 @@ describe('getToolRawId', () => {
   it('should handle converted community tool', () => {
     const result = getToolRawId('community-oldPlugin');
     expect(result).toBe('oldPlugin');
+  });
+});
+
+describe('splitToolsetToolPluginId', () => {
+  it('should preserve slashes inside tool name', () => {
+    const result = splitToolsetToolPluginId('toolset-abc/namespace/nestedTool');
+
+    expect(result).toEqual({
+      parentId: 'toolset-abc',
+      toolName: 'namespace/nestedTool'
+    });
+  });
+
+  it('should preserve leading slash in tool name', () => {
+    const result = splitToolsetToolPluginId('69e20f48dbec7c6ece77556b//test');
+
+    expect(result).toEqual({
+      parentId: '69e20f48dbec7c6ece77556b',
+      toolName: '/test'
+    });
+  });
+});
+
+describe('parseToolsetToolId', () => {
+  it('should parse combined HTTP tool id and preserve leading slash in tool name', () => {
+    const result = parseToolsetToolId('http-69e20f48dbec7c6ece77556b//test');
+
+    expect(result).toEqual({
+      parentId: '69e20f48dbec7c6ece77556b',
+      toolName: '/test'
+    });
+  });
+});
+
+describe('getToolNameCandidates', () => {
+  it('should prefer full tool name and fallback to last segment for legacy ids', () => {
+    expect(getToolNameCandidates('toolset/tool')).toEqual(['toolset/tool', 'tool']);
+  });
+
+  it('should preserve leading slash name before fallback', () => {
+    expect(getToolNameCandidates('/test')).toEqual(['/test', 'test']);
   });
 });

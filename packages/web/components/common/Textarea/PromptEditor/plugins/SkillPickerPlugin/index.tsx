@@ -59,6 +59,9 @@ export type SkillItemType = {
   }[];
 };
 
+const hasChildItems = (item?: SkillItemType) =>
+  !!item && (!!item.children || item.isFolder || !!item.tools?.length);
+
 export default function SkillPickerPlugin({
   skillOption,
   isFocus
@@ -222,7 +225,9 @@ export default function SkillPickerPlugin({
   const [isItemClickLoading, setIsItemClickLoading] = useState(false);
   const { runAsync: handleItemClick } = useRequest(
     async ({ item, option }: { item: SkillItemType; option?: SkillOptionItemType }) => {
-      if (!item.canClick || !option?.onClick || itemClickLock.current) return;
+      if (!item.canClick || hasChildItems(item) || !option?.onClick || itemClickLock.current) {
+        return;
+      }
       itemClickLock.current = true;
       setIsItemClickLoading(true);
       try {
@@ -555,7 +560,11 @@ export default function SkillPickerPlugin({
         const latestItem = flattenedItems[currentRowIndex];
         const latestOption = skillOptions[currentColumnIndex];
 
-        if (latestOption?.onClick) {
+        if (hasChildItems(latestItem)) {
+          return true;
+        }
+
+        if (latestOption?.onClick && !hasChildItems(latestItem)) {
           handleItemClick({ item: latestItem, option: latestOption });
 
           return true;
@@ -591,7 +600,7 @@ export default function SkillPickerPlugin({
 
   const selectedTool = useMemo(() => {
     const item = skillOptions[currentColumnIndex]?.list[currentRowIndex];
-    if (!item || !item.canClick) return null;
+    if (!item || !item.canClick || hasChildItems(item)) return null;
     return item;
   }, [skillOptions, currentColumnIndex, currentRowIndex]);
 
@@ -810,6 +819,10 @@ export default function SkillPickerPlugin({
       void nodeToRemove;
 
       // Step 1: Call async onClick handler (outside editor.update)
+      if (hasChildItems(selectedOption)) {
+        return;
+      }
+
       const skillId = await selectedOption.onClick?.(selectedOption.id);
 
       // Step 2: Update editor with the skill (inside a fresh editor.update)

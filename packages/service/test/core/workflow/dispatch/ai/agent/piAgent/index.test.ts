@@ -397,6 +397,31 @@ describe('dispatchPiAgent user context', () => {
     ]);
   });
 
+  it('replaces system prompt tool references before creating pi agent', async () => {
+    const { dispatchPiAgent } =
+      await import('@fastgpt/service/core/workflow/dispatch/ai/agent/piAgent');
+    const props = createProps();
+    props.params.systemPrompt = '优先使用 {{@dataset_search@}}，未知 {{@missing_tool@}} 保留。';
+
+    let resultPromise: Promise<any>;
+    runWithContext(
+      {
+        queryUrlTypeMap: {},
+        mcpClientMemory: {}
+      },
+      () => {
+        resultPromise = dispatchPiAgent(props);
+      }
+    );
+    await resultPromise!;
+
+    expect(agentConstructorArgs[0].initialState.systemPrompt).toContain('优先使用 {{知识库检索}}');
+    expect(agentConstructorArgs[0].initialState.systemPrompt).toContain(
+      '未知 {{@missing_tool@}} 保留'
+    );
+    expect(agentConstructorArgs[0].initialState.systemPrompt).not.toContain('{{@dataset_search@}}');
+  });
+
   it('injects sandbox input files before calling pi agent prompt', async () => {
     const { dispatchPiAgent } =
       await import('@fastgpt/service/core/workflow/dispatch/ai/agent/piAgent');

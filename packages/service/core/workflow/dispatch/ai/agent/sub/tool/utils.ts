@@ -1,5 +1,9 @@
 import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
-import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
+import {
+  getToolNameCandidates,
+  splitCombineToolId,
+  splitToolsetToolPluginId
+} from '@fastgpt/global/core/app/tool/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authAppByTmbId } from '../../../../../../../support/permission/app/auth';
@@ -274,11 +278,12 @@ export const getAgentRuntimeTools = async ({
     app: AppSchemaType;
     pluginId: string;
   }): Promise<AgentRuntimeNode> => {
-    const [, ...toolNameParts] = pluginId.split('/');
-    const toolName = toolNameParts.join('/');
+    const { toolName } = splitToolsetToolPluginId(pluginId);
     const version = await getVersionNodes({ app });
     const toolList = version.nodes[0]?.toolConfig?.mcpToolSet?.toolList ?? [];
-    const tool = toolList.find((item) => item.name === toolName);
+    const tool = getToolNameCandidates(toolName)
+      .map((name) => toolList.find((item) => item.name === name))
+      .find(Boolean);
     if (!tool) return Promise.reject(PluginErrEnum.unExist);
 
     const node = getMCPToolRuntimeNode({
@@ -308,12 +313,12 @@ export const getAgentRuntimeTools = async ({
     app: AppSchemaType;
     pluginId: string;
   }): Promise<AgentRuntimeNode> => {
-    const [, ...toolNameParts] = pluginId.split('/');
-    const toolName = toolNameParts.join('/');
+    const { toolName } = splitToolsetToolPluginId(pluginId);
     const version = await getVersionNodes({ app });
-    const tool = version.nodes[0]?.toolConfig?.httpToolSet?.toolList.find(
-      (item) => item.name === toolName
-    );
+    const toolList = version.nodes[0]?.toolConfig?.httpToolSet?.toolList ?? [];
+    const tool = getToolNameCandidates(toolName)
+      .map((name) => toolList.find((item) => item.name === name))
+      .find(Boolean);
     if (!tool) return Promise.reject(PluginErrEnum.unExist);
 
     const node = getHTTPToolRuntimeNode({

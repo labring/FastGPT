@@ -224,6 +224,17 @@ describe('httpTool utils', () => {
 
       expect(result).toEqual({ toolsetId: 'toolset-xyz', toolName: 'a/b/c/d' });
     });
+
+    it('should preserve leading slash in tool name', () => {
+      const result = parseHttpToolConfig({
+        toolId: 'http-69e20f48dbec7c6ece77556b//test'
+      });
+
+      expect(result).toEqual({
+        toolsetId: '69e20f48dbec7c6ece77556b',
+        toolName: '/test'
+      });
+    });
   });
 
   describe('pathData2ToolList', () => {

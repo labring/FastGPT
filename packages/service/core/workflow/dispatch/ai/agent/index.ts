@@ -201,12 +201,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     });
     // system message 由 getMainAgentSystemPrompt 统一注入；历史里的 system 只作为外部噪音过滤掉。
     const loopMessages = historiesMessages.filter((message) => message.role !== 'system');
-    // 用户配置 prompt 和 sandbox prompt 作为 Main Agent 的 system 背景输入。
-    const formatedSystemPrompt = parseUserSystemPrompt({
-      userSystemPrompt: [systemPrompt, sandboxClient ? SANDBOX_SYSTEM_PROMPT : '']
-        .filter(Boolean)
-        .join('\n\n')
-    });
 
     // 汇总用户选择工具、内置系统工具、知识库/文件工具和 sandbox tools。
     // completionTools 只描述给模型看，subAppsMap 则供 runtime 执行工具时定位真实实现。
@@ -246,6 +240,13 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       const formatId = id.slice(1);
       return agentSubAppsMap.get(id) || agentSubAppsMap.get(formatId);
     };
+    // 用户配置 prompt 和 sandbox prompt 作为 Main Agent 的 system 背景输入。
+    const formatedSystemPrompt = parseUserSystemPrompt({
+      userSystemPrompt: [systemPrompt, sandboxClient ? SANDBOX_SYSTEM_PROMPT : '']
+        .filter(Boolean)
+        .join('\n\n'),
+      getSubAppInfo
+    });
 
     // 2. 创建 workflow adapter。
     // 通用 agent loop 不感知 workflow；工具执行、SSE、usage、nodeResponse 都通过 runtime 参数回调进来。

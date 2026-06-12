@@ -6,7 +6,11 @@ import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constan
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { getHTTPToolRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
-import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
+import {
+  getToolNameCandidates,
+  splitCombineToolId,
+  splitToolsetToolPluginId
+} from '@fastgpt/global/core/app/tool/utils';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeTypeEnum,
@@ -168,7 +172,7 @@ export async function getChildAppPreviewNode({
     }
     // mcp tool
     else if (source === AppToolSourceEnum.mcp) {
-      const [parentId, toolName] = pluginId.split('/');
+      const { parentId, toolName } = splitToolsetToolPluginId(pluginId);
       // 1. get parentApp
       const item = await MongoApp.findById(parentId).lean();
       if (!item) return Promise.reject(PluginErrEnum.unExist);
@@ -180,12 +184,17 @@ export async function getChildAppPreviewNode({
       });
       const toolConfig = version.nodes[0].toolConfig?.mcpToolSet;
       const tool = await (async () => {
+        const matchTool = <T extends { name: string }>(tools: T[]) =>
+          getToolNameCandidates(toolName)
+            .map((name) => tools.find((item) => item.name === name))
+            .find(Boolean);
+
         if (toolConfig?.toolList) {
           // new mcp toolset
-          return toolConfig.toolList.find((item) => item.name === toolName);
+          return matchTool(toolConfig.toolList);
         }
         // old mcp toolset
-        return (await getMCPChildren(item)).find((item) => item.name === toolName);
+        return matchTool(await getMCPChildren(item));
       })();
       if (!tool) return Promise.reject(PluginErrEnum.unExist);
       return {
@@ -215,7 +224,7 @@ export async function getChildAppPreviewNode({
     }
     // http tool
     else if (source === AppToolSourceEnum.http) {
-      const [parentId, toolName] = pluginId.split('/');
+      const { parentId, toolName } = splitToolsetToolPluginId(pluginId);
       const item = await MongoApp.findById(parentId).lean();
       if (!item) return Promise.reject(PluginErrEnum.unExist);
 
@@ -227,7 +236,9 @@ export async function getChildAppPreviewNode({
       const toolConfig = version.nodes[0].toolConfig?.httpToolSet;
       const tool = await (async () => {
         if (toolConfig?.toolList) {
-          return toolConfig.toolList.find((item) => item.name === toolName);
+          return getToolNameCandidates(toolName)
+            .map((name) => toolConfig.toolList.find((item) => item.name === name))
+            .find(Boolean);
         }
         return undefined;
       })();

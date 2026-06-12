@@ -183,7 +183,8 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
     const formatedSystemPrompt = parseUserSystemPrompt({
       userSystemPrompt: [systemPrompt || '', sandboxClient ? SANDBOX_SYSTEM_PROMPT : '']
         .filter(Boolean)
-        .join('\n\n')
+        .join('\n\n'),
+      getSubAppInfo
     });
 
     // 4. 创建 workflow runtime adapter。它负责主模型 requestId、usage、nodeResponses、SSE 与 request record。

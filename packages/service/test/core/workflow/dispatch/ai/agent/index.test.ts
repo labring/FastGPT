@@ -297,6 +297,32 @@ describe('dispatchRunAgent user context', () => {
     expect(loopInput.messages[1].content).toContain('当前问题');
   });
 
+  it('replaces system prompt tool references with readable names before starting the loop', async () => {
+    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    const props = createProps();
+    props.params.systemPrompt = '优先使用 {{@dataset_search@}}，未知 {{@missing_tool@}} 保留。';
+
+    let result: any;
+    runWithContext(
+      {
+        queryUrlTypeMap: {
+          '/old.pdf': ChatFileTypeEnum.file,
+          '/current.pdf': ChatFileTypeEnum.file
+        },
+        mcpClientMemory: {}
+      },
+      () => {
+        result = dispatchRunAgent(props);
+      }
+    );
+    await result;
+
+    const loopInput = runUnifiedAgentLoopMock.mock.calls[0][0].input;
+    expect(loopInput.systemPrompt).toContain('优先使用 {{知识库检索}}');
+    expect(loopInput.systemPrompt).toContain('未知 {{@missing_tool@}} 保留');
+    expect(loopInput.systemPrompt).not.toContain('{{@dataset_search@}}');
+  });
+
   it('injects sandbox input files before starting the unified agent loop', async () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const props = createProps();

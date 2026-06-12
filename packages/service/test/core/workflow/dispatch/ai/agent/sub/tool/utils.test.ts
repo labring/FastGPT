@@ -80,6 +80,11 @@ const mcpTool = {
   inputSchema: mcpInputSchema
 };
 
+const mcpToolWithLeadingSlash = {
+  ...mcpTool,
+  name: '/test'
+};
+
 const httpTool = {
   name: 'create',
   description: 'Create record',
@@ -91,6 +96,11 @@ const httpTool = {
     type: 'object',
     properties: {}
   }
+};
+
+const httpToolWithLeadingSlash = {
+  ...httpTool,
+  name: '/test'
 };
 
 const createToolsetApp = ({
@@ -158,6 +168,17 @@ describe('getAgentRuntimeTools schema loading', () => {
         }
       }
     }),
+    mcp_slash_app: createToolsetApp({
+      id: 'mcp_slash_app',
+      type: AppTypeEnum.mcpToolSet,
+      toolConfig: {
+        mcpToolSet: {
+          url: 'https://mcp.example.com',
+          headerSecret: {},
+          toolList: [mcpToolWithLeadingSlash]
+        }
+      }
+    }),
     '123_app': createToolsetApp({
       id: '123_app',
       type: AppTypeEnum.mcpToolSet,
@@ -177,6 +198,17 @@ describe('getAgentRuntimeTools schema loading', () => {
           baseUrl: 'https://api.example.com',
           headerSecret: {},
           toolList: [httpTool]
+        }
+      }
+    }),
+    http_slash_app: createToolsetApp({
+      id: 'http_slash_app',
+      type: AppTypeEnum.httpToolSet,
+      toolConfig: {
+        httpToolSet: {
+          baseUrl: 'https://api.example.com',
+          headerSecret: {},
+          toolList: [httpToolWithLeadingSlash]
         }
       }
     })
@@ -206,6 +238,18 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].requestSchema.function.name).toBe('mcp_appsearch');
     expect(tools[0].requestSchema.function.parameters).toEqual(mcpInputSchema);
     expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
+  });
+
+  it('loads a selected MCP tool whose name starts with slash', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'mcp-mcp_slash_app//test', config: {} }]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].id).toBe('mcp_slash_apptest');
+    expect(tools[0].name).toBe('/test');
+    expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_slash_app//test');
   });
 
   it('prefixes tool function name only when the runtime tool id starts with a number', async () => {
@@ -246,6 +290,18 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].requestSchema.function.parameters).toEqual(httpRequestSchema);
     expect(tools[0].requestSchema.function.parameters).not.toEqual(httpInputSchema);
     expect(tools[0].toolConfig?.httpTool?.toolId).toBe('http-http_app/create');
+  });
+
+  it('loads a selected HTTP tool whose name starts with slash', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'http-http_slash_app//test', config: {} }]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].id).toBe('http_slash_apptest');
+    expect(tools[0].name).toBe('/test');
+    expect(tools[0].toolConfig?.httpTool?.toolId).toBe('http-http_slash_app//test');
   });
 
   it('loads system tool params from standard JSON schema description', async () => {

@@ -26,7 +26,7 @@ import {
   type HelperBotChatItemSiteType
 } from '@fastgpt/global/core/chat/helperBot/type';
 import type { onSendMessageParamsType } from './type';
-import { textareaMinH } from '../ChatContainer/ChatBox/constants';
+import { ChatInputWrapperStyle, textareaMinH } from '../ChatContainer/ChatBox/constants';
 import { streamFetch } from '@/web/common/api/fetch';
 import type { generatingMessageProps } from '../ChatContainer/type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -408,12 +408,7 @@ const ChatBox = ({ type, metadata, onApply, ChatBoxRef, ...props }: HelperBotPro
           </Box>
         ))}
       </ScrollData>
-      <Box
-        px={[3, 5]}
-        m={['0 auto 10px', '10px auto']}
-        w={'100%'}
-        maxW={['auto', 'min(820px, 100%)']}
-      >
+      <Box {...ChatInputWrapperStyle}>
         <ChatInput
           TextareaDom={TextareaDom}
           chatId={chatId}
