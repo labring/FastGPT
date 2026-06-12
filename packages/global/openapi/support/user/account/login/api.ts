@@ -109,7 +109,8 @@ export type OauthLoginBodyType = z.infer<typeof OauthLoginBodySchema>;
 // ===== Fast Login =====
 export const FastLoginBodySchema = z.object({
   token: z.string().meta({ description: 'Token' }),
-  code: z.string().meta({ description: 'Code' })
+  code: z.string().meta({ description: 'Code' }),
+  language: LanguageSchema.optional().meta({ description: '语言' })
 });
 export type FastLoginBodyType = z.infer<typeof FastLoginBodySchema>;
 
@@ -120,7 +121,8 @@ export const WxLoginBodySchema = z.object({
   bd_vid: z.string().optional(),
   msclkid: z.string().optional(),
   fastgpt_sem: z.string().optional(),
-  sourceDomain: z.string().optional()
+  sourceDomain: z.string().optional(),
+  language: LanguageSchema.optional().meta({ description: '语言' })
 });
 export type WxLoginBodyType = z.infer<typeof WxLoginBodySchema>;
 export const GetWXLoginQRResponseSchema = z.object({

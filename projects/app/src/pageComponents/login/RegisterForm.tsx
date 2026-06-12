@@ -18,6 +18,7 @@ import {
 } from '@/web/support/marketing/utils';
 import { checkPasswordRule } from '@fastgpt/global/common/string/password';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
+import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 
 type LoginSuccessHandler = (res: LoginSuccessResponseType) => void | Promise<void>;
 
@@ -35,7 +36,7 @@ interface RegisterType {
 
 const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
   const { toast } = useToast();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const { feConfigs } = useSystemStore();
   const {
@@ -61,7 +62,8 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
         bd_vid: getBdVId(),
         msclkid: getMsclkid(),
         fastgpt_sem: getFastGPTSem(),
-        sourceDomain: getSourceDomain()
+        sourceDomain: getSourceDomain(),
+        language: i18n.language as LangEnum
       });
       await loginSuccess(loginResponse);
       removeFastGPTSem();
@@ -72,7 +74,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
       });
     },
     {
-      refreshDeps: [loginSuccess, t, toast]
+      refreshDeps: [i18n.language, loginSuccess, t, toast]
     }
   );
   const onSubmitErr = (err: Record<string, any>) => {
