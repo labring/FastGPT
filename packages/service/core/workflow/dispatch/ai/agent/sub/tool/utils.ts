@@ -401,11 +401,7 @@ export const getAgentRuntimeTools = async ({
       }
     }
 
-    const description = JSON.stringify({
-      type: flowNodeType,
-      name: name,
-      intro: toolDescription || intro
-    });
+    const description = [name, toolDescription || intro].filter(Boolean).join(': ');
     // 仅数字开头的工具名需要补前缀，避免破坏 runtime 使用原始 tool id 反查工具。
     const formatToolId = /^\d/.test(toolId) ? `t${toolId}` : toolId;
 
@@ -527,6 +523,10 @@ export const getAgentRuntimeTools = async ({
         })();
 
         // toolset 展开后的子工具统一走 tool 执行；params 仍继承父工具配置。
+        const promptReference = {
+          id: tool.id,
+          name: toolNode.name
+        };
         const buildSubApp = (child: RuntimeNodeItemType, id = child.nodeId): SubAppInitType => ({
           type: 'tool',
           id,
@@ -534,6 +534,7 @@ export const getAgentRuntimeTools = async ({
           avatar: child.avatar,
           version: child.version,
           toolConfig: child.toolConfig,
+          promptReference,
           params: tool.config,
           requestSchema: formatSchema({
             toolId: id,
@@ -609,6 +610,7 @@ export const getAgentRuntimeTools = async ({
               avatar: toolNode.avatar,
               version: toolNode.version,
               toolConfig: toolNode.toolConfig,
+              promptReference,
               params: tool.config,
               requestSchema: formatSchema({
                 toolId: cleanedPluginId,

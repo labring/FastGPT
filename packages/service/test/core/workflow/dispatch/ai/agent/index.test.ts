@@ -15,7 +15,8 @@ const {
   axiosGetMock,
   getAgentSkillInfosMock,
   injectAgentSkillFilesToSandboxMock,
-  checkTeamSandboxPermissionMock
+  checkTeamSandboxPermissionMock,
+  getAgentRuntimeToolsMock
 } = vi.hoisted(() => ({
   runUnifiedAgentLoopMock: vi.fn(),
   getSandboxClientMock: vi.fn(),
@@ -24,7 +25,8 @@ const {
   axiosGetMock: vi.fn(),
   getAgentSkillInfosMock: vi.fn(),
   injectAgentSkillFilesToSandboxMock: vi.fn(),
-  checkTeamSandboxPermissionMock: vi.fn()
+  checkTeamSandboxPermissionMock: vi.fn(),
+  getAgentRuntimeToolsMock: vi.fn(async () => [])
 }));
 
 vi.mock('@fastgpt/service/core/ai/llm/agentLoop', async (importOriginal) => {
@@ -36,7 +38,7 @@ vi.mock('@fastgpt/service/core/ai/llm/agentLoop', async (importOriginal) => {
 });
 
 vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool/utils', () => ({
-  getAgentRuntimeTools: vi.fn(async () => [])
+  getAgentRuntimeTools: getAgentRuntimeToolsMock
 }));
 
 vi.mock('@fastgpt/service/core/ai/skill/runtime', async (importOriginal) => {
@@ -252,6 +254,7 @@ describe('dispatchRunAgent user context', () => {
         skillMdPath: './skills/Report-skill_1/SKILL.md'
       }
     ]);
+    getAgentRuntimeToolsMock.mockResolvedValue([]);
     runUnifiedAgentLoopMock.mockResolvedValue({
       status: 'done',
       answerText: 'ok',
@@ -321,6 +324,60 @@ describe('dispatchRunAgent user context', () => {
     expect(loopInput.systemPrompt).toContain('优先使用 {{知识库检索}}');
     expect(loopInput.systemPrompt).toContain('未知 {{@missing_tool@}} 保留');
     expect(loopInput.systemPrompt).not.toContain('{{@dataset_search@}}');
+  });
+
+  it('replaces system toolset prompt references from promptToolReferenceInfoMap', async () => {
+    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    const props = createProps();
+    props.params.systemPrompt = '优先使用 {{@systemTool-system_toolset@}}。';
+    props.params.agent_selectedTools = [
+      {
+        id: 'systemTool-system_toolset',
+        config: {}
+      } as any
+    ];
+    getAgentRuntimeToolsMock.mockResolvedValueOnce([
+      {
+        type: 'tool',
+        id: 'system_toolset_search',
+        name: '系统工具集搜索',
+        params: {},
+        requestSchema: {
+          type: 'function',
+          function: {
+            name: 'system_toolset_search',
+            description: '',
+            parameters: {
+              type: 'object',
+              properties: {}
+            }
+          }
+        },
+        promptReference: {
+          id: 'systemTool-system_toolset',
+          name: '系统工具集'
+        }
+      }
+    ]);
+
+    let result: any;
+    runWithContext(
+      {
+        queryUrlTypeMap: {
+          '/old.pdf': ChatFileTypeEnum.file,
+          '/current.pdf': ChatFileTypeEnum.file
+        },
+        mcpClientMemory: {}
+      },
+      () => {
+        result = dispatchRunAgent(props);
+      }
+    );
+    await result;
+
+    const loopInput = runUnifiedAgentLoopMock.mock.calls[0][0].input;
+    expect(loopInput.systemPrompt).toContain('优先使用 {{系统工具集}}');
+    expect(loopInput.systemPrompt).not.toContain('{{@systemTool-system_toolset@}}');
   });
 
   it('injects sandbox input files before starting the unified agent loop', async () => {

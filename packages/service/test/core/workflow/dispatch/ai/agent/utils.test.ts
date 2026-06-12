@@ -1,23 +1,27 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
 import { getSubapps, getExecuteTool } from '@fastgpt/service/core/workflow/dispatch/ai/agent/utils';
 import { readFileTool } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/file/utils';
 import { datasetSearchTool } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/dataset/utils';
 
-const { dispatchAgentDatasetSearchMock, dispatchAppMock, dispatchFileReadMock } = vi.hoisted(
-  () => ({
-    dispatchAgentDatasetSearchMock: vi.fn(),
-    dispatchAppMock: vi.fn(),
-    dispatchFileReadMock: vi.fn()
-  })
-);
+const {
+  dispatchAgentDatasetSearchMock,
+  dispatchAppMock,
+  dispatchFileReadMock,
+  getAgentRuntimeToolsMock
+} = vi.hoisted(() => ({
+  dispatchAgentDatasetSearchMock: vi.fn(),
+  dispatchAppMock: vi.fn(),
+  dispatchFileReadMock: vi.fn(),
+  getAgentRuntimeToolsMock: vi.fn(async () => [])
+}));
 
 vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/file', () => ({
   dispatchFileRead: dispatchFileReadMock
 }));
 
 vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool/utils', () => ({
-  getAgentRuntimeTools: vi.fn(async () => [])
+  getAgentRuntimeTools: getAgentRuntimeToolsMock
 }));
 
 vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/dataset', () => ({
@@ -30,6 +34,11 @@ vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/app', () => ({
 }));
 
 describe('Agent read_files tool protocol', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    getAgentRuntimeToolsMock.mockResolvedValue([]);
+  });
+
   it('exposes read_files with ids parameter', async () => {
     const { completionTools } = await getSubapps({
       tmbId: 'tmb_1',
@@ -139,6 +148,89 @@ describe('Agent read_files tool protocol', () => {
       },
       required: ['query']
     });
+  });
+
+  it('uses loaded toolset names for prompt references when selected tools only include ids', async () => {
+    getAgentRuntimeToolsMock.mockResolvedValue([
+      {
+        type: 'tool',
+        id: 'metaso0',
+        name: '搜索网页',
+        params: {},
+        requestSchema: {
+          type: 'function',
+          function: {
+            name: 'metaso0',
+            description: '',
+            parameters: {
+              type: 'object',
+              properties: {}
+            }
+          }
+        },
+        promptReference: {
+          id: 'systemTool-metaso',
+          name: '秘塔搜索'
+        }
+      },
+      {
+        type: 'tool',
+        id: '697342badc35c2fc3f90ac3a0',
+        name: 'HTTP 搜索',
+        params: {},
+        requestSchema: {
+          type: 'function',
+          function: {
+            name: 'httpTool0',
+            description: '',
+            parameters: {
+              type: 'object',
+              properties: {}
+            }
+          }
+        },
+        promptReference: {
+          id: '697342badc35c2fc3f90ac3a',
+          name: 'HTTP 工具集'
+        }
+      },
+      {
+        type: 'tool',
+        id: '69e20f48dbec7c6ece77556b0',
+        name: 'MCP 搜索',
+        params: {},
+        requestSchema: {
+          type: 'function',
+          function: {
+            name: 'mcpTool0',
+            description: '',
+            parameters: {
+              type: 'object',
+              properties: {}
+            }
+          }
+        },
+        promptReference: {
+          id: '69e20f48dbec7c6ece77556b',
+          name: 'MCP 工具集'
+        }
+      }
+    ]);
+
+    const { promptToolReferenceInfoMap } = await getSubapps({
+      tmbId: 'tmb_1',
+      tools: [
+        { id: 'systemTool-metaso', config: {} },
+        { id: '697342badc35c2fc3f90ac3a', config: {} },
+        { id: '69e20f48dbec7c6ece77556b', config: {} }
+      ],
+      hasFiles: false,
+      hasDataset: false
+    });
+
+    expect(promptToolReferenceInfoMap.get('systemTool-metaso')).toBe('秘塔搜索');
+    expect(promptToolReferenceInfoMap.get('697342badc35c2fc3f90ac3a')).toBe('HTTP 工具集');
+    expect(promptToolReferenceInfoMap.get('69e20f48dbec7c6ece77556b')).toBe('MCP 工具集');
   });
 
   it('passes external OpenAI account to dataset search tool', async () => {

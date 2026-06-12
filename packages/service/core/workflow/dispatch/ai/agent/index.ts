@@ -204,18 +204,19 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
     // 汇总用户选择工具、内置系统工具、知识库/文件工具和 sandbox tools。
     // completionTools 只描述给模型看，subAppsMap 则供 runtime 执行工具时定位真实实现。
-    const { completionTools: agentCompletionTools, subAppsMap: agentSubAppsMap } = await getSubapps(
-      {
-        tools: selectedTools,
-        tmbId: runningAppInfo.tmbId,
-        lang,
-        hasDataset: datasetParams && datasetParams.datasets.length > 0,
-        hasFiles: !!chatConfig?.fileSelectConfig?.canSelectFile,
-        useAgentSandbox: !!sandboxClient
-      }
-    );
+    const {
+      completionTools: agentCompletionTools,
+      subAppsMap: agentSubAppsMap,
+      promptToolReferenceInfoMap
+    } = await getSubapps({
+      tools: selectedTools,
+      tmbId: runningAppInfo.tmbId,
+      lang,
+      hasDataset: datasetParams && datasetParams.datasets.length > 0,
+      hasFiles: !!chatConfig?.fileSelectConfig?.canSelectFile,
+      useAgentSandbox: !!sandboxClient
+    });
 
-    console.log('agentSubAppsMap', agentSubAppsMap);
     // runtime 运行详情和工具卡需要根据 function name 反查展示名、头像和描述。
     // 用户工具与系统工具的 id 形态不完全一致，这里统一归一化查询。
     const getSubAppInfo = (id: string) => {
@@ -240,12 +241,21 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       const formatId = id.slice(1);
       return agentSubAppsMap.get(id) || agentSubAppsMap.get(formatId);
     };
+    const resolvePromptToolReferenceName = (id: string) => {
+      const formatId = id.startsWith('t') ? id.slice(1) : id;
+      return (
+        promptToolReferenceInfoMap.get(id) ||
+        promptToolReferenceInfoMap.get(formatId) ||
+        getSystemToolInfo(id, lang)?.name ||
+        getSystemToolInfo(formatId, lang)?.name
+      );
+    };
     // 用户配置 prompt 和 sandbox prompt 作为 Main Agent 的 system 背景输入。
     const formatedSystemPrompt = parseUserSystemPrompt({
       userSystemPrompt: [systemPrompt, sandboxClient ? SANDBOX_SYSTEM_PROMPT : '']
         .filter(Boolean)
         .join('\n\n'),
-      getSubAppInfo
+      resolvePromptToolReferenceName
     });
 
     // 2. 创建 workflow adapter。

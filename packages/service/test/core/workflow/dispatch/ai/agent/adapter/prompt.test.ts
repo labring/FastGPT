@@ -4,7 +4,7 @@ import {
   replaceToolReferenceWithName
 } from '@fastgpt/service/core/workflow/dispatch/ai/agent/adapter/prompt';
 
-const getSubAppInfo = (id: string) => {
+const resolvePromptToolReferenceName = (id: string) => {
   const names: Record<string, string> = {
     dataset_search: '知识库检索',
     agent_sandbox: '虚拟机',
@@ -16,18 +16,14 @@ const getSubAppInfo = (id: string) => {
     personal_agent_app: '个人 Agent'
   };
 
-  return {
-    name: names[id] || '',
-    avatar: '',
-    toolDescription: ''
-  };
+  return names[id];
 };
 
 describe('workflow agent prompt adapter', () => {
   it('replaces skill references with readable tool names', () => {
     const result = replaceToolReferenceWithName({
       text: '优先使用 {{@dataset_search@}} 和 {{@agent_sandbox@}}。',
-      getSubAppInfo
+      resolvePromptToolReferenceName
     });
 
     expect(result).toBe('优先使用 {{知识库检索}} 和 {{虚拟机}}。');
@@ -36,7 +32,7 @@ describe('workflow agent prompt adapter', () => {
   it('keeps unknown skill references unchanged', () => {
     const result = replaceToolReferenceWithName({
       text: '未知工具 {{@missing_tool@}} 保持原样。',
-      getSubAppInfo
+      resolvePromptToolReferenceName
     });
 
     expect(result).toBe('未知工具 {{@missing_tool@}} 保持原样。');
@@ -71,7 +67,7 @@ describe('workflow agent prompt adapter', () => {
   ])('replaces $label references with readable tool names', ({ referenceId, name }) => {
     const result = replaceToolReferenceWithName({
       text: `优先使用 {{@${referenceId}@}} 完成任务。`,
-      getSubAppInfo
+      resolvePromptToolReferenceName
     });
 
     expect(result).toBe(`优先使用 {{${name}}} 完成任务。`);
@@ -80,7 +76,7 @@ describe('workflow agent prompt adapter', () => {
   it('formats user system prompt after replacing tool references', () => {
     const result = parseUserSystemPrompt({
       userSystemPrompt: '参考 {{@custom_tool@}} 完成任务。',
-      getSubAppInfo
+      resolvePromptToolReferenceName
     });
 
     expect(result).toContain('参考 {{自定义工具}} 完成任务。');

@@ -145,16 +145,18 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
     const { text: formatUserChatInput } = chatValue2RuntimePrompt(currentUserMessage.value);
 
     // 2. 收集 workflow 可用工具。PiAgent 工具执行仍复用现有 workflow 子工具调度器。
-    const { completionTools: agentCompletionTools, subAppsMap: agentSubAppsMap } = await getSubapps(
-      {
-        tools: selectedTools,
-        tmbId: runningAppInfo.tmbId,
-        lang,
-        hasDataset: datasetParams && datasetParams.datasets.length > 0,
-        hasFiles: !!chatConfig?.fileSelectConfig?.canSelectFile,
-        useAgentSandbox: !!sandboxClient
-      }
-    );
+    const {
+      completionTools: agentCompletionTools,
+      subAppsMap: agentSubAppsMap,
+      promptToolReferenceInfoMap
+    } = await getSubapps({
+      tools: selectedTools,
+      tmbId: runningAppInfo.tmbId,
+      lang,
+      hasDataset: datasetParams && datasetParams.datasets.length > 0,
+      hasFiles: !!chatConfig?.fileSelectConfig?.canSelectFile,
+      useAgentSandbox: !!sandboxClient
+    });
 
     const getSubAppInfo = (id: string) => {
       const formatId = id.startsWith('t') ? id.slice(1) : id;
@@ -178,13 +180,22 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       const formatId = id.startsWith('t') ? id.slice(1) : id;
       return agentSubAppsMap.get(id) || agentSubAppsMap.get(formatId);
     };
+    const resolvePromptToolReferenceName = (id: string) => {
+      const formatId = id.startsWith('t') ? id.slice(1) : id;
+      return (
+        promptToolReferenceInfoMap.get(id) ||
+        promptToolReferenceInfoMap.get(formatId) ||
+        getSystemToolInfo(id, lang)?.name ||
+        getSystemToolInfo(formatId, lang)?.name
+      );
+    };
 
     // 3. 拼接 PiAgent 的 system prompt。这里只补齐 workflow 专属约束和 sandbox prompt。
     const formatedSystemPrompt = parseUserSystemPrompt({
       userSystemPrompt: [systemPrompt || '', sandboxClient ? SANDBOX_SYSTEM_PROMPT : '']
         .filter(Boolean)
         .join('\n\n'),
-      getSubAppInfo
+      resolvePromptToolReferenceName
     });
 
     // 4. 创建 workflow runtime adapter。它负责主模型 requestId、usage、nodeResponses、SSE 与 request record。

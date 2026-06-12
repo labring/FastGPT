@@ -1,7 +1,8 @@
 import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
-import type { GetSubAppInfoFnType } from '../type';
 
 const toolReferenceReg = /\{\{@([^@{}]+)@\}\}/g;
+
+export type ResolvePromptToolReferenceNameFn = (id: string) => string | undefined;
 
 const getToolReferenceIdCandidates = (id: string) => {
   const trimId = id.trim();
@@ -26,18 +27,18 @@ const getToolReferenceIdCandidates = (id: string) => {
 
 /**
  * 将 PromptEditor 保存的工具引用 ID 转成人类可读工具名。
- * 工具可见性仍由 runtime tool catalog 决定；这里仅负责 mainPrompt 中的背景文本可读性。
+ * 只依赖 prompt 引用解析器，不关心工具是否可执行，避免和 runtime 工具 catalog 耦合。
  */
 export const replaceToolReferenceWithName = ({
   text,
-  getSubAppInfo
+  resolvePromptToolReferenceName
 }: {
   text: string;
-  getSubAppInfo: GetSubAppInfoFnType;
+  resolvePromptToolReferenceName: ResolvePromptToolReferenceNameFn;
 }) => {
   return text.replace(toolReferenceReg, (raw, id: string) => {
     const name = getToolReferenceIdCandidates(id)
-      .map((candidate) => getSubAppInfo(candidate).name)
+      .map((candidate) => resolvePromptToolReferenceName(candidate))
       .find(Boolean);
 
     return name ? `{{${name}}}` : raw;
@@ -50,10 +51,10 @@ export const replaceToolReferenceWithName = ({
  */
 export const parseUserSystemPrompt = ({
   userSystemPrompt,
-  getSubAppInfo
+  resolvePromptToolReferenceName
 }: {
   userSystemPrompt?: string;
-  getSubAppInfo: GetSubAppInfoFnType;
+  resolvePromptToolReferenceName: ResolvePromptToolReferenceNameFn;
 }) => {
   if (!userSystemPrompt) {
     return '';
@@ -61,7 +62,7 @@ export const parseUserSystemPrompt = ({
 
   const readableSystemPrompt = replaceToolReferenceWithName({
     text: userSystemPrompt,
-    getSubAppInfo
+    resolvePromptToolReferenceName
   });
 
   return `${readableSystemPrompt}

@@ -23,7 +23,8 @@ const {
   sandboxWriteFilesMock,
   sandboxClientExecMock,
   axiosGetMock,
-  checkTeamSandboxPermissionMock
+  checkTeamSandboxPermissionMock,
+  getAgentRuntimeToolsMock
 } = vi.hoisted(() => ({
   agentPromptMock: vi.fn(),
   agentSubscribeMock: vi.fn(),
@@ -39,7 +40,8 @@ const {
   sandboxWriteFilesMock: vi.fn(),
   sandboxClientExecMock: vi.fn(),
   axiosGetMock: vi.fn(),
-  checkTeamSandboxPermissionMock: vi.fn()
+  checkTeamSandboxPermissionMock: vi.fn(),
+  getAgentRuntimeToolsMock: vi.fn(async () => [])
 }));
 
 vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
@@ -77,7 +79,7 @@ vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/piAgent/toolAdapter', 
 }));
 
 vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool/utils', () => ({
-  getAgentRuntimeTools: vi.fn(async () => [])
+  getAgentRuntimeTools: getAgentRuntimeToolsMock
 }));
 
 vi.mock('@fastgpt/service/core/ai/skill/runtime', async (importOriginal) => {
@@ -299,6 +301,7 @@ describe('dispatchPiAgent user context', () => {
         skillMdPath: './skills/Report-skill_1/SKILL.md'
       }
     ]);
+    getAgentRuntimeToolsMock.mockResolvedValue([]);
     createPiAgentWorkflowRuntimeMock.mockReturnValue({
       onPayload: vi.fn(),
       handleAgentEvent: vi.fn(),
@@ -420,6 +423,59 @@ describe('dispatchPiAgent user context', () => {
       '未知 {{@missing_tool@}} 保留'
     );
     expect(agentConstructorArgs[0].initialState.systemPrompt).not.toContain('{{@dataset_search@}}');
+  });
+
+  it('replaces system toolset prompt references from promptToolReferenceInfoMap', async () => {
+    const { dispatchPiAgent } =
+      await import('@fastgpt/service/core/workflow/dispatch/ai/agent/piAgent');
+    const props = createProps();
+    props.params.systemPrompt = '优先使用 {{@systemTool-system_toolset@}}。';
+    props.params.agent_selectedTools = [
+      {
+        id: 'systemTool-system_toolset',
+        config: {}
+      } as any
+    ];
+    getAgentRuntimeToolsMock.mockResolvedValueOnce([
+      {
+        type: 'tool',
+        id: 'system_toolset_search',
+        name: '系统工具集搜索',
+        params: {},
+        requestSchema: {
+          type: 'function',
+          function: {
+            name: 'system_toolset_search',
+            description: '',
+            parameters: {
+              type: 'object',
+              properties: {}
+            }
+          }
+        },
+        promptReference: {
+          id: 'systemTool-system_toolset',
+          name: '系统工具集'
+        }
+      }
+    ]);
+
+    let resultPromise: Promise<any>;
+    runWithContext(
+      {
+        queryUrlTypeMap: {},
+        mcpClientMemory: {}
+      },
+      () => {
+        resultPromise = dispatchPiAgent(props);
+      }
+    );
+    await resultPromise!;
+
+    expect(agentConstructorArgs[0].initialState.systemPrompt).toContain('优先使用 {{系统工具集}}');
+    expect(agentConstructorArgs[0].initialState.systemPrompt).not.toContain(
+      '{{@systemTool-system_toolset@}}'
+    );
   });
 
   it('injects sandbox input files before calling pi agent prompt', async () => {

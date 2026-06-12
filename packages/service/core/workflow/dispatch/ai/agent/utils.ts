@@ -24,7 +24,8 @@ import type { WorkflowNodeResponseWriter } from '../../../../chat/nodeResponseSt
 
 /**
  * 收集 Agent 节点可用的系统工具和用户选择的子应用工具。
- * 返回给 LLM 的 completionTools 与运行时查找用的 subAppsMap 会在这里保持一致。
+ * completionTools/subAppsMap 面向 runtime；promptToolReferenceInfoMap 只用于解析 prompt 中的
+ * {{@toolId@}} 展示名，不参与工具展开和执行。
  */
 export const getSubapps = async ({
   tmbId,
@@ -43,8 +44,11 @@ export const getSubapps = async ({
 }): Promise<{
   completionTools: ChatCompletionTool[];
   subAppsMap: Map<string, SubAppRuntimeType>;
+  promptToolReferenceInfoMap: Map<string, string>;
 }> => {
   const completionTools: ChatCompletionTool[] = [];
+  const subAppsMap = new Map<string, SubAppRuntimeType>();
+  const promptToolReferenceInfoMap = new Map<string, string>();
 
   // system tools
   {
@@ -64,8 +68,6 @@ export const getSubapps = async ({
     }
   }
 
-  /* User tools */
-  const subAppsMap = new Map<string, SubAppRuntimeType>();
   const formatTools = await getAgentRuntimeTools({
     tools,
     tmbId,
@@ -73,6 +75,9 @@ export const getSubapps = async ({
   });
 
   formatTools.forEach((tool) => {
+    if (tool.promptReference) {
+      promptToolReferenceInfoMap.set(tool.promptReference.id, tool.promptReference.name);
+    }
     completionTools.push(tool.requestSchema);
     subAppsMap.set(tool.id, {
       type: tool.type,
@@ -87,7 +92,8 @@ export const getSubapps = async ({
 
   return {
     completionTools,
-    subAppsMap
+    subAppsMap,
+    promptToolReferenceInfoMap
   };
 };
 
