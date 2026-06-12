@@ -49,7 +49,7 @@ export const readFileContentByBuffer = async ({
   teamId,
   tmbId,
 
-  extension,
+  extension: rawExtension,
   buffer,
   encoding,
   customPdfParse = false,
@@ -74,6 +74,9 @@ export const readFileContentByBuffer = async ({
 }): Promise<{
   rawText: string;
 }> => {
+  // 归一化扩展名为小写，避免大写/混合大小写后缀（如 .PDF）无法匹配解析器（#6996）
+  const extension = rawExtension.toLowerCase();
+
   const parseMarkdownImages = (rawText: string) =>
     parseMarkdownBase64Images(rawText, {
       parseBase64: true,
