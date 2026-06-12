@@ -10,22 +10,23 @@ import {
   Text,
   useDisclosure
 } from '@chakra-ui/react';
-import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyIcon from '../Icon';
 import { useTranslation } from 'next-i18next';
 
-type TrainStatusFilterOption = {
+type TableHeaderFilterOption = {
   key: string;
   label: string;
 };
 
 type Props = {
   value: string | undefined;
-  onChange: (status: string | undefined) => void;
-  options: TrainStatusFilterOption[];
+  onChange: (value: string | undefined) => void;
+  options: TableHeaderFilterOption[];
   label: string;
+  allLabel?: string;
 };
 
-const TrainStatusFilter = ({ value, onChange, options, label }: Props) => {
+const TableHeaderFilter = ({ value, onChange, options, label, allLabel }: Props) => {
   const { t } = useTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
@@ -69,41 +70,49 @@ const TrainStatusFilter = ({ value, onChange, options, label }: Props) => {
             }}
             fontSize={'xs'}
             alignItems={'center'}
+            overflow={'hidden'}
+            textOverflow={'ellipsis'}
             whiteSpace={'nowrap'}
+            title={allLabel || t('common:All')}
           >
-            {t('common:All')}
+            {allLabel || t('common:All')}
           </Box>
-          {options.map((option) => {
-            const isSelected = value === option.key;
+          <Box maxH={'200px'} overflowY={'auto'}>
+            {options.map((option) => {
+              const isSelected = value === option.key;
 
-            return (
-              <Box
-                key={option.key}
-                h={'28px'}
-                px={'8px'}
-                py={'6px'}
-                cursor={'pointer'}
-                borderRadius={isSelected ? '4px' : 'none'}
-                bg={isSelected ? 'rgba(50, 136, 250, 0.06)' : 'transparent'}
-                color={isSelected ? '#1770E6' : '#333'}
-                _hover={{ bg: isSelected ? 'rgba(50, 136, 250, 0.06)' : 'myGray.50' }}
-                onClick={() => {
-                  onChange(isSelected ? undefined : option.key);
-                  onClose();
-                }}
-                fontSize={'xs'}
-                alignItems={'center'}
-                whiteSpace={'nowrap'}
-              >
-                {option.label}
-              </Box>
-            );
-          })}
+              return (
+                <Box
+                  key={option.key}
+                  h={'28px'}
+                  px={'8px'}
+                  py={'6px'}
+                  cursor={'pointer'}
+                  borderRadius={isSelected ? '4px' : 'none'}
+                  bg={isSelected ? 'rgba(50, 136, 250, 0.06)' : 'transparent'}
+                  color={isSelected ? '#1770E6' : '#333'}
+                  _hover={{ bg: isSelected ? 'rgba(50, 136, 250, 0.06)' : 'myGray.50' }}
+                  onClick={() => {
+                    onChange(isSelected ? undefined : option.key);
+                    onClose();
+                  }}
+                  fontSize={'xs'}
+                  alignItems={'center'}
+                  overflow={'hidden'}
+                  textOverflow={'ellipsis'}
+                  whiteSpace={'nowrap'}
+                  title={option.label}
+                >
+                  {option.label}
+                </Box>
+              );
+            })}
+          </Box>
         </PopoverBody>
       </PopoverContent>
     </Popover>
   );
 };
 
-export type { TrainStatusFilterOption };
-export default TrainStatusFilter;
+export type { TableHeaderFilterOption };
+export default TableHeaderFilter;

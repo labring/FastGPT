@@ -38,16 +38,6 @@ const ModelFilterBar = ({
             list={providerList}
           />
         </Box>
-        {/* <Box flexShrink={0} minW={'100px'}>
-          <MySelect
-            w={'100%'}
-            h={'36px'}
-            bg={'white'}
-            value={filterState.modelType}
-            onChange={(modelType) => setFilterState((state) => ({ ...state, modelType }))}
-            list={modelTypeList}
-          />
-        </Box> */}
         <Box minW={0} maxW={'350px'}>
           <SearchInput
             h={'36px'}

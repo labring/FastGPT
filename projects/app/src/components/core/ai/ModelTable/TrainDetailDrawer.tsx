@@ -40,7 +40,7 @@ import type {
 import type { EnhancedErrorMessage as RerankEnhancedErrorMessage } from '@fastgpt/global/core/train/rerank/error';
 import type { EnhancedErrorMessage as EmbeddingEnhancedErrorMessage } from '@fastgpt/global/core/train/embedding/error';
 import TrainExceptionModal from './TrainExceptionModal';
-import TrainStatusFilter, { type TrainStatusFilterOption } from './TrainStatusFilter';
+import TableHeaderFilter, { type TableHeaderFilterOption } from '@fastgpt/web/components/common/TableHeaderFilter';
 import { getDatasetsWithChildren } from '@/web/core/dataset/api';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type';
@@ -207,7 +207,7 @@ const TrainDetailDrawer = ({
 
   const actualIsLoading = isLoading && !isPollingRef.current;
 
-  const statusOptions = useMemo<TrainStatusFilterOption[]>(
+  const statusOptions = useMemo<TableHeaderFilterOption[]>(
     () =>
       Object.keys(trainTaskStatusStyleMap).map((status) => ({
         key: status,
@@ -694,7 +694,7 @@ const TrainDetailDrawer = ({
                     <Th>{t('account_model:train_detail_new_model')}</Th>
                     <Th>{t('account_model:train_detail_trainer')}</Th>
                     <Th>
-                      <TrainStatusFilter
+                      <TableHeaderFilter
                         label={t('account_model:train_detail_status')}
                         value={selectedStatus}
                         onChange={setSelectedStatus}
