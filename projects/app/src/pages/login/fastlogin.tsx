@@ -11,6 +11,7 @@ import { useTranslation } from 'next-i18next';
 import { validateRedirectUrl } from '@/web/common/utils/uri';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 import { useLoginRedirectAfterLogin } from '@/web/support/user/loginRedirect';
+import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 
 const FastLogin = ({
   code,
@@ -26,7 +27,7 @@ const FastLogin = ({
   const { setUserInfo } = useUserStore();
   const router = useRouter();
   const { toast } = useToast();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const resolveLoginRedirect = useLoginRedirectAfterLogin();
   const loginSuccess = useCallback(
     async (res: LoginSuccessResponseType) => {
@@ -53,7 +54,8 @@ const FastLogin = ({
       try {
         const res = await postFastLogin({
           code,
-          token
+          token,
+          language: i18n.language as LangEnum
         });
         if (!res) {
           toast({
@@ -75,7 +77,7 @@ const FastLogin = ({
         }, 1000);
       }
     },
-    [loginSuccess, router, t, toast]
+    [i18n.language, loginSuccess, router, t, toast]
   );
 
   useEffect(() => {

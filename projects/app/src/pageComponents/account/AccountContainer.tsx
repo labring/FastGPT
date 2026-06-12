@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Box, Flex, useTheme } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
@@ -44,7 +44,7 @@ const AccountContainer = ({
     return router.pathname.split('/').pop() as TabEnum;
   }, [router.pathname]);
 
-  const tabList = useRef([
+  const tabList = [
     {
       icon: 'support/user/userLight',
       label: t('account:personal_information'),
@@ -130,7 +130,7 @@ const AccountContainer = ({
       label: t('account:logout'),
       value: TabEnum.loginout
     }
-  ]);
+  ];
 
   const { openConfirm, ConfirmModal } = useConfirm({
     content: t('account:confirm_logout')
@@ -168,7 +168,7 @@ const AccountContainer = ({
               mx={'auto'}
               mt={2}
               w={'100%'}
-              list={tabList.current}
+              list={tabList}
               value={currentTab}
               onChange={setCurrentTab}
             />
@@ -185,7 +185,7 @@ const AccountContainer = ({
               m={'auto'}
               w={'100%'}
               size={isPc ? 'md' : 'sm'}
-              list={tabList.current.map((item) => ({
+              list={tabList.map((item) => ({
                 value: item.value,
                 label: item.label
               }))}

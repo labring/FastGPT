@@ -19,6 +19,7 @@ import {
 } from '@/web/support/marketing/utils';
 import PolicyTip from './PolicyTip';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
+import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 
 type LoginSuccessHandler = (res: LoginSuccessResponseType) => void | Promise<void>;
 
@@ -28,7 +29,7 @@ interface Props {
 }
 
 const WechatForm = ({ setPageType, loginSuccess }: Props) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { toast } = useToast();
 
   const { data: wechatInfo } = useQuery(['getWXLoginQR'], getWXLoginQR, {
@@ -41,7 +42,7 @@ const WechatForm = ({ setPageType, loginSuccess }: Props) => {
   });
 
   useQuery(
-    ['getWXLoginResult', wechatInfo?.code],
+    ['getWXLoginResult', wechatInfo?.code, i18n.language],
     () =>
       getWXLoginResult({
         inviterId: getInviterId(),
@@ -49,7 +50,8 @@ const WechatForm = ({ setPageType, loginSuccess }: Props) => {
         bd_vid: getBdVId(),
         msclkid: getMsclkid(),
         fastgpt_sem: getFastGPTSem(),
-        sourceDomain: getSourceDomain()
+        sourceDomain: getSourceDomain(),
+        language: i18n.language as LangEnum
       }),
     {
       refetchInterval: 3 * 1000,

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { LanguageSchema } from '../../../../../common/i18n/type';
 
 // ===== Update password by old password =====
 export const UpdatePasswordByOldBodySchema = z
@@ -56,7 +57,8 @@ export const UpdatePasswordByCodeBodySchema = z.object({
   username: z.string().trim().min(1).meta({ description: '用户名' }),
   code: z.string().meta({ description: '验证码' }),
   password: z.string().trim().min(1).meta({ description: '新密码' }),
-  tmbId: z.string().optional().meta({ description: '团队成员 ID（可选）' })
+  tmbId: z.string().optional().meta({ description: '团队成员 ID（可选）' }),
+  language: LanguageSchema.optional().meta({ description: '语言' })
 });
 
 export type UpdatePasswordByCodeBodyType = z.infer<typeof UpdatePasswordByCodeBodySchema>;

@@ -12,7 +12,10 @@ import type {
   WxLoginBodyType,
   GetWXLoginQRResponseType
 } from '@fastgpt/global/openapi/support/user/account/login/api';
-import type { UpdatePasswordByOldBodyType } from '@fastgpt/global/openapi/support/user/account/password/api';
+import type {
+  UpdatePasswordByCodeBodyType,
+  UpdatePasswordByOldBodyType
+} from '@fastgpt/global/openapi/support/user/account/password/api';
 import type { AccountRegisterBodyType } from '@fastgpt/global/openapi/support/user/account/register/api';
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
@@ -63,7 +66,9 @@ export const postRegister = ({
   inviterId,
   bd_vid,
   msclkid,
-  fastgpt_sem
+  fastgpt_sem,
+  sourceDomain,
+  language
 }: AccountRegisterBodyType) =>
   POST<LoginSuccessResponseType>(`/proApi/support/user/account/register/emailAndPhone`, {
     username,
@@ -72,6 +77,8 @@ export const postRegister = ({
     bd_vid,
     msclkid,
     fastgpt_sem,
+    sourceDomain,
+    language,
     password: hashStr(password)
   });
 
@@ -79,15 +86,13 @@ export const postRegister = ({
 export const postFindPassword = ({
   username,
   code,
-  password
-}: {
-  username: string;
-  code: string;
-  password: string;
-}) =>
+  password,
+  ...props
+}: UpdatePasswordByCodeBodyType) =>
   POST<LoginSuccessResponseType>(`/proApi/support/user/account/password/updateByCode`, {
     username,
     code,
+    ...props,
     password: hashStr(password)
   });
 export const updatePasswordByOld = ({ oldPsw, newPsw }: UpdatePasswordByOldBodyType) =>

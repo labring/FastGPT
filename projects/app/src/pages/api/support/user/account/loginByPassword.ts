@@ -20,12 +20,16 @@ import {
 } from '@fastgpt/global/openapi/support/user/account/login/api';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { getClientIpFromRequest } from '@fastgpt/service/common/security/clientIp';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(
   req: ApiRequestProps<LoginByPasswordBodyType>,
   res: ApiResponseType
 ): Promise<LoginSuccessResponseType> {
-  const { username, password, code, language } = LoginByPasswordBodySchema.parse(req.body);
+  const { username, password, code, language } = parseApiInput({
+    req,
+    bodySchema: LoginByPasswordBodySchema
+  }).body;
 
   // Auth prelogin code
   await authCode({
