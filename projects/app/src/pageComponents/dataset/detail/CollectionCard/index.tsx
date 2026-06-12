@@ -198,7 +198,7 @@ const CollectionCard = () => {
           parentId: targetId
         });
         getData(pageNum);
-      } catch (error) {}
+      } catch {}
     }
   });
 
@@ -261,18 +261,29 @@ const CollectionCard = () => {
                   }}
                 >
                   <Td minW={'150px'} maxW={['200px', '300px']} draggable py={2}>
-                    <HStack>
+                    <HStack minW={0}>
                       <HStack onClick={(e) => e.stopPropagation()}>
                         <Checkbox
                           isChecked={isSelected(collection)}
-                          onChange={(e) => toggleSelect(collection)}
+                          onChange={() => toggleSelect(collection)}
                         />
                       </HStack>
-                      <Box>
-                        <Flex alignItems={'center'}>
-                          <MyIcon name={collection.icon as any} w={'1.25rem'} mr={2} />
-                          <MyTooltip label={t('common:click_drag_tip')} shouldWrapChildren={false}>
-                            <Box color={'myGray.900'} fontWeight={'500'} className="textEllipsis">
+                      <Box minW={0} flex={1}>
+                        <Flex alignItems={'center'} minW={0}>
+                          <MyIcon
+                            name={collection.icon as any}
+                            w={'1.25rem'}
+                            mr={2}
+                            flexShrink={0}
+                          />
+                          <MyTooltip label={collection.name} showOnlyWhenOverflow>
+                            <Box
+                              color={'myGray.900'}
+                              fontWeight={'500'}
+                              className="textEllipsis"
+                              minW={0}
+                              flex={'0 1 auto'}
+                            >
                               {collection.name}
                             </Box>
                           </MyTooltip>

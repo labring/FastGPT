@@ -15,6 +15,7 @@ import {
 import { getQuoteDataList } from '@/web/core/chat/record/api';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 type MobileQuoteTab = 'detail' | 'source';
 
@@ -177,9 +178,11 @@ const QuoteReader = ({
             onClick={() => openCollectionQuote(item)}
           >
             <MyIcon name={item.icon as any} flexShrink={0} w={'16px'} />
-            <Box className={'textEllipsis'} minW={0}>
-              {item.sourceName}
-            </Box>
+            <MyTooltip label={item.sourceName} showOnlyWhenOverflow>
+              <Box className={'textEllipsis'} minW={0}>
+                {item.sourceName}
+              </Box>
+            </MyTooltip>
           </Flex>
         ))}
       </Flex>

@@ -110,9 +110,6 @@ const FolderPath = (props: {
       }
     };
 
-    const shouldTruncate = !isLast && item.parentName.length > 10;
-    const displayName = shouldTruncate ? `${item.parentName.slice(0, 10)}...` : item.parentName;
-
     const pathBox = (
       <Box
         fontSize={['xs', fontSize || 'sm']}
@@ -133,13 +130,15 @@ const FolderPath = (props: {
             })}
         {...(isLast && !forbidLastClick && clickStyles)}
       >
-        {displayName}
+        {item.parentName}
       </Box>
     );
 
     return (
       <Flex key={item.parentId || index} alignItems={'center'}>
-        {shouldTruncate ? <MyTooltip label={item.parentName}>{pathBox}</MyTooltip> : pathBox}
+        <MyTooltip label={item.parentName} showOnlyWhenOverflow>
+          {pathBox}
+        </MyTooltip>
         {!isLast && <MyIcon name={'common/line'} color={'myGray.500'} mx={1} width={'5px'} />}
       </Flex>
     );

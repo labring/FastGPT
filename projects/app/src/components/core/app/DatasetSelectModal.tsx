@@ -29,6 +29,7 @@ import FolderPath from '@/components/common/folder/Path';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import QuickCreateDatasetModal from '@/pageComponents/app/detail/components/QuickCreateDatasetModal';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 // Dataset selection modal component
 export const DatasetSelectModal = ({
@@ -306,14 +307,29 @@ export const DatasetSelectModal = ({
                           </Box>
 
                           {/* Avatar */}
-                          <Avatar src={item.avatar} w={7} h={7} borderRadius="sm" ml={3} mr={2.5} />
+                          <Avatar
+                            src={item.avatar}
+                            w={7}
+                            h={7}
+                            borderRadius="sm"
+                            ml={3}
+                            mr={2.5}
+                            flexShrink={0}
+                          />
 
                           {/* Name and type */}
                           <Box flex={1} minW={0}>
-                            <Box fontSize="sm" color={'myGray.900'} lineHeight={1}>
-                              {item.name}
-                            </Box>
-                            <Box fontSize="xs" color="myGray.500">
+                            <MyTooltip label={item.name} showOnlyWhenOverflow>
+                              <Box
+                                fontSize="sm"
+                                color={'myGray.900'}
+                                lineHeight={1.2}
+                                className="textEllipsis"
+                              >
+                                {item.name}
+                              </Box>
+                            </MyTooltip>
+                            <Box fontSize="xs" color="myGray.500" className="textEllipsis">
                               {item.type === DatasetTypeEnum.folder ? (
                                 <>{t('common:Folder')}</>
                               ) : (
@@ -408,9 +424,20 @@ export const DatasetSelectModal = ({
                             cursor="pointer"
                             alignItems="center"
                           >
-                            <Avatar src={item.avatar} w={6} h={6} borderRadius="sm" mr={3} />
-                            <Box flex={1} minW={0}>
-                              <Box fontSize="sm">{item.name}</Box>
+                            <Avatar
+                              src={item.avatar}
+                              w={6}
+                              h={6}
+                              borderRadius="sm"
+                              mr={3}
+                              flexShrink={0}
+                            />
+                            <Box flex={1} minW={0} mr={2}>
+                              <MyTooltip label={item.name} showOnlyWhenOverflow>
+                                <Box fontSize="sm" className="textEllipsis" lineHeight={1.2}>
+                                  {item.name}
+                                </Box>
+                              </MyTooltip>
                             </Box>
                             <IconButton
                               aria-label="Remove"
@@ -418,6 +445,7 @@ export const DatasetSelectModal = ({
                               size="xs"
                               variant="ghost"
                               color="black"
+                              flexShrink={0}
                               _hover={{ bg: 'myGray.200' }}
                               onClick={() =>
                                 setSelectedDatasets((prev) =>

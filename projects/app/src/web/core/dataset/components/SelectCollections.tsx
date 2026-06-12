@@ -17,6 +17,7 @@ import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '../context/datasetPageContext';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const SelectCollections = ({
   datasetId,
@@ -187,14 +188,16 @@ const SelectCollections = ({
                         result = [...selectedDatasetCollectionIds, item._id];
                       }
                       setSelectedDatasetCollectionIds(result);
-                      onChange && onChange({ parentId, collectionIds: result });
+                      onChange?.({ parentId, collectionIds: result });
                     }
                   }}
                 >
-                  <Flex alignItems={'center'} h={'38px'}>
-                    <MyIcon name={item.icon as any} w={'18px'} />
-                    <Box ml={3} fontSize={'sm'} className="textEllipsis">
-                      {item.name}
+                  <Flex alignItems={'center'} h={'38px'} minW={0}>
+                    <MyIcon name={item.icon as any} w={'18px'} flexShrink={0} />
+                    <Box ml={3} fontSize={'sm'} minW={0} flex={1}>
+                      <MyTooltip label={item.name} showOnlyWhenOverflow>
+                        <Box className="textEllipsis">{item.name}</Box>
+                      </MyTooltip>
                     </Box>
                   </Flex>
                 </Card>

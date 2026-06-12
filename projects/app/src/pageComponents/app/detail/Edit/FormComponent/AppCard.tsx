@@ -27,6 +27,7 @@ import type { SimpleAppSnapshotType } from './useSnapshots';
 import ExportConfigPopover from '@/pageComponents/app/detail/ExportConfigPopover';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 import type { Form2WorkflowFnType } from './type';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const AppCard = ({
   appForm,
@@ -91,16 +92,18 @@ const AppCard = ({
         <Flex alignItems={'center'} justifyContent={'space-between'} mb={5}>
           <Flex alignItems={'center'} flex={1} minW={0}>
             <Avatar src={appDetail.avatar} borderRadius={'md'} w={'28px'} h={'28px'} />
-            <Box
-              ml={3}
-              fontWeight={'bold'}
-              fontSize={'lg'}
-              color={'myGray.900'}
-              flex={1}
-              noOfLines={1}
-            >
-              {appDetail.name}
-            </Box>
+            <MyTooltip label={appDetail.name} showOnlyWhenOverflow>
+              <Box
+                ml={3}
+                fontWeight={'bold'}
+                fontSize={'lg'}
+                color={'myGray.900'}
+                flex={1}
+                noOfLines={1}
+              >
+                {appDetail.name}
+              </Box>
+            </MyTooltip>
           </Flex>
 
           {/* Right Action Icons */}

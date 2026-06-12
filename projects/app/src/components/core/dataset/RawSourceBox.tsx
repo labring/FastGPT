@@ -51,36 +51,35 @@ const RawSourceBox = ({
     teamId,
     teamToken
   });
+  const displaySourceName = sourceName || t('common:unknow_source');
 
   return (
-    <MyTooltip
-      label={canPreview ? t('file:click_to_view_raw_source') : ''}
-      shouldWrapChildren={false}
+    <Box
+      color={'myGray.900'}
+      fontWeight={'medium'}
+      display={'inline-flex'}
+      whiteSpace={'nowrap'}
+      {...(canPreview
+        ? {
+            cursor: 'pointer',
+            textDecoration: 'underline',
+            onClick: read
+          }
+        : {})}
+      {...props}
     >
-      <Box
-        color={'myGray.900'}
-        fontWeight={'medium'}
-        display={'inline-flex'}
-        whiteSpace={'nowrap'}
-        {...(canPreview
-          ? {
-              cursor: 'pointer',
-              textDecoration: 'underline',
-              onClick: read
-            }
-          : {})}
-        {...props}
-      >
-        <MyIcon name={icon as any} w={['1rem', '1.25rem']} mr={2} />
+      <MyIcon name={icon as any} w={['1rem', '1.25rem']} mr={2} flexShrink={0} />
+      <MyTooltip label={displaySourceName} showOnlyWhenOverflow>
         <Box
           maxW={['200px', '300px']}
           className={props.className ?? 'textEllipsis'}
           wordBreak={'break-all'}
+          minW={0}
         >
-          {sourceName || t('common:unknow_source')}
+          {displaySourceName}
         </Box>
-      </Box>
-    </MyTooltip>
+      </MyTooltip>
+    </Box>
   );
 };
 
