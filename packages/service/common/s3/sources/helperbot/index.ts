@@ -10,7 +10,8 @@ import {
 import { differenceInHours } from 'date-fns';
 import { S3Buckets } from '../../config/constants';
 import path from 'path';
-import { getFileS3Key, parseHelperBotFileS3Key } from '../../utils';
+import { getFileS3Key } from '../../utils';
+import { parseHelperBotFileS3Key } from './key';
 
 export class S3HelperBotSource extends S3PrivateBucket {
   private static instance: S3HelperBotSource;

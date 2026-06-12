@@ -12,7 +12,7 @@ import { getRerankModel } from '@fastgpt/service/core/ai/model';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
-import { isAuthorizedTempFileS3Key } from '@fastgpt/service/common/s3/utils';
+import { isAuthorizedTempFileS3Key } from '@fastgpt/service/common/s3/sources/temp/key';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import {
   SearchDatasetTestBodySchema,

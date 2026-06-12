@@ -4,7 +4,7 @@ import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { PresignChatFileGetUrlSchema } from '@fastgpt/global/openapi/core/chat/file/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { isAuthorizedChatFileS3Key } from '@fastgpt/service/common/s3/utils';
+import { isAuthorizedChatFileS3Key } from '@fastgpt/service/common/s3/sources/chat/key';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 
 async function handler(req: ApiRequestProps): Promise<string> {

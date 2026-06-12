@@ -7,7 +7,7 @@ import {
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getS3HelperBotSource } from '@fastgpt/service/common/s3/sources/helperbot';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
-import { isAuthorizedHelperBotFileS3Key } from '@fastgpt/service/common/s3/utils';
+import { isAuthorizedHelperBotFileS3Key } from '@fastgpt/service/common/s3/sources/helperbot/key';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps<GetHelperBotFilePreviewParamsType>): Promise<string> {
