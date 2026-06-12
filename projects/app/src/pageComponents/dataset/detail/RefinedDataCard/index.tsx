@@ -613,6 +613,7 @@ const RefinedDataCard = () => {
                               alignItems={'center'}
                               cursor={'pointer'}
                               borderRadius={'sm'}
+                              px={'4px'}
                               _hover={{
                                 bg: 'rgba(206, 221, 255, 0.3)'
                               }}
@@ -697,6 +698,7 @@ const RefinedDataCard = () => {
                               h={'24px'}
                               cursor={'pointer'}
                               borderRadius={'sm'}
+                              px={'4px'}
                               _hover={{
                                 bg: 'rgba(206, 221, 255, 0.3)'
                               }}
