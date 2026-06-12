@@ -537,6 +537,8 @@
   "week.Tuesday": "星期二",
   "week.Wednesday": "星期三",
   "workflow.Input guide": "填寫說明",
+  "developer_config": "開發者配置",
+  "tool_input_agent_generated_tip": "執行時由模型填寫，會進入工具呼叫參數。",
   "workflow.file_url": "檔案連結",
   "workflow.form_input": "表單輸入",
   "workflow.form_input_description_placeholder": "例如：\n補充您的資訊",

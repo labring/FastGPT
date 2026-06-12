@@ -8,14 +8,51 @@ import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { ToolNodeItemType } from '../type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
+  canInputBeAgentGenerated,
+  isAgentGeneratedToolInput
+} from '@fastgpt/global/core/app/formEdit/utils';
+import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import {
   getAgentLoopCoreSystemToolInfo,
   type AgentLoopCoreToolInfo
 } from '../../agentLoopCore/interface';
 
 export type ToolInfo = AgentLoopCoreToolInfo<ToolNodeItemType>;
 
-const createToolSchema = (item: ToolNodeItemType): ChatCompletionTool => {
-  const parameters = item.jsonSchema || nodeInputs2JsonSchema({ inputs: item.toolParams });
+const buildModelVisibleJsonSchema = ({
+  toolParams,
+  jsonSchema
+}: {
+  toolParams: FlowNodeInputItemType[];
+  jsonSchema?: Record<string, any>;
+}) => {
+  const modelVisibleKeys = new Set(toolParams.map((input) => input.key));
+
+  if (jsonSchema) {
+    const properties = jsonSchema.properties || {};
+    const nextSchema: Record<string, any> = {
+      ...jsonSchema,
+      properties: Object.fromEntries(
+        Object.entries(properties).filter(([key]) => modelVisibleKeys.has(key))
+      )
+    };
+
+    if (Array.isArray(jsonSchema.required)) {
+      nextSchema.required = jsonSchema.required.filter((key: string) => modelVisibleKeys.has(key));
+    } else if ('required' in jsonSchema) {
+      nextSchema.required = jsonSchema.required;
+    }
+
+    return nextSchema;
+  }
+
+  return nodeInputs2JsonSchema({ inputs: toolParams });
+};
+
+export const createToolSchema = (item: ToolNodeItemType): ChatCompletionTool => {
+  const toolParams = item.toolParams.filter(
+    (input) => isAgentGeneratedToolInput(input) && canInputBeAgentGenerated(input)
+  );
 
   if (item.jsonSchema) {
     return {
@@ -23,7 +60,10 @@ const createToolSchema = (item: ToolNodeItemType): ChatCompletionTool => {
       function: {
         name: item.nodeId,
         description: `${item.name}: ${item.toolDescription || item.intro}`,
-        parameters
+        parameters: buildModelVisibleJsonSchema({
+          toolParams,
+          jsonSchema: item.jsonSchema
+        })
       }
     };
   }
@@ -33,7 +73,7 @@ const createToolSchema = (item: ToolNodeItemType): ChatCompletionTool => {
     function: {
       name: item.nodeId,
       description: `${item.name}: ${item.toolDescription || item.intro}`,
-      parameters
+      parameters: buildModelVisibleJsonSchema({ toolParams })
     }
   };
 };

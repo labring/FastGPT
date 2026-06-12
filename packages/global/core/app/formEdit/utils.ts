@@ -1,7 +1,75 @@
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '../../workflow/constants';
 import { FlowNodeInputTypeEnum } from '../../workflow/node/constant';
+import type { FlowNodeInputItemType } from '../../workflow/type/io';
 import type { FlowNodeTemplateType } from '../../workflow/type/node';
 import type { SelectedToolItemType } from './type';
+
+const formRenderTypesMap: Record<string, boolean> = {
+  [FlowNodeInputTypeEnum.input]: true,
+  [FlowNodeInputTypeEnum.textarea]: true,
+  [FlowNodeInputTypeEnum.numberInput]: true,
+  [FlowNodeInputTypeEnum.password]: true,
+  [FlowNodeInputTypeEnum.switch]: true,
+  [FlowNodeInputTypeEnum.select]: true,
+  [FlowNodeInputTypeEnum.JSONEditor]: true,
+  [FlowNodeInputTypeEnum.timePointSelect]: true,
+  [FlowNodeInputTypeEnum.timeRangeSelect]: true
+};
+
+const agentGeneratedDenyRenderTypes = new Set<FlowNodeInputTypeEnum>([
+  FlowNodeInputTypeEnum.fileSelect,
+  FlowNodeInputTypeEnum.password,
+  FlowNodeInputTypeEnum.selectLLMModel,
+  FlowNodeInputTypeEnum.settingLLMModel,
+  FlowNodeInputTypeEnum.hidden,
+  FlowNodeInputTypeEnum.customVariable,
+  FlowNodeInputTypeEnum.addInputParam,
+  FlowNodeInputTypeEnum.selectDataset,
+  FlowNodeInputTypeEnum.selectDatasetParamsModal,
+  FlowNodeInputTypeEnum.settingDatasetQuotePrompt
+]);
+
+/**
+ * 判断工具入参当前最终类型是否为 Agent 生成。
+ * 默认输入方式会在 preview/detail 构建阶段写入 renderTypeList，这里只消费最终状态。
+ */
+export const isAgentGeneratedToolInput = (input: Pick<FlowNodeInputItemType, 'renderTypeList'>) =>
+  input.renderTypeList[0] === FlowNodeInputTypeEnum.agentGenerated;
+
+/**
+ * 服务端 runtime schema 的安全边界：即使持久化数据被篡改，也只允许普通可生成字段进入模型 schema。
+ */
+export const canInputBeAgentGenerated = (
+  input: Pick<FlowNodeInputItemType, 'key' | 'renderTypeList'>
+) => {
+  if (input.key === NodeInputKeyEnum.systemInputConfig) return false;
+  return !input.renderTypeList.some((type) => agentGeneratedDenyRenderTypes.has(type));
+};
+
+/**
+ * 工具首次加入工作流/Agent 时，将默认输入方式固化为最终 renderTypeList。
+ * 未来插件侧 isToolParam 落地后，应在这里优先读取该字段；当前用 toolDescription 兼容旧插件。
+ */
+export const initToolInputTypeByDefaultMode = <T extends FlowNodeInputItemType>(input: T): T => {
+  if (isAgentGeneratedToolInput(input)) return input;
+
+  if (!input.toolDescription || !canInputBeAgentGenerated(input)) {
+    return input;
+  }
+
+  return {
+    ...input,
+    selectedTypeIndex: 0,
+    renderTypeList: [
+      FlowNodeInputTypeEnum.agentGenerated,
+      ...input.renderTypeList.filter((type) => type !== FlowNodeInputTypeEnum.agentGenerated)
+    ]
+  };
+};
+
+export const initToolInputsTypeByDefaultMode = <T extends FlowNodeInputItemType>(
+  inputs: T[]
+): T[] => inputs.map((input) => initToolInputTypeByDefaultMode(input));
 
 /* Invalid tool check
   1. Reference type. but not tool description;
@@ -25,6 +93,8 @@ export const validateToolConfiguration = ({
 
   // 检查是否有无效的输入配置
   const hasInvalidInput = toolTemplate.inputs.some((input) => {
+    if (isAgentGeneratedToolInput(input) && canInputBeAgentGenerated(input)) return false;
+
     // 引用类型但没有工具描述
     if (
       input.renderTypeList.length === 1 &&
@@ -64,22 +134,11 @@ export const validateToolConfiguration = ({
 export const checkNeedsUserConfiguration = (toolTemplate: {
   inputs: FlowNodeTemplateType['inputs'];
 }): boolean => {
-  const formRenderTypesMap: Record<string, boolean> = {
-    [FlowNodeInputTypeEnum.input]: true,
-    [FlowNodeInputTypeEnum.textarea]: true,
-    [FlowNodeInputTypeEnum.numberInput]: true,
-    [FlowNodeInputTypeEnum.password]: true,
-    [FlowNodeInputTypeEnum.switch]: true,
-    [FlowNodeInputTypeEnum.select]: true,
-    [FlowNodeInputTypeEnum.JSONEditor]: true,
-    [FlowNodeInputTypeEnum.timePointSelect]: true,
-    [FlowNodeInputTypeEnum.timeRangeSelect]: true
-  };
   return (
     (toolTemplate.inputs.length > 0 &&
       toolTemplate.inputs.some((input) => {
-        // 有工具描述的不需要配置
-        if (input.toolDescription) return false;
+        // Agent 生成字段不需要开发者配置
+        if (isAgentGeneratedToolInput(input) && canInputBeAgentGenerated(input)) return false;
         // 禁用流的不需要配置
         if (input.key === NodeInputKeyEnum.forbidStream) return false;
         // 历史记录不需要配置
@@ -119,24 +178,13 @@ export const getToolConfigStatus = ({
     };
   }
 
-  // For tools that need config, check if all required fields have values
-  const formRenderTypesMap: Record<string, boolean> = {
-    [FlowNodeInputTypeEnum.input]: true,
-    [FlowNodeInputTypeEnum.textarea]: true,
-    [FlowNodeInputTypeEnum.numberInput]: true,
-    [FlowNodeInputTypeEnum.password]: true,
-    [FlowNodeInputTypeEnum.select]: true,
-    [FlowNodeInputTypeEnum.JSONEditor]: true,
-    [FlowNodeInputTypeEnum.timePointSelect]: true,
-    [FlowNodeInputTypeEnum.timeRangeSelect]: true
-  };
-
   // Find all inputs that need configuration(Only check the required items)
   const configInputs = tool.inputs.filter((input) => {
     if (input.key === NodeInputKeyEnum.forbidStream) return false;
     if (input.key === NodeInputKeyEnum.history) return false;
     if (input.key === NodeInputKeyEnum.systemInputConfig) return true;
-    if (input.toolDescription || input.required !== true) return false;
+    if (isAgentGeneratedToolInput(input) && canInputBeAgentGenerated(input)) return false;
+    if (input.required !== true) return false;
     return input.renderTypeList.some((type) => formRenderTypesMap[type]);
   });
 
