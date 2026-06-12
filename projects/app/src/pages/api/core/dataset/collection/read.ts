@@ -78,9 +78,18 @@ async function handler(req: ApiRequestProps): Promise<ReadCollectionSourceRespon
       return collection.rawLink;
     }
     if (collection.type === DatasetCollectionTypeEnum.apiFile && collection.apiFileId) {
-      return (await getApiDatasetRequest(collection.dataset.apiDatasetServer)).getFilePreviewUrl({
+      const url = await (
+        await getApiDatasetRequest(collection.dataset.apiDatasetServer)
+      ).getFilePreviewUrl({
         apiFileId: collection.apiFileId
       });
+
+      // If the URL is absolute, return it directly; otherwise, resolve against API server base URL
+      if (/^https?:\/\//i.test(url)) {
+        return url;
+      }
+      const baseUrl = collection.dataset.apiDatasetServer?.apiServer?.baseUrl || '';
+      return baseUrl.replace(/\/+$/, '') + (url.startsWith('/') ? url : `/${url}`);
     }
     if (collection.type === DatasetCollectionTypeEnum.externalFile) {
       if (collection.externalFileId && collection.dataset.externalReadUrl) {
