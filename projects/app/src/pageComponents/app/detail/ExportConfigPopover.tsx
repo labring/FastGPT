@@ -132,7 +132,7 @@ const ExportConfigPopover = ({
     <MyPopover
       placement={'right-start'}
       offset={[0, 0]}
-      hasArrow={false}
+      hasArrow={true}
       trigger={'hover'}
       flip={false}
       zIndex={2000}
