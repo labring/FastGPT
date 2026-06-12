@@ -41,12 +41,14 @@ const FieldEditModal = ({
   defaultValue,
   keys = [],
   hasDynamicInput,
+  showAgentGenerated,
   onClose,
   onSubmit
 }: {
   defaultValue: FlowNodeInputItemType;
   keys: string[];
   hasDynamicInput: boolean;
+  showAgentGenerated: boolean;
   onClose: () => void;
   onSubmit: (data: FlowNodeInputItemType) => void;
 }) => {
@@ -57,13 +59,13 @@ const FieldEditModal = ({
 
   // rawInputTypeList: full renderTypeList array, used for onTypeChange
   const rawInputTypeList = useMemo(
-    () => getPluginInputTypeRawList({ hasDynamicInput }),
-    [hasDynamicInput]
+    () => getPluginInputTypeRawList({ hasDynamicInput, showAgentGenerated }),
+    [hasDynamicInput, showAgentGenerated]
   );
   // inputTypeList: for InputTypeSelector display
   const inputTypeList = useMemo(
-    () => getPluginInputTypeList({ hasDynamicInput }),
-    [hasDynamicInput]
+    () => getPluginInputTypeList({ hasDynamicInput, showAgentGenerated }),
+    [hasDynamicInput, showAgentGenerated]
   );
 
   const isEdit = !!defaultValue.key;
@@ -100,7 +102,8 @@ const FieldEditModal = ({
       if (
         data.renderTypeList[0] !== FlowNodeInputTypeEnum.reference &&
         data.renderTypeList[0] !== FlowNodeInputTypeEnum.customVariable &&
-        data.renderTypeList[0] !== FlowNodeInputTypeEnum.hidden
+        data.renderTypeList[0] !== FlowNodeInputTypeEnum.hidden &&
+        data.renderTypeList[0] !== FlowNodeInputTypeEnum.agentGenerated
       ) {
         data.valueType = defaultValueType;
       }
@@ -110,7 +113,8 @@ const FieldEditModal = ({
         data.renderTypeList[0] === FlowNodeInputTypeEnum.addInputParam ||
         data.renderTypeList[0] === FlowNodeInputTypeEnum.customVariable ||
         data.renderTypeList[0] === FlowNodeInputTypeEnum.hidden ||
-        data.renderTypeList[0] === FlowNodeInputTypeEnum.switch
+        data.renderTypeList[0] === FlowNodeInputTypeEnum.switch ||
+        data.renderTypeList[0] === FlowNodeInputTypeEnum.agentGenerated
       ) {
         data.required = false;
       }
@@ -129,8 +133,8 @@ const FieldEditModal = ({
       }
 
       // Get toolDescription and removes the types of some unusable tools
-      if (data.toolDescription && data.renderTypeList.includes(FlowNodeInputTypeEnum.reference)) {
-        data.toolDescription = data.description;
+      if (data.renderTypeList[0] === FlowNodeInputTypeEnum.agentGenerated) {
+        data.toolDescription = data.toolDescription || data.description || data.label;
       } else {
         data.toolDescription = undefined;
       }

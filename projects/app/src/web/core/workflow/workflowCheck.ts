@@ -33,7 +33,12 @@ import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
-import { getToolConfigStatus } from '@fastgpt/global/core/app/formEdit/utils';
+import {
+  canInputBeAgentGenerated,
+  getToolConfigStatus,
+  initToolInputTypeByDefaultMode,
+  isAgentGeneratedToolInput
+} from '@fastgpt/global/core/app/formEdit/utils';
 
 type WorkflowCheckContext = {
   nodeMap: Map<string, Node<FlowNodeItemType, string | undefined>>;
@@ -762,7 +767,13 @@ export const checkWorkflowNodeIssues = ({
           return;
         }
 
-        if (isToolNode && input.toolDescription) {
+        // Agent 生成字段运行时由模型填写，不需要开发者预填。
+        const normalizedInput = initToolInputTypeByDefaultMode(input);
+        if (
+          isToolNode &&
+          isAgentGeneratedToolInput(normalizedInput) &&
+          canInputBeAgentGenerated(normalizedInput)
+        ) {
           return;
         }
 

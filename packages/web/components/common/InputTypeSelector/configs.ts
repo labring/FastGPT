@@ -106,66 +106,86 @@ export const getFormInputTypeList = (): InputTypeConfigItem[][] => {
 };
 export const getPluginInputTypeRawList = (options?: {
   hasDynamicInput?: boolean;
+  showAgentGenerated?: boolean;
 }): PluginInputTypeConfigItem[][] => {
-  const { hasDynamicInput = false } = options || {};
+  const { hasDynamicInput = false, showAgentGenerated = true } = options || {};
+
+  const baseInputTypes: PluginInputTypeConfigItem[] = [
+    ...(showAgentGenerated
+      ? [
+          {
+            icon: 'core/app/toolCall',
+            label: i18nT('common:core.workflow.inputType.agentGenerated'),
+            value: [FlowNodeInputTypeEnum.agentGenerated],
+            defaultValueType: WorkflowIOValueTypeEnum.string,
+            description: i18nT('common:core.workflow.inputType.agentGeneratedDesc')
+          }
+        ]
+      : []),
+    {
+      icon: 'core/workflow/inputType/reference',
+      label: i18nT('common:core.workflow.inputType.Reference'),
+      value: [FlowNodeInputTypeEnum.reference],
+      defaultValueType: WorkflowIOValueTypeEnum.string
+    },
+    {
+      icon: 'core/workflow/inputType/input',
+      label: i18nT('common:core.workflow.inputType.textInput'),
+      value: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+      defaultValueType: WorkflowIOValueTypeEnum.string
+    },
+    {
+      icon: 'core/workflow/inputType/password',
+      label: i18nT('common:core.workflow.inputType.password'),
+      value: [FlowNodeInputTypeEnum.password],
+      defaultValueType: WorkflowIOValueTypeEnum.string
+    },
+    {
+      icon: 'core/workflow/inputType/numberInput',
+      label: i18nT('common:core.workflow.inputType.number input'),
+      value: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference],
+      defaultValueType: WorkflowIOValueTypeEnum.number
+    },
+    {
+      icon: 'core/workflow/inputType/option',
+      label: i18nT('common:core.workflow.inputType.select'),
+      value: [FlowNodeInputTypeEnum.select, FlowNodeInputTypeEnum.reference],
+      defaultValueType: WorkflowIOValueTypeEnum.string
+    },
+    {
+      icon: 'core/workflow/inputType/multipleSelect',
+      label: i18nT('common:core.workflow.inputType.multipleSelect'),
+      value: [FlowNodeInputTypeEnum.multipleSelect, FlowNodeInputTypeEnum.reference],
+      defaultValueType: WorkflowIOValueTypeEnum.arrayString
+    },
+    {
+      icon: 'core/workflow/inputType/switch',
+      label: i18nT('common:core.workflow.inputType.switch'),
+      value: [FlowNodeInputTypeEnum.switch, FlowNodeInputTypeEnum.reference],
+      defaultValueType: WorkflowIOValueTypeEnum.boolean
+    },
+    {
+      icon: 'core/workflow/inputType/JSONEditor',
+      label: i18nT('common:core.workflow.inputType.JSON editor'),
+      value: [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference],
+      defaultValueType: WorkflowIOValueTypeEnum.object
+    },
+    {
+      icon: 'core/workflow/inputType/timePointSelect',
+      label: i18nT('common:core.workflow.inputType.timePointSelect'),
+      value: [FlowNodeInputTypeEnum.timePointSelect, FlowNodeInputTypeEnum.reference],
+      defaultValueType: WorkflowIOValueTypeEnum.string
+    },
+    {
+      icon: 'core/workflow/inputType/timeRangeSelect',
+      label: i18nT('common:core.workflow.inputType.timeRangeSelect'),
+      value: [FlowNodeInputTypeEnum.timeRangeSelect, FlowNodeInputTypeEnum.reference],
+      defaultValueType: WorkflowIOValueTypeEnum.arrayString
+    }
+  ];
 
   return [
-    [
-      {
-        icon: 'core/workflow/inputType/reference',
-        label: i18nT('common:core.workflow.inputType.Reference'),
-        value: [FlowNodeInputTypeEnum.reference],
-        defaultValueType: WorkflowIOValueTypeEnum.string
-      },
-      {
-        icon: 'core/workflow/inputType/input',
-        label: i18nT('common:core.workflow.inputType.textInput'),
-        value: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-        defaultValueType: WorkflowIOValueTypeEnum.string
-      },
-      {
-        icon: 'core/workflow/inputType/password',
-        label: i18nT('common:core.workflow.inputType.password'),
-        value: [FlowNodeInputTypeEnum.password],
-        defaultValueType: WorkflowIOValueTypeEnum.string
-      },
-      {
-        icon: 'core/workflow/inputType/numberInput',
-        label: i18nT('common:core.workflow.inputType.number input'),
-        value: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference],
-        defaultValueType: WorkflowIOValueTypeEnum.number
-      },
-      {
-        icon: 'core/workflow/inputType/option',
-        label: i18nT('common:core.workflow.inputType.select'),
-        value: [FlowNodeInputTypeEnum.select, FlowNodeInputTypeEnum.reference],
-        defaultValueType: WorkflowIOValueTypeEnum.string
-      },
-      {
-        icon: 'core/workflow/inputType/multipleSelect',
-        label: i18nT('common:core.workflow.inputType.multipleSelect'),
-        value: [FlowNodeInputTypeEnum.multipleSelect, FlowNodeInputTypeEnum.reference],
-        defaultValueType: WorkflowIOValueTypeEnum.arrayString
-      },
-      {
-        icon: 'core/workflow/inputType/switch',
-        label: i18nT('common:core.workflow.inputType.switch'),
-        value: [FlowNodeInputTypeEnum.switch, FlowNodeInputTypeEnum.reference],
-        defaultValueType: WorkflowIOValueTypeEnum.boolean
-      },
-      {
-        icon: 'core/workflow/inputType/timePointSelect',
-        label: i18nT('common:core.workflow.inputType.timePointSelect'),
-        value: [FlowNodeInputTypeEnum.timePointSelect, FlowNodeInputTypeEnum.reference],
-        defaultValueType: WorkflowIOValueTypeEnum.string
-      },
-      {
-        icon: 'core/workflow/inputType/timeRangeSelect',
-        label: i18nT('common:core.workflow.inputType.timeRangeSelect'),
-        value: [FlowNodeInputTypeEnum.timeRangeSelect, FlowNodeInputTypeEnum.reference],
-        defaultValueType: WorkflowIOValueTypeEnum.arrayString
-      }
-    ],
+    baseInputTypes,
     [
       {
         icon: 'core/workflow/inputType/file',
@@ -216,6 +236,7 @@ export const getPluginInputTypeRawList = (options?: {
 };
 export const getPluginInputTypeList = (options?: {
   hasDynamicInput?: boolean;
+  showAgentGenerated?: boolean;
 }): InputTypeConfigItem[][] => {
   const rawList = getPluginInputTypeRawList(options);
 

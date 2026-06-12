@@ -3,6 +3,7 @@ import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { initToolInputsTypeByDefaultMode } from '@fastgpt/global/core/app/formEdit/utils';
 import {
   jsonSchema2NodeInput,
   jsonSchema2NodeOutput,
@@ -102,7 +103,8 @@ const omitRuntimeJsonSchemaField = <T>(value: T): T => {
 
   if (!value || typeof value !== 'object') return value;
 
-  const { jsonSchema, ...rest } = value as Record<string, any>;
+  const rest = { ...(value as Record<string, any>) };
+  delete rest.jsonSchema;
 
   return Object.fromEntries(
     Object.entries(rest).map(([key, item]) => [key, omitRuntimeJsonSchemaField(item)])
@@ -110,7 +112,11 @@ const omitRuntimeJsonSchemaField = <T>(value: T): T => {
 };
 
 const omitClientPreviewSchemaFields = <T extends Record<string, any>>(value: T): T => {
-  const { inputSchema, outputSchema, secretSchema, ...rest } = value;
+  const rest = { ...value };
+  delete rest.inputSchema;
+  delete rest.outputSchema;
+  delete rest.secretSchema;
+
   return omitRuntimeJsonSchemaField(rest) as T;
 };
 
@@ -196,7 +202,7 @@ export async function getClientSystemToolPreviewNode({
     hasSystemSecret: toolDetail.hasSystemSecret,
     isFolder: !isWorkflowTool && toolDetail.isToolSet,
     status: toolDetail.status,
-    inputs,
+    inputs: initToolInputsTypeByDefaultMode(inputs),
 
     outputs: schemaOutputs
       ? schemaOutputs.some((item) => item.type === FlowNodeOutputTypeEnum.error)
@@ -477,6 +483,8 @@ export async function getClientToolPreviewNode({
       };
     })();
 
+    const normalizedInputs = initToolInputsTypeByDefaultMode(nodeIOConfig.inputs);
+
     return {
       id: getNanoid(),
       pluginId: app.id,
@@ -506,6 +514,7 @@ export async function getClientToolPreviewNode({
       status: app.status,
 
       ...nodeIOConfig,
+      inputs: normalizedInputs,
       outputs: nodeIOConfig.outputs.some((item) => item.type === FlowNodeOutputTypeEnum.error)
         ? nodeIOConfig.outputs
         : [...nodeIOConfig.outputs, Output_Template_Error_Message]

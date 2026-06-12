@@ -150,9 +150,6 @@ const InputTypeConfig = ({
   const { isSelectAll: isSelectAllValueType, setIsSelectAll: setIsSelectAllValueType } =
     useMultipleSelect(selectValueTypeList, false);
 
-  const toolDescription = watch('toolDescription');
-  const isToolInput = !!toolDescription;
-
   const listValue = watch('list') ?? [];
   const {
     fields: selectEnums,
@@ -234,6 +231,7 @@ const InputTypeConfig = ({
       FlowNodeInputTypeEnum.addInputParam,
       FlowNodeInputTypeEnum.customVariable,
       FlowNodeInputTypeEnum.hidden,
+      FlowNodeInputTypeEnum.agentGenerated,
       FlowNodeInputTypeEnum.switch,
       VariableInputEnum.switch,
       VariableInputEnum.custom,
@@ -273,19 +271,6 @@ const InputTypeConfig = ({
 
     return isOptionInput || map[inputType as keyof typeof map];
   }, [inputType, isOptionInput]);
-
-  const showIsToolInput = useMemo(() => {
-    const list = [
-      FlowNodeInputTypeEnum.reference,
-      FlowNodeInputTypeEnum.JSONEditor,
-      FlowNodeInputTypeEnum.input,
-      FlowNodeInputTypeEnum.numberInput,
-      FlowNodeInputTypeEnum.switch,
-      FlowNodeInputTypeEnum.select,
-      FlowNodeInputTypeEnum.multipleSelect
-    ];
-    return type === 'plugin' && list.includes(inputType as FlowNodeInputTypeEnum);
-  }, [inputType, type]);
 
   const filterValidField = useCallback(
     (data: Record<string, any>) => {
@@ -415,9 +400,7 @@ const InputTypeConfig = ({
             placeholder={t('workflow:field_description_placeholder')}
             rows={3}
             minH={10}
-            {...register('description', {
-              required: showIsToolInput && isToolInput ? true : false
-            })}
+            {...register('description')}
           />
         </Flex>
 
@@ -455,23 +438,6 @@ const InputTypeConfig = ({
             <Switch {...register('required')} />
           </Flex>
         )}
-        {/* reference */}
-        {showIsToolInput && (
-          <>
-            <Flex alignItems={'center'}>
-              <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>
-                {t('workflow:field_used_as_tool_input')}
-              </FormLabel>
-              <Switch
-                isChecked={isToolInput}
-                onChange={(e) => {
-                  setValue('toolDescription', e.target.checked ? 'sign' : '');
-                }}
-              />
-            </Flex>
-          </>
-        )}
-
         {showMaxLenInput && (
           <Flex alignItems={'center'}>
             <FormLabel flex={'0 0 132px'} fontWeight={'medium'}>

@@ -53,7 +53,15 @@ describe('useToolNodeList', () => {
               valueType: 'string',
               toolDescription: 'Query',
               required: true,
-              renderTypeList: [FlowNodeInputTypeEnum.input]
+              renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+            },
+            {
+              key: 'apiKey',
+              valueType: 'string',
+              toolDescription: 'Developer config',
+              required: true,
+              value: 'secret',
+              renderTypeList: [FlowNodeInputTypeEnum.password]
             },
             {
               key: NodeInputKeyEnum.toolData,

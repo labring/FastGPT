@@ -23,6 +23,12 @@ import dynamic from 'next/dynamic';
 import { defaultInput } from './InputEditModal';
 import RenderOutput from '../render/RenderOutput';
 import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
+import {
+  canInputBeAgentGenerated,
+  isAgentGeneratedToolInput
+} from '@fastgpt/global/core/app/formEdit/utils';
+import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 const FieldEditModal = dynamic(() => import('./InputEditModal'));
 
@@ -37,8 +43,17 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { nodeId, inputs = [], outputs } = data;
 
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
 
   const [editField, setEditField] = useState<FlowNodeInputItemType>();
+
+  const isUsedAsTool = useMemo(
+    () =>
+      edges.some(
+        (edge) => edge.target === nodeId && edge.targetHandle === NodeOutputKeyEnum.selectedTools
+      ),
+    [edges, nodeId]
+  );
 
   const onSubmit = useCallback(
     (data: FlowNodeInputItemType) => {
@@ -121,7 +136,7 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                 icon: FlowNodeInputMap[inputType]?.icon as string,
                 label: t(input.label as any),
                 type: input.valueType ? t(FlowValueTypeMap[input.valueType]?.label as any) : '-',
-                isTool: !!input.toolDescription,
+                isTool: isAgentGeneratedToolInput(input) && canInputBeAgentGenerated(input),
                 key: input.key
               };
             })}
@@ -168,6 +183,7 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                 input.renderTypeList.includes(FlowNodeInputTypeEnum.addInputParam)
             )
           }
+          showAgentGenerated={isUsedAsTool}
           onClose={() => setEditField(undefined)}
           onSubmit={onSubmit}
         />

@@ -550,6 +550,8 @@
   "week.Tuesday": "Tuesday",
   "week.Wednesday": "Wednesday",
   "workflow.Input guide": "Input Guide",
+  "developer_config": "Developer config",
+  "tool_input_agent_generated_tip": "Filled by the model at runtime and exposed as a tool-call parameter.",
   "workflow.file_url": "Document Link",
   "workflow.form_input": "Form input",
   "workflow.form_input_description_placeholder": "For example: \nAdd your information",

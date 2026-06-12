@@ -571,11 +571,6 @@ export const useSkillManager = ({
       if (!tool) return;
 
       if (isSubApp(tool.flowNodeType)) {
-        const hasFormInput = checkNeedsUserConfiguration(tool);
-        if (!hasFormInput) {
-          return;
-        }
-
         setConfigTool(tool);
       }
     },

@@ -80,8 +80,6 @@ const ToolSelect = ({
           // 即将下架/已下架
           const status = item.status || item.pluginData?.status;
 
-          const hasFormInput =
-            item.configStatus === 'configured' || item.configStatus === 'waitingForConfig';
           const isUnconfigured = item.configStatus === 'waitingForConfig';
           const isDebugTool = isDebugToolSource(item.source);
 
@@ -147,7 +145,7 @@ const ToolSelect = ({
                   )}
                   {isDebugTool && <DebugToolTag className="unHoverStyle" />}
                   {/* Edit icon */}
-                  {hasFormInput && !toolError && (
+                  {!toolError && (
                     <MyIconButton
                       className="hoverStyle"
                       display={['flex', 'none']}

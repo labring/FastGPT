@@ -33,7 +33,12 @@ import type {
 } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 import type { SubAppInitType } from '../type';
-import { getToolConfigStatus } from '@fastgpt/global/core/app/formEdit/utils';
+import {
+  canInputBeAgentGenerated,
+  getToolConfigStatus,
+  initToolInputsTypeByDefaultMode,
+  isAgentGeneratedToolInput
+} from '@fastgpt/global/core/app/formEdit/utils';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
@@ -57,6 +62,36 @@ type AgentRuntimeNode = RuntimeNodeItemType & {
   hasSystemSecret?: boolean;
   hasTokenFee?: boolean;
   systemKeyCost?: number;
+};
+
+const buildModelVisibleJsonSchema = ({
+  toolParams,
+  jsonSchema
+}: {
+  toolParams: FlowNodeInputItemType[];
+  jsonSchema?: Record<string, any>;
+}) => {
+  const modelVisibleKeys = new Set(toolParams.map((input) => input.key));
+
+  if (jsonSchema) {
+    const properties = jsonSchema.properties || {};
+    const nextSchema: Record<string, any> = {
+      ...jsonSchema,
+      properties: Object.fromEntries(
+        Object.entries(properties).filter(([key]) => modelVisibleKeys.has(key))
+      )
+    };
+
+    if (Array.isArray(jsonSchema.required)) {
+      nextSchema.required = jsonSchema.required.filter((key: string) => modelVisibleKeys.has(key));
+    } else if ('required' in jsonSchema) {
+      nextSchema.required = jsonSchema.required;
+    }
+
+    return nextSchema;
+  }
+
+  return nodeInputs2JsonSchema({ inputs: toolParams });
 };
 
 /**
@@ -460,8 +495,7 @@ export const getAgentRuntimeTools = async ({
     let schema = jsonSchema;
 
     for (const input of inputs) {
-      // 没有 JSON Schema 的普通工具，用 toolDescription 标识哪些 input 可以交给模型填写。
-      if (input.toolDescription) {
+      if (isAgentGeneratedToolInput(input) && canInputBeAgentGenerated(input)) {
         toolParams.push(input);
       }
 
@@ -480,7 +514,7 @@ export const getAgentRuntimeTools = async ({
         function: {
           name: formatToolId,
           description,
-          parameters: schema
+          parameters: buildModelVisibleJsonSchema({ toolParams, jsonSchema: schema })
         }
       };
     }
@@ -529,6 +563,7 @@ export const getAgentRuntimeTools = async ({
           toolNode.toolConfig = tool.toolConfig;
         }
 
+        toolNode.inputs = initToolInputsTypeByDefaultMode(toolNode.inputs);
         // 合并用户在 Agent 工具面板里保存的配置；false/0/空字符串也是有效配置值。
         toolNode.inputs.forEach((input) => {
           if (Object.prototype.hasOwnProperty.call(tool.config, input.key)) {
