@@ -5,7 +5,7 @@ import type { FileTokenQuery } from '@fastgpt/global/common/file/type';
 import jwt from 'jsonwebtoken';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { getS3DatasetSource } from '../../../common/s3/sources/dataset';
-import { parseDatasetFileS3Key } from '../../../common/s3/utils';
+import { parseDatasetFileS3Key } from '../../../common/s3/sources/dataset/key';
 import { serviceEnv } from '../../../env';
 import { authDataset } from '../dataset/auth';
 

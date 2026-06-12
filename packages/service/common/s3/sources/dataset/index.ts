@@ -21,7 +21,7 @@ import { readFileContentByBuffer } from '../../../file/read/utils';
 import { ensureTextContentTypeCharset, isTextLikeFile, resolveMimeType } from '../../utils/mime';
 import { datasetAllowedExtensions } from '../../utils/uploadConstraints';
 import { getFileS3Key, truncateFilename } from '../../utils';
-import { isAuthorizedDatasetFileS3Key } from '../../utils';
+import { isAuthorizedDatasetFileS3Key } from './key';
 import type { S3RawTextSource } from '../rawText';
 import { getS3RawTextSource } from '../rawText';
 

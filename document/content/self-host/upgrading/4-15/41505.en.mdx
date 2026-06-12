@@ -11,3 +11,7 @@ description: 'FastGPT V4.15.0-beta5 Release Notes'
 
 1. HTML output now automatically switches to preview mode after generation, reducing the need to open the preview manually.
 2. Improved long-name display for apps, datasets, files, and folders: names are truncated when they exceed the available width, and the full name is shown when hovering over the name.
+
+## 🐛 Bug Fixes
+
+1. Fixed a potential cross-resource file access risk when private S3 object keys were not bound to the already-authorized resource.

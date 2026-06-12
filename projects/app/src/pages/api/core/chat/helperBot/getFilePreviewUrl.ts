@@ -1,13 +1,21 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import type { GetHelperBotFilePreviewParamsType } from '@fastgpt/global/openapi/core/chat/helperBot/api';
+import {
+  GetHelperBotFilePreviewParamsSchema,
+  type GetHelperBotFilePreviewParamsType
+} from '@fastgpt/global/openapi/core/chat/helperBot/api';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getS3HelperBotSource } from '@fastgpt/service/common/s3/sources/helperbot';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
-import { isAuthorizedHelperBotFileS3Key } from '@fastgpt/service/common/s3/utils';
+import { isAuthorizedHelperBotFileS3Key } from '@fastgpt/service/common/s3/sources/helperbot/key';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps<GetHelperBotFilePreviewParamsType>): Promise<string> {
-  const { key, mode } = req.body;
+  const { key, mode } = parseApiInput({
+    req,
+    bodySchema: GetHelperBotFilePreviewParamsSchema
+  }).body;
+
   const { userId } = await authCert({
     req,
     authToken: true
