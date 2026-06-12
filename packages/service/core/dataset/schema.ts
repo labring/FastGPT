@@ -118,14 +118,18 @@ const DatasetSchema = new Schema({
   vectorModelId: {
     type: String,
     required: function (this: any) {
-      return this.type !== DatasetTypeEnum.structureDocument;
+      return (
+        this.type !== DatasetTypeEnum.structureDocument && this.type !== DatasetTypeEnum.folder
+      );
     }
   },
   agentModelId: {
     type: String,
     required: function (this: any) {
       return (
-        this.type !== DatasetTypeEnum.database && this.type !== DatasetTypeEnum.structureDocument
+        this.type !== DatasetTypeEnum.database &&
+        this.type !== DatasetTypeEnum.structureDocument &&
+        this.type !== DatasetTypeEnum.folder
       );
     }
   },
