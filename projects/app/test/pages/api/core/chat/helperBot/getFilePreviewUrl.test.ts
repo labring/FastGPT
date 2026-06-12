@@ -1,4 +1,5 @@
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
+import { ApiRequestInputParseError } from '@fastgpt/service/common/zod/requestParseError';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -73,6 +74,13 @@ describe('getFilePreviewUrl', () => {
       })
     ).rejects.toBe(ChatErrEnum.unAuthChat);
 
+    expect(mocks.createGetFileURL).not.toHaveBeenCalled();
+  });
+
+  it('rejects invalid request body before auth or signing', async () => {
+    await expect(callHandler({})).rejects.toBeInstanceOf(ApiRequestInputParseError);
+
+    expect(mocks.authCert).not.toHaveBeenCalled();
     expect(mocks.createGetFileURL).not.toHaveBeenCalled();
   });
 });
