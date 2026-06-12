@@ -144,14 +144,14 @@ const EditForm = ({
         return {
           ...option,
           onClick: async (toolId: string) => {
-            const skillId = await option.onClick?.(toolId);
+            const result = await option.onClick?.(toolId);
 
             // AgentV2 提示词 @虚拟机 时，同步打开下方虚拟机开关。
-            if (skillId === AGENT_SANDBOX_TOOLSET_ID && !appForm.aiSettings.useAgentSandbox) {
+            if (result?.id === AGENT_SANDBOX_TOOLSET_ID && !appForm.aiSettings.useAgentSandbox) {
               onChangeAgentSandbox(true);
             }
 
-            return skillId;
+            return result;
           }
         };
       }

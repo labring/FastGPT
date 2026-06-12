@@ -146,6 +146,7 @@ export default function Editor({
   const [focus, setFocus] = useState(false);
   const [scrollHeight, setScrollHeight] = useState(0);
   const editorOutputRef = useRef(value);
+  const pendingSkillsRef = useRef<Map<string, SkillLabelItemType>>(new Map());
 
   const initialConfig = {
     namespace: isRichText ? 'richPromptEditor' : 'promptEditor',
@@ -291,8 +292,13 @@ export default function Editor({
                 selectedSkills={selectedSkills}
                 onClickSkill={onClickSkill}
                 onRemoveSkill={onRemoveSkill}
+                pendingSkillsRef={pendingSkillsRef}
               />
-              <SkillPickerPlugin skillOption={skillOption} isFocus={focus} />
+              <SkillPickerPlugin
+                skillOption={skillOption}
+                isFocus={focus}
+                pendingSkillsRef={pendingSkillsRef}
+              />
             </>
           )}
 

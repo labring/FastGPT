@@ -25,6 +25,7 @@ import { useMount } from 'ahooks';
 import { useRequest } from '../../../../../../hooks/useRequest';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { useTranslation } from 'next-i18next';
+import type { SkillLabelItemType } from '../SkillLabelPlugin';
 
 /* 
   两列渲染器
@@ -34,8 +35,13 @@ export type SkillOptionItemType = {
   description?: string;
   list: SkillItemType[];
   onSelect?: (id: string) => Promise<SkillOptionItemType | undefined>;
-  onClick?: (id: string) => Promise<string | undefined>;
+  onClick?: (id: string) => Promise<SkillClickResult | undefined>;
   onFolderLoad?: (id: string) => Promise<SkillItemType[]>;
+};
+
+export type SkillClickResult = {
+  id: string;
+  skill: SkillLabelItemType;
 };
 
 export type SkillItemType = {
@@ -61,14 +67,22 @@ export type SkillItemType = {
 
 export default function SkillPickerPlugin({
   skillOption,
-  isFocus
+  isFocus,
+  pendingSkillsRef
 }: {
   skillOption: SkillOptionItemType;
   isFocus: boolean;
+  pendingSkillsRef: React.MutableRefObject<Map<string, SkillLabelItemType>>;
 }) {
   const { t } = useTranslation();
   const [skillOptions, setSkillOptions] = useState<SkillOptionItemType[]>([skillOption]);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const isMenuOpenRef = useRef(false);
+
+  const updateMenuOpen = useCallback((open: boolean) => {
+    isMenuOpenRef.current = open;
+    setIsMenuOpen(open);
+  }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -186,6 +200,8 @@ export default function SkillPickerPlugin({
 
   const insertSkillNodeText = useCallback(
     (skillId: string, matchingString?: string | null) => {
+      let inserted = false;
+
       editor.update(() => {
         const selection = $getSelection();
         if (!$isRangeSelection(selection)) return;
@@ -212,9 +228,24 @@ export default function SkillPickerPlugin({
         }
 
         selection.insertNodes([$createTextNode(`{{@${skillId}@}}`)]);
+        inserted = true;
       });
+
+      return inserted;
     },
     [editor]
+  );
+
+  const insertSkillResult = useCallback(
+    (result: SkillClickResult, matchingString?: string | null) => {
+      pendingSkillsRef.current.set(result.id, result.skill);
+      const inserted = insertSkillNodeText(result.id, matchingString);
+
+      if (!inserted) {
+        pendingSkillsRef.current.delete(result.id);
+      }
+    },
+    [insertSkillNodeText, pendingSkillsRef]
   );
 
   // Handle item click (confirm selection)
@@ -229,11 +260,12 @@ export default function SkillPickerPlugin({
       setIsItemClickLoading(true);
       try {
         // Step 1: Execute async onClick to get skillId (outside editor.update)
-        const skillId = await option.onClick(item.id);
+        const result = await option.onClick(item.id);
 
         // Step 2: Update editor with the skillId (inside a fresh editor.update)
-        if (skillId) {
-          insertSkillNodeText(skillId);
+        if (result) {
+          insertSkillResult(result);
+          updateMenuOpen(false);
         }
       } catch (error) {
         return Promise.reject(error);
@@ -243,7 +275,7 @@ export default function SkillPickerPlugin({
       }
     },
     {
-      refreshDeps: [insertSkillNodeText]
+      refreshDeps: [insertSkillResult, updateMenuOpen]
     }
   );
 
@@ -353,7 +385,7 @@ export default function SkillPickerPlugin({
     const removeUpCommand = editor.registerCommand(
       KEY_ARROW_UP_COMMAND,
       (e: KeyboardEvent) => {
-        if (!isMenuOpen) return true;
+        if (!isMenuOpenRef.current) return false;
 
         e.preventDefault();
         e.stopPropagation();
@@ -391,7 +423,7 @@ export default function SkillPickerPlugin({
     const removeDownCommand = editor.registerCommand(
       KEY_ARROW_DOWN_COMMAND,
       (e: KeyboardEvent) => {
-        if (!isMenuOpen) return true;
+        if (!isMenuOpenRef.current) return false;
 
         e.preventDefault();
         e.stopPropagation();
@@ -429,7 +461,7 @@ export default function SkillPickerPlugin({
     const removeRightCommand = editor.registerCommand(
       KEY_ARROW_RIGHT_COMMAND,
       (e: KeyboardEvent) => {
-        if (!isMenuOpen) return true;
+        if (!isMenuOpenRef.current) return false;
 
         e.preventDefault();
         e.stopPropagation();
@@ -476,7 +508,7 @@ export default function SkillPickerPlugin({
     const removeLeftCommand = editor.registerCommand(
       KEY_ARROW_LEFT_COMMAND,
       (e: KeyboardEvent) => {
-        if (!isMenuOpen) return true;
+        if (!isMenuOpenRef.current) return false;
 
         e.preventDefault();
         e.stopPropagation();
@@ -518,10 +550,10 @@ export default function SkillPickerPlugin({
     const removeSpaceCommand = editor.registerCommand(
       KEY_SPACE_COMMAND,
       (e: KeyboardEvent) => {
+        if (!isMenuOpenRef.current) return false;
+
         e.preventDefault();
         e.stopPropagation();
-
-        if (!isMenuOpen) return true;
 
         setInteractionMode('keyboard');
 
@@ -546,10 +578,10 @@ export default function SkillPickerPlugin({
     const removeEnterCommand = editor.registerCommand(
       KEY_ENTER_COMMAND,
       (e: KeyboardEvent) => {
+        if (!isMenuOpenRef.current) return false;
+
         e.preventDefault();
         e.stopPropagation();
-
-        if (!isMenuOpen) return true;
 
         setInteractionMode('keyboard');
 
@@ -812,11 +844,12 @@ export default function SkillPickerPlugin({
       void nodeToRemove;
 
       // Step 1: Call async onClick handler (outside editor.update)
-      const skillId = await selectedOption.onClick?.(selectedOption.id);
+      const result = await selectedOption.onClick?.(selectedOption.id);
 
       // Step 2: Update editor with the skill (inside a fresh editor.update)
-      if (skillId) {
-        insertSkillNodeText(skillId, matchingString);
+      if (result) {
+        insertSkillResult(result, matchingString);
+        updateMenuOpen(false);
 
         // Close menu after editor update to avoid flushSync warning
         setTimeout(() => {
@@ -827,7 +860,7 @@ export default function SkillPickerPlugin({
         closeMenu();
       }
     },
-    [insertSkillNodeText]
+    [insertSkillResult, updateMenuOpen]
   );
   const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('@', {
     minLength: 0
@@ -837,7 +870,7 @@ export default function SkillPickerPlugin({
     <LexicalTypeaheadMenuPlugin
       onQueryChange={(matchingString) => {
         // Update menu open state based on query
-        setIsMenuOpen(matchingString !== null);
+        updateMenuOpen(matchingString !== null);
       }}
       onSelectOption={onSelectOption}
       triggerFn={checkForTriggerMatch}

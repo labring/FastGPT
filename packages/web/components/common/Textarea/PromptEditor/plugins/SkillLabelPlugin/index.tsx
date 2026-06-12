@@ -23,11 +23,13 @@ export type SkillLabelItemType = SelectedToolItemType & {
 
 function SkillLabelPlugin({
   selectedSkills = [],
-  onClickSkill
+  onClickSkill,
+  pendingSkillsRef
 }: {
   selectedSkills: SkillLabelItemType[];
   onClickSkill: (id: string) => void;
   onRemoveSkill: (id: string) => void;
+  pendingSkillsRef: React.MutableRefObject<Map<string, SkillLabelItemType>>;
 }) {
   const [editor] = useLexicalComposerContext();
   const selectedSkillsRef = useRef(selectedSkills);
@@ -35,7 +37,11 @@ function SkillLabelPlugin({
 
   useEffect(() => {
     selectedSkillsRef.current = selectedSkills;
-  }, [selectedSkills]);
+
+    selectedSkills.forEach((skill) => {
+      pendingSkillsRef.current.delete(skill.id);
+    });
+  }, [pendingSkillsRef, selectedSkills]);
 
   useEffect(() => {
     onClickSkillRef.current = onClickSkill;
@@ -100,7 +106,9 @@ function SkillLabelPlugin({
 
   const handleSkillClick = useCallback(
     (id: string, nodeKey?: NodeKey) => {
-      const tool = selectedSkillsRef.current.find((item) => item.id === id);
+      const tool =
+        selectedSkillsRef.current.find((item) => item.id === id) ??
+        pendingSkillsRef.current.get(id);
 
       if (!tool || tool.configStatus === 'invalid') {
         removeSkillNode(id, nodeKey);
@@ -109,7 +117,7 @@ function SkillLabelPlugin({
 
       onClickSkillRef.current(id);
     },
-    [removeSkillNode]
+    [pendingSkillsRef, removeSkillNode]
   );
 
   // Register text entity transformer to convert {{@skillId@}} text into SkillNode
@@ -118,7 +126,11 @@ function SkillLabelPlugin({
       const textContent = textNode.getTextContent();
       const skillId = textContent.slice(3, -3);
 
-      const tool = selectedSkillsRef.current.find((t) => t.id === skillId);
+      const selectedTool = selectedSkillsRef.current.find((t) => t.id === skillId);
+      if (selectedTool) {
+        pendingSkillsRef.current.delete(skillId);
+      }
+      const tool = selectedTool ?? pendingSkillsRef.current.get(skillId);
 
       return $createSkillNode({
         id: skillId,
@@ -134,7 +146,7 @@ function SkillLabelPlugin({
       ...registerLexicalTextEntity(editor, getSkillMatch, SkillNode, createSkillPlugin)
     );
     return unregister;
-  }, [editor, getSkillMatch, handleSkillClick]);
+  }, [editor, getSkillMatch, handleSkillClick, pendingSkillsRef]);
 
   // Update existing SkillNode properties when selectedSkills change
   // Sync tool name, avatar, status and configure handler for each skill node
@@ -142,7 +154,11 @@ function SkillLabelPlugin({
     editor.update(() => {
       visitSkillNodes((node) => {
         const id = node.getSkillKey();
-        const tool = selectedSkills.find((t) => t.id === id);
+        const selectedTool = selectedSkills.find((t) => t.id === id);
+        if (selectedTool) {
+          pendingSkillsRef.current.delete(id);
+        }
+        const tool = selectedTool ?? pendingSkillsRef.current.get(id);
         const writableNode = node.getWritable();
 
         if (tool) {
@@ -161,7 +177,7 @@ function SkillLabelPlugin({
         }
       });
     });
-  }, [selectedSkills, editor, handleSkillClick, visitSkillNodes]);
+  }, [selectedSkills, editor, handleSkillClick, pendingSkillsRef, visitSkillNodes]);
 
   return null;
 }
