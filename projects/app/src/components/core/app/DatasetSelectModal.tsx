@@ -319,7 +319,7 @@ export const DatasetSelectModal = ({
 
                           {/* Name and type */}
                           <Box flex={1} minW={0}>
-                            <MyTooltip label={item.name} shouldWrapChildren={false}>
+                            <MyTooltip label={item.name} showOnlyWhenOverflow>
                               <Box
                                 fontSize="sm"
                                 color={'myGray.900'}
@@ -433,7 +433,7 @@ export const DatasetSelectModal = ({
                               flexShrink={0}
                             />
                             <Box flex={1} minW={0} mr={2}>
-                              <MyTooltip label={item.name} shouldWrapChildren={false}>
+                              <MyTooltip label={item.name} showOnlyWhenOverflow>
                                 <Box fontSize="sm" className="textEllipsis" lineHeight={1.2}>
                                   {item.name}
                                 </Box>

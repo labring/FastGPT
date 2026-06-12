@@ -206,7 +206,7 @@ function List() {
         <Flex w="100%">
           <Avatar src={dataset.avatar} borderRadius={6} w={'28px'} flexShrink={0} />
           <Box width="0" flex="1" className="textEllipsis" color={'myGray.900'} ml={2}>
-            <MyTooltip label={dataset.name} shouldWrapChildren={false}>
+            <MyTooltip label={dataset.name} showOnlyWhenOverflow>
               <Box className="textEllipsis">{dataset.name}</Box>
             </MyTooltip>
           </Box>

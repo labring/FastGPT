@@ -166,12 +166,14 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
   const Render = useMemo(() => {
     return (
       <HStack flex={1} justifyContent={'space-between'}>
-        <HStack>
+        <HStack minW={0}>
           <Avatar src={appDetail.avatar} w={'1.75rem'} borderRadius={'md'} flexShrink={0} />
-          <Box>
-            <HStack spacing={1}>
-              <MyTooltip label={appDetail.name} shouldWrapChildren={false}>
-                <Box color={'myGray.900'}>{appDetail.name}</Box>
+          <Box minW={0}>
+            <HStack spacing={1} minW={0}>
+              <MyTooltip label={appDetail.name} showOnlyWhenOverflow>
+                <Box color={'myGray.900'} maxW={['45vw', '280px']} className="textEllipsis">
+                  {appDetail.name}
+                </Box>
               </MyTooltip>
             </HStack>
             {showSaveStatus && (

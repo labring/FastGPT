@@ -90,7 +90,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
                   aria-label={''}
                   _hover={'none'}
                 />
-                <MyTooltip label={datasetDetail.name} shouldWrapChildren={false}>
+                <MyTooltip label={datasetDetail.name} showOnlyWhenOverflow>
                   <Box
                     fontWeight={500}
                     color={'myGray.600'}

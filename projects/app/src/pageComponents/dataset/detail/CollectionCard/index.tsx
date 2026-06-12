@@ -276,7 +276,7 @@ const CollectionCard = () => {
                             mr={2}
                             flexShrink={0}
                           />
-                          <MyTooltip label={collection.name} shouldWrapChildren={false}>
+                          <MyTooltip label={collection.name} showOnlyWhenOverflow>
                             <Box
                               color={'myGray.900'}
                               fontWeight={'500'}
@@ -287,9 +287,6 @@ const CollectionCard = () => {
                               {collection.name}
                             </Box>
                           </MyTooltip>
-                          <MyTooltip label={t('common:click_drag_tip')} shouldWrapChildren={false}>
-                            <Box flex={'1 0 16px'} alignSelf={'stretch'} minH={'20px'} />
-                          </MyTooltip>
                         </Flex>
                         {feConfigs?.isPlus && !!collection.tags?.length && (
                           <TagsPopOver currentCollection={collection} hoverBg={'white'} />
@@ -298,32 +295,20 @@ const CollectionCard = () => {
                     </HStack>
                   </Td>
                   <Td py={2}>
-                    <MyTooltip label={t('common:click_drag_tip')} shouldWrapChildren={false}>
-                      <Box>
-                        {collection.trainingType
-                          ? t(
-                              (DatasetCollectionDataProcessModeMap[collection.trainingType]
-                                ?.label || '-') as any
-                            )
-                          : '-'}
-                      </Box>
-                    </MyTooltip>
+                    {collection.trainingType
+                      ? t(
+                          (DatasetCollectionDataProcessModeMap[collection.trainingType]?.label ||
+                            '-') as any
+                        )
+                      : '-'}
                   </Td>
-                  <Td py={2}>
-                    <MyTooltip label={t('common:click_drag_tip')} shouldWrapChildren={false}>
-                      <Box>{collection.dataAmount || '-'}</Box>
-                    </MyTooltip>
-                  </Td>
+                  <Td py={2}>{collection.dataAmount || '-'}</Td>
                   <Td fontSize={'xs'} py={2} color={'myGray.500'}>
-                    <MyTooltip label={t('common:click_drag_tip')} shouldWrapChildren={false}>
-                      <Box>
-                        <Box>{formatTime2YMDHM(collection.createTime)}</Box>
-                        <Box>{formatTime2YMDHM(collection.updateTime)}</Box>
-                      </Box>
-                    </MyTooltip>
+                    <Box>{formatTime2YMDHM(collection.createTime)}</Box>
+                    <Box>{formatTime2YMDHM(collection.updateTime)}</Box>
                   </Td>
                   <Td py={2}>
-                    <MyTooltip label={t('common:click_drag_tip')} shouldWrapChildren={false}>
+                    <MyTooltip label={t('common:Click_to_expand')}>
                       <MyTag
                         showDot
                         colorSchema={collection.colorSchema as any}

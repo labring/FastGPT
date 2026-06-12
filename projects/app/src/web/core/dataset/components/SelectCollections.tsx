@@ -195,7 +195,7 @@ const SelectCollections = ({
                   <Flex alignItems={'center'} h={'38px'} minW={0}>
                     <MyIcon name={item.icon as any} w={'18px'} flexShrink={0} />
                     <Box ml={3} fontSize={'sm'} minW={0} flex={1}>
-                      <MyTooltip label={item.name} shouldWrapChildren={false}>
+                      <MyTooltip label={item.name} showOnlyWhenOverflow>
                         <Box className="textEllipsis">{item.name}</Box>
                       </MyTooltip>
                     </Box>

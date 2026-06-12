@@ -1,14 +1,20 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Tooltip, type TooltipProps } from '@chakra-ui/react';
+import { Tooltip, type TooltipProps, useMergeRefs } from '@chakra-ui/react';
 
-/** 合并 ref 回调，避免在 cloneElement 的 ref 中直接修改 children 上的 ref 对象。 */
-function assignRef<T>(ref: React.Ref<T> | undefined, value: T | null) {
-  if (typeof ref === 'function') {
-    ref(value);
-  } else if (ref && typeof ref === 'object') {
-    (ref as React.MutableRefObject<T | null>).current = value;
-  }
-}
+const defaultTooltipProps = {
+  className: 'chakra-tooltip',
+  bg: 'white',
+  arrowShadowColor: 'rgba(0,0,0,0.05)',
+  hasArrow: true,
+  arrowSize: 12,
+  offset: [-15, 15] as [number, number],
+  color: 'myGray.800',
+  px: 4,
+  py: 2,
+  borderRadius: '8px',
+  whiteSpace: 'pre-wrap',
+  boxShadow: '1px 1px 10px rgba(0,0,0,0.2)'
+} satisfies Omit<TooltipProps, 'children'>;
 
 interface Props extends TooltipProps {
   /**
@@ -17,17 +23,26 @@ interface Props extends TooltipProps {
   showOnlyWhenOverflow?: boolean;
 }
 
-const MyTooltip = ({
+/**
+ * 为“仅溢出时展示”模式注入测量 ref，并保留原子元素上的 ref 与 hover/focus 事件。
+ * 普通 Tooltip 不走这段逻辑，避免全局 tooltip 都承担 DOM 测量成本。
+ */
+const useOverflowTooltipTrigger = ({
   children,
-  shouldWrapChildren = true,
-  showOnlyWhenOverflow = false,
-  isDisabled,
-  ...props
-}: Props) => {
+  enabled
+}: {
+  children: React.ReactNode;
+  enabled: boolean;
+}) => {
   const triggerRef = useRef<HTMLElement | null>(null);
   const [isOverflow, setIsOverflow] = useState(false);
 
   const checkOverflow = useCallback(() => {
+    if (!enabled) {
+      setIsOverflow(false);
+      return;
+    }
+
     const target = triggerRef.current;
 
     if (!target) {
@@ -35,16 +50,20 @@ const MyTooltip = ({
       return;
     }
 
-    setIsOverflow(target.scrollWidth > target.clientWidth);
-  }, []);
+    setIsOverflow(
+      target.scrollWidth > target.clientWidth || target.scrollHeight > target.clientHeight
+    );
+  }, [enabled]);
 
   useEffect(() => {
-    if (!showOnlyWhenOverflow) return;
+    if (!enabled) return;
 
-    checkOverflow();
+    const frame = window.requestAnimationFrame(checkOverflow);
 
     const target = triggerRef.current;
-    if (!target) return;
+    if (!target) {
+      return () => window.cancelAnimationFrame(frame);
+    }
 
     const observer =
       typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(checkOverflow);
@@ -53,10 +72,11 @@ const MyTooltip = ({
     window.addEventListener('resize', checkOverflow);
 
     return () => {
+      window.cancelAnimationFrame(frame);
       observer?.disconnect();
       window.removeEventListener('resize', checkOverflow);
     };
-  }, [checkOverflow, children, showOnlyWhenOverflow]);
+  }, [checkOverflow, children, enabled]);
 
   const setTriggerRef = useCallback(
     (node: HTMLElement | null) => {
@@ -66,64 +86,75 @@ const MyTooltip = ({
     [checkOverflow]
   );
 
-  const triggerChildren = React.isValidElement(children) ? children : null;
-  const childOriginRef = triggerChildren
-    ? ((triggerChildren as any).ref as React.Ref<HTMLElement> | undefined)
+  const triggerElement = React.isValidElement(children) ? children : null;
+  const childOriginRef = triggerElement
+    ? ((triggerElement as any).ref as React.Ref<HTMLElement> | undefined)
     : undefined;
-  const triggerChildrenProps = triggerChildren?.props as
+  const triggerElementProps = triggerElement?.props as
     | {
         onMouseEnter?: React.MouseEventHandler;
         onFocus?: React.FocusEventHandler;
       }
     | undefined;
+  const mergedRef = useMergeRefs(childOriginRef, setTriggerRef);
 
-  const tooltipChildren = !showOnlyWhenOverflow ? (
-    children
-  ) : triggerChildren ? (
-    React.cloneElement(triggerChildren as React.ReactElement<any>, {
-      ref: (node: HTMLElement | null) => {
-        assignRef(childOriginRef, node);
-        setTriggerRef(node);
-      },
-      onMouseEnter: (event: React.MouseEvent) => {
-        checkOverflow();
-        triggerChildrenProps?.onMouseEnter?.(event);
-      },
-      onFocus: (event: React.FocusEvent) => {
-        checkOverflow();
-        triggerChildrenProps?.onFocus?.(event);
-      }
-    })
-  ) : (
-    <span
-      ref={setTriggerRef}
-      style={{ display: 'inline-block', maxWidth: '100%' }}
-      onMouseEnter={checkOverflow}
-      onFocus={checkOverflow}
-    >
-      {children}
-    </span>
-  );
+  if (!enabled) {
+    return {
+      isOverflow: false,
+      triggerChildren: children
+    };
+  }
+
+  return {
+    isOverflow,
+    triggerChildren: triggerElement ? (
+      React.cloneElement(triggerElement as React.ReactElement<any>, {
+        ref: mergedRef,
+        onMouseEnter: (event: React.MouseEvent) => {
+          checkOverflow();
+          triggerElementProps?.onMouseEnter?.(event);
+        },
+        onFocus: (event: React.FocusEvent) => {
+          checkOverflow();
+          triggerElementProps?.onFocus?.(event);
+        }
+      })
+    ) : (
+      <span
+        ref={setTriggerRef}
+        style={{ display: 'inline-block', maxWidth: '100%' }}
+        onMouseEnter={checkOverflow}
+        onFocus={checkOverflow}
+      >
+        {children}
+      </span>
+    )
+  };
+};
+
+const MyTooltip = ({
+  children,
+  shouldWrapChildren = true,
+  showOnlyWhenOverflow = false,
+  isDisabled,
+  ...props
+}: Props) => {
+  const { isOverflow, triggerChildren } = useOverflowTooltipTrigger({
+    children,
+    enabled: showOnlyWhenOverflow
+  });
+  const finalChildren = showOnlyWhenOverflow ? triggerChildren : children;
+  const finalShouldWrapChildren = showOnlyWhenOverflow ? false : shouldWrapChildren;
+  const finalIsDisabled = isDisabled || (showOnlyWhenOverflow && !isOverflow);
 
   return (
     <Tooltip
-      className="chakra-tooltip"
-      bg={'white'}
-      arrowShadowColor={'rgba(0,0,0,0.05)'}
-      hasArrow
-      arrowSize={12}
-      offset={[-15, 15]}
-      color={'myGray.800'}
-      px={4}
-      py={2}
-      borderRadius={'8px'}
-      whiteSpace={'pre-wrap'}
-      boxShadow={'1px 1px 10px rgba(0,0,0,0.2)'}
-      shouldWrapChildren={showOnlyWhenOverflow ? false : shouldWrapChildren}
-      isDisabled={isDisabled || (showOnlyWhenOverflow && !isOverflow)}
+      {...defaultTooltipProps}
+      shouldWrapChildren={finalShouldWrapChildren}
+      isDisabled={finalIsDisabled}
       {...props}
     >
-      {tooltipChildren}
+      {finalChildren}
     </Tooltip>
   );
 };

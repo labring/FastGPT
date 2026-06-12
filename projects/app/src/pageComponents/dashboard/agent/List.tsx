@@ -213,7 +213,7 @@ const List = () => {
         <Grid templateColumns="auto 1fr auto" alignItems="center" width="100%" gap={2}>
           <Avatar src={app.avatar} borderRadius={'sm'} w={'1.5rem'} />
           <Box color={'myGray.900'} fontWeight={'medium'} minWidth={0} overflow="hidden">
-            <MyTooltip label={app.name} shouldWrapChildren={false}>
+            <MyTooltip label={app.name} showOnlyWhenOverflow>
               <Box className={'textEllipsis'}>{app.name}</Box>
             </MyTooltip>
           </Box>

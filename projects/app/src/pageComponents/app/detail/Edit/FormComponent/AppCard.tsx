@@ -92,7 +92,7 @@ const AppCard = ({
         <Flex alignItems={'center'} justifyContent={'space-between'} mb={5}>
           <Flex alignItems={'center'} flex={1} minW={0}>
             <Avatar src={appDetail.avatar} borderRadius={'md'} w={'28px'} h={'28px'} />
-            <MyTooltip label={appDetail.name} shouldWrapChildren={false}>
+            <MyTooltip label={appDetail.name} showOnlyWhenOverflow>
               <Box
                 ml={3}
                 fontWeight={'bold'}

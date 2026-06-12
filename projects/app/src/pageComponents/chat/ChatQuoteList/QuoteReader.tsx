@@ -178,7 +178,7 @@ const QuoteReader = ({
             onClick={() => openCollectionQuote(item)}
           >
             <MyIcon name={item.icon as any} flexShrink={0} w={'16px'} />
-            <MyTooltip label={item.sourceName} shouldWrapChildren={false}>
+            <MyTooltip label={item.sourceName} showOnlyWhenOverflow>
               <Box className={'textEllipsis'} minW={0}>
                 {item.sourceName}
               </Box>

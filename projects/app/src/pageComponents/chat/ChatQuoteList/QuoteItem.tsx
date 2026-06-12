@@ -50,7 +50,7 @@ const QuoteItem = ({
         <Box alignItems={'center'} fontSize={'10px'} fontWeight={500} display={'inline-flex'}>
           <Flex gap={1} minW={0}>
             <MyIcon name={icon as any} flexShrink={0} w={'12px'} />
-            <MyTooltip label={sourceName} shouldWrapChildren={false}>
+            <MyTooltip label={sourceName} showOnlyWhenOverflow>
               <Box
                 className={'textEllipsis'}
                 wordBreak={'break-all'}
