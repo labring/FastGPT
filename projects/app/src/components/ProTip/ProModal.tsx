@@ -25,7 +25,11 @@ const ProModal = (props: { isOpen?: boolean; onClose?: () => void }) => {
     >
       <ModalBody
         userSelect={'none'}
-        py={8}
+        pt={0}
+        pb={8}
+        px={6}
+        position={'relative'}
+        overflow={'hidden'}
         _before={{
           content: '""',
           position: 'absolute',
@@ -34,68 +38,64 @@ const ProModal = (props: { isOpen?: boolean; onClose?: () => void }) => {
           w: '100%',
           h: '100%',
           bgImage: 'url(/imgs/proModalBg.png)',
-          bgSize: 'cover',
-          bgPosition: 'center',
+          bgSize: '100% auto',
+          bgPosition: 'top center',
           bgRepeat: 'no-repeat',
-          opacity: 0.48,
+          opacity: 0.32,
           zIndex: -10
         }}
         display={'flex'}
         justifyContent={'center'}
       >
-        <VStack gap={4} w={'300px'} px={1}>
-          <MyIcon name={'star'} w={8} />
-          <Box
-            color={'myGray.900'}
-            fontSize="20px"
-            fontWeight={'medium'}
-            lineHeight="26px"
-            letterSpacing="0.15px"
-          >
+        <VStack w={'full'} alignItems={'center'} textAlign={'center'} gap={0}>
+          <Flex h={'112px'} alignItems={'center'} justifyContent={'center'}>
+            <MyIcon name={'star'} w={9} h={9} transform={'translateY(40%)'} />
+          </Flex>
+          <Box color={'myGray.900'} fontSize={'26px'} fontWeight={'bold'} lineHeight={'34px'}>
             {t('app:pro_modal_title')}
           </Box>
-          <Box
-            color={'myGray.900'}
-            fontSize="18px"
-            fontWeight={'medium'}
-            lineHeight="26px"
-            letterSpacing="0.15px"
-          >
-            {t('app:pro_modal_subtitle')}
-          </Box>
-          <Flex
-            flexDirection={'column'}
-            gap={'10px'}
+          <VStack
             w={'full'}
             color={'myGray.900'}
-            fontSize={'14px'}
+            fontSize={'18px'}
+            alignItems={'center'}
+            gap={0}
+            mt={7}
           >
-            <Box>{t('app:pro_modal_feature_1')}</Box>
-            <Box>{t('app:pro_modal_feature_2')}</Box>
-            <Box>{t('app:pro_modal_feature_3')}</Box>
-            <Box>
-              <MyIcon name={'common/ellipsis'} w={'18px'} />
+            <Box lineHeight={'26px'}>{t('app:pro_modal_subtitle')}</Box>
+            <Box lineHeight={'26px'}>{t('app:pro_modal_feature_1')}</Box>
+            <Box lineHeight={'26px'}>{t('app:pro_modal_feature_2')}</Box>
+            <Box lineHeight={'26px'}>{t('app:pro_modal_feature_3')}</Box>
+            <Box color={'myGray.500'} letterSpacing={'2px'} lineHeight={'26px'}>
+              ......
             </Box>
-          </Flex>
-          <Flex gap={'3'} flexDirection={'column'} w={'full'}>
+          </VStack>
+          <Flex gap={3} flexDirection={'column'} w={'full'} mt={6}>
             <Button
               w={'full'}
+              h={'48px'}
+              borderRadius={'10px'}
               onClick={() => {
                 window.open(getDocPath('/guide/version/commercial'), '_blank');
               }}
-              fontSize={'14px'}
+              fontSize={'16px'}
+              fontWeight={'medium'}
             >
               {t('app:pro_modal_unlock_button')}
             </Button>
-          </Flex>
-          <Flex
-            rounded={'md'}
-            fontSize={'12px'}
-            color={'myGray.600'}
-            cursor={'pointer'}
-            onClick={onClose}
-          >
-            {t('app:pro_modal_later_button')}
+            <Button
+              w={'full'}
+              h={'48px'}
+              borderRadius={'10px'}
+              variant={'whiteBase'}
+              fontSize={'16px'}
+              fontWeight={'medium'}
+              borderColor={'#E4E7ED'}
+              boxShadow={'0 2px 5px rgba(15, 23, 42, 0.06)'}
+              onClick={onClose}
+            >
+              {t('app:pro_modal_later_button')}
+            </Button>
           </Flex>
         </VStack>
       </ModalBody>
