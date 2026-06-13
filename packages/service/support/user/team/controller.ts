@@ -169,7 +169,6 @@ export async function updateTeam({
 
     const response = await ai.chat.completions.create({
       model: 'gpt-4o-mini',
-      max_tokens: 1,
       messages: [{ role: 'user', content: 'hi' }]
     });
     if (response?.choices?.[0]?.message?.content === undefined) {

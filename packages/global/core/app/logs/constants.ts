@@ -60,6 +60,20 @@ export enum AppLogTimespanEnum {
   month = 'month',
   quarter = 'quarter'
 }
+export const AppLogTimespanMap: Record<AppLogTimespanEnum, { label: string }> = {
+  [AppLogTimespanEnum.day]: {
+    label: i18nT('app:logs_timespan_day')
+  },
+  [AppLogTimespanEnum.week]: {
+    label: i18nT('app:logs_timespan_week')
+  },
+  [AppLogTimespanEnum.month]: {
+    label: i18nT('app:logs_timespan_month')
+  },
+  [AppLogTimespanEnum.quarter]: {
+    label: i18nT('app:logs_timespan_quarter')
+  }
+};
 
 export const offsetOptions = [
   { label: 'T+1', value: '1' },

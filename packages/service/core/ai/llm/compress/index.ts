@@ -134,7 +134,6 @@ export const compressRequestMessages = async ({
             content: userPrompt
           }
         ],
-        temperature: 0.1,
         reasoning_effort: reasoningEffort
       }
     });
@@ -288,7 +287,6 @@ export const compressLargeContent = async ({
               content: userPrompt
             }
           ],
-          temperature: 0.1,
           stream: false,
           reasoning_effort: reasoningEffort
         }

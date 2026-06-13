@@ -160,6 +160,65 @@ describe('addStatisticalDataToHistoryItem', () => {
     expect(addStatisticalDataToHistoryItem(historyItem).useAgentSandbox).toBe(false);
   });
 
+  it('uses node error as chat bubble error text when errorText is absent', () => {
+    const historyItem: ChatItemMiniType = {
+      obj: ChatRoleEnum.AI,
+      value: [
+        {
+          text: {
+            content: 'done'
+          }
+        }
+      ],
+      responseData: [
+        {
+          id: 'http-response',
+          nodeId: 'http-node',
+          moduleName: 'HTTP 请求',
+          moduleType: FlowNodeTypeEnum.httpRequest468,
+          error: 'connect ECONNREFUSED 127.0.0.1:3000'
+        }
+      ]
+    };
+
+    expect(addStatisticalDataToHistoryItem(historyItem).errorText).toEqual({
+      moduleName: 'HTTP 请求',
+      errorText: 'connect ECONNREFUSED 127.0.0.1:3000'
+    });
+  });
+
+  it('does not use HTTP result error as chat bubble error text when node error is absent', () => {
+    const historyItem: ChatItemMiniType = {
+      obj: ChatRoleEnum.AI,
+      value: [
+        {
+          text: {
+            content: 'done'
+          }
+        }
+      ],
+      responseData: [
+        {
+          id: 'http-response',
+          nodeId: 'http-node',
+          moduleName: 'HTTP 请求',
+          moduleType: FlowNodeTypeEnum.httpRequest468,
+          httpResult: {
+            error: {
+              message: 'Request failed with status code 500',
+              status: 500,
+              data: {
+                message: 'upstream failed'
+              }
+            }
+          }
+        }
+      ]
+    };
+
+    expect(addStatisticalDataToHistoryItem(historyItem).errorText).toBeUndefined();
+  });
+
   it('includes dataset quote tags that use QUOTE markdown links', () => {
     const quoteId = '507f1f77bcf86cd799439011';
     const historyItem: ChatItemMiniType = {

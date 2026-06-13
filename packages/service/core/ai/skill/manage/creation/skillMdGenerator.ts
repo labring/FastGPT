@@ -234,7 +234,6 @@ export async function getSkillGuidance({
     body: {
       model,
       messages,
-      max_tokens: 1000,
       stream: true
     }
   });

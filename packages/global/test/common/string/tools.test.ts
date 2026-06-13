@@ -6,12 +6,10 @@ import {
   hashStr,
   replaceRegChars,
   replaceSensitiveText,
-  replaceVariable,
   simpleText,
   sliceJsonStr,
   sliceStrStartEnd,
-  strIsLink,
-  valToStr
+  strIsLink
 } from '@fastgpt/global/common/string/tools';
 
 describe('string tools', () => {
@@ -35,44 +33,6 @@ describe('string tools', () => {
     const input = '  你 好 \r\n\r\n\r\nfoo\x00bar  ';
     expect(simpleText(input)).toBe('你 好 \n\nfoo bar');
     expect(simpleText('a   b')).toBe('a   b');
-  });
-
-  it('should convert values to strings', () => {
-    expect(valToStr(undefined)).toBe('');
-    expect(valToStr(null)).toBe('null');
-    expect(valToStr({ a: 1 })).toBe('{"a":1}');
-    expect(valToStr(123)).toBe('123');
-  });
-
-  it('should replace variables with recursion and safeguards', () => {
-    expect(replaceVariable('Hello {{name}}', { name: 'Ada' })).toBe('Hello Ada');
-    expect(
-      replaceVariable('Hello {{name}}', {
-        name: '{{first}} {{last}}',
-        first: 'Ada',
-        last: 'Lovelace'
-      })
-    ).toBe('Hello Ada Lovelace');
-    expect(replaceVariable('Hello {{name}}', { name: undefined })).toBe('Hello ');
-    expect(replaceVariable('Hello {{name}}', { name: '{{name}}' })).toBe('Hello {{name}}');
-    expect(replaceVariable(123 as any, { name: 'Ada' })).toBe(123);
-  });
-
-  it('should treat $ special characters in replacement value as literals', () => {
-    // $1, $2 不应被解释为捕获组引用
-    expect(replaceVariable('value: {{val}}', { val: '$1' })).toBe('value: $1');
-    expect(replaceVariable('value: {{val}}', { val: '$2' })).toBe('value: $2');
-    // $$ 不应被解释为字面量 $
-    expect(replaceVariable('value: {{val}}', { val: '$$' })).toBe('value: $$');
-    // $& 不应被替换为整个匹配字符串
-    expect(replaceVariable('value: {{val}}', { val: '$&' })).toBe('value: $&');
-    // $` 和 $' 不应被替换为匹配前/后的内容
-    expect(replaceVariable('value: {{val}}', { val: "$'" })).toBe("value: $'");
-    expect(replaceVariable('value: {{val}}', { val: '$`' })).toBe('value: $`');
-    // 混合场景
-    expect(replaceVariable('result={{a}}&other={{b}}', { a: '$1', b: '$2' })).toBe(
-      'result=$1&other=$2'
-    );
   });
 
   it('should replace sensitive text', () => {

@@ -812,7 +812,7 @@
   "error_llm_not_config": "Unconfigured file understanding model",
   "error_un_permission": "No permission to operate",
   "error_vlm_not_config": "Image comprehension model not configured",
-  "exit_directly": "exit_directly",
+  "exit_directly": "Exit",
   "expired_time": "Expiration Time",
   "export_to_json": "Export to JSON",
   "extraPointsPrice": "¥ {{price}}",

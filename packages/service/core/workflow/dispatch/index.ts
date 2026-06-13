@@ -11,11 +11,7 @@ import type {
   NodeOutputItemType
 } from '@fastgpt/global/core/workflow/runtime/type';
 import type { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import {
-  FlowNodeInputTypeEnum,
-  FlowNodeTypeEnum
-} from '@fastgpt/global/core/workflow/node/constant';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   DispatchNodeResponseKeyEnum,
   SseResponseEventEnum
@@ -30,8 +26,6 @@ import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 import { filterNodeResponseTreeData, stripChildTotalPoints } from '@fastgpt/global/core/chat/utils';
 import {
   filterWorkflowEdges,
-  getReferenceVariableValue,
-  replaceEditorVariable,
   textAdaptGptResponse,
   valueTypeFormat
 } from '@fastgpt/global/core/workflow/runtime/utils';
@@ -56,7 +50,7 @@ import {
   summarizeRuntimeNodeResponses
 } from './utils/index';
 import { WorkflowVariableState } from './utils/variables';
-import { getHandleId, nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
+import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { callbackMap } from './constants';
 import { getUserChatInfo } from '../../../support/user/team/utils';
 import { checkTeamAIPoints } from '../../../support/permission/teamLimit';
@@ -87,6 +81,7 @@ import {
   shouldTraceWorkflowStep,
   type WorkflowObservedStepResult
 } from './utils/trace';
+import { getWorkflowNodeRunParams } from './utils/runtime';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
 
@@ -814,66 +809,6 @@ export class WorkflowQueue {
     };
 
     const executeNode = async (stepSpan?: Span): Promise<WorkflowObservedStepResult> => {
-      /* Inject data into module input */
-      const getNodeRunParams = (node: RuntimeNodeItemType) => {
-        if (node.flowNodeType === FlowNodeTypeEnum.pluginInput) {
-          // Format plugin input to object
-          return node.inputs.reduce<Record<string, any>>((acc, item) => {
-            acc[item.key] = valueTypeFormat(item.value, item.valueType);
-            return acc;
-          }, {});
-        }
-
-        // Dynamic input need to store a key.
-        const dynamicInput = node.inputs.find(
-          (item) => item.renderTypeList[0] === FlowNodeInputTypeEnum.addInputParam
-        );
-        const params: Record<string, any> = dynamicInput
-          ? {
-              [dynamicInput.key]: {}
-            }
-          : {};
-
-        const runtimeVariables = this.data.variableState.toRuntimeRecord();
-        node.inputs.forEach((input) => {
-          // Special input, not format
-          if (input.key === dynamicInput?.key) return;
-
-          // Skip some special key
-          if (
-            [NodeInputKeyEnum.childrenNodeIdList, NodeInputKeyEnum.httpJsonBody].includes(
-              input.key as NodeInputKeyEnum
-            )
-          ) {
-            params[input.key] = input.value;
-            return;
-          }
-
-          // replace {{$xx.xx$}} and {{xx}} variables
-          let value = replaceEditorVariable({
-            text: input.value,
-            nodesMap: this.runtimeNodesMap,
-            variables: runtimeVariables
-          });
-
-          // replace reference variables
-          value = getReferenceVariableValue({
-            value,
-            nodesMap: this.runtimeNodesMap,
-            variables: runtimeVariables,
-            isReferenceVal: nodeInputIsReference(input)
-          });
-
-          // Dynamic input is stored in the dynamic key
-          if (input.canEdit && dynamicInput && params[dynamicInput.key]) {
-            params[dynamicInput.key][input.key] = valueTypeFormat(value, input.valueType);
-          }
-          params[input.key] = valueTypeFormat(value, input.valueType);
-        });
-
-        return params;
-      };
-
       const nodeResponseId = getNanoid();
 
       // push run status messages
@@ -888,7 +823,11 @@ export class WorkflowQueue {
       }
       const startTime = Date.now();
       // get node running params
-      const params = getNodeRunParams(node);
+      const params = getWorkflowNodeRunParams({
+        node,
+        runtimeNodesMap: this.runtimeNodesMap,
+        variableState: this.data.variableState
+      });
 
       const dispatchData: ModuleDispatchProps<Record<string, any>> = {
         ...this.data,

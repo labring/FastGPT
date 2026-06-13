@@ -1,14 +1,6 @@
 import crypto from 'crypto';
 import { customAlphabet } from 'nanoid';
 import path from 'path';
-import { getErrText } from '../error/utils';
-
-export const checkStrOversize = (str: string, size = 1e8) => {
-  if (str.length > size) {
-    return true;
-  }
-  return false;
-};
 
 /* check string is a web link */
 export function strIsLink(str?: string) {
@@ -33,103 +25,6 @@ export const simpleText = (text = '') => {
 
   return text;
 };
-
-export const valToStr = (val: any) => {
-  if (val === undefined) return '';
-  if (val === null) return 'null';
-
-  if (typeof val === 'object') {
-    try {
-      const start = Date.now();
-      const res = JSON.stringify(val);
-
-      if (Date.now() - start > 1000) {
-        console.warn('Slow JSON.stringify', {
-          duration: Date.now() - start,
-          valLength: res.length
-        });
-      }
-
-      return res;
-    } catch (error) {
-      console.error('Failed to stringify value', { error });
-      return `Failed to stringify value: ${getErrText(error)}`;
-    }
-  }
-
-  return String(val);
-};
-
-// replace {{variable}} to value
-export function replaceVariable(text: any, obj: Record<string, any>, depth = 0) {
-  if (typeof text !== 'string') return text;
-  if (checkStrOversize(text)) {
-    throw new Error('Text length exceeds 100,000,000 characters.');
-  }
-
-  const MAX_REPLACEMENT_DEPTH = 10;
-  const processedVariables = new Set<string>();
-
-  // Prevent infinite recursion
-  if (depth > MAX_REPLACEMENT_DEPTH) {
-    return text;
-  }
-
-  // Check for circular references in variable values
-  const hasCircularReference = (value: any, targetKey: string): boolean => {
-    if (typeof value !== 'string') return false;
-
-    // Check if the value contains the target variable pattern (direct self-reference)
-    const selfRefPattern = new RegExp(
-      `\\{\\{${targetKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\}\\}`,
-      'g'
-    );
-    return selfRefPattern.test(value);
-  };
-
-  let result = text;
-  let hasReplacements = false;
-
-  // Build replacement map first to avoid modifying string during iteration
-  const replacements: { pattern: string; replacement: string }[] = [];
-
-  for (const key in obj) {
-    // Skip if already processed to avoid immediate circular reference
-    if (processedVariables.has(key)) {
-      continue;
-    }
-
-    const val = obj[key];
-
-    // Check for direct circular reference
-    if (hasCircularReference(String(val), key)) {
-      continue;
-    }
-
-    const formatVal = valToStr(val);
-    const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-    replacements.push({
-      pattern: `{{${escapedKey}}}`,
-      replacement: formatVal
-    });
-
-    processedVariables.add(key);
-    hasReplacements = true;
-  }
-
-  // Apply all replacements
-  replacements.forEach(({ pattern, replacement }) => {
-    result = result.replace(new RegExp(pattern, 'g'), () => replacement);
-  });
-
-  // If we made replacements and there might be nested variables, recursively process
-  if (hasReplacements && /\{\{[^}]+\}\}/.test(result)) {
-    result = replaceVariable(result, obj, depth + 1);
-  }
-
-  return result || '';
-}
 
 /* replace sensitive text */
 export const replaceSensitiveText = (text: string) => {

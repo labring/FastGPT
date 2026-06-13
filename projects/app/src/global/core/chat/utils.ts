@@ -9,12 +9,23 @@ import type { SearchDataResponseQuoteListItemType } from '@fastgpt/global/core/d
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getFlatAppResponses } from '@fastgpt/global/core/chat/utils';
 import { sandboxToolMap } from '@fastgpt/global/core/ai/sandbox/tools';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 export const isLLMNode = (item: ChatHistoryItemResType) =>
   item.moduleType === FlowNodeTypeEnum.chatNode || item.moduleType === FlowNodeTypeEnum.toolCall;
 
 const isSandboxToolId = (toolId?: string) =>
   !!toolId && Object.prototype.hasOwnProperty.call(sandboxToolMap, toolId);
+
+/**
+ * 从节点运行详情中提取可直接展示在聊天气泡上的错误文本。
+ *
+ * 部分节点失败时历史数据只写入顶层 `error`，不一定有专门用于展示的 `errorText`。
+ * 这里统一兜底，避免报错卡片显示“无输出”。
+ */
+const getNodeErrorText = (item: ChatHistoryItemResType) => {
+  return item.errorText || getErrText(item.error);
+};
 
 export function transformPreviewHistories(
   histories: ChatItemMiniType[],
@@ -100,10 +111,11 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemMiniType) {
         }
       }
 
-      if (item.errorText && !acc.errorText) {
+      const nodeErrorText = getNodeErrorText(item);
+      if (nodeErrorText && !acc.errorText) {
         acc.errorText = {
           moduleName: item.moduleName,
-          errorText: item.errorText
+          errorText: nodeErrorText
         };
       }
 

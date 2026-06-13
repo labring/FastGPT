@@ -1,4 +1,4 @@
-import { replaceVariable } from '@fastgpt/global/common/string/tools';
+import { replaceVariable } from '../../../../common/string/replaceVariable';
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 
 export const getPromptToolCallPrompt = (tools: ChatCompletionTool['function'][]) => {

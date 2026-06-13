@@ -60,7 +60,6 @@ export const getImageCaptionQueries = async ({
           userKey,
           body: {
             model: vlmModelData.model,
-            temperature: 0.1,
             stream: true,
             useVision: true,
             messages: [

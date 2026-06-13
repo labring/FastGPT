@@ -11,11 +11,7 @@ import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../../Provider';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import AIChatLoading from '../AIChatLoading';
-import {
-  hasAiAnswerContent,
-  hasAiInteractiveContent,
-  hasAiProcessingContent
-} from './utils';
+import { hasAiAnswerContent, hasAiInteractiveContent, hasAiProcessingContent } from './utils';
 import { useTranslation } from 'next-i18next';
 
 const ResponseTags = dynamic(() => import('../ResponseTags'));
@@ -92,7 +88,7 @@ const AIChatBubble = ({
             lineHeight="20px"
             color="myGray.500"
           >
-            {t('chat:no_output_content', '应用无输出内容')}
+            {t('chat:no_output_content')}
           </Box>
         )}
         {isLastValueGroup && (

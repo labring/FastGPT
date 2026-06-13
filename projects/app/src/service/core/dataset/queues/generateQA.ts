@@ -3,7 +3,7 @@ import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/cont
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { replaceVariable } from '@fastgpt/global/common/string/tools';
+import { replaceVariable } from '@fastgpt/service/common/string/replaceVariable';
 import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
 import type { PushDataChunkType } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { getLLMModel } from '@fastgpt/service/core/ai/model';
@@ -143,7 +143,6 @@ export async function generateQA(): Promise<any> {
         } = await createLLMResponse({
           body: {
             model: modelData.model,
-            temperature: 0.3,
             messages,
             stream: true
           }

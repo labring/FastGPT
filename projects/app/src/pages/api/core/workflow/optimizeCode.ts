@@ -113,8 +113,6 @@ async function handler(req: ApiRequestProps<OptimizeCodeBody>, res: ApiResponseT
       body: {
         model,
         messages,
-        temperature: 0.1,
-        max_tokens: 2000,
         stream: true,
         useVision: false
       },

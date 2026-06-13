@@ -180,7 +180,6 @@ export const queryExtension = async ({
     body: {
       stream: true,
       model: modelData.model,
-      temperature: 0.1,
       messages
     }
   });

@@ -16,7 +16,7 @@ import {
 } from '@fastgpt/global/core/chat/adapt';
 import { getQuoteTemplate, getQuotePrompt } from '@fastgpt/global/core/ai/prompt/AIChat';
 import type { AIChatNodeProps } from '@fastgpt/global/core/workflow/runtime/type';
-import { replaceVariable } from '@fastgpt/global/common/string/tools';
+import { replaceVariable } from '../../../../common/string/replaceVariable';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { getLLMModel } from '../../../ai/model';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
