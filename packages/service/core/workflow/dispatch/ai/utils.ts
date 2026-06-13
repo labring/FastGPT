@@ -1,8 +1,4 @@
-import {
-  replaceVariable,
-  sliceJsonStr,
-  sliceStrStartEnd
-} from '@fastgpt/global/common/string/tools';
+import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import type {
   AIChatItemValueItemType,
   UserChatItemValueItemType
@@ -13,10 +9,9 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import type { JSONSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
 import type { ToolNodeItemType } from './toolcall/type';
-import json5 from 'json5';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import { SYSTEM_MAX_STRING_LENGTH } from '../../../../env';
+import { replaceVariable } from '../../../../common/string/replaceVariable';
 
 // Assistant process
 export const filterToolResponseToPreview = (response: AIChatItemValueItemType[]) => {
@@ -67,9 +62,7 @@ export const toolCallMessagesAdapt = ({
   Image：{{imgCount}}
   ------
   {{question}}`;
-    return replaceVariable(prompt, obj, {
-      maxStringLength: SYSTEM_MAX_STRING_LENGTH
-    });
+    return replaceVariable(prompt, obj);
   };
 
   if (skip) return userInput;

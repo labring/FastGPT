@@ -6,16 +6,13 @@ import {
   SseResponseEventEnum
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
-import {
-  getReferenceVariableValue,
-  replaceEditorVariable
-} from '@fastgpt/global/core/workflow/runtime/utils';
+import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
 import { type TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
 import { type ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { isValidReferenceValue } from '@fastgpt/global/core/workflow/utils';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { getLogger, LogCategories } from '../../../../common/logger';
-import { SYSTEM_MAX_STRING_LENGTH } from '../../../../env';
+import { replaceEditorVariable } from '../utils/replaceEditorVariable';
 
 const addLog = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
 
@@ -112,8 +109,7 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
             ? replaceEditorVariable({
                 text: item.value?.[1],
                 nodesMap: runtimeNodesMap,
-                variables: runtimeVariables,
-                maxStringLength: SYSTEM_MAX_STRING_LENGTH
+                variables: runtimeVariables
               })
             : item.value?.[1];
 

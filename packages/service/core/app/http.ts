@@ -5,11 +5,10 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 import { contentTypeMap, ContentTypes } from '@fastgpt/global/core/workflow/constants';
-import { replaceEditorVariable } from '@fastgpt/global/core/workflow/runtime/utils';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '../../common/system/utils';
 import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
-import { SYSTEM_MAX_STRING_LENGTH } from '../../env';
+import { replaceEditorVariable } from '../workflow/dispatch/utils/replaceEditorVariable';
 import FormData from 'form-data';
 
 export type RunHTTPToolParams = {
@@ -42,8 +41,7 @@ const buildHttpRequest = ({
     return replaceEditorVariable({
       text,
       nodesMap: new Map(),
-      variables: params,
-      maxStringLength: SYSTEM_MAX_STRING_LENGTH
+      variables: params
     });
   };
 

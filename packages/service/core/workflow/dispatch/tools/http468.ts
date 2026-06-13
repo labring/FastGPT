@@ -16,7 +16,6 @@ import type {
 import {
   formatVariableValByType,
   getReferenceVariableValue,
-  replaceEditorVariable,
   valueTypeFormat
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import type { AxiosRequestConfig } from 'axios';
@@ -29,7 +28,7 @@ import { formatHttpError } from '../utils';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '../../../../common/system/utils';
 import { serviceRequestMaxContentLength } from '../../../../common/system/constants';
 import { axios, httpsCertificateIgnoreAgent } from '../../../../common/api/axios';
-import { SYSTEM_MAX_STRING_LENGTH } from '../../../../env';
+import { replaceEditorVariable } from '../utils/replaceEditorVariable';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.TOOLS);
 
@@ -139,8 +138,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     return replaceEditorVariable({
       text,
       nodesMap: runtimeNodesMap,
-      variables: allVariables,
-      maxStringLength: SYSTEM_MAX_STRING_LENGTH
+      variables: allVariables
     });
   };
 

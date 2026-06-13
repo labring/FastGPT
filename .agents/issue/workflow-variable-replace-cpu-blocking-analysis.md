@@ -581,7 +581,8 @@ SYSTEM_MAX_STRING_LENGTH_M=100
 - 有效范围是 `1 ~ 100`，由 `serviceEnv` 初始化时校验；非法值直接启动失败。
 - 默认 `100`，也就是 `100,000,000` 字符。
 - 该限制是系统级同步字符串处理保护，不只属于工作流；目前主要由工作流变量替换路径使用。
-- `@fastgpt/global` 的字符串工具不直接读取环境变量，避免 global 反向依赖 service；server 侧调用从 `serviceEnv.SYSTEM_MAX_STRING_LENGTH_M` 计算字符上限后显式传入。
+- 变量替换工具已从 `@fastgpt/global` 移到 `@fastgpt/service`，内部直接使用 `serviceEnv` 初始化后导出的 `SYSTEM_MAX_STRING_LENGTH`；调用方不再传递 `maxStringLength`。
+- `@fastgpt/global` 只保留纯工具和 workflow runtime 数据格式化逻辑，避免 global 反向依赖 service。
 
 部署模板、Helm values 和中文/英文环境变量文档已同步。
 

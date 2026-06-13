@@ -9,7 +9,7 @@ const defaultableIntSchema = (defaultValue: number) =>
     z.coerce.number<number>().int().nonnegative()
   );
 
-export const SYSTEM_STRING_LENGTH_UNIT = 1_000_000;
+const SYSTEM_STRING_LENGTH_UNIT = 1_000_000;
 
 /**
  * 判断系统是否显式配置了 Agent 虚拟机能力。

@@ -1,0 +1,112 @@
+import { describe, expect, it } from 'vitest';
+import {
+  getTextOversizeErrorMessage,
+  valToStr,
+  replaceVariable
+} from '@fastgpt/service/common/string/replaceVariable';
+
+describe('service replaceVariable', () => {
+  it('should convert values to strings', () => {
+    expect(valToStr(undefined)).toBe('');
+    expect(valToStr(null)).toBe('null');
+    expect(valToStr({ a: 1 })).toBe('{"a":1}');
+    expect(valToStr(123)).toBe('123');
+  });
+
+  it('should replace variables with recursion and safeguards', () => {
+    expect(replaceVariable('Hello {{name}}', { name: 'Ada' })).toBe('Hello Ada');
+    expect(
+      replaceVariable('Hello {{name}}', {
+        name: '{{first}} {{last}}',
+        first: 'Ada',
+        last: 'Lovelace'
+      })
+    ).toBe('Hello Ada Lovelace');
+    expect(replaceVariable('Hello {{name}}', { name: undefined })).toBe('Hello ');
+    expect(replaceVariable('Hello {{name}}', { name: '{{name}}' })).toBe('Hello {{name}}');
+    expect(replaceVariable(123 as any, { name: 'Ada' })).toBe(123);
+  });
+
+  it('should only stringify variables that appear in the template', () => {
+    let stringifyCount = 0;
+    const unusedLargeObject = {
+      toJSON() {
+        stringifyCount += 1;
+        return { value: 'unused' };
+      }
+    };
+
+    expect(
+      replaceVariable('Hello {{name}}', {
+        name: 'Ada',
+        unusedLargeObject
+      })
+    ).toBe('Hello Ada');
+    expect(stringifyCount).toBe(0);
+  });
+
+  it('should return strings without placeholders before reading variables', () => {
+    let stringifyCount = 0;
+    const unused = {
+      toJSON() {
+        stringifyCount += 1;
+        return { value: 'unused' };
+      }
+    };
+
+    expect(replaceVariable('Hello Ada', { unused })).toBe('Hello Ada');
+    expect(stringifyCount).toBe(0);
+  });
+
+  it('should format oversize error with the service env limit', () => {
+    expect(getTextOversizeErrorMessage()).toBe('Text length exceeds 100,000,000 characters.');
+  });
+
+  it('should stringify the same referenced variable once per replacement round', () => {
+    let stringifyCount = 0;
+    const value = {
+      toJSON() {
+        stringifyCount += 1;
+        return { a: 1 };
+      }
+    };
+
+    expect(replaceVariable('{{value}} {{value}}', { value })).toBe('{"a":1} {"a":1}');
+    expect(stringifyCount).toBe(1);
+  });
+
+  it('should not replace non-enumerable Object prototype keys', () => {
+    expect(replaceVariable('value: {{toString}}', {})).toBe('value: {{toString}}');
+    expect(replaceVariable('value: {{toString}}', { toString: 'own value' })).toBe(
+      'value: own value'
+    );
+  });
+
+  it('should support proxy-backed variable records', () => {
+    const variables = new Proxy(
+      {},
+      {
+        has(_, key) {
+          return key === 'name';
+        },
+        get(_, key) {
+          return key === 'name' ? 'Ada' : undefined;
+        }
+      }
+    ) as Record<string, any>;
+
+    expect(replaceVariable('Hello {{name}}', variables)).toBe('Hello Ada');
+  });
+
+  it('should treat $ special characters in replacement value as literals', () => {
+    expect(replaceVariable('value: {{val}}', { val: '$1' })).toBe('value: $1');
+    expect(replaceVariable('value: {{val}}', { val: '$2' })).toBe('value: $2');
+    expect(replaceVariable('value: {{val}}', { val: '$$' })).toBe('value: $$');
+    expect(replaceVariable('value: {{val}}', { val: '$&' })).toBe('value: $&');
+    expect(replaceVariable('value: {{val}}', { val: "$'" })).toBe("value: $'");
+    expect(replaceVariable('value: {{val}}', { val: '$`' })).toBe('value: $`');
+    expect(replaceVariable('result={{a}}&other={{b}}', { a: '$1', b: '$2' })).toBe(
+      'result=$1&other=$2'
+    );
+  });
+});

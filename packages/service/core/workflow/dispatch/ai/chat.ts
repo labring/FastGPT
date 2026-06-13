@@ -16,7 +16,7 @@ import {
 } from '@fastgpt/global/core/chat/adapt';
 import { getQuoteTemplate, getQuotePrompt } from '@fastgpt/global/core/ai/prompt/AIChat';
 import type { AIChatNodeProps } from '@fastgpt/global/core/workflow/runtime/type';
-import { replaceVariable } from '@fastgpt/global/common/string/tools';
+import { replaceVariable } from '../../../../common/string/replaceVariable';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { getLLMModel } from '../../../ai/model';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
@@ -36,7 +36,6 @@ import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { postTextCensor } from '../../../chat/postTextCensor';
 import { createLLMResponse } from '../../../ai/llm/request';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
-import { SYSTEM_MAX_STRING_LENGTH } from '../../../../env';
 
 export type ChatProps = ModuleDispatchProps<
   AIChatNodeProps & {
@@ -322,21 +321,15 @@ const getDatasetCiteData = async ({
   useDatasetQuote: boolean;
 }) => {
   function getValue({ item, index }: { item: SearchDataResponseItemType; index: number }) {
-    return replaceVariable(
-      quoteTemplate,
-      {
-        id: item.id,
-        q: item.q,
-        a: item.a || '',
-        updateTime: formatTime2YMDHM(item.updateTime),
-        source: item.sourceName,
-        sourceId: String(item.sourceId || ''),
-        index: index + 1
-      },
-      {
-        maxStringLength: SYSTEM_MAX_STRING_LENGTH
-      }
-    );
+    return replaceVariable(quoteTemplate, {
+      id: item.id,
+      q: item.q,
+      a: item.a || '',
+      updateTime: formatTime2YMDHM(item.updateTime),
+      source: item.sourceName,
+      sourceId: String(item.sourceId || ''),
+      index: index + 1
+    });
   }
 
   // slice filterSearch
@@ -358,29 +351,17 @@ const getDatasetCiteData = async ({
   // Reset user input, add dataset quote to user input
   const replaceInputValue =
     useDatasetQuote && quoteRole === 'user'
-      ? replaceVariable(
-          datasetQuotePromptTemplate,
-          {
-            quote: datasetQuoteText,
-            question: userChatInput
-          },
-          {
-            maxStringLength: SYSTEM_MAX_STRING_LENGTH
-          }
-        )
+      ? replaceVariable(datasetQuotePromptTemplate, {
+          quote: datasetQuoteText,
+          question: userChatInput
+        })
       : userChatInput;
 
   const systemPrompt =
     useDatasetQuote && quoteRole === 'system'
-      ? replaceVariable(
-          datasetQuotePromptTemplate,
-          {
-            quote: datasetQuoteText
-          },
-          {
-            maxStringLength: SYSTEM_MAX_STRING_LENGTH
-          }
-        )
+      ? replaceVariable(datasetQuotePromptTemplate, {
+          quote: datasetQuoteText
+        })
       : '';
 
   return {

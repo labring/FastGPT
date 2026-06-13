@@ -20,6 +20,24 @@ const createVariableState = (
 });
 
 describe('dispatchTextEditor', () => {
+  it('纯文本不构造 runtime variables', () => {
+    const result = dispatchTextEditor({
+      variableState: {
+        ...createVariableState(),
+        toRuntimeRecord: () => {
+          throw new Error('should not build runtime variables');
+        }
+      },
+      params: {
+        [NodeInputKeyEnum.textareaInput]: 'plain text',
+        [NodeInputKeyEnum.addInputParam]: {}
+      }
+    });
+
+    expect(result.data?.[NodeOutputKeyEnum.text]).toBe('plain text');
+    expect(result[DispatchNodeResponseKeyEnum.nodeResponse]?.textOutput).toBe('plain text');
+  });
+
   it('只 stringify 模板实际引用的 custom variable', () => {
     let stringifyCount = 0;
     const unusedObject = {

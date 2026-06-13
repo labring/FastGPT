@@ -3,8 +3,7 @@ import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
-import { replaceVariable } from '@fastgpt/global/common/string/tools';
-import { SYSTEM_MAX_STRING_LENGTH } from '../../../../env';
+import { replaceVariable } from '../../../../common/string/replaceVariable';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.textareaInput]: string;
@@ -19,6 +18,17 @@ export const dispatchTextEditor = (props: Record<string, any>): Response => {
     variableState,
     params: { system_textareaInput: text = '', system_addInputParam: customVariables = {} }
   } = props as Props;
+
+  if (!text.includes('{{')) {
+    return {
+      data: {
+        [NodeOutputKeyEnum.text]: text
+      },
+      [DispatchNodeResponseKeyEnum.nodeResponse]: {
+        textOutput: text
+      }
+    };
+  }
 
   const runtimeVariables = variableState.toRuntimeRecord();
   const variables = new Proxy(runtimeVariables, {
@@ -43,9 +53,7 @@ export const dispatchTextEditor = (props: Record<string, any>): Response => {
     }
   }) as Record<string, any>;
 
-  const textResult = replaceVariable(text, variables, {
-    maxStringLength: SYSTEM_MAX_STRING_LENGTH
-  });
+  const textResult = replaceVariable(text, variables);
 
   return {
     data: {

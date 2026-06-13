@@ -32,7 +32,6 @@ import { filterNodeResponseTreeData, stripChildTotalPoints } from '@fastgpt/glob
 import {
   filterWorkflowEdges,
   getReferenceVariableValue,
-  replaceEditorVariable,
   textAdaptGptResponse,
   valueTypeFormat
 } from '@fastgpt/global/core/workflow/runtime/utils';
@@ -88,7 +87,7 @@ import {
   shouldTraceWorkflowStep,
   type WorkflowObservedStepResult
 } from './utils/trace';
-import { SYSTEM_MAX_STRING_LENGTH } from '../../../env';
+import { replaceEditorVariable } from './utils/replaceEditorVariable';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
 
@@ -197,8 +196,7 @@ export const getWorkflowNodeRunParams = ({
         value = replaceEditorVariable({
           text: value,
           nodesMap: runtimeNodesMap,
-          variables: getRuntimeVariables(),
-          maxStringLength: SYSTEM_MAX_STRING_LENGTH
+          variables: getRuntimeVariables()
         });
       }
 
