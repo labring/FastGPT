@@ -1,5 +1,6 @@
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
+import { SYSTEM_MAX_STRING_LENGTH } from '../../../../env';
 
 export const getPromptToolCallPrompt = (tools: ChatCompletionTool['function'][]) => {
   const prompt = `<ToolSkill>
@@ -35,7 +36,13 @@ export const getPromptToolCallPrompt = (tools: ChatCompletionTool['function'][])
     parameters: tool.parameters
   }));
 
-  return replaceVariable(prompt, {
-    toolSchema: JSON.stringify(schema)
-  });
+  return replaceVariable(
+    prompt,
+    {
+      toolSchema: JSON.stringify(schema)
+    },
+    {
+      maxStringLength: SYSTEM_MAX_STRING_LENGTH
+    }
+  );
 };

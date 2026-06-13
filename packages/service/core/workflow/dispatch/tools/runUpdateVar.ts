@@ -15,6 +15,7 @@ import { type ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/
 import { isValidReferenceValue } from '@fastgpt/global/core/workflow/utils';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { getLogger, LogCategories } from '../../../../common/logger';
+import { SYSTEM_MAX_STRING_LENGTH } from '../../../../env';
 
 const addLog = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
 
@@ -62,7 +63,7 @@ const applyNumberOp = (
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.updateList]: TUpdateListItem[];
 }>;
-type Response = DispatchNodeResultType<{}>;
+type Response = DispatchNodeResultType<Record<string, never>>;
 
 export const dispatchUpdateVariable = async (props: Props): Promise<Response> => {
   const { params, variableState, runtimeNodesMap, workflowStreamResponse, runningAppInfo } = props;
@@ -111,7 +112,8 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
             ? replaceEditorVariable({
                 text: item.value?.[1],
                 nodesMap: runtimeNodesMap,
-                variables: runtimeVariables
+                variables: runtimeVariables,
+                maxStringLength: SYSTEM_MAX_STRING_LENGTH
               })
             : item.value?.[1];
 

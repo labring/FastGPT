@@ -29,6 +29,7 @@ import { formatHttpError } from '../utils';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '../../../../common/system/utils';
 import { serviceRequestMaxContentLength } from '../../../../common/system/constants';
 import { axios, httpsCertificateIgnoreAgent } from '../../../../common/api/axios';
+import { SYSTEM_MAX_STRING_LENGTH } from '../../../../env';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.TOOLS);
 
@@ -138,7 +139,8 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     return replaceEditorVariable({
       text,
       nodesMap: runtimeNodesMap,
-      variables: allVariables
+      variables: allVariables,
+      maxStringLength: SYSTEM_MAX_STRING_LENGTH
     });
   };
 

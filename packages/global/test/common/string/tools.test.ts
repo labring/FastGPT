@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   customNanoid,
+  DEFAULT_MAX_STRING_LENGTH,
   formatNumberWithUnit,
+  getTextOversizeErrorMessage,
   getNanoid,
   hashStr,
   replaceRegChars,
@@ -56,6 +58,69 @@ describe('string tools', () => {
     expect(replaceVariable('Hello {{name}}', { name: undefined })).toBe('Hello ');
     expect(replaceVariable('Hello {{name}}', { name: '{{name}}' })).toBe('Hello {{name}}');
     expect(replaceVariable(123 as any, { name: 'Ada' })).toBe(123);
+  });
+
+  it('should only stringify variables that appear in the template', () => {
+    let stringifyCount = 0;
+    const unusedLargeObject = {
+      toJSON() {
+        stringifyCount += 1;
+        return { value: 'unused' };
+      }
+    };
+
+    expect(
+      replaceVariable('Hello {{name}}', {
+        name: 'Ada',
+        unusedLargeObject
+      })
+    ).toBe('Hello Ada');
+    expect(stringifyCount).toBe(0);
+  });
+
+  it('should return strings without placeholders before reading variables', () => {
+    let stringifyCount = 0;
+    const unused = {
+      toJSON() {
+        stringifyCount += 1;
+        return { value: 'unused' };
+      }
+    };
+
+    expect(replaceVariable('Hello Ada', { unused })).toBe('Hello Ada');
+    expect(stringifyCount).toBe(0);
+  });
+
+  it('should use an explicit max string length without reading env', () => {
+    expect(DEFAULT_MAX_STRING_LENGTH).toBe(100_000_000);
+    expect(getTextOversizeErrorMessage()).toBe('Text length exceeds 100,000,000 characters.');
+    expect(getTextOversizeErrorMessage(2_000_000)).toBe(
+      'Text length exceeds 2,000,000 characters.'
+    );
+
+    expect(() =>
+      replaceVariable('hello {{name}}', { name: 'Ada' }, { maxStringLength: 5 })
+    ).toThrow('Text length exceeds 5 characters.');
+  });
+
+  it('should stringify the same referenced variable once per replacement round', () => {
+    let stringifyCount = 0;
+    const value = {
+      toJSON() {
+        stringifyCount += 1;
+        return { a: 1 };
+      }
+    };
+
+    expect(replaceVariable('{{value}} {{value}}', { value })).toBe('{"a":1} {"a":1}');
+    expect(stringifyCount).toBe(1);
+  });
+
+  it('should not replace non-enumerable Object prototype keys', () => {
+    expect(replaceVariable('value: {{toString}}', {})).toBe('value: {{toString}}');
+    expect(replaceVariable('value: {{toString}}', { toString: 'own value' })).toBe(
+      'value: own value'
+    );
   });
 
   it('should treat $ special characters in replacement value as literals', () => {

@@ -1,5 +1,11 @@
 import json5 from 'json5';
-import { checkStrOversize, replaceVariable, valToStr } from '../../../common/string/tools';
+import {
+  checkStrOversize,
+  DEFAULT_MAX_STRING_LENGTH,
+  getTextOversizeErrorMessage,
+  replaceVariable,
+  valToStr
+} from '../../../common/string/tools';
 import { ChatRoleEnum } from '../../../core/chat/constants';
 import type { ChatItemMiniType } from '../../../core/chat/type';
 import type { NodeOutputItemType } from './type';
@@ -382,31 +388,33 @@ export function replaceEditorVariable({
   text,
   nodesMap,
   variables,
-  depth = 0
+  depth = 0,
+  maxStringLength = DEFAULT_MAX_STRING_LENGTH
 }: {
   text: any;
   nodesMap: Record<string, RuntimeNodeItemType> | Map<string, RuntimeNodeItemType>;
   variables: Record<string, unknown>; // runtime global variables
   depth?: number;
+  maxStringLength?: number;
 }) {
   const getNode = (nodeId: string) => {
     return nodesMap instanceof Map ? nodesMap.get(nodeId) : nodesMap[nodeId];
   };
   if (typeof text !== 'string') return text;
   if (text === '') return text;
-  if (checkStrOversize(text)) {
-    throw new Error('Text length exceeds 100,000,000 characters.');
+  if (checkStrOversize(text, maxStringLength)) {
+    throw new Error(getTextOversizeErrorMessage(maxStringLength));
   }
+  if (!text.includes('{{')) return text;
 
   const MAX_REPLACEMENT_DEPTH = 10;
-  const processedVariables = new Set<string>();
 
   // Prevent infinite recursion
   if (depth > MAX_REPLACEMENT_DEPTH) {
     return text;
   }
 
-  text = replaceVariable(text, variables);
+  text = replaceVariable(text, variables, { maxStringLength });
 
   // Check for circular references in variable values
   const hasCircularReference = (value: any, targetKey: string): boolean => {
@@ -421,81 +429,69 @@ export function replaceEditorVariable({
   };
 
   const variablePattern = /\{\{\$([^.]+)\.([^$]+)\$\}\}/g;
-  const matches = [...text.matchAll(variablePattern)];
-  if (matches.length === 0) return text;
-
   let result = text;
-  let hasReplacements = false;
+  let currentDepth = depth;
 
-  // Build replacement map first to avoid modifying string during iteration
-  const replacements: Array<{ pattern: string; replacement: string }> = [];
+  while (currentDepth <= MAX_REPLACEMENT_DEPTH && result.includes('{{$')) {
+    let hasReplacements = false;
+    const replacementCache = new Map<string, string | undefined>();
 
-  const variableRegex = /[.*+?^${}()|[\]\\]/g;
-  for (const match of matches) {
-    const nodeId = match[1];
-    const id = match[2];
-    const variableKey = `${nodeId}.${id}`;
-
-    // Skip if already processed to avoid immediate circular reference
-    if (processedVariables.has(variableKey)) {
-      continue;
-    }
-
-    const variableVal = (() => {
-      if (nodeId === VARIABLE_NODE_ID) {
-        return variables[id];
+    result = result.replace(variablePattern, (match: string, nodeId: string, id: string) => {
+      const variableKey = `${nodeId}.${id}`;
+      if (replacementCache.has(variableKey)) {
+        const cachedReplacement = replacementCache.get(variableKey);
+        return cachedReplacement === undefined ? match : cachedReplacement;
       }
-      // Find upstream node input/output
-      const node = getNode(nodeId);
-      if (!node) return;
 
-      const output = node.outputs.find((output) => output.id === id);
-      if (output) return formatVariableValByType(output.value, output.valueType);
+      const variableVal = (() => {
+        if (nodeId === VARIABLE_NODE_ID) {
+          return variables[id];
+        }
 
-      // Use the node's input as the variable value(Example: HTTP data will reference its own dynamic input)
-      const input = node.inputs.find((input) => input.key === id);
-      if (input) {
-        return getReferenceVariableValue({
-          value: input.value,
-          nodesMap,
-          variables
-        });
+        // Find upstream node input/output
+        const node = getNode(nodeId);
+        if (!node) return;
+
+        const output = node.outputs.find((output) => output.id === id);
+        if (output) return formatVariableValByType(output.value, output.valueType);
+
+        // Use the node's input as the variable value(Example: HTTP data will reference its own dynamic input)
+        const input = node.inputs.find((input) => input.key === id);
+        if (input) {
+          return getReferenceVariableValue({
+            value: input.value,
+            nodesMap,
+            variables
+          });
+        }
+      })();
+
+      // 直接自引用保持原占位符，交给最大深度保护兜底更复杂的环。
+      if (hasCircularReference(variableVal, variableKey)) {
+        replacementCache.set(variableKey, undefined);
+        return match;
       }
-    })();
 
-    // Check for direct circular reference
-    if (hasCircularReference(String(variableVal), variableKey)) {
-      continue;
-    }
-
-    const formatVal = valToStr(variableVal);
-    const escapedNodeId = nodeId.replace(variableRegex, '\\$&');
-    const escapedId = id.replace(variableRegex, '\\$&');
-
-    replacements.push({
-      pattern: `\\{\\{\\$${escapedNodeId}\\.${escapedId}\\$\\}\\}`,
-      replacement: formatVal
+      const replacement = valToStr(variableVal);
+      replacementCache.set(variableKey, replacement);
+      if (replacement !== match) {
+        hasReplacements = true;
+      }
+      return replacement;
     });
 
-    processedVariables.add(variableKey);
-    hasReplacements = true;
-  }
+    if (!hasReplacements) break;
+    currentDepth++;
 
-  // Apply all replacements
-  for (const { pattern, replacement } of replacements) {
-    if (checkStrOversize(result)) {
-      console.warn('Text length exceeds 100,000,000 characters.');
+    if (checkStrOversize(result, maxStringLength)) {
+      console.warn(getTextOversizeErrorMessage(maxStringLength));
       break;
     }
 
-    const re = _getCachedRegex(pattern);
-    re.lastIndex = 0;
-    result = result.replace(re, () => replacement);
-  }
-
-  // If we made replacements and there might be nested variables, recursively process
-  if (hasReplacements && /\{\{\$[^.]+\.[^$]+\$\}\}/.test(result)) {
-    result = replaceEditorVariable({ text: result, nodesMap, variables, depth: depth + 1 });
+    // 旧逻辑每次处理嵌套节点引用前都会先处理普通变量，这里保留该顺序。
+    if (currentDepth <= MAX_REPLACEMENT_DEPTH && result.includes('{{$')) {
+      result = replaceVariable(result, variables, { maxStringLength });
+    }
   }
 
   return result || '';

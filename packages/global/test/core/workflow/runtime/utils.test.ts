@@ -1519,6 +1519,62 @@ describe('replaceEditorVariable', () => {
     expect(result).toBe('Hello World');
   });
 
+  it('should return strings without placeholders before reading variables', () => {
+    let stringifyCount = 0;
+    const result = replaceEditorVariable({
+      text: 'plain text',
+      nodesMap: {},
+      variables: {
+        unused: {
+          toJSON() {
+            stringifyCount += 1;
+            return { value: 'unused' };
+          }
+        }
+      }
+    });
+
+    expect(result).toBe('plain text');
+    expect(stringifyCount).toBe(0);
+  });
+
+  it('should not stringify unused global variables when replacing node references', () => {
+    let stringifyCount = 0;
+    const nodesMap: Record<string, RuntimeNodeItemType> = {
+      node1: {
+        nodeId: 'node1',
+        name: 'test',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        inputs: [],
+        outputs: [
+          {
+            id: 'out1',
+            key: 'output1',
+            type: FlowNodeOutputTypeEnum.static,
+            value: 'outputValue',
+            valueType: WorkflowIOValueTypeEnum.string
+          }
+        ]
+      }
+    };
+
+    const result = replaceEditorVariable({
+      text: 'Result: {{$node1.out1$}}',
+      nodesMap,
+      variables: {
+        unused: {
+          toJSON() {
+            stringifyCount += 1;
+            return { value: 'unused' };
+          }
+        }
+      }
+    });
+
+    expect(result).toBe('Result: outputValue');
+    expect(stringifyCount).toBe(0);
+  });
+
   it('should replace node output variables', () => {
     const nodesMap: Record<string, RuntimeNodeItemType> = {
       node1: {

@@ -9,6 +9,8 @@ const defaultableIntSchema = (defaultValue: number) =>
     z.coerce.number<number>().int().nonnegative()
   );
 
+export const SYSTEM_STRING_LENGTH_UNIT = 1_000_000;
+
 /**
  * 判断系统是否显式配置了 Agent 虚拟机能力。
  * 注意 serviceEnv 会给部分字段填默认值，这里必须读取原始 env，避免把未配置误判为已配置。
@@ -246,6 +248,10 @@ export const serviceEnv = createEnv({
     WORKFLOW_PARALLEL_MAX_CONCURRENCY: IntSchema.default(10).meta({
       description: '并行节点并发上限（最终会 clamp 到 [5, 100]，默认 10）'
     }),
+    SYSTEM_MAX_STRING_LENGTH_M: IntSchema.min(1).max(100).default(100).meta({
+      description:
+        '系统同步字符串处理最大字符数（M，1M=1,000,000 字符），用于变量替换等 CPU 密集文本操作'
+    }),
     CHAT_MAX_QPM: IntSchema.default(5000).meta({
       description: '聊天 QPM（若用户套餐有限制，这里不生效）'
     }),
@@ -312,3 +318,6 @@ if (serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY > serviceEnv.WORKFLOW_MAX_LOOP_
     `Invalid environment configuration: WORKFLOW_PARALLEL_MAX_CONCURRENCY (${serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY}) must not exceed WORKFLOW_MAX_LOOP_TIMES (${serviceEnv.WORKFLOW_MAX_LOOP_TIMES})`
   );
 }
+
+export const SYSTEM_MAX_STRING_LENGTH =
+  serviceEnv.SYSTEM_MAX_STRING_LENGTH_M * SYSTEM_STRING_LENGTH_UNIT;

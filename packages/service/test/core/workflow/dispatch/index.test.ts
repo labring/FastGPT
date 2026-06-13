@@ -4,11 +4,22 @@ import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
+  getWorkflowNodeRunParams,
   WorkflowQueue,
   mergeAssistantResponseAnswerText
 } from '@fastgpt/service/core/workflow/dispatch/index';
 import { createClientAbortTracker } from '@fastgpt/service/core/workflow/dispatch/utils/clientAbort';
 import { createNode, createEdge } from '../utils';
+import {
+  NodeInputKeyEnum,
+  VARIABLE_NODE_ID,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeOutputTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import type { WorkflowVariableStateLike } from '@fastgpt/global/core/workflow/runtime/type';
 
 const waitWithTimeout = async <T>(promise: Promise<T>, timeoutMs: number, label: string) => {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -409,6 +420,171 @@ describe('createClientAbortTracker', () => {
         server.close((error) => (error ? reject(error) : resolve()));
       });
     }
+  });
+});
+
+describe('getWorkflowNodeRunParams', () => {
+  const createVariableState = (variables: Record<string, unknown> = {}) => {
+    let toRuntimeRecordCount = 0;
+    const state: WorkflowVariableStateLike = {
+      get: (key) => variables[key],
+      set: async (key, value) => {
+        variables[key] = value;
+        return value;
+      },
+      getStoreValue: (key) => variables[key],
+      getFileStoreValueByRuntimeUrl: () => undefined,
+      toRuntimeRecord: () => {
+        toRuntimeRecordCount += 1;
+        return { ...variables };
+      },
+      toStoreRecord: () => ({ ...variables }),
+      clone: () => createVariableState({ ...variables }).state
+    };
+
+    return {
+      state,
+      getToRuntimeRecordCount: () => toRuntimeRecordCount
+    };
+  };
+
+  it('静态 input 不应构造 runtimeVariables', () => {
+    const variableState = createVariableState({ name: 'Ada' });
+    const node = createNode('node1', FlowNodeTypeEnum.textEditor);
+    node.inputs = [
+      {
+        key: NodeInputKeyEnum.textareaInput,
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.textarea],
+        value: 'plain text',
+        valueType: WorkflowIOValueTypeEnum.string
+      }
+    ];
+
+    const params = getWorkflowNodeRunParams({
+      node,
+      runtimeNodesMap: new Map(),
+      variableState: variableState.state
+    });
+
+    expect(params[NodeInputKeyEnum.textareaInput]).toBe('plain text');
+    expect(variableState.getToRuntimeRecordCount()).toBe(0);
+  });
+
+  it('普通变量模板按需构造 runtimeVariables 并完成替换', () => {
+    const variableState = createVariableState({ name: 'Ada' });
+    const node = createNode('node1', FlowNodeTypeEnum.textEditor);
+    node.inputs = [
+      {
+        key: NodeInputKeyEnum.textareaInput,
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.textarea],
+        value: 'Hello {{name}}',
+        valueType: WorkflowIOValueTypeEnum.string
+      }
+    ];
+
+    const params = getWorkflowNodeRunParams({
+      node,
+      runtimeNodesMap: new Map(),
+      variableState: variableState.state
+    });
+
+    expect(params[NodeInputKeyEnum.textareaInput]).toBe('Hello Ada');
+    expect(variableState.getToRuntimeRecordCount()).toBe(1);
+  });
+
+  it('节点输出模板按需构造 runtimeVariables 并完成替换', () => {
+    const variableState = createVariableState({
+      unused: {
+        toJSON() {
+          throw new Error('unused variable should not be stringified');
+        }
+      }
+    });
+    const node = createNode('target', FlowNodeTypeEnum.textEditor);
+    node.inputs = [
+      {
+        key: NodeInputKeyEnum.textareaInput,
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.textarea],
+        value: 'Result: {{$source.output$}}',
+        valueType: WorkflowIOValueTypeEnum.string
+      }
+    ];
+    const sourceNode = createNode('source', FlowNodeTypeEnum.textEditor);
+    sourceNode.outputs = [
+      {
+        id: 'output',
+        key: 'output',
+        type: FlowNodeOutputTypeEnum.static,
+        value: 'done',
+        valueType: WorkflowIOValueTypeEnum.string
+      }
+    ];
+
+    const params = getWorkflowNodeRunParams({
+      node,
+      runtimeNodesMap: new Map([['source', sourceNode]]),
+      variableState: variableState.state
+    });
+
+    expect(params[NodeInputKeyEnum.textareaInput]).toBe('Result: done');
+    expect(variableState.getToRuntimeRecordCount()).toBe(1);
+  });
+
+  it('纯引用 input 直接解析原始对象', () => {
+    const refValue = { nested: true };
+    const variableState = createVariableState({ payload: refValue });
+    const node = createNode('node1', FlowNodeTypeEnum.textEditor);
+    node.inputs = [
+      {
+        key: 'payload',
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.reference],
+        value: [VARIABLE_NODE_ID, 'payload'],
+        valueType: WorkflowIOValueTypeEnum.object
+      }
+    ];
+
+    const params = getWorkflowNodeRunParams({
+      node,
+      runtimeNodesMap: new Map(),
+      variableState: variableState.state
+    });
+
+    expect(params.payload).toBe(refValue);
+    expect(variableState.getToRuntimeRecordCount()).toBe(1);
+  });
+
+  it('dynamic input 保持顶层和动态参数对象同步写入', () => {
+    const variableState = createVariableState({ name: 'Ada' });
+    const node = createNode('node1', FlowNodeTypeEnum.textEditor);
+    node.inputs = [
+      {
+        key: NodeInputKeyEnum.addInputParam,
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.addInputParam],
+        value: undefined
+      },
+      {
+        key: 'dynamicName',
+        label: '',
+        renderTypeList: [FlowNodeInputTypeEnum.input],
+        value: '{{name}}',
+        valueType: WorkflowIOValueTypeEnum.string,
+        canEdit: true
+      }
+    ];
+
+    const params = getWorkflowNodeRunParams({
+      node,
+      runtimeNodesMap: new Map(),
+      variableState: variableState.state
+    });
+
+    expect(params[NodeInputKeyEnum.addInputParam]).toEqual({ dynamicName: 'Ada' });
+    expect(params.dynamicName).toBe('Ada');
   });
 });
 

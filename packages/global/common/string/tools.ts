@@ -3,7 +3,12 @@ import { customAlphabet } from 'nanoid';
 import path from 'path';
 import { getErrText } from '../error/utils';
 
-export const checkStrOversize = (str: string, size = 1e8) => {
+export const DEFAULT_MAX_STRING_LENGTH = 100_000_000;
+
+export const getTextOversizeErrorMessage = (size = DEFAULT_MAX_STRING_LENGTH) =>
+  `Text length exceeds ${size.toLocaleString('en-US')} characters.`;
+
+export const checkStrOversize = (str: string, size = DEFAULT_MAX_STRING_LENGTH) => {
   if (str.length > size) {
     return true;
   }
@@ -60,26 +65,66 @@ export const valToStr = (val: any) => {
   return String(val);
 };
 
-// replace {{variable}} to value
-export function replaceVariable(text: any, obj: Record<string, any>, depth = 0) {
-  if (typeof text !== 'string') return text;
-  if (checkStrOversize(text)) {
-    throw new Error('Text length exceeds 100,000,000 characters.');
+const VARIABLE_PLACEHOLDER_PATTERN = /\{\{([^}]+)\}\}/g;
+const SKIP_VARIABLE_REPLACEMENT = Symbol('skipVariableReplacement');
+type ReplaceVariableOptions = {
+  depth?: number;
+  maxStringLength?: number;
+};
+
+const hasVariableKey = (obj: Record<string, any>, key: string) => {
+  if (Object.prototype.hasOwnProperty.call(obj, key)) {
+    return Object.prototype.propertyIsEnumerable.call(obj, key);
   }
 
-  const MAX_REPLACEMENT_DEPTH = 10;
-  const processedVariables = new Set<string>();
+  if (!(key in obj)) return false;
 
-  // Prevent infinite recursion
+  let proto = Object.getPrototypeOf(obj);
+  while (proto) {
+    if (Object.prototype.hasOwnProperty.call(proto, key)) {
+      return Object.prototype.propertyIsEnumerable.call(proto, key);
+    }
+    proto = Object.getPrototypeOf(proto);
+  }
+
+  // Proxy-backed variable records can expose virtual keys through the `has` trap.
+  return true;
+};
+
+/**
+ * 将文本中的 `{{variable}}` 占位符替换为变量值。
+ *
+ * 该函数位于 global 包，不能直接读取 service env；服务侧需要把已校验的字符串上限显式传入。
+ * 替换时只格式化模板实际引用的变量，避免大变量表在每次工作流节点运行时被整体 stringify。
+ */
+export function replaceVariable(
+  text: any,
+  obj: Record<string, any>,
+  optionsOrDepth: ReplaceVariableOptions | number = {},
+  fallbackMaxStringLength = DEFAULT_MAX_STRING_LENGTH
+) {
+  const { depth, maxStringLength } =
+    typeof optionsOrDepth === 'number'
+      ? { depth: optionsOrDepth, maxStringLength: fallbackMaxStringLength }
+      : {
+          depth: optionsOrDepth.depth ?? 0,
+          maxStringLength: optionsOrDepth.maxStringLength ?? DEFAULT_MAX_STRING_LENGTH
+        };
+
+  if (typeof text !== 'string') return text;
+  if (checkStrOversize(text, maxStringLength)) {
+    throw new Error(getTextOversizeErrorMessage(maxStringLength));
+  }
+  if (!text.includes('{{')) return text;
+
+  const MAX_REPLACEMENT_DEPTH = 10;
   if (depth > MAX_REPLACEMENT_DEPTH) {
     return text;
   }
 
-  // Check for circular references in variable values
   const hasCircularReference = (value: any, targetKey: string): boolean => {
     if (typeof value !== 'string') return false;
 
-    // Check if the value contains the target variable pattern (direct self-reference)
     const selfRefPattern = new RegExp(
       `\\{\\{${targetKey.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\}\\}`,
       'g'
@@ -88,44 +133,36 @@ export function replaceVariable(text: any, obj: Record<string, any>, depth = 0) 
   };
 
   let result = text;
-  let hasReplacements = false;
+  let currentDepth = depth;
 
-  // Build replacement map first to avoid modifying string during iteration
-  const replacements: { pattern: string; replacement: string }[] = [];
+  while (currentDepth <= MAX_REPLACEMENT_DEPTH && result.includes('{{')) {
+    let changed = false;
+    const replacementCache = new Map<string, string | typeof SKIP_VARIABLE_REPLACEMENT>();
 
-  for (const key in obj) {
-    // Skip if already processed to avoid immediate circular reference
-    if (processedVariables.has(key)) {
-      continue;
-    }
+    result = result.replace(VARIABLE_PLACEHOLDER_PATTERN, (match: string, key: string) => {
+      if (!hasVariableKey(obj, key)) return match;
 
-    const val = obj[key];
+      if (replacementCache.has(key)) {
+        const cachedReplacement = replacementCache.get(key);
+        return cachedReplacement === SKIP_VARIABLE_REPLACEMENT ? match : (cachedReplacement ?? '');
+      }
 
-    // Check for direct circular reference
-    if (hasCircularReference(String(val), key)) {
-      continue;
-    }
+      const val = obj[key];
+      if (hasCircularReference(val, key)) {
+        replacementCache.set(key, SKIP_VARIABLE_REPLACEMENT);
+        return match;
+      }
 
-    const formatVal = valToStr(val);
-    const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-    replacements.push({
-      pattern: `{{${escapedKey}}}`,
-      replacement: formatVal
+      const replacement = valToStr(val);
+      replacementCache.set(key, replacement);
+      if (replacement !== match) {
+        changed = true;
+      }
+      return replacement;
     });
 
-    processedVariables.add(key);
-    hasReplacements = true;
-  }
-
-  // Apply all replacements
-  replacements.forEach(({ pattern, replacement }) => {
-    result = result.replace(new RegExp(pattern, 'g'), () => replacement);
-  });
-
-  // If we made replacements and there might be nested variables, recursively process
-  if (hasReplacements && /\{\{[^}]+\}\}/.test(result)) {
-    result = replaceVariable(result, obj, depth + 1);
+    if (!changed) break;
+    currentDepth++;
   }
 
   return result || '';

@@ -20,6 +20,7 @@ import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/train
 import { delay } from '@fastgpt/service/common/bullmq';
 import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
 import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import { SYSTEM_MAX_STRING_LENGTH } from '@fastgpt/service/env';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.QA);
 
@@ -127,7 +128,7 @@ export async function generateQA(): Promise<any> {
       try {
         const modelData = getLLMModel(data.dataset.agentModel);
         const prompt = `${data.collection.qaPrompt || Prompt_AgentQA.description}
-  ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
+  ${replaceVariable(Prompt_AgentQA.fixedText, { text }, { maxStringLength: SYSTEM_MAX_STRING_LENGTH })}`;
 
         // request LLM to get QA
         const messages: ChatCompletionMessageParam[] = [

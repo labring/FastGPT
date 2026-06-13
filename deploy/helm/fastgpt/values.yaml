@@ -92,6 +92,11 @@ autoscaling:
   targetCPUUtilizationPercentage: 80
   # targetMemoryUtilizationPercentage: 80
 
+system:
+  # Maximum character length for synchronous system string operations, in M characters.
+  # 1 means 1,000,000 characters. Valid range: 1 to 100.
+  maxStringLengthM: 100
+
 # Additional volumes on the output Deployment definition.
 volumes: []
 # - name: foo

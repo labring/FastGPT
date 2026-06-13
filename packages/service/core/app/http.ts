@@ -9,6 +9,8 @@ import { replaceEditorVariable } from '@fastgpt/global/core/workflow/runtime/uti
 import { isInternalAddress, PRIVATE_URL_TEXT } from '../../common/system/utils';
 import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
+import { SYSTEM_MAX_STRING_LENGTH } from '../../env';
+import FormData from 'form-data';
 
 export type RunHTTPToolParams = {
   baseUrl: string;
@@ -40,7 +42,8 @@ const buildHttpRequest = ({
     return replaceEditorVariable({
       text,
       nodesMap: new Map(),
-      variables: params
+      variables: params,
+      maxStringLength: SYSTEM_MAX_STRING_LENGTH
     });
   };
 
@@ -58,7 +61,7 @@ const buildHttpRequest = ({
     }
 
     if (staticBody.type === ContentTypes.formData) {
-      const formData = new (require('form-data'))();
+      const formData = new FormData();
       staticBody.formData?.forEach(({ key, value }) => {
         const replacedKey = replaceVariables(key);
         const replacedValue = replaceVariables(value);

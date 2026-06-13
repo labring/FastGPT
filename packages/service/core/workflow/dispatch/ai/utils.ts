@@ -16,6 +16,7 @@ import type { ToolNodeItemType } from './toolcall/type';
 import json5 from 'json5';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
+import { SYSTEM_MAX_STRING_LENGTH } from '../../../../env';
 
 // Assistant process
 export const filterToolResponseToPreview = (response: AIChatItemValueItemType[]) => {
@@ -66,7 +67,9 @@ export const toolCallMessagesAdapt = ({
   Image：{{imgCount}}
   ------
   {{question}}`;
-    return replaceVariable(prompt, obj);
+    return replaceVariable(prompt, obj, {
+      maxStringLength: SYSTEM_MAX_STRING_LENGTH
+    });
   };
 
   if (skip) return userInput;
