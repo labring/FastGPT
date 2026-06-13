@@ -1,18 +1,17 @@
 import { Box, type BoxProps, Button, Flex } from '@chakra-ui/react';
-import React, { useMemo, useState, useRef } from 'react';
+import React, { useMemo, useState } from 'react';
 import { type ChatControllerProps } from './ChatController';
 import styles from '../index.module.scss';
 import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatBoxContext } from '../Provider';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { type AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
-import { useMemoizedFn, useSize } from 'ahooks';
+import { useMemoizedFn } from 'ahooks';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import HumanChatBubble from './HumanChatBubble';
@@ -53,12 +52,6 @@ const ChatItem = (props: Props) => {
   const { t } = useTranslation();
 
   const [showFeedbackContent, setShowFeedbackContent] = useState(false);
-
-  // Error variables
-  const [errorExpanded, setErrorExpanded] = useState(false);
-  const errorContentRef = useRef<HTMLDivElement>(null);
-  const errorContentSize = useSize(errorContentRef);
-  const errorContentOverflow = (errorContentSize?.height || 0) > 100;
 
   const styleMap: BoxProps = useMemoEnhance(
     () => ({
@@ -362,78 +355,6 @@ const ChatItem = (props: Props) => {
         );
       })}
 
-      {isChatLog && chat.obj === ChatRoleEnum.AI && errorText && (
-        <Box
-          mt={2}
-          maxW={'500px'}
-          border={'1px solid'}
-          borderColor={'myGray.200'}
-          borderRadius={'md'}
-          p={3}
-          bg={'white'}
-        >
-          <Flex alignItems={'center'} mb={2}>
-            <MyIcon name={'common/warn'} w={'16px'} color={'yellow.500'} mr={2} />
-            <Box fontSize={'mini'} fontWeight={'medium'} color={'myGray.600'}>
-              {t('chat:log.error.error_prefix')} - {errorText.moduleName}
-            </Box>
-          </Flex>
-          <Box
-            position={'relative'}
-            maxH={errorExpanded ? '600px' : '100px'}
-            overflow={errorExpanded ? 'auto' : 'hidden'}
-          >
-            <Box
-              ref={errorContentRef}
-              fontSize={'sm'}
-              color={'myGray.500'}
-              whiteSpace={'pre-wrap'}
-              ml={6}
-            >
-              {errorText.errorText}
-            </Box>
-            {!errorExpanded && errorContentOverflow && (
-              <Box
-                position={'absolute'}
-                bottom={0}
-                left={0}
-                right={0}
-                h={'50px'}
-                bgGradient={'linear(to-b, transparent, white)'}
-                pointerEvents={'none'}
-              />
-            )}
-          </Box>
-          {errorContentOverflow && (
-            <Flex
-              justifyContent={'center'}
-              bg={'myGray.150'}
-              cursor={'pointer'}
-              onClick={() => setErrorExpanded(!errorExpanded)}
-              alignItems={'center'}
-              py={1}
-              backdropFilter={'blur(2px)'}
-              borderBottomRadius={'sm'}
-              fontSize={'10px'}
-              fontWeight={'medium'}
-              color={'myGray.600'}
-              _hover={{
-                bg: 'myGray.200'
-              }}
-              mx={-3}
-              mb={-3}
-              mt={2}
-            >
-              {errorExpanded ? t('chat:log.error.collapse') : t('chat:log.error.expand')}
-              <MyIcon
-                name={errorExpanded ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}
-                w={'12px'}
-                ml={1}
-              />
-            </Flex>
-          )}
-        </Box>
-      )}
     </Flex>
   );
 };
