@@ -75,14 +75,35 @@ describe('service replaceVariable', () => {
     expect(stringifyCount).toBe(1);
   });
 
-  it('should not replace non-enumerable Object prototype keys', () => {
+  it('should only replace enumerable own, inherited, and proxy-backed keys', () => {
     expect(replaceVariable('value: {{toString}}', {})).toBe('value: {{toString}}');
     expect(replaceVariable('value: {{toString}}', { toString: 'own value' })).toBe(
       'value: own value'
     );
-  });
 
-  it('should support proxy-backed variable records', () => {
+    const nonEnumerableOwn = {};
+    Object.defineProperty(nonEnumerableOwn, 'secret', {
+      value: 'hidden',
+      enumerable: false
+    });
+    expect(replaceVariable('value: {{secret}}', nonEnumerableOwn)).toBe('value: {{secret}}');
+
+    const enumerablePrototype = {
+      inheritedName: 'Ada'
+    };
+    expect(replaceVariable('Hello {{inheritedName}}', Object.create(enumerablePrototype))).toBe(
+      'Hello Ada'
+    );
+
+    const nonEnumerablePrototype = {};
+    Object.defineProperty(nonEnumerablePrototype, 'inheritedSecret', {
+      value: 'hidden',
+      enumerable: false
+    });
+    expect(
+      replaceVariable('value: {{inheritedSecret}}', Object.create(nonEnumerablePrototype))
+    ).toBe('value: {{inheritedSecret}}');
+
     const variables = new Proxy(
       {},
       {
