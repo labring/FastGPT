@@ -4,10 +4,10 @@ import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
-  getWorkflowNodeRunParams,
   WorkflowQueue,
   mergeAssistantResponseAnswerText
 } from '@fastgpt/service/core/workflow/dispatch/index';
+import { getWorkflowNodeRunParams } from '@fastgpt/service/core/workflow/dispatch/utils/runtime';
 import { createClientAbortTracker } from '@fastgpt/service/core/workflow/dispatch/utils/clientAbort';
 import { createNode, createEdge } from '../utils';
 import {
