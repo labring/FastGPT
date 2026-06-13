@@ -6,7 +6,6 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import {
   checkStrOversize,
-  getTextOversizeErrorMessage,
   valToStr,
   replaceVariable
 } from '../../../../common/string/replaceVariable';
@@ -34,12 +33,11 @@ export function replaceEditorVariable({
   };
   if (typeof text !== 'string') return text;
   if (text === '') return text;
-  if (checkStrOversize(text)) {
-    throw new Error(getTextOversizeErrorMessage());
-  }
+  if (checkStrOversize(text)) return text;
   if (!text.includes('{{')) return text;
 
   text = replaceVariable(text, variables);
+  if (checkStrOversize(text)) return text;
 
   const hasCircularReference = (value: any, targetKey: string): boolean => {
     return typeof value === 'string' && value.includes(`{{$${targetKey}$}}`);
@@ -100,12 +98,15 @@ export function replaceEditorVariable({
     currentDepth++;
 
     if (checkStrOversize(result)) {
-      throw new Error(getTextOversizeErrorMessage());
+      break;
     }
 
     // 旧逻辑每次处理嵌套节点引用前都会先处理普通变量，这里保留该顺序。
     if (currentDepth <= MAX_REPLACEMENT_DEPTH && result.includes('{{$')) {
       result = replaceVariable(result, variables);
+      if (checkStrOversize(result)) {
+        break;
+      }
     }
   }
 

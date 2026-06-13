@@ -36,9 +36,6 @@ export const valToStr = (val: any) => {
   return String(val);
 };
 
-export const getTextOversizeErrorMessage = () =>
-  `Text length exceeds ${SYSTEM_MAX_STRING_LENGTH.toLocaleString('en-US')} characters.`;
-
 export const checkStrOversize = (str: string) => str.length > SYSTEM_MAX_STRING_LENGTH;
 
 const hasVariableKey = (obj: Record<string, any>, key: string) => {
@@ -68,9 +65,7 @@ const hasVariableKey = (obj: Record<string, any>, key: string) => {
  */
 export const replaceVariable = (text: any, obj: Record<string, any>) => {
   if (typeof text !== 'string') return text;
-  if (checkStrOversize(text)) {
-    throw new Error(getTextOversizeErrorMessage());
-  }
+  if (checkStrOversize(text)) return text;
   if (!text.includes('{{')) return text;
 
   const hasCircularReference = (value: any, targetKey: string): boolean => {
@@ -106,9 +101,7 @@ export const replaceVariable = (text: any, obj: Record<string, any>) => {
       return replacement;
     });
 
-    if (checkStrOversize(result)) {
-      throw new Error(getTextOversizeErrorMessage());
-    }
+    if (checkStrOversize(result)) break;
 
     if (!changed) break;
     currentDepth++;

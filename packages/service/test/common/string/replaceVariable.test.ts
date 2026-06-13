@@ -1,9 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import {
-  getTextOversizeErrorMessage,
-  valToStr,
-  replaceVariable
-} from '@fastgpt/service/common/string/replaceVariable';
+import { valToStr, replaceVariable } from '@fastgpt/service/common/string/replaceVariable';
 
 describe('service replaceVariable', () => {
   it('should convert values to strings', () => {
@@ -58,11 +54,7 @@ describe('service replaceVariable', () => {
     expect(stringifyCount).toBe(0);
   });
 
-  it('should format oversize error with the service env limit', () => {
-    expect(getTextOversizeErrorMessage()).toBe('Text length exceeds 100,000,000 characters.');
-  });
-
-  it('should reject replacement results that exceed the system string limit before the next round', async () => {
+  it('should stop replacement rounds when the result exceeds the system string limit', async () => {
     vi.resetModules();
     vi.doMock('@fastgpt/service/env', () => ({
       SYSTEM_MAX_STRING_LENGTH: 20
@@ -70,12 +62,15 @@ describe('service replaceVariable', () => {
     const { replaceVariable: replaceVariableWithSmallLimit } =
       await import('@fastgpt/service/common/string/replaceVariable');
 
-    expect(() =>
+    expect(
       replaceVariableWithSmallLimit('{{large}}', {
         large: `${'x'.repeat(21)}{{next}}`,
         next: 'should not be scanned'
       })
-    ).toThrow('Text length exceeds 20 characters.');
+    ).toBe(`${'x'.repeat(21)}{{next}}`);
+    expect(replaceVariableWithSmallLimit(`${'x'.repeat(21)}{{next}}`, { next: 'value' })).toBe(
+      `${'x'.repeat(21)}{{next}}`
+    );
 
     vi.doUnmock('@fastgpt/service/env');
     vi.resetModules();

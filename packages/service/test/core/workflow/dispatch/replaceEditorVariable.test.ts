@@ -184,10 +184,11 @@ describe('replaceEditorVariable', () => {
     expect(result).toBe('Result: {{$node1.out1$}}');
   });
 
-  it('should reject node reference replacement results that exceed the system string limit', async () => {
+  it('should stop node reference replacement rounds when the result exceeds the system string limit', async () => {
     vi.resetModules();
+    const text = 'Result: {{$node1.out1$}}';
     vi.doMock('@fastgpt/service/env', () => ({
-      SYSTEM_MAX_STRING_LENGTH: 20
+      SYSTEM_MAX_STRING_LENGTH: text.length
     }));
     const { replaceEditorVariable: replaceEditorVariableWithSmallLimit } =
       await import('@fastgpt/service/core/workflow/dispatch/utils/replaceEditorVariable');
@@ -202,20 +203,20 @@ describe('replaceEditorVariable', () => {
             id: 'out1',
             key: 'output1',
             type: FlowNodeOutputTypeEnum.static,
-            value: 'x'.repeat(21),
+            value: 'x'.repeat(text.length + 1),
             valueType: WorkflowIOValueTypeEnum.string
           }
         ]
       }
     };
 
-    expect(() =>
+    expect(
       replaceEditorVariableWithSmallLimit({
-        text: 'Result: {{$node1.out1$}}',
+        text,
         nodesMap,
         variables: {}
       })
-    ).toThrow('Text length exceeds 20 characters.');
+    ).toBe(`Result: ${'x'.repeat(text.length + 1)}`);
 
     vi.doUnmock('@fastgpt/service/env');
     vi.resetModules();
