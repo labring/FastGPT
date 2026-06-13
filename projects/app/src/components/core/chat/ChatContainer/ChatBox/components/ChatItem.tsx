@@ -19,7 +19,6 @@ import AIChatBubble, { shouldFilterAiValue } from './AIChatBubble';
 import type { ChatBoxInputType } from '../type';
 import { hasAiAnswerContent } from './AIChatBubble/utils';
 import ChatErrorCard from './ChatErrorCard';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 
 const colorMap = {
   [ChatStatusEnum.loading]: {
@@ -87,16 +86,10 @@ const ChatItem = (props: Props) => {
       errorText?.moduleName ||
       chat.moduleName ||
       t('common:core.module.template.ai_chat', { defaultValue: 'AI 对话' });
-    const errorReason = errorText?.errorText || '';
-    const noOutputText = t('chat:no_output', '无输出');
-    const isNoOutputError =
-      !errorReason ||
-      errorReason === 'chat:LLM_model_response_empty' ||
-      errorReason === t('chat:LLM_model_response_empty');
 
     return {
       title: `${t('chat:log.error.error_prefix')} - ${t(moduleName)}`,
-      message: isNoOutputError ? noOutputText : t(getErrText(errorReason))
+      message: t(errorText?.errorText || chat.errorMsg || 'Unknow error')
     };
   }, [chat.errorMsg, chat.moduleName, errorText, t]);
 
@@ -354,7 +347,6 @@ const ChatItem = (props: Props) => {
           </Box>
         );
       })}
-
     </Flex>
   );
 };
