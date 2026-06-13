@@ -100,8 +100,7 @@ export function replaceEditorVariable({
     currentDepth++;
 
     if (checkStrOversize(result)) {
-      console.warn(getTextOversizeErrorMessage());
-      break;
+      throw new Error(getTextOversizeErrorMessage());
     }
 
     // 旧逻辑每次处理嵌套节点引用前都会先处理普通变量，这里保留该顺序。

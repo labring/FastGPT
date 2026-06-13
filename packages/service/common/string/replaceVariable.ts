@@ -106,6 +106,10 @@ export const replaceVariable = (text: any, obj: Record<string, any>) => {
       return replacement;
     });
 
+    if (checkStrOversize(result)) {
+      throw new Error(getTextOversizeErrorMessage());
+    }
+
     if (!changed) break;
     currentDepth++;
   }
