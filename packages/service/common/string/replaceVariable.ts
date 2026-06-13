@@ -1,8 +1,10 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { SYSTEM_MAX_STRING_LENGTH } from '../../env';
+import { getLogger, LogCategories } from '../logger';
 
 const VARIABLE_PLACEHOLDER_PATTERN = /\{\{([^}]+)\}\}/g;
 const MAX_REPLACEMENT_DEPTH = 10;
+const logger = getLogger(LogCategories.SYSTEM);
 
 /**
  * 将变量值按变量替换的历史语义转成字符串。
@@ -38,6 +40,27 @@ export const valToStr = (val: any) => {
 
 export const checkStrOversize = (str: string) => str.length > SYSTEM_MAX_STRING_LENGTH;
 
+/**
+ * 记录同步字符串处理遇到超长文本的情况。日志只包含长度和上下文，不输出正文，
+ * 避免大文本进入日志系统造成额外 CPU/IO 压力。
+ */
+export const logOversizeString = ({
+  source,
+  reason,
+  length
+}: {
+  source: string;
+  reason: string;
+  length: number;
+}) => {
+  logger.info('Oversize string detected during synchronous string processing', {
+    source,
+    reason,
+    length,
+    maxLength: SYSTEM_MAX_STRING_LENGTH
+  });
+};
+
 const hasVariableKey = (obj: Record<string, any>, key: string) => {
   if (Object.prototype.hasOwnProperty.call(obj, key)) {
     return Object.prototype.propertyIsEnumerable.call(obj, key);
@@ -65,7 +88,14 @@ const hasVariableKey = (obj: Record<string, any>, key: string) => {
  */
 export const replaceVariable = (text: any, obj: Record<string, any>) => {
   if (typeof text !== 'string') return text;
-  if (checkStrOversize(text)) return text;
+  if (checkStrOversize(text)) {
+    logOversizeString({
+      source: 'replaceVariable',
+      reason: 'input',
+      length: text.length
+    });
+    return text;
+  }
   if (!text.includes('{{')) return text;
 
   const hasCircularReference = (value: any, targetKey: string): boolean => {
@@ -101,7 +131,14 @@ export const replaceVariable = (text: any, obj: Record<string, any>) => {
       return replacement;
     });
 
-    if (checkStrOversize(result)) break;
+    if (checkStrOversize(result)) {
+      logOversizeString({
+        source: 'replaceVariable',
+        reason: 'replacement_result',
+        length: result.length
+      });
+      break;
+    }
 
     if (!changed) break;
     currentDepth++;

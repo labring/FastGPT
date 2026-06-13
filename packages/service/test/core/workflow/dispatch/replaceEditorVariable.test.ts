@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { VARIABLE_NODE_ID, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeOutputTypeEnum,
@@ -7,7 +7,24 @@ import {
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { replaceEditorVariable } from '@fastgpt/service/core/workflow/dispatch/utils/replaceEditorVariable';
 
+const { loggerInfoMock } = vi.hoisted(() => ({
+  loggerInfoMock: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/common/logger', () => ({
+  getLogger: () => ({
+    info: loggerInfoMock
+  }),
+  LogCategories: {
+    SYSTEM: ['system']
+  }
+}));
+
 describe('replaceEditorVariable', () => {
+  beforeEach(() => {
+    loggerInfoMock.mockClear();
+  });
+
   it('should return non-string values as is', () => {
     expect(replaceEditorVariable({ text: 123, nodesMap: {}, variables: {} })).toBe(123);
     expect(replaceEditorVariable({ text: null, nodesMap: {}, variables: {} })).toBe(null);
@@ -217,6 +234,15 @@ describe('replaceEditorVariable', () => {
         variables: {}
       })
     ).toBe(`Result: ${'x'.repeat(text.length + 1)}`);
+    expect(loggerInfoMock).toHaveBeenCalledWith(
+      'Oversize string detected during synchronous string processing',
+      {
+        source: 'replaceEditorVariable',
+        reason: 'node_reference_result',
+        length: text.length + 9,
+        maxLength: text.length
+      }
+    );
 
     vi.doUnmock('@fastgpt/service/env');
     vi.resetModules();

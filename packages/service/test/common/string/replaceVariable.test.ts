@@ -1,7 +1,24 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { valToStr, replaceVariable } from '@fastgpt/service/common/string/replaceVariable';
 
+const { loggerInfoMock } = vi.hoisted(() => ({
+  loggerInfoMock: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/common/logger', () => ({
+  getLogger: () => ({
+    info: loggerInfoMock
+  }),
+  LogCategories: {
+    SYSTEM: ['system']
+  }
+}));
+
 describe('service replaceVariable', () => {
+  beforeEach(() => {
+    loggerInfoMock.mockClear();
+  });
+
   it('should convert values to strings', () => {
     expect(valToStr(undefined)).toBe('');
     expect(valToStr(null)).toBe('null');
@@ -68,8 +85,29 @@ describe('service replaceVariable', () => {
         next: 'should not be scanned'
       })
     ).toBe(`${'x'.repeat(21)}{{next}}`);
+    expect(loggerInfoMock).toHaveBeenCalledWith(
+      'Oversize string detected during synchronous string processing',
+      {
+        source: 'replaceVariable',
+        reason: 'replacement_result',
+        length: 29,
+        maxLength: 20
+      }
+    );
+
+    loggerInfoMock.mockClear();
+
     expect(replaceVariableWithSmallLimit(`${'x'.repeat(21)}{{next}}`, { next: 'value' })).toBe(
       `${'x'.repeat(21)}{{next}}`
+    );
+    expect(loggerInfoMock).toHaveBeenCalledWith(
+      'Oversize string detected during synchronous string processing',
+      {
+        source: 'replaceVariable',
+        reason: 'input',
+        length: 29,
+        maxLength: 20
+      }
     );
 
     vi.doUnmock('@fastgpt/service/env');
