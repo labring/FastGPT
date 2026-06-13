@@ -143,7 +143,6 @@ export async function generateQA(): Promise<any> {
         } = await createLLMResponse({
           body: {
             model: modelData.model,
-            temperature: 0.3,
             messages,
             stream: true
           }

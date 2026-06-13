@@ -122,7 +122,6 @@ ${chunkSummaries}
       body: {
         model,
         messages: [{ role: 'user', content: prompt }],
-        temperature: 0,
         stream: false
       }
     });

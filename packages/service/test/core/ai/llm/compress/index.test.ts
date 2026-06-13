@@ -489,11 +489,11 @@ describe('compressLargeContent', () => {
     expect(createLLMResponseMock).toHaveBeenCalledWith(
       expect.objectContaining({
         body: expect.objectContaining({
-          stream: false,
-          temperature: 0.1
+          stream: false
         })
       })
     );
+    expect(createLLMResponseMock.mock.calls[0][0].body).not.toHaveProperty('temperature');
     const compressPrompt = createLLMResponseMock.mock.calls[0][0].body.messages[0].content;
     const userPrompt = createLLMResponseMock.mock.calls[0][0].body.messages[1].content;
     expect(compressPrompt).not.toContain('tokens');

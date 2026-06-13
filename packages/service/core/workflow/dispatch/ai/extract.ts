@@ -239,7 +239,6 @@ const toolChoice = async (props: ActionProps) => {
   const body = {
     stream: true,
     model: extractModel.model,
-    temperature: 0.01,
     messages: filterMessages,
     tools,
     tool_choice: { type: 'function', function: { name: agentFunName } },
@@ -321,7 +320,6 @@ const completions = async (props: ActionProps) => {
   } = await createLLMResponse({
     body: {
       model: extractModel.model,
-      temperature: 0.01,
       messages: chats2GPTMessages({ messages, reserveId: false, reserveReason: false }),
       stream: true
     },

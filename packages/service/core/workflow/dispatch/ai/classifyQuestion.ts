@@ -145,7 +145,6 @@ const completions = async ({
   } = await createLLMResponse({
     body: {
       model: cqModel.model,
-      temperature: 0.01,
       messages: chats2GPTMessages({ messages, reserveId: false, reserveReason: false }),
       stream: true
     },

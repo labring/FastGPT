@@ -103,8 +103,6 @@ async function handler(req: ApiRequestProps<OptimizePromptBody>, res: ApiRespons
       body: {
         model,
         messages,
-        temperature: 0.1,
-        max_tokens: 2000,
         stream: true
       },
       onStreaming: ({ text }) => {

@@ -38,8 +38,6 @@ export async function createQuestionGuide({
   } = await createLLMResponse({
     body: {
       model,
-      temperature: 0.1,
-      max_tokens: 200,
       messages: concatMessages,
       stream: true,
       ...(questionGuideModel?.reasoning ? { reasoning_effort: 'none' as const } : {})
