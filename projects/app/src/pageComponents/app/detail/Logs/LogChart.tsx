@@ -36,6 +36,7 @@ import BarChartComponent from '@fastgpt/web/components/common/charts/BarChartCom
 import { theme } from '@fastgpt/web/styles/theme';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import {
+  AppLogTimespanMap,
   AppLogTimespanEnum,
   fakeChartData,
   offsetOptions
@@ -364,7 +365,7 @@ const LogChart = ({
               <Flex flex={1} />
               <MySelect
                 list={Object.values(AppLogTimespanEnum).map((option) => ({
-                  label: t(`app:logs_timespan_${option}`),
+                  label: t(AppLogTimespanMap[option].label),
                   value: option
                 }))}
                 value={userTimespan}
@@ -519,7 +520,7 @@ const LogChart = ({
               <Flex flex={1} />
               <MySelect
                 list={Object.values(AppLogTimespanEnum).map((option) => ({
-                  label: t(`app:logs_timespan_${option}`),
+                  label: t(AppLogTimespanMap[option].label),
                   value: option
                 }))}
                 value={chatTimespan}
@@ -667,7 +668,7 @@ const LogChart = ({
               <Flex flex={1} />
               <MySelect
                 list={Object.values(AppLogTimespanEnum).map((option) => ({
-                  label: t(`app:logs_timespan_${option}`),
+                  label: t(AppLogTimespanMap[option].label),
                   value: option
                 }))}
                 value={appTimespan}
