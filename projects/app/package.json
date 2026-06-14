@@ -58,7 +58,7 @@
     "dayjs": "catalog:",
     "echarts": "5.4.1",
     "echarts-gl": "2.0.9",
-    "esbuild": "^0.25.11",
+    "esbuild": "^0.28.1",
     "framer-motion": "9.1.7",
     "hyperdown": "^2.4.29",
     "i18next": "catalog:",
