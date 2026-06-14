@@ -69,6 +69,8 @@
   "enter_comment": "输入注释",
   "error_catch": "报错捕获",
   "error_text": "错误信息",
+  "http_full_error": "完整错误",
+  "http_full_error_description": "HTTP 请求失败时的完整错误对象，包含 message、status、code、data 等字段。",
   "execute_different_branches_based_on_conditions": "根据一定的条件，执行不同的分支。",
   "extraction_requirements_description": "提取要求描述",
   "extraction_requirements_description_detail": "给AI一些对应的背景知识或要求描述，引导AI更好的完成任务。\\n该输入框可使用全局变量。",

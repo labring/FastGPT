@@ -69,6 +69,8 @@
   "enter_comment": "輸入註解",
   "error_catch": "報錯捕獲",
   "error_text": "錯誤訊息",
+  "http_full_error": "完整錯誤",
+  "http_full_error_description": "HTTP 請求失敗時的完整錯誤物件，包含 message、status、code、data 等欄位。",
   "execute_different_branches_based_on_conditions": "根據條件執行不同的分支。",
   "extraction_requirements_description": "擷取需求描述",
   "extraction_requirements_description_detail": "提供 AI 相對應的背景知識或需求描述，引導 AI 更好地完成任務。\\n這個輸入框可以使用全域變數。",

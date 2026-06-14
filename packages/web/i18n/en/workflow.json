@@ -69,6 +69,8 @@
   "enter_comment": "Enter comment",
   "error_catch": "Error catch",
   "error_text": "Error text",
+  "http_full_error": "Full error",
+  "http_full_error_description": "Complete error object when the HTTP request fails, including message, status, code, data, and other fields.",
   "execute_different_branches_based_on_conditions": "Execute different branches based on conditions.",
   "extraction_requirements_description": "Extraction Requirements Description",
   "extraction_requirements_description_detail": "Provide AI with some background knowledge or requirements to guide it in completing the task better.\\nThis input box can use global variables.",

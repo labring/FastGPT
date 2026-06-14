@@ -17,6 +17,7 @@ import type { StoreNodeItemType } from '../type/node';
 import { isValidReferenceValueFormat } from '../utils';
 import type { RuntimeNodeItemType } from './type';
 import { isSecretValue } from '../../../common/secret/utils';
+import { ensureHttp468Outputs } from '../template/system/http468';
 import { isChildInteractive } from '../template/system/interactive/constants';
 
 export const extractDeepestInteractive = (
@@ -108,7 +109,7 @@ export const valueTypeFormat = (value: any, valueType?: WorkflowIOValueTypeEnum)
       const trimmedValue = value.trim();
       try {
         return json5.parse(trimmedValue);
-      } catch (error) {}
+      } catch {}
     }
     return {};
   }
@@ -118,7 +119,7 @@ export const valueTypeFormat = (value: any, valueType?: WorkflowIOValueTypeEnum)
     if (isObjectString(value)) {
       try {
         return json5.parse(value);
-      } catch (error) {}
+      } catch {}
     }
     return [value];
   }
@@ -134,7 +135,7 @@ export const valueTypeFormat = (value: any, valueType?: WorkflowIOValueTypeEnum)
     if (isObjectString(value)) {
       try {
         return json5.parse(value);
-      } catch (error) {}
+      } catch {}
     }
     return [];
   }
@@ -144,7 +145,7 @@ export const valueTypeFormat = (value: any, valueType?: WorkflowIOValueTypeEnum)
     if (isObjectString(value)) {
       try {
         return json5.parse(value);
-      } catch (error) {}
+      } catch {}
     }
     return [];
   }
@@ -260,7 +261,10 @@ export const storeNodes2RuntimeNodes = (
         showStatus: node.showStatus,
         isEntry: entryNodeIds.includes(node.nodeId),
         inputs: node.inputs,
-        outputs: node.outputs,
+        outputs:
+          node.flowNodeType === FlowNodeTypeEnum.httpRequest468
+            ? ensureHttp468Outputs(node.outputs)
+            : node.outputs,
         pluginId: node.pluginId,
         version: node.version,
         toolConfig: node.toolConfig,

@@ -84,6 +84,7 @@ type HttpResponse = DispatchNodeResultType<
   },
   {
     [NodeOutputKeyEnum.error]?: string;
+    [NodeOutputKeyEnum.httpFullError]?: ReturnType<typeof formatHttpError>;
   }
 >;
 
@@ -255,6 +256,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       .filter(
         (item) =>
           item.id !== NodeOutputKeyEnum.error &&
+          item.id !== NodeOutputKeyEnum.httpFullError &&
           item.id !== NodeOutputKeyEnum.httpRawResponse &&
           item.id !== NodeOutputKeyEnum.addOutputParam
       )
@@ -319,7 +321,8 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
 
     return {
       error: {
-        [NodeOutputKeyEnum.error]: getErrText(error)
+        [NodeOutputKeyEnum.error]: getErrText(error),
+        [NodeOutputKeyEnum.httpFullError]: formatHttpError(error)
       },
       [DispatchNodeResponseKeyEnum.nodeResponse]: {
         params: Object.keys(params).length > 0 ? params : undefined,

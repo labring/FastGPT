@@ -309,6 +309,7 @@ export enum NodeOutputKeyEnum {
 
   // http
   httpRawResponse = 'httpRawResponse',
+  httpFullError = 'httpFullError',
 
   // plugin
   pluginStart = 'pluginStart',
