@@ -34,7 +34,8 @@ export async function handler(req: ApiRequestProps): Promise<ChatHistoryItemResT
       {
         appId,
         chatId,
-        dataId
+        dataId,
+        obj: ChatRoleEnum.AI
       },
       'dataId obj responseData'
     ).lean()

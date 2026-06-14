@@ -1,5 +1,5 @@
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
-import { getChildrenResponses } from '@fastgpt/global/core/chat/utils';
+import { getChildrenResponses } from '@fastgpt/global/core/chat/utils/mergeNode';
 import type { SideTabItemType } from './types';
 
 export const flattenResponse = (response: ChatHistoryItemResType[]) => {

@@ -37,17 +37,6 @@ const ChatItemResponseSchema = new Schema({
 
 // 按 chat item 拉取完整 nodeResponse rows；复合索引包含 _id，避免详情读取时额外排序。
 ChatItemResponseSchema.index({ appId: 1, chatId: 1, chatItemDataId: 1, _id: 1 });
-ChatItemResponseSchema.index(
-  {
-    appId: 1,
-    chatId: 1,
-    chatItemDataId: 1,
-    'data.id': 1
-  },
-  {
-    unique: true
-  }
-);
 
 // Clear expired response
 ChatItemResponseSchema.index({ teamId: 1, time: -1 });

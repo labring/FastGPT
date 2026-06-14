@@ -23,6 +23,7 @@ export type AgentLoopChildrenInteractiveParams<TChildrenResponse = unknown> = {
 
 export type AgentLoopToolChildrenInteractive<TChildrenResponse = unknown> = {
   type: 'toolChildrenInteractive';
+  nodeResponseId?: string;
   params: {
     childrenResponse: TChildrenResponse;
     toolParams: {

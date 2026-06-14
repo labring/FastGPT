@@ -21,6 +21,7 @@ interface ConfigType {
   cancelToken?: AbortController;
   maxQuantity?: number; // The maximum number of simultaneous requests, usually used to cancel old requests
   withCredentials?: boolean;
+  dataAsBody?: boolean;
 }
 interface ResponseDataType {
   code: number;
@@ -195,7 +196,7 @@ instance.interceptors.response.use(responseSuccess, (err) => Promise.reject(err)
 function request(
   url: string,
   data: any,
-  { cancelToken, maxQuantity, withCredentials, ...config }: ConfigType,
+  { cancelToken, maxQuantity, withCredentials, dataAsBody, ...config }: ConfigType,
   method: Method
 ): any {
   /* 去空 */
@@ -209,14 +210,15 @@ function request(
   }
 
   const { id: signId, abortSignal } = checkMaxQuantity({ url, maxQuantity });
+  const shouldSendBody = ['POST', 'PUT'].includes(method) || dataAsBody;
 
   return instance
     .request({
       baseURL: getWebReqUrl('/api'),
       url,
       method,
-      data: ['POST', 'PUT'].includes(method) ? data : undefined,
-      params: !['POST', 'PUT'].includes(method) ? data : undefined,
+      data: shouldSendBody ? data : undefined,
+      params: shouldSendBody ? undefined : data,
       signal: cancelToken?.signal ?? abortSignal,
       withCredentials,
       ...config // 用户自定义配置，可以覆盖前面的配置

@@ -14,7 +14,10 @@ import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { clientGetWorkflowToolRunUserQuery } from '@fastgpt/global/core/workflow/utils';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
-import { appendNodeResponseByParent, mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
+import {
+  appendNodeResponseByParent,
+  mergeNodeResponseDataByIdAndParent
+} from '@fastgpt/global/core/chat/utils/mergeNode';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { WorkflowRuntimeContextProvider } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
 
@@ -224,7 +227,7 @@ const PluginRunContextProvider = ({
             if (index !== state.length - 1) return item;
 
             // Check node response error
-            const responseData = mergeChatResponseData(item.responseData || []);
+            const responseData = mergeNodeResponseDataByIdAndParent(item.responseData || []);
             if (responseData[responseData.length - 1]?.error) {
               toast({
                 title: t(getErrText(responseData[responseData.length - 1].error)),

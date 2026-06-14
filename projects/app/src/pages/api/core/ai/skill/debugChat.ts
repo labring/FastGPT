@@ -21,8 +21,19 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
-import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
-import { pushChatRecords, updateInteractiveChat } from '@fastgpt/service/core/chat/saveChat';
+import {
+  ChatGenerateStatusEnum,
+  ChatRoleEnum,
+  ChatSourceEnum
+} from '@fastgpt/global/core/chat/constants';
+import {
+  failChatRound,
+  finalizeChatRound,
+  type Props as SaveChatProps,
+  updateInteractiveChat
+} from '@fastgpt/service/core/chat/saveChat';
+import { preChatRound, type PreChatRoundResult } from '@fastgpt/service/core/chat/utils/prepare';
+import { updateChatGenerateStatus } from '@fastgpt/service/core/chat/chatGenerateStatus';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { LimitTypeEnum, teamFrequencyLimit } from '@fastgpt/service/common/api/frequencyLimit';
 import { getIpFromRequest } from '@fastgpt/service/common/geo';
@@ -52,7 +63,6 @@ import {
   type SkillDebugChatBody
 } from '@fastgpt/global/core/ai/skill/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { resolveResponseChatItemId } from '@fastgpt/service/core/chat/interactiveResponseDataId';
 import {
   createWorkflowStreamResponseContext,
   type WorkflowStreamResponseContext
@@ -189,6 +199,13 @@ export function buildDebugRuntimeNodes(
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   let skillId = '';
   let streamResponseContext: WorkflowStreamResponseContext | undefined;
+  const roundState = {
+    preparedRound: undefined as PreChatRoundResult | undefined,
+    appId: '',
+    chatId: '',
+    responseChatItemId: '',
+    finalized: false
+  };
 
   try {
     const {
@@ -261,13 +278,22 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     const newHistories = concatHistories(histories, chatMessages);
     const interactive = getLastInteractiveValue(newHistories);
-    const responseChatItemId = await resolveResponseChatItemId({
+    const preparedRound = await preChatRound({
       appId: skillId,
       chatId,
+      teamId,
+      tmbId,
+      source: ChatSourceEnum.test,
+      userContent: userQuestion,
       responseChatItemId: responseChatItemIdFromBody,
-      interactive,
-      userContent: userQuestion
+      interactive
     });
+    const runningChatId = preparedRound.chatId;
+    const finalResponseChatItemId = preparedRound.responseChatItemId;
+    roundState.preparedRound = preparedRound;
+    roundState.appId = skillId;
+    roundState.chatId = runningChatId;
+    roundState.responseChatItemId = finalResponseChatItemId;
 
     // Build the minimal workflow
     const { runtimeNodes, runtimeEdges } = buildDebugRuntimeNodes(
@@ -283,8 +309,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       detail: true,
       teamId,
       appId: skillId,
-      chatId,
-      responseId: chatId,
+      chatId: runningChatId,
+      responseId: runningChatId,
       showNodeStatus: true
     });
 
@@ -316,8 +342,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       },
       runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
 
-      chatId,
-      responseChatItemId,
+      chatId: runningChatId,
+      responseChatItemId: finalResponseChatItemId,
       runtimeNodes,
       runtimeEdges,
       variables: {},
@@ -350,15 +376,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Save chat records (using skillId as virtual appId)
     const newTitle = getChatTitleFromChatMessage(userQuestion);
     const aiResponse: AIChatItemType & { dataId?: string } = {
-      dataId: responseChatItemId,
+      dataId: finalResponseChatItemId,
       obj: ChatRoleEnum.AI,
       value: assistantResponses,
       memories: system_memories,
       customFeedbacks
     };
 
-    const saveParams = {
-      chatId,
+    const saveParams: SaveChatProps = {
+      chatId: runningChatId,
       appId: skillId,
       teamId,
       tmbId,
@@ -375,13 +401,49 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     };
 
     if (interactive) {
-      await updateInteractiveChat({ interactive, ...saveParams });
-    } else {
-      await pushChatRecords(saveParams);
+      await updateInteractiveChat({
+        interactive,
+        shouldFinalizePreparedRound: preparedRound.shouldFinalizePreparedRound,
+        ...saveParams
+      });
+    } else if (preparedRound.shouldFinalizePreparedRound) {
+      await finalizeChatRound(saveParams);
+    }
+    roundState.finalized = true;
+
+    if (!preparedRound.shouldFinalizePreparedRound && preparedRound.shouldPersistChatRound) {
+      await updateChatGenerateStatus({
+        appId: skillId,
+        chatId: runningChatId,
+        status: ChatGenerateStatusEnum.done
+      });
     }
 
     await streamResponseContext.flushResume();
   } catch (err: any) {
+    const { preparedRound } = roundState;
+    if (
+      !roundState.finalized &&
+      preparedRound?.shouldPersistChatRound &&
+      roundState.appId &&
+      roundState.chatId
+    ) {
+      if (preparedRound.shouldFinalizePreparedRound) {
+        await failChatRound({
+          appId: roundState.appId,
+          chatId: roundState.chatId,
+          responseChatItemId: roundState.responseChatItemId,
+          error: err
+        });
+      } else {
+        await updateChatGenerateStatus({
+          appId: roundState.appId,
+          chatId: roundState.chatId,
+          status: ChatGenerateStatusEnum.error
+        });
+      }
+    }
+
     logger.error('Skill debug chat error', { error: err, skillId });
     if (streamResponseContext) {
       streamResponseContext.writeStreamError(err);

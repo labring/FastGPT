@@ -8,6 +8,7 @@ import { ChatCompletionMessageParamSchema } from '../../../../ai/llm/type';
 
 export const InteractiveBasicTypeSchema = z.object({
   entryNodeIds: z.array(z.string()),
+  nodeResponseId: z.string().optional(),
   memoryEdges: z.array(RuntimeEdgeItemTypeSchema),
   nodeOutputs: z.array(NodeOutputItemSchema),
   skipNodeQueue: z
@@ -19,6 +20,7 @@ export type InteractiveBasicType = z.infer<typeof InteractiveBasicTypeSchema>;
 
 const InteractiveNodeTypeSchema = z.object({
   entryNodeIds: z.array(z.string()).optional(),
+  nodeResponseId: z.string().optional(),
   memoryEdges: z.array(RuntimeEdgeItemTypeSchema).optional(),
   nodeOutputs: z.array(NodeOutputItemSchema).optional()
 });
@@ -47,7 +49,8 @@ export const ToolCallChildrenInteractiveSchema = z.object({
     })
   })
 });
-export type ToolCallChildrenInteractive = z.infer<typeof ToolCallChildrenInteractiveSchema>;
+export type ToolCallChildrenInteractive = InteractiveNodeType &
+  z.infer<typeof ToolCallChildrenInteractiveSchema>;
 
 // Loop bode
 export const LoopInteractiveSchema = z.object({

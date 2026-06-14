@@ -23,7 +23,8 @@ import type {
 } from '@fastgpt/global/core/workflow/runtime/type';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
-import { filterNodeResponseTreeData, stripChildTotalPoints } from '@fastgpt/global/core/chat/utils';
+import { filterNodeResponseTreeData } from '@fastgpt/global/core/chat/utils';
+import { stripChildTotalPoints } from '@fastgpt/global/core/chat/utils/mergeNode';
 import {
   filterWorkflowEdges,
   textAdaptGptResponse,
@@ -94,7 +95,7 @@ type Props = Omit<
   | 'variableState'
   | 'responseChatItemId'
 > & {
-  responseChatItemId?: string;
+  responseChatItemId: string;
   variables: Record<string, any>;
   runtimeNodes: RuntimeNodeItemType[];
   runtimeEdges: RuntimeEdgeItemType[];
@@ -137,7 +138,7 @@ export async function dispatchWorkFlow({
     chatId,
     apiVersion
   } = data;
-  const responseChatItemId = data.responseChatItemId || getNanoid(24);
+  const responseChatItemId = data.responseChatItemId;
 
   // Check url valid
   const invalidInput = query.some((item) => {
@@ -259,7 +260,6 @@ export async function dispatchWorkFlow({
       : undefined;
 
   const { nodeResponseWriter } = await createWorkflowEntryNodeResponseWriter({
-    lastInteractive: data.lastInteractive,
     teamId: data.runningAppInfo.teamId,
     appId: data.runningAppInfo.id,
     chatId,
@@ -369,6 +369,7 @@ export class WorkflowQueue {
     | {
         entryNodeIds: string[];
         interactiveResponse: InteractiveNodeResponseType;
+        nodeResponseId?: string;
       }
     | undefined;
   system_memories: Record<string, any> = {}; // Workflow node memories
@@ -800,6 +801,7 @@ export class WorkflowQueue {
   private async nodeRunWithActive(node: RuntimeNodeItemType): Promise<{
     node: RuntimeNodeItemType;
     runStatus: 'run';
+    nodeResponseId: string;
     result: NodeResponseCompleteType;
   }> {
     const mode = this.isDebugMode ? 'test' : this.data.mode;
@@ -809,8 +811,11 @@ export class WorkflowQueue {
     };
 
     const executeNode = async (stepSpan?: Span): Promise<WorkflowObservedStepResult> => {
-      const nodeResponseId = getNanoid();
-
+      const nodeResponseId =
+        this.data.lastInteractive?.nodeResponseId &&
+        this.data.lastInteractive.entryNodeIds?.includes(node.nodeId)
+          ? this.data.lastInteractive.nodeResponseId
+          : getNanoid();
       // push run status messages
       if (node.showStatus && !this.data.isToolCall) {
         this.data.workflowStreamResponse?.({
@@ -1025,6 +1030,7 @@ export class WorkflowQueue {
       return {
         node,
         runStatus: 'run',
+        nodeResponseId,
         result: {
           ...dispatchRes,
           runtimeNodeResponseSummary: mergeRuntimeNodeResponseSummary(
@@ -1380,6 +1386,10 @@ export class WorkflowQueue {
       if (this.isDebugMode) {
         this.debugNextStepRunNodes = this.debugNextStepRunNodes.concat([nodeRunResult.node]);
       }
+      const nodeResponseId =
+        nodeRunResult.runStatus === 'run'
+          ? nodeRunResult.nodeResponseId
+          : nodeRunResult.result[DispatchNodeResponseKeyEnum.nodeResponse]?.id;
 
       // For the pause interactive response, there may be multiple nodes triggered at the same time, so multiple entry nodes need to be recorded.
       // For other interactive nodes, only one will be triggered at the same time.
@@ -1388,12 +1398,14 @@ export class WorkflowQueue {
           entryNodeIds: this.nodeInteractiveResponse?.entryNodeIds
             ? this.nodeInteractiveResponse.entryNodeIds.concat(nodeRunResult.node.nodeId)
             : [nodeRunResult.node.nodeId],
-          interactiveResponse
+          interactiveResponse,
+          nodeResponseId
         };
       } else {
         this.nodeInteractiveResponse = {
           entryNodeIds: [nodeRunResult.node.nodeId],
-          interactiveResponse
+          interactiveResponse,
+          nodeResponseId
         };
       }
       return;
@@ -1410,10 +1422,12 @@ export class WorkflowQueue {
   /* Have interactive result, computed edges and node outputs */
   handleInteractiveResult({
     entryNodeIds,
-    interactiveResponse
+    interactiveResponse,
+    nodeResponseId
   }: {
     entryNodeIds: string[];
     interactiveResponse: InteractiveNodeResponseType;
+    nodeResponseId?: string;
   }): AIChatItemValueItemType {
     // Get node outputs
     const nodeOutputs: NodeOutputItemType[] = [];
@@ -1431,6 +1445,7 @@ export class WorkflowQueue {
 
     const interactiveResult: WorkflowInteractiveResponseType = {
       ...interactiveResponse,
+      ...(nodeResponseId ? { nodeResponseId } : {}),
       skipNodeQueue: Array.from(this.skipNodeQueue.values()).map((item) => ({
         id: item.node.nodeId,
         skippedNodeIdList: Array.from(item.skippedNodeIdList)
@@ -1477,7 +1492,6 @@ export class WorkflowQueue {
   }
 }
 export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowResponse> => {
-  data.responseChatItemId ||= getNanoid(24);
   // Over max depth
   const previousWorkflowDispatchDeep = data.workflowDispatchDeep;
   const currentWorkflowDispatchDeep = previousWorkflowDispatchDeep + 1;
@@ -1582,7 +1596,8 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
               if (workflowQueue.nodeInteractiveResponse) {
                 const interactiveAssistant = workflowQueue.handleInteractiveResult({
                   entryNodeIds: workflowQueue.nodeInteractiveResponse.entryNodeIds,
-                  interactiveResponse: workflowQueue.nodeInteractiveResponse.interactiveResponse
+                  interactiveResponse: workflowQueue.nodeInteractiveResponse.interactiveResponse,
+                  nodeResponseId: workflowQueue.nodeInteractiveResponse.nodeResponseId
                 });
                 if (workflowQueue.isRootRuntime) {
                   workflowQueue.chatAssistantResponse.push(interactiveAssistant);

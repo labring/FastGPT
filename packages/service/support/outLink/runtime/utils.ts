@@ -1,5 +1,5 @@
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import type { UserChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import {
   getWorkflowEntryNodeIds,
   getMaxHistoryLimitFromNodes,
@@ -10,7 +10,13 @@ import type { OutlinkAppType, OutLinkSchemaType } from '@fastgpt/global/support/
 import { getAppLatestVersion } from '../../../core/app/version/controller';
 import { MongoApp } from '../../../core/app/schema';
 import { getChatItems } from '../../../core/chat/controller';
-import { pushChatRecords } from '../../../core/chat/saveChat';
+import {
+  failChatRound,
+  finalizeChatRound,
+  type Props as SaveChatProps
+} from '../../../core/chat/saveChat';
+import { preChatRound, type PreChatRoundResult } from '../../../core/chat/utils/prepare';
+import { updateChatGenerateStatus } from '../../../core/chat/chatGenerateStatus';
 import { dispatchWorkFlow } from '../../../core/workflow/dispatch';
 import { getRunningUserInfoByTmbId } from '../../../support/user/team/utils';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -100,6 +106,11 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
   streamId
 }: outLinkInvokeChatProps<T>) {
   const streamResKey = `${STREAM_CACHE_KEY_PREFIX}${streamId}`;
+  const roundState = {
+    preparedRound: undefined as PreChatRoundResult | undefined,
+    appId: '',
+    finalized: false
+  };
 
   try {
     // Get app workflow config
@@ -190,7 +201,25 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
 
     // Merge global variables from database
     const variables = chatDetail?.variables ?? {};
-    const responseChatItemId = getNanoid(24);
+    const userContent: UserChatItemType & { dataId?: string } = {
+      dataId: messageId,
+      obj: ChatRoleEnum.Human,
+      value: query
+    };
+    const preparedRound = await preChatRound({
+      appId: String(app._id),
+      chatId,
+      teamId: String(outLinkConfig.teamId),
+      tmbId: String(outLinkConfig.tmbId),
+      source: getChatSourceByPublishChannel(outLinkConfig.type),
+      sourceName: outLinkConfig.name,
+      shareId: outLinkConfig.shareId,
+      outLinkUid: chatUserId,
+      userContent,
+      responseChatItemId: messageId
+    });
+    roundState.preparedRound = preparedRound;
+    roundState.appId = String(app._id);
 
     const {
       assistantResponses,
@@ -212,8 +241,8 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
       },
       runningUserInfo: await getRunningUserInfoByTmbId(app.tmbId),
       uid: chatUserId || outLinkConfig.tmbId,
-      chatId,
-      responseChatItemId,
+      chatId: preparedRound.chatId,
+      responseChatItemId: preparedRound.responseChatItemId,
       variables,
       histories,
       query: query,
@@ -261,9 +290,9 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
     })();
 
     // Save and reply
-    await pushChatRecords({
-      chatId,
-      appId: app._id,
+    const saveParams: SaveChatProps = {
+      chatId: preparedRound.chatId,
+      appId: String(app._id),
       teamId: outLinkConfig.teamId,
       tmbId: outLinkConfig.tmbId,
       outLinkUid: chatUserId,
@@ -274,13 +303,9 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
       shareId: outLinkConfig.shareId,
       source: getChatSourceByPublishChannel(outLinkConfig.type),
       sourceName: outLinkConfig.name,
-      userContent: {
-        dataId: messageId,
-        obj: ChatRoleEnum.Human,
-        value: query
-      },
+      userContent,
       aiContent: {
-        dataId: responseChatItemId,
+        dataId: preparedRound.responseChatItemId,
         obj: ChatRoleEnum.AI,
         value: assistantResponses,
         memories: system_memories
@@ -289,7 +314,9 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
       durationSeconds,
       errorMsg: replyResult?.success ? undefined : replyResult?.errmsg,
       nodeResponseSummary
-    });
+    };
+    await finalizeChatRound(saveParams);
+    roundState.finalized = true;
 
     const totalPoints = flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
     addOutLinkUsage({
@@ -301,6 +328,38 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
       await appendRedisCache(streamResKey, STREAM_END_FLAG, 60);
     }
   } catch (error) {
+    const { preparedRound } = roundState;
+    if (!roundState.finalized && preparedRound?.shouldPersistChatRound && roundState.appId) {
+      if (preparedRound.shouldFinalizePreparedRound) {
+        await failChatRound({
+          appId: roundState.appId,
+          chatId: preparedRound.chatId,
+          responseChatItemId: preparedRound.responseChatItemId,
+          error
+        }).catch((saveError) => {
+          logger.error('Outlink invoke chat mark error failed', {
+            shareId: outLinkConfig.shareId,
+            chatId,
+            messageId,
+            error: saveError
+          });
+        });
+      } else {
+        await updateChatGenerateStatus({
+          appId: roundState.appId,
+          chatId: preparedRound.chatId,
+          status: ChatGenerateStatusEnum.error
+        }).catch((saveError) => {
+          logger.error('Outlink invoke chat unlock failed', {
+            shareId: outLinkConfig.shareId,
+            chatId,
+            messageId,
+            error: saveError
+          });
+        });
+      }
+    }
+
     logger.error('Outlink invoke chat failed', {
       shareId: outLinkConfig.shareId,
       chatId,

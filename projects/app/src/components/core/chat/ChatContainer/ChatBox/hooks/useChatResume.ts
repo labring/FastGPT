@@ -9,7 +9,7 @@ import {
   ChatRoleEnum,
   ChatStatusEnum
 } from '@fastgpt/global/core/chat/constants';
-import { mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
+import { mergeNodeResponseDataByIdAndParent } from '@fastgpt/global/core/chat/utils/mergeNode';
 import { streamResumeFetch, type ResumeStreamErrorType } from '@/web/common/api/fetch';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
@@ -276,7 +276,7 @@ export const useChatResume = ({
               ...item,
               status: ChatStatusEnum.finish,
               time: new Date(),
-              responseData: mergeChatResponseData(item.responseData || [])
+              responseData: mergeNodeResponseDataByIdAndParent(item.responseData || [])
             };
           });
 

@@ -15,6 +15,9 @@ type UseChatRecordActionsProps = {
   onDeleteChatItem?: (contentId: string, delFile?: boolean) => Promise<void>;
 };
 
+const uniqueDataIds = (dataIds: Array<string | undefined>) =>
+  Array.from(new Set(dataIds.filter((dataId): dataId is string => !!dataId)));
+
 /**
  * 管理 ChatBox 中“记录级动作”的副作用和本地 records 更新。
  *
@@ -47,20 +50,23 @@ export const useChatRecordActions = ({
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
 
   /**
-   * 删除一条服务端聊天记录。
+   * 删除一组服务端聊天记录。
    *
    * `delFile` 默认是 true，表示删除消息时一起删除关联文件；重试流程会传 false，
    * 因为同一轮历史可能需要继续复用原文件输入，不能在删除旧记录时把文件也删掉。
    */
-  const onDelMessage = useMemoizedFn((contentId: string, delFile = true) => {
+  const onDelMessages = useMemoizedFn((contentIds: string[], delFile = true) => {
+    const targetContentIds = uniqueDataIds(contentIds);
+    if (targetContentIds.length === 0) return Promise.resolve();
+
     if (onDeleteChatItem) {
-      return onDeleteChatItem(contentId, delFile);
+      return Promise.all(targetContentIds.map((contentId) => onDeleteChatItem(contentId, delFile)));
     }
 
     return delChatRecordById({
       appId,
       chatId,
-      contentId,
+      contentIds: targetContentIds,
       delFile,
       ...outLinkAuthData
     });
@@ -85,12 +91,9 @@ export const useChatRecordActions = ({
       const delHistory = chatRecords.slice(index);
 
       try {
-        await Promise.all(
-          delHistory.map((item) => {
-            if (item.dataId) {
-              return onDelMessage(item.dataId, false);
-            }
-          })
+        await onDelMessages(
+          delHistory.map((item) => item.dataId),
+          false
         );
         setChatRecords((state) => (index === 0 ? [] : state.slice(0, index)));
 
@@ -126,12 +129,9 @@ export const useChatRecordActions = ({
       try {
         if (index < 0 || delHistory[0]?.obj !== ChatRoleEnum.Human) return;
 
-        await Promise.all(
-          delHistory.map((item) => {
-            if (item.dataId) {
-              return onDelMessage(item.dataId, false);
-            }
-          })
+        await onDelMessages(
+          delHistory.map((item) => item.dataId),
+          false
         );
         setChatRecords((state) => (index === 0 ? [] : state.slice(0, index)));
 
@@ -162,18 +162,22 @@ export const useChatRecordActions = ({
     return () => {
       setChatRecords((state) => {
         let aiIndex = -1;
+        const deletedDataIds: string[] = [];
 
-        return state.filter((chat, i) => {
+        const nextState = state.filter((chat, i) => {
           if (chat.dataId === dataId) {
             aiIndex = i + 1;
-            onDelMessage(dataId);
+            deletedDataIds.push(dataId);
             return false;
           } else if (aiIndex === i && chat.obj === ChatRoleEnum.AI && chat.dataId) {
-            onDelMessage(chat.dataId);
+            deletedDataIds.push(chat.dataId);
             return false;
           }
           return true;
         });
+
+        void onDelMessages(deletedDataIds);
+        return nextState;
       });
     };
   });

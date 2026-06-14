@@ -51,26 +51,35 @@ export const ensureGenerateChat = async (params: EnsureGenerateChatParams) => {
   );
 };
 
+/**
+ * 尝试占用一次会话生成槽。
+ *
+ * 同一个 `appId/chatId` 只允许一个请求进入生成中状态；已有 generating 记录时返回 false，
+ * 由 API 层转换为“当前会话正在运行”的错误。创建/更新时只按 `appId/chatId` upsert，
+ * 避免把 `chatGenerateStatus` 放进 upsert 条件导致已有 generating 记录时误插入新文档。
+ */
 export const tryStartGenerateChat = async (params: EnsureGenerateChatParams) => {
   const { $set, $setOnInsert } = buildGeneratingChatUpdate(params);
 
   try {
-    await MongoChat.updateOne(
+    const oldChat = await MongoChat.findOneAndUpdate(
       {
         appId: params.appId,
-        chatId: params.chatId,
-        chatGenerateStatus: {
-          $ne: ChatGenerateStatusEnum.generating
-        }
+        chatId: params.chatId
       },
       {
         $set,
         $setOnInsert
       },
       {
-        upsert: true
+        upsert: true,
+        new: false
       }
-    );
+    ).lean();
+
+    if (oldChat?.chatGenerateStatus === ChatGenerateStatusEnum.generating) {
+      return false;
+    }
 
     return true;
   } catch (error: any) {

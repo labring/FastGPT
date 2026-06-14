@@ -4,7 +4,10 @@ import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType
 } from '@fastgpt/global/core/chat/type';
-import { appendNodeResponseByParent, mergeChatResponseData } from '@fastgpt/global/core/chat/utils';
+import {
+  appendNodeResponseByParent,
+  mergeNodeResponseDataByIdAndParent
+} from '@fastgpt/global/core/chat/utils/mergeNode';
 import { extractDeepestInteractive } from '@fastgpt/global/core/workflow/runtime/utils';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { ChatSiteItemType } from '../type';
@@ -150,7 +153,7 @@ export const mergeResumeCompletedChatRecords = ({
 
     const mergedResponseData =
       shouldMergeResponseData && resumedResponseData?.length
-        ? mergeChatResponseData(
+        ? mergeNodeResponseDataByIdAndParent(
             resumedResponseData.reduce<ChatHistoryItemResType[]>(
               (responses, resumedItem) => appendNodeResponseByParent(responses, resumedItem),
               item.responseData || []

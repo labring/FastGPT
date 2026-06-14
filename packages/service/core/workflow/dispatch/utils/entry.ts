@@ -1,4 +1,3 @@
-import type { ChatDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import type { WorkflowNodeResponseWriter } from '../../../chat/nodeResponseStorage';
 import { createWorkflowNodeResponseWriter } from '../../../chat/nodeResponseStorage';
 
@@ -16,14 +15,12 @@ export type WorkflowNodeResponseWriteConfig = {
  * 推断。子 workflow 只复用这个 writer，不关心当前请求到底落库还是仅保留请求内 flat 数据。
  */
 export const createWorkflowEntryNodeResponseWriter = async ({
-  lastInteractive,
   teamId,
   appId,
   chatId,
   chatItemDataId,
   nodeResponseWriteConfig
 }: {
-  lastInteractive?: ChatDispatchProps['lastInteractive'];
   teamId: string;
   appId: string;
   chatId: string;
@@ -34,7 +31,6 @@ export const createWorkflowEntryNodeResponseWriter = async ({
 }> => {
   return {
     nodeResponseWriter: await createWorkflowNodeResponseWriter({
-      mode: lastInteractive ? 'append' : 'replace',
       teamId,
       appId,
       chatId,

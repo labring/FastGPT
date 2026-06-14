@@ -425,7 +425,6 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     );
     const nodeResponse = result[DispatchNodeResponseKeyEnum.nodeResponse];
     expect(nodeResponse.errorText).toBe('workflow:loop_run_conditional_requires_break');
-    expect(nodeResponse.mergeSignId).toBe('loopRun1');
     expect(runWorkflowMock).not.toHaveBeenCalled();
   });
 
@@ -602,7 +601,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     expect(nodeResponse.childResponseCount).toBe(3);
     expect(nodeResponseWriter.recordWithParent).toHaveBeenCalledTimes(1);
     expect(nodeResponseWriter.recordWithParent.mock.calls[0][0][0]).toMatchObject({
-      id: 'loopRun1_iter_1',
+      id: 'loop-parent-response:iter:1',
       totalPoints: 6,
       childResponseCount: 2
     });
@@ -791,11 +790,13 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     const result: any = await dispatchLoopRun(props);
     const nodeResponse = result[DispatchNodeResponseKeyEnum.nodeResponse];
 
-    expect(runWorkflowMock.mock.calls[0][0].nodeResponseParentId).toBe('loopRun1_iter_1');
+    expect(runWorkflowMock.mock.calls[0][0].nodeResponseParentId).toBe(
+      'loop-parent-response:iter:1'
+    );
     expect(nodeResponseWriter.recordWithParent).toHaveBeenCalledTimes(1);
     expect(nodeResponseWriter.recordWithParent.mock.calls[0][1]).toBe('loop-parent-response');
     expect(nodeResponseWriter.recordWithParent.mock.calls[0][0][0]).toMatchObject({
-      id: 'loopRun1_iter_1',
+      id: 'loop-parent-response:iter:1',
       childResponseCount: 2
     });
     expect(

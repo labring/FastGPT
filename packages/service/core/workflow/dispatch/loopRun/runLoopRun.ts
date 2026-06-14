@@ -78,7 +78,6 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     return getNodeErrResponse({
       error: preCheckError,
       responseData: {
-        mergeSignId: node.nodeId,
         ...(mode === LoopRunModeEnum.array ? { loopRunInput: inputArray } : {})
       }
     });
@@ -152,7 +151,8 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     }
 
     const isResumeIteration = !!interactiveData && iteration === resumeIteration;
-    const iterationResponseId = `${node.nodeId}_iter_${iteration}`;
+    const loopRunNodeResponseId = props.nodeResponseParentId || node.nodeId;
+    const iterationResponseId = `${loopRunNodeResponseId}:iter:${iteration}`;
 
     if (isResumeIteration) {
       isolatedNodes.forEach((n) => {
@@ -315,7 +315,6 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       loopRunIterations: loopHistory.length,
       loopRunHistory: loopHistory,
       childResponseCount,
-      mergeSignId: node.nodeId,
       ...(errorText ? { errorText } : {})
     },
     [DispatchNodeResponseKeyEnum.customFeedbacks]:

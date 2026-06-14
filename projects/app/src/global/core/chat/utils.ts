@@ -112,7 +112,7 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemMiniType) {
       }
 
       const nodeErrorText = getNodeErrorText(item);
-      if (nodeErrorText && !acc.errorText) {
+      if (nodeErrorText) {
         acc.errorText = {
           moduleName: item.moduleName,
           errorText: nodeErrorText

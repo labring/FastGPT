@@ -2,7 +2,7 @@ import { type CSSProperties } from 'react';
 import { Box, Flex, Grid, HStack } from '@chakra-ui/react';
 import dynamic from 'next/dynamic';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
-import { getChildrenResponses } from '@fastgpt/global/core/chat/utils';
+import { getChildrenResponses } from '@fastgpt/global/core/chat/utils/mergeNode';
 import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constants';
 import styles from '@/components/Markdown/index.module.scss';
 import { formatNumber } from '@fastgpt/global/common/math/tools';

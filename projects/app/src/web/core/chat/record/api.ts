@@ -22,7 +22,7 @@ export const getChatRecords = (data: GetRecordsV2BodyType) =>
 
 // delete one chat record
 export const delChatRecordById = (data: DeleteChatRecordBodyType) =>
-  DELETE(`/core/chat/record/delete`, data);
+  DELETE(`/core/chat/record/delete`, data, { dataAsBody: true });
 
 export const getQuoteDataList = (data: GetQuoteBodyType) =>
   POST<GetQuoteResponseType>(`/core/chat/record/getQuote`, data);

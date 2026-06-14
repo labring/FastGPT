@@ -25,9 +25,13 @@ import { encryptSecretValue, anyValueDecrypt } from '../../common/secret/utils';
 import type { SecretValueType } from '@fastgpt/global/common/secret/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { normalizeChatFileStoreValues } from './fileStoreValue';
 import type { NodeResponseWriteSummary } from './nodeResponseStorage';
+import {
+  getPreparedRoundDataIds,
+  isSkipSaveChatId,
+  stripUserContentFileUrls
+} from './utils/prepare';
 
 const logger = getLogger(LogCategories.MODULE.CHAT);
 
@@ -51,16 +55,6 @@ export type Props = {
   nodeResponseSummary?: NodeResponseWriteSummary;
   durationSeconds: number; //s
   errorMsg?: string;
-};
-
-const isSkipSaveChatId = (chatId?: string) => !chatId || chatId === 'NO_RECORD_HISTORIES';
-
-const stripUserContentFileUrls = (userContent: UserChatItemType & { dataId?: string }) => {
-  userContent.value.forEach((item) => {
-    if (item.file?.key) {
-      item.file.url = '';
-    }
-  });
 };
 
 const beforeProcess = (props: Props) => {
@@ -205,23 +199,6 @@ const getChatDataLog = async ({
   };
 };
 
-export type EnsurePendingChatRoundParams = {
-  chatId: string;
-  appId: string;
-  teamId: string;
-  tmbId: string;
-  userContent: UserChatItemType & { dataId?: string };
-  responseChatItemId: string;
-};
-
-type PrepareChatRoundParams = Pick<
-  Props,
-  'chatId' | 'appId' | 'teamId' | 'tmbId' | 'source' | 'sourceName' | 'shareId' | 'outLinkUid'
-> & {
-  userContent: UserChatItemType & { dataId?: string };
-  responseChatItemId: string;
-};
-
 type FailChatRoundParams = {
   chatId: string;
   appId: string;
@@ -229,144 +206,16 @@ type FailChatRoundParams = {
   error: unknown;
 };
 
-const ensurePreparedHumanDataId = ({
-  userContent,
-  responseChatItemId
-}: {
-  userContent: UserChatItemType & { dataId?: string };
-  responseChatItemId: string;
-}) => {
-  if (userContent.dataId && userContent.dataId !== responseChatItemId) {
-    return userContent.dataId;
-  }
-
-  const humanDataId = getNanoid(24);
-  userContent.dataId = humanDataId;
-
-  return humanDataId;
-};
-
-const getPreparedRoundDataIds = ({
-  userContent,
-  aiContent
-}: {
-  userContent: UserChatItemType & { dataId?: string };
-  aiContent: AIChatItemType & { dataId?: string };
-}) => {
-  if (!userContent.dataId) {
-    throw new Error('Pending chat round human dataId is missing');
-  }
-  if (!aiContent.dataId) {
-    throw new Error('Pending chat round ai dataId is missing');
-  }
-  if (userContent.dataId === aiContent.dataId) {
-    throw new Error('Pending chat round dataId must be unique');
-  }
-
-  return {
-    humanDataId: userContent.dataId,
-    aiDataId: aiContent.dataId
-  };
-};
-
-export const prepareChatRound = async (params: PrepareChatRoundParams) => {
-  const {
-    chatId,
-    appId,
-    teamId,
-    tmbId,
-    source,
-    sourceName,
-    shareId,
-    outLinkUid,
-    responseChatItemId
-  } = params;
-
-  if (isSkipSaveChatId(chatId)) return;
-
-  stripUserContentFileUrls(params.userContent);
-  const humanDataId = ensurePreparedHumanDataId({
-    userContent: params.userContent,
-    responseChatItemId
-  });
-  const now = new Date();
-
-  const userPayload: UserChatItemType & { dataId: string; obj: typeof ChatRoleEnum.Human } = {
-    ...params.userContent,
-    dataId: humanDataId,
-    obj: ChatRoleEnum.Human
-  };
-
-  const aiPlaceholder: AIChatItemType & { dataId: string } = {
-    dataId: responseChatItemId,
-    obj: ChatRoleEnum.AI,
-    value: []
-  };
-
-  await mongoSessionRun(async (session) => {
-    await MongoChat.updateOne(
-      {
-        appId,
-        chatId
-      },
-      {
-        $set: {
-          teamId,
-          tmbId,
-          appId,
-          chatId,
-          source,
-          sourceName,
-          shareId,
-          outLinkUid,
-          updateTime: now,
-          hasBeenRead: false,
-          chatGenerateStatus: ChatGenerateStatusEnum.generating
-        },
-        $setOnInsert: {
-          createTime: now
-        }
-      },
-      {
-        session,
-        upsert: true
-      }
-    );
-
-    const upsertOptions = {
-      session,
-      upsert: true
-    };
-
-    await MongoChatItem.updateOne(
-      { appId, chatId, dataId: humanDataId, obj: ChatRoleEnum.Human },
-      {
-        $setOnInsert: {
-          teamId,
-          tmbId,
-          chatId,
-          appId,
-          ...userPayload
-        }
-      },
-      upsertOptions
-    );
-    await MongoChatItem.updateOne(
-      { appId, chatId, dataId: responseChatItemId, obj: ChatRoleEnum.AI },
-      {
-        $setOnInsert: {
-          teamId,
-          tmbId,
-          chatId,
-          appId,
-          ...aiPlaceholder
-        }
-      },
-      upsertOptions
-    );
-  });
-};
-
+/**
+ * 完成一轮已经 prepare 的对话保存。
+ *
+ * preChatRound 会先创建 chat 记录和本轮 Human/AI 两条占位 chat items，并把会话标记为
+ * generating。workflow 真正运行结束后，这里负责把占位 item 更新为最终消息内容、补齐
+ * chat 的标题/变量/插件输入/统计信息，并把 chatGenerateStatus 改成 done。
+ *
+ * 这个方法只处理“已经预创建”的新运行轮次；未接入 prepare 的旧兼容路径仍由
+ * pushChatRecords 单独处理。
+ */
 export const finalizeChatRound = async (props: Props) => {
   beforeProcess(props);
 
@@ -409,6 +258,7 @@ export const finalizeChatRound = async (props: Props) => {
     nodeResponseSummary: props.nodeResponseSummary
   });
   const processedContent = [userContent, aiResponse];
+  // dataId 来自 prepareChatRound 预创建的 Human/AI 占位 item，用它定位并补全本轮记录。
   const { humanDataId, aiDataId } = await getPreparedRoundDataIds({
     userContent,
     aiContent
@@ -435,14 +285,18 @@ export const finalizeChatRound = async (props: Props) => {
       ...metadata
     };
 
+    // 这里不是新增 chat items，而是把 prepare 阶段创建的占位记录替换成最终内容。
+    // obj 是 chat item 的角色标识，只用于查询定位，不在 finalize 阶段修改。
+    const humanUpdate = { ...(processedContent[0] as Record<string, unknown>) };
+    const aiUpdate = { ...(processedContent[1] as Record<string, unknown>) };
+    delete humanUpdate.obj;
+    delete aiUpdate.obj;
+
     const [humanDoc, aiDoc] = await Promise.all([
       MongoChatItem.findOneAndUpdate(
         { appId, chatId, dataId: humanDataId, obj: ChatRoleEnum.Human },
         {
-          $set: {
-            ...(processedContent[0] as Record<string, unknown>),
-            obj: ChatRoleEnum.Human
-          }
+          $set: humanUpdate
         },
         {
           session,
@@ -452,10 +306,7 @@ export const finalizeChatRound = async (props: Props) => {
       MongoChatItem.findOneAndUpdate(
         { appId, chatId, dataId: aiDataId, obj: ChatRoleEnum.AI },
         {
-          $set: {
-            ...(processedContent[1] as Record<string, unknown>),
-            obj: ChatRoleEnum.AI
-          }
+          $set: aiUpdate
         },
         {
           session,
@@ -468,6 +319,7 @@ export const finalizeChatRound = async (props: Props) => {
       throw new Error(`Pending chat round items not found: ${chatId}`);
     }
 
+    // chat 记录在 prepare 阶段已经存在，这里补齐运行结果相关的会话级字段并释放 generating 状态。
     await MongoChat.updateOne(
       {
         appId,
@@ -516,6 +368,7 @@ export const finalizeChatRound = async (props: Props) => {
     });
   });
 
+  // 统计日志不是主链路强依赖，失败只记录日志，不影响 chat item 和 chat 主数据保存。
   try {
     const { fifteenMinutesAgo, errorCount, totalPoints, now } = await getChatDataLog({
       nodeResponseSummary: props.nodeResponseSummary
@@ -637,7 +490,7 @@ export const pushChatRecords = async (props: Props) => {
     metadata = {}
   } = props;
 
-  if (!chatId || chatId === 'NO_RECORD_HISTORIES') return;
+  if (!chatId || isSkipSaveChatId(chatId)) return;
 
   try {
     const chat = await MongoChat.findOne(
@@ -798,9 +651,11 @@ export const pushChatRecords = async (props: Props) => {
 */
 export const updateInteractiveChat = async ({
   interactive,
+  shouldFinalizePreparedRound = false,
   ...props
 }: Props & {
   interactive: WorkflowInteractiveResponseType;
+  shouldFinalizePreparedRound?: boolean;
 }) => {
   beforeProcess(props);
 
@@ -836,7 +691,7 @@ export const updateInteractiveChat = async ({
   // Get interactive response
   const { text: userInteractiveVal } = chatValue2RuntimePrompt(userContent.value);
 
-  // 如果是发送一条新的 user 消息，则直接用推送记录的方式
+  // 如果是发送一条新的 user 消息，必须由调用方提前 prepare 本轮 Human/AI 占位记录。
   const status = checkInteractiveResponseStatus({
     interactive,
     input: userInteractiveVal
@@ -844,23 +699,38 @@ export const updateInteractiveChat = async ({
   // 提取嵌套在子流程里的交互节点
   const finalInteractive = extractDeepestInteractive(interactive);
   if (status === 'query') {
-    // 特殊处理：
-    {
-      // 1. AskQuery 需要把用户答案回填到上一条 interactive，避免后续多轮恢复时丢失 answer。
-      if (finalInteractive.type === 'agentPlanAskQuery') {
-        finalInteractive.params.answer = userInteractiveVal;
-        chatItem.value[chatItem.value.length - 1].interactive = interactive;
-        chatItem.markModified('value');
-        await chatItem.save();
-
-        // 追加 PlanId 给 userItem(便于适配器会跳过转化该条消息)
-        props.userContent.value.forEach((item) => {
-          item.planId = finalInteractive.planId;
-        });
-      }
+    if (!shouldFinalizePreparedRound) {
+      throw new Error('Prepared chat round is required for interactive query');
     }
 
-    return await pushChatRecords(props);
+    if (finalInteractive.type === 'agentPlanAskQuery') {
+      finalInteractive.params.answer = userInteractiveVal;
+
+      const interactiveChatItem = await MongoChatItem.findOne({
+        appId,
+        chatId,
+        obj: ChatRoleEnum.AI,
+        'value.interactive': { $exists: true }
+      }).sort({ _id: -1 });
+      if (!interactiveChatItem || interactiveChatItem.obj !== ChatRoleEnum.AI) {
+        throw new Error(`Interactive query chat item not found: ${chatId}`);
+      }
+      const previousInteractiveIndex = interactiveChatItem.value.findLastIndex(
+        (item) => !!item.interactive
+      );
+      if (previousInteractiveIndex === -1) {
+        throw new Error(`Interactive query value not found: ${chatId}`);
+      }
+      interactiveChatItem.value[previousInteractiveIndex].interactive = interactive;
+      interactiveChatItem.markModified('value');
+      await interactiveChatItem.save();
+
+      props.userContent.value.forEach((item) => {
+        item.planId = finalInteractive.planId;
+      });
+    }
+
+    return finalizeChatRound(props);
   }
 
   const parsedUserInteractiveVal = (() => {

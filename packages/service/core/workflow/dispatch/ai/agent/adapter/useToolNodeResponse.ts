@@ -1,6 +1,6 @@
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
-import { stripChildTotalPoints } from '@fastgpt/global/core/chat/utils';
+import { stripChildTotalPoints } from '@fastgpt/global/core/chat/utils/mergeNode';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { AgentLoopEvent, AgentLoopToolCatalog } from '../../../../../ai/llm/agentLoop';

@@ -158,7 +158,6 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       model: modelName,
       query: userChatInput,
       historyPreview,
-      mergeSignId: nodeId,
       finishReason: finish_reason,
       llmRequestIds: requestIds
     };

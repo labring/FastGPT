@@ -16,11 +16,11 @@ import {
   ChatStatusEnum
 } from '@fastgpt/global/core/chat/constants';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
+import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import {
   appendNodeResponseByParent,
-  mergeChatResponseData,
-  getChatTitleFromChatMessage
-} from '@fastgpt/global/core/chat/utils';
+  mergeNodeResponseDataByIdAndParent
+} from '@fastgpt/global/core/chat/utils/mergeNode';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -654,7 +654,7 @@ export const useChatGenerate = ({
               newChatHistories = state.map((item, index) => {
                 if (index !== state.length - 1) return item;
 
-                const responseData = mergeChatResponseData(item.responseData || []);
+                const responseData = mergeNodeResponseDataByIdAndParent(item.responseData || []);
                 if (!abortSignal?.signal?.aborted) {
                   const uncaughtErr = responseData.find((r) => r.error)?.error;
                   const err = uncaughtErr ?? responseData[responseData.length - 1]?.errorText;

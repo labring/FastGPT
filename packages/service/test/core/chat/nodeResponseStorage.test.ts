@@ -4,8 +4,12 @@ import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
 import {
   WorkflowNodeResponseWriter,
+  composeChatItemResponseData,
   composeNodeResponseDetail,
   createChatItemResponseRows,
+  createWorkflowNodeResponseWriter,
+  getChatItemResponseData,
+  getChatItemResponseRows,
   getNodeResponseChildResponseCount
 } from '@fastgpt/service/core/chat/nodeResponseStorage';
 
@@ -119,6 +123,58 @@ describe('createChatItemResponseRows', () => {
     expect(rows[1].data.childTotalPoints).toBeUndefined();
     expect(rows[1].data.childResponseCount).toBe(1);
   });
+
+  it('generates ids for invalid input without response id', () => {
+    const rows = createChatItemResponseRows({
+      ...base,
+      nodeResponses: [
+        {
+          nodeId: 'legacy-node',
+          moduleName: 'Legacy Node',
+          moduleType: FlowNodeTypeEnum.chatNode
+        } as ChatHistoryItemResType
+      ]
+    });
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].data.id).toBeTruthy();
+    expect(rows[0].data.nodeId).toBe('legacy-node');
+  });
+
+  it('slims root dataset quote list before storage', () => {
+    const rows = createChatItemResponseRows({
+      ...base,
+      nodeResponses: [
+        makeResponse({
+          id: 'dataset-root',
+          moduleType: FlowNodeTypeEnum.datasetSearchNode,
+          quoteList: [
+            {
+              id: 'quote-1',
+              q: 'full question should not be stored',
+              a: 'full answer should not be stored',
+              datasetId: 'dataset-1',
+              collectionId: 'collection-1',
+              sourceId: 'source-1',
+              sourceName: 'source',
+              chunkIndex: 0,
+              score: []
+            }
+          ]
+        })
+      ]
+    });
+
+    expect(rows[0].data.quoteList?.[0]).toEqual({
+      id: 'quote-1',
+      chunkIndex: 0,
+      datasetId: 'dataset-1',
+      collectionId: 'collection-1',
+      sourceId: 'source-1',
+      sourceName: 'source',
+      score: []
+    });
+  });
 });
 
 describe('getNodeResponseChildResponseCount', () => {
@@ -211,19 +267,17 @@ describe('composeNodeResponseDetail', () => {
     expect(result[0].childrenResponses?.map((item) => item.id)).toEqual(['child']);
   });
 
-  it('merges append rows by mergeSignId after rebuilding childrenResponses', () => {
+  it('folds append rows by id and parentId after rebuilding childrenResponses', () => {
     const rows = createChatItemResponseRows({
       ...base,
       nodeResponses: [
         makeResponse({
-          id: 'append-1',
-          mergeSignId: 'interactive',
+          id: 'interactive-response',
           runningTime: 1,
           childrenResponses: [makeResponse({ id: 'append-child-1' })]
         }),
         makeResponse({
-          id: 'append-2',
-          mergeSignId: 'interactive',
+          id: 'interactive-response',
           runningTime: 2,
           childrenResponses: [makeResponse({ id: 'append-child-2' })]
         })
@@ -239,6 +293,149 @@ describe('composeNodeResponseDetail', () => {
       'append-child-2'
     ]);
   });
+
+  it('does not fold rows with the same id under different parentId', () => {
+    const rows = createChatItemResponseRows({
+      ...base,
+      nodeResponses: [
+        makeResponse({ id: 'parent-1' }),
+        makeResponse({ id: 'parent-2' }),
+        makeResponse({
+          id: 'shared-child',
+          parentId: 'parent-1',
+          moduleName: 'Child under parent 1',
+          totalPoints: 1
+        }),
+        makeResponse({
+          id: 'shared-child',
+          parentId: 'parent-2',
+          moduleName: 'Child under parent 2',
+          totalPoints: 2
+        })
+      ]
+    });
+
+    const result = composeNodeResponseDetail(rows);
+
+    expect(result).toHaveLength(2);
+    expect(result[0].childrenResponses).toEqual([
+      expect.objectContaining({
+        id: 'shared-child',
+        parentId: 'parent-1',
+        totalPoints: 1
+      })
+    ]);
+    expect(result[1].childrenResponses).toEqual([
+      expect.objectContaining({
+        id: 'shared-child',
+        parentId: 'parent-2',
+        totalPoints: 2
+      })
+    ]);
+  });
+
+  it('skips rows without data or data id', () => {
+    expect(
+      composeChatItemResponseData({
+        rows: [
+          {},
+          {
+            data: {
+              nodeId: 'missing-id',
+              moduleName: 'Missing Id',
+              moduleType: FlowNodeTypeEnum.chatNode
+            }
+          },
+          {
+            data: makeResponse({
+              id: 'root'
+            })
+          }
+        ]
+      })
+    ).toEqual([
+      expect.objectContaining({
+        id: 'root'
+      })
+    ]);
+  });
+});
+
+describe('getChatItemResponseData', () => {
+  beforeEach(async () => {
+    await MongoChatItemResponse.deleteMany(base);
+  });
+
+  it('reads persisted rows before fallback responseData', async () => {
+    await MongoChatItemResponse.create([
+      {
+        ...base,
+        data: makeResponse({
+          id: 'child',
+          parentId: 'root',
+          moduleName: 'Child'
+        })
+      },
+      {
+        ...base,
+        data: makeResponse({
+          id: 'root',
+          moduleName: 'Root'
+        })
+      }
+    ]);
+
+    const rows = await getChatItemResponseRows(base);
+    expect(rows.map((row) => row.data?.id)).toEqual(['child', 'root']);
+
+    await expect(
+      getChatItemResponseData({
+        ...base,
+        fallbackResponseData: [makeResponse({ id: 'fallback' })]
+      })
+    ).resolves.toEqual([
+      expect.objectContaining({
+        id: 'root',
+        childrenResponses: [
+          expect.objectContaining({
+            id: 'child',
+            parentId: 'root'
+          })
+        ]
+      })
+    ]);
+  });
+
+  it('uses fallback responseData and strips childTotalPoints when there are no rows', async () => {
+    const result = await getChatItemResponseData({
+      ...base,
+      fallbackResponseData: [
+        makeResponse({
+          id: 'fallback-root',
+          childTotalPoints: 10,
+          childrenResponses: [
+            makeResponse({
+              id: 'fallback-child',
+              childTotalPoints: 3
+            })
+          ]
+        })
+      ]
+    });
+
+    expect(result).toEqual([
+      expect.objectContaining({
+        id: 'fallback-root',
+        childrenResponses: [
+          expect.objectContaining({
+            id: 'fallback-child'
+          })
+        ]
+      })
+    ]);
+    expect(result[0]).not.toHaveProperty('childTotalPoints');
+    expect(result[0].childrenResponses?.[0]).not.toHaveProperty('childTotalPoints');
+  });
 });
 
 describe('WorkflowNodeResponseWriter', () => {
@@ -248,13 +445,11 @@ describe('WorkflowNodeResponseWriter', () => {
 
   it('flushes rows in batches and releases pending rows after success', async () => {
     const create = vi.fn().mockResolvedValue(undefined);
-    const deleteMany = vi.fn().mockResolvedValue(undefined);
     const writer = new WorkflowNodeResponseWriter({
       ...base,
       batchSize: 3,
       model: {
-        create,
-        deleteMany
+        create
       }
     });
 
@@ -276,12 +471,6 @@ describe('WorkflowNodeResponseWriter', () => {
     await writer.record([makeResponse({ id: 'second' })]);
     expect(create).not.toHaveBeenCalled();
     await writer.record([makeResponse({ id: 'third' })]);
-    expect(deleteMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        'data.id': { $in: ['root', 'second', 'third'] }
-      }),
-      expect.any(Object)
-    );
     expect(create).toHaveBeenCalledTimes(1);
     expect(create.mock.calls[0][0].map((doc: any) => doc.data.id)).toEqual([
       'root',
@@ -296,44 +485,36 @@ describe('WorkflowNodeResponseWriter', () => {
 
   it('passes mongo session to create writes', async () => {
     const create = vi.fn().mockResolvedValue(undefined);
-    const deleteMany = vi.fn().mockResolvedValue(undefined);
     const session = { id: 'session-id' } as any;
     const writer = new WorkflowNodeResponseWriter({
       ...base,
       batchSize: 1,
       session,
       model: {
-        create,
-        deleteMany
+        create
       }
     });
 
     await writer.record([makeResponse({ id: 'root' })]);
 
-    expect(deleteMany.mock.calls[0][1]).toMatchObject({
-      session
-    });
     expect(create.mock.calls[0][1]).toMatchObject({
       session
     });
   });
 
-  it('uses one generated mongo session for delete and create when no session is provided', async () => {
+  it('writes append-only rows without a generated mongo session when no session is provided', async () => {
     const create = vi.fn().mockResolvedValue(undefined);
-    const deleteMany = vi.fn().mockResolvedValue(undefined);
     const writer = new WorkflowNodeResponseWriter({
       ...base,
       batchSize: 1,
       model: {
-        create,
-        deleteMany
+        create
       }
     });
 
     await writer.record([makeResponse({ id: 'root' })]);
 
-    expect(deleteMany.mock.calls[0][1]?.session).toBeDefined();
-    expect(create.mock.calls[0][1]?.session).toBe(deleteMany.mock.calls[0][1]?.session);
+    expect(create.mock.calls[0][1]?.session).toBeUndefined();
     expect(create.mock.calls[0][1]).toMatchObject({
       ordered: true
     });
@@ -341,15 +522,13 @@ describe('WorkflowNodeResponseWriter', () => {
 
   it('writes one buffered batch and lets mongo validate payload size', async () => {
     const create = vi.fn().mockResolvedValue(undefined);
-    const deleteMany = vi.fn().mockResolvedValue(undefined);
     const session = { id: 'session-id' } as any;
     const writer = new WorkflowNodeResponseWriter({
       ...base,
       batchSize: 10,
       session,
       model: {
-        create,
-        deleteMany
+        create
       }
     });
 
@@ -378,8 +557,7 @@ describe('WorkflowNodeResponseWriter', () => {
       ...base,
       batchSize: 2,
       model: {
-        create,
-        deleteMany: vi.fn()
+        create
       }
     });
 
@@ -404,8 +582,7 @@ describe('WorkflowNodeResponseWriter', () => {
       batchSize: 10,
       retainInMemory: true,
       model: {
-        create: vi.fn().mockResolvedValue(undefined),
-        deleteMany: vi.fn().mockResolvedValue(undefined)
+        create: vi.fn().mockResolvedValue(undefined)
       }
     });
 
@@ -445,14 +622,13 @@ describe('WorkflowNodeResponseWriter', () => {
     ]);
   });
 
-  it('retains only latest flat nodeResponse by id using db semantics', async () => {
+  it('retains all flat nodeResponse increments and folds them for composition', async () => {
     const writer = new WorkflowNodeResponseWriter({
       ...base,
       batchSize: 10,
       retainInMemory: true,
       model: {
-        create: vi.fn().mockResolvedValue(undefined),
-        deleteMany: vi.fn().mockResolvedValue(undefined)
+        create: vi.fn().mockResolvedValue(undefined)
       }
     });
 
@@ -460,6 +636,20 @@ describe('WorkflowNodeResponseWriter', () => {
     await writer.record([makeResponse({ id: 'child', moduleName: 'Latest Child' })]);
 
     expect(writer.getFlatNodeResponses()).toEqual([
+      expect.objectContaining({
+        id: 'child',
+        moduleName: 'Child'
+      }),
+      expect.objectContaining({
+        id: 'child',
+        moduleName: 'Latest Child'
+      })
+    ]);
+    expect(
+      composeNodeResponseDetail(
+        writer.getFlatNodeResponses().map((response) => ({ data: response }))
+      )
+    ).toEqual([
       expect.objectContaining({
         id: 'child',
         moduleName: 'Latest Child'
@@ -488,14 +678,13 @@ describe('WorkflowNodeResponseWriter', () => {
     expect(deleteMany).not.toHaveBeenCalled();
   });
 
-  it('keeps only the latest buffered row when id is recorded repeatedly before flush', async () => {
+  it('keeps all buffered increments when id is recorded repeatedly before flush', async () => {
     const create = vi.fn().mockResolvedValue(undefined);
     const writer = new WorkflowNodeResponseWriter({
       ...base,
       batchSize: 10,
       model: {
-        create,
-        deleteMany: vi.fn()
+        create
       }
     });
 
@@ -516,8 +705,15 @@ describe('WorkflowNodeResponseWriter', () => {
     await writer.close();
 
     expect(create).toHaveBeenCalledTimes(1);
-    expect(create.mock.calls[0][0]).toHaveLength(1);
+    expect(create.mock.calls[0][0]).toHaveLength(2);
     expect(create.mock.calls[0][0][0]).toMatchObject({
+      data: {
+        id: 'node',
+        moduleName: 'First',
+        totalPoints: 1
+      }
+    });
+    expect(create.mock.calls[0][0][1]).toMatchObject({
       data: {
         id: 'node',
         moduleName: 'Latest',
@@ -535,8 +731,7 @@ describe('WorkflowNodeResponseWriter', () => {
       ...base,
       batchSize: 1,
       model: {
-        create,
-        deleteMany: vi.fn()
+        create
       }
     });
 
@@ -558,8 +753,7 @@ describe('WorkflowNodeResponseWriter', () => {
       ...base,
       batchSize: 1,
       model: {
-        create,
-        deleteMany: vi.fn()
+        create
       }
     });
 
@@ -628,8 +822,7 @@ describe('WorkflowNodeResponseWriter', () => {
       ...base,
       batchSize: 1,
       model: {
-        create,
-        deleteMany: vi.fn()
+        create
       }
     });
 
@@ -658,26 +851,17 @@ describe('WorkflowNodeResponseWriter', () => {
 
   it('drops rows and continues when normal and slim fallback writes fail', async () => {
     const create = vi.fn().mockRejectedValue(new Error('db rejects every payload'));
-    const deleteMany = vi.fn().mockResolvedValue(undefined);
     const writer = new WorkflowNodeResponseWriter({
       ...base,
       batchSize: 1,
-      replaceBeforeFirstFlush: true,
       model: {
-        create,
-        deleteMany
+        create
       }
     });
 
     await writer.record([makeResponse({ id: 'root' })]);
 
     expect(create).toHaveBeenCalledTimes(4);
-    expect(deleteMany).toHaveBeenCalledTimes(5);
-    expect(deleteMany.mock.calls.at(-1)?.[0]).toEqual({
-      appId: base.appId,
-      chatId: base.chatId,
-      chatItemDataId: base.chatItemDataId
-    });
     expect(writer.isFullyFlushed).toBe(true);
     expect(writer.getSummary()).toMatchObject({
       errorCount: 0,
@@ -691,8 +875,7 @@ describe('WorkflowNodeResponseWriter', () => {
       ...base,
       batchSize: 1,
       model: {
-        create,
-        deleteMany: vi.fn().mockResolvedValue(undefined)
+        create
       }
     });
 
@@ -735,8 +918,7 @@ describe('WorkflowNodeResponseWriter', () => {
       ...base,
       batchSize: 10,
       model: {
-        create: vi.fn().mockResolvedValue(undefined),
-        deleteMany: vi.fn()
+        create: vi.fn().mockResolvedValue(undefined)
       }
     });
 
@@ -772,5 +954,78 @@ describe('WorkflowNodeResponseWriter', () => {
       lastError: 'failed',
       totalPoints: 10
     });
+  });
+
+  it('creates a writer through factory and writes rows with default options', async () => {
+    const create = vi.fn().mockResolvedValue(undefined);
+    const writer = await createWorkflowNodeResponseWriter({
+      ...base,
+      batchSize: 1,
+      model: {
+        create
+      }
+    });
+
+    await writer.record([makeResponse({ id: 'factory-root' })]);
+
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(create.mock.calls[0][0][0]).toMatchObject({
+      ...base,
+      data: expect.objectContaining({
+        id: 'factory-root'
+      })
+    });
+  });
+
+  it('keeps separate summary contributions for same id under different parentId', async () => {
+    const writer = new WorkflowNodeResponseWriter({
+      ...base,
+      batchSize: 10,
+      model: {
+        create: vi.fn().mockResolvedValue(undefined)
+      }
+    });
+
+    await writer.record([
+      makeResponse({ id: 'parent-1' }),
+      makeResponse({ id: 'parent-2' }),
+      makeResponse({
+        id: 'shared-child',
+        parentId: 'parent-1',
+        moduleType: FlowNodeTypeEnum.datasetSearchNode,
+        quoteList: [
+          {
+            id: 'quote-1',
+            collectionId: 'collection-parent-1',
+            datasetId: 'dataset',
+            sourceId: 'source',
+            sourceName: 'source',
+            chunkIndex: 0,
+            score: []
+          }
+        ]
+      }),
+      makeResponse({
+        id: 'shared-child',
+        parentId: 'parent-2',
+        moduleType: FlowNodeTypeEnum.datasetSearchNode,
+        quoteList: [
+          {
+            id: 'quote-2',
+            collectionId: 'collection-parent-2',
+            datasetId: 'dataset',
+            sourceId: 'source',
+            sourceName: 'source',
+            chunkIndex: 0,
+            score: []
+          }
+        ]
+      })
+    ]);
+
+    expect(writer.getSummary().citeCollectionIds).toEqual([
+      'collection-parent-1',
+      'collection-parent-2'
+    ]);
   });
 });
