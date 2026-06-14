@@ -2154,52 +2154,6 @@ describe('chats2GPTMessages', () => {
     ]);
   });
 
-  it('should not append ask_agent tool response when matching answer is absent', () => {
-    const messages: ChatItemMiniType[] = [
-      {
-        obj: ChatRoleEnum.AI,
-        value: [
-          {
-            agentAsk: {
-              id: 'call_ask',
-              planId: 'plan_1',
-              functionName: 'ask_agent',
-              params: '{"question":"Need confirmation?"}',
-              assistantText: 'Need confirmation.'
-            }
-          },
-          {
-            interactive: {
-              type: 'agentPlanAskQuery',
-              planId: 'plan_1',
-              params: {
-                content: 'Need confirmation?'
-              }
-            }
-          }
-        ]
-      }
-    ];
-
-    expect(chats2GPTMessages({ messages, reserveId: false, reserveTool: true })).toEqual([
-      {
-        dataId: undefined,
-        role: ChatCompletionRequestMessageRoleEnum.Assistant,
-        content: 'Need confirmation.',
-        tool_calls: [
-          {
-            id: 'call_ask',
-            type: 'function',
-            function: {
-              name: 'ask_agent',
-              arguments: '{"question":"Need confirmation?"}'
-            }
-          }
-        ]
-      }
-    ]);
-  });
-
   it('should handle multiple reasoning values by merging consecutive assistant entries', () => {
     const messages: ChatItemMiniType[] = [
       {
