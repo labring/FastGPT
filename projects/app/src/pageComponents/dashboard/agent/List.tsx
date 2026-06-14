@@ -17,15 +17,7 @@ import {
   AppTypeList,
   ToolTypeList
 } from '@fastgpt/global/core/app/constants';
-import {
-  fetchResourceSubtreeMaxFolderDepth,
-  useFolderDrag
-} from '@/components/common/folder/useFolderDrag';
-import {
-  getCurrentFolderLevel,
-  resolveMaxFolderDepth
-} from '@fastgpt/global/common/parentFolder/depth';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useFolderDrag } from '@/components/common/folder/useFolderDrag';
 import dynamic from 'next/dynamic';
 import type { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
 import MyMenu, { type MenuItemType } from '@fastgpt/web/components/common/MyMenu';
@@ -79,13 +71,8 @@ const List = () => {
     setMoveAppId,
     folderDetail,
     searchKey,
-    setSearchKey,
-    paths,
-    parentId: contextParentId
+    setSearchKey
   } = useContextSelector(AppListContext, (v) => v);
-  const { feConfigs } = useSystemStore();
-  const maxFolderDepth = resolveMaxFolderDepth(feConfigs?.limit?.maxFolderDepth);
-  const currentFolderLevel = getCurrentFolderLevel(contextParentId, paths.length);
 
   const hasCreatePer = folderDetail
     ? folderDetail.permission.hasWritePer && folderDetail?.type !== AppTypeEnum.httpPlugin
@@ -120,16 +107,6 @@ const List = () => {
   const { getBoxProps } = useFolderDrag({
     activeStyles: {
       borderColor: 'primary.600'
-    },
-    moveDepthLimit: {
-      maxDepth: maxFolderDepth,
-      currentFolderLevel,
-      isFolderResource: (id) => {
-        const app = myApps.find((item) => String(item._id) === String(id));
-        return !!app && AppFolderTypeList.includes(app.type);
-      },
-      fetchSubtreeMaxFolderDepth: (id) =>
-        fetchResourceSubtreeMaxFolderDepth({ resourceType: 'app', resourceId: id })
     },
     onDrop: (dragId: string, targetId: string) => {
       openMoveConfirm({ onConfirm: async () => onPutAppById(dragId, { parentId: targetId }) })();

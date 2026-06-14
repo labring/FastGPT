@@ -1,15 +1,7 @@
-import z from 'zod';
 import type { ParentTreePathItemType } from './type';
 
 /** 允许的最深文件夹层级，默认 4（根目录下最多 4 层文件夹）。 */
 export const DEFAULT_MAX_FOLDER_DEPTH = 4;
-
-export const resolveMaxFolderDepth = (value?: number) => {
-  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
-    return DEFAULT_MAX_FOLDER_DEPTH;
-  }
-  return value;
-};
 
 /** 归一化路由 parentId：仅保留非空字符串，其余视为根目录。 */
 export const normalizeParentId = (parentId: unknown): string | null => {
@@ -53,7 +45,7 @@ export const getCurrentFolderLevel = (parentId: string | null | undefined, paths
  * 规则：新建后的文件夹层级 = 当前层级 + 1，不得超过 maxFolderLevel。
  */
 export const canCreateFolderAtDepth = (currentFolderLevel: number, maxFolderLevel?: number) => {
-  const max = resolveMaxFolderDepth(maxFolderLevel);
+  const max = maxFolderLevel ?? DEFAULT_MAX_FOLDER_DEPTH;
   return currentFolderLevel + 1 <= max;
 };
 
@@ -84,38 +76,3 @@ export const canCreateSubFolder = (
     maxFolderLevel
   );
 };
-
-/** 列表页中文件夹卡片作为 drop 目标时，移入资源的父级深度。 */
-export const getDropTargetFolderDepth = (currentFolderLevel: number) => currentFolderLevel + 1;
-
-/** 移动资源到目标文件夹后，整体深度是否仍在限制内。非文件夹 subtreeMaxFolderDepth 为 0。 */
-export const canMoveResourceToTarget = (
-  targetParentDepth: number,
-  subtreeMaxFolderDepth: number,
-  maxFolderLevel?: number
-) => targetParentDepth + subtreeMaxFolderDepth <= resolveMaxFolderDepth(maxFolderLevel);
-
-/* GET /api/common/parentFolder/subtreeDepth — 拖拽移动前查询子树最大文件夹深度 */
-export const ParentFolderResourceTypeSchema = z.enum(['app', 'dataset', 'skill']);
-
-export const GetSubtreeMaxFolderDepthQuerySchema = z.object({
-  resourceType: ParentFolderResourceTypeSchema.meta({
-    example: 'app',
-    description: '资源类型'
-  }),
-  resourceId: z.string().meta({
-    example: '68ad85a7463006c963799a05',
-    description: '资源 ID'
-  })
-});
-export type GetSubtreeMaxFolderDepthQueryType = z.infer<typeof GetSubtreeMaxFolderDepthQuerySchema>;
-
-export const GetSubtreeMaxFolderDepthResponseSchema = z.object({
-  subtreeMaxFolderDepth: z.number().meta({
-    example: 1,
-    description: '文件夹子树最大相对深度，非文件夹为 0'
-  })
-});
-export type GetSubtreeMaxFolderDepthResponseType = z.infer<
-  typeof GetSubtreeMaxFolderDepthResponseSchema
->;

@@ -24,15 +24,7 @@ import {
   postUpdateDatasetCollaborators
 } from '@/web/core/dataset/api/collaborator';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import {
-  fetchResourceSubtreeMaxFolderDepth,
-  useFolderDrag
-} from '@/components/common/folder/useFolderDrag';
-import {
-  getCurrentFolderLevel,
-  normalizeParentId,
-  resolveMaxFolderDepth
-} from '@fastgpt/global/common/parentFolder/depth';
+import { useFolderDrag } from '@/components/common/folder/useFolderDrag';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useTranslation } from 'next-i18next';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
@@ -44,7 +36,7 @@ import { useVirtualGridList } from '@fastgpt/web/hooks/useVirtualGridList';
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 
 function List() {
-  const { setLoading, getModelProvider, feConfigs } = useSystemStore();
+  const { setLoading, getModelProvider } = useSystemStore();
   const { isPc } = useSystem();
   const { t } = useTranslation();
   const {
@@ -58,13 +50,10 @@ function List() {
     myDatasets,
     folderDetail,
     searchKey,
-    setSearchKey,
-    paths
+    setSearchKey
   } = useContextSelector(DatasetsContext, (v) => v);
   const router = useRouter();
   const { parentId = null } = router.query as { parentId?: string | null };
-  const maxFolderDepth = resolveMaxFolderDepth(feConfigs?.limit?.maxFolderDepth);
-  const currentFolderLevel = getCurrentFolderLevel(normalizeParentId(parentId), paths.length);
   const [editPerDatasetId, setEditPerDatasetId] = useState<string>();
 
   const formatDatasets = useMemo(
@@ -102,14 +91,6 @@ function List() {
   const { getBoxProps } = useFolderDrag({
     activeStyles: {
       borderColor: 'primary.600'
-    },
-    moveDepthLimit: {
-      maxDepth: maxFolderDepth,
-      currentFolderLevel,
-      isFolderResource: (id) =>
-        myDatasets.find((item) => String(item._id) === String(id))?.type === DatasetTypeEnum.folder,
-      fetchSubtreeMaxFolderDepth: (id) =>
-        fetchResourceSubtreeMaxFolderDepth({ resourceType: 'dataset', resourceId: id })
     },
     onDrop: (dragId: string, targetId: string) => {
       openMoveConfirm({

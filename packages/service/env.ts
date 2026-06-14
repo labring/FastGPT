@@ -1,6 +1,7 @@
 import { createEnv } from '@t3-oss/env-core';
 import z from 'zod';
 import { isPhaseProductionBuild } from '@fastgpt/global/common/system/constants';
+import { DEFAULT_MAX_FOLDER_DEPTH } from '@fastgpt/global/common/parentFolder/depth';
 import { BoolSchema, IntSchema, NumSchema, UrlSchema } from '@fastgpt/global/common/zod';
 
 const defaultableIntSchema = (defaultValue: number) =>
@@ -278,7 +279,7 @@ export const serviceEnv = createEnv({
     SERVICE_REQUEST_MAX_CONTENT_LENGTH: IntSchema.default(10).meta({
       description: '服务器接收请求的最大大小（MB）'
     }),
-    FASTGPT_MAX_FOLDER_DEPTH: IntSchema.min(2).max(20).default(4).meta({
+    FASTGPT_MAX_FOLDER_DEPTH: IntSchema.min(2).max(20).default(DEFAULT_MAX_FOLDER_DEPTH).meta({
       description: '允许的最深文件夹层级，默认 4（根目录下最多 4 层文件夹）'
     }),
     APP_FOLDER_MAX_AMOUNT: IntSchema.default(1000).meta({

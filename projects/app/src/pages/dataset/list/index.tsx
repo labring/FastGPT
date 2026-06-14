@@ -32,8 +32,8 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import {
   canCreateSubFolder,
-  normalizeParentId,
-  resolveMaxFolderDepth
+  DEFAULT_MAX_FOLDER_DEPTH,
+  normalizeParentId
 } from '@fastgpt/global/common/parentFolder/depth';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 
@@ -65,7 +65,7 @@ const Dataset = () => {
   } = useContextSelector(DatasetsContext, (v) => v);
   const { userInfo } = useUserStore();
   const { feConfigs } = useSystemStore();
-  const maxFolderDepth = resolveMaxFolderDepth(feConfigs?.limit?.maxFolderDepth);
+  const maxFolderDepth = feConfigs?.limit?.maxFolderDepth ?? DEFAULT_MAX_FOLDER_DEPTH;
   const canCreateFolder = canCreateSubFolder(parentId, paths, maxFolderDepth);
   const { toast } = useToast();
   const [editFolderData, setEditFolderData] = useState<EditFolderFormType>();

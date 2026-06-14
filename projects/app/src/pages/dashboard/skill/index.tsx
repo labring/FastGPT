@@ -17,7 +17,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import {
   canCreateSubFolder,
-  resolveMaxFolderDepth
+  DEFAULT_MAX_FOLDER_DEPTH
 } from '@fastgpt/global/common/parentFolder/depth';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { postCreateSkillFolder } from '@/web/core/skill/api';
@@ -56,7 +56,7 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     paths,
     folderDetail
   } = useContextSelector(SkillListContext, (v) => v);
-  const maxFolderDepth = resolveMaxFolderDepth(feConfigs?.limit?.maxFolderDepth);
+  const maxFolderDepth = feConfigs?.limit?.maxFolderDepth ?? DEFAULT_MAX_FOLDER_DEPTH;
   const canCreateFolder = canCreateSubFolder(parentId, paths, maxFolderDepth);
 
   const { runAsync: onCreateFolder } = useRequest(postCreateSkillFolder, {

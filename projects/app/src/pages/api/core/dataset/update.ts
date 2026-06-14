@@ -43,6 +43,7 @@ import { getResourceOwnedClbs } from '@fastgpt/service/support/permission/contro
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '@fastgpt/service/common/system/utils';
 import { checkMoveFolderDepth } from '@fastgpt/service/common/parentFolder/depth';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 // 更新知识库接口
 // 包括如下功能：
@@ -57,19 +58,24 @@ import { checkMoveFolderDepth } from '@fastgpt/service/common/parentFolder/depth
 //  (3) 如果从根目录移动或移动到根目录，需要有团队的应用创建权限
 async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
   const {
-    id,
-    parentId,
-    name,
-    avatar,
-    intro,
-    agentModel,
-    vlmModel,
-    websiteConfig,
-    externalReadUrl,
-    apiDatasetServer,
-    autoSync,
-    chunkSettings: rawChunkSettings
-  } = UpdateDatasetBodySchema.parse(req.body);
+    body: {
+      id,
+      parentId,
+      name,
+      avatar,
+      intro,
+      agentModel,
+      vlmModel,
+      websiteConfig,
+      externalReadUrl,
+      apiDatasetServer,
+      autoSync,
+      chunkSettings: rawChunkSettings
+    }
+  } = parseApiInput({
+    req,
+    bodySchema: UpdateDatasetBodySchema
+  });
 
   if (websiteConfig?.url) {
     if (await isInternalAddress(websiteConfig.url)) {

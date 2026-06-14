@@ -32,7 +32,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import {
   canCreateSubFolder,
-  resolveMaxFolderDepth
+  DEFAULT_MAX_FOLDER_DEPTH
 } from '@fastgpt/global/common/parentFolder/depth';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
@@ -63,7 +63,7 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   const [editFolder, setEditFolder] = useState<EditFolderFormType>();
   const { userInfo } = useUserStore();
   const { feConfigs } = useSystemStore();
-  const maxFolderDepth = resolveMaxFolderDepth(feConfigs?.limit?.maxFolderDepth);
+  const maxFolderDepth = feConfigs?.limit?.maxFolderDepth ?? DEFAULT_MAX_FOLDER_DEPTH;
   const canCreateFolder = canCreateSubFolder(parentId, paths, maxFolderDepth);
 
   const {

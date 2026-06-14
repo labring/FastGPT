@@ -1,5 +1,4 @@
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { DEFAULT_MAX_FOLDER_DEPTH } from '@fastgpt/global/common/parentFolder/depth';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { serviceEnv } from '../../env';
 
@@ -43,9 +42,6 @@ type CheckMoveFolderDepthProps = FolderDepthModelProps & {
   isFolderType: FolderTypeChecker;
 };
 
-/** 读取系统配置的最大目录深度，非法值在 env 层已回落默认值。 */
-export const getMaxFolderDepth = () => serviceEnv.FASTGPT_MAX_FOLDER_DEPTH;
-
 /**
  * 根据 parentId 向上追溯，计算父级目录深度。
  * 根目录深度为 0；遇到 parentId 成环或父级不存在时拒绝请求。
@@ -63,7 +59,7 @@ const getParentFolderDepth = async ({
 
   while (currentId) {
     if (visited.has(currentId)) {
-      return Promise.reject(CommonErrEnum.invalidParams);
+      throw CommonErrEnum.invalidParams;
     }
     visited.add(currentId);
 
@@ -71,7 +67,7 @@ const getParentFolderDepth = async ({
       .findById(currentId, 'parentId teamId')
       .lean<FolderResourceDoc>();
     if (!doc || String(doc.teamId) !== String(teamId)) {
-      return Promise.reject(CommonErrEnum.invalidParams);
+      throw CommonErrEnum.invalidParams;
     }
 
     depth += 1;
@@ -85,7 +81,7 @@ const getParentFolderDepth = async ({
  * 计算被移动资源子树中文件夹的最大相对深度。
  * 非文件夹资源返回 0；文件夹自身相对深度为 1。
  */
-export const getSubtreeMaxFolderDepth = async ({
+const getSubtreeMaxFolderDepth = async ({
   resourceId,
   teamId,
   model,
@@ -96,7 +92,7 @@ export const getSubtreeMaxFolderDepth = async ({
 }): Promise<number> => {
   const resource = await model.findById(resourceId, 'type teamId').lean<FolderResourceDoc>();
   if (!resource || String(resource.teamId) !== String(teamId)) {
-    return Promise.reject(CommonErrEnum.invalidResource);
+    throw CommonErrEnum.invalidResource;
   }
 
   if (!resource.type || !isFolderType(resource.type)) {
@@ -105,6 +101,7 @@ export const getSubtreeMaxFolderDepth = async ({
 
   let maxRelativeDepth = 1;
   const queue: Array<{ id: string; depth: number }> = [{ id: resourceId, depth: 1 }];
+  const visited = new Set<string>([resourceId]);
 
   while (queue.length > 0) {
     const current = queue.shift();
@@ -117,9 +114,12 @@ export const getSubtreeMaxFolderDepth = async ({
       .lean<FolderResourceDoc>();
 
     for (const child of children) {
-      if (child.type && isFolderType(child.type)) {
-        queue.push({ id: String(child._id), depth: current.depth + 1 });
-      }
+      if (!child.type || !isFolderType(child.type)) continue;
+
+      const childId = String(child._id);
+      if (visited.has(childId)) continue;
+      visited.add(childId);
+      queue.push({ id: childId, depth: current.depth + 1 });
     }
   }
 
@@ -165,11 +165,11 @@ export const checkCreateFolderDepth = async ({
   teamId,
   model
 }: CheckCreateFolderDepthProps) => {
-  const maxDepth = getMaxFolderDepth();
+  const maxDepth = serviceEnv.MAX_FOLDER_DEPTH;
   const parentDepth = await getParentFolderDepth({ parentId, teamId, model });
 
   if (parentDepth + 1 > maxDepth) {
-    return Promise.reject(CommonErrEnum.folderDepthLimit);
+    throw CommonErrEnum.folderDepthLimit;
   }
 };
 
@@ -184,10 +184,10 @@ export const checkMoveFolderDepth = async ({
   model,
   isFolderType
 }: CheckMoveFolderDepthProps) => {
-  const maxDepth = getMaxFolderDepth();
+  const maxDepth = serviceEnv.MAX_FOLDER_DEPTH;
 
   if (targetParentId && String(targetParentId) === String(resourceId)) {
-    return Promise.reject(CommonErrEnum.invalidParams);
+    throw CommonErrEnum.invalidParams;
   }
 
   if (targetParentId) {
@@ -198,7 +198,7 @@ export const checkMoveFolderDepth = async ({
       model
     });
     if (movingIntoDescendant) {
-      return Promise.reject(CommonErrEnum.invalidParams);
+      throw CommonErrEnum.invalidParams;
     }
   }
 
@@ -208,8 +208,6 @@ export const checkMoveFolderDepth = async ({
   ]);
 
   if (targetParentDepth + subtreeMaxFolderDepth > maxDepth) {
-    return Promise.reject(CommonErrEnum.folderMoveDepthLimit);
+    throw CommonErrEnum.folderMoveDepthLimit;
   }
 };
-
-export { DEFAULT_MAX_FOLDER_DEPTH };
