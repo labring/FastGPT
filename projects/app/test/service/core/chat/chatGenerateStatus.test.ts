@@ -68,7 +68,8 @@ describe('chatGenerateStatus', () => {
     expect(MongoChat.findOneAndUpdate).toHaveBeenCalledWith(
       {
         appId: baseParams.appId,
-        chatId: baseParams.chatId
+        chatId: baseParams.chatId,
+        chatGenerateStatus: { $ne: ChatGenerateStatusEnum.generating }
       },
       {
         $set: expect.objectContaining({
@@ -102,9 +103,8 @@ describe('chatGenerateStatus', () => {
   it('should reject acquiring generate slot when chat is already generating', async () => {
     vi.mocked(MongoChat.findOneAndUpdate).mockReturnValue({
       lean: () =>
-        Promise.resolve({
-          _id: 'chat-object-id',
-          chatGenerateStatus: ChatGenerateStatusEnum.generating
+        Promise.reject({
+          code: 11000
         })
     } as any);
 
@@ -113,7 +113,8 @@ describe('chatGenerateStatus', () => {
     expect(MongoChat.findOneAndUpdate).toHaveBeenCalledWith(
       {
         appId: baseParams.appId,
-        chatId: baseParams.chatId
+        chatId: baseParams.chatId,
+        chatGenerateStatus: { $ne: ChatGenerateStatusEnum.generating }
       },
       expect.objectContaining({
         $set: expect.objectContaining({

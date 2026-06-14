@@ -170,9 +170,11 @@ describe('prepare chat round', () => {
   });
 
   it('should reject when the chat is already generating', async () => {
+    const originalUpdateTime = new Date('2026-01-01T00:00:00.000Z');
     const params = createPreChatRoundParams(
       {
-        chatId: 'generating-chat-id'
+        chatId: 'generating-chat-id',
+        sourceName: 'new-source-name'
       },
       { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
     );
@@ -182,10 +184,17 @@ describe('prepare chat round', () => {
       teamId: testTeamId,
       tmbId: testTmbId,
       source: params.source,
+      sourceName: 'original-source-name',
+      updateTime: originalUpdateTime,
       chatGenerateStatus: ChatGenerateStatusEnum.generating
     });
 
     await expect(preChatRound(params)).rejects.toBe(ChatErrEnum.chatIsGenerating);
+
+    const chat = await MongoChat.findOne({ appId: testAppId, chatId: params.chatId }).lean();
+    expect(chat?.sourceName).toBe('original-source-name');
+    expect(chat?.updateTime?.getTime()).toBe(originalUpdateTime.getTime());
+    expect(chat?.chatGenerateStatus).toBe(ChatGenerateStatusEnum.generating);
     expect(await MongoChatItem.countDocuments({ appId: testAppId, chatId: params.chatId })).toBe(0);
   });
 

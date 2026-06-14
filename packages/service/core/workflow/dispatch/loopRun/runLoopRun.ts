@@ -112,13 +112,24 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
   // Pre-interrupt runtime summary survives across resume here, so loopRun can still
   // calculate finished nodes, child stats and wall time without retaining full child details.
   let pendingIterationSummary = interactiveData?.pendingIterationSummary;
-  const getIncrementalChildResponseCount = (
-    summary: ReturnType<typeof getRuntimeNodeResponseSummary>,
-    preInterruptSummary: typeof pendingIterationSummary
-  ) => {
-    if (!preInterruptSummary) return summary.childResponseCount;
+  const getWrapperSummary = ({
+    isResumeIteration,
+    response
+  }: {
+    isResumeIteration: boolean;
+    response: Response;
+  }) => {
+    const currentSummary = getRuntimeNodeResponseSummary(response);
+    const fullSummary = isResumeIteration
+      ? mergeRuntimeNodeResponseSummary(pendingIterationSummary, currentSummary)
+      : currentSummary;
 
-    return (summary.childResponseCount || 0) - (preInterruptSummary.childResponseCount || 0);
+    // 同一个 iterationResponseId 会在暂停和恢复后各写一条 wrapper row；读取时数值字段按
+    // id/parentId 累加，所以恢复后的 wrapper 必须只写本次 resume 产生的增量统计。
+    return {
+      fullSummary,
+      wrapperSummary: isResumeIteration ? currentSummary : fullSummary
+    };
   };
 
   const resumeIteration = interactiveData?.iteration;
@@ -183,17 +194,12 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
 
     // Merge pre-interrupt runtime summary so resumed iteration still sees the full
     // set of finished nodes and stats without keeping full child nodeResponse data.
-    const iterationSummary = isResumeIteration
-      ? mergeRuntimeNodeResponseSummary(
-          pendingIterationSummary,
-          getRuntimeNodeResponseSummary(response)
-        )
-      : getRuntimeNodeResponseSummary(response);
-    const iterationChildResponseCount = getIncrementalChildResponseCount(
-      iterationSummary,
-      isResumeIteration ? pendingIterationSummary : undefined
-    );
-    const iterationRunningTime = iterationSummary.runningTime;
+    const { fullSummary: iterationSummary, wrapperSummary } = getWrapperSummary({
+      isResumeIteration,
+      response
+    });
+    const iterationChildResponseCount = wrapperSummary.childResponseCount;
+    const iterationRunningTime = wrapperSummary.runningTime;
     assistantResponses.push(...response.assistantResponses);
     const iterationTotalPoints = pushSubWorkflowUsage({
       usagePush: props.usagePush,
@@ -201,13 +207,12 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       name,
       iteration
     });
-    const iterationDetailTotalPoints = iterationSummary.totalPoints ?? iterationTotalPoints;
+    const iterationDetailTotalPoints = wrapperSummary.totalPoints ?? iterationTotalPoints;
     totalPoints += iterationTotalPoints;
     collectResponseFeedbacks(response, customFeedbacks);
 
     // Apply `finishedNodeIds` over the merged children so pre-interrupt nodes count
-    // as finished for the customOutputs snapshot. 交互暂停时也要先算一次，避免
-    // partial iteration wrapper 缺少已完成输出。
+    // as finished for the customOutputs snapshot.
     const finishedNodeIds = new Set(iterationSummary.finishedNodeIds);
     const customOutputs = readCustomOutputSnapshot({
       customOutputInputs,
@@ -241,7 +246,9 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     };
 
     // Pause: stash accumulated children so the next resume still sees pre-interrupt
-    // nodes (supports multiple interrupts in the same iteration).
+    // nodes (supports multiple interrupts in the same iteration). 暂停时也写一次 wrapper，
+    // 作为本轮 child nodeResponses 的 parent；恢复完成后会用同一个 iterationResponseId
+    // 再写增量 wrapper，读取时按 id/parentId 累加统计并合并 children。
     if (response.workflowInteractiveResponse) {
       interactiveResponse = response.workflowInteractiveResponse;
       pendingIterationSummary = iterationSummary;

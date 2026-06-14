@@ -541,7 +541,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     expect(history[1]).toMatchObject({ iteration: 2, success: true });
   });
 
-  it('lastInteractive 恢复 → 只累计恢复后的增量 child 统计', async () => {
+  it('lastInteractive 恢复 → 完成时只写入恢复后的 wrapper 增量统计', async () => {
     const nodeResponseWriter = {
       recordWithParent: vi.fn().mockResolvedValue([])
     };
@@ -602,7 +602,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     expect(nodeResponseWriter.recordWithParent).toHaveBeenCalledTimes(1);
     expect(nodeResponseWriter.recordWithParent.mock.calls[0][0][0]).toMatchObject({
       id: 'loop-parent-response:iter:1',
-      totalPoints: 6,
+      totalPoints: 5,
       childResponseCount: 2
     });
   });
@@ -850,7 +850,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     });
   });
 
-  it('interactive 中断轮：不内嵌 partial loopRunDetail，父响应保留 child 统计', async () => {
+  it('interactive 中断轮：写入本轮 wrapper，确保已写 child 可挂到 loop 下', async () => {
     const interactivePayload: any = {
       entryNodeIds: ['userSelectNode'],
       memoryEdges: [],
@@ -865,17 +865,30 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
         })
       )
     );
+    const nodeResponseWriter = {
+      recordWithParent: vi.fn().mockResolvedValue([])
+    };
 
-    const props = makeProps({
-      [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.array,
-      [NodeInputKeyEnum.loopRunInputArray]: ['a', 'b'],
-      [NodeInputKeyEnum.childrenNodeIdList]: ['startNode', 'chatNode']
-    });
+    const props = {
+      ...makeProps({
+        [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.array,
+        [NodeInputKeyEnum.loopRunInputArray]: ['a', 'b'],
+        [NodeInputKeyEnum.childrenNodeIdList]: ['startNode', 'chatNode']
+      }),
+      nodeResponseWriter,
+      nodeResponseParentId: 'loop-parent-response'
+    };
 
     const result: any = await dispatchLoopRun(props);
     const nodeResponse = result[DispatchNodeResponseKeyEnum.nodeResponse];
     expect(nodeResponse.loopRunDetail).toBeUndefined();
     expect(nodeResponse.childResponseCount).toBe(2);
+    expect(nodeResponseWriter.recordWithParent).toHaveBeenCalledTimes(1);
+    expect(nodeResponseWriter.recordWithParent.mock.calls[0][1]).toBe('loop-parent-response');
+    expect(nodeResponseWriter.recordWithParent.mock.calls[0][0][0]).toMatchObject({
+      id: 'loop-parent-response:iter:1',
+      childResponseCount: 1
+    });
   });
 
   it('array mode 数组长度 === max → 跑满且不报超限（回归：== max 不算超限）', async () => {
