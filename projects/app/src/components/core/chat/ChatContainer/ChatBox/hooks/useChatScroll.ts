@@ -1,6 +1,12 @@
-import { useRef } from 'react';
+import { useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
 import { useMemoizedFn, useThrottleFn } from 'ahooks';
-import { shouldFollowGeneratingScroll } from '../utils/scrollUtils';
+import {
+  isChatScrollAtBottom,
+  shouldFollowGeneratingScroll,
+  shouldShowChatScrollToBottomButton
+} from '../utils/scrollUtils';
+
+const SHOW_SCROLL_TO_BOTTOM_BUTTON_DELAY = 160;
 
 /**
  * 管理 ChatBox 的滚动容器和生成中跟随底部逻辑。
@@ -13,6 +19,8 @@ import { shouldFollowGeneratingScroll } from '../utils/scrollUtils';
  * - `ScrollContainerRef` 绑定到聊天记录滚动容器。
  * - `scrollToBottom` 用于明确要求滚到底部，支持 smooth/auto 和延迟。
  * - `generatingScroll` 用于流式生成中“条件跟随底部”，避免打断用户查看历史。
+ * - `isScrollAtBottom` 只描述当前滚动位置。
+ * - `isScrollToBottomButtonVisible` 会延迟展示，避免流式内容撑高后的瞬时按钮闪烁。
  *
  * 关键边界：
  * - `scrollToBottom` 保留 DOM 未挂载时的延迟重试，因为 ChatBox 有动态加载记录、
@@ -21,7 +29,81 @@ import { shouldFollowGeneratingScroll } from '../utils/scrollUtils';
  *   传入 `force` 时才跟随；这能避免用户向上查看历史时被流式 token 拉回底部。
  */
 export const useChatScroll = () => {
-  const ScrollContainerRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const [scrollContainer, setScrollContainer] = useState<HTMLDivElement | null>(null);
+  const ScrollContainerRef = useMemo(
+    () =>
+      ({
+        get current() {
+          return scrollContainerRef.current;
+        },
+        set current(container: HTMLDivElement | null) {
+          if (scrollContainerRef.current === container) return;
+          scrollContainerRef.current = container;
+          setScrollContainer(container);
+        }
+      }) as MutableRefObject<HTMLDivElement | null>,
+    []
+  );
+  const [isScrollAtBottom, setIsScrollAtBottom] = useState(true);
+  const [isScrollToBottomButtonVisible, setIsScrollToBottomButtonVisible] = useState(false);
+  const showScrollToBottomButtonTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  /**
+   * 同步用户是否已经滚动到底部。
+   *
+   * 这个状态只服务 UI 提示，不参与生成中的自动贴底逻辑，避免额外状态改变影响流式
+   * token 的滚动节奏。没有可滚动内容时视为已经在底部，因此不会展示回到底部按钮。
+   */
+  const syncScrollAtBottom = useMemoizedFn(() => {
+    const container = scrollContainerRef.current;
+    if (!container) {
+      setIsScrollAtBottom(true);
+      setIsScrollToBottomButtonVisible(false);
+      return;
+    }
+
+    const scrollState = {
+      scrollTop: container.scrollTop,
+      clientHeight: container.clientHeight,
+      scrollHeight: container.scrollHeight
+    };
+    const nextIsScrollAtBottom = isChatScrollAtBottom(scrollState);
+
+    setIsScrollAtBottom(nextIsScrollAtBottom);
+    if (nextIsScrollAtBottom) {
+      if (showScrollToBottomButtonTimerRef.current) {
+        clearTimeout(showScrollToBottomButtonTimerRef.current);
+        showScrollToBottomButtonTimerRef.current = undefined;
+      }
+      setIsScrollToBottomButtonVisible(false);
+      return;
+    }
+
+    if (!shouldShowChatScrollToBottomButton(scrollState)) {
+      if (showScrollToBottomButtonTimerRef.current) {
+        clearTimeout(showScrollToBottomButtonTimerRef.current);
+        showScrollToBottomButtonTimerRef.current = undefined;
+      }
+      setIsScrollToBottomButtonVisible(false);
+      return;
+    }
+
+    if (isScrollToBottomButtonVisible || showScrollToBottomButtonTimerRef.current) return;
+    showScrollToBottomButtonTimerRef.current = setTimeout(() => {
+      showScrollToBottomButtonTimerRef.current = undefined;
+      const latestContainer = scrollContainerRef.current;
+      if (!latestContainer) return;
+
+      setIsScrollToBottomButtonVisible(
+        shouldShowChatScrollToBottomButton({
+          scrollTop: latestContainer.scrollTop,
+          clientHeight: latestContainer.clientHeight,
+          scrollHeight: latestContainer.scrollHeight
+        })
+      );
+    }, SHOW_SCROLL_TO_BOTTOM_BUTTON_DELAY);
+  });
 
   /**
    * 滚动到底部。
@@ -31,15 +113,16 @@ export const useChatScroll = () => {
    */
   const scrollToBottom = useMemoizedFn((behavior: 'smooth' | 'auto' = 'smooth', delay = 0) => {
     const runScroll = () => {
-      if (!ScrollContainerRef.current) {
+      if (!scrollContainerRef.current) {
         setTimeout(runScroll, 500);
         return;
       }
 
-      ScrollContainerRef.current.scrollTo({
-        top: ScrollContainerRef.current.scrollHeight,
+      scrollContainerRef.current.scrollTo({
+        top: scrollContainerRef.current.scrollHeight,
         behavior
       });
+      syncScrollAtBottom();
     };
 
     setTimeout(() => {
@@ -49,13 +132,13 @@ export const useChatScroll = () => {
 
   const { run: generatingScroll } = useThrottleFn(
     (force?: boolean) => {
-      if (!ScrollContainerRef.current) return;
+      if (!scrollContainerRef.current) return;
       // 流式响应会高频触发，先判断用户是否仍在底部附近，再决定是否滚动。
       // `force` 用于发送新消息、恢复占位等明确需要贴底的场景。
       const isBottom = shouldFollowGeneratingScroll({
-        scrollTop: ScrollContainerRef.current.scrollTop,
-        clientHeight: ScrollContainerRef.current.clientHeight,
-        scrollHeight: ScrollContainerRef.current.scrollHeight,
+        scrollTop: scrollContainerRef.current.scrollTop,
+        clientHeight: scrollContainerRef.current.clientHeight,
+        scrollHeight: scrollContainerRef.current.scrollHeight,
         force
       });
 
@@ -68,9 +151,58 @@ export const useChatScroll = () => {
     }
   );
 
+  useEffect(() => {
+    const container = scrollContainer;
+    if (!container) {
+      syncScrollAtBottom();
+      return;
+    }
+
+    syncScrollAtBottom();
+    container.addEventListener('scroll', syncScrollAtBottom, { passive: true });
+    window.addEventListener('resize', syncScrollAtBottom);
+
+    const resizeObserver =
+      typeof ResizeObserver === 'undefined'
+        ? undefined
+        : new ResizeObserver(() => {
+            syncScrollAtBottom();
+          });
+    resizeObserver?.observe(container);
+
+    const mutationObserver =
+      typeof MutationObserver === 'undefined'
+        ? undefined
+        : new MutationObserver(() => {
+            syncScrollAtBottom();
+          });
+    mutationObserver?.observe(container, {
+      childList: true,
+      subtree: true,
+      characterData: true
+    });
+
+    return () => {
+      container.removeEventListener('scroll', syncScrollAtBottom);
+      window.removeEventListener('resize', syncScrollAtBottom);
+      resizeObserver?.disconnect();
+      mutationObserver?.disconnect();
+    };
+  }, [scrollContainer, syncScrollAtBottom]);
+
+  useEffect(() => {
+    return () => {
+      if (showScrollToBottomButtonTimerRef.current) {
+        clearTimeout(showScrollToBottomButtonTimerRef.current);
+      }
+    };
+  }, []);
+
   return {
     ScrollContainerRef,
     scrollToBottom,
-    generatingScroll
+    generatingScroll,
+    isScrollAtBottom,
+    isScrollToBottomButtonVisible
   };
 };

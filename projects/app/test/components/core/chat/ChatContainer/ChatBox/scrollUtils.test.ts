@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   CHAT_GENERATING_SCROLL_BOTTOM_THRESHOLD,
+  CHAT_SCROLL_TO_BOTTOM_BUTTON_DISTANCE_THRESHOLD,
+  getChatScrollBottomDistance,
   getChatScrollTargetKey,
+  isChatScrollAtBottom,
   shouldFollowGeneratingScroll,
-  shouldForceScrollAfterRecordsLoaded
+  shouldForceScrollAfterRecordsLoaded,
+  shouldShowChatScrollToBottomButton
 } from '@/components/core/chat/ChatContainer/ChatBox/utils/scrollUtils';
 
 describe('ChatBox scrollUtils', () => {
@@ -84,6 +88,54 @@ describe('ChatBox scrollUtils', () => {
     expect(
       shouldFollowGeneratingScroll({
         scrollTop: 1000 - 500 - CHAT_GENERATING_SCROLL_BOTTOM_THRESHOLD,
+        clientHeight: 500,
+        scrollHeight: 1000
+      })
+    ).toBe(true);
+  });
+
+  it('should identify whether chat scroll is already at bottom', () => {
+    expect(
+      isChatScrollAtBottom({
+        scrollTop: 496,
+        clientHeight: 500,
+        scrollHeight: 1000
+      })
+    ).toBe(true);
+    expect(
+      isChatScrollAtBottom({
+        scrollTop: 495,
+        clientHeight: 500,
+        scrollHeight: 1000
+      })
+    ).toBe(false);
+    expect(
+      isChatScrollAtBottom({
+        scrollTop: 0,
+        clientHeight: 500,
+        scrollHeight: 500
+      })
+    ).toBe(true);
+  });
+
+  it('should show scroll-to-bottom button only after leaving bottom enough', () => {
+    expect(
+      getChatScrollBottomDistance({
+        scrollTop: 400,
+        clientHeight: 500,
+        scrollHeight: 1000
+      })
+    ).toBe(100);
+    expect(
+      shouldShowChatScrollToBottomButton({
+        scrollTop: 1000 - 500 - CHAT_SCROLL_TO_BOTTOM_BUTTON_DISTANCE_THRESHOLD,
+        clientHeight: 500,
+        scrollHeight: 1000
+      })
+    ).toBe(false);
+    expect(
+      shouldShowChatScrollToBottomButton({
+        scrollTop: 1000 - 500 - CHAT_SCROLL_TO_BOTTOM_BUTTON_DISTANCE_THRESHOLD - 1,
         clientHeight: 500,
         scrollHeight: 1000
       })

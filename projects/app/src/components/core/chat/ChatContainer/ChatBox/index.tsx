@@ -8,7 +8,7 @@ import React, {
   useLayoutEffect
 } from 'react';
 import Script from 'next/script';
-import { Box, Flex } from '@chakra-ui/react';
+import { Box } from '@chakra-ui/react';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { useTranslation } from 'next-i18next';
 import { postMarkChatRead } from '@/web/core/chat/history/api';
@@ -58,6 +58,7 @@ import ChatBoxModals from './components/ChatBoxModals';
 import type { ChatRecordsListProps } from './components/ChatRecordsList';
 import AppChatMain from './components/AppChatMain';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import ScrollToBottomButton from './components/ScrollToBottomButton';
 
 const ChatHomeVariablesForm = dynamic(() => import('./components/home/ChatHomeVariablesForm'));
 const DesktopHomeLayout = dynamic(() => import('./components/home/DesktopHomeLayout'));
@@ -118,7 +119,8 @@ const ChatBox = ({
 
   const [questionGuides, setQuestionGuide] = useState<string[]>([]);
   const [expandedDeletedGroups, setExpandedDeletedGroups] = useState<Set<string>>(new Set());
-  const { ScrollContainerRef, scrollToBottom, generatingScroll } = useChatScroll();
+  const { ScrollContainerRef, scrollToBottom, generatingScroll, isScrollToBottomButtonVisible } =
+    useChatScroll();
 
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
@@ -380,6 +382,12 @@ const ChatBox = ({
 
   const canRenderChatInput = onStartChat && chatStarted && active && canSendQuery;
   const canSendPrompt = canRenderChatInput && !isRoundPending;
+  const canRenderScrollToBottomButton =
+    (chatType === ChatTypeEnum.chat ||
+      chatType === ChatTypeEnum.home ||
+      chatType === ChatTypeEnum.test ||
+      chatType === ChatTypeEnum.share) &&
+    isScrollToBottomButtonVisible;
 
   // Add listener
   useEffect(() => {
@@ -583,18 +591,24 @@ const ChatBox = ({
           {canRenderChatInput && (
             <Box {...ChatInputWrapperStyle}>
               {showWorkorder && <WorkorderEntrance />}
+              <Box position="relative">
+                <ScrollToBottomButton
+                  isVisible={canRenderScrollToBottomButton}
+                  onClick={() => scrollToBottom('smooth')}
+                />
 
-              <ChatInput
-                onSendMessage={sendPrompt}
-                lastInteractive={lastInteractive}
-                onStop={() => abortRequest('stop')}
-                onStopChat={requestStopChat}
-                onStopSettled={handleStopSettled}
-                disableSend={isRoundPending}
-                TextareaDom={TextareaDom}
-                resetInputVal={resetInputVal}
-                chatForm={chatForm}
-              />
+                <ChatInput
+                  onSendMessage={sendPrompt}
+                  lastInteractive={lastInteractive}
+                  onStop={() => abortRequest('stop')}
+                  onStopChat={requestStopChat}
+                  onStopSettled={handleStopSettled}
+                  disableSend={isRoundPending}
+                  TextareaDom={TextareaDom}
+                  resetInputVal={resetInputVal}
+                  chatForm={chatForm}
+                />
+              </Box>
             </Box>
           )}
         </>
