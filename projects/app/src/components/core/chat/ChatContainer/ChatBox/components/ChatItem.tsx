@@ -9,6 +9,7 @@ import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 import { useTranslation } from 'next-i18next';
 import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { type AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import type { SearchDataResponseQuoteListItemType } from '@fastgpt/global/core/dataset/type';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 import { useMemoizedFn } from 'ahooks';
@@ -77,10 +78,9 @@ const ChatItem = (props: Props) => {
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
   const isShowFullText = useContextSelector(ChatItemContext, (v) => v.isShowFullText);
 
-  const { totalQuoteList: quoteList = [], errorText } = useMemoEnhance(
-    () => addStatisticalDataToHistoryItem(chat),
-    [chat]
-  );
+  const statisticalChatItem = useMemoEnhance(() => addStatisticalDataToHistoryItem(chat), [chat]);
+  const quoteList: SearchDataResponseQuoteListItemType[] = statisticalChatItem.totalQuoteList ?? [];
+  const { errorText } = statisticalChatItem;
   const inlineErrorInfo = useMemo(() => {
     if (!chat.errorMsg && !errorText) return;
 

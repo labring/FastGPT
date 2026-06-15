@@ -33,6 +33,17 @@ interface MigrationResult {
   activeProvider?: string;
 }
 
+const countSandboxArchiveCandidates = (params: {
+  provider: SandboxProviderType;
+  inactiveBefore: Date;
+}) =>
+  MongoSandboxInstance.countDocuments({
+    provider: params.provider,
+    status: 'stopped',
+    lastActiveAt: { $lt: params.inactiveBefore },
+    'metadata.archive.state': { $exists: false }
+  });
+
 /**
  * init 归档脚本统一记录归档失败埋点。
  * 归档 service 会把 zip 安装失败、workspace 超限、上传/删除失败等失败汇总到 failures。
@@ -180,12 +191,48 @@ export async function migrateSandboxArchiveData(params: {
     logger.info(`Active Sandbox Provider: ${activeProvider}`);
     logger.info('Running immediate sandbox archiving task...');
     archiveTriggered = true;
+    const archiveCandidateCount = await countSandboxArchiveCandidates({
+      provider: activeProvider,
+      inactiveBefore: calculatedInactiveBefore
+    });
+    const archiveStartTime = Date.now();
+
+    logger.info('Sandbox archive candidates counted', {
+      provider: activeProvider,
+      inactiveBefore: calculatedInactiveBefore.toISOString(),
+      total: archiveCandidateCount
+    });
 
     archiveResult = await archiveSandboxResources({
       inactiveBefore: calculatedInactiveBefore,
       providers: [activeProvider],
       options: {
-        ensureZipInSandbox: true
+        ensureZipInSandbox: true,
+        onProgress: (progress) => {
+          const percent =
+            archiveCandidateCount > 0
+              ? Math.min(100, Math.round((progress.processedCount / archiveCandidateCount) * 100))
+              : 100;
+
+          logger.info('Sandbox archive progress', {
+            provider: activeProvider,
+            total: archiveCandidateCount,
+            processed: progress.processedCount,
+            success: progress.successCount,
+            failed: progress.failCount,
+            batchSize: progress.batchSize,
+            percent,
+            elapsedMs: Date.now() - archiveStartTime
+          });
+
+          progress.failures.forEach((failure) => {
+            logger.error('Sandbox archive resource failed', {
+              provider: activeProvider,
+              sandboxId: failure.sandboxId,
+              error: failure.error
+            });
+          });
+        }
       }
     });
     await traceSandboxArchiveFailures({
@@ -193,7 +240,10 @@ export async function migrateSandboxArchiveData(params: {
       archiveResult
     });
 
-    logger.info('Archive task executed successfully', { archiveResult });
+    logger.info('Archive task executed successfully', {
+      archiveResult,
+      elapsedMs: Date.now() - archiveStartTime
+    });
   }
 
   const duration = Date.now() - startTime;

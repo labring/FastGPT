@@ -8,7 +8,7 @@ import React, {
   useLayoutEffect
 } from 'react';
 import Script from 'next/script';
-import { Box } from '@chakra-ui/react';
+import { Box, type BoxProps } from '@chakra-ui/react';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { useTranslation } from 'next-i18next';
 import { postMarkChatRead } from '@/web/core/chat/history/api';

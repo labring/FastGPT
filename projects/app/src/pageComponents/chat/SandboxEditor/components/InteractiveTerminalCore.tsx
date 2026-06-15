@@ -21,8 +21,8 @@ const InteractiveTerminalCore = ({ appId, chatId, outLinkAuthData, canWrite = tr
   });
 
   return (
-    <Flex position={'relative'} w={'100%'} h={'100%'}>
-      <Box ref={containerRef} w={'100%'} h={'100%'} bg={'#1e1e1e'} />
+    <Flex position={'relative'} w={'100%'} h={'100%'} bg={'#ffffff'} px={'16px'}>
+      <Box ref={containerRef} w={'100%'} h={'100%'} bg={'#ffffff'} />
     </Flex>
   );
 };

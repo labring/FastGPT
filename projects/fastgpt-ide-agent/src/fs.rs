@@ -1,14 +1,16 @@
 use std::collections::{BTreeSet, HashSet};
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use std::time::{Duration, SystemTime};
 
 use base64::Engine;
 use futures_util::{SinkExt, StreamExt};
 use notify::event::ModifyKind;
-use notify::{Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use notify::{Event, EventKind, RecursiveMode};
+use notify_debouncer_full::{DebounceEventResult, DebouncedEvent, new_debouncer};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use tokio::sync::{broadcast, mpsc};
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::tungstenite::protocol::frame::CloseFrame;
 
@@ -21,7 +23,22 @@ use crate::workspace::{
 const DEFAULT_EXCLUDED_NAMES: &[&str] = &["node_modules", ".git", ".next", "dist", "build", ".bun"];
 const FS_CHANGE_DEBOUNCE_MS: u64 = 500;
 const FS_CHANGE_MAX_PATHS: usize = 200;
+const FS_WATCH_BROADCAST_CAPACITY: usize = 128;
 const DEFAULT_MAX_FILE_BYTES: u64 = 10 * 1024 * 1024;
+
+#[derive(Debug, Clone)]
+struct FsChangeBatch {
+    seq: u64,
+    paths: Vec<String>,
+    kinds: Vec<String>,
+    overflow: bool,
+}
+
+struct FsWatchHub {
+    tx: broadcast::Sender<FsChangeBatch>,
+}
+
+static FS_WATCH_HUB: OnceLock<FsWatchHub> = OnceLock::new();
 
 fn max_file_bytes() -> u64 {
     std::env::var("FASTGPT_IDE_MAX_FILE_BYTES")
@@ -56,15 +73,48 @@ fn collect_fs_event_paths(event: &Event) -> Vec<String> {
         .collect()
 }
 
+fn collect_debounced_event_paths(events: &[DebouncedEvent]) -> (Vec<String>, bool) {
+    let mut paths = BTreeSet::<String>::new();
+    let mut overflow = false;
+
+    for event in events {
+        for path in collect_fs_event_paths(&event.event) {
+            if !paths.contains(&path) && paths.len() >= FS_CHANGE_MAX_PATHS {
+                overflow = true;
+                continue;
+            }
+            paths.insert(path);
+        }
+    }
+
+    (paths.into_iter().collect(), overflow)
+}
+
+fn collect_debounced_event_kinds(events: &[DebouncedEvent]) -> Vec<String> {
+    let mut kinds = BTreeSet::<String>::new();
+    for event in events {
+        if let Some(kind) = get_fs_event_kind(&event.event.kind) {
+            kinds.insert(kind.to_string());
+        }
+    }
+    kinds.into_iter().collect()
+}
+
+fn debounced_events_need_rescan(events: &[DebouncedEvent]) -> bool {
+    events.iter().any(|event| event.event.need_rescan())
+}
+
 fn build_fs_change_notification(
     paths: Vec<String>,
     kinds: Vec<String>,
     overflow: bool,
+    seq: u64,
 ) -> JsonRpcNotification {
     JsonRpcNotification {
         jsonrpc: "2.0".to_string(),
         method: "fs/did_change".to_string(),
         params: json!({
+            "seq": seq,
             "paths": paths,
             "kinds": kinds,
             "overflow": overflow
@@ -72,94 +122,142 @@ fn build_fs_change_notification(
     }
 }
 
-fn start_fs_watcher(outbound_tx: tokio::sync::mpsc::Sender<Message>) -> Option<RecommendedWatcher> {
-    let root = get_workspace_root().to_path_buf();
-    let (event_tx, mut event_rx) = tokio::sync::mpsc::channel::<notify::Result<Event>>(1000);
+fn publish_fs_change_batch(
+    tx: &broadcast::Sender<FsChangeBatch>,
+    next_seq: &mut u64,
+    batch: FsChangeBatch,
+) {
+    if batch.paths.is_empty() && !batch.overflow {
+        return;
+    }
 
-    let mut watcher = match notify::recommended_watcher(move |res| {
-        let _ = event_tx.try_send(res);
-    }) {
-        Ok(watcher) => watcher,
+    *next_seq = next_seq.wrapping_add(1);
+    let _ = tx.send(FsChangeBatch {
+        seq: *next_seq,
+        ..batch
+    });
+}
+
+fn start_workspace_watcher(tx: broadcast::Sender<FsChangeBatch>) {
+    let root = get_workspace_root().to_path_buf();
+    let (event_tx, mut event_rx) = mpsc::unbounded_channel::<DebounceEventResult>();
+
+    let mut debouncer = match new_debouncer(
+        Duration::from_millis(FS_CHANGE_DEBOUNCE_MS),
+        None,
+        move |res| {
+            let _ = event_tx.send(res);
+        },
+    ) {
+        Ok(debouncer) => debouncer,
         Err(err) => {
             eprintln!("Failed to create workspace watcher: {}", err);
-            return None;
+            return;
         }
     };
 
-    if let Err(err) = watcher.watch(&root, RecursiveMode::Recursive) {
+    if let Err(err) = debouncer.watch(&root, RecursiveMode::Recursive) {
         eprintln!("Failed to watch workspace {:?}: {}", root, err);
-        return None;
+        return;
     }
 
     tokio::spawn(async move {
-        let mut pending_paths = BTreeSet::<String>::new();
-        let mut pending_kinds = BTreeSet::<String>::new();
-        let mut overflow = false;
-        let debounce = tokio::time::sleep(Duration::from_millis(FS_CHANGE_DEBOUNCE_MS));
-        tokio::pin!(debounce);
-        let mut timer_active = false;
+        // 持有 debouncer，确保进程级监听器生命周期覆盖整个聚合任务。
+        let _debouncer = debouncer;
+        let mut next_seq = 0_u64;
 
-        loop {
-            tokio::select! {
-                maybe_event = event_rx.recv() => {
-                    let Some(event_res) = maybe_event else {
-                        break;
-                    };
+        while let Some(event_res) = event_rx.recv().await {
+            let batch = match event_res {
+                Ok(events) => {
+                    let (paths, path_overflow) = collect_debounced_event_paths(&events);
+                    let overflow = debounced_events_need_rescan(&events) || path_overflow;
+                    let kinds = collect_debounced_event_kinds(&events);
 
-                    let event = match event_res {
-                        Ok(event) => event,
-                        Err(err) => {
-                            eprintln!("Workspace watcher event error: {}", err);
-                            continue;
-                        }
-                    };
-
-                    let Some(kind) = get_fs_event_kind(&event.kind) else {
-                        continue;
-                    };
-
-                    let paths = collect_fs_event_paths(&event);
-                    if paths.is_empty() {
-                        continue;
-                    }
-
-                    pending_kinds.insert(kind.to_string());
-                    for path in paths {
-                        if pending_paths.len() >= FS_CHANGE_MAX_PATHS {
-                            overflow = true;
+                    FsChangeBatch {
+                        seq: 0,
+                        paths,
+                        kinds: if kinds.is_empty() && overflow {
+                            vec!["overflow".to_string()]
                         } else {
-                            pending_paths.insert(path);
-                        }
+                            kinds
+                        },
+                        overflow,
                     }
-
-                    debounce.as_mut().reset(tokio::time::Instant::now() + Duration::from_millis(FS_CHANGE_DEBOUNCE_MS));
-                    timer_active = true;
                 }
-
-                _ = &mut debounce, if timer_active => {
-                    if !pending_paths.is_empty() || overflow {
-                        let notification = build_fs_change_notification(
-                            pending_paths.iter().cloned().collect(),
-                            pending_kinds.iter().cloned().collect(),
-                            overflow,
-                        );
-                        if let Ok(text) = serde_json::to_string(&notification)
-                            && outbound_tx.send(Message::Text(text.into())).await.is_err()
-                        {
-                            break;
-                        }
+                Err(errors) => {
+                    for err in errors {
+                        eprintln!("Workspace watcher event error: {}", err);
                     }
-
-                    pending_paths.clear();
-                    pending_kinds.clear();
-                    overflow = false;
-                    timer_active = false;
+                    FsChangeBatch {
+                        seq: 0,
+                        paths: Vec::new(),
+                        kinds: vec!["overflow".to_string()],
+                        overflow: true,
+                    }
                 }
-            }
+            };
+
+            publish_fs_change_batch(&tx, &mut next_seq, batch);
         }
     });
+}
 
-    Some(watcher)
+fn fs_watch_hub() -> &'static FsWatchHub {
+    FS_WATCH_HUB.get_or_init(|| {
+        let (tx, _) = broadcast::channel(FS_WATCH_BROADCAST_CAPACITY);
+        start_workspace_watcher(tx.clone());
+
+        FsWatchHub { tx }
+    })
+}
+
+async fn send_fs_change_batch(
+    outbound_tx: &mpsc::Sender<Message>,
+    batch: FsChangeBatch,
+) -> Result<(), ()> {
+    let notification =
+        build_fs_change_notification(batch.paths, batch.kinds, batch.overflow, batch.seq);
+    if let Ok(text) = serde_json::to_string(&notification) {
+        outbound_tx
+            .send(Message::Text(text.into()))
+            .await
+            .map_err(|_| ())?;
+    }
+    Ok(())
+}
+
+async fn forward_fs_change_batches(
+    mut change_rx: broadcast::Receiver<FsChangeBatch>,
+    outbound_tx: mpsc::Sender<Message>,
+) {
+    let mut last_forwarded_seq = 0_u64;
+
+    loop {
+        match change_rx.recv().await {
+            Ok(batch) => {
+                last_forwarded_seq = batch.seq;
+                if send_fs_change_batch(&outbound_tx, batch).await.is_err() {
+                    break;
+                }
+            }
+            Err(broadcast::error::RecvError::Lagged(skipped)) => {
+                last_forwarded_seq = last_forwarded_seq.wrapping_add(skipped);
+                let overflow_batch = FsChangeBatch {
+                    seq: last_forwarded_seq,
+                    paths: Vec::new(),
+                    kinds: vec!["overflow".to_string()],
+                    overflow: true,
+                };
+                if send_fs_change_batch(&outbound_tx, overflow_batch)
+                    .await
+                    .is_err()
+                {
+                    break;
+                }
+            }
+            Err(broadcast::error::RecvError::Closed) => break,
+        }
+    }
 }
 
 async fn handle_read_dir(params: Option<serde_json::Value>) -> Result<serde_json::Value, String> {
@@ -608,9 +706,12 @@ pub async fn handle_fs_session<S>(
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
 {
     let (mut ws_sink, mut ws_source) = ws_stream.split();
-    let (outbound_tx, mut outbound_rx) = tokio::sync::mpsc::channel::<Message>(100);
+    let (outbound_tx, mut outbound_rx) = mpsc::channel::<Message>(100);
     let (close_tx, mut close_rx) = tokio::sync::oneshot::channel::<Option<CloseFrame>>();
-    let _watcher = start_fs_watcher(outbound_tx.clone());
+    let mut fs_change_task = tokio::spawn(forward_fs_change_batches(
+        fs_watch_hub().tx.subscribe(),
+        outbound_tx.clone(),
+    ));
 
     let mut send_task = tokio::spawn(async move {
         loop {
@@ -671,6 +772,7 @@ pub async fn handle_fs_session<S>(
     tokio::select! {
         _ = &mut send_task => {},
         _ = &mut recv_task => {},
+        _ = &mut fs_change_task => {},
     }
 
     if !send_task.is_finished() {
@@ -679,12 +781,18 @@ pub async fn handle_fs_session<S>(
     if !recv_task.is_finished() {
         let _ = tokio::time::timeout(Duration::from_millis(200), &mut recv_task).await;
     }
+    if !fs_change_task.is_finished() {
+        let _ = tokio::time::timeout(Duration::from_millis(200), &mut fs_change_task).await;
+    }
 
     if !send_task.is_finished() {
         send_task.abort();
     }
     if !recv_task.is_finished() {
         recv_task.abort();
+    }
+    if !fs_change_task.is_finished() {
+        fs_change_task.abort();
     }
 }
 
@@ -965,6 +1073,7 @@ mod tests {
             vec!["src/index.ts".to_string()],
             vec!["create".to_string()],
             false,
+            42,
         );
         let value = serde_json::to_value(notification).unwrap();
 
@@ -979,6 +1088,10 @@ mod tests {
             Some("src/index.ts")
         );
         assert_eq!(
+            value.pointer("/params/seq").and_then(|v| v.as_u64()),
+            Some(42)
+        );
+        assert_eq!(
             value.pointer("/params/kinds/0").and_then(|v| v.as_str()),
             Some("create")
         );
@@ -986,5 +1099,51 @@ mod tests {
             value.pointer("/params/overflow").and_then(|v| v.as_bool()),
             Some(false)
         );
+    }
+
+    #[test]
+    fn test_publish_fs_change_batch_increments_seq() {
+        let (tx, mut rx) = broadcast::channel(4);
+        let mut next_seq = 0_u64;
+
+        publish_fs_change_batch(
+            &tx,
+            &mut next_seq,
+            FsChangeBatch {
+                seq: 0,
+                paths: vec!["src/index.ts".to_string()],
+                kinds: vec!["modify".to_string()],
+                overflow: false,
+            },
+        );
+
+        let batch = rx.try_recv().unwrap();
+        assert_eq!(batch.seq, 1);
+        assert_eq!(batch.paths, vec!["src/index.ts"]);
+        assert_eq!(batch.kinds, vec!["modify"]);
+        assert!(!batch.overflow);
+    }
+
+    #[test]
+    fn test_publish_fs_change_batch_can_emit_overflow_only_notification() {
+        let (tx, mut rx) = broadcast::channel(4);
+        let mut next_seq = 7_u64;
+
+        publish_fs_change_batch(
+            &tx,
+            &mut next_seq,
+            FsChangeBatch {
+                seq: 0,
+                paths: Vec::new(),
+                kinds: vec!["overflow".to_string()],
+                overflow: true,
+            },
+        );
+
+        let batch = rx.try_recv().unwrap();
+        assert_eq!(batch.seq, 8);
+        assert!(batch.paths.is_empty());
+        assert_eq!(batch.kinds, vec!["overflow"]);
+        assert!(batch.overflow);
     }
 }

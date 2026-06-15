@@ -64,8 +64,17 @@ export interface SandboxArchiveResult {
   failures: SandboxArchiveFailure[];
 }
 
+export interface SandboxArchiveProgress {
+  processedCount: number;
+  successCount: number;
+  failCount: number;
+  batchSize: number;
+  failures: SandboxArchiveFailure[];
+}
+
 export interface SandboxArchiveOptions {
   ensureZipInSandbox?: boolean;
+  onProgress?: (progress: SandboxArchiveProgress) => void | Promise<void>;
 }
 
 const shellQuote = (value: string): string => `'${value.replace(/'/g, `'\\''`)}'`;
@@ -496,16 +505,31 @@ export async function archiveSandboxResources(params: {
       SANDBOX_ARCHIVE_BATCH_SIZE
     );
 
+    const batchFailures: SandboxArchiveFailure[] = [];
     for (const { resource, result } of results) {
       if (result.success) {
         successCount++;
       } else {
-        failures.push({
+        const failure = {
           sandboxId: resource.sandboxId,
           error: result.error || 'Unknown error'
-        });
+        };
+        failures.push(failure);
+        batchFailures.push(failure);
       }
     }
+
+    await Promise.resolve(
+      options?.onProgress?.({
+        processedCount: successCount + failures.length,
+        successCount,
+        failCount: failures.length,
+        batchSize: resources.length,
+        failures: batchFailures
+      })
+    ).catch((error) => {
+      logger.error('Failed to report sandbox archive progress', { error });
+    });
   };
 
   try {

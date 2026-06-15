@@ -31,7 +31,6 @@ import {
 const EXCLUDE_NAMES = ['node_modules', '.git', '.next', 'dist', 'build', '.bun'];
 const INITIAL_TREE_MAX_DEPTH = 20;
 const RPC_TIMEOUT_MS = 30000;
-const FS_CHANGE_REFRESH_DEBOUNCE_MS = 600;
 const DEFAULT_MAX_FILE_SIZE_MB = 10;
 const INVALID_PATH_SEGMENT_CHARS = /[\/\\\u0000]/;
 
@@ -321,7 +320,6 @@ export const useSandboxFileStore = ({
   const onErrorRef = useLatest(onError);
   const loadingFilePathsRef = useRef<Set<string>>(new Set());
   const loadingFileCountRef = useRef(0);
-  const fsChangeRefreshTimerRef = useRef<number | null>(null);
   const isRefreshingWorkspaceRef = useRef(false);
   const hasPendingWorkspaceRefreshRef = useRef(false);
 
@@ -461,11 +459,10 @@ export const useSandboxFileStore = ({
       isRefreshingWorkspaceRef.current = true;
       try {
         let refreshOptions = options;
-        let latestFileTree: TreeNode[] | null = null;
-
         do {
           hasPendingWorkspaceRefreshRef.current = false;
           setLoadingRoot(true);
+          let latestFileTree: TreeNode[] | null = null;
 
           try {
             const data = await rpcCall('fs/read_dir_recursive', {
@@ -488,69 +485,71 @@ export const useSandboxFileStore = ({
             setLoadingRoot(false);
           }
 
+          if (!hasPendingWorkspaceRefreshRef.current) {
+            const filesToReload =
+              openedFilesRef.current
+                ?.filter((f) => !f.isDirty && !f.isBinary && !f.isUnknown)
+                .map((f) => ({
+                  path: f.path,
+                  language: f.language,
+                  content: f.content,
+                  mtime: f.mtime
+                })) || [];
+
+            if (filesToReload.length > 0) {
+              const reloadResults = await Promise.allSettled(
+                filesToReload.map(async (f) => {
+                  const { content, isUnknown, mtime } = await loadFile(f.path, f.language);
+                  return { content, isUnknown, mtime };
+                })
+              );
+
+              const updates = new Map<
+                string,
+                { content: string; isUnknown: boolean; mtime?: number }
+              >();
+              const snapshots = new Map(
+                filesToReload.map((f) => [f.path, { content: f.content, mtime: f.mtime }])
+              );
+              reloadResults.forEach((result, idx) => {
+                const f = filesToReload[idx];
+                if (result.status === 'fulfilled') {
+                  updates.set(f.path, result.value);
+                } else if (latestFileTree && !findNodeByPath(latestFileTree, f.path)) {
+                  closeOpenedFileByPath(f.path);
+                }
+              });
+
+              if (updates.size > 0) {
+                setOpenedFiles((prev) =>
+                  prev.map((item) => {
+                    const update = updates.get(item.path);
+                    const snapshot = snapshots.get(item.path);
+                    if (
+                      update &&
+                      snapshot &&
+                      !item.isDirty &&
+                      item.content === snapshot.content &&
+                      item.mtime === snapshot.mtime
+                    ) {
+                      return {
+                        ...item,
+                        content: update.content,
+                        isUnknown: update.isUnknown,
+                        mtime: update.mtime,
+                        isDirty: false
+                      };
+                    }
+                    return item;
+                  })
+                );
+              }
+            }
+          }
+
           // 并发文件事件只需要再补一次刷新，避免事件风暴触发多次全量扫描。
           refreshOptions = { preserveExpandedDirs: true };
         } while (hasPendingWorkspaceRefreshRef.current);
-
-        const filesToReload =
-          openedFilesRef.current
-            ?.filter((f) => !f.isDirty && !f.isBinary && !f.isUnknown)
-            .map((f) => ({
-              path: f.path,
-              language: f.language,
-              content: f.content,
-              mtime: f.mtime
-            })) || [];
-
-        if (filesToReload.length > 0) {
-          const reloadResults = await Promise.allSettled(
-            filesToReload.map(async (f) => {
-              const { content, isUnknown, mtime } = await loadFile(f.path, f.language);
-              return { content, isUnknown, mtime };
-            })
-          );
-
-          const updates = new Map<
-            string,
-            { content: string; isUnknown: boolean; mtime?: number }
-          >();
-          const snapshots = new Map(
-            filesToReload.map((f) => [f.path, { content: f.content, mtime: f.mtime }])
-          );
-          reloadResults.forEach((result, idx) => {
-            const f = filesToReload[idx];
-            if (result.status === 'fulfilled') {
-              updates.set(f.path, result.value);
-            } else if (latestFileTree && !findNodeByPath(latestFileTree, f.path)) {
-              closeOpenedFileByPath(f.path);
-            }
-          });
-
-          if (updates.size > 0) {
-            setOpenedFiles((prev) =>
-              prev.map((item) => {
-                const update = updates.get(item.path);
-                const snapshot = snapshots.get(item.path);
-                if (
-                  update &&
-                  snapshot &&
-                  !item.isDirty &&
-                  item.content === snapshot.content &&
-                  item.mtime === snapshot.mtime
-                ) {
-                  return {
-                    ...item,
-                    content: update.content,
-                    isUnknown: update.isUnknown,
-                    mtime: update.mtime,
-                    isDirty: false
-                  };
-                }
-                return item;
-              })
-            );
-          }
-        }
       } finally {
         isRefreshingWorkspaceRef.current = false;
       }
@@ -569,24 +568,6 @@ export const useSandboxFileStore = ({
 
   const refreshWorkspaceRef = useLatest(refreshWorkspace);
 
-  const scheduleFsChangeRefresh = useCallback(() => {
-    if (fsChangeRefreshTimerRef.current !== null) {
-      window.clearTimeout(fsChangeRefreshTimerRef.current);
-    }
-
-    fsChangeRefreshTimerRef.current = window.setTimeout(() => {
-      fsChangeRefreshTimerRef.current = null;
-      void refreshWorkspaceRef.current?.({ preserveExpandedDirs: true });
-    }, FS_CHANGE_REFRESH_DEBOUNCE_MS);
-  }, [refreshWorkspaceRef]);
-
-  const clearScheduledFsChangeRefresh = useCallback(() => {
-    if (fsChangeRefreshTimerRef.current !== null) {
-      window.clearTimeout(fsChangeRefreshTimerRef.current);
-      fsChangeRefreshTimerRef.current = null;
-    }
-  }, []);
-
   // 维持长连接连接
   useEffect(() => {
     if (!appId || !chatId) return;
@@ -595,7 +576,6 @@ export const useSandboxFileStore = ({
     stoppedConnectErrorRef.current = null;
 
     if (isPreparing) {
-      clearScheduledFsChangeRefresh();
       Promise.resolve().then(() => {
         setIsWsConnected(false);
         stoppedConnectErrorRef.current = null;
@@ -689,7 +669,7 @@ export const useSandboxFileStore = ({
                 }
               }
             } else if (data.jsonrpc === '2.0' && data.method === 'fs/did_change') {
-              scheduleFsChangeRefresh();
+              void refreshWorkspaceRef.current?.({ preserveExpandedDirs: true });
             }
           } catch (e) {
             console.error('[SandboxWS] Failed to parse WebSocket message:', e);
@@ -740,7 +720,6 @@ export const useSandboxFileStore = ({
 
     return () => {
       isDestroyed = true;
-      clearScheduledFsChangeRefresh();
       if (ws) {
         if (wsRef.current === ws) {
           wsRef.current = null;
@@ -768,17 +747,11 @@ export const useSandboxFileStore = ({
     isPreparing,
     canWrite,
     refreshWorkspaceRef,
-    scheduleFsChangeRefresh,
-    clearScheduledFsChangeRefresh,
     resetConnectPromise,
     t,
     toast
   ]);
   // =========================================================================
-
-  useEffect(() => {
-    return clearScheduledFsChangeRefresh;
-  }, [clearScheduledFsChangeRefresh]);
 
   // 激活文件变更时，自动同步选中态
   useEffect(() => {

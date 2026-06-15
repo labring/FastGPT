@@ -17,6 +17,28 @@ export const isLLMNode = (item: ChatHistoryItemResType) =>
 const isSandboxToolId = (toolId?: string) =>
   !!toolId && Object.prototype.hasOwnProperty.call(sandboxToolMap, toolId);
 
+const isSandboxChatTool = (tool?: { functionName?: string } | null) =>
+  isSandboxToolId(tool?.functionName);
+
+const hasSandboxToolInChatValue = (historyItem: ChatItemMiniType) => {
+  if (historyItem.obj !== ChatRoleEnum.AI) return false;
+
+  return historyItem.value.some((item) => {
+    if (isSandboxChatTool(item.tool)) return true;
+
+    return item.tools?.some(isSandboxChatTool) === true;
+  });
+};
+
+const withUseAgentSandbox = (historyItem: ChatItemMiniType, useAgentSandbox: boolean) => {
+  if (!useAgentSandbox || historyItem.useAgentSandbox === true) return historyItem;
+
+  return {
+    ...historyItem,
+    useAgentSandbox
+  };
+};
+
 /**
  * 从节点运行详情中提取可直接展示在聊天气泡上的错误文本。
  *

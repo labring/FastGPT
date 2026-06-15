@@ -288,7 +288,7 @@ export const LeftHeader = () => {
         <Avatar src={skillDetail.avatar} w={'30px'} h={'30px'} borderRadius={'sm'} />
         <Box
           minW={0}
-          flex={'1 1 0'}
+          flex={'0 1 auto'}
           color={'myGray.600'}
           fontSize={'16px'}
           fontWeight={'medium'}
