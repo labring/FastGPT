@@ -24,6 +24,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import dynamic from 'next/dynamic';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import {
   deleteSystemModel,
   getModelConfigJson,
@@ -58,6 +59,7 @@ const ModelTable = () => {
   const { t, i18n } = useTranslation();
   const { userInfo } = useUserStore();
   const { defaultModels, feConfigs, getModelProviders, getModelProvider } = useSystemStore();
+  const { toast } = useToast();
 
   const isRoot = userInfo?.username === 'root';
   const canCreateModel = isRoot || !!userInfo?.team.permission.hasModelCreatePer;
@@ -243,11 +245,61 @@ const ModelTable = () => {
     successToast: t('common:Success')
   });
   const { runAsync: updateModel, loading: updatingModel } = useRequest(putSystemModel, {
-    onSuccess: refreshModels
+    onSuccess: refreshModels,
+    onError: (err: any) => {
+      const refs = err?.response?.data?.data?.references;
+      if (err?.response?.data?.code === 409 && refs) {
+        const appList = refs
+          .filter((r: any) => r.resourceType === 'app')
+          .map((r: any) => `${r.resourceName} (${r.creatorName})`)
+          .join('\n');
+        const dsList = refs
+          .filter((r: any) => r.resourceType === 'dataset')
+          .map((r: any) => `${r.resourceName} (${r.creatorName})`)
+          .join('\n');
+        const msg = [
+          t('account_model:model_referenced_by_resources'),
+          appList && `\n${t('app:application')}: \n${appList}`,
+          dsList && `\n${t('common:core.dataset.Dataset')}: \n${dsList}`
+        ]
+          .filter(Boolean)
+          .join('');
+        toast({
+          title: msg,
+          status: 'warning',
+          duration: 10000
+        });
+      }
+    }
   });
 
   const { runAsync: deleteModel } = useRequest(deleteSystemModel, {
-    onSuccess: refreshModels
+    onSuccess: refreshModels,
+    onError: (err: any) => {
+      const refs = err?.response?.data?.data?.references;
+      if (err?.response?.data?.code === 409 && refs) {
+        const appList = refs
+          .filter((r: any) => r.resourceType === 'app')
+          .map((r: any) => `${r.resourceName} (${r.creatorName})`)
+          .join('\n');
+        const dsList = refs
+          .filter((r: any) => r.resourceType === 'dataset')
+          .map((r: any) => `${r.resourceName} (${r.creatorName})`)
+          .join('\n');
+        const msg = [
+          t('account_model:model_referenced_by_resources'),
+          appList && `\n${t('app:application')}: \n${appList}`,
+          dsList && `\n${t('common:core.dataset.Dataset')}: \n${dsList}`
+        ]
+          .filter(Boolean)
+          .join('');
+        toast({
+          title: msg,
+          status: 'warning',
+          duration: 10000
+        });
+      }
+    }
   });
 
   const [editModelData, setEditModelData] = useState<GetModelDetailResponse>();

@@ -140,14 +140,14 @@ const HomeChatWindow = () => {
           res.app.chatConfig = {
             fileSelectConfig: {
               ...defaultFileSelectConfig,
-              canSelectImg: !!modelData.vision
+              canSelectImg: !!modelData?.vision
             },
             whisperConfig: defaultWhisperConfig
           };
         } else {
           res.app.chatConfig.fileSelectConfig = {
             ...defaultFileSelectConfig,
-            canSelectImg: !!modelData.vision
+            canSelectImg: !!modelData?.vision
           };
           res.app.chatConfig.whisperConfig = {
             ...defaultWhisperConfig,
@@ -319,7 +319,7 @@ const HomeChatWindow = () => {
                         ...state.app.chatConfig,
                         fileSelectConfig: {
                           ...defaultFileSelectConfig,
-                          canSelectImg: !!getWebLLMModel(model).vision
+                          canSelectImg: !!getWebLLMModel(model)?.vision
                         }
                       }
                     }

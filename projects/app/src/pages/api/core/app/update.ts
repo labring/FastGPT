@@ -127,7 +127,8 @@ async function handler(req: ApiRequestProps<AppUpdateBody, AppUpdateQuery>) {
       modelIds: extractWorkflowModelIds({
         modules: nodes,
         chatConfig
-      })
+      }),
+      resourceContext: { appId }
     });
     models.forEach((model) => assertModelAvailable(model));
   }

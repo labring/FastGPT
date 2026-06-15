@@ -22,28 +22,19 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const UsageDetail = ({ usage, onClose }: { usage: UsageListItemType; onClose: () => void }) => {
   const { t } = useSafeTranslation();
-  const { llmModelList, embeddingModelList, ttsModelList, sttModelList, reRankModelList } =
-    useSystemStore();
+  const systemModelList = useSystemStore((state) => state.systemModelList);
+  const systemModelNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    if (systemModelList) {
+      for (const model of systemModelList) {
+        if (model.id) map[model.id] = model.name || model.model || model.id;
+      }
+    }
+    return map;
+  }, [systemModelList]);
   const filterBillList = useMemo(
     () => usage.list.filter((item) => item && item.moduleName),
     [usage.list]
-  );
-  const modelNameMap = useMemo(
-    () =>
-      [
-        ...llmModelList,
-        ...embeddingModelList,
-        ...ttsModelList,
-        ...sttModelList,
-        ...reRankModelList
-      ].reduce(
-        (acc, model) => {
-          acc[model.id] = model.name || model.model;
-          return acc;
-        },
-        {} as Record<string, string>
-      ),
-    [embeddingModelList, llmModelList, reRankModelList, sttModelList, ttsModelList]
   );
 
   const {
@@ -159,7 +150,9 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageListItemType; onClose: ()
                   <Tr key={i}>
                     <Td>{t(item.moduleName as any)}</Td>
                     {hasModel && (
-                      <Td>{item.modelId ? modelNameMap[item.modelId] || item.modelId : '-'}</Td>
+                      <Td>
+                        {item.modelId ? systemModelNameMap[item.modelId] || item.modelId : '-'}
+                      </Td>
                     )}
                     {hasToken && <Td>{item.tokens ?? '-'}</Td>}
                     {hasInputToken && <Td>{item.inputTokens ?? '-'}</Td>}

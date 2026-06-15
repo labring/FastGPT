@@ -72,21 +72,14 @@ export const WholeResponseContent = ({
   onOpenRequestIdDetail?: (requestId: string) => void;
 }) => {
   const { t } = useSafeTranslation();
-  const { llmModelList, embeddingModelList, reRankModelList } = useSystemStore();
-
-  const modelNameMap = useMemo(() => {
-    return [...llmModelList, ...embeddingModelList, ...reRankModelList].reduce(
-      (acc, model) => {
-        acc[model.id] = model.name || model.model;
-        return acc;
-      },
-      {} as Record<string, string>
-    );
-  }, [embeddingModelList, llmModelList, reRankModelList]);
+  const { systemModelList } = useSystemStore();
 
   const getModelDisplayName = useCallback(
-    (modelId?: string) => (modelId ? modelNameMap[modelId] || modelId : undefined),
-    [modelNameMap]
+    (modelId?: string) => {
+      if (!modelId) return undefined;
+      return systemModelList?.find((item) => item.id === modelId)?.name || modelId;
+    },
+    [systemModelList]
   );
 
   const retrievalModeTextMap: Record<DatasetRetrievalModeEnum, string> = {

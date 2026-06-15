@@ -88,7 +88,8 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
           authToken: true,
           authApiKey: true,
           modelId: agentModelId,
-          per: ReadPermissionVal
+          per: ReadPermissionVal,
+          resourceContext: { datasetId: id }
         }).then(({ model }) => {
           assertModelAvailable(model, { type: ModelTypeEnum.llm });
         })
@@ -99,7 +100,8 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
           authToken: true,
           authApiKey: true,
           modelId: vectorModelId,
-          per: ReadPermissionVal
+          per: ReadPermissionVal,
+          resourceContext: { datasetId: id }
         }).then(({ model }) => {
           assertModelAvailable(model, { type: ModelTypeEnum.embedding });
         })
@@ -110,7 +112,8 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
           authToken: true,
           authApiKey: true,
           modelId: vlmModelId,
-          per: ReadPermissionVal
+          per: ReadPermissionVal,
+          resourceContext: { datasetId: id }
         }).then(({ model }) => {
           assertModelAvailable(model, { type: ModelTypeEnum.llm, requireVision: true });
         })

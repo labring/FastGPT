@@ -124,5 +124,6 @@
   "train_detail_confirm_delete_with_model": "同时删除生成的模型",
   "all_datasets": "全部知识库",
   "base_model_tab": "基础模型",
-  "custom_model_tab": "已训练模型"
+  "custom_model_tab": "已训练模型",
+  "model_referenced_by_resources": "该模型已被以下应用/知识库引用，为保障应用正常使用，请先切换至其他模型"
 }

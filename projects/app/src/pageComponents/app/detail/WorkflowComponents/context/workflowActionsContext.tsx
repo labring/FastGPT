@@ -215,17 +215,19 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
     [forbiddenSaveSnapshot, setNodes]
   );
 
-  // 使用结构共享优化的节点更改
-  const { llmModelList } = useSystemStore();
+  // Lookup map built from full system model list (not permission-filtered),
+  // so collaborators can resolve owner's private models in workflow nodes.
+  const { systemModelList } = useSystemStore();
   const llmModelIdMap = useMemo(() => {
-    return llmModelList.reduce(
+    if (!systemModelList) return {} as Record<string, LLMModelItemType>;
+    return systemModelList.reduce(
       (acc, model) => {
-        acc[model.id] = model;
+        if (model.id) acc[model.id] = model as LLMModelItemType;
         return acc;
       },
       {} as Record<string, LLMModelItemType>
     );
-  }, [llmModelList]);
+  }, [systemModelList]);
   const onChangeNode = useCallback(
     (props: FlowNodeChangeProps | FlowNodeChangeProps[]) => {
       const updateData = Array.isArray(props) ? props : [props];

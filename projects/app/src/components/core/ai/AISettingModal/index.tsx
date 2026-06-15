@@ -386,10 +386,12 @@ const AIChatSettingsModal = ({
                 isDisabled={responseFormat === undefined}
                 size={'sm'}
                 bg={'myGray.25'}
-                list={selectedModel.responseFormatList!.map((item) => ({
-                  value: item,
-                  label: item
-                }))}
+                list={
+                  selectedModel?.responseFormatList?.map((item) => ({
+                    value: item,
+                    label: item
+                  })) ?? []
+                }
                 value={responseFormat}
                 onChange={(e) => {
                   setValue(NodeInputKeyEnum.aiChatResponseFormat, e);

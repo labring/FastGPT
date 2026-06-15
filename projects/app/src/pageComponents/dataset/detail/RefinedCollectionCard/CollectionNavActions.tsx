@@ -265,11 +265,7 @@ const CollectionNavActions = () => {
       {datasetDetail.permission.hasManagePer && (
         <MyMenu
           offset={[0, 5]}
-          Button={
-            <Button variant={'whiteBase'}>
-              {t('common:More')}
-            </Button>
-          }
+          Button={<Button variant={'whiteBase'}>{t('common:More')}</Button>}
           menuList={[
             {
               children: [

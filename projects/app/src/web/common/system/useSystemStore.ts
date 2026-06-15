@@ -12,7 +12,7 @@ import { type FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
 import { type SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
-import type { SystemDefaultModelType } from '@fastgpt/service/core/ai/type';
+import type { SystemDefaultModelType, SystemModelItemType } from '@fastgpt/service/core/ai/type';
 import {
   defaultProvider,
   formatModelProviders,
@@ -62,6 +62,7 @@ type State = {
   modelProviderMap: Record<langType, Record<string, ModelProviderItemType>>;
   aiproxyChannels: NonNullable<InitDateResponse['aiproxyChannels']>;
   defaultModels: SystemDefaultModelType;
+  systemModelList: SystemModelItemType[];
   llmModelList: ModelWithPermission<LLMModelItemType>[];
   embeddingModelList: ModelWithPermission<EmbeddingModelItemType>[];
   ttsModelList: ModelWithPermission<TTSModelType>[];
@@ -151,6 +152,7 @@ export const useSystemStore = create<State>()(
         },
         aiproxyChannels: [],
         defaultModels: {},
+        systemModelList: [],
         llmModelList: [],
         embeddingModelList: [],
         ttsModelList: [],
@@ -233,6 +235,7 @@ export const useSystemStore = create<State>()(
               state.sttModelList;
 
             state.defaultModels = res.defaultModels ?? state.defaultModels;
+            state.systemModelList = res.systemModelList ?? state.systemModelList;
           });
         }
       })),

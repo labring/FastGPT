@@ -162,7 +162,7 @@ const EditForm = ({
 
   // Force close image select when model not support vision
   useEffect(() => {
-    if (!selectedModel.vision) {
+    if (!selectedModel?.vision) {
       setAppForm((state) => ({
         ...state,
         chatConfig: {

@@ -205,4 +205,3 @@ function AuditLog({ Tabs }: { Tabs: React.ReactNode }) {
 }
 
 export default AuditLog;
-

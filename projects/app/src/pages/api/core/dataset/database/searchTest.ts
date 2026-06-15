@@ -61,7 +61,8 @@ async function handler(
       authToken: true,
       authApiKey: true,
       modelId: dataset.vectorModelId,
-      per: ReadPermissionVal
+      per: ReadPermissionVal,
+      resourceContext: { datasetId }
     }).then(({ model }) => {
       assertModelAvailable(model, { type: ModelTypeEnum.embedding });
     }),
@@ -70,7 +71,8 @@ async function handler(
       authToken: true,
       authApiKey: true,
       modelId: sqlLLM.id,
-      per: ReadPermissionVal
+      per: ReadPermissionVal,
+      resourceContext: { datasetId }
     }).then(({ model }) => {
       assertModelAvailable(model, { type: ModelTypeEnum.llm });
     })

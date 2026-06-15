@@ -37,7 +37,8 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     authToken: true,
     authApiKey: true,
     modelId: vectorModelId,
-    per: ReadPermissionVal
+    per: ReadPermissionVal,
+    resourceContext: { datasetId }
   });
   assertModelAvailable(model, { type: ModelTypeEnum.embedding });
 

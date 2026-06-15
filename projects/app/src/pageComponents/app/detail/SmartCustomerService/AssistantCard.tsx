@@ -90,9 +90,7 @@ const AssistantCard = () => {
                 icon={<MyIcon name={'core/chat/chatLight'} w={'16px'} />}
                 aria-label={'chat'}
                 onClick={() =>
-                  router.push(
-                    `/chat?appId=${appId}&pane=${ChatSidebarPaneEnum.RECENTLY_USED_APPS}`
-                  )
+                  router.push(`/chat?appId=${appId}&pane=${ChatSidebarPaneEnum.RECENTLY_USED_APPS}`)
                 }
               />
             </MyTooltip>

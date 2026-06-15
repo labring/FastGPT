@@ -603,11 +603,7 @@ const RefinedDataCard = () => {
                         onClick={() => handleCardClick(item._id)}
                       >
                         {/* Header - 序号和字符数 */}
-                        <Flex
-                          alignItems={'center'}
-                          h={'24px'}
-                          mb={2}
-                        >
+                        <Flex alignItems={'center'} h={'24px'} mb={2}>
                           <MyTooltip label={t(isFolded ? 'common:Expand' : 'common:Collapse')}>
                             <Flex
                               alignItems={'center'}
@@ -772,7 +768,6 @@ const RefinedDataCard = () => {
                             </Box>
                           )}
                         </Box>
-
                       </Card>
                     );
                   })}
