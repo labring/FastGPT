@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SystemToolSystemSecretStatusEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
+import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 
 const mocks = vi.hoisted(() => ({
   listTools: vi.fn(),
@@ -224,7 +229,40 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
     mocks.getAppLatestVersion.mockResolvedValue({
       versionId: 'latest-version',
       versionName: 'Latest Version',
-      nodes: []
+      nodes: [
+        {
+          nodeId: 'plugin-input',
+          flowNodeType: FlowNodeTypeEnum.pluginInput,
+          name: 'Plugin Input',
+          inputs: [
+            {
+              key: 'query',
+              label: 'Query',
+              valueType: WorkflowIOValueTypeEnum.string,
+              toolDescription: 'Search query',
+              required: true,
+              renderTypeList: [FlowNodeInputTypeEnum.input]
+            }
+          ],
+          outputs: []
+        },
+        {
+          nodeId: 'plugin-output',
+          flowNodeType: FlowNodeTypeEnum.pluginOutput,
+          name: 'Plugin Output',
+          inputs: [
+            {
+              key: 'result',
+              label: 'Result',
+              valueType: WorkflowIOValueTypeEnum.string,
+              description: 'Search result',
+              required: true,
+              renderTypeList: [FlowNodeInputTypeEnum.input]
+            }
+          ],
+          outputs: []
+        }
+      ]
     });
     mocks.checkIsLatestVersion.mockResolvedValue(true);
 
@@ -236,6 +274,104 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
     expect(tool.hasTokenFee).toBe(true);
     expect(tool.version).toBe('latest-version');
     expect(tool.versionLabel).toBe('Latest Version');
+    expect(tool.inputSchema).toEqual({
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          title: 'Query',
+          description: 'Search query',
+          toolDescription: 'Search query'
+        }
+      },
+      required: ['query']
+    });
+    expect(tool.outputSchema).toEqual({
+      type: 'object',
+      properties: {
+        result: {
+          type: 'string',
+          title: 'Result',
+          description: 'Search result'
+        }
+      },
+      required: ['result']
+    });
+    expect(tool).not.toHaveProperty('inputs');
+    expect(tool).not.toHaveProperty('outputs');
+  });
+
+  it('returns plugin client schemas directly for system tools', async () => {
+    const inputSchema = {
+      type: 'object',
+      properties: {
+        city: { type: 'string', description: 'City name' }
+      },
+      required: ['city']
+    };
+    const outputSchema = {
+      type: 'object',
+      properties: {
+        weather: { type: 'string' }
+      }
+    };
+    const secretSchema = {
+      type: 'object',
+      properties: {
+        apiKey: { type: 'string', isSecret: true }
+      },
+      required: ['apiKey']
+    };
+
+    mocks.findSystemTool.mockResolvedValue({
+      pluginId: 'systemTool-weather',
+      status: 'Normal',
+      currentCost: 1,
+      hasTokenFee: false,
+      systemKeyCost: 2,
+      customConfig: {}
+    });
+    mocks.findSystemTools.mockResolvedValue([]);
+    mocks.getTool.mockResolvedValue({
+      source: 'system',
+      isToolset: true,
+      name: { en: 'Weather' },
+      description: { en: 'Weather intro' },
+      pluginId: 'weather',
+      version: '1.0.0',
+      icon: 'weather.svg',
+      tags: [],
+      toolDescription: 'Weather tool',
+      inputSchema,
+      outputSchema,
+      secretSchema,
+      children: [
+        {
+          id: 'forecast',
+          name: { en: 'Forecast' },
+          description: { en: 'Forecast intro' },
+          toolDescription: 'Forecast tool',
+          inputSchema,
+          outputSchema
+        }
+      ]
+    });
+
+    const tool = await SystemToolRepo.getInstance().getSystemToolDetail({
+      pluginId: 'systemTool-weather'
+    });
+
+    expect(tool.inputSchema).toBe(inputSchema);
+    expect(tool.outputSchema).toBe(outputSchema);
+    expect(tool.secretSchema).toBe(secretSchema);
+    expect(tool.children?.[0]).toMatchObject({
+      id: 'forecast',
+      inputSchema,
+      outputSchema
+    });
+    expect(tool).not.toHaveProperty('inputs');
+    expect(tool).not.toHaveProperty('outputs');
+    expect(tool).not.toHaveProperty('secrets');
   });
 });
 

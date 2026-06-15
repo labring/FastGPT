@@ -9,6 +9,11 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { Output_Template_Error_Message } from '@fastgpt/global/core/workflow/template/output';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  jsonSchema2NodeInput,
+  jsonSchema2NodeOutput,
+  jsonSchema2SecretInput
+} from '@fastgpt/global/core/app/jsonschema';
 
 /**
  * 获得工具的 Template 类型供工作流渲染
@@ -34,19 +39,25 @@ export async function getToolPreviewNode({
     source: toolSource
   });
   const shouldReturnVersion = versionId ? true : versionId === undefined && getLatestVersion;
+  const secrets = jsonSchema2SecretInput({ jsonSchema: toolDetail.secretSchema });
+  const schemaInputs = jsonSchema2NodeInput({
+    jsonSchema: toolDetail.inputSchema,
+    schemaType: 'systemTool'
+  });
+  const schemaOutputs = jsonSchema2NodeOutput({ jsonSchema: toolDetail.outputSchema });
 
   const inputs = [
-    ...(toolDetail.secrets?.length
+    ...(secrets?.length
       ? [
           {
             key: NodeInputKeyEnum.systemInputConfig,
             label: '',
             renderTypeList: [FlowNodeInputTypeEnum.hidden],
-            inputList: toolDetail.secrets
+            inputList: secrets
           }
         ]
       : []),
-    ...(toolDetail.inputs ?? [])
+    ...schemaInputs
   ];
   const isWorkflowTool = !!toolDetail.associatedPluginId;
 
@@ -83,10 +94,10 @@ export async function getToolPreviewNode({
     status: toolDetail.status,
     inputs,
 
-    outputs: toolDetail.outputs
-      ? toolDetail.outputs.some((item) => item.type === FlowNodeOutputTypeEnum.error)
-        ? toolDetail.outputs
-        : [...toolDetail.outputs, Output_Template_Error_Message]
+    outputs: schemaOutputs
+      ? schemaOutputs.some((item) => item.type === FlowNodeOutputTypeEnum.error)
+        ? schemaOutputs
+        : [...schemaOutputs, Output_Template_Error_Message]
       : [],
 
     ...(isWorkflowTool

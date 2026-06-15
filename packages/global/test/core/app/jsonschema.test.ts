@@ -6,13 +6,20 @@ import type {
 import {
   jsonSchema2NodeInput,
   jsonSchema2NodeOutput,
+  jsonSchema2SecretInput,
+  inputConfigs2JsonSchema,
   getNodeInputTypeFromSchemaInputType,
   getSchemaValueType,
+  nodeInputs2JsonSchema,
+  nodeOutputs2JsonSchema,
   str2OpenApiSchema
 } from '@fastgpt/global/core/app/jsonschema';
 import { bundleOpenAPISchema } from '@fastgpt/global/common/string/swagger';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { FlowNodeInputItemTypeSchema } from '@fastgpt/global/core/workflow/type/io';
+import {
+  FlowNodeInputItemTypeSchema,
+  InputConfigInputTypeEnum
+} from '@fastgpt/global/core/workflow/type/io';
 
 describe('jsonSchema2NodeInput', () => {
   it('should return correct node input for http schema', () => {
@@ -563,6 +570,199 @@ describe('jsonSchema2NodeOutput', () => {
     const result = jsonSchema2NodeOutput({ jsonSchema });
 
     expect(result[0].valueType).toBe(WorkflowIOValueTypeEnum.arrayString);
+  });
+});
+
+describe('nodeInputs2JsonSchema', () => {
+  it('should convert node inputs to json schema properties', () => {
+    const result = nodeInputs2JsonSchema({
+      inputs: [
+        {
+          key: 'query',
+          label: 'Query',
+          valueType: WorkflowIOValueTypeEnum.string,
+          toolDescription: 'Search query',
+          description: 'UI description',
+          required: true,
+          renderTypeList: ['input', 'reference']
+        },
+        {
+          key: 'platform',
+          label: 'Platform',
+          valueType: WorkflowIOValueTypeEnum.arrayString,
+          toolDescription: 'Select platforms',
+          required: false,
+          renderTypeList: ['multipleSelect', 'reference'],
+          list: [
+            { label: 'Zhihu', value: 'zhihu' },
+            { label: 'Weibo', value: 'weibo' }
+          ]
+        },
+        {
+          key: 'legacy',
+          label: 'Legacy',
+          valueType: WorkflowIOValueTypeEnum.string,
+          toolDescription: 'Legacy enum',
+          required: false,
+          renderTypeList: ['select', 'reference'],
+          enum: 'a\nb'
+        }
+      ]
+    });
+
+    expect(result).toEqual({
+      type: 'object',
+      properties: {
+        query: {
+          type: 'string',
+          title: 'Query',
+          description: 'Search query',
+          toolDescription: 'Search query'
+        },
+        platform: {
+          type: 'array',
+          items: {
+            type: 'string',
+            enum: ['zhihu', 'weibo']
+          },
+          title: 'Platform',
+          description: 'Select platforms',
+          toolDescription: 'Select platforms'
+        },
+        legacy: {
+          type: 'string',
+          enum: ['a', 'b'],
+          title: 'Legacy',
+          description: 'Legacy enum',
+          toolDescription: 'Legacy enum'
+        }
+      },
+      required: ['query']
+    });
+  });
+});
+
+describe('nodeOutputs2JsonSchema', () => {
+  it('should convert node outputs to json schema properties', () => {
+    const result = nodeOutputs2JsonSchema({
+      outputs: [
+        {
+          id: 'result',
+          key: 'result',
+          label: 'Result',
+          type: 'static',
+          valueType: WorkflowIOValueTypeEnum.object,
+          description: 'Result object',
+          required: true
+        }
+      ]
+    });
+
+    expect(result).toEqual({
+      type: 'object',
+      properties: {
+        result: {
+          type: 'object',
+          title: 'Result',
+          description: 'Result object'
+        }
+      },
+      required: ['result']
+    });
+  });
+});
+
+describe('inputConfigs2JsonSchema', () => {
+  it('should convert input config to secret schema', () => {
+    const result = inputConfigs2JsonSchema({
+      inputConfigs: [
+        {
+          key: 'apiKey',
+          label: 'API Key',
+          inputType: InputConfigInputTypeEnum.secret,
+          description: 'Secret key',
+          required: true
+        },
+        {
+          key: 'region',
+          label: 'Region',
+          inputType: InputConfigInputTypeEnum.select,
+          list: [
+            { label: 'US', value: 'us' },
+            { label: 'EU', value: 'eu' }
+          ]
+        }
+      ]
+    });
+
+    expect(result).toEqual({
+      type: 'object',
+      properties: {
+        apiKey: {
+          type: 'string',
+          isSecret: true,
+          title: 'API Key',
+          description: 'Secret key'
+        },
+        region: {
+          type: 'string',
+          enum: ['us', 'eu'],
+          title: 'Region',
+          description: ''
+        }
+      },
+      required: ['apiKey']
+    });
+  });
+});
+
+describe('jsonSchema2SecretInput', () => {
+  it('should convert scalar and array enums to select options', () => {
+    const result = jsonSchema2SecretInput({
+      jsonSchema: {
+        type: 'object',
+        properties: {
+          region: {
+            type: 'string',
+            title: 'Region',
+            enum: ['us', 'eu']
+          },
+          scopes: {
+            type: 'array',
+            title: 'Scopes',
+            items: {
+              type: 'string',
+              enum: ['read', 'write']
+            }
+          }
+        }
+      }
+    });
+
+    expect(result).toEqual([
+      {
+        inputType: InputConfigInputTypeEnum.select,
+        key: 'region',
+        label: 'Region',
+        description: undefined,
+        required: undefined,
+        list: [
+          { label: 'us', value: 'us' },
+          { label: 'eu', value: 'eu' }
+        ]
+      },
+      {
+        inputType: InputConfigInputTypeEnum.select,
+        key: 'scopes',
+        label: 'Scopes',
+        description: undefined,
+        required: undefined,
+        list: [
+          { label: 'read', value: 'read' },
+          { label: 'write', value: 'write' }
+        ]
+      }
+    ]);
   });
 });
 

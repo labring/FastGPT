@@ -3,6 +3,28 @@ import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/ty
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
+const childInputSchema = {
+  type: 'object',
+  properties: {
+    input1: {
+      type: 'string',
+      title: 'Input 1',
+      description: 'Input desc'
+    }
+  }
+};
+
+const childOutputSchema = {
+  type: 'object',
+  properties: {
+    output1: {
+      type: 'string',
+      title: 'Output 1',
+      description: 'Output desc'
+    }
+  }
+};
+
 // Mock token counting (uses worker threads, not available in test)
 vi.mock('@fastgpt/service/common/string/tiktoken/index', () => ({
   countPromptTokensBatch: vi.fn(async (texts: string[]) => {
@@ -160,16 +182,16 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
       name?: string;
       description?: string;
       toolDescription?: string;
-      inputs?: any[] | null;
-      outputs?: any[] | null;
+      inputSchema?: any;
+      outputSchema?: any;
     }> = [
       {
         id: 'child-1',
         name: 'Original',
         description: 'Original Desc',
         toolDescription: 'Original Tool Desc',
-        inputs: [{ key: 'input1', value: 'val1' }],
-        outputs: [{ key: 'output1' }]
+        inputSchema: childInputSchema,
+        outputSchema: childOutputSchema
       }
     ],
     version = 'v1'
@@ -204,15 +226,13 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
         name: 'Original',
         description: 'Original Desc',
         toolDescription: 'Original Tool Desc',
-        inputs: [{ key: 'input1', value: 'val1' }],
-        outputs: [{ key: 'output1' }]
+        inputSchema: childInputSchema,
+        outputSchema: childOutputSchema
       },
       {
         id: 'child-2',
         name: 'Not Selected',
-        description: 'Not Selected Desc',
-        inputs: [],
-        outputs: []
+        description: 'Not Selected Desc'
       }
     ]);
 
@@ -238,9 +258,52 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
       systemTool: { toolId: 'systemTool-toolset-1/child-1' }
     });
     expect(result[0].pluginId).toBe('systemTool-toolset-1/child-1');
-    expect(result[0].inputs).toEqual([{ key: 'input1', value: 'val1' }]);
-    expect(result[0].outputs).toEqual([{ key: 'output1' }]);
+    expect(result[0].inputs[0]).toMatchObject({
+      key: 'input1',
+      label: 'Input 1',
+      valueType: 'string'
+    });
+    expect(result[0].outputs[0]).toMatchObject({
+      key: 'output1',
+      label: 'Output 1',
+      valueType: 'string'
+    });
     expect(result[0].version).toBe('v1');
+  });
+
+  it('should preserve original child input schema on runtime node', async () => {
+    const inputSchema = {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        query: {
+          type: 'string',
+          pattern: '^fastgpt'
+        }
+      },
+      required: ['query']
+    };
+    const toolSetNode = makeToolSetNode({
+      toolId: 'systemTool-toolset-1',
+      toolList: [{ toolId: 'child-1', name: 'Search', description: 'Search Desc' }]
+    });
+
+    mockToolDetail([
+      {
+        id: 'child-1',
+        name: 'Search',
+        description: 'Search Intro',
+        inputSchema
+      }
+    ]);
+
+    const result = await getSystemToolRunTimeNodeFromSystemToolset({
+      toolSetNode,
+      lang: 'en'
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].jsonSchema).toBe(inputSchema);
   });
 
   it('should use child name and descriptions when selected config is empty', async () => {
@@ -253,9 +316,7 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
         id: 'child-1',
         name: 'Original Name',
         description: 'Original Intro',
-        toolDescription: 'Original Tool Description',
-        inputs: [],
-        outputs: []
+        toolDescription: 'Original Tool Description'
       }
     ]);
 
@@ -276,17 +337,12 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
       inputs: [{ key: NodeInputKeyEnum.systemInputConfig, value: { apiKey: 'test-key' } }]
     });
 
-    const childInputs = [
-      { key: NodeInputKeyEnum.systemInputConfig, value: null },
-      { key: 'otherInput', value: 'other' }
-    ];
     mockToolDetail([
       {
         id: 'child-1',
         name: 'Tool1',
         description: 'Intro1',
-        inputs: childInputs,
-        outputs: []
+        inputSchema: childInputSchema
       }
     ]);
 
@@ -303,7 +359,7 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
     expect(configInput?.value).toEqual({ apiKey: 'test-key' });
   });
 
-  it('should not modify inputs when no systemInputConfig in toolSetNode', async () => {
+  it('should not add systemInputConfig when no systemInputConfig in toolSetNode', async () => {
     const toolSetNode = makeToolSetNode({
       toolList: [{ toolId: 'child-1', name: 'Tool1', description: 'Desc1' }],
       inputs: [] // No systemInputConfig
@@ -314,8 +370,7 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
         id: 'child-1',
         name: 'Tool1',
         description: 'Intro1',
-        inputs: [{ key: NodeInputKeyEnum.systemInputConfig, value: 'original' }],
-        outputs: []
+        inputSchema: childInputSchema
       }
     ]);
 
@@ -324,11 +379,10 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
       lang: 'en'
     });
 
-    // toolsetInputConfig is undefined, so value check is falsy → no modification
     const configInput = result[0].inputs.find(
       (i: any) => i.key === NodeInputKeyEnum.systemInputConfig
     );
-    expect(configInput?.value).toBe('original');
+    expect(configInput).toBeUndefined();
   });
 
   it('should use default lang "en" when not provided', async () => {
@@ -351,7 +405,7 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
     expect(result).toHaveLength(1);
   });
 
-  it('should handle null inputs/outputs from tool', async () => {
+  it('should handle missing schemas from tool', async () => {
     const toolSetNode = makeToolSetNode({
       toolList: [{ toolId: 'child-1', name: 'Tool1', description: 'Desc1' }]
     });
@@ -360,9 +414,7 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
       {
         id: 'child-1',
         name: 'Tool1',
-        description: 'Intro1',
-        inputs: null,
-        outputs: null
+        description: 'Intro1'
       }
     ]);
 
@@ -385,8 +437,8 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
     });
 
     mockToolDetail([
-      { id: 'child-1', name: 'Original T1', inputs: [], outputs: [] },
-      { id: 'child-2', name: 'Original T2', inputs: [], outputs: [] }
+      { id: 'child-1', name: 'Original T1' },
+      { id: 'child-2', name: 'Original T2' }
     ]);
 
     const result = await getSystemToolRunTimeNodeFromSystemToolset({

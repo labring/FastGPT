@@ -3,15 +3,18 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import {
-  jsonSchema2NodeInput,
-  jsonSchema2NodeOutput,
-  jsonSchema2SecretInput
+  jsonSchema2SecretInput,
+  nodeInputs2JsonSchema,
+  nodeOutputs2JsonSchema
 } from '@fastgpt/global/core/app/jsonschema';
 import { SystemToolCodec } from '@fastgpt/global/core/app/tool/systemTool/codec';
 import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { filterPluginTags } from '@fastgpt/global/core/plugin/utils';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import type { PluginListParamsType } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { pluginClient } from '../../../../thirdProvider/fastgptPlugin';
 import { MongoSystemTool } from '../../../plugin/tool/systemToolSchema';
@@ -34,8 +37,8 @@ import { MongoAppVersion } from '../../version/schema';
 import type { SystemPluginToolCollectionType } from '@fastgpt/global/core/plugin/tool/type';
 import type { AppToolRuntimeType } from '@fastgpt/global/core/app/tool/type';
 import type { PluginPermissionEnumType } from '@fastgpt/global/sdk/fastgpt-plugin';
-import { pluginData2FlowNodeIO } from '@fastgpt/global/core/workflow/utils';
 import { Types } from '../../../../common/mongo';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 
 type SystemToolRuntimeType = {
   id: string;
@@ -44,6 +47,27 @@ type SystemToolRuntimeType = {
   systemKeyCost: number;
   secretsVal?: Record<string, any>;
   permissions?: PluginPermissionEnumType[];
+};
+
+const workflowToolNodes2JsonSchema = ({ nodes }: { nodes: StoreNodeItemType[] }) => {
+  const pluginInput = nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput);
+  const pluginOutput = nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginOutput);
+
+  return {
+    inputSchema: nodeInputs2JsonSchema({ inputs: pluginInput?.inputs ?? [] }),
+    outputSchema: nodeOutputs2JsonSchema({
+      outputs:
+        pluginOutput?.inputs.map((item) => ({
+          id: item.key,
+          type: FlowNodeOutputTypeEnum.static,
+          key: item.key,
+          valueType: item.valueType,
+          label: item.label || item.key,
+          description: item.description,
+          required: item.required
+        })) ?? []
+    })
+  };
 };
 
 /**
@@ -167,6 +191,10 @@ export class SystemToolRepo {
           })
         : true;
 
+      const { inputSchema, outputSchema } = workflowToolNodes2JsonSchema({
+        nodes: appVersion.nodes
+      });
+
       return {
         id: pluginId,
         name: dbTool.customConfig.name,
@@ -180,9 +208,8 @@ export class SystemToolRepo {
         avatar: app.avatar,
         hasSystemSecret: false,
         systemSecretStatus: SystemToolCodec.getSystemSecretStatus({ hasSecret: false }),
-        ...pluginData2FlowNodeIO({
-          nodes: appVersion.nodes
-        }),
+        inputSchema,
+        outputSchema,
         isToolSet: false,
         currentCost: dbTool.currentCost ?? 0,
         hasTokenFee: dbTool.hasTokenFee ?? false,
@@ -235,11 +262,8 @@ export class SystemToolRepo {
             systemKeyCost: dbChild?.systemKeyCost ?? 0,
             currentCost: dbChild?.currentCost ?? 0,
             icon: item.icon,
-            inputs: jsonSchema2NodeInput({
-              jsonSchema: item.inputSchema,
-              schemaType: 'systemTool'
-            }),
-            outputs: jsonSchema2NodeOutput({ jsonSchema: item.outputSchema })
+            inputSchema: item.inputSchema,
+            outputSchema: item.outputSchema
           } satisfies SystemToolChildDetailType;
         })
       : undefined;
@@ -286,23 +310,16 @@ export class SystemToolRepo {
       hideTags: dbTool?.hideTags ?? [],
       promoteTags: dbTool?.promoteTags ?? [],
       pluginOrder: dbTool?.pluginOrder,
-      secrets,
+      secretSchema: tool.secretSchema,
       isLatestVersion: tool.isLatestVersion,
       ...(childPluginId
         ? {
-            inputs: jsonSchema2NodeInput({
-              jsonSchema: child!.inputSchema,
-              schemaType: 'systemTool'
-            }),
-            outputs: jsonSchema2NodeOutput({ jsonSchema: child!.outputSchema })
+            inputSchema: child!.inputSchema,
+            outputSchema: child!.outputSchema
           }
         : {
-            inputs: tool.inputSchema
-              ? jsonSchema2NodeInput({ jsonSchema: tool.inputSchema, schemaType: 'systemTool' })
-              : [],
-            outputs: tool.outputSchema
-              ? jsonSchema2NodeOutput({ jsonSchema: tool.outputSchema })
-              : []
+            inputSchema: tool.inputSchema,
+            outputSchema: tool.outputSchema
           }),
       permissions: tool.permission
     };
