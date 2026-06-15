@@ -67,6 +67,7 @@ const Dataset = () => {
   const { feConfigs } = useSystemStore();
   const maxFolderDepth = feConfigs?.limit?.maxFolderDepth ?? DEFAULT_MAX_FOLDER_DEPTH;
   const canCreateFolder = canCreateSubFolder(parentId, paths, maxFolderDepth);
+  const folderDepthLimitTip = t('common:folder_depth_limit_tip');
   const { toast } = useToast();
   const [editFolderData, setEditFolderData] = useState<EditFolderFormType>();
   const [createDatasetType, setCreateDatasetType] = useState<CreateDatasetType>();
@@ -220,19 +221,17 @@ const Dataset = () => {
                         }
                       ]
                     },
-                    ...(canCreateFolder
-                      ? [
-                          {
-                            children: [
-                              {
-                                icon: FolderIcon,
-                                label: t('common:Folder'),
-                                onClick: () => setEditFolderData({})
-                              }
-                            ]
-                          }
-                        ]
-                      : [])
+                    {
+                      children: [
+                        {
+                          icon: FolderIcon,
+                          label: t('common:Folder'),
+                          disabled: !canCreateFolder,
+                          disabledTip: folderDepthLimitTip,
+                          onClick: () => setEditFolderData({})
+                        }
+                      ]
+                    }
                   ]}
                 />
               </Box>

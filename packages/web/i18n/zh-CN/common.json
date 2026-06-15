@@ -46,6 +46,7 @@
   "File": "文件",
   "Finish": "完成",
   "Folder": "文件夹",
+  "folder_depth_limit_tip": "已达到最大目录深度",
   "FullScreen": "全屏",
   "FullScreenLight": "全屏预览",
   "Import": "导入",

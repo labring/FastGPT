@@ -27,6 +27,7 @@ import FolderPath from '@/components/common/folder/Path';
 import { useRouter } from 'next/router';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { useSkillSandboxOperationGuard } from '@/components/core/skill/useSkillSandboxOperationGuard';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const EditFolderModal = dynamic(
   () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
@@ -58,6 +59,7 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   } = useContextSelector(SkillListContext, (v) => v);
   const maxFolderDepth = feConfigs?.limit?.maxFolderDepth ?? DEFAULT_MAX_FOLDER_DEPTH;
   const canCreateFolder = canCreateSubFolder(parentId, paths, maxFolderDepth);
+  const folderDepthLimitTip = t('common:folder_depth_limit_tip');
 
   const { runAsync: onCreateFolder } = useRequest(postCreateSkillFolder, {
     onSuccess() {
@@ -124,16 +126,17 @@ const SkillPageContent = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
 
               {hasCreatePer && (
                 <>
-                  {canCreateFolder && (
+                  <MyTooltip label={canCreateFolder ? '' : folderDepthLimitTip}>
                     <Button
                       variant={'grayBase'}
                       leftIcon={<MyIcon name={'common/addLight'} w={'18px'} mr={-1} />}
                       onClick={() => setEditFolder({})}
+                      isDisabled={!canCreateFolder}
                       px={5}
                     >
                       {t('common:Folder')}
                     </Button>
-                  )}
+                  </MyTooltip>
                   <Button
                     variant={'grayBase'}
                     leftIcon={<MyIcon name={'common/importLight'} w={'14px'} />}

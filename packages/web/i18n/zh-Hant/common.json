@@ -45,6 +45,7 @@
   "File": "檔案",
   "Finish": "完成",
   "Folder": "資料夾",
+  "folder_depth_limit_tip": "已達到最大目錄深度",
   "FullScreen": "全屏",
   "FullScreenLight": "全屏預覽",
   "Import": "匯入",

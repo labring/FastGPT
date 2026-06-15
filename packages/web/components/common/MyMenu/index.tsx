@@ -361,7 +361,7 @@ const MyMenu = ({
                   if (child.disabled && child.disabledTip) {
                     return (
                       <MyTooltip shouldWrapChildren={false} key={index} label={child.disabledTip}>
-                        {menuItem}
+                        <Box>{menuItem}</Box>
                       </MyTooltip>
                     );
                   }
