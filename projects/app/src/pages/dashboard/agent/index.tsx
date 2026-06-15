@@ -29,9 +29,15 @@ import { getUtmWorkflow } from '@/web/support/marketing/utils';
 import { useMount } from 'ahooks';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import {
+  canCreateSubFolder,
+  DEFAULT_MAX_FOLDER_DEPTH
+} from '@fastgpt/global/common/parentFolder/depth';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import TemplateCreatePanel from '@/pageComponents/dashboard/agent/TemplateCreatePanel';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const EditFolderModal = dynamic(
   () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
@@ -57,6 +63,10 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   } = useContextSelector(AppListContext, (v) => v);
   const [editFolder, setEditFolder] = useState<EditFolderFormType>();
   const { userInfo } = useUserStore();
+  const { feConfigs } = useSystemStore();
+  const maxFolderDepth = feConfigs?.limit?.maxFolderDepth ?? DEFAULT_MAX_FOLDER_DEPTH;
+  const canCreateFolder = canCreateSubFolder(parentId, paths, maxFolderDepth);
+  const folderDepthLimitTip = t('common:folder_depth_limit_tip');
 
   const {
     isOpen: isOpenJsonImportModal,
@@ -149,14 +159,17 @@ const MyApps = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
 
               {hasCreatePer && (
                 <>
-                  <Button
-                    variant={'grayBase'}
-                    leftIcon={<MyIcon name={'common/addLight'} w={'18px'} mr={-1} />}
-                    onClick={() => setEditFolder({})}
-                    px={5}
-                  >
-                    {t('common:Folder')}
-                  </Button>
+                  <MyTooltip label={canCreateFolder ? '' : folderDepthLimitTip}>
+                    <Button
+                      variant={'grayBase'}
+                      leftIcon={<MyIcon name={'common/addLight'} w={'18px'} mr={-1} />}
+                      onClick={() => setEditFolder({})}
+                      isDisabled={!canCreateFolder}
+                      px={5}
+                    >
+                      {t('common:Folder')}
+                    </Button>
+                  </MyTooltip>
                   <Button
                     variant={'grayBase'}
                     leftIcon={<MyIcon name={'common/importLight'} w={'14px'} />}

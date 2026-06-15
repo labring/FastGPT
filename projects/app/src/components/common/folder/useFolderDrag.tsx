@@ -1,4 +1,4 @@
-import React, { useState, type DragEvent, useCallback } from 'react';
+import { useState, type DragEvent, useCallback } from 'react';
 import type { BoxProps } from '@chakra-ui/react';
 import { useBoolean } from 'ahooks';
 
@@ -19,7 +19,7 @@ export const useFolderDrag = ({
         draggable: true,
         userSelect: 'none' as any,
         'data-drag-id': isFolder ? dataId : undefined,
-        onDragStart: (e: DragEvent<HTMLDivElement>) => {
+        onDragStart: () => {
           setDragId(dataId);
         },
         onDragOver: (e: DragEvent<HTMLDivElement>) => {
@@ -41,7 +41,7 @@ export const useFolderDrag = ({
               if (targetId && dragId && targetId !== dragId) {
                 await onDrop(dragId, targetId);
               }
-            } catch (error) {}
+            } catch {}
 
             setTargetId(undefined);
             setDragId(undefined);

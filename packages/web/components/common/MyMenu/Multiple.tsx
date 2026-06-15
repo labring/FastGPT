@@ -13,6 +13,7 @@ import type { IconNameType } from '../Icon/type';
 import { useSystem } from '../../../hooks/useSystem';
 import Avatar from '../Avatar';
 import MyPopover from '../MyPopover';
+import MyTooltip from '../MyTooltip';
 
 export type MenuItemType = 'primary' | 'danger' | 'gray' | 'grayBg';
 
@@ -29,6 +30,8 @@ export type MenuItemData = {
     onClick?: () => any;
     menuItemStyles?: MenuItemProps;
     menuList?: MenuItemData[];
+    disabled?: boolean;
+    disabledTip?: string;
   }>;
 };
 
@@ -204,13 +207,19 @@ const MenuItem = ({
     <Box
       px={3}
       py={2}
-      cursor="pointer"
+      cursor={item.disabled ? 'not-allowed' : 'pointer'}
+      opacity={item.disabled ? 0.6 : 1}
       borderRadius="md"
-      _hover={{
-        bg: 'primary.50',
-        color: 'primary.600'
-      }}
+      _hover={
+        item.disabled
+          ? {}
+          : {
+              bg: 'primary.50',
+              color: 'primary.600'
+            }
+      }
       onClick={(e) => {
+        if (item.disabled) return;
         if (item.onClick) {
           item.onClick();
         }
@@ -235,7 +244,7 @@ const MenuItem = ({
           >
             {item.label}
           </Box>
-          {item.description && (
+          {item.description && !item.disabled && (
             <Box color={'myGray.500'} fontSize={'mini'}>
               {item.description}
             </Box>
@@ -297,6 +306,16 @@ const MultipleMenu = (props: Props) => {
                   </Box>
                 )}
                 {group.children.map((item, index) => {
+                  const menuItem = <MenuItem item={item} size={size} onClose={onCloseFn} />;
+
+                  if (item.disabled && item.disabledTip) {
+                    return (
+                      <MyTooltip shouldWrapChildren={false} key={index} label={item.disabledTip}>
+                        <Box>{menuItem}</Box>
+                      </MyTooltip>
+                    );
+                  }
+
                   return (
                     <Box key={index}>
                       {item.menuList ? (
@@ -306,15 +325,11 @@ const MultipleMenu = (props: Props) => {
                           trigger={'hover'}
                           menuList={item.menuList}
                           onClose={onCloseFn}
-                          Trigger={
-                            <Box>
-                              <MenuItem item={item} size={size} onClose={onCloseFn} />
-                            </Box>
-                          }
+                          Trigger={<Box>{menuItem}</Box>}
                           hasArrow
                         />
                       ) : (
-                        <MenuItem item={item} size={size} onClose={onCloseFn} />
+                        menuItem
                       )}
                     </Box>
                   );

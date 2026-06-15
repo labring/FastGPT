@@ -28,6 +28,7 @@ import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { updateParentFoldersUpdateTime } from '@fastgpt/service/core/app/controller';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { checkMoveFolderDepth } from '@fastgpt/service/common/parentFolder/depth';
 import {
   UpdateAppBodySchema,
   UpdateAppQuerySchema,
@@ -109,6 +110,23 @@ async function handler(req: ApiRequestProps<UpdateAppBodyType, UpdateAppQueryTyp
     if (!permission.hasWritePer) {
       return Promise.reject(AppErrEnum.unAuthApp);
     }
+  }
+
+  if (isMove) {
+    const isFolderType =
+      app.type === AppTypeEnum.toolFolder
+        ? (type: string) => type === AppTypeEnum.toolFolder
+        : app.type === AppTypeEnum.folder
+          ? (type: string) => type === AppTypeEnum.folder
+          : () => false;
+
+    await checkMoveFolderDepth({
+      resourceId: appId,
+      targetParentId: parentId,
+      teamId: app.teamId,
+      model: MongoApp,
+      isFolderType
+    });
   }
 
   const onUpdate = async (session?: ClientSession) => {

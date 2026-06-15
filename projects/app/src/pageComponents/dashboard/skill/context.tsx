@@ -4,6 +4,7 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getSkillList, getSkillFolderPath, getSkillDetail } from '@/web/core/skill/api';
 import type { ListSkillsResponse } from '@fastgpt/global/core/ai/skill/api';
 import type { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
+import { normalizeParentId } from '@fastgpt/global/common/parentFolder/depth';
 import { useRouter } from 'next/router';
 import type { SkillPermission } from '@fastgpt/global/support/permission/skill/controller';
 
@@ -46,10 +47,7 @@ export const SkillListContext = createContext<SkillListContextType>({
 
 const SkillListContextProvider = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
-  // 归一化 parentId：非空字符串时取值，否则为 null
-  const rawParentId = router.query.parentId;
-  const parentId: string | null =
-    typeof rawParentId === 'string' && rawParentId.length > 0 ? rawParentId : null;
+  const parentId = normalizeParentId(router.query.parentId);
 
   const [searchKey, setSearchKey] = useState('');
 

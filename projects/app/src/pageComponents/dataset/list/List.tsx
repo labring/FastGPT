@@ -52,9 +52,9 @@ function List() {
     searchKey,
     setSearchKey
   } = useContextSelector(DatasetsContext, (v) => v);
-  const [editPerDatasetId, setEditPerDatasetId] = useState<string>();
   const router = useRouter();
   const { parentId = null } = router.query as { parentId?: string | null };
+  const [editPerDatasetId, setEditPerDatasetId] = useState<string>();
 
   const formatDatasets = useMemo(
     () =>

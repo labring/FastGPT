@@ -30,6 +30,11 @@ import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import {
+  canCreateSubFolder,
+  DEFAULT_MAX_FOLDER_DEPTH,
+  normalizeParentId
+} from '@fastgpt/global/common/parentFolder/depth';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 
 const EditFolderModal = dynamic(
@@ -42,7 +47,7 @@ const Dataset = () => {
   const { isPc } = useSystem();
   const { t } = useTranslation();
   const router = useRouter();
-  const { parentId } = router.query as { parentId: string };
+  const parentId = normalizeParentId(router.query.parentId);
 
   const {
     myDatasets,
@@ -60,6 +65,9 @@ const Dataset = () => {
   } = useContextSelector(DatasetsContext, (v) => v);
   const { userInfo } = useUserStore();
   const { feConfigs } = useSystemStore();
+  const maxFolderDepth = feConfigs?.limit?.maxFolderDepth ?? DEFAULT_MAX_FOLDER_DEPTH;
+  const canCreateFolder = canCreateSubFolder(parentId, paths, maxFolderDepth);
+  const folderDepthLimitTip = t('common:folder_depth_limit_tip');
   const { toast } = useToast();
   const [editFolderData, setEditFolderData] = useState<EditFolderFormType>();
   const [createDatasetType, setCreateDatasetType] = useState<CreateDatasetType>();
@@ -218,6 +226,8 @@ const Dataset = () => {
                         {
                           icon: FolderIcon,
                           label: t('common:Folder'),
+                          disabled: !canCreateFolder,
+                          disabledTip: folderDepthLimitTip,
                           onClick: () => setEditFolderData({})
                         }
                       ]

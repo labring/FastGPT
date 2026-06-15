@@ -9,7 +9,9 @@ export enum CommonErrEnum {
   fileNotFound = 'fileNotFound',
   unAuthFile = 'unAuthFile',
   missingParams = 'missingParams',
-  inheritPermissionError = 'inheritPermissionError'
+  inheritPermissionError = 'inheritPermissionError',
+  folderDepthLimit = 'folderDepthLimit',
+  folderMoveDepthLimit = 'folderMoveDepthLimit'
 }
 const datasetErr = [
   {
@@ -35,6 +37,14 @@ const datasetErr = [
   {
     statusText: CommonErrEnum.inheritPermissionError,
     message: i18nT('common:error.inheritPermissionError')
+  },
+  {
+    statusText: CommonErrEnum.folderDepthLimit,
+    message: i18nT('common:error.folderDepthLimit')
+  },
+  {
+    statusText: CommonErrEnum.folderMoveDepthLimit,
+    message: i18nT('common:error.folderMoveDepthLimit')
   }
 ];
 export default datasetErr.reduce((acc, cur, index) => {

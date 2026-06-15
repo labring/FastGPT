@@ -18,6 +18,7 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { checkTeamAppTypeLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { checkCreateFolderDepth } from '@fastgpt/service/common/parentFolder/depth';
 import {
   CreateAppFolderBodySchema,
   CreateAppFolderResponseSchema,
@@ -47,6 +48,8 @@ async function handler(
     : await authUserPer({ req, authToken: true, per: TeamAppCreatePermissionVal });
 
   await checkTeamAppTypeLimit({ teamId, appCheckType: 'folder' });
+
+  await checkCreateFolderDepth({ parentId, teamId, model: MongoApp });
 
   // Create app
   await mongoSessionRun(async (session) => {
