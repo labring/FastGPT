@@ -376,6 +376,50 @@ describe('mergeNodeResponseDataByIdAndParent', () => {
     );
   });
 
+  it('should compose many persisted flat rows with nested legacy detail fields efficiently', () => {
+    const rootResponses: ChatHistoryItemResType[] = Array.from({ length: 5 }, (_, rootIndex) => {
+      const rootId = `parallel-${rootIndex}`;
+
+      return {
+        id: rootId,
+        nodeId: rootId,
+        moduleName: 'Parallel',
+        moduleType: FlowNodeTypeEnum.parallelRun,
+        parallelRunDetail: Array.from({ length: 20 }, (_, childIndex) => {
+          const childId = `${rootId}-loop-run-${childIndex}`;
+
+          return {
+            id: childId,
+            parentId: rootId,
+            nodeId: childId,
+            moduleName: 'Loop run',
+            moduleType: FlowNodeTypeEnum.loopRun,
+            loopRunDetail: [
+              {
+                id: `${childId}-plugin`,
+                parentId: childId,
+                nodeId: `${childId}-plugin`,
+                moduleName: 'Plugin',
+                moduleType: FlowNodeTypeEnum.pluginModule
+              }
+            ]
+          };
+        })
+      };
+    });
+    const responseDataList = rootResponses.flatMap((root) => [
+      root,
+      ...(root.parallelRunDetail || []),
+      ...((root.parallelRunDetail || []).flatMap((child) => child.loopRunDetail || []) || [])
+    ]);
+
+    const result = mergeNodeResponseDataByIdAndParent(responseDataList);
+
+    expect(result).toHaveLength(5);
+    expect(result[0].parallelRunDetail).toHaveLength(20);
+    expect(result[0].parallelRunDetail?.[0].loopRunDetail).toHaveLength(1);
+  });
+
   it('should merge accumulated tool call fields by id and parentId', () => {
     const responseDataList: ChatHistoryItemResType[] = [
       {

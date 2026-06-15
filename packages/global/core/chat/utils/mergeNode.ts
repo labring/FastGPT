@@ -63,20 +63,19 @@ const hasRootParentDependency = (responses: ChatHistoryItemResType[]) => {
  * 这里优先在同层用 `id + parentId` 建索引合并，只有发现 sibling 之间还存在 parent 依赖时
  * 才回退到完整挂树逻辑，保留 child 先到、parent 后到的兼容语义。
  */
-const mergeChildResponseList = (
+function mergeChildResponseList(
   current: ChatHistoryItemResType[] = [],
   incoming: ChatHistoryItemResType[] = []
-): ChatHistoryItemResType[] => {
+): ChatHistoryItemResType[] {
   const responses = [...current, ...incoming];
   if (responses.length === 0) return [];
 
-  if (hasRootParentDependency(responses)) {
-    return responses.reduce<ChatHistoryItemResType[]>(
-      (list, child) => appendNodeResponseByParent(list, child),
-      []
-    );
-  }
+  if (hasRootParentDependency(responses)) return mergeNodeResponseListByParent(responses);
 
+  return mergeNodeResponsesByIdentity(responses);
+}
+
+function mergeNodeResponsesByIdentity(responses: ChatHistoryItemResType[]) {
   const indexByIdentity = new Map<string, number>();
   return responses.reduce<ChatHistoryItemResType[]>((list, child) => {
     if (!child.id) {
@@ -95,7 +94,47 @@ const mergeChildResponseList = (
     list[existingIndex] = mergeNodeResponse(list[existingIndex], child);
     return list;
   }, []);
-};
+}
+
+function attachNodeResponsesByParent(responses: ChatHistoryItemResType[]) {
+  const parentById = new Map<string, ChatHistoryItemResType>();
+
+  responses.forEach((response) => {
+    if (response.id && !parentById.has(response.id)) {
+      parentById.set(response.id, response);
+    }
+  });
+
+  return responses.reduce<ChatHistoryItemResType[]>((roots, response) => {
+    const parent =
+      response.parentId && response.parentId !== response.id
+        ? parentById.get(response.parentId)
+        : undefined;
+    if (!parent) return [...roots, response];
+
+    parent.childrenResponses = mergeChildResponseList(parent.childrenResponses || [], [
+      {
+        ...response,
+        parentId: response.parentId
+      }
+    ]);
+    return roots;
+  }, []);
+}
+
+/**
+ * 批量读取时使用的一次性挂树算法。
+ *
+ * 与流式 append 不同，详情读取已经拿到了完整 rows，可以先按 `id + parentId` 合并同层
+ * 增量，再按 parentId 一次性挂到 `childrenResponses`。这样避免每条 row 都递归扫描已构建
+ * 的整棵树，在 loop/parallel 产生大量 rows 时把复杂度从接近 O(n^2) 降到线性扫描为主。
+ */
+function mergeNodeResponseListByParent(
+  responseDataList: ChatHistoryItemResType[] = []
+): ChatHistoryItemResType[] {
+  const normalizedResponses = responseDataList.map(normalizeNodeResponseChildren);
+  return attachNodeResponsesByParent(mergeNodeResponsesByIdentity(normalizedResponses));
+}
 
 /**
  * 合并同一个 nodeResponse 的增量数据。
@@ -378,8 +417,4 @@ const stripChildTotalPoints = (item: ChatHistoryItemResType): ChatHistoryItemRes
 export const mergeNodeResponseDataByIdAndParent = (
   responseDataList: ChatHistoryItemResType[] = []
 ): ChatHistoryItemResType[] =>
-  responseDataList
-    .reduce<
-      ChatHistoryItemResType[]
-    >((responses, nodeResponse) => appendNodeResponseByParent(responses, normalizeNodeResponseChildren(nodeResponse)), [])
-    .map(stripChildTotalPoints);
+  mergeNodeResponseListByParent(responseDataList).map(stripChildTotalPoints);
