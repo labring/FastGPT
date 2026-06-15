@@ -268,7 +268,7 @@ const ChatBox = ({
     chatControllerRef: chatController,
     questionGuideControllerRef: questionGuideController,
     setQuestionGuide,
-    scrollToBottom
+    generatingScroll
   });
 
   const { abortRequest, generatingMessage, sendPrompt } = useChatGenerate({
