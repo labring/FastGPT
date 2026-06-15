@@ -1,10 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
 import { useMemoizedFn, useThrottleFn } from 'ahooks';
-import {
-  isChatScrollAtBottom,
-  shouldFollowGeneratingScroll,
-  shouldShowChatScrollToBottomButton
-} from '../utils/scrollUtils';
+import { isChatScrollAtBottom, shouldShowChatScrollToBottomButton } from '../utils/scrollUtils';
 
 /**
  * 管理 ChatBox 的滚动容器和生成中跟随底部逻辑。
@@ -16,22 +12,22 @@ import {
  * 输出约定：
  * - `ScrollContainerRef` 绑定到聊天记录滚动容器。
  * - `scrollToBottom` 用于明确要求滚到底部，支持 smooth/auto 和延迟。
- * - `generatingScroll` 用于流式生成中“条件跟随底部”，避免打断用户查看历史。
+ * - `generatingScroll` 用于流式生成中根据用户意图跟随底部，避免打断用户查看历史。
  * - `isScrollAtBottom` 只描述当前滚动位置。
- * - `isScrollToBottomButtonVisible` 优先在用户主动离开底部后展示；若图片等大块内容让
- *   底部距离突然过大，也会兜底展示，避免用户失去回到底部入口。
+ * - `isScrollToBottomButtonVisible` 只在用户主动离开底部后展示，避免流式内容追加或图片
+ *   加载造成瞬时距离变化时按钮闪烁。
  *
  * 关键边界：
  * - `scrollToBottom` 保留 DOM 未挂载时的延迟重试，因为 ChatBox 有动态加载记录、
  *   home/chat 分支切换和恢复生成占位消息，调用时机可能早于滚动容器真实出现。
  * - 用户主动向上滚动后，当前轮生成不再自动吸附底部；滚回底部或显式点击回到底部后恢复。
- * - `generatingScroll` 复用 `shouldFollowGeneratingScroll`，只有仍允许跟随且用户接近底部时才跟随。
+ * - 内容高度变化时只看 `shouldFollowGeneratingRef`，不再用底部距离反推吸底意图，避免图片加载等
+ *   异步撑高内容时丢失吸底。
  */
 export const useChatScroll = () => {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const lastScrollTopRef = useRef(0);
   const shouldFollowGeneratingRef = useRef(true);
-  const userHasLeftBottomRef = useRef(false);
   const [scrollContainer, setScrollContainer] = useState<HTMLDivElement | null>(null);
   const ScrollContainerRef = useMemo(
     () =>
@@ -61,7 +57,6 @@ export const useChatScroll = () => {
       const container = scrollContainerRef.current;
       if (!container) {
         shouldFollowGeneratingRef.current = true;
-        userHasLeftBottomRef.current = false;
         lastScrollTopRef.current = 0;
         setIsScrollAtBottom(true);
         setIsScrollToBottomButtonVisible(false);
@@ -81,11 +76,9 @@ export const useChatScroll = () => {
         !nextIsScrollAtBottom
       ) {
         shouldFollowGeneratingRef.current = false;
-        userHasLeftBottomRef.current = true;
       }
       if (nextIsScrollAtBottom) {
         shouldFollowGeneratingRef.current = true;
-        userHasLeftBottomRef.current = false;
       }
       lastScrollTopRef.current = container.scrollTop;
 
@@ -94,11 +87,32 @@ export const useChatScroll = () => {
         !nextIsScrollAtBottom &&
           shouldShowChatScrollToBottomButton({
             ...scrollState,
-            userHasLeftBottom: userHasLeftBottomRef.current
+            userHasLeftBottom: !shouldFollowGeneratingRef.current
           })
       );
     }
   );
+
+  /**
+   * 内容尺寸变化后的吸底补偿。
+   *
+   * 图片加载、代码块渲染和 Markdown 重排都会在用户没有滚动的情况下改变 scrollHeight；
+   * 只要用户意图仍是吸底，就直接补滚到底部。若用户已主动上滚，`shouldFollowGeneratingRef`
+   * 为 false，不会打断阅读历史。
+   */
+  const syncAfterContentChange = useMemoizedFn(() => {
+    syncScrollAtBottom();
+    if (!shouldFollowGeneratingRef.current) return;
+
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: 'auto'
+    });
+    syncScrollAtBottom();
+  });
 
   /**
    * 滚动到底部。
@@ -114,7 +128,6 @@ export const useChatScroll = () => {
       }
 
       shouldFollowGeneratingRef.current = true;
-      userHasLeftBottomRef.current = false;
       scrollContainerRef.current.scrollTo({
         top: scrollContainerRef.current.scrollHeight,
         behavior
@@ -130,20 +143,9 @@ export const useChatScroll = () => {
   const { run: generatingScroll } = useThrottleFn(
     (force?: boolean) => {
       if (!scrollContainerRef.current) return;
-      if (!shouldFollowGeneratingRef.current) return;
+      if (!shouldFollowGeneratingRef.current && !force) return;
 
-      // 流式响应会高频触发，先判断用户是否仍在底部附近，再决定是否滚动。
-      // `force` 只绕过距离阈值，不绕过用户主动向上滚动后的暂停跟随状态。
-      const isBottom = shouldFollowGeneratingScroll({
-        scrollTop: scrollContainerRef.current.scrollTop,
-        clientHeight: scrollContainerRef.current.clientHeight,
-        scrollHeight: scrollContainerRef.current.scrollHeight,
-        force
-      });
-
-      if (isBottom) {
-        scrollToBottom('auto');
-      }
+      scrollToBottom('auto');
     },
     {
       wait: 100
@@ -159,7 +161,7 @@ export const useChatScroll = () => {
 
     syncScrollAtBottom();
     const handleScroll = () => syncScrollAtBottom({ fromScroll: true });
-    const handleResize = () => syncScrollAtBottom();
+    const handleResize = () => syncAfterContentChange();
 
     container.addEventListener('scroll', handleScroll, { passive: true });
     window.addEventListener('resize', handleResize);
@@ -168,7 +170,7 @@ export const useChatScroll = () => {
       typeof ResizeObserver === 'undefined'
         ? undefined
         : new ResizeObserver(() => {
-            syncScrollAtBottom();
+            syncAfterContentChange();
           });
     resizeObserver?.observe(container);
 
@@ -176,7 +178,7 @@ export const useChatScroll = () => {
       typeof MutationObserver === 'undefined'
         ? undefined
         : new MutationObserver(() => {
-            syncScrollAtBottom();
+            syncAfterContentChange();
           });
     mutationObserver?.observe(container, {
       childList: true,
@@ -190,7 +192,7 @@ export const useChatScroll = () => {
       resizeObserver?.disconnect();
       mutationObserver?.disconnect();
     };
-  }, [scrollContainer, syncScrollAtBottom]);
+  }, [scrollContainer, syncAfterContentChange, syncScrollAtBottom]);
 
   return {
     ScrollContainerRef,

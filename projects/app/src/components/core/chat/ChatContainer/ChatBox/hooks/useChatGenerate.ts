@@ -1,4 +1,4 @@
-import { type MutableRefObject } from 'react';
+import { type MutableRefObject, useEffect, useRef } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { useTranslation } from 'next-i18next';
 import { useMemoizedFn } from 'ahooks';
@@ -140,351 +140,388 @@ export const useChatGenerate = ({
   const setAudioPlayingChatId = useContextSelector(ChatBoxContext, (v) => v.setAudioPlayingChatId);
   const splitText2Audio = useContextSelector(ChatBoxContext, (v) => v.splitText2Audio);
 
-  const generatingMessage = useMemoizedFn(
-    ({
-      responseValueId,
-      event,
-      text = '',
-      reasoningText,
-      status,
-      name,
-      tool,
-      interactive,
-      plan,
-      planStatus,
-      sandboxStatus,
-      skill,
-      variables,
-      nodeResponse,
-      durationSeconds,
-      autoTTSResponse
-    }: generatingMessageProps & { autoTTSResponse?: boolean }) => {
-      setChatRecords((state) => {
-        const histories = nodeResponse?.formInputResult
-          ? refreshSubmittedFormInteractiveValues({
-              histories: state,
-              nodeResponse
-            })
-          : state;
+  const generatingMessageQueueRef = useRef<
+    Array<generatingMessageProps & { autoTTSResponse?: boolean }>
+  >([]);
+  const generatingMessageFrameRef = useRef<number>();
 
-        return histories.map((item, index) => {
-          if (index !== histories.length - 1) return item;
-          if (item.obj !== ChatRoleEnum.AI) return item;
+  const applyGeneratingMessage = useMemoizedFn(
+    (
+      state: ChatSiteItemType[],
+      {
+        responseValueId,
+        event,
+        text = '',
+        reasoningText,
+        status,
+        name,
+        tool,
+        interactive,
+        plan,
+        planStatus,
+        sandboxStatus,
+        skill,
+        variables,
+        nodeResponse,
+        durationSeconds,
+        autoTTSResponse
+      }: generatingMessageProps & { autoTTSResponse?: boolean }
+    ) => {
+      const histories = nodeResponse?.formInputResult
+        ? refreshSubmittedFormInteractiveValues({
+            histories: state,
+            nodeResponse
+          })
+        : state;
 
-          if (autoTTSResponse) {
-            splitText2Audio(formatChatValue2InputType(item.value).text || '');
-          }
+      return histories.map((item, index) => {
+        if (index !== histories.length - 1) return item;
+        if (item.obj !== ChatRoleEnum.AI) return item;
 
-          const updateIndex = (() => {
-            if (!responseValueId) return item.value.length - 1;
-            const index = item.value.findIndex((item) => item.id === responseValueId);
-            if (index !== -1) return index;
-            return item.value.length - 1;
+        if (autoTTSResponse) {
+          splitText2Audio(formatChatValue2InputType(item.value).text || '');
+        }
+
+        const updateIndex = (() => {
+          if (!responseValueId) return item.value.length - 1;
+          const index = item.value.findIndex((item) => item.id === responseValueId);
+          if (index !== -1) return index;
+          return item.value.length - 1;
+        })();
+        const updateValue: AIChatItemValueItemType = cloneDeep(item.value[updateIndex]);
+
+        if (event === SseResponseEventEnum.flowNodeResponse && nodeResponse) {
+          return {
+            ...item,
+            responseData: appendNodeResponseByParent(item.responseData, nodeResponse)
+          };
+        }
+        if (event === SseResponseEventEnum.flowNodeStatus && status) {
+          return {
+            ...item,
+            status,
+            moduleName: name
+          };
+        }
+        if (event === SseResponseEventEnum.sandboxStatus && sandboxStatus) {
+          const getSandboxPhaseLabel = (): string => {
+            const { phase, isWarmStart, skillName } = sandboxStatus;
+            if (phase === 'deployingSkills') {
+              return t('chat:sandbox_status_deployingSkills', { skillName: skillName ?? '' });
+            }
+            if (
+              phase === 'downloadingPackage' ||
+              phase === 'uploadingPackage' ||
+              phase === 'extractingPackage'
+            ) {
+              return t(`chat:sandbox_status_${phase}` as any, { skillName: skillName ?? '' });
+            }
+            if (phase === 'ready') {
+              return t(
+                isWarmStart ? 'chat:sandbox_status_ready_warm' : 'chat:sandbox_status_ready_cold'
+              );
+            }
+            return t(`chat:sandbox_status_${phase}` as any);
+          };
+          return {
+            ...item,
+            status: 'loading' as const,
+            moduleName: getSandboxPhaseLabel()
+          };
+        }
+        if (event === SseResponseEventEnum.skillCall && skill) {
+          const alreadyExists = item.value.some(
+            (v) =>
+              v.id === responseValueId && v.skills?.some((s) => s.skillMdPath === skill.skillMdPath)
+          );
+          if (alreadyExists) return item;
+
+          const skillId = skill.id || responseValueId || getNanoid(10);
+          const val: AIChatItemValueItemType = {
+            id: responseValueId,
+            skills: [
+              {
+                id: skillId,
+                skillName: skill.skillName,
+                skillAvatar: skill.skillAvatar || '',
+                description: skill.description,
+                skillMdPath: skill.skillMdPath
+              }
+            ]
+          };
+          return {
+            ...item,
+            value: [...item.value, val]
+          };
+        }
+        if (event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer) {
+          const answerUpdateIndex = (() => {
+            if (responseValueId) {
+              return item.value.findIndex((item) => item.id === responseValueId);
+            }
+
+            const latestIndex = item.value.length - 1;
+            const latestValue = item.value[latestIndex];
+
+            // reason 流只能续写“纯 reasoning”占位；否则说明上一段回答已成型，需要新起一段。
+            if (
+              reasoningText &&
+              latestValue?.reasoning &&
+              !latestValue.text?.content &&
+              !latestValue.tools?.length &&
+              !latestValue.tool &&
+              !latestValue.skills?.length &&
+              !latestValue.interactive &&
+              !latestValue.plan &&
+              !latestValue.planStatus &&
+              !latestValue.agentPlanUpdate &&
+              !latestValue.agentAsk &&
+              !latestValue.agentStopGate &&
+              !latestValue.contextCheckpoint
+            ) {
+              return latestIndex;
+            }
+
+            if (text) return latestIndex;
+
+            return -1;
           })();
-          const updateValue: AIChatItemValueItemType = cloneDeep(item.value[updateIndex]);
+          const answerUpdateValue: AIChatItemValueItemType | undefined =
+            answerUpdateIndex >= 0 ? cloneDeep(item.value[answerUpdateIndex]) : undefined;
+          const replaceUpdateValue = (nextValue: AIChatItemValueItemType) => ({
+            ...item,
+            value: [
+              ...item.value.slice(0, answerUpdateIndex),
+              nextValue,
+              ...item.value.slice(answerUpdateIndex + 1)
+            ]
+          });
 
-          if (event === SseResponseEventEnum.flowNodeResponse && nodeResponse) {
-            return {
-              ...item,
-              responseData: appendNodeResponseByParent(item.responseData, nodeResponse)
-            };
-          }
-          if (event === SseResponseEventEnum.flowNodeStatus && status) {
-            return {
-              ...item,
-              status,
-              moduleName: name
-            };
-          }
-          if (event === SseResponseEventEnum.sandboxStatus && sandboxStatus) {
-            const getSandboxPhaseLabel = (): string => {
-              const { phase, isWarmStart, skillName } = sandboxStatus;
-              if (phase === 'deployingSkills') {
-                return t('chat:sandbox_status_deployingSkills', { skillName: skillName ?? '' });
-              }
-              if (
-                phase === 'downloadingPackage' ||
-                phase === 'uploadingPackage' ||
-                phase === 'extractingPackage'
-              ) {
-                return t(`chat:sandbox_status_${phase}` as any, { skillName: skillName ?? '' });
-              }
-              if (phase === 'ready') {
-                return t(
-                  isWarmStart ? 'chat:sandbox_status_ready_warm' : 'chat:sandbox_status_ready_cold'
-                );
-              }
-              return t(`chat:sandbox_status_${phase}` as any);
-            };
-            return {
-              ...item,
-              status: 'loading' as const,
-              moduleName: getSandboxPhaseLabel()
-            };
-          }
-          if (event === SseResponseEventEnum.skillCall && skill) {
-            const alreadyExists = item.value.some(
-              (v) =>
-                v.id === responseValueId &&
-                v.skills?.some((s) => s.skillMdPath === skill.skillMdPath)
-            );
-            if (alreadyExists) return item;
-
-            const skillId = skill.id || responseValueId || getNanoid(10);
-            const val: AIChatItemValueItemType = {
-              id: responseValueId,
-              skills: [
-                {
-                  id: skillId,
-                  skillName: skill.skillName,
-                  skillAvatar: skill.skillAvatar || '',
-                  description: skill.description,
-                  skillMdPath: skill.skillMdPath
+          if (reasoningText) {
+            if (answerUpdateValue?.reasoning) {
+              answerUpdateValue.reasoning.content += reasoningText;
+              return replaceUpdateValue(answerUpdateValue);
+            } else if (answerUpdateValue?.text && !answerUpdateValue.text.content) {
+              answerUpdateValue.reasoning = {
+                content: reasoningText
+              };
+              return replaceUpdateValue(answerUpdateValue);
+            } else {
+              const val: AIChatItemValueItemType = {
+                id: responseValueId,
+                reasoning: {
+                  content: reasoningText
                 }
-              ]
-            };
-            return {
-              ...item,
-              value: [...item.value, val]
-            };
+              };
+              return {
+                ...item,
+                value: [...item.value, val]
+              };
+            }
           }
-          if (event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer) {
-            const answerUpdateIndex = (() => {
-              if (responseValueId) {
-                return item.value.findIndex((item) => item.id === responseValueId);
-              }
+          if (text) {
+            if (answerUpdateValue?.text) {
+              answerUpdateValue.text.content += text;
+              return replaceUpdateValue(answerUpdateValue);
+            } else if (answerUpdateValue?.reasoning) {
+              answerUpdateValue.text = {
+                content: text
+              };
+              return replaceUpdateValue(answerUpdateValue);
+            } else {
+              const newValue: AIChatItemValueItemType = {
+                id: responseValueId,
+                text: {
+                  content: text
+                }
+              };
+              return {
+                ...item,
+                value: item.value.concat(newValue)
+              };
+            }
+          }
+        }
 
-              const latestIndex = item.value.length - 1;
-              const latestValue = item.value[latestIndex];
-
-              // reason 流只能续写“纯 reasoning”占位；否则说明上一段回答已成型，需要新起一段。
-              if (
-                reasoningText &&
-                latestValue?.reasoning &&
-                !latestValue.text?.content &&
-                !latestValue.tools?.length &&
-                !latestValue.tool &&
-                !latestValue.skills?.length &&
-                !latestValue.interactive &&
-                !latestValue.plan &&
-                !latestValue.planStatus &&
-                !latestValue.agentPlanUpdate &&
-                !latestValue.agentAsk &&
-                !latestValue.agentStopGate &&
-                !latestValue.contextCheckpoint
-              ) {
-                return latestIndex;
-              }
-
-              if (text) return latestIndex;
-
-              return -1;
-            })();
-            const answerUpdateValue: AIChatItemValueItemType | undefined =
-              answerUpdateIndex >= 0 ? cloneDeep(item.value[answerUpdateIndex]) : undefined;
-            const replaceUpdateValue = (nextValue: AIChatItemValueItemType) => ({
+        if (event === SseResponseEventEnum.toolCall && tool) {
+          const val: AIChatItemValueItemType = {
+            id: responseValueId || tool.id,
+            tools: [tool]
+          };
+          return {
+            ...item,
+            value: [...item.value, val]
+          };
+        }
+        if (event === SseResponseEventEnum.toolParams && tool && updateValue.tools) {
+          if (tool.params) {
+            updateValue.tools = updateValue.tools.map((item) =>
+              item.id === tool.id ? { ...item, params: `${item.params || ''}${tool.params}` } : item
+            );
+            return {
               ...item,
               value: [
-                ...item.value.slice(0, answerUpdateIndex),
-                nextValue,
-                ...item.value.slice(answerUpdateIndex + 1)
+                ...item.value.slice(0, updateIndex),
+                updateValue,
+                ...item.value.slice(updateIndex + 1)
               ]
-            });
-
-            if (reasoningText) {
-              if (answerUpdateValue?.reasoning) {
-                answerUpdateValue.reasoning.content += reasoningText;
-                return replaceUpdateValue(answerUpdateValue);
-              } else if (answerUpdateValue?.text && !answerUpdateValue.text.content) {
-                answerUpdateValue.reasoning = {
-                  content: reasoningText
-                };
-                return replaceUpdateValue(answerUpdateValue);
-              } else {
-                const val: AIChatItemValueItemType = {
-                  id: responseValueId,
-                  reasoning: {
-                    content: reasoningText
-                  }
-                };
-                return {
-                  ...item,
-                  value: [...item.value, val]
-                };
-              }
-            }
-            if (text) {
-              if (answerUpdateValue?.text) {
-                answerUpdateValue.text.content += text;
-                return replaceUpdateValue(answerUpdateValue);
-              } else if (answerUpdateValue?.reasoning) {
-                answerUpdateValue.text = {
-                  content: text
-                };
-                return replaceUpdateValue(answerUpdateValue);
-              } else {
-                const newValue: AIChatItemValueItemType = {
-                  id: responseValueId,
-                  text: {
-                    content: text
-                  }
-                };
-                return {
-                  ...item,
-                  value: item.value.concat(newValue)
-                };
-              }
-            }
-          }
-
-          if (event === SseResponseEventEnum.toolCall && tool) {
-            const val: AIChatItemValueItemType = {
-              id: responseValueId || tool.id,
-              tools: [tool]
-            };
-            return {
-              ...item,
-              value: [...item.value, val]
             };
           }
-          if (event === SseResponseEventEnum.toolParams && tool && updateValue.tools) {
-            if (tool.params) {
-              updateValue.tools = updateValue.tools.map((item) =>
-                item.id === tool.id
-                  ? { ...item, params: `${item.params || ''}${tool.params}` }
-                  : item
-              );
-              return {
-                ...item,
-                value: [
-                  ...item.value.slice(0, updateIndex),
-                  updateValue,
-                  ...item.value.slice(updateIndex + 1)
-                ]
-              };
-            }
-            return item;
-          }
-          if (event === SseResponseEventEnum.toolResponse && tool && updateValue.tools) {
-            if (tool.response) {
-              updateValue.tools = updateValue.tools.map((item) =>
-                item.id === tool.id
-                  ? { ...item, response: `${item.response || ''}${tool.response}` }
-                  : item
-              );
-
-              return {
-                ...item,
-                value: [
-                  ...item.value.slice(0, updateIndex),
-                  updateValue,
-                  ...item.value.slice(updateIndex + 1)
-                ]
-              };
-            }
-            return item;
-          }
-
-          if (event === SseResponseEventEnum.planStatus && planStatus) {
-            const planStatusIndex = item.value.findIndex(
-              (value) => !!value.planStatus || (!!responseValueId && value.id === responseValueId)
-            );
-            const nextPlanStatusValue: AIChatItemValueItemType = {
-              id: responseValueId,
-              planStatus
-            };
-
-            if (planStatusIndex >= 0) {
-              return {
-                ...item,
-                value: [
-                  ...item.value.slice(0, planStatusIndex),
-                  {
-                    ...item.value[planStatusIndex],
-                    ...nextPlanStatusValue
-                  },
-                  ...item.value.slice(planStatusIndex + 1)
-                ]
-              };
-            }
-
-            return {
-              ...item,
-              value: [...item.value, nextPlanStatusValue]
-            };
-          }
-          if (event === SseResponseEventEnum.plan && plan) {
-            const planIndex = item.value.findIndex(
-              (value) =>
-                (!!responseValueId && value.id === responseValueId) ||
-                !!value.planStatus ||
-                (value.plan?.planId && value.plan.planId === plan.planId)
-            );
-            const nextPlanValue = {
-              id: responseValueId || plan.planId,
-              plan,
-              planStatus: undefined
-            };
-
-            if (planIndex >= 0) {
-              return {
-                ...item,
-                value: [
-                  ...item.value.slice(0, planIndex),
-                  {
-                    ...item.value[planIndex],
-                    ...nextPlanValue
-                  },
-                  ...item.value.slice(planIndex + 1)
-                ]
-              };
-            }
-
-            return {
-              ...item,
-              value: [...item.value, nextPlanValue]
-            };
-          }
-          if (event === SseResponseEventEnum.updateVariables && variables) {
-            resetVariables({ variables });
-          }
-          if (event === SseResponseEventEnum.interactive && interactive) {
-            if (
-              !shouldAppendResumeInteractive({
-                existingValues: item.value,
-                incomingInteractive: interactive
-              })
-            ) {
-              return item;
-            }
-
-            const val: AIChatItemValueItemType = {
-              interactive
-            };
-
-            return {
-              ...item,
-              value: item.value.concat(val)
-            };
-          }
-
-          if (event === SseResponseEventEnum.workflowDuration && durationSeconds) {
-            return {
-              ...item,
-              durationSeconds: item.durationSeconds
-                ? +(item.durationSeconds + durationSeconds).toFixed(2)
-                : durationSeconds
-            };
-          }
-
           return item;
-        });
-      });
+        }
+        if (event === SseResponseEventEnum.toolResponse && tool && updateValue.tools) {
+          if (tool.response) {
+            updateValue.tools = updateValue.tools.map((item) =>
+              item.id === tool.id
+                ? { ...item, response: `${item.response || ''}${tool.response}` }
+                : item
+            );
 
-      const forceScroll = event === SseResponseEventEnum.interactive;
-      generatingScroll(forceScroll);
+            return {
+              ...item,
+              value: [
+                ...item.value.slice(0, updateIndex),
+                updateValue,
+                ...item.value.slice(updateIndex + 1)
+              ]
+            };
+          }
+          return item;
+        }
+
+        if (event === SseResponseEventEnum.planStatus && planStatus) {
+          const planStatusIndex = item.value.findIndex(
+            (value) => !!value.planStatus || (!!responseValueId && value.id === responseValueId)
+          );
+          const nextPlanStatusValue: AIChatItemValueItemType = {
+            id: responseValueId,
+            planStatus
+          };
+
+          if (planStatusIndex >= 0) {
+            return {
+              ...item,
+              value: [
+                ...item.value.slice(0, planStatusIndex),
+                {
+                  ...item.value[planStatusIndex],
+                  ...nextPlanStatusValue
+                },
+                ...item.value.slice(planStatusIndex + 1)
+              ]
+            };
+          }
+
+          return {
+            ...item,
+            value: [...item.value, nextPlanStatusValue]
+          };
+        }
+        if (event === SseResponseEventEnum.plan && plan) {
+          const planIndex = item.value.findIndex(
+            (value) =>
+              (!!responseValueId && value.id === responseValueId) ||
+              !!value.planStatus ||
+              (value.plan?.planId && value.plan.planId === plan.planId)
+          );
+          const nextPlanValue = {
+            id: responseValueId || plan.planId,
+            plan,
+            planStatus: undefined
+          };
+
+          if (planIndex >= 0) {
+            return {
+              ...item,
+              value: [
+                ...item.value.slice(0, planIndex),
+                {
+                  ...item.value[planIndex],
+                  ...nextPlanValue
+                },
+                ...item.value.slice(planIndex + 1)
+              ]
+            };
+          }
+
+          return {
+            ...item,
+            value: [...item.value, nextPlanValue]
+          };
+        }
+        if (event === SseResponseEventEnum.updateVariables && variables) {
+          resetVariables({ variables });
+        }
+        if (event === SseResponseEventEnum.interactive && interactive) {
+          if (
+            !shouldAppendResumeInteractive({
+              existingValues: item.value,
+              incomingInteractive: interactive
+            })
+          ) {
+            return item;
+          }
+
+          const val: AIChatItemValueItemType = {
+            interactive
+          };
+
+          return {
+            ...item,
+            value: item.value.concat(val)
+          };
+        }
+
+        if (event === SseResponseEventEnum.workflowDuration && durationSeconds) {
+          return {
+            ...item,
+            durationSeconds: item.durationSeconds
+              ? +(item.durationSeconds + durationSeconds).toFixed(2)
+              : durationSeconds
+          };
+        }
+
+        return item;
+      });
     }
   );
+
+  const flushGeneratingMessageQueue = useMemoizedFn(() => {
+    if (generatingMessageFrameRef.current !== undefined) {
+      window.cancelAnimationFrame(generatingMessageFrameRef.current);
+      generatingMessageFrameRef.current = undefined;
+    }
+
+    const queue = generatingMessageQueueRef.current;
+    if (queue.length === 0) return;
+
+    generatingMessageQueueRef.current = [];
+    setChatRecords((state) =>
+      queue.reduce((histories, message) => applyGeneratingMessage(histories, message), state)
+    );
+
+    generatingScroll(queue.some((message) => message.event === SseResponseEventEnum.interactive));
+  });
+
+  const generatingMessage = useMemoizedFn(
+    (message: generatingMessageProps & { autoTTSResponse?: boolean }) => {
+      generatingMessageQueueRef.current.push(message);
+
+      if (generatingMessageFrameRef.current !== undefined) return;
+
+      generatingMessageFrameRef.current = window.requestAnimationFrame(flushGeneratingMessageQueue);
+    }
+  );
+
+  useEffect(() => {
+    return () => {
+      if (generatingMessageFrameRef.current !== undefined) {
+        window.cancelAnimationFrame(generatingMessageFrameRef.current);
+      }
+      generatingMessageFrameRef.current = undefined;
+      generatingMessageQueueRef.current = [];
+    };
+  }, []);
 
   const abortRequest = useMemoizedFn((reason: string = 'stop') => {
     chatControllerRef.current?.abort(new Error(reason));
@@ -649,6 +686,8 @@ export const useChatGenerate = ({
               variables: requestVariables
             });
 
+            flushGeneratingMessageQueue();
+
             let newChatHistories: ChatSiteItemType[] = [];
             setChatRecords((state) => {
               newChatHistories = state.map((item, index) => {
@@ -711,6 +750,8 @@ export const useChatGenerate = ({
             if (isAbortByLeave(err)) {
               return;
             }
+
+            flushGeneratingMessageQueue();
 
             const errorMsg = t(getErrText(err, t('common:core.chat.error.Chat error') as any));
 

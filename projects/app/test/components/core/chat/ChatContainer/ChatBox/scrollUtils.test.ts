@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   CHAT_GENERATING_SCROLL_BOTTOM_THRESHOLD,
-  CHAT_SCROLL_TO_BOTTOM_BUTTON_FORCE_DISTANCE_THRESHOLD,
   CHAT_SCROLL_TO_BOTTOM_BUTTON_DISTANCE_THRESHOLD,
   getChatScrollBottomDistance,
   getChatScrollTargetKey,
@@ -149,13 +148,5 @@ describe('ChatBox scrollUtils', () => {
         userHasLeftBottom: false
       })
     ).toBe(false);
-    expect(
-      shouldShowChatScrollToBottomButton({
-        scrollTop: 1000 - 500 - CHAT_SCROLL_TO_BOTTOM_BUTTON_FORCE_DISTANCE_THRESHOLD - 1,
-        clientHeight: 500,
-        scrollHeight: 1000,
-        userHasLeftBottom: false
-      })
-    ).toBe(true);
   });
 });

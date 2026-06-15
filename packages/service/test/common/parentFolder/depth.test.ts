@@ -43,6 +43,15 @@ const createModel = (docs: TestFolderDoc[]) => {
 };
 
 describe('folder depth checks', () => {
+  it('allows creating a root folder without querying parent chain', async () => {
+    const { model, findByIdCalls } = createModel([]);
+
+    await expect(checkCreateFolderDepth({ parentId: null, teamId, model })).resolves.toBe(
+      undefined
+    );
+    expect(findByIdCalls).toEqual([]);
+  });
+
   it('allows creating the fourth level folder with default max depth', async () => {
     const { model } = createModel([
       { _id: 'level-1', parentId: null, teamId, type: 'folder' },
@@ -67,6 +76,44 @@ describe('folder depth checks', () => {
       CommonErrEnum.folderDepthLimit
     );
     expect(findByIdCalls).toEqual(['level-4', 'level-3', 'level-2', 'level-1']);
+  });
+
+  it('allows moving a folder subtree to root when the subtree depth reaches the max depth exactly', async () => {
+    const { model } = createModel([
+      { _id: 'moving-1', parentId: null, teamId, type: 'folder' },
+      { _id: 'moving-2', parentId: 'moving-1', teamId, type: 'folder' },
+      { _id: 'moving-3', parentId: 'moving-2', teamId, type: 'folder' },
+      { _id: 'moving-4', parentId: 'moving-3', teamId, type: 'folder' }
+    ]);
+
+    await expect(
+      checkMoveFolderDepth({
+        resourceId: 'moving-1',
+        targetParentId: null,
+        teamId,
+        model,
+        isFolderType: folderType
+      })
+    ).resolves.toBe(undefined);
+  });
+
+  it('allows moving a folder subtree when target depth plus subtree depth reaches the max depth exactly', async () => {
+    const { model } = createModel([
+      { _id: 'level-1', parentId: null, teamId, type: 'folder' },
+      { _id: 'level-2', parentId: 'level-1', teamId, type: 'folder' },
+      { _id: 'moving-1', parentId: null, teamId, type: 'folder' },
+      { _id: 'moving-2', parentId: 'moving-1', teamId, type: 'folder' }
+    ]);
+
+    await expect(
+      checkMoveFolderDepth({
+        resourceId: 'moving-1',
+        targetParentId: 'level-2',
+        teamId,
+        model,
+        isFolderType: folderType
+      })
+    ).resolves.toBe(undefined);
   });
 
   it('allows moving a non-folder resource into the deepest allowed folder', async () => {
@@ -107,6 +154,29 @@ describe('folder depth checks', () => {
         isFolderType: folderType
       })
     ).rejects.toBe(CommonErrEnum.folderMoveDepthLimit);
+  });
+
+  it('rejects moving into a target parent chain beyond max depth before scanning subtree', async () => {
+    const { model, findByIdCalls, findCalls } = createModel([
+      { _id: 'level-1', parentId: null, teamId, type: 'folder' },
+      { _id: 'level-2', parentId: 'level-1', teamId, type: 'folder' },
+      { _id: 'level-3', parentId: 'level-2', teamId, type: 'folder' },
+      { _id: 'level-4', parentId: 'level-3', teamId, type: 'folder' },
+      { _id: 'level-5', parentId: 'level-4', teamId, type: 'folder' },
+      { _id: 'moving-folder', parentId: null, teamId, type: 'folder' }
+    ]);
+
+    await expect(
+      checkMoveFolderDepth({
+        resourceId: 'moving-folder',
+        targetParentId: 'level-5',
+        teamId,
+        model,
+        isFolderType: folderType
+      })
+    ).rejects.toBe(CommonErrEnum.folderMoveDepthLimit);
+    expect(findByIdCalls).toEqual(['level-5', 'level-4', 'level-3', 'level-2', 'level-1']);
+    expect(findCalls).toEqual([]);
   });
 
   it('rejects moving a deep folder subtree once it exceeds remaining target depth', async () => {
@@ -181,6 +251,33 @@ describe('folder depth checks', () => {
         isFolderType: folderType
       })
     ).rejects.toBe(CommonErrEnum.invalidResource);
+  });
+
+  it('rejects invalid target parents while moving resources', async () => {
+    const { model } = createModel([
+      { _id: 'foreign-parent', parentId: null, teamId: 'team-2', type: 'folder' },
+      { _id: 'moving-folder', parentId: null, teamId, type: 'folder' }
+    ]);
+
+    await expect(
+      checkMoveFolderDepth({
+        resourceId: 'moving-folder',
+        targetParentId: 'missing-parent',
+        teamId,
+        model,
+        isFolderType: folderType
+      })
+    ).rejects.toBe(CommonErrEnum.invalidParams);
+
+    await expect(
+      checkMoveFolderDepth({
+        resourceId: 'moving-folder',
+        targetParentId: 'foreign-parent',
+        teamId,
+        model,
+        isFolderType: folderType
+      })
+    ).rejects.toBe(CommonErrEnum.invalidParams);
   });
 
   it('rejects cyclic parent chains', async () => {

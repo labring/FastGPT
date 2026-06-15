@@ -209,6 +209,14 @@ export const checkMoveFolderDepth = async ({
     throw CommonErrEnum.invalidParams;
   }
 
+  const targetParentDepth = await getParentFolderDepth({
+    parentId: targetParentId,
+    teamId,
+    model,
+    maxAllowedDepth: maxDepth,
+    limitErr: CommonErrEnum.folderMoveDepthLimit
+  });
+
   if (targetParentId) {
     const movingIntoDescendant = await isInSubtree({
       ancestorId: resourceId,
@@ -221,13 +229,6 @@ export const checkMoveFolderDepth = async ({
     }
   }
 
-  const targetParentDepth = await getParentFolderDepth({
-    parentId: targetParentId,
-    teamId,
-    model,
-    maxAllowedDepth: maxDepth,
-    limitErr: CommonErrEnum.folderMoveDepthLimit
-  });
   await getSubtreeMaxFolderDepth({
     resourceId,
     teamId,

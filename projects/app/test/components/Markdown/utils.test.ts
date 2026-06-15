@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { mdTextFormat, CodeClassNameEnum } from '@/components/Markdown/utils';
+import {
+  mdTextFormat,
+  CodeClassNameEnum,
+  hideStreamingIncompleteMarkdownTail
+} from '@/components/Markdown/utils';
 
 describe('Markdown utils', () => {
   describe('mdTextFormat', () => {
@@ -54,6 +58,112 @@ describe('Markdown utils', () => {
       expect(CodeClassNameEnum.svg).toBe('svg');
       expect(CodeClassNameEnum.video).toBe('video');
       expect(CodeClassNameEnum.audio).toBe('audio');
+    });
+  });
+
+  describe('hideStreamingIncompleteMarkdownTail', () => {
+    it('should hide incomplete image markdown at the streaming tail', () => {
+      expect(hideStreamingIncompleteMarkdownTail('before ![](https://example.com/a.png')).toBe(
+        'before '
+      );
+      expect(hideStreamingIncompleteMarkdownTail('before ![alt](https://example.com/a.png')).toBe(
+        'before '
+      );
+    });
+
+    it('should hide incomplete image alt syntax at the streaming tail', () => {
+      expect(hideStreamingIncompleteMarkdownTail('before ![alt')).toBe('before ');
+      expect(hideStreamingIncompleteMarkdownTail('before ![alt]')).toBe('before ');
+    });
+
+    it('should keep complete image markdown unchanged', () => {
+      const text = 'before ![alt](https://example.com/a.png)';
+
+      expect(hideStreamingIncompleteMarkdownTail(text)).toBe(text);
+    });
+
+    it('should reveal broken image syntax after the tail is interrupted', () => {
+      const text = 'before ![alt](https://example.com/a.png and text';
+
+      expect(hideStreamingIncompleteMarkdownTail(text)).toBe(text);
+    });
+
+    it('should reveal incomplete image syntax when the hidden tail is too long', () => {
+      const hiddenTailWithinLimit = `![alt](${''.padEnd(93, 'a')}`;
+      const hiddenTailOverLimit = `![alt](${''.padEnd(94, 'a')}`;
+
+      expect(hiddenTailWithinLimit.length).toBe(100);
+      expect(hiddenTailOverLimit.length).toBe(101);
+      expect(hideStreamingIncompleteMarkdownTail(`before ${hiddenTailWithinLimit}`)).toBe(
+        'before '
+      );
+      expect(hideStreamingIncompleteMarkdownTail(`before ${hiddenTailOverLimit}`)).toBe(
+        `before ${hiddenTailOverLimit}`
+      );
+    });
+
+    it('should hide incomplete link markdown at the streaming tail', () => {
+      expect(hideStreamingIncompleteMarkdownTail('before [doc](https://example.com/page')).toBe(
+        'before '
+      );
+    });
+
+    it('should keep incomplete plain link text visible', () => {
+      const text = 'before [doc';
+
+      expect(hideStreamingIncompleteMarkdownTail(text)).toBe(text);
+    });
+
+    it('should hide incomplete text style markdown at the streaming tail', () => {
+      expect(hideStreamingIncompleteMarkdownTail('before **bold')).toBe('before ');
+      expect(hideStreamingIncompleteMarkdownTail('before __bold')).toBe('before ');
+      expect(hideStreamingIncompleteMarkdownTail('before *italic')).toBe('before ');
+      expect(hideStreamingIncompleteMarkdownTail('before _italic')).toBe('before ');
+      expect(hideStreamingIncompleteMarkdownTail('before ~~deleted')).toBe('before ');
+      expect(hideStreamingIncompleteMarkdownTail('before `code')).toBe('before ');
+    });
+
+    it('should keep complete text style markdown unchanged', () => {
+      const text =
+        'before **bold** and __strong__ and *italic* and _em_ and ~~deleted~~ and `code`';
+
+      expect(hideStreamingIncompleteMarkdownTail(text)).toBe(text);
+    });
+
+    it('should reveal incomplete text style markdown when the hidden content is too long', () => {
+      const hiddenTailWithinLimit = `**${''.padEnd(48, 'a')}`;
+      const hiddenTailOverLimit = `**${''.padEnd(49, 'a')}`;
+
+      expect(hiddenTailWithinLimit.length).toBe(50);
+      expect(hiddenTailOverLimit.length).toBe(51);
+      expect(hideStreamingIncompleteMarkdownTail(`before ${hiddenTailWithinLimit}`)).toBe(
+        'before '
+      );
+      expect(hideStreamingIncompleteMarkdownTail(`before ${hiddenTailOverLimit}`)).toBe(
+        `before ${hiddenTailOverLimit}`
+      );
+    });
+
+    it('should not hide text style markdown that is probably interrupted or plain text', () => {
+      const interrupted = 'before ** bold';
+      const plainText = 'foo**bar';
+      const listItem = '* item';
+      const multiplication = 'x*y';
+      const snakeCase = 'foo_bar';
+
+      expect(hideStreamingIncompleteMarkdownTail(interrupted)).toBe(interrupted);
+      expect(hideStreamingIncompleteMarkdownTail(plainText)).toBe(plainText);
+      expect(hideStreamingIncompleteMarkdownTail(listItem)).toBe(listItem);
+      expect(hideStreamingIncompleteMarkdownTail(multiplication)).toBe(multiplication);
+      expect(hideStreamingIncompleteMarkdownTail(snakeCase)).toBe(snakeCase);
+    });
+
+    it('should not hide incomplete markdown inside code spans or fences', () => {
+      const inlineCode = '`![alt](https://example.com/a.png`';
+      const fencedCode = '```md\n![alt](https://example.com/a.png';
+
+      expect(hideStreamingIncompleteMarkdownTail(inlineCode)).toBe(inlineCode);
+      expect(hideStreamingIncompleteMarkdownTail(fencedCode)).toBe(fencedCode);
     });
   });
 });
