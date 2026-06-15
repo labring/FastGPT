@@ -1,0 +1,48 @@
+---
+title: Versions & Publishing
+description: Why you need to publish versions, how to save snapshots, and easy rollback to historical versions.
+---
+
+import { Alert } from '@/components/docs/Alert';
+
+## Why do you need to "Publish"?
+
+Edits in the editor only take effect in the "Debug Chat" panel. To formally apply your changes to your workflows or agents, you must click "Publish" to deploy a formal version.
+
+<Alert icon="💡" context="warning">
+  **Note:** The debugging environment is isolated from the production deployment environment. This
+  ensures that when you edit or debug skill code, it will not affect the online agents and workflows
+  currently running.
+</Alert>
+
+---
+
+## Saving Version Snapshots
+
+1. Once testing is successful, click the **"Publish"** button in the top right corner of the editor.
+2. In the modal, enter the **Version Name** (by default, the current time is prefilled, but you can customize it, e.g., `v1.0.0`).
+3. Confirm, and the system will solidify the current code state as an "official version" and publish it.
+
+<Alert icon="💡" context="warning">
+  **Note:** During publishing, the system automatically applies the ignore rules specified in the
+  `.gitignore` file at the project root (if not present, a default file ignoring `node_modules`,
+  `.venv`, `dist`, etc., will be created). Only files that are not ignored will be packaged, and you
+  must ensure the total size of these files does not exceed the limit, otherwise publishing may
+  fail.
+</Alert>
+
+---
+
+## Version Rollback
+
+To restore a previous version:
+
+1. Click the **"Version History"** (clock) icon in the top right corner of the editor to view all published snapshots.
+2. Hover over the version you want to restore, and click the **"Switch"** (return arrow) icon to instantly revert both your workspace files and the live production version back to that snapshot.
+
+<Alert icon="💡" context="warning">
+  **Note:** Restored versions will not carry files that were ignored by `.gitignore` (for example,
+  local files like `node_modules` or `.venv` that were ignored cannot be recovered via rollback).
+</Alert>
+
+![Version History & Rollback](/imgs/version_history_rollback.png)
