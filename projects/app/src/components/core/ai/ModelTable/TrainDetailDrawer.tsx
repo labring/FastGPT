@@ -319,25 +319,15 @@ const TrainDetailDrawer = ({
     (task: TrainTaskItem) => {
       const baseDetailed = task.result?.baseModelEvalResult?.detailed_results;
       const tunedDetailed = task.result?.tunedModelEvalResult?.detailed_results;
-
-      if (isRerank) {
-        return {
-          precision5Before: baseDetailed?.rerank_top5_precision,
-          precision5After: tunedDetailed?.rerank_top5_precision,
-          precision10Before: baseDetailed?.rerank_top10_precision,
-          precision10After: tunedDetailed?.rerank_top10_precision,
-          mrr10Before: baseDetailed?.rerank_top10_mrr,
-          mrr10After: tunedDetailed?.rerank_top10_mrr
-        };
-      }
+      const prefix = isRerank ? 'rerank' : 'embed';
+      const k = isRerank ? 10 : 20;
 
       return {
-        precision5Before: baseDetailed?.embed_top5_precision,
-        precision5After: tunedDetailed?.embed_top5_precision,
-        precision10Before: baseDetailed?.embed_top10_precision,
-        precision10After: tunedDetailed?.embed_top10_precision,
-        mrr10Before: baseDetailed?.embed_top10_mrr,
-        mrr10After: tunedDetailed?.embed_top10_mrr
+        k,
+        precisionBefore: baseDetailed?.[`${prefix}_top${k}_precision`],
+        precisionAfter: tunedDetailed?.[`${prefix}_top${k}_precision`],
+        mrrBefore: baseDetailed?.[`${prefix}_top${k}_mrr`],
+        mrrAfter: tunedDetailed?.[`${prefix}_top${k}_mrr`]
       };
     },
     [isRerank]
@@ -464,10 +454,12 @@ const TrainDetailDrawer = ({
         return <Text color={'myGray.500'}>-</Text>;
       }
 
+      const { k, precisionBefore, precisionAfter, mrrBefore, mrrAfter } = metrics;
+
       return (
         <Flex flexDirection={'column'} gap={1}>
-          {renderMetricRow('Hit@10', metrics.precision10Before, metrics.precision10After, true)}
-          {renderMetricRow('MRR@10', metrics.mrr10Before, metrics.mrr10After, false)}
+          {renderMetricRow(`Hit@${k}`, precisionBefore, precisionAfter, true)}
+          {renderMetricRow(`MRR@${k}`, mrrBefore, mrrAfter, false)}
         </Flex>
       );
     },

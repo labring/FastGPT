@@ -57,10 +57,7 @@ function makeEvalItem(userInput: string, expectedContextIds: string[], retrieval
 /** Build a mock MongoDatasetData.find response from candidate IDs */
 function mockDatasetDataFind(ids: string[]) {
   return {
-    lean: () =>
-      Promise.resolve(
-        ids.map((id) => ({ _id: id, q: `q_${id}`, a: `a_${id}` }))
-      )
+    lean: () => Promise.resolve(ids.map((id) => ({ _id: id, q: `q_${id}`, a: `a_${id}` })))
   };
 }
 
@@ -243,7 +240,7 @@ describe('evaluateRerankModelHelper（本地 reranker）', () => {
   });
 
   test('pLimit 限制了 reRankRecall 的并发调用数不超过 TRAIN_EVAL_CONCURRENCY', async () => {
-    // 构造 50 条 eval item（远超 TRAIN_EVAL_CONCURRENCY=20）
+    // 构造 50 条 eval item（远超 TRAIN_EVAL_CONCURRENCY=5）
     const items = Array.from({ length: 50 }, (_, i) =>
       makeEvalItem(`q${i}`, [`doc${i}`], [`doc${i}`, `other${i}`])
     );
@@ -267,7 +264,7 @@ describe('evaluateRerankModelHelper（本地 reranker）', () => {
       RerankTaskCheckpointStageEnum.eval_basemodel
     );
 
-    // TRAIN_EVAL_CONCURRENCY = 20
+    // TRAIN_EVAL_CONCURRENCY = 5
     expect(peak).toBeLessThanOrEqual(trainEnv.TRAIN_EVAL_CONCURRENCY);
     expect(peak).toBeGreaterThan(1);
   });

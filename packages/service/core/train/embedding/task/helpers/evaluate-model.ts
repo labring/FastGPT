@@ -18,7 +18,7 @@ import { pLimit } from '../../../common/utils';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { Types } from 'mongoose';
 
-const K_VALUES = [5, 10, 15];
+const K_VALUES = [5, 10, 15, 20];
 
 /**
  * Evaluate an embedding model on the given evaluation dataset

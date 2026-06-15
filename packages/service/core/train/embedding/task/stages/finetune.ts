@@ -90,6 +90,29 @@ export async function runFinetuneStage(task: EmbeddingTrainTaskSchemaType): Prom
       sftTaskId: undefined
     });
 
+    if (!checkpointData.generate_evaldataset?.evalDatasetFilePath) {
+      const enhancedError = createEmbeddingEnhancedError(
+        EmbeddingTaskCheckpointStageEnum.finetuning,
+        EmbeddingTrainErrEnum.embeddingFinetuneDataPathNotFound,
+        EmbeddingTrainSuggestionEnum.embeddingFinetuneDataPathNotFound
+      );
+      throw new TrainTaskUnrecoverableError(enhancedError);
+    }
+
+    let evalDatasetFile: Buffer;
+    try {
+      evalDatasetFile = await fs.readFile(checkpointData.generate_evaldataset.evalDatasetFilePath);
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      const enhancedError = createEmbeddingEnhancedError(
+        EmbeddingTaskCheckpointStageEnum.finetuning,
+        EmbeddingTrainErrEnum.embeddingFinetuneDataFileNotFound,
+        EmbeddingTrainSuggestionEnum.embeddingFinetuneDataFileNotFound,
+        errorMsg
+      );
+      throw new TrainTaskUnrecoverableError(enhancedError);
+    }
+
     let createResponse: Awaited<ReturnType<typeof createSFTTask>>;
     try {
       createResponse = await createSFTTask({
@@ -100,7 +123,8 @@ export async function runFinetuneStage(task: EmbeddingTrainTaskSchemaType): Prom
           learning_rate: trainEnv.SFT_BRIDGE_LEARNING_RATE,
           epochs: 3,
           batch_size: 32
-        }
+        },
+        evalDatasetFile
       });
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);

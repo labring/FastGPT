@@ -90,6 +90,13 @@ export async function createSFTTask(request: CreateSFTTaskRequest): Promise<Crea
       formData.append('parameters', JSON.stringify(request.parameters));
     }
 
+    if (request.evalDatasetFile) {
+      formData.append('eval_dataset', request.evalDatasetFile, {
+        filename: 'eval_dataset.jsonl',
+        contentType: 'application/jsonl'
+      });
+    }
+
     const response = await axios.post(url, formData, {
       timeout: getSFTBridgeTimeout(),
       headers: {

@@ -16,7 +16,7 @@ import { addLog } from '../../../../../common/system/log';
 import { TrainTaskUnrecoverableError, TrainTaskRetriableError } from '../../../common/errors';
 import { getDefaultLLMModel } from '../../../../ai/model';
 
-const K_VALUES = [5, 10, 15];
+const K_VALUES = [5, 10, 15, 20];
 
 /**
  * Stage 7: LLM Judge (Embedding)
