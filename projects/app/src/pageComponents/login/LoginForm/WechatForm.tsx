@@ -13,7 +13,6 @@ import {
   getBdVId,
   getFastGPTSem,
   getMsclkid,
-  getSourceDomain,
   removeFastGPTSem,
   getInviterId
 } from '@/web/support/marketing/utils';
@@ -50,7 +49,6 @@ const WechatForm = ({ setPageType, loginSuccess }: Props) => {
         bd_vid: getBdVId(),
         msclkid: getMsclkid(),
         fastgpt_sem: getFastGPTSem(),
-        sourceDomain: getSourceDomain(),
         language: i18n.language as LangEnum
       }),
     {

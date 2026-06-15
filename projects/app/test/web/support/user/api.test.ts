@@ -48,7 +48,11 @@ describe('user api', () => {
       inviterId: 'inviter123',
       bd_vid: 'vid123',
       msclkid: 'click123',
-      fastgpt_sem: 'sem123'
+      fastgpt_sem: {
+        keyword: 'sem123',
+        source: 'home_hero_trial',
+        sourceDomain: 'https://example.com'
+      }
     };
     await api.postRegister(data);
   });

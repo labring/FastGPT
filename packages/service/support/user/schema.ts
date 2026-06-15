@@ -62,7 +62,6 @@ const UserSchema = new Schema({
     ref: userCollectionName
   },
   fastgpt_sem: Object,
-  sourceDomain: String,
 
   phonePrefix: Number,
   contact: String,

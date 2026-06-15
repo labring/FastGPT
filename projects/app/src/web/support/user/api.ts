@@ -67,7 +67,6 @@ export const postRegister = ({
   bd_vid,
   msclkid,
   fastgpt_sem,
-  sourceDomain,
   language
 }: AccountRegisterBodyType) =>
   POST<LoginSuccessResponseType>(`/proApi/support/user/account/register/emailAndPhone`, {
@@ -77,7 +76,6 @@ export const postRegister = ({
     bd_vid,
     msclkid,
     fastgpt_sem,
-    sourceDomain,
     language,
     password: hashStr(password)
   });
