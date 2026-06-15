@@ -375,6 +375,7 @@ export function useScrollPagination<
     total: Math.max(total, data.length),
     data,
     setData,
+    setTotal,
     fetchData: loadData,
     refreshList
   };

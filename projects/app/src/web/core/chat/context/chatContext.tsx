@@ -116,6 +116,7 @@ const ChatContextProvider = ({
     ScrollData,
     isLoading: isPaginationLoading,
     setData: setHistories,
+    setTotal: setHistoriesTotal,
     fetchData: loadHistories,
     data: histories
   } = useScrollPagination(getChatHistories, {
@@ -124,6 +125,11 @@ const ChatContextProvider = ({
     refreshDeps: [params],
     showErrorToast: false
   });
+  const historiesRef = useRef(histories);
+
+  useEffect(() => {
+    historiesRef.current = histories;
+  }, [histories]);
 
   const onChangeChatId = useCallback(
     (changeChatId = getNanoid(24), forbid = false) => {
@@ -204,7 +210,12 @@ const ChatContextProvider = ({
     {
       onSuccess(data, params) {
         const chatId = params[0];
+        const hasDeletedHistory = historiesRef.current.some((i) => i.chatId === chatId);
+
         setHistories((old) => old.filter((i) => i.chatId !== chatId));
+        if (hasDeletedHistory) {
+          setHistoriesTotal((total) => Math.max(total - 1, 0));
+        }
       },
       refreshDeps: [outLinkAuthData, historyAppId]
     }
@@ -220,6 +231,7 @@ const ChatContextProvider = ({
       refreshDeps: [outLinkAuthData, historyAppId],
       onSuccess() {
         setHistories([]);
+        setHistoriesTotal(0);
       },
       onFinally() {
         onChangeChatId();
@@ -247,13 +259,8 @@ const ChatContextProvider = ({
   );
 
   const historyChatIdsKey = useMemo(() => histories.map((h) => h.chatId).join(','), [histories]);
-  const historiesRef = useRef(histories);
   const prevHistoryAppIdRef = useRef<string | null>(null);
   const pendingAppChatRestoreRef = useRef(false);
-
-  useEffect(() => {
-    historiesRef.current = histories;
-  }, [histories]);
 
   /** 切换应用后，若当前 chatId 无效则恢复该应用上次会话或最近一条历史 */
   useEffect(() => {
