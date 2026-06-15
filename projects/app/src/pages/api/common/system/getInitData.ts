@@ -56,6 +56,7 @@ export type InitDateResponse = {
 
   activeModelList?: ActiveModelListItem[];
   defaultModels?: SystemDefaultModelType;
+  systemModelList?: SystemModelItemType[];
   modelProviders?: { provider: string; value: I18nStringStrictType; avatar: string }[];
   aiproxyChannels?: AIProxyChannelsType;
 };
@@ -365,6 +366,7 @@ async function handler(
       systemVersion: global.systemVersion,
       activeModelList: await buildActiveModelList(userAccessibleModels, teamId),
       defaultModels: getDefaultModelsByPermission(userAccessibleModels),
+      systemModelList: global.systemActiveDesensitizedModels,
       modelProviders: global.ModelProviderRawCache,
       aiproxyChannels: global.aiproxyChannelsCache
     };

@@ -209,6 +209,8 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
         if (!appDetail.permission.hasWritePer) return;
 
         // Validate model references before saving
+        // Only warn for app owners; collaborators may see owner's private models
+        // which are accessible through the app context (implicit model auth via resource context)
         const modelIds = extractWorkflowModelIds({
           modules: data.nodes,
           chatConfig: data.chatConfig
@@ -223,7 +225,9 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
             ...systemStore.sttModelList.map((m) => m.id)
           ]);
           const invalidModelIds = modelIds.filter((id) => !allValidModelIds.has(id));
-          if (invalidModelIds.length > 0) {
+          // Only show warning for app owners; collaborators can use owner's private models
+          // through the app context (bypassed in server-side authModel with resourceContext)
+          if (invalidModelIds.length > 0 && appDetail.permission.isOwner) {
             toast({
               title: t('common:code_error.model_not_found', {
                 modelIds: invalidModelIds.join(', ')

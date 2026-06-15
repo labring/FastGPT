@@ -137,5 +137,6 @@
   "train_detail_confirm_delete_with_model": "Delete the generated model at the same time",
   "all_datasets": "All Knowledge Bases",
   "base_model_tab": "Base Models",
-  "custom_model_tab": "Trained Models"
+  "custom_model_tab": "Trained Models",
+  "model_referenced_by_resources": "This model is referenced by the following apps/datasets. To ensure normal operation, please switch to another model first"
 }

@@ -119,13 +119,13 @@ export const DatasetPageContextProvider = ({
       setDatasetDetail((state) => ({
         ...state,
         ...data,
-        agentModel: data.agentModelId ? getWebLLMModel(data.agentModelId) : state.agentModel,
+        agentModel: data.agentModelId ? getWebLLMModel(data.agentModelId)! : state.agentModel,
         vectorModel: data.vectorModelId
-          ? getWebEmbeddingModel(data.vectorModelId)
+          ? getWebEmbeddingModel(data.vectorModelId)!
           : state.vectorModel,
         // vlmModel 传 null 表示清空，需将状态设为 undefined；不传则保留原值
         vlmModel: data.vlmModelId
-          ? getWebLLMModel(data.vlmModelId)
+          ? getWebLLMModel(data.vlmModelId)!
           : data.vlmModelId === null
             ? undefined
             : state.vlmModel,

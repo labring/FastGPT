@@ -72,7 +72,8 @@ async function handler(
       authToken: true,
       authApiKey: true,
       modelId: embeddingModelId || dataset.vectorModelId,
-      per: ReadPermissionVal
+      per: ReadPermissionVal,
+      resourceContext: { datasetId }
     }).then(({ model }) => {
       assertModelAvailable(model, { type: ModelTypeEnum.embedding });
     }),
@@ -82,7 +83,8 @@ async function handler(
           authToken: true,
           authApiKey: true,
           modelId: rerankModelId,
-          per: ReadPermissionVal
+          per: ReadPermissionVal,
+          resourceContext: { datasetId }
         }).then(({ model }) => {
           assertModelAvailable(model, { type: ModelTypeEnum.rerank });
         })
@@ -93,7 +95,8 @@ async function handler(
           authToken: true,
           authApiKey: true,
           modelId: datasetSearchExtensionModelId,
-          per: ReadPermissionVal
+          per: ReadPermissionVal,
+          resourceContext: { datasetId }
         }).then(({ model }) => {
           assertModelAvailable(model, { type: ModelTypeEnum.llm });
         })
@@ -104,7 +107,8 @@ async function handler(
           authToken: true,
           authApiKey: true,
           modelId: datasetDeepSearchModelId,
-          per: ReadPermissionVal
+          per: ReadPermissionVal,
+          resourceContext: { datasetId }
         }).then(({ model }) => {
           assertModelAvailable(model, { type: ModelTypeEnum.llm });
         })

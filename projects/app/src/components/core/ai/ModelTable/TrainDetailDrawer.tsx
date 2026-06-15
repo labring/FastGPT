@@ -40,7 +40,9 @@ import type {
 import type { EnhancedErrorMessage as RerankEnhancedErrorMessage } from '@fastgpt/global/core/train/rerank/error';
 import type { EnhancedErrorMessage as EmbeddingEnhancedErrorMessage } from '@fastgpt/global/core/train/embedding/error';
 import TrainExceptionModal from './TrainExceptionModal';
-import TableHeaderFilter, { type TableHeaderFilterOption } from '@fastgpt/web/components/common/TableHeaderFilter';
+import TableHeaderFilter, {
+  type TableHeaderFilterOption
+} from '@fastgpt/web/components/common/TableHeaderFilter';
 import { getDatasetsWithChildren } from '@/web/core/dataset/api';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type';

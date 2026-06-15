@@ -18,6 +18,9 @@ import { addAuditLog, getI18nModelType } from '@fastgpt/service/support/user/aud
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { replaceResourceClbs } from '@fastgpt/service/support/permission/inheritPermission';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { findReferencingResources } from '@fastgpt/service/support/permission/model/reference';
+import { jsonRes } from '@fastgpt/service/common/response';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 const buildModelUpdate = ({
   fields,
@@ -94,6 +97,19 @@ async function handler(
   }
 
   if (isShared !== undefined) {
+    // When changing from public to private, check if the model is referenced by shared resources
+    if (isShared === false && modelItem.isShared === true) {
+      const references = await findReferencingResources(id, teamId);
+      if (references.length > 0) {
+        jsonRes(res, {
+          code: 409,
+          data: { references },
+          message: i18nT('account_model:model_referenced_by_resources')
+        });
+        return UpdateModelResponseSchema.parse({});
+      }
+    }
+
     updateData.$set = { ...(updateData.$set || {}), isShared };
 
     // When changing a private model to public, remove all collaborator configurations.
@@ -115,7 +131,21 @@ async function handler(
     return UpdateModelResponseSchema.parse({});
   }
 
-  await MongoSystemModel.updateOne({ _id: modelItem.id }, updateData);
+  // When setting isShared to false, use findOneAndUpdate to atomically verify
+  // the model is still shared, preventing TOCTOU race with concurrent requests.
+  if (isShared === false) {
+    const result = await MongoSystemModel.findOneAndUpdate(
+      { _id: modelItem.id, isShared: true },
+      updateData
+    );
+    if (!result) {
+      // Another request already changed isShared; reload cache and return
+      await updatedReloadSystemModel();
+      return UpdateModelResponseSchema.parse({});
+    }
+  } else {
+    await MongoSystemModel.updateOne({ _id: modelItem.id }, updateData);
+  }
 
   await updatedReloadSystemModel();
 

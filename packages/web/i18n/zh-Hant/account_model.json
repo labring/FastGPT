@@ -137,5 +137,6 @@
   "clear": "清空",
   "price_tier_open_ended": "無窮",
   "rerank_max_token": "最大 Token 限制",
-  "rerank_max_token_tip": "Rerank 階段單次請求的 token 上限（query + 單個文件），超出限制的文件會被自動切分"
+  "rerank_max_token_tip": "Rerank 階段單次請求的 token 上限（query + 單個文件），超出限制的文件會被自動切分",
+  "model_referenced_by_resources": "該模型已被以下應用/知識庫引用，為保障應用正常使用，請先切換至其他模型"
 }

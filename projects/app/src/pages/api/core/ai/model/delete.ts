@@ -17,6 +17,9 @@ import {
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { addAuditLog, getI18nModelType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { findReferencingResources } from '@fastgpt/service/support/permission/model/reference';
+import { jsonRes } from '@fastgpt/service/common/response';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 async function handler(
   req: ApiRequestProps<DeleteModelQuery, DeleteModelQuery>,
@@ -40,6 +43,17 @@ async function handler(
 
   if (modelItem.isCustom === false) {
     return Promise.reject(ModelErrEnum.systemModelCannotDelete);
+  }
+
+  // Check if the model is referenced by any shared apps or datasets
+  const references = await findReferencingResources(id, teamId);
+  if (references.length > 0) {
+    jsonRes(res, {
+      code: 409,
+      data: { references },
+      message: i18nT('account_model:model_referenced_by_resources')
+    });
+    return DeleteModelResponseSchema.parse({});
   }
 
   const dbModel = await MongoSystemModel.findById(modelItem.id).lean();

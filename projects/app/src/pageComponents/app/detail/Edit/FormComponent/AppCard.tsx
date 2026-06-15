@@ -170,50 +170,50 @@ const AppCard = ({
             )}
             {appDetail.permission.isOwner && configToWorkflow && (
               <MyMenu
-                    size={'xs'}
-                    Button={
-                      <IconButton
-                        variant={'whitePrimary'}
-                        size={'mdSquare'}
-                        icon={<MyIcon name={'more'} w={'16px'} />}
-                        aria-label={'more'}
-                      />
-                    }
-                    menuList={[
-                      {
-                        children: [
-                          {
-                            label: (
-                              <Flex>
-                                <ExportConfigPopover
-                                  appName={appDetail.name}
-                                  appIntro={appDetail.intro}
-                                  appForm={appForm}
-                                  chatConfig={appDetail.chatConfig}
-                                  filterSensitiveInfo={filterSensitiveInfo}
-                                  onFilterSensitiveInfoChange={setFilterSensitiveInfo}
-                                />
-                              </Flex>
-                            )
-                          },
-                          {
-                            icon: 'core/app/type/workflow',
-                            label: t('app:transition_to_workflow'),
-                            onClick: () => setTransitionCreateNew(true)
-                          },
-                          ...(appDetail.permission.hasWritePer && feConfigs?.show_team_chat
-                            ? [
-                                {
-                                  icon: 'core/chat/fileSelect',
-                                  label: t('app:team_tags_set'),
-                                  onClick: () => setTeamTagsSet(appDetail)
-                                }
-                              ]
-                            : [])
-                        ]
-                      }
-                    ]}
+                size={'xs'}
+                Button={
+                  <IconButton
+                    variant={'whitePrimary'}
+                    size={'mdSquare'}
+                    icon={<MyIcon name={'more'} w={'16px'} />}
+                    aria-label={'more'}
                   />
+                }
+                menuList={[
+                  {
+                    children: [
+                      {
+                        label: (
+                          <Flex>
+                            <ExportConfigPopover
+                              appName={appDetail.name}
+                              appIntro={appDetail.intro}
+                              appForm={appForm}
+                              chatConfig={appDetail.chatConfig}
+                              filterSensitiveInfo={filterSensitiveInfo}
+                              onFilterSensitiveInfoChange={setFilterSensitiveInfo}
+                            />
+                          </Flex>
+                        )
+                      },
+                      {
+                        icon: 'core/app/type/workflow',
+                        label: t('app:transition_to_workflow'),
+                        onClick: () => setTransitionCreateNew(true)
+                      },
+                      ...(appDetail.permission.hasWritePer && feConfigs?.show_team_chat
+                        ? [
+                            {
+                              icon: 'core/chat/fileSelect',
+                              label: t('app:team_tags_set'),
+                              onClick: () => setTeamTagsSet(appDetail)
+                            }
+                          ]
+                        : [])
+                    ]
+                  }
+                ]}
+              />
             )}
           </HStack>
         </Flex>

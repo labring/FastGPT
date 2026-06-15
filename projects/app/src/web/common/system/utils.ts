@@ -2,6 +2,7 @@ import {
   type EmbeddingModelItemType,
   type LLMModelItemType
 } from '@fastgpt/global/core/ai/model.schema';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { useSystemStore } from './useSystemStore';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 
@@ -52,16 +53,26 @@ export const downloadFetch = async ({
 };
 
 export const getWebLLMModel = (modelId?: string) => {
-  const list = useSystemStore.getState().llmModelList;
-  const defaultModels = useSystemStore.getState().defaultModels;
-
-  return list.find((item) => item.id === modelId) ?? defaultModels.llm!;
+  if (modelId == null) return undefined;
+  const state = useSystemStore.getState();
+  return (
+    state.llmModelList.find((item) => item.id === modelId) ??
+    (state.systemModelList?.find(
+      (item) => item.id === modelId && item.type === ModelTypeEnum.llm
+    ) as LLMModelItemType | undefined) ??
+    state.defaultModels.llm
+  );
 };
 export const getWebEmbeddingModel = (modelId?: string) => {
-  const list = useSystemStore.getState().embeddingModelList;
-  const defaultModels = useSystemStore.getState().defaultModels;
-
-  return list.find((item) => item.id === modelId) ?? defaultModels.embedding!;
+  if (modelId == null) return undefined;
+  const state = useSystemStore.getState();
+  return (
+    state.embeddingModelList.find((item) => item.id === modelId) ??
+    (state.systemModelList?.find(
+      (item) => item.id === modelId && item.type === ModelTypeEnum.embedding
+    ) as EmbeddingModelItemType | undefined) ??
+    state.defaultModels.embedding
+  );
 };
 export const getWebDefaultLLMModel = (llmList: LLMModelItemType[] = []) => {
   const list = llmList.length > 0 ? llmList : useSystemStore.getState().llmModelList;

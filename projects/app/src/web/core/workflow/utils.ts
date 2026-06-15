@@ -173,11 +173,11 @@ export const storeNode2FlowNode = ({
       )
   };
 
-  // Format output invalid
-  const llmList = useSystemStore.getState().llmModelList;
-  const llmModelIdMap = llmList.reduce(
+  // Lookup map built from full system model list (not permission-filtered)
+  const systemModelList = useSystemStore.getState().systemModelList ?? [];
+  const llmModelIdMap = systemModelList.reduce(
     (acc, model) => {
-      acc[model.id] = model;
+      if (model.id) acc[model.id] = model as LLMModelItemType;
       return acc;
     },
     {} as Record<string, LLMModelItemType>
@@ -881,11 +881,12 @@ export const autoAdjustDatasetNodeLimit = ({
   // 与 datasetSearch 模板中的默认值保持一致
   const DEFAULT_DATASET_MAX_TOKENS = 5000;
 
-  const llmModelList = useSystemStore.getState().llmModelList;
   const { show_dataset_search_params } = useSystemStore.getState().feConfigs;
-  const llmModelIdMap = llmModelList.reduce(
+  // Lookup map built from full system model list (not permission-filtered)
+  const systemModelList = useSystemStore.getState().systemModelList ?? [];
+  const llmModelIdMap = systemModelList.reduce(
     (acc, model) => {
-      acc[model.id] = model;
+      if (model.id) acc[model.id] = model as LLMModelItemType;
       return acc;
     },
     {} as Record<string, LLMModelItemType>

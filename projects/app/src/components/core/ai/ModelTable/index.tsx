@@ -57,7 +57,10 @@ type TablePanelProps = TableSharedProps & {
   modelList: ModelRow[];
   modelType: import('@fastgpt/global/core/ai/model').ModelTypeEnum | '';
   onModelTypeChange: (val: import('@fastgpt/global/core/ai/model').ModelTypeEnum | '') => void;
-  modelTypeList: { label: string; value: import('@fastgpt/global/core/ai/model').ModelTypeEnum | '' }[];
+  modelTypeList: {
+    label: string;
+    value: import('@fastgpt/global/core/ai/model').ModelTypeEnum | '';
+  }[];
 };
 
 const ModelTable = ({ permissionConfig = false }: { permissionConfig?: boolean }) => {

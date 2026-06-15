@@ -29,7 +29,7 @@ const ToolSelect = ({
   onRemoveTool
 }: {
   topAgentSelectedTools?: SelectedToolItemType[];
-  selectedModel: LLMModelItemType;
+  selectedModel?: LLMModelItemType;
   selectedTools?: SelectedToolItemType[];
   fileSelectConfig?: AppFileSelectConfigType;
   onAddTool: (tool: SelectedToolItemType) => void;

@@ -111,7 +111,8 @@ async function handler(req: ApiRequestProps<SearchApiBody>): Promise<SearchApiRe
       authToken: true,
       authApiKey: true,
       modelId: resolvedEmbeddingModelId,
-      per: ReadPermissionVal
+      per: ReadPermissionVal,
+      resourceContext: { datasetId: String(firstDataset._id) }
     }).then(({ model }) => {
       assertModelAvailable(model, { type: ModelTypeEnum.embedding });
     }),
@@ -121,7 +122,8 @@ async function handler(req: ApiRequestProps<SearchApiBody>): Promise<SearchApiRe
           authToken: true,
           authApiKey: true,
           modelId: rerankModelId,
-          per: ReadPermissionVal
+          per: ReadPermissionVal,
+          resourceContext: { datasetId: String(firstDataset._id) }
         }).then(({ model }) => {
           assertModelAvailable(model, { type: ModelTypeEnum.rerank });
         })
@@ -132,7 +134,8 @@ async function handler(req: ApiRequestProps<SearchApiBody>): Promise<SearchApiRe
           authToken: true,
           authApiKey: true,
           modelId: datasetSearchExtensionModelId,
-          per: ReadPermissionVal
+          per: ReadPermissionVal,
+          resourceContext: { datasetId: String(firstDataset._id) }
         }).then(({ model }) => {
           assertModelAvailable(model, { type: ModelTypeEnum.llm });
         })
@@ -143,7 +146,8 @@ async function handler(req: ApiRequestProps<SearchApiBody>): Promise<SearchApiRe
           authToken: true,
           authApiKey: true,
           modelId: datasetDeepSearchModelId,
-          per: ReadPermissionVal
+          per: ReadPermissionVal,
+          resourceContext: { datasetId: String(firstDataset._id) }
         }).then(({ model }) => {
           assertModelAvailable(model, { type: ModelTypeEnum.llm });
         })

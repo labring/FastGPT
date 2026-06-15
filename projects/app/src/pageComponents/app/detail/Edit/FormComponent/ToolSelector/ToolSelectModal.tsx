@@ -44,7 +44,7 @@ type Props = {
   topAgentSelectedTools?: SelectedToolItemType[];
   selectedTools: FlowNodeTemplateType[];
   fileSelectConfig: AppFormEditFormType['chatConfig']['fileSelectConfig'];
-  selectedModel: LLMModelItemType;
+  selectedModel?: LLMModelItemType;
   onAddTool: (tool: SelectedToolItemType) => void;
   onRemoveTool: (tool: NodeTemplateListItemType) => void;
 };

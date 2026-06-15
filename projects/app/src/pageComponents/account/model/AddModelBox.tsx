@@ -261,7 +261,11 @@ const Field = ({
   <GridItem colSpan={colSpan}>
     <Flex alignItems={'center'} gap={1} mb={2}>
       <Box fontSize={'12px'} fontWeight={'500'} color={'myGray.900'}>
-        {required && <Box as={'span'} color={'red.500'}>*</Box>}
+        {required && (
+          <Box as={'span'} color={'red.500'}>
+            *
+          </Box>
+        )}
         {label}
       </Box>
       {tip && <QuestionTip label={tip} />}
@@ -960,7 +964,11 @@ export const ModelEditModal = ({
       <ModalBody px={'32px'} py={0}>
         <Section title={t('account:model.basic_config_section')}>
           <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
-            <Field label={t('account:model.model_id')} tip={t('account:model.model_id_tip')} required>
+            <Field
+              label={t('account:model.model_id')}
+              tip={t('account:model.model_id_tip')}
+              required
+            >
               <Input
                 {...register('model', { required: true })}
                 {...InputStyles}

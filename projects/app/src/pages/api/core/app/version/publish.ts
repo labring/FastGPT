@@ -34,7 +34,8 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>, res: NextApiRe
     modelIds: extractWorkflowModelIds({
       modules: nodes,
       chatConfig
-    })
+    }),
+    resourceContext: { appId }
   });
   models.forEach((model) => assertModelAvailable(model));
 
