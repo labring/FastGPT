@@ -640,6 +640,123 @@ describe('nodeInputs2JsonSchema', () => {
       required: ['query']
     });
   });
+
+  it('should convert select options from list and enums to json schema enum', () => {
+    const result = nodeInputs2JsonSchema({
+      inputs: [
+        {
+          key: 'singleSelection',
+          label: 'singleSelection',
+          valueType: WorkflowIOValueTypeEnum.string,
+          toolDescription: 'Select one option',
+          renderTypeList: ['select', 'reference'],
+          list: [
+            { label: 'Option A', value: 'A' },
+            { label: 'Option B', value: 'B' }
+          ]
+        },
+        {
+          key: 'fallbackSelection',
+          label: 'fallbackSelection',
+          valueType: WorkflowIOValueTypeEnum.string,
+          toolDescription: 'Select one fallback option',
+          renderTypeList: ['select', 'reference'],
+          list: [],
+          enums: [
+            { label: 'Option C', value: 'C' },
+            { label: 'Option D', value: 'D' }
+          ]
+        }
+      ]
+    });
+
+    expect(result.properties).toMatchObject({
+      singleSelection: {
+        type: 'string',
+        enum: ['A', 'B']
+      },
+      fallbackSelection: {
+        type: 'string',
+        enum: ['C', 'D']
+      }
+    });
+  });
+
+  it('should keep non-string workflow value types from falling back to string schema', () => {
+    const result = nodeInputs2JsonSchema({
+      inputs: [
+        {
+          key: 'items',
+          label: 'Items',
+          valueType: WorkflowIOValueTypeEnum.arrayObject,
+          renderTypeList: ['JSONEditor', 'reference']
+        },
+        {
+          key: 'history',
+          label: 'History',
+          valueType: WorkflowIOValueTypeEnum.chatHistory,
+          renderTypeList: ['JSONEditor', 'reference']
+        },
+        {
+          key: 'quote',
+          label: 'Quote',
+          valueType: WorkflowIOValueTypeEnum.datasetQuote,
+          renderTypeList: ['JSONEditor', 'reference']
+        },
+        {
+          key: 'dynamic',
+          label: 'Dynamic',
+          valueType: WorkflowIOValueTypeEnum.dynamic,
+          renderTypeList: ['JSONEditor', 'reference']
+        },
+        {
+          key: 'dataset',
+          label: 'Dataset',
+          valueType: WorkflowIOValueTypeEnum.selectDataset,
+          renderTypeList: ['JSONEditor', 'reference']
+        },
+        {
+          key: 'app',
+          label: 'App',
+          valueType: WorkflowIOValueTypeEnum.selectApp,
+          renderTypeList: ['JSONEditor', 'reference']
+        }
+      ]
+    });
+
+    expect(result.properties).toEqual({
+      items: {
+        type: 'array',
+        items: { type: 'object' },
+        title: 'Items',
+        description: ''
+      },
+      history: {
+        type: 'array',
+        items: { type: 'object' },
+        title: 'History',
+        description: ''
+      },
+      quote: {
+        type: 'array',
+        items: { type: 'object' },
+        title: 'Quote',
+        description: ''
+      },
+      dynamic: {
+        title: 'Dynamic',
+        description: ''
+      },
+      dataset: {
+        title: 'Dataset',
+        description: ''
+      },
+      app: {
+        title: 'App',
+        description: ''
+      }
+    });
+  });
 });
 
 describe('nodeOutputs2JsonSchema', () => {
@@ -668,6 +785,28 @@ describe('nodeOutputs2JsonSchema', () => {
         }
       },
       required: ['result']
+    });
+  });
+
+  it('should convert arrayObject node outputs to array object schema', () => {
+    const result = nodeOutputs2JsonSchema({
+      outputs: [
+        {
+          id: 'items',
+          key: 'items',
+          label: 'Items',
+          type: 'static',
+          valueType: WorkflowIOValueTypeEnum.arrayObject,
+          description: 'Object list'
+        }
+      ]
+    });
+
+    expect(result.properties?.items).toEqual({
+      type: 'array',
+      items: { type: 'object' },
+      title: 'Items',
+      description: 'Object list'
     });
   });
 });

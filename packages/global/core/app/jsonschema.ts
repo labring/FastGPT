@@ -363,8 +363,37 @@ const cloneJsonSchemaProperty = (
 const getJsonSchemaPropertyFromValueType = (
   valueType?: WorkflowIOValueTypeEnum
 ): JsonSchemaPropertiesItemType => {
+  // Node IO 的 valueType 混合了数据类型和编辑器/运行时语义。JSON Schema 只能表达
+  // 工具调用所需的通用数据结构；这里显式处理无法无损表达的类型，避免缺失映射时
+  // 默认退化成 string，误导系统工具、MCP/HTTP 工具和模型侧参数 contract。
   if (valueType === WorkflowIOValueTypeEnum.any) return {};
   if (valueType === WorkflowIOValueTypeEnum.arrayAny) return { type: 'array' };
+  if (valueType === WorkflowIOValueTypeEnum.arrayObject) {
+    return {
+      type: 'array',
+      items: {
+        type: 'object'
+      }
+    };
+  }
+  if (
+    valueType === WorkflowIOValueTypeEnum.chatHistory ||
+    valueType === WorkflowIOValueTypeEnum.datasetQuote
+  ) {
+    return {
+      type: 'array',
+      items: {
+        type: 'object'
+      }
+    };
+  }
+  if (
+    valueType === WorkflowIOValueTypeEnum.dynamic ||
+    valueType === WorkflowIOValueTypeEnum.selectDataset ||
+    valueType === WorkflowIOValueTypeEnum.selectApp
+  ) {
+    return {};
+  }
 
   return cloneJsonSchemaProperty(
     valueType ? valueTypeJsonSchemaMap[valueType] : toolValueTypeList[0].jsonSchema
@@ -372,12 +401,11 @@ const getJsonSchemaPropertyFromValueType = (
 };
 
 const getEnumValuesFromNodeInput = (input: FlowNodeInputItemType) => {
-  const enumValues =
-    input.list?.map((item) => item.value).filter(Boolean) ||
-    input.enums?.map((item) => item.value).filter(Boolean) ||
-    input.enum?.split('\n').filter(Boolean);
-
-  return enumValues?.length ? enumValues : undefined;
+  return [
+    input.list?.map((item) => item.value).filter(Boolean),
+    input.enums?.map((item) => item.value).filter(Boolean),
+    input.enum?.split('\n').filter(Boolean)
+  ].find((enumValues) => enumValues && enumValues.length > 0);
 };
 
 const setEnumValuesToJsonSchemaProperty = ({
