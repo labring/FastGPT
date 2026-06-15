@@ -48,8 +48,8 @@ const RunPreviewHeader = ({
       </MyTooltip>
 
       <Flex position="absolute" right="24px" alignItems="center" gap={2}>
-        <ChatVariableButton chatType={ChatTypeEnum.test} />
         <SandboxEntryIcon onOpen={onOpenSandboxModal} />
+        <ChatVariableButton chatType={ChatTypeEnum.test} />
         <MyTooltip label={restartLabel}>
           <IconButton
             className="chat"

@@ -105,15 +105,24 @@ const ToolMenu = ({
         menuList={[
           {
             children: [
-              {
-                icon: 'core/chat/chatLight',
-                label: t('common:core.chat.New Chat'),
-                onClick: () => {
-                  clearChatRecords();
-                  onChangeChatId();
-                  setSandboxExists(false);
-                }
-              },
+              ...(!isPc && sandboxExists
+                ? [
+                    {
+                      icon: 'core/chat/monitor' as const,
+                      label: t('app:use_agent_sandbox'),
+                      onClick: () => onOpenSandboxModal()
+                    }
+                  ]
+                : []),
+              ...(!isPc && chatType && hasVariables
+                ? [
+                    {
+                      icon: 'core/chat/var' as const,
+                      label: t('common:core.module.Variable'),
+                      onClick: () => setIsVariableDrawerOpen(true)
+                    }
+                  ]
+                : []),
               // {
               //   icon: 'core/app/appApiLight',
               //   label: `HTML ${t('common:Export')}`,
@@ -128,24 +137,15 @@ const ToolMenu = ({
                     }
                   ]
                 : []),
-              ...(!isPc && chatType && hasVariables
-                ? [
-                    {
-                      icon: 'core/chat/var' as const,
-                      label: t('common:core.module.Variable'),
-                      onClick: () => setIsVariableDrawerOpen(true)
-                    }
-                  ]
-                : []),
-              ...(!isPc && sandboxExists
-                ? [
-                    {
-                      icon: 'core/chat/monitor' as const,
-                      label: t('app:use_agent_sandbox'),
-                      onClick: () => onOpenSandboxModal()
-                    }
-                  ]
-                : [])
+              {
+                icon: 'core/chat/chatLight',
+                label: t('common:core.chat.New Chat'),
+                onClick: () => {
+                  clearChatRecords();
+                  onChangeChatId();
+                  setSandboxExists(false);
+                }
+              }
               // {
               //   icon: 'core/chat/export/pdf',
               //   label: `PDF ${t('common:Export')}`,
