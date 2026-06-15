@@ -35,10 +35,8 @@ const DatasetDataSchema = new Schema({
   },
   q: {
     type: String,
-    required: function () {
-      // 不是 string 类型（含 null/undefined/缺省）→ 报错
-      return typeof this.q !== 'string';
-    }
+    default: '',
+    set: (v: any) => (v == null ? '' : v)
   },
   a: {
     type: String
