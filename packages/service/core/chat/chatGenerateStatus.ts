@@ -51,26 +51,36 @@ export const ensureGenerateChat = async (params: EnsureGenerateChatParams) => {
   );
 };
 
+/**
+ * 尝试占用一次会话生成槽。
+ *
+ * 同一个 `appId/chatId` 只允许一个请求进入生成中状态；已有 generating 记录时返回 false，
+ * 由 API 层转换为“当前会话正在运行”的错误。
+ *
+ * 这里用“条件匹配 + upsert + 唯一索引”实现无副作用抢占：只有非 generating
+ * 记录会被更新为 generating；如果已有 generating 记录，查询不会命中，upsert 会因
+ * `{ appId, chatId }` 唯一索引报 11000，再转换为 false。这样被拒绝的并发请求不会刷新
+ * updateTime 或覆盖 source/sourceName。
+ */
 export const tryStartGenerateChat = async (params: EnsureGenerateChatParams) => {
   const { $set, $setOnInsert } = buildGeneratingChatUpdate(params);
 
   try {
-    await MongoChat.updateOne(
+    await MongoChat.findOneAndUpdate(
       {
         appId: params.appId,
         chatId: params.chatId,
-        chatGenerateStatus: {
-          $ne: ChatGenerateStatusEnum.generating
-        }
+        chatGenerateStatus: { $ne: ChatGenerateStatusEnum.generating }
       },
       {
         $set,
         $setOnInsert
       },
       {
-        upsert: true
+        upsert: true,
+        new: false
       }
-    );
+    ).lean();
 
     return true;
   } catch (error: any) {

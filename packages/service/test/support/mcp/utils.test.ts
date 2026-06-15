@@ -51,7 +51,12 @@ vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/chat/saveChat', () => ({
-  pushChatRecords: vi.fn()
+  finalizeChatRound: vi.fn(),
+  failChatRound: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/core/chat/utils/prepare', () => ({
+  preChatRound: vi.fn()
 }));
 
 beforeEach(() => {

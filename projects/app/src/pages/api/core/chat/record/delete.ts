@@ -7,9 +7,16 @@ import {
   DeleteChatRecordResponseSchema,
   type DeleteChatRecordResponseType
 } from '@fastgpt/global/openapi/core/chat/record/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+
+const hasRequestBodyPayload = (body: unknown) =>
+  !!body && typeof body === 'object' && Object.keys(body).length > 0;
 
 async function handler(req: ApiRequestProps): Promise<DeleteChatRecordResponseType> {
-  const { appId, chatId, contentId, ...authProps } = DeleteChatRecordBodySchema.parse(req.query);
+  const params = hasRequestBodyPayload(req.body)
+    ? parseApiInput({ req, bodySchema: DeleteChatRecordBodySchema }).body
+    : parseApiInput({ req, querySchema: DeleteChatRecordBodySchema }).query;
+  const { appId, chatId, contentId, contentIds, ...authProps } = params;
   await authChatCrud({
     req,
     authToken: true,
@@ -19,11 +26,19 @@ async function handler(req: ApiRequestProps): Promise<DeleteChatRecordResponseTy
     ...authProps
   });
 
-  await MongoChatItem.updateOne(
+  const targetContentIds = Array.from(
+    new Set([...(contentIds ?? []), ...(contentId ? [contentId] : [])])
+  );
+
+  if (targetContentIds.length === 0) {
+    return DeleteChatRecordResponseSchema.parse(undefined);
+  }
+
+  await MongoChatItem.updateMany(
     {
       appId,
       chatId,
-      dataId: contentId
+      dataId: { $in: targetContentIds }
     },
     {
       $set: { deleteTime: new Date() }

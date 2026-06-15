@@ -112,6 +112,58 @@ describe('addStatisticalDataToHistoryItem', () => {
     expect(addStatisticalDataToHistoryItem(historyItem).totalQuoteList).toHaveLength(1);
   });
 
+  it('deduplicates dataset quote tags by cited quote id', () => {
+    const quoteId = '507f1f77bcf86cd799439011';
+    const historyItem: ChatItemMiniType = {
+      obj: ChatRoleEnum.AI,
+      value: [
+        {
+          text: {
+            content: `done [${quoteId}](QUOTE)`
+          }
+        }
+      ],
+      responseData: [
+        {
+          id: 'dataset-response-1',
+          nodeId: 'dataset-node-1',
+          moduleName: 'Dataset Search 1',
+          moduleType: FlowNodeTypeEnum.datasetSearchNode,
+          quoteList: [
+            {
+              id: quoteId,
+              chunkIndex: 0,
+              datasetId: 'dataset-1',
+              collectionId: 'collection-1',
+              sourceName: 'doc.pdf',
+              score: [{ type: 'embedding', value: 0.9, index: 0 }]
+            }
+          ]
+        },
+        {
+          id: 'dataset-response-2',
+          nodeId: 'dataset-node-2',
+          moduleName: 'Dataset Search 2',
+          moduleType: FlowNodeTypeEnum.datasetSearchNode,
+          quoteList: [
+            {
+              id: quoteId,
+              chunkIndex: 0,
+              datasetId: 'dataset-1',
+              collectionId: 'collection-1',
+              sourceName: 'doc.pdf',
+              score: [{ type: 'embedding', value: 0.9, index: 0 }]
+            }
+          ]
+        }
+      ]
+    };
+
+    expect(
+      addStatisticalDataToHistoryItem(historyItem).totalQuoteList?.map((quote) => quote.id)
+    ).toEqual([quoteId]);
+  });
+
   it('does not mark non-sandbox tools as sandbox usage', () => {
     const historyItem: ChatItemMiniType = {
       obj: ChatRoleEnum.AI,
@@ -184,6 +236,40 @@ describe('addStatisticalDataToHistoryItem', () => {
     expect(addStatisticalDataToHistoryItem(historyItem).errorText).toEqual({
       moduleName: 'HTTP 请求',
       errorText: 'connect ECONNREFUSED 127.0.0.1:3000'
+    });
+  });
+
+  it('uses the last node error as chat bubble error text when multiple nodes fail', () => {
+    const historyItem: ChatItemMiniType = {
+      obj: ChatRoleEnum.AI,
+      value: [
+        {
+          text: {
+            content: 'done'
+          }
+        }
+      ],
+      responseData: [
+        {
+          id: 'http-response',
+          nodeId: 'http-node',
+          moduleName: 'HTTP 请求',
+          moduleType: FlowNodeTypeEnum.httpRequest468,
+          errorText: 'upstream timeout'
+        },
+        {
+          id: 'agent-response',
+          nodeId: 'agent-node',
+          moduleName: 'Agent',
+          moduleType: FlowNodeTypeEnum.agent,
+          errorText: 'agent stopped'
+        }
+      ]
+    };
+
+    expect(addStatisticalDataToHistoryItem(historyItem).errorText).toEqual({
+      moduleName: 'Agent',
+      errorText: 'agent stopped'
     });
   });
 

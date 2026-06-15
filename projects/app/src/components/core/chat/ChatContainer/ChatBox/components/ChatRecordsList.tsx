@@ -17,6 +17,7 @@ import {
   hasAiInteractiveContent,
   hasAiProcessingContent
 } from './AIChatBubble/utils';
+import { getChatItemRenderKey } from '../utils/recordGroups';
 
 export type ChatRecordsListProps = {
   records: ChatSiteItemType[];
@@ -160,7 +161,7 @@ const ChatRecordsList = ({
           previousRecord?.obj === ChatRoleEnum.Human ? onRetry(previousRecord.dataId) : undefined;
 
         return (
-          <Box key={item.dataId}>
+          <Box key={getChatItemRenderKey(item)}>
             {item.collapseTop && (
               <DeletedItemsCollapse
                 count={item.collapseTop.count}

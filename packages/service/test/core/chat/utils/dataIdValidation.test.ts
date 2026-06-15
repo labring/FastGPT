@@ -4,10 +4,11 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import {
   CHAT_DATA_ID_DUPLICATE_ERROR_MESSAGE,
+  assertNoExistingChatDataIds,
   assertNoDuplicateChatDataIdsInRequest,
   getChatMessagesDataIds,
   validateChatRoundDataIds
-} from '@fastgpt/service/core/chat/dataIdValidation';
+} from '@fastgpt/service/core/chat/utils/dataIdValidation';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getUser } from '@test/datas/users';
@@ -58,7 +59,11 @@ describe('chat dataId validation', () => {
     ).toThrow(`${CHAT_DATA_ID_DUPLICATE_ERROR_MESSAGE}: history-1`);
   });
 
-  it('should reject human and ai sharing one dataId', async () => {
+  it('should ignore empty values when checking duplicate dataIds in the current request', () => {
+    expect(() => assertNoDuplicateChatDataIdsInRequest([undefined, '', 'history-1'])).not.toThrow();
+  });
+
+  it('should allow human and ai sharing one round dataId', async () => {
     await expect(
       validateChatRoundDataIds({
         appId,
@@ -70,7 +75,32 @@ describe('chat dataId validation', () => {
         },
         responseChatItemId: 'same-data-id'
       })
-    ).rejects.toThrow(`${CHAT_DATA_ID_DUPLICATE_ERROR_MESSAGE}: same-data-id`);
+    ).resolves.toBeUndefined();
+  });
+
+  it('should allow current round AI dataId when only an existing human item has the same dataId', async () => {
+    await MongoChatItem.create({
+      teamId: testUser.teamId,
+      tmbId: testUser.tmbId,
+      appId,
+      chatId,
+      dataId: 'same-round-id',
+      obj: ChatRoleEnum.Human,
+      value: [{ text: { content: 'old question' } }]
+    });
+
+    await expect(
+      validateChatRoundDataIds({
+        appId,
+        chatId,
+        userContent: {
+          obj: ChatRoleEnum.Human,
+          dataId: 'same-round-id',
+          value: [{ text: { content: 'hello' } }]
+        },
+        responseChatItemId: 'same-round-id'
+      })
+    ).resolves.toBeUndefined();
   });
 
   it('should reject dataIds that already exist in chat items', async () => {
@@ -109,6 +139,50 @@ describe('chat dataId validation', () => {
           value: [{ text: { content: 'hello' } }]
         },
         responseChatItemId: 'new-ai'
+      })
+    ).resolves.toBeUndefined();
+  });
+
+  it('should skip current round AI dataId validation when responseChatItemId is missing', async () => {
+    await expect(
+      validateChatRoundDataIds({
+        appId,
+        chatId,
+        userContent: {
+          obj: ChatRoleEnum.Human,
+          dataId: 'human-only',
+          value: [{ text: { content: 'hello' } }]
+        }
+      })
+    ).resolves.toBeUndefined();
+  });
+
+  it('should reject existing chat dataIds in generic history validation', async () => {
+    await MongoChatItem.create({
+      teamId: testUser.teamId,
+      tmbId: testUser.tmbId,
+      appId,
+      chatId,
+      dataId: 'existing-human',
+      obj: ChatRoleEnum.Human,
+      value: [{ text: { content: 'old question' } }]
+    });
+
+    await expect(
+      assertNoExistingChatDataIds({
+        appId,
+        chatId,
+        dataIds: ['missing', 'existing-human']
+      })
+    ).rejects.toThrow(`${CHAT_DATA_ID_DUPLICATE_ERROR_MESSAGE}: existing-human`);
+  });
+
+  it('should skip generic history validation when all dataIds are empty', async () => {
+    await expect(
+      assertNoExistingChatDataIds({
+        appId,
+        chatId,
+        dataIds: [undefined, '']
       })
     ).resolves.toBeUndefined();
   });

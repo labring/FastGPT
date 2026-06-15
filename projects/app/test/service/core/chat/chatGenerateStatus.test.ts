@@ -9,6 +9,8 @@ import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 
 vi.mock('@fastgpt/service/core/chat/chatSchema', () => ({
   MongoChat: {
+    findOne: vi.fn(),
+    findOneAndUpdate: vi.fn(),
     updateOne: vi.fn()
   }
 }));
@@ -25,6 +27,12 @@ const baseParams = {
 describe('chatGenerateStatus', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(MongoChat.findOne).mockReturnValue({
+      lean: () => Promise.resolve(null)
+    } as any);
+    vi.mocked(MongoChat.findOneAndUpdate).mockReturnValue({
+      lean: () => Promise.resolve(null)
+    } as any);
   });
 
   it('should ensure a chat is marked as generating', async () => {
@@ -55,17 +63,13 @@ describe('chatGenerateStatus', () => {
   });
 
   it('should acquire generate slot when the chat is not already generating', async () => {
-    vi.mocked(MongoChat.updateOne).mockResolvedValue({} as any);
-
     await expect(tryStartGenerateChat(baseParams)).resolves.toBe(true);
 
-    expect(MongoChat.updateOne).toHaveBeenCalledWith(
+    expect(MongoChat.findOneAndUpdate).toHaveBeenCalledWith(
       {
         appId: baseParams.appId,
         chatId: baseParams.chatId,
-        chatGenerateStatus: {
-          $ne: ChatGenerateStatusEnum.generating
-        }
+        chatGenerateStatus: { $ne: ChatGenerateStatusEnum.generating }
       },
       {
         $set: expect.objectContaining({
@@ -79,17 +83,62 @@ describe('chatGenerateStatus', () => {
         }
       },
       {
-        upsert: true
+        upsert: true,
+        new: false
       }
     );
   });
 
-  it('should reject acquiring generate slot when another request already owns it', async () => {
-    vi.mocked(MongoChat.updateOne).mockRejectedValue({
-      code: 11000
-    });
+  it('should reject acquiring generate slot when unique index reports a race', async () => {
+    vi.mocked(MongoChat.findOneAndUpdate).mockReturnValue({
+      lean: () =>
+        Promise.reject({
+          code: 11000
+        })
+    } as any);
 
     await expect(tryStartGenerateChat(baseParams)).resolves.toBe(false);
+  });
+
+  it('should reject acquiring generate slot when chat is already generating', async () => {
+    vi.mocked(MongoChat.findOneAndUpdate).mockReturnValue({
+      lean: () =>
+        Promise.reject({
+          code: 11000
+        })
+    } as any);
+
+    await expect(tryStartGenerateChat(baseParams)).resolves.toBe(false);
+
+    expect(MongoChat.findOneAndUpdate).toHaveBeenCalledWith(
+      {
+        appId: baseParams.appId,
+        chatId: baseParams.chatId,
+        chatGenerateStatus: { $ne: ChatGenerateStatusEnum.generating }
+      },
+      expect.objectContaining({
+        $set: expect.objectContaining({
+          chatGenerateStatus: ChatGenerateStatusEnum.generating
+        }),
+        $setOnInsert: expect.objectContaining({
+          createTime: expect.any(Date)
+        })
+      }),
+      {
+        upsert: true,
+        new: false
+      }
+    );
+    expect(MongoChat.updateOne).not.toHaveBeenCalled();
+  });
+
+  it('should rethrow non-duplicate update errors', async () => {
+    const error = new Error('mongo failed');
+    vi.mocked(MongoChat.findOneAndUpdate).mockReturnValue({
+      lean: () => Promise.reject(error)
+    } as any);
+
+    await expect(tryStartGenerateChat(baseParams)).rejects.toThrow(error);
   });
 
   it('should update chat status to done or error without changing caller metadata', async () => {

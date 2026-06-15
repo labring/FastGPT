@@ -7,14 +7,12 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {
   getChildrenResponses,
-  mergeChatResponseData,
-  stripChildTotalPoints,
-  stripChildTotalPointsFromResponseData
-} from '@fastgpt/global/core/chat/utils';
+  getNodeResponseIdentityKey,
+  mergeNodeResponseDataByIdAndParent
+} from '@fastgpt/global/core/chat/utils/mergeNode';
 import { MongoChatItemResponse } from './chatItemResponseSchema';
 import { getLogger, LogCategories } from '../../common/logger';
 import { writePrimary } from '../../common/mongo/utils';
-import { mongoSessionRun } from '../../common/mongo/sessionRun';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.HISTORY);
 // 常规写入失败后最多重试 3 次；仍失败再进入瘦身 fallback，避免异常详情阻断主流程。
@@ -56,23 +54,17 @@ type CreateRowsParams = ChatItemResponseBase & {
 };
 
 /**
- * writer 只依赖 create/deleteMany，测试里可以传入轻量 mock model。
+ * writer 只依赖 create，测试里可以传入轻量 mock model。
  * 这里刻意不暴露 Mongoose Model 全量类型，降低单元测试和业务代码耦合。
  */
 type WriterModel = {
   create: (docs: Record<string, unknown>[], options?: Record<string, unknown>) => Promise<unknown>;
-  deleteMany: (
-    filter: Record<string, unknown>,
-    options?: Record<string, unknown>
-  ) => Promise<unknown>;
 };
 
 // 新运行链路里 response.id 必有；getNanoid 只是兜底测试或异常输入，确保 DB row 可唯一定位。
 const getResponseId = (response: ChatHistoryItemResType) => response.id || getNanoid();
 
 const getParentId = (response: ChatHistoryItemResType) => response.parentId;
-
-const getRowResponseId = (row: ChatItemResponseStorageRow) => row.data.id;
 
 /**
  * 数据集搜索节点可能携带完整 quote q/a 文本，体积很大且详情展示只需要来源元信息。
@@ -161,21 +153,6 @@ const slimRowsForFallback = (rows: ChatItemResponseStorageRow[]): ChatItemRespon
     ...row,
     data: slimNodeResponseData(row.data)
   }));
-
-/**
- * 同一批 buffer 里同一个 data.id 可能被多次 record。
- *
- * 例如某节点先写入 loading 状态，随后写入完成态。入库时只保留最后一次数据，避免同一
- * chatItem 下出现重复 id，也减少 delete/create 的工作量。
- */
-const dedupeRowsById = (rows: ChatItemResponseStorageRow[]) => {
-  const latestIndexById = new Map<string, number>();
-  rows.forEach((row, index) => {
-    latestIndexById.set(getRowResponseId(row), index);
-  });
-
-  return rows.filter((row, index) => latestIndexById.get(getRowResponseId(row)) === index);
-};
 
 /**
  * 将 child 响应整理成一棵可递归统计的树。
@@ -315,14 +292,13 @@ export const createChatItemResponseRows = ({
   ...base
 }: CreateRowsParams): ChatItemResponseStorageRow[] => {
   return nodeResponses.map((response) => {
-    const responseForStorage = stripChildTotalPoints(response);
     const id = getResponseId(response);
     const currentParentId = getParentId(response);
     const children = getChildrenResponses(response);
     const childResponseCount = getResponseChildResponseCount(response, children);
     // data 是当前 nodeResponse 本身：保留 childrenResponses，仅读取时再与 parentId child rows 合并。
     const data = slimQuoteListForStorage({
-      ...responseForStorage,
+      ...response,
       id,
       ...(currentParentId ? { parentId: currentParentId } : {}),
       ...(childResponseCount !== undefined ? { childResponseCount } : {})
@@ -338,49 +314,25 @@ export const createChatItemResponseRows = ({
 /**
  * 将 `MongoChatItemResponse` rows 还原为前端需要的嵌套 responseData。
  *
- * 新数据只依赖 `data.id/data.parentId` 拼回 `childrenResponses`，返回前统一经过
- * `mergeChatResponseData` 合并交互追加结果。
+ * 新数据只依赖 `data.id/data.parentId` 拼回 `childrenResponses`。同一个 `id + parentId`
+ * 的多条 rows 被视为同一展示节点的增量，数值字段按增量累加，其他字段以后到的为准。
  */
 export const composeNodeResponseDetail = (
   rows: ChatItemResponseRowLike[] = []
-): ChatHistoryItemResType[] => {
-  const flatResponses: ChatHistoryItemResType[] = [];
-  const flatResponseMap = new Map<string, ChatHistoryItemResType>();
+): ChatHistoryItemResType[] =>
+  mergeNodeResponseDataByIdAndParent(
+    rows.flatMap((row) => {
+      const id = row.data?.id;
+      if (!row.data || !id) return [];
 
-  rows.forEach((row) => {
-    if (!row.data) return;
-
-    const id = row.data.id;
-    if (!id) {
-      return;
-    }
-
-    const response: ChatHistoryItemResType = {
-      ...row.data,
-      id
-    };
-
-    flatResponses.push(response);
-    flatResponseMap.set(id, response);
-  });
-
-  const rootResponses: ChatHistoryItemResType[] = [];
-  flatResponses.forEach((response) => {
-    const parentId = response.parentId;
-    // parentId 指向自身或找不到 parent 时按 root 展示，避免异常数据让详情节点丢失。
-    const parent = parentId && parentId !== response.id ? flatResponseMap.get(parentId) : undefined;
-
-    if (!parent) {
-      rootResponses.push(response);
-      return;
-    }
-
-    (parent.childrenResponses ||= []).push(response);
-  });
-
-  // 最后统一跑 mergeChatResponseData，保留交互节点 mergeSignId 等历史合并语义。
-  return stripChildTotalPointsFromResponseData(mergeChatResponseData(rootResponses));
-};
+      return [
+        {
+          ...row.data,
+          id
+        }
+      ];
+    })
+  );
 
 export const composeChatItemResponseData = ({ rows = [] }: { rows?: ChatItemResponseRowLike[] }) =>
   composeNodeResponseDetail(rows);
@@ -406,9 +358,7 @@ export const getChatItemResponseData = async ({
    * 新数据优先来自 chat_item_responses 平铺表；如果调用方传入旧链路的内存/内联详情，
    * 只有在独立表没有 rows 时才回退，避免新数据被空旧字段或空 flowResponses 覆盖。
    */
-  return rows.length > 0
-    ? composeChatItemResponseData({ rows })
-    : stripChildTotalPointsFromResponseData(fallbackResponseData || []);
+  return rows.length > 0 ? composeChatItemResponseData({ rows }) : fallbackResponseData || [];
 };
 
 export const getChatItemResponseRows = async ({
@@ -434,9 +384,9 @@ export const getChatItemResponseRows = async ({
  * 请求级 nodeResponse 写入器。
  *
  * 一个 workflow 请求复用同一个 writer，并通过 `writeQueue` 串行化父/子 workflow 的
- * record 调用，保证 Mongo 写入顺序就是详情展示顺序。flush 使用“先删同 data.id 旧
- * rows，再 ordered create(rows[])”的事务批处理；普通写失败会重试，仍失败时写瘦身
- * rows，最后仍失败只丢弃本批并记录日志，避免异常响应详情阻断主工作流。
+ * record 调用，保证 Mongo 写入顺序就是详情展示顺序。flush 只做 ordered create；
+ * 普通写失败会重试，仍失败时写瘦身 rows，最后仍失败只丢弃本批并记录日志，避免异常
+ * 响应详情阻断主工作流。
  */
 export class WorkflowNodeResponseWriter {
   // 尚未 flush 的 rows。record 成功后调用方可以释放原始数组引用，writer 只持有待写 row。
@@ -451,18 +401,14 @@ export class WorkflowNodeResponseWriter {
   private readonly retainInMemory: boolean;
   // 子 workflow 可能共享同一个 writer，并发 record 必须串行化，才能保证写入顺序稳定。
   private writeQueue = Promise.resolve();
-  // replace 模式下用于判断是否已经成功写过新 rows，避免失败时过早清空旧详情。
-  private hasPersistedRows = false;
   private failedFlushCount = 0;
-  // 按 nodeResponse id 保存摘要贡献；相同 id 的节点完成态会覆盖开始态，避免重复累计。
+  // 按 nodeResponse id + parentId 保存摘要贡献；相同展示节点完成态会覆盖开始态，避免重复累计。
   private readonly summaryContributions = new Map<string, NodeResponseWriteSummary>();
-  private replaceBeforeFirstFlush: boolean;
 
   constructor({
     model,
     batchSize = 5,
     session,
-    replaceBeforeFirstFlush = false,
     persistToDb = true,
     retainInMemory = false,
     ...base
@@ -470,7 +416,6 @@ export class WorkflowNodeResponseWriter {
     model?: WriterModel;
     batchSize?: number;
     session?: ClientSession;
-    replaceBeforeFirstFlush?: boolean;
     persistToDb?: boolean;
     retainInMemory?: boolean;
   }) {
@@ -478,7 +423,6 @@ export class WorkflowNodeResponseWriter {
     this.batchSize = batchSize;
     this.base = base;
     this.session = session;
-    this.replaceBeforeFirstFlush = replaceBeforeFirstFlush;
     this.persistToDb = persistToDb;
     this.retainInMemory = retainInMemory;
   }
@@ -503,8 +447,8 @@ export class WorkflowNodeResponseWriter {
    * 收集 saveChat 需要的轻量摘要。
    *
    * 详情 rows 写库失败后可以丢弃，但引用来源、根节点错误数和根节点费用仍需要保存到
-   * chat 记录/日志中。相同 response id 的后续 row 会覆盖前一次贡献，避免节点重试或
-   * 完成态更新造成重复累计。
+   * chat 记录/日志中。相同 `id + parentId` 的后续 row 会覆盖前一次贡献，避免节点重试
+   * 或完成态更新造成重复累计。
    */
   private collectSummary(rows: ChatItemResponseStorageRow[]) {
     rows.forEach((row) => {
@@ -518,7 +462,6 @@ export class WorkflowNodeResponseWriter {
       contribution.citeCollectionIds.push(...collectCiteCollectionIds(row.data));
 
       // 保存历史统计保持旧逻辑口径：只按根节点累计错误数和积分。
-      const id = getRowResponseId(row);
       if (!row.data.parentId) {
         const errorText = row.data.errorText || row.data.error;
         if (errorText) {
@@ -528,15 +471,16 @@ export class WorkflowNodeResponseWriter {
         contribution.totalPoints = row.data.totalPoints || 0;
       }
 
+      const identityKey = getNodeResponseIdentityKey(row.data);
       if (
         contribution.citeCollectionIds.length > 0 ||
         contribution.errorCount > 0 ||
         contribution.totalPoints !== 0
       ) {
-        // 相同 id 后到的 row 覆盖前一次贡献，保证重试/完成态更新后摘要不重复累计。
-        this.summaryContributions.set(id, contribution);
+        // 相同展示节点后到的 row 覆盖前一次贡献，保证重试/完成态更新后摘要不重复累计。
+        this.summaryContributions.set(identityKey, contribution);
       } else {
-        this.summaryContributions.delete(id);
+        this.summaryContributions.delete(identityKey);
       }
     });
   }
@@ -544,16 +488,12 @@ export class WorkflowNodeResponseWriter {
   /**
    * 保留请求内 flat nodeResponse。
    *
-   * 内存缓存只作为业务入口最终返回使用，不能提前拼树。这里复用 DB 的同 id 最新态语义：
-   * 新 row 会替换旧 row，并按最后写入位置进入 flat 列表。
+   * 内存缓存只作为业务入口最终返回使用，不能提前拼树。这里和 DB 一样保留所有增量 rows，
+   * 最终由 composeNodeResponseDetail 按 `id + parentId` fold。
    */
   private retainFlatRows(rows: ChatItemResponseStorageRow[]) {
     if (!this.retainInMemory) return;
 
-    const incomingIds = new Set(rows.map(getRowResponseId));
-    this.flatResponseRows = this.flatResponseRows.filter(
-      (row) => !incomingIds.has(getRowResponseId(row))
-    );
     this.flatResponseRows.push(...rows);
   }
 
@@ -561,24 +501,18 @@ export class WorkflowNodeResponseWriter {
    * 记录一批 nodeResponse。
    *
    * 输入就是本次要保存的 nodeResponses；writer 不再递归展开 childrenResponses。这里会
-   * 转成 rows、去重、收集摘要，然后进入串行队列写入 buffer。buffer 达到 batchSize
-   * 时立即 flush；返回值与实际写入的 row data 一致。
+   * 转成 rows、收集摘要，然后进入串行队列写入 buffer。buffer 达到 batchSize 时立即
+   * flush；返回值与实际写入的 row data 一致。
    */
   async record(nodeResponses?: ChatHistoryItemResType[]) {
-    const rows = dedupeRowsById(
-      createChatItemResponseRows({
-        ...this.base,
-        nodeResponses
-      })
-    );
-    const ids = rows.map(getRowResponseId);
+    const rows = createChatItemResponseRows({
+      ...this.base,
+      nodeResponses
+    });
     // 本地关系和摘要必须在入队前更新；即使本批稍后写库失败，saveChat 仍可读取运行期摘要。
     this.collectSummary(rows);
 
     await this.enqueue(async () => {
-      const incomingIds = new Set(ids);
-      // buffer 中相同 id 的旧行被新行替换，内存中只保留最后态。
-      this.buffer = this.buffer.filter((row) => !incomingIds.has(getRowResponseId(row)));
       this.buffer.push(...rows);
       this.retainFlatRows(rows);
       if (!this.persistToDb) {
@@ -612,60 +546,12 @@ export class WorkflowNodeResponseWriter {
   }
 
   /**
-   * 删除当前 chat item 下全部独立 nodeResponse rows。
-   *
-   * 仅用于 replace 模式第一次 flush，保证重新运行后详情完全来自本轮请求。
-   */
-  private async deleteExistingRows(session?: ClientSession) {
-    // replace 模式首次成功写入前清空旧详情，保证恢复/重新运行后详情只来自当前请求。
-    await this.getWriteModel().deleteMany(
-      {
-        appId: this.base.appId,
-        chatId: this.base.chatId,
-        chatItemDataId: this.base.chatItemDataId
-      },
-      {
-        session,
-        ...writePrimary
-      }
-    );
-  }
-
-  /**
-   * 删除当前批次中同 id 的旧 rows。
-   *
-   * append 或节点更新时使用“先删后插”，配合唯一索引保证同一 chat item 下 `data.id`
-   * 只有一份最新 row。
-   */
-  private async deleteRowsById(ids: string[], session?: ClientSession) {
-    // 普通 append/更新采用同 id 先删后插，避免 create 时触发 unique index 冲突。
-    await this.getWriteModel().deleteMany(
-      {
-        appId: this.base.appId,
-        chatId: this.base.chatId,
-        chatItemDataId: this.base.chatItemDataId,
-        'data.id': { $in: ids }
-      },
-      {
-        session,
-        ...writePrimary
-      }
-    );
-  }
-
-  /**
    * 在一个 Mongo session 内持久化 rows。
    *
-   * 写入前先处理 replace/delete-by-id，再用 ordered create 保证本批 rows 要么全部成功，
-   * 要么由事务回滚。这里不做 JSON/BSON 体积预估，大小和序列化问题统一交给 Mongo 报错。
+   * 运行期 nodeResponse 表只追加不删除/更新；读取时再按 `data.id + parentId` fold。
+   * 这里不做 JSON/BSON 体积预估，大小和序列化问题统一交给 Mongo 报错。
    */
   private async persistRows(rows: ChatItemResponseStorageRow[], session?: ClientSession) {
-    const ids = [...new Set(rows.map(getRowResponseId))];
-    if (this.replaceBeforeFirstFlush && !this.hasPersistedRows) {
-      await this.deleteExistingRows(session);
-    } else {
-      await this.deleteRowsById(ids, session);
-    }
     const time = new Date();
     const rowsWithTime = rows.map((row) => ({
       ...row,
@@ -692,16 +578,15 @@ export class WorkflowNodeResponseWriter {
   /**
    * 为 persistRows 选择事务边界。
    *
-   * 外层已传入 session 时复用外层事务；否则为本次 flush 创建短事务，避免 delete 成功、
-   * create 失败后留下空详情。
+   * 外层已传入 session 时复用外层事务；否则直接追加写入，避免每批 nodeResponse 都创建
+   * 独立短事务。ordered create 失败后由 retry/slim fallback 兜底。
    */
   private async persistRowsWithSession(rows: ChatItemResponseStorageRow[]) {
     if (this.session) {
       // 外层已经有事务时复用 session，保证 chatItem/chatResponse 的写入边界一致。
       await this.persistRows(rows, this.session);
     } else {
-      // 独立 writer flush 使用短事务包裹 delete/create，确保一批 rows 要么替换成功，要么回滚。
-      await mongoSessionRun((session) => this.persistRows(rows, session));
+      await this.persistRows(rows);
     }
   }
 
@@ -737,7 +622,6 @@ export class WorkflowNodeResponseWriter {
 
     const fallbackRows = slimRowsForFallback(rows);
     try {
-      // 瘦身 fallback 仍复用同样的 delete/create 语义，保证成功后同 id 只保留关键字段版本。
       await this.persistRowsWithSession(fallbackRows);
       logger.error('Workflow node responses flushed with slim fallback rows', {
         error: lastError,
@@ -755,53 +639,22 @@ export class WorkflowNodeResponseWriter {
   }
 
   /**
-   * replace 模式首批 rows 完全落库失败后的兜底清理。
-   *
-   * 首批彻底失败时如果仍保留旧 rows，用户会误以为详情来自本轮运行；因此这里尽量清掉
-   * 旧详情。清理失败也只打日志，不阻断 workflow 主流程。
-   */
-  private async cleanupReplaceRowsAfterDrop() {
-    if (!this.replaceBeforeFirstFlush || this.hasPersistedRows) return;
-
-    try {
-      // replace 模式第一次写入彻底失败时，清掉旧 rows，避免用户误以为看到了本次运行详情。
-      if (this.session) {
-        await this.deleteExistingRows(this.session);
-      } else {
-        await mongoSessionRun((session) => this.deleteExistingRows(session));
-      }
-      this.replaceBeforeFirstFlush = false;
-    } catch (error) {
-      logger.error('Failed to clear stale workflow node responses after dropped write rows', {
-        error
-      });
-    }
-  }
-
-  /**
    * flush 当前 buffer。
    *
-   * flush 前再次按 id 去重，确保同一批内只保留最后态；失败后释放详情 rows 并保留
-   * summary。无论成功失败，都会清空 buffer 以降低运行期内存占用。
+   * 失败后释放详情 rows 并保留 summary。无论成功失败，都会清空 buffer 以降低运行期
+   * 内存占用。
    */
   private async flushBufferedRows() {
     if (this.buffer.length === 0) return;
 
-    const rows = dedupeRowsById(this.buffer);
+    const rows = this.buffer;
     const persisted = await this.persistRowsWithRetry(rows);
     // flush 后立即释放 buffer，避免完整 nodeResponse 长时间占用内存。
     this.buffer = [];
 
-    if (persisted) {
-      this.hasPersistedRows = true;
-    } else {
+    if (!persisted) {
       this.failedFlushCount += 1;
       // 写库失败只丢弃详情 rows；运行期已累计的引用、错误数和积分仍要给 saveChat 使用。
-      await this.cleanupReplaceRowsAfterDrop();
-    }
-    if (persisted) {
-      // 首次成功写入后 replace 模式结束，后续同 id 更新只做局部 delete/create。
-      this.replaceBeforeFirstFlush = false;
     }
   }
 
@@ -873,25 +726,20 @@ export class WorkflowNodeResponseWriter {
 
   /** 返回本轮请求内保留的 flat nodeResponses。未开启 retainInMemory 时恒为空数组。 */
   getFlatNodeResponses(): ChatHistoryItemResType[] {
-    return stripChildTotalPointsFromResponseData(this.flatResponseRows.map((row) => row.data));
+    return this.flatResponseRows.map((row) => row.data);
   }
 }
 
 /**
  * 创建 workflow nodeResponse writer。
- *
- * `replace` 模式不会在创建时立刻删除旧 rows，而是延迟到第一次 flush 的事务里执行；
- * 这样如果本轮完全没有可写 rows，或第一次写入失败，不会先清空用户还能查看的旧详情。
  */
 export const createWorkflowNodeResponseWriter = async ({
-  mode,
   session,
   model = MongoChatItemResponse,
   persistToDb = true,
   retainInMemory = false,
   ...params
 }: CreateRowsParams & {
-  mode: 'replace' | 'append';
   session?: ClientSession;
   model?: WriterModel;
   persistToDb?: boolean;
@@ -901,7 +749,6 @@ export const createWorkflowNodeResponseWriter = async ({
     ...params,
     model,
     session,
-    replaceBeforeFirstFlush: persistToDb && mode === 'replace',
     persistToDb,
     retainInMemory
   });

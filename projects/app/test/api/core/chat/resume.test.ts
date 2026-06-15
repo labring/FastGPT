@@ -381,8 +381,14 @@ describe('stream resume api', () => {
       appId,
       chatId,
       field:
-        'obj value adminFeedback userGoodFeedback userBadFeedback time hideInUI durationSeconds errorMsg responseData customFeedbacks isFeedbackRead deleteTime',
-      limit: 10
+        'obj value adminFeedback userGoodFeedback userBadFeedback time hideInUI durationSeconds errorMsg customFeedbacks isFeedbackRead deleteTime',
+      limit: 10,
+      nodeResponseMode: 'preview',
+      nodeResponsePreviewProjection: expect.objectContaining({
+        chatItemDataId: 1,
+        'data.id': 1,
+        'data.errorText': 1
+      })
     });
     expect(addPreviewUrlToChatItems).toHaveBeenCalled();
     expect(redis.call).not.toHaveBeenCalled();

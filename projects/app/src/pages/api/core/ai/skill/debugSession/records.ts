@@ -4,8 +4,10 @@ import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { addPreviewUrlToChatItems } from '@fastgpt/service/core/chat/utils';
-import { transformPreviewHistories } from '@/global/core/chat/utils';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import {
+  chatItemResponsePreviewProjection,
+  transformPreviewHistories
+} from '@/global/core/chat/utils';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import {
   SkillDebugRecordsBodySchema,
@@ -14,7 +16,8 @@ import {
 import type { GetRecordsV2ResponseType } from '@fastgpt/global/openapi/core/chat/record/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
-const commonField = `obj value adminFeedback userGoodFeedback userBadFeedback time hideInUI durationSeconds errorMsg ${DispatchNodeResponseKeyEnum.nodeResponse}`;
+const commonField =
+  'obj value adminFeedback userGoodFeedback userBadFeedback time hideInUI durationSeconds errorMsg';
 
 async function handler(
   req: ApiRequestProps<SkillDebugRecordsBody>
@@ -42,7 +45,9 @@ async function handler(
     limit: pageSize ?? 20,
     initialId,
     nextId,
-    prevId
+    prevId,
+    nodeResponseMode: 'preview',
+    nodeResponsePreviewProjection: chatItemResponsePreviewProjection
   });
 
   await addPreviewUrlToChatItems(result.histories, 'chatFlow');

@@ -1,8 +1,9 @@
-import type { NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { transformPreviewHistories } from '@/global/core/chat/utils';
+import {
+  chatItemResponsePreviewProjection,
+  transformPreviewHistories
+} from '@/global/core/chat/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
@@ -23,10 +24,7 @@ import {
   type GetPaginationRecordsResponseType
 } from '@fastgpt/global/openapi/core/chat/record/api';
 
-export async function handler(
-  req: ApiRequestProps,
-  _res: NextApiResponse
-): Promise<GetPaginationRecordsResponseType> {
+export async function handler(req: ApiRequestProps): Promise<GetPaginationRecordsResponseType> {
   const {
     appId,
     chatId,
@@ -62,7 +60,8 @@ export async function handler(
   const isPlugin = app.type === AppTypeEnum.workflowTool;
   const isOutLink = authType === GetChatTypeEnum.outLink;
 
-  const commonField = `obj value adminFeedback userGoodFeedback userBadFeedback time hideInUI durationSeconds errorMsg ${DispatchNodeResponseKeyEnum.nodeResponse}`;
+  const commonField =
+    'obj value adminFeedback userGoodFeedback userBadFeedback time hideInUI durationSeconds errorMsg';
   const fieldMap = {
     [GetChatTypeEnum.normal]: `${commonField} ${loadCustomFeedbacks ? 'customFeedbacks' : ''}`,
     [GetChatTypeEnum.outLink]: commonField,
@@ -75,7 +74,9 @@ export async function handler(
     chatId,
     field: fieldMap[type],
     offset,
-    limit: pageSize
+    limit: pageSize,
+    nodeResponseMode: isPlugin ? 'full' : 'preview',
+    nodeResponsePreviewProjection: chatItemResponsePreviewProjection
   });
 
   // Presign file urls

@@ -1,6 +1,5 @@
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
-import { stripChildTotalPoints } from '@fastgpt/global/core/chat/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { AgentLoopEvent, AgentLoopToolCatalog } from '../../../../../ai/llm/agentLoop';
@@ -92,9 +91,6 @@ export const useToolNodeResponse = ({
     };
   };
 
-  const stripNodeResponseChildTotalPoints = (nodeResponse: ChatHistoryItemResType) =>
-    stripChildTotalPoints(nodeResponse);
-
   const getUpdatePlanStatus = (call: ToolResponseEvent['call']): AgentPlanStatus => {
     /**
      * update_plan 既可能是首次设置/替换计划，也可能是状态更新。
@@ -180,19 +176,17 @@ export const useToolNodeResponse = ({
       : undefined;
     const childrenResponses = compressNodeResponse ? [compressNodeResponse] : [];
 
-    appendNodeResponse(
-      stripNodeResponseChildTotalPoints({
-        id: `${node.nodeId}-plan-${call.id}`,
-        nodeId: `${node.nodeId}-plan-${call.id}`,
-        moduleName: AgentNodeResponseDisplay.plan.moduleName,
-        moduleType: node.flowNodeType,
-        moduleLogo: AgentNodeResponseDisplay.plan.moduleLogo,
-        runningTime: seconds,
-        textOutput: response,
-        agentPlanStatus,
-        ...(childrenResponses.length > 0 ? { childrenResponses } : {})
-      })
-    );
+    appendNodeResponse({
+      id: `${node.nodeId}-plan-${call.id}`,
+      nodeId: `${node.nodeId}-plan-${call.id}`,
+      moduleName: AgentNodeResponseDisplay.plan.moduleName,
+      moduleType: node.flowNodeType,
+      moduleLogo: AgentNodeResponseDisplay.plan.moduleLogo,
+      runningTime: seconds,
+      textOutput: response,
+      agentPlanStatus,
+      ...(childrenResponses.length > 0 ? { childrenResponses } : {})
+    });
   };
 
   const createToolNodeResponse = (event: ToolResponseEvent): ChatHistoryItemResType => {
@@ -222,12 +216,12 @@ export const useToolNodeResponse = ({
       ...(compressNodeResponse ? [compressNodeResponse] : [])
     ];
 
-    return stripNodeResponseChildTotalPoints({
+    return {
       ...toolNodeResponse,
       runningTime: toolNodeResponse.runningTime ?? event.seconds,
       toolRes: toolNodeResponse.toolRes ?? event.response,
       ...(childrenResponses.length > 0 ? { childrenResponses } : {})
-    });
+    };
   };
 
   /**

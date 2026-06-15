@@ -11,10 +11,11 @@ import styles from './index.module.scss';
 import dynamic from 'next/dynamic';
 
 import { Box } from '@chakra-ui/react';
-import { CodeClassNameEnum, mdTextFormat } from './utils';
+import { CodeClassNameEnum, hideStreamingIncompleteMarkdownTail, mdTextFormat } from './utils';
 import type { AProps } from './A';
 import MarkdownTable from '@fastgpt/web/components/common/Markdown/MarkdownTable';
 import { MarkdownRendererRuntimeContext } from './runtimeContext';
+import { useStreamAnimatedRehypePlugin } from './rehypeStreamAnimated';
 
 const CodeLight = dynamic(() => import('./codeBlock/CodeLight'), { ssr: false });
 const MermaidCodeBlock = dynamic(() => import('./img/MermaidCodeBlock'), { ssr: false });
@@ -80,6 +81,7 @@ type Props = {
   className?: string;
   autoPreviewHtmlCodeBlock?: boolean;
 } & AProps;
+
 const Markdown = (props: Props) => {
   const source = props.source || '';
 
@@ -112,9 +114,19 @@ const MarkdownRender = ({
   );
 
   const formatSource = useMemo(() => {
-    if (showAnimation || forbidZhFormat) return source;
+    if (showAnimation) return hideStreamingIncompleteMarkdownTail(source);
+    if (forbidZhFormat) return source;
     return mdTextFormat(source);
   }, [forbidZhFormat, showAnimation, source]);
+
+  const streamAnimatedRehypePlugin = useStreamAnimatedRehypePlugin();
+  const rehypePlugins = useMemo(
+    () =>
+      showAnimation
+        ? [RehypeKatex, [RehypeExternalLinks, { target: '_blank' }], streamAnimatedRehypePlugin]
+        : [RehypeKatex, [RehypeExternalLinks, { target: '_blank' }]],
+    [showAnimation, streamAnimatedRehypePlugin]
+  );
 
   const urlTransform = useCallback((val: string) => {
     return val;
@@ -129,7 +141,7 @@ const MarkdownRender = ({
       ${showAnimation ? `${formatSource ? styles.waitingAnimation : styles.animation}` : ''}
     `}
           remarkPlugins={[RemarkMath, [RemarkGfm, { singleTilde: false }], RemarkBreaks]}
-          rehypePlugins={[RehypeKatex, [RehypeExternalLinks, { target: '_blank' }]]}
+          rehypePlugins={rehypePlugins as any}
           components={markdownComponents}
           urlTransform={urlTransform}
         >

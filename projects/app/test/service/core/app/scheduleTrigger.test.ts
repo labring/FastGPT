@@ -6,7 +6,10 @@ const mocks = vi.hoisted(() => ({
   appUpdateOne: vi.fn(),
   getAppLatestVersion: vi.fn(),
   dispatchWorkFlow: vi.fn(),
-  pushChatRecords: vi.fn(),
+  preChatRound: vi.fn(),
+  finalizeChatRound: vi.fn(),
+  failChatRound: vi.fn(),
+  updateChatGenerateStatus: vi.fn(),
   getRunningUserInfoByTmbId: vi.fn(),
   createChatUsageRecord: vi.fn(),
   getWorkflowEntryNodeIds: vi.fn(),
@@ -36,7 +39,16 @@ vi.mock('@fastgpt/service/core/app/version/controller', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/chat/saveChat', () => ({
-  pushChatRecords: mocks.pushChatRecords
+  finalizeChatRound: mocks.finalizeChatRound,
+  failChatRound: mocks.failChatRound
+}));
+
+vi.mock('@fastgpt/service/core/chat/utils/prepare', () => ({
+  preChatRound: mocks.preChatRound
+}));
+
+vi.mock('@fastgpt/service/core/chat/chatGenerateStatus', () => ({
+  updateChatGenerateStatus: mocks.updateChatGenerateStatus
 }));
 
 vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
@@ -103,22 +115,35 @@ describe('getScheduleTriggerApp', () => {
         totalPoints: 0
       }
     });
-    mocks.pushChatRecords.mockResolvedValue(undefined);
+    mocks.preChatRound.mockResolvedValue({
+      chatId: 'prepared-chat-id',
+      responseChatItemId: 'prepared-response-id',
+      shouldPersistChatRound: true,
+      shouldFinalizePreparedRound: true
+    });
+    mocks.finalizeChatRound.mockResolvedValue(undefined);
+    mocks.failChatRound.mockResolvedValue(undefined);
+    mocks.updateChatGenerateStatus.mockResolvedValue(undefined);
     mocks.getNextTimeByCronStringAndTimezone.mockReturnValue(new Date('2026-06-08T00:00:00.000Z'));
   });
 
   it('saves scheduled trigger AI content with the dispatch responseChatItemId', async () => {
     await getScheduleTriggerApp();
 
+    expect(mocks.preChatRound).toHaveBeenCalledTimes(1);
     expect(mocks.dispatchWorkFlow).toHaveBeenCalledTimes(1);
-    expect(mocks.pushChatRecords).toHaveBeenCalledTimes(1);
+    expect(mocks.finalizeChatRound).toHaveBeenCalledTimes(1);
 
     const dispatchInput = mocks.dispatchWorkFlow.mock.calls[0][0];
-    const saveInput = mocks.pushChatRecords.mock.calls[0][0];
+    const saveInput = mocks.finalizeChatRound.mock.calls[0][0];
 
+    expect(dispatchInput).toMatchObject({
+      chatId: 'prepared-chat-id',
+      responseChatItemId: 'prepared-response-id'
+    });
     expect(saveInput.aiContent).toMatchObject({
       obj: ChatRoleEnum.AI,
-      dataId: dispatchInput.responseChatItemId,
+      dataId: 'prepared-response-id',
       value: [{ text: { content: 'ok' } }],
       memories: { memory: 'value' },
       customFeedbacks: ['feedback-id']
@@ -131,6 +156,21 @@ describe('getScheduleTriggerApp', () => {
         errorCount: 0,
         totalPoints: 0
       }
+    });
+  });
+
+  it('marks the prepared scheduled trigger round as failed when workflow dispatch rejects', async () => {
+    const error = new Error('dispatch failed');
+    mocks.dispatchWorkFlow.mockRejectedValue(error);
+
+    await getScheduleTriggerApp();
+
+    expect(mocks.finalizeChatRound).not.toHaveBeenCalled();
+    expect(mocks.failChatRound).toHaveBeenCalledWith({
+      appId: 'app-id',
+      chatId: 'prepared-chat-id',
+      responseChatItemId: 'prepared-response-id',
+      error
     });
   });
 });

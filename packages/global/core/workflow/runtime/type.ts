@@ -187,7 +187,7 @@ export const DispatchNodeResponseSchema = z
     customOutputs: z.record(z.string(), z.any()).optional().meta({ description: '自定义输出' }),
     nodeInputs: z.record(z.string(), z.any()).optional().meta({ description: '节点输入' }),
     nodeOutputs: z.record(z.string(), z.any()).optional().meta({ description: '节点输出' }),
-    mergeSignId: z.string().optional().meta({ description: '合并签名 ID' }),
+    mergeSignId: z.string().optional().meta({ description: '旧版合并签名 ID', deprecated: true }),
     parentId: z.string().optional().meta({ description: '父节点响应实例 ID' }),
 
     // bill

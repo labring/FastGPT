@@ -4,6 +4,7 @@ import { TeamPermission } from '../permission/user/controller';
 import type { UserStatusEnum } from './constant';
 import { TeamMemberStatusEnum } from './team/constant';
 import { TeamTmbItemSchema } from './team/type';
+import type { FastGPTSemType } from '../marketing/type';
 
 export const UserTagsSchema = z.enum(['wecom']);
 export const UserTagsEnum = UserTagsSchema.enum;
@@ -26,9 +27,7 @@ export type UserModelSchema = {
   status: `${UserStatusEnum}`;
   lastLoginTmbId?: string;
   passwordUpdateTime?: Date;
-  fastgpt_sem?: {
-    keyword: string;
-  };
+  fastgpt_sem?: FastGPTSemType;
   contact?: string;
   tags: UserTagsType[];
   meta?: UserMetaType;

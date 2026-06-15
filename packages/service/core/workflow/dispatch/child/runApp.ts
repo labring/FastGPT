@@ -224,8 +224,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
         totalPoints: usagePoints,
         query: userChatInput,
         textOutput: text,
-        childResponseCount,
-        mergeSignId: props.node.nodeId
+        childResponseCount
       },
       [DispatchNodeResponseKeyEnum.toolResponse]: text,
       [DispatchNodeResponseKeyEnum.customFeedbacks]: customFeedbacks

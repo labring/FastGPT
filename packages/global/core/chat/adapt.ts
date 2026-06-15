@@ -191,6 +191,62 @@ export const mergeAssistantFieldMessages = (messages: ChatCompletionMessageParam
   return mergedMessages;
 };
 
+const isPureTextAiValue = (item: AIChatItemValueItemType) =>
+  !!item.text &&
+  !item.id &&
+  !item.planId &&
+  !item.reasoning &&
+  !item.tools &&
+  !item.skills &&
+  !item.interactive &&
+  !item.plan &&
+  !item.planStatus &&
+  !item.agentPlanUpdate &&
+  !item.agentAsk &&
+  !item.agentStopGate &&
+  !item.contextCheckpoint &&
+  !item.tool &&
+  !item.hideReason &&
+  !item.hideInUI;
+
+/**
+ * 规整 AI chat value。
+ *
+ * 运行期可能把普通回答拆成很多连续 text value，甚至连续追加空 text 占位。这里在适配层
+ * 归一化这些纯文本片段：非空纯文本连续时合并，纯空 text 占位直接丢弃；如果最终没有
+ * 任何可保存 value，再补一个空 text。带 reasoning、interactive、tool、plan 等语义字段
+ * 的 value 保持独立边界。
+ */
+export const normalizeAIChatValue = (values: AIChatItemValueItemType[]) => {
+  const result: AIChatItemValueItemType[] = [];
+
+  values.forEach((item) => {
+    if (!isPureTextAiValue(item)) {
+      result.push(item);
+      return;
+    }
+
+    const text = item.text?.content || '';
+    if (!text) return;
+
+    const lastItem = result[result.length - 1];
+    if (lastItem && isPureTextAiValue(lastItem)) {
+      lastItem.text!.content += text;
+      return;
+    }
+
+    result.push(item);
+  });
+
+  if (result.length === 0) {
+    result.push({
+      text: { content: '' }
+    });
+  }
+
+  return result;
+};
+
 /**
  * 将 FastGPT 内部 ChatItem 历史转换为 GPT request messages。
  *

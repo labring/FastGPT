@@ -134,8 +134,7 @@ export const dispatchLoop = async (props: Props): Promise<Response> => {
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints,
       loopInput: loopInputArray,
-      loopResult: outputValueArr,
-      mergeSignId: props.node.nodeId
+      loopResult: outputValueArr
     },
     [DispatchNodeResponseKeyEnum.customFeedbacks]:
       customFeedbacks.length > 0 ? customFeedbacks : undefined

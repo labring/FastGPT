@@ -8,7 +8,8 @@ import {
   chatValue2RuntimePrompt,
   runtimePrompt2ChatsValue,
   getSystemPrompt_ChatItemType,
-  mergeAssistantFieldMessages
+  mergeAssistantFieldMessages,
+  normalizeAIChatValue
 } from '@fastgpt/global/core/chat/adapt';
 import { ChatRoleEnum, ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
@@ -787,6 +788,57 @@ describe('mergeAssistantFieldMessages', () => {
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
         reasoning_content: 'reason 1reason 2reason 3',
         content: 'answer 1answer 2answer 3'
+      }
+    ]);
+  });
+});
+
+describe('normalizeAIChatValue', () => {
+  it('should merge plain text values and drop empty text placeholders when other values exist', () => {
+    expect(
+      normalizeAIChatValue([
+        { text: { content: '' } },
+        { text: { content: '' } },
+        { reasoning: { content: 'thinking' }, text: { content: '' } },
+        { text: { content: '' } },
+        { text: { content: 'Final' } },
+        { text: { content: ' answer' } },
+        { text: { content: '' } },
+        { text: { content: '' } }
+      ])
+    ).toEqual([
+      { reasoning: { content: 'thinking' }, text: { content: '' } },
+      { text: { content: 'Final answer' } }
+    ]);
+  });
+
+  it('should keep one empty text value when all values are empty', () => {
+    expect(normalizeAIChatValue([])).toEqual([{ text: { content: '' } }]);
+    expect(normalizeAIChatValue([{ text: { content: '' } }, { text: { content: '' } }])).toEqual([
+      { text: { content: '' } }
+    ]);
+  });
+
+  it('should preserve reasoning boundaries for consecutive AI chat nodes', () => {
+    expect(
+      normalizeAIChatValue([
+        {
+          reasoning: { content: 'think 1' },
+          text: { content: 'answer 1' }
+        },
+        {
+          reasoning: { content: 'think 2' },
+          text: { content: 'answer 2' }
+        }
+      ])
+    ).toEqual([
+      {
+        reasoning: { content: 'think 1' },
+        text: { content: 'answer 1' }
+      },
+      {
+        reasoning: { content: 'think 2' },
+        text: { content: 'answer 2' }
       }
     ]);
   });

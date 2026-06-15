@@ -3,10 +3,7 @@ import { EventEmitter } from 'node:events';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import {
-  WorkflowQueue,
-  mergeAssistantResponseAnswerText
-} from '@fastgpt/service/core/workflow/dispatch/index';
+import { WorkflowQueue } from '@fastgpt/service/core/workflow/dispatch/index';
 import { getWorkflowNodeRunParams } from '@fastgpt/service/core/workflow/dispatch/utils/runtime';
 import { createClientAbortTracker } from '@fastgpt/service/core/workflow/dispatch/utils/clientAbort';
 import { createNode, createEdge } from '../utils';
@@ -39,41 +36,6 @@ const waitWithTimeout = async <T>(promise: Promise<T>, timeoutMs: number, label:
     }
   }
 };
-
-describe('mergeAssistantResponseAnswerText', () => {
-  it('should merge consecutive plain text assistant values', () => {
-    expect(
-      mergeAssistantResponseAnswerText([
-        { text: { content: 'first' } },
-        { text: { content: ' second' } }
-      ])
-    ).toEqual([{ text: { content: 'first second' } }]);
-  });
-
-  it('should preserve reasoning boundaries for consecutive AI chat nodes', () => {
-    expect(
-      mergeAssistantResponseAnswerText([
-        {
-          reasoning: { content: 'think 1' },
-          text: { content: 'answer 1' }
-        },
-        {
-          reasoning: { content: 'think 2' },
-          text: { content: 'answer 2' }
-        }
-      ])
-    ).toEqual([
-      {
-        reasoning: { content: 'think 1' },
-        text: { content: 'answer 1' }
-      },
-      {
-        reasoning: { content: 'think 2' },
-        text: { content: 'answer 2' }
-      }
-    ]);
-  });
-});
 
 describe('createClientAbortTracker', () => {
   const mockRes = (overrides: Record<string, any> = {}) => {

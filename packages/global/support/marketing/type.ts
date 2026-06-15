@@ -7,14 +7,18 @@ export const ShortUrlSchema = z.object({
 });
 export type ShortUrlParams = z.infer<typeof ShortUrlSchema>;
 
+export const FastGPT_SEM_Schema = ShortUrlSchema.extend({
+  keyword: z.string().optional(),
+  search: z.string().optional(),
+  source: z.string().optional(),
+  sourceDomain: z.string().optional()
+});
+export type FastGPTSemType = z.infer<typeof FastGPT_SEM_Schema>;
+
 export const TrackRegisterParamsSchema = z.object({
   inviterId: z.string().optional(),
   bd_vid: z.string().optional(),
   msclkid: z.string().optional(),
-  fastgpt_sem: ShortUrlSchema.extend({
-    keyword: z.string().optional(),
-    search: z.string().optional()
-  }).optional(),
-  sourceDomain: z.string().optional()
+  fastgpt_sem: FastGPT_SEM_Schema.optional()
 });
 export type TrackRegisterParams = z.infer<typeof TrackRegisterParamsSchema>;

@@ -65,15 +65,20 @@ export const shouldShowChatScrollToBottomButton = ({
   scrollTop,
   clientHeight,
   scrollHeight,
+  userHasLeftBottom = true,
   threshold = CHAT_SCROLL_TO_BOTTOM_BUTTON_DISTANCE_THRESHOLD
 }: {
   scrollTop: number;
   clientHeight: number;
   scrollHeight: number;
+  userHasLeftBottom?: boolean;
   threshold?: number;
-}) =>
-  getChatScrollBottomDistance({
+}) => {
+  const bottomDistance = getChatScrollBottomDistance({
     scrollTop,
     clientHeight,
     scrollHeight
-  }) > threshold;
+  });
+
+  return userHasLeftBottom && bottomDistance > threshold;
+};

@@ -1,7 +1,8 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatHistoryItemResType, ChatItemMiniType } from '@fastgpt/global/core/chat/type';
-import { getChildrenResponses, hasContextCheckpoint } from '@fastgpt/global/core/chat/utils';
+import { hasContextCheckpoint } from '@fastgpt/global/core/chat/utils';
+import { getChildrenResponses } from '@fastgpt/global/core/chat/utils/mergeNode';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { DispatchFlowResponse, RuntimeNodeResponseSummary } from '../type';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';

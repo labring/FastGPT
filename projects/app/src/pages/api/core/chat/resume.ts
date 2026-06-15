@@ -8,7 +8,6 @@ import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 import {
-  DispatchNodeResponseKeyEnum,
   StreamResumeCompletedEvent,
   StreamResumePhaseEnum,
   StreamResumePhaseEvent,
@@ -22,7 +21,10 @@ import {
 } from '@fastgpt/service/core/chat/resume';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { addPreviewUrlToChatItems } from '@fastgpt/service/core/chat/utils';
-import { transformPreviewHistories } from '@/global/core/chat/utils';
+import {
+  chatItemResponsePreviewProjection,
+  transformPreviewHistories
+} from '@/global/core/chat/utils';
 import { delay } from '@fastgpt/global/common/system/utils';
 
 const completedChatPageSize = 10;
@@ -123,8 +125,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const result = await getChatItems({
       appId,
       chatId,
-      field: `obj value adminFeedback userGoodFeedback userBadFeedback time hideInUI durationSeconds errorMsg ${DispatchNodeResponseKeyEnum.nodeResponse} customFeedbacks isFeedbackRead deleteTime`,
-      limit: completedChatPageSize
+      field:
+        'obj value adminFeedback userGoodFeedback userBadFeedback time hideInUI durationSeconds errorMsg customFeedbacks isFeedbackRead deleteTime',
+      limit: completedChatPageSize,
+      nodeResponseMode: 'preview',
+      nodeResponsePreviewProjection: chatItemResponsePreviewProjection
     });
 
     await addPreviewUrlToChatItems(result.histories, 'chatFlow');

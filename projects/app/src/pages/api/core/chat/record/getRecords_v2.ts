@@ -1,7 +1,9 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { transformPreviewHistories } from '@/global/core/chat/utils';
+import {
+  chatItemResponsePreviewProjection,
+  transformPreviewHistories
+} from '@/global/core/chat/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
@@ -58,7 +60,8 @@ async function handler(req: ApiRequestProps): Promise<GetRecordsV2ResponseType> 
   const isPlugin = app.type === AppTypeEnum.workflowTool;
   const isOutLink = authType === GetChatTypeEnum.outLink;
 
-  const commonField = `obj value adminFeedback userGoodFeedback userBadFeedback time hideInUI durationSeconds errorMsg ${DispatchNodeResponseKeyEnum.nodeResponse}`;
+  const commonField =
+    'obj value adminFeedback userGoodFeedback userBadFeedback time hideInUI durationSeconds errorMsg';
   const fieldMap = {
     [GetChatTypeEnum.normal]: `${commonField} ${loadCustomFeedbacks ? 'customFeedbacks isFeedbackRead deleteTime' : ''}`,
     [GetChatTypeEnum.outLink]: commonField,
@@ -74,7 +77,9 @@ async function handler(req: ApiRequestProps): Promise<GetRecordsV2ResponseType> 
     limit: pageSize,
     initialId,
     prevId,
-    nextId
+    nextId,
+    nodeResponseMode: isPlugin ? 'full' : 'preview',
+    nodeResponsePreviewProjection: chatItemResponsePreviewProjection
   });
 
   // Presign file urls

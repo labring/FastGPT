@@ -20,6 +20,21 @@ import { Call } from '@test/utils/request';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getEditDebugSandboxId } from '@fastgpt/service/core/ai/skill/edit/config';
+import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+
+const debugChatMocks = vi.hoisted(() => ({
+  dispatchWorkFlow: vi.fn(),
+  preChatRound: vi.fn(),
+  finalizeChatRound: vi.fn(),
+  failChatRound: vi.fn(),
+  updateInteractiveChat: vi.fn(),
+  updateChatGenerateStatus: vi.fn(),
+  getRunningUserInfoByTmbId: vi.fn(),
+  responseWrite: vi.fn(),
+  flushResume: vi.fn(),
+  writeStreamError: vi.fn(),
+  createWorkflowStreamResponseContext: vi.fn()
+}));
 
 vi.mock('@fastgpt/service/env', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@fastgpt/service/env')>();
@@ -38,6 +53,32 @@ vi.mock('@fastgpt/service/env', async (importOriginal) => {
     }
   };
 });
+
+vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
+  dispatchWorkFlow: debugChatMocks.dispatchWorkFlow
+}));
+
+vi.mock('@fastgpt/service/core/chat/utils/prepare', () => ({
+  preChatRound: debugChatMocks.preChatRound
+}));
+
+vi.mock('@fastgpt/service/core/chat/saveChat', () => ({
+  finalizeChatRound: debugChatMocks.finalizeChatRound,
+  failChatRound: debugChatMocks.failChatRound,
+  updateInteractiveChat: debugChatMocks.updateInteractiveChat
+}));
+
+vi.mock('@fastgpt/service/core/chat/chatGenerateStatus', () => ({
+  updateChatGenerateStatus: debugChatMocks.updateChatGenerateStatus
+}));
+
+vi.mock('@fastgpt/service/support/user/team/utils', () => ({
+  getRunningUserInfoByTmbId: debugChatMocks.getRunningUserInfoByTmbId
+}));
+
+vi.mock('@/service/core/workflow/streamResponseContext', () => ({
+  createWorkflowStreamResponseContext: debugChatMocks.createWorkflowStreamResponseContext
+}));
 
 // ── Constants mirrored from the implementation ──
 const START_NODE_ID = 'skill-debug-start';
@@ -244,6 +285,36 @@ describe('debugChat handler — parameter validation', () => {
   beforeEach(async () => {
     testUser = await getUser(`debug-chat-user-${getNanoid(6)}`);
     vi.clearAllMocks();
+    debugChatMocks.preChatRound.mockResolvedValue({
+      chatId: 'prepared-debug-chat-id',
+      responseChatItemId: 'prepared-debug-response-id',
+      shouldPersistChatRound: true,
+      shouldFinalizePreparedRound: true
+    });
+    debugChatMocks.createWorkflowStreamResponseContext.mockResolvedValue({
+      responseWrite: debugChatMocks.responseWrite,
+      flushResume: debugChatMocks.flushResume,
+      writeStreamError: debugChatMocks.writeStreamError
+    });
+    debugChatMocks.dispatchWorkFlow.mockResolvedValue({
+      assistantResponses: [{ text: { content: 'debug answer' } }],
+      system_memories: { memory: 'value' },
+      durationSeconds: 1.2,
+      customFeedbacks: ['feedback-id'],
+      nodeResponseSummary: {
+        citeCollectionIds: [],
+        errorCount: 0,
+        totalPoints: 0
+      }
+    });
+    debugChatMocks.finalizeChatRound.mockResolvedValue(undefined);
+    debugChatMocks.failChatRound.mockResolvedValue(undefined);
+    debugChatMocks.updateInteractiveChat.mockResolvedValue(undefined);
+    debugChatMocks.updateChatGenerateStatus.mockResolvedValue(undefined);
+    debugChatMocks.getRunningUserInfoByTmbId.mockResolvedValue({
+      teamId: testUser.teamId,
+      tmbId: testUser.tmbId
+    });
 
     const skill = await MongoAgentSkills.create({
       name: 'Test Debug Skill',
@@ -287,6 +358,7 @@ describe('debugChat handler — parameter validation', () => {
   it('should call sseErrRes when messages array is empty', async () => {
     await Call(debugChatApi.default, {
       auth: testUser,
+      cookies: {},
       body: {
         skillId,
         chatId: getNanoid(),
@@ -303,6 +375,10 @@ describe('debugChat handler — parameter validation', () => {
   it('should call sseErrRes when edit-debug sandbox does not exist', async () => {
     await Call(debugChatApi.default, {
       auth: testUser,
+      cookies: {},
+      headers: {
+        origin: 'http://test.local'
+      },
       body: {
         skillId,
         chatId: getNanoid(),
@@ -338,6 +414,10 @@ describe('debugChat handler — parameter validation', () => {
 
     await Call(debugChatApi.default, {
       auth: testUser,
+      cookies: {},
+      headers: {
+        origin: 'http://test.local'
+      },
       body: {
         skillId,
         chatId: getNanoid(),
@@ -351,5 +431,73 @@ describe('debugChat handler — parameter validation', () => {
     const calls = getSseErrResMock().mock.calls;
     const hasSandboxError = calls.some(([, err]) => /sandbox/i.test(err?.message ?? ''));
     expect(hasSandboxError).toBe(false);
+  });
+
+  it('should prepare and finalize a skill debug chat round with prepared ids', async () => {
+    await MongoSandboxInstance.create({
+      provider: 'opensandbox',
+      sandboxId: getEditDebugSandboxId(skillId),
+      appId: skillId,
+      chatId: 'edit-debug',
+      userId: testUser.tmbId,
+      type: SandboxTypeEnum.editDebug,
+      status: 'running',
+      metadata: {
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        skillId,
+        provider: 'opensandbox',
+        image: { repository: 'test-image', tag: 'latest' },
+        providerCreatedAt: new Date()
+      }
+    });
+
+    await Call(debugChatApi.default, {
+      auth: testUser,
+      cookies: {},
+      headers: {
+        origin: 'http://test.local'
+      },
+      body: {
+        skillId,
+        chatId: 'debug-chat-id',
+        responseChatItemId: 'client-response-id',
+        model: 'gpt-4o',
+        messages: [{ role: 'user', content: 'hi' }]
+      }
+    });
+
+    expect(debugChatMocks.preChatRound).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appId: skillId,
+        chatId: 'debug-chat-id',
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        source: ChatSourceEnum.test,
+        responseChatItemId: 'client-response-id',
+        userContent: expect.objectContaining({
+          obj: ChatRoleEnum.Human
+        })
+      })
+    );
+    expect(debugChatMocks.dispatchWorkFlow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chatId: 'prepared-debug-chat-id',
+        responseChatItemId: 'prepared-debug-response-id'
+      })
+    );
+    expect(debugChatMocks.finalizeChatRound).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chatId: 'prepared-debug-chat-id',
+        appId: skillId,
+        source: ChatSourceEnum.test,
+        aiContent: expect.objectContaining({
+          dataId: 'prepared-debug-response-id',
+          value: [{ text: { content: 'debug answer' } }],
+          memories: { memory: 'value' },
+          customFeedbacks: ['feedback-id']
+        })
+      })
+    );
   });
 });

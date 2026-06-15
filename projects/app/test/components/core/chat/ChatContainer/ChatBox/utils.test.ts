@@ -11,6 +11,7 @@ import {
   shouldReplaceResumeAiValue,
   shouldResetResumeAiPlaceholder
 } from '@/components/core/chat/ChatContainer/ChatBox/utils/resume';
+import { shouldShowChatItemInlineError } from '@/components/core/chat/ChatContainer/ChatBox/utils/error';
 
 describe('stripChatValueFileUrls', () => {
   it('removes signed urls from keyed files before sending messages', () => {
@@ -60,6 +61,48 @@ describe('stripChatValueFileUrls', () => {
       }
     ]);
     expect(value[0].file.url).toBe('https://preview.example.com/image.png');
+  });
+});
+
+describe('shouldShowChatItemInlineError', () => {
+  it('hides inline error for the last item while chatting', () => {
+    expect(
+      shouldShowChatItemInlineError({
+        hasInlineError: true,
+        isChatting: true,
+        isLastChild: true
+      })
+    ).toBe(false);
+  });
+
+  it('shows inline error after chatting completes', () => {
+    expect(
+      shouldShowChatItemInlineError({
+        hasInlineError: true,
+        isChatting: false,
+        isLastChild: true
+      })
+    ).toBe(true);
+  });
+
+  it('keeps historical item errors visible while a later message is chatting', () => {
+    expect(
+      shouldShowChatItemInlineError({
+        hasInlineError: true,
+        isChatting: true,
+        isLastChild: false
+      })
+    ).toBe(true);
+  });
+
+  it('does not show anything when there is no inline error', () => {
+    expect(
+      shouldShowChatItemInlineError({
+        hasInlineError: false,
+        isChatting: false,
+        isLastChild: true
+      })
+    ).toBe(false);
   });
 });
 

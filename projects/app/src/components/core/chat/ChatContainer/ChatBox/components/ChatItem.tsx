@@ -19,6 +19,7 @@ import AIChatBubble, { shouldFilterAiValue } from './AIChatBubble';
 import type { ChatBoxInputType } from '../type';
 import { hasAiAnswerContent } from './AIChatBubble/utils';
 import ChatErrorCard from './ChatErrorCard';
+import { shouldShowChatItemInlineError } from '../utils/error';
 
 const colorMap = {
   [ChatStatusEnum.loading]: {
@@ -92,6 +93,11 @@ const ChatItem = (props: Props) => {
       message: t(errorText?.errorText || chat.errorMsg || 'Unknow error')
     };
   }, [chat.errorMsg, chat.moduleName, errorText, t]);
+  const showInlineError = shouldShowChatItemInlineError({
+    hasInlineError: !!inlineErrorInfo,
+    isChatting,
+    isLastChild
+  });
 
   const isChatLog = chatType === 'log';
 
@@ -286,7 +292,7 @@ const ChatItem = (props: Props) => {
           i === splitAiResponseResults.length - 1 ? (
             <>
               {/* error message */}
-              {inlineErrorInfo && (
+              {showInlineError && inlineErrorInfo && (
                 <Box mt={4}>
                   <ChatErrorCard title={inlineErrorInfo.title} message={inlineErrorInfo.message} />
                 </Box>

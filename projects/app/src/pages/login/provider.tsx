@@ -15,7 +15,6 @@ import {
   getFastGPTSem,
   getInviterId,
   getMsclkid,
-  getSourceDomain,
   removeFastGPTSem
 } from '@/web/support/marketing/utils';
 import { postAcceptInvitationLink } from '@/web/support/user/team/api';
@@ -91,7 +90,6 @@ const provider = () => {
           bd_vid: getBdVId(),
           msclkid: getMsclkid(),
           fastgpt_sem: getFastGPTSem(),
-          sourceDomain: getSourceDomain(),
           language: i18n.language as LangEnum
         });
 

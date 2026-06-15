@@ -7,6 +7,7 @@ import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/
 export type WorkflowObservedStepResult = {
   node: RuntimeNodeItemType;
   runStatus: 'run';
+  nodeResponseId: string;
   result: {
     [DispatchNodeResponseKeyEnum.nodeResponse]?: ChatHistoryItemResType;
     error?: {

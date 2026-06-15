@@ -1,5 +1,6 @@
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
-import { filterNodeResponseTreeData, getChildrenResponses } from '@fastgpt/global/core/chat/utils';
+import { filterNodeResponseTreeData } from '@fastgpt/global/core/chat/utils';
+import { getChildrenResponses } from '@fastgpt/global/core/chat/utils/mergeNode';
 import { composeNodeResponseDetail } from '@fastgpt/service/core/chat/nodeResponseStorage';
 import type { WorkflowDebugResponse } from '@fastgpt/service/core/workflow/dispatch/type';
 

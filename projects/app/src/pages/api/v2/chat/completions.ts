@@ -20,9 +20,9 @@ import {
   type Props as SaveChatProps,
   failChatRound,
   finalizeChatRound,
-  prepareChatRound,
   updateInteractiveChat
 } from '@fastgpt/service/core/chat/saveChat';
+import { preChatRound, type PreChatRoundResult } from '@fastgpt/service/core/chat/utils/prepare';
 import { authOutLinkChatStart } from '@/service/support/permission/auth/outLink';
 import { recordAppUsage } from '@fastgpt/service/core/app/record/utils';
 import { pushResult2Remote, addOutLinkUsage } from '@fastgpt/service/support/outLink/tools';
@@ -62,21 +62,13 @@ import { getIpFromRequest } from '@fastgpt/service/common/geo';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import type { AuthResponseType } from '@fastgpt/global/openapi/core/chat/completion/api';
 import { CompletionsPropsSchema } from '@fastgpt/global/openapi/core/chat/completion/api';
-import {
-  tryStartGenerateChat,
-  updateChatGenerateStatus
-} from '@fastgpt/service/core/chat/chatGenerateStatus';
+import { updateChatGenerateStatus } from '@fastgpt/service/core/chat/chatGenerateStatus';
 import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { validateChatRoundDataIds } from '@fastgpt/service/core/chat/dataIdValidation';
 import {
   filterWorkflowFinalResponseData,
   getWorkflowFinalResponseData
 } from '@/service/core/workflow/nodeResponse';
-import {
-  getInteractiveResponseStatus,
-  resolveResponseChatItemId
-} from '@fastgpt/service/core/chat/interactiveResponseDataId';
 import {
   createWorkflowStreamResponseContext,
   type WorkflowStreamResponseContext
@@ -107,12 +99,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const originIp = getIpFromRequest(req);
 
   const startTime = Date.now();
-  let runningChatId: string | undefined;
-  let runningAppId: string | undefined;
   let streamResponseContext: WorkflowStreamResponseContext | undefined;
-  let finalResponseChatItemId = responseChatItemId || getNanoid(24);
-  let usePreparedRound = false;
-  let hasAcquiredGenerateSlot = false;
+  const roundState = {
+    preparedRound: undefined as PreChatRoundResult | undefined,
+    appId: undefined as string | undefined,
+    chatId: undefined as string | undefined,
+    responseChatItemId: responseChatItemId || getNanoid(24)
+  };
 
   try {
     if (!Array.isArray(messages)) {
@@ -251,18 +244,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Get chat histories
     const newHistories = concatHistories(histories, chatMessages);
     const interactive = getLastInteractiveValue(newHistories) || undefined;
-    const saveChatId = chatId || getNanoid(24);
-    const interactiveStatus = getInteractiveResponseStatus({
-      interactive,
-      userContent: userQuestion
-    });
-    finalResponseChatItemId = await resolveResponseChatItemId({
-      appId: String(app._id),
-      chatId: saveChatId,
-      responseChatItemId: finalResponseChatItemId,
-      interactive,
-      userContent: userQuestion
-    });
 
     // Get runtimeNodes
     let runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes, interactive));
@@ -273,14 +254,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       variables = {};
     }
     runtimeNodes = rewriteNodeOutputByHistories(runtimeNodes, interactive);
-
-    await validateChatRoundDataIds({
-      appId: String(app._id),
-      chatId: saveChatId,
-      userContent: userQuestion,
-      responseChatItemId:
-        !interactive || interactiveStatus === 'query' ? finalResponseChatItemId : undefined
-    });
 
     const source = (() => {
       if (shareId) {
@@ -295,40 +268,27 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return ChatSourceEnum.online;
     })();
 
-    runningChatId = saveChatId;
-    runningAppId = String(app._id);
-    usePreparedRound = !interactive;
-
-    const canStartGenerate = await tryStartGenerateChat({
-      appId: runningAppId,
-      chatId: runningChatId,
+    const preparedRound = await preChatRound({
+      appId: String(app._id),
+      chatId,
       teamId,
       tmbId: String(tmbId),
       source,
       sourceName: sourceName || '',
       shareId,
-      outLinkUid: outLinkUserId
+      outLinkUid: outLinkUserId,
+      userContent: userQuestion,
+      responseChatItemId: roundState.responseChatItemId,
+      interactive
     });
 
-    if (!canStartGenerate) {
-      throw ChatErrEnum.chatIsGenerating;
-    }
-    hasAcquiredGenerateSlot = true;
-
-    if (usePreparedRound) {
-      await prepareChatRound({
-        appId: runningAppId,
-        chatId: runningChatId,
-        teamId,
-        tmbId: String(tmbId),
-        source,
-        sourceName: sourceName || '',
-        shareId,
-        outLinkUid: outLinkUserId,
-        userContent: userQuestion,
-        responseChatItemId: finalResponseChatItemId
-      });
-    }
+    const saveChatId = preparedRound.chatId;
+    const finalResponseChatItemId = preparedRound.responseChatItemId;
+    const runningAppId = String(app._id);
+    roundState.preparedRound = preparedRound;
+    roundState.appId = runningAppId;
+    roundState.chatId = saveChatId;
+    roundState.responseChatItemId = finalResponseChatItemId;
 
     streamResponseContext = await createWorkflowStreamResponseContext({
       req,
@@ -337,8 +297,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       detail,
       teamId,
       appId: runningAppId,
-      chatId: runningChatId,
-      responseId: chatId,
+      chatId: saveChatId,
+      responseId: saveChatId,
       showNodeStatus: showRunningStatus
     });
     const shouldCollectFinalResponseData = (!stream && detail) || !!shareId;
@@ -389,7 +349,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           responseAllData,
           responseDetail: showCite,
           nodeResponseWriteConfig: {
-            persistToDb: true,
+            persistToDb: preparedRound.shouldPersistChatRound,
             retainInMemory: shouldCollectFinalResponseData
           }
         });
@@ -412,7 +372,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     const params: SaveChatProps = {
       chatId: saveChatId,
-      appId: app._id,
+      appId: String(app._id),
       versionId,
       teamId,
       tmbId: tmbId,
@@ -434,15 +394,19 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       durationSeconds
     };
     if (interactive) {
-      await updateInteractiveChat({ interactive, ...params });
-    } else {
+      await updateInteractiveChat({
+        interactive,
+        shouldFinalizePreparedRound: preparedRound.shouldFinalizePreparedRound,
+        ...params
+      });
+    } else if (preparedRound.shouldFinalizePreparedRound) {
       await finalizeChatRound(params);
     }
 
-    if (interactive) {
+    if (!preparedRound.shouldFinalizePreparedRound && preparedRound.shouldPersistChatRound) {
       await updateChatGenerateStatus({
         appId: runningAppId,
-        chatId: runningChatId,
+        chatId: saveChatId,
         status: ChatGenerateStatusEnum.done
       });
     }
@@ -523,7 +487,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       res.json({
         ...(detail ? { responseData: feResponseData, newVariables } : {}),
         error: finalError,
-        id: chatId || '',
+        id: saveChatId,
         model: '',
         usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 1 },
         choices: [
@@ -567,18 +531,19 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
     }
   } catch (err) {
-    if (hasAcquiredGenerateSlot && runningAppId && runningChatId) {
-      if (usePreparedRound) {
+    const { preparedRound } = roundState;
+    if (preparedRound?.shouldPersistChatRound && roundState.appId && roundState.chatId) {
+      if (preparedRound.shouldFinalizePreparedRound) {
         await failChatRound({
-          appId: runningAppId,
-          chatId: runningChatId,
-          responseChatItemId: finalResponseChatItemId,
+          appId: roundState.appId,
+          chatId: roundState.chatId,
+          responseChatItemId: roundState.responseChatItemId,
           error: err
         });
       } else {
         await updateChatGenerateStatus({
-          appId: runningAppId,
-          chatId: runningChatId,
+          appId: roundState.appId,
+          chatId: roundState.chatId,
           status: ChatGenerateStatusEnum.error
         });
       }

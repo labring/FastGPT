@@ -323,6 +323,71 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     });
   });
 
+  it('keeps child nodeResponseId only inside childrenResponse when a tool call pauses', async () => {
+    const onRunTool = vi.fn(async () => ({
+      response: 'waiting for user selection',
+      assistantMessages: [],
+      usages: [],
+      interactive: {
+        type: 'userSelect',
+        nodeResponseId: 'child_select_response',
+        entryNodeIds: ['select_node'],
+        memoryEdges: [],
+        nodeOutputs: [],
+        params: {
+          description: 'Choose one',
+          userSelectOptions: []
+        }
+      }
+    }));
+
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      toolCall({
+        id: 'call_search',
+        name: 'search',
+        args: {
+          q: 'FastGPT'
+        }
+      }),
+      text({ requestId: 'req_should_not_be_used', content: 'unused' })
+    ]);
+
+    const result = await runAgentLoop({
+      maxRunAgentTimes: 5,
+      body: {
+        model: 'gpt-4',
+        stream: true,
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'search FastGPT'
+          }
+        ],
+        tools: [searchTool]
+      },
+      usagePush: vi.fn(),
+      isAborted: () => false,
+      onRunTool,
+      onRunInteractiveTool: vi.fn()
+    });
+
+    expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
+    expect(result.interactiveResponse).toEqual(
+      expect.objectContaining({
+        type: 'toolChildrenInteractive',
+        params: expect.objectContaining({
+          childrenResponse: expect.objectContaining({
+            nodeResponseId: 'child_select_response'
+          }),
+          toolParams: expect.objectContaining({
+            toolCallId: 'call_search'
+          })
+        })
+      })
+    );
+    expect(result.interactiveResponse?.nodeResponseId).toBeUndefined();
+  });
+
   it('feeds the compressed tool response into the next LLM request', async () => {
     compressToolResponseMock.mockImplementation(async ({ response }) => ({
       compressed: `compressed:${response}`

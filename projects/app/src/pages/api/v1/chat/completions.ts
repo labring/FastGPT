@@ -18,9 +18,11 @@ import { GPTMessages2Chats, chatValue2RuntimePrompt } from '@fastgpt/global/core
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import {
   type Props as SaveChatProps,
-  pushChatRecords,
+  failChatRound,
+  finalizeChatRound,
   updateInteractiveChat
 } from '@fastgpt/service/core/chat/saveChat';
+import { preChatRound, type PreChatRoundResult } from '@fastgpt/service/core/chat/utils/prepare';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { authOutLinkChatStart } from '@/service/support/permission/auth/outLink';
 import { recordAppUsage } from '@fastgpt/service/core/app/record/utils';
@@ -63,15 +65,12 @@ import { LimitTypeEnum, teamFrequencyLimit } from '@fastgpt/service/common/api/f
 import { getIpFromRequest } from '@fastgpt/service/common/geo';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { validateChatRoundDataIds } from '@fastgpt/service/core/chat/dataIdValidation';
+import { updateChatGenerateStatus } from '@fastgpt/service/core/chat/chatGenerateStatus';
+import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 import {
   filterWorkflowFinalResponseData,
   getWorkflowFinalResponseData
 } from '@/service/core/workflow/nodeResponse';
-import {
-  getInteractiveResponseStatus,
-  resolveResponseChatItemId
-} from '@fastgpt/service/core/chat/interactiveResponseDataId';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
@@ -98,6 +97,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   const startTime = Date.now();
   const originIp = getIpFromRequest(req);
+  const roundState = {
+    preparedRound: undefined as PreChatRoundResult | undefined,
+    appId: undefined as string | undefined,
+    chatId: undefined as string | undefined,
+    responseChatItemId
+  };
 
   try {
     if (!Array.isArray(messages)) {
@@ -247,26 +252,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
     runtimeNodes = rewriteNodeOutputByHistories(runtimeNodes, interactive);
 
-    const saveChatId = chatId || getNanoid(24);
-    const interactiveStatus = getInteractiveResponseStatus({
-      interactive,
-      userContent: userQuestion
-    });
-    const finalResponseChatItemId = await resolveResponseChatItemId({
-      appId: String(app._id),
-      chatId: saveChatId,
-      responseChatItemId,
-      interactive,
-      userContent: userQuestion
-    });
-    await validateChatRoundDataIds({
-      appId: String(app._id),
-      chatId: saveChatId,
-      userContent: userQuestion,
-      responseChatItemId:
-        !interactive || interactiveStatus === 'query' ? finalResponseChatItemId : undefined
-    });
-
     const source = (() => {
       if (shareId) {
         return ChatSourceEnum.share;
@@ -280,11 +265,32 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return ChatSourceEnum.online;
     })();
 
+    const preparedRound = await preChatRound({
+      appId: String(app._id),
+      chatId,
+      teamId,
+      tmbId: String(tmbId),
+      source,
+      sourceName: sourceName || '',
+      shareId,
+      outLinkUid: outLinkUserId,
+      userContent: userQuestion,
+      responseChatItemId: roundState.responseChatItemId,
+      interactive
+    });
+    const saveChatId = preparedRound.chatId;
+    const finalResponseChatItemId = preparedRound.responseChatItemId;
+    const runningAppId = String(app._id);
+    roundState.preparedRound = preparedRound;
+    roundState.appId = runningAppId;
+    roundState.chatId = saveChatId;
+    roundState.responseChatItemId = finalResponseChatItemId;
+
     const workflowResponseWrite = getWorkflowResponseWrite({
       res,
       detail,
       streamResponse: stream,
-      id: chatId,
+      id: saveChatId,
       showNodeStatus: showRunningStatus
     });
     const shouldCollectFinalResponseData = detail || !!shareId;
@@ -334,7 +340,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
           workflowStreamResponse: workflowResponseWrite,
           nodeResponseWriteConfig: {
-            persistToDb: true,
+            persistToDb: preparedRound.shouldPersistChatRound,
             retainInMemory: shouldCollectFinalResponseData
           }
         });
@@ -357,7 +363,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     const params: SaveChatProps = {
       chatId: saveChatId,
-      appId: app._id,
+      appId: String(app._id),
       versionId,
       teamId,
       tmbId: tmbId,
@@ -379,9 +385,21 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       nodeResponseSummary
     };
     if (interactive) {
-      await updateInteractiveChat({ interactive, ...params });
-    } else {
-      await pushChatRecords(params);
+      await updateInteractiveChat({
+        interactive,
+        shouldFinalizePreparedRound: preparedRound.shouldFinalizePreparedRound,
+        ...params
+      });
+    } else if (preparedRound.shouldFinalizePreparedRound) {
+      await finalizeChatRound(params);
+    }
+
+    if (!preparedRound.shouldFinalizePreparedRound && preparedRound.shouldPersistChatRound) {
+      await updateChatGenerateStatus({
+        appId: runningAppId,
+        chatId: saveChatId,
+        status: ChatGenerateStatusEnum.done
+      });
     }
 
     const isOwnerUse = !shareId && !spaceTeamId && String(tmbId) === String(app.tmbId);
@@ -535,6 +553,23 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
     }
   } catch (err) {
+    const { preparedRound } = roundState;
+    if (preparedRound?.shouldPersistChatRound && roundState.appId && roundState.chatId) {
+      if (preparedRound.shouldFinalizePreparedRound) {
+        await failChatRound({
+          appId: roundState.appId,
+          chatId: roundState.chatId,
+          responseChatItemId: roundState.responseChatItemId,
+          error: err
+        });
+      } else {
+        await updateChatGenerateStatus({
+          appId: roundState.appId,
+          chatId: roundState.chatId,
+          status: ChatGenerateStatusEnum.error
+        });
+      }
+    }
     if (stream) {
       sseErrRes(res, err);
       res.end();

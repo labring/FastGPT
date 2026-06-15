@@ -31,7 +31,12 @@ import {
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { getChatTitleFromChatMessage, removeEmptyUserInput } from '@fastgpt/global/core/chat/utils';
-import { pushChatRecords } from '@fastgpt/service/core/chat/saveChat';
+import {
+  failChatRound,
+  finalizeChatRound,
+  type Props as SaveChatProps
+} from '@fastgpt/service/core/chat/saveChat';
+import { preChatRound } from '@fastgpt/service/core/chat/utils/prepare';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
 import { getRuntimeNodeResponseSummary } from '@fastgpt/service/core/workflow/dispatch/utils';
@@ -218,85 +223,109 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
 
     const chatId = getNanoid();
     const responseChatItemId = getNanoid(24);
-
-    const {
-      assistantResponses,
-      newVariables,
-      durationSeconds,
-      system_memories,
-      nodeResponseSummary,
-      runtimeNodeResponseSummary
-    } = await dispatchWorkFlow({
+    const preparedRound = await preChatRound({
       chatId,
-      mode: 'chat',
-      usageSource: UsageSourceEnum.mcp,
-      runningAppInfo: {
-        id: String(app._id),
-        name: app.name,
-        teamId: String(app.teamId),
-        tmbId: String(app.tmbId)
-      },
-      runningUserInfo: await getRunningUserInfoByTmbId(app.tmbId),
-      uid: String(app.tmbId),
-      runtimeNodes,
-      runtimeEdges: storeEdges2RuntimeEdges(edges),
-      variables,
-      responseChatItemId,
-      query: removeEmptyUserInput(userQuestion.value),
-      chatConfig,
-      histories: [],
-      stream: false,
-      maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
-      nodeResponseWriteConfig: {
-        persistToDb: true,
-        retainInMemory: false
-      }
-    });
-
-    // Save chat
-    const aiResponse: AIChatItemType & { dataId?: string } = {
-      dataId: responseChatItemId,
-      obj: ChatRoleEnum.AI,
-      value: assistantResponses,
-      memories: system_memories
-    };
-    const newTitle = isPlugin ? 'Mcp call' : getChatTitleFromChatMessage(userQuestion);
-    await pushChatRecords({
-      chatId,
-      appId: app._id,
-      versionId,
-      teamId: app.teamId,
-      tmbId: app.tmbId,
-      nodes,
-      appChatConfig: chatConfig,
-      variables: newVariables,
-      newTitle,
+      appId: String(app._id),
+      teamId: String(app.teamId),
+      tmbId: String(app.tmbId),
       source: ChatSourceEnum.mcp,
       userContent: userQuestion,
-      aiContent: aiResponse,
-      durationSeconds,
-      nodeResponseSummary
+      responseChatItemId
     });
+    let chatRoundFinalized = false;
 
-    // Get MCP response type
-    let responseContent = (() => {
-      if (isPlugin) {
-        const { pluginOutput } = getRuntimeNodeResponseSummary({
-          runtimeNodeResponseSummary
+    try {
+      const {
+        assistantResponses,
+        newVariables,
+        durationSeconds,
+        system_memories,
+        nodeResponseSummary,
+        runtimeNodeResponseSummary
+      } = await dispatchWorkFlow({
+        chatId: preparedRound.chatId,
+        mode: 'chat',
+        usageSource: UsageSourceEnum.mcp,
+        runningAppInfo: {
+          id: String(app._id),
+          name: app.name,
+          teamId: String(app.teamId),
+          tmbId: String(app.tmbId)
+        },
+        runningUserInfo: await getRunningUserInfoByTmbId(app.tmbId),
+        uid: String(app.tmbId),
+        runtimeNodes,
+        runtimeEdges: storeEdges2RuntimeEdges(edges),
+        variables,
+        responseChatItemId: preparedRound.responseChatItemId,
+        query: removeEmptyUserInput(userQuestion.value),
+        chatConfig,
+        histories: [],
+        stream: false,
+        maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
+        nodeResponseWriteConfig: {
+          persistToDb: true,
+          retainInMemory: false
+        }
+      });
+
+      // Save chat
+      const aiResponse: AIChatItemType & { dataId?: string } = {
+        dataId: preparedRound.responseChatItemId,
+        obj: ChatRoleEnum.AI,
+        value: assistantResponses,
+        memories: system_memories
+      };
+      const newTitle = isPlugin ? 'Mcp call' : getChatTitleFromChatMessage(userQuestion);
+      const saveParams: SaveChatProps = {
+        chatId: preparedRound.chatId,
+        appId: String(app._id),
+        versionId,
+        teamId: String(app.teamId),
+        tmbId: String(app.tmbId),
+        nodes,
+        appChatConfig: chatConfig,
+        variables: newVariables,
+        newTitle,
+        source: ChatSourceEnum.mcp,
+        userContent: userQuestion,
+        aiContent: aiResponse,
+        durationSeconds,
+        nodeResponseSummary
+      };
+      await finalizeChatRound(saveParams);
+      chatRoundFinalized = true;
+
+      // Get MCP response type
+      let responseContent = (() => {
+        if (isPlugin) {
+          const { pluginOutput } = getRuntimeNodeResponseSummary({
+            runtimeNodeResponseSummary
+          });
+          return stringifyMcpPluginOutput(pluginOutput);
+        }
+
+        return assistantResponses
+          .map((item) => item?.text?.content)
+          .filter(Boolean)
+          .join('\n');
+      })();
+
+      // Format response content
+      responseContent = removeDatasetCiteText(responseContent.trim(), false);
+
+      return responseContent;
+    } catch (error) {
+      if (!chatRoundFinalized && preparedRound.shouldPersistChatRound) {
+        await failChatRound({
+          appId: String(app._id),
+          chatId: preparedRound.chatId,
+          responseChatItemId: preparedRound.responseChatItemId,
+          error
         });
-        return stringifyMcpPluginOutput(pluginOutput);
       }
-
-      return assistantResponses
-        .map((item) => item?.text?.content)
-        .filter(Boolean)
-        .join('\n');
-    })();
-
-    // Format response content
-    responseContent = removeDatasetCiteText(responseContent.trim(), false);
-
-    return responseContent;
+      throw error;
+    }
   };
 
   const mcp = await MongoMcpKey.findOne({ key }, { apps: 1 }).lean();

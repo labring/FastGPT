@@ -2,6 +2,15 @@ import { ChatTypeEnum } from '../constants';
 import type { ChatSiteItemType } from '../type';
 
 /**
+ * 生成聊天记录列表使用的 React key。
+ *
+ * 同一轮交互下 human/AI 消息可能复用 `dataId`，列表 key 需要带上 `obj` 才能避免
+ * React 把不同角色的消息当成同一个元素复用。
+ */
+export const getChatItemRenderKey = (item: Pick<ChatSiteItemType, 'obj' | 'dataId'>) =>
+  `${item.obj}-${item.dataId}`;
+
+/**
  * 为 log 模式的连续删除消息补充折叠元信息。
  *
  * 输入输出约定：

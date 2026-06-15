@@ -236,7 +236,6 @@ describe('runWorkflow node response persistence', () => {
       })
     ];
     const nodeResponseWriter = await createWorkflowNodeResponseWriter({
-      mode: 'replace',
       teamId: '654a4107c32f3bf5f998452f',
       appId,
       chatId,
@@ -427,7 +426,6 @@ describe('runWorkflow node response persistence', () => {
         tmbId: '65ab7007462ada7dbb899948'
       };
       const nodeResponseWriter = await createWorkflowNodeResponseWriter({
-        mode: 'replace',
         teamId: runningAppInfo.teamId,
         appId,
         chatId,
@@ -505,12 +503,224 @@ describe('runWorkflow node response persistence', () => {
     }
   });
 
+  it('returns the runtime node response id when workflow pauses on an interactive node', async () => {
+    const appId = '67e0d5535c02d1d5cdede723';
+    const chatId = 'workflow-interactive-node-response-chat';
+    const responseChatItemId = 'workflow-interactive-node-response-ai-item';
+    const runningAppInfo = {
+      id: appId,
+      name: 'Workflow Interactive App',
+      teamId: '654a4107c32f3bf5f998452f',
+      tmbId: '65ab7007462ada7dbb899948'
+    };
+    const runtimeNodes: RuntimeNodeItemType[] = [
+      makeNode('select_node', FlowNodeTypeEnum.userSelect, {
+        isEntry: true,
+        inputs: [
+          makeInput({
+            key: NodeInputKeyEnum.description,
+            value: 'Choose one',
+            valueType: WorkflowIOValueTypeEnum.string
+          }),
+          makeInput({
+            key: NodeInputKeyEnum.userSelectOptions,
+            value: [
+              {
+                key: 'a',
+                value: 'A'
+              }
+            ],
+            valueType: WorkflowIOValueTypeEnum.arrayObject
+          })
+        ]
+      })
+    ];
+    const nodeResponseWriter = await createWorkflowNodeResponseWriter({
+      teamId: runningAppInfo.teamId,
+      appId,
+      chatId,
+      chatItemDataId: responseChatItemId
+    });
+
+    const result = await runWorkflow({
+      apiVersion: 'v2',
+      mode: 'chat',
+      chatId,
+      responseChatItemId,
+      runningAppInfo,
+      runningUserInfo: {
+        teamId: runningAppInfo.teamId,
+        tmbId: runningAppInfo.tmbId,
+        teamName: 'team',
+        memberName: 'member',
+        contact: '',
+        username: 'user'
+      },
+      uid: 'test-user',
+      lang: 'zh-CN',
+      histories: [],
+      query: [{ type: 'text', text: { content: 'pause' } }],
+      variables: {},
+      chatConfig: {},
+      runtimeNodes,
+      runtimeEdges: [],
+      variableState: await WorkflowVariableState.create({
+        timezone: 'Asia/Shanghai',
+        runningAppInfo,
+        uid: 'test-user',
+        chatId,
+        responseChatItemId,
+        histories: [],
+        variablesConfig: [],
+        inputVariables: {},
+        externalVariables: {}
+      }),
+      externalProvider: {},
+      workflowDispatchDeep: 0,
+      maxRunTimes: 20,
+      stream: false,
+      responseAllData: true,
+      responseDetail: true,
+      nodeResponseWriter,
+      checkIsStopping: () => false
+    } as any);
+    await nodeResponseWriter.close();
+
+    const interactive = result.workflowInteractiveResponse;
+    expect(interactive).toEqual(
+      expect.objectContaining({
+        type: 'userSelect',
+        entryNodeIds: ['select_node'],
+        nodeResponseId: expect.any(String)
+      })
+    );
+    const rows = await MongoChatItemResponse.find({
+      appId,
+      chatId,
+      chatItemDataId: responseChatItemId
+    }).lean();
+    expect(rows).toHaveLength(0);
+  });
+
+  it('keeps nested interactive nodeResponseIds scoped to their own layer', async () => {
+    const originalToolCallDispatch = callbackMap[FlowNodeTypeEnum.toolCall];
+    const childNodeResponseId = 'child_select_response';
+    callbackMap[FlowNodeTypeEnum.toolCall] = vi.fn(async () => ({
+      [DispatchNodeResponseKeyEnum.interactive]: {
+        type: 'toolChildrenInteractive',
+        params: {
+          childrenResponse: {
+            type: 'userSelect',
+            nodeResponseId: childNodeResponseId,
+            entryNodeIds: ['select_node'],
+            memoryEdges: [],
+            nodeOutputs: [],
+            params: {
+              description: 'Choose one',
+              userSelectOptions: []
+            }
+          },
+          toolParams: {
+            memoryRequestMessages: [],
+            toolCallId: 'call_search'
+          }
+        }
+      },
+      [DispatchNodeResponseKeyEnum.nodeResponse]: {
+        totalPoints: 0
+      }
+    }));
+
+    try {
+      const appId = '67e0d5535c02d1d5cdede724';
+      const chatId = 'workflow-nested-interactive-node-response-chat';
+      const responseChatItemId = 'workflow-nested-interactive-node-response-ai-item';
+      const runningAppInfo = {
+        id: appId,
+        name: 'Workflow Nested Interactive App',
+        teamId: '654a4107c32f3bf5f998452f',
+        tmbId: '65ab7007462ada7dbb899948'
+      };
+      const runtimeNodes: RuntimeNodeItemType[] = [
+        makeNode('tool_call_node', FlowNodeTypeEnum.toolCall, {
+          isEntry: true
+        })
+      ];
+      const nodeResponseWriter = await createWorkflowNodeResponseWriter({
+        teamId: runningAppInfo.teamId,
+        appId,
+        chatId,
+        chatItemDataId: responseChatItemId
+      });
+
+      const result = await runWorkflow({
+        apiVersion: 'v2',
+        mode: 'chat',
+        chatId,
+        responseChatItemId,
+        runningAppInfo,
+        runningUserInfo: {
+          teamId: runningAppInfo.teamId,
+          tmbId: runningAppInfo.tmbId,
+          teamName: 'team',
+          memberName: 'member',
+          contact: '',
+          username: 'user'
+        },
+        uid: 'test-user',
+        lang: 'zh-CN',
+        histories: [],
+        query: [{ type: 'text', text: { content: 'pause' } }],
+        variables: {},
+        chatConfig: {},
+        runtimeNodes,
+        runtimeEdges: [],
+        variableState: await WorkflowVariableState.create({
+          timezone: 'Asia/Shanghai',
+          runningAppInfo,
+          uid: 'test-user',
+          chatId,
+          responseChatItemId,
+          histories: [],
+          variablesConfig: [],
+          inputVariables: {},
+          externalVariables: {}
+        }),
+        externalProvider: {},
+        workflowDispatchDeep: 0,
+        maxRunTimes: 20,
+        stream: false,
+        responseAllData: true,
+        responseDetail: true,
+        nodeResponseWriter,
+        checkIsStopping: () => false
+      } as any);
+      await nodeResponseWriter.close();
+
+      const interactive = result.workflowInteractiveResponse;
+      expect(interactive).toEqual(
+        expect.objectContaining({
+          type: 'toolChildrenInteractive',
+          entryNodeIds: ['tool_call_node'],
+          nodeResponseId: expect.any(String),
+          params: expect.objectContaining({
+            childrenResponse: expect.objectContaining({
+              nodeResponseId: childNodeResponseId
+            })
+          })
+        })
+      );
+      expect(interactive?.nodeResponseId).not.toBe(childNodeResponseId);
+    } finally {
+      callbackMap[FlowNodeTypeEnum.toolCall] = originalToolCallDispatch;
+    }
+  });
+
   it('streams batched node responses into v2 flat rows and composes childrenResponses on detail read', async () => {
     const loopItems = ['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta'];
     const { runtimeNodes, runtimeEdges } = createLoopRunWorkflow(loopItems);
     const responseEvents: unknown[] = [];
     const nodeResponseWriter = await createWorkflowNodeResponseWriter({
-      mode: 'replace',
       teamId: '654a4107c32f3bf5f998452f',
       appId: '67e0d5535c02d1d5cdede71f',
       chatId: 'workflow-persistence-chat',

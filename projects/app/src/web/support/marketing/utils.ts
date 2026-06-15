@@ -3,6 +3,8 @@ import {
   type TrackRegisterParams
 } from '@fastgpt/global/support/marketing/type';
 
+const fastgptSemSourceDomainInitedKey = 'fastgpt_sem_sourceDomain_inited';
+
 export const getInviterId = () => {
   return localStorage.getItem('inviterId') || undefined;
 };
@@ -72,23 +74,34 @@ export const setFastGPTSem = (fastgptSem?: TrackRegisterParams['fastgpt_sem']) =
   const validEntries = Object.entries(fastgptSem).filter(([_, value]) => !!value);
   if (validEntries.length === 0) return;
 
-  localStorage.setItem('fastgpt_sem', JSON.stringify(fastgptSem));
+  const currentFastGPTSem = getFastGPTSem();
+  const nextFastGPTSem = Object.fromEntries(validEntries);
+
+  localStorage.setItem(
+    'fastgpt_sem',
+    JSON.stringify({
+      ...currentFastGPTSem,
+      ...nextFastGPTSem
+    })
+  );
 };
 export const removeFastGPTSem = () => {
   localStorage.removeItem('fastgpt_sem');
+  localStorage.removeItem(fastgptSemSourceDomainInitedKey);
 };
 
-export const getSourceDomain = () => {
-  return sessionStorage.getItem('sourceDomain') || undefined;
-};
-export const setSourceDomain = (sourceDomain?: string) => {
+export const initFastGPTSemSourceDomain = (sourceDomain?: string) => {
+  if (localStorage.getItem(fastgptSemSourceDomainInitedKey)) return;
+
   const formatSourceDomain = (() => {
     if (sourceDomain) return sourceDomain;
     return document.referrer;
   })();
 
-  if (!formatSourceDomain || getSourceDomain()) return;
-  sessionStorage.setItem('sourceDomain', formatSourceDomain);
+  localStorage.setItem(fastgptSemSourceDomainInitedKey, '1');
+
+  if (!formatSourceDomain) return;
+  setFastGPTSem({ sourceDomain: formatSourceDomain });
 };
 
 export const setCouponCode = (couponCode?: string) => {

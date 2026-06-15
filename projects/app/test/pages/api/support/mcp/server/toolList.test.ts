@@ -14,7 +14,8 @@ import { MongoMcpKey } from '@fastgpt/service/support/mcp/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
-import { pushChatRecords } from '@fastgpt/service/core/chat/saveChat';
+import { failChatRound, finalizeChatRound } from '@fastgpt/service/core/chat/saveChat';
+import { preChatRound } from '@fastgpt/service/core/chat/utils/prepare';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
 
 vi.mock('@fastgpt/service/support/mcp/schema', () => ({
@@ -63,7 +64,12 @@ vi.mock('@fastgpt/service/core/workflow/dispatch', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/chat/saveChat', () => ({
-  pushChatRecords: vi.fn()
+  finalizeChatRound: vi.fn(),
+  failChatRound: vi.fn()
+}));
+
+vi.mock('@fastgpt/service/core/chat/utils/prepare', () => ({
+  preChatRound: vi.fn()
 }));
 
 describe('toolList', () => {
@@ -229,7 +235,14 @@ describe('callMcpServerTool', () => {
         }
       }
     } as any);
-    vi.mocked(pushChatRecords).mockResolvedValue(undefined as any);
+    vi.mocked(preChatRound).mockResolvedValue({
+      chatId: 'prepared-mcp-chat-id',
+      responseChatItemId: 'prepared-mcp-response-id',
+      shouldPersistChatRound: true,
+      shouldFinalizePreparedRound: true
+    });
+    vi.mocked(finalizeChatRound).mockResolvedValue(undefined as any);
+    vi.mocked(failChatRound).mockResolvedValue(undefined as any);
 
     await expect(
       callMcpServerTool({
@@ -238,5 +251,20 @@ describe('callMcpServerTool', () => {
         inputs: {}
       })
     ).resolves.toBe(JSON.stringify({ result: 'plugin output value' }));
+
+    expect(dispatchWorkFlow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chatId: 'prepared-mcp-chat-id',
+        responseChatItemId: 'prepared-mcp-response-id'
+      })
+    );
+    expect(finalizeChatRound).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chatId: 'prepared-mcp-chat-id',
+        aiContent: expect.objectContaining({
+          dataId: 'prepared-mcp-response-id'
+        })
+      })
+    );
   });
 });

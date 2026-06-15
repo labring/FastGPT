@@ -192,8 +192,7 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
       parallelInput: loopInputArray,
       parallelResult: filteredArray,
       parallelRunDetail: fullDetail,
-      childResponseCount: rootChildResponseCount,
-      mergeSignId: node.nodeId
+      childResponseCount: rootChildResponseCount
     },
     [DispatchNodeResponseKeyEnum.customFeedbacks]:
       customFeedbacks.length > 0 ? customFeedbacks : undefined

@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
-import { getProcessedChatRecords } from '@/components/core/chat/ChatContainer/ChatBox/utils/recordGroups';
+import {
+  getChatItemRenderKey,
+  getProcessedChatRecords
+} from '@/components/core/chat/ChatContainer/ChatBox/utils/recordGroups';
 import type { ChatSiteItemType } from '@/components/core/chat/ChatContainer/ChatBox/type';
 
 const createRecord = ({
@@ -23,6 +26,22 @@ const createRecord = ({
   ],
   status: ChatStatusEnum.finish,
   deleteTime
+});
+
+describe('getChatItemRenderKey', () => {
+  it('separates records with the same dataId but different roles', () => {
+    const dataId = 'same-data-id';
+
+    expect(getChatItemRenderKey({ obj: ChatRoleEnum.Human, dataId })).toBe(
+      `${ChatRoleEnum.Human}-${dataId}`
+    );
+    expect(getChatItemRenderKey({ obj: ChatRoleEnum.AI, dataId })).toBe(
+      `${ChatRoleEnum.AI}-${dataId}`
+    );
+    expect(getChatItemRenderKey({ obj: ChatRoleEnum.Human, dataId })).not.toBe(
+      getChatItemRenderKey({ obj: ChatRoleEnum.AI, dataId })
+    );
+  });
 });
 
 describe('getProcessedChatRecords', () => {
