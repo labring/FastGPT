@@ -259,6 +259,7 @@ export type RerankTrainTaskSchemaType = {
     trainDatasetFilePath: string;
     tunedModelId: string;
     evalDatasetId: string;
+    evalDatasetFilePath: string;
     baseModelEvalResult: RerankEvalResult;
     tunedModelEvalResult: RerankEvalResult;
     /** Re-judged metrics (from llm_judge stage, if available) */

@@ -221,6 +221,7 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
             finalCheckpoint.generate_trainset?.trainDatasetFilePath ?? undefined,
           tunedModelId: finalCheckpoint.registering?.tunedModelId ?? undefined,
           evalDatasetId: finalCheckpoint.generate_evaldataset?.evalDatasetId ?? undefined,
+          evalDatasetFilePath: finalCheckpoint.generate_evaldataset?.evalDatasetFilePath ?? undefined,
           baseModelEvalResult: finalCheckpoint.eval_basemodel?.baseModelEvalResult,
           tunedModelEvalResult: finalCheckpoint.eval_tunedmodel?.tunedModelEvalResult,
           baseModelRejudgedResult: finalCheckpoint.llm_judge?.baseModelRejudgedResult,
