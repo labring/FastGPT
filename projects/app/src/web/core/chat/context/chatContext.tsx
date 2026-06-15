@@ -33,7 +33,7 @@ type ChatContextType = {
   setHistories: React.Dispatch<React.SetStateAction<ChatHistoryItemType[]>>;
   forbidLoadChat: React.MutableRefObject<boolean>;
   onChangeChatId: (chatId?: string, forbid?: boolean) => void;
-  loadHistories: () => void;
+  loadHistories: (options?: { init?: boolean; silent?: boolean }) => void;
   ScrollData: ({
     children,
     EmptyChildren,
@@ -253,7 +253,7 @@ const ChatContextProvider = ({
           fallbackTitle: '新对话'
         })
       );
-      loadHistories({ init: true });
+      loadHistories({ init: true, silent: true });
     },
     [historyAppId, loadHistories, setHistories]
   );

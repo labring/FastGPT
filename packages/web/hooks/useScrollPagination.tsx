@@ -215,16 +215,21 @@ export function useScrollPagination<
   const loadData = useLockFn(
     async ({
       init = false,
-      ScrollContainerRef
+      ScrollContainerRef,
+      silent = false
     }: {
       init?: boolean;
       ScrollContainerRef?: RefObject<HTMLDivElement>;
+      silent?: boolean;
     } = {}) => {
       if (noMore && !init) return;
 
-      setTrue();
+      // 静默刷新用于后台校准数据，保留旧列表并避免整块 loading 闪烁。
+      if (!silent) {
+        setTrue();
+      }
 
-      if (init) {
+      if (init && !silent) {
         setData([]);
         setTotal(0);
       }
@@ -275,7 +280,9 @@ export function useScrollPagination<
         console.log(error);
       }
 
-      setFalse();
+      if (!silent) {
+        setFalse();
+      }
     }
   );
 
