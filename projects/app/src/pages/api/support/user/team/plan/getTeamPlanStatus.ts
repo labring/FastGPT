@@ -15,6 +15,9 @@ import { MongoEvalDatasetCollection } from '@fastgpt/service/core/evaluation/dat
 import { MongoEvalDatasetData } from '@fastgpt/service/core/evaluation/dataset/evalDatasetDataSchema';
 import { MongoEvalMetric } from '@fastgpt/service/core/evaluation/metric/schema';
 import { MongoAppRegistration } from '@fastgpt/service/support/appRegistration/schema';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+
+const logger = getLogger(LogCategories.MODULE.TEAM);
 
 async function handler(
   req: NextApiRequest,
@@ -82,7 +85,9 @@ async function handler(
       usedEvalDatasetDataAmount,
       usedEvalMetricAmount
     };
-  } catch (error) {}
+  } catch (error) {
+    logger.warn('getTeamPlanStatus error', { error });
+  }
 }
 
 export default NextAPI(handler);
