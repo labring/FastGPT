@@ -2,7 +2,10 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
 import { updatedReloadSystemModel } from '@fastgpt/service/core/ai/config/utils';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import {
+  WritePermissionVal,
+  PerResourceTypeEnum
+} from '@fastgpt/global/support/permission/constant';
 import { authModel } from '@fastgpt/service/support/permission/model/auth';
 import {
   UpdateModelBodySchema,
@@ -13,6 +16,8 @@ import {
 import { ModelErrEnum } from '@fastgpt/global/common/error/code/model';
 import { addAuditLog, getI18nModelType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { replaceResourceClbs } from '@fastgpt/service/support/permission/inheritPermission';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 
 const buildModelUpdate = ({
   fields,
@@ -90,6 +95,20 @@ async function handler(
 
   if (isShared !== undefined) {
     updateData.$set = { ...(updateData.$set || {}), isShared };
+
+    // When changing a private model to public, remove all collaborator configurations.
+    // Uses the same replaceResourceClbs as collaborator/update.ts to preserve owner records.
+    if (isShared) {
+      await mongoSessionRun((session) =>
+        replaceResourceClbs({
+          resourceType: PerResourceTypeEnum.model,
+          teamId,
+          resourceId: modelItem.id,
+          collaborators: [],
+          session
+        })
+      );
+    }
   }
 
   if (Object.keys(updateData).length === 0) {
