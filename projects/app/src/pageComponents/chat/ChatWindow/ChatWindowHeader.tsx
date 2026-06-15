@@ -31,9 +31,9 @@ const ChatWindowHeader = ({
     >
       {title}
       <Flex position="absolute" right={5} alignItems="center" gap={2}>
+        {rightActions}
         <ChatVariableButton chatType={chatType} />
         {hasHistory && <MarkdownExportButton history={history} />}
-        {rightActions}
       </Flex>
     </Flex>
   );

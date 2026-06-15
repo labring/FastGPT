@@ -15,10 +15,10 @@ import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { cardStyles } from '../../constants';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
-import VariablePopover from '@/components/core/chat/ChatContainer/components/VariablePopover';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import type { Form2WorkflowFnType } from '../FormComponent/type';
 import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
+import ChatVariableButton from '@/pageComponents/chat/ChatWindow/ChatVariableButton';
 
 type Props = {
   appForm: AppFormEditFormType;
@@ -32,8 +32,6 @@ const ChatTest = ({ appForm, setRenderEdit, form2WorkflowFn }: Props) => {
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
-  // agentForm2AppWorkflow dependent allDatasets
-  const isVariableVisible = useContextSelector(ChatItemContext, (v) => v.isVariableVisible);
 
   const [workflowData, setWorkflowData] = useSafeState({
     nodes: appDetail.modules || [],
@@ -79,29 +77,31 @@ const ChatTest = ({ appForm, setRenderEdit, form2WorkflowFn }: Props) => {
         {...cardStyles}
         boxShadow={'3'}
       >
-        <Flex px={[2, 5]} pb={2}>
+        <Flex px={[2, 5]} pb={2} alignItems={'center'}>
           <Box fontSize={['md', 'lg']} fontWeight={'bold'} color={'myGray.900'} mr={3}>
             {t('app:chat_debug')}
           </Box>
-          {!isVariableVisible && <VariablePopover chatType={ChatTypeEnum.test} />}
           <Box flex={1} />
 
-          <SandboxEntryIcon size={'smSquare'} mr={2} onOpen={onOpenSandboxModal} />
-          <MyTooltip label={t('common:core.chat.Restart')}>
-            <IconButton
-              className="chat"
-              size={'smSquare'}
-              icon={<MyIcon name={'common/clearLight'} w={'14px'} />}
-              variant={'whiteDanger'}
-              borderRadius={'md'}
-              aria-label={'delete'}
-              onClick={(e) => {
-                e.stopPropagation();
-                restartChat();
-                setSandboxExists(false);
-              }}
-            />
-          </MyTooltip>
+          <Flex alignItems={'center'} gap={2}>
+            <SandboxEntryIcon size={'smSquare'} onOpen={onOpenSandboxModal} />
+            <ChatVariableButton chatType={ChatTypeEnum.test} />
+            <MyTooltip label={t('common:core.chat.Restart')}>
+              <IconButton
+                className="chat"
+                size={'smSquare'}
+                icon={<MyIcon name={'common/clearLight'} w={'14px'} />}
+                variant={'whiteDanger'}
+                borderRadius={'md'}
+                aria-label={'delete'}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  restartChat();
+                  setSandboxExists(false);
+                }}
+              />
+            </MyTooltip>
+          </Flex>
         </Flex>
         <Box flex={1}>
           <ChatContainer />

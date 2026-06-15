@@ -30,6 +30,7 @@ import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workf
 import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 
 const InputGuideBox = dynamic(() => import('./InputGuideBox'));
+const PLACEHOLDER_APP_NAME_TOKEN = '__APP_NAME__';
 
 const fileTypeFilter = (file: File) => {
   return (
@@ -85,8 +86,27 @@ const ChatInput = ({
   const autoTTSResponse = useContextSelector(ChatBoxContext, (v) => v.autoTTSResponse);
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
   const appName = useContextSelector(ChatItemContext, (v) => v.chatBoxData.app.name);
-  const placeholderAppName =
-    chatType === ChatTypeEnum.home ? 'FastGPT' : appName || 'FastGPT';
+  const placeholderAppName = chatType === ChatTypeEnum.home ? 'FastGPT' : appName || 'FastGPT';
+  const appNamePlaceholderParts = useMemo(() => {
+    const placeholderText = String(
+      t('common:core.chat.Type a message to app', {
+        appName: PLACEHOLDER_APP_NAME_TOKEN
+      })
+    );
+    const tokenIndex = placeholderText.indexOf(PLACEHOLDER_APP_NAME_TOKEN);
+
+    if (tokenIndex < 0) {
+      return {
+        prefix: placeholderText,
+        suffix: ''
+      };
+    }
+
+    return {
+      prefix: placeholderText.slice(0, tokenIndex),
+      suffix: placeholderText.slice(tokenIndex + PLACEHOLDER_APP_NAME_TOKEN.length)
+    };
+  }, [t]);
 
   const fileCtrl = useFieldArray({
     control,
@@ -164,7 +184,7 @@ const ChatInput = ({
     () => (
       <Flex direction={'column'} mt={fileList.length > 0 ? 1 : 0}>
         {/* Textarea */}
-        <Flex w={'100%'}>
+        <Flex w={'100%'} position={'relative'}>
           {/* Prompt Container */}
           <Textarea
             ref={TextareaDom}
@@ -177,12 +197,10 @@ const ChatInput = ({
             _focusVisible={{
               border: 'none'
             }}
-            placeholder={
-              dialogTips ||
-              t('common:core.chat.Type a message to app', { appName: placeholderAppName })
-            }
+            placeholder={dialogTips || ''}
             resize={'none'}
             rows={1}
+            bg={'transparent'}
             height={textareaMinH}
             lineHeight={textareaMinH}
             maxHeight={[24, 32]}
@@ -270,6 +288,37 @@ const ChatInput = ({
             onFocus={onFocus}
             onBlur={offFocus}
           />
+          {!dialogTips && !inputValue && (
+            <Flex
+              pointerEvents={'none'}
+              position={'absolute'}
+              left={0}
+              right={0}
+              top={0}
+              h={textareaMinH}
+              alignItems={'center'}
+              color={'myGray.400'}
+              fontSize={'16px'}
+              lineHeight={textareaMinH}
+              letterSpacing={'0.5px'}
+              minW={0}
+              overflow={'hidden'}
+              whiteSpace={'nowrap'}
+            >
+              <Box flexShrink={0}>{appNamePlaceholderParts.prefix}</Box>
+              <Box
+                flex={'0 1 auto'}
+                minW={0}
+                maxW={'100%'}
+                overflow={'hidden'}
+                textOverflow={'ellipsis'}
+                whiteSpace={'nowrap'}
+              >
+                {placeholderAppName}
+              </Box>
+              <Box flexShrink={0}>{appNamePlaceholderParts.suffix}</Box>
+            </Flex>
+          )}
         </Flex>
       </Flex>
     ),
@@ -277,6 +326,9 @@ const ChatInput = ({
       fileList.length,
       TextareaDom,
       dialogTips,
+      appNamePlaceholderParts.prefix,
+      appNamePlaceholderParts.suffix,
+      placeholderAppName,
       isPc,
       t,
       inputValue,

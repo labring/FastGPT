@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useImperativeHandle, useRef, useState } from 'react';
+import React, { useEffect, useImperativeHandle, useRef, useState } from 'react';
 
 import HelperBotContextProvider, { type HelperBotProps } from './context';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/helperBot/type';
@@ -20,7 +20,7 @@ import type { ChatBoxInputFormType } from '../ChatContainer/ChatBox/type';
 import { useForm } from 'react-hook-form';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
-import { useMemoizedFn, useThrottleFn } from 'ahooks';
+import { useMemoizedFn } from 'ahooks';
 import {
   HelperBotTypeEnum,
   type HelperBotChatItemSiteType
@@ -31,12 +31,15 @@ import { streamFetch } from '@/web/common/api/fetch';
 import type { generatingMessageProps } from '../ChatContainer/type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { useChatScroll } from '../ChatContainer/ChatBox/hooks/useChatScroll';
+import ScrollToBottomButton from '../ChatContainer/ChatBox/components/ScrollToBottomButton';
 
 const ChatBox = ({ type, metadata, onApply, ChatBoxRef, ...props }: HelperBotProps) => {
   const { toast } = useToast();
   const { t } = useTranslation();
 
-  const ScrollContainerRef = useRef<HTMLDivElement>(null);
+  const { ScrollContainerRef, scrollToBottom, generatingScroll, isScrollToBottomButtonVisible } =
+    useChatScroll();
   // Messages 管理
   const [chatId, setChatId] = useState<string>(getNanoid(12));
   const [isChatting, setIsChatting] = useState(false);
@@ -58,20 +61,6 @@ const ChatBox = ({ type, metadata, onApply, ChatBoxRef, ...props }: HelperBotPro
     };
   }, []);
 
-  const scrollToBottom = useCallback((behavior: 'smooth' | 'auto' = 'smooth', delay = 0) => {
-    setTimeout(() => {
-      if (!ScrollContainerRef.current) {
-        setTimeout(() => {
-          scrollToBottom(behavior);
-        }, 500);
-      } else {
-        ScrollContainerRef.current.scrollTo({
-          top: ScrollContainerRef.current.scrollHeight,
-          behavior
-        });
-      }
-    }, delay);
-  }, []);
   const {
     data: chatRecords,
     setData: setChatRecords,
@@ -126,21 +115,6 @@ const ChatBox = ({ type, metadata, onApply, ChatBoxRef, ...props }: HelperBotPro
   const TextareaDom = useRef<HTMLTextAreaElement>(null);
 
   // Message request
-  const { run: generatingScroll } = useThrottleFn(
-    (force?: boolean) => {
-      if (!ScrollContainerRef.current) return;
-      const isBottom =
-        ScrollContainerRef.current.scrollTop + ScrollContainerRef.current.clientHeight + 150 >=
-        ScrollContainerRef.current.scrollHeight;
-
-      if (isBottom || force) {
-        scrollToBottom('auto');
-      }
-    },
-    {
-      wait: 100
-    }
-  );
   const generatingMessage = useMemoizedFn(
     ({ event, text = '', reasoningText, collectionForm, formData }: generatingMessageProps) => {
       setChatRecords((state) =>
@@ -409,14 +383,21 @@ const ChatBox = ({ type, metadata, onApply, ChatBoxRef, ...props }: HelperBotPro
         ))}
       </ScrollData>
       <Box {...ChatInputWrapperStyle}>
-        <ChatInput
-          TextareaDom={TextareaDom}
-          chatId={chatId}
-          chatForm={chatForm}
-          isChatting={isChatting}
-          onSendMessage={handleSendMessage}
-          onStop={() => {}}
-        />
+        <Box position="relative">
+          <ScrollToBottomButton
+            isVisible={isScrollToBottomButtonVisible}
+            onClick={() => scrollToBottom('smooth')}
+          />
+
+          <ChatInput
+            TextareaDom={TextareaDom}
+            chatId={chatId}
+            chatForm={chatForm}
+            isChatting={isChatting}
+            onSendMessage={handleSendMessage}
+            onStop={() => {}}
+          />
+        </Box>
       </Box>
     </MyBox>
   );

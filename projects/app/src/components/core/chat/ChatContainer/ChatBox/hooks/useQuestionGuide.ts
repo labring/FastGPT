@@ -22,7 +22,7 @@ import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/ch
  * 关键边界：
  * - 主聊天请求已经 abort 时不再生成问题引导，否则用户点击停止后仍可能看到新推荐问题。
  * - 每次请求前都会创建新的 AbortController，并写回 ref，让后续 stop/leave 能中断当前请求。
- * - 结果写入后延迟滚动到底部，给推荐问题组件一次渲染高度的时间。
+ * - 结果写入后延迟触发生成滚动，复用用户主动上滚后的暂停吸附语义。
  */
 export const useQuestionGuide = ({
   appId,
@@ -32,7 +32,7 @@ export const useQuestionGuide = ({
   chatControllerRef,
   questionGuideControllerRef,
   setQuestionGuide,
-  scrollToBottom
+  generatingScroll
 }: {
   appId: string;
   chatId: string;
@@ -41,7 +41,7 @@ export const useQuestionGuide = ({
   chatControllerRef: MutableRefObject<AbortController>;
   questionGuideControllerRef: MutableRefObject<AbortController>;
   setQuestionGuide: (guides: string[]) => void;
-  scrollToBottom: (behavior?: 'smooth' | 'auto', delay?: number) => void;
+  generatingScroll: (force?: boolean) => void;
 }) => {
   return useCallback(async () => {
     // 保留拆分前语义：只用主聊天请求的 abort 状态阻止回答结束后的问题引导。
@@ -66,9 +66,9 @@ export const useQuestionGuide = ({
       );
       if (Array.isArray(result)) {
         setQuestionGuide(result);
-        // 推荐问题渲染会增加底部高度，延迟滚动可以避免在 DOM 高度更新前滚动失败。
+        // 推荐问题渲染会增加底部高度，延迟到 DOM 更新后再按当前吸附状态决定是否跟随。
         setTimeout(() => {
-          scrollToBottom();
+          generatingScroll();
         }, 100);
       }
     } catch {}
@@ -80,6 +80,6 @@ export const useQuestionGuide = ({
     chatId,
     outLinkAuthData,
     setQuestionGuide,
-    scrollToBottom
+    generatingScroll
   ]);
 };

@@ -112,7 +112,11 @@ const ChatSliderList = () => {
       <ScrollData
         flex={'1 0 0'}
         h={0}
-        p={0}
+        pt={0}
+        pl={0}
+        pr={'16px'}
+        pb={'16px'}
+        mr={'-16px'}
         overflowY={'auto'}
         overflowX={'hidden'}
         sx={{

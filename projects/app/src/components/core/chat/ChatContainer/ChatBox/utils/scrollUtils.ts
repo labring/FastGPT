@@ -1,4 +1,6 @@
 export const CHAT_GENERATING_SCROLL_BOTTOM_THRESHOLD = 150;
+export const CHAT_SCROLL_BOTTOM_VISIBILITY_THRESHOLD = 4;
+export const CHAT_SCROLL_TO_BOTTOM_BUTTON_DISTANCE_THRESHOLD = 48;
 
 export const getChatScrollTargetKey = ({ appId, chatId }: { appId?: string; chatId?: string }) => {
   if (!appId || !chatId) return;
@@ -31,3 +33,47 @@ export const shouldFollowGeneratingScroll = ({
   force?: boolean;
   threshold?: number;
 }) => force || scrollTop + clientHeight + threshold >= scrollHeight;
+
+export const getChatScrollBottomDistance = ({
+  scrollTop,
+  clientHeight,
+  scrollHeight
+}: {
+  scrollTop: number;
+  clientHeight: number;
+  scrollHeight: number;
+}) => Math.max(scrollHeight - scrollTop - clientHeight, 0);
+
+export const isChatScrollAtBottom = ({
+  scrollTop,
+  clientHeight,
+  scrollHeight,
+  threshold = CHAT_SCROLL_BOTTOM_VISIBILITY_THRESHOLD
+}: {
+  scrollTop: number;
+  clientHeight: number;
+  scrollHeight: number;
+  threshold?: number;
+}) =>
+  getChatScrollBottomDistance({
+    scrollTop,
+    clientHeight,
+    scrollHeight
+  }) <= threshold;
+
+export const shouldShowChatScrollToBottomButton = ({
+  scrollTop,
+  clientHeight,
+  scrollHeight,
+  threshold = CHAT_SCROLL_TO_BOTTOM_BUTTON_DISTANCE_THRESHOLD
+}: {
+  scrollTop: number;
+  clientHeight: number;
+  scrollHeight: number;
+  threshold?: number;
+}) =>
+  getChatScrollBottomDistance({
+    scrollTop,
+    clientHeight,
+    scrollHeight
+  }) > threshold;
