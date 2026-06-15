@@ -16,6 +16,7 @@ import {
   DispatchNodeResponseKeyEnum,
   SseResponseEventEnum
 } from '@fastgpt/global/core/workflow/runtime/constants';
+import { normalizeAIChatValue } from '@fastgpt/global/core/chat/adapt';
 import type {
   ChatDispatchProps,
   DispatchNodeResultType,
@@ -1628,7 +1629,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
               debugResponse: workflowQueue.getDebugResponse(),
               workflowInteractiveResponse: interactiveResult,
               [DispatchNodeResponseKeyEnum.runTimes]: workflowQueue.workflowRunTimes,
-              [DispatchNodeResponseKeyEnum.assistantResponses]: mergeAssistantResponseAnswerText(
+              [DispatchNodeResponseKeyEnum.assistantResponses]: normalizeAIChatValue(
                 workflowQueue.chatAssistantResponse
               ),
               [DispatchNodeResponseKeyEnum.toolResponse]: workflowQueue.toolRunResponse,
@@ -1658,55 +1659,4 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
       data.workflowDispatchDeep = previousWorkflowDispatchDeep;
     }
   });
-};
-
-/**
- * 合并连续的纯文本 assistant value，减少普通 answer 片段在页面上分裂展示。
- *
- * 带 reasoning、工具、交互、计划等结构化信息的 value 必须保留独立边界；否则连续
- * AI 节点的第二段 reasoning 会在合并 text 时被吞掉，刷新历史后页面看不到对应思考。
- */
-export const mergeAssistantResponseAnswerText = (response: AIChatItemValueItemType[]) => {
-  const result: AIChatItemValueItemType[] = [];
-
-  const isPlainTextValue = (item: AIChatItemValueItemType) =>
-    !!item.text &&
-    !item.id &&
-    !item.planId &&
-    !item.reasoning &&
-    !item.tools &&
-    !item.skills &&
-    !item.interactive &&
-    !item.plan &&
-    !item.planStatus &&
-    !item.agentPlanUpdate &&
-    !item.agentAsk &&
-    !item.agentStopGate &&
-    !item.contextCheckpoint &&
-    !item.tool &&
-    !item.hideReason &&
-    !item.hideInUI;
-
-  // 合并连续的text
-  for (let i = 0; i < response.length; i++) {
-    const item = response[i];
-    if (isPlainTextValue(item)) {
-      const text = item.text?.content || '';
-      const lastItem = result[result.length - 1];
-      if (lastItem && isPlainTextValue(lastItem) && lastItem.text?.content) {
-        lastItem.text.content += text;
-        continue;
-      }
-    }
-    result.push(item);
-  }
-
-  // If result is empty, auto add a text message
-  if (result.length === 0) {
-    result.push({
-      text: { content: '' }
-    });
-  }
-
-  return result;
 };

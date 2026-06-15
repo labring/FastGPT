@@ -180,6 +180,7 @@ export async function getChatItems({
       .map((item) => item.dataId);
 
     if (chatItemDataIds.length > 0) {
+      const start = Date.now();
       const chatItemResponsesMap = await MongoChatItemResponse.find(
         { appId, chatId, chatItemDataId: { $in: chatItemDataIds } },
         {
@@ -198,7 +199,7 @@ export async function getChatItems({
           });
           return map;
         });
-
+      console.log('DB find response time', { time: Date.now() - start });
       histories.forEach((item) => {
         if (item.obj !== ChatRoleEnum.AI) return;
         if (hasInlineNodeResponses(item)) return;
@@ -207,6 +208,7 @@ export async function getChatItems({
           rows: chatItemResponsesMap.get(String(item.dataId)) || []
         });
       });
+      console.log('DB format response time', { time: Date.now() - start });
     }
   }
 
