@@ -197,7 +197,7 @@ const AppCard = React.memo(function AppCard({
 
   const menuList = useMemo(
     () => [
-      ...([AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.assistant].includes(app.type)
+      ...(AppTypeList.includes(app.type)
         ? [
             {
               children: [
@@ -298,12 +298,7 @@ const AppCard = React.memo(function AppCard({
         : [
             {
               children: [
-                ...([
-                  AppTypeEnum.simple,
-                  AppTypeEnum.workflow,
-                  AppTypeEnum.assistant,
-                  AppTypeEnum.chatAgent
-                ].includes(app.type)
+                ...(AppTypeList.includes(app.type)
                   ? [
                       {
                         icon: 'core/skill/skill',
