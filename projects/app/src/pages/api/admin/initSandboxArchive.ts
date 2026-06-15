@@ -7,6 +7,7 @@ import {
   type SandboxArchiveResult
 } from '@fastgpt/service/core/ai/sandbox/service/archive';
 import { getLogger } from '@fastgpt/service/common/logger';
+import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { getConfiguredSandboxProvider } from '@fastgpt/service/core/ai/sandbox/provider/config';
 import type { SandboxProviderType } from '@fastgpt/service/core/ai/sandbox/type';
 import { SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
@@ -14,6 +15,7 @@ import { subDays } from 'date-fns';
 import z from 'zod';
 
 const logger = getLogger(['initSandboxArchive']);
+const SANDBOX_ARCHIVE_TRACE_SOURCE = 'initSandboxArchive';
 
 const InitSandboxArchiveBodySchema = z.object({
   runArchive: z.boolean().optional(),
@@ -30,6 +32,36 @@ interface MigrationResult {
   duration: number;
   activeProvider?: string;
 }
+
+/**
+ * init 归档脚本统一记录归档失败埋点。
+ * 归档 service 会把 zip 安装失败、workspace 超限、上传/删除失败等失败汇总到 failures。
+ */
+const traceSandboxArchiveFailures = async (params: {
+  provider: SandboxProviderType;
+  archiveResult: SandboxArchiveResult;
+}) => {
+  if (params.archiveResult.failures.length === 0) return;
+
+  await Promise.all(
+    params.archiveResult.failures.map((failure) =>
+      Promise.resolve(
+        pushTrack.sandboxArchive({
+          provider: params.provider,
+          sandboxId: failure.sandboxId,
+          reason: failure.error,
+          source: SANDBOX_ARCHIVE_TRACE_SOURCE
+        })
+      ).catch((error) => {
+        logger.error('Failed to record sandbox archive track', {
+          provider: params.provider,
+          sandboxId: failure.sandboxId,
+          error
+        });
+      })
+    )
+  );
+};
 
 /**
  * AI 沙盒冷归档与状态数据迁移脚本
@@ -151,7 +183,14 @@ export async function migrateSandboxArchiveData(params: {
 
     archiveResult = await archiveSandboxResources({
       inactiveBefore: calculatedInactiveBefore,
-      providers: [activeProvider]
+      providers: [activeProvider],
+      options: {
+        ensureZipInSandbox: true
+      }
+    });
+    await traceSandboxArchiveFailures({
+      provider: activeProvider,
+      archiveResult
     });
 
     logger.info('Archive task executed successfully', { archiveResult });

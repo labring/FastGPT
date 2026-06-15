@@ -64,6 +64,10 @@ export interface SandboxArchiveResult {
   failures: SandboxArchiveFailure[];
 }
 
+export interface SandboxArchiveOptions {
+  ensureZipInSandbox?: boolean;
+}
+
 const shellQuote = (value: string): string => `'${value.replace(/'/g, `'\\''`)}'`;
 
 const runSandboxCommand = async (
@@ -81,6 +85,35 @@ const runSandboxCommand = async (
   }
 
   return result;
+};
+
+/**
+ * init 归档脚本兼容历史 sandbox 镜像缺少 zip 的场景。
+ * 仅在脚本显式传入开关时执行，避免改变常规 cron 归档行为。
+ */
+const ensureZipAvailableInSandbox = async (params: { sandbox: ISandbox }) => {
+  const { sandbox } = params;
+  const command = [
+    'if command -v zip >/dev/null 2>&1; then exit 0; fi',
+    'if command -v apt-get >/dev/null 2>&1; then',
+    '  DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends zip || (apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends zip);',
+    'elif command -v apk >/dev/null 2>&1; then',
+    '  apk add --no-cache zip;',
+    'elif command -v yum >/dev/null 2>&1; then',
+    '  yum install -y zip;',
+    'elif command -v dnf >/dev/null 2>&1; then',
+    '  dnf install -y zip;',
+    'else',
+    '  echo "No supported package manager found to install zip" >&2;',
+    '  exit 127;',
+    'fi',
+    'command -v zip >/dev/null 2>&1 || { echo "zip command is still unavailable after install" >&2; exit 127; }'
+  ].join('\n');
+
+  await runSandboxCommand(sandbox, command, {
+    timeoutMs: SANDBOX_ARCHIVE_COMMAND_TIMEOUT_MS,
+    maxOutputBytes: 8 * 1024
+  });
 };
 
 async function buildArchiveRuntimeConfig(resource: SandboxResourceDoc) {
@@ -287,7 +320,8 @@ async function restoreWorkspaceArchive(params: {
  */
 export async function archiveSandboxResource(
   resource: SandboxResourceDoc,
-  inactiveBefore: Date
+  inactiveBefore: Date,
+  options: SandboxArchiveOptions = {}
 ): Promise<{ success: boolean; error?: string }> {
   const archivingDoc = await markSandboxArchiving(resource, inactiveBefore);
   if (!archivingDoc) {
@@ -299,6 +333,12 @@ export async function archiveSandboxResource(
   try {
     const { sandbox, profile } = await connectSandboxForArchive(archivingDoc);
     connectedSandbox = sandbox;
+
+    if (options.ensureZipInSandbox) {
+      await ensureZipAvailableInSandbox({
+        sandbox
+      });
+    }
 
     const archiveBuffer = await createWorkspaceArchive({
       sandbox,
@@ -432,8 +472,9 @@ export async function archiveSandboxResource(
 export async function archiveSandboxResources(params: {
   inactiveBefore: Date;
   providers?: SandboxProviderType[];
+  options?: SandboxArchiveOptions;
 }): Promise<SandboxArchiveResult> {
-  const { inactiveBefore, providers } = params;
+  const { inactiveBefore, providers, options } = params;
   const cursor = createSandboxResourcesToArchiveCursor({
     inactiveBefore,
     providers
@@ -450,7 +491,7 @@ export async function archiveSandboxResources(params: {
       resources,
       async (resource) => ({
         resource,
-        result: await archiveSandboxResource(resource, inactiveBefore)
+        result: await archiveSandboxResource(resource, inactiveBefore, options)
       }),
       SANDBOX_ARCHIVE_BATCH_SIZE
     );
