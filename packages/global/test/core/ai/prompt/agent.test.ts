@@ -44,6 +44,14 @@ describe('getExtractJsonPrompt', () => {
     expect(result).toContain('## JSON Schema');
   });
 
+  it('should describe text extraction instead of function calling', () => {
+    const result = getExtractJsonPrompt({});
+    expect(result).toContain('从文本中提取结构化信息');
+    expect(result).toContain('按 JSON Schema 生成对应字段值');
+    expect(result).not.toContain('执行一个函数');
+    expect(result).not.toContain('生成对应的参数');
+  });
+
   it('should include systemPrompt section when systemPrompt is provided', () => {
     const result = getExtractJsonPrompt({ systemPrompt: '请提取用户姓名' });
     expect(result).toContain('【背景知识】');
@@ -95,8 +103,23 @@ describe('getExtractJsonPrompt', () => {
 
   it('should always contain output requirements section', () => {
     const result = getExtractJsonPrompt({});
-    expect(result).toContain('严格输出 json 字符串');
-    expect(result).toContain('不要回答问题');
+    expect(result).toContain('严格只输出一个 JSON object 字符串');
+    expect(result).toContain('不要输出 Markdown、代码块、解释、前后缀文本或回答问题');
+  });
+
+  it('should constrain plain JSON extraction format and fields', () => {
+    const result = getExtractJsonPrompt({
+      schema: '{"type":"object","properties":{"name":{"type":"string"}}}'
+    });
+
+    expect(result).toContain('输出字段只能来自 JSON Schema');
+    expect(result).toContain('不要新增字段');
+    expect(result).toContain('不要修改字段名');
+    expect(result).toContain('JSON Schema required 中声明的字段必须生成');
+    expect(result).toContain('非 required 字段如果没有可靠字段值，可以省略');
+    expect(result).toContain('字段类型和枚举值');
+    expect(result).toContain('不要编造');
+    expect(result).toContain('最新用户输入优先');
   });
 });
 

@@ -1,26 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
-const {
-  createLLMResponseMock,
-  filterGPTMessageByMaxContextMock,
-  getLLMModelMock,
-  formatModelChars2PointsMock
-} = vi.hoisted(() => ({
+const { createLLMResponseMock, getLLMModelMock, formatModelChars2PointsMock } = vi.hoisted(() => ({
   createLLMResponseMock: vi.fn(),
-  filterGPTMessageByMaxContextMock: vi.fn(),
   getLLMModelMock: vi.fn(),
   formatModelChars2PointsMock: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
   createLLMResponse: createLLMResponseMock
-}));
-
-vi.mock('@fastgpt/service/core/ai/llm/utils', () => ({
-  filterGPTMessageByMaxContext: filterGPTMessageByMaxContextMock
 }));
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
@@ -72,17 +62,59 @@ const createProps = () =>
     }
   }) as any;
 
+const createAfterSaleProps = () =>
+  ({
+    ...createProps(),
+    params: {
+      ...createProps().params,
+      content: '客户李四反馈商品包装破损，但没有提供订单号和联系电话。他希望平台尽快处理。',
+      description: '从售后反馈中提取客户、订单、商品和问题信息',
+      extractKeys: [
+        {
+          key: 'customerName',
+          desc: '客户姓名',
+          required: true
+        },
+        {
+          key: 'orderNo',
+          desc: '订单号',
+          required: true
+        },
+        {
+          key: 'productName',
+          desc: '商品名称',
+          required: true
+        },
+        {
+          key: 'issue',
+          desc: '客户反馈的问题',
+          required: true
+        }
+      ]
+    }
+  }) as any;
+
+const mockLLMResponse = (answerText: string) => ({
+  requestId: 'request_1',
+  finish_reason: 'stop',
+  answerText,
+  usage: {
+    inputTokens: 10,
+    outputTokens: 5,
+    usedUserOpenAIKey: false
+  }
+});
+
 describe('dispatchContentExtract', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    filterGPTMessageByMaxContextMock.mockImplementation(async ({ messages }) => messages);
     formatModelChars2PointsMock.mockReturnValue({
       totalPoints: 1,
       modelName: 'DeepSeek R1'
     });
   });
 
-  it('forces reasoning models to disable reasoning in tool choice extraction', async () => {
+  it('uses plain JSON extraction even when the model supports tool choice', async () => {
     getLLMModelMock.mockReturnValue({
       model: 'deepseek-r1',
       name: 'DeepSeek R1',
@@ -90,28 +122,21 @@ describe('dispatchContentExtract', () => {
       reasoning: true,
       toolChoice: true
     });
-    createLLMResponseMock.mockResolvedValue({
-      answerText: '',
-      toolCalls: [
-        {
-          function: {
-            arguments: '{"name":"张三"}'
-          }
-        }
-      ],
-      usage: {
-        inputTokens: 10,
-        outputTokens: 5,
-        usedUserOpenAIKey: false
-      }
-    });
+    createLLMResponseMock.mockResolvedValue(mockLLMResponse('{"name":"张三"}'));
 
-    await dispatchContentExtract(createProps());
+    const result = await dispatchContentExtract(createProps());
 
     expect(createLLMResponseMock.mock.calls[0][0].body).toMatchObject({
       model: 'deepseek-r1',
-      reasoning_effort: 'none',
-      toolCallMode: 'toolChoice'
+      stream: true
+    });
+    expect(createLLMResponseMock.mock.calls[0][0].body).not.toHaveProperty('tools');
+    expect(createLLMResponseMock.mock.calls[0][0].body).not.toHaveProperty('tool_choice');
+    expect(createLLMResponseMock.mock.calls[0][0].body).not.toHaveProperty('toolCallMode');
+    expect(createLLMResponseMock.mock.calls[0][0].body).not.toHaveProperty('reasoning_effort');
+    expect(result.data).toMatchObject({
+      success: true,
+      name: '张三'
     });
   });
 
@@ -123,14 +148,7 @@ describe('dispatchContentExtract', () => {
       reasoning: true,
       toolChoice: false
     });
-    createLLMResponseMock.mockResolvedValue({
-      answerText: '{"name":"张三"}',
-      usage: {
-        inputTokens: 10,
-        outputTokens: 5,
-        usedUserOpenAIKey: false
-      }
-    });
+    createLLMResponseMock.mockResolvedValue(mockLLMResponse('{"name":"张三"}'));
 
     await dispatchContentExtract(createProps());
 
@@ -148,17 +166,86 @@ describe('dispatchContentExtract', () => {
       reasoning: false,
       toolChoice: false
     });
-    createLLMResponseMock.mockResolvedValue({
-      answerText: '{"name":"张三"}',
-      usage: {
-        inputTokens: 10,
-        outputTokens: 5,
-        usedUserOpenAIKey: false
-      }
-    });
+    createLLMResponseMock.mockResolvedValue(mockLLMResponse('{"name":"张三"}'));
 
     await dispatchContentExtract(createProps());
 
     expect(createLLMResponseMock.mock.calls[0][0].body).not.toHaveProperty('reasoning_effort');
+  });
+
+  it('keeps the existing plain JSON slicing behavior', async () => {
+    getLLMModelMock.mockReturnValue({
+      model: 'gpt-4o',
+      name: 'GPT-4o',
+      maxContext: 128000,
+      reasoning: false,
+      toolChoice: false
+    });
+    createLLMResponseMock.mockResolvedValue(mockLLMResponse('提取结果：{"name":"张三"}'));
+
+    const result = await dispatchContentExtract(createProps());
+
+    expect(result.data).toMatchObject({
+      success: true,
+      name: '张三'
+    });
+  });
+
+  it('returns default required fields when the model response has no JSON content', async () => {
+    getLLMModelMock.mockReturnValue({
+      model: 'gpt-4o',
+      name: 'GPT-4o',
+      maxContext: 128000,
+      reasoning: false,
+      toolChoice: false
+    });
+    createLLMResponseMock.mockResolvedValue(mockLLMResponse('没有可提取的信息'));
+
+    const result = await dispatchContentExtract(createProps());
+
+    expect(result.data).toMatchObject({
+      success: true,
+      name: ''
+    });
+  });
+
+  it('extracts multiple fields and removes fields outside the schema', async () => {
+    getLLMModelMock.mockReturnValue({
+      model: 'gpt-4o',
+      name: 'GPT-4o',
+      maxContext: 128000,
+      reasoning: false,
+      toolChoice: false
+    });
+    createLLMResponseMock.mockResolvedValue(
+      mockLLMResponse(
+        JSON.stringify({
+          customerName: '李四',
+          orderNo: '',
+          productName: '',
+          issue: '商品包装破损，希望平台尽快处理',
+          phone: '13800138000'
+        })
+      )
+    );
+
+    const result = await dispatchContentExtract(createAfterSaleProps());
+
+    expect(result.data).toMatchObject({
+      success: true,
+      customerName: '李四',
+      orderNo: '',
+      productName: '',
+      issue: '商品包装破损，希望平台尽快处理'
+    });
+    expect(result.data).not.toHaveProperty('phone');
+    expect(result.data?.[NodeOutputKeyEnum.contextExtractFields]).toBe(
+      JSON.stringify({
+        customerName: '李四',
+        issue: '商品包装破损，希望平台尽快处理',
+        orderNo: '',
+        productName: ''
+      })
+    );
   });
 });
