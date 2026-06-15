@@ -606,5 +606,14 @@
   "click_sync_first": "點擊同步按鈕查看響應結果",
   "sync": "同步",
   "sync_failed": "同步失敗",
-  "permission_sync_disabled_tip": "知識庫已開啟權限同步，不再支援此處設定"
+  "permission_sync_disabled_tip": "知識庫已開啟權限同步，不再支援此處設定",
+  "knowledge_process": "知識處理",
+  "keep_header_footer": "保留頁首頁尾",
+  "keep_header_footer_tip": "如頁首頁尾中包含重要資訊，可開啟，未開啟時將忽略頁首頁尾，不在分塊中保留。",
+  "keep_appendix": "保留附錄",
+  "keep_appendix_tip": "如附錄中包含重要資訊，可開啟，未開啟時將忽略附錄，不在分塊中保留。",
+  "seal_rec": "印章識別",
+  "seal_rec_tip": "開啟後，將識別文件中包含的印章文字，印章包含重要資訊且相對清晰時可開啟。",
+  "chart_analysis": "統計圖轉表格",
+  "chart_analysis_tip": "開啟後，文件中的趨勢圖、長條圖等統計圖將同時轉化為詳細資料表格放在分塊中，適用於需要使用統計圖中具體資料的場景。"
 }

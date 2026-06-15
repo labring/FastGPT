@@ -605,5 +605,14 @@
   "click_sync_first": "Click the Sync button to view the response",
   "sync": "Sync",
   "sync_failed": "Sync failed",
-  "permission_sync_disabled_tip": "Dataset has permission sync enabled, settings are no longer supported here"
+  "permission_sync_disabled_tip": "Dataset has permission sync enabled, settings are no longer supported here",
+  "knowledge_process": "Knowledge Processing",
+  "keep_header_footer": "Retain Headers & Footers",
+  "keep_header_footer_tip": "Enable this if headers or footers contain important information. When disabled, headers and footers will be ignored and not retained in chunks.",
+  "keep_appendix": "Retain Appendix",
+  "keep_appendix_tip": "Enable this if the appendix contains important information. When disabled, the appendix will be ignored and not retained in chunks.",
+  "seal_rec": "Seal Recognition",
+  "seal_rec_tip": "When enabled, text within seals/stamps in the document will be recognized. Enable this when seals contain important information and are relatively clear.",
+  "chart_analysis": "Convert Charts to Tables",
+  "chart_analysis_tip": "When enabled, trend charts, bar charts, and other statistical charts in the document will be converted into detailed data tables and included in chunks. Suitable for scenarios where specific data from charts is needed."
 }

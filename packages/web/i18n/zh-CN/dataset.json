@@ -604,5 +604,14 @@
   "click_sync_first": "点击同步按钮查看响应结果",
   "sync": "同步",
   "sync_failed": "同步失败",
-  "permission_sync_disabled_tip": "知识库已开启权限同步，不再支持此处设置"
+  "permission_sync_disabled_tip": "知识库已开启权限同步，不再支持此处设置",
+  "knowledge_process": "知识处理",
+  "keep_header_footer": "保留页眉页脚",
+  "keep_header_footer_tip": "如页眉页脚中包含重要信息，可开启，未开启时将忽略页眉页脚，不在分块中保留。",
+  "keep_appendix": "保留附录",
+  "keep_appendix_tip": "如附录中包含重要信息，可开启，未开启时将忽略附录，不在分块中保留。",
+  "seal_rec": "印章识别",
+  "seal_rec_tip": "开启后，将识别文件中包含的印章文字，印章包含重要信息且相对清晰时可开启。",
+  "chart_analysis": "统计图转表格",
+  "chart_analysis_tip": "开启后，文件中的趋势图、柱状图等统计图将同时转化为详细数据表格放在分块中，适用于需要使用统计图中具体数据的场景。"
 }
