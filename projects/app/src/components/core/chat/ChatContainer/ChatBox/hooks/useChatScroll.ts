@@ -6,8 +6,6 @@ import {
   shouldShowChatScrollToBottomButton
 } from '../utils/scrollUtils';
 
-const SHOW_SCROLL_TO_BOTTOM_BUTTON_DELAY = 160;
-
 /**
  * 管理 ChatBox 的滚动容器和生成中跟随底部逻辑。
  *
@@ -20,7 +18,7 @@ const SHOW_SCROLL_TO_BOTTOM_BUTTON_DELAY = 160;
  * - `scrollToBottom` 用于明确要求滚到底部，支持 smooth/auto 和延迟。
  * - `generatingScroll` 用于流式生成中“条件跟随底部”，避免打断用户查看历史。
  * - `isScrollAtBottom` 只描述当前滚动位置。
- * - `isScrollToBottomButtonVisible` 会延迟展示，避免流式内容撑高后的瞬时按钮闪烁。
+ * - `isScrollToBottomButtonVisible` 由安全距离阈值控制，避免贴近底部时按钮闪烁。
  *
  * 关键边界：
  * - `scrollToBottom` 保留 DOM 未挂载时的延迟重试，因为 ChatBox 有动态加载记录、
@@ -47,7 +45,6 @@ export const useChatScroll = () => {
   );
   const [isScrollAtBottom, setIsScrollAtBottom] = useState(true);
   const [isScrollToBottomButtonVisible, setIsScrollToBottomButtonVisible] = useState(false);
-  const showScrollToBottomButtonTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
   /**
    * 同步用户是否已经滚动到底部。
@@ -71,38 +68,9 @@ export const useChatScroll = () => {
     const nextIsScrollAtBottom = isChatScrollAtBottom(scrollState);
 
     setIsScrollAtBottom(nextIsScrollAtBottom);
-    if (nextIsScrollAtBottom) {
-      if (showScrollToBottomButtonTimerRef.current) {
-        clearTimeout(showScrollToBottomButtonTimerRef.current);
-        showScrollToBottomButtonTimerRef.current = undefined;
-      }
-      setIsScrollToBottomButtonVisible(false);
-      return;
-    }
-
-    if (!shouldShowChatScrollToBottomButton(scrollState)) {
-      if (showScrollToBottomButtonTimerRef.current) {
-        clearTimeout(showScrollToBottomButtonTimerRef.current);
-        showScrollToBottomButtonTimerRef.current = undefined;
-      }
-      setIsScrollToBottomButtonVisible(false);
-      return;
-    }
-
-    if (isScrollToBottomButtonVisible || showScrollToBottomButtonTimerRef.current) return;
-    showScrollToBottomButtonTimerRef.current = setTimeout(() => {
-      showScrollToBottomButtonTimerRef.current = undefined;
-      const latestContainer = scrollContainerRef.current;
-      if (!latestContainer) return;
-
-      setIsScrollToBottomButtonVisible(
-        shouldShowChatScrollToBottomButton({
-          scrollTop: latestContainer.scrollTop,
-          clientHeight: latestContainer.clientHeight,
-          scrollHeight: latestContainer.scrollHeight
-        })
-      );
-    }, SHOW_SCROLL_TO_BOTTOM_BUTTON_DELAY);
+    setIsScrollToBottomButtonVisible(
+      !nextIsScrollAtBottom && shouldShowChatScrollToBottomButton(scrollState)
+    );
   });
 
   /**
@@ -189,14 +157,6 @@ export const useChatScroll = () => {
       mutationObserver?.disconnect();
     };
   }, [scrollContainer, syncScrollAtBottom]);
-
-  useEffect(() => {
-    return () => {
-      if (showScrollToBottomButtonTimerRef.current) {
-        clearTimeout(showScrollToBottomButtonTimerRef.current);
-      }
-    };
-  }, []);
 
   return {
     ScrollContainerRef,
