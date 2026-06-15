@@ -1,5 +1,4 @@
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
-import { filterGPTMessageByMaxContext } from '../../../ai/llm/utils';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ContextExtractAgentItemType } from '@fastgpt/global/core/workflow/template/system/contextExtract/type';
@@ -20,12 +19,8 @@ import json5 from 'json5';
 import { getLogger, LogCategories } from '../../../../common/logger';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.AI);
-import { type ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
-import {
-  getExtractJsonPrompt,
-  getExtractJsonToolPrompt
-} from '@fastgpt/global/core/ai/prompt/agent';
+import { getExtractJsonPrompt } from '@fastgpt/global/core/ai/prompt/agent';
 import { createLLMResponse } from '../../../ai/llm/request';
 import type { JsonSchemaPropertiesItemType } from '@fastgpt/global/core/app/jsonschema';
 
@@ -43,8 +38,6 @@ type Response = DispatchNodeResultType<{
 }>;
 
 type ActionProps = Props & { extractModel: LLMModelItemType; lastMemory?: Record<string, any> };
-
-const agentFunName = 'request_function';
 
 export async function dispatchContentExtract(props: Props): Promise<Response> {
   const {
@@ -69,22 +62,12 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   >;
 
   try {
-    const { arg, inputTokens, outputTokens, usedUserOpenAIKey } = await (async () => {
-      if (extractModel.toolChoice) {
-        return toolChoice({
-          ...props,
-          histories: chatHistories,
-          extractModel,
-          lastMemory
-        });
-      }
-      return completions({
-        ...props,
-        histories: chatHistories,
-        extractModel,
-        lastMemory
-      });
-    })();
+    const { arg, inputTokens, outputTokens, usedUserOpenAIKey } = await completions({
+      ...props,
+      histories: chatHistories,
+      extractModel,
+      lastMemory
+    });
 
     // remove invalid key
     for (const key in arg) {
@@ -174,109 +157,6 @@ const getJsonSchema = ({ params: { extractKeys } }: ActionProps) => {
   return properties;
 };
 
-const toolChoice = async (props: ActionProps) => {
-  const {
-    externalProvider,
-    extractModel,
-    histories,
-    params: { content, description },
-    lastMemory
-  } = props;
-
-  const messages: ChatItemMiniType[] = [
-    {
-      obj: ChatRoleEnum.System,
-      value: [
-        {
-          text: {
-            content: getExtractJsonToolPrompt({
-              systemPrompt: description,
-              memory: lastMemory ? JSON.stringify(lastMemory) : undefined
-            })
-          }
-        }
-      ]
-    },
-    ...histories,
-    {
-      obj: ChatRoleEnum.Human,
-      value: [
-        {
-          text: {
-            content
-          }
-        }
-      ]
-    }
-  ];
-  const adaptMessages = chats2GPTMessages({
-    messages,
-    reserveId: false,
-    reserveReason: false
-  });
-  const filterMessages = await filterGPTMessageByMaxContext({
-    messages: adaptMessages,
-    maxContext: extractModel.maxContext
-  });
-
-  const schema = getJsonSchema(props);
-
-  const tools: ChatCompletionTool[] = [
-    {
-      type: 'function',
-      function: {
-        name: agentFunName,
-        description: '需要执行的函数',
-        parameters: {
-          type: 'object',
-          properties: schema,
-          required: []
-        }
-      }
-    }
-  ];
-
-  const body = {
-    stream: true,
-    model: extractModel.model,
-    messages: filterMessages,
-    tools,
-    tool_choice: { type: 'function', function: { name: agentFunName } },
-    toolCallMode: 'toolChoice',
-    ...(extractModel.reasoning ? { reasoning_effort: 'none' as const } : {})
-  } as const;
-
-  const {
-    answerText: text,
-    toolCalls,
-    usage: { inputTokens, outputTokens, usedUserOpenAIKey }
-  } = await createLLMResponse({
-    body,
-    userKey: externalProvider.openaiAccount
-  });
-
-  const arg: Record<string, any> = (() => {
-    try {
-      return json5.parse(toolCalls?.[0]?.function?.arguments || text || '');
-    } catch (error) {
-      logger.warn('Failed to parse tool call arguments', {
-        body,
-        responseText: text,
-        toolCall: toolCalls?.[0]?.function,
-        error
-      });
-      return {};
-    }
-  })();
-
-  return {
-    inputTokens,
-    outputTokens,
-    usedUserOpenAIKey,
-    arg
-  };
-};
-
 const completions = async (props: ActionProps) => {
   const {
     extractModel,
@@ -315,6 +195,8 @@ const completions = async (props: ActionProps) => {
   ];
 
   const {
+    requestId,
+    finish_reason: finishReason,
     answerText: answer,
     usage: { inputTokens, outputTokens, usedUserOpenAIKey }
   } = await createLLMResponse({
@@ -329,7 +211,26 @@ const completions = async (props: ActionProps) => {
   // parse response
   const jsonStr = sliceJsonStr(answer);
 
+  logger.debug('Content extract LLM response received', {
+    requestId,
+    model: extractModel.model,
+    finishReason,
+    answerLength: answer.length,
+    jsonLength: jsonStr.length,
+    inputTokens,
+    outputTokens
+  });
+
   if (!jsonStr) {
+    logger.warn('Content extract result has no JSON content', {
+      requestId,
+      model: extractModel.model,
+      finishReason,
+      answerLength: answer.length,
+      inputTokens,
+      outputTokens
+    });
+
     return {
       rawResponse: answer,
       inputTokens,
@@ -348,7 +249,14 @@ const completions = async (props: ActionProps) => {
       arg: json5.parse(jsonStr) as Record<string, any>
     };
   } catch (error) {
-    logger.warn('Failed to parse extract result', { answer, error });
+    logger.warn('Failed to parse extract result', {
+      requestId,
+      model: extractModel.model,
+      finishReason,
+      answerLength: answer.length,
+      jsonLength: jsonStr.length,
+      error
+    });
     return {
       rawResponse: answer,
       inputTokens,
