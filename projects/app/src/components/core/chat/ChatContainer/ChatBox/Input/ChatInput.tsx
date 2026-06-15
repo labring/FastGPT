@@ -86,12 +86,13 @@ const ChatInput = ({
   const autoTTSResponse = useContextSelector(ChatBoxContext, (v) => v.autoTTSResponse);
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
   const appName = useContextSelector(ChatItemContext, (v) => v.chatBoxData.app.name);
-  const placeholderAppName =
-    chatType === ChatTypeEnum.home ? 'FastGPT' : appName || 'FastGPT';
+  const placeholderAppName = chatType === ChatTypeEnum.home ? 'FastGPT' : appName || 'FastGPT';
   const appNamePlaceholderParts = useMemo(() => {
-    const placeholderText = t('common:core.chat.Type a message to app', {
-      appName: PLACEHOLDER_APP_NAME_TOKEN
-    });
+    const placeholderText = String(
+      t('common:core.chat.Type a message to app', {
+        appName: PLACEHOLDER_APP_NAME_TOKEN
+      })
+    );
     const tokenIndex = placeholderText.indexOf(PLACEHOLDER_APP_NAME_TOKEN);
 
     if (tokenIndex < 0) {
@@ -196,9 +197,7 @@ const ChatInput = ({
             _focusVisible={{
               border: 'none'
             }}
-            placeholder={
-              dialogTips || ''
-            }
+            placeholder={dialogTips || ''}
             resize={'none'}
             rows={1}
             bg={'transparent'}
