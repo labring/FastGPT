@@ -45,7 +45,7 @@ async function handler(
     return Promise.reject(ModelErrEnum.systemModelCannotDelete);
   }
 
-  // Check if the model is referenced by any shared apps or datasets
+  // Check if the model is referenced by any apps or datasets
   const references = await findReferencingResources(id, teamId);
   if (references.length > 0) {
     jsonRes(res, {

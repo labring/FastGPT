@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { getFakeUsers } from '@test/datas/users';
-import {
-  PerResourceTypeEnum,
-  ReadPermissionVal,
-  ReadRoleVal
-} from '@fastgpt/global/support/permission/constant';
-import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
@@ -26,16 +20,15 @@ describe('service/support/permission/model/reference', () => {
     expect(result).toEqual([]);
   });
 
-  it('returns empty array when app references model but has no collaborators', async () => {
+  it('finds app that references the model even without collaborators', async () => {
     const users = await getFakeUsers(1);
     const [member] = users.members;
     const modelId = 'model-ref-no-collab';
 
-    // Create an app that references the model via workflow modules
-    await MongoApp.create({
+    const app = await MongoApp.create({
       teamId: member.teamId,
       tmbId: member.tmbId,
-      name: 'Test App No Collab',
+      name: 'Unshared App',
       type: AppTypeEnum.workflow,
       modules: [
         {
@@ -51,162 +44,25 @@ describe('service/support/permission/model/reference', () => {
       edges: []
     });
 
+    const creator = await MongoTeamMember.findById(member.tmbId, 'name').lean();
+
     const result = await findReferencingResources(modelId, String(member.teamId));
-    expect(result).toEqual([]);
-  });
-
-  it('finds app with collaborators that references the model', async () => {
-    const users = await getFakeUsers(2);
-    const [member1, member2] = users.members;
-    const modelId = 'model-ref-with-collab';
-
-    // Owner (member1) creates an app that references the model
-    const app = await MongoApp.create({
-      teamId: member1.teamId,
-      tmbId: member1.tmbId,
-      name: 'Shared App With Model',
-      type: AppTypeEnum.workflow,
-      modules: [
-        {
-          name: 'AI Chat',
-          flowNodeType: 'chatNode',
-          inputs: [{ key: NodeInputKeyEnum.aiModelId, value: modelId }]
-        }
-      ],
-      chatConfig: {},
-      edges: []
-    });
-
-    // Add collaborator (member2) to the app
-    await MongoResourcePermission.create({
-      resourceType: PerResourceTypeEnum.app,
-      teamId: member1.teamId,
-      resourceId: String(app._id),
-      tmbId: member2.tmbId,
-      permission: ReadRoleVal
-    });
-
-    // Get creator name
-    const creator = await MongoTeamMember.findById(member1.tmbId, 'name').lean();
-
-    const result = await findReferencingResources(modelId, String(member1.teamId));
     expect(result).toHaveLength(1);
     expect(result[0]).toMatchObject({
       resourceType: 'app',
       resourceId: String(app._id),
-      resourceName: 'Shared App With Model',
-      creatorTmbId: String(member1.tmbId),
+      resourceName: 'Unshared App',
+      creatorTmbId: String(member.tmbId),
       creatorName: creator?.name || ''
     });
   });
 
-  it('finds dataset with collaborators that references the model', async () => {
-    const users = await getFakeUsers(2);
-    const [member1, member2] = users.members;
-    const modelId = 'model-ref-dataset-collab';
-
-    // Owner (member1) creates a dataset with the model as agentModel
-    const dataset = await MongoDataset.create({
-      teamId: member1.teamId,
-      tmbId: member1.tmbId,
-      name: 'Shared Dataset With Model',
-      type: DatasetTypeEnum.dataset,
-      agentModelId: modelId,
-      vectorModelId: 'another-model-id',
-      vlmModelId: undefined,
-      trainingType: DatasetCollectionDataProcessModeEnum.chunk
-    });
-
-    // Add collaborator (member2) to the dataset
-    await MongoResourcePermission.create({
-      resourceType: PerResourceTypeEnum.dataset,
-      teamId: member1.teamId,
-      resourceId: String(dataset._id),
-      tmbId: member2.tmbId,
-      permission: ReadRoleVal
-    });
-
-    const creator = await MongoTeamMember.findById(member1.tmbId, 'name').lean();
-
-    const result = await findReferencingResources(modelId, String(member1.teamId));
-    expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({
-      resourceType: 'dataset',
-      resourceId: String(dataset._id),
-      resourceName: 'Shared Dataset With Model',
-      creatorTmbId: String(member1.tmbId),
-      creatorName: creator?.name || ''
-    });
-  });
-
-  it('finds dataset referencing model via vectorModelId', async () => {
-    const users = await getFakeUsers(2);
-    const [member1, member2] = users.members;
-    const modelId = 'model-ref-vector-collab';
-
-    const dataset = await MongoDataset.create({
-      teamId: member1.teamId,
-      tmbId: member1.tmbId,
-      name: 'Vector Model Dataset',
-      type: DatasetTypeEnum.dataset,
-      agentModelId: 'other-model',
-      vectorModelId: modelId,
-      vlmModelId: undefined,
-      trainingType: DatasetCollectionDataProcessModeEnum.chunk
-    });
-
-    // Add collaborator
-    await MongoResourcePermission.create({
-      resourceType: PerResourceTypeEnum.dataset,
-      teamId: member1.teamId,
-      resourceId: String(dataset._id),
-      tmbId: member2.tmbId,
-      permission: ReadRoleVal
-    });
-
-    const result = await findReferencingResources(modelId, String(member1.teamId));
-    expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({
-      resourceType: 'dataset',
-      resourceName: 'Vector Model Dataset'
-    });
-  });
-
-  it('finds dataset referencing model via vlmModelId', async () => {
-    const users = await getFakeUsers(2);
-    const [member1, member2] = users.members;
-    const modelId = 'model-ref-vlm-collab';
-
-    const dataset = await MongoDataset.create({
-      teamId: member1.teamId,
-      tmbId: member1.tmbId,
-      name: 'VLM Model Dataset',
-      type: DatasetTypeEnum.dataset,
-      agentModelId: 'other-model',
-      vectorModelId: 'another-vector-model',
-      vlmModelId: modelId,
-      trainingType: DatasetCollectionDataProcessModeEnum.chunk
-    });
-
-    await MongoResourcePermission.create({
-      resourceType: PerResourceTypeEnum.dataset,
-      teamId: member1.teamId,
-      resourceId: String(dataset._id),
-      tmbId: member2.tmbId,
-      permission: ReadRoleVal
-    });
-
-    const result = await findReferencingResources(modelId, String(member1.teamId));
-    expect(result).toHaveLength(1);
-    expect(result[0]).toMatchObject({ resourceType: 'dataset', resourceName: 'VLM Model Dataset' });
-  });
-
-  it('returns empty array when dataset references model but has no collaborators', async () => {
+  it('finds dataset that references the model even without collaborators', async () => {
     const users = await getFakeUsers(1);
     const [member] = users.members;
     const modelId = 'model-ref-dataset-no-collab';
 
-    await MongoDataset.create({
+    const dataset = await MongoDataset.create({
       teamId: member.teamId,
       tmbId: member.tmbId,
       name: 'Private Dataset',
@@ -217,19 +73,72 @@ describe('service/support/permission/model/reference', () => {
       trainingType: DatasetCollectionDataProcessModeEnum.chunk
     });
 
+    const creator = await MongoTeamMember.findById(member.tmbId, 'name').lean();
+
     const result = await findReferencingResources(modelId, String(member.teamId));
-    expect(result).toEqual([]);
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      resourceType: 'dataset',
+      resourceId: String(dataset._id),
+      resourceName: 'Private Dataset',
+      creatorTmbId: String(member.tmbId),
+      creatorName: creator?.name || ''
+    });
+  });
+
+  it('finds dataset referencing model via vectorModelId', async () => {
+    const users = await getFakeUsers(1);
+    const [member] = users.members;
+    const modelId = 'model-ref-vector';
+
+    const dataset = await MongoDataset.create({
+      teamId: member.teamId,
+      tmbId: member.tmbId,
+      name: 'Vector Model Dataset',
+      type: DatasetTypeEnum.dataset,
+      agentModelId: 'other-model',
+      vectorModelId: modelId,
+      vlmModelId: undefined,
+      trainingType: DatasetCollectionDataProcessModeEnum.chunk
+    });
+
+    const result = await findReferencingResources(modelId, String(member.teamId));
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      resourceType: 'dataset',
+      resourceName: 'Vector Model Dataset'
+    });
+  });
+
+  it('finds dataset referencing model via vlmModelId', async () => {
+    const users = await getFakeUsers(1);
+    const [member] = users.members;
+    const modelId = 'model-ref-vlm';
+
+    const dataset = await MongoDataset.create({
+      teamId: member.teamId,
+      tmbId: member.tmbId,
+      name: 'VLM Model Dataset',
+      type: DatasetTypeEnum.dataset,
+      agentModelId: 'other-model',
+      vectorModelId: 'another-vector-model',
+      vlmModelId: modelId,
+      trainingType: DatasetCollectionDataProcessModeEnum.chunk
+    });
+
+    const result = await findReferencingResources(modelId, String(member.teamId));
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ resourceType: 'dataset', resourceName: 'VLM Model Dataset' });
   });
 
   it('filters out apps whose modules contain modelId only as substring in other values', async () => {
-    const users = await getFakeUsers(2);
-    const [member1, member2] = users.members;
+    const users = await getFakeUsers(1);
+    const [member] = users.members;
     const modelId = 'model-123';
 
-    // Create an app where the only matching value contains modelId as part of a longer string
-    const app = await MongoApp.create({
-      teamId: member1.teamId,
-      tmbId: member1.tmbId,
+    await MongoApp.create({
+      teamId: member.teamId,
+      tmbId: member.tmbId,
       name: 'Substring App',
       type: AppTypeEnum.workflow,
       modules: [
@@ -243,22 +152,12 @@ describe('service/support/permission/model/reference', () => {
       edges: []
     });
 
-    // Even with collaborators, the model is not actually referenced
-    // because extractWorkflowModelIds only extracts real model references
-    await MongoResourcePermission.create({
-      resourceType: PerResourceTypeEnum.app,
-      teamId: member1.teamId,
-      resourceId: String(app._id),
-      tmbId: member2.tmbId,
-      permission: ReadRoleVal
-    });
-
-    const result = await findReferencingResources(modelId, String(member1.teamId));
+    const result = await findReferencingResources(modelId, String(member.teamId));
     // extractWorkflowModelIds should not pick up modelId from URL input values
     expect(result).toEqual([]);
   });
 
-  it('finds multiple apps and datasets with collaborators in a single batch query', async () => {
+  it('finds all apps and datasets regardless of collaborator status in a single batch query', async () => {
     const users = await getFakeUsers(2);
     const [member1, member2] = users.members;
     const modelId = 'model-ref-multi-resource';
@@ -296,8 +195,8 @@ describe('service/support/permission/model/reference', () => {
     });
     const app3 = await MongoApp.create({
       teamId: member1.teamId,
-      tmbId: member1.tmbId,
-      name: 'App Gamma No Collab',
+      tmbId: member2.tmbId,
+      name: 'App Gamma',
       type: AppTypeEnum.workflow,
       modules: [
         {
@@ -332,111 +231,40 @@ describe('service/support/permission/model/reference', () => {
       trainingType: DatasetCollectionDataProcessModeEnum.chunk
     });
 
-    // Add collaborators to app1, app2 and ds1, ds2 (not app3)
-    const collaboratorTmbId = member2.tmbId;
-    await MongoResourcePermission.create({
-      resourceType: PerResourceTypeEnum.app,
-      teamId: member1.teamId,
-      resourceId: String(app1._id),
-      tmbId: collaboratorTmbId,
-      permission: ReadRoleVal
-    });
-    await MongoResourcePermission.create({
-      resourceType: PerResourceTypeEnum.app,
-      teamId: member1.teamId,
-      resourceId: String(app2._id),
-      tmbId: collaboratorTmbId,
-      permission: ReadRoleVal
-    });
-    await MongoResourcePermission.create({
-      resourceType: PerResourceTypeEnum.dataset,
-      teamId: member1.teamId,
-      resourceId: String(ds1._id),
-      tmbId: collaboratorTmbId,
-      permission: ReadRoleVal
-    });
-    await MongoResourcePermission.create({
-      resourceType: PerResourceTypeEnum.dataset,
-      teamId: member1.teamId,
-      resourceId: String(ds2._id),
-      tmbId: collaboratorTmbId,
-      permission: ReadRoleVal
-    });
-
     const result = await findReferencingResources(modelId, String(member1.teamId));
 
-    // Should have 4 results: app1, app2, ds1, ds2 (app3 has no collaborators)
-    expect(result).toHaveLength(4);
+    // All 5 resources reference the model (collaborator status no longer matters)
+    expect(result).toHaveLength(5);
 
     const appResults = result.filter((r) => r.resourceType === 'app');
     const datasetResults = result.filter((r) => r.resourceType === 'dataset');
 
-    expect(appResults).toHaveLength(2);
+    expect(appResults).toHaveLength(3);
     expect(datasetResults).toHaveLength(2);
 
     const appNames = appResults.map((r) => r.resourceName).sort();
-    expect(appNames).toEqual(['App Alpha', 'App Beta']);
+    expect(appNames).toEqual(['App Alpha', 'App Beta', 'App Gamma']);
 
     const dsNames = datasetResults.map((r) => r.resourceName).sort();
     expect(dsNames).toEqual(['Dataset One', 'Dataset Two']);
 
-    // All results should have the same creatorTmbId
-    for (const item of result) {
-      expect(item.creatorTmbId).toBe(String(member1.tmbId));
-    }
-
     // Verify creator names are populated via batch query
-    const creator = await MongoTeamMember.findById(member1.tmbId, 'name').lean();
-    for (const item of result) {
-      expect(item.creatorName).toBe(creator?.name || '');
-    }
-  });
-
-  it('handles permission with lower access level than ReadPermissionVal correctly', async () => {
-    const users = await getFakeUsers(2);
-    const [member1, member2] = users.members;
-    const modelId = 'model-ref-low-permission';
-
-    const app = await MongoApp.create({
-      teamId: member1.teamId,
-      tmbId: member1.tmbId,
-      name: 'App With Low Permission',
-      type: AppTypeEnum.workflow,
-      modules: [
-        {
-          name: 'AI Chat',
-          flowNodeType: 'chatNode',
-          inputs: [{ key: NodeInputKeyEnum.aiModelId, value: modelId }]
-        }
-      ],
-      chatConfig: {},
-      edges: []
-    });
-
-    // Grant permission below ReadPermissionVal (e.g., 0 = no access in practical terms)
-    // The query uses $gte: ReadPermissionVal, so lower values should be excluded
-    await MongoResourcePermission.create({
-      resourceType: PerResourceTypeEnum.app,
-      teamId: member1.teamId,
-      resourceId: String(app._id),
-      tmbId: member2.tmbId,
-      permission: ReadPermissionVal - 1 // below read threshold
-    });
-
-    const result = await findReferencingResources(modelId, String(member1.teamId));
-    // Permission below ReadPermissionVal should not count as collaborator
-    expect(result).toEqual([]);
+    const creator1 = await MongoTeamMember.findById(member1.tmbId, 'name').lean();
+    const creator2 = await MongoTeamMember.findById(member2.tmbId, 'name').lean();
+    const appGamma = appResults.find((r) => r.resourceName === 'App Gamma')!;
+    expect(appGamma.creatorName).toBe(creator2?.name || '');
+    const appAlpha = appResults.find((r) => r.resourceName === 'App Alpha')!;
+    expect(appAlpha.creatorName).toBe(creator1?.name || '');
   });
 
   it('respects teamId boundary — ignores resources from other teams', async () => {
-    const users1 = await getFakeUsers(2);
-    const [team1Member1, team1Member2] = users1.members;
+    const users = await getFakeUsers(1);
+    const [member] = users.members;
     const modelId = 'model-ref-cross-team';
 
-    // Create datasets with members from getFakeUsers (same team)
     await MongoDataset.create({
-      teamId: team1Member1.teamId,
-      tmbId: team1Member1.tmbId,
+      teamId: member.teamId,
+      tmbId: member.tmbId,
       name: 'Team1 Dataset',
       type: DatasetTypeEnum.dataset,
       agentModelId: modelId,
@@ -445,12 +273,11 @@ describe('service/support/permission/model/reference', () => {
       trainingType: DatasetCollectionDataProcessModeEnum.chunk
     });
 
-    // Only team1's resources should appear
-    const result = await findReferencingResources(modelId, String(team1Member1.teamId));
-    // Dataset exists but has no collaborators yet
-    expect(result).toHaveLength(0);
+    // Correct teamId finds the dataset
+    const result = await findReferencingResources(modelId, String(member.teamId));
+    expect(result).toHaveLength(1);
 
-    // Now query with a different teamId — should find nothing
+    // Different teamId finds nothing
     const result2 = await findReferencingResources(modelId, '000000000000000000000099');
     expect(result2).toEqual([]);
   });
@@ -487,22 +314,6 @@ describe('service/support/permission/model/reference', () => {
       vectorModelId: 'other-vector-model',
       vlmModelId: undefined,
       trainingType: DatasetCollectionDataProcessModeEnum.chunk
-    });
-
-    // member3 is collaborator on both
-    await MongoResourcePermission.create({
-      resourceType: PerResourceTypeEnum.app,
-      teamId: member1.teamId,
-      resourceId: String(app._id),
-      tmbId: member3.tmbId,
-      permission: ReadRoleVal
-    });
-    await MongoResourcePermission.create({
-      resourceType: PerResourceTypeEnum.dataset,
-      teamId: member1.teamId,
-      resourceId: String(dataset._id),
-      tmbId: member3.tmbId,
-      permission: ReadRoleVal
     });
 
     const result = await findReferencingResources(modelId, String(member1.teamId));

@@ -204,7 +204,8 @@ const Dataset = () => {
                                           icon: 'core/dataset/databaseColor',
                                           label: t('dataset:direct_database'),
                                           description: t('dataset:database_auth_desc'),
-                                          onClick: () => onSelectDatasetType(DatasetTypeEnum.database)
+                                          onClick: () =>
+                                            onSelectDatasetType(DatasetTypeEnum.database)
                                         }
                                       ]
                                     }
