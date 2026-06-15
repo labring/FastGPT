@@ -640,7 +640,6 @@ describe('nodeInputs2JsonSchema', () => {
       required: ['query']
     });
   });
-
   it('should convert select options from list and enums to json schema enum', () => {
     const result = nodeInputs2JsonSchema({
       inputs: [
