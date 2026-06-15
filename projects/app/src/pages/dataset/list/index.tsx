@@ -184,30 +184,42 @@ const Dataset = () => {
                             description: t('dataset:website_dataset_desc'),
                             onClick: () => onSelectDatasetType(DatasetTypeEnum.websiteDataset)
                           },
-                          {
-                            icon: 'core/dataset/datasetDb',
-                            label: t('dataset:database'),
-                            description: t('dataset:build_database_by_import'),
-                            menuList: [
-                              {
-                                children: [
-                                  {
-                                    icon: 'core/dataset/fileDbColor',
-                                    label: t('dataset:file_database'),
-                                    description: t('dataset:file_database_desc'),
-                                    onClick: () =>
-                                      onSelectDatasetType(DatasetTypeEnum.structureDocument)
-                                  },
-                                  {
-                                    icon: 'core/dataset/databaseColor',
-                                    label: t('dataset:direct_database'),
-                                    description: t('dataset:database_auth_desc'),
-                                    onClick: () => onSelectDatasetType(DatasetTypeEnum.database)
-                                  }
-                                ]
-                              }
-                            ]
-                          },
+                          ...(feConfigs?.show_direct_database === true
+                            ? [
+                                {
+                                  icon: 'core/dataset/datasetDb',
+                                  label: t('dataset:database'),
+                                  description: t('dataset:build_database_by_import'),
+                                  menuList: [
+                                    {
+                                      children: [
+                                        {
+                                          icon: 'core/dataset/fileDbColor',
+                                          label: t('dataset:file_database'),
+                                          description: t('dataset:file_database_desc'),
+                                          onClick: () =>
+                                            onSelectDatasetType(DatasetTypeEnum.structureDocument)
+                                        },
+                                        {
+                                          icon: 'core/dataset/databaseColor',
+                                          label: t('dataset:direct_database'),
+                                          description: t('dataset:database_auth_desc'),
+                                          onClick: () => onSelectDatasetType(DatasetTypeEnum.database)
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            : [
+                                {
+                                  icon: 'core/dataset/fileDbColor',
+                                  label: t('dataset:file_database'),
+                                  description: t('dataset:file_database_desc'),
+                                  onClick: () =>
+                                    onSelectDatasetType(DatasetTypeEnum.structureDocument)
+                                }
+                              ]),
                           {
                             icon: 'core/dataset/otherDataset',
                             label: t('dataset:other_dataset'),

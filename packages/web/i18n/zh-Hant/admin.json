@@ -774,5 +774,7 @@
   "max_upload_file_count_field": "最大上傳文件數量",
   "sandbox": "虛擬機",
   "show_dataset_search_params": "知識檢索參數",
-  "show_dataset_search_params_tip": "開啟後，在應用中進行知識檢索時，可更改標準檢索中的預設參數。"
+  "show_dataset_search_params_tip": "開啟後，在應用中進行知識檢索時，可更改標準檢索中的預設參數。",
+  "show_direct_database": "直連資料庫",
+  "show_direct_database_tip": "開啟後，在建構知識庫時，可選擇授權 MySQL（5.7及其以上版本）、PostgreSQL（9.6及其以上版本 ）、 SQL Server（2016及其以上版本 ）及 Oracle（12c 及其以上版本 ）進行連接，檢索時將連接資料庫獲取所選的資料表，實現簡單的資料庫檢索問答。"
 }

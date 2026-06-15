@@ -774,5 +774,7 @@
   "max_upload_file_count_field": "Max upload file count",
   "sandbox": "Sandbox",
   "show_dataset_search_params": "Knowledge retrieval parameters",
-  "show_dataset_search_params_tip": "When enabled, you can change the default parameters in standard retrieval during knowledge retrieval in the app."
+  "show_dataset_search_params_tip": "When enabled, you can change the default parameters in standard retrieval during knowledge retrieval in the app.",
+  "show_direct_database": "Direct database connection",
+  "show_direct_database_tip": "When enabled, you can authorize MySQL (version 5.7 and above), PostgreSQL (version 9.6 and above), SQL Server (version 2016 and above), and Oracle (version 12c and above) for connection when building a knowledge base. During retrieval, it will connect to the database to fetch data from selected tables, enabling simple database Q&A."
 }

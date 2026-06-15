@@ -80,6 +80,7 @@ export type FastGPTFeConfigsType = {
   show_batch_eval?: boolean;
   show_evaluation?: boolean;
   show_dataset_search_params?: boolean;
+  show_direct_database?: boolean;
 
   concatMd?: string;
   docUrl?: string;
