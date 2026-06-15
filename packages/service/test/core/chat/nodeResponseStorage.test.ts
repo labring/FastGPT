@@ -86,7 +86,6 @@ describe('createChatItemResponseRows', () => {
         childResponseCount: 3
       }
     });
-    expect(rows[0].data.childTotalPoints).toBeUndefined();
     expect(rows[0].data.childResponseCount).toBe(3);
     expect(rows[0].data.childrenResponses?.map((item) => item.id)).toEqual(['child']);
     expect(rows[0].data.toolDetail?.map((item) => item.id)).toEqual(['tool-child']);
@@ -97,7 +96,7 @@ describe('createChatItemResponseRows', () => {
     });
   });
 
-  it('does not write childTotalPoints in response rows', () => {
+  it('does not generate childTotalPoints in response rows', () => {
     const rows = createChatItemResponseRows({
       ...base,
       nodeResponses: [
@@ -105,14 +104,12 @@ describe('createChatItemResponseRows', () => {
           id: 'loop',
           moduleType: FlowNodeTypeEnum.loopRun,
           totalPoints: 1,
-          childTotalPoints: 999,
           childrenResponses: [makeResponse({ id: 'loop-child', totalPoints: 2 })]
         }),
         makeResponse({
           id: 'batch',
           moduleType: FlowNodeTypeEnum.parallelRun,
           totalPoints: 3,
-          childTotalPoints: 888,
           childrenResponses: [makeResponse({ id: 'batch-child', totalPoints: 4 })]
         })
       ]
@@ -406,7 +403,7 @@ describe('getChatItemResponseData', () => {
     ]);
   });
 
-  it('uses fallback responseData and strips childTotalPoints when there are no rows', async () => {
+  it('uses fallback responseData as-is when there are no rows', async () => {
     const result = await getChatItemResponseData({
       ...base,
       fallbackResponseData: [
@@ -426,15 +423,15 @@ describe('getChatItemResponseData', () => {
     expect(result).toEqual([
       expect.objectContaining({
         id: 'fallback-root',
+        childTotalPoints: 10,
         childrenResponses: [
           expect.objectContaining({
-            id: 'fallback-child'
+            id: 'fallback-child',
+            childTotalPoints: 3
           })
         ]
       })
     ]);
-    expect(result[0]).not.toHaveProperty('childTotalPoints');
-    expect(result[0].childrenResponses?.[0]).not.toHaveProperty('childTotalPoints');
   });
 });
 
@@ -811,7 +808,7 @@ describe('WorkflowNodeResponseWriter', () => {
     expect(writer.isFullyFlushed).toBe(true);
   });
 
-  it('drops childTotalPoints from slim fallback rows for loop and batch containers', async () => {
+  it('keeps slim fallback rows free of generated childTotalPoints', async () => {
     const create = vi
       .fn()
       .mockRejectedValueOnce(new Error('invalid payload 1'))
@@ -831,7 +828,6 @@ describe('WorkflowNodeResponseWriter', () => {
         id: 'loop',
         moduleType: FlowNodeTypeEnum.loopRun,
         totalPoints: 6,
-        childTotalPoints: 999,
         childResponseCount: 1,
         childrenResponses: [makeResponse({ id: 'child', totalPoints: 2 })]
       })

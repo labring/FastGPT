@@ -768,7 +768,8 @@ describe('getChatItems', () => {
         chatId,
         offset: 0,
         limit: 10,
-        field: 'obj value responseData'
+        field: 'obj value',
+        nodeResponseMode: 'full'
       });
 
       expect(result.histories).toHaveLength(1);
@@ -784,7 +785,7 @@ describe('getChatItems', () => {
       });
     });
 
-    it('keeps inline chatItem responseData for legacy records', async () => {
+    it('reads persisted rows even when chat item still has legacy inline responseData', async () => {
       await MongoChatItem.create({
         teamId: testUser.teamId,
         tmbId: testUser.tmbId,
@@ -822,13 +823,14 @@ describe('getChatItems', () => {
         chatId,
         offset: 0,
         limit: 10,
-        field: 'obj value responseData'
+        field: 'obj value',
+        nodeResponseMode: 'full'
       });
 
-      expect(result.histories[0].responseData?.map((item) => item.id)).toEqual(['fallback-root']);
+      expect(result.histories[0].responseData?.map((item) => item.id)).toEqual(['persisted-root']);
     });
 
-    it('does not overwrite legacy chatItem responseData even when it is empty', async () => {
+    it('does not use empty legacy chat item responseData as a fallback', async () => {
       await MongoChatItem.create({
         teamId: testUser.teamId,
         tmbId: testUser.tmbId,
@@ -859,10 +861,151 @@ describe('getChatItems', () => {
         chatId,
         offset: 0,
         limit: 10,
-        field: 'obj value responseData'
+        field: 'obj value',
+        nodeResponseMode: 'full'
       });
 
-      expect(result.histories[0].responseData).toEqual([]);
+      expect(result.histories[0].responseData?.map((item) => item.id)).toEqual(['persisted-root']);
+    });
+
+    it('loads lightweight preview response rows without composing responseData tree', async () => {
+      const citedQuoteId = '0123456789abcdef01234567';
+      const uncitedQuoteId = 'fedcba9876543210fedcba98';
+      const aiDataId = 'preview-ai-data-id';
+
+      await MongoChatItem.create({
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        userId: testUser.userId,
+        appId,
+        chatId,
+        dataId: aiDataId,
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            type: 'text',
+            text: {
+              content: `Answer with cite [${citedQuoteId}](CITE)`
+            }
+          }
+        ],
+        responseData: [
+          {
+            id: 'legacy-root',
+            moduleName: 'Legacy',
+            moduleType: FlowNodeTypeEnum.chatNode,
+            errorText: 'legacy error'
+          }
+        ]
+      });
+
+      await MongoChatItemResponse.create([
+        {
+          teamId: testUser.teamId,
+          appId,
+          chatId,
+          chatItemDataId: aiDataId,
+          data: {
+            id: 'dataset-response',
+            moduleName: 'Dataset',
+            moduleType: FlowNodeTypeEnum.datasetSearchNode,
+            quoteList: [
+              {
+                id: citedQuoteId,
+                datasetId: 'dataset-1',
+                collectionId: 'collection-1',
+                sourceId: 'source-1',
+                sourceName: 'source.md',
+                chunkIndex: 0,
+                score: 0.9
+              },
+              {
+                id: uncitedQuoteId,
+                datasetId: 'dataset-1',
+                collectionId: 'collection-1',
+                sourceId: 'source-2',
+                sourceName: 'unused.md',
+                chunkIndex: 1,
+                score: 0.5
+              }
+            ]
+          }
+        },
+        {
+          teamId: testUser.teamId,
+          appId,
+          chatId,
+          chatItemDataId: aiDataId,
+          data: {
+            id: 'tool-response',
+            moduleName: 'Tool',
+            moduleType: FlowNodeTypeEnum.tool,
+            toolRes: {
+              citeLinks: [
+                {
+                  name: 'Tool Ref',
+                  url: 'https://example.com/ref'
+                },
+                {
+                  name: 'Tool Ref',
+                  url: 'https://example.com/ref'
+                }
+              ]
+            },
+            errorText: 'tool failed'
+          }
+        },
+        {
+          teamId: testUser.teamId,
+          appId,
+          chatId,
+          chatItemDataId: aiDataId,
+          data: {
+            id: 'large-response',
+            moduleName: 'LLM',
+            moduleType: FlowNodeTypeEnum.chatNode,
+            historyPreview: 'large preview should not be projected',
+            toolRes: {
+              result: 'large result should not be projected'
+            }
+          }
+        }
+      ]);
+
+      const result = await getChatItems({
+        appId,
+        chatId,
+        offset: 0,
+        limit: 10,
+        field: 'obj value responseData',
+        nodeResponseMode: 'preview'
+      });
+
+      const item = result.histories[0];
+      expect(item.responseData?.map((response) => response.id)).toEqual([
+        'dataset-response',
+        'tool-response',
+        'large-response'
+      ]);
+      expect(item.responseData?.[0].quoteList?.map((quote) => quote.id)).toEqual([
+        citedQuoteId,
+        uncitedQuoteId
+      ]);
+      expect(item.responseData?.[1].toolRes).toEqual({
+        citeLinks: [
+          {
+            name: 'Tool Ref',
+            url: 'https://example.com/ref'
+          },
+          {
+            name: 'Tool Ref',
+            url: 'https://example.com/ref'
+          }
+        ]
+      });
+      expect(item.responseData?.[1].errorText).toBe('tool failed');
+      expect(item.responseData?.[2].historyPreview).toBeUndefined();
+      expect(item.responseData?.[2].toolRes?.result).toBeUndefined();
     });
   });
 });

@@ -1549,7 +1549,8 @@ describe('pushChatRecords', () => {
         chatId: props.chatId,
         offset: 0,
         limit: 10,
-        field: 'obj value responseData'
+        field: 'obj value',
+        nodeResponseMode: 'full'
       });
       const aiRecord = records.histories.find((item) => item.obj === ChatRoleEnum.AI);
 

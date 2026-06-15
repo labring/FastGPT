@@ -341,6 +341,41 @@ describe('mergeNodeResponseDataByIdAndParent', () => {
     expect(result[0].childrenResponses?.map((item) => item.id)).toEqual(['child-1', 'child-2']);
   });
 
+  it('should merge repeated node increments with many inline children efficiently', () => {
+    const responseDataList: ChatHistoryItemResType[] = Array.from({ length: 20 }, (_, index) => ({
+      id: 'agent-1',
+      nodeId: 'agent-node',
+      moduleName: 'Agent',
+      moduleType: FlowNodeTypeEnum.agent,
+      runningTime: 1,
+      childrenResponses: Array.from({ length: 10 }, (__, childIndex) => ({
+        id: `child-${index}-${childIndex}`,
+        parentId: 'agent-1',
+        nodeId: `child-node-${index}-${childIndex}`,
+        moduleName: `Child ${index}-${childIndex}`,
+        moduleType: FlowNodeTypeEnum.tool
+      }))
+    }));
+
+    const result = mergeNodeResponseDataByIdAndParent(responseDataList);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].runningTime).toBe(20);
+    expect(result[0].childrenResponses).toHaveLength(200);
+    expect(result[0].childrenResponses?.[0]).toEqual(
+      expect.objectContaining({
+        id: 'child-0-0',
+        parentId: 'agent-1'
+      })
+    );
+    expect(result[0].childrenResponses?.at(-1)).toEqual(
+      expect.objectContaining({
+        id: 'child-19-9',
+        parentId: 'agent-1'
+      })
+    );
+  });
+
   it('should merge accumulated tool call fields by id and parentId', () => {
     const responseDataList: ChatHistoryItemResType[] = [
       {
@@ -639,7 +674,7 @@ describe('mergeNodeResponseDataByIdAndParent', () => {
     expect(result[0].loopRunDetail?.map((item) => item.id)).toEqual(['loop-1', 'loop-2']);
   });
 
-  it('should keep anonymous responses as separate rows and strip childTotalPoints recursively', () => {
+  it('should keep anonymous responses as separate rows without filtering fields', () => {
     const responseDataList: ChatHistoryItemResType[] = [
       {
         nodeId: 'anonymous-1',

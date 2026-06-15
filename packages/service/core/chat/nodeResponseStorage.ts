@@ -8,9 +8,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {
   getChildrenResponses,
   getNodeResponseIdentityKey,
-  mergeNodeResponseDataByIdAndParent,
-  stripChildTotalPoints,
-  stripChildTotalPointsFromResponseData
+  mergeNodeResponseDataByIdAndParent
 } from '@fastgpt/global/core/chat/utils/mergeNode';
 import { MongoChatItemResponse } from './chatItemResponseSchema';
 import { getLogger, LogCategories } from '../../common/logger';
@@ -294,14 +292,13 @@ export const createChatItemResponseRows = ({
   ...base
 }: CreateRowsParams): ChatItemResponseStorageRow[] => {
   return nodeResponses.map((response) => {
-    const responseForStorage = stripChildTotalPoints(response);
     const id = getResponseId(response);
     const currentParentId = getParentId(response);
     const children = getChildrenResponses(response);
     const childResponseCount = getResponseChildResponseCount(response, children);
     // data 是当前 nodeResponse 本身：保留 childrenResponses，仅读取时再与 parentId child rows 合并。
     const data = slimQuoteListForStorage({
-      ...responseForStorage,
+      ...response,
       id,
       ...(currentParentId ? { parentId: currentParentId } : {}),
       ...(childResponseCount !== undefined ? { childResponseCount } : {})
@@ -361,9 +358,7 @@ export const getChatItemResponseData = async ({
    * 新数据优先来自 chat_item_responses 平铺表；如果调用方传入旧链路的内存/内联详情，
    * 只有在独立表没有 rows 时才回退，避免新数据被空旧字段或空 flowResponses 覆盖。
    */
-  return rows.length > 0
-    ? composeChatItemResponseData({ rows })
-    : stripChildTotalPointsFromResponseData(fallbackResponseData || []);
+  return rows.length > 0 ? composeChatItemResponseData({ rows }) : fallbackResponseData || [];
 };
 
 export const getChatItemResponseRows = async ({
@@ -731,7 +726,7 @@ export class WorkflowNodeResponseWriter {
 
   /** 返回本轮请求内保留的 flat nodeResponses。未开启 retainInMemory 时恒为空数组。 */
   getFlatNodeResponses(): ChatHistoryItemResType[] {
-    return stripChildTotalPointsFromResponseData(this.flatResponseRows.map((row) => row.data));
+    return this.flatResponseRows.map((row) => row.data);
   }
 }
 

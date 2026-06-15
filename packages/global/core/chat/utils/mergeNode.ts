@@ -46,36 +46,56 @@ const isSameNodeResponseIdentity = (
   !!incoming.id &&
   getNodeResponseIdentityKey(current) === getNodeResponseIdentityKey(incoming);
 
-/**
- * 对外 responseData 不再携带 childTotalPoints。
- *
- * 子节点积分展示统一由客户端基于 childrenResponses 现场计算；后端只保留 totalPoints 和
- * childResponseCount 这类节点自身消耗/结构字段，避免存储值和展示计算值产生双口径。
- */
-export const stripChildTotalPoints = (item: ChatHistoryItemResType): ChatHistoryItemResType => {
-  const { childTotalPoints, ...rest } = item;
-  const strippedChildren = childrenResponseFields.reduce<Partial<ChatHistoryItemResType>>(
-    (acc, field) => {
-      const children = item[field] as ChatHistoryItemResType[] | undefined;
-      if (!children?.length) return acc;
+const hasRootParentDependency = (responses: ChatHistoryItemResType[]) => {
+  const rootIds = new Set(responses.flatMap((response) => (response.id ? [response.id] : [])));
 
-      return {
-        ...acc,
-        [field]: children.map(stripChildTotalPoints)
-      };
-    },
-    {}
+  return responses.some(
+    (response) =>
+      response.parentId && response.parentId !== response.id && rootIds.has(response.parentId)
   );
-
-  return {
-    ...rest,
-    ...strippedChildren
-  } as ChatHistoryItemResType;
 };
 
-export const stripChildTotalPointsFromResponseData = (
-  responseData: ChatHistoryItemResType[] = []
-): ChatHistoryItemResType[] => responseData.map(stripChildTotalPoints);
+/**
+ * 合并同一个 child 字段下的 sibling nodes。
+ *
+ * 旧实现会把 current + incoming 从空数组重新走一遍 appendNodeResponseByParent；
+ * 当同一个节点多次增量且每次都带大量 childrenResponses 时，会反复扫描并复制整棵 child 树。
+ * 这里优先在同层用 `id + parentId` 建索引合并，只有发现 sibling 之间还存在 parent 依赖时
+ * 才回退到完整挂树逻辑，保留 child 先到、parent 后到的兼容语义。
+ */
+const mergeChildResponseList = (
+  current: ChatHistoryItemResType[] = [],
+  incoming: ChatHistoryItemResType[] = []
+): ChatHistoryItemResType[] => {
+  const responses = [...current, ...incoming];
+  if (responses.length === 0) return [];
+
+  if (hasRootParentDependency(responses)) {
+    return responses.reduce<ChatHistoryItemResType[]>(
+      (list, child) => appendNodeResponseByParent(list, child),
+      []
+    );
+  }
+
+  const indexByIdentity = new Map<string, number>();
+  return responses.reduce<ChatHistoryItemResType[]>((list, child) => {
+    if (!child.id) {
+      list.push(child);
+      return list;
+    }
+
+    const identity = getNodeResponseIdentityKey(child);
+    const existingIndex = indexByIdentity.get(identity);
+    if (existingIndex === undefined) {
+      indexByIdentity.set(identity, list.length);
+      list.push(child);
+      return list;
+    }
+
+    list[existingIndex] = mergeNodeResponse(list[existingIndex], child);
+    return list;
+  }, []);
+};
 
 /**
  * 合并同一个 nodeResponse 的增量数据。
@@ -88,20 +108,17 @@ const mergeNodeResponse = (
   current: ChatHistoryItemResType,
   incoming: ChatHistoryItemResType
 ): ChatHistoryItemResType => {
-  const childrenResponses = [
-    ...(current.childrenResponses || []),
-    ...(incoming.childrenResponses || [])
-  ].reduce<ChatHistoryItemResType[]>((list, child) => appendNodeResponseByParent(list, child), []);
+  const childrenResponses = mergeChildResponseList(
+    current.childrenResponses,
+    incoming.childrenResponses
+  );
 
   const mergedLegacyChildren = childrenResponseFields.reduce<Partial<ChatHistoryItemResType>>(
     (acc, field) => {
       if (field === 'childrenResponses') return acc;
-      const merged = [
-        ...((current[field] || []) as ChatHistoryItemResType[]),
-        ...((incoming[field] || []) as ChatHistoryItemResType[])
-      ].reduce<ChatHistoryItemResType[]>(
-        (list, child) => appendNodeResponseByParent(list, child),
-        []
+      const merged = mergeChildResponseList(
+        current[field] as ChatHistoryItemResType[] | undefined,
+        incoming[field] as ChatHistoryItemResType[] | undefined
       );
 
       return merged.length > 0 ? { ...acc, [field]: merged } : acc;
@@ -334,14 +351,35 @@ const normalizeNodeResponseChildren = (
   };
 };
 
+const stripChildTotalPoints = (item: ChatHistoryItemResType): ChatHistoryItemResType => {
+  const strippedItem = { ...item };
+  delete strippedItem.childTotalPoints;
+
+  const strippedChildren = childrenResponseFields.reduce<Partial<ChatHistoryItemResType>>(
+    (acc, field) => {
+      const children = item[field] as ChatHistoryItemResType[] | undefined;
+      if (!children?.length) return acc;
+
+      return {
+        ...acc,
+        [field]: children.map(stripChildTotalPoints)
+      };
+    },
+    {}
+  );
+
+  return {
+    ...strippedItem,
+    ...strippedChildren
+  };
+};
+
 /** 按 `id + parentId` 合并 nodeResponse 增量，旧 `mergeSignId` 语义不再参与合并。 */
 export const mergeNodeResponseDataByIdAndParent = (
   responseDataList: ChatHistoryItemResType[] = []
 ): ChatHistoryItemResType[] =>
-  stripChildTotalPointsFromResponseData(
-    responseDataList.reduce<ChatHistoryItemResType[]>(
-      (responses, nodeResponse) =>
-        appendNodeResponseByParent(responses, normalizeNodeResponseChildren(nodeResponse)),
-      []
-    )
-  );
+  responseDataList
+    .reduce<
+      ChatHistoryItemResType[]
+    >((responses, nodeResponse) => appendNodeResponseByParent(responses, normalizeNodeResponseChildren(nodeResponse)), [])
+    .map(stripChildTotalPoints);

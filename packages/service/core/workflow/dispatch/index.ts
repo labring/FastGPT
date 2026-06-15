@@ -25,7 +25,6 @@ import type {
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 import { filterNodeResponseTreeData } from '@fastgpt/global/core/chat/utils';
-import { stripChildTotalPoints } from '@fastgpt/global/core/chat/utils/mergeNode';
 import {
   filterWorkflowEdges,
   textAdaptGptResponse,
@@ -993,7 +992,7 @@ export class WorkflowQueue {
         filteredResponses.forEach((item) => {
           this.data.workflowStreamResponse?.({
             event: SseResponseEventEnum.flowNodeResponse,
-            data: stripChildTotalPoints(item)
+            data: item
           });
         });
       }

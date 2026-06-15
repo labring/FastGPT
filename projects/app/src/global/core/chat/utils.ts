@@ -27,6 +27,30 @@ const getNodeErrorText = (item: ChatHistoryItemResType) => {
   return item.errorText || getErrText(item.error);
 };
 
+/**
+ * 聊天列表预览只需要从 nodeResponse rows 中提取标签和错误摘要。
+ *
+ * 不包含 `historyPreview` 和 `error`：前者只用于详情弹窗，后者可能是大对象；列表错误展示优先
+ * 使用轻量的 `errorText`，chat item 自身还有 `errorMsg` 兜底。
+ */
+export const chatItemResponsePreviewProjection = {
+  chatItemDataId: 1,
+  'data.id': 1,
+  'data.parentId': 1,
+  'data.moduleType': 1,
+  'data.moduleName': 1,
+  'data.quoteList.id': 1,
+  'data.quoteList.collectionId': 1,
+  'data.quoteList.datasetId': 1,
+  'data.quoteList.sourceId': 1,
+  'data.quoteList.sourceName': 1,
+  'data.quoteList.chunkIndex': 1,
+  'data.quoteList.score': 1,
+  'data.toolId': 1,
+  'data.toolRes.citeLinks': 1,
+  'data.errorText': 1
+} as const;
+
 export function transformPreviewHistories(
   histories: ChatItemMiniType[],
   responseDetail: boolean
@@ -134,8 +158,14 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemMiniType) {
 
   // Filter quote list to only include citations actually referenced in the response text
   const responseText = historyItem.value.map((v) => v.text?.content || '').join('');
-  const citedIds = extractCitationIdsFromText(responseText);
-  const filteredQuoteList = totalQuoteList.filter((quote) => citedIds.includes(quote.id));
+  const citedIds = new Set(extractCitationIdsFromText(responseText));
+  const quoteDedupe = new Set<string>();
+  const filteredQuoteList = totalQuoteList.filter((quote) => {
+    if (!quote.id || !citedIds.has(quote.id) || quoteDedupe.has(quote.id)) return false;
+
+    quoteDedupe.add(quote.id);
+    return true;
+  });
 
   return {
     ...historyItem,

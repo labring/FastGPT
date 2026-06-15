@@ -112,6 +112,58 @@ describe('addStatisticalDataToHistoryItem', () => {
     expect(addStatisticalDataToHistoryItem(historyItem).totalQuoteList).toHaveLength(1);
   });
 
+  it('deduplicates dataset quote tags by cited quote id', () => {
+    const quoteId = '507f1f77bcf86cd799439011';
+    const historyItem: ChatItemMiniType = {
+      obj: ChatRoleEnum.AI,
+      value: [
+        {
+          text: {
+            content: `done [${quoteId}](QUOTE)`
+          }
+        }
+      ],
+      responseData: [
+        {
+          id: 'dataset-response-1',
+          nodeId: 'dataset-node-1',
+          moduleName: 'Dataset Search 1',
+          moduleType: FlowNodeTypeEnum.datasetSearchNode,
+          quoteList: [
+            {
+              id: quoteId,
+              chunkIndex: 0,
+              datasetId: 'dataset-1',
+              collectionId: 'collection-1',
+              sourceName: 'doc.pdf',
+              score: [{ type: 'embedding', value: 0.9, index: 0 }]
+            }
+          ]
+        },
+        {
+          id: 'dataset-response-2',
+          nodeId: 'dataset-node-2',
+          moduleName: 'Dataset Search 2',
+          moduleType: FlowNodeTypeEnum.datasetSearchNode,
+          quoteList: [
+            {
+              id: quoteId,
+              chunkIndex: 0,
+              datasetId: 'dataset-1',
+              collectionId: 'collection-1',
+              sourceName: 'doc.pdf',
+              score: [{ type: 'embedding', value: 0.9, index: 0 }]
+            }
+          ]
+        }
+      ]
+    };
+
+    expect(
+      addStatisticalDataToHistoryItem(historyItem).totalQuoteList?.map((quote) => quote.id)
+    ).toEqual([quoteId]);
+  });
+
   it('does not mark non-sandbox tools as sandbox usage', () => {
     const historyItem: ChatItemMiniType = {
       obj: ChatRoleEnum.AI,

@@ -75,7 +75,6 @@ describe('agent adapter useToolNodeResponse', () => {
         nodeId: 'call_search',
         moduleType: FlowNodeTypeEnum.tool,
         moduleName: 'Search',
-        childTotalPoints: 999,
         childrenResponses: [
           {
             id: 'existing_child',
