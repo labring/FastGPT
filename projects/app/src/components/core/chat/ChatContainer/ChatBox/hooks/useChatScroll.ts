@@ -18,7 +18,8 @@ import {
  * - `scrollToBottom` 用于明确要求滚到底部，支持 smooth/auto 和延迟。
  * - `generatingScroll` 用于流式生成中“条件跟随底部”，避免打断用户查看历史。
  * - `isScrollAtBottom` 只描述当前滚动位置。
- * - `isScrollToBottomButtonVisible` 由安全距离阈值控制，避免贴近底部时按钮闪烁。
+ * - `isScrollToBottomButtonVisible` 优先在用户主动离开底部后展示；若图片等大块内容让
+ *   底部距离突然过大，也会兜底展示，避免用户失去回到底部入口。
  *
  * 关键边界：
  * - `scrollToBottom` 保留 DOM 未挂载时的延迟重试，因为 ChatBox 有动态加载记录、
@@ -30,6 +31,7 @@ export const useChatScroll = () => {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const lastScrollTopRef = useRef(0);
   const shouldFollowGeneratingRef = useRef(true);
+  const userHasLeftBottomRef = useRef(false);
   const [scrollContainer, setScrollContainer] = useState<HTMLDivElement | null>(null);
   const ScrollContainerRef = useMemo(
     () =>
@@ -59,6 +61,7 @@ export const useChatScroll = () => {
       const container = scrollContainerRef.current;
       if (!container) {
         shouldFollowGeneratingRef.current = true;
+        userHasLeftBottomRef.current = false;
         lastScrollTopRef.current = 0;
         setIsScrollAtBottom(true);
         setIsScrollToBottomButtonVisible(false);
@@ -78,15 +81,21 @@ export const useChatScroll = () => {
         !nextIsScrollAtBottom
       ) {
         shouldFollowGeneratingRef.current = false;
+        userHasLeftBottomRef.current = true;
       }
       if (nextIsScrollAtBottom) {
         shouldFollowGeneratingRef.current = true;
+        userHasLeftBottomRef.current = false;
       }
       lastScrollTopRef.current = container.scrollTop;
 
       setIsScrollAtBottom(nextIsScrollAtBottom);
       setIsScrollToBottomButtonVisible(
-        !nextIsScrollAtBottom && shouldShowChatScrollToBottomButton(scrollState)
+        !nextIsScrollAtBottom &&
+          shouldShowChatScrollToBottomButton({
+            ...scrollState,
+            userHasLeftBottom: userHasLeftBottomRef.current
+          })
       );
     }
   );
@@ -105,6 +114,7 @@ export const useChatScroll = () => {
       }
 
       shouldFollowGeneratingRef.current = true;
+      userHasLeftBottomRef.current = false;
       scrollContainerRef.current.scrollTo({
         top: scrollContainerRef.current.scrollHeight,
         behavior
