@@ -8,6 +8,8 @@ import {
   markDataTrainingPhaseTrace
 } from '@fastgpt/service/core/dataset/training/utils';
 import { addMinutes } from 'date-fns';
+import { pushCollectionUpdateJob } from '@fastgpt/service/core/dataset/collection/mq';
+import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import {
@@ -157,6 +159,21 @@ export async function generateDatabaseSchemaEmbedding(): Promise<any> {
             return insertData({ trainingData: data, phaseStartTime });
           }
         })();
+
+        // Directly set statsUpdatedAt so frontend immediately shows "ready" instead of "queued".
+        // Must be synchronous (not via BullMQ) because the queue may not be available
+        // in all deployments. The async pushCollectionUpdateJob below handles comprehensive stats.
+        await MongoDatasetCollection.updateOne(
+          { _id: data.collectionId },
+          { $set: { statsUpdatedAt: new Date() } }
+        );
+
+        // Also trigger full stats recalculation via BullMQ
+        pushCollectionUpdateJob({
+          collectionId: String(data.collectionId),
+          datasetId: String(data.datasetId),
+          teamId: String(data.teamId)
+        });
 
         // push usage
         pushGenerateVectorUsage({
@@ -531,3 +548,4 @@ const processDatabaseSchema = async ({
 
   return { tokens: totalTokens };
 };
+
