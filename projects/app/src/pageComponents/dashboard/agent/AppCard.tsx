@@ -298,9 +298,12 @@ const AppCard = React.memo(function AppCard({
         : [
             {
               children: [
-                ...([AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.assistant].includes(
-                  app.type
-                )
+                ...([
+                  AppTypeEnum.simple,
+                  AppTypeEnum.workflow,
+                  AppTypeEnum.assistant,
+                  AppTypeEnum.chatAgent
+                ].includes(app.type)
                   ? [
                       {
                         icon: 'core/skill/skill',
