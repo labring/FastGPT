@@ -81,7 +81,7 @@ async function handler(
 
   // Calculate dynamic limit based on generateSqlModel's maxContext
   const dynamicLimit = calculateDynamicLimit({
-    generateSqlModelId: sqlLLM.model,
+    generateSqlModelId: modelId,
     safetyFactor: 0.6,
     estimatedTokensPerItem: 1024
   });
@@ -289,3 +289,4 @@ async function handler(
   return Promise.reject(`Unsupported dataset type: ${dataset.type}`);
 }
 export default NextAPI(handler);
+
