@@ -548,4 +548,3 @@ const processDatabaseSchema = async ({
 
   return { tokens: totalTokens };
 };
-
