@@ -125,6 +125,7 @@
   "import_model_config": "Select model",
   "import_param_setting": "Configure parameters",
   "import_select_file": "Select files",
+  "import_select_api_file": "Select files (Sync API File Library)",
   "import_select_link": "Link",
   "index_prefix_title": "Include titles in indexes",
   "index_prefix_title_tips": "Automatically include titles in all indexes.",

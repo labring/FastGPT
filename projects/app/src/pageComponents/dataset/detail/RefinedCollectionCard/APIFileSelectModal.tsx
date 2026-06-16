@@ -124,7 +124,7 @@ const APIFileSelectModal = ({ isOpen, onClose, parentId, onSuccess }: Props) => 
 
   return (
     <MyModal
-      title={t('dataset:import_select_file')}
+      title={t('dataset:import_select_api_file')}
       isOpen={isOpen}
       onClose={onClose}
       w={'600px'}
