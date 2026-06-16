@@ -88,6 +88,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
   const { dataset, permission, tmbId, teamId } = await authDataset({
     req,
     authToken: true,
+    authApiKey: true,
     datasetId: id,
     per: ReadPermissionVal
   });
@@ -108,6 +109,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
       const { dataset: targetDataset } = await authDataset({
         req,
         authToken: true,
+        authApiKey: true,
         datasetId: parentId,
         per: ManagePermissionVal
       });
@@ -120,6 +122,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
       await authDataset({
         req,
         authToken: true,
+        authApiKey: true,
         datasetId: dataset.parentId,
         per: ManagePermissionVal
       });
