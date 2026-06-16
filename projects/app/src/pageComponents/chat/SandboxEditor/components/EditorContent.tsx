@@ -218,17 +218,6 @@ const EditorContent = ({
                 });
               }
             );
-
-            // 失去焦点时自动保存脏文件
-            editor.onDidBlurEditorText(() => {
-              if (!canWrite) return;
-              const files = openedFilesRef.current;
-              if (!files) return;
-              const currentFile = files.find((f) => f.path === activeFilePath);
-              if (currentFile?.isDirty) {
-                saveFile(activeFilePath);
-              }
-            });
           }}
           onChange={(value) => {
             if (!canWrite) return;

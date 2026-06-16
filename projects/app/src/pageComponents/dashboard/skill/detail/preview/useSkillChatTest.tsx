@@ -110,8 +110,8 @@ export const useSkillChatTest = ({
         pl={'16px'}
         pr={0}
         maxW={'100%'}
-        boxBodyProps={{ px: 0, maxW: '100%', mx: 0 }}
-        inputBodyProps={{ maxW: '100%', mx: 0, px: 0, pl: 0, pr: 0 }}
+        boxBodyProps={{ px: 0, pr: '8px', maxW: '100%', mx: 0 }}
+        inputBodyProps={{ maxW: '100%', mx: 0, px: 0, pl: 0, pr: '8px' }}
         EmptyState={
           <Flex
             flex={1}
