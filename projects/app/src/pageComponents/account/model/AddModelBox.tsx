@@ -324,7 +324,6 @@ const ProviderField = React.memo(function ProviderField({
         onChange={(value) => setValue('provider', value)}
         list={providerList.current}
         {...InputStyles}
-        maxW={['100%', '360px']}
       />
     </Field>
   );
@@ -947,7 +946,7 @@ export const ModelEditModal = ({
   const CustomApi = useMemo(
     () => (
       <>
-        <GridItem>
+        <GridItem colSpan={[1, 2]}>
           <Flex alignItems={'center'} gap={1} mb={2}>
             <FormLabel
               required={isNormalUser}
@@ -961,7 +960,7 @@ export const ModelEditModal = ({
           </Flex>
           <Input {...register('requestUrl', { required: isNormalUser })} {...InputStyles} />
         </GridItem>
-        <GridItem>
+        <GridItem colSpan={[1, 2]}>
           <Flex alignItems={'center'} gap={1} mb={2}>
             <FormLabel
               required={isNormalUser}
