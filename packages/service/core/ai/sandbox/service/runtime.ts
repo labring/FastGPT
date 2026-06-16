@@ -1,6 +1,5 @@
 import { generateSandboxId } from '@fastgpt/global/core/ai/sandbox/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { serviceEnv } from '../../../../env';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import {
   type ExecuteResult,
@@ -10,19 +9,30 @@ import {
 } from '@fastgpt-sdk/sandbox-adapter';
 import { getSessionVolumeConfig, type VolumeManagerResult } from '../volume/service';
 import { buildRuntimeSandboxAdapter } from '../provider/adapter';
+import { getConfiguredSandboxProvider } from '../provider/config';
 import { ensureConnectedSandboxRunning } from '../provider/lifecycle';
 import { deleteSandboxResource, stopSandboxResource } from './resource';
 import { upsertRunningSandboxInstance } from '../instance/repository';
 import type { SandboxProviderType } from '../type';
+import {
+  assertSandboxNotArchivedOrBusy,
+  SandboxArchiveStateError,
+  restoreArchivedSandboxBeforeUse
+} from './archive';
 
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
-type UnionIdType = {
-  appId: string;
-  userId: string;
-  chatId: string;
-  teamId?: string;
-};
+export type SandboxClientQuery =
+  | {
+      sandboxId: string;
+      teamId?: string;
+    }
+  | {
+      appId: string;
+      userId?: string;
+      chatId: string;
+      teamId?: string;
+    };
 
 type SandboxClientProps = {
   sandboxId: string;
@@ -37,7 +47,10 @@ type SandboxClientOptions = {
   resourceLimits?: ResourceLimits;
   vmConfig?: VolumeManagerResult | undefined;
   createConfig?: SandboxCreateSpec;
+  restoreArchived?: boolean;
 };
+
+type NormalizedSandboxClientQuery = SandboxClientProps;
 
 /**
  * 当前会话运行态 sandbox client。
@@ -62,7 +75,7 @@ export class SandboxClient {
     this.userId = props.userId;
     this.chatId = props.chatId;
 
-    this.providerName = opts.providerName ?? serviceEnv.AGENT_SANDBOX_PROVIDER;
+    this.providerName = opts.providerName ?? getConfiguredSandboxProvider();
     this.provider = buildRuntimeSandboxAdapter(this.providerName, this.sandboxId, opts);
   }
 
@@ -75,7 +88,7 @@ export class SandboxClient {
   async ensureAvailable() {
     // 先写 running 记录是有意设计：运行态入口需要先占位并暴露资源归属，
     // 后续 provider ready 检查失败时会由调用方返回错误，后台兜底检查/cron 再修正不可用实例。
-    await upsertRunningSandboxInstance({
+    const instance = await upsertRunningSandboxInstance({
       provider: this.providerName,
       sandboxId: this.sandboxId,
       appId: this.appId,
@@ -93,6 +106,13 @@ export class SandboxClient {
         volumeEnabled: !!this.opts?.vmConfig
       }
     });
+    if (!instance) {
+      await assertSandboxNotArchivedOrBusy({
+        provider: this.providerName,
+        sandboxId: this.sandboxId
+      });
+      throw new SandboxArchiveStateError('archiving');
+    }
     await ensureConnectedSandboxRunning(this.provider);
   }
 
@@ -152,21 +172,33 @@ export class SandboxClient {
   }
 }
 
-type ExplicitSandboxIdType = {
-  sandboxId: string;
-  appId?: string;
-  userId?: string;
-  chatId?: string;
-  teamId?: string;
-};
+export function resolveSandboxId(props: SandboxClientQuery): string {
+  return normalizeSandboxClientQuery(props).sandboxId;
+}
 
-function resolveSandboxId(props: ExplicitSandboxIdType | UnionIdType): string {
+function normalizeSandboxClientQuery(props: SandboxClientQuery): NormalizedSandboxClientQuery {
   if ('sandboxId' in props) {
-    return props.sandboxId;
+    if (!props.sandboxId) {
+      throw new Error('sandboxId is required');
+    }
+    return {
+      sandboxId: props.sandboxId,
+      teamId: props.teamId
+    };
   }
 
-  const sandboxUserId = props.chatId === 'edit-debug' ? '' : props.userId;
-  return generateSandboxId(props.appId, sandboxUserId, props.chatId);
+  if (!props.appId || !props.chatId) {
+    throw new Error('appId and chatId are required when sandboxId is not provided');
+  }
+
+  const sandboxUserId = props.chatId === 'edit-debug' ? '' : (props.userId ?? '');
+  return {
+    sandboxId: generateSandboxId(props.appId, sandboxUserId, props.chatId),
+    appId: props.appId,
+    userId: props.userId,
+    chatId: props.chatId,
+    teamId: props.teamId
+  };
 }
 
 /**
@@ -176,18 +208,45 @@ function resolveSandboxId(props: ExplicitSandboxIdType | UnionIdType): string {
  * 返回前会准备 volume 配置并确保 sandbox 可用。
  */
 export const getSandboxClient = async (
-  props: ExplicitSandboxIdType | UnionIdType,
-  opts: {
-    providerName?: SandboxProviderType;
-    resourceLimits?: ResourceLimits;
-    createConfig?: SandboxCreateSpec;
-  } = {}
+  props: SandboxClientQuery,
+  opts: Omit<SandboxClientOptions, 'vmConfig'> = {}
 ) => {
-  const sandboxId = resolveSandboxId(props);
+  const sandboxContext = normalizeSandboxClientQuery(props);
+  const { sandboxId, appId, userId, chatId, teamId } = sandboxContext;
+  const providerName = opts.providerName ?? getConfiguredSandboxProvider();
+  let vmConfig: VolumeManagerResult | undefined;
 
-  const vmConfig = await getSessionVolumeConfig(sandboxId);
-
-  const sandbox = new SandboxClient({ ...props, sandboxId }, { ...opts, vmConfig });
+  if (opts.restoreArchived === false) {
+    await assertSandboxNotArchivedOrBusy({
+      provider: providerName,
+      sandboxId
+    });
+  } else {
+    vmConfig = providerName === 'opensandbox' ? await getSessionVolumeConfig(sandboxId) : undefined;
+    await restoreArchivedSandboxBeforeUse({
+      provider: providerName,
+      sandboxId,
+      appId,
+      userId,
+      chatId,
+      resourceLimit: opts.resourceLimits
+        ? {
+            cpuCount: opts.resourceLimits.cpuCount,
+            memoryMiB: opts.resourceLimits.memoryMiB,
+            diskGiB: opts.resourceLimits.diskGiB
+          }
+        : undefined,
+      vmConfig: vmConfig ?? null,
+      storage: vmConfig?.storage,
+      createConfig: opts.createConfig
+    });
+  }
+  vmConfig ??= providerName === 'opensandbox' ? await getSessionVolumeConfig(sandboxId) : undefined;
+  const sandbox = new SandboxClient(sandboxContext, {
+    ...opts,
+    providerName,
+    vmConfig
+  });
   await sandbox.ensureAvailable();
   return sandbox;
 };

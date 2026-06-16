@@ -32,17 +32,29 @@ export const SandboxImageSchema = z.object({
   tag: z.string().optional()
 });
 
+export const SandboxArchiveStateSchema = z.enum(['archiving', 'archived', 'restoring']);
+export type SandboxArchiveStateType = z.infer<typeof SandboxArchiveStateSchema>;
+
 export const SandboxMetadataSchema = z.object({
   teamId: z.string().optional(),
   tmbId: z.string().optional(),
 
   volumeEnabled: z.boolean().optional(),
   provider: SandboxProviderSchema.optional(),
+  archive: z
+    .object({
+      state: SandboxArchiveStateSchema,
+      archivedAt: z.coerce.date().optional()
+    })
+    .optional(),
 
   skillId: z.string().optional(),
   sessionId: z.string().optional(),
   skillIds: z.array(z.string()).optional(),
-  image: SandboxImageSchema
+  image: SandboxImageSchema.optional(),
+
+  skillName: z.string().optional(),
+  versionId: z.string().optional()
 });
 export type SandboxMetadataType = z.infer<typeof SandboxMetadataSchema>;
 

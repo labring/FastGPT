@@ -127,7 +127,10 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   limit: {
     exportDatasetLimitMinutes: 0,
     websiteSyncLimitMinuted: 0,
-    agentSkillMaxUploadBytes: serviceEnv.AGENT_SKILL_MAX_UPLOAD_SIZE * 1024 * 1024,
+    agentSandboxMaxEditDebug: serviceEnv.AGENT_SANDBOX_MAX_EDIT_DEBUG,
+    agentSandboxArchiveMaxBytes: serviceEnv.AGENT_SANDBOX_ARCHIVE_MAX_SIZE * 1024 * 1024,
+    skillSandboxMaxBytes: serviceEnv.AGENT_SANDBOX_SKILL_MAX_SIZE * 1024 * 1024,
+    agentSandboxMaxFileBytes: serviceEnv.AGENT_SANDBOX_MAX_FILE_SIZE * 1024 * 1024,
     workflowParallelRunMaxConcurrency: serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY,
     maxFolderDepth: serviceEnv.MAX_FOLDER_DEPTH
   },
@@ -169,7 +172,8 @@ export async function initSystemConfig() {
       show_agent_sandbox: hasAgentSandboxConfig(),
       payFormUrl: appEnv.PAY_FORM_URL || '',
 
-      agentSandboxFree: appEnv.AGENT_SANDBOX_FREE_TIP
+      agentSandboxFree: appEnv.AGENT_SANDBOX_FREE_TIP,
+      agentSandboxProxyUrl: appEnv.AGENT_SANDBOX_PROXY_URL || ''
     },
     systemEnv: {
       ...fileRes.systemEnv,

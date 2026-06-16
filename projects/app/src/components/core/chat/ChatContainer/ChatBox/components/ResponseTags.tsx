@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Flex, useDisclosure, Box } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
+import type { ToolCiteLinksType } from '@fastgpt/global/core/chat/type';
 import type { SearchDataResponseQuoteListItemType } from '@fastgpt/global/core/dataset/type';
 import dynamic from 'next/dynamic';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
@@ -118,11 +119,7 @@ const CitationListCard = React.memo(function CitationListCard({
               )}
             </Flex>
 
-            <Flex
-              mt={'4px'}
-              flexWrap={'wrap'}
-              gap={'4px'}
-            >
+            <Flex mt={'4px'} flexWrap={'wrap'} gap={'4px'}>
               {items.map((item) => (
                 <MyTooltip key={item.key} label={t('common:core.chat.quote.Read Quote')}>
                   <Flex
@@ -215,10 +212,7 @@ const ResponseTags = ({
   const durationSeconds = historyItem.durationSeconds || 0;
   const isShowCite = useContextSelector(ChatItemContext, (v) => v.isShowCite);
   const showWholeResponse = useContextSelector(ChatItemContext, (v) => v.showWholeResponse ?? true);
-  const {
-    totalQuoteList: quoteList = [],
-    toolCiteLinks = [],
-  } = useMemo(() => {
+  const responseTags = useMemo(() => {
     return {
       ...addStatisticalDataToHistoryItem(historyItem),
       ...(!isShowCite
@@ -228,6 +222,8 @@ const ResponseTags = ({
         : {})
     };
   }, [historyItem, isShowCite]);
+  const quoteList: SearchDataResponseQuoteListItemType[] = responseTags.totalQuoteList ?? [];
+  const toolCiteLinks: ToolCiteLinksType[] = responseTags.toolCiteLinks ?? [];
 
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
 
@@ -286,8 +282,7 @@ const ResponseTags = ({
   }, [quoteList, toolCiteLinks, onOpenCiteModal, isShowCite]);
 
   const notEmptyTags =
-    (showFooterMeta && notSharePage) ||
-    (showFooterMeta && isPc && durationSeconds > 0);
+    (showFooterMeta && notSharePage) || (showFooterMeta && isPc && durationSeconds > 0);
 
   return !showTags ? null : (
     <>

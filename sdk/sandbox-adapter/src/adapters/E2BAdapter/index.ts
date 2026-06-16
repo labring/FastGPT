@@ -2,6 +2,7 @@ import { Sandbox, CommandExitError, FileType } from '@e2b/code-interpreter';
 import { BaseSandboxAdapter } from '../BaseSandboxAdapter';
 import { CommandPolyfillService } from '@/polyfill/CommandPolyfillService';
 import { CommandExecutionError, ConnectionError } from '@/errors';
+import { fileDataToUint8Array, uint8ArrayToCleanArrayBuffer } from '@/utils/files';
 import type {
   ExecuteOptions,
   ExecuteResult,
@@ -276,42 +277,27 @@ export class E2BAdapter extends BaseSandboxAdapter {
       const results: FileWriteResult[] = [];
 
       // E2B 支持批量写入
-      const writeData = files.map((f) => {
-        let data: string | ArrayBuffer;
-        if (typeof f.data === 'string') {
-          data = f.data;
-        } else if (f.data instanceof Uint8Array) {
-          data = f.data.buffer as ArrayBuffer;
-        } else if (f.data instanceof ArrayBuffer) {
-          data = f.data;
-        } else {
-          // Blob or ReadableStream - convert to string for now
-          data = '';
-        }
-
-        return {
-          path: this.normalizePath(f.path),
-          data
-        };
-      });
+      const writeData = await Promise.all(
+        files.map(async (f) => {
+          const uint8Array = await fileDataToUint8Array(f.data);
+          return {
+            path: this.normalizePath(f.path),
+            data: uint8ArrayToCleanArrayBuffer(uint8Array)
+          };
+        })
+      );
 
       try {
         await sandbox.files.write(writeData);
 
         // 所有写入成功
-        for (const file of files) {
-          let size = 0;
-          if (typeof file.data === 'string') {
-            size = Buffer.byteLength(file.data);
-          } else if (file.data instanceof ArrayBuffer) {
-            size = file.data.byteLength;
-          } else if (file.data instanceof Uint8Array) {
-            size = file.data.byteLength;
-          }
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          const bytesWritten = writeData[i].data.byteLength;
 
           results.push({
             path: file.path,
-            bytesWritten: size,
+            bytesWritten,
             error: null
           });
         }

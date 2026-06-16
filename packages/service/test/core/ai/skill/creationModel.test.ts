@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
-import { getSkillCreationLLMModel } from '@fastgpt/service/core/ai/skill/manage/creation/model';
+import { getSkillCreationLLMModel } from '@fastgpt/service/core/ai/model';
 
 const originalSystemDefaultModel = global.systemDefaultModel;
 
@@ -26,7 +26,7 @@ describe('skill creation model selection', () => {
     global.systemDefaultModel = originalSystemDefaultModel;
   });
 
-  it('uses the helper bot model resolved from HELPER_BOT_MODEL', () => {
+  it('uses the system default LLM even when helper bot model is configured', () => {
     const systemModel = buildLlmModel('system-default-model', true);
     const helperModel = buildLlmModel('helper-env-model');
 
@@ -36,7 +36,7 @@ describe('skill creation model selection', () => {
       helperBotLLM: helperModel
     };
 
-    expect(getSkillCreationLLMModel()).toBe('helper-env-model');
+    expect(getSkillCreationLLMModel()).toBe('system-default-model');
   });
 
   it('falls back to the system default LLM when helper bot model is missing', () => {

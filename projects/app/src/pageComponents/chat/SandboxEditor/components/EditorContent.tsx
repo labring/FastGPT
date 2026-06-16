@@ -15,30 +15,28 @@ import MarkdownMetadataCard from './MarkdownMetadataCard';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-
-type EditorInstance = Parameters<NonNullable<Parameters<typeof Editor>[0]['onMount']>>[0];
+import type { SandboxEditorInstance } from '../types';
 
 type Props = {
   activeFile: OpenedFile | undefined;
   activeFilePath: string;
-  saving: boolean;
   downloadingFile: boolean;
   downloadCurrentFile: () => void;
   saveFile: (path?: string) => void;
   setOpenedFiles: React.Dispatch<React.SetStateAction<OpenedFile[]>>;
   openedFiles: OpenedFile[];
-  editorRef: React.MutableRefObject<EditorInstance | undefined>;
+  editorRef: React.MutableRefObject<SandboxEditorInstance | undefined>;
   appId: string;
   chatId: string;
   outLinkAuthData?: OutLinkChatAuthProps;
   showDownload?: boolean;
   defaultViewMode?: 'source' | 'preview';
+  canWrite?: boolean;
 };
 
 const EditorContent = ({
   activeFile,
   activeFilePath,
-  saving,
   downloadingFile,
   downloadCurrentFile,
   saveFile,
@@ -49,7 +47,8 @@ const EditorContent = ({
   chatId,
   outLinkAuthData,
   showDownload = true,
-  defaultViewMode
+  defaultViewMode,
+  canWrite = true
 }: Props) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -189,6 +188,7 @@ const EditorContent = ({
             fontFamily: "'Monaco', 'Menlo', 'Consolas', 'Courier New', monospace",
             tabSize: 2,
             wordWrap: 'on',
+            readOnly: !canWrite,
             smoothScrolling: true,
             cursorBlinking: 'smooth',
             renderLineHighlight: 'line',
@@ -202,6 +202,7 @@ const EditorContent = ({
 
             // 保存快捷键 Ctrl/Cmd + S
             editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+              if (!canWrite) return;
               saveFile();
             });
 
@@ -209,6 +210,7 @@ const EditorContent = ({
             editor.addCommand(
               monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyS,
               () => {
+                if (!canWrite) return;
                 openedFilesRef.current?.forEach((file) => {
                   if (file.isDirty) {
                     saveFile(file.path);
@@ -219,6 +221,7 @@ const EditorContent = ({
 
             // 失去焦点时自动保存脏文件
             editor.onDidBlurEditorText(() => {
+              if (!canWrite) return;
               const files = openedFilesRef.current;
               if (!files) return;
               const currentFile = files.find((f) => f.path === activeFilePath);
@@ -228,6 +231,7 @@ const EditorContent = ({
             });
           }}
           onChange={(value) => {
+            if (!canWrite) return;
             // 更新当前文件内容
             if (activeFilePath && value !== undefined && value !== activeFile?.content) {
               setOpenedFiles((prev) =>
@@ -243,15 +247,15 @@ const EditorContent = ({
   };
 
   return (
-    <Flex flex={'1 0 0'} flexDirection="column" bg={'white'} minH={0} h="100%">
-      <Flex align="center" justify="space-between" px={4} h={'44px'}>
+    <Flex flex={1} flexDirection="column" bg={'white'} minH={0}>
+      <Flex align="center" justify="space-between" px="16px" h={'44px'}>
         <Flex align="center" gap={2}>
-          <Box fontSize="14px" fontWeight="600" color="myGray.800">
+          <Box fontSize="14px" fontWeight={'semibold'} color={'myGray.800'}>
             {activeFile?.name || ''}
           </Box>
           {activeFile && (
             <Flex alignItems={'center'} h={'20px'}>
-              {activeFile.isDirty || saving ? (
+              {activeFile.isDirty ? (
                 <Flex alignItems={'center'} gap={1} color={'myGray.500'} fontSize={'xs'}>
                   <MyIcon name={'common/loading'} w={'12px'} />
                   <Box>{t('common:core.app.saving')}</Box>
@@ -302,9 +306,6 @@ const EditorContent = ({
               }
               py="1"
               px="2.5"
-              outerPadding="4px"
-              outerHeight="40px"
-              itemHeight="32px"
               fontSize="xs"
               iconSize="16px"
             />

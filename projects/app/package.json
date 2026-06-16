@@ -39,6 +39,7 @@
     "@emotion/react": "catalog:",
     "@emotion/styled": "catalog:",
     "@fastgpt-sdk/otel": "workspace:*",
+    "@fastgpt-sdk/sandbox-adapter": "workspace:*",
     "@fastgpt-sdk/storage": "workspace:*",
     "@fastgpt/global": "workspace:*",
     "@fastgpt/service": "workspace:*",
@@ -99,7 +100,9 @@
     "undici": "^7.18.2",
     "use-context-selector": "^1.4.4",
     "vaul": "catalog:",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "@xterm/addon-fit": "catalog:",
+    "@xterm/xterm": "catalog:"
   },
   "devDependencies": {
     "@next/bundle-analyzer": "16.1.6",

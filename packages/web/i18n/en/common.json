@@ -377,6 +377,7 @@
   "core.chat.Recent use": "Recently Used",
   "core.chat.Record": "Voice Input",
   "core.chat.Restart": "Restart",
+  "core.chat.Restart Confirm": "Are you sure you want to restart the chat? The current record will not be saved",
   "core.chat.Run test": "Run Preview",
   "core.chat.Select dataset": "Select Dataset",
   "core.chat.Select dataset Desc": "Select a Dataset to store the expected answer",

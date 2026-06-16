@@ -114,6 +114,7 @@ const AIChatBubble = ({
           showWholeResponse={canShowWholeResponse}
           onOpenWholeModal={onOpenWholeModal}
           durationSeconds={chat.durationSeconds || 0}
+          responseData={chat.responseData}
         />
       )}
       {isOpenWholeModal && <WholeResponseModal dataId={chat.dataId} onClose={onCloseWholeModal} />}

@@ -1,0 +1,12 @@
+target/
+dist/
+
+.env
+.env.*
+!.env.template
+
+.git/
+.gitignore
+.DS_Store
+
+*.log

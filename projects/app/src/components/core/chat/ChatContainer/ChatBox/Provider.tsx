@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react';
+import { type BoxProps } from '@chakra-ui/react';
 import { useAudioPlay } from '@/web/common/utils/voice';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import {
@@ -42,6 +43,8 @@ export type ChatProviderProps = {
 
   quickAppList?: ChatQuickAppType[];
   onSwitchQuickApp?: (appId: string) => Promise<void>;
+  boxBodyProps?: BoxProps;
+  inputBodyProps?: BoxProps;
 };
 
 type useChatStoreType = Omit<ChatProviderProps, 'appId' | 'chatId' | 'outLinkAuthData'> & {
@@ -128,6 +131,8 @@ export const ChatBoxContext = createContext<useChatStoreType>({
     open: false,
     customUrl: ''
   },
+  boxBodyProps: undefined,
+  inputBodyProps: undefined,
   // @ts-ignore
   variablesForm: undefined
 });

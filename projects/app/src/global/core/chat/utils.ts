@@ -17,6 +17,28 @@ export const isLLMNode = (item: ChatHistoryItemResType) =>
 const isSandboxToolId = (toolId?: string) =>
   !!toolId && Object.prototype.hasOwnProperty.call(sandboxToolMap, toolId);
 
+const isSandboxChatTool = (tool?: { functionName?: string } | null) =>
+  isSandboxToolId(tool?.functionName);
+
+const hasSandboxToolInChatValue = (historyItem: ChatItemMiniType) => {
+  if (historyItem.obj !== ChatRoleEnum.AI) return false;
+
+  return historyItem.value.some((item) => {
+    if (isSandboxChatTool(item.tool)) return true;
+
+    return item.tools?.some(isSandboxChatTool) === true;
+  });
+};
+
+const withUseAgentSandbox = (historyItem: ChatItemMiniType, useAgentSandbox: boolean) => {
+  if (!useAgentSandbox || historyItem.useAgentSandbox === true) return historyItem;
+
+  return {
+    ...historyItem,
+    useAgentSandbox
+  };
+};
+
 /**
  * 从节点运行详情中提取可直接展示在聊天气泡上的错误文本。
  *
@@ -87,16 +109,19 @@ const extractCitationIdsFromText = (text: string): string[] => {
 
 export function addStatisticalDataToHistoryItem(historyItem: ChatItemMiniType) {
   if (historyItem.obj !== ChatRoleEnum.AI) return historyItem;
-  if (historyItem.totalQuoteList !== undefined || historyItem.toolCiteLinks !== undefined)
-    return historyItem;
-  if (!historyItem.responseData) return historyItem;
+  const useAgentSandbox =
+    historyItem.useAgentSandbox === true || hasSandboxToolInChatValue(historyItem);
+  const hasResolvedTags =
+    historyItem.totalQuoteList !== undefined || historyItem.toolCiteLinks !== undefined;
+  if (hasResolvedTags || !historyItem.responseData)
+    return withUseAgentSandbox(historyItem, useAgentSandbox);
 
   // Flat children
   const flatResData = getFlatAppResponses(historyItem.responseData || []);
 
   // get llm module account and history preview length and total quote list and external link list and error text
   const {
-    useAgentSandbox,
+    useAgentSandbox: resolvedUseAgentSandbox,
     llmModuleAccount,
     historyPreviewLength,
     totalQuoteList,
@@ -146,7 +171,7 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemMiniType) {
       return acc;
     },
     {
-      useAgentSandbox: false,
+      useAgentSandbox,
       totalQuoteList: [] as SearchDataResponseQuoteListItemType[],
       toolCiteLinks: [] as ToolCiteLinksType[],
       linkDedupe: new Set<string>(),
@@ -169,7 +194,7 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemMiniType) {
 
   return {
     ...historyItem,
-    useAgentSandbox,
+    useAgentSandbox: resolvedUseAgentSandbox,
     totalQuoteList: filteredQuoteList,
     ...(toolCiteLinks.length ? { toolCiteLinks } : {}),
     ...(errorText ? { errorText } : {}),

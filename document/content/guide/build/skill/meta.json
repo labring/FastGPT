@@ -1,0 +1,10 @@
+{
+  "title": "技能",
+  "root": false,
+  "pages": [
+    "intro",
+    "development",
+    "version",
+    "integration"
+  ]
+}

@@ -8,7 +8,7 @@ import React, {
   useLayoutEffect
 } from 'react';
 import Script from 'next/script';
-import { Box } from '@chakra-ui/react';
+import { Box, type BoxProps } from '@chakra-ui/react';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { useTranslation } from 'next-i18next';
 import { postMarkChatRead } from '@/web/core/chat/history/api';
@@ -66,7 +66,8 @@ const MobileHomeLayout = dynamic(() => import('./components/home/MobileHomeLayou
 const WorkorderEntrance = dynamic(() => import('@/pageComponents/chat/WorkorderEntrance'));
 
 type Props = OutLinkChatAuthProps &
-  ChatProviderProps & {
+  ChatProviderProps &
+  BoxProps & {
     isReady: boolean;
     feedbackType?: `${FeedbackTypeEnum}`;
     showMarkIcon?: boolean; // admin mark dataset
@@ -89,6 +90,7 @@ type Props = OutLinkChatAuthProps &
     onStopChat?: () => Promise<StopChatFnResult>;
     /** 覆盖默认已读接口；不传则使用普通 App Chat 的 postMarkChatRead。 */
     onMarkChatRead?: (data: MarkChatReadBodyType) => Promise<unknown>;
+    EmptyState?: React.ReactNode;
   };
 
 const ChatBox = ({
@@ -105,7 +107,11 @@ const ChatBox = ({
   onTriggerRefresh,
   onDeleteChatItem,
   onStopChat,
-  onMarkChatRead
+  onMarkChatRead,
+  boxBodyProps,
+  inputBodyProps,
+  EmptyState,
+  ...props
 }: Props) => {
   const { t } = useTranslation();
   const { isPc } = useSystem();
@@ -543,7 +549,7 @@ const ChatBox = ({
           onStop={() => abortRequest('stop')}
           onStopChat={requestStopChat}
           onStopSettled={handleStopSettled}
-          disableSend={isRoundPending}
+          disableSend={isRoundPending || !isReady}
           TextareaDom={TextareaDom}
           resetInputVal={resetInputVal}
           chatForm={chatForm}
@@ -559,6 +565,7 @@ const ChatBox = ({
       flexDirection={'column'}
       h={'100%'}
       position={'relative'}
+      {...props}
     >
       <Script src={getWebReqUrl('/js/html2pdf.bundle.min.js')} strategy="lazyOnload"></Script>
       {/* chat box container */}
@@ -587,9 +594,16 @@ const ChatBox = ({
             chatForm={chatForm}
             chatType={chatType}
             recordsListProps={recordsListProps}
+            maxW={props.maxW}
+            boxBodyProps={boxBodyProps}
+            EmptyState={
+              chatRecords.length === 0 && isChatRecordsLoaded && !isLoadingRecords
+                ? EmptyState
+                : undefined
+            }
           />
           {canRenderChatInput && (
-            <Box {...ChatInputWrapperStyle}>
+            <Box {...ChatInputWrapperStyle} {...inputBodyProps}>
               {showWorkorder && <WorkorderEntrance />}
               <Box position="relative">
                 <ScrollToBottomButton

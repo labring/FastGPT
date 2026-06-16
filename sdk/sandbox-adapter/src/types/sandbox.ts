@@ -75,7 +75,7 @@ export interface NetworkPolicy {
  */
 export interface SandboxInfo {
   id: SandboxId;
-  image: ImageSpec;
+  image?: ImageSpec;
   entrypoint: string[];
   metadata?: Record<string, string>;
   status: SandboxStatus;

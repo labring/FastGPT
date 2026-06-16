@@ -8,3 +8,5 @@ export * from './errors';
 export * from './interfaces';
 // Export types
 export * from './types';
+// Export utils
+export * from './utils/image';

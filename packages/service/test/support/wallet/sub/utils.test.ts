@@ -695,6 +695,7 @@ describe('getTeamStandPlan', () => {
       currentExtraDatasetSize: 0
     };
 
+    // getTeamStandPlan 使用 .lean()，需要 mock 返回带 lean 方法的对象
     const mockQuery = {
       lean: vi.fn().mockResolvedValue([mockPlan])
     };
@@ -971,20 +972,5 @@ describe('teamQPM', () => {
       // 全局 mock 会自动处理 Redis 调用
       await expect(teamQPM.clearTeamQPMLimitCache(teamId)).resolves.not.toThrow();
     });
-  });
-});
-
-describe('clearTeamPlanCache', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it('清除团队套餐相关的所有缓存', async () => {
-    const teamId = mockTeamId;
-
-    await clearTeamPlanCache(teamId);
-
-    // 函数应该被调用（具体实现会调用 teamPoint 和 teamQPM 的清除方法）
-    expect(teamId).toBeDefined();
   });
 });

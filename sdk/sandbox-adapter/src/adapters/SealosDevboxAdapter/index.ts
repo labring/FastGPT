@@ -8,13 +8,18 @@ import type {
   SandboxEndpointSelector,
   SandboxId,
   SandboxInfo,
-  SandboxState
+  SandboxState,
+  FileWriteEntry,
+  FileWriteResult,
+  FileReadResult,
+  ReadFileOptions
 } from '../../types';
 import { BaseSandboxAdapter } from '../BaseSandboxAdapter';
 import { DevboxApi, DevboxApiError } from './api';
 import { DevboxPhaseEnum, type DevboxCreateRequest, type DevboxInfoData } from './type';
 import { formatImageSpec, parseImageSpec } from '@/utils/image';
 import { joinUrlPath, normalizePathPrefix } from '@/utils/url';
+import { fileDataToUint8Array } from '@/utils/files';
 
 const GET_INFO_RETRY_TIMEOUT_MS = 30_000;
 const GET_INFO_RETRY_INTERVAL_MS = 1_000;
@@ -92,7 +97,7 @@ export class SealosDevboxAdapter extends BaseSandboxAdapter {
 
     return this.removeUndefined({
       name: this._id,
-      image: spec.image ? formatImageSpec(spec.image) : undefined,
+      image: spec.image?.repository ? formatImageSpec(spec.image) : undefined,
       env: Object.keys(env).length > 0 ? env : undefined,
       labels: spec.labels,
       upstreamID: spec.upstreamID,
@@ -307,14 +312,103 @@ export class SealosDevboxAdapter extends BaseSandboxAdapter {
     }
   }
 
+  // ==================== File System ====================
+
+  async writeFiles(entries: FileWriteEntry[]): Promise<FileWriteResult[]> {
+    const results: FileWriteResult[] = [];
+    for (const entry of entries) {
+      const normalizedPath = this.normalizePath(entry.path);
+      try {
+        const content = await fileDataToUint8Array(entry.data);
+        const bytesWritten = content.byteLength;
+
+        let modeStr: string | undefined;
+        if (entry.mode !== undefined) {
+          modeStr = entry.mode.toString(8).padStart(4, '0');
+        }
+
+        const res = await this.api.uploadFile(
+          this._id,
+          {
+            path: normalizedPath,
+            mode: modeStr
+          },
+          content
+        );
+
+        if (res.code !== 200) {
+          throw new Error(res.message || `Upload failed with code ${res.code}`);
+        }
+
+        results.push({ path: normalizedPath, bytesWritten, error: null });
+      } catch (error) {
+        results.push({
+          path: normalizedPath,
+          bytesWritten: 0,
+          error: error instanceof Error ? error : new Error(String(error))
+        });
+      }
+    }
+    return results;
+  }
+
+  async readFiles(paths: string[], options?: ReadFileOptions): Promise<FileReadResult[]> {
+    const results: FileReadResult[] = [];
+    for (const path of paths) {
+      const normalizedPath = this.normalizePath(path);
+      try {
+        if (options?.range) {
+          const [fallbackResult] = await super.readFiles([path], options);
+          if (fallbackResult) {
+            results.push(fallbackResult);
+            continue;
+          }
+        }
+
+        const buffer = await this.api.downloadFile(this._id, { path: normalizedPath });
+        results.push({
+          path: normalizedPath,
+          content: new Uint8Array(buffer),
+          error: null
+        });
+      } catch (error) {
+        results.push({
+          path: normalizedPath,
+          content: new Uint8Array(),
+          error: error instanceof Error ? error : new Error(String(error))
+        });
+      }
+    }
+    return results;
+  }
+
+  override async writeFileStream(path: string, stream: ReadableStream<Uint8Array>): Promise<void> {
+    const normalizedPath = this.normalizePath(path);
+    const results = await this.writeFiles([
+      {
+        path: normalizedPath,
+        data: stream
+      }
+    ]);
+    const firstResult = results[0];
+    if (firstResult?.error) {
+      throw firstResult.error;
+    }
+  }
+
   // ==================== Command Execution ====================
+
+  private getCommandTimeoutSeconds(timeoutMs?: number): number | undefined {
+    if (timeoutMs === undefined || timeoutMs <= 0) return undefined;
+    return Math.min(Math.max(Math.ceil(timeoutMs / 1000), 1), 600);
+  }
 
   async execute(command: string, options?: ExecuteOptions): Promise<ExecuteResult> {
     const cmd = this.buildCommand(command, this.normalizePath(options?.workingDirectory));
     try {
       const res = await this.api.exec(this._id, {
         command: cmd,
-        timeoutSeconds: options?.timeoutMs ? Math.ceil(options.timeoutMs / 1000) : undefined
+        timeoutSeconds: this.getCommandTimeoutSeconds(options?.timeoutMs)
       });
 
       if (!res.data) {
@@ -348,7 +442,7 @@ export class SealosDevboxAdapter extends BaseSandboxAdapter {
 
   private async getHttpgateTarget(
     port: number
-  ): Promise<{ origin: string; basePath: string; port: number; password?: string }> {
+  ): Promise<{ origin: string; basePath: string; port: number }> {
     const res = await this.api.info(this._id);
     if (res.code !== 200 || !res.data) {
       throw new ConnectionError(`Failed to get devbox info: ${res.message}`, this.config.baseUrl);
@@ -391,15 +485,16 @@ export class SealosDevboxAdapter extends BaseSandboxAdapter {
       return this.normalizeHttpgateDomain(this.config.httpgateDomain);
     }
 
-    const prefix = 'devbox-gateway.';
-    if (!gateway.host.startsWith(prefix)) {
-      throw new ConnectionError(
-        `Cannot derive httpgate domain from gateway host "${gateway.host}"`,
-        this.config.baseUrl
-      );
+    const separator = '-gateway.';
+    const index = gateway.host.indexOf(separator);
+    if (index !== -1) {
+      return gateway.host.slice(index + separator.length);
     }
 
-    return gateway.host.slice(prefix.length);
+    throw new ConnectionError(
+      `Cannot derive httpgate domain from gateway host "${gateway.host}"`,
+      this.config.baseUrl
+    );
   }
 
   private normalizeHttpgateDomain(domain: string): string {

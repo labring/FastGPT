@@ -75,6 +75,12 @@ catalogs:
     '@vitest/coverage-v8':
       specifier: ^4.1.5
       version: 4.1.5
+    '@xterm/addon-fit':
+      specifier: ^0.10.0
+      version: 0.10.0
+    '@xterm/xterm':
+      specifier: ^5.5.0
+      version: 5.5.0
     ahooks:
       specifier: ^3.9.5
       version: 3.9.5
@@ -1265,6 +1271,9 @@ importers:
       '@fastgpt-sdk/otel':
         specifier: workspace:*
         version: link:../../sdk/otel
+      '@fastgpt-sdk/sandbox-adapter':
+        specifier: workspace:*
+        version: link:../../sdk/sandbox-adapter
       '@fastgpt-sdk/storage':
         specifier: workspace:*
         version: link:../../sdk/storage
@@ -1301,6 +1310,12 @@ importers:
       '@tanstack/react-query':
         specifier: 'catalog:'
         version: 4.36.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      '@xterm/addon-fit':
+        specifier: 'catalog:'
+        version: 0.10.0(@xterm/xterm@5.5.0)
+      '@xterm/xterm':
+        specifier: 'catalog:'
+        version: 5.5.0
       ahooks:
         specifier: 'catalog:'
         version: 3.9.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -7034,6 +7049,14 @@ packages:
     resolution: {integrity: sha512-2WALfTl4xo2SkGCYRt6rDTFfk9R1czmBvUQy12gK2KuRKIpWEhcbbzy8EZXtz/jkRqHX8bFEc6FC1HjX4TUWYw==}
     engines: {node: '>=10.0.0'}
     deprecated: this version has critical issues, please update to the latest version
+
+  '@xterm/addon-fit@0.10.0':
+    resolution: {integrity: sha512-UFYkDm4HUahf2lnEyHvio51TNGiLK66mqP2JoATy7hRZeXaGMRDr00JiSF7m63vR5WKATF605yEggJKsw0JpMQ==}
+    peerDependencies:
+      '@xterm/xterm': ^5.0.0
+
+  '@xterm/xterm@5.5.0':
+    resolution: {integrity: sha512-hqJHYaQb5OptNunnyAnkHyM8aCjZ1MEIDTQu1iIbbTD/xops91NB5yq1ZK/dC2JDbVWtF23zUtl9JE2NqwT87A==}
 
   '@zag-js/dom-query@0.31.1':
     resolution: {integrity: sha512-oiuohEXAXhBxpzzNm9k2VHGEOLC1SXlXSbRPcfBZ9so5NRQUA++zCE7cyQJqGLTZR0t3itFLlZqDbYEXRrefwg==}
@@ -21614,6 +21637,12 @@ snapshots:
   '@xmldom/is-dom-node@1.0.1': {}
 
   '@xmldom/xmldom@0.8.10': {}
+
+  '@xterm/addon-fit@0.10.0(@xterm/xterm@5.5.0)':
+    dependencies:
+      '@xterm/xterm': 5.5.0
+
+  '@xterm/xterm@5.5.0': {}
 
   '@zag-js/dom-query@0.31.1': {}
 

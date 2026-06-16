@@ -50,12 +50,22 @@ export const normalizeEntrypoint = (entrypoint?: string | string[]) => {
  *
  * 这些变量表达 FastGPT 自身的运行契约，provider 只负责把它们映射到实际 createConfig。
  */
-export function buildBaseSandboxRuntimeEnv(
-  sessionId: string,
-  workDirectory: string
-): Record<string, string> {
+export function buildBaseSandboxRuntimeEnv({
+  sessionId,
+  workDirectory,
+  ideAgentBindAddr,
+  ideAgentMaxFileBytes
+}: {
+  sessionId: string;
+  workDirectory: string;
+  ideAgentBindAddr: string;
+  ideAgentMaxFileBytes: number;
+}): Record<string, string> {
   return {
     FASTGPT_SESSION_ID: sessionId,
-    FASTGPT_WORKDIR: workDirectory
+    FASTGPT_WORKDIR: workDirectory,
+    IDE_AGENT_ENABLED: 'true',
+    IDE_AGENT_BIND_ADDR: ideAgentBindAddr,
+    FASTGPT_IDE_MAX_FILE_BYTES: String(ideAgentMaxFileBytes)
   };
 }

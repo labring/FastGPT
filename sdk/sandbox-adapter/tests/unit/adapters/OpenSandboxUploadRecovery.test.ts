@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
-  getWriteEntryByteLength,
   isUploadFalseNegativeCandidate,
   toOpenSandboxWriteData,
   verifyCommittedUpload
 } from '@/adapters/OpenSandboxAdapter/uploadRecovery';
+import { getWriteEntryByteLength } from '@/utils/files';
 
 const makeUploadError = (statusCode = 500) =>
   Object.assign(new Error(`Upload failed (status=${statusCode})`), { statusCode });
@@ -61,8 +61,9 @@ describe('OpenSandbox upload recovery', () => {
     ).resolves.toBe(false);
   });
 
-  it('uses size-only confirmation for large committed uploads', async () => {
+  it('does not recover large uploads unless committed bytes match', async () => {
     const data = new Uint8Array(1024 * 1024 + 1);
+    data.fill(1);
     const readCommittedFileBytes = vi.fn(async () => data);
 
     await expect(
@@ -76,7 +77,18 @@ describe('OpenSandbox upload recovery', () => {
       })
     ).resolves.toBe(true);
 
-    expect(readCommittedFileBytes).not.toHaveBeenCalled();
+    expect(readCommittedFileBytes).toHaveBeenCalled();
+
+    await expect(
+      verifyCommittedUpload({
+        entry: { path: '/large.bin', data },
+        normalizedPath: '/large.bin',
+        bytesWritten: data.byteLength,
+        error: makeUploadError(),
+        getCommittedFileSize: vi.fn(async () => data.byteLength),
+        readCommittedFileBytes: vi.fn(async () => new Uint8Array(data.byteLength))
+      })
+    ).resolves.toBe(false);
   });
 
   it('does not recover metadata writes or stream uploads', async () => {

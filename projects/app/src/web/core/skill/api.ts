@@ -151,16 +151,12 @@ export const postCreateSkillFolder = (data: CreateSkillFolderBody) =>
 export const getSkillFolderPath = (data: GetSkillFolderPathQuery) =>
   GET<GetSkillFolderPathResponse>('/core/ai/skill/folder/path', data);
 
-/** 导出 Skill 压缩包（触发浏览器下载） */
-export const exportSkill = (
-  skillId: string,
-  skillName: string,
-  source: 'version' | 'workspace' = 'version'
-) => {
+/** 导出当前 Skill 编辑沙盒工作区压缩包（触发浏览器下载） */
+export const exportSkill = (skillId: string, skillName: string) => {
   const { setLoading } = useSystemStore.getState();
   setLoading(true);
   return downloadFetch({
-    url: `/api/core/ai/skill/export?skillId=${encodeURIComponent(skillId)}&source=${source}`,
+    url: `/api/core/ai/skill/export?skillId=${encodeURIComponent(skillId)}`,
     filename: `${skillName}.zip`,
     waitResponse: true
   }).finally(() => {

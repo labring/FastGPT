@@ -1,6 +1,12 @@
 import { createEnv } from '@t3-oss/env-core';
 import z from 'zod';
+import { isPhaseProductionBuild } from '@fastgpt/global/common/system/constants';
 import { BoolSchema, IntSchema, UrlSchema } from '@fastgpt/global/common/zod';
+import { hasAgentSandboxConfig } from '@fastgpt/global/core/ai/sandbox/env';
+
+const AgentSandboxProxyUrlSchema = z.string().refine((url) => /^wss?:\/\//.test(url), {
+  message: 'AGENT_SANDBOX_PROXY_URL must start with ws:// or wss://'
+});
 
 export const appEnv = createEnv({
   server: {
@@ -19,7 +25,8 @@ export const appEnv = createEnv({
 
     // 临时
     MARKETPLACE_URL: UrlSchema.default('https://v2.marketplace.fastgpt.cn'),
-    PASSWORD_EXPIRED_MONTH: IntSchema.optional()
+    PASSWORD_EXPIRED_MONTH: IntSchema.optional(),
+    AGENT_SANDBOX_PROXY_URL: AgentSandboxProxyUrlSchema.optional()
   },
   emptyStringAsUndefined: true,
   runtimeEnv: process.env,
@@ -28,3 +35,11 @@ export const appEnv = createEnv({
     throw new Error(`Invalid app environment variables. Please check: ${paths}\n`);
   }
 });
+
+if (!isPhaseProductionBuild && hasAgentSandboxConfig(process.env)) {
+  if (!appEnv.AGENT_SANDBOX_PROXY_URL) {
+    throw new Error(
+      'AGENT_SANDBOX_PROXY_URL is required when Agent Sandbox is enabled. Please configure a browser-accessible ws:// or wss:// agent-sandbox-proxy URL.'
+    );
+  }
+}

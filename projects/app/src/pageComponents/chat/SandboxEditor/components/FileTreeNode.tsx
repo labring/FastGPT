@@ -49,7 +49,7 @@ const FileTreeNode = ({
 }: Props) => {
   const isExpanded = expandedDirs.has(node.path);
   const isLoading = loadingDirs.has(node.path);
-  const isActive = activeFilePath === node.path;
+  const isActive = node.type === 'file' && activeFilePath === node.path;
   const isSelected = selectedPath === node.path;
   const isRenaming = renamingPath === node.path;
   const shouldShowArrow = node.type === 'directory';
@@ -76,9 +76,6 @@ const FileTreeNode = ({
   // 完美VSCode拖放体验：只允许文件夹节点和根目录Box显示放置高亮
   const isOverNode = node.type === 'directory' && (isOver || realOverDestPath === node.path);
 
-  const iconColor = isSelected ? '#1E293B' : isActive ? '#388BFD' : '#64748B';
-  const textColor = isSelected ? '#1E293B' : isActive ? '#388BFD' : '#475569';
-
   return (
     <Box>
       <Flex
@@ -86,26 +83,27 @@ const FileTreeNode = ({
           setDragRef(el);
           setDropRef(el);
         }}
-        pl={`${node.level * 16 + 8}px`}
+        pl={`${node.level * 16 + 4}px`}
         pr={2}
-        h="32px"
+        h="28px"
         cursor="pointer"
         opacity={isDragging ? 0.4 : 1}
-        _hover={{ bg: 'rgba(15, 23, 42, 0.04)' }}
+        _hover={{ bg: 'myGray.05' }}
         bg={
-          isSelected
-            ? 'rgba(56, 139, 253, 0.12)'
-            : isActive
-              ? 'rgba(56, 139, 253, 0.04)'
-              : isOverNode
-                ? 'rgba(56, 139, 253, 0.15)'
+          isOverNode
+            ? 'rgba(56, 139, 253, 0.08)'
+            : isSelected
+              ? 'primary.100'
+              : isActive
+                ? 'myGray.05'
                 : 'transparent'
         }
-        border={isOverNode ? '1px dashed #388BFD' : '1px solid transparent'}
-        borderRadius="6px"
+        border={isOverNode ? '1px dashed #2B5FD9' : '1px solid transparent'}
+        borderRadius="xs"
         onClick={() => {
-          setSelectedPath(node.path);
+          if (!node || !node.path) return;
           if (node.type === 'file') {
+            setSelectedPath(node.path);
             openFile(node.path);
           } else {
             toggleDirectory(node);
@@ -117,7 +115,7 @@ const FileTreeNode = ({
         }}
         align="center"
         fontSize="13px"
-        color={textColor}
+        color="myGray.600"
         transition="all 0.15s ease"
         userSelect={'none'}
         {...listeners}
@@ -127,9 +125,8 @@ const FileTreeNode = ({
         <Flex
           justify="center"
           align="center"
-          w="12px"
-          h="12px"
-          mr="6px"
+          w="16px"
+          h="16px"
           flexShrink={0}
           onClick={(e) => {
             if (shouldShowArrow) {
@@ -140,14 +137,15 @@ const FileTreeNode = ({
         >
           {shouldShowArrow &&
             (isLoading ? (
-              <Spinner size="xs" color="myGray.400" w="8px" h="8px" />
+              <Spinner size="xs" color="myGray.400" />
             ) : (
               <MyIcon
                 name="core/chat/chevronRight"
-                w="12px"
+                w="16px"
+                h="16px"
                 transition="transform 0.15s ease"
                 transform={isExpanded ? 'rotate(90deg)' : 'none'}
-                color={iconColor}
+                color="myGray.600"
               />
             ))}
         </Flex>
@@ -155,9 +153,10 @@ const FileTreeNode = ({
         {/* 匹配图标 */}
         {node.type === 'directory' ? (
           <MyIcon
-            name="core/app/sandbox/folderLine"
+            name="common/folderFill"
             w="16px"
-            color={iconColor}
+            h="16px"
+            color="#EF7623"
             mr="8px"
             flexShrink={0}
           />
@@ -167,7 +166,7 @@ const FileTreeNode = ({
             fill="none"
             w="16px"
             h="16px"
-            color={iconColor}
+            color="myGray.600"
             mr="8px"
             flexShrink={0}
           />
@@ -187,7 +186,7 @@ const FileTreeNode = ({
             noOfLines={1}
             overflow="hidden"
             textOverflow="ellipsis"
-            fontWeight={isSelected || isActive ? '500' : '400'}
+            fontWeight={isSelected || isActive ? 'medium' : '400'}
           >
             {node.name}
           </Text>
@@ -197,7 +196,7 @@ const FileTreeNode = ({
       {/* 渲染子节点，同时在需要时渲染 Inline 新建子节点输入框 */}
       {shouldShowArrow && isExpanded && (
         <Box>
-          {node.children && renderTreeNodes(node.children)}
+          {node.children && <>{renderTreeNodes(node.children)}</>}
           {creatingNode && creatingNode.parentPath === node.path && (
             <InlineCreateNode
               level={node.level + 1}
@@ -225,6 +224,7 @@ const RenameInput = ({
 }) => {
   const [value, setValue] = useState(initialName);
   const inputRef = useRef<HTMLInputElement>(null);
+  const finishedRef = useRef(false);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -244,6 +244,8 @@ const RenameInput = ({
   }, [initialName, type]);
 
   const handleSubmit = () => {
+    if (finishedRef.current) return;
+    finishedRef.current = true;
     const trimmed = value.trim();
     if (!trimmed || trimmed === initialName) {
       onCancel();
@@ -271,8 +273,12 @@ const RenameInput = ({
       onBlur={handleSubmit}
       onKeyDown={(e) => {
         if (e.key === 'Enter') {
+          e.preventDefault();
           handleSubmit();
         } else if (e.key === 'Escape') {
+          e.preventDefault();
+          if (finishedRef.current) return;
+          finishedRef.current = true;
           onCancel();
         }
       }}
@@ -295,6 +301,7 @@ export const InlineCreateNode = ({
 }) => {
   const [val, setVal] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const finishedRef = useRef(false);
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -304,6 +311,8 @@ export const InlineCreateNode = ({
   }, []);
 
   const handleSubmit = () => {
+    if (finishedRef.current) return;
+    finishedRef.current = true;
     const trimmed = val.trim();
     if (!trimmed) {
       onCancel();
@@ -314,20 +323,21 @@ export const InlineCreateNode = ({
 
   return (
     <Flex
-      pl={`${level * 16 + 8}px`}
+      pl={`${level * 16 + 4}px`}
       pr={2}
-      h="32px"
+      h="28px"
       align="center"
       fontSize="13px"
       bg="transparent"
       border="1px solid transparent"
       borderRadius="6px"
     >
-      <Flex justify="center" align="center" w="12px" h="12px" mr="6px" flexShrink={0} />
+      <Flex justify="center" align="center" w="16px" h="16px" flexShrink={0} />
       {type === 'directory' ? (
         <MyIcon
           name="core/app/sandbox/folderLine"
           w="16px"
+          h="16px"
           color="#64748B"
           mr="8px"
           flexShrink={0}
@@ -337,6 +347,7 @@ export const InlineCreateNode = ({
           name="core/app/sandbox/fileGenericLine"
           fill="none"
           w="16px"
+          h="16px"
           color="#64748B"
           mr="8px"
           flexShrink={0}
@@ -364,8 +375,12 @@ export const InlineCreateNode = ({
         onBlur={handleSubmit}
         onKeyDown={(e) => {
           if (e.key === 'Enter') {
+            e.preventDefault();
             handleSubmit();
           } else if (e.key === 'Escape') {
+            e.preventDefault();
+            if (finishedRef.current) return;
+            finishedRef.current = true;
             onCancel();
           }
         }}

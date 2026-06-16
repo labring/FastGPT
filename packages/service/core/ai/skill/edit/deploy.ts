@@ -1,13 +1,17 @@
 import { mongoSessionRun } from '../../../../common/mongo/sessionRun';
 import { Types } from '../../../../common/mongo';
+import { getLogger, LogCategories } from '../../../../common/logger';
 import { updateCurrentVersion } from '../manage';
-import { removeSkillPackageTTL, validateZipStructure, uploadSkillPackage } from '../package';
+import { removeSkillPackageTTL, uploadSkillPackage } from '../package';
 import { packageSkillInSandbox } from './sandbox';
 import { EDIT_DEBUG_SANDBOX_CHAT_ID } from './config';
 import { createVersion } from '../version';
 import { getSandboxRuntimeProfile } from '../../sandbox/runtime/profile';
 import { getSandboxProviderConfig } from '../../sandbox/provider/config';
-import { findSandboxInstanceByAppChatType } from '../../sandbox/instance/repository';
+import {
+  findSandboxInstanceByAppChatType,
+  updateSandboxInstanceRecordBySandboxId
+} from '../../sandbox/instance/repository';
 import { MongoAgentSkills } from '../model/schema';
 import { SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
@@ -15,6 +19,8 @@ import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import type { SaveDeploySkillResponse } from '@fastgpt/global/core/ai/skill/api';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
+
+const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
 export type SaveDeploySkillFromSandboxParams = {
   skillId: string;
@@ -55,10 +61,6 @@ export async function saveDeploySkillFromSandbox({
       sandboxId: sandboxInfo.sandboxId,
       workDirectory: runtimeProfile.workDirectory
     });
-    const validation = await validateZipStructure(packageBuffer);
-    if (!validation.valid) {
-      throw new Error(validation.error || 'Invalid skill package structure');
-    }
   } catch (error: any) {
     return Promise.reject(
       new UserError(`Failed to package skill directory: ${error.message || 'Unknown error'}`)
@@ -84,7 +86,7 @@ export async function saveDeploySkillFromSandbox({
     throw new UserError(`Failed to upload package: ${error.message || 'Unknown error'}`);
   }
 
-  return mongoSessionRun(async (session) => {
+  const deployResult = await mongoSessionRun(async (session) => {
     const isVersionLinked = await updateCurrentVersion(skillId, versionId, session);
     if (!isVersionLinked) {
       // skill 可能在打包上传期间被删除。此时不能移除 S3 TTL，让孤儿包继续走 TTL 清理。
@@ -120,4 +122,22 @@ export async function saveDeploySkillFromSandbox({
       createdAt: createdAt.toISOString()
     };
   });
+
+  // 发布新版本成功后，更新运行中沙盒实例的 versionId，保证后续版本切换时能够正确执行版本比对和容器重建
+  await updateSandboxInstanceRecordBySandboxId({
+    provider: providerConfig.provider,
+    sandboxId: sandboxInfo.sandboxId,
+    metadata: {
+      ...(sandboxInfo.metadata || {}),
+      versionId
+    }
+  }).catch((err) => {
+    logger.error('[Sandbox] Failed to update sandbox versionId after deploy', {
+      sandboxId: sandboxInfo.sandboxId,
+      versionId,
+      error: err
+    });
+  });
+
+  return deployResult;
 }

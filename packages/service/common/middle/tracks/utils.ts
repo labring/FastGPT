@@ -207,5 +207,16 @@ export const pushTrack = {
         retentionDays: data.retentionDays
       }
     });
+  },
+  sandboxArchive: (data: {
+    provider: string;
+    sandboxId: string;
+    reason: string;
+    source?: string;
+  }) => {
+    return createTrack({
+      event: TrackEnum.sandboxArchive,
+      data
+    });
   }
 };

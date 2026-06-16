@@ -17,14 +17,10 @@ import JSZip from 'jszip';
 import { extractSkillNameFromSkillMd } from '../utils';
 import { DEFAULT_GITIGNORE_CONTENT } from './constants';
 
-// 测试用例需要直接构造 ZIP，因此这里保留 JSZip 的再导出。
-export { JSZip };
-
 export type CreateSkillPackageParams = {
   name: string;
   skillMd: string;
   assets?: Record<string, Buffer | string>;
-  additionalFiles?: Record<string, Buffer | string>;
 };
 
 /**
@@ -47,6 +43,7 @@ export type ZipValidationResult = {
   files: string[];
   error?: string;
   skillMdPath?: string;
+  totalUncompressedBytes?: number;
 };
 
 export type ExtractSkillPackageResult = {
@@ -67,7 +64,7 @@ export type NormalizedSkillPackageFile = {
  * 输出结构固定为 `{name}/SKILL.md` 加可选资源文件，便于后续版本存储和导出保持一致。
  */
 export async function createSkillPackage(params: CreateSkillPackageParams): Promise<Buffer> {
-  const { name, skillMd, assets, additionalFiles } = params;
+  const { name, skillMd, assets } = params;
   const zip = new JSZip();
 
   // 根目录名直接来自 skill name，前面流程已经做过合法性约束。
@@ -79,26 +76,22 @@ export async function createSkillPackage(params: CreateSkillPackageParams): Prom
   // SKILL.md 是 skill 包的必需入口文件。
   zip.file(`${rootDir}/SKILL.md`, skillMd);
 
-  // Auto-generate a comprehensive default .gitignore if not present
-  const hasGitignore =
-    (assets && (assets['.gitignore'] || assets['/.gitignore'])) ||
-    (additionalFiles && (additionalFiles['.gitignore'] || additionalFiles['/.gitignore']));
+  // 只有根目录下显式声明了 /.gitignore，才不覆盖生成默认的
+  const hasRootGitignore = assets && assets['/.gitignore'];
 
-  if (!hasGitignore) {
-    zip.file(`${rootDir}/.gitignore`, DEFAULT_GITIGNORE_CONTENT);
+  if (!hasRootGitignore) {
+    zip.file(`.gitignore`, DEFAULT_GITIGNORE_CONTENT);
   }
 
   // Add assets (optional)
   if (assets) {
     Object.entries(assets).forEach(([path, content]) => {
-      addFileToZip(zip, `${rootDir}/${path}`, content);
-    });
-  }
-
-  // Add additional files (optional)
-  if (additionalFiles) {
-    Object.entries(additionalFiles).forEach(([path, content]) => {
-      addFileToZip(zip, `${rootDir}/${path}`, content);
+      // 以 / 开头的代表强制放在压缩包根目录；否则照常放进资源包(技能)目录下
+      if (path.startsWith('/')) {
+        addFileToZip(zip, path.slice(1), content);
+      } else {
+        addFileToZip(zip, `${rootDir}/${path}`, content);
+      }
     });
   }
 
@@ -140,7 +133,10 @@ async function generateZipBuffer(zip: JSZip): Promise<Buffer> {
  *
  * 兼容两种形态：历史单 skill 包（一个 SKILL.md）和多 skill 包（多个一级目录各自含 SKILL.md）。
  */
-export async function validateZipStructure(zipBuffer: Buffer): Promise<ZipValidationResult> {
+export async function validateZipStructure(
+  zipBuffer: Buffer,
+  options: { maxUncompressedBytes?: number } = {}
+): Promise<ZipValidationResult> {
   try {
     const zip = await JSZip.loadAsync(zipBuffer);
     const files = Object.keys(zip.files);
@@ -152,6 +148,44 @@ export async function validateZipStructure(zipBuffer: Buffer): Promise<ZipValida
         files,
         error: 'ZIP archive is empty'
       };
+    }
+
+    let totalUncompressedBytes = 0;
+    for (const file of Object.values(zip.files)) {
+      const unsafePath = file.unsafeOriginalName ?? file.name;
+      if (!isSafeZipEntryPath(unsafePath)) {
+        return {
+          valid: false,
+          hasSkillMd: false,
+          files,
+          error: `Unsafe ZIP entry path: ${unsafePath}`
+        };
+      }
+
+      if (isZipSymlink(file)) {
+        return {
+          valid: false,
+          hasSkillMd: false,
+          files,
+          error: `ZIP symlink entries are not allowed: ${unsafePath}`
+        };
+      }
+
+      if (!file.dir) {
+        totalUncompressedBytes += getZipEntryUncompressedSize(file);
+        if (
+          options.maxUncompressedBytes !== undefined &&
+          totalUncompressedBytes > options.maxUncompressedBytes
+        ) {
+          return {
+            valid: false,
+            hasSkillMd: false,
+            files,
+            totalUncompressedBytes,
+            error: 'ZIP archive uncompressed size exceeds maximum allowed size'
+          };
+        }
+      }
     }
 
     // 兼容根目录直接放 SKILL.md 的历史包。
@@ -184,7 +218,8 @@ export async function validateZipStructure(zipBuffer: Buffer): Promise<ZipValida
       valid: true,
       hasSkillMd: true,
       files,
-      skillMdPath
+      skillMdPath,
+      totalUncompressedBytes
     };
   } catch (error) {
     return {
@@ -194,6 +229,37 @@ export async function validateZipStructure(zipBuffer: Buffer): Promise<ZipValida
       error: `Invalid ZIP archive: ${error instanceof Error ? error.message : 'Unknown error'}`
     };
   }
+}
+
+function isSafeZipEntryPath(path: string): boolean {
+  if (!path || path.includes('\0')) return false;
+  if (path.startsWith('/') || path.startsWith('\\')) return false;
+  if (/^[A-Za-z]:[\\/]/.test(path)) return false;
+
+  return !path.split(/[\\/]+/).some((segment) => segment === '..');
+}
+
+function isZipSymlink(file: JSZip.JSZipObject): boolean {
+  const permissions =
+    typeof file.unixPermissions === 'string'
+      ? Number.parseInt(file.unixPermissions, 8)
+      : file.unixPermissions;
+
+  return Number.isFinite(permissions) && ((permissions as number) & 0xf000) === 0xa000;
+}
+
+function getZipEntryUncompressedSize(file: JSZip.JSZipObject): number {
+  const compressedData = (
+    file as JSZip.JSZipObject & {
+      _data?: {
+        uncompressedSize?: number;
+      };
+    }
+  )._data;
+
+  return Number.isFinite(compressedData?.uncompressedSize)
+    ? Number(compressedData?.uncompressedSize)
+    : 0;
 }
 
 /**
@@ -311,18 +377,6 @@ export async function standardizeSkillPackageBySkillMdName(
     assets,
     name
   };
-}
-
-/**
- * 获取 ZIP 内文件列表，读取失败时返回空数组供调试接口容错展示。
- */
-export async function getZipFileList(zipBuffer: Buffer): Promise<string[]> {
-  try {
-    const zip = await JSZip.loadAsync(zipBuffer);
-    return Object.keys(zip.files).filter((path) => !zip.files[path].dir);
-  } catch {
-    return [];
-  }
 }
 
 /**

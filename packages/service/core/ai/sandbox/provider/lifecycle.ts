@@ -1,5 +1,9 @@
 import { getLogger, LogCategories } from '../../../../common/logger';
-import { type ISandbox, type OpenSandboxAdapter } from '@fastgpt-sdk/sandbox-adapter';
+import {
+  type ISandbox,
+  type OpenSandboxAdapter,
+  type SandboxCreateSpec
+} from '@fastgpt-sdk/sandbox-adapter';
 import { buildSandboxAdapter } from './adapter';
 import type { SandboxProviderConfig } from './config';
 
@@ -7,7 +11,7 @@ const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
 export type SandboxInfo = NonNullable<Awaited<ReturnType<ISandbox['getInfo']>>>;
 
-const SANDBOX_COMMAND_READY_TIMEOUT_MS = 120_000;
+const SANDBOX_COMMAND_READY_TIMEOUT_MS = 300_000;
 const SANDBOX_COMMAND_READY_INTERVAL_MS = 1_000;
 const SANDBOX_COMMAND_READY_PROBE_TIMEOUT_MS = 5_000;
 
@@ -92,10 +96,12 @@ async function waitUntilSandboxCommandReady(
  */
 export async function connectToSandbox(
   providerConfig: SandboxProviderConfig,
-  sandboxId: string
+  sandboxId: string,
+  createConfig?: SandboxCreateSpec
 ): Promise<ISandbox> {
   const sandbox = buildSandboxAdapter(providerConfig, {
-    sandboxId
+    sandboxId,
+    createConfig
   });
 
   await ensureConnectedSandboxRunning(sandbox);
@@ -128,7 +134,7 @@ export async function getReadySandboxInfo(
   sandbox: ISandbox,
   fallback: {
     sandboxId: string;
-    image: SandboxInfo['image'];
+    image?: SandboxInfo['image'];
     entrypoint?: SandboxInfo['entrypoint'];
     status?: SandboxInfo['status'];
     createdAt?: SandboxInfo['createdAt'];
@@ -147,7 +153,7 @@ export async function getReadySandboxInfo(
 
   return {
     id: sandbox.id ?? fallback.sandboxId,
-    image: fallback.image,
+    ...(fallback.image ? { image: fallback.image } : {}),
     entrypoint: fallback.entrypoint ?? [],
     status: fallback.status ?? sandbox.status,
     createdAt: fallback.createdAt ?? new Date()
@@ -163,17 +169,17 @@ export async function connectReadySandboxByInstance(
   providerConfig: SandboxProviderConfig,
   instance: {
     sandboxId: string;
-  }
+  },
+  createConfig?: SandboxCreateSpec
 ): Promise<{
   sandbox: ISandbox;
   sandboxInfo: SandboxInfo;
 }> {
-  const sandbox = await connectToSandbox(providerConfig, instance.sandboxId);
+  const sandbox = await connectToSandbox(providerConfig, instance.sandboxId, createConfig);
 
   try {
     const sandboxInfo = await getReadySandboxInfo(sandbox, {
       sandboxId: instance.sandboxId,
-      image: { repository: '' },
       status: sandbox.status
     });
     return {

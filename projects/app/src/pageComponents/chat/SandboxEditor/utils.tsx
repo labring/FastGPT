@@ -381,7 +381,7 @@ export const renameTreeNodeInTree = <
 export const parseMarkdownFrontmatter = (
   content: string
 ): {
-  metadata: Record<string, any>;
+  metadata: Record<string, string>;
   bodyContent: string;
   hasMetadata: boolean;
 } => {
@@ -399,7 +399,7 @@ export const parseMarkdownFrontmatter = (
   const yamlContent = match[1];
   const bodyContent = match[2] ?? '';
 
-  const result: Record<string, any> = {};
+  const result: Record<string, string> = {};
   const lines = yamlContent.split('\n');
   for (const line of lines) {
     const trimmed = line.trim();
@@ -413,28 +413,7 @@ export const parseMarkdownFrontmatter = (
 
     if (!key) continue;
 
-    let cleanedValue: any = value;
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      cleanedValue = value.slice(1, -1);
-    } else if (value === 'true') {
-      cleanedValue = true;
-    } else if (value === 'false') {
-      cleanedValue = false;
-    } else if (value === 'null') {
-      cleanedValue = null;
-    } else if (!isNaN(Number(value)) && value !== '') {
-      cleanedValue = Number(value);
-    } else if (value.startsWith('[') && value.endsWith(']')) {
-      const arrayContent = value.slice(1, -1).trim();
-      cleanedValue = arrayContent
-        ? arrayContent.split(',').map((item) => item.trim().replace(/["']/g, ''))
-        : [];
-    }
-
-    result[key] = cleanedValue;
+    result[key] = value;
   }
 
   return {

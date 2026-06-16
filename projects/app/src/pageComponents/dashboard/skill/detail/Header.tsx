@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { createContext, useContext, useMemo, useState } from 'react';
 import { Box, Button, Flex, HStack, IconButton, useDisclosure } from '@chakra-ui/react';
 import { Trans, useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
@@ -7,10 +7,11 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBackButton from '@fastgpt/web/components/common/MyBackButton';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
+import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import SaveAndPublishModal from '@/components/common/Modal/SaveAndPublishModal';
-import { SkillDetailContext, TabEnum } from './context';
-import SkillHistoriesSlider from './config/SkillHistoriesSlider';
+import { SkillDetailContext } from './context';
+import SkillHistoriesPopover from './config/SkillHistoriesPopover';
 import {
   deleteSkill,
   postUpdateSkill,
@@ -29,100 +30,44 @@ import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import dynamic from 'next/dynamic';
 import type { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
 
-const RouteTab = () => {
-  const { t } = useTranslation();
-  const { currentTab, setCurrentTab } = useContextSelector(SkillDetailContext, (v) => ({
-    currentTab: v.currentTab,
-    setCurrentTab: v.setCurrentTab
-  }));
+export const HeaderContext = createContext<{
+  savingAll: boolean;
+  setSavingAll: React.Dispatch<React.SetStateAction<boolean>>;
+  editedSkill: EditResourceInfoFormType | undefined;
+  setEditedSkill: React.Dispatch<React.SetStateAction<EditResourceInfoFormType | undefined>>;
+  showPermModal: boolean;
+  setShowPermModal: React.Dispatch<React.SetStateAction<boolean>>;
+  isPublishModalOpen: boolean;
+  onPublishModalOpen: () => void;
+  onPublishModalClose: () => void;
+  isSaving: boolean;
+  onClickDeleteSkill: (id: string) => Promise<any>;
+  DeleteConfirmModal: React.ComponentType<any>;
+  openConfirmDelete: any;
+  onUpdateSkill: (
+    id: string,
+    data: { avatar?: string; name?: string; intro?: string }
+  ) => Promise<any>;
+  onExportSkill: (skillId: string, skillName: string) => Promise<any>;
+  onSaveDeploy: (props: { skillId: string; versionName: string }) => Promise<any>;
+  handlePublishClick: () => Promise<void>;
+} | null>(null);
 
-  const canSwitchTab = useContextSelector(
-    SkillDetailContext,
-    (v) => v.isSkillReady && v.sandboxState === 'ready'
-  );
-
-  const tabList = [
-    { label: t('skill:detail_tab_config'), value: TabEnum.config },
-    { label: t('skill:detail_tab_preview'), value: TabEnum.preview }
-  ];
-
-  return (
-    <HStack borderRadius={'md'} bg={'rgba(244, 244, 245, 0.63)'} backdropBlur={'blur(5px)'} p={1}>
-      {tabList.map((tab) => (
-        <HStack
-          key={tab.value}
-          justifyContent={'center'}
-          cursor={currentTab === tab.value ? 'default' : canSwitchTab ? 'pointer' : 'not-allowed'}
-          w={'120px'}
-          h={8}
-          fontSize={'12px'}
-          fontWeight={'medium'}
-          userSelect={'none'}
-          {...(currentTab === tab.value
-            ? {
-                bg: 'white',
-                boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-                color: 'black',
-                borderRadius: '2px'
-              }
-            : {
-                color: 'myGray.500',
-                onClick: () => {
-                  if (!canSwitchTab) return;
-                  setCurrentTab(tab.value);
-                }
-              })}
-        >
-          <Box>{tab.label}</Box>
-        </HStack>
-      ))}
-    </HStack>
-  );
-};
-
-const Header = () => {
+export const HeaderProvider = ({ children }: { children: React.ReactNode }) => {
   const { t } = useTranslation();
   const router = useRouter();
 
-  const {
-    skillDetail,
-    refreshSkillDetail,
-    showHistories,
-    setShowHistories,
-    isSkillReady,
-    sandboxState,
-    saveAllRef
-  } = useContextSelector(SkillDetailContext, (v) => ({
-    skillDetail: v.skillDetail,
+  const { refreshSkillDetail, saveAllRef } = useContextSelector(SkillDetailContext, (v) => ({
     refreshSkillDetail: v.refreshSkillDetail,
-    showHistories: v.showHistories,
-    setShowHistories: v.setShowHistories,
-    isSkillReady: v.isSkillReady,
-    sandboxState: v.sandboxState,
     saveAllRef: v.saveAllRef
   }));
-  const canOperate = isSkillReady && sandboxState === 'ready';
 
   const [savingAll, setSavingAll] = useState(false);
-
-  const handlePublishClick = async () => {
-    try {
-      setSavingAll(true);
-      if (saveAllRef && saveAllRef.current) {
-        await saveAllRef.current();
-      }
-      onPublishModalOpen();
-    } catch (error) {
-      console.error('Save all before publish failed:', error);
-    } finally {
-      setSavingAll(false);
-    }
-  };
-
   const [editedSkill, setEditedSkill] = useState<EditResourceInfoFormType>();
   const [showPermModal, setShowPermModal] = useState(false);
 
@@ -158,7 +103,7 @@ const Header = () => {
   );
 
   const { runAsync: onExportSkill } = useRequest(
-    (skillId: string, skillName: string) => exportSkill(skillId, skillName, 'workspace'),
+    (skillId: string, skillName: string) => exportSkill(skillId, skillName),
     {
       successToast: t('skill:export_success'),
       errorToast: t('skill:export_failed')
@@ -179,9 +124,74 @@ const Header = () => {
 
   const {
     isOpen: isPublishModalOpen,
-    onOpen: onPublishModalOpen,
-    onClose: onPublishModalClose
+    onOpen: onOpenPublishModal,
+    onClose: onClosePublishModal
   } = useDisclosure();
+
+  const handlePublishClick = async () => {
+    try {
+      setSavingAll(true);
+      if (saveAllRef && saveAllRef.current) {
+        await saveAllRef.current();
+      }
+      onOpenPublishModal();
+    } catch (error) {
+      console.error('Save all before publish failed:', error);
+    } finally {
+      setSavingAll(false);
+    }
+  };
+
+  return (
+    <HeaderContext.Provider
+      value={{
+        savingAll,
+        setSavingAll,
+        editedSkill,
+        setEditedSkill,
+        showPermModal,
+        setShowPermModal,
+        isPublishModalOpen,
+        onPublishModalOpen: onOpenPublishModal,
+        onPublishModalClose: onClosePublishModal,
+        isSaving,
+        onClickDeleteSkill,
+        DeleteConfirmModal,
+        openConfirmDelete,
+        onUpdateSkill,
+        onExportSkill,
+        onSaveDeploy,
+        handlePublishClick
+      }}
+    >
+      {children}
+    </HeaderContext.Provider>
+  );
+};
+
+export const useHeader = () => {
+  const ctx = useContext(HeaderContext);
+  if (!ctx) {
+    throw new Error('useHeader must be used within HeaderProvider');
+  }
+  return ctx;
+};
+
+export const LeftHeader = () => {
+  const { t } = useTranslation();
+  const router = useRouter();
+
+  const { skillDetail, isSkillReady, restartChat } = useContextSelector(
+    SkillDetailContext,
+    (v) => ({
+      skillDetail: v.skillDetail,
+      isSkillReady: v.isSkillReady,
+      restartChat: v.restartChat
+    })
+  );
+
+  const { setEditedSkill, setShowPermModal, onExportSkill, openConfirmDelete, onClickDeleteSkill } =
+    useHeader();
 
   const menuList = useMemo(
     () => [
@@ -262,27 +272,47 @@ const Header = () => {
   if (!skillDetail) return null;
 
   return (
-    <Flex flexShrink={0} h={'64px'} alignItems={'center'} position={'relative'} userSelect={'none'}>
-      {/* 返回按钮 */}
-      <MyBackButton onClick={() => router.push('/dashboard/skill')} />
-
-      {/* Skill 信息 */}
-      <HStack ml={1} spacing={2}>
-        <Avatar src={skillDetail.avatar} w={'1.75rem'} borderRadius={'md'} />
-        <Box color={'myGray.900'}>{skillDetail.name}</Box>
+    <Flex
+      flexShrink={0}
+      h={'64px'}
+      alignItems={'center'}
+      justifyContent={'space-between'}
+      gap={'8px'}
+      pl={'24px'}
+      pr={0}
+      bg={'transparent'}
+      userSelect={'none'}
+    >
+      <HStack spacing={'8px'} minW={0} flex={'1 1 0'}>
+        <MyBackButton onClick={() => router.push('/dashboard/skill')} />
+        <Avatar src={skillDetail.avatar} w={'30px'} h={'30px'} borderRadius={'sm'} />
+        <Box
+          minW={0}
+          flex={'0 1 auto'}
+          color={'myGray.600'}
+          fontSize={'16px'}
+          fontWeight={'medium'}
+          px={'4px'}
+        >
+          <MyTooltip label={skillDetail.name} showOnlyWhenOverflow>
+            <Box className="textEllipsis">{skillDetail.name}</Box>
+          </MyTooltip>
+        </Box>
         {isSkillReady && (
           <MyMenu
             Button={
               <IconButton
                 aria-label="Expand"
-                icon={<MyIcon name={'common/select'} w={'18px'} color={'myGray.500'} />}
+                icon={<MyIcon name={'common/select'} w={'18px'} color={'myGray.600'} />}
                 w={'34px'}
                 h={'34px'}
                 bg={'white'}
                 border={'1px solid'}
                 borderColor={'myGray.250'}
                 borderRadius={'sm'}
-                boxShadow={'0 1px 2px 0 rgba(19, 51, 107, 0.05), 0 0 1px 0 rgba(19, 51, 107, 0.08)'}
+                boxShadow={
+                  '0px 1px 2px 0px rgba(19, 51, 107, 0.05), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)'
+                }
                 _hover={{
                   bg: 'myGray.50'
                 }}
@@ -293,43 +323,76 @@ const Header = () => {
         )}
       </HStack>
 
-      {/* 居中 Tab */}
-      <Box position={'absolute'} left={'50%'} transform={'translateX(-50%)'}>
-        <RouteTab />
-      </Box>
-
-      <Box flex={1} />
-
-      {/* 右侧按钮组（历史版本抽屉打开时隐藏） */}
-      {canOperate && !showHistories && (
-        <HStack spacing={3}>
-          <IconButton
-            icon={<MyIcon name={'history'} w={'18px'} />}
-            aria-label={''}
-            size={'sm'}
-            w={'34px'}
-            h={'34px'}
-            variant={'whitePrimary'}
-            onClick={() => setShowHistories(true)}
-          />
-          <Button
-            size={'sm'}
-            h={'34px'}
-            px={'14px'}
-            variant={'primary'}
-            isLoading={isSaving || savingAll}
-            onClick={handlePublishClick}
-          >
-            {t('common:Publish')}
-          </Button>
-        </HStack>
+      {isSkillReady && restartChat && (
+        <PopoverConfirm
+          Trigger={
+            <IconButton
+              icon={<MyIcon name={'common/clearLight'} w={'18px'} color={'myGray.600'} />}
+              aria-label={'Restart Chat'}
+              w={'32px'}
+              h={'32px'}
+              minW={'32px'}
+              minH={'32px'}
+              variant={'grayGhost'}
+              borderRadius={'sm'}
+            />
+          }
+          placement={'bottom-end'}
+          type="info"
+          content={t('common:core.chat.Restart Confirm')}
+          onConfirm={restartChat}
+        />
       )}
+    </Flex>
+  );
+};
 
-      {/* 历史版本抽屉 */}
-      {canOperate && showHistories && (
-        <SkillHistoriesSlider onClose={() => setShowHistories(false)} />
-      )}
+export const RightHeader = () => {
+  const { t } = useTranslation();
+  const { handlePublishClick, isSaving, savingAll } = useHeader();
 
+  return (
+    <SkillHistoriesPopover
+      publishButton={
+        <Button
+          size={'sm'}
+          h={'34px'}
+          px={'14px'}
+          variant={'primary'}
+          isLoading={isSaving || savingAll}
+          onClick={handlePublishClick}
+        >
+          {t('common:Publish')}
+        </Button>
+      }
+    />
+  );
+};
+
+export const HeaderDialogs = () => {
+  const { t } = useTranslation();
+  const { skillDetail, refreshSkillDetail } = useContextSelector(SkillDetailContext, (v) => ({
+    skillDetail: v.skillDetail,
+    refreshSkillDetail: v.refreshSkillDetail
+  }));
+
+  const {
+    editedSkill,
+    setEditedSkill,
+    showPermModal,
+    setShowPermModal,
+    isPublishModalOpen,
+    onPublishModalClose,
+    isSaving,
+    onUpdateSkill,
+    onSaveDeploy,
+    DeleteConfirmModal
+  } = useHeader();
+
+  if (!skillDetail) return null;
+
+  return (
+    <>
       {/* 发布确认弹窗 */}
       {isPublishModalOpen && (
         <SaveAndPublishModal
@@ -393,8 +456,6 @@ const Header = () => {
           onClose={() => setShowPermModal(false)}
         />
       )}
-    </Flex>
+    </>
   );
 };
-
-export default React.memo(Header);

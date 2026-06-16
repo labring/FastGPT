@@ -1,28 +1,27 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { Box, Flex, IconButton } from '@chakra-ui/react';
-import { useTranslation } from 'next-i18next';
-import MyIcon from '@fastgpt/web/components/common/Icon';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Box } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { SkillDetailContext } from '../context';
-import AIModelSelector from '@/components/Select/AIModelSelector';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ChatItemContextProvider from '@/web/core/chat/context/chatItemContext';
 import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext';
 import { useSkillChatTest } from './useSkillChatTest';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getSkillDebugRecords } from '@/web/core/skill/api';
 import type { LinkedPaginationProps } from '@fastgpt/global/openapi/api';
 import type { GetPaginationRecordsBodyType } from '@fastgpt/global/openapi/core/chat/record/api';
+import ChatAIModelSelector from '@/pageComponents/chat/ChatWindow/ChatAIModelSelector';
 
-const SkillPreview = ({ chatId, restartChat }: { chatId: string; restartChat: () => void }) => {
-  const { t } = useTranslation();
-  const { skillId, sandboxState } = useContextSelector(SkillDetailContext, (v) => ({
+const SkillPreview = () => {
+  const { skillId, sandboxState, chatId } = useContextSelector(SkillDetailContext, (v) => ({
     skillId: v.skillId,
-    sandboxState: v.sandboxState
+    sandboxState: v.sandboxState,
+    chatId: v.chatId
   }));
 
-  const { llmModelList } = useSystemStore();
-  const [selectedModel, setSelectedModel] = useState(llmModelList[0]?.model || '');
+  const { llmModelList, defaultModels } = useSystemStore();
+  const defaultModel = defaultModels.llm?.model || llmModelList[0]?.model || '';
+  const [selectedModel, setSelectedModel] = useState('');
+  const userSelectedModelRef = useRef(false);
 
   const modelSelectList = useMemo(
     () => llmModelList.map((item) => ({ label: item.name, value: item.model })),
@@ -31,63 +30,50 @@ const SkillPreview = ({ chatId, restartChat }: { chatId: string; restartChat: ()
 
   const isReady = sandboxState === 'ready';
 
+  useEffect(() => {
+    if (!userSelectedModelRef.current && defaultModel && selectedModel !== defaultModel) {
+      setSelectedModel(defaultModel);
+    }
+  }, [defaultModel, selectedModel]);
+
+  const ModelSelectorInput = useMemo(() => {
+    return (
+      <ChatAIModelSelector
+        h={'36px'}
+        boxShadow={'none'}
+        size={'sm'}
+        bg={'myGray.50'}
+        rounded={'10px'}
+        value={selectedModel}
+        list={modelSelectList}
+        onChange={(val) => {
+          userSelectedModelRef.current = true;
+          setSelectedModel(val);
+        }}
+      />
+    );
+  }, [selectedModel, modelSelectList]);
+
   const { ChatContainer } = useSkillChatTest({
     skillId,
     model: selectedModel,
     chatId,
-    isReady
+    isReady,
+    InputLeftComponent: ModelSelectorInput
   });
 
   return (
-    <Flex h={'100%'} direction={'column'} py={'16px'} px={'24px'}>
-      {/* Header */}
-      <Flex alignItems={'center'} justifyContent={'space-between'} mb={4} flexShrink={0}>
-        <Box fontSize={'18px'} fontWeight={500} color={'#111824'} lineHeight={'28px'}>
-          {t('skill:detail_tab_preview')}
-        </Box>
-        <Flex alignItems={'center'} gap={'8px'}>
-          <AIModelSelector
-            w={'200px'}
-            size={'sm'}
-            value={selectedModel}
-            list={modelSelectList}
-            onChange={(val) => setSelectedModel(val)}
-          />
-          <IconButton
-            w={'32px'}
-            h={'32px'}
-            minW={'32px'}
-            icon={<MyIcon name={'common/clearLight'} w={'14px'} />}
-            variant={'whiteDanger'}
-            borderRadius={'md'}
-            aria-label={'clear'}
-            onClick={(e) => {
-              e.stopPropagation();
-              restartChat();
-            }}
-          />
-        </Flex>
-      </Flex>
-
-      {/* Chat area */}
-      <Box flex={1} overflow={'hidden'}>
-        <ChatContainer />
-      </Box>
-    </Flex>
+    <Box h={'100%'} w={'100%'} overflow={'hidden'}>
+      <ChatContainer />
+    </Box>
   );
 };
 
-const CHAT_ID_STORAGE_KEY = (skillId: string) => `skill_debug_chatId_${skillId}`;
-
 const Render = () => {
-  const skillId = useContextSelector(SkillDetailContext, (v) => v.skillId);
-  const [chatId, setChatId] = useState(() => {
-    const stored = localStorage.getItem(CHAT_ID_STORAGE_KEY(skillId));
-    if (stored) return stored;
-    const newId = getNanoid(24);
-    localStorage.setItem(CHAT_ID_STORAGE_KEY(skillId), newId);
-    return newId;
-  });
+  const { skillId, chatId } = useContextSelector(SkillDetailContext, (v) => ({
+    skillId: v.skillId,
+    chatId: v.chatId
+  }));
 
   const chatRecordProviderParams = useMemo(
     () => ({
@@ -96,12 +82,6 @@ const Render = () => {
     }),
     [skillId, chatId]
   );
-
-  const restartChat = useCallback(() => {
-    const newId = getNanoid(24);
-    localStorage.setItem(CHAT_ID_STORAGE_KEY(skillId), newId);
-    setChatId(newId);
-  }, [skillId]);
 
   const skillFetchFn = useCallback(
     (data: LinkedPaginationProps<GetPaginationRecordsBodyType>) =>
@@ -125,10 +105,12 @@ const Render = () => {
       showRunningStatus={true}
       showSkillReferences={true}
       showWholeResponse={false}
+      showPoints={true}
       showAvatar={false}
+      showSandboxAction={false}
     >
       <ChatRecordContextProvider params={chatRecordProviderParams} fetchFn={skillFetchFn}>
-        <SkillPreview chatId={chatId} restartChat={restartChat} />
+        <SkillPreview />
       </ChatRecordContextProvider>
     </ChatItemContextProvider>
   );

@@ -1,6 +1,5 @@
 import type { FileWriteEntry } from '@/types';
-
-const VERIFY_UPLOAD_CONTENT_MAX_BYTES = 1024 * 1024;
+import { isReadableStreamData, uint8ArrayToCleanArrayBuffer } from '@/utils/files';
 
 type ReplayableWriteData = Exclude<FileWriteEntry['data'], ReadableStream<Uint8Array>>;
 
@@ -17,32 +16,6 @@ export type VerifyCommittedUploadParams = CommittedUploadVerificationDeps & {
 };
 
 /**
- * Detect streams structurally instead of relying on `instanceof ReadableStream`;
- * Node and browser/polyfilled streams can come from different realms.
- */
-export const isReadableStreamData = (
-  data: FileWriteEntry['data']
-): data is ReadableStream<Uint8Array> =>
-  typeof data === 'object' &&
-  data !== null &&
-  typeof (data as ReadableStream<Uint8Array>).getReader === 'function';
-
-/**
- * Computes expected bytes without buffering large in-memory inputs again.
- *
- * Strings need UTF-8 encoding length, while binary types already expose byte length/size.
- * Streams return 0 because committed-upload recovery never accepts stream uploads.
- */
-export const getWriteEntryByteLength = async (entry: FileWriteEntry): Promise<number> => {
-  if (typeof entry.data === 'string') return new TextEncoder().encode(entry.data).byteLength;
-  if (entry.data instanceof Uint8Array) return entry.data.byteLength;
-  if (entry.data instanceof ArrayBuffer) return entry.data.byteLength;
-  if (entry.data instanceof Blob) return entry.data.size;
-  if (isReadableStreamData(entry.data)) return 0;
-  return 0;
-};
-
-/**
  * Converts Uint8Array inputs to a clean ArrayBuffer for the OpenSandbox SDK.
  *
  * Node Buffers and pooled Uint8Arrays may have a non-zero byteOffset. Passing the backing buffer
@@ -50,12 +23,7 @@ export const getWriteEntryByteLength = async (entry: FileWriteEntry): Promise<nu
  */
 export const toOpenSandboxWriteData = (data: FileWriteEntry['data']): FileWriteEntry['data'] => {
   if (!(data instanceof Uint8Array)) return data;
-
-  if (data.byteOffset === 0 && data.byteLength === data.buffer.byteLength) {
-    return data.buffer as ArrayBuffer;
-  }
-
-  return data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer;
+  return uint8ArrayToCleanArrayBuffer(data);
 };
 
 export const isReplayableWriteData = (data: FileWriteEntry['data']): data is ReplayableWriteData =>
@@ -85,7 +53,7 @@ export const isUploadFalseNegativeCandidate = (error: unknown): boolean => {
  * OpenSandbox `/files/upload` can return 500 after the file has already been committed. This
  * function only converts that failure to success when committed file state is strong enough:
  * non-upload errors stay failures; metadata writes stay failures; streams are not replayable;
- * large files use size-only confirmation; small files must match byte-for-byte.
+ * committed content must match byte-for-byte.
  */
 export const verifyCommittedUpload = async ({
   entry,
@@ -107,12 +75,6 @@ export const verifyCommittedUpload = async ({
 
   const committedSize = await getCommittedFileSize(normalizedPath);
   if (committedSize !== bytesWritten) return false;
-
-  // Large files avoid a second full read. The false-negative symptom happens after the server
-  // writes the file, so matching size is the bounded-cost acceptance signal.
-  if (bytesWritten > VERIFY_UPLOAD_CONTENT_MAX_BYTES) {
-    return true;
-  }
 
   const expectedBytes = await toWriteEntryBytes(entry.data);
   const actualBytes = await readCommittedFileBytes(normalizedPath);

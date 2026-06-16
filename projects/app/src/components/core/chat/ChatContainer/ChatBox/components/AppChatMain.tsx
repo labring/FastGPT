@@ -16,7 +16,7 @@ type ScrollDataComponent = ({
   ScrollContainerRef?: RefObject<HTMLDivElement>;
 } & BoxProps) => React.JSX.Element;
 
-type AppChatMainProps = {
+type AppChatMainProps = BoxProps & {
   ScrollData: ScrollDataComponent;
   ScrollContainerRef: RefObject<HTMLDivElement>;
   welcomeText?: string;
@@ -24,6 +24,8 @@ type AppChatMainProps = {
   chatForm: UseFormReturn<ChatBoxInputFormType>;
   chatType: ChatTypeEnum;
   recordsListProps: ChatRecordsListProps;
+  boxBodyProps?: BoxProps;
+  EmptyState?: React.ReactNode;
 };
 
 /**
@@ -42,7 +44,10 @@ const AppChatMain = ({
   chatStarted,
   chatForm,
   chatType,
-  recordsListProps
+  recordsListProps,
+  maxW = ['100%', '92%'],
+  boxBodyProps,
+  EmptyState
 }: AppChatMainProps) => {
   return (
     <ScrollData
@@ -53,15 +58,26 @@ const AppChatMain = ({
       overflow={'overlay'}
       px={[4, 6]}
       pb={6}
+      {...boxBodyProps}
     >
-      <Box maxW={'700px'} h={'100%'} mx={'auto'}>
+      <Box
+        maxW={boxBodyProps?.maxW ?? maxW}
+        h={'100%'}
+        mx={boxBodyProps?.mx ?? boxBodyProps?.margin ?? 'auto'}
+        display={'flex'}
+        flexDirection={'column'}
+      >
         {!!welcomeText && <WelcomeBox welcomeText={welcomeText} />}
 
         <Box id="variable-input">
           <VariableInputForm chatStarted={chatStarted} chatForm={chatForm} chatType={chatType} />
         </Box>
 
-        <ChatRecordsList {...recordsListProps} />
+        {recordsListProps.records.length === 0 && EmptyState ? (
+          EmptyState
+        ) : (
+          <ChatRecordsList {...recordsListProps} />
+        )}
       </Box>
     </ScrollData>
   );

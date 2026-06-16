@@ -1,7 +1,7 @@
 import { serviceEnv } from '../../../../env';
 import type { SandboxCreateSpec, SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
 import type { VolumeManagerResult } from '../volume/service';
-import { getSandboxRuntimeProfile } from '../runtime/profile';
+import { getSandboxRuntimeProfile, buildBaseSandboxRuntimeEnv } from '../runtime/profile';
 
 type SandboxRuntime = 'kubernetes' | 'docker';
 
@@ -40,6 +40,14 @@ function assertNever(value: never): never {
   throw new Error(`Unsupported sandbox provider: ${String(value)}`);
 }
 
+export function getConfiguredSandboxProvider(): SandboxProviderType {
+  const provider = serviceEnv.AGENT_SANDBOX_PROVIDER;
+  if (!provider) {
+    throw new Error('AGENT_SANDBOX_PROVIDER is required when Agent Sandbox is used');
+  }
+  return provider;
+}
+
 /**
  * 获取当前或指定 provider 的连接配置。
  *
@@ -47,7 +55,7 @@ function assertNever(value: never): never {
  * 适合权限校验、历史资源查询等只需要 provider 名称的场景。
  */
 export function getSandboxProviderConfig(
-  provider: SandboxProviderType = serviceEnv.AGENT_SANDBOX_PROVIDER
+  provider: SandboxProviderType = getConfiguredSandboxProvider()
 ): SandboxProviderConfig {
   return getSandboxAdapterConfig({ provider }).providerConfig;
 }
@@ -86,7 +94,7 @@ export function validateSandboxConfig(config: SandboxProviderConfig): void {
  * SandboxRuntimeProfile.buildConfig，避免这里再散落 provider 运行时分支。
  */
 export function getSandboxAdapterConfig({
-  provider = serviceEnv.AGENT_SANDBOX_PROVIDER,
+  provider = getConfiguredSandboxProvider(),
   runtime = false,
   resourceLimits,
   vmConfig,
@@ -100,6 +108,17 @@ export function getSandboxAdapterConfig({
   createConfig?: SandboxCreateConfig;
   sessionId?: string;
 } = {}): SandboxAdapterConfig {
+  const profile = getSandboxRuntimeProfile(provider);
+  const baseEnv =
+    runtime && sessionId
+      ? buildBaseSandboxRuntimeEnv({
+          sessionId,
+          workDirectory: profile.workDirectory,
+          ideAgentBindAddr: serviceEnv.IDE_AGENT_BIND_ADDR,
+          ideAgentMaxFileBytes: serviceEnv.AGENT_SANDBOX_MAX_FILE_SIZE * 1024 * 1024
+        })
+      : undefined;
+
   switch (provider) {
     case 'opensandbox': {
       const providerConfig: OpenSandboxProviderConfig = {
@@ -114,10 +133,15 @@ export function getSandboxAdapterConfig({
       return {
         providerConfig,
         createConfig: runtime
-          ? getSandboxRuntimeProfile(provider).buildConfig({
+          ? profile.buildConfig({
               resourceLimits,
               vmConfig,
-              createConfig
+              createConfig,
+              entrypoint: createConfig?.entrypoint ?? (profile.entrypoint || undefined),
+              env: {
+                ...createConfig?.env,
+                ...baseEnv
+              }
             })
           : undefined
       };
@@ -134,9 +158,13 @@ export function getSandboxAdapterConfig({
       return {
         providerConfig,
         createConfig: runtime
-          ? getSandboxRuntimeProfile(provider).buildConfig({
+          ? profile.buildConfig({
               createConfig,
-              sessionId
+              sessionId,
+              env: {
+                ...createConfig?.env,
+                ...baseEnv
+              }
             })
           : undefined
       };
@@ -152,7 +180,7 @@ export function getSandboxAdapterConfig({
       return {
         providerConfig,
         createConfig: runtime
-          ? getSandboxRuntimeProfile(provider).buildConfig({
+          ? profile.buildConfig({
               createConfig
             })
           : undefined

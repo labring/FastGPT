@@ -21,7 +21,6 @@ import {
 } from '@fastgpt/global/core/ai/skill/constants';
 import {
   deleteSkill,
-  exportSkill,
   postUpdateSkill,
   postCopySkill,
   getAppsBySkillId,
@@ -48,6 +47,7 @@ import type {
 import ListCreateCard from '@/pageComponents/dashboard/ListCreateCard';
 import { useVirtualGridList } from '@fastgpt/web/hooks/useVirtualGridList';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
@@ -291,14 +291,6 @@ const List = ({
     []
   );
 
-  const { runAsync: onExportSkill } = useRequest(
-    (skillId: string, skillName: string) => exportSkill(skillId, skillName),
-    {
-      successToast: t('skill:export_success'),
-      errorToast: t('skill:export_failed')
-    }
-  );
-
   const renderSkillCard = (skill: (typeof skills)[number]) => {
     const isFolder = skill.type === AgentSkillTypeEnum.folder;
     const isPersonal = skill.source === AgentSkillSourceEnum.personal;
@@ -350,12 +342,6 @@ const List = ({
               ? [
                   {
                     children: [
-                      {
-                        icon: 'export',
-                        type: 'grayBg' as const,
-                        label: t('skill:export_config'),
-                        onClick: () => onExportSkill(skill._id, skill.name)
-                      },
                       {
                         icon: 'copy',
                         type: 'grayBg' as const,
@@ -409,6 +395,7 @@ const List = ({
         position={'relative'}
         display={'flex'}
         flexDirection={'column'}
+        minW={0}
         _hover={{
           borderColor: 'primary.300',
           boxShadow: '1.5',
@@ -428,7 +415,7 @@ const List = ({
           }
         }}
       >
-        <Flex alignItems={'center'} gap={2}>
+        <Grid templateColumns={'auto minmax(0, 1fr) auto'} alignItems={'center'} gap={2}>
           {isFolder ? (
             <MyIcon name={'common/folderFill'} w={'1.5rem'} flexShrink={0} color={'myGray.500'} />
           ) : (
@@ -439,8 +426,12 @@ const List = ({
               flexShrink={0}
             />
           )}
-          <Box className="textEllipsis" color={'myGray.900'} fontWeight={'medium'}>
-            {skill.name}
+          <Box minW={0}>
+            <MyTooltip label={skill.name} showOnlyWhenOverflow>
+              <Box className="textEllipsis" color={'myGray.900'} fontWeight={'medium'}>
+                {skill.name}
+              </Box>
+            </MyTooltip>
           </Box>
           {(isSkillCreating || isSkillCreateFailed) && (
             <Box
@@ -455,7 +446,7 @@ const List = ({
               {isSkillCreateFailed ? t('common:failed') : t('skill:generating')}
             </Box>
           )}
-        </Flex>
+        </Grid>
 
         <Box
           flex={'1 0 56px'}

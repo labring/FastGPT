@@ -5,12 +5,15 @@ const originalEnv = {
   AGENT_SANDBOX_SEALOS_BASEURL: process.env.AGENT_SANDBOX_SEALOS_BASEURL,
   AGENT_SANDBOX_SEALOS_TOKEN: process.env.AGENT_SANDBOX_SEALOS_TOKEN,
   AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: process.env.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY,
+  AGENT_SANDBOX_SEALOS_IMAGE: process.env.AGENT_SANDBOX_SEALOS_IMAGE,
   AGENT_SANDBOX_E2B_API_KEY: process.env.AGENT_SANDBOX_E2B_API_KEY,
   AGENT_SANDBOX_OPENSANDBOX_BASEURL: process.env.AGENT_SANDBOX_OPENSANDBOX_BASEURL,
   AGENT_SANDBOX_OPENSANDBOX_API_KEY: process.env.AGENT_SANDBOX_OPENSANDBOX_API_KEY,
   AGENT_SANDBOX_OPENSANDBOX_RUNTIME: process.env.AGENT_SANDBOX_OPENSANDBOX_RUNTIME,
   AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO,
-  AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG
+  AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG,
+  AGENT_SANDBOX_MAX_FILE_SIZE: process.env.AGENT_SANDBOX_MAX_FILE_SIZE,
+  AGENT_SANDBOX_PROXY_SECRET: process.env.AGENT_SANDBOX_PROXY_SECRET
 };
 
 const loadSandboxConfigModule = async () => {
@@ -35,6 +38,7 @@ const defaultOpenSandboxDockerNetworkPolicy = {
 describe('sandbox provider config', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', 'test-secret-123456789012345678901234');
   });
 
   afterEach(() => {
@@ -45,6 +49,7 @@ describe('sandbox provider config', () => {
       'AGENT_SANDBOX_SEALOS_WORK_DIRECTORY',
       originalEnv.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY
     );
+    vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', originalEnv.AGENT_SANDBOX_SEALOS_IMAGE);
     vi.stubEnv('AGENT_SANDBOX_E2B_API_KEY', originalEnv.AGENT_SANDBOX_E2B_API_KEY);
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', originalEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL);
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', originalEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY);
@@ -57,6 +62,8 @@ describe('sandbox provider config', () => {
       'AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG',
       originalEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG
     );
+    vi.stubEnv('AGENT_SANDBOX_MAX_FILE_SIZE', originalEnv.AGENT_SANDBOX_MAX_FILE_SIZE);
+    vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', originalEnv.AGENT_SANDBOX_PROXY_SECRET);
     vi.unstubAllGlobals();
   });
 
@@ -84,6 +91,20 @@ describe('sandbox provider config', () => {
       provider: 'e2b',
       apiKey: 'e2b-token'
     });
+  });
+
+  it('does not default sandbox provider when env is empty', async () => {
+    vi.stubEnv('AGENT_SANDBOX_PROVIDER', undefined);
+
+    const { getConfiguredSandboxProvider, getSandboxProviderConfig } =
+      await loadSandboxConfigModule();
+
+    expect(getConfiguredSandboxProvider).toThrow(
+      'AGENT_SANDBOX_PROVIDER is required when Agent Sandbox is used'
+    );
+    expect(getSandboxProviderConfig).toThrow(
+      'AGENT_SANDBOX_PROVIDER is required when Agent Sandbox is used'
+    );
   });
 
   it('keeps e2b runtime create config when runtime adapter config is requested', async () => {
@@ -117,22 +138,61 @@ describe('sandbox provider config', () => {
 
     const { getSandboxAdapterConfig } = await loadSandboxConfigModule();
 
-    expect(
-      getSandboxAdapterConfig({
-        provider: 'sealosdevbox',
-        runtime: true,
-        sessionId: 'session-1'
-      })
-    ).toEqual({
-      providerConfig: {
-        provider: 'sealosdevbox',
-        baseUrl: 'https://devbox.example.com',
-        token: 'sealos-token'
+    // 1. 无环境变量 Image 时，传空 repository 让 Sealos 走默认 agent 镜像
+    const result = getSandboxAdapterConfig({
+      provider: 'sealosdevbox',
+      runtime: true,
+      sessionId: 'session-1'
+    });
+
+    expect(result.providerConfig).toEqual({
+      provider: 'sealosdevbox',
+      baseUrl: 'https://devbox.example.com',
+      token: 'sealos-token'
+    });
+
+    expect(result.createConfig).toEqual({
+      image: {
+        repository: ''
       },
-      createConfig: {
-        workingDir: '/home/devbox/workspace',
-        upstreamID: 'session-1'
+      workingDir: '/home/devbox/workspace',
+      upstreamID: 'session-1',
+      env: {
+        FASTGPT_SESSION_ID: 'session-1',
+        FASTGPT_WORKDIR: '/home/devbox/workspace',
+        IDE_AGENT_ENABLED: 'true',
+        IDE_AGENT_BIND_ADDR: '0.0.0.0:1318',
+        FASTGPT_IDE_MAX_FILE_BYTES: '10485760'
       }
+    });
+
+    // 2. 有环境变量 Image 时，携带 image 字段
+    vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', 'default-sealos-image:latest');
+    vi.resetModules();
+    const { getSandboxAdapterConfig: getSandboxAdapterConfigWithImage } =
+      await loadSandboxConfigModule();
+    const resultWithEnvImage = getSandboxAdapterConfigWithImage({
+      provider: 'sealosdevbox',
+      runtime: true,
+      sessionId: 'session-1'
+    });
+    expect(resultWithEnvImage.createConfig?.image).toEqual({
+      repository: 'default-sealos-image',
+      tag: 'latest'
+    });
+
+    // 3. 显式传入镜像时，覆盖环境变量中的默认镜像
+    const resultWithExplicitImage = getSandboxAdapterConfigWithImage({
+      provider: 'sealosdevbox',
+      runtime: true,
+      sessionId: 'session-1',
+      createConfig: {
+        image: { repository: 'explicit-sealos-image', tag: 'v1' }
+      }
+    });
+    expect(resultWithExplicitImage.createConfig?.image).toEqual({
+      repository: 'explicit-sealos-image',
+      tag: 'v1'
     });
   });
 
@@ -164,6 +224,30 @@ describe('sandbox provider config', () => {
       vi.doUnmock('@fastgpt/service/env');
       vi.resetModules();
     }
+  });
+
+  it('allows empty proxy secret before agent sandbox credentials are configured', async () => {
+    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'opensandbox');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', 'http://opensandbox.local');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', '');
+    vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', '');
+    vi.resetModules();
+
+    const { serviceEnv } = await import('@fastgpt/service/env');
+
+    expect(serviceEnv.AGENT_SANDBOX_PROXY_SECRET).toBeUndefined();
+  });
+
+  it('rejects short proxy secret when agent sandbox is configured', async () => {
+    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'opensandbox');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', 'http://opensandbox.local');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', 'opensandbox-api-key');
+    vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', 'short');
+    vi.resetModules();
+
+    await expect(import('@fastgpt/service/env')).rejects.toThrow(
+      'AGENT_SANDBOX_PROXY_SECRET must be at least 32 characters'
+    );
   });
 
   it('parses opensandbox config and runtime create config from env', async () => {
@@ -234,16 +318,28 @@ describe('sandbox provider config', () => {
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_RUNTIME', 'docker');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO', 'default-opensandbox-image');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG', 'stable');
-
     vi.resetModules();
     const { getSandboxRuntimeProfile } =
       await import('@fastgpt/service/core/ai/sandbox/runtime/profile');
-
-    expect(getSandboxRuntimeProfile('opensandbox').buildConfig()).toEqual({
+    const profile = getSandboxRuntimeProfile('opensandbox');
+    expect(profile.buildConfig()).toEqual({
       image: {
         repository: 'default-opensandbox-image',
         tag: 'stable'
       },
+      networkPolicy: defaultOpenSandboxDockerNetworkPolicy
+    });
+
+    expect(
+      profile.buildConfig({
+        entrypoint: profile.entrypoint
+      })
+    ).toEqual({
+      image: {
+        repository: 'default-opensandbox-image',
+        tag: 'stable'
+      },
+      entrypoint: ['/home/sandbox/entrypoint.sh'],
       networkPolicy: defaultOpenSandboxDockerNetworkPolicy
     });
   });
@@ -300,19 +396,6 @@ describe('sandbox provider config', () => {
         runtime: 'invalid' as 'docker'
       })
     ).toThrow('Invalid runtime: invalid');
-  });
-
-  it('requires opensandbox api key for docker runtime', async () => {
-    const { validateSandboxConfig } = await loadSandboxConfigModule();
-
-    expect(() =>
-      validateSandboxConfig({
-        provider: 'opensandbox',
-        baseUrl: 'http://opensandbox.local',
-        apiKey: '',
-        runtime: 'docker'
-      })
-    ).toThrow('Sandbox provider apiKey is required for opensandbox');
   });
 
   it('throws for unsupported provider in config switch', async () => {

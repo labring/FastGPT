@@ -67,7 +67,7 @@ jobs:
         id: build
         uses: docker/build-push-action@v6
         with:
-          context: projects/agent-sandbox
+          context: .
           file: projects/agent-sandbox/Dockerfile
           platforms: linux/${{ matrix.arch }}
           labels: |

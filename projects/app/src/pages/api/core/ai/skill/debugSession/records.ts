@@ -53,11 +53,13 @@ async function handler(
   await addPreviewUrlToChatItems(result.histories, 'chatFlow');
 
   const list = transformPreviewHistories(result.histories, true);
+  const historiesMap = new Map(result.histories.map((h: any) => [h.dataId, h.responseData]));
 
   return {
     list: list.map((item) => ({
       ...item,
-      id: item.dataId!
+      id: item.dataId!,
+      responseData: historiesMap.get(item.dataId)
     })),
     total: result.total,
     hasMorePrev: result.hasMorePrev,

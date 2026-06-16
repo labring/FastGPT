@@ -53,7 +53,6 @@
   "copy_skill_confirm": "The system will create a skill with the same configuration for you, but the permissions will not be copied. Please confirm!",
   "detail_tab_config": "Skill Config",
   "detail_tab_preview": "Run Preview",
-  "generating": "Loading Skill...",
   "history_versions": "History Versions",
   "exit_tips": "Your changes have not been saved. \"Exit directly\" will not save your edits.",
   "select_skill": "Select Skill",
@@ -91,5 +90,6 @@
   "no_current_version": "No available Skill version yet. Recreate or import the Skill before editing.",
   "permission.des.read": "Can view Agent Skill",
   "permission.des.write": "Can edit Agent Skill",
-  "permission.des.manage": "Can manage Agent Skill and collaborators"
+  "permission.des.manage": "Can manage Agent Skill and collaborators",
+  "empty_state_tip": "Tell AI how to modify the Skill,\nor let AI run the Skill to see the effect"
 }

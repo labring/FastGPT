@@ -11,9 +11,6 @@ const E2B_DEFAULT_WORK_DIRECTORY = '/home/user';
 export function buildE2BRuntimeProfile(): SandboxRuntimeProfile {
   return {
     provider: 'e2b',
-    defaultImage: {
-      repository: ''
-    },
     workDirectory: E2B_DEFAULT_WORK_DIRECTORY,
     entrypoint: '',
     skillsRootPath: getSandboxSkillsRootPath(E2B_DEFAULT_WORK_DIRECTORY),

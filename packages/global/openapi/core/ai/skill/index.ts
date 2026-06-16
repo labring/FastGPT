@@ -165,15 +165,15 @@ export const SkillPath: OpenAPIPath = {
   },
   '/core/ai/skill/export': {
     get: {
-      summary: '导出技能',
-      description: '下载技能 ZIP 包',
+      summary: '导出技能编辑区',
+      description: '下载当前技能编辑沙盒工作区 ZIP 包',
       tags: [TagsMap.aiSkill],
       requestParams: {
         query: ExportSkillQuerySchema
       },
       responses: {
         200: {
-          description: '返回技能 zip 文件',
+          description: '返回技能编辑区 zip 文件',
           content: {
             'application/zip': {
               schema: {

@@ -210,7 +210,7 @@ const createProps = () =>
     }
   }) as any;
 
-const getEditSkillsRootPath = () => getSandboxRuntimeProfile().skillsRootPath;
+const getEditWorkDirectory = () => getSandboxRuntimeProfile().workDirectory;
 
 describe('dispatchRunAgent user context', () => {
   beforeEach(() => {
@@ -502,7 +502,7 @@ describe('dispatchRunAgent user context', () => {
     });
     expect(getAgentSkillInfosMock).toHaveBeenCalledWith({
       sandbox: expect.any(Object),
-      workDirectory: getEditSkillsRootPath()
+      workDirectory: getEditWorkDirectory()
     });
     expect(injectAgentSkillFilesToSandboxMock).not.toHaveBeenCalled();
 

@@ -16,6 +16,14 @@ function assertNever(value: never): never {
   throw new Error(`Unsupported sandbox provider: ${String(value)}`);
 }
 
+function getConfiguredProvider(): SandboxProviderType {
+  const provider = serviceEnv.AGENT_SANDBOX_PROVIDER;
+  if (!provider) {
+    throw new Error('AGENT_SANDBOX_PROVIDER is required when Agent Sandbox is used');
+  }
+  return provider;
+}
+
 /**
  * 获取 provider 对应的 FastGPT sandbox 运行态契约。
  *
@@ -23,7 +31,7 @@ function assertNever(value: never): never {
  * 映射由各 provider profile 文件维护。
  */
 export function getSandboxRuntimeProfile(
-  provider: SandboxProviderType = serviceEnv.AGENT_SANDBOX_PROVIDER
+  provider: SandboxProviderType = getConfiguredProvider()
 ): SandboxRuntimeProfile {
   switch (provider) {
     case 'opensandbox':

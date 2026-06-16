@@ -14,31 +14,35 @@ import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import React from 'react';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
+import { Flex } from '@chakra-ui/react';
+import { useTranslation } from 'next-i18next';
+
+const fileSelectConfig: AppFileSelectConfigType = {
+  maxFiles: 10,
+  canSelectFile: false,
+  canSelectImg: false,
+  customPdfParse: false,
+  canSelectVideo: false,
+  canSelectAudio: false,
+  canSelectCustomFileExtension: false,
+  customFileExtensionList: []
+};
 
 export const useSkillChatTest = ({
   skillId,
   model,
   chatId,
-  isReady
+  isReady,
+  InputLeftComponent
 }: {
   skillId: string;
   model: string;
   chatId: string;
   isReady: boolean;
+  InputLeftComponent?: React.ReactNode;
 }) => {
+  const { t } = useTranslation(['skill', 'common']);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
-
-  // TODO: 暂时隐藏文件上传按钮，后续需要放开 canSelectFile 和 canSelectImg
-  const fileSelectConfig: AppFileSelectConfigType = {
-    maxFiles: 10,
-    canSelectFile: false,
-    canSelectImg: false,
-    customPdfParse: false,
-    canSelectVideo: false,
-    canSelectAudio: false,
-    canSelectCustomFileExtension: false,
-    customFileExtensionList: []
-  };
 
   // Set chat box data
   useEffect(() => {
@@ -52,7 +56,6 @@ export const useSkillChatTest = ({
         pluginInputs: []
       }
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [skillId, setChatBoxData]);
 
   const startChat = useMemoizedFn(
@@ -99,9 +102,39 @@ export const useSkillChatTest = ({
         onStartChat={startChat}
         onDeleteChatItem={handleDeleteChatItem}
         onStopChat={handleStopChat}
+        InputLeftComponent={InputLeftComponent}
+        dialogTips={t('common:core.chat.Type a message')}
+        pl={'16px'}
+        pr={0}
+        maxW={'100%'}
+        boxBodyProps={{ px: 0, maxW: '100%', mx: 0 }}
+        inputBodyProps={{ maxW: '100%', mx: 0, px: 0, pl: 0, pr: 0 }}
+        EmptyState={
+          <Flex
+            flex={1}
+            alignItems="center"
+            justifyContent="center"
+            color="myGray.500"
+            fontSize="sm"
+            textAlign="center"
+            lineHeight="20px"
+            whiteSpace="pre-wrap"
+          >
+            {t('empty_state_tip')}
+          </Flex>
+        }
       />
     ),
-    [skillId, chatId, isReady, startChat, handleDeleteChatItem, handleStopChat]
+    [
+      skillId,
+      chatId,
+      isReady,
+      startChat,
+      handleDeleteChatItem,
+      handleStopChat,
+      InputLeftComponent,
+      t
+    ]
   );
 
   return {

@@ -3,6 +3,7 @@ import z from 'zod';
 import { isPhaseProductionBuild } from '@fastgpt/global/common/system/constants';
 import { DEFAULT_MAX_FOLDER_DEPTH } from '@fastgpt/global/common/parentFolder/depth';
 import { BoolSchema, IntSchema, NumSchema, UrlSchema } from '@fastgpt/global/common/zod';
+import { hasAgentSandboxConfig as hasAgentSandboxConfigFromEnv } from '@fastgpt/global/core/ai/sandbox/env';
 
 const defaultableIntSchema = (defaultValue: number) =>
   z.preprocess(
@@ -13,25 +14,8 @@ const defaultableIntSchema = (defaultValue: number) =>
 // 系统最大字符串处理长度
 const SYSTEM_STRING_LENGTH_UNIT = 1_000_000;
 
-/**
- * 判断系统是否显式配置了 Agent 虚拟机能力。
- * 注意 serviceEnv 会给部分字段填默认值，这里必须读取原始 env，避免把未配置误判为已配置。
- */
-export const hasAgentSandboxConfig = () => {
-  const provider = process.env.AGENT_SANDBOX_PROVIDER;
-
-  if (provider === 'sealosdevbox') {
-    return !!(process.env.AGENT_SANDBOX_SEALOS_BASEURL && process.env.AGENT_SANDBOX_SEALOS_TOKEN);
-  }
-
-  if (provider === 'opensandbox') {
-    return !!(
-      process.env.AGENT_SANDBOX_OPENSANDBOX_BASEURL && process.env.AGENT_SANDBOX_OPENSANDBOX_API_KEY
-    );
-  }
-
-  return false;
-};
+const optionalNonEmptyString = () =>
+  z.preprocess((value) => (value === '' ? undefined : value), z.string().optional());
 
 // 枚举
 const LogLevelSchema = z.enum(['trace', 'debug', 'info', 'warning', 'error', 'fatal']);
@@ -75,13 +59,16 @@ export const serviceEnv = createEnv({
     PRO_URL: UrlSchema.optional(),
 
     // Agent sandbox
-    AGENT_SANDBOX_PROVIDER: z.enum(['sealosdevbox', 'opensandbox', 'e2b']).default('opensandbox'),
+    AGENT_SANDBOX_PROVIDER: z.enum(['sealosdevbox', 'opensandbox', 'e2b']).optional(),
+    AGENT_SANDBOX_PROXY_SECRET: optionalNonEmptyString(),
+    IDE_AGENT_BIND_ADDR: z.string().default('0.0.0.0:1318'),
     // E2B配置
     AGENT_SANDBOX_E2B_API_KEY: z.string().optional(),
     // Sealos配置
     AGENT_SANDBOX_SEALOS_BASEURL: UrlSchema.optional(),
     AGENT_SANDBOX_SEALOS_TOKEN: z.string().optional(),
     AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: z.string().default('/home/devbox/workspace'),
+    AGENT_SANDBOX_SEALOS_IMAGE: z.string().optional(),
     // OpenSandbox配置
     AGENT_SANDBOX_OPENSANDBOX_BASEURL: UrlSchema.optional(),
     AGENT_SANDBOX_OPENSANDBOX_API_KEY: z.string().optional(),
@@ -92,13 +79,16 @@ export const serviceEnv = createEnv({
     AGENT_SANDBOX_ENABLE_VOLUME: BoolSchema.default(false),
     AGENT_SANDBOX_VOLUME_MANAGER_URL: UrlSchema.default('http://localhost:3005'),
     AGENT_SANDBOX_VOLUME_MANAGER_TOKEN: z.string().optional(),
-
-    // Skill 配置
-    AGENT_SKILL_MAX_UPLOAD_SIZE: NumSchema.default(50).meta({
-      description: 'Skill 包大小上限（MB），用于上传、解压、下载和 sandbox 打包校验'
+    AGENT_SANDBOX_ARCHIVE_MAX_SIZE: NumSchema.default(50).meta({
+      description: 'Agent sandbox 冷归档包大小上限（MB），用于归档包的上传、下载和打包校验'
+    }),
+    AGENT_SANDBOX_SKILL_MAX_SIZE: NumSchema.default(10).meta({
+      description: 'Skill sandbox 包大小上限（MB），用于 Skill 包上传、下载和打包发布校验'
+    }),
+    AGENT_SANDBOX_MAX_FILE_SIZE: NumSchema.default(10).meta({
+      description: 'Agent sandbox IDE 单文件读写和上传大小上限（MB）'
     }),
     AGENT_SANDBOX_MAX_EDIT_DEBUG: NumSchema.default(100),
-    AGENT_SANDBOX_MAX_SESSION_RUNTIME: NumSchema.default(300),
 
     // ==================== 数据库与缓存 ====================
     // Redisg
@@ -270,11 +260,6 @@ export const serviceEnv = createEnv({
     EVAL_CONCURRENCY: IntSchema.default(3).meta({
       description: '评估任务 worker 并发数'
     }),
-    SANDBOX_PROXY_REPLACE_DOCKER_INTERNAL_WITH_LOCALHOST: BoolSchema.default(false).meta({
-      description:
-        '是否把 endpoint 中的 host.docker.internal 改写为 localhost；当 sandbox-proxy 直接运行在宿主机进程时开启，容器或 k8s 内运行时保持关闭'
-    }),
-
     // ==================== 资源限制 ====================
     SERVICE_REQUEST_MAX_CONTENT_LENGTH: IntSchema.default(10).meta({
       description: '服务器接收请求的最大大小（MB）'
@@ -326,3 +311,19 @@ if (serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY > serviceEnv.WORKFLOW_MAX_LOOP_
 
 export const SYSTEM_MAX_STRING_LENGTH =
   serviceEnv.SYSTEM_MAX_STRING_LENGTH_M * SYSTEM_STRING_LENGTH_UNIT;
+
+if (hasAgentSandboxConfigFromEnv(process.env)) {
+  if (!serviceEnv.AGENT_SANDBOX_PROXY_SECRET) {
+    throw new Error('AGENT_SANDBOX_PROXY_SECRET is required when Agent Sandbox is enabled.');
+  }
+
+  if (serviceEnv.AGENT_SANDBOX_PROXY_SECRET.length < 32) {
+    throw new Error('AGENT_SANDBOX_PROXY_SECRET must be at least 32 characters.');
+  }
+}
+
+/**
+ * 判断系统是否显式配置了 Agent 虚拟机能力。
+ * 必须直读 process.env，避免空环境被 schema 默认值误判为已启用。
+ */
+export const hasAgentSandboxConfig = (): boolean => hasAgentSandboxConfigFromEnv(process.env);

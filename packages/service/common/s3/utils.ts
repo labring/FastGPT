@@ -1,5 +1,7 @@
 import { isAfter } from 'date-fns';
 import type { ClientSession } from 'mongoose';
+import { buffer as consumeStreamToBuffer } from 'node:stream/consumers';
+import type { Readable } from 'node:stream';
 import { MongoS3TTL } from './models/ttl';
 import { S3Buckets } from './config/constants';
 import { S3PrivateBucket } from './buckets/private';
@@ -14,6 +16,43 @@ export { jwtSignS3ObjectKey, jwtVerifyS3ObjectKey, jwtSignS3DownloadToken } from
 
 // S3文件名最大长度配置
 export const S3_FILENAME_MAX_LENGTH = 50;
+
+/**
+ * 将 S3 下载流读取为 Buffer。
+ *
+ * 普通小文件可以直接用 node:stream/consumers；但 archive/Skill 包这类受环境变量限制的对象，
+ * 需要在读取过程中按 chunk 检查上限并提前销毁流，避免异常对象被完整读入内存。
+ */
+export async function readStreamToBuffer(params: {
+  stream: Readable;
+  maxBytes?: number;
+  exceededMessage?: string;
+}): Promise<Buffer> {
+  const { stream, maxBytes, exceededMessage } = params;
+
+  if (maxBytes === undefined) {
+    return consumeStreamToBuffer(stream);
+  }
+
+  const chunks: Buffer[] = [];
+  let totalSize = 0;
+
+  for await (const chunk of stream) {
+    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    totalSize += buffer.length;
+
+    if (totalSize > maxBytes) {
+      stream.destroy();
+      throw new Error(
+        exceededMessage ?? `S3 object exceeds maximum allowed size (${maxBytes} bytes)`
+      );
+    }
+
+    chunks.push(buffer);
+  }
+
+  return Buffer.concat(chunks, totalSize);
+}
 
 /**
  * 截断文件名，确保不超过最大长度，同时保留扩展名

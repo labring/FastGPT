@@ -9,6 +9,7 @@ import {
 } from '../instance/repository';
 import { buildSandboxResourceAdapter } from '../provider/adapter';
 import { deleteSessionVolume } from '../volume/service';
+import { getS3SandboxSource } from '../../../../common/s3/sources/sandbox';
 
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
@@ -22,23 +23,44 @@ export async function stopSandboxResource(resource: SandboxResourceRef): Promise
   const sandbox = buildSandboxResourceAdapter(resource);
 
   await sandbox.stop();
-  await markSandboxResourceStopped(resource);
+  const stoppedResult = await markSandboxResourceStopped(resource);
+  if (resource.lastActiveAt && stoppedResult?.matchedCount === 0) {
+    logger.warn('Skip marking sandbox stopped because record changed after stop', {
+      sandboxId: resource.sandboxId,
+      provider: resource.provider
+    });
+  }
 }
 
 /**
  * 删除一条已存在的 sandbox 资源记录，并尽力清理关联 volume。
  */
-export async function deleteSandboxResource(resource: SandboxResourceRef): Promise<void> {
+export async function deleteSandboxResource(
+  resource: SandboxResourceRef,
+  opts: { keepVolume?: boolean } = {}
+): Promise<void> {
   const sandbox = buildSandboxResourceAdapter(resource);
 
   await sandbox.delete();
-  await deleteSessionVolume(resource.sandboxId).catch((err) => {
-    logger.error('Failed to delete sandbox volume', {
-      sandboxId: resource.sandboxId,
-      error: err
+  if (!opts.keepVolume && resource.provider === 'opensandbox') {
+    await deleteSessionVolume(resource.sandboxId).catch((err) => {
+      logger.error('Failed to delete sandbox volume', {
+        sandboxId: resource.sandboxId,
+        error: err
+      });
     });
-  });
+  }
   await deleteSandboxResourceRecord(resource);
+  await getS3SandboxSource()
+    .deleteWorkspaceArchive({
+      sandboxId: resource.sandboxId
+    })
+    .catch((err) => {
+      logger.error('Failed to delete sandbox archive', {
+        sandboxId: resource.sandboxId,
+        error: err
+      });
+    });
 }
 
 /**

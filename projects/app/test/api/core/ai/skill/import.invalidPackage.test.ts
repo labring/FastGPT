@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import JSZip from 'jszip';
 import fs from 'fs/promises';
 import os from 'os';
 import path from 'path';
 import handler from '@/pages/api/core/ai/skill/import';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { MongoAgentSkillsVersion } from '@fastgpt/service/core/ai/skill/version/schema';
-import { downloadSkillPackage, JSZip } from '@fastgpt/service/core/ai/skill/package';
+import { downloadSkillPackage } from '@fastgpt/service/core/ai/skill/package';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getUser } from '@test/datas/users';

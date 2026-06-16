@@ -24,7 +24,10 @@ export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
   config.feConfigs.uploadFileMaxAmount = serviceEnv.UPLOAD_FILE_MAX_AMOUNT;
   config.feConfigs.limit = {
     ...config.feConfigs.limit,
-    agentSkillMaxUploadBytes: serviceEnv.AGENT_SKILL_MAX_UPLOAD_SIZE * 1024 * 1024,
+    agentSandboxMaxEditDebug: serviceEnv.AGENT_SANDBOX_MAX_EDIT_DEBUG,
+    agentSandboxArchiveMaxBytes: serviceEnv.AGENT_SANDBOX_ARCHIVE_MAX_SIZE * 1024 * 1024,
+    skillSandboxMaxBytes: serviceEnv.AGENT_SANDBOX_SKILL_MAX_SIZE * 1024 * 1024,
+    agentSandboxMaxFileBytes: serviceEnv.AGENT_SANDBOX_MAX_FILE_SIZE * 1024 * 1024,
     maxFolderDepth: serviceEnv.MAX_FOLDER_DEPTH
   };
 

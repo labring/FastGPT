@@ -13,6 +13,9 @@ import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 import { useSandboxEditor } from '@/pageComponents/chat/SandboxEditor/hook';
 import { WorkflowRuntimeContext } from '../../../context/workflowRuntimeContext';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { getFlatAppResponses } from '@fastgpt/global/core/chat/utils';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 
 type AIChatBubbleActionsProps = {
   chatControllerProps: ChatControllerProps;
@@ -21,6 +24,7 @@ type AIChatBubbleActionsProps = {
   showWholeResponse: boolean;
   onOpenWholeModal: () => void;
   durationSeconds: number;
+  responseData?: ChatHistoryItemResType[];
 };
 
 const AIChatBubbleActions = ({
@@ -29,13 +33,15 @@ const AIChatBubbleActions = ({
   questionGuides,
   showWholeResponse,
   onOpenWholeModal,
-  durationSeconds
+  durationSeconds,
+  responseData
 }: AIChatBubbleActionsProps) => {
   const { t } = useTranslation();
   const { onRetry } = chatControllerProps;
   const { isPc } = useSystem();
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
   const showRetry = chatType !== ChatTypeEnum.log && !!onRetry;
+  const showSandboxAction = useContextSelector(ChatItemContext, (v) => v.showSandboxAction ?? true);
   const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
@@ -48,6 +54,23 @@ const AIChatBubbleActions = ({
     chatId,
     outLinkAuthData
   });
+  const showPoints = useContextSelector(ChatItemContext, (v) => v.showPoints ?? false);
+
+  const totalPoints = useMemo(() => {
+    if (!responseData) return 0;
+    const flatResData = getFlatAppResponses(responseData);
+    return flatResData.reduce(
+      (sum: number, item: ChatHistoryItemResType) => sum + (item.totalPoints || 0),
+      0
+    );
+  }, [responseData]);
+
+  const formattedPoints = useMemo(() => {
+    const formatted = new Intl.NumberFormat(undefined, {
+      maximumFractionDigits: 1
+    }).format(totalPoints);
+    return totalPoints > 0 ? `-${formatted}` : formatted;
+  }, [totalPoints]);
 
   return (
     <Box mt={4} maxW={'100%'}>
@@ -93,7 +116,7 @@ const AIChatBubbleActions = ({
             </Flex>
           )}
 
-          {isPc && useAgentSandbox && (
+          {showSandboxAction && isPc && useAgentSandbox && (
             <Flex
               alignItems={'center'}
               gap={'4px'}
@@ -124,6 +147,12 @@ const AIChatBubbleActions = ({
               {durationSeconds.toFixed(2)} s
             </Box>
           </>
+        )}
+
+        {showPoints && (
+          <Box display={['none', 'block']} ml={4} color={'myGray.400'}>
+            {t('common:n_ai_points', { amount: formattedPoints })}
+          </Box>
         )}
       </Flex>
 
@@ -156,7 +185,7 @@ const AIChatBubbleActions = ({
         </Flex>
       )}
 
-      <SandboxEditorModal />
+      {showSandboxAction && <SandboxEditorModal />}
     </Box>
   );
 };
