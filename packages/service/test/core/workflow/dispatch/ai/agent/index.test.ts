@@ -595,9 +595,7 @@ describe('dispatchRunAgent user context', () => {
       }
     );
     const result = await promise;
-    expect(result.error?.system_error_text).toBe(
-      '当前应用未配置虚拟机，暂时无法使用相关功能，请联系管理员配置。'
-    );
+    expect(result.error?.system_error_text).toBe('当前应用无权使用虚拟机，请联系管理员配置。');
     expect(getSandboxClientMock).not.toHaveBeenCalled();
   });
 });

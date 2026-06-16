@@ -5,6 +5,8 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { dispatchRunTools } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall';
 import { checkTeamSandboxPermission } from '@fastgpt/service/support/permission/teamLimit';
 import { createRuntimeNodeResponseSummary } from '@fastgpt/service/core/workflow/dispatch/utils';
+import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 const { getLLMModelMock, runToolCallMock, useToolMessagesMock, useToolNodeListMock } = vi.hoisted(
   () => ({
@@ -194,8 +196,11 @@ describe('dispatchRunTools file context', () => {
       })
     );
 
-    await expect(promise).rejects.toThrow(
-      '当前应用未配置虚拟机，暂时无法使用相关功能，请联系管理员配置。'
+    await expect(promise).rejects.toMatchObject({
+      message: SandboxErrEnum.agentSandboxPermissionDenied
+    });
+    await expect(promise.catch((error) => getErrText(error))).resolves.toBe(
+      '当前应用无权使用虚拟机，请联系管理员配置。'
     );
     expect(useToolMessagesMock).not.toHaveBeenCalled();
     expect(runToolCallMock).not.toHaveBeenCalled();

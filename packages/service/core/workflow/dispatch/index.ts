@@ -1445,6 +1445,7 @@ export class WorkflowQueue {
 
     const interactiveResult: WorkflowInteractiveResponseType = {
       ...interactiveResponse,
+      interactiveId: getNanoid(),
       ...(nodeResponseId ? { nodeResponseId } : {}),
       skipNodeQueue: Array.from(this.skipNodeQueue.values()).map((item) => ({
         id: item.node.nodeId,

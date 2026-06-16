@@ -10,6 +10,7 @@ import { getSandboxRuntimeProfile } from '../../../../../../ai/sandbox/runtime/p
 import { getSandboxClient, type SandboxClient } from '../../../../../../ai/sandbox/service/runtime';
 import { pickOutboundAxios } from '../../../../../../../common/api/axios';
 import { checkTeamSandboxPermission } from '../../../../../../../support/permission/teamLimit';
+import { createAgentSandboxPermissionDeniedError } from '../../../../../../ai/sandbox/error';
 
 type UseSandboxParams = {
   appId: string;
@@ -96,7 +97,7 @@ export async function useSandbox({
     try {
       await checkTeamSandboxPermission(teamId);
     } catch {
-      throw new Error('当前应用未配置虚拟机，暂时无法使用相关功能，请联系管理员配置。');
+      throw createAgentSandboxPermissionDeniedError();
     }
   }
 

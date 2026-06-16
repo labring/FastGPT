@@ -192,10 +192,7 @@ export const shouldAppendResumeInteractive = ({
   if (!lastExistingInteractive) return true;
 
   const existingFinalInteractive = extractDeepestInteractive(lastExistingInteractive);
-  const isSameInteractive =
-    existingFinalInteractive.type === incomingFinalInteractive.type &&
-    (existingFinalInteractive.usageId === incomingFinalInteractive.usageId ||
-      isSameArray(existingFinalInteractive.entryNodeIds, incomingFinalInteractive.entryNodeIds));
+  const isSameInteractive = areSameInteractive(existingFinalInteractive, incomingFinalInteractive);
 
   if (!isSameInteractive) return true;
 
@@ -212,10 +209,16 @@ const areSameInteractive = (
   const finalA = extractDeepestInteractive(a);
   const finalB = extractDeepestInteractive(b);
 
+  if (finalA.type !== finalB.type) return false;
+
+  // 新数据使用每次暂停生成的 interactiveId 区分同一节点的不同触发轮次。
+  if (finalA.interactiveId || finalB.interactiveId) {
+    return !!finalA.interactiveId && finalA.interactiveId === finalB.interactiveId;
+  }
+
   return (
-    finalA.type === finalB.type &&
-    // 同一轮交互：usageId 相同，或 entryNodeIds 数组完全一致（dataId 变化时仍视为同一表单）
-    (finalA.usageId === finalB.usageId || isSameArray(finalA.entryNodeIds, finalB.entryNodeIds))
+    // 兼容旧数据：没有 interactiveId 时，仍按历史规则识别同一轮交互。
+    finalA.usageId === finalB.usageId || isSameArray(finalA.entryNodeIds, finalB.entryNodeIds)
   );
 };
 

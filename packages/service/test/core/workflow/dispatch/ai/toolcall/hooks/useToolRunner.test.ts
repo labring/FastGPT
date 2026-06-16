@@ -3,6 +3,8 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { useToolRunner } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/hooks/useToolRunner';
 import { summarizeRuntimeNodeResponses } from '@fastgpt/service/core/workflow/dispatch/utils';
+import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 const { dispatchReadFileToolMock, runSandboxToolsMock, runWorkflowMock } = vi.hoisted(() => ({
   dispatchReadFileToolMock: vi.fn(),
@@ -541,8 +543,11 @@ describe('useToolRunner', () => {
     });
 
     const promise = runTool({ call: createCall({ name: 'shell' }) });
-    await expect(promise).rejects.toThrow(
-      '当前应用未配置虚拟机，暂时无法使用相关功能，请联系管理员配置。'
+    await expect(promise).rejects.toMatchObject({
+      message: SandboxErrEnum.agentSandboxPermissionDenied
+    });
+    await expect(promise.catch((error) => getErrText(error))).resolves.toBe(
+      '当前应用无权使用虚拟机，请联系管理员配置。'
     );
   });
 });

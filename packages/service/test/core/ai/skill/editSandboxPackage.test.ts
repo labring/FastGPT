@@ -150,6 +150,9 @@ import {
   migrateArchivedSandboxInstanceRecord,
   updateSandboxInstanceRecordBySandboxId
 } from '@fastgpt/service/core/ai/sandbox/instance/repository';
+import { checkTeamSandboxPermission } from '@fastgpt/service/support/permission/teamLimit';
+import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 type MockReadFileResult = {
   path: string;
@@ -376,11 +379,31 @@ temp_data.csv
 describe('createEditDebugSandbox', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(checkTeamSandboxPermission).mockResolvedValue(undefined);
     vi.mocked(buildSandboxAdapter).mockReturnValue({
       getInfo: vi.fn(async () => ({
         status: { state: 'Running' }
       }))
     } as any);
+  });
+
+  it('throws structured sandbox error when team has no sandbox permission', async () => {
+    vi.mocked(checkTeamSandboxPermission).mockRejectedValueOnce(new Error('no permission'));
+
+    const promise = createEditDebugSandbox({
+      skillId: 'skill-1',
+      teamId: 'team-1',
+      tmbId: 'tmb-1'
+    });
+
+    await expect(promise).rejects.toMatchObject({
+      message: SandboxErrEnum.agentSandboxPermissionDenied
+    });
+    await expect(promise.catch((error) => getErrText(error))).resolves.toBe(
+      '当前应用无权使用虚拟机，请联系管理员配置。'
+    );
+
+    expect(MongoAgentSkills.findOne).not.toHaveBeenCalled();
   });
 
   it('uploads zip packages and decompresses inside the sandbox so Chinese skill directory names are preserved', async () => {
