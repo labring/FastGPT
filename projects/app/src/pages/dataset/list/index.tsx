@@ -26,8 +26,8 @@ import {
 } from '@/web/core/dataset/api/collaborator';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { type CreateDatasetType } from '@/pageComponents/dataset/list/CreateModal';
+import { resolveDatasetCreateAction } from '@/pageComponents/dataset/list/commercialDatasetTypes';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import {
@@ -36,6 +36,7 @@ import {
   normalizeParentId
 } from '@fastgpt/global/common/parentFolder/depth';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
+import ProModal from '@/components/ProTip/ProModal';
 
 const EditFolderModal = dynamic(
   () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
@@ -67,22 +68,20 @@ const Dataset = () => {
   const { feConfigs } = useSystemStore();
   const maxFolderDepth = feConfigs?.limit?.maxFolderDepth ?? DEFAULT_MAX_FOLDER_DEPTH;
   const canCreateFolder = canCreateSubFolder(parentId, paths, maxFolderDepth);
-  const folderDepthLimitTip = t('common:folder_depth_limit_tip');
-  const { toast } = useToast();
+
   const [editFolderData, setEditFolderData] = useState<EditFolderFormType>();
   const [createDatasetType, setCreateDatasetType] = useState<CreateDatasetType>();
+  const [proModalOpen, setProModalOpen] = useState(false);
 
   const onSelectDatasetType = useCallback(
-    (e: CreateDatasetType) => {
-      if (!feConfigs?.isPlus && [DatasetTypeEnum.websiteDataset].includes(e)) {
-        return toast({
-          status: 'warning',
-          title: t('common:commercial_function_tip')
-        });
+    (type: CreateDatasetType) => {
+      if (resolveDatasetCreateAction(type, feConfigs?.isPlus) === 'proModal') {
+        setProModalOpen(true);
+        return;
       }
-      setCreateDatasetType(e);
+      setCreateDatasetType(type);
     },
-    [t, toast, feConfigs]
+    [feConfigs?.isPlus]
   );
 
   const RenderSearchInput = useMemo(
@@ -227,7 +226,7 @@ const Dataset = () => {
                           icon: FolderIcon,
                           label: t('common:Folder'),
                           disabled: !canCreateFolder,
-                          disabledTip: folderDepthLimitTip,
+                          disabledTip: t('common:folder_depth_limit_tip'),
                           onClick: () => setEditFolderData({})
                         }
                       ]
@@ -332,6 +331,9 @@ const Dataset = () => {
           onClose={() => setCreateDatasetType(undefined)}
           parentId={parentId || undefined}
         />
+      )}
+      {!feConfigs?.isPlus && (
+        <ProModal isOpen={proModalOpen} onClose={() => setProModalOpen(false)} />
       )}
     </MyBox>
   );
