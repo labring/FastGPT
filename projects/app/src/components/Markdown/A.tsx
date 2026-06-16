@@ -56,6 +56,18 @@ const EmptyHrefLink = function EmptyHrefLink({ content }: { content: string }) {
   );
 };
 
+const getLinkTextContent = (children: React.ReactNode): string => {
+  if (children === undefined || children === null || typeof children === 'boolean') return '';
+  if (typeof children === 'string' || typeof children === 'number') return String(children);
+  if (Array.isArray(children)) return children.map(getLinkTextContent).join('');
+
+  if (React.isValidElement<{ children?: React.ReactNode }>(children)) {
+    return getLinkTextContent(children.props.children);
+  }
+
+  return '';
+};
+
 const CiteLink = React.memo(function CiteLink({
   id,
   chatAuthData,
@@ -65,11 +77,6 @@ const CiteLink = React.memo(function CiteLink({
   const { t } = useTranslation();
 
   const { isOpen, onOpen, onClose } = useDisclosure();
-
-  if (!isObjectId(id)) {
-    return <></>;
-  }
-
   const {
     data: datasetCiteData,
     loading,
@@ -85,6 +92,10 @@ const CiteLink = React.memo(function CiteLink({
     () => getSourceNameIcon({ sourceId: sourceData.sourceId, sourceName: sourceData.sourceName }),
     [sourceData]
   );
+
+  if (!isObjectId(id)) {
+    return <></>;
+  }
 
   return (
     <Popover
@@ -199,7 +210,7 @@ const A = ({
   showAnimation: boolean;
   [key: string]: any;
 }) => {
-  const content = useMemo(() => (children === undefined ? '' : String(children)), [children]);
+  const content = useMemo(() => getLinkTextContent(children), [children]);
 
   // empty href link
   if (!props.href && typeof children?.[0] === 'string') {

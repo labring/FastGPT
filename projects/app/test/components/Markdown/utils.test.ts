@@ -114,6 +114,29 @@ describe('Markdown utils', () => {
       expect(hideStreamingIncompleteMarkdownTail(text)).toBe(text);
     });
 
+    it('should hide incomplete cite markdown at the streaming tail', () => {
+      expect(hideStreamingIncompleteMarkdownTail('before [507f1f77bcf86cd799439011](CITE')).toBe(
+        'before '
+      );
+      expect(hideStreamingIncompleteMarkdownTail('before [507f1f77bcf86cd799439011](QUOTE')).toBe(
+        'before '
+      );
+      expect(hideStreamingIncompleteMarkdownTail('before [507f1f77bcf86cd799439011]')).toBe(
+        'before '
+      );
+      expect(hideStreamingIncompleteMarkdownTail('before [507f1f77bcf86cd79943901')).toBe(
+        'before '
+      );
+    });
+
+    it('should keep complete cite markdown unchanged', () => {
+      const cite = 'before [507f1f77bcf86cd799439011](CITE)';
+      const quote = 'before [507f1f77bcf86cd799439011](QUOTE)';
+
+      expect(hideStreamingIncompleteMarkdownTail(cite)).toBe(cite);
+      expect(hideStreamingIncompleteMarkdownTail(quote)).toBe(quote);
+    });
+
     it('should hide incomplete text style markdown at the streaming tail', () => {
       expect(hideStreamingIncompleteMarkdownTail('before **bold')).toBe('before ');
       expect(hideStreamingIncompleteMarkdownTail('before __bold')).toBe('before ');
