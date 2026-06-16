@@ -1316,4 +1316,50 @@ describe('removeUnauthModels', () => {
     expect(result?.[0].inputs[0].value).toBe('gpt-4');
     expect(result?.[1].inputs[0].value).toBeUndefined();
   });
+
+  it('should clear chatConfig.questionGuide when model is unauthorized', async () => {
+    const modules: any[] = [];
+    const chatConfig = {
+      questionGuide: { open: true, modelId: 'unauthorized-model' }
+    } as any;
+    const allowedModels = new Set(['gpt-4']);
+
+    await removeUnauthModels({ modules, chatConfig, allowedModels });
+    expect(chatConfig.questionGuide).toBeUndefined();
+  });
+
+  it('should keep chatConfig.questionGuide when model is authorized', async () => {
+    const modules: any[] = [];
+    const chatConfig = {
+      questionGuide: { open: true, modelId: 'gpt-4' }
+    } as any;
+    const allowedModels = new Set(['gpt-4']);
+
+    await removeUnauthModels({ modules, chatConfig, allowedModels });
+    expect(chatConfig.questionGuide).toEqual({ open: true, modelId: 'gpt-4' });
+  });
+
+  it('should not modify chatConfig when it is undefined', async () => {
+    const modules = [
+      {
+        nodeId: 'node1',
+        flowNodeType: FlowNodeTypeEnum.chatNode,
+        name: 'Chat',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.aiModelId,
+            label: 'Model',
+            value: 'gpt-4',
+            selectedTypeIndex: 0,
+            renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel]
+          }
+        ],
+        outputs: []
+      }
+    ];
+    const allowedModels = new Set(['gpt-4']);
+
+    const result = await removeUnauthModels({ modules, allowedModels });
+    expect(result?.[0].inputs[0].value).toBe('gpt-4');
+  });
 });

@@ -540,9 +540,11 @@ export const extractWorkflowModelIds = ({
 
 export const removeUnauthModels = async ({
   modules,
+  chatConfig,
   allowedModels = new Set()
 }: {
   modules: AppSchema['modules'];
+  chatConfig?: AppChatConfigType;
   allowedModels?: Set<string>;
 }) => {
   if (modules) {
@@ -570,5 +572,15 @@ export const removeUnauthModels = async ({
       });
     });
   }
+
+  if (chatConfig) {
+    appChatConfigModelPaths.forEach(([configKey, modelKey]) => {
+      const modelId = (chatConfig as Record<string, any>)?.[configKey]?.[modelKey];
+      if (modelId && !allowedModels.has(modelId)) {
+        delete (chatConfig as Record<string, any>)[configKey];
+      }
+    });
+  }
+
   return modules;
 };
