@@ -72,18 +72,39 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
   );
 
   return (
-    <MyBox h={'100%'} isLoading={isFetching} position={'relative'}>
-      <Flex justifyContent={'space-between'}>
+    <MyBox h={'100%'} isLoading={isFetching} position={'relative'} pt={3} px={5} minH={'50vh'}>
+      <Flex justifyContent={'space-between'} flexDirection="row">
         <HStack>
-          <Box color={'myGray.900'} fontSize={'lg'}>
-            {t('common:core.app.Share link')}
+          <Box>
+            <Flex alignItems={'center'}>
+              <Box color={'myGray.900'} fontWeight={'bold'} fontSize={['md', 'lg']}>
+                {t('common:core.app.Share link')}
+              </Box>
+              {feConfigs?.docUrl && (
+                <Link
+                  href={getDocPath('/openapi/share')}
+                  target={'_blank'}
+                  ml={2}
+                  color={'primary.500'}
+                  fontSize={'sm'}
+                >
+                  <Flex alignItems={'center'}>
+                    <MyIcon name="book" w={'17px'} h={'17px'} mr="1" />
+                    {t('common:read_doc')}
+                  </Flex>
+                </Link>
+              )}
+            </Flex>
+            <Box fontSize={'mini'} color={'myGray.600'}>
+              {t('common:core.app.Share link desc detail')}
+            </Box>
           </Box>
-          <QuestionTip label={t('common:core.app.Share link desc detail')} />
         </HStack>
         <Button
-          variant={'whitePrimary'}
+          variant={'primary'}
           colorScheme={'blue'}
           size={['sm', 'md']}
+          leftIcon={<MyIcon name={'common/addLight'} w="1.25rem" color="white" />}
           {...(shareChatList.length >= 10
             ? {
                 isDisabled: true,

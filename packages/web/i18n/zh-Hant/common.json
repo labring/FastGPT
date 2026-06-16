@@ -972,6 +972,8 @@
   "support.openapi.Api baseurl": "API 根網址",
   "support.openapi.Api manager": "API 金鑰管理",
   "support.openapi.Copy success": "已複製 API 網址",
+  "support.openapi.Copy api key": "複製 API 金鑰",
+  "support.openapi.Copy api key tip": "請妥善保管您的金鑰，不要洩露給他人。",
   "support.openapi.New api key": "新的 API 金鑰",
   "support.openapi.New api key tip": "請妥善保管您的金鑰，金鑰將不會再次顯示",
   "support.outlink.Delete link tip": "確認刪除此免登入連結？刪除後，該連結將立即失效，對話記錄仍會保留，請確認！",

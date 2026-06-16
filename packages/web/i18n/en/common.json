@@ -983,6 +983,8 @@
   "support.openapi.Api baseurl": "API Base URL",
   "support.openapi.Api manager": "API Key Management",
   "support.openapi.Copy success": "API Address Copied",
+  "support.openapi.Copy api key": "Copy API Key",
+  "support.openapi.Copy api key tip": "Keep your key safe and do not share it with others.",
   "support.openapi.New api key": "New API Key",
   "support.openapi.New api key tip": "Please keep your key safe, it will not be displayed again",
   "support.outlink.Delete link tip": "Confirm to Delete This Login-Free Link? The link will become invalid immediately after deletion, but the chat logs will be retained. Please confirm!",

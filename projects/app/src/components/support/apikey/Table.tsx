@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Box,
   Button,
@@ -21,7 +21,8 @@ import {
   getOpenApiKeys,
   createAOpenApiKey,
   delOpenApiById,
-  putOpenApiKey
+  putOpenApiKey,
+  postCopyOpenApiKeyAudit
 } from '@/web/support/openapi/api';
 import type { EditApiKeyProps } from '@/global/support/openapi/api';
 import dayjs from 'dayjs';
@@ -31,6 +32,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
+import MyModalV2 from '@fastgpt/web/components/v2/common/MyModal';
 import { useForm } from 'react-hook-form';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getDocPath } from '@/web/common/system/doc';
@@ -48,14 +50,28 @@ const defaultEditData: EditProps = {
   }
 };
 
-const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
+const maskApiKey = (apiKey: string) => {
+  if (apiKey.startsWith('******')) return apiKey;
+  return `******${apiKey.slice(-4)}`;
+};
+
+type ApiKeyTableProps = {
+  tips: string;
+  appId?: string;
+  mode?: 'account' | 'publish';
+};
+
+const ApiKeyTable = ({ tips, appId, mode = 'account' }: ApiKeyTableProps) => {
   const { t } = useTranslation();
   const theme = useTheme();
   const { copyData } = useCopyData();
   const { feConfigs } = useSystemStore();
-  const [baseUrl, setBaseUrl] = useState('https://fastgpt.io/api');
+  const isPublishMode = mode === 'publish';
+  const baseUrl =
+    feConfigs?.customApiDomain || (typeof location !== 'undefined' ? `${location.origin}/api` : '');
   const [editData, setEditData] = useState<EditProps>();
   const [apiKey, setApiKey] = useState('');
+  const [copyApiKey, setCopyApiKey] = useState<{ id: string; apiKey: string }>();
 
   const { ConfirmModal, openConfirm } = useConfirm({
     type: 'delete',
@@ -77,10 +93,6 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
     refreshDeps: [appId]
   });
 
-  useEffect(() => {
-    setBaseUrl(feConfigs?.customApiDomain || `${location.origin}/api`);
-  }, [feConfigs?.customApiDomain]);
-
   return (
     <MyBox
       isLoading={isGetting}
@@ -88,22 +100,36 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
       flexDirection={'column'}
       h={'100%'}
       position={'relative'}
+      pt={isPublishMode ? 3 : 0}
+      px={isPublishMode ? 5 : 0}
+      minH={isPublishMode ? '50vh' : undefined}
     >
       <Box display={['block', 'flex']} alignItems={'center'}>
         <Box flex={1}>
-          <Flex alignItems={'flex-end'}>
-            <Box color={'myGray.900'} fontSize={'lg'}>
+          <Flex alignItems={'center'}>
+            <Box
+              color={'myGray.900'}
+              fontSize={isPublishMode ? ['md', 'lg'] : 'lg'}
+              fontWeight={isPublishMode ? 'bold' : 'normal'}
+            >
               {t('common:support.openapi.Api manager')}
             </Box>
             {feConfigs?.docUrl && (
               <Link
                 href={feConfigs.openAPIDocUrl || getDocPath('/openapi/intro')}
                 target={'_blank'}
-                ml={1}
+                ml={isPublishMode ? 2 : 1}
                 color={'primary.500'}
                 fontSize={'sm'}
               >
-                {t('common:read_doc')}
+                {isPublishMode ? (
+                  <Flex alignItems={'center'}>
+                    <MyIcon name="book" w={'17px'} h={'17px'} mr="1" />
+                    {t('common:read_doc')}
+                  </Flex>
+                ) : (
+                  t('common:read_doc')
+                )}
               </Link>
             )}
           </Flex>
@@ -132,7 +158,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
           <Button
             ml={3}
             leftIcon={<AddIcon fontSize={'md'} />}
-            variant={'whitePrimary'}
+            variant={isPublishMode ? 'primary' : 'whitePrimary'}
             onClick={() =>
               setEditData({
                 ...defaultEditData,
@@ -149,7 +175,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
           <Thead>
             <Tr>
               <Th>{t('common:Name')}</Th>
-              <Th>Api Key</Th>
+              <Th>API KEY</Th>
               <Th>{t('common:support.outlink.Usage points')}</Th>
               {feConfigs?.isPlus && (
                 <>
@@ -166,7 +192,20 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
             {apiKeys.map(({ _id, name, usagePoints, limit, apiKey, createTime, lastUsedTime }) => (
               <Tr key={_id}>
                 <Td>{name}</Td>
-                <Td>{apiKey}</Td>
+                <Td>
+                  <Flex alignItems={'center'} gap={2}>
+                    <Box>{maskApiKey(apiKey)}</Box>
+                    {isPublishMode && (
+                      <IconButton
+                        aria-label={t('common:Copy')}
+                        icon={<MyIcon name={'copy'} w={'15px'} />}
+                        size={'xs'}
+                        variant={'whiteBase'}
+                        onClick={() => setCopyApiKey({ id: _id, apiKey })}
+                      />
+                    )}
+                  </Flex>
+                </Td>
                 <Td>
                   {Math.round(usagePoints)}/
                   {feConfigs?.isPlus && limit?.maxUsagePoints && limit?.maxUsagePoints > -1
@@ -247,6 +286,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
         />
       )}
       <ConfirmModal />
+      <ApiKeyCopyModal data={copyApiKey} onClose={() => setCopyApiKey(undefined)} />
       <MyModal
         isOpen={!!apiKey}
         w={['400px', '600px']}
@@ -288,6 +328,59 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
 };
 
 export default React.memo(ApiKeyTable);
+
+function ApiKeyCopyModal({
+  data,
+  onClose
+}: {
+  data?: { id: string; apiKey: string };
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const { copyData } = useCopyData();
+  const apiKey = data?.apiKey || '';
+
+  const onCopy = async () => {
+    await copyData(apiKey);
+    if (data?.id) {
+      postCopyOpenApiKeyAudit({ id: data.id }).catch(() => undefined);
+    }
+  };
+
+  return (
+    <MyModalV2
+      isOpen={!!data}
+      onClose={onClose}
+      title={t('common:support.openapi.Copy api key')}
+      size="md"
+      footer={
+        <>
+          <Button variant="whiteBase" onClick={onClose}>
+            {t('common:Close')}
+          </Button>
+          <Button onClick={onCopy} leftIcon={<MyIcon name={'copy'} w={'15px'} />}>
+            {t('common:Copy')}
+          </Button>
+        </>
+      }
+    >
+      <Box color={'myGray.600'} mb={3}>
+        {t('common:support.openapi.Copy api key tip')}
+      </Box>
+      <Flex
+        bg={'myGray.100'}
+        px={3}
+        py={2}
+        whiteSpace={'pre-wrap'}
+        wordBreak={'break-all'}
+        borderRadius={'md'}
+        userSelect={'all'}
+      >
+        {apiKey}
+      </Flex>
+    </MyModalV2>
+  );
+}
 
 // edit link modal
 function EditKeyModal({

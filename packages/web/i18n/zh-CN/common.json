@@ -983,6 +983,8 @@
   "support.openapi.Api baseurl": "API 根地址",
   "support.openapi.Api manager": "API 密钥管理",
   "support.openapi.Copy success": "已复制 API 地址",
+  "support.openapi.Copy api key": "复制 API 密钥",
+  "support.openapi.Copy api key tip": "请保管好你的密钥，不要泄露给他人。",
   "support.openapi.New api key": "新的 API 密钥",
   "support.openapi.New api key tip": "请保管好你的密钥，密钥不会再次展示~",
   "support.outlink.Delete link tip": "确认删除该免登录链接？删除后，该链接将会立即失效，对话日志仍会保留，请确认！",

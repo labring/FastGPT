@@ -33,7 +33,9 @@ async function handler(
       appId
     }).sort({ _id: -1 });
 
-    return GetApiKeyListResponseSchema.parse(findResponse.map((item) => item.toObject()));
+    return GetApiKeyListResponseSchema.parse(
+      findResponse.map((item) => item.toObject({ getters: false }))
+    );
   }
   // global apikey
   const { teamId, tmbId, permission } = await authUserPer({

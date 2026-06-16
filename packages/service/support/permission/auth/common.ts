@@ -75,7 +75,16 @@ export async function parseHeaderCert({
     })();
 
     // auth apikey
-    const { teamId, tmbId, appId: apiKeyAppId = '', sourceName } = await authOpenApiKey({ apikey });
+    const {
+      teamId,
+      tmbId,
+      appId: apiKeyAppId = '',
+      sourceName
+    } = await authOpenApiKey({
+      apikey,
+      req,
+      authorizationAppId: authorizationAppid
+    });
 
     return {
       uid: '',

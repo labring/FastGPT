@@ -25,7 +25,9 @@ export const OpenApiKeySchema = z.object({
   tmbId: ObjectIdSchema.meta({ description: '团队成员 ID' }),
   createTime: z.coerce.date().meta({ description: '创建时间' }),
   lastUsedTime: z.coerce.date().optional().meta({ description: '最后使用时间' }),
-  apiKey: z.string().meta({ description: 'API Key，列表接口返回脱敏值' }),
+  apiKey: z.string().meta({
+    description: 'API Key，团队级列表返回脱敏值；应用级列表返回明文，供发布渠道重复复制'
+  }),
   appId: ObjectIdSchema.optional().meta({ description: '绑定应用 ID' }),
   name: z.string().optional().default('Api Key').meta({ description: 'API Key 名称' }),
   usagePoints: z.number().optional().default(0).meta({ description: '累计使用积分' }),
@@ -119,6 +121,24 @@ export const DeleteApiKeyResponseSchema = z.undefined().meta({
   description: '删除成功'
 });
 export type DeleteApiKeyResponseType = z.infer<typeof DeleteApiKeyResponseSchema>;
+
+/* ============================================================================
+ * API: 记录 API Key 复制审计
+ * Route: POST /api/support/openapi/copy
+ * Method: POST
+ * Description: 记录用户复制 API Key 明文的审计日志。
+ * Tags: ['API Key 管理']
+ * ============================================================================ */
+
+export const CopyApiKeyBodySchema = z.object({
+  id: ObjectIdSchema.meta({ description: 'API Key 记录 ID' })
+});
+export type CopyApiKeyBodyType = z.infer<typeof CopyApiKeyBodySchema>;
+
+export const CopyApiKeyResponseSchema = z.undefined().meta({
+  description: '记录成功'
+});
+export type CopyApiKeyResponseType = z.infer<typeof CopyApiKeyResponseSchema>;
 
 export const ApiKeyHealthParamsSchema = z.object({
   apiKey: z.string().nonempty().meta({
