@@ -122,7 +122,7 @@ export const DatasetSchema = z
 
     keep_header_footer: z.boolean().optional().meta({ description: '保留页眉页脚' }),
     keep_appendix: z.boolean().optional().meta({ description: '保留附录' }),
-    seal_rec: z.boolean().optional().meta({ description: '印章识别' }),
+    image_analysis: z.boolean().optional().meta({ description: '文档图片识别' }),
     chart_analysis: z.boolean().optional().meta({ description: '统计图转表格' }),
 
     deleteTime: z.coerce.date().nullish().meta({ description: '删除时间' }),

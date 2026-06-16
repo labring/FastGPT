@@ -149,7 +149,12 @@ export const useFeishuDatasetRequest = ({ feishuServer }: { feishuServer: Feishu
   const getFileContent = async ({
     apiFileId
   }: {
+    teamId?: string;
+    tmbId?: string;
     apiFileId: string;
+    customPdfParse?: boolean;
+    datasetId?: string;
+    parseConfig?: Record<string, any>;
   }): Promise<ApiFileReadContentResponseType> => {
     const [{ content }, { document }] = await Promise.all([
       request<{ content: string }>(

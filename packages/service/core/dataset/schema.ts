@@ -268,8 +268,8 @@ const DatasetSchema = new Schema({
     default: false
   },
 
-  // 印章识别
-  seal_rec: {
+  // 文档图片识别
+  image_analysis: {
     type: Boolean,
     default: false
   },

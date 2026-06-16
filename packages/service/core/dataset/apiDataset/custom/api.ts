@@ -170,13 +170,15 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServerTy
     tmbId,
     apiFileId,
     customPdfParse,
-    datasetId
+    datasetId,
+    parseConfig
   }: {
     teamId: string;
     tmbId: string;
     apiFileId: string;
     customPdfParse?: boolean;
     datasetId: string;
+    parseConfig?: Record<string, any>;
   }): Promise<ApiFileReadContentResponseType> => {
     const data = await request<
       {
@@ -218,7 +220,8 @@ export const useApiDatasetRequest = ({ apiServer }: { apiServer: APIFileServerTy
         relatedId: apiFileId,
         datasetId,
         customPdfParse,
-        getFormatText: true
+        getFormatText: true,
+        parseConfig
       });
 
       const sourceName = fallbackTitle;

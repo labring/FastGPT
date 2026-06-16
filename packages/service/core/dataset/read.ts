@@ -29,7 +29,8 @@ export const readFileRawTextByUrl = async ({
   getFormatText,
   relatedId,
   datasetId,
-  maxFileSize = getFileMaxSize()
+  maxFileSize = getFileMaxSize(),
+  parseConfig
 }: {
   teamId: string;
   tmbId: string;
@@ -39,6 +40,7 @@ export const readFileRawTextByUrl = async ({
   relatedId: string; // externalFileId / apiFileId
   datasetId: string;
   maxFileSize?: number;
+  parseConfig?: Record<string, any>;
 }) => {
   const extension = parseFileExtensionFromUrl(url);
 
@@ -132,7 +134,8 @@ export const readFileRawTextByUrl = async ({
               // TODO: 链接解析出来的图片不过期，删除知识库时候也需要一起删
               prefix: fileParsedPrefix
             },
-            filename
+            filename,
+            parseConfig
           });
         });
 
@@ -172,7 +175,8 @@ export const readDatasetSourceRawText = async ({
   customPdfParse,
   getFormatText,
   usageId,
-  datasetId
+  datasetId,
+  parseConfig
 }: {
   teamId: string;
   tmbId: string;
@@ -186,6 +190,7 @@ export const readDatasetSourceRawText = async ({
   apiDatasetServer?: ApiDatasetServerType; // api dataset
   usageId?: string;
   datasetId: string; // For S3 image upload
+  parseConfig?: Record<string, any>;
 }): Promise<{
   title?: string;
   rawText: string;
@@ -193,6 +198,39 @@ export const readDatasetSourceRawText = async ({
   if (type === DatasetSourceReadTypeEnum.fileLocal) {
     if (!datasetId || !isS3ObjectKey(sourceId, 'dataset')) {
       return Promise.reject('datasetId is required for S3 files');
+    }
+
+    // When parseConfig is provided, bypass getDatasetFileRawText (private S3 module)
+    // to pass extra parameters through to the custom parse service.
+    const hasParseConfig = parseConfig && Object.keys(parseConfig).length > 0;
+    if (hasParseConfig) {
+      const { buffer, extension } = await getS3DatasetSource().getDatasetFileBuffer(sourceId);
+      const metadata = await getS3DatasetSource().getFileMetadata(sourceId);
+      const { fileParsedPrefix } = getFileS3Key.dataset({
+        datasetId,
+        filename: 'file'
+      });
+
+      const { rawText } = await readS3FileContentByBuffer({
+        customPdfParse,
+        getFormatText,
+        extension,
+        teamId,
+        tmbId,
+        buffer,
+        encoding: 'utf-8',
+        imageKeyOptions: {
+          prefix: fileParsedPrefix
+        },
+        filename: metadata?.filename,
+        usageId,
+        parseConfig
+      });
+
+      return {
+        title: metadata?.filename || '',
+        rawText
+      };
     }
 
     const { filename, rawText } = await getS3DatasetSource().getDatasetFileRawText({
@@ -232,7 +270,8 @@ export const readDatasetSourceRawText = async ({
       url: sourceId,
       relatedId: externalFileId,
       datasetId,
-      customPdfParse
+      customPdfParse,
+      parseConfig
     });
     return {
       rawText
@@ -244,7 +283,8 @@ export const readDatasetSourceRawText = async ({
       teamId,
       tmbId,
       customPdfParse,
-      datasetId
+      datasetId,
+      parseConfig
     });
     return {
       title,
@@ -263,7 +303,8 @@ export const readApiServerFileContent = async ({
   teamId,
   tmbId,
   customPdfParse,
-  datasetId
+  datasetId,
+  parseConfig
 }: {
   apiDatasetServer?: ApiDatasetServerType;
   apiFileId: string;
@@ -271,6 +312,7 @@ export const readApiServerFileContent = async ({
   tmbId: string;
   customPdfParse?: boolean;
   datasetId: string;
+  parseConfig?: Record<string, any>;
 }): Promise<{
   title?: string;
   rawText: string;
@@ -280,7 +322,8 @@ export const readApiServerFileContent = async ({
     tmbId,
     apiFileId,
     customPdfParse,
-    datasetId
+    datasetId,
+    parseConfig
   });
 };
 

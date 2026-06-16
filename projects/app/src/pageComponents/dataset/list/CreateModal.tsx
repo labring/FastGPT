@@ -109,7 +109,7 @@ const CreateModal = ({
       autoSync: false,
       keep_header_footer: false,
       keep_appendix: false,
-      seal_rec: false,
+      image_analysis: false,
       chart_analysis: false
     }
   });
@@ -122,7 +122,7 @@ const CreateModal = ({
   const permissionSync = watch('apiDatasetServer.apiServer.permissionSync');
   const keepHeaderFooter = watch('keep_header_footer');
   const keepAppendix = watch('keep_appendix');
-  const sealRec = watch('seal_rec');
+  const imageAnalysis = watch('image_analysis');
   const chartAnalysis = watch('chart_analysis');
 
   const { Component: AvatarUploader, handleFileSelectorOpen: handleAvatarSelectorOpen } =
@@ -152,7 +152,7 @@ const CreateModal = ({
           apiDatasetServer: data.apiDatasetServer as any,
           keep_header_footer: data.keep_header_footer || false,
           keep_appendix: data.keep_appendix || false,
-          seal_rec: data.seal_rec || false,
+          image_analysis: data.image_analysis || false,
           chart_analysis: data.chart_analysis || false
         });
       }
@@ -195,7 +195,7 @@ const CreateModal = ({
         ? {
             keep_header_footer: data.keep_header_footer,
             keep_appendix: data.keep_appendix,
-            seal_rec: data.seal_rec,
+            image_analysis: data.image_analysis,
             chart_analysis: data.chart_analysis
           }
         : {};
@@ -584,10 +584,10 @@ const CreateModal = ({
                         value: keepAppendix
                       },
                       {
-                        key: 'seal_rec' as const,
+                        key: 'image_analysis' as const,
                         label: t('dataset:seal_rec'),
                         tip: t('dataset:seal_rec_tip'),
-                        value: sealRec
+                        value: imageAnalysis
                       },
                       {
                         key: 'chart_analysis' as const,
