@@ -9,7 +9,7 @@ export const DEFAULT_USER_AVATAR = '/imgs/avatar/BlueAvatar.svg';
 
 export const DEFAULT_SYSTEM_TITLE = 'SANGFOR Agent Builder';
 export const DEFAULT_SYSTEM_SHORT_NAME = 'Agent Builder';
-export const AGENT_BUILDER_VERSION = 'V1.3.0_P';
+export const AGENT_BUILDER_VERSION = 'V1.4.0_P';
 
 export const isDevEnv = process.env.NODE_ENV === 'development';
 export const isProduction = process.env.NODE_ENV === 'production';
