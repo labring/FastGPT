@@ -22,7 +22,7 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDataListResponse
   const { searchText = '', collectionId } = GetDatasetDataListBodySchema.parse(req.body);
   let { offset, pageSize } = parsePaginationRequest(req);
 
-  pageSize = Math.min(pageSize, 30);
+  pageSize = Math.min(pageSize, 100);
 
   const { teamId, collection } = await authDatasetCollection({
     req,
