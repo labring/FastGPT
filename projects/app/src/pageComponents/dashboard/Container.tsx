@@ -132,6 +132,9 @@ type SubNavGroupProps = {
   onItemClick: (path: string) => void;
 };
 
+const isPathActive = (currentPath: string, itemPath: string) =>
+  currentPath === itemPath || currentPath.startsWith(itemPath + '/');
+
 const SubNavGroup = ({
   icon,
   label,
@@ -223,8 +226,8 @@ const SubNavGroup = ({
               label={item.label}
               isActive={
                 item.activePaths
-                  ? item.activePaths.some((p) => currentPath.startsWith(p))
-                  : currentPath.startsWith(item.path)
+                  ? item.activePaths.some((p) => isPathActive(currentPath, p))
+                  : isPathActive(currentPath, item.path)
               }
               isCollapsed={false}
               onClick={() => onItemClick(item.path)}
@@ -350,7 +353,7 @@ const SubNavSettings = ({
               h="36px"
               px="44px"
               bg={
-                item.path && currentPath.startsWith(item.path)
+                                item.path && isPathActive(currentPath, item.path)
                   ? 'rgba(50, 136, 250, 0.1)'
                   : 'transparent'
               }
@@ -362,10 +365,10 @@ const SubNavSettings = ({
             >
               <Text
                 fontSize="13px"
-                fontWeight={item.path && currentPath.startsWith(item.path) ? 600 : 'normal'}
-                color={item.path && currentPath.startsWith(item.path) ? '#156AD9' : '#3E4A59'}
+                fontWeight={                item.path && isPathActive(currentPath, item.path) ? 600 : 'normal'}
+                color={                item.path && isPathActive(currentPath, item.path) ? '#156AD9' : '#3E4A59'}
                 _groupHover={{
-                  color: item.path && currentPath.startsWith(item.path) ? '#156AD9' : '#3E4A59'
+                  color:                 item.path && isPathActive(currentPath, item.path) ? '#156AD9' : '#3E4A59'
                 }}
                 whiteSpace="nowrap"
               >
@@ -605,7 +608,7 @@ export const DashboardNavbar = ({
               collapsedLabel={t('common:Setting')}
               isActive={
                 isCollapsed &&
-                settingsItems.some((item) => item.path && pathname.startsWith(item.path))
+                settingsItems.some((item) => item.path && isPathActive(pathname, item.path))
               }
               isCollapsed={isCollapsed}
               isExpanded={expandedKeys.includes('settings')}
