@@ -120,7 +120,11 @@ export const checkTeamEvalMetricLimit = (amount = 1) =>
 
 /* plans */
 export const getTeamPlanStatus = () =>
-  GET<ClientTeamPlanStatusType>(`/support/user/team/plan/getTeamPlanStatus`, {}, { maxQuantity: 1 });
+  GET<ClientTeamPlanStatusType>(
+    `/support/user/team/plan/getTeamPlanStatus`,
+    {},
+    { maxQuantity: 1 }
+  );
 export const getTeamPlans = () =>
   GET<TeamSubSchemaType[]>(`/proApi/support/user/team/plan/getTeamPlans`);
 

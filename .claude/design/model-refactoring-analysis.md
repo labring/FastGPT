@@ -1,27 +1,112 @@
 # 模型重构分析报告
 
-> 分支: `feat/model-management-with-permission` vs `origin/develop-1.3.0`
-> 影响: **355 个文件，+6522 / -4669 行**
+> 分支对比: `origin/develop-1.4.0` vs `origin/develop-1.3.0`
+> 影响: **675 个文件，+30891 / -13089 行**
 
 ---
 
-## 一、涉及的核心模块
+## 一、重构目的
+
+本次重构解决旧模型体系的三个核心问题：
+
+1. **模型标识不稳定** — 旧方案以 `model` 字段（如 `"gpt-4o"`）作为唯一标识和查找 key。当多个自定义模型共用同一个 OpenAI model 名时（如团队 A 和团队 B 各自配置了不同参数的 `gpt-4o`），唯一索引会冲突，无法区分。
+2. **缺乏权限控制** — 所有模型对所有用户可见，无法实现「团队私有模型」「模型共享」等场景。
+3. **数据结构不规整** — 旧方案将模型配置放在嵌套的 `metadata` 对象中，schema 校验依赖运行时解析，字段散落在嵌套对象内外，类型安全差。
+
+---
+
+## 二、重构设计
+
+### 核心思路
+
+**用不可变的 `_id` 替代可变的 `model` 名作为模型的唯一标识和关联 key。**
+
+```
+旧:  model 名字 = 唯一标识 + 查找 key + 关联外键
+新:  _id        = 唯一标识 + 查找 key + 关联外键
+     model 名字 = 仅用于调用 AI API 时的 model 参数
+```
+
+### 关键设计决策
+
+| 决策 | 说明 |
+|------|------|
+| **`_id` 作为引用 key** | App、Dataset、Evaluation 等所有引用模型的地方，从存 model 名字改为存 model `_id` |
+| **metadata 扁平化** | `metadata.type`, `metadata.maxContext` 等全部提升到文档顶层，Zod schema 直校验 |
+| **系统模型入库** | 插件定义的模型通过 `bulkWrite upsert` 自动持久化到 MongoDB，使其拥有 `_id` |
+| **权限模型** | 新增 `PerResourceTypeEnum.model`，自定义模型支持 Owner/Collaborator/Shared 控制 |
+| **数据迁移一并完成** | `initv4150` 9 步脚本将存量 model 名字批量转换为 model id |
+
+### 重构前后数据流对比
+
+#### 旧数据流
+
+```
+┌──────────────────────────────────────────────────────────┐
+│  启动时: 加载插件模型 → 存入 llmModelMap (key = model名)   │
+│          加载 DB 自定义模型 (metadata 嵌套) → 同上          │
+└──────────────────────────────────────────────────────────┘
+App/Dataset 存储 model 名字 "gpt-4o"
+       ↓
+getLLMModel("gpt-4o") → llmModelMap.get("gpt-4o")  // 通过 model 名查找
+       ↓
+返回 LLMModelItemType（包含 maxContext, vision 等配置）
+       ↓
+实际调用 AI 时取 modelData.model 作为 OpenAI API 的 model 参数
+
+❌ 问题: model 名"gpt-4o"在 Map 中只能存一份,第二个同名的自定义模型会覆盖
+```
+
+#### 新数据流
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  启动时: 插件模型 bulkWrite upsert 入 DB (获得 _id)            │
+│          加载所有 DB 模型 → leanToModelItem() 清洗空值          │
+│          → normalizeSystemModel() Zod 校验/补默认值             │
+│          → 存入 llmModelIdMap (key = _id) + systemModelIdMap   │
+└──────────────────────────────────────────────────────────────┘
+App/Dataset 存储 model id "68ad85a7463006c963799a05"
+       ↓
+getLLMModelById("68ad85a7463006c963799a05") → llmModelIdMap.get("68ad85a7463006c963799a05")
+       ↓
+返回 LLMModelItemType（id + model + 所有配置字段）
+       ↓
+实际调用 AI 时取 modelData.model 作为 OpenAI API 的 model 参数
+
+✅ 不同自定义模型即使共享 model 名, _id 始终唯一
+```
+
+#### 计费链路变更
+
+```
+旧: formatModelChars2Points({ model: "gpt-4o", ... })
+      → findAIModel("gpt-4o") 遍历 5 个 Map 查找
+
+新: formatModelChars2Points({ modelId: "68ad85a...", ... })
+      → getModelById("68ad85a...") 直接查 systemModelIdMap
+```
+
+---
+
+## 三、涉及的核心模块
 
 | 模块 | 关键目录 |
 |------|---------|
-| **1. AI 模型配置** | `packages/service/core/ai/config/` (schema, utils), `packages/service/core/ai/model.ts` |
-| **2. 知识库** | `packages/global/core/dataset/`, `packages/service/core/dataset/` |
-| **3. 工作流编排** | `packages/global/core/workflow/` (constants, utils, templates) |
-| **4. 应用配置** | `packages/global/core/app/` (type, constants, formEdit) |
-| **5. 权限系统** | `packages/global/support/permission/`, `packages/service/support/permission/` |
-| **6. 评测/评估** | `packages/global/core/evaluation/`, `packages/service/core/evaluation/` |
-| **7. 模型训练** | `packages/global/core/train/`, `packages/service/core/train/` |
-| **8. 前端组件** | `projects/app/src/components/core/ai/ModelTable`, `pageComponents/` |
-| **9. API 接口** | `projects/app/src/pages/api/core/ai/model/` 等 50+ API 文件 |
+| **AI 模型配置** | `packages/service/core/ai/config/` (schema, utils), `packages/service/core/ai/model.ts`, `packages/service/core/ai/type.ts` |
+| **知识库** | `packages/global/core/dataset/`, `packages/service/core/dataset/` |
+| **工作流编排** | `packages/global/core/workflow/` (constants, utils, templates) |
+| **应用配置** | `packages/global/core/app/` (type, constants, formEdit) |
+| **权限系统** | `packages/global/support/permission/`, `packages/service/support/permission/` |
+| **评测/评估** | `packages/global/core/evaluation/`, `packages/service/core/evaluation/` |
+| **模型训练** | `packages/global/core/train/`, `packages/service/core/train/` |
+| **前端组件** | `projects/app/src/components/core/ai/ModelTable`, `pageComponents/` |
+| **API 接口** | `projects/app/src/pages/api/core/ai/model/` 等 50+ API 文件 |
+| **计费/用量** | `packages/service/support/wallet/usage/`, `packages/global/support/wallet/usage/` |
 
 ---
 
-## 二、DB Schema 关键变更
+## 四、DB Schema 关键变更
 
 ### 1. `system_models` 表（最核心变更）
 
@@ -47,22 +132,20 @@
   tmbId: string;           // 新增：创建者
   teamId: string;          // 新增：所属团队
   isShared: boolean;       // 新增：是否共享
+  isCustom: boolean;       // 新增：是否自定义模型
 }
 ```
 
-**迁移步骤** (`initv4150.ts`):
-1. 删除 `model` 字段的 unique 索引（允许多个自定义模型用同一个 OpenAI model 名）
-2. 创建新索引 `teamId_1`, `tmbId_1`, `isShared_1`
-3. 数据迁移：将 `metadata.xxx` 扁平化到文档顶层，设置 `isShared = true`（存量数据默认共享）
-
-**旧 model 查找（生命周期）**: `schema → metadata → runtime global cache（以 model 名作 key）`
-**新 model 查找（生命周期）**: `schema（扁平化，所有字段在顶层）→ runtime global cache（以 _id 作 key）`
-
+**Schema 变化细节**:
+- 移除旧的 `{ model, metadata }` 结构，base 字段 + price 字段声明在 Schema 顶层
+- `strict: false` 允许类型特有字段（如 `maxContext`、`voices`、`dimensions`）动态存储
+- 新增索引: `teamId_1`, `tmbId_1`, `isShared_1`
+- 丢弃 `model` 字段的 unique 索引
 
 ### 2. `datasets` 表
 
-| 旧字段 | 新字段 | 值变化 |
-|--------|--------|--------|
+| 旧字段 | 新字段 | 备注 |
+|--------|--------|------|
 | `vectorModel: string` | `vectorModelId: string` | 从存储 **模型 model 名** 变为存储 **模型 _id** |
 | `agentModel: string` | `agentModelId: string` | 同上 |
 | `vlmModel: string` | `vlmModelId: string` | 同上 |
@@ -70,6 +153,7 @@
 **Mongoose Schema 变化**:
 - `default: 'text-embedding-3-small'` → 不再设置 default（改为 required 校验）
 - `default: 'gpt-4o-mini'` → 不再设置 default（改为 required 校验）
+- folder 类型数据集不再要求 `vectorModelId`/`agentModelId`
 
 ### 3. 评估相关表
 
@@ -79,16 +163,25 @@
 | `EvalDatasetDataSynthesisMetadata` | `intelligentGenerationModel` | `intelligentGenerationModelId` |
 | `EvalDatasetCollectionSchemaType` | `evaluationModel` | `evaluationModelId` |
 | `RuntimeConfig` | `llm`, `embedding` | `llmId`, `embeddingId` |
-| 评测回调 `SelectedDatasetSchema` | `vectorModel: { model: string }` | `vectorModel: { id: string }` |
+
+### 4. 用量表 `usage_items`
+
+| 旧字段 | 新字段 |
+|--------|--------|
+| `model?: string` | `modelId?: string` |
+
+### 5. 训练任务表 (`embedding_train_tasks`, `rerank_train_tasks`)
+
+`baseModelId`、`checkpoint.data.registering.tunedModelId`、`result.tunedModelId` 字段的值从 model 名转换为 model id。
 
 ---
 
-## 三、工作流/应用配置中关键数据命名变更
+## 五、工作流/应用配置中关键数据命名变更
 
-### 工作流常量 `NodeInputKeyEnum` (核心枚举)
+### 工作流常量 `NodeInputKeyEnum`
 
-| 旧 Key 枚举名 | 旧 value → 新 value |
-|---------------|---------------------|
+| 旧枚举名 → 新枚举名 | 旧 value → 新 value |
+|---------------------|---------------------|
 | `aiModel` → `aiModelId` | `'model'` → `'modelId'` |
 | `datasetSearchEmbeddingModel` → `datasetSearchEmbeddingModelId` | `'embeddingModel'` → `'embeddingModelId'` |
 | `datasetSearchRerankModel` → `datasetSearchRerankModelId` | `'rerankModel'` → `'rerankModelId'` |
@@ -98,12 +191,31 @@
 | `datasetAgenticSearchLLMModel` → `datasetAgenticSearchLLMModelId` | `'agenticSearchLLMModel'` → `'agenticSearchLLMModelId'` |
 | `datasetAgenticSearchRerankModel` → `datasetAgenticSearchRerankModelId` | `'agenticSearchRerankModel'` → `'agenticSearchRerankModelId'` |
 
-### 应用配置 `AppSchema`
+移除枚举: `useEditDebugSandbox`
 
-| 旧字段 | 新字段 |
-|--------|--------|
-| `AppTTSConfigType.model: string` | `modelId: string` |
-| `AppQGConfigType.model: string` | `modelId: string` |
+### `workflow/utils.ts` 新增工具函数
+
+**`extractWorkflowModelIds()`** — 从工作流 modules 和 chatConfig 中提取所有引用的 model id:
+```
+遍历 modules[].inputs[] → 匹配 workflowModelInputKeySet (8 个 model key)
+    ├── 直接 model 值 → addModelId()
+    └── datasetParams 复合对象 → 遍历 datasetParamsModelKeySet (6 个 key)
+遍历 chatConfig.questionGuide.modelId, chatConfig.ttsConfig.modelId
+返回 Array.from(modelIds)
+```
+用途：模型删除时的引用检查，以及权限过滤时的批量校验。
+
+**`removeUnauthModels()` 重构**:
+- 从只处理 `key === 'model'` 的单一判断 → 使用 `workflowModelInputKeySet` 匹配所有 8 种 model key
+- 新增 `datasetParams` 复合对象内嵌 model 字段的权限过滤
+- 使用 `checkInputIsReference()` 统一判断引用类型输入
+
+### 应用配置类型变更
+
+| 类型.旧字段 | 新字段 |
+|------------|--------|
+| `AppTTSConfigType.model` | `modelId` |
+| `AppQGConfigType.model` | `modelId` |
 | `AppDatasetSearchParamsType.rerankModel` | `rerankModelId` |
 | `AppDatasetSearchParamsType.embeddingModel` | `embeddingModelId` |
 | `AppDatasetSearchParamsType.datasetSearchExtensionModel` | `datasetSearchExtensionModelId` |
@@ -112,6 +224,7 @@
 | `AppDatasetSearchParamsType.agenticSearchRerankModel` | `agenticSearchRerankModelId` |
 | `SettingAIDataType.model` | `modelId` |
 | `AppSimpleEditFormType.aiSettings.model` | `modelId` |
+| `AppFormEditFormV1TypeSchema.aiSettings.model` | `modelId` |
 
 ### 运行时响应 `DispatchNodeResponseSchema`
 
@@ -124,26 +237,35 @@
 | `deepSearchResult.model` | `deepSearchResult.modelId` |
 | `extensionModel` | `extensionModelId` (deprecated) |
 
+`agenticSearchResult` 从 `z.any()` 变为结构化对象:
+```typescript
+z.object({
+  reasoningText, searchCount, toolCallCount,
+  llmModelId, llmInputTokens, llmOutputTokens,
+  playbook, executionPath, confidence, queryLanguage
+})
+```
+
 ---
 
-## 四、运行时全局缓存的变更
+## 六、运行时全局缓存的变更
 
-### Map 类型及变量名
+### Map 类型及变量名 (`packages/service/core/ai/type.ts`)
 
 | 旧变量 | 新变量 | Map key 变化 |
 |--------|--------|-------------|
-| `llmModelMap: Map<string, LLMModelItemType>` | `llmModelIdMap` | key 从 `model` 变为 `id` |
+| `llmModelMap` | `llmModelIdMap` | key 从 `model` 变为 `id` |
 | `embeddingModelMap` | `embeddingModelIdMap` | 同上 |
 | `ttsModelMap` | `ttsModelIdMap` | 同上 |
 | `sttModelMap` | `sttModelIdMap` | 同上 |
 | `reRankModelMap` | `reRankModelIdMap` | 同上 |
 | (无) | `systemModelIdMap` | **新增**: 全类型统一查找 |
 
-### 模型查找函数
+### 模型查找函数 (`packages/service/core/ai/model.ts`)
 
 | 旧函数 | 新函数 | 参数变化 |
 |--------|--------|---------|
-| `getLLMModel(model?: string)` | `getLLMModelById(id?: string)` | model 名 → model id |
+| `getLLMModel(model?)` | `getLLMModelById(id?)` | model 名 → model id |
 | `getDatasetModel(model?)` | `getDatasetModelById(id?)` | 同上 |
 | `getVlmModel(model?)` | `getVlmModelById(id?)` | 同上 |
 | `getEmbeddingModel(model?)` | `getEmbeddingModelById(id?)` | 同上 |
@@ -151,26 +273,33 @@
 | `getSTTModel(model?)` | `getSTTModelById(id?)` | 同上 |
 | `getRerankModel(model?)` | `getRerankModelById(id?)` | 同上 |
 | `getEvaluationModel(model?)` | `getEvaluationModelById(id?)` | 同上 |
-| `findAIModel(model)` | **删除** | |
-| `findModelFromAlldata(model)` | `getModelById(id)` | 功能简化，直接从 `systemModelIdMap` 查 |
+| `findAIModel(model)` | **删除** | — |
+| `findModelFromAlldata(model)` | `getModelById(id)` | 功能简化，直接查 `systemModelIdMap` |
+| (无) | `getDefaultDatasetModel()` | **新增** |
 
-### 模型加载流程变更
+### 模型加载流程 (`packages/service/core/ai/config/utils.ts`)
 
-**旧流程**: `MongoDB(metadata嵌套) → lean() → metadata.model 作为 key → llmModelMap/embeddingModelMap...`
-
-**新流程**:
 ```
-MongoDB(扁平化) → lean() → leanToModelItem() 清洗空值 → _id 作为 id
+MongoDB(扁平化) → lean() → leanToModelItem() 清洗空值 → normalizeSystemModel() Zod 校验
     ├── llmModelIdMap.set(model.id, model)
     ├── embeddingModelIdMap.set(model.id, model)
     └── systemModelIdMap.set(model.id, model)
 ```
 
-**额外新增**: 系统模型自动持久化到 MongoDB（通过 bulkWrite upsert），确保插件中的系统模型也有 `_id` 便于统一 ID 查找。
+**新增关键函数**:
+- **`leanToModelItem()`**: 将 `_id` 转为 `id` 字段，过滤 null/undefined 值
+- **`normalizeSystemModel()`**: 根据模型 type 使用对应 Zod schema 校验（`safeParse`），自动补全默认值、剔除非法字段
+- **插件模型自动持久化**: 插件定义的模型通过 `bulkWrite upsert` 自动写入 MongoDB，使其拥有 `_id`；插件已移除的孤立 DB 记录会被自动清理
+
+**Zod Schema `.default()` 值**: 许多字段现在有默认值，降低对 DB 存储默认值的依赖：
+- LLM: `maxContext: 16000`, `maxResponse: 8000`, `quoteMaxToken: 8000`, `functionCall: true`, `toolChoice: true`
+- Embedding: `defaultToken: 512`, `maxToken: 512`, `weight: 0`
+- Rerank: `maxToken: 3000`
+- TTS: `voices: []`
 
 ---
 
-## 五、权限系统新增
+## 七、权限系统新增
 
 ### 资源类型
 - `PerResourceTypeEnum.model` — 模型作为独立的权限管理资源
@@ -183,10 +312,11 @@ MongoDB(扁平化) → lean() → leanToModelItem() 清洗空值 → _id 作为 
 
 | 文件 | 作用 |
 |------|------|
-| `packages/global/support/permission/model/constant.ts` | 定义 Model 角色的 Owner/Read/Write 权限值 |
+| `packages/global/support/permission/model/constant.ts` | Model 角色的 Owner/Read/Write 权限值定义 |
 | `packages/global/support/permission/model/controller.ts` | `ModelPermission` 类，继承 `Permission` 基类 |
 | `packages/service/support/permission/model/controller.ts` | 模型权限业务逻辑（协作角色合并、列表过滤） |
-| `packages/service/support/permission/model/auth.ts` | 模型级权限鉴权（428 行，新增） |
+| `packages/service/support/permission/model/auth.ts` | 模型级权限鉴权（300 行） |
+| `packages/service/support/permission/model/reference.ts` | 模型引用检查（删除前检查是否被 App/Dataset 引用） |
 
 ### 新增 API 端点
 
@@ -195,13 +325,13 @@ MongoDB(扁平化) → lean() → leanToModelItem() 清洗空值 → _id 作为 
 | `/api/core/ai/model/create` | POST | 创建自定义模型，写入权限记录 |
 | `/api/core/ai/model/list` | POST | 获取有读权限的模型列表（含创建者信息） |
 | `/api/core/ai/model/update` | PUT | 更新模型配置 |
-| `/api/core/ai/model/delete` | DELETE | 删除自定义模型 |
+| `/api/core/ai/model/delete` | DELETE | 删除自定义模型（含引用检查） |
 | `/api/core/ai/model/detail` | POST | 获取单个模型详情 |
 | `/api/core/ai/model/updateDefault` | POST | 设置系统默认模型 |
 | `/api/core/ai/model/getDefaultConfig` | POST | 获取模型默认配置 |
 | `/api/core/ai/model/getConfigJson` | POST | 获取模型配置 JSON |
 | `/api/core/ai/model/updateWithJson` | POST | 通过 JSON 更新模型 |
-| `/api/admin/initv4150` | POST | v4.15.0 模型重构数据迁移 |
+| `/api/admin/initv4150` | POST | v4.15.0 模型重构数据迁移（9 步） |
 
 ### 权限判断逻辑
 
@@ -219,154 +349,107 @@ getModelPermissionFromRole(model, teamId, tmbId, ...):
 
 ---
 
-## 六、数据流变更示意
+## 八、数据迁移脚本 (`initv4150.ts`)
 
-### 旧数据流
+共 9 步，幂等可重复执行：
 
-```
-App/Dataset 存储 model 名字 "gpt-4o"
-       ↓
-getLLMModel("gpt-4o") → llmModelMap.get("gpt-4o")  // 通过 model 名查找
-       ↓
-返回 LLMModelItemType（包含 maxContext, vision 等配置）
-```
+| 步骤 | 函数 | 迁移内容 |
+|------|------|---------|
+| **Step 1** | `dropModelUniqueIndex()` | 删除 `model` 字段的 unique 索引 |
+| **Step 2** | `createNewIndexes()` | 创建 `teamId_1`, `tmbId_1`, `isShared_1` 索引 |
+| **Step 3** | `migrateModelData()` | `metadata` 扁平化、设置 `isShared`、补全缺失默认值、孤儿模型归属 root |
+| **Step 4** | `migrateDatasets()` | `vectorModel/agentModel/vlmModel` → `XxxModelId`，model 名转 model id，清理 `dataset_trainings.model` |
+| **Step 5** | `migrateAppWorkflows()` | `apps.modules` + `app_versions.nodes` 的 model key/value 迁移，`chatConfig.questionGuide`/`ttsConfig` 迁移 |
+| **Step 6** | `migrateEvaluationData()` | `eval_dataset_collections` 和 `eval_dataset_datas` 的 model 字段迁移 |
+| **Step 7** | `migrateEvaluationTasks()` | `evals.evaluators[].runtimeConfig.llm/embedding` → `llmId/embeddingId` |
+| **Step 8** | `migrateTrainingRecords()` | embedding/rerank 训练任务的 model id 转换 |
+| **Step 9** | `migrateUsageRecords()` | `usage_items.model` → `modelId` |
 
-### 新数据流
-
-```
-App/Dataset 存储 model id "68ad85a7463006c963799a05"
-       ↓
-getLLMModelById("68ad85a7463006c963799a05") → llmModelIdMap.get("68ad85a7463006c963799a05")
-       ↓
-返回 LLMModelItemType（id + model + 所有配置字段）
-       ↓
-实际调用 AI 时取 modelData.model 作为 OpenAI API 的 model 参数
-```
+**关键辅助函数**:
+- `buildModelNameToIdMap()`: 从 `system_models` 构建 model 名 → model id 映射（同名多模型优先 active）
+- `WORKFLOW_MODEL_KEY_MAP`: 8 个 model key 的旧名→新名映射常量
+- `convertModelValue()`: 将 model 名字符串转换为 model id
 
 ---
 
-## 七、影响面汇总
+## 九、影响面汇总
 
-| 影响范围 | 文件数(约) | 核心变化 |
-|----------|-----------|---------|
-| system_models 表 schema | 2 | metadata 扁平化、新增 permission 字段、model 去唯一索引 |
-| datasets 表字段 | 3 | vectorModel/agentModel/vlmModel → XxxModelId |
-| 评估相关表字段 | 5 | model → modelId 系列重命名 |
-| 工作流 node input keys | 5 | 8 个 model 相关 key 统一加 Id 后缀 |
-| 应用配置类型 | 3 | model → modelId |
-| 运行时 dispatch 响应 | 1 | model → modelId 系列重命名 |
-| 全局 model cache map | 2 | 6 个 Map 重命名，key 从 model 名变 id |
-| 模型查找函数 | 2 | 9 个函数重命名，参数从 model 名变 id |
-| 权限系统 | 6 | 新增 model 资源类型、团队位、认证中间件 |
-| API 接口 | 12 | 新增 CRUD + list 接口，重构权限校验 |
-| 前端组件 | 15+ | ModelTable、Channel、表单等适配新 API |
-| 数据迁移 | 1 | initv4150.ts 执行 index + data 迁移 |
+| 影响范围 | 核心变化 |
+|----------|---------|
+| `system_models` 表 | metadata 扁平化、新增权限字段、model 去唯一索引 |
+| `datasets` 表 | vectorModel/agentModel/vlmModel → XxxModelId |
+| 评估相关表 | model → modelId 系列重命名 |
+| 工作流 node input keys | 8 个 model key 统一加 Id 后缀，新增 extractWorkflowModelIds、removeUnauthModels 重构 |
+| 应用配置类型 | model → modelId |
+| 运行时 dispatch 响应 | model → modelId 系列重命名，agenticSearchResult 结构化 |
+| 全局 model cache | 6 个 Map 重命名，新增 systemModelIdMap，key 从 model 名变 id |
+| 模型查找函数 | 11 个函数重命名/新增/删除，参数从 model 名变 id |
+| 权限系统 | 新增 model 资源类型、团队位、鉴权中间件、引用检查 |
+| API 接口 | 新增 CRUD + list 接口，重构权限校验，initv4150 迁移端点 |
+| 计费/用量 | formatModelChars2Points 参数变 modelId，usage_items 字段重命名 |
+| 数据迁移 | initv4150.ts 9 步完整迁移 (index + 8 类数据) |
 
 ---
 
-## 八、重构缺陷与未完善项
+## 十、TODO
 
-### 严重 (会导致线上问题)
+### 1. fastgpt-plugin 中定义的工作流模板、默认模型配置需要优化
 
-#### 1. 缺失 `datasets` 表数据迁移脚本
+当前 `fastgpt-plugin` 中定义的工作流模板和默认模型配置仍使用旧字段名（如 `model` 而非 `modelId`），需同步更新以匹配新的数据模型。
 
-`datasets` 表字段 `vectorModel`/`agentModel`/`vlmModel` 直接重命名为 `vectorModelId`/`agentModelId`/`vlmModelId`，且 **Mongoose Schema 中已彻底删除旧字段**，无 virtual/getter 做向后兼容。
+### 2. aiproxy Channel 权限越权问题
 
-- **旧文档**: `{ vectorModel: "text-embedding-3-small", agentModel: "gpt-4o-mini" }`
-- **新 Schema**: 只认 `{ vectorModelId: "...", agentModelId: "..." }`
-- **影响**: `dataset.vectorModelId` 读取为 `undefined` → `getEmbeddingModelById(undefined)` → 返回默认模型（**模型配置被静默覆盖为默认值**）
-- **涉及代码**:
-  - `packages/service/core/dataset/schema.ts` — 旧字段已删除，只保留新字段
-  - `projects/app/src/pages/api/core/dataset/detail.ts:39` — 直接读取 `dataset.vectorModelId`
-  - `projects/app/src/pages/api/core/dataset/list.ts:377` — 同上
-- **修复建议**: 在 `initv4150.ts` 中增加 dataset 迁移步骤，通过旧 `model` 名在 `system_models` 中查找对应 `_id`，回填 `vectorModelId`/`agentModelId`/`vlmModelId`
+**问题描述**: 用户 A 创建了自定义模型（`id: 00000xxx001`, `model: qwen-3.6`），未配置自定义 `requestUrl` 和 `requestAuth`；root 创建了另一个模型（`id: 00000xxx002`, `model: qwen-3.6`），同时配置了对应的 model-channel，绑定了 `model=qwen-3.6`。当用户 A 执行模型测试或产生模型调用时，会越权使用 root 配置的 model-channel 来访问 `qwen-3.6`。
 
-#### 2. 缺失应用工作流模块 (App Modules) 的数据迁移
+**根因**: aiproxy 的 channel 匹配仅基于 `model` 名字（`qwen-3.6`），不感知 FastGPT 侧的模型 `_id` 和权限归属。用户 A 的模型调用到达 aiproxy 时，aiproxy 根据 `model` 名匹配到了 root 配置的 channel。
 
-工作流节点 inputs 的 key 值已从 `'model'` 改为 `'modelId'`（对应 `NodeInputKeyEnum.aiModelId`），但 **存量 App 文档中的 `modules[].inputs[]` 仍存储旧 key**。
+---
 
-- **旧数据**: `{ key: 'model', value: 'gpt-4o' }`
-- **新代码**: 通过 `NodeInputKeyEnum.aiModelId` (= `'modelId'`) 查找 inputs → **匹配不上，节点模型为空**
-- **影响面**: 所有存量工作流中的 AI Chat、Dataset Search、Agent 等节点的模型选择全部失效
-- **涉及代码**:
-  - `packages/global/core/workflow/constants.ts` — 8 个枚举值重命名
-  - `packages/service/core/workflow/dispatch/ai/chat.ts:110` — 通过 `inputs[NodeInputKeyEnum.aiModelId]` 查找，读不到旧 key
-  - `packages/global/core/workflow/utils.ts:505` — `extractWorkflowModelIds` 的 `workflowModelInputKeySet` 只包含新 key
-- **需要迁移的 key 映射**:
-  ```
-  'model'                       → 'modelId'
-  'embeddingModel'              → 'embeddingModelId'
-  'rerankModel'                 → 'rerankModelId'
-  'datasetSearchExtensionModel' → 'datasetSearchExtensionModelId'
-  'generateSqlModel'            → 'generateSqlModelId'
-  'datasetDeepSearchModel'      → 'datasetDeepSearchModelId'
-  'agenticSearchLLMModel'       → 'agenticSearchLLMModelId'
-  'agenticSearchRerankModel'    → 'agenticSearchRerankModelId'
-  ```
-- **更为棘手的是**: 旧 value 是 model 名字（如 `'gpt-4o'`），新代码期望 model id（如 `'68ad85a7463006c963799a05'`），需要同时做 value 的映射转换
-- **修复建议**: 在 `initv4150.ts` 中增加 App modules 迁移步骤，遍历所有 App 的 `modules[].inputs[]`，替换 key 并将 value 从 model 名转换为 model id。对于 `datasetParams` 复合对象内嵌的 model 字段也需同样处理
+## 附录: aiproxy 渠道管理与权限隔离分析
 
-### 中等 (功能降级)
+当前 aiproxy 通过 **三层模型** 实现访问控制：Group → Token → Channel
 
-#### 3. 缺失 App chatConfig 数据迁移
+### 数据模型关系
 
-App 的 `chatConfig.questionGuide.model` → `modelId`、`chatConfig.ttsConfig.model` → `modelId` 无迁移脚本。
+```
+Group (组)
+  ├── ID, Status, AvailableSets, RPMRatio, TPMRatio
+  ├── 拥有多个 Token
+  └── 拥有多个 GroupModelConfig
 
-- **影响**: 存量 App 的问答引导和 TTS 功能可能使用错误的模型选择
-- **涉及代码**: `packages/global/core/app/type.ts` 中 `AppQGConfigTypeSchema`、`AppTTSConfigTypeSchema`
+Token (API密钥)
+  ├── 属于一个 Group
+  ├── Models []string        — 限制可访问的模型
+  ├── Subnets []string       — IP 白名单
+  ├── Quota / PeriodQuota    — 配额控制
+  └── Status                 — 启用/禁用
 
-#### 4. 缺失评估 (Evaluation) 数据迁移
+Channel (渠道/上游)
+  ├── Type, Key, BaseURL
+  ├── Models []string        — 该渠道支持的模型
+  ├── Sets []string          — 渠道分组标签 (如 "default")
+  ├── Priority               — 同模型多渠道时的优先级
+  └── Status                 — 启用/禁用
 
-以下字段变更无迁移脚本:
-- `EvalDatasetDataQualityMetadata.model` → `modelId`
-- `EvalDatasetDataSynthesisMetadata.intelligentGenerationModel` → `intelligentGenerationModelId`
-- `EvalDatasetCollectionSchemaType.evaluationModel` → `evaluationModelId`
-- `RuntimeConfig.llm`/`embedding` → `llmId`/`embeddingId`
-
-- **影响**: 存量评估任务可能无法正常运行
-- **涉及代码**: `packages/global/core/evaluation/`、`packages/service/core/evaluation/`
-
-#### 5. DatasetTraining Schema 中 `model` 字段废弃未清理
-
-`DatasetTrainingSchema` 已移除 `model` 字段（`packages/global/core/dataset/type.ts`），`updateTraining` 函数也移除了旧的 `model: agentModel` 写入（`projects/app/src/pages/api/core/dataset/update.ts:339` 附近），但存量训练记录中仍保留孤儿字段。虽不影响功能，但数据不一致。
-
-### 轻微 (边界情况)
-
-#### 6. 模型查找函数缺少防御性兜底
-
-`packages/service/core/ai/model.ts` 中所有 `getXxxById` 函数使用非空断言 `!`，但 `Map.get()` 在 key 不存在时返回 `undefined`：
-
-```typescript
-// 当模型被删除后 id miss, 返回 undefined 却声称类型是 LLMModelItemType
-export const getLLMModelById = (id?: string): LLMModelItemType => {
-  if (!id) return getDefaultLLMModel();
-  return global.llmModelIdMap?.get(id)!;
-};
+ModelConfig (模型配置)
+  ├── Model, Type, Owner
+  ├── RPM, TPM              — 模型级速率限制
+  └── Price                 — 定价
 ```
 
-- **影响**: 后续 `.model` 访问 TypeError
-- **修复建议**: 改为 `?? getDefaultLLMModel()` 或显式抛错
+### 权限隔离机制
 
-#### 7. `getVlmModelById` 对非 vision 模型返回 undefined
+| 能力 | 支持程度 | 实现位置 |
+|------|---------|---------|
+| Token → 模型限制 | 支持 | `token_cache.go:57` FindModel() — Token 可配置允许访问的模型白名单 |
+| Group → Set 隔离 | 支持 | `group.go:36` AvailableSets — Group 只能访问特定 Set 的 Channel |
+| Channel → Set 分类 | 支持 | `channel.go:60` Sets — Channel 打标签归类 |
+| Token → IP 限制 | 支持 | `token.go:39` Subnets — 限制 Token 使用的 IP 范围 |
+| Token → 配额 | 支持 | `token.go:47-51` Quota + PeriodQuota — 总量/周期配额 |
+| Group → 速率限制 | 支持 | `group.go:32-33` RPMRatio/TPMRatio + GroupModelConfig |
+| Group → 模型配置覆盖 | 支持 | `group_cache.go:33` ModelConfigs — 按 Group 覆盖 RPM/TPM/Price 等 |
+| Admin API 鉴权 | 单 Key | `auth.go:41` AdminAuth — 仅支持单一 AdminKey |
 
-```typescript
-export const getVlmModelById = (id?: string): LLMModelItemType => {
-  if (!id) return getDefaultVLMModel();
-  const model = global.llmModelIdMap?.get(id);
-  return (model?.vision ? model : undefined)!;
-};
-```
+### 与 FastGPT 模型重构的断层
 
-传入 LLM 模型 id（非 vision）时，该函数返回 `undefined` 而**类型声明声称返回 `LLMModelItemType`**，属于类型欺骗。
-
-### 建议优先级
-
-| 优先级 | 缺陷 | 说明 |
-|--------|------|------|
-| **P0** | #1 datasets 迁移 | 存量数据集模型配置全部丢失 |
-| **P0** | #2 App modules 迁移 | 存量工作流模型节点全部失效 |
-| **P1** | #3 chatConfig 迁移 | 问答引导、TTS 功能降级 |
-| **P1** | #6 查找函数兜底 | 运行时 TypeError |
-| **P2** | #4 评估数据迁移 | 历史评估任务不可用 |
-| **P2** | #5 训练记录清理 | 数据一致性问题 |
-| **P3** | #7 VLM 函数修复 | 类型安全 + 边界行为 |
+FastGPT 重构后模型以 `_id` 为唯一标识，但 aiproxy 的 channel 匹配仍然基于 `model` 名字字符串。当多个 FastGPT 模型（不同 `_id`）共用同一个 `model` 名时，aiproxy 无法区分调用来源的权限归属，存在跨用户 channel 复用风险。
