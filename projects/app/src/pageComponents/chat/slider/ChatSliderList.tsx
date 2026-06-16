@@ -44,12 +44,17 @@ const ChatSliderList = () => {
       hasBeenRead?: boolean;
       isTemporary?: boolean;
     }[] = scopedHistories.map((item) => {
-      const isActiveChat = item.chatId === activeChatId && chatBoxData.chatId === item.chatId;
+      const isActiveChat =
+        item.chatId === activeChatId &&
+        chatBoxData.chatId === item.chatId &&
+        chatBoxData.appId === item.appId;
       const customTitle = item.customTitle?.trim() ? item.customTitle : undefined;
+      const realtimeTitle = chatBoxData.title?.trim() ? chatBoxData.title : undefined;
+      const title = (isActiveChat ? realtimeTitle : undefined) || customTitle || item.title;
 
       return {
         id: item.chatId,
-        title: getHistoryDisplayTitle(customTitle || item.title),
+        title: getHistoryDisplayTitle(title),
         customTitle,
         top: item.top,
         updateTime: item.updateTime,
@@ -88,6 +93,7 @@ const ChatSliderList = () => {
     histories,
     t,
     chatBoxData.chatId,
+    chatBoxData.appId,
     chatBoxData.title,
     chatBoxData.chatGenerateStatus,
     chatBoxData.hasBeenRead

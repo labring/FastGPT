@@ -403,7 +403,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
     }
 
-    const isOwnerUse = !shareId && !spaceTeamId && String(tmbId) === String(app.tmbId);
+    const isOwnerUse = !shareId && !spaceTeamId;
     if (isOwnerUse && source === ChatSourceEnum.online) {
       await recordAppUsage({
         appId: app._id,
