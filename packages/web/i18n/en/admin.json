@@ -776,5 +776,14 @@
   "show_dataset_search_params": "Knowledge retrieval parameters",
   "show_dataset_search_params_tip": "When enabled, you can change the default parameters in standard retrieval during knowledge retrieval in the app.",
   "show_direct_database": "Direct database connection",
-  "show_direct_database_tip": "When enabled, you can authorize MySQL (version 5.7 and above), PostgreSQL (version 9.6 and above), SQL Server (version 2016 and above), and Oracle (version 12c and above) for connection when building a knowledge base. During retrieval, it will connect to the database to fetch data from selected tables, enabling simple database Q&A."
+  "show_direct_database_tip": "When enabled, you can authorize MySQL (version 5.7 and above), PostgreSQL (version 9.6 and above), SQL Server (version 2016 and above), and Oracle (version 12c and above) for connection when building a knowledge base. During retrieval, it will connect to the database to fetch data from selected tables, enabling simple database Q&A.",
+  "ops_service": "Operations Service",
+  "remote_maintenance": "Remote Maintenance",
+  "ssh_status": "SSH Status",
+  "ssh_enabled": "Enabled",
+  "ssh_disabled": "Disabled",
+  "enable_ssh": "Enable SSH",
+  "disable_ssh": "Disable SSH",
+  "ssh_port": "SSH Port",
+  "ssh_port_tip": "Contact technical support for remote assistance in diagnosing, troubleshooting, and resolving technical issues to restore services or improve system performance."
 }
