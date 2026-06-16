@@ -776,5 +776,14 @@
   "show_dataset_search_params": "知识检索参数",
   "show_dataset_search_params_tip": "开启后，在应用中进行知识检索时，可更改标准检索中的默认参数。",
   "show_direct_database": "直连数据库",
-  "show_direct_database_tip": "开启后，在构建知识库时，可选择授权 MySQL（5.7及其以上版本）、PostgreSQL（9.6及其以上版本 ）、 SQL server（2016及其以上版本 ）及 Oracle（12c 及其以上版本 ）进行连接，检索时将连接数据库获取选定的数据表，实现简单的数据库检索问答。"
+  "show_direct_database_tip": "开启后，在构建知识库时，可选择授权 MySQL（5.7及其以上版本）、PostgreSQL（9.6及其以上版本 ）、 SQL server（2016及其以上版本 ）及 Oracle（12c 及其以上版本 ）进行连接，检索时将连接数据库获取选定的数据表，实现简单的数据库检索问答。",
+  "ops_service": "运维服务",
+  "remote_maintenance": "远程维护",
+  "ssh_status": "SSH状态",
+  "ssh_enabled": "已启用",
+  "ssh_disabled": "已禁用",
+  "enable_ssh": "启用SSH",
+  "disable_ssh": "禁用SSH",
+  "ssh_port": "SSH端口",
+  "ssh_port_tip": "可联系技术服务远程协助排查、诊断、处理技术问题，以恢复业务或改善系统运行状态。"
 }

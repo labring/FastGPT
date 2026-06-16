@@ -776,5 +776,14 @@
   "show_dataset_search_params": "知識檢索參數",
   "show_dataset_search_params_tip": "開啟後，在應用中進行知識檢索時，可更改標準檢索中的預設參數。",
   "show_direct_database": "直連資料庫",
-  "show_direct_database_tip": "開啟後，在建構知識庫時，可選擇授權 MySQL（5.7及其以上版本）、PostgreSQL（9.6及其以上版本 ）、 SQL Server（2016及其以上版本 ）及 Oracle（12c 及其以上版本 ）進行連接，檢索時將連接資料庫獲取所選的資料表，實現簡單的資料庫檢索問答。"
+  "show_direct_database_tip": "開啟後，在建構知識庫時，可選擇授權 MySQL（5.7及其以上版本）、PostgreSQL（9.6及其以上版本 ）、 SQL Server（2016及其以上版本 ）及 Oracle（12c 及其以上版本 ）進行連接，檢索時將連接資料庫獲取所選的資料表，實現簡單的資料庫檢索問答。",
+  "ops_service": "運維服務",
+  "remote_maintenance": "遠程維護",
+  "ssh_status": "SSH狀態",
+  "ssh_enabled": "已啟用",
+  "ssh_disabled": "已禁用",
+  "enable_ssh": "啟用SSH",
+  "disable_ssh": "禁用SSH",
+  "ssh_port": "SSH端口",
+  "ssh_port_tip": "可聯絡技術服務遠程協助排查、診斷、處理技術問題，以恢復業務或改善系統運行狀態。"
 }

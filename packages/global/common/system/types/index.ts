@@ -158,6 +158,8 @@ export type FastGPTFeConfigsType = {
   agentSandboxFree?: boolean;
   // Beta features
   show_skill?: boolean;
+  // Host-agent ops service
+  show_ops_service?: boolean;
 };
 
 export type SystemEnvType = {
