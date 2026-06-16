@@ -307,7 +307,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
             </Text>
           )}
         </Flex>
-        {datasetTestItem && (
+        {datasetTestItem && !isDatabaseDataset(datasetDetail.type) && (
           <Box mb={3}>
             <SearchParamsTip
               searchMode={datasetTestItem.searchMode}
@@ -508,7 +508,7 @@ const TestResultDatabase = React.memo(function TestResultDatabase({
         <>
           <Box mt={1} gap={4}>
             <Box mb={4}>
-              <Box p={4} borderRadius={'12px'} bg={'myWhite.300'} border={theme.borders.sm}>
+              <Box p={4} borderRadius={'12px'} border={theme.borders.sm}>
                 <Text fontSize={'14px'} fontWeight={'medium'} color={'myGray.900'} mb={2}>
                   {t('dataset:database_sql_query')}
                 </Text>
@@ -518,7 +518,7 @@ const TestResultDatabase = React.memo(function TestResultDatabase({
               </Box>
             </Box>
 
-            <Box p={4} borderRadius={'12px'} bg={'myWhite.300'} border={theme.borders.sm}>
+            <Box p={4} borderRadius={'12px'} border={theme.borders.sm}>
               <Text fontSize={'14px'} fontWeight={'medium'} color={'myGray.900'} mb={2}>
                 {t('dataset:search_result')}
               </Text>
