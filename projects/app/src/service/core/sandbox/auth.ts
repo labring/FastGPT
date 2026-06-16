@@ -8,6 +8,7 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { serviceEnv } from '@fastgpt/service/env';
 import { timingSafeEqual } from 'crypto';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
+import { createAgentSandboxPermissionDeniedError } from '@fastgpt/service/core/ai/sandbox/error';
 
 /**
  * 统一沙盒 API 会话访问控制鉴权。
@@ -73,7 +74,7 @@ export async function authSandboxSession({
   try {
     await checkTeamSandboxPermission(result.teamId);
   } catch {
-    throw new Error('当前应用未配置虚拟机，暂时无法使用相关功能，请联系管理员配置。');
+    throw createAgentSandboxPermissionDeniedError();
   }
 
   return result;

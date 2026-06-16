@@ -12,6 +12,7 @@ import { postTextCensor } from '../../../../chat/postTextCensor';
 import { useToolNodeList } from './hooks/useToolNodeList';
 import { useToolMessages } from './hooks/useToolMessages';
 import { checkTeamSandboxPermission } from '../../../../../support/permission/teamLimit';
+import { createAgentSandboxPermissionDeniedError } from '../../../../ai/sandbox/error';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -48,7 +49,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     try {
       await checkTeamSandboxPermission(runningUserInfo.teamId);
     } catch {
-      throw new Error('当前应用未配置虚拟机，暂时无法使用相关功能，请联系管理员配置。');
+      throw createAgentSandboxPermissionDeniedError();
     }
   }
 
