@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Badge, Box, Button, Flex, IconButton, Spinner } from '@chakra-ui/react';
+import { Box, Button, Flex, Spinner } from '@chakra-ui/react';
 import { keyframes } from '@emotion/react';
 import { useContextSelector } from 'use-context-selector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -9,11 +9,12 @@ import { onWorkflowCopilot, type CopilotToolCallEvent } from '@/web/common/api/f
 import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
-import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
+import { checkWorkflowNodeAndConnection, nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
 import {
   EDGE_TYPE,
   FlowNodeInputTypeEnum,
-  FlowNodeOutputTypeEnum
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type { ContextExtractAgentItemType } from '@fastgpt/global/core/workflow/template/system/contextExtract/type';
@@ -47,6 +48,8 @@ type ToolCallMessage = {
   params: string;
   status: 'calling' | 'done' | 'error';
   result?: string;
+  /** toolResponse 完成后填入，展示给用户的具体操作对象描述 */
+  displaySuffix?: string;
 };
 type MessageItem = TextMessage | ToolCallMessage;
 
@@ -105,6 +108,35 @@ const TOOL_LABEL_KEYS: Record<string, string> = {
   update_system_config: i18nT('workflow:copilot_tool_update_system_config'),
   set_node_catch_error: i18nT('workflow:copilot_tool_set_node_catch_error')
 };
+
+const NODE_TYPE_LABEL_MAP: Partial<Record<FlowNodeTypeEnum, string>> = {
+  [FlowNodeTypeEnum.chatNode]: i18nT('workflow:template.ai_chat'),
+  [FlowNodeTypeEnum.textEditor]: i18nT('workflow:text_concatenation'),
+  [FlowNodeTypeEnum.answerNode]: i18nT('workflow:assigned_reply'),
+  [FlowNodeTypeEnum.datasetSearchNode]: i18nT('workflow:template.dataset_search'),
+  [FlowNodeTypeEnum.classifyQuestion]: i18nT('workflow:question_classification'),
+  [FlowNodeTypeEnum.contentExtract]: i18nT('workflow:text_content_extraction'),
+  [FlowNodeTypeEnum.datasetConcatNode]: i18nT('workflow:knowledge_base_search_merge'),
+  [FlowNodeTypeEnum.toolCall]: i18nT('workflow:template.agent'),
+  [FlowNodeTypeEnum.toolParams]: i18nT('workflow:tool_custom_field'),
+  [FlowNodeTypeEnum.stopTool]: i18nT('workflow:tool_call_termination'),
+  [FlowNodeTypeEnum.agent]: i18nT('workflow:template.agent_module'),
+  [FlowNodeTypeEnum.readFiles]: i18nT('app:workflow.read_files'),
+  [FlowNodeTypeEnum.httpRequest468]: i18nT('workflow:http_request'),
+  [FlowNodeTypeEnum.queryExtension]: i18nT('workflow:question_optimization'),
+  [FlowNodeTypeEnum.lafModule]: i18nT('workflow:laf_function_call_test'),
+  [FlowNodeTypeEnum.ifElseNode]: i18nT('workflow:condition_checker'),
+  [FlowNodeTypeEnum.variableUpdate]: i18nT('workflow:variable_update'),
+  [FlowNodeTypeEnum.code]: i18nT('workflow:code_execution'),
+  [FlowNodeTypeEnum.loop]: i18nT('workflow:loop'),
+  [FlowNodeTypeEnum.parallelRun]: i18nT('workflow:parallel_run'),
+  [FlowNodeTypeEnum.systemConfig]: i18nT('workflow:template.system_config'),
+  [FlowNodeTypeEnum.workflowStart]: i18nT('workflow:template.workflow_start'),
+  [FlowNodeTypeEnum.customFeedback]: i18nT('workflow:custom_feedback'),
+  [FlowNodeTypeEnum.userSelect]: i18nT('app:workflow.user_select'),
+  [FlowNodeTypeEnum.formInput]: i18nT('app:workflow.form_input'),
+}
+
 
 function safeParseJson(str: string): Record<string, any> | null {
   try {
@@ -1843,50 +1875,83 @@ async function executeTool(ctx: ExecuteToolCtx): Promise<string> {
 const ToolCallRow = React.memo(
   ({ msg, getNodes }: { msg: ToolCallMessage; getNodes: () => Node<FlowNodeItemType>[] }) => {
     const { t } = useTranslation();
-    const backendResult = msg.result ? safeParseJson(msg.result) : null;
+    const backendResult = msg.status === 'done' && msg.result ? safeParseJson(msg.result) : null;
+    const [issuesExpanded, setIssuesExpanded] = useState(false);
+
+    const label = TOOL_LABEL_KEYS[msg.functionName]
+      ? t(TOOL_LABEL_KEYS[msg.functionName])
+      : msg.functionName;
 
     return (
-      <Flex alignItems="center" px={3} py={1} gap={2} fontSize="xs">
-        {msg.status === 'calling' ? (
-          <Spinner size="xs" color="primary.500" flexShrink={0} />
-        ) : msg.status === 'error' ? (
-          <MyIcon name="common/closeLight" w={3} color="red.500" flexShrink={0} />
-        ) : (
-          <MyIcon name="common/check" w={3} color="green.500" flexShrink={0} />
-        )}
+      <Box py={0.5}>
+        <Flex alignItems="center" gap="8px">
+          {/* Left icon: keep existing status logic */}
+          {msg.status === 'calling' ? (
+            <Spinner size="xs" color="primary.500" flexShrink={0} />
+          ) : msg.status === 'error' ? (
+            <MyIcon name="common/closeLight" w="12px" color="red.500" flexShrink={0} />
+          ) : (
+            <MyIcon name="common/check" w="12px" color="green.500" flexShrink={0} />
+          )}
 
-        <Box fontFamily="mono" fontWeight="medium" color="myGray.700" flex={1} noOfLines={1}>
-          {TOOL_LABEL_KEYS[msg.functionName]
-            ? t(TOOL_LABEL_KEYS[msg.functionName])
-            : msg.functionName}
-        </Box>
-
-        {/* Inline summary */}
-        {msg.status === 'done' && backendResult && (
-          <Box fontSize="xs" flexShrink={0}>
-            {backendResult.valid === true && <Box color="green.600">✓</Box>}
-            {backendResult.valid === false && (
-              <Box color="red.500">
-                ✗{' '}
-                {t('workflow:copilot_issues_count', {
-                  count: ((backendResult.issues as string[]) ?? []).length
-                })}
+          <Box
+            fontSize="12px"
+            lineHeight="20px"
+            color="#999999"
+            noOfLines={1}
+            flex={1}
+          >
+            {label}
+            {msg.displaySuffix && (
+              <Box as="span" color="#BBBBBB">
+                {' '}({msg.displaySuffix})
               </Box>
             )}
-            {backendResult.totalNodes != null && backendResult.valid == null && (
-              <Box color="myGray.500">
-                {t('workflow:copilot_node_edge_stat', {
-                  nodes: backendResult.totalNodes,
-                  edges: backendResult.totalEdges
-                })}
+            {/* 工具执行结果摘要（单行） */}
+            {backendResult && (
+              <Box as="span" ml="4px">
+                {backendResult.valid === true && <Box as="span" color="green.600">✓</Box>}
+                {backendResult.valid === false && (
+                  <Box as="span" color="red.500">
+                    ✗ {t('workflow:copilot_issues_count', {
+                      count: ((backendResult.issues as string[]) ?? []).length
+                    })}
+                    <Box
+                      as="span"
+                      ml="8px"
+                      cursor="pointer"
+                      color="myGray.400"
+                      onClick={(e: React.MouseEvent) => { e.stopPropagation(); setIssuesExpanded((v) => !v); }}
+                    >
+                      <MyIcon
+                        name={issuesExpanded ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}
+                        w="12px"
+                        display="inline"
+                        verticalAlign="middle"
+                        mb="4px"
+                      />
+                    </Box>
+                  </Box>
+                )}
+                {backendResult._note && (
+                  <Box as="span" color="#BBBBBB">{t('workflow:copilot_node_already_exists')}</Box>
+                )}
               </Box>
-            )}
-            {backendResult._note && (
-              <Box color="myGray.400">{t('workflow:copilot_node_already_exists')}</Box>
             )}
           </Box>
+        </Flex>
+
+        {/* valid === false 时在文本下方展开 issues 列表 */}
+        {backendResult?.valid === false && issuesExpanded && (
+          <Box pl="20px" mt="2px">
+            <Box bg="myGray.50" p="8px" borderRadius="md">
+              {((backendResult.issues as string[]) ?? []).map((issue: string, i: number) => (
+                <Box key={i} fontSize="12px" lineHeight="20px" color="red.500">{i + 1}. {issue}</Box>
+              ))}
+            </Box>
+          </Box>
         )}
-      </Flex>
+      </Box>
     );
   }
 );
@@ -1897,111 +1962,126 @@ const ToolCallGroup = React.memo(
   ({ tools, getNodes }: { tools: ToolCallMessage[]; getNodes: () => Node<FlowNodeItemType>[] }) => {
     const { t } = useTranslation();
     const [expanded, setExpanded] = useState(false);
-    const allDone = tools.every((t) => t.status === 'done');
+    const [issuesExpanded, setIssuesExpanded] = useState(false);
     const hasError = tools.some((t) => t.status === 'error');
     const calling = tools.some((t) => t.status === 'calling');
+    const hasChildren = tools.length > 1;
+    const allDone = tools.every((t) => t.status === 'done');
 
-    // 单个工具时直接展开显示
-    const isSingle = tools.length === 1;
-
-    // 如果只有一个验证工具，显示详细信息
     const singleValidation =
-      isSingle && tools[0].functionName === 'validate_workflow'
+      !hasChildren && tools[0].functionName === 'validate_workflow'
         ? safeParseJson(tools[0].result ?? '')
         : null;
 
+    const label = hasChildren
+      ? t('workflow:copilot_tool_group_title')
+      : TOOL_LABEL_KEYS[tools[0].functionName]
+        ? t(TOOL_LABEL_KEYS[tools[0].functionName])
+        : tools[0].functionName;
+
     return (
-      <Box
-        mb={2}
-        ml={8}
-        borderRadius="md"
-        border="1px solid"
-        borderColor={hasError ? 'red.200' : 'myGray.150'}
-        bg={hasError ? 'red.50' : 'myGray.25'}
-        overflow="hidden"
-      >
-        {/* Header */}
+      <Box mb={2}>
+        {/* Header row: min-height 24px, no bg, no border */}
         <Flex
-          alignItems="center"
-          px={3}
-          py={1.5}
-          gap={2}
-          cursor={!isSingle ? 'pointer' : 'default'}
-          onClick={() => !isSingle && setExpanded((v) => !v)}
-          _hover={!isSingle ? { bg: 'myGray.50' } : {}}
+          alignItems="flex-start"
+          minH="24px"
+          gap="8px"
+          cursor={hasChildren ? 'pointer' : 'default'}
+          onClick={() => hasChildren && setExpanded((v) => !v)}
         >
-          {calling ? (
-            <Spinner size="xs" color="primary.500" flexShrink={0} />
-          ) : hasError ? (
-            <MyIcon name="common/closeLight" w={3.5} color="red.500" flexShrink={0} />
-          ) : (
-            <MyIcon name="common/check" w={3.5} color="green.500" flexShrink={0} />
-          )}
+          <MyIcon name="core/chat/toolCall" w="14px" flexShrink={0} color="#3E4A59" mt="5px" />
 
-          <Box fontFamily="mono" fontSize="xs" fontWeight="medium" color="myGray.700" flex={1}>
-            {isSingle
-              ? TOOL_LABEL_KEYS[tools[0].functionName]
-                ? t(TOOL_LABEL_KEYS[tools[0].functionName])
-                : tools[0].functionName
-              : ''}
-          </Box>
-
-          {/* Single validation inline result */}
-          {singleValidation && allDone && (
-            <Box fontSize="xs">
-              {singleValidation.valid === true && (
-                <Box color="green.600">✓ {t('workflow:copilot_validate_passed')}</Box>
+          <Box minW={0}>
+            <Flex
+              fontSize="12px"
+              lineHeight="24px"
+              color={hasError ? 'red.500' : '#666666'}
+              alignItems="center"
+              minW={0}
+              gap="4px"
+            >
+              <Box
+                as="span"
+                overflow="hidden"
+                textOverflow="ellipsis"
+                whiteSpace="nowrap"
+                minW={0}
+                flex="1"
+              >
+                {label}
+                {!hasChildren && tools[0].displaySuffix && ` (${tools[0].displaySuffix})`}
+              </Box>
+              {/* validate_workflow 单工具：inline 显示验证结果，固定不收缩 */}
+              {singleValidation && allDone && (
+                <Flex as="span" alignItems="center" flexShrink={0} gap="4px">
+                  {singleValidation.valid === true && (
+                    <Box as="span" color="green.600">✓ {t('workflow:copilot_validate_passed')}</Box>
+                  )}
+                  {singleValidation.valid === false && (
+                    <Flex as="span" alignItems="center" color="red.500" gap="4px">
+                      <Box as="span">
+                        ✗ {t('workflow:copilot_validate_problems', {
+                          count: ((singleValidation.issues as string[]) ?? []).length
+                        })}
+                      </Box>
+                      <Box
+                        as="span"
+                        cursor="pointer"
+                        color="myGray.400"
+                        display="inline-flex"
+                        alignItems="center"
+                        onClick={(e: React.MouseEvent) => { e.stopPropagation(); setIssuesExpanded((v) => !v); }}
+                      >
+                        <MyIcon
+                          name={issuesExpanded ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}
+                          w="12px"
+                        />
+                      </Box>
+                    </Flex>
+                  )}
+                </Flex>
               )}
-              {singleValidation.valid === false && (
-                <Box color="red.500">
-                  ✗{' '}
-                  {t('workflow:copilot_validate_problems', {
-                    count: ((singleValidation.issues as string[]) ?? []).length
-                  })}
+              {calling && (
+                <Box as="span" display="inline-flex" alignItems="center" flexShrink={0}>
+                  <MyIcon name="common/loading" w="14px" flexShrink={0} />
                 </Box>
               )}
-            </Box>
-          )}
-
-          <Badge
-            fontSize="10px"
-            variant="subtle"
-            colorScheme={hasError ? 'red' : calling ? 'blue' : 'green'}
-          >
-            {calling
-              ? t('workflow:copilot_status_executing')
-              : hasError
-                ? t('workflow:copilot_status_failed')
-                : t('workflow:copilot_done')}
-          </Badge>
-
-          {!isSingle && (
-            <MyIcon
-              name={expanded ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}
-              w={3}
-              color="myGray.400"
-            />
-          )}
+              {hasChildren && (
+                <Box as="span" display="inline-flex" alignItems="center" flexShrink={0}>
+                  <MyIcon
+                    name={expanded ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}
+                    w="12px"
+                    color="myGray.400"
+                  />
+                </Box>
+              )}
+            </Flex>
+            {/* validate_workflow 失败时展示 issues 列表 */}
+            {singleValidation?.valid === false && allDone && issuesExpanded && (
+              <Box mt={1} pl={0}>
+                <Box bg="myGray.50" p="8px" borderRadius="md">
+                  {((singleValidation.issues as string[]) ?? []).map((issue: string, i: number) => (
+                    <Box key={i} fontSize="12px" lineHeight="20px" color="red.500">{i + 1}. {issue}</Box>
+                  ))}
+                </Box>
+              </Box>
+            )}
+          </Box>
         </Flex>
 
-        {/* Expanded details: show individual rows */}
-        {(expanded || isSingle) && tools.length > 1 && (
-          <Box borderTop="1px solid" borderColor="myGray.100">
-            {tools.map((tool) => (
-              <ToolCallRow key={tool.id} msg={tool} getNodes={getNodes} />
-            ))}
-          </Box>
-        )}
-
-        {/* Single tool: show validation issues if any */}
-        {isSingle && singleValidation?.valid === false && (
-          <Box px={3} pb={2} pt={1} borderTop="1px solid" borderColor="myGray.100">
-            <Box fontSize="xs" color="red.500">
-              {((singleValidation.issues as string[]) ?? []).map((issue: string, i: number) => (
-                <Box key={i}>· {issue}</Box>
+        {/* Expanded child rows */}
+        {hasChildren && expanded && (
+          <Flex mt={1}>
+            {/* 竖线：宽度与左侧 icon 对齐（14px），居中放 2px 竖线 */}
+            <Flex w="14px" flexShrink={0} justifyContent="center" mr="8px">
+              <Box w="1px" bg="#EBEDF0" borderRadius="1px" />
+            </Flex>
+            <Box flex={1} minW={0}>
+              {tools.map((tool) => (
+                <ToolCallRow key={tool.id} msg={tool} getNodes={getNodes} />
               ))}
             </Box>
-          </Box>
+          </Flex>
         )}
       </Box>
     );
@@ -2024,7 +2104,10 @@ const CopilotPanel = ({
 
   const { setNodes, setEdges, workflowStartNode, getNodeList, getNodes, edges } =
     useContextSelector(WorkflowBufferDataContext, (v) => v);
-  const { onChangeNode } = useContextSelector(WorkflowActionsContext, (v) => v);
+  const { onChangeNode, onUpdateNodeError, onRemoveError } = useContextSelector(
+    WorkflowActionsContext,
+    (v) => v
+  );
   const autoLayout = useWorkflowAutoLayout();
 
   // 读取和更新 chatConfig（用于 update_system_config 工具）
@@ -2054,6 +2137,18 @@ const CopilotPanel = ({
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
+  /** 静默触发工作流校验：不弹 toast，仅标红错误节点 */
+  const runSilentValidation = useMemoizedFn(() => {
+    const checkResults = checkWorkflowNodeAndConnection({
+      nodes: getNodes(),
+      edges
+    });
+    onRemoveError();
+    if (checkResults) {
+      checkResults.forEach((nodeId) => onUpdateNodeError(nodeId, true));
+    }
+  });
+
   /** Returns the current slot position and advances to the next one (350px right) */
   const getAndAdvanceNodePos = useMemoizedFn(() => {
     const pos = { ...nextNodePosRef.current };
@@ -2076,7 +2171,7 @@ const CopilotPanel = ({
 
   // 暂存 finalizeToolCall 先于 addToolCall 执行的结果（竞态处理）
   const earlyFinalizedRef = useRef(
-    new Map<string, { params: string; status: 'done' | 'error'; result: string }>()
+    new Map<string, { params: string; status: 'done' | 'error'; result: string; displaySuffix?: string }>()
   );
 
   const addToolCall = useMemoizedFn((tool: CopilotToolCallEvent) => {
@@ -2095,7 +2190,8 @@ const CopilotPanel = ({
             functionName: tool.functionName,
             params: earlyResult.params,
             status: earlyResult.status,
-            result: earlyResult.result
+            result: earlyResult.result,
+            displaySuffix: earlyResult.displaySuffix
           }
         ];
       }
@@ -2119,6 +2215,50 @@ const CopilotPanel = ({
   });
 
   const finalizeToolCall = useMemoizedFn(async (tool: CopilotToolCallEvent): Promise<string> => {
+    // 在执行工具前计算 displaySuffix（delete_node 执行后节点已从 tracker 移除，需要提前获取名称）
+    const _p = safeParseJson(tool.params);
+    let displaySuffix: string | undefined;
+    if (_p && trackerRef.current) {
+      const _findName = (nodeId: string): string | undefined => {
+        const node = trackerRef.current!.nodes.find((n) => n.nodeId === nodeId);
+        if (node) return t(node.name);
+        // 兜底：将 nodeId 作为 flowNodeType 查 NODE_TYPE_LABEL_MAP（系统节点如 userGuide、systemConfig）
+        const labelKey = NODE_TYPE_LABEL_MAP[nodeId as FlowNodeTypeEnum];
+        return labelKey ? t(labelKey) : undefined;
+      };
+      const _typeLabel = (nodeType: string) => {
+        const key = NODE_TYPE_LABEL_MAP[nodeType as FlowNodeTypeEnum];
+        return key ? t(key) : nodeType;
+      };
+      switch (tool.functionName) {
+        case 'add_node': {
+          const lbl =
+            typeof _p.node_name === 'string' && _p.node_name.trim()
+              ? _p.node_name.trim()
+              : _typeLabel(String(_p.node_type ?? ''));
+          if (lbl) displaySuffix = lbl;
+          break;
+        }
+        case 'delete_node':
+          displaySuffix = _findName(_p.node_id as string);
+          break;
+        case 'add_edge': {
+          const src = _findName(_p.sourceNodeId as string);
+          const tgt = _findName(_p.targetNodeId as string);
+          if (src || tgt) displaySuffix = `${src ?? _p.sourceNodeId} → ${tgt ?? _p.targetNodeId}`;
+          break;
+        }
+        case 'get_node_config_schema':
+          displaySuffix = _typeLabel(String(_p.node_type ?? ''));
+          break;
+        case 'update_node_inputs':
+        case 'get_available_references':
+        case 'get_node_detail':
+          displaySuffix = _findName(_p.node_id as string);
+          break;
+      }
+    }
+
     let execResult: string;
     try {
       if (!trackerRef.current) {
@@ -2157,7 +2297,7 @@ const CopilotPanel = ({
         // 正常路径：addToolCall 已创建了 'calling' 消息，更新为最终状态
         return prev.map((m) =>
           m.kind === 'tool' && m.id === tool.id
-            ? { ...m, params: tool.params, status: finalStatus, result: execResult }
+            ? { ...m, params: tool.params, status: finalStatus, result: execResult, displaySuffix }
             : m
         );
       }
@@ -2166,7 +2306,8 @@ const CopilotPanel = ({
       earlyFinalizedRef.current.set(tool.id, {
         params: tool.params,
         status: finalStatus,
-        result: execResult
+        result: execResult,
+        displaySuffix
       });
       return prev;
     });
@@ -2520,7 +2661,19 @@ const CopilotPanel = ({
       } finally {
         abortControllerRef.current = null;
         setIsThinking(false);
-        setTimeout(() => autoLayout(), 400);
+        // 等待一帧，确保所有 setNodes/setEdges 的 React 批处理已应用到画布，
+        // 再让 useRequest 的 loading 变为 false（完成按钮出现）
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+        setTimeout(() => {
+          autoLayout();
+          // 自动布局完成后，静默触发工作流校验（不弹 toast，仅标红错误节点）
+          // 使用双 rAF 确保 autoLayout 的 setNodes/setEdges 已完成渲染
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              runSilentValidation();
+            });
+          });
+        }, 400);
       }
     }
   );
@@ -2606,11 +2759,9 @@ const CopilotPanel = ({
       return (
         <Flex key={msg.id} justifyContent="flex-end" mb={3}>
           <Box
-            bg="primary.500"
-            color="white"
-            px={3}
-            py={2}
-            borderRadius="12px 12px 2px 12px"
+            bg="blue.100"
+            p="12px"
+            borderRadius="8px"
             maxW="85%"
             fontSize="sm"
             whiteSpace="pre-wrap"
