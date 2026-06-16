@@ -30,7 +30,8 @@ export const GetDatasetFileContentParamsSchema = z.object({
   customPdfParse: z.boolean().optional(),
   getFormatText: z.boolean().optional(), // 数据类型都尽可能转化成 markdown 格式
   datasetId: ObjectIdSchema,
-  usageId: ObjectIdSchema.optional()
+  usageId: ObjectIdSchema.optional(),
+  parseConfig: z.record(z.string(), z.union([z.boolean(), z.null(), z.undefined()])).optional()
 });
 export type GetDatasetFileContentParams = z.infer<typeof GetDatasetFileContentParamsSchema>;
 

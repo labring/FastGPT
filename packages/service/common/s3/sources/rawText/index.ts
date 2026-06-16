@@ -25,12 +25,12 @@ export class S3RawTextSource extends S3PrivateBucket {
   }
 
   async addRawTextBuffer(params: AddRawTextBufferParams) {
-    const { sourceId, sourceName, text, customPdfParse } =
+    const { sourceId, sourceName, text, customPdfParse, parseConfig } =
       AddRawTextBufferParamsSchema.parse(params);
 
     // 因为 Key 唯一对应一个 Object 所以不需要根据文件内容计算 Hash 直接用 Key 计算 Hash 就行了
     const hash = createHash('md5').update(sourceId).digest('hex');
-    const key = getFileS3Key.rawText({ hash, customPdfParse });
+    const key = getFileS3Key.rawText({ hash, customPdfParse, parseConfig });
     const buffer = Buffer.from(text);
 
     await MongoS3TTL.create({
@@ -53,10 +53,10 @@ export class S3RawTextSource extends S3PrivateBucket {
   }
 
   async getRawTextBuffer(params: GetRawTextBufferParams) {
-    const { customPdfParse, sourceId } = params;
+    const { customPdfParse, sourceId, parseConfig } = params;
 
     const hash = createHash('md5').update(sourceId).digest('hex');
-    const key = getFileS3Key.rawText({ hash, customPdfParse });
+    const key = getFileS3Key.rawText({ hash, customPdfParse, parseConfig });
 
     if (!(await this.isObjectExists(key))) return null;
 

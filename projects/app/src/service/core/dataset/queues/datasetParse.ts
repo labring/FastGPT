@@ -331,6 +331,18 @@ const runParseQueue = async ({
           if (dataset.image_analysis) parseConfig.image_analysis = true;
           if (dataset.chart_analysis) parseConfig.chart_analysis = true;
 
+          logger.info('parseConfig built from dataset', {
+            trainingId: data._id,
+            datasetId: data.datasetId,
+            collectionId: data.collectionId,
+            customPdfParse: collection.customPdfParse,
+            dataset_keep_header_footer: dataset.keep_header_footer,
+            dataset_keep_appendix: dataset.keep_appendix,
+            dataset_image_analysis: dataset.image_analysis,
+            dataset_chart_analysis: dataset.chart_analysis,
+            parseConfig
+          });
+
           ({ title, rawText } = await readDatasetSourceRawText({
             teamId: data.teamId,
             tmbId: data.tmbId,

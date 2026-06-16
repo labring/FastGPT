@@ -14,8 +14,10 @@ import { parseDatasetBackup2Chunks } from './parseBackup';
 import { addLog } from '../../common/system/log';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getFileMaxSize } from '../../common/file/utils';
+import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getS3DatasetSource, S3DatasetSource } from '../../common/s3/sources/dataset';
+import { getS3RawTextSource } from '../../common/s3/sources/rawText';
 import { getFileS3Key, isS3ObjectKey } from '../../common/s3/utils';
 import { getLogger, LogCategories } from '../../common/logger';
 
@@ -129,7 +131,7 @@ export const readFileRawTextByUrl = async ({
             teamId,
             tmbId,
             buffer,
-            encoding: 'utf-8',
+            encoding: detectFileEncoding(buffer) || 'utf-8',
             imageKeyOptions: {
               // TODO: 链接解析出来的图片不过期，删除知识库时候也需要一起删
               prefix: fileParsedPrefix
@@ -203,9 +205,29 @@ export const readDatasetSourceRawText = async ({
     // When parseConfig is provided, bypass getDatasetFileRawText (private S3 module)
     // to pass extra parameters through to the custom parse service.
     const hasParseConfig = parseConfig && Object.keys(parseConfig).length > 0;
+    logger.info('readDatasetSourceRawText path decision', {
+      type,
+      hasParseConfig,
+      customPdfParse,
+      parseConfig
+    });
     if (hasParseConfig) {
+      // 尝试读取缓存（key 包含 parseConfig 以区分不同配置的解析结果）
+      const cachedBuffer = await getS3RawTextSource().getRawTextBuffer({
+        customPdfParse,
+        sourceId,
+        parseConfig
+      });
+      if (cachedBuffer) {
+        return {
+          title: cachedBuffer.filename,
+          rawText: cachedBuffer.text
+        };
+      }
+
       const { buffer, extension } = await getS3DatasetSource().getDatasetFileBuffer(sourceId);
       const metadata = await getS3DatasetSource().getFileMetadata(sourceId);
+      const encoding = detectFileEncoding(buffer) || 'utf-8';
       const { fileParsedPrefix } = getFileS3Key.dataset({
         datasetId,
         filename: 'file'
@@ -218,7 +240,7 @@ export const readDatasetSourceRawText = async ({
         teamId,
         tmbId,
         buffer,
-        encoding: 'utf-8',
+        encoding,
         imageKeyOptions: {
           prefix: fileParsedPrefix
         },
@@ -226,6 +248,19 @@ export const readDatasetSourceRawText = async ({
         usageId,
         parseConfig
       });
+
+      // 写入缓存（非关键路径，异步执行，失败不阻塞主流程）
+      getS3RawTextSource()
+        .addRawTextBuffer({
+          sourceId,
+          sourceName: metadata?.filename || '',
+          text: rawText,
+          customPdfParse,
+          parseConfig
+        })
+        .catch((err) => {
+          logger.warn('Failed to write rawText cache', { sourceId, error: err });
+        });
 
       return {
         title: metadata?.filename || '',
@@ -240,7 +275,8 @@ export const readDatasetSourceRawText = async ({
       getFormatText,
       customPdfParse,
       usageId,
-      datasetId
+      datasetId,
+      parseConfig
     });
 
     return {

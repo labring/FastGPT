@@ -53,7 +53,11 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
     avatar,
     vectorModelId = getDefaultEmbeddingModel()?.id,
     agentModelId = getDefaultLLMModel()?.id,
-    vlmModelId: rawVlmModelId
+    vlmModelId: rawVlmModelId,
+    keep_header_footer,
+    keep_appendix,
+    image_analysis,
+    chart_analysis
   } = datasetParams;
 
   // vlmModelId: null=不使用, undefined=取默认值, string=指定模型
@@ -124,7 +128,11 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetWithFilesResp
             vlmModelId,
             avatar,
             intro: '',
-            type: DatasetTypeEnum.dataset
+            type: DatasetTypeEnum.dataset,
+            ...(typeof keep_header_footer === 'boolean' && { keep_header_footer }),
+            ...(typeof keep_appendix === 'boolean' && { keep_appendix }),
+            ...(typeof image_analysis === 'boolean' && { image_analysis }),
+            ...(typeof chart_analysis === 'boolean' && { chart_analysis })
           }
         ],
         { session, ordered: true }

@@ -61,7 +61,11 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
     vlmModelId: rawVlmModelId,
     apiDatasetServer,
     websiteConfig,
-    autoSync
+    autoSync,
+    keep_header_footer,
+    keep_appendix,
+    image_analysis,
+    chart_analysis
   } = CreateDatasetBodySchema.parse(req.body);
 
   // vlmModelId: null=不使用, undefined=取默认值, string=指定模型
@@ -191,6 +195,10 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
           apiDatasetServer,
           ...(websiteConfig && { websiteConfig }),
           ...(typeof autoSync === 'boolean' && { autoSync }),
+          ...(typeof keep_header_footer === 'boolean' && { keep_header_footer }),
+          ...(typeof keep_appendix === 'boolean' && { keep_appendix }),
+          ...(typeof image_analysis === 'boolean' && { image_analysis }),
+          ...(typeof chart_analysis === 'boolean' && { chart_analysis }),
           ...(chunkSettings && { chunkSettings })
         }
       ],
