@@ -122,7 +122,13 @@ export const env = createEnv({
     AGENT_ENGINE: z.enum(['default', 'pi']).default('default'),
 
     // piAgent context compaction (summarizes old messages when context window is near limit)
-    PI_AGENT_COMPACTION_ENABLED: BoolSchema.default(false)
+    PI_AGENT_COMPACTION_ENABLED: BoolSchema.default(false),
+
+    // User input auto-compression: compress ultra-long user input before sending to LLM
+    // Threshold ratio: compress when user input tokens > maxContext * this ratio (0~1)
+    USER_INPUT_COMPRESS_THRESHOLD: NumSchema.default(0.8),
+    // Target ratio: compress to maxContext * this ratio (must be < threshold)
+    USER_INPUT_COMPRESS_TARGET: NumSchema.default(0.6)
   },
   emptyStringAsUndefined: true,
   runtimeEnv: process.env,

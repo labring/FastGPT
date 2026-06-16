@@ -29,6 +29,8 @@ import { resolveDatasetParams } from '../resolveDatasetParams';
 import { SANDBOX_SYSTEM_PROMPT } from '@fastgpt/global/core/ai/sandbox/constants';
 import { hashStr, getNanoid } from '@fastgpt/global/common/string/tools';
 import { getLLMModelById } from '../../../../../ai/model';
+import { compressLargeContent } from '../../../../../ai/llm/compress';
+import { countPromptTokens } from '../../../../../../common/string/tiktoken';
 import { formatModelChars2Points } from '../../../../../../support/wallet/usage/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
@@ -96,9 +98,50 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       useSkill: skillIds.length > 0
     });
 
+    // Auto-compress ultra-long user input before piAgent loop
+    let finalUserChatInput = userChatInput;
+    if (finalUserChatInput) {
+      const modelData = getLLMModelById(modelId);
+      if (modelData) {
+        const inputTokens = await countPromptTokens(finalUserChatInput);
+        const threshold = Math.floor(modelData.maxContext * env.USER_INPUT_COMPRESS_THRESHOLD);
+        if (inputTokens > threshold) {
+          const targetTokens = Math.floor(modelData.maxContext * env.USER_INPUT_COMPRESS_TARGET);
+          getLogger(LogCategories.MODULE.AI.AGENT).debug(
+            'piAgent user input auto-compression triggered',
+            { inputTokens, threshold, targetTokens }
+          );
+          const result = await compressLargeContent({
+            content: finalUserChatInput,
+            model: modelData,
+            maxTokens: targetTokens
+          });
+          if (result.compressed && result.compressed !== finalUserChatInput) {
+            finalUserChatInput = result.compressed;
+            if (result.usage) {
+              usagePush([result.usage]);
+            }
+            // Inject metadata into _query for UI persistence (shared ref with userQuestion.value)
+            if (_query && Array.isArray(_query) && _query.length > 0) {
+              const firstValue = _query[0];
+              if (firstValue?.text) {
+                firstValue.text.originalContent = userChatInput;
+                firstValue.text.content = result.compressed;
+                (firstValue as any).compression = {
+                  modelId: modelData.id,
+                  inputTokens: result.usage?.inputTokens,
+                  outputTokens: result.usage?.outputTokens
+                };
+              }
+            }
+          }
+        }
+      }
+    }
+
     const formatUserChatInput = fileInputPrompt
-      ? `${fileInputPrompt}\n\n${userChatInput}`
-      : userChatInput;
+      ? `${fileInputPrompt}\n\n${finalUserChatInput}`
+      : finalUserChatInput;
 
     // Initialize capabilities — sandbox skills (lazy-init)
     {
