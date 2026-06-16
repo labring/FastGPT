@@ -255,6 +255,7 @@ export type EmbeddingTrainTaskSchemaType = {
     trainDatasetFilePath: string;
     tunedModelId: string;
     evalDatasetId: string;
+    evalDatasetFilePath: string;
     baseModelEvalResult: EmbeddingEvalResult;
     tunedModelEvalResult: EmbeddingEvalResult;
     /** Re-judged metrics (from llm_judge stage, if available) */
