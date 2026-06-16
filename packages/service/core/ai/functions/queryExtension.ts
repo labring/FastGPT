@@ -133,6 +133,8 @@ export const queryExtension = async ({
   usedUserOpenAIKey: boolean;
   embeddingTokens: number;
 }> => {
+  const startTime = Date.now();
+  const getSeconds = () => +((Date.now() - startTime) / 1000).toFixed(2);
   // 1. Request model
   const modelData = getLLMModel(llmModel);
   const filterHistories = await filterGPTMessageByMaxContext({
@@ -170,7 +172,6 @@ export const queryExtension = async ({
     }
   ] as any;
 
-  const llmStartTime = Date.now();
   const {
     answerText: answer,
     requestId,
@@ -183,7 +184,6 @@ export const queryExtension = async ({
       messages
     }
   });
-  const seconds = +((Date.now() - llmStartTime) / 1000).toFixed(2);
 
   if (!answer) {
     return {
@@ -192,7 +192,7 @@ export const queryExtension = async ({
       llmModel: modelData.model,
       embeddingModel,
       requestId,
-      seconds,
+      seconds: getSeconds(),
       inputTokens: inputTokens,
       outputTokens: outputTokens,
       usedUserOpenAIKey,
@@ -213,7 +213,7 @@ export const queryExtension = async ({
       llmModel: modelData.model,
       embeddingModel,
       requestId,
-      seconds,
+      seconds: getSeconds(),
       inputTokens: inputTokens,
       outputTokens: outputTokens,
       usedUserOpenAIKey,
@@ -237,7 +237,7 @@ export const queryExtension = async ({
         llmModel: modelData.model,
         embeddingModel,
         requestId,
-        seconds,
+        seconds: getSeconds(),
         inputTokens,
         outputTokens,
         usedUserOpenAIKey,
@@ -257,7 +257,7 @@ export const queryExtension = async ({
         llmModel: modelData.model,
         embeddingModel,
         requestId,
-        seconds,
+        seconds: getSeconds(),
         inputTokens,
         outputTokens,
         usedUserOpenAIKey,
@@ -278,7 +278,7 @@ export const queryExtension = async ({
       llmModel: modelData.model,
       embeddingModel: useEmbeddingModel,
       requestId,
-      seconds,
+      seconds: getSeconds(),
       inputTokens,
       outputTokens,
       usedUserOpenAIKey,
@@ -295,7 +295,7 @@ export const queryExtension = async ({
       llmModel: modelData.model,
       embeddingModel,
       requestId,
-      seconds,
+      seconds: getSeconds(),
       inputTokens,
       outputTokens,
       usedUserOpenAIKey,
