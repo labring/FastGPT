@@ -24,6 +24,8 @@ import {
 } from '@/web/support/marketing/utils';
 import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
 import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { removeUnauthModels } from '@fastgpt/global/core/workflow/utils';
 
 type FormType = {
   avatar: string;
@@ -34,6 +36,7 @@ type FormType = {
 const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
   const { parentId, loadMyApps } = useContextSelector(AppListContext, (v) => v);
+  const { getMyModelList } = useSystemStore();
   const router = useRouter();
 
   const { register, setValue, watch, handleSubmit } = useForm<FormType>({
@@ -135,6 +138,13 @@ const JsonImportModal = ({ onClose }: { onClose: () => void }) => {
           return Promise.reject(t('app:invalid_json_format'));
         }
       })();
+
+      const allowedModels = await getMyModelList();
+      await removeUnauthModels({
+        modules: workflow.nodes,
+        chatConfig: workflow.chatConfig,
+        allowedModels
+      });
 
       return postCreateApp({
         parentId,
