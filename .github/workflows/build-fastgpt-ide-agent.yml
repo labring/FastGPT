@@ -119,6 +119,13 @@ jobs:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Login to Ali Hub
+        if: matrix.image == 'fastgpt-agent-sandbox-proxy'
+        uses: docker/login-action@v3
+        with:
+          registry: registry.cn-hangzhou.aliyuncs.com
+          username: ${{ secrets.FASTGPT_ALI_IMAGE_USER }}
+          password: ${{ secrets.FASTGPT_ALI_IMAGE_PSW }}
       - name: Download digests
         uses: actions/download-artifact@v4
         with:
@@ -132,9 +139,20 @@ jobs:
       - name: Set image name and tag
         run: |
           echo "Git_Tag=ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:${{ matrix.tag }}" >> $GITHUB_ENV
+          if [[ "${{ matrix.image }}" == "fastgpt-agent-sandbox-proxy" ]]; then
+            echo "Ali_Tag=${{ secrets.FASTGPT_ALI_IMAGE_PREFIX }}/${{ matrix.image }}:${{ matrix.tag }}" >> $GITHUB_ENV
+          fi
 
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
         run: |
-          docker buildx imagetools create -t "${Git_Tag}" \
-            $(printf 'ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}@sha256:%s ' *)
+          TAGS="${Git_Tag}"
+          if [[ -n "${Ali_Tag:-}" ]]; then
+            TAGS="$(echo -e "${TAGS}\n${Ali_Tag}")"
+          fi
+
+          for TAG in $TAGS; do
+            docker buildx imagetools create -t "${TAG}" \
+              $(printf 'ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}@sha256:%s ' *)
+            sleep 5
+          done
