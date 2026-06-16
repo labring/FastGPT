@@ -16,7 +16,6 @@ import {
   ChatStatusEnum
 } from '@fastgpt/global/core/chat/constants';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
-import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import {
   appendNodeResponseByParent,
   mergeNodeResponseDataByIdAndParent
@@ -505,6 +504,23 @@ export const useChatGenerate = ({
 
   const generatingMessage = useMemoizedFn(
     (message: generatingMessageProps & { autoTTSResponse?: boolean }) => {
+      if (message.event === SseResponseEventEnum.chatTitle && message.title) {
+        setChatBoxData((state) =>
+          state.appId === appId && state.chatId === chatId
+            ? {
+                ...state,
+                title: message.title
+              }
+            : state
+        );
+        syncSidebarChatGenerateStatus(ChatGenerateStatusEnum.generating, {
+          title: message.title,
+          targetAppId: appId,
+          targetChatId: chatId
+        });
+        return;
+      }
+
       generatingMessageQueueRef.current.push(message);
 
       if (generatingMessageFrameRef.current !== undefined) return;
@@ -624,7 +640,6 @@ export const useChatGenerate = ({
               status: ChatStatusEnum.loading
             }
           ];
-          const temporaryHistoryTitle = getChatTitleFromChatMessage(currentHumanChat);
 
           resumedChatTargetRef.current = `${appId}:${chatId}`;
 
@@ -632,7 +647,6 @@ export const useChatGenerate = ({
             state.appId === appId && state.chatId === chatId
               ? {
                   ...state,
-                  title: temporaryHistoryTitle,
                   chatGenerateStatus: ChatGenerateStatusEnum.generating,
                   hasBeenRead: false
                 }
@@ -641,8 +655,7 @@ export const useChatGenerate = ({
           syncSidebarChatGenerateStatus(ChatGenerateStatusEnum.generating, {
             hasBeenRead: false,
             targetAppId: appId,
-            targetChatId: chatId,
-            title: temporaryHistoryTitle
+            targetChatId: chatId
           });
 
           setChatRecords(

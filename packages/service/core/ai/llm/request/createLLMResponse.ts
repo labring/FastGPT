@@ -15,7 +15,10 @@ import type { AIApiRequestMeta } from '../../config';
 import { createChatCompletion } from './createChatCompletion';
 import { useLLMResponseAccumulator } from './hooks/useLLMResponseAccumulator';
 import { llmCompletionsBodyFormat } from './requestBody';
-import { saveLLMErrorRecord, saveLLMResponseRecord } from './records';
+import {
+  saveLLMErrorRecord as persistLLMErrorRecord,
+  saveLLMResponseRecord as persistLLMResponseRecord
+} from './records';
 import { createCompleteResponse } from './response/complete';
 import { normalizeCompletionFinishReason } from './response/normalize';
 import { createStreamResponse } from './response/stream';
@@ -36,7 +39,14 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
 ): Promise<LLMResponse> => {
   const requestId = createLLMRequestId();
 
-  const { throwError = true, body, custonHeaders, userKey, maxContinuations = 1 } = args;
+  const {
+    throwError = true,
+    body,
+    custonHeaders,
+    userKey,
+    maxContinuations = 1,
+    saveLLMResponseRecord = true
+  } = args;
   const { messages, useVision, useAudio, useVideo, extractFiles, tools, toolCallMode } = body;
   const model = getLLMModel(body.model);
 
@@ -200,19 +210,21 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
       (finish_reason === 'stop' || !finish_reason || isEmptyToolCallsFinish);
     const responseEmptyTip = isNotResponse ? getEmptyResponseTip() : undefined;
 
-    // 保存详情只记录实际请求与模型响应，不把用于计费分支的 usedUserOpenAIKey 写入详情。
-    saveLLMResponseRecord({
-      requestId,
-      requestBody: requestBody as ChatCompletionCreateParams,
-      answerText,
-      reasoningText,
-      toolCalls,
-      finishReason: finish_reason,
-      usage,
-      inputTokens,
-      outputTokens,
-      error: error ?? responseEmptyTip
-    });
+    if (saveLLMResponseRecord) {
+      // 保存详情只记录实际请求与模型响应，不把用于计费分支的 usedUserOpenAIKey 写入详情。
+      persistLLMResponseRecord({
+        requestId,
+        requestBody: requestBody as ChatCompletionCreateParams,
+        answerText,
+        reasoningText,
+        toolCalls,
+        finishReason: finish_reason,
+        usage,
+        inputTokens,
+        outputTokens,
+        error: error ?? responseEmptyTip
+      });
+    }
 
     if (error && throwError) {
       throw error;
@@ -231,6 +243,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
         outputTokens,
         usedUserOpenAIKey: aiRequestMeta.usedUserOpenAIKey
       },
+      rawUsage: usage,
       requestId,
 
       requestMessages,
@@ -239,11 +252,13 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
     };
   } catch (error) {
     // createChatCompletion 抛错或解析阶段抛错都会落到这里，保证 requestId 对应的错误详情被保存。
-    saveLLMErrorRecord({
-      requestId,
-      requestBody: requestBody as ChatCompletionCreateParams,
-      error
-    });
+    if (saveLLMResponseRecord) {
+      persistLLMErrorRecord({
+        requestId,
+        requestBody: requestBody as ChatCompletionCreateParams,
+        error
+      });
+    }
 
     if (throwError) {
       throw error;

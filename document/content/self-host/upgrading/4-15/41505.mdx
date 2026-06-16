@@ -3,18 +3,30 @@ title: 'V4.15.0-beta5(进行中)'
 description: 'FastGPT V4.15.0-beta5 更新说明'
 ---
 
+### 升级脚本
+
+```shell
+curl --location --request POST 'https://{{host}}/api/admin/initSandboxArchive' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json' \
+-d '{"runArchive":true,"inactiveDays":0}'
+```
+
 ## 🚀 新增内容
 
 1. HTTP 节点支持配置忽略 TLS 证书校验，适用于调用使用自签名证书或内部证书的 HTTPS 服务。
 2. 支持目录深度环境变量，避免无限嵌套目录。
 3. 对话框支持快速滚动到底部按键。
 4. 参考 Lobe UI 优化流输出动效。
+5. 支持通过模型生成对话标题，需配置 `CHAT_TITLE_MODEL` 变量。
+6. 调整 Skill Edit 编辑交互。
 
 ## ⚙️ 优化
 
 1. HTML 输出后自动切换为预览，减少手动打开预览的操作。
 2. 优化应用、知识库、文件和文件夹等长名称展示：超出宽度时自动省略，并在 hover 名称时展示完整内容。
 3. 移除所有内置 LLM 请求中的 `temperature` 和 `max_tokens`，避免部分模型不兼容。
+4. 知识库训练出现错误时的提示，同时支持一键全部重试。
 
 ## 🐛 修复
 

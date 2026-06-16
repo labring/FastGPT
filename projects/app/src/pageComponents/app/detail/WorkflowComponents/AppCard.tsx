@@ -202,8 +202,10 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
           <IconButton
             aria-label="Expand"
             icon={<MyIcon name={'common/select'} w={'18px'} color={'myGray.500'} />}
-            w={'34px'}
-            h={'34px'}
+            w={'32px'}
+            h={'32px'}
+            minW={'32px'}
+            minH={'32px'}
             flexShrink={0}
             bg={'white'}
             border={'1px solid'}

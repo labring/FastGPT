@@ -256,6 +256,7 @@ export const getWorkflowResponseWrite = ({
 
     // detail=false 时只保留最终答案类事件，隐藏节点、工具和中间状态细节。
     const notDetailEvent: Record<string, 1> = {
+      [SseResponseEventEnum.chatTitle]: 1,
       [SseResponseEventEnum.answer]: 1,
       [SseResponseEventEnum.fastAnswer]: 1
     };
@@ -271,7 +272,7 @@ export const getWorkflowResponseWrite = ({
     if (!showNodeStatus && statusEvent[event]) return;
 
     writeStreamChunk({
-      event: detail ? event : undefined,
+      event: detail || event === SseResponseEventEnum.chatTitle ? event : undefined,
       data: JSON.stringify({
         ...data,
         ...(id && detail && { responseValueId: id })

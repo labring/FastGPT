@@ -86,6 +86,7 @@
   "sandbox_failed": "沙箱创建失败: {{message}}",
   "sandbox_retry": "重试",
   "sandbox_error_title": "沙箱创建失败",
+  "sandbox_debug_loading_toast": "沙箱启动中，请稍后再发送消息",
   "no_current_version": "Skill 暂无可用版本，请重新创建或导入后再编辑。",
   "permission.des.read": "可查看 Agent Skill",
   "permission.des.write": "可编辑 Agent Skill",

@@ -63,7 +63,6 @@ const createMockProps = (
       outputs: []
     }
   ],
-  newTitle: 'Test Chat',
   source: 'online' as any,
   userContent: {
     obj: ChatRoleEnum.Human,
@@ -211,7 +210,7 @@ describe('pushChatRecords', () => {
       // Check chat record
       const chat = await MongoChat.findOne({ appId: testAppId, chatId: props.chatId });
       expect(chat).toBeDefined();
-      expect(chat?.title).toBe('Test Chat');
+      expect(chat?.title).toBe('');
       expect(String(chat?.teamId)).toBe(props.teamId);
     });
 

@@ -66,6 +66,8 @@ export type CreateLLMResponseProps<
   custonHeaders?: Record<string, string>;
   // finish_reason=length 时最多连续请求的次数，避免模型一直返回 length 造成死循环。
   maxContinuations?: number;
+  // 是否保存 LLM 请求响应详情。内部辅助调用可关闭，避免污染用户可见的请求记录。
+  saveLLMResponseRecord?: boolean;
 } & ResponseEvents;
 
 export type LLMResponse = {
@@ -83,6 +85,7 @@ export type LLMResponse = {
     // 只给上层计费判断使用，不保存到 LLM request detail。
     usedUserOpenAIKey: boolean;
   };
+  rawUsage?: LLMAccumulatedUsage;
 
   // 原始请求 messages 与最终 assistantMessage，供上层继续拼完整对话上下文。
   requestMessages: ChatCompletionMessageParam[];

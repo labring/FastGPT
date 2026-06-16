@@ -30,7 +30,7 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
-import { getChatTitleFromChatMessage, removeEmptyUserInput } from '@fastgpt/global/core/chat/utils';
+import { removeEmptyUserInput } from '@fastgpt/global/core/chat/utils';
 import {
   failChatRound,
   finalizeChatRound,
@@ -180,6 +180,7 @@ export const getMcpServerTools = async (key: string): Promise<Tool[]> => {
 export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps) => {
   const dispatchApp = async (app: AppSchemaType, variables: Record<string, any>) => {
     const isPlugin = app.type === AppTypeEnum.workflowTool;
+    const pluginFixedTitle = isPlugin ? 'Mcp call' : undefined;
 
     // Get app latest version
     const { versionId, nodes, edges, chatConfig } = await getAppLatestVersion(app._id, app);
@@ -230,7 +231,8 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
       tmbId: String(app.tmbId),
       source: ChatSourceEnum.mcp,
       userContent: userQuestion,
-      responseChatItemId
+      responseChatItemId,
+      fixedTitle: pluginFixedTitle
     });
     let chatRoundFinalized = false;
 
@@ -276,7 +278,6 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
         value: assistantResponses,
         memories: system_memories
       };
-      const newTitle = isPlugin ? 'Mcp call' : getChatTitleFromChatMessage(userQuestion);
       const saveParams: SaveChatProps = {
         chatId: preparedRound.chatId,
         appId: String(app._id),
@@ -286,7 +287,6 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
         nodes,
         appChatConfig: chatConfig,
         variables: newVariables,
-        newTitle,
         source: ChatSourceEnum.mcp,
         userContent: userQuestion,
         aiContent: aiResponse,

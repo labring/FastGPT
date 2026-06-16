@@ -1,16 +1,22 @@
 import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatHistoryItemType } from '@fastgpt/global/core/chat/type';
+import i18next from 'i18next';
 
 export const getDisplayHistoryTitle = ({
   title,
-  fallbackTitle
+  fallbackTitle = i18next.t('common:core.chat.New Chat')
 }: {
   title?: string;
-  fallbackTitle: string;
+  fallbackTitle?: string;
 }) => {
   const normalizedTitle = title?.trim();
   return normalizedTitle || fallbackTitle;
 };
+
+export const normalizeHistoryTitle = (history: ChatHistoryItemType) => ({
+  ...history,
+  title: getDisplayHistoryTitle({ title: history.title })
+});
 
 export const upsertHistoryTitle = ({
   histories,
@@ -24,7 +30,7 @@ export const upsertHistoryTitle = ({
   appId: string;
   chatId: string;
   title?: string;
-  fallbackTitle: string;
+  fallbackTitle?: string;
   now?: Date;
 }) => {
   const nextTitle = getDisplayHistoryTitle({ title, fallbackTitle });

@@ -16,7 +16,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import type { UpdateHistoryBodyType } from '@fastgpt/global/openapi/core/chat/history/api';
 import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
-import { upsertHistoryTitle } from './historyTitleUtils';
+import { normalizeHistoryTitle, upsertHistoryTitle } from './historyTitleUtils';
 
 type UpdateHistoryParams = Pick<UpdateHistoryBodyType, 'chatId' | 'customTitle' | 'top'>;
 
@@ -87,11 +87,7 @@ const ChatContextProvider = ({
   const { chatId, setChatId, outLinkAuthData } = useChatStore();
   const historyAppId = String(params.appId ?? '');
 
-  const {
-    isOpen: isOpenSlider,
-    onClose: onCloseSlider,
-    onOpen: openSlider
-  } = useDisclosure();
+  const { isOpen: isOpenSlider, onClose: onCloseSlider, onOpen: openSlider } = useDisclosure();
   const openSliderTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const onOpenSlider = useCallback(() => {
     if (openSliderTimerRef.current) {
@@ -125,11 +121,12 @@ const ChatContextProvider = ({
     refreshDeps: [params],
     showErrorToast: false
   });
-  const historiesRef = useRef(histories);
+  const displayHistories = useMemo(() => histories.map(normalizeHistoryTitle), [histories]);
+  const historiesRef = useRef(displayHistories);
 
   useEffect(() => {
-    historiesRef.current = histories;
-  }, [histories]);
+    historiesRef.current = displayHistories;
+  }, [displayHistories]);
 
   const onChangeChatId = useCallback(
     (changeChatId = getNanoid(24), forbid = false) => {
@@ -249,8 +246,7 @@ const ChatContextProvider = ({
           histories: state,
           appId: historyAppId,
           chatId,
-          title: newTitle,
-          fallbackTitle: '新对话'
+          title: newTitle
         })
       );
       loadHistories({ init: true, silent: true });
@@ -258,7 +254,10 @@ const ChatContextProvider = ({
     [historyAppId, loadHistories, setHistories]
   );
 
-  const historyChatIdsKey = useMemo(() => histories.map((h) => h.chatId).join(','), [histories]);
+  const historyChatIdsKey = useMemo(
+    () => displayHistories.map((h) => h.chatId).join(','),
+    [displayHistories]
+  );
   const prevHistoryAppIdRef = useRef<string | null>(null);
   const pendingAppChatRestoreRef = useRef(false);
 
@@ -280,7 +279,7 @@ const ChatContextProvider = ({
     pendingAppChatRestoreRef.current = false;
 
     const { chatId: currentChatId } = useChatStore.getState();
-    const scopedHistories = histories.filter((item) => item.appId === historyAppId);
+    const scopedHistories = displayHistories.filter((item) => item.appId === historyAppId);
 
     if (scopedHistories.some((item) => item.chatId === currentChatId)) {
       return;
@@ -290,12 +289,12 @@ const ChatContextProvider = ({
       // 跨应用恢复历史时必须重新拉 init，否则 chatBoxData 会停留在上一个应用。
       onChangeChatId(scopedHistories[0].chatId);
     }
-  }, [historyAppId, histories, isPaginationLoading, onChangeChatId]);
+  }, [historyAppId, displayHistories, isPaginationLoading, onChangeChatId]);
 
   /** 侧栏是否仍有「思考中」：仅此时需要定时轮询；无则只依赖单次 poll / 可见性拉取，避免一直打接口。 */
   const hasGeneratingInSidebar = useMemo(
-    () => histories.some((h) => h.chatGenerateStatus === ChatGenerateStatusEnum.generating),
-    [histories]
+    () => displayHistories.some((h) => h.chatGenerateStatus === ChatGenerateStatusEnum.generating),
+    [displayHistories]
   );
 
   // 轮询同步侧栏 chatGenerateStatus / hasBeenRead（以服务端为准）。
@@ -376,12 +375,12 @@ const ChatContextProvider = ({
       setHistories,
       ScrollData,
       loadHistories,
-      histories,
+      histories: displayHistories,
       onUpdateHistoryTitle
     }),
     [
       ScrollData,
-      histories,
+      displayHistories,
       isLoading,
       isOpenSlider,
       loadHistories,

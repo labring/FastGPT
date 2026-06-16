@@ -64,6 +64,7 @@ const AIChatBubbleActions = ({
       0
     );
   }, [responseData]);
+  const showTotalPoints = showPoints && totalPoints > 0;
 
   const formattedPoints = useMemo(() => {
     const formatted = new Intl.NumberFormat(undefined, {
@@ -149,7 +150,7 @@ const AIChatBubbleActions = ({
           </>
         )}
 
-        {showPoints && (
+        {showTotalPoints && (
           <Box display={['none', 'block']} ml={4} color={'myGray.400'}>
             {t('common:n_ai_points', { amount: formattedPoints })}
           </Box>

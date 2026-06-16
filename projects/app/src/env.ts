@@ -22,17 +22,22 @@ export const appEnv = createEnv({
     SHOW_DISCOUNT_COUPON: BoolSchema.default(false),
     HIDE_CHAT_COPYRIGHT_SETTING: BoolSchema.default(false),
     AGENT_SANDBOX_FREE_TIP: BoolSchema.default(false),
+    AGENT_SANDBOX_PROXY_URL: AgentSandboxProxyUrlSchema.optional(),
 
     // 临时
     MARKETPLACE_URL: UrlSchema.default('https://v2.marketplace.fastgpt.cn'),
-    PASSWORD_EXPIRED_MONTH: IntSchema.optional(),
-    AGENT_SANDBOX_PROXY_URL: AgentSandboxProxyUrlSchema.optional()
+    PASSWORD_EXPIRED_MONTH: IntSchema.optional()
   },
   emptyStringAsUndefined: true,
   runtimeEnv: process.env,
   onValidationError(issues) {
-    const paths = issues.map((issue) => issue.path).join(', ');
-    throw new Error(`Invalid app environment variables. Please check: ${paths}\n`);
+    const details = issues
+      .map((issue) => {
+        const path = issue.path?.join('.') || '<root>';
+        return `${path}: ${issue.message}`;
+      })
+      .join('\n');
+    throw new Error(`Invalid app environment variables:\n${details}\n`);
   }
 });
 

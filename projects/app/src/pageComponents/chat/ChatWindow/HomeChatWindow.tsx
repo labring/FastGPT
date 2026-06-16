@@ -21,8 +21,6 @@ import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/const
 import React, { useMemo, useEffect } from 'react';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import { streamFetch } from '@/web/common/api/fetch';
-import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
-import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { useLocalStorageState, useMemoizedFn, useMount } from 'ahooks';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -53,6 +51,7 @@ import ToolMenu from '@/pageComponents/chat/ToolMenu';
 import MobileModelSelectorDrawer from './MobileModelSelectorDrawer';
 import { mobileChatHeaderIconButtonStyle } from './headerIconButtonStyle';
 import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
+import { getDisplayHistoryTitle } from '@/web/core/chat/context/historyTitleUtils';
 
 const defaultFileSelectConfig: AppFileSelectConfigType = {
   maxFiles: 20,
@@ -83,7 +82,6 @@ const HomeChatWindow = () => {
   const { chatId, appId, outLinkAuthData } = useChatStore();
 
   const forbidLoadChatRef = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
-  const onUpdateHistoryTitle = useContextSelector(ChatContext, (v) => v.onUpdateHistoryTitle);
   const onOpenSlider = useContextSelector(ChatContext, (v) => v.onOpenSlider);
 
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
@@ -101,6 +99,10 @@ const HomeChatWindow = () => {
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
 
   const isCurrentChatReady = chatBoxData.appId === appId && chatBoxData.chatId === chatId;
+  const chatWindowTitle = getDisplayHistoryTitle({
+    title: isCurrentChatReady ? chatBoxData.title : undefined,
+    fallbackTitle: t('common:core.chat.New Chat')
+  });
   const { SandboxEntryIcon } = useSandboxStatus({ appId, chatId, outLinkAuthData });
   const { SandboxEditorModal, onOpenSandboxModal } = useSandboxEditor({
     appId,
@@ -278,18 +280,6 @@ const HomeChatWindow = () => {
         abortCtrl: controller
       });
 
-      const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats({ messages: histories })[0]);
-
-      onUpdateHistoryTitle({ chatId, newTitle });
-      setChatBoxData((state) =>
-        state.appId === appId && state.chatId === chatId
-          ? {
-              ...state,
-              title: newTitle
-            }
-          : state
-      );
-
       refreshRecentlyUsed();
 
       return { responseText, isNewChat: forbidLoadChatRef.current };
@@ -433,7 +423,7 @@ const HomeChatWindow = () => {
       >
         {isPc ? (
           <ChatWindowHeader
-            title={chatBoxData?.title}
+            title={chatWindowTitle}
             history={chatRecords}
             chatType={ChatTypeEnum.home}
             rightActions={<SandboxEntryIcon onOpen={onOpenSandboxModal} />}

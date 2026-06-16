@@ -246,7 +246,7 @@ describe('sandbox provider config', () => {
     vi.resetModules();
 
     await expect(import('@fastgpt/service/env')).rejects.toThrow(
-      'AGENT_SANDBOX_PROXY_SECRET must be at least 32 characters'
+      'Invalid environment variables. Please check: AGENT_SANDBOX_PROXY_SECRET'
     );
   });
 

@@ -299,7 +299,6 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
       nodes,
       appChatConfig: chatConfig,
       variables: newVariables,
-      newTitle: String(userQuestion || '').slice(0, 8),
       shareId: outLinkConfig.shareId,
       source: getChatSourceByPublishChannel(outLinkConfig.type),
       sourceName: outLinkConfig.name,

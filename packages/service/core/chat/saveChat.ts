@@ -44,7 +44,6 @@ export type Props = {
   nodes: StoreNodeItemType[];
   appChatConfig?: AppChatConfigType;
   variables?: Record<string, any>;
-  newTitle: string;
   source: `${ChatSourceEnum}`;
   sourceName?: string;
   shareId?: string;
@@ -228,7 +227,6 @@ export const finalizeChatRound = async (props: Props) => {
     nodes,
     appChatConfig,
     variables,
-    newTitle,
     source,
     sourceName,
     shareId,
@@ -336,7 +334,6 @@ export const finalizeChatRound = async (props: Props) => {
           welcomeText,
           variables: variables || {},
           pluginInputs,
-          title: newTitle,
           source,
           sourceName,
           shareId,
@@ -477,7 +474,6 @@ export const pushChatRecords = async (props: Props) => {
     nodes,
     appChatConfig,
     variables,
-    newTitle,
     source,
     sourceName,
     shareId,
@@ -552,7 +548,6 @@ export const pushChatRecords = async (props: Props) => {
             welcomeText,
             variables: variables || {},
             pluginInputs,
-            title: newTitle,
             source,
             sourceName,
             shareId,

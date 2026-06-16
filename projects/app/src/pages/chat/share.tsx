@@ -3,7 +3,6 @@ import { useRouter } from 'next/router';
 import { Box, Flex, IconButton } from '@chakra-ui/react';
 import { streamFetch } from '@/web/common/api/fetch';
 import SideBar from '@/components/SideBar';
-import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
@@ -13,7 +12,6 @@ import { serviceSideProps } from '@/web/common/i18n/utils';
 import { LANG_KEY, SHARE_LANG_KEY } from '@fastgpt/web/i18n/utils';
 import { useTranslation } from 'next-i18next';
 import { getInitOutLinkChatInfo } from '@/web/core/chat/api';
-import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 
@@ -32,6 +30,7 @@ import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/contex
 import ChatRecordContextProvider, {
   ChatRecordContext
 } from '@/web/core/chat/context/chatRecordContext';
+import { getDisplayHistoryTitle } from '@/web/core/chat/context/historyTitleUtils';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { type AppSchemaType } from '@fastgpt/global/core/app/type';
@@ -98,7 +97,6 @@ const OutLink = (props: Props) => {
 
   const forbidLoadChatRef = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
   const onChangeChatId = useContextSelector(ChatContext, (v) => v.onChangeChatId);
-  const onUpdateHistoryTitle = useContextSelector(ChatContext, (v) => v.onUpdateHistoryTitle);
   const onOpenSlider = useContextSelector(ChatContext, (v) => v.onOpenSlider);
   const onCloseSlider = useContextSelector(ChatContext, (v) => v.onCloseSlider);
 
@@ -113,8 +111,10 @@ const OutLink = (props: Props) => {
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const isChatRecordsLoaded = useContextSelector(ChatRecordContext, (v) => v.isChatRecordsLoaded);
-  const chatWindowTitle =
-    chatBoxData.title?.trim() || t('common:core.chat.New Chat', { defaultValue: '新对话' });
+  const chatWindowTitle = getDisplayHistoryTitle({
+    title: chatBoxData.title,
+    fallbackTitle: t('common:core.chat.New Chat')
+  });
 
   const initSign = useRef(false);
   const { data, loading } = useRequest(
@@ -200,19 +200,10 @@ const OutLink = (props: Props) => {
         abortCtrl: controller
       });
 
-      const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats({ messages: histories })[0]);
-
       // new chat
       if (completionChatId !== chatId) {
         onChangeChatId(completionChatId, true);
       }
-      onUpdateHistoryTitle({ chatId: completionChatId, newTitle });
-
-      // update chat window
-      setChatBoxData((state) => ({
-        ...state,
-        title: newTitle
-      }));
 
       // hook message
       window.top?.postMessage(
@@ -234,8 +225,6 @@ const OutLink = (props: Props) => {
       outLinkAuthData,
       isShowCite,
       props.showSkillReferences,
-      onUpdateHistoryTitle,
-      setChatBoxData,
       forbidLoadChatRef,
       onChangeChatId
     ]

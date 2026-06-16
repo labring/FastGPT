@@ -6,11 +6,7 @@ import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
-import {
-  concatHistories,
-  getChatTitleFromChatMessage,
-  removeEmptyUserInput
-} from '@fastgpt/global/core/chat/utils';
+import { concatHistories, removeEmptyUserInput } from '@fastgpt/global/core/chat/utils';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
@@ -94,6 +90,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // 类型获取
     const isPlugin = app.type === AppTypeEnum.workflowTool;
     const isTool = app.type === AppTypeEnum.tool;
+    const pluginFixedTitle = isPlugin ? variables.cTime || formatTime2YMDHM(new Date()) : undefined;
 
     if (
       !(await teamFrequencyLimit({
@@ -175,7 +172,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       sourceName: appName || '',
       userContent: userQuestion,
       responseChatItemId: roundState.responseChatItemId,
-      interactive
+      interactive,
+      fixedTitle: pluginFixedTitle
     });
 
     const runningChatId = preparedRound.chatId;
@@ -256,11 +254,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       data: '[DONE]'
     });
 
-    // save chat
-    const newTitle = isPlugin
-      ? variables.cTime || formatTime2YMDHM(new Date())
-      : getChatTitleFromChatMessage(userQuestion);
-
     const aiResponse: AIChatItemType & { dataId?: string } = {
       dataId: responseChatItemId,
       obj: ChatRoleEnum.AI,
@@ -276,7 +269,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       nodes,
       appChatConfig: chatConfig,
       variables: newVariables,
-      newTitle,
       source,
       sourceName: appName || '',
       userContent: userQuestion,

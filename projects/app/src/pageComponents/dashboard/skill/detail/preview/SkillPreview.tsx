@@ -59,6 +59,7 @@ const SkillPreview = () => {
     model: selectedModel,
     chatId,
     isReady,
+    disabledSendTip: isReady ? undefined : 'skill:sandbox_debug_loading_toast',
     InputLeftComponent: ModelSelectorInput
   });
 

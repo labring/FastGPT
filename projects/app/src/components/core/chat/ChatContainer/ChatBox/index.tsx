@@ -59,6 +59,7 @@ import type { ChatRecordsListProps } from './components/ChatRecordsList';
 import AppChatMain from './components/AppChatMain';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import ScrollToBottomButton from './components/ScrollToBottomButton';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const ChatHomeVariablesForm = dynamic(() => import('./components/home/ChatHomeVariablesForm'));
 const DesktopHomeLayout = dynamic(() => import('./components/home/DesktopHomeLayout'));
@@ -77,6 +78,7 @@ type Props = OutLinkChatAuthProps &
     enableAutoResume?: boolean;
     /** 是否执行普通 App Chat 的已读标记；Skill 调试会话没有普通 Chat history，需要关闭。 */
     enableMarkChatRead?: boolean;
+    disabledSendTip?: string;
 
     onStartChat?: (e: StartChatFnProps) => Promise<
       StreamResponseType & {
@@ -102,6 +104,7 @@ const ChatBox = ({
   showWorkorder,
   enableAutoResume = false,
   enableMarkChatRead = true,
+  disabledSendTip,
   onStartChat,
   chatType,
   onTriggerRefresh,
@@ -114,6 +117,7 @@ const ChatBox = ({
   ...props
 }: Props) => {
   const { t } = useTranslation();
+  const { toast } = useToast();
   const { isPc } = useSystem();
   const TextareaDom = useRef<HTMLTextAreaElement>(null);
   const chatController = useRef(new AbortController());
@@ -294,6 +298,16 @@ const ChatBox = ({
     generatingScroll,
     syncSidebarChatGenerateStatus,
     finishChatGenerateStatus
+  });
+  const sendPromptWithDisabledGuard = useMemoizedFn((input: ChatBoxInputType) => {
+    if (disabledSendTip) {
+      toast({
+        title: disabledSendTip,
+        status: 'warning'
+      });
+      return;
+    }
+    sendPrompt(input);
   });
 
   const handleStopSettled = useMemoizedFn((status: ChatGenerateStatusEnum, completed: boolean) => {
@@ -545,11 +559,11 @@ const ChatBox = ({
         </Box>
       ) : (
         <ChatInput
-          onSendMessage={sendPrompt}
+          onSendMessage={sendPromptWithDisabledGuard}
           onStop={() => abortRequest('stop')}
           onStopChat={requestStopChat}
           onStopSettled={handleStopSettled}
-          disableSend={isRoundPending || !isReady}
+          disableSend={isRoundPending || (!isReady && !disabledSendTip)}
           TextareaDom={TextareaDom}
           resetInputVal={resetInputVal}
           chatForm={chatForm}
@@ -612,7 +626,7 @@ const ChatBox = ({
                 />
 
                 <ChatInput
-                  onSendMessage={sendPrompt}
+                  onSendMessage={sendPromptWithDisabledGuard}
                   lastInteractive={lastInteractive}
                   onStop={() => abortRequest('stop')}
                   onStopChat={requestStopChat}

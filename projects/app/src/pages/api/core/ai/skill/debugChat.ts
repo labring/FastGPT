@@ -9,11 +9,7 @@ import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat
 import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
-import {
-  concatHistories,
-  getChatTitleFromChatMessage,
-  removeEmptyUserInput
-} from '@fastgpt/global/core/chat/utils';
+import { concatHistories, removeEmptyUserInput } from '@fastgpt/global/core/chat/utils';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { NextAPI } from '@/service/middleware/entry';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
@@ -416,8 +412,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     });
 
     // Save chat records (using skillId as virtual appId)
-    const newTitle = getChatTitleFromChatMessage(userQuestion);
-
     const aiResponse: AIChatItemType & { dataId?: string } = {
       dataId: finalResponseChatItemId,
       obj: ChatRoleEnum.AI,
@@ -435,7 +429,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       nodes: [],
       appChatConfig: {},
       variables: {},
-      newTitle,
       source: ChatSourceEnum.test,
       userContent: userQuestion,
       aiContent: aiResponse,
