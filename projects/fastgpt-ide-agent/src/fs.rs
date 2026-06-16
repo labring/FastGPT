@@ -6,8 +6,10 @@ use std::time::{Duration, SystemTime};
 use base64::Engine;
 use futures_util::{SinkExt, StreamExt};
 use notify::event::ModifyKind;
-use notify::{Event, EventKind, RecursiveMode};
-use notify_debouncer_full::{DebounceEventResult, DebouncedEvent, new_debouncer};
+use notify::{Config, Event, EventKind, EventKindMask, RecommendedWatcher, RecursiveMode};
+use notify_debouncer_full::{
+    DebounceEventResult, DebouncedEvent, RecommendedCache, new_debouncer_opt,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio::sync::{broadcast, mpsc};
@@ -78,6 +80,10 @@ fn collect_debounced_event_paths(events: &[DebouncedEvent]) -> (Vec<String>, boo
     let mut overflow = false;
 
     for event in events {
+        if get_fs_event_kind(&event.event.kind).is_none() {
+            continue;
+        }
+
         for path in collect_fs_event_paths(&event.event) {
             if !paths.contains(&path) && paths.len() >= FS_CHANGE_MAX_PATHS {
                 overflow = true;
@@ -142,12 +148,16 @@ fn start_workspace_watcher(tx: broadcast::Sender<FsChangeBatch>) {
     let root = get_workspace_root().to_path_buf();
     let (event_tx, mut event_rx) = mpsc::unbounded_channel::<DebounceEventResult>();
 
-    let mut debouncer = match new_debouncer(
+    // 只订阅真实文件变更，避免 read_dir/read metadata 在 inotify 下触发 Access 事件后自激刷新。
+    let watcher_config = Config::default().with_event_kinds(EventKindMask::CORE);
+    let mut debouncer = match new_debouncer_opt::<_, RecommendedWatcher, _>(
         Duration::from_millis(FS_CHANGE_DEBOUNCE_MS),
         None,
         move |res| {
             let _ = event_tx.send(res);
         },
+        RecommendedCache::new(),
+        watcher_config,
     ) {
         Ok(debouncer) => debouncer,
         Err(err) => {
@@ -803,6 +813,7 @@ mod tests {
     use notify::event::{CreateKind, EventAttributes, EventKind};
     use serde_json::json;
     use std::fs;
+    use std::time::Instant;
 
     #[tokio::test]
     async fn test_handle_fs_request_jsonrpc_workflow() {
@@ -1065,6 +1076,26 @@ mod tests {
                 "build/index.js"
             ]
         );
+    }
+
+    #[test]
+    fn test_collect_debounced_event_paths_ignores_access_events() {
+        let temp_workspace = init_test_workspace();
+        let events = vec![DebouncedEvent::new(
+            Event {
+                kind: EventKind::Access(notify::event::AccessKind::Open(
+                    notify::event::AccessMode::Read,
+                )),
+                paths: vec![temp_workspace.join("skills")],
+                attrs: EventAttributes::new(),
+            },
+            Instant::now(),
+        )];
+
+        let (paths, overflow) = collect_debounced_event_paths(&events);
+
+        assert!(paths.is_empty());
+        assert!(!overflow);
     }
 
     #[test]
