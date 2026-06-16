@@ -125,6 +125,7 @@
   "import_model_config": "模型选择",
   "import_param_setting": "参数设置",
   "import_select_file": "选择文件",
+  "import_select_api_file": "选择文件（同步 API 文件库）",
   "import_select_link": "输入链接",
   "index_prefix_title": "将标题加入索引",
   "index_prefix_title_tips": "自动给所有索引加标题名",
