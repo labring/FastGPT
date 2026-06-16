@@ -30,7 +30,6 @@ type Props = {
   saveFile: (path?: string) => void;
   editorRef: React.MutableRefObject<SandboxEditorInstance | undefined>;
   filteredTree: TreeNode[];
-  loadingFile: boolean;
   showTerminalBtn?: boolean;
   canWrite?: boolean;
   headerRight?: React.ReactNode;
@@ -57,7 +56,6 @@ const EditorWorkspace = ({
   saveFile,
   editorRef,
   filteredTree,
-  loadingFile,
   showTerminalBtn = false,
   canWrite = true,
   headerRight,
@@ -132,22 +130,6 @@ const EditorWorkspace = ({
     [terminalHeight, workspaceHeight]
   );
 
-  const [delayedLoadingFile, setDelayedLoadingFile] = useState(false);
-
-  useEffect(() => {
-    if (loadingFile) {
-      const startTimer = setTimeout(() => {
-        setDelayedLoadingFile(true);
-      }, 100);
-      return () => clearTimeout(startTimer);
-    } else {
-      const endTimer = setTimeout(() => {
-        setDelayedLoadingFile(false);
-      }, 200);
-      return () => clearTimeout(endTimer);
-    }
-  }, [loadingFile]);
-
   const loadingLines = useMemo(() => {
     const lines: string[] = [];
     const isStage1 = isPreparing;
@@ -166,16 +148,7 @@ const EditorWorkspace = ({
   const showWorkspaceHeader = openedFiles.length > 0 || !!headerRight;
 
   const mainEditorNode = (
-    <MyBox
-      isLoading={delayedLoadingFile}
-      loadingVariant="particle"
-      flex={1}
-      display="flex"
-      flexDirection="column"
-      minH={0}
-      w="100%"
-      bg="white"
-    >
+    <MyBox flex={1} display="flex" flexDirection="column" minH={0} w="100%" bg="white">
       {loadingLines.length > 0 ? (
         <Flex
           flex={1}

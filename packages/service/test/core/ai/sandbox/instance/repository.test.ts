@@ -449,6 +449,65 @@ describe('sandbox instance helpers', () => {
     expect(stored?.storage).toBeUndefined();
   });
 
+  it('streams archive candidates by lastActiveAt descending', async () => {
+    const inactiveBefore = new Date('2026-02-01T00:00:00.000Z');
+    const appId = `instance-helper-${getNanoid()}`;
+    const [olderDoc, newerDoc] = await MongoSandboxInstance.create([
+      {
+        provider: 'opensandbox',
+        sandboxId: `instance-helper-${getNanoid()}`,
+        appId,
+        userId: 'user-1',
+        chatId: 'archive-old-chat',
+        type: SandboxTypeEnum.sessionRuntime,
+        status: SandboxStatusEnum.stopped,
+        lastActiveAt: new Date('2026-01-01T00:00:00.000Z'),
+        createdAt: new Date(),
+        metadata: {
+          image: { repository: 'image' }
+        }
+      },
+      {
+        provider: 'opensandbox',
+        sandboxId: `instance-helper-${getNanoid()}`,
+        appId,
+        userId: 'user-1',
+        chatId: 'archive-new-chat',
+        type: SandboxTypeEnum.sessionRuntime,
+        status: SandboxStatusEnum.stopped,
+        lastActiveAt: new Date('2026-01-20T00:00:00.000Z'),
+        createdAt: new Date(),
+        metadata: {
+          image: { repository: 'image' }
+        }
+      },
+      {
+        provider: 'opensandbox',
+        sandboxId: `instance-helper-${getNanoid()}`,
+        appId,
+        userId: 'user-1',
+        chatId: 'archive-active-chat',
+        type: SandboxTypeEnum.sessionRuntime,
+        status: SandboxStatusEnum.stopped,
+        lastActiveAt: new Date('2026-02-20T00:00:00.000Z'),
+        createdAt: new Date(),
+        metadata: {
+          image: { repository: 'image' }
+        }
+      }
+    ]);
+
+    const resources = await collectArchiveCursor({
+      inactiveBefore,
+      providers: ['opensandbox']
+    });
+
+    expect(resources.map((item) => item.sandboxId)).toEqual([
+      newerDoc.sandboxId,
+      olderDoc.sandboxId
+    ]);
+  });
+
   it('supports repository optional provider and update branches', async () => {
     const appId = `instance-helper-${getNanoid()}`;
     const chatId = `chat-${getNanoid()}`;
