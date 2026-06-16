@@ -156,9 +156,9 @@ const Layout = ({ children }: { children: JSX.Element }) => {
             {isHideNavbar ? (
               <Auth>{children}</Auth>
             ) : isDashboardPage ? (
-              // Dashboard 页面：DashboardContainer 内部已包含新版侧边栏，无需旧版 Navbar
+              // Dashboard 页面：每个页面自行管理滚动，Layout 不接管 overflow
               <Auth>
-                <Box h={'100%'} overflow={'overlay'}>
+                <Box h={'100%'} overflow={'hidden'}>
                   {children}
                 </Box>
               </Auth>
