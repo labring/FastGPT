@@ -189,6 +189,7 @@ export const getNewModelFormData = (
     outputPrice: undefined,
     priceTiers: undefined,
 
+    isShared: true,
     isCustom: true,
     isActive: true,
     isDefault: false,
