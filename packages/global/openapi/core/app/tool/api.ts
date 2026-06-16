@@ -129,5 +129,21 @@ export const GetPreviewNodeQuerySchema = z.union([
 
 export type GetPreviewNodeQuery = z.infer<typeof GetPreviewNodeQuerySchema>;
 
+export const GetPreviewNodeQueryOpenAPISchema = GetPreviewNodeBaseQuerySchema.extend({
+  versionId: z.string().optional().meta({
+    example: '68ad85a7463006c963799a05',
+    description:
+      '工具版本 ID，与 getLatestVersion 必须二选一。传空字符串时返回最新版节点数据，但响应中的 version 为空'
+  }),
+  getLatestVersion: BoolSchema.optional().meta({
+    example: true,
+    description:
+      '是否获取最新版本 ID，与 versionId 必须二选一。只能传 true，表示返回最新版节点数据并带上具体 version'
+  })
+}).meta({
+  description:
+    'OpenAPI 文档参数模型。运行时仍由 GetPreviewNodeQuerySchema 校验 versionId/getLatestVersion 的二选一约束。'
+});
+
 export const GetPreviewNodeResponseSchema = ToolPreviewNodeResponseSchema;
 export type GetPreviewNodeResponse = z.infer<typeof GetPreviewNodeResponseSchema>;
