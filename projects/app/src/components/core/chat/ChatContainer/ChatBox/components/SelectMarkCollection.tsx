@@ -1,5 +1,5 @@
 import React from 'react';
-import { ModalBody, useTheme, ModalFooter, Button, Box, Card, Flex, Grid } from '@chakra-ui/react';
+import { useTheme, ModalFooter, Button, Box, Card, Flex, Grid } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -9,6 +9,7 @@ import dynamic from 'next/dynamic';
 import { type AdminFbkType } from '@fastgpt/global/core/chat/type';
 import SelectCollections from '@/web/core/dataset/components/SelectCollections';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const InputDataModal = dynamic(
   () => import('@/pageComponents/dataset/detail/components/InputDataModal')
@@ -49,49 +50,51 @@ const SelectMarkCollection = ({
           isLoading={isFetching}
           tips={t('common:core.chat.Select dataset Desc')}
         >
-          <ModalBody flex={'1 0 0'} overflowY={'auto'}>
-            <Grid
-              display={'grid'}
-              gridTemplateColumns={['repeat(1,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']}
-              gridGap={3}
-              userSelect={'none'}
-            >
-              {datasets.map((item) =>
-                (() => {
-                  return (
-                    <Card
-                      key={item._id}
-                      p={3}
-                      border={theme.borders.base}
-                      boxShadow={'sm'}
-                      h={'80px'}
-                      cursor={'pointer'}
-                      _hover={{
-                        boxShadow: 'md'
-                      }}
-                      onClick={() => {
-                        if (item.type === DatasetTypeEnum.folder) {
-                          setParentId(item._id);
-                        } else {
-                          setAdminMarkData({ ...adminMarkData, datasetId: item._id });
-                        }
-                      }}
-                    >
-                      <Flex alignItems={'center'} h={'38px'}>
-                        <Avatar src={item.avatar} w={'2rem'} borderRadius={'sm'}></Avatar>
-                        <Box ml={3}>{item.name}</Box>
-                      </Flex>
-                      <Flex justifyContent={'flex-end'} alignItems={'center'} fontSize={'sm'}>
-                        <MyIcon mr={1} name="kbTest" w={'12px'} />
-                        <Box color={'myGray.500'}>{item.vectorModel.name}</Box>
-                      </Flex>
-                    </Card>
-                  );
-                })()
-              )}
-            </Grid>
-            {datasets.length === 0 && <EmptyTip text={t('chat:empty_directory')}></EmptyTip>}
-          </ModalBody>
+          {datasets.length === 0 && <EmptyTip text={t('chat:empty_directory')}></EmptyTip>}
+          <Grid
+            display={'grid'}
+            gridTemplateColumns={['repeat(1,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']}
+            gridGap={3}
+            userSelect={'none'}
+          >
+            {datasets.map((item) =>
+              (() => {
+                return (
+                  <Card
+                    key={item._id}
+                    p={3}
+                    border={theme.borders.base}
+                    boxShadow={'sm'}
+                    h={'80px'}
+                    cursor={'pointer'}
+                    _hover={{
+                      boxShadow: 'md'
+                    }}
+                    onClick={() => {
+                      if (item.type === DatasetTypeEnum.folder) {
+                        setParentId(item._id);
+                      } else {
+                        setAdminMarkData({ ...adminMarkData, datasetId: item._id });
+                      }
+                    }}
+                  >
+                    <Flex alignItems={'center'} h={'38px'}>
+                      <Avatar src={item.avatar} w={'2rem'} borderRadius={'sm'}></Avatar>
+                      <MyTooltip label={item.name} showOnlyWhenOverflow>
+                        <Box ml={3} className="textEllipsis">
+                          {item.name}
+                        </Box>
+                      </MyTooltip>
+                    </Flex>
+                    <Flex justifyContent={'flex-end'} alignItems={'center'} fontSize={'sm'}>
+                      <MyIcon mr={1} name="kbTest" w={'12px'} />
+                      <Box color={'myGray.500'}>{item.vectorModel.name}</Box>
+                    </Flex>
+                  </Card>
+                );
+              })()
+            )}
+          </Grid>
         </DatasetSelectModal>
       )}
 
@@ -109,20 +112,18 @@ const SelectMarkCollection = ({
             });
           }}
           CustomFooter={
-            <ModalFooter>
-              <Button
-                variant={'whiteBase'}
-                mr={2}
-                onClick={() => {
-                  setAdminMarkData({
-                    ...adminMarkData,
-                    datasetId: undefined
-                  });
-                }}
-              >
-                {t('common:last_step')}
-              </Button>
-            </ModalFooter>
+            <Button
+              variant={'whiteBase'}
+              mr={2}
+              onClick={() => {
+                setAdminMarkData({
+                  ...adminMarkData,
+                  datasetId: undefined
+                });
+              }}
+            >
+              {t('common:last_step')}
+            </Button>
           }
         />
       )}

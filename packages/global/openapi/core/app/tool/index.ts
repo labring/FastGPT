@@ -1,7 +1,7 @@
 import type { OpenAPIPath } from '../../../type';
 import { TagsMap } from '../../../tag';
 import {
-  GetPreviewNodeQuerySchema,
+  GetPreviewNodeQueryOpenAPISchema,
   GetPreviewNodeResponseSchema,
   GetSystemToolTemplatesBodySchema,
   GetSystemToolTemplatesResponseSchema,
@@ -61,7 +61,7 @@ export const ToolPath: OpenAPIPath = {
         '根据工具 ID 和版本配置生成可插入工作流画布的工具节点模板，支持系统工具和我的工具（MCP、HTTP、工作流工具）',
       tags: [TagsMap.appSystemTool, TagsMap.httpTools, TagsMap.mcpTools, TagsMap.pluginTeam],
       requestParams: {
-        query: GetPreviewNodeQuerySchema
+        query: GetPreviewNodeQueryOpenAPISchema
       },
       responses: {
         200: {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { openAPIDocument } from '@fastgpt/global/openapi';
 import { GetPreviewNodeQuerySchema } from '@fastgpt/global/openapi/core/app/tool/api';
 
 describe('GetPreviewNodeQuerySchema', () => {
@@ -50,5 +51,9 @@ describe('GetPreviewNodeQuerySchema', () => {
         getLatestVersion: false
       }).success
     ).toBe(false);
+  });
+
+  it('keeps full OpenAPI document generation compatible with query params', () => {
+    expect(openAPIDocument.paths['/core/app/tool/getPreviewNode']?.get).toBeDefined();
   });
 });
