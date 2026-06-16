@@ -138,5 +138,9 @@
   "all_datasets": "All Knowledge Bases",
   "base_model_tab": "Base Models",
   "custom_model_tab": "Trained Models",
-  "model_referenced_by_resources": "This model is referenced by the following apps/datasets. To ensure normal operation, please switch to another model first"
+  "model_referenced_by_resources": "This model is referenced by the following apps/datasets. To ensure normal operation, please switch to another model first",
+  "model_must_be_public_to_set_default": "Default model must be public. Please set the model permission to \"All members available\" first",
+  "model_is_default_cannot_be_private": "This model is currently set as a default model and cannot be set to private. Please remove it from default models first",
+  "collaborator_must_cover_references": "This model is referenced by the following members' apps/datasets. Adding collaborators will make it private. Please also add the referencing members as collaborators",
+  "collaborator_has_reference": "Cannot remove this collaborator because their apps/datasets reference this model"
 }

@@ -13,6 +13,8 @@ import {
 } from '@fastgpt/global/openapi/core/ai/model/api';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AdminAuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
+import { jsonRes } from '@fastgpt/service/common/response';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 async function handler(
   req: ApiRequestProps<UpdateDefaultModelBody, any>,
@@ -30,6 +32,36 @@ async function handler(
     datasetImageLLMId,
     evaluationId
   } = UpdateDefaultModelBodySchema.parse(req.body);
+
+  // Verify all model IDs to be set as default are public models
+  const modelIds = [
+    llmId,
+    embeddingId,
+    ttsId,
+    sttId,
+    rerankId,
+    datasetTextLLMId,
+    datasetImageLLMId,
+    evaluationId
+  ].filter(Boolean) as string[];
+
+  if (modelIds.length > 0) {
+    const models = await MongoSystemModel.find(
+      {
+        _id: { $in: modelIds.map((id) => new Types.ObjectId(id)) }
+      },
+      'isShared'
+    ).lean();
+
+    const privateModels = models.filter((m) => m.isShared !== true);
+    if (privateModels.length > 0) {
+      jsonRes(res, {
+        code: 409,
+        message: i18nT('account_model:model_must_be_public_to_set_default')
+      });
+      return UpdateDefaultModelResponseSchema.parse({});
+    }
+  }
 
   await mongoSessionRun(async (session) => {
     // Remove all default flags

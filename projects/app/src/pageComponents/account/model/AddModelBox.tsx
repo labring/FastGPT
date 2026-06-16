@@ -26,6 +26,7 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getSystemModelDefaultConfig, postSystemModel, putSystemModel } from '@/web/core/ai/config';
 import type { GetModelDetailResponse } from '@fastgpt/global/openapi/core/ai/model/api';
 import {
@@ -788,6 +789,7 @@ export const ModelEditModal = ({
 }) => {
   const { t, i18n } = useTranslation();
   const { feConfigs, getModelProviders } = useSystemStore();
+  const { toast } = useToast();
 
   const [referenceDialog, setReferenceDialog] = useState<{
     isOpen: boolean;
@@ -905,6 +907,13 @@ export const ModelEditModal = ({
         const refs = err?.data?.references;
         if (err?.code === 409 && refs?.length > 0) {
           setReferenceDialog({ isOpen: true, references: refs });
+          return;
+        }
+        if (err?.code === 409 && err?.message) {
+          toast({
+            title: t(err.message as any),
+            status: 'error'
+          });
           return;
         }
       }

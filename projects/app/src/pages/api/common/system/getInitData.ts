@@ -15,13 +15,6 @@ import { Types } from '@fastgpt/service/common/mongo';
 import type { SourceMemberType } from '@fastgpt/global/support/user/type';
 import { ReadPermissionVal, ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import type {
-  EmbeddingModelItemType,
-  LLMModelItemType,
-  RerankModelItemType,
-  STTModelType,
-  TTSModelType
-} from '@fastgpt/global/core/ai/model.schema';
 import { getModelListWithPermission } from '@fastgpt/service/support/permission/model/controller';
 import { ModelPermission } from '@fastgpt/global/support/permission/model/controller';
 
@@ -285,48 +278,6 @@ async function filterModelsByPermission({
   });
 }
 
-function getDefaultModelsByPermission(models: SystemModelItemType[]): SystemDefaultModelType {
-  const modelIdSet = new Set(models.map((model) => model.id));
-  const getVisibleModel = <T extends SystemModelItemType | undefined>(model: T): T | undefined => {
-    if (!model?.id) return undefined;
-    return modelIdSet.has(model.id) ? model : undefined;
-  };
-  const llmModels = models.filter(
-    (model): model is LLMModelItemType => model.type === ModelTypeEnum.llm
-  );
-  const embeddingModels = models.filter(
-    (model): model is EmbeddingModelItemType => model.type === ModelTypeEnum.embedding
-  );
-  const ttsModels = models.filter(
-    (model): model is TTSModelType => model.type === ModelTypeEnum.tts
-  );
-  const sttModels = models.filter(
-    (model): model is STTModelType => model.type === ModelTypeEnum.stt
-  );
-  const rerankModels = models.filter(
-    (model): model is RerankModelItemType => model.type === ModelTypeEnum.rerank
-  );
-
-  return {
-    [ModelTypeEnum.llm]:
-      getVisibleModel(global.systemDefaultModel[ModelTypeEnum.llm]) || llmModels[0],
-    datasetTextLLM: getVisibleModel(global.systemDefaultModel.datasetTextLLM) || llmModels[0],
-    datasetImageLLM: getVisibleModel(global.systemDefaultModel.datasetImageLLM) || undefined,
-    evaluation:
-      getVisibleModel(global.systemDefaultModel.evaluation) ||
-      llmModels.find((model) => model.useInEvaluation),
-    helperBotLLM: getVisibleModel(global.systemDefaultModel.helperBotLLM) || llmModels[0],
-    [ModelTypeEnum.embedding]:
-      getVisibleModel(global.systemDefaultModel[ModelTypeEnum.embedding]) || embeddingModels[0],
-    [ModelTypeEnum.tts]:
-      getVisibleModel(global.systemDefaultModel[ModelTypeEnum.tts]) || ttsModels[0],
-    [ModelTypeEnum.stt]:
-      getVisibleModel(global.systemDefaultModel[ModelTypeEnum.stt]) || sttModels[0],
-    [ModelTypeEnum.rerank]:
-      getVisibleModel(global.systemDefaultModel[ModelTypeEnum.rerank]) || rerankModels[0]
-  };
-}
-
 async function handler(
   req: ApiRequestProps<{}, { bufferId?: string }>,
   res: NextApiResponse
@@ -365,7 +316,7 @@ async function handler(
       subPlans: global.subPlans,
       systemVersion: global.systemVersion,
       activeModelList: await buildActiveModelList(userAccessibleModels, teamId),
-      defaultModels: getDefaultModelsByPermission(userAccessibleModels),
+      defaultModels: global.systemDefaultModel,
       systemModelList: global.systemActiveDesensitizedModels,
       modelProviders: global.ModelProviderRawCache,
       aiproxyChannels: global.aiproxyChannelsCache

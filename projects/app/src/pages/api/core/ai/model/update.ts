@@ -108,6 +108,21 @@ async function handler(
         });
         return UpdateModelResponseSchema.parse({});
       }
+
+      // Check if the model is currently a default model
+      const doc = modelItem as Record<string, any>;
+      const isDefaultModel =
+        doc.isDefault ||
+        doc.isDefaultDatasetTextModel ||
+        doc.isDefaultDatasetImageModel ||
+        doc.isDefaultEvaluationModel;
+      if (isDefaultModel) {
+        jsonRes(res, {
+          code: 409,
+          message: i18nT('account_model:model_is_default_cannot_be_private')
+        });
+        return UpdateModelResponseSchema.parse({});
+      }
     }
 
     updateData.$set = { ...(updateData.$set || {}), isShared };
@@ -131,22 +146,7 @@ async function handler(
     return UpdateModelResponseSchema.parse({});
   }
 
-  // When setting isShared to false, use findOneAndUpdate to atomically verify
-  // the model is still shared, preventing TOCTOU race with concurrent requests.
-  if (isShared === false) {
-    const result = await MongoSystemModel.findOneAndUpdate(
-      { _id: modelItem.id, isShared: true },
-      updateData
-    );
-    if (!result) {
-      // Another request already changed isShared; reload cache and return
-      await updatedReloadSystemModel();
-      return UpdateModelResponseSchema.parse({});
-    }
-  } else {
-    await MongoSystemModel.updateOne({ _id: modelItem.id }, updateData);
-  }
-
+  await MongoSystemModel.updateOne({ _id: modelItem.id }, updateData);
   await updatedReloadSystemModel();
 
   (async () => {

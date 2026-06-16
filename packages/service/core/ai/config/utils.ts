@@ -339,38 +339,55 @@ export const loadSystemModels = async (init = false, language = 'en') => {
       return providerA.order - providerB.order;
     });
 
-    // Default model check
+    // Default model check (only from public models)
     {
+      const publicLLMList =
+        _llmModelIdMap.size > 0
+          ? Array.from(_llmModelIdMap.values()).filter((m) => m.isShared)
+          : [];
+      const publicEmbeddingList =
+        _embeddingModelIdMap.size > 0
+          ? Array.from(_embeddingModelIdMap.values()).filter((m) => m.isShared)
+          : [];
+      const publicTTSList =
+        _ttsModelIdMap.size > 0
+          ? Array.from(_ttsModelIdMap.values()).filter((m) => m.isShared)
+          : [];
+      const publicSTTList =
+        _sttModelIdMap.size > 0
+          ? Array.from(_sttModelIdMap.values()).filter((m) => m.isShared)
+          : [];
+      const publicRerankList =
+        _reRankModelIdMap.size > 0
+          ? Array.from(_reRankModelIdMap.values()).filter((m) => m.isShared)
+          : [];
+
       if (!_systemDefaultModel.llm) {
-        _systemDefaultModel.llm = Array.from(_llmModelIdMap.values())[0];
+        _systemDefaultModel.llm = publicLLMList[0];
       }
       if (!_systemDefaultModel.datasetTextLLM) {
-        _systemDefaultModel.datasetTextLLM = Array.from(_llmModelIdMap.values())[0];
+        _systemDefaultModel.datasetTextLLM = publicLLMList[0];
       }
       if (!_systemDefaultModel.datasetImageLLM) {
         _systemDefaultModel.datasetImageLLM = undefined;
       }
       if (!_systemDefaultModel.evaluation) {
-        _systemDefaultModel.evaluation = Array.from(_llmModelIdMap.values()).find(
-          (item) => item.useInEvaluation
-        );
+        _systemDefaultModel.evaluation = publicLLMList.find((item) => item.useInEvaluation);
       }
       if (!_systemDefaultModel.helperBotLLM) {
-        _systemDefaultModel.helperBotLLM = _systemActiveModelList.find(
-          (item) => item.type === ModelTypeEnum.llm
-        );
+        _systemDefaultModel.helperBotLLM = publicLLMList[0];
       }
       if (!_systemDefaultModel.embedding) {
-        _systemDefaultModel.embedding = Array.from(_embeddingModelIdMap.values())[0];
+        _systemDefaultModel.embedding = publicEmbeddingList[0];
       }
       if (!_systemDefaultModel.tts) {
-        _systemDefaultModel.tts = Array.from(_ttsModelIdMap.values())[0];
+        _systemDefaultModel.tts = publicTTSList[0];
       }
       if (!_systemDefaultModel.stt) {
-        _systemDefaultModel.stt = Array.from(_sttModelIdMap.values())[0];
+        _systemDefaultModel.stt = publicSTTList[0];
       }
       if (!_systemDefaultModel.rerank) {
-        _systemDefaultModel.rerank = Array.from(_reRankModelIdMap.values())[0];
+        _systemDefaultModel.rerank = publicRerankList[0];
       }
     }
 

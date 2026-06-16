@@ -49,7 +49,7 @@ import PriceTiersLabel from '@/components/core/ai/PriceTiersLabel';
 import TestModeBetaTag from '@/components/core/ai/TestModeBetaTag';
 import TableHeaderFilter from '@fastgpt/web/components/common/TableHeaderFilter';
 import { LazyCollaboratorProvider } from '@/components/support/permission/MemberManager/context';
-import { OwnerRoleVal, ReadRoleVal } from '@fastgpt/global/support/permission/constant';
+import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import { getModelCollaborators, updateModelCollaborators } from '@/web/common/system/api';
 import type { ModelReference } from '@fastgpt/service/support/permission/model/reference';
 
@@ -258,6 +258,13 @@ const ModelTable = () => {
       const refs = err?.data?.references;
       if (err?.code === 409 && refs?.length > 0) {
         setReferenceDialog({ isOpen: true, references: refs });
+        return;
+      }
+      if (err?.code === 409 && err?.message) {
+        toast({
+          title: t(err.message as any),
+          status: 'error'
+        });
         return;
       }
     }
@@ -475,13 +482,14 @@ const ModelTable = () => {
                                   setReferenceDialog({ isOpen: true, references: refs });
                                   return; // don't re-throw — we've handled 409 in the dialog
                                 }
+                                if (err?.code === 409 && err?.message) {
+                                  toast({
+                                    title: t(err.message as any),
+                                    status: 'error'
+                                  });
+                                  return;
+                                }
                                 throw err;
-                              }
-                              if (
-                                item.isShared &&
-                                collaborators.some((clb) => clb.permission !== OwnerRoleVal)
-                              ) {
-                                await updateModel({ id: item.id, isShared: false });
                               }
                             }}
                             permission={userInfo!.team.permission}
