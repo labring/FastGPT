@@ -25,6 +25,10 @@ export interface EmbeddingDiTingDetailedResults {
   embed_top15_ndcg?: number;
   embed_top15_map?: number;
   embed_top15_precision?: number;
+  embed_top20_mrr?: number;
+  embed_top20_ndcg?: number;
+  embed_top20_map?: number;
+  embed_top20_precision?: number;
   overall_mrr?: number;
   overall_ndcg?: number;
   overall_map?: number;
