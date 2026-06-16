@@ -20,7 +20,7 @@ use crate::workspace::{
     sanitize_create_path, sanitize_existing_workspace_entry_path, sanitize_path,
 };
 
-const DEFAULT_EXCLUDED_NAMES: &[&str] = &["node_modules", ".git", ".next", "dist", "build", ".bun"];
+const DEFAULT_EXCLUDED_NAMES: &[&str] = &[".DS_Store"];
 const FS_CHANGE_DEBOUNCE_MS: u64 = 500;
 const FS_CHANGE_MAX_PATHS: usize = 200;
 const FS_WATCH_BROADCAST_CAPACITY: usize = 128;

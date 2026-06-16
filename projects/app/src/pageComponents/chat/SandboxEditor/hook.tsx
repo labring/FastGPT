@@ -28,7 +28,7 @@ import {
   updateTreeNode
 } from './utils';
 
-const EXCLUDE_NAMES = ['node_modules', '.git', '.next', 'dist', 'build', '.bun'];
+const SYSTEM_FILE_NAMES = ['.DS_Store'];
 const INITIAL_TREE_MAX_DEPTH = 20;
 const RPC_TIMEOUT_MS = 30000;
 const DEFAULT_MAX_FILE_SIZE_MB = 10;
@@ -36,6 +36,27 @@ const INVALID_PATH_SEGMENT_CHARS = /[\/\\\u0000]/;
 
 type RefreshWorkspaceOptions = {
   preserveExpandedDirs?: boolean;
+};
+
+type SandboxDirEntry = {
+  name: string;
+  is_dir: boolean;
+  size?: number;
+  mtime?: number;
+};
+
+type SandboxReadFileResponse = {
+  content: string;
+  mtime?: number;
+};
+
+type SandboxWriteFileResponse = {
+  mtime?: number;
+};
+
+type SandboxReadDirRecursiveResponse = {
+  files?: TreeNode[];
+  expandedPaths?: string[];
 };
 
 const encodeBase64 = (content: string) => {
@@ -327,7 +348,7 @@ export const useSandboxFileStore = ({
   const wsRef = useRef<WebSocket | null>(null);
   const nextRpcIdRef = useRef(1);
   const pendingRpcRequestsRef = useRef<
-    Map<number, { resolve: (res: any) => void; reject: (err: any) => void }>
+    Map<number, { resolve: (res: unknown) => void; reject: (err: unknown) => void }>
   >(new Map());
   const connectPromiseRef = useRef<Promise<void> | null>(null);
   const resolveConnectRef = useRef<(() => void) | null>(null);
@@ -366,7 +387,7 @@ export const useSandboxFileStore = ({
 
   // RPC 调用
   const rpcCall = useCallback(
-    async (method: string, params: any) => {
+    async <T = unknown,>(method: string, params: unknown): Promise<T> => {
       if (stoppedConnectErrorRef.current) {
         throw stoppedConnectErrorRef.current;
       }
@@ -380,7 +401,7 @@ export const useSandboxFileStore = ({
         throw new Error('WebSocket is not connected');
       }
       const id = nextRpcIdRef.current++;
-      const promise = new Promise<any>((resolve, reject) => {
+      const promise = new Promise<T>((resolve, reject) => {
         const timer = window.setTimeout(() => {
           pendingRpcRequestsRef.current.delete(id);
           reject(new Error(`Sandbox RPC timeout: ${method}`));
@@ -389,7 +410,7 @@ export const useSandboxFileStore = ({
         pendingRpcRequestsRef.current.set(id, {
           resolve: (res) => {
             window.clearTimeout(timer);
-            resolve(res);
+            resolve(res as T);
           },
           reject: (err) => {
             window.clearTimeout(timer);
@@ -426,7 +447,7 @@ export const useSandboxFileStore = ({
       setLoadingFile(true);
       try {
         const isBinary = getIsBinaryByLanguage(language);
-        const res = await rpcCall('fs/read_file', { path: filePath });
+        const res = await rpcCall<SandboxReadFileResponse>('fs/read_file', { path: filePath });
         const rawBytes = Uint8Array.from(window.atob(res.content), (c) => c.charCodeAt(0));
 
         if (!isBinary) {
@@ -465,10 +486,10 @@ export const useSandboxFileStore = ({
           let latestFileTree: TreeNode[] | null = null;
 
           try {
-            const data = await rpcCall('fs/read_dir_recursive', {
+            const data = await rpcCall<SandboxReadDirRecursiveResponse>('fs/read_dir_recursive', {
               path: '.',
               maxDepth: INITIAL_TREE_MAX_DEPTH,
-              excludeNames: EXCLUDE_NAMES
+              excludeNames: SYSTEM_FILE_NAMES
             });
 
             const nextFileTree = data.files || [];
@@ -591,7 +612,7 @@ export const useSandboxFileStore = ({
 
     let isDestroyed = false;
     let ws: WebSocket | null = null;
-    let reconnectTimer: any = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     const pendingRpcRequests = pendingRpcRequestsRef.current;
 
     const connect = async () => {
@@ -787,18 +808,18 @@ export const useSandboxFileStore = ({
       });
 
       try {
-        const res = await rpcCall('fs/read_dir', { path });
-        let filteredFiles = (res || []).map((item: any) => ({
+        const res = await rpcCall<SandboxDirEntry[]>('fs/read_dir', { path });
+        let filteredFiles = (res || []).map((item) => ({
           name: item.name,
           path: path === '.' ? item.name : `${path}/${item.name}`,
-          type: item.is_dir ? 'directory' : 'file',
+          type: item.is_dir ? ('directory' as const) : ('file' as const),
           size: item.size,
           mtime: item.mtime
         }));
 
-        filteredFiles = filteredFiles.filter((file: any) => !EXCLUDE_NAMES.includes(file.name));
+        filteredFiles = filteredFiles.filter((file) => !SYSTEM_FILE_NAMES.includes(file.name));
 
-        const nodes: TreeNode[] = filteredFiles.map((file: any) => ({
+        const nodes: TreeNode[] = filteredFiles.map((file) => ({
           ...file,
           level,
           children: file.type === 'directory' ? [] : undefined,
@@ -851,7 +872,7 @@ export const useSandboxFileStore = ({
         const savedContent = targetFile.content;
         const savedMtime = targetFile.mtime;
         const b64 = encodeBase64(savedContent);
-        const res = await rpcCall('fs/write_file', {
+        const res = await rpcCall<SandboxWriteFileResponse>('fs/write_file', {
           path: targetPath,
           content: b64,
           old_mtime: savedMtime
@@ -866,7 +887,7 @@ export const useSandboxFileStore = ({
               : f
           )
         );
-      } catch (err: any) {
+      } catch (err) {
         console.error('Failed to save file:', err);
         toast({
           title: t('chat:sandbox_save_failed', '保存文件失败'),
@@ -894,7 +915,7 @@ export const useSandboxFileStore = ({
         const savedContent = currentFile.content;
         const savedMtime = currentFile.mtime;
         const b64 = encodeBase64(savedContent);
-        const res = await rpcCall('fs/write_file', {
+        const res = await rpcCall<SandboxWriteFileResponse>('fs/write_file', {
           path: df.path,
           content: b64,
           old_mtime: savedMtime

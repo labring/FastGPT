@@ -28,6 +28,7 @@ import {
 import type { DragEndEvent, DragStartEvent, CollisionDetection } from '@dnd-kit/core';
 import FileTreeNode, { InlineCreateNode } from './FileTreeNode';
 import { getIconByFilename } from '../utils';
+import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 // 自定义碰撞检测算法，实现根目录和空白区拖放
 const customCollisionDetection: CollisionDetection = (args) => {
@@ -89,7 +90,7 @@ type Props = {
   setExpandedDirs: React.Dispatch<React.SetStateAction<Set<string>>>;
   appId: string;
   chatId: string;
-  outLinkAuthData?: any;
+  outLinkAuthData?: OutLinkChatAuthProps;
   showFileOps?: boolean;
   isLoading?: boolean;
 };

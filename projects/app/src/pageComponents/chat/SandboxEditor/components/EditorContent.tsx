@@ -15,8 +15,7 @@ import MarkdownMetadataCard from './MarkdownMetadataCard';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-
-type EditorInstance = Parameters<NonNullable<Parameters<typeof Editor>[0]['onMount']>>[0];
+import type { SandboxEditorInstance } from '../types';
 
 type Props = {
   activeFile: OpenedFile | undefined;
@@ -26,7 +25,7 @@ type Props = {
   saveFile: (path?: string) => void;
   setOpenedFiles: React.Dispatch<React.SetStateAction<OpenedFile[]>>;
   openedFiles: OpenedFile[];
-  editorRef: React.MutableRefObject<EditorInstance | undefined>;
+  editorRef: React.MutableRefObject<SandboxEditorInstance | undefined>;
   appId: string;
   chatId: string;
   outLinkAuthData?: OutLinkChatAuthProps;

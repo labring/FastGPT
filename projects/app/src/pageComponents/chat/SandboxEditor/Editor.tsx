@@ -12,8 +12,7 @@ import FileTree from './components/FileTree';
 import EditorWorkspace from './components/EditorWorkspace';
 import { filterTree } from './utils';
 import { useSandboxFileStore } from './hook';
-
-type EditorInstance = Parameters<NonNullable<Parameters<typeof Editor>[0]['onMount']>>[0];
+import type { SandboxEditorInstance } from './types';
 
 const FILE_TREE_DEFAULT_WIDTH = 260;
 const FILE_TREE_MIN_WIDTH = 260;
@@ -49,7 +48,7 @@ const SandboxEditor = ({
 }: Props) => {
   const { t } = useTranslation();
   const saveAllRef = useContextSelector(SkillDetailContext, (v) => v.saveAllRef);
-  const editorRef = useRef<EditorInstance>();
+  const editorRef = useRef<SandboxEditorInstance>();
   const editorLayoutRef = useRef<HTMLDivElement>(null);
   const [fileTreeWidth, setFileTreeWidth] = useState(FILE_TREE_DEFAULT_WIDTH);
   const [isFileTreeResizing, setIsFileTreeResizing] = useState(false);

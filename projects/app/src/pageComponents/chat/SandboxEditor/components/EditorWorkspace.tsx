@@ -10,6 +10,8 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import ParticleLoading from '@fastgpt/web/components/common/MyLoading/ParticleLoading';
 import RandomGridBackground from './RandomGridBackground';
+import type { TreeNode } from './FileTree';
+import type { SandboxEditorInstance } from '../types';
 
 type Props = {
   appId: string;
@@ -26,8 +28,8 @@ type Props = {
   downloadingFile: boolean;
   downloadCurrentFile: () => void;
   saveFile: (path?: string) => void;
-  editorRef: React.MutableRefObject<any>;
-  filteredTree: any[];
+  editorRef: React.MutableRefObject<SandboxEditorInstance | undefined>;
+  filteredTree: TreeNode[];
   loadingFile: boolean;
   showTerminalBtn?: boolean;
   canWrite?: boolean;

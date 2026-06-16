@@ -30,8 +30,8 @@ export const useInteractiveTerminal = ({
 
     let isDestroyed = false;
     let ws: WebSocket | null = null;
-    let reconnectTimer: any = null;
-    let stableConnectionTimer: any = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let stableConnectionTimer: ReturnType<typeof setTimeout> | null = null;
     let reconnectCount = 0;
 
     // 实例化 Xterm 终端
@@ -172,18 +172,19 @@ export const useInteractiveTerminal = ({
           console.error('[SandboxTerminal] WS error:', err);
           ws?.close();
         };
-      } catch (err: any) {
+      } catch (err) {
         console.error('[SandboxTerminal] Connection error:', err);
+        const errorMessage = err instanceof Error ? err.message : String(err);
         if (!isDestroyed) {
           if (reconnectCount >= MAX_RECONNECT_ATTEMPTS) {
             term.write(
-              `\r\n\x1b[1;31mError: Connection failed: ${err.message}. Reconnect stopped.\x1b[0m\r\n`
+              `\r\n\x1b[1;31mError: Connection failed: ${errorMessage}. Reconnect stopped.\x1b[0m\r\n`
             );
             return;
           }
           reconnectCount++;
           term.write(
-            `\r\n\x1b[1;31mError: Connection failed: ${err.message}. Retrying in 5s...\x1b[0m\r\n`
+            `\r\n\x1b[1;31mError: Connection failed: ${errorMessage}. Retrying in 5s...\x1b[0m\r\n`
           );
           reconnectTimer = setTimeout(connect, 5000);
         }

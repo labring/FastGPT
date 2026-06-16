@@ -1,5 +1,10 @@
 import type { I18nStringType, localeType } from '../../../../common/i18n/type';
-import { AGENT_SANDBOX_TOOLSET_ID, SANDBOX_ICON, SANDBOX_NAME } from '../../../ai/sandbox/tools';
+import {
+  AGENT_SANDBOX_TOOLSET_ID,
+  SANDBOX_ICON,
+  SANDBOX_NAME,
+  sandboxToolMap
+} from '../../../ai/sandbox/tools';
 import { parseI18nString } from '../../../../common/i18n/utils';
 
 export enum SubAppIds {
@@ -40,6 +45,15 @@ export const systemSubInfo: Record<
   }
 };
 export const getSystemToolInfo = (id: string, lang: localeType = 'en') => {
+  if (id in sandboxToolMap) {
+    const info = sandboxToolMap[id];
+    return {
+      name: parseI18nString(info.name, lang),
+      avatar: info.avatar,
+      toolDescription: info.toolDescription
+    };
+  }
+
   if (id in systemSubInfo) {
     const info = systemSubInfo[id];
     return {
