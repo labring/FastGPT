@@ -191,7 +191,7 @@ const ApiDatasetForm = ({
             />
           </Flex>
           <Flex mt={rowTopMargin} alignItems={'center'} {...rowLayoutProps}>
-            <FormLabel required flex={['', '0 0 110px']} fontSize={'sm'}>
+            <FormLabel flex={['', '0 0 110px']} fontSize={'sm'}>
               Authorization
             </FormLabel>
             <Input
