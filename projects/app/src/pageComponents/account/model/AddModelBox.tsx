@@ -23,7 +23,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelTypeEnum, getQwenEmbeddingRerankInstruction } from '@fastgpt/global/core/ai/constants';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -891,6 +891,13 @@ export const ModelEditModal = ({
 
       const modelFields = buildModelFieldsPayload(data);
 
+      const qwenInstruction = getQwenEmbeddingRerankInstruction(data.type, data.model);
+      if (qwenInstruction) {
+        modelFields.instruction = qwenInstruction;
+      } else if ((isEmbeddingModel || isRerankModel) && modelData.instruction) {
+        modelFields.instruction = '';
+      }
+
       return (
         modelData.id
           ? putSystemModel({ id: modelData.id, ...modelFields })
@@ -1121,16 +1128,6 @@ export const ModelEditModal = ({
                     {...NumberInputStyles}
                   />
                 </Field>
-                <Field
-                  label={t('account:model.instruction')}
-                  tip={t('account:model.instruction_embedding_tip')}
-                >
-                  <MyTextarea
-                    {...register('instruction')}
-                    placeholder={t('account:model.instruction_embedding_placeholder')}
-                    rows={3}
-                  />
-                </Field>
                 <SwitchField
                   label={t('account:model.support_train')}
                   tip={t('account:model.support_train_tip')}
@@ -1155,16 +1152,6 @@ export const ModelEditModal = ({
                     name="maxToken"
                     min={1000}
                     {...NumberInputStyles}
-                  />
-                </Field>
-                <Field
-                  label={t('account:model.instruction')}
-                  tip={t('account:model.instruction_rerank_tip')}
-                >
-                  <MyTextarea
-                    {...register('instruction')}
-                    placeholder={t('account:model.instruction_rerank_placeholder')}
-                    rows={3}
                   />
                 </Field>
                 <SwitchField
