@@ -58,7 +58,7 @@ const RenderTool = React.memo(
           >
             <HStack h={'24px'} lineHeight={'24px'} mr={1} spacing="0">
               <Flex w="24px" h="24px" alignItems="center" justifyContent="center">
-                <Avatar src={tool.toolAvatar} w="16px" h="16px" borderRadius="sm" />
+                <Avatar src={tool.toolAvatar} w="16px" h="16px" borderRadius="xs" />
               </Flex>
               <Box fontSize="16px" lineHeight="24px" color="myGray.600">
                 {t(tool.toolName)}

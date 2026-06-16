@@ -14,9 +14,6 @@ const defaultableIntSchema = (defaultValue: number) =>
 // 系统最大字符串处理长度
 const SYSTEM_STRING_LENGTH_UNIT = 1_000_000;
 
-const optionalNonEmptyString = () =>
-  z.preprocess((value) => (value === '' ? undefined : value), z.string().optional());
-
 // 枚举
 const LogLevelSchema = z.enum(['trace', 'debug', 'info', 'warning', 'error', 'fatal']);
 const StorageVendorSchema = z.enum(['minio', 'aws-s3', 'cos', 'oss']);
@@ -58,9 +55,13 @@ export const serviceEnv = createEnv({
 
     PRO_URL: UrlSchema.optional(),
 
+    // Agent sandbox proxy
+    AGENT_SANDBOX_PROXY_SECRET: z
+      .string()
+      .min(32, ", 'AGENT_SANDBOX_PROXY_SECRET must be at least 32 characters'")
+      .optional(),
     // Agent sandbox
     AGENT_SANDBOX_PROVIDER: z.enum(['sealosdevbox', 'opensandbox', 'e2b']).optional(),
-    AGENT_SANDBOX_PROXY_SECRET: optionalNonEmptyString(),
     IDE_AGENT_BIND_ADDR: z.string().default('0.0.0.0:1318'),
     // E2B配置
     AGENT_SANDBOX_E2B_API_KEY: z.string().optional(),
@@ -314,16 +315,6 @@ if (serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY > serviceEnv.WORKFLOW_MAX_LOOP_
 
 export const SYSTEM_MAX_STRING_LENGTH =
   serviceEnv.SYSTEM_MAX_STRING_LENGTH_M * SYSTEM_STRING_LENGTH_UNIT;
-
-if (hasAgentSandboxConfigFromEnv(process.env)) {
-  if (!serviceEnv.AGENT_SANDBOX_PROXY_SECRET) {
-    throw new Error('AGENT_SANDBOX_PROXY_SECRET is required when Agent Sandbox is enabled.');
-  }
-
-  if (serviceEnv.AGENT_SANDBOX_PROXY_SECRET.length < 32) {
-    throw new Error('AGENT_SANDBOX_PROXY_SECRET must be at least 32 characters.');
-  }
-}
 
 /**
  * 判断系统是否显式配置了 Agent 虚拟机能力。

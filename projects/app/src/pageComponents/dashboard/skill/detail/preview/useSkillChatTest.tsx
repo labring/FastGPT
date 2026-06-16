@@ -33,12 +33,14 @@ export const useSkillChatTest = ({
   model,
   chatId,
   isReady,
+  disabledSendTip,
   InputLeftComponent
 }: {
   skillId: string;
   model: string;
   chatId: string;
   isReady: boolean;
+  disabledSendTip?: string;
   InputLeftComponent?: React.ReactNode;
 }) => {
   const { t } = useTranslation(['skill', 'common']);
@@ -103,6 +105,7 @@ export const useSkillChatTest = ({
         onDeleteChatItem={handleDeleteChatItem}
         onStopChat={handleStopChat}
         InputLeftComponent={InputLeftComponent}
+        disabledSendTip={disabledSendTip ? t(disabledSendTip as any) : undefined}
         dialogTips={t('common:core.chat.Type a message')}
         pl={'16px'}
         pr={0}
@@ -133,6 +136,7 @@ export const useSkillChatTest = ({
       handleDeleteChatItem,
       handleStopChat,
       InputLeftComponent,
+      disabledSendTip,
       t
     ]
   );

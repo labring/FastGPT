@@ -87,6 +87,7 @@
   "sandbox_failed": "Sandbox creation failed: {{message}}",
   "sandbox_retry": "Retry",
   "sandbox_error_title": "Sandbox Creation Failed",
+  "sandbox_debug_loading_toast": "The sandbox is starting. Please send the message later.",
   "no_current_version": "No available Skill version yet. Recreate or import the Skill before editing.",
   "permission.des.read": "Can view Agent Skill",
   "permission.des.write": "Can edit Agent Skill",

@@ -3,6 +3,15 @@ title: 'V4.15.0-beta5(进行中)'
 description: 'FastGPT V4.15.0-beta5 更新说明'
 ---
 
+### 升级脚本
+
+```shell
+curl --location --request POST 'https://{{host}}/api/admin/initSandboxArchive' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json' \
+-d '{"runArchive":true,"inactiveDays":0}'
+```
+
 ## 🚀 新增内容
 
 1. HTTP 节点支持配置忽略 TLS 证书校验，适用于调用使用自签名证书或内部证书的 HTTPS 服务。
@@ -10,6 +19,7 @@ description: 'FastGPT V4.15.0-beta5 更新说明'
 3. 对话框支持快速滚动到底部按键。
 4. 参考 Lobe UI 优化流输出动效。
 5. 支持通过模型生成对话标题，需配置 `CHAT_TITLE_MODEL` 变量。
+6. 调整 Skill Edit 编辑交互。
 
 ## ⚙️ 优化
 
