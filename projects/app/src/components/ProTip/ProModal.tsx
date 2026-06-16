@@ -52,7 +52,7 @@ const ProModal = (props: { isOpen?: boolean; onClose?: () => void }) => {
             <MyIcon name={'star'} w={9} h={9} transform={'translateY(40%)'} />
           </Flex>
           <Box color={'myGray.900'} fontSize={'26px'} fontWeight={'bold'} lineHeight={'34px'}>
-            {t('app:pro_modal_title')}
+            {t('common:pro_modal_title')}
           </Box>
           <VStack
             w={'full'}
@@ -62,10 +62,10 @@ const ProModal = (props: { isOpen?: boolean; onClose?: () => void }) => {
             gap={0}
             mt={7}
           >
-            <Box lineHeight={'26px'}>{t('app:pro_modal_subtitle')}</Box>
-            <Box lineHeight={'26px'}>{t('app:pro_modal_feature_1')}</Box>
-            <Box lineHeight={'26px'}>{t('app:pro_modal_feature_2')}</Box>
-            <Box lineHeight={'26px'}>{t('app:pro_modal_feature_3')}</Box>
+            <Box lineHeight={'26px'}>{t('common:pro_modal_subtitle')}</Box>
+            <Box lineHeight={'26px'}>{t('common:pro_modal_feature_1')}</Box>
+            <Box lineHeight={'26px'}>{t('common:pro_modal_feature_2')}</Box>
+            <Box lineHeight={'26px'}>{t('common:pro_modal_feature_3')}</Box>
             <Box color={'myGray.500'} letterSpacing={'2px'} lineHeight={'26px'}>
               ......
             </Box>
@@ -81,7 +81,7 @@ const ProModal = (props: { isOpen?: boolean; onClose?: () => void }) => {
               fontSize={'16px'}
               fontWeight={'medium'}
             >
-              {t('app:pro_modal_unlock_button')}
+              {t('common:pro_modal_unlock_button')}
             </Button>
             <Button
               w={'full'}
@@ -94,7 +94,7 @@ const ProModal = (props: { isOpen?: boolean; onClose?: () => void }) => {
               boxShadow={'0 2px 5px rgba(15, 23, 42, 0.06)'}
               onClick={onClose}
             >
-              {t('app:pro_modal_later_button')}
+              {t('common:pro_modal_later_button')}
             </Button>
           </Flex>
         </VStack>
