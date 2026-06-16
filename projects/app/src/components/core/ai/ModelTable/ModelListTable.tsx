@@ -2,6 +2,7 @@ import {
   Box,
   Button,
   Checkbox,
+  Flex,
   HStack,
   Table,
   TableContainer,
@@ -9,7 +10,9 @@ import {
   Td,
   Th,
   Thead,
-  Tr
+  Tr,
+  ModalBody,
+  ModalFooter
 } from '@chakra-ui/react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
@@ -29,8 +32,10 @@ import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import type { Dispatch, SetStateAction } from 'react';
 import { useState, useEffect, useMemo } from 'react';
+import dynamic from 'next/dynamic';
 import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type';
 import type { ModelTypeEnum } from '@fastgpt/global/core/ai/model';
+import type { ModelReference } from '@fastgpt/service/support/permission/model/reference';
 import type {
   ModelTabType,
   I18nT,
@@ -41,6 +46,8 @@ import type {
 } from './types';
 import { modelTableTabValues } from './types';
 import { hasErrorTrainTask, hasRunningTrainTask } from './helpers/trainStatus';
+
+const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 
 export type ModelListTableProps = {
   t: I18nT;
@@ -83,6 +90,7 @@ type ModelTableRowProps = {
   setTrainDetailDrawer: Dispatch<SetStateAction<TrainDetailModel | null>>;
   datasetInfo: DatasetInfo;
   showModelId: boolean;
+  handleCollaboratorError: (references: ModelReference[]) => void;
 };
 
 type TableActionCellProps = {
@@ -93,6 +101,7 @@ type TableActionCellProps = {
   hasManagePer: boolean;
   userPermission: TeamPermission;
   handleOpenTrainDrawer: OpenTrainModelHandler;
+  handleCollaboratorError: (references: ModelReference[]) => void;
 };
 
 const ModelListTable = ({
@@ -123,6 +132,16 @@ const ModelListTable = ({
     () => modelList.some((item) => item.permission.hasManagePer),
     [modelList]
   );
+
+  // Reference warning dialog state
+  const [referenceDialog, setReferenceDialog] = useState<{
+    isOpen: boolean;
+    references: ModelReference[];
+  }>({ isOpen: false, references: [] });
+
+  const handleCollaboratorError = (references: ModelReference[]) => {
+    setReferenceDialog({ isOpen: true, references });
+  };
 
   const [datasetInfo, setDatasetInfo] = useState<DatasetInfo>({
     datasetNameMap: {},
@@ -177,51 +196,97 @@ const ModelListTable = ({
   }, [showTrainedModelColumns, loadDatasets]);
 
   return (
-    <TableContainer mt={4} flex={'1 0 0'} h={0} overflowY={'auto'}>
-      <Table>
-        <Thead>
-          <Tr color={'myGray.600'}>
-            <Th fontSize={'xs'} w={showTrainedModelColumns ? '180px' : undefined}>
-              <HStack>
-                {permissionConfig && hasManagePer && (
-                  <Box w="20px" mr={1}>
-                    {hasSelectableModel && (
-                      <Checkbox isChecked={isSelecteAll} onChange={selectAllTrigger}></Checkbox>
-                    )}
-                  </Box>
-                )}
-                <HStack spacing={1} cursor={'pointer'} onClick={() => setShowModelId(!showModelId)}>
-                  <Box>{showModelId ? t('account:model.model_id') : t('common:model.name')}</Box>
-                  <MyIcon name={'modal/changePer'} w={'1rem'} />
+    <>
+      <TableContainer mt={4} flex={'1 0 0'} h={0} overflowY={'auto'}>
+        <Table>
+          <Thead>
+            <Tr color={'myGray.600'}>
+              <Th fontSize={'xs'} w={showTrainedModelColumns ? '180px' : undefined}>
+                <HStack>
+                  {permissionConfig && hasManagePer && (
+                    <Box w="20px" mr={1}>
+                      {hasSelectableModel && (
+                        <Checkbox isChecked={isSelecteAll} onChange={selectAllTrigger}></Checkbox>
+                      )}
+                    </Box>
+                  )}
+                  <HStack
+                    spacing={1}
+                    cursor={'pointer'}
+                    onClick={() => setShowModelId(!showModelId)}
+                  >
+                    <Box>{showModelId ? t('account:model.model_id') : t('common:model.name')}</Box>
+                    <MyIcon name={'modal/changePer'} w={'1rem'} />
+                  </HStack>
                 </HStack>
-              </HStack>
-            </Th>
-            <Th fontSize={'xs'} w={showTrainedModelColumns ? '132px' : undefined}>
-              <TableHeaderFilter
-                value={modelType || undefined}
-                onChange={(val) => onModelTypeChange((val as ModelTypeEnum) || '')}
-                options={modelTypeList
-                  .filter((item) => item.value !== '')
-                  .map((item) => ({ key: item.value, label: item.label }))}
-                label={t('common:model.model_type')}
-                allLabel={t('common:model.all_type')}
-              />
-            </Th>
-            {showTrainedModelColumns ? (
-              <>
+              </Th>
+              <Th fontSize={'xs'} w={showTrainedModelColumns ? '132px' : undefined}>
+                <TableHeaderFilter
+                  value={modelType || undefined}
+                  onChange={(val) => onModelTypeChange((val as ModelTypeEnum) || '')}
+                  options={modelTypeList
+                    .filter((item) => item.value !== '')
+                    .map((item) => ({ key: item.value, label: item.label }))}
+                  label={t('common:model.model_type')}
+                  allLabel={t('common:model.all_type')}
+                />
+              </Th>
+              {showTrainedModelColumns ? (
+                <>
+                  <Th
+                    fontSize={'xs'}
+                    w={'250px'}
+                    cursor={'pointer'}
+                    userSelect={'none'}
+                    onClick={() => toggleTrainTimeSort?.()}
+                  >
+                    <HStack spacing={1}>
+                      <Box>{t('account_model:train_detail_train_time')}</Box>
+                      {trainTimeSortOrder ? (
+                        <MyIcon
+                          name={
+                            trainTimeSortOrder === 'asc' ? 'common/table/asc' : 'common/table/desc'
+                          }
+                          w={'12px'}
+                          cursor={'pointer'}
+                          color={'primary.600'}
+                        />
+                      ) : (
+                        <MyIcon
+                          name={'common/table/sort'}
+                          w={'12px'}
+                          cursor={'pointer'}
+                          color={'myGray.400'}
+                          _hover={{ color: 'primary.600' }}
+                        />
+                      )}
+                    </HStack>
+                  </Th>
+                  <Th fontSize={'xs'} w={'150px'}>
+                    {t('account_model:train_detail_trainer')}
+                  </Th>
+                  <Th fontSize={'xs'} w={'80px'}>
+                    {t('account_model:train_data')}
+                  </Th>
+                </>
+              ) : (
+                <Th fontSize={'xs'}>{t('common:model.billing')}</Th>
+              )}
+              {showTrainTaskColumn && (
                 <Th
                   fontSize={'xs'}
-                  w={'250px'}
                   cursor={'pointer'}
                   userSelect={'none'}
-                  onClick={() => toggleTrainTimeSort?.()}
+                  onClick={toggleTrainTaskCountSort}
                 >
                   <HStack spacing={1}>
-                    <Box>{t('account_model:train_detail_train_time')}</Box>
-                    {trainTimeSortOrder ? (
+                    <Box>{t('account_model:train_task_count')}</Box>
+                    {trainTaskCountSortOrder ? (
                       <MyIcon
                         name={
-                          trainTimeSortOrder === 'asc' ? 'common/table/asc' : 'common/table/desc'
+                          trainTaskCountSortOrder === 'asc'
+                            ? 'common/table/asc'
+                            : 'common/table/desc'
                         }
                         w={'12px'}
                         cursor={'pointer'}
@@ -238,78 +303,96 @@ const ModelListTable = ({
                     )}
                   </HStack>
                 </Th>
-                <Th fontSize={'xs'} w={'150px'}>
-                  {t('account_model:train_detail_trainer')}
-                </Th>
-                <Th fontSize={'xs'} w={'80px'}>
-                  {t('account_model:train_data')}
-                </Th>
-              </>
-            ) : (
-              <Th fontSize={'xs'}>{t('common:model.billing')}</Th>
-            )}
-            {showTrainTaskColumn && (
-              <Th
-                fontSize={'xs'}
-                cursor={'pointer'}
-                userSelect={'none'}
-                onClick={toggleTrainTaskCountSort}
-              >
-                <HStack spacing={1}>
-                  <Box>{t('account_model:train_task_count')}</Box>
-                  {trainTaskCountSortOrder ? (
-                    <MyIcon
-                      name={
-                        trainTaskCountSortOrder === 'asc' ? 'common/table/asc' : 'common/table/desc'
-                      }
-                      w={'12px'}
-                      cursor={'pointer'}
-                      color={'primary.600'}
-                    />
-                  ) : (
-                    <MyIcon
-                      name={'common/table/sort'}
-                      w={'12px'}
-                      cursor={'pointer'}
-                      color={'myGray.400'}
-                      _hover={{ color: 'primary.600' }}
-                    />
-                  )}
-                </HStack>
+              )}
+              {permissionConfig && (
+                <>
+                  <Th fontSize={'xs'}>{t('account:model.creator')}</Th>
+                  <Th fontSize={'xs'}>{t('account:model.permission_label')}</Th>
+                </>
+              )}
+              <Th fontSize={'xs'} w={showTrainedModelColumns ? '240px' : undefined}>
+                {t('account_model:action')}
               </Th>
-            )}
-            {permissionConfig && (
-              <>
-                <Th fontSize={'xs'}>{t('account:model.creator')}</Th>
-                <Th fontSize={'xs'}>{t('account:model.permission_label')}</Th>
-              </>
-            )}
-            <Th fontSize={'xs'} w={showTrainedModelColumns ? '240px' : undefined}>
-              {t('account_model:action')}
-            </Th>
-          </Tr>
-        </Thead>
-        <Tbody>
-          {modelList.map((item) => (
-            <ModelTableRow
-              key={item.id}
-              item={item}
-              tabType={tabType}
-              t={t}
-              permissionConfig={permissionConfig}
-              hasManagePer={hasManagePer}
-              userPermission={userPermission}
-              toggleSelect={toggleSelect}
-              isSelected={isSelected}
-              handleOpenTrainDrawer={handleOpenTrainDrawer}
-              setTrainDetailDrawer={setTrainDetailDrawer}
-              datasetInfo={datasetInfo}
-              showModelId={showModelId}
-            />
-          ))}
-        </Tbody>
-      </Table>
-    </TableContainer>
+            </Tr>
+          </Thead>
+          <Tbody>
+            {modelList.map((item) => (
+              <ModelTableRow
+                key={item.id}
+                item={item}
+                tabType={tabType}
+                t={t}
+                permissionConfig={permissionConfig}
+                hasManagePer={hasManagePer}
+                userPermission={userPermission}
+                toggleSelect={toggleSelect}
+                isSelected={isSelected}
+                handleOpenTrainDrawer={handleOpenTrainDrawer}
+                setTrainDetailDrawer={setTrainDetailDrawer}
+                datasetInfo={datasetInfo}
+                showModelId={showModelId}
+                handleCollaboratorError={handleCollaboratorError}
+              />
+            ))}
+          </Tbody>
+        </Table>
+      </TableContainer>
+
+      {/* Reference warning dialog — shown when model permission update is blocked */}
+      {referenceDialog.isOpen && (
+        <MyModal
+          isOpen
+          onClose={() => setReferenceDialog({ isOpen: false, references: [] })}
+          iconSrc="modal/warning"
+          title={t('account_model:model_referenced_by_resources')}
+          maxW="600px"
+        >
+          <ModalBody>
+            <TableContainer>
+              <Table fontSize="sm">
+                <Thead>
+                  <Tr>
+                    <Th>{t('common:resource_type')}</Th>
+                    <Th>{t('common:resource_name')}</Th>
+                    <Th>{t('common:creator')}</Th>
+                  </Tr>
+                </Thead>
+                <Tbody>
+                  {referenceDialog.references.map((ref, i) => (
+                    <Tr key={i}>
+                      <Td>
+                        <Flex alignItems="center" gap={2}>
+                          <MyIcon
+                            name={
+                              ref.resourceType === 'app'
+                                ? 'core/app/type/simple'
+                                : 'core/dataset/commonDatasetColor'
+                            }
+                            w="1.25rem"
+                          />
+                          {t(
+                            ref.resourceType === 'app'
+                              ? 'app:application'
+                              : 'common:core.dataset.Dataset'
+                          )}
+                        </Flex>
+                      </Td>
+                      <Td fontWeight="medium">{ref.resourceName}</Td>
+                      <Td>{ref.creatorName}</Td>
+                    </Tr>
+                  ))}
+                </Tbody>
+              </Table>
+            </TableContainer>
+          </ModalBody>
+          <ModalFooter>
+            <Button onClick={() => setReferenceDialog({ isOpen: false, references: [] })}>
+              {t('common:Close')}
+            </Button>
+          </ModalFooter>
+        </MyModal>
+      )}
+    </>
   );
 };
 
@@ -325,7 +408,8 @@ const ModelTableRow = ({
   handleOpenTrainDrawer,
   setTrainDetailDrawer,
   datasetInfo,
-  showModelId
+  showModelId,
+  handleCollaboratorError
 }: ModelTableRowProps) => {
   const showTrainedModelColumns = tabType === modelTableTabValues.custom;
   const showTrainTaskColumn = tabType === modelTableTabValues.base;
@@ -496,6 +580,7 @@ const ModelTableRow = ({
           hasManagePer={hasManagePer}
           userPermission={userPermission}
           handleOpenTrainDrawer={handleOpenTrainDrawer}
+          handleCollaboratorError={handleCollaboratorError}
         />
       </Td>
     </Tr>
@@ -509,7 +594,8 @@ const ModelTableActionCell = ({
   permissionConfig,
   hasManagePer,
   userPermission,
-  handleOpenTrainDrawer
+  handleOpenTrainDrawer,
+  handleCollaboratorError
 }: TableActionCellProps) => {
   const showPermissionButton = permissionConfig && item.permission.hasManagePer;
   const showTrainButton = tabType === modelTableTabValues.base && !!item.trainableModelType;
@@ -537,10 +623,19 @@ const ModelTableActionCell = ({
           defaultRole={ReadRoleVal}
           onGetCollaboratorList={() => getModelCollaborators(item.id)}
           onUpdateCollaborators={async ({ collaborators }) => {
-            await updateModelCollaborators({
-              collaborators,
-              modelIds: [item.id]
-            });
+            try {
+              await updateModelCollaborators({
+                collaborators,
+                modelIds: [item.id]
+              });
+            } catch (err: any) {
+              const refs = err?.data?.references;
+              if (err?.code === 409 && refs?.length > 0) {
+                handleCollaboratorError(refs);
+                throw err;
+              }
+              throw err;
+            }
             if (item.isShared && collaborators.some((clb) => clb.permission !== OwnerRoleVal)) {
               await putSystemModel({ id: item.id, isShared: false });
               clientInitData(undefined, { forceRefresh: true });

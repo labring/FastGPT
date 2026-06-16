@@ -97,7 +97,7 @@ async function handler(
   }
 
   if (isShared !== undefined) {
-    // When changing from public to private, check if the model is referenced by shared resources
+    // When changing from public to private, check if the model is referenced by any resource.
     if (isShared === false && modelItem.isShared === true) {
       const references = await findReferencingResources(id, teamId);
       if (references.length > 0) {

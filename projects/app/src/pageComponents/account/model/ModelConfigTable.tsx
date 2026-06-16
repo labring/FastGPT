@@ -51,6 +51,7 @@ import TableHeaderFilter from '@fastgpt/web/components/common/TableHeaderFilter'
 import { LazyCollaboratorProvider } from '@/components/support/permission/MemberManager/context';
 import { OwnerRoleVal, ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import { getModelCollaborators, updateModelCollaborators } from '@/web/common/system/api';
+import type { ModelReference } from '@fastgpt/service/support/permission/model/reference';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 const ModelEditModal = dynamic(() => import('./AddModelBox').then((mod) => mod.ModelEditModal));
@@ -63,6 +64,12 @@ const ModelTable = () => {
 
   const isRoot = userInfo?.username === 'root';
   const canCreateModel = isRoot || !!userInfo?.team.permission.hasModelCreatePer;
+
+  // Reference warning dialog state
+  const [referenceDialog, setReferenceDialog] = useState<{
+    isOpen: boolean;
+    references: ModelReference[];
+  }>({ isOpen: false, references: [] });
 
   const [provider, setProvider] = useState<string | ''>('');
   const providerList = useRef<{ label: React.ReactNode; value: string | '' }[]>([
@@ -246,58 +253,24 @@ const ModelTable = () => {
   });
   const { runAsync: updateModel, loading: updatingModel } = useRequest(putSystemModel, {
     onSuccess: refreshModels,
+    errorToast: '',
     onError: (err: any) => {
-      const refs = err?.response?.data?.data?.references;
-      if (err?.response?.data?.code === 409 && refs) {
-        const appList = refs
-          .filter((r: any) => r.resourceType === 'app')
-          .map((r: any) => `${r.resourceName} (${r.creatorName})`)
-          .join('\n');
-        const dsList = refs
-          .filter((r: any) => r.resourceType === 'dataset')
-          .map((r: any) => `${r.resourceName} (${r.creatorName})`)
-          .join('\n');
-        const msg = [
-          t('account_model:model_referenced_by_resources'),
-          appList && `\n${t('app:application')}: \n${appList}`,
-          dsList && `\n${t('common:core.dataset.Dataset')}: \n${dsList}`
-        ]
-          .filter(Boolean)
-          .join('');
-        toast({
-          title: msg,
-          status: 'warning',
-          duration: 10000
-        });
+      const refs = err?.data?.references;
+      if (err?.code === 409 && refs?.length > 0) {
+        setReferenceDialog({ isOpen: true, references: refs });
+        return;
       }
     }
   });
 
   const { runAsync: deleteModel } = useRequest(deleteSystemModel, {
     onSuccess: refreshModels,
+    errorToast: '',
     onError: (err: any) => {
-      const refs = err?.response?.data?.data?.references;
-      if (err?.response?.data?.code === 409 && refs) {
-        const appList = refs
-          .filter((r: any) => r.resourceType === 'app')
-          .map((r: any) => `${r.resourceName} (${r.creatorName})`)
-          .join('\n');
-        const dsList = refs
-          .filter((r: any) => r.resourceType === 'dataset')
-          .map((r: any) => `${r.resourceName} (${r.creatorName})`)
-          .join('\n');
-        const msg = [
-          t('account_model:model_referenced_by_resources'),
-          appList && `\n${t('app:application')}: \n${appList}`,
-          dsList && `\n${t('common:core.dataset.Dataset')}: \n${dsList}`
-        ]
-          .filter(Boolean)
-          .join('');
-        toast({
-          title: msg,
-          status: 'warning',
-          duration: 10000
-        });
+      const refs = err?.data?.references;
+      if (err?.code === 409 && refs?.length > 0) {
+        setReferenceDialog({ isOpen: true, references: refs });
+        return;
       }
     }
   });
@@ -491,10 +464,19 @@ const ModelTable = () => {
                             defaultRole={ReadRoleVal}
                             onGetCollaboratorList={() => getModelCollaborators(item.id)}
                             onUpdateCollaborators={async ({ collaborators }) => {
-                              await updateModelCollaborators({
-                                collaborators,
-                                modelIds: [item.id]
-                              });
+                              try {
+                                await updateModelCollaborators({
+                                  collaborators,
+                                  modelIds: [item.id]
+                                });
+                              } catch (err: any) {
+                                const refs = err?.data?.references;
+                                if (err?.code === 409 && refs?.length > 0) {
+                                  setReferenceDialog({ isOpen: true, references: refs });
+                                  return; // don't re-throw — we've handled 409 in the dialog
+                                }
+                                throw err;
+                              }
                               if (
                                 item.isShared &&
                                 collaborators.some((clb) => clb.permission !== OwnerRoleVal)
@@ -545,6 +527,61 @@ const ModelTable = () => {
       )}
       {isOpenJsonConfig && (
         <JsonConfigModal onClose={onCloseJsonConfig} onSuccess={refreshModels} />
+      )}
+
+      {/* Reference warning dialog — shown when model deletion/permission revocation is blocked */}
+      {referenceDialog.isOpen && (
+        <MyModal
+          isOpen
+          onClose={() => setReferenceDialog({ isOpen: false, references: [] })}
+          iconSrc="modal/warning"
+          title={t('account_model:model_referenced_by_resources')}
+          maxW="600px"
+        >
+          <ModalBody>
+            <TableContainer>
+              <Table fontSize="sm">
+                <Thead>
+                  <Tr>
+                    <Th>{t('common:resource_type')}</Th>
+                    <Th>{t('common:resource_name')}</Th>
+                    <Th>{t('common:creator')}</Th>
+                  </Tr>
+                </Thead>
+                <Tbody>
+                  {referenceDialog.references.map((ref, i) => (
+                    <Tr key={i}>
+                      <Td>
+                        <Flex alignItems="center" gap={2}>
+                          <MyIcon
+                            name={
+                              ref.resourceType === 'app'
+                                ? 'core/app/type/simple'
+                                : 'core/dataset/commonDatasetColor'
+                            }
+                            w="1.25rem"
+                          />
+                          {t(
+                            ref.resourceType === 'app'
+                              ? 'app:application'
+                              : 'common:core.dataset.Dataset'
+                          )}
+                        </Flex>
+                      </Td>
+                      <Td fontWeight="medium">{ref.resourceName}</Td>
+                      <Td>{ref.creatorName}</Td>
+                    </Tr>
+                  ))}
+                </Tbody>
+              </Table>
+            </TableContainer>
+          </ModalBody>
+          <ModalFooter>
+            <Button onClick={() => setReferenceDialog({ isOpen: false, references: [] })}>
+              {t('common:Close')}
+            </Button>
+          </ModalFooter>
+        </MyModal>
       )}
     </>
   );
