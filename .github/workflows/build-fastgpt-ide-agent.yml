@@ -1,18 +1,48 @@
-name: Build fastgpt-ide-agent images
+name: Build fastgpt agent helper images
 
 on:
   workflow_dispatch:
+    inputs:
+      ide_agent_tag:
+        description: 'fastgpt-ide-agent image tag'
+        required: false
+        default: latest
+        type: string
+      agent_sandbox_proxy_tag:
+        description: 'fastgpt-agent-sandbox-proxy image tag'
+        required: false
+        default: latest
+        type: string
 
 jobs:
-  build-fastgpt-ide-agent-images:
+  build-fastgpt-agent-helper-images:
     permissions:
       packages: write
       contents: read
     strategy:
       matrix:
         include:
-          - arch: amd64
-          - arch: arm64
+          - image: fastgpt-ide-agent
+            context: projects/fastgpt-ide-agent
+            dockerfile: projects/fastgpt-ide-agent/Dockerfile
+            description: fastgpt-ide-agent image
+            arch: amd64
+          - image: fastgpt-ide-agent
+            context: projects/fastgpt-ide-agent
+            dockerfile: projects/fastgpt-ide-agent/Dockerfile
+            description: fastgpt-ide-agent image
+            arch: arm64
+            runs-on: ubuntu-24.04-arm
+          - image: fastgpt-agent-sandbox-proxy
+            context: projects/agent-sandbox-proxy
+            dockerfile: projects/agent-sandbox-proxy/Dockerfile
+            description: fastgpt-agent-sandbox-proxy image
+            arch: amd64
+          - image: fastgpt-agent-sandbox-proxy
+            context: projects/agent-sandbox-proxy
+            dockerfile: projects/agent-sandbox-proxy/Dockerfile
+            description: fastgpt-agent-sandbox-proxy image
+            arch: arm64
             runs-on: ubuntu-24.04-arm
     runs-on: ${{ matrix.runs-on || 'ubuntu-24.04' }}
     steps:
@@ -29,11 +59,11 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-ide-agent-buildx-${{ github.sha }}
+          key: ${{ runner.os }}-${{ matrix.image }}-buildx-${{ github.sha }}
           restore-keys: |
-            ${{ runner.os }}-ide-agent-buildx-
+            ${{ runner.os }}-${{ matrix.image }}-buildx-
 
-      # Push per-arch images by digest first; the release job publishes the latest manifest.
+      # Push per-arch images by digest first; the release job publishes the final manifest tag.
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -45,13 +75,13 @@ jobs:
         id: build
         uses: docker/build-push-action@v6
         with:
-          context: projects/fastgpt-ide-agent
-          file: projects/fastgpt-ide-agent/Dockerfile
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
           platforms: linux/${{ matrix.arch }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
-            org.opencontainers.image.description=fastgpt-ide-agent image
-          outputs: type=image,"name=ghcr.io/${{ github.repository_owner }}/fastgpt-ide-agent",push-by-digest=true,push=true
+            org.opencontainers.image.description=${{ matrix.description }}
+          outputs: type=image,"name=ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}",push-by-digest=true,push=true
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
 
@@ -64,16 +94,23 @@ jobs:
       - name: Upload digest
         uses: actions/upload-artifact@v4
         with:
-          name: digests-fastgpt-ide-agent-${{ github.sha }}-${{ matrix.arch }}
+          name: digests-${{ matrix.image }}-${{ github.sha }}-${{ matrix.arch }}
           path: ${{ runner.temp }}/digests/*
           if-no-files-found: error
           retention-days: 1
 
-  release-fastgpt-ide-agent-images:
+  release-fastgpt-agent-helper-images:
     permissions:
       packages: write
       contents: read
-    needs: build-fastgpt-ide-agent-images
+    needs: build-fastgpt-agent-helper-images
+    strategy:
+      matrix:
+        include:
+          - image: fastgpt-ide-agent
+            tag: ${{ inputs.ide_agent_tag || 'latest' }}
+          - image: fastgpt-agent-sandbox-proxy
+            tag: ${{ inputs.agent_sandbox_proxy_tag || 'latest' }}
     runs-on: ubuntu-24.04
     steps:
       - name: Login to GitHub Container Registry
@@ -86,7 +123,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: ${{ runner.temp }}/digests
-          pattern: digests-fastgpt-ide-agent-${{ github.sha }}-*
+          pattern: digests-${{ matrix.image }}-${{ github.sha }}-*
           merge-multiple: true
 
       - name: Set up Docker Buildx
@@ -94,10 +131,10 @@ jobs:
 
       - name: Set image name and tag
         run: |
-          echo "Git_Latest=ghcr.io/${{ github.repository_owner }}/fastgpt-ide-agent:latest" >> $GITHUB_ENV
+          echo "Git_Tag=ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:${{ matrix.tag }}" >> $GITHUB_ENV
 
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
         run: |
-          docker buildx imagetools create -t "${Git_Latest}" \
-            $(printf 'ghcr.io/${{ github.repository_owner }}/fastgpt-ide-agent@sha256:%s ' *)
+          docker buildx imagetools create -t "${Git_Tag}" \
+            $(printf 'ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}@sha256:%s ' *)
