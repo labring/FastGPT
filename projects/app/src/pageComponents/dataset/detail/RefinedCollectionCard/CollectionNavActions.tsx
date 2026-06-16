@@ -271,13 +271,11 @@ const CollectionNavActions = () => {
               children: [
                 {
                   icon: 'key',
-                  type: 'grayBg' as const,
                   label: t('common:permission.Permission'),
                   onClick: () => setEditPerOpen(true)
                 },
                 {
                   icon: 'edit',
-                  type: 'grayBg' as const,
                   label: t('common:Edit'),
                   onClick: () => setShowCreateModal(true)
                 }
@@ -459,6 +457,8 @@ const CollectionNavActions = () => {
           avatar={datasetDetail.avatar}
           name={datasetDetail.name}
           isInheritPermission={datasetDetail.inheritPermission}
+          showEffectScope
+          effectScope={datasetDetail.permissionEffectScope}
           onChangeOwner={(tmbId: string) =>
             postChangeOwner({ datasetId: datasetDetail._id, ownerId: tmbId }).then(() =>
               loadDatasetDetail(datasetDetail._id)
@@ -479,6 +479,15 @@ const CollectionNavActions = () => {
               deleteDatasetCollaborators({ ...props, datasetId: datasetDetail._id }),
             refreshDeps: [datasetDetail._id, datasetDetail.inheritPermission]
           }}
+          onConfirmPermission={({ collaborators, permissionEffectScope }) =>
+            postUpdateDatasetCollaborators({
+              collaborators,
+              datasetId: datasetDetail._id,
+              permissionEffectScope
+            }).then(() => {
+              loadDatasetDetail(datasetDetail._id);
+            })
+          }
           onClose={() => setEditPerOpen(false)}
         />
       )}
