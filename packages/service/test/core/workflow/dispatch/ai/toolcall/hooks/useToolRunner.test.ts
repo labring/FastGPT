@@ -547,7 +547,7 @@ describe('useToolRunner', () => {
       message: SandboxErrEnum.agentSandboxPermissionDenied
     });
     await expect(promise.catch((error) => getErrText(error))).resolves.toBe(
-      '当前应用无权使用虚拟机，请联系管理员配置。'
+      'common:code_error.sandbox_error.agent_sandbox_permission_denied'
     );
   });
 });

@@ -595,7 +595,9 @@ describe('dispatchRunAgent user context', () => {
       }
     );
     const result = await promise;
-    expect(result.error?.system_error_text).toBe('当前应用无权使用虚拟机，请联系管理员配置。');
+    expect(result.error?.system_error_text).toBe(
+      'common:code_error.sandbox_error.agent_sandbox_permission_denied'
+    );
     expect(getSandboxClientMock).not.toHaveBeenCalled();
   });
 });
