@@ -49,7 +49,7 @@ const buildSandboxResourcesToArchiveQuery = (params: {
     status: SandboxStatusEnum.stopped,
     lastActiveAt: { $lt: inactiveBefore },
     'metadata.archive.state': { $exists: false }
-  }).sort({ lastActiveAt: 1 });
+  }).sort({ lastActiveAt: -1 });
 };
 
 /**
