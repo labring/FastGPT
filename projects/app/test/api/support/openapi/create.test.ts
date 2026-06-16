@@ -1,12 +1,9 @@
 import type { EditApiKeyProps } from '@/global/support/openapi/api';
 import * as createapi from '@/pages/api/support/openapi/create';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
-import {
-  TeamApikeyCreatePermissionVal,
-  TeamDatasetCreatePermissionVal
-} from '@fastgpt/global/support/permission/user/constant';
+import { TeamApikeyCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { getFakeUsers } from '@test/datas/users';
 import { Call } from '@test/utils/request';
@@ -60,5 +57,79 @@ describe('create dataset', () => {
     });
     expect(res2.error).toBeUndefined();
     expect(res2.code).toBe(200);
+  });
+
+  it('team owner can create global APIKey with authProxy enabled', async () => {
+    const users = await getFakeUsers(1);
+
+    const res = await Call<EditApiKeyProps>(createapi.default, {
+      auth: users.owner,
+      body: {
+        name: 'owner auth proxy key',
+        authProxy: true,
+        limit: {
+          maxUsagePoints: 1000
+        }
+      }
+    });
+
+    expect(res.error).toBeUndefined();
+    expect(res.code).toBe(200);
+
+    const openapi = await MongoOpenApi.findOne({
+      teamId: users.owner.teamId,
+      name: 'owner auth proxy key'
+    }).lean();
+    expect(openapi?.authProxy).toBe(true);
+  });
+
+  it('non-owner cannot enable authProxy when creating global APIKey', async () => {
+    const users = await getFakeUsers(1);
+    await MongoResourcePermission.create({
+      resourceType: 'team',
+      teamId: users.members[0].teamId,
+      resourceId: null,
+      tmbId: users.members[0].tmbId,
+      permission: TeamApikeyCreatePermissionVal
+    });
+
+    const res = await Call<EditApiKeyProps>(createapi.default, {
+      auth: users.members[0],
+      body: {
+        name: 'member auth proxy key',
+        authProxy: true,
+        limit: {
+          maxUsagePoints: 1000
+        }
+      }
+    });
+
+    expect(res.code).toBe(500);
+    expect(await MongoOpenApi.findOne({ name: 'member auth proxy key' })).toBeNull();
+  });
+
+  it('app APIKey cannot enable authProxy', async () => {
+    const users = await getFakeUsers(1);
+    const app = await MongoApp.create({
+      name: 'auth proxy app',
+      type: 'simple',
+      tmbId: users.owner.tmbId,
+      teamId: users.owner.teamId
+    });
+
+    const res = await Call<EditApiKeyProps>(createapi.default, {
+      auth: users.owner,
+      body: {
+        appId: String(app._id),
+        name: 'app auth proxy key',
+        authProxy: true,
+        limit: {
+          maxUsagePoints: 1000
+        }
+      }
+    });
+
+    expect(res.code).toBe(500);
+    expect(await MongoOpenApi.findOne({ name: 'app auth proxy key' })).toBeNull();
   });
 });

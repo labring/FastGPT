@@ -26,9 +26,15 @@ export const OpenApiKeySchema = z.object({
   createTime: z.coerce.date().meta({ description: '创建时间' }),
   lastUsedTime: z.coerce.date().optional().meta({ description: '最后使用时间' }),
   apiKey: z.string().meta({
-    description: 'API Key，团队级列表返回脱敏值；应用级列表返回明文，供发布渠道重复复制'
+    description: 'API Key；有复制权限时返回明文，否则返回脱敏值'
+  }),
+  canCopy: z.boolean().optional().default(false).meta({
+    description: '当前用户是否可以复制该 API Key 明文'
   }),
   appId: ObjectIdSchema.optional().meta({ description: '绑定应用 ID' }),
+  authProxy: z.boolean().optional().default(false).meta({
+    description: '是否允许团队级 API Key 在 chat/completions 请求中通过 authProxy 代理团队成员身份'
+  }),
   name: z.string().optional().default('Api Key').meta({ description: 'API Key 名称' }),
   usagePoints: z.number().optional().default(0).meta({ description: '累计使用积分' }),
   limit: ApiKeyLimitSchema.meta({
@@ -48,6 +54,11 @@ export type OpenApiKeySchemaType = z.infer<typeof OpenApiKeySchema>;
 export const CreateApiKeyBodySchema = z.object({
   appId: ObjectIdSchema.optional().meta({ description: '绑定应用 ID，不传则创建团队级 API Key' }),
   name: z.string().min(1).meta({ example: '生产环境 Key', description: 'API Key 名称' }),
+  authProxy: z.boolean().optional().meta({
+    example: false,
+    description:
+      '是否允许团队级 API Key 在 chat/completions 请求中代理团队成员身份；仅团队 owner 可开启'
+  }),
   limit: ApiKeyLimitSchema.meta({
     description: 'API Key 使用限制，未配置时表示不限制过期时间和积分用量'
   })
@@ -89,9 +100,13 @@ export const UpdateApiKeyBodySchema = CreateApiKeyBodySchema.partial()
   .extend({
     _id: ObjectIdSchema.meta({ description: 'API Key 记录 ID' })
   })
-  .refine(({ name, limit }) => name !== undefined || limit !== undefined, {
-    message: 'name or limit is required'
-  });
+  .refine(
+    ({ name, limit, authProxy }) =>
+      name !== undefined || limit !== undefined || authProxy !== undefined,
+    {
+      message: 'name, limit or authProxy is required'
+    }
+  );
 export type UpdateApiKeyBodyType = z.infer<typeof UpdateApiKeyBodySchema>;
 
 export const UpdateApiKeyResponseSchema = z.undefined().meta({

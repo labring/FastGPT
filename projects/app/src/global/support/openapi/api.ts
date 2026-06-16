@@ -7,5 +7,6 @@ export type GetApiKeyProps = {
 export type EditApiKeyProps = {
   appId?: string;
   name: string;
+  authProxy?: boolean;
   limit: OpenApiSchema['limit'];
 };

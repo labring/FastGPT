@@ -15,7 +15,8 @@ import {
   useTheme,
   Link,
   Input,
-  IconButton
+  IconButton,
+  Switch
 } from '@chakra-ui/react';
 import {
   getOpenApiKeys,
@@ -45,6 +46,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 type EditProps = EditApiKeyProps & { _id?: string };
 const defaultEditData: EditProps = {
   name: '',
+  authProxy: false,
   limit: {
     maxUsagePoints: -1
   }
@@ -189,83 +191,98 @@ const ApiKeyTable = ({ tips, appId, mode = 'account' }: ApiKeyTableProps) => {
             </Tr>
           </Thead>
           <Tbody fontSize={'sm'}>
-            {apiKeys.map(({ _id, name, usagePoints, limit, apiKey, createTime, lastUsedTime }) => (
-              <Tr key={_id}>
-                <Td>{name}</Td>
-                <Td>
-                  <Flex alignItems={'center'} gap={2}>
-                    <Box>{maskApiKey(apiKey)}</Box>
-                    {isPublishMode && (
-                      <IconButton
-                        aria-label={t('common:Copy')}
-                        icon={<MyIcon name={'copy'} w={'15px'} />}
-                        size={'xs'}
-                        variant={'whiteBase'}
-                        onClick={() => setCopyApiKey({ id: _id, apiKey })}
-                      />
-                    )}
-                  </Flex>
-                </Td>
-                <Td>
-                  {Math.round(usagePoints)}/
-                  {feConfigs?.isPlus && limit?.maxUsagePoints && limit?.maxUsagePoints > -1
-                    ? `${limit?.maxUsagePoints}`
-                    : t('common:Unlimited')}
-                </Td>
-                {feConfigs?.isPlus && (
-                  <>
-                    <Td whiteSpace={'pre-wrap'}>
-                      {limit?.expiredTime
-                        ? dayjs(limit?.expiredTime).format('YYYY/MM/DD\nHH:mm')
-                        : '-'}
-                    </Td>
-                  </>
-                )}
-                <Td whiteSpace={'pre-wrap'}>{dayjs(createTime).format('YYYY/MM/DD\nHH:mm:ss')}</Td>
-                <Td whiteSpace={'pre-wrap'}>
-                  {lastUsedTime
-                    ? dayjs(lastUsedTime).format('YYYY/MM/DD\nHH:mm:ss')
-                    : t('common:un_used')}
-                </Td>
-                <Td>
-                  <MyMenu
-                    offset={[-50, 5]}
-                    Button={
-                      <IconButton
-                        icon={<MyIcon name={'more'} w={'14px'} />}
-                        name={'more'}
-                        variant={'whitePrimary'}
-                        size={'sm'}
-                        aria-label={''}
-                      />
-                    }
-                    menuList={[
-                      {
-                        children: [
-                          {
-                            label: t('common:Edit'),
-                            icon: 'edit',
-                            onClick: () =>
-                              setEditData({
-                                _id,
-                                name,
-                                limit,
-                                appId
-                              })
-                          },
-                          {
-                            label: t('common:Delete'),
-                            icon: 'delete',
-                            type: 'danger',
-                            onClick: () => openConfirm({ onConfirm: () => onclickRemove(_id) })()
-                          }
-                        ]
+            {apiKeys.map(
+              ({
+                _id,
+                name,
+                usagePoints,
+                limit,
+                apiKey,
+                canCopy,
+                createTime,
+                lastUsedTime,
+                authProxy
+              }) => (
+                <Tr key={_id}>
+                  <Td>{name}</Td>
+                  <Td>
+                    <Flex alignItems={'center'} gap={2}>
+                      <Box>{maskApiKey(apiKey)}</Box>
+                      {canCopy && (
+                        <IconButton
+                          aria-label={t('common:Copy')}
+                          icon={<MyIcon name={'copy'} w={'15px'} />}
+                          size={'xs'}
+                          variant={'whiteBase'}
+                          onClick={() => setCopyApiKey({ id: _id, apiKey })}
+                        />
+                      )}
+                    </Flex>
+                  </Td>
+                  <Td>
+                    {Math.round(usagePoints)}/
+                    {feConfigs?.isPlus && limit?.maxUsagePoints && limit?.maxUsagePoints > -1
+                      ? `${limit?.maxUsagePoints}`
+                      : t('common:Unlimited')}
+                  </Td>
+                  {feConfigs?.isPlus && (
+                    <>
+                      <Td whiteSpace={'pre-wrap'}>
+                        {limit?.expiredTime
+                          ? dayjs(limit?.expiredTime).format('YYYY/MM/DD\nHH:mm')
+                          : '-'}
+                      </Td>
+                    </>
+                  )}
+                  <Td whiteSpace={'pre-wrap'}>
+                    {dayjs(createTime).format('YYYY/MM/DD\nHH:mm:ss')}
+                  </Td>
+                  <Td whiteSpace={'pre-wrap'}>
+                    {lastUsedTime
+                      ? dayjs(lastUsedTime).format('YYYY/MM/DD\nHH:mm:ss')
+                      : t('common:un_used')}
+                  </Td>
+                  <Td>
+                    <MyMenu
+                      offset={[-50, 5]}
+                      Button={
+                        <IconButton
+                          icon={<MyIcon name={'more'} w={'14px'} />}
+                          name={'more'}
+                          variant={'whitePrimary'}
+                          size={'sm'}
+                          aria-label={''}
+                        />
                       }
-                    ]}
-                  />
-                </Td>
-              </Tr>
-            ))}
+                      menuList={[
+                        {
+                          children: [
+                            {
+                              label: t('common:Edit'),
+                              icon: 'edit',
+                              onClick: () =>
+                                setEditData({
+                                  _id,
+                                  name,
+                                  limit,
+                                  authProxy,
+                                  appId
+                                })
+                            },
+                            {
+                              label: t('common:Delete'),
+                              icon: 'delete',
+                              type: 'danger',
+                              onClick: () => openConfirm({ onConfirm: () => onclickRemove(_id) })()
+                            }
+                          ]
+                        }
+                      ]}
+                    />
+                  </Td>
+                </Tr>
+              )
+            )}
           </Tbody>
         </Table>
       </TableContainer>
@@ -339,12 +356,15 @@ function ApiKeyCopyModal({
   const { t } = useTranslation();
   const { copyData } = useCopyData();
   const apiKey = data?.apiKey || '';
+  const { runAsync: copyAudit, loading } = useRequest(postCopyOpenApiKeyAudit, {
+    errorToast: 'Error'
+  });
 
   const onCopy = async () => {
-    await copyData(apiKey);
     if (data?.id) {
-      postCopyOpenApiKeyAudit({ id: data.id }).catch(() => undefined);
+      await copyAudit({ id: data.id });
     }
+    await copyData(apiKey);
   };
 
   return (
@@ -358,7 +378,11 @@ function ApiKeyCopyModal({
           <Button variant="whiteBase" onClick={onClose}>
             {t('common:Close')}
           </Button>
-          <Button onClick={onCopy} leftIcon={<MyIcon name={'copy'} w={'15px'} />}>
+          <Button
+            isLoading={loading}
+            onClick={onCopy}
+            leftIcon={<MyIcon name={'copy'} w={'15px'} />}
+          >
             {t('common:Copy')}
           </Button>
         </>
@@ -476,6 +500,15 @@ function EditKeyModal({
               />
             </Flex>
           </>
+        )}
+        {!defaultData.appId && (
+          <Flex alignItems={'center'} mt={4}>
+            <FormLabel display={'flex'} flex={'0 0 90px'} alignItems={'center'}>
+              {t('common:support.openapi.Auth proxy')}
+              <QuestionTip ml={1} label={t('common:support.openapi.Auth proxy tip')}></QuestionTip>
+            </FormLabel>
+            <Switch {...register('authProxy')} />
+          </Flex>
         )}
       </ModalBody>
 

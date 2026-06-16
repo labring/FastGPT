@@ -66,6 +66,7 @@ export async function authOpenApiKey({
       teamId: String(openApi.teamId),
       tmbId: String(openApi.tmbId),
       appId: openApi.appId || '',
+      authProxy: !!openApi.authProxy,
       sourceName: openApi.name
     };
   } catch (error) {

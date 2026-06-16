@@ -86,6 +86,7 @@ describe('openapi auth', () => {
       teamId,
       tmbId,
       appId: '',
+      authProxy: false,
       sourceName: 'team key'
     });
     expect(mockAuthOpenApiHandler).toHaveBeenCalledTimes(1);
@@ -111,6 +112,7 @@ describe('openapi auth', () => {
       teamId,
       tmbId,
       appId: 'app-1',
+      authProxy: false,
       sourceName: 'app key'
     });
     expect(mockAuthOpenApiHandler).toHaveBeenCalledTimes(1);
@@ -152,5 +154,23 @@ describe('openapi auth', () => {
     ).rejects.toBe(ERROR_ENUM.unAuthApiKey);
 
     expect(mockAuthOpenApiHandler).not.toHaveBeenCalled();
+  });
+
+  it('返回 APIKey 是否开启 authProxy', async () => {
+    await MongoOpenApi.create({
+      ...teamApiKey,
+      apiKey: 'fastgpt-team-auth-proxy',
+      authProxy: true
+    });
+
+    const result = await authOpenApiKey({
+      apikey: 'fastgpt-team-auth-proxy',
+      req: {
+        method: 'POST',
+        url: '/api/core/dataset/list'
+      } as any
+    });
+
+    expect(result.authProxy).toBe(true);
   });
 });
