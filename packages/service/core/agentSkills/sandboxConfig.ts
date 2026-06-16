@@ -130,6 +130,50 @@ export function getSkillSizeLimits(): SkillSizeLimits {
   };
 }
 
+/** Heap headroom ratio — refuse zip operations when heapUsed/heapTotal exceeds this. */
+const HEAP_HEADROOM_RATIO = 0.9;
+
+/**
+ * Small allocations are always permitted regardless of overall heap pressure.
+ * A single-digit-MB allocation is extremely unlikely to be the final push to
+ * OOM, and rejecting it would make the API completely unusable when the heap
+ * is already under moderate pressure (e.g. in memory-constrained dev/staging
+ * environments where --max-old-space-size was not tuned).
+ */
+const SMALL_ALLOCATION_BYTES = 10 * 1024 * 1024; // 10 MB
+
+/**
+ * Throw if the requested additional bytes would push the V8 heap past the
+ * headroom ratio, UNLESS the allocation is small enough to be safe even on a
+ * nearly-full heap (see SMALL_ALLOCATION_BYTES).
+ *
+ * Use before any in-memory zip operation (full-zip download, JSZip
+ * load/generate, decompress extraction) to prevent an individual request from
+ * triggering OOM when the heap is already under pressure.
+ *
+ * The check is a best-effort safety net, not a guarantee — concurrent
+ * allocations between the check and the actual operation may still exhaust
+ * the heap.  Paired with the per-operation size limits in
+ * `getSkillSizeLimits()`, this provides two layers of defence.
+ */
+export function checkHeapHeadroom(additionalBytes: number): void {
+  // Always permit small allocations — even a nearly-full heap can absorb
+  // a few MB without OOM, and rejecting tiny requests makes the API unusable.
+  if (additionalBytes <= SMALL_ALLOCATION_BYTES) {
+    return;
+  }
+
+  const { heapUsed, heapTotal } = process.memoryUsage();
+  const projected = heapUsed + additionalBytes;
+  if (projected > heapTotal * HEAP_HEADROOM_RATIO) {
+    throw new Error(
+      `Insufficient heap memory: ${(heapUsed / 1024 / 1024).toFixed(0)}MB used of ` +
+        `${(heapTotal / 1024 / 1024).toFixed(0)}MB total, ` +
+        `need ${(additionalBytes / 1024 / 1024).toFixed(0)}MB more`
+    );
+  }
+}
+
 /**
  * Validate sandbox configuration
  */

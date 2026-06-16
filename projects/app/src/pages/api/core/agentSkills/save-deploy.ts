@@ -28,6 +28,9 @@ import { isValidObjectId } from 'mongoose';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/agentSkill';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+
+const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS.DEPLOY);
 
 /**
  * 把 AgentSkillEditor 当前所有未保存的文件作为一份完整变更打包成新版本，
@@ -59,12 +62,26 @@ async function handler(
     content: f.content
   }));
 
-  const baseBuffer = await downloadSkillPackage({ storageInfo: skill.currentStorage });
-  const newBuffer = await mutateZip(baseBuffer, (zip) => {
-    for (const f of normalizedFiles) {
-      zipWriteText(zip, f.path, f.content);
-    }
-  });
+  let newBuffer: Buffer;
+  try {
+    const baseBuffer = await downloadSkillPackage({ storageInfo: skill.currentStorage });
+    newBuffer = await mutateZip(baseBuffer, (zip) => {
+      for (const f of normalizedFiles) {
+        zipWriteText(zip, f.path, f.content);
+      }
+    });
+  } catch (err: any) {
+    logger.error('Failed to download or mutate skill package', {
+      skillId,
+      fileCount: normalizedFiles.length,
+      error: err?.message
+    });
+    return Promise.reject(
+      new UserError(
+        `Failed to prepare skill package for deploy: ${err?.message || 'unknown error'}`
+      )
+    );
+  }
 
   const response = await mongoSessionRun(async (session) => {
     const nextVersion = await getNextVersionNumber(skillId, session);

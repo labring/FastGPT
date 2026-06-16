@@ -12,6 +12,7 @@ import JSZip from 'jszip';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import type { AgentSkillSchemaType } from '@fastgpt/global/core/agentSkills/type';
 import { downloadSkillPackage, uploadSkillPackage } from './storage';
+import { checkHeapHeadroom } from './sandboxConfig';
 import { updateCurrentStorage } from './controller';
 import { MongoAgentSkillsVersion } from './version/schema';
 import { MongoAgentSkills } from './schema';
@@ -262,6 +263,11 @@ export async function editCurrentPackage(params: {
 
       // Renew lock before mutation (download may have been slow)
       await renewSkillEditLock(lockHandle);
+
+      // JSZip.loadAsync + generateAsync can triple the in-memory footprint
+      // (raw buffer + internal JSZip representation + new buffer).
+      // Check with 2× the actual size as a conservative estimate.
+      checkHeapHeadroom(oldBuffer.length * 2);
 
       const newBuffer = await mutateZip(oldBuffer, mutator);
 
