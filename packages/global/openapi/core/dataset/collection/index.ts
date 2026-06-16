@@ -78,7 +78,8 @@ export const DatasetCollectionPath: OpenAPIPath = {
   '/core/dataset/collection/scrollList': {
     post: {
       summary: '获取数据集集合列表（滚动分页）',
-      description: '获取数据集集合列表（滚动分页）',
+      description: '已废弃：获取数据集集合列表（滚动分页）。请改用 /core/dataset/collection/listV2',
+      deprecated: true,
       tags: [TagsMap.datasetCollection],
       requestBody: {
         content: {

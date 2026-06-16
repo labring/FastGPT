@@ -7,6 +7,7 @@ import {
   DatasetTypeEnum,
   SearchScoreTypeEnum,
   TrainingModeEnum,
+  CollectionTrainingStatusEnum,
   ChunkSettingModeEnum,
   ChunkTriggerConfigTypeEnum,
   ParagraphChunkAIModeEnum
@@ -262,6 +263,24 @@ export const CollectionWithDatasetSchema = DatasetCollectionSchema.extend({
 });
 export type CollectionWithDatasetType = z.infer<typeof CollectionWithDatasetSchema>;
 
+export const CollectionTrainingStatusSchema = z.object({
+  trainingAmount: z.number().optional().default(0).meta({ description: '剩余训练数量' }),
+  activeTrainingAmount: z
+    .number()
+    .optional()
+    .default(0)
+    .meta({ description: '仍会继续处理的训练数量' }),
+  finalErrorAmount: z.number().optional().default(0).meta({ description: '最终/阻塞异常训练数量' }),
+  hasError: z.boolean().optional().default(false).meta({ description: '是否存在最终/阻塞异常' }),
+  slowestTrainingMode: z.enum(TrainingModeEnum).optional().meta({ description: '最慢训练阶段' }),
+  slowestTrainingStatus: z
+    .enum(CollectionTrainingStatusEnum)
+    .optional()
+    .default(CollectionTrainingStatusEnum.ready)
+    .meta({ description: '最慢训练阶段状态' })
+});
+export type CollectionTrainingStatusType = z.infer<typeof CollectionTrainingStatusSchema>;
+
 /* ====== service type ===== */
 
 /* ================= dataset ===================== */
@@ -329,7 +348,7 @@ export const DatasetCollectionItemSchema = CollectionWithDatasetSchema.extend({
   permission: PermissionSchema,
   indexAmount: z.number().meta({ description: '索引数量' }),
   errorCount: z.number().optional().meta({ description: '错误数量' })
-});
+}).merge(CollectionTrainingStatusSchema);
 export type DatasetCollectionItemType = z.infer<typeof DatasetCollectionItemSchema>;
 
 /* ================= data ===================== */

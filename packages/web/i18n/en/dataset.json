@@ -201,5 +201,9 @@
   "website_info": "Website Information",
   "yuque_dataset": "Yuque Knowledge Base",
   "yuque_dataset_config": "Configure Yuque Knowledge Base",
-  "yuque_dataset_desc": "Build knowledge base using Yuque documents by configuring document permissions, documents will not be stored twice"
+  "yuque_dataset_desc": "Build knowledge base using Yuque documents by configuring document permissions, documents will not be stored twice",
+  "training.stage_error": "{{stage}} error",
+  "training.status_error": "Training error",
+  "training_error_list": "Error list",
+  "training_error_empty": "No training errors"
 }

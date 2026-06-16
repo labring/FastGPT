@@ -160,7 +160,7 @@ export async function generateVector(): Promise<any> {
       }
 
       // auth balance
-      if (!(await checkTeamAiPointsAndLock(data.teamId))) {
+      if (!(await checkTeamAiPointsAndLock(data.teamId, String(data._id)))) {
         continue;
       }
 

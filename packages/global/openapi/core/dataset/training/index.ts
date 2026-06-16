@@ -6,14 +6,17 @@ import {
   DeleteTrainingDataBodySchema,
   GetTrainingDataDetailBodySchema,
   GetTrainingErrorBodySchema,
+  GetDatasetTrainingErrorBodySchema,
+  HasDatasetTrainingErrorQuerySchema,
   GetDatasetTrainingQueueQuerySchema
 } from './api';
 
 export const DatasetTrainingPath: OpenAPIPath = {
   '/core/dataset/training/updateTrainingData': {
     put: {
-      summary: '更新训练数据',
-      description: '更新单条训练数据，或批量重试集合内所有错误数据（不传 dataId）',
+      summary: '更新训练数据或重试训练异常',
+      description:
+        '更新或重试训练异常：传 dataId 时重试或编辑后重训单个 chunk；不传 dataId 时，可按 collectionId 或 datasetId 重试全部最终/阻塞异常',
       tags: [TagsMap.datasetTraining],
       requestBody: {
         content: {
@@ -92,8 +95,8 @@ export const DatasetTrainingPath: OpenAPIPath = {
 
   '/core/dataset/training/getTrainingError': {
     post: {
-      summary: '获取训练错误列表',
-      description: '分页查询集合内训练失败的数据列表',
+      summary: '获取集合训练错误列表',
+      description: '分页查询集合内最终/阻塞异常训练记录',
       tags: [TagsMap.datasetTraining],
       requestBody: {
         content: {
@@ -105,6 +108,43 @@ export const DatasetTrainingPath: OpenAPIPath = {
       responses: {
         200: {
           description: '成功返回错误数据分页列表'
+        }
+      }
+    }
+  },
+
+  '/core/dataset/training/getDatasetTrainingError': {
+    post: {
+      summary: '获取知识库训练错误列表',
+      description:
+        '分页查询知识库内存在最终/阻塞异常的集合，并返回每个集合内的部分异常 chunk；传 collectionId 时加载该集合更多异常 chunk',
+      tags: [TagsMap.datasetTraining],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: GetDatasetTrainingErrorBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功返回知识库错误数据分页列表'
+        }
+      }
+    }
+  },
+
+  '/core/dataset/training/hasDatasetTrainingError': {
+    get: {
+      summary: '检查知识库是否存在训练错误',
+      description: '轻量检查知识库内是否存在最终/阻塞异常训练记录，用于列表徽章状态探测',
+      tags: [TagsMap.datasetTraining],
+      requestParams: {
+        query: HasDatasetTrainingErrorQuerySchema
+      },
+      responses: {
+        200: {
+          description: '成功返回是否存在训练错误'
         }
       }
     }

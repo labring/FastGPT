@@ -138,7 +138,6 @@ export const authDataset = async ({
 export async function authDatasetCollection({
   collectionId,
   per = NullPermissionVal,
-  isRoot = false,
   ...props
 }: AuthModeType & {
   collectionId: string;

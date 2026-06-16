@@ -112,7 +112,7 @@ export async function generateQA(): Promise<any> {
         continue;
       }
       // auth balance
-      if (!(await checkTeamAiPointsAndLock(data.teamId))) {
+      if (!(await checkTeamAiPointsAndLock(data.teamId, String(data._id)))) {
         continue;
       }
 

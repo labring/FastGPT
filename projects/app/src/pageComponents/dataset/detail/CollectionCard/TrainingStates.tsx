@@ -1,16 +1,4 @@
-import {
-  Box,
-  Button,
-  Flex,
-  ModalBody,
-  Table,
-  TableContainer,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tr
-} from '@chakra-ui/react';
+import { Box, Flex, ModalBody } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
@@ -18,26 +6,14 @@ import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useMemo, useState } from 'react';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getDatasetCollectionTrainingDetail } from '@/web/core/dataset/api/collection';
-import {
-  deleteTrainingData,
-  getTrainingDataDetail,
-  getTrainingError,
-  updateTrainingData
-} from '@/web/core/dataset/api/training';
 import { DatasetCollectionDataProcessModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { type GetTrainingDataDetailResponse } from '@fastgpt/global/openapi/core/dataset/training/api';
-import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import { TrainingProcess } from '@/web/core/dataset/constants';
-import { useForm } from 'react-hook-form';
 import type { GetCollectionTrainingDetailResponseType } from '@fastgpt/global/openapi/core/dataset/collection/api';
-import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
-import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import MyImage from '@/components/MyImage';
-import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import type { Permission } from '@fastgpt/global/support/permission/controller';
 import React from 'react';
+import TrainingErrorList from './TrainingErrorList';
 
 enum TrainingStatus {
   NotStart = 'NotStart',
@@ -57,6 +33,8 @@ const ProgressView = ({
   const isQA = trainingDetail?.trainingType === DatasetCollectionDataProcessModeEnum.qa;
   const isImageParse =
     trainingDetail?.trainingType === DatasetCollectionDataProcessModeEnum.imageParse;
+  const isImageIndex = trainingDetail.advancedTraining.imageIndex;
+  const isAutoIndexes = trainingDetail.advancedTraining.autoIndexes;
 
   /* 
     状态计算
@@ -136,7 +114,7 @@ const ProgressView = ({
             }
           ]
         : []),
-      ...(trainingDetail?.advancedTraining.imageIndex
+      ...(isImageIndex
         ? [
             {
               errorCount: trainingDetail.errorCounts.image,
@@ -148,7 +126,7 @@ const ProgressView = ({
             }
           ]
         : []),
-      ...(trainingDetail?.advancedTraining.autoIndexes
+      ...(isAutoIndexes
         ? [
             {
               errorCount: trainingDetail.errorCounts.auto,
@@ -185,8 +163,8 @@ const ProgressView = ({
     trainingDetail.queuedCounts,
     trainingDetail.trainingCounts,
     trainingDetail.errorCounts,
-    trainingDetail?.advancedTraining.imageIndex,
-    trainingDetail?.advancedTraining.autoIndexes,
+    isImageIndex,
+    isAutoIndexes,
     trainingDetail.trainedCount,
     t,
     isImageParse,
@@ -286,231 +264,14 @@ const ProgressView = ({
   );
 };
 
-const ErrorView = ({
-  collectionId,
-  refreshTrainingDetail
-}: {
-  collectionId: string;
-  refreshTrainingDetail: () => void;
-}) => {
-  const { t } = useTranslation();
-  const TrainingText = {
-    [TrainingModeEnum.parse]: t('dataset:process.Parsing'),
-    [TrainingModeEnum.chunk]: t('dataset:process.Vectorizing'),
-    [TrainingModeEnum.qa]: t('dataset:process.Get QA'),
-    [TrainingModeEnum.imageParse]: t('dataset:process.Image_Index'),
-    [TrainingModeEnum.image]: t('dataset:process.Image_Index'),
-    [TrainingModeEnum.auto]: t('dataset:process.Auto_Index')
-  };
-
-  const [editChunk, setEditChunk] = useState<GetTrainingDataDetailResponse>();
-
-  const {
-    data: errorList,
-    ScrollData,
-    isLoading,
-    refreshList
-  } = useScrollPagination(getTrainingError, {
-    pageSize: 15,
-    params: {
-      collectionId
-    },
-    EmptyTip: <EmptyTip />
-  });
-
-  const { runAsync: getData, loading: getDataLoading } = useRequest(
-    (data: { collectionId: string; dataId: string }) => {
-      return getTrainingDataDetail(data);
-    },
-    {
-      manual: true,
-      onSuccess: (data) => {
-        setEditChunk(data);
-      }
-    }
-  );
-  const { runAsync: deleteData, loading: deleteLoading } = useRequest(
-    (data: { collectionId: string; dataId: string }) => {
-      return deleteTrainingData(data);
-    },
-    {
-      manual: true,
-      onSuccess: () => {
-        refreshList();
-      }
-    }
-  );
-  const { runAsync: updateData, loading: updateLoading } = useRequest(
-    (data: { collectionId: string; dataId: string; q?: string; a?: string }) => {
-      return updateTrainingData(data);
-    },
-    {
-      manual: true,
-      onSuccess: () => {
-        refreshList();
-        refreshTrainingDetail();
-        setEditChunk(undefined);
-      }
-    }
-  );
-
-  if (editChunk) {
-    return (
-      <EditView
-        loading={updateLoading}
-        editChunk={editChunk}
-        onCancel={() => setEditChunk(undefined)}
-        onSave={(data) => {
-          updateData({
-            collectionId,
-            dataId: editChunk._id,
-            ...data
-          });
-        }}
-      />
-    );
-  }
-
-  return (
-    <ScrollData
-      h={'400px'}
-      isLoading={isLoading || updateLoading || getDataLoading || deleteLoading}
-    >
-      <TableContainer overflowY={'auto'} fontSize={'12px'}>
-        <Table variant={'simple'}>
-          <Thead>
-            <Tr>
-              <Th pr={0}>{t('dataset:dataset.Chunk_Number')}</Th>
-              <Th pr={0}>{t('dataset:dataset.Training_Status')}</Th>
-              <Th>{t('dataset:dataset.Error_Message')}</Th>
-              <Th w={'220px'}>{t('dataset:dataset.Operation')}</Th>
-            </Tr>
-          </Thead>
-          <Tbody>
-            {errorList.map((item, index) => (
-              <Tr key={index}>
-                <Td>{item.chunkIndex + 1}</Td>
-                <Td>{TrainingText[item.mode]}</Td>
-                <Td maxW={50}>
-                  <MyTooltip shouldWrapChildren={false} placement={'auto'} label={t(item.errorMsg)}>
-                    {t(item.errorMsg)}
-                  </MyTooltip>
-                </Td>
-                <Td w={'220px'} px={3}>
-                  <Flex alignItems={'center'}>
-                    <Button
-                      variant={'ghost'}
-                      size={'sm'}
-                      color={'myGray.600'}
-                      leftIcon={<MyIcon name={'common/confirm/restoreTip'} w={4} />}
-                      fontSize={'mini'}
-                      onClick={() => updateData({ collectionId, dataId: item._id })}
-                    >
-                      {t('dataset:dataset.ReTrain')}
-                    </Button>
-                    <Box w={'1px'} height={'16px'} bg={'myGray.200'} />
-                    <Button
-                      variant={'ghost'}
-                      size={'sm'}
-                      color={'myGray.600'}
-                      leftIcon={<MyIcon name={'edit'} w={4} />}
-                      fontSize={'mini'}
-                      onClick={() => getData({ collectionId, dataId: item._id })}
-                    >
-                      {t('dataset:dataset.Edit_Chunk')}
-                    </Button>
-                    <Box w={'1px'} height={'16px'} bg={'myGray.200'} />
-                    <Button
-                      variant={'ghost'}
-                      size={'sm'}
-                      color={'myGray.600'}
-                      leftIcon={<MyIcon name={'delete'} w={4} />}
-                      fontSize={'mini'}
-                      onClick={() => {
-                        deleteData({ collectionId, dataId: item._id });
-                      }}
-                    >
-                      {t('dataset:dataset.Delete_Chunk')}
-                    </Button>
-                  </Flex>
-                </Td>
-              </Tr>
-            ))}
-          </Tbody>
-        </Table>
-      </TableContainer>
-    </ScrollData>
-  );
-};
-
-const EditView = ({
-  loading,
-  editChunk,
-  onCancel,
-  onSave
-}: {
-  loading: boolean;
-  editChunk: GetTrainingDataDetailResponse;
-  onCancel: () => void;
-  onSave: (data: { q: string; a?: string }) => void;
-}) => {
-  const { t } = useTranslation();
-  const { register, handleSubmit } = useForm({
-    defaultValues: {
-      q: editChunk?.q || '',
-      a: editChunk?.a || ''
-    }
-  });
-
-  return (
-    <Flex flexDirection={'column'} gap={4}>
-      {editChunk?.imagePreviewUrl && (
-        <Box>
-          <FormLabel>{t('file:image')}</FormLabel>
-          <Box w={'100%'} h={'200px'} border={'base'} borderRadius={'md'}>
-            <MyImage src={editChunk.imagePreviewUrl} alt="image" w={'100%'} h={'100%'} />
-          </Box>
-        </Box>
-      )}
-
-      <Box>
-        {(editChunk?.a || editChunk?.imagePreviewUrl) && (
-          <FormLabel>
-            {editChunk?.a
-              ? t('common:dataset_data_input_chunk_content')
-              : t('common:dataset_data_input_q')}
-          </FormLabel>
-        )}
-        <MyTextarea
-          {...register('q', { required: true })}
-          minH={editChunk?.a || editChunk?.imagePreviewUrl ? 200 : 400}
-        />
-      </Box>
-
-      {editChunk?.a && (
-        <Box>
-          <Box>{t('common:dataset_data_input_a')}</Box>
-          <MyTextarea {...register('a')} minH={200} />
-        </Box>
-      )}
-      <Flex justifyContent={'flex-end'} gap={4}>
-        <Button variant={'outline'} onClick={onCancel}>
-          {t('common:Cancel')}
-        </Button>
-        <Button isLoading={loading} variant={'primary'} onClick={handleSubmit(onSave)}>
-          {t('common:Confirm')}
-        </Button>
-      </Flex>
-    </Flex>
-  );
-};
-
 const TrainingStates = ({
   collectionId,
+  permission,
   defaultTab = 'states',
   onClose
 }: {
   collectionId: string;
+  permission: Permission;
   defaultTab?: 'states' | 'errors';
   onClose: () => void;
 }) => {
@@ -526,18 +287,6 @@ const TrainingStates = ({
     pollingWhenHidden: false,
     manual: false
   });
-
-  // All retry logic
-  const { runAsync: handleRetryAll, loading: retrying } = useRequest(
-    () => updateTrainingData({ collectionId }),
-    {
-      manual: true,
-      onSuccess: () => {
-        refreshTrainingDetail();
-      },
-      errorToast: t('dataset:retry_failed')
-    }
-  );
 
   const errorCounts = Object.values(trainingDetail?.errorCounts || {}).reduce(
     (acc, count) => acc + count,
@@ -567,17 +316,15 @@ const TrainingStates = ({
               }
             ]}
           />
-          {tab === 'errors' && errorCounts > 0 && (
-            <Button variant={'whiteBase'} size="sm" isLoading={retrying} onClick={handleRetryAll}>
-              {t('dataset:retry_all')}
-            </Button>
-          )}
         </Flex>
         {tab === 'states' && trainingDetail && <ProgressView trainingDetail={trainingDetail} />}
         {tab === 'errors' && (
-          <ErrorView
-            collectionId={collectionId}
-            refreshTrainingDetail={refreshTrainingDetail}
+          <TrainingErrorList
+            scope={{ type: 'collection', collectionId }}
+            permission={permission}
+            onRefresh={refreshTrainingDetail}
+            onClose={onClose}
+            showFooter={errorCounts > 0}
           />
         )}
       </ModalBody>
