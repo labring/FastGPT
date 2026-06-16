@@ -27,6 +27,7 @@ export type generatingMessageProps = {
   variables?: Record<string, any>;
   nodeResponse?: ChatHistoryItemResType;
   durationSeconds?: number;
+  title?: string;
 
   // Agent
   plan?: AgentPlanType;

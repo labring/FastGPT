@@ -337,7 +337,7 @@ describe('prepare chat round', () => {
       { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
     );
 
-    await prepareChatRound({
+    const result = await prepareChatRound({
       chatId: params.chatId,
       appId: testAppId,
       teamId: testTeamId,
@@ -350,6 +350,7 @@ describe('prepare chat round', () => {
       responseChatItemId
     });
 
+    expect(result.shouldGenerateTitle).toBe(true);
     expect(params.userContent.dataId).toBeDefined();
     expect(params.userContent.dataId).toBe(responseChatItemId);
 
@@ -369,6 +370,38 @@ describe('prepare chat round', () => {
     expect(aiItem?.value).toEqual([]);
   });
 
+  it('should skip title generation when prepared chat already has a custom title', async () => {
+    const params = createPrepareParams(
+      { responseChatItemId: 'prepared-ai-item-with-title' },
+      { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+    );
+
+    await MongoChat.create({
+      chatId: params.chatId,
+      appId: testAppId,
+      teamId: testTeamId,
+      tmbId: testTmbId,
+      source: params.source,
+      title: 'Manual Topic',
+      customTitle: 'Manual Topic'
+    });
+
+    const result = await prepareChatRound({
+      chatId: params.chatId,
+      appId: testAppId,
+      teamId: testTeamId,
+      tmbId: testTmbId,
+      source: params.source,
+      sourceName: params.sourceName,
+      shareId: params.shareId,
+      outLinkUid: params.outLinkUid,
+      userContent: params.userContent,
+      responseChatItemId: params.responseChatItemId!
+    });
+
+    expect(result.shouldGenerateTitle).toBe(false);
+  });
+
   it('should skip direct prepare for no-record chat id', async () => {
     const params = createPrepareParams(
       {
@@ -378,8 +411,9 @@ describe('prepare chat round', () => {
       { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
     );
 
-    await prepareChatRound(params);
+    const result = await prepareChatRound(params);
 
+    expect(result.shouldGenerateTitle).toBe(false);
     expect(params.userContent.dataId).toBeUndefined();
     expect(await MongoChat.countDocuments({ appId: testAppId })).toBe(0);
     expect(await MongoChatItem.countDocuments({ appId: testAppId })).toBe(0);

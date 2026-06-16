@@ -10,7 +10,6 @@ import type { ChatItemMiniType, ChatHistoryItemResType } from '@fastgpt/global/c
 import { SANDBOX_SHELL_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
 import {
   concatHistories,
-  getChatTitleFromChatMessage,
   getHistoryPreview,
   filterNodeResponseTreeData,
   filterPublicNodeResponseData,
@@ -81,43 +80,6 @@ describe('hasContextCheckpoint', () => {
     };
 
     expect(hasContextCheckpoint(history)).toBe(false);
-  });
-});
-
-describe('getChatTitleFromChatMessage', () => {
-  it('should extract title from text content', () => {
-    const message: ChatItemMiniType = {
-      obj: ChatRoleEnum.Human,
-      value: [{ text: { content: 'This is a long message that should be truncated' } }]
-    };
-
-    const result = getChatTitleFromChatMessage(message);
-
-    expect(result).toBe('This is a long messa');
-    expect(result.length).toBe(20);
-  });
-
-  it('should return default value when message is undefined', () => {
-    const result = getChatTitleFromChatMessage(undefined);
-
-    expect(result).toBe('新对话');
-  });
-
-  it('should return default value when no text content', () => {
-    const message: ChatItemMiniType = {
-      obj: ChatRoleEnum.Human,
-      value: []
-    };
-
-    const result = getChatTitleFromChatMessage(message);
-
-    expect(result).toBe('新对话');
-  });
-
-  it('should use custom default value', () => {
-    const result = getChatTitleFromChatMessage(undefined, 'Custom Default');
-
-    expect(result).toBe('Custom Default');
   });
 });
 

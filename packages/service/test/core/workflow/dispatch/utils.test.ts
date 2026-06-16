@@ -174,6 +174,18 @@ describe('getWorkflowResponseWrite', () => {
     expect(responseWrite).toHaveBeenCalledWith(expect.objectContaining({ event: undefined }));
   });
 
+  it('should keep chatTitle event name when detail is false', () => {
+    const res = mockRes();
+    vi.mocked(responseWrite).mockClear();
+    const fn = getWorkflowResponseWrite({ res, detail: false, streamResponse: true });
+    fn({ event: SseResponseEventEnum.chatTitle, data: { title: 'Generated Title' } });
+    expect(responseWrite).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: SseResponseEventEnum.chatTitle
+      })
+    );
+  });
+
   it('should continue mirroring direct chunks after response is closed', () => {
     const res = mockRes();
     res.closed = true;

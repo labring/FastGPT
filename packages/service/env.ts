@@ -208,6 +208,9 @@ export const serviceEnv = createEnv({
       .string()
       .optional()
       .meta({ description: '辅助生成模型（暂时只能指定一个，需保证系统中已激活该模型）' }),
+    CHAT_TITLE_MODEL: z.string().optional().meta({
+      description: '对话标题生成模型；不配置或未命中已启用模型时，回退到系统默认 LLM'
+    }),
     SKIP_FILE_TYPE_CHECK: BoolSchema.default(false).meta({
       description: '是否跳过文件类型检查'
     }),

@@ -10,8 +10,6 @@ import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/const
 import { useCallback } from 'react';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import { streamFetch } from '@/web/common/api/fetch';
-import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
-import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -34,6 +32,7 @@ import ToolMenu from '@/pageComponents/chat/ToolMenu';
 import { mobileChatHeaderIconButtonStyle } from './headerIconButtonStyle';
 import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
 import Avatar from '@fastgpt/web/components/common/Avatar';
+import { getDisplayHistoryTitle } from '@/web/core/chat/context/historyTitleUtils';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
@@ -45,7 +44,6 @@ const AppChatWindow = () => {
   const { isPc } = useSystem();
 
   const forbidLoadChatRef = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
-  const onUpdateHistoryTitle = useContextSelector(ChatContext, (v) => v.onUpdateHistoryTitle);
   const onOpenSlider = useContextSelector(ChatContext, (v) => v.onOpenSlider);
 
   const isPlugin = useContextSelector(ChatItemContext, (v) => v.isPlugin);
@@ -54,13 +52,13 @@ const AppChatWindow = () => {
   const onChangeChatId = useContextSelector(ChatContext, (v) => v.onChangeChatId);
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const isCurrentChatReady = chatBoxData.appId === appId && chatBoxData.chatId === chatId;
-  const chatWindowTitle =
-    isCurrentChatReady && chatBoxData.title?.trim()
-      ? chatBoxData.title
-      : t('common:core.chat.New Chat', { defaultValue: '新对话' });
+  const chatWindowTitle = getDisplayHistoryTitle({
+    title: isCurrentChatReady ? chatBoxData.title : undefined,
+    fallbackTitle: t('common:core.chat.New Chat')
+  });
   const mobileHeaderTitle = isCurrentChatReady
     ? chatBoxData.app.name
-    : t('common:core.chat.New Chat', { defaultValue: '新对话' });
+    : t('common:core.chat.New Chat');
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
@@ -155,35 +153,11 @@ const AppChatWindow = () => {
         onMessage: generatingMessage
       });
 
-      const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats({ messages: histories })[0]);
-
-      onUpdateHistoryTitle({ chatId, newTitle });
-      setChatBoxData((state) =>
-        state.appId === appId && state.chatId === chatId
-          ? {
-              ...state,
-              title: newTitle
-            }
-          : state
-      );
-
       refreshRecentlyUsed();
 
       return { responseText, isNewChat: forbidLoadChatRef.current };
     },
-    [
-      appId,
-      chatId,
-      pane,
-      chatSettings?.appId,
-      onUpdateHistoryTitle,
-      setChatBoxData,
-      forbidLoadChatRef,
-      isShowCite,
-      showSkillReferences,
-      refreshRecentlyUsed,
-      upsertRecentlyUsedAppPlaceholder
-    ]
+    [appId, chatId, forbidLoadChatRef, isShowCite, showSkillReferences, refreshRecentlyUsed]
   );
 
   return (

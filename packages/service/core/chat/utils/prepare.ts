@@ -11,6 +11,11 @@ import { MongoChat } from '../chatSchema';
 import { tryStartGenerateChat, updateChatGenerateStatus } from '../chatGenerateStatus';
 import { validateChatRoundDataIds } from './dataIdValidation';
 import { getInteractiveResponseStatus } from '../interactiveResponseDataId';
+import {
+  canWriteGeneratedTitle,
+  syncGeneratedChatTitleFromUserContent,
+  type GeneratedChatTitleResult
+} from '../title';
 
 export const NO_RECORD_CHAT_ID = 'NO_RECORD_HISTORIES';
 
@@ -56,10 +61,15 @@ export type PrepareChatRoundParams = {
   responseChatItemId: string;
 };
 
+export type PrepareChatRoundResult = {
+  shouldGenerateTitle: boolean;
+};
+
 export type PreChatRoundParams = Omit<PrepareChatRoundParams, 'chatId' | 'responseChatItemId'> & {
   chatId?: string;
   responseChatItemId?: string;
   interactive?: WorkflowInteractiveResponseType;
+  fixedTitle?: string;
 };
 
 export type PreChatRoundResult = {
@@ -67,6 +77,7 @@ export type PreChatRoundResult = {
   responseChatItemId: string;
   shouldPersistChatRound: boolean;
   shouldFinalizePreparedRound: boolean;
+  titleGeneration?: Promise<GeneratedChatTitleResult | undefined>;
 };
 
 /**
@@ -101,7 +112,9 @@ export const getPreparedRoundDataIds = ({
  * 这里使用严格 create，不再使用 upsert。调用方必须先确认 AI dataId 未被使用；
  * Human 和 AI 使用同一个 roundDataId，便于客户端与服务端用一轮消息 ID 对齐。
  */
-export const prepareChatRound = async (params: PrepareChatRoundParams) => {
+export const prepareChatRound = async (
+  params: PrepareChatRoundParams
+): Promise<PrepareChatRoundResult> => {
   const {
     chatId,
     appId,
@@ -114,7 +127,11 @@ export const prepareChatRound = async (params: PrepareChatRoundParams) => {
     responseChatItemId
   } = params;
 
-  if (isSkipSaveChatId(chatId)) return;
+  if (isSkipSaveChatId(chatId)) {
+    return {
+      shouldGenerateTitle: false
+    };
+  }
 
   stripUserContentFileUrls(params.userContent);
   params.userContent.dataId = responseChatItemId;
@@ -132,8 +149,10 @@ export const prepareChatRound = async (params: PrepareChatRoundParams) => {
     value: []
   };
 
+  let shouldGenerateTitle = false;
+
   await mongoSessionRun(async (session) => {
-    await MongoChat.updateOne(
+    const previousChat = await MongoChat.findOneAndUpdate(
       {
         appId,
         chatId
@@ -158,9 +177,14 @@ export const prepareChatRound = async (params: PrepareChatRoundParams) => {
       },
       {
         session,
-        upsert: true
+        upsert: true,
+        new: false
       }
-    );
+    )
+      .select('title customTitle')
+      .lean();
+
+    shouldGenerateTitle = canWriteGeneratedTitle(previousChat);
 
     await MongoChatItem.create(
       [
@@ -182,6 +206,10 @@ export const prepareChatRound = async (params: PrepareChatRoundParams) => {
       { session, ordered: true, ...writePrimary }
     );
   });
+
+  return {
+    shouldGenerateTitle
+  };
 };
 
 /**
@@ -258,17 +286,26 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
       responseChatItemId
     });
 
-    await prepareChatRound({
+    const preparedChatRound = await prepareChatRound({
       ...params,
       chatId,
       responseChatItemId
+    });
+
+    const titleGeneration = syncGeneratedChatTitleFromUserContent({
+      appId: params.appId,
+      chatId,
+      userContent: params.userContent,
+      shouldGenerateTitle: preparedChatRound.shouldGenerateTitle,
+      fixedTitle: params.fixedTitle
     });
 
     return {
       chatId,
       responseChatItemId,
       shouldPersistChatRound: true,
-      shouldFinalizePreparedRound: true
+      shouldFinalizePreparedRound: true,
+      titleGeneration
     };
   } catch (error) {
     await updateChatGenerateStatus({

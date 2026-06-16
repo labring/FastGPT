@@ -333,6 +333,32 @@ describe('createLLMResponse', () => {
       );
       expect(mockSaveLLMRequestRecord.mock.calls[0][0].response).not.toHaveProperty('usage');
     });
+
+    it('should skip saving error record when saveLLMResponseRecord is false', async () => {
+      const createMock = vi.fn().mockRejectedValue(new Error('upstream failed'));
+      mockGetAIApi.mockReturnValue(
+        createMockAIApiResult({
+          chat: {
+            completions: {
+              create: createMock
+            }
+          }
+        })
+      );
+
+      const result = await createLLMResponse({
+        throwError: false,
+        saveLLMResponseRecord: false,
+        body: {
+          model: 'gpt-4',
+          messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'hi' }],
+          stream: false
+        }
+      });
+
+      expect(result.finish_reason).toBe('error');
+      expect(mockSaveLLMRequestRecord).not.toHaveBeenCalled();
+    });
   });
 
   describe('Non-stream text output', () => {
@@ -385,6 +411,53 @@ describe('createLLMResponse', () => {
       expect(result.finish_reason).toBe('stop');
       expect(result.toolCalls).toBeUndefined();
       expect(streamedText).toBe('Hello! How can I help you?');
+    });
+
+    it('should skip saving request record when saveLLMResponseRecord is false', async () => {
+      const mockResponse = {
+        choices: [
+          {
+            message: {
+              role: 'assistant',
+              content: 'Internal helper response'
+            },
+            finish_reason: 'stop'
+          }
+        ],
+        usage: {
+          prompt_tokens: 5,
+          completion_tokens: 3,
+          total_tokens: 8
+        }
+      };
+
+      const mockAI = {
+        chat: {
+          completions: {
+            create: vi.fn().mockResolvedValue(mockResponse)
+          }
+        }
+      };
+      mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
+
+      const result = await createLLMResponse({
+        saveLLMResponseRecord: false,
+        body: {
+          model: 'gpt-4',
+          messages: [
+            { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Generate title' }
+          ],
+          stream: false
+        }
+      });
+
+      expect(result.answerText).toBe('Internal helper response');
+      expect(result.usage).toEqual({
+        inputTokens: 5,
+        outputTokens: 3,
+        usedUserOpenAIKey: false
+      });
+      expect(mockSaveLLMRequestRecord).not.toHaveBeenCalled();
     });
 
     it('should fill stop finish reason for non-stream response when finish reason is missing', async () => {

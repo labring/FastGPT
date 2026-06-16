@@ -12,7 +12,6 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
-import { getDisplayHistoryTitle } from '@/web/core/chat/context/historyTitleUtils';
 
 const ChatSliderList = () => {
   const { isPc } = useSystem();
@@ -31,6 +30,8 @@ const ChatSliderList = () => {
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
 
   const concatHistory = useMemo(() => {
+    const newChatTitle = t('common:core.chat.New Chat');
+    const getHistoryDisplayTitle = (title?: string) => title?.trim() || newChatTitle;
     const scopedHistories = histories.filter((item) => item.appId === appId);
 
     const formatHistories: {
@@ -44,11 +45,12 @@ const ChatSliderList = () => {
       isTemporary?: boolean;
     }[] = scopedHistories.map((item) => {
       const isActiveChat = item.chatId === activeChatId && chatBoxData.chatId === item.chatId;
+      const customTitle = item.customTitle?.trim() ? item.customTitle : undefined;
 
       return {
         id: item.chatId,
-        title: item.title,
-        customTitle: item.customTitle,
+        title: getHistoryDisplayTitle(customTitle || item.title),
+        customTitle,
         top: item.top,
         updateTime: item.updateTime,
         chatGenerateStatus: isActiveChat
@@ -69,10 +71,7 @@ const ChatSliderList = () => {
       isTemporary?: boolean;
     } = {
       id: activeChatId,
-      title: getDisplayHistoryTitle({
-        title: chatBoxData.chatId === activeChatId ? chatBoxData.title : undefined,
-        fallbackTitle: t('common:core.chat.New Chat')
-      }),
+      title: getHistoryDisplayTitle(chatBoxData.chatId === activeChatId ? chatBoxData.title : ''),
       updateTime: new Date(),
       isTemporary: true,
       chatGenerateStatus:
@@ -80,11 +79,7 @@ const ChatSliderList = () => {
       hasBeenRead: chatBoxData.chatId === activeChatId ? chatBoxData.hasBeenRead : undefined
     };
     const activeChat = scopedHistories.find((item) => item.chatId === activeChatId);
-    const shouldPrependActiveChat =
-      chatBoxData.appId === appId &&
-      chatBoxData.chatId === activeChatId &&
-      !activeChat &&
-      !!activeChatId;
+    const shouldPrependActiveChat = !!appId && !!activeChatId && !activeChat;
 
     return shouldPrependActiveChat ? [newChat].concat(formatHistories) : formatHistories;
   }, [
@@ -92,7 +87,6 @@ const ChatSliderList = () => {
     appId,
     histories,
     t,
-    chatBoxData.appId,
     chatBoxData.chatId,
     chatBoxData.title,
     chatBoxData.chatGenerateStatus,
@@ -167,7 +161,7 @@ const ChatSliderList = () => {
             })}
           >
             <Box flex={'1 0 0'} className="textEllipsis">
-              {item.customTitle || item.title}
+              {item.title}
             </Box>
             {!!item.id && (
               <Flex gap={2} alignItems={'center'}>

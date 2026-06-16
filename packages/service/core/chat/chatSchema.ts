@@ -45,7 +45,9 @@ const ChatSchema = new Schema({
   },
   title: {
     type: String,
-    default: '历史记录'
+    trim: true,
+    maxlength: [100, 'Title cannot exceed 100 characters'],
+    default: ''
   },
   customTitle: {
     type: String,

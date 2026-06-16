@@ -39,6 +39,7 @@ type StreamFetchProps = {
 };
 export type StreamResponseType = {
   responseText: string;
+  title?: string;
 };
 export type ResumeStreamResponseType = StreamResponseType & {
   completedChat?: StreamNoNeedToBeResumeType;
@@ -101,6 +102,10 @@ type ResponseQueueItemType = CommonResponseType &
     | {
         event: SseResponseEventEnum.skillCall;
         skill: SkillModuleResponseItemType;
+      }
+    | {
+        event: SseResponseEventEnum.chatTitle;
+        title: string;
       }
   );
 
@@ -229,6 +234,11 @@ function handleEventSourceData(params: HandleEventSourceDataParams) {
         break;
       }
 
+      case SseResponseEventEnum.chatTitle: {
+        onmessage({ event, title: obj.title });
+        break;
+      }
+
       default: {
         throw new Error(`Unsupported event: ${event}`);
       }
@@ -271,6 +281,7 @@ function $ssefetch(params: SSEFetchParams) {
     }, 60000);
 
     let responseText = '';
+    let title: string | undefined;
     let responseQueue: ResponseQueueItemType[] = [];
     let error: string | undefined;
     let finished = false;
@@ -285,7 +296,7 @@ function $ssefetch(params: SSEFetchParams) {
         return onfailed();
       }
 
-      return resolve({ responseText });
+      return resolve({ responseText, title });
     };
 
     const isAnswerEvent = (event: SseResponseEventEnum) => {
@@ -362,6 +373,11 @@ function $ssefetch(params: SSEFetchParams) {
           }
         },
         onmessage: ({ event, data }) => {
+          if (event === SseResponseEventEnum.chatTitle) {
+            try {
+              title = JSON.parse(data)?.title;
+            } catch {}
+          }
           handleEventSourceData({
             event,
             data,
@@ -413,6 +429,7 @@ function $resumefetch({ url, onmessage, onResumeUnavailable, controller }: Resum
     }, 60000);
 
     let responseText = '';
+    let title: string | undefined;
     let responseQueue: ResponseQueueItemType[] = [];
     let error: string | undefined;
     let finished = false;
@@ -424,7 +441,7 @@ function $resumefetch({ url, onmessage, onResumeUnavailable, controller }: Resum
       if (error !== undefined) {
         return onfailed();
       }
-      return resolve({ responseText, completedChat, resumeUnavailable });
+      return resolve({ responseText, title, completedChat, resumeUnavailable });
     };
     const onAbort = () => {
       finished = true;
@@ -551,6 +568,12 @@ function $resumefetch({ url, onmessage, onResumeUnavailable, controller }: Resum
 
           if (data === '[DONE]') {
             return;
+          }
+
+          if (event === SseResponseEventEnum.chatTitle) {
+            try {
+              title = JSON.parse(data)?.title;
+            } catch {}
           }
 
           handleEventSourceData({

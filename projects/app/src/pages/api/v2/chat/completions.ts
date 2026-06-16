@@ -23,6 +23,7 @@ import {
   updateInteractiveChat
 } from '@fastgpt/service/core/chat/saveChat';
 import { preChatRound, type PreChatRoundResult } from '@fastgpt/service/core/chat/utils/prepare';
+import { createGeneratedChatTitleSender } from '@fastgpt/service/core/chat/title';
 import { authOutLinkChatStart } from '@/service/support/permission/auth/outLink';
 import { recordAppUsage } from '@fastgpt/service/core/app/record/utils';
 import { pushResult2Remote, addOutLinkUsage } from '@fastgpt/service/support/outLink/tools';
@@ -30,7 +31,6 @@ import { getUsageSourceByAuthType } from '@fastgpt/global/support/wallet/usage/t
 import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
 import {
   concatHistories,
-  getChatTitleFromChatMessage,
   removeAIResponseCite,
   removeEmptyUserInput
 } from '@fastgpt/global/core/chat/utils';
@@ -192,6 +192,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const finalShowSkillReferences =
       (showSkillReferences ?? authShowSkillReferences ?? false) && !!showRunningStatus;
     const isPlugin = app.type === AppTypeEnum.workflowTool;
+    const pluginFixedTitle = isPlugin ? variables.cTime || formatTime2YMDHM(new Date()) : undefined;
 
     // Check message type
     if (isPlugin) {
@@ -279,7 +280,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       outLinkUid: outLinkUserId,
       userContent: userQuestion,
       responseChatItemId: roundState.responseChatItemId,
-      interactive
+      interactive,
+      fixedTitle: pluginFixedTitle
     });
 
     const saveChatId = preparedRound.chatId;
@@ -302,6 +304,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       showNodeStatus: showRunningStatus
     });
     const shouldCollectFinalResponseData = (!stream && detail) || !!shareId;
+    const titleSender = createGeneratedChatTitleSender({
+      titleGeneration: preparedRound.titleGeneration,
+      stream,
+      writeChatTitle: (payload) => streamResponseContext?.responseWrite(payload)
+    });
 
     /* start flow controller */
     const {
@@ -357,11 +364,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return Promise.reject('您的工作流版本过低，请重新发布一次');
     })();
 
-    // save chat
-    const newTitle = isPlugin
-      ? variables.cTime || formatTime2YMDHM(new Date())
-      : getChatTitleFromChatMessage(userQuestion);
-
     const aiResponse: AIChatItemType & { dataId?: string } = {
       dataId: finalResponseChatItemId,
       obj: ChatRoleEnum.AI,
@@ -379,7 +381,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       nodes,
       appChatConfig: chatConfig,
       variables: newVariables,
-      newTitle,
       shareId,
       outLinkUid: outLinkUserId,
       source,
@@ -438,6 +439,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     });
 
     if (stream) {
+      await titleSender.send();
+
       streamResponseContext.responseWrite({
         event: SseResponseEventEnum.answer,
         data: textAdaptGptResponse({
@@ -454,6 +457,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       await streamResponseContext.flushResume();
       res.end();
     } else {
+      const generatedTitle = await titleSender.send();
       const formatResponseContent = removeAIResponseCite(assistantResponses, retainDatasetCite);
       const formattdResponse = (() => {
         if (formatResponseContent.length === 0)
@@ -486,6 +490,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
       res.json({
         ...(detail ? { responseData: feResponseData, newVariables } : {}),
+        title: generatedTitle,
         error: finalError,
         id: saveChatId,
         model: '',

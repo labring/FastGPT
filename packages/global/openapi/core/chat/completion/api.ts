@@ -91,6 +91,7 @@ const ChatCompletionUsageSchema = z.object({
 
 export const CompletionsResponseSchema = z.object({
   id: z.string().meta({ description: '对话 ID（chatId）' }),
+  title: z.string().optional().meta({ description: '未命名会话标题生成成功时返回的对话标题' }),
   model: z.literal('').meta({ description: '模型名称，v1 接口固定为空字符串' }),
   usage: ChatCompletionUsageSchema.meta({
     description: 'Token 用量。v1 接口为占位值，需要时请从 responseData 计算'

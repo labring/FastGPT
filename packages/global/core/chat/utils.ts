@@ -28,19 +28,6 @@ export const hasContextCheckpoint = (history: ChatItemMiniType) =>
   history.obj === ChatRoleEnum.AI &&
   history.value.some((value) => Boolean(value.contextCheckpoint));
 
-export const getChatTitleFromChatMessage = (
-  message?: ChatItemMiniType,
-  defaultValue = '新对话'
-) => {
-  const textMsg = message?.value.find((item) => 'text' in item && item.text);
-
-  if (textMsg?.text?.content) {
-    return textMsg.text.content.slice(0, 20);
-  }
-
-  return defaultValue;
-};
-
 // Keep the first n and last n characters
 export const getHistoryPreview = (
   completeMessages: ChatItemMiniType[],
