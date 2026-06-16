@@ -127,7 +127,7 @@ const AIContentCard = React.memo(function AIContentCard({
     !!statusBoxData?.status && statusBoxData && isLastChild && showRunningStatus && debuggerMode;
 
   return (
-    <Flex flexDirection={'column'} gap={2}>
+    <Flex flexDirection={'column'} gap={3}>
       {chatValue.map((value, i) => {
         const key = `${dataId}-ai-${i}`;
         const isLastValue = isLastChild && i === chatValue.length - 1;

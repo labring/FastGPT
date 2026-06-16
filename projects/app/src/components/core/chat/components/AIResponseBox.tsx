@@ -18,7 +18,6 @@ import type {
 } from '@fastgpt/global/core/chat/type';
 import React, { useCallback, useMemo } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import Avatar from '@fastgpt/web/components/common/Avatar';
 import type {
   InteractiveBasicType,
   PaymentPauseInteractive,
@@ -98,7 +97,7 @@ const RenderResoningContent = React.memo(function RenderResoningContent({
       <AccordionItem borderTop={'none'} borderBottom={'none'}>
         <AccordionButton {...reasoningAccordionButtonStyle}>
           <HStack spacing={2}>
-            <MyIcon name={'core/chat/deepThing'} w={'14px'} flexShrink={0} />
+            <MyIcon name={'core/chat/thinking'} w={'14px'} h={'14px'} flexShrink={0} />
             <Box
               fontSize={'xs'}
               color={'myGray.800' /* Gray modern/900 */}
@@ -123,6 +122,7 @@ const RenderResoningContent = React.memo(function RenderResoningContent({
           py={2}
           px={4}
           mt={2}
+          ml={'6px'}
           bg={'white'}
           borderLeft={'2px solid'}
           borderColor={'myGray.200' /* Blue Gray/L30 */}
@@ -237,22 +237,26 @@ const RenderTool = React.memo(
     return (
       <Accordion allowToggle>
         <AccordionItem borderTop={'none'} borderBottom={'none'}>
-          <AccordionButton {...accordionButtonStyle}>
-            <Avatar src={tool.toolAvatar} w={'1.25rem'} h={'1.25rem'} borderRadius={'sm'} />
-            <Box mx={2} fontSize={'sm'} color={'myGray.900'}>
-              {t(tool.toolName)}
-            </Box>
-            {showAnimation && tool.response === undefined && (
-              <MyIcon name={'common/loading'} w={'14px'} />
-            )}
-            <AccordionIcon color={'myGray.600'} ml={5} />
+          <AccordionButton {...reasoningAccordionButtonStyle}>
+            <HStack spacing={2}>
+              <MyIcon name={'core/chat/toolCall'} w={'16px'} h={'16px'} flexShrink={0} />
+              <Box fontSize={'xs'} color={'myGray.800'} lineHeight={'18px'} fontWeight={500}>
+                {t(tool.toolName)}
+              </Box>
+              {showAnimation && tool.response === undefined && (
+                <MyIcon name={'common/loading'} w={'14px'} />
+              )}
+            </HStack>
+            <AccordionIcon color={'myGray.550'} ml={1} opacity={0.8} />
           </AccordionButton>
           <AccordionPanel
-            py={0}
-            px={0}
-            mt={3}
-            borderRadius={'md'}
-            overflow={'hidden'}
+            py={2}
+            px={4}
+            mt={2}
+            ml={'7px'}
+            bg={'white'}
+            borderLeft={'2px solid'}
+            borderColor={'myGray.200'}
             maxH={'500px'}
             overflowY={'auto'}
           >
@@ -296,7 +300,7 @@ const RenderSkill = React.memo(
       <Accordion allowToggle>
         <AccordionItem borderTop={'none'} borderBottom={'none'}>
           <AccordionButton {...accordionButtonStyle}>
-            <Avatar src={skill.skillAvatar} w={'1.25rem'} h={'1.25rem'} borderRadius={'sm'} />
+            <MyIcon name={'core/chat/toolCall'} w={'16px'} h={'16px'} flexShrink={0} />
             <Box mx={2} fontSize={'sm'} color={'myGray.900'}>
               {skill.skillName}
             </Box>
@@ -593,14 +597,14 @@ const AIResponseBox = ({
   }
   if (tools && showRunningStatus) {
     return tools.map((tool) => (
-      <Box key={tool.id} _notLast={{ mb: 2 }}>
+      <Box key={tool.id}>
         <RenderTool showAnimation={isChatting} tool={tool} />
       </Box>
     ));
   }
   if (skills && showSkillReferences && showRunningStatus) {
     return skills.map((skill) => (
-      <Box key={skill.id} _notLast={{ mb: 2 }}>
+      <Box key={skill.id}>
         <RenderSkill showAnimation={isChatting} skill={skill} />
       </Box>
     ));

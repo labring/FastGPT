@@ -18,7 +18,7 @@ export const skillToolsMap = {
       'zh-Hant': '讀取文件',
       en: 'ReadFile'
     },
-    avatar: 'core/workflow/template/readFiles',
+    avatar: 'core/chat/toolCall',
     toolDescription:
       'Read file contents in the sandbox, supports batch reading. Used to view SKILL.md documents, config files, execution results, etc.'
   },
@@ -28,7 +28,7 @@ export const skillToolsMap = {
       'zh-Hant': '寫入文件',
       en: 'WriteFile'
     },
-    avatar: 'core/workflow/template/readFiles',
+    avatar: 'core/chat/toolCall',
     toolDescription:
       'Create or overwrite a file in the sandbox. Used to write input data, create config files, etc.'
   },
@@ -38,7 +38,7 @@ export const skillToolsMap = {
       'zh-Hant': '編輯文件',
       en: 'EditFile'
     },
-    avatar: 'core/workflow/template/readFiles',
+    avatar: 'core/chat/toolCall',
     toolDescription:
       'Edit files in the sandbox precisely by finding and replacing specified content. Supports batch editing across multiple files.'
   },
@@ -48,7 +48,7 @@ export const skillToolsMap = {
       'zh-Hant': '執行命令',
       en: 'Execute'
     },
-    avatar: 'core/workflow/template/codeRun',
+    avatar: 'core/chat/toolCall',
     toolDescription:
       'Execute a shell command in the sandbox. Used to run scripts, install dependencies, execute skills, etc.'
   },
@@ -58,7 +58,7 @@ export const skillToolsMap = {
       'zh-Hant': '搜索文件',
       en: 'SearchFile'
     },
-    avatar: 'core/workflow/template/datasetSearch',
+    avatar: 'core/chat/toolCall',
     toolDescription:
       'Search for files in the sandbox. Find matching file paths by filename pattern (glob).'
   },
@@ -68,7 +68,7 @@ export const skillToolsMap = {
       'zh-Hant': '獲取用戶文件',
       en: 'FetchUserFile'
     },
-    avatar: 'core/workflow/template/readFiles',
+    avatar: 'core/chat/toolCall',
     toolDescription:
       'Download a user-uploaded file (document or image) from the conversation and write it as a binary file into the sandbox filesystem. Use this when a skill script needs to process a raw file. Workflow: call this tool first to place the file at target_path (relative to workspace), then run skill scripts that read from that path.'
   }
