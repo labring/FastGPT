@@ -22,6 +22,11 @@ type RechartsComponents = {
   Tooltip: any;
 };
 
+const POINTS_COLOR = '#5E8FFF';
+const TOTAL_TOKENS_COLOR = '#5E8FFF';
+const INPUT_TOKENS_COLOR = '#38A169';
+const OUTPUT_TOKENS_COLOR = '#D69E2E';
+
 const CustomTooltip = ({ active, payload }: TooltipProps<ValueType, NameType>) => {
   const data = payload?.[0]?.payload as usageFormType;
   const { t } = useTranslation();
@@ -40,9 +45,12 @@ const CustomTooltip = ({ active, payload }: TooltipProps<ValueType, NameType>) =
         <Box fontSize={'mini'} color={'myGray.600'} mb={3}>
           {data.date}
         </Box>
-        <Box fontSize={'14px'} color={'myGray.900'} fontWeight={'medium'}>
-          {`${formatNumber(data.totalPoints)} ${t('account_usage:points')}`}
-        </Box>
+        <Flex alignItems={'center'} gap={2}>
+          <Box w={2} h={2} borderRadius={'full'} bg={POINTS_COLOR} flexShrink={0} />
+          <Box fontSize={'14px'} color={'myGray.600'}>
+            {`${t('account_usage:points')}: ${formatNumber(data.totalPoints)}`}
+          </Box>
+        </Flex>
       </Box>
     );
   }
@@ -186,7 +194,7 @@ const DashboardChart = ({
           <Line
             type="monotone"
             dataKey="totalPoints"
-            stroke="#5E8FFF"
+            stroke={POINTS_COLOR}
             strokeWidth={2.5}
             dot={false}
           />
@@ -232,19 +240,24 @@ const DashboardChart = ({
                     <Box fontSize={'mini'} color={'myGray.600'} mb={3}>
                       {data.date}
                     </Box>
-                    <Box
-                      fontSize={'14px'}
-                      color={'myGray.900'}
-                      fontWeight={'medium'}
-                    >{`${t('account_usage:total_token_label')}${input + output}`}</Box>
-                    <Box
-                      fontSize={'12px'}
-                      color={'myGray.600'}
-                    >{`${t('account_usage:input_token_label')}${input}`}</Box>
-                    <Box
-                      fontSize={'12px'}
-                      color={'myGray.600'}
-                    >{`${t('account_usage:output_token_label')}${output}`}</Box>
+                    <Flex alignItems={'center'} gap={2} mb={1}>
+                      <Box w={2} h={2} borderRadius={'full'} bg={TOTAL_TOKENS_COLOR} flexShrink={0} />
+                      <Box fontSize={'14px'} color={'myGray.600'}>
+                        {`${t('account_usage:total_tokens')}: ${formatNumber(input + output)}`}
+                      </Box>
+                    </Flex>
+                    <Flex alignItems={'center'} gap={2} mb={1}>
+                      <Box w={2} h={2} borderRadius={'full'} bg={INPUT_TOKENS_COLOR} flexShrink={0} />
+                      <Box fontSize={'12px'} color={'myGray.600'}>
+                        {`${t('account_usage:input_tokens')}: ${formatNumber(input)}`}
+                      </Box>
+                    </Flex>
+                    <Flex alignItems={'center'} gap={2}>
+                      <Box w={2} h={2} borderRadius={'full'} bg={OUTPUT_TOKENS_COLOR} flexShrink={0} />
+                      <Box fontSize={'12px'} color={'myGray.600'}>
+                        {`${t('account_usage:output_tokens')}: ${formatNumber(output)}`}
+                      </Box>
+                    </Flex>
                   </Box>
                 );
               }
@@ -255,7 +268,7 @@ const DashboardChart = ({
             type="monotone"
             dataKey="totalTokens"
             name={t('account_usage:total_tokens')}
-            stroke="#5E8FFF"
+            stroke={TOTAL_TOKENS_COLOR}
             strokeWidth={2.5}
             dot={false}
           />
@@ -263,7 +276,7 @@ const DashboardChart = ({
             type="monotone"
             dataKey="inputTokens"
             name={t('account_usage:input_tokens')}
-            stroke="#38A169"
+            stroke={INPUT_TOKENS_COLOR}
             strokeWidth={2}
             dot={false}
           />
@@ -271,7 +284,7 @@ const DashboardChart = ({
             type="monotone"
             dataKey="outputTokens"
             name={t('account_usage:output_tokens')}
-            stroke="#D69E2E"
+            stroke={OUTPUT_TOKENS_COLOR}
             strokeWidth={2}
             dot={false}
           />
