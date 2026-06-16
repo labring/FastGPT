@@ -125,5 +125,9 @@
   "all_datasets": "全部知识库",
   "base_model_tab": "基础模型",
   "custom_model_tab": "已训练模型",
-  "model_referenced_by_resources": "该模型已被以下应用/知识库引用，为保障应用正常使用，请先切换至其他模型"
+  "model_referenced_by_resources": "该模型已被以下应用/知识库引用，为保障应用正常使用，请先切换至其他模型",
+  "model_must_be_public_to_set_default": "默认模型必须为公开模型，请先将模型权限设为「全部成员可用」",
+  "model_is_default_cannot_be_private": "该模型当前为默认模型，无法设为私有，请先取消默认模型配置后重试",
+  "collaborator_must_cover_references": "该模型被以下成员的应用/知识库引用，添加协作者将使其变为私有，请将引用的成员一并添加为协作者",
+  "collaborator_has_reference": "该协作者有应用/知识库引用了此模型，无法移除"
 }

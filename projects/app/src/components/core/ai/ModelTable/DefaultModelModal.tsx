@@ -59,10 +59,12 @@ const DefaultModelModal = ({
             <AIModelSelector
               bg="myGray.50"
               value={defaultData.llm?.id}
-              list={llmModelList.map((item) => ({
-                value: item.id,
-                label: item.name
-              }))}
+              list={llmModelList
+                .filter((item) => item.isShared)
+                .map((item) => ({
+                  value: item.id,
+                  label: item.name
+                }))}
               onChange={(e) => {
                 setDefaultData((state) => ({
                   ...state,
@@ -79,7 +81,7 @@ const DefaultModelModal = ({
               bg="myGray.50"
               value={defaultData.embedding?.id}
               list={embeddingModelList
-                .filter((item) => !item.isTuned)
+                .filter((item) => !item.isTuned && item.isShared)
                 .map((item) => ({
                   value: item.id,
                   label: item.name
@@ -99,10 +101,12 @@ const DefaultModelModal = ({
             <AIModelSelector
               bg="myGray.50"
               value={defaultData.tts?.id}
-              list={ttsModelList.map((item) => ({
-                value: item.id,
-                label: item.name
-              }))}
+              list={ttsModelList
+                .filter((item) => item.isShared)
+                .map((item) => ({
+                  value: item.id,
+                  label: item.name
+                }))}
               onChange={(e) => {
                 setDefaultData((state) => ({
                   ...state,
@@ -118,10 +122,12 @@ const DefaultModelModal = ({
             <AIModelSelector
               bg="myGray.50"
               value={defaultData.stt?.id}
-              list={sttModelList.map((item) => ({
-                value: item.id,
-                label: item.name
-              }))}
+              list={sttModelList
+                .filter((item) => item.isShared)
+                .map((item) => ({
+                  value: item.id,
+                  label: item.name
+                }))}
               onChange={(e) => {
                 setDefaultData((state) => ({
                   ...state,
@@ -138,7 +144,7 @@ const DefaultModelModal = ({
               bg="myGray.50"
               value={defaultData.rerank?.id}
               list={reRankModelList
-                .filter((item) => !item.isTuned)
+                .filter((item) => !item.isTuned && item.isShared)
                 .map((item) => ({
                   value: item.id,
                   label: item.name
@@ -162,10 +168,12 @@ const DefaultModelModal = ({
             <AIModelSelector
               bg="myGray.50"
               value={defaultData.datasetTextLLM?.id}
-              list={llmModelList.map((item) => ({
-                value: item.id,
-                label: item.name
-              }))}
+              list={llmModelList
+                .filter((item) => item.isShared)
+                .map((item) => ({
+                  value: item.id,
+                  label: item.name
+                }))}
               onChange={(e) => {
                 setDefaultData((state) => ({
                   ...state,
@@ -185,10 +193,12 @@ const DefaultModelModal = ({
               bg="myGray.50"
               clearable
               value={defaultData.datasetImageLLM?.id}
-              list={vlmModelList.map((item) => ({
-                value: item.id,
-                label: item.name
-              }))}
+              list={vlmModelList
+                .filter((item) => item.isShared)
+                .map((item) => ({
+                  value: item.id,
+                  label: item.name
+                }))}
               onChange={(e) => {
                 setDefaultData((state) => ({
                   ...state,
@@ -209,7 +219,7 @@ const DefaultModelModal = ({
                 bg="myGray.50"
                 value={defaultData.evaluation?.id}
                 list={llmModelList
-                  .filter((item) => item.useInEvaluation)
+                  .filter((item) => item.useInEvaluation && item.isShared)
                   .map((item) => ({
                     value: item.id,
                     label: item.name

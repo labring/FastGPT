@@ -138,5 +138,9 @@
   "price_tier_open_ended": "無窮",
   "rerank_max_token": "最大 Token 限制",
   "rerank_max_token_tip": "Rerank 階段單次請求的 token 上限（query + 單個文件），超出限制的文件會被自動切分",
-  "model_referenced_by_resources": "該模型已被以下應用/知識庫引用，為保障應用正常使用，請先切換至其他模型"
+  "model_referenced_by_resources": "該模型已被以下應用/知識庫引用，為保障應用正常使用，請先切換至其他模型",
+  "model_must_be_public_to_set_default": "預設模型必須為公開模型，請先將模型權限設為「全部成員可用」",
+  "model_is_default_cannot_be_private": "該模型目前為預設模型，無法設為私有，請先取消預設模型設定後重試",
+  "collaborator_must_cover_references": "該模型被以下成員的應用/知識庫引用，添加協作者將使其變為私有，請將引用的成員一併添加為協作者",
+  "collaborator_has_reference": "該協作者有應用/知識庫引用了此模型，無法移除"
 }

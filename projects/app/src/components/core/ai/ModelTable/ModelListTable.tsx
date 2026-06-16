@@ -22,14 +22,13 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import EllipsisTooltip from '@fastgpt/web/components/common/EllipsisTooltip';
 import { LazyCollaboratorProvider } from '@/components/support/permission/MemberManager/context';
-import { OwnerRoleVal, ReadRoleVal } from '@fastgpt/global/support/permission/constant';
-import { putSystemModel } from '@/web/core/ai/config';
-import { clientInitData } from '@/web/common/system/staticData';
+import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import { getModelCollaborators, updateModelCollaborators } from '@/web/common/system/api';
 import { getDatasetsWithChildren } from '@/web/core/dataset/api';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { Dispatch, SetStateAction } from 'react';
 import { useState, useEffect, useMemo } from 'react';
 import dynamic from 'next/dynamic';
@@ -599,6 +598,7 @@ const ModelTableActionCell = ({
 }: TableActionCellProps) => {
   const showPermissionButton = permissionConfig && item.permission.hasManagePer;
   const showTrainButton = tabType === modelTableTabValues.base && !!item.trainableModelType;
+  const { toast } = useToast();
 
   if (!showPermissionButton && !showTrainButton) {
     return null;
@@ -632,13 +632,16 @@ const ModelTableActionCell = ({
               const refs = err?.data?.references;
               if (err?.code === 409 && refs?.length > 0) {
                 handleCollaboratorError(refs);
-                throw err;
+                return;
+              }
+              if (err?.code === 409 && err?.message) {
+                toast({
+                  title: t(err.message as any),
+                  status: 'error'
+                });
+                return;
               }
               throw err;
-            }
-            if (item.isShared && collaborators.some((clb) => clb.permission !== OwnerRoleVal)) {
-              await putSystemModel({ id: item.id, isShared: false });
-              clientInitData(undefined, { forceRefresh: true });
             }
           }}
           permission={userPermission}
