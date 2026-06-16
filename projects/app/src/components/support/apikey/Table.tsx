@@ -3,8 +3,6 @@ import {
   Box,
   Button,
   Flex,
-  ModalFooter,
-  ModalBody,
   Table,
   Thead,
   Tbody,
@@ -32,9 +30,8 @@ import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyModalV2 from '@fastgpt/web/components/v2/common/MyModal';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getDocPath } from '@/web/common/system/doc';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
@@ -304,10 +301,8 @@ const ApiKeyTable = ({ tips, appId, mode = 'account' }: ApiKeyTableProps) => {
       )}
       <ConfirmModal />
       <ApiKeyCopyModal data={copyApiKey} onClose={() => setCopyApiKey(undefined)} />
-      <MyModal
+      <MyModalV2
         isOpen={!!apiKey}
-        w={['400px', '600px']}
-        iconSrc="keyPrimary"
         title={
           <Box>
             <Box fontWeight={'bold'}>{t('common:support.openapi.New api key')}</Box>
@@ -316,30 +311,29 @@ const ApiKeyTable = ({ tips, appId, mode = 'account' }: ApiKeyTableProps) => {
             </Box>
           </Box>
         }
+        size="md"
         onClose={() => setApiKey('')}
-      >
-        <ModalBody pt={5}>
-          <Flex
-            bg={'myGray.100'}
-            px={3}
-            py={2}
-            whiteSpace={'pre-wrap'}
-            wordBreak={'break-all'}
-            cursor={'pointer'}
-            borderRadius={'md'}
-            userSelect={'all'}
-            onClick={() => copyData(apiKey)}
-          >
-            <Box flex={1}>{apiKey}</Box>
-            <MyIcon ml={1} name={'copy'} w={'16px'}></MyIcon>
-          </Flex>
-        </ModalBody>
-        <ModalFooter>
+        footer={
           <Button variant="whiteBase" onClick={() => setApiKey('')}>
             {t('common:OK')}
           </Button>
-        </ModalFooter>
-      </MyModal>
+        }
+      >
+        <Flex
+          bg={'myGray.100'}
+          px={3}
+          py={2}
+          whiteSpace={'pre-wrap'}
+          wordBreak={'break-all'}
+          cursor={'pointer'}
+          borderRadius={'md'}
+          userSelect={'all'}
+          onClick={() => copyData(apiKey)}
+        >
+          <Box flex={1}>{apiKey}</Box>
+          <MyIcon ml={1} name={'copy'} w={'16px'}></MyIcon>
+        </Flex>
+      </MyModalV2>
     </MyBox>
   );
 };
@@ -423,10 +417,11 @@ function EditKeyModal({
   const { feConfigs } = useSystemStore();
 
   const {
+    control,
     register,
     setValue,
     handleSubmit: submitShareChat
-  } = useForm({
+  } = useForm<EditProps>({
     defaultValues: defaultData
   });
 
@@ -450,13 +445,30 @@ function EditKeyModal({
   );
 
   return (
-    <MyModal
+    <MyModalV2
       isOpen={true}
-      iconSrc="keyPrimary"
       title={isEdit ? t('publish:edit_api_key') : t('publish:create_api_key')}
+      size="md"
+      onClose={onClose}
+      footer={
+        <>
+          <Button variant={'whiteBase'} onClick={onClose}>
+            {t('common:Close')}
+          </Button>
+
+          <Button
+            isLoading={creating || updating}
+            onClick={submitShareChat((data) =>
+              isEdit ? onclickUpdate(data) : onclickCreate(data)
+            )}
+          >
+            {t('common:Confirm')}
+          </Button>
+        </>
+      }
     >
-      <ModalBody>
-        <Flex alignItems={'center'}>
+      <Flex flexDirection={'column'} gap={4}>
+        <Flex alignItems={'center'} gap={4}>
           <FormLabel flex={'0 0 90px'}>{t('common:Name')}</FormLabel>
           <Input
             placeholder={t('publish:key_alias') || 'key_alias'}
@@ -468,7 +480,7 @@ function EditKeyModal({
         </Flex>
         {feConfigs?.isPlus && (
           <>
-            <Flex alignItems={'center'} mt={4}>
+            <Flex alignItems={'center'} gap={4}>
               <FormLabel display={'flex'} flex={'0 0 90px'} alignItems={'center'}>
                 {t('common:support.outlink.Max usage points')}
                 <QuestionTip
@@ -485,7 +497,7 @@ function EditKeyModal({
                 })}
               />
             </Flex>
-            <Flex alignItems={'center'} mt={4}>
+            <Flex alignItems={'center'} gap={4}>
               <FormLabel flex={'0 0 90px'}>{t('common:expired_time')}</FormLabel>
               <Input
                 type="datetime-local"
@@ -507,23 +519,19 @@ function EditKeyModal({
               {t('common:support.openapi.Auth proxy')}
               <QuestionTip ml={1} label={t('common:support.openapi.Auth proxy tip')}></QuestionTip>
             </FormLabel>
-            <Switch {...register('authProxy')} />
+            <Controller
+              control={control}
+              name="authProxy"
+              render={({ field }) => (
+                <Switch
+                  isChecked={!!field.value}
+                  onChange={(e) => field.onChange(e.target.checked)}
+                />
+              )}
+            />
           </Flex>
         )}
-      </ModalBody>
-
-      <ModalFooter>
-        <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-          {t('common:Close')}
-        </Button>
-
-        <Button
-          isLoading={creating || updating}
-          onClick={submitShareChat((data) => (isEdit ? onclickUpdate(data) : onclickCreate(data)))}
-        >
-          {t('common:Confirm')}
-        </Button>
-      </ModalFooter>
-    </MyModal>
+      </Flex>
+    </MyModalV2>
   );
 }

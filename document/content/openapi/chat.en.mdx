@@ -11,7 +11,9 @@ You can find the AppId in your application details URL.
 
 # Start a Conversation
 
-- This API requires an application-specific API key, or it will return an error.
+- This API supports two API Key types:
+  - `App API Key`: created in the app's publish channel. It is already bound to the app and can directly call that app's chat endpoint.
+  - `Global API Key`: created in account settings. Pass `appId` in the request body when calling this endpoint. To proxy a team member identity through `authProxy`, the team owner must enable `authProxy` when creating or editing the key.
 - Some packages require adding `v1` to the `BaseUrl`. If you get a 404 error, try adding `v1` and retry.
 
 {/* * 对话现在有`v1`和`v2`两个接口，可以按需使用，v2 自 4.9.4 版本新增，v1 接口同时不再维护 */}
