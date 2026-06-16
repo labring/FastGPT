@@ -58,7 +58,7 @@ export const serviceEnv = createEnv({
     // Agent sandbox proxy
     AGENT_SANDBOX_PROXY_SECRET: z
       .string()
-      .min(32, ", 'AGENT_SANDBOX_PROXY_SECRET must be at least 32 characters'")
+      .min(32, 'AGENT_SANDBOX_PROXY_SECRET must be at least 32 characters')
       .optional(),
     // Agent sandbox
     AGENT_SANDBOX_PROVIDER: z.enum(['sealosdevbox', 'opensandbox', 'e2b']).optional(),
