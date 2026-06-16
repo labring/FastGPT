@@ -1,10 +1,9 @@
 import { getDatasets, getDatasetPaths } from '@/web/core/dataset/api';
-import MyModal from '@fastgpt/web/components/common/MyModal';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import React, { type Dispatch, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { Box } from '@chakra-ui/react';
 import FolderPath from '@/components/common/folder/Path';
-import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import type {
   ParentIdType,
@@ -32,7 +31,6 @@ const DatasetSelectContainer = ({
 
   return (
     <MyModal
-      iconSrc="/imgs/workflow/db.png"
       title={
         <Box fontWeight={'normal'}>
           <FolderPath
@@ -58,10 +56,9 @@ const DatasetSelectContainer = ({
       w={'100%'}
       maxW={['90vw', '900px']}
       isCentered
+      isLoading={isLoading}
     >
-      <MyBox isLoading={isLoading} h={'100%'}>
-        {children}
-      </MyBox>
+      {children}
     </MyModal>
   );
 };
