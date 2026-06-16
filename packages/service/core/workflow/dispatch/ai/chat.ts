@@ -1,5 +1,6 @@
 import { filterGPTMessageByMaxContext } from '../../../ai/llm/utils';
 import type { ChatItemMiniType, UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
+import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
@@ -39,7 +40,11 @@ import { parseUrlToFileType } from '../../utils/context';
 import { i18nT } from '../../../../../global/common/i18n/utils';
 import { postTextCensor } from '../../../chat/postTextCensor';
 import { createLLMResponse } from '../../../ai/llm/request';
+import { compressLargeContent } from '../../../ai/llm/compress';
+import { countPromptTokens } from '../../../../common/string/tiktoken';
+import { env } from '../../../../env';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
+import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { addLog } from '../../../../common/system/log';
 import {
   extractQuerySynonyms,
@@ -110,7 +115,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   const modelConstantsData = getLLMModelById(modelId);
   if (!modelConstantsData) {
     return getNodeErrResponse({
-      error: `Model ${modelId} not found`,
+      error: `Model ${modelId} not found`
     });
   }
 
@@ -170,6 +175,58 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       maxToken
     });
 
+    // Auto-compress ultra-long user input before getChatMessages
+    let finalUserInput = userChatInput;
+    let compressionMeta: {
+      originalText: string;
+      compressedText: string;
+      usage?: ChatNodeUsageType;
+    } | null = null;
+
+    if (userChatInput) {
+      const inputTokens = await countPromptTokens(userChatInput);
+      const threshold = Math.floor(
+        modelConstantsData.maxContext * env.USER_INPUT_COMPRESS_THRESHOLD
+      );
+
+      if (inputTokens > threshold) {
+        const targetTokens = Math.floor(
+          modelConstantsData.maxContext * env.USER_INPUT_COMPRESS_TARGET
+        );
+
+        addLog.debug('User input auto-compression triggered', {
+          inputTokens,
+          threshold,
+          targetTokens
+        });
+
+        const result = await compressLargeContent({
+          content: userChatInput,
+          model: modelConstantsData,
+          maxTokens: targetTokens,
+          userKey: externalProvider.openaiAccount
+        });
+
+        if (result.compressed && result.compressed !== userChatInput) {
+          finalUserInput = result.compressed;
+          compressionMeta = {
+            originalText: userChatInput,
+            compressedText: result.compressed,
+            usage: result.usage
+          };
+
+          if (result.usage) {
+            props.usagePush([result.usage]);
+          }
+
+          addLog.debug('User input auto-compression completed', {
+            originalTokens: inputTokens,
+            moduleName: result.usage?.moduleName
+          });
+        }
+      }
+    }
+
     const [{ filterMessages }] = await Promise.all([
       getChatMessages({
         model: modelConstantsData,
@@ -181,7 +238,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         aiChatQuoteRole,
         datasetQuotePrompt: quotePrompt,
         version,
-        userChatInput,
+        userChatInput: finalUserInput,
         systemPrompt,
         userFiles,
         documentQuoteText
@@ -269,6 +326,41 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     ]);
 
     const chatCompleteMessages = GPTMessages2Chats({ messages: completeMessages });
+
+    // Inject compression metadata for UI display and persistence
+    if (compressionMeta) {
+      // Inject into query array (shared references with userQuestion.value used by save function)
+      if (query && Array.isArray(query) && query.length > 0) {
+        const firstQueryValue = query[0];
+        if (firstQueryValue?.text) {
+          firstQueryValue.text.originalContent = compressionMeta.originalText;
+          firstQueryValue.text.content = compressionMeta.compressedText;
+          (firstQueryValue as any).compression = {
+            modelId: modelConstantsData.id,
+            inputTokens: compressionMeta.usage?.inputTokens,
+            outputTokens: compressionMeta.usage?.outputTokens
+          };
+        }
+      }
+
+      // Also inject into chatCompleteMessages for downstream consumers
+      for (let i = chatCompleteMessages.length - 1; i >= 0; i--) {
+        const msg = chatCompleteMessages[i];
+        if (msg.obj === ChatRoleEnum.Human) {
+          const firstValue = msg.value?.[0] as UserChatItemValueItemType | undefined;
+          if (firstValue?.text) {
+            firstValue.text.originalContent = compressionMeta.originalText;
+            firstValue.text.content = compressionMeta.compressedText;
+            firstValue.compression = {
+              modelId: modelConstantsData.id,
+              inputTokens: compressionMeta.usage?.inputTokens,
+              outputTokens: compressionMeta.usage?.outputTokens
+            };
+          }
+          break;
+        }
+      }
+    }
 
     if (error) {
       return getNodeErrResponse({

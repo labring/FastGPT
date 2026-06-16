@@ -1,4 +1,4 @@
-import { Box, type BoxProps, Card, Flex, Button } from '@chakra-ui/react';
+import { Box, type BoxProps, Card, Flex, Button, Badge } from '@chakra-ui/react';
 import React, { useMemo, useState, useRef } from 'react';
 import ChatController, { type ChatControllerProps } from './ChatController';
 import ChatAvatar from './ChatAvatar';
@@ -77,17 +77,48 @@ ${JSON.stringify(questionGuides)}`}
 const HumanContentCard = React.memo(
   function HumanContentCard({ chatValue }: { chatValue: UserChatItemValueItemType[] }) {
     const { text, files = [] } = formatChatValue2InputType(chatValue);
+    const { t } = useTranslation();
+
+    // Check if compression was applied to this message
+    const compressedItem = chatValue.find(
+      (item) => 'compression' in item && (item as any).compression?.modelId
+    );
+    const originalContent =
+      compressedItem?.text && 'originalContent' in compressedItem.text
+        ? (compressedItem.text as any).originalContent
+        : undefined;
+    const hasCompression = !!compressedItem && !!originalContent;
+
+    const [showOriginal, setShowOriginal] = useState(false);
+
+    const displayText = hasCompression && showOriginal ? originalContent : text;
+
     return (
       <Flex flexDirection={'column'} gap={4}>
         {files.length > 0 && <FilesBlock files={files} />}
-        {text && (
+        {hasCompression && (
+          <Flex alignItems={'center'} gap={2}>
+            <Badge colorScheme="orange" fontSize={'xs'}>
+              {t('chat:input_compressed')}
+            </Badge>
+            <Button
+              size={'xs'}
+              variant={'ghost'}
+              fontSize={'xs'}
+              onClick={() => setShowOriginal(!showOriginal)}
+            >
+              {showOriginal ? t('chat:show_compressed') : t('chat:show_original')}
+            </Button>
+          </Flex>
+        )}
+        {displayText && (
           <Box
             fontSize={'inherit'}
             color={'inherit'}
             whiteSpace={'pre-wrap'}
             wordBreak={'break-word'}
           >
-            {text}
+            {displayText}
           </Box>
         )}
       </Flex>

@@ -8,6 +8,9 @@ import type {
   ModuleDispatchProps
 } from '@fastgpt/global/core/workflow/runtime/type';
 import { getNodeErrResponse, getHistories } from '../../utils';
+import { compressLargeContent } from '../../../../ai/llm/compress';
+import { countPromptTokens } from '../../../../../common/string/tiktoken';
+import { getLLMModelById } from '../../../../ai/model';
 import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType,
@@ -164,9 +167,44 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
     // 交互模式进来的话，这个值才是交互输入的值
     const { text: queryInput, files: queryFiles } = chatValue2RuntimePrompt(query);
+
+    // Auto-compress ultra-long user input before agent processing
+    let finalUserChatInput = userChatInput;
+
+    if (finalUserChatInput) {
+      const modelData = getLLMModelById(modelId);
+      if (modelData) {
+        const inputTokens = await countPromptTokens(finalUserChatInput);
+        const threshold = Math.floor(modelData.maxContext * env.USER_INPUT_COMPRESS_THRESHOLD);
+
+        if (inputTokens > threshold) {
+          const targetTokens = Math.floor(modelData.maxContext * env.USER_INPUT_COMPRESS_TARGET);
+
+          getLogger(LogCategories.MODULE.AI.AGENT).debug(
+            'User input auto-compression triggered in agent',
+            { inputTokens, threshold, targetTokens }
+          );
+
+          const result = await compressLargeContent({
+            content: finalUserChatInput,
+            model: modelData,
+            maxTokens: targetTokens
+          });
+
+          if (result.compressed && result.compressed !== finalUserChatInput) {
+            finalUserChatInput = result.compressed;
+
+            if (result.usage) {
+              usagePush([result.usage]);
+            }
+          }
+        }
+      }
+    }
+
     const formatUserChatInput = fileInputPrompt
-      ? `${fileInputPrompt}\n\n${userChatInput}`
-      : userChatInput;
+      ? `${fileInputPrompt}\n\n${finalUserChatInput}`
+      : finalUserChatInput;
     const currentUserMessage = chats2GPTMessages({
       messages: [
         {

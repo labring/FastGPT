@@ -158,10 +158,18 @@ export const UserChatItemValueItemSchema = z.object({
   planId: z.string().nullish(),
   text: z
     .object({
-      content: z.string()
+      content: z.string(),
+      originalContent: z.string().optional()
     })
     .optional(),
-  file: UserChatItemFileItemSchema.optional()
+  file: UserChatItemFileItemSchema.optional(),
+  compression: z
+    .object({
+      modelId: z.string().optional(),
+      inputTokens: z.number().optional(),
+      outputTokens: z.number().optional()
+    })
+    .optional()
 });
 export type UserChatItemValueItemType = z.infer<typeof UserChatItemValueItemSchema>;
 
