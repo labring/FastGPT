@@ -37,7 +37,7 @@ export async function handler(
   // const tools = await getSystemToolsWithInstalled({ teamId, isRoot, userTags });
   const systemToolRepo = SystemToolRepo.getInstance();
   if (parentId) {
-    const parent = await systemToolRepo.getSystemToolDetail({
+    const parent = await systemToolRepo.getSystemToolDisplayInfo({
       pluginId: parentId,
       lang,
       source: 'system'

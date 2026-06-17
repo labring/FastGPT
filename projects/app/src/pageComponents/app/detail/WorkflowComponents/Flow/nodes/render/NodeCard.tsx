@@ -22,7 +22,7 @@ import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 import { ToolSourceHandle, ToolTargetHandle } from './Handle/ToolHandle';
 import { ConnectionSourceHandle, ConnectionTargetHandle } from './Handle/ConnectionHandle';
 import { useDebug } from '../../hooks/useDebug';
-import { getToolPreviewNode } from '@/web/core/app/api/tool';
+import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
 import { getAppVersionList } from '@/web/core/app/api/version';
 import { getTeamToolVersions } from '@/web/core/plugin/team/api';
 import { storeNode2FlowNode } from '@/web/core/workflow/utils';
@@ -655,7 +655,7 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
       if (!node) return;
 
       if (node.pluginId) {
-        const template = await getToolPreviewNode({
+        const template = await getClientToolPreviewNode({
           appId: node.pluginId,
           versionId
         });

@@ -5,7 +5,6 @@ import {
   SystemToolListItemSchema
 } from '../../../../../core/app/tool/systemTool/type';
 import { SystemToolVersionSchema } from '../../../../../core/app/tool/systemTool/type/base';
-import { OpenAPIFlowNodeOutputItemTypeSchema } from '../../../workflow/node';
 
 /* ============================================================================
  * API: 获取团队插件列表
@@ -65,19 +64,7 @@ export const TeamToolDetailSchema = z.object({
 });
 export type GetTeamToolDetailResponseType = z.infer<typeof TeamToolDetailSchema>;
 
-const OpenAPISystemToolChildDetailSchema = SystemToolChildDetailSchema.omit({
-  outputs: true
-}).extend({
-  outputs: z.array(OpenAPIFlowNodeOutputItemTypeSchema)
-});
-
-export const OpenAPITeamToolDetailSchema = TeamToolDetailSchema.omit({
-  outputs: true,
-  children: true
-}).extend({
-  outputs: z.array(OpenAPIFlowNodeOutputItemTypeSchema).optional(),
-  children: z.array(OpenAPISystemToolChildDetailSchema).optional()
-});
+export const OpenAPITeamToolDetailSchema = TeamToolDetailSchema;
 
 /* ============================================================================
  * API: 获取团队工具版本列表

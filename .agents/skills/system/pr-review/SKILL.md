@@ -107,6 +107,7 @@ git branch -D pr/<number>
 
 对照 FastGPT 各项规范逐一检查，完成以下检查清单：
 
+- [] **i18n 静态 key 规范**：检查新增/修改的 `t(...)` 调用是否能被 i18n 清理脚本静态识别。禁止 ``t(`ns:key_${value}`)``、`t(prefix + value)`、`t(variableKey)`、`t(condition ? 'ns:a' : 'ns:b')` 等动态或表达式 key；有限枚举必须拆成显式分支或静态映射，并让最终调用保持 `t('ns:literal_key')` 形式。同时确认所有被引用 key 已补齐到对应语言包，避免被误清理或运行时裸显 key。
 - [] [API 路由开发规范](../../design/api/index.md)
 - [] [前端组件规范](./style/front.md)
 - [] [数据库规范](./style/db.md)

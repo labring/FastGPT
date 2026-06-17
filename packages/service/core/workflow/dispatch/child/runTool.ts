@@ -161,15 +161,14 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         }
 
         // Custom error field
-        return {
+        return getNodeErrResponse({
           error: res.error,
           [DispatchNodeResponseKeyEnum.nodeResponse]: {
             toolInput,
             error: res.error,
             moduleLogo: avatar
-          },
-          [DispatchNodeResponseKeyEnum.toolResponse]: res.error
-        };
+          }
+        });
       }
 
       const usagePoints = (() => {
@@ -287,18 +286,14 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       });
 
       if (errorMsg) {
-        if (catchError) {
-          return {
-            error: { [NodeOutputKeyEnum.errorText]: errorMsg },
-            [DispatchNodeResponseKeyEnum.nodeResponse]: {
-              toolInput,
-              toolRes: errorMsg,
-              moduleLogo: avatar
-            },
-            [DispatchNodeResponseKeyEnum.toolResponse]: errorMsg
-          };
-        }
-        throw new Error(errorMsg);
+        return getNodeErrResponse({
+          error: errorMsg,
+          [DispatchNodeResponseKeyEnum.nodeResponse]: {
+            toolInput,
+            toolRes: errorMsg,
+            moduleLogo: avatar
+          }
+        });
       }
 
       return {

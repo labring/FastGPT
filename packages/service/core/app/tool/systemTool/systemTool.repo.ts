@@ -3,15 +3,18 @@ import { UserError } from '@fastgpt/global/common/error/utils';
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import {
-  jsonSchema2NodeInput,
-  jsonSchema2NodeOutput,
-  jsonSchema2SecretInput
+  jsonSchema2SecretInput,
+  nodeInputs2JsonSchema,
+  nodeOutputs2JsonSchema
 } from '@fastgpt/global/core/app/jsonschema';
 import { SystemToolCodec } from '@fastgpt/global/core/app/tool/systemTool/codec';
 import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { filterPluginTags } from '@fastgpt/global/core/plugin/utils';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import type { PluginListParamsType } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { pluginClient } from '../../../../thirdProvider/fastgptPlugin';
 import { MongoSystemTool } from '../../../plugin/tool/systemToolSchema';
@@ -34,8 +37,8 @@ import { MongoAppVersion } from '../../version/schema';
 import type { SystemPluginToolCollectionType } from '@fastgpt/global/core/plugin/tool/type';
 import type { AppToolRuntimeType } from '@fastgpt/global/core/app/tool/type';
 import type { PluginPermissionEnumType } from '@fastgpt/global/sdk/fastgpt-plugin';
-import { pluginData2FlowNodeIO } from '@fastgpt/global/core/workflow/utils';
 import { Types } from '../../../../common/mongo';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 
 type SystemToolRuntimeType = {
   id: string;
@@ -44,6 +47,61 @@ type SystemToolRuntimeType = {
   systemKeyCost: number;
   secretsVal?: Record<string, any>;
   permissions?: PluginPermissionEnumType[];
+};
+
+type SystemToolDisplayChildType = Pick<
+  SystemToolChildDetailType,
+  'id' | 'name' | 'description' | 'toolDescription' | 'icon' | 'currentCost' | 'systemKeyCost'
+>;
+
+type SystemToolDisplayInfoType = Pick<
+  SystemToolListItemType,
+  | 'id'
+  | 'version'
+  | 'status'
+  | 'source'
+  | 'isToolSet'
+  | 'avatar'
+  | 'name'
+  | 'intro'
+  | 'author'
+  | 'tags'
+  | 'toolDescription'
+  | 'userGuide'
+  | 'readmeUrl'
+  | 'courseUrl'
+  | 'pluginOrder'
+  | 'originCost'
+  | 'currentCost'
+  | 'systemKeyCost'
+  | 'hasTokenFee'
+  | 'hasSystemSecret'
+  | 'systemSecretStatus'
+  | 'hideTags'
+  | 'promoteTags'
+> & {
+  children?: SystemToolDisplayChildType[];
+};
+
+const workflowToolNodes2JsonSchema = ({ nodes }: { nodes: StoreNodeItemType[] }) => {
+  const pluginInput = nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput);
+  const pluginOutput = nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginOutput);
+
+  return {
+    inputSchema: nodeInputs2JsonSchema({ inputs: pluginInput?.inputs ?? [] }),
+    outputSchema: nodeOutputs2JsonSchema({
+      outputs:
+        pluginOutput?.inputs.map((item) => ({
+          id: item.key,
+          type: FlowNodeOutputTypeEnum.static,
+          key: item.key,
+          valueType: item.valueType,
+          label: item.label || item.key,
+          description: item.description,
+          required: item.required
+        })) ?? []
+    })
+  };
 };
 
 /**
@@ -167,6 +225,10 @@ export class SystemToolRepo {
           })
         : true;
 
+      const { inputSchema, outputSchema } = workflowToolNodes2JsonSchema({
+        nodes: appVersion.nodes
+      });
+
       return {
         id: pluginId,
         name: dbTool.customConfig.name,
@@ -180,9 +242,8 @@ export class SystemToolRepo {
         avatar: app.avatar,
         hasSystemSecret: false,
         systemSecretStatus: SystemToolCodec.getSystemSecretStatus({ hasSecret: false }),
-        ...pluginData2FlowNodeIO({
-          nodes: appVersion.nodes
-        }),
+        inputSchema,
+        outputSchema,
         isToolSet: false,
         currentCost: dbTool.currentCost ?? 0,
         hasTokenFee: dbTool.hasTokenFee ?? false,
@@ -235,11 +296,8 @@ export class SystemToolRepo {
             systemKeyCost: dbChild?.systemKeyCost ?? 0,
             currentCost: dbChild?.currentCost ?? 0,
             icon: item.icon,
-            inputs: jsonSchema2NodeInput({
-              jsonSchema: item.inputSchema,
-              schemaType: 'systemTool'
-            }),
-            outputs: jsonSchema2NodeOutput({ jsonSchema: item.outputSchema })
+            inputSchema: item.inputSchema,
+            outputSchema: item.outputSchema
           } satisfies SystemToolChildDetailType;
         })
       : undefined;
@@ -286,28 +344,152 @@ export class SystemToolRepo {
       hideTags: dbTool?.hideTags ?? [],
       promoteTags: dbTool?.promoteTags ?? [],
       pluginOrder: dbTool?.pluginOrder,
-      secrets,
+      secretSchema: tool.secretSchema,
       isLatestVersion: tool.isLatestVersion,
       ...(childPluginId
         ? {
-            inputs: jsonSchema2NodeInput({
-              jsonSchema: child!.inputSchema,
-              schemaType: 'systemTool'
-            }),
-            outputs: jsonSchema2NodeOutput({ jsonSchema: child!.outputSchema })
+            inputSchema: child!.inputSchema,
+            outputSchema: child!.outputSchema
           }
         : {
-            inputs: tool.inputSchema
-              ? jsonSchema2NodeInput({ jsonSchema: tool.inputSchema, schemaType: 'systemTool' })
-              : [],
-            outputs: tool.outputSchema
-              ? jsonSchema2NodeOutput({ jsonSchema: tool.outputSchema })
-              : []
+            inputSchema: tool.inputSchema,
+            outputSchema: tool.outputSchema
           }),
       permissions: tool.permission
     };
 
     return toolDetail;
+  };
+
+  /**
+   * 获取系统工具的轻量展示信息，仅用于路径、模板列表这类 UI 元数据场景。
+   *
+   * 这个方法刻意不返回 input/output/secret schema，也不会为工作流工具加载 app
+   * version 生成 workflow JSON Schema；需要运行或配置详情时仍使用 getSystemToolDetail。
+   */
+  getSystemToolDisplayInfo = async ({
+    pluginId,
+    source = 'system',
+    lang
+  }: {
+    pluginId: string;
+    source?: string;
+    lang?: `${LangEnum}`;
+  }): Promise<SystemToolDisplayInfoType> => {
+    const { pluginId: rawPluginId, source: toolSource } = splitCombineToolId(pluginId);
+    const [parentPluginId, childPluginId] = rawPluginId.split('/');
+
+    const exactDbTool = await MongoSystemTool.findOne({ pluginId });
+    if (!childPluginId && exactDbTool?.customConfig?.associatedPluginId) {
+      return {
+        id: pluginId,
+        version: exactDbTool.customConfig.version,
+        status: exactDbTool.status ?? PluginStatusEnum.Normal,
+        source: 'system',
+        isToolSet: false,
+        avatar: exactDbTool.customConfig.avatar ?? '',
+        name: exactDbTool.customConfig.name,
+        intro: exactDbTool.customConfig.intro ?? '',
+        author: exactDbTool.customConfig.author ?? global.feConfigs.systemTitle ?? '',
+        tags: exactDbTool.customConfig.tags ?? [],
+        toolDescription:
+          exactDbTool.customConfig.toolDescription ?? exactDbTool.customConfig.intro ?? '',
+        userGuide: exactDbTool.customConfig.userGuide,
+        pluginOrder: exactDbTool.pluginOrder ?? 0,
+        originCost: exactDbTool.originCost ?? 0,
+        currentCost: exactDbTool.currentCost ?? 0,
+        systemKeyCost: exactDbTool.systemKeyCost ?? 0,
+        hasTokenFee: exactDbTool.hasTokenFee ?? false,
+        hasSystemSecret: false,
+        systemSecretStatus: SystemToolCodec.getSystemSecretStatus({ hasSecret: false }),
+        hideTags: exactDbTool.hideTags ?? [],
+        promoteTags: exactDbTool.promoteTags ?? []
+      };
+    }
+
+    const pluginSource =
+      source === AppToolSourceEnum.commercial ? AppToolSourceEnum.commercial : 'system';
+    const tools = await pluginClient.listTools({
+      sources: [pluginSource]
+    });
+    const tool = tools.find((item) => item.pluginId === parentPluginId);
+    if (!tool) return Promise.reject(PluginErrEnum.unExist);
+
+    const parentCombinedPluginId = [
+      AppToolSourceEnum.systemTool,
+      AppToolSourceEnum.commercial
+    ].includes(toolSource)
+      ? `${toolSource}-${parentPluginId}`
+      : parentPluginId;
+    const parentConfigIds = Array.from(
+      new Set([
+        parentCombinedPluginId,
+        parentPluginId,
+        SystemToolCodec.getDBPluginId(parentPluginId)
+      ])
+    );
+    const childConfigIds =
+      tool.children?.flatMap((child) => [
+        `${parentCombinedPluginId}/${child.id}`,
+        `${parentPluginId}/${child.id}`,
+        `${SystemToolCodec.getDBPluginId(parentPluginId)}/${child.id}`
+      ]) ?? [];
+    const dbTools = await MongoSystemTool.find({
+      pluginId: {
+        $in: [...parentConfigIds, ...childConfigIds]
+      }
+    });
+    const dbToolsMap = new Map(dbTools.map((item) => [item.pluginId, item]));
+    const parentConfig = parentConfigIds.map((id) => dbToolsMap.get(id)).find(Boolean);
+    const parent = SystemToolCodec.attachToolConfig({
+      tool,
+      config: parentConfig,
+      lang
+    });
+    const children =
+      tool.children?.map<SystemToolDisplayChildType>((item) => {
+        const childIcon = (item as { icon?: string }).icon;
+        const childConfig = [
+          `${parentCombinedPluginId}/${item.id}`,
+          `${parentPluginId}/${item.id}`,
+          `${SystemToolCodec.getDBPluginId(parentPluginId)}/${item.id}`
+        ]
+          .map((id) => dbToolsMap.get(id))
+          .find(Boolean);
+
+        return {
+          id: item.id,
+          name: parseI18nString(item.name, lang),
+          description: parseI18nString(item.description, lang),
+          toolDescription: childConfig?.customConfig?.toolDescription ?? item.toolDescription,
+          icon: childIcon,
+          currentCost: childConfig?.currentCost ?? 0,
+          systemKeyCost: childConfig?.systemKeyCost ?? 0
+        };
+      }) ?? [];
+
+    if (childPluginId) {
+      const child = children.find((item) => item.id === childPluginId);
+      if (!child) return Promise.reject(PluginErrEnum.unExist);
+
+      return {
+        ...parent,
+        id: pluginId,
+        isToolSet: false,
+        avatar: child.icon ?? parent.avatar,
+        name: child.name,
+        intro: child.description ?? '',
+        toolDescription: child.toolDescription ?? '',
+        currentCost: child.currentCost,
+        systemKeyCost: child.systemKeyCost
+      };
+    }
+
+    return {
+      ...parent,
+      id: pluginId,
+      children: parent.isToolSet ? children : undefined
+    };
   };
 
   getVersions = async ({

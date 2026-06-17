@@ -1,13 +1,4 @@
-import {
-  Box,
-  Button,
-  Flex,
-  HStack,
-  Input,
-  ModalBody,
-  ModalFooter,
-  useDisclosure
-} from '@chakra-ui/react';
+import { Box, Button, Flex, HStack, Input, useDisclosure } from '@chakra-ui/react';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
@@ -19,7 +10,7 @@ import type { FlowNodeInputItemType, InputConfigType } from '@fastgpt/global/cor
 import { useForm, Controller } from 'react-hook-form';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import IconButton from '@/pageComponents/account/team/OrgManage/IconButton';
-import MyModal from '@fastgpt/web/components/common/MyModal';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import InputRender from '@/components/core/app/formRender';
 import { secretInputTypeToInputType } from '@/components/core/app/formRender/utils';
 import { getAppToolTemplates } from '@/web/core/app/api/tool';
@@ -105,13 +96,22 @@ const SecretInputModal = ({
   return (
     <MyModal
       isOpen
-      iconSrc={'key'}
-      iconColor={'primary.600'}
       title={t('workflow:tool_active_config')}
       onClose={onClose}
-      w={'500px'}
+      size={'md'}
+      isCentered
+      footer={
+        <>
+          <Button variant={'whiteBase'} onClick={onClose}>
+            {t('common:Cancel')}
+          </Button>
+          <Button variant={'primary'} onClick={handleSubmit(onSubmit)}>
+            {t('common:Confirm')}
+          </Button>
+        </>
+      }
     >
-      <ModalBody pt={6}>
+      <>
         <FormLabel mb={1} fontSize={'md'}>
           {t('common:secret_key')}
         </FormLabel>
@@ -228,12 +228,13 @@ const SecretInputModal = ({
                         const inputKey = `value.${item.key}.value` as any;
                         const value = getValues(`value.${item.key}`);
                         const showInput = !!value?.value || !value?.secret || editIndex === i;
+                        const fieldLabel = t(item.label as any);
 
                         return (
                           <Box key={item.key} mb={inputList.length - 1 === i ? 2 : 5}>
                             <Flex alignItems={'center'} mb={0.5}>
                               <FormLabel required={item.required} color={'myGray.600'}>
-                                {t(item.label as any)}
+                                {fieldLabel}
                               </FormLabel>
                               {item.description && <QuestionTip label={item.description} />}
                               <Box flex={'1 0 0'} />
@@ -243,7 +244,13 @@ const SecretInputModal = ({
                                 {showInput ? (
                                   <Input
                                     bg={'myGray.50'}
-                                    placeholder={item.description}
+                                    h={'48px'}
+                                    py={0}
+                                    display={'flex'}
+                                    alignItems={'center'}
+                                    lineHeight={'normal'}
+                                    _placeholder={{ lineHeight: 'normal' }}
+                                    placeholder={fieldLabel}
                                     {...register(inputKey, {
                                       required: item.required
                                     })}
@@ -275,6 +282,27 @@ const SecretInputModal = ({
                                   </>
                                 )}
                               </Flex>
+                            ) : item.inputType === 'input' ? (
+                              <Controller
+                                control={control}
+                                name={inputKey}
+                                rules={{
+                                  required: item.required
+                                }}
+                                render={({ field: { onChange, value }, fieldState: { error } }) => (
+                                  <Input
+                                    value={value ?? ''}
+                                    onChange={(e) => onChange(e.target.value)}
+                                    bg={'myGray.50'}
+                                    h={'48px'}
+                                    py={0}
+                                    lineHeight={'normal'}
+                                    _placeholder={{ lineHeight: 'normal' }}
+                                    placeholder={fieldLabel}
+                                    isInvalid={!!error}
+                                  />
+                                )}
+                              />
                             ) : (
                               <Controller
                                 control={control}
@@ -299,7 +327,7 @@ const SecretInputModal = ({
                                       inputType={secretInputTypeToInputType(item.inputType)}
                                       value={value}
                                       onChange={onChange}
-                                      placeholder={item.description}
+                                      placeholder={fieldLabel}
                                       bg={'myGray.50'}
                                       list={item.list}
                                       isInvalid={!!error}
@@ -319,15 +347,7 @@ const SecretInputModal = ({
             onChange={(e) => setValue('type', e)}
           />
         </Box>
-      </ModalBody>
-      <ModalFooter>
-        <Button mr={4} variant={'whiteBase'} onClick={onClose}>
-          {t('common:Cancel')}
-        </Button>
-        <Button variant={'primary'} onClick={handleSubmit(onSubmit)}>
-          {t('common:Confirm')}
-        </Button>
-      </ModalFooter>
+      </>
     </MyModal>
   );
 };

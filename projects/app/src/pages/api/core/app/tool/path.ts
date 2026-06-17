@@ -68,7 +68,7 @@ async function getToolPathItem({
 }): Promise<GetToolPathResponseType[number]> {
   const systemToolRepo = SystemToolRepo.getInstance();
   const { source } = splitCombineToolId(toolId);
-  const tool = await systemToolRepo.getSystemToolDetail({
+  const tool = await systemToolRepo.getSystemToolDisplayInfo({
     pluginId: toolId,
     lang,
     source: source === AppToolSourceEnum.commercial ? AppToolSourceEnum.commercial : 'system'

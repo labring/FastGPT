@@ -19,6 +19,8 @@
   "permission.only_collaborators": "僅協作者可存取",
   "permission.team_read": "團隊可存取",
   "permission.team_write": "團隊可編輯",
+  "promotion.pay": "付費",
+  "promotion.register": "註冊",
   "register.confirm": "確認註冊",
   "register.register_account": "註冊 {{account}} 帳號",
   "register.success": "註冊成功",

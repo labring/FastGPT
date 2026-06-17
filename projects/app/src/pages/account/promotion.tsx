@@ -119,7 +119,11 @@ const Promotion = () => {
                     <Td>
                       {item.createTime ? dayjs(item.createTime).format('YYYY/MM/DD HH:mm:ss') : '-'}
                     </Td>
-                    <Td>{t(`user:promotion.${item.type}` as any)}</Td>
+                    <Td>
+                      {item.type === 'register'
+                        ? t('user:promotion.register')
+                        : t('user:promotion.pay')}
+                    </Td>
                     <Td>{item.amount}</Td>
                   </Tr>
                 ))}

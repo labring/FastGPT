@@ -16,9 +16,9 @@ vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
   }
 }));
 
-import { getToolPreviewNode } from '@fastgpt/service/core/app/tool/presenter';
+import { getClientSystemToolPreviewNode } from '@fastgpt/service/core/app/tool/utils/client';
 
-describe('getToolPreviewNode', () => {
+describe('getClientSystemToolPreviewNode', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getInstance.mockReturnValue({
@@ -27,15 +27,6 @@ describe('getToolPreviewNode', () => {
   });
 
   it('adds system input config when system tool has secrets', async () => {
-    const secrets = [
-      {
-        key: 'apiKey',
-        label: 'API Key',
-        inputType: 'secret',
-        required: true
-      }
-    ];
-
     mocks.getSystemToolDetail.mockResolvedValueOnce({
       id: 'systemTool-weather',
       version: '1.0.0',
@@ -52,20 +43,29 @@ describe('getToolPreviewNode', () => {
       systemKeyCost: 1,
       hasTokenFee: false,
       hasSystemSecret: true,
-      secrets,
-      inputs: [
-        {
-          key: 'city',
-          label: 'City',
-          valueType: 'string',
-          renderTypeList: [FlowNodeInputTypeEnum.input],
-          required: true
+      secretSchema: {
+        type: 'object',
+        properties: {
+          apiKey: {
+            type: 'string',
+            title: 'API Key',
+            isSecret: true
+          }
+        },
+        required: ['apiKey']
+      },
+      inputSchema: {
+        type: 'object',
+        properties: {
+          city: {
+            type: 'string',
+            title: 'City'
+          }
         }
-      ],
-      outputs: []
+      }
     });
 
-    const result = await getToolPreviewNode({
+    const result = await getClientSystemToolPreviewNode({
       pluginId: 'systemTool-weather',
       versionId: '1.0.0',
       lang: 'en'
@@ -75,7 +75,15 @@ describe('getToolPreviewNode', () => {
       key: NodeInputKeyEnum.systemInputConfig,
       label: '',
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
-      inputList: secrets
+      inputList: [
+        {
+          key: 'apiKey',
+          label: 'API Key',
+          inputType: 'secret',
+          description: undefined,
+          required: true
+        }
+      ]
     });
     expect(result.inputs[1]?.key).toBe('city');
     expect(result.version).toBe('1.0.0');
@@ -99,19 +107,18 @@ describe('getToolPreviewNode', () => {
       systemKeyCost: 0,
       hasTokenFee: false,
       hasSystemSecret: false,
-      inputs: [
-        {
-          key: 'city',
-          label: 'City',
-          valueType: 'string',
-          renderTypeList: [FlowNodeInputTypeEnum.input],
-          required: true
+      inputSchema: {
+        type: 'object',
+        properties: {
+          city: {
+            type: 'string',
+            title: 'City'
+          }
         }
-      ],
-      outputs: []
+      }
     });
 
-    const result = await getToolPreviewNode({
+    const result = await getClientSystemToolPreviewNode({
       pluginId: 'systemTool-weather',
       lang: 'en'
     });
@@ -138,12 +145,10 @@ describe('getToolPreviewNode', () => {
       currentCost: 0,
       systemKeyCost: 0,
       hasTokenFee: false,
-      hasSystemSecret: false,
-      inputs: [],
-      outputs: []
+      hasSystemSecret: false
     });
 
-    const result = await getToolPreviewNode({
+    const result = await getClientSystemToolPreviewNode({
       pluginId: 'systemTool-weather',
       getLatestVersion: true,
       lang: 'en'
@@ -169,12 +174,10 @@ describe('getToolPreviewNode', () => {
       currentCost: 0,
       systemKeyCost: 0,
       hasTokenFee: false,
-      hasSystemSecret: false,
-      inputs: [],
-      outputs: []
+      hasSystemSecret: false
     });
 
-    const result = await getToolPreviewNode({
+    const result = await getClientSystemToolPreviewNode({
       pluginId: 'systemTool-weather',
       versionId: '',
       lang: 'en'
@@ -209,19 +212,28 @@ describe('getToolPreviewNode', () => {
       hasTokenFee: true,
       hasSystemSecret: false,
       associatedPluginId: 'app-id',
-      inputs: [
-        {
-          key: 'query',
-          label: 'Query',
-          valueType: 'string',
-          renderTypeList: [FlowNodeInputTypeEnum.input],
-          required: true
+      inputSchema: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            title: 'Query'
+          }
+        },
+        required: ['query']
+      },
+      outputSchema: {
+        type: 'object',
+        properties: {
+          result: {
+            type: 'string',
+            title: 'Result'
+          }
         }
-      ],
-      outputs: []
+      }
     });
 
-    const result = await getToolPreviewNode({
+    const result = await getClientSystemToolPreviewNode({
       pluginId: 'commercial-workflow-tool',
       versionId: 'workflow-version',
       lang: 'en'

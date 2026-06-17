@@ -44,8 +44,6 @@ export type AdminSystemToolChildDetailType = z.infer<typeof AdminSystemToolChild
 /** 系统工具的详细信息 */
 export const AdminSystemToolDetailSchema = z.object({
   ...SystemToolDetailSchema.omit({
-    inputs: true,
-    outputs: true,
     isLatestVersion: true,
     children: true
   }).shape,

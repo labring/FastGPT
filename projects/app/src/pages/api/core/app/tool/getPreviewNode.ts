@@ -1,7 +1,7 @@
 /*
   get plugin preview modules
  */
-import { getChildAppPreviewNode } from '@fastgpt/service/core/app/tool/controller';
+import { getClientToolPreviewNode } from '@fastgpt/service/core/app/tool/utils/client';
 import { type FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
@@ -32,7 +32,7 @@ async function handler(
   }
 
   return GetPreviewNodeResponseSchema.parse(
-    await getChildAppPreviewNode({
+    await getClientToolPreviewNode({
       appId,
       versionId,
       getLatestVersion,

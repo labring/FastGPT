@@ -548,7 +548,7 @@ export const useWorkflow = () => {
       if (unSupportedTypes.includes(node.type as FlowNodeTypeEnum)) {
         return toast({
           status: 'warning',
-          title: t(isParallel ? 'workflow:can_not_parallel' : 'workflow:can_not_loop')
+          title: isParallel ? t('workflow:can_not_parallel') : t('workflow:can_not_loop')
         });
       }
 

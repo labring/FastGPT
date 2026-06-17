@@ -1,4 +1,8 @@
-import { WorkflowIOValueTypeEnum } from '../workflow/constants';
+import {
+  WorkflowIOValueTypeEnum,
+  toolValueTypeList,
+  valueTypeJsonSchemaMap
+} from '../workflow/constants';
 import { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum } from '../workflow/node/constant';
 import type { InputConfigType } from '../workflow/type/io';
 import {
@@ -13,69 +17,75 @@ import { i18nT } from '../../common/i18n/utils';
 import z from 'zod';
 import { parseOpenAPISchemaString } from '../../common/string/swagger';
 
-export const JsonSchemaPropertiesItemSchema = z.object({
-  // 基本类型定义
-  type: z.any().optional(), // 可能不存在（使用 anyOf/oneOf 时）
+export const JsonSchemaPropertiesItemSchema = z
+  .object({
+    // 基本类型定义
+    type: z.any().optional(), // 可能不存在（使用 anyOf/oneOf 时）
 
-  // 组合类型（JSON Schema 规范）
-  anyOf: z.array(z.any()).optional(), // 任意一个匹配（联合类型，如 Optional[T]）
-  oneOf: z.array(z.any()).optional(), // 只能匹配一个
-  allOf: z.array(z.any()).optional(), // 必须全部匹配
-  not: z.any().optional(), // 不匹配
+    // 组合类型（JSON Schema 规范）
+    anyOf: z.array(z.any()).optional(), // 任意一个匹配（联合类型，如 Optional[T]）
+    oneOf: z.array(z.any()).optional(), // 只能匹配一个
+    allOf: z.array(z.any()).optional(), // 必须全部匹配
+    not: z.any().optional(), // 不匹配
 
-  // 枚举和常量
-  enum: z.array(z.any()).optional(), // 枚举值
-  const: z.any().optional(), // 常量值
+    // 枚举和常量
+    enum: z.array(z.any()).optional(), // 枚举值
+    const: z.any().optional(), // 常量值
 
-  // 字符串约束
-  minLength: z.number().optional(), // 最小长度
-  maxLength: z.number().optional(), // 最大长度
-  pattern: z.string().optional(), // 正则表达式
-  format: z.string().optional(), // 格式（email, uri, date-time 等）
+    // 字符串约束
+    minLength: z.number().optional(), // 最小长度
+    maxLength: z.number().optional(), // 最大长度
+    pattern: z.string().optional(), // 正则表达式
+    format: z.string().optional(), // 格式（email, uri, date-time 等）
 
-  // 数字约束
-  minimum: z.number().optional(), // 最小值
-  maximum: z.number().optional(), // 最大值
-  exclusiveMinimum: z.union([z.number(), z.boolean()]).optional(), // 排他最小值
-  exclusiveMaximum: z.union([z.number(), z.boolean()]).optional(), // 排他最大值
-  multipleOf: z.number().optional(), // 倍数
+    // 数字约束
+    minimum: z.number().optional(), // 最小值
+    maximum: z.number().optional(), // 最大值
+    exclusiveMinimum: z.union([z.number(), z.boolean()]).optional(), // 排他最小值
+    exclusiveMaximum: z.union([z.number(), z.boolean()]).optional(), // 排他最大值
+    multipleOf: z.number().optional(), // 倍数
 
-  // 数组约束
-  items: z.any().optional(), // 数组项类型
-  minItems: z.number().optional(), // 最小项数
-  maxItems: z.number().optional(), // 最大项数
-  uniqueItems: z.boolean().optional(), // 唯一项
+    // 数组约束
+    items: z.any().optional(), // 数组项类型
+    minItems: z.number().optional(), // 最小项数
+    maxItems: z.number().optional(), // 最大项数
+    uniqueItems: z.boolean().optional(), // 唯一项
 
-  // 对象约束
-  properties: z.record(z.string(), z.any()).optional(), // 对象属性
-  required: z.array(z.string()).optional(), // 必填字段
-  additionalProperties: z.union([z.boolean(), z.any()]).optional(), // 额外属性
+    // 对象约束
+    properties: z.record(z.string(), z.any()).optional(), // 对象属性
+    required: z.array(z.string()).optional(), // 必填字段
+    additionalProperties: z.union([z.boolean(), z.any()]).optional(), // 额外属性
 
-  // 元数据
-  title: z.string().optional(), // 标题
-  description: z.string().optional(), // 描述
-  default: z.any().optional(), // 默认值
-  examples: z.array(z.any()).optional(), // 示例
+    // 元数据
+    title: z.string().optional(), // 标题
+    description: z.string().optional(), // 描述
+    default: z.any().optional(), // 默认值
+    examples: z.array(z.any()).optional(), // 示例
 
-  // 自定义扩展（FastGPT 专用）
-  'x-tool-description': z.string().optional(), // 工具描述
-  toolDescription: z.string().optional(), // 工具描述 for System Tool
-  isSecret: z.boolean().optional() // System Tool
-});
+    // 自定义扩展（FastGPT 专用）
+    'x-tool-description': z.string().optional(), // 工具描述
+    toolDescription: z.string().optional(), // 工具描述 for System Tool
+    isSecret: z.boolean().optional() // System Tool
+  })
+  .catchall(z.any());
 export type JsonSchemaPropertiesItemType = z.infer<typeof JsonSchemaPropertiesItemSchema>;
 
-export const JSONSchemaInputTypeSchema = z.object({
-  type: z.any().optional(),
-  properties: z.record(z.string(), JsonSchemaPropertiesItemSchema).optional(),
-  required: z.array(z.string()).optional()
-});
+export const JSONSchemaInputTypeSchema = z
+  .object({
+    type: z.any().optional(),
+    properties: z.record(z.string(), JsonSchemaPropertiesItemSchema).optional(),
+    required: z.array(z.string()).optional()
+  })
+  .catchall(z.any());
 export type JSONSchemaInputType = z.infer<typeof JSONSchemaInputTypeSchema>;
 
-export const JSONSchemaOutputTypeSchema = z.object({
-  type: z.any().optional(),
-  properties: z.record(z.string(), JsonSchemaPropertiesItemSchema).optional(),
-  required: z.array(z.string()).optional()
-});
+export const JSONSchemaOutputTypeSchema = z
+  .object({
+    type: z.any().optional(),
+    properties: z.record(z.string(), JsonSchemaPropertiesItemSchema).optional(),
+    required: z.array(z.string()).optional()
+  })
+  .catchall(z.any());
 export type JSONSchemaOutputType = z.infer<typeof JSONSchemaOutputTypeSchema>;
 
 export const getNodeInputTypeFromSchemaInputType = ({
@@ -295,6 +305,11 @@ export const jsonSchema2SecretInput = ({
 }): InputConfigType[] | undefined => {
   if (!jsonSchema) return undefined;
   return Object.entries(jsonSchema?.properties || {}).map(([key, value]) => {
+    const enumValues: unknown[] | undefined =
+      value.enum ??
+      (value.items && typeof value.items === 'object' && Array.isArray(value.items.enum)
+        ? value.items.enum
+        : undefined);
     const workflowInputType = getNodeInputTypeFromSchemaInputType({
       type: value.type,
       arrayItems: value.items
@@ -302,6 +317,7 @@ export const jsonSchema2SecretInput = ({
     // inputType => inputConfig 里面的 inputType
     const inputType = (() => {
       if (value?.isSecret === true) return InputConfigInputTypeEnum.secret;
+      if (enumValues?.length) return InputConfigInputTypeEnum.select;
       switch (workflowInputType) {
         case WorkflowIOValueTypeEnum.string:
           return InputConfigInputTypeEnum.input;
@@ -327,7 +343,207 @@ export const jsonSchema2SecretInput = ({
       label: value.title ?? key,
       description: value.description,
       required: jsonSchema?.required?.includes(key),
-      ...(value.enum ? { list: value.enum.map((v) => ({ label: v, value: v })) } : {})
+      ...(enumValues
+        ? { list: enumValues.map((v: unknown) => ({ label: String(v), value: String(v) })) }
+        : {})
     } satisfies InputConfigType;
   });
+};
+
+const cloneJsonSchemaProperty = (
+  schema?: JsonSchemaPropertiesItemType
+): JsonSchemaPropertiesItemType => {
+  if (!schema) return { ...toolValueTypeList[0].jsonSchema };
+  return {
+    ...schema,
+    items: schema.items && typeof schema.items === 'object' ? { ...schema.items } : schema.items
+  };
+};
+
+const getJsonSchemaPropertyFromValueType = (
+  valueType?: WorkflowIOValueTypeEnum
+): JsonSchemaPropertiesItemType => {
+  // Node IO 的 valueType 混合了数据类型和编辑器/运行时语义。JSON Schema 只能表达
+  // 工具调用所需的通用数据结构；这里显式处理无法无损表达的类型，避免缺失映射时
+  // 默认退化成 string，误导系统工具、MCP/HTTP 工具和模型侧参数 contract。
+  if (valueType === WorkflowIOValueTypeEnum.any) return {};
+  if (valueType === WorkflowIOValueTypeEnum.arrayAny) return { type: 'array' };
+  if (valueType === WorkflowIOValueTypeEnum.arrayObject) {
+    return {
+      type: 'array',
+      items: {
+        type: 'object'
+      }
+    };
+  }
+  if (
+    valueType === WorkflowIOValueTypeEnum.chatHistory ||
+    valueType === WorkflowIOValueTypeEnum.datasetQuote
+  ) {
+    return {
+      type: 'array',
+      items: {
+        type: 'object'
+      }
+    };
+  }
+  if (
+    valueType === WorkflowIOValueTypeEnum.dynamic ||
+    valueType === WorkflowIOValueTypeEnum.selectDataset ||
+    valueType === WorkflowIOValueTypeEnum.selectApp
+  ) {
+    return {};
+  }
+
+  return cloneJsonSchemaProperty(
+    valueType ? valueTypeJsonSchemaMap[valueType] : toolValueTypeList[0].jsonSchema
+  );
+};
+
+const getEnumValuesFromNodeInput = (input: FlowNodeInputItemType) => {
+  return [
+    input.list?.map((item) => item.value).filter(Boolean),
+    input.enums?.map((item) => item.value).filter(Boolean),
+    input.enum?.split('\n').filter(Boolean)
+  ].find((enumValues) => enumValues && enumValues.length > 0);
+};
+
+const setEnumValuesToJsonSchemaProperty = ({
+  schema,
+  enumValues
+}: {
+  schema: JsonSchemaPropertiesItemType;
+  enumValues?: string[];
+}) => {
+  if (!enumValues?.length) return schema;
+
+  if (schema.type === 'array') {
+    return {
+      ...schema,
+      items: {
+        ...(schema.items && typeof schema.items === 'object' ? schema.items : {}),
+        enum: enumValues
+      }
+    };
+  }
+
+  return {
+    ...schema,
+    enum: enumValues
+  };
+};
+
+export const nodeInput2JsonSchemaProperty = (
+  input: FlowNodeInputItemType
+): JsonSchemaPropertiesItemType => {
+  const schema = setEnumValuesToJsonSchemaProperty({
+    schema: getJsonSchemaPropertyFromValueType(input.valueType),
+    enumValues: getEnumValuesFromNodeInput(input)
+  });
+
+  return {
+    ...schema,
+    title: input.label || input.key,
+    description: input.toolDescription || input.description || '',
+    ...(input.defaultValue !== undefined ? { default: input.defaultValue } : {}),
+    ...(typeof input.min === 'number' ? { minimum: input.min } : {}),
+    ...(typeof input.max === 'number' ? { maximum: input.max } : {}),
+    ...(input.toolDescription ? { toolDescription: input.toolDescription } : {})
+  };
+};
+
+export const nodeInputs2JsonSchema = ({
+  inputs = []
+}: {
+  inputs?: FlowNodeInputItemType[];
+}): JSONSchemaInputType => {
+  const properties = inputs.reduce<Record<string, JsonSchemaPropertiesItemType>>((acc, input) => {
+    acc[input.key] = nodeInput2JsonSchemaProperty(input);
+    return acc;
+  }, {});
+  const required = inputs.filter((input) => input.required).map((input) => input.key);
+
+  return {
+    type: 'object',
+    properties,
+    ...(required.length ? { required } : {})
+  };
+};
+
+export const nodeOutput2JsonSchemaProperty = (
+  output: FlowNodeOutputItemType
+): JsonSchemaPropertiesItemType => ({
+  ...getJsonSchemaPropertyFromValueType(output.valueType),
+  title: output.label || output.key,
+  description: output.description || '',
+  ...(output.defaultValue !== undefined ? { default: output.defaultValue } : {})
+});
+
+export const nodeOutputs2JsonSchema = ({
+  outputs = []
+}: {
+  outputs?: FlowNodeOutputItemType[];
+} = {}): JSONSchemaOutputType => {
+  const properties = outputs.reduce<Record<string, JsonSchemaPropertiesItemType>>((acc, output) => {
+    acc[output.key] = nodeOutput2JsonSchemaProperty(output);
+    return acc;
+  }, {});
+  const required = outputs.filter((output) => output.required).map((output) => output.key);
+
+  return {
+    type: 'object',
+    properties,
+    ...(required.length ? { required } : {})
+  };
+};
+
+export const inputConfig2JsonSchemaProperty = (
+  inputConfig: InputConfigType
+): JsonSchemaPropertiesItemType => {
+  const schema = (() => {
+    switch (inputConfig.inputType) {
+      case InputConfigInputTypeEnum.numberInput:
+        return { type: 'number' };
+      case InputConfigInputTypeEnum.switch:
+        return { type: 'boolean' };
+      case InputConfigInputTypeEnum.secret:
+        return { type: 'string', isSecret: true };
+      case InputConfigInputTypeEnum.select:
+      case InputConfigInputTypeEnum.input:
+      default:
+        return { type: 'string' };
+    }
+  })() satisfies JsonSchemaPropertiesItemType;
+
+  return {
+    ...setEnumValuesToJsonSchemaProperty({
+      schema,
+      enumValues: inputConfig.list?.map((item) => item.value).filter(Boolean)
+    }),
+    title: inputConfig.label || inputConfig.key,
+    description: inputConfig.description || ''
+  };
+};
+
+export const inputConfigs2JsonSchema = ({
+  inputConfigs = []
+}: {
+  inputConfigs?: InputConfigType[];
+} = {}): JSONSchemaInputType => {
+  const properties = inputConfigs.reduce<Record<string, JsonSchemaPropertiesItemType>>(
+    (acc, inputConfig) => {
+      acc[inputConfig.key] = inputConfig2JsonSchemaProperty(inputConfig);
+      return acc;
+    },
+    {}
+  );
+  const required = inputConfigs
+    .filter((inputConfig) => inputConfig.required)
+    .map((item) => item.key);
+
+  return {
+    type: 'object',
+    properties,
+    ...(required.length ? { required } : {})
+  };
 };

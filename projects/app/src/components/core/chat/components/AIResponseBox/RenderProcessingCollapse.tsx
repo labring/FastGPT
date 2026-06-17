@@ -50,7 +50,7 @@ const RenderProcessingCollapse = React.memo(function RenderProcessingCollapse({
           >
             <HStack h={'24px'} lineHeight={'24px'} mr={1} spacing="0">
               <Box fontSize={'16px'} lineHeight={'24px'}>
-                {t(isProcessing ? 'chat:processing' : 'chat:processed')}
+                {isProcessing ? t('chat:processing') : t('chat:processed')}
                 {isProcessing && label && (
                   <Box as="span">
                     {' · '}

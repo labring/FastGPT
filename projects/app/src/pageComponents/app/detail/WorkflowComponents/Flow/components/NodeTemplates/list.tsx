@@ -12,7 +12,7 @@ import {
   css
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { getToolPreviewNode } from '@/web/core/app/api/tool';
+import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
 import type {
   FlowNodeItemType,
   NodeTemplateListItemType,
@@ -245,7 +245,7 @@ const NodeTemplateList = ({
             ].includes(template.flowNodeType);
 
             if (shouldLoadPreviewNode) {
-              const node = await getToolPreviewNode({
+              const node = await getClientToolPreviewNode({
                 appId: template.id,
                 getLatestVersion: true
               });

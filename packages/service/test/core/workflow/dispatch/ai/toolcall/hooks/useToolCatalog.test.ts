@@ -74,7 +74,10 @@ describe('useToolCatalog', () => {
               key: 'city',
               valueType: WorkflowIOValueTypeEnum.string,
               toolDescription: 'City name',
-              enum: 'Hangzhou\nShanghai\n',
+              list: [
+                { label: 'Hangzhou', value: 'Hangzhou' },
+                { label: 'Shanghai', value: 'Shanghai' }
+              ],
               required: true
             },
             {
@@ -120,13 +123,16 @@ describe('useToolCatalog', () => {
             properties: {
               city: {
                 type: 'string',
+                title: 'city',
                 description: 'City name',
+                toolDescription: 'City name',
                 enum: ['Hangzhou', 'Shanghai']
               },
               days: {
                 type: 'string',
                 description: 'Days',
-                enum: undefined
+                title: 'days',
+                toolDescription: 'Days'
               }
             },
             required: ['city']

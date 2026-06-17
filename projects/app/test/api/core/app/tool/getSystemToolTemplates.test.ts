@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   getUserDetail: vi.fn(),
   getSystemToolList: vi.fn(),
   getSystemToolDetail: vi.fn(),
+  getSystemToolDisplayInfo: vi.fn(),
   getInstance: vi.fn()
 }));
 
@@ -45,7 +46,8 @@ describe('get system tool templates handler', () => {
     mocks.getUserDetail.mockResolvedValue({ tags: ['hidden-user'] });
     mocks.getInstance.mockReturnValue({
       getSystemToolList: mocks.getSystemToolList,
-      getSystemToolDetail: mocks.getSystemToolDetail
+      getSystemToolDetail: mocks.getSystemToolDetail,
+      getSystemToolDisplayInfo: mocks.getSystemToolDisplayInfo
     });
   });
 
@@ -94,7 +96,7 @@ describe('get system tool templates handler', () => {
   });
 
   it('filters toolset children by escaped searchKey', async () => {
-    mocks.getSystemToolDetail.mockResolvedValue({
+    mocks.getSystemToolDisplayInfo.mockResolvedValue({
       id: 'toolset',
       name: 'Toolset',
       intro: 'Parent intro',
@@ -133,10 +135,11 @@ describe('get system tool templates handler', () => {
       systemKeyCost: 0.5,
       hasTokenFee: true
     });
-    expect(mocks.getSystemToolDetail).toHaveBeenCalledWith({
+    expect(mocks.getSystemToolDisplayInfo).toHaveBeenCalledWith({
       pluginId: 'toolset',
       lang: 'zh',
       source: 'system'
     });
+    expect(mocks.getSystemToolDetail).not.toHaveBeenCalled();
   });
 });
