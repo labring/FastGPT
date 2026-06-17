@@ -328,7 +328,7 @@ const NewDatasetCard = React.memo(function NewDatasetCard({
         ) : (
           <Avatar src={dataset.avatar} borderRadius={6} w={'28px'} flexShrink={0} />
         )}
-        <Box width="0" flex="1" className="textEllipsis" color={'myGray.900'}>
+        <Box width="0" flex="1" className="textEllipsis" color={'myGray.900'} fontWeight={'medium'}>
           {dataset.name}
         </Box>
         {/* 右侧：非文件夹用相对定位容器叠加切换，文件夹直接内联菜单按钮 */}
