@@ -3,7 +3,6 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../node/constant';
-import { type FlowNodeOutputItemType } from '../../type/io';
 import { type FlowNodeTemplateType } from '../../type/node';
 import {
   WorkflowIOValueTypeEnum,
@@ -15,15 +14,6 @@ import {
 import { Input_Template_DynamicInput } from '../input';
 import { Output_Template_AddOutput } from '../output';
 import { i18nT } from '../../../../common/i18n/utils';
-
-const HttpFullErrorOutput: FlowNodeOutputItemType = {
-  id: NodeOutputKeyEnum.httpFullError,
-  key: NodeOutputKeyEnum.httpFullError,
-  label: i18nT('workflow:http_full_error'),
-  description: i18nT('workflow:http_full_error_description'),
-  valueType: WorkflowIOValueTypeEnum.object,
-  type: FlowNodeOutputTypeEnum.error
-};
 
 export const HttpNode468: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.httpRequest468,
@@ -153,17 +143,13 @@ export const HttpNode468: FlowNodeTemplateType = {
       valueType: WorkflowIOValueTypeEnum.string,
       type: FlowNodeOutputTypeEnum.error
     },
-    HttpFullErrorOutput
+    {
+      id: NodeOutputKeyEnum.httpFullError,
+      key: NodeOutputKeyEnum.httpFullError,
+      label: i18nT('workflow:http_full_error'),
+      description: i18nT('workflow:http_full_error_description'),
+      valueType: WorkflowIOValueTypeEnum.object,
+      type: FlowNodeOutputTypeEnum.error
+    }
   ]
-};
-
-/** 为存量 HTTP 节点补齐完整错误输出，避免运行时无法写入 httpFullError。 */
-export const ensureHttp468Outputs = (
-  outputs: FlowNodeOutputItemType[]
-): FlowNodeOutputItemType[] => {
-  if (outputs.some((item) => item.key === NodeOutputKeyEnum.httpFullError)) {
-    return outputs;
-  }
-
-  return [...outputs, HttpFullErrorOutput];
 };

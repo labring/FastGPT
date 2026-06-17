@@ -17,7 +17,6 @@ import type { StoreNodeItemType } from '../type/node';
 import { isValidReferenceValueFormat } from '../utils';
 import type { RuntimeNodeItemType } from './type';
 import { isSecretValue } from '../../../common/secret/utils';
-import { ensureHttp468Outputs } from '../template/system/http468';
 import { isChildInteractive } from '../template/system/interactive/constants';
 
 export const extractDeepestInteractive = (
@@ -261,10 +260,7 @@ export const storeNodes2RuntimeNodes = (
         showStatus: node.showStatus,
         isEntry: entryNodeIds.includes(node.nodeId),
         inputs: node.inputs,
-        outputs:
-          node.flowNodeType === FlowNodeTypeEnum.httpRequest468
-            ? ensureHttp468Outputs(node.outputs)
-            : node.outputs,
+        outputs: node.outputs,
         pluginId: node.pluginId,
         version: node.version,
         toolConfig: node.toolConfig,
