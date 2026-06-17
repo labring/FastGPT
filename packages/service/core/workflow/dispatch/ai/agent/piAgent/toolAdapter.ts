@@ -212,6 +212,7 @@ export async function buildAgentTools({
           // the skills capability owns the sandbox session and must intercept tools like
           // `sandbox_get_file_url` so the file lookup runs against the capability's sandbox
           // (sandboxId = sessionId), not the hashed sandboxId from getSandboxClient.
+          const capStartTime = Date.now();
           const capResult = await capabilityToolCallHandler?.(toolId, argStr, callId);
           if (capResult != null) {
             const subInfo = getSubAppInfo(toolId);
@@ -223,7 +224,8 @@ export async function buildAgentTools({
               moduleName: subInfo.name,
               moduleLogo: subInfo.avatar,
               toolInput: parseJsonArgs(argStr),
-              toolRes: capResult.response
+              toolRes: capResult.response,
+              runningTime: +((Date.now() - capStartTime) / 1000).toFixed(2)
             });
             if (capResult.usages?.length) usagePush(capResult.usages);
             // Persist skill assistantResponses (e.g. skill references from SKILL.md reads)
