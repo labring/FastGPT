@@ -147,7 +147,8 @@ const CollectionCard = () => {
     sortBy,
     setSortBy,
     sortOrder,
-    setSortOrder
+    setSortOrder,
+    scrollContainerRef
   } = useContextSelector(CollectionPageContext, (v) => v);
 
   // Add file status icon
@@ -529,7 +530,7 @@ const CollectionCard = () => {
             }}
           />
         ) : (
-          <TableContainer overflowY={'auto'} fontSize={'sm'} flex={'1 0 0'} h={0}>
+          <TableContainer ref={scrollContainerRef} overflowY={'auto'} fontSize={'sm'} flex={'1 0 0'} h={0}>
             <Table variant={'simple'} draggable={false}>
               <Thead draggable={false}>
                 <Tr>

@@ -3,9 +3,11 @@ import {
   type Dispatch,
   type ReactNode,
   type SetStateAction,
+  type RefObject,
   useState,
   useMemo,
-  useCallback
+  useCallback,
+  useRef
 } from 'react';
 import type {
   CollectionTagValueType,
@@ -62,6 +64,7 @@ type CollectionPageContextType = {
     activeStep?: number
   ) => void;
   hasTrainingData: boolean;
+  scrollContainerRef: RefObject<HTMLDivElement>;
 };
 
 export const CollectionPageContext = createContext<CollectionPageContextType>({
@@ -109,7 +112,8 @@ export const CollectionPageContext = createContext<CollectionPageContextType>({
   },
   hasDatabaseConfig: false,
   handleOpenConfigPage: () => {},
-  hasTrainingData: false
+  hasTrainingData: false,
+  scrollContainerRef: { current: null }
 });
 
 const CollectionPageContextProvider = ({ children }: { children: ReactNode }) => {
@@ -130,6 +134,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     null
   );
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const {
     data: collections,
     Pagination,
@@ -149,7 +154,8 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
       ...(sortBy ? { sortBy, sortOrder } : {})
     },
     // defaultRequest: false,
-    refreshDeps: [parentId, searchText, filterTags, statusFilter, sortBy, sortOrder]
+    refreshDeps: [parentId, searchText, filterTags, statusFilter, sortBy, sortOrder],
+    scrollContainerRef
   });
 
   const getData = useCallback(
@@ -275,7 +281,8 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
       pageSize,
       hasDatabaseConfig,
       handleOpenConfigPage,
-      hasTrainingData
+      hasTrainingData,
+      scrollContainerRef
     }),
     [
       Pagination,

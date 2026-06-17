@@ -287,7 +287,8 @@ const RefinedDataCard = () => {
       searchText: debouncedSearchText
     },
     refreshDeps: [debouncedSearchText, collectionId],
-    EmptyTip: EmptyTipDom
+    EmptyTip: EmptyTipDom,
+    scrollContainerRef
   });
 
   const hasTrainingData = useMemo(
