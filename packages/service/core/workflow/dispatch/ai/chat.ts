@@ -263,7 +263,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       responseEmptyTip,
       usage,
       error,
-      requestId // 获取请求追踪 ID
+      requestId, // 获取请求追踪 ID
+      firstTokenTime
     } = await createLLMResponse({
       throwError: false,
       body: {
@@ -376,7 +377,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
           historyPreview: getHistoryPreview(chatCompleteMessages, 10000, aiChatVision),
           contextTotalLen: completeMessages.length,
           finishReason: finish_reason,
-          llmRequestIds: [requestId] // 记录 LLM 请求追踪 ID
+          llmRequestIds: [requestId], // 记录 LLM 请求追踪 ID
+          firstTokenTime
         }
       });
     }
@@ -401,7 +403,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         historyPreview: getHistoryPreview(chatCompleteMessages, 10000, aiChatVision),
         contextTotalLen: completeMessages.length,
         finishReason: finish_reason,
-        llmRequestIds: [requestId] // 记录 LLM 请求追踪 ID
+        llmRequestIds: [requestId], // 记录 LLM 请求追踪 ID
+        firstTokenTime
       },
       [DispatchNodeResponseKeyEnum.toolResponses]: answerText
     };

@@ -77,6 +77,8 @@
   "llm_request_detail": "LLM Request Detail",
   "llm_request_ids": "LLM request details",
   "llm_tokens": "LLM tokens",
+  "first_token_time": "First token response time",
+  "response_time": "Response time",
   "log.error.collapse": "Collapse",
   "log.error.error_prefix": "Error",
   "log.error.expand": "Expand",
