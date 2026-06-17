@@ -103,7 +103,7 @@ const Dataset = () => {
                     pl={2}
                     letterSpacing={1}
                     fontSize={'1.25rem'}
-                    fontWeight={'bold'}
+                    fontWeight={'medium'}
                     color={'myGray.900'}
                   >
                     {t('common:core.dataset.My Dataset')}
