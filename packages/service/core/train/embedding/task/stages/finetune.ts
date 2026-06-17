@@ -210,6 +210,12 @@ export async function runFinetuneStage(task: EmbeddingTrainTaskSchemaType): Prom
       }
     } else if (statusResponse.status === SFTTaskStatus.failed) {
       const errorMsg = statusResponse.error;
+      await updateEmbeddingCheckpointData(
+        String(task._id),
+        EmbeddingTaskCheckpointStageEnum.finetuning,
+        { sftTaskId: null },
+        true
+      );
       const enhancedError = createEmbeddingEnhancedError(
         EmbeddingTaskCheckpointStageEnum.finetuning,
         EmbeddingTrainErrEnum.embeddingFinetuneTrainingFailed,

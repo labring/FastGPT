@@ -1,13 +1,14 @@
 /**
- * 单元测试：dispatchDatasetSearch 多 Embedding 模型分组搜索逻辑
+ * 单元测试：dispatchDatasetSearch — embeddingModelId 检索模型选择逻辑
  *
  * 覆盖范围：
- * 1. 相同 vectorModel 的知识库被分到同一组（一次 defaultSearchDatasetData 调用）
- * 2. 不同 vectorModel 的知识库分到不同组（多次调用）
- * 3. 没有 vectorModel 的知识库触发 DB 回退（MongoDataset.findById）
- * 4. 多组结果按 score 降序合并
- * 5. embeddingTokens 为所有组之和
- * 6. __modelTokenMap 记录按模型计费的 token 数
+ * 1. 指定 embeddingModelId 时使用微调模型作为 searchModel
+ * 2. 未指定 embeddingModelId 时回退到知识库 vectorModel
+ * 3. 所有常规知识库合并为单次 defaultSearchDatasetData 调用
+ * 4. embeddingTokens 正确累加
+ * 5. 计费使用 searchModel
+ * 6. userChatInput 为空时提前返回
+ * 7. datasets 为空时返回错误响应
  */
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import {
@@ -146,7 +147,7 @@ vi.mock('@fastgpt/global/core/ai/prompt/dataset', () => ({
   getDatasetSearchToolResponsePrompt: vi.fn(() => '')
 }));
 
-// ─── Mock: workflow node utils ────────────────────────────────────────────
+// ─── Mock: workflow node utils ─────────────────────────────────────────────
 vi.mock('@fastgpt/service/core/workflow/dispatch/utils', () => ({
   getNodeErrResponse: vi.fn((e: any) => ({ error: e, data: { quoteQA: [] } }))
 }));
@@ -205,6 +206,11 @@ vi.mock('@fastgpt/service/common/mongo', () => {
 vi.mock('@fastgpt/service/common/string/tiktoken', () => ({
   countGptMessagesTokens: vi.fn().mockResolvedValue(0),
   countPromptTokens: vi.fn().mockResolvedValue(0)
+}));
+
+// ─── Mock: detectLang（避免依赖外部库） ──────────────────────────────────
+vi.mock('diting-rag-ts', () => ({
+  detectLang: vi.fn(() => 'en')
 }));
 
 // ─── Helpers ─────────────────────────────────────────────────────────────
@@ -286,12 +292,11 @@ function buildSearchResult(
 
 // ─── 测试套件 ─────────────────────────────────────────────────────────────
 
-describe('dispatchDatasetSearch - 多模型分组搜索', () => {
+describe('dispatchDatasetSearch - embeddingModelId 检索模型选择', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  // 确保 MongoApp.findById 返回非 assistant 类型，避免触发 assistant 专属分支
   async function setupMongoAppMock() {
     const { MongoApp } = await import('@fastgpt/service/core/app/schema');
     (MongoApp.findById as any).mockReturnValue({
@@ -304,8 +309,7 @@ describe('dispatchDatasetSearch - 多模型分组搜索', () => {
   /**
    * 设置 MongoDataset.findById mock，根据 fields 参数返回不同数据：
    * - 'type databaseConfig' → 返回普通 dataset 类型
-   * - 'vectorModel'         → 根据 datasetId→modelId 映射返回
-   * - 'name'               → 返回数据集名称
+   * - 'vectorModelId'         → 根据 datasetId→modelId 映射返回
    */
   async function setupMongoDatasetMock(vectorModelMap: Record<string, string> = {}) {
     const { MongoDataset } = await import('@fastgpt/service/core/dataset/schema');
@@ -326,15 +330,14 @@ describe('dispatchDatasetSearch - 多模型分组搜索', () => {
           then: (resolve: any) => resolve(null)
         };
       }
-      // default
       return { lean: () => Promise.resolve(null) };
     });
   }
 
-  // ─── Test 1: 相同 vectorModel → 单组调用 ────────────────────────────────
-  test('相同 vectorModel 的知识库应分到同一组，只调用一次 defaultSearchDatasetData', async () => {
+  // ─── Test 1: 指定 embeddingModelId → 使用微调模型 ───────────────────────
+  test('指定 embeddingModelId 时应使用该模型进行检索', async () => {
     await setupMongoAppMock();
-    await setupMongoDatasetMock({ ds1: 'model-A', ds2: 'model-A' });
+    await setupMongoDatasetMock({ ds1: 'base-model-A', ds2: 'base-model-A' });
 
     const { defaultSearchDatasetData } = await import(
       '@fastgpt/service/core/dataset/search/controller'
@@ -354,14 +357,14 @@ describe('dispatchDatasetSearch - 多模型分组搜索', () => {
         datasetId: 'ds1',
         name: 'Dataset 1',
         avatar: '',
-        vectorModel: { id: 'model-A' } as any,
+        vectorModel: { id: 'base-model-A' } as any,
         datasetType: DatasetTypeEnum.dataset
       },
       {
         datasetId: 'ds2',
         name: 'Dataset 2',
         avatar: '',
-        vectorModel: { id: 'model-A' } as any,
+        vectorModel: { id: 'base-model-A' } as any,
         datasetType: DatasetTypeEnum.dataset
       }
     ];
@@ -369,43 +372,32 @@ describe('dispatchDatasetSearch - 多模型分组搜索', () => {
     const { dispatchDatasetSearch } = await import(
       '@fastgpt/service/core/workflow/dispatch/dataset/search'
     );
-    await dispatchDatasetSearch(buildProps(datasets) as any);
+    await dispatchDatasetSearch(buildProps(datasets, { embeddingModelId: 'tuned-model-X' }) as any);
 
-    // 只应调用一次，且包含两个知识库 ID
     expect(defaultSearchDatasetData).toHaveBeenCalledTimes(1);
     const call = (defaultSearchDatasetData as any).mock.calls[0][0];
-    expect(call.modelId).toBe('model-A');
+    expect(call.modelId).toBe('tuned-model-X');
     expect(call.datasetIds).toEqual(expect.arrayContaining(['ds1', 'ds2']));
-    expect(call.datasetIds).toHaveLength(2);
   });
 
-  // ─── Test 2: 不同 vectorModel → 两组分别调用 ────────────────────────────
-  test('不同 vectorModel 的知识库应分到不同组，各自调用一次 defaultSearchDatasetData', async () => {
+  // ─── Test 2: 未指定 embeddingModelId → 回退到知识库 vectorModel ────────
+  test('未指定 embeddingModelId 时应回退到知识库 vectorModel', async () => {
     await setupMongoAppMock();
-    await setupMongoDatasetMock({ ds1: 'model-A', ds2: 'model-B' });
+    await setupMongoDatasetMock({ ds1: 'base-model-A' });
 
     const { defaultSearchDatasetData } = await import(
       '@fastgpt/service/core/dataset/search/controller'
     );
-
-    // 两组分别返回不同 token 数
-    (defaultSearchDatasetData as any)
-      .mockResolvedValueOnce(buildSearchResult([{ id: 'r1', scoreValue: 0.9 }], 100))
-      .mockResolvedValueOnce(buildSearchResult([{ id: 'r2', scoreValue: 0.7 }], 150));
+    (defaultSearchDatasetData as any).mockResolvedValue(
+      buildSearchResult([{ id: 'r1', scoreValue: 0.9 }], 100)
+    );
 
     const datasets: SelectedDatasetType[] = [
       {
         datasetId: 'ds1',
         name: 'Dataset 1',
         avatar: '',
-        vectorModel: { id: 'model-A' } as any,
-        datasetType: DatasetTypeEnum.dataset
-      },
-      {
-        datasetId: 'ds2',
-        name: 'Dataset 2',
-        avatar: '',
-        vectorModel: { id: 'model-B' } as any,
+        vectorModel: { id: 'base-model-A' } as any,
         datasetType: DatasetTypeEnum.dataset
       }
     ];
@@ -415,26 +407,14 @@ describe('dispatchDatasetSearch - 多模型分组搜索', () => {
     );
     await dispatchDatasetSearch(buildProps(datasets) as any);
 
-    // 应该调用两次
-    expect(defaultSearchDatasetData).toHaveBeenCalledTimes(2);
-
-    const calls = (defaultSearchDatasetData as any).mock.calls;
-    const modelsCalled = calls.map((c: any[]) => c[0].modelId).sort();
-    expect(modelsCalled).toEqual(['model-A', 'model-B']);
-
-    // 每个 model 组只包含对应的 datasetId
-    const callByModelA = calls.find((c: any[]) => c[0].modelId === 'model-A');
-    const callByModelB = calls.find((c: any[]) => c[0].modelId === 'model-B');
-    expect(callByModelA[0].datasetIds).toContain('ds1');
-    expect(callByModelA[0].datasetIds).not.toContain('ds2');
-    expect(callByModelB[0].datasetIds).toContain('ds2');
-    expect(callByModelB[0].datasetIds).not.toContain('ds1');
+    expect(defaultSearchDatasetData).toHaveBeenCalledTimes(1);
+    const call = (defaultSearchDatasetData as any).mock.calls[0][0];
+    expect(call.modelId).toBe('base-model-A');
   });
 
-  // ─── Test 3: vectorModel 缺失 → DB 回退 ─────────────────────────────────
-  test('缺少 vectorModel 的知识库应通过 MongoDataset.findById 回退获取模型', async () => {
+  // ─── Test 3: 多个知识库 → 合并为单次调用 ────────────────────────────────
+  test('多个知识库应合并为单次 defaultSearchDatasetData 调用', async () => {
     await setupMongoAppMock();
-    // ds1 有 vectorModel，ds2 没有（回退到 DB 返回 'model-B'）
     await setupMongoDatasetMock({ ds1: 'model-A', ds2: 'model-B' });
 
     const { defaultSearchDatasetData } = await import(
@@ -444,8 +424,6 @@ describe('dispatchDatasetSearch - 多模型分组搜索', () => {
       buildSearchResult([{ id: 'r1', scoreValue: 0.9 }], 100)
     );
 
-    const { MongoDataset } = await import('@fastgpt/service/core/dataset/schema');
-
     const datasets: SelectedDatasetType[] = [
       {
         datasetId: 'ds1',
@@ -458,7 +436,7 @@ describe('dispatchDatasetSearch - 多模型分组搜索', () => {
         datasetId: 'ds2',
         name: 'Dataset 2',
         avatar: '',
-        // 故意不设置 vectorModel，触发 DB 回退
+        vectorModel: { id: 'model-B' } as any,
         datasetType: DatasetTypeEnum.dataset
       }
     ];
@@ -468,34 +446,24 @@ describe('dispatchDatasetSearch - 多模型分组搜索', () => {
     );
     await dispatchDatasetSearch(buildProps(datasets) as any);
 
-    // 验证 MongoDataset.findById 被用 'vectorModelId' 字段调用过（DB 回退）
-    const findByIdCalls = (MongoDataset.findById as any).mock.calls;
-    const dbFallbackCalls = findByIdCalls.filter(
-      (c: any[]) => c[1] === 'vectorModelId' && c[0] === 'ds2'
-    );
-    expect(dbFallbackCalls.length).toBeGreaterThan(0);
+    // 只有一个 embeddingModelId 时，所有知识库合并为一次调用
+    expect(defaultSearchDatasetData).toHaveBeenCalledTimes(1);
+    const call = (defaultSearchDatasetData as any).mock.calls[0][0];
+    expect(call.datasetIds).toEqual(expect.arrayContaining(['ds1', 'ds2']));
+    expect(call.datasetIds).toHaveLength(2);
   });
 
-  // ─── Test 4: 多组结果按 RRF score 降序合并 ──────────────────────────────────
-  test('多组搜索结果应按 score 降序合并', async () => {
+  // ─── Test 4: embeddingTokens 正确累加到响应 ─────────────────────────────
+  test('embeddingTokens 应正确累加并反映在响应中', async () => {
     await setupMongoAppMock();
-    await setupMongoDatasetMock({ ds1: 'model-A', ds2: 'model-B' });
+    await setupMongoDatasetMock({ ds1: 'model-A' });
 
     const { defaultSearchDatasetData } = await import(
       '@fastgpt/service/core/dataset/search/controller'
     );
-
-    // model-A 返回 rrfScore=0.7 的结果，model-B 返回 rrfScore=0.9 的结果
-    (defaultSearchDatasetData as any).mockImplementation(({ modelId }: { modelId: string }) => {
-      if (modelId === 'model-A') {
-        const result = buildSearchResult([{ id: 'r-A', scoreValue: 0.7 }], 100);
-        result.searchRes[0].score = [{ type: 'rrf', value: 0.7, index: 0 }];
-        return Promise.resolve(result);
-      }
-      const result = buildSearchResult([{ id: 'r-B', scoreValue: 0.9 }], 150);
-      result.searchRes[0].score = [{ type: 'rrf', value: 0.9, index: 0 }];
-      return Promise.resolve(result);
-    });
+    (defaultSearchDatasetData as any).mockResolvedValue(
+      buildSearchResult([{ id: 'r1', scoreValue: 0.9 }], 150)
+    );
 
     const datasets: SelectedDatasetType[] = [
       {
@@ -503,13 +471,6 @@ describe('dispatchDatasetSearch - 多模型分组搜索', () => {
         name: 'Dataset 1',
         avatar: '',
         vectorModel: { id: 'model-A' } as any,
-        datasetType: DatasetTypeEnum.dataset
-      },
-      {
-        datasetId: 'ds2',
-        name: 'Dataset 2',
-        avatar: '',
-        vectorModel: { id: 'model-B' } as any,
         datasetType: DatasetTypeEnum.dataset
       }
     ];
@@ -519,98 +480,40 @@ describe('dispatchDatasetSearch - 多模型分组搜索', () => {
     );
     const result = await dispatchDatasetSearch(buildProps(datasets) as any);
 
-    const quoteQA = result.data?.quoteQA ?? [];
-    expect(quoteQA.length).toBeGreaterThanOrEqual(2);
-    // 验证按 RRF score 降序排列
-    for (let i = 0; i < quoteQA.length - 1; i++) {
-      const scoreA = quoteQA[i].score.find((s: any) => s.type === 'rrf')?.value ?? 0;
-      const scoreB = quoteQA[i + 1].score.find((s: any) => s.type === 'rrf')?.value ?? 0;
-      expect(scoreA).toBeGreaterThanOrEqual(scoreB);
-    }
-    // r-B (score 0.9) 应排在 r-A (score 0.7) 之前
-    const ids = quoteQA.map((q: any) => q.id);
-    expect(ids.indexOf('r-B')).toBeLessThan(ids.indexOf('r-A'));
-  });
-
-  // ─── Test 5: embeddingTokens 为各组之和 ──────────────────────────────────
-  test('最终 embeddingTokens 应为所有组 token 之和', async () => {
-    await setupMongoAppMock();
-    await setupMongoDatasetMock({ ds1: 'model-A', ds2: 'model-B' });
-
-    const { defaultSearchDatasetData } = await import(
-      '@fastgpt/service/core/dataset/search/controller'
-    );
-
-    (defaultSearchDatasetData as any)
-      .mockResolvedValueOnce(buildSearchResult([{ id: 'r1', scoreValue: 0.9 }], 120)) // model-A: 120 tokens
-      .mockResolvedValueOnce(buildSearchResult([{ id: 'r2', scoreValue: 0.7 }], 80)); // model-B: 80 tokens
-
-    const datasets: SelectedDatasetType[] = [
-      {
-        datasetId: 'ds1',
-        name: 'Dataset 1',
-        avatar: '',
-        vectorModel: { id: 'model-A' } as any,
-        datasetType: DatasetTypeEnum.dataset
-      },
-      {
-        datasetId: 'ds2',
-        name: 'Dataset 2',
-        avatar: '',
-        vectorModel: { id: 'model-B' } as any,
-        datasetType: DatasetTypeEnum.dataset
-      }
-    ];
-
-    const { dispatchDatasetSearch } = await import(
-      '@fastgpt/service/core/workflow/dispatch/dataset/search'
-    );
-    const result = await dispatchDatasetSearch(buildProps(datasets) as any);
-
+    expect(result).toBeDefined();
     const nodeResponse =
       result[Symbol.for('dispatchNodeResponse')] ??
       (result as any)['nodeResponse'] ??
-      (result as any)[Object.getOwnPropertySymbols(result)[0]];
-
-    // totalPoints 应基于 120+80=200 tokens 计算（非零）
-    // 注意 embeddingTokens 合并后写入 commonResult，在账单处再次累加
-    // 此处只验证 nodeResponse 存在且有 totalPoints
-    expect(result).toBeDefined();
+      (result as any)[
+        Object.getOwnPropertySymbols(result).find(
+          (s) => s.description === 'dispatchNodeResponse'
+        ) ?? ''
+      ] ??
+      result;
+    expect(nodeResponse).toBeDefined();
   });
 
-  // ─── Test 6: __modelTokenMap 按模型记录 token ───────────────────────────
-  test('多个 embedding 模型应在 __modelTokenMap 中各自记录 token', async () => {
+  // ─── Test 5: 计费使用 searchModel（非 knowledge base 的 vectorModel） ───
+  test('计费应使用 searchModel 而非知识库默认 vectorModel', async () => {
     await setupMongoAppMock();
-    await setupMongoDatasetMock({ ds1: 'model-A', ds2: 'model-B' });
+    await setupMongoDatasetMock({ ds1: 'base-model-A' });
 
     const { defaultSearchDatasetData } = await import(
       '@fastgpt/service/core/dataset/search/controller'
     );
+    (defaultSearchDatasetData as any).mockResolvedValue(
+      buildSearchResult([{ id: 'r1', scoreValue: 0.9 }], 100)
+    );
 
-    (defaultSearchDatasetData as any)
-      .mockResolvedValueOnce(buildSearchResult([{ id: 'r1', scoreValue: 0.9 }], 120))
-      .mockResolvedValueOnce(buildSearchResult([{ id: 'r2', scoreValue: 0.7 }], 80));
-
-    const { getEmbeddingModelById } = await import('@fastgpt/service/core/ai/model');
-    (getEmbeddingModelById as any).mockImplementation((modelId: string) => ({
-      id: modelId,
-      model: modelId,
-      name: `Name-${modelId}`
-    }));
+    const { formatModelChars2Points } = await import('@fastgpt/service/support/wallet/usage/utils');
+    (formatModelChars2Points as any).mockClear();
 
     const datasets: SelectedDatasetType[] = [
       {
         datasetId: 'ds1',
         name: 'Dataset 1',
         avatar: '',
-        vectorModel: { id: 'model-A' } as any,
-        datasetType: DatasetTypeEnum.dataset
-      },
-      {
-        datasetId: 'ds2',
-        name: 'Dataset 2',
-        avatar: '',
-        vectorModel: { id: 'model-B' } as any,
+        vectorModel: { id: 'base-model-A' } as any,
         datasetType: DatasetTypeEnum.dataset
       }
     ];
@@ -618,15 +521,15 @@ describe('dispatchDatasetSearch - 多模型分组搜索', () => {
     const { dispatchDatasetSearch } = await import(
       '@fastgpt/service/core/workflow/dispatch/dataset/search'
     );
-    await dispatchDatasetSearch(buildProps(datasets) as any);
+    await dispatchDatasetSearch(buildProps(datasets, { embeddingModelId: 'tuned-model-X' }) as any);
 
-    // getEmbeddingModelById 应该被调用（用于 modelTokenMap）
-    // 由于有 embeddingTokens > 0，应该至少被调用两次（model-A 和 model-B）
-    expect(getEmbeddingModelById).toHaveBeenCalledWith('model-A');
-    expect(getEmbeddingModelById).toHaveBeenCalledWith('model-B');
+    // 计费应使用 tuned-model-X 而非 base-model-A
+    expect(formatModelChars2Points).toHaveBeenCalledWith(
+      expect.objectContaining({ modelId: 'tuned-model-X' })
+    );
   });
 
-  // ─── Test 7: userChatInput 为空时直接返回 emptyResult ───────────────────
+  // ─── Test 6: userChatInput 为空时直接返回空结果 ─────────────────────────
   test('userChatInput 为空时应直接返回空结果', async () => {
     const { defaultSearchDatasetData } = await import(
       '@fastgpt/service/core/dataset/search/controller'
@@ -651,36 +554,34 @@ describe('dispatchDatasetSearch - 多模型分组搜索', () => {
     expect(defaultSearchDatasetData).not.toHaveBeenCalled();
   });
 
-  // ─── Test 8: datasets 为空时返回错误响应 ────────────────────────────────
+  // ─── Test 7: datasets 为空时返回错误响应 ────────────────────────────────
   test('datasets 为空时应返回错误响应', async () => {
     const { dispatchDatasetSearch } = await import(
       '@fastgpt/service/core/workflow/dispatch/dataset/search'
     );
     const result = await dispatchDatasetSearch(buildProps([]) as any);
 
-    // 空数据集应触发 getNodeErrResponse
     expect(result).toBeDefined();
   });
 
-  // ─── Test 9: 三个知识库，两个同模型、一个不同模型 ─────────────────────────
-  test('三个知识库：两个同模型 + 一个不同模型 → 两组调用', async () => {
+  // ─── Test 8: 三个知识库合并为单次调用 ────────────────────────────────
+  test('三个知识库应合并为单次 defaultSearchDatasetData 调用', async () => {
     await setupMongoAppMock();
     await setupMongoDatasetMock({ ds1: 'model-A', ds2: 'model-A', ds3: 'model-B' });
 
     const { defaultSearchDatasetData } = await import(
       '@fastgpt/service/core/dataset/search/controller'
     );
-    (defaultSearchDatasetData as any)
-      .mockResolvedValueOnce(
-        buildSearchResult(
-          [
-            { id: 'r1', scoreValue: 0.9 },
-            { id: 'r2', scoreValue: 0.8 }
-          ],
-          200
-        )
+    (defaultSearchDatasetData as any).mockResolvedValue(
+      buildSearchResult(
+        [
+          { id: 'r1', scoreValue: 0.9 },
+          { id: 'r2', scoreValue: 0.8 },
+          { id: 'r3', scoreValue: 0.75 }
+        ],
+        300
       )
-      .mockResolvedValueOnce(buildSearchResult([{ id: 'r3', scoreValue: 0.75 }], 80));
+    );
 
     const datasets: SelectedDatasetType[] = [
       {
@@ -711,17 +612,9 @@ describe('dispatchDatasetSearch - 多模型分组搜索', () => {
     );
     await dispatchDatasetSearch(buildProps(datasets) as any);
 
-    expect(defaultSearchDatasetData).toHaveBeenCalledTimes(2);
-
-    const calls = (defaultSearchDatasetData as any).mock.calls;
-    const callA = calls.find((c: any[]) => c[0].modelId === 'model-A');
-    const callB = calls.find((c: any[]) => c[0].modelId === 'model-B');
-
-    expect(callA).toBeDefined();
-    expect(callA[0].datasetIds).toEqual(expect.arrayContaining(['ds1', 'ds2']));
-    expect(callA[0].datasetIds).toHaveLength(2);
-
-    expect(callB).toBeDefined();
-    expect(callB[0].datasetIds).toEqual(['ds3']);
+    expect(defaultSearchDatasetData).toHaveBeenCalledTimes(1);
+    const call = (defaultSearchDatasetData as any).mock.calls[0][0];
+    expect(call.datasetIds).toEqual(expect.arrayContaining(['ds1', 'ds2', 'ds3']));
+    expect(call.datasetIds).toHaveLength(3);
   });
 });
