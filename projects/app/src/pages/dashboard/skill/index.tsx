@@ -116,7 +116,7 @@ const SkillPageContent = () => {
                             <Flex alignItems={'center'} gap={3}>
                               <MyIcon name={'core/skill/default'} w={'32px'} flexShrink={0} />
                               <Box>
-                                <Box color={'#333'} fontWeight={'bold'} fontSize={'sm'}>
+                                <Box color={'#333'} fontSize={'sm'}>
                                   {t('skill:custom_skill')}
                                 </Box>
                                 <Box color={'#666'} fontSize={'xs'} mt={1}>

@@ -305,7 +305,7 @@ const List = () => {
                     flexShrink={0}
                   />
                 )}
-                <Box width="0" flex="1" className="textEllipsis" color={'myGray.900'}>
+                <Box width="0" flex="1" className="textEllipsis" color={'myGray.900'} fontWeight={'medium'}>
                   {skill.name}
                 </Box>
                 {isPersonal && (

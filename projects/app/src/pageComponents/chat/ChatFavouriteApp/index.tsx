@@ -227,7 +227,9 @@ const ChatFavouriteApp = () => {
               >
                 <Flex fontSize="16px" fontWeight="500" alignItems="center" gap={2}>
                   <Avatar src={app.avatar} borderRadius={8} />
-                  <Flex>{app.name}</Flex>
+                  <Box flex={'1'} width={'0'} className={'textEllipsis'} color={'myGray.900'}>
+                    {app.name}
+                  </Box>
                 </Flex>
 
                 <Box fontSize="xs" color="myGray.500" minH="0" noOfLines={2} overflow="hidden">

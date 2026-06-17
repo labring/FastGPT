@@ -97,7 +97,7 @@ const List = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
               >
                 <HStack>
                   <Avatar src={app.avatar} borderRadius={'sm'} w={'1.5rem'} />
-                  <Box flex={'1'} width={'0'} color={'myGray.900'} className={'textEllipsis'}>
+                  <Box flex={'1'} width={'0'} color={'myGray.900'} className={'textEllipsis'} fontWeight={'medium'}>
                     {app.name}
                   </Box>
                   <Box mr={'-1.25rem'}>
