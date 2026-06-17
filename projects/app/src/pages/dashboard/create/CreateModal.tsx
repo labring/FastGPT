@@ -116,6 +116,9 @@ const CreateModal = ({
               if (input.key === NodeInputKeyEnum.datasetSearchRerankModelId) {
                 input.value = '';
               }
+              if (input.key === NodeInputKeyEnum.datasetSearchUsingExtensionQuery) {
+                input.value = true;
+              }
             });
           }
           return node;

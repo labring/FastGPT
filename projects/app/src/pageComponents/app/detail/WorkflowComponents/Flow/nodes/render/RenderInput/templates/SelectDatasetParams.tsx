@@ -42,7 +42,7 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
     rerankModelId: defaultModels.rerank?.id,
     rerankMethod: RerankMethodEnum.content,
     rerankWeight: 0.6,
-    datasetSearchUsingExtensionQuery: true,
+    datasetSearchUsingExtensionQuery: false,
     datasetSearchExtensionModelId: defaultModels.llm?.id,
     datasetSearchExtensionBg: '',
     generateSqlModelId: defaultModels.llm?.id,
@@ -475,6 +475,25 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
                 </Box>
               </Flex>
             </>
+          )}
+
+          {/* 问题改写 */}
+          {retrievalMode === DatasetRetrievalModeEnum.standard && !showDatasetSearchParams && (
+            <Flex alignItems="center" mb={2} fontWeight={'medium'}>
+              <FormLabel w="96px" color={'myGray.600'}>
+                {t('common:core.module.template.Query extension')}
+                <QuestionTip ml={1} label={t('common:core.dataset.Query extension intro')} />
+              </FormLabel>
+              <Switch
+                ml={2}
+                isChecked={data.datasetSearchUsingExtensionQuery}
+                onChange={(e) => {
+                  const checked = e.target.checked;
+                  setData((prev) => ({ ...prev, datasetSearchUsingExtensionQuery: checked }));
+                  updateNodeInput(NodeInputKeyEnum.datasetSearchUsingExtensionQuery, checked);
+                }}
+              />
+            </Flex>
           )}
 
           {/* 输出思考过程 —— 仅多轮智能检索 */}

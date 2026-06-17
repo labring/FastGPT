@@ -510,6 +510,26 @@ const EditForm = ({
               </Box>
             </FormItem>
           )}
+          {(appForm.dataset.retrievalMode as string) === DatasetRetrievalModeEnum.standard &&
+            !showDatasetSearchParams && (
+              <FormItem
+                label={t('common:core.module.template.Query extension')}
+                tooltip={t('common:core.dataset.Query extension intro')}
+              >
+                <Switch
+                  isChecked={appForm.dataset.datasetSearchUsingExtensionQuery ?? true}
+                  onChange={(e) =>
+                    setAppForm((state) => ({
+                      ...state,
+                      dataset: {
+                        ...state.dataset,
+                        datasetSearchUsingExtensionQuery: e.target.checked
+                      }
+                    }))
+                  }
+                />
+              </FormItem>
+            )}
           {(appForm.dataset.retrievalMode as string) === DatasetRetrievalModeEnum.agentic && (
             <FormItem
               label={t('app:retrieval_output_thinking')}

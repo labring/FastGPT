@@ -199,7 +199,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     usingReRank: true,
     rerankModelId: defaultModels.rerank?.id,
     rerankWeight: 0.6,
-    datasetSearchUsingExtensionQuery: true,
+    datasetSearchUsingExtensionQuery: false,
     datasetSearchExtensionModelId: defaultModels.llm?.id,
     datasetSearchExtensionBg: ''
   });
