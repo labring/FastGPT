@@ -19,6 +19,8 @@
   "permission.only_collaborators": "Collaborators Only",
   "permission.team_read": "Team Read Access",
   "permission.team_write": "Team Write Access",
+  "promotion.pay": "Payment",
+  "promotion.register": "Registration",
   "register.confirm": "Confirm Registration",
   "register.register_account": "Register {{account}} Account",
   "register.success": "Registration Successful",

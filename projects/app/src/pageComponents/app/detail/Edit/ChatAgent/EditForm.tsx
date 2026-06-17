@@ -274,7 +274,9 @@ const EditForm = ({
                 <SandboxTipTag />
               ) : (
                 <MyTag>
-                  {t(showSandbox ? 'app:sandbox_free_not_support' : 'app:sandbox_not_support_tip')}
+                  {showSandbox
+                    ? t('app:sandbox_free_not_support')
+                    : t('app:sandbox_not_support_tip')}
                 </MyTag>
               )}
             </Box>

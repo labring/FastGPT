@@ -75,7 +75,7 @@ const LabelAndFormRender = ({
               if (!hasValue) return false;
               // 有 minLength 要求且正在输入新值时，检查长度
               if (props.minLength && value.value && value.value.length < props.minLength) {
-                return t(`common:min_length`, { minLenth: props.minLength });
+                return t('common:min_length', { minLenth: props.minLength });
               }
               return true;
             }
@@ -93,7 +93,7 @@ const LabelAndFormRender = ({
             ? {
                 minLength: {
                   value: props.minLength,
-                  message: t(`common:min_length`, { minLenth: props.minLength })
+                  message: t('common:min_length', { minLenth: props.minLength })
                 }
               }
             : {})

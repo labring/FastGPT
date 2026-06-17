@@ -103,7 +103,7 @@ const MyEdit = <T extends SimpleAppSnapshotType | WorkflowSnapshotsType>({
             onClick={async () => {
               const initialSnapshot = past[past.length - 1];
 
-              onSwitchTmpVersion(initialSnapshot, t(`app:version_initial_copy`));
+              onSwitchTmpVersion(initialSnapshot, t('app:version_initial_copy'));
               toast({
                 title: t('workflow:workflow.Switch_success'),
                 status: 'success'
