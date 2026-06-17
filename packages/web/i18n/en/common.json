@@ -988,7 +988,7 @@
   "support.openapi.Auth proxy": "Auth proxy",
   "support.openapi.Auth proxy tip": "Allow a team-level API key to proxy a team member identity through authProxy in chat/completions requests. Only team owners can enable it.",
   "support.openapi.New api key": "New API Key",
-  "support.openapi.New api key tip": "Please keep your key safe, it will not be displayed again",
+  "support.openapi.New api key tip": "Keep your key safe and do not share it with others.",
   "support.outlink.Delete link tip": "Confirm to Delete This Login-Free Link? The link will become invalid immediately after deletion, but the chat logs will be retained. Please confirm!",
   "support.outlink.Max usage points": "Points Limit",
   "support.outlink.Max usage points tip": "The maximum number of points allowed for this link. It cannot be used after exceeding the limit. -1 means unlimited.",

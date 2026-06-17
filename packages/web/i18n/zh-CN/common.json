@@ -988,7 +988,7 @@
   "support.openapi.Auth proxy": "身份代理",
   "support.openapi.Auth proxy tip": "允许团队级 API 密钥在 chat/completions 请求中通过 authProxy 代理团队成员身份。仅团队所有者可开启。",
   "support.openapi.New api key": "新的 API 密钥",
-  "support.openapi.New api key tip": "请保管好你的密钥，密钥不会再次展示~",
+  "support.openapi.New api key tip": "请保管好你的密钥，不要泄露给他人。",
   "support.outlink.Delete link tip": "确认删除该免登录链接？删除后，该链接将会立即失效，对话日志仍会保留，请确认！",
   "support.outlink.Max usage points": "积分上限",
   "support.outlink.Max usage points tip": "该链接最多允许使用多少积分，超出后将无法使用。-1 代表无限制。",
