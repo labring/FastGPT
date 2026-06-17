@@ -22,6 +22,7 @@ import {
   getChatItemResponseData
 } from '@fastgpt/service/core/chat/nodeResponseStorage';
 import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
+import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 
 const makeInput = ({
   key,
@@ -500,6 +501,128 @@ describe('runWorkflow node response persistence', () => {
       expect(rows).toHaveLength(0);
     } finally {
       restoreTextEditorDispatch();
+    }
+  });
+
+  it('marks caught node errors so chat bubbles can ignore recovered failures', async () => {
+    const originalTextEditorDispatch = callbackMap[FlowNodeTypeEnum.textEditor];
+    callbackMap[FlowNodeTypeEnum.textEditor] = vi
+      .fn()
+      .mockResolvedValueOnce({
+        error: {
+          [NodeOutputKeyEnum.errorText]: 'upstream timeout'
+        },
+        [DispatchNodeResponseKeyEnum.nodeResponse]: {
+          errorText: 'upstream timeout'
+        }
+      })
+      .mockResolvedValueOnce({
+        data: {
+          [NodeOutputKeyEnum.text]: 'fallback answer'
+        },
+        [DispatchNodeResponseKeyEnum.nodeResponse]: {
+          textOutput: 'fallback answer'
+        }
+      });
+
+    try {
+      const appId = '67e0d5535c02d1d5cdede725';
+      const chatId = 'workflow-caught-error-chat';
+      const responseChatItemId = 'workflow-caught-error-ai-item';
+      const runningAppInfo = {
+        id: appId,
+        name: 'Workflow Caught Error App',
+        teamId: '654a4107c32f3bf5f998452f',
+        tmbId: '65ab7007462ada7dbb899948'
+      };
+      const runtimeNodes: RuntimeNodeItemType[] = [
+        makeNode('error_node', FlowNodeTypeEnum.textEditor, {
+          isEntry: true,
+          catchError: true,
+          outputs: [makeOutput({ key: NodeOutputKeyEnum.text })]
+        }),
+        makeNode('fallback_node', FlowNodeTypeEnum.textEditor, {
+          outputs: [makeOutput({ key: NodeOutputKeyEnum.text })]
+        })
+      ];
+      const runtimeEdges: RuntimeEdgeItemType[] = [
+        {
+          ...makeEdge('error_node', 'fallback_node'),
+          sourceHandle: getHandleId('error_node', 'source_catch', 'right')
+        }
+      ];
+      const nodeResponseWriter = await createWorkflowNodeResponseWriter({
+        teamId: runningAppInfo.teamId,
+        appId,
+        chatId,
+        chatItemDataId: responseChatItemId
+      });
+
+      await runWorkflow({
+        apiVersion: 'v2',
+        mode: 'chat',
+        chatId,
+        responseChatItemId,
+        runningAppInfo,
+        runningUserInfo: {
+          teamId: runningAppInfo.teamId,
+          tmbId: runningAppInfo.tmbId,
+          teamName: 'team',
+          memberName: 'member',
+          contact: '',
+          username: 'user'
+        },
+        uid: 'test-user',
+        lang: 'zh-CN',
+        histories: [],
+        query: [{ type: 'text', text: { content: 'recover' } }],
+        variables: {},
+        chatConfig: {},
+        runtimeNodes,
+        runtimeEdges,
+        variableState: await WorkflowVariableState.create({
+          timezone: 'Asia/Shanghai',
+          runningAppInfo,
+          uid: 'test-user',
+          chatId,
+          responseChatItemId,
+          histories: [],
+          variablesConfig: [],
+          inputVariables: {},
+          externalVariables: {}
+        }),
+        externalProvider: {},
+        workflowDispatchDeep: 0,
+        maxRunTimes: 20,
+        stream: false,
+        responseAllData: true,
+        responseDetail: true,
+        nodeResponseWriter,
+        checkIsStopping: () => false
+      } as any);
+      await nodeResponseWriter.close();
+
+      const detail = await getChatItemResponseData({
+        appId,
+        chatId,
+        chatItemDataId: responseChatItemId
+      });
+
+      expect(detail).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            nodeId: 'error_node',
+            errorText: 'upstream timeout',
+            errorCaptured: true
+          }),
+          expect.objectContaining({
+            nodeId: 'fallback_node',
+            textOutput: 'fallback answer'
+          })
+        ])
+      );
+    } finally {
+      callbackMap[FlowNodeTypeEnum.textEditor] = originalTextEditorDispatch;
     }
   });
 

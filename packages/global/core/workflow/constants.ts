@@ -286,8 +286,10 @@ export enum NodeOutputKeyEnum {
   text = 'system_text',
   addOutputParam = 'system_addOutputParam',
   rawResponse = 'system_rawResponse',
+
   systemError = 'system_error',
   errorText = 'system_error_text',
+  error = 'error',
 
   // start
   userFiles = 'userFiles',
@@ -309,7 +311,7 @@ export enum NodeOutputKeyEnum {
 
   // http
   httpRawResponse = 'httpRawResponse',
-  httpFullError = 'httpFullError',
+  httpRawError = 'system_httpRawError',
 
   // plugin
   pluginStart = 'pluginStart',
@@ -340,10 +342,7 @@ export enum NodeOutputKeyEnum {
   formInputResult = 'formInputResult',
 
   // File
-  fileTitle = 'fileTitle',
-
-  /** @deprecated */
-  error = 'error'
+  fileTitle = 'fileTitle'
 }
 
 export enum ParallelRunStatusEnum {

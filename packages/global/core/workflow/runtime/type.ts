@@ -182,6 +182,7 @@ export const DispatchNodeResponseSchema = z
       .optional()
       .meta({ description: '错误信息' }),
     errorText: z.string().optional().meta({ description: '错误文本' }), // Just show
+    errorCaptured: z.boolean().optional().meta({ description: '错误已被 catch 分支捕获' }),
 
     customInputs: z.record(z.string(), z.any()).optional().meta({ description: '自定义输入' }),
     customOutputs: z.record(z.string(), z.any()).optional().meta({ description: '自定义输出' }),
@@ -262,6 +263,7 @@ export const DispatchNodeResponseSchema = z
       .meta({ description: '请求体' }),
     headers: z.record(z.string(), z.any()).optional().meta({ description: '请求头' }),
     httpResult: z.record(z.string(), z.any()).optional().meta({ description: '请求结果' }),
+    httpErrorResult: z.record(z.string(), z.any()).optional().meta({ description: '请求失败结果' }),
 
     // Tool
     toolInput: z.record(z.string(), z.any()).optional().meta({ description: '工具输入' }),
@@ -371,7 +373,9 @@ export type DispatchNodeResponseType = Omit<
 
 export type DispatchNodeResultType<
   T = Record<string, never>,
-  ERR = { [NodeOutputKeyEnum.errorText]?: string }
+  ERR = {
+    [NodeOutputKeyEnum.errorText]?: string;
+  }
 > = {
   [DispatchNodeResponseKeyEnum.answerText]?: string;
   [DispatchNodeResponseKeyEnum.reasoningText]?: string;
@@ -388,7 +392,7 @@ export type DispatchNodeResultType<
   [DispatchNodeResponseKeyEnum.customFeedbacks]?: string[];
 
   data?: T;
-  error?: ERR;
+  error?: ERR & { [NodeOutputKeyEnum.errorText]?: string };
 
   /** @deprecated */
   [DispatchNodeResponseKeyEnum.nodeDispatchUsages]?: ChatNodeUsageType[]; // Node total usage

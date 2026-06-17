@@ -136,19 +136,20 @@ export const HttpNode468: FlowNodeTemplateType = {
       valueType: WorkflowIOValueTypeEnum.any,
       type: FlowNodeOutputTypeEnum.static
     },
+
+    {
+      id: NodeOutputKeyEnum.httpRawError,
+      key: NodeOutputKeyEnum.httpRawError,
+      label: i18nT('workflow:http_full_error'),
+      description: i18nT('workflow:http_full_error_description'),
+      valueType: WorkflowIOValueTypeEnum.object,
+      type: FlowNodeOutputTypeEnum.error
+    },
     {
       id: NodeOutputKeyEnum.error,
       key: NodeOutputKeyEnum.error,
       label: i18nT('workflow:error_text'),
       valueType: WorkflowIOValueTypeEnum.string,
-      type: FlowNodeOutputTypeEnum.error
-    },
-    {
-      id: NodeOutputKeyEnum.httpFullError,
-      key: NodeOutputKeyEnum.httpFullError,
-      label: i18nT('workflow:http_full_error'),
-      description: i18nT('workflow:http_full_error_description'),
-      valueType: WorkflowIOValueTypeEnum.object,
       type: FlowNodeOutputTypeEnum.error
     }
   ]

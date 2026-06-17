@@ -29,7 +29,8 @@ const defaultNodeResponsePreviewProjection = {
   'data.quoteList.score': 1,
   'data.toolId': 1,
   'data.toolRes.citeLinks': 1,
-  'data.errorText': 1
+  'data.errorText': 1,
+  'data.errorCaptured': 1
 } as const;
 
 export async function getChatItems({

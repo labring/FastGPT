@@ -10,7 +10,7 @@ import type {
   NodeEdgeGroupsMap,
   NodeOutputItemType
 } from '@fastgpt/global/core/workflow/runtime/type';
-import type { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   DispatchNodeResponseKeyEnum,
@@ -889,6 +889,14 @@ export class WorkflowQueue {
 
               return {
                 ...result,
+                ...(result[DispatchNodeResponseKeyEnum.nodeResponse]
+                  ? {
+                      [DispatchNodeResponseKeyEnum.nodeResponse]: {
+                        ...result[DispatchNodeResponseKeyEnum.nodeResponse],
+                        errorCaptured: true
+                      }
+                    }
+                  : {}),
                 [DispatchNodeResponseKeyEnum.skipHandleId]: result[
                   DispatchNodeResponseKeyEnum.skipHandleId
                 ]
@@ -913,6 +921,7 @@ export class WorkflowQueue {
               ).filter(Boolean)
             };
           } catch (error) {
+            const errorText = getErrText(error);
             // Skip all edges and return error
             let skipHandleId = targetEdges.map((item) => item.sourceHandle);
             if (node.catchError) {
@@ -920,8 +929,16 @@ export class WorkflowQueue {
             }
 
             return {
+              ...(node.catchError
+                ? {
+                    error: {
+                      [NodeOutputKeyEnum.errorText]: errorText
+                    }
+                  }
+                : {}),
               [DispatchNodeResponseKeyEnum.nodeResponse]: {
-                error: getErrText(error)
+                error: errorText,
+                ...(node.catchError ? { errorCaptured: true } : {})
               },
               [DispatchNodeResponseKeyEnum.skipHandleId]: skipHandleId
             };
