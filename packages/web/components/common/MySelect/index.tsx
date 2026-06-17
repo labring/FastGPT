@@ -40,6 +40,7 @@ export type SelectProps<T = any> = Omit<ButtonProps, 'onChange'> & {
   valueLabel?: string | React.ReactNode;
   placeholder?: string;
   isSearch?: boolean;
+  formLabel?: string;
   list: {
     alias?: string | React.ReactNode;
     icon?: string;
@@ -82,6 +83,7 @@ const MySelect = <T = any,>(
     value,
     valueLabel,
     isSearch = false,
+    formLabel,
     width = '100%',
     list = [],
     onChange,
@@ -251,6 +253,14 @@ const MySelect = <T = any,>(
           {...props}
         >
           <Flex alignItems={'center'} justifyContent="space-between" w="100%">
+            {formLabel && (
+              <>
+                <Box fontSize={'sm'} color={'myGray.600'} whiteSpace={'nowrap'} flexShrink={0}>
+                  {formLabel}
+                </Box>
+                <Box w={'1px'} h={'12px'} bg={'myGray.200'} mx={2} flexShrink={0} />
+              </>
+            )}
             <Flex alignItems={'center'} flex="1" minW={0} overflow={'hidden'}>
               {isSelecting && <MyIcon mr={2} name={'common/loading'} w={'1rem'} />}
               {valueLabel ? (
