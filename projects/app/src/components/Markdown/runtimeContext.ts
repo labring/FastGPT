@@ -8,6 +8,10 @@ export type MarkdownRendererRuntimeContextValue = {
   chatAuthData?: AProps['chatAuthData'];
   allowedCitationIds?: AProps['allowedCitationIds'];
   onOpenCiteModal?: AProps['onOpenCiteModal'];
+  enableQuickReplies?: boolean;
+  onQuickReplyClick?: (text: string) => void;
+  /** 原始 markdown 文本，用于校验 quick-replies fence 是否完整闭合。 */
+  markdownSource?: string;
 };
 
 /**

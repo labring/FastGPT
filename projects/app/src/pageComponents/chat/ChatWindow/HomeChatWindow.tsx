@@ -487,6 +487,7 @@ const HomeChatWindow = () => {
             onStartChat={onStartChat}
             quickAppList={(chatSettings?.quickAppList || []).slice(0, 3)}
             onSwitchQuickApp={handleSwitchQuickApp}
+            enableQuickReplies
           />
         </Box>
         <SandboxEditorModal />

@@ -68,7 +68,7 @@ const RenderResoningContent = React.memo(function RenderResoningContent({
           borderColor={'myGray.300'}
           color={'myGray.500'}
         >
-          <Markdown source={content} showAnimation={showAnimation} />
+          <Markdown source={content} showAnimation={showAnimation} enableQuickReplies={false} />
         </AccordionPanel>
       </AccordionItem>
     </Accordion>
@@ -88,7 +88,7 @@ const RenderText = React.memo(function RenderText({
     return text;
   }, [text]);
 
-  return <Markdown source={source} showAnimation={showAnimation} />;
+  return <Markdown source={source} showAnimation={showAnimation} enableQuickReplies={false} />;
 });
 const RenderCollectionForm = React.memo(function RenderCollectionForm({
   canSubmit,

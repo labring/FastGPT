@@ -3,6 +3,7 @@ import {
   ChatItemContext,
   type OnOpenCiteModalProps
 } from '@/web/core/chat/context/chatItemContext';
+import { QuickReplyContext } from '../../ChatContainer/context/quickReplyContext';
 import { WorkflowRuntimeContext } from '../../ChatContainer/context/workflowRuntimeContext';
 import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
 import { useCreation } from 'ahooks';
@@ -29,6 +30,8 @@ const RenderText = React.memo(function RenderText({
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
   const isShowCite = useContextSelector(ChatItemContext, (v) => v.isShowCite);
+  const enableQuickReplies = useContextSelector(QuickReplyContext, (v) => v.enableQuickReplies);
+  const onQuickReplyClick = useContextSelector(QuickReplyContext, (v) => v.onQuickReplyClick);
 
   const source = useMemo(() => {
     if (!text) return '';
@@ -53,6 +56,8 @@ const RenderText = React.memo(function RenderText({
       onOpenCiteModal={onOpenCiteModal}
       isDisabled={isDisabled}
       autoPreviewHtmlCodeBlock
+      enableQuickReplies={enableQuickReplies}
+      onQuickReplyClick={onQuickReplyClick}
     />
   );
 });
