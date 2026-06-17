@@ -237,6 +237,7 @@ export const NodeTemplateListItemTypeSchema = z.object({
   currentCost: NumSchema.optional(), // 当前积分消耗
   systemKeyCost: NumSchema.optional(), // 系统密钥费用，统一为数字
   hasTokenFee: BoolSchema.optional(),
+  status: PluginStatusSchema.optional(),
   instructions: z.string().optional(), // 使用说明
   courseUrl: z.string().optional(),
   readmeUrl: z.string().optional(),

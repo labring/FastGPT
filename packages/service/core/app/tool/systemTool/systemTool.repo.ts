@@ -51,7 +51,14 @@ type SystemToolRuntimeType = {
 
 type SystemToolDisplayChildType = Pick<
   SystemToolChildDetailType,
-  'id' | 'name' | 'description' | 'toolDescription' | 'icon' | 'currentCost' | 'systemKeyCost'
+  | 'id'
+  | 'name'
+  | 'status'
+  | 'description'
+  | 'toolDescription'
+  | 'icon'
+  | 'currentCost'
+  | 'systemKeyCost'
 >;
 
 type SystemToolDisplayInfoType = Pick<
@@ -292,6 +299,7 @@ export class SystemToolRepo {
           return {
             id: item.id,
             name: parseI18nString(item.name, lang),
+            status: dbChild?.status ?? PluginStatusEnum.Normal,
             description: parseI18nString(item.description, lang),
             systemKeyCost: dbChild?.systemKeyCost ?? 0,
             currentCost: dbChild?.currentCost ?? 0,
@@ -460,6 +468,7 @@ export class SystemToolRepo {
         return {
           id: item.id,
           name: parseI18nString(item.name, lang),
+          status: childConfig?.status ?? PluginStatusEnum.Normal,
           description: parseI18nString(item.description, lang),
           toolDescription: childConfig?.customConfig?.toolDescription ?? item.toolDescription,
           icon: childIcon,
