@@ -68,11 +68,11 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
         zIndex={3}
         flexDirection={'column'}
         position={'absolute'}
-        top={20}
+        top={'64px'}
         left={0}
         pt={5}
         pb={4}
-        h={isOpen ? 'calc(100% - 20px)' : '0'}
+        h={isOpen ? 'calc(100% - 64px)' : '0'}
         w={isOpen ? ['100%', `${sliderWidth}px`] : '0'}
         bg={'white'}
         boxShadow={'3px 0 20px rgba(0,0,0,0.2)'}
