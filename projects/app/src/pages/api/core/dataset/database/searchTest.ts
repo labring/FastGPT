@@ -56,16 +56,20 @@ async function handler(
   await checkTeamAIPoints(teamId);
   const sqlLLM = getLLMModelById(modelId);
   await Promise.all([
-    authModel({
-      req,
-      authToken: true,
-      authApiKey: true,
-      modelId: dataset.vectorModelId,
-      per: ReadPermissionVal,
-      resourceContext: { datasetId }
-    }).then(({ model }) => {
-      assertModelAvailable(model, { type: ModelTypeEnum.embedding });
-    }),
+    ...(dataset.vectorModelId
+      ? [
+          authModel({
+            req,
+            authToken: true,
+            authApiKey: true,
+            modelId: dataset.vectorModelId,
+            per: ReadPermissionVal,
+            resourceContext: { datasetId }
+          }).then(({ model }) => {
+            assertModelAvailable(model, { type: ModelTypeEnum.embedding });
+          })
+        ]
+      : []),
     authModel({
       req,
       authToken: true,
@@ -289,3 +293,4 @@ async function handler(
   return Promise.reject(`Unsupported dataset type: ${dataset.type}`);
 }
 export default NextAPI(handler);
+
