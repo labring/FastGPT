@@ -5,7 +5,9 @@ import {
   type SetStateAction,
   useState,
   useMemo,
-  useCallback
+  useCallback,
+  useEffect,
+  useRef
 } from 'react';
 import { useTranslation } from 'next-i18next';
 import { createContext, useContextSelector } from 'use-context-selector';
@@ -24,6 +26,39 @@ import { type WebsiteConfigFormType } from './WebsiteConfig';
 
 const WebSiteConfigModal = dynamic(() => import('./WebsiteConfig'));
 
+type CollectionListState = {
+  pageNum: number;
+  pageSize: number;
+  parentId: string;
+  searchText: string;
+  filterTags: string[];
+};
+
+const getCollectionListStorageKey = (datasetId: string) =>
+  `fastgpt_dataset_collection_list_${datasetId}`;
+
+/** 从 sessionStorage 读取知识库 collection 列表状态，SSR 安全 */
+const readCollectionListState = (datasetId: string): CollectionListState | null => {
+  if (typeof window === 'undefined' || !datasetId) return null;
+  try {
+    const raw = sessionStorage.getItem(getCollectionListStorageKey(datasetId));
+    if (!raw) return null;
+    return JSON.parse(raw) as CollectionListState;
+  } catch {
+    return null;
+  }
+};
+
+/** 将知识库 collection 列表状态写入 sessionStorage */
+const writeCollectionListState = (datasetId: string, state: CollectionListState) => {
+  if (typeof window === 'undefined' || !datasetId) return;
+  try {
+    sessionStorage.setItem(getCollectionListStorageKey(datasetId), JSON.stringify(state));
+  } catch {
+    // sessionStorage 写入失败时静默忽略
+  }
+};
+
 type CollectionPageContextType = {
   openDatasetSyncConfirm: () => void;
   onOpenWebsiteModal: () => void;
@@ -34,6 +69,7 @@ type CollectionPageContextType = {
   isGetting: boolean;
   pageNum: number;
   pageSize: number;
+  parentId: string;
   searchText: string;
   setSearchText: Dispatch<SetStateAction<string>>;
   filterTags: string[];
@@ -52,18 +88,19 @@ export const CollectionPageContext = createContext<CollectionPageContextType>({
     throw new Error('Function not implemented.');
   },
   total: 0,
-  getData: function (e: number): void {
+  getData: function (_pageNum: number): void {
     throw new Error('Function not implemented.');
   },
   isGetting: false,
   pageNum: 0,
   pageSize: 0,
+  parentId: '',
   searchText: '',
-  setSearchText: function (value: SetStateAction<string>): void {
+  setSearchText: function (_value: SetStateAction<string>): void {
     throw new Error('Function not implemented.');
   },
   filterTags: [],
-  setFilterTags: function (value: SetStateAction<string[]>): void {
+  setFilterTags: function (_value: SetStateAction<string[]>): void {
     throw new Error('Function not implemented.');
   }
 });
@@ -71,16 +108,44 @@ export const CollectionPageContext = createContext<CollectionPageContextType>({
 const CollectionPageContextProvider = ({ children }: { children: ReactNode }) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { parentId = '' } = router.query as { parentId: string };
+  const { parentId: queryParentId = '' } = router.query as { parentId: string };
 
   const { datasetDetail, datasetId, updateDataset, loadDatasetDetail } = useContextSelector(
     DatasetPageContext,
     (v) => v
   );
 
+  const savedState = useMemo(() => readCollectionListState(datasetId), [datasetId]);
+  // parentId 以 URL 为准；目录恢复由下方 router.replace 写入 query，避免回根目录时被 sessionStorage 覆盖
+  const parentId = queryParentId;
+
+  const hasRestoredQueryRef = useRef(false);
+  useEffect(() => {
+    if (!router.isReady || !datasetId || hasRestoredQueryRef.current) return;
+    hasRestoredQueryRef.current = true;
+
+    const saved = readCollectionListState(datasetId);
+    if (!saved) return;
+
+    const queryUpdates: Record<string, string | number> = {};
+    if (!queryParentId && saved.parentId) {
+      queryUpdates.parentId = saved.parentId;
+    }
+    const queryPage = router.query.page;
+    if ((queryPage === undefined || queryPage === '') && saved.pageNum > 1) {
+      queryUpdates.page = saved.pageNum;
+    }
+    if (Object.keys(queryUpdates).length === 0) return;
+
+    router.replace({
+      pathname: router.pathname,
+      query: { ...router.query, ...queryUpdates }
+    });
+  }, [router.isReady, datasetId, queryParentId, router]);
+
   // collection list
-  const [searchText, setSearchText] = useState('');
-  const [filterTags, setFilterTags] = useState<string[]>([]);
+  const [searchText, setSearchText] = useState(savedState?.searchText ?? '');
+  const [filterTags, setFilterTags] = useState<string[]>(savedState?.filterTags ?? []);
   const {
     data: collections,
     Pagination,
@@ -90,7 +155,8 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     pageNum,
     pageSize
   } = usePagination(getDatasetCollections, {
-    defaultPageSize: 20,
+    defaultPageSize: savedState?.pageSize ?? 20,
+    defaultPageNum: savedState?.pageNum,
     storeToQuery: true,
     params: {
       datasetId,
@@ -100,6 +166,17 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     },
     refreshDeps: [parentId, searchText, filterTags]
   });
+
+  useEffect(() => {
+    if (!datasetId) return;
+    writeCollectionListState(datasetId, {
+      pageNum,
+      pageSize,
+      parentId,
+      searchText,
+      filterTags
+    });
+  }, [datasetId, pageNum, pageSize, parentId, searchText, filterTags]);
 
   const syncDataset = useCallback(async () => {
     if (datasetDetail.type === DatasetTypeEnum.websiteDataset) {
@@ -156,7 +233,8 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
       getData,
       isGetting,
       pageNum,
-      pageSize
+      pageSize,
+      parentId
     }),
     [
       Pagination,
@@ -169,6 +247,7 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
       openDatasetSyncConfirm,
       pageNum,
       pageSize,
+      parentId,
       searchText,
       total
     ]

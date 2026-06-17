@@ -30,7 +30,7 @@ import { useRouter } from 'next/router';
 
 const thresholdVal = 200;
 
-export function usePagination<DataT, ResT = {}>(
+export function usePagination<DataT, ResT = any>(
   api: (data: PaginationProps<DataT>) => Promise<PaginationResponse<ResT>>,
   {
     defaultPageSize = 10,
@@ -38,6 +38,7 @@ export function usePagination<DataT, ResT = {}>(
     params,
     type = 'button',
     onChange,
+    defaultPageNum,
     refreshDeps,
     scrollLoadType = 'bottom',
     EmptyTip,
@@ -46,10 +47,11 @@ export function usePagination<DataT, ResT = {}>(
     storeToQuery = false
   }: {
     defaultPageSize?: number;
+    defaultPageNum?: number;
     pageSizeOptions?: number[];
     params?: DataT;
     type?: 'button' | 'scroll';
-    onChange?: (pageNum: number) => void;
+    onChange?: (pageNum: number, pageSize?: number) => void;
     refreshDeps?: any[];
     throttleWait?: number;
     scrollLoadType?: 'top' | 'bottom';
@@ -60,8 +62,11 @@ export function usePagination<DataT, ResT = {}>(
   }
 ) {
   const router = useRouter();
-  let { page = '1' } = router.query as { page: string };
-  const numPage = Number(page);
+  const queryPage = router.query.page;
+  const initialPageNum =
+    queryPage !== undefined && String(queryPage).length > 0
+      ? Number(queryPage)
+      : (defaultPageNum ?? 1);
 
   const { toast } = useToast();
   const { isPc } = useSystem();
@@ -70,7 +75,7 @@ export function usePagination<DataT, ResT = {}>(
   const [isLoading, { setTrue, setFalse }] = useBoolean(false);
   const [error, setError] = useState<Error | null>(null);
 
-  const [pageNum, setPageNum] = useState(numPage);
+  const [pageNum, setPageNum] = useState(initialPageNum);
   const [pageSize, setPageSize] = useState(defaultPageSize);
   const pageSizeOptions = useCreation(
     () => defaultPageSizeOptions || [10, 20, 50, 100],
@@ -109,7 +114,9 @@ export function usePagination<DataT, ResT = {}>(
           });
         }
 
-        res.total !== undefined && setTotal(res.total);
+        if (res.total !== undefined) {
+          setTotal(res.total);
+        }
 
         if (type === 'scroll') {
           if (scrollLoadType === 'top') {
@@ -139,7 +146,7 @@ export function usePagination<DataT, ResT = {}>(
           setData(res.list);
         }
 
-        onChange?.(num);
+        onChange?.(num, pageSize);
       } catch (error: any) {
         setError(error);
         if (error.code !== 'ERR_CANCELED') {
@@ -337,7 +344,7 @@ export function usePagination<DataT, ResT = {}>(
     async () => {
       if (isFirstLoad.current) {
         isFirstLoad.current = false;
-        fetchData(numPage);
+        fetchData(initialPageNum);
         return;
       }
 
@@ -351,8 +358,10 @@ export function usePagination<DataT, ResT = {}>(
   );
   // Page size refresh
   useEffect(() => {
-    data.length > 0 && fetchData();
-  }, [pageSize]);
+    if (data.length > 0) {
+      fetchData();
+    }
+  }, [pageSize, data.length, fetchData]);
 
   useRequest(
     async () => {

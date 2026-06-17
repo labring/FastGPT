@@ -56,7 +56,6 @@ const Header = ({
   const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
 
   const router = useRouter();
-  const { parentId = '' } = router.query as { parentId: string };
 
   const {
     searchText,
@@ -64,6 +63,7 @@ const Header = ({
     total,
     getData,
     pageNum,
+    parentId,
     onOpenWebsiteModal,
     openDatasetSyncConfirm
   } = useContextSelector(CollectionPageContext, (v) => v);
