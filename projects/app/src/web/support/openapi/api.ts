@@ -31,9 +31,9 @@ export const getOpenApiKeys = (params?: GetApiKeyListQueryType) =>
   GET<GetApiKeyListResponseType>('/support/openapi/list', params);
 
 /**
- * record api key copy audit
+ * copy api key and record audit
  */
-export const postCopyOpenApiKeyAudit = (data: CopyApiKeyBodyType) =>
+export const copyOpenApiKey = (data: CopyApiKeyBodyType) =>
   POST<CopyApiKeyResponseType>('/support/openapi/copy', data);
 
 /**

@@ -11,7 +11,7 @@ const OptionalDateSchema = z.preprocess((value) => {
 export const ApiKeyLimitSchema = z
   .object({
     expiredTime: OptionalDateSchema.meta({ description: '过期时间' }),
-    maxUsagePoints: z.number().optional().default(-1).meta({
+    maxUsagePoints: z.number().default(-1).meta({
       example: -1,
       description: '最大积分用量限制'
     })
@@ -26,17 +26,17 @@ export const OpenApiKeySchema = z.object({
   createTime: z.coerce.date().meta({ description: '创建时间' }),
   lastUsedTime: z.coerce.date().optional().meta({ description: '最后使用时间' }),
   apiKey: z.string().meta({
-    description: 'API Key；有复制权限时返回明文，否则返回脱敏值'
+    description: 'API Key 脱敏值；复制明文请调用复制接口'
   }),
-  canCopy: z.boolean().optional().default(false).meta({
+  canCopy: z.boolean().default(false).meta({
     description: '当前用户是否可以复制该 API Key 明文'
   }),
   appId: ObjectIdSchema.optional().meta({ description: '绑定应用 ID' }),
-  authProxy: z.boolean().optional().default(false).meta({
+  authProxy: z.boolean().default(false).meta({
     description: '是否允许团队级 API Key 在 chat/completions 请求中通过 authProxy 代理团队成员身份'
   }),
-  name: z.string().optional().default('Api Key').meta({ description: 'API Key 名称' }),
-  usagePoints: z.number().optional().default(0).meta({ description: '累计使用积分' }),
+  name: z.string().default('Api Key').meta({ description: 'API Key 名称' }),
+  usagePoints: z.number().default(0).meta({ description: '累计使用积分' }),
   limit: ApiKeyLimitSchema.meta({
     description: 'API Key 使用限制，未配置时表示不限制过期时间和积分用量'
   })
@@ -138,10 +138,10 @@ export const DeleteApiKeyResponseSchema = z.undefined().meta({
 export type DeleteApiKeyResponseType = z.infer<typeof DeleteApiKeyResponseSchema>;
 
 /* ============================================================================
- * API: 记录 API Key 复制审计
+ * API: 复制 API Key
  * Route: POST /api/support/openapi/copy
  * Method: POST
- * Description: 记录用户复制 API Key 明文的审计日志。
+ * Description: 返回 API Key 明文并记录用户复制审计日志。
  * Tags: ['API Key 管理']
  * ============================================================================ */
 
@@ -150,8 +150,8 @@ export const CopyApiKeyBodySchema = z.object({
 });
 export type CopyApiKeyBodyType = z.infer<typeof CopyApiKeyBodySchema>;
 
-export const CopyApiKeyResponseSchema = z.undefined().meta({
-  description: '记录成功'
+export const CopyApiKeyResponseSchema = z.string().meta({
+  description: 'API Key 明文'
 });
 export type CopyApiKeyResponseType = z.infer<typeof CopyApiKeyResponseSchema>;
 

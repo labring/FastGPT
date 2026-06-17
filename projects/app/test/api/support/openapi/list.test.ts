@@ -7,7 +7,7 @@ import { getFakeUsers, getRootUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 
 describe('support/openapi/list', () => {
-  it('团队级 APIKey 列表对有复制权限的记录返回明文', async () => {
+  it('团队级 APIKey 列表对有复制权限的记录返回脱敏值和复制权限', async () => {
     const user = await getRootUser();
     await MongoOpenApi.create({
       teamId: user.teamId,
@@ -22,7 +22,7 @@ describe('support/openapi/list', () => {
 
     expect(result.code).toBe(200);
     expect(result.data).toHaveLength(1);
-    expect(result.data[0].apiKey).toBe('fastgpt-team-secret');
+    expect(result.data[0].apiKey).toBe('******cret');
     expect(result.data[0].canCopy).toBe(true);
     expect(result.data[0].authProxy).toBe(false);
   });
@@ -59,13 +59,13 @@ describe('support/openapi/list', () => {
         item
       ])
     );
-    expect(resultMap['manager key'].apiKey).toBe('fastgpt-manager-secret');
+    expect(resultMap['manager key'].apiKey).toBe('******cret');
     expect(resultMap['manager key'].canCopy).toBe(true);
     expect(resultMap['member key'].apiKey).toBe('******cret');
     expect(resultMap['member key'].canCopy).toBe(false);
   });
 
-  it('应用级 APIKey 列表返回明文供发布渠道重复复制', async () => {
+  it('应用级 APIKey 列表返回脱敏值和复制权限', async () => {
     const user = await getRootUser();
     const app = await MongoApp.create({
       teamId: user.teamId,
@@ -91,7 +91,7 @@ describe('support/openapi/list', () => {
 
     expect(result.code).toBe(200);
     expect(result.data).toHaveLength(1);
-    expect(result.data[0].apiKey).toBe('fastgpt-app-secret');
+    expect(result.data[0].apiKey).toBe('******cret');
     expect(result.data[0].canCopy).toBe(true);
     expect(result.data[0].authProxy).toBe(false);
   });

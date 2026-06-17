@@ -38,7 +38,7 @@ async function handler(
         const canCopy = permission.isOwner;
 
         return {
-          ...item.toObject({ getters: !canCopy }),
+          ...item.toObject({ getters: true }),
           canCopy
         };
       })
@@ -61,7 +61,7 @@ async function handler(
       const canCopy = permission.isOwner || String(item.tmbId) === tmbId;
 
       return {
-        ...item.toObject({ getters: !canCopy }),
+        ...item.toObject({ getters: true }),
         canCopy
       };
     })

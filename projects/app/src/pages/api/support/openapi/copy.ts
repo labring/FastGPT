@@ -34,7 +34,13 @@ async function handler(req: ApiRequestProps<CopyApiKeyBodyType>): Promise<CopyAp
     }
   });
 
-  return CopyApiKeyResponseSchema.parse(undefined);
+  const apiKey = (
+    openapi as unknown as {
+      get: (path: 'apiKey', type?: unknown, options?: { getters?: boolean }) => unknown;
+    }
+  ).get('apiKey', null, { getters: false });
+
+  return CopyApiKeyResponseSchema.parse(apiKey);
 }
 
 export default NextAPI(handler);

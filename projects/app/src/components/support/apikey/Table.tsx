@@ -21,7 +21,7 @@ import {
   createAOpenApiKey,
   delOpenApiById,
   putOpenApiKey,
-  postCopyOpenApiKeyAudit
+  copyOpenApiKey
 } from '@/web/support/openapi/api';
 import type { EditApiKeyProps } from '@/global/support/openapi/api';
 import dayjs from 'dayjs';
@@ -82,14 +82,15 @@ const ApiKeyTable = ({ tips, appId, mode = 'account' }: ApiKeyTableProps) => {
       refetch();
     }
   });
-  const { runAsync: copyAudit } = useRequest(postCopyOpenApiKeyAudit, {
+  const { runAsync: copyApiKey } = useRequest(copyOpenApiKey, {
     errorToast: 'Error'
   });
 
-  const onCopyApiKey = async ({ id, apiKey }: { id: string; apiKey: string }) => {
+  const onCopyApiKey = async (id: string) => {
     setCopyingApiKeyId(id);
     try {
-      await Promise.all([copyAudit({ id }), copyData(apiKey)]);
+      const plainApiKey = await copyApiKey({ id });
+      await copyData(plainApiKey);
     } finally {
       setCopyingApiKeyId(undefined);
     }
@@ -224,7 +225,7 @@ const ApiKeyTable = ({ tips, appId, mode = 'account' }: ApiKeyTableProps) => {
                           size={'xs'}
                           variant={'whiteBase'}
                           isLoading={copyingApiKeyId === _id}
-                          onClick={() => onCopyApiKey({ id: _id, apiKey })}
+                          onClick={() => onCopyApiKey(_id)}
                         />
                       )}
                     </Flex>

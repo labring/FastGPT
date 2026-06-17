@@ -13,7 +13,7 @@ describe('support/openapi/copy', () => {
     vi.mocked(addAuditLog).mockClear();
   });
 
-  it('记录团队级 APIKey 复制审计且不写入明文密钥', async () => {
+  it('记录团队级 APIKey 复制审计并返回明文密钥', async () => {
     const user = await getRootUser();
     const openapi = await MongoOpenApi.create({
       teamId: user.teamId,
@@ -37,6 +37,7 @@ describe('support/openapi/copy', () => {
     });
 
     expect(result.code).toBe(200);
+    expect(result.data).toBe('fastgpt-team-secret');
     expect(addAuditLog).toHaveBeenCalledWith({
       tmbId: auth.tmbId,
       teamId: auth.teamId,
@@ -48,7 +49,7 @@ describe('support/openapi/copy', () => {
     expect(JSON.stringify(vi.mocked(addAuditLog).mock.calls)).not.toContain('fastgpt-team-secret');
   });
 
-  it('记录应用级 APIKey 复制审计且不写入明文密钥', async () => {
+  it('记录应用级 APIKey 复制审计并返回明文密钥', async () => {
     const user = await getRootUser();
     const app = await MongoApp.create({
       teamId: user.teamId,
@@ -80,6 +81,7 @@ describe('support/openapi/copy', () => {
     });
 
     expect(result.code).toBe(200);
+    expect(result.data).toBe('fastgpt-app-secret');
     expect(addAuditLog).toHaveBeenCalledWith({
       tmbId: auth.tmbId,
       teamId: auth.teamId,
