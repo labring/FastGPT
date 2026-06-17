@@ -424,11 +424,17 @@ async function filterDatasetQuote({
   // slice filterSearch
   const filterQuoteQA = await filterSearchResultsByMaxChars(quoteQA, model.quoteMaxToken);
 
+  // 按 collectionId 去重，同一文件的不同分块只保留第一个（得分最高）
+  const dedupedQuoteQA = filterQuoteQA.filter((item, index) => {
+    if (!item.collectionId) return true;
+    return filterQuoteQA.findIndex((q) => q.collectionId === item.collectionId) === index;
+  });
+
   // 收集 chunk 来源的同义词映射（已挂在每个 item 上）
-  const chunkSynonymMappings = filterQuoteQA.flatMap((item) => item.synonymMappings ?? []);
+  const chunkSynonymMappings = dedupedQuoteQA.flatMap((item) => item.synonymMappings ?? []);
 
   // 收集去重的 datasetIds，用于查询 query 来源的同义词
-  const datasetIds = [...new Set(filterQuoteQA.map((item) => item.datasetId).filter(Boolean))];
+  const datasetIds = [...new Set(dedupedQuoteQA.map((item) => item.datasetId).filter(Boolean))];
 
   // 查询 query 命中的同义词映射
   const querySynonymMappings = await extractQuerySynonyms(userChatInput, datasetIds);
@@ -459,8 +465,8 @@ async function filterDatasetQuote({
   }
 
   const datasetQuoteText =
-    filterQuoteQA.length > 0
-      ? `${filterQuoteQA.map((item, index) => getValue({ item, index }).trim()).join('\n------\n')}`
+    dedupedQuoteQA.length > 0
+      ? `${dedupedQuoteQA.map((item, index) => getValue({ item, index }).trim()).join('\n------\n')}`
       : '';
 
   addLog.debug('AI Chat - Final Dataset Quote Text', {
