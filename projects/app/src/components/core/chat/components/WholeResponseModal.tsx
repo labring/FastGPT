@@ -595,6 +595,11 @@ export const WholeResponseContent = ({
                         <Box fontWeight={'bold'} fontSize={'sm'}>
                           {t(child.moduleName as any) || child.moduleName}
                         </Box>
+                        {child.runningTime !== undefined && (
+                          <Box fontSize={'xs'} color={'myGray.500'}>
+                            {child.runningTime.toFixed(2)}s
+                          </Box>
+                        )}
                         {child.totalPoints !== undefined && (
                           <Box fontSize={'xs'} color={'myGray.500'}>
                             {formatNumber(child.totalPoints)} points
@@ -1185,7 +1190,7 @@ const SideTabItem = ({
               {t(sideBarItem.moduleName as any, sideBarItem.moduleNameArgs)}
             </Box>
             <Box fontSize={'12px'} lineHeight={'16px'} color={'#667085'} letterSpacing={'0.5px'}>
-              {t(sideBarItem.runningTime as any) + 's'}
+              {sideBarItem.runningTime !== undefined ? `${sideBarItem.runningTime}s` : ''}
             </Box>
           </Box>
           <Box

@@ -76,6 +76,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
 
   const assistantResponses: AIChatItemValueItemType[] = [];
   const nodeResponses: ChatHistoryItemResType[] = [];
+  const startTime = Date.now();
   const capabilities: AgentCapability[] = [];
 
   try {
@@ -645,7 +646,8 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       totalPoints: 0, // Will be calculated by the dispatch layer
       childrenResponses: nodeResponses.length > 0 ? [...nodeResponses] : undefined,
       textOutput: answerText || undefined,
-      historyPreview
+      historyPreview,
+      runningTime: +((Date.now() - startTime) / 1000).toFixed(2)
       // Clear nodeResponses so we don't double-count — the nodeResponse itself carries childrenResponses
     };
 

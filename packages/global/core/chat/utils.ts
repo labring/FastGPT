@@ -185,7 +185,8 @@ export const filterPublicNodeResponseData = ({
     [FlowNodeTypeEnum.agent]: true,
     [FlowNodeTypeEnum.pluginOutput]: true,
     [FlowNodeTypeEnum.runApp]: true,
-    [FlowNodeTypeEnum.toolCall]: true
+    [FlowNodeTypeEnum.toolCall]: true,
+    [FlowNodeTypeEnum.tool]: true
   };
 
   const filedMap: Record<string, boolean> = responseDetail
@@ -193,12 +194,20 @@ export const filterPublicNodeResponseData = ({
         quoteList: true,
         moduleType: true,
         pluginOutput: true,
-        runningTime: true
+        runningTime: true,
+        moduleName: true,
+        moduleLogo: true,
+        nodeId: true,
+        id: true
       }
     : {
         moduleType: true,
         pluginOutput: true,
-        runningTime: true
+        runningTime: true,
+        moduleName: true,
+        moduleLogo: true,
+        nodeId: true,
+        id: true
       };
 
   return nodeRespones
@@ -206,7 +215,7 @@ export const filterPublicNodeResponseData = ({
     .map((item) => {
       const obj: DispatchNodeResponseType = {};
       for (let key in item) {
-        if (key === 'toolDetail' || key === 'pluginDetail') {
+        if (key === 'toolDetail' || key === 'pluginDetail' || key === 'childrenResponses') {
           // @ts-ignore
           obj[key] = filterPublicNodeResponseData({ nodeRespones: item[key], responseDetail });
         } else if (filedMap[key]) {
