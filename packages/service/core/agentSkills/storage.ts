@@ -6,8 +6,7 @@
  */
 
 import { S3PrivateBucket } from '../../common/s3/buckets/private';
-import type { ClientSession } from '../../common/mongo';
-import { getSkillSizeLimits } from './sandboxConfig';
+import { getSkillSizeLimits, checkHeapHeadroom } from './sandboxConfig';
 
 export type SkillStorageInfo = {
   bucket: string;
@@ -98,6 +97,15 @@ export async function downloadSkillPackage(params: DownloadSkillPackageParams): 
   const { storageInfo } = params;
   const { maxDownloadBytes } = getSkillSizeLimits();
 
+  // Verify heap headroom BEFORE establishing the S3 connection.
+  // If the check fails after downloadObject(), the HTTP stream is leaked
+  // because the catch block never runs (no try-catch wraps the connection).
+  const estimatedBytes =
+    storageInfo.size > 0
+      ? Math.min(storageInfo.size, maxDownloadBytes)
+      : Math.min(50 * 1024 * 1024, maxDownloadBytes);
+  checkHeapHeadroom(estimatedBytes);
+
   const bucket = new S3PrivateBucket();
 
   const response = await bucket.client.downloadObject({
@@ -111,18 +119,104 @@ export async function downloadSkillPackage(params: DownloadSkillPackageParams): 
   // Convert stream to buffer with size limit to prevent OOM
   const chunks: Buffer[] = [];
   let totalSize = 0;
-  for await (const chunk of response.body) {
-    const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-    totalSize += buf.length;
-    if (totalSize > maxDownloadBytes) {
-      throw new Error(
-        `Skill package exceeds maximum allowed size (${maxDownloadBytes / 1024 / 1024}MB)`
-      );
+
+  // Attach error listener to prevent unhandled stream errors from crashing the process
+  response.body.on('error', () => {
+    // Stream errors surface via the for-await loop; this listener prevents
+    // the error from becoming an unhandled 'error' event on the stream.
+  });
+
+  try {
+    for await (const chunk of response.body) {
+      const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      totalSize += buf.length;
+      if (totalSize > maxDownloadBytes) {
+        throw new Error(
+          `Skill package exceeds maximum allowed size (${maxDownloadBytes / 1024 / 1024}MB)`
+        );
+      }
+      chunks.push(buf);
     }
-    chunks.push(buf);
+  } catch (err) {
+    // Destroy the stream to free the underlying HTTP connection.
+    // Without this, a partially-consumed stream holds the connection open
+    // until GC or timeout, which under concurrency exhausts the S3 pool.
+    if (response.body && !response.body.destroyed) {
+      response.body.destroy();
+    }
+    throw err;
   }
 
   return Buffer.concat(chunks);
+}
+
+/**
+ * Stream skill package from MinIO/S3 directly to a writable stream (e.g. HTTP
+ * response).  Avoids buffering the entire ZIP in memory — each chunk is
+ * forwarded as it arrives.  The same size limit as downloadSkillPackage is
+ * enforced; when exceeded the S3 source stream is destroyed and an error is
+ * thrown so the caller can abort the response.
+ *
+ * IMPORTANT: The caller is responsible for setting appropriate response headers
+ * (Content-Type, Content-Disposition, etc.) *before* calling this function.
+ * Content-Length is set automatically from storageInfo.size when available.
+ */
+import type { Writable } from 'node:stream';
+
+export async function streamSkillPackageToResponse(
+  params: DownloadSkillPackageParams & {
+    res: Writable & { setHeader?: (name: string, value: string | number) => void };
+  }
+): Promise<void> {
+  const { storageInfo, res } = params;
+  const { maxDownloadBytes } = getSkillSizeLimits();
+
+  // Set Content-Length from stored metadata when available
+  if (storageInfo.size > 0 && res.setHeader) {
+    res.setHeader('Content-Length', storageInfo.size);
+  }
+
+  // Fast-fail when stored size already exceeds the limit
+  if (storageInfo.size > maxDownloadBytes) {
+    throw new Error(
+      `Skill package exceeds maximum allowed size (${maxDownloadBytes / 1024 / 1024}MB)`
+    );
+  }
+
+  const bucket = new S3PrivateBucket();
+  const response = await bucket.client.downloadObject({ key: storageInfo.key });
+
+  if (!response.body) {
+    throw new Error(`Failed to download skill package: ${storageInfo.key}`);
+  }
+
+  let totalSize = 0;
+
+  response.body.on('error', () => {
+    // Prevent unhandled stream errors; they surface via for-await
+  });
+
+  try {
+    for await (const chunk of response.body) {
+      const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      totalSize += buf.length;
+      if (totalSize > maxDownloadBytes) {
+        if (!response.body.destroyed) {
+          response.body.destroy();
+        }
+        throw new Error(
+          `Skill package exceeds maximum allowed size (${maxDownloadBytes / 1024 / 1024}MB)`
+        );
+      }
+      res.write(buf);
+    }
+    res.end();
+  } catch (err) {
+    if (response.body && !response.body.destroyed) {
+      response.body.destroy();
+    }
+    throw err;
+  }
 }
 
 /**
@@ -234,7 +328,7 @@ export async function listSessionArtifacts(sessionId: string): Promise<string[]>
   const bucket = new S3PrivateBucket();
 
   const { keys } = await bucket.client.listObjects({ prefix });
-  return keys.map((key) => key.replace(prefix, ''));
+  return keys.map((key: string) => key.replace(prefix, ''));
 }
 
 /**
@@ -254,8 +348,20 @@ export async function downloadSessionArtifact(
   }
 
   const chunks: Buffer[] = [];
-  for await (const chunk of response.body) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+
+  response.body.on('error', () => {
+    // Prevent unhandled stream error events; errors surface via for-await
+  });
+
+  try {
+    for await (const chunk of response.body) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    }
+  } catch (err) {
+    if (response.body && !response.body.destroyed) {
+      response.body.destroy();
+    }
+    throw err;
   }
 
   return Buffer.concat(chunks);

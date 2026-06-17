@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { authSkill } from '@fastgpt/service/support/permission/agentSkill/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { downloadSkillPackage } from '@fastgpt/service/core/agentSkills/storage';
+import { streamSkillPackageToResponse } from '@fastgpt/service/core/agentSkills/storage';
 import type { ExportSkillQuery } from '@fastgpt/global/core/agentSkills/api';
 import { AgentSkillTypeEnum } from '@fastgpt/global/core/agentSkills/constants';
 import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
@@ -43,17 +43,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     logger.debug('Exporting skill', { skillId, skillName: skill.name });
 
-    const zipBuffer = await downloadSkillPackage({ storageInfo: skill.currentStorage });
-
     const filename = `${skill.name}.zip`;
     res.setHeader('Content-Type', 'application/zip');
     res.setHeader(
       'Content-Disposition',
       `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`
     );
-    res.setHeader('Content-Length', zipBuffer.length);
     res.setHeader('Cache-Control', 'no-store');
-    res.status(200).end(zipBuffer);
+
+    // Stream directly from S3 to the HTTP response to avoid buffering
+    // the entire ZIP in memory (critical for large packages under load).
+    await streamSkillPackageToResponse({ storageInfo: skill.currentStorage, res });
 
     (async () => {
       addAuditLog({

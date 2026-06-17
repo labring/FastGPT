@@ -69,7 +69,7 @@ async function handler(req: ApiRequestProps): Promise<MutatePackageResponse> {
       }
     });
   } finally {
-    await Promise.allSettled(filepaths.map((p) => fs.unlink(p)));
+    multer.clearDiskTempFiles(filepaths);
   }
 }
 
