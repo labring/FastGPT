@@ -105,7 +105,6 @@ const DateRangePicker = ({
         py={1}
         borderRadius={'sm'}
         cursor={'pointer'}
-        bg={'myGray.50'}
         fontSize={'sm'}
         onClick={() => setShowSelected(true)}
         alignItems={'center'}

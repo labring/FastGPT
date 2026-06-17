@@ -9,7 +9,6 @@ import dayjs from 'dayjs';
 import DateRangePicker, {
   type DateRangeType
 } from '@fastgpt/web/components/common/DateRangePicker';
-import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { getChannelList, getDashboardV2 } from '@/web/core/ai/channel';
 import { getSystemModelList } from '@/web/core/ai/config';
@@ -394,61 +393,47 @@ const ModelDashboard = () => {
   return (
     <>
       <HStack spacing={4} justifyContent="space-between" mb={4}>
-        <HStack spacing={4}>
-          <HStack>
-            <FormLabel>{t('common:user.Time')}</FormLabel>
-            <Box>
-              <DateRangePicker
-                h={'36px'}
-                defaultDate={filterProps.dateRange}
-                dateRange={filterProps.dateRange}
-                onSuccess={handleDateRangeChange}
-              />
-            </Box>
-          </HStack>
-          <HStack>
-            <FormLabel>{t('account_model:channel_name')}</FormLabel>
-            <Box flex={'1 0 0'}>
-              <MySelect<string>
-                h={'36px'}
-                bg={'myGray.50'}
-                isSearch
-                list={channelList}
-                placeholder={t('account_model:select_channel')}
-                value={filterProps.channelId}
-                onChange={(val) => setFilterProps({ ...filterProps, channelId: val })}
-              />
-            </Box>
-          </HStack>
-          <HStack>
-            <FormLabel>{t('account_model:model_name')}</FormLabel>
-            <Box flex={'1 0 0'}>
-              <MySelect<string>
-                h={'36px'}
-                bg={'myGray.50'}
-                isSearch
-                list={modelList}
-                placeholder={t('account_model:select_model')}
-                value={filterProps.model}
-                onChange={(val) => setFilterProps({ ...filterProps, model: val })}
-              />
-            </Box>
-          </HStack>
+        <HStack spacing={2}>
+          <DateRangePicker
+            h={'36px'}
+            defaultDate={filterProps.dateRange}
+            dateRange={filterProps.dateRange}
+            onSuccess={handleDateRangeChange}
+          />
+          <MySelect<string>
+            h={'36px'}
+            isSearch
+            formLabel={t('account_model:channel_name')}
+            w={'180px'}
+            fontWeight={'normal'}
+            list={channelList}
+            placeholder={t('account_model:select_channel')}
+            value={filterProps.channelId}
+            onChange={(val) => setFilterProps({ ...filterProps, channelId: val })}
+          />
+          <MySelect<string>
+            h={'36px'}
+            isSearch
+            formLabel={t('account_model:model_name')}
+            w={'180px'}
+            fontWeight={'normal'}
+            list={modelList}
+            placeholder={t('account_model:select_model')}
+            value={filterProps.model}
+            onChange={(val) => setFilterProps({ ...filterProps, model: val })}
+          />
           {viewMode === 'chart' && (
-            <HStack>
-              <FormLabel>{t('account_model:timespan_label')}</FormLabel>
-              <Box flex={'1 0 0'}>
-                <MySelect<'minute' | 'hour' | 'day'>
-                  h={'36px'}
-                  bg={'myGray.50'}
-                  list={timespanOptions}
-                  value={filterProps.timespan}
-                  onChange={(val) => {
-                    setFilterProps({ ...filterProps, timespan: val });
-                  }}
-                />
-              </Box>
-            </HStack>
+            <MySelect<'minute' | 'hour' | 'day'>
+              h={'36px'}
+              formLabel={t('account_model:timespan_label')}
+              w={'180px'}
+              fontWeight={'normal'}
+              list={timespanOptions}
+              value={filterProps.timespan}
+              onChange={(val) => {
+                setFilterProps({ ...filterProps, timespan: val });
+              }}
+            />
           )}
         </HStack>
 

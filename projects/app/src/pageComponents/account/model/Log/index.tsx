@@ -22,7 +22,6 @@ import DateRangePicker, {
   type DateRangeType
 } from '@fastgpt/web/components/common/DateRangePicker';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
@@ -166,60 +165,48 @@ const ChannelLog = () => {
 
   return (
     <>
-      <Flex alignItems={'center'} gap={3} mb={4} flexWrap={'nowrap'}>
-        <HStack flexShrink={0}>
-          <FormLabel>{t('common:user.Time')}</FormLabel>
-          <DateRangePicker
-            h={'36px'}
-            defaultDate={filterProps.dateRange}
-            dateRange={filterProps.dateRange}
-            onSuccess={(e) => setFilterProps({ ...filterProps, dateRange: e })}
-          />
-        </HStack>
-        <HStack flexShrink={0}>
-          <FormLabel>{t('account_model:channel_name')}</FormLabel>
-          <Box flex={'1 0 0'}>
-            <MySelect<string>
-              h={'36px'}
-              bg={'myGray.50'}
-              isSearch
-              list={channelList}
-              placeholder={t('account_model:select_channel')}
-              value={filterProps.channelId}
-              onChange={(val) => setFilterProps({ ...filterProps, channelId: val })}
-            />
-          </Box>
-        </HStack>
-        <HStack flexShrink={0}>
-          <FormLabel>{t('account_model:model_name')}</FormLabel>
-          <Box flex={'1 0 0'}>
-            <MySelect<string>
-              h={'36px'}
-              bg={'myGray.50'}
-              isSearch
-              list={modelList}
-              placeholder={t('account_model:select_model')}
-              value={filterProps.model}
-              onChange={(val) => setFilterProps({ ...filterProps, model: val })}
-            />
-          </Box>
-        </HStack>
-        <HStack flexShrink={0} flex={'0 0 200px'}>
-          <FormLabel>{t('account_model:log_status')}</FormLabel>
-          <Box flex={'1 0 0'}>
-            <MySelect<'all' | 'success' | 'error'>
-              h={'36px'}
-              bg={'myGray.50'}
-              list={[
-                { label: t('common:All'), value: 'all' },
-                { label: t('common:Success'), value: 'success' },
-                { label: t('common:failed'), value: 'error' }
-              ]}
-              value={filterProps.code_type}
-              onChange={(val) => setFilterProps({ ...filterProps, code_type: val })}
-            />
-          </Box>
-        </HStack>
+      <Flex alignItems={'center'} gap={2} mb={4} flexWrap={'nowrap'}>
+        <DateRangePicker
+          h={'36px'}
+          defaultDate={filterProps.dateRange}
+          dateRange={filterProps.dateRange}
+          onSuccess={(e) => setFilterProps({ ...filterProps, dateRange: e })}
+        />
+        <MySelect<string>
+          h={'36px'}
+          isSearch
+          formLabel={t('account_model:channel_name')}
+          w={'180px'}
+          fontWeight={'normal'}
+          list={channelList}
+          placeholder={t('account_model:select_channel')}
+          value={filterProps.channelId}
+          onChange={(val) => setFilterProps({ ...filterProps, channelId: val })}
+        />
+        <MySelect<string>
+          h={'36px'}
+          isSearch
+          formLabel={t('account_model:model_name')}
+          w={'200px'}
+          fontWeight={'normal'}
+          list={modelList}
+          placeholder={t('account_model:select_model')}
+          value={filterProps.model}
+          onChange={(val) => setFilterProps({ ...filterProps, model: val })}
+        />
+        <MySelect<'all' | 'success' | 'error'>
+          h={'36px'}
+          formLabel={t('account_model:log_status')}
+          w={'150px'}
+          fontWeight={'normal'}
+          list={[
+            { label: t('common:All'), value: 'all' },
+            { label: t('common:Success'), value: 'success' },
+            { label: t('common:failed'), value: 'error' }
+          ]}
+          value={filterProps.code_type}
+          onChange={(val) => setFilterProps({ ...filterProps, code_type: val })}
+        />
         {isRoot && (
           <>
             <Box flex={1} />
