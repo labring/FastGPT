@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Box, Flex, Switch } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -27,16 +27,16 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
   const { t } = useTranslation();
   const { copyData } = useCopyData();
 
-  const { register, watch, setValue, reset } = useForm({
+  const { register, control, getValues, setValue, reset } = useForm({
     defaultValues: defaultPlaygroundVisibilityForm
   });
 
-  const showCite = watch('showCite');
-  const showFullText = watch('showFullText');
-  const canDownloadSource = watch('canDownloadSource');
-  const showRunningStatus = watch('showRunningStatus');
-  const showSkillReferences = watch('showSkillReferences');
-  const showWholeResponse = watch('showWholeResponse');
+  const showCite = useWatch({ control, name: 'showCite' });
+  const showFullText = useWatch({ control, name: 'showFullText' });
+  const canDownloadSource = useWatch({ control, name: 'canDownloadSource' });
+  const showRunningStatus = useWatch({ control, name: 'showRunningStatus' });
+  const showSkillReferences = useWatch({ control, name: 'showSkillReferences' });
+  const showWholeResponse = useWatch({ control, name: 'showWholeResponse' });
 
   const playgroundLink = useMemo(() => {
     if (typeof window !== 'undefined') {
@@ -72,7 +72,7 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
   );
 
   const autoSave = async () => {
-    const values = watch();
+    const values = getValues();
     await saveConfig(values);
   };
 
@@ -127,13 +127,8 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
           </Flex>
           <Flex alignItems={'center'}>
             <Flex alignItems={'center'} flex={'0 0 127px'}>
-              <FormLabel fontSize={'12px'}>
-                {t('common:core.chat.response.Read complete response')}
-              </FormLabel>
-              <QuestionTip
-                ml={1}
-                label={t('common:core.chat.response.Read complete response tips')}
-              />
+              <FormLabel fontSize={'12px'}>{t('app:publish.show_whole_response')}</FormLabel>
+              <QuestionTip ml={1} label={t('app:publish.show_whole_response_tip')} />
             </Flex>
             <Switch
               {...register('showWholeResponse', {

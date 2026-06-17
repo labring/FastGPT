@@ -46,6 +46,9 @@ const withUseAgentSandbox = (historyItem: ChatItemMiniType, useAgentSandbox: boo
  * 这里统一兜底，避免报错卡片显示“无输出”。
  */
 const getNodeErrorText = (item: ChatHistoryItemResType) => {
+  // 开启错误捕获的节点会把错误交给 catch 分支继续执行，聊天气泡不应把它当最终失败展示。
+  if (item.errorCaptured) return;
+
   return item.errorText || getErrText(item.error);
 };
 
@@ -70,7 +73,8 @@ export const chatItemResponsePreviewProjection = {
   'data.quoteList.score': 1,
   'data.toolId': 1,
   'data.toolRes.citeLinks': 1,
-  'data.errorText': 1
+  'data.errorText': 1,
+  'data.errorCaptured': 1
 } as const;
 
 export function transformPreviewHistories(

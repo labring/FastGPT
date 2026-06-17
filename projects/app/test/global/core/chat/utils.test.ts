@@ -297,6 +297,73 @@ describe('addStatisticalDataToHistoryItem', () => {
     });
   });
 
+  it('ignores captured node errors when building chat bubble error text', () => {
+    const historyItem: ChatItemMiniType = {
+      obj: ChatRoleEnum.AI,
+      value: [
+        {
+          text: {
+            content: 'done'
+          }
+        }
+      ],
+      responseData: [
+        {
+          id: 'http-response',
+          nodeId: 'http-node',
+          moduleName: 'HTTP 请求',
+          moduleType: FlowNodeTypeEnum.httpRequest468,
+          errorText: 'upstream timeout',
+          errorCaptured: true
+        },
+        {
+          id: 'answer-response',
+          nodeId: 'answer-node',
+          moduleName: '指定回复',
+          moduleType: FlowNodeTypeEnum.answerNode,
+          textOutput: 'fallback answer'
+        }
+      ]
+    };
+
+    expect(addStatisticalDataToHistoryItem(historyItem).errorText).toBeUndefined();
+  });
+
+  it('uses later uncaptured errors after captured node errors', () => {
+    const historyItem: ChatItemMiniType = {
+      obj: ChatRoleEnum.AI,
+      value: [
+        {
+          text: {
+            content: 'done'
+          }
+        }
+      ],
+      responseData: [
+        {
+          id: 'http-response',
+          nodeId: 'http-node',
+          moduleName: 'HTTP 请求',
+          moduleType: FlowNodeTypeEnum.httpRequest468,
+          errorText: 'captured timeout',
+          errorCaptured: true
+        },
+        {
+          id: 'agent-response',
+          nodeId: 'agent-node',
+          moduleName: 'Agent',
+          moduleType: FlowNodeTypeEnum.agent,
+          errorText: 'agent stopped'
+        }
+      ]
+    };
+
+    expect(addStatisticalDataToHistoryItem(historyItem).errorText).toEqual({
+      moduleName: 'Agent',
+      errorText: 'agent stopped'
+    });
+  });
+
   it('does not use HTTP result error as chat bubble error text when node error is absent', () => {
     const historyItem: ChatItemMiniType = {
       obj: ChatRoleEnum.AI,

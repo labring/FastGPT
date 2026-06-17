@@ -708,8 +708,11 @@ export const useChatGenerate = ({
 
                 const responseData = mergeNodeResponseDataByIdAndParent(item.responseData || []);
                 if (!abortSignal?.signal?.aborted) {
-                  const uncaughtErr = responseData.find((r) => r.error)?.error;
-                  const err = uncaughtErr ?? responseData[responseData.length - 1]?.errorText;
+                  const uncaughtErr = responseData.find((r) => r.error && !r.errorCaptured)?.error;
+                  const lastUncapturedErrorText = [...responseData]
+                    .reverse()
+                    .find((r) => r.errorText && !r.errorCaptured)?.errorText;
+                  const err = uncaughtErr ?? lastUncapturedErrorText;
                   const errorMsg = err ? t(getErrText(err)) : undefined;
 
                   return {

@@ -24,7 +24,7 @@ import { JSONPath } from 'jsonpath-plus';
 import { getSecretValue } from '../../../../common/secret/utils';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { getLogger, LogCategories } from '../../../../common/logger';
-import { formatHttpError } from '../utils';
+import { formatHttpError, getNodeErrResponse } from '../utils';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '../../../../common/system/utils';
 import { serviceRequestMaxContentLength } from '../../../../common/system/constants';
 import { axios, httpsCertificateIgnoreAgent } from '../../../../common/api/axios';
@@ -83,7 +83,9 @@ type HttpResponse = DispatchNodeResultType<
     [key: string]: any;
   },
   {
-    [NodeOutputKeyEnum.error]?: string;
+    [NodeOutputKeyEnum.errorText]: string; //未使用，仅作类型。
+    [NodeOutputKeyEnum.error]: string; // 适配字段
+    [NodeOutputKeyEnum.httpRawError]?: ReturnType<typeof formatHttpError>;
   }
 >;
 
@@ -255,6 +257,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       .filter(
         (item) =>
           item.id !== NodeOutputKeyEnum.error &&
+          item.id !== NodeOutputKeyEnum.httpRawError &&
           item.id !== NodeOutputKeyEnum.httpRawResponse &&
           item.id !== NodeOutputKeyEnum.addOutputParam
       )
@@ -317,17 +320,21 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       };
     }
 
-    return {
-      error: {
-        [NodeOutputKeyEnum.error]: getErrText(error)
+    const errText = getErrText(error);
+    const errObj = formatHttpError(error);
+    return getNodeErrResponse({
+      error: errText,
+      customErr: {
+        [NodeOutputKeyEnum.error]: errText,
+        [NodeOutputKeyEnum.httpRawError]: errObj
       },
-      [DispatchNodeResponseKeyEnum.nodeResponse]: {
+      responseData: {
         params: Object.keys(params).length > 0 ? params : undefined,
         body: Object.keys(formattedRequestBody).length > 0 ? formattedRequestBody : undefined,
         headers: Object.keys(publicHeaders).length > 0 ? publicHeaders : undefined,
-        httpResult: { error: formatHttpError(error) }
+        httpErrorResult: errObj
       }
-    };
+    });
   }
 };
 

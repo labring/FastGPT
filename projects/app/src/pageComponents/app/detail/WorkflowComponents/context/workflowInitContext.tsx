@@ -170,11 +170,14 @@ const WorkflowInitContextProvider = ({
         outputs: node.data.outputs.map((output) => {
           return {
             key: output.key,
+            id: output.id,
             label: output.label,
+            type: output.type,
             valueType: output.valueType,
             invalid: output.invalid
           };
-        })
+        }),
+        catchError: node.data.catchError
       });
 
       if (node.data.parentNodeId) {

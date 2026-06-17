@@ -28,11 +28,9 @@ const WholeResponseModal = dynamic(() => import('../../../components/WholeRespon
 
 const CitationListCard = React.memo(function CitationListCard({
   items,
-  isPc,
   onOpenAll
 }: {
   items: CitationRenderItem[];
-  isPc: boolean;
   onOpenAll: () => void;
 }) {
   const { t } = useTranslation();
@@ -222,9 +220,6 @@ const ResponseTags = ({
         : {})
     };
   }, [historyItem, isShowCite]);
-  const quoteList: SearchDataResponseQuoteListItemType[] = responseTags.totalQuoteList ?? [];
-  const toolCiteLinks: ToolCiteLinksType[] = responseTags.toolCiteLinks ?? [];
-
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
 
   const notSharePage = useMemo(() => chatType !== 'share', [chatType]);
@@ -237,6 +232,8 @@ const ResponseTags = ({
 
   const citationRenderList: CitationRenderItem[] = useMemo(() => {
     if (!isShowCite) return [];
+    const quoteList: SearchDataResponseQuoteListItemType[] = responseTags.totalQuoteList ?? [];
+    const toolCiteLinks: ToolCiteLinksType[] = responseTags.toolCiteLinks ?? [];
 
     // Dataset citations
     const datasetItems = Object.values(
@@ -279,7 +276,7 @@ const ResponseTags = ({
     }));
 
     return [...datasetItems, ...linkItems];
-  }, [quoteList, toolCiteLinks, onOpenCiteModal, isShowCite]);
+  }, [responseTags, onOpenCiteModal, isShowCite]);
 
   const notEmptyTags =
     (showFooterMeta && notSharePage) || (showFooterMeta && isPc && durationSeconds > 0);
@@ -288,11 +285,7 @@ const ResponseTags = ({
     <>
       {/* quote */}
       {citationRenderList.length > 0 && (
-        <CitationListCard
-          items={citationRenderList}
-          isPc={isPc}
-          onOpenAll={() => onOpenCiteModal()}
-        />
+        <CitationListCard items={citationRenderList} onOpenAll={() => onOpenCiteModal()} />
       )}
 
       {notEmptyTags && (
@@ -306,14 +299,14 @@ const ResponseTags = ({
           )}
 
           {showFooterMeta && notSharePage && showWholeResponse && (
-            <MyTooltip label={t('common:core.chat.response.Read complete response tips')}>
+            <MyTooltip label={t('chat:response.read_complete_response_tips')}>
               <MyTag
                 colorSchema="gray"
                 type="borderSolid"
                 cursor={'pointer'}
                 onClick={onOpenWholeModal}
               >
-                {t('common:core.chat.response.Read complete response')}
+                {t('chat:response.read_complete_response')}
               </MyTag>
             </MyTooltip>
           )}
