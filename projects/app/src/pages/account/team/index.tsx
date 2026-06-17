@@ -117,9 +117,9 @@ const Team = () => {
           justify={'space-between'}
         >
           <Flex align={'center'}>
-            <Flex gap={2} color={'myGray.900'}>
+            <Flex gap={2} color={'myGray.900'} alignItems={'center'}>
               <Icon name="support/user/usersLight" w={'1.25rem'} h={'1.25rem'} />
-              <Box fontWeight={'500'} fontSize={'1rem'}>
+              <Box fontSize={'1rem'}>
                 {t('common:team')}
               </Box>
             </Flex>

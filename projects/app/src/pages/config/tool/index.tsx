@@ -62,7 +62,8 @@ const ToolProvider = () => {
   return (
     <AccountContainer>
       <Flex h={'100%'} flexDirection={'column'} py={4} px={6}>
-        <Flex alignItems={'center'} flexShrink={0}>
+        <Flex alignItems={'center'} flexShrink={0} fontSize={'16px'}>
+          <MyIcon mr={2} name={'common/settingLight'} w={'20px'} />
           <Box flex={'1'} color={'myGray.900'}>
             {t('common:system_tool_manage')}
           </Box>

@@ -41,7 +41,7 @@ const ModelProvider = () => {
 
   const header = (
     <Flex alignItems={'center'} position={'relative'} flex={1}>
-      <Box fontSize={'lg'} fontWeight={'medium'} lineHeight="26px" color={'black'}>
+      <Box fontSize={'lg'} fontWeight={'medium'} color={'black'}>
         {t('account_model:model_management')}
       </Box>
       <Box position={'absolute'} left={'50%'} transform={'translateX(-50%)'}>

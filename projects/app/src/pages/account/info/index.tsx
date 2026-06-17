@@ -197,7 +197,6 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
     fontFamily: '"PingFang SC"',
     fontSize: '16px',
     fontStyle: 'normal',
-    fontWeight: 500,
     lineHeight: '24px',
     letterSpacing: '0.15px'
   };

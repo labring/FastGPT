@@ -104,8 +104,9 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
     >
       <Box display={['block', 'flex']} alignItems={'center'}>
         <Box flex={1}>
-          <Flex alignItems={'flex-end'}>
-            <Box color={'myGray.900'} fontSize={'lg'}>
+          <Flex alignItems={'center'}>
+            <MyIcon mr={2} name={'key'} w={'20px'} />
+            <Box color={'myGray.900'} fontSize={'16px'}>
               {t('common:support.openapi.Api manager')}
             </Box>
             {feConfigs?.docUrl && (
@@ -116,7 +117,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
                     getDocPath('/docs/introduction/development/openapi/intro')
                   }
                   target={'_blank'}
-                  ml={1}
+                  ml={4}
                   color={'primary.500'}
                   fontSize={'sm'}
                 >
