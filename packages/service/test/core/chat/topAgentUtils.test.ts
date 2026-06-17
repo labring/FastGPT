@@ -4,11 +4,6 @@ import {
   SANDBOX_SHELL_TOOL_NAME
 } from '@fastgpt/global/core/ai/sandbox/tools';
 
-vi.mock('@fastgpt/service/core/app/tool/controller', () => ({
-  getSystemToolsWithInstalled: vi.fn(async () => []),
-  getMyTools: vi.fn(async () => [])
-}));
-
 vi.mock('@fastgpt/service/core/app/tool/workflowTool', () => ({
   getUserAvaliableWorkflowTools: vi.fn(async () => [])
 }));

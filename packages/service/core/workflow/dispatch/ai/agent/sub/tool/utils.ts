@@ -60,7 +60,7 @@ type AgentRuntimeNode = RuntimeNodeItemType & {
 /**
  * 将 Agent 选择的工具配置转换成 LLM function calling 与 runtime 执行共用的工具描述。
  *
- * 这里刻意不调用面向前端预览的 getChildAppPreviewNode：Agent runtime 只关心鉴权后的执行
+ * 这里刻意不调用面向前端预览的 getClientToolPreviewNode：Agent runtime 只关心鉴权后的执行
  * 节点、toolConfig 和 JSON Schema。App 类工具统一读取当前发布版本；MCP/HTTP 工具集只使用
  * 当前版本节点里保存的 toolList，不额外兼容旧版 MCP 数据源。
  */

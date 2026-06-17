@@ -5,7 +5,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
-import { getChildAppPreviewNode } from './tool/controller';
+import { getClientToolPreviewNode } from './tool/utils/client';
 import { authAppByTmbId } from '../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -46,7 +46,7 @@ export async function rewriteAppWorkflowToDetail({
 
     try {
       const [preview] = await Promise.all([
-        getChildAppPreviewNode({
+        getClientToolPreviewNode({
           appId: id,
           versionId,
           lang

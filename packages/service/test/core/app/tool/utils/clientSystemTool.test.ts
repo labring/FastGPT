@@ -16,9 +16,9 @@ vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
   }
 }));
 
-import { getToolPreviewNode } from '@fastgpt/service/core/app/tool/presenter';
+import { getClientSystemToolPreviewNode } from '@fastgpt/service/core/app/tool/utils/client';
 
-describe('getToolPreviewNode', () => {
+describe('getClientSystemToolPreviewNode', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getInstance.mockReturnValue({
@@ -65,7 +65,7 @@ describe('getToolPreviewNode', () => {
       }
     });
 
-    const result = await getToolPreviewNode({
+    const result = await getClientSystemToolPreviewNode({
       pluginId: 'systemTool-weather',
       versionId: '1.0.0',
       lang: 'en'
@@ -118,7 +118,7 @@ describe('getToolPreviewNode', () => {
       }
     });
 
-    const result = await getToolPreviewNode({
+    const result = await getClientSystemToolPreviewNode({
       pluginId: 'systemTool-weather',
       lang: 'en'
     });
@@ -148,7 +148,7 @@ describe('getToolPreviewNode', () => {
       hasSystemSecret: false
     });
 
-    const result = await getToolPreviewNode({
+    const result = await getClientSystemToolPreviewNode({
       pluginId: 'systemTool-weather',
       getLatestVersion: true,
       lang: 'en'
@@ -177,7 +177,7 @@ describe('getToolPreviewNode', () => {
       hasSystemSecret: false
     });
 
-    const result = await getToolPreviewNode({
+    const result = await getClientSystemToolPreviewNode({
       pluginId: 'systemTool-weather',
       versionId: '',
       lang: 'en'
@@ -233,7 +233,7 @@ describe('getToolPreviewNode', () => {
       }
     });
 
-    const result = await getToolPreviewNode({
+    const result = await getClientSystemToolPreviewNode({
       pluginId: 'commercial-workflow-tool',
       versionId: 'workflow-version',
       lang: 'en'

@@ -11,7 +11,11 @@ import {
   type NodeTemplateListItemType
 } from '@fastgpt/global/core/workflow/type/node';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { getToolPreviewNode, getAppToolTemplates, getAppToolPaths } from '@/web/core/app/api/tool';
+import {
+  getClientToolPreviewNode,
+  getAppToolTemplates,
+  getAppToolPaths
+} from '@/web/core/app/api/tool';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { getTeamAppTemplates } from '@/web/core/app/api/tool';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
@@ -269,7 +273,7 @@ const RenderList = React.memo(function RenderList({
 
   const { runAsync: onClickAdd, loading: isLoading } = useRequest(
     async (template: NodeTemplateListItemType) => {
-      const res = await getToolPreviewNode({ appId: template.id, versionId: '' });
+      const res = await getClientToolPreviewNode({ appId: template.id, versionId: '' });
       const isToolSetTemplate = template.flowNodeType === FlowNodeTypeEnum.toolSet;
 
       if (!isToolSetTemplate) {

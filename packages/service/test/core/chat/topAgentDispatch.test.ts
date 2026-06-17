@@ -17,11 +17,6 @@ vi.mock('@fastgpt/service/core/ai/model', () => ({
   }))
 }));
 
-vi.mock('@fastgpt/service/core/app/tool/controller', () => ({
-  getSystemToolsWithInstalled: vi.fn(async () => []),
-  getMyTools: vi.fn(async () => [])
-}));
-
 vi.mock('@fastgpt/service/core/app/tool/workflowTool', () => ({
   getUserAvaliableWorkflowTools: vi.fn(async () => [])
 }));
