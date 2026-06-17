@@ -45,7 +45,8 @@ export function usePagination<DataT, ResT = {}>(
     pollingInterval,
     pollingWhenHidden = false,
     storeToQuery = false,
-    disabled = false
+    disabled = false,
+    scrollContainerRef
   }: {
     defaultPageSize?: number;
     defaultPageNum?: number;
@@ -61,6 +62,8 @@ export function usePagination<DataT, ResT = {}>(
     pollingWhenHidden?: boolean;
     storeToQuery?: boolean;
     disabled?: boolean;
+    /** 滚动容器引用，用于在切换页面时自动滚动到顶部（仅在 type='button' 时生效） */
+    scrollContainerRef?: RefObject<HTMLDivElement>;
   }
 ) {
   const router = useRouter();
@@ -153,6 +156,11 @@ export function usePagination<DataT, ResT = {}>(
           }
         } else {
           setData(res.list);
+        }
+
+        // Scroll to top after page change for button-type pagination
+        if (type !== 'scroll' && scrollContainerRef?.current) {
+          scrollContainerRef.current.scrollTop = 0;
         }
 
         onChange?.(num);

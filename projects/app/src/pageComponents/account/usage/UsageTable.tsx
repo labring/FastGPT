@@ -17,7 +17,7 @@ import { type UsageListItemType } from '@fastgpt/global/support/wallet/usage/typ
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import dayjs from 'dayjs';
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef } from 'react';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { getUserUsages } from '@/web/support/wallet/usage/api';
@@ -70,6 +70,8 @@ const UsageTableList = ({
     usageSources
   ]);
 
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
   const {
     data: usages,
     isLoading,
@@ -78,7 +80,8 @@ const UsageTableList = ({
   } = usePagination(getUserUsages, {
     defaultPageSize: 20,
     params: requestParams,
-    refreshDeps: [requestParams]
+    refreshDeps: [requestParams],
+    scrollContainerRef
   });
 
   const [usageDetail, setUsageDetail] = useState<UsageListItemType>();
@@ -143,7 +146,7 @@ const UsageTableList = ({
           onConfirm={exportUsage}
         />
       </Flex>
-      <TableContainer mt={3} flex={'1 0 0'} h={0} overflowY={'auto'}>
+      <TableContainer ref={scrollContainerRef} mt={3} flex={'1 0 0'} h={0} overflowY={'auto'}>
         <Table>
           <Thead>
             <Tr>
