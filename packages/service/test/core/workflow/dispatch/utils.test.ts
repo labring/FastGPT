@@ -1145,7 +1145,6 @@ describe('getNodeErrResponse', () => {
   it('should return proper error response structure', () => {
     const result = getNodeErrResponse({ error: 'test error' });
     expect(result.error[NodeOutputKeyEnum.errorText]).toBe('test error');
-    expect(result.error[NodeOutputKeyEnum.error]).toBe('test error');
     expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toHaveProperty(
       'errorText',
       'test error'
@@ -1160,7 +1159,6 @@ describe('getNodeErrResponse', () => {
     });
     expect(result.error).toEqual({
       [NodeOutputKeyEnum.errorText]: 'fail',
-      [NodeOutputKeyEnum.error]: 'fail',
       code: 500,
       detail: 'internal'
     });
@@ -1199,8 +1197,7 @@ describe('getNodeErrResponse', () => {
       customErr: 'not-object' as any
     });
     expect(result.error).toEqual({
-      [NodeOutputKeyEnum.errorText]: 'fail',
-      [NodeOutputKeyEnum.error]: 'fail'
+      [NodeOutputKeyEnum.errorText]: 'fail'
     });
   });
 });
