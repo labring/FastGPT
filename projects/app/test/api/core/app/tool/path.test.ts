@@ -4,6 +4,7 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 const mocks = vi.hoisted(() => ({
   getLocale: vi.fn(),
   getSystemToolDetail: vi.fn(),
+  getSystemToolDisplayInfo: vi.fn(),
   getInstance: vi.fn()
 }));
 
@@ -24,22 +25,23 @@ describe('system tool path handler', () => {
     vi.clearAllMocks();
     mocks.getLocale.mockReturnValue('en');
     mocks.getInstance.mockReturnValue({
-      getSystemToolDetail: mocks.getSystemToolDetail
+      getSystemToolDetail: mocks.getSystemToolDetail,
+      getSystemToolDisplayInfo: mocks.getSystemToolDisplayInfo
     });
   });
 
   it('returns empty paths when sourceId is empty', async () => {
     const result = await handler(
-      { query: {} } as ApiRequestProps<{}, { sourceId?: string }>,
+      { query: {} } as ApiRequestProps<Record<string, never>, { sourceId?: string }>,
       {} as ApiResponseType<any>
     );
 
     expect(result).toEqual([]);
-    expect(mocks.getSystemToolDetail).not.toHaveBeenCalled();
+    expect(mocks.getSystemToolDisplayInfo).not.toHaveBeenCalled();
   });
 
   it('returns current top-level system tool path', async () => {
-    mocks.getSystemToolDetail.mockResolvedValueOnce({
+    mocks.getSystemToolDisplayInfo.mockResolvedValueOnce({
       name: 'Weather'
     });
 
@@ -49,7 +51,7 @@ describe('system tool path handler', () => {
           sourceId: 'systemTool-weather',
           type: 'current'
         }
-      } as ApiRequestProps<{}, { sourceId: string; type: 'current' }>,
+      } as ApiRequestProps<Record<string, never>, { sourceId: string; type: 'current' }>,
       {} as ApiResponseType<any>
     );
 
@@ -59,15 +61,16 @@ describe('system tool path handler', () => {
         parentName: 'Weather'
       }
     ]);
-    expect(mocks.getSystemToolDetail).toHaveBeenCalledWith({
+    expect(mocks.getSystemToolDisplayInfo).toHaveBeenCalledWith({
       pluginId: 'systemTool-weather',
       lang: 'en',
       source: 'system'
     });
+    expect(mocks.getSystemToolDetail).not.toHaveBeenCalled();
   });
 
   it('returns parent and child paths for system toolset child', async () => {
-    mocks.getSystemToolDetail.mockImplementation(({ pluginId }) =>
+    mocks.getSystemToolDisplayInfo.mockImplementation(({ pluginId }) =>
       Promise.resolve({
         name: pluginId === 'systemTool-map' ? 'Map' : 'Geocode'
       })
@@ -79,7 +82,7 @@ describe('system tool path handler', () => {
           sourceId: 'systemTool-map/geocode',
           type: 'current'
         }
-      } as ApiRequestProps<{}, { sourceId: string; type: 'current' }>,
+      } as ApiRequestProps<Record<string, never>, { sourceId: string; type: 'current' }>,
       {} as ApiResponseType<any>
     );
 
@@ -96,7 +99,7 @@ describe('system tool path handler', () => {
   });
 
   it('returns only parent path when querying parent of system toolset child', async () => {
-    mocks.getSystemToolDetail.mockResolvedValueOnce({
+    mocks.getSystemToolDisplayInfo.mockResolvedValueOnce({
       name: 'Map'
     });
 
@@ -106,7 +109,7 @@ describe('system tool path handler', () => {
           sourceId: 'systemTool-map/geocode',
           type: 'parent'
         }
-      } as ApiRequestProps<{}, { sourceId: string; type: 'parent' }>,
+      } as ApiRequestProps<Record<string, never>, { sourceId: string; type: 'parent' }>,
       {} as ApiResponseType<any>
     );
 
@@ -116,6 +119,7 @@ describe('system tool path handler', () => {
         parentName: 'Map'
       }
     ]);
-    expect(mocks.getSystemToolDetail).toHaveBeenCalledTimes(1);
+    expect(mocks.getSystemToolDisplayInfo).toHaveBeenCalledTimes(1);
+    expect(mocks.getSystemToolDetail).not.toHaveBeenCalled();
   });
 });

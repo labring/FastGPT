@@ -375,6 +375,184 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
   });
 });
 
+describe('SystemToolRepo.getSystemToolDisplayInfo', () => {
+  it('returns workflow tool display metadata without loading app version schemas', async () => {
+    mocks.findSystemTool.mockResolvedValue({
+      pluginId: 'systemTool-workflow-tool',
+      status: 'Normal',
+      currentCost: 3,
+      hasTokenFee: true,
+      systemKeyCost: 4,
+      pluginOrder: 5,
+      originCost: 6,
+      hideTags: ['hidden-user'],
+      promoteTags: ['vip'],
+      customConfig: {
+        name: 'Workflow Tool',
+        avatar: 'workflow.svg',
+        intro: 'Workflow intro',
+        toolDescription: 'Workflow description',
+        version: 'workflow-version',
+        tags: ['workflow'],
+        associatedPluginId: 'app-id',
+        author: 'Custom Author',
+        userGuide: 'Guide'
+      }
+    });
+
+    const tool = await SystemToolRepo.getInstance().getSystemToolDisplayInfo({
+      pluginId: 'systemTool-workflow-tool'
+    });
+
+    expect(tool).toMatchObject({
+      id: 'systemTool-workflow-tool',
+      name: 'Workflow Tool',
+      avatar: 'workflow.svg',
+      intro: 'Workflow intro',
+      toolDescription: 'Workflow description',
+      version: 'workflow-version',
+      currentCost: 3,
+      systemKeyCost: 4,
+      hasTokenFee: true
+    });
+    expect(tool).not.toHaveProperty('inputSchema');
+    expect(tool).not.toHaveProperty('outputSchema');
+    expect(tool).not.toHaveProperty('secretSchema');
+    expect(mocks.findAppById).not.toHaveBeenCalled();
+    expect(mocks.getAppLatestVersion).not.toHaveBeenCalled();
+    expect(mocks.getTool).not.toHaveBeenCalled();
+    expect(mocks.listTools).not.toHaveBeenCalled();
+  });
+
+  it('returns toolset child display metadata without child schemas', async () => {
+    const inputSchema = {
+      type: 'object',
+      properties: {
+        city: { type: 'string' }
+      }
+    };
+    const outputSchema = {
+      type: 'object',
+      properties: {
+        weather: { type: 'string' }
+      }
+    };
+
+    mocks.findSystemTool.mockResolvedValue(undefined);
+    mocks.listTools.mockResolvedValue([
+      {
+        source: 'system',
+        isToolset: true,
+        name: { en: 'Weather' },
+        description: { en: 'Weather intro' },
+        pluginId: 'weather',
+        version: '1.0.0',
+        icon: 'weather.svg',
+        tags: ['life'],
+        toolDescription: 'Weather tool',
+        hasSecret: false,
+        children: [
+          {
+            id: 'forecast',
+            name: { en: 'Forecast' },
+            description: { en: 'Forecast intro' },
+            toolDescription: 'Forecast tool',
+            icon: 'forecast.svg',
+            inputSchema,
+            outputSchema
+          }
+        ]
+      }
+    ]);
+    mocks.findSystemTools.mockResolvedValue([
+      {
+        pluginId: 'systemTool-weather/forecast',
+        currentCost: 2,
+        systemKeyCost: 1,
+        customConfig: {
+          name: 'Forecast',
+          version: '1.0.0',
+          toolDescription: 'Configured forecast'
+        }
+      }
+    ]);
+
+    const tool = await SystemToolRepo.getInstance().getSystemToolDisplayInfo({
+      pluginId: 'systemTool-weather/forecast'
+    });
+
+    expect(tool).toMatchObject({
+      id: 'systemTool-weather/forecast',
+      name: 'Forecast',
+      intro: 'Forecast intro',
+      avatar: 'forecast.svg',
+      toolDescription: 'Configured forecast',
+      currentCost: 2,
+      systemKeyCost: 1
+    });
+    expect(tool).not.toHaveProperty('inputSchema');
+    expect(tool).not.toHaveProperty('outputSchema');
+    expect(tool).not.toHaveProperty('secretSchema');
+    expect(mocks.getTool).not.toHaveBeenCalled();
+  });
+
+  it('returns parent toolset children without schemas', async () => {
+    const inputSchema = {
+      type: 'object',
+      properties: {
+        city: { type: 'string' }
+      }
+    };
+    const outputSchema = {
+      type: 'object',
+      properties: {
+        weather: { type: 'string' }
+      }
+    };
+
+    mocks.findSystemTool.mockResolvedValue(undefined);
+    mocks.listTools.mockResolvedValue([
+      {
+        source: 'system',
+        isToolset: true,
+        name: { en: 'Weather' },
+        description: { en: 'Weather intro' },
+        pluginId: 'weather',
+        version: '1.0.0',
+        icon: 'weather.svg',
+        tags: ['life'],
+        toolDescription: 'Weather tool',
+        hasSecret: false,
+        children: [
+          {
+            id: 'forecast',
+            name: { en: 'Forecast' },
+            description: { en: 'Forecast intro' },
+            toolDescription: 'Forecast tool',
+            inputSchema,
+            outputSchema
+          }
+        ]
+      }
+    ]);
+    mocks.findSystemTools.mockResolvedValue([]);
+
+    const tool = await SystemToolRepo.getInstance().getSystemToolDisplayInfo({
+      pluginId: 'systemTool-weather'
+    });
+
+    expect(tool.children?.[0]).toMatchObject({
+      id: 'forecast',
+      name: 'Forecast',
+      description: 'Forecast intro',
+      toolDescription: 'Forecast tool'
+    });
+    expect(tool.children?.[0]).not.toHaveProperty('inputSchema');
+    expect(tool.children?.[0]).not.toHaveProperty('outputSchema');
+    expect(mocks.getTool).not.toHaveBeenCalled();
+  });
+});
+
 describe('SystemToolRepo.getVersions', () => {
   it('returns app version ids and names for workflow tools', async () => {
     const sortedAppVersions = [
