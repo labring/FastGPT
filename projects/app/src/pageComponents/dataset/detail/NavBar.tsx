@@ -199,7 +199,7 @@ const NavBar = ({ currentTab }: { currentTab: TabEnum }) => {
           h={showNavTab ? '16' : '12'}
           alignItems={'center'}
           flexShrink={0}
-          templateColumns={'290px 1fr auto'}
+          templateColumns={'330px 1fr auto'}
         >
           {/* 左列：面包屑路径 */}
           <Flex alignItems={'center'} py={'0.38rem'} pr={4} h={10} minW={0} overflow={'hidden'}>
