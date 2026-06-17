@@ -52,10 +52,10 @@ export const AppWhisperConfigTypeSchema = z.object({
   }),
   autoSend: BoolSchema.meta({
     description: '语音识别完成后是否自动发送问题'
-  }),
+  }).default(false),
   autoTTSResponse: BoolSchema.meta({
     description: '语音输入后是否自动播报应用回复'
-  })
+  }).default(false)
 });
 export type AppWhisperConfigType = z.infer<typeof AppWhisperConfigTypeSchema>;
 
