@@ -134,9 +134,8 @@ const NODE_TYPE_LABEL_MAP: Partial<Record<FlowNodeTypeEnum, string>> = {
   [FlowNodeTypeEnum.workflowStart]: i18nT('workflow:template.workflow_start'),
   [FlowNodeTypeEnum.customFeedback]: i18nT('workflow:custom_feedback'),
   [FlowNodeTypeEnum.userSelect]: i18nT('app:workflow.user_select'),
-  [FlowNodeTypeEnum.formInput]: i18nT('app:workflow.form_input'),
-}
-
+  [FlowNodeTypeEnum.formInput]: i18nT('app:workflow.form_input')
+};
 
 function safeParseJson(str: string): Record<string, any> | null {
   try {
@@ -1894,26 +1893,26 @@ const ToolCallRow = React.memo(
             <MyIcon name="common/check" w="12px" color="green.500" flexShrink={0} />
           )}
 
-          <Box
-            fontSize="12px"
-            lineHeight="20px"
-            color="#999999"
-            noOfLines={1}
-            flex={1}
-          >
+          <Box fontSize="12px" lineHeight="20px" color="#999999" noOfLines={1} flex={1}>
             {label}
             {msg.displaySuffix && (
               <Box as="span" color="#BBBBBB">
-                {' '}({msg.displaySuffix})
+                {' '}
+                ({msg.displaySuffix})
               </Box>
             )}
             {/* 工具执行结果摘要（单行） */}
             {backendResult && (
               <Box as="span" ml="4px">
-                {backendResult.valid === true && <Box as="span" color="green.600">✓</Box>}
+                {backendResult.valid === true && (
+                  <Box as="span" color="green.600">
+                    ✓
+                  </Box>
+                )}
                 {backendResult.valid === false && (
                   <Box as="span" color="red.500">
-                    ✗ {t('workflow:copilot_issues_count', {
+                    ✗{' '}
+                    {t('workflow:copilot_issues_count', {
                       count: ((backendResult.issues as string[]) ?? []).length
                     })}
                     <Box
@@ -1921,7 +1920,10 @@ const ToolCallRow = React.memo(
                       ml="8px"
                       cursor="pointer"
                       color="myGray.400"
-                      onClick={(e: React.MouseEvent) => { e.stopPropagation(); setIssuesExpanded((v) => !v); }}
+                      onClick={(e: React.MouseEvent) => {
+                        e.stopPropagation();
+                        setIssuesExpanded((v) => !v);
+                      }}
                     >
                       <MyIcon
                         name={issuesExpanded ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}
@@ -1934,7 +1936,9 @@ const ToolCallRow = React.memo(
                   </Box>
                 )}
                 {backendResult._note && (
-                  <Box as="span" color="#BBBBBB">{t('workflow:copilot_node_already_exists')}</Box>
+                  <Box as="span" color="#BBBBBB">
+                    {t('workflow:copilot_node_already_exists')}
+                  </Box>
                 )}
               </Box>
             )}
@@ -1946,7 +1950,9 @@ const ToolCallRow = React.memo(
           <Box pl="20px" mt="2px">
             <Box bg="myGray.50" p="8px" borderRadius="md">
               {((backendResult.issues as string[]) ?? []).map((issue: string, i: number) => (
-                <Box key={i} fontSize="12px" lineHeight="20px" color="red.500">{i + 1}. {issue}</Box>
+                <Box key={i} fontSize="12px" lineHeight="20px" color="red.500">
+                  {i + 1}. {issue}
+                </Box>
               ))}
             </Box>
           </Box>
@@ -2015,12 +2021,15 @@ const ToolCallGroup = React.memo(
               {singleValidation && allDone && (
                 <Flex as="span" alignItems="center" flexShrink={0} gap="4px">
                   {singleValidation.valid === true && (
-                    <Box as="span" color="green.600">✓ {t('workflow:copilot_validate_passed')}</Box>
+                    <Box as="span" color="green.600">
+                      ✓ {t('workflow:copilot_validate_passed')}
+                    </Box>
                   )}
                   {singleValidation.valid === false && (
                     <Flex as="span" alignItems="center" color="red.500" gap="4px">
                       <Box as="span">
-                        ✗ {t('workflow:copilot_validate_problems', {
+                        ✗{' '}
+                        {t('workflow:copilot_validate_problems', {
                           count: ((singleValidation.issues as string[]) ?? []).length
                         })}
                       </Box>
@@ -2030,7 +2039,10 @@ const ToolCallGroup = React.memo(
                         color="myGray.400"
                         display="inline-flex"
                         alignItems="center"
-                        onClick={(e: React.MouseEvent) => { e.stopPropagation(); setIssuesExpanded((v) => !v); }}
+                        onClick={(e: React.MouseEvent) => {
+                          e.stopPropagation();
+                          setIssuesExpanded((v) => !v);
+                        }}
                       >
                         <MyIcon
                           name={issuesExpanded ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}
@@ -2061,7 +2073,9 @@ const ToolCallGroup = React.memo(
               <Box mt={1} pl={0}>
                 <Box bg="myGray.50" p="8px" borderRadius="md">
                   {((singleValidation.issues as string[]) ?? []).map((issue: string, i: number) => (
-                    <Box key={i} fontSize="12px" lineHeight="20px" color="red.500">{i + 1}. {issue}</Box>
+                    <Box key={i} fontSize="12px" lineHeight="20px" color="red.500">
+                      {i + 1}. {issue}
+                    </Box>
                   ))}
                 </Box>
               </Box>
@@ -2171,7 +2185,10 @@ const CopilotPanel = ({
 
   // 暂存 finalizeToolCall 先于 addToolCall 执行的结果（竞态处理）
   const earlyFinalizedRef = useRef(
-    new Map<string, { params: string; status: 'done' | 'error'; result: string; displaySuffix?: string }>()
+    new Map<
+      string,
+      { params: string; status: 'done' | 'error'; result: string; displaySuffix?: string }
+    >()
   );
 
   const addToolCall = useMemoizedFn((tool: CopilotToolCallEvent) => {

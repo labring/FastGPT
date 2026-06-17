@@ -230,14 +230,6 @@ export async function buildAgentTools({
             if (capResult.assistantResponses?.length) {
               assistantResponses.push(...capResult.assistantResponses);
             }
-            // When sandbox_read_file loads SKILL.md, update the tool display name
-            // to reflect which skills are being loaded (e.g. "加载 pptx 技能")
-            if (capResult.skillNames?.length) {
-              const toolItem = assistantResponses.find((item) => item.tool?.id === callId);
-              if (toolItem?.tool) {
-                toolItem.tool.toolName = `加载 ${capResult.skillNames.join('，')} 技能`;
-              }
-            }
             return { response: capResult.response, usages: capResult.usages };
           }
 
@@ -400,24 +392,14 @@ export async function buildAgentTools({
       signal?: AbortSignal
     ) => {
       const subAppInfo = getSubAppInfo(toolId);
-      // When sandbox_read_file reads SKILL.md, resolve skill names so the
-      // frontend shows "加载 xxx 技能" immediately during streaming.
       const skillDisplayName = resolveSkillDisplayName(args, skillPathMap);
-      const toolName = skillDisplayName ?? subAppInfo?.name ?? toolId;
+      const isSkillRead = !!skillDisplayName;
 
-      assistantResponses.push({
-        tool: {
-          id: callId,
-          toolName,
-          toolAvatar: subAppInfo?.avatar || '',
-          functionName: toolId,
-          params: JSON.stringify(args)
-        }
-      });
-      workflowStreamResponse?.({
-        id: callId,
-        event: SseResponseEventEnum.toolCall,
-        data: {
+      if (isSkillRead) {
+        // Skill display handled by skillCall events
+      } else {
+        const toolName = subAppInfo?.name ?? toolId;
+        assistantResponses.push({
           tool: {
             id: callId,
             toolName,
@@ -425,8 +407,21 @@ export async function buildAgentTools({
             functionName: toolId,
             params: JSON.stringify(args)
           }
-        }
-      });
+        });
+        workflowStreamResponse?.({
+          id: callId,
+          event: SseResponseEventEnum.toolCall,
+          data: {
+            tool: {
+              id: callId,
+              toolName,
+              toolAvatar: subAppInfo?.avatar || '',
+              functionName: toolId,
+              params: JSON.stringify(args)
+            }
+          }
+        });
+      }
       const result = await execute(callId, args, signal);
       // Update tool item in assistantResponses with the response so the
       // output is visible alongside the input when expanding the tool block.

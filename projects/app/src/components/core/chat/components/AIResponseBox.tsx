@@ -288,39 +288,57 @@ ${response}`}
 
 const RenderSkill = React.memo(
   function RenderSkill({
-    showAnimation,
+    showAnimation: _showAnimation,
     skill
   }: {
     showAnimation: boolean;
     skill: SkillModuleResponseItemType;
   }) {
     const { t } = useSafeTranslation();
+    const isLoading = skill.status === 'loading';
 
     return (
       <Accordion allowToggle>
         <AccordionItem borderTop={'none'} borderBottom={'none'}>
           <AccordionButton {...accordionButtonStyle}>
-            <MyIcon name={'core/chat/toolCall'} w={'16px'} h={'16px'} flexShrink={0} />
-            <Box mx={2} fontSize={'sm'} color={'myGray.900'}>
-              {skill.skillName}
-            </Box>
-            <AccordionIcon color={'myGray.600'} ml={5} />
-          </AccordionButton>
-          <AccordionPanel
-            py={0}
-            px={0}
-            mt={3}
-            borderRadius={'md'}
-            overflow={'hidden'}
-            maxH={'500px'}
-            overflowY={'auto'}
-          >
-            {skill.description && (
-              <Box mb={3} fontSize={'xs'} color={'myGray.500'} px={3}>
-                {skill.description}
-              </Box>
+            {isLoading ? (
+              <MyIcon name={'common/loading'} w={'14px'} h={'14px'} flexShrink={0} />
+            ) : (
+              <MyIcon
+                name={'common/check'}
+                w={'14px'}
+                h={'14px'}
+                flexShrink={0}
+                color={'green.500'}
+              />
             )}
-          </AccordionPanel>
+            <Box mx={2} fontSize={'sm'} color={'myGray.900'}>
+              {t('chat:skill_completed', { skillName: skill.skillName })}
+            </Box>
+            {!isLoading && <AccordionIcon color={'myGray.600'} ml={5} />}
+          </AccordionButton>
+          {!isLoading && (
+            <AccordionPanel
+              py={0}
+              px={0}
+              mt={3}
+              borderRadius={'md'}
+              overflow={'hidden'}
+              maxH={'500px'}
+              overflowY={'auto'}
+            >
+              {skill.description && (
+                <Box mb={3} fontSize={'xs'} color={'myGray.500'} px={3}>
+                  {skill.description}
+                </Box>
+              )}
+              {skill.content && (
+                <Box mb={2} px={3}>
+                  <Markdown source={skill.content} />
+                </Box>
+              )}
+            </AccordionPanel>
+          )}
         </AccordionItem>
       </Accordion>
     );

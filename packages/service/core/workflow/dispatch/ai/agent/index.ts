@@ -539,14 +539,38 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
                 planId: agentPlan!.planId,
                 stepId: step.id
               }));
-            assistantResponses.push(...assistantResponse);
+
+            // Interleave skill items into chronological position by matching
+            // skill.skills[0].id ↔ tool.id, then stamp stepId.
             if (result.capabilityAssistantResponses?.length) {
-              assistantResponses.push(
-                ...result.capabilityAssistantResponses.map((item) => ({
-                  ...item,
-                  stepId: step.id
-                }))
-              );
+              const toolIdToIndex: Record<string, number> = {};
+              assistantResponse.forEach((item, idx) => {
+                const toolId =
+                  (item as AIChatItemValueItemType).tool?.id ||
+                  (item as AIChatItemValueItemType).tools?.[0]?.id;
+                if (toolId) toolIdToIndex[toolId] = idx;
+              });
+
+              const fallbackItems: AIChatItemValueItemType[] = [];
+              for (const skillItem of result.capabilityAssistantResponses) {
+                const callId = skillItem.skills?.[0]?.id;
+                if (callId && toolIdToIndex[callId] !== undefined) {
+                  assistantResponse[toolIdToIndex[callId]] = {
+                    ...skillItem,
+                    planId: agentPlan!.planId,
+                    stepId: step.id
+                  };
+                } else {
+                  fallbackItems.push({
+                    ...skillItem,
+                    planId: agentPlan!.planId,
+                    stepId: step.id
+                  });
+                }
+              }
+              assistantResponses.push(...assistantResponse, ...fallbackItems);
+            } else {
+              assistantResponses.push(...assistantResponse);
             }
             // Persist tool calls so they survive page refresh.
             // GPTMessages2Chats already produces tools from LLM tool_calls when
@@ -634,9 +658,29 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         })
           .map((item) => item.value as AIChatItemValueItemType[])
           .flat();
-        assistantResponses.push(...assistantResponse);
+
+        // Interleave skill items into chronological position by matching
+        // skill.skills[0].id ↔ tool.id from GPTMessages2Chats output.
+        // This preserves correct ordering after page refresh.
         if (result.capabilityAssistantResponses?.length) {
-          assistantResponses.push(...result.capabilityAssistantResponses);
+          const toolIdToIndex: Record<string, number> = {};
+          assistantResponse.forEach((item, idx) => {
+            const toolId = item.tool?.id || item.tools?.[0]?.id;
+            if (toolId) toolIdToIndex[toolId] = idx;
+          });
+
+          const fallbackItems: AIChatItemValueItemType[] = [];
+          for (const skillItem of result.capabilityAssistantResponses) {
+            const callId = skillItem.skills?.[0]?.id;
+            if (callId && toolIdToIndex[callId] !== undefined) {
+              assistantResponse[toolIdToIndex[callId]] = skillItem;
+            } else {
+              fallbackItems.push(skillItem);
+            }
+          }
+          assistantResponses.push(...assistantResponse, ...fallbackItems);
+        } else {
+          assistantResponses.push(...assistantResponse);
         }
         // Persist tool calls so they survive page refresh.
         // GPTMessages2Chats already produces tools from LLM tool_calls when

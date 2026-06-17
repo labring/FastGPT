@@ -200,6 +200,8 @@
   "sandbox_status_failed": "沙箱啟動失敗",
   "sandbox_status_lazyInit": "初始化沙箱...",
   "skill_calling": "正在呼叫技能：{{name}}",
+  "skill_loading": "正在加載 {{skillName}} 技能中...",
+  "skill_completed": "完成加載 {{skillName}} 技能",
   "ai_reasoning_done": "已深度思考（用時 {{seconds}} 秒）",
   "ai_reasoning_done_simple": "已深度思考",
   "click_contextual_preview": "點選檢視上下文預覽",

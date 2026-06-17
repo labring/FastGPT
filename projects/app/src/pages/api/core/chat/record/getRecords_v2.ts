@@ -35,14 +35,11 @@ export function reorderAIResponseValue(
   value: AIChatItemValueItemType[]
 ): AIChatItemValueItemType[] {
   const skillItems: AIChatItemValueItemType[] = [];
-  const nonSkillItems: AIChatItemValueItemType[] = [];
 
   // Separate skill items from non-skill items
   for (const item of value) {
     if (item.skills && item.skills.length > 0) {
       skillItems.push(item);
-    } else {
-      nonSkillItems.push(item);
     }
   }
 
@@ -58,31 +55,34 @@ export function reorderAIResponseValue(
     }
   }
 
-  // Build result array, inserting skills after matching tools
+  // Build result by iterating the original value array in order.
+  // Skills that match a preceding tool are inserted right after that tool;
+  // unmatched skills stay at their original chronological position.
   const result: AIChatItemValueItemType[] = [];
   const usedSkillIds = new Set<string>();
 
-  for (const item of nonSkillItems) {
-    result.push(item);
+  for (const item of value) {
+    if (item.skills?.length) {
+      // Skill item: only add if it wasn't already inserted after its matching tool
+      const skillId = item.skills[0].id;
+      if (skillId && !usedSkillIds.has(skillId)) {
+        result.push(item);
+        usedSkillIds.add(skillId);
+      }
+    } else {
+      result.push(item);
 
-    // Check if any tool in this item has a matching skill
-    const tools = item.tools || (item.tool ? [item.tool] : undefined);
-    if (tools) {
-      for (const tool of tools) {
-        const matchingSkill = skillByToolCallId.get(tool.id);
-        if (matchingSkill && !usedSkillIds.has(tool.id)) {
-          result.push(matchingSkill);
-          usedSkillIds.add(tool.id);
+      // Check if any tool in this item has a matching skill → insert after tool
+      const tools = item.tools || (item.tool ? [item.tool] : undefined);
+      if (tools) {
+        for (const tool of tools) {
+          const matchingSkill = skillByToolCallId.get(tool.id);
+          if (matchingSkill && !usedSkillIds.has(tool.id)) {
+            result.push(matchingSkill);
+            usedSkillIds.add(tool.id);
+          }
         }
       }
-    }
-  }
-
-  // Append any remaining unmatched skill items at the end
-  for (const skillItem of skillItems) {
-    const skillId = skillItem.skills?.[0]?.id;
-    if (skillId && !usedSkillIds.has(skillId)) {
-      result.push(skillItem);
     }
   }
 

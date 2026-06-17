@@ -22,6 +22,7 @@ import path from 'path';
 type DispatchResult = {
   response: string;
   usages: [];
+  files?: Array<{ path: string; content: string }>;
 };
 
 /**
@@ -43,10 +44,12 @@ export async function dispatchSandboxReadFile(
         file.content instanceof Uint8Array
           ? new TextDecoder('utf-8').decode(file.content)
           : String(file.content);
-      return `--- ${file.path} ---\n${content}`;
+      return { path: file.path, content };
     });
 
-    return { response: results.join('\n\n'), usages: [] };
+    const response = results.map((r) => `--- ${r.path} ---\n${r.content}`).join('\n\n');
+
+    return { response, usages: [], files: results };
   } catch (error) {
     return {
       response: `Failed to read files: ${error instanceof Error ? error.message : String(error)}`,
