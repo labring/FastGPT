@@ -241,19 +241,37 @@ const DashboardChart = ({
                       {data.date}
                     </Box>
                     <Flex alignItems={'center'} gap={2} mb={1}>
-                      <Box w={2} h={2} borderRadius={'full'} bg={TOTAL_TOKENS_COLOR} flexShrink={0} />
+                      <Box
+                        w={2}
+                        h={2}
+                        borderRadius={'full'}
+                        bg={TOTAL_TOKENS_COLOR}
+                        flexShrink={0}
+                      />
                       <Box fontSize={'14px'} color={'myGray.600'}>
                         {`${t('account_usage:total_tokens')}: ${formatNumber(input + output)}`}
                       </Box>
                     </Flex>
                     <Flex alignItems={'center'} gap={2} mb={1}>
-                      <Box w={2} h={2} borderRadius={'full'} bg={INPUT_TOKENS_COLOR} flexShrink={0} />
+                      <Box
+                        w={2}
+                        h={2}
+                        borderRadius={'full'}
+                        bg={INPUT_TOKENS_COLOR}
+                        flexShrink={0}
+                      />
                       <Box fontSize={'12px'} color={'myGray.600'}>
                         {`${t('account_usage:input_tokens')}: ${formatNumber(input)}`}
                       </Box>
                     </Flex>
                     <Flex alignItems={'center'} gap={2}>
-                      <Box w={2} h={2} borderRadius={'full'} bg={OUTPUT_TOKENS_COLOR} flexShrink={0} />
+                      <Box
+                        w={2}
+                        h={2}
+                        borderRadius={'full'}
+                        bg={OUTPUT_TOKENS_COLOR}
+                        flexShrink={0}
+                      />
                       <Box fontSize={'12px'} color={'myGray.600'}>
                         {`${t('account_usage:output_tokens')}: ${formatNumber(output)}`}
                       </Box>

@@ -281,27 +281,20 @@ export const masterCall = async ({
         return;
       }
 
-      // When sandbox_read_file reads SKILL.md, resolve skill names so the
-      // frontend shows "加载 xxx 技能" immediately during streaming.
+      // When sandbox_read_file reads SKILL.md, skip the tool display —
+      // completed skill references are emitted by collectSkillReferenceResponses.
       const toolArgs = parseJsonArgs(call.function.arguments);
       const skillDisplayName = resolveSkillDisplayName(toolArgs ?? {}, skillPathMap);
-      const toolName = skillDisplayName ?? subApp?.name ?? call.function.name;
+      const isSkillRead = !!skillDisplayName;
 
-      // Persist tool call to chat history (SSE also streams it for real-time display)
-      collectedTools.push({
-        tool: {
-          id: call.id,
-          toolName,
-          toolAvatar: subApp?.avatar || '',
-          functionName: call.function.name,
-          params: call.function.arguments ?? ''
-        }
-      });
+      if (isSkillRead) {
+        // Skill display handled by skillCall events from collectSkillReferenceResponses
+      } else {
+        // Non-skill sandbox_read_file: emit normal toolCall
+        const toolName = subApp?.name ?? call.function.name;
 
-      stepStreamResponse?.({
-        id: call.id,
-        event: SseResponseEventEnum.toolCall,
-        data: {
+        // Persist tool call to chat history (SSE also streams it for real-time display)
+        collectedTools.push({
           tool: {
             id: call.id,
             toolName,
@@ -309,8 +302,22 @@ export const masterCall = async ({
             functionName: call.function.name,
             params: call.function.arguments ?? ''
           }
-        }
-      });
+        });
+
+        stepStreamResponse?.({
+          id: call.id,
+          event: SseResponseEventEnum.toolCall,
+          data: {
+            tool: {
+              id: call.id,
+              toolName,
+              toolAvatar: subApp?.avatar || '',
+              functionName: call.function.name,
+              params: call.function.arguments ?? ''
+            }
+          }
+        });
+      }
     },
     onToolParam({ tool, params }) {
       stepStreamResponse?.({
@@ -533,14 +540,6 @@ export const masterCall = async ({
           if (capResult != null) {
             if (capResult.assistantResponses?.length) {
               capabilityAssistantResponses.push(...capResult.assistantResponses);
-            }
-            // When sandbox_read_file loads SKILL.md, update the tool display name
-            // to reflect which skills are being loaded (e.g. "加载 pptx 技能")
-            if (capResult.skillNames?.length) {
-              const toolItem = collectedTools.find((item) => item.tool?.id === callId);
-              if (toolItem?.tool) {
-                toolItem.tool.toolName = `加载 ${capResult.skillNames.join('，')} 技能`;
-              }
             }
             const subInfo = getSubAppInfo(toolId);
             childrenResponses.push({

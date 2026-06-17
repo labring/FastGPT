@@ -439,7 +439,41 @@ const ChatBox = ({
             };
           }
           if (event === SseResponseEventEnum.skillCall && skill) {
-            // 去重检查：避免同一个 skill 在同一步骤中重复展示
+            const skillLoading = skill.status === 'loading';
+            const skillCompleted = skill.status === 'completed' || !skill.status;
+
+            // For completed skill calls: replace matching loading skill item with
+            // completed data (loading → completed transition within the same step)
+            if (skillCompleted && skill.skillName) {
+              const loadingSkillIndex = item.value.findIndex(
+                (v) =>
+                  v.stepId === stepId &&
+                  v.skills?.some((s) => s.status === 'loading' && s.skillName === skill.skillName)
+              );
+              if (loadingSkillIndex !== -1) {
+                const skillId = skill.id || responseValueId || getNanoid(10);
+                const newVal: AIChatItemValueItemType = {
+                  id: responseValueId,
+                  stepId,
+                  skills: [
+                    {
+                      id: skillId,
+                      skillName: skill.skillName,
+                      skillAvatar: skill.skillAvatar || '',
+                      description: skill.description,
+                      skillMdPath: skill.skillMdPath,
+                      status: 'completed',
+                      content: skill.content
+                    }
+                  ]
+                };
+                const newValue = [...item.value];
+                newValue[loadingSkillIndex] = newVal;
+                return { ...item, value: newValue };
+              }
+            }
+
+            // Dedup check: avoid showing the same skill twice
             const alreadyExists = item.value.some(
               (v) =>
                 v.stepId === stepId && v.skills?.some((s) => s.skillMdPath === skill.skillMdPath)
@@ -456,7 +490,9 @@ const ChatBox = ({
                   skillName: skill.skillName,
                   skillAvatar: skill.skillAvatar || '',
                   description: skill.description,
-                  skillMdPath: skill.skillMdPath
+                  skillMdPath: skill.skillMdPath,
+                  status: skillLoading ? 'loading' : 'completed',
+                  content: skill.content
                 }
               ]
             };
@@ -518,6 +554,19 @@ const ChatBox = ({
 
           // Tool call
           if (event === SseResponseEventEnum.toolCall && tool) {
+            // Defensive: hide sandbox_read_file tools that read SKILL.md
+            if (tool.functionName === 'sandbox_read_file') {
+              try {
+                const parsedParams = JSON.parse(tool.params || '{}');
+                const hasSkillMd = parsedParams?.paths?.some((p: string) =>
+                  p.endsWith('/SKILL.md')
+                );
+                if (hasSkillMd) return item;
+              } catch {
+                // If params can't be parsed, fall through to normal display
+              }
+            }
+
             const val: AIChatItemValueItemType = {
               id: responseValueId,
               tool

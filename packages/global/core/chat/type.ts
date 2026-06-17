@@ -88,7 +88,9 @@ export const SkillModuleResponseItemSchema = z.object({
   skillName: z.string(),
   skillAvatar: z.string(),
   description: z.string(),
-  skillMdPath: z.string()
+  skillMdPath: z.string(),
+  status: z.enum(['loading', 'completed']).optional(),
+  content: z.string().optional()
 });
 export type SkillModuleResponseItemType = z.infer<typeof SkillModuleResponseItemSchema>;
 

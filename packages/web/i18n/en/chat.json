@@ -202,6 +202,8 @@
   "sandbox_status_failed": "Sandbox failed to start",
   "sandbox_status_lazyInit": "Initializing sandbox...",
   "skill_calling": "Calling skill: {{name}}",
+  "skill_loading": "Loading skill {{skillName}}...",
+  "skill_completed": "Skill {{skillName}} loaded",
   "click_contextual_preview": "Click to preview context",
   "contextual": "{{num}} contexts",
   "contextual_preview": "Contexts previewed: {{num}}",

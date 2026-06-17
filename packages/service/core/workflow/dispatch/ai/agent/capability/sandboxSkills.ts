@@ -149,13 +149,15 @@ export function collectSkillReferenceResponses({
   sandboxContext,
   workflowStreamResponse,
   showSkillReferences,
-  toolCallId
+  toolCallId,
+  fileContentMap
 }: {
   paths: string[];
   sandboxContext: AgentSandboxContext;
   workflowStreamResponse?: WorkflowResponseType;
   showSkillReferences: boolean;
   toolCallId: string;
+  fileContentMap?: Record<string, string>;
 }): { skillItems: AIChatItemValueItemType[]; skillNames: string[] } {
   if (!showSkillReferences) return { skillItems: [], skillNames: [] };
 
@@ -184,7 +186,8 @@ export function collectSkillReferenceResponses({
       skillNames.push(skill.name);
     }
 
-    // Use toolCallId from the triggering tool call for correlation
+    // Emit skillCall with completed status and optional content
+    const skillContent = fileContentMap?.[filePath];
     workflowStreamResponse?.({
       id: toolCallId,
       event: SseResponseEventEnum.skillCall,
@@ -194,7 +197,9 @@ export function collectSkillReferenceResponses({
           skillName: skill.name,
           skillAvatar: skill.avatar || '',
           description: skill.description,
-          skillMdPath: filePath
+          skillMdPath: filePath,
+          status: 'completed',
+          content: skillContent
         }
       }
     });
@@ -206,7 +211,9 @@ export function collectSkillReferenceResponses({
           skillName: skill.name,
           skillAvatar: skill.avatar || '',
           description: skill.description,
-          skillMdPath: filePath
+          skillMdPath: filePath,
+          status: 'completed',
+          content: skillContent
         }
       ]
     });
@@ -392,16 +399,26 @@ async function buildSessionHandler(
       const parsed = SandboxReadFileSchema.safeParse(parseJsonArgs(args));
       if (!parsed.success) return { response: parsed.error.message, usages: [] };
 
+      const readResult = await dispatchSandboxReadFile(sandboxContext, parsed.data);
+      const fileContentMap: Record<string, string> = {};
+      if (readResult.files) {
+        for (const file of readResult.files) {
+          fileContentMap[file.path] = file.content;
+        }
+      }
+
       const { skillItems: assistantResponses, skillNames } = collectSkillReferenceResponses({
         paths: parsed.data.paths,
         sandboxContext,
         workflowStreamResponse,
         showSkillReferences,
-        toolCallId
+        toolCallId,
+        fileContentMap
       });
 
       return {
-        ...(await dispatchSandboxReadFile(sandboxContext, parsed.data)),
+        response: readResult.response,
+        usages: readResult.usages,
         ...(assistantResponses.length > 0 && { assistantResponses }),
         ...(skillNames.length > 0 && { skillNames })
       };

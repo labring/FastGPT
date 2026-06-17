@@ -6,7 +6,7 @@ import {
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
-import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
   DispatchNodeResponseKeyEnum,
   StreamResumeCompletedEvent,
@@ -22,6 +22,7 @@ import {
 } from '@fastgpt/service/core/chat/resume';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { addPreviewUrlToChatItems } from '@fastgpt/service/core/chat/utils';
+import { reorderAIResponseValue } from './record/getRecords_v2';
 import { transformPreviewHistories } from '@/global/core/chat/utils';
 import { delay } from '@fastgpt/global/common/system/utils';
 
@@ -128,6 +129,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     });
 
     await addPreviewUrlToChatItems(result.histories, 'chatFlow');
+
+    // Reorder AI response value: insert skill records after their corresponding tool
+    result.histories.forEach((item) => {
+      if (item.obj === ChatRoleEnum.AI) {
+        item.value = reorderAIResponseValue(item.value);
+      }
+    });
 
     const list = transformPreviewHistories(result.histories, showCite).map((item) => ({
       ...item,
