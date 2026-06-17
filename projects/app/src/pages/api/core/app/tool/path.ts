@@ -2,7 +2,11 @@ import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { SystemToolRepo } from '@fastgpt/service/core/app/tool/systemTool/systemTool.repo';
-import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
+import {
+  encodeDebugToolId,
+  isDebugToolSource,
+  splitCombineToolId
+} from '@fastgpt/global/core/app/tool/utils';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import {
   GetToolPathQuerySchema,
@@ -49,14 +53,19 @@ export default NextAPI(handler);
 function getParentToolId(toolId: string) {
   const { source, pluginId } = splitCombineToolId(toolId);
 
-  if (![AppToolSourceEnum.systemTool, AppToolSourceEnum.commercial].includes(source)) {
+  if (
+    ![AppToolSourceEnum.systemTool, AppToolSourceEnum.commercial].includes(source as any) &&
+    !isDebugToolSource(source)
+  ) {
     return;
   }
 
   const [parentPluginId, childPluginId] = pluginId.split('/');
   if (!parentPluginId || !childPluginId) return;
 
-  return `${source}-${parentPluginId}`;
+  return isDebugToolSource(source)
+    ? encodeDebugToolId({ source, pluginId: parentPluginId })
+    : `${source}-${parentPluginId}`;
 }
 
 async function getToolPathItem({
@@ -71,7 +80,7 @@ async function getToolPathItem({
   const tool = await systemToolRepo.getSystemToolDisplayInfo({
     pluginId: toolId,
     lang,
-    source: source === AppToolSourceEnum.commercial ? AppToolSourceEnum.commercial : 'system'
+    source: source === AppToolSourceEnum.commercial || isDebugToolSource(source) ? source : 'system'
   });
 
   return {

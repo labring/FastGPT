@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import type { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -11,8 +11,10 @@ import { useDebounceEffect } from 'ahooks';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { useLocalPluginDebugSession } from '@/web/core/plugin/debug/localDebugSession';
 
 export const useNodeTemplates = () => {
+  const { session: debugSession } = useLocalPluginDebugSession();
   const [templateType, setTemplateType] = useState(TemplateTypeEnum.basic);
 
   const [searchKey, setSearchKey] = useState('');
@@ -115,6 +117,7 @@ export const useNodeTemplates = () => {
         return getAppToolTemplates({
           searchKey: searchVal,
           parentId,
+          debugSessionId: debugSession?.debugSessionId,
           tags
         });
       }
@@ -134,11 +137,23 @@ export const useNodeTemplates = () => {
 
       loadNodeTemplates({ parentId, searchVal: searchKey, tags: selectedTagIds });
     },
-    [searchKey],
+    [searchKey, debugSession?.debugSessionId],
     {
       wait: 300
     }
   );
+
+  useEffect(() => {
+    if (templateType !== TemplateTypeEnum.systemTools) return;
+    loadNodeTemplates({ parentId, searchVal: searchKey, tags: selectedTagIds });
+  }, [
+    debugSession?.debugSessionId,
+    loadNodeTemplates,
+    parentId,
+    searchKey,
+    selectedTagIds,
+    templateType
+  ]);
 
   const onUpdateParentId = useCallback(
     (parentId: ParentIdType) => {

@@ -44,6 +44,10 @@ export const GetSystemToolTemplatesBodySchema = z.object({
     example: 'systemTool-map',
     description: '工具集父工具 ID。传入后返回该工具集下的子工具模板'
   }),
+  debugSessionId: z.string().optional().meta({
+    example: 'dbg_xxx',
+    description: '调试会话 ID。传入后会把当前登录团队成员的调试插件追加到系统工具模板'
+  }),
   tags: z
     .array(z.string())
     .optional()

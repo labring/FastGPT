@@ -1,7 +1,12 @@
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import type { DispatchSubAppResponse } from '../../type';
-import { getToolNameCandidates, getToolRawId } from '@fastgpt/global/core/app/tool/utils';
+import {
+  getToolNameCandidates,
+  getToolRawId,
+  isDebugToolSource,
+  splitCombineToolId
+} from '@fastgpt/global/core/app/tool/utils';
 import { getSecretValue } from '../../../../../../../common/secret/utils';
 import type {
   ChatDispatchProps,
@@ -101,10 +106,12 @@ export const dispatchTool = async ({
     };
 
     if (toolConfig?.systemTool?.toolId) {
+      const { source: parsedSource } = splitCombineToolId(toolConfig.systemTool.toolId);
+      const toolSource = isDebugToolSource(parsedSource) ? parsedSource : 'system';
       const systemToolRepo = SystemToolRepo.getInstance();
       const tool = await systemToolRepo.getSystemToolRuntime({
         pluginId: toolConfig.systemTool.toolId,
-        source: 'system',
+        source: toolSource,
         version
       });
       const inputConfigParams = await (async () => {
@@ -142,7 +149,7 @@ export const dispatchTool = async ({
         pluginId: formatToolId,
         ...(childId ? { childId } : {}),
         version: tool.version ?? version ?? '',
-        source: 'system', // TODO: 后续 source 需要从节点配置中获取到
+        source: toolSource,
         input: Object.fromEntries(Object.entries(params)),
         secrets: inputConfigParams,
         systemVar: {

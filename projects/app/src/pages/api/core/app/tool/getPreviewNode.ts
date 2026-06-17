@@ -6,7 +6,7 @@ import { type FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/no
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
-import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
+import { isDebugToolSource, splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -26,7 +26,7 @@ async function handler(
     querySchema: GetPreviewNodeQuerySchema
   });
 
-  const { authAppId } = splitCombineToolId(appId);
+  const { authAppId, source } = splitCombineToolId(appId);
   if (authAppId) {
     await authApp({ req, authToken: true, appId: authAppId, per: ReadPermissionVal });
   }
@@ -36,7 +36,8 @@ async function handler(
       appId,
       versionId,
       getLatestVersion,
-      lang: getLocale(req)
+      lang: getLocale(req),
+      source: isDebugToolSource(source) ? source : undefined
     })
   );
 }

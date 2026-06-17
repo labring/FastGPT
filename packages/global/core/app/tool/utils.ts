@@ -1,4 +1,7 @@
 import { AppToolSourceEnum } from '../tool/constants';
+import { NodeInputKeyEnum } from '../../workflow/constants';
+import type { StoreNodeItemType } from '../../workflow/type/node';
+import type { SelectedToolItemType } from '../formEdit/type';
 
 /**
   Tool id rule:
@@ -12,10 +15,13 @@ import { AppToolSourceEnum } from '../tool/constants';
   (deprecated) community: community-id
 */
 export function splitCombineToolId(id: string): {
-  source: AppToolSourceEnum;
+  source: AppToolSourceEnum | string;
   pluginId: string;
   authAppId?: string;
 } {
+  const debugTool = parseDebugToolId(id);
+  if (debugTool) return debugTool;
+
   const splitRes = id.split('-');
   if (splitRes.length === 1) {
     // app id
@@ -77,6 +83,74 @@ export function splitCombineToolId(id: string): {
   }
 
   throw new Error('Invalid tool id');
+}
+
+const DebugToolIdPrefix = 'debug:';
+const DebugToolIdSeparator = '|';
+
+export function isDebugToolId(id?: string): id is string {
+  return typeof id === 'string' && id.startsWith(DebugToolIdPrefix);
+}
+
+export function isDebugToolSource(source?: string): source is string {
+  return typeof source === 'string' && source.startsWith(DebugToolIdPrefix);
+}
+
+export function encodeDebugToolId({ source, pluginId }: { source: string; pluginId: string }) {
+  return `${source}${DebugToolIdSeparator}${pluginId}`;
+}
+
+export function parseDebugToolId(id: string):
+  | {
+      source: string;
+      pluginId: string;
+    }
+  | undefined {
+  if (!isDebugToolId(id)) return;
+
+  const separatorIndex = id.lastIndexOf(DebugToolIdSeparator);
+  if (separatorIndex <= DebugToolIdPrefix.length || separatorIndex === id.length - 1) {
+    throw new Error('Invalid debug tool id');
+  }
+
+  return {
+    source: id.slice(0, separatorIndex),
+    pluginId: id.slice(separatorIndex + 1)
+  };
+}
+
+export function hasDebugToolInSelectedTools(selectedTools?: SelectedToolItemType[] | null) {
+  return (
+    selectedTools?.some((tool) => isDebugToolId(tool.pluginId) || isDebugToolId(tool.id)) ?? false
+  );
+}
+
+/**
+ * 检查发布数据中是否包含本地调试工具。
+ * 需要同时覆盖普通工具节点、工具集配置和 Agent 节点 selectedTools 输入，避免调试 source 被发布到线上版本。
+ */
+export function hasDebugToolInNodes(nodes?: StoreNodeItemType[] | null) {
+  return (
+    nodes?.some((node) => {
+      if (isDebugToolId(node.pluginId)) return true;
+
+      const toolConfig = node.toolConfig;
+      if (isDebugToolId(toolConfig?.systemTool?.toolId)) return true;
+      if (isDebugToolId(toolConfig?.systemToolSet?.toolId)) return true;
+      if (toolConfig?.systemToolSet?.toolList?.some((tool) => isDebugToolId(tool.toolId))) {
+        return true;
+      }
+
+      const selectedToolsInput = node.inputs.find(
+        (input) => input.key === NodeInputKeyEnum.selectedTools
+      );
+      const selectedTools = Array.isArray(selectedToolsInput?.value)
+        ? (selectedToolsInput.value as SelectedToolItemType[])
+        : [];
+
+      return hasDebugToolInSelectedTools(selectedTools);
+    }) ?? false
+  );
 }
 
 export const getToolRawId = (id: string) => {

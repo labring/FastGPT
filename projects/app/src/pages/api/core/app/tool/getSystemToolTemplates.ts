@@ -15,6 +15,7 @@ import {
 } from '@fastgpt/global/openapi/core/app/tool/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
+import { getPluginDebugSessionStatus } from '@fastgpt/service/thirdProvider/fastgptPlugin/debugSession';
 
 export type GetSystemPluginTemplatesBody = GetSystemToolTemplatesBodyType;
 
@@ -23,7 +24,7 @@ export async function handler(
 ): Promise<NodeTemplateListItemType[]> {
   const { teamId, tmbId, isRoot } = await authCert({ req, authToken: true });
   const {
-    body: { tags, parentId, searchKey }
+    body: { tags, parentId, searchKey, debugSessionId }
   } = parseApiInput({
     req,
     bodySchema: GetSystemToolTemplatesBodySchema
@@ -72,14 +73,26 @@ export async function handler(
       filterTemplatesBySearchKey(childTemplates, searchRegex)
     );
   }
+  const debugSession = debugSessionId
+    ? await getPluginDebugSessionStatus({
+        tmbId,
+        debugSessionId
+      }).catch(() => undefined)
+    : undefined;
+  const debugSource =
+    debugSession && !['revoked', 'expired'].includes(debugSession.status)
+      ? debugSession.source
+      : undefined;
   // no parentId, get all tools
   const tools = await systemToolRepo.getSystemToolList({
     lang,
-    sources: ['system', teamId],
+    // 调试状态下追加 debug source，Agent/Workflow 仍保留生产环境插件可选。
+    sources: ['system', teamId, ...(debugSource ? [debugSource] : [])],
     tags
   });
 
   const templates = tools
+    .sort((a, b) => Number(isDebugSource(b.source)) - Number(isDebugSource(a.source)))
     .filter((item) => {
       if (!isSelectableToolStatus(item.status)) return false;
       if (isRoot) return true;
@@ -99,6 +112,10 @@ export async function handler(
     .filter((item) => filterTemplateBySearchKey(item, searchRegex));
 
   return GetSystemToolTemplatesResponseSchema.parse(templates);
+}
+
+function isDebugSource(source?: string) {
+  return !!source?.startsWith('debug:');
 }
 
 export default NextAPI(handler);

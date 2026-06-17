@@ -1,6 +1,7 @@
 import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
 import {
   getToolNameCandidates,
+  isDebugToolSource,
   splitCombineToolId,
   splitToolsetToolPluginId
 } from '@fastgpt/global/core/app/tool/utils';
@@ -110,13 +111,14 @@ export const getAgentRuntimeTools = async ({
   }: {
     toolId: string;
     nodeId: string;
-    source: AppToolSourceEnum.systemTool | AppToolSourceEnum.commercial;
+    source: AppToolSourceEnum.systemTool | AppToolSourceEnum.commercial | string;
   }): Promise<AgentRuntimeNode> => {
     const systemToolRepo = SystemToolRepo.getInstance();
     const toolDetail = await systemToolRepo.getSystemToolDetail({
       pluginId: toolId,
       lang,
-      source: source === AppToolSourceEnum.commercial ? AppToolSourceEnum.commercial : 'system'
+      source:
+        source === AppToolSourceEnum.commercial || isDebugToolSource(source) ? source : 'system'
     });
     const isWorkflowTool = !!toolDetail.associatedPluginId;
     const secrets = jsonSchema2SecretInput({ jsonSchema: toolDetail.secretSchema });
@@ -352,13 +354,17 @@ export const getAgentRuntimeTools = async ({
     toolId,
     app
   }: {
-    source: AppToolSourceEnum;
+    source: AppToolSourceEnum | string;
     pluginId: string;
     toolId: string;
     app?: AppSchemaType;
   }): Promise<AgentRuntimeNode> => {
     // Agent 运行时只需要节点执行和 schema 信息，不能依赖面向前端展示的 preview controller。
-    if (source === AppToolSourceEnum.systemTool || source === AppToolSourceEnum.commercial) {
+    if (
+      source === AppToolSourceEnum.systemTool ||
+      source === AppToolSourceEnum.commercial ||
+      isDebugToolSource(source)
+    ) {
       return formatSystemToolNode({
         toolId,
         nodeId: pluginId,

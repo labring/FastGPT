@@ -1,8 +1,9 @@
 import { NodeGradients, NodeBorderColors } from '@fastgpt/global/core/workflow/node/constant';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
 
-const getColorSchemaBySource = (source: AppToolSourceEnum) => {
+const getColorSchemaBySource = (source?: AppToolSourceEnum | string) => {
   if (source === AppToolSourceEnum.http || source === AppToolSourceEnum.mcp) {
     return 'salmon';
   }
@@ -13,6 +14,9 @@ const getColorSchemaBySource = (source: AppToolSourceEnum) => {
   ) {
     return 'gray';
   }
+  if (isDebugToolSource(source)) {
+    return 'gray';
+  }
   return undefined;
 };
 
@@ -21,7 +25,7 @@ export const getGradientByColorSchema = ({
   source
 }: {
   colorSchema?: keyof typeof NodeGradients;
-  source: AppToolSourceEnum;
+  source?: AppToolSourceEnum | string;
 }): string | undefined => {
   const sourceColor = getColorSchemaBySource(source);
   if (sourceColor) {
@@ -36,7 +40,7 @@ export const getBorderColorByColorSchema = ({
   source
 }: {
   colorSchema?: keyof typeof NodeBorderColors;
-  source: AppToolSourceEnum;
+  source?: AppToolSourceEnum | string;
 }): string | undefined => {
   const sourceColor = getColorSchemaBySource(source);
   if (sourceColor) {

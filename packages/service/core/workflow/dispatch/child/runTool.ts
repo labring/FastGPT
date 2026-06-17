@@ -19,7 +19,12 @@ import { getNodeErrResponse } from '../utils';
 import { getAppVersionById } from '../../../../core/app/version/controller';
 import { runHTTPTool } from '../../../app/http';
 import { getWorkflowContext } from '../../utils/context';
-import { getToolNameCandidates, getToolRawId } from '@fastgpt/global/core/app/tool/utils';
+import {
+  getToolNameCandidates,
+  getToolRawId,
+  isDebugToolSource,
+  splitCombineToolId
+} from '@fastgpt/global/core/app/tool/utils';
 import { pluginClient } from '../../../../thirdProvider/fastgptPlugin';
 import { SystemToolRepo } from '../../../app/tool/systemTool/systemTool.repo';
 import { InvokeProcessor } from '../../../../support/invoke/invoke';
@@ -80,10 +85,12 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
 
     // run system tool
     if (toolConfig?.systemTool?.toolId) {
+      const { source: parsedSource } = splitCombineToolId(toolConfig.systemTool.toolId);
+      const toolSource = isDebugToolSource(parsedSource) ? parsedSource : 'system';
       const systemToolRepo = SystemToolRepo.getInstance();
       const tool = await systemToolRepo.getSystemToolRuntime({
         pluginId: toolConfig.systemTool.toolId,
-        source: 'system', // TODO : 后续用户调用时传 teamId
+        source: toolSource,
         version
       });
 
@@ -123,7 +130,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       const res = await pluginClient.runToolStream({
         pluginId: formatToolId,
         version: tool.version ?? version ?? '',
-        source: 'system', // TODO: 后续用户调用时传 teamId
+        source: toolSource,
         input: toolInput,
         secrets: inputConfigParams,
         ...(childId ? { childId } : {}),

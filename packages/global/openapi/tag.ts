@@ -43,6 +43,7 @@ export const DevApiTagsMap = {
   /* 核心-插件系统 */
   pluginToolTag: '工具标签',
   pluginTeam: '团队插件管理',
+  pluginDebug: '插件调试',
 
   /* 辅助-用户体系 */
   userInform: '用户通知',

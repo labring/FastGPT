@@ -23,6 +23,7 @@ export type ToolCardItemType = {
   downloadCount?: number;
   associatedPluginId?: string;
   source?: string;
+  isDebug?: boolean;
 };
 
 /**
@@ -171,8 +172,30 @@ const ToolCard = ({
         }
       }}
     >
+      {item.isDebug && (
+        <Flex
+          alignItems="center"
+          justifyContent={'center'}
+          position={'absolute'}
+          top={3}
+          right={3}
+          minW={'64px'}
+          h={'26px'}
+          px={3}
+          bg={'rgba(255, 245, 204, 1)'}
+          color={'rgba(227, 72, 49, 1)'}
+          fontSize={'13px'}
+          fontWeight={'500'}
+          borderRadius={'8px'}
+          border={'1px solid rgba(247, 214, 118, 1)'}
+          zIndex={2}
+        >
+          测试
+        </Flex>
+      )}
+
       {/* Update badge in top-right corner */}
-      {item.update && mode === 'admin' && (
+      {item.update && mode === 'admin' && !item.isDebug && (
         <Flex
           alignItems="center"
           position={'absolute'}

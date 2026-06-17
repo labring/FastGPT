@@ -48,6 +48,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { WorkflowModalContext } from '../../../context/workflowModalContext';
+import { isDebugToolId } from '@fastgpt/global/core/app/tool/utils';
 
 export type TemplateListProps = {
   onAddNode: ({ newNodes }: { newNodes: Node<FlowNodeItemType>[] }) => void;
@@ -82,6 +83,7 @@ const NodeTemplateListItem = ({
   const isSystemTool = templateType === TemplateTypeEnum.systemTools;
   const isSystemToolSet = isSystemTool && template.flowNodeType === FlowNodeTypeEnum.toolSet;
   const showExpandArrow = template.isFolder || isSystemToolSet;
+  const isDebugTool = isDebugToolId(template.id);
 
   return (
     <MyTooltip
@@ -95,9 +97,12 @@ const NodeTemplateListItem = ({
               objectFit={'contain'}
               borderRadius={'sm'}
             />
-            <Box fontWeight={'bold'} ml={3} color={'myGray.900'} flex={'1'}>
-              {template.name}
-            </Box>
+            <Flex alignItems={'center'} gap={2} ml={3} flex={'1'} minW={0}>
+              <Box fontWeight={'bold'} color={'myGray.900'} className="textEllipsis">
+                {template.name}
+              </Box>
+              {isDebugTool && <DebugToolTag />}
+            </Flex>
             {isSystemTool && (
               <Box color={'myGray.500'}>By {template.author || feConfigs?.systemTitle}</Box>
             )}
@@ -169,15 +174,18 @@ const NodeTemplateListItem = ({
           borderRadius={'sm'}
           flexShrink={0}
         />
-        <Box flex={'1 0 0'} ml={3}>
-          <Box
-            color={'myGray.900'}
-            fontWeight={'500'}
-            fontSize={isPopover ? 'xs' : 'sm'}
-            className="textEllipsis"
-          >
-            {t(template.name as any)}
-          </Box>
+        <Box flex={'1 0 0'} ml={3} minW={0}>
+          <Flex alignItems={'center'} gap={2} minW={0}>
+            <Box
+              color={'myGray.900'}
+              fontWeight={'500'}
+              fontSize={isPopover ? 'xs' : 'sm'}
+              className="textEllipsis"
+            >
+              {t(template.name as any)}
+            </Box>
+            {isDebugTool && <DebugToolTag />}
+          </Flex>
         </Box>
         {showExpandArrow && (
           <Box
@@ -211,6 +219,25 @@ const NodeTemplateListItem = ({
     </MyTooltip>
   );
 };
+
+const DebugToolTag = React.memo(function DebugToolTag() {
+  return (
+    <Box
+      flexShrink={0}
+      px={2}
+      py={0.5}
+      borderRadius={'6px'}
+      bg={'rgba(255, 245, 204, 1)'}
+      color={'rgba(227, 72, 49, 1)'}
+      border={'1px solid rgba(247, 214, 118, 1)'}
+      fontSize={'11px'}
+      fontWeight={'500'}
+      lineHeight={'16px'}
+    >
+      测试
+    </Box>
+  );
+});
 
 const NodeTemplateList = ({
   onAddNode,

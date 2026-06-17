@@ -44,6 +44,8 @@ import {
   getToolConfigStatus,
   validateToolConfiguration
 } from '@fastgpt/global/core/app/formEdit/utils';
+import { useLocalPluginDebugSession } from '@/web/core/plugin/debug/localDebugSession';
+import { isDebugToolId } from '@fastgpt/global/core/app/tool/utils';
 
 type Props = {
   topAgentSelectedTools?: SelectedToolItemType[];
@@ -70,6 +72,7 @@ enum TemplateTypeEnum {
 const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void }) => {
   const { t } = useTranslation();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
+  const { session: debugSession } = useLocalPluginDebugSession();
 
   const [templateType, setTemplateType] = useState(TemplateTypeEnum.systemTools);
   const [parentId, setParentId] = useState<ParentIdType>('');
@@ -91,7 +94,11 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
       searchVal?: string;
     }) => {
       if (type === TemplateTypeEnum.systemTools) {
-        return getAppToolTemplates({ parentId, searchKey: searchVal });
+        return getAppToolTemplates({
+          parentId,
+          searchKey: searchVal,
+          debugSessionId: debugSession?.debugSessionId
+        });
       } else if (type === TemplateTypeEnum.myTools) {
         return getTeamAppTemplates({
           parentId,
@@ -116,7 +123,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
         setTemplateType(type);
         setParentId(parentId);
       },
-      refreshDeps: [templateType, searchKey, parentId]
+      refreshDeps: [templateType, searchKey, parentId, debugSession?.debugSessionId]
     }
   );
 
@@ -258,6 +265,25 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
 
 export default React.memo(ToolSelectModal);
 
+const DebugToolTag = React.memo(function DebugToolTag() {
+  return (
+    <Box
+      flexShrink={0}
+      px={2}
+      py={0.5}
+      borderRadius={'6px'}
+      bg={'rgba(255, 245, 204, 1)'}
+      color={'rgba(227, 72, 49, 1)'}
+      border={'1px solid rgba(247, 214, 118, 1)'}
+      fontSize={'11px'}
+      fontWeight={'500'}
+      lineHeight={'16px'}
+    >
+      测试
+    </Box>
+  );
+});
+
 const RenderList = React.memo(function RenderList({
   topAgentSelectedTools = [],
   templates,
@@ -373,6 +399,7 @@ const RenderList = React.memo(function RenderList({
                         >
                           {name}
                         </Box>
+                        {isDebugToolId(template.id) && <DebugToolTag />}
                         {isSystemTool && (
                           <Box color={'myGray.500'}>
                             By {template.author || feConfigs?.systemTitle}
@@ -411,14 +438,17 @@ const RenderList = React.memo(function RenderList({
                       flexShrink={0}
                     />
                     <Box minW={0}>
-                      <Box
-                        color={'myGray.900'}
-                        fontWeight={'500'}
-                        fontSize={'sm'}
-                        className="textEllipsis"
-                      >
-                        {name}
-                      </Box>
+                      <Flex alignItems={'center'} gap={2} minW={0}>
+                        <Box
+                          color={'myGray.900'}
+                          fontWeight={'500'}
+                          fontSize={'sm'}
+                          className="textEllipsis"
+                        >
+                          {name}
+                        </Box>
+                        {isDebugToolId(template.id) && <DebugToolTag />}
+                      </Flex>
                     </Box>
                     <Flex gap={2} minW={0} justifySelf={'end'} alignItems={'center'}>
                       {selected ? (

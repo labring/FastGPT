@@ -8,7 +8,7 @@ import {
   nodeOutputs2JsonSchema
 } from '@fastgpt/global/core/app/jsonschema';
 import { SystemToolCodec } from '@fastgpt/global/core/app/tool/systemTool/codec';
-import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
+import { isDebugToolSource, splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { filterPluginTags } from '@fastgpt/global/core/plugin/utils';
 import {
@@ -194,6 +194,7 @@ export class SystemToolRepo {
       SystemToolCodec.attachToolConfig({
         tool,
         config:
+          DBPluginsMap.get(SystemToolCodec.getDBPluginId(tool.pluginId, tool.source)) ??
           DBPluginsMap.get(SystemToolCodec.getDBPluginId(tool.pluginId)) ??
           DBPluginsMap.get(tool.pluginId),
         lang
@@ -227,7 +228,8 @@ export class SystemToolRepo {
     lang?: `${LangEnum}`;
     fallbackLatestVersion?: boolean;
   }): Promise<SystemToolDetailType> => {
-    const { pluginId: rawPluginId } = splitCombineToolId(pluginId);
+    const { pluginId: rawPluginId, source: parsedSource } = splitCombineToolId(pluginId);
+    source = isDebugToolSource(parsedSource) ? parsedSource : source;
     const [parentPluginId, childPluginId] = rawPluginId.split('/');
     const getChildToolDetail = !!childPluginId;
 
@@ -602,7 +604,10 @@ export class SystemToolRepo {
 
     const versions = await pluginClient.listPluginVersions({
       pluginId: parentToolId,
-      source: pluginSource === AppToolSourceEnum.commercial ? AppToolSourceEnum.commercial : source
+      source:
+        pluginSource === AppToolSourceEnum.commercial || isDebugToolSource(pluginSource)
+          ? pluginSource
+          : source
     });
 
     return versions.map((item) => ({
@@ -619,7 +624,8 @@ export class SystemToolRepo {
     version?: string;
     source?: string;
   }): Promise<SystemToolRuntimeType> => {
-    const { pluginId: rawPluginId } = splitCombineToolId(pluginId);
+    const { pluginId: rawPluginId, source: parsedSource } = splitCombineToolId(pluginId);
+    source = isDebugToolSource(parsedSource) ? parsedSource : source;
     const [parentPluginId] = rawPluginId.split('/');
 
     const dbTool = await MongoSystemTool.findOne({ pluginId }).lean();
