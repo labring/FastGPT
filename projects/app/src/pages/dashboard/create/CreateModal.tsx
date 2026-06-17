@@ -241,7 +241,7 @@ const CreateModal = ({
         {/* 描述 */}
         <Box mb={4}>
           <FormLabel mb={2.5}>{t('common:plugin.Description')}</FormLabel>
-          <Textarea rows={3} resize={'vertical'} {...register('intro')} />
+          <Textarea resize={'vertical'} minH={'50px'} h={'50px'} {...register('intro')} />
         </Box>
 
         {/* 智能问答：知识库选择 */}

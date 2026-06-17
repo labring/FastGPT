@@ -124,6 +124,11 @@ const Workflow = ({
   }, []);
 
   useEffect(() => {
+    if (!nodesInteractive && fitViewDone.current) {
+      onCloseTemplate();
+    }
+  }, [nodesInteractive]);
+  useEffect(() => {
     // 自动定位画布：需等待 ReactFlow 初始化完成(onInit) + 节点数据加载并渲染出宽高后执行，仅执行一次
     if (
       !reactFlowInitialized.current ||
@@ -161,6 +166,7 @@ const Workflow = ({
               _hover={{ bg: 'myGray.700' }}
               aria-label={''}
               boxShadow={'0 4px 10px 0 rgba(19, 51, 107, 0.20), 0 0 1px 0 rgba(19, 51, 107, 0.50)'}
+              isDisabled={!nodesInteractive}
               onClick={() => {
                 isOpenTemplate ? onCloseTemplate() : onOpenTemplate();
               }}
