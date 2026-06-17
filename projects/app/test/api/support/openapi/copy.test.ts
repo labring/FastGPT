@@ -11,6 +11,7 @@ import { Call } from '@test/utils/request';
 describe('support/openapi/copy', () => {
   beforeEach(() => {
     vi.mocked(addAuditLog).mockClear();
+    vi.mocked(addAuditLog).mockResolvedValue(undefined);
   });
 
   it('记录团队级 APIKey 复制审计并返回明文密钥', async () => {
@@ -91,5 +92,33 @@ describe('support/openapi/copy', () => {
       }
     });
     expect(JSON.stringify(vi.mocked(addAuditLog).mock.calls)).not.toContain('fastgpt-app-secret');
+  });
+
+  it('审计写入失败时不返回明文密钥', async () => {
+    const user = await getRootUser();
+    const openapi = await MongoOpenApi.create({
+      teamId: user.teamId,
+      tmbId: user.tmbId,
+      apiKey: 'fastgpt-audit-failed-secret',
+      name: 'audit failed key'
+    });
+
+    vi.mocked(addAuditLog).mockRejectedValueOnce(new Error('audit failed'));
+
+    const result = await Call(handler, {
+      auth: {
+        ...user,
+        userId: String(user.userId),
+        teamId: String(user.teamId),
+        tmbId: String(user.tmbId)
+      },
+      body: {
+        id: String(openapi._id)
+      }
+    });
+
+    expect(result.code).toBe(500);
+    expect(result.data).toBeUndefined();
+    expect(JSON.stringify(result)).not.toContain('fastgpt-audit-failed-secret');
   });
 });

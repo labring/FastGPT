@@ -3,6 +3,8 @@ import {
   ApiKeyHealthParamsSchema,
   ApiKeyHealthErrorResponseSchema,
   ApiKeyHealthResponseSchema,
+  CopyApiKeyBodySchema,
+  CopyApiKeyResponseSchema,
   CreateApiKeyBodySchema,
   CreateApiKeyResponseSchema,
   DeleteApiKeyQuerySchema,
@@ -97,6 +99,30 @@ export const ApiKeyPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: DeleteApiKeyResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/support/openapi/copy': {
+    post: {
+      summary: '复制 API Key',
+      description: '返回 API Key 明文并记录用户复制审计日志',
+      tags: [TagsMap.apiKey],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: CopyApiKeyBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功复制 API Key',
+          content: {
+            'application/json': {
+              schema: CopyApiKeyResponseSchema
             }
           }
         }

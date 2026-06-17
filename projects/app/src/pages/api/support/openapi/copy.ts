@@ -25,7 +25,7 @@ async function handler(req: ApiRequestProps<CopyApiKeyBodyType>): Promise<CopyAp
     per: OwnerPermissionVal
   });
 
-  addAuditLog({
+  await addAuditLog({
     tmbId,
     teamId,
     event: AuditEventEnum.COPY_API_KEY,
