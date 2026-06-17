@@ -70,7 +70,7 @@ const ApiKeyTable = ({ tips, appId, mode = 'account' }: ApiKeyTableProps) => {
     feConfigs?.customApiDomain || (typeof location !== 'undefined' ? `${location.origin}/api` : '');
   const [editData, setEditData] = useState<EditProps>();
   const [apiKey, setApiKey] = useState('');
-  const [copyApiKey, setCopyApiKey] = useState<{ id: string; apiKey: string }>();
+  const [copyingApiKeyId, setCopyingApiKeyId] = useState<string>();
 
   const { ConfirmModal, openConfirm } = useConfirm({
     type: 'delete',
@@ -82,6 +82,18 @@ const ApiKeyTable = ({ tips, appId, mode = 'account' }: ApiKeyTableProps) => {
       refetch();
     }
   });
+  const { runAsync: copyAudit } = useRequest(postCopyOpenApiKeyAudit, {
+    errorToast: 'Error'
+  });
+
+  const onCopyApiKey = async ({ id, apiKey }: { id: string; apiKey: string }) => {
+    setCopyingApiKeyId(id);
+    try {
+      await Promise.all([copyAudit({ id }), copyData(apiKey)]);
+    } finally {
+      setCopyingApiKeyId(undefined);
+    }
+  };
 
   const {
     data: apiKeys = [],
@@ -211,7 +223,8 @@ const ApiKeyTable = ({ tips, appId, mode = 'account' }: ApiKeyTableProps) => {
                           icon={<MyIcon name={'copy'} w={'15px'} />}
                           size={'xs'}
                           variant={'whiteBase'}
-                          onClick={() => setCopyApiKey({ id: _id, apiKey })}
+                          isLoading={copyingApiKeyId === _id}
+                          onClick={() => onCopyApiKey({ id: _id, apiKey })}
                         />
                       )}
                     </Flex>
@@ -300,7 +313,6 @@ const ApiKeyTable = ({ tips, appId, mode = 'account' }: ApiKeyTableProps) => {
         />
       )}
       <ConfirmModal />
-      <ApiKeyCopyModal data={copyApiKey} onClose={() => setCopyApiKey(undefined)} />
       <MyModalV2
         isOpen={!!apiKey}
         title={
@@ -339,66 +351,6 @@ const ApiKeyTable = ({ tips, appId, mode = 'account' }: ApiKeyTableProps) => {
 };
 
 export default React.memo(ApiKeyTable);
-
-function ApiKeyCopyModal({
-  data,
-  onClose
-}: {
-  data?: { id: string; apiKey: string };
-  onClose: () => void;
-}) {
-  const { t } = useTranslation();
-  const { copyData } = useCopyData();
-  const apiKey = data?.apiKey || '';
-  const { runAsync: copyAudit, loading } = useRequest(postCopyOpenApiKeyAudit, {
-    errorToast: 'Error'
-  });
-
-  const onCopy = async () => {
-    if (data?.id) {
-      await copyAudit({ id: data.id });
-    }
-    await copyData(apiKey);
-  };
-
-  return (
-    <MyModalV2
-      isOpen={!!data}
-      onClose={onClose}
-      title={t('common:support.openapi.Copy api key')}
-      size="md"
-      footer={
-        <>
-          <Button variant="whiteBase" onClick={onClose}>
-            {t('common:Close')}
-          </Button>
-          <Button
-            isLoading={loading}
-            onClick={onCopy}
-            leftIcon={<MyIcon name={'copy'} w={'15px'} />}
-          >
-            {t('common:Copy')}
-          </Button>
-        </>
-      }
-    >
-      <Box color={'myGray.600'} mb={3}>
-        {t('common:support.openapi.Copy api key tip')}
-      </Box>
-      <Flex
-        bg={'myGray.100'}
-        px={3}
-        py={2}
-        whiteSpace={'pre-wrap'}
-        wordBreak={'break-all'}
-        borderRadius={'md'}
-        userSelect={'all'}
-      >
-        {apiKey}
-      </Flex>
-    </MyModalV2>
-  );
-}
 
 // edit link modal
 function EditKeyModal({
