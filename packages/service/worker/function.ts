@@ -24,7 +24,7 @@ export const text2Chunks = async (props: SplitProps): Promise<SplitResponse> => 
       markdown: props.text,
       chunk_sizes: { text: props.chunkSize }
     }, {
-      timeout: (chunkTimeout ?? 10) * 60 * 1000,
+      timeout: (chunkTimeout ?? 60) * 60 * 1000,
       headers: {
         'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {})
