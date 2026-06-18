@@ -29,6 +29,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initSandboxArchive' \
 3. 移除所有内置 LLM 请求中的 `temperature` 和 `max_tokens`，避免部分模型不兼容。
 4. 知识库训练出现错误时的提示，同时支持一键全部重试。
 5. 过滤掉无效的知识库引用角标。
+6. 工具运行空响应时候，自动补充 "none"，避免部分模型报错。
 
 ## 🐛 修复
 
