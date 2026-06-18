@@ -119,6 +119,7 @@ function MemberModal({
       }),
     {
       successToast: t('common:add_success'),
+      errorToast: '',
       onSuccess() {
         onClose();
       }
