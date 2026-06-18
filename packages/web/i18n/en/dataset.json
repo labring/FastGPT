@@ -218,6 +218,7 @@
   "tag.add_new": "Add",
   "tag.cancel": "Deselect",
   "tag.delete_tag_confirm": "Are you sure you want to delete the tag?",
+  "tag.duplicate_name": "Tag name already exists",
   "tag.hoverTagToFilter": "Hover a tag to view values",
   "tag.manage": "Manage tags",
   "tag.searchOrAddTag": "Search or add",

@@ -126,7 +126,9 @@ export const createOrGetCollectionTags = async ({
 
   const existingTagMap = new Map(existingTags.map((t) => [t.tag, t._id]));
 
-  const newTagContents = allTagContents.filter((content) => !existingTagMap.has(content));
+  const newTagContents = [
+    ...new Set(allTagContents.filter((content) => !existingTagMap.has(content)))
+  ];
   if (newTagContents.length > 0) {
     const newTags = await MongoDatasetCollectionTags.insertMany(
       newTagContents.map((tagContent) => ({ teamId, datasetId, tag: tagContent })),
