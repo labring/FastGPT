@@ -101,6 +101,7 @@ const createProps = (overrides: Record<string, any> = {}) =>
 describe('dispatchRunTools file context', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    global.feConfigs = {};
     getLLMModelMock.mockReturnValue({
       model: 'gpt-5',
       name: 'GPT-5',
@@ -178,6 +179,34 @@ describe('dispatchRunTools file context', () => {
       expect.objectContaining({
         params: expect.objectContaining({
           fileUrlList: ['/current.pdf']
+        })
+      })
+    );
+  });
+
+  it('passes sandbox entrypoint through when sandbox is enabled', async () => {
+    global.feConfigs = { show_agent_sandbox: true };
+
+    await dispatchRunTools(
+      createProps({
+        params: {
+          ...createProps().params,
+          useAgentSandbox: true,
+          sandboxEntrypoint: 'pip install -r requirements.txt'
+        }
+      })
+    );
+
+    expect(useToolMessagesMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        useSandbox: true
+      })
+    );
+    expect(runToolCallMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: expect.objectContaining({
+          useAgentSandbox: true,
+          sandboxEntrypoint: 'pip install -r requirements.txt'
         })
       })
     );

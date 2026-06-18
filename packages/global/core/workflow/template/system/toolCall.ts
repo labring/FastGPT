@@ -132,6 +132,12 @@ export const ToolCallNode: FlowNodeTemplateType = {
       value: false
     },
     {
+      key: NodeInputKeyEnum.sandboxEntrypoint,
+      renderTypeList: [FlowNodeInputTypeEnum.custom],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.string
+    },
+    {
       ...Input_Template_System_Prompt,
       label: i18nT('common:core.ai.Prompt'),
       description: systemPromptTip,

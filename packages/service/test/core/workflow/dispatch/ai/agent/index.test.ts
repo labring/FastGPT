@@ -15,6 +15,9 @@ const {
   axiosGetMock,
   getAgentSkillInfosMock,
   injectAgentSkillFilesToSandboxMock,
+  runAgentSandboxEntrypointMock,
+  runAgentSkillVersionEntrypointsMock,
+  withAgentSkillRuntimeLockMock,
   checkTeamSandboxPermissionMock,
   getAgentRuntimeToolsMock
 } = vi.hoisted(() => ({
@@ -25,6 +28,9 @@ const {
   axiosGetMock: vi.fn(),
   getAgentSkillInfosMock: vi.fn(),
   injectAgentSkillFilesToSandboxMock: vi.fn(),
+  runAgentSandboxEntrypointMock: vi.fn(),
+  runAgentSkillVersionEntrypointsMock: vi.fn(),
+  withAgentSkillRuntimeLockMock: vi.fn(async ({ fn }: { fn: () => Promise<unknown> }) => fn()),
   checkTeamSandboxPermissionMock: vi.fn(),
   getAgentRuntimeToolsMock: vi.fn(async () => [])
 }));
@@ -49,6 +55,12 @@ vi.mock('@fastgpt/service/core/ai/skill/runtime', async (importOriginal) => {
     injectAgentSkillFilesToSandbox: injectAgentSkillFilesToSandboxMock
   };
 });
+
+vi.mock('@fastgpt/service/core/ai/skill/runtime/entrypoint', () => ({
+  runAgentSandboxEntrypoint: runAgentSandboxEntrypointMock,
+  runAgentSkillVersionEntrypoints: runAgentSkillVersionEntrypointsMock,
+  withAgentSkillRuntimeLock: withAgentSkillRuntimeLockMock
+}));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/service/runtime', async (importOriginal) => {
   const original =
@@ -236,22 +248,20 @@ describe('dispatchRunAgent user context', () => {
       exec: sandboxClientExecMock,
       getSandboxId: () => 'sandbox_prepared'
     });
-    getAgentSkillInfosMock.mockResolvedValue([
-      {
-        id: './SKILL.md',
-        name: 'Edit Skill',
-        description: 'Edit skill description',
-        directory: '.',
-        skillMdPath: './SKILL.md'
-      }
-    ]);
     injectAgentSkillFilesToSandboxMock.mockResolvedValue([
       {
-        id: './skills/Report-skill_1/SKILL.md',
+        versionId: 'version_1',
+        targetDir: '/workspace/projects/version_1',
+        freshlyDeployed: true
+      }
+    ]);
+    getAgentSkillInfosMock.mockResolvedValue([
+      {
+        id: '/workspace/projects/version_1/Report/SKILL.md',
         name: 'Report',
         description: 'Write reports',
-        directory: './skills/Report-skill_1',
-        skillMdPath: './skills/Report-skill_1/SKILL.md'
+        directory: '/workspace/projects/version_1/Report',
+        skillMdPath: '/workspace/projects/version_1/Report/SKILL.md'
       }
     ]);
     getAgentRuntimeToolsMock.mockResolvedValue([]);
@@ -386,9 +396,19 @@ describe('dispatchRunAgent user context', () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const props = createProps();
     props.params.useAgentSandbox = true;
+    props.params.sandboxEntrypoint = 'pip install -r requirements.txt';
+    injectAgentSkillFilesToSandboxMock.mockResolvedValueOnce([]);
+    let resolveSandboxWriteFiles: (() => void) | undefined;
+    sandboxWriteFilesMock.mockReturnValueOnce(
+      new Promise<void>((resolve) => {
+        resolveSandboxWriteFiles = resolve;
+      })
+    );
     let sandboxReadyBeforeLoop = false;
+    let entrypointsReadyBeforeLoop = false;
     runUnifiedAgentLoopMock.mockImplementationOnce(async () => {
       sandboxReadyBeforeLoop = sandboxWriteFilesMock.mock.calls.length > 0;
+      entrypointsReadyBeforeLoop = runAgentSandboxEntrypointMock.mock.calls.length > 0;
       return {
         status: 'done',
         answerText: 'ok',
@@ -411,6 +431,10 @@ describe('dispatchRunAgent user context', () => {
         result = dispatchRunAgent(props);
       }
     );
+
+    await Promise.resolve();
+    expect(runAgentSandboxEntrypointMock).not.toHaveBeenCalled();
+    resolveSandboxWriteFiles?.();
     await result;
 
     expect(getSandboxClientMock).toHaveBeenCalledWith({
@@ -419,10 +443,23 @@ describe('dispatchRunAgent user context', () => {
       chatId: 'chat_1'
     });
     expect(sandboxReadyBeforeLoop).toBe(true);
+    expect(entrypointsReadyBeforeLoop).toBe(true);
     const writeFiles = sandboxWriteFilesMock.mock.calls[0][0];
     expect(writeFiles.map((file: { path: string }) => file.path)).toEqual([
       'user_files/current.pdf'
     ]);
+    expect(runAgentSandboxEntrypointMock).toHaveBeenCalledWith({
+      sandbox: expect.any(Object),
+      sandboxEntrypoint: 'pip install -r requirements.txt',
+      workDirectory: getSandboxRuntimeProfile().workDirectory
+    });
+    expect(injectAgentSkillFilesToSandboxMock).toHaveBeenCalledWith({
+      sandbox: expect.any(Object),
+      skillIds: [],
+      teamId: 'team_1',
+      workDirectory: getSandboxRuntimeProfile().workDirectory
+    });
+    expect(runAgentSkillVersionEntrypointsMock).not.toHaveBeenCalled();
     const loopInput = runUnifiedAgentLoopMock.mock.calls[0][0].input;
     expect(loopInput.systemPrompt).not.toContain('pwd: /workspace');
     expect(loopInput.messages.at(-1)?.content).toContain('当前 sandbox 工作目录: /workspace');
@@ -481,6 +518,15 @@ describe('dispatchRunAgent user context', () => {
     props.params.useAgentSandbox = false;
     props.params.skills = [];
     props.params.editSkillId = 'edit_skill_1';
+    getAgentSkillInfosMock.mockResolvedValueOnce([
+      {
+        id: './SKILL.md',
+        name: 'Edit Skill',
+        description: 'Edit skill description',
+        directory: '.',
+        skillMdPath: './SKILL.md'
+      }
+    ]);
 
     let result: any;
     runWithContext(
@@ -507,11 +553,66 @@ describe('dispatchRunAgent user context', () => {
       workDirectory: getEditWorkDirectory()
     });
     expect(injectAgentSkillFilesToSandboxMock).not.toHaveBeenCalled();
+    expect(runAgentSandboxEntrypointMock).not.toHaveBeenCalled();
+    expect(runAgentSkillVersionEntrypointsMock).not.toHaveBeenCalled();
 
     const loopInput = runUnifiedAgentLoopMock.mock.calls[0][0].input;
     expect(loopInput.messages.at(-1)?.content).toContain('## 技能');
     expect(loopInput.messages.at(-1)?.content).toContain('<name>Edit Skill</name>');
     expect(loopInput.messages.at(-1)?.content).toContain('<path>./SKILL.md</path>');
+  });
+
+  it('runs selected skill entrypoints before scanning skill info', async () => {
+    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    const props = createProps();
+    props.params.useAgentSandbox = false;
+    props.params.sandboxEntrypoint = 'echo should-not-run';
+    props.params.skills = [{ skillId: 'skill_1' }];
+
+    let skillEntrypointsReadyBeforeScan = false;
+    getAgentSkillInfosMock.mockImplementationOnce(async () => {
+      skillEntrypointsReadyBeforeScan = runAgentSkillVersionEntrypointsMock.mock.calls.length > 0;
+      return [
+        {
+          id: '/workspace/projects/version_1/Report/SKILL.md',
+          name: 'Report',
+          description: 'Write reports',
+          directory: '/workspace/projects/version_1/Report',
+          skillMdPath: '/workspace/projects/version_1/Report/SKILL.md'
+        }
+      ];
+    });
+
+    let result: any;
+    runWithContext(
+      {
+        queryUrlTypeMap: {
+          '/current.pdf': ChatFileTypeEnum.file
+        },
+        mcpClientMemory: {}
+      },
+      () => {
+        result = dispatchRunAgent(props);
+      }
+    );
+    await result;
+
+    expect(runAgentSandboxEntrypointMock).not.toHaveBeenCalled();
+    expect(runAgentSkillVersionEntrypointsMock).toHaveBeenCalledWith({
+      sandbox: expect.any(Object),
+      versions: [
+        {
+          versionId: 'version_1',
+          targetDir: '/workspace/projects/version_1',
+          freshlyDeployed: true
+        }
+      ]
+    });
+    expect(skillEntrypointsReadyBeforeScan).toBe(true);
+    expect(getAgentSkillInfosMock).toHaveBeenCalledWith({
+      sandbox: expect.any(Object),
+      skillDirectories: ['/workspace/projects/version_1']
+    });
   });
 
   it('returns the final answer as assistant response', async () => {

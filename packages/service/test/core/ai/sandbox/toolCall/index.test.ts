@@ -38,7 +38,7 @@ vi.mock('@fastgpt/service/common/s3/utils', () => ({
 
 import {
   getSandboxToolInfo,
-  injectSandboxFiles,
+  prepareSandboxToolRuntime,
   runSandboxTools
 } from '@fastgpt/service/core/ai/sandbox/toolCall';
 
@@ -137,14 +137,16 @@ describe('sandbox toolCall index', () => {
     runtimeMock.getSandboxClient.mockResolvedValueOnce(sandbox);
     const files = [{ path: '/workspace/a.txt', url: 'https://example.com/a.txt' }];
 
-    await injectSandboxFiles({
-      appId: 'app',
-      userId: 'user',
-      chatId: 'chat',
-      files
-    });
+    await expect(
+      prepareSandboxToolRuntime({
+        appId: 'app',
+        userId: 'user',
+        chatId: 'chat',
+        files
+      })
+    ).resolves.toBe(sandbox);
 
-    expect(sandbox.ensureAvailable).toHaveBeenCalledTimes(1);
+    expect(sandbox.ensureAvailable).not.toHaveBeenCalled();
     expect(fileServiceMock.writeUrlFilesToSandbox).toHaveBeenCalledWith(sandbox.provider, files);
   });
 

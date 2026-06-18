@@ -41,7 +41,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       aiChatVideo,
       aiChatReasoning,
       isResponseAnswerText = true,
-      useAgentSandbox
+      useAgentSandbox,
+      sandboxEntrypoint
     }
   } = props;
 
@@ -73,6 +74,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     props.params.aiChatReasoning = aiChatReasoning && toolModel.reasoning;
     props.params.fileUrlList = fileLinks;
     props.params.useAgentSandbox = useSandbox;
+    props.params.sandboxEntrypoint = useSandbox ? sandboxEntrypoint : undefined;
 
     const toolNodes = useToolNodeList({
       nodeId,

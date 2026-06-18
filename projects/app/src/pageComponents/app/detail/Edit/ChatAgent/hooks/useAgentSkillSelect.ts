@@ -141,7 +141,8 @@ export const useAgentSkillSelect = ({
         ...state,
         aiSettings: {
           ...state.aiSettings,
-          useAgentSandbox: checked
+          useAgentSandbox: checked,
+          sandboxEntrypoint: checked ? state.aiSettings.sandboxEntrypoint : undefined
         }
       }));
     },

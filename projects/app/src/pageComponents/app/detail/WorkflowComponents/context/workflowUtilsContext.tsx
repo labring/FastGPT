@@ -196,7 +196,10 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
 
       // Sandbox unavailable check
       const sandboxUnavailableNode = nodes.find((node) => {
-        if (node.data.flowNodeType === FlowNodeTypeEnum.agent) {
+        if (
+          node.data.flowNodeType === FlowNodeTypeEnum.agent ||
+          node.data.flowNodeType === FlowNodeTypeEnum.toolCall
+        ) {
           const useAgentSandbox = node.data.inputs.find(
             (input) => input.key === NodeInputKeyEnum.useAgentSandbox
           )?.value;

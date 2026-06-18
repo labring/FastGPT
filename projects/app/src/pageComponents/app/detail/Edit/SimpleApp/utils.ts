@@ -102,10 +102,11 @@ export const appWorkflow2Form = ({
         node.inputs,
         NodeInputKeyEnum.aiChatJsonSchema
       );
-      defaultAppForm.aiSettings.useAgentSandbox = findInputValueByKey(
-        node.inputs,
-        NodeInputKeyEnum.useAgentSandbox
-      );
+      const useAgentSandbox = findInputValueByKey(node.inputs, NodeInputKeyEnum.useAgentSandbox);
+      defaultAppForm.aiSettings.useAgentSandbox = useAgentSandbox;
+      defaultAppForm.aiSettings.sandboxEntrypoint = useAgentSandbox
+        ? findInputValueByKey(node.inputs, NodeInputKeyEnum.sandboxEntrypoint)
+        : undefined;
     } else if (node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode) {
       defaultAppForm.dataset.datasets = findInputValueByKey(
         node.inputs,
@@ -583,6 +584,10 @@ export function form2AppWorkflow(
     };
   }
   function toolTemplates(formData: AppFormEditFormType): WorkflowType {
+    const normalizedSandboxEntrypoint = formData.aiSettings.useAgentSandbox
+      ? formData.aiSettings.sandboxEntrypoint?.trim() || undefined
+      : undefined;
+
     const toolNodeId = getNanoid(6);
 
     // Dataset tool config
@@ -717,6 +722,13 @@ export function form2AppWorkflow(
               label: '',
               valueType: WorkflowIOValueTypeEnum.boolean,
               value: formData.aiSettings.useAgentSandbox ?? false
+            },
+            {
+              key: NodeInputKeyEnum.sandboxEntrypoint,
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              label: '',
+              valueType: WorkflowIOValueTypeEnum.string,
+              value: normalizedSandboxEntrypoint
             },
             {
               key: NodeInputKeyEnum.aiSystemPrompt,

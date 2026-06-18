@@ -29,7 +29,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSkillManager } from './hooks/useSkillManager';
 import { AGENT_SANDBOX_TOOLSET_ID, SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/tools';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import SandboxTipTag from '../../components/SandboxTipTag';
+import SandboxConfigButton from '../../components/SandboxConfigButton';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
@@ -269,20 +269,21 @@ const EditForm = ({
               <QuestionTip ml={1} label={t('app:use_computer_desc')} />
             </Flex>
 
-            <Box mr={2}>
-              {showSandbox && enableSandbox ? (
-                <SandboxTipTag />
-              ) : (
-                <MyTag>
-                  {showSandbox
-                    ? t('app:sandbox_free_not_support')
-                    : t('app:sandbox_not_support_tip')}
-                </MyTag>
-              )}
-            </Box>
-            <Switch
-              isChecked={appForm.aiSettings.useAgentSandbox ?? false}
-              onChange={(e) => onChangeAgentSandbox(e.target.checked)}
+            <SandboxConfigButton
+              showSandbox={!!showSandbox}
+              enableSandbox={enableSandbox}
+              isEnabled={appForm.aiSettings.useAgentSandbox ?? false}
+              entrypoint={appForm.aiSettings.sandboxEntrypoint}
+              onChangeSandbox={onChangeAgentSandbox}
+              onChangeEntrypoint={(value) => {
+                setAppForm((state) => ({
+                  ...state,
+                  aiSettings: {
+                    ...state.aiSettings,
+                    sandboxEntrypoint: value
+                  }
+                }));
+              }}
             />
           </Flex>
         </Box>

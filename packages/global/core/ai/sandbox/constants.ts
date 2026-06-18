@@ -25,6 +25,7 @@ export const generateSandboxId = (appId: string, userId: string, chatId: string)
 
 // Prompt
 export const SANDBOX_USER_FILES_PATH = 'user_files/';
+export const SANDBOX_ENTRYPOINT_MAX_LENGTH = 16 * 1024;
 export const SANDBOX_SYSTEM_PROMPT = `## 沙盒能力
 你拥有一个独立的 Linux 沙盒环境（Ubuntu 22.04），可通过 sandbox 工具操作文件和执行命令。
 - 系统预装：bash / python3 / node / bun / git / curl

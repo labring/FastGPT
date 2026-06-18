@@ -105,6 +105,9 @@ export const serviceEnv = createEnv({
       description: 'Agent sandbox IDE 单文件读写和上传大小上限（MB）'
     }),
     AGENT_SANDBOX_MAX_EDIT_DEBUG: NumSchema.default(100),
+    AGENT_SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS: IntSchema.min(1).max(600).default(30).meta({
+      description: 'Agent sandbox entrypoint 执行超时时间（秒）'
+    }),
 
     // ==================== 数据库与缓存 ====================
     // Redisg

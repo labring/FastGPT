@@ -3,6 +3,7 @@ import z from 'zod';
 import { AppChatConfigTypeSchema, AppDatasetSearchParamsTypeSchema } from '../type';
 import { FlowNodeTemplateTypeSchema } from '../../workflow/type/node';
 import { NodeInputKeyEnum } from '../../workflow/constants';
+import { SANDBOX_ENTRYPOINT_MAX_LENGTH } from '../../ai/sandbox/constants';
 
 export type AgentSubAppItemType = object;
 
@@ -43,7 +44,8 @@ export const AppFormEditFormV1TypeSchema = z.object({
     [NodeInputKeyEnum.aiChatStopSign]: z.string().optional(),
     [NodeInputKeyEnum.aiChatResponseFormat]: z.string().optional(),
     [NodeInputKeyEnum.aiChatJsonSchema]: z.string().optional(),
-    [NodeInputKeyEnum.useAgentSandbox]: z.boolean().default(false).optional()
+    [NodeInputKeyEnum.useAgentSandbox]: z.boolean().default(false).optional(),
+    [NodeInputKeyEnum.sandboxEntrypoint]: z.string().max(SANDBOX_ENTRYPOINT_MAX_LENGTH).optional()
   }),
   dataset: AppDatasetSearchParamsTypeSchema.extend({
     datasets: z.array(SelectedDatasetSchema)

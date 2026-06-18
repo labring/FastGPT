@@ -77,9 +77,7 @@ export const runSandboxTools = async ({
 
   const instance =
     sandboxClient ??
-    (await getSandboxClient(
-      sandboxId ? { sandboxId, appId, userId, chatId } : { appId, userId, chatId }
-    ));
+    (await getSandboxClient(sandboxId ? { sandboxId } : { appId, userId, chatId }));
   const result = await tool.execute({
     appId,
     userId,
@@ -97,11 +95,12 @@ export const runSandboxTools = async ({
 };
 
 /**
- * 将用户输入文件注入到当前会话 sandbox。
+ * 准备 ToolCall 使用的运行态 sandbox。
  *
- * 该入口会确保运行态 sandbox 可用，然后把远端 URL 文件下载并写入 provider 文件系统。
+ * 该入口会获取当前会话 sandbox client，并把本轮用户输入文件写入 provider 文件系统。
+ * 即使没有文件也会返回 sandbox client，供 sandbox entrypoint 和后续工具调用复用。
  */
-export const injectSandboxFiles = async ({
+export const prepareSandboxToolRuntime = async ({
   appId,
   userId,
   chatId,
@@ -114,11 +113,9 @@ export const injectSandboxFiles = async ({
   sandboxId?: string;
   files: { path: string; url: string }[];
 }) => {
-  const instance = await getSandboxClient(
-    sandboxId ? { sandboxId, appId, userId, chatId } : { appId, userId, chatId }
-  );
-  await instance.ensureAvailable();
+  const instance = await getSandboxClient(sandboxId ? { sandboxId } : { appId, userId, chatId });
   await writeUrlFilesToSandbox(instance.provider, files);
+  return instance;
 };
 
 /**

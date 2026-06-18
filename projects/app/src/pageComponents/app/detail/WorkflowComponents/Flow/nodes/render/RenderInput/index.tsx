@@ -1,6 +1,6 @@
 import React from 'react';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import { Box, Flex, Switch } from '@chakra-ui/react';
+import { Box } from '@chakra-ui/react';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import dynamic from 'next/dynamic';
 import InputLabel from './Label';
@@ -9,12 +9,6 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import VariableTip from '@/components/common/Textarea/MyTextarea/VariableTip';
 import CommonInputForm from './templates/CommonInputForm';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import SandboxTipTag from '@/pageComponents/app/detail/components/SandboxTipTag';
-import SandboxNotSupportTip from '@/pageComponents/app/detail/components/SandboxNotSupportTip';
-import { useUserStore } from '@/web/support/user/useUserStore';
-import MyTag from '@fastgpt/web/components/common/Tag/index';
-import { useTranslation } from 'next-i18next';
 
 const RenderList: Record<
   FlowNodeInputTypeEnum,
@@ -107,11 +101,7 @@ type Props = {
   mb?: number;
 };
 const RenderInput = ({ flowInputList, nodeId, CustomComponent, mb = 5 }: Props) => {
-  const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
-  const { teamPlanStatus } = useUserStore();
-  const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
-  const showSandbox = feConfigs.show_agent_sandbox;
 
   const filterProInputs = useMemoEnhance(() => {
     return flowInputList.filter((input) => {
@@ -147,37 +137,14 @@ const RenderInput = ({ flowInputList, nodeId, CustomComponent, mb = 5 }: Props) 
 
           if (!RenderItem) return null;
 
-          const renderInput =
-            input.key === NodeInputKeyEnum.useAgentSandbox
-              ? {
-                  ...input,
-                  customRender: ({
-                    value,
-                    onChange
-                  }: {
-                    value: boolean;
-                    onChange?: (value: boolean) => void;
-                  }) => (
-                    <Switch
-                      isChecked={!!value}
-                      onChange={(e) => {
-                        const checked = e.target.checked;
-                        if (checked && (!showSandbox || !enableSandbox)) return;
-                        onChange?.(checked);
-                      }}
-                    />
-                  )
-                }
-              : input;
-
           return {
             Component: (
-              <RenderItem.Component inputs={filterProInputs} item={renderInput} nodeId={nodeId} />
+              <RenderItem.Component inputs={filterProInputs} item={input} nodeId={nodeId} />
             ),
             LableRightComponent: RenderItem.LableRightComponent ? (
               <RenderItem.LableRightComponent
                 inputs={filterProInputs}
-                item={renderInput}
+                item={input}
                 nodeId={nodeId}
               />
             ) : undefined
@@ -203,32 +170,10 @@ const RenderInput = ({ flowInputList, nodeId, CustomComponent, mb = 5 }: Props) 
               />
             )}
 
-            {/* tmp */}
-            {input.key === NodeInputKeyEnum.useAgentSandbox ? (
-              RenderComponent ? (
-                <Flex alignItems={'center'} gap={1}>
-                  {showSandbox && enableSandbox ? (
-                    <SandboxTipTag />
-                  ) : (
-                    <MyTag>
-                      {t(
-                        showSandbox ? 'app:sandbox_free_not_support' : 'app:sandbox_not_support_tip'
-                      )}
-                    </MyTag>
-                  )}
-                  {RenderComponent.Component}
-                </Flex>
-              ) : (
-                <SandboxNotSupportTip type={showSandbox ? 'freeDisable' : 'systemDisable'} />
-              )
-            ) : (
-              <>
-                {!!RenderComponent && (
-                  <Box mt={isRowUI ? 0 : 2} className={'nodrag'}>
-                    {RenderComponent.Component}
-                  </Box>
-                )}
-              </>
+            {!!RenderComponent && (
+              <Box mt={isRowUI ? 0 : 2} className={'nodrag'}>
+                {RenderComponent.Component}
+              </Box>
             )}
           </Box>
         );

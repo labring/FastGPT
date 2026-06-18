@@ -25,13 +25,11 @@ const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 export type SandboxClientQuery =
   | {
       sandboxId: string;
-      teamId?: string;
     }
   | {
       appId: string;
       userId?: string;
       chatId: string;
-      teamId?: string;
     };
 
 type SandboxClientProps = {
@@ -39,7 +37,6 @@ type SandboxClientProps = {
   appId?: string;
   userId?: string;
   chatId?: string;
-  teamId?: string;
 };
 
 type SandboxClientOptions = {
@@ -49,8 +46,6 @@ type SandboxClientOptions = {
   createConfig?: SandboxCreateSpec;
   restoreArchived?: boolean;
 };
-
-type NormalizedSandboxClientQuery = SandboxClientProps;
 
 /**
  * 当前会话运行态 sandbox client。
@@ -172,18 +167,13 @@ export class SandboxClient {
   }
 }
 
-export function resolveSandboxId(props: SandboxClientQuery): string {
-  return normalizeSandboxClientQuery(props).sandboxId;
-}
-
-function normalizeSandboxClientQuery(props: SandboxClientQuery): NormalizedSandboxClientQuery {
+const resolveSandboxClientProps = (props: SandboxClientQuery): SandboxClientProps => {
   if ('sandboxId' in props) {
     if (!props.sandboxId) {
       throw new Error('sandboxId is required');
     }
     return {
-      sandboxId: props.sandboxId,
-      teamId: props.teamId
+      sandboxId: props.sandboxId
     };
   }
 
@@ -196,10 +186,9 @@ function normalizeSandboxClientQuery(props: SandboxClientQuery): NormalizedSandb
     sandboxId: generateSandboxId(props.appId, sandboxUserId, props.chatId),
     appId: props.appId,
     userId: props.userId,
-    chatId: props.chatId,
-    teamId: props.teamId
+    chatId: props.chatId
   };
-}
+};
 
 /**
  * 获取当前业务会话的运行态 sandbox client。
@@ -211,8 +200,8 @@ export const getSandboxClient = async (
   props: SandboxClientQuery,
   opts: Omit<SandboxClientOptions, 'vmConfig'> = {}
 ) => {
-  const sandboxContext = normalizeSandboxClientQuery(props);
-  const { sandboxId, appId, userId, chatId, teamId } = sandboxContext;
+  const sandboxClientProps = resolveSandboxClientProps(props);
+  const { sandboxId, appId, userId, chatId } = sandboxClientProps;
   const providerName = opts.providerName ?? getConfiguredSandboxProvider();
   let vmConfig: VolumeManagerResult | undefined;
 
@@ -242,7 +231,7 @@ export const getSandboxClient = async (
     });
   }
   vmConfig ??= providerName === 'opensandbox' ? await getSessionVolumeConfig(sandboxId) : undefined;
-  const sandbox = new SandboxClient(sandboxContext, {
+  const sandbox = new SandboxClient(sandboxClientProps, {
     ...opts,
     providerName,
     vmConfig

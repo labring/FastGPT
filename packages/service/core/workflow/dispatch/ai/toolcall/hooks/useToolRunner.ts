@@ -7,6 +7,7 @@ import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { AgentLoopChildrenInteractiveParams } from '../../../../../ai/llm/agentLoop';
 import { runSandboxTools } from '../../../../../ai/sandbox/toolCall';
+import type { SandboxClient } from '../../../../../ai/sandbox/service/runtime';
 import { parseJsonArgs } from '../../../../../ai/utils';
 import { runWorkflow } from '../../../index';
 import { getRuntimeNodeResponseSummary } from '../../../utils';
@@ -85,6 +86,7 @@ export const useToolRunner = ({
   runtimeNodes,
   runtimeEdges,
   allFiles,
+  sandboxClient,
   fileUrls = [],
   getToolInfo,
   cacheToolFlowResponse,
@@ -95,6 +97,7 @@ export const useToolRunner = ({
   runtimeNodes: DispatchToolModuleProps['runtimeNodes'];
   runtimeEdges: DispatchToolModuleProps['runtimeEdges'];
   allFiles: Map<string, FileInputType>;
+  sandboxClient?: SandboxClient;
   fileUrls?: string[];
   getToolInfo: (name: string) => ToolInfo | undefined;
   cacheToolFlowResponse: (args: {
@@ -134,14 +137,16 @@ export const useToolRunner = ({
           throw createAgentSandboxPermissionDeniedError();
         }
 
-        const { input, response, durationSeconds } = await runSandboxTools({
+        const sandboxToolParams = {
           toolName: call.function.name,
           args: call.function.arguments ?? '',
           appId: workflowProps.runningAppInfo.id,
           userId: workflowProps.uid,
           chatId: workflowProps.chatId,
-          sandboxId: workflowProps.runningAppInfo.sandboxId
-        });
+          sandboxId: workflowProps.runningAppInfo.sandboxId,
+          ...(sandboxClient ? { sandboxClient } : {})
+        };
+        const { input, response, durationSeconds } = await runSandboxTools(sandboxToolParams);
 
         const flowResponse = getSandboxToolWorkflowResponse({
           name: toolInfo.name,

@@ -32,8 +32,8 @@ import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover'
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import { SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/tools';
-import SandboxTipTag from '../../components/SandboxTipTag';
 import SandboxNotSupportTip from '../../components/SandboxNotSupportTip';
+import SandboxConfigButton from '../../components/SandboxConfigButton';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import DatasetCard from '@/components/core/app/DatasetCard';
 
@@ -260,24 +260,32 @@ const EditForm = ({
               <FormLabel ml={2}>{t('app:use_agent_sandbox')}</FormLabel>
               <QuestionTip ml={1} label={t('app:use_computer_desc')} />
             </Flex>
-            <Box mr={2}>
-              {showSandbox && enableSandbox ? (
-                <SandboxTipTag />
-              ) : (
+            <SandboxConfigButton
+              showSandbox={!!showSandbox}
+              enableSandbox={enableSandbox}
+              isEnabled={isAgentSandboxEnabled}
+              entrypoint={appForm.aiSettings.sandboxEntrypoint}
+              notSupportTip={
                 <SandboxNotSupportTip type={showSandbox ? 'freeDisable' : 'systemDisable'} />
-              )}
-            </Box>
-            <Switch
-              isChecked={isAgentSandboxEnabled}
-              onChange={(e) => {
-                const checked = e.target.checked;
+              }
+              onChangeSandbox={(checked) => {
                 if (checked && (!showSandbox || !enableSandbox)) return;
 
                 setAppForm((state) => ({
                   ...state,
                   aiSettings: {
                     ...state.aiSettings,
-                    useAgentSandbox: checked
+                    useAgentSandbox: checked,
+                    sandboxEntrypoint: checked ? state.aiSettings.sandboxEntrypoint : undefined
+                  }
+                }));
+              }}
+              onChangeEntrypoint={(value) => {
+                setAppForm((state) => ({
+                  ...state,
+                  aiSettings: {
+                    ...state.aiSettings,
+                    sandboxEntrypoint: value
                   }
                 }));
               }}

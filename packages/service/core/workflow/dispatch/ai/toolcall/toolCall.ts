@@ -66,11 +66,12 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
       aiChatReasoningEffort,
       isResponseAnswerText = true,
       useAgentSandbox,
+      sandboxEntrypoint,
       fileUrlList
     }
   } = workflowProps;
 
-  const { finalMessages, tools, getToolInfo } = await useToolCatalog({
+  const { finalMessages, tools, getToolInfo, sandboxClient } = await useToolCatalog({
     messages,
     toolNodes,
     currentInputFiles,
@@ -79,7 +80,8 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     appId: workflowProps.runningAppInfo.id,
     userId: workflowProps.uid,
     chatId: workflowProps.chatId,
-    sandboxId: workflowProps.runningAppInfo.sandboxId
+    sandboxId: workflowProps.runningAppInfo.sandboxId,
+    sandboxEntrypoint
   });
   // ToolCall 的一次运行会横跨 LLM loop、真实工具执行、SSE 预览和运行详情落库。
   // 这里按职责拆成 hook，toolCall.ts 只保留主流程编排。
@@ -106,6 +108,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     runtimeNodes,
     runtimeEdges,
     allFiles,
+    sandboxClient,
     fileUrls: fileUrlList,
     getToolInfo,
     cacheToolFlowResponse,

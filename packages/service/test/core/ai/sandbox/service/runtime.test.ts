@@ -122,7 +122,9 @@ describe('sandbox runtime service', () => {
   });
 
   it('gets a sandbox client by stable sandbox id and ensures it is available', async () => {
-    const client = await getSandboxClient({ sandboxId: 'sandbox-ready-check' });
+    const client = await getSandboxClient({
+      sandboxId: 'sandbox-ready-check'
+    });
 
     expect(client.getSandboxId()).toBe('sandbox-ready-check');
     expect(mocks.getSessionVolumeConfig).not.toHaveBeenCalled();
@@ -137,6 +139,9 @@ describe('sandbox runtime service', () => {
       expect.objectContaining({
         provider: 'sealosdevbox',
         sandboxId: 'sandbox-ready-check',
+        appId: undefined,
+        userId: undefined,
+        chatId: undefined,
         metadata: {
           volumeEnabled: false
         }
@@ -165,6 +170,9 @@ describe('sandbox runtime service', () => {
       expect.objectContaining({
         provider: 'opensandbox',
         sandboxId: 'opensandbox-volume',
+        appId: undefined,
+        userId: undefined,
+        chatId: undefined,
         vmConfig,
         storage: { mountPath: '/workspace' }
       })

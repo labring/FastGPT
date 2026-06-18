@@ -131,6 +131,20 @@ export const AgentNode: FlowNodeTemplateType = {
     },
     Input_Template_File_Link,
     Input_Template_UserChatInput,
+    {
+      key: NodeInputKeyEnum.useAgentSandbox,
+      renderTypeList: [FlowNodeInputTypeEnum.switch],
+      label: i18nT('app:use_agent_sandbox'),
+      description: i18nT('app:use_computer_desc'),
+      valueType: WorkflowIOValueTypeEnum.boolean,
+      value: false
+    },
+    {
+      key: NodeInputKeyEnum.sandboxEntrypoint,
+      renderTypeList: [FlowNodeInputTypeEnum.custom],
+      label: '',
+      valueType: WorkflowIOValueTypeEnum.string
+    },
     // Skill
     {
       key: NodeInputKeyEnum.skills,

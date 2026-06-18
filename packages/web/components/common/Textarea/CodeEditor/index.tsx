@@ -8,11 +8,21 @@ type Props = Omit<EditorProps, 'resize'> & { language?: string };
 function getLanguage(language: string | undefined): string {
   let fullName: string;
   switch (language) {
+    case 'python':
     case 'py':
       fullName = 'python';
       break;
+    case 'javascript':
     case 'js':
       fullName = 'javascript';
+      break;
+    case 'json':
+      fullName = 'json';
+      break;
+    case 'sh':
+    case 'shell':
+    case 'bash':
+      fullName = 'shell';
       break;
     default:
       fullName = `javascript`;

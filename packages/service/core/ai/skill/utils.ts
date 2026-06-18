@@ -203,7 +203,7 @@ export const joinSandboxPath = (basePath: string, path: string): string =>
   `${trimSandboxPathRight(basePath)}/${path}`;
 
 /**
- * 获取沙盒内 Skill 一级根目录。
+ * 获取运行态 selected skill version 的 projects 根目录。
  */
 export const getSkillsRootPath = (workDirectory: string): string =>
   joinSandboxPath(workDirectory, 'projects');
@@ -232,17 +232,6 @@ export const getSafeSkillDirectoryName = (skillName: string): string => {
     ? normalized
     : 'skill';
 };
-
-/**
- * 获取运行态沙盒下的 Skill 物理存储目标路径。
- */
-export const getSkillTargetPath = ({
-  workDirectory,
-  skillId
-}: {
-  workDirectory: string;
-  skillId: string;
-}): string => joinSandboxPath(getSkillsRootPath(workDirectory), getSafeSkillDirectoryName(skillId));
 
 export type GitignoreParsedResult = {
   customExcludes: string[];

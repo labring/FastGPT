@@ -54,6 +54,51 @@ describe('form2AppWorkflow', () => {
     expect(result.edges).toHaveLength(1);
   });
 
+  it('roundtrips simple app sandbox entrypoint through the tool call node', () => {
+    const form: AppFormEditFormType = {
+      aiSettings: {
+        [NodeInputKeyEnum.aiModel]: 'gpt-4',
+        [NodeInputKeyEnum.aiSystemPrompt]: 'You are a helpful assistant',
+        maxHistories: 5,
+        [NodeInputKeyEnum.aiChatIsResponseText]: true,
+        [NodeInputKeyEnum.useAgentSandbox]: true,
+        [NodeInputKeyEnum.sandboxEntrypoint]: 'pip install -r requirements.txt'
+      },
+      dataset: {
+        datasets: [],
+        similarity: 0.8,
+        limit: 1500,
+        searchMode: 'embedding',
+        embeddingWeight: 0.7,
+        usingReRank: false,
+        rerankModel: '',
+        rerankWeight: 0.5,
+        datasetSearchUsingExtensionQuery: false,
+        datasetSearchExtensionModel: '',
+        datasetSearchExtensionBg: ''
+      },
+      selectedTools: [],
+      chatConfig: {}
+    };
+
+    const workflow = form2AppWorkflow(form, mockT);
+    const toolCallNode = workflow.nodes.find(
+      (node) => node.flowNodeType === FlowNodeTypeEnum.toolCall
+    );
+
+    expect(
+      toolCallNode?.inputs.find((input) => input.key === NodeInputKeyEnum.sandboxEntrypoint)?.value
+    ).toBe('pip install -r requirements.txt');
+
+    const restored = appWorkflow2Form({
+      nodes: workflow.nodes,
+      chatConfig: workflow.chatConfig
+    });
+
+    expect(restored.aiSettings.useAgentSandbox).toBe(true);
+    expect(restored.aiSettings.sandboxEntrypoint).toBe('pip install -r requirements.txt');
+  });
+
   it('should generate dataset workflow when datasets are selected', () => {
     const form: AppFormEditFormType = {
       aiSettings: {

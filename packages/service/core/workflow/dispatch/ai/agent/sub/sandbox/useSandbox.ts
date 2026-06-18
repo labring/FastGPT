@@ -6,6 +6,11 @@ import {
   injectAgentSkillFilesToSandbox,
   type DeployedSkillInfo
 } from '../../../../../../ai/skill/runtime';
+import {
+  runAgentSandboxEntrypoint,
+  runAgentSkillVersionEntrypoints,
+  withAgentSkillRuntimeLock
+} from '../../../../../../ai/skill/runtime/entrypoint';
 import { getSandboxRuntimeProfile } from '../../../../../../ai/sandbox/runtime/profile';
 import { getSandboxClient, type SandboxClient } from '../../../../../../ai/sandbox/service/runtime';
 import { pickOutboundAxios } from '../../../../../../../common/api/axios';
@@ -18,7 +23,8 @@ type UseSandboxParams = {
   chatId: string;
   sandboxId?: string;
   teamId: string;
-  useAgentSandbox: boolean;
+  needSandboxRuntime: boolean;
+  sandboxEntrypoint?: string;
   skillIds: string[];
   editSkillId?: string;
   currentFiles: AgentInputFile[];
@@ -84,16 +90,14 @@ export async function useSandbox({
   chatId,
   sandboxId,
   teamId,
-  useAgentSandbox,
+  needSandboxRuntime,
+  sandboxEntrypoint,
   skillIds,
   editSkillId,
   currentFiles
 }: UseSandboxParams): Promise<UseSandboxResult> {
   const hasEditSkill = !!editSkillId;
-  const hasAgentSkills = skillIds.length > 0;
-  const needSandbox = useAgentSandbox || hasEditSkill || hasAgentSkills;
-
-  if (needSandbox) {
+  if (needSandboxRuntime) {
     try {
       await checkTeamSandboxPermission(teamId);
     } catch {
@@ -101,7 +105,7 @@ export async function useSandbox({
     }
   }
 
-  if (!needSandbox) {
+  if (!needSandboxRuntime) {
     return {
       skillInfos: []
     };
@@ -109,33 +113,72 @@ export async function useSandbox({
 
   // 确认使用沙盒，启动沙盒实例
   const sandboxClient = await getSandboxClient(
-    sandboxId ? { sandboxId, appId, userId, chatId } : { appId, userId, chatId }
+    sandboxId ? { sandboxId } : { appId, userId, chatId }
   );
+  const runtimeProfile = getSandboxRuntimeProfile();
 
-  const getSkillsInfo = async () => {
-    // 编辑调试包已解压到当前工作目录，调度侧需要扫描同一目录才能读取 SKILL.md。
-    if (hasEditSkill) {
-      const runtimeProfile = getSandboxRuntimeProfile();
-      return getAgentSkillInfos({
+  if (hasEditSkill) {
+    const [, currentWorkingDirectory, skillInfos] = await Promise.all([
+      injectInputFilesToSandbox(sandboxClient.provider, currentFiles),
+      readSandboxPwd(sandboxClient),
+      // 编辑调试包已解压到当前工作目录，调度侧需要扫描同一目录才能读取 SKILL.md。
+      getAgentSkillInfos({
         sandbox: sandboxClient.provider,
         workDirectory: runtimeProfile.workDirectory
-      });
-    } else if (hasAgentSkills) {
-      return injectAgentSkillFilesToSandbox({
-        sandbox: sandboxClient.provider,
-        skillIds,
-        teamId,
-        workDirectory: '.'
-      });
-    }
-    return [];
-  };
+      })
+    ]);
 
-  const [, skillInfos, currentWorkingDirectory] = await Promise.all([
-    injectInputFilesToSandbox(sandboxClient.provider, currentFiles),
-    getSkillsInfo(),
-    readSandboxPwd(sandboxClient)
-  ]);
+    return {
+      sandboxClient,
+      currentWorkingDirectory,
+      skillInfos
+    };
+  }
+
+  const { currentWorkingDirectory, skillInfos } = await withAgentSkillRuntimeLock({
+    sandbox: sandboxClient.provider,
+    fn: async () => {
+      const [deployedSkillVersions, , currentWorkingDirectory] = await Promise.all([
+        injectAgentSkillFilesToSandbox({
+          sandbox: sandboxClient.provider,
+          skillIds,
+          teamId,
+          workDirectory: runtimeProfile.workDirectory
+        }),
+        injectInputFilesToSandbox(sandboxClient.provider, currentFiles),
+        readSandboxPwd(sandboxClient)
+      ]);
+      const effectiveSandboxEntrypoint = sandboxEntrypoint?.trim();
+
+      if (effectiveSandboxEntrypoint) {
+        await runAgentSandboxEntrypoint({
+          sandbox: sandboxClient.provider,
+          sandboxEntrypoint: effectiveSandboxEntrypoint,
+          workDirectory: runtimeProfile.workDirectory
+        });
+      }
+
+      if (deployedSkillVersions.length > 0) {
+        await runAgentSkillVersionEntrypoints({
+          sandbox: sandboxClient.provider,
+          versions: deployedSkillVersions
+        });
+      }
+
+      const skillInfos =
+        deployedSkillVersions.length > 0
+          ? await getAgentSkillInfos({
+              sandbox: sandboxClient.provider,
+              skillDirectories: deployedSkillVersions.map(({ targetDir }) => targetDir)
+            })
+          : [];
+
+      return {
+        currentWorkingDirectory,
+        skillInfos
+      };
+    }
+  });
 
   return {
     sandboxClient,

@@ -32,6 +32,7 @@ This is the documentation.`;
       const files = Object.keys(zip.files);
 
       expect(files).toContain(`${name}/SKILL.md`);
+      expect(await zip.file('.gitignore')?.async('string')).toContain('node_modules/');
       // JSZip may or may not include directory entries depending on how it's called
       // but SKILL.md should definitely be there with the prefix
 

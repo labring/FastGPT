@@ -7,7 +7,10 @@ import { SANDBOX_TOOLS } from '@fastgpt/global/core/ai/sandbox/tools';
 import { nodeInputs2JsonSchema } from '@fastgpt/global/core/app/jsonschema';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
-import { getSandboxToolInfo, injectSandboxFiles } from '../../../../../ai/sandbox/toolCall';
+import { getSandboxToolInfo, prepareSandboxToolRuntime } from '../../../../../ai/sandbox/toolCall';
+import { getSandboxRuntimeProfile } from '../../../../../ai/sandbox/runtime/profile';
+import { runAgentSandboxEntrypoint } from '../../../../../ai/skill/runtime/entrypoint';
+import type { SandboxClient } from '../../../../../ai/sandbox/service/runtime';
 import type { FileInputType, ToolNodeItemType } from '../type';
 import { ReadFileTooData, ReadFileToolSchema } from '../tools/file';
 
@@ -63,7 +66,8 @@ export const useToolCatalog = async ({
   appId,
   userId,
   chatId,
-  sandboxId
+  sandboxId,
+  sandboxEntrypoint
 }: {
   messages: ChatCompletionMessageParam[];
   toolNodes: ToolNodeItemType[];
@@ -74,8 +78,10 @@ export const useToolCatalog = async ({
   userId: string;
   chatId: string;
   sandboxId?: string;
+  sandboxEntrypoint?: string;
 }) => {
   let finalMessages = messages;
+  let sandboxClient: SandboxClient | undefined;
   const toolNodesMap = new Map<string, ToolNodeItemType>();
 
   /**
@@ -103,8 +109,11 @@ export const useToolCatalog = async ({
       finalMessages = [{ role: 'system', content: SANDBOX_SYSTEM_PROMPT }, ...messages];
     }
 
-    if (currentInputFiles.length > 0) {
-      await injectSandboxFiles({
+    const effectiveSandboxEntrypoint = sandboxEntrypoint?.trim();
+    const shouldPrepareSandboxRuntime =
+      currentInputFiles.length > 0 || !!effectiveSandboxEntrypoint;
+    if (shouldPrepareSandboxRuntime) {
+      sandboxClient = await prepareSandboxToolRuntime({
         appId,
         userId,
         chatId,
@@ -114,6 +123,14 @@ export const useToolCatalog = async ({
           url: file.url
         }))
       });
+
+      if (effectiveSandboxEntrypoint) {
+        await runAgentSandboxEntrypoint({
+          sandbox: sandboxClient.provider,
+          sandboxEntrypoint: effectiveSandboxEntrypoint,
+          workDirectory: getSandboxRuntimeProfile().workDirectory
+        });
+      }
     }
   }
 
@@ -149,6 +166,7 @@ export const useToolCatalog = async ({
   return {
     finalMessages,
     tools,
-    getToolInfo
+    getToolInfo,
+    sandboxClient
   };
 };

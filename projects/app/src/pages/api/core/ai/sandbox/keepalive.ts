@@ -8,8 +8,7 @@ import { authAgentSandboxProxy } from '@/service/core/sandbox/auth';
 const KeepAliveBodySchema = z.object({
   appId: z.string(),
   userId: z.string(),
-  chatId: z.string(),
-  teamId: z.string().optional()
+  chatId: z.string()
 });
 
 /**
@@ -23,12 +22,12 @@ const KeepAliveBodySchema = z.object({
 async function handler(req: ApiRequestProps): Promise<void> {
   authAgentSandboxProxy(req);
 
-  const { appId, userId, chatId, teamId } = parseApiInput({
+  const { appId, userId, chatId } = parseApiInput({
     req,
     bodySchema: KeepAliveBodySchema
   }).body;
 
-  await getSandboxClient({ appId, userId, chatId, teamId }, { restoreArchived: false });
+  await getSandboxClient({ appId, userId, chatId }, { restoreArchived: false });
 }
 
 export default NextAPI(handler);
