@@ -12,11 +12,13 @@ const {
   dispatchAgentDatasetSearchMock,
   dispatchAppMock,
   dispatchFileReadMock,
+  dispatchToolMock,
   getAgentRuntimeToolsMock
 } = vi.hoisted(() => ({
   dispatchAgentDatasetSearchMock: vi.fn(),
   dispatchAppMock: vi.fn(),
   dispatchFileReadMock: vi.fn(),
+  dispatchToolMock: vi.fn(),
   getAgentRuntimeToolsMock: vi.fn(async () => [])
 }));
 
@@ -26,6 +28,10 @@ vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/file', () => ({
 
 vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool/utils', () => ({
   getAgentRuntimeTools: getAgentRuntimeToolsMock
+}));
+
+vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool', () => ({
+  dispatchTool: dispatchToolMock
 }));
 
 vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/dataset', () => ({
@@ -149,6 +155,92 @@ describe('Agent read_files tool protocol', () => {
     expect(dispatchFileReadMock).toHaveBeenCalledWith(
       expect.objectContaining({
         files: [{ id: 'current-0', url: '/current.pdf' }]
+      })
+    );
+  });
+
+  it('replaces agent file ids before dispatching user tools', async () => {
+    dispatchToolMock.mockResolvedValue({
+      response: 'tool response',
+      usages: [],
+      nodeResponse: {
+        moduleName: 'HTTP Tool'
+      }
+    });
+    const executeTool = getExecuteTool({
+      checkIsStopping: vi.fn(),
+      chatConfig: {},
+      runningUserInfo: {
+        teamId: 'team_1',
+        tmbId: 'tmb_1'
+      },
+      runningAppInfo: {
+        id: 'app_1'
+      },
+      chatId: 'chat_1',
+      uid: 'user_1',
+      variableState: {} as any,
+      externalProvider: {
+        openaiAccount: undefined
+      } as any,
+      lang: 'zh-CN',
+      requestOrigin: '',
+      mode: 'chat',
+      timezone: 'Asia/Shanghai',
+      retainDatasetCite: false,
+      maxRunTimes: 10,
+      workflowDispatchDeep: 0,
+      params: {
+        model: 'gpt-4'
+      },
+      stream: false,
+      getSubAppInfo: () => ({
+        name: 'HTTP Tool',
+        avatar: '',
+        toolDescription: ''
+      }),
+      getSubApp: () => ({
+        type: 'tool',
+        id: 'http-tool',
+        name: 'HTTP Tool',
+        avatar: '',
+        version: '1.0.0',
+        toolConfig: {},
+        params: {
+          fixedFile: 'current-0'
+        }
+      }),
+      completionTools: [],
+      fileUrlMap: {
+        'current-0': 'https://files/current.pdf',
+        'current-1': 'https://files/image.png'
+      },
+      filesMap: {}
+    } as any);
+
+    await executeTool({
+      callId: 'call_http_tool',
+      toolId: 'http-tool',
+      args: JSON.stringify({
+        fileUrl: 'current-1',
+        nested: {
+          list: ['current-0', 'keep']
+        },
+        text: 'please use current-0'
+      })
+    });
+
+    expect(dispatchToolMock).toHaveBeenCalledTimes(1);
+    expect(dispatchToolMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: {
+          fixedFile: 'https://files/current.pdf',
+          fileUrl: 'https://files/image.png',
+          nested: {
+            list: ['https://files/current.pdf', 'keep']
+          },
+          text: 'please use current-0'
+        }
       })
     );
   });

@@ -53,7 +53,7 @@ type AgentSelectedDatasetContext = AgentSelectedDatasetInput & {
 
 export const isValidAgentFileUrl = (url: unknown): url is string => {
   if (typeof url !== 'string') return false;
-  const validPrefixList = ['/', 'http', 'ws', 'data:'];
+  const validPrefixList = ['/', 'http', 'ws'];
   return validPrefixList.some((prefix) => url.startsWith(prefix));
 };
 
@@ -126,9 +126,6 @@ export function parseAgentInputFiles({
     })
     .filter(Boolean) as AgentInputFile[];
 }
-
-const filterAgentDocumentFiles = (files: AgentInputFile[]) =>
-  files.filter((file) => file.type === ChatFileTypeEnum.file);
 
 /**
  * 解析本轮用户输入文件。
@@ -213,8 +210,10 @@ export const loadAgentDatasetContext = async (
 export const buildAgentInputFilesPrompt = (files: AgentInputFile[] = []) => {
   if (files.length === 0) return '';
 
-  return `## 文件
-用户本次对话上传的文件。需要把文件传给工具时，直接使用 url；type 为 ${ChatFileTypeEnum.file} 的文件也可通过 ${SubAppIds.readFiles} 读取文件内容：
+  return `## 对话文件
+用户本次对话上传的文件，用途：
+1. 可通过 ${SubAppIds.readFiles} 读取文档内容。
+2. 可把 url 作为模型参数。
 
 ${files
   .map(

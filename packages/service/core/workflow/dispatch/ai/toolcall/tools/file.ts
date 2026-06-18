@@ -10,6 +10,7 @@ import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import z from 'zod';
 import type { ChildResponseItemType } from '../type';
 import { summarizeRuntimeNodeResponses } from '../../../utils';
+import { documentFileType } from '@fastgpt/global/common/file/constants';
 
 const logger = getLogger(LogCategories.MODULE.AI.TOOL_CALL);
 
@@ -26,11 +27,11 @@ export const ReadFileToolSchema: ChatCompletionTool = {
   type: 'function',
   function: {
     name: ReadFileTooData.id,
-    description: '解析文件内容，获取文本。',
+    description: `读取文档并返回文档内容，支持: ${documentFileType}`,
     parameters: {
       type: 'object',
       properties: {
-        ids: { type: 'array', items: { type: 'string' } }
+        ids: { type: 'array', description: '需要读取的文档 id 列表', items: { type: 'string' } }
       },
       required: ['ids']
     }

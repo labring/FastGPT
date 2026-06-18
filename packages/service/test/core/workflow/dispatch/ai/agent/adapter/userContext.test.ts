@@ -725,7 +725,7 @@ describe('useUserContext', () => {
     );
   });
 
-  it('filters invalid urls and keeps image audio video urls in agent context', async () => {
+  it('filters invalid and data urls and keeps image audio video urls in agent context', async () => {
     const dataImage = 'data:image/png;base64,AAAA';
     await runWithContextAsync(
       {
@@ -756,35 +756,28 @@ describe('useUserContext', () => {
         });
 
         expect(result.filesMap).toEqual({
-          'current_ai-2': '/doc.pdf'
+          'current_ai-0': '/doc.pdf'
         });
         expect(result.fileUrlMap).toEqual({
-          'current_ai-1': dataImage,
-          'current_ai-2': '/doc.pdf',
-          'current_ai-3': '/voice.mp3',
-          'current_ai-4': '/demo.mp4'
+          'current_ai-0': '/doc.pdf',
+          'current_ai-1': '/voice.mp3',
+          'current_ai-2': '/demo.mp4'
         });
         expect(result.currentFiles).toEqual([
           {
-            id: 'current_ai-1',
-            name: 'image.png',
-            type: ChatFileTypeEnum.image,
-            url: dataImage
-          },
-          {
-            id: 'current_ai-2',
+            id: 'current_ai-0',
             name: 'doc.pdf',
             type: ChatFileTypeEnum.file,
             url: '/doc.pdf'
           },
           {
-            id: 'current_ai-3',
+            id: 'current_ai-1',
             name: 'voice.mp3',
             type: ChatFileTypeEnum.audio,
             url: '/voice.mp3'
           },
           {
-            id: 'current_ai-4',
+            id: 'current_ai-2',
             name: 'demo.mp4',
             type: ChatFileTypeEnum.video,
             url: '/demo.mp4'
@@ -792,15 +785,16 @@ describe('useUserContext', () => {
         ]);
 
         const { text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
-        expect(text).not.toContain('<id>current_ai-0</id>');
+        expect(text).toContain('<id>current_ai-0</id>');
         expect(text).toContain('<id>current_ai-1</id>');
         expect(text).toContain('<id>current_ai-2</id>');
-        expect(text).toContain('<id>current_ai-3</id>');
-        expect(text).toContain('<id>current_ai-4</id>');
-        expect(text).toContain('<type>image</type>');
+        expect(text).not.toContain('<id>current_ai-3</id>');
+        expect(text).not.toContain('<id>current_ai-4</id>');
+        expect(text).not.toContain('<type>image</type>');
         expect(text).toContain('<type>audio</type>');
         expect(text).toContain('<type>video</type>');
         expect(text).not.toContain('not-a-url');
+        expect(text).not.toContain('data:image');
         expect(text).not.toContain('data:text/plain');
       }
     );

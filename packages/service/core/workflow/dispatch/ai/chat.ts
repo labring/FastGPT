@@ -447,6 +447,7 @@ const getChatMessages = async ({
 
           return files.map((file) => ({
             name: file.name,
+            url: file.url,
             content: file.content
           }));
         }

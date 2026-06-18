@@ -53,10 +53,15 @@ describe('dispatchReadFiles', () => {
     });
 
     const text = result.data?.[NodeOutputKeyEnum.text];
+    expect(text).toContain('## 文件读取结果');
+    expect(text).toContain('<id>0</id>');
+    expect(text).toContain('<name>a.pdf</name>');
     expect(text).toContain('Alpha');
     expect(text).toContain('Beta');
     expect(text).toContain('a.pdf');
     expect(text).toContain('b.pdf');
+    expect(text).not.toContain('用户本次对话上传的文件');
+    expect(text).not.toContain('可通过 read_files');
 
     expect(result.data?.[NodeOutputKeyEnum.rawResponse]).toEqual([
       { filename: 'a.pdf', url: '/a.pdf', text: 'Alpha' },
