@@ -191,7 +191,7 @@ export async function agenticSearchDispatch(
 
     // 合并 forbidCollectionIds：系统级 forbid + 权限级 forbid
     const systemForbiddenCols = await MongoDatasetCollection.find(
-      { datasetId: { $in: datasetIds }, forbid: true },
+      { datasetId: { $in: datasetIds }, forbid: true, deleteTime: null },
       '_id'
     ).lean();
     const forbidSet = new Set<string>();
@@ -220,7 +220,7 @@ export async function agenticSearchDispatch(
       }
       // 查出 datasets 下所有可用 collection，不在白名单中的加入 forbid
       const allCols = await MongoDatasetCollection.find(
-        { datasetId: { $in: datasetIds }, forbid: { $ne: true }, type: { $ne: 'folder' } },
+        { datasetId: { $in: datasetIds }, forbid: { $ne: true }, deleteTime: null, type: { $ne: 'folder' } },
         '_id'
       ).lean();
       const whitelistSet = new Set(filterWhitelist);

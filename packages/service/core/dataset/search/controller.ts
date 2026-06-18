@@ -439,7 +439,7 @@ export async function filterCollectionByNewTagFormat({
         : { 'tags.tagId': { $in: orTagIds } };
 
     const candidates = await MongoDatasetCollection.find(
-      { teamId, datasetId, ...tagIdQuery },
+      { teamId, datasetId, deleteTime: null, ...tagIdQuery },
       '_id tags',
       { ...readFromSecondary }
     ).lean();
@@ -511,7 +511,8 @@ export async function resolveCollectionFilter({
       {
         teamId,
         datasetId: { $in: datasetIds },
-        _id: { $in: parentCollectionIds }
+        _id: { $in: parentCollectionIds },
+        deleteTime: null
       },
       '_id type',
       { ...readFromSecondary }
@@ -533,7 +534,8 @@ export async function resolveCollectionFilter({
         {
           teamId,
           datasetId: { $in: datasetIds },
-          parentId: { $in: folderIds }
+          parentId: { $in: folderIds },
+          deleteTime: null
         },
         '_id type',
         { ...readFromSecondary }
@@ -630,7 +632,8 @@ export async function resolveCollectionFilter({
             {
               teamId,
               datasetId,
-              tags: { $all: tagIds }
+              tags: { $all: tagIds },
+              deleteTime: null
             },
             '_id',
             { ...readFromSecondary }
@@ -644,7 +647,8 @@ export async function resolveCollectionFilter({
           {
             teamId,
             datasetId: { $in: datasetIds },
-            $or: [{ tags: { $size: 0 } }, { tags: { $exists: false } }]
+            $or: [{ tags: { $size: 0 } }, { tags: { $exists: false } }],
+            deleteTime: null
           },
           '_id',
           { ...readFromSecondary }
@@ -670,7 +674,8 @@ export async function resolveCollectionFilter({
           $or: [
             { tags: { $in: orTagIds } },
             ...(orTags.includes(null) ? [{ tags: { $size: 0 } }] : [])
-          ]
+          ],
+          deleteTime: null
         },
         '_id',
         { ...readFromSecondary }
@@ -687,6 +692,7 @@ export async function resolveCollectionFilter({
         {
           teamId,
           datasetId: { $in: datasetIds },
+          deleteTime: null,
           createTime: {
             ...(getCreateTime && { $gte: new Date(getCreateTime) }),
             ...(lteCreateTime && { $lte: new Date(lteCreateTime) })
@@ -912,7 +918,8 @@ export async function searchDatasetData(
         }),
       MongoDatasetCollection.find(
         {
-          _id: { $in: collectionIdList }
+          _id: { $in: collectionIdList },
+          deleteTime: null
         },
         datasetCollectionSelectField,
         { ...readFromSecondary }
@@ -1115,7 +1122,8 @@ export async function searchDatasetData(
         }),
       MongoDatasetCollection.find(
         {
-          _id: { $in: collectionIds.map((id) => new Types.ObjectId(id)) }
+          _id: { $in: collectionIds.map((id) => new Types.ObjectId(id)) },
+          deleteTime: null
         },
         datasetCollectionSelectField,
         { ...readFromSecondary }
@@ -1285,7 +1293,8 @@ export async function searchDatasetData(
         }),
       MongoDatasetCollection.find(
         {
-          _id: { $in: collectionIds }
+          _id: { $in: collectionIds },
+          deleteTime: null
         },
         datasetCollectionSelectField,
         { ...readFromSecondary }
@@ -1922,7 +1931,8 @@ const mergeAndGetSchema = async ({
   // Batch fetch all collections with table schema
   const collections = await MongoDatasetCollection.find({
     _id: { $in: Array.from(resultsByCollection.keys()) },
-    teamId
+    teamId,
+    deleteTime: null
   })
     .select('_id datasetId name tableSchema')
     .lean();
@@ -2020,7 +2030,8 @@ export const generateAndExecuteSQL = async ({
   const collections = await MongoDatasetCollection.find({
     datasetId,
     name: { $in: tableNames },
-    teamId
+    teamId,
+    deleteTime: null
   }).lean();
 
   // Collections Changes during Sql Generation
@@ -2154,7 +2165,8 @@ export async function searchFAQData({
         teamId,
         datasetId: { $in: datasetIds },
         trainingType: DatasetCollectionDataProcessModeEnum.template,
-        forbid: { $ne: true }
+        forbid: { $ne: true },
+        deleteTime: null
       },
       '_id'
     ).lean();

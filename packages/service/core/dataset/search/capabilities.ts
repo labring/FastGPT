@@ -225,7 +225,7 @@ export async function embeddingRecall(options: RecallOptions): Promise<RecallRes
         );
         return map;
       }),
-    MongoDatasetCollection.find({ _id: { $in: collectionIdList } }, datasetCollectionSelectField, {
+    MongoDatasetCollection.find({ _id: { $in: collectionIdList }, deleteTime: null }, datasetCollectionSelectField, {
       ...readFromSecondary
     })
       .lean()
@@ -360,7 +360,7 @@ export async function embeddingRecallPerQuery(
         });
         return map;
       }),
-    MongoDatasetCollection.find({ _id: { $in: collectionIdList } }, datasetCollectionSelectField, {
+    MongoDatasetCollection.find({ _id: { $in: collectionIdList }, deleteTime: null }, datasetCollectionSelectField, {
       ...readFromSecondary
     })
       .lean()
@@ -519,7 +519,7 @@ export async function fullTextRecall(options: RecallOptions): Promise<RecallResu
         });
         return map;
       }),
-    MongoDatasetCollection.find({ _id: { $in: collectionIds } }, datasetCollectionSelectField, {
+    MongoDatasetCollection.find({ _id: { $in: collectionIds }, deleteTime: null }, datasetCollectionSelectField, {
       ...readFromSecondary
     })
       .lean()
@@ -632,7 +632,7 @@ export async function fullTextRecallFromMilvus(options: {
         return map;
       }),
     MongoDatasetCollection.find(
-      { _id: { $in: collectionIds.map((id) => new Types.ObjectId(id)) } },
+      { _id: { $in: collectionIds.map((id) => new Types.ObjectId(id)) }, deleteTime: null },
       datasetCollectionSelectField,
       { ...readFromSecondary }
     )
@@ -770,7 +770,7 @@ export async function fullTextRecallFromMongo(options: {
         res.forEach((item) => map.set(String(item._id), item));
         return map;
       }),
-    MongoDatasetCollection.find({ _id: { $in: collectionIds } }, datasetCollectionSelectField, {
+    MongoDatasetCollection.find({ _id: { $in: collectionIds }, deleteTime: null }, datasetCollectionSelectField, {
       ...readFromSecondary
     })
       .lean()
@@ -949,7 +949,7 @@ export async function milvusHybridRecall(options: {
         return map;
       }),
     MongoDatasetCollection.find(
-      { _id: { $in: collectionIds.map((id) => new Types.ObjectId(id)) } },
+      { _id: { $in: collectionIds.map((id) => new Types.ObjectId(id)) }, deleteTime: null },
       datasetCollectionSelectField,
       { ...readFromSecondary }
     )

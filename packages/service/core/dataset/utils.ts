@@ -65,7 +65,8 @@ export const filterCollectionsByTmbId = async ({
   const collections = await MongoDatasetCollection.find(
     {
       datasetId: { $in: datasetIds },
-      forbid: { $ne: true }
+      forbid: { $ne: true },
+      deleteTime: null
     },
     '_id tmbId datasetId parentId inheritPermission type'
   ).lean();

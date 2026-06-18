@@ -98,7 +98,8 @@ export const embeddingRecall = async ({
       }),
     MongoDatasetCollection.find(
       {
-        _id: { $in: collectionIdList }
+        _id: { $in: collectionIdList },
+        deleteTime: null
       },
       datasetCollectionSelectField,
       { ...readFromSecondary }
