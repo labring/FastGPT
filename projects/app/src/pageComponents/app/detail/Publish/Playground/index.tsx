@@ -35,7 +35,6 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
   const showFullText = useWatch({ control, name: 'showFullText' });
   const canDownloadSource = useWatch({ control, name: 'canDownloadSource' });
   const showRunningStatus = useWatch({ control, name: 'showRunningStatus' });
-  const showSkillReferences = useWatch({ control, name: 'showSkillReferences' });
   const showWholeResponse = useWatch({ control, name: 'showWholeResponse' });
 
   const playgroundLink = useMemo(() => {
@@ -77,7 +76,7 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
   };
 
   const visibilityItemGridProps = {
-    templateColumns: { base: 'minmax(0, 1fr) auto', md: '140px auto' } as const,
+    templateColumns: { base: 'minmax(0, 1fr) auto', sm: '140px auto' } as const,
     columnGap: '28px' as const,
     alignItems: 'center' as const
   };
@@ -121,13 +120,13 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
       <Grid
         mt={4}
         w={'100%'}
-        templateColumns={{ base: '1fr', md: 'repeat(3, 1fr)' }}
+        templateColumns={{ base: '1fr', sm: 'repeat(3, 1fr)' }}
         columnGap={6}
         rowGap={4}
         pb={4}
       >
         <Grid {...visibilityItemGridProps}>
-          <FormLabel fontSize={'12px'} mb={0} whiteSpace={{ base: 'normal', md: 'nowrap' }}>
+          <FormLabel fontSize={'12px'} mb={0} whiteSpace={{ base: 'normal', sm: 'nowrap' }}>
             {t('publish:show_node')}
           </FormLabel>
           <Switch
@@ -141,28 +140,7 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
 
         <Grid {...visibilityItemGridProps}>
           <Flex alignItems={'center'} gap={1}>
-            <FormLabel fontSize={'12px'} mb={0} whiteSpace={{ base: 'normal', md: 'nowrap' }}>
-              {t('publish:show_skill_reference')}
-            </FormLabel>
-            <QuestionTip label={t('publish:show_skill_reference_tips')} />
-          </Flex>
-          <Switch
-            flexShrink={0}
-            {...register('showSkillReferences', {
-              onChange(e) {
-                if (e.target.checked) {
-                  setValue('showRunningStatus', true);
-                }
-                autoSave();
-              }
-            })}
-            isChecked={showSkillReferences}
-          />
-        </Grid>
-
-        <Grid {...visibilityItemGridProps}>
-          <Flex alignItems={'center'} gap={1}>
-            <FormLabel fontSize={'12px'} mb={0} whiteSpace={{ base: 'normal', md: 'nowrap' }}>
+            <FormLabel fontSize={'12px'} mb={0} whiteSpace={{ base: 'normal', sm: 'nowrap' }}>
               {t('app:publish.show_whole_response')}
             </FormLabel>
             <QuestionTip label={t('app:publish.show_whole_response_tip')} />
@@ -176,9 +154,11 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
           />
         </Grid>
 
+        <Box display={{ base: 'none', sm: 'block' }} />
+
         <Grid {...visibilityItemGridProps}>
           <Flex alignItems={'center'} gap={1}>
-            <FormLabel fontSize={'12px'} mb={0} whiteSpace={{ base: 'normal', md: 'nowrap' }}>
+            <FormLabel fontSize={'12px'} mb={0} whiteSpace={{ base: 'normal', sm: 'nowrap' }}>
               {t('common:support.outlink.share.Response Quote')}
             </FormLabel>
             <QuestionTip label={t('common:support.outlink.share.Response Quote tips')} />
@@ -200,7 +180,7 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
 
         <Grid {...visibilityItemGridProps}>
           <Flex alignItems={'center'} gap={1}>
-            <FormLabel fontSize={'12px'} mb={0} whiteSpace={{ base: 'normal', md: 'nowrap' }}>
+            <FormLabel fontSize={'12px'} mb={0} whiteSpace={{ base: 'normal', sm: 'nowrap' }}>
               {t('common:core.app.share.Show full text')}
             </FormLabel>
             <QuestionTip label={t('common:support.outlink.share.Show full text tips')} />
@@ -223,7 +203,7 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
 
         <Grid {...visibilityItemGridProps}>
           <Flex alignItems={'center'} gap={1}>
-            <FormLabel fontSize={'12px'} mb={0} whiteSpace={{ base: 'normal', md: 'nowrap' }}>
+            <FormLabel fontSize={'12px'} mb={0} whiteSpace={{ base: 'normal', sm: 'nowrap' }}>
               {t('common:core.app.share.Download source')}
             </FormLabel>
             <QuestionTip label={t('common:support.outlink.share.Download source tips')} />
