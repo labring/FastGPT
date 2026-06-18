@@ -104,7 +104,8 @@ async function handler(
     const collectionCount = await MongoDatasetCollection.countDocuments({
       teamId,
       datasetId,
-      forbid: { $ne: true }
+      forbid: { $ne: true },
+      deleteTime: null
     });
 
     if (collectionCount === 0) {
@@ -197,7 +198,8 @@ async function handler(
     const collectionCount = await MongoDatasetCollection.countDocuments({
       teamId,
       datasetId,
-      forbid: { $ne: true }
+      forbid: { $ne: true },
+      deleteTime: null
     });
 
     if (collectionCount === 0) {

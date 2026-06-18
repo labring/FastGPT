@@ -250,7 +250,8 @@ export async function searchDatasetDataForAssistant(
         }),
       MongoDatasetCollection.find(
         {
-          _id: { $in: collectionIdList }
+          _id: { $in: collectionIdList },
+          deleteTime: null
         },
         datasetCollectionSelectField,
         { ...readFromSecondary }
@@ -418,7 +419,8 @@ export async function searchDatasetDataForAssistant(
         }),
       MongoDatasetCollection.find(
         {
-          _id: { $in: collectionIds }
+          _id: { $in: collectionIds },
+          deleteTime: null
         },
         datasetCollectionSelectField,
         { ...readFromSecondary }
