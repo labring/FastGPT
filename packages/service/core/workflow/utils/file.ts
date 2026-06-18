@@ -38,6 +38,7 @@ export const formatUserQueryWithFiles = async ({
     {
       id?: string;
       name: string;
+      url: string;
       sandboxPath?: string;
       content?: string;
     }[]

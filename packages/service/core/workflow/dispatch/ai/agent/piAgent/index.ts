@@ -137,7 +137,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       currentFiles: userContext.currentFiles
     });
 
-    const { chatHistories, filesMap } = userContext;
+    const { chatHistories, filesMap, fileUrlMap } = userContext;
     const { currentUserMessage } = userContext.getCurrentMessages({
       skillInfos,
       currentWorkingDirectory
@@ -219,6 +219,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       getSubApp,
       completionTools: agentCompletionTools,
       sandboxClient,
+      fileUrlMap,
       filesMap
     };
 

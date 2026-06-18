@@ -53,7 +53,7 @@ type AgentSelectedDatasetContext = AgentSelectedDatasetInput & {
 
 export const isValidAgentFileUrl = (url: unknown): url is string => {
   if (typeof url !== 'string') return false;
-  const validPrefixList = ['/', 'http', 'ws', 'data:'];
+  const validPrefixList = ['/', 'http', 'ws'];
   return validPrefixList.some((prefix) => url.startsWith(prefix));
 };
 
@@ -127,9 +127,6 @@ export function parseAgentInputFiles({
     .filter(Boolean) as AgentInputFile[];
 }
 
-const filterAgentDocumentFiles = (files: AgentInputFile[]) =>
-  files.filter((file) => file.type === ChatFileTypeEnum.file);
-
 /**
  * 解析本轮用户输入文件。
  *
@@ -151,16 +148,14 @@ export function buildCurrentAgentInputFiles({
   );
   const currentQueryFilesByUrl = new Map(queryFiles.map((file) => [file.url, file]));
 
-  return filterAgentDocumentFiles(
-    parseAgentInputFiles({
-      files: currentInputFiles.map(
-        (url) => currentQueryFilesByUrl.get(url) || { type: ChatFileTypeEnum.file, url }
-      ),
-      prefixId: currentDataId || getNanoid(),
-      requestOrigin,
-      maxFiles
-    })
-  );
+  return parseAgentInputFiles({
+    files: currentInputFiles.map(
+      (url) => currentQueryFilesByUrl.get(url) || { type: ChatFileTypeEnum.file, url }
+    ),
+    prefixId: currentDataId || getNanoid(),
+    requestOrigin,
+    maxFiles
+  });
 }
 
 /**
@@ -213,17 +208,20 @@ export const loadAgentDatasetContext = async (
 
 /* Prompt */
 export const buildAgentInputFilesPrompt = (files: AgentInputFile[] = []) => {
-  const documentFiles = filterAgentDocumentFiles(files);
-  if (documentFiles.length === 0) return '';
+  if (files.length === 0) return '';
 
-  return `## 文件
-用户本次对话上传的的文件， 可通过 ${SubAppIds.readFiles} 读取文件内容：
+  return `## 对话文件
+用户本次对话上传的文件，用途：
+1. 可通过 ${SubAppIds.readFiles} 读取文档内容。
+2. 可把 url 作为模型参数。
 
-${documentFiles
+${files
   .map(
     (file) => `<file>
 <id>${escapeXml(file.id)}</id>
 <name>${escapeXml(file.name)}</name>
+<type>${escapeXml(file.type)}</type>
+<url>${escapeXml(file.url)}</url>
 </file>`
   )
   .join('\n')}`;
@@ -319,6 +317,7 @@ export type UseUserContextResult = {
   chatHistories: ChatItemMiniType[];
   currentFiles: AgentInputFile[];
   queryInput: string;
+  fileUrlMap: Record<string, string>;
   filesMap: Record<string, string>;
   getCurrentMessages: (params?: {
     skillInfos?: DeployedSkillInfo[];
@@ -362,6 +361,8 @@ export const useUserContext = async ({
   timezone: string;
 }): Promise<UseUserContextResult> => {
   const chatHistories = getHistories(history, histories);
+  // fileUrlMap 记录所有上传文件，供普通工具参数把 file id 兜底转换成可访问 URL。
+  const fileUrlMap: Record<string, string> = {};
   // filesMap 只给 read_files 使用，因此只登记 document 类型文件。
   const filesMap: Record<string, string> = {};
 
@@ -372,6 +373,7 @@ export const useUserContext = async ({
     if (files.length === 0) return;
 
     for (const file of files) {
+      fileUrlMap[file.id] = file.url;
       if (file.type === ChatFileTypeEnum.file) {
         filesMap[file.id] = file.url;
       }
@@ -384,14 +386,12 @@ export const useUserContext = async ({
 
     const { files } = chatValue2RuntimePrompt(message.value);
 
-    const formatFiles = filterAgentDocumentFiles(
-      parseAgentInputFiles({
-        files,
-        prefixId: getMessagePrefixId(message, index),
-        requestOrigin,
-        maxFiles
-      })
-    );
+    const formatFiles = parseAgentInputFiles({
+      files,
+      prefixId: getMessagePrefixId(message, index),
+      requestOrigin,
+      maxFiles
+    });
 
     registerFiles(formatFiles);
     if (formatFiles.length === 0) return message;
@@ -439,6 +439,7 @@ export const useUserContext = async ({
     chatHistories,
     currentFiles: currentInputFiles,
     queryInput,
+    fileUrlMap,
     filesMap,
     getCurrentMessages: ({ skillInfos, currentWorkingDirectory } = {}) => {
       const currentUserMessage: ChatItemMiniType = {

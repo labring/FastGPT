@@ -6,6 +6,7 @@ import {
   sandboxToolMap
 } from '../../../ai/sandbox/tools';
 import { parseI18nString } from '../../../../common/i18n/utils';
+import { documentFileType } from '../../../../common/file/constants';
 
 export enum SubAppIds {
   ask = 'ask_agent',
@@ -25,7 +26,7 @@ export const systemSubInfo: Record<
       en: 'FileParsing'
     },
     avatar: 'core/workflow/template/readFiles',
-    toolDescription: '读取文件内容，并返回文件内容。'
+    toolDescription: `读取文档并返回文档内容，支持: ${documentFileType}`
   },
   [SubAppIds.datasetSearch]: {
     name: {
