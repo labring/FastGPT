@@ -14,6 +14,7 @@ import {
   type GetSystemToolTemplatesBodyType
 } from '@fastgpt/global/openapi/core/app/tool/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
 
 export type GetSystemPluginTemplatesBody = GetSystemToolTemplatesBodyType;
 
@@ -42,24 +43,30 @@ export async function handler(
       lang,
       source: 'system'
     });
+    if (!isSelectableToolStatus(parent.status)) {
+      return GetSystemToolTemplatesResponseSchema.parse([]);
+    }
 
     const childTemplates =
-      parent.children?.map((child) => ({
-        ...parent,
-        templateType: FlowNodeTemplateTypeEnum.tools,
-        // templateType: tool.isToolSet
-        //   ? FlowNodeTemplateTypeEnum.tools
-        //   : FlowNodeTemplateTypeEnum.other,
-        flowNodeType: FlowNodeTypeEnum.tool,
-        name: child.name,
-        intro: child.description,
-        toolDescription: child.toolDescription,
-        id: `${parentId}/${child.id}`,
-        avatar: child.icon ?? parent.avatar,
-        currentCost: child.currentCost,
-        systemKeyCost: child.systemKeyCost,
-        hasTokenFee: parent.hasTokenFee
-      })) ?? [];
+      parent.children
+        ?.filter((child) => isSelectableToolStatus(child.status))
+        .map((child) => ({
+          ...parent,
+          templateType: FlowNodeTemplateTypeEnum.tools,
+          // templateType: tool.isToolSet
+          //   ? FlowNodeTemplateTypeEnum.tools
+          //   : FlowNodeTemplateTypeEnum.other,
+          flowNodeType: FlowNodeTypeEnum.tool,
+          name: child.name,
+          intro: child.description,
+          toolDescription: child.toolDescription,
+          id: `${parentId}/${child.id}`,
+          avatar: child.icon ?? parent.avatar,
+          currentCost: child.currentCost,
+          systemKeyCost: child.systemKeyCost,
+          hasTokenFee: parent.hasTokenFee,
+          status: child.status
+        })) ?? [];
 
     return GetSystemToolTemplatesResponseSchema.parse(
       filterTemplatesBySearchKey(childTemplates, searchRegex)
@@ -74,6 +81,7 @@ export async function handler(
 
   const templates = tools
     .filter((item) => {
+      if (!isSelectableToolStatus(item.status)) return false;
       if (isRoot) return true;
       if (item.hideTags && item.hideTags.some((tag) => userTags.includes(tag))) return false;
       return true;
@@ -99,6 +107,13 @@ function getSearchRegex(searchKey?: string) {
   const trimmedSearchKey = searchKey?.trim();
   if (!trimmedSearchKey) return;
   return new RegExp(replaceRegChars(trimmedSearchKey), 'i');
+}
+
+/**
+ * Agent 工具选择列表只展示仍可新增配置的工具；旧应用中已选中的下线工具由节点/表单卡片继续显示状态。
+ */
+function isSelectableToolStatus(status?: PluginStatusType) {
+  return status === undefined || status === PluginStatusEnum.Normal;
 }
 
 function filterTemplatesBySearchKey<T extends NodeTemplateListItemType>(

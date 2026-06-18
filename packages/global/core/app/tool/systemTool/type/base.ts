@@ -68,6 +68,7 @@ export type SystemToolListItemType = z.infer<typeof SystemToolListItemSchema>;
 export const SystemToolChildDetailSchema = z.object({
   id: z.string(),
   name: z.string(),
+  status: PluginStatusSchema.meta({ description: '工具的状态' }),
   description: z.string().optional(),
   toolDescription: z.string().optional(),
   icon: z.string().optional(),

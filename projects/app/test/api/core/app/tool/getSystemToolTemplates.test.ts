@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 
 const mocks = vi.hoisted(() => ({
   authCert: vi.fn(),
@@ -59,6 +60,7 @@ describe('get system tool templates handler', () => {
         intro: 'Forecast lookup',
         toolDescription: 'Get weather',
         isToolSet: false,
+        status: PluginStatusEnum.Normal,
         tags: ['life']
       },
       {
@@ -67,6 +69,7 @@ describe('get system tool templates handler', () => {
         intro: 'Calculator',
         toolDescription: 'Compute numbers',
         isToolSet: false,
+        status: PluginStatusEnum.Normal,
         tags: ['calc']
       },
       {
@@ -75,6 +78,7 @@ describe('get system tool templates handler', () => {
         intro: 'Forecast lookup',
         toolDescription: 'Get weather',
         isToolSet: false,
+        status: PluginStatusEnum.Normal,
         tags: ['life'],
         hideTags: ['hidden-user']
       }
@@ -101,10 +105,12 @@ describe('get system tool templates handler', () => {
       name: 'Toolset',
       intro: 'Parent intro',
       avatar: 'parent-icon',
+      status: PluginStatusEnum.Normal,
       children: [
         {
           id: 'plus',
           name: 'A+B Tool',
+          status: PluginStatusEnum.Normal,
           description: 'Exact plus',
           toolDescription: 'Use literal plus',
           currentCost: 2,
@@ -113,6 +119,7 @@ describe('get system tool templates handler', () => {
         {
           id: 'regex-like',
           name: 'AxxB Tool',
+          status: PluginStatusEnum.Normal,
           description: 'Would match an unescaped regex',
           toolDescription: 'No literal plus',
           currentCost: 3,
@@ -140,6 +147,120 @@ describe('get system tool templates handler', () => {
       lang: 'zh',
       source: 'system'
     });
+    expect(mocks.getSystemToolDetail).not.toHaveBeenCalled();
+  });
+
+  it('filters soon offline and offline tools from root system tool candidates', async () => {
+    mocks.getSystemToolList.mockResolvedValue([
+      {
+        id: 'normal-tool',
+        name: 'Normal Tool',
+        intro: '',
+        toolDescription: '',
+        isToolSet: false,
+        status: PluginStatusEnum.Normal,
+        tags: []
+      },
+      {
+        id: 'soon-offline-tool',
+        name: 'Soon Offline Tool',
+        intro: '',
+        toolDescription: '',
+        isToolSet: false,
+        status: PluginStatusEnum.SoonOffline,
+        tags: []
+      },
+      {
+        id: 'offline-tool',
+        name: 'Offline Tool',
+        intro: '',
+        toolDescription: '',
+        isToolSet: false,
+        status: PluginStatusEnum.Offline,
+        tags: []
+      }
+    ]);
+
+    const result = await handler({
+      body: {}
+    } as ApiRequestProps<GetSystemPluginTemplatesBody>);
+
+    expect(result.map((item) => item.id)).toEqual(['normal-tool']);
+  });
+
+  it('filters unavailable toolset children from system tool candidates', async () => {
+    mocks.getSystemToolDisplayInfo.mockResolvedValue({
+      id: 'toolset',
+      name: 'Toolset',
+      intro: 'Parent intro',
+      avatar: 'parent-icon',
+      status: PluginStatusEnum.Normal,
+      children: [
+        {
+          id: 'normal-child',
+          name: 'Normal Child',
+          status: PluginStatusEnum.Normal,
+          description: '',
+          currentCost: 1,
+          systemKeyCost: 0
+        },
+        {
+          id: 'soon-offline-child',
+          name: 'Soon Offline Child',
+          status: PluginStatusEnum.SoonOffline,
+          description: '',
+          currentCost: 1,
+          systemKeyCost: 0
+        },
+        {
+          id: 'offline-child',
+          name: 'Offline Child',
+          status: PluginStatusEnum.Offline,
+          description: '',
+          currentCost: 1,
+          systemKeyCost: 0
+        }
+      ],
+      hasTokenFee: false
+    });
+
+    const result = await handler({
+      body: {
+        parentId: 'toolset'
+      }
+    } as ApiRequestProps<GetSystemPluginTemplatesBody>);
+
+    expect(result.map((item) => item.id)).toEqual(['toolset/normal-child']);
+    expect(mocks.getSystemToolDetail).not.toHaveBeenCalled();
+  });
+
+  it('returns no children when parent toolset is unavailable', async () => {
+    mocks.getSystemToolDisplayInfo.mockResolvedValue({
+      id: 'toolset',
+      name: 'Toolset',
+      intro: 'Parent intro',
+      avatar: 'parent-icon',
+      status: PluginStatusEnum.Offline,
+      children: [
+        {
+          id: 'normal-child',
+          name: 'Normal Child',
+          status: PluginStatusEnum.Normal,
+          description: '',
+          currentCost: 1,
+          systemKeyCost: 0
+        }
+      ],
+      hasTokenFee: false
+    });
+
+    const result = await handler({
+      body: {
+        parentId: 'toolset'
+      }
+    } as ApiRequestProps<GetSystemPluginTemplatesBody>);
+
+    expect(result).toEqual([]);
     expect(mocks.getSystemToolDetail).not.toHaveBeenCalled();
   });
 });
