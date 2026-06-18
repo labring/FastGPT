@@ -201,7 +201,12 @@ export const useYuqueDatasetRequest = ({ yuqueServer }: { yuqueServer: YuqueServ
   const getFileContent = async ({
     apiFileId
   }: {
+    teamId?: string;
+    tmbId?: string;
     apiFileId: string;
+    customPdfParse?: boolean;
+    datasetId?: string;
+    parseConfig?: Record<string, any>;
   }): Promise<ApiFileReadContentResponseType> => {
     if (typeof apiFileId !== 'string') return Promise.reject('Invalid file id');
     const [parentId, fileId] = apiFileId.split(/-(.*?)-(.*)/);

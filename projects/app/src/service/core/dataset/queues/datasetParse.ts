@@ -324,12 +324,20 @@ const runParseQueue = async ({
             continue;
           }
 
+          // Build parse config from dataset settings
+          const parseConfig: Record<string, any> = {};
+          if (dataset.keep_header_footer) parseConfig.keep_header_footer = true;
+          if (dataset.keep_appendix) parseConfig.keep_appendix = true;
+          if (dataset.image_analysis) parseConfig.image_analysis = true;
+          if (dataset.chart_analysis) parseConfig.chart_analysis = true;
+
           ({ title, rawText } = await readDatasetSourceRawText({
             teamId: data.teamId,
             tmbId: data.tmbId,
             customPdfParse: collection.customPdfParse,
             usageId: data.billId,
             datasetId: data.datasetId,
+            parseConfig: Object.keys(parseConfig).length > 0 ? parseConfig : undefined,
             ...sourceReadType
           }));
         }

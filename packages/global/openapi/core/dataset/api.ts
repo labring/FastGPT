@@ -75,8 +75,8 @@ export const CreateDatasetBodySchema = z.object({
   keep_appendix: z.boolean().optional().meta({
     description: '保留附录'
   }),
-  seal_rec: z.boolean().optional().meta({
-    description: '印章识别'
+  image_analysis: z.boolean().optional().meta({
+    description: '文档图片识别'
   }),
   chart_analysis: z.boolean().optional().meta({
     description: '统计图转表格'
@@ -309,8 +309,8 @@ export const UpdateDatasetBodySchema = z.object({
   keep_appendix: z.boolean().optional().meta({
     description: '保留附录'
   }),
-  seal_rec: z.boolean().optional().meta({
-    description: '印章识别'
+  image_analysis: z.boolean().optional().meta({
+    description: '文档图片识别'
   }),
   chart_analysis: z.boolean().optional().meta({
     description: '统计图转表格'

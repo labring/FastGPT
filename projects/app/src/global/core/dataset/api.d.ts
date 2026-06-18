@@ -41,7 +41,7 @@ export type CreateDatasetParams = {
   autoSync?: boolean;
   keep_header_footer?: boolean;
   keep_appendix?: boolean;
-  seal_rec?: boolean;
+  image_analysis?: boolean;
   chart_analysis?: boolean;
 };
 

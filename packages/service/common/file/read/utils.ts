@@ -36,6 +36,7 @@ type FileParseContext = {
   extension: string;
   filename?: string;
   usageId?: string;
+  parseConfig?: Record<string, any>;
 };
 
 const parseByCustomService = async ({
@@ -44,7 +45,8 @@ const parseByCustomService = async ({
   buffer,
   extension,
   filename,
-  usageId
+  usageId,
+  parseConfig
 }: FileParseContext): Promise<ReadFileResponse> => {
   const { url, key: token, timeout = 10 } = global.systemEnv.customPdfParse ?? {};
   if (!url || !token) {
@@ -67,6 +69,15 @@ const parseByCustomService = async ({
 
   const data = new FormData();
   data.append('file', buffer, { filename: filename || `file.${extension}` });
+
+  // Append extra parse config fields to FormData
+  if (parseConfig) {
+    Object.entries(parseConfig).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        data.append(key, String(value));
+      }
+    });
+  }
 
   addLog.debug('Calling custom parse service', { url, bufferSize: buffer.length });
 
@@ -180,7 +191,8 @@ export const readRawContentByFileBuffer = async ({
   customPdfParse = false,
   getFormatText = true,
   filename,
-  usageId
+  usageId,
+  parseConfig
 }: {
   teamId: string;
   tmbId: string;
@@ -192,6 +204,7 @@ export const readRawContentByFileBuffer = async ({
   getFormatText?: boolean;
   filename?: string;
   usageId?: string;
+  parseConfig?: Record<string, any>;
 }): Promise<ReadFileResponse> => {
   const systemParse = () => readRawContentFromBuffer({ extension, encoding, buffer });
 
@@ -202,7 +215,7 @@ export const readRawContentByFileBuffer = async ({
       if (cfg?.url) {
         if (!cfg?.key)
           return () => Promise.reject(new UserError(CommonErrEnum.customParseMissingKey));
-        return () => parseByCustomService({ teamId, tmbId, buffer, extension, filename, usageId });
+        return () => parseByCustomService({ teamId, tmbId, buffer, extension, filename, usageId, parseConfig });
       }
       return () =>
         Promise.reject(
@@ -225,7 +238,7 @@ export const readRawContentByFileBuffer = async ({
     if (isDocumentType && cfg?.url) {
       if (!cfg?.key)
         return () => Promise.reject(new UserError(CommonErrEnum.customParseMissingKey));
-      return () => parseByCustomService({ teamId, tmbId, buffer, extension, filename, usageId });
+      return () => parseByCustomService({ teamId, tmbId, buffer, extension, filename, usageId, parseConfig });
     }
     if (extension === 'pdf' && cfg?.doc2xKey)
       return () => parseByDoc2x({ teamId, tmbId, buffer, extension, filename, usageId });
@@ -280,7 +293,8 @@ export const readS3FileContentByBuffer = async ({
   getFormatText = true,
   filename,
   usageId,
-  imageKeyOptions
+  imageKeyOptions,
+  parseConfig
 }: {
   teamId: string;
   tmbId: string;
@@ -292,6 +306,7 @@ export const readS3FileContentByBuffer = async ({
   filename?: string;
   usageId?: string;
   imageKeyOptions?: { prefix: string; expiredTime?: Date };
+  parseConfig?: Record<string, any>;
 }): Promise<ReadFileResponse> => {
   const systemParse = () => readRawContentFromBuffer({ extension, encoding, buffer });
 
@@ -302,7 +317,7 @@ export const readS3FileContentByBuffer = async ({
       if (cfg?.url) {
         if (!cfg?.key)
           return () => Promise.reject(new UserError(CommonErrEnum.customParseMissingKey));
-        return () => parseByCustomService({ teamId, tmbId, buffer, extension, filename, usageId });
+        return () => parseByCustomService({ teamId, tmbId, buffer, extension, filename, usageId, parseConfig });
       }
       return () =>
         Promise.reject(
@@ -325,7 +340,7 @@ export const readS3FileContentByBuffer = async ({
     if (isDocumentType && cfg?.url) {
       if (!cfg?.key)
         return () => Promise.reject(new UserError(CommonErrEnum.customParseMissingKey));
-      return () => parseByCustomService({ teamId, tmbId, buffer, extension, filename, usageId });
+      return () => parseByCustomService({ teamId, tmbId, buffer, extension, filename, usageId, parseConfig });
     }
     if (extension === 'pdf' && cfg?.doc2xKey)
       return () => parseByDoc2x({ teamId, tmbId, buffer, extension, filename, usageId });

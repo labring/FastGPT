@@ -297,11 +297,18 @@ export const syncCollection = async (collection: CollectionWithDatasetType) => {
     };
   })();
 
+  const parseConfig: Record<string, any> = {};
+  if (dataset.keep_header_footer) parseConfig.keep_header_footer = true;
+  if (dataset.keep_appendix) parseConfig.keep_appendix = true;
+  if (dataset.image_analysis) parseConfig.image_analysis = true;
+  if (dataset.chart_analysis) parseConfig.chart_analysis = true;
+
   const { title, rawText } = await readDatasetSourceRawText({
     teamId: collection.teamId,
     tmbId: collection.tmbId,
     datasetId: collection.datasetId,
     customPdfParse: collection.customPdfParse,
+    parseConfig: Object.keys(parseConfig).length > 0 ? parseConfig : undefined,
     ...sourceReadType
   });
 
