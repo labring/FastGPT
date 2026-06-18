@@ -554,7 +554,46 @@ describe('SystemToolRepo.getSystemToolDisplayInfo', () => {
     expect(mocks.getTool).not.toHaveBeenCalled();
   });
 
-  it('fills parent toolset children icons from detail by default when list omits them', async () => {
+  it('keeps parent toolset display lightweight when list omits child icons', async () => {
+    mocks.findSystemTool.mockResolvedValue(undefined);
+    mocks.listTools.mockResolvedValue([
+      {
+        source: 'system',
+        isToolset: true,
+        name: { en: 'Weather' },
+        description: { en: 'Weather intro' },
+        pluginId: 'weather',
+        version: '1.0.0',
+        icon: 'weather.svg',
+        tags: ['life'],
+        toolDescription: 'Weather tool',
+        hasSecret: false,
+        children: [
+          {
+            id: 'forecast',
+            name: { en: 'Forecast' },
+            description: { en: 'Forecast intro' },
+            toolDescription: 'Forecast tool'
+          }
+        ]
+      }
+    ]);
+    mocks.findSystemTools.mockResolvedValue([]);
+
+    const tool = await SystemToolRepo.getInstance().getSystemToolDisplayInfo({
+      pluginId: 'systemTool-weather'
+    });
+
+    expect(tool.children?.[0]).toMatchObject({
+      id: 'forecast',
+      icon: undefined
+    });
+    expect(tool.children?.[0]).not.toHaveProperty('inputSchema');
+    expect(tool.children?.[0]).not.toHaveProperty('outputSchema');
+    expect(mocks.getTool).not.toHaveBeenCalled();
+  });
+
+  it('fills parent toolset children icons from detail for expanded child templates', async () => {
     const inputSchema = {
       type: 'object',
       properties: {
@@ -616,7 +655,7 @@ describe('SystemToolRepo.getSystemToolDisplayInfo', () => {
     });
     mocks.findSystemTools.mockResolvedValue([]);
 
-    const tool = await SystemToolRepo.getInstance().getSystemToolDisplayInfo({
+    const tool = await SystemToolRepo.getInstance().getSystemToolDisplayInfoWithChildIcons({
       pluginId: 'systemTool-weather'
     });
 

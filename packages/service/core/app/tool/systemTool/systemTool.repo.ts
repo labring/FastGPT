@@ -148,8 +148,8 @@ export class SystemToolRepo {
   }
 
   /**
-   * listTools 的子工具 DTO 只保留名称/描述，不带 icon；展示子工具列表时补读 detail
-   * 拿头像。detail 里的 schema 只用于取 icon，不会继续透传到展示结构。
+   * listTools 的子工具 DTO 可能只保留名称/描述，不带 icon；展开工具集展示子工具列表时
+   * 补读 detail 拿头像。detail 里的 schema 只用于取 icon，不会继续透传到展示结构。
    */
   private async getToolsetChildIconMap({
     pluginId,
@@ -479,17 +479,10 @@ export class SystemToolRepo {
       lang
     });
     const listChildIconMap = getChildIconMap(tool.children);
-    const detailChildIconMap =
-      tool.children?.some((item) => !listChildIconMap.has(item.id)) === true
-        ? await this.getToolsetChildIconMap({
-            pluginId: parentPluginId,
-            source: pluginSource
-          })
-        : new Map<string, string>();
 
     const children =
       tool.children?.map<SystemToolDisplayChildType>((item) => {
-        const childIcon = listChildIconMap.get(item.id) ?? detailChildIconMap.get(item.id);
+        const childIcon = listChildIconMap.get(item.id);
         const childConfig = [
           `${parentCombinedPluginId}/${item.id}`,
           `${parentPluginId}/${item.id}`,
@@ -531,6 +524,49 @@ export class SystemToolRepo {
       ...parent,
       id: pluginId,
       children: parent.isToolSet ? children : undefined
+    };
+  };
+
+  /**
+   * 获取工具集展开后的子工具展示信息。仅展开列表需要子工具自己的 icon，因此在这个入口
+   * 对 listTools 缺失的 child icon 补读 detail，避免路径、面包屑等轻量场景额外拉取 detail。
+   */
+  getSystemToolDisplayInfoWithChildIcons = async ({
+    pluginId,
+    source = 'system',
+    lang
+  }: {
+    pluginId: string;
+    source?: string;
+    lang?: `${LangEnum}`;
+  }): Promise<SystemToolDisplayInfoType> => {
+    const parent = await this.getSystemToolDisplayInfo({ pluginId, source, lang });
+    const missingChildIcon = parent.children?.some((child) => !child.icon) === true;
+    if (!parent.isToolSet || !parent.children || !missingChildIcon) return parent;
+
+    const { pluginId: rawPluginId } = splitCombineToolId(pluginId);
+    const [parentPluginId, childPluginId] = rawPluginId.split('/');
+    if (!parentPluginId || childPluginId) return parent;
+
+    const pluginSource =
+      source === AppToolSourceEnum.commercial ? AppToolSourceEnum.commercial : 'system';
+    const childIconMap = await this.getToolsetChildIconMap({
+      pluginId: parentPluginId,
+      source: pluginSource
+    });
+    if (childIconMap.size === 0) return parent;
+
+    return {
+      ...parent,
+      children: parent.children.map((child) => {
+        const icon = childIconMap.get(child.id);
+        return child.icon || !icon
+          ? child
+          : {
+              ...child,
+              icon
+            };
+      })
     };
   };
 
