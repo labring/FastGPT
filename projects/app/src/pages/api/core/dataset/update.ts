@@ -70,6 +70,10 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
     externalReadUrl,
     apiDatasetServer,
     autoSync,
+    keep_header_footer,
+    keep_appendix,
+    image_analysis,
+    chart_analysis,
     chunkSettings,
     databaseConfig
   } = UpdateDatasetBodySchema.parse(req.body);
@@ -260,6 +264,10 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
       ...(externalReadUrl !== undefined && { externalReadUrl }),
       ...(isMove && { inheritPermission: inheritParentPermission }),
       ...(typeof autoSync === 'boolean' && { autoSync }),
+      ...(typeof keep_header_footer === 'boolean' && { keep_header_footer }),
+      ...(typeof keep_appendix === 'boolean' && { keep_appendix }),
+      ...(typeof image_analysis === 'boolean' && { image_analysis }),
+      ...(typeof chart_analysis === 'boolean' && { chart_analysis }),
       ...apiDatasetParams
     };
     const unsetData: Record<string, any> = {
