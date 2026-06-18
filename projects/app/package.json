@@ -4,6 +4,7 @@
   "private": false,
   "scripts": {
     "dev": "npm run build:workers && next dev",
+    "dev:proxy": "node scripts/dev-proxy.js",
     "build": "npm run build:workers && next build --webpack",
     "start": "next start",
     "lint": "next lint",
