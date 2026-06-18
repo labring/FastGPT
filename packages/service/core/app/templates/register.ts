@@ -9,11 +9,46 @@ const getFileTemplates = async (): Promise<AppTemplateSchemaType[]> => {
   return (await pluginClient.listWorkflows()) as AppTemplateSchemaType[];
 };
 
+const formatTemplateAvatar = (avatar?: string | null) => {
+  if (!avatar) {
+    return '';
+  }
+
+  if (avatar.startsWith('/') || avatar.startsWith('http://') || avatar.startsWith('https://')) {
+    return avatar;
+  }
+
+  return `/${avatar}`;
+};
+
+/**
+ * 系统模板来自 plugin 服务，本地数据库只作为展示和运营配置覆盖层。
+ * workflow、userGuide、type 等模板内容字段必须始终以 plugin 返回为准，避免后台误覆盖导致模板创建失败。
+ */
+const getPluginSystemTemplateConfig = (config: AppTemplateSchemaType) => ({
+  ...Object.fromEntries(
+    Object.entries({
+      name: config.name,
+      intro: config.intro,
+      avatar: formatTemplateAvatar(config.avatar),
+      tags: config.tags,
+      isActive: config.isActive,
+      isPromoted: config.isPromoted,
+      promoteTags: config.promoteTags,
+      hideTags: config.hideTags,
+      recommendText: config.recommendText,
+      isQuickTemplate: config.isQuickTemplate,
+      order: config.order
+    }).filter(([, value]) => value !== undefined)
+  )
+});
+
 const getAppTemplates = async () => {
   const originCommunityTemplates = await getFileTemplates();
   const communityTemplates = originCommunityTemplates.map((template) => {
     return {
       ...template,
+      avatar: formatTemplateAvatar(template.avatar),
       templateId: `${AppToolSourceEnum.community}-${template.templateId.split('.')[0]}`
     };
   });
@@ -27,7 +62,7 @@ const getAppTemplates = async () => {
     if (config) {
       return {
         ...template,
-        ...config
+        ...getPluginSystemTemplateConfig(config)
       };
     }
 
@@ -72,5 +107,13 @@ export const getAppTemplatesAndLoadThem = async (refresh = false) => {
 };
 
 export const isCommercialTemaplte = (templateId: string) => {
-  return templateId.startsWith(AppToolSourceEnum.commercial);
+  return templateId.startsWith(`${AppToolSourceEnum.commercial}-`);
+};
+
+/**
+ * 判断模板是否来自 fastgpt-plugin 的系统模板列表。
+ * 系统模板的 workflow 和 userGuide 由 plugin 服务维护，本地数据库只保存展示和上下线等覆盖配置。
+ */
+export const isPluginSystemTemplate = (templateId: string) => {
+  return templateId.startsWith(`${AppToolSourceEnum.community}-`);
 };
