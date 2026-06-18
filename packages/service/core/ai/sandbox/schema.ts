@@ -79,3 +79,18 @@ export const MongoSandboxInstance = getMongoModel<SandboxInstanceSchemaType>(
   collectionName,
   SandboxInstanceSchema
 );
+
+// Semaphore for atomic sandbox count limiting.
+// Single document (_id: 'sandbox_count') shared across all replicas.
+const SemaphoreCollectionName = 'sandbox_semaphore';
+const SemaphoreSchema = new Schema({
+  _id: { type: String, default: 'sandbox_count' },
+  count: { type: Number, required: true, default: 0 },
+  updatedAt: { type: Date, default: () => new Date() }
+});
+
+export const MongoSemaphore = getMongoModel<{
+  _id: string;
+  count: number;
+  updatedAt: Date;
+}>(SemaphoreCollectionName, SemaphoreSchema);

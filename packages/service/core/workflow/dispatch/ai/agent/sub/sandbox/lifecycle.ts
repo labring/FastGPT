@@ -24,7 +24,6 @@ import {
 } from '../../../../../../agentSkills/sandboxConfig';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { getSandboxClient, type SandboxClient } from '../../../../../../ai/sandbox/controller';
-import { env } from '../../../../../../../env';
 import type {
   AgentSkillSchemaType,
   AgentSkillsVersionSchemaType,
@@ -187,31 +186,20 @@ export async function createAgentSandbox(
   const defaults = getSandboxDefaults();
   validateSandboxConfig(providerConfig);
 
-  // Step 1: Atomically reserve or find an existing sandbox.
-  // Uses the unique partial index on (appId, chatId)
-  // so that only one replica can claim the slot.
+  // Step 1: Atomically reserve or find an existing sandbox by (chatId, appId).
+  // Uses unique partial index on (appId, chatId) so only one replica can claim the slot.
+  // The reservation is created with status=stopped so that ensureAvailable() Path 2
+  // atomically acquires the semaphore and starts the container.
   onProgress?.({ sandboxId: sessionId, phase: 'checkExisting' });
   const reservation = await MongoSandboxInstance.findOneAndUpdate(
-    {
-      chatId
-    },
+    { chatId, appId: teamId },
     {
       $setOnInsert: {
         sandboxId: sessionId,
         provider: providerConfig.provider,
-        chatId,
-        appId: teamId,
-        userId: tmbId,
-        status: SandboxStatusEnum.running,
+        status: SandboxStatusEnum.stopped,
         lastActiveAt: new Date(),
-        createdAt: new Date(),
-        metadata: {
-          sessionId,
-          teamId,
-          tmbId,
-          skillIds: [],
-          provider: providerConfig.provider
-        }
+        createdAt: new Date()
       }
     },
     { upsert: true, new: false }
@@ -369,19 +357,6 @@ export async function createAgentSandbox(
 
     if (deployableSkills.length === 0) {
       throw new Error('No deployable skills found (missing active versions)');
-    }
-  }
-
-  // Check active sandbox count limit
-  const maxCount = global.feConfigs?.limit?.agentSandboxMaxCount ?? env.AGENT_SANDBOX_MAX_COUNT;
-  if (maxCount !== undefined) {
-    const activeCount = await MongoSandboxInstance.countDocuments({
-      status: SandboxStatusEnum.running
-    });
-    if (activeCount >= maxCount) {
-      const message = `Active agent sandbox limit reached (${activeCount}/${maxCount}). Please try again later.`;
-      onProgress?.({ sandboxId: sessionId, phase: 'failed', message });
-      throw new Error(message);
     }
   }
 

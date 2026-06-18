@@ -40,7 +40,7 @@ export const env = createEnv({
     AGENT_SKILL_MAX_DOWNLOAD_SIZE: NumSchema.optional(),
     AGENT_SKILL_MAX_SANDBOX_SIZE: NumSchema.optional(),
 
-    AGENT_SANDBOX_MAX_COUNT: NumSchema.optional(),
+    AGENT_SANDBOX_MAX_COUNT: NumSchema.default(100),
 
     // 对象存储
     STORAGE_VENDOR: StorageVendorSchema.default('minio'),
