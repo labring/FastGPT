@@ -51,6 +51,7 @@ import WorkflowSandboxConfig, {
 } from '../components/WorkflowSandboxConfig';
 import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
+import { countAgentGeneratedToolInputs } from '@/pageComponents/app/detail/Edit/FormComponent/ToolSelector/utils';
 
 const PromptEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea/PromptEditor'));
 const SkillSelectModal = dynamic(
@@ -679,47 +680,74 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                 >
                   {t('common:Choose')}
                 </Button>
-                {selectedTools.map((item) => (
-                  <MyTooltip key={item.id} label={item.intro}>
-                    <Flex
-                      alignItems={'center'}
-                      h={10}
-                      boxShadow={'sm'}
-                      bg={'white'}
-                      border={'base'}
-                      px={2}
-                      borderRadius={'md'}
-                      _hover={{
-                        borderColor: 'primary.300',
-                        '& .delete-btn': { display: 'flex' }
-                      }}
-                    >
-                      <Avatar src={item.avatar} w={'18px'} borderRadius={'xs'} />
-                      <Box
-                        ml={1.5}
-                        flex={'1 0 0'}
-                        w={0}
-                        className="textEllipsis"
-                        fontWeight={'bold'}
-                        fontSize={['sm', 'sm']}
+                {selectedTools.map((item) => {
+                  const agentGeneratedInputCount = countAgentGeneratedToolInputs(item);
+
+                  return (
+                    <MyTooltip key={item.id} label={item.intro}>
+                      <Flex
+                        alignItems={'center'}
+                        h={10}
+                        boxShadow={'sm'}
+                        bg={'white'}
+                        border={'base'}
+                        px={2}
+                        borderRadius={'md'}
+                        _hover={{
+                          borderColor: 'primary.300',
+                          '& .delete-btn': { display: 'flex' },
+                          '& .agent-generated-tag': { display: 'none' }
+                        }}
                       >
-                        {item.name}
-                      </Box>
-                      {isDebugToolSource(item.source) && <DebugToolTag />}
-                      <Box className="delete-btn" display={'none'}>
+                        <Avatar src={item.avatar} w={'18px'} borderRadius={'xs'} />
+                        <Box
+                          ml={1.5}
+                          flex={'1 0 0'}
+                          w={0}
+                          className="textEllipsis"
+                          fontWeight={'bold'}
+                          fontSize={['sm', 'sm']}
+                        >
+                          {item.name}
+                        </Box>
+                        {isDebugToolSource(item.source) && (
+                          <DebugToolTag className="agent-generated-tag" />
+                        )}
+                        {agentGeneratedInputCount > 0 && (
+                          <MyTag
+                            className="agent-generated-tag"
+                            colorSchema="green"
+                            type="fill"
+                            px={1.5}
+                            py={0.5}
+                          >
+                            {t('common:core.workflow.inputType.agentGenerated')} ×
+                            {agentGeneratedInputCount}
+                          </MyTag>
+                        )}
                         <MyIconButton
-                          icon="delete"
-                          hoverBg="red.50"
-                          hoverColor="red.600"
+                          icon="common/setting"
+                          tip={t('app:tool_param_config')}
                           onClick={(e) => {
                             e.stopPropagation();
-                            onDeleteTool(item.pluginId!);
+                            onClickSkill(item.pluginId!);
                           }}
                         />
-                      </Box>
-                    </Flex>
-                  </MyTooltip>
-                ))}
+                        <Box className="delete-btn" display={'none'}>
+                          <MyIconButton
+                            icon="delete"
+                            hoverBg="red.50"
+                            hoverColor="red.600"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDeleteTool(item.pluginId!);
+                            }}
+                          />
+                        </Box>
+                      </Flex>
+                    </MyTooltip>
+                  );
+                })}
               </Grid>
               {isOpenToolSelect && (
                 <ToolSelectModal
