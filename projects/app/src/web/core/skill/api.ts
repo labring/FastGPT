@@ -1,4 +1,5 @@
 import { GET, DELETE, POST } from '@/web/common/api/request';
+import { streamFetch, type StreamResponseType } from '@/web/common/api/fetch';
 import { downloadFetch } from '@/web/common/system/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { EventStreamContentType, fetchEventSource } from '@fortaine/fetch-event-source';
@@ -21,6 +22,7 @@ import type {
   CreateEditDebugSandboxBody,
   CreateEditDebugSandboxResponse,
   CreateSkillFolderBody,
+  SkillDebugChatBody,
   SkillDebugRecordsBody,
   SkillDebugSessionControlBody,
   SkillDebugSessionStopResponse,
@@ -34,6 +36,7 @@ import type { SkillDebugDeleteChatItemBody } from '@fastgpt/global/core/ai/skill
 import type { GetResourceFolderListProps } from '@fastgpt/global/common/parentFolder/type';
 import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { GetRecordsV2ResponseType } from '@fastgpt/global/openapi/core/chat/record/api';
+import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 
 /** 获取 Skill 列表（支持分页、搜索、分类、文件夹过滤） */
 export const getSkillList = (data: ListSkillsQuery) =>
@@ -140,8 +143,22 @@ export const streamCreateEditDebugSandbox = ({
     });
   });
 
-/** Skill 调试对话 SSE 接口 URL */
-export const SKILL_DEBUG_CHAT_URL = '/api/core/ai/skill/debugChat';
+/** 发起 Skill 调试对话，使用 Skill 专属鉴权与编辑沙箱运行态。 */
+export const streamSkillDebugChat = ({
+  data,
+  onMessage,
+  abortCtrl
+}: {
+  data: SkillDebugChatBody;
+  onMessage: StartChatFnProps['generatingMessage'];
+  abortCtrl: AbortController;
+}): Promise<StreamResponseType> =>
+  streamFetch({
+    url: '/api/core/ai/skill/debugChat',
+    data,
+    onMessage,
+    abortCtrl
+  });
 
 /** 创建 Skill 文件夹 */
 export const postCreateSkillFolder = (data: CreateSkillFolderBody) =>
