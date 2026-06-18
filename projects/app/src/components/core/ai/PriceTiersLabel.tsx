@@ -21,7 +21,14 @@ const formatPriceSummary = ({
   const compactUnitLabel = unitLabel.replace(/\s*\/\s*/g, '/').trim();
 
   if (tiers.length === 1) {
-    return <Box>{`${prices[0]} ${compactUnitLabel}`}</Box>;
+    return (
+      <Box>
+        <Box as="span" fontWeight={'bold'}>
+          {prices[0]}
+        </Box>
+        {` ${compactUnitLabel}`}
+      </Box>
+    );
   }
 
   return (
@@ -35,7 +42,10 @@ const formatPriceSummary = ({
         textUnderlinePosition: 'from-font'
       }}
     >
-      {`${minPrice}~${maxPrice} ${compactUnitLabel}`}
+      <Box as="span" fontWeight={'bold'}>
+        {`${minPrice}~${maxPrice}`}
+      </Box>
+      {` ${compactUnitLabel}`}
     </Box>
   );
 };
