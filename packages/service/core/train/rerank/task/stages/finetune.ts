@@ -208,6 +208,12 @@ export async function runFinetuneStage(task: RerankTrainTaskSchemaType): Promise
       }
     } else if (statusResponse.status === SFTTaskStatus.failed) {
       const errorMsg = statusResponse.error;
+      await updateRerankCheckpointData(
+        String(task._id),
+        RerankTaskCheckpointStageEnum.finetuning,
+        { sftTaskId: null },
+        true
+      );
       const enhancedError = createRerankEnhancedError(
         RerankTaskCheckpointStageEnum.finetuning,
         RerankTrainErrEnum.rerankFinetuneTrainingFailed,

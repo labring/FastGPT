@@ -89,6 +89,7 @@ type DatasetSearchProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]?: string;
   [NodeInputKeyEnum.datasetSearchMode]: DatasetSearchModeEnum;
   [NodeInputKeyEnum.datasetSearchEmbeddingWeight]?: number;
+  [NodeInputKeyEnum.datasetSearchEmbeddingModelId]?: string;
 
   [NodeInputKeyEnum.datasetSearchUsingReRank]: boolean;
   [NodeInputKeyEnum.datasetSearchRerankModelId]?: string;
@@ -141,6 +142,7 @@ export async function dispatchDatasetSearch(
       collectionFilterMatch,
       searchMode,
       embeddingWeight,
+      embeddingModelId,
       usingReRank,
       rerankModelId,
       rerankMethod = RerankMethodEnum.content,
@@ -245,6 +247,11 @@ export async function dispatchDatasetSearch(
       : undefined;
     // Get Rerank Model
     const rerankModelData = getRerankModelById(rerankModelId);
+
+    // Use user-specified embeddingModelId for search if provided, otherwise fall back to dataset's vectorModel
+    const searchModel = embeddingModelId
+      ? getEmbeddingModelById(embeddingModelId) || vectorModel
+      : vectorModel;
 
     // Check dataset types and separate them
     const datasetDetails = await Promise.all(
@@ -367,7 +374,7 @@ export async function dispatchDatasetSearch(
               histories,
               teamId,
               queries: [userChatInput],
-              modelId: vectorModel!.id,
+              modelId: searchModel!.id,
               limit: dynamicLimit,
               datasetIds: [datasetId],
               authForbidCollectionIds
@@ -483,12 +490,12 @@ export async function dispatchDatasetSearch(
         isAssistant &&
         datasetSearchUsingExtensionQuery &&
         datasetSearchExtensionModelId &&
-        vectorModel
+        searchModel
       ) {
         preComputedQueryExtension = await datasetSearchQueryExtension({
           query: userChatInput,
           llmModelId: datasetSearchExtensionModelId,
-          embeddingModelId: vectorModel.id,
+          embeddingModelId: searchModel.id,
           extensionBg: datasetSearchExtensionBg,
           histories,
           isAssistant: true,
@@ -503,7 +510,7 @@ export async function dispatchDatasetSearch(
         teamId,
         reRankQuery: userChatInput,
         queries: [userChatInput],
-        modelId: vectorModel!.id,
+        modelId: searchModel!.id,
         similarity,
         limit,
         datasetIds: commonDatasetIds,
@@ -728,163 +735,33 @@ export async function dispatchDatasetSearch(
             datasetDeepSearchBg
           });
         } else {
-          if (commonDatasetIds.length > 0) {
-            // Group common datasets by their vectorModel (user-selected per dataset in node)
-            type ModelGroup = { vectorModelId: string; datasetIds: string[] };
-            const modelGroupMap = new Map<string, ModelGroup>();
-            const needsDbLookupIds: string[] = [];
-
-            for (const d of datasets) {
-              if (!commonDatasetIds.includes(d.datasetId)) continue;
-              const modelId = d.vectorModel?.id;
-              if (modelId) {
-                if (!modelGroupMap.has(modelId)) {
-                  modelGroupMap.set(modelId, { vectorModelId: modelId, datasetIds: [] });
-                }
-                modelGroupMap.get(modelId)!.datasetIds.push(d.datasetId);
-              } else {
-                needsDbLookupIds.push(d.datasetId);
-              }
-            }
-
-            // Fall back to DB lookup for datasets without vectorModel in SelectedDatasetType (backward compat)
-            if (needsDbLookupIds.length > 0) {
-              const dbModels = await Promise.all(
-                needsDbLookupIds.map((id) => MongoDataset.findById(id, 'vectorModelId').lean())
-              );
-              for (let i = 0; i < needsDbLookupIds.length; i++) {
-                const dsId = needsDbLookupIds[i];
-                const modelId = getEmbeddingModelById(dbModels[i]?.vectorModelId)?.id || '';
-                if (!modelGroupMap.has(modelId)) {
-                  modelGroupMap.set(modelId, { vectorModelId: modelId, datasetIds: [] });
-                }
-                modelGroupMap.get(modelId)!.datasetIds.push(dsId);
-              }
-            }
-
-            addLog.debug('Dataset Search - Model grouping completed', {
-              totalDatasetIds: commonDatasetIds.length,
-              groupCount: modelGroupMap.size,
-              groups: [...modelGroupMap.entries()].map(([modelId, group]) => ({
-                vectorModelId: modelId,
-                datasetCount: group.datasetIds.length,
-                datasetIds: group.datasetIds
-              }))
-            });
-
-            // Parallel search per model group, collect results with model info for billing
-            const groupSearchResults = await Promise.all(
-              [...modelGroupMap.values()].map(async (group) => {
-                const groupSearchData = {
-                  histories,
-                  teamId,
-                  reRankQuery: userChatInput,
-                  queries: [userChatInput],
-                  modelId: group.vectorModelId,
-                  similarity,
-                  limit,
-                  datasetIds: group.datasetIds,
-                  searchMode,
-                  embeddingWeight,
-                  usingReRank,
-                  rerankModelId: rerankModelData?.id,
-                  rerankMethod,
-                  rerankWeight,
-                  collectionFilterMatch,
-                  lang: lang ?? queryLanguage,
-                  authForbidCollectionIds
-                };
-
-                const result = await defaultSearchDatasetData({
-                  ...groupSearchData,
-                  datasetSearchUsingExtensionQuery,
-                  datasetSearchExtensionModelId,
-                  datasetSearchExtensionBg,
-                  isAssistant,
-                  synonymDatasetIds: datasetIds, // 所有知识库 ID，用于同义词检索；向量检索使用 groupSearchData.datasetIds（分组 ID）
-                  appId,
-                  faqAnswerMode,
-                  lang: lang ?? queryLanguage,
-                  // 传入预计算结果，defaultSearchDatasetData 内部将跳过重复的 LLM 调用
-                  preComputedQueryExtension
-                });
-
-                addLog.debug('Dataset Search - Model group search completed', {
-                  vectorModelId: group.vectorModelId,
-                  datasetIds: group.datasetIds,
-                  resultCount: result.searchRes.length,
-                  embeddingTokens: result.embeddingTokens,
-                  reRankInputTokens: result.reRankInputTokens,
-                  usingReRank: result.usingReRank
-                });
-
-                return { result, vectorModelId: group.vectorModelId };
-              })
-            );
-
-            if (groupSearchResults.length > 0) {
-              // Merge searchRes from all groups, sorted by RRF score descending
-              const mergedSearchRes = groupSearchResults
-                .flatMap((g) => g.result.searchRes)
-                .sort((a, b) => {
-                  const aRrf = a.score.find((s) => s.type === SearchScoreTypeEnum.rrf)?.value ?? 0;
-                  const bRrf = b.score.find((s) => s.type === SearchScoreTypeEnum.rrf)?.value ?? 0;
-                  return bRrf - aRrf;
-                });
-
-              // Use first group's result as base for metadata fields
-              const baseResult = groupSearchResults[0].result as SearchDatasetDataResponse;
-              commonSearchResult = {
-                ...baseResult,
-                searchRes: mergedSearchRes,
-                embeddingTokens: groupSearchResults.reduce(
-                  (s, g) => s + g.result.embeddingTokens,
-                  0
-                ),
-                reRankInputTokens: groupSearchResults.reduce(
-                  (s, g) => s + g.result.reRankInputTokens,
-                  0
-                )
-              };
-
-              addLog.debug('Dataset Search - Results merged from multiple models', {
-                groupCount: groupSearchResults.length,
-                totalSearchResults: mergedSearchRes.length,
-                totalEmbeddingTokens: commonSearchResult.embeddingTokens,
-                totalReRankTokens: commonSearchResult.reRankInputTokens,
-                groups: groupSearchResults.map((g) => ({
-                  vectorModelId: g.vectorModelId,
-                  resultCount: g.result.searchRes.length,
-                  embeddingTokens: g.result.embeddingTokens,
-                  reRankTokens: g.result.reRankInputTokens
-                }))
-              });
-
-              // Store per-model token counts for billing
-              const modelTokenMap = new Map<
-                string,
-                { modelId: string; modelName: string; tokens: number }
-              >();
-              for (const { result, vectorModelId } of groupSearchResults) {
-                if (result.embeddingTokens > 0) {
-                  const modelData = getEmbeddingModelById(vectorModelId);
-                  const key = vectorModelId;
-                  const existing = modelTokenMap.get(key);
-                  if (existing) {
-                    existing.tokens += result.embeddingTokens;
-                  } else {
-                    modelTokenMap.set(key, {
-                      modelId: modelData?.id || vectorModelId,
-                      modelName: modelData?.name || vectorModelId,
-                      tokens: result.embeddingTokens
-                    });
-                  }
-                }
-              }
-              // Attach modelTokenMap to be used in billing below
-              (commonSearchResult as any).__modelTokenMap = modelTokenMap;
-            }
-          }
+          commonSearchResult = await defaultSearchDatasetData({
+            histories,
+            teamId,
+            reRankQuery: userChatInput,
+            queries: [userChatInput],
+            modelId: searchModel!.id,
+            similarity,
+            limit,
+            datasetIds: commonDatasetIds,
+            searchMode,
+            embeddingWeight,
+            usingReRank,
+            rerankModelId: rerankModelData?.id,
+            rerankMethod,
+            rerankWeight,
+            collectionFilterMatch,
+            lang: lang ?? queryLanguage,
+            authForbidCollectionIds,
+            datasetSearchUsingExtensionQuery,
+            datasetSearchExtensionModelId,
+            datasetSearchExtensionBg,
+            isAssistant,
+            synonymDatasetIds: datasetIds,
+            appId,
+            faqAnswerMode,
+            preComputedQueryExtension
+          });
         }
       }
     }
@@ -939,34 +816,17 @@ export async function dispatchDatasetSearch(
 
     // count bill results
     const nodeUsages: ChatNodeUsageType[] = [];
-    // 1. Search vector — bill per embedding model used across all groups
-    const modelTokenMap:
-      | Map<string, { modelId: string; modelName: string; tokens: number }>
-      | undefined = commonSearchResult ? (commonSearchResult as any).__modelTokenMap : undefined;
-    if (modelTokenMap && modelTokenMap.size > 0) {
-      for (const { modelId, modelName, tokens } of modelTokenMap.values()) {
-        const { totalPoints, modelName: billingModelName } = formatModelChars2Points({
-          modelId,
-          inputTokens: tokens
-        });
-        nodeUsages.push({
-          totalPoints,
-          moduleName: node.name,
-          modelId: modelId,
-          inputTokens: tokens
-        });
-      }
-    } else if (vectorModel && embeddingTokens > 0) {
-      // Fallback: bill using the primary vectorModel (database search tokens)
+    // 1. Search vector — bill using searchModel
+    if (searchModel && embeddingTokens > 0) {
       const { totalPoints: embeddingTotalPoints, modelName: embeddingModelName } =
         formatModelChars2Points({
-          modelId: vectorModel.id,
+          modelId: searchModel.id,
           inputTokens: embeddingTokens
         });
       nodeUsages.push({
         totalPoints: embeddingTotalPoints,
         moduleName: node.name,
-        modelId: vectorModel.id,
+        modelId: searchModel.id,
         inputTokens: embeddingTokens
       });
     }
@@ -1106,7 +966,7 @@ export async function dispatchDatasetSearch(
         totalPoints,
         query: userChatInput,
         retrievalMode: retrievalMode as DatasetRetrievalModeEnum,
-        embeddingModelId: vectorModel?.id,
+        embeddingModelId: searchModel!.id,
         embeddingTokens,
         similarity: usingSimilarityFilter ? similarity : undefined,
         limit,
