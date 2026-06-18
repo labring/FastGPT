@@ -11,6 +11,7 @@ import { parsePlanAskToolCall } from '../plan/parser';
 import { applyPlanUpdate } from '../plan/state';
 import { runStopGate } from '../stop';
 import { getToolsForUnifiedLoop, normalizeToolCatalog } from '../tools';
+import { normalizeToolResponseContent } from '../utils';
 import type {
   AgentLoopRuntime,
   AgentLoopToolExecutionResult,
@@ -163,7 +164,7 @@ export const runUnifiedAgentLoop = async ({
           {
             role: ChatCompletionRequestMessageRoleEnum.Tool,
             tool_call_id: input.pendingMainContext.askToolCallId,
-            content: input.userAnswer || ''
+            content: normalizeToolResponseContent(input.userAnswer)
           } as ChatCompletionMessageParam
         ]
       : buildInitialMessages({ input, hasRuntimeTools });

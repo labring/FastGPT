@@ -64,7 +64,7 @@ const AgentEdit = () => {
   );
 
   return (
-    <Flex h={'100%'} flexDirection={'column'} px={[3, 0]} pr={[3, 3]}>
+    <Flex h={'100%'} minH={0} flexDirection={'column'} px={[3, 0]} pr={[3, 3]}>
       <Header
         appForm={appForm}
         forbiddenSaveSnapshot={forbiddenSaveSnapshot}
@@ -78,7 +78,15 @@ const AgentEdit = () => {
       {currentTab === TabEnum.appEdit ? (
         <Edit appForm={appForm} setAppForm={setAppForm} setPast={setPast} />
       ) : (
-        <Box flex={'1 0 0'} h={0} mt={[4, 0]} mb={[2, 4]}>
+        <Box
+          flex={'1 0 0'}
+          h={0}
+          minH={0}
+          overflowY={'auto'}
+          overflowX={'hidden'}
+          mt={[4, 0]}
+          mb={[2, 4]}
+        >
           {currentTab === TabEnum.publish && <PublishChannel />}
           {currentTab === TabEnum.logs && <Logs />}
         </Box>

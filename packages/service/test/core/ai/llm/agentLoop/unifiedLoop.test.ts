@@ -787,6 +787,51 @@ describe('runUnifiedAgentLoop', () => {
     expect(createLLMResponseMock).toHaveBeenCalledTimes(2);
   });
 
+  it('normalizes empty ask_agent resume answer to none in tool message', async () => {
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      text({
+        requestId: 'req_after_resume',
+        content: 'continued after empty answer'
+      })
+    ]);
+
+    await runUnifiedAgentLoop({
+      runtime: createRuntime(),
+      input: {
+        messages: [],
+        pendingMainContext: {
+          messages: [
+            {
+              role: ChatCompletionRequestMessageRoleEnum.User,
+              content: 'Need clarification'
+            },
+            {
+              role: ChatCompletionRequestMessageRoleEnum.Assistant,
+              tool_calls: [
+                {
+                  id: 'call_ask',
+                  type: 'function',
+                  function: {
+                    name: 'ask_agent',
+                    arguments: '{}'
+                  }
+                }
+              ]
+            }
+          ],
+          askToolCallId: 'call_ask'
+        },
+        userAnswer: ''
+      }
+    });
+
+    expect(createLLMResponseMock.mock.calls[0][0].body.messages).toContainEqual({
+      role: 'tool',
+      tool_call_id: 'call_ask',
+      content: 'none'
+    });
+  });
+
   it('keeps runtime-tool plan-update requirements across ask_agent resume', async () => {
     mockCreateLLMResponseQueue(createLLMResponseMock, [
       toolCall({
