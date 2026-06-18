@@ -30,6 +30,7 @@ const AIResponseBox = ({
   isLastChild,
   isChatting,
   onOpenCiteModal,
+  allowedCitationIds,
   wrapProcessing = true,
   showProcessing = true,
   showFoldableProcessing: showFoldableProcessingProp = true,
@@ -45,6 +46,7 @@ const AIResponseBox = ({
   isLastChild: boolean;
   isChatting: boolean;
   onOpenCiteModal?: (e?: OnOpenCiteModalProps) => void;
+  allowedCitationIds?: Set<string>;
   wrapProcessing?: boolean;
   showProcessing?: boolean;
   showFoldableProcessing?: boolean;
@@ -146,6 +148,7 @@ const AIResponseBox = ({
         showAnimation={isChatting && isLastResponseValue}
         text={textContent}
         onOpenCiteModal={onOpenCiteModal}
+        allowedCitationIds={allowedCitationIds}
         isDisabled={disableStreamingInteraction}
       />
     );

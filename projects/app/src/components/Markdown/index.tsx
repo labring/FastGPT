@@ -51,7 +51,7 @@ function MarkdownCodeRenderer(props: any) {
 }
 
 function MarkdownLinkRenderer(props: any) {
-  const { showAnimation, chatAuthData, onOpenCiteModal } = useContext(
+  const { showAnimation, chatAuthData, allowedCitationIds, onOpenCiteModal } = useContext(
     MarkdownRendererRuntimeContext
   );
 
@@ -60,6 +60,7 @@ function MarkdownLinkRenderer(props: any) {
       {...props}
       showAnimation={showAnimation}
       chatAuthData={chatAuthData}
+      allowedCitationIds={allowedCitationIds}
       onOpenCiteModal={onOpenCiteModal}
     />
   );
@@ -100,6 +101,7 @@ const MarkdownRender = ({
   autoPreviewHtmlCodeBlock,
 
   chatAuthData,
+  allowedCitationIds,
   onOpenCiteModal
 }: Props) => {
   const renderContextValue = useMemo(
@@ -108,9 +110,17 @@ const MarkdownRender = ({
       autoPreviewHtmlCodeBlock,
       markdownClassName: className,
       chatAuthData,
+      allowedCitationIds,
       onOpenCiteModal
     }),
-    [autoPreviewHtmlCodeBlock, chatAuthData, className, onOpenCiteModal, showAnimation]
+    [
+      allowedCitationIds,
+      autoPreviewHtmlCodeBlock,
+      chatAuthData,
+      className,
+      onOpenCiteModal,
+      showAnimation
+    ]
   );
 
   const formatSource = useMemo(() => {

@@ -30,6 +30,7 @@ export type AProps = {
     chatId: string;
     chatItemDataId: string;
   } & OutLinkChatAuthProps;
+  allowedCitationIds?: Set<string>;
   onOpenCiteModal?: (e?: {
     collectionId?: string;
     sourceId?: string;
@@ -202,6 +203,7 @@ const CiteLink = React.memo(function CiteLink({
 const A = ({
   children,
   chatAuthData,
+  allowedCitationIds,
   onOpenCiteModal,
   showAnimation,
   ...props
@@ -222,6 +224,11 @@ const A = ({
     (props.href?.startsWith('CITE') || props.href?.startsWith('QUOTE')) &&
     typeof content === 'string'
   ) {
+    console.log(allowedCitationIds, allowedCitationIds?.has(content));
+    if (allowedCitationIds && !allowedCitationIds.has(content)) {
+      return null;
+    }
+
     return (
       <CiteLink
         id={content}

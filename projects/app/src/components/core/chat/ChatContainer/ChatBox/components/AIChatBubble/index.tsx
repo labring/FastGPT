@@ -28,6 +28,7 @@ type AIChatBubbleProps = {
   isChatting: boolean;
   loadingText?: string;
   questionGuides: string[];
+  allowedCitationIds?: Set<string>;
   onOpenCiteModal: (e?: OnOpenCiteModalProps) => void;
   chatControllerProps: ChatControllerProps;
   children?: React.ReactNode;
@@ -42,6 +43,7 @@ const AIChatBubble = ({
   isChatting,
   loadingText,
   questionGuides,
+  allowedCitationIds,
   onOpenCiteModal,
   chatControllerProps,
   children
@@ -79,6 +81,7 @@ const AIChatBubble = ({
           dataId={chat.dataId}
           isLastChild={isLastChild && isLastValueGroup}
           isChatting={isChatting}
+          allowedCitationIds={allowedCitationIds}
           onOpenCiteModal={onOpenCiteModal}
         />
         {showNoOutputTip && (
