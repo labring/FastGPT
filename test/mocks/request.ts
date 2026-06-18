@@ -45,9 +45,11 @@ export type parseHeaderCertRet = {
   teamId: string;
   tmbId: string;
   appId: string;
+  apiKeyAppId?: string;
   authType: AuthUserTypeEnum;
   sourceName: string | undefined;
   apikey: string;
+  apiKeyAuthProxy?: boolean;
   isRoot: boolean;
   sessionId: string;
 };

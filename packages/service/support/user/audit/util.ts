@@ -70,7 +70,7 @@ export function addAuditLog<T extends AuditEventEnum>({
   teamId: string;
   event: T;
   params?: AuditEventParamsType[T];
-}): void;
+}): Promise<void>;
 
 export function addAuditLog<T extends AdminAuditEventEnum>({
   teamId,
@@ -82,7 +82,7 @@ export function addAuditLog<T extends AdminAuditEventEnum>({
   teamId: string;
   event: T;
   params?: AdminAuditEventParamsType[T];
-}): void;
+}): Promise<void>;
 export function addAuditLog<T extends AuditEventEnum | AdminAuditEventEnum>({
   teamId,
   tmbId,
@@ -93,13 +93,13 @@ export function addAuditLog<T extends AuditEventEnum | AdminAuditEventEnum>({
   teamId: string;
   event: T;
   params?: any;
-}) {
-  retryFn(() =>
-    MongoTeamAudit.create({
+}): Promise<void> {
+  return retryFn(async () => {
+    await MongoTeamAudit.create({
       tmbId: tmbId,
       teamId: teamId,
       event,
       metadata: params
-    })
-  );
+    });
+  });
 }

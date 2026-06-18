@@ -5,14 +5,17 @@ description: Access FastGPT app via API
 
 import { Alert } from '@/components/docs/Alert';
 
-In FastGPT, you can create multiple API keys for each app to access the app's API endpoints. Each key can only access one app. For complete endpoint documentation, [see the Chat API reference](../../../openapi/intro.en.mdx).
+In FastGPT, the API entry under Publish Channels only creates **App API Keys**. App API Keys are isolated by app: each key belongs to the current app only and can only access that app's chat endpoint.
 
-## Get API Key
+If you need to call general OpenAPI endpoints such as Knowledge Base or app management APIs, or use `authProxy` in `chat/completions` to proxy a team member identity, create a **Global API Key** in account settings. For the full distinction, [see the OpenAPI Introduction](../../../openapi/intro.en.mdx).
 
-Go to App -> "API Access", then click "API Key" to create a key.
+## Get an App API Key
+
+Go to App -> "Publish Channels" -> "API", then click "New" to create a key.
 
 <Alert context="warning">
-  Keep your key safe. Once the dialog is closed, you cannot copy the key again -- you can only create a new key and copy it.
+  App API Keys can only access the current app. Keep your key safe. To copy it again later, use the
+  copy button in this app's API publish channel list.
 </Alert>
 
 ![](/imgs/fastgpt-api1.jpg)

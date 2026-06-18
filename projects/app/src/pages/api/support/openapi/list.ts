@@ -22,7 +22,7 @@ async function handler(
 
   if (appId) {
     // app-level apikey
-    await authApp({
+    const { permission } = await authApp({
       req,
       authToken: true,
       appId,
@@ -33,7 +33,16 @@ async function handler(
       appId
     }).sort({ _id: -1 });
 
-    return GetApiKeyListResponseSchema.parse(findResponse.map((item) => item.toObject()));
+    return GetApiKeyListResponseSchema.parse(
+      findResponse.map((item) => {
+        const canCopy = permission.isOwner;
+
+        return {
+          ...item.toObject({ getters: true }),
+          canCopy
+        };
+      })
+    );
   }
   // global apikey
   const { teamId, tmbId, permission } = await authUserPer({
@@ -47,7 +56,16 @@ async function handler(
     ...(!permission.hasManagePer && { tmbId }) // if not manager, read own key
   }).sort({ _id: -1 });
 
-  return GetApiKeyListResponseSchema.parse(findResponse.map((item) => item.toObject()));
+  return GetApiKeyListResponseSchema.parse(
+    findResponse.map((item) => {
+      const canCopy = permission.isOwner || String(item.tmbId) === tmbId;
+
+      return {
+        ...item.toObject({ getters: true }),
+        canCopy
+      };
+    })
+  );
 }
 
 export default NextAPI(handler);

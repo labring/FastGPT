@@ -5,14 +5,17 @@ description: 通过 API 访问 FastGPT 应用
 
 import { Alert } from '@/components/docs/Alert';
 
-在 FastGPT 中，你可以为每一个应用创建多个 API 密钥，用于访问应用的 API 接口。每个密钥仅能访问一个应用。完整的接口可以[查看应用对话接口](../../../openapi/intro.mdx)。
+在 FastGPT 中，发布渠道里的 API 入口只能创建 **应用 APIKey**。应用 APIKey 按应用隔离，每个密钥只属于当前应用，只能用于访问该应用的对话接口。
 
-## 获取 API 密钥
+如果你需要调用知识库、应用管理等通用 OpenAPI，或需要在 `chat/completions` 中使用 `authProxy` 代理团队成员身份，请到账号设置里创建 **全局 APIKey**。完整的概念区分可以[查看 OpenAPI 介绍](../../../openapi/intro.mdx)。
 
-依次选择应用 -> 「API访问」，然后点击「API 密钥」来创建密钥。
+## 获取应用 APIKey
+
+依次选择应用 ->「发布渠道」->「API」，然后点击「新建」创建密钥。
 
 <Alert context="warning">
-  密钥需要自己保管好，一旦关闭就无法再复制密钥，只能创建新密钥再复制。
+  应用 APIKey 只能访问当前应用。请妥善保管密钥；如需再次复制，可在当前应用的 API
+  发布渠道列表中点击复制按钮。
 </Alert>
 
 ![](/imgs/fastgpt-api1.jpg)

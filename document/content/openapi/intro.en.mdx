@@ -22,16 +22,20 @@ FastGPT OpenAPI lets you authenticate with an API Key to access FastGPT services
 
 ![](../../public/imgs/fastgpt-api-baseurl.png)
 
-## How to Get an API Key
+## API Key Types
 
-FastGPT has **2 types** of API Keys: a global key (cannot directly call app chat) and an app-specific key that includes an AppId (can directly call app chat).
+FastGPT has **two types of API Keys**: **Global API Keys** and **App API Keys**. They are created in different places, have different isolation boundaries, and support different APIs.
 
-We recommend using `app-specific keys` only for app or chat-related endpoints, and `global keys` for everything else.
+| Type           | Where to create it             | Isolation                                        | Typical use                                                                                                                                                                                                                                                           |
+| -------------- | ------------------------------ | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Global API Key | Account settings -> API Keys   | Team-level key that is not bound to a single app | Call general OpenAPI endpoints that support API Key authentication. To call `chat/completions`, pass `appId` in the request body. Since `v4.15.0`, the team owner can enable `authProxy` for the key to proxy a team member identity, and the request body must include `authProxy`. |
+| App API Key    | App -> Publish Channels -> API | App-scoped key. Each key belongs to one app only | Call the `chat/completions` endpoint for that app. The key is already bound to the app, so you do not need to pass `appId`. App API Keys do not support `authProxy`.                                                                                                  |
 
-|        Global Key               |           App-Specific Key            |
-| --------------------- | --------------------- |
+Use an `App API Key` when a third-party client or external system only needs to chat with one app. Use a `Global API Key` for server-side integrations that manage shared resources such as Knowledge Bases or apps, or when `chat/completions` needs `authProxy`.
+
+| Global API Key                          | App API Key                             |
+| --------------------------------------- | --------------------------------------- |
 | ![](../../public/imgs/fastgpt-api2.jpg) | ![](../../public/imgs/fastgpt-api1.jpg) |
-
 
 ## Basic Configuration
 

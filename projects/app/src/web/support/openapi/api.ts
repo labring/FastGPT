@@ -2,6 +2,8 @@ import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
 import type {
   CreateApiKeyBodyType,
   CreateApiKeyResponseType,
+  CopyApiKeyBodyType,
+  CopyApiKeyResponseType,
   DeleteApiKeyQueryType,
   DeleteApiKeyResponseType,
   GetApiKeyListQueryType,
@@ -27,6 +29,12 @@ export const putOpenApiKey = (data: UpdateApiKeyBodyType) =>
  */
 export const getOpenApiKeys = (params?: GetApiKeyListQueryType) =>
   GET<GetApiKeyListResponseType>('/support/openapi/list', params);
+
+/**
+ * copy api key and record audit
+ */
+export const copyOpenApiKey = (data: CopyApiKeyBodyType) =>
+  POST<CopyApiKeyResponseType>('/support/openapi/copy', data);
 
 /**
  * delete api by id

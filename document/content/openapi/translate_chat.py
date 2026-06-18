@@ -11,9 +11,9 @@ translations = {
     '如何获取': 'How to Get',
     '可在应用详情的路径里获取': 'You can find the AppId in your application details URL',
     '发起对话': 'Start a Conversation',
-    '该接口的 API Key 需使用': 'This API requires',
-    '应用特定的 key': 'an application-specific API key',
-    '否则会报错': 'or it will return an error',
+    '该接口支持两类 APIKey': 'This API supports two API Key types',
+    '应用 APIKey': 'App API Key',
+    '全局 APIKey': 'Global API Key',
     '有些包调用时': 'Some packages require',
     '需要添加': 'adding',
     '路径，有些不需要，如果出现404情况，可补充': 'to the path. If you get a 404 error, try adding',
@@ -195,7 +195,7 @@ for line in lines:
     translated = line
     
     # Common translations
-    translated = translated.replace('该接口的 API Key 需使用`应用特定的 key`，否则会报错。', 'This API requires an application-specific API key, or it will return an error.')
+    translated = translated.replace('该接口支持两类 APIKey：', 'This API supports two API Key types:')
     translated = translated.replace('有些包调用时，`BaseUrl`需要添加`v1`路径，有些不需要，如果出现404情况，可补充`v1`重试。', 'Some packages require adding `v1` to the `BaseUrl`. If you get a 404 error, try adding `v1` and retry.')
     translated = translated.replace('可在应用详情的路径里获取 AppId。', 'You can find the AppId in your application details URL.')
     translated = translated.replace('`v1`对话接口兼容`GPT`的接口！如果你的项目使用的是标准的`GPT`官方接口，可以直接通过修改`BaseUrl`和 `Authorization`来访问 FastGpt 应用，不过需要注意下面几个规则：', 'The `v1` chat API is compatible with the `GPT` interface! If you\'re using the standard `GPT` official API, you can access FastGPT by simply changing the `BaseUrl` and `Authorization`. However, note these rules:')
