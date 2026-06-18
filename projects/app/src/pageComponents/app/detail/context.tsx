@@ -217,20 +217,25 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
         });
         if (modelIds.length > 0) {
           const systemStore = useSystemStore.getState();
-          const allValidModelIds = new Set([
-            ...systemStore.llmModelList.map((m) => m.id),
-            ...systemStore.embeddingModelList.map((m) => m.id),
-            ...systemStore.reRankModelList.map((m) => m.id),
-            ...systemStore.ttsModelList.map((m) => m.id),
-            ...systemStore.sttModelList.map((m) => m.id)
-          ]);
-          const invalidModelIds = modelIds.filter((id) => !allValidModelIds.has(id));
+          const allModels = [
+            ...systemStore.llmModelList,
+            ...systemStore.embeddingModelList,
+            ...systemStore.reRankModelList,
+            ...systemStore.ttsModelList,
+            ...systemStore.sttModelList
+          ];
+          const validModelIds = new Set(allModels.map((m) => m.id));
+          const modelNameMap: Record<string, string> = Object.fromEntries(
+            allModels.map((m) => [m.id, m.name])
+          );
+          const invalidModelIds = modelIds.filter((id) => !validModelIds.has(id));
+          const invalidModelNames = invalidModelIds.map((id) => modelNameMap[id] || id);
           // Only show warning for app owners; collaborators can use owner's private models
           // through the app context (bypassed in server-side authModel with resourceContext)
-          if (invalidModelIds.length > 0 && appDetail.permission.isOwner) {
+          if (invalidModelNames.length > 0 && appDetail.permission.isOwner) {
             toast({
               title: t('common:code_error.model_not_found', {
-                modelIds: invalidModelIds.join(', ')
+                modelIds: invalidModelNames.join(', ')
               }),
               status: 'warning',
               duration: 6000
