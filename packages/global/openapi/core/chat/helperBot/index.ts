@@ -1,14 +1,38 @@
 import z from 'zod';
 import type { OpenAPIPath } from '../../../type';
+import { TagsMap } from '../../../tag';
 import {
+  HelperBotCompletionsParamsSchema,
   DeleteHelperBotChatParamsSchema,
   GetHelperBotChatRecordsParamsSchema,
-  GetHelperBotChatRecordsResponseSchema,
-  HelperBotCompletionsParamsSchema
+  GetHelperBotChatRecordsResponseSchema
 } from './api';
-import { TagsMap } from '../../../tag';
 
 export const HelperBotPath: OpenAPIPath = {
+  '/proApi/core/chat/helperBot/completions': {
+    post: {
+      summary: '辅助生成统一对话接口',
+      description: '辅助生成统一对话接口',
+      tags: [TagsMap.helperBot],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: HelperBotCompletionsParamsSchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功返回流式处理结果',
+          content: {
+            'application/stream+json': {
+              schema: z.any()
+            }
+          }
+        }
+      }
+    }
+  },
   '/core/chat/helperBot/getRecords': {
     get: {
       summary: '分页获取记录',
@@ -46,30 +70,6 @@ export const HelperBotPath: OpenAPIPath = {
           description: '成功删除记录',
           content: {
             'application/json': {
-              schema: z.any()
-            }
-          }
-        }
-      }
-    }
-  },
-  '/core/chat/helperBot/completions': {
-    post: {
-      summary: '辅助助手对话接口',
-      description: '辅助助手对话接口',
-      tags: [TagsMap.helperBot],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: HelperBotCompletionsParamsSchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          description: '成功返回处理结果',
-          content: {
-            'application/stream+json': {
               schema: z.any()
             }
           }

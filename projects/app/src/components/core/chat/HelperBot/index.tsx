@@ -293,7 +293,7 @@ const ChatBox = ({ type, metadata, onApply, ChatBoxRef, ...props }: HelperBotPro
         chatController.current = abortSignal;
 
         const response = await streamFetch({
-          url: '/api/core/chat/helperBot/completions',
+          url: '/api/proApi/core/chat/helperBot/completions',
           data: {
             chatId,
             chatItemId: chatItemDataId,

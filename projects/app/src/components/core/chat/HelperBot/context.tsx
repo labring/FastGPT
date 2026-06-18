@@ -2,9 +2,11 @@ import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import React, { type ReactNode } from 'react';
 import { createContext } from 'use-context-selector';
 import { HelperBotTypeEnum } from '@fastgpt/global/core/chat/helperBot/type';
-import type { TopAgentParamsType } from '@fastgpt/global/core/chat/helperBot/topAgent/type';
+import type {
+  TopAgentFormDataType,
+  TopAgentParamsType
+} from '@fastgpt/global/core/chat/helperBot/topAgent/type';
 import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
-import type { TopAgentFormDataType } from '@fastgpt/service/core/chat/HelperBot/dispatch/topAgent/type';
 
 export type HelperBotRefType = {
   restartChat: () => void;
