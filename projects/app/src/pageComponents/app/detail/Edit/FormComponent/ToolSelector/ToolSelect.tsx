@@ -20,6 +20,7 @@ import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
+import { countAgentGeneratedToolInputs } from './utils';
 
 const ToolSelect = ({
   generatedSelectedTools,
@@ -82,6 +83,7 @@ const ToolSelect = ({
 
           const isUnconfigured = item.configStatus === 'waitingForConfig';
           const isDebugTool = isDebugToolSource(item.source);
+          const agentGeneratedInputCount = countAgentGeneratedToolInputs(item);
 
           return (
             <MyTooltip key={item.id} label={item.intro}>
@@ -102,9 +104,6 @@ const ToolSelect = ({
                 _hover={{
                   borderColor: toolError ? 'red.600' : 'primary.300',
                   '.delete': {
-                    display: 'flex'
-                  },
-                  '.hoverStyle': {
                     display: 'flex'
                   },
                   '.unHoverStyle': {
@@ -144,17 +143,20 @@ const ToolSelect = ({
                     </MyTag>
                   )}
                   {isDebugTool && <DebugToolTag className="unHoverStyle" />}
-                  {/* Edit icon */}
+                  {agentGeneratedInputCount > 0 && (
+                    <MyTag colorSchema="green" type="fill" className="unHoverStyle">
+                      {t('common:core.workflow.inputType.agentGenerated')} ×
+                      {agentGeneratedInputCount}
+                    </MyTag>
+                  )}
                   {!toolError && (
                     <MyIconButton
-                      className="hoverStyle"
-                      display={['flex', 'none']}
                       icon="common/setting"
+                      tip={t('app:tool_param_config')}
                       onClick={() => setConfigTool(item)}
                     />
                   )}
-                  {/* Delete icon */}
-                  <Box className="hoverStyle" display={['flex', 'none']} ml={0.5}>
+                  <Box className="delete" display={['flex', 'none']} ml={0.5}>
                     <MyIconButton
                       icon="delete"
                       hoverBg="red.50"
