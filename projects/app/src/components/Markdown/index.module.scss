@@ -536,30 +536,20 @@
   }
 }
 
-// 完整响应弹窗代码块：外层固定为弹窗内容区 80%，header 固定，内容区内部滚动。
+// 完整响应弹窗代码块：短内容随高度收缩，超出弹窗内容区 80% 后内部滚动。
 .codeJsonConstrained {
   :global(.markdown) :global(.code-block-wrapper),
   :global(.markdown) :global(.htmlCodeBlock) {
-    display: flex;
-    flex-direction: column;
-    height: var(--response-code-block-height);
-    max-height: var(--response-code-block-height);
     width: 100%;
     overflow: hidden;
     border-radius: var(--chakra-radii-md);
   }
 
-  :global(.markdown) :global(.code-header) {
-    flex-shrink: 0;
-  }
-
   :global(.markdown) :global(.code-block-wrapper) pre,
   :global(.markdown) :global(.htmlCodeBlock) pre,
   :global(.markdown) :global(.code-block-body) {
-    flex: 1 1 0;
-    min-height: 0;
     height: auto !important;
-    max-height: none !important;
+    max-height: calc(var(--response-code-block-height) - 40px) !important;
     overflow: auto !important;
     margin: 0 !important;
     border-bottom-left-radius: var(--chakra-radii-md);
@@ -568,9 +558,8 @@
 
   // HTML 预览区在完整响应弹窗内跟随外层限高，覆盖聊天的 60vh 上限。
   :global(.markdown) :global(.htmlCodeBlock) :global(.code-block-body) {
-    flex: 1 1 0;
-    min-height: 0;
-    max-height: none !important;
+    height: auto !important;
+    max-height: calc(var(--response-code-block-height) - 40px) !important;
     overflow: auto !important;
   }
 }
