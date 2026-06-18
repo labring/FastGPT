@@ -6,12 +6,14 @@ const {
   countPromptTokensMock,
   createLLMResponseMock,
   defaultSearchDatasetDataMock,
+  filterDatasetsByTmbIdMock,
   findDatasetByIdMock,
   formatModelChars2PointsMock
 } = vi.hoisted(() => ({
   countPromptTokensMock: vi.fn(),
   createLLMResponseMock: vi.fn(),
   defaultSearchDatasetDataMock: vi.fn(),
+  filterDatasetsByTmbIdMock: vi.fn(),
   findDatasetByIdMock: vi.fn(),
   formatModelChars2PointsMock: vi.fn()
 }));
@@ -24,6 +26,10 @@ vi.mock('@fastgpt/service/core/dataset/schema', () => ({
   MongoDataset: {
     findById: findDatasetByIdMock
   }
+}));
+
+vi.mock('@fastgpt/service/core/dataset/utils', () => ({
+  filterDatasetsByTmbId: filterDatasetsByTmbIdMock
 }));
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
@@ -67,6 +73,7 @@ describe('dispatchAgentDatasetSearch', () => {
         vectorModel: 'embedding-model'
       })
     });
+    filterDatasetsByTmbIdMock.mockImplementation(async ({ datasetIds }) => datasetIds);
     countPromptTokensMock.mockResolvedValue(100);
     createLLMResponseMock.mockResolvedValue({
       answerText: '[chunk_2]',
@@ -330,5 +337,60 @@ describe('dispatchAgentDatasetSearch', () => {
       })
     );
     expect(result.nodeResponse?.datasetQueries).toEqual(['legacy query']);
+  });
+
+  it('filters dataset ids by tmbId when dataset auth is enabled', async () => {
+    filterDatasetsByTmbIdMock.mockResolvedValueOnce(['dataset_2']);
+    defaultSearchDatasetDataMock.mockResolvedValue({
+      searchRes: [],
+      embeddingTokens: 0,
+      reRankInputTokens: 0,
+      usingSimilarityFilter: true,
+      usingReRank: false
+    });
+
+    await dispatchAgentDatasetSearch({
+      args: JSON.stringify({ query: ['origin'] }),
+      teamId: 'team_1',
+      tmbId: 'tmb_1',
+      llmModel: 'gpt-main',
+      datasetParams: {
+        datasets: [{ datasetId: 'dataset_1' }, { datasetId: 'dataset_2' }],
+        searchMode: DatasetSearchModeEnum.embedding,
+        authTmbId: true
+      } as any
+    });
+
+    expect(filterDatasetsByTmbIdMock).toHaveBeenCalledWith({
+      datasetIds: ['dataset_1', 'dataset_2'],
+      tmbId: 'tmb_1'
+    });
+    expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        datasetIds: ['dataset_2']
+      })
+    );
+  });
+
+  it('stops dataset search when auth filtering removes all datasets', async () => {
+    filterDatasetsByTmbIdMock.mockResolvedValueOnce([]);
+
+    const result = await dispatchAgentDatasetSearch({
+      args: JSON.stringify({ query: ['origin'] }),
+      teamId: 'team_1',
+      tmbId: 'tmb_1',
+      llmModel: 'gpt-main',
+      datasetParams: {
+        datasets: [{ datasetId: 'dataset_1' }],
+        searchMode: DatasetSearchModeEnum.embedding,
+        authTmbId: true
+      } as any
+    });
+
+    expect(result).toEqual({
+      response: 'No authorized dataset selected'
+    });
+    expect(findDatasetByIdMock).not.toHaveBeenCalled();
+    expect(defaultSearchDatasetDataMock).not.toHaveBeenCalled();
   });
 });

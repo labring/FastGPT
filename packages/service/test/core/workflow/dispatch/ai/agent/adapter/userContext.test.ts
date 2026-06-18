@@ -466,6 +466,7 @@ describe('useUserContext', () => {
   });
 
   it('loads dataset name and description from backend when selected state only keeps id', async () => {
+    vi.mocked(filterDatasetsByTmbId).mockClear();
     vi.mocked(MongoDataset.find).mockReturnValueOnce({
       lean: vi.fn(async () => [
         {
@@ -497,10 +498,7 @@ describe('useUserContext', () => {
           maxFiles: 20
         });
 
-        expect(filterDatasetsByTmbId).toHaveBeenCalledWith({
-          datasetIds: ['dataset_1'],
-          tmbId: 'tmb_1'
-        });
+        expect(filterDatasetsByTmbId).not.toHaveBeenCalled();
         expect(MongoDataset.find).toHaveBeenCalledWith(
           {
             _id: {
@@ -519,6 +517,7 @@ describe('useUserContext', () => {
   });
 
   it('filters unauthorized datasets before loading backend metadata', async () => {
+    vi.mocked(filterDatasetsByTmbId).mockClear();
     vi.mocked(filterDatasetsByTmbId).mockResolvedValueOnce(['dataset_1']);
     vi.mocked(MongoDataset.find).mockReturnValueOnce({
       lean: vi.fn(async () => [
@@ -549,11 +548,16 @@ describe('useUserContext', () => {
               datasetId: 'dataset_2'
             }
           ],
+          authTmbId: true,
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
           maxFiles: 20
         });
 
+        expect(filterDatasetsByTmbId).toHaveBeenCalledWith({
+          datasetIds: ['dataset_1', 'dataset_2'],
+          tmbId: 'tmb_1'
+        });
         expect(MongoDataset.find).toHaveBeenCalledWith(
           {
             _id: {

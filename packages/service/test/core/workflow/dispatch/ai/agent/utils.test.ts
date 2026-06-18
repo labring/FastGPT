@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
 import {
+  getAgentDatasetParams,
   getSubapps,
   getExecuteTool,
   replaceAgentFileIdsWithUrls
@@ -414,7 +415,103 @@ describe('Agent read_files tool protocol', () => {
 
     expect(dispatchAgentDatasetSearchMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        userKey
+        userKey,
+        datasetParams: {
+          datasets: [{ datasetId: 'dataset_1' }]
+        }
+      })
+    );
+  });
+
+  it('normalizes workflow agent dataset inputs for dataset search tool', async () => {
+    dispatchAgentDatasetSearchMock.mockResolvedValue({
+      response: 'dataset content',
+      usages: [],
+      nodeResponse: {
+        moduleName: 'Dataset Search'
+      }
+    });
+
+    const params = {
+      model: 'gpt-4',
+      datasets: [{ datasetId: 'dataset_1' }],
+      similarity: 0.55,
+      limit: 1800,
+      searchMode: 'mixedRecall',
+      embeddingWeight: 0.65,
+      usingReRank: true,
+      rerankModel: 'rerank-model',
+      rerankWeight: 0.4,
+      datasetSearchUsingExtensionQuery: true,
+      datasetSearchExtensionModel: 'query-model',
+      datasetSearchExtensionBg: 'query bg',
+      authTmbId: true
+    };
+
+    expect(getAgentDatasetParams(params as any)).toEqual({
+      datasets: [{ datasetId: 'dataset_1' }],
+      similarity: 0.55,
+      limit: 1800,
+      searchMode: 'mixedRecall',
+      embeddingWeight: 0.65,
+      usingReRank: true,
+      rerankModel: 'rerank-model',
+      rerankWeight: 0.4,
+      datasetSearchUsingExtensionQuery: true,
+      datasetSearchExtensionModel: 'query-model',
+      datasetSearchExtensionBg: 'query bg',
+      authTmbId: true
+    });
+
+    const executeTool = getExecuteTool({
+      checkIsStopping: vi.fn(),
+      chatConfig: {},
+      runningUserInfo: {
+        teamId: 'team_1',
+        tmbId: 'tmb_1'
+      },
+      runningAppInfo: {
+        id: 'app_1'
+      },
+      chatId: 'chat_1',
+      uid: 'user_1',
+      variableState: {} as any,
+      externalProvider: {
+        openaiAccount: undefined
+      } as any,
+      lang: 'zh-CN',
+      requestOrigin: '',
+      mode: 'chat',
+      timezone: 'Asia/Shanghai',
+      retainDatasetCite: false,
+      maxRunTimes: 10,
+      workflowDispatchDeep: 0,
+      params,
+      stream: false,
+      getSubAppInfo: () => ({
+        name: 'Dataset Search',
+        avatar: '',
+        toolDescription: ''
+      }),
+      getSubApp: () => undefined,
+      completionTools: [],
+      filesMap: {}
+    } as any);
+
+    await executeTool({
+      callId: 'call_dataset_search',
+      toolId: SubAppIds.datasetSearch,
+      args: '{"query":["FastGPT"]}'
+    });
+
+    expect(dispatchAgentDatasetSearchMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        teamId: 'team_1',
+        tmbId: 'tmb_1',
+        datasetParams: expect.objectContaining({
+          datasets: [{ datasetId: 'dataset_1' }],
+          authTmbId: true
+        })
       })
     );
   });

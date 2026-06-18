@@ -16,7 +16,7 @@ import type { DispatchAgentModuleProps } from '..';
 import { parseUserSystemPrompt } from '../adapter/prompt';
 import { useUserContext } from '../adapter/userContext';
 import { useSandbox } from '../sub/sandbox';
-import { getSubapps, type ToolDispatchContext } from '../utils';
+import { getAgentDatasetParams, getSubapps, type ToolDispatchContext } from '../utils';
 import {
   createPiAgentWorkflowRuntime,
   normalizePiAgentMessages,
@@ -59,13 +59,13 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       agent_selectedTools: selectedTools = [],
       skills: selectedSkills = [],
       editSkillId,
-      agent_datasetParams: datasetParams,
       useAgentSandbox = false,
       aiChatVision,
       aiChatReasoning,
       aiChatReasoningEffort
     }
   } = props;
+  const datasetParams = getAgentDatasetParams(props.params);
 
   const piMessagesKey = `piMessages-${nodeId}`;
 
@@ -121,6 +121,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       currentQuery: query,
       currentDataId: responseChatItemId,
       selectedDataset: datasetParams?.datasets,
+      authTmbId: datasetParams?.authTmbId,
       tmbId: runningUserInfo.tmbId,
       timezone,
       requestOrigin,

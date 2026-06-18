@@ -438,6 +438,26 @@ const EditForm = ({
               <MyIcon name={'core/app/simpleMode/dataset'} w={'20px'} />
               <FormLabel ml={2}>{t('app:dataset')}</FormLabel>
             </Flex>
+            <Flex alignItems={'center'} mr={2}>
+              <Box fontSize={'sm'} color={'myGray.600'} whiteSpace={'nowrap'}>
+                {t('workflow:auth_tmb_id')}
+              </Box>
+              <QuestionTip ml={1} label={t('workflow:auth_tmb_id_tip')} />
+              <Switch
+                ml={2}
+                size={'sm'}
+                isChecked={!!appForm.dataset.authTmbId}
+                onChange={(e) => {
+                  setAppForm((state) => ({
+                    ...state,
+                    dataset: {
+                      ...state.dataset,
+                      authTmbId: e.target.checked
+                    }
+                  }));
+                }}
+              />
+            </Flex>
             <Button
               variant={'transparentBase'}
               leftIcon={<MyIcon name={'edit'} w={'14px'} />}

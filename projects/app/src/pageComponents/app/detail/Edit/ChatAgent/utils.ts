@@ -333,7 +333,8 @@ export function agentForm2AppWorkflow(
                 rerankWeight: data.dataset.rerankWeight,
                 datasetSearchUsingExtensionQuery: data.dataset.datasetSearchUsingExtensionQuery,
                 datasetSearchExtensionModel: data.dataset.datasetSearchExtensionModel,
-                datasetSearchExtensionBg: data.dataset.datasetSearchExtensionBg
+                datasetSearchExtensionBg: data.dataset.datasetSearchExtensionBg,
+                [NodeInputKeyEnum.authTmbId]: data.dataset.authTmbId
               })
             },
             // agent sandbox
