@@ -218,6 +218,7 @@
   "tag.add_new": "新增",
   "tag.cancel": "取消",
   "tag.delete_tag_confirm": "確定要刪除標籤嗎？",
+  "tag.duplicate_name": "標籤名稱已存在",
   "tag.hoverTagToFilter": "懸停標籤查看可選值",
   "tag.manage": "標籤管理",
   "tag.searchOrAddTag": "搜尋或新增標籤",

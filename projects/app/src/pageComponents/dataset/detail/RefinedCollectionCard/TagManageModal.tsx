@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Button, Flex, Box, ModalFooter, Input } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
@@ -51,14 +51,44 @@ const TagManageModal = ({ onClose }: { onClose: (refresh?: boolean) => void }) =
     { label: t('dataset:tag.type_datetime'), value: 'datetime' }
   ];
 
+  const duplicateNewTagNames = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const pt of pendingNewTags) {
+      if (pt.tag.trim()) {
+        counts.set(pt.tag, (counts.get(pt.tag) || 0) + 1);
+      }
+    }
+    return new Set([...counts.entries()].filter(([, count]) => count > 1).map(([name]) => name));
+  }, [pendingNewTags]);
+
+  const existingTagNames = useMemo(() => new Set(displayedTags.map((t) => t.tag)), [displayedTags]);
+
   const { runAsync: onConfirmSave, loading } = useRequest(
     async () => {
       const existingTags = collectionTags
         .filter((tag) => !deletedTagIds.has(tag._id))
         .map((tag) => ({ tag: tag.tag, tagType: tag.tagType }));
 
+      // 检测新 tag 之间是否有重复
+      const newTagNames = pendingNewTags.map((pt) => pt.tag.trim()).filter(Boolean);
+      const seen = new Set<string>();
+      for (const name of newTagNames) {
+        if (seen.has(name)) {
+          throw new Error(t('dataset:tag.duplicate_name'));
+        }
+        seen.add(name);
+      }
+
+      // 检测新 tag 是否与已有未删除 tag 重复
+      for (const pt of pendingNewTags) {
+        if (!pt.tag.trim()) continue;
+        if (existingTags.find((et) => et.tag === pt.tag)) {
+          throw new Error(t('dataset:tag.duplicate_name'));
+        }
+      }
+
       const validNewTags = pendingNewTags
-        .filter((pt) => pt.tag.trim() && !existingTags.find((et) => et.tag === pt.tag))
+        .filter((pt) => pt.tag.trim())
         .map((pt) => ({ tag: pt.tag, tagType: pt.tagType }));
 
       await Promise.all(
@@ -142,6 +172,7 @@ const TagManageModal = ({ onClose }: { onClose: (refresh?: boolean) => void }) =
                       tag={pt.tag}
                       tagType={pt.tagType}
                       isEditable={true}
+                      isDuplicate={duplicateNewTagNames.has(pt.tag) || existingTagNames.has(pt.tag)}
                       tagTypeOptions={tagTypeOptions}
                       onTagChange={(val) =>
                         setPendingNewTags((prev) =>
@@ -185,7 +216,7 @@ const TagManageModal = ({ onClose }: { onClose: (refresh?: boolean) => void }) =
             <Button variant={'whiteBase'} onClick={() => onClose()}>
               {t('common:Cancel')}
             </Button>
-            <Button isLoading={loading} onClick={onConfirmSave}>
+            <Button isLoading={loading} onClick={() => onConfirmSave().catch(() => {})}>
               {t('common:Confirm')}
             </Button>
           </ModalFooter>
@@ -202,6 +233,7 @@ type TagRowProps = {
   tag: string;
   tagType: 'string' | 'number' | 'datetime';
   isEditable: boolean;
+  isDuplicate?: boolean;
   tagTypeOptions: { label: string; value: string }[];
   onDelete: () => void;
   onTagChange?: (val: string) => void;
@@ -212,6 +244,7 @@ const TagRow = ({
   tag,
   tagType,
   isEditable,
+  isDuplicate,
   tagTypeOptions,
   onDelete,
   onTagChange,
@@ -225,6 +258,7 @@ const TagRow = ({
         flex={'1'}
         onChange={(e) => onTagChange?.(e.target.value)}
         placeholder={t('dataset:tag.tag_name')}
+        borderColor={isDuplicate ? 'red.500' : undefined}
       />
       <MySelect
         w={'130px'}
