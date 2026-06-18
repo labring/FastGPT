@@ -333,7 +333,8 @@ export const getEmptyAgentConfig = (t: any) => {
       dataset: {
         ...defaultAppForm.dataset,
         datasets: [],
-        searchMode: DatasetSearchModeEnum.mixedRecall
+        searchMode: DatasetSearchModeEnum.mixedRecall,
+        datasetSearchUsingExtensionQuery: false
       },
       selectedTools: [],
       chatConfig: {}

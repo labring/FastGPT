@@ -633,6 +633,28 @@ const EditForm = ({
             </>
           )}
 
+          {/* 问题改写（仅标准检索 inline 展开时显示） */}
+          {(appForm.dataset.retrievalMode as string) === DatasetRetrievalModeEnum.standard &&
+            !showDatasetSearchParams && (
+              <FormItem
+                label={t('common:core.module.template.Query extension')}
+                tooltip={t('common:core.dataset.Query extension intro')}
+              >
+                <Switch
+                  isChecked={appForm.dataset.datasetSearchUsingExtensionQuery ?? true}
+                  onChange={(e) =>
+                    setAppForm((state) => ({
+                      ...state,
+                      dataset: {
+                        ...state.dataset,
+                        datasetSearchUsingExtensionQuery: e.target.checked
+                      }
+                    }))
+                  }
+                />
+              </FormItem>
+            )}
+
           {/* 输出思考过程（仅多轮智能检索时显示） */}
           {(appForm.dataset.retrievalMode as string) === DatasetRetrievalModeEnum.agentic && (
             <FormItem
