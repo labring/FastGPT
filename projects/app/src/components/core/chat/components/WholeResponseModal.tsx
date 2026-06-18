@@ -1200,10 +1200,10 @@ const SideTabItem = ({
               {(() => {
                 const time =
                   sideBarItem.moduleType === FlowNodeTypeEnum.chatNode &&
-                  sideBarItem.firstTokenTime !== undefined
+                  sideBarItem.firstTokenTime != null
                     ? sideBarItem.firstTokenTime
                     : sideBarItem.runningTime;
-                return time !== undefined ? `${time}s` : '';
+                return time != null && !Number.isNaN(time) ? `${Number(time).toFixed(2)}s` : '';
               })()}
             </Box>
           </Box>
