@@ -4,6 +4,7 @@ import {
   checkRoleUpdateConflict,
   getChangedCollaborators,
   getCollaboratorId,
+  isPrivateResourceByCollaborators,
   mergeCollaboratorList
 } from '@fastgpt/global/support/permission/utils';
 import {
@@ -810,6 +811,63 @@ describe('Permission Utils', () => {
       expect(user1?.permission).toBe(ManageRoleVal | WriteRoleVal);
       // user3: child owner not converted
       expect(user3?.permission).toBe(OwnerRoleVal);
+    });
+  });
+
+  describe('isPrivateResourceByCollaborators', () => {
+    it('should treat a single owner collaborator as private', () => {
+      const result = isPrivateResourceByCollaborators({
+        resourceClbs: [{ tmbId: 'owner', permission: OwnerRoleVal }]
+      });
+
+      expect(result).toBe(true);
+    });
+
+    it('should treat direct extra collaborators as non-private', () => {
+      const result = isPrivateResourceByCollaborators({
+        resourceClbs: [
+          { tmbId: 'owner', permission: OwnerRoleVal },
+          { tmbId: 'user1', permission: ReadRoleVal }
+        ]
+      });
+
+      expect(result).toBe(false);
+    });
+
+    it('should dedupe inherited parent and child owner records before checking privacy', () => {
+      const result = isPrivateResourceByCollaborators({
+        inheritPermission: true,
+        parentClbs: [{ tmbId: 'owner', permission: OwnerRoleVal }],
+        resourceClbs: [{ tmbId: 'owner', permission: OwnerRoleVal }]
+      });
+
+      expect(result).toBe(true);
+    });
+
+    it('should treat inherited parent collaborators as non-private', () => {
+      const result = isPrivateResourceByCollaborators({
+        inheritPermission: true,
+        parentClbs: [
+          { tmbId: 'owner', permission: OwnerRoleVal },
+          { groupId: 'group1', permission: ReadRoleVal }
+        ],
+        resourceClbs: [{ tmbId: 'owner', permission: OwnerRoleVal }]
+      });
+
+      expect(result).toBe(false);
+    });
+
+    it('should treat inherited child extra collaborators as non-private', () => {
+      const result = isPrivateResourceByCollaborators({
+        inheritPermission: true,
+        parentClbs: [{ tmbId: 'owner', permission: OwnerRoleVal }],
+        resourceClbs: [
+          { tmbId: 'owner', permission: OwnerRoleVal },
+          { orgId: 'org1', permission: ReadRoleVal }
+        ]
+      });
+
+      expect(result).toBe(false);
     });
   });
 });
