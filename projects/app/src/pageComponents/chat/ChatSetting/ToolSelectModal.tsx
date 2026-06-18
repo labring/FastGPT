@@ -104,6 +104,10 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
 
   const onUpdateParentId = useCallback(
     (parentId: ParentIdType) => {
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+
       loadTemplates({
         parentId
       });
@@ -156,7 +160,14 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
       )}
       <MyBox isLoading={isLoading} pt={2} pb={3} flex={'1 0 0'} h={0}>
         <Box px={[3, 6]} overflow={'overlay'} height={'100%'}>
-          <RenderList templates={templates} setParentId={onUpdateParentId} {...props} />
+          <RenderList
+            templates={templates}
+            parentId={parentId}
+            searchKey={searchKey}
+            selectedTagIds={selectedTagIds}
+            setParentId={onUpdateParentId}
+            {...props}
+          />
         </Box>
       </MyBox>
     </MyModal>
@@ -167,6 +178,9 @@ export default React.memo(ToolSelectModal);
 
 const RenderList = React.memo(function RenderList({
   templates,
+  parentId,
+  searchKey,
+  selectedTagIds,
   onAddTool,
   onRemoveTool,
   setParentId,
@@ -174,6 +188,9 @@ const RenderList = React.memo(function RenderList({
   chatConfig = {}
 }: Props & {
   templates: NodeTemplateListItemType[];
+  parentId: ParentIdType;
+  searchKey: string;
+  selectedTagIds: string[];
   setParentId: (parentId: ParentIdType) => any;
 }) {
   const { t, i18n } = useTranslation();
@@ -182,6 +199,12 @@ const RenderList = React.memo(function RenderList({
   const [configTool, setConfigTool] = useState<FlowNodeTemplateType>();
   const onCloseConfigTool = useCallback(() => setConfigTool(undefined), []);
   const { toast } = useToast();
+  const listScopeKey = useMemo(
+    () => `${parentId ?? ''}:${searchKey}:${selectedTagIds.join(',')}`,
+    [parentId, searchKey, selectedTagIds]
+  );
+  const [tooltipEnabledScopeKey, setTooltipEnabledScopeKey] = useState('');
+  const isTooltipEnabled = tooltipEnabledScopeKey === listScopeKey;
 
   const { runAsync: onClickAdd, loading: isLoading } = useRequest(
     async (template: NodeTemplateListItemType) => {
@@ -279,13 +302,21 @@ const RenderList = React.memo(function RenderList({
 
   const pluginListRender =
     templates.length > 0 ? (
-      <Grid gridTemplateColumns={gridStyle.gridTemplateColumns} rowGap={3} columnGap={3} pt={3}>
+      <Grid
+        key={listScopeKey}
+        onMouseMove={() => setTooltipEnabledScopeKey(listScopeKey)}
+        gridTemplateColumns={gridStyle.gridTemplateColumns}
+        rowGap={3}
+        columnGap={3}
+        pt={3}
+      >
         {templates.map((template) => {
           const selected = selectedTools.some((tool) => tool.pluginId === template.id);
 
           return (
             <MyTooltip
               key={template.id}
+              isDisabled={!isTooltipEnabled}
               placement={'right'}
               label={
                 <Box py={2}>
