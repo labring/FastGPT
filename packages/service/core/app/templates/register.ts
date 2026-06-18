@@ -22,10 +22,12 @@ const formatTemplateAvatar = (avatar?: string | null) => {
 };
 
 /**
- * 系统模板来自 plugin 服务，本地数据库只作为展示和运营配置覆盖层。
- * workflow、userGuide、type 等模板内容字段必须始终以 plugin 返回为准，避免后台误覆盖导致模板创建失败。
+ * 提取系统模板允许由数据库覆盖的运营字段。
+ *
+ * 系统模板来自 plugin 服务，workflow、userGuide、type 等内容字段必须始终以 plugin 返回为准。
+ * 数据库只作为展示卡片、上下线、推荐和标签等运营配置层，避免后台保存的旧 workflow 覆盖新版模板。
  */
-const getPluginSystemTemplateConfig = (config: AppTemplateSchemaType) => ({
+const pickPluginSystemTemplateEditableConfig = (config: AppTemplateSchemaType) => ({
   ...Object.fromEntries(
     Object.entries({
       name: config.name,
@@ -61,8 +63,9 @@ const getAppTemplates = async () => {
 
     if (config) {
       return {
+        ...config,
         ...template,
-        ...getPluginSystemTemplateConfig(config)
+        ...pickPluginSystemTemplateEditableConfig(config)
       };
     }
 
