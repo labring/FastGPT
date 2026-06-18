@@ -845,7 +845,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           <Box mb={5}>
             <Flex className="nodrag" cursor={'default'} alignItems={'center'}>
               <FormLabel color={'myGray.600'}>{t('common:core.dataset.Dataset')}</FormLabel>
-              {authTmbIdInput && (
+              {feConfigs?.isPlus && authTmbIdInput && (
                 <Flex ml={2} alignItems={'center'}>
                   <Box fontSize={'sm'} color={'myGray.600'} whiteSpace={'nowrap'}>
                     {t('workflow:auth_tmb_id')}

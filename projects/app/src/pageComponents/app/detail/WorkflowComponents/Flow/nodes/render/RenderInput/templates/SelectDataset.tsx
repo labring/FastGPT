@@ -11,6 +11,7 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowActionsContext';
 import DatasetCard from '@/components/core/app/DatasetCard';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 
@@ -133,6 +134,7 @@ export const SwitchAuthTmb = React.memo(function SwitchAuthTmb({
   nodeId
 }: RenderInputProps) {
   const { t } = useTranslation();
+  const { feConfigs } = useSystemStore();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const authTmbIdInput = useMemo(
@@ -140,7 +142,7 @@ export const SwitchAuthTmb = React.memo(function SwitchAuthTmb({
     [inputs]
   );
 
-  return authTmbIdInput ? (
+  return feConfigs?.isPlus && authTmbIdInput ? (
     <Flex alignItems={'center'}>
       <Box fontSize={'sm'}>{t('workflow:auth_tmb_id')}</Box>
       <QuestionTip label={t('workflow:auth_tmb_id_tip')} />
