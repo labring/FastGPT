@@ -3,7 +3,7 @@ import { MongoResourcePermission } from '../../../../support/permission/schema';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { AppTypeEnum, AppFolderTypeList } from '@fastgpt/global/core/app/constants';
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
-import { sumPer } from '@fastgpt/global/support/permission/utils';
+import { isPrivateResourceByCollaborators, sumPer } from '@fastgpt/global/support/permission/utils';
 import { getGroupsByTmbId } from '../../../../support/permission/memberGroup/controllers';
 import { getOrgIdSetWithParentByTmbId } from '../../../../support/permission/org/controllers';
 import { MongoApp } from '../../schema';
@@ -50,6 +50,13 @@ export const getUserAvaliableWorkflowTools = async ({
       myGroupMap.has(String(item.groupId)) ||
       myOrgSet.has(String(item.orgId))
   );
+  const roleListMap = new Map<string, (typeof roleList)[number][]>();
+  roleList.forEach((item) => {
+    const resourceId = String(item.resourceId);
+    const list = roleListMap.get(resourceId) ?? [];
+    list.push(item);
+    roleListMap.set(resourceId, list);
+  });
 
   const myApps: {
     _id: string;
@@ -86,21 +93,27 @@ export const getUserAvaliableWorkflowTools = async ({
           });
         };
 
-        const getClbCount = (appId: string) => {
-          return roleList.filter((item) => String(item.resourceId) === String(appId)).length;
-        };
-
         // Inherit app, check parent folder clb and it's own clb
         if (!AppFolderTypeList.includes(app.type) && app.parentId && app.inheritPermission) {
+          const resourceClbs = roleListMap.get(String(app._id)) ?? [];
+          const parentClbs = roleListMap.get(String(app.parentId)) ?? [];
+
           return {
             Per: getPer(String(app.parentId)).addRole(getPer(String(app._id)).role),
-            privateApp: getClbCount(String(app.parentId)) <= 1
+            privateApp: isPrivateResourceByCollaborators({
+              resourceClbs,
+              parentClbs,
+              inheritPermission: true
+            })
           };
         }
+        const resourceClbs = roleListMap.get(String(app._id)) ?? [];
 
         return {
           Per: getPer(String(app._id)),
-          privateApp: getClbCount(String(app._id)) <= 1
+          privateApp: isPrivateResourceByCollaborators({
+            resourceClbs
+          })
         };
       })();
 
