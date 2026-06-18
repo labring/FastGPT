@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   getSystemToolList: vi.fn(),
   getSystemToolDetail: vi.fn(),
   getSystemToolDisplayInfo: vi.fn(),
+  getSystemToolDisplayInfoWithChildIcons: vi.fn(),
   getInstance: vi.fn()
 }));
 
@@ -48,7 +49,8 @@ describe('get system tool templates handler', () => {
     mocks.getInstance.mockReturnValue({
       getSystemToolList: mocks.getSystemToolList,
       getSystemToolDetail: mocks.getSystemToolDetail,
-      getSystemToolDisplayInfo: mocks.getSystemToolDisplayInfo
+      getSystemToolDisplayInfo: mocks.getSystemToolDisplayInfo,
+      getSystemToolDisplayInfoWithChildIcons: mocks.getSystemToolDisplayInfoWithChildIcons
     });
   });
 
@@ -100,7 +102,7 @@ describe('get system tool templates handler', () => {
   });
 
   it('filters toolset children by escaped searchKey', async () => {
-    mocks.getSystemToolDisplayInfo.mockResolvedValue({
+    mocks.getSystemToolDisplayInfoWithChildIcons.mockResolvedValue({
       id: 'toolset',
       name: 'Toolset',
       intro: 'Parent intro',
@@ -113,6 +115,7 @@ describe('get system tool templates handler', () => {
           status: PluginStatusEnum.Normal,
           description: 'Exact plus',
           toolDescription: 'Use literal plus',
+          icon: 'plus-icon',
           currentCost: 2,
           systemKeyCost: 0.5
         },
@@ -138,15 +141,17 @@ describe('get system tool templates handler', () => {
 
     expect(result.map((item) => item.id)).toEqual(['toolset/plus']);
     expect(result[0]).toMatchObject({
+      avatar: 'plus-icon',
       currentCost: 2,
       systemKeyCost: 0.5,
       hasTokenFee: true
     });
-    expect(mocks.getSystemToolDisplayInfo).toHaveBeenCalledWith({
+    expect(mocks.getSystemToolDisplayInfoWithChildIcons).toHaveBeenCalledWith({
       pluginId: 'toolset',
       lang: 'zh',
       source: 'system'
     });
+    expect(mocks.getSystemToolDisplayInfo).not.toHaveBeenCalled();
     expect(mocks.getSystemToolDetail).not.toHaveBeenCalled();
   });
 
@@ -189,7 +194,7 @@ describe('get system tool templates handler', () => {
   });
 
   it('filters unavailable toolset children from system tool candidates', async () => {
-    mocks.getSystemToolDisplayInfo.mockResolvedValue({
+    mocks.getSystemToolDisplayInfoWithChildIcons.mockResolvedValue({
       id: 'toolset',
       name: 'Toolset',
       intro: 'Parent intro',
@@ -231,11 +236,16 @@ describe('get system tool templates handler', () => {
     } as ApiRequestProps<GetSystemPluginTemplatesBody>);
 
     expect(result.map((item) => item.id)).toEqual(['toolset/normal-child']);
+    expect(mocks.getSystemToolDisplayInfoWithChildIcons).toHaveBeenCalledWith({
+      pluginId: 'toolset',
+      lang: 'zh',
+      source: 'system'
+    });
     expect(mocks.getSystemToolDetail).not.toHaveBeenCalled();
   });
 
   it('returns no children when parent toolset is unavailable', async () => {
-    mocks.getSystemToolDisplayInfo.mockResolvedValue({
+    mocks.getSystemToolDisplayInfoWithChildIcons.mockResolvedValue({
       id: 'toolset',
       name: 'Toolset',
       intro: 'Parent intro',

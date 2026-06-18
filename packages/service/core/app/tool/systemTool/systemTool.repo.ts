@@ -90,6 +90,11 @@ type SystemToolDisplayInfoType = Pick<
   children?: SystemToolDisplayChildType[];
 };
 
+const getChildIconMap = (children?: { id: string; icon?: string }[]) =>
+  new Map(
+    (children ?? []).flatMap((child) => (child.icon ? ([[child.id, child.icon]] as const) : []))
+  );
+
 const workflowToolNodes2JsonSchema = ({ nodes }: { nodes: StoreNodeItemType[] }) => {
   const pluginInput = nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginInput);
   const pluginOutput = nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginOutput);
@@ -140,6 +145,25 @@ export class SystemToolRepo {
   // TODO: 缓存
   private async getAllSystemToolRecords(): Promise<SystemPluginToolCollectionType[]> {
     return MongoSystemTool.find({});
+  }
+
+  /**
+   * listTools 的子工具 DTO 可能只保留名称/描述，不带 icon；展开工具集展示子工具列表时
+   * 补读 detail 拿头像。detail 里的 schema 只用于取 icon，不会继续透传到展示结构。
+   */
+  private async getToolsetChildIconMap({
+    pluginId,
+    source
+  }: {
+    pluginId: string;
+    source: string;
+  }): Promise<Map<string, string>> {
+    try {
+      const detail = await pluginClient.getTool({ pluginId, source });
+      return getChildIconMap(detail.children);
+    } catch {
+      return new Map();
+    }
   }
 
   /** 获取系统工具列表，归一化为一个相同的列表类型，业务层做 pick */
@@ -454,9 +478,11 @@ export class SystemToolRepo {
       config: parentConfig,
       lang
     });
+    const listChildIconMap = getChildIconMap(tool.children);
+
     const children =
       tool.children?.map<SystemToolDisplayChildType>((item) => {
-        const childIcon = (item as { icon?: string }).icon;
+        const childIcon = listChildIconMap.get(item.id);
         const childConfig = [
           `${parentCombinedPluginId}/${item.id}`,
           `${parentPluginId}/${item.id}`,
@@ -498,6 +524,49 @@ export class SystemToolRepo {
       ...parent,
       id: pluginId,
       children: parent.isToolSet ? children : undefined
+    };
+  };
+
+  /**
+   * 获取工具集展开后的子工具展示信息。仅展开列表需要子工具自己的 icon，因此在这个入口
+   * 对 listTools 缺失的 child icon 补读 detail，避免路径、面包屑等轻量场景额外拉取 detail。
+   */
+  getSystemToolDisplayInfoWithChildIcons = async ({
+    pluginId,
+    source = 'system',
+    lang
+  }: {
+    pluginId: string;
+    source?: string;
+    lang?: `${LangEnum}`;
+  }): Promise<SystemToolDisplayInfoType> => {
+    const parent = await this.getSystemToolDisplayInfo({ pluginId, source, lang });
+    const missingChildIcon = parent.children?.some((child) => !child.icon) === true;
+    if (!parent.isToolSet || !parent.children || !missingChildIcon) return parent;
+
+    const { pluginId: rawPluginId } = splitCombineToolId(pluginId);
+    const [parentPluginId, childPluginId] = rawPluginId.split('/');
+    if (!parentPluginId || childPluginId) return parent;
+
+    const pluginSource =
+      source === AppToolSourceEnum.commercial ? AppToolSourceEnum.commercial : 'system';
+    const childIconMap = await this.getToolsetChildIconMap({
+      pluginId: parentPluginId,
+      source: pluginSource
+    });
+    if (childIconMap.size === 0) return parent;
+
+    return {
+      ...parent,
+      children: parent.children.map((child) => {
+        const icon = childIconMap.get(child.id);
+        return child.icon || !icon
+          ? child
+          : {
+              ...child,
+              icon
+            };
+      })
     };
   };
 
