@@ -5,6 +5,8 @@ import type { FilterState, I18nT, ModelRow, ProviderOption } from '../types';
 import type { SourceMemberType } from '@fastgpt/global/support/user/type';
 import type { ModelPermission } from '@fastgpt/global/support/permission/model/controller';
 import type { TrainTaskSummary } from '@/pages/api/common/system/getInitData';
+import type { ModelPriceTierType } from '@fastgpt/global/core/ai/model.schema';
+import PriceTiersLabel from '../../PriceTiersLabel';
 
 type ModelProvider = {
   avatar: string;
@@ -26,6 +28,7 @@ type BaseModelItem = {
   charsPointsPrice?: number;
   inputPrice?: number;
   outputPrice?: number;
+  priceTiers?: ModelPriceTierType[];
   trainTaskSummary?: TrainTaskSummary;
 };
 
@@ -115,46 +118,28 @@ export const getFilteredModelList = ({
   const formatLLMModelList: FormattedModelItem[] = llmModelList.map((item) => ({
     ...item,
     typeLabel: t('common:model.type.chat'),
-    priceLabel:
-      typeof item.inputPrice === 'number' ? (
-        <Box>
-          <Flex>
-            {`${t('common:Input')}: `}
-            <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5} ml={2}>
-              {item.inputPrice || 0}
-            </Box>
-            {`${t('common:support.wallet.subscription.point')}/1K tokens`}
-          </Flex>
-          <Flex>
-            {`${t('common:Output')}: `}
-            <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5} ml={2}>
-              {item.outputPrice || 0}
-            </Box>
-            {`${t('common:support.wallet.subscription.point')}/1K tokens`}
-          </Flex>
-        </Box>
-      ) : (
-        <Flex color={'myGray.700'}>
-          <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-            {item.charsPointsPrice || 0}
-          </Box>
-          {`${t('common:support.wallet.subscription.point')}/1K tokens`}
-        </Flex>
-      ),
+    priceLabel: (
+      <PriceTiersLabel
+        config={item}
+        unitLabel={`${t('common:support.wallet.subscription.point')} / 1K Tokens`}
+      />
+    ),
     tagColor: 'blue'
   }));
 
   const formatEmbeddingModelList: FormattedModelItem[] = embeddingModelList.map((item) => ({
     ...item,
     typeLabel: t('common:model.type.embedding'),
-    priceLabel: (
+    priceLabel: typeof item.charsPointsPrice === 'number' ? (
       <Flex color={'myGray.700'}>
         {`${t('common:Input')}: `}
         <Box fontWeight={'bold'} color={'myGray.900'} mx={0.5}>
-          {item.charsPointsPrice || 0}
+          {item.charsPointsPrice}
         </Box>
         {` ${t('common:support.wallet.subscription.point')}/1K tokens`}
       </Flex>
+    ) : (
+      '-'
     ),
     tagColor: 'yellow',
     trainableModelType: item.supportTrain ? ModelTypeEnum.embedding : undefined
@@ -163,13 +148,15 @@ export const getFilteredModelList = ({
   const formatTTSModelList: FormattedModelItem[] = ttsModelList.map((item) => ({
     ...item,
     typeLabel: t('common:model.type.tts'),
-    priceLabel: (
+    priceLabel: typeof item.charsPointsPrice === 'number' ? (
       <Flex color={'myGray.700'}>
         <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-          {item.charsPointsPrice || 0}
+          {item.charsPointsPrice}
         </Box>
         {` ${t('common:support.wallet.subscription.point')}/1K ${t('common:unit.character')}`}
       </Flex>
+    ) : (
+      '-'
     ),
     tagColor: 'green'
   }));
@@ -177,13 +164,15 @@ export const getFilteredModelList = ({
   const formatSTTModelList: FormattedModelItem[] = sttModelList.map((item) => ({
     ...item,
     typeLabel: t('common:model.type.stt'),
-    priceLabel: (
+    priceLabel: typeof item.charsPointsPrice === 'number' ? (
       <Flex color={'myGray.700'}>
         <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
           {item.charsPointsPrice}
         </Box>
         {` ${t('common:support.wallet.subscription.point')}/60${t('common:unit.seconds')}`}
       </Flex>
+    ) : (
+      '-'
     ),
     tagColor: 'purple'
   }));
@@ -191,7 +180,7 @@ export const getFilteredModelList = ({
   const formatRerankModelList: FormattedModelItem[] = reRankModelList.map((item) => ({
     ...item,
     typeLabel: t('common:model.type.reRank'),
-    priceLabel: item.charsPointsPrice ? (
+    priceLabel: typeof item.charsPointsPrice === 'number' ? (
       <Flex color={'myGray.700'}>
         {`${t('common:Input')}: `}
         <Box fontWeight={'bold'} color={'myGray.900'} mx={0.5}>

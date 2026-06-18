@@ -121,14 +121,16 @@ const ModelTable = () => {
       .map((item) => ({
         ...item,
         typeLabel: t('common:model.type.embedding'),
-        priceLabel: (
+        priceLabel: typeof item.charsPointsPrice === 'number' ? (
           <Flex color={'myGray.700'}>
             {`${t('common:Input')}: `}
             <Box fontWeight={'bold'} color={'myGray.900'} mx={0.5}>
-              {item.charsPointsPrice || 0}
+              {item.charsPointsPrice}
             </Box>
             {` ${t('common:support.wallet.subscription.point')}/1K tokens`}
           </Flex>
+        ) : (
+          '-'
         ),
         tagColor: 'yellow'
       }));
@@ -137,13 +139,15 @@ const ModelTable = () => {
       .map((item) => ({
         ...item,
         typeLabel: t('common:model.type.tts'),
-        priceLabel: (
+        priceLabel: typeof item.charsPointsPrice === 'number' ? (
           <Flex color={'myGray.700'}>
             <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-              {item.charsPointsPrice || 0}
+              {item.charsPointsPrice}
             </Box>
             {` ${t('common:support.wallet.subscription.point')}/1K ${t('common:unit.character')}`}
           </Flex>
+        ) : (
+          '-'
         ),
         tagColor: 'green'
       }));
@@ -152,13 +156,15 @@ const ModelTable = () => {
       .map((item) => ({
         ...item,
         typeLabel: t('common:model.type.stt'),
-        priceLabel: (
+        priceLabel: typeof item.charsPointsPrice === 'number' ? (
           <Flex color={'myGray.700'}>
             <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-              {item.charsPointsPrice || 0}
+              {item.charsPointsPrice}
             </Box>
             {` ${t('common:support.wallet.subscription.point')}/60${t('common:unit.seconds')}`}
           </Flex>
+        ) : (
+          '-'
         ),
         tagColor: 'purple'
       }));
@@ -167,7 +173,7 @@ const ModelTable = () => {
       .map((item) => ({
         ...item,
         typeLabel: t('common:model.type.reRank'),
-        priceLabel: item.charsPointsPrice ? (
+        priceLabel: typeof item.charsPointsPrice === 'number' ? (
           <Flex color={'myGray.700'}>
             {`${t('common:Input')}: `}
             <Box fontWeight={'bold'} color={'myGray.900'} mx={0.5}>

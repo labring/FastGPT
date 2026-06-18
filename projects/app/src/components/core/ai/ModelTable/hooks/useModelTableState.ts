@@ -5,6 +5,7 @@ import { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelec
 import type { BaseModelTrainDefaultBaseModel } from '../BaseModelTrainModal';
 import type { SourceMemberType } from '@fastgpt/global/support/user/type';
 import type { ModelPermission } from '@fastgpt/global/support/permission/model/controller';
+import type { ModelPriceTierType } from '@fastgpt/global/core/ai/model.schema';
 import type {
   FilterState,
   I18nT,
@@ -37,6 +38,7 @@ type BaseModelItem = {
   charsPointsPrice?: number;
   inputPrice?: number;
   outputPrice?: number;
+  priceTiers?: ModelPriceTierType[];
   trainTaskSummary?: ModelRow['trainTaskSummary'];
 };
 
