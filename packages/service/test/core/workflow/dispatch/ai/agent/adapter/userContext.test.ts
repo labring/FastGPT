@@ -140,7 +140,7 @@ describe('buildAgentInputFilesPrompt', () => {
       }
     ]);
 
-    expect(result).toContain('## 文件');
+    expect(result).toContain('## 对话文件');
     expect(result).toContain('<id>current-0</id>');
     expect(result).toContain('<name>guide.pdf</name>');
     expect(result).toContain('<type>file</type>');
@@ -203,10 +203,10 @@ describe('buildAgentUserReminderInput', () => {
     expect(result).toContain('<system-reminder>');
     expect(result).toContain('## 技能');
     expect(result).toContain('<path>/workspace/Skill/SKILL.md</path>');
-    expect(result.indexOf('## 技能')).toBeLessThan(result.indexOf('## 文件'));
-    expect(result.indexOf('## 文件')).toBeLessThan(result.indexOf('## 知识库'));
+    expect(result.indexOf('## 技能')).toBeLessThan(result.indexOf('## 对话文件'));
+    expect(result.indexOf('## 对话文件')).toBeLessThan(result.indexOf('## 知识库'));
     expect(result.indexOf('## 知识库')).toBeLessThan(result.indexOf('## 背景信息'));
-    expect(result).toContain('## 文件');
+    expect(result).toContain('## 对话文件');
     expect(result).toContain('## 知识库');
     expect(result).toContain('<id>dataset_1</id>');
     expect(result).toContain('## 背景信息');
@@ -270,7 +270,7 @@ describe('buildAgentUserReminderInput', () => {
       selectedDataset
     });
     expect(datasetOnly).toContain('## 知识库');
-    expect(datasetOnly).not.toContain('## 文件');
+    expect(datasetOnly).not.toContain('## 对话文件');
     expect(datasetOnly).not.toContain('当前时间');
   });
 
@@ -456,7 +456,7 @@ describe('useUserContext', () => {
         const { text: historyText } = chatValue2RuntimePrompt(result.rewrittenHistories[0].value);
         const { text: currentText } = chatValue2RuntimePrompt(result.currentUserMessage.value);
 
-        expect(historyText).toContain('## 文件');
+        expect(historyText).toContain('## 对话文件');
         expect(historyText).not.toContain('## 技能');
         expect(currentText).toContain('## 技能');
         expect(currentText).toContain('<path>/workspace/Report/SKILL.md</path>');
@@ -824,7 +824,7 @@ describe('useUserContext', () => {
         expect(result.filesMap).toEqual({});
 
         const { text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
-        expect(text).not.toContain('## 文件');
+        expect(text).not.toContain('## 对话文件');
         expect(text).toContain('分析文件');
       }
     );
@@ -975,7 +975,7 @@ describe('useUserContext', () => {
         expect(result.rewrittenHistories[0]).toBe(result.chatHistories[0]);
 
         const { text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
-        expect(text).not.toContain('## 文件');
+        expect(text).not.toContain('## 对话文件');
         expect(text).toContain('当前问题');
       }
     );
@@ -1012,7 +1012,7 @@ describe('useUserContext', () => {
         expect(files).toEqual([]);
         expect(text).toContain('当前时间');
         expect(text).toContain('只问一个问题');
-        expect(text).not.toContain('## 文件');
+        expect(text).not.toContain('## 对话文件');
       }
     );
   });
