@@ -163,15 +163,18 @@ export function buildCurrentAgentInputFiles({
  */
 export const loadAgentDatasetContext = async (
   selectedDataset: AgentSelectedDatasetInput[] = [],
-  tmbId: string
+  tmbId: string,
+  authTmbId = false
 ): Promise<AgentSelectedDatasetContext[]> => {
   if (selectedDataset.length === 0) return [];
 
   const datasetIds = selectedDataset.map((item) => item.datasetId);
-  const authorizedDatasetIds = await filterDatasetsByTmbId({
-    datasetIds,
-    tmbId
-  });
+  const authorizedDatasetIds = authTmbId
+    ? await filterDatasetsByTmbId({
+        datasetIds,
+        tmbId
+      })
+    : datasetIds;
   if (authorizedDatasetIds.length === 0) return [];
 
   const datasets = await MongoDataset.find(
@@ -345,6 +348,7 @@ export const useUserContext = async ({
   requestOrigin,
   maxFiles,
   selectedDataset,
+  authTmbId,
   tmbId,
   timezone
 }: {
@@ -357,6 +361,7 @@ export const useUserContext = async ({
   requestOrigin?: string;
   maxFiles: number;
   selectedDataset?: AgentSelectedDatasetInput[];
+  authTmbId?: boolean;
   tmbId: string;
   timezone: string;
 }): Promise<UseUserContextResult> => {
@@ -433,7 +438,7 @@ export const useUserContext = async ({
   registerFiles(currentInputFiles);
 
   // 获取知识库
-  const selectedDatasetWithIntro = await loadAgentDatasetContext(selectedDataset, tmbId);
+  const selectedDatasetWithIntro = await loadAgentDatasetContext(selectedDataset, tmbId, authTmbId);
 
   return {
     chatHistories,

@@ -1,5 +1,6 @@
 import type { AppFormEditFormType } from './formEdit/type';
 import { DatasetSearchModeEnum } from '../dataset/constants';
+import { NodeInputKeyEnum } from '../workflow/constants';
 import { type WorkflowTemplateBasicType } from '../workflow/type';
 import { AppTypeEnum } from './constants';
 import appErrList from '../../common/error/code/app';
@@ -21,7 +22,8 @@ export const getDefaultAppForm = (): AppFormEditFormType => {
       rerankModel: '',
       rerankWeight: 0.5,
       datasetSearchUsingExtensionQuery: true,
-      datasetSearchExtensionBg: ''
+      datasetSearchExtensionBg: '',
+      [NodeInputKeyEnum.authTmbId]: false
     },
     selectedTools: [],
     selectedAgentSkills: [],

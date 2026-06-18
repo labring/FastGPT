@@ -13,6 +13,7 @@ import type { DispatchAgentModuleProps } from '.';
 import { dispatchAgentDatasetSearch } from './sub/dataset';
 import { dispatchSandboxTool } from './sub/sandbox';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { parseJsonArgs } from '../../../../ai/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { dispatchTool } from './sub/tool';
@@ -21,6 +22,8 @@ import { dispatchApp, dispatchPlugin } from './sub/app';
 import type { SandboxClient } from '../../../../ai/sandbox/service/runtime';
 import { SystemToolRepo } from '../../../../app/tool/systemTool/systemTool.repo';
 import type { WorkflowNodeResponseWriter } from '../../../../chat/nodeResponseStorage';
+import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
+import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 
 /**
  * 收集 Agent 节点可用的系统工具和用户选择的子应用工具。
@@ -163,6 +166,38 @@ export const replaceAgentFileIdsWithUrls = <T>(value: T, fileUrlMap: Record<stri
 };
 
 /**
+ * 统一 Agent 的知识库配置来源。
+ *
+ * ChatAgent 保存的是 agent_datasetParams；Workflow Agent 节点模板保存的是
+ * datasets/similarity/authTmbId 等独立输入。runtime 内部收敛成 datasetParams，
+ * 保证上下文提示、工具暴露和真实检索使用同一组知识库权限配置。
+ */
+export const getAgentDatasetParams = (
+  params: DispatchAgentModuleProps['params']
+): AppFormEditFormType['dataset'] | undefined => {
+  const datasetParams = params[NodeInputKeyEnum.datasetParams];
+  if (datasetParams) return datasetParams;
+
+  const datasets = params[NodeInputKeyEnum.datasetSelectList];
+  if (!Array.isArray(datasets) || datasets.length === 0) return;
+
+  return {
+    datasets,
+    similarity: params[NodeInputKeyEnum.datasetSimilarity],
+    limit: params[NodeInputKeyEnum.datasetMaxTokens],
+    searchMode: params[NodeInputKeyEnum.datasetSearchMode] || DatasetSearchModeEnum.embedding,
+    embeddingWeight: params[NodeInputKeyEnum.datasetSearchEmbeddingWeight],
+    usingReRank: params[NodeInputKeyEnum.datasetSearchUsingReRank],
+    rerankModel: params[NodeInputKeyEnum.datasetSearchRerankModel],
+    rerankWeight: params[NodeInputKeyEnum.datasetSearchRerankWeight],
+    datasetSearchUsingExtensionQuery: params[NodeInputKeyEnum.datasetSearchUsingExtensionQuery],
+    datasetSearchExtensionModel: params[NodeInputKeyEnum.datasetSearchExtensionModel],
+    datasetSearchExtensionBg: params[NodeInputKeyEnum.datasetSearchExtensionBg],
+    [NodeInputKeyEnum.authTmbId]: params[NodeInputKeyEnum.authTmbId]
+  };
+};
+
+/**
  * 创建 workflow 工具执行器。
  * 该执行器屏蔽工具来源差异，将沙盒、文件读取、知识库搜索和用户子应用统一成 agentLoop 可消费的工具结果。
  */
@@ -183,11 +218,7 @@ export const getExecuteTool = ({
   variableState,
   externalProvider,
   streamResponseFn,
-  params: {
-    model,
-    // Dataset search configuration
-    agent_datasetParams: datasetParams
-  },
+  params,
   lang,
   requestOrigin,
   mode,
@@ -197,6 +228,9 @@ export const getExecuteTool = ({
   workflowDispatchDeep,
   nodeResponseWriter
 }: ToolDispatchContext) => {
+  const { model } = params;
+  const datasetParams = getAgentDatasetParams(params);
+
   /**
    * 执行单次工具调用，并补齐节点响应的 id、运行时间和计费信息。
    */

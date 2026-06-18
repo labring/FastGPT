@@ -25,6 +25,7 @@ import {
   createChunkSelectionChildNodeResponse,
   createQueryExtensionChildNodeResponse
 } from '../../../../dataset/nodeResponse';
+import { filterDatasetsByTmbId } from '../../../../../../dataset/utils';
 const logger = getLogger(LogCategories.MODULE.AI.AGENT);
 
 type DatasetSearchParams = {
@@ -162,6 +163,7 @@ export const dispatchAgentDatasetSearch = async ({
   args,
   datasetParams,
   teamId,
+  tmbId,
   llmModel,
   userKey
 }: DatasetSearchParams): Promise<DispatchSubAppResponse> => {
@@ -192,7 +194,18 @@ export const dispatchAgentDatasetSearch = async ({
   });
 
   try {
-    const datasetIds = await Promise.resolve(datasetParams.datasets.map((item) => item.datasetId));
+    const datasetIds = datasetParams.authTmbId
+      ? await filterDatasetsByTmbId({
+          datasetIds: datasetParams.datasets.map((item) => item.datasetId),
+          tmbId
+        })
+      : datasetParams.datasets.map((item) => item.datasetId);
+
+    if (datasetIds.length === 0) {
+      return {
+        response: 'No authorized dataset selected'
+      };
+    }
 
     // Get vector model
     const vectorModel = getEmbeddingModel(
