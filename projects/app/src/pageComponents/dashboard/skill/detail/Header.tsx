@@ -36,8 +36,6 @@ const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditRe
 const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
 
 export const HeaderContext = createContext<{
-  savingAll: boolean;
-  setSavingAll: React.Dispatch<React.SetStateAction<boolean>>;
   editedSkill: EditResourceInfoFormType | undefined;
   setEditedSkill: React.Dispatch<React.SetStateAction<EditResourceInfoFormType | undefined>>;
   showPermModal: boolean;
@@ -55,19 +53,15 @@ export const HeaderContext = createContext<{
   ) => Promise<any>;
   onExportSkill: (skillId: string, skillName: string) => Promise<any>;
   onSaveDeploy: (props: { skillId: string; versionName: string }) => Promise<any>;
-  handlePublishClick: () => Promise<void>;
+  handlePublishClick: () => void;
 } | null>(null);
 
 export const HeaderProvider = ({ children }: { children: React.ReactNode }) => {
   const { t } = useTranslation();
   const router = useRouter();
 
-  const { refreshSkillDetail, saveAllRef } = useContextSelector(SkillDetailContext, (v) => ({
-    refreshSkillDetail: v.refreshSkillDetail,
-    saveAllRef: v.saveAllRef
-  }));
+  const refreshSkillDetail = useContextSelector(SkillDetailContext, (v) => v.refreshSkillDetail);
 
-  const [savingAll, setSavingAll] = useState(false);
   const [editedSkill, setEditedSkill] = useState<EditResourceInfoFormType>();
   const [showPermModal, setShowPermModal] = useState(false);
 
@@ -128,25 +122,13 @@ export const HeaderProvider = ({ children }: { children: React.ReactNode }) => {
     onClose: onClosePublishModal
   } = useDisclosure();
 
-  const handlePublishClick = async () => {
-    try {
-      setSavingAll(true);
-      if (saveAllRef && saveAllRef.current) {
-        await saveAllRef.current();
-      }
-      onOpenPublishModal();
-    } catch (error) {
-      console.error('Save all before publish failed:', error);
-    } finally {
-      setSavingAll(false);
-    }
+  const handlePublishClick = () => {
+    onOpenPublishModal();
   };
 
   return (
     <HeaderContext.Provider
       value={{
-        savingAll,
-        setSavingAll,
         editedSkill,
         setEditedSkill,
         showPermModal,
@@ -279,7 +261,7 @@ export const LeftHeader = () => {
       justifyContent={'space-between'}
       gap={'8px'}
       pl={'24px'}
-      pr={0}
+      pr={'8px'}
       bg={'transparent'}
       userSelect={'none'}
     >
@@ -351,7 +333,7 @@ export const LeftHeader = () => {
 
 export const RightHeader = () => {
   const { t } = useTranslation();
-  const { handlePublishClick, isSaving, savingAll } = useHeader();
+  const { handlePublishClick, isSaving } = useHeader();
 
   return (
     <SkillHistoriesPopover
@@ -361,7 +343,7 @@ export const RightHeader = () => {
           h={'34px'}
           px={'14px'}
           variant={'primary'}
-          isLoading={isSaving || savingAll}
+          isLoading={isSaving}
           onClick={handlePublishClick}
         >
           {t('common:Publish')}
@@ -373,10 +355,15 @@ export const RightHeader = () => {
 
 export const HeaderDialogs = () => {
   const { t } = useTranslation();
-  const { skillDetail, refreshSkillDetail } = useContextSelector(SkillDetailContext, (v) => ({
-    skillDetail: v.skillDetail,
-    refreshSkillDetail: v.refreshSkillDetail
-  }));
+  const { skillDetail, refreshSkillDetail, saveAllRef } = useContextSelector(
+    SkillDetailContext,
+    (v) => ({
+      skillDetail: v.skillDetail,
+      refreshSkillDetail: v.refreshSkillDetail,
+      saveAllRef: v.saveAllRef
+    })
+  );
+  const [isConfirmingPublish, setIsConfirmingPublish] = useState(false);
 
   const {
     editedSkill,
@@ -399,11 +386,17 @@ export const HeaderDialogs = () => {
       {isPublishModalOpen && (
         <SaveAndPublishModal
           title={t('common:Publish')}
-          isLoading={isSaving}
+          isLoading={isSaving || isConfirmingPublish}
           onClose={onPublishModalClose}
           onConfirm={async (versionName) => {
-            await onSaveDeploy({ skillId: skillDetail._id, versionName });
-            onPublishModalClose();
+            try {
+              setIsConfirmingPublish(true);
+              await saveAllRef.current?.();
+              await onSaveDeploy({ skillId: skillDetail._id, versionName });
+              onPublishModalClose();
+            } finally {
+              setIsConfirmingPublish(false);
+            }
           }}
         />
       )}

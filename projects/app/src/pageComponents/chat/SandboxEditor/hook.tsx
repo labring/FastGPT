@@ -941,7 +941,7 @@ export const useSandboxFileStore = ({
     }
   }, [canWrite, openedFilesRef, rpcCall, toast, t]);
 
-  // 1.5 秒防抖自动保存脏文件
+  // 500ms 防抖自动保存脏文件
   useEffect(() => {
     const dirtyFiles = openedFiles.filter((f) => f.isDirty && !f.isBinary && !f.isUnknown);
     if (dirtyFiles.length === 0) return;
@@ -950,7 +950,7 @@ export const useSandboxFileStore = ({
       dirtyFiles.forEach((f) => {
         saveFile(f.path);
       });
-    }, 1500);
+    }, 500);
 
     return () => clearTimeout(timer);
   }, [openedFiles, saveFile]);

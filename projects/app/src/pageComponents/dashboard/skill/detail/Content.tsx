@@ -29,7 +29,7 @@ const Content = () => {
       pt={'16px'}
       pb={'16px'}
       pr={'16px'}
-      pl={'8px'}
+      pl={0}
     >
       {sandboxState === 'failed' ? (
         <SandboxError />
