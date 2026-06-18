@@ -25,7 +25,7 @@ import type {
   ToolModuleResponseItemType,
   SkillModuleResponseItemType
 } from '@fastgpt/global/core/chat/type';
-import type { TopAgentFormDataType } from '@fastgpt/service/core/chat/HelperBot/dispatch/topAgent/type';
+import type { TopAgentFormDataType } from '@fastgpt/global/core/chat/helperBot/topAgent/type';
 import type { UserInputInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { AgentPlanStatusType, AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import type { StreamNoNeedToBeResumeType } from '@fastgpt/global/openapi/core/ai/api';
@@ -204,7 +204,7 @@ function handleEventSourceData(params: HandleEventSourceDataParams) {
       }
 
       case SseResponseEventEnum.collectionForm: {
-        onmessage({ event, collectionForm: obj });
+        enqueue({ responseValueId, event, collectionForm: obj });
         break;
       }
 

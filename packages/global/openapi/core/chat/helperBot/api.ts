@@ -1,13 +1,31 @@
-import { PaginationResponseSchema } from '../../../api';
-import { PaginationSchema } from '../../../api';
+import { z } from 'zod';
+import { PaginationResponseSchema, PaginationSchema } from '../../../api';
+import { ChatFileTypeEnum } from '../../../../core/chat/constants';
 import {
   HelperBotChatItemSiteSchema,
   HelperBotTypeEnum,
   HelperBotTypeEnumSchema
 } from '../../../../core/chat/helperBot/type';
 import { topAgentParamsSchema } from '../../../../core/chat/helperBot/topAgent/type';
-import { z } from 'zod';
-import { ChatFileTypeEnum } from '../../../../core/chat/constants';
+
+export const HelperBotCompletionsParamsSchema = z.object({
+  chatId: z.string(),
+  chatItemId: z.string(),
+  query: z.string(),
+  files: z.array(
+    z.object({
+      type: z.enum(ChatFileTypeEnum),
+      key: z.string(),
+      url: z.string().optional(),
+      name: z.string()
+    })
+  ),
+  metadata: z.object({
+    type: z.literal(HelperBotTypeEnum.topAgent),
+    data: topAgentParamsSchema
+  })
+});
+export type HelperBotCompletionsParamsType = z.infer<typeof HelperBotCompletionsParamsSchema>;
 
 // 分页获取记录
 export const GetHelperBotChatRecordsParamsSchema = PaginationSchema.extend({
@@ -45,22 +63,3 @@ export const GetHelperBotFilePreviewParamsSchema = z.object({
 });
 export type GetHelperBotFilePreviewParamsType = z.infer<typeof GetHelperBotFilePreviewParamsSchema>;
 export const GetHelperBotFilePreviewResponseSchema = z.string();
-
-export const HelperBotCompletionsParamsSchema = z.object({
-  chatId: z.string(),
-  chatItemId: z.string(),
-  query: z.string(),
-  files: z.array(
-    z.object({
-      type: z.enum(ChatFileTypeEnum),
-      key: z.string(),
-      url: z.string().optional(),
-      name: z.string()
-    })
-  ),
-  metadata: z.object({
-    type: z.literal(HelperBotTypeEnum.topAgent),
-    data: topAgentParamsSchema
-  })
-});
-export type HelperBotCompletionsParamsType = z.infer<typeof HelperBotCompletionsParamsSchema>;
