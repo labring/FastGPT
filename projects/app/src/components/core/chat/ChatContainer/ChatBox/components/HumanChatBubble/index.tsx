@@ -14,6 +14,7 @@ type HumanChatBubbleProps = {
   chatValue: UserChatItemValueItemType[];
   chatTime?: Date;
   onEditSubmit?: (input: ChatBoxInputType) => void | Promise<void>;
+  canEdit?: boolean;
   children?: React.ReactNode;
 };
 
@@ -23,7 +24,13 @@ type HumanChatBubbleProps = {
  * 用户气泡的宽度、附件单列展示和 hover 操作区与 AI 气泡完全隔离，避免影响流式
  * AI 回复的原有宽度计算。编辑按钮当前只提供 UI 入口，后续需要接入消息编辑接口。
  */
-const HumanChatBubble = ({ chatValue, chatTime, onEditSubmit, children }: HumanChatBubbleProps) => {
+const HumanChatBubble = ({
+  chatValue,
+  chatTime,
+  onEditSubmit,
+  canEdit = true,
+  children
+}: HumanChatBubbleProps) => {
   const { isPc } = useSystem();
   const { text: chatText = '', files = [] } = useMemo(
     () => formatChatValue2InputType(chatValue),
@@ -79,6 +86,7 @@ const HumanChatBubble = ({ chatValue, chatTime, onEditSubmit, children }: HumanC
           chatText={chatText}
           chatTime={chatTime}
           isAlwaysVisible={!isPc}
+          canEdit={canEdit}
           onEdit={() => setIsEditing(true)}
         />
       </Box>

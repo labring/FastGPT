@@ -321,6 +321,7 @@ const ChatItem = (props: Props) => {
               <HumanChatBubble
                 chatValue={value as UserChatItemValueItemType[]}
                 chatTime={i === splitAiResponseResults.length - 1 ? chat.time : undefined}
+                canEdit={!isChatting}
                 onEditSubmit={onEditSubmit}
               >
                 {renderCommonFooter()}
