@@ -24,6 +24,7 @@
     "test:service": "turbo run test --filter=@fastgpt/service",
     "test:service:integration": "turbo run test:integration --filter=@fastgpt/service",
     "test:vector": "turbo run test:integration --filter=@fastgpt/service",
+    "security:check-env": "node ./deploy/enterprise/check-env.mjs",
     "build:sdks": "pnpm -r --filter @fastgpt-sdk/storage --filter @fastgpt-sdk/otel --filter @fastgpt-sdk/sandbox-adapter build"
   },
   "devDependencies": {
