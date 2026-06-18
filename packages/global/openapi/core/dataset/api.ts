@@ -68,6 +68,18 @@ export const CreateDatasetBodySchema = z.object({
     }),
   autoSync: z.boolean().optional().meta({
     description: '是否自动同步'
+  }),
+  keep_header_footer: z.boolean().optional().meta({
+    description: '保留页眉页脚'
+  }),
+  keep_appendix: z.boolean().optional().meta({
+    description: '保留附录'
+  }),
+  seal_rec: z.boolean().optional().meta({
+    description: '印章识别'
+  }),
+  chart_analysis: z.boolean().optional().meta({
+    description: '统计图转表格'
   })
 });
 
@@ -290,6 +302,18 @@ export const UpdateDatasetBodySchema = z.object({
   }),
   autoSync: z.boolean().optional().meta({
     description: '是否自动同步'
+  }),
+  keep_header_footer: z.boolean().optional().meta({
+    description: '保留页眉页脚'
+  }),
+  keep_appendix: z.boolean().optional().meta({
+    description: '保留附录'
+  }),
+  seal_rec: z.boolean().optional().meta({
+    description: '印章识别'
+  }),
+  chart_analysis: z.boolean().optional().meta({
+    description: '统计图转表格'
   }),
   chunkSettings: ChunkSettingsSchema.optional().meta({
     description: '分块配置'

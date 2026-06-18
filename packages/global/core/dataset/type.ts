@@ -120,6 +120,11 @@ export const DatasetSchema = z
 
     apiDatasetServer: ApiDatasetServerSchema.optional().meta({ description: 'API 服务器配置' }),
 
+    keep_header_footer: z.boolean().optional().meta({ description: '保留页眉页脚' }),
+    keep_appendix: z.boolean().optional().meta({ description: '保留附录' }),
+    seal_rec: z.boolean().optional().meta({ description: '印章识别' }),
+    chart_analysis: z.boolean().optional().meta({ description: '统计图转表格' }),
+
     deleteTime: z.coerce.date().nullish().meta({ description: '删除时间' }),
 
     autoSync: z.boolean().optional().meta({ description: '自动同步', deprecated: true }),

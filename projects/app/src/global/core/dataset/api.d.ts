@@ -39,6 +39,10 @@ export type CreateDatasetParams = {
     selector: string;
   };
   autoSync?: boolean;
+  keep_header_footer?: boolean;
+  keep_appendix?: boolean;
+  seal_rec?: boolean;
+  chart_analysis?: boolean;
 };
 
 export type RebuildEmbeddingProps = {

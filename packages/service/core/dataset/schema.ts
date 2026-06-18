@@ -256,6 +256,30 @@ const DatasetSchema = new Schema({
     default: null // null表示未删除，有值表示删除时间
   },
 
+  // 保留页眉页脚
+  keep_header_footer: {
+    type: Boolean,
+    default: false
+  },
+
+  // 保留附录
+  keep_appendix: {
+    type: Boolean,
+    default: false
+  },
+
+  // 印章识别
+  seal_rec: {
+    type: Boolean,
+    default: false
+  },
+
+  // 统计图转表格
+  chart_analysis: {
+    type: Boolean,
+    default: false
+  },
+
   // abandoned
   autoSync: Boolean,
   externalReadUrl: String,

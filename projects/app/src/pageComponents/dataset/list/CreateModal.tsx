@@ -8,7 +8,8 @@ import {
   Input,
   HStack,
   Textarea,
-  Switch
+  Switch,
+  Collapse
 } from '@chakra-ui/react';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import { useForm } from 'react-hook-form';
@@ -41,6 +42,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import oneLight from 'react-syntax-highlighter/dist/esm/styles/prism/one-light';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { getDocPath } from '@/web/common/system/doc';
+import { ChevronDownIcon, ChevronUpIcon } from '@chakra-ui/icons';
 import ApiDatasetForm from '../ApiDatasetForm';
 import { getWebDefaultEmbeddingModel, getWebDefaultLLMModel } from '@/web/common/system/utils';
 import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
@@ -104,7 +106,11 @@ const CreateModal = ({
         url: '',
         selector: ''
       },
-      autoSync: false
+      autoSync: false,
+      keep_header_footer: false,
+      keep_appendix: false,
+      seal_rec: false,
+      chart_analysis: false
     }
   });
   const { register, setValue, handleSubmit, watch, reset } = form;
@@ -114,6 +120,10 @@ const CreateModal = ({
   const vlmModelId = watch('vlmModelId');
   const autoSync = watch('autoSync');
   const permissionSync = watch('apiDatasetServer.apiServer.permissionSync');
+  const keepHeaderFooter = watch('keep_header_footer');
+  const keepAppendix = watch('keep_appendix');
+  const sealRec = watch('seal_rec');
+  const chartAnalysis = watch('chart_analysis');
 
   const { Component: AvatarUploader, handleFileSelectorOpen: handleAvatarSelectorOpen } =
     useUploadAvatar(getUploadAvatarPresignedUrl, {
@@ -139,7 +149,11 @@ const CreateModal = ({
           vlmModelId: data.vlmModel?.id,
           websiteConfig: data.websiteConfig || { url: '', selector: '' },
           autoSync: data.autoSync || false,
-          apiDatasetServer: data.apiDatasetServer as any
+          apiDatasetServer: data.apiDatasetServer as any,
+          keep_header_footer: data.keep_header_footer || false,
+          keep_appendix: data.keep_appendix || false,
+          seal_rec: data.seal_rec || false,
+          chart_analysis: data.chart_analysis || false
         });
       }
     }
@@ -167,9 +181,25 @@ const CreateModal = ({
     type === DatasetTypeEnum.apiDataset ||
     type === DatasetTypeEnum.feishu ||
     type === DatasetTypeEnum.yuque;
+  const hasKnowledgeProcess =
+    type === DatasetTypeEnum.dataset ||
+    type === DatasetTypeEnum.apiDataset ||
+    type === DatasetTypeEnum.feishu ||
+    type === DatasetTypeEnum.yuque;
+
+  const [knowledgeProcessOpen, setKnowledgeProcessOpen] = useState(false);
 
   const { runAsync: onclickCreate, loading: creating } = useRequest(
     async (data: CreateDatasetParams) => {
+      const knowledgeProcessData = hasKnowledgeProcess
+        ? {
+            keep_header_footer: data.keep_header_footer,
+            keep_appendix: data.keep_appendix,
+            seal_rec: data.seal_rec,
+            chart_analysis: data.chart_analysis
+          }
+        : {};
+
       if (isEditMode) {
         const vectorModelChanged =
           data.vectorModelId &&
@@ -188,7 +218,8 @@ const CreateModal = ({
           vlmModelId: data.vlmModelId ?? null,
           apiDatasetServer: data.apiDatasetServer,
           ...(isWebsite && { websiteConfig: data.websiteConfig }),
-          ...(hasAutoSync && { autoSync: data.autoSync })
+          ...(hasAutoSync && { autoSync: data.autoSync }),
+          ...knowledgeProcessData
         };
         await putDatasetById(updateData);
 
@@ -217,7 +248,8 @@ const CreateModal = ({
         vlmModelId: data.vlmModelId ?? null,
         apiDatasetServer: data.apiDatasetServer,
         ...(isWebsite && { websiteConfig: data.websiteConfig }),
-        ...(hasAutoSync && { autoSync: data.autoSync })
+        ...(hasAutoSync && { autoSync: data.autoSync }),
+        ...knowledgeProcessData
       };
 
       const submitData: CreateDatasetBody = isStructureDocument
@@ -513,6 +545,78 @@ const CreateModal = ({
                 {t('dataset:edit_model_warning')}
               </Box>
             </HStack>
+          )}
+
+          {/* 知识处理配置（通用/apiDataset/飞书/语雀） */}
+          {hasKnowledgeProcess && (
+            <Box mt={6}>
+              <Flex
+                h={'32px'}
+                alignItems={'center'}
+                cursor={'pointer'}
+                userSelect={'none'}
+                onClick={() => setKnowledgeProcessOpen((v) => !v)}
+              >
+                <Box fontSize={'12px'} fontWeight={600} color={'#333'} flexShrink={0}>
+                  {t('dataset:knowledge_process')}
+                </Box>
+                {knowledgeProcessOpen ? (
+                  <ChevronUpIcon w={'16px'} h={'16px'} mx={'8px'} flexShrink={0} color={'#333'} />
+                ) : (
+                  <ChevronDownIcon w={'16px'} h={'16px'} mx={'8px'} flexShrink={0} color={'#333'} />
+                )}
+                <Box flex={1} h={'1px'} bg={'myGray.150'} />
+              </Flex>
+              <Collapse in={knowledgeProcessOpen} animateOpacity>
+                <Box mt={2} display={'flex'} flexDirection={'column'} gap={2}>
+                  {(
+                    [
+                      {
+                        key: 'keep_header_footer' as const,
+                        label: t('dataset:keep_header_footer'),
+                        tip: t('dataset:keep_header_footer_tip'),
+                        value: keepHeaderFooter
+                      },
+                      {
+                        key: 'keep_appendix' as const,
+                        label: t('dataset:keep_appendix'),
+                        tip: t('dataset:keep_appendix_tip'),
+                        value: keepAppendix
+                      },
+                      {
+                        key: 'seal_rec' as const,
+                        label: t('dataset:seal_rec'),
+                        tip: t('dataset:seal_rec_tip'),
+                        value: sealRec
+                      },
+                      {
+                        key: 'chart_analysis' as const,
+                        label: t('dataset:chart_analysis'),
+                        tip: t('dataset:chart_analysis_tip'),
+                        value: chartAnalysis
+                      }
+                    ] as const
+                  ).map((item) => (
+                    <HStack
+                      key={item.key}
+                      spacing={2}
+                      h={'32px'}
+                      alignItems={'center'}
+                    >
+                      <Box fontSize={'12px'} color={'#333'}>
+                        {item.label}
+                      </Box>
+                      <QuestionTip label={item.tip} />
+                      <Switch
+                        size={'sm'}
+                        isChecked={!!item.value}
+                        onChange={(e) => setValue(item.key, e.target.checked)}
+                      />
+                    </HStack>
+                  ))}
+                </Box>
+              </Collapse>
+            </Box>
           )}
         </ModalBody>
 
