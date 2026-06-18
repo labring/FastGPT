@@ -16,6 +16,7 @@ import type {
   SandboxFetchUserFileSchema
 } from '@fastgpt/global/core/workflow/node/agent/skillTools';
 import axios from 'axios';
+import https from 'https';
 import { serverRequestBaseUrl } from '../../../../../../../common/api/serverRequest';
 import path from 'path';
 
@@ -206,7 +207,9 @@ export async function dispatchSandboxFetchUserFile(
   try {
     const response = await axios.get(fileEntry.url, {
       baseURL: serverRequestBaseUrl,
-      responseType: 'arraybuffer'
+      responseType: 'arraybuffer',
+      timeout: 30000,
+      httpsAgent: new https.Agent({ rejectUnauthorized: false })
     });
     const buffer: ArrayBuffer = response.data;
 
