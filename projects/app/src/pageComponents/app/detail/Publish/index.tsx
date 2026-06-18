@@ -1,5 +1,5 @@
-import React, { useRef, useState } from 'react';
-import { Box, Flex } from '@chakra-ui/react';
+import React, { useMemo, useState } from 'react';
+import { Box } from '@chakra-ui/react';
 
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import dynamic from 'next/dynamic';
@@ -31,98 +31,95 @@ const OutLink = () => {
 
   const appId = useContextSelector(AppContext, (v) => v.appId);
 
-  const publishList = useRef([
-    {
-      icon: '/imgs/modal/shareFill.svg',
-      title: t('common:core.app.Share link'),
-      desc: t('common:core.app.Share link desc'),
-      value: PublishChannelEnum.share,
-      isProFn: false
-    },
-    {
-      icon: 'support/outlink/apikeyFill',
-      title: t('common:core.app.Api request'),
-      desc: t('common:core.app.Api request desc'),
-      value: PublishChannelEnum.apikey,
-      isProFn: false
-    },
-    ...(feConfigs?.show_publish_wechat !== false
-      ? [
-          {
-            icon: 'core/app/publish/wechat',
-            title: t('publish:wechat.bot'),
-            desc: t('publish:wechat.bot_desc'),
-            value: PublishChannelEnum.wechat,
-            isProFn: false
-          }
-        ]
-      : []),
-    ...(feConfigs?.show_publish_feishu !== false &&
-    !userInfo?.tags?.includes(UserTagsSchema.enum.wecom)
-      ? [
-          {
-            icon: 'core/app/publish/lark',
-            title: t('publish:feishu_bot'),
-            desc: t('publish:feishu_bot_desc'),
-            value: PublishChannelEnum.feishu,
-            isProFn: true
-          }
-        ]
-      : []),
-    ...(feConfigs?.show_publish_dingtalk !== false &&
-    !userInfo?.tags?.includes(UserTagsSchema.enum.wecom)
-      ? [
-          {
-            icon: 'common/dingtalkFill',
-            title: t('publish:dingtalk.bot'),
-            desc: t('publish:dingtalk.bot_desc'),
-            value: PublishChannelEnum.dingtalk,
-            isProFn: true
-          }
-        ]
-      : []),
-    ...(feConfigs?.show_publish_wecom === true
-      ? [
-          {
-            icon: 'core/app/publish/wecom',
-            title: t('publish:wecom.bot'),
-            desc: t('publish:wecom.bot_desc'),
-            value: PublishChannelEnum.wecom,
-            isProFn: true
-          }
-        ]
-      : []),
-    ...(feConfigs?.show_publish_offiaccount !== false
-      ? [
-          {
-            icon: 'core/app/publish/offiaccount',
-            title: t('publish:official_account.name'),
-            desc: t('publish:official_account.desc'),
-            value: PublishChannelEnum.officialAccount,
-            isProFn: true
-          }
-        ]
-      : []),
+  const publishList = useMemo(
+    () => [
+      {
+        icon: '/imgs/modal/shareFill.svg',
+        title: t('common:core.app.Share link'),
+        desc: t('common:core.app.Share link desc'),
+        value: PublishChannelEnum.share,
+        isProFn: false
+      },
+      {
+        icon: 'support/outlink/apikeyFill',
+        title: t('common:core.app.Api request'),
+        desc: t('common:core.app.Api request desc'),
+        value: PublishChannelEnum.apikey,
+        isProFn: false
+      },
+      ...(feConfigs?.show_publish_wechat !== false
+        ? [
+            {
+              icon: 'core/app/publish/wechat',
+              title: t('publish:wechat.bot'),
+              desc: t('publish:wechat.bot_desc'),
+              value: PublishChannelEnum.wechat,
+              isProFn: false
+            }
+          ]
+        : []),
+      ...(feConfigs?.show_publish_feishu !== false &&
+      !userInfo?.tags?.includes(UserTagsSchema.enum.wecom)
+        ? [
+            {
+              icon: 'core/app/publish/lark',
+              title: t('publish:feishu_bot'),
+              desc: t('publish:feishu_bot_desc'),
+              value: PublishChannelEnum.feishu,
+              isProFn: true
+            }
+          ]
+        : []),
+      ...(feConfigs?.show_publish_dingtalk !== false &&
+      !userInfo?.tags?.includes(UserTagsSchema.enum.wecom)
+        ? [
+            {
+              icon: 'common/dingtalkFill',
+              title: t('publish:dingtalk.bot'),
+              desc: t('publish:dingtalk.bot_desc'),
+              value: PublishChannelEnum.dingtalk,
+              isProFn: true
+            }
+          ]
+        : []),
+      ...(feConfigs?.show_publish_wecom === true
+        ? [
+            {
+              icon: 'core/app/publish/wecom',
+              title: t('publish:wecom.bot'),
+              desc: t('publish:wecom.bot_desc'),
+              value: PublishChannelEnum.wecom,
+              isProFn: true
+            }
+          ]
+        : []),
+      ...(feConfigs?.show_publish_offiaccount !== false
+        ? [
+            {
+              icon: 'core/app/publish/offiaccount',
+              title: t('publish:official_account.name'),
+              desc: t('publish:official_account.desc'),
+              value: PublishChannelEnum.officialAccount,
+              isProFn: true
+            }
+          ]
+        : []),
 
-    {
-      icon: 'core/chat/sidebar/home',
-      title: t('common:navbar.Chat'),
-      desc: t('app:publish.chat_desc'),
-      value: PublishChannelEnum.playground,
-      isProFn: false
-    }
-  ]);
+      {
+        icon: 'core/chat/sidebar/home',
+        title: t('common:navbar.Chat'),
+        desc: t('app:publish.chat_desc'),
+        value: PublishChannelEnum.playground,
+        isProFn: false
+      }
+    ],
+    [t, feConfigs, userInfo?.tags]
+  );
 
   const [linkType, setLinkType] = useState<PublishChannelEnum>(PublishChannelEnum.share);
 
   return (
-    <Box
-      display={['block', 'flex']}
-      overflowY={'auto'}
-      overflowX={'hidden'}
-      h={'100%'}
-      flexDirection={'column'}
-    >
+    <Box>
       <Box mx={[4, 8]} py={[4, 6]} borderBottom={'1px solid'} borderColor={'myGray.150'}>
         <MyRadio
           gridTemplateColumns={[
@@ -133,10 +130,10 @@ const OutLink = () => {
             'repeat(4, 1fr)'
           ]}
           iconSize={'20px'}
-          list={publishList.current}
+          list={publishList}
           value={linkType}
           onChange={(e) => {
-            const config = publishList.current.find((v) => v.value === e)!;
+            const config = publishList.find((v) => v.value === e)!;
             if (!feConfigs.isPlus && config.isProFn) {
               toast({
                 status: 'warning',
@@ -149,7 +146,7 @@ const OutLink = () => {
         />
       </Box>
 
-      <Flex flexDirection={'column'} mt={2} px={[4, 8]} py={[4, 6]} flex={1}>
+      <Box mt={2} px={[4, 8]} py={[4, 6]}>
         {linkType === PublishChannelEnum.share && (
           <Link appId={appId} type={PublishChannelEnum.share} />
         )}
@@ -160,7 +157,7 @@ const OutLink = () => {
         {linkType === PublishChannelEnum.officialAccount && <OffiAccount appId={appId} />}
         {linkType === PublishChannelEnum.wechat && <Wechat appId={appId} />}
         {linkType === PublishChannelEnum.playground && <Playground appId={appId} />}
-      </Flex>
+      </Box>
     </Box>
   );
 };
