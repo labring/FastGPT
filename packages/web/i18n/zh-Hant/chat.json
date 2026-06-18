@@ -74,6 +74,8 @@
   "resume_unavailable_memory_pressure": "目前服務資源緊張，暫時不提供串流恢復。請稍後再查看最終回答。",
   "llm_request_ids": "LLM 請求詳情",
   "llm_tokens": "LLM tokens",
+  "first_token_time": "首 token 響應時間",
+  "response_time": "響應時間",
   "log.error.collapse": "折疊",
   "log.error.error_prefix": "報錯信息",
   "log.error.expand": "展開剩餘",

@@ -93,6 +93,7 @@ type LLMResponse = {
   requestMessages: ChatCompletionMessageParam[];
   assistantMessage?: ChatCompletionMessageParam;
   completeMessages: ChatCompletionMessageParam[];
+  firstTokenTime?: number;
 };
 
 /*
@@ -145,6 +146,8 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
   let currentMessages = [...requestBody.messages];
   let continuationCount = 0;
   let isStreamResponse = false;
+  let firstTokenTime: number | undefined;
+  const requestStartTime = Date.now();
 
   try {
     while (continuationCount < maxContinuations) {
@@ -179,28 +182,41 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
         isStreamResponse = currentIsStreamResponse;
       }
 
-      let { answerText, reasoningText, toolCalls, finish_reason, usage, error } =
-        await (async () => {
-          if (currentIsStreamResponse) {
-            return createStreamResponse({
-              response,
-              body,
-              isAborted: args.isAborted,
-              onStreaming: args.onStreaming,
-              onReasoning: args.onReasoning,
-              onToolCall: args.onToolCall,
-              onToolParam: args.onToolParam
-            });
-          } else {
-            return createCompleteResponse({
-              response,
-              body,
-              onStreaming: args.onStreaming,
-              onReasoning: args.onReasoning,
-              onToolCall: args.onToolCall
-            });
-          }
-        })();
+      let {
+        answerText,
+        reasoningText,
+        toolCalls,
+        finish_reason,
+        usage,
+        error,
+        firstTokenTime: currentFirstTokenTime
+      } = await (async () => {
+        if (currentIsStreamResponse) {
+          return createStreamResponse({
+            response,
+            body,
+            requestStartTime,
+            isAborted: args.isAborted,
+            onStreaming: args.onStreaming,
+            onReasoning: args.onReasoning,
+            onToolCall: args.onToolCall,
+            onToolParam: args.onToolParam
+          });
+        } else {
+          return createCompleteResponse({
+            response,
+            body,
+            requestStartTime,
+            onStreaming: args.onStreaming,
+            onReasoning: args.onReasoning,
+            onToolCall: args.onToolCall
+          });
+        }
+      })();
+
+      if (continuationCount === 0 && currentFirstTokenTime !== undefined) {
+        firstTokenTime = currentFirstTokenTime;
+      }
 
       // Format toolCalls
       // 1. Auto complete arguments, avoid model not support "" arguments
@@ -352,6 +368,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
         outputTokens: error ? 0 : outputTokens
       },
       requestId, // 返回请求追踪 ID
+      firstTokenTime,
 
       requestMessages,
       assistantMessage,
@@ -374,6 +391,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
     return {
       error,
       requestId, // 返回请求追踪 ID
+      firstTokenTime,
       isStreamResponse: false,
       answerText: '',
       reasoningText: '',
@@ -393,7 +411,7 @@ type CompleteParams = Pick<CreateLLMResponseProps<ChatCompletionCreateParams>, '
 
 type CompleteResponse = Pick<
   LLMResponse,
-  'answerText' | 'reasoningText' | 'toolCalls' | 'finish_reason'
+  'answerText' | 'reasoningText' | 'toolCalls' | 'finish_reason' | 'firstTokenTime'
 > & {
   usage?: CompletionUsage;
   error?: any;
@@ -402,6 +420,7 @@ type CompleteResponse = Pick<
 export const createStreamResponse = async ({
   body,
   response,
+  requestStartTime,
   isAborted,
   onStreaming,
   onReasoning,
@@ -409,11 +428,13 @@ export const createStreamResponse = async ({
   onToolParam
 }: CompleteParams & {
   response: StreamResponseType;
+  requestStartTime: number;
   isAborted?: CreateLLMResponseProps['isAborted'];
 }): Promise<CompleteResponse> => {
   const { retainDatasetCite = true, tools, toolCallMode = 'toolChoice', modelId } = body;
   const modelData = getLLMModelById(modelId);
   const { parsePart, getResponseData, updateFinishReason, updateError } = parseLLMStreamResponse();
+  let firstTokenTime: number | undefined;
 
   if (tools?.length) {
     if (toolCallMode === 'toolChoice') {
@@ -422,6 +443,9 @@ export const createStreamResponse = async ({
 
       try {
         for await (const part of response) {
+          if (firstTokenTime === undefined) {
+            firstTokenTime = +((Date.now() - requestStartTime) / 1000).toFixed(2);
+          }
           if (isAborted?.()) {
             response.controller?.abort();
             updateFinishReason('close');
@@ -499,6 +523,7 @@ export const createStreamResponse = async ({
         reasoningText: reasoningContent,
         finish_reason,
         usage,
+        firstTokenTime,
         toolCalls: toolCalls.filter((call) => !!call)
       };
     } else {
@@ -507,6 +532,10 @@ export const createStreamResponse = async ({
 
       try {
         for await (const part of response) {
+          if (firstTokenTime === undefined) {
+            firstTokenTime = +((Date.now() - requestStartTime) / 1000).toFixed(2);
+          }
+
           if (isAborted?.()) {
             response.controller?.abort();
             updateFinishReason('close');
@@ -575,6 +604,7 @@ export const createStreamResponse = async ({
         reasoningText: reasoningContent,
         finish_reason,
         usage,
+        firstTokenTime,
         toolCalls
       };
     }
@@ -582,6 +612,10 @@ export const createStreamResponse = async ({
     // Not use tool
     try {
       for await (const part of response) {
+        if (firstTokenTime === undefined) {
+          firstTokenTime = +((Date.now() - requestStartTime) / 1000).toFixed(2);
+        }
+
         if (isAborted?.()) {
           response.controller?.abort();
           updateFinishReason('close');
@@ -612,7 +646,8 @@ export const createStreamResponse = async ({
       answerText: content,
       reasoningText: reasoningContent,
       finish_reason,
-      usage
+      usage,
+      firstTokenTime
     };
   }
 };
@@ -620,12 +655,17 @@ export const createStreamResponse = async ({
 export const createCompleteResponse = async ({
   body,
   response,
+  requestStartTime,
   onStreaming,
   onReasoning,
   onToolCall
-}: CompleteParams & { response: UnStreamResponseType }): Promise<CompleteResponse> => {
+}: CompleteParams & {
+  response: UnStreamResponseType;
+  requestStartTime: number;
+}): Promise<CompleteResponse> => {
   const { tools, toolCallMode = 'toolChoice', retainDatasetCite = true, modelId } = body;
   const modelData = getLLMModelById(modelId);
+  const firstTokenTime = +((Date.now() - requestStartTime) / 1000).toFixed(2);
 
   const finish_reason = response.choices?.[0]?.finish_reason as CompletionFinishReason;
   const usage = response.usage;
@@ -697,7 +737,8 @@ export const createCompleteResponse = async ({
     answerText: formatContent,
     toolCalls,
     finish_reason,
-    usage
+    usage,
+    firstTokenTime
   };
 };
 

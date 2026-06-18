@@ -43,6 +43,7 @@ type sideTabItemType = {
   moduleName: string;
   moduleNameArgs?: Record<string, any>;
   runningTime?: number;
+  firstTokenTime?: number;
   moduleType: string;
   // nodeId:string; // abandon
   id: string;
@@ -676,6 +677,12 @@ export const WholeResponseContent = ({
                 value={`Input/Output = ${activeModule?.inputTokens || 0}/${activeModule?.outputTokens || 0}`}
               />
             )}
+            {activeModule?.firstTokenTime !== undefined && (
+              <Row label={t('chat:first_token_time')} value={`${activeModule.firstTokenTime}s`} />
+            )}
+            {activeModule?.runningTime !== undefined && (
+              <Row label={t('chat:response_time')} value={`${activeModule.runningTime}s`} />
+            )}
             {activeModule.queryExtensionResult && (
               <Row
                 label={t('chat:query_extension_IO_tokens')}
@@ -1190,7 +1197,14 @@ const SideTabItem = ({
               {t(sideBarItem.moduleName as any, sideBarItem.moduleNameArgs)}
             </Box>
             <Box fontSize={'12px'} lineHeight={'16px'} color={'#667085'} letterSpacing={'0.5px'}>
-              {sideBarItem.runningTime !== undefined ? `${sideBarItem.runningTime}s` : ''}
+              {(() => {
+                const time =
+                  sideBarItem.moduleType === FlowNodeTypeEnum.chatNode &&
+                  sideBarItem.firstTokenTime !== undefined
+                    ? sideBarItem.firstTokenTime
+                    : sideBarItem.runningTime;
+                return time !== undefined ? `${time}s` : '';
+              })()}
             </Box>
           </Box>
           <Box
@@ -1334,6 +1348,7 @@ export const ResponseBox = React.memo(function ResponseBox({
           moduleName: item.moduleName,
           moduleNameArgs: item.moduleNameArgs,
           runningTime: item.runningTime,
+          firstTokenTime: item.firstTokenTime,
           moduleType: item.moduleType,
           id: item.id ?? item.nodeId,
           children
