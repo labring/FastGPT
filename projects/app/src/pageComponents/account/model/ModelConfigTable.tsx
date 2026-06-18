@@ -52,6 +52,7 @@ import { LazyCollaboratorProvider } from '@/components/support/permission/Member
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import { getModelCollaborators, updateModelCollaborators } from '@/web/common/system/api';
 import type { ModelReference } from '@fastgpt/service/support/permission/model/reference';
+import ModelReferenceModal from '@/components/core/ai/ModelTable/ModelReferenceModal';
 
 const MyModal = dynamic(() => import('@fastgpt/web/components/common/MyModal'));
 const ModelEditModal = dynamic(() => import('./AddModelBox').then((mod) => mod.ModelEditModal));
@@ -480,7 +481,7 @@ const ModelTable = () => {
                                 const refs = err?.data?.references;
                                 if (err?.code === 409 && refs?.length > 0) {
                                   setReferenceDialog({ isOpen: true, references: refs });
-                                  return; // don't re-throw — we've handled 409 in the dialog
+                                  throw err;
                                 }
                                 if (err?.code === 409 && err?.message) {
                                   toast({
@@ -538,59 +539,11 @@ const ModelTable = () => {
       )}
 
       {/* Reference warning dialog — shown when model deletion/permission revocation is blocked */}
-      {referenceDialog.isOpen && (
-        <MyModal
-          isOpen
-          onClose={() => setReferenceDialog({ isOpen: false, references: [] })}
-          iconSrc="modal/warning"
-          title={t('account_model:model_referenced_by_resources')}
-          maxW="600px"
-        >
-          <ModalBody>
-            <TableContainer>
-              <Table fontSize="sm">
-                <Thead>
-                  <Tr>
-                    <Th>{t('common:resource_type')}</Th>
-                    <Th>{t('common:resource_name')}</Th>
-                    <Th>{t('common:creator')}</Th>
-                  </Tr>
-                </Thead>
-                <Tbody>
-                  {referenceDialog.references.map((ref, i) => (
-                    <Tr key={i}>
-                      <Td>
-                        <Flex alignItems="center" gap={2}>
-                          <MyIcon
-                            name={
-                              ref.resourceType === 'app'
-                                ? 'core/app/type/simple'
-                                : 'core/dataset/commonDatasetColor'
-                            }
-                            w="1.25rem"
-                          />
-                          {t(
-                            ref.resourceType === 'app'
-                              ? 'app:application'
-                              : 'common:core.dataset.Dataset'
-                          )}
-                        </Flex>
-                      </Td>
-                      <Td fontWeight="medium">{ref.resourceName}</Td>
-                      <Td>{ref.creatorName}</Td>
-                    </Tr>
-                  ))}
-                </Tbody>
-              </Table>
-            </TableContainer>
-          </ModalBody>
-          <ModalFooter>
-            <Button onClick={() => setReferenceDialog({ isOpen: false, references: [] })}>
-              {t('common:Close')}
-            </Button>
-          </ModalFooter>
-        </MyModal>
-      )}
+      <ModelReferenceModal
+        isOpen={referenceDialog.isOpen}
+        references={referenceDialog.references}
+        onClose={() => setReferenceDialog({ isOpen: false, references: [] })}
+      />
     </>
   );
 };

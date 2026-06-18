@@ -8,7 +8,6 @@ import {
   Th,
   Thead,
   Tr,
-  TableContainer,
   Switch,
   ModalBody,
   Input,
@@ -46,8 +45,8 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { sanitizeModelPriceTiers } from '@fastgpt/global/core/ai/pricing';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 import type { ModelReference } from '@fastgpt/service/support/permission/model/reference';
+import ModelReferenceModal from '@/components/core/ai/ModelTable/ModelReferenceModal';
 
 export const AddModelButton = ({
   onCreate,
@@ -1321,61 +1320,11 @@ export const ModelEditModal = ({
         </ModalFooter>
       </MyModal>
 
-      {referenceDialog.isOpen && (
-        <MyModal
-          isOpen
-          onClose={() => setReferenceDialog({ isOpen: false, references: [] })}
-          iconSrc="modal/warning"
-          title={t('account_model:model_referenced_by_resources')}
-          maxW="600px"
-        >
-          <ModalBody>
-            <TableContainer>
-              <Table fontSize="sm">
-                <Thead>
-                  <Tr>
-                    <Th>{t('common:resource_type')}</Th>
-                    <Th>{t('common:resource_name')}</Th>
-                    <Th>{t('common:creator')}</Th>
-                  </Tr>
-                </Thead>
-                <Tbody>
-                  {referenceDialog.references.map((ref, i) => (
-                    <Tr key={i}>
-                      <Td>
-                        <Flex alignItems="center" gap={2}>
-                          <MyIcon
-                            name={
-                              ref.resourceType === 'app'
-                                ? 'core/app/type/simple'
-                                : 'core/dataset/commonDatasetColor'
-                            }
-                            w="1.25rem"
-                          />
-                          {ref.resourceType === 'app'
-                            ? t('app:application')
-                            : t('common:core.dataset.Dataset')}
-                        </Flex>
-                      </Td>
-                      <Td fontWeight="medium">{ref.resourceName}</Td>
-                      <Td>{ref.creatorName}</Td>
-                    </Tr>
-                  ))}
-                </Tbody>
-              </Table>
-            </TableContainer>
-          </ModalBody>
-          <ModalFooter>
-            <Button
-              variant="whiteBase"
-              mr={3}
-              onClick={() => setReferenceDialog({ isOpen: false, references: [] })}
-            >
-              {t('common:Close')}
-            </Button>
-          </ModalFooter>
-        </MyModal>
-      )}
+      <ModelReferenceModal
+        isOpen={referenceDialog.isOpen}
+        references={referenceDialog.references}
+        onClose={() => setReferenceDialog({ isOpen: false, references: [] })}
+      />
     </>
   );
 };
