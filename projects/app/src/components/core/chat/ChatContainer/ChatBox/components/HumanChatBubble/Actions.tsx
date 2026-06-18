@@ -10,6 +10,7 @@ type HumanChatBubbleActionsProps = {
   chatText: string;
   chatTime?: Date;
   onEdit: () => void;
+  canEdit?: boolean;
   isAlwaysVisible?: boolean;
 };
 
@@ -17,6 +18,7 @@ const HumanChatBubbleActions = ({
   chatText,
   chatTime,
   onEdit,
+  canEdit = true,
   isAlwaysVisible = false
 }: HumanChatBubbleActionsProps) => {
   const { t } = useTranslation();
@@ -58,17 +60,19 @@ const HumanChatBubbleActions = ({
             onClick={() => copyData(chatText)}
           />
         </MyTooltip>
-        <MyTooltip label={t('common:Edit')}>
-          <MyIcon
-            w={'16px'}
-            p={'4px'}
-            cursor="pointer"
-            name={'edit'}
-            color={'myGray.400'}
-            _hover={{ color: 'primary.600' }}
-            onClick={onEdit}
-          />
-        </MyTooltip>
+        {canEdit && (
+          <MyTooltip label={t('common:Edit')}>
+            <MyIcon
+              w={'16px'}
+              p={'4px'}
+              cursor="pointer"
+              name={'edit'}
+              color={'myGray.400'}
+              _hover={{ color: 'primary.600' }}
+              onClick={onEdit}
+            />
+          </MyTooltip>
+        )}
       </Flex>
     </Flex>
   );

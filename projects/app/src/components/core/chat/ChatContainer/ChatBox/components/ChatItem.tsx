@@ -80,6 +80,12 @@ const ChatItem = (props: Props) => {
 
   const statisticalChatItem = useMemoEnhance(() => addStatisticalDataToHistoryItem(chat), [chat]);
   const quoteList: SearchDataResponseQuoteListItemType[] = statisticalChatItem.totalQuoteList ?? [];
+  const allowedCitationIds = useMemoEnhance(() => {
+    const sourceQuoteList = statisticalChatItem.totalQuoteList;
+    if (!sourceQuoteList) return;
+
+    return new Set(sourceQuoteList.map((item) => item.id).filter((id): id is string => !!id));
+  }, [statisticalChatItem.totalQuoteList]);
   const { errorText } = statisticalChatItem;
   const inlineErrorInfo = useMemo(() => {
     if (!chat.errorMsg && !errorText) return;
@@ -315,6 +321,7 @@ const ChatItem = (props: Props) => {
               <HumanChatBubble
                 chatValue={value as UserChatItemValueItemType[]}
                 chatTime={i === splitAiResponseResults.length - 1 ? chat.time : undefined}
+                canEdit={!isChatting}
                 onEditSubmit={onEditSubmit}
               >
                 {renderCommonFooter()}
@@ -341,6 +348,7 @@ const ChatItem = (props: Props) => {
               isChatting={isChatting}
               loadingText={showRunningStatus ? statusBoxData?.name : undefined}
               questionGuides={questionGuides}
+              allowedCitationIds={allowedCitationIds}
               onOpenCiteModal={onOpenCiteModal}
               chatControllerProps={{
                 ...props,

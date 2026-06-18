@@ -6,6 +6,7 @@ export type MarkdownRendererRuntimeContextValue = {
   autoPreviewHtmlCodeBlock?: boolean;
   markdownClassName?: string;
   chatAuthData?: AProps['chatAuthData'];
+  allowedCitationIds?: AProps['allowedCitationIds'];
   onOpenCiteModal?: AProps['onOpenCiteModal'];
 };
 
