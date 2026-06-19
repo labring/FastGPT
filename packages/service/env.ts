@@ -261,6 +261,12 @@ export const serviceEnv = createEnv({
     TRACK_BATCH_UPDATE_TIME: IntSchema.default(10000).meta({
       description: '埋点批量写入间隔（毫秒）'
     }),
+    ENTERPRISE_AUDIT_LOG_ENABLED: BoolSchema.default(true).meta({
+      description: '是否启用企业审计日志写入'
+    }),
+    ENTERPRISE_AUDIT_LOG_RETENTION_DAYS: IntSchema.default(365).meta({
+      description: '企业审计日志保留天数'
+    }),
     EVAL_CONCURRENCY: IntSchema.default(3).meta({
       description: '评估任务 worker 并发数'
     }),

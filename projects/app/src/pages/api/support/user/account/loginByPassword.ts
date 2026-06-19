@@ -21,6 +21,16 @@ import {
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { getClientIpFromRequest } from '@fastgpt/service/common/security/clientIp';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import {
+  createAnonymousAuditActor,
+  createUserAuditActor,
+  writeEnterpriseAuditEvent
+} from '@fastgpt/service/support/enterprise/audit/util';
+import {
+  EnterpriseAuditActionEnum,
+  EnterpriseAuditResourceTypeEnum,
+  EnterpriseAuditResultEnum
+} from '@fastgpt/global/support/enterprise/audit/constants';
 
 async function handler(
   req: ApiRequestProps<LoginByPasswordBodyType>,
@@ -30,6 +40,10 @@ async function handler(
     req,
     bodySchema: LoginByPasswordBodySchema
   }).body;
+  const clientIp = getClientIpFromRequest(req);
+  const userAgent = Array.isArray(req.headers['user-agent'])
+    ? req.headers['user-agent'].join(',')
+    : req.headers['user-agent'];
 
   // Auth prelogin code
   await authCode({
@@ -44,14 +58,58 @@ async function handler(
   });
 
   if (!user) {
+    writeEnterpriseAuditEvent({
+      action: EnterpriseAuditActionEnum.UserLoginFailure,
+      result: EnterpriseAuditResultEnum.Failure,
+      actor: createAnonymousAuditActor(username),
+      resource: {
+        type: EnterpriseAuditResourceTypeEnum.User,
+        name: username
+      },
+      clientIp,
+      userAgent,
+      metadata: {
+        reason: 'account_psw_error'
+      }
+    });
     return Promise.reject(UserErrEnum.account_psw_error);
   }
   if (user.status === UserStatusEnum.forbidden) {
+    writeEnterpriseAuditEvent({
+      action: EnterpriseAuditActionEnum.UserLoginFailure,
+      result: EnterpriseAuditResultEnum.Failure,
+      actor: createAnonymousAuditActor(username),
+      resource: {
+        type: EnterpriseAuditResourceTypeEnum.User,
+        id: String(user._id),
+        name: username
+      },
+      clientIp,
+      userAgent,
+      metadata: {
+        reason: 'account_forbidden'
+      }
+    });
     return Promise.reject('Invalid account!');
   }
 
   if (user) {
     if (user.username.startsWith('wecom-')) {
+      writeEnterpriseAuditEvent({
+        action: EnterpriseAuditActionEnum.UserLoginFailure,
+        result: EnterpriseAuditResultEnum.Failure,
+        actor: createAnonymousAuditActor(username),
+        resource: {
+          type: EnterpriseAuditResourceTypeEnum.User,
+          id: String(user._id),
+          name: username
+        },
+        clientIp,
+        userAgent,
+        metadata: {
+          reason: 'wecom_password_login_denied'
+        }
+      });
       return Promise.reject(new UserError('Wecom user can not login with password'));
     }
   }
@@ -71,7 +129,7 @@ async function handler(
     teamId: userDetail.team.teamId,
     tmbId: userDetail.team.tmbId,
     isRoot: username === 'root',
-    ip: getClientIpFromRequest(req)
+    ip: clientIp
   });
 
   setCookie(res, token);
@@ -86,6 +144,27 @@ async function handler(
     tmbId: userDetail.team.tmbId,
     teamId: userDetail.team.teamId,
     event: AuditEventEnum.LOGIN
+  });
+  writeEnterpriseAuditEvent({
+    action: EnterpriseAuditActionEnum.UserLoginSuccess,
+    result: EnterpriseAuditResultEnum.Success,
+    actor: createUserAuditActor({
+      userId: String(user._id),
+      teamId: userDetail.team.teamId,
+      tmbId: userDetail.team.tmbId,
+      isRoot: username === 'root',
+      name: username
+    }),
+    resource: {
+      type: EnterpriseAuditResourceTypeEnum.User,
+      id: String(user._id),
+      name: username
+    },
+    clientIp,
+    userAgent,
+    metadata: {
+      method: 'password'
+    }
   });
 
   return {

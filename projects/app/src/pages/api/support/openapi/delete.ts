@@ -8,6 +8,16 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
+  createUserAuditActor,
+  writeEnterpriseAuditEvent
+} from '@fastgpt/service/support/enterprise/audit/util';
+import {
+  EnterpriseAuditActionEnum,
+  EnterpriseAuditResourceTypeEnum,
+  EnterpriseAuditResultEnum
+} from '@fastgpt/global/support/enterprise/audit/constants';
+import { getClientIpFromRequest } from '@fastgpt/service/common/security/clientIp';
+import {
   DeleteApiKeyQuerySchema,
   DeleteApiKeyResponseSchema,
   type DeleteApiKeyQueryType,
@@ -40,6 +50,26 @@ async function handler(
       event: AuditEventEnum.DELETE_API_KEY,
       params: {
         keyName: openapi.name
+      }
+    });
+    writeEnterpriseAuditEvent({
+      action: EnterpriseAuditActionEnum.ApiKeyDelete,
+      result: EnterpriseAuditResultEnum.Success,
+      actor: createUserAuditActor({
+        teamId,
+        tmbId
+      }),
+      resource: {
+        type: EnterpriseAuditResourceTypeEnum.ApiKey,
+        id,
+        name: openapi.name
+      },
+      clientIp: getClientIpFromRequest(req),
+      userAgent: Array.isArray(req.headers['user-agent'])
+        ? req.headers['user-agent'].join(',')
+        : req.headers['user-agent'],
+      metadata: {
+        appId: openapi.appId
       }
     });
   })();

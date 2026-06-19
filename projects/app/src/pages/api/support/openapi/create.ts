@@ -12,6 +12,16 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
+  createUserAuditActor,
+  writeEnterpriseAuditEvent
+} from '@fastgpt/service/support/enterprise/audit/util';
+import {
+  EnterpriseAuditActionEnum,
+  EnterpriseAuditResourceTypeEnum,
+  EnterpriseAuditResultEnum
+} from '@fastgpt/global/support/enterprise/audit/constants';
+import { getClientIpFromRequest } from '@fastgpt/service/common/security/clientIp';
+import {
   CreateApiKeyBodySchema,
   CreateApiKeyResponseSchema,
   type CreateApiKeyBodyType,
@@ -67,7 +77,7 @@ async function handler(
   const nanoid = getNanoid(Math.floor(Math.random() * 14) + 52);
   const apiKey = `${global.systemEnv?.openapiPrefix || 'fastgpt'}-${nanoid}`;
 
-  await MongoOpenApi.create({
+  const openapi = await MongoOpenApi.create({
     teamId,
     tmbId,
     apiKey,
@@ -84,6 +94,28 @@ async function handler(
       event: AuditEventEnum.CREATE_API_KEY,
       params: {
         keyName: name
+      }
+    });
+    writeEnterpriseAuditEvent({
+      action: EnterpriseAuditActionEnum.ApiKeyCreate,
+      result: EnterpriseAuditResultEnum.Success,
+      actor: createUserAuditActor({
+        teamId,
+        tmbId
+      }),
+      resource: {
+        type: EnterpriseAuditResourceTypeEnum.ApiKey,
+        id: String(openapi._id),
+        name
+      },
+      clientIp: getClientIpFromRequest(req),
+      userAgent: Array.isArray(req.headers['user-agent'])
+        ? req.headers['user-agent'].join(',')
+        : req.headers['user-agent'],
+      metadata: {
+        appId,
+        authProxy: !appId && authProxy,
+        keySuffix: apiKey.slice(-4)
       }
     });
   })();
