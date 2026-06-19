@@ -1,0 +1,438 @@
+# FastGPT enterprise internal runtime.
+# Run from deploy/runtime with:
+# docker compose --env-file ../enterprise/.env.enterprise -f docker-compose.enterprise.yml config
+# docker compose --env-file ../enterprise/.env.enterprise -f docker-compose.enterprise.yml up -d
+
+x-share-db-config: &x-share-db-config
+  MONGODB_URI: ${MONGODB_URI:?required}
+  DB_MAX_LINK: ${DB_MAX_LINK:-100}
+  REDIS_URL: ${REDIS_URL:?required}
+  STORAGE_VENDOR: ${STORAGE_VENDOR:?required}
+  STORAGE_REGION: ${STORAGE_REGION:?required}
+  STORAGE_ACCESS_KEY_ID: ${STORAGE_ACCESS_KEY_ID:?required}
+  STORAGE_SECRET_ACCESS_KEY: ${STORAGE_SECRET_ACCESS_KEY:?required}
+  STORAGE_PUBLIC_BUCKET: ${STORAGE_PUBLIC_BUCKET:?required}
+  STORAGE_PRIVATE_BUCKET: ${STORAGE_PRIVATE_BUCKET:?required}
+  STORAGE_EXTERNAL_ENDPOINT: ${STORAGE_EXTERNAL_ENDPOINT:?required}
+  STORAGE_S3_ENDPOINT: ${STORAGE_S3_ENDPOINT:?required}
+  STORAGE_S3_FORCE_PATH_STYLE: ${STORAGE_S3_FORCE_PATH_STYLE:-true}
+  STORAGE_S3_MAX_RETRIES: ${STORAGE_S3_MAX_RETRIES:-3}
+
+x-log-config: &x-log-config
+  LOG_ENABLE_CONSOLE: ${LOG_ENABLE_CONSOLE:-true}
+  LOG_CONSOLE_LEVEL: ${LOG_CONSOLE_LEVEL:-info}
+  LOG_ENABLE_OTEL: ${LOG_ENABLE_OTEL:-true}
+  LOG_OTEL_LEVEL: ${LOG_OTEL_LEVEL:-info}
+  LOG_OTEL_URL: ${LOG_OTEL_URL:?required}
+
+x-no-proxy-config: &x-no-proxy-config
+  NO_PROXY: localhost,127.0.0.1,::1,fastgpt-app,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-minio,fastgpt-mongo,fastgpt-redis,fastgpt-vector,fastgpt-mcp-server,opensandbox-server,fastgpt-volume-manager,host.docker.internal,*.orb.internal,*.orb.local
+  no_proxy: localhost,127.0.0.1,::1,fastgpt-app,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-minio,fastgpt-mongo,fastgpt-redis,fastgpt-vector,fastgpt-mcp-server,opensandbox-server,fastgpt-volume-manager,host.docker.internal,*.orb.internal,*.orb.local
+
+x-vec-config: &x-vec-config
+  PG_URL: ${PG_URL:?required}
+
+services:
+  fastgpt-vector:
+    image: ${PGVECTOR_IMAGE:-pgvector/pgvector}:${PGVECTOR_TAG:-0.8.0-pg15}
+    container_name: fastgpt-pg
+    restart: always
+    networks:
+      - data
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}
+      POSTGRES_DB: ${POSTGRES_DB:?required}
+    volumes:
+      - fastgpt-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  fastgpt-mongo:
+    image: ${MONGO_IMAGE:-mongo}:${MONGO_TAG:-5.0.32}
+    container_name: fastgpt-mongo
+    restart: always
+    networks:
+      - data
+    command: mongod --keyFile /data/mongodb.key --replSet rs0
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:?required}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:?required}
+    volumes:
+      - fastgpt-mongo:/data/db
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'mongo -u "$${MONGO_INITDB_ROOT_USERNAME}" -p "$${MONGO_INITDB_ROOT_PASSWORD}" --authenticationDatabase admin --eval "db.adminCommand(''ping'')"'
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    entrypoint:
+      - bash
+      - -c
+      - |
+        openssl rand -base64 128 > /data/mongodb.key
+        chmod 400 /data/mongodb.key
+        chown 999:999 /data/mongodb.key
+        cat > /data/initReplicaSet.js <<'EOF'
+        const isInited = rs.status().ok === 1
+        if (!isInited) {
+          rs.initiate({
+            _id: "rs0",
+            members: [{ _id: 0, host: "fastgpt-mongo:27017" }]
+          })
+        }
+        EOF
+        exec docker-entrypoint.sh "$$@" &
+        until mongo -u "$${MONGO_INITDB_ROOT_USERNAME}" -p "$${MONGO_INITDB_ROOT_PASSWORD}" --authenticationDatabase admin --eval "print('waited for connection')"; do
+          echo "Waiting for MongoDB to start..."
+          sleep 2
+        done
+        mongo -u "$${MONGO_INITDB_ROOT_USERNAME}" -p "$${MONGO_INITDB_ROOT_PASSWORD}" --authenticationDatabase admin /data/initReplicaSet.js
+        wait $$!
+
+  fastgpt-redis:
+    image: ${REDIS_IMAGE:-redis}:${REDIS_TAG:-7.2-alpine}
+    container_name: fastgpt-redis
+    restart: always
+    networks:
+      - data
+    command: >
+      redis-server
+      --requirepass $${REDIS_PASSWORD}
+      --loglevel warning
+      --maxclients ${REDIS_MAX_CLIENTS:-10000}
+      --appendonly yes
+      --save 60 10
+      --maxmemory ${REDIS_MAX_MEMORY:-4gb}
+      --maxmemory-policy noeviction
+    healthcheck:
+      test: ['CMD-SHELL', 'redis-cli -a "$${REDIS_PASSWORD}" ping']
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?required}
+    volumes:
+      - fastgpt-redis:/data
+
+  fastgpt-minio:
+    image: ${MINIO_IMAGE:-minio/minio}:${MINIO_TAG:-RELEASE.2025-09-07T16-13-09Z}
+    container_name: fastgpt-minio
+    restart: always
+    networks:
+      - data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?required}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?required}
+    volumes:
+      - fastgpt-minio:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  fastgpt-app:
+    image: ${FASTGPT_IMAGE:-ghcr.io/labring/fastgpt}:${FASTGPT_TAG:-v4.14.22}
+    container_name: fastgpt-app
+    restart: always
+    ports:
+      - '${FASTGPT_PORT:-3000}:3000'
+    networks:
+      - data
+      - app
+      - codesandbox
+      - opensandbox
+      - aiproxy
+    depends_on:
+      fastgpt-mongo:
+        condition: service_healthy
+      fastgpt-vector:
+        condition: service_healthy
+      fastgpt-redis:
+        condition: service_healthy
+      fastgpt-minio:
+        condition: service_healthy
+      fastgpt-code-sandbox:
+        condition: service_healthy
+      fastgpt-plugin:
+        condition: service_healthy
+    environment:
+      <<: [*x-share-db-config, *x-vec-config, *x-log-config, *x-no-proxy-config]
+      HOSTNAME: 0.0.0.0
+      FE_DOMAIN: ${FE_DOMAIN:?required}
+      FILE_DOMAIN: ${FILE_DOMAIN:?required}
+      ROOT_KEY: ${ROOT_KEY:?required}
+      DEFAULT_ROOT_PSW: ${DEFAULT_ROOT_PSW:?required}
+      SYNC_INDEX: ${SYNC_INDEX:-true}
+      TOKEN_KEY: ${TOKEN_KEY:?required}
+      FILE_TOKEN_KEY: ${FILE_TOKEN_KEY:?required}
+      AES256_SECRET_KEY: ${AES256_SECRET_KEY:?required}
+      USE_IP_LIMIT: ${USE_IP_LIMIT:?required}
+      CHECK_INTERNAL_IP: ${CHECK_INTERNAL_IP:?required}
+      TRUSTED_PROXY_ENABLE: ${TRUSTED_PROXY_ENABLE:?required}
+      TRUSTED_PROXY_IPS: ${TRUSTED_PROXY_IPS:?required}
+      PASSWORD_LOGIN_LOCK_SECONDS: ${PASSWORD_LOGIN_LOCK_SECONDS:?required}
+      PASSWORD_EXPIRED_MONTH: ${PASSWORD_EXPIRED_MONTH:?required}
+      MAX_LOGIN_SESSION: ${MAX_LOGIN_SESSION:?required}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:?required}
+      MULTIPLE_DATA_TO_BASE64: ${MULTIPLE_DATA_TO_BASE64:-true}
+      PLUGIN_BASE_URL: http://fastgpt-plugin:3000
+      PLUGIN_TOKEN: ${PLUGIN_TOKEN:?required}
+      CODE_SANDBOX_URL: http://fastgpt-code-sandbox:3000
+      CODE_SANDBOX_TOKEN: ${CODE_SANDBOX_TOKEN:?required}
+      AIPROXY_API_ENDPOINT: http://fastgpt-aiproxy:3000
+      AIPROXY_API_TOKEN: ${AIPROXY_API_TOKEN:?required}
+      AGENT_SANDBOX_PROVIDER: ${AGENT_SANDBOX_PROVIDER:-opensandbox}
+      AGENT_SANDBOX_OPENSANDBOX_BASEURL: http://opensandbox-server:8090
+      AGENT_SANDBOX_OPENSANDBOX_API_KEY: ${AGENT_SANDBOX_OPENSANDBOX_API_KEY:-}
+      AGENT_SANDBOX_OPENSANDBOX_RUNTIME: docker
+      AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: ${AGENT_SANDBOX_IMAGE_REPO:-ghcr.io/labring/fastgpt-agent-sandbox}
+      AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: ${AGENT_SANDBOX_IMAGE_TAG:-v0.1.2}
+      AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: ${AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY:-true}
+      AGENT_SANDBOX_ENABLE_VOLUME: ${AGENT_SANDBOX_ENABLE_VOLUME:-true}
+      AGENT_SANDBOX_VOLUME_MANAGER_URL: http://fastgpt-volume-manager:3000
+      AGENT_SANDBOX_VOLUME_MANAGER_TOKEN: ${AGENT_SANDBOX_VOLUME_MANAGER_TOKEN:?required}
+      AGENT_SANDBOX_PROXY_SECRET: ${AGENT_SANDBOX_PROXY_SECRET:?required}
+      AGENT_SANDBOX_PROXY_URL: ${AGENT_SANDBOX_PROXY_URL:?required}
+      LOG_OTEL_SERVICE_NAME: ${LOG_OTEL_SERVICE_NAME:-fastgpt-app}
+      METRICS_ENABLE_OTEL: ${METRICS_ENABLE_OTEL:-true}
+      METRICS_OTEL_URL: ${METRICS_OTEL_URL:?required}
+      METRICS_OTEL_SERVICE_NAME: ${METRICS_OTEL_SERVICE_NAME:-fastgpt-app}
+      TRACING_ENABLE_OTEL: ${TRACING_ENABLE_OTEL:-true}
+      TRACING_OTEL_URL: ${TRACING_OTEL_URL:?required}
+      TRACING_OTEL_SERVICE_NAME: ${TRACING_OTEL_SERVICE_NAME:-fastgpt-app}
+    volumes:
+      - ./config.json:/app/data/config.json:ro
+
+  fastgpt-code-sandbox:
+    image: ${FASTGPT_CODE_SANDBOX_IMAGE:-ghcr.io/labring/fastgpt-code-sandbox}:${FASTGPT_CODE_SANDBOX_TAG:-v4.14.22}
+    container_name: fastgpt-code-sandbox
+    restart: always
+    networks:
+      - codesandbox
+    environment:
+      <<: [*x-log-config, *x-no-proxy-config]
+      LOG_OTEL_SERVICE_NAME: ${CODE_SANDBOX_LOG_SERVICE_NAME:-fastgpt-code-sandbox}
+      SANDBOX_TOKEN: ${CODE_SANDBOX_TOKEN:?required}
+      SANDBOX_MAX_TIMEOUT: ${SANDBOX_MAX_TIMEOUT:?required}
+      SANDBOX_MAX_MEMORY_MB: ${SANDBOX_MAX_MEMORY_MB:?required}
+      SANDBOX_POOL_SIZE: ${SANDBOX_POOL_SIZE:?required}
+      CHECK_INTERNAL_IP: ${SANDBOX_CHECK_INTERNAL_IP:?required}
+      SANDBOX_REQUEST_MAX_COUNT: ${SANDBOX_REQUEST_MAX_COUNT:?required}
+      SANDBOX_REQUEST_TIMEOUT: ${SANDBOX_REQUEST_TIMEOUT:?required}
+      SANDBOX_REQUEST_MAX_RESPONSE_MB: ${SANDBOX_REQUEST_MAX_RESPONSE_MB:?required}
+      SANDBOX_REQUEST_MAX_BODY_MB: ${SANDBOX_REQUEST_MAX_BODY_MB:?required}
+      SANDBOX_JS_ALLOWED_MODULES: ${SANDBOX_JS_ALLOWED_MODULES:?required}
+      SANDBOX_PYTHON_ALLOWED_MODULES: ${SANDBOX_PYTHON_ALLOWED_MODULES:?required}
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'bun',
+          '-e',
+          "fetch('http://localhost:3000/health').then((res) => { if (!res.ok) throw new Error(String(res.status)); })"
+        ]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  fastgpt-mcp-server:
+    image: ${FASTGPT_MCP_SERVER_IMAGE:-ghcr.io/labring/fastgpt-mcp_server}:${FASTGPT_MCP_SERVER_TAG:-v4.14.22}
+    container_name: fastgpt-mcp-server
+    restart: always
+    networks:
+      - app
+    environment:
+      <<: [*x-log-config]
+      LOG_OTEL_SERVICE_NAME: ${MCP_SERVER_LOG_SERVICE_NAME:-fastgpt-mcp-server}
+      FASTGPT_ENDPOINT: http://fastgpt-app:3000
+
+  fastgpt-plugin:
+    image: ${FASTGPT_PLUGIN_IMAGE:-ghcr.io/labring/fastgpt-plugin}:${FASTGPT_PLUGIN_TAG:-v0.6.2}
+    container_name: fastgpt-plugin
+    restart: always
+    networks:
+      - data
+      - app
+    environment:
+      <<: [*x-share-db-config, *x-log-config, *x-no-proxy-config]
+      AUTH_TOKEN: ${PLUGIN_TOKEN:?required}
+      SERVICE_REQUEST_MAX_CONTENT_LENGTH: ${PLUGIN_SERVICE_REQUEST_MAX_CONTENT_LENGTH:-10}
+      MAX_API_SIZE: ${PLUGIN_MAX_API_SIZE:-10}
+      LOG_OTEL_SERVICE_NAME: ${PLUGIN_LOG_SERVICE_NAME:-fastgpt-plugin}
+    depends_on:
+      fastgpt-mongo:
+        condition: service_healthy
+      fastgpt-minio:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  opensandbox-server:
+    image: ${OPENSANDBOX_SERVER_IMAGE:-opensandbox/server}:${OPENSANDBOX_SERVER_TAG:-v0.1.9}
+    container_name: fastgpt-opensandbox-server
+    restart: always
+    networks:
+      - opensandbox
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    configs:
+      - source: opensandbox-config
+        target: /etc/opensandbox/config.toml
+    environment:
+      <<: [*x-no-proxy-config]
+      SANDBOX_CONFIG_PATH: /etc/opensandbox/config.toml
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'python',
+          '-c',
+          'import urllib.request,sys; sys.exit(0 if urllib.request.urlopen("http://localhost:8090/health",timeout=3).status==200 else 1)'
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  opensandbox-agent-sandbox-image:
+    image: ${AGENT_SANDBOX_IMAGE_REPO:-ghcr.io/labring/fastgpt-agent-sandbox}:${AGENT_SANDBOX_IMAGE_TAG:-v0.1.2}
+    profiles:
+      - prepull
+
+  opensandbox-execd-image:
+    image: ${OPENSANDBOX_EXECD_IMAGE:-opensandbox/execd}:${OPENSANDBOX_EXECD_TAG:-v1.0.7}
+    profiles:
+      - prepull
+
+  opensandbox-egress-image:
+    image: ${OPENSANDBOX_EGRESS_IMAGE:-opensandbox/egress}:${OPENSANDBOX_EGRESS_TAG:-v1.0.3}
+    profiles:
+      - prepull
+
+  fastgpt-volume-manager:
+    image: ${FASTGPT_VOLUME_MANAGER_IMAGE:-ghcr.io/labring/fastgpt-agent-volume-manager}:${FASTGPT_VOLUME_MANAGER_TAG:-v0.1.2}
+    container_name: fastgpt-volume-manager
+    restart: always
+    networks:
+      - opensandbox
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      <<: [*x-no-proxy-config]
+      PORT: 3000
+      VM_RUNTIME: docker
+      VM_AUTH_TOKEN: ${AGENT_SANDBOX_VOLUME_MANAGER_TOKEN:?required}
+      VM_VOLUME_NAME_PREFIX: ${AGENT_SANDBOX_VOLUME_NAME_PREFIX:-fastgpt-session}
+      VM_LOG_LEVEL: ${AGENT_SANDBOX_VOLUME_MANAGER_LOG_LEVEL:-info}
+      VM_DOCKER_API_VERSION: ${AGENT_SANDBOX_VOLUME_MANAGER_DOCKER_API_VERSION:-v1.44}
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'bun',
+          '-e',
+          "fetch('http://localhost:3000/health').then((res) => { if (!res.ok) throw new Error(String(res.status)); })"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  fastgpt-aiproxy:
+    image: ${AIPROXY_IMAGE:-ghcr.io/labring/aiproxy}:${AIPROXY_TAG:-v0.5.8}
+    container_name: fastgpt-aiproxy
+    restart: unless-stopped
+    depends_on:
+      fastgpt-aiproxy-pg:
+        condition: service_healthy
+    networks:
+      - aiproxy
+    environment:
+      ADMIN_KEY: ${AIPROXY_API_TOKEN:?required}
+      LOG_DETAIL_STORAGE_HOURS: ${AIPROXY_LOG_DETAIL_STORAGE_HOURS:-1}
+      SQL_DSN: ${AIPROXY_SQL_DSN:?required}
+      RETRY_TIMES: ${AIPROXY_RETRY_TIMES:-3}
+      BILLING_ENABLED: ${AIPROXY_BILLING_ENABLED:-false}
+      DISABLE_MODEL_CONFIG: ${AIPROXY_DISABLE_MODEL_CONFIG:-true}
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:3000/api/status']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  fastgpt-aiproxy-pg:
+    image: ${AIPROXY_PG_IMAGE:-pgvector/pgvector}:${AIPROXY_PG_TAG:-0.8.0-pg15}
+    container_name: fastgpt-aiproxy-pg
+    restart: unless-stopped
+    networks:
+      - aiproxy
+    environment:
+      TZ: ${TZ:-Asia/Taipei}
+      POSTGRES_USER: ${AIPROXY_POSTGRES_USER:?required}
+      POSTGRES_DB: ${AIPROXY_POSTGRES_DB:?required}
+      POSTGRES_PASSWORD: ${AIPROXY_POSTGRES_PASSWORD:?required}
+    volumes:
+      - fastgpt-aiproxy-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+networks:
+  data:
+    name: fastgpt_data
+  app:
+    name: fastgpt_app
+  codesandbox:
+    name: fastgpt_codesandbox
+  opensandbox:
+    name: fastgpt_opensandbox
+  aiproxy:
+    name: fastgpt_aiproxy
+
+volumes:
+  fastgpt-pg:
+  fastgpt-mongo:
+  fastgpt-redis:
+  fastgpt-minio:
+  fastgpt-aiproxy-pg:
+
+configs:
+  opensandbox-config:
+    content: |
+      [server]
+      host = "0.0.0.0"
+      port = 8090
+      log_level = "INFO"
+
+      [runtime]
+      type = "docker"
+      execd_image = "opensandbox/execd:v1.0.7"
+
+      [egress]
+      image = "opensandbox/egress:v1.0.3"
+
+      [docker]
+      network_mode = "bridge"
+      host_ip = "host.docker.internal"
+      drop_capabilities = ["AUDIT_WRITE", "MKNOD", "NET_ADMIN", "NET_RAW", "SYS_ADMIN", "SYS_MODULE", "SYS_PTRACE", "SYS_TIME", "SYS_TTY_CONFIG"]
+      no_new_privileges = true
+      pids_limit = 512
+
+      [ingress]
+      mode = "direct"

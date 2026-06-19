@@ -4,7 +4,7 @@
 
 ### W0-01 企业 runtime compose
 
-- 状态：未开始
+- 状态：已完成
 - 目标：新增可用于企业内网部署的 `deploy/runtime/docker-compose.enterprise.yml`
 - 交付物：
   - `deploy/runtime/docker-compose.enterprise.yml`
@@ -22,7 +22,7 @@
 
 ### W0-02 env 与 compose 闭环
 
-- 状态：未开始
+- 状态：已完成
 - 目标：让 `deploy/enterprise/.env.example` 与 runtime compose 字段完全对齐
 - 交付物：
   - 更新 `deploy/enterprise/.env.example`
@@ -37,7 +37,7 @@
 
 ### W0-03 CI 安全检查
 
-- 状态：未开始
+- 状态：已完成
 - 目标：在 GitHub Actions 中强制检查企业部署配置
 - 交付物：
   - `.github/workflows/enterprise-security.yml`
@@ -51,7 +51,7 @@
 
 ### W0-04 反向代理与端口收敛文档
 
-- 状态：未开始
+- 状态：已完成
 - 目标：说明企业内网应该如何暴露 FastGPT
 - 交付物：
   - `deploy/runtime/reverse-proxy.md`
@@ -65,7 +65,7 @@
 
 ### W0-05 备份恢复初稿
 
-- 状态：未开始
+- 状态：已完成
 - 目标：形成最小可用备份恢复 runbook
 - 交付物：
   - `deploy/runtime/backup-restore.md`

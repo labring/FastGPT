@@ -1,0 +1,84 @@
+name: Enterprise security baseline
+
+on:
+  pull_request:
+    paths:
+      - 'deploy/enterprise/**'
+      - 'deploy/runtime/**'
+      - 'package.json'
+      - '.github/workflows/enterprise-security.yml'
+  push:
+    branches:
+      - enterprise/internal-hardening
+    paths:
+      - 'deploy/enterprise/**'
+      - 'deploy/runtime/**'
+      - 'package.json'
+      - '.github/workflows/enterprise-security.yml'
+
+jobs:
+  enterprise-security:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check JavaScript syntax
+        run: node --check deploy/enterprise/check-env.mjs
+
+      - name: Check package JSON
+        run: node -e "JSON.parse(require('fs').readFileSync('package.json','utf8'))"
+
+      - name: Confirm example env is rejected
+        run: |
+          set +e
+          node deploy/enterprise/check-env.mjs deploy/enterprise/.env.example
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ]; then
+            echo "Expected .env.example to fail because it contains placeholders."
+            exit 1
+          fi
+
+      - name: Create CI enterprise env
+        run: |
+          cp deploy/enterprise/.env.example /tmp/fastgpt.env.enterprise
+          node <<'NODE'
+          const fs = require('fs');
+          const path = '/tmp/fastgpt.env.enterprise';
+          const replacements = {
+            DEFAULT_ROOT_PSW: 'ciRootSecretValue012345678901234567890',
+            TOKEN_KEY: 'ciTokenSecretValue012345678901234567890',
+            FILE_TOKEN_KEY: 'ciFileSecretValue012345678901234567890',
+            AES256_SECRET_KEY: 'ciAesSecretValue012345678901234567890',
+            ROOT_KEY: 'ciRootKeySecretValue012345678901234567890',
+            PLUGIN_TOKEN: 'ciPluginSecretValue012345678901234567890',
+            CODE_SANDBOX_TOKEN: 'ciSandboxSecretValue012345678901234567890',
+            AGENT_SANDBOX_PROXY_SECRET: 'ciProxySecretValue012345678901234567890',
+            AGENT_SANDBOX_VOLUME_MANAGER_TOKEN: 'ciVolumeSecretValue012345678901234567890',
+            AIPROXY_API_TOKEN: 'ciAiProxySecretValue012345678901234567890',
+            MONGO_INITDB_ROOT_PASSWORD: 'ciMongoSecretValue012345678901234567890',
+            MONGODB_URI: 'mongodb://fastgpt:ciMongoSecretValue012345678901234567890@fastgpt-mongo:27017/fastgpt?authSource=admin',
+            POSTGRES_PASSWORD: 'ciPgSecretValue012345678901234567890',
+            PG_URL: 'postgresql://fastgpt:ciPgSecretValue012345678901234567890@fastgpt-vector:5432/postgres',
+            REDIS_PASSWORD: 'ciRedisSecretValue012345678901234567890',
+            REDIS_URL: 'redis://default:ciRedisSecretValue012345678901234567890@fastgpt-redis:6379',
+            AIPROXY_POSTGRES_PASSWORD: 'ciAiProxyPgSecretValue012345678901234567890',
+            AIPROXY_SQL_DSN: 'postgres://aiproxy:ciAiProxyPgSecretValue012345678901234567890@fastgpt-aiproxy-pg:5432/aiproxy',
+            STORAGE_ACCESS_KEY_ID: 'ciStorageAccessValue012345678901234567890',
+            STORAGE_SECRET_ACCESS_KEY: 'ciStorageSecretValue012345678901234567890',
+            MINIO_ROOT_USER: 'ciMinioUserValue012345678901234567890',
+            MINIO_ROOT_PASSWORD: 'ciMinioSecretValue012345678901234567890'
+          };
+          let content = fs.readFileSync(path, 'utf8');
+          for (const [key, value] of Object.entries(replacements)) {
+            content = content.replace(new RegExp(`^${key}=.*$`, 'm'), `${key}=${value}`);
+          }
+          fs.writeFileSync(path, content);
+          NODE
+
+      - name: Check enterprise env
+        run: node deploy/enterprise/check-env.mjs /tmp/fastgpt.env.enterprise
+
+      - name: Check enterprise compose
+        run: docker compose --env-file /tmp/fastgpt.env.enterprise -f deploy/runtime/docker-compose.enterprise.yml config >/tmp/fastgpt.compose.yml

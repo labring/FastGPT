@@ -5,6 +5,10 @@ import path from 'node:path';
 
 const envFile = process.argv[2] || 'deploy/enterprise/.env.enterprise';
 const envPath = path.resolve(process.cwd(), envFile);
+const composeFile =
+  process.argv.find((arg) => arg.startsWith('--compose='))?.slice('--compose='.length) ||
+  'deploy/runtime/docker-compose.enterprise.yml';
+const composePath = path.resolve(process.cwd(), composeFile);
 
 const requiredKeys = [
   'FE_DOMAIN',
@@ -28,14 +32,42 @@ const requiredKeys = [
   'AGENT_SANDBOX_PROXY_SECRET',
   'AGENT_SANDBOX_VOLUME_MANAGER_TOKEN',
   'AIPROXY_API_TOKEN',
+  'AIPROXY_POSTGRES_USER',
+  'AIPROXY_POSTGRES_PASSWORD',
+  'AIPROXY_POSTGRES_DB',
+  'AIPROXY_SQL_DSN',
   'MONGODB_URI',
   'PG_URL',
   'REDIS_URL',
+  'REDIS_PASSWORD',
+  'POSTGRES_USER',
+  'POSTGRES_PASSWORD',
+  'POSTGRES_DB',
+  'MONGO_INITDB_ROOT_USERNAME',
+  'MONGO_INITDB_ROOT_PASSWORD',
+  'STORAGE_VENDOR',
+  'STORAGE_REGION',
   'STORAGE_ACCESS_KEY_ID',
   'STORAGE_SECRET_ACCESS_KEY',
+  'STORAGE_PUBLIC_BUCKET',
+  'STORAGE_PRIVATE_BUCKET',
+  'STORAGE_S3_ENDPOINT',
   'MINIO_ROOT_USER',
   'MINIO_ROOT_PASSWORD',
-  'SANDBOX_CHECK_INTERNAL_IP'
+  'SANDBOX_CHECK_INTERNAL_IP',
+  'SANDBOX_MAX_TIMEOUT',
+  'SANDBOX_MAX_MEMORY_MB',
+  'SANDBOX_POOL_SIZE',
+  'SANDBOX_REQUEST_MAX_COUNT',
+  'SANDBOX_REQUEST_TIMEOUT',
+  'SANDBOX_REQUEST_MAX_RESPONSE_MB',
+  'SANDBOX_REQUEST_MAX_BODY_MB',
+  'SANDBOX_JS_ALLOWED_MODULES',
+  'SANDBOX_PYTHON_ALLOWED_MODULES',
+  'LOG_OTEL_URL',
+  'METRICS_OTEL_URL',
+  'TRACING_OTEL_URL',
+  'AGENT_SANDBOX_PROXY_URL'
 ];
 
 const weakValues = new Set([
@@ -69,7 +101,11 @@ const secretKeys = [
   'STORAGE_ACCESS_KEY_ID',
   'STORAGE_SECRET_ACCESS_KEY',
   'MINIO_ROOT_USER',
-  'MINIO_ROOT_PASSWORD'
+  'MINIO_ROOT_PASSWORD',
+  'MONGO_INITDB_ROOT_PASSWORD',
+  'POSTGRES_PASSWORD',
+  'REDIS_PASSWORD',
+  'AIPROXY_POSTGRES_PASSWORD'
 ];
 
 const booleanTrueKeys = [
@@ -90,18 +126,31 @@ if (!fs.existsSync(envPath)) {
 }
 
 const env = parseEnv(fs.readFileSync(envPath, 'utf8'));
+const composeRequiredKeys = fs.existsSync(composePath)
+  ? parseComposeRequiredKeys(fs.readFileSync(composePath, 'utf8'))
+  : [];
 
-for (const key of requiredKeys) {
+if (!fs.existsSync(composePath)) {
+  warnings.push(`Compose file not found, skip compose variable check: ${composePath}`);
+}
+
+for (const key of unique([...requiredKeys, ...composeRequiredKeys])) {
   if (!env[key]) {
     errors.push(`${key} is required`);
+  }
+  if (env[key]?.includes('<') || env[key]?.includes('>')) {
+    errors.push(`${key} still contains a placeholder`);
+  }
+}
+
+for (const key of composeRequiredKeys) {
+  if (!requiredKeys.includes(key)) {
+    warnings.push(`${key} is required by compose but not listed in check-env requiredKeys`);
   }
 }
 
 for (const key of secretKeys) {
   const value = env[key] || '';
-  if (value.includes('<') || value.includes('>')) {
-    errors.push(`${key} still contains a placeholder`);
-  }
   if (weakValues.has(value.toLowerCase())) {
     errors.push(`${key} uses a known weak default value`);
   }
@@ -144,13 +193,20 @@ if (!Number.isFinite(maxLoginSession) || maxLoginSession < 1 || maxLoginSession 
   warnings.push('MAX_LOGIN_SESSION should usually be between 1 and 5 for internal deployments');
 }
 
-for (const key of ['MONGODB_URI', 'PG_URL', 'REDIS_URL']) {
+for (const key of ['MONGODB_URI', 'PG_URL', 'REDIS_URL', 'AIPROXY_SQL_DSN']) {
   const value = env[key] || '';
-  for (const weakValue of weakValues) {
-    if (weakValue && value.toLowerCase().includes(weakValue)) {
-      errors.push(`${key} contains weak default credential fragment "${weakValue}"`);
-      break;
-    }
+  const password = getUrlPassword(value);
+  if (!password) {
+    errors.push(`${key} must include a password`);
+    continue;
+  }
+
+  if (weakValues.has(password.toLowerCase())) {
+    errors.push(`${key} contains a known weak password value`);
+  }
+
+  if (password.length < 24) {
+    warnings.push(`${key} password is shorter than 24 characters`);
   }
 }
 
@@ -193,6 +249,30 @@ function isLocalUrl(value) {
   } catch {
     return false;
   }
+}
+
+function parseComposeRequiredKeys(content) {
+  const keys = new Set();
+  const requiredPattern = /\$\{([A-Z0-9_]+):\?[^}]*\}/g;
+  let match;
+
+  while ((match = requiredPattern.exec(content)) !== null) {
+    keys.add(match[1]);
+  }
+
+  return Array.from(keys).sort();
+}
+
+function getUrlPassword(value) {
+  try {
+    return decodeURIComponent(new URL(value).password || '');
+  } catch {
+    return '';
+  }
+}
+
+function unique(values) {
+  return Array.from(new Set(values));
 }
 
 function printAndExit() {
