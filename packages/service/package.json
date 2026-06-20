@@ -59,7 +59,7 @@
     "mime-types": "catalog:",
     "minio": "catalog:",
     "mongoose": "catalog:",
-    "multer": "2.1.0",
+    "multer": "2.2.0",
     "mysql2": "^3.11.3",
     "next": "catalog:",
     "nextjs-cors": "2.2.1",
