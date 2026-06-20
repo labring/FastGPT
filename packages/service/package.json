@@ -73,7 +73,7 @@
     "proxy-agent": "catalog:",
     "proxy-from-env": "^1.1.0",
     "turndown": "^7.1.2",
-    "undici": "^7.18.2",
+    "undici": "^7.28.0",
     "winston": "^3.17.0",
     "xlsx": "0.18.5",
     "zod": "catalog:"
