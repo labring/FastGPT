@@ -3,7 +3,19 @@ title: 'V4.15.0-beta5(进行中)'
 description: 'FastGPT V4.15.0-beta5 更新说明'
 ---
 
+## 📦 升级指南
+
+### 修改环境变量
+
+`fastgpt` 和 `fastgpt-pro` 增加环境变量 `CHAT_TITLE_MODEL`，用于自动生成对话的标题，例如：
+
+```shell
+CHAT_TITLE_MODEL=deepseek-v4-flash
+```
+
 ### 升级脚本
+
+将所有旧的沙盒 workspace 归档到 s3 里，从而更彻底的释放不活跃的沙盒，旧的沙盒可能因为超时安装 zip 失败。因为旧的沙盒大部分关联的是旧的对话，不执行该脚本，直接把旧的沙盒全部移除也可以。该脚本仅影响旧的沙盒，不影响新生成沙盒。
 
 ```shell
 curl --location --request POST 'https://{{host}}/api/admin/initSandboxArchive' \

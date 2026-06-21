@@ -1,5 +1,5 @@
 import z from 'zod';
-import { LafAccountSchema, OpenaiAccountSchema } from '../../../../support/user/team/type';
+import { OpenaiAccountSchema } from '../../../../support/user/team/type';
 
 export const TeamChangeOwnerBodySchema = z.object({
   userId: z.string().describe("the New Owner's UserId.")
@@ -24,9 +24,6 @@ export const UpdateTeamBodySchema = z.object({
   }),
   teamDomain: z.string().optional().meta({
     description: '团队域名'
-  }),
-  lafAccount: LafAccountSchema.optional().meta({
-    description: 'Laf 账号配置'
   }),
   openaiAccount: OpenaiAccountSchema.optional().meta({
     description: 'OpenAI 账号配置'

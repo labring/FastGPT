@@ -18,6 +18,7 @@ Below is the simplest AI conversation, consisting of a Workflow Start node and a
 ![](/imgs/flow-intro2.png)
 
 Execution flow:
+
 1. The user inputs a question. The [Workflow Start] node executes and saves the user's question.
 2. The [AI Chat] node executes. It has two required parameters: "Chat History" and "User Question." Chat history defaults to 6 messages, representing the context length. The user question comes from the [Workflow Start] node.
 3. The [AI Chat] node calls the conversation API with the chat history and user question to generate a response.
@@ -33,11 +34,11 @@ Functionally, nodes fall into 2 categories:
 
 Each node has 3 core parts: inputs, outputs, and triggers.
 
-   ![](/imgs/flow-intro3.png)
+![](/imgs/flow-intro3.png)
 
-   - AI model, prompt, chat history, user question, and Knowledge Base citation are inputs. Inputs can be manual entries or variable references, which include "global variables" and outputs from any previous node.
-   - New context and AI reply content are outputs. Outputs can be referenced by any subsequent node.
-   - Each node has four "triggers" (top, bottom, left, right) for connections. Connected nodes execute sequentially based on conditions.
+- AI model, prompt, chat history, user question, and Knowledge Base citation are inputs. Inputs can be manual entries or variable references, which include "global variables" and outputs from any previous node.
+- New context and AI reply content are outputs. Outputs can be referenced by any subsequent node.
+- Each node has four "triggers" (top, bottom, left, right) for connections. Connected nodes execute sequentially based on conditions.
 
 ## Key Concept — How Workflows Execute
 
@@ -45,11 +46,12 @@ FastGPT Workflows start from the [Workflow Start] node, triggered when the user 
 
 Let's look at how workflows execute and when each node is triggered.
 
-   ![](/imgs/flow-intro1.png)
+![](/imgs/flow-intro1.png)
 
 As shown above, nodes can "be connected to" and "connect to other nodes." We call incoming connections "predecessor lines" and outgoing connections "successor lines." In the example, the [Knowledge Base Search] node has one predecessor line on the left and one successor line on the right. The [AI Chat] node only has a predecessor line on the left.
 
 Lines in FastGPT Workflows have these states:
+
 - `waiting`: The connected node is waiting to execute.
 - `active`: The connected node is ready to execute.
 - `skip`: The connected node should be skipped.
@@ -62,6 +64,7 @@ Node execution rules:
 4. After execution, successor lines are updated to `active` or `skip`, and predecessor lines reset to `waiting` for the next cycle.
 
 Walking through the example:
+
 1. [Workflow Start] completes and sets its successor line to `active`.
 2. [Knowledge Base Search] sees its predecessor line is `active`, executes, then sets its successor line to `active` and predecessor line to `waiting`.
 3. [AI Chat] sees its predecessor line is `active` and executes. The workflow ends.
@@ -84,6 +87,4 @@ Walking through the example:
 
 1. Text Processing: can merge strings together.
 2. Knowledge Base Search Merge: can combine multiple Knowledge Base search results.
-3. Other results: cannot be merged directly. Consider passing them to an `HTTP` node for merging. Use [Laf](https://laf.run/) to quickly create a serverless HTTP endpoint.
-
-
+3. Other results: cannot be merged directly. Consider passing them to an `HTTP` node and merging them in your own service.

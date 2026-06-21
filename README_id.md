@@ -119,7 +119,6 @@ Jika Anda menghadapi masalah, Anda dapat [melihat tutorial penyebaran Docker len
 - [Dokumentasi OpenAPI](https://doc.fastgpt.io/openapi/intro)
 - [FastGPT-plugin](https://github.com/labring/fastgpt-plugin)
 - [AI Proxy: Layanan Load Balancing Agregasi Model](https://github.com/labring/aiproxy)
-- [Laf: Akses Cepat 3 Menit ke Aplikasi Pihak Ketiga](https://github.com/labring/laf)
 - [Sealos: Penerapan Cepat Aplikasi Klaster](https://github.com/labring/sealos)
 
 <a href="#readme">

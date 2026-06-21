@@ -29,6 +29,7 @@ import { isInternalAddress, PRIVATE_URL_TEXT } from '../../../../common/system/u
 import { serviceRequestMaxContentLength } from '../../../../common/system/constants';
 import { axios, httpsCertificateIgnoreAgent } from '../../../../common/api/axios';
 import { replaceEditorVariable } from '../utils/replaceEditorVariable';
+import { checkStrOversize, logOversizeString } from '../../../../common/string/replaceVariable';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.TOOLS);
 
@@ -352,24 +353,43 @@ export const replaceJsonBodyString = (
   const { allVariables, runtimeNodesMap } = props;
 
   const MAX_REPLACEMENT_DEPTH = 10;
-  const processedVariables = new Set<string>();
 
   // Prevent infinite recursion
   if (depth > MAX_REPLACEMENT_DEPTH) {
     return text;
   }
+  if (checkStrOversize(text)) {
+    logOversizeString({
+      source: 'replaceJsonBodyString',
+      reason: depth === 0 ? 'input' : 'recursive_input',
+      length: text.length
+    });
+    return text;
+  }
 
-  // Check if the variable is in quotes
-  const isVariableInQuotes = (text: string, variable: string) => {
-    const index = text.indexOf(variable);
-    if (index === -1) return false;
+  /**
+   * 为 replace callback 的递增 offset 做惰性引号状态扫描。
+   * 旧实现每个变量都 substring + match 重新计算一次，变量多且 body 大时会放大 CPU。
+   */
+  const createQuoteChecker = (source: string) => {
+    let cursor = 0;
+    let inQuotes = false;
+    let escaped = false;
 
-    // 计算变量前面的引号数量
-    const textBeforeVar = text.substring(0, index);
-    const matches = textBeforeVar.match(/"/g) || [];
-
-    // 如果引号数量为奇数，则变量在引号内
-    return matches.length % 2 === 1;
+    return (offset: number) => {
+      while (cursor < offset) {
+        const char = source[cursor];
+        if (escaped) {
+          escaped = false;
+        } else if (char === '\\') {
+          escaped = true;
+        } else if (char === '"') {
+          inQuotes = !inQuotes;
+        }
+        cursor++;
+      }
+      return inQuotes;
+    };
   };
 
   const valToStr = (val: any, isQuoted = false) => {
@@ -417,109 +437,107 @@ export const replaceJsonBodyString = (
   };
 
   let result = text;
-  let hasReplacements = false;
+  let currentDepth = depth;
 
-  // 1. Replace {{$nodeId.id$}} variables
   const regex1 = /\{\{\$([^.]+)\.([^$]+)\$\}\}/g;
-  const matches1 = [...result.matchAll(regex1)];
-
-  // Build replacement map first to avoid modifying string during iteration
-  const replacements1: Array<{ pattern: string; replacement: string }> = [];
-
-  for (const match of matches1) {
-    const nodeId = match[1];
-    const id = match[2];
-    const fullMatch = match[0];
-    const variableKey = `${nodeId}.${id}`;
-
-    // Skip if already processed to avoid immediate circular reference
-    if (processedVariables.has(variableKey)) {
-      continue;
-    }
-
-    // 检查变量是否在引号内
-    const isInQuotes = isVariableInQuotes(result, fullMatch);
-
-    const variableVal = (() => {
-      if (nodeId === VARIABLE_NODE_ID) {
-        return allVariables[id];
-      }
-      // Find upstream node input/output
-      const node = runtimeNodesMap.get(nodeId);
-      if (!node) return;
-
-      const output = node.outputs.find((output) => output.id === id);
-      if (output) return formatVariableValByType(output.value, output.valueType);
-
-      const input = node.inputs.find((input) => input.key === id);
-      if (input) {
-        return getReferenceVariableValue({
-          value: input.value,
-          nodesMap: runtimeNodesMap,
-          variables: allVariables
-        });
-      }
-    })();
-
-    const formatVal = valToStr(variableVal, isInQuotes);
-    // Check for direct circular reference
-    if (hasCircularReference(String(variableVal), variableKey)) {
-      continue;
-    }
-
-    const escapedPattern = `\\{\\{\\$${nodeId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\$\\}\\}`;
-
-    replacements1.push({
-      pattern: escapedPattern,
-      replacement: formatVal
-    });
-
-    processedVariables.add(variableKey);
-    hasReplacements = true;
-  }
-  replacements1.forEach(({ pattern, replacement }) => {
-    result = result.replace(new RegExp(pattern, 'g'), replacement);
-  });
-
-  // 2. Replace {{key}} variables
   const regex2 = /{{([^}]+)}}/g;
-  const matches2 = result.match(regex2) || [];
-  const uniqueKeys2 = [...new Set(matches2.map((match) => match.slice(2, -2)))];
-  // Build replacement map for simple variables
-  const replacements2: Array<{ pattern: string; replacement: string }> = [];
-  for (const key of uniqueKeys2) {
-    if (processedVariables.has(key)) {
-      continue;
-    }
 
-    const fullMatch = `{{${key}}}`;
-    const variableVal = allVariables[key];
+  while (currentDepth <= MAX_REPLACEMENT_DEPTH && result.includes('{{')) {
+    let hasReplacements = false;
 
-    // Check for direct circular reference
-    if (hasCircularReference(variableVal, key)) {
-      continue;
-    }
+    // 1. Replace {{$nodeId.id$}} variables
+    const nodeReplacementCache = new Map<string, string | undefined>();
+    const isNodeVariableInQuotes = createQuoteChecker(result);
 
-    // 检查变量是否在引号内
-    const isInQuotes = isVariableInQuotes(result, fullMatch);
-    const formatVal = valToStr(variableVal, isInQuotes);
-    const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    result = result.replace(
+      regex1,
+      (fullMatch: string, nodeId: string, id: string, offset: number) => {
+        const variableKey = `${nodeId}.${id}`;
 
-    replacements2.push({
-      pattern: `{{${escapedKey}}}`,
-      replacement: formatVal
+        if (nodeReplacementCache.has(variableKey)) {
+          const cachedReplacement = nodeReplacementCache.get(variableKey);
+          return cachedReplacement === undefined ? fullMatch : cachedReplacement;
+        }
+
+        // 检查变量是否在引号内
+        const isInQuotes = isNodeVariableInQuotes(offset);
+
+        const variableVal = (() => {
+          if (nodeId === VARIABLE_NODE_ID) {
+            return allVariables[id];
+          }
+          // Find upstream node input/output
+          const node = runtimeNodesMap.get(nodeId);
+          if (!node) return;
+
+          const output = node.outputs.find((output) => output.id === id);
+          if (output) return formatVariableValByType(output.value, output.valueType);
+
+          const input = node.inputs.find((input) => input.key === id);
+          if (input) {
+            return getReferenceVariableValue({
+              value: input.value,
+              nodesMap: runtimeNodesMap,
+              variables: allVariables
+            });
+          }
+        })();
+
+        // Check for direct circular reference
+        if (hasCircularReference(String(variableVal), variableKey)) {
+          nodeReplacementCache.set(variableKey, undefined);
+          return fullMatch;
+        }
+
+        const formatVal = valToStr(variableVal, isInQuotes);
+        nodeReplacementCache.set(variableKey, formatVal);
+        if (formatVal !== fullMatch) {
+          hasReplacements = true;
+        }
+        return formatVal;
+      }
+    );
+
+    // 2. Replace {{key}} variables
+    const variableReplacementCache = new Map<string, string | undefined>();
+    const isVariableInQuotes = createQuoteChecker(result);
+
+    result = result.replace(regex2, (fullMatch: string, key: string, offset: number) => {
+      if (variableReplacementCache.has(key)) {
+        const cachedReplacement = variableReplacementCache.get(key);
+        return cachedReplacement === undefined ? fullMatch : cachedReplacement;
+      }
+
+      const variableVal = allVariables[key];
+
+      // Check for direct circular reference
+      if (hasCircularReference(variableVal, key)) {
+        variableReplacementCache.set(key, undefined);
+        return fullMatch;
+      }
+
+      // 检查变量是否在引号内
+      const isInQuotes = isVariableInQuotes(offset);
+      const formatVal = valToStr(variableVal, isInQuotes);
+
+      variableReplacementCache.set(key, formatVal);
+      if (formatVal !== fullMatch) {
+        hasReplacements = true;
+      }
+      return formatVal;
     });
 
-    processedVariables.add(key);
-    hasReplacements = true;
-  }
-  replacements2.forEach(({ pattern, replacement }) => {
-    result = result.replace(new RegExp(pattern, 'g'), replacement);
-  });
+    if (checkStrOversize(result)) {
+      logOversizeString({
+        source: 'replaceJsonBodyString',
+        reason: 'replacement_result',
+        length: result.length
+      });
+      return result;
+    }
 
-  // If we made replacements and there might be nested variables, recursively process
-  if (hasReplacements && /\{\{[^}]*\}\}/.test(result)) {
-    result = replaceJsonBodyString({ text: result, depth: depth + 1 }, props);
+    if (!hasReplacements) break;
+    currentDepth++;
   }
 
   return result.replace(/(".*?")\s*:\s*undefined\b/g, '$1:null');

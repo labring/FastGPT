@@ -53,7 +53,6 @@ async function getTeamMember(match: Record<string, any>): Promise<TeamTmbItemTyp
     }),
     notificationAccount: tmb.team.notificationAccount,
 
-    lafAccount: tmb.team.lafAccount,
     openaiAccount: tmb.team.openaiAccount,
     externalWorkflowVariables: tmb.team.externalWorkflowVariables,
     isWecomTeam: !!tmb.team.meta?.wecom
@@ -154,7 +153,6 @@ export async function updateTeam({
   name,
   avatar,
   teamDomain,
-  lafAccount,
   openaiAccount,
   externalWorkflowVariable
 }: UpdateTeamProps & { teamId: string }) {
@@ -179,9 +177,6 @@ export async function updateTeam({
   return mongoSessionRun(async (session) => {
     const unsetObj = (() => {
       const obj: Record<string, 1> = {};
-      if (lafAccount?.pat === '') {
-        obj.lafAccount = 1;
-      }
       if (openaiAccount?.key === '') {
         obj.openaiAccount = 1;
       }
@@ -200,9 +195,6 @@ export async function updateTeam({
     })();
     const setObj = (() => {
       const obj: Record<string, any> = {};
-      if (lafAccount?.pat && lafAccount?.appid) {
-        obj.lafAccount = lafAccount;
-      }
       if (openaiAccount?.key && openaiAccount?.baseUrl) {
         obj.openaiAccount = openaiAccount;
       }

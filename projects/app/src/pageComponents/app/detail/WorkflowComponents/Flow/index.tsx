@@ -55,7 +55,6 @@ const nodeTypes: Record<FlowNodeTypeEnum, any> = {
   [FlowNodeTypeEnum.tool]: NodeSimple,
   [FlowNodeTypeEnum.toolSet]: dynamic(() => import('./nodes/NodeToolSet')),
   [FlowNodeTypeEnum.toolParams]: dynamic(() => import('./nodes/NodeToolParams')),
-  [FlowNodeTypeEnum.lafModule]: dynamic(() => import('./nodes/NodeLaf')),
   [FlowNodeTypeEnum.ifElseNode]: dynamic(() => import('./nodes/NodeIfElse')),
   [FlowNodeTypeEnum.variableUpdate]: dynamic(() => import('./nodes/NodeVariableUpdate')),
   [FlowNodeTypeEnum.code]: dynamic(() => import('./nodes/NodeCode')),
@@ -152,7 +151,11 @@ const Workflow = () => {
               aria-label={''}
               boxShadow={'0 4px 10px 0 rgba(19, 51, 107, 0.20), 0 0 1px 0 rgba(19, 51, 107, 0.50)'}
               onClick={() => {
-                isOpenTemplate ? onCloseTemplate() : onOpenTemplate();
+                if (isOpenTemplate) {
+                  onCloseTemplate();
+                } else {
+                  onOpenTemplate();
+                }
               }}
             />
           </Box>
