@@ -219,10 +219,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
                     aiSettings: {
                       ...prev.aiSettings,
                       systemPrompt: formData.systemPrompt || prev.aiSettings.systemPrompt,
-                      useAgentSandbox: enableSandboxEnabled,
-                      sandboxEntrypoint: enableSandboxEnabled
-                        ? prev.aiSettings.sandboxEntrypoint
-                        : undefined
+                      useAgentSandbox: enableSandboxEnabled
                     },
                     chatConfig: {
                       ...prev.chatConfig,

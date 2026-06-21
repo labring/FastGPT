@@ -32,7 +32,6 @@ import OptimizerPopover from '@/components/common/PromptEditor/OptimizerPopover'
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import { SANDBOX_ICON } from '@fastgpt/global/core/ai/sandbox/tools';
-import SandboxNotSupportTip from '../../components/SandboxNotSupportTip';
 import SandboxConfigButton from '../../components/SandboxConfigButton';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import DatasetCard from '@/components/core/app/DatasetCard';
@@ -265,9 +264,6 @@ const EditForm = ({
               enableSandbox={enableSandbox}
               isEnabled={isAgentSandboxEnabled}
               entrypoint={appForm.aiSettings.sandboxEntrypoint}
-              notSupportTip={
-                <SandboxNotSupportTip type={showSandbox ? 'freeDisable' : 'systemDisable'} />
-              }
               onChangeSandbox={(checked) => {
                 if (checked && (!showSandbox || !enableSandbox)) return;
 
@@ -275,8 +271,7 @@ const EditForm = ({
                   ...state,
                   aiSettings: {
                     ...state.aiSettings,
-                    useAgentSandbox: checked,
-                    sandboxEntrypoint: checked ? state.aiSettings.sandboxEntrypoint : undefined
+                    useAgentSandbox: checked
                   }
                 }));
               }}

@@ -111,73 +111,75 @@ export const runAgentSkillVersionEntrypoints = async ({
   if (versions.length === 0) return;
 
   const stateLocation = await resolveEntrypointStateLocation(sandbox);
-  const stateContext = await readEntrypointState(sandbox, stateLocation);
-  const state = stateContext.state;
+  await withEntrypointStateLock(sandbox, stateLocation, async () => {
+    const stateContext = await readEntrypointState(sandbox, stateLocation);
+    const state = stateContext.state;
 
-  const originalSkillEntrypoints = state.skillEntrypoints || [];
-  const selectedVersionIds = new Set(versions.map(({ versionId }) => versionId));
-  const executedVersionIds = new Set(
-    originalSkillEntrypoints.filter((versionId) => selectedVersionIds.has(versionId))
-  );
-  let stateDirty = originalSkillEntrypoints.length !== executedVersionIds.size;
-  const writeSkillEntrypointState = async () => {
-    stateContext.state.skillEntrypoints = Array.from(executedVersionIds);
-    await writeEntrypointState(sandbox, stateContext);
-    stateDirty = false;
-  };
-  const clearFreshDeployState = async (versionId: string) => {
-    if (!executedVersionIds.delete(versionId)) return;
+    const originalSkillEntrypoints = state.skillEntrypoints || [];
+    const selectedVersionIds = new Set(versions.map(({ versionId }) => versionId));
+    const executedVersionIds = new Set(
+      originalSkillEntrypoints.filter((versionId) => selectedVersionIds.has(versionId))
+    );
+    let stateDirty = originalSkillEntrypoints.length !== executedVersionIds.size;
+    const writeSkillEntrypointState = async () => {
+      stateContext.state.skillEntrypoints = Array.from(executedVersionIds);
+      await writeEntrypointState(sandbox, stateContext);
+      stateDirty = false;
+    };
+    const clearFreshDeployState = async (versionId: string) => {
+      if (!executedVersionIds.delete(versionId)) return;
 
-    // fresh deploy 没有成功执行入口时不能保留旧成功状态，否则下轮可能误跳过。
-    await writeSkillEntrypointState();
-  };
+      // fresh deploy 没有成功执行入口时不能保留旧成功状态，否则下轮可能误跳过。
+      await writeSkillEntrypointState();
+    };
 
-  for (const version of versions) {
-    if (!version.freshlyDeployed && executedVersionIds.has(version.versionId)) continue;
+    for (const version of versions) {
+      if (!version.freshlyDeployed && executedVersionIds.has(version.versionId)) continue;
 
-    const entrypointPath = joinSandboxPath(version.targetDir, ENTRYPOINT_FILE_NAME);
-    const existsResult = await sandbox
-      .execute(`[ -f ${shellQuote(entrypointPath)} ]`, {
-        timeoutMs: 5_000,
-        maxOutputBytes: 1024
-      })
-      .catch((error) => {
-        logger.warn('[Agent Skills] Failed to check skill entrypoint file', {
-          versionId: version.versionId,
-          entrypointPath,
-          error
+      const entrypointPath = joinSandboxPath(version.targetDir, ENTRYPOINT_FILE_NAME);
+      const existsResult = await sandbox
+        .execute(`[ -f ${shellQuote(entrypointPath)} ]`, {
+          timeoutMs: 5_000,
+          maxOutputBytes: 1024
+        })
+        .catch((error) => {
+          logger.warn('[Agent Skills] Failed to check skill entrypoint file', {
+            versionId: version.versionId,
+            entrypointPath,
+            error
+          });
+          return undefined;
         });
-        return undefined;
+      if (!existsResult || existsResult.exitCode !== 0) {
+        if (version.freshlyDeployed) {
+          await clearFreshDeployState(version.versionId);
+        }
+        continue;
+      }
+
+      const result = await executeEntrypointCommand({
+        sandbox,
+        command: `cd ${shellQuote(version.targetDir)} && ${buildLimitedOutputShellCommand(
+          `/bin/bash ${shellQuote(ENTRYPOINT_FILE_NAME)}`
+        )}`,
+        label: `skill:${version.versionId}`
       });
-    if (!existsResult || existsResult.exitCode !== 0) {
-      if (version.freshlyDeployed) {
-        await clearFreshDeployState(version.versionId);
+
+      if (!result) {
+        if (version.freshlyDeployed) {
+          await clearFreshDeployState(version.versionId);
+        }
+        continue;
       }
-      continue;
+
+      executedVersionIds.add(version.versionId);
+      await writeSkillEntrypointState();
     }
 
-    const result = await executeEntrypointCommand({
-      sandbox,
-      command: `cd ${shellQuote(version.targetDir)} && ${buildLimitedOutputShellCommand(
-        `/bin/bash ${shellQuote(ENTRYPOINT_FILE_NAME)}`
-      )}`,
-      label: `skill:${version.versionId}`
-    });
-
-    if (!result) {
-      if (version.freshlyDeployed) {
-        await clearFreshDeployState(version.versionId);
-      }
-      continue;
+    if (stateDirty) {
+      await writeSkillEntrypointState();
     }
-
-    executedVersionIds.add(version.versionId);
-    await writeSkillEntrypointState();
-  }
-
-  if (stateDirty) {
-    await writeSkillEntrypointState();
-  }
+  });
 };
 
 const resolveEntrypointStateLocation = async (

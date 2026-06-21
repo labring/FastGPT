@@ -102,11 +102,14 @@ export const appWorkflow2Form = ({
         node.inputs,
         NodeInputKeyEnum.aiChatJsonSchema
       );
-      const useAgentSandbox = findInputValueByKey(node.inputs, NodeInputKeyEnum.useAgentSandbox);
-      defaultAppForm.aiSettings.useAgentSandbox = useAgentSandbox;
-      defaultAppForm.aiSettings.sandboxEntrypoint = useAgentSandbox
-        ? findInputValueByKey(node.inputs, NodeInputKeyEnum.sandboxEntrypoint)
-        : undefined;
+      defaultAppForm.aiSettings.useAgentSandbox = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.useAgentSandbox
+      );
+      defaultAppForm.aiSettings.sandboxEntrypoint = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.sandboxEntrypoint
+      );
     } else if (node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode) {
       defaultAppForm.dataset.datasets = findInputValueByKey(
         node.inputs,
@@ -584,9 +587,7 @@ export function form2AppWorkflow(
     };
   }
   function toolTemplates(formData: AppFormEditFormType): WorkflowType {
-    const normalizedSandboxEntrypoint = formData.aiSettings.useAgentSandbox
-      ? formData.aiSettings.sandboxEntrypoint?.trim() || undefined
-      : undefined;
+    const normalizedSandboxEntrypoint = formData.aiSettings.sandboxEntrypoint?.trim() || undefined;
 
     const toolNodeId = getNanoid(6);
 

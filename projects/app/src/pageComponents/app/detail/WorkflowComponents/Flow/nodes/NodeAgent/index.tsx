@@ -478,23 +478,11 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           value: checked
         }
       });
-      if (!checked && sandboxEntrypointInput) {
-        onChangeNode({
-          nodeId,
-          key: NodeInputKeyEnum.sandboxEntrypoint,
-          type: 'updateInput',
-          value: {
-            ...sandboxEntrypointInput,
-            value: undefined
-          }
-        });
-      }
     },
     [
       enableSandbox,
       nodeId,
       onChangeNode,
-      sandboxEntrypointInput,
       sandboxInput,
       selectedAgentSkills.length,
       showSandbox,

@@ -8,16 +8,11 @@ type Props = Omit<EditorProps, 'resize'> & { language?: string };
 function getLanguage(language: string | undefined): string {
   let fullName: string;
   switch (language) {
-    case 'python':
     case 'py':
       fullName = 'python';
       break;
-    case 'javascript':
     case 'js':
       fullName = 'javascript';
-      break;
-    case 'json':
-      fullName = 'json';
       break;
     case 'sh':
     case 'shell':
@@ -34,8 +29,7 @@ function getLanguage(language: string | undefined): string {
 const CodeEditor = (props: Props) => {
   const { t } = useTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const { language, ...otherProps } = props;
-  const fullName = getLanguage(language);
+  const fullName = getLanguage(props.language);
   return (
     <>
       <MyEditor {...props} resize onOpenModal={onOpen} language={fullName} />

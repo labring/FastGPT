@@ -99,28 +99,8 @@ const NodeToolCall = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           value: checked
         }
       });
-      if (!checked && sandboxEntrypointInput) {
-        onChangeNode({
-          nodeId,
-          key: NodeInputKeyEnum.sandboxEntrypoint,
-          type: 'updateInput',
-          value: {
-            ...sandboxEntrypointInput,
-            value: undefined
-          }
-        });
-      }
     },
-    [
-      enableSandbox,
-      nodeId,
-      onChangeNode,
-      sandboxEntrypointInput,
-      sandboxInput,
-      showSandbox,
-      t,
-      toast
-    ]
+    [enableSandbox, nodeId, onChangeNode, sandboxInput, showSandbox, t, toast]
   );
 
   return (

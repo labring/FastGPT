@@ -69,9 +69,9 @@ export const appWorkflow2AgentForm = ({
       defaultAppForm.aiSettings.aiChatTopP = inputMap.get(NodeInputKeyEnum.aiChatTopP);
       const useAgentSandbox = inputMap.get(NodeInputKeyEnum.useAgentSandbox);
       defaultAppForm.aiSettings.useAgentSandbox = useAgentSandbox;
-      defaultAppForm.aiSettings.sandboxEntrypoint = useAgentSandbox
-        ? inputMap.get(NodeInputKeyEnum.sandboxEntrypoint)
-        : undefined;
+      defaultAppForm.aiSettings.sandboxEntrypoint = inputMap.get(
+        NodeInputKeyEnum.sandboxEntrypoint
+      );
 
       const tools = inputMap.get(NodeInputKeyEnum.selectedTools) as FlowNodeTemplateType[];
       if (tools) {
@@ -147,9 +147,7 @@ export function agentForm2AppWorkflow(
   chatConfig: AppChatConfigType;
 } {
   const aiChatNodeId = '7BdojPlukIQw';
-  const normalizedSandboxEntrypoint = data.aiSettings.useAgentSandbox
-    ? data.aiSettings.sandboxEntrypoint?.trim() || undefined
-    : undefined;
+  const normalizedSandboxEntrypoint = data.aiSettings.sandboxEntrypoint?.trim() || undefined;
   const modelData = getWebLLMModel(data.aiSettings.model);
   const modelMultimodal = {
     vision: !!modelData?.vision,

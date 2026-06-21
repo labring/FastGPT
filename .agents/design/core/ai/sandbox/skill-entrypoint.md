@@ -75,8 +75,8 @@ selected skillIds
   -> 查询 skill.currentVersionId
   -> 查询 version.storageKey
   -> expectedVersionDirs = ./projects/<currentVersionId>
-  -> 缺失 marker 的 versionDir 才下载、解压
-  -> 已存在 marker 的 versionDir 跳过下载、解压
+  -> 缺失的 versionDir 才下载、解压
+  -> 已存在的 versionDir 跳过下载、解压
   -> 清理 ./projects 下不在 expectedVersionDirs 的旧 version 目录
   -> 对 expectedVersionDirs 检查 entrypoint 成功状态，未成功执行过时执行
   -> 只扫描本轮 selected versionDirs 下的 SKILL.md，用于 prompt 注入
@@ -85,18 +85,17 @@ selected skillIds
 部署目录判断：
 
 ```text
-[ -f ./projects/<versionId>/.fastgpt-skill-version ] 为 true
+./projects/<versionId> 为一级目录，且 versionId 是合法版本 ID
 => 认为该版本包已经部署过
 
-marker 不存在
+versionDir 不存在
 => 使用 version.storageKey 下载 zip 并部署
 ```
 
-部署使用临时目录和 marker 文件，避免半解压目录或普通项目目录被误判为可用版本：
+部署使用临时目录解压，成功后再整体替换目标 versionDir，避免半解压目录直接暴露为可用版本：
 
 ```text
 ./projects/.tmp-<versionId>-<random>  解压临时目录
-./projects/.tmp-<versionId>-<random>/.fastgpt-skill-version
 mv ./projects/.tmp-<versionId>-<random> ./projects/<versionId>
 ```
 
@@ -133,12 +132,6 @@ HOME 解析沿用 ide-agent 逻辑：
 有 selected version 时会按本轮 version 集合 reconcile `skillEntrypoints`：未选中的 versionId 会被移除，fresh deploy 后入口失败或不存在时也会清掉对应旧成功状态，避免目录重建后误跳过。状态目录不可用时仍执行脚本但不记录成功状态；状态文件缺失或损坏时会按空状态重建。
 
 状态读写和普通运行态 skill 目录 reconcile 都使用 sandbox HOME 下的目录锁。锁会有限等待并清理陈旧锁；锁机制本身不可用时只记录日志并继续执行，不向上阻断本轮 Agent 初始化。
-
-由于 E2B 的 HOME 可能就是工作目录，默认 skill 打包 ignore 必须包含：
-
-```text
-.fastgpt/
-```
 
 ## 执行判断
 

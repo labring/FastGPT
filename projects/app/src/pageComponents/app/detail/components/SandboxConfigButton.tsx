@@ -8,14 +8,13 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useTranslation } from 'next-i18next';
 import SandboxEntrypointEditor from './SandboxEntrypointEditor';
-import SandboxTipTag from './SandboxTipTag';
+import SandboxNotSupportTip from './SandboxNotSupportTip';
 
 type SandboxConfigButtonProps = Omit<FlexProps, 'onChange'> & {
   showSandbox: boolean;
   enableSandbox: boolean;
   isEnabled: boolean;
   entrypoint?: string;
-  notSupportTip?: React.ReactNode;
   onChangeSandbox: (checked: boolean) => void;
   onChangeEntrypoint?: (value: string) => void;
 };
@@ -31,7 +30,6 @@ function SandboxConfigButton({
   enableSandbox,
   isEnabled,
   entrypoint,
-  notSupportTip,
   onChangeSandbox,
   onChangeEntrypoint,
   ...props
@@ -67,13 +65,9 @@ function SandboxConfigButton({
   return (
     <Flex alignItems={'center'} gap={1} {...props}>
       {showSandbox && enableSandbox ? (
-        <SandboxTipTag />
+        <MyTag>{t('app:sandbox_free_tip')}</MyTag>
       ) : (
-        notSupportTip || (
-          <MyTag>
-            {t(showSandbox ? 'app:sandbox_free_not_support' : 'app:sandbox_not_support_tip')}
-          </MyTag>
-        )
+        <SandboxNotSupportTip type={showSandbox ? 'freeDisable' : 'systemDisable'} />
       )}
 
       <MyTooltip label={t('common:Config')}>
