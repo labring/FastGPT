@@ -17,6 +17,16 @@ import {
   DeleteAppResponseSchema,
   type DeleteAppResponseType
 } from '@fastgpt/global/openapi/core/app/common/api';
+import {
+  createUserAuditActor,
+  getEnterpriseAuditRequestContext,
+  writeEnterpriseAuditEvent
+} from '@fastgpt/service/support/enterprise/audit/util';
+import {
+  EnterpriseAuditActionEnum,
+  EnterpriseAuditResourceTypeEnum,
+  EnterpriseAuditResultEnum
+} from '@fastgpt/global/support/enterprise/audit/constants';
 
 async function handler(req: NextApiRequest): Promise<DeleteAppResponseType> {
   const { appId } = parseApiInput({
@@ -73,6 +83,21 @@ async function handler(req: NextApiRequest): Promise<DeleteAppResponseType> {
       }
     });
   })();
+  writeEnterpriseAuditEvent({
+    action: EnterpriseAuditActionEnum.AppDelete,
+    result: EnterpriseAuditResultEnum.Success,
+    actor: createUserAuditActor({ userId, teamId, tmbId }),
+    resource: {
+      type: EnterpriseAuditResourceTypeEnum.App,
+      id: appId,
+      name: app.name
+    },
+    ...getEnterpriseAuditRequestContext(req),
+    metadata: {
+      appType: app.type,
+      deletedChildrenCount: deleteAppsList.length
+    }
+  });
 
   // Tracks
   pushTrack.countAppNodes({ teamId, tmbId, uid: userId, appId });

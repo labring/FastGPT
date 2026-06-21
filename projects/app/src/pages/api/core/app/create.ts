@@ -42,6 +42,16 @@ import { copyAvatarImage } from '@fastgpt/service/common/file/image/controller';
 import { extractAppResourceRefsFromNodes } from '@fastgpt/service/core/app/resourceRefs';
 
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import {
+  createUserAuditActor,
+  getEnterpriseAuditRequestContext,
+  writeEnterpriseAuditEvent
+} from '@fastgpt/service/support/enterprise/audit/util';
+import {
+  EnterpriseAuditActionEnum,
+  EnterpriseAuditResourceTypeEnum,
+  EnterpriseAuditResultEnum
+} from '@fastgpt/global/support/enterprise/audit/constants';
 
 async function handler(req: ApiRequestProps<CreateAppBodyType>) {
   const { body } = parseApiInput({
@@ -110,6 +120,23 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
     userAvatar: tmb?.avatar,
     username: tmb?.user?.username,
     templateId
+  });
+  const auditContext = getEnterpriseAuditRequestContext(req);
+  writeEnterpriseAuditEvent({
+    action: EnterpriseAuditActionEnum.AppCreate,
+    result: EnterpriseAuditResultEnum.Success,
+    actor: createUserAuditActor({ userId, teamId, tmbId, isRoot }),
+    resource: {
+      type: EnterpriseAuditResourceTypeEnum.App,
+      id: String(appId),
+      name
+    },
+    ...auditContext,
+    metadata: {
+      appType: type,
+      parentId,
+      templateId
+    }
   });
 
   pushTrack.createApp({

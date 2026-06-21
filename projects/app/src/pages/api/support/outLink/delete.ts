@@ -15,6 +15,16 @@ import {
   type OutLinkDeleteQueryType,
   type OutLinkDeleteResponseType
 } from '@fastgpt/global/openapi/support/outLink/api';
+import {
+  createUserAuditActor,
+  getEnterpriseAuditRequestContext,
+  writeEnterpriseAuditEvent
+} from '@fastgpt/service/support/enterprise/audit/util';
+import {
+  EnterpriseAuditActionEnum,
+  EnterpriseAuditResourceTypeEnum,
+  EnterpriseAuditResultEnum
+} from '@fastgpt/global/support/enterprise/audit/constants';
 
 /* delete a shareChat by shareChatId */
 async function handler(
@@ -24,7 +34,7 @@ async function handler(
     req,
     querySchema: OutLinkDeleteQuerySchema
   }).query;
-  const { tmbId, teamId, outLink, app } = await authOutLinkCrud({
+  const { tmbId, teamId, userId, outLink, app } = await authOutLinkCrud({
     req,
     outLinkId: id,
     authToken: true,
@@ -53,6 +63,23 @@ async function handler(
       }
     });
   })();
+  writeEnterpriseAuditEvent({
+    action: EnterpriseAuditActionEnum.ShareLinkDelete,
+    result: EnterpriseAuditResultEnum.Success,
+    actor: createUserAuditActor({ userId, teamId, tmbId }),
+    resource: {
+      type: EnterpriseAuditResourceTypeEnum.ShareLink,
+      id,
+      name: outLink.name
+    },
+    ...getEnterpriseAuditRequestContext(req),
+    metadata: {
+      appId: String(app._id),
+      appName: app.name,
+      appType: app.type,
+      linkType: outlink?.type
+    }
+  });
 
   return OutLinkDeleteResponseSchema.parse(undefined);
 }

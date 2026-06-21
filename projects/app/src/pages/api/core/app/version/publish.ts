@@ -20,6 +20,16 @@ import {
   PublishAppQuerySchema,
   PublishAppResponseSchema
 } from '@fastgpt/global/openapi/core/app/version/api';
+import {
+  createUserAuditActor,
+  getEnterpriseAuditRequestContext,
+  writeEnterpriseAuditEvent
+} from '@fastgpt/service/support/enterprise/audit/util';
+import {
+  EnterpriseAuditActionEnum,
+  EnterpriseAuditResourceTypeEnum,
+  EnterpriseAuditResultEnum
+} from '@fastgpt/global/support/enterprise/audit/constants';
 
 async function handler(req: ApiRequestProps<PostPublishAppProps>) {
   const {
@@ -92,6 +102,21 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
         appType: getI18nAppType(app.type)
       }
     });
+    writeEnterpriseAuditEvent({
+      action: EnterpriseAuditActionEnum.AppPublish,
+      result: EnterpriseAuditResultEnum.Success,
+      actor: createUserAuditActor({ teamId, tmbId }),
+      resource: {
+        type: EnterpriseAuditResourceTypeEnum.App,
+        id: appId,
+        name: app.name
+      },
+      ...getEnterpriseAuditRequestContext(req),
+      metadata: {
+        appType: app.type,
+        operation: 'auto_save'
+      }
+    });
 
     return PublishAppResponseSchema.parse(undefined);
   }
@@ -161,6 +186,22 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
       }
     });
   })();
+  writeEnterpriseAuditEvent({
+    action: EnterpriseAuditActionEnum.AppPublish,
+    result: EnterpriseAuditResultEnum.Success,
+    actor: createUserAuditActor({ teamId, tmbId }),
+    resource: {
+      type: EnterpriseAuditResourceTypeEnum.App,
+      id: appId,
+      name: app.name
+    },
+    ...getEnterpriseAuditRequestContext(req),
+    metadata: {
+      appType: app.type,
+      operation: isPublish ? 'save_and_publish' : 'update',
+      versionName
+    }
+  });
 
   return PublishAppResponseSchema.parse(undefined);
 }

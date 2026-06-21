@@ -19,11 +19,11 @@ import {
   type LoginSuccessResponseType
 } from '@fastgpt/global/openapi/support/user/account/login/api';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
-import { getClientIpFromRequest } from '@fastgpt/service/common/security/clientIp';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   createAnonymousAuditActor,
   createUserAuditActor,
+  getEnterpriseAuditRequestContext,
   writeEnterpriseAuditEvent
 } from '@fastgpt/service/support/enterprise/audit/util';
 import {
@@ -40,10 +40,26 @@ async function handler(
     req,
     bodySchema: LoginByPasswordBodySchema
   }).body;
-  const clientIp = getClientIpFromRequest(req);
-  const userAgent = Array.isArray(req.headers['user-agent'])
-    ? req.headers['user-agent'].join(',')
-    : req.headers['user-agent'];
+  const { clientIp, userAgent, requestId } = getEnterpriseAuditRequestContext(req);
+
+  if (!serviceEnv.ENTERPRISE_PASSWORD_LOGIN_ENABLED && username !== 'root') {
+    writeEnterpriseAuditEvent({
+      action: EnterpriseAuditActionEnum.UserLoginFailure,
+      result: EnterpriseAuditResultEnum.Failure,
+      actor: createAnonymousAuditActor(username),
+      resource: {
+        type: EnterpriseAuditResourceTypeEnum.User,
+        name: username
+      },
+      requestId,
+      clientIp,
+      userAgent,
+      metadata: {
+        reason: 'password_login_disabled'
+      }
+    });
+    return Promise.reject('Password login is disabled');
+  }
 
   // Auth prelogin code
   await authCode({
@@ -66,6 +82,7 @@ async function handler(
         type: EnterpriseAuditResourceTypeEnum.User,
         name: username
       },
+      requestId,
       clientIp,
       userAgent,
       metadata: {
@@ -84,6 +101,7 @@ async function handler(
         id: String(user._id),
         name: username
       },
+      requestId,
       clientIp,
       userAgent,
       metadata: {
@@ -104,6 +122,7 @@ async function handler(
           id: String(user._id),
           name: username
         },
+        requestId,
         clientIp,
         userAgent,
         metadata: {
@@ -160,6 +179,7 @@ async function handler(
       id: String(user._id),
       name: username
     },
+    requestId,
     clientIp,
     userAgent,
     metadata: {

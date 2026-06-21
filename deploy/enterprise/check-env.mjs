@@ -214,6 +214,43 @@ if ((env.LOG_CONSOLE_LEVEL || '').toLowerCase() === 'debug') {
   warnings.push('LOG_CONSOLE_LEVEL=debug may expose sensitive details in production logs');
 }
 
+const passwordLoginEnabled = (env.ENTERPRISE_PASSWORD_LOGIN_ENABLED || 'true').toLowerCase();
+if (!['true', 'false'].includes(passwordLoginEnabled)) {
+  errors.push('ENTERPRISE_PASSWORD_LOGIN_ENABLED must be true or false');
+}
+
+if (passwordLoginEnabled === 'false') {
+  for (const key of [
+    'ENTERPRISE_AUTH_ALLOWED_EMAIL_DOMAINS',
+    'ENTERPRISE_OIDC_ISSUER',
+    'ENTERPRISE_OIDC_CLIENT_ID',
+    'ENTERPRISE_OIDC_CLIENT_SECRET'
+  ]) {
+    if (!env[key]) {
+      errors.push(`${key} is required when ENTERPRISE_PASSWORD_LOGIN_ENABLED=false`);
+    }
+  }
+}
+
+if (env.ENTERPRISE_AUTH_ALLOWED_EMAIL_DOMAINS === '*') {
+  errors.push(
+    'ENTERPRISE_AUTH_ALLOWED_EMAIL_DOMAINS must be an explicit comma-separated allowlist'
+  );
+}
+
+if (env.ENTERPRISE_OIDC_ISSUER) {
+  if (!env.ENTERPRISE_OIDC_ISSUER.startsWith('https://')) {
+    errors.push('ENTERPRISE_OIDC_ISSUER must use https:// in production');
+  }
+  if (isLocalUrl(env.ENTERPRISE_OIDC_ISSUER)) {
+    errors.push('ENTERPRISE_OIDC_ISSUER must not use localhost, 127.0.0.1, or 0.0.0.0');
+  }
+}
+
+if (env.ENTERPRISE_OIDC_CLIENT_SECRET) {
+  validateSecretValue('ENTERPRISE_OIDC_CLIENT_SECRET', env.ENTERPRISE_OIDC_CLIENT_SECRET);
+}
+
 printAndExit();
 
 function parseEnv(content) {
@@ -268,6 +305,15 @@ function getUrlPassword(value) {
     return decodeURIComponent(new URL(value).password || '');
   } catch {
     return '';
+  }
+}
+
+function validateSecretValue(key, value) {
+  if (weakValues.has(value.toLowerCase())) {
+    errors.push(`${key} uses a known weak default value`);
+  }
+  if (value.length < 24) {
+    warnings.push(`${key} is shorter than 24 characters; use a high-entropy random value`);
   }
 }
 

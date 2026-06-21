@@ -14,6 +14,16 @@ import {
   type OutLinkUpdateBodyType,
   type OutLinkUpdateResponseType
 } from '@fastgpt/global/openapi/support/outLink/api';
+import {
+  createUserAuditActor,
+  getEnterpriseAuditRequestContext,
+  writeEnterpriseAuditEvent
+} from '@fastgpt/service/support/enterprise/audit/util';
+import {
+  EnterpriseAuditActionEnum,
+  EnterpriseAuditResourceTypeEnum,
+  EnterpriseAuditResultEnum
+} from '@fastgpt/global/support/enterprise/audit/constants';
 
 // {
 // _id?: string; // Outlink 的 ID
@@ -50,6 +60,7 @@ async function handler(
   const {
     tmbId,
     teamId,
+    userId,
     outLink,
     app: logApp
   } = await authOutLinkCrud({
@@ -82,6 +93,34 @@ async function handler(
       }
     });
   })();
+  writeEnterpriseAuditEvent({
+    action: EnterpriseAuditActionEnum.ShareLinkUpdate,
+    result: EnterpriseAuditResultEnum.Success,
+    actor: createUserAuditActor({ userId, teamId, tmbId }),
+    resource: {
+      type: EnterpriseAuditResourceTypeEnum.ShareLink,
+      id: _id,
+      name: outLink.name
+    },
+    ...getEnterpriseAuditRequestContext(req),
+    metadata: {
+      appId: String(logApp._id),
+      appName: logApp.name,
+      appType: logApp.type,
+      updatedFields: Object.entries({
+        name,
+        showCite,
+        canDownloadSource,
+        showRunningStatus,
+        showSkillReferences,
+        showFullText,
+        limit,
+        app
+      })
+        .filter(([, value]) => value !== undefined)
+        .map(([key]) => key)
+    }
+  });
   return OutLinkUpdateResponseSchema.parse(doc?.shareId!);
 }
 export default NextAPI(handler);

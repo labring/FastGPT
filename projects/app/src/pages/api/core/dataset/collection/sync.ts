@@ -9,6 +9,16 @@ import {
   SyncCollectionResponseSchema,
   type SyncCollectionResponseType
 } from '@fastgpt/global/openapi/core/dataset/collection/api';
+import {
+  createUserAuditActor,
+  getEnterpriseAuditRequestContext,
+  writeEnterpriseAuditEvent
+} from '@fastgpt/service/support/enterprise/audit/util';
+import {
+  EnterpriseAuditActionEnum,
+  EnterpriseAuditResourceTypeEnum,
+  EnterpriseAuditResultEnum
+} from '@fastgpt/global/support/enterprise/audit/constants';
 
 /*
   Collection sync
@@ -21,7 +31,7 @@ import {
 async function handler(req: ApiRequestProps): Promise<SyncCollectionResponseType> {
   const { collectionId } = parseApiInput({ req, bodySchema: SyncCollectionBodySchema }).body;
 
-  const { collection } = await authDatasetCollection({
+  const { collection, teamId, tmbId, userId } = await authDatasetCollection({
     req,
     authToken: true,
     authApiKey: true,
@@ -29,7 +39,46 @@ async function handler(req: ApiRequestProps): Promise<SyncCollectionResponseType
     per: WritePermissionVal
   });
 
-  return SyncCollectionResponseSchema.parse(await syncCollection(collection));
+  try {
+    const result = await syncCollection(collection);
+    writeEnterpriseAuditEvent({
+      action: EnterpriseAuditActionEnum.KnowledgeSyncRun,
+      result: EnterpriseAuditResultEnum.Success,
+      actor: createUserAuditActor({ userId, teamId, tmbId }),
+      resource: {
+        type: EnterpriseAuditResourceTypeEnum.Collection,
+        id: collectionId,
+        name: collection.name
+      },
+      ...getEnterpriseAuditRequestContext(req),
+      metadata: {
+        syncResult: result,
+        datasetId: String(collection.datasetId),
+        datasetName: collection.dataset?.name,
+        collectionType: collection.type
+      }
+    });
+    return SyncCollectionResponseSchema.parse(result);
+  } catch (error) {
+    writeEnterpriseAuditEvent({
+      action: EnterpriseAuditActionEnum.KnowledgeSyncRun,
+      result: EnterpriseAuditResultEnum.Failure,
+      actor: createUserAuditActor({ userId, teamId, tmbId }),
+      resource: {
+        type: EnterpriseAuditResourceTypeEnum.Collection,
+        id: collectionId,
+        name: collection.name
+      },
+      ...getEnterpriseAuditRequestContext(req),
+      metadata: {
+        datasetId: String(collection.datasetId),
+        datasetName: collection.dataset?.name,
+        collectionType: collection.type,
+        error: error instanceof Error ? error.message : String(error)
+      }
+    });
+    throw error;
+  }
 }
 
 export default NextAPI(handler);

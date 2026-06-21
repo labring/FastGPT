@@ -12,12 +12,22 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { deleteDatasetsImmediate } from '@fastgpt/service/core/dataset/delete/processor';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import {
+  createUserAuditActor,
+  getEnterpriseAuditRequestContext,
+  writeEnterpriseAuditEvent
+} from '@fastgpt/service/support/enterprise/audit/util';
+import {
+  EnterpriseAuditActionEnum,
+  EnterpriseAuditResourceTypeEnum,
+  EnterpriseAuditResultEnum
+} from '@fastgpt/global/support/enterprise/audit/constants';
 
 async function handler(req: ApiRequestProps) {
   const { id: datasetId } = parseApiInput({ req, querySchema: DeleteDatasetQuerySchema }).query;
 
   // auth owner
-  const { teamId, tmbId, dataset } = await authDataset({
+  const { teamId, tmbId, dataset, userId } = await authDataset({
     req,
     authToken: true,
     authApiKey: true,
@@ -70,6 +80,21 @@ async function handler(req: ApiRequestProps) {
       }
     });
   })();
+  writeEnterpriseAuditEvent({
+    action: EnterpriseAuditActionEnum.DatasetDelete,
+    result: EnterpriseAuditResultEnum.Success,
+    actor: createUserAuditActor({ userId, teamId, tmbId }),
+    resource: {
+      type: EnterpriseAuditResourceTypeEnum.Dataset,
+      id: datasetId,
+      name: dataset.name
+    },
+    ...getEnterpriseAuditRequestContext(req),
+    metadata: {
+      datasetType: dataset.type,
+      deletedChildrenCount: datasetIds.length
+    }
+  });
 }
 
 export default NextAPI(handler);

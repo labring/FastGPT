@@ -8,12 +8,17 @@ export enum EnterpriseAuditActionEnum {
   AppUpdate = 'app.update',
   AppDelete = 'app.delete',
   AppPublish = 'app.publish',
+  ShareLinkUpdate = 'share_link.update',
+  ShareLinkDelete = 'share_link.delete',
   DatasetCreate = 'dataset.create',
   DatasetUpdate = 'dataset.update',
   DatasetDelete = 'dataset.delete',
   DatasetCollectionImport = 'dataset.collection.import',
   DatasetCollectionDelete = 'dataset.collection.delete',
   ModelConfigUpdate = 'model.config.update',
+  ModelConfigDelete = 'model.config.delete',
+  IdentityConfigUpdate = 'identity.config.update',
+  KnowledgeSyncRun = 'knowledge_sync.run',
   SystemConfigUpdate = 'system.config.update',
   AuditExport = 'audit.export'
 }

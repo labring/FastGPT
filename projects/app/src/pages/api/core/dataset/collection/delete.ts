@@ -14,6 +14,16 @@ import {
   DeleteCollectionBodySchema,
   DeleteCollectionQuerySchema
 } from '@fastgpt/global/openapi/core/dataset/collection/api';
+import {
+  createUserAuditActor,
+  getEnterpriseAuditRequestContext,
+  writeEnterpriseAuditEvent
+} from '@fastgpt/service/support/enterprise/audit/util';
+import {
+  EnterpriseAuditActionEnum,
+  EnterpriseAuditResourceTypeEnum,
+  EnterpriseAuditResultEnum
+} from '@fastgpt/global/support/enterprise/audit/constants';
 
 async function handler(req: ApiRequestProps) {
   const { id } = parseApiInput({ req, querySchema: DeleteCollectionQuerySchema }).query;
@@ -25,7 +35,7 @@ async function handler(req: ApiRequestProps) {
     return Promise.reject(CommonErrEnum.missingParams);
   }
 
-  const [{ teamId, collection, tmbId }] = await Promise.all(
+  const [{ teamId, collection, tmbId, userId }] = await Promise.all(
     deletedIds.map(async (collectionId) => {
       return await authDatasetCollection({
         req,
@@ -79,6 +89,24 @@ async function handler(req: ApiRequestProps) {
       }
     });
   })();
+  writeEnterpriseAuditEvent({
+    action: EnterpriseAuditActionEnum.DatasetCollectionDelete,
+    result: EnterpriseAuditResultEnum.Success,
+    actor: createUserAuditActor({ userId, teamId, tmbId }),
+    resource: {
+      type: EnterpriseAuditResourceTypeEnum.Collection,
+      id: String(collection._id),
+      name: collection.name
+    },
+    ...getEnterpriseAuditRequestContext(req),
+    metadata: {
+      datasetId: String(collection.datasetId),
+      datasetName: collection.dataset?.name || '',
+      datasetType: collection.dataset?.type || '',
+      deletedIds: deletedIds.map(String),
+      deletedChildrenCount: collections.length
+    }
+  });
 }
 
 export default NextAPI(handler);

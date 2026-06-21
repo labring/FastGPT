@@ -13,6 +13,7 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   createUserAuditActor,
+  getEnterpriseAuditRequestContext,
   writeEnterpriseAuditEvent
 } from '@fastgpt/service/support/enterprise/audit/util';
 import {
@@ -20,7 +21,6 @@ import {
   EnterpriseAuditResourceTypeEnum,
   EnterpriseAuditResultEnum
 } from '@fastgpt/global/support/enterprise/audit/constants';
-import { getClientIpFromRequest } from '@fastgpt/service/common/security/clientIp';
 import {
   CreateApiKeyBodySchema,
   CreateApiKeyResponseSchema,
@@ -108,10 +108,7 @@ async function handler(
         id: String(openapi._id),
         name
       },
-      clientIp: getClientIpFromRequest(req),
-      userAgent: Array.isArray(req.headers['user-agent'])
-        ? req.headers['user-agent'].join(',')
-        : req.headers['user-agent'],
+      ...getEnterpriseAuditRequestContext(req),
       metadata: {
         appId,
         authProxy: !appId && authProxy,

@@ -23,7 +23,8 @@ export enum TabEnum {
   'loginout' = 'loginout',
   'team' = 'team',
   'model' = 'model',
-  'customDomain' = 'customDomain'
+  'customDomain' = 'customDomain',
+  'enterprise' = 'enterprise'
 }
 
 const AccountContainer = ({
@@ -70,6 +71,15 @@ const AccountContainer = ({
             icon: 'support/bill/payRecordLight',
             label: t('account:bills_and_invoices'),
             value: TabEnum.bill
+          }
+        ]
+      : []),
+    ...(userInfo?.team?.permission.hasManagePer
+      ? [
+          {
+            icon: 'support/permission/privateLight',
+            label: 'Enterprise',
+            value: TabEnum.enterprise
           }
         ]
       : []),

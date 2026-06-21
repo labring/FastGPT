@@ -11,11 +11,7 @@ import {
   UpdateDatasetBodySchema,
   type UpdateDatasetBody
 } from '@fastgpt/global/openapi/core/dataset/api';
-import {
-  DatasetCollectionTypeEnum,
-  DatasetTypeEnum,
-  TrainingModeEnum
-} from '@fastgpt/global/core/dataset/constants';
+import { DatasetTypeEnum, TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ClientSession } from 'mongoose';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
@@ -44,6 +40,16 @@ import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '@fastgpt/service/common/system/utils';
 import { checkMoveFolderDepth } from '@fastgpt/service/common/parentFolder/depth';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import {
+  createUserAuditActor,
+  getEnterpriseAuditRequestContext,
+  writeEnterpriseAuditEvent
+} from '@fastgpt/service/support/enterprise/audit/util';
+import {
+  EnterpriseAuditActionEnum,
+  EnterpriseAuditResourceTypeEnum,
+  EnterpriseAuditResultEnum
+} from '@fastgpt/global/support/enterprise/audit/constants';
 
 // 更新知识库接口
 // 包括如下功能：
@@ -85,7 +91,7 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
 
   const isMove = parentId !== undefined;
 
-  const { dataset, permission, tmbId, teamId } = await authDataset({
+  const { dataset, permission, tmbId, teamId, userId } = await authDataset({
     req,
     authToken: true,
     authApiKey: true,
@@ -149,8 +155,6 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
       isFolderType: (type) => type === DatasetTypeEnum.folder
     });
   }
-
-  const isFolder = dataset.type === DatasetTypeEnum.folder;
 
   updateTraining({
     teamId: dataset.teamId,
@@ -274,10 +278,58 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
         session
       });
       logDatasetMove({ tmbId, teamId, dataset, targetName });
-      return onUpdate(session);
+      const result = await onUpdate(session);
+      writeEnterpriseAuditEvent({
+        action: EnterpriseAuditActionEnum.DatasetUpdate,
+        result: EnterpriseAuditResultEnum.Success,
+        actor: createUserAuditActor({ userId, teamId, tmbId }),
+        resource: {
+          type: EnterpriseAuditResourceTypeEnum.Dataset,
+          id,
+          name: dataset.name
+        },
+        ...getEnterpriseAuditRequestContext(req),
+        metadata: {
+          datasetType: dataset.type,
+          operation: 'move',
+          parentId,
+          targetName
+        }
+      });
+      return result;
     } else {
       logDatasetUpdate({ tmbId, teamId, dataset });
-      return onUpdate(session);
+      const result = await onUpdate(session);
+      writeEnterpriseAuditEvent({
+        action: EnterpriseAuditActionEnum.DatasetUpdate,
+        result: EnterpriseAuditResultEnum.Success,
+        actor: createUserAuditActor({ userId, teamId, tmbId }),
+        resource: {
+          type: EnterpriseAuditResourceTypeEnum.Dataset,
+          id,
+          name: dataset.name
+        },
+        ...getEnterpriseAuditRequestContext(req),
+        metadata: {
+          datasetType: dataset.type,
+          operation: 'update',
+          updatedFields: Object.entries({
+            name,
+            avatar,
+            intro,
+            agentModel,
+            vlmModel,
+            websiteConfig,
+            externalReadUrl,
+            apiDatasetServer,
+            autoSync,
+            chunkSettings
+          })
+            .filter(([, value]) => value !== undefined)
+            .map(([key]) => key)
+        }
+      });
+      return result;
     }
   });
 }

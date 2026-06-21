@@ -12,11 +12,21 @@ import {
   CreateCollectionResponseSchema,
   type CreateCollectionResponseType
 } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
+import {
+  createUserAuditActor,
+  getEnterpriseAuditRequestContext,
+  writeEnterpriseAuditEvent
+} from '@fastgpt/service/support/enterprise/audit/util';
+import {
+  EnterpriseAuditActionEnum,
+  EnterpriseAuditResourceTypeEnum,
+  EnterpriseAuditResultEnum
+} from '@fastgpt/global/support/enterprise/audit/constants';
 
 async function handler(req: ApiRequestProps): Promise<CreateCollectionResponseType> {
   const body = parseApiInput({ req, bodySchema: CreateCollectionBodySchema }).body;
 
-  const { teamId, tmbId, dataset } = await authDataset({
+  const { teamId, tmbId, dataset, userId } = await authDataset({
     req,
     authToken: true,
     authApiKey: true,
@@ -42,6 +52,22 @@ async function handler(req: ApiRequestProps): Promise<CreateCollectionResponseTy
       }
     });
   })();
+  writeEnterpriseAuditEvent({
+    action: EnterpriseAuditActionEnum.DatasetCollectionImport,
+    result: EnterpriseAuditResultEnum.Success,
+    actor: createUserAuditActor({ userId, teamId, tmbId }),
+    resource: {
+      type: EnterpriseAuditResourceTypeEnum.Collection,
+      id: String(_id),
+      name: body.name
+    },
+    ...getEnterpriseAuditRequestContext(req),
+    metadata: {
+      datasetId: body.datasetId,
+      datasetName: dataset.name,
+      datasetType: dataset.type
+    }
+  });
 
   return CreateCollectionResponseSchema.parse(_id);
 }

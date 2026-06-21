@@ -267,6 +267,31 @@ export const serviceEnv = createEnv({
     ENTERPRISE_AUDIT_LOG_RETENTION_DAYS: IntSchema.default(365).meta({
       description: '企业审计日志保留天数'
     }),
+    ENTERPRISE_PASSWORD_LOGIN_ENABLED: BoolSchema.default(true).meta({
+      description: '是否允许非 root 使用密码登入；接入企业 SSO 后可关闭，仅保留 root break-glass'
+    }),
+    ENTERPRISE_AUTH_ALLOWED_EMAIL_DOMAINS: z
+      .string()
+      .optional()
+      .meta({ description: '企业身份允许的邮箱域名，逗号分隔；用于 SSO/外部身份接入准入' }),
+    ENTERPRISE_OIDC_ISSUER: UrlSchema.optional().meta({ description: '企业 OIDC Issuer URL' }),
+    ENTERPRISE_OIDC_CLIENT_ID: z.string().optional().meta({ description: '企业 OIDC Client ID' }),
+    ENTERPRISE_OIDC_CLIENT_SECRET: z
+      .string()
+      .optional()
+      .meta({ description: '企业 OIDC Client Secret' }),
+    ENTERPRISE_OIDC_SCOPES: z
+      .string()
+      .default('openid profile email')
+      .meta({ description: '企业 OIDC scopes' }),
+    ENTERPRISE_OIDC_EMAIL_CLAIM: z
+      .string()
+      .default('email')
+      .meta({ description: '企业 OIDC 邮箱 claim 名称' }),
+    ENTERPRISE_OIDC_GROUPS_CLAIM: z
+      .string()
+      .default('groups')
+      .meta({ description: '企业 OIDC 群组 claim 名称' }),
     EVAL_CONCURRENCY: IntSchema.default(3).meta({
       description: '评估任务 worker 并发数'
     }),

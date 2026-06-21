@@ -1,18 +1,28 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
 import { findModelFromAlldata } from '@fastgpt/service/core/ai/model';
 import { updatedReloadSystemModel } from '@fastgpt/service/core/ai/config/utils';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import {
+  createUserAuditActor,
+  getEnterpriseAuditRequestContext,
+  writeEnterpriseAuditEvent
+} from '@fastgpt/service/support/enterprise/audit/util';
+import {
+  EnterpriseAuditActionEnum,
+  EnterpriseAuditResourceTypeEnum,
+  EnterpriseAuditResultEnum
+} from '@fastgpt/global/support/enterprise/audit/constants';
 
 export type updateBody = {
   model: string;
   metadata?: Record<string, any>;
 };
 
-async function handler(req: ApiRequestProps<updateBody>, res: ApiResponseType<any>) {
-  await authSystemAdmin({ req });
+async function handler(req: ApiRequestProps<updateBody>) {
+  const admin = await authSystemAdmin({ req });
 
   const metadata = req.body.metadata;
   let { model } = req.body;
@@ -71,6 +81,28 @@ async function handler(req: ApiRequestProps<updateBody>, res: ApiResponseType<an
   );
 
   await updatedReloadSystemModel();
+  writeEnterpriseAuditEvent({
+    action: EnterpriseAuditActionEnum.ModelConfigUpdate,
+    result: EnterpriseAuditResultEnum.Success,
+    actor: createUserAuditActor({
+      userId: admin.userId,
+      teamId: admin.teamId,
+      tmbId: admin.tmbId,
+      isRoot: admin.isRoot
+    }),
+    resource: {
+      type: EnterpriseAuditResourceTypeEnum.ModelConfig,
+      id: model,
+      name: metadataConcat.name || model
+    },
+    ...getEnterpriseAuditRequestContext(req),
+    metadata: {
+      model,
+      type: metadataConcat.type,
+      provider: metadataConcat.provider,
+      isCustom: metadataConcat.isCustom ?? dbModel?.metadata?.isCustom ?? modelData?.isCustom
+    }
+  });
 
   return {};
 }

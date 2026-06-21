@@ -32,6 +32,16 @@ import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import {
+  createUserAuditActor,
+  getEnterpriseAuditRequestContext,
+  writeEnterpriseAuditEvent
+} from '@fastgpt/service/support/enterprise/audit/util';
+import {
+  EnterpriseAuditActionEnum,
+  EnterpriseAuditResourceTypeEnum,
+  EnterpriseAuditResultEnum
+} from '@fastgpt/global/support/enterprise/audit/constants';
 
 async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
   const {
@@ -126,6 +136,24 @@ async function handler(req: ApiRequestProps): Promise<CreateDatasetResponse> {
       }
     });
   })();
+  writeEnterpriseAuditEvent({
+    action: EnterpriseAuditActionEnum.DatasetCreate,
+    result: EnterpriseAuditResultEnum.Success,
+    actor: createUserAuditActor({ userId, teamId, tmbId }),
+    resource: {
+      type: EnterpriseAuditResourceTypeEnum.Dataset,
+      id: String(datasetId),
+      name
+    },
+    ...getEnterpriseAuditRequestContext(req),
+    metadata: {
+      datasetType: type,
+      parentId,
+      vectorModel,
+      agentModel,
+      vlmModel
+    }
+  });
 
   return CreateDatasetResponseSchema.parse(datasetId);
 }

@@ -36,6 +36,16 @@ import {
   type UpdateAppBodyType,
   type UpdateAppQueryType
 } from '@fastgpt/global/openapi/core/app/common/api';
+import {
+  createUserAuditActor,
+  getEnterpriseAuditRequestContext,
+  writeEnterpriseAuditEvent
+} from '@fastgpt/service/support/enterprise/audit/util';
+import {
+  EnterpriseAuditActionEnum,
+  EnterpriseAuditResourceTypeEnum,
+  EnterpriseAuditResultEnum
+} from '@fastgpt/global/support/enterprise/audit/constants';
 
 // 更新应用接口
 // 包括如下功能：
@@ -65,7 +75,7 @@ async function handler(req: ApiRequestProps<UpdateAppBodyType, UpdateAppQueryTyp
 
   // this step is to get the app and its permission, and we will check the permission manually for
   // different cases
-  const { app, permission, teamId, tmbId } = await authApp({
+  const { app, permission, teamId, tmbId, userId } = await authApp({
     req,
     authToken: true,
     appId,
@@ -184,7 +194,7 @@ async function handler(req: ApiRequestProps<UpdateAppBodyType, UpdateAppQueryTyp
 
   // Move
   if (isMove) {
-    await mongoSessionRun(async (session) => {
+    const result = await mongoSessionRun(async (session) => {
       // Inherit folder: Sync children permission and it's clbs
       const parentClbs = await getResourceOwnedClbs({
         teamId: app.teamId,
@@ -212,10 +222,56 @@ async function handler(req: ApiRequestProps<UpdateAppBodyType, UpdateAppQueryTyp
       logAppMove({ tmbId, teamId, app, targetName });
       return UpdateAppResponseSchema.parse(await onUpdate(session));
     });
+    writeEnterpriseAuditEvent({
+      action: EnterpriseAuditActionEnum.AppUpdate,
+      result: EnterpriseAuditResultEnum.Success,
+      actor: createUserAuditActor({ userId, teamId, tmbId }),
+      resource: {
+        type: EnterpriseAuditResourceTypeEnum.App,
+        id: appId,
+        name: app.name
+      },
+      ...getEnterpriseAuditRequestContext(req),
+      metadata: {
+        appType: app.type,
+        operation: 'move',
+        parentId,
+        targetName
+      }
+    });
+    return result;
   } else {
     logAppUpdate({ tmbId, teamId, app, name, intro });
 
-    return UpdateAppResponseSchema.parse(await onUpdate());
+    const result = UpdateAppResponseSchema.parse(await onUpdate());
+    writeEnterpriseAuditEvent({
+      action: EnterpriseAuditActionEnum.AppUpdate,
+      result: EnterpriseAuditResultEnum.Success,
+      actor: createUserAuditActor({ userId, teamId, tmbId }),
+      resource: {
+        type: EnterpriseAuditResourceTypeEnum.App,
+        id: appId,
+        name: app.name
+      },
+      ...getEnterpriseAuditRequestContext(req),
+      metadata: {
+        appType: app.type,
+        operation: 'update',
+        updatedFields: Object.entries({
+          name,
+          avatar,
+          type,
+          intro,
+          nodes,
+          edges,
+          chatConfig,
+          teamTags
+        })
+          .filter(([, value]) => value !== undefined)
+          .map(([key]) => key)
+      }
+    });
+    return result;
   }
 }
 

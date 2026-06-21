@@ -1,20 +1,19 @@
-import {
-  EnterpriseAuditActorTypeEnum,
-  EnterpriseAuditResultEnum
-} from '@fastgpt/global/support/enterprise/audit/constants';
+import type { EnterpriseAuditResultEnum } from '@fastgpt/global/support/enterprise/audit/constants';
+import { EnterpriseAuditActorTypeEnum } from '@fastgpt/global/support/enterprise/audit/constants';
 import type {
   EnterpriseAuditActor,
   EnterpriseAuditLogSchemaType,
   EnterpriseAuditResource
 } from '@fastgpt/global/support/enterprise/audit/type';
 import { retryFn } from '@fastgpt/global/common/system/utils';
+import type { NextApiRequest } from 'next';
 import { getLogger, LogCategories } from '../../../common/logger';
+import { getClientIpFromRequest } from '../../../common/security/clientIp';
 import { serviceEnv } from '../../../env';
 import { MongoEnterpriseAuditLog } from './schema';
 
 const logger = getLogger(LogCategories.MODULE.USER.ACCOUNT);
-const sensitiveKeyPattern =
-  /password|psw|token|secret|authorization|cookie|apikey|apiKey|key$/i;
+const sensitiveKeyPattern = /password|psw|token|secret|authorization|cookie|apikey|apiKey|key$/i;
 
 type WriteEnterpriseAuditEventProps = {
   action: EnterpriseAuditLogSchemaType['action'];
@@ -87,13 +86,33 @@ export function createAnonymousAuditActor(name?: string): EnterpriseAuditActor {
   };
 }
 
+export function getEnterpriseAuditRequestContext(req: NextApiRequest): {
+  clientIp?: string;
+  userAgent?: string;
+  requestId?: string;
+} {
+  const userAgent = req.headers?.['user-agent'];
+  const requestId = req.headers?.['x-request-id'];
+
+  return {
+    clientIp: getClientIpFromRequest(req),
+    userAgent: Array.isArray(userAgent) ? userAgent.join(',') : userAgent,
+    requestId: Array.isArray(requestId) ? requestId[0] : requestId
+  };
+}
+
 export function sanitizeEnterpriseAuditMetadata<T>(value: T): T {
   return sanitizeObject(value);
 }
 
 function sanitizeObject<T>(value: T): T {
   if (!value || typeof value !== 'object') return value;
+  if (value instanceof Date) return value;
+  if (typeof (value as { toHexString?: unknown }).toHexString === 'function') {
+    return String(value) as T;
+  }
   if (Array.isArray(value)) return value.map((item) => sanitizeObject(item)) as T;
+  if (Object.getPrototypeOf(value) !== Object.prototype) return String(value) as T;
 
   return Object.fromEntries(
     Object.entries(value as Record<string, unknown>).map(([key, item]) => [
