@@ -58,6 +58,7 @@ const exactMap: Record<string, string> = {
   '/use-cases': defaultHomePath,
   '/self-host': '/self-host/deploy/docker',
   '/openapi': '/openapi/intro',
+  '/openapi/share': '/guide/build/publish/link',
   '/faq': '/faq/chat'
 };
 

@@ -1,19 +1,53 @@
 ---
-title: 分享链接身份鉴权
-description: FastGPT 分享链接身份鉴权
+title: 免登录窗口发布
+description: FastGPT 免登录窗口发布
 ---
 
 ## 介绍
 
-在 FastGPT V4.6.4 中，我们修改了分享链接的数据读取方式，为每个用户生成一个 localId，用于标识用户，从云端拉取对话记录。但是这种方式仅能保障用户在同一设备同一浏览器中使用，如果切换设备或者清空浏览器缓存则会丢失这些记录。这种方式存在一定的风险，因此我们仅允许用户拉取近`30天`的`20条`记录。
+免登录窗口可以创建一个临时可访问的地址，任何互联网上的用户可以通过该地址来使用应用。产生的费用产生在应用归属的团队下，所以请注意不要随意分享。
 
-分享链接身份鉴权设计的目的在于，将 FastGPT 的对话框快速、安全的接入到你现有的系统中，仅需 2 个接口即可实现。该功能目前只在商业版中提供。
+系统会为每个用户生成一个 localId，用于标识用户，从云端拉取对话记录。但是这种方式仅能保障用户在同一设备同一浏览器中使用，如果切换设备或者清空浏览器缓存则会丢失这些记录。这种方式存在一定的风险，因此我们仅允许用户拉取近 `30天` 的 `20条` 记录。
 
-## 使用说明
+## 使用流程
 
-免登录链接配置中，你可以选择填写`身份验证`栏。这是一个`POST`请求的根地址。在填写该地址后，分享链接的初始化、开始对话以及对话结束都会向该地址的特定接口发送一条请求。下面以`host`来表示`凭身份验证根地址`。服务器接口仅需返回是否校验成功即可，不需要返回其他数据，格式如下：
+### 1. 创建链接
 
-### 接口统一响应格式
+在 `应用详情` - `发布渠道` - `免登录窗口` 中，创建新链接。
+
+填写名称后即可创建，该名称仅用于记录展示。
+
+![alt text](/imgs/image.png)
+
+### 2. 复制链接
+
+点击开始使用，即可打开使用链接，复制后即可使用。
+
+![alt text](/imgs/image-1.png)
+
+## 参数配置
+
+部分参数仅商业版支持配置。
+
+- 名称：仅用于记录该链接的名称，用于展示
+- 过期时间：超过该时间后，链接无法使用。
+- QPM: 每个用户每分钟最大访问次数。
+- 积分上限：该链接产生的最大计费数据。
+- 身份验证：便于接入第三方系统进行身份认证和对话回调。
+- 实时运行状态：是否展示当前运行的节点。
+- 查看引用片段：见系统介绍
+- 查看引用全文：见系统介绍
+- 下载/打开来源原文：见系统介绍
+
+## 身份验证说明
+
+分享链接身份验证设计的目的在于，将 FastGPT 的对话框快速、安全的接入到你现有的系统中，仅需 2 个接口即可实现。该功能目前只在商业版中提供。
+
+### 使用说明
+
+免登录链接配置中，你可以选择填写 `身份验证` 栏。这是一个 `POST` 请求的根地址。在填写该地址后，分享链接的初始化、开始对话以及对话结束都会向该地址的特定接口发送一条请求。下面以 `host` 来表示 `凭身份验证根地址`。服务器接口仅需返回是否校验成功即可，不需要返回其他数据，格式如下：
+
+#### 接口统一响应格式
 
 ```jsonc
 {
@@ -26,25 +60,25 @@ description: FastGPT 分享链接身份鉴权
 }
 ```
 
-`FastGPT` 将会判断`success`是否为`true`决定是允许用户继续操作。`message`与`msg`是等同的，你可以选择返回其中一个，当`success`不为`true`时，将会提示这个错误。
+`FastGPT` 将会判断 `success` 是否为 `true` 决定是允许用户继续操作。`message` 与 `msg` 是等同的，你可以选择返回其中一个，当 `success` 不为 `true` 时，将会提示这个错误。
 
 `uid` 是用户的唯一凭证，必须返回该 ID 且 ID 的格式为不包含 "|"、"/“、"\\" 字符的、小于等于 255 **字节长度**的字符串，否则会返回 `Invalid UID` 的错误。`uid` 将会用于拉取对话记录以及保存对话记录，可参考下方实践案例。
 
-### 触发流程
+#### 触发流程
 
-![](../../public/imgs/sharelink_process.png)
+![](/imgs/sharelink_process.png)
 
-## 配置教程
+### 配置教程
 
-### 1. 配置身份校验地址
+#### 1. 配置身份校验地址
 
-![](../../public/imgs/share-setlink.png)
+![](/imgs/share-setlink.png)
 
 配置校验地址后，在每次分享链接使用时，都会向对应的地址发起校验和上报请求。
 
 这里仅需配置根地址，无需具体到完整请求路径。
 
-### 2. 分享链接中增加额外 query
+#### 2. 分享链接中增加额外 query
 
 在分享链接的地址中，增加一个额外的参数: authToken。例如：
 
@@ -52,9 +86,9 @@ description: FastGPT 分享链接身份鉴权
 
 完整链接: `https://share.fastgpt.io/chat/share?shareId=648aaf5ae121349a16d62192&authToken=userid12345`
 
-这个`authToken`通常是你系统生成的用户唯一凭证（Token之类的）。FastGPT 会在鉴权接口的`body`中携带 token=[authToken] 的参数。
+这个 `authToken` 通常是你系统生成的用户唯一凭证（Token 之类的）。FastGPT 会在鉴权接口的 `body` 中携带 token=[authToken] 的参数。
 
-### 3. 编写聊天初始化校验接口
+#### 3. 编写聊天初始化校验接口
 
 <Tabs items={['请求示例','鉴权成功','鉴权失败']}>
   <Tab value="请求示例" >
@@ -96,7 +130,7 @@ curl --location --request POST '{{host}}/shareAuth/init' \
   </Tab>
 </Tabs>
 
-### 4. 编写对话前校验接口
+#### 4. 编写对话前校验接口
 
 <Tabs items={['请求示例','鉴权成功','鉴权失败']}>
   <Tab value="请求示例" >
@@ -144,13 +178,13 @@ curl --location --request POST '{{host}}/shareAuth/start' \
   </Tab>
 </Tabs>
 
-### 5. 编写对话结果上报接口（可选）
+#### 5. 编写对话结果上报接口（可选）
 
 该接口无规定返回值。
 
-响应值与[chat 接口格式相同](./intro.mdx#响应)，仅多了一个`token`。
+响应值与 [chat 接口格式相同](../../../openapi/intro.mdx#响应)，仅多了一个 `token`。
 
-重点关注：`totalPoints`(总消耗AI积分)，`token`(Token消耗总数)
+重点关注：`totalPoints` (总消耗 AI 积分)，`token` (Token 消耗总数)
 
 ```bash
 curl --location --request POST '{{host}}/shareAuth/finish' \
@@ -271,18 +305,18 @@ type ResponseType = {
 };
 ```
 
-## 实践案例
+### 实践案例
 
-我们以[Laf作为服务器为例](https://laf.dev/)，简单展示这 3 个接口的使用方式。
+我们以 [Laf 作为服务器为例](https://laf.dev/)，简单展示这 3 个接口的使用方式。
 
-### 1. 创建3个Laf接口
+#### 1. 创建 3 个 Laf 接口
 
-![](../../public/imgs/share-auth1.png)
+![](/imgs/share-auth1.png)
 
 <Tabs items={['/shareAuth/init','/shareAuth/start','/shareAuth/finish']}>
   <Tab value="/shareAuth/init" >
 
-这个接口中，我们设置了`token`必须等于`fastgpt`才能通过校验。（实际生产中不建议固定写死）
+这个接口中，我们设置了 `token` 必须等于 `fastgpt` 才能通过校验。（实际生产中不建议固定写死）
 
 ```ts
 import cloud from '@lafjs/cloud';
@@ -303,7 +337,7 @@ export default async function (ctx: FunctionContext) {
 
   <Tab value="/shareAuth/start" >
 
-这个接口中，我们设置了`token`必须等于`fastgpt`才能通过校验。并且如果问题中包含了`你`字，则会报错，用于模拟敏感校验。
+这个接口中，我们设置了 `token` 必须等于 `fastgpt` 才能通过校验。并且如果问题中包含了 `你` 字，则会报错，用于模拟敏感校验。
 
 ```ts
 import cloud from '@lafjs/cloud';
@@ -348,25 +382,25 @@ export default async function (ctx: FunctionContext) {
   </Tab>
 </Tabs>
 
-### 2. 配置校验地址
+#### 2. 配置校验地址
 
-我们随便复制3个地址中一个接口: `https://d8dns0.laf.dev/shareAuth/finish`, 去除`/shareAuth/finish`后填入`身份校验`:`https://d8dns0.laf.dev`
+我们随便复制 3 个地址中一个接口: `https://d8dns0.laf.dev/shareAuth/finish` , 去除 `/shareAuth/finish` 后填入 `身份校验` : `https://d8dns0.laf.dev`
 
-![](../../public/imgs/share-auth2.jpg)
+![](/imgs/share-auth2.jpg)
 
-### 3. 修改分享链接参数
+#### 3. 修改分享链接参数
 
 源分享链接：`https://share.fastgpt.io/chat/share?shareId=64be36376a438af0311e599c`
 
 修改后：`https://share.fastgpt.io/chat/share?shareId=64be36376a438af0311e599c&authToken=fastgpt`
 
-### 4. 测试效果
+#### 4. 测试效果
 
-1. 打开源链接或者`authToken`不等于`fastgpt`的链接会提示身份错误。
+1. 打开源链接或者 `authToken` 不等于 `fastgpt` 的链接会提示身份错误。
 2. 发送内容中包含你字，会提示内容不合规。
 
-## 使用场景
+### 使用场景
 
-这个鉴权方式通常是帮助你直接嵌入`分享链接`到你的应用中，在你的应用打开分享链接前，应做`authToken`的拼接后再打开。
+这个鉴权方式通常是帮助你直接嵌入 `分享链接` 到你的应用中，在你的应用打开分享链接前，应做 `authToken` 的拼接后再打开。
 
-除了对接已有系统的用户外，你还可以对接`余额`功能，通过`结果上报`接口扣除用户余额，通过`对话前校验`接口检查用户的余额。
+除了对接已有系统的用户外，你还可以对接 `余额` 功能，通过 `结果上报` 接口扣除用户余额，通过 `对话前校验` 接口检查用户的余额。
