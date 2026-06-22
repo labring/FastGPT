@@ -1,0 +1,26 @@
+{
+  "version": "1.0",
+  "label": "自定义域名",
+  "label_safe": "账户_自定义域名",
+  "type": "capability",
+  "status": "done",
+  "entry_files": [
+    "projects/app/src/pages/account/customDomain/index.tsx"
+  ],
+  "router_paths": [
+    "/account/customDomain"
+  ],
+  "is_grouping": false,
+  "has_tab_children": false,
+  "parent_label": "账户",
+  "output_dir_biz": "doc\\kb\\业务知识库\\账户\\自定义域名/",
+  "output_dir_tech": "doc\\kb\\技术知识库\\账户\\自定义域名/",
+  "depends_on": [],
+  "claimed_by": "",
+  "claimed_at": "2026-06-18T11:10:36Z",
+  "session_id": "e13994f7-19d8-4d56-8761-7681a61bc8e8",
+  "retry_count": 0,
+  "max_retries": 2,
+  "error": "",
+  "pid": 27267
+}

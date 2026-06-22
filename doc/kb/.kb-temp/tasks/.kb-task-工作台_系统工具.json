@@ -1,0 +1,26 @@
+{
+  "version": "1.0",
+  "label": "系统工具",
+  "label_safe": "工作台_系统工具",
+  "type": "capability",
+  "status": "done",
+  "entry_files": [
+    "projects/app/src/pages/dashboard/systemTool/index.tsx"
+  ],
+  "router_paths": [
+    "/dashboard/systemTool"
+  ],
+  "is_grouping": false,
+  "has_tab_children": false,
+  "parent_label": "工作台",
+  "output_dir_biz": "doc\\kb\\业务知识库\\工作台\\系统工具/",
+  "output_dir_tech": "doc\\kb\\技术知识库\\工作台\\系统工具/",
+  "depends_on": [],
+  "claimed_by": "",
+  "claimed_at": "2026-06-18T10:17:22Z",
+  "session_id": "cb748181-10fb-4eec-a492-fcb8485eec01",
+  "retry_count": 0,
+  "max_retries": 2,
+  "error": "",
+  "pid": 22600
+}

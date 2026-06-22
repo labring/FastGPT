@@ -1,0 +1,24 @@
+## ✅ `登录_登录首页_忘记密码` 文档生成完成
+
+### Tab 检测结果
+- 框架：React（函数组件）
+- 无 Tab 结构，不创建子任务
+
+### 生成的文档（7 个）
+
+| 编号 | 文档 | 路径 |
+|------|------|------|
+| 08 | 模块概览 | `doc/kb/业务知识库/登录/登录首页/忘记密码/模块概览.md` |
+| 09 | 业务流程索引 | `doc/kb/业务知识库/登录/登录首页/忘记密码/业务流程索引.md` |
+| 10 | 业务流程详解 | `doc/kb/业务知识库/登录/登录首页/忘记密码/业务流程详解.md` |
+| 12 | API索引 | `doc/kb/技术知识库/登录/登录首页/忘记密码/API索引.md` |
+| 13 | 组件列表 | `doc/kb/技术知识库/登录/登录首页/忘记密码/组件列表.md` |
+| 14 | Store数据流 | `doc/kb/技术知识库/登录/登录首页/忘记密码/Store数据流.md` |
+| 16 | Hooks工具函数 | `doc/kb/技术知识库/登录/登录首页/忘记密码/Hooks工具函数.md` |
+
+### 核心发现
+- **入口组件**：`ForgetPasswordForm.tsx` —— 嵌入式表单，在 `/login` 页面内通过 `setPageType('forgetPassword')` 切换显示
+- **核心 API**：`POST /proApi/support/user/account/password/updateByCode`（密码重置）
+- **验证码发送**：通过 `useSendCode` hook 调用 `sendAuthCode` API，含 Google reCAPTCHA 人机验证
+- **密码校验**：`checkPasswordRule` —— 8-100 位，须含字母+数字（至少两种组合）
+- **任务状态**：`done`

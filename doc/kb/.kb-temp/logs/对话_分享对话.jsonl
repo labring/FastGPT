@@ -1,0 +1,29 @@
+---
+
+## ✅ 「分享对话」知识库文档生成完成
+
+**能力**: 分享对话 | **入口**: `projects/app/src/pages/chat/share.tsx` | **路由**: `/chat/share`
+
+### 生成的文档
+
+| 编号 | 文档 | 位置 | 状态 |
+|------|------|------|------|
+| 08 | 模块概览 | `doc/kb/业务知识库/对话/分享对话/模块概览.md` | ✅ |
+| 09 | 业务流程索引 | `doc/kb/业务知识库/对话/分享对话/业务流程索引.md` | ✅ |
+| 10 | 业务流程详解 | `doc/kb/业务知识库/对话/分享对话/业务流程详解.md` | ✅ |
+| 12 | API索引 | `doc/kb/技术知识库/对话/分享对话/API索引.md` | ✅ |
+| 13 | 组件列表 | `doc/kb/技术知识库/对话/分享对话/组件列表.md` | ✅ |
+| 14 | Store数据流 | `doc/kb/技术知识库/对话/分享对话/Store数据流.md` | ✅ (按需) |
+
+### 分析摘要
+
+- **Tab 检测**: 无 Tab，单页面结构
+- **框架**: React (Next.js SSR)
+- **核心功能**: 外部用户通过分享链接匿名/认证后与 AI 应用对话
+- **关键 API**: `GET /core/chat/outLink/init`（初始化）、`POST /api/v2/chat/completions`（流式对话）
+- **关键 Store**: `useShareChatStore`（本地用户身份持久化）、`useChatStore`（聊天状态管理）
+- **模式**: 支持匿名访问和强制认证两种模式，由 `MongoOutLink.allowAnonymous` 控制
+
+```json
+{"label":"分享对话","docs_generated":["08","09","10","12","13","14"],"tab_files":[],"status":"ok","error":null}
+```

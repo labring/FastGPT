@@ -1,0 +1,26 @@
+{
+  "version": "1.0",
+  "label": "模型管理",
+  "label_safe": "账户_模型管理",
+  "type": "capability",
+  "status": "done",
+  "entry_files": [
+    "projects/app/src/pages/account/model/index.tsx"
+  ],
+  "router_paths": [
+    "/account/model"
+  ],
+  "is_grouping": false,
+  "has_tab_children": true,
+  "parent_label": "账户",
+  "output_dir_biz": "doc\\kb\\业务知识库\\账户\\模型管理/",
+  "output_dir_tech": "doc\\kb\\技术知识库\\账户\\模型管理/",
+  "depends_on": [],
+  "claimed_by": "",
+  "claimed_at": "2026-06-18T10:59:08Z",
+  "session_id": "905a481a-1931-43c5-be79-466462efc252",
+  "retry_count": 0,
+  "max_retries": 2,
+  "error": "",
+  "pid": 26487
+}

@@ -1,0 +1,25 @@
+{
+  "version": "1.0",
+  "label": "数据集详情",
+  "label_safe": "数据集_数据集详情",
+  "type": "capability",
+  "status": "done",
+  "entry_files": [
+    "projects/app/src/pages/dataset/detail/index.tsx"
+  ],
+  "router_paths": [
+    "/dataset/detail"
+  ],
+  "is_grouping": false,
+  "has_tab_children": true,
+  "parent_label": "数据集",
+  "output_dir_biz": "doc\\kb\\业务知识库\\数据集\\数据集详情/",
+  "output_dir_tech": "doc\\kb\\技术知识库\\数据集\\数据集详情/",
+  "depends_on": [],
+  "claimed_by": "",
+  "claimed_at": "2026-06-18T10:37:34Z",
+  "session_id": "5e3d3432-d9a3-4211-bae5-90aef21cbf6a",
+  "retry_count": 0,
+  "max_retries": 2,
+  "error": ""
+}

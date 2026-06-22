@@ -1,0 +1,26 @@
+{
+  "version": "1.0",
+  "label": "用量统计",
+  "label_safe": "账户_用量统计",
+  "type": "capability",
+  "status": "done",
+  "entry_files": [
+    "projects/app/src/pages/account/usage/index.tsx"
+  ],
+  "router_paths": [
+    "/account/usage"
+  ],
+  "is_grouping": false,
+  "has_tab_children": true,
+  "parent_label": "账户",
+  "output_dir_biz": "doc\\kb\\业务知识库\\账户\\用量统计/",
+  "output_dir_tech": "doc\\kb\\技术知识库\\账户\\用量统计/",
+  "depends_on": [],
+  "claimed_by": "",
+  "claimed_at": "2026-06-18T11:00:11Z",
+  "session_id": "a8b3635c-8d9f-4e1c-8afc-975b133ba07e",
+  "retry_count": 0,
+  "max_retries": 2,
+  "error": "",
+  "pid": 26600
+}

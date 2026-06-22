@@ -1,0 +1,26 @@
+{
+  "version": "1.0",
+  "label": "账单",
+  "label_safe": "账户_账单",
+  "type": "capability",
+  "status": "done", "session_id": "e61b8284-c949-45e4-a1de-784638fd6431", "claimed_at": "2026-06-18T11:11:29Z",
+  "entry_files": [
+    "projects/app/src/pages/account/bill/index.tsx"
+  ],
+  "router_paths": [
+    "/account/bill"
+  ],
+  "is_grouping": false,
+  "has_tab_children": true,
+  "parent_label": "账户",
+  "output_dir_biz": "doc\\kb\\业务知识库\\账户\\账单/",
+  "output_dir_tech": "doc\\kb\\技术知识库\\账户\\账单/",
+  "depends_on": [],
+  "claimed_by": "",
+  "claimed_at": "2026-06-18T11:11:29Z",
+  "session_id": "e61b8284-c949-45e4-a1de-784638fd6431",
+  "retry_count": 0,
+  "max_retries": 2,
+  "error": "",
+  "pid": 27358
+}

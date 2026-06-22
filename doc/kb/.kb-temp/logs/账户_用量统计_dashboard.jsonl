@@ -1,0 +1,32 @@
+校验脚本返回的问题全部来自**其他模块**（对话、工作台等），本模块的 `dashboard` 文件无任何 MISSING_FILE、BROKEN_LINK 或 MISSING_FRONTMATTER 问题。
+
+---
+
+## 生成完毕 — `账户_用量统计_dashboard`
+
+### Tab 检测结果
+
+入口文件 `Dashboard.tsx` 是 React 函数式组件，无内部 Tab 结构。`has_tabs: false`。
+
+### 文档清单
+
+| 编号 | 文档名 | 路径 | 大小 |
+|------|--------|------|------|
+| 08 | 模块概览 | `业务知识库/账户/用量统计/dashboard/模块概览.md` | 2.5 KB |
+| 09 | 业务流程索引 | `业务知识库/账户/用量统计/dashboard/业务流程索引.md` | 3.1 KB |
+| 10 | 业务流程详解 | `业务知识库/账户/用量统计/dashboard/业务流程详解.md` | 9.3 KB |
+| 12 | API索引 | `技术知识库/账户/用量统计/dashboard/API索引.md` | 1.8 KB |
+| 13 | 组件列表 | `技术知识库/账户/用量统计/dashboard/组件列表.md` | 1.3 KB |
+
+### 自检通过项
+
+- ✅ 禁项检查（业务知识：无源码代码块/Props/Store/构建配置；Mermaid 为豁免项；技术知识：无业务背景/用户故事/业务流程图）
+- ✅ Frontmatter 7 字段齐全
+- ✅ 跨模块依赖基于 CodeGraph 实际 import 关系
+- ✅ API 调用链标注了调用位置和调用场景
+- ✅ 所有组件路径指向真实文件
+- ✅ Mermaid 图覆盖全部 3 个核心场景
+
+```json
+{"label":"dashboard","docs_generated":["08","09","10","12","13"],"tab_files":[],"status":"ok","error":null}
+```

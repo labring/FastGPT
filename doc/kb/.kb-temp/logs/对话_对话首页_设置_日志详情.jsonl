@@ -1,0 +1,30 @@
+---
+
+## ✅ `对话_对话首页_设置_日志详情` 文档生成完成
+
+### 生成文件清单
+
+**业务知识库** (`doc/kb/业务知识库/对话/对话首页/设置/日志详情/`)：
+
+| 文件 | 类型 | 内容概要 |
+|------|------|---------|
+| `模块概览.md` | 必生成 | 模块定位（管理员日志管理工具）、角色差异（hasManagePer+isPlus）、跨模块依赖（LogsContext/LogTable等） |
+| `业务流程索引.md` | 必生成 | 6 个业务场景（S01-S06）：查看列表、筛选、列配置、对话详情、导出、批量删除 |
+| `业务流程详解.md` | 必生成 | 每个场景完整步骤追踪 + Mermaid 时序图（含筛选联动、删除确认、导出链路） |
+| `共享能力清单.md` | 按需 | 跳过 — 本模块无对外共享能力 |
+
+**技术知识库** (`doc/kb/技术知识库/对话/对话首页/设置/日志详情/`)：
+
+| 文件 | 类型 | 内容概要 |
+|------|------|---------|
+| `API索引.md` | 必生成 | 8 个 API 反向索引 + 调用链追踪（日志列表/列配置/导出/对话记录等） |
+| `组件列表.md` | 必生成 | LogDetails + LogsFilterBar 组件清单，标注外部依赖（来自 app/detail/Logs） |
+| `Store数据流.md` | 按需 | 跳过 — 使用 React Context 无独立 Store |
+| `共享组件清单.md` | 按需 | 跳过 — 组件全部来自外部 app/detail/Logs 模块 |
+| `Hooks工具函数.md` | 按需 | 跳过 — 仅使用 useContextSelector 和 useTranslation 外部 Hooks |
+
+### 关键发现
+
+- **无 Tab 子节点**：日志详情本身即为 ChatSetting 的 Tab，内部无嵌套 Tab
+- **组件复用**：核心 UI（LogTable、HeaderControl、LogKeysConfigPopover）均来自 `@/pageComponents/app/detail/Logs/`
+- **权限模型**：双重校验（`hasManagePer` + `isPlus`），在 ChatSetting 入口统一拦截

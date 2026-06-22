@@ -1,0 +1,22 @@
+{
+  "version": "1.0",
+  "label": "数据集",
+  "label_safe": "数据集",
+  "type": "capability",
+  "status": "done",
+  "entry_files": [],
+  "router_paths": [],
+  "is_grouping": true,
+  "has_tab_children": false,
+  "parent_label": "",
+  "output_dir_biz": "doc\\kb\\业务知识库\\数据集/",
+  "output_dir_tech": "doc\\kb\\技术知识库\\数据集/",
+  "depends_on": [],
+  "claimed_by": "",
+  "claimed_at": "2026-06-18T10:35:48Z",
+  "session_id": "cdbd01e1-9557-4053-8bc1-85daabeddfbb",
+  "retry_count": 0,
+  "max_retries": 2,
+  "error": "",
+  "pid": 24307
+}

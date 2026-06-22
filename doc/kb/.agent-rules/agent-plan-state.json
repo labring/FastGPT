@@ -1,0 +1,252 @@
+{
+  "version": "5.0",
+  "generated_at": "2026-06-18T00:00:00.000Z",
+  "confirmed_by_human": true,
+  "confirmed_at": "2026-06-18T00:00:00.000Z",
+  "execution_mode": "ultra",
+  "capability_architecture": "route-hierarchy",
+  "knowledge_architecture": "single-layer",
+  "project_context": {
+    "frontend_frameworks": ["react", "next.js", "chakra-ui"],
+    "route_strategy": "next-file-system",
+    "state_management": ["zustand", "react-context"],
+    "component_model": "functional"
+  },
+  "capability_tree": {
+    "children": [
+      {
+        "label": "首页",
+        "entry_files": ["projects/app/src/pages/index.tsx"],
+        "router_paths": ["/"],
+        "bfs_file_count": 0,
+        "children": [],
+        "parent_signal": { "source": "route", "detail": "leaf route, component != null" }
+      },
+      {
+        "label": "页面未找到",
+        "entry_files": ["projects/app/src/pages/404.tsx"],
+        "router_paths": ["/404"],
+        "bfs_file_count": 0,
+        "children": [],
+        "parent_signal": { "source": "route", "detail": "leaf route, component != null" }
+      },
+      {
+        "label": "OpenAPI 文档",
+        "entry_files": ["projects/app/src/pages/openapi.tsx"],
+        "router_paths": ["/openapi"],
+        "bfs_file_count": 0,
+        "children": [],
+        "parent_signal": { "source": "route", "detail": "leaf route, component != null" }
+      },
+      {
+        "label": "对话",
+        "entry_files": [],
+        "router_paths": [],
+        "bfs_file_count": 0,
+        "children": [
+          {
+            "label": "对话首页",
+            "entry_files": ["projects/app/src/pages/chat/index.tsx"],
+            "router_paths": ["/chat"],
+            "bfs_file_count": 0,
+            "children": [],
+            "parent_signal": { "source": "route", "detail": "leaf route, parent page" }
+          },
+          {
+            "label": "分享对话",
+            "entry_files": ["projects/app/src/pages/chat/share.tsx"],
+            "router_paths": ["/chat/share"],
+            "bfs_file_count": 0,
+            "children": [],
+            "parent_signal": { "source": "route", "detail": "leaf route, component != null" }
+          }
+        ],
+        "parent_signal": { "source": "route", "detail": "grouping node, component = null" }
+      },
+      {
+        "label": "应用",
+        "entry_files": [],
+        "router_paths": [],
+        "bfs_file_count": 0,
+        "children": [
+          {
+            "label": "应用详情",
+            "entry_files": ["projects/app/src/pages/app/detail/index.tsx"],
+            "router_paths": ["/app/detail"],
+            "bfs_file_count": 0,
+            "children": [],
+            "parent_signal": { "source": "route", "detail": "leaf route, component != null" }
+          }
+        ],
+        "parent_signal": { "source": "route", "detail": "grouping node, component = null" }
+      },
+      {
+        "label": "登录",
+        "entry_files": [],
+        "router_paths": [],
+        "bfs_file_count": 0,
+        "children": [
+          {
+            "label": "登录首页",
+            "entry_files": ["projects/app/src/pages/login/index.tsx"],
+            "router_paths": ["/login"],
+            "bfs_file_count": 0,
+            "children": [],
+            "parent_signal": { "source": "route", "detail": "leaf route, parent page" }
+          },
+          {
+            "label": "快速登录",
+            "entry_files": ["projects/app/src/pages/login/fastlogin.tsx"],
+            "router_paths": ["/login/fastlogin"],
+            "bfs_file_count": 0,
+            "children": [],
+            "parent_signal": { "source": "route", "detail": "leaf route, component != null" }
+          },
+          {
+            "label": "第三方登录",
+            "entry_files": ["projects/app/src/pages/login/provider.tsx"],
+            "router_paths": ["/login/provider"],
+            "bfs_file_count": 0,
+            "children": [],
+            "parent_signal": { "source": "route", "detail": "leaf route, component != null" }
+          }
+        ],
+        "parent_signal": { "source": "route", "detail": "grouping node, component = null" }
+      },
+      {
+        "label": "账户",
+        "entry_files": [],
+        "router_paths": [],
+        "bfs_file_count": 0,
+        "children": [
+          { "label": "API 密钥", "entry_files": ["projects/app/src/pages/account/apikey.tsx"], "router_paths": ["/account/apikey"], "bfs_file_count": 0, "children": [], "parent_signal": { "source": "route", "detail": "leaf route, component != null" } },
+          { "label": "通知", "entry_files": ["projects/app/src/pages/account/inform.tsx"], "router_paths": ["/account/inform"], "bfs_file_count": 0, "children": [], "parent_signal": { "source": "route", "detail": "leaf route, component != null" } },
+          { "label": "个性化设置", "entry_files": ["projects/app/src/pages/account/setting.tsx"], "router_paths": ["/account/setting"], "bfs_file_count": 0, "children": [], "parent_signal": { "source": "route", "detail": "leaf route, component != null" } },
+          { "label": "推广", "entry_files": ["projects/app/src/pages/account/promotion.tsx"], "router_paths": ["/account/promotion"], "bfs_file_count": 0, "children": [], "parent_signal": { "source": "route", "detail": "leaf route, component != null" } },
+          { "label": "账单", "entry_files": ["projects/app/src/pages/account/bill/index.tsx"], "router_paths": ["/account/bill"], "bfs_file_count": 0, "children": [], "parent_signal": { "source": "route", "detail": "leaf route, component != null" } },
+          { "label": "自定义域名", "entry_files": ["projects/app/src/pages/account/customDomain/index.tsx"], "router_paths": ["/account/customDomain"], "bfs_file_count": 0, "children": [], "parent_signal": { "source": "route", "detail": "leaf route, component != null" } },
+          { "label": "账号信息", "entry_files": ["projects/app/src/pages/account/info/index.tsx"], "router_paths": ["/account/info"], "bfs_file_count": 0, "children": [], "parent_signal": { "source": "route", "detail": "leaf route, component != null" } },
+          { "label": "模型管理", "entry_files": ["projects/app/src/pages/account/model/index.tsx"], "router_paths": ["/account/model"], "bfs_file_count": 0, "children": [], "parent_signal": { "source": "route", "detail": "leaf route, component != null" } },
+          { "label": "团队管理", "entry_files": ["projects/app/src/pages/account/team/index.tsx"], "router_paths": ["/account/team"], "bfs_file_count": 0, "children": [], "parent_signal": { "source": "route", "detail": "leaf route, component != null" } },
+          { "label": "第三方集成", "entry_files": ["projects/app/src/pages/account/thirdParty/index.tsx"], "router_paths": ["/account/thirdParty"], "bfs_file_count": 0, "children": [], "parent_signal": { "source": "route", "detail": "leaf route, component != null" } },
+          { "label": "用量统计", "entry_files": ["projects/app/src/pages/account/usage/index.tsx"], "router_paths": ["/account/usage"], "bfs_file_count": 0, "children": [], "parent_signal": { "source": "route", "detail": "leaf route, component != null" } }
+        ],
+        "parent_signal": { "source": "route", "detail": "grouping node, component = null" }
+      },
+      {
+        "label": "工作台",
+        "entry_files": [],
+        "router_paths": [],
+        "bfs_file_count": 0,
+        "children": [
+          { "label": "应用工作台", "entry_files": ["projects/app/src/pages/dashboard/agent/index.tsx"], "router_paths": ["/dashboard/agent"], "bfs_file_count": 0, "children": [], "parent_signal": { "source": "route", "detail": "leaf route, component != null" } },
+          { "label": "创建应用", "entry_files": ["projects/app/src/pages/dashboard/create/index.tsx"], "router_paths": ["/dashboard/create"], "bfs_file_count": 0, "children": [], "parent_signal": { "source": "route", "detail": "leaf route, component != null" } },
+          {
+            "label": "评测",
+            "entry_files": [],
+            "router_paths": [],
+            "bfs_file_count": 0,
+            "children": [
+              { "label": "评测首页", "entry_files": ["projects/app/src/pages/dashboard/evaluation/index.tsx"], "router_paths": ["/dashboard/evaluation"], "bfs_file_count": 0, "children": [], "parent_signal": { "source": "route", "detail": "leaf route, parent page" } },
+              { "label": "创建评测", "entry_files": ["projects/app/src/pages/dashboard/evaluation/create.tsx"], "router_paths": ["/dashboard/evaluation/create"], "bfs_file_count": 0, "children": [], "parent_signal": { "source": "route", "detail": "leaf route, component != null" } },
+              {
+                "label": "评测数据集",
+                "entry_files": [],
+                "router_paths": [],
+                "bfs_file_count": 0,
+                "children": [
+                  { "label": "评测数据集首页", "entry_files": ["projects/app/src/pages/dashboard/evaluation/dataset/index.tsx"], "router_paths": ["/dashboard/evaluation/dataset"], "bfs_file_count": 0, "children": [], "parent_signal": { "source": "route", "detail": "leaf route, parent page" } },
+                  { "label": "文件导入", "entry_files": ["projects/app/src/pages/dashboard/evaluation/dataset/fileImport.tsx"], "router_paths": ["/dashboard/evaluation/dataset/fileImport"], "bfs_file_count": 0, "children": [], "parent_signal": { "source": "route", "detail": "leaf route, component != null" } },
+                  { "label": "评测数据集详情", "entry_files": ["projects/app/src/pages/dashboard/evaluation/dataset/detail/index.tsx"], "router_paths": ["/dashboard/evaluation/dataset/detail"], "bfs_file_count": 0, "children": [], "parent_signal": { "source": "route", "detail": "leaf route, component != null" } }
+                ],
+                "parent_signal": { "source": "route", "detail": "grouping node, component = null" }
+              },
+              {
+                "label": "评测维度",
+                "entry_files": [],
+                "router_paths": [],
+                "bfs_file_count": 0,
+                "children": [
+                  { "label": "评测维度首页", "entry_files": ["projects/app/src/pages/dashboard/evaluation/dimension/index.tsx"], "router_paths": ["/dashboard/evaluation/dimension"], "bfs_file_count": 0, "children": [], "parent_signal": { "source": "route", "detail": "leaf route, parent page" } },
+                  { "label": "创建维度", "entry_files": ["projects/app/src/pages/dashboard/evaluation/dimension/create.tsx"], "router_paths": ["/dashboard/evaluation/dimension/create"], "bfs_file_count": 0, "children": [], "parent_signal": { "source": "route", "detail": "leaf route, component != null" } },
+                  { "label": "编辑维度", "entry_files": ["projects/app/src/pages/dashboard/evaluation/dimension/edit.tsx"], "router_paths": ["/dashboard/evaluation/dimension/edit"], "bfs_file_count": 0, "children": [], "parent_signal": { "source": "route", "detail": "leaf route, component != null" } }
+                ],
+                "parent_signal": { "source": "route", "detail": "grouping node, component = null" }
+              },
+              {
+                "label": "评测任务",
+                "entry_files": [],
+                "router_paths": [],
+                "bfs_file_count": 0,
+                "children": [
+                  { "label": "评测任务首页", "entry_files": ["projects/app/src/pages/dashboard/evaluation/task/index.tsx"], "router_paths": ["/dashboard/evaluation/task"], "bfs_file_count": 0, "children": [], "parent_signal": { "source": "route", "detail": "leaf route, parent page" } },
+                  { "label": "任务详情", "entry_files": ["projects/app/src/pages/dashboard/evaluation/task/detail/index.tsx"], "router_paths": ["/dashboard/evaluation/task/detail"], "bfs_file_count": 0, "children": [], "parent_signal": { "source": "route", "detail": "leaf route, component != null" } }
+                ],
+                "parent_signal": { "source": "route", "detail": "grouping node, component = null" }
+              }
+            ],
+            "parent_signal": { "source": "route", "detail": "grouping node, component = null" }
+          },
+          { "label": "MCP 服务器", "entry_files": ["projects/app/src/pages/dashboard/mcpServer/index.tsx"], "router_paths": ["/dashboard/mcpServer"], "bfs_file_count": 0, "children": [], "parent_signal": { "source": "route", "detail": "leaf route, component != null" } },
+          { "label": "技能管理", "entry_files": ["projects/app/src/pages/dashboard/skill/index.tsx"], "router_paths": ["/dashboard/skill"], "bfs_file_count": 0, "children": [], "parent_signal": { "source": "route", "detail": "leaf route, component != null" } },
+          { "label": "系统工具", "entry_files": ["projects/app/src/pages/dashboard/systemTool/index.tsx"], "router_paths": ["/dashboard/systemTool"], "bfs_file_count": 0, "children": [], "parent_signal": { "source": "route", "detail": "leaf route, component != null" } },
+          { "label": "模板市场", "entry_files": ["projects/app/src/pages/dashboard/templateMarket/index.tsx"], "router_paths": ["/dashboard/templateMarket"], "bfs_file_count": 0, "children": [], "parent_signal": { "source": "route", "detail": "leaf route, component != null" } },
+          { "label": "工具管理", "entry_files": ["projects/app/src/pages/dashboard/tool/index.tsx"], "router_paths": ["/dashboard/tool"], "bfs_file_count": 0, "children": [], "parent_signal": { "source": "route", "detail": "leaf route, component != null" } }
+        ],
+        "parent_signal": { "source": "route", "detail": "grouping node, component = null" }
+      },
+      {
+        "label": "数据集",
+        "entry_files": [],
+        "router_paths": [],
+        "bfs_file_count": 0,
+        "children": [
+          { "label": "数据集列表", "entry_files": ["projects/app/src/pages/dataset/list/index.tsx"], "router_paths": ["/dataset/list"], "bfs_file_count": 0, "children": [], "parent_signal": { "source": "route", "detail": "leaf route, component != null" } },
+          { "label": "数据集详情", "entry_files": ["projects/app/src/pages/dataset/detail/index.tsx"], "router_paths": ["/dataset/detail"], "bfs_file_count": 0, "children": [], "parent_signal": { "source": "route", "detail": "leaf route, component != null" } }
+        ],
+        "parent_signal": { "source": "route", "detail": "grouping node, component = null" }
+      },
+      {
+        "label": "配置",
+        "entry_files": [],
+        "router_paths": [],
+        "bfs_file_count": 0,
+        "children": [
+          {
+            "label": "工具配置",
+            "entry_files": [],
+            "router_paths": [],
+            "bfs_file_count": 0,
+            "children": [
+              { "label": "工具配置首页", "entry_files": ["projects/app/src/pages/config/tool/index.tsx"], "router_paths": ["/config/tool"], "bfs_file_count": 0, "children": [], "parent_signal": { "source": "route", "detail": "leaf route, parent page" } },
+              { "label": "工具市场", "entry_files": ["projects/app/src/pages/config/tool/marketplace.tsx"], "router_paths": ["/config/tool/marketplace"], "bfs_file_count": 0, "children": [], "parent_signal": { "source": "route", "detail": "leaf route, component != null" } }
+            ],
+            "parent_signal": { "source": "route", "detail": "grouping node, component = null" }
+          }
+        ],
+        "parent_signal": { "source": "route", "detail": "grouping node, component = null" }
+      },
+      {
+        "label": "价格",
+        "entry_files": ["projects/app/src/pages/price/index.tsx"],
+        "router_paths": ["/price"],
+        "bfs_file_count": 0,
+        "children": [],
+        "parent_signal": { "source": "route", "detail": "leaf route, component != null" }
+      },
+      {
+        "label": "技能",
+        "entry_files": [],
+        "router_paths": [],
+        "bfs_file_count": 0,
+        "children": [
+          { "label": "技能详情", "entry_files": ["projects/app/src/pages/skill/detail.tsx"], "router_paths": ["/skill/detail"], "bfs_file_count": 0, "children": [], "parent_signal": { "source": "route", "detail": "leaf route, component != null" } }
+        ],
+        "parent_signal": { "source": "route", "detail": "grouping node, component = null" }
+      }
+    ]
+  },
+  "shared_modules": [],
+  "monorepo_splits": [],
+  "removed_nodes": []
+}

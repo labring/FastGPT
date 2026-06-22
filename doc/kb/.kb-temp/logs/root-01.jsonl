@@ -1,0 +1,20 @@
+**root-01 (`仓库概览`) 文档生成完成** ✅
+
+已生成 `doc/kb/仓库概览.md`，内容包括：
+
+| 章节 | 说明 |
+|------|------|
+| 基本信息 | 从 `package.json` 提取的名称/版本，git SHA `ed5536221`，`project_context` 框架信息 |
+| 目录结构 | 基于 `find src -maxdepth 3` 真实输出的 tree 格式，含中文注释 |
+| 技术栈 | 从 `project_context`（三轴检测）+ `package.json` 版本号组合填充 |
+| 仓库规模 | 源文件 1,360 / 一级模块 7 / 路由 45（来自 `route-table.json#total_routes`） |
+| 知识库文档索引 | 从 `capability_tree` 递归展平，分为根级文档、业务知识库、技术知识库三部分 |
+
+自检结果：
+- ✅ frontmatter 字段齐全
+- ✅ 禁项检查通过（无用户故事句式、无构建配置引用、无业务代码片段、无未验证路径）
+- ✅ 仅含目录结构示例（允许的结构示例）
+
+```json
+{"status":"ok","file":"仓库概览.md"}
+```

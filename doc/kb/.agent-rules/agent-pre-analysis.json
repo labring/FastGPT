@@ -1,0 +1,93 @@
+{
+  "source_file_count": 3307,
+  "aliases": {
+    "@": "projects/app/src",
+    "@fastgpt": "packages",
+    "@test": "test",
+    "@fastgpt/service": "packages/service",
+    "@fastgpt-sdk/otel": "sdk/otel/src",
+    "@fastgpt-sdk/otel/logger": "sdk/otel/src/logger-entry.ts",
+    "@fastgpt-sdk/otel/metrics": "sdk/otel/src/metrics-entry.ts",
+    "@fastgpt-sdk/otel/tracing": "sdk/otel/src/tracing-entry.ts",
+    "@fastgpt-sdk/storage": "sdk/storage/src",
+    "diting-rag-ts": "packages/diting-rag-ts/src/index.ts"
+  },
+  "entries": ["projects/app/src/pages/_app.tsx"],
+  "entry_html_map": {
+    "projects/app/src/pages/_app.tsx": "Next.js implicit (pages/ directory)"
+  },
+  "is_monorepo": true,
+  "monorepo_tool": "pnpm",
+  "packages": [
+    "packages/diting-rag-ts",
+    "packages/global",
+    "packages/service",
+    "packages/templates",
+    "packages/web",
+    "projects/agent-sandbox",
+    "projects/app",
+    "projects/code-sandbox",
+    "projects/marketplace",
+    "projects/mcp_server",
+    "projects/sandbox",
+    "projects/volume-manager"
+  ],
+  "shared_candidates": [
+    "packages/global",
+    "packages/web",
+    "packages/service",
+    "packages/templates",
+    "packages/diting-rag-ts",
+    "projects/app/src/components",
+    "projects/app/src/components/common",
+    "projects/app/src/components/core",
+    "projects/app/src/components/Layout",
+    "projects/app/src/components/support"
+  ],
+  "route_strategy_clues": ["next-file-system"],
+  "entry_router_map": [
+    {
+      "entry": "projects/app/src/pages/_app.tsx",
+      "html": "Next.js implicit (pages/ directory)",
+      "router_file": "projects/app/src/pages/_app.tsx",
+      "has_router": true
+    }
+  ],
+  "capability_architecture": "route-hierarchy",
+  "capability_architecture_evidence": {
+    "source": "route_parent_path",
+    "detail": "Next.js 文件系统路由，pages/ 目录下的嵌套目录形成路由层级。parent_path 非空路由占比约 78%，最大嵌套深度 4 层（如 /dashboard/evaluation/task/detail）。无菜单配置文件。",
+    "menu_files": [],
+    "menu_depth": 0,
+    "menu_top_level_count": 0,
+    "route_parent_path_ratio": "78%",
+    "route_max_depth": 4,
+    "total_routes": 45
+  },
+  "execution_mode": "ultra",
+  "shared_analysis": {
+    "prune_dirs": [],
+    "assessed_candidates": [
+      {
+        "dir": "packages/global",
+        "verdict": "shared",
+        "reason": "共享类型、常量、工具函数，无路由文件"
+      },
+      {
+        "dir": "packages/web",
+        "verdict": "shared",
+        "reason": "共享前端组件、hooks、样式、国际化，无路由文件"
+      },
+      {
+        "dir": "packages/service",
+        "verdict": "shared",
+        "reason": "后端服务、数据库模型、API 控制器，无前端路由"
+      },
+      {
+        "dir": "projects/app/src/components",
+        "verdict": "shared",
+        "reason": "应用级共享组件目录，含 common/core/Layout/support 子目录"
+      }
+    ]
+  }
+}

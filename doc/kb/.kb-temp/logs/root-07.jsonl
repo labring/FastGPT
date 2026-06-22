@@ -1,0 +1,19 @@
+**root-07 `代码编写指南.md` 已生成完毕。**
+
+## 生成摘要
+
+| 项目 | 内容 |
+|------|------|
+| 输出文件 | `doc/kb/代码编写指南.md` |
+| 文档类型 | 07 — 仓库级技术知识文档 |
+| 状态 | `done` |
+
+### 文档包含四个章节：
+
+1. **组件结构模板** — 基于 `inform.tsx`、`setting.tsx`、`usage/index.tsx` 三个页面组件归纳的 React FC 标准结构，含 import 顺序、hooks 组织、SSR 注入、分页模式等完整注释
+
+2. **命名规则** — 11 类命名规范的完整表格（组件文件 PascalCase、路由目录 kebab-case、工具函数 `utils.ts`、Store `useXxxStore.ts` 等），附 5 处已知不一致命名的标注
+
+3. **常见反模式** — 8 条有证据支撑的反模式（`exhaustive-deps` 禁用占比 69%、`sfDatasetSelectModal.tsx` 命名违规、路由目录 camelCase 不一致等）
+
+4. **国际化使用指南** — 基于 `next-i18next` + 30 命名空间 + 三语种的实际使用方式，含快速上手步骤、常见陷阱、命名空间速查表

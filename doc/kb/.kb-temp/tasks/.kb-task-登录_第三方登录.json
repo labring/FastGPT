@@ -1,0 +1,26 @@
+{
+  "version": "1.0",
+  "label": "第三方登录",
+  "label_safe": "登录_第三方登录",
+  "type": "capability",
+  "status": "done",
+  "entry_files": [
+    "projects/app/src/pages/login/provider.tsx"
+  ],
+  "router_paths": [
+    "/login/provider"
+  ],
+  "is_grouping": false,
+  "has_tab_children": false,
+  "parent_label": "登录",
+  "output_dir_biz": "doc\\kb\\业务知识库\\登录\\第三方登录/",
+  "output_dir_tech": "doc\\kb\\技术知识库\\登录\\第三方登录/",
+  "depends_on": [],
+  "claimed_by": "",
+  "claimed_at": "2026-06-18T10:48:59Z",
+  "session_id": "a8b1bf72-47cc-46b6-881e-7c49fed522b4",
+  "retry_count": 0,
+  "max_retries": 2,
+  "error": "",
+  "pid": 25363
+}

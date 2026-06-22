@@ -1,0 +1,20 @@
+---
+
+## ✅ 完成：`登录_登录首页_密码登录`
+
+**生成文档清单**：
+
+| 文档 | 路径 |
+|------|------|
+| 模块概览 | `doc/kb/业务知识库/登录/登录首页/密码登录/模块概览.md` |
+| 业务流程索引 | `doc/kb/业务知识库/登录/登录首页/密码登录/业务流程索引.md` |
+| 业务流程详解 | `doc/kb/业务知识库/登录/登录首页/密码登录/业务流程详解.md` |
+| API索引 | `doc/kb/技术知识库/登录/登录首页/密码登录/API索引.md` |
+| 组件列表 | `doc/kb/技术知识库/登录/登录首页/密码登录/组件列表.md` |
+
+**代码探索覆盖**：
+- 入口组件：`LoginForm.tsx`（密码登录表单）
+- 子组件：`FormLayout.tsx`（共享登录布局）、`PolicyTip.tsx`（协议提示）
+- API：`GET /support/user/account/preLogin` → `POST /support/user/account/loginByPassword`
+- 状态管理：`useSystemStore`（feConfigs）、`react-hook-form`（表单状态）
+- 关键链路：预登录码获取 → 密码哈希 → 登录提交 → 登录成功跳转 / 密码错误 URL 清理

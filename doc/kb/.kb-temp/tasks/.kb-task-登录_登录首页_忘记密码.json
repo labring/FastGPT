@@ -1,0 +1,19 @@
+{
+  "version": "1.0",
+  "label": "忘记密码",
+  "label_safe": "登录_登录首页_忘记密码",
+  "type": "capability",
+  "status": "done",
+  "entry_files": [
+    "projects/app/src/pageComponents/login/ForgetPasswordForm.tsx"
+  ],
+  "is_grouping": false,
+  "has_tab_children": false,
+  "parent_label": "登录首页",
+  "output_dir_biz": "doc\\kb\\业务知识库\\登录\\登录首页/忘记密码/",
+  "output_dir_tech": "doc\\kb\\技术知识库\\登录\\登录首页/忘记密码/",
+  "depends_on": [],
+  "claimed_at": "2026-06-18T10:51:08Z",
+  "session_id": "be5da10f-6661-4d41-a585-cdc9d648cffc",
+  "pid": 25566
+}

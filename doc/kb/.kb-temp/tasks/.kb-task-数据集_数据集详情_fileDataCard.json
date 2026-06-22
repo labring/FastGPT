@@ -1,0 +1,26 @@
+{
+  "version": "1.0",
+  "label": "结构化数据卡片",
+  "label_safe": "数据集_数据集详情_fileDataCard",
+  "type": "capability",
+  "status": "done",
+  "entry_files": [
+    "projects/app/src/pageComponents/dataset/detail/FileDataCard.tsx"
+  ],
+  "router_paths": [
+    "/dataset/detail?currentTab=fileDataCard"
+  ],
+  "is_grouping": false,
+  "has_tab_children": false,
+  "parent_label": "数据集详情",
+  "output_dir_biz": "doc/kb/业务知识库/数据集/数据集详情/结构化数据卡片/",
+  "output_dir_tech": "doc/kb/技术知识库/数据集/数据集详情/结构化数据卡片/",
+  "depends_on": [],
+  "claimed_by": "",
+  "claimed_at": "2026-06-18T10:41:33Z",
+  "session_id": "8c7eeac1-9116-4e41-b0a3-dfd59222557c",
+  "retry_count": 0,
+  "max_retries": 2,
+  "error": "",
+  "pid": 24883
+}

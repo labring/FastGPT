@@ -1,0 +1,26 @@
+{
+  "version": "1.0",
+  "label": "评测首页",
+  "label_safe": "工作台_评测_评测首页",
+  "type": "capability",
+  "status": "done",
+  "entry_files": [
+    "projects/app/src/pages/dashboard/evaluation/index.tsx"
+  ],
+  "router_paths": [
+    "/dashboard/evaluation"
+  ],
+  "is_grouping": false,
+  "has_tab_children": true,
+  "parent_label": "评测",
+  "output_dir_biz": "doc\\kb\\业务知识库\\工作台\\评测\\评测首页/",
+  "output_dir_tech": "doc\\kb\\技术知识库\\工作台\\评测\\评测首页/",
+  "depends_on": [],
+  "claimed_by": "",
+  "claimed_at": "2026-06-18T10:28:32Z",
+  "session_id": "01c03e9f-bdbd-4c79-9df2-a1282791d72e",
+  "retry_count": 0,
+  "max_retries": 2,
+  "error": "",
+  "pid": 23622
+}

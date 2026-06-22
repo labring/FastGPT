@@ -158,3 +158,14 @@ function agent_loop(用户需求){
 3. 相同需求文档，尽量写在一起（内容超过 300 行，可以分批写入），或者创建要给目录一起管理，不要随意平铺一堆不同版本的相同问题的文档。
 4. 文件输出，使用正确的编码格式，例如UTF-8。
 5. 除非用户指明，否则不要编写总结报告。
+
+<!-- CODEGRAPH_START -->
+## CodeGraph
+
+In repositories indexed by CodeGraph (a `.codegraph/` directory exists at the repo root), reach for it BEFORE grep/find or reading files when you need to understand or locate code:
+
+- **MCP tools** (when available): `codegraph_explore` answers most code questions in one call — the relevant symbols' verbatim source plus the call paths between them. `codegraph_node` returns one symbol's source + callers, or reads a whole file with line numbers. If the tools are listed but deferred, load them by name via tool search.
+- **Shell** (always works): `codegraph explore "<symbol names or question>"` and `codegraph node <symbol-or-file>` print the same output.
+
+If there is no `.codegraph/` directory, skip CodeGraph entirely — indexing is the user's decision.
+<!-- CODEGRAPH_END -->

@@ -1,0 +1,26 @@
+{
+  "version": "1.0",
+  "label": "API 密钥",
+  "label_safe": "账户_API 密钥",
+  "type": "capability",
+  "status": "done",
+  "entry_files": [
+    "projects/app/src/pages/account/apikey.tsx"
+  ],
+  "router_paths": [
+    "/account/apikey"
+  ],
+  "is_grouping": false,
+  "has_tab_children": false,
+  "parent_label": "账户",
+  "output_dir_biz": "doc\\kb\\业务知识库\\账户\\API 密钥/",
+  "output_dir_tech": "doc\\kb\\技术知识库\\账户\\API 密钥/",
+  "depends_on": [],
+  "claimed_by": "",
+  "claimed_at": "2026-06-18T10:53:06Z",
+  "session_id": "0c78ce90-cfea-4c1d-b739-bd021f90fce2",
+  "retry_count": 0,
+  "max_retries": 2,
+  "error": "",
+  "pid": 25802
+}

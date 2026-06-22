@@ -1,0 +1,22 @@
+{
+  "version": "1.0",
+  "label": "配置",
+  "label_safe": "配置",
+  "type": "capability",
+  "status": "done",
+  "entry_files": [],
+  "router_paths": [],
+  "is_grouping": true,
+  "has_tab_children": false,
+  "parent_label": "",
+  "output_dir_biz": "doc\\kb\\业务知识库\\配置/",
+  "output_dir_tech": "doc\\kb\\技术知识库\\配置/",
+  "depends_on": [],
+  "claimed_by": "",
+  "claimed_at": "2026-06-18T11:19:43Z",
+  "session_id": "4af8c8b0-de2c-4696-bae0-7734dc349798",
+  "retry_count": 0,
+  "max_retries": 2,
+  "error": "",
+  "pid": 27773
+}

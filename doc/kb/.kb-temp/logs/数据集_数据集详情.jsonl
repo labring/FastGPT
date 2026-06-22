@@ -1,0 +1,27 @@
+所有验证通过。**数据集详情** 父级文档生成完成。
+
+## 执行摘要
+
+| 项目 | 状态 |
+|------|------|
+| **Tab 检测** | ✅ 发现 7 个 Tab（模式 C：`TabEnum` 条件渲染） |
+| **子任务创建** | ✅ 7 个 `.kb-task-*.json` 已创建（2 个已被调度器认领） |
+| **08-模块概览** | ✅ 已生成 |
+| **09-业务流程索引** | ✅ 已生成 |
+| **10-业务流程详解** | ✅ 已生成（分支一：Tab 子能力索引模式） |
+| **12-API索引** | ✅ 已生成 |
+| **13-组件列表** | ✅ 已生成 |
+| **11/14/15/16** | ⊘ 跳过（按需触发条件不满足） |
+| **自检** | ✅ 全部通过（frontmatter 7 字段齐全、禁项合规） |
+
+### Tab 子任务一览
+
+| Tab | label_safe | 入口组件 | 调度器状态 |
+|-----|-----------|---------|-----------|
+| 集合管理 | `数据集_数据集详情_collectionCard` | `RefinedCollectionCard/index.tsx` | in_progress |
+| 数据卡片 | `数据集_数据集详情_dataCard` | `RefinedDataCard/index.tsx` | in_progress |
+| 结构化数据卡片 | `数据集_数据集详情_fileDataCard` | `FileDataCard.tsx` | pending |
+| 检索测试 | `数据集_数据集详情_test` | `Test.tsx` | pending |
+| 导入数据 | `数据集_数据集详情_import` | `Import/index.tsx` | pending |
+| 同义词管理 | `数据集_数据集详情_synonym` | `Synonym/index.tsx` | pending |
+| 数据集配置 | `数据集_数据集详情_info` | `Info/index.tsx` | pending |

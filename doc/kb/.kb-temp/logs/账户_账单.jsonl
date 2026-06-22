@@ -1,0 +1,39 @@
+All checks pass. Only Mermaid code blocks found (exempted from the business doc code block ban). Here's the summary:
+
+---
+
+## ✅ `--scope 账户_账单` 执行完成
+
+### 生成文档 (8/8)
+
+**业务知识库** (`doc/kb/业务知识库/账户/账单/`)：
+| 文档 | 状态 |
+|------|------|
+| 模块概览.md | ✅ 含角色差异、跨模块依赖、子能力索引 |
+| 业务流程索引.md | ✅ 含 Tab 结构索引、3 个 Tab 子场景 |
+| 业务流程详解.md | ✅ 公共流程（入口/Tab切换/申请发票弹窗）+ Mermaid |
+
+**技术知识库** (`doc/kb/技术知识库/账户/账单/`)：
+| 文档 | 状态 |
+|------|------|
+| API索引.md | ✅ 11 个 API（账单 7 + 发票 4），含反向索引和调用链 |
+| 组件列表.md | ✅ 5 个组件，含消费的外部组件清单 |
+| Store数据流.md | ✅ 跳过说明（无独立 Store） |
+| 共享组件清单.md | ✅ BillDetailModal 完整 Props 和使用示例 |
+| Hooks工具函数.md | ✅ 跳过说明（无自定义 Hooks） |
+
+### Tab 子任务
+
+已创建 3 个子任务，均已被调度器派发：
+
+| 子任务 | 文件 | 状态 |
+|--------|------|------|
+| 账户_账单_账单记录 | `.kb-task-账户_账单_账单记录.json` | in_progress (PID 27715) |
+| 账户_账单_发票 | `.kb-task-账户_账单_发票.json` | in_progress (PID 27667) |
+| 账户_账单_发票抬头 | `.kb-task-账户_账单_发票抬头.json` | in_progress (PID 27701) |
+
+### Tab 检测来源
+
+- **框架**: React (Next.js)
+- **检测方式**: 行为结构 — 配置驱动（FillRowTabs `list` prop + value/onChange 状态切换）
+- **Tab 清单**: 账单记录 (bill) / 发票 (invoice) / 发票抬头 (invoiceHeader)

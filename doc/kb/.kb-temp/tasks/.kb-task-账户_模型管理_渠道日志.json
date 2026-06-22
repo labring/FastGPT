@@ -1,0 +1,29 @@
+{
+  "version": "1.0",
+  "label": "渠道日志",
+  "label_safe": "账户_模型管理_渠道日志",
+  "type": "capability",
+  "status": "done",
+  "entry_files": [
+    "projects/app/src/pageComponents/account/model/Log/index.tsx"
+  ],
+  "router_paths": [
+    "/account/model"
+  ],
+  "is_grouping": false,
+  "has_tab_children": false,
+  "parent_label": "模型管理",
+  "output_dir_biz": "doc\\kb\\业务知识库\\账户\\模型管理\\渠道日志/",
+  "output_dir_tech": "doc\\kb\\技术知识库\\账户\\模型管理\\渠道日志/",
+  "depends_on": [],
+  "claimed_by": "",
+  "claimed_at": "2026-06-18T11:02:41Z",
+  "session_id": "f38c9cc2-d246-4f5c-9193-f8a6f047e8b8",
+  "retry_count": 0,
+  "max_retries": 2,
+  "error": "",
+  "tab_source": "MyTabs: channel_log (account_model:log), root only with show_aiproxy",
+  "cross_module": false,
+  "dynamic": false,
+  "pid": 26727
+}
