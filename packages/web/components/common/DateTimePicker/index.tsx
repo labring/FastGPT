@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import type { InputProps } from '@chakra-ui/react';
 import { Box, Card, Flex, Button, Input, HStack, Text } from '@chakra-ui/react';
 import { format } from 'date-fns';
@@ -31,6 +32,7 @@ const DateTimePicker = ({
 }: DateTimePickerProps) => {
   const { t, i18n } = useTranslation();
   const pickerRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(value || null);
   const [hours, setHours] = useState(value?.getHours() || 0);
@@ -165,6 +167,36 @@ const DateTimePicker = ({
     setIsOpen(false);
   };
 
+  const handleConfirmRef = useRef(handleConfirm);
+  useEffect(() => {
+    handleConfirmRef.current = handleConfirm;
+  });
+
+  const selectedDateRef = useRef(selectedDate);
+  useEffect(() => {
+    selectedDateRef.current = selectedDate;
+  });
+
+  // 点击外部关闭弹窗
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        pickerRef.current &&
+        !pickerRef.current.contains(target) &&
+        cardRef.current &&
+        !cardRef.current.contains(target)
+      ) {
+        selectedDateRef.current ? handleConfirmRef.current() : setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen]);
+
   // 获取输入框位置用于定位弹窗
   const getInputPosition = () => {
     if (typeof window === 'undefined') return { top: '50%', left: '50%' };
@@ -225,37 +257,24 @@ const DateTimePicker = ({
         </Box>
       )}
 
-      {isOpen && !disabled && (
-        <>
-          {/* 背景遮罩 */}
-          <Box
-            position="fixed"
-            top={0}
-            left={0}
-            right={0}
-            bottom={0}
-            bg="rgba(0, 0, 0, 0.1)"
-            zIndex={9998}
-            onClick={() => (selectedDate ? handleConfirm() : setIsOpen(false))}
-          />
-
-          {/* 弹窗内容 */}
-          <Card
-            position="fixed"
-            zIndex={9999}
-            top={modalPosition.top}
-            left={modalPosition.left}
-            p={0}
-            minWidth="320px"
-            maxWidth="90vw"
-            maxHeight="80vh"
-            overflowY="auto"
-            boxShadow="2xl"
-            bg="white"
-            borderRadius="md"
-            border="1px solid"
-            borderColor="gray.200"
-          >
+      {isOpen && !disabled && createPortal(
+        <Card
+          ref={cardRef}
+          position="fixed"
+          zIndex={9999}
+          top={modalPosition.top}
+          left={modalPosition.left}
+          p={0}
+          minWidth="320px"
+          maxWidth="90vw"
+          maxHeight="80vh"
+          overflowY="auto"
+          boxShadow="2xl"
+          bg="white"
+          borderRadius="md"
+          border="1px solid"
+          borderColor="gray.200"
+        >
             {/* 日期选择器 */}
             <Box p={3} borderBottom="1px solid" borderColor="gray.200">
               <DayPicker
@@ -317,8 +336,8 @@ const DateTimePicker = ({
                 {t('common:Confirm')}
               </Button>
             </Flex>
-          </Card>
-        </>
+          </Card>,
+        document.body
       )}
     </Box>
   );
