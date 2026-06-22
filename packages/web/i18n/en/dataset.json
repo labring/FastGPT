@@ -563,7 +563,7 @@
   "database_table_label": "Data Table",
   "new_dataset_title": "New {{name}}",
   "edit_dataset_title": "Edit {{name}}",
-  "edit_model_warning": "Changing the model will reprocess all content in the dataset.",
+  "edit_model_warning": "Changing the vector model will reprocess all content in the dataset.",
   "knowledge_process_edit_tip": "Changes to knowledge processing settings only apply to newly uploaded files.",
   "icon_and_name": "Icon & Name",
   "agent_model_label": "Knowledge Enhancement Model",

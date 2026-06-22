@@ -562,7 +562,7 @@
   "database_table_label": "資料表",
   "new_dataset_title": "新建{{name}}",
   "edit_dataset_title": "编辑{{name}}",
-  "edit_model_warning": "更換模型將重新處理知識庫中所有內容。",
+  "edit_model_warning": "更換向量模型將重新處理知識庫中所有內容。",
   "knowledge_process_edit_tip": "變更知識處理方式，僅對新上傳的檔案生效。",
   "icon_and_name": "圖示 & 名稱",
   "agent_model_label": "知識增強模型",
