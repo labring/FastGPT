@@ -2,6 +2,7 @@
   "title": "对话使用",
   "root": false,
   "pages": [
+    "specialMarkdownTemplates",
     "htmlRendering",
     "quoteList"
   ]

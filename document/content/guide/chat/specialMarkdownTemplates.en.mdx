@@ -1,0 +1,44 @@
+---
+title: Quick Replies
+description: Quick start guide for quick replies in FastGPT chat
+---
+
+Quick replies let the AI output a group of clickable buttons in its response. When a user clicks a button, FastGPT sends that button text directly as the user's next message. This is useful for customer support, product introduction, sales guidance, and other scenarios where users need clear next-step options.
+
+## Usage
+
+Output a `quick-replies` code block in the AI response. Each line inside the code block is rendered as one quick-reply button.
+
+### Syntax
+
+````md
+```quick-replies
+View feature introduction
+Learn pricing plans
+Book a product demo
+```
+````
+
+### Preview
+
+![](/imgs/chat/specialMarkdown/quickReplies.png)
+
+## Notes
+
+- Write one quick-reply option per line. Blank lines are ignored.
+- The total code block content must not exceed 300 characters.
+- Clicking a quick reply sends the corresponding text directly and does not clear existing input.
+- If the AI is still responding, clicking a quick reply will not send a new message immediately. FastGPT will prompt the user to wait until the current chat finishes.
+- Quick replies only take effect in chat contexts where this capability is enabled, such as app chat, share link chat, and home chat.
+
+## Recommended Format
+
+We recommend providing 2 to 5 short and clear options each time.
+
+````md
+```quick-replies
+Check order status
+Request after-sales service
+Contact support
+```
+````
