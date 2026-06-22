@@ -53,6 +53,7 @@ const QuickReplies = ({ text }: QuickRepliesProps) => {
           px={4}
           w="full"
           fontSize="sm"
+          userSelect={'auto'}
           onClick={() => onQuickReplyClick?.(text)}
         >
           {text}
