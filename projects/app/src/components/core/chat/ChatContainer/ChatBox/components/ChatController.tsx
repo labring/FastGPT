@@ -13,6 +13,7 @@ import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
+import LikeFeedbackButton from './LikeFeedbackButton';
 
 export type ChatControllerProps = {
   isLastChild: boolean;
@@ -23,6 +24,7 @@ export type ChatControllerProps = {
   onMark?: () => void;
   onAddUserLike?: () => void;
   onAddUserDislike?: () => void;
+  likeFeedbackEffectTrigger?: number;
   onToggleFeedbackReadStatus?: () => void;
   showFeedbackContent?: boolean;
   onToggleFeedbackContent?: () => void;
@@ -47,7 +49,8 @@ const footerIconStyle = {
   cursor: 'pointer',
   p: '4px',
   color: 'myGray.400',
-  _hover: { color: 'primary.600' }
+  transition: 'color 180ms ease, transform 180ms ease, filter 180ms ease',
+  _hover: { color: 'primary.600', transform: 'translateY(-1px)' }
 };
 
 const ChatController = ({
@@ -58,6 +61,7 @@ const ChatController = ({
   onDelete,
   onAddUserDislike,
   onAddUserLike,
+  likeFeedbackEffectTrigger,
   onToggleFeedbackReadStatus,
   showFeedbackContent,
   onToggleFeedbackContent,
@@ -297,20 +301,27 @@ const ChatController = ({
                 <>
                   {!!onAddUserLike && (
                     <MyTooltip label={t('chat:feedback_helpful')}>
-                      <MyIcon
-                        {...iconStyle}
-                        {...(!!chat.userGoodFeedback
-                          ? activeFeedbackStyle
-                          : {
-                              _hover: { color: 'primary.600' }
-                            })}
-                        borderRight={isFooter ? undefined : !onAddUserDislike ? 'none' : 'base'}
-                        borderRightRadius={
-                          isFooter ? undefined : !onAddUserDislike ? 'sm' : 'none'
-                        }
-                        name={'core/chat/feedback/goodLight'}
-                        onClick={onAddUserLike}
-                      />
+                      {isFooter ? (
+                        <LikeFeedbackButton
+                          {...iconStyle}
+                          isActive={!!chat.userGoodFeedback}
+                          effectTrigger={likeFeedbackEffectTrigger}
+                          onClick={onAddUserLike}
+                        />
+                      ) : (
+                        <MyIcon
+                          {...iconStyle}
+                          {...(!!chat.userGoodFeedback
+                            ? activeFeedbackStyle
+                            : {
+                                _hover: { color: 'primary.600' }
+                              })}
+                          borderRight={!onAddUserDislike ? 'none' : 'base'}
+                          borderRightRadius={!onAddUserDislike ? 'sm' : 'none'}
+                          name={'core/chat/feedback/goodLight'}
+                          onClick={onAddUserLike}
+                        />
+                      )}
                     </MyTooltip>
                   )}
                   {!!onAddUserDislike && (

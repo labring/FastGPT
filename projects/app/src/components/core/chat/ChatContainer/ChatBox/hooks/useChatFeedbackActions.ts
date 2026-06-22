@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { useMemoizedFn } from 'ahooks';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -24,6 +24,10 @@ type UseChatFeedbackActionsProps = {
 };
 
 type AdminMarkState = AdminMarkType & { dataId: string };
+type LikeFeedbackEffectState = {
+  dataId: string;
+  trigger: number;
+};
 
 /**
  * 管理 ChatBox 中反馈、标注和反馈已读状态相关动作。
@@ -47,11 +51,31 @@ export const useChatFeedbackActions = ({
 }: UseChatFeedbackActionsProps) => {
   const [feedbackId, setFeedbackId] = useState<string>();
   const [adminMarkData, setAdminMarkData] = useState<AdminMarkState>();
+  const [likeFeedbackEffect, setLikeFeedbackEffect] = useState<LikeFeedbackEffectState>();
+  const likeFeedbackEffectTrigger = useRef(0);
+  const likeFeedbackEffectTimer = useRef<ReturnType<typeof setTimeout>>();
 
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
   const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
+
+  useEffect(() => {
+    return () => {
+      if (likeFeedbackEffectTimer.current) {
+        clearTimeout(likeFeedbackEffectTimer.current);
+      }
+    };
+  }, []);
+
+  // 取消赞或进入点踩流程时立即清理一次性视觉反馈，避免非点赞动作残留撒花。
+  const clearLikeFeedbackEffect = useMemoizedFn(() => {
+    if (likeFeedbackEffectTimer.current) {
+      clearTimeout(likeFeedbackEffectTimer.current);
+      likeFeedbackEffectTimer.current = undefined;
+    }
+    setLikeFeedbackEffect(undefined);
+  });
 
   /**
    * 生成 admin mark 入口回调。
@@ -109,6 +133,21 @@ export const useChatFeedbackActions = ({
             : chatItem
         )
       );
+      if (!isGoodFeedback) {
+        const trigger = ++likeFeedbackEffectTrigger.current;
+        if (likeFeedbackEffectTimer.current) {
+          clearTimeout(likeFeedbackEffectTimer.current);
+        }
+        setLikeFeedbackEffect({
+          dataId: chat.dataId,
+          trigger
+        });
+        likeFeedbackEffectTimer.current = setTimeout(() => {
+          setLikeFeedbackEffect((state) => (state?.trigger === trigger ? undefined : state));
+        }, 800);
+      } else {
+        clearLikeFeedbackEffect();
+      }
 
       try {
         updateChatUserFeedback({
@@ -134,6 +173,7 @@ export const useChatFeedbackActions = ({
 
     if (chat.userBadFeedback) {
       return () => {
+        clearLikeFeedbackEffect();
         if (!chat.dataId || !chatId || !appId) return;
         setChatRecords((state) =>
           state.map((chatItem) =>
@@ -152,7 +192,10 @@ export const useChatFeedbackActions = ({
       };
     }
 
-    return () => setFeedbackId(chat.dataId);
+    return () => {
+      clearLikeFeedbackEffect();
+      setFeedbackId(chat.dataId);
+    };
   });
 
   /**
@@ -230,6 +273,7 @@ export const useChatFeedbackActions = ({
    * 并关闭 modal，避免等待下一次 records reload 才看到反馈状态。
    */
   const onFeedbackSuccess = useMemoizedFn((content: string) => {
+    clearLikeFeedbackEffect();
     setChatRecords((state) =>
       state.map((item) =>
         item.dataId === feedbackId
@@ -273,6 +317,7 @@ export const useChatFeedbackActions = ({
     setFeedbackId,
     adminMarkData,
     setAdminMarkData,
+    likeFeedbackEffect,
     onMark,
     onAddUserLike,
     onAddUserDislike,
