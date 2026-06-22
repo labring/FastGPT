@@ -2,11 +2,12 @@ import z from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { ChatCompletionMessageParamSchema } from '../../../../core/ai/llm/type';
 import { getNanoid } from '../../../../common/string/tools';
-import { AppChatConfigTypeSchema, AppSchemaTypeSchema } from '../../../../core/app/type';
+import { AppSchemaTypeSchema } from '../../../../core/app/type';
 import { AuthUserTypeEnum } from '../../../../support/permission/constant';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 import { StoreEdgeItemTypeSchema } from '../../../../core/workflow/type/edge';
 import { OpenAPIStoreNodeItemTypeSchema } from '../../workflow/node';
+import { OpenAPIAppChatConfigSchema } from '../../app/common/api';
 
 const nullishToUndefined = <T extends z.ZodTypeAny>(schema: T) =>
   z.preprocess((v) => v ?? undefined, schema);
@@ -163,7 +164,7 @@ export const ChatTestPropsSchema = z.object({
     .meta({ description: '自定义响应的 assistant 的消息 ID，如果不传入，则自动生成一个' }),
   nodes: z.array(OpenAPIStoreNodeItemTypeSchema).meta({ description: '节点列表' }),
   edges: z.array(StoreEdgeItemTypeSchema).meta({ description: '边列表' }),
-  chatConfig: AppChatConfigTypeSchema.meta({ description: '聊天配置' }),
+  chatConfig: OpenAPIAppChatConfigSchema.meta({ description: '聊天配置' }),
   variables: nullishToUndefined(z.record(z.string(), z.any()).default({})).meta({
     description: '全局变量或插件输入'
   }),
