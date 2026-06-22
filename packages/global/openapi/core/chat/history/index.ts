@@ -1,6 +1,5 @@
 import type { OpenAPIPath } from '../../../type';
-import { DevApiTagsMap } from '../../../tag';
-import { SystemOpenApiTagMap } from '../../../tag';
+import { AppOpenApiTagMap, DevApiTagsMap, SystemOpenApiTagMap } from '../../../tag';
 import {
   GetHistoriesBodySchema,
   GetHistoriesResponseSchema,
@@ -18,7 +17,11 @@ export const ChatHistoryPath: OpenAPIPath = {
     post: {
       summary: '获取会话列表',
       description: '分页获取指定应用的会话',
-      tags: [DevApiTagsMap.chatHistory, SystemOpenApiTagMap.chatHistory],
+      tags: [
+        DevApiTagsMap.chatHistory,
+        SystemOpenApiTagMap.chatHistory,
+        AppOpenApiTagMap.chatHistory
+      ],
       requestBody: {
         content: {
           'application/json': {
@@ -86,7 +89,11 @@ export const ChatHistoryPath: OpenAPIPath = {
     put: {
       summary: '修改会话',
       description: '修改会话的标题、自定义标题或置顶状态',
-      tags: [DevApiTagsMap.chatHistory, SystemOpenApiTagMap.chatHistory],
+      tags: [
+        DevApiTagsMap.chatHistory,
+        SystemOpenApiTagMap.chatHistory,
+        AppOpenApiTagMap.chatHistory
+      ],
       requestBody: {
         content: {
           'application/json': {
@@ -105,7 +112,11 @@ export const ChatHistoryPath: OpenAPIPath = {
     delete: {
       summary: '删除单个会话',
       description: '软删除指定的单个会话，不会物理删除',
-      tags: [DevApiTagsMap.chatHistory, SystemOpenApiTagMap.chatHistory],
+      tags: [
+        DevApiTagsMap.chatHistory,
+        SystemOpenApiTagMap.chatHistory,
+        AppOpenApiTagMap.chatHistory
+      ],
       requestParams: {
         query: DelChatHistorySchema
       },
@@ -120,7 +131,11 @@ export const ChatHistoryPath: OpenAPIPath = {
     delete: {
       summary: '清空应用会话',
       description: '清空指定应用的所有会话(软删除)',
-      tags: [DevApiTagsMap.chatHistory, SystemOpenApiTagMap.chatHistory],
+      tags: [
+        DevApiTagsMap.chatHistory,
+        SystemOpenApiTagMap.chatHistory,
+        AppOpenApiTagMap.chatHistory
+      ],
       requestParams: {
         query: ClearChatHistoriesSchema
       },

@@ -1,6 +1,5 @@
 import type { OpenAPIPath } from '../../../type';
-import { DevApiTagsMap } from '../../../tag';
-import { SystemOpenApiTagMap } from '../../../tag';
+import { AppOpenApiTagMap, DevApiTagsMap, SystemOpenApiTagMap } from '../../../tag';
 import {
   StopV2ChatSchema,
   StopV2ChatResponseSchema,
@@ -13,7 +12,11 @@ export const ChatControllerPath: OpenAPIPath = {
     get: {
       summary: '获取会话框基本信息',
       description: '',
-      tags: [DevApiTagsMap.chatHistory, SystemOpenApiTagMap.chatHistory],
+      tags: [
+        DevApiTagsMap.chatHistory,
+        SystemOpenApiTagMap.chatHistory,
+        AppOpenApiTagMap.chatHistory
+      ],
       requestParams: {
         query: InitChatQuerySchema
       },
@@ -34,7 +37,11 @@ export const ChatControllerPath: OpenAPIPath = {
       summary: '停止会话',
       description: `停止正在运行的会话, 会尝试等待当前节点结束后返回，最长 5s，超过 5s 仍未结束，则会返回成功。
   LLM 节点，流输出时会同时被终止，但 HTTP 请求节点这种可能长时间运行的，不会被终止。`,
-      tags: [DevApiTagsMap.chatController, SystemOpenApiTagMap.chatController],
+      tags: [
+        DevApiTagsMap.chatController,
+        SystemOpenApiTagMap.chatController,
+        AppOpenApiTagMap.chatController
+      ],
       requestBody: {
         content: {
           'application/json': {

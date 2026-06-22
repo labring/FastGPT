@@ -1,6 +1,5 @@
 import type { OpenAPIPath } from '../../../type';
-import { DevApiTagsMap } from '../../../tag';
-import { SystemOpenApiTagMap } from '../../../tag';
+import { AppOpenApiTagMap, DevApiTagsMap, SystemOpenApiTagMap } from '../../../tag';
 import { ChatTestPropsSchema, CompletionsPropsSchema, CompletionsResponseSchema } from './api';
 
 /* =============== Request examples =============== */
@@ -318,7 +317,11 @@ data: [DONE]`;
 export const ChatCompletionPath: OpenAPIPath = {
   '/v1/chat/completions': {
     post: {
-      tags: [DevApiTagsMap.chatController, SystemOpenApiTagMap.chatController],
+      tags: [
+        DevApiTagsMap.chatController,
+        SystemOpenApiTagMap.chatController,
+        AppOpenApiTagMap.chatController
+      ],
       deprecated: true,
       summary: '发起会话v1',
       description: `v1 对话接口兼容 GPT 的接口。如果你的项目使用的是标准的 GPT 官方接口，可以直接通过修改 BaseUrl 和 Authorization 来访问 FastGPT 应用。
@@ -467,7 +470,11 @@ ${interactiveStreamExample}
   },
   '/v2/chat/completions': {
     post: {
-      tags: [DevApiTagsMap.chatController, SystemOpenApiTagMap.chatController],
+      tags: [
+        DevApiTagsMap.chatController,
+        SystemOpenApiTagMap.chatController,
+        AppOpenApiTagMap.chatController
+      ],
       summary: '发起对话 v2',
       description: `v2 对话接口与 v1 请求参数基本一致，但流式事件和停止方式有差异。
 

@@ -181,6 +181,10 @@ export const authApp = async ({
   if (result.authType === AuthUserTypeEnum.apikey && result.apiKeyAppId) {
     const { app } = await authAppByApiKeyTeam({ teamId: result.teamId, appId });
 
+    if (!app.permission.checkPer(per)) {
+      return Promise.reject(AppErrEnum.unAuthApp);
+    }
+
     return {
       ...result,
       permission: app.permission,

@@ -12,7 +12,9 @@ import { Call } from '@test/utils/request';
 import { describe, expect, it, beforeEach } from 'vitest';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
-import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { AuthUserTypeEnum, PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+
+type EmptyQuery = Record<string, never>;
 
 describe('batchDelete api test', () => {
   let testUser: Awaited<ReturnType<typeof getUser>>;
@@ -97,7 +99,7 @@ describe('batchDelete api test', () => {
   it('should batch delete multiple chats successfully', async () => {
     const deleteIds = [chatIds[0], chatIds[1]];
 
-    const res = await Call<ChatBatchDeleteBodyType, {}>(handler, {
+    const res = await Call<ChatBatchDeleteBodyType, EmptyQuery>(handler, {
       auth: testUser,
       body: {
         appId,
@@ -140,7 +142,7 @@ describe('batchDelete api test', () => {
   it('should delete single chat', async () => {
     const deleteIds = [chatIds[0]];
 
-    const res = await Call<ChatBatchDeleteBodyType, {}>(handler, {
+    const res = await Call<ChatBatchDeleteBodyType, EmptyQuery>(handler, {
       auth: testUser,
       body: {
         appId,
@@ -167,7 +169,7 @@ describe('batchDelete api test', () => {
   });
 
   it('should delete all chats when all chatIds are provided', async () => {
-    const res = await Call<ChatBatchDeleteBodyType, {}>(handler, {
+    const res = await Call<ChatBatchDeleteBodyType, EmptyQuery>(handler, {
       auth: testUser,
       body: {
         appId,
@@ -187,7 +189,7 @@ describe('batchDelete api test', () => {
   });
 
   it('should fail when chatIds is empty array', async () => {
-    const res = await Call<ChatBatchDeleteBodyType, {}>(handler, {
+    const res = await Call<ChatBatchDeleteBodyType, EmptyQuery>(handler, {
       auth: testUser,
       body: {
         appId,
@@ -200,7 +202,7 @@ describe('batchDelete api test', () => {
   });
 
   it('should fail when chatIds is not an array', async () => {
-    const res = await Call<any, {}, any>(handler, {
+    const res = await Call<any, EmptyQuery, any>(handler, {
       auth: testUser,
       body: {
         appId,
@@ -213,7 +215,7 @@ describe('batchDelete api test', () => {
   });
 
   it('should fail when appId is missing', async () => {
-    const res = await Call<ChatBatchDeleteBodyType, {}>(handler, {
+    const res = await Call<ChatBatchDeleteBodyType, EmptyQuery>(handler, {
       auth: testUser,
       body: {
         appId: '',
@@ -228,7 +230,7 @@ describe('batchDelete api test', () => {
   it('should fail when user does not have permission', async () => {
     const unauthorizedUser = await getUser('unauthorized-user-batch-delete');
 
-    const res = await Call<ChatBatchDeleteBodyType, {}>(handler, {
+    const res = await Call<ChatBatchDeleteBodyType, EmptyQuery>(handler, {
       auth: unauthorizedUser,
       body: {
         appId,
@@ -240,11 +242,36 @@ describe('batchDelete api test', () => {
     expect(res.error).toBeDefined();
   });
 
+  it('should reject app APIKey without chat log permission', async () => {
+    const res = await Call<ChatBatchDeleteBodyType, EmptyQuery>(handler, {
+      auth: {
+        ...testUser,
+        authType: AuthUserTypeEnum.apikey,
+        appId,
+        apiKeyAppId: appId,
+        apikey: 'app-api-key'
+      },
+      body: {
+        appId,
+        chatIds: [chatIds[0]]
+      }
+    });
+
+    expect(res.code).toBe(500);
+    expect(res.error).toBeDefined();
+
+    const chat = await MongoChat.findOne({
+      appId,
+      chatId: chatIds[0]
+    });
+    expect(chat).toBeDefined();
+  });
+
   it('should succeed even when some chatIds do not exist', async () => {
     const nonExistentChatId = getNanoid();
     const deleteIds = [chatIds[0], nonExistentChatId];
 
-    const res = await Call<ChatBatchDeleteBodyType, {}>(handler, {
+    const res = await Call<ChatBatchDeleteBodyType, EmptyQuery>(handler, {
       auth: testUser,
       body: {
         appId,
@@ -285,7 +312,7 @@ describe('batchDelete api test', () => {
     });
 
     // Try to delete a chat from the first app
-    const res = await Call<ChatBatchDeleteBodyType, {}>(handler, {
+    const res = await Call<ChatBatchDeleteBodyType, EmptyQuery>(handler, {
       auth: testUser,
       body: {
         appId,
@@ -327,7 +354,7 @@ describe('batchDelete api test', () => {
       )
     );
 
-    const res = await Call<ChatBatchDeleteBodyType, {}>(handler, {
+    const res = await Call<ChatBatchDeleteBodyType, EmptyQuery>(handler, {
       auth: testUser,
       body: {
         appId,

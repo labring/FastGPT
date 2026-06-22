@@ -9,8 +9,16 @@ const ApiReferenceReact = dynamic(
   { ssr: false }
 );
 
-export const ScalarOpenApiPage = ({ documentUrl }: { documentUrl: string }) => (
+export const ScalarOpenApiPage = ({
+  documentUrl,
+  defaultOpenAllTags
+}: {
+  documentUrl: string;
+  defaultOpenAllTags?: boolean;
+}) => (
   <Box w="100vw" h="100vh" overflow="auto">
-    <ApiReferenceReact configuration={getScalarOpenApiReferenceConfig(documentUrl)} />
+    <ApiReferenceReact
+      configuration={getScalarOpenApiReferenceConfig(documentUrl, { defaultOpenAllTags })}
+    />
   </Box>
 );
