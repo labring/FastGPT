@@ -60,10 +60,12 @@ export const withAgentSandboxInitLease = async <T>({
 export const runAgentSandboxEntrypoint = async ({
   sandbox,
   sandboxEntrypoint,
+  afterSandboxEntrypoint,
   workDirectory
 }: {
   sandbox: ISandbox;
   sandboxEntrypoint?: string;
+  afterSandboxEntrypoint?: string;
   workDirectory?: string;
 }): Promise<void> => {
   const script = sandboxEntrypoint?.trim();
@@ -84,6 +86,17 @@ export const runAgentSandboxEntrypoint = async ({
   });
 
   if (!result) return;
+
+  const afterScript = afterSandboxEntrypoint?.trim();
+  if (afterScript) {
+    const afterResult = await executeEntrypointCommand({
+      sandbox,
+      command: buildBashScriptCommand(afterScript, workDirectory),
+      label: 'sandbox:after'
+    });
+
+    if (!afterResult) return;
+  }
 
   stateContext.state.sandboxEntrypointHash = scriptHash;
   await writeEntrypointState(sandbox, stateContext);

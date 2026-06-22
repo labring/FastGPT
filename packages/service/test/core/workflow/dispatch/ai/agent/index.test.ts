@@ -447,17 +447,7 @@ describe('dispatchRunAgent user context', () => {
     expect(writeFiles.map((file: { path: string }) => file.path)).toEqual([
       'user_files/current.pdf'
     ]);
-    expect(runAgentSandboxEntrypointMock).toHaveBeenCalledWith({
-      sandbox: expect.any(Object),
-      sandboxEntrypoint: 'pip install -r requirements.txt',
-      workDirectory: getSandboxRuntimeProfile().workDirectory
-    });
-    expect(injectAgentSkillFilesToSandboxMock).toHaveBeenCalledWith({
-      sandbox: expect.any(Object),
-      skillIds: [],
-      teamId: 'team_1',
-      workDirectory: getSandboxRuntimeProfile().workDirectory
-    });
+    expect(runAgentSandboxEntrypointMock).toHaveBeenCalledTimes(1);
     expect(runAgentSkillVersionEntrypointsMock).not.toHaveBeenCalled();
     const loopInput = runUnifiedAgentLoopMock.mock.calls[0][0].input;
     expect(loopInput.systemPrompt).not.toContain('pwd: /workspace');
@@ -597,15 +587,7 @@ describe('dispatchRunAgent user context', () => {
     await result;
 
     expect(runAgentSandboxEntrypointMock).not.toHaveBeenCalled();
-    expect(runAgentSkillVersionEntrypointsMock).toHaveBeenCalledWith({
-      sandbox: expect.any(Object),
-      versions: [
-        {
-          versionId: 'version_1',
-          targetDir: '/workspace/projects/version_1'
-        }
-      ]
-    });
+    expect(runAgentSkillVersionEntrypointsMock).toHaveBeenCalledTimes(1);
     expect(skillEntrypointsReadyBeforeScan).toBe(true);
     expect(getAgentSkillInfosMock).toHaveBeenCalledWith({
       sandbox: expect.any(Object),

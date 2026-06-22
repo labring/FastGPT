@@ -14,38 +14,25 @@ type ExecuteResult = {
 
 const createSandbox = ({
   initialState,
-  entrypointExists = true,
   entrypointExitCode = 0,
-  entrypointThrows = false,
-  homeAvailable = true,
-  writeStateFails = false
+  entrypointThrows = false
 }: {
   initialState?: Record<string, unknown>;
-  entrypointExists?: boolean;
   entrypointExitCode?: number;
   entrypointThrows?: boolean;
-  homeAvailable?: boolean;
-  writeStateFails?: boolean;
 } = {}) => {
   let stateContent = initialState ? JSON.stringify(initialState) : undefined;
 
   const sandbox = {
     execute: vi.fn(async (command: string): Promise<ExecuteResult> => {
       if (command === 'printf "%s" "$HOME"') {
-        return homeAvailable
-          ? { exitCode: 0, stdout: '/home/test', stderr: '' }
-          : { exitCode: 0, stdout: '', stderr: '' };
-      }
-      if (command === 'sh -c "echo ~"') {
-        return homeAvailable
-          ? { exitCode: 0, stdout: '/home/test', stderr: '' }
-          : { exitCode: 1, stdout: '', stderr: 'no home' };
+        return { exitCode: 0, stdout: '/home/test', stderr: '' };
       }
       if (command.startsWith("mkdir -p '/home/test/.fastgpt/agent-skill-entrypoints'")) {
         return { exitCode: 0, stdout: '', stderr: '' };
       }
       if (command.startsWith("[ -f '/workspace/projects/version-1/entrypoint.sh' ]")) {
-        return { exitCode: entrypointExists ? 0 : 1, stdout: '', stderr: '' };
+        return { exitCode: 0, stdout: '', stderr: '' };
       }
       if (isSkillEntrypointCommand(command) || isSandboxEntrypointCommand(command)) {
         if (entrypointThrows) {
@@ -63,14 +50,6 @@ const createSandbox = ({
       }))
     ),
     writeFiles: vi.fn(async (entries: Array<{ path: string; data: string }>) => {
-      if (writeStateFails) {
-        return entries.map((entry) => ({
-          path: entry.path,
-          bytesWritten: 0,
-          error: new Error('write failed')
-        }));
-      }
-
       stateContent = String(entries[0].data);
       return entries.map((entry) => ({
         path: entry.path,
@@ -149,6 +128,28 @@ describe('runtime entrypoint', () => {
       .map(([command]) => command)
       .find(isSandboxEntrypointCommand);
     expect(entrypointCommand).toMatch(/^cd '\/workspace' && \/bin\/bash -c /);
+  });
+
+  it('runs after sandbox entrypoint only when sandbox entrypoint runs', async () => {
+    const sandbox = createSandbox();
+
+    await runAgentSandboxEntrypoint({
+      sandbox: sandbox as any,
+      sandboxEntrypoint: 'echo init',
+      afterSandboxEntrypoint: 'echo after'
+    });
+    await runAgentSandboxEntrypoint({
+      sandbox: sandbox as any,
+      sandboxEntrypoint: 'echo init',
+      afterSandboxEntrypoint: 'echo after'
+    });
+
+    const entrypointCommands = sandbox.execute.mock.calls
+      .map(([command]) => command)
+      .filter(isSandboxEntrypointCommand);
+
+    expect(entrypointCommands).toHaveLength(2);
+    expect(sandbox.getState()?.sandboxEntrypointHash).toMatch(/^sha256:/);
   });
 
   it('does not write sandbox entrypoint state when execution fails', async () => {

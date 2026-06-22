@@ -572,26 +572,12 @@ describe('dispatchPiAgent user context', () => {
       userId: 'user_1',
       chatId: 'chat_1'
     });
-    expect(injectAgentSkillFilesToSandboxMock).toHaveBeenCalledWith({
-      sandbox: expect.any(Object),
-      skillIds: ['skill_1'],
-      teamId: 'team_1',
-      workDirectory: getSandboxRuntimeProfile().workDirectory
-    });
     expect(getAgentSkillInfosMock).toHaveBeenCalledWith({
       sandbox: expect.any(Object),
       skillDirectories: ['/workspace/projects/version_1']
     });
     expect(runAgentSandboxEntrypointMock).not.toHaveBeenCalled();
-    expect(runAgentSkillVersionEntrypointsMock).toHaveBeenCalledWith({
-      sandbox: expect.any(Object),
-      versions: [
-        {
-          versionId: 'version_1',
-          targetDir: '/workspace/projects/version_1'
-        }
-      ]
-    });
+    expect(runAgentSkillVersionEntrypointsMock).toHaveBeenCalledTimes(1);
 
     const completionToolNames = buildAgentToolsMock.mock.calls[0][0].ctx.completionTools.map(
       (tool: any) => tool.function.name

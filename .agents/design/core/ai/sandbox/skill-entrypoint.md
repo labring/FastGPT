@@ -118,14 +118,14 @@ HOME 解析沿用 ide-agent 逻辑：
 
 ```json
 {
-  "sandboxEntrypointHashes": ["sha256:..."],
+  "sandboxEntrypointHash": "sha256:...",
   "skillEntrypoints": ["<versionId>"]
 }
 ```
 
 字段含义：
 
-1. `sandboxEntrypointHashes`：当前 sandbox 已成功执行过的 sandbox 层脚本 hash 集合。多个 workflow 节点共享同一个 sandbox 时，不同节点脚本互不覆盖。
+1. `sandboxEntrypointHash`：当前 sandbox 已成功执行过的 sandbox 层脚本 hash。
 2. `skillEntrypoints`：当前 sandbox 已成功执行过版本包根 `entrypoint.sh` 的 `versionId` 集合。
 
 状态只用于本 sandbox 内的 entrypoint 执行去重，不描述 DB 版本或发布状态。
@@ -141,16 +141,19 @@ HOME 解析沿用 ide-agent 逻辑：
 没有配置脚本
 => 跳过
 
-状态可读，且 state.sandboxEntrypointHashes 包含 hash(script.trim())
+状态可读，且 state.sandboxEntrypointHash 等于 hash(script.trim())
 => 跳过
 
-状态不可读，或 state.sandboxEntrypointHashes 不包含 hash(script.trim())
+状态不可读，或 state.sandboxEntrypointHash 不等于 hash(script.trim())
 => 执行脚本
-=> 成功后尽力追加写入 state.sandboxEntrypointHashes
+=> 如果存在代码侧 afterSandboxEntrypoint 脚本，则继续执行 after 脚本
+=> 两者都成功后尽力写入 state.sandboxEntrypointHash
 => 失败/超时只记录截断日志，继续主流程
 ```
 
 状态放在 sandbox HOME 中，而不是 DB 中。DB 只能表示当前发布配置是什么，不能证明某个具体 sandbox 里已经存在对应副作用。sandbox 被重建、HOME 被清理或实例切换时，HOME 状态会自然丢失，下次会重新执行。
+
+`afterSandboxEntrypoint` 只允许代码层传入，不暴露为用户配置。它不参与 hash、不单独记状态、不单独触发；只有 sandbox 层脚本本轮真实执行成功后才会执行。after 脚本失败时不写入 `sandboxEntrypointHash`，下轮按原 sandbox entrypoint 流程重试。
 
 ### skill 层
 
@@ -217,7 +220,8 @@ cd <versionDir> && /bin/bash entrypoint.sh
 3. 同一 sandbox 内 hash 不变时跳过。
 4. 配置脚本变更导致 hash 变化时重新执行。
 5. HOME 状态不可用时仍执行，但不写成功状态。
-6. 失败或超时不阻断主流程，且不写成功状态。
+6. 代码侧 after 脚本只在 sandbox entrypoint 本轮真实执行成功后执行。
+7. 失败或超时不阻断主流程，且不写成功状态。
 
 ### skill 层 entrypoint
 
