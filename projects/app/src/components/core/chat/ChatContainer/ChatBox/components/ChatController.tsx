@@ -90,6 +90,10 @@ const ChatController = ({
     <MyTooltip label={label}>{children}</MyTooltip>
   );
   const iconStyle = isFooter ? footerIconStyle : controlIconStyle;
+  const getIconHoverStyle = (color: string) => ({
+    color,
+    ...(isFooter ? { transform: 'translateY(-1px)' } : {})
+  });
   const activeFeedbackStyle = isFooter
     ? {
         color: 'primary.600'
@@ -142,7 +146,7 @@ const ChatController = ({
               {...iconStyle}
               name={'copy'}
               borderLeftRadius={isFooter ? undefined : 'sm'}
-              _hover={{ color: 'primary.600' }}
+              _hover={getIconHoverStyle('primary.600')}
               onClick={() => copyData(chatText)}
             />
           )}
@@ -154,7 +158,7 @@ const ChatController = ({
                   <MyIcon
                     {...iconStyle}
                     name={'common/retryLight'}
-                    _hover={{ color: isFooter ? 'primary.600' : 'green.500' }}
+                    _hover={getIconHoverStyle(isFooter ? 'primary.600' : 'green.500')}
                     onClick={onRetry}
                   />
                 )}
@@ -163,7 +167,7 @@ const ChatController = ({
                 <MyIcon
                   {...iconStyle}
                   name={'delete'}
-                  _hover={{ color: isFooter ? 'primary.600' : 'red.600' }}
+                  _hover={getIconHoverStyle(isFooter ? 'primary.600' : 'red.600')}
                   onClick={onDelete}
                 />
               )}
@@ -209,7 +213,7 @@ const ChatController = ({
                       fill: 'currentColor'
                     }
                   }}
-                  _hover={{ color: isFooter ? 'primary.600' : '#E74694' }}
+                  _hover={getIconHoverStyle(isFooter ? 'primary.600' : '#E74694')}
                   onClick={async () => {
                     setAudioPlayingChatId(chat.dataId);
                     const response = await playAudioByText({
@@ -238,7 +242,7 @@ const ChatController = ({
               <MyIcon
                 {...iconStyle}
                 name={'core/app/markLight'}
-                _hover={{ color: isFooter ? 'primary.600' : '#67c13b' }}
+                _hover={getIconHoverStyle(isFooter ? 'primary.600' : '#67c13b')}
                 onClick={onMark}
               />
             )}
@@ -314,7 +318,7 @@ const ChatController = ({
                           {...(!!chat.userGoodFeedback
                             ? activeFeedbackStyle
                             : {
-                                _hover: { color: 'primary.600' }
+                                _hover: getIconHoverStyle('primary.600')
                               })}
                           borderRight={!onAddUserDislike ? 'none' : 'base'}
                           borderRightRadius={!onAddUserDislike ? 'sm' : 'none'}
@@ -331,7 +335,7 @@ const ChatController = ({
                         {...(!!chat.userBadFeedback
                           ? activeBadFeedbackStyle
                           : {
-                              _hover: { color: 'primary.600' }
+                              _hover: getIconHoverStyle('primary.600')
                             })}
                         borderRight={isFooter ? undefined : 'none'}
                         borderRightRadius={isFooter ? undefined : 'sm'}
