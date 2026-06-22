@@ -1,10 +1,10 @@
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import z from 'zod';
-import { AppChatConfigTypeSchema } from '../../../../core/app/type';
 import { AppTypeEnum } from '../../../../core/app/constants';
-import { FlowNodeInputItemTypeSchema } from '../../../../core/workflow/type/io';
 import { ChatGenerateStatusEnum } from '../../../../core/chat/constants';
+import { OpenAPIFlowNodeInputItemTypeSchema } from '../../workflow/node';
+import { OpenAPIAppChatConfigSchema } from '../../app/common/api';
 
 /* Init */
 // Online chat
@@ -42,14 +42,14 @@ export const InitChatResponseSchema = z.object({
   hasBeenRead: z.boolean().optional().describe('是否已读'),
   app: z
     .object({
-      chatConfig: AppChatConfigTypeSchema.optional().describe('聊天配置'),
+      chatConfig: OpenAPIAppChatConfigSchema.optional().describe('聊天配置'),
       chatModels: z.array(z.string()).optional().describe('聊天模型'),
       name: z.string().min(1).describe('应用名称'),
       avatar: z.string().describe('应用头像'),
       intro: z.string().describe('应用简介'),
       canUse: z.boolean().optional().describe('是否可用'),
       type: z.enum(AppTypeEnum).describe('应用类型'),
-      pluginInputs: z.array(FlowNodeInputItemTypeSchema).describe('插件输入'),
+      pluginInputs: z.array(OpenAPIFlowNodeInputItemTypeSchema).describe('插件输入'),
       useAgentSandbox: z.boolean().optional().describe('是否使用虚拟机')
     })
     .describe('应用配置')

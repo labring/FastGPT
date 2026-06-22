@@ -10,9 +10,53 @@ import {
 } from '../../../core/workflow/type/node';
 import { BoolSchema, NumSchema } from '../../../common/zod';
 
-const OpenAPIFlowNodeInputItemTypeSchema = FlowNodeInputItemTypeSchema.meta({
-  description: '工作流节点输入配置'
-});
+export const OpenAPIFlowNodeInputItemTypeSchema = FlowNodeInputItemTypeSchema.omit({
+  list: true,
+  enums: true
+})
+  .extend({
+    // 运行时 schema 会通过 transform 为旧版选项补齐 label；OpenAPI 响应 schema 不能包含 transform。
+    list: z
+      .array(
+        z.object({
+          label: z.string().meta({
+            description: '变量选项展示名称'
+          }),
+          value: z.string().meta({
+            description: '变量选项实际值'
+          }),
+          icon: z.string().optional().meta({
+            description: '变量选项图标'
+          }),
+          description: z.string().optional().meta({
+            description: '变量选项说明'
+          })
+        })
+      )
+      .optional()
+      .meta({
+        description: '选择类变量的可选项'
+      }),
+    enums: z
+      .array(
+        z.object({
+          value: z.string().meta({
+            description: '枚举项实际值'
+          }),
+          label: z.string().meta({
+            description: '枚举项展示名称'
+          })
+        })
+      )
+      .optional()
+      .meta({
+        description: '已废弃：旧版枚举变量选项',
+        deprecated: true
+      })
+  })
+  .meta({
+    description: '工作流节点输入配置'
+  });
 
 // `invalidCondition` in FlowNodeOutputItemTypeSchema is a Zod function schema used only
 // by the editor to validate outputs; function schemas cannot be represented in JSON

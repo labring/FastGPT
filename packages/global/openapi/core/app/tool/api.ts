@@ -3,7 +3,10 @@ import {
   FlowNodeTemplateTypeSchema,
   NodeTemplateListItemTypeSchema
 } from '../../../../core/workflow/type/node';
-import { OpenAPIFlowNodeOutputItemTypeSchema } from '../../workflow/node';
+import {
+  OpenAPIFlowNodeInputItemTypeSchema,
+  OpenAPIFlowNodeOutputItemTypeSchema
+} from '../../workflow/node';
 import { BoolSchema } from '../../../../common/zod';
 
 const ToolNodeTemplateListItemSchema = NodeTemplateListItemTypeSchema.extend({
@@ -13,8 +16,10 @@ const ToolNodeTemplateListItemSchema = NodeTemplateListItemTypeSchema.extend({
 }).catchall(z.any());
 
 const ToolPreviewNodeResponseSchema = FlowNodeTemplateTypeSchema.omit({
+  inputs: true,
   outputs: true
 }).extend({
+  inputs: z.array(OpenAPIFlowNodeInputItemTypeSchema),
   outputs: z.array(OpenAPIFlowNodeOutputItemTypeSchema)
 });
 
