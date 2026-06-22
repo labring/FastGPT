@@ -81,6 +81,8 @@ catalog:
   '@xterm/addon-fit': ^0.10.0
   '@xterm/xterm': ^5.5.0
   zod: ^4
+  undici: ^7.28.0
+  hono: 4.12.25
 
 catalogMode: prefer
 

@@ -1,0 +1,198 @@
+---
+title: 'V4.15.0'
+description: 'FastGPT V4.15.0 Release Notes'
+---
+
+## 📦 Upgrade Guide
+
+### 1. Image Changes
+
+- Update the fastgpt-app (FastGPT main service) image tag to v4.15.0
+- Update the fastgpt-pro (FastGPT commercial edition) image tag to v4.15.0
+- Update the fastgpt-code-sandbox image tag to v4.15.0
+- Update the fastgpt-plugin image tag to v1.0.0-beta2
+- Update the aiproxy image tag to v0.6.1
+
+If you use OpenSandbox, update the following images:
+
+- Update the fastgpt-agent-sandbox image tag to v0.2.0
+- Update the fastgpt-agent-volume-manager image tag to v0.2.0
+
+### 2. Environment Variable Changes
+
+#### FastGPT Main Service
+
+For `fastgpt-app` and `fastgpt-pro`, this upgrade only requires attention to the following newly added settings or changed semantics. For the complete environment variable list, see [Environment Variables](../../config/env.en.mdx).
+
+```dotenv
+# File parsing worker concurrency
+PARSE_FILE_WORKERS=10
+# File parsing timeout in seconds
+PARSE_FILE_TIMEOUT_SECONDS=600
+# HTML-to-Markdown worker concurrency
+HTML_TO_MARKDOWN_WORKERS=10
+# Text chunking worker concurrency
+TEXT_TO_CHUNKS_WORKERS=10
+# Automatically sync MongoDB indexes. Use a boolean string instead of 0 or 1
+SYNC_INDEX=true
+# Whether to enable trusted reverse proxy client IP verification
+TRUSTED_PROXY_ENABLE=false
+# Trusted reverse proxy IP/CIDR list, separated by commas or whitespace. Only effective when TRUSTED_PROXY_ENABLE=true
+TRUSTED_PROXY_IPS=
+# Model used to automatically generate chat titles
+CHAT_TITLE_MODEL=deepseek-v4-flash
+# Maximum number of characters for synchronous system string processing, in M. Range: 1-100
+SYSTEM_MAX_STRING_LENGTH_M=100
+# Maximum folder depth. Default: 4. Range: 2-20
+MAX_FOLDER_DEPTH=4
+# Maximum input array length for Loop/Parallel nodes
+WORKFLOW_MAX_LOOP_TIMES=100
+# Parallel node concurrency limit. The final value is clamped to [5, 100]
+WORKFLOW_PARALLEL_MAX_CONCURRENCY=10
+# Agent Sandbox cold archive package size limit, in MB
+AGENT_SANDBOX_ARCHIVE_MAX_SIZE=50
+# Skill sandbox package size limit, in MB
+AGENT_SANDBOX_SKILL_MAX_SIZE=10
+```
+
+This release adds environment variable validation. Check that both `fastgpt-app` and `fastgpt-pro` include `AES256_SECRET_KEY` and `FILE_TOKEN_KEY`, and that the values are the same in both services.
+
+#### Plugin Service
+
+The plugin service has been upgraded to v1.0.0-beta2, and system tool execution has changed significantly:
+
+1. Update the `AUTH_TOKEN` environment variable for `fastgpt-plugin`. It must be at least 32 characters long.
+2. Update the `PLUGIN_TOKEN` environment variable for `fastgpt` to match the `AUTH_TOKEN` value used by `fastgpt-plugin`.
+3. Update the database name in the `MONGODB_URI` environment variable for `fastgpt-plugin` so it does not conflict with the MongoDB database name used by `fastgpt`. For example: `mongodb://myusername:mypassword@fastgpt-mongo:27017/fastgpt-plugin?authSource=admin`
+
+#### OpenSandbox
+
+If you use OpenSandbox, `AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH` is no longer effective and can be removed. OpenSandbox now always mounts persistent data to `/workspace`, which affects the old sandbox persistence behavior.
+
+#### Code Sandbox
+
+Code Sandbox adds request body, output size, and `queueId` queue controls:
+
+```dotenv
+# Maximum JSON request body size for the /sandbox API, including variables, in MB
+SANDBOX_API_MAX_BODY_MB=8
+# Maximum JSON output size for a single code execution, including return values and logs, in MB
+SANDBOX_MAX_OUTPUT_MB=10
+# Number of requests with the same queueId that may enter execution concurrently. Empty disables queueing.
+SANDBOX_QUEUE_ID_CONCURRENCY=
+```
+
+`/sandbox/js` and `/sandbox/python` request bodies now support an optional `queueId` field. When `SANDBOX_QUEUE_ID_CONCURRENCY` is configured and the request includes a valid `queueId`, requests with the same `queueId` are queued in FIFO order. Requests with different `queueId` values, or requests without `queueId`, are not restricted by this setting and are only limited by the worker pool concurrency.
+
+### 3. Reinstall System Tools
+
+After upgrading the plugin service, reinstall all legacy system tools:
+
+1. Download the [zip package](<https://github.com/labring/fastgpt-img/raw/refs/heads/main/fastgpt-official-plugins(1).zip>) that contains all system tools.
+2. Open the `fastgpt` web app, go to `Admin` in the navbar, click Add Plugin, click `Import/Update Plugin`, upload the zip package, and confirm.
+
+You can also download tools one by one from the plugin marketplace. Before the stable release, the marketplace URL is: [https://v2.marketplace.fastgpt.cn](https://v2.marketplace.fastgpt.cn)
+
+### 4. Upgrade Script
+
+If you use legacy sandbox workspaces, you can archive old sandbox workspaces to S3 with the following API to release inactive sandbox resources more thoroughly. This script only affects old sandboxes and does not affect newly generated sandboxes. You can also remove old sandboxes directly without running this script.
+
+```shell
+curl --location --request POST 'https://{{host}}/api/admin/initSandboxArchive' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json' \
+-d '{"runArchive":true,"inactiveDays":0}'
+```
+
+## 🚀 New Features
+
+1. Added the Loop node and deprecated the legacy batch execution node.
+2. Added the Skill module. Agent V2 can bind and run static Skills.
+3. Reworked the Agent V2 loop logic to improve stability for multi-step tool calls and orchestration.
+4. Knowledge Base search now supports native multimodal embedding models, image-to-image search, and permission filtering in Agent mode.
+5. Multimodal models now support audio and video input.
+6. Added beta support for connecting third-party Knowledge Bases to DingTalk Knowledge Base.
+7. Reworked the plugin system architecture, added plugin-level runtime config, and moved system tool execution to local-pool.
+8. Reworked the chatbox UI with quick scroll-to-bottom, model-generated chat titles, and smoother streaming output.
+9. Added virtual list rendering for apps and Knowledge Bases to improve large-list performance.
+10. Added a separate OpenAPI document, distinct from DevAPI documentation.
+11. Workflow template export now includes the template name and description.
+12. Global variable inputs now support object-type data.
+13. In tool call mode, when the virtual machine feature is enabled, files uploaded in the user chat input are injected directly into the VM.
+14. Added worker pools for file parsing, HTML-to-Markdown conversion, and text chunking to prevent resource exhaustion under high concurrency.
+15. Added model reasoning configuration.
+16. S3 now supports CDN configuration.
+17. Rerank now supports `defaultConfig`.
+18. Share links and portal pages now support language switching and no longer force language detection from the browser.
+19. Chat API now validates duplicate `dataId` values to prevent invalid data from entering Workflow execution and stream-resume merge logic.
+20. The HTTP node now supports ignoring TLS certificate verification and returning the complete error object.
+21. Added a directory depth environment variable to avoid infinitely nested directories.
+
+## ⚙️ Improvements
+
+1. Plugin execution entries can now be fetched from object storage and cached in a local directory.
+2. Optimized the OTEL log collection format.
+3. Disabled invalid connection mode in Workflows.
+4. Added mutually exclusive parent-child node selection to prevent jitter when moving selected parent and child nodes together.
+5. Improved Workflow node name, description input, and long-name adaptation.
+6. When the user is redirected from the Workflow editor because the login session expires, the draft is automatically saved for recovery.
+7. In Workflow run details, file fields from form input nodes are displayed as file lists.
+8. Workflow `nodeResponse` is now stored in a flattened structure to avoid save failures in large nested Workflows.
+9. Strengthened validation for Workflow array reference types to avoid conflicts with two-dimensional data.
+10. HTML output now automatically switches to preview mode after generation, reducing the need to open the preview manually.
+11. Improved stream-resume pause and abnormal interruption recovery to reduce chats getting stuck in inaccurate generating or stopping states.
+12. The most recent chat is remembered per app when switching apps, and local chat cache is cleared when switching teams.
+13. Improved the Knowledge Base search test interaction and Knowledge Base data editing modal.
+14. When a Knowledge Base is deleted, app orchestration now shows a graceful prompt.
+15. Improved error prompts during Knowledge Base training and added one-click retry for all failed items.
+16. Invalid Knowledge Base reference markers are now filtered out.
+17. PDF parsing now uses `liteparse` instead of PDFJs, improving speed by 3x.
+18. xlsx parsing now automatically removes empty rows and columns and supports merged cells.
+19. Added validation for input guide configuration to prevent incorrect custom dictionary URL configuration.
+20. Strengthened security protection for third-party Knowledge Base requests, HTTP tool parsing, IP detection, and Code Sandbox AST checks.
+21. File injection in messages moved from system messages to user messages to improve cache hit rates.
+22. Removed `temperature` and `max_tokens` from built-in LLM requests to avoid incompatibility with some models.
+23. Improved the reason hide toggle so reasoning can be hidden in the UI while still being preserved when requesting the LLM.
+24. Optimized `chat2messages` adaptation to avoid standalone reason output.
+25. Empty tool responses are now automatically filled with `none` to avoid errors in some models.
+26. Improved the insufficient-balance prompt for non-admin users and visitors.
+27. Template features are hidden when the user does not have creation permission.
+28. Improved long-name display for apps, Knowledge Bases, files, and folders: names are truncated when they exceed the available width, and the full name is shown on hover.
+29. Improved Skill-related modals, editing interactions, and list API performance.
+30. Improved the login page UI.
+31. Deduplicated site sync rate-limit error prompts.
+32. Image processing workers now support configuring whether images are converted to base64 before being sent to the model.
+
+## 🐛 Bug Fixes
+
+1. Fixed an issue where a model response error in Agent V2 mode caused steps to execute repeatedly.
+2. Fixed missing charset in text responses when previewing or downloading Knowledge Base source files.
+3. Fixed abnormal default values in Workflow single-node debugging.
+4. Fixed abnormal `defaultConfig` override behavior in model configuration.
+5. Fixed TTS playback errors when adapting to the latest OpenAI SDK.
+6. Fixed oversized chunks that could occur when Knowledge Base data chunks contained code blocks.
+7. Fixed abnormal multimodal file link retrieval from models.
+8. Fixed potential security risks related to the training API, HTTP tool parsing, and private S3 object keys.
+9. Fixed abnormal MCP tool expansion for tool calls after interactive nodes.
+10. Fixed abnormal tool call parameter schemas for array and object types in Workflow tools.
+11. Fixed UI offset in publish channel portals.
+12. Fixed the v1/completions API where `quoteList` in `nodeResponse` did not return `q` and `a`.
+13. Fixed conversation stream resume issues, including form restoration, file list restoration, node response preservation, duplicate interaction appending, temporary history titles, and cross-app chat leakage.
+14. Stop conversation prompts are now synchronized with the backend generation state, and the warning toast shown during stop has been removed.
+
+## 🛠️ Code Improvements
+
+1. Reorganized the overall code structure, upgraded Next.js, switched to Turbopack builds, and upgraded the default container Node.js version to 24.
+2. Unified Agent tool declaration and execution behavior.
+3. The plugin service moved from the legacy `runtime` structure to a pnpm workspace monorepo, split into HTTP service entry, domain model, use cases, API adapter, infrastructure, SDK, and CLI.
+4. App API interfaces now use zod schemas consistently and generate documentation.
+5. Split AI request, Workflow run detail, and chatbox code to reduce module coupling.
+6. Optimized user-defined API key billing logic and token calculation dependencies.
+7. Server-side environment loading now uses `@t3-oss/env-core` with stronger type checks. Other services also use centralized environment exports.
+8. Upgraded project tooling, including ESLint, Prettier, textlint, lint-staged, and TS6.
+9. Improved unit test performance, reducing full test runtime from 10 minutes to 5 minutes.
+10. Strengthened GitHub Actions security.
+11. Added design documentation and unit tests for stream-resume-related modules.
+12. Changed the volume manager runtime from Bun to Node.js.
+13. Images are now processed promptly inside workers instead of retaining base64 data, reducing memory usage.
+14. Added string length protection for system string processing. When strings are too large, synchronized replacement stops to avoid high CPU load.

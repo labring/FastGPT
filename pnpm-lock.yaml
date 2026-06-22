@@ -105,6 +105,9 @@ catalogs:
     gpt-tokenizer:
       specifier: 3.4.0
       version: 3.4.0
+    hono:
+      specifier: 4.12.25
+      version: 4.12.25
     i18next:
       specifier: 23.16.8
       version: 23.16.8
@@ -180,6 +183,9 @@ catalogs:
     typescript:
       specifier: ^6.0.3
       version: 6.0.3
+    undici:
+      specifier: ^7.28.0
+      version: 7.28.0
     vaul:
       specifier: ^1.1.2
       version: 1.1.2
@@ -594,8 +600,8 @@ importers:
         specifier: 'catalog:'
         version: 8.23.1(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.9)
       multer:
-        specifier: 2.1.0
-        version: 2.1.0
+        specifier: 2.2.0
+        version: 2.2.0
       mysql2:
         specifier: ^3.11.3
         version: 3.13.0
@@ -636,8 +642,8 @@ importers:
         specifier: ^7.1.2
         version: 7.2.0
       undici:
-        specifier: ^7.18.2
-        version: 7.18.2
+        specifier: 'catalog:'
+        version: 7.28.0
       winston:
         specifier: ^3.17.0
         version: 3.17.0
@@ -1452,8 +1458,8 @@ importers:
         specifier: ^1.58.3
         version: 1.85.1
       undici:
-        specifier: ^7.18.2
-        version: 7.18.2
+        specifier: 'catalog:'
+        version: 7.28.0
       use-context-selector:
         specifier: ^1.4.4
         version: 1.4.4(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(scheduler@0.26.0)
@@ -1532,7 +1538,7 @@ importers:
         version: link:../../packages/global
       '@hono/node-server':
         specifier: ^1.13.7
-        version: 1.19.9(hono@4.12.18)
+        version: 1.19.9(hono@4.12.25)
       '@t3-oss/env-core':
         specifier: 'catalog:'
         version: 0.13.10(typescript@6.0.3)(zod@4.1.12)
@@ -1555,8 +1561,8 @@ importers:
         specifier: ^17.3.1
         version: 17.4.2
       hono:
-        specifier: ^4.12.18
-        version: 4.12.18
+        specifier: 'catalog:'
+        version: 4.12.25
       lodash:
         specifier: 'catalog:'
         version: 4.17.23
@@ -1724,13 +1730,13 @@ importers:
     dependencies:
       '@hono/node-server':
         specifier: ^1.13.7
-        version: 1.19.9(hono@4.12.18)
+        version: 1.19.9(hono@4.12.25)
       hono:
-        specifier: ^4.12.18
-        version: 4.12.18
+        specifier: 'catalog:'
+        version: 4.12.25
       undici:
-        specifier: ^7.25.0
-        version: 7.25.0
+        specifier: 'catalog:'
+        version: 7.28.0
       zod:
         specifier: 'catalog:'
         version: 4.1.12
@@ -9767,8 +9773,8 @@ packages:
     resolution: {integrity: sha512-l7qMiNee7t82bH3SeyUCt9UF15EVmaBvsppY2zQtrbIhl/yzBTny+YUxsVjSjQ6gaqaeVtZmGocom8TzBlA4Yw==}
     engines: {node: '>=16.9.0'}
 
-  hono@4.12.18:
-    resolution: {integrity: sha512-RWzP96k/yv0PQfyXnWjs6zot20TqfpfsNXhOnev8d1InAxubW93L11/oNUc3tQqn2G0bSdAOBpX+2uDFHV7kdQ==}
+  hono@4.12.25:
+    resolution: {integrity: sha512-2NFaIyNVgJmBs/ecmtGzlmluTFs5cHEWGTdu0t1HBwYzoGXOL5nUQBRMXsXWla5i4KkG//QMzVP88m1+I3fdAQ==}
     engines: {node: '>=16.9.0'}
 
   hookable@5.5.3:
@@ -11458,8 +11464,8 @@ packages:
   msgpackr@1.11.2:
     resolution: {integrity: sha512-F9UngXRlPyWCDEASDpTf6c9uNhGPTqnTeLVt7bN+bU1eajoR/8V9ys2BRaV5C/e5ihE6sJ9uPIKaYt6bFuO32g==}
 
-  multer@2.1.0:
-    resolution: {integrity: sha512-TBm6j41rxNohqawsxlsWsNNh/VdV4QFXcBvRcPhXaA05EZ79z0qJ2bQFpync6JBoHTeNY5Q1JpG7AlTjdlfAEA==}
+  multer@2.2.0:
+    resolution: {integrity: sha512-6rdyFg2kLrMh9Jee7/BMPuV9lEAd7lLW2YUpF9/YxR7njyoUwwQ0ZPh3TaIY50Sw6vlyD2HW3wGOkTS4P79xrQ==}
     engines: {node: '>= 10.16.0'}
 
   mute-stream@0.0.8:
@@ -14051,12 +14057,12 @@ packages:
   undici-types@7.8.0:
     resolution: {integrity: sha512-9UJ2xGDvQ43tYyVMpuHlsgApydB8ZKfVYTsLDhXkFL/6gfkp+U8xTGdh8pMJv1SpZna0zxG1DwsKZsreLbXBxw==}
 
-  undici@7.18.2:
-    resolution: {integrity: sha512-y+8YjDFzWdQlSE9N5nzKMT3g4a5UBX1HKowfdXh0uvAnTaqqwqB92Jt4UXBAeKekDs5IaDKyJFR4X1gYVCgXcw==}
-    engines: {node: '>=20.18.1'}
-
   undici@7.25.0:
     resolution: {integrity: sha512-xXnp4kTyor2Zq+J1FfPI6Eq3ew5h6Vl0F/8d9XU5zZQf1tX9s2Su1/3PiMmUANFULpmksxkClamIZcaUqryHsQ==}
+    engines: {node: '>=20.18.1'}
+
+  undici@7.28.0:
+    resolution: {integrity: sha512-cRZYrTDwWznlnRiPjggAGxZXanty6M8RV1ff8Wm4LWXBp7/IG8v5DnOm74DtUBp9OONpK75YlPnIjQqX0dBDtA==}
     engines: {node: '>=20.18.1'}
 
   unescape@1.0.1:
@@ -17643,9 +17649,9 @@ snapshots:
     dependencies:
       hono: 4.11.7
 
-  '@hono/node-server@1.19.9(hono@4.12.18)':
+  '@hono/node-server@1.19.9(hono@4.12.25)':
     dependencies:
-      hono: 4.12.18
+      hono: 4.12.25
 
   '@humanfs/core@0.19.2':
     dependencies:
@@ -18155,7 +18161,7 @@ snapshots:
       openai: 6.26.0(ws@8.20.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.1.12)
       partial-json: 0.1.7
       proxy-agent: 6.5.0
-      undici: 7.25.0
+      undici: 7.28.0
       zod-to-json-schema: 3.25.1(zod@4.1.12)
     transitivePeerDependencies:
       - '@modelcontextprotocol/sdk'
@@ -25138,7 +25144,7 @@ snapshots:
 
   hono@4.11.7: {}
 
-  hono@4.12.18: {}
+  hono@4.12.25: {}
 
   hookable@5.5.3: {}
 
@@ -27256,7 +27262,7 @@ snapshots:
     optionalDependencies:
       msgpackr-extract: 3.0.3
 
-  multer@2.1.0:
+  multer@2.2.0:
     dependencies:
       append-field: 1.0.0
       busboy: 1.6.0
@@ -30413,9 +30419,9 @@ snapshots:
 
   undici-types@7.8.0: {}
 
-  undici@7.18.2: {}
-
   undici@7.25.0: {}
+
+  undici@7.28.0: {}
 
   unescape@1.0.1:
     dependencies:
