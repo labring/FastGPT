@@ -18,6 +18,7 @@ vi.mock('@fastgpt/service/core/app/schema', () => ({
   }
 }));
 
+import { StreamableHTTPError } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import { MCPClient, assertMCPUrlNotInternal, getMCPChildren } from '@fastgpt/service/core/app/mcp';
 import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 
@@ -423,13 +424,13 @@ describe('MCPClient', () => {
   });
 
   describe('getConnection', () => {
-    it('should fallback to SSE when StreamableHTTP fails', async () => {
+    it('should fallback to SSE when server rejects Streamable HTTP with a 4xx', async () => {
       const mcpClient = new MCPClient(config);
       const client = getPrivateClient(mcpClient);
-      // First connect (StreamableHTTP) fails, second (SSE) succeeds
+      // StreamableHTTP rejected with 405 (server speaks legacy SSE), SSE succeeds
       client.connect = vi
         .fn()
-        .mockRejectedValueOnce(new Error('streamable failed'))
+        .mockRejectedValueOnce(new StreamableHTTPError(405, 'Method Not Allowed'))
         .mockResolvedValueOnce(undefined);
 
       const result = await (mcpClient as any).getConnection();
@@ -437,12 +438,39 @@ describe('MCPClient', () => {
       expect(result).toBe(client);
     });
 
-    it('should reject when both transports fail', async () => {
+    it('should not fallback to SSE on a non-HTTP (e.g. network) error', async () => {
       const mcpClient = new MCPClient(config);
       const client = getPrivateClient(mcpClient);
-      client.connect = vi.fn().mockRejectedValue(new Error('all failed'));
+      client.connect = vi.fn().mockRejectedValue(new Error('network unreachable'));
 
-      await expect((mcpClient as any).getConnection()).rejects.toThrow('all failed');
+      await expect((mcpClient as any).getConnection()).rejects.toThrow('network unreachable');
+      // Original error surfaces as-is, SSE transport is not attempted
+      expect(client.connect).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not fallback to SSE when Streamable HTTP fails with a 5xx', async () => {
+      const mcpClient = new MCPClient(config);
+      const client = getPrivateClient(mcpClient);
+      client.connect = vi
+        .fn()
+        .mockRejectedValue(new StreamableHTTPError(500, 'Internal Server Error'));
+
+      await expect((mcpClient as any).getConnection()).rejects.toThrow('Internal Server Error');
+      expect(client.connect).toHaveBeenCalledTimes(1);
+    });
+
+    it('should surface both errors when the SSE fallback also fails', async () => {
+      const mcpClient = new MCPClient(config);
+      const client = getPrivateClient(mcpClient);
+      client.connect = vi
+        .fn()
+        .mockRejectedValueOnce(new StreamableHTTPError(404, 'Not Found'))
+        .mockRejectedValueOnce(new Error('SSE handshake failed'));
+
+      await expect((mcpClient as any).getConnection()).rejects.toThrow(
+        /Streamable HTTP:.*Not Found.*SSE:.*SSE handshake failed/s
+      );
+      expect(client.connect).toHaveBeenCalledTimes(2);
     });
 
     it('should return client on StreamableHTTP success', async () => {

@@ -1,6 +1,9 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import {
+  StreamableHTTPClientTransport,
+  StreamableHTTPError
+} from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import { type McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import { retryFn } from '@fastgpt/global/common/system/utils';
@@ -18,6 +21,23 @@ export const assertMCPUrlNotInternal = async (url: string) => {
   if (await isInternalAddress(url)) {
     return Promise.reject(PRIVATE_URL_TEXT);
   }
+};
+
+const shouldFallbackToSSE = (error: unknown): boolean => {
+  return (
+    error instanceof StreamableHTTPError &&
+    typeof error.code === 'number' &&
+    error.code >= 400 &&
+    error.code < 500
+  );
+};
+
+const getErrorMessage = (error: unknown) => {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return String(error);
 };
 
 export class MCPClient {
@@ -63,36 +83,50 @@ export class MCPClient {
         }
       });
       await this.client.connect(transport);
-    } catch (error) {
-      await this.client.connect(
-        new SSEClientTransport(new URL(this.url), {
-          requestInit: {
-            headers: this.headers
-          },
-          eventSourceInit: {
-            fetch: (url, init) => {
-              const mergedHeaders: Record<string, string> = {
-                ...this.headers
-              };
+    } catch (streamableError: any) {
+      if (!shouldFallbackToSSE(streamableError)) {
+        logger.info('Streamable HTTP error', streamableError);
+        throw streamableError;
+      }
 
-              if (init?.headers) {
-                if (init.headers instanceof Headers) {
-                  init.headers.forEach((value, key) => {
-                    mergedHeaders[key] = value;
-                  });
-                } else if (typeof init.headers === 'object') {
-                  Object.assign(mergedHeaders, init.headers);
+      try {
+        await this.client.connect(
+          new SSEClientTransport(new URL(this.url), {
+            requestInit: {
+              headers: this.headers
+            },
+            eventSourceInit: {
+              fetch: (url, init) => {
+                const mergedHeaders: Record<string, string> = {
+                  ...this.headers
+                };
+
+                if (init?.headers) {
+                  if (init.headers instanceof Headers) {
+                    init.headers.forEach((value, key) => {
+                      mergedHeaders[key] = value;
+                    });
+                  } else if (typeof init.headers === 'object') {
+                    Object.assign(mergedHeaders, init.headers);
+                  }
                 }
-              }
 
-              return fetch(url, {
-                ...init,
-                headers: mergedHeaders
-              });
+                return fetch(url, {
+                  ...init,
+                  headers: mergedHeaders
+                });
+              }
             }
-          }
-        })
-      );
+          })
+        );
+      } catch (sseError: any) {
+        logger.info('SSE error', sseError);
+        throw new Error(
+          `MCP connection failed. Streamable HTTP: ${getErrorMessage(
+            streamableError
+          )}; SSE: ${getErrorMessage(sseError)}`
+        );
+      }
     }
 
     this.client.onerror = (error) => {
