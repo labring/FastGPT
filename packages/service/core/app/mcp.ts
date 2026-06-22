@@ -1,16 +1,13 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
-import {
-  StreamableHTTPClientTransport,
-  StreamableHTTPError
-} from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import { type McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { MongoApp } from './schema';
 import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type';
-import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import $RefParser from '@apidevtools/json-schema-ref-parser';
 import { getLogger, LogCategories } from '../../common/logger';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '../../common/system/utils';
@@ -23,17 +20,6 @@ export const assertMCPUrlNotInternal = async (url: string) => {
   }
 };
 
-/**
- * Decide whether a failed Streamable HTTP connection should fall back to the
- * legacy HTTP+SSE transport.
- *
- * Following the MCP spec's backwards-compatibility flow, the legacy transport is
- * only attempted when the server rejects the Streamable HTTP request with a 4xx
- * status (e.g. 404/405), which signals it does not speak Streamable HTTP. Other
- * failures (network errors, 5xx, or an error raised after a successful
- * initialize) are not a protocol mismatch, so they must surface as-is instead of
- * being masked by a misleading SSE error.
- */
 const shouldFallbackToSSE = (error: unknown): boolean => {
   return (
     error instanceof StreamableHTTPError &&
@@ -72,36 +58,6 @@ export class MCPClient {
     return this.connectionPromise;
   }
 
-  private createSSETransport(): SSEClientTransport {
-    return new SSEClientTransport(new URL(this.url), {
-      requestInit: {
-        headers: this.headers
-      },
-      eventSourceInit: {
-        fetch: (url, init) => {
-          const mergedHeaders: Record<string, string> = {
-            ...this.headers
-          };
-
-          if (init?.headers) {
-            if (init.headers instanceof Headers) {
-              init.headers.forEach((value, key) => {
-                mergedHeaders[key] = value;
-              });
-            } else if (typeof init.headers === 'object') {
-              Object.assign(mergedHeaders, init.headers);
-            }
-          }
-
-          return fetch(url, {
-            ...init,
-            headers: mergedHeaders
-          });
-        }
-      }
-    });
-  }
-
   private async doConnect(): Promise<Client> {
     await assertMCPUrlNotInternal(this.url);
 
@@ -116,25 +72,45 @@ export class MCPClient {
         }
       });
       await this.client.connect(transport);
-    } catch (streamableError) {
-      // Only fall back to the legacy SSE transport when the server signals it
-      // does not support Streamable HTTP. Otherwise surface the original error.
+    } catch (streamableError: any) {
       if (!shouldFallbackToSSE(streamableError)) {
+        logger.info('Streamable HTTP error', streamableError);
         throw streamableError;
       }
 
-      logger.debug('Streamable HTTP connect failed, falling back to SSE transport', {
-        url: this.url,
-        error: streamableError
-      });
-
       try {
-        await this.client.connect(this.createSSETransport());
-      } catch (sseError) {
-        // Surface both failures so the Streamable HTTP root cause is not lost.
-        throw new Error(
-          `Failed to connect MCP server. Streamable HTTP: ${getErrText(streamableError)}; SSE: ${getErrText(sseError)}`
+        await this.client.connect(
+          new SSEClientTransport(new URL(this.url), {
+            requestInit: {
+              headers: this.headers
+            },
+            eventSourceInit: {
+              fetch: (url, init) => {
+                const mergedHeaders: Record<string, string> = {
+                  ...this.headers
+                };
+
+                if (init?.headers) {
+                  if (init.headers instanceof Headers) {
+                    init.headers.forEach((value, key) => {
+                      mergedHeaders[key] = value;
+                    });
+                  } else if (typeof init.headers === 'object') {
+                    Object.assign(mergedHeaders, init.headers);
+                  }
+                }
+
+                return fetch(url, {
+                  ...init,
+                  headers: mergedHeaders
+                });
+              }
+            }
+          })
         );
+      } catch (sseError: any) {
+        logger.info('SSE error', sseError);
+        throw sseError;
       }
     }
 
