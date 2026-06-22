@@ -18,10 +18,14 @@ type authModeType = {
   authToken?: boolean;
   authRoot?: boolean;
   authApiKey?: boolean;
+  authAppApiKey?: boolean;
   per?: PermissionValueType;
 };
 
-export type AuthModeType = RequireAtLeastOne<authModeType, 'authApiKey' | 'authRoot' | 'authToken'>;
+export type AuthModeType = RequireAtLeastOne<
+  authModeType,
+  'authApiKey' | 'authAppApiKey' | 'authRoot' | 'authToken'
+>;
 
 export type AuthResponseType<T extends Permission = Permission> = {
   userId: string;

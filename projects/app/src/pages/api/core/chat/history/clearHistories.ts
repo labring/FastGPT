@@ -12,10 +12,16 @@ export async function handler(req: ApiRequestProps, res: NextApiResponse) {
   const { query } = parseApiInput({ req, querySchema: ClearChatHistoriesSchema });
   const { appId, shareId, outLinkUid, teamId, teamToken } = query;
 
-  const { appId: authAppId, tmbId, uid, authType } = await authChatCrud({
+  const {
+    appId: authAppId,
+    tmbId,
+    uid,
+    authType
+  } = await authChatCrud({
     req,
     authToken: true,
     authApiKey: true,
+    authAppApiKey: true,
     ...query
   });
   const matchAppId = appId || authAppId;

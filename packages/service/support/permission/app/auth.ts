@@ -21,6 +21,7 @@ import {
 } from '@fastgpt/global/support/permission/app/constant';
 import { parseHeaderCert } from '../auth/common';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
+import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 
 export const authWorkflowToolByTmbId = async ({
   tmbId,
@@ -131,6 +132,33 @@ export const authAppByTmbId = async ({
   return { app };
 };
 
+/**
+ * 临时兼容策略：app APIKey 原本应只允许访问 key 绑定的 appId。
+ * 现阶段为了兼容旧调用方，body/query 中显式传入 appId 时优先使用该 appId，
+ * 只要求该 app 与 APIKey 归属同一个 team。该策略不安全也不合理，后续需要收敛。
+ */
+export const authAppByApiKeyTeam = async ({
+  teamId,
+  appId
+}: {
+  teamId: string;
+  appId: ParentIdType;
+}): Promise<{ app: AppDetailType }> => {
+  const app = await MongoApp.findOne({ _id: appId, teamId }).lean();
+  if (!app) {
+    return Promise.reject(AppErrEnum.unAuthApp);
+  }
+
+  const permission = new AppPermission({ isOwner: false, role: ReadRoleVal });
+
+  return {
+    app: {
+      ...app,
+      permission
+    }
+  };
+};
+
 export const authApp = async ({
   appId,
   per,
@@ -148,6 +176,16 @@ export const authApp = async ({
 
   if (!appId) {
     return Promise.reject(AppErrEnum.unExist);
+  }
+
+  if (result.authType === AuthUserTypeEnum.apikey && result.apiKeyAppId) {
+    const { app } = await authAppByApiKeyTeam({ teamId: result.teamId, appId });
+
+    return {
+      ...result,
+      permission: app.permission,
+      app
+    };
   }
 
   const { app } = await authAppByTmbId({

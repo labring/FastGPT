@@ -28,6 +28,7 @@ async function handler(req: ApiRequestProps<CreateQuestionGuideParams>, res: Nex
       req,
       authToken: true,
       authApiKey: true,
+      authAppApiKey: true,
       ...req.body
     })
   ]);

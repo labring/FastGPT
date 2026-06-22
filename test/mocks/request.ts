@@ -69,12 +69,14 @@ vi.mock('@fastgpt/service/support/permission/auth/common', async (importOriginal
       req,
       authToken = false,
       authRoot = false,
-      authApiKey = false
+      authApiKey = false,
+      authAppApiKey = false
     }: {
       req: MockReqType;
       authToken?: boolean;
       authRoot?: boolean;
       authApiKey?: boolean;
+      authAppApiKey?: boolean;
     }) => {
       const { auth } = req;
       if (!auth) {
@@ -84,7 +86,7 @@ vi.mock('@fastgpt/service/support/permission/auth/common', async (importOriginal
     }
   );
 
-  const authCert = async (props: any) => {
+  const authCert = vi.fn(async (props: any) => {
     const result = await parseHeaderCert(props);
 
     return {
@@ -92,7 +94,7 @@ vi.mock('@fastgpt/service/support/permission/auth/common', async (importOriginal
       isOwner: true,
       canWrite: true
     };
-  };
+  });
 
   const setCookie = vi.fn();
 
@@ -111,12 +113,14 @@ vi.mock('@fastgpt/service/support/permission/memberGroup/controllers', async (im
       req,
       authToken = false,
       authRoot = false,
-      authApiKey = false
+      authApiKey = false,
+      authAppApiKey = false
     }: {
       req: MockReqType;
       authToken?: boolean;
       authRoot?: boolean;
       authApiKey?: boolean;
+      authAppApiKey?: boolean;
     }) => {
       const { auth } = req;
       if (!auth) {

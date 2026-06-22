@@ -62,6 +62,14 @@ describe('getResData handler', () => {
     });
 
     await expect(callHandler()).resolves.toEqual([{ id: 'persisted-root' }]);
+    expect(mocks.authChatCrud).toHaveBeenCalledWith(
+      expect.objectContaining({
+        authApiKey: true,
+        authAppApiKey: true,
+        appId,
+        chatId
+      })
+    );
     expect(mocks.getChatItemResponseData).toHaveBeenCalledWith({
       appId,
       chatId,

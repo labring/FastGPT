@@ -54,7 +54,7 @@ export async function authChatCrud({
 }: AuthModeType &
   AuthChatCommonProps & {
     chatId?: string;
-}): Promise<{
+  }): Promise<{
   appId?: string;
   teamId: string;
   tmbId: string; // 本轮鉴权的 uid
@@ -191,6 +191,7 @@ export async function authChatCrud({
     req: props.req,
     authToken: true,
     authApiKey: true,
+    authAppApiKey: props.authAppApiKey,
     appId,
     per: ReadPermissionVal
   });

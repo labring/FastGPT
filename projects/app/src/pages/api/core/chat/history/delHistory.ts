@@ -12,11 +12,16 @@ export async function handler(req: ApiRequestProps, res: NextApiResponse) {
   const { query } = parseApiInput({ req, querySchema: DelChatHistorySchema });
   const { appId, chatId } = query;
 
-  const { appId: authAppId, authType, uid } = await authChatCrud({
+  const {
+    appId: authAppId,
+    authType,
+    uid
+  } = await authChatCrud({
     ...query,
     req,
     authToken: true,
-    authApiKey: true
+    authApiKey: true,
+    authAppApiKey: true
   });
   const matchAppId = appId || authAppId;
   if (!matchAppId) return Promise.reject('Param are error');

@@ -48,6 +48,7 @@ export async function handler(req: ApiRequestProps): Promise<GetPaginationRecord
       req,
       authToken: true,
       authApiKey: true,
+      authAppApiKey: true,
       appId,
       chatId,
       ...authProps

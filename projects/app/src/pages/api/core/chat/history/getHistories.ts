@@ -15,6 +15,8 @@ import { addMonths } from 'date-fns';
 import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { authAppByApiKeyTeam } from '@fastgpt/service/support/permission/app/auth';
 
 /* get chat histories list */
 export async function handler(
@@ -68,7 +70,16 @@ export async function handler(
       };
     }
     if (appId) {
-      const { tmbId } = await authCert({ req, authToken: true, authApiKey: true });
+      const { tmbId, teamId, authType, apiKeyAppId } = await authCert({
+        req,
+        authToken: true,
+        authApiKey: true,
+        authAppApiKey: true
+      });
+      if (authType === AuthUserTypeEnum.apikey && apiKeyAppId) {
+        await authAppByApiKeyTeam({ teamId, appId });
+      }
+
       return {
         appId,
         tmbId,

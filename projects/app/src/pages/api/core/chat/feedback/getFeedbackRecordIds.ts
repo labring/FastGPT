@@ -29,6 +29,7 @@ async function handler(
     req,
     authToken: true,
     authApiKey: true,
+    authAppApiKey: true,
     ...req.body
   });
 

@@ -504,6 +504,34 @@ describe('authChatCrud', () => {
       });
     });
 
+    it('should pass authAppApiKey option to app auth', async () => {
+      vi.mocked(authApp).mockResolvedValue({
+        teamId: 'team1',
+        tmbId: 'tmb1',
+        permission: new AppPermission({
+          isOwner: true
+        }),
+        authType: AuthUserTypeEnum.apikey
+      } as any);
+
+      await authChatCrud({
+        appId: 'app1',
+        req: {} as any,
+        authToken: true,
+        authApiKey: true,
+        authAppApiKey: true
+      });
+
+      expect(vi.mocked(authApp)).toHaveBeenCalledWith(
+        expect.objectContaining({
+          authToken: true,
+          authApiKey: true,
+          authAppApiKey: true,
+          appId: 'app1'
+        })
+      );
+    });
+
     it('should auth with cookie and valid chatId for same team', async () => {
       const mockChat = {
         appId: 'app1',

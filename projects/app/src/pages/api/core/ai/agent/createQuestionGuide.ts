@@ -32,7 +32,8 @@ async function handler(
   const { tmbId, teamId } = await authChatCert({
     req,
     authToken: true,
-    authApiKey: true
+    authApiKey: true,
+    authAppApiKey: true
   });
 
   const qgModel = getDefaultLLMModel();

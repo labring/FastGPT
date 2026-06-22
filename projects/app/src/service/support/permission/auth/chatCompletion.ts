@@ -8,7 +8,7 @@ import { AuthUserTypeEnum, ReadPermissionVal } from '@fastgpt/global/support/per
 import { notLeaveStatus } from '@fastgpt/global/support/user/team/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { authApp, authAppByApiKeyTeam } from '@fastgpt/service/support/permission/app/auth';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
@@ -103,8 +103,10 @@ export const resolveChatCompletionEffectiveTmbId = async ({
 /**
  * 鉴权 Chat Completions 头部请求，并返回后续对话运行需要的应用、团队和成员上下文。
  *
- * API Key 必须绑定 appId 或在请求体显式传 appId。全局 API Key 只有在 key 记录
- * 开启 authProxy 时，才能把运行身份切换到团队内的指定成员。
+ * API Key 必须绑定 appId 或在请求体显式传 appId。app APIKey 现阶段兼容请求体
+ * appId 优先：即使与 key 绑定 appId 不一致，只要目标应用属于同一 team 即允许。
+ * 这是不安全且不合理的临时策略，后续需要收敛回 key 绑定应用。全局 API Key 只有
+ * 在 key 记录开启 authProxy 时，才能把运行身份切换到团队内的指定成员。
  */
 export const authChatCompletionHeaderRequest = async ({
   req,
@@ -131,18 +133,21 @@ export const authChatCompletionHeaderRequest = async ({
   } = await authCert({
     req,
     authToken: true,
-    authApiKey: true
+    authApiKey: true,
+    authAppApiKey: true
   });
 
   const { app } = await (async () => {
     if (authType === AuthUserTypeEnum.apikey) {
-      const currentAppId = authorizedAppId || appId;
+      const currentAppId = appId || authorizedAppId;
       if (!currentAppId) {
         return Promise.reject(
           'Key is error. You need to use the app key rather than the account key.'
         );
       }
-      const app = await MongoApp.findOne({ _id: currentAppId, teamId });
+      const app = apiKeyAppId
+        ? (await authAppByApiKeyTeam({ teamId, appId: currentAppId })).app
+        : await MongoApp.findOne({ _id: currentAppId, teamId });
 
       if (!app) {
         return Promise.reject('app is empty');

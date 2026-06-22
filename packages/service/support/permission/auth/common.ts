@@ -31,7 +31,8 @@ export async function parseHeaderCert({
   req,
   authToken = false,
   authRoot = false,
-  authApiKey = false
+  authApiKey = false,
+  authAppApiKey = false
 }: AuthModeType) {
   // parse jwt
   async function authCookieToken(cookie?: string, token?: string) {
@@ -51,28 +52,11 @@ export async function parseHeaderCert({
       return Promise.reject(ERROR_ENUM.unAuthorization);
     }
 
-    // Bearer fastgpt-xxxx-appId
-    const auth = authorization.split(' ')[1];
-    if (!auth) {
+    // Authorization 后面的 token 整体就是 APIKey，不再解析历史的 key-appId 形式。
+    const apikey = authorization.split(' ')[1];
+    if (!apikey) {
       return Promise.reject(ERROR_ENUM.unAuthorization);
     }
-
-    const { apikey, appId: authorizationAppid = '' } = await (async () => {
-      const arr = auth.split('-');
-      // abandon
-      if (arr.length === 3) {
-        return {
-          apikey: `${arr[0]}-${arr[1]}`,
-          appId: arr[2]
-        };
-      }
-      if (arr.length === 2) {
-        return {
-          apikey: auth
-        };
-      }
-      return Promise.reject(ERROR_ENUM.unAuthorization);
-    })();
 
     // auth apikey
     const {
@@ -83,8 +67,8 @@ export async function parseHeaderCert({
       sourceName
     } = await authOpenApiKey({
       apikey,
-      req,
-      authorizationAppId: authorizationAppid
+      authApiKey,
+      authAppApiKey
     });
 
     return {
@@ -92,7 +76,7 @@ export async function parseHeaderCert({
       teamId,
       tmbId,
       apikey,
-      appId: apiKeyAppId || authorizationAppid,
+      appId: apiKeyAppId,
       apiKeyAppId,
       apiKeyAuthProxy: authProxy,
       sourceName
@@ -120,7 +104,7 @@ export async function parseHeaderCert({
     apiKeyAppId,
     apiKeyAuthProxy
   } = await (async () => {
-    if (authApiKey && authorization) {
+    if ((authApiKey || authAppApiKey) && authorization) {
       // apikey from authorization
       const authResponse = await parseAuthorization(authorization);
       return {

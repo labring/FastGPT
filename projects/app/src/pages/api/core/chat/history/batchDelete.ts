@@ -18,6 +18,7 @@ async function handler(req: ApiRequestProps) {
     req,
     authToken: true,
     authApiKey: true,
+    authAppApiKey: true,
     appId,
     per: AppReadChatLogPerVal
   });

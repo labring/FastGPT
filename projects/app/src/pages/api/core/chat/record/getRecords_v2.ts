@@ -50,6 +50,7 @@ async function handler(req: ApiRequestProps): Promise<GetRecordsV2ResponseType> 
       req,
       authToken: true,
       authApiKey: true,
+      authAppApiKey: true,
       ...req.body
     })
   ]);

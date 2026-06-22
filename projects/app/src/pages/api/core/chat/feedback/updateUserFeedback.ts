@@ -23,6 +23,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateUserFeedbackResponse
     req,
     authToken: true,
     authApiKey: true,
+    authAppApiKey: true,
     ...req.body
   });
 
