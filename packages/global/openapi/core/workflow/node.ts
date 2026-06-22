@@ -19,7 +19,7 @@ export const OpenAPIFlowNodeInputItemTypeSchema = FlowNodeInputItemTypeSchema.om
     list: z
       .array(
         z.object({
-          label: z.string().optional().meta({
+          label: z.string().meta({
             description: '变量选项展示名称'
           }),
           value: z.string().meta({
@@ -43,7 +43,7 @@ export const OpenAPIFlowNodeInputItemTypeSchema = FlowNodeInputItemTypeSchema.om
           value: z.string().meta({
             description: '枚举项实际值'
           }),
-          label: z.string().optional().meta({
+          label: z.string().meta({
             description: '枚举项展示名称'
           })
         })

@@ -80,7 +80,7 @@ const OpenAPIVariableItemSchema = VariableItemTypeSchema.omit({
     list: z
       .array(
         z.object({
-          label: z.string().optional().meta({
+          label: z.string().meta({
             description: '变量选项展示名称'
           }),
           value: z.string().meta({
@@ -104,7 +104,7 @@ const OpenAPIVariableItemSchema = VariableItemTypeSchema.omit({
           value: z.string().meta({
             description: '枚举项实际值'
           }),
-          label: z.string().optional().meta({
+          label: z.string().meta({
             description: '枚举项展示名称'
           })
         })
