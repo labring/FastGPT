@@ -16,8 +16,8 @@ type Particle = {
   color: string;
 };
 
-type LikeFeedbackButtonProps = Omit<BoxProps, 'color' | 'filter' | '_hover'> &
-  Pick<IconProps, 'w' | 'h' | 'boxSize'> & {
+type LikeFeedbackButtonProps = Pick<BoxProps, 'cursor' | 'onClick'> &
+  Pick<IconProps, 'w' | 'h' | 'boxSize' | 'p'> & {
     isActive: boolean;
     effectTrigger?: number;
   };
@@ -57,7 +57,10 @@ const LikeFeedbackButton = ({
   effectTrigger,
   cursor,
   onClick,
-  ...iconProps
+  w,
+  h,
+  boxSize,
+  p
 }: LikeFeedbackButtonProps) => {
   const buttonRef = useRef<HTMLSpanElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -203,7 +206,10 @@ const LikeFeedbackButton = ({
     >
       <MyIcon
         key={effectTrigger || 'idle'}
-        {...iconProps}
+        w={w}
+        h={h}
+        boxSize={boxSize}
+        p={p}
         cursor={undefined}
         color="currentColor"
         _hover={undefined}
