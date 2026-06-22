@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef } from 'react';
-import { Box, type IconProps } from '@chakra-ui/react';
+import { Box, type BoxProps, type IconProps } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import styles from '../index.module.scss';
 
@@ -16,10 +16,11 @@ type Particle = {
   color: string;
 };
 
-type LikeFeedbackButtonProps = Omit<IconProps, 'color' | 'filter' | '_hover'> & {
-  isActive: boolean;
-  effectTrigger?: number;
-};
+type LikeFeedbackButtonProps = Omit<BoxProps, 'color' | 'filter' | '_hover'> &
+  Pick<IconProps, 'w' | 'h' | 'boxSize'> & {
+    isActive: boolean;
+    effectTrigger?: number;
+  };
 
 const blueColors = ['#3370ff', '#4f82ff', '#7ca3ff'];
 const accentColor = '#efdefd';
