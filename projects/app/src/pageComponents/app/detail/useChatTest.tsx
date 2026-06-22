@@ -183,6 +183,7 @@ export const useChatTest = ({
         chatType={ChatTypeEnum.test}
         enableAutoResume
         onStartChat={startChat}
+        enableQuickReplies
       />
     )
   );

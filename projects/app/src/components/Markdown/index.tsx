@@ -28,6 +28,7 @@ const AudioBlock = dynamic(() => import('./codeBlock/Audio'), { ssr: false });
 
 const ChatGuide = dynamic(() => import('./chat/Guide'), { ssr: false });
 const QuestionGuide = dynamic(() => import('./chat/QuestionGuide'), { ssr: false });
+const QuickReplies = dynamic(() => import('./chat/QuickReplies'), { ssr: false });
 const A = dynamic(() => import('./A'), { ssr: false });
 
 function MarkdownImgRenderer(props: any) {
@@ -177,7 +178,7 @@ function Code(e: any) {
     autoPreviewHtmlCodeBlock,
     markdownClassName
   } = e;
-  const match = /language-(\w+)/.exec(className || '');
+  const match = /language-([\w-]+)/.exec(className || '');
   const codeType = match?.[1]?.toLowerCase();
 
   const strChildren = String(children);
@@ -219,6 +220,9 @@ function Code(e: any) {
   }
   if (codeType === CodeClassNameEnum.audio) {
     return <AudioBlock code={strChildren} />;
+  }
+  if (codeType === CodeClassNameEnum.quickReplies) {
+    return <QuickReplies text={strChildren} />;
   }
 
   return (

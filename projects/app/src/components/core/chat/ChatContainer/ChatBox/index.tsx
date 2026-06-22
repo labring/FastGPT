@@ -60,6 +60,10 @@ import AppChatMain from './components/AppChatMain';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import ScrollToBottomButton from './components/ScrollToBottomButton';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import {
+  QuickReplyContextProvider,
+  useRegisterQuickReplyClickHandler
+} from '../context/quickReplyContext';
 
 const ChatHomeVariablesForm = dynamic(() => import('./components/home/ChatHomeVariablesForm'));
 const DesktopHomeLayout = dynamic(() => import('./components/home/DesktopHomeLayout'));
@@ -93,6 +97,8 @@ type Props = OutLinkChatAuthProps &
     /** 覆盖默认已读接口；不传则使用普通 App Chat 的 postMarkChatRead。 */
     onMarkChatRead?: (data: MarkChatReadBodyType) => Promise<unknown>;
     EmptyState?: React.ReactNode;
+    /** 是否启用 AI 正文 quick-replies 快捷回复渲染，默认关闭。 */
+    enableQuickReplies?: boolean;
   };
 
 const ChatBox = ({
@@ -114,6 +120,7 @@ const ChatBox = ({
   boxBodyProps,
   inputBodyProps,
   EmptyState,
+  enableQuickReplies = false,
   ...props
 }: Props) => {
   const { t } = useTranslation();
@@ -442,6 +449,20 @@ const ChatBox = ({
     };
   }, [isReady, resetInputVal, sendPrompt, canSendPrompt, lastInteractive]);
 
+  /** 快捷回复点击：直接发送选项文本，并保留输入框原有内容。 */
+  const handleQuickReplyClick = useMemoizedFn((text: string) => {
+    const trimmedText = text.trim();
+    if (!trimmedText) return;
+
+    sendPromptWithDisabledGuard({
+      text: trimmedText,
+      interactive: lastInteractive,
+      clearInput: false
+    });
+  });
+
+  useRegisterQuickReplyClickHandler(enableQuickReplies ? handleQuickReplyClick : undefined);
+
   // Auto send prompt
   useDebounceEffect(
     () => {
@@ -656,11 +677,14 @@ const ChatBox = ({
     </MyBox>
   );
 };
-
 const ChatBoxContainer = (props: Props) => {
+  const { enableQuickReplies = false } = props;
+
   return (
     <ChatProvider {...props}>
-      <ChatBox {...props} />
+      <QuickReplyContextProvider enableQuickReplies={enableQuickReplies}>
+        <ChatBox {...props} />
+      </QuickReplyContextProvider>
     </ChatProvider>
   );
 };

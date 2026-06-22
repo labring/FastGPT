@@ -11,7 +11,8 @@ export enum CodeClassNameEnum {
   htm = 'htm',
   svg = 'svg',
   video = 'video',
-  audio = 'audio'
+  audio = 'audio',
+  quickReplies = 'quick-replies'
 }
 
 const streamingIncompleteMarkdownTailPatterns = [

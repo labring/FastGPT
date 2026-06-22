@@ -406,6 +406,7 @@ const OutLink = (props: Props) => {
                       onStartChat={startChat}
                       chatType={ChatTypeEnum.share}
                       showWorkorder={showWorkorder === '1'}
+                      enableQuickReplies
                     />
                   )}
                 </Box>

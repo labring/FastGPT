@@ -436,6 +436,16 @@
     word-break: break-word;
   }
 
+  pre:has([data-quick-replies]),
+  code:has([data-quick-replies]) {
+    background: transparent !important;
+    border: none;
+    padding: 0;
+    margin: 0;
+    color: inherit;
+    overflow: visible;
+  }
+
   pre {
     display: block;
     width: 100%;

@@ -58,6 +58,7 @@ describe('Markdown utils', () => {
       expect(CodeClassNameEnum.svg).toBe('svg');
       expect(CodeClassNameEnum.video).toBe('video');
       expect(CodeClassNameEnum.audio).toBe('audio');
+      expect(CodeClassNameEnum.quickReplies).toBe('quick-replies');
     });
   });
 

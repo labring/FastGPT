@@ -564,7 +564,8 @@ export const useChatGenerate = ({
       history = chatRecords,
       interactive,
       autoTTSResponse = false,
-      hideInUI = false
+      hideInUI = false,
+      clearInput = true
     }) => {
       variablesForm.handleSubmit(
         async ({ variables = {} }) => {
@@ -679,7 +680,9 @@ export const useChatGenerate = ({
               : newChatList
           );
 
-          resetInputVal({});
+          if (clearInput) {
+            resetInputVal({});
+          }
           setQuestionGuide([]);
           scrollToBottom('smooth', 100);
 
@@ -794,7 +797,7 @@ export const useChatGenerate = ({
               })
             );
 
-            if (!err?.responseText) {
+            if (!err?.responseText && clearInput) {
               resetInputVal({ text, files });
             }
 
