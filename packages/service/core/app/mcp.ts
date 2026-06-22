@@ -1,6 +1,9 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import {
+  StreamableHTTPClientTransport,
+  StreamableHTTPError
+} from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import { type McpToolConfigType } from '@fastgpt/global/core/app/tool/mcpTool/type';
 import { retryFn } from '@fastgpt/global/common/system/utils';
@@ -27,6 +30,14 @@ const shouldFallbackToSSE = (error: unknown): boolean => {
     error.code >= 400 &&
     error.code < 500
   );
+};
+
+const getErrorMessage = (error: unknown) => {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  return String(error);
 };
 
 export class MCPClient {
@@ -110,7 +121,11 @@ export class MCPClient {
         );
       } catch (sseError: any) {
         logger.info('SSE error', sseError);
-        throw sseError;
+        throw new Error(
+          `MCP connection failed. Streamable HTTP: ${getErrorMessage(
+            streamableError
+          )}; SSE: ${getErrorMessage(sseError)}`
+        );
       }
     }
 
