@@ -95,13 +95,13 @@ export const ChoiceCollapseToggleButton = React.memo(function ChoiceCollapseTogg
       <Button
         mx={'8px'}
         px={0}
-        h={'22px'}
+        h={'16px'}
         minW={0}
         variant={'unstyled'}
         color={'primary.600'}
         fontSize={'11px'}
         fontWeight={500}
-        lineHeight={'20px'}
+        lineHeight={'16px'}
         onClick={onToggle}
       >
         {isOptionsExpanded
