@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import DateTimePicker from '@fastgpt/web/components/common/DateTimePicker';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput';
@@ -36,28 +36,32 @@ const TimeInput: React.FC<TimeInputProps> = ({
   const minute = formatValue ? formatValue.getMinutes() : 0;
   const second = formatValue ? formatValue.getSeconds() : 0;
 
-  const validateAndSetDateTime = (newDate: Date) => {
-    if (minDate && newDate < minDate) {
-      onDateTimeChange(new Date(minDate));
-      return;
-    }
-    if (maxDate && newDate > maxDate) {
-      onDateTimeChange(new Date(maxDate));
-      return;
-    }
-    onDateTimeChange(newDate);
-  };
+  const validateAndSetDateTime = useCallback(
+    (newDate: Date) => {
+      if (minDate && newDate < minDate) {
+        onDateTimeChange(new Date(minDate));
+        return;
+      }
+      if (maxDate && newDate > maxDate) {
+        onDateTimeChange(new Date(maxDate));
+        return;
+      }
+      onDateTimeChange(newDate);
+    },
+    [minDate, maxDate, onDateTimeChange]
+  );
 
-  const handleDateChange = (date: Date | null) => {
-    if (!date) {
-      onDateTimeChange(undefined);
-      return;
-    }
-
-    const newDate = new Date(date);
-    newDate.setHours(hour, minute, second);
-    validateAndSetDateTime(newDate);
-  };
+  const handleDateChange = useCallback(
+    (date: Date | null) => {
+      if (!date) {
+        onDateTimeChange(undefined);
+        return;
+      }
+      // DateTimePicker 传出的 date 已包含用户选择的时间，不要用 TimeInput 自身的 hour/minute/second 覆盖
+      validateAndSetDateTime(new Date(date));
+    },
+    [validateAndSetDateTime, onDateTimeChange]
+  );
 
   const handleHourChange = (newHour?: number) => {
     const newDate = formatValue ? formatValue : new Date();
