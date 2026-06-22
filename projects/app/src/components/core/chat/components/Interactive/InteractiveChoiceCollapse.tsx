@@ -91,29 +91,28 @@ export const ChoiceCollapseToggleButton = React.memo(function ChoiceCollapseTogg
   if (!answer) return null;
 
   return (
-    <Box mt={3}>
-      <Box
-        as="button"
-        type="button"
-        display={'inline-flex'}
-        alignItems={'center'}
-        mx={'8px'}
-        px={0}
-        h={'16px'}
-        minW={0}
-        border={0}
-        bg={'transparent'}
-        color={'primary.600'}
-        cursor={'pointer'}
-        fontSize={'11px'}
-        fontWeight={500}
-        lineHeight={'16px'}
-        onClick={onToggle}
-      >
-        {isOptionsExpanded
-          ? t('chat:interactive.user_select.collapse_options')
-          : t('chat:interactive.user_select.expand_options')}
-      </Box>
+    <Box
+      as="button"
+      type="button"
+      display={'inline-flex'}
+      alignItems={'center'}
+      alignSelf={'flex-start'}
+      mx={'8px'}
+      px={0}
+      h={'16px'}
+      minW={0}
+      border={0}
+      bg={'transparent'}
+      color={'primary.600'}
+      cursor={'pointer'}
+      fontSize={'11px'}
+      fontWeight={500}
+      lineHeight={'16px'}
+      onClick={onToggle}
+    >
+      {isOptionsExpanded
+        ? t('chat:interactive.user_select.collapse_options')
+        : t('chat:interactive.user_select.expand_options')}
     </Box>
   );
 });
