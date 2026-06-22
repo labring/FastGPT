@@ -33,7 +33,7 @@ import {
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { InteractiveNodeResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import { ensureAgentSandboxRuntime } from './sub/sandbox';
+import { ensureAgentSandboxRuntime, streamAgentSandboxInitStatus } from './sub/sandbox';
 import type { WorkflowNodeResponseWriter } from '../../../../chat/nodeResponseStorage';
 import type { RuntimeNodeResponseSummary } from '../../type';
 import { createAgentNodeResponseCollector } from './nodeResponseCollector';
@@ -199,6 +199,16 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       requestOrigin,
       maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20
     });
+
+    if (effectiveUseAgentSandbox) {
+      streamAgentSandboxInitStatus({
+        workflowStreamResponse,
+        appId: runningAppInfo.id,
+        userId: uid,
+        chatId,
+        sandboxId: runningAppInfo.sandboxId
+      });
+    }
 
     // 初始化 sandbox：初始化、注入 skills、files
     const { sandboxClient, currentWorkingDirectory, skillInfos } = await ensureAgentSandboxRuntime({

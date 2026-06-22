@@ -4,7 +4,8 @@ import { getLogger, LogCategories } from '../../../../common/logger';
 import { serviceEnv } from '../../../../env';
 import { joinSandboxPath, shellQuote } from '../utils';
 import type { DeployedSkillVersion } from './types';
-import { withRedisLease } from '../../../../common/redis/lock';
+import { isRedisLeaseError, withRedisLease } from '../../../../common/redis/lock';
+import { createAgentSandboxInitializingError } from '../../sandbox/error';
 
 const logger = getLogger(LogCategories.MODULE.AI.AGENT);
 
@@ -13,8 +14,8 @@ const STATE_FILE_NAME = 'state.json';
 const ENTRYPOINT_FILE_NAME = 'entrypoint.sh';
 const MAX_LOG_OUTPUT_LENGTH = 4000;
 const MAX_ENTRYPOINT_OUTPUT_BYTES = 8 * 1024;
-const SANDBOX_INIT_LEASE_TTL_MS = 5 * 60 * 1000;
-const SANDBOX_INIT_LEASE_WAIT_MS = 2 * 60 * 1000;
+const SANDBOX_INIT_LEASE_TTL_MS = 3 * 60 * 1000;
+const SANDBOX_INIT_LEASE_RENEW_INTERVAL_MS = SANDBOX_INIT_LEASE_TTL_MS / 6;
 
 type EntrypointState = {
   sandboxEntrypointHash?: string;
@@ -46,8 +47,13 @@ export const withAgentSandboxInitLease = async <T>({
     key: `agent-sandbox:init:${sandboxId}`,
     label: 'agent-sandbox-init',
     ttlMs: SANDBOX_INIT_LEASE_TTL_MS,
-    waitMs: SANDBOX_INIT_LEASE_WAIT_MS,
+    renewIntervalMs: SANDBOX_INIT_LEASE_RENEW_INTERVAL_MS,
     fn
+  }).catch((error) => {
+    if (isRedisLeaseError(error)) {
+      throw createAgentSandboxInitializingError();
+    }
+    throw error;
   });
 };
 

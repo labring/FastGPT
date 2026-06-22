@@ -131,7 +131,7 @@ HOME 解析沿用 ide-agent 逻辑：
 状态只用于本 sandbox 内的 entrypoint 执行去重，不描述 DB 版本或发布状态。
 有 selected version 时会按本轮 version 集合 reconcile `skillEntrypoints`：未选中的 versionId 会被移除。状态目录不可用时仍执行脚本但不记录成功状态；状态文件缺失或损坏时会按空状态重建。
 
-状态读写和普通运行态 skill 目录 reconcile 由服务端 Redis per-sandbox lease 保护，不再向 sandbox 文件系统写入 `.lock` 或 `.runtime.lock`。lease 使用 5 分钟 TTL，不做 heartbeat/renew；获取 lease 最多等待 2 分钟，Redis 不可用或等待超时时只记录日志并继续执行，不向上阻断本轮 Agent 初始化。
+状态读写和普通运行态 skill 目录 reconcile 由服务端 Redis per-sandbox lease 保护，不再向 sandbox 文件系统写入 `.lock` 或 `.runtime.lock`。lease 使用 3 分钟 TTL，heartbeat 间隔为 TTL 的 1/6（默认 30 秒），续期和释放都必须校验 token。获取 lease 失败、Redis 获取异常或执行期间续期确认 lease 丢失时，不无锁执行临界区；服务端将错误转换为“虚拟机正在初始化，请稍后重试”的业务错误，由 Agent dispatch 兜底返回本轮错误响应。
 
 ## 执行判断
 

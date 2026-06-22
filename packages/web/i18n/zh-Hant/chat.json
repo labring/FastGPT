@@ -196,7 +196,7 @@
   "sandbox_status_failed": "沙箱創建失敗",
   "sandbox_status_failed_with_message": "沙箱創建失敗：{{message}}",
   "sandbox_status_fetchSkills": "正在獲取技能資訊...",
-  "sandbox_status_lazyInit": "正在準備沙箱環境...",
+  "sandbox_status_lazyInit": "虛擬機啟動中...",
   "sandbox_status_ready_cold": "沙箱環境就緒",
   "sandbox_status_ready_warm": "沙箱環境就緒（熱啟動）",
   "sandbox_status_uploadingPackage": "正在上傳 Skill 包到沙箱...",

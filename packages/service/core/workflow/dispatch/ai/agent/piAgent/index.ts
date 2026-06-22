@@ -15,7 +15,7 @@ import { getLogger, LogCategories } from '../../../../../../common/logger';
 import type { DispatchAgentModuleProps } from '..';
 import { parseUserSystemPrompt } from '../adapter/prompt';
 import { useUserContext } from '../adapter/userContext';
-import { ensureAgentSandboxRuntime } from '../sub/sandbox';
+import { ensureAgentSandboxRuntime, streamAgentSandboxInitStatus } from '../sub/sandbox';
 import { getAgentDatasetParams, getSubapps, type ToolDispatchContext } from '../utils';
 import {
   createPiAgentWorkflowRuntime,
@@ -140,6 +140,15 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       requestOrigin,
       maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20
     });
+    if (effectiveUseAgentSandbox) {
+      streamAgentSandboxInitStatus({
+        workflowStreamResponse,
+        appId: runningAppInfo.id,
+        userId: uid,
+        chatId,
+        sandboxId: runningAppInfo.sandboxId
+      });
+    }
     const { sandboxClient, currentWorkingDirectory, skillInfos } = await ensureAgentSandboxRuntime({
       appId: runningAppInfo.id,
       userId: uid,
