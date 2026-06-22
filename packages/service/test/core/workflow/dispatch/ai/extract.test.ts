@@ -209,6 +209,25 @@ describe('dispatchContentExtract', () => {
     });
   });
 
+  it('ignores scalar JSON responses and keeps the workflow running', async () => {
+    getLLMModelMock.mockReturnValue({
+      model: 'gpt-4o',
+      name: 'GPT-4o',
+      maxContext: 128000,
+      reasoning: false,
+      toolChoice: false
+    });
+    createLLMResponseMock.mockResolvedValue(mockLLMResponse('1'));
+
+    const result = await dispatchContentExtract(createProps());
+
+    expect(result.data).toMatchObject({
+      success: true,
+      name: ''
+    });
+    expect(result.error).toBeUndefined();
+  });
+
   it('extracts multiple fields and removes fields outside the schema', async () => {
     getLLMModelMock.mockReturnValue({
       model: 'gpt-4o',
