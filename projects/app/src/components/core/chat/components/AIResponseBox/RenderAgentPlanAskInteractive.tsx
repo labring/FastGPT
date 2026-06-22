@@ -85,9 +85,11 @@ const RenderAgentPlanAskInteractive = React.memo(function RenderAgentPlanAskInte
         </Box>
       )}
       {normalizedOptions.length > 0 && (
-        <Flex flexDirection={'column'} gap={3}>
+        <Box>
           {selectedAnswerPlacement === 'above' && (
-            <SelectedAnswerText answer={effectiveAnswer} />
+            <Box mb={3}>
+              <SelectedAnswerText answer={effectiveAnswer} />
+            </Box>
           )}
           <Collapse in={shouldShowOptions} animateOpacity>
             <Box p={1} m={-1}>
@@ -148,14 +150,16 @@ const RenderAgentPlanAskInteractive = React.memo(function RenderAgentPlanAskInte
             </Box>
           </Collapse>
           {selectedAnswerPlacement === 'below' && (
-            <SelectedAnswerText answer={effectiveAnswer} />
+            <Box mt={3}>
+              <SelectedAnswerText answer={effectiveAnswer} />
+            </Box>
           )}
           <ChoiceCollapseToggleButton
             answer={effectiveAnswer}
             isOptionsExpanded={isOptionsExpanded}
             onToggle={toggleOptionsExpanded}
           />
-        </Flex>
+        </Box>
       )}
     </Flex>
   );

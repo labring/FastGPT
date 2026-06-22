@@ -13,44 +13,52 @@ export const useInteractiveChoiceCollapse = (selectedAnswer?: string) => {
   const [selectedAnswerPlacement, setSelectedAnswerPlacement] =
     React.useState<SelectedAnswerPlacement>(selectedAnswer ? 'above' : 'below');
   const collapseTimerRef = React.useRef<ReturnType<typeof setTimeout>>();
+  const placementTimerRef = React.useRef<ReturnType<typeof setTimeout>>();
 
-  const clearCollapseTimer = React.useCallback(() => {
+  const clearCollapseTimers = React.useCallback(() => {
     if (collapseTimerRef.current) {
       clearTimeout(collapseTimerRef.current);
       collapseTimerRef.current = undefined;
+    }
+    if (placementTimerRef.current) {
+      clearTimeout(placementTimerRef.current);
+      placementTimerRef.current = undefined;
     }
   }, []);
 
   React.useEffect(() => {
     if (!selectedAnswer) {
-      clearCollapseTimer();
+      clearCollapseTimers();
       setIsOptionsExpanded(true);
       setSelectedAnswerPlacement('below');
     }
-  }, [clearCollapseTimer, selectedAnswer]);
+  }, [clearCollapseTimers, selectedAnswer]);
 
   React.useEffect(() => {
     return () => {
-      clearCollapseTimer();
+      clearCollapseTimers();
     };
-  }, [clearCollapseTimer]);
+  }, [clearCollapseTimers]);
 
   const scheduleCollapse = React.useCallback(() => {
-    clearCollapseTimer();
+    clearCollapseTimers();
     setSelectedAnswerPlacement('below');
     setIsOptionsExpanded(true);
     collapseTimerRef.current = setTimeout(() => {
       setIsOptionsExpanded(false);
-      setSelectedAnswerPlacement('above');
       collapseTimerRef.current = undefined;
+      placementTimerRef.current = setTimeout(() => {
+        setSelectedAnswerPlacement('above');
+        placementTimerRef.current = undefined;
+      }, 240);
     }, 1000);
-  }, [clearCollapseTimer]);
+  }, [clearCollapseTimers]);
 
   const toggleOptionsExpanded = React.useCallback(() => {
-    clearCollapseTimer();
+    clearCollapseTimers();
     setSelectedAnswerPlacement('above');
     setIsOptionsExpanded((state) => !state);
-  }, [clearCollapseTimer]);
+  }, [clearCollapseTimers]);
 
   return {
     isOptionsExpanded,
