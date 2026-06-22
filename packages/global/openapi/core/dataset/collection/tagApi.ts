@@ -42,20 +42,31 @@ export type UpdateDatasetCollectionTagParams = z.infer<typeof UpdateDatasetColle
  * API: 批量新增/修改标签
  * Route: POST /proApi/core/dataset/tag/batchUpsert
  * ============================================================================ */
-export const BatchUpsertTagsBodySchema = z.object({
-  datasetId: ObjectIdSchema.meta({ description: '数据集 ID' }),
-  tags: z
-    .array(
-      z.object({
-        tag: z.string().meta({ description: '标签名称' }),
-        tagType: z.enum(['string', 'number', 'datetime']).optional().meta({
-          description: '标签类型: string=文本, number=数字, datetime=日期时间'
+export const BatchUpsertTagsBodySchema = z
+  .object({
+    datasetId: ObjectIdSchema.meta({ description: '数据集 ID' }),
+    tags: z
+      .array(
+        z.object({
+          tag: z.string().meta({ description: '标签名称' }),
+          tagType: z.enum(['string', 'number', 'datetime']).optional().meta({
+            description: '标签类型: string=文本, number=数字, datetime=日期时间'
+          })
         })
-      })
-    )
-    .min(1)
-    .meta({ description: '标签数组' })
-});
+      )
+      .min(1)
+      .meta({ description: '标签数组' })
+  })
+  .refine(
+    (data) => {
+      const tagNames = data.tags.map((t) => t.tag);
+      return new Set(tagNames).size === tagNames.length;
+    },
+    {
+      message: '标签名不能重复',
+      path: ['tags']
+    }
+  );
 export type BatchUpsertTagsParams = z.infer<typeof BatchUpsertTagsBodySchema>;
 
 /* ============================================================================

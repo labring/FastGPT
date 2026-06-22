@@ -15,7 +15,8 @@ export enum CommonErrEnum {
   pptxParseFailed = 'pptxParseFailed',
   fileTypeRequiresExternalParse = 'fileTypeRequiresExternalParse',
   unsupportedFileType = 'unsupportedFileType',
-  customParseMissingKey = 'customParseMissingKey'
+  customParseMissingKey = 'customParseMissingKey',
+  duplicateTag = 'duplicateTag'
 }
 const datasetErr = [
   {
@@ -65,6 +66,10 @@ const datasetErr = [
   {
     statusText: CommonErrEnum.customParseMissingKey,
     message: i18nT('file:custom_parse_missing_key')
+  },
+  {
+    statusText: CommonErrEnum.duplicateTag,
+    message: i18nT('common:error.duplicate_tag')
   }
 ];
 export default datasetErr.reduce((acc, cur, index) => {

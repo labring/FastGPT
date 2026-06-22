@@ -16,6 +16,7 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/training/api';
 import { assertModelAvailable, authModel } from '@fastgpt/service/support/permission/model/auth';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> {
   const { datasetId, vectorModelId } = RebuildEmbeddingBodySchema.parse(req.body);
@@ -29,8 +30,11 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
   });
 
   // check vector model
-  if (!vectorModelId || dataset.vectorModelId === vectorModelId) {
-    return Promise.reject('vectorModelId 不合法');
+  if (!vectorModelId) {
+    return Promise.reject(i18nT('common:core.dataset.error.vectorModelIdInvalid'));
+  }
+  if (dataset.vectorModelId === vectorModelId) {
+    return Promise.reject(i18nT('common:core.dataset.error.vectorModelSame'));
   }
   const { model } = await authModel({
     req,
