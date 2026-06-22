@@ -6,7 +6,8 @@ import React, { useCallback, useMemo } from 'react';
 import { AGENT_PLAN_ASK_OTHER_OPTION_VALUE } from './constants';
 import { onSendPrompt } from './utils';
 import {
-  SelectedAnswerCollapseControl,
+  ChoiceCollapseToggleButton,
+  SelectedAnswerText,
   useInteractiveChoiceCollapse
 } from '../Interactive/InteractiveChoiceCollapse';
 
@@ -86,11 +87,7 @@ const RenderAgentPlanAskInteractive = React.memo(function RenderAgentPlanAskInte
       {normalizedOptions.length > 0 && (
         <Flex flexDirection={'column'} gap={3}>
           {selectedAnswerPlacement === 'above' && (
-            <SelectedAnswerCollapseControl
-              answer={effectiveAnswer}
-              isOptionsExpanded={isOptionsExpanded}
-              onToggle={toggleOptionsExpanded}
-            />
+            <SelectedAnswerText answer={effectiveAnswer} />
           )}
           <Collapse in={shouldShowOptions} animateOpacity>
             <Flex flexDirection={'column'} gap={3}>
@@ -149,12 +146,13 @@ const RenderAgentPlanAskInteractive = React.memo(function RenderAgentPlanAskInte
             </Flex>
           </Collapse>
           {selectedAnswerPlacement === 'below' && (
-            <SelectedAnswerCollapseControl
-              answer={effectiveAnswer}
-              isOptionsExpanded={isOptionsExpanded}
-              onToggle={toggleOptionsExpanded}
-            />
+            <SelectedAnswerText answer={effectiveAnswer} />
           )}
+          <ChoiceCollapseToggleButton
+            answer={effectiveAnswer}
+            isOptionsExpanded={isOptionsExpanded}
+            onToggle={toggleOptionsExpanded}
+          />
         </Flex>
       )}
     </Flex>

@@ -61,7 +61,23 @@ export const useInteractiveChoiceCollapse = (selectedAnswer?: string) => {
   };
 };
 
-export const SelectedAnswerCollapseControl = React.memo(function SelectedAnswerCollapseControl({
+export const SelectedAnswerText = React.memo(function SelectedAnswerText({
+  answer
+}: {
+  answer?: string;
+}) {
+  const { t } = useTranslation();
+
+  if (!answer) return null;
+
+  return (
+    <Box color={'myGray.500'} fontSize={'sm'} lineHeight={'20px'}>
+      {t('chat:interactive.user_select.selected', { answer })}
+    </Box>
+  );
+});
+
+export const ChoiceCollapseToggleButton = React.memo(function ChoiceCollapseToggleButton({
   answer,
   isOptionsExpanded,
   onToggle
@@ -76,11 +92,7 @@ export const SelectedAnswerCollapseControl = React.memo(function SelectedAnswerC
 
   return (
     <Box mt={3}>
-      <Box color={'myGray.500'} fontSize={'sm'} lineHeight={'20px'}>
-        {t('chat:interactive.user_select.selected', { answer })}
-      </Box>
       <Button
-        mt={1}
         mx={'8px'}
         px={0}
         h={'22px'}
