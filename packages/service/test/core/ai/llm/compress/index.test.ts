@@ -41,6 +41,7 @@ import {
   compressRequestMessages,
   compressToolResponse
 } from '@fastgpt/service/core/ai/llm/compress';
+import { extractExactAnchors } from '@fastgpt/service/core/ai/llm/compress/prompt';
 
 const model: LLMModelItemType = {
   type: ModelTypeEnum.llm,
@@ -91,6 +92,23 @@ const mockDefaultUsagePoints = () => {
   formatModelChars2PointsMock.mockReturnValue({
     totalPoints: 3
   });
+};
+
+const mockPromptTokensForLlmCompression = ({
+  cleanedTokens = 1000,
+  finalTokens = 50,
+  initialTokens = 1000
+}: {
+  cleanedTokens?: number;
+  finalTokens?: number;
+  initialTokens?: number;
+} = {}) => {
+  countPromptTokensMock
+    .mockResolvedValueOnce(initialTokens)
+    .mockResolvedValueOnce(cleanedTokens)
+    .mockResolvedValueOnce(cleanedTokens)
+    .mockResolvedValueOnce(finalTokens)
+    .mockResolvedValue(initialTokens);
 };
 
 describe('compressRequestMessages', () => {
@@ -154,7 +172,9 @@ describe('compressRequestMessages', () => {
     expect(compressPrompt).not.toContain('recent user 3');
     expect(userPrompt).toContain('<histories>');
     expect(userPrompt).toContain('recent user 3');
+    expect(userPrompt).toContain('<output_budget>');
     expect(compressPrompt).not.toContain('最近消息预览');
+    expect(createLLMResponseMock.mock.calls[0][0].body.max_tokens).toBeUndefined();
   });
 
   it('should pass reasoning effort to the checkpoint compression LLM request', async () => {
@@ -224,6 +244,109 @@ describe('compressRequestMessages', () => {
     );
   });
 
+  it('should not replace an over-target LLM checkpoint when final messages stay within the production threshold', async () => {
+    countGptMessagesTokensMock.mockResolvedValueOnce(5000).mockResolvedValueOnce(2800);
+    createLLMResponseMock.mockResolvedValue({
+      answerText:
+        '<context_checkpoint>\n# Context Checkpoint\n## User Goal\n保留完整语义摘要，而不是首尾截断。\n</context_checkpoint>',
+      usage: {
+        inputTokens: 500,
+        outputTokens: 3000
+      },
+      requestId: 'req_soft_budget',
+      finish_reason: 'stop'
+    });
+
+    const result = await compressRequestMessages({
+      messages: createMessages(),
+      model
+    });
+
+    expect(result.contextCheckpoint).toContain('保留完整语义摘要');
+    expect(result.contextCheckpoint).not.toContain('## Source History Excerpts');
+    expect(createLLMResponseMock.mock.calls[0][0].body.max_tokens).toBeUndefined();
+  });
+
+  it('should use deterministic fallback only when the final compressed messages fit the threshold', async () => {
+    countGptMessagesTokensMock
+      .mockResolvedValueOnce(5000)
+      .mockResolvedValueOnce(4500)
+      .mockResolvedValueOnce(1200)
+      .mockResolvedValueOnce(3000)
+      .mockResolvedValueOnce(2600);
+    createLLMResponseMock.mockResolvedValue({
+      answerText: '<context_checkpoint>\n超长 LLM checkpoint\n</context_checkpoint>',
+      usage: {
+        inputTokens: 500,
+        outputTokens: 3000
+      },
+      requestId: 'req_deterministic_budget',
+      finish_reason: 'stop'
+    });
+
+    const messages = createMessages();
+    const result = await compressRequestMessages({
+      messages,
+      model
+    });
+
+    expect(result.contextCheckpoint).toContain('## Source History Excerpts');
+    expect(result.messages).not.toBe(messages);
+    expect(countGptMessagesTokensMock).toHaveBeenNthCalledWith(3, {
+      messages: [messages[0]]
+    });
+  });
+
+  it('should return original messages when compressed checkpoint still exceeds the production threshold', async () => {
+    countGptMessagesTokensMock
+      .mockResolvedValueOnce(5000)
+      .mockResolvedValueOnce(4500)
+      .mockResolvedValueOnce(4500)
+      .mockResolvedValueOnce(1200);
+    createLLMResponseMock.mockResolvedValue({
+      answerText: '<context_checkpoint>\n超长 tool checkpoint\n</context_checkpoint>',
+      usage: {
+        inputTokens: 500,
+        outputTokens: 3000
+      },
+      requestId: 'req_over_budget_tool_history',
+      finish_reason: 'stop'
+    });
+    const messages: ChatCompletionMessageParam[] = [
+      {
+        role: ChatCompletionRequestMessageRoleEnum.System,
+        content: 'system prompt'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.User,
+        content: 'Run search_orders.'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: null,
+        tool_calls: [
+          {
+            id: 'call_search_orders',
+            type: 'function',
+            function: {
+              name: 'search_orders',
+              arguments: '{"customerId":"c_123"}'
+            }
+          }
+        ]
+      }
+    ];
+
+    const result = await compressRequestMessages({
+      messages,
+      model
+    });
+
+    expect(result.messages).toBe(messages);
+    expect(result.contextCheckpoint).toBeUndefined();
+    expect(result.requestIds).toEqual(['req_over_budget_tool_history']);
+  });
+
   it('should keep original messages when below compression threshold', async () => {
     countGptMessagesTokensMock.mockResolvedValue(100);
 
@@ -235,6 +358,172 @@ describe('compressRequestMessages', () => {
 
     expect(result).toEqual({ messages });
     expect(createLLMResponseMock).not.toHaveBeenCalled();
+  });
+
+  it('should build a local structured checkpoint for over-threshold tool-call histories', async () => {
+    countGptMessagesTokensMock.mockResolvedValueOnce(5000).mockResolvedValueOnce(1200);
+    const messages: ChatCompletionMessageParam[] = [
+      {
+        role: ChatCompletionRequestMessageRoleEnum.System,
+        content: 'system prompt'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.User,
+        content:
+          'Case alpha. Available tools: [{"type":"function","function":{"name":"search_orders","parameters":{"properties":{"customerId":{"type":"string"}}}}}]'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.User,
+        content: 'Find recent orders for customer c_123.'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: null,
+        tool_calls: [
+          {
+            id: 'call_search_orders',
+            type: 'function',
+            function: {
+              name: 'search_orders',
+              arguments: '{"customerId":"c_123","limit":5}'
+            }
+          }
+        ]
+      }
+    ];
+
+    const result = await compressRequestMessages({
+      messages,
+      model
+    });
+
+    expect(createLLMResponseMock).not.toHaveBeenCalled();
+    expect(result.usage).toBeUndefined();
+    expect(result.messages).toEqual([
+      messages[0],
+      {
+        role: ChatCompletionRequestMessageRoleEnum.User,
+        content: result.contextCheckpoint,
+        hideInUI: true
+      }
+    ]);
+    expect(result.contextCheckpoint).toContain('<context_checkpoint>');
+    expect(result.contextCheckpoint).toContain('Case alpha. Available tools:');
+    expect(result.contextCheckpoint).toContain('search_orders');
+    expect(result.contextCheckpoint).toContain('"customerId":"c_123"');
+    expect(result.contextCheckpoint).toContain('Find recent orders for customer c_123');
+  });
+
+  it('should count system messages before accepting a local structured checkpoint', async () => {
+    countGptMessagesTokensMock
+      .mockResolvedValueOnce(5000)
+      .mockResolvedValueOnce(4800)
+      .mockResolvedValueOnce(260);
+    createLLMResponseMock.mockResolvedValue({
+      answerText: '<context_checkpoint>\nllm fallback summary\n</context_checkpoint>',
+      usage: {
+        inputTokens: 50,
+        outputTokens: 10
+      },
+      requestId: 'req_structured_with_system_budget',
+      finish_reason: 'stop'
+    });
+    const messages: ChatCompletionMessageParam[] = [
+      {
+        role: ChatCompletionRequestMessageRoleEnum.System,
+        content: 'very long system prompt'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.User,
+        content:
+          'Available tools: [{"type":"function","function":{"name":"search_orders","parameters":{"properties":{"customerId":{"type":"string"}}}}}]'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: null,
+        tool_calls: [
+          {
+            id: 'call_search_orders',
+            type: 'function',
+            function: {
+              name: 'search_orders',
+              arguments: '{"customerId":"c_123"}'
+            }
+          }
+        ]
+      }
+    ];
+
+    const result = await compressRequestMessages({
+      messages,
+      model
+    });
+
+    expect(createLLMResponseMock).toHaveBeenCalled();
+    expect(result.contextCheckpoint).toContain('llm fallback summary');
+  });
+
+  it('should include generic tool call memory in checkpoint compression prompt', async () => {
+    countGptMessagesTokensMock
+      .mockResolvedValueOnce(5000)
+      .mockResolvedValueOnce(5000)
+      .mockResolvedValueOnce(2000);
+    createLLMResponseMock.mockResolvedValue({
+      answerText: '<context_checkpoint>\ntool summary\n</context_checkpoint>',
+      usage: {
+        inputTokens: 50,
+        outputTokens: 10
+      },
+      requestId: 'req_tool_memory',
+      finish_reason: 'stop'
+    });
+    const messages: ChatCompletionMessageParam[] = [
+      {
+        role: ChatCompletionRequestMessageRoleEnum.System,
+        content: 'system prompt'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.User,
+        content: 'Search enterprise contracts signed by Acme in 2025.'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: null,
+        tool_calls: [
+          {
+            id: 'call_search_contracts',
+            type: 'function',
+            function: {
+              name: 'search_contracts',
+              arguments: '{"company":"Acme","year":2025}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_search_contracts',
+        content: '{"contracts":[{"id":"ctr_2025_001","amount":1200000}]}'
+      }
+    ];
+
+    const result = await compressRequestMessages({
+      messages,
+      model
+    });
+
+    expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
+    expect(result.messages).toHaveLength(2);
+    expect(result.messages[0]).toBe(messages[0]);
+    expect(result.contextCheckpoint).toBe(
+      '<context_checkpoint>\ntool summary\n</context_checkpoint>'
+    );
+    const userPrompt = createLLMResponseMock.mock.calls[0][0].body.messages[1].content;
+    expect(userPrompt).toContain('<tool_call_memory>');
+    expect(userPrompt).toContain('fn=search_contracts');
+    expect(userPrompt).toContain('args={"company":"Acme","year":2025}');
+    expect(userPrompt).toContain('user=Search enterprise contracts');
+    expect(userPrompt).toContain('"id":"ctr_2025_001"');
   });
 
   it('should use the full request context to decide checkpoint compression', async () => {
@@ -457,7 +746,7 @@ describe('compressLargeContent', () => {
   });
 
   it('should use LLM chunk compression when rule cleanup is not enough', async () => {
-    countPromptTokensMock.mockResolvedValue(1000);
+    mockPromptTokensForLlmCompression();
     countGptMessagesTokensMock.mockResolvedValue(50);
     createLLMResponseMock.mockResolvedValue({
       answerText: ' compressed chunk ',
@@ -475,8 +764,7 @@ describe('compressLargeContent', () => {
       compressedTokenLimit: 100
     });
 
-    expect(result).toEqual({
-      compressed: 'compressed chunk',
+    expect(result).toMatchObject({
       usage: {
         moduleName: 'account_usage:llm_compress_text',
         model: 'GPT-4',
@@ -486,6 +774,7 @@ describe('compressLargeContent', () => {
       },
       requestIds: ['req_chunk']
     });
+    expect(result.compressed).toBe('compressed chunk');
     expect(createLLMResponseMock).toHaveBeenCalledWith(
       expect.objectContaining({
         body: expect.objectContaining({
@@ -503,10 +792,13 @@ describe('compressLargeContent', () => {
     expect(userPrompt).toContain('<content>');
     expect(userPrompt).toContain('large content that requires LLM compression');
     expect(userPrompt).toContain('</content>');
+    expect(userPrompt).toContain('<output_budget>');
+    expect(userPrompt).toContain('Target maximum output tokens: 65');
+    expect(createLLMResponseMock.mock.calls[0][0].body.max_tokens).toBeUndefined();
   });
 
   it('should pass reasoning effort to large content compression requests', async () => {
-    countPromptTokensMock.mockResolvedValue(1000);
+    mockPromptTokensForLlmCompression();
     countGptMessagesTokensMock.mockResolvedValue(50);
     createLLMResponseMock.mockResolvedValue({
       answerText: 'compressed',
@@ -529,7 +821,7 @@ describe('compressLargeContent', () => {
   });
 
   it('should keep original chunk text when LLM returns empty chunk content', async () => {
-    countPromptTokensMock.mockResolvedValue(1000);
+    mockPromptTokensForLlmCompression();
     countGptMessagesTokensMock.mockResolvedValue(50);
     createLLMResponseMock.mockResolvedValue({
       answerText: '',
@@ -552,10 +844,17 @@ describe('compressLargeContent', () => {
   });
 
   it('should truncate merged LLM output when it still exceeds the compressed token limit', async () => {
-    countPromptTokensMock.mockResolvedValue(1000);
-    countGptMessagesTokensMock.mockResolvedValueOnce(999).mockResolvedValueOnce(1000);
+    countPromptTokensMock
+      .mockResolvedValueOnce(1000)
+      .mockResolvedValueOnce(1000)
+      .mockResolvedValueOnce(1000)
+      .mockResolvedValueOnce(999)
+      .mockResolvedValueOnce(1000)
+      .mockResolvedValueOnce(999)
+      .mockResolvedValueOnce(999)
+      .mockResolvedValueOnce(50);
     createLLMResponseMock.mockResolvedValue({
-      answerText: 'x'.repeat(100),
+      answerText: 'x'.repeat(1000),
       usage: {
         inputTokens: 20,
         outputTokens: 200
@@ -569,7 +868,172 @@ describe('compressLargeContent', () => {
       compressedTokenLimit: 100
     });
 
-    expect(result.compressed).toContain('... [content truncated] ...');
+    expect(result.compressed.length).toBeLessThan(1000);
+    expect(result.compressed.length).toBeGreaterThan(0);
+  });
+
+  it('should keep LLM merge output when tokens are within budget even if char length barely changes', async () => {
+    countPromptTokensMock
+      .mockResolvedValueOnce(1000)
+      .mockResolvedValueOnce(1000)
+      .mockResolvedValueOnce(1000)
+      .mockResolvedValueOnce(999)
+      .mockResolvedValueOnce(1000)
+      .mockResolvedValueOnce(80)
+      .mockResolvedValueOnce(80)
+      .mockResolvedValueOnce(80);
+    createLLMResponseMock
+      .mockResolvedValueOnce({
+        answerText: 'x'.repeat(1000),
+        usage: {
+          inputTokens: 20,
+          outputTokens: 200
+        },
+        requestId: 'req_initial_long'
+      })
+      .mockResolvedValueOnce({
+        answerText: 'y'.repeat(980),
+        usage: {
+          inputTokens: 20,
+          outputTokens: 80
+        },
+        requestId: 'req_merge_within_budget'
+      });
+
+    const result = await compressLargeContent({
+      content: 'large content',
+      model,
+      compressedTokenLimit: 100
+    });
+
+    expect(result.compressed).toBe('y'.repeat(980));
+    expect(result.compressed).not.toContain('content truncated');
+  });
+
+  it('should append source excerpts when LLM output uses too little of the budget', async () => {
+    countPromptTokensMock
+      .mockResolvedValueOnce(2000)
+      .mockResolvedValueOnce(2000)
+      .mockResolvedValueOnce(2000)
+      .mockResolvedValueOnce(100)
+      .mockResolvedValueOnce(2000)
+      .mockResolvedValueOnce(100)
+      .mockResolvedValueOnce(700)
+      .mockResolvedValue(700);
+    createLLMResponseMock.mockResolvedValue({
+      answerText: '简短摘要',
+      usage: {
+        inputTokens: 20,
+        outputTokens: 20
+      },
+      requestId: 'req_short_summary'
+    });
+
+    const result = await compressLargeContent({
+      content: ['开头字段：关键背景', '正文内容。'.repeat(400), '尾部字段：最终结论'].join('\n'),
+      model,
+      compressedTokenLimit: 1000
+    });
+
+    expect(result.compressed).toContain('简短摘要');
+    expect(result.compressed).toContain('Source excerpts for exact labels and facts');
+    expect(result.compressed).toContain('尾部字段');
+  });
+
+  it('should append exact source anchors while staying within the token budget', async () => {
+    countPromptTokensMock
+      .mockResolvedValueOnce(2000)
+      .mockResolvedValueOnce(2000)
+      .mockResolvedValueOnce(2000)
+      .mockResolvedValueOnce(500)
+      .mockResolvedValueOnce(2000)
+      .mockResolvedValueOnce(500)
+      .mockResolvedValueOnce(540)
+      .mockResolvedValueOnce(580)
+      .mockResolvedValueOnce(600);
+    createLLMResponseMock.mockResolvedValue({
+      answerText: '压缩后的核心事实',
+      usage: {
+        inputTokens: 20,
+        outputTokens: 20
+      },
+      requestId: 'req_anchor_append'
+    });
+
+    const result = await compressLargeContent({
+      content: ['问题标题：关键问题', '字段名称：重要字段', '正文内容。'.repeat(400)].join('\n'),
+      model,
+      compressedTokenLimit: 1000
+    });
+
+    expect(result.compressed).toContain('压缩后的核心事实');
+    expect(result.compressed).toContain('Source labels / exact anchors');
+    expect(result.compressed).toContain('问题标题');
+    expect(result.compressed).toContain('字段名称');
+  });
+
+  it('should skip source anchors when compressed output already uses most of the budget', async () => {
+    countPromptTokensMock
+      .mockResolvedValueOnce(2000)
+      .mockResolvedValueOnce(2000)
+      .mockResolvedValueOnce(2000)
+      .mockResolvedValueOnce(810)
+      .mockResolvedValueOnce(2000)
+      .mockResolvedValueOnce(810)
+      .mockResolvedValueOnce(810);
+    createLLMResponseMock.mockResolvedValue({
+      answerText: '压缩后的核心事实',
+      usage: {
+        inputTokens: 20,
+        outputTokens: 20
+      },
+      requestId: 'req_anchor_skip'
+    });
+
+    const result = await compressLargeContent({
+      content: ['问题标题：关键问题', '字段名称：重要字段', '正文内容。'.repeat(400)].join('\n'),
+      model,
+      compressedTokenLimit: 1000
+    });
+
+    expect(result.compressed).toBe('压缩后的核心事实');
+    expect(result.compressed).not.toContain('Source labels / exact anchors');
+  });
+
+  it('should append at most twelve source anchors', async () => {
+    countPromptTokensMock
+      .mockResolvedValueOnce(2000)
+      .mockResolvedValueOnce(2000)
+      .mockResolvedValueOnce(2000)
+      .mockResolvedValueOnce(500)
+      .mockResolvedValueOnce(2000)
+      .mockResolvedValueOnce(500)
+      .mockResolvedValue(520);
+    createLLMResponseMock.mockResolvedValue({
+      answerText: '压缩后的核心事实',
+      usage: {
+        inputTokens: 20,
+        outputTokens: 20
+      },
+      requestId: 'req_anchor_cap'
+    });
+
+    const result = await compressLargeContent({
+      content: [
+        ...Array.from({ length: 20 }, (_, index) => `字段${index + 1}：值${index + 1}`),
+        '正文内容。'.repeat(400)
+      ].join('\n'),
+      model,
+      compressedTokenLimit: 1000
+    });
+
+    const appendedAnchorCount =
+      result.compressed
+        .split('Source labels / exact anchors:')[1]
+        ?.split('\n')
+        .filter((line) => line.trim().startsWith('- ')).length ?? 0;
+
+    expect(appendedAnchorCount).toBeLessThanOrEqual(12);
   });
 
   it('should return cleaned content when LLM chunk compression throws', async () => {
@@ -588,7 +1052,7 @@ describe('compressLargeContent', () => {
   });
 
   it('should skip billing points for chunk compression when valid userKey is provided', async () => {
-    countPromptTokensMock.mockResolvedValue(1000);
+    mockPromptTokensForLlmCompression();
     countGptMessagesTokensMock.mockResolvedValue(50);
     createLLMResponseMock.mockResolvedValue({
       answerText: 'compressed',
@@ -615,6 +1079,40 @@ describe('compressLargeContent', () => {
   });
 });
 
+describe('extractExactAnchors', () => {
+  it('should extract only generic structural anchors instead of ordinary keywords', () => {
+    const anchors = extractExactAnchors(
+      [
+        'The ordinary project background should not become an anchor.',
+        'tool_name: search_contracts',
+        'trace_id: req_2025_001',
+        '问题标题：如何处理长文本压缩',
+        '## Release Notes',
+        '1.2 处理流程',
+        '请参考【结论摘要】继续执行。',
+        'Use /tmp/project/report.txt on 2025-01-02.',
+        'statusCode: 429'
+      ].join('\n'),
+      20
+    );
+
+    expect(anchors).toEqual(
+      expect.arrayContaining([
+        'tool_name',
+        'trace_id',
+        '问题标题',
+        'Release Notes',
+        '处理流程',
+        '结论摘要',
+        'req_2025_001',
+        '2025-01-02',
+        '429'
+      ])
+    );
+    expect(anchors).not.toEqual(expect.arrayContaining(['ordinary', 'project', 'background']));
+  });
+});
+
 describe('compressToolResponse', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -633,8 +1131,143 @@ describe('compressToolResponse', () => {
     expect(createLLMResponseMock).not.toHaveBeenCalled();
   });
 
+  it('should minify JSON tool responses without LLM when minified content fits the budget', async () => {
+    countPromptTokensMock.mockResolvedValue(100);
+    const response = JSON.stringify(
+      {
+        source: 'tool_call_log',
+        rows: [
+          {
+            id: 'multiple_001',
+            messages: [
+              {
+                role: 'user',
+                content: 'Find lawsuits filed against Google in California in 2020.'
+              },
+              {
+                role: 'assistant',
+                content: null,
+                tool_calls: [
+                  {
+                    type: 'function',
+                    function: {
+                      name: 'lawsuits_search',
+                      arguments: '{"company_name":"Google","location":"California","year":2020}'
+                    }
+                  }
+                ]
+              }
+            ],
+            tools: [
+              {
+                type: 'function',
+                function: {
+                  name: 'lawsuits_search',
+                  description: 'Long description should be removed from compressed tool schema.',
+                  parameters: {
+                    type: 'object',
+                    required: ['company_name', 'location', 'year'],
+                    properties: {
+                      company_name: {
+                        type: 'string',
+                        description: 'Company name.'
+                      },
+                      location: {
+                        type: 'string',
+                        description: 'Location.'
+                      },
+                      year: {
+                        type: 'integer',
+                        description: 'Year.'
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      },
+      null,
+      2
+    );
+
+    const result = await compressToolResponse({
+      response,
+      model,
+      compressedTokenLimit: 1200,
+      currentMessagesTokens: 0,
+      toolLength: 1
+    });
+
+    expect(createLLMResponseMock).not.toHaveBeenCalled();
+    const compressed = JSON.parse(result.compressed);
+    expect(compressed.source).toBe('tool_call_log');
+    expect(result.compressed).toContain('rows');
+    expect(result.compressed).toContain('lawsuits_search');
+    expect(result.compressed).toContain('company_name');
+    expect(result.compressed).toContain('California');
+    expect(result.compressed).toContain('Long description');
+    expect(result.compressed).not.toContain('\n');
+  });
+
+  it('should summarize larger JSON tool responses structurally without LLM', async () => {
+    countPromptTokensMock.mockResolvedValueOnce(900).mockResolvedValueOnce(180);
+    const response = JSON.stringify({
+      source: 'tool_call_log',
+      rows: [
+        {
+          id: 'multiple_001',
+          messages: [
+            {
+              role: 'user',
+              content: 'Find lawsuits filed against Google in California in 2020.'
+            }
+          ],
+          tools: [
+            {
+              type: 'function',
+              function: {
+                name: 'lawsuits_search',
+                parameters: {
+                  type: 'object',
+                  required: ['company_name', 'location', 'year']
+                }
+              }
+            }
+          ]
+        },
+        {
+          id: 'multiple_002',
+          messages: [],
+          tools: []
+        }
+      ]
+    });
+
+    const result = await compressToolResponse({
+      response,
+      model,
+      compressedTokenLimit: 1200,
+      currentMessagesTokens: 0,
+      toolLength: 1
+    });
+
+    expect(createLLMResponseMock).not.toHaveBeenCalled();
+    expect(result.compressed).toContain('JSON structural summary');
+    expect(result.compressed).toContain('root keys: source, rows');
+    expect(result.compressed).toContain('important scalar values: tool_call_log; multiple_001');
+    expect(result.compressed).toContain('rows: array(length=2)');
+    expect(result.compressed).toContain('rows[0].id: multiple_001');
+    expect(result.compressed).toContain('rows[0].tools[0].function.name: lawsuits_search');
+    expect(result.compressed).not.toContain('{"source"');
+  });
+
   it('should use dynamic available context as the tool compressed token limit', async () => {
-    countPromptTokensMock.mockResolvedValue(1600);
+    mockPromptTokensForLlmCompression({
+      cleanedTokens: 1600,
+      initialTokens: 1600
+    });
     createLLMResponseMock.mockResolvedValue({
       answerText: 'compressed tool response',
       usage: {
@@ -657,5 +1290,32 @@ describe('compressToolResponse', () => {
     expect(result.usage?.moduleName).toBe('account_usage:tool_response_compress');
     expect(result.requestIds).toEqual(['req_tool']);
     expect(createLLMResponseMock.mock.calls[0][0].body.reasoning_effort).toBe('high');
+  });
+
+  it('should respect caller provided compressed token limit for tool response', async () => {
+    mockPromptTokensForLlmCompression({
+      cleanedTokens: 1200,
+      initialTokens: 1200
+    });
+    createLLMResponseMock.mockResolvedValue({
+      answerText: 'budgeted tool response',
+      usage: {
+        inputTokens: 30,
+        outputTokens: 6
+      },
+      requestId: 'req_tool_budget'
+    });
+
+    const result = await compressToolResponse({
+      response: 'tool response',
+      model,
+      compressedTokenLimit: 1000,
+      currentMessagesTokens: 0,
+      toolLength: 1
+    });
+
+    expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
+    expect(result.compressed).toBe('budgeted tool response');
+    expect(createLLMResponseMock.mock.calls[0][0].body.max_tokens).toBeUndefined();
   });
 });

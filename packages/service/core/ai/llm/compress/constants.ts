@@ -3,20 +3,21 @@
  *
  * ## 设计原则
  *
- * 1. **空间分配**
- *    - 输出预留：30%（模型生成答案 + 缓冲）
- *    - 系统提示词（Depends on）：15%
- *    - Agent 对话历史：55%
+ * 1. **压缩触发水位**
+ *    - Depends on：超过上下文 15% 后压缩
+ *    - Agent 对话历史：超过上下文 80% 后压缩
+ *    - 单个 tool response / 文件读取结果：超过上下文 50% 后压缩
+ *    - 知识库检索结果：超过上下文 20% 后触发相关性筛选
  *
  * 2. **压缩策略**
  *    - 触发阈值：接近空间上限时触发
  *    - 压缩目标：保留可续跑上下文，具体摘要粒度交给模型判断
- *    - 约束机制：单个 tool 有绝对大小限制
+ *    - 约束机制：最终结果用真实 token 校验，LLM 输出长度只通过 prompt 软约束
  *
  * 3. **协调关系**
- *    - Depends on 使用完整 response，需要较大空间（15%）
- *    - Agent 历史包含所有 tool responses，是动态主体（55%）
- *    - 单个 tool 不能过大，避免挤占其他空间（10%）
+ *    - Depends on 使用完整 response，先在较小水位触发
+ *    - Agent 历史包含多轮 user/assistant/tool 消息，接近上下文上限才整体 checkpoint
+ *    - 单个 tool/file response 不能过大，避免挤占后续对话和模型输出空间
  */
 
 export const COMPRESSION_CONFIG = {
