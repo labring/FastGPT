@@ -35,8 +35,8 @@ export type ChatBoxInputType = {
   files?: UserInputFileItemType[];
   interactive?: WorkflowInteractiveResponseType;
   hideInUI?: boolean;
-  /** 发送成功后保留在输入框的内容，用于快捷回复等场景。 */
-  keepInputAfterSend?: Pick<ChatBoxInputType, 'text' | 'files'>;
+  /** 发送后是否清空输入框；快捷回复等不占用输入框内容的发送场景可设为 false。 */
+  clearInput?: boolean;
 };
 
 export type SendPromptFnType = (

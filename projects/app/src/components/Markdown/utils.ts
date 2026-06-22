@@ -15,43 +15,6 @@ export enum CodeClassNameEnum {
   quickReplies = 'quick-replies'
 }
 
-/** quick-replies 代码块内容的最大字符数 */
-export const QUICK_REPLIES_MAX_LENGTH = 300;
-
-const quickRepliesFencePattern = /(?:```|~~~)quick-replies\s*\n([\s\S]*?)(?:```|~~~)/g;
-
-/**
- * 解析 quick-replies 代码块内容为选项列表。
- * 不符合规则时返回 null，由上层降级为普通代码块展示。
- */
-export const parseQuickReplies = (text: string): string[] | null => {
-  const content = text.replace(/\n$/, '');
-
-  if (!content || content.length > QUICK_REPLIES_MAX_LENGTH) {
-    return null;
-  }
-
-  const options = content
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  return options.length > 0 ? options : null;
-};
-
-/** 仅当 source 中存在与 blockContent 匹配的完整闭合 fence 时，才返回可渲染选项。 */
-export const getQuickRepliesOptions = (source: string, blockContent: string): string[] | null => {
-  const content = blockContent.replace(/\n$/, '');
-
-  for (const match of source.matchAll(quickRepliesFencePattern)) {
-    if (match[1].replace(/\n$/, '') === content) {
-      return parseQuickReplies(blockContent);
-    }
-  }
-
-  return null;
-};
-
 const streamingIncompleteMarkdownTailPatterns = [
   /!\[[^\]\n]*\]\([^\s\n)]*$/,
   /!\[[^\]\n]*\]$/,

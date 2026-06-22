@@ -449,34 +449,15 @@ const ChatBox = ({
     };
   }, [isReady, resetInputVal, sendPrompt, canSendPrompt, lastInteractive]);
 
-  /**
-   * 快捷回复点击：当前轮次仍在生成时追加到输入框末尾；
-   * 否则发送选项文本，并保留输入框原有内容。
-   */
+  /** 快捷回复点击：直接发送选项文本，并保留输入框原有内容。 */
   const handleQuickReplyClick = useMemoizedFn((text: string) => {
     const trimmedText = text.trim();
     if (!trimmedText) return;
 
-    if (isRoundPending) {
-      const currentInput = chatForm.getValues('input') || '';
-      const nextInput = currentInput ? `${currentInput}\n${trimmedText}` : trimmedText;
-      setValue('input', nextInput);
-
-      setTimeout(() => {
-        if (TextareaDom.current) {
-          TextareaDom.current.style.height = `${TextareaDom.current.scrollHeight}px`;
-        }
-      }, 100);
-      return;
-    }
-
     sendPromptWithDisabledGuard({
       text: trimmedText,
       interactive: lastInteractive,
-      keepInputAfterSend: {
-        text: chatForm.getValues('input') || '',
-        files: chatForm.getValues('files') || []
-      }
+      clearInput: false
     });
   });
 

@@ -11,18 +11,11 @@ import styles from './index.module.scss';
 import dynamic from 'next/dynamic';
 
 import { Box } from '@chakra-ui/react';
-import {
-  CodeClassNameEnum,
-  getQuickRepliesOptions,
-  hideStreamingIncompleteMarkdownTail,
-  mdTextFormat
-} from './utils';
+import { CodeClassNameEnum, hideStreamingIncompleteMarkdownTail, mdTextFormat } from './utils';
 import type { AProps } from './A';
 import MarkdownTable from '@fastgpt/web/components/common/Markdown/MarkdownTable';
 import { MarkdownRendererRuntimeContext } from './runtimeContext';
 import { useStreamAnimatedRehypePlugin } from './rehypeStreamAnimated';
-import { QuickReplyContext } from '@/components/core/chat/ChatContainer/context/quickReplyContext';
-import { useContextSelector } from 'use-context-selector';
 
 const CodeLight = dynamic(() => import('./codeBlock/CodeLight'), { ssr: false });
 const MermaidCodeBlock = dynamic(() => import('./img/MermaidCodeBlock'), { ssr: false });
@@ -119,8 +112,7 @@ const MarkdownRender = ({
       markdownClassName: className,
       chatAuthData,
       allowedCitationIds,
-      onOpenCiteModal,
-      markdownSource: source
+      onOpenCiteModal
     }),
     [
       allowedCitationIds,
@@ -128,8 +120,7 @@ const MarkdownRender = ({
       chatAuthData,
       className,
       onOpenCiteModal,
-      showAnimation,
-      source
+      showAnimation
     ]
   );
 
@@ -187,19 +178,10 @@ function Code(e: any) {
     autoPreviewHtmlCodeBlock,
     markdownClassName
   } = e;
-  const enableQuickReplies = useContextSelector(QuickReplyContext, (v) => v.enableQuickReplies);
-  const onQuickReplyClick = useContextSelector(QuickReplyContext, (v) => v.onQuickReplyClick);
-  const { markdownSource } = useContext(MarkdownRendererRuntimeContext);
   const match = /language-([\w-]+)/.exec(className || '');
   const codeType = match?.[1]?.toLowerCase();
 
   const strChildren = String(children);
-
-  const renderCodeLight = () => (
-    <CodeLight className={className} codeBlock={codeBlock} match={match}>
-      {children}
-    </CodeLight>
-  );
 
   if (codeType === CodeClassNameEnum.mermaid) {
     return <MermaidCodeBlock code={strChildren} />;
@@ -240,20 +222,14 @@ function Code(e: any) {
     return <AudioBlock code={strChildren} />;
   }
   if (codeType === CodeClassNameEnum.quickReplies) {
-    if (!enableQuickReplies) {
-      return renderCodeLight();
-    }
-
-    const options = getQuickRepliesOptions(markdownSource || '', strChildren);
-    if (!options) {
-      return renderCodeLight();
-    }
-
-    // 围栏完整且解析成功即可渲染按钮；不因 showAnimation 降级，避免流式结束后仍短暂显示代码块。
-    return <QuickReplies options={options} onClick={onQuickReplyClick} />;
+    return <QuickReplies text={strChildren} />;
   }
 
-  return renderCodeLight();
+  return (
+    <CodeLight className={className} codeBlock={codeBlock} match={match}>
+      {children}
+    </CodeLight>
+  );
 }
 
 function Image({ src, chatAuthData }: { src?: string; chatAuthData?: AProps['chatAuthData'] }) {
