@@ -60,7 +60,10 @@ import AppChatMain from './components/AppChatMain';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import ScrollToBottomButton from './components/ScrollToBottomButton';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { QuickReplyContextProvider } from '../context/quickReplyContext';
+import {
+  QuickReplyContextProvider,
+  useRegisterQuickReplyClickHandler
+} from '../context/quickReplyContext';
 
 const ChatHomeVariablesForm = dynamic(() => import('./components/home/ChatHomeVariablesForm'));
 const DesktopHomeLayout = dynamic(() => import('./components/home/DesktopHomeLayout'));
@@ -467,7 +470,7 @@ const ChatBox = ({
       return;
     }
 
-    sendPrompt({
+    sendPromptWithDisabledGuard({
       text: trimmedText,
       interactive: lastInteractive,
       keepInputAfterSend: {
@@ -477,13 +480,7 @@ const ChatBox = ({
     });
   });
 
-  const quickReplyContextValue = useMemo(
-    () => ({
-      enableQuickReplies,
-      onQuickReplyClick: enableQuickReplies ? handleQuickReplyClick : undefined
-    }),
-    [enableQuickReplies, handleQuickReplyClick]
-  );
+  useRegisterQuickReplyClickHandler(enableQuickReplies ? handleQuickReplyClick : undefined);
 
   // Auto send prompt
   useDebounceEffect(
@@ -616,95 +613,97 @@ const ChatBox = ({
   );
 
   return (
-    <QuickReplyContextProvider value={quickReplyContextValue}>
-      <MyBox
-        isLoading={isRecordActionLoading}
-        display={'flex'}
-        flexDirection={'column'}
-        h={'100%'}
-        position={'relative'}
-        {...props}
-      >
-        <Script src={getWebReqUrl('/js/html2pdf.bundle.min.js')} strategy="lazyOnload"></Script>
-        {/* chat box container */}
-        {isHomeRender ? (
-          <MyBox
-            isLoading={isLoadingRecords}
-            display="flex"
-            flexDirection="column"
-            flex={'1 0 0'}
-            h={0}
-            {...HomeChatContentWrapperStyle}
-          >
-            {isPc ? (
-              <DesktopHomeLayout inputSlot={HomeChatInput} />
-            ) : (
-              <MobileHomeLayout inputSlot={HomeChatInput} />
-            )}
-          </MyBox>
-        ) : (
-          <>
-            <AppChatMain
-              ScrollData={ScrollData}
-              ScrollContainerRef={ScrollContainerRef}
-              welcomeText={welcomeText}
-              chatStarted={chatStarted}
-              chatForm={chatForm}
-              chatType={chatType}
-              recordsListProps={recordsListProps}
-              maxW={props.maxW}
-              boxBodyProps={boxBodyProps}
-              EmptyState={
-                chatRecords.length === 0 && isChatRecordsLoaded && !isLoadingRecords
-                  ? EmptyState
-                  : undefined
-              }
-            />
-            {canRenderChatInput && (
-              <Box {...ChatInputWrapperStyle} {...inputBodyProps}>
-                {showWorkorder && <WorkorderEntrance />}
-                <Box position="relative">
-                  <ScrollToBottomButton
-                    isVisible={canRenderScrollToBottomButton}
-                    onClick={() => scrollToBottom('smooth')}
-                  />
+    <MyBox
+      isLoading={isRecordActionLoading}
+      display={'flex'}
+      flexDirection={'column'}
+      h={'100%'}
+      position={'relative'}
+      {...props}
+    >
+      <Script src={getWebReqUrl('/js/html2pdf.bundle.min.js')} strategy="lazyOnload"></Script>
+      {/* chat box container */}
+      {isHomeRender ? (
+        <MyBox
+          isLoading={isLoadingRecords}
+          display="flex"
+          flexDirection="column"
+          flex={'1 0 0'}
+          h={0}
+          {...HomeChatContentWrapperStyle}
+        >
+          {isPc ? (
+            <DesktopHomeLayout inputSlot={HomeChatInput} />
+          ) : (
+            <MobileHomeLayout inputSlot={HomeChatInput} />
+          )}
+        </MyBox>
+      ) : (
+        <>
+          <AppChatMain
+            ScrollData={ScrollData}
+            ScrollContainerRef={ScrollContainerRef}
+            welcomeText={welcomeText}
+            chatStarted={chatStarted}
+            chatForm={chatForm}
+            chatType={chatType}
+            recordsListProps={recordsListProps}
+            maxW={props.maxW}
+            boxBodyProps={boxBodyProps}
+            EmptyState={
+              chatRecords.length === 0 && isChatRecordsLoaded && !isLoadingRecords
+                ? EmptyState
+                : undefined
+            }
+          />
+          {canRenderChatInput && (
+            <Box {...ChatInputWrapperStyle} {...inputBodyProps}>
+              {showWorkorder && <WorkorderEntrance />}
+              <Box position="relative">
+                <ScrollToBottomButton
+                  isVisible={canRenderScrollToBottomButton}
+                  onClick={() => scrollToBottom('smooth')}
+                />
 
-                  <ChatInput
-                    onSendMessage={sendPromptWithDisabledGuard}
-                    lastInteractive={lastInteractive}
-                    onStop={() => abortRequest('stop')}
-                    onStopChat={requestStopChat}
-                    onStopSettled={handleStopSettled}
-                    disableSend={isRoundPending}
-                    TextareaDom={TextareaDom}
-                    resetInputVal={resetInputVal}
-                    chatForm={chatForm}
-                  />
-                </Box>
+                <ChatInput
+                  onSendMessage={sendPromptWithDisabledGuard}
+                  lastInteractive={lastInteractive}
+                  onStop={() => abortRequest('stop')}
+                  onStopChat={requestStopChat}
+                  onStopSettled={handleStopSettled}
+                  disableSend={isRoundPending}
+                  TextareaDom={TextareaDom}
+                  resetInputVal={resetInputVal}
+                  chatForm={chatForm}
+                />
               </Box>
-            )}
-          </>
-        )}
+            </Box>
+          )}
+        </>
+      )}
 
-        <ChatBoxModals
-          appId={appId}
-          chatId={chatId}
-          feedbackId={feedbackId}
-          adminMarkData={adminMarkData}
-          onCloseFeedback={() => setFeedbackId(undefined)}
-          onFeedbackSuccess={onFeedbackSuccess}
-          onCloseAdminMark={() => setAdminMarkData(undefined)}
-          onAdminMarkChange={setAdminMarkData}
-          onAdminMarkSuccess={onAdminMarkSuccess}
-        />
-      </MyBox>
-    </QuickReplyContextProvider>
+      <ChatBoxModals
+        appId={appId}
+        chatId={chatId}
+        feedbackId={feedbackId}
+        adminMarkData={adminMarkData}
+        onCloseFeedback={() => setFeedbackId(undefined)}
+        onFeedbackSuccess={onFeedbackSuccess}
+        onCloseAdminMark={() => setAdminMarkData(undefined)}
+        onAdminMarkChange={setAdminMarkData}
+        onAdminMarkSuccess={onAdminMarkSuccess}
+      />
+    </MyBox>
   );
 };
 const ChatBoxContainer = (props: Props) => {
+  const { enableQuickReplies = false } = props;
+
   return (
     <ChatProvider {...props}>
-      <ChatBox {...props} />
+      <QuickReplyContextProvider enableQuickReplies={enableQuickReplies}>
+        <ChatBox {...props} />
+      </QuickReplyContextProvider>
     </ChatProvider>
   );
 };

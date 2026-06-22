@@ -18,7 +18,7 @@ export enum CodeClassNameEnum {
 /** quick-replies 代码块内容的最大字符数 */
 export const QUICK_REPLIES_MAX_LENGTH = 300;
 
-const quickRepliesFencePattern = /```quick-replies\s*\n([\s\S]*?)```/g;
+const quickRepliesFencePattern = /(?:```|~~~)quick-replies\s*\n([\s\S]*?)(?:```|~~~)/g;
 
 /**
  * 解析 quick-replies 代码块内容为选项列表。

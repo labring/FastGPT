@@ -2,7 +2,10 @@ import { describe, it, expect } from 'vitest';
 import {
   mdTextFormat,
   CodeClassNameEnum,
-  hideStreamingIncompleteMarkdownTail
+  hideStreamingIncompleteMarkdownTail,
+  parseQuickReplies,
+  getQuickRepliesOptions,
+  QUICK_REPLIES_MAX_LENGTH
 } from '@/components/Markdown/utils';
 
 describe('Markdown utils', () => {
@@ -58,6 +61,53 @@ describe('Markdown utils', () => {
       expect(CodeClassNameEnum.svg).toBe('svg');
       expect(CodeClassNameEnum.video).toBe('video');
       expect(CodeClassNameEnum.audio).toBe('audio');
+      expect(CodeClassNameEnum.quickReplies).toBe('quick-replies');
+    });
+  });
+
+  describe('parseQuickReplies', () => {
+    it('should parse valid quick reply options', () => {
+      expect(parseQuickReplies('选项一\n选项二')).toEqual(['选项一', '选项二']);
+    });
+
+    it('should trim empty lines and whitespace', () => {
+      expect(parseQuickReplies('\n  选项一  \n\n  选项二\n')).toEqual(['选项一', '选项二']);
+    });
+
+    it('should return null for empty content', () => {
+      expect(parseQuickReplies('')).toBeNull();
+      expect(parseQuickReplies('\n\n')).toBeNull();
+    });
+
+    it('should return null when content exceeds max length', () => {
+      expect(parseQuickReplies('a'.repeat(QUICK_REPLIES_MAX_LENGTH + 1))).toBeNull();
+    });
+  });
+
+  describe('getQuickRepliesOptions', () => {
+    it('should return options for a closed backtick fence', () => {
+      const source = '```quick-replies\n选项一\n选项二\n```';
+      expect(getQuickRepliesOptions(source, '选项一\n选项二\n')).toEqual(['选项一', '选项二']);
+    });
+
+    it('should return options for a closed tilde fence', () => {
+      const source = '~~~quick-replies\n选项一\n选项二\n~~~';
+      expect(getQuickRepliesOptions(source, '选项一\n选项二\n')).toEqual(['选项一', '选项二']);
+    });
+
+    it('should return null for unclosed fence', () => {
+      const source = '```quick-replies\n选项一\n选项二\n';
+      expect(getQuickRepliesOptions(source, '选项一\n选项二\n')).toBeNull();
+    });
+
+    it('should return null when block content does not match source fence', () => {
+      const source = '```quick-replies\n选项一\n```';
+      expect(getQuickRepliesOptions(source, '选项二\n')).toBeNull();
+    });
+
+    it('should return null for invalid quick reply content', () => {
+      const source = '```quick-replies\n\n```';
+      expect(getQuickRepliesOptions(source, '\n')).toBeNull();
     });
   });
 

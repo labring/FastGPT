@@ -21,6 +21,8 @@ import type { AProps } from './A';
 import MarkdownTable from '@fastgpt/web/components/common/Markdown/MarkdownTable';
 import { MarkdownRendererRuntimeContext } from './runtimeContext';
 import { useStreamAnimatedRehypePlugin } from './rehypeStreamAnimated';
+import { QuickReplyContext } from '@/components/core/chat/ChatContainer/context/quickReplyContext';
+import { useContextSelector } from 'use-context-selector';
 
 const CodeLight = dynamic(() => import('./codeBlock/CodeLight'), { ssr: false });
 const MermaidCodeBlock = dynamic(() => import('./img/MermaidCodeBlock'), { ssr: false });
@@ -87,8 +89,6 @@ type Props = {
   forbidZhFormat?: boolean;
   className?: string;
   autoPreviewHtmlCodeBlock?: boolean;
-  enableQuickReplies?: boolean;
-  onQuickReplyClick?: (text: string) => void;
 } & AProps;
 
 const Markdown = (props: Props) => {
@@ -110,9 +110,7 @@ const MarkdownRender = ({
 
   chatAuthData,
   allowedCitationIds,
-  onOpenCiteModal,
-  enableQuickReplies,
-  onQuickReplyClick
+  onOpenCiteModal
 }: Props) => {
   const renderContextValue = useMemo(
     () => ({
@@ -122,8 +120,6 @@ const MarkdownRender = ({
       chatAuthData,
       allowedCitationIds,
       onOpenCiteModal,
-      enableQuickReplies,
-      onQuickReplyClick,
       markdownSource: source
     }),
     [
@@ -131,9 +127,7 @@ const MarkdownRender = ({
       autoPreviewHtmlCodeBlock,
       chatAuthData,
       className,
-      enableQuickReplies,
       onOpenCiteModal,
-      onQuickReplyClick,
       showAnimation,
       source
     ]
@@ -193,9 +187,9 @@ function Code(e: any) {
     autoPreviewHtmlCodeBlock,
     markdownClassName
   } = e;
-  const { enableQuickReplies, markdownSource, onQuickReplyClick } = useContext(
-    MarkdownRendererRuntimeContext
-  );
+  const enableQuickReplies = useContextSelector(QuickReplyContext, (v) => v.enableQuickReplies);
+  const onQuickReplyClick = useContextSelector(QuickReplyContext, (v) => v.onQuickReplyClick);
+  const { markdownSource } = useContext(MarkdownRendererRuntimeContext);
   const match = /language-([\w-]+)/.exec(className || '');
   const codeType = match?.[1]?.toLowerCase();
 
