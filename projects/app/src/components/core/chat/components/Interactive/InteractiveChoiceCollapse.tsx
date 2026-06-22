@@ -106,6 +106,7 @@ export const ChoiceCollapseToggleButton = React.memo(function ChoiceCollapseTogg
       alignItems={'center'}
       alignSelf={'flex-start'}
       position={'relative'}
+      mt={3}
       mx={'8px'}
       px={0}
       h={'16px'}

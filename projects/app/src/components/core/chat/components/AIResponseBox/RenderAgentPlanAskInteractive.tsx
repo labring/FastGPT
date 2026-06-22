@@ -99,7 +99,7 @@ const RenderAgentPlanAskInteractive = React.memo(function RenderAgentPlanAskInte
               exit: { overflow: 'hidden' }
             }}
           >
-            <Flex flexDirection={'column'} gap={3}>
+            <Flex w={'360px'} maxW={'100%'} flexDirection={'column'} gap={3}>
               <LeftRadio<string>
                 px={4}
                 py={4}
