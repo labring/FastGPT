@@ -79,7 +79,7 @@ const McpServer = () => {
                   {t('dashboard_mcp:mcp_server')}
                 </Box>
                 <Button
-                  isDisabled={!userInfo?.permission.hasApikeyCreatePer}
+                  isDisabled={!userInfo?.team.permission.hasAppCreatePer}
                   onClick={() => setEditMcp(defaultForm)}
                 >
                   {t('dashboard_mcp:create_mcp_server')}
@@ -95,7 +95,7 @@ const McpServer = () => {
                 </HStack>
                 <Flex mt={2} justifyContent={'flex-end'}>
                   <Button
-                    isDisabled={!userInfo?.permission.hasApikeyCreatePer}
+                    isDisabled={!userInfo?.team.permission.hasAppCreatePer}
                     onClick={() => setEditMcp(defaultForm)}
                   >
                     {t('dashboard_mcp:create_mcp_server')}
