@@ -91,63 +91,68 @@ const RenderAgentPlanAskInteractive = React.memo(function RenderAgentPlanAskInte
               <SelectedAnswerText answer={effectiveAnswer} />
             </Box>
           )}
-          <Collapse in={shouldShowOptions} animateOpacity>
-            <Box p={1} m={-1}>
-              <Flex flexDirection={'column'} gap={3}>
-                <LeftRadio<string>
-                  px={4}
-                  py={4}
-                  gridGap={2}
-                  align={'center'}
-                  list={radioOptions}
-                  value={radioValue}
-                  defaultBg={'white'}
-                  activeBg={'white'}
-                  onChange={(value) => {
-                    if (!value || isDisabled) return;
-                    if (value === AGENT_PLAN_ASK_OTHER_OPTION_VALUE) {
-                      setIsOtherSelected(true);
-                      return;
-                    }
-                    setIsOtherSelected(false);
-                    setSubmittedAnswer(value);
-                    scheduleCollapse();
-                    onSendPrompt(value);
-                  }}
-                  isDisabled={isDisabled}
-                />
-                {showOtherInput && (
-                  <Flex flexDirection={'column'} gap={2}>
-                    <Textarea
-                      autoFocus={!isDisabled}
-                      bg={'white'}
-                      rows={3}
-                      resize={'vertical'}
-                      value={currentOtherAnswer}
-                      placeholder={t('common:Other')}
-                      isDisabled={isDisabled}
-                      onChange={(e) => setOtherAnswer(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                          submitOtherAnswer();
-                        }
-                      }}
-                    />
-                    <Flex justifyContent={'flex-end'}>
-                      {!isDisabled && (
-                        <Button
-                          flexShrink={0}
-                          isDisabled={!otherAnswer.trim()}
-                          onClick={submitOtherAnswer}
-                        >
-                          {t('common:Submit')}
-                        </Button>
-                      )}
-                    </Flex>
+          <Collapse
+            in={shouldShowOptions}
+            animateOpacity
+            transitionEnd={{
+              enter: { overflow: 'visible' },
+              exit: { overflow: 'hidden' }
+            }}
+          >
+            <Flex flexDirection={'column'} gap={3}>
+              <LeftRadio<string>
+                px={4}
+                py={4}
+                gridGap={2}
+                align={'center'}
+                list={radioOptions}
+                value={radioValue}
+                defaultBg={'white'}
+                activeBg={'white'}
+                onChange={(value) => {
+                  if (!value || isDisabled) return;
+                  if (value === AGENT_PLAN_ASK_OTHER_OPTION_VALUE) {
+                    setIsOtherSelected(true);
+                    return;
+                  }
+                  setIsOtherSelected(false);
+                  setSubmittedAnswer(value);
+                  scheduleCollapse();
+                  onSendPrompt(value);
+                }}
+                isDisabled={isDisabled}
+              />
+              {showOtherInput && (
+                <Flex flexDirection={'column'} gap={2}>
+                  <Textarea
+                    autoFocus={!isDisabled}
+                    bg={'white'}
+                    rows={3}
+                    resize={'vertical'}
+                    value={currentOtherAnswer}
+                    placeholder={t('common:Other')}
+                    isDisabled={isDisabled}
+                    onChange={(e) => setOtherAnswer(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                        submitOtherAnswer();
+                      }
+                    }}
+                  />
+                  <Flex justifyContent={'flex-end'}>
+                    {!isDisabled && (
+                      <Button
+                        flexShrink={0}
+                        isDisabled={!otherAnswer.trim()}
+                        onClick={submitOtherAnswer}
+                      >
+                        {t('common:Submit')}
+                      </Button>
+                    )}
                   </Flex>
-                )}
-              </Flex>
-            </Box>
+                </Flex>
+              )}
+            </Flex>
           </Collapse>
           {selectedAnswerPlacement === 'below' && (
             <Box mt={3}>
