@@ -141,6 +141,7 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   limit: {
     exportDatasetLimitMinutes: 0,
     websiteSyncLimitMinuted: 0,
+    agentSandboxMaxCount: 100,
     workflowParallelRunMaxConcurrency: env.WORKFLOW_PARALLEL_MAX_CONCURRENCY
   },
   scripts: [],
