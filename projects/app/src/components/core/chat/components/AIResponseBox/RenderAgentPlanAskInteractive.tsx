@@ -1,10 +1,14 @@
-import { Box, Button, Flex, Textarea } from '@chakra-ui/react';
+import { Box, Button, Collapse, Flex, Textarea } from '@chakra-ui/react';
 import type { AgentPlanAskQueryInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
 import { useTranslation } from 'next-i18next';
 import React, { useCallback, useMemo } from 'react';
 import { AGENT_PLAN_ASK_OTHER_OPTION_VALUE } from './constants';
 import { onSendPrompt } from './utils';
+import {
+  SelectedAnswerCollapseControl,
+  useInteractiveChoiceCollapse
+} from '../Interactive/InteractiveChoiceCollapse';
 
 const RenderAgentPlanAskInteractive = React.memo(function RenderAgentPlanAskInteractive({
   interactive,
@@ -28,6 +32,13 @@ const RenderAgentPlanAskInteractive = React.memo(function RenderAgentPlanAskInte
     effectiveAnswer && normalizedOptions.includes(effectiveAnswer) ? effectiveAnswer : '';
   const answeredOther =
     effectiveAnswer && !normalizedOptions.includes(effectiveAnswer) ? effectiveAnswer : '';
+  const {
+    isOptionsExpanded,
+    selectedAnswerPlacement,
+    shouldShowOptions,
+    scheduleCollapse,
+    toggleOptionsExpanded
+  } = useInteractiveChoiceCollapse(effectiveAnswer);
   const showOtherInput = !!answeredOther || isOtherSelected;
   const radioValue =
     answeredOther || isOtherSelected ? AGENT_PLAN_ASK_OTHER_OPTION_VALUE : selectedOption;
@@ -37,8 +48,9 @@ const RenderAgentPlanAskInteractive = React.memo(function RenderAgentPlanAskInte
     if (!value || isDisabled) return;
 
     setSubmittedAnswer(value);
+    scheduleCollapse();
     onSendPrompt(value);
-  }, [isDisabled, otherAnswer]);
+  }, [isDisabled, otherAnswer, scheduleCollapse]);
   const radioOptions = useMemo(
     () => [
       ...normalizedOptions.map((option) => ({
@@ -73,55 +85,75 @@ const RenderAgentPlanAskInteractive = React.memo(function RenderAgentPlanAskInte
       )}
       {normalizedOptions.length > 0 && (
         <Flex flexDirection={'column'} gap={3}>
-          <LeftRadio<string>
-            py={3}
-            gridGap={2}
-            align={'center'}
-            list={radioOptions}
-            value={radioValue}
-            defaultBg={'white'}
-            activeBg={'white'}
-            onChange={(value) => {
-              if (!value || isDisabled) return;
-              if (value === AGENT_PLAN_ASK_OTHER_OPTION_VALUE) {
-                setIsOtherSelected(true);
-                return;
-              }
-              setIsOtherSelected(false);
-              setSubmittedAnswer(value);
-              onSendPrompt(value);
-            }}
-            isDisabled={isDisabled}
-          />
-          {showOtherInput && (
-            <Flex flexDirection={'column'} gap={2}>
-              <Textarea
-                autoFocus={!isDisabled}
-                bg={'white'}
-                rows={3}
-                resize={'vertical'}
-                value={currentOtherAnswer}
-                placeholder={t('common:Other')}
-                isDisabled={isDisabled}
-                onChange={(e) => setOtherAnswer(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                    submitOtherAnswer();
+          {selectedAnswerPlacement === 'above' && (
+            <SelectedAnswerCollapseControl
+              answer={effectiveAnswer}
+              isOptionsExpanded={isOptionsExpanded}
+              onToggle={toggleOptionsExpanded}
+            />
+          )}
+          <Collapse in={shouldShowOptions} animateOpacity>
+            <Flex flexDirection={'column'} gap={3}>
+              <LeftRadio<string>
+                px={4}
+                py={4}
+                gridGap={2}
+                align={'center'}
+                list={radioOptions}
+                value={radioValue}
+                defaultBg={'white'}
+                activeBg={'white'}
+                onChange={(value) => {
+                  if (!value || isDisabled) return;
+                  if (value === AGENT_PLAN_ASK_OTHER_OPTION_VALUE) {
+                    setIsOtherSelected(true);
+                    return;
                   }
+                  setIsOtherSelected(false);
+                  setSubmittedAnswer(value);
+                  scheduleCollapse();
+                  onSendPrompt(value);
                 }}
+                isDisabled={isDisabled}
               />
-              <Flex justifyContent={'flex-end'}>
-                {!isDisabled && (
-                  <Button
-                    flexShrink={0}
-                    isDisabled={!otherAnswer.trim()}
-                    onClick={submitOtherAnswer}
-                  >
-                    {t('common:Submit')}
-                  </Button>
-                )}
-              </Flex>
+              {showOtherInput && (
+                <Flex flexDirection={'column'} gap={2}>
+                  <Textarea
+                    autoFocus={!isDisabled}
+                    bg={'white'}
+                    rows={3}
+                    resize={'vertical'}
+                    value={currentOtherAnswer}
+                    placeholder={t('common:Other')}
+                    isDisabled={isDisabled}
+                    onChange={(e) => setOtherAnswer(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                        submitOtherAnswer();
+                      }
+                    }}
+                  />
+                  <Flex justifyContent={'flex-end'}>
+                    {!isDisabled && (
+                      <Button
+                        flexShrink={0}
+                        isDisabled={!otherAnswer.trim()}
+                        onClick={submitOtherAnswer}
+                      >
+                        {t('common:Submit')}
+                      </Button>
+                    )}
+                  </Flex>
+                </Flex>
+              )}
             </Flex>
+          </Collapse>
+          {selectedAnswerPlacement === 'below' && (
+            <SelectedAnswerCollapseControl
+              answer={effectiveAnswer}
+              isOptionsExpanded={isOptionsExpanded}
+              onToggle={toggleOptionsExpanded}
+            />
           )}
         </Flex>
       )}
