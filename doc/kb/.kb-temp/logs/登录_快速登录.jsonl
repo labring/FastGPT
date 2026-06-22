@@ -1,0 +1,28 @@
+---
+
+## ✅ 登录_快速登录 — 文档生成完成
+
+**Scope**: `登录_快速登录` | **类型**: capability（叶子节点）| **Tab 检测**: 无 Tab
+
+### 生成的文档（5 篇）
+
+| # | 文档 | 路径 |
+|---|------|------|
+| 08 | 模块概览 | `doc/kb/业务知识库/登录/快速登录/模块概览.md` |
+| 09 | 业务流程索引 | `doc/kb/业务知识库/登录/快速登录/业务流程索引.md` |
+| 10 | 业务流程详解 | `doc/kb/业务知识库/登录/快速登录/业务流程详解.md` |
+| 12 | API索引 | `doc/kb/技术知识库/登录/快速登录/API索引.md` |
+| 13 | 组件列表 | `doc/kb/技术知识库/登录/快速登录/组件列表.md` |
+
+### 关键发现
+
+- **组件类型**: React 函数式组件（Next.js SSR 页面）
+- **业务场景**: 单场景——通过外部链接携带的 `code`+`token` 完成免密认证
+- **API**: `POST /proApi/support/user/account/login/fastLogin`
+- **依赖**: `useUserStore`（用户状态）、`clearToken`/`loginOut`（旧凭证清除）、`validateRedirectUrl`（URL 安全校验）
+- **未生成**: 11-共享能力清单、14-Store数据流、15-共享组件清单、16-Hooks工具函数（该模块为纯消费型叶子页面，不满足按需触发条件）
+- **验证**: validate-output.js 通过，本次生成的 5 篇文档零错误
+
+```json
+{"label":"快速登录","docs_generated":["08","09","10","12","13"],"tab_files":[],"status":"ok","error":null}
+```

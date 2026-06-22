@@ -1,0 +1,19 @@
+{
+  "version": "1.0",
+  "label": "注册",
+  "label_safe": "登录_登录首页_注册",
+  "type": "capability",
+  "status": "done",
+  "entry_files": [
+    "projects/app/src/pageComponents/login/RegisterForm.tsx"
+  ],
+  "is_grouping": false,
+  "has_tab_children": false,
+  "parent_label": "登录首页",
+  "output_dir_biz": "doc\\kb\\业务知识库\\登录\\登录首页/注册/",
+  "output_dir_tech": "doc\\kb\\技术知识库\\登录\\登录首页/注册/",
+  "depends_on": [],
+  "claimed_at": "2026-06-18T10:52:14Z",
+  "session_id": "10bfbbeb-8470-44e8-a7f5-cde28669d1c4",
+  "pid": 25718
+}

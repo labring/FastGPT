@@ -1,0 +1,19 @@
+`root-02`（API架构）文档生成完成。
+
+**生成文件**: `doc/kb/API架构.md`
+
+**文档覆盖内容**:
+
+| 章节 | 内容 |
+|------|------|
+| 请求层封装 | 三套请求模块（主业务 API / Laf API / SSE 流式），axios 实例配置，拦截器模式 |
+| 错误处理机制 | 错误分类表（业务错误/Token 失效/余额不足/服务端异常/网络异常），页面例外保护，Laf 401 自动刷新 |
+| 公共参数 | `NEXT_PUBLIC_BASE_URL` 子路由前缀、Laf token 注入、Date 序列化、undefined 清理 |
+| 环境切换 | Base URL 配置、Next.js API Routes 代理模式、环境变量说明 |
+
+**关键源码文件**:
+- `projects/app/src/web/common/api/request.ts` — 主业务 API（axios 封装 + 并发控制）
+- `projects/app/src/web/common/api/lafRequest.ts` — Laf 云函数 API（含 token 刷新）
+- `projects/app/src/web/common/api/fetch.ts` — SSE 流式请求（含断流恢复）
+- `projects/app/src/web/common/api/client.ts` — 共享错误处理函数
+- `projects/app/src/web/common/utils/errorLogger.ts` — 浏览器错误日志收集

@@ -1,0 +1,26 @@
+{
+  "version": "1.0",
+  "label": "创建应用",
+  "label_safe": "工作台_创建应用",
+  "type": "capability",
+  "status": "done",
+  "entry_files": [
+    "projects/app/src/pages/dashboard/create/index.tsx"
+  ],
+  "router_paths": [
+    "/dashboard/create"
+  ],
+  "is_grouping": false,
+  "has_tab_children": false,
+  "parent_label": "工作台",
+  "output_dir_biz": "doc\\kb\\业务知识库\\工作台\\创建应用/",
+  "output_dir_tech": "doc\\kb\\技术知识库\\工作台\\创建应用/",
+  "depends_on": [],
+  "claimed_by": "",
+  "claimed_at": "2026-06-18T10:12:50Z",
+  "session_id": "defafcd2-8f3d-457c-8464-9c5d1d6a5788",
+  "retry_count": 0,
+  "max_retries": 2,
+  "error": "",
+  "pid": 22222
+}

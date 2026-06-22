@@ -1,0 +1,22 @@
+`root-05`（自动化测试）文档已生成完毕。
+
+**生成位置**：`doc/kb/自动化测试.md`
+
+**文档内容概要**：
+
+| 章节 | 内容 |
+|------|------|
+| 测试框架 | Vitest 3.0.9 + @vitest/coverage-v8 3.0.9 + mongodb-memory-server 10.1.4 |
+| 覆盖率要求 | 未配置 coverageThreshold，仅生成报告不作拦截 |
+| 运行命令 | `pnpm test`、`pnpm test:vector`、沙箱 `pnpm test` / `pnpm test:watch` |
+| 编写规范 | `*.test.ts` 命名、集中式 `test/` 目录、describe/it 2-3 层结构 |
+| Mock 策略 | vi.mock 模块级 Mock、MongoDB 内存实例、权限鉴权 Mock |
+| 配置要点 | fileParallelism=false（串行防冲突）、maxConcurrency=10、threads 线程池 |
+
+**自检结果**：
+- ✅ Frontmatter 字段齐全（capability_label=null, doc_type="05"）
+- ✅ 版本号从 package.json 真实提取
+- ✅ 覆盖率阈值明确标注"未配置"
+- ✅ 运行命令与 package.json scripts 一致
+- ✅ 测试示例来自 `test/cases/global/common/string/utils.test.ts`
+- ✅ 无禁项内容

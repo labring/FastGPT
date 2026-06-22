@@ -1,0 +1,24 @@
+{
+  "version": "1.0",
+  "label": "config",
+  "label_safe": "技能_技能详情_config",
+  "type": "capability",
+  "status": "done",
+  "entry_files": [
+    "projects/app/src/pageComponents/dashboard/skill/detail/config/AgentSkillEditor/index.tsx"
+  ],
+  "router_paths": [],
+  "is_grouping": false,
+  "has_tab_children": false,
+  "parent_label": "技能详情",
+  "output_dir_biz": "doc\\kb\\业务知识库\\技能\\技能详情\\config/",
+  "output_dir_tech": "doc\\kb\\技术知识库\\技能\\技能详情\\config/",
+  "depends_on": [],
+  "claimed_by": "",
+  "claimed_at": "2026-06-18T10:35:33Z",
+  "session_id": "9f93fb86-bf26-4f61-80e2-074e0cfa5bba",
+  "retry_count": 0,
+  "max_retries": 2,
+  "error": "",
+  "pid": 24271
+}

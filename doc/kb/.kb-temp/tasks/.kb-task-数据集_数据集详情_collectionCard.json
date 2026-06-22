@@ -1,0 +1,25 @@
+{
+  "version": "1.0",
+  "label": "集合管理",
+  "label_safe": "数据集_数据集详情_collectionCard",
+  "type": "capability",
+  "status": "done",
+  "entry_files": [
+    "projects/app/src/pageComponents/dataset/detail/RefinedCollectionCard/index.tsx"
+  ],
+  "router_paths": [
+    "/dataset/detail?currentTab=collectionCard"
+  ],
+  "is_grouping": false,
+  "has_tab_children": false,
+  "parent_label": "数据集详情",
+  "output_dir_biz": "doc/kb/业务知识库/数据集/数据集详情/集合管理/",
+  "output_dir_tech": "doc/kb/技术知识库/数据集/数据集详情/集合管理/",
+  "depends_on": [],
+  "claimed_by": "",
+  "claimed_at": "2026-06-18T10:39:35Z",
+  "session_id": "02f49190-6fc4-4481-92d8-e9fd169f0190",
+  "retry_count": 0,
+  "max_retries": 2,
+  "error": ""
+}

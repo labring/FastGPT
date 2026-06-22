@@ -1,0 +1,26 @@
+{
+  "version": "1.0",
+  "label": "任务详情",
+  "label_safe": "工作台_评测_评测任务_任务详情",
+  "type": "capability",
+  "status": "done",
+  "entry_files": [
+    "projects/app/src/pages/dashboard/evaluation/task/detail/index.tsx"
+  ],
+  "router_paths": [
+    "/dashboard/evaluation/task/detail"
+  ],
+  "is_grouping": false,
+  "has_tab_children": false,
+  "parent_label": "评测任务",
+  "output_dir_biz": "doc\\kb\\业务知识库\\工作台\\评测\\评测任务\\任务详情/",
+  "output_dir_tech": "doc\\kb\\技术知识库\\工作台\\评测\\评测任务\\任务详情/",
+  "depends_on": [],
+  "claimed_by": "",
+  "claimed_at": "2026-06-18T10:20:37Z",
+  "session_id": "bf03b093-ee35-4072-97eb-ea2232adb9cf",
+  "retry_count": 0,
+  "max_retries": 2,
+  "error": "",
+  "pid": 22847
+}

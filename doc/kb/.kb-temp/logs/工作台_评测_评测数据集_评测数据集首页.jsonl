@@ -1,0 +1,27 @@
+评测数据集首页知识库文档生成完成。以下是生成结果：
+
+## 生成汇总
+
+### 业务知识库（4 篇）
+| 文档 | 大小 | 内容 |
+|------|------|------|
+| **模块概览.md** | 2.3 KB | 模块定位、角色差异（团队成员统一权限）、跨模块依赖（7个依赖项）、对外共享（IntelligentGeneration 组件） |
+| **业务流程索引.md** | 5.7 KB | 8 个业务场景（S01 查看列表 ~ S08 查看异常任务），含场景关系图 |
+| **业务流程详解.md** | 13.0 KB | 全场景深度追踪：步骤表格（用户操作→API→分支条件→页面变化）、表单字段清单、校验规则、数据加载详情、Mermaid 流程图 |
+| **共享能力清单.md** | 2.3 KB | IntelligentGeneration 组件被 4 个外部模块引用，完整 imports_from 依赖表 |
+
+### 技术知识库（5 篇）
+| 文档 | 大小 | 内容 |
+|------|------|------|
+| **API索引.md** | 5.6 KB | 8 个 API 端点反向索引（列表/管理/智能生成/异常处理），每个 API 含完整调用链追踪 |
+| **组件列表.md** | 2.6 KB | 3 个组件（EvaluationDatasets、IntelligentGeneration、ErrorModal）+ 13 个消费的外部组件 |
+| **共享组件清单.md** | 2.3 KB | IntelligentGeneration 完整 Props/接口定义和使用场景说明 |
+| **Store数据流.md** | 0.8 KB | 跳过说明（无独立 Store，使用 React useState + usePagination + useSystemStore） |
+| **Hooks工具函数.md** | 0.7 KB | 跳过说明（无自定义 Hook，全部依赖共享 Hook） |
+
+### Tab 检测结果
+- 无 Tab 结构发现 → `has_tab_children: false`，未创建子任务
+
+### 验证结果
+- 本模块 9 个文档全部通过验证脚本检查（0 错误）
+- 报告中 87 个问题均为其他模块和根级文档的已有问题

@@ -1,0 +1,26 @@
+{
+  "version": "1.0",
+  "label": "评测维度首页",
+  "label_safe": "工作台_评测_评测维度_评测维度首页",
+  "type": "capability",
+  "status": "done",
+  "entry_files": [
+    "projects/app/src/pages/dashboard/evaluation/dimension/index.tsx"
+  ],
+  "router_paths": [
+    "/dashboard/evaluation/dimension"
+  ],
+  "is_grouping": false,
+  "has_tab_children": false,
+  "parent_label": "评测维度",
+  "output_dir_biz": "doc\\kb\\业务知识库\\工作台\\评测\\评测维度\\评测维度首页/",
+  "output_dir_tech": "doc\\kb\\技术知识库\\工作台\\评测\\评测维度\\评测维度首页/",
+  "depends_on": [],
+  "claimed_by": "",
+  "claimed_at": "2026-06-18T10:26:16Z",
+  "session_id": "19257024-a228-4e69-a9e0-22e77db89f27",
+  "retry_count": 0,
+  "max_retries": 2,
+  "error": "",
+  "pid": 23421
+}

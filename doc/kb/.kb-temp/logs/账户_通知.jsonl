@@ -1,0 +1,23 @@
+`kb-init-frontend --scope 账户_通知` 执行完成。以下是生成结果汇总：
+
+## 生成文档清单
+
+| 编号 | 文档名 | 输出路径 |
+|------|--------|---------|
+| 08 | 模块概览 | `doc/kb/业务知识库/账户/通知/模块概览.md` |
+| 09 | 业务流程索引 | `doc/kb/业务知识库/账户/通知/业务流程索引.md` |
+| 10 | 业务流程详解 | `doc/kb/业务知识库/账户/通知/业务流程详解.md` |
+| 12 | API索引 | `doc/kb/技术知识库/账户/通知/API索引.md` |
+| 13 | 组件列表 | `doc/kb/技术知识库/账户/通知/组件列表.md` |
+
+## 关键发现
+
+- **无 Tab 结构**：通知页面为纯列表 + 详情弹窗，无 Tab 子任务拆分
+- **3 个 API**：`getInforms`（分页列表）、`readInform`（标记已读）、`getUnreadCount`（未读轮询，Layout 层调用）
+- **2 个本地组件**：`InformTable`（页面）、`NotificationDetailsModal`（弹窗）
+- **跨模块依赖**：AccountContainer（容器）、usePagination/EmptyTip/MyTag/MyModal/Markdown（共享组件和 Hooks）
+- **条件文档（11/14/15/16）**：均跳过 — 模块无共享能力、无自定义 Store、无自定义 Hooks、NotificationDetailsModal 仅内部使用
+
+```json
+{"label":"通知","docs_generated":["08","09","10","12","13"],"tab_files":[],"status":"ok"}
+```

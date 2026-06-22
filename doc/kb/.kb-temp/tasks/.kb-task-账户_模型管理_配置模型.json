@@ -1,0 +1,28 @@
+{
+  "version": "1.0",
+  "label": "配置模型",
+  "label_safe": "账户_模型管理_配置模型",
+  "type": "capability",
+  "status": "done",
+  "entry_files": [
+    "projects/app/src/pageComponents/account/model/ModelConfigTable.tsx"
+  ],
+  "router_paths": [
+    "/account/model"
+  ],
+  "is_grouping": false,
+  "has_tab_children": false,
+  "parent_label": "模型管理",
+  "output_dir_biz": "doc\\kb\\业务知识库\\账户\\模型管理\\配置模型/",
+  "output_dir_tech": "doc\\kb\\技术知识库\\账户\\模型管理\\配置模型/",
+  "depends_on": [],
+  "claimed_by": "",
+  "claimed_at": "2026-06-18T11:05:12Z",
+  "session_id": "d084c7cb-9fbc-4bcf-a433-294889369796",
+  "retry_count": 0,
+  "max_retries": 2,
+  "error": "",
+  "tab_source": "MyTabs: config (config_model), always visible",
+  "cross_module": false,
+  "dynamic": false
+}

@@ -1,0 +1,22 @@
+{
+  "version": "1.0",
+  "label": "账单记录",
+  "label_safe": "账户_账单_账单记录",
+  "type": "capability",
+  "status": "done",
+  "entry_files": [
+    "projects/app/src/pageComponents/account/bill/BillTable.tsx"
+  ],
+  "is_grouping": false,
+  "has_tab_children": false,
+  "parent_label": "账单",
+  "output_dir_biz": "doc\\kb\\业务知识库\\账户\\账单\\账单记录/",
+  "output_dir_tech": "doc\\kb\\技术知识库\\账户\\账单\\账单记录/",
+  "depends_on": [],
+  "claimed_by": "",
+  "claimed_at": "2026-06-18T11:19:25Z",
+  "session_id": "47e8b84f-1f87-43e7-8297-06981451ebe0",
+  "retry_count": 0,
+  "max_retries": 2,
+  "error": ""
+}

@@ -1,0 +1,25 @@
+{
+  "version": "1.0",
+  "label": "工具市场",
+  "label_safe": "配置_工具配置_工具市场",
+  "type": "capability",
+  "status": "done",
+  "entry_files": [
+    "projects/app/src/pages/config/tool/marketplace.tsx"
+  ],
+  "router_paths": [
+    "/config/tool/marketplace"
+  ],
+  "is_grouping": false,
+  "has_tab_children": false,
+  "parent_label": "工具配置",
+  "output_dir_biz": "doc\\kb\\业务知识库\\配置\\工具配置\\工具市场/",
+  "output_dir_tech": "doc\\kb\\技术知识库\\配置\\工具配置\\工具市场/",
+  "depends_on": [],
+  "claimed_by": "",
+  "claimed_at": "2026-06-18T11:22:22Z",
+  "session_id": "a5f1affc-a54c-457a-8aef-09b12df091d1",
+  "retry_count": 0,
+  "max_retries": 2,
+  "error": ""
+}

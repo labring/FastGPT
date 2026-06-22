@@ -1,0 +1,28 @@
+{
+  "version": "1.0",
+  "label": "权限管理",
+  "label_safe": "账户_团队管理_权限管理",
+  "type": "capability",
+  "status": "done",
+  "entry_files": [
+    "projects/app/src/pageComponents/account/team/PermissionManage/index.tsx"
+  ],
+  "router_paths": [
+    "/account/team?teamTab=permission"
+  ],
+  "is_grouping": false,
+  "has_tab_children": false,
+  "parent_label": "团队管理",
+  "output_dir_biz": "doc/kb/业务知识库/账户/团队管理/权限管理/",
+  "output_dir_tech": "doc/kb/技术知识库/账户/团队管理/权限管理/",
+  "depends_on": [
+    "账户_团队管理"
+  ],
+  "claimed_by": "kb-init",
+  "claimed_at": "2026-06-18T10:57:11Z",
+  "session_id": "ea154606-db70-4e8a-b6b6-4503f2f05e1f",
+  "retry_count": 0,
+  "max_retries": 2,
+  "error": "",
+  "pid": 26286
+}

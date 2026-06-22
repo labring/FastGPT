@@ -1,0 +1,13 @@
+✅ **`root-17` 文档生成完成**
+
+**自检清单**：
+- ✅ frontmatter 字段齐全（capability_label=null, doc_type="17", doc_label="本地开发指南", generated_at, parent_module=null, roles=[], router_paths=[]）
+- ✅ 环境要求版本号从 `package.json` 真实提取（Node.js ≥20, pnpm 9.15.9）
+- ✅ 启动命令从 `package.json` scripts 真实提取
+- ✅ Mock 方案基于实际依赖检测（无浏览器端 mock，测试用 Vitest `vi.mock()`）
+- ✅ Mock 示例基于实际 `test/mocks/` 目录结构
+- ✅ 禁项自检通过（技术知识禁项无一命中）
+
+```json
+{"status":"ok","file":"本地开发指南.md"}
+```

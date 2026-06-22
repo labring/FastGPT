@@ -1,0 +1,69 @@
+前置条件已满足：`agent-plan-state.json` 确认 `confirmed_by_human: true`，且任务队列已存在。
+
+`--scope` 需要指定具体的 `label_safe` 值。以下是当前可用的任务列表：
+
+---
+
+### 📋 可用任务（共 72 个）
+
+| # | label_safe | 类型 |
+|---|-----------|------|
+| **首页** | | |
+| 1 | `首页` | capability |
+| 2 | `页面未找到` | capability |
+| 3 | `OpenAPI 文档` | capability |
+| 4 | `价格` | capability |
+| **对话** | | |
+| 5 | `对话` | grouping |
+| 6 | `对话_对话首页` | capability |
+| 7 | `对话_对话首页_首页` | tab-child |
+| 8 | `对话_对话首页_精选应用` | tab-child |
+| 9 | `对话_对话首页_团队应用` | tab-child |
+| 10 | `对话_对话首页_最近使用` | tab-child |
+| 11 | `对话_对话首页_设置` | tab-child |
+| 12 | `对话_对话首页_设置_首页设置` | tab-child |
+| 13 | `对话_对话首页_设置_收藏应用` | tab-child |
+| 14 | `对话_对话首页_设置_数据看板` | tab-child |
+| 15 | `对话_对话首页_设置_日志详情` | tab-child |
+| 16 | `对话_分享对话` | capability |
+| **应用** | | |
+| 17 | `应用` | grouping |
+| 18 | `应用_应用详情` | capability |
+| **登录** | | |
+| 19 | `登录` | grouping |
+| 20 | `登录_登录首页` | capability |
+| 21 | `登录_快速登录` | capability |
+| 22 | `登录_第三方登录` | capability |
+| **账户** | | |
+| 23 | `账户` | grouping |
+| 24-33 | `账户_API 密钥` ~ `账户_通知` (10项) | capability |
+| **工作台** | | |
+| 34 | `工作台` | grouping |
+| 35-40 | `工作台_应用工作台` ~ `工作台_系统工具` (6项) | capability |
+| 41 | `工作台_评测` | grouping |
+| 42-52 | 评测子节点 (11项) | capability |
+| **数据集** | | |
+| 53 | `数据集` | grouping |
+| 54-55 | `数据集_数据集列表`, `数据集_数据集详情` | capability |
+| **配置** | | |
+| 56 | `配置` | grouping |
+| 57-59 | 配置子节点 (3项) | capability |
+| **技能** | | |
+| 60 | `技能` | grouping |
+| 61 | `技能_技能详情` | capability |
+| **Root** | | |
+| 62-68 | `root-00` ~ `root-07`, `root-17` | root |
+| **Finalize** | | |
+| 69 | `finalize` | finalize |
+
+---
+
+请指定要执行的 `--scope` 值，例如：
+
+```
+--scope 首页
+--scope 对话_对话首页
+--scope 工作台_评测_评测首页
+```
+
+你想执行哪个任务？

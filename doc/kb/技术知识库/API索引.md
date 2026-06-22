@@ -1,3 +1,13 @@
+---
+capability_label: null
+doc_type: "12"
+doc_label: "API索引"
+generated_at: "2026-05-26T00:00:00.000Z"
+parent_module: null
+roles: []
+router_paths: []
+---
+
 # API 索引
 
 > 本文档梳理 FastGPT 主应用（`projects/app`）的 HTTP API 全景，包含对外的 OpenAI 兼容接口（v1）以及前后端共享的内部接口（core/common）。所有 API 路由文件位于 `FastGPT/projects/app/src/pages/api/`，遵循 Next.js Pages Router 文件路由约定。

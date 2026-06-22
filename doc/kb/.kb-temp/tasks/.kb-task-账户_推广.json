@@ -1,0 +1,26 @@
+{
+  "version": "1.0",
+  "label": "推广",
+  "label_safe": "账户_推广",
+  "type": "capability",
+  "status": "done",
+  "entry_files": [
+    "projects/app/src/pages/account/promotion.tsx"
+  ],
+  "router_paths": [
+    "/account/promotion"
+  ],
+  "is_grouping": false,
+  "has_tab_children": false,
+  "parent_label": "账户",
+  "output_dir_biz": "doc\\kb\\业务知识库\\账户\\推广/",
+  "output_dir_tech": "doc\\kb\\技术知识库\\账户\\推广/",
+  "depends_on": [],
+  "claimed_by": "",
+  "claimed_at": "2026-06-18T10:54:33Z",
+  "session_id": "e87b916b-5b56-43d6-b0ab-cdda3004e610",
+  "retry_count": 0,
+  "max_retries": 2,
+  "error": "",
+  "pid": 25965
+}

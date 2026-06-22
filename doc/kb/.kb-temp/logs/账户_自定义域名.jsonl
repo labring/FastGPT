@@ -1,0 +1,28 @@
+---
+
+## ✅ kb-init-frontend --scope 账户_自定义域名 完成
+
+### 生成文档清单
+
+| 编号 | 文档名 | 输出路径 | 大小 |
+|------|--------|---------|------|
+| 08 | 模块概览 | `doc/kb/业务知识库/账户/自定义域名/模块概览.md` | 2.6 KB |
+| 09 | 业务流程索引 | `doc/kb/业务知识库/账户/自定义域名/业务流程索引.md` | 4.2 KB |
+| 10 | 业务流程详解 | `doc/kb/业务知识库/账户/自定义域名/业务流程详解.md` | 13.4 KB |
+| 12 | API索引 | `doc/kb/技术知识库/账户/自定义域名/API索引.md` | 5.6 KB |
+| 13 | 组件列表 | `doc/kb/技术知识库/账户/自定义域名/组件列表.md` | 3.5 KB |
+
+### 模块分析摘要
+
+- **能力类型**：Leaf 节点，无 Tab，无子能力
+- **入口文件**：`projects/app/src/pages/account/customDomain/index.tsx`
+- **路由路径**：`/account/customDomain`
+- **核心业务**：自定义域名全生命周期管理（添加→DNS验证→激活/删除）
+- **API 数量**：6 个（list/create/delete/active/checkDNSResolve/updateVerifyFile，其中 updateVerifyFile 未启用）
+- **活跃组件**：2 个（列表页 + 创建弹窗）
+- **角色**：仅团队所有者，需要 Plus 订阅
+- **未生成的按需文档**：11（无共享能力）、14（无独立 Store）、15（无共享组件）、16（无自定义 Hooks）
+
+```json
+{"label":"自定义域名","docs_generated":["08","09","10","12","13"],"tab_files":[],"status":"ok","error":null}
+```

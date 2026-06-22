@@ -1,0 +1,26 @@
+{
+  "version": "1.0",
+  "label": "登录首页",
+  "label_safe": "登录_登录首页",
+  "type": "capability",
+  "status": "done",
+  "entry_files": [
+    "projects/app/src/pages/login/index.tsx"
+  ],
+  "router_paths": [
+    "/login"
+  ],
+  "is_grouping": false,
+  "has_tab_children": true,
+  "parent_label": "登录",
+  "output_dir_biz": "doc\\kb\\业务知识库\\登录\\登录首页/",
+  "output_dir_tech": "doc\\kb\\技术知识库\\登录\\登录首页/",
+  "depends_on": [],
+  "claimed_by": "",
+  "claimed_at": "2026-06-18T10:48:16Z",
+  "session_id": "f0ad5d82-4d5d-4cdf-bcd5-6de4340ab252",
+  "retry_count": 0,
+  "max_retries": 2,
+  "error": "",
+  "pid": 25276
+}

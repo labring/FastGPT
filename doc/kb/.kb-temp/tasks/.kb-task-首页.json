@@ -1,0 +1,26 @@
+{
+  "version": "1.0",
+  "label": "首页",
+  "label_safe": "首页",
+  "type": "capability",
+  "status": "done",
+  "entry_files": [
+    "projects/app/src/pages/index.tsx"
+  ],
+  "router_paths": [
+    "/"
+  ],
+  "is_grouping": false,
+  "has_tab_children": false,
+  "parent_label": "",
+  "output_dir_biz": "doc\\kb\\业务知识库\\首页/",
+  "output_dir_tech": "doc\\kb\\技术知识库\\首页/",
+  "depends_on": [],
+  "claimed_by": "",
+  "claimed_at": "2026-06-18T11:23:33Z",
+  "session_id": "6640003f-2b23-4d70-88df-2baadd1f82de",
+  "retry_count": 0,
+  "max_retries": 2,
+  "error": "",
+  "pid": 28108
+}

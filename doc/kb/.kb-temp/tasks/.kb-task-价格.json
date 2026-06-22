@@ -1,0 +1,25 @@
+{
+  "version": "1.0",
+  "label": "价格",
+  "label_safe": "价格",
+  "type": "capability",
+  "status": "done",
+  "entry_files": [
+    "projects/app/src/pages/price/index.tsx"
+  ],
+  "router_paths": [
+    "/price"
+  ],
+  "is_grouping": false,
+  "has_tab_children": false,
+  "parent_label": "",
+  "output_dir_biz": "doc\\kb\\业务知识库\\价格/",
+  "output_dir_tech": "doc\\kb\\技术知识库\\价格/",
+  "depends_on": [],
+  "claimed_by": "",
+  "claimed_at": "2026-06-18T10:01:47Z",
+  "session_id": "835f9fe7-0490-4156-89cb-5fb534c759ec",
+  "retry_count": 0,
+  "max_retries": 2,
+  "error": ""
+}

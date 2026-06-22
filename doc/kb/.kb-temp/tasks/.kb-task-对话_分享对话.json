@@ -1,0 +1,26 @@
+{
+  "version": "1.0",
+  "label": "分享对话",
+  "label_safe": "对话_分享对话",
+  "type": "capability",
+  "status": "done",
+  "entry_files": [
+    "projects/app/src/pages/chat/share.tsx"
+  ],
+  "router_paths": [
+    "/chat/share"
+  ],
+  "is_grouping": false,
+  "has_tab_children": false,
+  "parent_label": "对话",
+  "output_dir_biz": "doc\\kb\\业务知识库\\对话\\分享对话/",
+  "output_dir_tech": "doc\\kb\\技术知识库\\对话\\分享对话/",
+  "depends_on": [],
+  "claimed_by": "",
+  "claimed_at": "2026-06-18T10:01:48Z",
+  "session_id": "bbabf3fe-662c-48f2-8ec1-33b502927d76",
+  "retry_count": 0,
+  "max_retries": 2,
+  "error": "",
+  "pid": null
+}

@@ -1,0 +1,21 @@
+{
+  "version": "1.0",
+  "label": "团队应用",
+  "label_safe": "对话_对话首页_团队应用",
+  "type": "capability",
+  "status": "done",
+  "entry_files": [
+    "projects/app/src/pageComponents/chat/ChatTeamApp/index.tsx"
+  ],
+  "is_grouping": false,
+  "has_tab_children": false,
+  "parent_label": "对话首页",
+  "output_dir_biz": "doc/kb/业务知识库/对话/对话首页/团队应用/",
+  "output_dir_tech": "doc/kb/技术知识库/对话/对话首页/团队应用/",
+  "depends_on": [
+    "对话_对话首页"
+  ],
+  "claimed_at": "2026-06-18T10:04:37Z",
+  "session_id": "5edfb2f7-977e-419e-ac27-d9e943c2f93e",
+  "pid": 21502
+}

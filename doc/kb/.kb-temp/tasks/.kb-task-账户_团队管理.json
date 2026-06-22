@@ -1,0 +1,26 @@
+{
+  "version": "1.0",
+  "label": "团队管理",
+  "label_safe": "账户_团队管理",
+  "type": "capability",
+  "status": "done",
+  "entry_files": [
+    "projects/app/src/pages/account/team/index.tsx"
+  ],
+  "router_paths": [
+    "/account/team"
+  ],
+  "is_grouping": false,
+  "has_tab_children": true,
+  "parent_label": "账户",
+  "output_dir_biz": "doc\\kb\\业务知识库\\账户\\团队管理/",
+  "output_dir_tech": "doc\\kb\\技术知识库\\账户\\团队管理/",
+  "depends_on": [],
+  "claimed_by": "",
+  "claimed_at": "2026-06-18T10:53:43Z",
+  "session_id": "be3e5d22-e72d-4bf2-8259-f799b6682612",
+  "retry_count": 0,
+  "max_retries": 2,
+  "error": "",
+  "pid": 25926
+}

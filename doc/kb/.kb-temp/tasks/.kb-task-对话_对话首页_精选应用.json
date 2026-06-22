@@ -1,0 +1,21 @@
+{
+  "version": "1.0",
+  "label": "精选应用",
+  "label_safe": "对话_对话首页_精选应用",
+  "type": "capability",
+  "status": "done",
+  "entry_files": [
+    "projects/app/src/pageComponents/chat/ChatFavouriteApp/index.tsx"
+  ],
+  "is_grouping": false,
+  "has_tab_children": false,
+  "parent_label": "对话首页",
+  "output_dir_biz": "doc/kb/业务知识库/对话/对话首页/精选应用/",
+  "output_dir_tech": "doc/kb/技术知识库/对话/对话首页/精选应用/",
+  "depends_on": [
+    "对话_对话首页"
+  ],
+  "claimed_at": "2026-06-18T10:06:15Z",
+  "session_id": "cd78e166-1883-4430-bd8a-e49fca9d3155",
+  "pid": 21608
+}

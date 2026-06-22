@@ -1,0 +1,21 @@
+{
+  "version": "1.0",
+  "label": "首页设置",
+  "label_safe": "对话_对话首页_设置_首页设置",
+  "type": "capability",
+  "status": "done",
+  "entry_files": [
+    "projects/app/src/pageComponents/chat/ChatSetting/HomepageSetting/index.tsx"
+  ],
+  "is_grouping": false,
+  "has_tab_children": false,
+  "parent_label": "设置",
+  "output_dir_biz": "doc/kb/业务知识库/对话/对话首页/设置/首页设置/",
+  "output_dir_tech": "doc/kb/技术知识库/对话/对话首页/设置/首页设置/",
+  "depends_on": [
+    "对话_对话首页_设置"
+  ],
+  "claimed_at": "2026-06-18T10:09:09Z",
+  "session_id": "6f40b908-e2c6-49c5-b2e3-c8390b21e56e",
+  "pid": 21853
+}

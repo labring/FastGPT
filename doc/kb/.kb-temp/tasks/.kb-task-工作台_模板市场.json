@@ -1,0 +1,26 @@
+{
+  "version": "1.0",
+  "label": "模板市场",
+  "label_safe": "工作台_模板市场",
+  "type": "capability",
+  "status": "done",
+  "entry_files": [
+    "projects/app/src/pages/dashboard/templateMarket/index.tsx"
+  ],
+  "router_paths": [
+    "/dashboard/templateMarket"
+  ],
+  "is_grouping": false,
+  "has_tab_children": false,
+  "parent_label": "工作台",
+  "output_dir_biz": "doc\\kb\\业务知识库\\工作台\\模板市场/",
+  "output_dir_tech": "doc\\kb\\技术知识库\\工作台\\模板市场/",
+  "depends_on": [],
+  "claimed_by": "",
+  "claimed_at": "2026-06-18T10:16:29Z",
+  "session_id": "1d9b2f81-b93b-4ce7-a546-43c41d214254",
+  "retry_count": 0,
+  "max_retries": 2,
+  "error": "",
+  "pid": 22540
+}

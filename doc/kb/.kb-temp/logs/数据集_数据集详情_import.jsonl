@@ -1,0 +1,37 @@
+---
+
+## ✅ `数据集_数据集详情_import` 文档生成完成
+
+### 生成文档清单
+
+| 编号 | 文档名 | 路径 | 类型 |
+|------|--------|------|------|
+| 08 | 模块概览 | `业务知识库/数据集/数据集详情/导入数据/模块概览.md` | 业务 |
+| 09 | 业务流程索引 | `业务知识库/数据集/数据集详情/导入数据/业务流程索引.md` | 业务 |
+| 10 | 业务流程详解 | `业务知识库/数据集/数据集详情/导入数据/业务流程详解.md` | 业务 |
+| 12 | API索引 | `技术知识库/数据集/数据集详情/导入数据/API索引.md` | 技术 |
+| 13 | 组件列表 | `技术知识库/数据集/数据集详情/导入数据/组件列表.md` | 技术 |
+
+### 跳过的按需文档
+
+- **11 (共享能力清单)**: 模块为叶子节点，对外共享能力有限，核心内容已在 08 §3/§4 中覆盖
+- **14 (Store数据流)**: 模块使用 React Context (`DatasetImportContext`) 管理状态，无独立 Zustand/Pinia Store
+- **15 (共享组件清单)**: 模块组件均为内部共享，外部消费极少，已在 13 中标注
+- **16 (Hooks工具函数)**: 模块无自研 Hook，使用的 `useMyStep`、`useRequest`、`useContextSelector` 均为外部公共 Hook
+
+### 模块结构概要
+
+导入数据模块采用**动态组件渲染**模式，通过 URL 参数 `source` 激活 8 种导入源之一：
+
+| 导入源 | 步骤数 | 共用组件 |
+|--------|--------|---------|
+| 本地文件 (FileLocal) | 4 步 | DataProcess, PreviewData, Upload |
+| 网页链接 (FileLink) | 4 步 | DataProcess, PreviewData, Upload |
+| 自定义文本 (FileCustomText) | 4 步 | DataProcess, PreviewData, Upload |
+| 外部文件 (ExternalFile) | 4 步 | DataProcess, PreviewData, Upload |
+| API 数据集 (APIDataset) | 4 步 | DataProcess, PreviewData, Upload |
+| 重训练 (ReTraining) | 3 步 | DataProcess, PreviewData, Upload |
+| 图片数据集 (ImageDataset) | 单页 | 无（独立流程） |
+| 数据库 (Database) | 2 步 | ConnectDatabaseForm, DataBaseConfig |
+
+涉及 **18 个 API**，分属 5 个 API 定义文件，被 7 个导入组件和 3 个内部 Hook 调用。

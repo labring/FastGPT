@@ -1,0 +1,20 @@
+---
+
+## ✅ root-00 执行完成
+
+**任务**：`共享基础设施` (type=root)
+
+**输出文件**：`doc/kb/共享基础设施.md`
+
+**自检结果**：
+
+| 检查项 | 状态 |
+|--------|------|
+| Frontmatter 字段齐全 (7/7) | ✅ |
+| 禁项自检（用户故事/流程图/Changelog/构建配置） | ✅ 均无命中 |
+| 共享模块表格覆盖全部发现目录 | ✅ 10 个目录 |
+| 使用规范节完整 | ✅ |
+
+**覆盖的共享模块**：`packages/global/`、`packages/service/`、`packages/web/`、`packages/templates/`、`packages/diting-rag-ts/`、`plugins/`、`deploy/`、`projects/code-sandbox/`、`projects/mcp_server/`、`projects/agent-sandbox/`
+
+> 校验脚本报告的问题均为其他已有文件的预制问题（BROKEN_LINK 168条、MISSING_FRONTMATTER 12条、MISSING_FILE 业务能力地图.md），与本 task 无关。

@@ -1,0 +1,26 @@
+{
+  "version": "1.0",
+  "label": "第三方集成",
+  "label_safe": "账户_第三方集成",
+  "type": "capability",
+  "status": "done",
+  "entry_files": [
+    "projects/app/src/pages/account/thirdParty/index.tsx"
+  ],
+  "router_paths": [
+    "/account/thirdParty"
+  ],
+  "is_grouping": false,
+  "has_tab_children": false,
+  "parent_label": "账户",
+  "output_dir_biz": "doc\\kb\\业务知识库\\账户\\第三方集成/",
+  "output_dir_tech": "doc\\kb\\技术知识库\\账户\\第三方集成/",
+  "depends_on": [],
+  "claimed_by": "",
+  "claimed_at": "2026-06-18T11:10:20Z",
+  "session_id": "f7542805-a554-4ffa-afb1-2026aa611044",
+  "retry_count": 0,
+  "max_retries": 2,
+  "error": "",
+  "pid": 27244
+}

@@ -1,0 +1,36 @@
+校验脚本运行完成。所有 119 个报错都是知识库中**其他模块的预存问题**（对话、工作台等），与本次生成的登录首页文档无关。
+
+---
+
+## 执行总结
+
+**任务**: `登录_登录首页` — 单能力文档生成（含 Tab 自发现）
+
+### Tab 检测结果
+
+检测方式：**行为结构 模式 B (配置驱动 TypeMap) + 模式 C (条件渲染 pageType)**
+
+| Tab | 入口文件 | 状态 |
+|-----|---------|------|
+| 密码登录 | `pageComponents/login/LoginForm/LoginForm.tsx` | 子任务已创建、已被调度器领取 |
+| 注册 | `pageComponents/login/RegisterForm.tsx` | 子任务已创建 |
+| 忘记密码 | `pageComponents/login/ForgetPasswordForm.tsx` | 子任务已创建 |
+| 微信登录 | `pageComponents/login/LoginForm/WechatForm.tsx` | 子任务已创建、已被调度器领取 |
+
+### 文档生成清单
+
+| 编号 | 文档 | 路径 | 状态 |
+|------|------|------|------|
+| 08 | 模块概览 | `业务知识库/登录/登录首页/模块概览.md` | ✅ |
+| 09 | 业务流程索引 | `业务知识库/登录/登录首页/业务流程索引.md` | ✅ |
+| 10 | 业务流程详解 | `业务知识库/登录/登录首页/业务流程详解.md` | ✅ (Tab 子能力索引模式) |
+| 12 | API索引 | `技术知识库/登录/登录首页/API索引.md` | ✅ |
+| 13 | 组件列表 | `技术知识库/登录/登录首页/组件列表.md` | ✅ |
+
+> 按需文档（11/14/15/16）：本模块为纯消费者角色，无独立共享能力、模块级 Store 或自定义 Hooks，跳过生成。
+
+### 关键设计决策
+
+- **has_tab_children: true** — 08/09/10 仅覆盖公共功能（布局、OAuth、IP 检测、Cookie 同意），具体登录/注册流程由子 Tab 任务独立生成
+- **FormLayout** 被识别为共享组件，服务于 LoginForm 和 WechatForm
+- **LoginContainer** (`pageComponents/login/index.tsx`) 是独立封装版本，被识别为共享能力，支持内嵌弹窗场景

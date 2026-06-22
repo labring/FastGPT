@@ -1,0 +1,25 @@
+{
+  "version": "1.0",
+  "label": "dashboard",
+  "label_safe": "账户_用量统计_dashboard",
+  "type": "capability",
+  "status": "done",
+  "entry_files": [
+    "projects/app/src/pageComponents/account/usage/Dashboard.tsx"
+  ],
+  "router_paths": [
+    "/account/usage?usageTab=dashboard"
+  ],
+  "is_grouping": false,
+  "has_tab_children": false,
+  "parent_label": "用量统计",
+  "output_dir_biz": "doc\\kb\\业务知识库\\账户\\用量统计\\dashboard/",
+  "output_dir_tech": "doc\\kb\\技术知识库\\账户\\用量统计\\dashboard/",
+  "depends_on": [],
+  "claimed_by": "",
+  "claimed_at": "2026-06-18T11:05:32Z",
+  "session_id": "3b924a9e-829d-413b-a9c2-4a63eb6b0e98",
+  "retry_count": 0,
+  "max_retries": 2,
+  "error": ""
+}

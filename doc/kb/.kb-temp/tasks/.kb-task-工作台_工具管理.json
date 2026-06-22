@@ -1,0 +1,26 @@
+{
+  "version": "1.0",
+  "label": "工具管理",
+  "label_safe": "工作台_工具管理",
+  "type": "capability",
+  "status": "done",
+  "entry_files": [
+    "projects/app/src/pages/dashboard/tool/index.tsx"
+  ],
+  "router_paths": [
+    "/dashboard/tool"
+  ],
+  "is_grouping": false,
+  "has_tab_children": false,
+  "parent_label": "工作台",
+  "output_dir_biz": "doc\\kb\\业务知识库\\工作台\\工具管理/",
+  "output_dir_tech": "doc\\kb\\技术知识库\\工作台\\工具管理/",
+  "depends_on": [],
+  "claimed_by": "",
+  "claimed_at": "2026-06-18T10:13:17Z",
+  "session_id": "f9e34eb8-1b5d-44eb-b1f4-6afbb9fdd00c",
+  "retry_count": 0,
+  "max_retries": 2,
+  "error": "",
+  "pid": 22280
+}
