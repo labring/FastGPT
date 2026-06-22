@@ -1356,6 +1356,7 @@
   "core.dataset.error.Rerank unauthorized": "重排模型\"{{modelName}}\"服务未授权，未执行知识重排",
   "core.dataset.error.canNotEditAdminPermission": "无法修改管理员权限",
   "core.dataset.error.cannotChangeOwner": "不能变更所有者，请使用变更所有者功能",
+  "core.dataset.error.collaboratorNotInTeam": "协作者不属于当前团队，无法添加",
   "core.dataset.error.collectionNameDuplicate": "该数据集中已存在同名文件",
   "core.dataset.error.fileContentDuplicate": "该数据集中已存在内容完全相同的文件",
   "core.dataset.error.collectionNameExtensionMismatch": "文件后缀与原文件不一致，不能修改后缀名",
