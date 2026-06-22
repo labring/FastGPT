@@ -766,6 +766,7 @@
   "error.inheritPermissionError": "权限继承错误",
   "error.owner_required": "协作者中必须包含所有者",
   "error.invalid_params": "参数无效",
+  "error.duplicate_tag": "标签名不能重复",
   "error.llm_track_expired": "请求详情已过期",
   "error.missingParams": "参数缺失",
   "error.s3_upload_auth_failed": "无权上传文件",

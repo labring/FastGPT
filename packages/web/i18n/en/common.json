@@ -767,6 +767,7 @@
   "error.inheritPermissionError": "Permission inheritance error.",
   "error.owner_required": "Owner is required in collaborators.",
   "error.invalid_params": "Invalid parameter.",
+  "error.duplicate_tag": "Duplicate tag names are not allowed.",
   "error.llm_track_expired": "Request details expired",
   "error.missingParams": "Parameter is missing.",
   "error.s3_upload_auth_failed": "No permission to upload file",

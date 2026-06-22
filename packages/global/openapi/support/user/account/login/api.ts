@@ -36,7 +36,7 @@ export type LoginSuccessResponseType = z.infer<typeof LoginSuccessResponseSchema
 
 // ===== Pre login - get login verification code =====
 export const PreLoginQuerySchema = z.object({
-  username: z.string().meta({
+  username: z.string().min(1).meta({
     example: 'admin',
     description: '用户名'
   })
