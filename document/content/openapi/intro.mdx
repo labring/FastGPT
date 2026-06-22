@@ -1,16 +1,40 @@
 ---
-title: OpenAPI 介绍
-description: FastGPT OpenAPI 介绍
+title: API 文档介绍
+description: FastGPT API 文档介绍
 ---
 
-## 自动化 API 文档
+从 `4.15.0` 开始，FastGPT API 文档均采用 `zod-openapi` 自动生成的方式（部分旧接口未改造，所以不显示），旧版的 FastGPT openapi 直接看左侧目录。
 
-自动化 API 文档为当前版本系统的所有接口，不区分是否可通过 API Key 调用。
+FastGPT API 文档一共分成三套：
 
-后续所有接口都将做自动化生成，会逐步完善文档。
+- Dev API: 所有开发的 API，不一定能通过 apikey 调用。
+- System OpenAPI: 系统所有开放的接口，可以通过系统 ApiKey 调用。
+- App OpenAPI: 单个应用的开放接口，适用范围更小，仅可通过应用级别 ApiKey 调用。图方便的话，一般情况下都可以直接用 System OpenAPI 替代。
 
-- [中国大陆版 API 文档](https://cloud.fastgpt.cn/openapi)
-- [国际版 API 文档](https://cloud.fastgpt.io/openapi)
+## API 文档地址
+
+endpoint 是你的 FastGPT 访问地址，拼上对应 path 即可打开文档。
+
+- Dev API: `{{endpoint}}/apidoc/devapi`
+- System OpenAPI: `{{endpoint}}/apidoc/systemopenapi`
+- App OpenAPI: `{{endpoint}}/apidoc/appopenapi`
+
+## 云服务 API 文档地址
+
+**Dev API:**
+
+- [中国大陆版文档](https://cloud.fastgpt.cn/apidoc/devapi)
+- [国际版文档](https://cloud.fastgpt.io/apidoc/devapi)
+
+**System OpenAPI**
+
+- [中国大陆版文档](https://cloud.fastgpt.cn/apidoc/systemopenapi)
+- [国际版文档](https://cloud.fastgpt.io/apidoc/systemopenapi)
+
+**App OpenAPI**
+
+- [中国大陆版文档](https://cloud.fastgpt.cn/apidoc/appopenapi)
+- [国际版文档](https://cloud.fastgpt.io/apidoc/appopenapi)
 
 ## 使用说明
 
@@ -22,21 +46,6 @@ FastGPT OpenAPI 接口允许你使用 API Key 进行鉴权，从而操作 FastGP
 
 ![](../../public/imgs/fastgpt-api-baseurl.png)
 
-## API Key 类型
-
-FastGPT 的 API Key 分为 **全局 APIKey** 和 **应用 APIKey**。这两个概念的生成位置、隔离范围和可调用接口不同，请按实际场景选择。
-
-| 类型        | 生成位置                | 隔离范围                           | 典型用途                                                                                                                                                                                  |
-| ----------- | ----------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 全局 APIKey | 账号设置 -> API 密钥    | 团队级全局密钥，不绑定单个应用     | 调用支持 API Key 鉴权的通用 OpenAPI。调用 `chat/completions` 时需要在请求体传入 `appId`；如需代理团队成员身份，`v4.15.0` 版本后可由团队所有者为该 key 开启 `authProxy`，再在请求体传入 `authProxy`。 |
-| 应用 APIKey | 应用 -> 发布渠道 -> API | 按应用隔离，每个密钥只属于一个应用 | 只能调用该应用的 `chat/completions` 对话接口。密钥内已绑定应用，无需额外传 `appId`，也不支持 `authProxy`。                                                                                |
-
-我们建议：第三方客户端或外部系统只需要对接单个应用对话时，使用 `应用 APIKey`；服务端需要操作知识库、应用管理等通用资源，或需要在对话接口中使用 `authProxy` 代理身份时，使用 `全局 APIKey`。
-
-| 全局 APIKey                             | 应用 APIKey                             |
-| --------------------------------------- | --------------------------------------- |
-| ![](../../public/imgs/fastgpt-api2.jpg) | ![](../../public/imgs/fastgpt-api1.jpg) |
-
 ## 基本配置
 
 OpenAPI 中，所有的接口都通过 Header.Authorization 进行鉴权。
@@ -47,46 +56,3 @@ headers: {
     Authorization: "Bearer {{apikey}}"
 }
 ```
-
-**发起应用对话示例**
-
-```sh
-curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
---header 'Authorization: Bearer fastgpt-xxxxxx' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "chatId": "111",
-    "stream": false,
-    "detail": false,
-    "messages": [
-        {
-            "content": "导演是谁",
-            "role": "user"
-        }
-    ]
-}'
-```
-
-## 自定义用户 ID
-
-`v4.8.13` 后支持传入自定义的用户 ID, 并且存入历史记录中。
-
-```sh
-curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
---header 'Authorization: Bearer fastgpt-xxxxxx' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "chatId": "111",
-    "stream": false,
-    "detail": false,
-    "messages": [
-        {
-            "content": "导演是谁",
-            "role": "user"
-        }
-    ],
-    "customUid": "xxxxxx"
-}'
-```
-
-在历史记录中，该条记录的使用者会显示为 `xxxxxx`。

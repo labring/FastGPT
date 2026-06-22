@@ -27,6 +27,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<InitC
         req,
         authToken: true,
         authApiKey: true,
+        authAppApiKey: true,
         appId,
         per: ReadPermissionVal
       }),

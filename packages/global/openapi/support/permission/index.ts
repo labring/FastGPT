@@ -1,5 +1,5 @@
 import type { OpenAPIPath } from '../../type';
-import { TagsMap } from '../../tag';
+import { DevApiTagsMap } from '../../tag';
 import {
   GetAppCollaboratorListQuerySchema,
   GetAppCollaboratorListResponseSchema,
@@ -12,7 +12,7 @@ export const PermissionPath: OpenAPIPath = {
     get: {
       summary: '获取应用协作者列表',
       description: '获取应用或应用文件夹的协作者列表，包含继承权限场景下的父级协作者信息',
-      tags: [TagsMap.permissionCollaborator, TagsMap.appPer],
+      tags: [DevApiTagsMap.permissionCollaborator, DevApiTagsMap.appPer],
       requestParams: {
         query: GetAppCollaboratorListQuerySchema
       },
@@ -32,7 +32,7 @@ export const PermissionPath: OpenAPIPath = {
     post: {
       summary: '更新应用协作者',
       description: '覆盖更新应用或应用文件夹的协作者权限',
-      tags: [TagsMap.permissionCollaborator, TagsMap.appPer],
+      tags: [DevApiTagsMap.permissionCollaborator, DevApiTagsMap.appPer],
       requestBody: {
         content: {
           'application/json': {

@@ -1,5 +1,5 @@
 import type { OpenAPIPath } from '../../../type';
-import { TagsMap } from '../../../tag';
+import { DevApiTagsMap } from '../../../tag';
 import {
   GetTeamPluginListResponseSchema,
   GetTeamToolDetailQuerySchema,
@@ -13,7 +13,7 @@ export const PluginTeamPath: OpenAPIPath = {
     get: {
       summary: '获取团队插件列表',
       description: '获取团队插件列表',
-      tags: [TagsMap.pluginTeam],
+      tags: [DevApiTagsMap.pluginTeam],
       responses: {
         200: {
           description: '获取团队插件列表成功',
@@ -31,7 +31,7 @@ export const PluginTeamPath: OpenAPIPath = {
     get: {
       summary: '获取工具卡片详情',
       description: '获取工具片详情',
-      tags: [TagsMap.pluginTeam],
+      tags: [DevApiTagsMap.pluginTeam],
       requestParams: {
         query: GetTeamToolDetailQuerySchema
       },
@@ -51,7 +51,7 @@ export const PluginTeamPath: OpenAPIPath = {
     get: {
       summary: '获取团队工具版本列表',
       description: '获取团队工具版本列表',
-      tags: [TagsMap.pluginTeam],
+      tags: [DevApiTagsMap.pluginTeam],
       requestParams: {
         query: GetTeamToolVersionsQuerySchema
       },

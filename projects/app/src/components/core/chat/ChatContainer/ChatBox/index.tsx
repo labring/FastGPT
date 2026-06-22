@@ -92,7 +92,7 @@ type Props = OutLinkChatAuthProps &
     onTriggerRefresh?: () => void;
     /** 覆盖默认消息删除接口；Skill 调试会话需要走 skill 专属 chat item 删除接口。 */
     onDeleteChatItem?: (contentId: string, delFile?: boolean) => Promise<void>;
-    /** 覆盖默认停止对话接口；Skill 调试会话不能走普通 App Chat 的 /v2/chat/stop 鉴权。 */
+    /** 覆盖默认停止会话接口；Skill 调试会话不能走普通 App Chat 的 /v2/chat/stop 鉴权。 */
     onStopChat?: () => Promise<StopChatFnResult>;
     /** 覆盖默认已读接口；不传则使用普通 App Chat 的 postMarkChatRead。 */
     onMarkChatRead?: (data: MarkChatReadBodyType) => Promise<unknown>;

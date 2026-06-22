@@ -1,5 +1,5 @@
 import type { OpenAPIPath } from '../../type';
-import { TagsMap } from '../../tag';
+import { DevApiTagsMap } from '../../tag';
 import {
   OutLinkCreateBodySchema,
   OutLinkCreateResponseSchema,
@@ -16,7 +16,7 @@ export const OutLinkPath: OpenAPIPath = {
     get: {
       summary: '获取应用的发布渠道列表',
       description: '查询指定应用的所有 OutLink 发布渠道配置',
-      tags: [TagsMap.publishChannel],
+      tags: [DevApiTagsMap.publishChannel],
       requestParams: {
         query: OutLinkListQuerySchema
       },
@@ -36,7 +36,7 @@ export const OutLinkPath: OpenAPIPath = {
     post: {
       summary: '创建发布渠道',
       description: '为指定应用创建发布渠道',
-      tags: [TagsMap.publishChannel],
+      tags: [DevApiTagsMap.publishChannel],
       requestBody: {
         content: {
           'application/json': {
@@ -60,7 +60,7 @@ export const OutLinkPath: OpenAPIPath = {
     put: {
       summary: '更新发布渠道',
       description: '更新发布渠道配置',
-      tags: [TagsMap.publishChannel],
+      tags: [DevApiTagsMap.publishChannel],
       requestBody: {
         content: {
           'application/json': {
@@ -84,7 +84,7 @@ export const OutLinkPath: OpenAPIPath = {
     delete: {
       summary: '删除发布渠道',
       description: '删除指定发布渠道',
-      tags: [TagsMap.publishChannel],
+      tags: [DevApiTagsMap.publishChannel],
       requestParams: {
         query: OutLinkDeleteQuerySchema
       },

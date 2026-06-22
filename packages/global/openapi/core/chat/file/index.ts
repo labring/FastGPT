@@ -1,5 +1,5 @@
 import type { OpenAPIPath } from '../../../type';
-import { TagsMap } from '../../../tag';
+import { DevApiTagsMap } from '../../../tag';
 import { PresignChatFilePostUrlSchema, PresignChatFileGetUrlSchema } from './api';
 import { CreatePostPresignedUrlResponseSchema } from '../../../../common/file/s3/type';
 import { z } from 'zod';
@@ -9,7 +9,7 @@ export const ChatFilePath: OpenAPIPath = {
     post: {
       summary: '获取文件上传 URL',
       description: '获取文件上传 URL',
-      tags: [TagsMap.chatFile],
+      tags: [DevApiTagsMap.chatFile],
       requestBody: {
         content: {
           'application/json': {
@@ -33,7 +33,7 @@ export const ChatFilePath: OpenAPIPath = {
     post: {
       summary: '获取文件预览地址',
       description: '获取文件预览地址',
-      tags: [TagsMap.chatFile],
+      tags: [DevApiTagsMap.chatFile],
       requestBody: {
         content: {
           'application/json': {

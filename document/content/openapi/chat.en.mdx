@@ -18,7 +18,7 @@ You can find the AppId in your application details URL.
 
 {/* * 对话现在有`v1`和`v2`两个接口，可以按需使用，v2 自 4.9.4 版本新增，v1 接口同时不再维护 */}
 
-## Request Chat Agent and Workflow
+## Start Chat
 
 The `v1` chat API is compatible with the `GPT` interface! If you're using the standard `GPT` official API, you can access FastGPT by simply changing the `BaseUrl` and `Authorization`. However, note these rules:
 
@@ -99,7 +99,7 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
 - headers.Authorization: Bearer [apikey]
 - chatId: string | undefined.
   - Empty or omitted: FastGPT context is not used, and context is built entirely from `messages`.
-  - Non-empty string: uses `chatId` for the chat, automatically reads history from the FastGPT database, and uses only the last item in `messages` as the user question. Other messages are ignored. Make sure `chatId` is unique and shorter than 250 characters.
+  - Non-empty string: uses `chatId` for the chat, automatically reads messages from the FastGPT session, and uses only the last item in `messages` as the user question. Other messages are ignored. Make sure `chatId` is unique and shorter than 250 characters.
 - messages: Same structure as [GPT chat messages](https://platform.openai.com/docs/api-reference/chat/object).
 - responseChatItemId: string | undefined. If provided, FastGPT uses it as the response message ID and stores it in the database. Make sure it is unique under the current `chatId`.
 - detail: Whether to return intermediate values. In `stream` mode, they are separated by `event`; in non-stream mode, they are stored in `responseData`.
@@ -605,12 +605,12 @@ event取值：
 
 \***\*Important Fields\*\***
 
-- chatId - The ID of a conversation window under an application
-- dataId - The ID of a chat record under a conversation window
+- chatId - The ID of a session under an application
+- dataId - The ID of a message under a session
 
-## History Management
+## Session Management
 
-### Get History List
+### Get Session List
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
 <Tab value="Request Example">
@@ -632,8 +632,8 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/history/getH
 
 - appId - Application ID
 - offset - Offset (starting position)
-- pageSize - Number of records
-- source - Chat source. `source=api` means get API-created chats only (excludes web UI chats)
+- pageSize - Number of items
+- source - Chat source. `source=api` means get API-created sessions only (excludes web UI sessions)
 
 </Tab>
 
@@ -671,7 +671,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/history/getH
 </Tab>
 </Tabs>
 
-### Update History Title
+### Update Session Title
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
 <Tab value="Request Example">
@@ -692,8 +692,8 @@ curl --location --request PUT 'http://localhost:3000/api/core/chat/history/updat
 <Tab value="Parameters" >
 
 - appId - Application ID
-- chatId - History ID
-- customTitle - Custom chat title
+- chatId - Session ID
+- customTitle - Custom session title
 
 </Tab>
 
@@ -711,7 +711,7 @@ curl --location --request PUT 'http://localhost:3000/api/core/chat/history/updat
 </Tab>
 </Tabs>
 
-### Update History Pin Status
+### Update Session Pin Status
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
 <Tab value="Request Example">
@@ -732,7 +732,7 @@ curl --location --request PUT 'http://localhost:3000/api/core/chat/history/updat
 <Tab value="Parameters" >
 
 - appId - Application ID
-- chatId - History ID
+- chatId - Session ID
 - top - Whether to pin. true = pin, false = unpin
 
 </Tab>
@@ -751,7 +751,7 @@ curl --location --request PUT 'http://localhost:3000/api/core/chat/history/updat
 </Tab>
 </Tabs>
 
-### Delete a History Record
+### Delete a Session
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
 <Tab value="Request Example">
@@ -766,7 +766,7 @@ curl --location --request DELETE 'http://localhost:3000/api/core/chat/history/de
 <Tab value="Parameters" >
 
 - appId - Application ID
-- chatId - History ID
+- chatId - Session ID
 
 </Tab>
 
@@ -784,9 +784,9 @@ curl --location --request DELETE 'http://localhost:3000/api/core/chat/history/de
 </Tab>
 </Tabs>
 
-### Clear App History Records
+### Clear App Sessions
 
-Only clears chat history created via API Key. Does not clear history from web UI, share links, or other sources.
+Only clears sessions created via API Key. Does not clear sessions from web UI, share links, or other sources.
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
 <Tab value="Request Example">
@@ -818,11 +818,11 @@ curl --location --request DELETE 'http://localhost:3000/api/core/chat/history/cl
 </Tab>
 </Tabs>
 
-## Chat Records
+## Message Management
 
-Operations on chat records under a specific chatId.
+Operations on messages under a specific session.
 
-### Get Chat Box Basic Info
+### Get Session Basic Info
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
 <Tab value="Request Example">
@@ -837,7 +837,7 @@ curl --location --request GET 'http://localhost:3000/api/core/chat/init?appId=[a
 <Tab value="Parameters" >
 
 - appId - Application ID
-- chatId - History ID
+- chatId - Session ID
 
 </Tab>
 
@@ -892,13 +892,13 @@ curl --location --request GET 'http://localhost:3000/api/core/chat/init?appId=[a
 </Tab>
 </Tabs>
 
-## Chat Records
+### Get Message List
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
 <Tab value="Request Example">
 
 ```bash
-curl --location --request POST 'http://localhost:3000/api/core/chat/getPaginationRecords' \
+curl --location --request POST 'http://localhost:3000/api/core/chat/record/getPaginationRecords' \
 --header 'Authorization: Bearer [apikey]' \
 --header 'Content-Type: application/json' \
 --data-raw '{
@@ -915,9 +915,9 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/getPaginatio
 <Tab value="Parameters" >
 
 - appId - Application ID
-- chatId - History ID
+- chatId - Session ID
 - offset - Offset
-- pageSize - Number of records
+- pageSize - Number of items
 - loadCustomFeedbacks - Whether to load custom feedbacks (optional)
 
 </Tab>
@@ -969,13 +969,13 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/getPaginatio
 </Tab>
 </Tabs>
 
-## Chat Records
+### Get Message Run Details
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
 <Tab value="Request Example">
 
 ```bash
-curl --location --request GET 'http://localhost:3000/api/core/chat/getResData?appId=[appId]&chatId=[chatId]&dataId=[dataId]' \
+curl --location --request GET 'http://localhost:3000/api/core/chat/record/getResData?appId=[appId]&chatId=[chatId]&dataId=[dataId]' \
 --header 'Authorization: Bearer [apikey]'
 ```
 
@@ -984,8 +984,8 @@ curl --location --request GET 'http://localhost:3000/api/core/chat/getResData?ap
 <Tab value="Parameters" >
 
 - appId - Application ID
-- chatId - Chat ID
-- dataId - Chat Record ID
+- chatId - Session ID
+- dataId - Message ID
 
 </Tab>
 
@@ -1042,7 +1042,7 @@ curl --location --request GET 'http://localhost:3000/api/core/chat/getResData?ap
 </Tab>
 </Tabs>
 
-## Chat Records
+### Delete Message
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
 <Tab value="Request Example" >
@@ -1057,8 +1057,8 @@ curl --location --request DELETE 'http://localhost:3000/api/core/chat/record/del
 <Tab value="Parameters" >
 
 - appId - Application ID
-- chatId - History ID
-- contentId - Chat Record ID
+- chatId - Session ID
+- contentId - Message ID
 
 </Tab>
 
@@ -1076,10 +1076,12 @@ curl --location --request DELETE 'http://localhost:3000/api/core/chat/record/del
 </Tab>
 </Tabs>
 
-### Like / Unlike
+### Update Feedback (Like / Dislike)
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
 <Tab value="Request Example">
+
+Like / unlike:
 
 ```bash
 curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/updateUserFeedback' \
@@ -1093,35 +1095,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/upd
 }'
 ```
 
-</Tab>
-
-<Tab value="Parameters" >
-
-- appId - Application ID
-- chatId - History ID
-- dataId - Chat Record ID
-- userGoodFeedback - User feedback when liking (optional). Omit to unlike.
-
-</Tab>
-
-<Tab value="Response Example" >
-
-```json
-{
-  "code": 200,
-  "statusText": "",
-  "message": "",
-  "data": null
-}
-```
-
-</Tab>
-</Tabs>
-
-### Dislike / Remove Dislike
-
-<Tabs items={['Request Example','Parameters','Response Example']}>
-<Tab value="Request Example">
+Dislike / remove dislike:
 
 ```bash
 curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/updateUserFeedback' \
@@ -1140,8 +1114,9 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/upd
 <Tab value="Parameters" >
 
 - appId - Application ID
-- chatId - History ID
-- dataId - Chat Record ID
+- chatId - Session ID
+- dataId - Message ID
+- userGoodFeedback - User feedback when liking (optional). Omit to unlike.
 - userBadFeedback - User feedback when disliking (optional). Omit to remove dislike.
 
 </Tab>
@@ -1164,7 +1139,7 @@ curl --location --request POST 'http://localhost:3000/api/core/chat/feedback/upd
 
 **4.8.16 New API (version**
 
-The new question suggestion feature requires both appId and chatId parameters. It automatically fetches the last 6 conversation turns from chatId as context.
+The suggested questions feature requires both appId and chatId. It automatically fetches the last 6 message turns from the session as context.
 
 <Tabs items={['Request Example','Parameters','Response Example']}>
 <Tab value="Request Example">
@@ -1191,7 +1166,7 @@ curl --location --request POST 'http://localhost:3000/api/core/ai/agent/v2/creat
 | 参数名        | 类型   | 必填 | 说明                                                       |
 | ------------- | ------ | ---- | ---------------------------------------------------------- |
 | appId         | string | ✅   | 应用 Id                                                    |
-| chatId        | string | ✅   | 对话 Id                                                    |
+| chatId        | string | ✅   | Session ID                                                 |
 | questionGuide | object |      | 自定义配置，不传的话，则会根据 appId，取最新发布版本的配置 |
 
 ```ts

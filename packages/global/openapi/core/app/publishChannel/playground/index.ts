@@ -4,7 +4,7 @@ import {
   UpdatePlaygroundVisibilityConfigParamsSchema,
   PlaygroundUpdateResponseSchema
 } from './api';
-import { TagsMap } from '../../../../tag';
+import { DevApiTagsMap } from '../../../../tag';
 import { PlaygroundVisibilityConfigSchema } from '../../../../../support/outLink/type';
 import z from 'zod';
 
@@ -14,7 +14,7 @@ export const PlaygroundPath: OpenAPIPath = {
       summary: '获取门户配置',
       description:
         '获取指定应用的门户聊天界面的可见性配置，包括节点状态、响应详情、全文显示和原始来源显示的设置',
-      tags: [TagsMap.publishChannel],
+      tags: [DevApiTagsMap.publishChannel],
       requestParams: {
         query: GetPlaygroundVisibilityConfigParamsSchema
       },
@@ -51,7 +51,7 @@ export const PlaygroundPath: OpenAPIPath = {
       summary: '更新门户配置',
       description:
         '更新指定应用的门户聊天界面的可见性配置，包括节点状态、响应详情、全文显示和原始来源显示的设置。如果配置不存在则创建新配置',
-      tags: [TagsMap.publishChannel],
+      tags: [DevApiTagsMap.publishChannel],
       requestBody: {
         content: {
           'application/json': {

@@ -1,5 +1,5 @@
 import type { OpenAPIPath } from '../../../type';
-import { TagsMap } from '../../../tag';
+import { DevApiTagsMap } from '../../../tag';
 import { UpdateTeamBodySchema } from './api';
 
 export const TeamPath: OpenAPIPath = {
@@ -7,7 +7,7 @@ export const TeamPath: OpenAPIPath = {
     post: {
       summary: '更新团队信息',
       description: '更新团队名称、头像、域名、第三方账号（OpenAI）及外部工作流变量',
-      tags: [TagsMap.teamManage],
+      tags: [DevApiTagsMap.teamManage],
       requestBody: {
         content: {
           'application/json': {

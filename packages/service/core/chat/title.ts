@@ -247,10 +247,12 @@ export const scheduleGeneratedChatTitleFromUserContent = (params: {
 export const createGeneratedChatTitleSender = ({
   titleGeneration,
   stream,
+  detail,
   writeChatTitle
 }: {
   titleGeneration?: Promise<GeneratedChatTitleResult | undefined>;
   stream: boolean;
+  detail: boolean;
   writeChatTitle?: (payload: {
     event: SseResponseEventEnum.chatTitle;
     data: { title: string };
@@ -268,7 +270,7 @@ export const createGeneratedChatTitleSender = ({
 
         const { title } = titleResult;
 
-        if (stream) {
+        if (stream && detail) {
           writeChatTitle?.({
             event: SseResponseEventEnum.chatTitle,
             data: {

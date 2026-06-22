@@ -1,5 +1,5 @@
 import type { OpenAPIPath } from '../../../type';
-import { TagsMap } from '../../../tag';
+import { DevApiTagsMap } from '../../../tag';
 import {
   GetPreviewNodeQueryOpenAPISchema,
   GetPreviewNodeResponseSchema,
@@ -14,7 +14,7 @@ export const ToolPath: OpenAPIPath = {
     post: {
       summary: '获取系统工具模板列表',
       description: '获取可添加到工作流中的系统工具模板列表，支持搜索、标签筛选和工具集子工具查询',
-      tags: [TagsMap.appSystemTool],
+      tags: [DevApiTagsMap.appSystemTool],
       requestBody: {
         content: {
           'application/json': {
@@ -38,7 +38,7 @@ export const ToolPath: OpenAPIPath = {
     get: {
       summary: '获取工具路径',
       description: '获取系统工具或工具集子工具在工具树中的路径',
-      tags: [TagsMap.appSystemTool],
+      tags: [DevApiTagsMap.appSystemTool],
       requestParams: {
         query: GetToolPathQuerySchema
       },
@@ -59,7 +59,12 @@ export const ToolPath: OpenAPIPath = {
       summary: '获取工具节点信息',
       description:
         '根据工具 ID 和版本配置生成可插入工作流画布的工具节点模板，支持系统工具和我的工具（MCP、HTTP、工作流工具）',
-      tags: [TagsMap.appSystemTool, TagsMap.httpTools, TagsMap.mcpTools, TagsMap.pluginTeam],
+      tags: [
+        DevApiTagsMap.appSystemTool,
+        DevApiTagsMap.httpTools,
+        DevApiTagsMap.mcpTools,
+        DevApiTagsMap.pluginTeam
+      ],
       requestParams: {
         query: GetPreviewNodeQueryOpenAPISchema
       },

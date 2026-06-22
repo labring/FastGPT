@@ -14,7 +14,7 @@ const nullishToUndefined = <T extends z.ZodTypeAny>(schema: T) =>
 
 const WebCompletionsSchema = z.object({
   chatId: nullishToUndefined(z.string().max(1024).optional()).meta({
-    description: '聊天ID, 传入的话会自动获取历史记录，不传入则认为是新对话'
+    description: '会话 ID，传入的话会自动获取会话中的对话，不传入则认为是新会话'
   }),
   appId: nullishToUndefined(ObjectIdSchema.optional()),
   customUid: nullishToUndefined(z.string().max(1024).optional()).meta({

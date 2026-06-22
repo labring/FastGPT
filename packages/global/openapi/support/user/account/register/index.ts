@@ -1,5 +1,5 @@
 import type { OpenAPIPath } from '../../../../type';
-import { TagsMap } from '../../../../tag';
+import { DevApiTagsMap } from '../../../../tag';
 import { AccountRegisterBodySchema } from './api';
 
 export const RegisterPath: OpenAPIPath = {
@@ -7,7 +7,7 @@ export const RegisterPath: OpenAPIPath = {
     post: {
       summary: '邮箱/手机号注册',
       description: '使用邮箱或手机号验证码注册新账号',
-      tags: [TagsMap.userLogin],
+      tags: [DevApiTagsMap.userLogin],
       requestBody: {
         content: {
           'application/json': {

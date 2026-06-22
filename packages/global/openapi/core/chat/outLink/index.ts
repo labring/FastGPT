@@ -1,5 +1,5 @@
 import type { OpenAPIPath } from '../../../type';
-import { TagsMap } from '../../../tag';
+import { DevApiTagsMap } from '../../../tag';
 import { InitOutLinkChatQuerySchema } from './api';
 
 export const OutLinkChatPath: OpenAPIPath = {
@@ -7,7 +7,7 @@ export const OutLinkChatPath: OpenAPIPath = {
     get: {
       summary: '初始化外链会话',
       description: '通过分享链接初始化会话，获取应用配置和历史会话信息',
-      tags: [TagsMap.chatPage],
+      tags: [DevApiTagsMap.chatPage],
       requestParams: {
         query: InitOutLinkChatQuerySchema
       },

@@ -32,10 +32,10 @@ export const GetResDataQuerySchema = OutLinkChatAuthSchema.extend({
 export type GetResDataQueryType = z.infer<typeof GetResDataQuerySchema>;
 
 /* ============================================================================
- * API: 删除对话记录
+ * API: 删除对话
  * Route: DELETE /api/core/chat/record/delete
  * Method: DELETE
- * Description: 软删除指定的对话消息记录（设置 deleteTime）
+ * Description: 软删除指定的对话消息（设置 deleteTime）
  * ============================================================================ */
 
 export const DeleteChatRecordBodySchema = OutLinkChatAuthSchema.extend({
@@ -70,7 +70,7 @@ export const GetQuoteBodySchema = OutLinkChatAuthSchema.extend({
   appId: ObjectIdSchema.describe('应用 ID'),
   chatId: z.string().min(1).max(256).meta({
     example: 'chat_abc123',
-    description: '对话 ID'
+    description: '会话 ID'
   }),
   chatItemDataId: z.string().min(1).max(256).meta({
     example: 'item_abc123',
@@ -105,7 +105,7 @@ export type GetQuoteResponseType = z.infer<typeof GetQuoteResponseSchema>;
 
 export const GetCollectionQuoteBodySchema = OutLinkChatAuthSchema.extend({
   appId: ObjectIdSchema.describe('应用 ID'),
-  chatId: z.string().min(1).max(256).describe('对话 ID'),
+  chatId: z.string().min(1).max(256).describe('会话 ID'),
   chatItemDataId: z.string().min(1).max(256).describe('对话消息 dataId'),
   collectionId: ObjectIdSchema.describe('集合 ID'),
   pageSize: z.number().int().min(1).max(30).default(15).describe('每页条数，范围 [1, 30]'),
@@ -129,10 +129,10 @@ export const GetCollectionQuoteResSchema = z.object({
 export type GetCollectionQuoteResType = z.infer<typeof GetCollectionQuoteResSchema>;
 
 /* ============================================================================
- * API: 分页获取对话记录
+ * API: 分页获取对话
  * Route: POST /api/core/chat/record/getPaginationRecords
  * Method: POST
- * Description: 分页获取指定应用和会话的对话记录，支持多种鉴权模式
+ * Description: 分页获取指定应用和会话的对话，支持多种鉴权模式
  * ============================================================================ */
 
 const GetRecordPropsSchema = z.object({
@@ -157,16 +157,16 @@ export const GetPaginationRecordsBodySchema = PaginationSchema.extend(
 export type GetPaginationRecordsBodyType = z.infer<typeof GetPaginationRecordsBodySchema>;
 
 export const GetPaginationRecordsResponseSchema = z.object({
-  list: z.array(z.any()).meta({ description: '对话记录列表' }),
+  list: z.array(z.any()).meta({ description: '对话列表' }),
   total: z.number().int().nonnegative().meta({ example: 10, description: '总数' })
 });
 export type GetPaginationRecordsResponseType = z.infer<typeof GetPaginationRecordsResponseSchema>;
 
 /* ============================================================================
- * API: 获取对话记录（v2）
+ * API: 获取对话（v2）
  * Route: POST /api/core/chat/record/getRecordsV2
  * Method: POST
- * Description: 获取对话记录（v2）
+ * Description: 获取对话（v2）
  * ============================================================================ */
 export const GetRecordsV2BodySchema = LinkedPaginationSchema(GetRecordPropsSchema.shape);
 export type GetRecordsV2BodyType = z.infer<typeof GetRecordsV2BodySchema>;

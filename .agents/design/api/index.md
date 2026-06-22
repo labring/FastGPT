@@ -102,7 +102,7 @@ export default NextAPI(handler);
 **3a. 添加标签** (如果是新模块): `packages/global/openapi/tag.ts`
 
 ```typescript
-export const TagsMap = {
+export const DevApiTagsMap = {
   // Dataset
   datasetCommon: '知识库管理',    // ← 新增
   datasetCollection: '集合管理',
@@ -114,7 +114,7 @@ export const TagsMap = {
 
 ```typescript
 import type { OpenAPIPath } from '../../type';
-import { TagsMap } from '../../tag';
+import { DevApiTagsMap } from '../../tag';
 import { CreateDatasetBodySchema } from './api';
 
 export const DatasetPath: OpenAPIPath = {
@@ -122,7 +122,7 @@ export const DatasetPath: OpenAPIPath = {
     post: {
       summary: '创建知识库',
       description: '创建新的知识库,支持多种类型',
-      tags: [TagsMap.datasetCommon],
+      tags: [DevApiTagsMap.datasetCommon],
       requestBody: {
         content: {
           'application/json': {
@@ -327,7 +327,7 @@ export type DatasetCreateResponse = CreateDatasetResponseType;
 
 **OpenAPI 注册** (`packages/global/openapi/.../index.ts`):
 - [ ] 路由已在 index.ts 中注册
-- [ ] 使用了正确的 `TagsMap` 标签
+- [ ] 使用了正确的 `DevApiTagsMap` 标签
 - [ ] 新模块已在 `tag.ts` 中添加标签
 
 **类型引用**:

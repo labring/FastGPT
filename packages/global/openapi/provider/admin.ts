@@ -1,7 +1,7 @@
 import { createDocument } from 'zod-openapi';
-import { AdminCorePath } from './admin/core';
-import { TagsMap } from './tag';
-import { AdminSupportPath } from './admin/support';
+import { AdminCorePath } from '../admin/core';
+import { AdminSupportPath } from '../admin/support';
+import { DevApiTagsMap } from '../tag';
 
 export const adminOpenAPIDocument = createDocument({
   openapi: '3.1.0',
@@ -18,15 +18,15 @@ export const adminOpenAPIDocument = createDocument({
   'x-tagGroups': [
     {
       name: '仪表盘',
-      tags: [TagsMap.adminDashboard]
+      tags: [DevApiTagsMap.adminDashboard]
     },
     {
       name: '核心资源管理',
-      tags: [TagsMap.adminApps]
+      tags: [DevApiTagsMap.adminApps]
     },
     {
       name: '系统配置',
-      tags: [TagsMap.adminInform]
+      tags: [DevApiTagsMap.adminInform]
     }
   ]
 });

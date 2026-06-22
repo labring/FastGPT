@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { openAPIDocument } from '@fastgpt/global/openapi';
+import { openAPIDocument } from '@fastgpt/global/openapi/provider/devapi';
 import { GetPreviewNodeQuerySchema } from '@fastgpt/global/openapi/core/app/tool/api';
 
 describe('GetPreviewNodeQuerySchema', () => {
