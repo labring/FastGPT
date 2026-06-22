@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Button } from '@chakra-ui/react';
+import { Box } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 
 type SelectedAnswerPlacement = 'above' | 'below';
@@ -92,13 +92,19 @@ export const ChoiceCollapseToggleButton = React.memo(function ChoiceCollapseTogg
 
   return (
     <Box mt={3}>
-      <Button
+      <Box
+        as="button"
+        type="button"
+        display={'inline-flex'}
+        alignItems={'center'}
         mx={'8px'}
         px={0}
         h={'16px'}
         minW={0}
-        variant={'unstyled'}
+        border={0}
+        bg={'transparent'}
         color={'primary.600'}
+        cursor={'pointer'}
         fontSize={'11px'}
         fontWeight={500}
         lineHeight={'16px'}
@@ -107,7 +113,7 @@ export const ChoiceCollapseToggleButton = React.memo(function ChoiceCollapseTogg
         {isOptionsExpanded
           ? t('chat:interactive.user_select.collapse_options')
           : t('chat:interactive.user_select.expand_options')}
-      </Button>
+      </Box>
     </Box>
   );
 });
