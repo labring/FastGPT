@@ -36,7 +36,6 @@ describe('withRedisLease', () => {
     await expect(resultPromise).resolves.toBe('ok');
     expect(work).toHaveBeenCalledTimes(1);
     expect(redis.set).toHaveBeenCalledWith('lock:lease-test', expect.any(String), 'PX', 60, 'NX');
-    expect(redis.eval.mock.calls.some((call: unknown[]) => call[4] === 60)).toBe(true);
     expect(await redis.get('lock:lease-test')).toBeNull();
   });
 

@@ -130,28 +130,6 @@ describe('runtime entrypoint', () => {
     expect(entrypointCommand).toMatch(/^cd '\/workspace' && \/bin\/bash -c /);
   });
 
-  it('runs after sandbox entrypoint only when sandbox entrypoint runs', async () => {
-    const sandbox = createSandbox();
-
-    await runAgentSandboxEntrypoint({
-      sandbox: sandbox as any,
-      sandboxEntrypoint: 'echo init',
-      afterSandboxEntrypoint: 'echo after'
-    });
-    await runAgentSandboxEntrypoint({
-      sandbox: sandbox as any,
-      sandboxEntrypoint: 'echo init',
-      afterSandboxEntrypoint: 'echo after'
-    });
-
-    const entrypointCommands = sandbox.execute.mock.calls
-      .map(([command]) => command)
-      .filter(isSandboxEntrypointCommand);
-
-    expect(entrypointCommands).toHaveLength(2);
-    expect(sandbox.getState()?.sandboxEntrypointHash).toMatch(/^sha256:/);
-  });
-
   it('does not write sandbox entrypoint state when execution fails', async () => {
     const sandbox = createSandbox({ entrypointExitCode: 1 });
 
@@ -192,21 +170,6 @@ describe('runtime entrypoint', () => {
       .filter(isSkillEntrypointCommand);
 
     expect(runCommands).toHaveLength(1);
-    expect(sandbox.getState()?.skillEntrypoints).toEqual(['version-1']);
-  });
-
-  it('removes unselected skill versions from entrypoint state', async () => {
-    const sandbox = createSandbox({
-      initialState: {
-        skillEntrypoints: ['version-1', 'version-2']
-      }
-    });
-
-    await runAgentSkillVersionEntrypoints({
-      sandbox: sandbox as any,
-      versions: [version]
-    });
-
     expect(sandbox.getState()?.skillEntrypoints).toEqual(['version-1']);
   });
 

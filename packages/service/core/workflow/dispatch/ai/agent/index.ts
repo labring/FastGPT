@@ -33,7 +33,11 @@ import {
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { InteractiveNodeResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import { ensureAgentSandboxRuntime, streamAgentSandboxInitStatus } from './sub/sandbox';
+import {
+  agentSandboxBootstrap,
+  ensureAgentSandboxRuntime,
+  streamAgentSandboxInitStatus
+} from './sub/sandbox';
 import type { WorkflowNodeResponseWriter } from '../../../../chat/nodeResponseStorage';
 import type { RuntimeNodeResponseSummary } from '../../type';
 import { createAgentNodeResponseCollector } from './nodeResponseCollector';
@@ -218,6 +222,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       sandboxId: runningAppInfo.sandboxId,
       teamId: runningAppInfo.teamId,
       needSandboxRuntime: effectiveUseAgentSandbox,
+      sandboxBootstrap: agentSandboxBootstrap,
       sandboxEntrypoint: effectiveSandboxEntrypoint,
       skillIds,
       editSkillId,

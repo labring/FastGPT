@@ -15,7 +15,11 @@ import { getLogger, LogCategories } from '../../../../../../common/logger';
 import type { DispatchAgentModuleProps } from '..';
 import { parseUserSystemPrompt } from '../adapter/prompt';
 import { useUserContext } from '../adapter/userContext';
-import { ensureAgentSandboxRuntime, streamAgentSandboxInitStatus } from '../sub/sandbox';
+import {
+  agentSandboxBootstrap,
+  ensureAgentSandboxRuntime,
+  streamAgentSandboxInitStatus
+} from '../sub/sandbox';
 import { getAgentDatasetParams, getSubapps, type ToolDispatchContext } from '../utils';
 import {
   createPiAgentWorkflowRuntime,
@@ -156,6 +160,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       sandboxId: runningAppInfo.sandboxId,
       teamId: runningAppInfo.teamId,
       needSandboxRuntime: effectiveUseAgentSandbox,
+      sandboxBootstrap: agentSandboxBootstrap,
       sandboxEntrypoint: effectiveSandboxEntrypoint,
       skillIds,
       editSkillId,

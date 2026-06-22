@@ -4,18 +4,20 @@
 
 Agent Skill 需要支持初始化脚本，但入口脚本不能绑定到 sandbox 创建时机。运行态 sandbox 会复用，selected skill 版本会变化，应用配置里的 sandbox 层脚本也可能变化。更准确的模型是：每次进入运行态 `useSandbox()` 时，把当前 sandbox reconcile 到本轮需要的状态。
 
-本方案覆盖运行态 sandbox entrypoint 与 Agent skill runtime，不改 `projects/code-sandbox`，不使用 sandbox provider 的容器 entrypoint。
+本方案覆盖运行态 sandbox bootstrap、sandbox entrypoint 与 Agent skill runtime，不改 `projects/code-sandbox`，不使用 sandbox provider 的容器 entrypoint。
 
 ## 目标
 
-1. 支持 sandbox 层入口脚本：来自 Agent 配置字段 `sandboxEntrypoint`，不写入 sandbox 工作区。
-2. 支持 skill 版本包入口脚本：固定识别 `./projects/<versionId>/entrypoint.sh`。
-3. entrypoint 在用户文件和 skill 包文件注入完成后执行，且在 `SKILL.md` 扫描注入 prompt 前执行。
-4. 同一个 sandbox 内避免重复执行：
+1. 支持平台侧 sandbox bootstrap 回调：只允许代码侧传入，用于镜像源、平台内置文件等基础环境准备。
+2. 支持 sandbox 层入口脚本：来自 Agent 配置字段 `sandboxEntrypoint`，不写入 sandbox 工作区。
+3. 支持 skill 版本包入口脚本：固定识别 `./projects/<versionId>/entrypoint.sh`。
+4. bootstrap 在用户文件和 skill 包文件注入前执行；entrypoint 在注入完成后执行，且在 `SKILL.md` 扫描注入 prompt 前执行。
+5. 同一个 sandbox 内避免重复执行：
+   - bootstrap：框架只提供加锁后的执行时机；幂等、版本判断或跳过逻辑由回调内部自行维护。
    - sandbox 层入口：当前配置脚本 hash 与 HOME 状态一致时跳过。
    - skill 层入口：HOME 状态记录当前 `versionId` 已成功执行时跳过。
-5. 脚本失败、超时或状态读写失败不阻断 Agent 初始化。
-6. edit-debug 不自动执行 entrypoint，用户通过 workspace terminal 手动运行。
+6. 脚本失败、超时或状态读写失败不阻断 Agent 初始化。
+7. edit-debug 不自动执行 bootstrap 或 entrypoint，用户通过 workspace terminal 手动运行。
 
 ## 非目标
 
@@ -135,6 +137,19 @@ HOME 解析沿用 ide-agent 逻辑：
 
 ## 执行判断
 
+### 平台 bootstrap 层
+
+```text
+没有代码侧 bootstrap 回调
+=> 跳过
+
+存在代码侧 bootstrap 回调
+=> 在 Redis lease 内、用户文件和 skill 包注入前执行回调
+=> 回调内部自行决定是否写文件、执行命令、检查版本或跳过
+```
+
+bootstrap 回调不暴露为用户配置，只允许代码侧注入。框架只保证执行时机、sandbox 上下文和 Redis lease 保护；回调内部逻辑、幂等状态、错误处理和是否执行 shell 都由调用方自行维护。它用于配置镜像源、写平台内置文件等基础环境准备，执行时机早于用户文件注入、skill 包部署和用户 sandbox entrypoint。
+
 ### sandbox 层
 
 ```text
@@ -146,14 +161,11 @@ HOME 解析沿用 ide-agent 逻辑：
 
 状态不可读，或 state.sandboxEntrypointHash 不等于 hash(script.trim())
 => 执行脚本
-=> 如果存在代码侧 afterSandboxEntrypoint 脚本，则继续执行 after 脚本
-=> 两者都成功后尽力写入 state.sandboxEntrypointHash
+=> 成功后尽力写入 state.sandboxEntrypointHash
 => 失败/超时只记录截断日志，继续主流程
 ```
 
 状态放在 sandbox HOME 中，而不是 DB 中。DB 只能表示当前发布配置是什么，不能证明某个具体 sandbox 里已经存在对应副作用。sandbox 被重建、HOME 被清理或实例切换时，HOME 状态会自然丢失，下次会重新执行。
-
-`afterSandboxEntrypoint` 只允许代码层传入，不暴露为用户配置。它不参与 hash、不单独记状态、不单独触发；只有 sandbox 层脚本本轮真实执行成功后才会执行。after 脚本失败时不写入 `sandboxEntrypointHash`，下轮按原 sandbox entrypoint 流程重试。
 
 ### skill 层
 
@@ -174,15 +186,16 @@ entrypoint.sh 存在
 
 ```text
 1. 启动或连接 sandbox
-2. 并行注入用户输入文件、部署 selected skill version、读取 pwd
-3. 等待用户文件和 skill 包部署都完成
-4. 执行 sandbox 层 entrypoint
-5. 执行本轮需要运行的 skill version entrypoint
-6. 扫描本轮 selected versionDirs 下的 SKILL.md
-7. 返回 sandboxClient、currentWorkingDirectory、skillInfos
+2. 执行平台侧 sandbox bootstrap
+3. 并行注入用户输入文件、部署 selected skill version、读取 pwd
+4. 等待用户文件和 skill 包部署都完成
+5. 执行 sandbox 层 entrypoint
+6. 执行本轮需要运行的 skill version entrypoint
+7. 扫描本轮 selected versionDirs 下的 SKILL.md
+8. 返回 sandboxClient、currentWorkingDirectory、skillInfos
 ```
 
-sandbox 层 entrypoint 放在 skill entrypoint 前面，因为它更像基础环境初始化，skill entrypoint 可以依赖它产生的环境。
+平台 bootstrap 放在最前面，因为镜像源和平台内置文件可能会被后续用户文件注入、sandbox entrypoint 或 skill entrypoint 消费。sandbox 层 entrypoint 放在 skill entrypoint 前面，因为它更像用户配置的基础环境初始化，skill entrypoint 可以依赖它产生的环境。
 
 edit-debug 不接入自动执行流程。
 
@@ -220,8 +233,7 @@ cd <versionDir> && /bin/bash entrypoint.sh
 3. 同一 sandbox 内 hash 不变时跳过。
 4. 配置脚本变更导致 hash 变化时重新执行。
 5. HOME 状态不可用时仍执行，但不写成功状态。
-6. 代码侧 after 脚本只在 sandbox entrypoint 本轮真实执行成功后执行。
-7. 失败或超时不阻断主流程，且不写成功状态。
+6. 失败或超时不阻断主流程，且不写成功状态。
 
 ### skill 层 entrypoint
 

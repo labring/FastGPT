@@ -17,6 +17,12 @@ import { pickOutboundAxios } from '../../../../../../../common/api/axios';
 import { checkTeamSandboxPermission } from '../../../../../../../support/permission/teamLimit';
 import { createAgentSandboxPermissionDeniedError } from '../../../../../../ai/sandbox/error';
 
+export type AgentSandboxBootstrap = (context: {
+  sandboxClient: SandboxClient;
+  sandbox: ISandbox;
+  workDirectory: string;
+}) => Promise<void>;
+
 type EnsureAgentSandboxRuntimeParams = {
   appId: string;
   userId: string;
@@ -24,8 +30,8 @@ type EnsureAgentSandboxRuntimeParams = {
   sandboxId?: string;
   teamId: string;
   needSandboxRuntime: boolean;
+  sandboxBootstrap?: AgentSandboxBootstrap;
   sandboxEntrypoint?: string;
-  afterSandboxEntrypoint?: string;
   skillIds: string[];
   editSkillId?: string;
   currentFiles: AgentInputFile[];
@@ -44,8 +50,8 @@ type SandboxRuntimeContext = {
 type InitRuntimeSandboxParams = SandboxRuntimeContext & {
   teamId: string;
   skillIds: string[];
+  sandboxBootstrap?: AgentSandboxBootstrap;
   sandboxEntrypoint?: string;
-  afterSandboxEntrypoint?: string;
   currentFiles: AgentInputFile[];
 };
 
@@ -123,21 +129,28 @@ const initEditSkillSandbox = async ({
 /**
  * 初始化普通 Agent sandbox。
  *
- * 顺序固定为：准备文件和 skill 包 -> sandbox entrypoint -> skill entrypoint -> 扫描 SKILL.md。
+ * 顺序固定为：平台 bootstrap 回调 -> 准备文件和 skill 包 -> sandbox entrypoint -> skill entrypoint -> 扫描 SKILL.md。
  */
 const initRuntimeSandbox = async ({
   sandboxClient,
   workDirectory,
   teamId,
   skillIds,
+  sandboxBootstrap,
   sandboxEntrypoint,
-  afterSandboxEntrypoint,
   currentFiles
 }: InitRuntimeSandboxParams): Promise<Omit<EnsureAgentSandboxRuntimeResult, 'sandboxClient'>> => {
   return withAgentSandboxInitLease({
     sandboxId: sandboxClient.getSandboxId(),
     fn: async () => {
       const sandbox = sandboxClient.provider;
+
+      await sandboxBootstrap?.({
+        sandboxClient,
+        sandbox,
+        workDirectory
+      });
+
       const [deployedSkillVersions, , currentWorkingDirectory] = await Promise.all([
         injectAgentSkillFilesToSandbox({
           sandbox,
@@ -154,7 +167,6 @@ const initRuntimeSandbox = async ({
         await runAgentSandboxEntrypoint({
           sandbox,
           sandboxEntrypoint: effectiveSandboxEntrypoint,
-          afterSandboxEntrypoint,
           workDirectory
         });
       }
@@ -196,8 +208,8 @@ export async function ensureAgentSandboxRuntime({
   sandboxId,
   teamId,
   needSandboxRuntime,
+  sandboxBootstrap,
   sandboxEntrypoint,
-  afterSandboxEntrypoint,
   skillIds,
   editSkillId,
   currentFiles
@@ -244,8 +256,8 @@ export async function ensureAgentSandboxRuntime({
     ...context,
     teamId,
     skillIds,
+    sandboxBootstrap,
     sandboxEntrypoint,
-    afterSandboxEntrypoint,
     currentFiles
   });
 

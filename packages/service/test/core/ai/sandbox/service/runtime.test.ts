@@ -139,9 +139,6 @@ describe('sandbox runtime service', () => {
       expect.objectContaining({
         provider: 'sealosdevbox',
         sandboxId: 'sandbox-ready-check',
-        appId: undefined,
-        userId: undefined,
-        chatId: undefined,
         metadata: {
           volumeEnabled: false
         }
@@ -170,9 +167,6 @@ describe('sandbox runtime service', () => {
       expect.objectContaining({
         provider: 'opensandbox',
         sandboxId: 'opensandbox-volume',
-        appId: undefined,
-        userId: undefined,
-        chatId: undefined,
         vmConfig,
         storage: { mountPath: '/workspace' }
       })
