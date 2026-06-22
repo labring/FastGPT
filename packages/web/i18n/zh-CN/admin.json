@@ -742,7 +742,7 @@
   "intro": "简介",
   "featured": "精选",
   "toolkit_config_moved": "相关功能配置已移至前台，",
-  "toolkit_config_moved_desc": "您可在前台登陆root账号，进行工具配置~",
+  "toolkit_config_moved_desc": "您可在前台登录root账号，进行工具配置",
   "model_sensitive_check": "模型敏感审查",
   "baidu_sensitive_check": "百度敏感校验",
   "domain_security": "域名安全",

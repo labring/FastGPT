@@ -12,13 +12,13 @@
   "privacy_policy": "DPA",
   "redirect": "Go now",
   "register": "Sign up",
-  "reset_password_tip": "The new password must be at least 8 characters long and contain at least two combinations: numbers, letters, or special characters",
+  "reset_password_tip": "The new password must be at least 8 characters long and contain at least two of the following: digits, letters, or special characters.",
   "root_password_placeholder": "The root account password is the value of the environment variable DEFAULT_ROOT_PSW.",
   "use_root_login": "Log in as root",
   "login_failed": "Login error occurred.",
   "privacy": "DPA",
   "terms": "EULA",
   "wecom": "WeCom",
-  "copyright": "@2012-2026 Sangfor Technology Co., Ltd. All rights reserved.",
+  "copyright": "@2012-2026 Sangfor Technologies. All rights reserved.",
   "powered_by": "Powered by FASTGPT"
 }
