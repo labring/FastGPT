@@ -1,5 +1,6 @@
-import React, { useEffect, type Dispatch } from 'react';
-import { FormControl, Flex, Input, Button, Box } from '@chakra-ui/react';
+import React, { useEffect, useState, type Dispatch } from 'react';
+import { FormControl, Flex, Input, Button, Box, InputGroup, InputRightElement } from '@chakra-ui/react';
+import { ViewOffIcon, ViewIcon } from '@chakra-ui/icons';
 import { useForm } from 'react-hook-form';
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import { postLogin, getPreLogin } from '@/web/support/user/api';
@@ -39,6 +40,8 @@ const LoginForm = ({ setPageType, loginSuccess, teamId }: Props) => {
     handleSubmit,
     formState: { errors }
   } = useForm<LoginFormType>();
+
+  const [showPassword, setShowPassword] = useState(false);
 
   const { runAsync: onclickLogin, loading: requesting } = useRequest(
     async ({ username, password }: LoginFormType) => {
@@ -129,22 +132,30 @@ const LoginForm = ({ setPageType, loginSuccess, teamId }: Props) => {
           ></Input>
         </FormControl>
         <FormControl mt={7} isInvalid={!!errors.password}>
-          <Input
-            size={'lg'}
-            type={'password'}
-            placeholder={
-              isCommunityVersion
-                ? t('login:root_password_placeholder')
-                : t('common:support.user.login.Password')
-            }
-            {...register('password', {
-              required: true,
-              maxLength: {
-                value: 60,
-                message: t('login:password_condition')
+          <InputGroup size={'lg'}>
+            <Input
+              type={showPassword ? 'text' : 'password'}
+              placeholder={
+                isCommunityVersion
+                  ? t('login:root_password_placeholder')
+                  : t('common:support.user.login.Password')
               }
-            })}
-          ></Input>
+              {...register('password', {
+                required: true,
+                maxLength: {
+                  value: 60,
+                  message: t('login:password_condition')
+                }
+              })}
+            />
+            <InputRightElement>
+              {showPassword ? (
+                <ViewOffIcon cursor={'pointer'} onClick={() => setShowPassword(false)} />
+              ) : (
+                <ViewIcon cursor={'pointer'} onClick={() => setShowPassword(true)} />
+              )}
+            </InputRightElement>
+          </InputGroup>
         </FormControl>
         <PolicyTip isCenter={false} />
 
