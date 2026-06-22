@@ -15,7 +15,10 @@ import { type PermissionValueType } from '@fastgpt/global/support/permission/typ
 import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { type AuthModeType, type AuthResponseType } from '../type';
-import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
+import {
+  AppReadChatLogPerVal,
+  AppReadChatLogRoleVal
+} from '@fastgpt/global/support/permission/app/constant';
 import { parseHeaderCert } from '../auth/common';
 import { sumPer } from '@fastgpt/global/support/permission/utils';
 
@@ -80,7 +83,10 @@ export const authAppByTmbId = async ({
 
       return {
         ...app,
-        permission: new AppPermission({ isOwner: false, role: ReadRoleVal })
+        permission: new AppPermission({
+          isOwner: false,
+          role: sumPer(ReadRoleVal, AppReadChatLogRoleVal)
+        })
       };
     }
 
