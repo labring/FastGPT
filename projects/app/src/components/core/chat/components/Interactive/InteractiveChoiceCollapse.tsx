@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box } from '@chakra-ui/react';
+import { Box, type BoxProps } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 
 type SelectedAnswerPlacement = 'above' | 'below';
@@ -88,11 +88,13 @@ export const SelectedAnswerText = React.memo(function SelectedAnswerText({
 export const ChoiceCollapseToggleButton = React.memo(function ChoiceCollapseToggleButton({
   answer,
   isOptionsExpanded,
-  onToggle
+  onToggle,
+  mt = 3
 }: {
   answer?: string;
   isOptionsExpanded: boolean;
   onToggle: () => void;
+  mt?: BoxProps['mt'];
 }) {
   const { t } = useTranslation();
 
@@ -106,7 +108,7 @@ export const ChoiceCollapseToggleButton = React.memo(function ChoiceCollapseTogg
       alignItems={'center'}
       alignSelf={'flex-start'}
       position={'relative'}
-      mt={3}
+      mt={mt}
       mx={'8px'}
       px={0}
       h={'16px'}
