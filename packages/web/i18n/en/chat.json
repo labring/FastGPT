@@ -273,6 +273,9 @@
   "tool_response_compress": "Tool response compression",
   "unsupported_file_type": "Unsupported file types",
   "variable_invisable_in_share": "External variables are not visible in login-free links",
+  "interactive.user_select.collapse_options": "Collapse options",
+  "interactive.user_select.expand_options": "Expand options",
+  "interactive.user_select.selected": "Selected: {{answer}}",
   "view_all_citations": "View all",
   "view_citations": "View References"
 }

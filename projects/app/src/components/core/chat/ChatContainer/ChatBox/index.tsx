@@ -340,6 +340,7 @@ const ChatBox = ({
     setFeedbackId,
     adminMarkData,
     setAdminMarkData,
+    likeFeedbackEffect,
     onMark,
     onAddUserLike,
     onAddUserDislike,
@@ -551,6 +552,7 @@ const ChatBox = ({
       onMark,
       onAddUserLike,
       onAddUserDislike,
+      likeFeedbackEffect,
       onCloseCustomFeedback,
       onToggleFeedbackReadStatus
     }),
@@ -568,6 +570,7 @@ const ChatBox = ({
       onMark,
       onAddUserLike,
       onAddUserDislike,
+      likeFeedbackEffect,
       onCloseCustomFeedback,
       onToggleFeedbackReadStatus
     ]

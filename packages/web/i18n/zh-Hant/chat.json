@@ -269,6 +269,9 @@
   "tool_response_compress": "工具回應壓縮",
   "unsupported_file_type": "不支援的檔案類型",
   "variable_invisable_in_share": "外部變量在免登錄鏈接中不可見",
+  "interactive.user_select.collapse_options": "收起選項",
+  "interactive.user_select.expand_options": "展開選項",
+  "interactive.user_select.selected": "已選擇：{{answer}}",
   "view_all_citations": "查看全部",
   "view_citations": "檢視引用"
 }

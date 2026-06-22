@@ -273,6 +273,9 @@
   "tool_response_compress": "工具响应压缩",
   "unsupported_file_type": "不支持的文件类型",
   "variable_invisable_in_share": "外部变量在免登录链接中不可见",
+  "interactive.user_select.collapse_options": "收起选项",
+  "interactive.user_select.expand_options": "展开选项",
+  "interactive.user_select.selected": "已选择：{{answer}}",
   "view_all_citations": "查看全部",
   "view_citations": "查看引用"
 }

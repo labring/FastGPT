@@ -38,6 +38,10 @@ export type ChatRecordsListProps = {
   onMark: (chat: ChatSiteItemType, q?: string) => (() => void) | undefined;
   onAddUserLike: (chat: ChatSiteItemType) => (() => void) | undefined;
   onAddUserDislike: (chat: ChatSiteItemType) => (() => void) | undefined;
+  likeFeedbackEffect?: {
+    dataId: string;
+    trigger: number;
+  };
   onCloseCustomFeedback: (
     chat: ChatSiteItemType,
     index: number
@@ -71,6 +75,7 @@ const ChatRecordsList = ({
   onMark,
   onAddUserLike,
   onAddUserDislike,
+  likeFeedbackEffect,
   onCloseCustomFeedback,
   onToggleFeedbackReadStatus
 }: ChatRecordsListProps) => {
@@ -213,6 +218,10 @@ const ChatRecordsList = ({
                         ),
                         onAddUserLike: onAddUserLike(item),
                         onAddUserDislike: onAddUserDislike(item),
+                        likeFeedbackEffectTrigger:
+                          likeFeedbackEffect?.dataId === item.dataId
+                            ? likeFeedbackEffect.trigger
+                            : undefined,
                         onToggleFeedbackReadStatus: onToggleFeedbackReadStatus(item)
                       }}
                     >

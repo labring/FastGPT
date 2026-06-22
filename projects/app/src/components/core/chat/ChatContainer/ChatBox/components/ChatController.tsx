@@ -13,6 +13,7 @@ import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
+import LikeFeedbackButton from './LikeFeedbackButton';
 
 export type ChatControllerProps = {
   isLastChild: boolean;
@@ -23,6 +24,7 @@ export type ChatControllerProps = {
   onMark?: () => void;
   onAddUserLike?: () => void;
   onAddUserDislike?: () => void;
+  likeFeedbackEffectTrigger?: number;
   onToggleFeedbackReadStatus?: () => void;
   showFeedbackContent?: boolean;
   onToggleFeedbackContent?: () => void;
@@ -47,7 +49,8 @@ const footerIconStyle = {
   cursor: 'pointer',
   p: '4px',
   color: 'myGray.400',
-  _hover: { color: 'primary.600' }
+  transition: 'color 180ms ease, transform 180ms ease, filter 180ms ease',
+  _hover: { color: 'primary.600', transform: 'translateY(-1px)' }
 };
 
 const ChatController = ({
@@ -58,6 +61,7 @@ const ChatController = ({
   onDelete,
   onAddUserDislike,
   onAddUserLike,
+  likeFeedbackEffectTrigger,
   onToggleFeedbackReadStatus,
   showFeedbackContent,
   onToggleFeedbackContent,
@@ -86,6 +90,10 @@ const ChatController = ({
     <MyTooltip label={label}>{children}</MyTooltip>
   );
   const iconStyle = isFooter ? footerIconStyle : controlIconStyle;
+  const getIconHoverStyle = (color: string) => ({
+    color,
+    ...(isFooter ? { transform: 'translateY(-1px)' } : {})
+  });
   const activeFeedbackStyle = isFooter
     ? {
         color: 'primary.600'
@@ -138,7 +146,7 @@ const ChatController = ({
               {...iconStyle}
               name={'copy'}
               borderLeftRadius={isFooter ? undefined : 'sm'}
-              _hover={{ color: 'primary.600' }}
+              _hover={getIconHoverStyle('primary.600')}
               onClick={() => copyData(chatText)}
             />
           )}
@@ -150,7 +158,7 @@ const ChatController = ({
                   <MyIcon
                     {...iconStyle}
                     name={'common/retryLight'}
-                    _hover={{ color: isFooter ? 'primary.600' : 'green.500' }}
+                    _hover={getIconHoverStyle(isFooter ? 'primary.600' : 'green.500')}
                     onClick={onRetry}
                   />
                 )}
@@ -159,7 +167,7 @@ const ChatController = ({
                 <MyIcon
                   {...iconStyle}
                   name={'delete'}
-                  _hover={{ color: isFooter ? 'primary.600' : 'red.600' }}
+                  _hover={getIconHoverStyle(isFooter ? 'primary.600' : 'red.600')}
                   onClick={onDelete}
                 />
               )}
@@ -205,7 +213,7 @@ const ChatController = ({
                       fill: 'currentColor'
                     }
                   }}
-                  _hover={{ color: isFooter ? 'primary.600' : '#E74694' }}
+                  _hover={getIconHoverStyle(isFooter ? 'primary.600' : '#E74694')}
                   onClick={async () => {
                     setAudioPlayingChatId(chat.dataId);
                     const response = await playAudioByText({
@@ -234,7 +242,7 @@ const ChatController = ({
               <MyIcon
                 {...iconStyle}
                 name={'core/app/markLight'}
-                _hover={{ color: isFooter ? 'primary.600' : '#67c13b' }}
+                _hover={getIconHoverStyle(isFooter ? 'primary.600' : '#67c13b')}
                 onClick={onMark}
               />
             )}
@@ -297,20 +305,27 @@ const ChatController = ({
                 <>
                   {!!onAddUserLike && (
                     <MyTooltip label={t('chat:feedback_helpful')}>
-                      <MyIcon
-                        {...iconStyle}
-                        {...(!!chat.userGoodFeedback
-                          ? activeFeedbackStyle
-                          : {
-                              _hover: { color: 'primary.600' }
-                            })}
-                        borderRight={isFooter ? undefined : !onAddUserDislike ? 'none' : 'base'}
-                        borderRightRadius={
-                          isFooter ? undefined : !onAddUserDislike ? 'sm' : 'none'
-                        }
-                        name={'core/chat/feedback/goodLight'}
-                        onClick={onAddUserLike}
-                      />
+                      {isFooter ? (
+                        <LikeFeedbackButton
+                          {...iconStyle}
+                          isActive={!!chat.userGoodFeedback}
+                          effectTrigger={likeFeedbackEffectTrigger}
+                          onClick={onAddUserLike}
+                        />
+                      ) : (
+                        <MyIcon
+                          {...iconStyle}
+                          {...(!!chat.userGoodFeedback
+                            ? activeFeedbackStyle
+                            : {
+                                _hover: getIconHoverStyle('primary.600')
+                              })}
+                          borderRight={!onAddUserDislike ? 'none' : 'base'}
+                          borderRightRadius={!onAddUserDislike ? 'sm' : 'none'}
+                          name={'core/chat/feedback/goodLight'}
+                          onClick={onAddUserLike}
+                        />
+                      )}
                     </MyTooltip>
                   )}
                   {!!onAddUserDislike && (
@@ -320,7 +335,7 @@ const ChatController = ({
                         {...(!!chat.userBadFeedback
                           ? activeBadFeedbackStyle
                           : {
-                              _hover: { color: 'primary.600' }
+                              _hover: getIconHoverStyle('primary.600')
                             })}
                         borderRight={isFooter ? undefined : 'none'}
                         borderRightRadius={isFooter ? undefined : 'sm'}

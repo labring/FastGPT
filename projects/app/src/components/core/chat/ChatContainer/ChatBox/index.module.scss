@@ -1,6 +1,18 @@
 .statusAnimation {
   animation: statusBox 0.8s linear infinite alternate;
 }
+
+.likeFeedbackIconPop {
+  animation: likeFeedbackIconPop 320ms ease;
+}
+
+.likeFeedbackCanvas {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+}
+
 @keyframes statusBox {
   0% {
     opacity: 1;
@@ -8,5 +20,19 @@
 
   100% {
     opacity: 0.11;
+  }
+}
+
+@keyframes likeFeedbackIconPop {
+  0% {
+    transform: scale(1);
+  }
+
+  35% {
+    transform: scale(1.18);
+  }
+
+  100% {
+    transform: scale(1);
   }
 }
