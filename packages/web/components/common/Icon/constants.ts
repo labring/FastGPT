@@ -330,8 +330,6 @@ export const iconPaths = {
   'core/workflow/template/ifelse': () => import('./icons/core/workflow/template/ifelse.svg'),
   'core/workflow/template/ifelseLinear': () =>
     import('./icons/core/workflow/template/ifelseLinear'),
-  'core/workflow/template/lafDispatch': () =>
-    import('./icons/core/workflow/template/lafDispatch.svg'),
   'core/workflow/template/loop': () => import('./icons/core/workflow/template/loop.svg'),
   'core/workflow/template/loopEnd': () => import('./icons/core/workflow/template/loopEnd.svg'),
   'core/workflow/template/loopEndLinear': () =>
@@ -488,7 +486,6 @@ export const iconPaths = {
     import('./icons/support/account/customDomain/provider/tencent.svg'),
   'support/account/customDomain/provider/volcengine': () =>
     import('./icons/support/account/customDomain/provider/volcengine.svg'),
-  'support/account/laf': () => import('./icons/support/account/laf.svg'),
   'support/account/loginoutLight': () => import('./icons/support/account/loginoutLight.svg'),
   'support/account/plans': () => import('./icons/support/account/plans.svg'),
   'support/account/promotionLight': () => import('./icons/support/account/promotionLight.svg'),

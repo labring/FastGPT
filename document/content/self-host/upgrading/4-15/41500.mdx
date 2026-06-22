@@ -1,0 +1,187 @@
+---
+title: 'V4.15.0(进行中)'
+description: 'FastGPT V4.15.0 更新说明'
+---
+
+## 📦 升级指南
+
+### 1. 环境变量变更
+
+完整环境变量清单见 [环境变量说明](../../config/env.mdx)。
+
+`fastgpt-app` 和 `fastgpt-pro` 本次升级需关注下面新增或变更语义的配置。同时需检查是否都包含 `AES256_SECRET_KEY` 且相等。
+
+```dotenv
+# 自动生成对话标题使用的模型
+CHAT_TITLE_MODEL=deepseek-v4-flash
+# 文件解析 worker 并发数
+PARSE_FILE_WORKERS=10
+# 文件解析超时时间，单位秒
+PARSE_FILE_TIMEOUT_SECONDS=600
+# HTML 转 Markdown worker 并发数
+HTML_TO_MARKDOWN_WORKERS=10
+# 文本切块 worker 并发数
+TEXT_TO_CHUNKS_WORKERS=10
+# 自动同步 Mongo 数据库索引，需使用 boolean 字符串值，而不是 0 和 1
+SYNC_INDEX=true
+# 是否启用可信反向代理客户端 IP 校验
+TRUSTED_PROXY_ENABLE=false
+# 可信反向代理 IP/CIDR 列表，逗号或空白分隔。仅 TRUSTED_PROXY_ENABLE=true 时生效
+TRUSTED_PROXY_IPS=
+# 系统变量替换等同步字符串处理的最大字符数，单位 M，范围 1~100
+SYSTEM_MAX_STRING_LENGTH_M=100
+# 允许的最深文件夹层级，默认 4，范围 2~20
+MAX_FOLDER_DEPTH=4
+# 循环/并行节点最大输入数组长度
+WORKFLOW_MAX_LOOP_TIMES=100
+# 并行节点并发上限，最终会 clamp 到 [5, 100]
+WORKFLOW_PARALLEL_MAX_CONCURRENCY=10
+# Agent 沙箱冷归档包大小上限，单位 MB
+AGENT_SANDBOX_ARCHIVE_MAX_SIZE=50
+# Skill sandbox 包大小上限，单位 MB
+AGENT_SANDBOX_SKILL_MAX_SIZE=10
+```
+
+#### Plugin 服务
+
+插件服务升级到 v1.0.0-beta2，系统工具运行方式有较大调整：
+
+1. 修改 `fastgpt-plugin` 的环境变量 `AUTH_TOKEN`，要求 32 位以上。
+2. 同时修改 `fastgpt` 的环境变量 `PLUGIN_TOKEN`，与 `fastgpt-plugin` 的 `AUTH_TOKEN` 一致。
+3. 修改 `fastgpt-plugin` 的环境变量 `MONGODB_URI` 中的数据库名，不与 `fastgpt` 的 Mongo 数据库名重名即可，例如：`mongodb://myusername:mypassword@fastgpt-mongo:27017/fastgpt-plugin?authSource=admin`
+
+#### OpenSandbox
+
+如使用 OpenSandbox，`AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH` 不再生效，可移除。OpenSandbox 固定挂载持久化数据到 `/workspace`，旧的沙盒持久化会受到影响。
+
+#### Code Sandbox
+
+Code Sandbox 新增请求体、输出大小和 `queueId` 排队控制：
+
+```dotenv
+# /sandbox API JSON 请求体总大小上限，包含 variables，单位 MB
+SANDBOX_API_MAX_BODY_MB=8
+# 单次代码执行输出 JSON 大小上限，包含返回值和日志，单位 MB
+SANDBOX_MAX_OUTPUT_MB=10
+# 同一个 queueId 同时可进入执行流程的请求数；为空时不启用排队
+SANDBOX_QUEUE_ID_CONCURRENCY=
+```
+
+`/sandbox/js` 和 `/sandbox/python` 请求体新增可选字段 `queueId`。当配置 `SANDBOX_QUEUE_ID_CONCURRENCY` 且请求传入有效 `queueId` 时，同一 `queueId` 的请求会按 FIFO 排队；不同 `queueId` 或未传 `queueId` 的请求不受该限制，仍只受 worker 池并发限制影响。
+
+### 2. 镜像变更
+
+### 3. 重装系统工具
+
+插件服务升级后，需要重装旧的所有系统工具：
+
+1. 下载所有系统工具的 [zip 包](<https://github.com/labring/fastgpt-img/raw/refs/heads/main/fastgpt-official-plugins(1).zip>)。
+2. 打开 `fastgpt` 网页 - 点击 `管理员` navbar - 点击添加插件 - 点击 `导入/更新插件` - 上传 zip - 确认。
+
+也可以打开插件市场逐个下载，正式版之前，插件市场地址为: [https://v2.marketplace.fastgpt.cn](https://v2.marketplace.fastgpt.cn)
+
+### 4. 升级脚本
+
+如使用旧版沙盒 workspace，可通过下面接口将旧沙盒 workspace 归档到 S3，从而更彻底地释放不活跃沙盒。该脚本仅影响旧的沙盒，不影响新生成的沙盒；不执行该脚本，直接移除旧沙盒也可以。
+
+```shell
+curl --location --request POST 'https://{{host}}/api/admin/initSandboxArchive' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json' \
+-d '{"runArchive":true,"inactiveDays":0}'
+```
+
+### 清理重复对话，构建唯一索引
+
+## 🚀 新增内容
+
+1. 新增技能模块，Agent V2 可绑定静态 Skill 来运行。
+2. 重写 Agent V2 loop 逻辑，提升多轮工具调用和流程编排的稳定性。
+3. 插件系统架构重写，支持插件级 runtime config，系统工具运行迁移到 local-pool。
+4. 新增循环节点，弃用旧的批量执行。
+5. 知识库搜索支持原生多模态 embedding 模型、图搜图和 Agent 模式权限过滤。
+6. 多模态模型支持音视频输入。
+7. 第三方知识库新增钉钉知识库接入。
+8. 重写 chatbox UI，支持快速滚动到底部、模型生成对话标题和更流畅的流式输出动效。
+9. 应用/知识库增加虚拟列表渲染，优化大列表加载性能。
+10. 增加单独的 OpenAPI 文档，区分 DevAPI 文档。
+11. 工作流模板导出支持同时导出名称和介绍。
+12. 全局变量输入框支持输入 object 类型数据。
+13. 工具调用模式下，如果开启虚拟机功能，用户对话框上传的文件会直接注入到虚拟机中。
+14. 增加文件解析、HTML 转 Markdown、文本切块 worker pool，避免并发太高导致资源耗尽。
+15. 增加模型思考配置。
+16. S3 支持配置 CDN。
+17. Rerank 支持配置 defaultConfig。
+18. 分享链接/门户页支持语言切换，不再强制自动识别浏览器语言。
+19. Chat API 增加 `dataId` 重复校验，避免脏数据进入工作流与流恢复合并逻辑。
+20. HTTP 节点支持配置忽略 TLS 证书校验，并支持返回完整错误对象。
+21. 支持目录深度环境变量，避免无限嵌套目录。
+
+## ⚙️ 优化
+
+1. 插件运行入口支持从对象存储拉取，并缓存到本地文件目录。
+2. 优化 OTEL 日志采集格式。
+3. 禁用工作流无效连接模式。
+4. 增加父子节点选中互斥功能，解决同时选中父子节点时移动节点抖动的问题。
+5. 优化工作流节点名称、介绍输入和超长名称适配。
+6. 工作流编辑页因登录失效跳出后，自动保存草稿用于恢复。
+7. 工作流运行详情中，表单输入节点的文件字段以文件列表形式展示。
+8. 工作流运行的 nodeResponse 改为扁平化存储，避免大的嵌套工作流保存失败。
+9. 工作流数组引用类型增强校验，避免与二维数据冲突。
+10. HTML 输出后自动切换为预览，减少手动打开预览的操作。
+11. 流恢复暂停和异常中断恢复体验优化，减少会话卡在「生成中」或停止态不准确的问题。
+12. 切换应用时按应用恢复最近会话，切换团队时清除本地 chat 缓存。
+13. 优化知识库搜索测试交互和知识库数据编辑弹窗。
+14. 知识库被删除后，应用编排时优雅提示。
+15. 知识库训练出现错误时优化提示，并支持一键全部重试。
+16. 过滤掉无效的知识库引用角标。
+17. PDF 解析将 PDFJs 替换为 `liteparse`，速度提高 3 倍。
+18. xlsx 解析自动去除空行空列，并补充合并单元格。
+19. 输入引导配置增加校验，避免错误配置自定义词库地址。
+20. 加强第三方知识库请求、HTTP tool parse、IP 检测和 Code Sandbox AST 检查等安全防护。
+21. 文件注入 messages 位置从 system 调整至 user，便于命中缓存。
+22. 移除所有内置 LLM 请求中的 `temperature` 和 `max_tokens`，避免部分模型不兼容。
+23. reason hide 开关完善，确保 UI 不显示时，请求 LLM 仍可保留 reason。
+24. chat2messages adapt 优化，避免出现独立的 reason。
+25. 工具运行空响应时自动补充 `none`，避免部分模型报错。
+26. 非管理员/访客触发余额不足时，优化提示。
+27. 无创建权限时隐藏模板功能。
+28. 应用、知识库、文件和文件夹等长名称展示优化：超出宽度时自动省略，hover 名称时展示完整内容。
+29. 技能模块相关弹窗、编辑交互和列表接口性能优化。
+30. 登录页 UI 优化。
+31. 站点同步限流错误提示去重。
+32. 图片处理线程支持配置是否转化成 base64 发送给模型。
+
+## 🐛 修复
+
+1. 修复 Agent V2 模式下，模型响应报错会导致 step 重复执行。
+2. 修复知识库源文件预览和下载时文本类型响应缺少 charset 的问题。
+3. 修复工作流单节点调试存在异常默认值的问题。
+4. 修复模型配置 `defaultConfig` 覆盖异常。
+5. 修复 TTS 语音播放适配最新 OpenAI SDK 时的报错。
+6. 修复知识库数据分块遇到代码块时可能出现超大分块的问题。
+7. 修复模型获取多模态文件链接异常。
+8. 修复 training 接口、HTTP tool parse 和 S3 私有对象 key 相关的潜在安全风险。
+9. 修复交互节点后的工具调用展开 MCP 工具异常。
+10. 修复工作流工具 array 和 object 类型工具调用参数 schema 异常。
+11. 修复发布渠道 - 门户 UI 偏移。
+12. 修复 v1/completions 接口 `nodeResponse` 中 `quoteList` 未返回 `q`、`a` 的问题。
+13. 修复对话流恢复过程中的表单回填、文件列表恢复、节点响应保留、重复交互追加、临时历史标题和跨应用会话串显问题。
+14. 停止对话提示改为与后端生成态同步，移除停止时的 warning toast。
+
+## 🛠️ 代码优化
+
+1. 调整整体代码结构，升级 Next.js 并切换至 Turbopack 构建；容器默认 Node.js 升级至 24。
+2. 统一 Agent tool 的声明和运行方式。
+3. 插件服务从旧 `runtime` 结构调整为 pnpm workspace monorepo，拆分为 HTTP 服务入口、领域模型、用例、API adapter、基础设施、SDK 和 CLI。
+4. app API 接口统一使用 zod schema 编写并生成文档。
+5. 拆分 AI request、工作流运行详情和对话框相关代码，降低模块耦合。
+6. 优化用户自定义密钥计费逻辑和 token 计算依赖。
+7. 服务端 env 加载统一使用 `@t3-oss/env-core`，增加类型检查；其余服务也采用集中导出 env 的方式使用环境变量。
+8. 升级工程化工具链，包括 ESLint、Prettier、textlint、lint-staged 和 TS6。
+9. 优化单测性能，全量测试从 10 分钟降至 5 分钟。
+10. GitHub Action 增强安全性。
+11. 流恢复相关模块补充设计文档与单元测试。
+12. volume manager 从 Bun 改为 Node.js 运行。
+13. 及时处理 worker 内图片，不再存留 base64，降低内存消耗。
+14. 增加系统处理字符串时的长度保护，如果长度过大会停止继续同步替换，避免高 CPU 负载。

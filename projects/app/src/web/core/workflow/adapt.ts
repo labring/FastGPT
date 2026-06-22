@@ -117,8 +117,7 @@ enum FlowTypeEnum {
   pluginOutput = 'pluginOutput',
   queryExtension = 'cfr',
   tools = 'tools',
-  stopTool = 'stopTool',
-  lafModule = 'lafModule'
+  stopTool = 'stopTool'
 }
 enum OutputTypeEnum {
   answer = 'answer',
@@ -262,8 +261,7 @@ export const v1Workflow2V2 = (
       [FlowTypeEnum.pluginOutput]: FlowNodeTypeEnum.pluginOutput,
       [FlowTypeEnum.queryExtension]: FlowNodeTypeEnum.queryExtension,
       [FlowTypeEnum.tools]: FlowNodeTypeEnum.toolCall,
-      [FlowTypeEnum.stopTool]: FlowNodeTypeEnum.stopTool,
-      [FlowTypeEnum.lafModule]: FlowNodeTypeEnum.lafModule
+      [FlowTypeEnum.stopTool]: FlowNodeTypeEnum.stopTool
     };
 
     const inputTypeMap: Record<any, FlowNodeInputTypeEnum> = {

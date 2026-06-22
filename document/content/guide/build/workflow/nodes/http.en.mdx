@@ -173,43 +173,37 @@ Configure the `key` to extract values from FastGPT's parsed format, following st
 Starting from FastGPT v4.6.8, output formatting was added, primarily converting `JSON` to `string`. If you select `string` as the output type, the HTTP node will convert the corresponding key's value to a JSON string. This lets you pipe HTTP output directly into a `Text Processing` node, append appropriate prompts, and feed the result into `AI Chat`.
 
 <Alert context="warning">
-The HTTP node is extremely versatile. You can integrate public APIs to extend your workflow capabilities.
-
-If you don't want to deploy additional services, use [Laf](https://laf.dev/) to quickly develop and publish APIs -- write and ship instantly with no deployment needed.
-
+  The HTTP node is extremely versatile. You can integrate public APIs to extend your workflow
+  capabilities.
 </Alert>
 
-## Laf HTTP Integration Example
+## HTTP Service Integration Example
 
-Here is a POST request example written in Laf:
+Here is a POST request service example:
 
 ```ts
-import cloud from '@lafjs/cloud';
-const db = cloud.database();
-
 type RequestType = {
   appId: string;
   appointment: string;
   action: 'post' | 'delete' | 'put' | 'get';
 };
 
-export default async function (ctx: FunctionContext) {
+export async function handleAppointmentRequest(body: RequestType) {
   try {
-    // Get parameters from body
-    const { appId, appointment, action } = ctx.body as RequestType;
+    const { appId, appointment, action } = body;
 
     const parseBody = JSON.parse(appointment);
     if (action === 'get') {
-      return await getRecord(parseBody);
+      return await getRecord(appId, parseBody);
     }
     if (action === 'post') {
-      return await createRecord(parseBody);
+      return await createRecord(appId, parseBody);
     }
     if (action === 'put') {
-      return await putRecord(parseBody);
+      return await putRecord(appId, parseBody);
     }
     if (action === 'delete') {
-      return await removeRecord(parseBody);
+      return await removeRecord(appId, parseBody);
     }
 
     return {

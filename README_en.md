@@ -119,7 +119,6 @@ If you encounter any issues, you can [view the complete Docker deployment tutori
 - [OpenAPI Documentation](https://doc.fastgpt.io/openapi/intro)
 - [FastGPT-plugin](https://github.com/labring/fastgpt-plugin)
 - [AI Proxy: Model Aggregation Load Balancing Service](https://github.com/labring/aiproxy)
-- [Laf: Quick 3-Minute Access to Third-Party Applications](https://github.com/labring/laf)
 - [Sealos: Quick Cluster Application Deployment](https://github.com/labring/sealos)
 
 <a href="#readme">

@@ -149,7 +149,6 @@ export enum FlowNodeTypeEnum {
   toolCall = 'tools',
   stopTool = 'stopTool',
   toolParams = 'toolParams',
-  lafModule = 'lafModule',
   ifElseNode = 'ifElseNode',
   variableUpdate = 'variableUpdate',
   code = 'code',

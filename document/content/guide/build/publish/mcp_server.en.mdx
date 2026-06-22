@@ -23,16 +23,16 @@ After logging into FastGPT, open `Workspace` and click `MCP Server` to access th
 
 You can customize the MCP Server name and select which applications to associate.
 
-| | |
-|---|---|
+|                            |                            |
+| -------------------------- | -------------------------- |
 | ![](/imgs/mcp_server2.png) | ![](/imgs/mcp_server3.png) |
 
 ### 2. Get the MCP Server URL
 
 After creating an MCP Server, click `Start Using` to get the access URL.
 
-| | |
-|---|---|
+|                            |                            |
+| -------------------------- | -------------------------- |
 | ![](/imgs/mcp_server4.png) | ![](/imgs/mcp_server5.png) |
 
 #### 3. Use the MCP Server
@@ -43,18 +43,16 @@ Open Cursor's settings page and click MCP to enter the MCP configuration page. C
 
 Return to Cursor's MCP management page and you'll see your MCP Server listed. Make sure to set it to `enabled`.
 
-| | | |
-|---|---|---|
+|                            |                            |                            |
+| -------------------------- | -------------------------- | -------------------------- |
 | ![](/imgs/mcp_server6.png) | ![](/imgs/mcp_server7.png) | ![](/imgs/mcp_server8.png) |
-
 
 Open Cursor's chat panel and switch to `Agent` mode — only this mode triggers MCP Server calls.
 After sending a question about `fastgpt`, you'll see Cursor invoke an MCP tool (described as: query fastgpt knowledge base), which calls the FastGPT application to process the question and return results.
 
-| | |
-|---|---|
+|                            |                             |
+| -------------------------- | --------------------------- |
 | ![](/imgs/mcp_server9.png) | ![](/imgs/mcp_server10.png) |
-
 
 ## Self-Hosted MCP Server Setup
 
@@ -66,24 +64,24 @@ Add the `fastgpt-mcp-server` service to your `docker-compose.yml`:
 
 ```yml
 fastgpt-mcp-server:
-    container_name: fastgpt-mcp-server
-    image: ghcr.io/labring/fastgpt-mcp_server:latest
-    ports:
-      - 3005:3000
-    networks:
-      - fastgpt
-    restart: always
-    environment:
-      - FASTGPT_ENDPOINT=http://fastgpt:3000
+  container_name: fastgpt-mcp-server
+  image: ghcr.io/labring/fastgpt-mcp_server:latest
+  ports:
+    - 3005:3000
+  networks:
+    - fastgpt
+  restart: always
+  environment:
+    - FASTGPT_ENDPOINT=http://fastgpt:3000
 ```
 
 ### Update FastGPT Configuration
 
 In your `config.json`, add: `"feconfigs.mcpServerProxyEndpoint": "<your fastgpt-mcp-server URL>"` (no trailing slash). For example:
+
 ```json
 {
   "feConfigs": {
-    "lafEnv": "https://laf.dev",
     "mcpServerProxyEndpoint": "https://mcp.fastgpt.cn"
   }
 }

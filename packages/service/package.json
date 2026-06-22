@@ -59,7 +59,7 @@
     "mime-types": "catalog:",
     "minio": "catalog:",
     "mongoose": "catalog:",
-    "multer": "2.1.0",
+    "multer": "2.2.0",
     "mysql2": "^3.11.3",
     "next": "catalog:",
     "nextjs-cors": "2.2.1",
@@ -73,7 +73,7 @@
     "proxy-agent": "catalog:",
     "proxy-from-env": "^1.1.0",
     "turndown": "^7.1.2",
-    "undici": "^7.18.2",
+    "undici": "catalog:",
     "winston": "^3.17.0",
     "xlsx": "0.18.5",
     "zod": "catalog:"

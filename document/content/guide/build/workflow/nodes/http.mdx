@@ -172,44 +172,35 @@ HTTP 模块会向对应的地址发送一个 `HTTP` 请求，实际操作与 Pos
 
 FastGPT v4.6.8 后，加入了出参格式化功能，主要以 `json` 格式化成 `字符串` 为主。如果你的输出类型选择了 `字符串`，则会将 `HTTP` 对应 `key` 的值，转成 `json` 字符串进行输出。因此，未来你可以直接从 `HTTP` 接口输出内容至 `文本加工` 中，然后拼接适当的提示词，最终输入给 `AI对话`。
 
-<Alert context="warning">
-HTTP 模块非常强大，你可以对接一些公开的 API，来提高编排的功能。
+<Alert context="warning">HTTP 模块非常强大，你可以对接一些公开的 API，来提高编排的功能。</Alert>
 
-如果你不想额外部署服务，可以使用 [Laf](https://laf.dev/) 来快速开发上线接口，即写即发，无需部署。
+## HTTP 对接业务服务示例
 
-</Alert>
-
-## laf 对接 HTTP 示例
-
-下面是在 Laf 编写的 POST 请求示例：
+下面是一个 POST 请求服务示例：
 
 ```ts
-import cloud from '@lafjs/cloud';
-const db = cloud.database();
-
 type RequestType = {
   appId: string;
   appointment: string;
   action: 'post' | 'delete' | 'put' | 'get';
 };
 
-export default async function (ctx: FunctionContext) {
+export async function handleAppointmentRequest(body: RequestType) {
   try {
-    // 从 body 中获取参数
-    const { appId, appointment, action } = ctx.body as RequestType;
+    const { appId, appointment, action } = body;
 
     const parseBody = JSON.parse(appointment);
     if (action === 'get') {
-      return await getRecord(parseBody);
+      return await getRecord(appId, parseBody);
     }
     if (action === 'post') {
-      return await createRecord(parseBody);
+      return await createRecord(appId, parseBody);
     }
     if (action === 'put') {
-      return await putRecord(parseBody);
+      return await putRecord(appId, parseBody);
     }
     if (action === 'delete') {
-      return await removeRecord(parseBody);
+      return await removeRecord(appId, parseBody);
     }
 
     return {

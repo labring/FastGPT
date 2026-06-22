@@ -21,7 +21,6 @@
     "parallel_run",
     "knowledge_base_search_merge",
     "coreferenceResolution",
-    "laf",
     "custom_feedback"
   ]
 }

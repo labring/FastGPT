@@ -4,13 +4,6 @@ import type { GroupMemberRole } from '../../permission/memberGroup/constant';
 import { TeamPermission } from '../../permission/user/controller';
 import { z } from 'zod';
 
-export const LafAccountSchema = z.object({
-  appid: z.string(),
-  token: z.string(),
-  pat: z.string()
-});
-export type LafAccountType = z.infer<typeof LafAccountSchema>;
-
 export const OpenaiAccountSchema = z.object({
   key: z.string(),
   baseUrl: z.string()
@@ -18,7 +11,6 @@ export const OpenaiAccountSchema = z.object({
 export type OpenaiAccountType = z.infer<typeof OpenaiAccountSchema>;
 
 export const ThidPartyAccountSchema = z.object({
-  lafAccount: LafAccountSchema.optional(),
   openaiAccount: OpenaiAccountSchema.optional(),
   externalWorkflowVariables: z.record(z.string(), z.string()).optional()
 });
@@ -109,17 +101,17 @@ export type TeamMemberItemType<
   ? {
       permission: TeamPermission;
     }
-  : {}) &
+  : unknown) &
   (Options extends { withOrgs: true }
     ? {
         orgs?: string[]; // full path name, pattern: /teamName/orgname1/orgname2
       }
-    : {}) &
+    : unknown) &
   (Options extends { withGroupRole: true }
     ? {
         groupRole?: `${GroupMemberRole}`;
       }
-    : {});
+    : unknown);
 
 export type TeamTagItemType = {
   label: string;

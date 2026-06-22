@@ -36,7 +36,7 @@ curl --location --request POST 'https://domain/v1/embeddings' \
 --header 'Content-Type: application/json' \
 --data-raw '{
   "model": "m3e",
-  "input": ["What is laf"]
+  "input": ["What is FastGPT"]
 }'
 ```
 
@@ -69,17 +69,17 @@ Edit the config.json file and add the M3E model to `vectorModels`:
 
 1. Select the M3E model when creating a Knowledge Base.
 
-      Note: once selected, the embedding model for the Knowledge Base cannot be changed.
+   Note: once selected, the embedding model for the Knowledge Base cannot be changed.
 
-      ![](../../../public/imgs/model-m3e2.png)
+   ![](../../../public/imgs/model-m3e2.png)
 
 2. Import data
 3. Test search
 
-      ![](../../../public/imgs/model-m3e3.png)
+   ![](../../../public/imgs/model-m3e3.png)
 
 4. Bind the Knowledge Base to an app
 
-      Note: an app can only bind Knowledge Bases that use the same embedding model -- cross-model binding is not supported. You may also need to adjust the similarity threshold, as different embedding models produce different similarity (distance) scores. Test and tune accordingly.
+   Note: an app can only bind Knowledge Bases that use the same embedding model -- cross-model binding is not supported. You may also need to adjust the similarity threshold, as different embedding models produce different similarity (distance) scores. Test and tune accordingly.
 
-      ![](../../../public/imgs/model-m3e4.png)
+   ![](../../../public/imgs/model-m3e4.png)

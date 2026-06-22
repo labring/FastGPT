@@ -31,12 +31,11 @@ import { dispatchHttp468Request } from './tools/http468';
 import { dispatchQueryExtension } from './tools/queryExternsion';
 import { dispatchReadFiles } from './tools/readFiles';
 import { dispatchIfElse } from './tools/runIfElse';
-import { dispatchLafRequest } from './tools/runLaf';
 import { dispatchUpdateVariable } from './tools/runUpdateVar';
 import { dispatchTextEditor } from './tools/textEditor';
 import { dispatchRunAgent } from './ai/agent';
 
-export const callbackMap: Record<FlowNodeTypeEnum, Function> = {
+export const callbackMap: Record<FlowNodeTypeEnum, (...args: any[]) => unknown> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
 
   // Child
@@ -60,7 +59,6 @@ export const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.answerNode]: dispatchAnswer,
   [FlowNodeTypeEnum.datasetConcatNode]: dispatchDatasetConcat,
   [FlowNodeTypeEnum.httpRequest468]: dispatchHttp468Request,
-  [FlowNodeTypeEnum.lafModule]: dispatchLafRequest,
   [FlowNodeTypeEnum.ifElseNode]: dispatchIfElse,
   [FlowNodeTypeEnum.variableUpdate]: dispatchUpdateVariable,
   [FlowNodeTypeEnum.code]: dispatchCodeSandbox,
