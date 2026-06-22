@@ -18,7 +18,6 @@ const createSandbox = ({
   entrypointExitCode = 0,
   entrypointThrows = false,
   homeAvailable = true,
-  lockAvailable = true,
   writeStateFails = false
 }: {
   initialState?: Record<string, unknown>;
@@ -26,11 +25,9 @@ const createSandbox = ({
   entrypointExitCode?: number;
   entrypointThrows?: boolean;
   homeAvailable?: boolean;
-  lockAvailable?: boolean;
   writeStateFails?: boolean;
 } = {}) => {
   let stateContent = initialState ? JSON.stringify(initialState) : undefined;
-  const statePath = '/home/test/.fastgpt/agent-skill-entrypoints/state.json';
 
   const sandbox = {
     execute: vi.fn(async (command: string): Promise<ExecuteResult> => {
@@ -45,14 +42,6 @@ const createSandbox = ({
           : { exitCode: 1, stdout: '', stderr: 'no home' };
       }
       if (command.startsWith("mkdir -p '/home/test/.fastgpt/agent-skill-entrypoints'")) {
-        return { exitCode: 0, stdout: '', stderr: '' };
-      }
-      if (isAcquireLockCommand(command)) {
-        return lockAvailable
-          ? { exitCode: 0, stdout: '', stderr: '' }
-          : { exitCode: 1, stdout: '', stderr: 'busy' };
-      }
-      if (isReleaseLockCommand(command)) {
         return { exitCode: 0, stdout: '', stderr: '' };
       }
       if (command.startsWith("[ -f '/workspace/projects/version-1/entrypoint.sh' ]")) {
@@ -97,8 +86,7 @@ const createSandbox = ({
 
 const version: DeployedSkillVersion = {
   versionId: 'version-1',
-  targetDir: '/workspace/projects/version-1',
-  freshlyDeployed: false
+  targetDir: '/workspace/projects/version-1'
 };
 
 const isSandboxEntrypointCommand = (command: string) =>
@@ -108,17 +96,6 @@ const isSkillEntrypointCommand = (command: string) =>
   command.startsWith("cd '/workspace/projects/version-1' && /bin/bash -c ") &&
   command.includes('entrypoint.sh') &&
   command.includes('tail -c 8192');
-
-const isAcquireLockCommand = (command: string) =>
-  command.startsWith('/bin/bash -c ') &&
-  command.includes('/home/test/.fastgpt/agent-skill-entrypoints/.lock') &&
-  command.includes('deadline=') &&
-  command.includes('mkdir "$lock_dir"');
-
-const isReleaseLockCommand = (command: string) =>
-  command.startsWith('/bin/bash -c ') &&
-  command.includes('/home/test/.fastgpt/agent-skill-entrypoints/.lock') &&
-  command.includes('cat "$lock_dir/owner"');
 
 describe('runtime entrypoint', () => {
   it('skips empty sandbox entrypoint', async () => {
@@ -132,13 +109,15 @@ describe('runtime entrypoint', () => {
     expect(sandbox.execute).not.toHaveBeenCalled();
   });
 
-  it('runs sandbox entrypoint once per script hash and reruns after script changes', async () => {
+  it('skips sandbox entrypoint when the current script hash matches and overwrites after changes', async () => {
     const sandbox = createSandbox();
 
     await runAgentSandboxEntrypoint({
       sandbox: sandbox as any,
       sandboxEntrypoint: 'echo first'
     });
+    const firstHash = sandbox.getState()?.sandboxEntrypointHash;
+
     await runAgentSandboxEntrypoint({
       sandbox: sandbox as any,
       sandboxEntrypoint: 'echo first'
@@ -153,7 +132,8 @@ describe('runtime entrypoint', () => {
       .filter(isSandboxEntrypointCommand);
 
     expect(entrypointCommands).toHaveLength(2);
-    expect(sandbox.getState()?.sandboxEntrypointHashes).toHaveLength(2);
+    expect(sandbox.getState()?.sandboxEntrypointHash).toMatch(/^sha256:/);
+    expect(sandbox.getState()?.sandboxEntrypointHash).not.toBe(firstHash);
   });
 
   it('runs sandbox entrypoint from the configured work directory', async () => {
@@ -179,7 +159,7 @@ describe('runtime entrypoint', () => {
       sandboxEntrypoint: 'exit 1'
     });
 
-    expect(sandbox.getState()?.sandboxEntrypointHashes).toBeUndefined();
+    expect(sandbox.getState()?.sandboxEntrypointHash).toBeUndefined();
   });
 
   it('does not throw or write state when sandbox entrypoint execution throws', async () => {
@@ -191,10 +171,10 @@ describe('runtime entrypoint', () => {
         sandboxEntrypoint: 'echo throw'
       })
     ).resolves.toBeUndefined();
-    expect(sandbox.getState()?.sandboxEntrypointHashes).toBeUndefined();
+    expect(sandbox.getState()?.sandboxEntrypointHash).toBeUndefined();
   });
 
-  it('uses skill version state to skip successful skill entrypoints and reruns fresh deploys', async () => {
+  it('uses skill version state to skip successful skill entrypoints', async () => {
     const sandbox = createSandbox();
 
     await runAgentSkillVersionEntrypoints({
@@ -205,43 +185,13 @@ describe('runtime entrypoint', () => {
       sandbox: sandbox as any,
       versions: [version]
     });
-    await runAgentSkillVersionEntrypoints({
-      sandbox: sandbox as any,
-      versions: [
-        {
-          ...version,
-          freshlyDeployed: true
-        }
-      ]
-    });
 
     const runCommands = sandbox.execute.mock.calls
       .map(([command]) => command)
       .filter(isSkillEntrypointCommand);
 
-    expect(runCommands).toHaveLength(2);
+    expect(runCommands).toHaveLength(1);
     expect(sandbox.getState()?.skillEntrypoints).toEqual(['version-1']);
-  });
-
-  it('removes stale skill state when a freshly deployed entrypoint fails', async () => {
-    const sandbox = createSandbox({
-      initialState: {
-        skillEntrypoints: ['version-1']
-      },
-      entrypointExitCode: 1
-    });
-
-    await runAgentSkillVersionEntrypoints({
-      sandbox: sandbox as any,
-      versions: [
-        {
-          ...version,
-          freshlyDeployed: true
-        }
-      ]
-    });
-
-    expect(sandbox.getState()?.skillEntrypoints).toBeUndefined();
   });
 
   it('removes unselected skill versions from entrypoint state', async () => {

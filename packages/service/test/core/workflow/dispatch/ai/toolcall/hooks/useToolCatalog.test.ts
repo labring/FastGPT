@@ -6,12 +6,17 @@ import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants
 import { useToolCatalog } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/hooks/useToolCatalog';
 import { ReadFileTooData } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/tools/file';
 
-const { getSandboxToolInfoMock, prepareSandboxToolRuntimeMock, runAgentSandboxEntrypointMock } =
-  vi.hoisted(() => ({
-    getSandboxToolInfoMock: vi.fn(),
-    prepareSandboxToolRuntimeMock: vi.fn(),
-    runAgentSandboxEntrypointMock: vi.fn()
-  }));
+const {
+  getSandboxToolInfoMock,
+  prepareSandboxToolRuntimeMock,
+  runAgentSandboxEntrypointMock,
+  withAgentSandboxInitLeaseMock
+} = vi.hoisted(() => ({
+  getSandboxToolInfoMock: vi.fn(),
+  prepareSandboxToolRuntimeMock: vi.fn(),
+  runAgentSandboxEntrypointMock: vi.fn(),
+  withAgentSandboxInitLeaseMock: vi.fn(async ({ fn }: { fn: () => Promise<unknown> }) => fn())
+}));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/toolCall', async (importOriginal) => {
   const original =
@@ -25,7 +30,8 @@ vi.mock('@fastgpt/service/core/ai/sandbox/toolCall', async (importOriginal) => {
 });
 
 vi.mock('@fastgpt/service/core/ai/skill/runtime/entrypoint', () => ({
-  runAgentSandboxEntrypoint: runAgentSandboxEntrypointMock
+  runAgentSandboxEntrypoint: runAgentSandboxEntrypointMock,
+  withAgentSandboxInitLease: withAgentSandboxInitLeaseMock
 }));
 
 const createToolNode = (overrides: Record<string, any> = {}) =>

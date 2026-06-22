@@ -287,11 +287,9 @@ export const injectAgentSkillFilesToSandbox = async ({
 
   await cleanupStaleDirs(expectedTargetDirs);
 
-  const missingTargetDirs = new Set(missingSkills.map(({ targetDir }) => targetDir));
   return deployableSkills.map(({ versionId, targetDir }) => ({
     versionId,
-    targetDir,
-    freshlyDeployed: missingTargetDirs.has(targetDir)
+    targetDir
   }));
 };
 

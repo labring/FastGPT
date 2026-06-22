@@ -4,21 +4,20 @@ import { getLogger, LogCategories } from '../../../../common/logger';
 import { serviceEnv } from '../../../../env';
 import { joinSandboxPath, shellQuote } from '../utils';
 import type { DeployedSkillVersion } from './types';
+import { withRedisLease } from '../../../../common/redis/lock';
 
 const logger = getLogger(LogCategories.MODULE.AI.AGENT);
 
 const STATE_DIR_RELATIVE_PATH = '.fastgpt/agent-skill-entrypoints';
 const STATE_FILE_NAME = 'state.json';
-const LOCK_DIR_NAME = '.lock';
-const RUNTIME_LOCK_DIR_NAME = '.runtime.lock';
 const ENTRYPOINT_FILE_NAME = 'entrypoint.sh';
 const MAX_LOG_OUTPUT_LENGTH = 4000;
 const MAX_ENTRYPOINT_OUTPUT_BYTES = 8 * 1024;
-const LOCK_STALE_SECONDS = 15 * 60;
-const LOCK_WAIT_SECONDS = 10 * 60;
+const SANDBOX_INIT_LEASE_TTL_MS = 5 * 60 * 1000;
+const SANDBOX_INIT_LEASE_WAIT_MS = 2 * 60 * 1000;
 
 type EntrypointState = {
-  sandboxEntrypointHashes?: string[];
+  sandboxEntrypointHash?: string;
   skillEntrypoints?: string[];
 };
 
@@ -31,24 +30,23 @@ type EntrypointStateContext = {
 type EntrypointStateLocation = Omit<EntrypointStateContext, 'state'>;
 
 /**
- * 保护普通运行态 skill 目录 reconcile、entrypoint 和 SKILL.md scan。
+ * 保护同一个 sandbox 的运行态初始化流程。
  *
  * 同一个 sandbox 内并发选择不同 skill 时，如果 cleanup 与 scan 交错，可能删除
- * 另一轮正在使用的版本目录。这个锁只绑定 sandbox HOME，不进入 DB。
+ * 另一轮正在使用的版本目录。锁只存在于服务端 Redis，不写入 sandbox 文件系统。
  */
-export const withAgentSkillRuntimeLock = async <T>({
-  sandbox,
+export const withAgentSandboxInitLease = async <T>({
+  sandboxId,
   fn
 }: {
-  sandbox: ISandbox;
+  sandboxId: string;
   fn: () => Promise<T>;
 }): Promise<T> => {
-  const location = await resolveEntrypointStateLocation(sandbox);
-  return withSandboxDirLock({
-    sandbox,
-    stateDir: location.stateDir,
-    lockName: RUNTIME_LOCK_DIR_NAME,
-    label: 'runtime',
+  return withRedisLease({
+    key: `agent-sandbox:init:${sandboxId}`,
+    label: 'agent-sandbox-init',
+    ttlMs: SANDBOX_INIT_LEASE_TTL_MS,
+    waitMs: SANDBOX_INIT_LEASE_WAIT_MS,
     fn
   });
 };
@@ -72,27 +70,23 @@ export const runAgentSandboxEntrypoint = async ({
   if (!script) return;
 
   const stateLocation = await resolveEntrypointStateLocation(sandbox);
-  await withEntrypointStateLock(sandbox, stateLocation, async () => {
-    const lockedStateContext = await readEntrypointState(sandbox, stateLocation);
-    const state = lockedStateContext.state;
+  const stateContext = await readEntrypointState(sandbox, stateLocation);
+  const state = stateContext.state;
 
-    const scriptHash = hashContent(script);
-    const executedSandboxEntrypoints = new Set(state.sandboxEntrypointHashes || []);
-    if (executedSandboxEntrypoints.has(scriptHash)) return;
+  const scriptHash = hashContent(script);
+  if (state.sandboxEntrypointHash === scriptHash) return;
 
-    const command = buildBashScriptCommand(script, workDirectory);
-    const result = await executeEntrypointCommand({
-      sandbox,
-      command,
-      label: 'sandbox'
-    });
-
-    if (!result) return;
-
-    executedSandboxEntrypoints.add(scriptHash);
-    lockedStateContext.state.sandboxEntrypointHashes = Array.from(executedSandboxEntrypoints);
-    await writeEntrypointState(sandbox, lockedStateContext);
+  const command = buildBashScriptCommand(script, workDirectory);
+  const result = await executeEntrypointCommand({
+    sandbox,
+    command,
+    label: 'sandbox'
   });
+
+  if (!result) return;
+
+  stateContext.state.sandboxEntrypointHash = scriptHash;
+  await writeEntrypointState(sandbox, stateContext);
 };
 
 /**
@@ -111,75 +105,57 @@ export const runAgentSkillVersionEntrypoints = async ({
   if (versions.length === 0) return;
 
   const stateLocation = await resolveEntrypointStateLocation(sandbox);
-  await withEntrypointStateLock(sandbox, stateLocation, async () => {
-    const stateContext = await readEntrypointState(sandbox, stateLocation);
-    const state = stateContext.state;
+  const stateContext = await readEntrypointState(sandbox, stateLocation);
+  const state = stateContext.state;
 
-    const originalSkillEntrypoints = state.skillEntrypoints || [];
-    const selectedVersionIds = new Set(versions.map(({ versionId }) => versionId));
-    const executedVersionIds = new Set(
-      originalSkillEntrypoints.filter((versionId) => selectedVersionIds.has(versionId))
-    );
-    let stateDirty = originalSkillEntrypoints.length !== executedVersionIds.size;
-    const writeSkillEntrypointState = async () => {
-      stateContext.state.skillEntrypoints = Array.from(executedVersionIds);
-      await writeEntrypointState(sandbox, stateContext);
-      stateDirty = false;
-    };
-    const clearFreshDeployState = async (versionId: string) => {
-      if (!executedVersionIds.delete(versionId)) return;
+  const originalSkillEntrypoints = state.skillEntrypoints || [];
+  const selectedVersionIds = new Set(versions.map(({ versionId }) => versionId));
+  const executedVersionIds = new Set(
+    originalSkillEntrypoints.filter((versionId) => selectedVersionIds.has(versionId))
+  );
+  let stateDirty = originalSkillEntrypoints.length !== executedVersionIds.size;
+  const writeSkillEntrypointState = async () => {
+    stateContext.state.skillEntrypoints = Array.from(executedVersionIds);
+    await writeEntrypointState(sandbox, stateContext);
+    stateDirty = false;
+  };
 
-      // fresh deploy 没有成功执行入口时不能保留旧成功状态，否则下轮可能误跳过。
-      await writeSkillEntrypointState();
-    };
+  for (const version of versions) {
+    if (executedVersionIds.has(version.versionId)) continue;
 
-    for (const version of versions) {
-      if (!version.freshlyDeployed && executedVersionIds.has(version.versionId)) continue;
-
-      const entrypointPath = joinSandboxPath(version.targetDir, ENTRYPOINT_FILE_NAME);
-      const existsResult = await sandbox
-        .execute(`[ -f ${shellQuote(entrypointPath)} ]`, {
-          timeoutMs: 5_000,
-          maxOutputBytes: 1024
-        })
-        .catch((error) => {
-          logger.warn('[Agent Skills] Failed to check skill entrypoint file', {
-            versionId: version.versionId,
-            entrypointPath,
-            error
-          });
-          return undefined;
+    const entrypointPath = joinSandboxPath(version.targetDir, ENTRYPOINT_FILE_NAME);
+    const existsResult = await sandbox
+      .execute(`[ -f ${shellQuote(entrypointPath)} ]`, {
+        timeoutMs: 5_000,
+        maxOutputBytes: 1024
+      })
+      .catch((error) => {
+        logger.warn('[Agent Skills] Failed to check skill entrypoint file', {
+          versionId: version.versionId,
+          entrypointPath,
+          error
         });
-      if (!existsResult || existsResult.exitCode !== 0) {
-        if (version.freshlyDeployed) {
-          await clearFreshDeployState(version.versionId);
-        }
-        continue;
-      }
-
-      const result = await executeEntrypointCommand({
-        sandbox,
-        command: `cd ${shellQuote(version.targetDir)} && ${buildLimitedOutputShellCommand(
-          `/bin/bash ${shellQuote(ENTRYPOINT_FILE_NAME)}`
-        )}`,
-        label: `skill:${version.versionId}`
+        return undefined;
       });
+    if (!existsResult || existsResult.exitCode !== 0) continue;
 
-      if (!result) {
-        if (version.freshlyDeployed) {
-          await clearFreshDeployState(version.versionId);
-        }
-        continue;
-      }
+    const result = await executeEntrypointCommand({
+      sandbox,
+      command: `cd ${shellQuote(version.targetDir)} && ${buildLimitedOutputShellCommand(
+        `/bin/bash ${shellQuote(ENTRYPOINT_FILE_NAME)}`
+      )}`,
+      label: `skill:${version.versionId}`
+    });
 
-      executedVersionIds.add(version.versionId);
-      await writeSkillEntrypointState();
-    }
+    if (!result) continue;
 
-    if (stateDirty) {
-      await writeSkillEntrypointState();
-    }
-  });
+    executedVersionIds.add(version.versionId);
+    await writeSkillEntrypointState();
+  }
+
+  if (stateDirty) {
+    await writeSkillEntrypointState();
+  }
 };
 
 const resolveEntrypointStateLocation = async (
@@ -245,6 +221,14 @@ const readEntrypointState = async (
 
   try {
     const content = Buffer.from(stateFile.content).toString('utf-8');
+    if (!content.trim()) {
+      return {
+        stateDir,
+        statePath,
+        state: {}
+      };
+    }
+
     const parsed = JSON.parse(content);
     return {
       stateDir,
@@ -264,121 +248,6 @@ const readEntrypointState = async (
   }
 };
 
-const withEntrypointStateLock = async (
-  sandbox: ISandbox,
-  stateLocation: EntrypointStateLocation,
-  fn: () => Promise<void>
-): Promise<void> => {
-  await withSandboxDirLock({
-    sandbox,
-    stateDir: stateLocation.stateDir,
-    lockName: LOCK_DIR_NAME,
-    label: 'entrypoint-state',
-    fn
-  });
-};
-
-const withSandboxDirLock = async <T>({
-  sandbox,
-  stateDir,
-  lockName,
-  label,
-  fn
-}: {
-  sandbox: ISandbox;
-  stateDir?: string;
-  lockName: string;
-  label: string;
-  fn: () => Promise<T>;
-}): Promise<T> => {
-  if (!stateDir) {
-    return fn();
-  }
-
-  const lockDir = joinSandboxPath(stateDir, lockName);
-  const ownerToken = crypto.randomUUID();
-  const lockResult = await sandbox
-    .execute(buildAcquireLockCommand({ lockDir, ownerToken }), {
-      timeoutMs: (LOCK_WAIT_SECONDS + 10) * 1000,
-      maxOutputBytes: 1024
-    })
-    .catch((error) => {
-      logger.warn('[Agent Skills] Failed to acquire sandbox lock', {
-        label,
-        lockDir,
-        error
-      });
-      return undefined;
-    });
-
-  if (!lockResult || lockResult.exitCode !== 0) {
-    logger.warn('[Agent Skills] Sandbox lock unavailable after waiting, run without lock', {
-      label,
-      lockDir,
-      stderr: lockResult?.stderr
-    });
-    return fn();
-  }
-
-  try {
-    return await fn();
-  } finally {
-    await sandbox.execute(buildReleaseLockCommand({ lockDir, ownerToken })).catch((error) => {
-      logger.warn('[Agent Skills] Failed to release sandbox lock', {
-        label,
-        lockDir,
-        error
-      });
-    });
-  }
-};
-
-const buildAcquireLockCommand = ({
-  lockDir,
-  ownerToken
-}: {
-  lockDir: string;
-  ownerToken: string;
-}) =>
-  `/bin/bash -c ${shellQuote(`
-lock_dir=${shellQuote(lockDir)}
-owner_token=${shellQuote(ownerToken)}
-deadline=$(( $(date +%s) + ${LOCK_WAIT_SECONDS} ))
-while true; do
-  if mkdir "$lock_dir" 2>/dev/null; then
-    printf %s "$owner_token" > "$lock_dir/owner"
-    exit 0
-  fi
-
-  now=$(date +%s)
-  lock_mtime=$(stat -c %Y "$lock_dir" 2>/dev/null || stat -f %m "$lock_dir" 2>/dev/null || printf %s "$now")
-  if [ $(( now - lock_mtime )) -ge ${LOCK_STALE_SECONDS} ]; then
-    rm -rf "$lock_dir"
-    continue
-  fi
-
-  if [ "$now" -ge "$deadline" ]; then
-    exit 1
-  fi
-  sleep 1
-done
-`)}`;
-
-const buildReleaseLockCommand = ({
-  lockDir,
-  ownerToken
-}: {
-  lockDir: string;
-  ownerToken: string;
-}) =>
-  `/bin/bash -c ${shellQuote(`
-lock_dir=${shellQuote(lockDir)}
-owner_token=${shellQuote(ownerToken)}
-if [ -f "$lock_dir/owner" ] && [ "$(cat "$lock_dir/owner" 2>/dev/null)" = "$owner_token" ]; then
-  rm -rf "$lock_dir"
-fi
-`)}`;
-
 const writeEntrypointState = async (
   sandbox: ISandbox,
   { statePath, state }: EntrypointStateContext
@@ -391,8 +260,8 @@ const writeEntrypointState = async (
         path: statePath,
         data: JSON.stringify(
           {
-            ...((state.sandboxEntrypointHashes || []).length > 0
-              ? { sandboxEntrypointHashes: Array.from(new Set(state.sandboxEntrypointHashes)) }
+            ...(state.sandboxEntrypointHash
+              ? { sandboxEntrypointHash: state.sandboxEntrypointHash }
               : {}),
             ...((state.skillEntrypoints || []).length > 0
               ? { skillEntrypoints: Array.from(new Set(state.skillEntrypoints)) }
@@ -496,12 +365,11 @@ const executeEntrypointCommand = async ({
 const normalizeEntrypointState = (value: unknown): EntrypointState => {
   if (!value || typeof value !== 'object') return {};
   const raw = value as EntrypointState;
+
   return {
-    ...(Array.isArray(raw.sandboxEntrypointHashes)
+    ...(typeof raw.sandboxEntrypointHash === 'string'
       ? {
-          sandboxEntrypointHashes: raw.sandboxEntrypointHashes.filter(
-            (item) => typeof item === 'string'
-          )
+          sandboxEntrypointHash: raw.sandboxEntrypointHash
         }
       : {}),
     ...(Array.isArray(raw.skillEntrypoints)

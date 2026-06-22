@@ -17,7 +17,7 @@ const {
   injectAgentSkillFilesToSandboxMock,
   runAgentSandboxEntrypointMock,
   runAgentSkillVersionEntrypointsMock,
-  withAgentSkillRuntimeLockMock,
+  withAgentSandboxInitLeaseMock,
   checkTeamSandboxPermissionMock,
   getAgentRuntimeToolsMock
 } = vi.hoisted(() => ({
@@ -30,7 +30,7 @@ const {
   injectAgentSkillFilesToSandboxMock: vi.fn(),
   runAgentSandboxEntrypointMock: vi.fn(),
   runAgentSkillVersionEntrypointsMock: vi.fn(),
-  withAgentSkillRuntimeLockMock: vi.fn(async ({ fn }: { fn: () => Promise<unknown> }) => fn()),
+  withAgentSandboxInitLeaseMock: vi.fn(async ({ fn }: { fn: () => Promise<unknown> }) => fn()),
   checkTeamSandboxPermissionMock: vi.fn(),
   getAgentRuntimeToolsMock: vi.fn(async () => [])
 }));
@@ -59,7 +59,7 @@ vi.mock('@fastgpt/service/core/ai/skill/runtime', async (importOriginal) => {
 vi.mock('@fastgpt/service/core/ai/skill/runtime/entrypoint', () => ({
   runAgentSandboxEntrypoint: runAgentSandboxEntrypointMock,
   runAgentSkillVersionEntrypoints: runAgentSkillVersionEntrypointsMock,
-  withAgentSkillRuntimeLock: withAgentSkillRuntimeLockMock
+  withAgentSandboxInitLease: withAgentSandboxInitLeaseMock
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/service/runtime', async (importOriginal) => {
@@ -251,8 +251,7 @@ describe('dispatchRunAgent user context', () => {
     injectAgentSkillFilesToSandboxMock.mockResolvedValue([
       {
         versionId: 'version_1',
-        targetDir: '/workspace/projects/version_1',
-        freshlyDeployed: true
+        targetDir: '/workspace/projects/version_1'
       }
     ]);
     getAgentSkillInfosMock.mockResolvedValue([
@@ -603,8 +602,7 @@ describe('dispatchRunAgent user context', () => {
       versions: [
         {
           versionId: 'version_1',
-          targetDir: '/workspace/projects/version_1',
-          freshlyDeployed: true
+          targetDir: '/workspace/projects/version_1'
         }
       ]
     });

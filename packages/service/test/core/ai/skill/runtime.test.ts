@@ -663,8 +663,7 @@ description: Latest current skill
     expect(deployedVersions).toEqual([
       {
         versionId: String(currentVersionId),
-        targetDir: currentTargetDir,
-        freshlyDeployed: false
+        targetDir: currentTargetDir
       }
     ]);
     expect(sandbox.writeFiles).not.toHaveBeenCalled();

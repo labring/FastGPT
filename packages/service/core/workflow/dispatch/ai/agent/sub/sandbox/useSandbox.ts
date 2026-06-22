@@ -9,7 +9,7 @@ import {
 import {
   runAgentSandboxEntrypoint,
   runAgentSkillVersionEntrypoints,
-  withAgentSkillRuntimeLock
+  withAgentSandboxInitLease
 } from '../../../../../../ai/skill/runtime/entrypoint';
 import { getSandboxRuntimeProfile } from '../../../../../../ai/sandbox/runtime/profile';
 import { getSandboxClient, type SandboxClient } from '../../../../../../ai/sandbox/service/runtime';
@@ -135,8 +135,8 @@ export async function useSandbox({
     };
   }
 
-  const { currentWorkingDirectory, skillInfos } = await withAgentSkillRuntimeLock({
-    sandbox: sandboxClient.provider,
+  const { currentWorkingDirectory, skillInfos } = await withAgentSandboxInitLease({
+    sandboxId: sandboxClient.getSandboxId(),
     fn: async () => {
       const [deployedSkillVersions, , currentWorkingDirectory] = await Promise.all([
         injectAgentSkillFilesToSandbox({

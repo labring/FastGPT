@@ -11,6 +11,4 @@ export type DeployedSkillInfo = {
 export type DeployedSkillVersion = {
   versionId: string;
   targetDir: string;
-  /** 本轮重新解压时，即使 HOME 已记录该 versionId 成功，也需要重跑 entrypoint。 */
-  freshlyDeployed: boolean;
 };

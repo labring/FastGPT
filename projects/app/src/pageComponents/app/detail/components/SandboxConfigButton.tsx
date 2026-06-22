@@ -102,7 +102,7 @@ function SandboxConfigButton({
         >
           <Flex alignItems={'center'}>
             <HStack spacing={1}>
-              <FormLabel>{t('app:use_agent_sandbox')}</FormLabel>
+              <FormLabel>{t('app:enable_agent_sandbox')}</FormLabel>
               <QuestionTip label={t('app:use_computer_desc')} />
             </HStack>
             <Box flex={1} />

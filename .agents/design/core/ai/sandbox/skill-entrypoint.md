@@ -13,7 +13,7 @@ Agent Skill 需要支持初始化脚本，但入口脚本不能绑定到 sandbox
 3. entrypoint 在用户文件和 skill 包文件注入完成后执行，且在 `SKILL.md` 扫描注入 prompt 前执行。
 4. 同一个 sandbox 内避免重复执行：
    - sandbox 层入口：当前配置脚本 hash 与 HOME 状态一致时跳过。
-   - skill 层入口：当前 `versionId` 非本轮 fresh deploy，且 HOME 状态记录该版本入口已成功执行时跳过。
+   - skill 层入口：HOME 状态记录当前 `versionId` 已成功执行时跳过。
 5. 脚本失败、超时或状态读写失败不阻断 Agent 初始化。
 6. edit-debug 不自动执行 entrypoint，用户通过 workspace terminal 手动运行。
 
@@ -129,9 +129,9 @@ HOME 解析沿用 ide-agent 逻辑：
 2. `skillEntrypoints`：当前 sandbox 已成功执行过版本包根 `entrypoint.sh` 的 `versionId` 集合。
 
 状态只用于本 sandbox 内的 entrypoint 执行去重，不描述 DB 版本或发布状态。
-有 selected version 时会按本轮 version 集合 reconcile `skillEntrypoints`：未选中的 versionId 会被移除，fresh deploy 后入口失败或不存在时也会清掉对应旧成功状态，避免目录重建后误跳过。状态目录不可用时仍执行脚本但不记录成功状态；状态文件缺失或损坏时会按空状态重建。
+有 selected version 时会按本轮 version 集合 reconcile `skillEntrypoints`：未选中的 versionId 会被移除。状态目录不可用时仍执行脚本但不记录成功状态；状态文件缺失或损坏时会按空状态重建。
 
-状态读写和普通运行态 skill 目录 reconcile 都使用 sandbox HOME 下的目录锁。锁会有限等待并清理陈旧锁；锁机制本身不可用时只记录日志并继续执行，不向上阻断本轮 Agent 初始化。
+状态读写和普通运行态 skill 目录 reconcile 由服务端 Redis per-sandbox lease 保护，不再向 sandbox 文件系统写入 `.lock` 或 `.runtime.lock`。lease 使用 5 分钟 TTL，不做 heartbeat/renew；获取 lease 最多等待 2 分钟，Redis 不可用或等待超时时只记录日志并继续执行，不向上阻断本轮 Agent 初始化。
 
 ## 执行判断
 
@@ -159,14 +159,11 @@ HOME 解析沿用 ide-agent 逻辑：
 => 跳过
 
 entrypoint.sh 存在
-=> 本轮 fresh deploy 时执行，即使 state.skillEntrypoints 已包含 versionId
-=> 非 fresh deploy 且 state.skillEntrypoints 包含 versionId 时跳过
+=> state.skillEntrypoints 包含 versionId 时跳过
 => 状态不可读或不包含 versionId 时执行
 ```
 
 正常发布模型下，同一个 `versionId` 的脚本内容不会变化，因此 skill 层不记录脚本 hash。失败或超时不写入 `versionId`，下轮同一 sandbox 会再次尝试。
-
-如果某个 `versionId` 目录曾被取消选择后清理，HOME 状态可能仍保留该 `versionId`。部署函数会返回 `freshlyDeployed` 瞬时标记：本轮 fresh deploy 的版本必须重新检查并执行入口。`freshlyDeployed` 不写入状态文件。
 
 ## 执行顺序
 
@@ -228,7 +225,7 @@ cd <versionDir> && /bin/bash entrypoint.sh
 2. 不递归执行子目录里的 `entrypoint.sh`。
 3. 新部署版本存在 entrypoint 时执行。
 4. 同一 versionId 已成功执行过时跳过。
-5. 目录被清理后重新部署同一 versionId 时，fresh deploy 会重新执行。
+5. 同一 versionId 的目录被用户或脚本删除后，不额外兜底重跑；正常内容变更应产生新 versionId。
 6. HOME 状态不可用时仍执行，但不写成功状态。
 7. 上次失败或超时后，下轮会再次尝试。
 8. entrypoint 在用户输入文件和 skill 包部署都完成后执行。
