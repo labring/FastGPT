@@ -621,6 +621,8 @@
   "import_unsupported_format": "Unsupported file format",
   "import_empty_file": "File is empty or missing data rows",
   "import_missing_username_column": "Missing required column: Username",
+  "import_missing_password_column": "Missing required column: Password",
+  "import_missing_department_column": "Missing required column: Department",
   "import_no_valid_rows": "No valid data rows in file",
   "import_user_already_exists": "Username already exists: {{usernames}}",
   "importing": "Importing",
