@@ -1,0 +1,10 @@
+{
+  "title": "Chat Agent V2",
+  "root": false,
+  "pages": [
+    "settings",
+    "debug",
+    "vm",
+    "startup"
+  ]
+}

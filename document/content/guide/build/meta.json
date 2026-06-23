@@ -3,6 +3,7 @@
   "root": false,
   "pages": [
     "general",
+    "agentv2",
     "workflow",
     "tools",
     "skill",

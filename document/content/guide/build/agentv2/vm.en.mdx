@@ -1,0 +1,80 @@
+---
+title: Virtual Machine
+description: Understand the core concepts, runtime design, and debugging workflow for the Agent V2 Virtual Machine (Computer Sandbox).
+---
+
+![Virtual Machine Sandbox](/imgs/agent_vm_intro.png)
+
+In FastGPT Agent V2, the **Virtual Machine** is a dedicated, physically isolated, and secure lightweight Linux running sandbox environment provisioned for each chat session. It equips the Agent with real-world computation, code execution, and file read/write capabilities, allowing the AI to not only "think" but also execute code to solve complex tasks like a human programmer.
+
+---
+
+## What is Virtual Machine
+
+When you toggle the "Enable Computer" option, the system dynamically provisions and binds a dedicated sandbox container for each individual chat session in the background.
+
+![Enable Computer](/imgs/agent_vm_enable.png)
+
+With the virtual machine, the Agent can:
+
+- **Execute Dynamic Code**: Run Python, Node.js, or Shell scripts via the code executor to perform complex calculations and data manipulations.
+- **Read and Write Local Files**: Create, modify, and read files in the isolated `/workspace` directory, including generating charts or processing uploaded CSV/Excel sheets.
+- **Customize the Environment & Startup Script**: Dynamically customize the runtime environment by binding SKILL packages, or configuring custom [Startup Scripts](./startup) (which automatically execute specified Shell initialization commands, such as installing dependencies or setting environment variables, after the VM spins up but before the AI workflow starts).
+
+---
+
+## Virtual Machine Design
+
+To balance security, latency, and resource footprint across high-concurrency and multi-tenant environments, the system features the following core designs:
+
+### 1. Session-Level Isolation and Lifecycle Management
+
+- The virtual machine is tightly coupled with the user's chat session. Different users and sessions run in entirely isolated environments.
+- The system utilizes a keepalive mechanism to sustain active containers. When a session remains idle for too long (exceeding the configurable timeout, typically a few minutes), the container is automatically collected and destroyed to release host resources.
+
+### 2. Session Persistence
+
+The virtual machine remains active throughout the duration of a chat session. Dependencies downloaded, temporary files written, or environment variables set in the previous turns remain accessible in subsequent turns.
+
+### 3. Security Constraints & Escape Prevention
+
+- Strict resource quotas (CPU, Memory, Disk IO) and network firewall policies are applied to the sandbox to prevent malicious resource exhaustion or internal network access.
+- All executed commands are encoded in Base64 and decoded securely inside the container to prevent Command Injection risks from string concatenations.
+
+### 4. Instant Sandbox Reconstruction
+
+Clicking "Restart" during testing will thoroughly destroy the current virtual machine. The next request will provision and initialize a clean, brand-new container to prevent historical files from contaminating the session.
+
+---
+
+## Virtual Machine Debugging
+
+When you enable the **Computer** option in the left configuration panel, the Chat Preview window will automatically unlock the following sandbox-exclusive debugging features:
+
+### Virtual Machine File Manager
+
+Shortcut entries to the VM file manager are provided at the top of the chat window and below chat bubbles that involve VM operations. Clicking them pops up a modal to browse, edit, upload, or download files (such as charts, code, and HTML previews) inside the container, achieving a closed debugging loop.
+
+|                                                                |                                                                  |
+| :------------------------------------------------------------: | :--------------------------------------------------------------: |
+| ![Virtual Machine File Bubble](/imgs/agent_vm_file_bubble.png) | ![Virtual Machine File Manager](/imgs/agent_vm_file_manager.png) |
+
+### Automatic Dialog File Injection
+
+Any files you upload via the chat input box (such as CSV or Excel sheets) are automatically downloaded and written into the VM's `user_files/` directory before execution, allowing the AI to read and process them as local files via code.
+
+### Code Execution and Self-Correction
+
+The virtual machine provides a real execution environment. If code fails due to missing dependencies or syntax errors, the error logs are real-time fed back to the LLM, enabling the AI to self-correct and re-run within multi-turn planning.
+
+### Pre-emptive Initialization and State Persistence
+
+With the Computer option enabled, the system automatically spins up and prepares the sandbox environment before each chat session starts. All files, dependencies, and execution states are persisted across chat steps to support continuous multi-turn debugging.
+
+### Real-time Startup Status Tracking
+
+During testing, the chat bubble header streams real-time VM provisioning updates, allowing you to audit the startup progress and duration.
+
+### Complete Sandbox Reconstruction upon Reset
+
+Clicking the "Restart" button resets the test session, and the next interaction will provision and initialize a clean, brand-new VM container to prevent historical file contamination.
