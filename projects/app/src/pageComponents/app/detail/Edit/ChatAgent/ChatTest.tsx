@@ -29,6 +29,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import ChatVariableButton from '@/pageComponents/chat/ChatWindow/ChatVariableButton';
+import ProModal from '@/components/ProTip/ProModal';
 
 type Props = {
   appForm: AppFormEditFormType;
@@ -51,6 +52,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
   });
 
   const [activeTab, setActiveTab] = useSafeState<'helper' | 'chat_debug'>('chat_debug');
+  const [proModalOpen, setProModalOpen] = useSafeState(false);
   const HelperBotRef = useRef<HelperBotRefType>(null);
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
@@ -154,6 +156,10 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
             ]}
             value={activeTab}
             onChange={(value) => {
+              if (value === 'helper' && !feConfigs?.isPlus) {
+                setProModalOpen(true);
+                return;
+              }
               setActiveTab(value);
             }}
           />
@@ -253,6 +259,9 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
       )}
 
       <SandboxEditorModal />
+      {!feConfigs?.isPlus && (
+        <ProModal isOpen={proModalOpen} onClose={() => setProModalOpen(false)} />
+      )}
     </Flex>
   );
 };
