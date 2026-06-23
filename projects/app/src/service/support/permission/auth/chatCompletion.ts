@@ -6,9 +6,8 @@ import type {
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { AuthUserTypeEnum, ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { notLeaveStatus } from '@fastgpt/global/support/user/team/constant';
-import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import { authApp, authAppByApiKeyTeam } from '@fastgpt/service/support/permission/app/auth';
+import { authApp, authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
@@ -25,14 +24,14 @@ export const resolveChatCompletionEffectiveTmbId = async ({
   authProxy,
   teamId,
   tmbId,
-  apiKeyAppId,
+  legacyAppId,
   apiKeyAuthProxy
 }: {
   authType: AuthUserTypeEnum;
   authProxy?: ChatCompletionAuthProxy;
   teamId: string;
   tmbId: string;
-  apiKeyAppId?: string;
+  legacyAppId?: string;
   apiKeyAuthProxy?: boolean;
 }) => {
   if (!authProxy) {
@@ -42,7 +41,7 @@ export const resolveChatCompletionEffectiveTmbId = async ({
     };
   }
 
-  if (authType !== AuthUserTypeEnum.apikey || apiKeyAppId || !apiKeyAuthProxy) {
+  if (authType !== AuthUserTypeEnum.apikey || legacyAppId || !apiKeyAuthProxy) {
     return Promise.reject(ChatErrEnum.unAuthChat);
   }
 
@@ -103,10 +102,9 @@ export const resolveChatCompletionEffectiveTmbId = async ({
 /**
  * 鉴权 Chat Completions 头部请求，并返回后续对话运行需要的应用、团队和成员上下文。
  *
- * API Key 必须绑定 appId 或在请求体显式传 appId。app APIKey 现阶段兼容请求体
- * appId 优先：即使与 key 绑定 appId 不一致，只要目标应用属于同一 team 即允许。
- * 这是不安全且不合理的临时策略，后续需要收敛回 key 绑定应用。全局 API Key 只有
- * 在 key 记录开启 authProxy 时，才能把运行身份切换到团队内的指定成员。
+ * API Key 先完成凭证鉴权，再按 body.appId > apiKey-appId > legacyAppId 解析应用。
+ * authProxy 只改变本次 completions 的 effective tmbId；应用和会话权限继续按
+ * effective tmbId 走现有权限链路，不能因为 APIKey 创建者有权限而绕过代理成员权限。
  */
 export const authChatCompletionHeaderRequest = async ({
   req,
@@ -121,77 +119,63 @@ export const authChatCompletionHeaderRequest = async ({
   authProxy?: ChatCompletionAuthProxy;
   showSkillReferences?: boolean;
 }): Promise<AuthResponseType> => {
-  const {
-    appId: authorizedAppId,
-    apiKeyAppId,
-    apiKeyAuthProxy,
-    teamId,
-    tmbId,
-    authType,
-    sourceName,
-    apikey
-  } = await authCert({
-    req,
-    authToken: true,
-    authApiKey: true,
-    authAppApiKey: true
-  });
-
-  const { app } = await (async () => {
-    if (authType === AuthUserTypeEnum.apikey) {
-      const currentAppId = appId || authorizedAppId;
-      if (!currentAppId) {
-        return Promise.reject(
-          'Key is error. You need to use the app key rather than the account key.'
-        );
-      }
-      const app = apiKeyAppId
-        ? (await authAppByApiKeyTeam({ teamId, appId: currentAppId })).app
-        : await MongoApp.findOne({ _id: currentAppId, teamId });
-
-      if (!app) {
-        return Promise.reject('app is empty');
-      }
-
-      appId = String(app._id);
-
-      return {
-        app
-      };
-    }
-
-    if (!appId) {
-      return Promise.reject('appId is empty');
-    }
-    const { app } = await authApp({
+  const { legacyAppId, parsedAppId, apiKeyAuthProxy, teamId, tmbId, authType, sourceName, apikey } =
+    await authCert({
       req,
       authToken: true,
-      appId,
-      per: ReadPermissionVal
+      authApiKey: true
     });
 
-    return {
-      app
-    };
-  })();
-
-  const { tmbId: effectiveTmbId, isProxy } = await resolveChatCompletionEffectiveTmbId({
+  const { tmbId: effectiveTmbId } = await resolveChatCompletionEffectiveTmbId({
     authType,
     authProxy,
     teamId,
     tmbId,
-    apiKeyAppId,
+    legacyAppId,
     apiKeyAuthProxy
   });
 
-  const chat = await MongoChat.findOne({ appId, chatId }).lean();
-  const shouldCheckChatMember =
-    authType === AuthUserTypeEnum.token || (authType === AuthUserTypeEnum.apikey && isProxy);
+  const currentAppId =
+    authType === AuthUserTypeEnum.apikey ? appId || parsedAppId || legacyAppId : appId;
+
+  if (!currentAppId) {
+    return Promise.reject('appId is empty');
+  }
+
+  const { app, permission } = await (async () => {
+    if (authType === AuthUserTypeEnum.apikey) {
+      const { app } = await authAppByTmbId({
+        tmbId: effectiveTmbId,
+        appId: currentAppId,
+        per: ReadPermissionVal
+      });
+
+      return {
+        app,
+        permission: app.permission
+      };
+    }
+
+    const { app, permission } = await authApp({
+      req,
+      authToken: true,
+      appId: currentAppId,
+      per: ReadPermissionVal
+    });
+
+    return {
+      app,
+      permission
+    };
+  })();
+
+  appId = String(app._id);
+  const chat = chatId ? await MongoChat.findOne({ appId, chatId }).lean() : null;
 
   if (
     chat &&
     (String(chat.teamId) !== teamId ||
-      (shouldCheckChatMember && String(chat.tmbId) !== effectiveTmbId))
+      (!permission.hasReadChatLogPer && String(chat.tmbId) !== effectiveTmbId))
   ) {
     return Promise.reject(ChatErrEnum.unAuthChat);
   }

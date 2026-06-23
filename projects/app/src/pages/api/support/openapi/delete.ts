@@ -1,6 +1,5 @@
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import { authOpenApiKeyCrud } from '@fastgpt/service/support/permission/auth/openapi';
-import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
@@ -29,8 +28,7 @@ async function handler(
   const { tmbId, teamId, openapi } = await authOpenApiKeyCrud({
     req,
     authToken: true,
-    id,
-    per: OwnerPermissionVal
+    id
   });
 
   (async () => {

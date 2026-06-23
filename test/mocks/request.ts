@@ -45,7 +45,8 @@ export type parseHeaderCertRet = {
   teamId: string;
   tmbId: string;
   appId: string;
-  apiKeyAppId?: string;
+  legacyAppId?: string;
+  parsedAppId?: string;
   authType: AuthUserTypeEnum;
   sourceName: string | undefined;
   apikey: string;
@@ -69,14 +70,12 @@ vi.mock('@fastgpt/service/support/permission/auth/common', async (importOriginal
       req,
       authToken = false,
       authRoot = false,
-      authApiKey = false,
-      authAppApiKey = false
+      authApiKey = false
     }: {
       req: MockReqType;
       authToken?: boolean;
       authRoot?: boolean;
       authApiKey?: boolean;
-      authAppApiKey?: boolean;
     }) => {
       const { auth } = req;
       if (!auth) {
@@ -113,14 +112,12 @@ vi.mock('@fastgpt/service/support/permission/memberGroup/controllers', async (im
       req,
       authToken = false,
       authRoot = false,
-      authApiKey = false,
-      authAppApiKey = false
+      authApiKey = false
     }: {
       req: MockReqType;
       authToken?: boolean;
       authRoot?: boolean;
       authApiKey?: boolean;
-      authAppApiKey?: boolean;
     }) => {
       const { auth } = req;
       if (!auth) {

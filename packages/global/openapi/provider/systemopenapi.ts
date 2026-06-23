@@ -98,7 +98,8 @@ export const apiDocOpenAPIDocument = createDocument({
         type: 'http',
         scheme: 'bearer',
         bearerFormat: 'API Key',
-        description: '在 Authorization 请求头中传入 Bearer <apiKey>。'
+        description:
+          '在 Authorization 请求头中传入 Bearer <apiKey>。除 chat/completions 外，对话相关接口必须在 body/query 中显式传入 appId。chat/completions 推荐传 body.appId；为兼容 OpenAI SDK，也允许 Bearer <apiKey>-<appId>，该后缀仅作为传输兼容，不会写入数据库。'
       }
     }
   },

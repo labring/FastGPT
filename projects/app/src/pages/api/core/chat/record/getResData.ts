@@ -23,7 +23,6 @@ export async function handler(req: ApiRequestProps): Promise<ChatHistoryItemResT
       req,
       authToken: true,
       authApiKey: true,
-      authAppApiKey: true,
       appId,
       chatId,
       shareId,

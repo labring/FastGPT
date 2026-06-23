@@ -1,7 +1,5 @@
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -15,56 +13,25 @@ import {
 async function handler(
   req: ApiRequestProps<any, GetApiKeyListQueryType>
 ): Promise<GetApiKeyListResponseType> {
-  const { appId } = parseApiInput({
+  parseApiInput({
     req,
     querySchema: GetApiKeyListQuerySchema
-  }).query;
-
-  if (appId) {
-    // app-level apikey
-    const { permission } = await authApp({
-      req,
-      authToken: true,
-      appId,
-      per: ManagePermissionVal
-    });
-
-    const findResponse = await MongoOpenApi.find({
-      appId
-    }).sort({ _id: -1 });
-
-    return GetApiKeyListResponseSchema.parse(
-      findResponse.map((item) => {
-        const canCopy = permission.isOwner;
-
-        return {
-          ...item.toObject({ getters: true }),
-          canCopy
-        };
-      })
-    );
-  }
-  // global apikey
-  const { teamId, tmbId, permission } = await authUserPer({
+  });
+  const { teamId, tmbId } = await authUserPer({
     req,
     authToken: true
   });
 
   const findResponse = await MongoOpenApi.find({
-    appId,
     teamId,
-    ...(!permission.hasManagePer && { tmbId }) // if not manager, read own key
+    tmbId
   }).sort({ _id: -1 });
 
   return GetApiKeyListResponseSchema.parse(
-    findResponse.map((item) => {
-      const canCopy = permission.isOwner || String(item.tmbId) === tmbId;
-
-      return {
-        ...item.toObject({ getters: true }),
-        canCopy
-      };
-    })
+    findResponse.map((item) => ({
+      ...item.toObject({ getters: true }),
+      canCopy: true
+    }))
   );
 }
 

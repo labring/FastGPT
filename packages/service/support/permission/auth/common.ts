@@ -31,8 +31,7 @@ export async function parseHeaderCert({
   req,
   authToken = false,
   authRoot = false,
-  authApiKey = false,
-  authAppApiKey = false
+  authApiKey = false
 }: AuthModeType) {
   // parse jwt
   async function authCookieToken(cookie?: string, token?: string) {
@@ -52,7 +51,7 @@ export async function parseHeaderCert({
       return Promise.reject(ERROR_ENUM.unAuthorization);
     }
 
-    // Authorization 后面的 token 整体就是 APIKey，不再解析历史的 key-appId 形式。
+    // Authorization 支持真实 APIKey，也支持仅作传输兼容的 apiKey-appId。
     const apikey = authorization.split(' ')[1];
     if (!apikey) {
       return Promise.reject(ERROR_ENUM.unAuthorization);
@@ -62,22 +61,23 @@ export async function parseHeaderCert({
     const {
       teamId,
       tmbId,
-      appId: apiKeyAppId = '',
+      apikey: realApiKey,
+      legacyAppId = '',
+      parsedAppId = '',
       authProxy,
       sourceName
     } = await authOpenApiKey({
       apikey,
-      authApiKey,
-      authAppApiKey
+      authApiKey
     });
 
     return {
       uid: '',
       teamId,
       tmbId,
-      apikey,
-      appId: apiKeyAppId,
-      apiKeyAppId,
+      apikey: realApiKey,
+      legacyAppId,
+      parsedAppId,
       apiKeyAuthProxy: authProxy,
       sourceName
     };
@@ -101,18 +101,20 @@ export async function parseHeaderCert({
     isRoot,
     sourceName,
     sessionId,
-    apiKeyAppId,
+    legacyAppId,
+    parsedAppId,
     apiKeyAuthProxy
   } = await (async () => {
-    if ((authApiKey || authAppApiKey) && authorization) {
+    if (authApiKey && authorization) {
       // apikey from authorization
       const authResponse = await parseAuthorization(authorization);
       return {
         uid: authResponse.uid,
         teamId: authResponse.teamId,
         tmbId: authResponse.tmbId,
-        appId: authResponse.appId,
-        apiKeyAppId: authResponse.apiKeyAppId,
+        appId: '',
+        legacyAppId: authResponse.legacyAppId,
+        parsedAppId: authResponse.parsedAppId,
         openApiKey: authResponse.apikey,
         authType: AuthUserTypeEnum.apikey,
         apiKeyAuthProxy: authResponse.apiKeyAuthProxy,
@@ -162,7 +164,8 @@ export async function parseHeaderCert({
     appId,
     authType,
     sourceName,
-    apiKeyAppId,
+    legacyAppId,
+    parsedAppId,
     apiKeyAuthProxy,
     apikey: openApiKey,
     isRoot: !!isRoot,

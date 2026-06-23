@@ -150,7 +150,7 @@ const OutLink = () => {
         {linkType === PublishChannelEnum.share && (
           <Link appId={appId} type={PublishChannelEnum.share} />
         )}
-        {linkType === PublishChannelEnum.apikey && <API appId={appId} />}
+        {linkType === PublishChannelEnum.apikey && <API />}
         {linkType === PublishChannelEnum.feishu && <FeiShu appId={appId} />}
         {linkType === PublishChannelEnum.dingtalk && <DingTalk appId={appId} />}
         {linkType === PublishChannelEnum.wecom && <Wecom appId={appId} />}

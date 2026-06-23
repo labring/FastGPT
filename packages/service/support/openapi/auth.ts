@@ -5,32 +5,49 @@ import type { OpenApiSchema } from '@fastgpt/global/support/openapi/type';
 
 export type AuthOpenApiLimitProps = { openApi: OpenApiSchema };
 
-export type OpenApiKeyType = 'team' | 'app';
+const ApiKeyAppIdCredentialReg = /^(.+)-([a-fA-F0-9]{24})$/;
+
+/**
+ * 解析开放接口 Authorization 中的 APIKey 凭证。
+ *
+ * `apiKey-appId` 仅用于 OpenAI SDK 兼容，后缀必须是 24 位 ObjectId；
+ * 命中时只用真实 APIKey 查库，`parsedAppId` 作为 completions 的 appId 兜底来源。
+ */
+export function resolveOpenApiCredential(rawCredential: string) {
+  const credential = rawCredential.trim();
+  const match = credential.match(ApiKeyAppIdCredentialReg);
+
+  if (!match) {
+    return {
+      apikey: credential,
+      parsedAppId: ''
+    };
+  }
+
+  return {
+    apikey: match[1],
+    parsedAppId: match[2]
+  };
+}
 
 export async function authOpenApiKey({
   apikey,
-  authApiKey = true,
-  authAppApiKey = false
+  authApiKey = true
 }: {
   apikey: string;
   authApiKey?: boolean;
-  authAppApiKey?: boolean;
 }) {
   if (!apikey) {
     return Promise.reject(ERROR_ENUM.unAuthApiKey);
   }
   try {
-    const openApi = await MongoOpenApi.findOne({ apiKey: apikey.trim() }).lean();
-    if (!openApi) {
+    if (!authApiKey) {
       return Promise.reject(ERROR_ENUM.unAuthApiKey);
     }
 
-    const keyType: OpenApiKeyType = openApi.appId ? 'app' : 'team';
-    const isAllowedKeyType =
-      (keyType === 'team' && authApiKey) || (keyType === 'app' && authAppApiKey);
-
-    // 调用点必须显式声明接受 team/app APIKey，拒绝时不能触发限额与使用时间更新。
-    if (!isAllowedKeyType) {
+    const { apikey: realApiKey, parsedAppId } = resolveOpenApiCredential(apikey);
+    const openApi = await MongoOpenApi.findOne({ apiKey: realApiKey }).lean();
+    if (!openApi) {
       return Promise.reject(ERROR_ENUM.unAuthApiKey);
     }
 
@@ -42,13 +59,13 @@ export async function authOpenApiKey({
     updateApiKeyUsedTime(openApi._id);
 
     return {
-      apikey,
+      apikey: realApiKey,
       teamId: String(openApi.teamId),
       tmbId: String(openApi.tmbId),
-      appId: openApi.appId || '',
+      legacyAppId: openApi.appId || '',
+      parsedAppId,
       authProxy: !!openApi.authProxy,
-      sourceName: openApi.name,
-      keyType
+      sourceName: openApi.name
     };
   } catch (error) {
     return Promise.reject(error);

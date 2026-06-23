@@ -504,7 +504,7 @@ describe('authChatCrud', () => {
       });
     });
 
-    it('should pass authAppApiKey option to app auth', async () => {
+    it('should pass APIKey auth option to app auth', async () => {
       vi.mocked(authApp).mockResolvedValue({
         teamId: 'team1',
         tmbId: 'tmb1',
@@ -518,15 +518,13 @@ describe('authChatCrud', () => {
         appId: 'app1',
         req: {} as any,
         authToken: true,
-        authApiKey: true,
-        authAppApiKey: true
+        authApiKey: true
       });
 
       expect(vi.mocked(authApp)).toHaveBeenCalledWith(
         expect.objectContaining({
           authToken: true,
           authApiKey: true,
-          authAppApiKey: true,
           appId: 'app1'
         })
       );

@@ -102,8 +102,8 @@ curl --location --request POST 'https://{{host}}/api/admin/initSandboxArchive' \
 5. 新增循环节点，弃用旧的批量执行。
 6. 知识库搜索支持原生多模态 embedding 模型、图搜图和 Agent 模式权限过滤。
 7. 多模态模型支持音视频输入。
-8. API 密钥逻辑优化，明确划分应用 API 与全局 api。
-9. 生成多份 API 文档，区分 DevAPI、App OpenAPI、System OpenAPI。
+8. API 密钥逻辑优化，统一 APIKey 管理并由请求显式传入应用上下文。
+9. 生成 DevAPI 和 System OpenAPI 两套 API 文档。
 10. 支持快速回复的输出语法。
 11. 第三方知识库新增钉钉知识库接入。
 12. 增加模型思考配置。

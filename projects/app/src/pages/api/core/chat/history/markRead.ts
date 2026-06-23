@@ -15,7 +15,6 @@ export async function handler(req: ApiRequestProps, _res: ApiResponseType): Prom
     req,
     authToken: true,
     authApiKey: true,
-    authAppApiKey: true,
     per: WritePermissionVal
   });
 

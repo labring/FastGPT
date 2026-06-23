@@ -242,13 +242,18 @@ describe('batchDelete api test', () => {
     expect(res.error).toBeDefined();
   });
 
-  it('should reject app APIKey without chat log permission', async () => {
+  it('should reject APIKey member without chat log permission', async () => {
+    const noLogPermissionUser = await getUser(
+      'no-log-permission-user-batch-delete',
+      testUser.teamId
+    );
+
     const res = await Call<ChatBatchDeleteBodyType, EmptyQuery>(handler, {
       auth: {
-        ...testUser,
+        ...noLogPermissionUser,
         authType: AuthUserTypeEnum.apikey,
         appId,
-        apiKeyAppId: appId,
+        legacyAppId: appId,
         apikey: 'app-api-key'
       },
       body: {

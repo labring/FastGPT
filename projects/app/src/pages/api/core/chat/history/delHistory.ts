@@ -20,8 +20,7 @@ export async function handler(req: ApiRequestProps, res: NextApiResponse) {
     ...query,
     req,
     authToken: true,
-    authApiKey: true,
-    authAppApiKey: true
+    authApiKey: true
   });
   const matchAppId = appId || authAppId;
   if (!matchAppId) return Promise.reject('Param are error');

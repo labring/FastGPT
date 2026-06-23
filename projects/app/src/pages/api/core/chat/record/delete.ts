@@ -21,7 +21,6 @@ async function handler(req: ApiRequestProps): Promise<DeleteChatRecordResponseTy
     req,
     authToken: true,
     authApiKey: true,
-    authAppApiKey: true,
     appId,
     chatId,
     ...authProps

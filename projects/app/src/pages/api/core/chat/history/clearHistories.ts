@@ -21,7 +21,6 @@ export async function handler(req: ApiRequestProps, res: NextApiResponse) {
     req,
     authToken: true,
     authApiKey: true,
-    authAppApiKey: true,
     ...query
   });
   const matchAppId = appId || authAppId;

@@ -88,11 +88,3 @@ export const SystemOpenApiTagMap = {
   datasetDataIndex: 'systemOpenAPI:datasetDataIndex',
   datasetOther: 'systemOpenAPI:datasetOther'
 };
-
-export const AppOpenApiTagMap = {
-  appLog: 'appOpenAPI:appLog',
-
-  chatHistory: 'appOpenAPI:chatHistory',
-  chat: 'appOpenAPI:chat',
-  chatController: 'appOpenAPI:chatController'
-};

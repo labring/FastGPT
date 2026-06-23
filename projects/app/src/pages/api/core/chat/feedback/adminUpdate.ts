@@ -19,7 +19,6 @@ async function handler(req: ApiRequestProps): Promise<AdminUpdateFeedbackRespons
     req,
     authToken: true,
     authApiKey: true,
-    authAppApiKey: true,
     appId,
     chatId
   });

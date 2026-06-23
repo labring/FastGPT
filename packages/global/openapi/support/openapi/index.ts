@@ -20,7 +20,7 @@ export const ApiKeyPath: OpenAPIPath = {
   '/support/openapi/create': {
     post: {
       summary: '创建 API Key',
-      description: '创建团队级或应用级 API Key',
+      description: '创建 API Key',
       tags: [DevApiTagsMap.apiKey],
       requestBody: {
         content: {
@@ -44,7 +44,7 @@ export const ApiKeyPath: OpenAPIPath = {
   '/support/openapi/list': {
     get: {
       summary: '获取 API Key 列表',
-      description: '获取团队级或指定应用下的 API Key 列表',
+      description: '获取当前登录成员创建的 API Key 列表',
       tags: [DevApiTagsMap.apiKey],
       requestParams: {
         query: GetApiKeyListQuerySchema

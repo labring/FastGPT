@@ -5,12 +5,31 @@ description: FastGPT OpenAPI Introduction
 
 ## Automated API Documentation
 
-The automated API documentation covers all endpoints in the current version, regardless of whether they can be called via API Key.
+Starting with `4.15.0`, FastGPT API docs are generated with `zod-openapi`. Some legacy endpoints have not been migrated yet, so they may not appear in the generated docs.
 
-All future endpoints will be auto-generated, with documentation continuously improved.
+FastGPT provides two generated API documents:
 
-- [China Mainland API Documentation](https://cloud.fastgpt.cn/openapi)
-- [International API Documentation](https://cloud.fastgpt.io/openapi)
+- Dev API: all development APIs. Not every endpoint can be called with an API Key.
+- System OpenAPI: public endpoints that support API Key authentication.
+
+## API Documentation URLs
+
+Use your FastGPT endpoint as the base URL and append the path below:
+
+- Dev API: `{{endpoint}}/apidoc/devapi`
+- System OpenAPI: `{{endpoint}}/apidoc/systemopenapi`
+
+## Cloud API Documentation URLs
+
+**Dev API:**
+
+- [China Mainland Documentation](https://cloud.fastgpt.cn/apidoc/devapi)
+- [International Documentation](https://cloud.fastgpt.io/apidoc/devapi)
+
+**System OpenAPI:**
+
+- [China Mainland Documentation](https://cloud.fastgpt.cn/apidoc/systemopenapi)
+- [International Documentation](https://cloud.fastgpt.io/apidoc/systemopenapi)
 
 ## Usage Guide
 
@@ -22,20 +41,14 @@ FastGPT OpenAPI lets you authenticate with an API Key to access FastGPT services
 
 ![](../../public/imgs/fastgpt-api-baseurl.png)
 
-## API Key Types
+## API Key
 
-FastGPT has **two types of API Keys**: **Global API Keys** and **App API Keys**. They are created in different places, have different isolation boundaries, and support different APIs.
+FastGPT uses a unified API Key model. API Keys are member credentials and are not bound to a single app.
 
-| Type           | Where to create it             | Isolation                                        | Typical use                                                                                                                                                                                                                                                           |
-| -------------- | ------------------------------ | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Global API Key | Account settings -> API Keys   | Team-level key that is not bound to a single app | Call general OpenAPI endpoints that support API Key authentication. To call `chat/completions`, pass `appId` in the request body. Since `v4.15.0`, the team owner can enable `authProxy` for the key to proxy a team member identity, and the request body must include `authProxy`. |
-| App API Key    | App -> Publish Channels -> API | App-scoped key. Each key belongs to one app only | Call the `chat/completions` endpoint for that app. The key is already bound to the app, so you do not need to pass `appId`. App API Keys do not support `authProxy`.                                                                                                  |
-
-Use an `App API Key` when a third-party client or external system only needs to chat with one app. Use a `Global API Key` for server-side integrations that manage shared resources such as Knowledge Bases or apps, or when `chat/completions` needs `authProxy`.
-
-| Global API Key                          | App API Key                             |
-| --------------------------------------- | --------------------------------------- |
-| ![](../../public/imgs/fastgpt-api2.jpg) | ![](../../public/imgs/fastgpt-api1.jpg) |
+- For app-related endpoints other than `chat/completions`, pass `appId` explicitly in the request body or query.
+- For `chat/completions`, passing `body.appId` is recommended.
+- For OpenAI SDK compatibility, `Authorization: Bearer <apiKey>-<appId>` is also supported for `chat/completions`. The `-<appId>` suffix is only a transport compatibility format and is not stored.
+- Team owners can enable `authProxy` on an API Key to let `chat/completions` run as another team member. This does not skip app or chat permission checks.
 
 ## Basic Configuration
 
@@ -55,6 +68,7 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
 --header 'Authorization: Bearer fastgpt-xxxxxx' \
 --header 'Content-Type: application/json' \
 --data-raw '{
+    "appId": "your_app_id",
     "chatId": "111",
     "stream": false,
     "detail": false,
@@ -76,6 +90,7 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
 --header 'Authorization: Bearer fastgpt-xxxxxx' \
 --header 'Content-Type: application/json' \
 --data-raw '{
+    "appId": "your_app_id",
     "chatId": "111",
     "stream": false,
     "detail": false,

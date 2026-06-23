@@ -7,6 +7,62 @@ import { Call } from '@test/utils/request';
 import { describe, expect, it } from 'vitest';
 
 describe('support/openapi/update', () => {
+  it('member can update their own APIKey base fields', async () => {
+    const { members } = await getFakeUsers(1);
+    const [member] = members;
+    const openapi = await MongoOpenApi.create({
+      teamId: member.teamId,
+      tmbId: member.tmbId,
+      apiKey: 'fastgpt-member-update-own',
+      name: 'member key',
+      limit: {
+        maxUsagePoints: 100
+      }
+    });
+
+    const res = await Call<UpdateApiKeyBodyType>(handler, {
+      auth: member,
+      body: {
+        _id: String(openapi._id),
+        name: 'member updated key',
+        limit: {
+          maxUsagePoints: 200
+        }
+      }
+    });
+
+    expect(res.error).toBeUndefined();
+    expect(res.code).toBe(200);
+
+    const updated = await MongoOpenApi.findById(openapi._id).lean();
+    expect(updated?.name).toBe('member updated key');
+    expect(updated?.limit?.maxUsagePoints).toBe(200);
+  });
+
+  it('team owner cannot update other member APIKey', async () => {
+    const { owner, members } = await getFakeUsers(1);
+    const [member] = members;
+    const openapi = await MongoOpenApi.create({
+      teamId: member.teamId,
+      tmbId: member.tmbId,
+      apiKey: 'fastgpt-member-update-private',
+      name: 'member private key'
+    });
+
+    const res = await Call<UpdateApiKeyBodyType>(handler, {
+      auth: owner,
+      body: {
+        _id: String(openapi._id),
+        name: 'owner updated key'
+      }
+    });
+
+    expect(res.code).toBe(500);
+
+    const updated = await MongoOpenApi.findById(openapi._id).lean();
+    expect(updated?.name).toBe('member private key');
+  });
+
   it('team owner can enable authProxy for global APIKey', async () => {
     const { owner } = await getFakeUsers(1);
     const openapi = await MongoOpenApi.create({

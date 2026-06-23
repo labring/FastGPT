@@ -1,6 +1,5 @@
 import type { EditApiKeyProps } from '@/global/support/openapi/api';
 import * as createapi from '@/pages/api/support/openapi/create';
-import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { TeamApikeyCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
@@ -9,20 +8,23 @@ import { getFakeUsers } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { describe, it, expect } from 'vitest';
 
-describe('create dataset', () => {
-  it('should return 200 when create dataset success', async () => {
+describe('support/openapi/create', () => {
+  it('creates system APIKeys and ignores legacy appId input', async () => {
     const users = await getFakeUsers(2);
-    await MongoResourcePermission.create({
-      resourceType: 'team',
-      teamId: users.members[0].teamId,
-      resourceId: null,
-      tmbId: users.members[0].tmbId,
-      permission: TeamApikeyCreatePermissionVal
-    });
+    await MongoResourcePermission.create(
+      users.members.map((member) => ({
+        resourceType: 'team',
+        teamId: member.teamId,
+        resourceId: null,
+        tmbId: member.tmbId,
+        permission: TeamApikeyCreatePermissionVal
+      }))
+    );
+
     const res = await Call<EditApiKeyProps>(createapi.default, {
       auth: users.members[0],
       body: {
-        name: 'test',
+        name: 'system key',
         limit: {
           maxUsagePoints: 1000
         }
@@ -31,13 +33,12 @@ describe('create dataset', () => {
     expect(res.error).toBeUndefined();
     expect(res.code).toBe(200);
 
-    await MongoResourcePermission.create({
-      resourceType: 'app',
-      teamId: users.members[1].teamId,
-      resourceId: null,
-      tmbId: users.members[1].tmbId,
-      permission: ManagePermissionVal
-    });
+    const systemKey = await MongoOpenApi.findOne({
+      teamId: users.members[0].teamId,
+      tmbId: users.members[0].tmbId,
+      name: 'system key'
+    }).lean();
+    expect(systemKey?.appId).toBeUndefined();
 
     const app = await MongoApp.create({
       name: 'a',
@@ -49,14 +50,21 @@ describe('create dataset', () => {
       auth: users.members[1],
       body: {
         appId: app._id,
-        name: 'test',
+        name: 'legacy appId input key',
         limit: {
           maxUsagePoints: 1000
         }
-      }
+      } as EditApiKeyProps
     });
     expect(res2.error).toBeUndefined();
     expect(res2.code).toBe(200);
+
+    const legacyInputKey = await MongoOpenApi.findOne({
+      teamId: users.members[1].teamId,
+      tmbId: users.members[1].tmbId,
+      name: 'legacy appId input key'
+    }).lean();
+    expect(legacyInputKey?.appId).toBeUndefined();
   });
 
   it('team owner can create global APIKey with authProxy enabled', async () => {
@@ -108,7 +116,7 @@ describe('create dataset', () => {
     expect(await MongoOpenApi.findOne({ name: 'member auth proxy key' })).toBeNull();
   });
 
-  it('app APIKey cannot enable authProxy', async () => {
+  it('legacy appId input is ignored when owner enables authProxy', async () => {
     const users = await getFakeUsers(1);
     const app = await MongoApp.create({
       name: 'auth proxy app',
@@ -126,10 +134,18 @@ describe('create dataset', () => {
         limit: {
           maxUsagePoints: 1000
         }
-      }
+      } as EditApiKeyProps
     });
 
-    expect(res.code).toBe(500);
-    expect(await MongoOpenApi.findOne({ name: 'app auth proxy key' })).toBeNull();
+    expect(res.error).toBeUndefined();
+    expect(res.code).toBe(200);
+
+    const openapi = await MongoOpenApi.findOne({
+      teamId: users.owner.teamId,
+      tmbId: users.owner.tmbId,
+      name: 'app auth proxy key'
+    }).lean();
+    expect(openapi?.authProxy).toBe(true);
+    expect(openapi?.appId).toBeUndefined();
   });
 });

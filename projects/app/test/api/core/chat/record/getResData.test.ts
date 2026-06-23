@@ -65,7 +65,6 @@ describe('getResData handler', () => {
     expect(mocks.authChatCrud).toHaveBeenCalledWith(
       expect.objectContaining({
         authApiKey: true,
-        authAppApiKey: true,
         appId,
         chatId
       })

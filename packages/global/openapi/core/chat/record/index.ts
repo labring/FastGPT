@@ -1,5 +1,5 @@
 import type { OpenAPIPath } from '../../../type';
-import { AppOpenApiTagMap, DevApiTagsMap, SystemOpenApiTagMap } from '../../../tag';
+import { DevApiTagsMap, SystemOpenApiTagMap } from '../../../tag';
 import {
   GetResDataQuerySchema,
   DeleteChatRecordBodySchema,
@@ -20,7 +20,7 @@ export const ChatRecordPath: OpenAPIPath = {
     post: {
       summary: '分页获取对话',
       description: '分页获取指定应用和会话的对话，支持多种鉴权模式',
-      tags: [DevApiTagsMap.chatRecord, SystemOpenApiTagMap.chat, AppOpenApiTagMap.chat],
+      tags: [DevApiTagsMap.chatRecord, SystemOpenApiTagMap.chat],
       requestBody: {
         content: {
           'application/json': {
@@ -44,7 +44,7 @@ export const ChatRecordPath: OpenAPIPath = {
     post: {
       summary: '根据锚点获取对话',
       description: '根据锚点获取指定应用和会话的对话，支持多种鉴权模式',
-      tags: [DevApiTagsMap.chatRecord, SystemOpenApiTagMap.chat, AppOpenApiTagMap.chat],
+      tags: [DevApiTagsMap.chatRecord, SystemOpenApiTagMap.chat],
       requestBody: {
         content: {
           'application/json': {
@@ -69,7 +69,7 @@ export const ChatRecordPath: OpenAPIPath = {
     get: {
       summary: '获取对话响应详细数据',
       description: '根据 dataId 获取对话中某条 AI 回复的详细响应数据',
-      tags: [DevApiTagsMap.chatRecord, SystemOpenApiTagMap.chat, AppOpenApiTagMap.chat],
+      tags: [DevApiTagsMap.chatRecord, SystemOpenApiTagMap.chat],
       requestParams: {
         query: GetResDataQuerySchema
       },
@@ -134,7 +134,7 @@ export const ChatRecordPath: OpenAPIPath = {
     delete: {
       summary: '删除对话',
       description: '软删除指定的对话消息记录（设置 deleteTime）',
-      tags: [DevApiTagsMap.chatRecord, SystemOpenApiTagMap.chat, AppOpenApiTagMap.chat],
+      tags: [DevApiTagsMap.chatRecord, SystemOpenApiTagMap.chat],
       requestBody: {
         content: {
           'application/json': {

@@ -262,7 +262,7 @@ describe('getHistories api test', () => {
     expect(res.data.list.find((chat) => chat.chatId === otherChatId)).toBeUndefined();
   });
 
-  it('should return empty list when appId does not exist', async () => {
+  it('should fail when appId does not exist', async () => {
     const nonExistentAppId = '507f1f77bcf86cd799439011'; // Valid ObjectId format but non-existent
 
     const res = await Call<GetHistoriesBodyType, any, GetHistoriesResponseType>(handler, {
@@ -276,9 +276,8 @@ describe('getHistories api test', () => {
       }
     });
 
-    expect(res.code).toBe(200);
-    expect(res.data.list).toHaveLength(0);
-    expect(res.data.total).toBe(0);
+    expect(res.code).toBe(500);
+    expect(res.error).toBeDefined();
   });
 
   it('should fail when appId is missing', async () => {
@@ -291,8 +290,8 @@ describe('getHistories api test', () => {
       }
     });
 
-    expect(res.code).toBe(200);
-    expect(res.data.list).toHaveLength(0);
+    expect(res.code).toBe(500);
+    expect(res.error).toBeDefined();
   });
 
   it('should include all required fields in response', async () => {
@@ -342,7 +341,7 @@ describe('getHistories api test', () => {
     expect(res.data.list[1].chatId).toBe(chatIds[2]);
   });
 
-  it('should return empty list when appId format is invalid', async () => {
+  it('should fail when appId format is invalid', async () => {
     const invalidAppId = 'invalid-app-id'; // Not a valid ObjectId format
 
     const res = await Call<GetHistoriesBodyType, any, GetHistoriesResponseType>(handler, {
@@ -356,12 +355,11 @@ describe('getHistories api test', () => {
       }
     });
 
-    expect(res.code).toBe(200);
-    expect(res.data.list).toHaveLength(0);
-    expect(res.data.total).toBe(0);
+    expect(res.code).toBe(500);
+    expect(res.error).toBeDefined();
   });
 
-  it('should accept empty string for appId and return empty list', async () => {
+  it('should fail when appId is empty string', async () => {
     const res = await Call<GetHistoriesBodyType, any, GetHistoriesResponseType>(handler, {
       auth: testUser,
       body: {
@@ -373,8 +371,7 @@ describe('getHistories api test', () => {
       }
     });
 
-    expect(res.code).toBe(200);
-    expect(res.data.list).toHaveLength(0);
-    expect(res.data.total).toBe(0);
+    expect(res.code).toBe(500);
+    expect(res.error).toBeDefined();
   });
 });

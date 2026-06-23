@@ -27,7 +27,7 @@ describe('support/openapi/list', () => {
     expect(result.data[0].authProxy).toBe(false);
   });
 
-  it('团队级 APIKey 列表对无复制权限的记录保持脱敏', async () => {
+  it('团队级 APIKey 列表只返回当前登录成员自己的记录', async () => {
     const { manager, members } = await getFakeUsers(1);
     const [member] = members;
 
@@ -51,39 +51,41 @@ describe('support/openapi/list', () => {
     });
 
     expect(result.code).toBe(200);
-    expect(result.data).toHaveLength(2);
-
-    const resultMap = Object.fromEntries(
-      result.data.map((item: { name: string; apiKey: string; canCopy: boolean }) => [
-        item.name,
-        item
-      ])
-    );
-    expect(resultMap['manager key'].apiKey).toBe('******cret');
-    expect(resultMap['manager key'].canCopy).toBe(true);
-    expect(resultMap['member key'].apiKey).toBe('******cret');
-    expect(resultMap['member key'].canCopy).toBe(false);
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0].name).toBe('manager key');
+    expect(result.data[0].apiKey).toBe('******cret');
+    expect(result.data[0].canCopy).toBe(true);
   });
 
-  it('应用级 APIKey 列表返回脱敏值和复制权限', async () => {
-    const user = await getRootUser();
+  it('旧 appId 查询参数被忽略，只返回本人 APIKey', async () => {
+    const { owner, members } = await getFakeUsers(1);
+    const [member] = members;
     const app = await MongoApp.create({
-      teamId: user.teamId,
-      tmbId: user.tmbId,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
       name: 'test app',
       type: AppTypeEnum.simple
     });
 
-    await MongoOpenApi.create({
-      teamId: user.teamId,
-      tmbId: user.tmbId,
-      appId: String(app._id),
-      apiKey: 'fastgpt-app-secret',
-      name: 'app key'
-    });
+    await MongoOpenApi.create([
+      {
+        teamId: owner.teamId,
+        tmbId: owner.tmbId,
+        appId: String(app._id),
+        apiKey: 'fastgpt-app-secret',
+        name: 'legacy app key'
+      },
+      {
+        teamId: member.teamId,
+        tmbId: member.tmbId,
+        appId: String(app._id),
+        apiKey: 'fastgpt-member-app-secret',
+        name: 'member legacy app key'
+      }
+    ]);
 
     const result = await Call(handler, {
-      auth: user,
+      auth: owner,
       query: {
         appId: String(app._id)
       }
@@ -91,6 +93,7 @@ describe('support/openapi/list', () => {
 
     expect(result.code).toBe(200);
     expect(result.data).toHaveLength(1);
+    expect(result.data[0].name).toBe('legacy app key');
     expect(result.data[0].apiKey).toBe('******cret');
     expect(result.data[0].canCopy).toBe(true);
     expect(result.data[0].authProxy).toBe(false);

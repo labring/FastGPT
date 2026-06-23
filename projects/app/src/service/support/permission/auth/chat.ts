@@ -191,7 +191,6 @@ export async function authChatCrud({
     req: props.req,
     authToken: true,
     authApiKey: true,
-    authAppApiKey: props.authAppApiKey,
     appId,
     per: ReadPermissionVal
   });

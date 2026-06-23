@@ -49,6 +49,15 @@ const defaultEditData: EditProps = {
   }
 };
 
+const getDefaultEditData = (): EditProps => ({
+  name: defaultEditData.name,
+  authProxy: defaultEditData.authProxy,
+  limit: {
+    maxUsagePoints: defaultEditData.limit?.maxUsagePoints ?? -1,
+    expiredTime: defaultEditData.limit?.expiredTime
+  }
+});
+
 const maskApiKey = (apiKey: string) => {
   if (apiKey.startsWith('******')) return apiKey;
   return `******${apiKey.slice(-4)}`;
@@ -56,11 +65,10 @@ const maskApiKey = (apiKey: string) => {
 
 type ApiKeyTableProps = {
   tips: string;
-  appId?: string;
   mode?: 'account' | 'publish';
 };
 
-const ApiKeyTable = ({ tips, appId, mode = 'account' }: ApiKeyTableProps) => {
+const ApiKeyTable = ({ tips, mode = 'account' }: ApiKeyTableProps) => {
   const { t } = useTranslation();
   const theme = useTheme();
   const { copyData } = useCopyData();
@@ -100,9 +108,8 @@ const ApiKeyTable = ({ tips, appId, mode = 'account' }: ApiKeyTableProps) => {
     data: apiKeys = [],
     loading: isGetting,
     run: refetch
-  } = useRequest(() => getOpenApiKeys({ appId }), {
-    manual: false,
-    refreshDeps: [appId]
+  } = useRequest(() => getOpenApiKeys(), {
+    manual: false
   });
 
   return (
@@ -171,12 +178,7 @@ const ApiKeyTable = ({ tips, appId, mode = 'account' }: ApiKeyTableProps) => {
             ml={3}
             leftIcon={<AddIcon fontSize={'md'} />}
             variant={isPublishMode ? 'primary' : 'whitePrimary'}
-            onClick={() =>
-              setEditData({
-                ...defaultEditData,
-                appId
-              })
-            }
+            onClick={() => setEditData(getDefaultEditData())}
           >
             {t('common:new_create')}
           </Button>
@@ -276,8 +278,7 @@ const ApiKeyTable = ({ tips, appId, mode = 'account' }: ApiKeyTableProps) => {
                                   _id,
                                   name,
                                   limit,
-                                  authProxy,
-                                  appId
+                                  authProxy
                                 })
                             },
                             {
@@ -466,24 +467,22 @@ function EditKeyModal({
             </Flex>
           </>
         )}
-        {!defaultData.appId && (
-          <Flex alignItems={'center'} mt={4}>
-            <FormLabel display={'flex'} flex={'0 0 90px'} alignItems={'center'}>
-              {t('common:support.openapi.Auth proxy')}
-              <QuestionTip ml={1} label={t('common:support.openapi.Auth proxy tip')}></QuestionTip>
-            </FormLabel>
-            <Controller
-              control={control}
-              name="authProxy"
-              render={({ field }) => (
-                <Switch
-                  isChecked={!!field.value}
-                  onChange={(e) => field.onChange(e.target.checked)}
-                />
-              )}
-            />
-          </Flex>
-        )}
+        <Flex alignItems={'center'} mt={4}>
+          <FormLabel display={'flex'} flex={'0 0 90px'} alignItems={'center'}>
+            {t('common:support.openapi.Auth proxy')}
+            <QuestionTip ml={1} label={t('common:support.openapi.Auth proxy tip')}></QuestionTip>
+          </FormLabel>
+          <Controller
+            control={control}
+            name="authProxy"
+            render={({ field }) => (
+              <Switch
+                isChecked={!!field.value}
+                onChange={(e) => field.onChange(e.target.checked)}
+              />
+            )}
+          />
+        </Flex>
       </Flex>
     </MyModalV2>
   );
