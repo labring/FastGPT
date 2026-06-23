@@ -14,14 +14,12 @@ import type { GetCollectionTrainingDetailResponseType } from '@fastgpt/global/op
 import type { Permission } from '@fastgpt/global/support/permission/controller';
 import React from 'react';
 import TrainingErrorList from './TrainingErrorList';
-
-enum TrainingStatus {
-  NotStart = 'NotStart',
-  Queued = 'Queued', // wait count>0
-  Running = 'Running', // wait count=0; training count>0.
-  Ready = 'Ready',
-  Error = 'Error'
-}
+import {
+  getTrainingStepStatus,
+  isTrainingDetailReady,
+  isTrainingStepHighlighted,
+  TrainingStatus
+} from './trainingStatesUtils';
 
 const ProgressView = ({
   trainingDetail
@@ -36,28 +34,23 @@ const ProgressView = ({
   const isImageIndex = trainingDetail.advancedTraining.imageIndex;
   const isAutoIndexes = trainingDetail.advancedTraining.autoIndexes;
 
-  /* 
-    状态计算
-    1. 暂时没有内容解析的状态
-    2. 完全没有训练数据时候，已就绪
-    3. 有训练数据，中间过程全部是进行中
-  */
   const statesArray = useMemo(() => {
-    const isReady =
-      Object.values(trainingDetail.queuedCounts).every((count) => count === 0) &&
-      Object.values(trainingDetail.trainingCounts).every((count) => count === 0) &&
-      Object.values(trainingDetail.errorCounts).every((count) => count === 0);
+    const isReady = isTrainingDetailReady(trainingDetail);
+    const modeOrder = [
+      TrainingModeEnum.parse,
+      ...(isImageParse ? [TrainingModeEnum.imageParse] : []),
+      ...(isQA ? [TrainingModeEnum.qa] : []),
+      ...(isImageIndex ? [TrainingModeEnum.image] : []),
+      ...(isAutoIndexes ? [TrainingModeEnum.auto] : []),
+      TrainingModeEnum.chunk
+    ];
 
-    const isContentParsing = trainingDetail.trainingCounts.parse > 0;
-
-    const getTrainingStatus = ({ errorCount }: { errorCount: number }) => {
-      if (isContentParsing) return TrainingStatus.NotStart;
-      if (isReady) return TrainingStatus.Ready;
-      if (errorCount > 0) {
-        return TrainingStatus.Error;
-      }
-      return TrainingStatus.Running;
-    };
+    const getTrainingStatus = (mode: TrainingModeEnum) =>
+      getTrainingStepStatus({
+        trainingDetail,
+        mode,
+        modeOrder
+      });
 
     // 只显示排队和处理中的数量
     const getStatusText = (mode: TrainingModeEnum) => {
@@ -85,9 +78,7 @@ const ProgressView = ({
       {
         label: t(TrainingProcess.parsing.label),
         statusText: getStatusText(TrainingModeEnum.parse),
-        status: getTrainingStatus({
-          errorCount: trainingDetail.errorCounts.parse
-        }),
+        status: getTrainingStatus(TrainingModeEnum.parse),
         errorCount: trainingDetail.errorCounts.parse
       },
       ...(isImageParse
@@ -96,9 +87,7 @@ const ProgressView = ({
               errorCount: trainingDetail.errorCounts.imageParse,
               label: t(TrainingProcess.parseImage.label),
               statusText: getStatusText(TrainingModeEnum.imageParse),
-              status: getTrainingStatus({
-                errorCount: trainingDetail.errorCounts.imageParse
-              })
+              status: getTrainingStatus(TrainingModeEnum.imageParse)
             }
           ]
         : []),
@@ -107,9 +96,7 @@ const ProgressView = ({
             {
               label: t(TrainingProcess.getQA.label),
               statusText: getStatusText(TrainingModeEnum.qa),
-              status: getTrainingStatus({
-                errorCount: trainingDetail.errorCounts.qa
-              }),
+              status: getTrainingStatus(TrainingModeEnum.qa),
               errorCount: trainingDetail.errorCounts.qa
             }
           ]
@@ -120,9 +107,7 @@ const ProgressView = ({
               errorCount: trainingDetail.errorCounts.image,
               label: t(TrainingProcess.imageIndex.label),
               statusText: getStatusText(TrainingModeEnum.image),
-              status: getTrainingStatus({
-                errorCount: trainingDetail.errorCounts.image
-              })
+              status: getTrainingStatus(TrainingModeEnum.image)
             }
           ]
         : []),
@@ -132,9 +117,7 @@ const ProgressView = ({
               errorCount: trainingDetail.errorCounts.auto,
               label: t(TrainingProcess.autoIndex.label),
               statusText: getStatusText(TrainingModeEnum.auto),
-              status: getTrainingStatus({
-                errorCount: trainingDetail.errorCounts.auto
-              })
+              status: getTrainingStatus(TrainingModeEnum.auto)
             }
           ]
         : []),
@@ -142,9 +125,7 @@ const ProgressView = ({
         errorCount: trainingDetail.errorCounts.chunk,
         label: t(TrainingProcess.vectorizing.label),
         statusText: getStatusText(TrainingModeEnum.chunk),
-        status: getTrainingStatus({
-          errorCount: trainingDetail.errorCounts.chunk
-        })
+        status: getTrainingStatus(TrainingModeEnum.chunk)
       },
       {
         errorCount: 0,
@@ -159,107 +140,100 @@ const ProgressView = ({
     ];
 
     return states;
-  }, [
-    trainingDetail.queuedCounts,
-    trainingDetail.trainingCounts,
-    trainingDetail.errorCounts,
-    isImageIndex,
-    isAutoIndexes,
-    trainingDetail.trainedCount,
-    t,
-    isImageParse,
-    isQA
-  ]);
+  }, [trainingDetail, isImageIndex, isAutoIndexes, t, isImageParse, isQA]);
 
   return (
     <Flex flexDirection={'column'} gap={6}>
-      {statesArray.map((item, index) => (
-        <Flex alignItems={'center'} pl={4} key={index}>
-          {/* Status round */}
-          <Box
-            w={'14px'}
-            h={'14px'}
-            borderWidth={'2px'}
-            borderRadius={'50%'}
-            position={'relative'}
-            display={'flex'}
-            alignItems={'center'}
-            justifyContent={'center'}
-            {...((item.status === TrainingStatus.Running ||
-              item.status === TrainingStatus.Error) && {
-              bg: 'primary.600',
-              borderColor: 'primary.600',
-              boxShadow: '0 0 0 4px var(--Royal-Blue-100, #E1EAFF)'
-            })}
-            {...(item.status === TrainingStatus.Ready && {
-              bg: 'primary.600',
-              borderColor: 'primary.600'
-            })}
-            // Line
-            {...(index !== statesArray.length - 1 && {
-              _after: {
-                content: '""',
-                height: '59px',
-                width: '2px',
-                bgColor: 'myGray.250',
-                position: 'absolute',
-                top: '14px',
-                left: '4px'
-              }
-            })}
-          >
-            {item.status === TrainingStatus.Ready && (
-              <MyIcon name="common/check" w={3} color={'white'} />
-            )}
-          </Box>
-          {/* Card */}
-          <Flex
-            alignItems={'center'}
-            w={'full'}
-            bg={
-              item.status === TrainingStatus.Running
-                ? 'primary.50'
-                : item.status === TrainingStatus.Error
-                  ? 'red.50'
-                  : 'myGray.50'
-            }
-            py={2.5}
-            px={3}
-            ml={5}
-            borderRadius={'8px'}
-            flex={1}
-            h={'53px'}
-          >
+      {statesArray.map((item, index) => {
+        const isHighlighted = isTrainingStepHighlighted(item.status);
+        const isActive =
+          item.status === TrainingStatus.Queued || item.status === TrainingStatus.Running;
+
+        return (
+          <Flex alignItems={'center'} pl={4} key={index}>
+            {/* Status round */}
             <Box
-              fontSize={'14px'}
-              fontWeight={'medium'}
-              color={item.status === TrainingStatus.NotStart ? 'myGray.400' : 'myGray.900'}
-              mr={2}
+              w={'14px'}
+              h={'14px'}
+              borderWidth={'2px'}
+              borderRadius={'50%'}
+              position={'relative'}
+              display={'flex'}
+              alignItems={'center'}
+              justifyContent={'center'}
+              {...(isHighlighted && {
+                bg: 'primary.600',
+                borderColor: 'primary.600'
+              })}
+              {...(isActive && {
+                boxShadow: '0 0 0 4px var(--Royal-Blue-100, #E1EAFF)'
+              })}
+              // Line
+              {...(index !== statesArray.length - 1 && {
+                _after: {
+                  content: '""',
+                  height: '59px',
+                  width: '2px',
+                  bgColor: 'myGray.250',
+                  position: 'absolute',
+                  top: '14px',
+                  left: '4px'
+                }
+              })}
             >
-              {t(item.label as any)}
+              {item.status === TrainingStatus.Ready && (
+                <MyIcon name="common/check" w={3} color={'white'} />
+              )}
             </Box>
-            {item.status === TrainingStatus.Error && (
-              <MyTag
-                showDot
-                type={'borderSolid'}
-                px={1}
-                fontSize={'mini'}
-                borderRadius={'md'}
-                h={5}
-                colorSchema={'red'}
+            {/* Card */}
+            <Flex
+              alignItems={'center'}
+              w={'full'}
+              bg={
+                item.status === TrainingStatus.Error
+                  ? 'red.50'
+                  : isHighlighted
+                    ? 'primary.50'
+                    : 'myGray.50'
+              }
+              py={2.5}
+              px={3}
+              ml={5}
+              borderRadius={'8px'}
+              flex={1}
+              h={'53px'}
+            >
+              <Box
+                fontSize={'14px'}
+                fontWeight={'medium'}
+                color={item.status === TrainingStatus.NotStart ? 'myGray.400' : 'myGray.900'}
+                mr={2}
               >
-                {t('dataset:training.Error', { count: item.errorCount })}
-              </MyTag>
-            )}
-            <Box flex={1} />
-            {!!item.statusText && (
-              <Flex fontSize={'sm'} alignItems={'center'}>
-                {item.statusText}
-              </Flex>
-            )}
+                {t(item.label as any)}
+              </Box>
+              {item.status === TrainingStatus.Error && (
+                <MyTag
+                  showDot
+                  type={'borderSolid'}
+                  px={1}
+                  fontSize={'mini'}
+                  borderRadius={'md'}
+                  h={5}
+                  colorSchema={'red'}
+                >
+                  {t('dataset:training.Error', { count: item.errorCount })}
+                </MyTag>
+              )}
+              <Box flex={1} />
+              {!!item.statusText && (
+                <Flex fontSize={'sm'} alignItems={'center'}>
+                  {item.statusText}
+                </Flex>
+              )}
+            </Flex>
           </Flex>
-        </Flex>
-      ))}
+        );
+      })}
     </Flex>
   );
 };
