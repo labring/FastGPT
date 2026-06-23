@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Grid, HStack } from '@chakra-ui/react';
+import { Box, Flex, Grid, HStack, Spinner } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -33,6 +33,9 @@ const List = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
         ].includes(app.type)
     )
   );
+  const hasMore = useContextSelector(AppListContext, (v) => v.hasMore);
+  const isFetchingApps = useContextSelector(AppListContext, (v) => v.isFetchingApps);
+  const sentinelCallbackRef = useContextSelector(AppListContext, (v) => v.sentinelCallbackRef);
   const handlePaneChange = useContextSelector(ChatPageContext, (v) => v.handlePaneChange);
 
   return (
@@ -143,6 +146,12 @@ const List = ({ appType }: { appType: AppTypeEnum | 'all' }) => {
         })}
       </Grid>
       {myApps.length === 0 && <EmptyTip text={t('common:core.app.no_app')} pt={'30vh'} />}
+      {myApps.length > 0 && (hasMore || isFetchingApps) && (
+        <Flex justifyContent="center" py={4}>
+          <Spinner size="md" color="primary.500" />
+        </Flex>
+      )}
+      <Box ref={sentinelCallbackRef} h="1px" aria-hidden />
     </>
   );
 };
