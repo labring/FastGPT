@@ -75,5 +75,9 @@
   "no_current_version": "Skill 暫無可用版本，請重新建立或匯入後再編輯。",
   "permission.des.read": "可查看 Agent Skill",
   "permission.des.write": "可編輯 Agent Skill",
-  "permission.des.manage": "可管理 Agent Skill 和協作者"
+  "permission.des.manage": "可管理 Agent Skill 和協作者",
+  "empty_state_tip": "告訴 AI 如何修改 Skill，\n或讓 AI 運行 Skill 查看效果",
+  "empty_state_community_prefix": "透過對話預覽 Skill 效果，",
+  "empty_state_community_upgrade": "升級商業版",
+  "empty_state_community_suffix": "可使用 AI 生成 Skill。"
 }

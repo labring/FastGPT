@@ -76,5 +76,8 @@
   "permission.des.read": "可查看 Agent Skill",
   "permission.des.write": "可编辑 Agent Skill",
   "permission.des.manage": "可管理 Agent Skill 和协作者",
-  "empty_state_tip": "告诉 AI 如何修改 Skill，\n或让 AI 运行 Skill 查看效果"
+  "empty_state_tip": "告诉 AI 如何修改 Skill，\n或让 AI 运行 Skill 查看效果",
+  "empty_state_community_prefix": "通过对话预览 Skill 效果，",
+  "empty_state_community_upgrade": "升级商业版",
+  "empty_state_community_suffix": "可使用 AI 生成 Skill。"
 }

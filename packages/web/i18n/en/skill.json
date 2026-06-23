@@ -76,5 +76,8 @@
   "permission.des.read": "Can view Agent Skill",
   "permission.des.write": "Can edit Agent Skill",
   "permission.des.manage": "Can manage Agent Skill and collaborators",
-  "empty_state_tip": "Tell AI how to modify the Skill,\nor let AI run the Skill to see the effect"
+  "empty_state_tip": "Tell AI how to modify the Skill,\nor let AI run the Skill to see the effect",
+  "empty_state_community_prefix": "Preview Skill results through chat. ",
+  "empty_state_community_upgrade": "Upgrade to the Commercial Edition",
+  "empty_state_community_suffix": " to generate Skills with AI."
 }

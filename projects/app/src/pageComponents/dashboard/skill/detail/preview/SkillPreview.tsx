@@ -21,6 +21,7 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import { useMemoizedFn } from 'ahooks';
+import ProModal from '@/components/ProTip/ProModal';
 
 const fileSelectConfig: AppFileSelectConfigType = {
   maxFiles: 10,
@@ -41,10 +42,11 @@ const SkillPreview = () => {
     chatId: v.chatId
   }));
 
-  const { llmModelList, defaultModels } = useSystemStore();
+  const { llmModelList, defaultModels, feConfigs } = useSystemStore();
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const defaultModel = defaultModels.llm?.model || llmModelList[0]?.model || '';
   const [selectedModel, setSelectedModel] = useState('');
+  const [proModalOpen, setProModalOpen] = useState(false);
   const userSelectedModelRef = useRef(false);
 
   const modelSelectList = useMemo(
@@ -162,10 +164,28 @@ const SkillPreview = () => {
             lineHeight="20px"
             whiteSpace="pre-wrap"
           >
-            {t('empty_state_tip')}
+            {feConfigs?.isPlus ? (
+              t('empty_state_tip')
+            ) : (
+              <>
+                {t('empty_state_community_prefix')}
+                <Box
+                  as="button"
+                  type="button"
+                  color="primary.600"
+                  fontWeight={500}
+                  cursor="pointer"
+                  onClick={() => setProModalOpen(true)}
+                >
+                  {t('empty_state_community_upgrade')}
+                </Box>
+                {t('empty_state_community_suffix')}
+              </>
+            )}
           </Flex>
         }
       />
+      <ProModal isOpen={proModalOpen} onClose={() => setProModalOpen(false)} />
     </Box>
   );
 };
