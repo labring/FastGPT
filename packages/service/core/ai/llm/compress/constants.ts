@@ -1,86 +1,121 @@
 /**
- * Agent 上下文压缩配置常量
- *
- * ## 设计原则
- *
- * 1. **压缩触发水位**
- *    - Depends on：超过上下文 15% 后压缩
- *    - Agent 对话历史：超过上下文 80% 后压缩
- *    - 单个 tool response / 文件读取结果：超过上下文 50% 后压缩
- *    - 知识库检索结果：超过上下文 20% 后触发相关性筛选
- *
- * 2. **压缩策略**
- *    - 触发阈值：接近空间上限时触发
- *    - 压缩目标：保留可续跑上下文，具体摘要粒度交给模型判断
- *    - 约束机制：最终结果用真实 token 校验，LLM 输出长度只通过 prompt 软约束
- *
- * 3. **协调关系**
- *    - Depends on 使用完整 response，先在较小水位触发
- *    - Agent 历史包含多轮 user/assistant/tool 消息，接近上下文上限才整体 checkpoint
- *    - 单个 tool/file response 不能过大，避免挤占后续对话和模型输出空间
+ * request messages checkpoint 的起始标签。
+ * 用于 compress/index.ts 中识别、规范化和生成隐藏历史 checkpoint。
  */
+export const CONTEXT_CHECKPOINT_START_TAG = '<context_checkpoint>';
 
-export const COMPRESSION_CONFIG = {
-  /**
-   * === Depends on（系统提示词中的步骤历史）===
-   *
-   * 触发场景：拼接依赖步骤的完整 response 后，token 数超过阈值
-   * 内容特点：包含多个步骤的完整执行结果（使用 response 而非 summary）
-   *
-   * 示例（maxContext=100k）：
-   * - 依赖 3 个步骤，每个 4k → 12k (12%) ✅ 不触发
-   * - 依赖 5 个步骤，每个 4k → 20k (20%) ⚠️ 触发压缩
-   */
-  DEPENDS_ON_THRESHOLD: 0.15, // 15% 触发压缩
+/**
+ * request messages checkpoint 的结束标签。
+ * 用于 compress/index.ts 中识别、规范化和生成隐藏历史 checkpoint。
+ */
+export const CONTEXT_CHECKPOINT_END_TAG = '</context_checkpoint>';
 
-  /**
-   * === 对话历史 ===
-   *
-   * 触发场景：对话历史（含所有 user/assistant/tool 消息）超过阈值
-   * 内容特点：动态累积，触发后会整体压成 checkpoint string
-   *
-   * 示例（maxContext=100k）：
-   * - 初始 20k + 6 轮对话(34k) = 54k (54%) ✅ 不触发
-   * - 再 1 轮 = 60k (60%) ⚠️ 触发压缩 → checkpoint
-   * - checkpoint 保存长程上下文、当前任务和未完成工具上下文
-   */
-  MESSAGE_THRESHOLD: 0.8,
+/**
+ * token 预算转字符预算时使用的近似换算比例。
+ * 用于 compress/index.ts 的本地 head-tail 截断、二分缩短和内容分块。
+ */
+export const APPROX_CHARS_PER_TOKEN = 3;
 
-  /**
-   * === 单个 tool response ===
-   *
-   * 触发场景：单个 tool 返回的内容超过绝对大小限制
-   * 内容特点：单次 tool 调用的响应（如搜索结果、文件内容等）
-   *
-   * 示例（maxContext=100k）：
-   * - tool response = 8k (8%) ✅ 不触发
-   * - tool response = 15k (15%) ⚠️ 触发压缩
-   */
-  SINGLE_TOOL_MAX: 0.5,
+/**
+ * LLM 分块压缩合并结果仍超预算时，最多再次压缩合并结果的轮数。
+ * 用于 compressLargeContent 的 merge compression 阶段。
+ */
+export const MERGED_COMPRESSION_MAX_ROUNDS = 2;
 
-  /**
-   * === 文件读取结果压缩 ===
-   *
-   * 触发场景：文件解析工具返回的文件内容超过限制
-   * 内容特点：通常是大型文档、PDF 等文件的完整文本内容
-   *
-   * 示例（maxContext=100k）：
-   * - 文件内容 = 40k (40%) ✅ 不触发
-   * - 文件内容 = 60k (60%) ⚠️ 触发压缩
-   */
-  FILE_READ_RESPONSE_MAX: 0.5, // 50% 触发压缩
+/**
+ * 本地 head-tail 截断时，字符预算分配给开头内容的比例。
+ * 用于 compress/index.ts 的 truncateContentByHeadTail。
+ */
+export const FINAL_HEAD_RATIO = 0.6;
 
-  /**
-   * === 分块压缩 ===
-   */
-  CHUNK_SIZE_RATIO: 0.5, // 单块不超过 maxContext 的 50%
+/**
+ * request messages 调用 LLM 生成 checkpoint 时的软目标比例。
+ * 用于 getCompressRequestMessagesUserPrompt 的 output_budget。
+ */
+export const CHECKPOINT_OUTPUT_TARGET_RATIO = 0.2;
 
-  /**
-   * === 知识库检索工具的压缩阈值 ===
-   * 策略：使用 LLM 根据查询相关性自动选择最相关的一半分块
-   */
-  DATASET_SEARCH_SELECTION_RATIO: 0.2
-} as const;
+/**
+ * request messages 调用 LLM 生成 checkpoint 时的最小软目标 token 数。
+ * 用于避免小上下文模型的 checkpoint output_budget 过小。
+ */
+export const CHECKPOINT_OUTPUT_MIN_TOKENS = 4096;
+
+/**
+ * request checkpoint LLM 输出 token 可接受比例。
+ * 用于判断 completion token 是否明显超过软目标；超过时记录警告但仍以最终 messages token 校验为准。
+ */
+export const REQUEST_CHECKPOINT_COMPLETION_ACCEPT_CONTEXT_RATIO = 0.5;
+
+/**
+ * 大内容压缩结果过短时，若压缩结果已占目标预算的该比例以上，则不再追加原文摘录。
+ * 用于 appendSourceExcerptForUnderfilledCompression。
+ */
+export const SOURCE_ANCHOR_APPEND_SKIP_RATIO = 0.8;
+
+/**
+ * 大内容压缩后最多追加的原文结构锚点数量。
+ * 用于 appendSourceAnchorsWithinBudget，避免锚点列表挤占摘要主体。
+ */
+export const SOURCE_ANCHOR_APPEND_MAX_COUNT = 12;
+
+/**
+ * tool response 原文直接返回阈值比例。
+ * 用于 compressToolResponse：响应不超过 20% context 时不做任何处理。
+ */
+export const TOOL_RESPONSE_DIRECT_RETURN_CONTEXT_RATIO = 0.2;
+
+/**
+ * tool response 进入 LLM 压缩的阈值比例。
+ * 用于 compressToolResponse：本地轻量处理后仍超过 50% context 才调用 LLM 压缩。
+ */
+export const TOOL_RESPONSE_LIGHT_PROCESS_CONTEXT_RATIO = 0.5;
+
+/**
+ * 本地截断时插入中间省略内容的标记。
+ * 用于 head-tail 截断，明确告知后续模型中间内容被省略。
+ */
+export const TRUNCATED_MARKER =
+  '\n\n... [content truncated: middle omitted to fit token budget] ...\n\n';
+
+/**
+ * Depends on（系统提示词中的步骤历史）压缩触发比例。
+ *
+ * 拼接依赖步骤完整 response 后，超过模型上下文 15% 时触发压缩。
+ * 用于 calculateCompressionThresholds().dependsOn。
+ */
+export const DEPENDS_ON_THRESHOLD_RATIO = 0.15;
+
+/**
+ * 对话历史压缩触发比例。
+ *
+ * messages + tools schema 超过模型上下文 80% 时，尝试压缩成 checkpoint。
+ * 用于 compressRequestMessages 的触发阈值。
+ */
+export const MESSAGE_THRESHOLD_RATIO = 0.8;
+
+/**
+ * 文件读取结果压缩触发比例。
+ *
+ * 文件解析工具返回的大型文档内容超过模型上下文 50% 时触发压缩。
+ * 用于 calculateCompressionThresholds().fileReadResponse。
+ */
+export const FILE_READ_RESPONSE_MAX_RATIO = 0.5;
+
+/**
+ * 大文本分块压缩的单块比例。
+ *
+ * 分块阶段单块不超过模型上下文 50%，避免单次压缩请求过大。
+ * 用于 compressLargeContent 的 splitIntoChunks 分块预算。
+ */
+export const CHUNK_SIZE_RATIO = 0.5;
+
+/**
+ * 知识库检索结果相关性筛选触发比例。
+ *
+ * 检索片段总 token 超过模型上下文 20% 时，调用 LLM 选择最相关片段。
+ * 用于 dispatchAgentDatasetSearch 的 chunk selection 触发阈值。
+ */
+export const DATASET_SEARCH_SELECTION_RATIO = 0.2;
 
 /**
  * 计算各场景的压缩阈值
@@ -91,29 +126,27 @@ export const calculateCompressionThresholds = (maxContext: number) => {
   return {
     // Depends on 压缩阈值
     dependsOn: {
-      threshold: Math.floor(maxContext * COMPRESSION_CONFIG.DEPENDS_ON_THRESHOLD)
+      threshold: Math.floor(maxContext * DEPENDS_ON_THRESHOLD_RATIO)
     },
     // 对话历史压缩阈值
     messages: {
-      threshold: Math.floor(maxContext * COMPRESSION_CONFIG.MESSAGE_THRESHOLD)
+      threshold: Math.floor(maxContext * MESSAGE_THRESHOLD_RATIO)
     },
 
-    // 单个 tool response 压缩阈值
+    // 单个 tool response 兼容阈值；新链路直接使用 0.2/0.5 分层常量。
     singleTool: {
-      threshold: Math.floor(maxContext * COMPRESSION_CONFIG.SINGLE_TOOL_MAX)
+      threshold: Math.floor(maxContext * TOOL_RESPONSE_LIGHT_PROCESS_CONTEXT_RATIO)
     },
 
     // 文件读取结果压缩阈值
     fileReadResponse: {
-      threshold: Math.floor(maxContext * COMPRESSION_CONFIG.FILE_READ_RESPONSE_MAX)
+      threshold: Math.floor(maxContext * FILE_READ_RESPONSE_MAX_RATIO)
     },
 
     // 分块压缩中每个分块的分割大小，用来划分原始大块的内容。
-    chunkSize: Math.floor(maxContext * COMPRESSION_CONFIG.CHUNK_SIZE_RATIO),
+    chunkSize: Math.floor(maxContext * CHUNK_SIZE_RATIO),
 
     // 知识库检索工具阈值，到达阈值会触发选择最相关的一半分块内容（筛选）
-    datasetSearchSelection: Math.floor(
-      maxContext * COMPRESSION_CONFIG.DATASET_SEARCH_SELECTION_RATIO
-    )
+    datasetSearchSelection: Math.floor(maxContext * DATASET_SEARCH_SELECTION_RATIO)
   };
 };

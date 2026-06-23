@@ -1,10 +1,28 @@
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { countGptMessagesTokens, countPromptTokens } from '../../../../common/string/tiktoken';
-import { calculateCompressionThresholds } from './constants';
+import {
+  APPROX_CHARS_PER_TOKEN,
+  CHECKPOINT_OUTPUT_MIN_TOKENS,
+  CHECKPOINT_OUTPUT_TARGET_RATIO,
+  CONTEXT_CHECKPOINT_END_TAG,
+  CONTEXT_CHECKPOINT_START_TAG,
+  FINAL_HEAD_RATIO,
+  MERGED_COMPRESSION_MAX_ROUNDS,
+  REQUEST_CHECKPOINT_COMPLETION_ACCEPT_CONTEXT_RATIO,
+  SOURCE_ANCHOR_APPEND_MAX_COUNT,
+  SOURCE_ANCHOR_APPEND_SKIP_RATIO,
+  TOOL_RESPONSE_DIRECT_RETURN_CONTEXT_RATIO,
+  TOOL_RESPONSE_LIGHT_PROCESS_CONTEXT_RATIO,
+  TRUNCATED_MARKER,
+  calculateCompressionThresholds
+} from './constants';
 import type { CreateLLMResponseProps } from '../request';
 import { createLLMResponse } from '../request';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
+import type {
+  ChatCompletionMessageParam,
+  ChatCompletionTool
+} from '@fastgpt/global/core/ai/llm/type';
 import {
   extractExactAnchors,
   getCompressLargeContentPrompt,
@@ -21,17 +39,6 @@ import { getLogger, LogCategories } from '../../../../common/logger';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 
 const logger = getLogger(LogCategories.MODULE.AI.LLM_COMPRESS);
-
-// Checkpoint 最终会作为纯字符串写入 chat history；固定标签用于后续 adapter 识别压缩边界。
-const CONTEXT_CHECKPOINT_START_TAG = '<context_checkpoint>';
-const CONTEXT_CHECKPOINT_END_TAG = '</context_checkpoint>';
-const APPROX_CHARS_PER_TOKEN = 3;
-const MERGED_COMPRESSION_MAX_ROUNDS = 2;
-const FINAL_HEAD_RATIO = 0.6;
-const CHECKPOINT_OUTPUT_TARGET_RATIO = 0.15;
-const SOURCE_ANCHOR_APPEND_SKIP_RATIO = 0.8;
-const SOURCE_ANCHOR_APPEND_MAX_COUNT = 12;
-const TRUNCATED_MARKER = '\n\n... [content truncated: middle omitted to fit token budget] ...\n\n';
 
 // LLM 可能会输出 markdown 代码块，或忘记补外层标签；入库前统一规整为一个可识别的 tagged string。
 const normalizeContextCheckpointContent = (content: string) => {
@@ -51,195 +58,6 @@ const normalizeContextCheckpointContent = (content: string) => {
   }
 
   return `${CONTEXT_CHECKPOINT_START_TAG}\n${withoutFence}\n${CONTEXT_CHECKPOINT_END_TAG}`;
-};
-
-/**
- * 将 OpenAI message content 统一转成可压缩的纯文本。
- *
- * 压缩链路只消费文本；多模态消息里只有 text 部分对上下文摘要有稳定价值，其它结构交给原消息协议处理。
- */
-const getMessageContentText = (content: ChatCompletionMessageParam['content']) => {
-  if (typeof content === 'string') return content;
-  if (Array.isArray(content)) {
-    return content
-      .map((item) => {
-        if (typeof item === 'string') return item;
-        if (item && typeof item === 'object' && 'text' in item && typeof item.text === 'string') {
-          return item.text;
-        }
-        return '';
-      })
-      .filter(Boolean)
-      .join('\n');
-  }
-  return '';
-};
-
-/**
- * 为 LLM checkpoint prompt 构造一段工具调用索引。
- *
- * 这里不是最终压缩结果，而是把“用户意图 -> 函数名 -> 参数 -> 工具结果”提前整理出来，
- * 避免模型从原始 message JSON 中自行配对 tool_call_id 时漏掉关键参数或结果。
- */
-const buildToolCallMemoryBlock = ({ messages }: { messages: ChatCompletionMessageParam[] }) => {
-  const toolResultByCallId = new Map<string, string>();
-  for (const message of messages) {
-    if (message.role !== ChatCompletionRequestMessageRoleEnum.Tool) continue;
-
-    const toolCallId = message.tool_call_id;
-    if (!toolCallId) continue;
-
-    toolResultByCallId.set(toolCallId, getMessageContentText(message.content));
-  }
-
-  const maxResultChars = 900;
-  const lines: string[] = [];
-  let latestUserIntent = '';
-
-  for (const message of messages) {
-    const content = getMessageContentText(message.content);
-    if (message.role === ChatCompletionRequestMessageRoleEnum.User && content) {
-      latestUserIntent = truncateByChars(content.replace(/\s+/g, ' ').trim(), 240);
-      continue;
-    }
-
-    const toolCalls =
-      message.role === ChatCompletionRequestMessageRoleEnum.Assistant
-        ? message.tool_calls
-        : undefined;
-    if (!toolCalls || toolCalls.length === 0) continue;
-
-    for (const toolCall of toolCalls) {
-      const functionCall = toolCall.function;
-      if (!functionCall?.name) continue;
-      const lineParts = [
-        `- fn=${functionCall.name}`,
-        `args=${functionCall.arguments || '{}'}`,
-        latestUserIntent ? `user=${latestUserIntent}` : '',
-        toolResultByCallId.has(toolCall.id)
-          ? `result=${truncateByChars(toolResultByCallId.get(toolCall.id) || '', maxResultChars)}`
-          : ''
-      ].filter(Boolean);
-
-      lines.push(lineParts.join('; '));
-    }
-  }
-
-  if (lines.length === 0) return;
-
-  return `<tool_call_memory>
-${lines.join('\n')}
-</tool_call_memory>`;
-};
-
-/**
- * 将结构化工具调用历史压成确定性 checkpoint。
- *
- * 这类历史的核心信息不是自然语言摘要，而是“用户意图 -> 已选择的工具 -> 参数”。这里只读取通用
- * message/tool_calls 结构，并使用生产压缩阈值作为安全上限，不接收 benchmark expected 这类评测目标。
- */
-const buildStructuredToolCallCheckpoint = ({
-  maxCheckpointTokens,
-  messages
-}: {
-  maxCheckpointTokens: number;
-  messages: ChatCompletionMessageParam[];
-}) => {
-  const hasToolCalls = messages.some(
-    (message) =>
-      message.role === ChatCompletionRequestMessageRoleEnum.Assistant &&
-      message.tool_calls &&
-      message.tool_calls.length > 0
-  );
-  if (!hasToolCalls) return;
-
-  const toolResultByCallId = new Map<string, string>();
-  for (const message of messages) {
-    if (message.role !== ChatCompletionRequestMessageRoleEnum.Tool || !message.tool_call_id) {
-      continue;
-    }
-    toolResultByCallId.set(message.tool_call_id, getMessageContentText(message.content));
-  }
-
-  const maxChars = Math.max(900, Math.floor(getApproxCharBudget(maxCheckpointTokens) * 0.75));
-  const lines: string[] = [
-    CONTEXT_CHECKPOINT_START_TAG,
-    '# Context Checkpoint',
-    '',
-    '## Structured Tool Calls'
-  ];
-  let usedChars = lines.join('\n').length;
-  const pendingUserLines: string[] = [];
-  let turnIndex = 0;
-
-  const pushLine = (line: string) => {
-    const normalized = line.replace(/\s+/g, ' ').trim();
-    if (!normalized) return false;
-    const nextChars = usedChars + normalized.length + 1;
-    if (nextChars > maxChars) return false;
-    lines.push(normalized);
-    usedChars = nextChars;
-    return true;
-  };
-
-  const compactUserText = (content: string) => {
-    const normalized = content.replace(/\s+/g, ' ').trim();
-    const toolNames = Array.from(normalized.matchAll(/"name"\s*:\s*"([^"]{1,120})"/g))
-      .map((match) => match[1])
-      .filter((name): name is string => Boolean(name));
-    if (toolNames.length > 0) {
-      const firstToolDefinitionIndex = normalized.search(/\[\s*\{/);
-      const prefix =
-        firstToolDefinitionIndex >= 0
-          ? normalized.slice(0, firstToolDefinitionIndex).trim()
-          : normalized.slice(0, 160).trim();
-      return truncateByChars(
-        [prefix, Array.from(new Set(toolNames)).join(', ')].filter(Boolean).join(' '),
-        260
-      );
-    }
-
-    return truncateByChars(normalized, 220);
-  };
-
-  for (const message of messages) {
-    if (message.role === ChatCompletionRequestMessageRoleEnum.User) {
-      const content = getMessageContentText(message.content);
-      if (content) pendingUserLines.push(compactUserText(content));
-      continue;
-    }
-
-    const toolCalls =
-      message.role === ChatCompletionRequestMessageRoleEnum.Assistant
-        ? message.tool_calls
-        : undefined;
-    if (!toolCalls || toolCalls.length === 0) continue;
-
-    turnIndex += 1;
-    if (!pushLine(`- turn ${turnIndex}`)) break;
-    const contextLines = pendingUserLines.splice(0);
-    contextLines.forEach((line) => pushLine(`  source: ${line}`));
-
-    const assistantText = getMessageContentText(message.content);
-    if (assistantText) {
-      pushLine(`  assistant: ${truncateByChars(assistantText, 220)}`);
-    }
-
-    for (const toolCall of toolCalls) {
-      const functionCall = toolCall.function;
-      if (!functionCall?.name) continue;
-      const args = functionCall.arguments || '{}';
-      if (!pushLine(`  call: ${functionCall.name} args=${args}`)) break;
-
-      const result = toolResultByCallId.get(toolCall.id);
-      if (result) {
-        pushLine(`  result: ${truncateByChars(result, Math.max(180, maxChars * 0.08))}`);
-      }
-    }
-  }
-
-  lines.push(CONTEXT_CHECKPOINT_END_TAG);
-  return lines.join('\n');
 };
 
 // 只用于切分和兜底截断前的粗估；最终是否超限仍以真实 token 统计为准。
@@ -458,68 +276,6 @@ const appendSourceAnchorsWithinBudget = async ({
 };
 
 /**
- * 为非工具调用的长历史构造一个确定性 checkpoint 候选。
- *
- * LLM checkpoint 在长会议/文档类历史上可能同义改写或超预算；这个候选只保留原始 history 的
- * head-tail 片段，并用真实 token 计数确认预算，不读取任何评测期望。
- */
-const buildDeterministicHistoryCheckpoint = async ({
-  maxCheckpointTokens,
-  messages
-}: {
-  maxCheckpointTokens: number;
-  messages: ChatCompletionMessageParam[];
-}) => {
-  const hasToolCalls = messages.some(
-    (message) =>
-      message.role === ChatCompletionRequestMessageRoleEnum.Assistant &&
-      message.tool_calls &&
-      message.tool_calls.length > 0
-  );
-  if (hasToolCalls) return;
-
-  const historyText = messages
-    .map((message) => {
-      const content = getMessageContentText(message.content).trim();
-      return content ? `${message.role}: ${content}` : '';
-    })
-    .filter(Boolean)
-    .join('\n\n');
-  if (!historyText) return;
-
-  const wrapCheckpoint = (text: string) =>
-    [
-      CONTEXT_CHECKPOINT_START_TAG,
-      '# Context Checkpoint',
-      '',
-      '## Source History Excerpts',
-      text.trim(),
-      CONTEXT_CHECKPOINT_END_TAG
-    ].join('\n');
-
-  let charBudget = Math.min(
-    historyText.length,
-    Math.max(360, Math.floor(getApproxCharBudget(maxCheckpointTokens) * 0.85))
-  );
-
-  for (let round = 0; round < 8 && charBudget > 0; round++) {
-    const candidate = wrapCheckpoint(truncateByChars(historyText, charBudget));
-    const tokens = await countGptMessagesTokens({
-      messages: [{ role: 'user', content: candidate }]
-    });
-
-    if (tokens <= maxCheckpointTokens) {
-      return {
-        checkpoint: candidate,
-        tokens
-      };
-    }
-
-    charBudget = Math.floor(charBudget * 0.7);
-  }
-};
-
-/**
  * 将大型 JSON 工具返回压成通用结构摘要。
  *
  * 压缩上下文里通常不需要完整 JSON 原文，但必须保留 key、路径、数组规模和代表性标量值，后续模型才知道
@@ -631,82 +387,139 @@ const summarizeJsonStructure = ({
       return true;
     }
 
-    const scalar = stringifyScalar(current);
-    if (!scalar) return true;
-    return pushLine(`${path}: ${truncateByChars(scalar, 60)}`);
+    return true;
   };
 
   collectImportantScalars(value);
   visit(value, '', 0);
 
-  const scalarValues = importantScalars.map((scalar) => {
-    const separatorIndex = scalar.indexOf('=');
-    return separatorIndex >= 0 ? scalar.slice(separatorIndex + 1) : scalar;
-  });
-
   return JSON.stringify({
     summaryType: 'JSON structural summary',
-    importantScalarSummary: `important scalar values: ${scalarValues.join('; ')}`,
     importantScalarValues: importantScalars,
     structure: structureLines
   });
 };
 
 /**
- * 优先用本地确定性方式压缩 JSON 工具返回。
+ * 对中等大小工具响应做本地轻量精简。
  *
- * JSON 的空白、结构 key、数组规模和代表性标量值可以由代码稳定保留；只有这条路径兜不住时，
- * 调用方才会退回通用大文本压缩，避免为结构化数据无谓调用 LLM。
+ * 这个阶段不调用 LLM，只做结构化 JSON 精简和低语义噪声清理；目标是减少上下文占用，同时避免
+ * 对 20%~50% context 的工具结果做高成本压缩或过度摘要。
  */
-const tryMinifyToolResponseJson = async ({
-  compressedTokenLimit,
-  response
+const lightProcessToolResponse = async ({
+  response,
+  targetTokenLimit
 }: {
-  compressedTokenLimit: number;
   response: string;
+  targetTokenLimit: number;
 }) => {
-  let parsed: unknown;
   try {
-    parsed = JSON.parse(response);
+    const parsed = JSON.parse(response);
+    if (parsed) {
+      const compressed = JSON.stringify(parsed);
+      const compressedTokens = await countPromptTokens(compressed);
+      if (compressedTokens <= targetTokenLimit) return compressed;
+
+      const structuralSummary = summarizeJsonStructure({
+        compressedTokenLimit: targetTokenLimit,
+        value: parsed
+      });
+      const structuralSummaryTokens = await countPromptTokens(structuralSummary);
+      if (
+        structuralSummaryTokens <= targetTokenLimit &&
+        structuralSummaryTokens < compressedTokens
+      ) {
+        return structuralSummary;
+      }
+
+      return compressed;
+    }
   } catch {
-    return;
-  }
-  if (!parsed) return;
-
-  const compressed = JSON.stringify(parsed);
-  const tokens = await countPromptTokens(compressed);
-  if (tokens <= Math.min(200, compressedTokenLimit * 0.2)) return compressed;
-
-  const structuralSummary = summarizeJsonStructure({
-    compressedTokenLimit,
-    value: parsed
-  });
-  const structuralSummaryTokens = await countPromptTokens(structuralSummary);
-  if (structuralSummaryTokens <= compressedTokenLimit && structuralSummaryTokens < tokens) {
-    return structuralSummary;
+    // Non-JSON tool responses continue through text cleanup.
   }
 
-  if (tokens <= compressedTokenLimit) return compressed;
+  return response
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, '[$1]')
+    .replace(/https?:\/\/[^\s"'(),}\]]+/gi, '')
+    .replace(/\b[a-zA-Z0-9+\/]{100,}={0,2}\b/g, '[BASE64_DATA]')
+    .replace(/[\/\w\-_]+\/[\w\-_]+\.\w+/g, (match) => {
+      const parts = match.split('/');
+      return parts[parts.length - 1];
+    })
+    .replace(/\b[a-f0-9]{32,}\b/gi, '')
+    .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, '')
+    .replace(/\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})?\b/g, '')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 };
 
 /**
- * 压缩 对话历史
- * 当 messages 的 token 长度超过阈值时，调用 LLM 进行压缩
+ * 统计一次真实请求上下文 token。
+ *
+ * request messages 压缩只会改写 messages，但模型请求仍然会携带 tools schema；因此所有触发判断、
+ * 压缩后校验和缓存基线都必须把 tools 一起计入。
+ */
+const countRequestMessagesTokens = ({
+  messages,
+  tools
+}: {
+  messages: ChatCompletionMessageParam[];
+  tools?: ChatCompletionTool[];
+}) =>
+  countGptMessagesTokens({
+    messages,
+    ...(tools?.length ? { tools } : {})
+  });
+
+const createContextCheckpointMessage = (
+  content: ContextCheckpointValueType
+): ChatCompletionMessageParam => ({
+  role: ChatCompletionRequestMessageRoleEnum.User,
+  content,
+  // checkpoint 是给下一轮模型看的历史上下文注入，不作为普通消息展示。
+  hideInUI: true
+});
+
+const getRequestCheckpointOutputTargetTokens = (maxContext: number) =>
+  Math.max(CHECKPOINT_OUTPUT_MIN_TOKENS, Math.floor(maxContext * CHECKPOINT_OUTPUT_TARGET_RATIO));
+
+const getToolResponseCompressionLimits = ({ maxContext }: { maxContext: number }) => {
+  const directReturnTokenLimit = Math.floor(maxContext * TOOL_RESPONSE_DIRECT_RETURN_CONTEXT_RATIO);
+
+  return {
+    // 原始结果不超过 20% context 时不处理；LLM 压缩目标也默认回到这个预算。
+    directReturnTokenLimit,
+    lightProcessTokenLimit: Math.floor(maxContext * TOOL_RESPONSE_LIGHT_PROCESS_CONTEXT_RATIO),
+    llmCompressedTokenLimit: directReturnTokenLimit
+  };
+};
+
+/**
+ * 压缩对话历史。
+ *
+ * 触发判断基于完整请求上下文（messages + tools schema）；真正压缩时只折叠非 system/developer
+ * 历史，system/developer 原样保留在最终请求前部。
  */
 export const compressRequestMessages = async ({
   checkIsStopping,
+  messageTokens: cachedMessageTokens,
   messages,
   model,
   reasoningEffort,
+  tools,
   userKey
 }: {
   checkIsStopping?: CreateLLMResponseProps['isAborted'];
+  messageTokens?: number;
   messages: ChatCompletionMessageParam[];
   model: LLMModelItemType;
   reasoningEffort?: CreateLLMResponseProps['body']['reasoning_effort'];
+  tools?: ChatCompletionTool[];
   userKey?: OpenaiAccountType;
 }): Promise<{
   messages: ChatCompletionMessageParam[];
+  messageTokens?: number;
   usage?: ChatNodeUsageType;
   requestIds?: string[];
   contextCheckpoint?: ContextCheckpointValueType;
@@ -733,57 +546,34 @@ export const compressRequestMessages = async ({
     }
   });
 
+  // 触发阈值按完整请求上下文判断；压缩内容仍只包含非 system/developer 历史。
+  // system/developer 和 tools schema 虽然不参与 checkpoint 压缩，但会真实占用模型上下文。
+  const messageTokens =
+    cachedMessageTokens ??
+    (await countRequestMessagesTokens({
+      messages,
+      tools
+    }));
+
   if (otherMessages.length === 0) {
     return {
-      messages
+      messages,
+      messageTokens
     };
   }
 
-  // 触发阈值按完整请求上下文判断；压缩内容仍只包含非 system/developer 历史。
-  // system/developer 虽然不参与 checkpoint 压缩，但会真实占用模型上下文。
-  const messageTokens = await countGptMessagesTokens({
-    messages
-  });
   const thresholds = calculateCompressionThresholds(model.maxContext).messages;
 
   if (messageTokens <= thresholds.threshold) {
     return {
-      messages
+      messages,
+      messageTokens
     };
   }
 
-  const structuredToolCheckpoint = buildStructuredToolCallCheckpoint({
-    messages: otherMessages,
-    maxCheckpointTokens: thresholds.threshold
-  });
-  if (structuredToolCheckpoint) {
-    const checkpointMessage: ChatCompletionMessageParam = {
-      role: ChatCompletionRequestMessageRoleEnum.User,
-      content: structuredToolCheckpoint,
-      hideInUI: true
-    };
-    const finalStructuredMessages = [...systemMessages, checkpointMessage];
-    const structuredTokens = await countGptMessagesTokens({
-      messages: finalStructuredMessages
-    });
-
-    if (
-      structuredTokens <= thresholds.threshold &&
-      structuredTokens < Math.floor(messageTokens * 0.85)
-    ) {
-      return {
-        messages: finalStructuredMessages,
-        contextCheckpoint: structuredToolCheckpoint
-      };
-    }
-  }
-
-  const toolCallMemory = buildToolCallMemoryBlock({
-    messages: otherMessages
-  });
-  const checkpointTargetTokenLimit = Math.max(
-    512,
-    Math.floor(model.maxContext * CHECKPOINT_OUTPUT_TARGET_RATIO)
+  const checkpointTargetTokenLimit = getRequestCheckpointOutputTargetTokens(model.maxContext);
+  const checkpointCompletionTokenLimit = Math.floor(
+    model.maxContext * REQUEST_CHECKPOINT_COMPLETION_ACCEPT_CONTEXT_RATIO
   );
 
   logger.info('Message compression started');
@@ -793,8 +583,7 @@ export const compressRequestMessages = async ({
     const compressPrompt = await getCompressRequestMessagesPrompt();
     const userPrompt = await getCompressRequestMessagesUserPrompt({
       messages: otherMessages,
-      outputTokenLimit: checkpointTargetTokenLimit,
-      toolCallMemory
+      outputTokenLimit: checkpointTargetTokenLimit
     });
     const { answerText, usage, requestId, finish_reason } = await createLLMResponse({
       throwError: false,
@@ -834,76 +623,65 @@ export const compressRequestMessages = async ({
     };
 
     if (!answerText) {
-      logger.warn('Message compression failed: empty response');
-      return { messages, usage: compressedUsage, requestIds: [requestId] };
+      logger.warn('Message compression failed', {
+        reason: 'empty_response',
+        originalTokens: messageTokens,
+        threshold: thresholds.threshold,
+        requestId,
+        finishReason: finish_reason
+      });
+      return { messages, messageTokens, usage: compressedUsage, requestIds: [requestId] };
     }
 
     if (finish_reason === 'close') {
-      logger.info('Compression messages aborted: return original messages');
-      return { messages, usage: compressedUsage, requestIds: [requestId] };
+      logger.info('Message compression skipped', {
+        reason: 'request_closed',
+        originalTokens: messageTokens,
+        threshold: thresholds.threshold,
+        requestId
+      });
+      return { messages, messageTokens, usage: compressedUsage, requestIds: [requestId] };
     }
 
-    let checkpointContent = normalizeContextCheckpointContent(answerText);
+    const checkpointContent = normalizeContextCheckpointContent(answerText);
 
     if (!checkpointContent) {
-      logger.warn('Message compression failed: invalid checkpoint content');
-      return { messages, usage: compressedUsage, requestIds: [requestId] };
+      logger.warn('Message compression failed', {
+        reason: 'invalid_checkpoint_content',
+        originalTokens: messageTokens,
+        threshold: thresholds.threshold,
+        requestId,
+        answerTextLength: answerText.length
+      });
+      return { messages, messageTokens, usage: compressedUsage, requestIds: [requestId] };
     }
 
-    const checkpointMessage: ChatCompletionMessageParam = {
-      role: ChatCompletionRequestMessageRoleEnum.User,
-      content: checkpointContent,
-      // checkpoint 是给下一轮模型看的历史上下文注入，不作为普通消息展示。
-      hideInUI: true
-    };
-    let finalMessages = [...systemMessages, checkpointMessage];
-    let compressedTokens = await countGptMessagesTokens({
-      messages: finalMessages
+    const checkpointMessage = createContextCheckpointMessage(checkpointContent);
+    const finalMessages = [...systemMessages, checkpointMessage];
+    const compressedTokens = await countRequestMessagesTokens({
+      messages: finalMessages,
+      tools
     });
 
-    // outputTokenLimit 只作为 prompt 软目标；只有最终消息仍超过生产安全阈值时，才退到确定性 head-tail 兜底。
-    if (compressedTokens > thresholds.threshold) {
-      const systemTokens = await countGptMessagesTokens({
-        messages: systemMessages
+    if (usage.outputTokens >= checkpointCompletionTokenLimit) {
+      logger.warn('Message compression completion exceeds soft limit, keeping LLM checkpoint', {
+        outputTokens: usage.outputTokens,
+        completionTokenLimit: checkpointCompletionTokenLimit,
+        originalTokens: messageTokens,
+        compressedTokens
       });
-      const availableCheckpointTokens = thresholds.threshold - systemTokens;
+    }
 
-      if (availableCheckpointTokens > 0) {
-        const deterministicCheckpoint = await buildDeterministicHistoryCheckpoint({
-          maxCheckpointTokens: availableCheckpointTokens,
-          messages: otherMessages
-        });
-
-        if (deterministicCheckpoint) {
-          const deterministicMessage: ChatCompletionMessageParam = {
-            role: ChatCompletionRequestMessageRoleEnum.User,
-            content: deterministicCheckpoint.checkpoint,
-            hideInUI: true
-          };
-          const deterministicMessages = [...systemMessages, deterministicMessage];
-          const deterministicTokens = await countGptMessagesTokens({
-            messages: deterministicMessages
-          });
-
-          if (
-            deterministicTokens <= thresholds.threshold &&
-            deterministicTokens < compressedTokens
-          ) {
-            checkpointContent = deterministicCheckpoint.checkpoint;
-            finalMessages = deterministicMessages;
-            compressedTokens = deterministicTokens;
-          }
-        }
-      }
-
-      if (compressedTokens > thresholds.threshold) {
-        logger.warn('Message compression failed: compressed checkpoint still exceeds threshold', {
-          originalTokens: messageTokens,
-          compressedTokens,
-          threshold: thresholds.threshold
-        });
-        return { messages, usage: compressedUsage, requestIds: [requestId] };
-      }
+    if (compressedTokens > thresholds.threshold) {
+      logger.warn('Message compression result still exceeds threshold', {
+        reason: 'compressed_messages_over_threshold',
+        originalTokens: messageTokens,
+        compressedTokens,
+        threshold: thresholds.threshold,
+        maxContext: model.maxContext,
+        requestId,
+        outputTokens: usage.outputTokens
+      });
     }
 
     logger.info('Message compression succeeded', {
@@ -913,13 +691,19 @@ export const compressRequestMessages = async ({
 
     return {
       messages: finalMessages,
+      messageTokens: compressedTokens,
       usage: compressedUsage,
       requestIds: [requestId],
       contextCheckpoint: checkpointContent
     };
   } catch (error) {
-    logger.error('Message compression failed', { error });
-    return { messages };
+    logger.error('Message compression failed', {
+      reason: 'exception',
+      originalTokens: messageTokens,
+      threshold: thresholds.threshold,
+      error
+    });
+    return { messages, messageTokens };
   }
 };
 
@@ -1040,8 +824,12 @@ export const compressLargeContent = async ({
       };
 
       if (!answerText) {
-        logger.warn('Chunk compression failed: empty response from LLM', {
-          chunkIndex
+        logger.warn('Chunk compression failed', {
+          reason: 'empty_response',
+          chunkIndex,
+          chunkLength: chunk.length,
+          chunkTokenLimit,
+          requestId
         });
         return {
           compressed: chunk,
@@ -1115,6 +903,7 @@ export const compressLargeContent = async ({
 
     if (finalTokens > compressedTokenLimit) {
       logger.warn('LLM chunk compression exceeded limit, running merge compression', {
+        reason: 'chunk_merge_over_budget',
         finalTokens,
         compressedTokenLimit,
         exceedRatio: (finalTokens / compressedTokenLimit).toFixed(2)
@@ -1149,6 +938,9 @@ export const compressLargeContent = async ({
 
       if (needsDeterministicTruncate || finalTokens > compressedTokenLimit) {
         logger.warn('LLM merge compression still exceeded limit, applying head-tail truncate', {
+          reason: needsDeterministicTruncate
+            ? 'merge_compression_low_gain'
+            : 'merge_compression_over_budget',
           finalTokens,
           compressedTokenLimit,
           exceedRatio: (finalTokens / compressedTokenLimit).toFixed(2)
@@ -1262,7 +1054,12 @@ export const compressLargeContent = async ({
       requestIds: result.usage.requestIds
     };
   } catch (error) {
-    logger.error('Chunk compression failed, fallback to binary truncate', { error });
+    logger.error('Chunk compression failed, returning cleaned content without LLM compression', {
+      reason: 'exception',
+      error,
+      compressedTokenLimit: effectiveCompressedTokenLimit,
+      cleanedContentTokens: currentTokens
+    });
     return {
       compressed: content.trim()
     };
@@ -1272,17 +1069,11 @@ export const compressLargeContent = async ({
 export const compressToolResponse = async ({
   response,
   model,
-  compressedTokenLimit: customCompressedTokenLimit,
-  currentMessagesTokens = 0,
-  toolLength = 1,
   reasoningEffort,
   userKey
 }: {
   response: string;
   model: LLMModelItemType;
-  compressedTokenLimit?: number;
-  currentMessagesTokens?: number;
-  toolLength?: number;
   reasoningEffort?: CreateLLMResponseProps['body']['reasoning_effort'];
   userKey?: OpenaiAccountType;
 }): Promise<{
@@ -1296,40 +1087,54 @@ export const compressToolResponse = async ({
     };
   }
 
-  // 单个 tool response 既受固定结果上限限制，也受当前请求剩余上下文窗口限制。
-  const staticCompressedTokenLimit = calculateCompressionThresholds(model.maxContext).singleTool
-    .threshold;
+  const responseTokens = await countPromptTokens(response);
+  const { directReturnTokenLimit, lightProcessTokenLimit, llmCompressedTokenLimit } =
+    getToolResponseCompressionLimits({
+      maxContext: model.maxContext
+    });
 
-  // 计算每个 tool response 的动态结果预算，预防多个 tool 同时返回的数据打爆上下文。
-  const availableCompressedTokenLimit = Math.max(
-    0,
-    Math.floor((model.maxContext - currentMessagesTokens) / toolLength)
-  );
-
-  // 取静态结果上限、动态结果预算和调用方显式目标预算的较小值。
-  const compressedTokenLimit = Math.min(
-    staticCompressedTokenLimit,
-    availableCompressedTokenLimit,
-    customCompressedTokenLimit ?? Number.POSITIVE_INFINITY
-  );
-
-  const jsonCompressed = await tryMinifyToolResponseJson({
-    response,
-    compressedTokenLimit
-  });
-  if (jsonCompressed) {
+  // 不超过 20% context 的工具结果直接发给模型，保持原始结构和可读性。
+  if (responseTokens <= directReturnTokenLimit) {
     return {
-      compressed: jsonCompressed
+      compressed: response
+    };
+  }
+
+  const lightProcessedResponse = await lightProcessToolResponse({
+    response,
+    targetTokenLimit: directReturnTokenLimit
+  });
+  const lightProcessedTokens = await countPromptTokens(lightProcessedResponse);
+
+  // 大于 20% context 的工具结果先做本地精简；精简后不超过 50% context 则不进入 LLM 压缩。
+  if (lightProcessedTokens <= lightProcessTokenLimit) {
+    return {
+      compressed: lightProcessedResponse
     };
   }
 
   // 调用通用压缩函数
-  return compressLargeContent({
-    content: response,
+  const result = await compressLargeContent({
+    content: lightProcessedResponse,
     model,
-    compressedTokenLimit,
+    compressedTokenLimit: llmCompressedTokenLimit,
     moduleName: i18nT('account_usage:tool_response_compress'),
     reasoningEffort,
     userKey
   });
+
+  const compressedTokens = await countPromptTokens(result.compressed);
+  if (compressedTokens > llmCompressedTokenLimit) {
+    logger.warn('Tool response compression result still exceeds target', {
+      reason: 'compressed_tool_response_over_target',
+      originalTokens: responseTokens,
+      lightProcessedTokens,
+      compressedTokens,
+      compressedTokenLimit: llmCompressedTokenLimit,
+      maxContext: model.maxContext,
+      requestIds: result.requestIds
+    });
+  }
+
+  return result;
 };

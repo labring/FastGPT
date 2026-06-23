@@ -42,7 +42,7 @@ type RunAgentCallProps<TChildrenResponse = unknown> = {
   childrenInteractiveParams?: AgentLoopChildrenInteractiveParams<TChildrenResponse>;
   // LLM 压缩后回调
   onAfterCompressContext?: (e: {
-    usage: ChatNodeUsageType;
+    usage?: ChatNodeUsageType;
     requestIds: string[];
     seconds: number;
     contextCheckpoint?: ContextCheckpointValueType;
@@ -124,34 +124,50 @@ type RunAgentResponse<TChildrenResponse = unknown> = {
  */
 export const onCompressContext = async ({
   isAborted,
+  messageTokens,
   requestMessages,
   modelData,
   reasoningEffort,
+  tools,
   userKey
 }: {
   isAborted: RunAgentCallProps['isAborted'];
+  messageTokens?: number;
   requestMessages: ChatCompletionMessageParam[];
   modelData: LLMModelItemType;
   reasoningEffort?: CreateLLMResponseProps['body']['reasoning_effort'];
+  tools?: ChatCompletionTool[];
   userKey: RunAgentCallProps['userKey'];
 }) => {
   const compressStartTime = Date.now();
   const result = await compressRequestMessages({
     checkIsStopping: isAborted,
+    messageTokens,
     messages: requestMessages,
     model: modelData,
     reasoningEffort,
+    tools,
     userKey
   });
-  if (result.usage) {
+  if (result.usage || result.contextCheckpoint || result.messages !== requestMessages) {
     return {
       messages: result.messages,
+      messageTokens: result.messageTokens,
+      hasCompressedContext: true,
       usage: result.usage,
       requestIds: result.requestIds ?? [],
       seconds: +((Date.now() - compressStartTime) / 1000).toFixed(2),
       contextCheckpoint: result.contextCheckpoint
     };
   }
+
+  return {
+    messages: result.messages,
+    messageTokens: result.messageTokens,
+    hasCompressedContext: false,
+    requestIds: result.requestIds ?? [],
+    seconds: +((Date.now() - compressStartTime) / 1000).toFixed(2)
+  };
 };
 
 /**
@@ -210,6 +226,20 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
     }
     return item;
   });
+  let requestMessagesTokenCount: number | undefined;
+
+  /**
+   * requestMessages 在未压缩时主要是 append-only。
+   * 已知基线 token 后，只统计新增 message，避免每轮压缩判断都重复统计完整历史。
+   */
+  const appendRequestMessages = async (...newMessages: ChatCompletionMessageParam[]) => {
+    requestMessages.push(...newMessages);
+    if (requestMessagesTokenCount !== undefined && newMessages.length > 0) {
+      requestMessagesTokenCount += await countGptMessagesTokens({
+        messages: newMessages
+      });
+    }
+  };
 
   let inputTokens: number = 0;
   let outputTokens: number = 0;
@@ -287,21 +317,28 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
     {
       const compressResult = await onCompressContext({
         isAborted,
+        messageTokens: requestMessagesTokenCount,
         requestMessages,
         modelData,
         reasoningEffort: body.reasoning_effort,
+        tools: body.tools,
         userKey
       });
       if (compressResult) {
-        requestMessages = compressResult.messages;
-        contextCheckpoint = compressResult.contextCheckpoint ?? contextCheckpoint;
-        usagePush?.([compressResult.usage]);
-        onAfterCompressContext?.({
-          usage: compressResult.usage,
-          requestIds: compressResult.requestIds,
-          seconds: compressResult.seconds,
-          contextCheckpoint: compressResult.contextCheckpoint
-        });
+        requestMessagesTokenCount = compressResult.messageTokens ?? requestMessagesTokenCount;
+        if (compressResult.hasCompressedContext) {
+          requestMessages = compressResult.messages;
+          contextCheckpoint = compressResult.contextCheckpoint ?? contextCheckpoint;
+          if (compressResult.usage) {
+            usagePush?.([compressResult.usage]);
+          }
+          onAfterCompressContext?.({
+            usage: compressResult.usage,
+            requestIds: compressResult.requestIds,
+            seconds: compressResult.seconds,
+            contextCheckpoint: compressResult.contextCheckpoint
+          });
+        }
       }
     }
 
@@ -408,7 +445,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       // 推送 AI 生成后的 assistantMessages
       if (llmAssistantMessage) {
         assistantMessages.push(llmAssistantMessage);
-        requestMessages.push(llmAssistantMessage);
+        await appendRequestMessages(llmAssistantMessage);
       }
     }
 
@@ -423,11 +460,9 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       };
 
       const runTool = async ({
-        tool,
-        currentMessagesTokens
+        tool
       }: {
         tool: ChatCompletionMessageToolCall;
-        currentMessagesTokens: number;
       }): Promise<ToolRunResult> => {
         const toolStartTime = Date.now();
         let toolErrorMessage: string | undefined;
@@ -470,8 +505,6 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           const compressionResult = await compressToolResponse({
             response,
             model: modelData,
-            currentMessagesTokens,
-            toolLength: toolCalls.length,
             reasoningEffort: body.reasoning_effort,
             userKey
           });
@@ -517,31 +550,35 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       };
 
       // 按 toolCalls 原始顺序写回工具结果，保证后续 LLM 上下文稳定。
-      const appendToolRunResults = (toolRunResults: ToolRunResult[]) => {
-        toolRunResults.forEach(
-          ({ tool, interactive, stopLoop, toolMessage, toolAssistantMessages }) => {
-            if (interactive) {
-              interactiveResponse = {
-                type: 'toolChildrenInteractive',
-                params: {
-                  childrenResponse: interactive,
-                  toolParams: {
-                    memoryRequestMessages: [],
-                    toolCallId: tool.id
-                  }
+      const appendToolRunResults = async (toolRunResults: ToolRunResult[]) => {
+        for (const {
+          tool,
+          interactive,
+          stopLoop,
+          toolMessage,
+          toolAssistantMessages
+        } of toolRunResults) {
+          if (interactive) {
+            interactiveResponse = {
+              type: 'toolChildrenInteractive',
+              params: {
+                childrenResponse: interactive,
+                toolParams: {
+                  memoryRequestMessages: [],
+                  toolCallId: tool.id
                 }
-              };
-            }
-            if (stopLoop) {
-              stopAgentLoop = true;
-            }
-
-            assistantMessages.push(toolMessage);
-            requestMessages.push(toolMessage);
-            // toolAssistantMessages 也需要记录成 AI 响应，所以这里需要推送。
-            assistantMessages.push(...toolAssistantMessages);
+              }
+            };
           }
-        );
+          if (stopLoop) {
+            stopAgentLoop = true;
+          }
+
+          assistantMessages.push(toolMessage);
+          await appendRequestMessages(toolMessage);
+          // toolAssistantMessages 也需要记录成 AI 响应，所以这里需要推送。
+          assistantMessages.push(...toolAssistantMessages);
+        }
       };
 
       const safeBatchToolSize = Math.max(1, batchToolSize);
@@ -549,17 +586,13 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
 
       while (toolIndex < toolCalls.length) {
         const currentTool = toolCalls[toolIndex];
-        const currentMessagesTokens = await countGptMessagesTokens({
-          messages: requestMessages
-        });
 
         // 只能串行的工具
         if (!canBatchTool(currentTool)) {
           const result = await runTool({
-            tool: currentTool,
-            currentMessagesTokens
+            tool: currentTool
           });
-          appendToolRunResults([result]);
+          await appendToolRunResults([result]);
           toolIndex++;
           continue;
         }
@@ -579,12 +612,11 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           batchTools,
           async (tool) =>
             runTool({
-              tool,
-              currentMessagesTokens
+              tool
             }),
           safeBatchToolSize
         );
-        appendToolRunResults(toolRunResults);
+        await appendToolRunResults(toolRunResults);
       }
     }
 
@@ -618,7 +650,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           ) {
             assistantMessages.pop();
           }
-          requestMessages.push(stopResult.feedbackMessage);
+          await appendRequestMessages(stopResult.feedbackMessage);
           continue;
         }
       }

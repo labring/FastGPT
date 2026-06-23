@@ -2,7 +2,10 @@ import {
   ChatCompletionRequestMessageRoleEnum,
   ModelTypeEnum
 } from '@fastgpt/global/core/ai/constants';
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
+import type {
+  ChatCompletionMessageParam,
+  ChatCompletionTool
+} from '@fastgpt/global/core/ai/llm/type';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -87,6 +90,23 @@ const createMessages = (): ChatCompletionMessageParam[] => [
     content: 'recent user 3'
   }
 ];
+
+const searchTool: ChatCompletionTool = {
+  type: 'function',
+  function: {
+    name: 'search',
+    description: 'Search test data',
+    parameters: {
+      type: 'object',
+      properties: {
+        q: {
+          type: 'string'
+        }
+      },
+      required: ['q']
+    }
+  }
+};
 
 const mockDefaultUsagePoints = () => {
   formatModelChars2PointsMock.mockReturnValue({
@@ -173,6 +193,7 @@ describe('compressRequestMessages', () => {
     expect(userPrompt).toContain('<histories>');
     expect(userPrompt).toContain('recent user 3');
     expect(userPrompt).toContain('<output_budget>');
+    expect(userPrompt).toContain('Target maximum output tokens: 4096');
     expect(compressPrompt).not.toContain('最近消息预览');
     expect(createLLMResponseMock.mock.calls[0][0].body.max_tokens).toBeUndefined();
   });
@@ -244,7 +265,7 @@ describe('compressRequestMessages', () => {
     );
   });
 
-  it('should not replace an over-target LLM checkpoint when final messages stay within the production threshold', async () => {
+  it('should keep the LLM checkpoint when completion output exceeds half context', async () => {
     countGptMessagesTokensMock.mockResolvedValueOnce(5000).mockResolvedValueOnce(2800);
     createLLMResponseMock.mockResolvedValue({
       answerText:
@@ -267,20 +288,15 @@ describe('compressRequestMessages', () => {
     expect(createLLMResponseMock.mock.calls[0][0].body.max_tokens).toBeUndefined();
   });
 
-  it('should use deterministic fallback only when the final compressed messages fit the threshold', async () => {
-    countGptMessagesTokensMock
-      .mockResolvedValueOnce(5000)
-      .mockResolvedValueOnce(4500)
-      .mockResolvedValueOnce(1200)
-      .mockResolvedValueOnce(3000)
-      .mockResolvedValueOnce(2600);
+  it('should keep the LLM checkpoint when final checkpoint tokens still exceed threshold', async () => {
+    countGptMessagesTokensMock.mockResolvedValueOnce(5000).mockResolvedValueOnce(4500);
     createLLMResponseMock.mockResolvedValue({
-      answerText: '<context_checkpoint>\n超长 LLM checkpoint\n</context_checkpoint>',
+      answerText: '<context_checkpoint>\nLLM checkpoint summary\n</context_checkpoint>',
       usage: {
         inputTokens: 500,
-        outputTokens: 3000
+        outputTokens: 1000
       },
-      requestId: 'req_deterministic_budget',
+      requestId: 'req_llm_checkpoint_only',
       finish_reason: 'stop'
     });
 
@@ -290,61 +306,14 @@ describe('compressRequestMessages', () => {
       model
     });
 
-    expect(result.contextCheckpoint).toContain('## Source History Excerpts');
+    expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
     expect(result.messages).not.toBe(messages);
-    expect(countGptMessagesTokensMock).toHaveBeenNthCalledWith(3, {
-      messages: [messages[0]]
-    });
-  });
-
-  it('should return original messages when compressed checkpoint still exceeds the production threshold', async () => {
-    countGptMessagesTokensMock
-      .mockResolvedValueOnce(5000)
-      .mockResolvedValueOnce(4500)
-      .mockResolvedValueOnce(4500)
-      .mockResolvedValueOnce(1200);
-    createLLMResponseMock.mockResolvedValue({
-      answerText: '<context_checkpoint>\n超长 tool checkpoint\n</context_checkpoint>',
-      usage: {
-        inputTokens: 500,
-        outputTokens: 3000
-      },
-      requestId: 'req_over_budget_tool_history',
-      finish_reason: 'stop'
-    });
-    const messages: ChatCompletionMessageParam[] = [
-      {
-        role: ChatCompletionRequestMessageRoleEnum.System,
-        content: 'system prompt'
-      },
-      {
-        role: ChatCompletionRequestMessageRoleEnum.User,
-        content: 'Run search_orders.'
-      },
-      {
-        role: ChatCompletionRequestMessageRoleEnum.Assistant,
-        content: null,
-        tool_calls: [
-          {
-            id: 'call_search_orders',
-            type: 'function',
-            function: {
-              name: 'search_orders',
-              arguments: '{"customerId":"c_123"}'
-            }
-          }
-        ]
-      }
-    ];
-
-    const result = await compressRequestMessages({
-      messages,
-      model
-    });
-
-    expect(result.messages).toBe(messages);
-    expect(result.contextCheckpoint).toBeUndefined();
-    expect(result.requestIds).toEqual(['req_over_budget_tool_history']);
+    expect(result.messageTokens).toBe(4500);
+    expect(result.contextCheckpoint).toBe(
+      '<context_checkpoint>\nLLM checkpoint summary\n</context_checkpoint>'
+    );
+    expect(result.contextCheckpoint).not.toContain('## Source History Excerpts');
+    expect(countGptMessagesTokensMock).toHaveBeenCalledTimes(2);
   });
 
   it('should keep original messages when below compression threshold', async () => {
@@ -356,12 +325,57 @@ describe('compressRequestMessages', () => {
       model
     });
 
-    expect(result).toEqual({ messages });
+    expect(result).toEqual({ messages, messageTokens: 100 });
     expect(createLLMResponseMock).not.toHaveBeenCalled();
   });
 
-  it('should build a local structured checkpoint for over-threshold tool-call histories', async () => {
+  it('should include tools schema when counting request message tokens', async () => {
+    countGptMessagesTokensMock.mockResolvedValue(100);
+    const messages: ChatCompletionMessageParam[] = [
+      {
+        role: ChatCompletionRequestMessageRoleEnum.User,
+        content: 'hello'
+      }
+    ];
+
+    const result = await compressRequestMessages({
+      messages,
+      model,
+      tools: [searchTool]
+    });
+
+    expect(result).toEqual({ messages, messageTokens: 100 });
+    expect(countGptMessagesTokensMock).toHaveBeenCalledWith({
+      messages,
+      tools: [searchTool]
+    });
+    expect(createLLMResponseMock).not.toHaveBeenCalled();
+  });
+
+  it('should reuse provided request message token count', async () => {
+    const messages = createMessages();
+    const result = await compressRequestMessages({
+      messageTokens: 100,
+      messages,
+      model
+    });
+
+    expect(result).toEqual({ messages, messageTokens: 100 });
+    expect(countGptMessagesTokensMock).not.toHaveBeenCalled();
+    expect(createLLMResponseMock).not.toHaveBeenCalled();
+  });
+
+  it('should send formatted user and assistant content to LLM for over-threshold tool-call histories', async () => {
     countGptMessagesTokensMock.mockResolvedValueOnce(5000).mockResolvedValueOnce(1200);
+    createLLMResponseMock.mockResolvedValue({
+      answerText: '<context_checkpoint>\norders summary\n</context_checkpoint>',
+      usage: {
+        inputTokens: 50,
+        outputTokens: 10
+      },
+      requestId: 'req_formatted_tool_history',
+      finish_reason: 'stop'
+    });
     const messages: ChatCompletionMessageParam[] = [
       {
         role: ChatCompletionRequestMessageRoleEnum.System,
@@ -389,6 +403,11 @@ describe('compressRequestMessages', () => {
             }
           }
         ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_search_orders',
+        content: '{"orders":[{"id":"ord_1","status":"paid"}]}'
       }
     ];
 
@@ -397,35 +416,251 @@ describe('compressRequestMessages', () => {
       model
     });
 
-    expect(createLLMResponseMock).not.toHaveBeenCalled();
-    expect(result.usage).toBeUndefined();
-    expect(result.messages).toEqual([
-      messages[0],
-      {
-        role: ChatCompletionRequestMessageRoleEnum.User,
-        content: result.contextCheckpoint,
-        hideInUI: true
-      }
-    ]);
-    expect(result.contextCheckpoint).toContain('<context_checkpoint>');
-    expect(result.contextCheckpoint).toContain('Case alpha. Available tools:');
-    expect(result.contextCheckpoint).toContain('search_orders');
-    expect(result.contextCheckpoint).toContain('"customerId":"c_123"');
-    expect(result.contextCheckpoint).toContain('Find recent orders for customer c_123');
+    expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
+    expect(result.contextCheckpoint).toBe(
+      '<context_checkpoint>\norders summary\n</context_checkpoint>'
+    );
+    const userPrompt = createLLMResponseMock.mock.calls[0][0].body.messages[1].content;
+    expect(userPrompt).toContain('<histories>');
+    expect(userPrompt).toContain('"role": "user"');
+    expect(userPrompt).toContain('"role": "assistant"');
+    expect(userPrompt).toContain('Find recent orders for customer c_123');
+    expect(userPrompt).toContain('<tools>');
+    expect(userPrompt).toContain('<tool name=\\"search_orders\\">');
+    expect(userPrompt).toContain('<param>{\\"customerId\\":\\"c_123\\",\\"limit\\":5}</param>');
+    expect(userPrompt).toContain('<response>');
+    expect(userPrompt).toContain('ord_1');
+    expect(userPrompt).toContain('paid');
+    expect(userPrompt).not.toContain('"role": "tool"');
+    expect(userPrompt).not.toContain('tool_calls');
+    expect(userPrompt).not.toContain('tool_call_id');
+    expect(userPrompt).not.toContain('call_search_orders');
   });
 
-  it('should count system messages before accepting a local structured checkpoint', async () => {
-    countGptMessagesTokensMock
-      .mockResolvedValueOnce(5000)
-      .mockResolvedValueOnce(4800)
-      .mockResolvedValueOnce(260);
+  it('should merge assistant content and tool calls into the same assistant checkpoint item', async () => {
+    countGptMessagesTokensMock.mockResolvedValueOnce(5000).mockResolvedValueOnce(1200);
     createLLMResponseMock.mockResolvedValue({
-      answerText: '<context_checkpoint>\nllm fallback summary\n</context_checkpoint>',
+      answerText: '<context_checkpoint>\nassistant content tool summary\n</context_checkpoint>',
       usage: {
         inputTokens: 50,
         outputTokens: 10
       },
-      requestId: 'req_structured_with_system_budget',
+      requestId: 'req_assistant_content_tool_history',
+      finish_reason: 'stop'
+    });
+    const messages: ChatCompletionMessageParam[] = [
+      {
+        role: ChatCompletionRequestMessageRoleEnum.System,
+        content: 'system prompt'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.User,
+        content: 'Check customer c_456 before answering.'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'I will inspect the latest customer profile before answering.',
+        tool_calls: [
+          {
+            id: 'call_get_customer',
+            type: 'function',
+            function: {
+              name: 'get_customer_profile',
+              arguments: '{"customerId":"c_456"}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_get_customer',
+        content: '{"customer":{"id":"c_456","tier":"enterprise","region":"NA"}}'
+      }
+    ];
+
+    await compressRequestMessages({
+      messages,
+      model
+    });
+
+    const userPrompt = createLLMResponseMock.mock.calls[0][0].body.messages[1].content;
+    expect(userPrompt).toContain('I will inspect the latest customer profile before answering.');
+    expect(userPrompt).toContain('<tools>');
+    expect(userPrompt).toContain('<tool name=\\"get_customer_profile\\">');
+    expect(userPrompt).toContain('<param>{\\"customerId\\":\\"c_456\\"}</param>');
+    expect(userPrompt).toContain('enterprise');
+    expect(userPrompt).not.toContain('"role": "tool"');
+    expect(userPrompt).not.toContain('tool_calls');
+    expect(userPrompt).not.toContain('tool_call_id');
+    expect(userPrompt).not.toContain('call_get_customer');
+  });
+
+  it('should match multiple tool responses by tool call id when tool messages are out of order', async () => {
+    countGptMessagesTokensMock.mockResolvedValueOnce(5000).mockResolvedValueOnce(1200);
+    createLLMResponseMock.mockResolvedValue({
+      answerText: '<context_checkpoint>\nmulti tool summary\n</context_checkpoint>',
+      usage: {
+        inputTokens: 50,
+        outputTokens: 10
+      },
+      requestId: 'req_multi_tool_history',
+      finish_reason: 'stop'
+    });
+    const messages: ChatCompletionMessageParam[] = [
+      {
+        role: ChatCompletionRequestMessageRoleEnum.System,
+        content: 'system prompt'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.User,
+        content: 'Compare recent orders and contracts for Acme.'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'I need both order and contract data.',
+        tool_calls: [
+          {
+            id: 'call_orders_multi',
+            type: 'function',
+            function: {
+              name: 'search_orders',
+              arguments: '{"company":"Acme","limit":2}'
+            }
+          },
+          {
+            id: 'call_contracts_multi',
+            type: 'function',
+            function: {
+              name: 'search_contracts',
+              arguments: '{"company":"Acme","year":2025}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_contracts_multi',
+        content: '{"contracts":[{"id":"ctr_multi_1","status":"active"}]}'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_orders_multi',
+        content: '{"orders":[{"id":"ord_multi_1","status":"paid"}]}'
+      }
+    ];
+
+    await compressRequestMessages({
+      messages,
+      model
+    });
+
+    const userPrompt = createLLMResponseMock.mock.calls[0][0].body.messages[1].content;
+    const ordersToolIndex = userPrompt.indexOf('<tool name=\\"search_orders\\">');
+    const ordersResultIndex = userPrompt.indexOf('ord_multi_1');
+    const contractsToolIndex = userPrompt.indexOf('<tool name=\\"search_contracts\\">');
+    const contractsResultIndex = userPrompt.indexOf('ctr_multi_1');
+
+    expect(ordersToolIndex).toBeGreaterThan(-1);
+    expect(contractsToolIndex).toBeGreaterThan(-1);
+    expect(ordersResultIndex).toBeGreaterThan(ordersToolIndex);
+    expect(contractsResultIndex).toBeGreaterThan(contractsToolIndex);
+    expect(ordersToolIndex).toBeLessThan(contractsToolIndex);
+    expect(userPrompt).toContain('<param>{\\"company\\":\\"Acme\\",\\"limit\\":2}</param>');
+    expect(userPrompt).toContain('<param>{\\"company\\":\\"Acme\\",\\"year\\":2025}</param>');
+    expect(userPrompt).not.toContain('call_orders_multi');
+    expect(userPrompt).not.toContain('call_contracts_multi');
+    expect(userPrompt).not.toContain('"role": "tool"');
+  });
+
+  it('should keep consecutive assistant messages separate while matching each tool response by id', async () => {
+    countGptMessagesTokensMock.mockResolvedValueOnce(5000).mockResolvedValueOnce(1200);
+    createLLMResponseMock.mockResolvedValue({
+      answerText: '<context_checkpoint>\nconsecutive assistant summary\n</context_checkpoint>',
+      usage: {
+        inputTokens: 50,
+        outputTokens: 10
+      },
+      requestId: 'req_consecutive_assistant_tools',
+      finish_reason: 'stop'
+    });
+    const messages: ChatCompletionMessageParam[] = [
+      {
+        role: ChatCompletionRequestMessageRoleEnum.System,
+        content: 'system prompt'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.User,
+        content: 'Gather order and contract context.'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'First I will inspect orders.',
+        tool_calls: [
+          {
+            id: 'call_consecutive_orders',
+            type: 'function',
+            function: {
+              name: 'search_orders',
+              arguments: '{"customerId":"c_789"}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'Then I will inspect contracts.',
+        tool_calls: [
+          {
+            id: 'call_consecutive_contracts',
+            type: 'function',
+            function: {
+              name: 'search_contracts',
+              arguments: '{"customerId":"c_789"}'
+            }
+          }
+        ]
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_consecutive_contracts',
+        content: '{"contracts":[{"id":"ctr_consecutive_1"}]}'
+      },
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_consecutive_orders',
+        content: '{"orders":[{"id":"ord_consecutive_1"}]}'
+      }
+    ];
+
+    await compressRequestMessages({
+      messages,
+      model
+    });
+
+    const userPrompt = createLLMResponseMock.mock.calls[0][0].body.messages[1].content;
+    const firstAssistantIndex = userPrompt.indexOf('First I will inspect orders.');
+    const secondAssistantIndex = userPrompt.indexOf('Then I will inspect contracts.');
+
+    expect(firstAssistantIndex).toBeGreaterThan(-1);
+    expect(secondAssistantIndex).toBeGreaterThan(firstAssistantIndex);
+    expect(userPrompt).toContain('<tool name=\\"search_orders\\">');
+    expect(userPrompt).toContain('ord_consecutive_1');
+    expect(userPrompt).toContain('<tool name=\\"search_contracts\\">');
+    expect(userPrompt).toContain('ctr_consecutive_1');
+    expect(userPrompt).not.toContain('call_consecutive_orders');
+    expect(userPrompt).not.toContain('call_consecutive_contracts');
+    expect(userPrompt).not.toContain('"role": "tool"');
+  });
+
+  it('should count tools schema but not send tools schema to checkpoint compression LLM', async () => {
+    countGptMessagesTokensMock.mockResolvedValueOnce(5000).mockResolvedValueOnce(260);
+    createLLMResponseMock.mockResolvedValue({
+      answerText: '<context_checkpoint>\ntool schema counted summary\n</context_checkpoint>',
+      usage: {
+        inputTokens: 50,
+        outputTokens: 10
+      },
+      requestId: 'req_without_tools_schema',
       finish_reason: 'stop'
     });
     const messages: ChatCompletionMessageParam[] = [
@@ -456,18 +691,25 @@ describe('compressRequestMessages', () => {
 
     const result = await compressRequestMessages({
       messages,
-      model
+      model,
+      tools: [searchTool]
     });
 
     expect(createLLMResponseMock).toHaveBeenCalled();
-    expect(result.contextCheckpoint).toContain('llm fallback summary');
+    expect(result.contextCheckpoint).toContain('tool schema counted summary');
+    expect(createLLMResponseMock.mock.calls[0][0].body.tools).toBeUndefined();
+    expect(countGptMessagesTokensMock).toHaveBeenNthCalledWith(1, {
+      messages,
+      tools: [searchTool]
+    });
+    expect(countGptMessagesTokensMock).toHaveBeenNthCalledWith(2, {
+      messages: [messages[0], expect.objectContaining({ hideInUI: true })],
+      tools: [searchTool]
+    });
   });
 
-  it('should include generic tool call memory in checkpoint compression prompt', async () => {
-    countGptMessagesTokensMock
-      .mockResolvedValueOnce(5000)
-      .mockResolvedValueOnce(5000)
-      .mockResolvedValueOnce(2000);
+  it('should not include tool call memory in checkpoint compression prompt', async () => {
+    countGptMessagesTokensMock.mockResolvedValueOnce(5000).mockResolvedValueOnce(2000);
     createLLMResponseMock.mockResolvedValue({
       answerText: '<context_checkpoint>\ntool summary\n</context_checkpoint>',
       usage: {
@@ -519,11 +761,16 @@ describe('compressRequestMessages', () => {
       '<context_checkpoint>\ntool summary\n</context_checkpoint>'
     );
     const userPrompt = createLLMResponseMock.mock.calls[0][0].body.messages[1].content;
-    expect(userPrompt).toContain('<tool_call_memory>');
-    expect(userPrompt).toContain('fn=search_contracts');
-    expect(userPrompt).toContain('args={"company":"Acme","year":2025}');
-    expect(userPrompt).toContain('user=Search enterprise contracts');
-    expect(userPrompt).toContain('"id":"ctr_2025_001"');
+    expect(userPrompt).not.toContain('<tool_call_memory>');
+    expect(userPrompt).not.toContain('fn=search_contracts');
+    expect(userPrompt).not.toContain('args={"company":"Acme","year":2025}');
+    expect(userPrompt).toContain('<tool name=\\"search_contracts\\">');
+    expect(userPrompt).toContain('<param>{\\"company\\":\\"Acme\\",\\"year\\":2025}</param>');
+    expect(userPrompt).toContain('Search enterprise contracts signed by Acme in 2025.');
+    expect(userPrompt).toContain('ctr_2025_001');
+    expect(userPrompt).not.toContain('"role": "tool"');
+    expect(userPrompt).not.toContain('tool_calls');
+    expect(userPrompt).not.toContain('tool_call_id');
   });
 
   it('should use the full request context to decide checkpoint compression', async () => {
@@ -691,7 +938,7 @@ describe('compressRequestMessages', () => {
       model
     });
 
-    expect(result).toEqual({ messages });
+    expect(result).toEqual({ messages, messageTokens: 6000 });
   });
 });
 
@@ -1131,8 +1378,36 @@ describe('compressToolResponse', () => {
     expect(createLLMResponseMock).not.toHaveBeenCalled();
   });
 
+  it('should keep small tool responses unchanged without any processing', async () => {
+    countPromptTokensMock.mockResolvedValue(800);
+    const response = JSON.stringify(
+      {
+        rows: [
+          {
+            id: 'keep_format_001',
+            content: 'Small JSON should not be minified or structurally summarized.'
+          }
+        ]
+      },
+      null,
+      2
+    );
+
+    const result = await compressToolResponse({
+      response,
+      model
+    });
+
+    expect(result).toEqual({ compressed: response });
+    expect(countPromptTokensMock).toHaveBeenCalledTimes(1);
+    expect(createLLMResponseMock).not.toHaveBeenCalled();
+  });
+
   it('should minify JSON tool responses without LLM when minified content fits the budget', async () => {
-    countPromptTokensMock.mockResolvedValue(100);
+    countPromptTokensMock
+      .mockResolvedValueOnce(1200)
+      .mockResolvedValueOnce(700)
+      .mockResolvedValueOnce(700);
     const response = JSON.stringify(
       {
         source: 'tool_call_log',
@@ -1194,13 +1469,11 @@ describe('compressToolResponse', () => {
 
     const result = await compressToolResponse({
       response,
-      model,
-      compressedTokenLimit: 1200,
-      currentMessagesTokens: 0,
-      toolLength: 1
+      model
     });
 
     expect(createLLMResponseMock).not.toHaveBeenCalled();
+    expect(countPromptTokensMock).toHaveBeenCalledTimes(3);
     const compressed = JSON.parse(result.compressed);
     expect(compressed.source).toBe('tool_call_log');
     expect(result.compressed).toContain('rows');
@@ -1212,7 +1485,11 @@ describe('compressToolResponse', () => {
   });
 
   it('should summarize larger JSON tool responses structurally without LLM', async () => {
-    countPromptTokensMock.mockResolvedValueOnce(900).mockResolvedValueOnce(180);
+    countPromptTokensMock
+      .mockResolvedValueOnce(1200)
+      .mockResolvedValueOnce(900)
+      .mockResolvedValueOnce(180)
+      .mockResolvedValueOnce(180);
     const response = JSON.stringify({
       source: 'tool_call_log',
       rows: [
@@ -1247,27 +1524,48 @@ describe('compressToolResponse', () => {
 
     const result = await compressToolResponse({
       response,
-      model,
-      compressedTokenLimit: 1200,
-      currentMessagesTokens: 0,
-      toolLength: 1
+      model
     });
 
     expect(createLLMResponseMock).not.toHaveBeenCalled();
     expect(result.compressed).toContain('JSON structural summary');
     expect(result.compressed).toContain('root keys: source, rows');
-    expect(result.compressed).toContain('important scalar values: tool_call_log; multiple_001');
+    expect(result.compressed).not.toContain('importantScalarSummary');
+    expect(result.compressed).toContain('"importantScalarValues"');
+    expect(result.compressed).toContain('source=tool_call_log');
+    expect(result.compressed).toContain('id=multiple_001');
     expect(result.compressed).toContain('rows: array(length=2)');
-    expect(result.compressed).toContain('rows[0].id: multiple_001');
-    expect(result.compressed).toContain('rows[0].tools[0].function.name: lawsuits_search');
+    expect(result.compressed).toContain('rows[0] keys: id, tools, messages');
+    expect(result.compressed).not.toContain('rows[0].id: multiple_001');
+    expect(result.compressed).not.toContain('rows[0].tools[0].function.name: lawsuits_search');
     expect(result.compressed).not.toContain('{"source"');
   });
 
-  it('should use dynamic available context as the tool compressed token limit', async () => {
-    mockPromptTokensForLlmCompression({
-      cleanedTokens: 1600,
-      initialTokens: 1600
+  it('should lightly process medium tool responses without LLM compression', async () => {
+    countPromptTokensMock.mockResolvedValueOnce(1200).mockResolvedValueOnce(1000);
+
+    const result = await compressToolResponse({
+      response:
+        'tool response https://example.com/a/b/c with image ![chart](https://example.com/chart.png)\n\n\nend',
+      model,
+      reasoningEffort: 'high'
     });
+
+    expect(createLLMResponseMock).not.toHaveBeenCalled();
+    expect(result.compressed).not.toContain('https://example.com');
+    expect(result.compressed).toContain('tool response');
+    expect(result.compressed).toContain('[chart]');
+  });
+
+  it('should compress large tool responses with 20 percent context as target', async () => {
+    countPromptTokensMock
+      .mockResolvedValueOnce(2400)
+      .mockResolvedValueOnce(2200)
+      .mockResolvedValueOnce(2200)
+      .mockResolvedValueOnce(2200)
+      .mockResolvedValueOnce(2200)
+      .mockResolvedValueOnce(50)
+      .mockResolvedValue(2400);
     createLLMResponseMock.mockResolvedValue({
       answerText: 'compressed tool response',
       usage: {
@@ -1280,8 +1578,6 @@ describe('compressToolResponse', () => {
     const result = await compressToolResponse({
       response: 'tool response',
       model,
-      currentMessagesTokens: 1000,
-      toolLength: 2,
       reasoningEffort: 'high'
     });
 
@@ -1290,32 +1586,8 @@ describe('compressToolResponse', () => {
     expect(result.usage?.moduleName).toBe('account_usage:tool_response_compress');
     expect(result.requestIds).toEqual(['req_tool']);
     expect(createLLMResponseMock.mock.calls[0][0].body.reasoning_effort).toBe('high');
-  });
-
-  it('should respect caller provided compressed token limit for tool response', async () => {
-    mockPromptTokensForLlmCompression({
-      cleanedTokens: 1200,
-      initialTokens: 1200
-    });
-    createLLMResponseMock.mockResolvedValue({
-      answerText: 'budgeted tool response',
-      usage: {
-        inputTokens: 30,
-        outputTokens: 6
-      },
-      requestId: 'req_tool_budget'
-    });
-
-    const result = await compressToolResponse({
-      response: 'tool response',
-      model,
-      compressedTokenLimit: 1000,
-      currentMessagesTokens: 0,
-      toolLength: 1
-    });
-
-    expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
-    expect(result.compressed).toBe('budgeted tool response');
-    expect(createLLMResponseMock.mock.calls[0][0].body.max_tokens).toBeUndefined();
+    expect(createLLMResponseMock.mock.calls[0][0].body.messages[1].content).toContain(
+      'Target maximum output tokens: 520'
+    );
   });
 });
