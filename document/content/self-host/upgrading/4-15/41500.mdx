@@ -93,6 +93,11 @@ curl --location --request POST 'https://{{host}}/api/admin/initSandboxArchive' \
 
 ### 清理重复对话，构建唯一索引
 
+## 功能重大变化
+
+1. ApiKey 功能调整，不再区分应用 key 和系统 key，只保留系统 key，如需兼容 openai sdk 用法，可使用 `apikey-appId` 的方式传递 Token。已有的 apikey 保持兼容，不影响使用。具体和查阅 [FastGPT API 文档说明](../../../openapi/intro)
+2. 部分 API 增加了更为严格的数据格式校验，如过遇到报错: `zod parse error` 可提交 issue 反馈，可能因一些旧数据或者自定义数据结构与声明不一致。
+
 ## 🚀 新增内容
 
 1. 新增技能模块，Agent V2 可绑定静态 Skill 来运行。

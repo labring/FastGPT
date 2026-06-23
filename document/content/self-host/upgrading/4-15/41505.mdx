@@ -31,6 +31,10 @@ curl --location --request POST 'https://{{host}}/api/admin/initSandboxArchive' \
 -d '{"runArchive":true,"inactiveDays":0}'
 ```
 
+## 功能重大变化
+
+1. ApiKey 功能调整，不再区分应用 key 和系统 key，只保留系统 key，如需兼容 openai sdk 用法，可使用 `apikey-appId` 的方式传递 Token。已有的 apikey 保持兼容，不影响使用。具体和查阅 [FastGPT API 文档说明](../../../openapi/intro)
+
 ## 🚀 新增内容
 
 1. HTTP 节点支持配置忽略 TLS 证书校验，适用于调用使用自签名证书或内部证书的 HTTPS 服务。

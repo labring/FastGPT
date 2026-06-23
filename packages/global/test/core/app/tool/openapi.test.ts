@@ -56,4 +56,11 @@ describe('GetPreviewNodeQuerySchema', () => {
   it('keeps full OpenAPI document generation compatible with query params', () => {
     expect(openAPIDocument.paths['/core/app/tool/getPreviewNode']?.get).toBeDefined();
   });
+
+  it('does not expose SystemOpenAPI filter tags in dev API document', () => {
+    const tags = openAPIDocument.paths['/core/chat/history/getHistories']?.post?.tags ?? [];
+
+    expect(tags).toContain('会话管理');
+    expect(tags.some((tag) => tag.startsWith('systemOpenAPI:'))).toBe(false);
+  });
 });

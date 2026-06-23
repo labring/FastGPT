@@ -162,6 +162,10 @@ export type ApiKeyHealthParamsType = z.infer<typeof ApiKeyHealthParamsSchema>;
 export const ApiKeyHealthResponseSchema = z.object({
   valid: z.literal(true).meta({
     description: 'API Key 是否有效'
+  }),
+  appId: ObjectIdSchema.optional().meta({
+    example: '68ad85a7463006c963799a05',
+    description: '旧应用 API Key 绑定的应用 ID；系统 API Key 不返回'
   })
 });
 export type ApiKeyHealthResponseType = z.infer<typeof ApiKeyHealthResponseSchema>;

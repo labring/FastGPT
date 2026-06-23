@@ -23,6 +23,7 @@ export const appEnv = createEnv({
     HIDE_CHAT_COPYRIGHT_SETTING: BoolSchema.default(false),
     AGENT_SANDBOX_FREE_TIP: BoolSchema.default(false),
     AGENT_SANDBOX_PROXY_URL: AgentSandboxProxyUrlSchema.optional(),
+    OPENAPI_KEY_MAX_COUNT: IntSchema.min(1).default(100),
 
     // 临时
     MARKETPLACE_URL: UrlSchema.default('https://v2.marketplace.fastgpt.cn'),

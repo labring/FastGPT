@@ -468,14 +468,20 @@ ${interactiveStreamExample}
     post: {
       tags: [DevApiTagsMap.chatController, SystemOpenApiTagMap.chatController],
       summary: '发起对话 v2',
-      description: `v2 对话接口与 v1 请求参数基本一致，但流式事件和停止方式有差异。
+      description: `v2 对话接口兼容 GPT 的接口规范。
+
+**密钥使用规范**
+
+- 使用 APIKey 鉴权。调用 \`chat/completions\` 时，推荐在请求体传入 \`body.appId\`。
+- 为兼容 OpenAI SDK，也支持 \`Authorization: Bearer <apiKey>-<appId>\`，此时不需要传递 \`body.appId\`。
+- 有些 SDK 调用时，\`BaseUrl\` 需要添加 \`v1\` 路径，有些不需要，如果出现 404 情况，可补充 \`v1\` 重试。
+- appId 的优先级：\`body.appId\` , \`<apiKey>-<appId>\` , \`apikey 关联的 appId(旧版适配)\`
 
 **注意事项**
 
-- 传入的 \`model\`、\`temperature\` 等参数字段均无效，这些字段由编排决定，不会根据 API 参数改变。
-- 不会返回实际消耗 \`Token\` 值。如果需要，可以设置 \`detail=true\`，并手动计算 \`responseData\` 里的 \`tokens\` 值。
-- 停止正在运行的 v2 对话请调用 \`/v2/chat/stop\`。
-- v2 支持通过 \`/core/chat/resume\` 做流式断线续传(仅在线对话支持）。
+- 如需通过 \`authProxy\` 代理团队成员身份，需要团队所有者在创建或编辑该 key 时开启 \`authProxy\`；代理身份仍需要具备目标应用和会话权限。（仅适用于 FastGPT >= v4.15.0）
+- 传入的 \`model\`，\`temperature\` 等参数字段均无效，这些字段由编排决定，不会根据 API 参数改变。
+- 不会返回实际消耗 \`Token\` 值，如果需要，可以设置 \`detail=true\`，并手动计算 \`responseData\` 里的 \`tokens\` 值。
 
 **chatId 行为**
 
@@ -503,12 +509,6 @@ ${interactiveStreamExample}
 - \`plan\` / \`planStatus\`：Agent 计划和计划状态（仅相关 Agent 节点可能返回）。
 - \`skillCall\` / \`sandboxStatus\`：技能调用和沙盒状态（仅相关能力启用时可能返回）。
 - \`error\`：报错。
-
-**v2 与 v1 的 SSE 差异**
-
-- v1 在 \`detail=true, stream=true\` 时会使用 \`flowResponses\` 返回节点响应数组。
-- v2 在 \`detail=true, stream=true\` 时使用 \`flowNodeResponse\` 按节点逐条返回响应详情，并额外可能返回 \`workflowDuration\`、Agent 计划、技能和沙盒状态事件。
-- \`detail=false, stream=true\` 时，v2 只保留答案类事件；普通答案 chunk 没有 \`event\` 字段，也不会返回 \`chatTitle\`。
 
 **交互节点**
 

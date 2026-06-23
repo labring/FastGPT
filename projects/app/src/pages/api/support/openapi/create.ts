@@ -9,6 +9,7 @@ import { TeamApikeyCreatePermissionVal } from '@fastgpt/global/support/permissio
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { appEnv } from '@/env';
 import {
   CreateApiKeyBodySchema,
   CreateApiKeyResponseSchema,
@@ -39,7 +40,7 @@ async function handler(
 
   const count = await MongoOpenApi.find({ tmbId }).countDocuments();
 
-  if (count >= 10) {
+  if (count >= appEnv.OPENAPI_KEY_MAX_COUNT) {
     return Promise.reject(OpenApiErrEnum.exceedLimit);
   }
 

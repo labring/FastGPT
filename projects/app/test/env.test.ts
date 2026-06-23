@@ -5,6 +5,16 @@ const importAppEnv = async () => {
   return import('../src/env');
 };
 
+const disableAgentSandboxEnv = () => {
+  vi.stubEnv('AGENT_SANDBOX_PROVIDER', '');
+  vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', '');
+  vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', '');
+  vi.stubEnv('AGENT_SANDBOX_SEALOS_BASEURL', '');
+  vi.stubEnv('AGENT_SANDBOX_SEALOS_TOKEN', '');
+  vi.stubEnv('AGENT_SANDBOX_E2B_API_KEY', '');
+  vi.stubEnv('AGENT_SANDBOX_PROXY_URL', '');
+};
+
 describe('app env validation', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
@@ -16,6 +26,36 @@ describe('app env validation', () => {
     vi.stubEnv('AGENT_SANDBOX_PROXY_URL', '');
 
     await expect(importAppEnv()).resolves.toBeDefined();
+  });
+
+  it('OPENAPI_KEY_MAX_COUNT 默认值为 100，且允许配置为最小值 1', async () => {
+    disableAgentSandboxEnv();
+    vi.stubEnv('OPENAPI_KEY_MAX_COUNT', '');
+
+    await expect(importAppEnv()).resolves.toMatchObject({
+      appEnv: expect.objectContaining({
+        OPENAPI_KEY_MAX_COUNT: 100
+      })
+    });
+
+    vi.stubEnv('OPENAPI_KEY_MAX_COUNT', '1');
+
+    await expect(importAppEnv()).resolves.toMatchObject({
+      appEnv: expect.objectContaining({
+        OPENAPI_KEY_MAX_COUNT: 1
+      })
+    });
+  });
+
+  it('OPENAPI_KEY_MAX_COUNT 必须是大于等于 1 的整数', async () => {
+    disableAgentSandboxEnv();
+    vi.stubEnv('OPENAPI_KEY_MAX_COUNT', '0');
+
+    await expect(importAppEnv()).rejects.toThrow('OPENAPI_KEY_MAX_COUNT');
+
+    vi.stubEnv('OPENAPI_KEY_MAX_COUNT', '1.5');
+
+    await expect(importAppEnv()).rejects.toThrow('OPENAPI_KEY_MAX_COUNT');
   });
 
   it('启用 opensandbox 时要求配置 AGENT_SANDBOX_PROXY_URL', async () => {

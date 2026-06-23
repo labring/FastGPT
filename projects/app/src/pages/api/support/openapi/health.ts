@@ -10,7 +10,7 @@ import { resolveOpenApiCredential } from '@fastgpt/service/support/openapi/auth'
 import { useIPFrequencyLimit } from '../../../../../../../packages/service/common/middle/reqFrequencyLimit';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
-async function handler(req: ApiRequestProps): Promise<ApiKeyHealthResponseType> {
+export async function handler(req: ApiRequestProps): Promise<ApiKeyHealthResponseType> {
   const { apiKey } = parseApiInput({
     req,
     querySchema: ApiKeyHealthParamsSchema
@@ -23,7 +23,8 @@ async function handler(req: ApiRequestProps): Promise<ApiKeyHealthResponseType> 
   }
 
   return ApiKeyHealthResponseSchema.parse({
-    valid: true
+    valid: true,
+    appId: apiKeyDoc.appId
   });
 }
 

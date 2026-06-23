@@ -104,6 +104,11 @@ curl --location --request POST 'https://{{host}}/api/admin/initSandboxArchive' \
 -d '{"runArchive":true,"inactiveDays":0}'
 ```
 
+## Breaking Changes
+
+1. API Key behavior has changed. FastGPT no longer distinguishes between app keys and system keys; only system keys are kept. For OpenAI SDK compatibility, pass the token as `apikey-appId`. Existing API keys remain compatible and continue to work. For details, see the [FastGPT API documentation](../../../openapi/intro).
+2. Some APIs now enforce stricter data format validation. If you see a `zod parse error`, please submit an issue. It may be caused by legacy data or custom data structures that do not match the declared schema.
+
 ## 🚀 New Features
 
 1. Added the Loop node and deprecated the legacy batch execution node.
