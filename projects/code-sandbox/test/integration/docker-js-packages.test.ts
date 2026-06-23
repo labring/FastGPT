@@ -145,6 +145,39 @@ async function main() {
     expect(result.data?.codeReturn.text).toContain('a%5Bb%5D=1');
   });
 
+  it('url 可 require 并解析 URL', async () => {
+    const result = await runJs(`
+async function main() {
+  const url = require('url');
+  const parsed = url.parse('https://example.com/a?b=1', true);
+  return {
+    hostname: parsed.hostname,
+    query: parsed.query.b
+  };
+}`);
+
+    expect(result.success).toBe(true);
+    expect(result.data?.codeReturn).toEqual({
+      hostname: 'example.com',
+      query: '1'
+    });
+  });
+
+  it('querystring 可 require 并处理查询串', async () => {
+    const result = await runJs(`
+async function main() {
+  const querystring = require('querystring');
+  return {
+    parsed: querystring.parse('a=1&b=2'),
+    text: querystring.stringify({ a: 1, b: 2 })
+  };
+}`);
+
+    expect(result.success).toBe(true);
+    expect(result.data?.codeReturn.parsed).toEqual({ a: '1', b: '2' });
+    expect(result.data?.codeReturn.text).toContain('a=1');
+  });
+
   it.each(['child_process', 'fs', 'net', 'http', 'https'])(
     '危险模块 %s 不能 require',
     async (moduleName) => {

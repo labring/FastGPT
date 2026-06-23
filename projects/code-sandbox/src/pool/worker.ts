@@ -369,14 +369,26 @@ const earlyDangerousMethods = [
   'initgroups'
 ];
 
-// 延迟删除：会被 https/dns/tsx 等内部使用，要等 hardenRuntime 预加载完白名单后再删
-const lateDangerousMethods = ['kill', 'exit', 'emitWarning', 'abort'];
+// 延迟处理：会被 https/dns/tsx/url 等内部使用，要等 hardenRuntime 预加载完白名单后再收紧。
+const lateDangerousMethods = ['kill', 'exit', 'abort'];
 
 function deleteProcessMethods(methods: readonly string[]): void {
   for (const method of methods) {
     try {
       Object.defineProperty(process, method, {
         value: undefined,
+        writable: false,
+        configurable: false
+      });
+    } catch {}
+  }
+}
+
+function stubProcessMethods(methods: readonly string[]): void {
+  for (const method of methods) {
+    try {
+      Object.defineProperty(process, method, {
+        value: () => undefined,
         writable: false,
         configurable: false
       });
@@ -565,9 +577,12 @@ function hardenRuntime(): void {
     } catch {}
   }
 
-  // 白名单模块已加载完毕，此时再删除 kill/exit/emitWarning/abort：
+  // 白名单模块已加载完毕，此时再删除 kill/exit/abort：
   // 这些方法仅在模块初始化时被 https/dns/tsx 等使用，预加载后不再需要。
   deleteProcessMethods(lateDangerousMethods);
+  // Node 内置 url.parse 在运行时仍会调用 process.emitWarning。
+  // 用户代码拿到的是下方 _sandboxProcess，这里只给真实 process 保留不可写 no-op 兼容内置模块。
+  stubProcessMethods(['emitWarning']);
 
   for (const intrinsic of hardenedIntrinsics) {
     if (intrinsic) _ObjectFreeze(intrinsic);

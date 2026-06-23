@@ -73,6 +73,7 @@ describe('模块拦截', () => {
         'fs/promises',
         'child_process',
         'http',
+        'url',
         'lodash'
       ]);
       await pool.init();
@@ -82,7 +83,8 @@ describe('模块拦截', () => {
           `async function main() { const fs = require('node:fs'); return { ok: typeof fs.readFileSync === 'function' }; }`,
           `async function main() { const fs = require('fs/promises'); return { ok: typeof fs.readFile === 'function' }; }`,
           `async function main() { const cp = require('child_process'); return { ok: typeof cp.execFile === 'function' }; }`,
-          `async function main() { const http = require('http'); return { ok: typeof http.request === 'function' }; }`
+          `async function main() { const http = require('http'); return { ok: typeof http.request === 'function' }; }`,
+          `async function main() { const url = require('url'); const parsed = url.parse('https://example.com/a?b=1', true); return { ok: parsed.hostname === 'example.com' && parsed.query.b === '1' }; }`
         ];
 
         for (const code of payloads) {
