@@ -730,9 +730,27 @@ export function form2AppWorkflow(
       };
     }
 
-    // 当开关关闭时，扩展模型跟随 AI 对话模型；开关开启时保留用户弹窗中的选择
+    // 开关关闭时：扩展模型、SQL 生成模型跟随 AI 对话模型
+    // 开关打开时：保留用户在弹窗中配置的值，若未配置则跟随 AI 对话模型
+    // 注：用户点击确认时 DatasetParamsModal 的 onSuccess 会通过 setAppForm 将值写入 appForm.dataset，
+    // 此时 formData.dataset.xxx 非空，下方 if 判断不成立，不会被覆写，保留用户选择
+    // aiSettings.modelId 来自历史保存数据（appWorkflow2Form 从 database workflow node 解析）
+    // 新建应用无历史数据时 modelId 为空，兜底取系统默认模型 defaultModels.llm?.id，
+    // 与前端 AIModelSelector 的回显逻辑保持一致（appForm.aiSettings.modelId || defaultModels.llm?.id）
     if (!useSystemStore.getState().feConfigs.show_dataset_search_params) {
-      formData.dataset.datasetSearchExtensionModelId = formData.aiSettings.modelId;
+      formData.dataset.datasetSearchExtensionModelId =
+        formData.aiSettings.modelId || useSystemStore.getState().defaultModels.llm?.id;
+      formData.dataset.generateSqlModelId =
+        formData.aiSettings.modelId || useSystemStore.getState().defaultModels.llm?.id;
+    } else {
+      if (!formData.dataset.datasetSearchExtensionModelId) {
+        formData.dataset.datasetSearchExtensionModelId =
+          formData.aiSettings.modelId || useSystemStore.getState().defaultModels.llm?.id;
+      }
+      if (!formData.dataset.generateSqlModelId) {
+        formData.dataset.generateSqlModelId =
+          formData.aiSettings.modelId || useSystemStore.getState().defaultModels.llm?.id;
+      }
     }
 
     // 创建回复模式判断节点
