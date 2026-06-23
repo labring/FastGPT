@@ -119,8 +119,8 @@ const ApiKeyTable = ({ mode = 'account' }: ApiKeyTableProps) => {
       flexDirection={'column'}
       h={'100%'}
       position={'relative'}
-      pt={isPublishMode ? 3 : 0}
-      px={isPublishMode ? 5 : 0}
+      pt={0}
+      px={0}
       minH={isPublishMode ? '50vh' : undefined}
     >
       <Box display={['block', 'flex']} alignItems={'center'}>
