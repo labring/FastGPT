@@ -25,6 +25,7 @@ import { jiebaSplitWithCustomDict } from '../../../common/string/jieba/index';
 import { detectAndDecodeBuffer } from '../../../common/file/encoding';
 import { addLog } from '../../../common/system/log';
 import { retryFn } from '@fastgpt/global/common/system/utils';
+import { pushCollectionUpdateJob } from '../collection/mq';
 
 // 同义词词汇缓存，key 为 datasetId，value 为词汇列表、过期时间和访问时间
 interface SynonymWordsCache {
@@ -480,6 +481,21 @@ export async function uploadSynonymFile({
       } catch (error) {
         addLog.error('Failed to create synonym training task:', error);
       }
+    }
+
+    // 触发所有受影响的 collection 的 stats 更新，使前端状态从 ready 变为 indexing
+    const affectedCollections = await MongoDatasetTraining.distinct('collectionId', {
+      teamId: new Types.ObjectId(teamId),
+      datasetId: new Types.ObjectId(datasetId),
+      mode: TrainingModeEnum.synonymStandardize
+    });
+
+    for (const collectionId of affectedCollections) {
+      pushCollectionUpdateJob({
+        collectionId: String(collectionId),
+        datasetId,
+        teamId
+      });
     }
 
     // 12. 清除同义词词汇缓存
