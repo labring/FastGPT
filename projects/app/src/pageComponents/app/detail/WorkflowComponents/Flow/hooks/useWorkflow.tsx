@@ -469,7 +469,10 @@ export const useWorkflow = () => {
   } = useContextSelector(WorkflowBufferDataContext, (state) => state);
   const selectedNodesMap = useContextSelector(WorkflowNodeDataContext, (v) => v.selectedNodesMap);
 
-  const { setConnectingEdge, onChangeNode } = useContextSelector(WorkflowActionsContext, (v) => v);
+  const { setConnectingEdge, onChangeNode, onUpdateNodeError } = useContextSelector(
+    WorkflowActionsContext,
+    (v) => v
+  );
   const pushPastSnapshot = useContextSelector(WorkflowSnapshotContext, (v) => v.pushPastSnapshot);
 
   const { setHoverEdgeId, setMenu } = useContextSelector(WorkflowUIContext, (v) => v);
@@ -662,8 +665,16 @@ export const useWorkflow = () => {
       change.selected = true;
     }
 
+    // 错误节点失焦（取消选中）时清除标红，与原版点击节点取消标红行为一致。
+    if (!change.selected) {
+      const node = getRawNodeById(change.id);
+      if (node?.data.isError) {
+        onUpdateNodeError(node.data.nodeId, false);
+      }
+      return;
+    }
+
     // 父子互斥(后操作优先): 选父则取消其已选 children;选子则取消已选父。
-    if (!change.selected) return;
     const node = getRawNodeById(change.id);
     if (!node) return;
 

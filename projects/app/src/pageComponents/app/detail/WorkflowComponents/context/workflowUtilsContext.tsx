@@ -1,11 +1,12 @@
 // 工作流工具函数层
-import React, { type ReactNode, useCallback, useMemo, useContext } from 'react';
+import React, { type ReactNode, useCallback, useEffect, useMemo } from 'react';
 import { createContext, useContextSelector } from 'use-context-selector';
 import { useReactFlow } from 'reactflow';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import {
-  checkWorkflowNodeAndConnection,
+  checkWorkflowBeforeRunOrPublish,
+  checkWorkflowNodeIssues,
   adaptCatchError,
   storeNode2FlowNode,
   storeEdge2RenderEdge
@@ -67,47 +68,25 @@ type WorkflowUtilsContextValue = {
   };
 };
 export const WorkflowUtilsContext = createContext<WorkflowUtilsContextValue>({
-  initData: function (
-    e: {
-      nodes: StoreNodeItemType[];
-      edges: StoreEdgeItemType[];
-      chatConfig?: AppChatConfigType;
-    },
-    isInit?: boolean
-  ): Promise<void> {
+  initData: (...args: Parameters<WorkflowUtilsContextValue['initData']>) => {
+    void args;
     throw new Error('Function not implemented.');
   },
-  flowData2StoreData: function ():
-    | {
-        nodes: StoreNodeItemType[];
-        edges: StoreEdgeItemType[];
-      }
-    | undefined {
+  flowData2StoreData: () => {
     throw new Error('Function not implemented.');
   },
-  flowData2StoreDataAndCheck: function (hideTip?: boolean):
-    | {
-        nodes: StoreNodeItemType[];
-        edges: StoreEdgeItemType[];
-      }
-    | undefined {
+  flowData2StoreDataAndCheck: (
+    ...args: Parameters<WorkflowUtilsContextValue['flowData2StoreDataAndCheck']>
+  ) => {
+    void args;
     throw new Error('Function not implemented.');
   },
-  splitOutput: function (outputs: FlowNodeOutputItemType[]): {
-    successOutputs: FlowNodeOutputItemType[];
-    hiddenOutputs: FlowNodeOutputItemType[];
-    errorOutputs: FlowNodeOutputItemType[];
-  } {
+  splitOutput: (...args: Parameters<WorkflowUtilsContextValue['splitOutput']>) => {
+    void args;
     throw new Error('Function not implemented.');
   },
-  splitToolInputs: function (
-    inputs: FlowNodeInputItemType[],
-    nodeId: string
-  ): {
-    isTool: boolean;
-    toolInputs: FlowNodeInputItemType[];
-    commonInputs: FlowNodeInputItemType[];
-  } {
+  splitToolInputs: (...args: Parameters<WorkflowUtilsContextValue['splitToolInputs']>) => {
+    void args;
     throw new Error('Function not implemented.');
   }
 });
@@ -115,7 +94,7 @@ export const WorkflowUtilsContext = createContext<WorkflowUtilsContextValue>({
 export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { fitView, getViewport, setViewport } = useReactFlow();
+  const { fitView } = useReactFlow();
   const { feConfigs } = useSystemStore();
   const { teamPlanStatus } = useUserStore();
   const showSandbox = feConfigs?.show_agent_sandbox;
@@ -127,7 +106,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
     (v) => v
   );
   const { past, setPast } = useContextSelector(WorkflowSnapshotContext, (v) => v);
-  const { onRemoveError, onUpdateNodeError, onChangeNode } = useContextSelector(
+  const { onRemoveError, onUpdateNodeError, onSyncWorkflowCheckIssues } = useContextSelector(
     WorkflowActionsContext,
     (v) => v
   );
@@ -222,21 +201,32 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
         return;
       }
 
-      const checkResults = checkWorkflowNodeAndConnection({ nodes, edges });
+      const { issueMap, hasError, firstErrorNodeId } = checkWorkflowBeforeRunOrPublish({
+        nodes,
+        edges,
+        t
+      });
 
-      if (!checkResults) {
+      if (!hasError) {
         onRemoveError();
         const storeWorkflow = uiWorkflow2StoreWorkflow({ nodes, edges });
 
         return storeWorkflow;
-      } else if (!hideTip) {
-        checkResults.forEach((nodeId) => onUpdateNodeError(nodeId, true));
+      }
 
-        // View move to the node that failed
-        fitView({
-          nodes: nodes.filter((node) => checkResults.includes(node.data.nodeId)),
-          padding: 0.3
-        });
+      if (!hideTip) {
+        onSyncWorkflowCheckIssues(issueMap);
+
+        if (firstErrorNodeId) {
+          onUpdateNodeError(firstErrorNodeId, true);
+          const firstErrorNode = nodes.find((node) => node.data.nodeId === firstErrorNodeId);
+          if (firstErrorNode) {
+            fitView({
+              nodes: [firstErrorNode],
+              padding: 0.3
+            });
+          }
+        }
 
         toast({
           status: 'warning',
@@ -248,14 +238,32 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
       getNodes,
       edges,
       onRemoveError,
+      onSyncWorkflowCheckIssues,
       fitView,
-      toast,
       t,
       onUpdateNodeError,
       showSandbox,
-      enableSandbox
+      enableSandbox,
+      toast
     ]
   );
+
+  /** 编辑页定时全量扫描，主动发现新增/已修复的节点错误。 */
+  useEffect(() => {
+    const runScheduledCheck = () => {
+      const nodes = getNodes();
+      if (nodes.length === 0) return;
+
+      const issueMap = checkWorkflowNodeIssues({ nodes, edges, t });
+      onSyncWorkflowCheckIssues(issueMap);
+    };
+
+    const timer = window.setInterval(runScheduledCheck, 10_000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [edges, getNodes, onSyncWorkflowCheckIssues, t]);
 
   // 4. initData - 初始化工作流数据
   const initData = useCallback(

@@ -5,7 +5,8 @@ import {
   type StoreEdgeItemType
 } from '@fastgpt/global/core/workflow/type/edge';
 import { useCallback, useState, useMemo } from 'react';
-import { checkWorkflowNodeAndConnection, getNodeAllSource } from '@/web/core/workflow/utils';
+import { useReactFlow } from 'reactflow';
+import { checkWorkflowBeforeRunOrPublish, getNodeAllSource } from '@/web/core/workflow/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { uiWorkflow2StoreWorkflow } from '../../utils';
 import { type RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
@@ -58,7 +59,11 @@ export const useDebug = () => {
     WorkflowBufferDataContext,
     (v) => v.childrenNodeIdListMap
   );
-  const { onUpdateNodeError, onRemoveError } = useContextSelector(WorkflowActionsContext, (v) => v);
+  const { fitView } = useReactFlow();
+  const { onUpdateNodeError, onRemoveError, onSyncWorkflowCheckIssues } = useContextSelector(
+    WorkflowActionsContext,
+    (v) => v
+  );
   const onStartNodeDebug = useContextSelector(WorkflowDebugContext, (v) => v.onStartNodeDebug);
 
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
@@ -94,22 +99,48 @@ export const useDebug = () => {
   const flowData2StoreDataAndCheck = useCallback(async () => {
     const nodes = getNodes();
 
-    const checkResults = checkWorkflowNodeAndConnection({ nodes, edges });
-    if (!checkResults) {
+    const { issueMap, hasError, firstErrorNodeId } = checkWorkflowBeforeRunOrPublish({
+      nodes,
+      edges,
+      t: workflowT
+    });
+
+    if (!hasError) {
       onRemoveError();
       const storeNodes = uiWorkflow2StoreWorkflow({ nodes, edges });
 
       return JSON.stringify(storeNodes);
-    } else {
-      checkResults.forEach((nodeId) => onUpdateNodeError(nodeId, true));
-
-      toast({
-        status: 'warning',
-        title: t('common:core.workflow.Check Failed')
-      });
-      return Promise.reject();
     }
-  }, [edges, getNodes, onRemoveError, onUpdateNodeError, t, toast]);
+
+    onSyncWorkflowCheckIssues(issueMap);
+
+    if (firstErrorNodeId) {
+      onUpdateNodeError(firstErrorNodeId, true);
+      const firstErrorNode = nodes.find((node) => node.data.nodeId === firstErrorNodeId);
+      if (firstErrorNode) {
+        fitView({
+          nodes: [firstErrorNode],
+          padding: 0.3
+        });
+      }
+    }
+
+    toast({
+      status: 'warning',
+      title: t('common:core.workflow.Check Failed')
+    });
+    return Promise.reject();
+  }, [
+    edges,
+    fitView,
+    getNodes,
+    onRemoveError,
+    onSyncWorkflowCheckIssues,
+    onUpdateNodeError,
+    t,
+    toast,
+    workflowT
+  ]);
 
   const openDebugNode = useCallback(
     async ({ entryNodeId }: { entryNodeId: string }) => {
