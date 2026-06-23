@@ -63,6 +63,7 @@
   "log.feedback.mark_as_read": "标为已读",
   "log.feedback.read": "已读",
   "log.feedback.show_feedback": "显示反馈",
+  "log.feedback.user_bad_feedback": "用户反馈",
   "master_agent_call": "主 agent 调用",
   "mobile_clear_history_confirm_tip": "此操作不可撤销",
   "mobile_clear_history_confirm_title": "确定清空历史记录？",

@@ -42,6 +42,9 @@ export type ChatRecordsListProps = {
     dataId: string;
     trigger: number;
   };
+  disableFooterHoverTranslate?: boolean;
+  footerRunDetailPosition?: 'default' | 'afterCopy';
+  feedbackUserName?: string;
   onCloseCustomFeedback: (
     chat: ChatSiteItemType,
     index: number
@@ -76,6 +79,9 @@ const ChatRecordsList = ({
   onAddUserLike,
   onAddUserDislike,
   likeFeedbackEffect,
+  disableFooterHoverTranslate,
+  footerRunDetailPosition,
+  feedbackUserName,
   onCloseCustomFeedback,
   onToggleFeedbackReadStatus
 }: ChatRecordsListProps) => {
@@ -222,6 +228,9 @@ const ChatRecordsList = ({
                           likeFeedbackEffect?.dataId === item.dataId
                             ? likeFeedbackEffect.trigger
                             : undefined,
+                        disableFooterHoverTranslate,
+                        footerRunDetailPosition,
+                        feedbackUserName,
                         onToggleFeedbackReadStatus: onToggleFeedbackReadStatus(item)
                       }}
                     >

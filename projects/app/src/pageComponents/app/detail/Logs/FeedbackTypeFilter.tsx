@@ -275,7 +275,7 @@ export const DetailLogsModalFeedbackTypeFilter = ({
     return () => {
       eventBus.off(EventNameEnum.refreshFeedback);
     };
-  }, []);
+  }, [loadFeedbackRecords]);
 
   return (
     <Flex alignItems={'center'} gap={3} w={'100%'}>
@@ -290,17 +290,18 @@ export const DetailLogsModalFeedbackTypeFilter = ({
       {showNavigation && (
         <>
           {/* Current position indicator */}
-          <Box fontSize={'sm'} color={'myGray.600'} whiteSpace={'nowrap'} flex={1}>
+          <Box fontSize={'sm'} color={'myGray.600'} whiteSpace={'nowrap'}>
             {currentPosition}/{totalCount}
           </Box>
 
-          {/* Previous button */}
-          <Button size="sm" w={'100px'} variant={'whiteBase'} onClick={handlePrev}>
-            {t('chat:Previous')}
-          </Button>
-          <Button size="sm" w={'100px'} variant={'whiteBase'} onClick={handleNext}>
-            {t('chat:Next')}
-          </Button>
+          <Flex flex={1} gap={3} minW={0}>
+            <Button size="sm" flex={1} h={'36px'} py={2} variant={'whiteBase'} onClick={handlePrev}>
+              {t('chat:Previous')}
+            </Button>
+            <Button size="sm" flex={1} h={'36px'} py={2} variant={'whiteBase'} onClick={handleNext}>
+              {t('chat:Next')}
+            </Button>
+          </Flex>
         </>
       )}
     </Flex>

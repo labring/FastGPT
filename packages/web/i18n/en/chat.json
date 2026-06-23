@@ -63,6 +63,7 @@
   "log.feedback.mark_as_read": "Mark as Read",
   "log.feedback.read": "Read",
   "log.feedback.show_feedback": "Show Feedback",
+  "log.feedback.user_bad_feedback": "User feedback",
   "master_agent_call": "Master agent",
   "mobile_clear_history_confirm_tip": "This action cannot be undone",
   "mobile_clear_history_confirm_title": "Clear history?",

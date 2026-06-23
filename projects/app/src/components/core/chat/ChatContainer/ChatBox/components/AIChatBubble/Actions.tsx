@@ -8,6 +8,7 @@ import ChatController, { type ChatControllerProps } from '../ChatController';
 import { ChatBoxContext } from '../../Provider';
 import { useContextSelector } from 'use-context-selector';
 import { ChatTypeEnum } from '../../constants';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatSiteItemType } from '../../type';
 import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 import { useSandboxEditor } from '@/pageComponents/chat/SandboxEditor/hook';
@@ -37,7 +38,7 @@ const AIChatBubbleActions = ({
   responseData
 }: AIChatBubbleActionsProps) => {
   const { t } = useTranslation();
-  const { onRetry } = chatControllerProps;
+  const { onRetry, feedbackUserName } = chatControllerProps;
   const { isPc } = useSystem();
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
   const showRetry = chatType !== ChatTypeEnum.log && !!onRetry;
@@ -65,6 +66,11 @@ const AIChatBubbleActions = ({
     );
   }, [responseData]);
   const showTotalPoints = showPoints && totalPoints > 0;
+  const badFeedback = historyItem.obj === ChatRoleEnum.AI ? historyItem.userBadFeedback : undefined;
+  const isFeedbackRead =
+    historyItem.obj === ChatRoleEnum.AI ? historyItem.isFeedbackRead : undefined;
+  const showUnreadBadFeedback =
+    chatType === ChatTypeEnum.log && !!badFeedback && isFeedbackRead !== true;
 
   const formattedPoints = useMemo(() => {
     const formatted = new Intl.NumberFormat(undefined, {
@@ -72,6 +78,22 @@ const AIChatBubbleActions = ({
     }).format(totalPoints);
     return totalPoints > 0 ? `-${formatted}` : formatted;
   }, [totalPoints]);
+  const renderRunDetailAction = () => (
+    <Flex
+      alignItems={'center'}
+      gap={'4px'}
+      p={'4px'}
+      cursor={'pointer'}
+      color={'myGray.400'}
+      _hover={{ color: 'primary.600' }}
+      onClick={onOpenWholeModal}
+    >
+      <MyIcon name={'core/chat/terminal'} w={'16px'} />
+      <Box>{t('chat:run_detail')}</Box>
+    </Flex>
+  );
+  const showRunDetailAfterCopy =
+    chatControllerProps.footerRunDetailPosition === 'afterCopy' && showWholeResponse;
 
   return (
     <Box mt={4} maxW={'100%'}>
@@ -86,7 +108,11 @@ const AIChatBubbleActions = ({
         zIndex={1}
       >
         <Flex alignItems={'center'} gap={'4px'}>
-          <ChatController {...chatControllerProps} variant="footer" />
+          <ChatController
+            {...chatControllerProps}
+            variant="footer"
+            footerAfterCopySlot={showRunDetailAfterCopy ? renderRunDetailAction() : undefined}
+          />
 
           {showRetry && (
             <MyTooltip label={t('common:core.chat.retry')}>
@@ -102,20 +128,7 @@ const AIChatBubbleActions = ({
             </MyTooltip>
           )}
 
-          {showWholeResponse && (
-            <Flex
-              alignItems={'center'}
-              gap={'4px'}
-              p={'4px'}
-              cursor={'pointer'}
-              color={'myGray.400'}
-              _hover={{ color: 'primary.600' }}
-              onClick={onOpenWholeModal}
-            >
-              <MyIcon name={'core/chat/terminal'} w={'16px'} />
-              <Box>{t('chat:run_detail')}</Box>
-            </Flex>
-          )}
+          {showWholeResponse && !showRunDetailAfterCopy && renderRunDetailAction()}
 
           {showSandboxAction && isPc && useAgentSandbox && (
             <Flex
@@ -156,6 +169,27 @@ const AIChatBubbleActions = ({
           </Box>
         )}
       </Flex>
+
+      {showUnreadBadFeedback && (
+        <Flex
+          mt={4}
+          flexDirection={'column'}
+          gap={'8px'}
+          maxW={'100%'}
+          border={'1px solid'}
+          borderColor={'myGray.250'}
+          borderRadius={'8px'}
+          p={'12px'}
+          whiteSpace={'pre-wrap'}
+        >
+          <Box fontSize={'10px'} lineHeight={'14px'} color={'myGray.500'}>
+            {feedbackUserName || t('chat:log.feedback.user_bad_feedback')}
+          </Box>
+          <Box fontSize={'12px'} lineHeight={'18px'} color={'myGray.900'}>
+            {badFeedback}
+          </Box>
+        </Flex>
+      )}
 
       {questionGuides.length > 0 && (
         <Flex mt={4} flexDirection={'column'} alignItems={'flex-start'} gap={'8px'}>
