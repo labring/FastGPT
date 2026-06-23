@@ -685,7 +685,7 @@ describe('JS 请求体大小限制', () => {
       code: `async function main() {
         const bigBody = 'x'.repeat(${sizeMB} * 1024 * 1024 + 1);
         try {
-          await httpRequest('https://1.1.1.1/cdn-cgi/trace', { method: 'POST', body: bigBody });
+          await httpRequest('https://example.com/', { method: 'POST', body: bigBody });
           return { blocked: false };
         } catch(e) {
           return { blocked: true, msg: e.message };
@@ -706,7 +706,7 @@ describe('JS 请求体大小限制', () => {
       code: `async function main() {
         const smallBody = JSON.stringify({ data: 'hello' });
         try {
-          await httpRequest('https://1.1.1.1/cdn-cgi/trace', { method: 'POST', body: smallBody });
+          await httpRequest('https://example.com/', { method: 'POST', body: smallBody });
           return { sizeOk: true };
         } catch(e) {
           // 网络错误可以接受，但不应该是 body too large
@@ -735,7 +735,7 @@ describe('Python 请求体大小限制', () => {
 
     const sizeMB = env.SANDBOX_REQUEST_MAX_BODY_MB;
     const result = await pool.execute({
-      code: `def main():\n    big_body = 'x' * (${sizeMB} * 1024 * 1024 + 1)\n    try:\n        http_request('https://1.1.1.1/cdn-cgi/trace', method='POST', body=big_body)\n        return {'blocked': False}\n    except Exception as e:\n        return {'blocked': True, 'msg': str(e)}`,
+      code: `def main():\n    big_body = 'x' * (${sizeMB} * 1024 * 1024 + 1)\n    try:\n        http_request('https://example.com/', method='POST', body=big_body)\n        return {'blocked': False}\n    except Exception as e:\n        return {'blocked': True, 'msg': str(e)}`,
       variables: {}
     });
     expect(result.success).toBe(true);
@@ -748,7 +748,7 @@ describe('Python 请求体大小限制', () => {
     await pool.init();
 
     const result = await pool.execute({
-      code: `def main():\n    try:\n        http_request('https://1.1.1.1/cdn-cgi/trace', method='POST', body='hello')\n        return {'size_ok': True}\n    except Exception as e:\n        return {'size_ok': 'too large' not in str(e).lower(), 'msg': str(e)}`,
+      code: `def main():\n    try:\n        http_request('https://example.com/', method='POST', body='hello')\n        return {'size_ok': True}\n    except Exception as e:\n        return {'size_ok': 'too large' not in str(e).lower(), 'msg': str(e)}`,
       variables: {}
     });
     expect(result.success).toBe(true);

@@ -608,7 +608,7 @@ async function main() { return recurse(); }`,
         {
           name: 'httpRequest GET',
           code: `async function main() {
-          const res = await httpRequest('https://1.1.1.1/cdn-cgi/trace');
+          const res = await httpRequest('https://example.com/');
           return { status: res.status, hasData: res.data.length > 0 };
         }`,
           expect: { success: true, codeReturnMatch: { status: 200, hasData: true } }
@@ -616,7 +616,7 @@ async function main() { return recurse(); }`,
         {
           name: 'httpRequest POST JSON',
           code: `async function main() {
-          const res = await httpRequest('https://1.1.1.1/cdn-cgi/trace', {
+          const res = await httpRequest('https://example.com/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: { message: 'hello' }
@@ -903,12 +903,12 @@ describe('Python 功能测试', () => {
       [
         {
           name: 'http_request GET',
-          code: `import json\ndef main():\n    res = http_request('https://1.1.1.1/cdn-cgi/trace')\n    return {'status': res['status'], 'hasData': len(res['data']) > 0}`,
+          code: `import json\ndef main():\n    res = http_request('https://example.com/')\n    return {'status': res['status'], 'hasData': len(res['data']) > 0}`,
           expect: { success: true, codeReturnMatch: { status: 200, hasData: true } }
         },
         {
           name: 'http_request POST JSON',
-          code: `import json\ndef main():\n    res = http_request('https://1.1.1.1/cdn-cgi/trace', method='POST', body={'message': 'hello'})\n    return {'hasStatus': type(res['status']) == int}`,
+          code: `import json\ndef main():\n    res = http_request('https://example.com/', method='POST', body={'message': 'hello'})\n    return {'hasStatus': type(res['status']) == int}`,
           expect: { success: true, codeReturnMatch: { hasStatus: true } }
         }
       ]

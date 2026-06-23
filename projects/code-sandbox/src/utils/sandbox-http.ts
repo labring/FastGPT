@@ -55,15 +55,6 @@ export async function runSandboxHttpRequest({
     throw new Error('Protocol not allowed');
   }
 
-  if (await isInternalAddress(payload.url)) {
-    throw new Error('Request to private network not allowed');
-  }
-
-  const ips = await dnsResolve(parsed.hostname);
-  if (ips.length === 0 || ips.some((ip) => isInternalResolvedIP(ip))) {
-    throw new Error('Request to private network not allowed');
-  }
-
   const method = (payload.method || 'GET').toUpperCase();
   const headers = { ...(payload.headers || {}) };
   const body =
@@ -75,6 +66,15 @@ export async function runSandboxHttpRequest({
 
   if (body && Buffer.byteLength(body, 'utf8') > limits.maxRequestBodySize) {
     throw new Error('Request body too large');
+  }
+
+  if (await isInternalAddress(payload.url)) {
+    throw new Error('Request to private network not allowed');
+  }
+
+  const ips = await dnsResolve(parsed.hostname);
+  if (ips.length === 0 || ips.some((ip) => isInternalResolvedIP(ip))) {
+    throw new Error('Request to private network not allowed');
   }
 
   const timeout = (() => {

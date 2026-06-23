@@ -100,7 +100,7 @@ class _SystemHelper:
     __slots__ = ()
 
     @staticmethod
-    def http_request(url, method='GET', headers=None, body=None, timeout=None):
+    def http_request(url, method='GET', headers=None, body=None, timeout=None, timeout_ms=None):
         if headers is None:
             headers = {}
         if body is not None:
@@ -118,7 +118,8 @@ class _SystemHelper:
             'method': method,
             'headers': headers,
             'body': body if body_text is None or isinstance(body, str) else body,
-            'timeout': timeout
+            'timeout': timeout,
+            'timeoutMs': timeout_ms
         })
 
     httpRequest = http_request
