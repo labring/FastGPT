@@ -20,6 +20,7 @@ type LikeFeedbackButtonProps = Pick<BoxProps, 'cursor' | 'onClick'> &
   Pick<IconProps, 'w' | 'h' | 'boxSize' | 'p'> & {
     isActive: boolean;
     effectTrigger?: number;
+    disableHoverTranslate?: boolean;
   };
 
 const blueColors = ['#3370ff', '#4f82ff', '#7ca3ff'];
@@ -60,7 +61,8 @@ const LikeFeedbackButton = ({
   w,
   h,
   boxSize,
-  p
+  p,
+  disableHoverTranslate = false
 }: LikeFeedbackButtonProps) => {
   const buttonRef = useRef<HTMLSpanElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -200,7 +202,7 @@ const LikeFeedbackButton = ({
       transition="color 180ms ease, transform 180ms ease, filter 180ms ease"
       _hover={{
         color: 'primary.600',
-        transform: 'translateY(-1px)'
+        ...(!disableHoverTranslate && { transform: 'translateY(-1px)' })
       }}
       onClick={onClick}
     >

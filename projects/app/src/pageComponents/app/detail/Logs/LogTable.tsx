@@ -73,7 +73,10 @@ const LogTable = ({
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
 
-  const [detailLogsId, setDetailLogsId] = useState<string>();
+  const [detailLogData, setDetailLogData] = useState<{
+    chatId: string;
+    feedbackUserName?: string;
+  }>();
   const appName = useContextSelector(AppContext, (v) => v.appDetail.name);
   const [unreadOnly, setUnreadOnly] = useState<boolean>(false);
   const [userIpType, setUserIpType] = useState<UserIpTypeValue>('all');
@@ -392,13 +395,13 @@ const LogTable = ({
           <Flex gap={3} px={1}>
             {!!item?.userGoodFeedbackCount && (
               <Flex alignItems={'center'}>
-                <MyIcon mr={1} name={'core/chat/feedback/goodLight'} color={'green.500'} w={4} />
+                <MyIcon mr={1} name={'core/chat/feedback/goodLight'} color={'myGray.400'} w={4} />
                 {item.userGoodFeedbackCount}
               </Flex>
             )}
             {!!item?.userBadFeedbackCount && (
               <Flex alignItems={'center'}>
-                <MyIcon mr={1} name={'core/chat/feedback/badLight'} color={'yellow.500'} w={4} />
+                <MyIcon mr={1} name={'core/chat/feedback/badLight'} color={'myGray.400'} w={4} />
                 {item.userBadFeedbackCount}
               </Flex>
             )}
@@ -569,7 +572,13 @@ const LogTable = ({
                   key={item._id}
                   _hover={{ bg: 'myWhite.600' }}
                   cursor={'pointer'}
-                  onClick={() => setDetailLogsId(item.chatId)}
+                  onClick={() =>
+                    setDetailLogData({
+                      chatId: item.chatId,
+                      feedbackUserName:
+                        item.outLinkUid || item.sourceMember?.name || item.tmbId || undefined
+                    })
+                  }
                 >
                   <Td>
                     <HStack onClick={(e) => e.stopPropagation()}>
@@ -626,12 +635,13 @@ const LogTable = ({
         )}
       </FloatingActionBar>
 
-      {!!detailLogsId && (
+      {!!detailLogData && (
         <DetailLogsModal
           appId={appId}
-          chatId={detailLogsId}
+          chatId={detailLogData.chatId}
+          feedbackUserName={detailLogData.feedbackUserName}
           onClose={() => {
-            setDetailLogsId(undefined);
+            setDetailLogData(undefined);
             getData(pageNum);
           }}
         />

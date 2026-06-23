@@ -99,6 +99,12 @@ type Props = OutLinkChatAuthProps &
     EmptyState?: React.ReactNode;
     /** 是否启用 AI 正文 quick-replies 快捷回复渲染，默认关闭。 */
     enableQuickReplies?: boolean;
+    /** 是否禁用 footer actions hover 时的上移动画。 */
+    disableFooterHoverTranslate?: boolean;
+    /** footer 中运行详情的位置，默认保持原有顺序。 */
+    footerRunDetailPosition?: 'default' | 'afterCopy';
+    /** 日志详情中展示用户反馈内容时使用的用户显示名。 */
+    feedbackUserName?: string;
   };
 
 const ChatBox = ({
@@ -121,6 +127,9 @@ const ChatBox = ({
   inputBodyProps,
   EmptyState,
   enableQuickReplies = false,
+  disableFooterHoverTranslate = false,
+  footerRunDetailPosition = 'default',
+  feedbackUserName,
   ...props
 }: Props) => {
   const { t } = useTranslation();
@@ -553,6 +562,9 @@ const ChatBox = ({
       onAddUserLike,
       onAddUserDislike,
       likeFeedbackEffect,
+      disableFooterHoverTranslate,
+      footerRunDetailPosition,
+      feedbackUserName,
       onCloseCustomFeedback,
       onToggleFeedbackReadStatus
     }),
@@ -571,6 +583,9 @@ const ChatBox = ({
       onAddUserLike,
       onAddUserDislike,
       likeFeedbackEffect,
+      disableFooterHoverTranslate,
+      footerRunDetailPosition,
+      feedbackUserName,
       onCloseCustomFeedback,
       onToggleFeedbackReadStatus
     ]

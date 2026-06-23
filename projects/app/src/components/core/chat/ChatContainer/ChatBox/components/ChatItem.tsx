@@ -1,5 +1,5 @@
-import { Box, type BoxProps, Button, Flex } from '@chakra-ui/react';
-import React, { useMemo, useState } from 'react';
+import { Box, type BoxProps, Flex } from '@chakra-ui/react';
+import React, { useMemo } from 'react';
 import { type ChatControllerProps } from './ChatController';
 import styles from '../index.module.scss';
 import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
@@ -51,8 +51,6 @@ const ChatItem = (props: Props) => {
   const { statusBoxData, children, isLastChild, questionGuides = [], chat, onEditSubmit } = props;
 
   const { t } = useTranslation();
-
-  const [showFeedbackContent, setShowFeedbackContent] = useState(false);
 
   const styleMap: BoxProps = useMemoEnhance(
     () => ({
@@ -259,36 +257,6 @@ const ChatItem = (props: Props) => {
           </Flex>
         )}
 
-      {/* User Feedback Content: Admin log show */}
-      {isChatLog &&
-        showFeedbackContent &&
-        chat.obj === ChatRoleEnum.AI &&
-        (chat.userGoodFeedback || chat.userBadFeedback) && (
-          <Box
-            mt={2}
-            maxW={'250'}
-            border={'1px solid'}
-            borderColor={'myGray.250'}
-            borderRadius={'md'}
-            p={3}
-          >
-            <Box fontSize={'sm'} color={'myGray.900'} whiteSpace={'pre-wrap'}>
-              {chat.userBadFeedback || chat.userGoodFeedback}
-            </Box>
-            <Flex justifyContent={'flex-end'} mt={2}>
-              <Button
-                size={'xs'}
-                variant={'grayGhost'}
-                fontSize={'xs'}
-                onClick={() => setShowFeedbackContent(false)}
-                color={'primary.600'}
-              >
-                {t('chat:log.feedback.hide_feedback')}
-              </Button>
-            </Flex>
-          </Box>
-        )}
-
       {/* content */}
       {splitAiResponseResults.map((value, i) => {
         const isPlanCard =
@@ -352,9 +320,7 @@ const ChatItem = (props: Props) => {
               onOpenCiteModal={onOpenCiteModal}
               chatControllerProps={{
                 ...props,
-                isLastChild,
-                showFeedbackContent,
-                onToggleFeedbackContent: () => setShowFeedbackContent(!showFeedbackContent)
+                isLastChild
               }}
             >
               {renderCommonFooter()}

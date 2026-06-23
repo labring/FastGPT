@@ -26,7 +26,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateUserFeedbackResponse
     ...req.body
   });
 
-  const chatItem = await MongoChatItem.findOne({ appId, chatId, dataId });
+  const chatItem = await MongoChatItem.findOne({ appId, chatId, dataId, obj: ChatRoleEnum.AI });
   if (!chatItem) {
     return Promise.reject('Chat item not found');
   }
@@ -34,7 +34,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateUserFeedbackResponse
   await mongoSessionRun(async (session) => {
     // Update ChatItem feedback
     await MongoChatItem.updateOne(
-      { appId, chatId, dataId },
+      { appId, chatId, dataId, obj: ChatRoleEnum.AI },
       {
         $unset: {
           ...(userBadFeedback === undefined && { userBadFeedback: '' }),

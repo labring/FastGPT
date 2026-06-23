@@ -79,18 +79,19 @@ describe('updateUserFeedback api test', () => {
   });
 
   it('should add good feedback', async () => {
-    const res = await Call<UpdateUserFeedbackBodyType, {}, UpdateUserFeedbackResponseType>(
-      handler,
-      {
-        auth: testUser,
-        body: {
-          appId,
-          chatId,
-          dataId,
-          userGoodFeedback: 'Great answer!'
-        }
+    const res = await Call<
+      UpdateUserFeedbackBodyType,
+      Record<string, never>,
+      UpdateUserFeedbackResponseType
+    >(handler, {
+      auth: testUser,
+      body: {
+        appId,
+        chatId,
+        dataId,
+        userGoodFeedback: 'Great answer!'
       }
-    );
+    });
 
     expect(res.code).toBe(200);
     expect(res.error).toBeUndefined();
@@ -116,18 +117,19 @@ describe('updateUserFeedback api test', () => {
   });
 
   it('should add bad feedback', async () => {
-    const res = await Call<UpdateUserFeedbackBodyType, {}, UpdateUserFeedbackResponseType>(
-      handler,
-      {
-        auth: testUser,
-        body: {
-          appId,
-          chatId,
-          dataId,
-          userBadFeedback: 'Not helpful'
-        }
+    const res = await Call<
+      UpdateUserFeedbackBodyType,
+      Record<string, never>,
+      UpdateUserFeedbackResponseType
+    >(handler, {
+      auth: testUser,
+      body: {
+        appId,
+        chatId,
+        dataId,
+        userBadFeedback: 'Not helpful'
       }
-    );
+    });
 
     expect(res.code).toBe(200);
     expect(res.error).toBeUndefined();
@@ -160,18 +162,19 @@ describe('updateUserFeedback api test', () => {
       { goodFeedbackCount: 1 }
     );
 
-    const res = await Call<UpdateUserFeedbackBodyType, {}, UpdateUserFeedbackResponseType>(
-      handler,
-      {
-        auth: testUser,
-        body: {
-          appId,
-          chatId,
-          dataId,
-          userGoodFeedback: undefined
-        }
+    const res = await Call<
+      UpdateUserFeedbackBodyType,
+      Record<string, never>,
+      UpdateUserFeedbackResponseType
+    >(handler, {
+      auth: testUser,
+      body: {
+        appId,
+        chatId,
+        dataId,
+        userGoodFeedback: undefined
       }
-    );
+    });
 
     expect(res.code).toBe(200);
     expect(res.error).toBeUndefined();
@@ -203,18 +206,19 @@ describe('updateUserFeedback api test', () => {
       { badFeedbackCount: 1 }
     );
 
-    const res = await Call<UpdateUserFeedbackBodyType, {}, UpdateUserFeedbackResponseType>(
-      handler,
-      {
-        auth: testUser,
-        body: {
-          appId,
-          chatId,
-          dataId,
-          userBadFeedback: undefined
-        }
+    const res = await Call<
+      UpdateUserFeedbackBodyType,
+      Record<string, never>,
+      UpdateUserFeedbackResponseType
+    >(handler, {
+      auth: testUser,
+      body: {
+        appId,
+        chatId,
+        dataId,
+        userBadFeedback: undefined
       }
-    );
+    });
 
     expect(res.code).toBe(200);
     expect(res.error).toBeUndefined();
@@ -246,18 +250,19 @@ describe('updateUserFeedback api test', () => {
       { goodFeedbackCount: 1 }
     );
 
-    const res = await Call<UpdateUserFeedbackBodyType, {}, UpdateUserFeedbackResponseType>(
-      handler,
-      {
-        auth: testUser,
-        body: {
-          appId,
-          chatId,
-          dataId,
-          userGoodFeedback: 'Excellent!'
-        }
+    const res = await Call<
+      UpdateUserFeedbackBodyType,
+      Record<string, never>,
+      UpdateUserFeedbackResponseType
+    >(handler, {
+      auth: testUser,
+      body: {
+        appId,
+        chatId,
+        dataId,
+        userGoodFeedback: 'Excellent!'
       }
-    );
+    });
 
     expect(res.code).toBe(200);
     expect(res.error).toBeUndefined();
@@ -281,6 +286,52 @@ describe('updateUserFeedback api test', () => {
     expect(chatLog?.goodFeedbackCount).toBe(1);
   });
 
+  it('should update AI feedback when human and AI share the same dataId', async () => {
+    await MongoChatItem.create({
+      teamId: testUser.teamId,
+      tmbId: testUser.tmbId,
+      userId: testUser.userId,
+      appId,
+      chatId,
+      dataId,
+      obj: ChatRoleEnum.Human,
+      value: [{ type: 'text', text: { content: 'Test question' } }]
+    });
+
+    const res = await Call<
+      UpdateUserFeedbackBodyType,
+      Record<string, never>,
+      UpdateUserFeedbackResponseType
+    >(handler, {
+      auth: testUser,
+      body: {
+        appId,
+        chatId,
+        dataId,
+        userBadFeedback: 'Not helpful'
+      }
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.error).toBeUndefined();
+
+    const humanChatItem = await MongoChatItem.findOne({
+      appId,
+      chatId,
+      dataId,
+      obj: ChatRoleEnum.Human
+    });
+    const aiChatItem = await MongoChatItem.findOne({
+      appId,
+      chatId,
+      dataId,
+      obj: ChatRoleEnum.AI
+    });
+
+    expect(humanChatItem?.userBadFeedback).toBeUndefined();
+    expect(aiChatItem?.userBadFeedback).toBe('Not helpful');
+  });
+
   it('should switch from good to bad feedback', async () => {
     // First add good feedback
     await MongoChatItem.updateOne({ appId, chatId, dataId }, { userGoodFeedback: 'Good' });
@@ -290,19 +341,20 @@ describe('updateUserFeedback api test', () => {
     );
 
     // Remove good and add bad feedback
-    const res = await Call<UpdateUserFeedbackBodyType, {}, UpdateUserFeedbackResponseType>(
-      handler,
-      {
-        auth: testUser,
-        body: {
-          appId,
-          chatId,
-          dataId,
-          userGoodFeedback: undefined,
-          userBadFeedback: 'Actually not good'
-        }
+    const res = await Call<
+      UpdateUserFeedbackBodyType,
+      Record<string, never>,
+      UpdateUserFeedbackResponseType
+    >(handler, {
+      auth: testUser,
+      body: {
+        appId,
+        chatId,
+        dataId,
+        userGoodFeedback: undefined,
+        userBadFeedback: 'Actually not good'
       }
-    );
+    });
 
     expect(res.code).toBe(200);
     expect(res.error).toBeUndefined();
@@ -329,54 +381,57 @@ describe('updateUserFeedback api test', () => {
   });
 
   it('should fail when chatId is empty', async () => {
-    const res = await Call<UpdateUserFeedbackBodyType, {}, UpdateUserFeedbackResponseType>(
-      handler,
-      {
-        auth: testUser,
-        body: {
-          appId,
-          chatId: '',
-          dataId,
-          userGoodFeedback: 'Great!'
-        }
+    const res = await Call<
+      UpdateUserFeedbackBodyType,
+      Record<string, never>,
+      UpdateUserFeedbackResponseType
+    >(handler, {
+      auth: testUser,
+      body: {
+        appId,
+        chatId: '',
+        dataId,
+        userGoodFeedback: 'Great!'
       }
-    );
+    });
 
     expect(res.code).toBe(500);
     expect(res.error).toBeDefined();
   });
 
   it('should fail when dataId is empty', async () => {
-    const res = await Call<UpdateUserFeedbackBodyType, {}, UpdateUserFeedbackResponseType>(
-      handler,
-      {
-        auth: testUser,
-        body: {
-          appId,
-          chatId,
-          dataId: '',
-          userGoodFeedback: 'Great!'
-        }
+    const res = await Call<
+      UpdateUserFeedbackBodyType,
+      Record<string, never>,
+      UpdateUserFeedbackResponseType
+    >(handler, {
+      auth: testUser,
+      body: {
+        appId,
+        chatId,
+        dataId: '',
+        userGoodFeedback: 'Great!'
       }
-    );
+    });
 
     expect(res.code).toBe(500);
     expect(res.error).toBeDefined();
   });
 
   it('should fail when chat item does not exist', async () => {
-    const res = await Call<UpdateUserFeedbackBodyType, {}, UpdateUserFeedbackResponseType>(
-      handler,
-      {
-        auth: testUser,
-        body: {
-          appId,
-          chatId,
-          dataId: 'non-existent-id',
-          userGoodFeedback: 'Great!'
-        }
+    const res = await Call<
+      UpdateUserFeedbackBodyType,
+      Record<string, never>,
+      UpdateUserFeedbackResponseType
+    >(handler, {
+      auth: testUser,
+      body: {
+        appId,
+        chatId,
+        dataId: 'non-existent-id',
+        userGoodFeedback: 'Great!'
       }
-    );
+    });
 
     expect(res.code).toBe(500);
     expect(res.error).toBeDefined();
@@ -385,18 +440,19 @@ describe('updateUserFeedback api test', () => {
   it('should fail when user does not have permission', async () => {
     const unauthorizedUser = await getUser(`unauthorized-user-feedback-${Math.random()}`);
 
-    const res = await Call<UpdateUserFeedbackBodyType, {}, UpdateUserFeedbackResponseType>(
-      handler,
-      {
-        auth: unauthorizedUser,
-        body: {
-          appId,
-          chatId,
-          dataId,
-          userGoodFeedback: 'Great!'
-        }
+    const res = await Call<
+      UpdateUserFeedbackBodyType,
+      Record<string, never>,
+      UpdateUserFeedbackResponseType
+    >(handler, {
+      auth: unauthorizedUser,
+      body: {
+        appId,
+        chatId,
+        dataId,
+        userGoodFeedback: 'Great!'
       }
-    );
+    });
 
     expect(res.code).toBe(500);
     expect(res.error).toBeDefined();

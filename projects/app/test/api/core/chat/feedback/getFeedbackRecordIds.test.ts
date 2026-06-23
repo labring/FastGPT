@@ -125,18 +125,19 @@ describe('getFeedbackRecordIds api test', () => {
   });
 
   it('should return all good feedback records', async () => {
-    const res = await Call<GetFeedbackRecordIdsBodyType, {}, GetFeedbackRecordIdsResponseType>(
-      handler,
-      {
-        auth: testUser,
-        body: {
-          appId,
-          chatId,
-          feedbackType: 'good',
-          unreadOnly: false
-        }
+    const res = await Call<
+      GetFeedbackRecordIdsBodyType,
+      Record<string, never>,
+      GetFeedbackRecordIdsResponseType
+    >(handler, {
+      auth: testUser,
+      body: {
+        appId,
+        chatId,
+        feedbackType: 'good',
+        unreadOnly: false
       }
-    );
+    });
 
     expect(res.code).toBe(200);
     expect(res.data?.total).toBe(2);
@@ -146,18 +147,19 @@ describe('getFeedbackRecordIds api test', () => {
   });
 
   it('should return only unread good feedback records', async () => {
-    const res = await Call<GetFeedbackRecordIdsBodyType, {}, GetFeedbackRecordIdsResponseType>(
-      handler,
-      {
-        auth: testUser,
-        body: {
-          appId,
-          chatId,
-          feedbackType: 'good',
-          unreadOnly: true
-        }
+    const res = await Call<
+      GetFeedbackRecordIdsBodyType,
+      Record<string, never>,
+      GetFeedbackRecordIdsResponseType
+    >(handler, {
+      auth: testUser,
+      body: {
+        appId,
+        chatId,
+        feedbackType: 'good',
+        unreadOnly: true
       }
-    );
+    });
 
     expect(res.code).toBe(200);
     expect(res.data?.total).toBe(1);
@@ -166,18 +168,19 @@ describe('getFeedbackRecordIds api test', () => {
   });
 
   it('should return all bad feedback records', async () => {
-    const res = await Call<GetFeedbackRecordIdsBodyType, {}, GetFeedbackRecordIdsResponseType>(
-      handler,
-      {
-        auth: testUser,
-        body: {
-          appId,
-          chatId,
-          feedbackType: 'bad',
-          unreadOnly: false
-        }
+    const res = await Call<
+      GetFeedbackRecordIdsBodyType,
+      Record<string, never>,
+      GetFeedbackRecordIdsResponseType
+    >(handler, {
+      auth: testUser,
+      body: {
+        appId,
+        chatId,
+        feedbackType: 'bad',
+        unreadOnly: false
       }
-    );
+    });
 
     expect(res.code).toBe(200);
     expect(res.data?.total).toBe(2);
@@ -187,18 +190,19 @@ describe('getFeedbackRecordIds api test', () => {
   });
 
   it('should return only unread bad feedback records', async () => {
-    const res = await Call<GetFeedbackRecordIdsBodyType, {}, GetFeedbackRecordIdsResponseType>(
-      handler,
-      {
-        auth: testUser,
-        body: {
-          appId,
-          chatId,
-          feedbackType: 'bad',
-          unreadOnly: true
-        }
+    const res = await Call<
+      GetFeedbackRecordIdsBodyType,
+      Record<string, never>,
+      GetFeedbackRecordIdsResponseType
+    >(handler, {
+      auth: testUser,
+      body: {
+        appId,
+        chatId,
+        feedbackType: 'bad',
+        unreadOnly: true
       }
-    );
+    });
 
     expect(res.code).toBe(200);
     expect(res.data?.total).toBe(1);
@@ -207,18 +211,19 @@ describe('getFeedbackRecordIds api test', () => {
   });
 
   it('should return all feedback records with has_feedback type', async () => {
-    const res = await Call<GetFeedbackRecordIdsBodyType, {}, GetFeedbackRecordIdsResponseType>(
-      handler,
-      {
-        auth: testUser,
-        body: {
-          appId,
-          chatId,
-          feedbackType: 'has_feedback',
-          unreadOnly: false
-        }
+    const res = await Call<
+      GetFeedbackRecordIdsBodyType,
+      Record<string, never>,
+      GetFeedbackRecordIdsResponseType
+    >(handler, {
+      auth: testUser,
+      body: {
+        appId,
+        chatId,
+        feedbackType: 'has_feedback',
+        unreadOnly: false
       }
-    );
+    });
 
     expect(res.code).toBe(200);
     expect(res.data?.total).toBe(4);
@@ -227,21 +232,23 @@ describe('getFeedbackRecordIds api test', () => {
     expect(res.data?.dataIds).toContain('data-2');
     expect(res.data?.dataIds).toContain('data-3');
     expect(res.data?.dataIds).toContain('data-4');
+    expect(res.data?.dataIds).not.toContain('data-6');
   });
 
   it('should return only unread feedback records with has_feedback type', async () => {
-    const res = await Call<GetFeedbackRecordIdsBodyType, {}, GetFeedbackRecordIdsResponseType>(
-      handler,
-      {
-        auth: testUser,
-        body: {
-          appId,
-          chatId,
-          feedbackType: 'has_feedback',
-          unreadOnly: true
-        }
+    const res = await Call<
+      GetFeedbackRecordIdsBodyType,
+      Record<string, never>,
+      GetFeedbackRecordIdsResponseType
+    >(handler, {
+      auth: testUser,
+      body: {
+        appId,
+        chatId,
+        feedbackType: 'has_feedback',
+        unreadOnly: true
       }
-    );
+    });
 
     expect(res.code).toBe(200);
     expect(res.data?.total).toBe(2);
@@ -251,18 +258,19 @@ describe('getFeedbackRecordIds api test', () => {
   });
 
   it('should return empty result when no appId or chatId', async () => {
-    const res = await Call<GetFeedbackRecordIdsBodyType, {}, GetFeedbackRecordIdsResponseType>(
-      handler,
-      {
-        auth: testUser,
-        body: {
-          appId: '',
-          chatId: '',
-          feedbackType: 'good',
-          unreadOnly: false
-        }
+    const res = await Call<
+      GetFeedbackRecordIdsBodyType,
+      Record<string, never>,
+      GetFeedbackRecordIdsResponseType
+    >(handler, {
+      auth: testUser,
+      body: {
+        appId: '',
+        chatId: '',
+        feedbackType: 'good',
+        unreadOnly: false
       }
-    );
+    });
 
     expect(res.code).toBe(200);
     expect(res.data?.total).toBe(0);
@@ -272,18 +280,19 @@ describe('getFeedbackRecordIds api test', () => {
   it('should fail when user does not have permission', async () => {
     const unauthorizedUser = await getUser(`unauthorized-user-get-ids-${Math.random()}`);
 
-    const res = await Call<GetFeedbackRecordIdsBodyType, {}, GetFeedbackRecordIdsResponseType>(
-      handler,
-      {
-        auth: unauthorizedUser,
-        body: {
-          appId,
-          chatId,
-          feedbackType: 'good',
-          unreadOnly: false
-        }
+    const res = await Call<
+      GetFeedbackRecordIdsBodyType,
+      Record<string, never>,
+      GetFeedbackRecordIdsResponseType
+    >(handler, {
+      auth: unauthorizedUser,
+      body: {
+        appId,
+        chatId,
+        feedbackType: 'good',
+        unreadOnly: false
       }
-    );
+    });
 
     expect(res.code).toBe(500);
     expect(res.error).toBeDefined();
