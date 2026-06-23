@@ -5,15 +5,16 @@ import React, {
   useEffect,
   useImperativeHandle,
   type ForwardedRef,
-  useState
+  useState,
+  useCallback
 } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Menu,
-  MenuList,
+  MenuButton,
   MenuItem,
   Button,
   useDisclosure,
-  MenuButton,
   Box,
   Flex,
   Input
@@ -63,17 +64,15 @@ export type SelectProps<T = any> = Omit<ButtonProps, 'onChange'> & {
   clearable?: boolean;
 };
 
-export const menuItemStyles: MenuItemProps = {
+const menuItemStyling: MenuItemProps = {
   borderRadius: 'sm',
   py: 2,
+  px: 2,
   display: 'flex',
   alignItems: 'center',
-  _hover: {
-    backgroundColor: 'myGray.100'
-  },
-  _notLast: {
-    mb: 1
-  }
+  fontSize: 'sm',
+  whiteSpace: 'pre-wrap',
+  mb: 0.5
 };
 
 const MySelect = <T = any,>(
@@ -104,22 +103,23 @@ const MySelect = <T = any,>(
   }>
 ) => {
   const ButtonRef = useRef<HTMLButtonElement>(null);
-  const MenuListRef = useRef<HTMLDivElement>(null);
+  const DropdownRef = useRef<HTMLDivElement>(null);
   const SelectedItemRef = useRef<HTMLDivElement>(null);
   const SearchInputRef = useRef<HTMLInputElement>(null);
 
-  const { isOpen, onOpen: defaultOnOpen, onClose: defaultOnClose } = useDisclosure();
-  const selectItem = useMemo(() => list.find((item) => item.value === value), [list, value]);
+  const { isOpen: rawIsOpen, onOpen: rawOnOpen, onClose: rawOnClose } = useDisclosure();
 
-  const onOpen = () => {
-    defaultOnOpen();
+  const onOpen = useCallback(() => {
+    rawOnOpen();
     customOnOpen?.();
-  };
+  }, [rawOnOpen, customOnOpen]);
 
-  const onClose = () => {
-    defaultOnClose();
+  const onClose = useCallback(() => {
+    rawOnClose();
     customOnClose?.();
-  };
+  }, [rawOnClose, customOnClose]);
+
+  const selectItem = useMemo(() => list.find((item) => item.value === value), [list, value]);
 
   const [search, setSearch] = useState('');
   const filterList = useMemo(() => {
@@ -139,10 +139,15 @@ const MySelect = <T = any,>(
     }
   }));
 
-  // Auto scroll
+  const { runAsync: onClickChange, loading } = useRequest((val: T) => onChange?.(val));
+
+  const isSelecting = loading || isLoading;
+  const isOpen = rawIsOpen && !isSelecting;
+
+  // Auto scroll to selected item when dropdown opens
   useEffect(() => {
-    if (isOpen && MenuListRef.current && SelectedItemRef.current) {
-      const menu = MenuListRef.current;
+    if (isOpen && DropdownRef.current && SelectedItemRef.current) {
+      const menu = DropdownRef.current;
       const selectedItem = SelectedItemRef.current;
       menu.scrollTop = selectedItem.offsetTop - menu.offsetTop - 100;
 
@@ -152,7 +157,40 @@ const MySelect = <T = any,>(
     }
   }, [isSearch, isOpen]);
 
-  const { runAsync: onClickChange, loading } = useRequest((val: T) => onChange?.(val));
+  // Close on outside click (mousedown for Chrome 109 compat, matching DateTimePicker pattern)
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        ButtonRef.current &&
+        !ButtonRef.current.contains(target) &&
+        DropdownRef.current &&
+        !DropdownRef.current.contains(target)
+      ) {
+        onClose();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen, onClose]);
+
+  // Escape to close
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+        ButtonRef.current?.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   const ListRender = useMemo(() => {
     return (
@@ -161,28 +199,25 @@ const MySelect = <T = any,>(
           filterList.map((item, i) => (
             <Box key={i}>
               <MenuItem
-                {...menuItemStyles}
-                {...(value === item.value
-                  ? {
-                      ref: SelectedItemRef,
-                      color: 'primary.700',
-                      bg: 'myGray.100'
-                    }
-                  : {
-                      color: item.isDisabled ? 'myGray.400' : 'myGray.900'
-                    })}
-                cursor={item.isDisabled ? 'not-allowed' : 'pointer'}
+                ref={value === item.value ? (SelectedItemRef as any) : undefined}
+                {...menuItemStyling}
+                color={item.isDisabled ? 'myGray.400' : value === item.value ? 'primary.700' : 'myGray.900'}
+                bg={value === item.value ? 'myGray.100' : undefined}
                 opacity={item.isDisabled ? 0.6 : 1}
+                cursor={item.isDisabled ? 'not-allowed' : 'pointer'}
+                _hover={
+                  item.isDisabled
+                    ? undefined
+                    : { backgroundColor: 'myGray.100' }
+                }
+                closeOnSelect={false}
                 onClick={(e) => {
                   e.stopPropagation();
                   if (!item.isDisabled && value !== item.value) {
                     onClickChange(item.value);
+                    onClose();
                   }
                 }}
-                whiteSpace={'pre-wrap'}
-                fontSize={'sm'}
-                display={'block'}
-                mb={0.5}
               >
                 <Flex alignItems={'center'} minW={0} overflow={'hidden'}>
                   {item.icon && (
@@ -204,21 +239,41 @@ const MySelect = <T = any,>(
         )}
       </>
     );
-  }, [filterList, onClickChange, value]);
-
-  const isSelecting = loading || isLoading;
+  }, [filterList, onClickChange, value, onClose]);
 
   const isShowClearable = clearable && value !== undefined && value !== '';
 
+  // Calculate dropdown position relative to viewport
+  const getDropdownPosition = () => {
+    if (typeof window === 'undefined') return { top: 0, left: 0, w: 0 };
+    const rect = ButtonRef.current?.getBoundingClientRect();
+    if (!rect) return { top: 0, left: 0, w: 0 };
+
+    const viewportHeight = window.innerHeight;
+    const estimatedDropdownH = 300;
+
+    let top = rect.bottom + 4;
+    if (top + estimatedDropdownH > viewportHeight && rect.top > estimatedDropdownH) {
+      top = rect.top - estimatedDropdownH - 4;
+    }
+
+    return {
+      top: Math.max(4, top),
+      left: rect.left,
+      w: rect.width
+    };
+  };
+
+  const dropdownPos = isOpen ? getDropdownPosition() : null;
+
   return (
-    <Box>
+    <Box position="relative">
       <Menu
         autoSelect={false}
-        isOpen={isOpen && !isSelecting}
+        isOpen={isOpen}
         onOpen={onOpen}
         onClose={onClose}
-        strategy={'fixed'}
-        // matchWidth
+        closeOnBlur={false}
       >
         <MenuButton
           as={Button}
@@ -330,35 +385,41 @@ const MySelect = <T = any,>(
           </Flex>
         </MenuButton>
 
-        <MenuList
-          ref={MenuListRef}
-          className={props.className}
-          minW={0}
-          w={(() => {
-            const w = ButtonRef.current?.clientWidth;
-            if (w) {
-              return `${w}px !important`;
+      {isOpen &&
+        dropdownPos &&
+        createPortal(
+          <Box
+            ref={DropdownRef}
+            className={props.className}
+            position="fixed"
+            zIndex={1500}
+            top={`${dropdownPos.top}px`}
+            left={`${dropdownPos.left}px`}
+            width={`${dropdownPos.w}px`}
+            px={'6px'}
+            py={'6px'}
+            border={'1px solid #fff'}
+            boxShadow={
+              '0px 2px 4px rgba(161, 167, 179, 0.25), 0px 0px 1px rgba(121, 141, 159, 0.25);'
             }
-            return Array.isArray(width)
-              ? width.map((item) => `${item} !important`)
-              : `${width} !important`;
-          })()}
-          px={'6px'}
-          py={'6px'}
-          border={'1px solid #fff'}
-          boxShadow={
-            '0px 2px 4px rgba(161, 167, 179, 0.25), 0px 0px 1px rgba(121, 141, 159, 0.25);'
-          }
-          zIndex={99}
-          maxH={'45vh'}
-          overflowY={'auto'}
-          onClick={(e) => {
-            e.stopPropagation();
-          }}
-        >
-          {ScrollData ? <ScrollData>{ListRender}</ScrollData> : ListRender}
-          {footer && footer(onClose)}
-        </MenuList>
+            maxH={'45vh'}
+            overflowY={'auto'}
+            bg={'white'}
+            borderRadius={'md'}
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+            onMouseLeave={() => {
+              if (document.activeElement instanceof HTMLElement) {
+                document.activeElement.blur();
+              }
+            }}
+          >
+            {ScrollData ? <ScrollData>{ListRender}</ScrollData> : ListRender}
+            {footer && footer(onClose)}
+          </Box>,
+          document.body
+        )}
       </Menu>
     </Box>
   );
