@@ -37,6 +37,7 @@ import {
 } from '@/web/core/app/api/template';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { userFilesInput } from '@fastgpt/global/core/workflow/template/system/workflowStart';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -161,6 +162,16 @@ function isFatalToolResult(result: string) {
   return (
     result.includes('workflow generation state is not initialized') ||
     result.includes('unknown tool')
+  );
+}
+
+function hasEnabledFileUpload(fileSelectConfig: any) {
+  return !!(
+    fileSelectConfig?.canSelectFile ||
+    fileSelectConfig?.canSelectImg ||
+    fileSelectConfig?.canSelectVideo ||
+    fileSelectConfig?.canSelectAudio ||
+    fileSelectConfig?.canSelectCustomFileExtension
   );
 }
 
@@ -1843,6 +1854,7 @@ async function executeTool(ctx: ExecuteToolCtx): Promise<string> {
       ]);
       const rejected: string[] = [];
       const applied: string[] = [];
+      let appliedFileSelectConfig: any;
       setChatConfig((prev) => {
         const next = { ...prev };
         for (const { key, value } of configs) {
@@ -1852,14 +1864,81 @@ async function executeTool(ctx: ExecuteToolCtx): Promise<string> {
           }
           (next as any)[key] = value;
           applied.push(key);
+          if (key === 'fileSelectConfig') {
+            appliedFileSelectConfig = value;
+          }
         }
         return next;
       });
+
+      if (appliedFileSelectConfig) {
+        const canUploadFiles = hasEnabledFileUpload(appliedFileSelectConfig);
+
+        setNodes((prev) =>
+          prev.map((node) => {
+            if (node.data.flowNodeType !== FlowNodeTypeEnum.workflowStart) return node;
+
+            const hasUserFilesOutput = node.data.outputs.some(
+              (item: FlowNodeOutputItemType) => item.key === userFilesInput.key
+            );
+            if (canUploadFiles && !hasUserFilesOutput) {
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  outputs: [...node.data.outputs, userFilesInput]
+                }
+              };
+            }
+            if (!canUploadFiles && hasUserFilesOutput) {
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  outputs: node.data.outputs.filter(
+                    (item: FlowNodeOutputItemType) => item.key !== userFilesInput.key
+                  )
+                }
+              };
+            }
+            return node;
+          })
+        );
+
+        const trackerStartNode = tracker.nodes.find(
+          (node) => node.flowNodeType === FlowNodeTypeEnum.workflowStart
+        );
+        if (trackerStartNode) {
+          const hasUserFilesOutput = trackerStartNode.outputs.some(
+            (item) => item.key === userFilesInput.key
+          );
+          if (canUploadFiles && !hasUserFilesOutput) {
+            trackerStartNode.outputs.push({
+              id: userFilesInput.id,
+              key: userFilesInput.key,
+              label: userFilesInput.label,
+              valueType: userFilesInput.valueType
+            });
+          }
+          if (!canUploadFiles && hasUserFilesOutput) {
+            trackerStartNode.outputs = trackerStartNode.outputs.filter(
+              (item) => item.key !== userFilesInput.key
+            );
+          }
+        }
+      }
+
       return JSON.stringify({
         success: true,
         applied,
+        ...(appliedFileSelectConfig
+          ? {
+              fileUploadEnabled: hasEnabledFileUpload(appliedFileSelectConfig),
+              note: 'If file upload is enabled, remind the user to review upload types, max file count, custom extensions, and parsing rules in the systemConfig node.'
+            }
+          : {}),
         ...(rejected.length > 0
-          ? { rejected, note: 'Rejected keys require user configuration' }
+          ? { rejected, rejectedNote: 'Rejected keys require user configuration' }
           : {})
       });
     }

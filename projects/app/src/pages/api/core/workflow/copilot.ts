@@ -320,7 +320,7 @@ const COPILOT_TOOLS: ChatCompletionTool[] = [
                 key: {
                   type: 'string',
                   description:
-                    'Config key. One of: welcomeText(string), variables(array), questionGuide({open,model?,customPrompt?}), autoExecute({open,defaultPrompt}), fileSelectConfig({canSelectFile?,canSelectImg?,maxFiles?}), ttsConfig({type:"none"|"web"|"model",model?,voice?,speed?}), whisperConfig({open,autoSend,autoTTSResponse}), chatInputGuide({open,customUrl})'
+                    'Config key. One of: welcomeText(string), variables(array), questionGuide({open,model?,customPrompt?}), autoExecute({open,defaultPrompt}), fileSelectConfig({maxFiles?,canSelectFile?,canSelectImg?,canSelectVideo?,canSelectAudio?,canSelectCustomFileExtension?,customFileExtensionList?,customPdfParse?}), ttsConfig({type:"none"|"web"|"model",model?,voice?,speed?}), whisperConfig({open,autoSend,autoTTSResponse}), chatInputGuide({open,customUrl})'
                 },
                 value: { description: 'New value for the config key' }
               },
@@ -458,7 +458,7 @@ systemConfig is a **special node** present in every workflow. It configures app-
 | variables | array | Pre-chat variables the user fills in before starting (e.g. name, scenario) |
 | questionGuide | {open, model?, customPrompt?} | Suggested questions shown near the input box |
 | autoExecute | {open, defaultPrompt} | Auto-execute on open without user input |
-| fileSelectConfig | {canSelectFile?, canSelectImg?, maxFiles?} | Allow users to upload files or images |
+| fileSelectConfig | {maxFiles?, canSelectFile?, canSelectImg?, canSelectVideo?, canSelectAudio?, canSelectCustomFileExtension?, customFileExtensionList?, customPdfParse?} | Allow users to upload files/images/video/audio/custom extensions |
 | ttsConfig | {type:"none"\|"web"\|"model", model?, voice?, speed?} | Text-to-speech settings |
 | whisperConfig | {open, autoSend, autoTTSResponse} | Voice input settings |
 | chatInputGuide | {open, customUrl} | Placeholder or guide text shown in the chat input box |
@@ -469,6 +469,20 @@ systemConfig is a **special node** present in every workflow. It configures app-
 | scheduledTriggerConfig | Scheduled trigger (user must specify the exact time/schedule) |
 
 When the user's request involves systemConfig settings, then call update_system_config directly. For scheduledTriggerConfig, mention that the user must configure the exact schedule in the UI.
+
+### File Upload Configuration Rules
+When the user requirement involves uploading, parsing, reading, summarizing, extracting, or analyzing user-provided files/images/audio/video, you MUST configure file upload through systemConfig:
+1. Call get_node_detail(systemConfigNodeId) to inspect current chatConfig.
+2. Call update_system_config with fileSelectConfig.
+3. Enable at least one upload type:
+   - Documents/PDF/Word/Excel/TXT/Markdown: canSelectFile=true
+   - Images/screenshots/photos: canSelectImg=true
+   - Video: canSelectVideo=true
+   - Audio: canSelectAudio=true
+   - Specific extensions not covered above: canSelectCustomFileExtension=true and set customFileExtensionList.
+4. If the user does not specify file count, use maxFiles=5 as a conservative default.
+5. If you add or use a readFiles node, make sure fileSelectConfig enables the matching upload type.
+6. In the final summary, always tell the user to review the upload types, max file count, custom extensions, and parsing rules in the systemConfig node.
 
 ## Error Catching
 Some nodes support error catching (get_workflow shows catchError field: false=supported but off, true=enabled).
