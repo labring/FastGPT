@@ -94,7 +94,7 @@ describe('collection training status api', () => {
     });
   });
 
-  it('should use active counts for progress and final errors for error tab', async () => {
+  it('should split current collection queued/running counts and final errors', async () => {
     const root = await getRootUser();
     const dataset = await MongoDataset.create({
       name: 'test',
@@ -120,7 +120,18 @@ describe('collection training status api', () => {
         billId: 'test',
         mode: TrainingModeEnum.qa,
         retryCount: 3,
+        lockTime: new Date(),
         errorMsg: 'temporary failed'
+      },
+      {
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId: dataset._id,
+        collectionId: collection._id,
+        billId: 'test',
+        mode: TrainingModeEnum.parse,
+        retryCount: 3,
+        lockTime: new Date('2000')
       },
       {
         teamId: root.teamId,
@@ -142,9 +153,82 @@ describe('collection training status api', () => {
     });
 
     expect(res.code).toBe(200);
+    expect(res.data.queuedCounts.parse).toBe(1);
+    expect(res.data.trainingCounts.parse).toBe(0);
+    expect(res.data.queuedCounts.qa).toBe(0);
     expect(res.data.trainingCounts.qa).toBe(1);
     expect(res.data.errorCounts.qa).toBe(0);
     expect(res.data.errorCounts.chunk).toBe(1);
+  });
+
+  it('should not include other dataset training records in collection queued counts', async () => {
+    const root = await getRootUser();
+    const [dataset, otherDataset] = await MongoDataset.create([
+      {
+        name: 'current',
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        vectorModel: 'test',
+        agentModel: 'test'
+      },
+      {
+        name: 'other',
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        vectorModel: 'test',
+        agentModel: 'test'
+      }
+    ]);
+    const [collection, otherCollection] = await MongoDatasetCollection.create([
+      {
+        name: 'current',
+        type: DatasetCollectionTypeEnum.file,
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId: dataset._id
+      },
+      {
+        name: 'other',
+        type: DatasetCollectionTypeEnum.file,
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId: otherDataset._id
+      }
+    ]);
+
+    await MongoDatasetTraining.create([
+      ...Array.from({ length: 6 }).map(() => ({
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId: otherDataset._id,
+        collectionId: otherCollection._id,
+        billId: 'test',
+        mode: TrainingModeEnum.chunk,
+        retryCount: 3,
+        lockTime: new Date('2000')
+      })),
+      {
+        teamId: root.teamId,
+        tmbId: root.tmbId,
+        datasetId: dataset._id,
+        collectionId: collection._id,
+        billId: 'test',
+        mode: TrainingModeEnum.parse,
+        retryCount: 3,
+        lockTime: new Date('2000')
+      }
+    ]);
+
+    const res = await Call(trainingDetailHandler, {
+      auth: root,
+      query: {
+        collectionId: collection._id
+      }
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data.queuedCounts.parse).toBe(1);
+    expect(res.data.queuedCounts.chunk).toBe(0);
   });
 
   it('should keep deprecated scrollList compatible with the collection list item schema', async () => {
