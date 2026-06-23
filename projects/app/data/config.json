@@ -22,7 +22,7 @@
       "url": "", // 自定义 PDF 解析服务地址
       "key": "", // 自定义 PDF 解析服务密钥
       "timeout": 60, // 自定义 PDF 解析超时时间
-      "chunkTimeout": 10, // 自定义文本分片超时时间
+      "chunkTimeout": 60, // 自定义文本分片超时时间
       "doc2xKey": "", // doc2x 服务密钥
       "textinAppId": "", // 合合信息 Textin 服务 App ID
       "textinSecretCode": "", // 合合信息 Textin 服务 Secret Code
