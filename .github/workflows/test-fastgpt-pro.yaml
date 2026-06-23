@@ -73,6 +73,8 @@ jobs:
       - name: Install Deps
         run: pnpm install --frozen-lockfile
       - name: Test
+        env:
+          INVOKE_TOKEN_SECRET: fastgpt_test_invoke_token_secret_32
         run: pnpm test:admin
       - name: Report Coverage
         if: always() && hashFiles('pro/admin/coverage/coverage-summary.json') != ''
