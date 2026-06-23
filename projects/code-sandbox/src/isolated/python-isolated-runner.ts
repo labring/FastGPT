@@ -146,7 +146,13 @@ export class PythonIsolatedRunner {
         HOME: '/tmp',
         TMPDIR: '/tmp',
         MPLCONFIGDIR: '/tmp/matplotlib',
-        PYTHONDONTWRITEBYTECODE: '1'
+        PYTHONDONTWRITEBYTECODE: '1',
+        // numpy/OpenBLAS may create worker threads while importing native extensions.
+        // Keep it single-threaded so seccomp does not need to allow clone/fork.
+        OPENBLAS_NUM_THREADS: '1',
+        OMP_NUM_THREADS: '1',
+        MKL_NUM_THREADS: '1',
+        NUMEXPR_NUM_THREADS: '1'
       }
     });
     const stdoutRl = createInterface({ input: proc.stdout!, terminal: false });
