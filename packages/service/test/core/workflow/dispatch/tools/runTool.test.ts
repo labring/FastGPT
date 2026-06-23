@@ -1,5 +1,226 @@
-import { describe, it, expect } from 'vitest';
-import { parseToolId } from '@fastgpt/service/core/workflow/dispatch/child/runTool';
+import { beforeEach, describe, it, expect, vi } from 'vitest';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  dispatchRunTool,
+  parseToolId
+} from '@fastgpt/service/core/workflow/dispatch/child/runTool';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+
+const { authAppByTmbIdMock, getAppVersionByIdMock, runHTTPToolMock, mcpToolCallMock } = vi.hoisted(
+  () => ({
+    authAppByTmbIdMock: vi.fn(),
+    getAppVersionByIdMock: vi.fn(),
+    runHTTPToolMock: vi.fn(),
+    mcpToolCallMock: vi.fn()
+  })
+);
+
+vi.mock('@fastgpt/service/support/permission/app/auth', () => ({
+  authAppByTmbId: authAppByTmbIdMock
+}));
+
+vi.mock('@fastgpt/service/core/app/version/controller', () => ({
+  getAppVersionById: getAppVersionByIdMock
+}));
+
+vi.mock('@fastgpt/service/core/app/http', () => ({
+  runHTTPTool: runHTTPToolMock
+}));
+
+vi.mock('@fastgpt/service/core/app/mcp', () => ({
+  assertMCPUrlNotInternal: vi.fn(),
+  MCPClient: vi.fn().mockImplementation(() => ({
+    toolCall: mcpToolCallMock
+  }))
+}));
+
+vi.mock('@fastgpt/service/common/logger', () => ({
+  LogCategories: {
+    MODULE: {
+      APP: {
+        TOOL: 'tool'
+      },
+      AI: {
+        LLM: 'llm'
+      }
+    }
+  },
+  getLogger: vi.fn(() => ({
+    error: vi.fn()
+  }))
+}));
+
+vi.mock('@fastgpt/service/common/middle/tracks/utils', () => ({
+  pushTrack: {
+    runSystemTool: vi.fn()
+  }
+}));
+
+vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin', () => ({
+  pluginClient: {
+    runToolStream: vi.fn()
+  }
+}));
+
+vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
+  SystemToolRepo: {
+    getInstance: vi.fn(() => ({
+      getSystemToolRuntime: vi.fn()
+    }))
+  }
+}));
+
+vi.mock('@fastgpt/service/core/workflow/utils/context', () => ({
+  getWorkflowContext: vi.fn(() => ({}))
+}));
+
+const createRunToolProps = (toolConfig: Record<string, any>) =>
+  ({
+    params: {
+      keyword: 'fastgpt'
+    },
+    runningAppInfo: {
+      id: 'attacker-app',
+      teamId: 'attacker-team',
+      tmbId: 'attacker-tmb',
+      name: 'Attacker workflow'
+    },
+    runningUserInfo: {
+      username: 'attacker',
+      teamName: 'Attacker team',
+      memberName: 'Attacker member',
+      contact: '',
+      teamId: 'attacker-team',
+      tmbId: 'attacker-tmb'
+    },
+    variableState: {
+      get: vi.fn()
+    },
+    node: {
+      nodeId: 'tool-node',
+      flowNodeType: FlowNodeTypeEnum.tool,
+      name: 'Tool node',
+      avatar: '',
+      toolConfig,
+      inputs: [],
+      outputs: []
+    },
+    uid: 'uid',
+    chatId: 'chat',
+    responseChatItemId: 'response',
+    usagePush: vi.fn()
+  }) as any;
+
+describe('dispatchRunTool runtime toolset auth', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authAppByTmbIdMock.mockResolvedValue({
+      app: {
+        _id: 'victim-toolset'
+      }
+    });
+  });
+
+  it('should reject HTTP tool execution when running app tmb has no parent toolset permission', async () => {
+    authAppByTmbIdMock.mockRejectedValueOnce(new Error('unAuthApp'));
+
+    const result = await dispatchRunTool(
+      createRunToolProps({
+        httpTool: {
+          toolId: 'http-victim-toolset/sandbox_echo'
+        }
+      })
+    );
+
+    expect(authAppByTmbIdMock).toHaveBeenCalledWith({
+      tmbId: 'attacker-tmb',
+      appId: 'victim-toolset',
+      per: ReadPermissionVal
+    });
+    expect(getAppVersionByIdMock).not.toHaveBeenCalled();
+    expect(runHTTPToolMock).not.toHaveBeenCalled();
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toBeTruthy();
+  });
+
+  it('should authorize HTTP parent toolset before loading version and running tool', async () => {
+    getAppVersionByIdMock.mockResolvedValueOnce({
+      nodes: [
+        {
+          toolConfig: {
+            httpToolSet: {
+              baseUrl: 'https://example.com',
+              toolList: [
+                {
+                  name: 'sandbox_echo',
+                  path: '/echo',
+                  method: 'post'
+                }
+              ]
+            }
+          }
+        }
+      ]
+    });
+    runHTTPToolMock.mockResolvedValueOnce({
+      data: {
+        ok: true
+      }
+    });
+
+    const result = await dispatchRunTool(
+      createRunToolProps({
+        httpTool: {
+          toolId: 'http-victim-toolset/sandbox_echo'
+        }
+      })
+    );
+
+    expect(authAppByTmbIdMock).toHaveBeenCalledWith({
+      tmbId: 'attacker-tmb',
+      appId: 'victim-toolset',
+      per: ReadPermissionVal
+    });
+    expect(getAppVersionByIdMock).toHaveBeenCalledWith({
+      appId: 'victim-toolset',
+      versionId: undefined
+    });
+    expect(runHTTPToolMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        baseUrl: 'https://example.com',
+        toolPath: '/echo',
+        method: 'post'
+      })
+    );
+    expect(result.data).toEqual({
+      [NodeOutputKeyEnum.rawResponse]: {
+        ok: true
+      },
+      ok: true
+    });
+  });
+
+  it('should reject MCP tool execution when running app tmb has no parent toolset permission', async () => {
+    authAppByTmbIdMock.mockRejectedValueOnce(new Error('unAuthApp'));
+
+    const result = await dispatchRunTool(
+      createRunToolProps({
+        mcpTool: {
+          toolId: 'mcp-victim-toolset/search'
+        }
+      })
+    );
+
+    expect(authAppByTmbIdMock).toHaveBeenCalledWith({
+      tmbId: 'attacker-tmb',
+      appId: 'victim-toolset',
+      per: ReadPermissionVal
+    });
+    expect(getAppVersionByIdMock).not.toHaveBeenCalled();
+    expect(mcpToolCallMock).not.toHaveBeenCalled();
+    expect(result.error?.[NodeOutputKeyEnum.errorText]).toBeTruthy();
+  });
+});
 
 describe('parseToolId', () => {
   describe('新版格式: source-appId/toolName', () => {

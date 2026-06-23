@@ -1,4 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
+import http from 'http';
+import os from 'os';
 
 // --- Hoisted mocks ---
 const { mockDereference, mockMongoAppFind } = vi.hoisted(() => ({
@@ -12,15 +14,22 @@ vi.mock('@apidevtools/json-schema-ref-parser', () => ({
   }
 }));
 
-vi.mock('@fastgpt/service/core/app/schema', () => ({
+vi.mock('../../../core/app/schema', () => ({
   MongoApp: {
     find: mockMongoAppFind
   }
 }));
 
 import { StreamableHTTPError } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
-import { MCPClient, assertMCPUrlNotInternal, getMCPChildren } from '@fastgpt/service/core/app/mcp';
+import {
+  MCPClient,
+  assertMCPUrlNotInternal,
+  createMcpSafeFetch,
+  getMCPChildren
+} from '../../../core/app/mcp';
 import type { AppSchemaType } from '@fastgpt/global/core/app/type';
+import { PRIVATE_URL_TEXT } from '../../../common/system/utils';
+import { serviceEnv } from '../../../env';
 
 // Access private client via prototype for spying
 const getPrivateClient = (mcpClient: MCPClient) =>
@@ -35,6 +44,48 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.restoreAllMocks();
 });
+
+const mutableServiceEnv = serviceEnv as { CHECK_INTERNAL_IP: boolean };
+const originalCheckInternalIp = serviceEnv.CHECK_INTERNAL_IP;
+
+afterEach(() => {
+  mutableServiceEnv.CHECK_INTERNAL_IP = originalCheckInternalIp;
+});
+
+const listen = (handler: http.RequestListener, host = '127.0.0.1') =>
+  new Promise<http.Server>((resolve) => {
+    const server = http.createServer(handler);
+    server.listen(0, host, () => resolve(server));
+  });
+
+const closeServer = (server: http.Server) =>
+  new Promise<void>((resolve, reject) => {
+    server.close((err) => (err ? reject(err) : resolve()));
+  });
+
+const getServerPort = (server: http.Server): number => {
+  const address = server.address();
+  if (!address || typeof address === 'string') {
+    throw new Error('Invalid test server address');
+  }
+  return address.port;
+};
+
+/**
+ * 构造一个非 loopback 的本机访问地址,用于模拟“初始 MCP URL 通过 SSRF 校验”。
+ * CHECK_INTERNAL_IP=false 时私网地址会放行,但 loopback/metadata 仍然恒拦截。
+ */
+const getReachablePrivateHost = () => {
+  const interfaces = os.networkInterfaces();
+  for (const items of Object.values(interfaces)) {
+    for (const item of items || []) {
+      if (item.family === 'IPv4' && !item.internal) {
+        return item.address;
+      }
+    }
+  }
+  return undefined;
+};
 
 describe('MCPClient', () => {
   const config = { url: 'https://example.com/mcp', headers: { Authorization: 'Bearer test' } };
@@ -200,7 +251,9 @@ describe('MCPClient', () => {
 
       const tools = await mcpClient.getTools();
 
-      const homeSchema = tools[0].inputSchema.properties!['home'] as any;
+      expect(tools[0]).toBeDefined();
+      const inputSchema = tools[0]!.inputSchema!;
+      const homeSchema = inputSchema.properties!['home'] as any;
       expect(homeSchema).toEqual({
         type: 'object',
         properties: { street: { type: 'string' }, city: { type: 'string' } }
@@ -271,7 +324,9 @@ describe('MCPClient', () => {
       const tools = await mcpClient.getTools();
 
       // Verify nested refs are fully resolved
-      const ownerProps = (tools[0].inputSchema.properties!['owner'] as any).properties;
+      expect(tools[0]).toBeDefined();
+      const inputSchema = tools[0]!.inputSchema!;
+      const ownerProps = (inputSchema.properties!['owner'] as any).properties;
       expect(ownerProps.name.properties).toEqual({
         first: { type: 'string' },
         last: { type: 'string' }
@@ -311,7 +366,9 @@ describe('MCPClient', () => {
 
       const tools = await mcpClient.getTools();
 
-      const tagsSchema = tools[0].inputSchema.properties!['tags'] as any;
+      expect(tools[0]).toBeDefined();
+      const inputSchema = tools[0]!.inputSchema!;
+      const tagsSchema = inputSchema.properties!['tags'] as any;
       expect(tagsSchema.items).toEqual({
         type: 'object',
         properties: { label: { type: 'string' } }
@@ -482,6 +539,130 @@ describe('MCPClient', () => {
       expect(client.connect).toHaveBeenCalledTimes(1);
       expect(result).toBe(client);
     });
+  });
+});
+
+describe('createMcpSafeFetch', () => {
+  it('should follow safe redirects hop by hop', async () => {
+    mutableServiceEnv.CHECK_INTERNAL_IP = false;
+    const carrierHost = getReachablePrivateHost();
+    if (!carrierHost) {
+      return;
+    }
+
+    const targetServer = await listen((req, res) => {
+      res.end(JSON.stringify({ ok: true, url: req.url }));
+    }, '0.0.0.0');
+    const targetPort = getServerPort(targetServer);
+
+    const redirectServer = await listen((req, res) => {
+      res.statusCode = 302;
+      res.setHeader('Location', `http://${carrierHost}:${targetPort}/mcp-target`);
+      res.end('redirect');
+    }, '0.0.0.0');
+    const redirectPort = getServerPort(redirectServer);
+
+    try {
+      const response = await createMcpSafeFetch()(`http://${carrierHost}:${redirectPort}/mcp`);
+
+      expect(await response.json()).toEqual({ ok: true, url: '/mcp-target' });
+    } finally {
+      await closeServer(redirectServer);
+      await closeServer(targetServer);
+    }
+  });
+
+  it('should block redirects to loopback addresses', async () => {
+    mutableServiceEnv.CHECK_INTERNAL_IP = false;
+    const carrierHost = getReachablePrivateHost();
+    if (!carrierHost) {
+      return;
+    }
+
+    const protectedServer = await listen((req, res) => {
+      res.end('INTERNAL-ONLY-RESPONSE');
+    });
+    const protectedPort = getServerPort(protectedServer);
+
+    const redirectServer = await listen((req, res) => {
+      res.statusCode = 302;
+      res.setHeader('Location', `http://127.0.0.1:${protectedPort}/mcp`);
+      res.end('redirect');
+    }, '0.0.0.0');
+    const redirectPort = getServerPort(redirectServer);
+
+    try {
+      await expect(createMcpSafeFetch()(`http://${carrierHost}:${redirectPort}/mcp`)).rejects.toBe(
+        PRIVATE_URL_TEXT
+      );
+    } finally {
+      await closeServer(redirectServer);
+      await closeServer(protectedServer);
+    }
+  });
+
+  it('should enforce max redirect count', async () => {
+    mutableServiceEnv.CHECK_INTERNAL_IP = false;
+    const carrierHost = getReachablePrivateHost();
+    if (!carrierHost) {
+      return;
+    }
+
+    let redirectPort = 0;
+    const redirectServer = await listen((req, res) => {
+      res.statusCode = 302;
+      res.setHeader('Location', `http://${carrierHost}:${redirectPort}/loop`);
+      res.end('redirect');
+    }, '0.0.0.0');
+    redirectPort = getServerPort(redirectServer);
+
+    try {
+      await expect(
+        createMcpSafeFetch({ maxRedirects: 1 })(`http://${carrierHost}:${redirectPort}/loop`)
+      ).rejects.toThrow('Maximum MCP redirects exceeded');
+    } finally {
+      await closeServer(redirectServer);
+    }
+  });
+
+  it('should drop sensitive headers when redirect target changes', async () => {
+    mutableServiceEnv.CHECK_INTERNAL_IP = false;
+    const carrierHost = getReachablePrivateHost();
+    if (!carrierHost) {
+      return;
+    }
+
+    let receivedAuthorization: string | undefined;
+    let receivedCookie: string | undefined;
+    const targetServer = await listen((req, res) => {
+      receivedAuthorization = req.headers.authorization;
+      receivedCookie = req.headers.cookie;
+      res.end('ok');
+    }, '0.0.0.0');
+    const targetPort = getServerPort(targetServer);
+
+    const redirectServer = await listen((req, res) => {
+      res.statusCode = 302;
+      res.setHeader('Location', `http://${carrierHost}:${targetPort}/mcp-target`);
+      res.end('redirect');
+    }, '0.0.0.0');
+    const redirectPort = getServerPort(redirectServer);
+
+    try {
+      const response = await createMcpSafeFetch()(`http://${carrierHost}:${redirectPort}/mcp`, {
+        headers: {
+          Authorization: 'Bearer secret',
+          Cookie: 'token=secret'
+        }
+      });
+
+      expect(await response.text()).toBe('ok');
+      expect(receivedAuthorization).toBeUndefined();
+      expect(receivedCookie).toBeUndefined();
+    } finally {
+      await closeServer(redirectServer);
+      await closeServer(targetServer);
+    }
   });
 });
 
