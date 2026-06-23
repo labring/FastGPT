@@ -70,16 +70,35 @@ const parseByCustomService = async ({
   const data = new FormData();
   data.append('file', buffer, { filename: filename || `file.${extension}` });
 
-  // Append extra parse config fields to FormData
+  // Append extra parse config fields to FormData (whitelist allowed keys)
+  const ALLOWED_PARSE_CONFIG_KEYS = new Set([
+    'keep_header_footer',
+    'keep_appendix',
+    'image_analysis',
+    'chart_analysis'
+  ]);
   if (parseConfig) {
     Object.entries(parseConfig).forEach(([key, value]) => {
-      if (value !== undefined && value !== null) {
+      if (value !== undefined && value !== null && ALLOWED_PARSE_CONFIG_KEYS.has(key)) {
         data.append(key, String(value));
       }
     });
   }
 
-  addLog.debug('Calling custom parse service', { url, bufferSize: buffer.length });
+  addLog.info('Calling custom parse service with parseConfig', {
+    url,
+    bufferSize: buffer.length,
+    extension,
+    filename,
+    parseConfig,
+    formDataFields: parseConfig
+      ? Object.fromEntries(
+          Object.entries(parseConfig)
+            .filter(([k]) => ALLOWED_PARSE_CONFIG_KEYS.has(k))
+            .map(([k, v]) => [k, v === undefined || v === null ? null : String(v)])
+        )
+      : null
+  });
 
   try {
     const { data: response } = await axios.post<{
@@ -144,7 +163,8 @@ const parseByDoc2x = async ({
   buffer,
   extension,
   filename,
-  usageId
+  usageId,
+  parseConfig: _parseConfig
 }: FileParseContext): Promise<ReadFileResponse> => {
   const doc2xKey = global.systemEnv.customPdfParse?.doc2xKey;
   if (!doc2xKey) {
@@ -241,7 +261,7 @@ export const readRawContentByFileBuffer = async ({
       return () => parseByCustomService({ teamId, tmbId, buffer, extension, filename, usageId, parseConfig });
     }
     if (extension === 'pdf' && cfg?.doc2xKey)
-      return () => parseByDoc2x({ teamId, tmbId, buffer, extension, filename, usageId });
+      return () => parseByDoc2x({ teamId, tmbId, buffer, extension, filename, usageId, parseConfig });
     return systemParse;
   };
 
@@ -343,7 +363,7 @@ export const readS3FileContentByBuffer = async ({
       return () => parseByCustomService({ teamId, tmbId, buffer, extension, filename, usageId, parseConfig });
     }
     if (extension === 'pdf' && cfg?.doc2xKey)
-      return () => parseByDoc2x({ teamId, tmbId, buffer, extension, filename, usageId });
+      return () => parseByDoc2x({ teamId, tmbId, buffer, extension, filename, usageId, parseConfig });
     return systemParse;
   };
 

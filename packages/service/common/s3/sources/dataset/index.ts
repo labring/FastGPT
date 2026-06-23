@@ -94,12 +94,13 @@ export class S3DatasetSource extends S3PrivateBucket {
   }
 
   async getDatasetFileRawText(params: GetDatasetFileContentParams) {
-    const { fileId, teamId, tmbId, customPdfParse, getFormatText, usageId } =
+    const { fileId, teamId, tmbId, customPdfParse, getFormatText, usageId, parseConfig } =
       GetDatasetFileContentParamsSchema.parse(params);
 
     const rawTextBuffer = await this.rawTextSource.getRawTextBuffer({
       customPdfParse,
-      sourceId: fileId
+      sourceId: fileId,
+      parseConfig
     });
 
     if (rawTextBuffer) {
@@ -125,7 +126,7 @@ export class S3DatasetSource extends S3PrivateBucket {
       size: buffer.length
     });
 
-    const encoding = detectFileEncoding(buffer);
+    const encoding = detectFileEncoding(buffer) || 'utf-8';
     const { fileParsedPrefix } = getFileS3Key.s3Key(fileId);
     const { rawText } = await readS3FileContentByBuffer({
       teamId,
@@ -137,17 +138,26 @@ export class S3DatasetSource extends S3PrivateBucket {
       usageId,
       getFormatText,
       filename,
+      parseConfig,
       imageKeyOptions: {
         prefix: fileParsedPrefix
       }
     });
 
-    this.rawTextSource.addRawTextBuffer({
-      sourceId: fileId,
-      sourceName: filename,
-      text: rawText,
-      customPdfParse
-    });
+    this.rawTextSource
+      .addRawTextBuffer({
+        sourceId: fileId,
+        sourceName: filename,
+        text: rawText,
+        customPdfParse,
+        parseConfig
+      })
+      .catch((err) => {
+        logger.warn('Failed to write rawText cache in getDatasetFileRawText', {
+          fileId,
+          error: err
+        });
+      });
 
     return {
       rawText,

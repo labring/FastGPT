@@ -6,6 +6,7 @@ import { S3PrivateBucket } from './buckets/private';
 import { S3Sources, type UploadImage2S3BucketParams } from './contracts/type';
 import { S3PublicBucket } from './buckets/public';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import type { ParsedFileContentS3KeyParams } from './sources/dataset/type';
 import type { HelperBotTypeEnumType } from '@fastgpt/global/core/chat/helperBot/type';
@@ -241,8 +242,19 @@ export const getFileS3Key = {
     };
   },
 
-  rawText: ({ hash, customPdfParse }: { hash: string; customPdfParse?: boolean }) => {
-    return [S3Sources.rawText, `${hash}${customPdfParse ? '-true' : ''}`].join('/');
+  rawText: ({
+    hash,
+    customPdfParse,
+    parseConfig
+  }: {
+    hash: string;
+    customPdfParse?: boolean;
+    parseConfig?: Record<string, any>;
+  }) => {
+    const parseConfigHash = parseConfig && Object.keys(parseConfig).length > 0
+      ? `-${createHash('md5').update(JSON.stringify(parseConfig)).digest('hex').slice(0, 8)}`
+      : '';
+    return [S3Sources.rawText, `${hash}${customPdfParse ? '-true' : ''}${parseConfigHash}`].join('/');
   }
 };
 

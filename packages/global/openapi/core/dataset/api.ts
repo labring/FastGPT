@@ -125,6 +125,18 @@ export const CreateDatasetWithFilesBodySchema = z.object({
       vlmModelId: z.string().optional().meta({
         example: 'gpt-4o',
         description: '视觉语言模型Id'
+      }),
+      keep_header_footer: z.boolean().optional().meta({
+        description: '保留页眉页脚'
+      }),
+      keep_appendix: z.boolean().optional().meta({
+        description: '保留附录'
+      }),
+      image_analysis: z.boolean().optional().meta({
+        description: '文档图片识别'
+      }),
+      chart_analysis: z.boolean().optional().meta({
+        description: '统计图转表格'
       })
     })
     .meta({ description: '知识库参数' }),
