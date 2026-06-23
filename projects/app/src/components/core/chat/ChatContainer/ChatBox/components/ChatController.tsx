@@ -121,18 +121,19 @@ const ChatController = ({
     isLogMode &&
     chat.obj === ChatRoleEnum.AI &&
     (!!chat.userGoodFeedback || !!chat.userBadFeedback);
-  const unreadFeedbackBadge = !chat.isFeedbackRead ? (
-    <Box
-      position={'absolute'}
-      top={'-2px'}
-      right={'-2px'}
-      w={'8px'}
-      h={'8px'}
-      bg={'red.500'}
-      borderRadius={'full'}
-      border={'1px solid white'}
-    />
-  ) : null;
+  const unreadFeedbackBadge =
+    showLogFeedbackAction && !chat.isFeedbackRead ? (
+      <Box
+        position={'absolute'}
+        top={'-2px'}
+        right={'-2px'}
+        w={'8px'}
+        h={'8px'}
+        bg={'red.500'}
+        borderRadius={'full'}
+        border={'1px solid white'}
+      />
+    ) : null;
 
   const {
     runAsync: requestOnToggleFeedbackReadStatus,
@@ -275,12 +276,12 @@ const ChatController = ({
               <Flex alignItems={'center'} gap={'4px'}>
                 {!!chat.userGoodFeedback && (
                   <MyTooltip label={t('chat:feedback_helpful')}>
-                    <Box position={'relative'}>
+                    <Box position={'relative'} cursor={'not-allowed'}>
                       <MyIcon
                         {...iconStyle}
                         name={'core/chat/feedback/goodLight'}
                         color={'primary.600'}
-                        cursor={'default'}
+                        cursor={'not-allowed'}
                         pointerEvents={'none'}
                         _hover={{ color: 'primary.600' }}
                       />
@@ -291,12 +292,12 @@ const ChatController = ({
 
                 {!!chat.userBadFeedback && (
                   <MyTooltip label={t('chat:feedback_unhelpful')}>
-                    <Box position={'relative'}>
+                    <Box position={'relative'} cursor={'not-allowed'}>
                       <MyIcon
                         {...iconStyle}
                         name={'core/chat/feedback/badLight'}
                         color={'primary.600'}
-                        cursor={'default'}
+                        cursor={'not-allowed'}
                         pointerEvents={'none'}
                         _hover={{ color: 'primary.600' }}
                       />

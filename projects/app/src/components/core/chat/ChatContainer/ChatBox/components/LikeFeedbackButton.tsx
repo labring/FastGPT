@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Box, type BoxProps, type IconProps } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import styles from '../index.module.scss';
@@ -16,11 +16,12 @@ type Particle = {
   color: string;
 };
 
-type LikeFeedbackButtonProps = Pick<BoxProps, 'cursor' | 'onClick'> &
+type LikeFeedbackButtonProps = Pick<BoxProps, 'cursor'> &
   Pick<IconProps, 'w' | 'h' | 'boxSize' | 'p'> & {
     isActive: boolean;
     effectTrigger?: number;
     disableHoverTranslate?: boolean;
+    onClick?: () => void;
   };
 
 const blueColors = ['#3370ff', '#4f82ff', '#7ca3ff'];
@@ -51,7 +52,7 @@ const getParticles = (x: number, y: number): Particle[] =>
 /**
  * 渲染点赞按钮的局部成功反馈。
  *
- * hover、图标弹跳和 canvas 粒子参数都对齐 prototype，只有新的 effectTrigger 会播放撒花。
+ * hover、点击图标弹跳和 canvas 粒子参数都对齐 prototype，只有新的 effectTrigger 会播放撒花。
  */
 const LikeFeedbackButton = ({
   isActive,
@@ -69,6 +70,7 @@ const LikeFeedbackButton = ({
   const particlesRef = useRef<Particle[]>([]);
   const rafRef = useRef<number>();
   const playedTriggerRef = useRef<number>();
+  const [iconPopTrigger, setIconPopTrigger] = useState(0);
 
   const resizeCanvas = useCallback(() => {
     const canvas = canvasRef.current;
@@ -185,6 +187,13 @@ const LikeFeedbackButton = ({
 
   useEffect(() => stopAnimation, [stopAnimation]);
 
+  const handleClick = useCallback(() => {
+    if (!onClick) return;
+
+    setIconPopTrigger((trigger) => trigger + 1);
+    onClick();
+  }, [onClick]);
+
   return (
     <Box
       as="span"
@@ -204,10 +213,10 @@ const LikeFeedbackButton = ({
         color: 'primary.600',
         ...(!disableHoverTranslate && { transform: 'translateY(-1px)' })
       }}
-      onClick={onClick}
+      onClick={handleClick}
     >
       <MyIcon
-        key={effectTrigger || 'idle'}
+        key={iconPopTrigger}
         w={w}
         h={h}
         boxSize={boxSize}
@@ -215,7 +224,7 @@ const LikeFeedbackButton = ({
         cursor={undefined}
         color="currentColor"
         _hover={undefined}
-        className={effectTrigger ? styles.likeFeedbackIconPop : undefined}
+        className={iconPopTrigger > 0 ? styles.likeFeedbackIconPop : undefined}
         name="core/chat/feedback/goodLight"
       />
     </Box>

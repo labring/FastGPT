@@ -8,6 +8,7 @@ import ChatController, { type ChatControllerProps } from '../ChatController';
 import { ChatBoxContext } from '../../Provider';
 import { useContextSelector } from 'use-context-selector';
 import { ChatTypeEnum } from '../../constants';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatSiteItemType } from '../../type';
 import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
 import { useSandboxEditor } from '@/pageComponents/chat/SandboxEditor/hook';
@@ -65,10 +66,11 @@ const AIChatBubbleActions = ({
     );
   }, [responseData]);
   const showTotalPoints = showPoints && totalPoints > 0;
+  const badFeedback = historyItem.obj === ChatRoleEnum.AI ? historyItem.userBadFeedback : undefined;
+  const isFeedbackRead =
+    historyItem.obj === ChatRoleEnum.AI ? historyItem.isFeedbackRead : undefined;
   const showUnreadBadFeedback =
-    chatType === ChatTypeEnum.log &&
-    !!historyItem.userBadFeedback &&
-    historyItem.isFeedbackRead !== true;
+    chatType === ChatTypeEnum.log && !!badFeedback && isFeedbackRead !== true;
 
   const formattedPoints = useMemo(() => {
     const formatted = new Intl.NumberFormat(undefined, {
@@ -184,7 +186,7 @@ const AIChatBubbleActions = ({
             {feedbackUserName || t('chat:log.feedback.user_bad_feedback')}
           </Box>
           <Box fontSize={'12px'} lineHeight={'18px'} color={'myGray.900'}>
-            {historyItem.userBadFeedback}
+            {badFeedback}
           </Box>
         </Flex>
       )}
