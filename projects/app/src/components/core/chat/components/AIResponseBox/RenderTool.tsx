@@ -44,8 +44,10 @@ const RenderTool = React.memo(
             h={'24px'}
             minH={'24px'}
             w={'fit-content'}
+            maxW={'100%'}
             display={'flex'}
             alignItems={'center'}
+            overflow={'hidden'}
             lineHeight={'24px'}
             p={0}
             bg={'transparent'}
@@ -56,11 +58,19 @@ const RenderTool = React.memo(
             _hover={{ bg: 'transparent', color: 'myGray.600' }}
             _expanded={{ color: 'myGray.600' }}
           >
-            <HStack h={'24px'} lineHeight={'24px'} mr={1} spacing="0">
-              <Flex w="24px" h="24px" alignItems="center" justifyContent="center">
+            <HStack h={'24px'} lineHeight={'24px'} mr={1} spacing="0" minW={0} overflow={'hidden'}>
+              <Flex w="24px" h="24px" flexShrink={0} alignItems="center" justifyContent="center">
                 <Avatar src={tool.toolAvatar} w="16px" h="16px" borderRadius="xs" />
               </Flex>
-              <Box fontSize="16px" lineHeight="24px" color="myGray.600">
+              <Box
+                fontSize="16px"
+                lineHeight="24px"
+                color="myGray.600"
+                minW={0}
+                overflow={'hidden'}
+                textOverflow={'ellipsis'}
+                whiteSpace={'nowrap'}
+              >
                 {t(tool.toolName)}
               </Box>
             </HStack>
