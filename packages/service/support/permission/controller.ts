@@ -20,6 +20,7 @@ import type {
   CollaboratorItemType
 } from '@fastgpt/global/support/permission/collaborator';
 import { MongoTeamMember } from '../../support/user/team/teamMemberSchema';
+import { MongoUser } from '../../support/user/schema';
 import { MongoOrgModel } from './org/orgSchema';
 import { MongoMemberGroupModel } from './memberGroup/memberGroupSchema';
 import { DEFAULT_ORG_AVATAR, DEFAULT_TEAM_AVATAR } from '@fastgpt/global/common/system/constants';
@@ -160,16 +161,26 @@ export const getClbsInfo = async ({
     if (clb.groupId) groupIds.push(clb.groupId);
   }
 
-  const infos = (
-    await Promise.all([
-      MongoTeamMember.find({ _id: { $in: tmbIds }, teamId }, '_id name avatar').lean(),
-      MongoOrgModel.find({ _id: { $in: orgIds }, teamId }, '_id name avatar').lean(),
-      MongoMemberGroupModel.find({ _id: { $in: groupIds }, teamId }, '_id name avatar').lean()
-    ])
-  ).flat();
+  const [tmbInfos, orgInfos, groupInfos] = await Promise.all([
+    MongoTeamMember.find({ _id: { $in: tmbIds }, teamId }, '_id name avatar userId').lean(),
+    MongoOrgModel.find({ _id: { $in: orgIds }, teamId }, '_id name avatar').lean(),
+    MongoMemberGroupModel.find({ _id: { $in: groupIds }, teamId }, '_id name avatar').lean()
+  ]);
+
+  const infos = [...tmbInfos, ...orgInfos, ...groupInfos];
+
+  const userIds = tmbInfos.map((info) => info.userId).filter(Boolean);
+  const users =
+    userIds.length > 0
+      ? await MongoUser.find({ _id: { $in: userIds } }, '_id username').lean()
+      : [];
+  const userIdToUsername = new Map(users.map((u) => [u._id.toString(), u.username ?? undefined]));
+
+  const tmbInfoMap = new Map(tmbInfos.map((t) => [t._id, t]));
 
   return clbs.map((clb) => {
     const info = infos.find((info) => info._id === getCollaboratorId(clb));
+    const tmbInfo = tmbInfoMap.get(getCollaboratorId(clb));
 
     return {
       ...clb,
@@ -179,7 +190,8 @@ export const getClbsInfo = async ({
         isOwner: Boolean(ownerTmbId && clb.tmbId && ownerTmbId === clb.tmbId)
       }),
       name: info?.name ?? 'Unknown name',
-      avatar: info?.avatar || (clb.orgId ? DEFAULT_ORG_AVATAR : DEFAULT_TEAM_AVATAR)
+      avatar: info?.avatar || (clb.orgId ? DEFAULT_ORG_AVATAR : DEFAULT_TEAM_AVATAR),
+      username: tmbInfo?.userId ? userIdToUsername.get(tmbInfo.userId.toString()) : undefined
     };
   });
 };
@@ -310,3 +322,4 @@ export const createResourceDefaultCollaborators = async ({
 
   await MongoResourcePermission.bulkWrite(ops, { session });
 };
+
