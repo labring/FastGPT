@@ -20,7 +20,8 @@ export default defineConfig({
       FILE_TOKEN_KEY:
         process.env.FILE_TOKEN_KEY ??
         'bfd697e7e798f75deaf2d31210bc93a2e41ad4eed9e7831071d77821b7b97cff',
-      AES256_SECRET_KEY: process.env.AES256_SECRET_KEY ?? 'fastgpt_test_aes256_secret_key'
+      AES256_SECRET_KEY: process.env.AES256_SECRET_KEY ?? 'fastgpt_test_aes256_secret_key',
+      INVOKE_TOKEN_SECRET: process.env.INVOKE_TOKEN_SECRET ?? 'token'
     },
     coverage: {
       enabled: true,
