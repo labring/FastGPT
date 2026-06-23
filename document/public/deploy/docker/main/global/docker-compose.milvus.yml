@@ -237,6 +237,8 @@ services:
       FILE_TOKEN_KEY: filetokenkey
       # 密钥加密 key
       AES256_SECRET_KEY: fastgptsecret
+      # Invoke 反向调用 JWT 密钥，至少 32 位
+      INVOKE_TOKEN_SECRET: fastgpt_invoke_token_secret_32_chars_min
       # 强制将图片转成 base64 传递给模型
       MULTIPLE_DATA_TO_BASE64: true
 

@@ -18,6 +18,21 @@ const SYSTEM_STRING_LENGTH_UNIT = 1_000_000;
 const LogLevelSchema = z.enum(['trace', 'debug', 'info', 'warning', 'error', 'fatal']);
 const StorageVendorSchema = z.enum(['minio', 'aws-s3', 'cos', 'oss']);
 const StorageCosProtocolSchema = z.enum(['https:', 'http:']);
+const TEST_INVOKE_TOKEN_SECRET = 'fastgpt_test_invoke_token_secret_32';
+
+/**
+ * 测试套件会在多个 workspace（包含 pro/admin 子模块）里直接导入 serviceEnv。
+ * 生产启动仍要求显式配置 INVOKE_TOKEN_SECRET；仅 Vitest/测试环境允许注入稳定测试密钥，
+ * 避免每个测试项目都重复维护同一个必填运行时密钥。
+ */
+const getRuntimeEnv = (): NodeJS.ProcessEnv => ({
+  ...process.env,
+  INVOKE_TOKEN_SECRET:
+    process.env.INVOKE_TOKEN_SECRET ??
+    (process.env.VITEST === 'true' || process.env.NODE_ENV === 'test'
+      ? TEST_INVOKE_TOKEN_SECRET
+      : undefined)
+});
 
 export const serviceEnv = createEnv({
   skipValidation: isPhaseProductionBuild,
@@ -296,11 +311,13 @@ export const serviceEnv = createEnv({
     DINGTALK_OAPI_BASE_URL: UrlSchema.default('https://oapi.dingtalk.com'),
     YUQUE_DATASET_BASE_URL: UrlSchema.default('https://www.yuque.com'),
 
-    // Invoke 反向调用相关
-    INVOKE_TOKEN_SECRET: z.string().default('token')
+    // Invoke 反向调用相关。该密钥用于签发/校验插件反向调用 JWT，必须显式配置，避免未配置时落到公开默认值。
+    INVOKE_TOKEN_SECRET: z
+      .string()
+      .min(32, 'INVOKE_TOKEN_SECRET must be at least 32 characters')
   },
   emptyStringAsUndefined: true,
-  runtimeEnv: process.env,
+  runtimeEnv: getRuntimeEnv(),
   onValidationError(issues) {
     const paths = issues.map((issue) => issue.path).join(', ');
     throw new Error(`Invalid environment variables. Please check: ${paths}\n`);
