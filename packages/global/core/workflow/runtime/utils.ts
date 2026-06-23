@@ -108,7 +108,7 @@ export const valueTypeFormat = (value: any, valueType?: WorkflowIOValueTypeEnum)
       const trimmedValue = value.trim();
       try {
         return json5.parse(trimmedValue);
-      } catch (error) {}
+      } catch {}
     }
     return {};
   }
@@ -118,7 +118,7 @@ export const valueTypeFormat = (value: any, valueType?: WorkflowIOValueTypeEnum)
     if (isObjectString(value)) {
       try {
         return json5.parse(value);
-      } catch (error) {}
+      } catch {}
     }
     return [value];
   }
@@ -134,7 +134,7 @@ export const valueTypeFormat = (value: any, valueType?: WorkflowIOValueTypeEnum)
     if (isObjectString(value)) {
       try {
         return json5.parse(value);
-      } catch (error) {}
+      } catch {}
     }
     return [];
   }
@@ -144,7 +144,7 @@ export const valueTypeFormat = (value: any, valueType?: WorkflowIOValueTypeEnum)
     if (isObjectString(value)) {
       try {
         return json5.parse(value);
-      } catch (error) {}
+      } catch {}
     }
     return [];
   }

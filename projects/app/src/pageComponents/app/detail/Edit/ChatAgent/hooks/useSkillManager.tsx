@@ -19,7 +19,7 @@ import dynamic from 'next/dynamic';
 import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
 import {
   getAppToolTemplates,
-  getToolPreviewNode,
+  getClientToolPreviewNode,
   getTeamAppTemplates
 } from '@/web/core/app/api/tool';
 import {
@@ -250,7 +250,7 @@ export const useSkillManager = ({
         };
       }
 
-      const toolTemplate = await getToolPreviewNode({ appId: toolId, versionId: '' });
+      const toolTemplate = await getClientToolPreviewNode({ appId: toolId, versionId: '' });
 
       const toolValid = validateToolConfiguration({
         toolTemplate,

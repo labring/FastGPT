@@ -268,6 +268,7 @@ const AppChatWindow = () => {
               chatType={ChatTypeEnum.chat}
               outLinkAuthData={outLinkAuthData}
               onStartChat={onStartChat}
+              enableQuickReplies
             />
           )}
         </Box>

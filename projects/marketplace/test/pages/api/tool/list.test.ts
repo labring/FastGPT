@@ -104,7 +104,7 @@ describe('/api/tool/list', () => {
         id: 'missing-tags',
         pluginId: 'missing-tags',
         tags: undefined,
-        secretSchema: { properties: [{ key: 'apiKey' }] }
+        secretSchema: { properties: { apiKey: { type: 'string' } } }
       })
     ]);
 

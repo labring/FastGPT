@@ -1,7 +1,6 @@
 {
   "configured": "已設定",
   "error.no_permission": "請聯絡管理員設定",
-  "laf_account": "af 帳號",
   "no_intro": "暫無說明",
   "not_configured": "未設定",
   "open_api_notice": "可以填寫 OpenAI/OneAPI 的相關金鑰。\n如果你填寫了該內容，在線上平臺使用【AI 對話】、【問題分類】和【內容提取】將會走你填寫的 Key，不會計費用。\n請注意你的 Key 是否有存取對應模型的權限。 \nGPT 模型可以選擇 FastAI。",

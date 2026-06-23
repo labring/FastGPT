@@ -1,5 +1,5 @@
-import { Box, type BoxProps, Button, Flex } from '@chakra-ui/react';
-import React, { useMemo, useState } from 'react';
+import { Box, type BoxProps, Flex } from '@chakra-ui/react';
+import React, { useMemo } from 'react';
 import { type ChatControllerProps } from './ChatController';
 import styles from '../index.module.scss';
 import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
@@ -52,8 +52,6 @@ const ChatItem = (props: Props) => {
 
   const { t } = useTranslation();
 
-  const [showFeedbackContent, setShowFeedbackContent] = useState(false);
-
   const styleMap: BoxProps = useMemoEnhance(
     () => ({
       order: chat.obj === ChatRoleEnum.Human ? 0 : 1,
@@ -80,6 +78,12 @@ const ChatItem = (props: Props) => {
 
   const statisticalChatItem = useMemoEnhance(() => addStatisticalDataToHistoryItem(chat), [chat]);
   const quoteList: SearchDataResponseQuoteListItemType[] = statisticalChatItem.totalQuoteList ?? [];
+  const allowedCitationIds = useMemoEnhance(() => {
+    const sourceQuoteList = statisticalChatItem.totalQuoteList;
+    if (!sourceQuoteList) return;
+
+    return new Set(sourceQuoteList.map((item) => item.id).filter((id): id is string => !!id));
+  }, [statisticalChatItem.totalQuoteList]);
   const { errorText } = statisticalChatItem;
   const inlineErrorInfo = useMemo(() => {
     if (!chat.errorMsg && !errorText) return;
@@ -253,36 +257,6 @@ const ChatItem = (props: Props) => {
           </Flex>
         )}
 
-      {/* User Feedback Content: Admin log show */}
-      {isChatLog &&
-        showFeedbackContent &&
-        chat.obj === ChatRoleEnum.AI &&
-        (chat.userGoodFeedback || chat.userBadFeedback) && (
-          <Box
-            mt={2}
-            maxW={'250'}
-            border={'1px solid'}
-            borderColor={'myGray.250'}
-            borderRadius={'md'}
-            p={3}
-          >
-            <Box fontSize={'sm'} color={'myGray.900'} whiteSpace={'pre-wrap'}>
-              {chat.userBadFeedback || chat.userGoodFeedback}
-            </Box>
-            <Flex justifyContent={'flex-end'} mt={2}>
-              <Button
-                size={'xs'}
-                variant={'grayGhost'}
-                fontSize={'xs'}
-                onClick={() => setShowFeedbackContent(false)}
-                color={'primary.600'}
-              >
-                {t('chat:log.feedback.hide_feedback')}
-              </Button>
-            </Flex>
-          </Box>
-        )}
-
       {/* content */}
       {splitAiResponseResults.map((value, i) => {
         const isPlanCard =
@@ -315,6 +289,7 @@ const ChatItem = (props: Props) => {
               <HumanChatBubble
                 chatValue={value as UserChatItemValueItemType[]}
                 chatTime={i === splitAiResponseResults.length - 1 ? chat.time : undefined}
+                canEdit={!isChatting}
                 onEditSubmit={onEditSubmit}
               >
                 {renderCommonFooter()}
@@ -341,12 +316,11 @@ const ChatItem = (props: Props) => {
               isChatting={isChatting}
               loadingText={showRunningStatus ? statusBoxData?.name : undefined}
               questionGuides={questionGuides}
+              allowedCitationIds={allowedCitationIds}
               onOpenCiteModal={onOpenCiteModal}
               chatControllerProps={{
                 ...props,
-                isLastChild,
-                showFeedbackContent,
-                onToggleFeedbackContent: () => setShowFeedbackContent(!showFeedbackContent)
+                isLastChild
               }}
             >
               {renderCommonFooter()}

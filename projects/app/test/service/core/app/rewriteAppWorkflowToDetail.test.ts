@@ -18,16 +18,16 @@ import type {
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getUser } from '@test/datas/users';
 
-const { getChildAppPreviewNodeMock, authAppByTmbIdMock } = vi.hoisted(() => ({
-  getChildAppPreviewNodeMock: vi.fn(),
+const { getClientToolPreviewNodeMock, authAppByTmbIdMock } = vi.hoisted(() => ({
+  getClientToolPreviewNodeMock: vi.fn(),
   authAppByTmbIdMock: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/app/tool/controller', async (importOriginal) => {
-  const mod = await importOriginal<typeof import('@fastgpt/service/core/app/tool/controller')>();
+vi.mock('@fastgpt/service/core/app/tool/utils/client', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('@fastgpt/service/core/app/tool/utils/client')>();
   return {
     ...mod,
-    getChildAppPreviewNode: getChildAppPreviewNodeMock
+    getClientToolPreviewNode: getClientToolPreviewNodeMock
   };
 });
 
@@ -43,7 +43,7 @@ const { rewriteAppWorkflowToDetail } = await import('@fastgpt/service/core/app/u
 
 describe('rewriteAppWorkflowToDetail - agent skills', () => {
   beforeEach(() => {
-    getChildAppPreviewNodeMock.mockReset();
+    getClientToolPreviewNodeMock.mockReset();
     authAppByTmbIdMock.mockReset();
   });
 
@@ -126,7 +126,7 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
   });
 
   it('刷新最新工具节点时使用新 renderTypeList，并保留旧节点选中的引用类型', async () => {
-    getChildAppPreviewNodeMock.mockResolvedValue({
+    getClientToolPreviewNodeMock.mockResolvedValue({
       id: 'mcp-app-1/tool',
       flowNodeType: FlowNodeTypeEnum.tool,
       name: 'Tool',
@@ -230,12 +230,12 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
 
     expect(toolInput.value).toEqual(toolReferenceValue);
     expect(skillsInput.value).toEqual(skillReferenceValue);
-    expect(getChildAppPreviewNodeMock).not.toHaveBeenCalled();
+    expect(getClientToolPreviewNodeMock).not.toHaveBeenCalled();
   });
 
   it('校验嵌套工具权限时透传 root 身份', async () => {
     const toolAppId = '507f1f77bcf86cd799439011';
-    getChildAppPreviewNodeMock.mockResolvedValue({
+    getClientToolPreviewNodeMock.mockResolvedValue({
       id: toolAppId,
       flowNodeType: FlowNodeTypeEnum.tool,
       name: 'Personal Tool',

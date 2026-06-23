@@ -44,9 +44,9 @@ const WholeResponseModal = ({ onClose, dataId }: { onClose: () => void; dataId: 
       title={
         <Flex alignItems={'center'} gap={2}>
           <Box fontSize={'20px'} lineHeight={'26px'} letterSpacing={'0.15px'} fontWeight={500}>
-            {t('common:core.chat.response.Complete Response')}
+            {t('chat:response.complete_response')}
           </Box>
-          <QuestionTip label={t('chat:question_tip')} />
+          <QuestionTip label={t('chat:response.question_tip')} />
         </Flex>
       }
     >
@@ -54,7 +54,7 @@ const WholeResponseModal = ({ onClose, dataId }: { onClose: () => void; dataId: 
         (!!response?.length ? (
           <ResponseBox response={response} dataId={dataId} />
         ) : (
-          <EmptyTip text={t('chat:no_workflow_response')} />
+          <EmptyTip text={t('chat:response.no_workflow_response')} />
         ))}
     </MyModal>
   );

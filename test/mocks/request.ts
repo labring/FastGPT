@@ -45,9 +45,12 @@ export type parseHeaderCertRet = {
   teamId: string;
   tmbId: string;
   appId: string;
+  legacyAppId?: string;
+  parsedAppId?: string;
   authType: AuthUserTypeEnum;
   sourceName: string | undefined;
   apikey: string;
+  apiKeyAuthProxy?: boolean;
   isRoot: boolean;
   sessionId: string;
 };
@@ -82,7 +85,7 @@ vi.mock('@fastgpt/service/support/permission/auth/common', async (importOriginal
     }
   );
 
-  const authCert = async (props: any) => {
+  const authCert = vi.fn(async (props: any) => {
     const result = await parseHeaderCert(props);
 
     return {
@@ -90,7 +93,7 @@ vi.mock('@fastgpt/service/support/permission/auth/common', async (importOriginal
       isOwner: true,
       canWrite: true
     };
-  };
+  });
 
   const setCookie = vi.fn();
 

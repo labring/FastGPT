@@ -1,5 +1,5 @@
 import type { OpenAPIPath } from '../../../type';
-import { TagsMap } from '../../../tag';
+import { DevApiTagsMap } from '../../../tag';
 import {
   ChatInputGuideListBodySchema,
   ChatInputGuideListResponseSchema,
@@ -21,7 +21,7 @@ export const ChatInputGuidePath: OpenAPIPath = {
     post: {
       summary: '获取对话输入引导列表',
       description: '获取指定应用的对话输入引导列表，支持关键词模糊搜索和分页',
-      tags: [TagsMap.chatInputGuide],
+      tags: [DevApiTagsMap.chatInputGuide],
       requestBody: {
         content: {
           'application/json': {
@@ -45,7 +45,7 @@ export const ChatInputGuidePath: OpenAPIPath = {
     get: {
       summary: '统计对话输入引导总数',
       description: '获取指定应用的对话输入引导总数',
-      tags: [TagsMap.chatInputGuide],
+      tags: [DevApiTagsMap.chatInputGuide],
       parameters: [
         {
           in: 'query',
@@ -70,7 +70,7 @@ export const ChatInputGuidePath: OpenAPIPath = {
     post: {
       summary: '创建对话输入引导',
       description: '批量创建对话输入引导文本',
-      tags: [TagsMap.chatInputGuide],
+      tags: [DevApiTagsMap.chatInputGuide],
       requestBody: {
         content: {
           'application/json': {
@@ -94,7 +94,7 @@ export const ChatInputGuidePath: OpenAPIPath = {
     delete: {
       summary: '删除对话输入引导',
       description: '批量删除指定的对话输入引导',
-      tags: [TagsMap.chatInputGuide],
+      tags: [DevApiTagsMap.chatInputGuide],
       requestBody: {
         content: {
           'application/json': {
@@ -118,7 +118,7 @@ export const ChatInputGuidePath: OpenAPIPath = {
     delete: {
       summary: '删除应用所有对话输入引导',
       description: '删除指定应用的所有对话输入引导',
-      tags: [TagsMap.chatInputGuide],
+      tags: [DevApiTagsMap.chatInputGuide],
       requestBody: {
         content: {
           'application/json': {
@@ -142,7 +142,7 @@ export const ChatInputGuidePath: OpenAPIPath = {
     post: {
       summary: '查询对话输入引导（公开接口）',
       description: '根据搜索词查询对话输入引导，支持分享链接和团队 Token 鉴权',
-      tags: [TagsMap.chatInputGuide],
+      tags: [DevApiTagsMap.chatInputGuide],
       requestBody: {
         content: {
           'application/json': {
@@ -166,7 +166,7 @@ export const ChatInputGuidePath: OpenAPIPath = {
     put: {
       summary: '更新对话输入引导',
       description: '更新指定的对话输入引导文本',
-      tags: [TagsMap.chatInputGuide],
+      tags: [DevApiTagsMap.chatInputGuide],
       requestBody: {
         content: {
           'application/json': {

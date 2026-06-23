@@ -10,3 +10,4 @@ export * from './plan/updateTool';
 export * from './stop';
 export * from './tools';
 export * from './loop/unified';
+export { normalizeToolResponseContent } from '@fastgpt/global/core/ai/llm/utils';

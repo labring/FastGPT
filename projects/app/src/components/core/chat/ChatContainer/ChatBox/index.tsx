@@ -60,6 +60,10 @@ import AppChatMain from './components/AppChatMain';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import ScrollToBottomButton from './components/ScrollToBottomButton';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import {
+  QuickReplyContextProvider,
+  useRegisterQuickReplyClickHandler
+} from '../context/quickReplyContext';
 
 const ChatHomeVariablesForm = dynamic(() => import('./components/home/ChatHomeVariablesForm'));
 const DesktopHomeLayout = dynamic(() => import('./components/home/DesktopHomeLayout'));
@@ -88,11 +92,19 @@ type Props = OutLinkChatAuthProps &
     onTriggerRefresh?: () => void;
     /** 覆盖默认消息删除接口；Skill 调试会话需要走 skill 专属 chat item 删除接口。 */
     onDeleteChatItem?: (contentId: string, delFile?: boolean) => Promise<void>;
-    /** 覆盖默认停止对话接口；Skill 调试会话不能走普通 App Chat 的 /v2/chat/stop 鉴权。 */
+    /** 覆盖默认停止会话接口；Skill 调试会话不能走普通 App Chat 的 /v2/chat/stop 鉴权。 */
     onStopChat?: () => Promise<StopChatFnResult>;
     /** 覆盖默认已读接口；不传则使用普通 App Chat 的 postMarkChatRead。 */
     onMarkChatRead?: (data: MarkChatReadBodyType) => Promise<unknown>;
     EmptyState?: React.ReactNode;
+    /** 是否启用 AI 正文 quick-replies 快捷回复渲染，默认关闭。 */
+    enableQuickReplies?: boolean;
+    /** 是否禁用 footer actions hover 时的上移动画。 */
+    disableFooterHoverTranslate?: boolean;
+    /** footer 中运行详情的位置，默认保持原有顺序。 */
+    footerRunDetailPosition?: 'default' | 'afterCopy';
+    /** 日志详情中展示用户反馈内容时使用的用户显示名。 */
+    feedbackUserName?: string;
   };
 
 const ChatBox = ({
@@ -114,6 +126,10 @@ const ChatBox = ({
   boxBodyProps,
   inputBodyProps,
   EmptyState,
+  enableQuickReplies = false,
+  disableFooterHoverTranslate = false,
+  footerRunDetailPosition = 'default',
+  feedbackUserName,
   ...props
 }: Props) => {
   const { t } = useTranslation();
@@ -333,6 +349,7 @@ const ChatBox = ({
     setFeedbackId,
     adminMarkData,
     setAdminMarkData,
+    likeFeedbackEffect,
     onMark,
     onAddUserLike,
     onAddUserDislike,
@@ -442,6 +459,20 @@ const ChatBox = ({
     };
   }, [isReady, resetInputVal, sendPrompt, canSendPrompt, lastInteractive]);
 
+  /** 快捷回复点击：直接发送选项文本，并保留输入框原有内容。 */
+  const handleQuickReplyClick = useMemoizedFn((text: string) => {
+    const trimmedText = text.trim();
+    if (!trimmedText) return;
+
+    sendPromptWithDisabledGuard({
+      text: trimmedText,
+      interactive: lastInteractive,
+      clearInput: false
+    });
+  });
+
+  useRegisterQuickReplyClickHandler(enableQuickReplies ? handleQuickReplyClick : undefined);
+
   // Auto send prompt
   useDebounceEffect(
     () => {
@@ -530,6 +561,10 @@ const ChatBox = ({
       onMark,
       onAddUserLike,
       onAddUserDislike,
+      likeFeedbackEffect,
+      disableFooterHoverTranslate,
+      footerRunDetailPosition,
+      feedbackUserName,
       onCloseCustomFeedback,
       onToggleFeedbackReadStatus
     }),
@@ -547,6 +582,10 @@ const ChatBox = ({
       onMark,
       onAddUserLike,
       onAddUserDislike,
+      likeFeedbackEffect,
+      disableFooterHoverTranslate,
+      footerRunDetailPosition,
+      feedbackUserName,
       onCloseCustomFeedback,
       onToggleFeedbackReadStatus
     ]
@@ -656,11 +695,14 @@ const ChatBox = ({
     </MyBox>
   );
 };
-
 const ChatBoxContainer = (props: Props) => {
+  const { enableQuickReplies = false } = props;
+
   return (
     <ChatProvider {...props}>
-      <ChatBox {...props} />
+      <QuickReplyContextProvider enableQuickReplies={enableQuickReplies}>
+        <ChatBox {...props} />
+      </QuickReplyContextProvider>
     </ChatProvider>
   );
 };

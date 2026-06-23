@@ -11,13 +11,16 @@ export enum CodeClassNameEnum {
   htm = 'htm',
   svg = 'svg',
   video = 'video',
-  audio = 'audio'
+  audio = 'audio',
+  quickReplies = 'quick-replies'
 }
 
 const streamingIncompleteMarkdownTailPatterns = [
   /!\[[^\]\n]*\]\([^\s\n)]*$/,
   /!\[[^\]\n]*\]$/,
   /!\[[^\]\n]*$/,
+  /\[[a-f0-9]{0,24}\]\((?:CITE|QUOTE)?$/i,
+  /\[[a-f0-9]{1,24}\]?$/i,
   /\[[^\]\n]*\]\([^\s\n)]*$/
 ];
 const streamingIncompleteTextMarkdownTailMarkers = ['**', '__', '~~'] as const;

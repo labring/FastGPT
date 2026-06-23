@@ -91,12 +91,12 @@ const RenderText = React.memo(function RenderText({
   return <Markdown source={source} showAnimation={showAnimation} />;
 });
 const RenderCollectionForm = React.memo(function RenderCollectionForm({
-  isLastValue,
+  canSubmit,
   collectionForm,
   onSubmit,
   showDescription = true
 }: {
-  isLastValue: boolean;
+  canSubmit: boolean;
   collectionForm: UserInputInteractive;
   onSubmit: (formData: string) => void;
   showDescription?: boolean;
@@ -141,7 +141,7 @@ const RenderCollectionForm = React.memo(function RenderCollectionForm({
         })}
       </Flex>
 
-      {!submitted && isLastValue && (
+      {!submitted && canSubmit && (
         <Flex justifyContent={'flex-end'} mt={4}>
           <Button
             size={'sm'}
@@ -180,6 +180,9 @@ const AIItem = ({
       ('text' in firstValue && firstValue.text?.content) ||
       ('reasoning' in firstValue && firstValue.reasoning && !firstValue.hideReason)
     );
+  const lastCollectionFormIndex = chat.value.findLastIndex(
+    (value) => 'collectionForm' in value && value.collectionForm
+  );
 
   return (
     <Box
@@ -214,7 +217,7 @@ const AIItem = ({
                   return (
                     <RenderCollectionForm
                       key={i}
-                      isLastValue={isLastChild && i === chat.value.length - 1}
+                      canSubmit={isLastChild && i === lastCollectionFormIndex}
                       collectionForm={value.collectionForm}
                       onSubmit={onSubmitCollectionForm}
                     />

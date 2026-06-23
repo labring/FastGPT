@@ -1,5 +1,4 @@
 {
-  "app_key_tips": "這些金鑰已與目前的應用程式連結。詳細使用方式請參閱說明文件。",
   "basic_info": "基本資訊",
   "copy_link_hint": "請將下方連結複製到指定位置",
   "create_api_key": "建立新金鑰",
@@ -17,7 +16,6 @@
   "feishu_api": "Lark API",
   "feishu_bot": "Lark 聊天機器人",
   "feishu_bot_desc": "透過 API 直接連結 Lark 聊天機器人",
-  "ip_whitelist": "IP 白名單",
   "key_alias": "金鑰別名，僅供顯示",
   "link_name": "分享連結名稱",
   "new_feishu_bot": "新增 Lark 聊天機器人",

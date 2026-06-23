@@ -1,4 +1,4 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
@@ -10,12 +10,13 @@ import {
 } from '@fastgpt/global/openapi/core/chat/feedback/api';
 import { updateChatFeedbackCount } from '@fastgpt/service/core/chat/controller';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
-async function handler(
-  req: ApiRequestProps,
-  _res: ApiResponseType<any>
-): Promise<UpdateFeedbackReadStatusResponseType> {
-  const { appId, chatId, dataId, isRead } = UpdateFeedbackReadStatusBodySchema.parse(req.body);
+async function handler(req: ApiRequestProps): Promise<UpdateFeedbackReadStatusResponseType> {
+  const { appId, chatId, dataId, isRead } = parseApiInput({
+    req,
+    bodySchema: UpdateFeedbackReadStatusBodySchema
+  }).body;
 
   await authChatCrud({
     req,

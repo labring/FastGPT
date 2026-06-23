@@ -76,9 +76,15 @@ const scalarApiReferenceCss = `
 
 `;
 
-export const getScalarOpenApiReferenceConfig = (url: string) =>
+export const getScalarOpenApiReferenceConfig = (
+  url: string,
+  options?: {
+    defaultOpenAllTags?: boolean;
+  }
+) =>
   ({
     customCss: scalarApiReferenceCss,
+    defaultOpenAllTags: options?.defaultOpenAllTags,
     hideDarkModeToggle: false,
     hideClientButton: true,
     showToolbar: 'never',

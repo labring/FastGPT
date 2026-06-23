@@ -28,7 +28,7 @@ type AppPropsWithLayout = AppProps & {
 };
 
 const routesWithCustomHead = ['/chat', '/chat/share', '/app/detail', '/dataset/detail'];
-const openAPIReferenceRoutes = ['/openapi', '/devapidoc'];
+const openAPIReferenceRoutes = ['/apidoc/devapi', '/apidoc/systemopenapi'];
 // 哪些路由不需要 Layout
 const routesWithoutLayout = openAPIReferenceRoutes;
 

@@ -4,7 +4,7 @@ import { ChatFavouriteAppPath } from './favourite/index';
 import { ChatFeedbackPath } from './feedback/index';
 import { ChatHistoryPath } from './history/index';
 import { GetRecentlyUsedAppsResponseSchema } from './api';
-import { TagsMap } from '../../tag';
+import { DevApiTagsMap } from '../../tag';
 import { ChatControllerPath } from './controler';
 import { HelperBotPath } from './helperBot';
 import { ChatInputGuidePath } from './inputGuide/index';
@@ -30,7 +30,7 @@ export const ChatPath: OpenAPIPath = {
     get: {
       summary: '获取最近使用的应用',
       description: '获取最近使用的应用',
-      tags: [TagsMap.chatPage],
+      tags: [DevApiTagsMap.chatPage],
       responses: {
         200: {
           description: '成功返回最近使用的应用',

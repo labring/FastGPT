@@ -15,12 +15,14 @@ const RenderText = React.memo(function RenderText({
   text,
   chatItemDataId,
   onOpenCiteModal,
+  allowedCitationIds,
   isDisabled
 }: {
   showAnimation: boolean;
   text: string;
   chatItemDataId: string;
   onOpenCiteModal?: (e?: OnOpenCiteModalProps) => void;
+  allowedCitationIds?: Set<string>;
   isDisabled?: boolean;
 }) {
   const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
@@ -47,6 +49,7 @@ const RenderText = React.memo(function RenderText({
       source={source}
       showAnimation={showAnimation}
       chatAuthData={chatAuthData}
+      allowedCitationIds={allowedCitationIds}
       onOpenCiteModal={onOpenCiteModal}
       isDisabled={isDisabled}
       autoPreviewHtmlCodeBlock

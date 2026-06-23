@@ -1,5 +1,5 @@
 import { type OpenAPIPath } from '../../type';
-import { TagsMap } from '../../tag';
+import { DevApiTagsMap } from '../../tag';
 import {
   McpCreateBodySchema,
   McpCreateResponseSchema,
@@ -15,7 +15,7 @@ export const McpPath: OpenAPIPath = {
     get: {
       summary: '获取 MCP Server 列表',
       description: '获取当前团队(或个人)可见的 MCP Server 列表',
-      tags: [TagsMap.mcpServer],
+      tags: [DevApiTagsMap.mcpServer],
       responses: {
         200: {
           description: 'MCP Server 列表',
@@ -32,7 +32,7 @@ export const McpPath: OpenAPIPath = {
     post: {
       summary: '创建 MCP Server',
       description: '创建一个新的 MCP Server,将若干应用以 MCP 工具的形式对外暴露',
-      tags: [TagsMap.mcpServer],
+      tags: [DevApiTagsMap.mcpServer],
       requestBody: {
         content: {
           'application/json': {
@@ -56,7 +56,7 @@ export const McpPath: OpenAPIPath = {
     put: {
       summary: '更新 MCP Server',
       description: '更新已存在的 MCP Server 名称或应用列表',
-      tags: [TagsMap.mcpServer],
+      tags: [DevApiTagsMap.mcpServer],
       requestBody: {
         content: {
           'application/json': {
@@ -80,7 +80,7 @@ export const McpPath: OpenAPIPath = {
     delete: {
       summary: '删除 MCP Server',
       description: '根据 ID 删除 MCP Server',
-      tags: [TagsMap.mcpServer],
+      tags: [DevApiTagsMap.mcpServer],
       requestParams: {
         query: McpDeleteQuerySchema
       },

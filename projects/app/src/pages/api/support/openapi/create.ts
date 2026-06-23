@@ -3,13 +3,13 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { OpenApiErrEnum } from '@fastgpt/global/common/error/code/openapi';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { TeamApikeyCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { appEnv } from '@/env';
 import {
   CreateApiKeyBodySchema,
   CreateApiKeyResponseSchema,
@@ -20,33 +20,27 @@ import {
 async function handler(
   req: ApiRequestProps<CreateApiKeyBodyType>
 ): Promise<CreateApiKeyResponseType> {
-  const { appId, name, limit } = parseApiInput({
+  const {
+    name,
+    limit,
+    authProxy = false
+  } = parseApiInput({
     req,
     bodySchema: CreateApiKeyBodySchema
   }).body;
-  const { tmbId, teamId } = await (async () => {
-    if (!appId) {
-      // global apikey is being created, auth the tmb
-      const { teamId, tmbId } = await authUserPer({
-        req,
-        authToken: true,
-        per: TeamApikeyCreatePermissionVal
-      });
-      return { teamId, tmbId };
-    } else {
-      const { teamId, tmbId } = await authApp({
-        req,
-        per: ManagePermissionVal,
-        appId,
-        authToken: true
-      });
-      return { teamId, tmbId };
-    }
-  })();
+  const { teamId, tmbId, permission } = await authUserPer({
+    req,
+    authToken: true,
+    per: TeamApikeyCreatePermissionVal
+  });
 
-  const count = await MongoOpenApi.find({ tmbId, appId }).countDocuments();
+  if (authProxy && !permission.isOwner) {
+    return Promise.reject(TeamErrEnum.unPermission);
+  }
 
-  if (count >= 10) {
+  const count = await MongoOpenApi.find({ tmbId }).countDocuments();
+
+  if (count >= appEnv.OPENAPI_KEY_MAX_COUNT) {
     return Promise.reject(OpenApiErrEnum.exceedLimit);
   }
 
@@ -57,7 +51,7 @@ async function handler(
     teamId,
     tmbId,
     apiKey,
-    appId,
+    authProxy,
     name,
     limit
   });

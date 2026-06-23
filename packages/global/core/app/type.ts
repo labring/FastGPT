@@ -1,7 +1,6 @@
 import { StoreNodeItemTypeSchema } from '../workflow/type/node';
 import { AppTypeEnum } from './constants';
-import type { NodeInputKeyEnum } from '../workflow/constants';
-import { VariableInputEnum } from '../workflow/constants';
+import { NodeInputKeyEnum, VariableInputEnum } from '../workflow/constants';
 import { InputComponentPropsTypeSchema } from '../workflow/type/io';
 import { DatasetSearchModeEnum } from '../dataset/constants';
 import type { ReasoningEffort } from '../ai/llm/type';
@@ -52,10 +51,10 @@ export const AppWhisperConfigTypeSchema = z.object({
   }),
   autoSend: BoolSchema.meta({
     description: '语音识别完成后是否自动发送问题'
-  }),
+  }).default(false),
   autoTTSResponse: BoolSchema.meta({
     description: '语音输入后是否自动播报应用回复'
-  })
+  }).default(false)
 });
 export type AppWhisperConfigType = z.infer<typeof AppWhisperConfigTypeSchema>;
 
@@ -260,6 +259,7 @@ export const AppDatasetSearchParamsTypeSchema = z.object({
   datasetSearchUsingExtensionQuery: BoolSchema.optional(),
   datasetSearchExtensionModel: z.string().optional(),
   datasetSearchExtensionBg: z.string().optional(),
+  [NodeInputKeyEnum.authTmbId]: BoolSchema.optional(),
 
   collectionFilterMatch: z.string().optional()
 });

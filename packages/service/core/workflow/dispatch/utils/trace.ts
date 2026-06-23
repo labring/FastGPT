@@ -28,7 +28,6 @@ const tracedWorkflowStepTypes = new Set<FlowNodeTypeEnum>([
   FlowNodeTypeEnum.queryExtension,
   FlowNodeTypeEnum.toolCall,
   FlowNodeTypeEnum.httpRequest468,
-  FlowNodeTypeEnum.lafModule,
   FlowNodeTypeEnum.code,
   FlowNodeTypeEnum.readFiles,
   FlowNodeTypeEnum.tool

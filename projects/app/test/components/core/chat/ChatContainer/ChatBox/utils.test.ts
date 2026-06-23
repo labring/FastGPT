@@ -168,6 +168,7 @@ describe('shouldAppendResumeInteractive', () => {
     const baseInteractive = {
       type: 'userInput',
       entryNodeIds: ['form-node-id'],
+      interactiveId: 'interactive-id',
       memoryEdges: [],
       nodeOutputs: [],
       usageId: 'usage-id',
@@ -220,6 +221,40 @@ describe('shouldAppendResumeInteractive', () => {
         incomingInteractive: baseInteractive
       })
     ).toBe(false);
+  });
+
+  it('appends a repeated form node when it is a different interactive trigger', () => {
+    const submittedInteractive = {
+      type: 'userInput',
+      entryNodeIds: ['form-node-id'],
+      interactiveId: 'first-interactive-id',
+      memoryEdges: [],
+      nodeOutputs: [],
+      usageId: 'usage-id',
+      params: {
+        description: '',
+        inputForm: [],
+        submitted: true
+      }
+    } as const;
+
+    expect(
+      shouldAppendResumeInteractive({
+        existingValues: [
+          {
+            interactive: submittedInteractive
+          }
+        ],
+        incomingInteractive: {
+          ...submittedInteractive,
+          interactiveId: 'second-interactive-id',
+          params: {
+            ...submittedInteractive.params,
+            submitted: false
+          }
+        }
+      })
+    ).toBe(true);
   });
 
   it('appends a new interactive when there is no submitted matching interactive', () => {

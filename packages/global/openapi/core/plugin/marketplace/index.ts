@@ -12,13 +12,13 @@ import {
   GetMarketplaceToolVersionsQuerySchema,
   GetMarketplaceToolVersionsResponseSchema
 } from './api';
-import { TagsMap } from '../../../tag';
+import { DevApiTagsMap } from '../../../tag';
 
 export const MarketplacePath: OpenAPIPath = {
   '/marketplace/api/tool/list': {
     get: {
       summary: '获取工具列表',
-      tags: [TagsMap.pluginMarketplace],
+      tags: [DevApiTagsMap.pluginMarketplace],
       requestParams: {
         query: GetMarketplaceToolsBodySchema
       },
@@ -37,7 +37,7 @@ export const MarketplacePath: OpenAPIPath = {
   '/marketplace/api/tool/detail': {
     get: {
       summary: '获取单个工具详情',
-      tags: [TagsMap.pluginMarketplace],
+      tags: [DevApiTagsMap.pluginMarketplace],
       requestParams: {
         query: GetMarketplaceToolDetailQuerySchema
       },
@@ -56,7 +56,7 @@ export const MarketplacePath: OpenAPIPath = {
   '/marketplace/api/tool/tags': {
     get: {
       summary: '获取工具标签',
-      tags: [TagsMap.pluginMarketplace],
+      tags: [DevApiTagsMap.pluginMarketplace],
       responses: {
         200: {
           description: '获取市场工具标签成功',
@@ -72,7 +72,7 @@ export const MarketplacePath: OpenAPIPath = {
   '/marketplace/api/tool/versions': {
     get: {
       summary: '获取工具版本列表',
-      tags: [TagsMap.pluginMarketplace],
+      tags: [DevApiTagsMap.pluginMarketplace],
       requestParams: {
         query: GetMarketplaceToolVersionsQuerySchema
       },
@@ -91,7 +91,7 @@ export const MarketplacePath: OpenAPIPath = {
   '/marketplace/api/admin/pkg/upload': {
     post: {
       summary: '上传 marketplace 插件 pkg',
-      tags: [TagsMap.pluginMarketplace],
+      tags: [DevApiTagsMap.pluginMarketplace],
       requestBody: {
         description: 'multipart/form-data, file 字段为 .pkg 文件',
         required: true,
@@ -116,7 +116,7 @@ export const MarketplacePath: OpenAPIPath = {
   '/marketplace/api/admin/pkg/delete': {
     post: {
       summary: '删除 marketplace 插件 pkg',
-      tags: [TagsMap.pluginMarketplace],
+      tags: [DevApiTagsMap.pluginMarketplace],
       requestBody: {
         description: '指定 pluginId、version 与来源删除某个插件版本',
         required: true,

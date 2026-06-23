@@ -119,7 +119,6 @@ Nếu bạn gặp vấn đề, bạn có thể [xem hướng dẫn triển khai 
 - [Tài Liệu OpenAPI](https://doc.fastgpt.io/openapi/intro)
 - [FastGPT-plugin](https://github.com/labring/fastgpt-plugin)
 - [AI Proxy: Dịch Vụ Cân Bằng Tải Tổng Hợp Mô Hình](https://github.com/labring/aiproxy)
-- [Laf: Truy Cập Nhanh 3 Phút vào Ứng Dụng Bên Thứ Ba](https://github.com/labring/laf)
 - [Sealos: Triển Khai Nhanh Ứng Dụng Cụm](https://github.com/labring/sealos)
 
 <a href="#readme">

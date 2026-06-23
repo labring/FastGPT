@@ -16,7 +16,7 @@ import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGrou
 import { getOrgIdSetWithParentByTmbId } from '@fastgpt/service/support/permission/org/controllers';
 import { addSourceMember } from '@fastgpt/service/support/user/utils';
 import { getEmbeddingModel } from '@fastgpt/service/core/ai/model';
-import { sumPer } from '@fastgpt/global/support/permission/utils';
+import { isPrivateResourceByCollaborators, sumPer } from '@fastgpt/global/support/permission/utils';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetDatasetListBodySchema,
@@ -74,6 +74,13 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
       tmbId
     })
   ]);
+  const roleListMap = new Map<string, (typeof roleList)[number][]>();
+  roleList.forEach((item) => {
+    const resourceId = String(item.resourceId);
+    const list = roleListMap.get(resourceId) ?? [];
+    list.push(item);
+    roleListMap.set(resourceId, list);
+  });
   const myRoles = roleList.filter(
     (item) =>
       String(item.tmbId) === String(tmbId) ||
@@ -147,24 +154,31 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetListResponse> {
             isOwner: String(dataset.tmbId) === String(tmbId) || teamPer.isOwner
           });
         };
-        const getClbCount = (datasetId: string) => {
-          return roleList.filter((item) => String(item.resourceId) === String(datasetId)).length;
-        };
-
         // inherit
         if (
           dataset.inheritPermission &&
           dataset.parentId &&
           dataset.type !== DatasetTypeEnum.folder
         ) {
+          const resourceClbs = roleListMap.get(String(dataset._id)) ?? [];
+          const parentClbs = roleListMap.get(String(dataset.parentId)) ?? [];
+
           return {
             Per: getPer(String(dataset.parentId)).addRole(getPer(String(dataset._id)).role),
-            privateDataset: getClbCount(String(dataset.parentId)) <= 1
+            privateDataset: isPrivateResourceByCollaborators({
+              resourceClbs,
+              parentClbs,
+              inheritPermission: true
+            })
           };
         }
+        const resourceClbs = roleListMap.get(String(dataset._id)) ?? [];
+
         return {
           Per: getPer(String(dataset._id)),
-          privateDataset: getClbCount(String(dataset._id)) <= 1
+          privateDataset: isPrivateResourceByCollaborators({
+            resourceClbs
+          })
         };
       })();
 

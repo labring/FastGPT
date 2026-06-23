@@ -18,12 +18,14 @@ import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/uti
 import { getHTTPToolRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/utils';
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
-import type { JSONSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
 import {
-  NodeInputKeyEnum,
-  toolValueTypeList,
-  valueTypeJsonSchemaMap
-} from '@fastgpt/global/core/workflow/constants';
+  jsonSchema2NodeInput,
+  jsonSchema2NodeOutput,
+  jsonSchema2SecretInput,
+  nodeInputs2JsonSchema,
+  type JSONSchemaInputType
+} from '@fastgpt/global/core/app/jsonschema';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type {
   McpToolConfigType,
   McpToolDataType
@@ -58,7 +60,7 @@ type AgentRuntimeNode = RuntimeNodeItemType & {
 /**
  * 将 Agent 选择的工具配置转换成 LLM function calling 与 runtime 执行共用的工具描述。
  *
- * 这里刻意不调用面向前端预览的 getChildAppPreviewNode：Agent runtime 只关心鉴权后的执行
+ * 这里刻意不调用面向前端预览的 getClientToolPreviewNode：Agent runtime 只关心鉴权后的执行
  * 节点、toolConfig 和 JSON Schema。App 类工具统一读取当前发布版本；MCP/HTTP 工具集只使用
  * 当前版本节点里保存的 toolList，不额外兼容旧版 MCP 数据源。
  */
@@ -117,19 +119,25 @@ export const getAgentRuntimeTools = async ({
       source: source === AppToolSourceEnum.commercial ? AppToolSourceEnum.commercial : 'system'
     });
     const isWorkflowTool = !!toolDetail.associatedPluginId;
+    const secrets = jsonSchema2SecretInput({ jsonSchema: toolDetail.secretSchema });
+    const schemaInputs = jsonSchema2NodeInput({
+      jsonSchema: toolDetail.inputSchema,
+      schemaType: 'systemTool'
+    });
+    const schemaOutputs = jsonSchema2NodeOutput({ jsonSchema: toolDetail.outputSchema });
     // secrets 是运行时私密配置，只放进隐藏 input，不能暴露成模型可填写参数。
     const inputs = [
-      ...(toolDetail.secrets?.length
+      ...(secrets?.length
         ? [
             {
               key: NodeInputKeyEnum.systemInputConfig,
               label: '',
               renderTypeList: [FlowNodeInputTypeEnum.hidden],
-              inputList: toolDetail.secrets
+              inputList: secrets
             } satisfies FlowNodeInputItemType
           ]
         : []),
-      ...(toolDetail.inputs ?? [])
+      ...schemaInputs
     ];
 
     return {
@@ -146,7 +154,8 @@ export const getAgentRuntimeTools = async ({
       toolDescription: toolDetail.toolDescription,
       version: '',
       inputs,
-      outputs: appendErrorOutput(toolDetail.outputs ?? []),
+      outputs: appendErrorOutput(schemaOutputs),
+      jsonSchema: toolDetail.inputSchema,
       currentCost: toolDetail.currentCost,
       hasSystemSecret: toolDetail.hasSystemSecret,
       hasTokenFee: toolDetail.hasTokenFee,
@@ -416,49 +425,12 @@ export const getAgentRuntimeTools = async ({
       };
     }
 
-    const properties: Record<string, any> = {};
-    toolParams.forEach((param) => {
-      const jsonSchema = param.valueType
-        ? valueTypeJsonSchemaMap[param.valueType] || toolValueTypeList[0].jsonSchema
-        : toolValueTypeList[0].jsonSchema;
-      const enumValues =
-        param.list?.map((item) => item.value).filter(Boolean) ||
-        param.enum?.split('\n').filter(Boolean);
-      const schema = {
-        ...jsonSchema,
-        description: param.toolDescription || ''
-      };
-
-      if (!enumValues?.length) {
-        properties[param.key] = schema;
-        return;
-      }
-
-      properties[param.key] =
-        schema.type === 'array'
-          ? {
-              ...schema,
-              items: {
-                ...(schema.items && typeof schema.items === 'object' ? schema.items : {}),
-                enum: enumValues
-              }
-            }
-          : {
-              ...schema,
-              enum: enumValues
-            };
-    });
-
     return {
       type: 'function',
       function: {
         name: formatToolId,
         description,
-        parameters: {
-          type: 'object',
-          properties,
-          required: toolParams.filter((param) => param.required).map((param) => param.key)
-        }
+        parameters: nodeInputs2JsonSchema({ inputs: toolParams })
       }
     };
   };
@@ -558,7 +530,8 @@ export const getAgentRuntimeTools = async ({
               toolSetNode: {
                 toolConfig: toolNode.toolConfig,
                 inputs: toolNode.inputs,
-                nodeId: pluginId
+                nodeId: pluginId,
+                version: toolNode.version
               },
               lang
             });

@@ -8,6 +8,7 @@ import { ChatCompletionMessageParamSchema } from '../../../../ai/llm/type';
 
 export const InteractiveBasicTypeSchema = z.object({
   entryNodeIds: z.array(z.string()),
+  interactiveId: z.string().optional(),
   nodeResponseId: z.string().optional(),
   memoryEdges: z.array(RuntimeEdgeItemTypeSchema),
   nodeOutputs: z.array(NodeOutputItemSchema),
@@ -20,6 +21,7 @@ export type InteractiveBasicType = z.infer<typeof InteractiveBasicTypeSchema>;
 
 const InteractiveNodeTypeSchema = z.object({
   entryNodeIds: z.array(z.string()).optional(),
+  interactiveId: z.string().optional(),
   nodeResponseId: z.string().optional(),
   memoryEdges: z.array(RuntimeEdgeItemTypeSchema).optional(),
   nodeOutputs: z.array(NodeOutputItemSchema).optional()

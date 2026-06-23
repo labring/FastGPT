@@ -1,4 +1,4 @@
-export const TagsMap = {
+export const DevApiTagsMap = {
   /* 核心-应用管理 */
   appCommon: '基础管理',
   appFolder: '文件夹管理',
@@ -25,11 +25,11 @@ export const TagsMap = {
   chatInputGuide: '对话输入引导',
 
   /* 核心-对话模块使用 */
-  chatHistory: '历史记录管理',
+  chatHistory: '会话管理',
   chatFeedback: '对话反馈',
   chatFile: '文件操作',
-  chatRecord: '对话记录管理',
-  chatController: '对话操作',
+  chatRecord: '对话管理',
+  chatController: '会话操作',
 
   /* 核心-知识库 */
   datasetCommon: '知识库管理',
@@ -71,4 +71,20 @@ export const TagsMap = {
   adminDashboard: '仪表盘',
   adminInform: '通知管理',
   adminApps: '应用管理'
+};
+
+export const SystemOpenApiTagMap = {
+  appLog: 'systemOpenAPI:appLog',
+
+  chatHistory: 'systemOpenAPI:chatHistory',
+  chat: 'systemOpenAPI:chat',
+  chatFeedback: 'systemOpenAPI:chatFeedback',
+  chatController: 'systemOpenAPI:chatController',
+
+  dataset: 'systemOpenAPI:dataset',
+  datasetCollection: 'systemOpenAPI:datasetCollection',
+  datasetCollectionCreate: 'systemOpenAPI:datasetCollectionCreate',
+  datasetData: 'systemOpenAPI:datasetData',
+  datasetDataIndex: 'systemOpenAPI:datasetDataIndex',
+  datasetOther: 'systemOpenAPI:datasetOther'
 };

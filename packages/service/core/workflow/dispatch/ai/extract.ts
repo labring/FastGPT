@@ -241,12 +241,32 @@ const completions = async (props: ActionProps) => {
   }
 
   try {
+    const arg = json5.parse(jsonStr);
+    if (!arg || typeof arg !== 'object' || Array.isArray(arg)) {
+      logger.warn('Content extract result is not an object', {
+        requestId,
+        model: extractModel.model,
+        finishReason,
+        answerLength: answer.length,
+        jsonLength: jsonStr.length,
+        resultType: Array.isArray(arg) ? 'array' : typeof arg
+      });
+
+      return {
+        rawResponse: answer,
+        inputTokens,
+        outputTokens,
+        usedUserOpenAIKey,
+        arg: {}
+      };
+    }
+
     return {
       rawResponse: answer,
       inputTokens,
       outputTokens,
       usedUserOpenAIKey,
-      arg: json5.parse(jsonStr) as Record<string, any>
+      arg: arg as Record<string, any>
     };
   } catch (error) {
     logger.warn('Failed to parse extract result', {

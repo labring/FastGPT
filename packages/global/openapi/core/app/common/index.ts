@@ -1,5 +1,5 @@
 import type { OpenAPIPath } from '../../../type';
-import { TagsMap } from '../../../tag';
+import { DevApiTagsMap } from '../../../tag';
 import {
   CopyAppBodySchema,
   CopyAppResponseSchema,
@@ -25,7 +25,7 @@ export const AppCommonPath: OpenAPIPath = {
     post: {
       summary: '获取应用列表',
       description: '获取当前团队下当前用户可读的应用或文件夹列表',
-      tags: [TagsMap.appCommon],
+      tags: [DevApiTagsMap.appCommon],
       requestBody: {
         content: {
           'application/json': {
@@ -49,7 +49,7 @@ export const AppCommonPath: OpenAPIPath = {
     post: {
       summary: '创建应用',
       description: '创建应用或文件夹',
-      tags: [TagsMap.appCommon],
+      tags: [DevApiTagsMap.appCommon],
       requestBody: {
         content: {
           'application/json': {
@@ -73,7 +73,7 @@ export const AppCommonPath: OpenAPIPath = {
     get: {
       summary: '获取应用详情',
       description: '获取应用完整详情。无写权限时会隐藏编排节点和边',
-      tags: [TagsMap.appCommon],
+      tags: [DevApiTagsMap.appCommon],
       requestParams: {
         query: GetAppDetailQuerySchema
       },
@@ -93,7 +93,7 @@ export const AppCommonPath: OpenAPIPath = {
     put: {
       summary: '更新应用',
       description: '更新应用基础信息、编排信息或移动应用位置',
-      tags: [TagsMap.appCommon],
+      tags: [DevApiTagsMap.appCommon],
       requestParams: {
         query: UpdateAppQuerySchema
       },
@@ -120,7 +120,7 @@ export const AppCommonPath: OpenAPIPath = {
     delete: {
       summary: '删除应用',
       description: '删除应用或文件夹，并返回被删除的非文件夹应用 ID 列表',
-      tags: [TagsMap.appCommon],
+      tags: [DevApiTagsMap.appCommon],
       requestParams: {
         query: DeleteAppQuerySchema
       },
@@ -140,7 +140,7 @@ export const AppCommonPath: OpenAPIPath = {
     post: {
       summary: '复制应用',
       description: '复制指定应用并返回新应用 ID',
-      tags: [TagsMap.appCommon],
+      tags: [DevApiTagsMap.appCommon],
       requestBody: {
         content: {
           'application/json': {
@@ -164,7 +164,7 @@ export const AppCommonPath: OpenAPIPath = {
     post: {
       summary: '批量获取应用基础信息',
       description: '根据应用 ID 列表批量获取应用名称和头像',
-      tags: [TagsMap.appCommon],
+      tags: [DevApiTagsMap.appCommon],
       requestBody: {
         content: {
           'application/json': {
@@ -188,7 +188,7 @@ export const AppCommonPath: OpenAPIPath = {
     post: {
       summary: '转换为工作流应用',
       description: '将简易应用转换为工作流应用，可选择复制为新应用',
-      tags: [TagsMap.appCommon],
+      tags: [DevApiTagsMap.appCommon],
       requestBody: {
         content: {
           'application/json': {

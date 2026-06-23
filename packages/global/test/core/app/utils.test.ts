@@ -35,7 +35,8 @@ describe('getDefaultAppForm', () => {
       rerankModel: '',
       rerankWeight: 0.5,
       datasetSearchUsingExtensionQuery: true,
-      datasetSearchExtensionBg: ''
+      datasetSearchExtensionBg: '',
+      authTmbId: false
     });
   });
 

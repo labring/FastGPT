@@ -1,6 +1,4 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { sseErrRes, jsonRes } from '@fastgpt/service/common/response';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
@@ -44,7 +42,6 @@ import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { type AIChatItemType, type UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
   serverGetWorkflowToolRunUserQuery,
@@ -73,6 +70,7 @@ import {
   createWorkflowStreamResponseContext,
   type WorkflowStreamResponseContext
 } from '@/service/core/workflow/streamResponseContext';
+import { authChatCompletionHeaderRequest } from '@/service/support/permission/auth/chatCompletion';
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -92,7 +90,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     showSkillReferences,
     messages,
     responseChatItemId,
-    metadata
+    metadata,
+    authProxy
   } = completionBody;
   let { detail, retainDatasetCite, variables } = completionBody;
 
@@ -150,6 +149,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     } = await (async () => {
       // share chat
       if (shareId && outLinkUid) {
+        if (authProxy) {
+          return Promise.reject(ChatErrEnum.unAuthChat);
+        }
+
         return authShareChat({
           shareId,
           outLinkUid,
@@ -160,6 +163,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       }
       // team space chat
       if (spaceTeamId && appId && teamToken) {
+        if (authProxy) {
+          return Promise.reject(ChatErrEnum.unAuthChat);
+        }
+
         return authTeamSpaceChat({
           teamId: spaceTeamId,
           teamToken,
@@ -169,10 +176,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       }
 
       /* parse req: api or token */
-      return authHeaderRequest({
+      return authChatCompletionHeaderRequest({
         req,
         appId,
-        chatId
+        chatId,
+        authProxy
       });
     })();
 
@@ -307,6 +315,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const titleSender = createGeneratedChatTitleSender({
       titleGeneration: preparedRound.titleGeneration,
       stream,
+      detail,
       writeChatTitle: (payload) => streamResponseContext?.responseWrite(payload)
     });
 
@@ -412,7 +421,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
     }
 
-    const isOwnerUse = !shareId && !spaceTeamId && String(tmbId) === String(app.tmbId);
+    const isOwnerUse = !shareId && !spaceTeamId;
     if (isOwnerUse && source === ChatSourceEnum.online) {
       await recordAppUsage({
         appId: app._id,
@@ -658,88 +667,6 @@ const authTeamSpaceChat = async ({
     outLinkUserId: uid
   };
 };
-const authHeaderRequest = async ({
-  req,
-  appId,
-  chatId
-}: {
-  req: NextApiRequest;
-  appId?: string;
-  chatId?: string;
-}): Promise<AuthResponseType> => {
-  const {
-    appId: apiKeyAppId,
-    teamId,
-    tmbId,
-    authType,
-    sourceName,
-    apikey
-  } = await authCert({
-    req,
-    authToken: true,
-    authApiKey: true
-  });
-
-  const { app } = await (async () => {
-    if (authType === AuthUserTypeEnum.apikey) {
-      const currentAppId = apiKeyAppId || appId;
-      if (!currentAppId) {
-        return Promise.reject(
-          'Key is error. You need to use the app key rather than the account key.'
-        );
-      }
-      const app = await MongoApp.findOne({ _id: currentAppId, teamId });
-
-      if (!app) {
-        return Promise.reject('app is empty');
-      }
-
-      appId = String(app._id);
-
-      return {
-        app
-      };
-    } else {
-      // token_auth
-      if (!appId) {
-        return Promise.reject('appId is empty');
-      }
-      const { app } = await authApp({
-        req,
-        authToken: true,
-        appId,
-        per: ReadPermissionVal
-      });
-
-      return {
-        app
-      };
-    }
-  })();
-
-  const chat = await MongoChat.findOne({ appId, chatId }).lean();
-
-  if (
-    chat &&
-    (String(chat.teamId) !== teamId ||
-      // There's no need to distinguish who created it if it's apiKey auth
-      (authType === AuthUserTypeEnum.token && String(chat.tmbId) !== tmbId))
-  ) {
-    return Promise.reject(ChatErrEnum.unAuthChat);
-  }
-
-  return {
-    teamId,
-    tmbId,
-    app,
-    apikey,
-    authType,
-    sourceName,
-    responseAllData: true,
-    showCite: true
-  };
-};
-
 export const config = {
   api: {
     bodyParser: {

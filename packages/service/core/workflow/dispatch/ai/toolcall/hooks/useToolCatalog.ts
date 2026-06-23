@@ -4,8 +4,7 @@ import type {
 } from '@fastgpt/global/core/ai/llm/type';
 import { SANDBOX_SYSTEM_PROMPT } from '@fastgpt/global/core/ai/sandbox/constants';
 import { SANDBOX_TOOLS } from '@fastgpt/global/core/ai/sandbox/tools';
-import type { JsonSchemaPropertiesItemType } from '@fastgpt/global/core/app/jsonschema';
-import { toolValueTypeList, valueTypeJsonSchemaMap } from '@fastgpt/global/core/workflow/constants';
+import { nodeInputs2JsonSchema } from '@fastgpt/global/core/app/jsonschema';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { getSandboxToolInfo, injectSandboxFiles } from '../../../../../ai/sandbox/toolCall';
@@ -42,29 +41,12 @@ const createToolSchema = (item: ToolNodeItemType): ChatCompletionTool => {
     };
   }
 
-  const properties: Record<string, JsonSchemaPropertiesItemType> = {};
-  item.toolParams.forEach((input) => {
-    const jsonSchema = input.valueType
-      ? valueTypeJsonSchemaMap[input.valueType] || toolValueTypeList[0].jsonSchema
-      : toolValueTypeList[0].jsonSchema;
-
-    properties[input.key] = {
-      ...jsonSchema,
-      description: input.toolDescription || '',
-      enum: input.enum?.split('\n').filter(Boolean) || undefined
-    };
-  });
-
   return {
     type: 'function',
     function: {
       name: item.nodeId,
       description: `${item.name}: ${item.toolDescription || item.intro}`,
-      parameters: {
-        type: 'object',
-        properties,
-        required: item.toolParams.filter((input) => input.required).map((input) => input.key)
-      }
+      parameters: nodeInputs2JsonSchema({ inputs: item.toolParams })
     }
   };
 };

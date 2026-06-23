@@ -19,6 +19,8 @@
   "permission.only_collaborators": "仅协作者访问",
   "permission.team_read": "团队可访问",
   "permission.team_write": "团队可编辑",
+  "promotion.pay": "付费",
+  "promotion.register": "注册",
   "register.confirm": "确认注册",
   "register.register_account": "注册 {{account}} 账号",
   "register.success": "注册成功",

@@ -286,7 +286,7 @@ export const WorkflowUtilsProvider = ({ children }: { children: ReactNode }) => 
           {
             nodes: nodes,
             edges: edges,
-            title: t(`app:app.version_initial`),
+            title: t('app:app.version_initial'),
             isSaved: true,
             chatConfig: e.chatConfig || appDetail.chatConfig
           }

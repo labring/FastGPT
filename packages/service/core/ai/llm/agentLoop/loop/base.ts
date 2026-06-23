@@ -23,6 +23,7 @@ import type {
 import { AgentUsageModuleName } from '../constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { batchRun } from '@fastgpt/global/common/system/utils';
+import { normalizeToolResponseContent } from '@fastgpt/global/core/ai/llm/utils';
 
 type RunAgentCallProps<TChildrenResponse = unknown> = {
   maxRunAgentTimes: number;
@@ -233,7 +234,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       item.role === 'tool' && item.tool_call_id === childrenInteractiveParams.toolParams.toolCallId
         ? {
             ...item,
-            content: response
+            content: normalizeToolResponseContent(response)
           }
         : item
     );
@@ -461,7 +462,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
         const { toolFinalResponse, toolResponseCompress } = await (async () => {
           if (skipResponseCompress) {
             return {
-              toolFinalResponse: response
+              toolFinalResponse: normalizeToolResponseContent(response)
             };
           }
 
@@ -475,12 +476,13 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
             userKey
           });
           const { compressed: compressed_context, usage: compressionUsage } = compressionResult;
+          const normalizedCompressedContext = normalizeToolResponseContent(compressed_context);
           if (compressionUsage) {
             usagePush([compressionUsage]);
             return {
-              toolFinalResponse: compressed_context,
+              toolFinalResponse: normalizedCompressedContext,
               toolResponseCompress: {
-                response: compressed_context,
+                response: normalizedCompressedContext,
                 usage: compressionUsage,
                 requestIds: compressionResult.requestIds ?? [],
                 seconds: +((Date.now() - compressStartTime) / 1000).toFixed(2)
@@ -489,7 +491,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           }
 
           return {
-            toolFinalResponse: compressed_context
+            toolFinalResponse: normalizedCompressedContext
           };
         })();
 

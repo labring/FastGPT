@@ -35,6 +35,10 @@ const OpenApiSchema = new Schema(
       type: String,
       required: false
     },
+    authProxy: {
+      type: Boolean,
+      default: false
+    },
     name: {
       type: String,
       default: 'Api Key'

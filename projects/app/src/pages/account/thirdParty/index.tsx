@@ -15,7 +15,6 @@ import { GET } from '@/web/common/api/request';
 import type { checkUsageResponse } from '@/pages/api/support/user/team/thirtdParty/checkUsage';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 
-const LafAccountModal = dynamic(() => import('@/components/support/laf/LafAccountModal'));
 const OpenAIAccountModal = dynamic(
   () => import('@/pageComponents/account/thirdParty/OpenAIAccountModal')
 );
@@ -39,7 +38,6 @@ const ThirdParty = () => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
   const { toast } = useToast();
-  const { isOpen: isOpenLaf, onClose: onCloseLaf, onOpen: onOpenLaf } = useDisclosure();
   const { isOpen: isOpenOpenai, onClose: onCloseOpenai, onOpen: onOpenOpenai } = useDisclosure();
 
   const [workflowVariable, setWorkflowVariable] = useState<ThirdPartyAccountType>();
@@ -51,14 +49,6 @@ const ThirdParty = () => {
   const defaultAccountList: ThirdPartyAccountType[] = useMemo(
     () => [
       {
-        name: t('account_thirdParty:laf_account'),
-        icon: 'support/account/laf',
-        intro: t('common:support.user.Laf account intro'),
-        onClick: onOpenLaf,
-        isOpen: !!feConfigs?.lafEnv,
-        active: !!userInfo?.team?.lafAccount?.appid
-      },
-      {
         name: t('account_thirdParty:openai_account_configuration'),
         iconColor: 'black',
         icon: 'common/openai',
@@ -68,15 +58,7 @@ const ThirdParty = () => {
         active: userInfo?.team?.openaiAccount?.key !== undefined
       }
     ],
-    [
-      feConfigs?.lafEnv,
-      feConfigs?.show_openai_account,
-      onOpenLaf,
-      onOpenOpenai,
-      t,
-      userInfo?.team?.lafAccount?.appid,
-      userInfo?.team?.openaiAccount?.key
-    ]
+    [feConfigs?.show_openai_account, onOpenOpenai, t, userInfo?.team?.openaiAccount?.key]
   );
 
   const { data: workflowVariables = [], loading } = useRequest(
@@ -88,7 +70,7 @@ const ThirdParty = () => {
               return await GET<checkUsageResponse>('/support/user/team/thirtdParty/checkUsage', {
                 key: item.key
               });
-            } catch (err) {
+            } catch {
               return;
             }
           })();
@@ -238,9 +220,6 @@ const ThirdParty = () => {
         </Grid>
       </MyBox>
 
-      {isOpenLaf && userInfo && (
-        <LafAccountModal defaultData={userInfo?.team?.lafAccount} onClose={onCloseLaf} />
-      )}
       {isOpenOpenai && userInfo && (
         <OpenAIAccountModal defaultData={userInfo?.team?.openaiAccount} onClose={onCloseOpenai} />
       )}

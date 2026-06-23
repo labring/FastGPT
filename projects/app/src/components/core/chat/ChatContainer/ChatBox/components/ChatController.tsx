@@ -13,6 +13,7 @@ import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { eventBus, EventNameEnum } from '@/web/common/utils/eventbus';
+import LikeFeedbackButton from './LikeFeedbackButton';
 
 export type ChatControllerProps = {
   isLastChild: boolean;
@@ -23,10 +24,13 @@ export type ChatControllerProps = {
   onMark?: () => void;
   onAddUserLike?: () => void;
   onAddUserDislike?: () => void;
+  likeFeedbackEffectTrigger?: number;
   onToggleFeedbackReadStatus?: () => void;
-  showFeedbackContent?: boolean;
-  onToggleFeedbackContent?: () => void;
   variant?: 'panel' | 'footer';
+  disableFooterHoverTranslate?: boolean;
+  footerRunDetailPosition?: 'default' | 'afterCopy';
+  footerAfterCopySlot?: React.ReactNode;
+  feedbackUserName?: string;
 };
 
 const controlIconStyle = {
@@ -47,7 +51,8 @@ const footerIconStyle = {
   cursor: 'pointer',
   p: '4px',
   color: 'myGray.400',
-  _hover: { color: 'primary.600' }
+  transition: 'color 180ms ease, transform 180ms ease, filter 180ms ease',
+  _hover: { color: 'primary.600', transform: 'translateY(-1px)' }
 };
 
 const ChatController = ({
@@ -58,10 +63,11 @@ const ChatController = ({
   onDelete,
   onAddUserDislike,
   onAddUserLike,
+  likeFeedbackEffectTrigger,
   onToggleFeedbackReadStatus,
-  showFeedbackContent,
-  onToggleFeedbackContent,
-  variant = 'panel'
+  variant = 'panel',
+  disableFooterHoverTranslate = false,
+  footerAfterCopySlot
 }: ChatControllerProps & FlexProps) => {
   const { t } = useTranslation();
   const { copyData } = useCopyData();
@@ -85,7 +91,16 @@ const ChatController = ({
   const renderTooltip = (label: string, children: React.ReactNode) => (
     <MyTooltip label={label}>{children}</MyTooltip>
   );
-  const iconStyle = isFooter ? footerIconStyle : controlIconStyle;
+  const getIconHoverStyle = (color: string) => ({
+    color,
+    ...(isFooter && !disableFooterHoverTranslate ? { transform: 'translateY(-1px)' } : {})
+  });
+  const iconStyle = isFooter
+    ? {
+        ...footerIconStyle,
+        _hover: getIconHoverStyle('primary.600')
+      }
+    : controlIconStyle;
   const activeFeedbackStyle = isFooter
     ? {
         color: 'primary.600'
@@ -102,6 +117,23 @@ const ChatController = ({
         color: 'white',
         bg: 'yellow.500'
       };
+  const showLogFeedbackAction =
+    isLogMode &&
+    chat.obj === ChatRoleEnum.AI &&
+    (!!chat.userGoodFeedback || !!chat.userBadFeedback);
+  const unreadFeedbackBadge =
+    showLogFeedbackAction && !chat.isFeedbackRead ? (
+      <Box
+        position={'absolute'}
+        top={'-2px'}
+        right={'-2px'}
+        w={'8px'}
+        h={'8px'}
+        bg={'red.500'}
+        borderRadius={'full'}
+        border={'1px solid white'}
+      />
+    ) : null;
 
   const {
     runAsync: requestOnToggleFeedbackReadStatus,
@@ -138,10 +170,11 @@ const ChatController = ({
               {...iconStyle}
               name={'copy'}
               borderLeftRadius={isFooter ? undefined : 'sm'}
-              _hover={{ color: 'primary.600' }}
+              _hover={getIconHoverStyle('primary.600')}
               onClick={() => copyData(chatText)}
             />
           )}
+          {isFooter && footerAfterCopySlot}
           {!!onDelete && !isChatting && chatType !== 'log' && (
             <>
               {onRetry &&
@@ -150,7 +183,7 @@ const ChatController = ({
                   <MyIcon
                     {...iconStyle}
                     name={'common/retryLight'}
-                    _hover={{ color: isFooter ? 'primary.600' : 'green.500' }}
+                    _hover={getIconHoverStyle(isFooter ? 'primary.600' : 'green.500')}
                     onClick={onRetry}
                   />
                 )}
@@ -159,7 +192,7 @@ const ChatController = ({
                 <MyIcon
                   {...iconStyle}
                   name={'delete'}
-                  _hover={{ color: isFooter ? 'primary.600' : 'red.600' }}
+                  _hover={getIconHoverStyle(isFooter ? 'primary.600' : 'red.600')}
                   onClick={onDelete}
                 />
               )}
@@ -205,7 +238,7 @@ const ChatController = ({
                       fill: 'currentColor'
                     }
                   }}
-                  _hover={{ color: isFooter ? 'primary.600' : '#E74694' }}
+                  _hover={getIconHoverStyle(isFooter ? 'primary.600' : '#E74694')}
                   onClick={async () => {
                     setAudioPlayingChatId(chat.dataId);
                     const response = await playAudioByText({
@@ -234,150 +267,127 @@ const ChatController = ({
               <MyIcon
                 {...iconStyle}
                 name={'core/app/markLight'}
-                _hover={{ color: isFooter ? 'primary.600' : '#67c13b' }}
+                _hover={getIconHoverStyle(isFooter ? 'primary.600' : '#67c13b')}
                 onClick={onMark}
               />
             )}
-          {chat.obj === ChatRoleEnum.AI && (
-            <>
-              {/* 日志模式下，始终展示赞/踩 */}
-              {isLogMode ? (
-                <>
-                  {!!chat.userGoodFeedback && (
-                    <MyTooltip label={t('chat:feedback_helpful')}>
-                      <Box position={'relative'}>
-                        <MyIcon
-                          {...iconStyle}
-                          color={'green.500'}
-                          name={'core/chat/feedback/goodLight'}
-                          cursor={'not-allowed'}
-                        />
-                        {!chat.isFeedbackRead && (
-                          <Box
-                            position={'absolute'}
-                            top={'-2px'}
-                            right={'-2px'}
-                            w={'8px'}
-                            h={'8px'}
-                            bg={'red.500'}
-                            borderRadius={'full'}
-                            border={'1px solid white'}
-                          />
-                        )}
-                      </Box>
-                    </MyTooltip>
-                  )}
-
-                  {!!chat.userBadFeedback && (
-                    <MyTooltip label={t('chat:feedback_unhelpful')}>
-                      <Box position={'relative'}>
-                        <MyIcon
-                          {...iconStyle}
-                          color={'yellow.500'}
-                          name={'core/chat/feedback/badLight'}
-                          cursor={'not-allowed'}
-                        />
-                        {!chat.isFeedbackRead && (
-                          <Box
-                            position={'absolute'}
-                            top={'-2px'}
-                            right={'-2px'}
-                            w={'8px'}
-                            h={'8px'}
-                            bg={'red.500'}
-                            borderRadius={'full'}
-                            border={'1px solid white'}
-                          />
-                        )}
-                      </Box>
-                    </MyTooltip>
-                  )}
-                </>
-              ) : (
-                <>
-                  {!!onAddUserLike && (
-                    <MyTooltip label={t('chat:feedback_helpful')}>
+          {showLogFeedbackAction && (
+            <Flex alignItems={'center'} gap={4}>
+              <Flex alignItems={'center'} gap={'4px'}>
+                {!!chat.userGoodFeedback && (
+                  <MyTooltip label={t('chat:feedback_helpful')}>
+                    <Box position={'relative'} cursor={'not-allowed'}>
                       <MyIcon
                         {...iconStyle}
-                        {...(!!chat.userGoodFeedback
-                          ? activeFeedbackStyle
-                          : {
-                              _hover: { color: 'primary.600' }
-                            })}
-                        borderRight={isFooter ? undefined : !onAddUserDislike ? 'none' : 'base'}
-                        borderRightRadius={
-                          isFooter ? undefined : !onAddUserDislike ? 'sm' : 'none'
-                        }
                         name={'core/chat/feedback/goodLight'}
-                        onClick={onAddUserLike}
+                        color={'primary.600'}
+                        cursor={'not-allowed'}
+                        pointerEvents={'none'}
+                        _hover={{ color: 'primary.600' }}
                       />
-                    </MyTooltip>
-                  )}
-                  {!!onAddUserDislike && (
-                    <MyTooltip label={t('chat:feedback_unhelpful')}>
+                      {unreadFeedbackBadge}
+                    </Box>
+                  </MyTooltip>
+                )}
+
+                {!!chat.userBadFeedback && (
+                  <MyTooltip label={t('chat:feedback_unhelpful')}>
+                    <Box position={'relative'} cursor={'not-allowed'}>
                       <MyIcon
                         {...iconStyle}
-                        {...(!!chat.userBadFeedback
-                          ? activeBadFeedbackStyle
-                          : {
-                              _hover: { color: 'primary.600' }
-                            })}
-                        borderRight={isFooter ? undefined : 'none'}
-                        borderRightRadius={isFooter ? undefined : 'sm'}
                         name={'core/chat/feedback/badLight'}
-                        onClick={onAddUserDislike}
+                        color={'primary.600'}
+                        cursor={'not-allowed'}
+                        pointerEvents={'none'}
+                        _hover={{ color: 'primary.600' }}
                       />
-                    </MyTooltip>
+                      {unreadFeedbackBadge}
+                    </Box>
+                  </MyTooltip>
+                )}
+              </Flex>
+
+              {onToggleFeedbackReadStatus &&
+                (chat.isFeedbackRead ? (
+                  <Button
+                    size={'xs'}
+                    variant={'unstyled'}
+                    display={'inline-flex'}
+                    alignItems={'center'}
+                    justifyContent={'center'}
+                    px={2}
+                    fontSize={'11px'}
+                    h={'22px'}
+                    color={'primary.600'}
+                    borderRadius={'sm'}
+                    _hover={{ bg: 'primary.50' }}
+                    isLoading={isLoadingOnToggleFeedbackReadStatus}
+                    onClick={requestOnToggleFeedbackReadStatus}
+                  >
+                    {t('chat:log.feedback.read')}
+                  </Button>
+                ) : (
+                  <Button
+                    size={'xs'}
+                    variant={'outline'}
+                    color={'myGray.600'}
+                    fontSize={'11px'}
+                    h={'22px'}
+                    isLoading={isLoadingOnToggleFeedbackReadStatus}
+                    onClick={requestOnToggleFeedbackReadStatus}
+                  >
+                    {t('chat:log.feedback.mark_as_read')}
+                  </Button>
+                ))}
+            </Flex>
+          )}
+          {chat.obj === ChatRoleEnum.AI && !isLogMode && (
+            <>
+              {!!onAddUserLike && (
+                <MyTooltip label={t('chat:feedback_helpful')}>
+                  {isFooter ? (
+                    <LikeFeedbackButton
+                      {...iconStyle}
+                      isActive={!!chat.userGoodFeedback}
+                      effectTrigger={likeFeedbackEffectTrigger}
+                      disableHoverTranslate={disableFooterHoverTranslate}
+                      onClick={onAddUserLike}
+                    />
+                  ) : (
+                    <MyIcon
+                      {...iconStyle}
+                      {...(!!chat.userGoodFeedback
+                        ? activeFeedbackStyle
+                        : {
+                            _hover: getIconHoverStyle('primary.600')
+                          })}
+                      borderRight={!onAddUserDislike ? 'none' : 'base'}
+                      borderRightRadius={!onAddUserDislike ? 'sm' : 'none'}
+                      name={'core/chat/feedback/goodLight'}
+                      onClick={onAddUserLike}
+                    />
                   )}
-                </>
+                </MyTooltip>
+              )}
+              {!!onAddUserDislike && (
+                <MyTooltip label={t('chat:feedback_unhelpful')}>
+                  <MyIcon
+                    {...iconStyle}
+                    {...(!!chat.userBadFeedback
+                      ? activeBadFeedbackStyle
+                      : {
+                          _hover: getIconHoverStyle('primary.600')
+                        })}
+                    borderRight={isFooter ? undefined : 'none'}
+                    borderRightRadius={isFooter ? undefined : 'sm'}
+                    name={'core/chat/feedback/badLight'}
+                    onClick={onAddUserDislike}
+                  />
+                </MyTooltip>
               )}
             </>
           )}
         </Flex>
-
-        {onToggleFeedbackReadStatus &&
-          chat.obj === ChatRoleEnum.AI &&
-          (chat.userGoodFeedback || chat.userBadFeedback) && (
-            <>
-              {chat.isFeedbackRead ? (
-                <Button
-                  variant={'unstyled'}
-                  alignItems={'center'}
-                  fontSize={'xs'}
-                  color={'myGray.500'}
-                  cursor={'pointer'}
-                  _hover={{ color: 'primary.600' }}
-                  isLoading={isLoadingOnToggleFeedbackReadStatus}
-                  onClick={requestOnToggleFeedbackReadStatus}
-                >
-                  {t('chat:log.feedback.read')}
-                </Button>
-              ) : (
-                <Button
-                  size={'xs'}
-                  variant={'whitePrimaryOutline'}
-                  fontSize={'xs'}
-                  h={'22px'}
-                  isLoading={isLoadingOnToggleFeedbackReadStatus}
-                  onClick={requestOnToggleFeedbackReadStatus}
-                >
-                  {t('chat:log.feedback.mark_as_read')}
-                </Button>
-              )}
-              {chat.userBadFeedback && onToggleFeedbackContent && !showFeedbackContent && (
-                <Button
-                  size={'xs'}
-                  variant={'grayGhost'}
-                  fontSize={'xs'}
-                  h={'22px'}
-                  onClick={onToggleFeedbackContent}
-                  color={'primary.600'}
-                >
-                  {t('chat:log.feedback.show_feedback')}
-                </Button>
-              )}
-            </>
-          )}
       </Flex>
     </>
   );

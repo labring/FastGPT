@@ -1,10 +1,11 @@
 import z from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
-import { ChatGenerateStatusEnum, ChatSourceEnum } from '../../../../core/chat/constants';
+import { ChatSourceEnum } from '../../../../core/chat/constants';
 import { PaginationSchema, PaginationResponseSchema } from '../../../api';
+import { ChatGenerateStatusSchema } from '../api';
 
-// Get chat histories schema
+// Get chat sessions schema
 export const GetHistoriesBodySchema = PaginationSchema.extend(OutLinkChatAuthSchema.shape).extend({
   appId: z.string().optional().describe('应用ID'),
   source: z.enum(ChatSourceEnum).optional().describe('对话来源'),
@@ -22,7 +23,7 @@ export const GetHistoriesResponseSchema = PaginationResponseSchema(
     customTitle: z.string().optional(),
     title: z.string(),
     top: z.boolean().optional(),
-    chatGenerateStatus: z.enum(ChatGenerateStatusEnum).optional(),
+    chatGenerateStatus: ChatGenerateStatusSchema.optional(),
     hasBeenRead: z.boolean().optional()
   })
 );
@@ -30,7 +31,7 @@ export type GetHistoriesResponseType = z.infer<typeof GetHistoriesResponseSchema
 
 export const GetHistoryStatusBodySchema = OutLinkChatAuthSchema.extend({
   appId: ObjectIdSchema.optional().describe('应用ID'),
-  chatIds: z.array(z.string().min(1)).min(1).max(200).describe('需要刷新状态的对话 ID 列表')
+  chatIds: z.array(z.string().min(1)).min(1).max(200).describe('需要刷新状态的会话 ID 列表')
 });
 export type GetHistoryStatusBodyType = z.infer<typeof GetHistoryStatusBodySchema>;
 
@@ -39,7 +40,7 @@ export const GetHistoryStatusResponseSchema = z.object({
     z.object({
       chatId: z.string(),
       updateTime: z.coerce.date(),
-      chatGenerateStatus: z.enum(ChatGenerateStatusEnum).optional(),
+      chatGenerateStatus: ChatGenerateStatusSchema.optional(),
       hasBeenRead: z.boolean().optional()
     })
   )
@@ -48,41 +49,41 @@ export type GetHistoryStatusResponseType = z.infer<typeof GetHistoryStatusRespon
 
 export const MarkChatReadBodySchema = OutLinkChatAuthSchema.extend({
   appId: ObjectIdSchema.describe('应用ID'),
-  chatId: z.string().min(1).describe('对话ID')
+  chatId: z.string().min(1).describe('会话ID')
 });
 export type MarkChatReadBodyType = z.infer<typeof MarkChatReadBodySchema>;
 
-// Update chat history schema
+// Update chat session schema
 export const UpdateHistoryBodySchema = OutLinkChatAuthSchema.extend({
   appId: ObjectIdSchema.describe('应用ID'),
-  chatId: z.string().min(1).describe('对话ID'),
+  chatId: z.string().min(1).describe('会话ID'),
   title: z.string().optional().describe('标题'),
   customTitle: z.string().optional().describe('自定义标题'),
   top: z.boolean().optional().describe('是否置顶')
 });
 export type UpdateHistoryBodyType = z.infer<typeof UpdateHistoryBodySchema>;
 
-// Delete single chat history schema
+// Delete single chat session schema
 export const DelChatHistorySchema = OutLinkChatAuthSchema.extend({
   appId: ObjectIdSchema.optional().describe('应用ID'),
-  chatId: z.string().min(1).describe('对话ID')
+  chatId: z.string().min(1).describe('会话ID')
 });
 export type DelChatHistoryType = z.infer<typeof DelChatHistorySchema>;
 
-// Clear all chat histories schema
+// Clear all chat sessions schema
 export const ClearChatHistoriesSchema = OutLinkChatAuthSchema.extend({
   appId: ObjectIdSchema.optional().describe('应用ID')
 });
 export type ClearChatHistoriesType = z.infer<typeof ClearChatHistoriesSchema>;
 
-// Batch delete chat histories schema (for log manager)
+// Batch delete chat sessions schema (for log manager)
 export const ChatBatchDeleteBodySchema = z.object({
   appId: ObjectIdSchema,
   chatIds: z
     .array(z.string().min(1))
     .min(1)
     .meta({
-      description: '对话ID列表',
+      description: '会话 ID 列表',
       example: ['chat_123456', 'chat_789012']
     })
 });

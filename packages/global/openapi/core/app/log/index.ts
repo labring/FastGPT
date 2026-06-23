@@ -1,6 +1,5 @@
 import type { OpenAPIPath } from '../../../type';
-import { TagsMap } from '../../../tag';
-import { ApiKeyTagMap } from '../../../apikey/tag';
+import { DevApiTagsMap, SystemOpenApiTagMap } from '../../../tag';
 import {
   GetAppChatLogsBodySchema,
   GetAppChatLogsResponseSchema,
@@ -23,7 +22,7 @@ export const AppLogPath: OpenAPIPath = {
     get: {
       summary: '获取应用日志键',
       description: '获取应用的日志键列表',
-      tags: [TagsMap.appLog],
+      tags: [DevApiTagsMap.appLog],
       requestParams: {
         query: GetLogKeysQuerySchema
       },
@@ -43,7 +42,7 @@ export const AppLogPath: OpenAPIPath = {
     put: {
       summary: '更新应用日志键',
       description: '更新应用的日志键列表',
-      tags: [TagsMap.appLog],
+      tags: [DevApiTagsMap.appLog],
       requestBody: {
         content: {
           'application/json': {
@@ -67,7 +66,7 @@ export const AppLogPath: OpenAPIPath = {
     post: {
       summary: '获取应用日志列表',
       description: '分页获取应用的对话日志列表，支持按时间范围、来源、用户等条件筛选',
-      tags: [TagsMap.appLog],
+      tags: [DevApiTagsMap.appLog],
       requestBody: {
         content: {
           'application/json': {
@@ -91,7 +90,7 @@ export const AppLogPath: OpenAPIPath = {
     post: {
       summary: '导出应用日志',
       description: '导出应用的对话日志为 CSV 文件，支持自定义导出字段和筛选条件',
-      tags: [TagsMap.appLog],
+      tags: [DevApiTagsMap.appLog],
       requestBody: {
         content: {
           'application/json': {
@@ -115,7 +114,7 @@ export const AppLogPath: OpenAPIPath = {
     get: {
       summary: '获取应用总体数据统计',
       description: '获取应用的总体数据统计，包括总用户数、总对话数、总积分消耗',
-      tags: [TagsMap.appLog, ApiKeyTagMap.appLog],
+      tags: [DevApiTagsMap.appLog, SystemOpenApiTagMap.appLog],
       requestParams: {
         query: GetTotalDataQuerySchema
       },
@@ -135,7 +134,7 @@ export const AppLogPath: OpenAPIPath = {
     post: {
       summary: '获取应用图表数据',
       description: '获取应用的图表统计数据，包括用户数据、对话数据、应用数据的时序统计',
-      tags: [TagsMap.appLog, ApiKeyTagMap.appLog],
+      tags: [DevApiTagsMap.appLog, SystemOpenApiTagMap.appLog],
       requestBody: {
         content: {
           'application/json': {
@@ -159,7 +158,7 @@ export const AppLogPath: OpenAPIPath = {
     post: {
       summary: '获取日志用户列表',
       description: '获取应用日志中的用户列表，包括外链用户和团队成员，按对话数量排序',
-      tags: [TagsMap.appLog],
+      tags: [DevApiTagsMap.appLog],
       requestBody: {
         content: {
           'application/json': {

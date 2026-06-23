@@ -10,10 +10,8 @@ translations = {
     '对话接口': 'Chat API',
     '如何获取': 'How to Get',
     '可在应用详情的路径里获取': 'You can find the AppId in your application details URL',
-    '发起对话': 'Start a Conversation',
-    '该接口的 API Key 需使用': 'This API requires',
-    '应用特定的 key': 'an application-specific API key',
-    '否则会报错': 'or it will return an error',
+    '发起会话': 'Start a Conversation',
+    '使用 APIKey 鉴权': 'Authenticate with an API Key',
     '有些包调用时': 'Some packages require',
     '需要添加': 'adding',
     '路径，有些不需要，如果出现404情况，可补充': 'to the path. If you get a 404 error, try adding',
@@ -139,7 +137,7 @@ for line in lines:
     if line.startswith('#'):
         if '如何获取 AppId' in line:
             output.append('# How to Get AppId\n')
-        elif '发起对话' in line:
+        elif '发起会话' in line:
             output.append('# Start a Conversation\n')
         elif '请求对话 Agent 和工作流' in line:
             output.append('## Request Chat Agent and Workflow\n')
@@ -195,7 +193,7 @@ for line in lines:
     translated = line
     
     # Common translations
-    translated = translated.replace('该接口的 API Key 需使用`应用特定的 key`，否则会报错。', 'This API requires an application-specific API key, or it will return an error.')
+    translated = translated.replace('该接口支持两类 APIKey：', 'This API supports two API Key types:')
     translated = translated.replace('有些包调用时，`BaseUrl`需要添加`v1`路径，有些不需要，如果出现404情况，可补充`v1`重试。', 'Some packages require adding `v1` to the `BaseUrl`. If you get a 404 error, try adding `v1` and retry.')
     translated = translated.replace('可在应用详情的路径里获取 AppId。', 'You can find the AppId in your application details URL.')
     translated = translated.replace('`v1`对话接口兼容`GPT`的接口！如果你的项目使用的是标准的`GPT`官方接口，可以直接通过修改`BaseUrl`和 `Authorization`来访问 FastGpt 应用，不过需要注意下面几个规则：', 'The `v1` chat API is compatible with the `GPT` interface! If you\'re using the standard `GPT` official API, you can access FastGPT by simply changing the `BaseUrl` and `Authorization`. However, note these rules:')
@@ -237,7 +235,7 @@ for line in lines:
     translated = translated.replace('指一个对话窗口下，某一个对话记录的 ID', 'The ID of a chat record under a conversation window')
     translated = translated.replace('如果工作流中包含交互节点，依然是调用该 API 接口，需要设置`detail=true`，并可以从`event=interactive`的数据中获取交互节点的配置信息。如果是`stream=false`，则可以从 choice 中获取`type=interactive`的元素，获取交互节点的选择信息。', 'If your workflow contains interactive nodes, still call this API with `detail=true`. Get interactive node config from `event=interactive` data. For `stream=false`, find `type=interactive` elements in choices.')
     translated = translated.replace('当你调用一个带交互节点的工作流时，如果工作流遇到了交互节点，那么会直接返回，你可以得到下面的信息：', 'When calling a workflow with interactive nodes, if an interactive node is encountered, it returns immediately with this info:')
-    translated = translated.replace('紧接着上一节，当你接收到交互节点信息后，可以根据这些数据进行 UI 渲染，引导用户输入或选择相关信息。然后需要再次发起对话，来继续工作流。调用的接口与仍是该接口，你需要按以下格式来发起请求：', 'After receiving interactive node info, render your UI to guide user input or selection. Then call this API again to continue the workflow. Use this format:')
+    translated = translated.replace('紧接着上一节，当你接收到交互节点信息后，可以根据这些数据进行 UI 渲染，引导用户输入或选择相关信息。然后需要再次发起会话，来继续工作流。调用的接口与仍是该接口，你需要按以下格式来发起请求：', 'After receiving interactive node info, render your UI to guide user input or selection. Then call this API again to continue the workflow. Use this format:')
     translated = translated.replace('对于用户选择，你只需要直接传递一个选择的结果给 messages 即可。', 'For user selection, simply pass the selected value to messages.')
     translated = translated.replace('表单输入稍微麻烦一点，需要将输入的内容，以对象形式并序列化成字符串，作为`messages`的值。对象的 key 对应表单的 key，value 为用户输入的值。务必确保`chatId`是一致的。', 'Form input is slightly more complex. Serialize the input as a JSON string for `messages`. Object keys match form keys, values are user inputs. Ensure `chatId` is consistent.')
     translated = translated.replace('插件的接口与对话接口一致，仅请求参数略有区别，有以下规定：', 'Plugin API is identical to chat API, with slight parameter differences:')

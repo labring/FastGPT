@@ -11,7 +11,7 @@ const OptionalDateSchema = z.preprocess((value) => {
 export const ApiKeyLimitSchema = z
   .object({
     expiredTime: OptionalDateSchema.meta({ description: '过期时间' }),
-    maxUsagePoints: z.number().optional().default(-1).meta({
+    maxUsagePoints: z.number().default(-1).meta({
       example: -1,
       description: '最大积分用量限制'
     })
@@ -25,10 +25,17 @@ export const OpenApiKeySchema = z.object({
   tmbId: ObjectIdSchema.meta({ description: '团队成员 ID' }),
   createTime: z.coerce.date().meta({ description: '创建时间' }),
   lastUsedTime: z.coerce.date().optional().meta({ description: '最后使用时间' }),
-  apiKey: z.string().meta({ description: 'API Key，列表接口返回脱敏值' }),
-  appId: ObjectIdSchema.optional().meta({ description: '绑定应用 ID' }),
-  name: z.string().optional().default('Api Key').meta({ description: 'API Key 名称' }),
-  usagePoints: z.number().optional().default(0).meta({ description: '累计使用积分' }),
+  apiKey: z.string().meta({
+    description: 'API Key 脱敏值；复制明文请调用复制接口'
+  }),
+  canCopy: z.boolean().default(false).meta({
+    description: '当前用户是否可以复制该 API Key 明文'
+  }),
+  authProxy: z.boolean().default(false).meta({
+    description: '是否允许 API Key 在 chat/completions 请求中通过 authProxy 代理团队成员身份'
+  }),
+  name: z.string().default('Api Key').meta({ description: 'API Key 名称' }),
+  usagePoints: z.number().default(0).meta({ description: '累计使用积分' }),
   limit: ApiKeyLimitSchema.meta({
     description: 'API Key 使用限制，未配置时表示不限制过期时间和积分用量'
   })
@@ -39,13 +46,17 @@ export type OpenApiKeySchemaType = z.infer<typeof OpenApiKeySchema>;
  * API: 创建 API Key
  * Route: POST /api/support/openapi/create
  * Method: POST
- * Description: 创建团队级或应用级 API Key。
+ * Description: 创建系统 API Key。
  * Tags: ['API Key 管理']
  * ============================================================================ */
 
 export const CreateApiKeyBodySchema = z.object({
-  appId: ObjectIdSchema.optional().meta({ description: '绑定应用 ID，不传则创建团队级 API Key' }),
   name: z.string().min(1).meta({ example: '生产环境 Key', description: 'API Key 名称' }),
+  authProxy: z.boolean().optional().meta({
+    example: false,
+    description:
+      '是否允许系统 API Key 在 chat/completions 请求中代理团队成员身份；仅团队 owner 可开启'
+  }),
   limit: ApiKeyLimitSchema.meta({
     description: 'API Key 使用限制，未配置时表示不限制过期时间和积分用量'
   })
@@ -61,13 +72,11 @@ export type CreateApiKeyResponseType = z.infer<typeof CreateApiKeyResponseSchema
  * API: 获取 API Key 列表
  * Route: GET /api/support/openapi/list
  * Method: GET
- * Description: 获取团队级或指定应用下的 API Key 列表。
+ * Description: 获取当前登录成员创建的系统 API Key 列表。
  * Tags: ['API Key 管理']
  * ============================================================================ */
 
-export const GetApiKeyListQuerySchema = z.object({
-  appId: ObjectIdSchema.optional().meta({ description: '应用 ID，不传则查询团队级 API Key' })
-});
+export const GetApiKeyListQuerySchema = z.object({});
 export type GetApiKeyListQueryType = z.infer<typeof GetApiKeyListQuerySchema>;
 
 export const GetApiKeyListResponseSchema = z.array(OpenApiKeySchema).meta({
@@ -87,9 +96,13 @@ export const UpdateApiKeyBodySchema = CreateApiKeyBodySchema.partial()
   .extend({
     _id: ObjectIdSchema.meta({ description: 'API Key 记录 ID' })
   })
-  .refine(({ name, limit }) => name !== undefined || limit !== undefined, {
-    message: 'name or limit is required'
-  });
+  .refine(
+    ({ name, limit, authProxy }) =>
+      name !== undefined || limit !== undefined || authProxy !== undefined,
+    {
+      message: 'name, limit or authProxy is required'
+    }
+  );
 export type UpdateApiKeyBodyType = z.infer<typeof UpdateApiKeyBodySchema>;
 
 export const UpdateApiKeyResponseSchema = z.undefined().meta({
@@ -120,6 +133,24 @@ export const DeleteApiKeyResponseSchema = z.undefined().meta({
 });
 export type DeleteApiKeyResponseType = z.infer<typeof DeleteApiKeyResponseSchema>;
 
+/* ============================================================================
+ * API: 复制 API Key
+ * Route: POST /api/support/openapi/copy
+ * Method: POST
+ * Description: 返回 API Key 明文并记录用户复制审计日志。
+ * Tags: ['API Key 管理']
+ * ============================================================================ */
+
+export const CopyApiKeyBodySchema = z.object({
+  id: ObjectIdSchema.meta({ description: 'API Key 记录 ID' })
+});
+export type CopyApiKeyBodyType = z.infer<typeof CopyApiKeyBodySchema>;
+
+export const CopyApiKeyResponseSchema = z.string().meta({
+  description: 'API Key 明文'
+});
+export type CopyApiKeyResponseType = z.infer<typeof CopyApiKeyResponseSchema>;
+
 export const ApiKeyHealthParamsSchema = z.object({
   apiKey: z.string().nonempty().meta({
     example: 'fastgpt-xxxxxxxx',
@@ -129,9 +160,12 @@ export const ApiKeyHealthParamsSchema = z.object({
 export type ApiKeyHealthParamsType = z.infer<typeof ApiKeyHealthParamsSchema>;
 
 export const ApiKeyHealthResponseSchema = z.object({
+  valid: z.literal(true).meta({
+    description: 'API Key 是否有效'
+  }),
   appId: ObjectIdSchema.optional().meta({
     example: '68ad85a7463006c963799a05',
-    description: 'API Key 绑定的应用 ID；团队级 API Key 不返回'
+    description: '旧应用 API Key 绑定的应用 ID；系统 API Key 不返回'
   })
 });
 export type ApiKeyHealthResponseType = z.infer<typeof ApiKeyHealthResponseSchema>;

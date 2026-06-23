@@ -13,6 +13,7 @@ import type { DispatchAgentModuleProps } from '.';
 import { dispatchAgentDatasetSearch } from './sub/dataset';
 import { dispatchSandboxTool } from './sub/sandbox';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { parseJsonArgs } from '../../../../ai/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { dispatchTool } from './sub/tool';
@@ -21,6 +22,8 @@ import { dispatchApp, dispatchPlugin } from './sub/app';
 import type { SandboxClient } from '../../../../ai/sandbox/service/runtime';
 import { SystemToolRepo } from '../../../../app/tool/systemTool/systemTool.repo';
 import type { WorkflowNodeResponseWriter } from '../../../../chat/nodeResponseStorage';
+import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
+import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 
 /**
  * 收集 Agent 节点可用的系统工具和用户选择的子应用工具。
@@ -125,9 +128,73 @@ export type ToolDispatchContext = Pick<
   getSubAppInfo: GetSubAppInfoFnType;
   getSubApp: (id: string) => SubAppRuntimeType | undefined;
   completionTools: ChatCompletionTool[];
+  fileUrlMap?: Record<string, string>;
   filesMap: Record<string, string>;
   sandboxClient?: SandboxClient;
   streamResponseFn?: (args: WorkflowResponseItemType) => void | undefined;
+};
+
+/**
+ * 将工具参数中完整匹配的 Agent 文件 id 替换成真实 URL。
+ *
+ * LLM 有时会把文件清单里的 `<id>` 填到用户工具参数中；这些 id 只对 FastGPT
+ * 内置 read_files 有意义，普通工具更需要可访问链接。这里只替换完整字符串，
+ * 不处理长文本里的局部命中，避免误改业务字段。
+ */
+export const replaceAgentFileIdsWithUrls = <T>(value: T, fileUrlMap: Record<string, string>): T => {
+  if (!value || Object.keys(fileUrlMap).length === 0) return value;
+
+  const replaceValue = (input: unknown): unknown => {
+    if (typeof input === 'string') {
+      return fileUrlMap[input] || input;
+    }
+
+    if (Array.isArray(input)) {
+      return input.map((item) => replaceValue(item));
+    }
+
+    if (input && typeof input === 'object') {
+      return Object.fromEntries(
+        Object.entries(input).map(([key, item]) => [key, replaceValue(item)])
+      );
+    }
+
+    return input;
+  };
+
+  return replaceValue(value) as T;
+};
+
+/**
+ * 统一 Agent 的知识库配置来源。
+ *
+ * ChatAgent 保存的是 agent_datasetParams；Workflow Agent 节点模板保存的是
+ * datasets/similarity/authTmbId 等独立输入。runtime 内部收敛成 datasetParams，
+ * 保证上下文提示、工具暴露和真实检索使用同一组知识库权限配置。
+ */
+export const getAgentDatasetParams = (
+  params: DispatchAgentModuleProps['params']
+): AppFormEditFormType['dataset'] | undefined => {
+  const datasetParams = params[NodeInputKeyEnum.datasetParams];
+  if (datasetParams) return datasetParams;
+
+  const datasets = params[NodeInputKeyEnum.datasetSelectList];
+  if (!Array.isArray(datasets) || datasets.length === 0) return;
+
+  return {
+    datasets,
+    similarity: params[NodeInputKeyEnum.datasetSimilarity],
+    limit: params[NodeInputKeyEnum.datasetMaxTokens],
+    searchMode: params[NodeInputKeyEnum.datasetSearchMode] || DatasetSearchModeEnum.embedding,
+    embeddingWeight: params[NodeInputKeyEnum.datasetSearchEmbeddingWeight],
+    usingReRank: params[NodeInputKeyEnum.datasetSearchUsingReRank],
+    rerankModel: params[NodeInputKeyEnum.datasetSearchRerankModel],
+    rerankWeight: params[NodeInputKeyEnum.datasetSearchRerankWeight],
+    datasetSearchUsingExtensionQuery: params[NodeInputKeyEnum.datasetSearchUsingExtensionQuery],
+    datasetSearchExtensionModel: params[NodeInputKeyEnum.datasetSearchExtensionModel],
+    datasetSearchExtensionBg: params[NodeInputKeyEnum.datasetSearchExtensionBg],
+    [NodeInputKeyEnum.authTmbId]: params[NodeInputKeyEnum.authTmbId]
+  };
 };
 
 /**
@@ -137,6 +204,7 @@ export type ToolDispatchContext = Pick<
 export const getExecuteTool = ({
   getSubAppInfo,
   getSubApp,
+  fileUrlMap = {},
   filesMap,
   sandboxClient,
   checkIsStopping,
@@ -150,11 +218,7 @@ export const getExecuteTool = ({
   variableState,
   externalProvider,
   streamResponseFn,
-  params: {
-    model,
-    // Dataset search configuration
-    agent_datasetParams: datasetParams
-  },
+  params,
   lang,
   requestOrigin,
   mode,
@@ -164,6 +228,9 @@ export const getExecuteTool = ({
   workflowDispatchDeep,
   nodeResponseWriter
 }: ToolDispatchContext) => {
+  const { model } = params;
+  const datasetParams = getAgentDatasetParams(params);
+
   /**
    * 执行单次工具调用，并补齐节点响应的 id、运行时间和计费信息。
    */
@@ -262,10 +329,13 @@ export const getExecuteTool = ({
             response: 'Params is not object'
           };
         }
-        const requestParams = {
-          ...tool.params,
-          ...toolCallParams
-        };
+        const requestParams = replaceAgentFileIdsWithUrls(
+          {
+            ...tool.params,
+            ...toolCallParams
+          },
+          fileUrlMap
+        );
 
         if (tool.type === 'tool') {
           const { response, usages, nodeResponse } = await dispatchTool({

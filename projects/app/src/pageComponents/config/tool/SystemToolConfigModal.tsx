@@ -52,6 +52,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { UpdateSystemToolBodyType } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
 import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import { jsonSchema2SecretInput } from '@fastgpt/global/core/app/jsonschema';
 
 const COST_LIMITS = { max: 1000, min: 0, step: 0.1 };
 const FORM_LABEL_WIDTH = '160px';
@@ -246,7 +247,10 @@ const SystemToolConfigModal = ({
   ]);
 
   // 从 tool 读取只读数据
-  const inputList = tool?.secrets;
+  const inputList = useMemo(
+    () => jsonSchema2SecretInput({ jsonSchema: tool?.secretSchema }) ?? [],
+    [tool?.secretSchema]
+  );
   const isFolder = tool?.isToolSet;
   const modalWidth = isFolder ? TOOL_SET_MODAL_WIDTH : SINGLE_TOOL_MODAL_WIDTH;
 
@@ -381,6 +385,7 @@ const SystemToolConfigModal = ({
 
   // Secret input render
   const renderInputField = (item: InputConfigType) => {
+    const fieldValue = secretsVal?.[item.key];
     const labelSection = (
       <HStack>
         <Box position={'relative'} fontSize={'14px'} fontWeight={'500'}>
@@ -399,6 +404,26 @@ const SystemToolConfigModal = ({
       return (
         <ConfigRow key={item.key} label={labelSection}>
           <Switch {...register(`secretsVal.${item.key}`)} />
+        </ConfigRow>
+      );
+    }
+
+    if (item.inputType === 'select') {
+      return (
+        <ConfigRow key={item.key} label={labelSection}>
+          <MySelect<string>
+            bg={'white'}
+            h={9}
+            list={item.list ?? []}
+            value={typeof fieldValue === 'string' ? fieldValue : undefined}
+            placeholder={item.label}
+            onChange={(value) => {
+              setValue(`secretsVal.${item.key}`, value, {
+                shouldDirty: true,
+                shouldValidate: true
+              });
+            }}
+          />
         </ConfigRow>
       );
     }

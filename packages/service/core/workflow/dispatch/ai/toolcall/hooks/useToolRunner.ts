@@ -18,6 +18,7 @@ import { dispatchReadFileTool, ReadFileToolParamsSchema } from '../tools/file';
 import { initToolCallEdges, initToolNodes } from '../utils';
 import type { ToolInfo } from './useToolCatalog';
 import { checkTeamSandboxPermission } from '../../../../../../support/permission/teamLimit';
+import { createAgentSandboxPermissionDeniedError } from '../../../../../ai/sandbox/error';
 
 type WorkflowProps = Omit<
   DispatchToolModuleProps,
@@ -130,7 +131,7 @@ export const useToolRunner = ({
         try {
           await checkTeamSandboxPermission(workflowProps.runningUserInfo.teamId);
         } catch {
-          throw new Error('当前应用未配置虚拟机，暂时无法使用相关功能，请联系管理员配置。');
+          throw createAgentSandboxPermissionDeniedError();
         }
 
         const { input, response, durationSeconds } = await runSandboxTools({

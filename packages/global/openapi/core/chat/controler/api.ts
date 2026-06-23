@@ -1,17 +1,18 @@
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import z from 'zod';
-import { AppChatConfigTypeSchema } from '../../../../core/app/type';
 import { AppTypeEnum } from '../../../../core/app/constants';
-import { FlowNodeInputItemTypeSchema } from '../../../../core/workflow/type/io';
 import { ChatGenerateStatusEnum } from '../../../../core/chat/constants';
+import { OpenAPIFlowNodeInputItemTypeSchema } from '../../workflow/node';
+import { OpenAPIAppChatConfigSchema } from '../../app/common/api';
+import { ChatGenerateStatusSchema } from '../api';
 
 /* Init */
 // Online chat
 export const InitChatQuerySchema = z
   .object({
     appId: ObjectIdSchema.describe('应用ID'),
-    chatId: z.string().min(1).describe('对话ID'),
+    chatId: z.string().min(1).describe('会话ID'),
     loadCustomFeedbacks: z.coerce.boolean().optional().describe('是否加载自定义反馈')
   })
   .meta({
@@ -33,23 +34,23 @@ export const InitTeamChatQuerySchema = z.object({
 export type InitTeamChatQueryType = z.infer<typeof InitTeamChatQuerySchema>;
 
 export const InitChatResponseSchema = z.object({
-  chatId: z.string().optional().describe('对话ID'),
+  chatId: z.string().optional().describe('会话ID'),
   appId: ObjectIdSchema.describe('应用ID'),
   userAvatar: z.string().optional().describe('用户头像'),
   title: z.string().describe('对话标题'),
   variables: z.record(z.string(), z.any()).optional().describe('全局变量值'),
-  chatGenerateStatus: z.enum(ChatGenerateStatusEnum).optional().describe('对话生成状态'),
+  chatGenerateStatus: ChatGenerateStatusSchema.optional(),
   hasBeenRead: z.boolean().optional().describe('是否已读'),
   app: z
     .object({
-      chatConfig: AppChatConfigTypeSchema.optional().describe('聊天配置'),
+      chatConfig: OpenAPIAppChatConfigSchema.optional().describe('聊天配置'),
       chatModels: z.array(z.string()).optional().describe('聊天模型'),
       name: z.string().min(1).describe('应用名称'),
       avatar: z.string().describe('应用头像'),
       intro: z.string().describe('应用简介'),
       canUse: z.boolean().optional().describe('是否可用'),
       type: z.enum(AppTypeEnum).describe('应用类型'),
-      pluginInputs: z.array(FlowNodeInputItemTypeSchema).describe('插件输入'),
+      pluginInputs: z.array(OpenAPIFlowNodeInputItemTypeSchema).describe('插件输入'),
       useAgentSandbox: z.boolean().optional().describe('是否使用虚拟机')
     })
     .describe('应用配置')
@@ -60,7 +61,7 @@ export type InitChatResponseType = z.infer<typeof InitChatResponseSchema>;
 export const StopV2ChatSchema = z
   .object({
     appId: ObjectIdSchema.describe('应用ID'),
-    chatId: z.string().min(1).describe('对话ID'),
+    chatId: z.string().min(1).describe('会话ID'),
     outLinkAuthData: OutLinkChatAuthSchema.optional().describe('外链鉴权数据')
   })
   .meta({
@@ -79,7 +80,7 @@ export const StopV2ChatResponseSchema = z
   .object({
     success: z.boolean().describe('是否成功发送停止信号'),
     completed: z.boolean().describe('工作流是否已在本次请求等待窗口内完成停止'),
-    chatGenerateStatus: z.enum(ChatGenerateStatusEnum).optional().describe('当前对话生成状态')
+    chatGenerateStatus: ChatGenerateStatusSchema.optional()
   })
   .meta({
     example: {

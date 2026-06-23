@@ -23,6 +23,9 @@ export type ToolListResponse = PaginationResponse<ToolListItem>;
 const getToolTags = (item: { tags?: readonly string[] | null }): readonly string[] =>
   Array.isArray(item.tags) ? item.tags : [];
 
+const hasSecretSchemaProperties = (secretSchema?: { properties?: Record<string, unknown> }) =>
+  !!secretSchema?.properties && Object.keys(secretSchema.properties).length > 0;
+
 async function handler(
   req: ApiRequestProps<ToolListBody, ToolListQuery>,
   res: ApiResponseType<any>
@@ -51,7 +54,7 @@ async function handler(
   return {
     list: filteredData.slice(offset, offset + pageSize).map((item) => ({
       ...item,
-      hasSecret: !!item?.secretSchema?.properties?.length,
+      hasSecret: hasSecretSchemaProperties(item.secretSchema),
       downloadCount: item.downloadCount,
       downloadUrl: item.downloadUrl || getPkgdownloadURL(item.toolId)
     })),

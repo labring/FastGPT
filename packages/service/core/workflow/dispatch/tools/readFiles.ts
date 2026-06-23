@@ -7,7 +7,6 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { getNodeErrResponse } from '../utils';
 import { parseFileContentFromUrls } from '../../utils/file';
-import { getUserFilesPrompt } from '../../../ai/llm/prompt';
 import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 
 type Props = ModuleDispatchProps<{
@@ -17,6 +16,20 @@ type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.text]: string;
   [NodeOutputKeyEnum.rawResponse]: { filename: string; url: string; text: string }[];
 }>;
+
+/**
+ * 格式化 ReadFiles 节点已经读取出的文件正文。
+ *
+ * 这个输出会作为节点 text/toolResponse 传给后续节点，因此只描述“读取结果”，
+ * 不复用对话上传文件 reminder，避免混入“可通过 read_files 再读取”的工具说明。
+ */
+export const buildReadFilesOutputText = (
+  files: { id: string; name: string; content: string }[] = []
+) => {
+  if (files.length === 0) return '';
+
+  return files.map((file) => `## ${file.name}\n${file.content}`).join('\n\n');
+};
 
 export const dispatchReadFiles = async (props: Props): Promise<Response> => {
   const {
@@ -51,7 +64,7 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
       content: item.content
     }));
 
-    const text = getUserFilesPrompt(files);
+    const text = buildReadFilesOutputText(files);
 
     const getPreviewResponse = files
       .map((item) => `## ${item.name}\n${sliceStrStartEnd(item.content, 1000, 1000)}`)
@@ -73,9 +86,7 @@ export const dispatchReadFiles = async (props: Props): Promise<Response> => {
         })),
         readFilesResult: getPreviewResponse
       },
-      [DispatchNodeResponseKeyEnum.toolResponse]: {
-        fileContent: text
-      }
+      [DispatchNodeResponseKeyEnum.toolResponse]: text
     };
   } catch (error) {
     return getNodeErrResponse({ error });

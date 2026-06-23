@@ -67,7 +67,6 @@ const SandboxEditor = ({
     setExpandedDirs,
     loadingDirs,
     loadingRoot,
-    loadingFile,
     downloadingFile,
     searchQuery,
     setSearchQuery,
@@ -244,7 +243,6 @@ const SandboxEditor = ({
         saveFile={saveFile}
         editorRef={editorRef}
         filteredTree={filteredTree}
-        loadingFile={loadingFile}
         showTerminalBtn={showTerminal}
         canWrite={showFileOps}
         headerRight={headerRight}

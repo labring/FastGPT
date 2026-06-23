@@ -5,6 +5,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { SystemToolRepo } from '../../app/tool/systemTool/systemTool.repo';
+import { jsonSchema2NodeInput, jsonSchema2NodeOutput } from '@fastgpt/global/core/app/jsonschema';
 
 /* filter search result */
 export const filterSearchResultsByMaxChars = async (
@@ -74,18 +75,22 @@ export async function getSystemToolRunTimeNodeFromSystemToolset({
     const pluginId = `${systemToolId}/${child.id}`;
     const intro = selectedTool.description || child.description;
     const toolDescription = selectedTool.description || child.toolDescription || child.description;
+    const childInputs = jsonSchema2NodeInput({
+      jsonSchema: child.inputSchema,
+      schemaType: 'systemTool'
+    });
+    const childOutputs = jsonSchema2NodeOutput({ jsonSchema: child.outputSchema });
 
     return {
       flowNodeType: FlowNodeTypeEnum.tool,
       avatar: tool.avatar,
-      inputs: toolsetInputConfig
-        ? [toolsetInputConfig, ...(child.inputs ?? [])]
-        : (child.inputs ?? []),
-      outputs: child.outputs ?? [],
+      inputs: toolsetInputConfig ? [toolsetInputConfig, ...childInputs] : childInputs,
+      outputs: childOutputs,
       name: selectedTool.name || child.name,
       intro,
       nodeId: `${toolSetNode.nodeId}${child.id}`,
       version: runtimeVersion,
+      jsonSchema: child.inputSchema,
       toolDescription,
       toolConfig: {
         systemTool: {

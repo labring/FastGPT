@@ -133,7 +133,6 @@ export const teamDeleteProcessor: Processor<TeamDeleteJobData> = async (job) => 
     // 8. 清理团队敏感信息
     team.notificationAccount = '';
     team.openaiAccount = undefined;
-    team.lafAccount = undefined;
     team.externalWorkflowVariables = undefined;
     team.meta = undefined;
     await team.save();

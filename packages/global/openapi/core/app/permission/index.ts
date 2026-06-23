@@ -1,5 +1,5 @@
 import type { OpenAPIPath } from '../../../type';
-import { TagsMap } from '../../../tag';
+import { DevApiTagsMap } from '../../../tag';
 import { AppPermissionCheckSchema } from '../../../../support/permission/app/controller.schema';
 import {
   GetAppPermissionQuerySchema,
@@ -12,7 +12,7 @@ export const AppPermissionPath: OpenAPIPath = {
     get: {
       summary: '获取应用权限',
       description: '根据应用 ID 获取当前用户对该应用的权限信息',
-      tags: [TagsMap.appPer],
+      tags: [DevApiTagsMap.appPer],
       requestParams: {
         query: GetAppPermissionQuerySchema
       },
@@ -32,7 +32,7 @@ export const AppPermissionPath: OpenAPIPath = {
     put: {
       summary: '恢复继承权限',
       description: '恢复指定应用的继承权限配置',
-      tags: [TagsMap.appPer],
+      tags: [DevApiTagsMap.appPer],
       requestParams: {
         query: ResumeInheritPermissionQuerySchema
       },

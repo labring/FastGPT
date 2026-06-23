@@ -37,7 +37,7 @@ import {
   getToolConfigStatus,
   validateToolConfiguration
 } from '@fastgpt/global/core/app/formEdit/utils';
-import { getToolPreviewNode } from '@/web/core/app/api/tool';
+import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 
@@ -333,7 +333,8 @@ export function agentForm2AppWorkflow(
                 rerankWeight: data.dataset.rerankWeight,
                 datasetSearchUsingExtensionQuery: data.dataset.datasetSearchUsingExtensionQuery,
                 datasetSearchExtensionModel: data.dataset.datasetSearchExtensionModel,
-                datasetSearchExtensionBg: data.dataset.datasetSearchExtensionBg
+                datasetSearchExtensionBg: data.dataset.datasetSearchExtensionBg,
+                [NodeInputKeyEnum.authTmbId]: data.dataset.authTmbId
               })
             },
             // agent sandbox
@@ -431,7 +432,7 @@ export const loadGeneratedTools = async ({
         }
 
         // 新工具，需要与已配置的 tool 进行 input 合并
-        const tool = await getToolPreviewNode({ appId: toolId, versionId: '' });
+        const tool = await getClientToolPreviewNode({ appId: toolId, versionId: '' });
         // 验证工具配置
         const toolValid = validateToolConfiguration({
           toolTemplate: tool,

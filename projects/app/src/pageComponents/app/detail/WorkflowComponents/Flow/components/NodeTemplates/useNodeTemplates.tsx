@@ -1,6 +1,5 @@
 import { useState, useMemo, useCallback, useRef } from 'react';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getTeamAppTemplates, getAppToolTemplates } from '@/web/core/app/api/tool';
@@ -14,7 +13,6 @@ import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 export const useNodeTemplates = () => {
-  const { feConfigs } = useSystemStore();
   const [templateType, setTemplateType] = useState(TemplateTypeEnum.basic);
 
   const [searchKey, setSearchKey] = useState('');
@@ -44,10 +42,6 @@ export const useNodeTemplates = () => {
               if (nodeExist) {
                 return false;
               }
-            }
-            // special node filter
-            if (item.flowNodeType === FlowNodeTypeEnum.lafModule && !feConfigs.lafEnv) {
-              return false;
             }
             // tool stop or tool params
             if (

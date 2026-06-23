@@ -1,4 +1,4 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
@@ -8,14 +8,13 @@ import {
   GetFeedbackRecordIdsResponseSchema,
   type GetFeedbackRecordIdsResponseType
 } from '@fastgpt/global/openapi/core/chat/feedback/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
-async function handler(
-  req: ApiRequestProps,
-  _res: ApiResponseType<any>
-): Promise<GetFeedbackRecordIdsResponseType> {
-  const { appId, chatId, feedbackType, unreadOnly } = GetFeedbackRecordIdsBodySchema.parse(
-    req.body
-  );
+async function handler(req: ApiRequestProps): Promise<GetFeedbackRecordIdsResponseType> {
+  const { appId, chatId, feedbackType, unreadOnly } = parseApiInput({
+    req,
+    bodySchema: GetFeedbackRecordIdsBodySchema
+  }).body;
 
   if (!appId || !chatId) {
     return {

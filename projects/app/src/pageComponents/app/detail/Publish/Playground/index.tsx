@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
-import { Box, Flex, Switch } from '@chakra-ui/react';
+import { Box, Flex, Grid, Switch } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -27,16 +27,15 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
   const { t } = useTranslation();
   const { copyData } = useCopyData();
 
-  const { register, watch, setValue, reset } = useForm({
+  const { register, control, getValues, setValue, reset } = useForm({
     defaultValues: defaultPlaygroundVisibilityForm
   });
 
-  const showCite = watch('showCite');
-  const showFullText = watch('showFullText');
-  const canDownloadSource = watch('canDownloadSource');
-  const showRunningStatus = watch('showRunningStatus');
-  const showSkillReferences = watch('showSkillReferences');
-  const showWholeResponse = watch('showWholeResponse');
+  const showCite = useWatch({ control, name: 'showCite' });
+  const showFullText = useWatch({ control, name: 'showFullText' });
+  const canDownloadSource = useWatch({ control, name: 'canDownloadSource' });
+  const showRunningStatus = useWatch({ control, name: 'showRunningStatus' });
+  const showWholeResponse = useWatch({ control, name: 'showWholeResponse' });
 
   const playgroundLink = useMemo(() => {
     if (typeof window !== 'undefined') {
@@ -72,12 +71,18 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
   );
 
   const autoSave = async () => {
-    const values = watch();
+    const values = getValues();
     await saveConfig(values);
   };
 
+  const visibilityItemGridProps = {
+    templateColumns: { base: 'minmax(0, 1fr) auto', sm: '140px auto' } as const,
+    columnGap: '28px' as const,
+    alignItems: 'center' as const
+  };
+
   return (
-    <Flex flexDirection="column" h="100%">
+    <Flex flexDirection="column">
       <Box fontSize={'sm'} fontWeight={'medium'} color={'myGray.900'} mb={3}>
         {t('app:publish.playground_link')}
       </Box>
@@ -112,118 +117,112 @@ const PlaygroundVisibilityConfig = ({ appId }: { appId: string }) => {
         {t('publish:private_config')}
       </Box>
 
-      <Flex flexDirection="column" gap={4} mt={4}>
-        <Flex gap={4} flexWrap={'wrap'}>
-          <Flex alignItems={'center'}>
-            <FormLabel fontSize={'12px'} flex={'0 0 127px'}>
-              {t('publish:show_node')}
+      <Grid
+        mt={4}
+        w={'100%'}
+        templateColumns={{ base: '1fr', sm: 'repeat(3, 1fr)' }}
+        columnGap={6}
+        rowGap={4}
+        pb={4}
+      >
+        <Grid {...visibilityItemGridProps}>
+          <FormLabel fontSize={'12px'} mb={0} whiteSpace={{ base: 'normal', sm: 'nowrap' }}>
+            {t('publish:show_node')}
+          </FormLabel>
+          <Switch
+            flexShrink={0}
+            {...register('showRunningStatus', {
+              onChange: autoSave
+            })}
+            isChecked={showRunningStatus}
+          />
+        </Grid>
+
+        <Grid {...visibilityItemGridProps}>
+          <Flex alignItems={'center'} gap={1}>
+            <FormLabel fontSize={'12px'} mb={0} whiteSpace={{ base: 'normal', sm: 'nowrap' }}>
+              {t('app:publish.show_whole_response')}
             </FormLabel>
-            <Switch
-              {...register('showRunningStatus', {
-                onChange: autoSave
-              })}
-              isChecked={showRunningStatus}
-            />
+            <QuestionTip label={t('app:publish.show_whole_response_tip')} />
           </Flex>
-          <Flex alignItems={'center'}>
-            <Flex alignItems={'center'} flex={'0 0 127px'}>
-              <FormLabel fontSize={'12px'}>
-                {t('common:core.chat.response.Read complete response')}
-              </FormLabel>
-              <QuestionTip
-                ml={1}
-                label={t('common:core.chat.response.Read complete response tips')}
-              />
-            </Flex>
-            <Switch
-              {...register('showWholeResponse', {
-                onChange: autoSave
-              })}
-              isChecked={showWholeResponse}
-            />
+          <Switch
+            flexShrink={0}
+            {...register('showWholeResponse', {
+              onChange: autoSave
+            })}
+            isChecked={showWholeResponse}
+          />
+        </Grid>
+
+        <Box display={{ base: 'none', sm: 'block' }} />
+
+        <Grid {...visibilityItemGridProps}>
+          <Flex alignItems={'center'} gap={1}>
+            <FormLabel fontSize={'12px'} mb={0} whiteSpace={{ base: 'normal', sm: 'nowrap' }}>
+              {t('common:support.outlink.share.Response Quote')}
+            </FormLabel>
+            <QuestionTip label={t('common:support.outlink.share.Response Quote tips')} />
           </Flex>
-        </Flex>
-        <Flex gap={4} flexWrap={'wrap'}>
-          <Flex alignItems={'center'}>
-            <Flex alignItems={'center'} flex={'0 0 127px'}>
-              <FormLabel fontSize={'12px'}>
-                {t('common:support.outlink.share.Response Quote')}
-              </FormLabel>
-              <QuestionTip ml={1} label={t('common:support.outlink.share.Response Quote tips')} />
-            </Flex>
-            <Switch
-              {...register('showCite', {
-                onChange(e) {
-                  if (!e.target.checked) {
-                    setValue('showFullText', false);
-                    setValue('canDownloadSource', false);
-                  }
-                  autoSave();
+          <Switch
+            flexShrink={0}
+            {...register('showCite', {
+              onChange(e) {
+                if (!e.target.checked) {
+                  setValue('showFullText', false);
+                  setValue('canDownloadSource', false);
                 }
-              })}
-              isChecked={showCite}
-            />
+                autoSave();
+              }
+            })}
+            isChecked={showCite}
+          />
+        </Grid>
+
+        <Grid {...visibilityItemGridProps}>
+          <Flex alignItems={'center'} gap={1}>
+            <FormLabel fontSize={'12px'} mb={0} whiteSpace={{ base: 'normal', sm: 'nowrap' }}>
+              {t('common:core.app.share.Show full text')}
+            </FormLabel>
+            <QuestionTip label={t('common:support.outlink.share.Show full text tips')} />
           </Flex>
-          <Flex alignItems={'center'}>
-            <Flex alignItems={'center'} flex={'0 0 127px'}>
-              <FormLabel fontSize={'12px'}>{t('common:core.app.share.Show full text')}</FormLabel>
-              <QuestionTip ml={1} label={t('common:support.outlink.share.Show full text tips')} />
-            </Flex>
-            <Switch
-              {...register('showFullText', {
-                onChange(e) {
-                  if (!e.target.checked) {
-                    setValue('canDownloadSource', false);
-                  } else {
-                    setValue('showCite', true);
-                  }
-                  autoSave();
+          <Switch
+            flexShrink={0}
+            {...register('showFullText', {
+              onChange(e) {
+                if (!e.target.checked) {
+                  setValue('canDownloadSource', false);
+                } else {
+                  setValue('showCite', true);
                 }
-              })}
-              isChecked={showFullText}
-            />
+                autoSave();
+              }
+            })}
+            isChecked={showFullText}
+          />
+        </Grid>
+
+        <Grid {...visibilityItemGridProps}>
+          <Flex alignItems={'center'} gap={1}>
+            <FormLabel fontSize={'12px'} mb={0} whiteSpace={{ base: 'normal', sm: 'nowrap' }}>
+              {t('common:core.app.share.Download source')}
+            </FormLabel>
+            <QuestionTip label={t('common:support.outlink.share.Download source tips')} />
           </Flex>
-          <Flex alignItems={'center'}>
-            <Flex alignItems={'center'} flex={'0 0 127px'}>
-              <FormLabel fontSize={'12px'} fontWeight={'medium'}>
-                {t('common:core.app.share.Download source')}
-              </FormLabel>
-              <QuestionTip ml={1} label={t('common:support.outlink.share.Download source tips')} />
-            </Flex>
-            <Switch
-              {...register('canDownloadSource', {
-                onChange(e) {
-                  if (e.target.checked) {
-                    setValue('showFullText', true);
-                    setValue('showCite', true);
-                  }
-                  autoSave();
+          <Switch
+            flexShrink={0}
+            {...register('canDownloadSource', {
+              onChange(e) {
+                if (e.target.checked) {
+                  setValue('showFullText', true);
+                  setValue('showCite', true);
                 }
-              })}
-              isChecked={canDownloadSource}
-            />
-          </Flex>
-        </Flex>
-        <Flex gap={4} flexWrap={'wrap'}>
-          <Flex alignItems={'center'}>
-            <Flex alignItems={'center'} flex={'0 0 127px'}>
-              <FormLabel fontSize={'12px'}>{t('publish:show_skill_reference')}</FormLabel>
-              <QuestionTip ml={1} label={t('publish:show_skill_reference_tips')} />
-            </Flex>
-            <Switch
-              {...register('showSkillReferences', {
-                onChange(e) {
-                  if (e.target.checked) {
-                    setValue('showRunningStatus', true);
-                  }
-                  autoSave();
-                }
-              })}
-              isChecked={showSkillReferences}
-            />
-          </Flex>
-        </Flex>
-      </Flex>
+                autoSave();
+              }
+            })}
+            isChecked={canDownloadSource}
+          />
+        </Grid>
+      </Grid>
     </Flex>
   );
 };

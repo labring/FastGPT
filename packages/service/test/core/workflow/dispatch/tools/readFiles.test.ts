@@ -53,10 +53,13 @@ describe('dispatchReadFiles', () => {
     });
 
     const text = result.data?.[NodeOutputKeyEnum.text];
+    expect(text).toContain('## a.pdf');
     expect(text).toContain('Alpha');
+    expect(text).toContain('## b.pdf');
     expect(text).toContain('Beta');
-    expect(text).toContain('a.pdf');
-    expect(text).toContain('b.pdf');
+    expect(text).not.toContain('用户本次对话上传的文件');
+    expect(text).not.toContain('可通过 read_files');
+    expect(text).not.toContain('<file>');
 
     expect(result.data?.[NodeOutputKeyEnum.rawResponse]).toEqual([
       { filename: 'a.pdf', url: '/a.pdf', text: 'Alpha' },
@@ -73,9 +76,7 @@ describe('dispatchReadFiles', () => {
     expect(nodeResponse.readFilesResult).toContain('## b.pdf');
     expect(nodeResponse.readFilesResult).toContain('Beta');
 
-    expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toEqual({
-      fileContent: text
-    });
+    expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toBe(text);
   });
 
   it('chatConfig 提供 maxFiles 和 customPdfParse 时按其值传入', async () => {
@@ -206,7 +207,7 @@ describe('dispatchReadFiles', () => {
     const nodeResponse = result[DispatchNodeResponseKeyEnum.nodeResponse] as any;
     expect(nodeResponse.readFiles).toEqual([]);
     expect(nodeResponse.readFilesResult).toBe('');
-    expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toEqual({ fileContent: '' });
+    expect(result[DispatchNodeResponseKeyEnum.toolResponse]).toBe('');
   });
 
   it('超大内容下预览仍按 sliceStrStartEnd 截断 (start/end 各 1000)', async () => {

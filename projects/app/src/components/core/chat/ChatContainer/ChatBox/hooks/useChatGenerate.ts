@@ -8,6 +8,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type {
   AIChatItemValueItemType,
+  SandboxStatusPhase,
   UserChatItemValueItemType
 } from '@fastgpt/global/core/chat/type';
 import {
@@ -204,23 +205,33 @@ export const useChatGenerate = ({
         }
         if (event === SseResponseEventEnum.sandboxStatus && sandboxStatus) {
           const getSandboxPhaseLabel = (): string => {
-            const { phase, isWarmStart, skillName } = sandboxStatus;
-            if (phase === 'deployingSkills') {
-              return t('chat:sandbox_status_deployingSkills', { skillName: skillName ?? '' });
-            }
-            if (
-              phase === 'downloadingPackage' ||
-              phase === 'uploadingPackage' ||
-              phase === 'extractingPackage'
-            ) {
-              return t(`chat:sandbox_status_${phase}` as any, { skillName: skillName ?? '' });
-            }
+            const { phase, isWarmStart, skillName, message } = sandboxStatus;
+            const phaseLabelMap: Record<Exclude<SandboxStatusPhase, 'ready' | 'failed'>, string> = {
+              checkExisting: t('chat:sandbox_status_checkExisting'),
+              connecting: t('chat:sandbox_status_connecting'),
+              fetchSkills: t('chat:sandbox_status_fetchSkills'),
+              creatingContainer: t('chat:sandbox_status_creatingContainer'),
+              deployingSkills: t('chat:sandbox_status_deployingSkills', {
+                skillName: skillName ?? ''
+              }),
+              downloadingPackage: t('chat:sandbox_status_downloadingPackage'),
+              uploadingPackage: t('chat:sandbox_status_uploadingPackage'),
+              extractingPackage: t('chat:sandbox_status_extractingPackage'),
+              lazyInit: t('chat:sandbox_status_lazyInit')
+            };
+
             if (phase === 'ready') {
-              return t(
-                isWarmStart ? 'chat:sandbox_status_ready_warm' : 'chat:sandbox_status_ready_cold'
-              );
+              return isWarmStart
+                ? t('chat:sandbox_status_ready_warm')
+                : t('chat:sandbox_status_ready_cold');
             }
-            return t(`chat:sandbox_status_${phase}` as any);
+            if (phase === 'failed') {
+              return message
+                ? t('chat:sandbox_status_failed_with_message', { message })
+                : t('chat:sandbox_status_failed');
+            }
+
+            return phaseLabelMap[phase];
           };
           return {
             ...item,
@@ -553,7 +564,8 @@ export const useChatGenerate = ({
       history = chatRecords,
       interactive,
       autoTTSResponse = false,
-      hideInUI = false
+      hideInUI = false,
+      clearInput = true
     }) => {
       variablesForm.handleSubmit(
         async ({ variables = {} }) => {
@@ -668,7 +680,9 @@ export const useChatGenerate = ({
               : newChatList
           );
 
-          resetInputVal({});
+          if (clearInput) {
+            resetInputVal({});
+          }
           setQuestionGuide([]);
           scrollToBottom('smooth', 100);
 
@@ -708,8 +722,11 @@ export const useChatGenerate = ({
 
                 const responseData = mergeNodeResponseDataByIdAndParent(item.responseData || []);
                 if (!abortSignal?.signal?.aborted) {
-                  const uncaughtErr = responseData.find((r) => r.error)?.error;
-                  const err = uncaughtErr ?? responseData[responseData.length - 1]?.errorText;
+                  const uncaughtErr = responseData.find((r) => r.error && !r.errorCaptured)?.error;
+                  const lastUncapturedErrorText = [...responseData]
+                    .reverse()
+                    .find((r) => r.errorText && !r.errorCaptured)?.errorText;
+                  const err = uncaughtErr ?? lastUncapturedErrorText;
                   const errorMsg = err ? t(getErrText(err)) : undefined;
 
                   return {
@@ -780,7 +797,7 @@ export const useChatGenerate = ({
               })
             );
 
-            if (!err?.responseText) {
+            if (!err?.responseText && clearInput) {
               resetInputVal({ text, files });
             }
 

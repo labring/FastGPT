@@ -19,6 +19,7 @@ import type {
   ChatCompletionToolMessageParam
 } from '../ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '../../core/ai/constants';
+import { normalizeToolResponseContent } from '../ai/llm/utils';
 
 type FileUrlChatFileType = ChatFileTypeEnum.file | ChatFileTypeEnum.audio | ChatFileTypeEnum.video;
 type FileUrlContentPart = Extract<ChatCompletionContentPart, { type: 'file_url' }>;
@@ -315,7 +316,9 @@ export const chats2GPTMessages = ({
       toolResponse: {
         tool_call_id: id,
         role: ChatCompletionRequestMessageRoleEnum.Tool,
-        content: typeof tool.response === 'string' ? tool.response : ''
+        content: normalizeToolResponseContent(
+          typeof tool.response === 'string' ? tool.response : undefined
+        )
       }
     };
   };
@@ -451,7 +454,7 @@ export const chats2GPTMessages = ({
           dataId,
           role: ChatCompletionRequestMessageRoleEnum.Tool,
           tool_call_id: id,
-          content: response
+          content: normalizeToolResponseContent(response)
         });
       };
 

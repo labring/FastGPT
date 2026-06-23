@@ -5,14 +5,17 @@ description: 通过 API 访问 FastGPT 应用
 
 import { Alert } from '@/components/docs/Alert';
 
-在 FastGPT 中，你可以为每一个应用创建多个 API 密钥，用于访问应用的 API 接口。每个密钥仅能访问一个应用。完整的接口可以[查看应用对话接口](../../../openapi/intro.mdx)。
+在 FastGPT 中，发布渠道里的 API 入口展示当前登录成员可用的 **APIKey**。APIKey 是团队成员的开放接口调用凭证，不再按应用创建专属密钥。
 
-## 获取 API 密钥
+调用当前应用的 `chat/completions` 接口时，推荐在请求体传入 `appId`。如果第三方应用只能配置 OpenAI SDK 风格的密钥，也可以使用 `apiKey-appId` 兼容格式。完整说明可以[查看 OpenAPI 介绍](../../../openapi/intro.mdx)。
 
-依次选择应用 -> 「API访问」，然后点击「API 密钥」来创建密钥。
+## 获取 APIKey
+
+依次选择应用 ->「发布渠道」->「API」，然后点击「新建」创建密钥。
 
 <Alert context="warning">
-  密钥需要自己保管好，一旦关闭就无法再复制密钥，只能创建新密钥再复制。
+  APIKey 代表当前登录成员的开放接口调用凭证。请妥善保管密钥；如需再次复制，可在 API
+  列表中点击复制按钮。
 </Alert>
 
 ![](/imgs/fastgpt-api1.jpg)
@@ -25,7 +28,7 @@ import { Alert } from '@/components/docs/Alert';
 
 ```bash
 OPENAI_API_BASE_URL: http://localhost:3000/api (改成自己部署的域名)
-OPENAI_API_KEY = 上一步获取到的密钥
+OPENAI_API_KEY = 上一步获取到的密钥（推荐在请求体传 appId；如第三方应用只能配置密钥，可填 apiKey-appId 兼容格式）
 ```
 
 **[ChatGPT Next Web](https://github.com/Yidadaa/ChatGPT-Next-Web) 示例：**

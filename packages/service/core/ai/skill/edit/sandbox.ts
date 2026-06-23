@@ -35,6 +35,7 @@ import { getLogger, LogCategories } from '../../../../common/logger';
 import { serviceEnv } from '../../../../env';
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
 import { checkTeamSandboxPermission } from '../../../../support/permission/teamLimit';
+import { createAgentSandboxPermissionDeniedError } from '../../sandbox/error';
 
 const addLog = getLogger(LogCategories.MODULE.AI.AGENT);
 
@@ -70,7 +71,7 @@ export async function createEditDebugSandbox(
   try {
     await checkTeamSandboxPermission(teamId);
   } catch {
-    throw new Error('当前应用未配置虚拟机，暂时无法使用相关功能，请联系管理员配置。');
+    throw createAgentSandboxPermissionDeniedError();
   }
 
   const providerConfig = getSandboxProviderConfig();

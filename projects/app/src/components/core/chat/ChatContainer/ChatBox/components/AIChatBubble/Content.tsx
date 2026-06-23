@@ -24,6 +24,7 @@ type AIChatBubbleContentProps = {
   responseData?: ChatHistoryItemResType[];
   isLastChild: boolean;
   isChatting: boolean;
+  allowedCitationIds?: Set<string>;
   onOpenCiteModal: (e?: OnOpenCiteModalProps) => void;
 };
 
@@ -33,6 +34,7 @@ const AIChatBubbleContent = ({
   dataId,
   isLastChild,
   isChatting,
+  allowedCitationIds,
   onOpenCiteModal
 }: AIChatBubbleContentProps) => {
   const renderValue = ({
@@ -67,6 +69,7 @@ const AIChatBubbleContent = ({
         isLastChild={isLastChild}
         isChatting={isChatting}
         onOpenCiteModal={onOpenCiteModal}
+        allowedCitationIds={allowedCitationIds}
         wrapProcessing={wrapProcessing}
         showProcessing={showProcessing}
         showFoldableProcessing={showFoldableProcessing}

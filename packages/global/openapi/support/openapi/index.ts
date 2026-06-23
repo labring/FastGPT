@@ -3,6 +3,8 @@ import {
   ApiKeyHealthParamsSchema,
   ApiKeyHealthErrorResponseSchema,
   ApiKeyHealthResponseSchema,
+  CopyApiKeyBodySchema,
+  CopyApiKeyResponseSchema,
   CreateApiKeyBodySchema,
   CreateApiKeyResponseSchema,
   DeleteApiKeyQuerySchema,
@@ -12,14 +14,14 @@ import {
   UpdateApiKeyBodySchema,
   UpdateApiKeyResponseSchema
 } from './api';
-import { TagsMap } from '../../tag';
+import { DevApiTagsMap } from '../../tag';
 
 export const ApiKeyPath: OpenAPIPath = {
   '/support/openapi/create': {
     post: {
       summary: '创建 API Key',
-      description: '创建团队级或应用级 API Key',
-      tags: [TagsMap.apiKey],
+      description: '创建 API Key',
+      tags: [DevApiTagsMap.apiKey],
       requestBody: {
         content: {
           'application/json': {
@@ -42,8 +44,8 @@ export const ApiKeyPath: OpenAPIPath = {
   '/support/openapi/list': {
     get: {
       summary: '获取 API Key 列表',
-      description: '获取团队级或指定应用下的 API Key 列表',
-      tags: [TagsMap.apiKey],
+      description: '获取当前登录成员创建的 API Key 列表',
+      tags: [DevApiTagsMap.apiKey],
       requestParams: {
         query: GetApiKeyListQuerySchema
       },
@@ -63,7 +65,7 @@ export const ApiKeyPath: OpenAPIPath = {
     put: {
       summary: '更新 API Key',
       description: '更新 API Key 名称或使用限制',
-      tags: [TagsMap.apiKey],
+      tags: [DevApiTagsMap.apiKey],
       requestBody: {
         content: {
           'application/json': {
@@ -87,7 +89,7 @@ export const ApiKeyPath: OpenAPIPath = {
     delete: {
       summary: '删除 API Key',
       description: '删除指定 API Key',
-      tags: [TagsMap.apiKey],
+      tags: [DevApiTagsMap.apiKey],
       requestParams: {
         query: DeleteApiKeyQuerySchema
       },
@@ -103,10 +105,34 @@ export const ApiKeyPath: OpenAPIPath = {
       }
     }
   },
+  '/support/openapi/copy': {
+    post: {
+      summary: '复制 API Key',
+      description: '返回 API Key 明文并记录用户复制审计日志',
+      tags: [DevApiTagsMap.apiKey],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: CopyApiKeyBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功复制 API Key',
+          content: {
+            'application/json': {
+              schema: CopyApiKeyResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
   '/support/openapi/health': {
     get: {
       summary: '检查 API Key 是否健康',
-      tags: [TagsMap.apiKey],
+      tags: [DevApiTagsMap.apiKey],
       requestParams: {
         query: ApiKeyHealthParamsSchema
       },

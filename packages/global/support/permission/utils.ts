@@ -182,3 +182,27 @@ export const mergeCollaboratorList = <T extends CollaboratorItemType>({
 
   return Array.from(idToClb.values());
 };
+
+/**
+ * 判断资源在当前协作者集合下是否仍为私有。
+ * 继承权限的资源需要先合并父级与自身协作者，避免同一个协作者在父子记录中被重复计数。
+ */
+export const isPrivateResourceByCollaborators = <T extends CollaboratorItemType>({
+  resourceClbs,
+  parentClbs,
+  inheritPermission
+}: {
+  resourceClbs: T[];
+  parentClbs?: T[];
+  inheritPermission?: boolean;
+}) => {
+  const realClbs =
+    inheritPermission && parentClbs
+      ? mergeCollaboratorList({
+          parentClbs,
+          childClbs: resourceClbs
+        })
+      : resourceClbs;
+
+  return realClbs.length <= 1;
+};

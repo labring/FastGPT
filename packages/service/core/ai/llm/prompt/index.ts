@@ -1,18 +1,23 @@
+import { ReadFileTooData } from '../../../workflow/dispatch/ai/toolcall/tools/file';
+
 /**
  * 将本轮上传文件整理为文本上下文，包含文件名、沙盒路径和可选文件内容。
  */
 export const getUserFilesPrompt = (
-  files: { id?: string; name: string; sandboxPath?: string; content?: string }[] = []
+  files: { id?: string; name: string; url: string; sandboxPath?: string; content?: string }[] = []
 ) => {
   if (files.length === 0) return '';
-  return `# Input Files
-用户本次上传的文件：
+  return `## 对话文件
+用户本次对话上传的文件，用途：
+1. 可通过 ${ReadFileTooData.id} 读取文档内容。
+2. 可把 url 作为模型参数。
 
 ${files
   .map((file) =>
     `<file>
 ${file.id ? `<id>${file.id}</id>` : ''}
 <name>${file.name}</name>
+<url>${file.url}</url>
 ${file.sandboxPath ? `<sandboxPath>${file.sandboxPath}</sandboxPath>` : ''}
 ${file.content ? `<content>${file.content}</content>` : ''}
 </file>`.trim()

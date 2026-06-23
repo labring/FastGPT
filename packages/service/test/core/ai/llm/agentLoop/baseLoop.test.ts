@@ -440,6 +440,115 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     });
   });
 
+  it('normalizes empty tool response to none before feeding the next LLM request', async () => {
+    const onRunTool = vi.fn(async () => ({
+      response: '',
+      assistantMessages: [],
+      usages: []
+    }));
+
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      toolCall({
+        id: 'call_search',
+        name: 'search',
+        args: {
+          q: 'FastGPT'
+        }
+      }),
+      text({ requestId: 'req_final', content: 'final answer' })
+    ]);
+
+    const result = await runAgentLoop({
+      maxRunAgentTimes: 5,
+      body: {
+        model: 'gpt-4',
+        stream: true,
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'search FastGPT'
+          }
+        ],
+        tools: [searchTool]
+      },
+      usagePush: vi.fn(),
+      isAborted: () => false,
+      onRunTool,
+      onRunInteractiveTool: vi.fn()
+    });
+
+    expect(createLLMResponseMock.mock.calls[1][0].body.messages).toContainEqual({
+      role: 'tool',
+      tool_call_id: 'call_search',
+      content: 'none'
+    });
+    expect(result.assistantMessages).toContainEqual({
+      role: 'tool',
+      tool_call_id: 'call_search',
+      content: 'none'
+    });
+  });
+
+  it('normalizes empty compressed tool response to none', async () => {
+    compressToolResponseMock.mockImplementation(async () => ({
+      compressed: ''
+    }));
+    const onAfterToolCall = vi.fn();
+    const onRunTool = vi.fn(async () => ({
+      response: 'raw response',
+      assistantMessages: [],
+      usages: []
+    }));
+
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      toolCall({
+        id: 'call_search',
+        name: 'search',
+        args: {
+          q: 'FastGPT'
+        }
+      }),
+      text({ requestId: 'req_final', content: 'final answer' })
+    ]);
+
+    const result = await runAgentLoop({
+      maxRunAgentTimes: 5,
+      body: {
+        model: 'gpt-4',
+        stream: true,
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'search FastGPT'
+          }
+        ],
+        tools: [searchTool]
+      },
+      usagePush: vi.fn(),
+      isAborted: () => false,
+      onRunTool,
+      onRunInteractiveTool: vi.fn(),
+      onAfterToolCall
+    });
+
+    expect(onAfterToolCall).toHaveBeenCalledWith(
+      expect.objectContaining({
+        call: expect.objectContaining({ id: 'call_search' }),
+        response: 'none'
+      })
+    );
+    expect(createLLMResponseMock.mock.calls[1][0].body.messages).toContainEqual({
+      role: 'tool',
+      tool_call_id: 'call_search',
+      content: 'none'
+    });
+    expect(result.assistantMessages).toContainEqual({
+      role: 'tool',
+      tool_call_id: 'call_search',
+      content: 'none'
+    });
+  });
+
   it('passes reasoning effort into context and tool response compression', async () => {
     compressRequestMessagesMock.mockImplementation(async ({ messages }) => ({
       messages

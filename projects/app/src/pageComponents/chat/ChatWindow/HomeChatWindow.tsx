@@ -32,7 +32,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ChatAIModelSelector from './ChatAIModelSelector';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
-import { getToolPreviewNode } from '@/web/core/app/api/tool';
+import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import { ChatPageContext } from '@/web/core/chat/context/chatPageContext';
@@ -247,7 +247,7 @@ const HomeChatWindow = () => {
 
       const tools: FlowNodeTemplateType[] = await Promise.all(
         selectedToolIds.map(async (toolId) => {
-          const node = await getToolPreviewNode({ appId: toolId, versionId: '' });
+          const node = await getClientToolPreviewNode({ appId: toolId, versionId: '' });
           node.inputs = node.inputs.map((input) => {
             const tool = availableTools.find((tool) => tool.pluginId === toolId);
             const value = tool?.inputs?.[input.key];
@@ -487,6 +487,7 @@ const HomeChatWindow = () => {
             onStartChat={onStartChat}
             quickAppList={(chatSettings?.quickAppList || []).slice(0, 3)}
             onSwitchQuickApp={handleSwitchQuickApp}
+            enableQuickReplies
           />
         </Box>
         <SandboxEditorModal />

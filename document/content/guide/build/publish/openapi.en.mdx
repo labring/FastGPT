@@ -5,14 +5,17 @@ description: Access FastGPT app via API
 
 import { Alert } from '@/components/docs/Alert';
 
-In FastGPT, you can create multiple API keys for each app to access the app's API endpoints. Each key can only access one app. For complete endpoint documentation, [see the Chat API reference](../../../openapi/intro.en.mdx).
+In FastGPT, the API entry under Publish Channels shows **API Keys** available to the current signed-in member. API Keys are member credentials for OpenAPI calls and are no longer created as app-scoped keys.
 
-## Get API Key
+When calling this app through `chat/completions`, passing `appId` in the request body is recommended. If a third-party app only supports OpenAI SDK-style key configuration, you can use the `apiKey-appId` compatibility format. For details, [see the OpenAPI Introduction](../../../openapi/intro.en.mdx).
 
-Go to App -> "API Access", then click "API Key" to create a key.
+## Get an API Key
+
+Go to App -> "Publish Channels" -> "API", then click "New" to create a key.
 
 <Alert context="warning">
-  Keep your key safe. Once the dialog is closed, you cannot copy the key again -- you can only create a new key and copy it.
+  An API Key represents the current signed-in member's OpenAPI credential. Keep your key safe. To
+  copy it again later, use the copy button in the API list.
 </Alert>
 
 ![](/imgs/fastgpt-api1.jpg)
@@ -25,7 +28,7 @@ Go to App -> "API Access", then click "API Key" to create a key.
 
 ```bash
 OPENAI_API_BASE_URL: http://localhost:3000/api (replace with your deployed domain)
-OPENAI_API_KEY = the key obtained in the previous step
+OPENAI_API_KEY = the key obtained in the previous step (passing appId in the request body is recommended; if the third-party app only accepts a key, use the apiKey-appId compatibility format)
 ```
 
 **[ChatGPT Next Web](https://github.com/Yidadaa/ChatGPT-Next-Web) Example:**

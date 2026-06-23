@@ -14,9 +14,9 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import {
   BLOCKED_LOCK_TIME,
-  activeTrainingMatch,
   finalErrorTrainingMatch
 } from '@fastgpt/service/core/dataset/training/query';
+import { subMinutes } from 'date-fns';
 
 const defaultCounts: Record<TrainingModeEnum, number> = {
   parse: 0,
@@ -25,6 +25,15 @@ const defaultCounts: Record<TrainingModeEnum, number> = {
   image: 0,
   auto: 0,
   imageParse: 0
+};
+
+const MODE_LOCK_TIMEOUT_MINUTES: Record<TrainingModeEnum, number> = {
+  parse: 10,
+  qa: 10,
+  chunk: 3,
+  image: 10,
+  auto: 10,
+  imageParse: 10
 };
 
 async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetailResponseType> {
@@ -47,34 +56,38 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetai
     collectionId: new Types.ObjectId(collection._id)
   };
 
-  // Computed global queue
-  const minId = (
-    await MongoDatasetTraining.findOne(match, { sort: { _id: 1 }, select: '_id' }).lean()
-  )?._id;
+  const now = new Date();
+  const activeTrainingExpr = Object.entries(MODE_LOCK_TIMEOUT_MINUTES).map(
+    ([mode, timeoutMinutes]) => ({
+      mode,
+      lockTime: { $gt: subMinutes(now, timeoutMinutes), $lt: BLOCKED_LOCK_TIME }
+    })
+  );
 
   const [ququedCountData, trainingCountData, errorCountData, trainedCount] = (await Promise.all([
-    minId
-      ? MongoDatasetTraining.aggregate([
-          {
-            $match: {
-              _id: { $lt: new Types.ObjectId(minId) },
-              retryCount: { $gt: 0 },
-              lockTime: { $lt: BLOCKED_LOCK_TIME }
-            }
-          },
-          {
-            $group: {
-              _id: '$mode',
-              count: { $sum: 1 }
-            }
-          }
-        ])
-      : Promise.resolve([]),
     MongoDatasetTraining.aggregate([
       {
         $match: {
           ...match,
-          ...activeTrainingMatch
+          retryCount: { $gt: 0 },
+          lockTime: { $lt: BLOCKED_LOCK_TIME },
+          // 只统计当前集合里未被 worker 领取或锁超时后可重试的任务，避免跨知识库队列污染状态展示。
+          $nor: activeTrainingExpr
+        }
+      },
+      {
+        $group: {
+          _id: '$mode',
+          count: { $sum: 1 }
+        }
+      }
+    ]),
+    MongoDatasetTraining.aggregate([
+      {
+        $match: {
+          ...match,
+          retryCount: { $gt: 0 },
+          $or: activeTrainingExpr
         }
       },
       {

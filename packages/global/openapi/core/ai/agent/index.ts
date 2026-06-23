@@ -1,5 +1,5 @@
 import type { OpenAPIPath } from '../../../type';
-import { TagsMap } from '../../../tag';
+import { DevApiTagsMap } from '../../../tag';
 import { CreateQuestionGuideBodySchema, CreateQuestionGuideResponseSchema } from './api';
 
 export const AgentPath: OpenAPIPath = {
@@ -7,7 +7,7 @@ export const AgentPath: OpenAPIPath = {
     post: {
       summary: '创建问题引导',
       description: '根据对话历史生成推荐的引导问题列表',
-      tags: [TagsMap.aiCommon],
+      tags: [DevApiTagsMap.aiCommon],
       requestBody: {
         content: {
           'application/json': {

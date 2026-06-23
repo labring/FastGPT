@@ -11,7 +11,11 @@ import {
   type NodeTemplateListItemType
 } from '@fastgpt/global/core/workflow/type/node';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { getToolPreviewNode, getAppToolTemplates, getAppToolPaths } from '@/web/core/app/api/tool';
+import {
+  getClientToolPreviewNode,
+  getAppToolTemplates,
+  getAppToolPaths
+} from '@/web/core/app/api/tool';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { getTeamAppTemplates } from '@/web/core/app/api/tool';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
@@ -144,6 +148,10 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
 
   const onUpdateParentId = useCallback(
     (parentId: ParentIdType) => {
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+
       loadTemplates({
         parentId
       });
@@ -236,6 +244,9 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
           <RenderList
             templates={templates}
             type={templateType}
+            parentId={parentId}
+            searchKey={searchKey}
+            selectedTagIds={selectedTagIds}
             setParentId={onUpdateParentId}
             {...props}
           />
@@ -251,6 +262,9 @@ const RenderList = React.memo(function RenderList({
   topAgentSelectedTools = [],
   templates,
   type,
+  parentId,
+  searchKey,
+  selectedTagIds,
   onAddTool,
   onRemoveTool,
   setParentId,
@@ -259,6 +273,9 @@ const RenderList = React.memo(function RenderList({
 }: Props & {
   templates: NodeTemplateListItemType[];
   type: TemplateTypeEnum;
+  parentId: ParentIdType;
+  searchKey: string;
+  selectedTagIds: string[];
   setParentId: (parentId: ParentIdType) => any;
 }) {
   const { i18n } = useTranslation();
@@ -266,10 +283,16 @@ const RenderList = React.memo(function RenderList({
   const { feConfigs } = useSystemStore();
   const router = useRouter();
   const { toast } = useToast();
+  const listScopeKey = useMemo(
+    () => `${type}:${parentId ?? ''}:${searchKey}:${selectedTagIds.join(',')}`,
+    [parentId, searchKey, selectedTagIds, type]
+  );
+  const [tooltipEnabledScopeKey, setTooltipEnabledScopeKey] = useState('');
+  const isTooltipEnabled = tooltipEnabledScopeKey === listScopeKey;
 
   const { runAsync: onClickAdd, loading: isLoading } = useRequest(
     async (template: NodeTemplateListItemType) => {
-      const res = await getToolPreviewNode({ appId: template.id, versionId: '' });
+      const res = await getClientToolPreviewNode({ appId: template.id, versionId: '' });
       const isToolSetTemplate = template.flowNodeType === FlowNodeTypeEnum.toolSet;
 
       if (!isToolSetTemplate) {
@@ -314,6 +337,8 @@ const RenderList = React.memo(function RenderList({
       <>
         {templates.length > 0 ? (
           <Grid
+            key={listScopeKey}
+            onMouseMove={() => setTooltipEnabledScopeKey(listScopeKey)}
             gridTemplateColumns={['minmax(0, 1fr)', 'repeat(2, minmax(0, 1fr))']}
             columnGap={3}
             rowGap={3}
@@ -329,6 +354,7 @@ const RenderList = React.memo(function RenderList({
               return (
                 <MyTooltip
                   key={template.id}
+                  isDisabled={!isTooltipEnabled}
                   label={
                     <Box py={2} minW={['auto', '250px']}>
                       <Flex alignItems={'center'} w={'100%'}>

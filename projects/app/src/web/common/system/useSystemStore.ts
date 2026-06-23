@@ -51,6 +51,8 @@ type State = {
 
   notSufficientModalType?: NotSufficientModalType;
   setNotSufficientModalType: (val?: NotSufficientModalType) => void;
+  showProModal: boolean;
+  setShowProModal: (e: boolean) => void;
 
   initDataBufferId?: string;
   feConfigs: FastGPTFeConfigsType;
@@ -141,6 +143,13 @@ export const useSystemStore = create<State>()(
         setNotSufficientModalType(type) {
           set((state) => {
             state.notSufficientModalType = type;
+          });
+        },
+
+        showProModal: false,
+        setShowProModal(e) {
+          set((state) => {
+            state.showProModal = e;
           });
         },
 

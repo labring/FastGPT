@@ -1,7 +1,7 @@
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatGenerateStatusEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { authOutLink } from '@/service/support/permission/auth/outLink';
-import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps, type ApiResponseType } from '@fastgpt/service/type/next';
@@ -13,6 +13,8 @@ import {
 import { addMonths } from 'date-fns';
 import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { authApp } from '@fastgpt/service/support/permission/app/auth';
 
 /* Batch get chatGenerateStatus / hasBeenRead for sidebar sync */
 export async function handler(
@@ -44,7 +46,14 @@ export async function handler(
       };
     }
     if (appId) {
-      const { tmbId } = await authCert({ req, authToken: true, authApiKey: true });
+      const { tmbId } = await authApp({
+        req,
+        authToken: true,
+        authApiKey: true,
+        appId,
+        per: ReadPermissionVal
+      });
+
       return {
         appId,
         tmbId
@@ -53,7 +62,7 @@ export async function handler(
   })();
 
   if (!match) {
-    return GetHistoryStatusResponseSchema.parse({ list: [] });
+    return Promise.reject(ChatErrEnum.unAuthChat);
   }
 
   if (match.appId && !ObjectIdSchema.safeParse(match.appId).success) {

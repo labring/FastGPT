@@ -1,7 +1,6 @@
 {
   "configured": "Configured",
   "error.no_permission": "Please contact the administrator to configure",
-  "laf_account": "laf account",
   "no_intro": "No explanation yet",
   "not_configured": "Not configured",
   "open_api_notice": "You can fill in the relevant key of OpenAI/OneAPI. \nIf you fill in this content, the online platform using [AI Dialogue], [Problem Classification] and [Content Extraction] will use the Key you filled in, and there will be no charge. \nPlease pay attention to whether your Key has permission to access the corresponding model. \nGPT models can choose FastAI.",

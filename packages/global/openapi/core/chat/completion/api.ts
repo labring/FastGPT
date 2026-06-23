@@ -2,20 +2,24 @@ import z from 'zod';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { ChatCompletionMessageParamSchema } from '../../../../core/ai/llm/type';
 import { getNanoid } from '../../../../common/string/tools';
-import { AppChatConfigTypeSchema, AppSchemaTypeSchema } from '../../../../core/app/type';
+import { AppSchemaTypeSchema } from '../../../../core/app/type';
 import { AuthUserTypeEnum } from '../../../../support/permission/constant';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 import { StoreEdgeItemTypeSchema } from '../../../../core/workflow/type/edge';
 import { OpenAPIStoreNodeItemTypeSchema } from '../../workflow/node';
+import { OpenAPIAppChatConfigSchema } from '../../app/common/api';
 
 const nullishToUndefined = <T extends z.ZodTypeAny>(schema: T) =>
   z.preprocess((v) => v ?? undefined, schema);
 
 const WebCompletionsSchema = z.object({
   chatId: nullishToUndefined(z.string().max(1024).optional()).meta({
-    description: '聊天ID, 传入的话会自动获取历史记录，不传入则认为是新对话'
+    description: '会话 ID，传入的话会自动获取会话中的对话，不传入则认为是新会话'
   }),
-  appId: nullishToUndefined(ObjectIdSchema.optional()),
+  appId: nullishToUndefined(ObjectIdSchema.optional()).meta({
+    description:
+      '应用 ID。推荐在请求体中传入；APIKey 调用时优先级为 body.appId > Authorization 中的 apiKey-appId 后缀 > 旧 APIKey 绑定 appId。apiKey-appId 仅用于兼容 OpenAI SDK，不会写入数据库'
+  }),
   customUid: nullishToUndefined(z.string().max(1024).optional()).meta({
     description: '自定义用户ID(分享链接)'
   }),
@@ -34,9 +38,32 @@ const ChatCompletionCreateParamsSchema = z.object({
   })
 });
 
+export const ChatCompletionAuthProxySchema = z
+  .object({
+    username: nullishToUndefined(z.string().trim().min(1).max(128).optional()).meta({
+      example: 'user@example.com',
+      description: 'API Key 代理调用的团队成员用户名'
+    }),
+    tmbId: nullishToUndefined(ObjectIdSchema.optional()).meta({
+      description: 'API Key 代理调用的团队成员 ID'
+    })
+  })
+  .strict()
+  .refine(({ username, tmbId }) => !!username || !!tmbId, {
+    message: 'authProxy.username or authProxy.tmbId is required'
+  })
+  .meta({
+    description:
+      'API Key 代理调用身份。仅开启 authProxy 的团队级 API Key 可用，username 与 tmbId 同时传入时必须指向同一团队成员'
+  });
+export type ChatCompletionAuthProxy = z.infer<typeof ChatCompletionAuthProxySchema>;
+
 export const CompletionsPropsSchema = OutLinkChatAuthSchema.extend(WebCompletionsSchema.shape)
   .extend(ChatCompletionCreateParamsSchema.shape)
   .extend({
+    authProxy: nullishToUndefined(ChatCompletionAuthProxySchema.optional()).meta({
+      description: 'API Key 代理调用身份'
+    }),
     variables: nullishToUndefined(z.record(z.string(), z.any()).default({})).meta({
       description: '全局变量或插件输入'
     }),
@@ -140,7 +167,7 @@ export const ChatTestPropsSchema = z.object({
     .meta({ description: '自定义响应的 assistant 的消息 ID，如果不传入，则自动生成一个' }),
   nodes: z.array(OpenAPIStoreNodeItemTypeSchema).meta({ description: '节点列表' }),
   edges: z.array(StoreEdgeItemTypeSchema).meta({ description: '边列表' }),
-  chatConfig: AppChatConfigTypeSchema.meta({ description: '聊天配置' }),
+  chatConfig: OpenAPIAppChatConfigSchema.meta({ description: '聊天配置' }),
   variables: nullishToUndefined(z.record(z.string(), z.any()).default({})).meta({
     description: '全局变量或插件输入'
   }),

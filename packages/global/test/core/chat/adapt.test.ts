@@ -1289,6 +1289,36 @@ describe('chats2GPTMessages', () => {
     expect(result[1].role).toBe(ChatCompletionRequestMessageRoleEnum.Tool);
   });
 
+  it('should normalize empty runtime tool responses to none when reserveTool is true', () => {
+    const messages: ChatItemMiniType[] = [
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            tools: [
+              {
+                id: 'call_empty',
+                toolName: 'Search',
+                toolAvatar: '',
+                functionName: 'search_web',
+                params: '{"query":"empty"}',
+                response: ''
+              }
+            ]
+          }
+        ]
+      }
+    ];
+
+    const result = chats2GPTMessages({ messages, reserveId: false, reserveTool: true });
+
+    expect(result[1]).toMatchObject({
+      role: ChatCompletionRequestMessageRoleEnum.Tool,
+      tool_call_id: 'call_empty',
+      content: 'none'
+    });
+  });
+
   it('should handle deprecated single tool when reserveTool is true', () => {
     const messages: ChatItemMiniType[] = [
       {
@@ -1314,6 +1344,34 @@ describe('chats2GPTMessages', () => {
     expect(result[0].role).toBe(ChatCompletionRequestMessageRoleEnum.Assistant);
     expect((result[0] as any).tool_calls?.[0].function.name).toBe('search_web');
     expect(result[1].role).toBe(ChatCompletionRequestMessageRoleEnum.Tool);
+  });
+
+  it('should normalize empty deprecated single tool responses to none when reserveTool is true', () => {
+    const messages: ChatItemMiniType[] = [
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            tool: {
+              id: 'call_legacy_empty',
+              toolName: 'Search',
+              toolAvatar: '',
+              functionName: 'search_web',
+              params: '{"query":"empty"}',
+              response: ''
+            }
+          }
+        ]
+      }
+    ];
+
+    const result = chats2GPTMessages({ messages, reserveId: false, reserveTool: true });
+
+    expect(result[1]).toMatchObject({
+      role: ChatCompletionRequestMessageRoleEnum.Tool,
+      tool_call_id: 'call_legacy_empty',
+      content: 'none'
+    });
   });
 
   it('should filter invalid historical tool records when reserveTool is true', () => {
@@ -2147,6 +2205,48 @@ describe('chats2GPTMessages', () => {
         dataId: undefined,
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
         content: 'final answer'
+      }
+    ]);
+  });
+
+  it('should normalize empty agent plan tool response to none when reserving tools', () => {
+    const messages: ChatItemMiniType[] = [
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            agentPlanUpdate: {
+              id: 'call_plan_empty',
+              functionName: 'update_plan',
+              params: '{"updates":[]}',
+              response: '',
+              assistantText: 'updating plan'
+            }
+          }
+        ]
+      }
+    ];
+
+    expect(chats2GPTMessages({ messages, reserveId: false, reserveTool: true })).toEqual([
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        content: 'updating plan',
+        tool_calls: [
+          {
+            id: 'call_plan_empty',
+            type: 'function',
+            function: {
+              name: 'update_plan',
+              arguments: '{"updates":[]}'
+            }
+          }
+        ]
+      },
+      {
+        dataId: undefined,
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_plan_empty',
+        content: 'none'
       }
     ]);
   });

@@ -15,7 +15,7 @@ import { SANDBOX_SYSTEM_PROMPT } from '@fastgpt/global/core/ai/sandbox/constants
 import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
 import type { ReasoningEffort } from '@fastgpt/global/core/ai/llm/type';
 import type { SelectedAgentSkillItemType } from '@fastgpt/global/core/app/formEdit/type';
-import { getSubapps } from './utils';
+import { getAgentDatasetParams, getSubapps } from './utils';
 import { parseUserSystemPrompt } from './adapter/prompt';
 import { useUserContext } from './adapter/userContext';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
@@ -57,6 +57,18 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.editSkillId]?: string;
 
   [NodeInputKeyEnum.datasetParams]?: AppFormEditFormType['dataset'];
+  [NodeInputKeyEnum.datasetSelectList]?: AppFormEditFormType['dataset']['datasets'];
+  [NodeInputKeyEnum.datasetSimilarity]?: number;
+  [NodeInputKeyEnum.datasetMaxTokens]?: number;
+  [NodeInputKeyEnum.datasetSearchMode]?: AppFormEditFormType['dataset']['searchMode'];
+  [NodeInputKeyEnum.datasetSearchEmbeddingWeight]?: number;
+  [NodeInputKeyEnum.datasetSearchUsingReRank]?: boolean;
+  [NodeInputKeyEnum.datasetSearchRerankModel]?: string;
+  [NodeInputKeyEnum.datasetSearchRerankWeight]?: number;
+  [NodeInputKeyEnum.datasetSearchUsingExtensionQuery]?: boolean;
+  [NodeInputKeyEnum.datasetSearchExtensionModel]?: string;
+  [NodeInputKeyEnum.datasetSearchExtensionBg]?: string;
+  [NodeInputKeyEnum.authTmbId]?: boolean;
   [NodeInputKeyEnum.useAgentSandbox]?: boolean;
 }> & {
   nodeResponseWriter?: WorkflowNodeResponseWriter;
@@ -132,12 +144,12 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       agent_selectedTools: selectedTools = [],
       skills: selectedSkills = [],
       editSkillId,
-      agent_datasetParams: datasetParams,
       useAgentSandbox = false,
       model,
       aiChatReasoning
     }
   } = props;
+  const datasetParams = getAgentDatasetParams(props.params);
   const agentModel = getLLMModel(model);
   props.params.aiChatVision = !!(props.params.aiChatVision && agentModel.vision);
   props.params.aiChatAudio = !!(props.params.aiChatAudio && agentModel.audio);
@@ -167,6 +179,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       currentQuery: query,
       currentDataId: responseChatItemId,
       selectedDataset: datasetParams?.datasets,
+      authTmbId: datasetParams?.authTmbId,
       tmbId: runningUserInfo.tmbId,
       timezone,
       requestOrigin,
@@ -186,7 +199,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       currentFiles: userContext.currentFiles
     });
     // 获取请求上下文
-    const { chatHistories, queryInput, filesMap } = userContext;
+    const { chatHistories, queryInput, filesMap, fileUrlMap } = userContext;
     const { rewrittenHistories, currentUserMessage } = userContext.getCurrentMessages({
       skillInfos,
       currentWorkingDirectory
@@ -267,6 +280,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         getSubAppInfo,
         getSubApp,
         completionTools: agentCompletionTools,
+        fileUrlMap,
         filesMap,
         sandboxClient,
         streamResponseFn: workflowStreamResponse

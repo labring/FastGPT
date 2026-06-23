@@ -1,6 +1,7 @@
 use axum::extract::ws::{Message as AxumMsg, WebSocket as AxumWs};
 use futures_util::{SinkExt, StreamExt, stream::SplitSink};
-use std::time::Duration;
+use reqwest::Url;
+use std::{env, time::Duration};
 use tokio_tungstenite::{
     connect_async_with_config,
     tungstenite::{
@@ -27,11 +28,152 @@ enum UpstreamControl {
 
 const UPSTREAM_CONNECT_MAX_ATTEMPTS: u8 = 10;
 const UPSTREAM_CONNECT_RETRY_DELAY: Duration = Duration::from_millis(300);
+const LOOPBACK_REWRITE_HOST_ENV: &str = "AGENT_SANDBOX_PROXY_REWRITE_HOST";
 
 fn upstream_ws_config() -> WebSocketConfig {
     WebSocketConfig::default()
         .max_message_size(Some(MAX_WS_MESSAGE_SIZE))
         .max_frame_size(Some(MAX_WS_FRAME_SIZE))
+}
+
+fn is_loopback_host(host: &str) -> bool {
+    host.eq_ignore_ascii_case("localhost") || host == "127.0.0.1" || host == "::1"
+}
+
+/// 构建 proxy 连接上游 sandbox endpoint 的 WebSocket base URL。
+/// 如果 endpoint 是回环地址，按 AGENT_SANDBOX_PROXY_REWRITE_HOST 改写 host。
+fn build_ws_upstream_base_url(raw_endpoint: &str) -> Result<String, String> {
+    let rewrite_host = env::var(LOOPBACK_REWRITE_HOST_ENV)
+        .ok()
+        .map(|value| value.trim().to_string())
+        .filter(|value| !value.is_empty());
+
+    build_ws_upstream_base_url_with_rewrite(raw_endpoint, rewrite_host.as_deref())
+}
+
+fn build_ws_upstream_base_url_with_rewrite(
+    raw_endpoint: &str,
+    rewrite_host: Option<&str>,
+) -> Result<String, String> {
+    let mut endpoint = parse_sandbox_endpoint(raw_endpoint)?;
+
+    rewrite_loopback_host(&mut endpoint, rewrite_host)?;
+    use_websocket_scheme(&mut endpoint)?;
+
+    Ok(endpoint.as_str().trim_end_matches('/').to_string())
+}
+
+fn parse_sandbox_endpoint(raw_endpoint: &str) -> Result<Url, String> {
+    let endpoint = raw_endpoint.trim().trim_end_matches('/');
+    if endpoint.is_empty() {
+        return Err("Sandbox endpoint url is empty.".to_string());
+    }
+
+    let endpoint = if endpoint.contains("://") {
+        endpoint.to_string()
+    } else {
+        format!("http://{}", endpoint)
+    };
+
+    Url::parse(&endpoint).map_err(|err| format!("Invalid sandbox endpoint url: {}", err))
+}
+
+fn rewrite_loopback_host(endpoint: &mut Url, rewrite_host: Option<&str>) -> Result<(), String> {
+    let Some(rewrite_host) = rewrite_host else {
+        return Ok(());
+    };
+
+    if !endpoint.host_str().is_some_and(is_loopback_host) {
+        return Ok(());
+    }
+
+    endpoint
+        .set_host(Some(rewrite_host))
+        .map_err(|_| format!("Invalid loopback rewrite host: {}", rewrite_host))?;
+
+    info!(
+        "[WSProxy] Rewrote loopback sandbox endpoint host to {}.",
+        rewrite_host
+    );
+    Ok(())
+}
+
+fn use_websocket_scheme(endpoint: &mut Url) -> Result<(), String> {
+    let ws_scheme = match endpoint.scheme() {
+        "http" | "ws" => "ws",
+        "https" | "wss" => "wss",
+        scheme => return Err(format!("Unsupported sandbox endpoint scheme: {}", scheme)),
+    };
+
+    endpoint
+        .set_scheme(ws_scheme)
+        .map_err(|_| format!("Failed to set sandbox endpoint scheme to {}", ws_scheme))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::build_ws_upstream_base_url_with_rewrite;
+
+    #[test]
+    fn rewrites_scheme_less_loopback_endpoint() {
+        let url = build_ws_upstream_base_url_with_rewrite(
+            "localhost:8090/sandboxes/demo/proxy/1318",
+            Some("host.docker.internal"),
+        )
+        .unwrap();
+
+        assert_eq!(
+            url,
+            "ws://host.docker.internal:8090/sandboxes/demo/proxy/1318"
+        );
+    }
+
+    #[test]
+    fn rewrites_http_loopback_endpoint() {
+        let url = build_ws_upstream_base_url_with_rewrite(
+            "http://127.0.0.1:8090/sandboxes/demo/proxy/1318/",
+            Some("host.docker.internal"),
+        )
+        .unwrap();
+
+        assert_eq!(
+            url,
+            "ws://host.docker.internal:8090/sandboxes/demo/proxy/1318"
+        );
+    }
+
+    #[test]
+    fn preserves_non_loopback_host() {
+        let url = build_ws_upstream_base_url_with_rewrite(
+            "http://opensandbox-server:8090/sandboxes/demo/proxy/1318",
+            Some("host.docker.internal"),
+        )
+        .unwrap();
+
+        assert_eq!(
+            url,
+            "ws://opensandbox-server:8090/sandboxes/demo/proxy/1318"
+        );
+    }
+
+    #[test]
+    fn preserves_secure_websocket_scheme() {
+        let url = build_ws_upstream_base_url_with_rewrite(
+            "https://sandbox.example.com/sandboxes/demo/proxy/1318",
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(url, "wss://sandbox.example.com/sandboxes/demo/proxy/1318");
+    }
+
+    #[test]
+    fn rejects_unsupported_scheme() {
+        let err = build_ws_upstream_base_url_with_rewrite("ftp://localhost/sandboxes/demo", None)
+            .unwrap_err();
+
+        assert!(err.contains("Unsupported sandbox endpoint scheme"));
+    }
 }
 
 /// 连接沙盒内的 IDE Agent，允许 agent 冷启动时出现短暂端口不可用。
@@ -91,15 +233,13 @@ pub async fn handle_relay(
 
     let target_url = match address.sandbox_url.as_deref().filter(|url| !url.is_empty()) {
         Some(url) => {
-            let ws_base = url
-                .trim()
-                .trim_end_matches('/')
-                .replacen("http://", "ws://", 1)
-                .replacen("https://", "wss://", 1);
-            let ws_base = if ws_base.starts_with("ws://") || ws_base.starts_with("wss://") {
-                ws_base
-            } else {
-                format!("ws://{}", ws_base)
+            let ws_base = match build_ws_upstream_base_url(url) {
+                Ok(ws_base) => ws_base,
+                Err(err) => {
+                    error!("[WSProxy] {}", err);
+                    close_client_ws(&mut client_sink, 1008, "Invalid sandbox endpoint").await;
+                    return;
+                }
             };
 
             format!(

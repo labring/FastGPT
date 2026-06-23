@@ -35,6 +35,8 @@ export type ChatBoxInputType = {
   files?: UserInputFileItemType[];
   interactive?: WorkflowInteractiveResponseType;
   hideInUI?: boolean;
+  /** 发送后是否清空输入框；快捷回复等不占用输入框内容的发送场景可设为 false。 */
+  clearInput?: boolean;
 };
 
 export type SendPromptFnType = (

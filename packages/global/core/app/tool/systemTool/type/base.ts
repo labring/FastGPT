@@ -1,13 +1,9 @@
 import z from 'zod';
 import { PluginStatusSchema } from '../../../../plugin/type';
 import { UserTagsSchema } from '../../../../../support/user/type';
-import {
-  FlowNodeInputItemTypeSchema,
-  FlowNodeOutputItemTypeSchema,
-  InputConfigTypeSchema
-} from '../../../../workflow/type/io';
 import { PluginPermissionEnumSchema } from '../../../../../sdk/fastgpt-plugin';
 import { SystemToolSystemSecretStatusEnum } from '../constants';
+import { JSONSchemaInputTypeSchema, JSONSchemaOutputTypeSchema } from '../../../jsonschema';
 
 // 系统工具最基础最通用的类型
 export const SystemToolBaseSchema = z.object({
@@ -61,7 +57,6 @@ export const SystemToolListItemSchema = z.object({
     .enum(SystemToolSystemSecretStatusEnum)
     .default(SystemToolSystemSecretStatusEnum.none)
     .meta({ description: '系统密钥配置状态' }),
-  secrets: z.array(InputConfigTypeSchema).optional(),
 
   // 用户筛选
   hideTags: z.array(UserTagsSchema).optional(),
@@ -73,27 +68,26 @@ export type SystemToolListItemType = z.infer<typeof SystemToolListItemSchema>;
 export const SystemToolChildDetailSchema = z.object({
   id: z.string(),
   name: z.string(),
+  status: PluginStatusSchema.meta({ description: '工具的状态' }),
   description: z.string().optional(),
   toolDescription: z.string().optional(),
   icon: z.string().optional(),
   currentCost: z.number().meta({ description: '当前使用的费用' }),
   systemKeyCost: z.number().meta({ description: '系统密钥的费用' }),
-  inputs: z.array(FlowNodeInputItemTypeSchema),
-  outputs: z.array(FlowNodeOutputItemTypeSchema)
+  inputSchema: JSONSchemaInputTypeSchema.optional(),
+  outputSchema: JSONSchemaOutputTypeSchema.optional()
 });
 
 export type SystemToolChildDetailType = z.infer<typeof SystemToolChildDetailSchema>;
 
-/** 系统工具的详细信息
- *  TODO: input, output, secret 这些类型其实并不合理，应当是更干净的类型, 后续再迁移
- */
+/** 系统工具的详细信息。Repo 只返回 JSON Schema，节点 IO 由 presenter/runtime 按需转换。 */
 export const SystemToolDetailSchema = z.object({
   ...SystemToolListItemSchema.shape,
   children: z.array(SystemToolChildDetailSchema).optional(),
 
-  inputs: z.array(FlowNodeInputItemTypeSchema).optional(),
-  outputs: z.array(FlowNodeOutputItemTypeSchema).optional(),
-  secrets: z.array(InputConfigTypeSchema).optional(),
+  inputSchema: JSONSchemaInputTypeSchema.optional(),
+  outputSchema: JSONSchemaOutputTypeSchema.optional(),
+  secretSchema: JSONSchemaInputTypeSchema.optional(),
   secretsVal: z.record(z.string(), z.any()).nullish(),
   isLatestVersion: z.boolean().optional(),
   associatedPluginId: z.string().optional(),

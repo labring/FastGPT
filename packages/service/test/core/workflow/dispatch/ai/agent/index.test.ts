@@ -293,8 +293,10 @@ describe('dispatchRunAgent user context', () => {
         content: expect.stringContaining('<id>current_ai_1-0</id>')
       })
     ]);
+    expect(loopInput.messages[0].content).toContain('<url>/old.pdf</url>');
     expect(loopInput.messages[0].content).not.toContain('## 知识库');
     expect(loopInput.messages[0].content).not.toContain('## 背景信息');
+    expect(loopInput.messages[1].content).toContain('<url>/current.pdf</url>');
     expect(loopInput.messages[1].content).toContain('## 知识库');
     expect(loopInput.messages[1].content).toContain('## 背景信息');
     expect(loopInput.messages[1].content).toContain('当前问题');
@@ -596,7 +598,7 @@ describe('dispatchRunAgent user context', () => {
     );
     const result = await promise;
     expect(result.error?.system_error_text).toBe(
-      '当前应用未配置虚拟机，暂时无法使用相关功能，请联系管理员配置。'
+      'common:code_error.sandbox_error.agent_sandbox_permission_denied'
     );
     expect(getSandboxClientMock).not.toHaveBeenCalled();
   });

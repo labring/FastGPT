@@ -97,7 +97,7 @@
     "remark-gfm": "catalog:",
     "remark-math": "^6.0.0",
     "sass": "^1.58.3",
-    "undici": "^7.18.2",
+    "undici": "catalog:",
     "use-context-selector": "^1.4.4",
     "vaul": "catalog:",
     "zod": "catalog:",

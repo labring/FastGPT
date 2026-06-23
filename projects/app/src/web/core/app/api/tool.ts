@@ -93,5 +93,5 @@ export const getAppToolPaths = (data: GetPathProps) => {
   return GET<ParentTreePathItemType[]>('/core/app/tool/path', data);
 };
 
-export const getToolPreviewNode = (data: GetPreviewNodeQuery) =>
+export const getClientToolPreviewNode = (data: GetPreviewNodeQuery) =>
   GET<FlowNodeTemplateType>('/core/app/tool/getPreviewNode', data);

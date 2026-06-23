@@ -325,7 +325,6 @@ export const useSandboxFileStore = ({
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set([]));
   const [loadingDirs, setLoadingDirs] = useState<Set<string>>(new Set());
   const [loadingRoot, setLoadingRoot] = useState(false);
-  const [loadingFile, setLoadingFile] = useState(false);
   const [downloadingFile, setDownloadingFile] = useState(false);
   const [isWsConnected, setIsWsConnected] = useState(false);
   const reconnectAttemptsRef = useRef(0);
@@ -340,7 +339,6 @@ export const useSandboxFileStore = ({
   const expandedDirsRef = useLatest(expandedDirs);
   const onErrorRef = useLatest(onError);
   const loadingFilePathsRef = useRef<Set<string>>(new Set());
-  const loadingFileCountRef = useRef(0);
   const isRefreshingWorkspaceRef = useRef(false);
   const hasPendingWorkspaceRefreshRef = useRef(false);
 
@@ -443,28 +441,21 @@ export const useSandboxFileStore = ({
       filePath: string,
       language: string
     ): Promise<{ content: string; isUnknown: boolean; mtime?: number }> => {
-      loadingFileCountRef.current += 1;
-      setLoadingFile(true);
-      try {
-        const isBinary = getIsBinaryByLanguage(language);
-        const res = await rpcCall<SandboxReadFileResponse>('fs/read_file', { path: filePath });
-        const rawBytes = Uint8Array.from(window.atob(res.content), (c) => c.charCodeAt(0));
+      const isBinary = getIsBinaryByLanguage(language);
+      const res = await rpcCall<SandboxReadFileResponse>('fs/read_file', { path: filePath });
+      const rawBytes = Uint8Array.from(window.atob(res.content), (c) => c.charCodeAt(0));
 
-        if (!isBinary) {
-          try {
-            const content = new TextDecoder('utf-8', { fatal: true }).decode(rawBytes);
-            return { content, isUnknown: false, mtime: res.mtime };
-          } catch {
-            return { content: '', isUnknown: true, mtime: res.mtime };
-          }
-        } else {
-          const mimeType = getMimeTypeByFileName(filePath.split('/').pop() || '');
-          const blob = new Blob([rawBytes], { type: mimeType });
-          return { content: URL.createObjectURL(blob), isUnknown: false, mtime: res.mtime };
+      if (!isBinary) {
+        try {
+          const content = new TextDecoder('utf-8', { fatal: true }).decode(rawBytes);
+          return { content, isUnknown: false, mtime: res.mtime };
+        } catch {
+          return { content: '', isUnknown: true, mtime: res.mtime };
         }
-      } finally {
-        loadingFileCountRef.current = Math.max(0, loadingFileCountRef.current - 1);
-        setLoadingFile(loadingFileCountRef.current > 0);
+      } else {
+        const mimeType = getMimeTypeByFileName(filePath.split('/').pop() || '');
+        const blob = new Blob([rawBytes], { type: mimeType });
+        return { content: URL.createObjectURL(blob), isUnknown: false, mtime: res.mtime };
       }
     },
     [rpcCall]
@@ -482,7 +473,10 @@ export const useSandboxFileStore = ({
         let refreshOptions = options;
         do {
           hasPendingWorkspaceRefreshRef.current = false;
-          setLoadingRoot(true);
+          const shouldShowLoadingRoot = fileTree.length === 0;
+          if (shouldShowLoadingRoot) {
+            setLoadingRoot(true);
+          }
           let latestFileTree: TreeNode[] | null = null;
 
           try {
@@ -503,7 +497,9 @@ export const useSandboxFileStore = ({
           } catch (error) {
             console.error('Failed to refresh workspace via WS:', error);
           } finally {
-            setLoadingRoot(false);
+            if (shouldShowLoadingRoot) {
+              setLoadingRoot(false);
+            }
           }
 
           if (!hasPendingWorkspaceRefreshRef.current) {
@@ -577,6 +573,7 @@ export const useSandboxFileStore = ({
     },
     [
       expandedDirsRef,
+      fileTree.length,
       rpcCall,
       setExpandedDirs,
       setFileTree,
@@ -944,7 +941,7 @@ export const useSandboxFileStore = ({
     }
   }, [canWrite, openedFilesRef, rpcCall, toast, t]);
 
-  // 1.5 秒防抖自动保存脏文件
+  // 500ms 防抖自动保存脏文件
   useEffect(() => {
     const dirtyFiles = openedFiles.filter((f) => f.isDirty && !f.isBinary && !f.isUnknown);
     if (dirtyFiles.length === 0) return;
@@ -953,7 +950,7 @@ export const useSandboxFileStore = ({
       dirtyFiles.forEach((f) => {
         saveFile(f.path);
       });
-    }, 1500);
+    }, 500);
 
     return () => clearTimeout(timer);
   }, [openedFiles, saveFile]);
@@ -1455,7 +1452,6 @@ export const useSandboxFileStore = ({
     setExpandedDirs,
     loadingDirs,
     loadingRoot,
-    loadingFile,
     downloadingFile,
     searchQuery,
     setSearchQuery,

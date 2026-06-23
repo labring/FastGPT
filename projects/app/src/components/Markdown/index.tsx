@@ -28,6 +28,7 @@ const AudioBlock = dynamic(() => import('./codeBlock/Audio'), { ssr: false });
 
 const ChatGuide = dynamic(() => import('./chat/Guide'), { ssr: false });
 const QuestionGuide = dynamic(() => import('./chat/QuestionGuide'), { ssr: false });
+const QuickReplies = dynamic(() => import('./chat/QuickReplies'), { ssr: false });
 const A = dynamic(() => import('./A'), { ssr: false });
 
 function MarkdownImgRenderer(props: any) {
@@ -51,7 +52,7 @@ function MarkdownCodeRenderer(props: any) {
 }
 
 function MarkdownLinkRenderer(props: any) {
-  const { showAnimation, chatAuthData, onOpenCiteModal } = useContext(
+  const { showAnimation, chatAuthData, allowedCitationIds, onOpenCiteModal } = useContext(
     MarkdownRendererRuntimeContext
   );
 
@@ -60,6 +61,7 @@ function MarkdownLinkRenderer(props: any) {
       {...props}
       showAnimation={showAnimation}
       chatAuthData={chatAuthData}
+      allowedCitationIds={allowedCitationIds}
       onOpenCiteModal={onOpenCiteModal}
     />
   );
@@ -100,6 +102,7 @@ const MarkdownRender = ({
   autoPreviewHtmlCodeBlock,
 
   chatAuthData,
+  allowedCitationIds,
   onOpenCiteModal
 }: Props) => {
   const renderContextValue = useMemo(
@@ -108,9 +111,17 @@ const MarkdownRender = ({
       autoPreviewHtmlCodeBlock,
       markdownClassName: className,
       chatAuthData,
+      allowedCitationIds,
       onOpenCiteModal
     }),
-    [autoPreviewHtmlCodeBlock, chatAuthData, className, onOpenCiteModal, showAnimation]
+    [
+      allowedCitationIds,
+      autoPreviewHtmlCodeBlock,
+      chatAuthData,
+      className,
+      onOpenCiteModal,
+      showAnimation
+    ]
   );
 
   const formatSource = useMemo(() => {
@@ -167,7 +178,7 @@ function Code(e: any) {
     autoPreviewHtmlCodeBlock,
     markdownClassName
   } = e;
-  const match = /language-(\w+)/.exec(className || '');
+  const match = /language-([\w-]+)/.exec(className || '');
   const codeType = match?.[1]?.toLowerCase();
 
   const strChildren = String(children);
@@ -209,6 +220,9 @@ function Code(e: any) {
   }
   if (codeType === CodeClassNameEnum.audio) {
     return <AudioBlock code={strChildren} />;
+  }
+  if (codeType === CodeClassNameEnum.quickReplies) {
+    return <QuickReplies text={strChildren} />;
   }
 
   return (

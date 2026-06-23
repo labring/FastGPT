@@ -119,7 +119,6 @@ docker compose up -d
 - [เอกสาร OpenAPI](https://doc.fastgpt.io/openapi/intro)
 - [FastGPT-plugin](https://github.com/labring/fastgpt-plugin)
 - [AI Proxy: บริการ Load Balancing การรวมโมเดล](https://github.com/labring/aiproxy)
-- [Laf: เข้าถึงแอปพลิเคชันของบุคคลที่สามใน 3 นาที](https://github.com/labring/laf)
 - [Sealos: การติดตั้งแอปพลิเคชันคลัสเตอร์อย่างรวดเร็ว](https://github.com/labring/sealos)
 
 <a href="#readme">

@@ -234,3 +234,35 @@ pnpm --filter @fastgpt/service test test/core/workflow/dispatch/ai/agent/adapter
 - [x] HelperBot / ChatAgent UI 改为暴露 `read_files`。
 - [x] 补充核心单测。
 - [ ] 浏览器集成测试：上传文件 + 选择知识库 + 当前时间 + `read_files` 工具调用。
+
+## 2026-06-10 补充：文件 URL 与工具调用参数
+
+### 问题
+
+Agent 和 AgentV2 的文件上下文只把上传文件暴露为内部 `id`。模型可以用这个 `id`
+调用内置 `read_files`，但当用户选择的外部工具需要文件链接时，模型容易把 `id`
+填进工具参数，工具无法访问真实文件。
+
+### 方案
+
+- `AgentInputFile` 继续保留稳定 `id`，同时在文件 reminder 中暴露 `type` 和 `url`。
+- `fileUrlMap` 登记所有可用上传文件，覆盖 document/image/audio/video。
+- `filesMap` 继续只登记 document 文件，专供 `read_files` 使用。
+- 用户工具执行前调用 `replaceAgentFileIdsWithUrls(...)`，只把完整命中的字符串、数组项、
+  对象字段值从文件 `id` 替换为 `url`。
+- 不做长文本 substring 替换，避免普通业务文本里出现同名字符串时被误改。
+
+### 边界
+
+- 内置 `read_files` 仍使用文件 `id`，不走 URL 替换。
+- 当前 `url` 来自聊天上传时保存的 `previewUrl` 或外部变量传入的链接；本次不额外刷新
+  已过期的 S3 signed URL。
+- 后续如果要彻底解决历史长会话中的过期链接，应把 `AgentInputFile` 扩展为保留 `key`，
+  在构建本轮 reminder 时用 `key` 重新签发新的 access URL。
+
+### 新增测试
+
+- 文件 reminder 包含 `<id>`、`<name>`、`<type>`、`<url>`。
+- `fileUrlMap` 覆盖 document/image/audio/video，`filesMap` 只覆盖 document。
+- Unified Agent 和 PiAgent prompt 都包含文件 URL。
+- `replaceAgentFileIdsWithUrls(...)` 只替换完整命中的 id，不替换长文本里的局部命中。

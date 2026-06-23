@@ -506,6 +506,11 @@ export const auditLogMap = {
     typeLabel: i18nT('account_team:update_api_key'),
     params: {} as { name?: string; keyName: string }
   },
+  [AuditEventEnum.COPY_API_KEY]: {
+    content: i18nT('account_team:log_copy_api_key'),
+    typeLabel: i18nT('account_team:copy_api_key'),
+    params: {} as { name?: string; keyName: string }
+  },
   [AuditEventEnum.DELETE_API_KEY]: {
     content: i18nT('account_team:log_delete_api_key'),
     typeLabel: i18nT('account_team:delete_api_key'),

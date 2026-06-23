@@ -1,39 +1,45 @@
 ---
-title: OpenAPI 介绍
-description: FastGPT OpenAPI 介绍
+title: API 文档介绍
+description: FastGPT API 文档介绍
 ---
 
-## 自动化 API 文档
+从 `4.15.0` 开始，FastGPT API 文档均采用 `zod-openapi` 自动生成的方式（部分旧接口未改造，所以不显示）。可通过访问 API 文档地址查看最新的接口情况，该文档里左侧手动编辑的接口说明不再更新。
 
-自动化 API 文档为当前版本系统的所有接口，不区分是否可通过 API Key 调用。
+FastGPT API 文档一共分成两套：
 
-后续所有接口都将做自动化生成，会逐步完善文档。
+- Dev API: 所有开发的 API，不一定能通过 ApiKey 调用。
+- System OpenAPI: 系统所有开放的接口，可以通过系统 ApiKey 调用。
 
-- [中国大陆版 API 文档](https://cloud.fastgpt.cn/openapi)
-- [国际版 API 文档](https://cloud.fastgpt.io/openapi)
+## API 文档地址
+
+endpoint 是你的 FastGPT 访问地址，拼上对应 path 即可打开文档。
+
+- Dev API: `{{endpoint}}/apidoc/devapi`
+- System OpenAPI: `{{endpoint}}/apidoc/systemopenapi`
+
+## 云服务 API 文档地址
+
+**Dev API:**
+
+- [中国大陆版文档](https://cloud.fastgpt.cn/apidoc/devapi)
+- [国际版文档](https://cloud.fastgpt.io/apidoc/devapi)
+
+**System OpenAPI**
+
+- [中国大陆版文档](https://cloud.fastgpt.cn/apidoc/systemopenapi)
+- [国际版文档](https://cloud.fastgpt.io/apidoc/systemopenapi)
 
 ## 使用说明
 
-FasGPT OpenAPI 接口允许你使用 Api Key 进行鉴权，从而操作 FastGPT 上的相关服务和资源，例如：调用应用对话接口、上传知识库数据、搜索测试等等。出于兼容性和安全考虑，并不是所有的接口都允许通过 Api Key 访问。
+FastGPT OpenAPI 接口允许你使用 API Key 进行鉴权，从而操作 FastGPT 上的相关服务和资源，例如：调用应用对话接口、上传知识库数据、搜索测试等等。出于兼容性和安全考虑，并不是所有的接口都允许通过 API Key 访问。
 
-## 如何查看 BaseURL
+### 如何查看 BaseURL
 
 **注意：BaseURL 不是接口地址，而是所有接口的根地址，直接请求 BaseURL 是没有用的。**
 
 ![](../../public/imgs/fastgpt-api-baseurl.png)
 
-## 如何获取 Api Key
-
-FastGPT 的 API Key **有 2 类**，一类是全局通用的 key (无法直接调用应用对话)；一类是携带了 AppId 也就是有应用标记的 key (可直接调用应用对话)。
-
-我们建议，仅操作应用或者对话的相关接口使用 `应用特定key`，其他接口使用 `通用key`。
-
-|        通用key               |           应用特定 key            |
-| --------------------- | --------------------- |
-| ![](../../public/imgs/fastgpt-api2.jpg) | ![](../../public/imgs/fastgpt-api1.jpg) |
-
-
-## 基本配置
+### 基本配置
 
 OpenAPI 中，所有的接口都通过 Header.Authorization 进行鉴权。
 
@@ -43,46 +49,3 @@ headers: {
     Authorization: "Bearer {{apikey}}"
 }
 ```
-
-**发起应用对话示例**
-
-```sh
-curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
---header 'Authorization: Bearer fastgpt-xxxxxx' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "chatId": "111",
-    "stream": false,
-    "detail": false,
-    "messages": [
-        {
-            "content": "导演是谁",
-            "role": "user"
-        }
-    ]
-}'
-```
-
-## 自定义用户 ID
-
-`v4.8.13`后支持传入自定义的用户 ID, 并且存入历史记录中。
-
-```sh
-curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
---header 'Authorization: Bearer fastgpt-xxxxxx' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "chatId": "111",
-    "stream": false,
-    "detail": false,
-    "messages": [
-        {
-            "content": "导演是谁",
-            "role": "user"
-        }
-    ],
-    "customUid": "xxxxxx"
-}'
-```
-
-在历史记录中，该条记录的使用者会显示为 `xxxxxx`。

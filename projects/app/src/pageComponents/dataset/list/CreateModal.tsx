@@ -112,11 +112,7 @@ const CreateModal = ({
         </>
       }
     >
-      <Flex
-        flexDirection={'column'}
-        alignItems={'flex-start'}
-        minH={showApiDatasetForm ? undefined : '338px'}
-      >
+      <Flex flexDirection={'column'} alignItems={'flex-start'}>
         <Flex w={'100%'} flexDirection={'column'} gap={4}>
           <Box w={'100%'}>
             <Flex justify={'space-between'}>

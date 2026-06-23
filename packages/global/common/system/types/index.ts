@@ -126,7 +126,6 @@ export type FastGPTFeConfigsType = {
   showCustomPdfParse?: boolean;
   customPdfParsePrice?: number;
 
-  lafEnv?: string;
   navbarItems?: NavbarItemType[];
   externalProviderWorkflowVariables?: ExternalProviderWorkflowVarType[];
 

@@ -17,7 +17,7 @@ import {
   UpdateToolRuntimeConfigBodySchema,
   UpdateWorkflowToolBodySchema
 } from './api';
-import { TagsMap } from '../../../../tag';
+import { DevApiTagsMap } from '../../../../tag';
 import { z } from 'zod';
 import { AdminSystemToolDetailSchema } from '../../../../../core/app/tool/systemTool/type';
 import { SystemToolTagPath } from './tag';
@@ -27,7 +27,7 @@ export const AdminPluginToolPath: OpenAPIPath = {
     get: {
       summary: '获取系统工具列表',
       description: '获取系统工具列表，需要系统管理员权限',
-      tags: [TagsMap.pluginToolAdmin],
+      tags: [DevApiTagsMap.pluginToolAdmin],
       requestParams: {
         query: GetAdminSystemToolsQuery
       },
@@ -47,7 +47,7 @@ export const AdminPluginToolPath: OpenAPIPath = {
     get: {
       summary: '获取系统工具详情',
       description: '获取系统工具详情，需要系统管理员权限',
-      tags: [TagsMap.pluginToolAdmin],
+      tags: [DevApiTagsMap.pluginToolAdmin],
       requestParams: {
         query: GetAdminSystemToolDetailQuerySchema
       },
@@ -67,7 +67,7 @@ export const AdminPluginToolPath: OpenAPIPath = {
     get: {
       summary: '获取系统工具版本列表',
       description: '获取系统工具版本列表，需要系统管理员权限',
-      tags: [TagsMap.pluginToolAdmin],
+      tags: [DevApiTagsMap.pluginToolAdmin],
       requestParams: {
         query: GetAdminSystemToolVersionsQuerySchema
       },
@@ -88,7 +88,7 @@ export const AdminPluginToolPath: OpenAPIPath = {
       summary: '更新系统工具',
       description:
         '更新系统工具配置，包括基础字段和自定义字段，支持递归更新子配置，需要系统管理员权限',
-      tags: [TagsMap.pluginToolAdmin],
+      tags: [DevApiTagsMap.pluginToolAdmin],
       requestBody: {
         content: {
           'application/json': {
@@ -112,7 +112,7 @@ export const AdminPluginToolPath: OpenAPIPath = {
     put: {
       summary: '更新系统工具顺序',
       description: '批量更新系统工具的排序顺序，需要系统管理员权限',
-      tags: [TagsMap.pluginToolAdmin],
+      tags: [DevApiTagsMap.pluginToolAdmin],
       requestBody: {
         content: {
           'application/json': {
@@ -136,7 +136,7 @@ export const AdminPluginToolPath: OpenAPIPath = {
     put: {
       summary: '更新工具运行时配置',
       description: '更新插件服务中的工具运行时配置，需要系统管理员权限',
-      tags: [TagsMap.pluginToolAdmin],
+      tags: [DevApiTagsMap.pluginToolAdmin],
       requestBody: {
         content: {
           'application/json': {
@@ -160,7 +160,7 @@ export const AdminPluginToolPath: OpenAPIPath = {
     get: {
       summary: '获取工具运行时配置',
       description: '获取插件服务中的工具运行时配置，需要系统管理员权限',
-      tags: [TagsMap.pluginToolAdmin],
+      tags: [DevApiTagsMap.pluginToolAdmin],
       requestParams: {
         query: GetToolRuntimeConfigQuerySchema
       },
@@ -180,7 +180,7 @@ export const AdminPluginToolPath: OpenAPIPath = {
     post: {
       summary: '重置工具运行时配置',
       description: '将工具运行时配置重置为插件服务默认值，需要系统管理员权限',
-      tags: [TagsMap.pluginToolAdmin],
+      tags: [DevApiTagsMap.pluginToolAdmin],
       requestBody: {
         content: {
           'application/json': {
@@ -204,7 +204,7 @@ export const AdminPluginToolPath: OpenAPIPath = {
     delete: {
       summary: '删除系统工具',
       description: '根据ID删除系统工具，需要系统管理员权限',
-      tags: [TagsMap.pluginToolAdmin],
+      tags: [DevApiTagsMap.pluginToolAdmin],
       requestParams: {
         query: DeleteSystemToolQuerySchema
       },
@@ -225,7 +225,7 @@ export const AdminPluginToolPath: OpenAPIPath = {
     post: {
       summary: '获取所有系统工具类型应用',
       description: '获取所有系统工具类型应用，用于选择系统上的应用作为系统工具。需要系统管理员权限',
-      tags: [TagsMap.pluginToolAdmin],
+      tags: [DevApiTagsMap.pluginToolAdmin],
       requestBody: {
         content: {
           'application/json': {
@@ -249,7 +249,7 @@ export const AdminPluginToolPath: OpenAPIPath = {
     post: {
       summary: '将系统应用设置成系统工具',
       description: '将系统应用设置成系统工具，需要系统管理员权限',
-      tags: [TagsMap.pluginToolAdmin],
+      tags: [DevApiTagsMap.pluginToolAdmin],
       requestBody: {
         content: {
           'application/json': {
@@ -273,7 +273,7 @@ export const AdminPluginToolPath: OpenAPIPath = {
     put: {
       summary: '更新工作流工具',
       description: '更新工作流工具配置，需要系统管理员权限',
-      tags: [TagsMap.pluginToolAdmin],
+      tags: [DevApiTagsMap.pluginToolAdmin],
       requestBody: {
         content: {
           'application/json': {
