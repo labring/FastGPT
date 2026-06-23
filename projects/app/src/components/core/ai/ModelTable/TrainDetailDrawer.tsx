@@ -711,7 +711,7 @@ const TrainDetailDrawer = ({
                       <Td fontSize={'sm'} whiteSpace={'nowrap'}>
                         <Text color={'myGray.700'}>{formatTime2YMDHMS(item.createTime)}</Text>
                       </Td>
-                      <Td fontSize={'sm'} maxW={'180px'} w={'180px'}>
+                      <Td fontSize={'sm'} maxW={'180px'} w={'180px'} className="tdTooltipFix">
                         <MyTooltip label={item.newModelName}>
                           <Text
                             color={'myGray.700'}
@@ -719,7 +719,6 @@ const TrainDetailDrawer = ({
                             textOverflow={'ellipsis'}
                             whiteSpace={'nowrap'}
                             maxW={'160px'}
-                            lineHeight={'20px'}
                           >
                             {item.newModelName || '-'}
                           </Text>
@@ -729,7 +728,7 @@ const TrainDetailDrawer = ({
                         {item.creatorName || '-'}
                       </Td>
                       <Td>{renderStatus(item)}</Td>
-                      <Td fontSize={'sm'} maxW={'150px'} w={'150px'}>
+                      <Td fontSize={'sm'} maxW={'150px'} w={'150px'} className="tdTooltipFix">
                         <MyTooltip label={getTrainDatasetDisplay(item)}>
                           <Text
                             color={'myGray.700'}
@@ -737,7 +736,6 @@ const TrainDetailDrawer = ({
                             textOverflow={'ellipsis'}
                             whiteSpace={'nowrap'}
                             maxW={'130px'}
-                            lineHeight={'20px'}
                           >
                             {getTrainDatasetDisplay(item)}
                           </Text>
