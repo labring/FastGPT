@@ -2,6 +2,7 @@ import { Button } from '@chakra-ui/react';
 import { LazyCollaboratorProvider } from '@/components/support/permission/MemberManager/context';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import { updateModelCollaborators } from '@/web/common/system/api';
+import { clientInitData } from '@/web/common/system/staticData';
 import type { useTableMultipleSelect } from '@fastgpt/web/hooks/useTableMultipleSelect';
 import type { I18nT, ModelRow, TeamPermission } from './types';
 
@@ -42,6 +43,7 @@ const BatchPermissionActionBar = ({
               modelIds: manageableItems.map((i) => i.id)
             })
           }
+          refetchResource={() => clientInitData()}
           permission={permission}
         >
           {({ onOpenManageModal }) => (

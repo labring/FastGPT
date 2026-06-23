@@ -499,6 +499,7 @@ const ModelTable = () => {
                                 throw err;
                               }
                             }}
+                            refetchResource={refreshModels}
                             permission={userInfo!.team.permission}
                           >
                             {({ onOpenManageModal }) => (
