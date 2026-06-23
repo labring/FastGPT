@@ -305,7 +305,11 @@ const AppCard = React.memo(function AppCard({
                         type: 'grayBg' as MenuItemType,
                         label: t('skill:export_as_skill'),
                         onClick: handleOpenExportSkill
-                      },
+                      }
+                    ]
+                  : []),
+                ...(app.type === AppTypeEnum.workflow
+                  ? [
                       {
                         type: 'grayBg' as MenuItemType,
                         label: (
