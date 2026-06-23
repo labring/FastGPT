@@ -1,4 +1,4 @@
-import type { FlexProps } from '@chakra-ui/react';
+import type { FlexProps, MenuItemProps } from '@chakra-ui/react';
 import {
   Box,
   type ButtonProps,
@@ -8,11 +8,10 @@ import {
   Menu,
   MenuButton,
   MenuItem,
-  type MenuItemProps,
-  MenuList,
   useDisclosure
 } from '@chakra-ui/react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import MyTag from '../Tag/index';
 import MyIcon from '../Icon';
 import MyAvatar from '../Avatar';
@@ -23,19 +22,6 @@ import { shadowLight } from '../../../styles/theme';
 import { useMemoEnhance } from '../../../hooks/useMemoEnhance';
 import MyLoading from '../MyLoading';
 import SearchInput from '../Input/SearchInput';
-
-const menuItemStyles: MenuItemProps = {
-  borderRadius: 'sm',
-  py: 2,
-  display: 'flex',
-  alignItems: 'center',
-  _hover: {
-    backgroundColor: 'myGray.100'
-  },
-  _notLast: {
-    mb: 2
-  }
-};
 
 export type SelectProps<T = any> = {
   list: {
@@ -76,6 +62,17 @@ type SelectedItemType<T> = {
   value: T;
 };
 
+const menuItemStyling: MenuItemProps = {
+  borderRadius: 'sm',
+  py: 2,
+  px: 2,
+  display: 'flex',
+  alignItems: 'center',
+  fontSize: 'sm',
+  whiteSpace: 'pre-wrap',
+  mb: 1
+};
+
 const MultipleSelect = <T = any,>({
   value: initialValue = [],
   placeholder,
@@ -103,10 +100,13 @@ const MultipleSelect = <T = any,>({
   tagStyle,
   menuBottomSlot,
   isLoading,
+  onClick: _ignoredOnClick,
   ...props
 }: SelectProps<T>) => {
   const SearchInputRef = useRef<HTMLInputElement>(null);
   const tagsContainerRef = useRef<HTMLDivElement>(null);
+  const TriggerRef = useRef<HTMLDivElement>(null);
+  const DropdownRef = useRef<HTMLDivElement>(null);
 
   const { t } = useTranslation();
   const { isOpen, onOpen: originalOnOpen, onClose } = useDisclosure();
@@ -119,7 +119,7 @@ const MultipleSelect = <T = any,>({
   const canInput = setInputValue !== undefined;
   const isSearchable = searchable || canInput;
 
-  // 内部搜索状态（当使用 searchable 模式时）
+  // 内部搜索状态
   const [internalSearchKey, setInternalSearchKey] = useState('');
   const searchKey = searchable ? internalSearchKey : inputValue ?? '';
   const setSearchKey = searchable
@@ -153,6 +153,7 @@ const MultipleSelect = <T = any,>({
     },
     [inputValue, formatValue, onSelect]
   );
+
   useEffect(() => {
     if (!isOpen) {
       setInputValue?.('');
@@ -167,7 +168,6 @@ const MultipleSelect = <T = any,>({
     if (typeof node === 'string') return node;
     if (typeof node === 'number') return String(node);
     if (!node) return '';
-    // 处理 React 元素，递归提取子节点的文本
     if (React.isValidElement(node)) {
       const props = node.props as { children?: React.ReactNode };
       if (props.children) {
@@ -183,7 +183,6 @@ const MultipleSelect = <T = any,>({
     return '';
   }, []);
 
-  // 根据搜索关键词过滤列表
   const filteredList = useMemo(() => {
     if (!searchKey) return list;
     const lowerSearch = searchKey.toLowerCase();
@@ -212,11 +211,10 @@ const MultipleSelect = <T = any,>({
 
   const onSelectAll = useCallback(() => {
     onSelect(isSelectAll ? [] : list.map((item) => item.value));
-
     setIsSelectAll?.((state) => !state);
   }, [isSelectAll, onSelect, list, setIsSelectAll]);
 
-  // 动态长度计算器 - 计算一行能展示多少个tag，剩余用+n表示
+  // 动态长度计算器
   const calculateLayout = useCallback(() => {
     if (!tagsContainerRef.current || selectedItems.length === 0) {
       setVisibleItems(selectedItems);
@@ -225,47 +223,37 @@ const MultipleSelect = <T = any,>({
     }
 
     const containerWidth = tagsContainerRef.current.offsetWidth;
-    const tagGap = 4; // tag之间的gap
-    const overflowIndicatorWidth = 30; // "+n" 宽度
+    const tagGap = 4;
+    const overflowIndicatorWidth = 30;
     const formLabelWidth = formLabel ? formLabel.length * 8 + 20 : 0;
 
-    // 实际可用宽度
     const availableWidth = containerWidth - formLabelWidth - 10;
 
-    // 如果只有一个项目，直接显示
     if (selectedItems.length === 1) {
       setVisibleItems(selectedItems);
       setOverflowItems([]);
       return;
     }
 
-    // 创建临时元素来测量每个tag的实际宽度
     const measureTagWidth = (item: any): number => {
-      // 如果有tagStyle.w，优先使用
       if (tagStyle?.w) {
         return typeof tagStyle.w === 'number' ? tagStyle.w : parseInt(String(tagStyle.w)) || 60;
       }
-
-      // 否则根据文本长度估算（更精确）
       const text = String(item.label || item.value);
-      const baseWidth = 16; // 基础padding
-      const charWidth = 8; // 每个字符约8px
-      const closeIconWidth = closeable ? 20 : 0; // 关闭按钮宽度
-
+      const baseWidth = 16;
+      const charWidth = 8;
+      const closeIconWidth = closeable ? 20 : 0;
       return baseWidth + text.length * charWidth + closeIconWidth;
     };
 
-    // 确保至少显示1个tag
     const firstTagWidth = measureTagWidth(selectedItems[0]);
 
-    // 如果连第一个tag都放不下，也要强制显示
     if (availableWidth < firstTagWidth) {
       setVisibleItems([selectedItems[0]]);
       setOverflowItems(selectedItems.slice(1));
       return;
     }
 
-    // 精确计算每个tag的宽度
     let usedWidth = 0;
     let visibleCount = 0;
 
@@ -286,7 +274,6 @@ const MultipleSelect = <T = any,>({
       }
     }
 
-    // 保证至少显示1个tag
     if (visibleCount === 0) {
       visibleCount = 1;
     }
@@ -295,40 +282,90 @@ const MultipleSelect = <T = any,>({
     setOverflowItems(selectedItems.slice(visibleCount));
   }, [closeable, formLabel, selectedItems, tagStyle?.w]);
 
-  // 动态监听容器宽度变化并重新计算布局
   useEffect(() => {
     if (!tagsContainerRef.current) return;
 
-    // 创建 ResizeObserver 监听容器宽度变化
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        // 当容器宽度发生变化时，触发重新计算
         requestAnimationFrame(() => {
           calculateLayout();
         });
       }
     });
 
-    // 开始监听容器
     resizeObserver.observe(tagsContainerRef.current);
 
-    // 初始计算
     requestAnimationFrame(() => {
       calculateLayout();
     });
 
-    // 清理监听器
     return () => {
       resizeObserver.disconnect();
     };
   }, [calculateLayout]);
 
-  // 当选中项目、样式等发生变化时重新计算
   useEffect(() => {
     requestAnimationFrame(() => {
       calculateLayout();
     });
   }, [calculateLayout]);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        TriggerRef.current &&
+        !TriggerRef.current.contains(target) &&
+        DropdownRef.current &&
+        !DropdownRef.current.contains(target)
+      ) {
+        onClose();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen, onClose]);
+
+  // Escape to close
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  // Calculate dropdown position
+  const getDropdownPosition = () => {
+    if (typeof window === 'undefined') return { top: 0, left: 0, w: 0 };
+    const rect = TriggerRef.current?.getBoundingClientRect();
+    if (!rect) return { top: 0, left: 0, w: 0 };
+
+    const viewportHeight = window.innerHeight;
+    const estimatedDropdownH = 300;
+
+    let top = rect.bottom + 4;
+    if (top + estimatedDropdownH > viewportHeight && rect.top > estimatedDropdownH) {
+      top = rect.top - estimatedDropdownH - 4;
+    }
+
+    return {
+      top: Math.max(4, top),
+      left: rect.left,
+      w: rect.width
+    };
+  };
+
+  const dropdownPos = isOpen ? getDropdownPosition() : null;
 
   const ListRender = useMemo(() => {
     return (
@@ -338,24 +375,18 @@ const MultipleSelect = <T = any,>({
           return (
             <MenuItem
               key={i}
-              {...(isSelected
-                ? {
-                    color: 'primary.600'
-                  }
-                : {
-                    color: 'myGray.900'
-                  })}
+              {...menuItemStyling}
+              color={isSelected ? 'primary.600' : 'myGray.900'}
+              gap={2}
+              _hover={{ backgroundColor: 'myGray.100' }}
+              closeOnSelect={false}
               onClick={(e) => {
                 e.stopPropagation();
                 e.preventDefault();
                 onclickItem(item.value);
               }}
-              whiteSpace={'pre-wrap'}
-              fontSize={'sm'}
-              gap={2}
-              {...menuItemStyles}
             >
-              <Checkbox isChecked={isSelected} />
+              <Checkbox isChecked={isSelected} pointerEvents="none" />
               {item.icon && <MyAvatar src={item.icon} w={'1rem'} borderRadius={'0'} />}
               <Box flex={'1 0 0'}>{item.label}</Box>
             </MenuItem>
@@ -372,12 +403,12 @@ const MultipleSelect = <T = any,>({
         isOpen={isOpen && !isDisabled}
         onOpen={isDisabled ? undefined : onOpen}
         onClose={onClose}
-        strategy={'fixed'}
-        matchWidth
+        closeOnBlur={false}
         closeOnSelect={false}
       >
         <MenuButton
           as={Flex}
+          ref={TriggerRef}
           px={3}
           alignItems={'center'}
           borderRadius={'md'}
@@ -498,66 +529,82 @@ const MultipleSelect = <T = any,>({
           </Flex>
         </MenuButton>
 
-        <MenuList
-          className={props.className}
-          px={'6px'}
-          py={'6px'}
-          border={'1px solid #fff'}
-          boxShadow={
-            '0px 4px 10px 0px rgba(19, 51, 107, 0.10), 0px 0px 1px 0px rgba(19, 51, 107, 0.10);'
-          }
-          zIndex={99}
-          maxH={'40vh'}
-          overflowY={'auto'}
-          position={'relative'}
-        >
-          {/* 搜索框 */}
-          {searchable && (
-            <Box px={'6px'} pt={'6px'} pb={'6px'}>
-              <SearchInput
-                placeholder={searchPlaceholder || t('common:search')}
-                value={internalSearchKey}
-                onChange={(e) => setSearchKey?.(e.target.value)}
-              />
-            </Box>
-          )}
-
-          {setIsSelectAll && (
-            <>
-              <MenuItem
-                color={isSelectAll ? 'primary.600' : 'myGray.900'}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  onSelectAll();
-                }}
-                whiteSpace={'pre-wrap'}
-                fontSize={'sm'}
-                gap={2}
-                mb={1}
-                {...menuItemStyles}
-              >
-                <Checkbox isChecked={isSelectAll} />
-                <Box flex={'1 0 0'}>{t('common:All')}</Box>
-              </MenuItem>
-
-              <MyDivider my={1} />
-            </>
-          )}
-
-          {ScrollData ? <ScrollData minH={20}>{ListRender}</ScrollData> : ListRender}
-
-          {menuBottomSlot && (
-            <>
-              <MyDivider my={1} />
-              <Box px={1} py={1}>
-                {menuBottomSlot}
+      {isOpen &&
+        !isDisabled &&
+        dropdownPos &&
+        createPortal(
+          <Box
+            ref={DropdownRef}
+            className={props.className}
+            position="fixed"
+            zIndex={1500}
+            top={`${dropdownPos.top}px`}
+            left={`${dropdownPos.left}px`}
+            width={`${dropdownPos.w}px`}
+            px={'6px'}
+            py={'6px'}
+            border={'1px solid #fff'}
+            boxShadow={
+              '0px 4px 10px 0px rgba(19, 51, 107, 0.10), 0px 0px 1px 0px rgba(19, 51, 107, 0.10);'
+            }
+            maxH={'40vh'}
+            overflowY={'auto'}
+            bg={'white'}
+            borderRadius={'md'}
+            onMouseLeave={() => {
+              if (document.activeElement instanceof HTMLElement) {
+                document.activeElement.blur();
+              }
+            }}
+          >
+            {/* 搜索框 */}
+            {searchable && (
+              <Box px={'6px'} pt={'6px'} pb={'6px'}>
+                <SearchInput
+                  placeholder={searchPlaceholder || t('common:search')}
+                  value={internalSearchKey}
+                  onChange={(e) => setSearchKey?.(e.target.value)}
+                />
               </Box>
-            </>
-          )}
+            )}
 
-          {isLoading && <MyLoading fixed={false} />}
-        </MenuList>
+            {setIsSelectAll && (
+              <>
+                <MenuItem
+                  {...menuItemStyling}
+                  color={isSelectAll ? 'primary.600' : 'myGray.900'}
+                  gap={2}
+                  _hover={{ backgroundColor: 'myGray.100' }}
+                  closeOnSelect={false}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    onSelectAll();
+                  }}
+                >
+                  <Checkbox isChecked={isSelectAll} pointerEvents="none" />
+                  <Box flex={'1 0 0'}>{t('common:All')}</Box>
+                </MenuItem>
+
+                <MyDivider my={1} />
+              </>
+            )}
+
+            {ScrollData ? <ScrollData minH={20}>{ListRender}</ScrollData> : ListRender}
+
+            {menuBottomSlot && (
+              <>
+                <MyDivider my={1} />
+                <Box px={1} py={1}>
+                  {menuBottomSlot}
+                </Box>
+              </>
+            )}
+
+            {isLoading && <MyLoading fixed={false} />}
+          </Box>,
+          document.body
+        )}
       </Menu>
     </Box>
   );
