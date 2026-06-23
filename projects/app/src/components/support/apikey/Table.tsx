@@ -131,7 +131,7 @@ const ApiKeyTable = ({ mode = 'account' }: ApiKeyTableProps) => {
               fontSize={isPublishMode ? ['md', 'lg'] : 'lg'}
               fontWeight={isPublishMode ? 'bold' : 'normal'}
             >
-              {t('common:support.openapi.Api manager')}
+              {t('common:support.openapi.Api manager')}({apiKeys.length})
             </Box>
             {feConfigs?.docUrl && (
               <Link

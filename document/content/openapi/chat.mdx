@@ -3,25 +3,24 @@ title: 对话接口
 description: FastGPT OpenAPI 对话接口
 ---
 
-# 如何获取 AppId
+## 如何获取 AppId
 
 可在应用详情的路径里获取 AppId。
 
 ![](../../public/imgs/appid.png)
 
-# 发起会话
-
-- 使用 APIKey 鉴权。调用 `chat/completions` 时，推荐在请求体传入 `appId`。
-- 为兼容 OpenAI SDK，也支持 `Authorization: Bearer <apiKey>-<appId>`。该后缀仅作为传输兼容格式，不会写入数据库。
-- 如需通过 `authProxy` 代理团队成员身份，需要团队所有者在创建或编辑该 key 时开启 `authProxy`；代理身份仍需要具备目标应用和会话权限。
-- 有些包调用时，`BaseUrl` 需要添加 `v1` 路径，有些不需要，如果出现 404 情况，可补充 `v1` 重试。
-
-{/* * 对话现在有`v1`和`v2`两个接口，可以按需使用，v2 自 4.9.4 版本新增，v1 接口同时不再维护 */}
-
 ## 发起会话
 
-`v1` 对话接口兼容 `GPT` 的接口！如果你的项目使用的是标准的 `GPT` 官方接口，可以直接通过修改 `BaseUrl` 和 `Authorization` 来访问 FastGpt 应用，不过需要注意下面几个规则：
+### 密钥使用规范
 
+- 使用 APIKey 鉴权。调用 `chat/completions` 时，推荐在请求体传入 `body.appId`。
+- 为兼容 OpenAI SDK，也支持 `Authorization: Bearer <apiKey>-<appId>`，此时不需要传递 `body.appId`。
+- 有些 SDK 调用时，`BaseUrl` 需要添加 `v1` 路径，有些不需要，如果出现 404 情况，可补充 `v1` 重试。
+- appId 的优先级：`body.appId` , `<apiKey>-<appId>` , `apikey 关联的 appId(旧版适配)`
+
+### 注意事项
+
+- 如需通过 `authProxy` 代理团队成员身份，需要团队所有者在创建或编辑该 key 时开启 `authProxy`；代理身份仍需要具备目标应用和会话权限。（仅适用于 FastGPT >= v4.15.0）
 - 传入的 `model`，`temperature` 等参数字段均无效，这些字段由编排决定，不会根据 API 参数改变。
 - 不会返回实际消耗 `Token` 值，如果需要，可以设置 `detail=true`，并手动计算 `responseData` 里的 `tokens` 值。
 
