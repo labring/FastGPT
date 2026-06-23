@@ -33,10 +33,15 @@ import {
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { InteractiveNodeResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import { useSandbox } from './sub/sandbox';
+import {
+  agentSandboxBootstrap,
+  ensureAgentSandboxRuntime,
+  streamAgentSandboxInitStatus
+} from './sub/sandbox';
 import type { WorkflowNodeResponseWriter } from '../../../../chat/nodeResponseStorage';
 import type { RuntimeNodeResponseSummary } from '../../type';
 import { createAgentNodeResponseCollector } from './nodeResponseCollector';
+import { createAgentSandboxPermissionDeniedError } from '../../../../ai/sandbox/error';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemMiniType[];
@@ -70,6 +75,7 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.datasetSearchExtensionBg]?: string;
   [NodeInputKeyEnum.authTmbId]?: boolean;
   [NodeInputKeyEnum.useAgentSandbox]?: boolean;
+  [NodeInputKeyEnum.sandboxEntrypoint]?: string;
 }> & {
   nodeResponseWriter?: WorkflowNodeResponseWriter;
 };
@@ -145,6 +151,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       skills: selectedSkills = [],
       editSkillId,
       useAgentSandbox = false,
+      sandboxEntrypoint,
       model,
       aiChatReasoning
     }
@@ -162,6 +169,13 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
   }
 
   const skillIds = editSkillId ? [editSkillId] : selectedSkills.map(({ skillId }) => skillId);
+  const hasSandboxRuntimeDependency = !!editSkillId || skillIds.length > 0;
+  const effectiveUseAgentSandbox =
+    hasSandboxRuntimeDependency || (!!useAgentSandbox && !!global.feConfigs?.show_agent_sandbox);
+  const effectiveSandboxEntrypoint =
+    effectiveUseAgentSandbox && useAgentSandbox && global.feConfigs?.show_agent_sandbox
+      ? sandboxEntrypoint
+      : undefined;
 
   // 初始化对话框输入的文件
   const fileUrlInput = inputs.find((item) => item.key === NodeInputKeyEnum.fileUrlList);
@@ -171,6 +185,10 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       : undefined;
 
   try {
+    if (hasSandboxRuntimeDependency && !global.feConfigs?.show_agent_sandbox) {
+      throw createAgentSandboxPermissionDeniedError();
+    }
+
     const userContext = await useUserContext({
       history,
       histories,
@@ -186,14 +204,26 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20
     });
 
+    if (effectiveUseAgentSandbox) {
+      streamAgentSandboxInitStatus({
+        workflowStreamResponse,
+        appId: runningAppInfo.id,
+        userId: uid,
+        chatId,
+        sandboxId: runningAppInfo.sandboxId
+      });
+    }
+
     // 初始化 sandbox：初始化、注入 skills、files
-    const { sandboxClient, currentWorkingDirectory, skillInfos } = await useSandbox({
+    const { sandboxClient, currentWorkingDirectory, skillInfos } = await ensureAgentSandboxRuntime({
       appId: runningAppInfo.id,
       userId: uid,
       chatId,
       sandboxId: runningAppInfo.sandboxId,
       teamId: runningAppInfo.teamId,
-      useAgentSandbox,
+      needSandboxRuntime: effectiveUseAgentSandbox,
+      sandboxBootstrap: agentSandboxBootstrap,
+      sandboxEntrypoint: effectiveSandboxEntrypoint,
       skillIds,
       editSkillId,
       currentFiles: userContext.currentFiles

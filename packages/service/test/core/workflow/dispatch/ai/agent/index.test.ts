@@ -50,6 +50,12 @@ vi.mock('@fastgpt/service/core/ai/skill/runtime', async (importOriginal) => {
   };
 });
 
+vi.mock('@fastgpt/service/core/ai/skill/runtime/entrypoint', () => ({
+  runAgentSandboxEntrypoint: vi.fn(),
+  runAgentSkillVersionEntrypoints: vi.fn(),
+  withAgentSandboxInitLease: vi.fn(async ({ fn }: { fn: () => Promise<unknown> }) => fn())
+}));
+
 vi.mock('@fastgpt/service/core/ai/sandbox/service/runtime', async (importOriginal) => {
   const original =
     await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/service/runtime')>();
@@ -236,22 +242,19 @@ describe('dispatchRunAgent user context', () => {
       exec: sandboxClientExecMock,
       getSandboxId: () => 'sandbox_prepared'
     });
-    getAgentSkillInfosMock.mockResolvedValue([
-      {
-        id: './SKILL.md',
-        name: 'Edit Skill',
-        description: 'Edit skill description',
-        directory: '.',
-        skillMdPath: './SKILL.md'
-      }
-    ]);
     injectAgentSkillFilesToSandboxMock.mockResolvedValue([
       {
-        id: './skills/Report-skill_1/SKILL.md',
+        versionId: 'version_1',
+        targetDir: '/workspace/projects/version_1'
+      }
+    ]);
+    getAgentSkillInfosMock.mockResolvedValue([
+      {
+        id: '/workspace/projects/version_1/Report/SKILL.md',
         name: 'Report',
         description: 'Write reports',
-        directory: './skills/Report-skill_1',
-        skillMdPath: './skills/Report-skill_1/SKILL.md'
+        directory: '/workspace/projects/version_1/Report',
+        skillMdPath: '/workspace/projects/version_1/Report/SKILL.md'
       }
     ]);
     getAgentRuntimeToolsMock.mockResolvedValue([]);
@@ -386,17 +389,8 @@ describe('dispatchRunAgent user context', () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const props = createProps();
     props.params.useAgentSandbox = true;
-    let sandboxReadyBeforeLoop = false;
-    runUnifiedAgentLoopMock.mockImplementationOnce(async () => {
-      sandboxReadyBeforeLoop = sandboxWriteFilesMock.mock.calls.length > 0;
-      return {
-        status: 'done',
-        answerText: 'ok',
-        completeMessages: [],
-        assistantMessages: [],
-        requestIds: []
-      };
-    });
+    props.params.sandboxEntrypoint = 'pip install -r requirements.txt';
+    injectAgentSkillFilesToSandboxMock.mockResolvedValueOnce([]);
 
     let result: any;
     runWithContext(
@@ -418,7 +412,6 @@ describe('dispatchRunAgent user context', () => {
       userId: 'user_1',
       chatId: 'chat_1'
     });
-    expect(sandboxReadyBeforeLoop).toBe(true);
     const writeFiles = sandboxWriteFilesMock.mock.calls[0][0];
     expect(writeFiles.map((file: { path: string }) => file.path)).toEqual([
       'user_files/current.pdf'
@@ -481,6 +474,15 @@ describe('dispatchRunAgent user context', () => {
     props.params.useAgentSandbox = false;
     props.params.skills = [];
     props.params.editSkillId = 'edit_skill_1';
+    getAgentSkillInfosMock.mockResolvedValueOnce([
+      {
+        id: './SKILL.md',
+        name: 'Edit Skill',
+        description: 'Edit skill description',
+        directory: '.',
+        skillMdPath: './SKILL.md'
+      }
+    ]);
 
     let result: any;
     runWithContext(

@@ -14,6 +14,11 @@ function getLanguage(language: string | undefined): string {
     case 'js':
       fullName = 'javascript';
       break;
+    case 'sh':
+    case 'shell':
+    case 'bash':
+      fullName = 'shell';
+      break;
     default:
       fullName = `javascript`;
       break;
@@ -24,8 +29,7 @@ function getLanguage(language: string | undefined): string {
 const CodeEditor = (props: Props) => {
   const { t } = useTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const { language, ...otherProps } = props;
-  const fullName = getLanguage(language);
+  const fullName = getLanguage(props.language);
   return (
     <>
       <MyEditor {...props} resize onOpenModal={onOpen} language={fullName} />

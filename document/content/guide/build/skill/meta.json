@@ -4,6 +4,7 @@
   "pages": [
     "intro",
     "development",
+    "initialization",
     "version",
     "integration"
   ]

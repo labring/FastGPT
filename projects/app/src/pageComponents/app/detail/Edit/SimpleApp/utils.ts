@@ -106,6 +106,10 @@ export const appWorkflow2Form = ({
         node.inputs,
         NodeInputKeyEnum.useAgentSandbox
       );
+      defaultAppForm.aiSettings.sandboxEntrypoint = findInputValueByKey(
+        node.inputs,
+        NodeInputKeyEnum.sandboxEntrypoint
+      );
     } else if (node.flowNodeType === FlowNodeTypeEnum.datasetSearchNode) {
       defaultAppForm.dataset.datasets = findInputValueByKey(
         node.inputs,
@@ -583,6 +587,8 @@ export function form2AppWorkflow(
     };
   }
   function toolTemplates(formData: AppFormEditFormType): WorkflowType {
+    const normalizedSandboxEntrypoint = formData.aiSettings.sandboxEntrypoint?.trim() || undefined;
+
     const toolNodeId = getNanoid(6);
 
     // Dataset tool config
@@ -717,6 +723,13 @@ export function form2AppWorkflow(
               label: '',
               valueType: WorkflowIOValueTypeEnum.boolean,
               value: formData.aiSettings.useAgentSandbox ?? false
+            },
+            {
+              key: NodeInputKeyEnum.sandboxEntrypoint,
+              renderTypeList: [FlowNodeInputTypeEnum.hidden],
+              label: '',
+              valueType: WorkflowIOValueTypeEnum.string,
+              value: normalizedSandboxEntrypoint
             },
             {
               key: NodeInputKeyEnum.aiSystemPrompt,

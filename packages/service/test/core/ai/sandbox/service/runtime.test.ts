@@ -122,7 +122,9 @@ describe('sandbox runtime service', () => {
   });
 
   it('gets a sandbox client by stable sandbox id and ensures it is available', async () => {
-    const client = await getSandboxClient({ sandboxId: 'sandbox-ready-check' });
+    const client = await getSandboxClient({
+      sandboxId: 'sandbox-ready-check'
+    });
 
     expect(client.getSandboxId()).toBe('sandbox-ready-check');
     expect(mocks.getSessionVolumeConfig).not.toHaveBeenCalled();

@@ -40,7 +40,7 @@ async function handler(req: ApiRequestProps): Promise<SandboxGetTicketResponse> 
   });
 
   // 2. 调度并确保沙盒已拉起可用
-  await getSandboxClient({ appId, userId: uid, chatId, teamId });
+  await getSandboxClient({ appId, userId: uid, chatId });
 
   // 签发短期 HMAC 凭证，内含租户元数据，不包含任何物理寻址信息。
   const ticket = jwt.sign(

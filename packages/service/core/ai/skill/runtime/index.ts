@@ -2,21 +2,15 @@ import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import { MongoAgentSkills } from '../model/schema';
 import { MongoAgentSkillsVersion } from '../version/schema';
 import { downloadSkillPackage } from '../package';
-import {
-  parseSkillMarkdown,
-  shellQuote,
-  joinSandboxPath,
-  getSkillsRootPath,
-  getSkillTargetPath
-} from '../utils';
+import { parseSkillMarkdown, shellQuote, joinSandboxPath, getSkillsRootPath } from '../utils';
 import { getLogger, LogCategories } from '../../../../common/logger';
-import type { DeployedSkillInfo } from './types';
+import type { DeployedSkillInfo, DeployedSkillVersion } from './types';
 import { serviceEnv } from '../../../../env';
 
-export type { DeployedSkillInfo } from './types';
+export type { DeployedSkillInfo, DeployedSkillVersion } from './types';
 
 const logger = getLogger(LogCategories.MODULE.AI.AGENT);
-const parseCommandOutputLines = (stdout: string) => stdout.trim().split('\n').filter(Boolean);
+const parseCommandOutputNulls = (stdout: string) => stdout.split('\0').filter(Boolean);
 
 type GetAgentSkillInfosParams = {
   workDirectory?: string;
@@ -41,13 +35,13 @@ export const getAgentSkillInfos = async ({
   const findResults = await Promise.all(
     scanDirectories.map(async (dir) => {
       const { exitCode, stdout, stderr } = await sandbox.execute(
-        `find ${shellQuote(dir)} -iname "SKILL.md" 2>/dev/null`
+        `find ${shellQuote(dir)} -iname "SKILL.md" -print0 2>/dev/null`
       );
       if (exitCode !== 0) {
         logger.warn('[Agent Skills] Find command failed for directory', { dir, stderr });
         return [];
       }
-      return parseCommandOutputLines(stdout);
+      return parseCommandOutputNulls(stdout);
     })
   );
 
@@ -112,8 +106,44 @@ export const injectAgentSkillFilesToSandbox = async ({
   skillIds: string[];
   teamId: string;
   workDirectory: string;
-}): Promise<DeployedSkillInfo[]> => {
-  if (skillIds.length === 0) return [];
+}): Promise<DeployedSkillVersion[]> => {
+  const skillsRootPath = getSkillsRootPath(workDirectory);
+  const prepareSkillsRootResult = await sandbox.execute(`mkdir -p ${shellQuote(skillsRootPath)}`);
+  if (prepareSkillsRootResult.exitCode !== 0) {
+    throw new Error(`Failed to prepare skill directory: ${prepareSkillsRootResult.stderr}`);
+  }
+
+  const existingDirResult = await sandbox.execute(
+    `find ${shellQuote(skillsRootPath)} -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null`
+  );
+  const listedDirs =
+    existingDirResult.exitCode === 0 ? parseCommandOutputNulls(existingDirResult.stdout) : [];
+  if (existingDirResult.exitCode !== 0) {
+    logger.warn('[Agent Skills] Failed to list deployed skill version directories', {
+      skillsRootPath,
+      stderr: existingDirResult.stderr
+    });
+  }
+  const existingDirs = listedDirs.filter((dir) => isSafeDirectSkillVersionDir(dir, skillsRootPath));
+
+  const cleanupStaleDirs = async (expectedTargetDirs: Set<string>) => {
+    const staleDirs = existingDirs.filter((dir) => !expectedTargetDirs.has(dir));
+    if (staleDirs.length === 0) return;
+
+    await sandbox
+      .execute(`rm -rf ${staleDirs.map((dir) => shellQuote(dir)).join(' ')}`)
+      .catch((error) => {
+        logger.warn('[Agent Skills] Failed to cleanup stale skill version directories', {
+          staleDirs,
+          error
+        });
+      });
+  };
+
+  if (skillIds.length === 0) {
+    await cleanupStaleDirs(new Set());
+    return [];
+  }
 
   const skills = await MongoAgentSkills.find({
     _id: { $in: skillIds },
@@ -122,6 +152,7 @@ export const injectAgentSkillFilesToSandbox = async ({
   });
   if (skills.length === 0) {
     logger.warn('[Agent Skills] No valid skills found from input skillIds', { skillIds });
+    await cleanupStaleDirs(new Set());
     return [];
   }
 
@@ -143,16 +174,14 @@ export const injectAgentSkillFilesToSandbox = async ({
     const version = versionMap.get(String(skill._id));
     if (!version?.storageKey) return [];
 
-    const skillId = String(skill._id);
-    const targetDir = getSkillTargetPath({
-      workDirectory,
-      skillId
-    });
+    const versionId = String(version._id);
+    const targetDir = joinSandboxPath(skillsRootPath, versionId);
 
     return [
       {
         skill,
         version,
+        versionId,
         targetDir
       }
     ];
@@ -162,42 +191,43 @@ export const injectAgentSkillFilesToSandbox = async ({
       '[Agent Skills] No deployable skills found (missing current versions) from input skillIds',
       { skillIds }
     );
+    await cleanupStaleDirs(new Set());
     return [];
   }
 
-  const skillsRootPath = getSkillsRootPath(workDirectory);
-  // 每轮重新部署当前选择的 skill。这样不会复用半解压、被用户误改或来自旧选择的脏目录。
-  const resetSkillsRootResult = await sandbox.execute(
-    `rm -rf ${shellQuote(skillsRootPath)} && mkdir -p ${shellQuote(skillsRootPath)}`
+  const expectedTargetDirs = new Set(deployableSkills.map(({ targetDir }) => targetDir));
+  const deployableTargetDirs = new Set(existingDirs);
+  const missingSkills = deployableSkills.filter(
+    ({ targetDir }) => !deployableTargetDirs.has(targetDir)
   );
-  if (resetSkillsRootResult.exitCode !== 0) {
-    throw new Error(`Failed to reset skill directory: ${resetSkillsRootResult.stderr}`);
-  }
-
-  const parentDirs = deployableSkills.map(({ targetDir }) => targetDir);
-  const mkdirResult = await sandbox.execute(
-    `mkdir -p ${parentDirs.map((dir) => shellQuote(dir)).join(' ')}`
-  );
-  if (mkdirResult.exitCode !== 0) {
-    throw new Error(`Failed to create skill directories inside sandbox: ${mkdirResult.stderr}`);
-  }
 
   const maxPackageBytes = serviceEnv.AGENT_SANDBOX_SKILL_MAX_SIZE * 1024 * 1024;
   const results = await Promise.all(
-    deployableSkills.map(async ({ skill, version, targetDir }) => {
+    missingSkills.map(async ({ skill, version, versionId, targetDir }) => {
       try {
         const rawPackageBuffer = await downloadSkillPackage({ storageKey: version.storageKey });
-        const zipPath = joinSandboxPath(targetDir, 'package.zip');
+        const tempDir = joinSandboxPath(
+          skillsRootPath,
+          `.tmp-${getSafeRuntimePathSegment(versionId)}-${Date.now()}-${Math.random()
+            .toString(36)
+            .slice(2)}`
+        );
+        const zipPath = joinSandboxPath(tempDir, 'package.zip');
+        const quotedTempDir = shellQuote(tempDir);
         const quotedTargetDir = shellQuote(targetDir);
         const unzipCommand = `(${[
-          `cd ${quotedTargetDir}`,
+          `cd ${quotedTempDir}`,
           `unzip -Z -t package.zip | awk -v max=${maxPackageBytes} 'BEGIN { ok=0 } /uncompressed,/ { ok=(($3 + 0) <= max) } END { exit ok ? 0 : 1 }'`,
           `unzip -Z1 package.zip | awk 'BEGIN { ok=1 } /^\\// || /(^|\\/)\\.\\.($|\\/)/ { ok=0 } END { exit ok ? 0 : 1 }'`,
           `unzip -o -q package.zip`,
-          `rm -f package.zip`
+          `rm -f package.zip`,
+          `rm -rf ${quotedTargetDir}`,
+          `mv ${quotedTempDir} ${quotedTargetDir}`
         ].join(' && ')})`;
 
         return {
+          targetDir,
+          tempDir,
           writeEntry: {
             path: zipPath,
             data: rawPackageBuffer
@@ -218,32 +248,58 @@ export const injectAgentSkillFilesToSandbox = async ({
   const unzipCommands = results.map((r) => r.unzipCommand);
 
   // 1. Batch write all ZIP packages directly to their respective folders in a single call
-  const writeResults = await sandbox.writeFiles(writeEntries);
-  const failedWrite = writeResults.find((result) => result.error);
-  if (failedWrite) {
-    await Promise.all(
-      deployableSkills.map(({ targetDir }) =>
-        sandbox.execute(`rm -rf ${shellQuote(targetDir)}`).catch(() => {})
-      )
+  if (writeEntries.length > 0) {
+    const tempDirs = results.map(({ tempDir }) => tempDir);
+    const mkdirTempResult = await sandbox.execute(
+      `mkdir -p ${tempDirs.map((dir) => shellQuote(dir)).join(' ')}`
     );
-    throw new Error(`Failed to write skill ZIP packages: ${failedWrite.error?.message}`);
+    if (mkdirTempResult.exitCode !== 0) {
+      throw new Error(
+        `Failed to create skill temp directories inside sandbox: ${mkdirTempResult.stderr}`
+      );
+    }
+
+    const writeResults = await sandbox.writeFiles(writeEntries);
+    const failedWrite = writeResults.find((result) => result.error);
+    if (failedWrite) {
+      await Promise.all(
+        results.map(({ tempDir }) =>
+          sandbox.execute(`rm -rf ${shellQuote(tempDir)}`).catch(() => {})
+        )
+      );
+      throw new Error(`Failed to write skill ZIP packages: ${failedWrite.error?.message}`);
+    }
+
+    // 2. Execute a single unified decompression command inside the sandbox container
+    const finalUnzipCmd = unzipCommands.join(' && ');
+    const extractResult = await sandbox.execute(finalUnzipCmd);
+    if (extractResult.exitCode !== 0) {
+      await Promise.all(
+        results.map(({ tempDir }) =>
+          sandbox.execute(`rm -rf ${shellQuote(tempDir)}`).catch(() => {})
+        )
+      );
+      throw new Error(
+        `Failed to decompress skill packages inside sandbox: ${extractResult.stderr}`
+      );
+    }
   }
 
-  // 2. Execute a single unified decompression command inside the sandbox container
-  const finalUnzipCmd = unzipCommands.join(' && ');
-  const extractResult = await sandbox.execute(finalUnzipCmd);
-  if (extractResult.exitCode !== 0) {
-    await Promise.all(
-      deployableSkills.map(({ targetDir }) =>
-        sandbox.execute(`rm -rf ${shellQuote(targetDir)}`).catch(() => {})
-      )
-    );
-    throw new Error(`Failed to decompress skill packages inside sandbox: ${extractResult.stderr}`);
-  }
+  await cleanupStaleDirs(expectedTargetDirs);
 
-  return getAgentSkillInfos({
-    sandbox,
-    // 只扫描本轮部署出来的 skill 目录，避免工作区其他 SKILL.md 被误注入 prompt。
-    skillDirectories: deployableSkills.map(({ targetDir }) => targetDir)
-  });
+  return deployableSkills.map(({ versionId, targetDir }) => ({
+    versionId,
+    targetDir
+  }));
+};
+
+const getSafeRuntimePathSegment = (value: string): string => value.replace(/[^a-zA-Z0-9_-]/g, '-');
+
+const isSafeDirectSkillVersionDir = (dir: string, skillsRootPath: string): boolean => {
+  const root = skillsRootPath === '/' ? '' : skillsRootPath.replace(/\/+$/, '');
+  const prefix = `${root}/`;
+  if (!dir.startsWith(prefix)) return false;
+
+  const name = dir.slice(prefix.length);
+  return /^[a-fA-F0-9]{24}$/.test(name);
 };

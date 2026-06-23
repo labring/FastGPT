@@ -54,8 +54,7 @@ describe('sandbox keepalive API', () => {
       {
         appId: 'app-1',
         userId: 'user-1',
-        chatId: 'chat-1',
-        teamId: 'team-1'
+        chatId: 'chat-1'
       },
       {
         restoreArchived: false

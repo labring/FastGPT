@@ -6,9 +6,16 @@ import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants
 import { useToolCatalog } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/hooks/useToolCatalog';
 import { ReadFileTooData } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/tools/file';
 
-const { getSandboxToolInfoMock, injectSandboxFilesMock } = vi.hoisted(() => ({
+const {
+  getSandboxToolInfoMock,
+  prepareSandboxToolRuntimeMock,
+  runAgentSandboxEntrypointMock,
+  withAgentSandboxInitLeaseMock
+} = vi.hoisted(() => ({
   getSandboxToolInfoMock: vi.fn(),
-  injectSandboxFilesMock: vi.fn()
+  prepareSandboxToolRuntimeMock: vi.fn(),
+  runAgentSandboxEntrypointMock: vi.fn(),
+  withAgentSandboxInitLeaseMock: vi.fn(async ({ fn }: { fn: () => Promise<unknown> }) => fn())
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/toolCall', async (importOriginal) => {
@@ -18,9 +25,14 @@ vi.mock('@fastgpt/service/core/ai/sandbox/toolCall', async (importOriginal) => {
   return {
     ...original,
     getSandboxToolInfo: getSandboxToolInfoMock,
-    injectSandboxFiles: injectSandboxFilesMock
+    prepareSandboxToolRuntime: prepareSandboxToolRuntimeMock
   };
 });
+
+vi.mock('@fastgpt/service/core/ai/skill/runtime/entrypoint', () => ({
+  runAgentSandboxEntrypoint: runAgentSandboxEntrypointMock,
+  withAgentSandboxInitLease: withAgentSandboxInitLeaseMock
+}));
 
 const createToolNode = (overrides: Record<string, any> = {}) =>
   ({
@@ -37,7 +49,11 @@ describe('useToolCatalog', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getSandboxToolInfoMock.mockReturnValue(undefined);
-    injectSandboxFilesMock.mockResolvedValue(undefined);
+    prepareSandboxToolRuntimeMock.mockResolvedValue({
+      provider: {
+        execute: vi.fn()
+      }
+    });
     (global as any).feConfigs = {};
   });
 
@@ -89,7 +105,6 @@ describe('useToolCatalog', () => {
           ]
         })
       ],
-      allFiles: new Map([['file_1', { id: 'file_1', url: 'https://files/a.pdf' } as any]]),
       currentInputFiles: [],
       useAgentSandbox: false,
       lang: 'en' as any,
@@ -182,7 +197,6 @@ describe('useToolCatalog', () => {
         }
       ],
       toolNodes: [],
-      allFiles: new Map(),
       currentInputFiles: [
         {
           id: 'file_1',
@@ -192,6 +206,7 @@ describe('useToolCatalog', () => {
         } as any
       ],
       useAgentSandbox: true,
+      sandboxEntrypoint: 'pip install -r requirements.txt',
       lang: 'en' as any,
       appId: 'app_1',
       userId: 'user_1',
@@ -203,7 +218,7 @@ describe('useToolCatalog', () => {
       role: ChatCompletionRequestMessageRoleEnum.System,
       content: `system prompt\n\n${SANDBOX_SYSTEM_PROMPT}`
     });
-    expect(injectSandboxFilesMock).toHaveBeenCalledWith({
+    expect(prepareSandboxToolRuntimeMock).toHaveBeenCalledWith({
       appId: 'app_1',
       userId: 'user_1',
       chatId: 'chat_1',
@@ -213,6 +228,11 @@ describe('useToolCatalog', () => {
           url: 'https://files/a.pdf'
         }
       ]
+    });
+    expect(runAgentSandboxEntrypointMock).toHaveBeenCalledWith({
+      sandbox: expect.any(Object),
+      sandboxEntrypoint: 'pip install -r requirements.txt',
+      workDirectory: expect.any(String)
     });
     expect(result.getToolInfo('sandbox_shell')).toEqual({
       type: 'sandbox',
@@ -234,7 +254,6 @@ describe('useToolCatalog', () => {
         }
       ],
       toolNodes: [],
-      allFiles: new Map(),
       currentInputFiles: [],
       useAgentSandbox: true,
       appId: 'app_1',
@@ -252,6 +271,8 @@ describe('useToolCatalog', () => {
         content: 'hello'
       }
     ]);
-    expect(injectSandboxFilesMock).not.toHaveBeenCalled();
+    expect(prepareSandboxToolRuntimeMock).not.toHaveBeenCalled();
+    expect(runAgentSandboxEntrypointMock).not.toHaveBeenCalled();
+    expect(result.sandboxClient).toBeUndefined();
   });
 });

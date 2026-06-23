@@ -87,12 +87,14 @@ const createRunner = ({
   runtimeNodes = [],
   runtimeEdges = [],
   allFiles = new Map(),
+  sandboxClient,
   fileUrls = []
 }: {
   getToolInfo: (name: string) => any;
   runtimeNodes?: any[];
   runtimeEdges?: any[];
   allFiles?: Map<string, any>;
+  sandboxClient?: any;
   fileUrls?: string[];
 }) => {
   const cacheToolFlowResponse = vi.fn();
@@ -116,6 +118,7 @@ const createRunner = ({
     runtimeNodes,
     runtimeEdges,
     allFiles,
+    sandboxClient,
     fileUrls,
     getToolInfo,
     cacheToolFlowResponse,
@@ -157,6 +160,11 @@ describe('useToolRunner', () => {
   });
 
   it('runs sandbox tools and caches sandbox workflow response', async () => {
+    const sandboxClient = {
+      provider: {
+        execute: vi.fn()
+      }
+    };
     runSandboxToolsMock.mockResolvedValue({
       input: {
         cmd: 'ls'
@@ -165,6 +173,7 @@ describe('useToolRunner', () => {
       durationSeconds: 0.5
     });
     const { runTool, cacheToolFlowResponse } = createRunner({
+      sandboxClient,
       getToolInfo: () => ({
         type: 'sandbox',
         name: 'Run shell',
@@ -184,7 +193,8 @@ describe('useToolRunner', () => {
       args: '{"cmd":"ls"}',
       appId: 'app_1',
       userId: 'user_1',
-      chatId: 'chat_1'
+      chatId: 'chat_1',
+      sandboxClient
     });
     expect(result).toEqual({
       response: 'sandbox ok',

@@ -1,0 +1,47 @@
+---
+title: Configuration Panel
+description: Detailed configuration guide for LLM parameters, virtual machine environment, and skill integration in Chat Agent V2.
+---
+
+The Configuration Panel is used to configure and bind all the core capabilities and execution environments required by your Agent.
+
+![Configuration Panel](/imgs/agent_settings_panel.png)
+
+---
+
+## AI Configuration & Virtual Machine
+
+- **AI Model**: Choose the dialogue model and configure parameters, for more general LLM parameters, refer to [AI Settings](../general/ai_settings).
+- **Prompt**: Define the core persona, objectives, and specific rules for the Agent. The editor supports rich text, and you can type `@` to quickly reference and bind tools, etc.
+
+  |                                                             |                                                                   |
+  | :---------------------------------------------------------: | :---------------------------------------------------------------: |
+  | ![`@` Tool Quick Binding](/imgs/agent_prompt_editor_at.png) | ![Rich Text Prompt Editor](/imgs/agent_prompt_editor_mention.png) |
+
+- **Virtual Machine**: Once enabled, the system assigns a dedicated Linux sandbox environment for each session, supporting code execution, file operations, and startup command configuration. For architecture and debugging details, refer to [Virtual Machine](./vm). For startup script details and execution limits, see [Startup Script](./startup).
+
+---
+
+## Associate SKILL & Tools
+
+- **Associated SKILLs**: Select and bind published SKILL packages from the skill library. The entrypoint script in the SKILL package will execute automatically when the VM spins up. If you associate SKILLs without enabling the VM sandbox, a warning "Virtual Machine Not Ready" will be displayed. To learn how to write and package custom SKILLs, please refer to [Development & Debugging](../skill/development).
+
+  ![Virtual Machine Not Ready Warning](/imgs/agent_skill_vm_not_ready.png)
+
+- **Tools**: You can choose to bind system built-in tools (e.g., search engines, charts), custom tools created by yourself or the team (including HTTP/MCP tools), or created applications.
+
+  ![Tools](/imgs/agent_integrate_tools.png)
+
+---
+
+## Knowledge Base & File Uploads
+
+- **Knowledge Base**: Associate specific corporate documents and adjust search settings (Hybrid Search, Re-ranking, etc.). It also supports configuring team member authorization permissions.
+- **File Uploads**: Toggle file uploads for end-users, permitting images, audio, video, or custom file extensions. File upload capabilities automatically adapt based on the multimodal features of the selected LLM. For detailed configurations, see [File Input](../general/fileInput).
+
+---
+
+## Welcome Text & Voice Input
+
+- **Welcome Text**: The initial welcome message sent automatically by the system before each conversation starts, supporting standard Markdown. It also supports `[Quick Question]` format, allowing users to send preset questions with a single click.
+- **Voice Input**: Enables users to input voice messages which are automatically converted to text. Once enabled, you can configure **Auto Send** (automatically send the message after recording completes) and **Auto Voice Response** (the AI will reply in audio format directly, requiring voice playback to be enabled).

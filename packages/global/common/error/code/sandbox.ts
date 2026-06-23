@@ -5,13 +5,19 @@ import type { ErrType } from '../errorCode';
 const startCode = 510000;
 
 export enum SandboxErrEnum {
-  agentSandboxPermissionDenied = 'agentSandboxPermissionDenied'
+  agentSandboxPermissionDenied = 'agentSandboxPermissionDenied',
+  agentSandboxInitializing = 'agentSandboxInitializing'
 }
 
 const sandboxErr = [
   {
     statusText: SandboxErrEnum.agentSandboxPermissionDenied,
     message: i18nT('common:code_error.sandbox_error.agent_sandbox_permission_denied')
+  },
+  {
+    statusText: SandboxErrEnum.agentSandboxInitializing,
+    message: i18nT('common:code_error.sandbox_error.agent_sandbox_initializing'),
+    httpStatus: 409
   }
 ];
 
@@ -23,7 +29,7 @@ export default sandboxErr.reduce((acc, cur, index) => {
       statusText: cur.statusText,
       message: cur.message,
       data: null,
-      httpStatus: 403
+      httpStatus: cur.httpStatus ?? 403
     }
   };
 }, {} as ErrType<`${SandboxErrEnum}`>);

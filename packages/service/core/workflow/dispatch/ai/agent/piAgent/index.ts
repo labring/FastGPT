@@ -15,7 +15,11 @@ import { getLogger, LogCategories } from '../../../../../../common/logger';
 import type { DispatchAgentModuleProps } from '..';
 import { parseUserSystemPrompt } from '../adapter/prompt';
 import { useUserContext } from '../adapter/userContext';
-import { useSandbox } from '../sub/sandbox';
+import {
+  agentSandboxBootstrap,
+  ensureAgentSandboxRuntime,
+  streamAgentSandboxInitStatus
+} from '../sub/sandbox';
 import { getAgentDatasetParams, getSubapps, type ToolDispatchContext } from '../utils';
 import {
   createPiAgentWorkflowRuntime,
@@ -26,6 +30,7 @@ import { buildPiModel, getModelApiKey, getPiThinkingLevel } from './modelBridge'
 import { buildAgentTools, createPiAgentToolEventHandler } from './toolAdapter';
 import type { RuntimeNodeResponseSummary } from '../../../type';
 import { createAgentNodeResponseCollector } from '../nodeResponseCollector';
+import { createAgentSandboxPermissionDeniedError } from '../../../../../ai/sandbox/error';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -60,6 +65,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       skills: selectedSkills = [],
       editSkillId,
       useAgentSandbox = false,
+      sandboxEntrypoint,
       aiChatVision,
       aiChatReasoning,
       aiChatReasoningEffort
@@ -113,6 +119,17 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
         ? fileLinksInput
         : undefined;
     const skillIds = editSkillId ? [editSkillId] : selectedSkills.map(({ skillId }) => skillId);
+    const hasSandboxRuntimeDependency = !!editSkillId || skillIds.length > 0;
+    if (hasSandboxRuntimeDependency && !global.feConfigs?.show_agent_sandbox) {
+      throw createAgentSandboxPermissionDeniedError();
+    }
+
+    const effectiveUseAgentSandbox =
+      hasSandboxRuntimeDependency || (!!useAgentSandbox && !!global.feConfigs?.show_agent_sandbox);
+    const effectiveSandboxEntrypoint =
+      effectiveUseAgentSandbox && useAgentSandbox && global.feConfigs?.show_agent_sandbox
+        ? sandboxEntrypoint
+        : undefined;
     const userContext = await useUserContext({
       history,
       histories,
@@ -127,12 +144,24 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       requestOrigin,
       maxFiles: chatConfig?.fileSelectConfig?.maxFiles || 20
     });
-    const { sandboxClient, currentWorkingDirectory, skillInfos } = await useSandbox({
+    if (effectiveUseAgentSandbox) {
+      streamAgentSandboxInitStatus({
+        workflowStreamResponse,
+        appId: runningAppInfo.id,
+        userId: uid,
+        chatId,
+        sandboxId: runningAppInfo.sandboxId
+      });
+    }
+    const { sandboxClient, currentWorkingDirectory, skillInfos } = await ensureAgentSandboxRuntime({
       appId: runningAppInfo.id,
       userId: uid,
       chatId,
+      sandboxId: runningAppInfo.sandboxId,
       teamId: runningAppInfo.teamId,
-      useAgentSandbox,
+      needSandboxRuntime: effectiveUseAgentSandbox,
+      sandboxBootstrap: agentSandboxBootstrap,
+      sandboxEntrypoint: effectiveSandboxEntrypoint,
       skillIds,
       editSkillId,
       currentFiles: userContext.currentFiles

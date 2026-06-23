@@ -68,7 +68,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
     per: ReadPermissionVal
   });
 
-  const sandbox = await getSandboxClient({ appId, userId: uid, chatId, teamId });
+  const sandbox = await getSandboxClient({ appId, userId: uid, chatId });
 
   const isDirectory = await isSandboxPathDirectory(sandbox, path);
 

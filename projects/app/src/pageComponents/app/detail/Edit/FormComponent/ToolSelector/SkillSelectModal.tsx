@@ -1,7 +1,7 @@
 import React from 'react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
-import { Box, Button, Flex, Grid } from '@chakra-ui/react';
+import { Box, Button, Flex, Grid, IconButton } from '@chakra-ui/react';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -70,7 +70,11 @@ const SkillSelectModal = ({
       <MyBox isLoading={isLoadingSkillList} mt={2} pb={3} flex={'1 0 0'} h={0}>
         <Box overflow={'overlay'} height={'100%'}>
           {skillList.length > 0 ? (
-            <Grid gridTemplateColumns={['1fr', '1fr 1fr']} gap={3} px={[3, 6]}>
+            <Grid
+              gridTemplateColumns={['minmax(0, 1fr)', 'repeat(2, minmax(0, 1fr))']}
+              gap={3}
+              px={[3, 6]}
+            >
               {skillList.map((item) => (
                 <SkillCard
                   key={item._id}
@@ -150,8 +154,11 @@ const SkillCard = React.memo(function SkillCard({
         </Box>
       }
     >
-      <Flex
+      <Grid
         alignItems={'center'}
+        gridTemplateColumns={'auto minmax(0, 1fr) auto'}
+        columnGap={2}
+        minW={0}
         py={3}
         px={3}
         _hover={{ bg: 'myWhite.600' }}
@@ -168,13 +175,11 @@ const SkillCard = React.memo(function SkillCard({
             flexShrink={0}
           />
         )}
-        <Box flex={'1 0 0'} ml={3}>
+        <Box minW={0}>
           <Box color={'myGray.900'} fontWeight={'500'} fontSize={'sm'} className={'textEllipsis'}>
             {item.name}
           </Box>
         </Box>
-        <Box flex={1} />
-
         {isFolder ? (
           <Button
             size={'sm'}
@@ -187,16 +192,13 @@ const SkillCard = React.memo(function SkillCard({
             {t('common:Open')}
           </Button>
         ) : isSelected ? (
-          <Button
-            size={'sm'}
-            variant={'grayDanger'}
-            leftIcon={<MyIcon name={'delete'} w={'16px'} mr={-1} />}
+          <IconButton
+            aria-label={t('common:Remove')}
+            size={'xsSquare'}
+            variant={'whiteDanger'}
+            icon={<MyIcon name={'delete'} w={'13px'} />}
             onClick={onRemove}
-            px={2}
-            fontSize={'mini'}
-          >
-            {t('common:Remove')}
-          </Button>
+          />
         ) : (
           <MyTooltip label={isAtLimit ? t('skill:skill_select_limit_tip') : undefined}>
             <Button
@@ -212,7 +214,7 @@ const SkillCard = React.memo(function SkillCard({
             </Button>
           </MyTooltip>
         )}
-      </Flex>
+      </Grid>
     </MyTooltip>
   );
 });

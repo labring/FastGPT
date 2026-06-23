@@ -7,3 +7,8 @@ export type DeployedSkillInfo = {
   directory: string;
   skillMdPath: string;
 };
+
+export type DeployedSkillVersion = {
+  versionId: string;
+  targetDir: string;
+};

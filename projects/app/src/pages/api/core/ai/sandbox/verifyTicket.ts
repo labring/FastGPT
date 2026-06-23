@@ -83,9 +83,9 @@ async function handler(req: ApiRequestProps) {
     throw new Error('Invalid ticket signature: ' + err.message);
   }
 
-  const { appId, userId, chatId, teamId } = decoded;
+  const { appId, userId, chatId } = decoded;
 
-  const sandbox = await getSandboxClient({ appId, userId, chatId, teamId });
+  const sandbox = await getSandboxClient({ appId, userId, chatId });
   const agentPassword = await readIdeAgentPassword(sandbox);
 
   const endpoint = await sandbox.provider.getEndpoint(getIdeAgentPort());

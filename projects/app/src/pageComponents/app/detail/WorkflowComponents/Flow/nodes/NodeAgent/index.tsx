@@ -42,12 +42,14 @@ import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { AppDatasetSearchParamsType } from '@fastgpt/global/core/app/type';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import SandboxTipTag from '@/pageComponents/app/detail/components/SandboxTipTag';
 import { RechargeModal } from '@/components/support/wallet/NotSufficientModal';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import DatasetCard from '@/components/core/app/DatasetCard';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import WorkflowSandboxConfig, {
+  createSandboxEntrypointInput
+} from '../components/WorkflowSandboxConfig';
 
 const PromptEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea/PromptEditor'));
 const SkillSelectModal = dynamic(
@@ -253,12 +255,10 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     () => inputs.find((i) => i.key === NodeInputKeyEnum.useAgentSandbox),
     [inputs]
   );
-  const sandboxRenderType = sandboxInput ? getRenderType(sandboxInput) : undefined;
-  const showSandboxInput =
-    !!sandboxInput &&
-    !(sandboxInput.isPro && !feConfigs?.isPlus) &&
-    sandboxRenderType !== FlowNodeInputTypeEnum.hidden &&
-    !sandboxInput.canEdit;
+  const sandboxEntrypointInput = useMemo(
+    () => inputs.find((i) => i.key === NodeInputKeyEnum.sandboxEntrypoint),
+    [inputs]
+  );
   const toolsInput = useMemo(
     () => inputs.find((i) => i.key === NodeInputKeyEnum.selectedTools),
     [inputs]
@@ -272,6 +272,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         NodeInputKeyEnum.aiSystemPrompt,
         NodeInputKeyEnum.skills,
         NodeInputKeyEnum.useAgentSandbox,
+        NodeInputKeyEnum.sandboxEntrypoint,
         NodeInputKeyEnum.selectedTools
       ]),
     []
@@ -558,32 +559,28 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         {/* 3. Chat inputs (fileLink, userChatInput) */}
         {chatInputs.length > 0 && <RenderInput nodeId={nodeId} flowInputList={chatInputs} />}
 
-        {showSandboxInput && sandboxInput && (
-          <Box
-            mb={5}
-            position={'relative'}
-            display={'flex'}
-            alignItems={'center'}
-            justifyContent={'space-between'}
-          >
-            <InputLabel nodeId={nodeId} input={sandboxInput} />
-            <Flex alignItems={'center'} gap={1} className={'nodrag'}>
-              {showSandbox && enableSandbox ? (
-                <SandboxTipTag />
-              ) : (
-                <MyTag>
-                  {showSandbox
-                    ? t('app:sandbox_free_not_support')
-                    : t('app:sandbox_not_support_tip')}
-                </MyTag>
-              )}
-              <Switch
-                isChecked={!!sandboxInput.value}
-                onChange={(e) => onChangeAgentSandbox(e.target.checked)}
-              />
-            </Flex>
-          </Box>
-        )}
+        <WorkflowSandboxConfig
+          nodeId={nodeId}
+          sandboxInput={sandboxInput}
+          sandboxEntrypointInput={sandboxEntrypointInput}
+          showSandbox={!!showSandbox}
+          enableSandbox={enableSandbox}
+          isPlus={feConfigs?.isPlus}
+          onChangeSandbox={onChangeAgentSandbox}
+          onChangeEntrypoint={(value) => {
+            onChangeNode({
+              nodeId,
+              key: NodeInputKeyEnum.sandboxEntrypoint,
+              type: 'replaceInput',
+              value: sandboxEntrypointInput
+                ? {
+                    ...sandboxEntrypointInput,
+                    value
+                  }
+                : createSandboxEntrypointInput(value)
+            });
+          }}
+        />
 
         {/* 4. Skills section (manual select / reference dual mode) */}
         {showWorkflowAgentSkills && skillsInput && (

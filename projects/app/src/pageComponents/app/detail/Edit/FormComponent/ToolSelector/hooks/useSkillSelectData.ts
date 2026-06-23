@@ -24,7 +24,8 @@ export const useSkillSelectData = () => {
       const { list } = await getSkillList({
         source: 'mine',
         parentId,
-        searchKey: searchKey || undefined
+        searchKey: searchKey || undefined,
+        withAppCount: false
       });
       return list;
     },
@@ -57,11 +58,6 @@ export const useSkillSelectData = () => {
     setSearchKey('');
   }, []);
 
-  const reset = useCallback(() => {
-    setSearchKey('');
-    setNavStack([]);
-  }, []);
-
   return {
     skillList,
     isLoadingSkillList,
@@ -69,7 +65,6 @@ export const useSkillSelectData = () => {
     setSearchKey,
     paths,
     onEnterFolder,
-    onUpdateParentId,
-    reset
+    onUpdateParentId
   };
 };

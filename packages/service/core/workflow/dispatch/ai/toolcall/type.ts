@@ -33,6 +33,7 @@ export type DispatchToolModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiChatResponseFormat]?: string;
   [NodeInputKeyEnum.aiChatJsonSchema]?: string;
   [NodeInputKeyEnum.useAgentSandbox]?: boolean;
+  [NodeInputKeyEnum.sandboxEntrypoint]?: string;
 }> & {
   messages: ChatCompletionMessageParam[];
   toolNodes: ToolNodeItemType[];
