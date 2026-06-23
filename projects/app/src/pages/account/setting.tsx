@@ -39,7 +39,7 @@ const Individuation = () => {
   return (
     <AccountContainer>
       <Box py={[3, '28px']} px={['5vw', '64px']}>
-        <Flex alignItems={'center'} fontSize={'16px'}>
+        <Flex alignItems={'center'} fontSize={'16px'} color={'myGray.900'}>
           <MyIcon mr={2} name={'common/settingLight'} w={'20px'} />
           {t('common:Setting')}
         </Flex>
