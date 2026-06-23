@@ -64,11 +64,11 @@ const maskApiKey = (apiKey: string) => {
 };
 
 type ApiKeyTableProps = {
-  tips: string;
+  tips?: string;
   mode?: 'account' | 'publish';
 };
 
-const ApiKeyTable = ({ tips, mode = 'account' }: ApiKeyTableProps) => {
+const ApiKeyTable = ({ mode = 'account' }: ApiKeyTableProps) => {
   const { t } = useTranslation();
   const theme = useTheme();
   const { copyData } = useCopyData();
@@ -141,20 +141,13 @@ const ApiKeyTable = ({ tips, mode = 'account' }: ApiKeyTableProps) => {
                 color={'primary.500'}
                 fontSize={'sm'}
               >
-                {isPublishMode ? (
-                  <Flex alignItems={'center'}>
-                    <MyIcon name="book" w={'17px'} h={'17px'} mr="1" />
-                    {t('common:read_doc')}
-                  </Flex>
-                ) : (
-                  t('common:read_doc')
-                )}
+                <Flex alignItems={'center'}>
+                  <MyIcon name="book" w={'17px'} h={'17px'} mr="1" />
+                  {t('common:read_doc')}
+                </Flex>
               </Link>
             )}
           </Flex>
-          <Box fontSize={'mini'} color={'myGray.600'}>
-            {tips}
-          </Box>
         </Box>
         <Flex
           mt={[2, 0]}
@@ -218,16 +211,29 @@ const ApiKeyTable = ({ tips, mode = 'account' }: ApiKeyTableProps) => {
                 <Tr key={_id}>
                   <Td>{name}</Td>
                   <Td>
-                    <Flex alignItems={'center'} gap={2}>
+                    <Flex alignItems={'center'} gap={1} role={'group'}>
                       <Box>{maskApiKey(apiKey)}</Box>
                       {canCopy && (
-                        <IconButton
+                        <MyIcon
+                          name={copyingApiKeyId === _id ? 'common/loading' : 'copy'}
+                          w={'15px'}
                           aria-label={t('common:Copy')}
-                          icon={<MyIcon name={'copy'} w={'15px'} />}
-                          size={'xs'}
-                          variant={'whiteBase'}
-                          isLoading={copyingApiKeyId === _id}
+                          role={'button'}
+                          tabIndex={0}
+                          color={'myGray.600'}
+                          opacity={copyingApiKeyId === _id ? 1 : 0}
+                          visibility={copyingApiKeyId === _id ? 'visible' : 'hidden'}
+                          cursor={'pointer'}
+                          transition={'opacity 0.15s ease, color 0.15s ease'}
+                          _groupHover={{ opacity: 1, visibility: 'visible' }}
+                          _hover={{ color: 'primary.600' }}
                           onClick={() => onCopyApiKey(_id)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              onCopyApiKey(_id);
+                            }
+                          }}
                         />
                       )}
                     </Flex>

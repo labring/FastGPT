@@ -1,5 +1,4 @@
 {
-  "app_key_tips": "这里展示当前登录成员可用的 API 密钥。调用当前应用时，建议在请求体中传入 appId，具体使用可参考文档。",
   "basic_info": "基本信息",
   "copy_link_hint": "将下面链接复制到指定位置",
   "create_api_key": "创建新 key",

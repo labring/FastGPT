@@ -1,5 +1,4 @@
 {
-  "app_key_tips": "This list shows API keys available to the current signed-in member. When calling this app, pass appId in the request body. See the documentation for details.",
   "basic_info": "Basic Info",
   "copy_link_hint": "Copy the link below to the specified location",
   "create_api_key": "Create New Key",

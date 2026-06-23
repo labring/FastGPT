@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Box } from '@chakra-ui/react';
+import { Box, HStack } from '@chakra-ui/react';
 
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import dynamic from 'next/dynamic';
@@ -10,9 +10,9 @@ import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { UserTagsSchema } from '@fastgpt/global/support/user/type';
+import ProTag from '@/components/ProTip/Tag';
 
 const Link = dynamic(() => import('./Link'));
 const API = dynamic(() => import('./API'));
@@ -25,11 +25,11 @@ const Playground = dynamic(() => import('./Playground'));
 
 const OutLink = () => {
   const { t } = useTranslation();
-  const { feConfigs } = useSystemStore();
-  const { toast } = useToast();
+  const { feConfigs, setShowProModal } = useSystemStore();
   const { userInfo } = useUserStore();
 
   const appId = useContextSelector(AppContext, (v) => v.appId);
+  const isPro = !!feConfigs.isPlus;
 
   const publishList = useMemo(
     () => [
@@ -63,7 +63,12 @@ const OutLink = () => {
         ? [
             {
               icon: 'core/app/publish/lark',
-              title: t('publish:feishu_bot'),
+              title: (
+                <HStack gap={1}>
+                  <Box>{t('publish:feishu_bot')}</Box>
+                  {!isPro && <ProTag />}
+                </HStack>
+              ),
               desc: t('publish:feishu_bot_desc'),
               value: PublishChannelEnum.feishu,
               isProFn: true
@@ -75,7 +80,12 @@ const OutLink = () => {
         ? [
             {
               icon: 'common/dingtalkFill',
-              title: t('publish:dingtalk.bot'),
+              title: (
+                <HStack gap={1}>
+                  <Box>{t('publish:dingtalk.bot')}</Box>
+                  {!isPro && <ProTag />}
+                </HStack>
+              ),
               desc: t('publish:dingtalk.bot_desc'),
               value: PublishChannelEnum.dingtalk,
               isProFn: true
@@ -86,7 +96,12 @@ const OutLink = () => {
         ? [
             {
               icon: 'core/app/publish/wecom',
-              title: t('publish:wecom.bot'),
+              title: (
+                <HStack gap={1}>
+                  <Box>{t('publish:wecom.bot')}</Box>
+                  {!isPro && <ProTag />}
+                </HStack>
+              ),
               desc: t('publish:wecom.bot_desc'),
               value: PublishChannelEnum.wecom,
               isProFn: true
@@ -97,7 +112,12 @@ const OutLink = () => {
         ? [
             {
               icon: 'core/app/publish/offiaccount',
-              title: t('publish:official_account.name'),
+              title: (
+                <HStack gap={1}>
+                  <Box>{t('publish:official_account.name')}</Box>
+                  {!isPro && <ProTag />}
+                </HStack>
+              ),
               desc: t('publish:official_account.desc'),
               value: PublishChannelEnum.officialAccount,
               isProFn: true
@@ -107,13 +127,18 @@ const OutLink = () => {
 
       {
         icon: 'core/chat/sidebar/home',
-        title: t('common:navbar.Chat'),
+        title: (
+          <HStack gap={1}>
+            <Box>{t('common:navbar.Chat')}</Box>
+            {!isPro && <ProTag />}
+          </HStack>
+        ),
         desc: t('app:publish.chat_desc'),
         value: PublishChannelEnum.playground,
-        isProFn: false
+        isProFn: true
       }
     ],
-    [t, feConfigs, userInfo?.tags]
+    [t, feConfigs, isPro, userInfo?.tags]
   );
 
   const [linkType, setLinkType] = useState<PublishChannelEnum>(PublishChannelEnum.share);
@@ -130,15 +155,13 @@ const OutLink = () => {
             'repeat(4, 1fr)'
           ]}
           iconSize={'20px'}
+          gridGap={[2, 3]}
           list={publishList}
           value={linkType}
           onChange={(e) => {
             const config = publishList.find((v) => v.value === e)!;
             if (!feConfigs.isPlus && config.isProFn) {
-              toast({
-                status: 'warning',
-                title: t('common:commercial_function_tip')
-              });
+              setShowProModal(true);
             } else {
               setLinkType(e as PublishChannelEnum);
             }
