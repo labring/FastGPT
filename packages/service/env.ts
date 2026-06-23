@@ -297,7 +297,9 @@ export const serviceEnv = createEnv({
     YUQUE_DATASET_BASE_URL: UrlSchema.default('https://www.yuque.com'),
 
     // Invoke 反向调用相关。该密钥用于签发/校验插件反向调用 JWT，必须显式配置，避免未配置时落到公开默认值。
-    INVOKE_TOKEN_SECRET: z.string()
+    INVOKE_TOKEN_SECRET: z
+      .string()
+      .min(32, 'INVOKE_TOKEN_SECRET must be at least 32 characters')
   },
   emptyStringAsUndefined: true,
   runtimeEnv: process.env,

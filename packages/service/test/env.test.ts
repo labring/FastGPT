@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+const validInvokeTokenSecret = 'fastgpt_test_invoke_token_secret_32';
+
 const originalEnv = {
   SYSTEM_MAX_STRING_LENGTH_M: process.env.SYSTEM_MAX_STRING_LENGTH_M,
   CHAT_TITLE_MODEL: process.env.CHAT_TITLE_MODEL,
@@ -26,7 +28,7 @@ describe('serviceEnv', () => {
   it('validates SYSTEM_MAX_STRING_LENGTH_M during service env init', async () => {
     vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
     vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
-    vi.stubEnv('INVOKE_TOKEN_SECRET', 'token');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
 
     vi.stubEnv('SYSTEM_MAX_STRING_LENGTH_M', undefined);
     await expect(importServiceEnv()).resolves.toMatchObject({
@@ -48,7 +50,7 @@ describe('serviceEnv', () => {
   it('rejects invalid SYSTEM_MAX_STRING_LENGTH_M during service env init', async () => {
     vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
     vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
-    vi.stubEnv('INVOKE_TOKEN_SECRET', 'token');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
 
     vi.stubEnv('SYSTEM_MAX_STRING_LENGTH_M', '0');
     await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
@@ -63,7 +65,7 @@ describe('serviceEnv', () => {
   it('validates chat title generation env during service env init', async () => {
     vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
     vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
-    vi.stubEnv('INVOKE_TOKEN_SECRET', 'token');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
 
     vi.stubEnv('CHAT_TITLE_MODEL', 'title-model');
     await expect(importServiceEnv()).resolves.toMatchObject({
@@ -80,10 +82,13 @@ describe('serviceEnv', () => {
     vi.stubEnv('INVOKE_TOKEN_SECRET', undefined);
     await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
 
-    vi.stubEnv('INVOKE_TOKEN_SECRET', 'token');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', 'short-token');
+    await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
+
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
     await expect(importServiceEnv()).resolves.toMatchObject({
       serviceEnv: {
-        INVOKE_TOKEN_SECRET: 'token'
+        INVOKE_TOKEN_SECRET: validInvokeTokenSecret
       }
     });
   });
