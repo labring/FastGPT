@@ -22,6 +22,9 @@ interface Props extends PopoverContentProps {
   onCloseFunc?: () => void;
   onOpenFunc?: () => void;
   closeOnBlur?: boolean;
+  closeDelay?: number;
+  openDelay?: number;
+  disablePortal?: boolean;
 }
 
 const MyPopover = ({
@@ -34,12 +37,24 @@ const MyPopover = ({
   onOpenFunc,
   onCloseFunc,
   closeOnBlur = false,
+  closeDelay = 100,
+  openDelay = 100,
+  disablePortal = false,
   onBackdropClick,
   ...props
 }: Props) => {
   const firstFieldRef = React.useRef(null);
 
   const { onOpen, onClose, isOpen } = useDisclosure();
+
+  const { zIndex: zIndexProp = 1001, ...restProps } = props;
+
+  const content = (
+    <PopoverContent {...restProps} zIndex={disablePortal ? 100 : zIndexProp}>
+      {hasArrow && <PopoverArrow />}
+      {children({ onClose })}
+    </PopoverContent>
+  );
 
   return (
     <Popover
@@ -57,8 +72,8 @@ const MyPopover = ({
       offset={offset}
       closeOnBlur={closeOnBlur}
       trigger={trigger}
-      openDelay={100}
-      closeDelay={100}
+      openDelay={openDelay}
+      closeDelay={closeDelay}
       isLazy
       lazyBehavior="unmount"
       autoFocus={false}
@@ -69,12 +84,7 @@ const MyPopover = ({
           <Box position="fixed" zIndex={1000} inset={0} onClick={() => onBackdropClick()} />
         </Portal>
       )}
-      <Portal>
-        <PopoverContent zIndex={1001} {...props}>
-          {hasArrow && <PopoverArrow />}
-          {children({ onClose })}
-        </PopoverContent>
-      </Portal>
+      {disablePortal ? content : <Portal>{content}</Portal>}
     </Popover>
   );
 };

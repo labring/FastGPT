@@ -84,6 +84,7 @@ const ExportConfigPopover = ({ appName, appId }: { appName: string; appId: strin
       offset={[0, 20]}
       hasArrow
       trigger={'hover'}
+      disablePortal
       w={'8.6rem'}
       Trigger={
         <MyBox display={'flex'} cursor={'pointer'} onClick={(e) => e.stopPropagation()}>
@@ -93,7 +94,7 @@ const ExportConfigPopover = ({ appName, appId }: { appName: string; appId: strin
       }
     >
       {({ onClose }) => (
-        <Box p={1} onClick={(e) => e.stopPropagation()}>
+        <Box p={1} onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
           <Flex
             py={'0.38rem'}
             px={1}
