@@ -193,7 +193,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
   };
 
   const titleStyles: BoxProps = {
-    color: 'var(--light-general-on-surface, var(--Gray-Modern-900, #111824))',
+    color: 'myGray.900',
     fontFamily: '"PingFang SC"',
     fontSize: '16px',
     fontStyle: 'normal',
