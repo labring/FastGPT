@@ -9,19 +9,16 @@ const ApiReferenceReact = dynamic(
   { ssr: false }
 );
 
-function OpenAPIPage() {
-  return (
-    <Box w="100vw" h="100vh" overflow="auto">
-      <ApiReferenceReact configuration={getScalarOpenApiReferenceConfig('/api/openapi.json')} />
-    </Box>
-  );
-}
-
-// 禁用静态生成
-export async function getServerSideProps() {
-  return {
-    props: {}
-  };
-}
-
-export default OpenAPIPage;
+export const ScalarOpenApiPage = ({
+  documentUrl,
+  defaultOpenAllTags
+}: {
+  documentUrl: string;
+  defaultOpenAllTags?: boolean;
+}) => (
+  <Box w="100vw" h="100vh" overflow="auto">
+    <ApiReferenceReact
+      configuration={getScalarOpenApiReferenceConfig(documentUrl, { defaultOpenAllTags })}
+    />
+  </Box>
+);

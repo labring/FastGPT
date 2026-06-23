@@ -49,18 +49,26 @@ const defaultEditData: EditProps = {
   }
 };
 
+const getDefaultEditData = (): EditProps => ({
+  name: defaultEditData.name,
+  authProxy: defaultEditData.authProxy,
+  limit: {
+    maxUsagePoints: defaultEditData.limit?.maxUsagePoints ?? -1,
+    expiredTime: defaultEditData.limit?.expiredTime
+  }
+});
+
 const maskApiKey = (apiKey: string) => {
   if (apiKey.startsWith('******')) return apiKey;
   return `******${apiKey.slice(-4)}`;
 };
 
 type ApiKeyTableProps = {
-  tips: string;
-  appId?: string;
+  tips?: string;
   mode?: 'account' | 'publish';
 };
 
-const ApiKeyTable = ({ tips, appId, mode = 'account' }: ApiKeyTableProps) => {
+const ApiKeyTable = ({ mode = 'account' }: ApiKeyTableProps) => {
   const { t } = useTranslation();
   const theme = useTheme();
   const { copyData } = useCopyData();
@@ -100,9 +108,8 @@ const ApiKeyTable = ({ tips, appId, mode = 'account' }: ApiKeyTableProps) => {
     data: apiKeys = [],
     loading: isGetting,
     run: refetch
-  } = useRequest(() => getOpenApiKeys({ appId }), {
-    manual: false,
-    refreshDeps: [appId]
+  } = useRequest(() => getOpenApiKeys(), {
+    manual: false
   });
 
   return (
@@ -112,8 +119,8 @@ const ApiKeyTable = ({ tips, appId, mode = 'account' }: ApiKeyTableProps) => {
       flexDirection={'column'}
       h={'100%'}
       position={'relative'}
-      pt={isPublishMode ? 3 : 0}
-      px={isPublishMode ? 5 : 0}
+      pt={0}
+      px={0}
       minH={isPublishMode ? '50vh' : undefined}
     >
       <Box display={['block', 'flex']} alignItems={'center'}>
@@ -124,7 +131,7 @@ const ApiKeyTable = ({ tips, appId, mode = 'account' }: ApiKeyTableProps) => {
               fontSize={isPublishMode ? ['md', 'lg'] : 'lg'}
               fontWeight={isPublishMode ? 'bold' : 'normal'}
             >
-              {t('common:support.openapi.Api manager')}
+              {t('common:support.openapi.Api manager')}({apiKeys.length})
             </Box>
             {feConfigs?.docUrl && (
               <Link
@@ -134,20 +141,13 @@ const ApiKeyTable = ({ tips, appId, mode = 'account' }: ApiKeyTableProps) => {
                 color={'primary.500'}
                 fontSize={'sm'}
               >
-                {isPublishMode ? (
-                  <Flex alignItems={'center'}>
-                    <MyIcon name="book" w={'17px'} h={'17px'} mr="1" />
-                    {t('common:read_doc')}
-                  </Flex>
-                ) : (
-                  t('common:read_doc')
-                )}
+                <Flex alignItems={'center'}>
+                  <MyIcon name="book" w={'17px'} h={'17px'} mr="1" />
+                  {t('common:read_doc')}
+                </Flex>
               </Link>
             )}
           </Flex>
-          <Box fontSize={'mini'} color={'myGray.600'}>
-            {tips}
-          </Box>
         </Box>
         <Flex
           mt={[2, 0]}
@@ -171,12 +171,7 @@ const ApiKeyTable = ({ tips, appId, mode = 'account' }: ApiKeyTableProps) => {
             ml={3}
             leftIcon={<AddIcon fontSize={'md'} />}
             variant={isPublishMode ? 'primary' : 'whitePrimary'}
-            onClick={() =>
-              setEditData({
-                ...defaultEditData,
-                appId
-              })
-            }
+            onClick={() => setEditData(getDefaultEditData())}
           >
             {t('common:new_create')}
           </Button>
@@ -216,16 +211,29 @@ const ApiKeyTable = ({ tips, appId, mode = 'account' }: ApiKeyTableProps) => {
                 <Tr key={_id}>
                   <Td>{name}</Td>
                   <Td>
-                    <Flex alignItems={'center'} gap={2}>
+                    <Flex alignItems={'center'} gap={1} role={'group'}>
                       <Box>{maskApiKey(apiKey)}</Box>
                       {canCopy && (
-                        <IconButton
+                        <MyIcon
+                          name={copyingApiKeyId === _id ? 'common/loading' : 'copy'}
+                          w={'15px'}
                           aria-label={t('common:Copy')}
-                          icon={<MyIcon name={'copy'} w={'15px'} />}
-                          size={'xs'}
-                          variant={'whiteBase'}
-                          isLoading={copyingApiKeyId === _id}
+                          role={'button'}
+                          tabIndex={0}
+                          color={'myGray.600'}
+                          opacity={copyingApiKeyId === _id ? 1 : 0}
+                          visibility={copyingApiKeyId === _id ? 'visible' : 'hidden'}
+                          cursor={'pointer'}
+                          transition={'opacity 0.15s ease, color 0.15s ease'}
+                          _groupHover={{ opacity: 1, visibility: 'visible' }}
+                          _hover={{ color: 'primary.600' }}
                           onClick={() => onCopyApiKey(_id)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              onCopyApiKey(_id);
+                            }
+                          }}
                         />
                       )}
                     </Flex>
@@ -276,8 +284,7 @@ const ApiKeyTable = ({ tips, appId, mode = 'account' }: ApiKeyTableProps) => {
                                   _id,
                                   name,
                                   limit,
-                                  authProxy,
-                                  appId
+                                  authProxy
                                 })
                             },
                             {
@@ -466,24 +473,22 @@ function EditKeyModal({
             </Flex>
           </>
         )}
-        {!defaultData.appId && (
-          <Flex alignItems={'center'} mt={4}>
-            <FormLabel display={'flex'} flex={'0 0 90px'} alignItems={'center'}>
-              {t('common:support.openapi.Auth proxy')}
-              <QuestionTip ml={1} label={t('common:support.openapi.Auth proxy tip')}></QuestionTip>
-            </FormLabel>
-            <Controller
-              control={control}
-              name="authProxy"
-              render={({ field }) => (
-                <Switch
-                  isChecked={!!field.value}
-                  onChange={(e) => field.onChange(e.target.checked)}
-                />
-              )}
-            />
-          </Flex>
-        )}
+        <Flex alignItems={'center'} mt={4}>
+          <FormLabel display={'flex'} flex={'0 0 90px'} alignItems={'center'}>
+            {t('common:support.openapi.Auth proxy')}
+            <QuestionTip ml={1} label={t('common:support.openapi.Auth proxy tip')}></QuestionTip>
+          </FormLabel>
+          <Controller
+            control={control}
+            name="authProxy"
+            render={({ field }) => (
+              <Switch
+                isChecked={!!field.value}
+                onChange={(e) => field.onChange(e.target.checked)}
+              />
+            )}
+          />
+        </Flex>
       </Flex>
     </MyModalV2>
   );

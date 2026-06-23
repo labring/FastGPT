@@ -8,14 +8,14 @@ import {
   OperationalAdResponseSchema,
   ActivityAdResponseSchema
 } from './api';
-import { TagsMap } from '../../../../tag';
+import { DevApiTagsMap } from '../../../../tag';
 
 export const AdminInformPath: OpenAPIPath = {
   '/admin/support/user/inform/sendSystemInform': {
     post: {
       summary: '发送系统通知给所有用户',
       description: '向所有用户发送系统通知消息',
-      tags: [TagsMap.adminInform],
+      tags: [DevApiTagsMap.adminInform],
       requestBody: {
         content: {
           'application/json': {
@@ -39,7 +39,7 @@ export const AdminInformPath: OpenAPIPath = {
     get: {
       summary: '获取系统弹窗内容',
       description: '获取系统消息弹窗的内容',
-      tags: [TagsMap.adminInform],
+      tags: [DevApiTagsMap.adminInform],
       responses: {
         200: {
           description: '成功获取系统弹窗内容',
@@ -56,7 +56,7 @@ export const AdminInformPath: OpenAPIPath = {
     post: {
       summary: '更新系统弹窗内容',
       description: '更新系统消息弹窗的内容',
-      tags: [TagsMap.adminInform],
+      tags: [DevApiTagsMap.adminInform],
       requestBody: {
         content: {
           'application/json': {
@@ -80,7 +80,7 @@ export const AdminInformPath: OpenAPIPath = {
     get: {
       summary: '获取运营广告',
       description: '获取运营广告的图片和链接',
-      tags: [TagsMap.adminInform],
+      tags: [DevApiTagsMap.adminInform],
       responses: {
         200: {
           description: '成功获取运营广告',
@@ -97,7 +97,7 @@ export const AdminInformPath: OpenAPIPath = {
     post: {
       summary: '更新运营广告',
       description: '更新运营广告的图片和链接',
-      tags: [TagsMap.adminInform],
+      tags: [DevApiTagsMap.adminInform],
       requestBody: {
         content: {
           'application/json': {
@@ -121,7 +121,7 @@ export const AdminInformPath: OpenAPIPath = {
     get: {
       summary: '获取活动广告',
       description: '获取活动广告的图片和链接',
-      tags: [TagsMap.adminInform],
+      tags: [DevApiTagsMap.adminInform],
       responses: {
         200: {
           description: '成功获取活动广告',
@@ -138,7 +138,7 @@ export const AdminInformPath: OpenAPIPath = {
     post: {
       summary: '更新活动广告',
       description: '更新活动广告的图片和链接',
-      tags: [TagsMap.adminInform],
+      tags: [DevApiTagsMap.adminInform],
       requestBody: {
         content: {
           'application/json': {

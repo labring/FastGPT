@@ -1,6 +1,5 @@
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import { authOpenApiKeyCrud } from '@fastgpt/service/support/permission/auth/openapi';
-import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
@@ -26,11 +25,11 @@ async function handler(
   const { tmbId, teamId, openapi, permission } = await authOpenApiKeyCrud({
     req,
     authToken: true,
-    id: _id,
-    per: OwnerPermissionVal
+    id: _id
   });
 
   if (authProxy !== undefined) {
+    // 旧应用 key 仅作为 completions appId 兼容来源，不能开启 authProxy。
     if (openapi.appId && authProxy) {
       return Promise.reject(OpenApiErrEnum.unAuth);
     }

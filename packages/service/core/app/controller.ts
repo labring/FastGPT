@@ -225,8 +225,8 @@ export const deleteAppDataProcessor = async ({
   {
     // 删除分享链接
     await MongoOutLink.deleteMany({ appId });
-    // 删除 OpenAPI 配置
-    await MongoOpenApi.deleteMany({ appId });
+    // 旧应用 APIKey 保留为系统 APIKey，仅移除 deprecated appId 兼容字段。
+    await MongoOpenApi.updateMany({ appId }, { $unset: { appId: '' } });
     // 删除应用版本
     await MongoAppVersion.deleteMany({ appId });
     // 删除聊天输入引导

@@ -1,5 +1,10 @@
 import { ObjectIdSchema } from '../../../common/type/mongo';
+import { ChatGenerateStatusEnum } from '../../../core/chat/constants';
 import z from 'zod';
+
+export const ChatGenerateStatusSchema = z
+  .enum(ChatGenerateStatusEnum)
+  .describe('对话生成状态：0=generating（生成中），1=done（已完成），2=error（生成异常）');
 
 /* Recently Used Apps */
 export const GetRecentlyUsedAppsResponseSchema = z.array(

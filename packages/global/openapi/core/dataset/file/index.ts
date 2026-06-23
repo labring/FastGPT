@@ -1,5 +1,5 @@
 import type { OpenAPIPath } from '../../../type';
-import { TagsMap } from '../../../tag';
+import { DevApiTagsMap } from '../../../tag';
 import {
   GetSearchTestImagePreviewUrlsBodySchema,
   GetSearchTestImagePreviewUrlsResponseSchema,
@@ -16,7 +16,7 @@ export const DatasetFilePath: OpenAPIPath = {
     post: {
       summary: '预览文件分块',
       description: '读取数据源并按给定分块参数预览生成的前 10 个分块，用于导入前校验',
-      tags: [TagsMap.datasetFile],
+      tags: [DevApiTagsMap.datasetFile],
       requestBody: {
         content: {
           'application/json': {
@@ -40,7 +40,7 @@ export const DatasetFilePath: OpenAPIPath = {
     post: {
       summary: '获取知识库文件上传预签名 URL',
       description: '为指定知识库生成 S3 上传预签名 URL，同时校验写权限并对上传频率进行限制',
-      tags: [TagsMap.datasetFile],
+      tags: [DevApiTagsMap.datasetFile],
       requestBody: {
         content: {
           'application/json': {
@@ -64,7 +64,7 @@ export const DatasetFilePath: OpenAPIPath = {
     post: {
       summary: '获取搜索测试图片上传预签名 URL',
       description: '获取搜索测试图片上传预签名 URL，仅支持图片文件，上传对象 3 小时后过期',
-      tags: [TagsMap.datasetFile],
+      tags: [DevApiTagsMap.datasetFile],
       requestBody: {
         content: {
           'application/json': {
@@ -88,7 +88,7 @@ export const DatasetFilePath: OpenAPIPath = {
     post: {
       summary: '获取搜索测试图片预览 URL',
       description: '根据搜索测试历史中的临时图片 key 重新生成短期预览 URL',
-      tags: [TagsMap.datasetFile],
+      tags: [DevApiTagsMap.datasetFile],
       requestBody: {
         content: {
           'application/json': {

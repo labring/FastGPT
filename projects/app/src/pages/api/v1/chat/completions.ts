@@ -308,6 +308,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const titleSender = createGeneratedChatTitleSender({
       titleGeneration: preparedRound.titleGeneration,
       stream,
+      detail,
       writeChatTitle: workflowResponseWrite
     });
 

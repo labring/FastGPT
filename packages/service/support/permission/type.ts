@@ -29,7 +29,8 @@ export type AuthResponseType<T extends Permission = Permission> = {
   tmbId: string;
   authType?: `${AuthUserTypeEnum}`;
   appId?: string;
-  apiKeyAppId?: string;
+  legacyAppId?: string;
+  parsedAppId?: string;
   apikey?: string;
   apiKeyAuthProxy?: boolean;
   sourceName?: string;

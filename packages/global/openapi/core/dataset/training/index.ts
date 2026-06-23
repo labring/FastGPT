@@ -1,5 +1,5 @@
 import type { OpenAPIPath } from '../../../type';
-import { TagsMap } from '../../../tag';
+import { DevApiTagsMap } from '../../../tag';
 import {
   UpdateTrainingDataBodySchema,
   RebuildEmbeddingBodySchema,
@@ -17,7 +17,7 @@ export const DatasetTrainingPath: OpenAPIPath = {
       summary: '更新训练数据或重试训练异常',
       description:
         '更新或重试训练异常：传 dataId 时重试或编辑后重训单个 chunk；不传 dataId 时，可按 collectionId 或 datasetId 重试全部最终/阻塞异常',
-      tags: [TagsMap.datasetTraining],
+      tags: [DevApiTagsMap.datasetTraining],
       requestBody: {
         content: {
           'application/json': {
@@ -37,7 +37,7 @@ export const DatasetTrainingPath: OpenAPIPath = {
     post: {
       summary: '重建数据集向量索引',
       description: '切换向量模型并重建知识库所有数据的向量索引，需要所有者权限',
-      tags: [TagsMap.datasetTraining],
+      tags: [DevApiTagsMap.datasetTraining],
       requestBody: {
         content: {
           'application/json': {
@@ -57,7 +57,7 @@ export const DatasetTrainingPath: OpenAPIPath = {
     post: {
       summary: '删除训练数据',
       description: '删除指定的训练数据条目，需要管理权限',
-      tags: [TagsMap.datasetTraining],
+      tags: [DevApiTagsMap.datasetTraining],
       requestBody: {
         content: {
           'application/json': {
@@ -77,7 +77,7 @@ export const DatasetTrainingPath: OpenAPIPath = {
     post: {
       summary: '获取训练数据详情',
       description: '获取单条训练数据的详细信息，包括图片预览 URL',
-      tags: [TagsMap.datasetTraining],
+      tags: [DevApiTagsMap.datasetTraining],
       requestBody: {
         content: {
           'application/json': {
@@ -97,7 +97,7 @@ export const DatasetTrainingPath: OpenAPIPath = {
     post: {
       summary: '获取集合训练错误列表',
       description: '分页查询集合内最终/阻塞异常训练记录',
-      tags: [TagsMap.datasetTraining],
+      tags: [DevApiTagsMap.datasetTraining],
       requestBody: {
         content: {
           'application/json': {
@@ -118,7 +118,7 @@ export const DatasetTrainingPath: OpenAPIPath = {
       summary: '获取知识库训练错误列表',
       description:
         '分页查询知识库内存在最终/阻塞异常的集合，并返回每个集合内的部分异常 chunk；传 collectionId 时加载该集合更多异常 chunk',
-      tags: [TagsMap.datasetTraining],
+      tags: [DevApiTagsMap.datasetTraining],
       requestBody: {
         content: {
           'application/json': {
@@ -138,7 +138,7 @@ export const DatasetTrainingPath: OpenAPIPath = {
     get: {
       summary: '检查知识库是否存在训练错误',
       description: '轻量检查知识库内是否存在最终/阻塞异常训练记录，用于列表徽章状态探测',
-      tags: [TagsMap.datasetTraining],
+      tags: [DevApiTagsMap.datasetTraining],
       requestParams: {
         query: HasDatasetTrainingErrorQuerySchema
       },
@@ -154,7 +154,7 @@ export const DatasetTrainingPath: OpenAPIPath = {
     get: {
       summary: '获取训练队列状态',
       description: '获取知识库当前的重建数量和训练队列数量',
-      tags: [TagsMap.datasetTraining],
+      tags: [DevApiTagsMap.datasetTraining],
       requestParams: {
         query: GetDatasetTrainingQueueQuerySchema
       },

@@ -5,17 +5,17 @@ description: Access FastGPT app via API
 
 import { Alert } from '@/components/docs/Alert';
 
-In FastGPT, the API entry under Publish Channels only creates **App API Keys**. App API Keys are isolated by app: each key belongs to the current app only and can only access that app's chat endpoint.
+In FastGPT, the API entry under Publish Channels shows **API Keys** available to the current signed-in member. API Keys are member credentials for OpenAPI calls and are no longer created as app-scoped keys.
 
-If you need to call general OpenAPI endpoints such as Knowledge Base or app management APIs, or use `authProxy` in `chat/completions` to proxy a team member identity, create a **Global API Key** in account settings. For the full distinction, [see the OpenAPI Introduction](../../../openapi/intro.en.mdx).
+When calling this app through `chat/completions`, passing `appId` in the request body is recommended. If a third-party app only supports OpenAI SDK-style key configuration, you can use the `apiKey-appId` compatibility format. For details, [see the OpenAPI Introduction](../../../openapi/intro.en.mdx).
 
-## Get an App API Key
+## Get an API Key
 
 Go to App -> "Publish Channels" -> "API", then click "New" to create a key.
 
 <Alert context="warning">
-  App API Keys can only access the current app. Keep your key safe. To copy it again later, use the
-  copy button in this app's API publish channel list.
+  An API Key represents the current signed-in member's OpenAPI credential. Keep your key safe. To
+  copy it again later, use the copy button in the API list.
 </Alert>
 
 ![](/imgs/fastgpt-api1.jpg)
@@ -28,7 +28,7 @@ Go to App -> "Publish Channels" -> "API", then click "New" to create a key.
 
 ```bash
 OPENAI_API_BASE_URL: http://localhost:3000/api (replace with your deployed domain)
-OPENAI_API_KEY = the key obtained in the previous step
+OPENAI_API_KEY = the key obtained in the previous step (passing appId in the request body is recommended; if the third-party app only accepts a key, use the apiKey-appId compatibility format)
 ```
 
 **[ChatGPT Next Web](https://github.com/Yidadaa/ChatGPT-Next-Web) Example:**

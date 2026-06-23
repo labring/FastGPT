@@ -1,5 +1,5 @@
 import type { OpenAPIPath } from '../../../type';
-import { TagsMap } from '../../../tag';
+import { DevApiTagsMap } from '../../../tag';
 import {
   CreateAppFolderBodySchema,
   CreateAppFolderResponseSchema,
@@ -12,7 +12,7 @@ export const AppFolderPath: OpenAPIPath = {
     post: {
       summary: '创建应用文件夹',
       description: '在根目录或指定父级文件夹下创建应用文件夹或工具文件夹',
-      tags: [TagsMap.appFolder],
+      tags: [DevApiTagsMap.appFolder],
       requestBody: {
         content: {
           'application/json': {
@@ -36,7 +36,7 @@ export const AppFolderPath: OpenAPIPath = {
     get: {
       summary: '获取应用文件夹路径',
       description: '获取指定应用或文件夹的父级路径',
-      tags: [TagsMap.appFolder],
+      tags: [DevApiTagsMap.appFolder],
       requestParams: {
         query: GetAppFolderPathQuerySchema
       },

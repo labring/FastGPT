@@ -104,6 +104,11 @@ curl --location --request POST 'https://{{host}}/api/admin/initSandboxArchive' \
 -d '{"runArchive":true,"inactiveDays":0}'
 ```
 
+## Breaking Changes
+
+1. API Key behavior has changed. FastGPT no longer distinguishes between app keys and system keys; only system keys are kept. For OpenAI SDK compatibility, pass the token as `apikey-appId`. Existing API keys remain compatible and continue to work. For details, see the [FastGPT API documentation](../../../openapi/intro).
+2. Some APIs now enforce stricter data format validation. If you see a `zod parse error`, please submit an issue. It may be caused by legacy data or custom data structures that do not match the declared schema.
+
 ## 🚀 New Features
 
 1. Added the Loop node and deprecated the legacy batch execution node.
@@ -185,7 +190,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initSandboxArchive' \
 1. Reorganized the overall code structure, upgraded Next.js, switched to Turbopack builds, and upgraded the default container Node.js version to 24.
 2. Unified Agent tool declaration and execution behavior.
 3. The plugin service moved from the legacy `runtime` structure to a pnpm workspace monorepo, split into HTTP service entry, domain model, use cases, API adapter, infrastructure, SDK, and CLI.
-4. App API interfaces now use zod schemas consistently and generate documentation.
+4. Application-related API interfaces now use zod schemas consistently and generate documentation.
 5. Split AI request, Workflow run detail, and chatbox code to reduce module coupling.
 6. Optimized user-defined API key billing logic and token calculation dependencies.
 7. Server-side environment loading now uses `@t3-oss/env-core` with stronger type checks. Other services also use centralized environment exports.

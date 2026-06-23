@@ -51,49 +51,33 @@ export async function parseHeaderCert({
       return Promise.reject(ERROR_ENUM.unAuthorization);
     }
 
-    // Bearer fastgpt-xxxx-appId
-    const auth = authorization.split(' ')[1];
-    if (!auth) {
+    // Authorization 支持真实 APIKey，也支持仅作传输兼容的 apiKey-appId。
+    const apikey = authorization.split(' ')[1];
+    if (!apikey) {
       return Promise.reject(ERROR_ENUM.unAuthorization);
     }
-
-    const { apikey, appId: authorizationAppid = '' } = await (async () => {
-      const arr = auth.split('-');
-      // abandon
-      if (arr.length === 3) {
-        return {
-          apikey: `${arr[0]}-${arr[1]}`,
-          appId: arr[2]
-        };
-      }
-      if (arr.length === 2) {
-        return {
-          apikey: auth
-        };
-      }
-      return Promise.reject(ERROR_ENUM.unAuthorization);
-    })();
 
     // auth apikey
     const {
       teamId,
       tmbId,
-      appId: apiKeyAppId = '',
+      apikey: realApiKey,
+      legacyAppId = '',
+      parsedAppId = '',
       authProxy,
       sourceName
     } = await authOpenApiKey({
       apikey,
-      req,
-      authorizationAppId: authorizationAppid
+      authApiKey
     });
 
     return {
       uid: '',
       teamId,
       tmbId,
-      apikey,
-      appId: apiKeyAppId || authorizationAppid,
-      apiKeyAppId,
+      apikey: realApiKey,
+      legacyAppId,
+      parsedAppId,
       apiKeyAuthProxy: authProxy,
       sourceName
     };
@@ -117,7 +101,8 @@ export async function parseHeaderCert({
     isRoot,
     sourceName,
     sessionId,
-    apiKeyAppId,
+    legacyAppId,
+    parsedAppId,
     apiKeyAuthProxy
   } = await (async () => {
     if (authApiKey && authorization) {
@@ -127,8 +112,9 @@ export async function parseHeaderCert({
         uid: authResponse.uid,
         teamId: authResponse.teamId,
         tmbId: authResponse.tmbId,
-        appId: authResponse.appId,
-        apiKeyAppId: authResponse.apiKeyAppId,
+        appId: '',
+        legacyAppId: authResponse.legacyAppId,
+        parsedAppId: authResponse.parsedAppId,
         openApiKey: authResponse.apikey,
         authType: AuthUserTypeEnum.apikey,
         apiKeyAuthProxy: authResponse.apiKeyAuthProxy,
@@ -178,7 +164,8 @@ export async function parseHeaderCert({
     appId,
     authType,
     sourceName,
-    apiKeyAppId,
+    legacyAppId,
+    parsedAppId,
     apiKeyAuthProxy,
     apikey: openApiKey,
     isRoot: !!isRoot,

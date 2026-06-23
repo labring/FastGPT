@@ -1,6 +1,5 @@
 import type { OpenAPIPath } from '../../../type';
-import { TagsMap } from '../../../tag';
-import { ApiKeyTagMap } from '../../../apikey/tag';
+import { DevApiTagsMap, SystemOpenApiTagMap } from '../../../tag';
 import {
   StopV2ChatSchema,
   StopV2ChatResponseSchema,
@@ -13,7 +12,7 @@ export const ChatControllerPath: OpenAPIPath = {
     get: {
       summary: '获取会话框基本信息',
       description: '',
-      tags: [TagsMap.chatController, ApiKeyTagMap.chatSession],
+      tags: [DevApiTagsMap.chatHistory, SystemOpenApiTagMap.chatHistory],
       requestParams: {
         query: InitChatQuerySchema
       },
@@ -31,10 +30,10 @@ export const ChatControllerPath: OpenAPIPath = {
   },
   '/v2/chat/stop': {
     post: {
-      summary: '停止 Agent 运行',
-      description: `优雅停止正在运行的 Agent, 会尝试等待当前节点结束后返回，最长 5s，超过 5s 仍未结束，则会返回成功。
+      summary: '停止会话',
+      description: `停止正在运行的会话, 会尝试等待当前节点结束后返回，最长 5s，超过 5s 仍未结束，则会返回成功。
   LLM 节点，流输出时会同时被终止，但 HTTP 请求节点这种可能长时间运行的，不会被终止。`,
-      tags: [TagsMap.chatController],
+      tags: [DevApiTagsMap.chatController, SystemOpenApiTagMap.chatController],
       requestBody: {
         content: {
           'application/json': {

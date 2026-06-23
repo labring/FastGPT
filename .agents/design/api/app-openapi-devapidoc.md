@@ -282,19 +282,19 @@ mcpServer: 'MCP 发布管理'
 {
   name: '应用管理',
   tags: [
-    TagsMap.appCommon,
-    TagsMap.appFolder,
-    TagsMap.appPer,
-    TagsMap.appVersion,
-    TagsMap.appTemplate,
-    TagsMap.appLog,
-    TagsMap.publishChannel,
-    TagsMap.apiKey
+    DevApiTagsMap.appCommon,
+    DevApiTagsMap.appFolder,
+    DevApiTagsMap.appPer,
+    DevApiTagsMap.appVersion,
+    DevApiTagsMap.appTemplate,
+    DevApiTagsMap.appLog,
+    DevApiTagsMap.publishChannel,
+    DevApiTagsMap.apiKey
   ]
 },
 {
   name: '工具管理',
-  tags: [TagsMap.httpTools, TagsMap.mcpTools, TagsMap.mcpServer]
+  tags: [DevApiTagsMap.httpTools, DevApiTagsMap.mcpTools, DevApiTagsMap.mcpServer]
 }
 ```
 

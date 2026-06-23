@@ -5,7 +5,7 @@ import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
-import { getRootUser } from '@test/datas/users';
+import { getFakeUsers, getRootUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 
 describe('support/openapi/copy', () => {
@@ -50,7 +50,7 @@ describe('support/openapi/copy', () => {
     expect(JSON.stringify(vi.mocked(addAuditLog).mock.calls)).not.toContain('fastgpt-team-secret');
   });
 
-  it('记录应用级 APIKey 复制审计并返回明文密钥', async () => {
+  it('兼容旧应用 APIKey 复制审计并返回明文密钥', async () => {
     const user = await getRootUser();
     const app = await MongoApp.create({
       teamId: user.teamId,
@@ -120,5 +120,33 @@ describe('support/openapi/copy', () => {
     expect(result.code).toBe(500);
     expect(result.data).toBeUndefined();
     expect(JSON.stringify(result)).not.toContain('fastgpt-audit-failed-secret');
+  });
+
+  it('不能复制同团队其他成员的 APIKey', async () => {
+    const { owner, members } = await getFakeUsers(1);
+    const [member] = members;
+    const openapi = await MongoOpenApi.create({
+      teamId: member.teamId,
+      tmbId: member.tmbId,
+      apiKey: 'fastgpt-member-private-secret',
+      name: 'member private key'
+    });
+
+    const result = await Call(handler, {
+      auth: {
+        ...owner,
+        userId: String(owner.userId),
+        teamId: String(owner.teamId),
+        tmbId: String(owner.tmbId)
+      },
+      body: {
+        id: String(openapi._id)
+      }
+    });
+
+    expect(result.code).toBe(500);
+    expect(result.data).toBeUndefined();
+    expect(JSON.stringify(result)).not.toContain('fastgpt-member-private-secret');
+    expect(addAuditLog).not.toHaveBeenCalled();
   });
 });

@@ -5,7 +5,7 @@ import { ChatPath } from './core/chat';
 import { DatasetPath } from './core/dataset';
 import { PluginPath } from './core/plugin';
 import { SupportPath } from './support';
-import { TagsMap } from './tag';
+import { DevApiTagsMap } from './tag';
 import type { OpenAPIPath } from './type';
 
 export const openAPIPaths: NonNullable<OpenAPIPath> = {
@@ -22,71 +22,85 @@ export const openAPITagGroups = [
   {
     name: '核心-应用管理',
     tags: [
-      TagsMap.appCommon,
-      TagsMap.appFolder,
-      TagsMap.appPer,
-      TagsMap.appVersion,
-      TagsMap.appTemplate,
-      TagsMap.appLog,
-      TagsMap.publishChannel
+      DevApiTagsMap.appCommon,
+      DevApiTagsMap.appFolder,
+      DevApiTagsMap.appPer,
+      DevApiTagsMap.appVersion,
+      DevApiTagsMap.appTemplate,
+      DevApiTagsMap.appLog,
+      DevApiTagsMap.publishChannel
     ]
   },
   {
     name: '核心-工具管理',
-    tags: [TagsMap.appSystemTool, TagsMap.httpTools, TagsMap.mcpTools, TagsMap.mcpServer]
+    tags: [
+      DevApiTagsMap.appSystemTool,
+      DevApiTagsMap.httpTools,
+      DevApiTagsMap.mcpTools,
+      DevApiTagsMap.mcpServer
+    ]
   },
   {
     name: '核心-AI 相关',
-    tags: [TagsMap.aiSkill, TagsMap.sandbox, TagsMap.aiCommon]
+    tags: [DevApiTagsMap.aiSkill, DevApiTagsMap.sandbox, DevApiTagsMap.aiCommon]
   },
   {
     name: '核心-对话模块配置',
-    tags: [TagsMap.chatSetting, TagsMap.chatPage, TagsMap.chatInputGuide]
+    tags: [DevApiTagsMap.chatSetting, DevApiTagsMap.chatPage, DevApiTagsMap.chatInputGuide]
   },
   {
     name: '核心-对话模块使用',
     tags: [
-      TagsMap.chatHistory,
-      TagsMap.chatFeedback,
-      TagsMap.chatFile,
-      TagsMap.chatRecord,
-      TagsMap.chatController
+      DevApiTagsMap.chatHistory,
+      DevApiTagsMap.chatFeedback,
+      DevApiTagsMap.chatFile,
+      DevApiTagsMap.chatRecord,
+      DevApiTagsMap.chatController
     ]
   },
   {
     name: '核心-知识库',
     tags: [
-      TagsMap.datasetCommon,
-      TagsMap.datasetCollection,
-      TagsMap.datasetCollectionCrteate,
-      TagsMap.datasetData,
-      TagsMap.datasetFile,
-      TagsMap.datasetTraining,
-      TagsMap.datasetApiDataset
+      DevApiTagsMap.datasetCommon,
+      DevApiTagsMap.datasetCollection,
+      DevApiTagsMap.datasetCollectionCrteate,
+      DevApiTagsMap.datasetData,
+      DevApiTagsMap.datasetFile,
+      DevApiTagsMap.datasetTraining,
+      DevApiTagsMap.datasetApiDataset
     ]
   },
   {
     name: '核心-插件系统',
-    tags: [TagsMap.pluginToolTag, TagsMap.pluginTeam]
+    tags: [DevApiTagsMap.pluginToolTag, DevApiTagsMap.pluginTeam]
   },
   {
     name: '辅助-用户体系',
-    tags: [TagsMap.userInform, TagsMap.walletBill, TagsMap.walletDiscountCoupon, TagsMap.userLogin]
+    tags: [
+      DevApiTagsMap.userInform,
+      DevApiTagsMap.walletBill,
+      DevApiTagsMap.walletDiscountCoupon,
+      DevApiTagsMap.userLogin
+    ]
   },
   {
     name: '辅助-权限管理',
-    tags: [TagsMap.permissionResource, TagsMap.permissionCollaborator]
+    tags: [DevApiTagsMap.permissionResource, DevApiTagsMap.permissionCollaborator]
   },
   {
     name: '通用-基础功能',
-    tags: [TagsMap.apiKey, TagsMap.customDomain]
+    tags: [DevApiTagsMap.apiKey, DevApiTagsMap.customDomain]
   },
   {
     name: '管理员-插件管理',
-    tags: [TagsMap.pluginAdmin, TagsMap.pluginMarketplace, TagsMap.pluginToolAdmin]
+    tags: [
+      DevApiTagsMap.pluginAdmin,
+      DevApiTagsMap.pluginMarketplace,
+      DevApiTagsMap.pluginToolAdmin
+    ]
   },
   {
     name: '系统接口',
-    tags: [TagsMap.helperBot]
+    tags: [DevApiTagsMap.helperBot]
   }
 ];

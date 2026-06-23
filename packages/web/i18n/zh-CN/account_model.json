@@ -105,7 +105,7 @@
   "model.defaultConfig": "额外 Body 参数",
   "model.defaultConfig_tip": "每次请求时候，都会携带该额外 Body 参数",
   "model.default_config": "Body 额外字段",
-  "model.default_config_tip": "发起对话请求时候，合并该配置。例如：\n\"\"\"\n{\n   \"temperature\": 1,\n   \"max_tokens\": null\n}\n\"\"\"",
+  "model.default_config_tip": "发起会话请求时候，合并该配置。例如：\n\"\"\"\n{\n   \"temperature\": 1,\n   \"max_tokens\": null\n}\n\"\"\"",
   "model.rerank_default_config_tip": "发起重排请求时候，合并该配置。例如：\n\"\"\"\n{\n   \"topn\": 5\n}\n\"\"\"",
   "model.default_model": "默认模型",
   "model.default_system_chat_prompt": "默认提示词",

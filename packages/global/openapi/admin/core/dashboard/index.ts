@@ -11,14 +11,14 @@ import {
   GetAppStatsResponseSchema,
   GetDatasetStatsResponseSchema
 } from './api';
-import { TagsMap } from '../../../tag';
+import { DevApiTagsMap } from '../../../tag';
 
 export const DashboardPath: OpenAPIPath = {
   '/admin/core/dashboard/getUserStats': {
     get: {
       summary: '获取用户全局统计',
       description: '获取用户总数和充值总数',
-      tags: [TagsMap.adminDashboard],
+      tags: [DevApiTagsMap.adminDashboard],
       responses: {
         200: {
           description: '成功获取用户统计',
@@ -35,7 +35,7 @@ export const DashboardPath: OpenAPIPath = {
     get: {
       summary: '获取应用全局统计',
       description: '获取工作流、简易应用、工作流工具、HTTP 工具和 MCP 工具的总数',
-      tags: [TagsMap.adminDashboard],
+      tags: [DevApiTagsMap.adminDashboard],
       responses: {
         200: {
           description: '成功获取应用统计',
@@ -52,7 +52,7 @@ export const DashboardPath: OpenAPIPath = {
     get: {
       summary: '获取知识库全局统计',
       description: '获取通用知识库、Web 站点同步、API、语雀、飞书知识库的总数以及索引总量',
-      tags: [TagsMap.adminDashboard],
+      tags: [DevApiTagsMap.adminDashboard],
       responses: {
         200: {
           description: '成功获取知识库统计',
@@ -69,7 +69,7 @@ export const DashboardPath: OpenAPIPath = {
     get: {
       summary: '获取对话统计数据',
       description: '获取对话数量和对话消息数量的时间序列统计数据',
-      tags: [TagsMap.adminDashboard],
+      tags: [DevApiTagsMap.adminDashboard],
       requestParams: {
         query: z.object({
           startTime: z.string().meta({
@@ -93,7 +93,7 @@ export const DashboardPath: OpenAPIPath = {
     get: {
       summary: '获取工作流 QPM 范围分布',
       description: '按团队最大 QPM 统计各范围的团队数量',
-      tags: [TagsMap.adminDashboard],
+      tags: [DevApiTagsMap.adminDashboard],
       requestParams: {
         query: z.object({
           startTime: z.string().meta({
@@ -117,7 +117,7 @@ export const DashboardPath: OpenAPIPath = {
     post: {
       summary: '获取消费统计数据',
       description: '获取积分消耗的时间序列统计数据',
-      tags: [TagsMap.adminDashboard],
+      tags: [DevApiTagsMap.adminDashboard],
       requestBody: {
         content: {
           'application/json': {
@@ -141,7 +141,7 @@ export const DashboardPath: OpenAPIPath = {
     get: {
       summary: '获取支付统计数据',
       description: '获取订单和支付金额的时间序列统计数据',
-      tags: [TagsMap.adminDashboard],
+      tags: [DevApiTagsMap.adminDashboard],
       requestParams: {
         query: z.object({
           startTime: z.string().meta({
@@ -165,7 +165,7 @@ export const DashboardPath: OpenAPIPath = {
     get: {
       summary: '获取用户注册统计数据',
       description: '获取用户注册数量的时间序列统计数据',
-      tags: [TagsMap.adminDashboard],
+      tags: [DevApiTagsMap.adminDashboard],
       requestParams: {
         query: z.object({
           startTime: z.string().meta({

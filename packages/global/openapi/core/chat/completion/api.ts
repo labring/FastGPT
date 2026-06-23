@@ -14,9 +14,12 @@ const nullishToUndefined = <T extends z.ZodTypeAny>(schema: T) =>
 
 const WebCompletionsSchema = z.object({
   chatId: nullishToUndefined(z.string().max(1024).optional()).meta({
-    description: '聊天ID, 传入的话会自动获取历史记录，不传入则认为是新对话'
+    description: '会话 ID，传入的话会自动获取会话中的对话，不传入则认为是新会话'
   }),
-  appId: nullishToUndefined(ObjectIdSchema.optional()),
+  appId: nullishToUndefined(ObjectIdSchema.optional()).meta({
+    description:
+      '应用 ID。推荐在请求体中传入；APIKey 调用时优先级为 body.appId > Authorization 中的 apiKey-appId 后缀 > 旧 APIKey 绑定 appId。apiKey-appId 仅用于兼容 OpenAI SDK，不会写入数据库'
+  }),
   customUid: nullishToUndefined(z.string().max(1024).optional()).meta({
     description: '自定义用户ID(分享链接)'
   }),

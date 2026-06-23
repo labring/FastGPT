@@ -3,6 +3,10 @@ title: 'V4.15.0-beta5 (In Progress)'
 description: 'FastGPT V4.15.0-beta5 Release Notes'
 ---
 
+## Breaking Changes
+
+1. API Key behavior has changed. FastGPT no longer distinguishes between app keys and system keys; only system keys are kept. For OpenAI SDK compatibility, pass the token as `apikey-appId`. Existing API keys remain compatible and continue to work. For details, see the [FastGPT API documentation](../../../openapi/intro).
+
 ## 🚀 New Features
 
 1. The HTTP node now supports ignoring TLS certificate verification, which is useful when calling HTTPS services that use self-signed or internal certificates.

@@ -1,6 +1,6 @@
 import type { OpenAPIPath } from '../../../type';
-import { TagsMap } from '../../../tag';
-import { ApiKeyTagMap } from '../../../apikey/tag';
+import { DevApiTagsMap } from '../../../tag';
+import { SystemOpenApiTagMap } from '../../../tag';
 import {
   UpdateFeedbackReadStatusBodySchema,
   UpdateFeedbackReadStatusResponseSchema,
@@ -19,7 +19,7 @@ export const ChatFeedbackPath: OpenAPIPath = {
     post: {
       summary: '添加/更新用户反馈',
       description: '用户对消息添加或更新好评/差评反馈',
-      tags: [TagsMap.chatFeedback, ApiKeyTagMap.chat],
+      tags: [DevApiTagsMap.chatFeedback, SystemOpenApiTagMap.chatFeedback],
       requestBody: {
         content: {
           'application/json': {
@@ -43,7 +43,7 @@ export const ChatFeedbackPath: OpenAPIPath = {
     post: {
       summary: '获取反馈记录ID列表',
       description: '根据反馈类型和已读状态，获取符合条件的消息ID列表',
-      tags: [TagsMap.chatFeedback],
+      tags: [DevApiTagsMap.chatFeedback],
       requestBody: {
         content: {
           'application/json': {
@@ -67,7 +67,7 @@ export const ChatFeedbackPath: OpenAPIPath = {
     post: {
       summary: '应用管理员-更新反馈阅读状态',
       description: '标记指定消息的反馈为已读或未读状态',
-      tags: [TagsMap.chatFeedback],
+      tags: [DevApiTagsMap.chatFeedback],
       requestBody: {
         content: {
           'application/json': {
@@ -91,7 +91,7 @@ export const ChatFeedbackPath: OpenAPIPath = {
     post: {
       summary: '应用管理员-标注反馈',
       description: '管理员为指定消息添加或更新标注反馈，包含数据集关联信息',
-      tags: [TagsMap.chatFeedback],
+      tags: [DevApiTagsMap.chatFeedback],
       requestBody: {
         content: {
           'application/json': {
@@ -115,7 +115,7 @@ export const ChatFeedbackPath: OpenAPIPath = {
     post: {
       summary: '应用管理员-关闭自定义反馈',
       description: '删除或关闭指定索引位置的自定义反馈条目',
-      tags: [TagsMap.chatFeedback],
+      tags: [DevApiTagsMap.chatFeedback],
       requestBody: {
         content: {
           'application/json': {

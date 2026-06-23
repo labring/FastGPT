@@ -1,6 +1,6 @@
 import z from 'zod';
 import type { OpenAPIPath } from '../../../type';
-import { TagsMap } from '../../../tag';
+import { DevApiTagsMap } from '../../../tag';
 import {
   HelperBotCompletionsParamsSchema,
   DeleteHelperBotChatParamsSchema,
@@ -13,7 +13,7 @@ export const HelperBotPath: OpenAPIPath = {
     post: {
       summary: '辅助生成统一对话接口',
       description: '辅助生成统一对话接口',
-      tags: [TagsMap.helperBot],
+      tags: [DevApiTagsMap.helperBot],
       requestBody: {
         content: {
           'application/json': {
@@ -37,7 +37,7 @@ export const HelperBotPath: OpenAPIPath = {
     get: {
       summary: '分页获取记录',
       description: '分页获取记录',
-      tags: [TagsMap.helperBot],
+      tags: [DevApiTagsMap.helperBot],
       requestParams: {
         query: GetHelperBotChatRecordsParamsSchema
       },
@@ -57,7 +57,7 @@ export const HelperBotPath: OpenAPIPath = {
     delete: {
       summary: '删除单组对话',
       description: '删除单组对话',
-      tags: [TagsMap.helperBot],
+      tags: [DevApiTagsMap.helperBot],
       requestBody: {
         content: {
           'application/json': {

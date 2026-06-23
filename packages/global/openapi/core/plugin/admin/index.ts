@@ -5,7 +5,7 @@ import {
   UploadPkgPluginBodySchema,
   UploadPkgPluginResponseSchema
 } from './api';
-import { TagsMap } from '../../../tag';
+import { DevApiTagsMap } from '../../../tag';
 import z from 'zod';
 import { AdminPluginToolPath } from './tool';
 
@@ -16,7 +16,7 @@ export const PluginAdminPath: OpenAPIPath = {
     post: {
       summary: '批量上传系统插件包',
       description: '上传 .pkg 文件或包含多个 .pkg 的 .zip 文件，需要系统管理员权限',
-      tags: [TagsMap.pluginAdmin],
+      tags: [DevApiTagsMap.pluginAdmin],
       requestBody: {
         required: true,
         content: {
@@ -42,7 +42,7 @@ export const PluginAdminPath: OpenAPIPath = {
     post: {
       summary: '从URL安装插件',
       description: '从URL安装插件，需要系统管理员权限',
-      tags: [TagsMap.pluginAdmin],
+      tags: [DevApiTagsMap.pluginAdmin],
       requestBody: {
         content: {
           'application/json': {

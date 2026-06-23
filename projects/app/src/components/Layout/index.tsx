@@ -43,6 +43,9 @@ const ManualCopyModal = dynamic(
 const ActivityAdModal = dynamic(() => import('@/components/support/activity/ActivityAdModal'), {
   ssr: false
 });
+const ProModal = dynamic(() => import('@/components/ProTip/ProModal'), {
+  ssr: false
+});
 
 const pcUnShowLayoutRoute: Record<string, boolean> = {
   '/': true,
@@ -75,7 +78,15 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   const { toast } = useToast();
   const { t } = useTranslation();
   const { Loading } = useLoading();
-  const { setLastRoute, loading, feConfigs, llmModelList, embeddingModelList } = useSystemStore();
+  const {
+    setLastRoute,
+    loading,
+    feConfigs,
+    llmModelList,
+    embeddingModelList,
+    showProModal,
+    setShowProModal
+  } = useSystemStore();
   const { isPc } = useSystem();
   const { userInfo, isUpdateNotification, setIsUpdateNotification } = useUserStore();
   const { setUserDefaultLng, setShareDefaultLng } = useI18nLng();
@@ -198,6 +209,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
 
       <ManualCopyModal />
       <ActivityAdModal />
+      {showProModal && <ProModal isOpen onClose={() => setShowProModal(false)} />}
       <Loading loading={loading} zIndex={999999} />
     </>
   );
