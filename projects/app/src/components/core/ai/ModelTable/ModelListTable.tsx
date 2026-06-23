@@ -21,6 +21,7 @@ import EllipsisTooltip from '@fastgpt/web/components/common/EllipsisTooltip';
 import { LazyCollaboratorProvider } from '@/components/support/permission/MemberManager/context';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 import { getModelCollaborators, updateModelCollaborators } from '@/web/common/system/api';
+import { clientInitData } from '@/web/common/system/staticData';
 import { getDatasetsWithChildren } from '@/web/core/dataset/api';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
@@ -591,6 +592,7 @@ const ModelTableActionCell = ({
               throw err;
             }
           }}
+          refetchResource={() => clientInitData()}
           permission={userPermission}
         >
           {({ onOpenManageModal }) => (

@@ -104,6 +104,7 @@ const CollaboratorContextProvider = ({
   const onUpdateCollaboratorsThen = async (props: UpdateClbPermissionProps) => {
     await onUpdateCollaborators(props);
     refetchCollaboratorList();
+    refetchResource?.();
   };
   const onDelOneCollaboratorThen = async (
     props: RequireOnlyOne<{ tmbId: string; groupId: string; orgId: string }>
@@ -186,6 +187,11 @@ const CollaboratorContextProvider = ({
     onClose: onCloseManageModal
   } = useDisclosure();
 
+  const handleOpenManageModal = useCallback(() => {
+    refetchCollaboratorList();
+    onOpenManageModal();
+  }, [refetchCollaboratorList, onOpenManageModal]);
+
   const { userInfo } = useUserStore();
   const myRole = useMemo(() => {
     return (
@@ -215,7 +221,7 @@ const CollaboratorContextProvider = ({
   return (
     <CollaboratorContext.Provider value={contextValue}>
       {children({
-        onOpenManageModal,
+        onOpenManageModal: handleOpenManageModal,
         MemberListCard,
         collaboratorList,
         refetchCollaboratorList
@@ -224,7 +230,6 @@ const CollaboratorContextProvider = ({
         <MemberModal
           onClose={() => {
             onCloseManageModal();
-            refetchResource?.();
           }}
           SelectedTip={selectedHint ? <LightTip text={selectedHint} /> : undefined}
         />
