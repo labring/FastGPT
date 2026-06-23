@@ -1,14 +1,14 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { ProcessPool } from '../../src/pool/process-pool';
-import { PythonProcessPool } from '../../src/pool/python-process-pool';
+import { PythonIsolatedRunner } from '../../src/isolated/python-isolated-runner';
 
 let jsPool: ProcessPool;
-let pyPool: PythonProcessPool;
+let pyPool: PythonIsolatedRunner;
 
 beforeAll(async () => {
   jsPool = new ProcessPool(1);
   await jsPool.init();
-  pyPool = new PythonProcessPool(1);
+  pyPool = new PythonIsolatedRunner(1);
   await pyPool.init();
 });
 

@@ -1,0 +1,307 @@
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { PythonIsolatedRunner } from '../../src/isolated/python-isolated-runner';
+
+let runner: PythonIsolatedRunner;
+
+beforeAll(async () => {
+  runner = new PythonIsolatedRunner(1);
+  await runner.init();
+});
+
+afterAll(async () => {
+  await runner.shutdown();
+});
+
+describe('PythonIsolatedRunner 安全规则兼容旧 pool', () => {
+  it.each(['os', 'subprocess', 'sys', 'socket', 'threading', 'multiprocessing', 'signal'])(
+    '阻止 import %s',
+    async (moduleName) => {
+      const result = await runner.execute({
+        code: `def main():
+    try:
+        __import__(${JSON.stringify(moduleName)})
+        return {'blocked': False}
+    except Exception as e:
+        return {'blocked': True, 'error': str(e)}`,
+        variables: {}
+      });
+      expect(result.success).toBe(true);
+      expect(result.data?.codeReturn.blocked).toBe(true);
+      expect(result.data?.codeReturn.error).toContain(moduleName);
+    }
+  );
+
+  it('builtins.__import__ 覆盖不能恢复危险 import', async () => {
+    const result = await runner.execute({
+      code: `import builtins
+def main():
+    changed = False
+    try:
+        builtins.__import__ = lambda *a, **kw: None
+        changed = True
+    except Exception:
+        pass
+    try:
+        import os
+        escaped = True
+    except Exception:
+        escaped = False
+    return {'changed': changed, 'escaped': escaped}`,
+      variables: {}
+    });
+    expect(result.success).toBe(true);
+    expect(result.data?.codeReturn.changed).toBe(false);
+    expect(result.data?.codeReturn.escaped).toBe(false);
+  });
+
+  it('运行时拼接 getattr 不能访问高危 dunder 属性', async () => {
+    const result = await runner.execute({
+      code: `def main():
+    name = "__" + "subclasses__"
+    return {'value': getattr(object, name)()}`,
+      variables: {}
+    });
+    expect(result.success).toBe(false);
+    expect(result.message).toMatch(/__subclasses__|not allowed/i);
+  });
+
+  it('setattr/delattr 即使通过变量名调用也不能改写 builtins 安全函数', async () => {
+    const result = await runner.execute({
+      code: `import builtins
+def main():
+    setter = setattr
+    deleter = delattr
+    result = []
+    for fn in (setter, deleter):
+        try:
+            if fn is setter:
+                fn(builtins, "__import__", lambda *a, **kw: None)
+            else:
+                fn(builtins, "__import__")
+            result.append(False)
+        except Exception:
+            result.append(True)
+    return {'blocked': result}`,
+      variables: {}
+    });
+    expect(result.success).toBe(true);
+    expect(result.data?.codeReturn.blocked).toEqual([true, true]);
+  });
+
+  it('即使通过允许的标准库间接拿到 os，命令执行被阻断且宿主 secret env 不泄露', async () => {
+    const oldToken = process.env.SANDBOX_TOKEN;
+    process.env.SANDBOX_TOKEN = 'test-host-secret-token';
+    try {
+      const result = await runner.execute({
+        code: `import platform
+def main():
+    os_ref = getattr(platform, 'os')
+    system_blocked = False
+    try:
+        os_ref.system('id')
+    except Exception:
+        system_blocked = True
+    env = dict(os_ref.environ)
+    return {
+        'system_blocked': system_blocked,
+        'has_sandbox_token': 'SANDBOX_TOKEN' in env,
+        'has_test_secret': 'test-host-secret-token' in ''.join(env.values())
+    }`,
+        variables: {}
+      });
+      expect(result.success).toBe(true);
+      expect(result.data?.codeReturn.system_blocked).toBe(true);
+      expect(result.data?.codeReturn.has_sandbox_token).toBe(false);
+      expect(result.data?.codeReturn.has_test_secret).toBe(false);
+    } finally {
+      if (oldToken === undefined) {
+        delete process.env.SANDBOX_TOKEN;
+      } else {
+        process.env.SANDBOX_TOKEN = oldToken;
+      }
+    }
+  });
+
+  it.each([
+    ['exec', `exec("import subprocess")`],
+    ['eval', `eval("__import__('os')")`],
+    ['compile', `exec(compile("import subprocess", "<test>", "exec"))`]
+  ])('%s 逃逸被拦截', async (_name, statement) => {
+    const result = await runner.execute({
+      code: `def main():
+    try:
+        ${statement}
+        return {'escaped': True}
+    except Exception:
+        return {'escaped': False}`,
+      variables: {}
+    });
+    expect(result.success).toBe(false);
+    expect(result.message).toMatch(/exec|eval|compile|not allowed/i);
+  });
+
+  it.each([
+    ['object.__subclasses__', `object.__subclasses__()`],
+    ['__class__.__bases__ 链式访问', `().__class__.__bases__[0].__subclasses__()`],
+    ['getattr 常量 dunder', `getattr(object, "__subclasses__")()`],
+    ['getattr 动态 dunder', `getattr(object, "__sub" + "classes__")()`],
+    ['type().__base__ 链式访问', `type(1).__base__.__subclasses__()`]
+  ])('阻断 %s 反射逃逸', async (_name, expression) => {
+    const result = await runner.execute({
+      code: `def main():
+    return {'value': ${expression}}`,
+      variables: {}
+    });
+    expect(result.success).toBe(false);
+    expect(result.message).toMatch(
+      /__class__|__base__|__bases__|__subclasses__|Dynamic getattr|not allowed/i
+    );
+  });
+
+  it('保留 type() 正常判断与动态创建类兼容', async () => {
+    const result = await runner.execute({
+      code: `def main():
+    MyClass = type('MyClass', (object,), {'x': 42})
+    obj = MyClass()
+    return {'is_int': type(1) == int, 'x': obj.x}`,
+      variables: {}
+    });
+    expect(result.success).toBe(true);
+    expect(result.data?.codeReturn).toEqual({ is_int: true, x: 42 });
+  });
+
+  it.each(['/etc/passwd', '/proc/self/environ'])('阻止 open 读取 %s', async (path) => {
+    const result = await runner.execute({
+      code: `def main():
+    with open(${JSON.stringify(path)}, 'r') as f:
+        return {'data': f.read()}`,
+      variables: {}
+    });
+    expect(result.success).toBe(false);
+    expect(result.message).toContain('not allowed');
+  });
+
+  it('阻止 open 写入文件', async () => {
+    const result = await runner.execute({
+      code: `def main():
+    with open('/tmp/evil.txt', 'w') as f:
+        f.write('hacked')
+    return {'ok': True}`,
+      variables: {}
+    });
+    expect(result.success).toBe(false);
+    expect(result.message).toContain('not allowed');
+  });
+
+  it('变量值包含 Python 代码不会被执行', async () => {
+    const result = await runner.execute({
+      code: `def main(v):
+    return {'val': v['code']}`,
+      variables: { code: '__import__("os").system("id")' }
+    });
+    expect(result.success).toBe(true);
+    expect(result.data?.codeReturn.val).toBe('__import__("os").system("id")');
+  });
+
+  it('无法通过 os 模块读取环境变量', async () => {
+    const result = await runner.execute({
+      code: `def main():
+    try:
+        import os
+        return {'blocked': False, 'env': dict(os.environ)}
+    except Exception as e:
+        return {'blocked': True, 'error': str(e)}`,
+      variables: {}
+    });
+    expect(result.success).toBe(true);
+    expect(result.data?.codeReturn.blocked).toBe(true);
+  });
+
+  it('上一次执行设置的全局变量，下一次读不到', async () => {
+    const r1 = await runner.execute({
+      code: `def main():
+    global secret_data
+    secret_data = 'leaked_password_123'
+    return {'written': True}`,
+      variables: {}
+    });
+    expect(r1.success).toBe(true);
+
+    const r2 = await runner.execute({
+      code: `def main():
+    try:
+        return {'leaked': True, 'val': secret_data}
+    except NameError:
+        return {'leaked': False}`,
+      variables: {}
+    });
+    expect(r2.success).toBe(true);
+    expect(r2.data?.codeReturn.leaked).toBe(false);
+  });
+
+  it('上一次修改的模块状态不影响下一次', async () => {
+    const r1 = await runner.execute({
+      code: `import json
+def main():
+    json._polluted = True
+    return {'polluted': hasattr(json, '_polluted')}`,
+      variables: {}
+    });
+    expect(r1.success).toBe(true);
+    expect(r1.data?.codeReturn.polluted).toBe(true);
+
+    const r2 = await runner.execute({
+      code: `import json
+def main():
+    return {
+        'has_pollution': hasattr(json, '_polluted'),
+        'dumps_works': json.dumps({'test': 1}) == '{"test": 1}'
+    }`,
+      variables: {}
+    });
+    expect(r2.success).toBe(true);
+    expect(r2.data?.codeReturn.has_pollution).toBe(false);
+    expect(r2.data?.codeReturn.dumps_works).toBe(true);
+  });
+
+  it('上一次的 print 输出不泄露到下一次', async () => {
+    await runner.execute({
+      code: `def main():
+    print('secret_token_abc123')
+    return {}`,
+      variables: {}
+    });
+
+    const result = await runner.execute({
+      code: `def main():
+    return {'ok': True}`,
+      variables: {}
+    });
+    expect(result.success).toBe(true);
+    expect(result.data?.log || '').not.toContain('secret_token_abc123');
+  });
+
+  it('上一次传入的 variables 不泄露到下一次', async () => {
+    await runner.execute({
+      code: `def main(v):
+    return {'got': v['apiKey']}`,
+      variables: { apiKey: 'sk-secret-key-12345' }
+    });
+
+    const result = await runner.execute({
+      code: `def main(v):
+    leaked = []
+    if v and 'apiKey' in v:
+        leaked.append('apiKey from vars')
+    try:
+        _ = apiKey
+        leaked.append('apiKey from global')
+    except NameError:
+        pass
+    return {'clean': len(leaked) == 0, 'leaked': leaked}`,
+      variables: {}
+    });
+    expect(result.success).toBe(true);
+    expect(result.data?.codeReturn.clean).toBe(true);
+  });
+});

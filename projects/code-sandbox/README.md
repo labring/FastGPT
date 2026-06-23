@@ -1,28 +1,24 @@
 # FastGPT Code Sandbox
 
-基于 Node + Hono 的代码执行沙盒，支持 JS 和 Python。采用进程池架构，预热长驻 worker 进程，通过 stdin/stdout JSON 协议通信，消除每次请求的进程启动开销。
+基于 Node + Hono 的代码执行沙盒，支持 JS 和 Python。JS 采用长驻 worker 进程池；Python 采用 one-shot 预热进程池，Linux/Docker 环境固定启用 chroot、seccomp、setuid/setgid 隔离。
 
 ## 架构
 
 ```
-HTTP Request → Hono Server → Process Pool → Worker (long-lived) → Result
-                                ↓
-                         ┌──────────────┐
-                         │  JS Workers   │  node worker.js (×N)
-                         │  Py Workers   │  python3 worker.py (×N)
-                         └──────────────┘
-                         stdin: JSON task → stdout: JSON result
+HTTP Request → Hono Server
+                  ├─ JS Process Pool → node worker.js (long-lived) → Result
+                  └─ Python One-shot Warm Pool → clean python3 bootstrap → one task → exit
 ```
 
-- **进程池**：启动时预热 N 个 worker 进程（默认 20），请求到达时直接分配空闲 worker，执行完归还池中
+- **JS 进程池**：启动时预热 N 个 worker 进程（默认 20），请求到达时直接分配空闲 worker，执行完归还池中
 - **JS 执行**：Node worker 进程 + 安全 shim（冻结 Function 构造器、危险全局对象遮蔽、require 白名单）
-- **Python 执行**：python3 worker 进程 + `__import__` 拦截 + resource 资源限制
+- **Python 执行**：预热 `SANDBOX_POOL_SIZE` 个干净 python3 进程，进程进入 native seccomp/chroot/降权后等待一条任务；执行用户代码后立即销毁并异步补充新的干净进程
 - **网络请求**：统一通过 `SystemHelper.httpRequest()` / `system_helper.http_request()` 收口，内置 SSRF 防护
-- **并发控制**：请求数超过池大小时自动排队，worker 崩溃自动重启补充
+- **并发控制**：JS 请求超过池大小时自动排队；Python 同时运行的独立子进程数复用 `SANDBOX_POOL_SIZE`
 
 ## 性能
 
-进程池 vs 旧版 spawn-per-request 对比（SANDBOX_POOL_SIZE=20）：
+JS 仍保留进程池收益。Python 为了多租户安全改为 one-shot 预热池：空闲进程只在执行用户代码前复用，执行用户代码后立即销毁。它能降低 Python 冷启动成本，但吞吐仍会低于旧长驻 worker。
 
 | 场景 | 旧版 QPS / P50 | 进程池 QPS / P50 | 提升 |
 |------|----------------|------------------|------|
@@ -30,12 +26,7 @@ HTTP Request → Hono Server → Process Pool → Worker (long-lived) → Result
 | JS IO 500ms (c50) | 22 / 2,107ms | 38 / 1,005ms | 1.7x |
 | JS 高 CPU (c10) | 9 / 1,079ms | 12 / 796ms | 1.3x |
 | JS 高内存 (c10) | — | 13 / 787ms | — |
-| Python 简单函数 (c50) | 14.7 / 2,897ms | 4,247 / 4ms | **289x** |
-| Python IO 500ms (c50) | 14.2 / 3,066ms | 38 / 1,003ms | 2.7x |
-| Python 高 CPU (c10) | 3.1 / 2,845ms | 4 / 2,191ms | 1.3x |
-| Python 高内存 (c10) | — | 11 / 893ms | — |
-
-资源占用（20+20 workers）：空闲 ~1.5GB RSS，压测峰值 ~2GB RSS。
+资源占用由 `SANDBOX_POOL_SIZE`、Python 预热空闲进程、Python 包加载情况和 `SANDBOX_MAX_MEMORY_MB` 共同决定。
 
 ## 快速开始
 
@@ -96,14 +87,14 @@ docker run -p 3000:3000 \
 
 ### `GET /health`
 
-健康检查，返回进程池状态。
+健康检查，返回 JS 进程池和 Python isolated runner 状态。
 
 ```json
 {
   "status": "ok",
   "version": "5.0.0",
   "jsPool": { "total": 20, "idle": 18, "busy": 2, "queued": 0 },
-  "pythonPool": { "total": 20, "idle": 20, "busy": 0, "queued": 0 }
+  "pythonPool": { "total": 0, "idle": 0, "busy": 0, "queued": 0, "poolSize": 20 }
 }
 ```
 
@@ -139,12 +130,16 @@ docker run -p 3000:3000 \
 | `SANDBOX_PORT` | 服务端口 | `3000` |
 | `SANDBOX_TOKEN` | Bearer Token 认证密钥 | 空（不鉴权） |
 
-### 进程池
+### 并发控制
 
 | 变量 | 说明 | 默认值 |
 |------|------|--------|
-| `SANDBOX_POOL_SIZE` | 每种语言的 worker 进程数 | `20` |
+| `SANDBOX_POOL_SIZE` | JS worker 进程数；也是 Python 同时运行和空闲预热的进程数 | `20` |
 | `SANDBOX_QUEUE_ID_CONCURRENCY` | 同一 `queueId` 同时可进入执行流程的请求数，空值表示不按 `queueId` 排队 | 空 |
+
+### Python 隔离
+
+Python 隔离不再提供运行时关闭开关。Linux 环境固定启用 native seccomp/chroot/降权，chroot 根目录固定为 `/tmp/fastgpt-python-sandbox`，用户代码进程固定降权到 `65537:65537`。Python 子进程不允许直接网络 syscall，外部请求必须通过父进程代理的 `http_request` 能力，并受请求次数、超时、请求体和响应体大小限制。
 
 ### 资源限制
 
@@ -174,9 +169,10 @@ src/
 ├── types.ts                   # 类型定义
 ├── pool/
 │   ├── process-pool.ts        # JS 进程池管理
-│   ├── python-process-pool.ts # Python 进程池管理
-│   ├── worker.ts              # JS worker（长驻进程，含安全 shim）
-│   └── worker.py              # Python worker（长驻进程，含安全沙箱）
+│   └── worker.ts              # JS worker（长驻进程，含安全 shim）
+├── isolated/
+│   ├── python-isolated-runner.ts # Python 独立进程执行器
+│   └── python-bootstrap.py       # Python 单次执行 bootstrap
 └── utils/
     └── semaphore.ts           # 信号量（通用并发控制）
 

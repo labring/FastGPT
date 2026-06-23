@@ -12,16 +12,16 @@
  */
 import { afterEach, describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { ProcessPool } from '../../src/pool/process-pool';
-import { PythonProcessPool } from '../../src/pool/python-process-pool';
+import { PythonIsolatedRunner } from '../../src/isolated/python-isolated-runner';
 import { CustomModuleProcessPool } from '../helpers/custom-process-pool';
 
 let jsPool: ProcessPool;
-let pyPool: PythonProcessPool;
+let pyPool: PythonIsolatedRunner;
 
 beforeAll(async () => {
   jsPool = new ProcessPool(1);
   await jsPool.init();
-  pyPool = new PythonProcessPool(1);
+  pyPool = new PythonIsolatedRunner(1);
   await pyPool.init();
 });
 
@@ -276,33 +276,6 @@ describe('模块拦截', () => {
         variables: {}
       });
       expect(result.success).toBe(false);
-    });
-
-    it('显式加入白名单后允许危险 Python 标准库', async () => {
-      const pool = new CustomModuleProcessPool('Python', [
-        'os',
-        'subprocess',
-        'socket',
-        'pathlib',
-        'json'
-      ]);
-      await pool.init();
-      try {
-        const payloads = [
-          `import os\ndef main():\n    return {'ok': hasattr(os, 'getcwd')}`,
-          `import subprocess\ndef main():\n    return {'ok': hasattr(subprocess, 'Popen')}`,
-          `import socket\ndef main():\n    return {'ok': hasattr(socket, 'socket')}`,
-          `from pathlib import Path\ndef main():\n    return {'ok': Path('/tmp').name == 'tmp'}`
-        ];
-
-        for (const code of payloads) {
-          const result = await pool.execute({ code, variables: {} });
-          expect(result.success).toBe(true);
-          expect(result.data?.codeReturn.ok).toBe(true);
-        }
-      } finally {
-        await pool.shutdown();
-      }
     });
 
     it('阻止 import requests（预检）', async () => {
@@ -627,7 +600,7 @@ def main():
     });
 
     // --- exec/eval 逃逸 ---
-    it('exec 中导入危险模块被 __import__ hook 拦截', async () => {
+    it('exec 中导入危险模块在预检阶段被拒绝', async () => {
       const result = await runner.execute({
         code: `
 def main():
@@ -639,8 +612,8 @@ def main():
 `,
         variables: {}
       });
-      expect(result.success).toBe(true);
-      expect(result.data?.codeReturn.escaped).toBe(false);
+      expect(result.success).toBe(false);
+      expect(result.message).toMatch(/exec|not allowed/i);
     });
 
     it('exec 字符串拼接绕过预检（运行时拦截兜底）', async () => {
@@ -672,11 +645,11 @@ def main():
 `,
         variables: {}
       });
-      expect(result.success).toBe(true);
-      expect(result.data?.codeReturn.escaped).toBe(false);
+      expect(result.success).toBe(false);
+      expect(result.message).toMatch(/eval|not allowed/i);
     });
 
-    it('compile + exec 导入危险模块被拦截', async () => {
+    it('compile + exec 导入危险模块在预检阶段被拒绝', async () => {
       const result = await runner.execute({
         code: `
 def main():
@@ -689,8 +662,8 @@ def main():
 `,
         variables: {}
       });
-      expect(result.success).toBe(true);
-      expect(result.data?.codeReturn.escaped).toBe(false);
+      expect(result.success).toBe(false);
+      expect(result.message).toMatch(/compile|exec|not allowed/i);
     });
 
     // --- 内部变量隔离 ---
@@ -742,7 +715,7 @@ def main():
       expect(result.data?.codeReturn.escaped).toBe(false);
     });
 
-    it('globals() 不泄露内部变量', async () => {
+    it('globals() 调用被拒绝，避免泄露内部变量', async () => {
       const result = await runner.execute({
         code: `def main(v):
     g = globals()
@@ -750,8 +723,8 @@ def main():
     return {"has_original_import": has_orig}`,
         variables: {}
       });
-      expect(result.success).toBe(true);
-      expect(result.data?.codeReturn.has_original_import).toBe(false);
+      expect(result.success).toBe(false);
+      expect(result.message).toMatch(/globals|not allowed/i);
     });
 
     // --- __subclasses__ / type ---
@@ -1302,19 +1275,26 @@ describe('沙盒环境加固，禁止用户代码篡改沙盒环境', () => {
   describe('Python', () => {
     const runner = { execute: (args: any) => pyPool.execute(args) };
 
-    it('builtins.__import__ 覆盖被静默忽略', async () => {
+    it('builtins.__import__ 覆盖被拒绝', async () => {
       const result = await runner.execute({
         code: `import builtins
 def main():
-    builtins.__import__ = lambda *a, **kw: None
+    changed = False
+    try:
+        builtins.__import__ = lambda *a, **kw: None
+        changed = True
+    except Exception:
+        pass
     try:
         import os
-        return {'escaped': True}
+        escaped = True
     except (ImportError, Exception):
-        return {'escaped': False}`,
+        escaped = False
+    return {'changed': changed, 'escaped': escaped}`,
         variables: {}
       });
       expect(result.success).toBe(true);
+      expect(result.data?.codeReturn.changed).toBe(false);
       expect(result.data?.codeReturn.escaped).toBe(false);
     });
 
@@ -1588,8 +1568,8 @@ describe('worker 状态隔离', () => {
     });
   });
 
-  describe('Python Worker 状态隔离', () => {
-    let pool: PythonProcessPool;
+  describe('Python isolated runner 状态隔离', () => {
+    let pool: PythonIsolatedRunner;
 
     afterEach(async () => {
       try {
@@ -1598,7 +1578,7 @@ describe('worker 状态隔离', () => {
     });
 
     it('上一次执行设置的全局变量，下一次读不到', async () => {
-      pool = new PythonProcessPool(1);
+      pool = new PythonIsolatedRunner(1);
       await pool.init();
 
       // 第一次：尝试写入全局
@@ -1617,7 +1597,7 @@ describe('worker 状态隔离', () => {
     });
 
     it('上一次修改的模块状态不影响下一次（模块快照恢复）', async () => {
-      pool = new PythonProcessPool(1);
+      pool = new PythonIsolatedRunner(1);
       await pool.init();
 
       // 第一次：给 json 模块添加自定义属性
@@ -1638,7 +1618,7 @@ describe('worker 状态隔离', () => {
     });
 
     it('上一次的 print 输出不泄露到下一次', async () => {
-      pool = new PythonProcessPool(1);
+      pool = new PythonIsolatedRunner(1);
       await pool.init();
 
       await pool.execute({
@@ -1656,7 +1636,7 @@ describe('worker 状态隔离', () => {
     });
 
     it('上一次传入的 variables 不泄露到下一次', async () => {
-      pool = new PythonProcessPool(1);
+      pool = new PythonIsolatedRunner(1);
       await pool.init();
 
       await pool.execute({
@@ -1742,7 +1722,7 @@ describe('环境变量隔离', () => {
   });
 
   describe('Python 环境变量隔离', () => {
-    let pool: PythonProcessPool;
+    let pool: PythonIsolatedRunner;
 
     afterEach(async () => {
       try {
@@ -1751,7 +1731,7 @@ describe('环境变量隔离', () => {
     });
 
     it('无法通过 os 模块读取环境变量', async () => {
-      pool = new PythonProcessPool(1);
+      pool = new PythonIsolatedRunner(1);
       await pool.init();
 
       const result = await pool.execute({
@@ -1763,7 +1743,7 @@ describe('环境变量隔离', () => {
     });
 
     it('无法通过 subprocess 执行 env 命令', async () => {
-      pool = new PythonProcessPool(1);
+      pool = new PythonIsolatedRunner(1);
       await pool.init();
 
       const result = await pool.execute({
@@ -1775,7 +1755,7 @@ describe('环境变量隔离', () => {
     });
 
     it('无法通过 open 读取 /etc/passwd', async () => {
-      pool = new PythonProcessPool(1);
+      pool = new PythonIsolatedRunner(1);
       await pool.init();
 
       const result = await pool.execute({
@@ -1867,7 +1847,7 @@ describe('进程干扰', () => {
   });
 
   describe('Python 进程干扰防护', () => {
-    let pool: PythonProcessPool;
+    let pool: PythonIsolatedRunner;
 
     afterEach(async () => {
       try {
@@ -1876,7 +1856,7 @@ describe('进程干扰', () => {
     });
 
     it('无法 import subprocess', async () => {
-      pool = new PythonProcessPool(1);
+      pool = new PythonIsolatedRunner(1);
       await pool.init();
 
       const result = await pool.execute({
@@ -1888,7 +1868,7 @@ describe('进程干扰', () => {
     });
 
     it('无法 import multiprocessing', async () => {
-      pool = new PythonProcessPool(1);
+      pool = new PythonIsolatedRunner(1);
       await pool.init();
 
       const result = await pool.execute({
@@ -1900,7 +1880,7 @@ describe('进程干扰', () => {
     });
 
     it('无法 import signal 发送信号', async () => {
-      pool = new PythonProcessPool(1);
+      pool = new PythonIsolatedRunner(1);
       await pool.init();
 
       const result = await pool.execute({
@@ -1912,7 +1892,7 @@ describe('进程干扰', () => {
     });
 
     it('无法 import threading 创建线程', async () => {
-      pool = new PythonProcessPool(1);
+      pool = new PythonIsolatedRunner(1);
       await pool.init();
 
       const result = await pool.execute({

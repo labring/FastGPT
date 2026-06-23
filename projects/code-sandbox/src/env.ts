@@ -81,7 +81,7 @@ export const env = createEnv({
           'json,csv,base64,binascii,struct,' +
           'hashlib,hmac,secrets,uuid,' +
           'typing,abc,enum,dataclasses,contextlib,' +
-          'pprint,' +
+          'pprint,weakref,' +
           'numpy,pandas,matplotlib'
       )
       .transform(parseAllowedModules)

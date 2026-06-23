@@ -1,19 +1,16 @@
 import { join } from 'path';
 import { BaseProcessPool } from '../../src/pool/base-process-pool';
 
-export type SandboxLanguage = 'JS' | 'Python';
-
 export class CustomModuleProcessPool extends BaseProcessPool {
   constructor(
-    language: SandboxLanguage,
+    language: 'JS',
     allowedModules: readonly string[],
     options: { recycleAfterTask?: boolean } = {}
   ) {
     super(1, {
       name: `Custom${language}`,
-      workerScript: join(process.cwd(), 'src/pool', language === 'JS' ? 'worker.ts' : 'worker.py'),
-      spawnCommand: (script) =>
-        language === 'JS' ? `exec tsx ${script}` : `exec python3 -u ${script}`,
+      workerScript: join(process.cwd(), 'src/pool', 'worker.ts'),
+      spawnCommand: (script) => `exec tsx ${script}`,
       allowedModules,
       recycleAfterTask: options.recycleAfterTask
     });

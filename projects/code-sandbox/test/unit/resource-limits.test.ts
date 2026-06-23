@@ -10,8 +10,8 @@
  */
 import { describe, it, expect, afterEach, beforeAll } from 'vitest';
 import { ProcessPool } from '../../src/pool/process-pool';
-import { PythonProcessPool } from '../../src/pool/python-process-pool';
-import { BaseProcessPool } from '../../src/pool/base-process-pool';
+import { PythonIsolatedRunner } from '../../src/isolated/python-isolated-runner';
+import type { BaseProcessPool } from '../../src/pool/base-process-pool';
 import { env, RUNTIME_MEMORY_OVERHEAD_MB } from '../../src/env';
 import {
   CustomModuleProcessPool,
@@ -100,7 +100,7 @@ describe('内存限制', () => {
 });
 
 describe('Python 内存限制', () => {
-  let pool: PythonProcessPool;
+  let pool: PythonIsolatedRunner;
 
   afterEach(async () => {
     try {
@@ -108,10 +108,11 @@ describe('Python 内存限制', () => {
     } catch {}
   });
 
-  it('Python 分配超大内存被 RSS 监控终止后自动 respawn', async () => {
-    pool = new PythonProcessPool(1);
+  it('Python 分配超大内存被 RSS 监控终止后 runner 可继续执行', async () => {
+    pool = new PythonIsolatedRunner(1);
     await pool.init();
     expect(pool.stats.total).toBe(1);
+    expect(pool.stats.idle).toBe(1);
 
     const result = await pool.execute({
       code: `import time\nimport random\ndef main():\n    chunks = []\n    for i in range(40):\n        chunk = bytearray(10 * 1024 * 1024)\n        chunk[0] = i % 256\n        chunks.append(chunk)\n        time.sleep(0.2)\n    return {'size': len(chunks)}`,
@@ -119,9 +120,6 @@ describe('Python 内存限制', () => {
     });
     expect(result.success).toBe(false);
     expect(result.message).toMatch(/memory|Memory|crash|Worker|timed out/i);
-
-    // 等 respawn
-    await new Promise((r) => setTimeout(r, 2000));
 
     const result2 = await pool.execute({
       code: `def main():\n    return {'recovered': True}`,
@@ -132,9 +130,10 @@ describe('Python 内存限制', () => {
   }, 30000);
 
   it('Python 分配配置范围内的内存正常工作', async () => {
-    pool = new PythonProcessPool(1);
+    pool = new PythonIsolatedRunner(1);
     await pool.init();
     expect(pool.stats.total).toBe(1);
+    expect(pool.stats.idle).toBe(1);
 
     const allocMB = 10;
 
@@ -195,35 +194,25 @@ describe('显式放开后台执行模块时的 worker 回收', () => {
     expect(recovery.data?.codeReturn.ok).toBe(true);
   }, 20000);
 
-  it('Python 显式允许 subprocess 后，任务返回即回收 worker 并清理子进程', async () => {
-    pool = new CustomModuleProcessPool('Python', ['subprocess'], { recycleAfterTask: true });
-    await pool.init();
+  it('Python isolated runner 拒绝 subprocess 且后续任务可继续执行', async () => {
+    const runner = new PythonIsolatedRunner(1);
+    await runner.init();
 
-    const firstPid = getWorkerPid(pool);
-    expect(firstPid).toBeTypeOf('number');
-
-    const result = await pool.execute({
-      code: `import subprocess\ndef main():\n    child = subprocess.Popen(['python3', '-c', 'import time; time.sleep(60)'])\n    return {'childPid': child.pid}`,
+    const result = await runner.execute({
+      code: `import subprocess\ndef main():\n    return {'never': True}`,
       variables: {}
     });
+    expect(result.success).toBe(false);
+    expect(result.message).toContain('subprocess');
 
-    expect(result.success).toBe(true);
-    const childPid = result.data?.codeReturn.childPid;
-    expect(childPid).toBeTypeOf('number');
-
-    const workerRecycled = await waitForCondition(() => {
-      const currentPid = getWorkerPid(pool);
-      return typeof currentPid === 'number' && currentPid !== firstPid;
-    });
-    expect(workerRecycled).toBe(true);
-    expect(await waitForPidExit(childPid)).toBe(true);
-
-    const recovery = await pool.execute({
+    const recovery = await runner.execute({
       code: `def main():\n    return {'ok': True}`,
       variables: {}
     });
     expect(recovery.success).toBe(true);
     expect(recovery.data?.codeReturn.ok).toBe(true);
+
+    await runner.shutdown();
   }, 20000);
 });
 
@@ -273,7 +262,7 @@ describe('JS CPU 密集型超时', () => {
     expect(result.message).toMatch(/timed out|timeout/i);
   });
 
-  it('CPU 超时后 worker 恢复正常', async () => {
+  it('CPU 超时后 runner 可继续执行新任务', async () => {
     pool = new ProcessPool(1);
     await pool.init();
 
@@ -293,7 +282,7 @@ describe('JS CPU 密集型超时', () => {
 });
 
 describe('Python CPU 密集型超时', () => {
-  let pool: PythonProcessPool;
+  let pool: PythonIsolatedRunner;
 
   afterEach(async () => {
     try {
@@ -302,7 +291,7 @@ describe('Python CPU 密集型超时', () => {
   });
 
   it('纯计算死循环被超时终止', async () => {
-    pool = new PythonProcessPool(1);
+    pool = new PythonIsolatedRunner(1);
     await pool.init();
 
     const start = Date.now();
@@ -318,15 +307,13 @@ describe('Python CPU 密集型超时', () => {
   });
 
   it('CPU 超时后 worker 恢复正常', async () => {
-    pool = new PythonProcessPool(1);
+    pool = new PythonIsolatedRunner(1);
     await pool.init();
 
     await pool.execute({
       code: `def main():\n    while True:\n        pass`,
       variables: {}
     });
-
-    await new Promise((r) => setTimeout(r, 2000));
 
     const r2 = await pool.execute({
       code: `def main():\n    return {'ok': True}`,
@@ -420,7 +407,7 @@ describe('JS 运行时长限制', () => {
 });
 
 describe('Python 运行时长限制', () => {
-  let pool: PythonProcessPool;
+  let pool: PythonIsolatedRunner;
 
   afterEach(async () => {
     try {
@@ -429,7 +416,7 @@ describe('Python 运行时长限制', () => {
   });
 
   it('sleep 超过超时限制被终止', async () => {
-    pool = new PythonProcessPool(1);
+    pool = new PythonIsolatedRunner(1);
     await pool.init();
 
     const start = Date.now();
@@ -444,25 +431,28 @@ describe('Python 运行时长限制', () => {
     expect(elapsed).toBeLessThan(env.SANDBOX_MAX_TIMEOUT + 10000);
   });
 
-  it('超时后回收 Python worker，避免信号和模块状态残留', async () => {
-    pool = new PythonProcessPool(1);
+  it('超时后清理 Python 子进程，避免状态残留到下一次执行', async () => {
+    pool = new PythonIsolatedRunner(1);
     await pool.init();
 
-    const pidBefore = (pool as any).workers[0].proc.pid;
     const result = await pool.execute({
       code: `import time\ndef main():\n    time.sleep(${Math.ceil(env.SANDBOX_MAX_TIMEOUT / 1000) + 5})\n    return {'done': True}`,
       variables: {}
     });
-    await new Promise((r) => setTimeout(r, 1500));
-    const pidAfter = (pool as any).workers[0].proc.pid;
 
     expect(result.success).toBe(false);
     expect(result.message).toMatch(/timed out|timeout/i);
-    expect(pidAfter).not.toBe(pidBefore);
+
+    const recovery = await pool.execute({
+      code: `def main():\n    return {'ok': True}`,
+      variables: {}
+    });
+    expect(recovery.success).toBe(true);
+    expect(recovery.data?.codeReturn.ok).toBe(true);
   });
 
   it('在超时范围内完成的代码正常返回', async () => {
-    pool = new PythonProcessPool(1);
+    pool = new PythonIsolatedRunner(1);
     await pool.init();
 
     const result = await pool.execute({
@@ -474,7 +464,7 @@ describe('Python 运行时长限制', () => {
   });
 
   it('delay() 超过 10s 上限被拒绝', async () => {
-    pool = new PythonProcessPool(1);
+    pool = new PythonIsolatedRunner(1);
     await pool.init();
 
     const result = await pool.execute({
@@ -528,7 +518,7 @@ describe('JS 输出大小限制', () => {
 });
 
 describe('Python 输出大小限制', () => {
-  let pool: PythonProcessPool;
+  let pool: PythonIsolatedRunner;
 
   afterEach(async () => {
     try {
@@ -536,11 +526,10 @@ describe('Python 输出大小限制', () => {
     } catch {}
   });
 
-  it('返回值超过 maxOutputSize 被拒绝且 worker 可恢复', async () => {
-    pool = new PythonProcessPool(1);
+  it('返回值超过 maxOutputSize 被拒绝且 runner 可恢复', async () => {
+    pool = new PythonIsolatedRunner(1);
     await pool.init();
 
-    const pidBefore = getWorkerPid(pool);
     const result = await pool.execute({
       code: `def main():\n    return 'x' * (${env.SANDBOX_MAX_OUTPUT_MB} * 1024 * 1024 + 1)`,
       variables: {}
@@ -548,12 +537,6 @@ describe('Python 输出大小限制', () => {
 
     expect(result.success).toBe(false);
     expect(result.message).toMatch(/output too large/i);
-
-    const workerRecycled = await waitForCondition(() => {
-      const currentPid = getWorkerPid(pool);
-      return typeof currentPid === 'number' && currentPid !== pidBefore;
-    });
-    expect(workerRecycled).toBe(true);
 
     const recovery = await pool.execute({
       code: `def main():\n    return {'ok': True}`,
@@ -639,7 +622,7 @@ describe('JS 网络请求次数限制', () => {
 });
 
 describe('Python 网络请求次数限制', () => {
-  let pool: PythonProcessPool;
+  let pool: PythonIsolatedRunner;
 
   afterEach(async () => {
     try {
@@ -648,7 +631,7 @@ describe('Python 网络请求次数限制', () => {
   });
 
   it(`第 maxRequests+1 次请求被拒绝（计数器验证）`, async () => {
-    pool = new PythonProcessPool(1);
+    pool = new PythonIsolatedRunner(1);
     await pool.init();
 
     const result = await pool.execute({
@@ -663,7 +646,7 @@ describe('Python 网络请求次数限制', () => {
   });
 
   it('请求计数每次执行重置', async () => {
-    pool = new PythonProcessPool(1);
+    pool = new PythonIsolatedRunner(1);
     await pool.init();
 
     await pool.execute({
@@ -738,7 +721,7 @@ describe('JS 请求体大小限制', () => {
 });
 
 describe('Python 请求体大小限制', () => {
-  let pool: PythonProcessPool;
+  let pool: PythonIsolatedRunner;
 
   afterEach(async () => {
     try {
@@ -747,7 +730,7 @@ describe('Python 请求体大小限制', () => {
   });
 
   it('请求体超过 maxRequestBodySize 被拒绝', async () => {
-    pool = new PythonProcessPool(1);
+    pool = new PythonIsolatedRunner(1);
     await pool.init();
 
     const sizeMB = env.SANDBOX_REQUEST_MAX_BODY_MB;
@@ -761,7 +744,7 @@ describe('Python 请求体大小限制', () => {
   });
 
   it('请求体在限制内正常发送（不因大小被拒）', async () => {
-    pool = new PythonProcessPool(1);
+    pool = new PythonIsolatedRunner(1);
     await pool.init();
 
     const result = await pool.execute({
@@ -826,7 +809,7 @@ describe('JS 网络协议限制', () => {
 });
 
 describe('Python 网络协议限制', () => {
-  let pool: PythonProcessPool;
+  let pool: PythonIsolatedRunner;
 
   afterEach(async () => {
     try {
@@ -835,7 +818,7 @@ describe('Python 网络协议限制', () => {
   });
 
   it('ftp:// 协议被拒绝', async () => {
-    pool = new PythonProcessPool(1);
+    pool = new PythonIsolatedRunner(1);
     await pool.init();
 
     const result = await pool.execute({
@@ -848,7 +831,7 @@ describe('Python 网络协议限制', () => {
   });
 
   it('file:// 协议被拒绝', async () => {
-    pool = new PythonProcessPool(1);
+    pool = new PythonIsolatedRunner(1);
     await pool.init();
 
     const result = await pool.execute({

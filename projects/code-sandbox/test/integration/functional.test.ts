@@ -6,7 +6,7 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { ProcessPool } from '../../src/pool/process-pool';
-import { PythonProcessPool } from '../../src/pool/python-process-pool';
+import { PythonIsolatedRunner } from '../../src/isolated/python-isolated-runner';
 
 // ============================================================
 // 测试用例矩阵类型
@@ -25,7 +25,7 @@ interface TestCase {
   };
 }
 
-function runMatrix(getPool: () => ProcessPool | PythonProcessPool, cases: TestCase[]) {
+function runMatrix(getPool: () => ProcessPool | PythonIsolatedRunner, cases: TestCase[]) {
   for (const tc of cases) {
     it(tc.name, async () => {
       const result = await getPool().execute({
@@ -634,9 +634,9 @@ async function main() { return recurse(); }`,
 // Python 功能测试矩阵
 // ============================================================
 describe('Python 功能测试', () => {
-  let pool: PythonProcessPool;
+  let pool: PythonIsolatedRunner;
   beforeAll(async () => {
-    pool = new PythonProcessPool(1);
+    pool = new PythonIsolatedRunner(1);
     await pool.init();
   });
   afterAll(async () => {
