@@ -23,7 +23,7 @@ import type {
 import { AgentUsageModuleName } from '../constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { batchRun } from '@fastgpt/global/common/system/utils';
-import { normalizeToolResponseContent } from '../utils';
+import { normalizeToolResponseContent } from '@fastgpt/global/core/ai/llm/utils';
 
 type RunAgentCallProps<TChildrenResponse = unknown> = {
   maxRunAgentTimes: number;

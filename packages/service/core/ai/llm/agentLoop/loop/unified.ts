@@ -11,7 +11,7 @@ import { parsePlanAskToolCall } from '../plan/parser';
 import { applyPlanUpdate } from '../plan/state';
 import { runStopGate } from '../stop';
 import { getToolsForUnifiedLoop, normalizeToolCatalog } from '../tools';
-import { normalizeToolResponseContent } from '../utils';
+import { normalizeToolResponseContent } from '@fastgpt/global/core/ai/llm/utils';
 import type {
   AgentLoopRuntime,
   AgentLoopToolExecutionResult,
