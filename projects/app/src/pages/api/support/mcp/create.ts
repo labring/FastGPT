@@ -21,7 +21,7 @@ async function handler(
     authApiKey: true
   });
 
-  if (!permission.hasApikeyCreatePer) {
+  if (!permission.hasAppCreatePer) {
     return Promise.reject(TeamErrEnum.unPermission);
   }
 
