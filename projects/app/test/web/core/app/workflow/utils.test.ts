@@ -22,10 +22,18 @@ import {
   filterWorkflowNodeOutputsByType,
   filterSelectableWorkflowNodeOutputs,
   workflowReferenceValueIsSelectable,
-  checkWorkflowNodeAndConnection
+  checkWorkflowNodeIssues,
+  checkWorkflowNodeAndConnection,
+  checkWorkflowHasError,
+  checkWorkflowBeforeRunOrPublish,
+  getWorkflowCheckErrorNodeIds
 } from '@/web/core/workflow/utils';
 import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { NodeOutputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
+import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
+import { ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 
 describe('nodeTemplate2FlowNode', () => {
   it('should initialize template text once before formatting the instance name', () => {
@@ -143,6 +151,609 @@ describe('adaptStoreNodeInputs', () => {
 
     expect(result[0]).toMatchObject({ selectedTypeIndex: 0, value: selectedSkills });
     expect(result[1]).toBe(inputs[1]);
+  });
+});
+
+describe('checkWorkflowNodeIssues', () => {
+  const makeNode = (
+    nodeId: string,
+    flowNodeType: FlowNodeTypeEnum,
+    data?: Partial<FlowNodeItemType>
+  ): Node<FlowNodeItemType> =>
+    ({
+      id: nodeId,
+      type: flowNodeType,
+      position: { x: 0, y: 0 },
+      data: {
+        nodeId,
+        flowNodeType,
+        name: nodeId,
+        inputs: [],
+        outputs: [],
+        ...data
+      }
+    }) as Node<FlowNodeItemType>;
+
+  const startNode = makeNode('start', FlowNodeTypeEnum.workflowStart, {
+    outputs: [
+      {
+        id: NodeOutputKeyEnum.userChatInput,
+        key: NodeOutputKeyEnum.userChatInput,
+        label: 'question',
+        type: FlowNodeOutputTypeEnum.static,
+        valueType: WorkflowIOValueTypeEnum.string
+      }
+    ]
+  });
+
+  it('collects multiple node errors in one pass', () => {
+    const requiredNode = makeNode('required', FlowNodeTypeEnum.answerNode, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.answerText,
+          label: 'answer',
+          required: true,
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.input],
+          value: ''
+        }
+      ]
+    });
+    const formNode = makeNode('form', FlowNodeTypeEnum.formInput, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.userInputForms,
+          renderTypeList: [FlowNodeInputTypeEnum.custom],
+          value: []
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, requiredNode, formNode],
+      edges: [
+        { id: 'e1', source: 'start', target: 'required', type: EDGE_TYPE },
+        { id: 'e2', source: 'start', target: 'form', type: EDGE_TYPE }
+      ]
+    });
+
+    expect(Object.keys(result).sort()).toEqual(['form', 'required']);
+    expect(result.required.map((issue) => issue.code)).toContain('required_input_empty');
+    expect(result.form.map((issue) => issue.code)).toContain('form_input_empty');
+  });
+
+  it('keeps all errors on a single node', () => {
+    const node = makeNode('multi', FlowNodeTypeEnum.userSelect, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.userSelectOptions,
+          renderTypeList: [FlowNodeInputTypeEnum.custom],
+          value: [{ value: '' }]
+        },
+        {
+          key: NodeInputKeyEnum.answerText,
+          label: 'answer',
+          required: true,
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.input],
+          value: ''
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, node],
+      edges: [{ id: 'e1', source: 'start', target: 'multi', type: EDGE_TYPE }]
+    });
+
+    expect(result.multi.map((issue) => issue.code)).toEqual(
+      expect.arrayContaining(['user_select_value_empty', 'required_input_empty'])
+    );
+  });
+
+  it('reports nodes without upstream connections', () => {
+    const node = makeNode('orphan', FlowNodeTypeEnum.answerNode);
+
+    const result = checkWorkflowNodeIssues({ nodes: [startNode, node], edges: [] });
+
+    expect(result.orphan.map((issue) => issue.code)).toContain('no_upstream');
+  });
+
+  it('reports invalid references', () => {
+    const node = makeNode('ref', FlowNodeTypeEnum.answerNode, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.answerText,
+          label: 'answer',
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          value: ['deleted', 'output']
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, node],
+      edges: [{ id: 'e1', source: 'start', target: 'ref', type: EDGE_TYPE }]
+    });
+
+    expect(result.ref.map((issue) => issue.code)).toContain('invalid_reference');
+  });
+
+  it('reports plugin errors on node issues', () => {
+    const node = makeNode('tool', FlowNodeTypeEnum.appModule, {
+      pluginData: {
+        error: 'not found'
+      } as any
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, node],
+      edges: [{ id: 'e1', source: 'start', target: 'tool', type: EDGE_TYPE }]
+    });
+
+    expect(result.tool.map((issue) => issue.code)).toContain('tool_missing');
+    expect(result.tool[0]?.message).toBe('该工具不存在，请删除');
+  });
+
+  it('reports permission error when pluginData error is unAuthApp', () => {
+    const node = makeNode('tool', FlowNodeTypeEnum.appModule, {
+      pluginData: {
+        error: AppErrEnum.unAuthApp
+      } as any
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, node],
+      edges: [{ id: 'e1', source: 'start', target: 'tool', type: EDGE_TYPE }]
+    });
+
+    expect(result.tool.map((issue) => issue.code)).toContain('tool_no_permission');
+    expect(result.tool[0]?.message).toBe('当前账号无权限访问该资源');
+  });
+
+  it('reports permission error when pluginData error is translated message', () => {
+    const node = makeNode('tool', FlowNodeTypeEnum.pluginModule, {
+      pluginData: {
+        error: ERROR_RESPONSE[PluginErrEnum.unAuth].message
+      } as any
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, node],
+      edges: [{ id: 'e1', source: 'start', target: 'tool', type: EDGE_TYPE }]
+    });
+
+    expect(result.tool.map((issue) => issue.code)).toContain('tool_no_permission');
+    expect(result.tool[0]?.message).toBe('当前账号无权限访问该资源');
+  });
+
+  it('reports missing tool when pluginData error is appUnExist', () => {
+    const node = makeNode('tool', FlowNodeTypeEnum.runApp, {
+      pluginData: {
+        error: AppErrEnum.unExist
+      } as any
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, node],
+      edges: [{ id: 'e1', source: 'start', target: 'tool', type: EDGE_TYPE }]
+    });
+
+    expect(result.tool.map((issue) => issue.code)).toContain('tool_missing');
+  });
+
+  it('uses fixed design copy for mapped issue codes', () => {
+    const disconnectedNode = makeNode('disconnected', FlowNodeTypeEnum.answerNode);
+    const unreachableNode = makeNode('unreachable', FlowNodeTypeEnum.answerNode);
+    const requiredNode = makeNode('required', FlowNodeTypeEnum.answerNode, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.answerText,
+          label: 'answer',
+          required: true,
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.input],
+          value: ''
+        }
+      ]
+    });
+
+    const unreachableResult = checkWorkflowNodeIssues({
+      nodes: [startNode, disconnectedNode, unreachableNode],
+      edges: [{ id: 'e1', source: 'disconnected', target: 'unreachable', type: EDGE_TYPE }]
+    });
+    const requiredResult = checkWorkflowNodeIssues({
+      nodes: [startNode, requiredNode],
+      edges: [{ id: 'e1', source: 'start', target: 'required', type: EDGE_TYPE }]
+    });
+
+    expect(unreachableResult.unreachable[0]?.code).toBe('unreachable_from_start');
+    expect(unreachableResult.unreachable[0]?.message).toBe('未与其他节点连线');
+    expect(requiredResult.required[0]?.message).toBe('需填写必填项 answer');
+  });
+
+  it('reports inactive and offline tools', () => {
+    const inactiveNode = makeNode('inactive', FlowNodeTypeEnum.appModule, {
+      pluginData: {} as any,
+      isLatestVersion: false
+    });
+    const offlineNode = makeNode('offline', FlowNodeTypeEnum.appModule, {
+      status: PluginStatusEnum.Offline
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, inactiveNode, offlineNode],
+      edges: [
+        { id: 'e1', source: 'start', target: 'inactive', type: EDGE_TYPE },
+        { id: 'e2', source: 'start', target: 'offline', type: EDGE_TYPE }
+      ]
+    });
+
+    expect(result.inactive.map((issue) => issue.code)).toContain('tool_inactive');
+    expect(result.offline.map((issue) => issue.code)).toContain('tool_offline');
+  });
+
+  it('reports specific node configuration errors', () => {
+    const httpNode = makeNode('http', FlowNodeTypeEnum.httpRequest468, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.httpReqUrl,
+          renderTypeList: [FlowNodeInputTypeEnum.input],
+          value: ''
+        }
+      ]
+    });
+    const toolCallNode = makeNode('toolCall', FlowNodeTypeEnum.toolCall, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.useAgentSandbox,
+          renderTypeList: [FlowNodeInputTypeEnum.switch],
+          value: false
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, httpNode, toolCallNode],
+      edges: [
+        { id: 'e1', source: 'start', target: 'http', type: EDGE_TYPE },
+        { id: 'e2', source: 'start', target: 'toolCall', type: EDGE_TYPE }
+      ]
+    });
+
+    expect(result.http.map((issue) => issue.code)).toContain('http_url_empty');
+    expect(result.toolCall.map((issue) => issue.code)).toContain('tool_call_empty');
+  });
+
+  it('returns invalid reference message with input name', () => {
+    const node = makeNode('ref', FlowNodeTypeEnum.answerNode, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.answerText,
+          label: 'answer',
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          value: ['deleted', 'output']
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, node],
+      edges: [{ id: 'e1', source: 'start', target: 'ref', type: EDGE_TYPE }]
+    });
+
+    expect(result.ref[0]?.message).toBe('answer 引用了无效变量，需删除');
+  });
+
+  it('treats unset reference as required_input_empty instead of invalid_reference', () => {
+    const unsetValues = [undefined, ['', ''], [undefined, undefined]] as const;
+
+    unsetValues.forEach((value, index) => {
+      const node = makeNode(`empty-ref-${index}`, FlowNodeTypeEnum.chatNode, {
+        inputs: [
+          {
+            key: NodeInputKeyEnum.userChatInput,
+            label: '用户问题',
+            required: true,
+            valueType: WorkflowIOValueTypeEnum.string,
+            renderTypeList: [FlowNodeInputTypeEnum.reference],
+            selectedTypeIndex: 0,
+            value
+          }
+        ]
+      });
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [startNode, node],
+        edges: [{ id: `e-${index}`, source: 'start', target: node.id, type: EDGE_TYPE }]
+      });
+
+      const issueCodes = result[node.id]?.map((issue) => issue.code) ?? [];
+      expect(issueCodes).toContain('required_input_empty');
+      expect(issueCodes).not.toContain('invalid_reference');
+    });
+  });
+
+  it('reports invalid_reference when referenced upstream node or output was deleted', () => {
+    const nodeWithDeletedNodeRef = makeNode('deleted-node', FlowNodeTypeEnum.chatNode, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.userChatInput,
+          label: '用户问题',
+          required: true,
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          selectedTypeIndex: 0,
+          value: ['deleted-node-id', NodeOutputKeyEnum.userChatInput]
+        }
+      ]
+    });
+    const nodeWithDeletedOutputRef = makeNode('deleted-output', FlowNodeTypeEnum.chatNode, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.userChatInput,
+          label: '用户问题',
+          required: true,
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          selectedTypeIndex: 0,
+          value: ['start', 'deleted-output-id']
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, nodeWithDeletedNodeRef, nodeWithDeletedOutputRef],
+      edges: [
+        { id: 'e1', source: 'start', target: 'deleted-node', type: EDGE_TYPE },
+        { id: 'e2', source: 'start', target: 'deleted-output', type: EDGE_TYPE }
+      ]
+    });
+
+    expect(result['deleted-node'].map((issue) => issue.code)).toContain('invalid_reference');
+    expect(result['deleted-node'].map((issue) => issue.code)).not.toContain('required_input_empty');
+    expect(result['deleted-output'].map((issue) => issue.code)).toContain('invalid_reference');
+    expect(result['deleted-output'].map((issue) => issue.code)).not.toContain(
+      'required_input_empty'
+    );
+  });
+
+  it('reports specific node configuration errors for ifElse, classify, code and extract', () => {
+    const ifElseNode = makeNode('ifElse', FlowNodeTypeEnum.ifElseNode, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.ifElseList,
+          renderTypeList: [FlowNodeInputTypeEnum.custom],
+          value: [
+            {
+              list: [{ variable: undefined, condition: undefined, value: undefined }]
+            }
+          ]
+        }
+      ]
+    });
+    const classifyNode = makeNode('classify', FlowNodeTypeEnum.classifyQuestion, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.agents,
+          renderTypeList: [FlowNodeInputTypeEnum.custom],
+          value: []
+        }
+      ]
+    });
+    const codeNode = makeNode('code', FlowNodeTypeEnum.code, {
+      inputs: [
+        {
+          key: 'customVar',
+          label: '',
+          renderTypeList: [FlowNodeInputTypeEnum.input],
+          value: ''
+        }
+      ]
+    });
+    const extractNode = makeNode('extract', FlowNodeTypeEnum.contentExtract, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.extractKeys,
+          renderTypeList: [FlowNodeInputTypeEnum.custom],
+          value: []
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, ifElseNode, classifyNode, codeNode, extractNode],
+      edges: [
+        { id: 'e1', source: 'start', target: 'ifElse', type: EDGE_TYPE },
+        { id: 'e2', source: 'start', target: 'classify', type: EDGE_TYPE },
+        { id: 'e3', source: 'start', target: 'code', type: EDGE_TYPE },
+        { id: 'e4', source: 'start', target: 'extract', type: EDGE_TYPE }
+      ]
+    });
+
+    expect(result.ifElse.map((issue) => issue.code)).toContain('if_else_incomplete');
+    expect(result.classify.map((issue) => issue.code)).toContain('classify_question_empty');
+    expect(result.code.map((issue) => issue.code)).toContain('code_input_incomplete');
+    expect(result.extract.map((issue) => issue.code)).toContain('context_extract_empty');
+  });
+
+  it('clears single node errors after configuration is fixed', () => {
+    const requiredNode = makeNode('required', FlowNodeTypeEnum.answerNode, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.answerText,
+          label: 'answer',
+          required: true,
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.input],
+          value: 'fixed answer'
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, requiredNode],
+      edges: [{ id: 'e1', source: 'start', target: 'required', type: EDGE_TYPE }],
+      nodeId: 'required'
+    });
+
+    expect(result.required).toBeUndefined();
+    expect(checkWorkflowHasError(result)).toBe(false);
+  });
+
+  it('supports single node validation', () => {
+    const requiredNode = makeNode('required', FlowNodeTypeEnum.answerNode, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.answerText,
+          label: 'answer',
+          required: true,
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.input],
+          value: ''
+        }
+      ]
+    });
+    const formNode = makeNode('form', FlowNodeTypeEnum.formInput, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.userInputForms,
+          renderTypeList: [FlowNodeInputTypeEnum.custom],
+          value: []
+        }
+      ]
+    });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, requiredNode, formNode],
+      edges: [
+        { id: 'e1', source: 'start', target: 'required', type: EDGE_TYPE },
+        { id: 'e2', source: 'start', target: 'form', type: EDGE_TYPE }
+      ],
+      nodeId: 'required'
+    });
+
+    expect(Object.keys(result)).toEqual(['required']);
+  });
+});
+
+describe('workflow check helpers', () => {
+  it('detects workflow errors from issue map', () => {
+    expect(checkWorkflowHasError({ node1: [{ level: 'error' } as any] })).toBe(true);
+    expect(checkWorkflowHasError({ node1: [{ level: 'warning' } as any] })).toBe(false);
+    expect(checkWorkflowHasError({})).toBe(false);
+  });
+
+  it('orders error node ids by canvas node order for stable first-error focus', () => {
+    const issueMap = {
+      nodeB: [{ level: 'error' } as any],
+      nodeA: [{ level: 'error' } as any]
+    };
+
+    expect(getWorkflowCheckErrorNodeIds(issueMap)).toEqual(
+      expect.arrayContaining(['nodeA', 'nodeB'])
+    );
+    expect(getWorkflowCheckErrorNodeIds(issueMap, ['nodeA', 'nodeB', 'nodeC'])).toEqual([
+      'nodeA',
+      'nodeB'
+    ]);
+  });
+
+  it('returns first error node by canvas order for run/publish checks', () => {
+    const makeNode = (
+      nodeId: string,
+      flowNodeType: FlowNodeTypeEnum,
+      data?: Partial<FlowNodeItemType>
+    ): Node<FlowNodeItemType> =>
+      ({
+        id: nodeId,
+        type: flowNodeType,
+        position: { x: 0, y: 0 },
+        data: {
+          nodeId,
+          flowNodeType,
+          name: nodeId,
+          inputs: [],
+          outputs: [],
+          ...data
+        }
+      }) as Node<FlowNodeItemType>;
+
+    const startNode = makeNode('start', FlowNodeTypeEnum.workflowStart);
+    const requiredNode = makeNode('required', FlowNodeTypeEnum.answerNode, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.answerText,
+          label: 'answer',
+          required: true,
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.input],
+          value: ''
+        }
+      ]
+    });
+    const httpNode = makeNode('http', FlowNodeTypeEnum.httpRequest468, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.httpReqUrl,
+          renderTypeList: [FlowNodeInputTypeEnum.input],
+          value: ''
+        }
+      ]
+    });
+
+    const result = checkWorkflowBeforeRunOrPublish({
+      nodes: [startNode, requiredNode, httpNode],
+      edges: [
+        { id: 'e1', source: 'start', target: 'required', type: EDGE_TYPE },
+        { id: 'e2', source: 'start', target: 'http', type: EDGE_TYPE }
+      ]
+    });
+
+    expect(result.hasError).toBe(true);
+    expect(result.firstErrorNodeId).toBe('required');
+    expect(result.errorNodeIds).toEqual(['required', 'http']);
+  });
+
+  it('blocks run/publish style checks when any error exists', () => {
+    const httpNode = {
+      id: 'http',
+      type: FlowNodeTypeEnum.httpRequest468,
+      position: { x: 0, y: 0 },
+      data: {
+        nodeId: 'http',
+        flowNodeType: FlowNodeTypeEnum.httpRequest468,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.httpReqUrl,
+            renderTypeList: [FlowNodeInputTypeEnum.input],
+            value: ''
+          }
+        ],
+        outputs: []
+      }
+    } as Node<FlowNodeItemType>;
+    const startNode = {
+      id: 'start',
+      type: FlowNodeTypeEnum.workflowStart,
+      position: { x: 0, y: 0 },
+      data: {
+        nodeId: 'start',
+        flowNodeType: FlowNodeTypeEnum.workflowStart,
+        inputs: [],
+        outputs: []
+      }
+    } as Node<FlowNodeItemType>;
+
+    const issueMap = checkWorkflowNodeIssues({
+      nodes: [startNode, httpNode],
+      edges: [{ id: 'e1', source: 'start', target: 'http', type: EDGE_TYPE }]
+    });
+
+    expect(checkWorkflowHasError(issueMap)).toBe(true);
+    expect(getWorkflowCheckErrorNodeIds(issueMap, ['start', 'http'])).toEqual(['http']);
   });
 });
 
@@ -746,7 +1357,7 @@ describe('checkWorkflowNodeAndConnection', () => {
       const loop = makeLoopRunNode(LoopRunModeEnum.array, ['start1']);
       // 数组模式下 loopRunInputArray 必填，填个非空 value 走通用校验
       const arrInput = loop.data.inputs.find((i) => i.key === NodeInputKeyEnum.loopRunInputArray)!;
-      arrInput.value = ['ws', 'userChatInput'];
+      arrInput.value = [[VARIABLE_NODE_ID, 'bar']];
       const nodes = [workflowStart, loop, makeChild('start1', FlowNodeTypeEnum.loopRunStart)];
       const result = checkWorkflowNodeAndConnection({
         nodes,
