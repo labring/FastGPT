@@ -476,6 +476,7 @@ const AppCard = React.memo(function AppCard({
               onClick={(e) => e.stopPropagation()}
             >
               <MyMenu
+                closeOnBlur={false}
                 Button={
                   <IconButton
                     size={'xsSquare'}

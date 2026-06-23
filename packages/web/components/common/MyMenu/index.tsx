@@ -45,6 +45,7 @@ export type Props = {
   onOpenChange?: (isOpen: boolean) => void;
   placement?: PlacementWithLogical;
   menuList: MenuItemData[];
+  closeOnBlur?: boolean;
 };
 
 const typeMapStyle: Record<MenuItemType, { styles: MenuItemProps; iconColor?: string }> = {
@@ -202,7 +203,8 @@ const MyMenu = ({
   menuList,
   placement = 'bottom-start',
   isOpen: externalIsOpen,
-  onOpenChange
+  onOpenChange,
+  closeOnBlur = true
 }: Props) => {
   const { isPc } = useSystem();
   const ref = useRef<HTMLDivElement>(null);
@@ -247,6 +249,7 @@ const MyMenu = ({
   return (
     <Menu
       offset={computeOffset}
+      closeOnBlur={closeOnBlur}
       isOpen={isOpen}
       autoSelect={false}
       direction={'ltr'}
