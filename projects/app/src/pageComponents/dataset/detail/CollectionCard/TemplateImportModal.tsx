@@ -11,6 +11,7 @@ import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContex
 import { useContextSelector } from 'use-context-selector';
 import { getDocPath } from '@/web/common/system/doc';
 import { Trans } from 'next-i18next';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 const TemplateImportModal = ({
   onFinish,
@@ -104,7 +105,7 @@ const TemplateImportModal = ({
             FileTypeNode={
               <Box fontSize={'xs'}>
                 <Trans
-                  i18nKey="file:template_csv_file_select_tip"
+                  i18nKey={i18nT('file:template_csv_file_select_tip')}
                   values={{
                     fileType: '.csv'
                   }}

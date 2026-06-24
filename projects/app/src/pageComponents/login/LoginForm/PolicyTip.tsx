@@ -3,6 +3,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { Box, Link } from '@chakra-ui/react';
 import React, { useEffect, useRef, useState } from 'react';
 import { Trans, useTranslation } from 'next-i18next';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 const PolicyTip = () => {
   const { feConfigs } = useSystemStore();
@@ -50,7 +51,7 @@ const PolicyTip = () => {
           whiteSpace={'pre-wrap'}
         >
           <Trans
-            i18nKey="login:policy_tip"
+            i18nKey={i18nT('login:policy_tip')}
             components={{
               lineBreak: isMultiline ? <br /> : <span />,
               termsLink: (
@@ -79,7 +80,7 @@ const PolicyTip = () => {
             aria-hidden
           >
             <Trans
-              i18nKey="login:policy_tip"
+              i18nKey={i18nT('login:policy_tip')}
               components={{
                 lineBreak: <span />,
                 termsLink: <Link />,

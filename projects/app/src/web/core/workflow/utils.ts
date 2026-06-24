@@ -3,7 +3,6 @@ import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/no
 import type { Edge, Node, XYPosition } from 'reactflow';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import {
-  AppNodeFlowNodeTypeMap,
   EDGE_TYPE,
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
@@ -11,6 +10,7 @@ import {
 } from '@fastgpt/global/core/workflow/node/constant';
 import { EmptyNode } from '@fastgpt/global/core/workflow/template/system/emptyNode';
 import { type StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getGlobalVariableNode } from './adapt';
 import { VARIABLE_NODE_ID, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
@@ -61,7 +61,7 @@ export const adaptStoreNodeInputs = (storeNode: StoreNodeItemType): FlowNodeInpu
     return {
       ...input,
       key: NodeInputKeyEnum.datasetSearchInput,
-      label: 'workflow:search_query',
+      label: i18nT('workflow:search_query'),
       value: isReferenceValue ? [input.value] : input.value,
       valueType: WorkflowIOValueTypeEnum.arrayString,
       selectedTypeIndex: isReferenceValue ? 0 : 1
@@ -879,8 +879,6 @@ export const checkWorkflowNodeAndConnection = ({
         continue;
       }
 
-      const hasIncoming = (incoming.get(nodeId) || []).length > 0;
-      const hasOutgoing = (outgoing.get(nodeId) || []).length > 0;
       const isStartNode = [
         FlowNodeTypeEnum.workflowStart,
         FlowNodeTypeEnum.pluginInput,

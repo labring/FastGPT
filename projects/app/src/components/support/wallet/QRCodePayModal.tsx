@@ -1,7 +1,7 @@
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation, Trans } from 'next-i18next';
-import { Box, ModalBody, Flex, Button, Text, Link } from '@chakra-ui/react';
+import { Box, ModalBody, Flex, Button, Link } from '@chakra-ui/react';
 import { checkBalancePayResult, putUpdatePayment } from '@/web/support/wallet/bill/api';
 import LightTip from '@fastgpt/web/components/common/LightTip';
 import QRCode from 'qrcode';
@@ -16,6 +16,7 @@ import Markdown from '@/components/Markdown';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import type { CreateBillResponseType } from '@fastgpt/global/openapi/support/wallet/bill/api';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 export type QRPayProps = CreateBillResponseType & {
   billId: string;
@@ -284,7 +285,7 @@ const QRCodePayModal = ({
         {feConfigs.payFormUrl && (
           <Box mt={4} textAlign="center" fontSize="sm">
             <Trans
-              i18nKey="common:pay.payment_form_tip"
+              i18nKey={i18nT('common:pay.payment_form_tip')}
               components={{
                 payLink: <Link href={feConfigs.payFormUrl} target="_blank" color="primary.600" />
               }}

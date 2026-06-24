@@ -150,7 +150,7 @@ export async function markSandboxResourceStopped(resource: SandboxResourceRef) {
 }
 
 /**
- * 查询可被 5 分钟 cron 暂停的运行中 sandbox。
+ * 查询可被 sandbox stop cron 暂停的运行中 sandbox。
  *
  * 正在归档或已归档的实例由归档流程管理生命周期，stop cron 不能插入中间状态。
  */
@@ -249,7 +249,7 @@ export async function findSandboxInstanceArchiveState(params: {
 /**
  * 流式读取待归档 sandbox，避免迁移脚本或 cron 一次性把历史全量记录拉进 Node.js 内存。
  *
- * 一周后的实例应先由 5 分钟 cron 标记为 stopped，再由归档任务统一处理。
+ * 一周后的实例应先由 sandbox stop cron 标记为 stopped，再由归档任务统一处理。
  * 归档不直接抢 running 实例，避免和 stop cron 操作同一个远端资源。
  */
 export function createSandboxResourcesToArchiveCursor(params: {

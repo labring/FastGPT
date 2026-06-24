@@ -29,6 +29,7 @@ import { WorkflowBufferDataContext } from '../../../context/workflowInitContext'
 import { WorkflowInitContext } from '../../../context/workflowInitContext';
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 const NodeLoopRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
@@ -39,7 +40,10 @@ const NodeLoopRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     WorkflowBufferDataContext,
     (v) => v
   );
-  const childNodeIds = childrenNodeIdListMap[nodeId] ?? [];
+  const childNodeIds = useMemo(
+    () => childrenNodeIdListMap[nodeId] ?? [],
+    [childrenNodeIdListMap, nodeId]
+  );
   const getRawNodeById = useContextSelector(WorkflowInitContext, (v) => v.getRawNodeById);
 
   const mode =
@@ -111,8 +115,8 @@ const NodeLoopRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             value: {
               id: NodeOutputKeyEnum.currentIndex,
               key: NodeOutputKeyEnum.currentIndex,
-              label: 'workflow:current_index',
-              description: 'workflow:current_index_desc',
+              label: i18nT('workflow:current_index'),
+              description: i18nT('workflow:current_index_desc'),
               type: FlowNodeOutputTypeEnum.static,
               valueType: WorkflowIOValueTypeEnum.number
             }
@@ -125,8 +129,8 @@ const NodeLoopRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             value: {
               id: NodeOutputKeyEnum.currentItem,
               key: NodeOutputKeyEnum.currentItem,
-              label: 'workflow:current_item',
-              description: 'workflow:current_item_desc',
+              label: i18nT('workflow:current_item'),
+              description: i18nT('workflow:current_item_desc'),
               type: FlowNodeOutputTypeEnum.static,
               valueType: WorkflowIOValueTypeEnum.any
             }
@@ -154,8 +158,8 @@ const NodeLoopRun = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             value: {
               id: NodeOutputKeyEnum.currentIteration,
               key: NodeOutputKeyEnum.currentIteration,
-              label: 'workflow:current_iteration',
-              description: 'workflow:current_iteration_desc',
+              label: i18nT('workflow:current_iteration'),
+              description: i18nT('workflow:current_iteration_desc'),
               type: FlowNodeOutputTypeEnum.static,
               valueType: WorkflowIOValueTypeEnum.number
             }

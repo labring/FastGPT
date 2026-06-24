@@ -29,6 +29,7 @@ import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getDocPath } from '@/web/common/system/doc';
 import { listCustomDomain } from '@/web/support/customDomain/api';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 const WecomEditModal = dynamic(() => import('./WecomEditModal'));
 const ShowShareLinkModal = dynamic(() => import('../components/showShareLinkModal'));
@@ -252,7 +253,7 @@ const Wecom = ({ appId }: { appId: string }) => {
             : {
                 text: (
                   <Trans
-                    i18nKey="app:publish_channel.wecom.empty"
+                    i18nKey={i18nT('app:publish_channel.wecom.empty')}
                     components={{
                       a: (
                         <Link

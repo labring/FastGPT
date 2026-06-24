@@ -28,6 +28,7 @@ import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConf
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { downloadFetch } from '@/web/common/system/utils';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 const UsageDetail = dynamic(() => import('./UsageDetail'));
 const RechargeModal = dynamic(() =>
@@ -92,14 +93,14 @@ const UsageTableList = ({
           ...requestParams,
           appNameMap: {
             ['core.app.Question Guide']: t('common:core.app.Question Guide'),
-            ['common:support.wallet.usage.Audio Speech']: t(
+            [i18nT('common:support.wallet.usage.Audio Speech')]: t(
               'common:support.wallet.usage.Audio Speech'
             ),
             ['support.wallet.usage.Whisper']: t('common:support.wallet.usage.Whisper'),
-            ['account_usage:embedding_index']: t('account_usage:embedding_index'),
-            ['account_usage:qa']: t('account_usage:qa'),
+            [i18nT('account_usage:embedding_index')]: t('account_usage:embedding_index'),
+            [i18nT('account_usage:qa')]: t('account_usage:qa'),
             ['core.dataset.training.Auto mode']: t('common:core.dataset.training.Auto mode'),
-            ['common:core.module.template.ai_chat']: t('common:core.module.template.ai_chat')
+            [i18nT('common:core.module.template.ai_chat')]: t('common:core.module.template.ai_chat')
           },
           sourcesMap: Object.fromEntries(
             Object.entries(UsageSourceMap).map(([key, config]) => [

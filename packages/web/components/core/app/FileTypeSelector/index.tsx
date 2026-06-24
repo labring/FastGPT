@@ -6,6 +6,7 @@ import {
   type FileExtensionKeyType
 } from '@fastgpt/global/core/app/constants';
 import MyIcon from '../../../common/Icon';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 type FileTypeSelectorValue = {
   canSelectFile?: boolean;
@@ -17,11 +18,14 @@ type FileTypeSelectorValue = {
 };
 
 const fileExtensionTypeTranslationMap = new Map<FileExtensionKeyType, string>([
-  ['canSelectFile', 'app:upload_file_extension_type_canSelectFile'],
-  ['canSelectImg', 'app:upload_file_extension_type_canSelectImg'],
-  ['canSelectVideo', 'app:upload_file_extension_type_canSelectVideo'],
-  ['canSelectAudio', 'app:upload_file_extension_type_canSelectAudio'],
-  ['canSelectCustomFileExtension', 'app:upload_file_extension_type_canSelectCustomFileExtension']
+  ['canSelectFile', i18nT('app:upload_file_extension_type_canSelectFile')],
+  ['canSelectImg', i18nT('app:upload_file_extension_type_canSelectImg')],
+  ['canSelectVideo', i18nT('app:upload_file_extension_type_canSelectVideo')],
+  ['canSelectAudio', i18nT('app:upload_file_extension_type_canSelectAudio')],
+  [
+    'canSelectCustomFileExtension',
+    i18nT('app:upload_file_extension_type_canSelectCustomFileExtension')
+  ]
 ]);
 
 export const FileTypeSelectorPanel = ({

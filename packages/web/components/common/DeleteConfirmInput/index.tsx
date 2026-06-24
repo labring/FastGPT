@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, Input, VStack, type StackProps } from '@chakra-ui/react';
 import { Trans, useTranslation } from 'next-i18next';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 type Props = Omit<StackProps, 'onChange'> & {
   value: string;
@@ -21,7 +22,7 @@ const DeleteConfirmInput = ({ value, confirmText, onChange, placeholder, ...prop
     <VStack align={'stretch'} spacing={'10px'} {...props}>
       <Box fontSize={'14px'} lineHeight={'20px'} color={'myGray.900'}>
         <Trans
-          i18nKey={'common:confirm_input_delete_tip'}
+          i18nKey={i18nT('common:confirm_input_delete_tip')}
           values={{ confirmText }}
           components={{
             bold: <Box as={'span'} fontWeight={'500'} userSelect={'all'} />

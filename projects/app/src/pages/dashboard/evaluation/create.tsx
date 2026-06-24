@@ -5,7 +5,7 @@ import { Box, Button, Flex, Input, VStack } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import AIModelSelector from '@/components/Select/AIModelSelector';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import AppSelect from '@/components/Select/AppSelect';
@@ -19,12 +19,13 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { fileDownload } from '@/web/common/file/utils';
 import { postCreateEvaluation } from '@/web/core/app/api/evaluation';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import Markdown from '@/components/Markdown';
 import { getEvaluationFileHeader } from '@fastgpt/global/core/app/evaluation/utils';
 import { evaluationFileErrors } from '@fastgpt/global/core/app/evaluation/constants';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 type EvaluationFormType = {
   name: string;
@@ -43,7 +44,7 @@ const EvaluationCreating = () => {
 
   const { llmModelList } = useSystemStore();
 
-  const { register, setValue, watch, handleSubmit } = useForm<EvaluationFormType>({
+  const { register, setValue, control, handleSubmit } = useForm<EvaluationFormType>({
     defaultValues: {
       name: '',
       evalModel: llmModelList[0]?.model,
@@ -52,10 +53,10 @@ const EvaluationCreating = () => {
     }
   });
 
-  const name = watch('name');
-  const evalModel = watch('evalModel');
-  const appId = watch('appId');
-  const evaluationFiles = watch('evaluationFiles');
+  const name = useWatch({ control, name: 'name' });
+  const evalModel = useWatch({ control, name: 'evalModel' });
+  const appId = useWatch({ control, name: 'appId' });
+  const evaluationFiles = useWatch({ control, name: 'evaluationFiles' });
 
   const { runAsync: getAppDetail, loading: isLoadingAppDetail } = useRequest(() => {
     if (appId) return getAppDetailById(appId);
@@ -254,7 +255,7 @@ const EvaluationCreating = () => {
                     FileTypeNode={
                       <Box fontSize={'xs'}>
                         <Trans
-                          i18nKey="dashboard_evaluation:template_csv_file_select_tip"
+                          i18nKey={i18nT('dashboard_evaluation:template_csv_file_select_tip')}
                           values={{
                             fileType: '.csv'
                           }}

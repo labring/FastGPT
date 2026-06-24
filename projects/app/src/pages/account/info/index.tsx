@@ -46,6 +46,7 @@ import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
 import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 const RedeemCouponModal = dynamic(() => import('@/pageComponents/account/info/RedeemCouponModal'), {
   ssr: false
@@ -384,7 +385,7 @@ const PlanUsage = () => {
   const planName = useMemo(() => {
     if (!teamPlanStatus?.standard?.currentSubLevel) return '';
     if (isWecomTeam && teamPlanStatus.standard.currentSubLevel === StandardSubLevelEnum.free)
-      return 'common:support.wallet.subscription.standardSubLevel.trial';
+      return i18nT('common:support.wallet.subscription.standardSubLevel.trial');
 
     return (
       subPlans?.standard?.[teamPlanStatus.standard.currentSubLevel]?.name ||

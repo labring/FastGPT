@@ -36,6 +36,7 @@ import {
   createCustomDomain
 } from '@/web/support/customDomain/api';
 import { getDocPath } from '@/web/common/system/doc';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 const ProviderItem = ({
   icon,
@@ -92,16 +93,21 @@ function CreateCustomDomainModal<T extends 'create' | 'refresh'>({
   const { feConfigs } = useSystemStore();
   const { copyData } = useCopyData();
 
-  const [provider, setProvider] = useState<ProviderEnum>('tencent');
-  const [domain, setDomain] = useState<string>('');
+  const [provider, setProvider] = useState<ProviderEnum>(() =>
+    type === 'refresh' ? data?.provider || 'tencent' : 'tencent'
+  );
+  const [domain, setDomain] = useState<string>(() =>
+    type === 'refresh' ? data?.domain || '' : ''
+  );
   const [editDomain, setEditDomain] = useState<boolean>(true);
-
-  useEffect(() => {
-    if (type === 'refresh') {
-      setProvider(data?.provider || 'tencent');
-      setDomain(data?.domain || '');
-    }
-  }, [data, type]);
+  const updateProvider = (provider: ProviderEnum) => {
+    setProvider(provider);
+    setDnsResolved(false);
+  };
+  const updateDomain = (domain: string) => {
+    setDomain(domain);
+    setDnsResolved(false);
+  };
 
   const cnameDomain = useMemo(() => {
     if (type === 'refresh') {
@@ -151,12 +157,6 @@ function CreateCustomDomainModal<T extends 'create' | 'refresh'>({
     return () => clearInterval(intervalId);
   }, [DnsResolved, checkDNSResolve, cnameDomain, domain, editDomain, startDnsResolve]);
 
-  useEffect(() => {
-    if (domain && provider) {
-      setDnsResolved(false);
-    }
-  }, [domain, provider]);
-
   const loading = loadingCreatingDomain;
 
   return (
@@ -175,25 +175,25 @@ function CreateCustomDomainModal<T extends 'create' | 'refresh'>({
           <ProviderItem
             icon="support/account/customDomain/provider/tencent"
             selected={provider === 'tencent'}
-            onClick={() => setProvider('tencent')}
+            onClick={() => updateProvider('tencent')}
             isDisabled={!editDomain || type === 'refresh'}
           />
           <ProviderItem
             icon="support/account/customDomain/provider/aliyun"
             selected={provider === 'aliyun'}
-            onClick={() => setProvider('aliyun')}
+            onClick={() => updateProvider('aliyun')}
             isDisabled={!editDomain || type === 'refresh'}
           />
           <ProviderItem
             icon="support/account/customDomain/provider/volcengine"
             selected={provider === 'volcengine'}
-            onClick={() => setProvider('volcengine')}
+            onClick={() => updateProvider('volcengine')}
             isDisabled={!editDomain || type === 'refresh'}
           />
         </Flex>
         <Box marginTop={'16px'} fontSize={'sm'} color={'gray.600'}>
           <Trans
-            i18nKey="account_custom_domain:registration_hint"
+            i18nKey={i18nT('account_custom_domain:registration_hint')}
             values={{ provider: t(providerMap[provider]) }}
             components={{ bold: <Text as="span" fontWeight="bold" color="gray.900" /> }}
           />
@@ -204,7 +204,7 @@ function CreateCustomDomainModal<T extends 'create' | 'refresh'>({
               h="40px"
               placeholder="www.example.com"
               value={domain}
-              onChange={(e) => setDomain(e.target.value)}
+              onChange={(e) => updateDomain(e.target.value)}
               isDisabled={!editDomain || type === 'refresh'}
             />
             <InputRightElement width="auto" paddingRight={'8px'}>
@@ -258,7 +258,7 @@ function CreateCustomDomainModal<T extends 'create' | 'refresh'>({
           </Box>
           <Box marginTop={'16px'} fontSize={'sm'} color={'gray.600'}>
             <Trans
-              i18nKey="account_custom_domain:DNS_resolve_hint"
+              i18nKey={i18nT('account_custom_domain:DNS_resolve_hint')}
               values={{ domain: cnameDomain }}
               components={{ bold: <Text as="span" fontWeight="bold" color="gray.900" /> }}
             />
