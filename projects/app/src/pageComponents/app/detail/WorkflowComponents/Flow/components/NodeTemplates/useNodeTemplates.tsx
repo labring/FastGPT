@@ -21,6 +21,7 @@ export const useNodeTemplates = () => {
   const searchKeyLock = useRef(false);
 
   const [parentId, setParentId] = useState<ParentIdType>('');
+  const [parentSource, setParentSource] = useState<string>();
 
   const appId = useContextSelector(AppContext, (v) => v.appDetail._id);
   const { basicNodeTemplates, hasToolNode, hasLoopRunNode, getNodeList, nodeAmount } =
@@ -85,12 +86,14 @@ export const useNodeTemplates = () => {
       parentId,
       type = templateType,
       searchVal,
-      tags
+      tags,
+      source
     }: {
       parentId?: ParentIdType;
       type?: TemplateTypeEnum;
       searchVal?: string;
       tags?: string[];
+      source?: string;
     }) => {
       if (type === TemplateTypeEnum.myTools) {
         // app, workflow-plugin, mcp
@@ -117,7 +120,7 @@ export const useNodeTemplates = () => {
         return getAppToolTemplates({
           searchKey: searchVal,
           parentId,
-          debugSessionId: debugSession?.debugSessionId,
+          source: parentId ? source : debugSession?.source,
           tags
         });
       }
@@ -135,9 +138,14 @@ export const useNodeTemplates = () => {
         return;
       }
 
-      loadNodeTemplates({ parentId, searchVal: searchKey, tags: selectedTagIds });
+      loadNodeTemplates({
+        parentId,
+        searchVal: searchKey,
+        tags: selectedTagIds,
+        source: parentSource
+      });
     },
-    [searchKey, debugSession?.debugSessionId],
+    [searchKey, debugSession?.source, parentSource],
     {
       wait: 300
     }
@@ -145,30 +153,40 @@ export const useNodeTemplates = () => {
 
   useEffect(() => {
     if (templateType !== TemplateTypeEnum.systemTools) return;
-    loadNodeTemplates({ parentId, searchVal: searchKey, tags: selectedTagIds });
+    loadNodeTemplates({
+      parentId,
+      searchVal: searchKey,
+      tags: selectedTagIds,
+      source: parentSource
+    });
   }, [
-    debugSession?.debugSessionId,
+    debugSession?.source,
     loadNodeTemplates,
     parentId,
+    parentSource,
     searchKey,
     selectedTagIds,
     templateType
   ]);
 
   const onUpdateParentId = useCallback(
-    (parentId: ParentIdType) => {
+    (parentId: ParentIdType, source?: string) => {
+      const nextParentSource = parentId ? (source ?? parentSource) : undefined;
+
       searchKeyLock.current = true;
       setSearchKey('');
       setParentId(parentId);
-      loadNodeTemplates({ parentId });
+      setParentSource(nextParentSource);
+      loadNodeTemplates({ parentId, source: nextParentSource });
     },
-    [loadNodeTemplates]
+    [loadNodeTemplates, parentSource]
   );
   const onUpdateTemplateType = useCallback(
     (type: TemplateTypeEnum) => {
       searchKeyLock.current = true;
       setSearchKey('');
       setParentId('');
+      setParentSource(undefined);
       setSelectedTagIds([]);
       setTemplateType(type);
       loadNodeTemplates({ type });
@@ -178,9 +196,9 @@ export const useNodeTemplates = () => {
   const onUpdateSelectedTagIds = useCallback(
     (tags: string[]) => {
       setSelectedTagIds(tags);
-      loadNodeTemplates({ parentId, searchVal: searchKey, tags });
+      loadNodeTemplates({ parentId, searchVal: searchKey, tags, source: parentSource });
     },
-    [loadNodeTemplates, parentId, searchKey]
+    [loadNodeTemplates, parentId, parentSource, searchKey]
   );
 
   const templates = useMemo(() => {
@@ -193,6 +211,7 @@ export const useNodeTemplates = () => {
   return {
     templateType,
     parentId,
+    parentSource,
     templatesIsLoading,
     templates,
     onUpdateParentId,

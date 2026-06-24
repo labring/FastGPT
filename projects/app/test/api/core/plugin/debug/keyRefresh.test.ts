@@ -4,7 +4,7 @@ import { Call } from '@test/utils/request';
 const mocks = vi.hoisted(() => ({
   authCert: vi.fn(),
   pluginClient: {
-    createDebugSession: vi.fn()
+    refreshDebugSessionKey: vi.fn()
   }
 }));
 
@@ -16,32 +16,32 @@ vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin', () => ({
   pluginClient: mocks.pluginClient
 }));
 
-import handler from '@/pages/api/plugin/debug-channel/enable';
+import handler from '@/pages/api/plugin/debug-channel/key:refresh';
 
-describe('plugin debug channel enable handler', () => {
+describe('plugin debug channel key refresh handler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.authCert.mockResolvedValue({
       tmbId: 'tmb_test'
     });
-    mocks.pluginClient.createDebugSession.mockResolvedValue({
+    mocks.pluginClient.refreshDebugSessionKey.mockResolvedValue({
       tmbId: 'tmb_test',
       source: 'debug:tmbId:tmb_test',
       status: 'enabled',
       enabled: true,
-      keyId: 'key_test',
-      connectionKey: 'connection_key',
+      keyId: 'key_refreshed',
+      connectionKey: 'connection_key_refreshed',
       createdAt: 1_781_500_000_000,
-      updatedAt: 1_781_500_000_000
+      updatedAt: 1_781_500_100_000,
+      refreshedAt: 1_781_500_100_000
     });
   });
 
-  it('uses current tmbId to enable debug channel and returns connection key', async () => {
+  it('returns a refreshed connection key from plugin client', async () => {
     const res = await Call(handler, {
       body: {},
       headers: {
-        host: 'fastgpt.example.com',
-        'x-forwarded-proto': 'https'
+        host: 'fastgpt.example.com'
       },
       auth: {
         tmbId: 'tmb_test'
@@ -49,13 +49,7 @@ describe('plugin debug channel enable handler', () => {
     });
 
     expect(res.code).toBe(200);
-    expect(mocks.authCert).toHaveBeenCalledWith({
-      req: expect.objectContaining({
-        body: {}
-      }),
-      authToken: true
-    });
-    expect(mocks.pluginClient.createDebugSession).toHaveBeenCalledWith({
+    expect(mocks.pluginClient.refreshDebugSessionKey).toHaveBeenCalledWith({
       tmbId: 'tmb_test'
     });
     expect(res.data).toEqual({
@@ -63,12 +57,13 @@ describe('plugin debug channel enable handler', () => {
       source: 'debug:tmbId:tmb_test',
       status: 'enabled',
       enabled: true,
-      keyId: 'key_test',
-      connectionKey: 'connection_key',
+      keyId: 'key_refreshed',
+      connectionKey: 'connection_key_refreshed',
       connectionUrl:
-        'https://fastgpt.example.com/api/plugin/debug-channel/connection-key:exchange?connectionKey=connection_key',
+        'https://fastgpt.example.com/api/plugin/debug-channel/connection-key:exchange?connectionKey=connection_key_refreshed',
       createdAt: 1_781_500_000_000,
-      updatedAt: 1_781_500_000_000
+      updatedAt: 1_781_500_100_000,
+      refreshedAt: 1_781_500_100_000
     });
   });
 });

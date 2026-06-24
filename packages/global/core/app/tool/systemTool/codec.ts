@@ -5,15 +5,13 @@ import type { SystemPluginToolCollectionType } from '../../../plugin/tool/type';
 import { PluginStatusEnum } from '../../../plugin/type';
 import { SystemToolSystemSecretStatusEnum } from './constants';
 import type { SystemToolListItemType } from './type';
-import { encodeDebugToolId, isDebugToolSource } from '../utils';
 
 type SystemToolConfigLike = SystemPluginToolCollectionType & {
   toObject?: () => SystemPluginToolCollectionType;
 };
 
 export const SystemToolCodec = {
-  getDBPluginId: (pluginId: string, source = 'system') =>
-    isDebugToolSource(source) ? encodeDebugToolId({ source, pluginId }) : `systemTool-${pluginId}`,
+  getDBPluginId: (pluginId: string) => `systemTool-${pluginId}`,
   getPluginIdFromDB: (dbPluginId: string) => dbPluginId.replace(/^systemTool-/, ''),
 
   getConfiguredSecretsVal(config?: SystemToolConfigLike | null) {
@@ -99,7 +97,7 @@ export const SystemToolCodec = {
     const hasSystemSecret = !!configuredSecretsVal;
 
     return {
-      id: this.getDBPluginId(tool.pluginId, tool.source),
+      id: this.getDBPluginId(tool.pluginId),
       etag: tool.etag,
       author: tool.author ?? global.feConfigs.systemTitle ?? '',
       avatar: tool.icon,

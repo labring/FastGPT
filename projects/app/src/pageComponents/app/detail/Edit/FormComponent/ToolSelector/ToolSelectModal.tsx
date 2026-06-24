@@ -45,7 +45,8 @@ import {
   validateToolConfiguration
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { useLocalPluginDebugSession } from '@/web/core/plugin/debug/localDebugSession';
-import { isDebugToolId } from '@fastgpt/global/core/app/tool/utils';
+import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
+import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
 
 type Props = {
   topAgentSelectedTools?: SelectedToolItemType[];
@@ -76,6 +77,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
 
   const [templateType, setTemplateType] = useState(TemplateTypeEnum.systemTools);
   const [parentId, setParentId] = useState<ParentIdType>('');
+  const [parentSource, setParentSource] = useState<string>();
   const [searchKey, setSearchKey] = useState('');
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
 
@@ -87,17 +89,19 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
     async ({
       type = templateType,
       parentId = '',
-      searchVal = searchKey
+      searchVal = searchKey,
+      source
     }: {
       type?: TemplateTypeEnum;
       parentId?: ParentIdType;
       searchVal?: string;
+      source?: string;
     }) => {
       if (type === TemplateTypeEnum.systemTools) {
         return getAppToolTemplates({
           parentId,
           searchKey: searchVal,
-          debugSessionId: debugSession?.debugSessionId
+          source: parentId ? source : debugSession?.source
         });
       } else if (type === TemplateTypeEnum.myTools) {
         return getTeamAppTemplates({
@@ -119,11 +123,12 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
       }
     },
     {
-      onSuccess(_, [{ type = templateType, parentId = '' }]) {
+      onSuccess(_, [{ type = templateType, parentId = '', source }]) {
         setTemplateType(type);
         setParentId(parentId);
+        setParentSource(parentId ? (source ?? parentSource) : undefined);
       },
-      refreshDeps: [templateType, searchKey, parentId, debugSession?.debugSessionId]
+      refreshDeps: [templateType, searchKey, parentId, debugSession?.source]
     }
   );
 
@@ -140,12 +145,12 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
   const { data: paths = [] } = useRequest(
     () => {
       if (templateType === TemplateTypeEnum.systemTools)
-        return getAppToolPaths({ sourceId: parentId, type: 'current' });
+        return getAppToolPaths({ sourceId: parentId, source: parentSource, type: 'current' });
       return getAppFolderPath({ sourceId: parentId, type: 'current' });
     },
     {
       manual: false,
-      refreshDeps: [parentId]
+      refreshDeps: [parentId, parentSource]
     }
   );
 
@@ -154,16 +159,18 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
   });
 
   const onUpdateParentId = useCallback(
-    (parentId: ParentIdType) => {
+    (parentId: ParentIdType, source?: string) => {
       if (document.activeElement instanceof HTMLElement) {
         document.activeElement.blur();
       }
+      const nextParentSource = parentId ? (source ?? parentSource) : undefined;
 
       loadTemplates({
-        parentId
+        parentId,
+        source: nextParentSource
       });
     },
-    [loadTemplates]
+    [loadTemplates, parentSource]
   );
 
   useRequest(() => loadTemplates({ searchVal: searchKey }), {
@@ -265,25 +272,6 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
 
 export default React.memo(ToolSelectModal);
 
-const DebugToolTag = React.memo(function DebugToolTag() {
-  return (
-    <Box
-      flexShrink={0}
-      px={2}
-      py={0.5}
-      borderRadius={'6px'}
-      bg={'rgba(255, 245, 204, 1)'}
-      color={'rgba(227, 72, 49, 1)'}
-      border={'1px solid rgba(247, 214, 118, 1)'}
-      fontSize={'11px'}
-      fontWeight={'500'}
-      lineHeight={'16px'}
-    >
-      测试
-    </Box>
-  );
-});
-
 const RenderList = React.memo(function RenderList({
   topAgentSelectedTools = [],
   templates,
@@ -302,7 +290,7 @@ const RenderList = React.memo(function RenderList({
   parentId: ParentIdType;
   searchKey: string;
   selectedTagIds: string[];
-  setParentId: (parentId: ParentIdType) => any;
+  setParentId: (parentId: ParentIdType, source?: string) => any;
 }) {
   const { i18n } = useTranslation();
   const { t } = useSafeTranslation();
@@ -318,7 +306,11 @@ const RenderList = React.memo(function RenderList({
 
   const { runAsync: onClickAdd, loading: isLoading } = useRequest(
     async (template: NodeTemplateListItemType) => {
-      const res = await getClientToolPreviewNode({ appId: template.id, versionId: '' });
+      const res = await getClientToolPreviewNode({
+        appId: template.id,
+        versionId: '',
+        source: template.source
+      });
       const isToolSetTemplate = template.flowNodeType === FlowNodeTypeEnum.toolSet;
 
       if (!isToolSetTemplate) {
@@ -376,6 +368,7 @@ const RenderList = React.memo(function RenderList({
               const intro =
                 t(parseI18nString(template.intro || '', i18n.language)) ||
                 t('common:core.workflow.Not intro');
+              const isDebugTool = isDebugToolSource(template.source);
 
               return (
                 <MyTooltip
@@ -399,7 +392,7 @@ const RenderList = React.memo(function RenderList({
                         >
                           {name}
                         </Box>
-                        {isDebugToolId(template.id) && <DebugToolTag />}
+                        {isDebugTool && <DebugToolTag />}
                         {isSystemTool && (
                           <Box color={'myGray.500'}>
                             By {template.author || feConfigs?.systemTitle}
@@ -447,7 +440,7 @@ const RenderList = React.memo(function RenderList({
                         >
                           {name}
                         </Box>
-                        {isDebugToolId(template.id) && <DebugToolTag />}
+                        {isDebugTool && <DebugToolTag />}
                       </Flex>
                     </Box>
                     <Flex gap={2} minW={0} justifySelf={'end'} alignItems={'center'}>
@@ -474,7 +467,7 @@ const RenderList = React.memo(function RenderList({
                             isLoading={isLoading}
                             leftIcon={<MyIcon name={'common/arrowRight'} w={'14px'} />}
                             iconSpacing={1}
-                            onClick={() => setParentId(template.id)}
+                            onClick={() => setParentId(template.id, template.source)}
                             fontSize={'mini'}
                             fontWeight={'500'}
                           >
@@ -502,7 +495,7 @@ const RenderList = React.memo(function RenderList({
                           isLoading={isLoading}
                           leftIcon={<MyIcon name={'common/arrowRight'} w={'14px'} />}
                           iconSpacing={1}
-                          onClick={() => setParentId(template.id)}
+                          onClick={() => setParentId(template.id, template.source)}
                           fontSize={'mini'}
                           fontWeight={'500'}
                         >

@@ -55,7 +55,6 @@ import {
 import {
   splitCombineToolId,
   getToolRawId,
-  isDebugToolId,
   isDebugToolSource
 } from '@fastgpt/global/core/app/tool/utils';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
@@ -63,6 +62,7 @@ import { getAppPermission } from '@/web/core/app/api';
 import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import type { SystemToolVersionType } from '@fastgpt/global/core/app/tool/systemTool/type/base';
+import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -229,7 +229,7 @@ const NodeCard = (props: Props) => {
   const isLoopNode = isNestedParentNodeType(node?.flowNodeType ?? '');
   const showVersion = useMemo(() => {
     const source = node?.pluginId ? splitCombineToolId(node.pluginId).source : undefined;
-    if (isDebugToolSource(source)) return false;
+    if (isDebugToolSource(node?.source) || isDebugToolSource(source)) return false;
     // 1. MCP/HTTP single tools use the latest toolset content and do not expose version selection.
     if (source === AppToolSourceEnum.mcp || source === AppToolSourceEnum.http) return false;
 
@@ -382,7 +382,7 @@ const NodeCard = (props: Props) => {
 
                     <Box mr={1} />
 
-                    {isDebugToolId(pluginId) && <DebugToolTag />}
+                    {isDebugToolSource(node?.source) && <DebugToolTag mr={2} />}
 
                     {showVersion && <NodeVersion node={node!} />}
 
@@ -663,7 +663,8 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
       if (node.pluginId) {
         const template = await getClientToolPreviewNode({
           appId: node.pluginId,
-          versionId
+          versionId,
+          source: node.source
         });
 
         if (!!template) {
@@ -1020,26 +1021,6 @@ const NodeActionButtons = React.memo<{
   );
 });
 NodeActionButtons.displayName = 'NodeActionButtons';
-
-const DebugToolTag = React.memo(function DebugToolTag() {
-  return (
-    <Box
-      flexShrink={0}
-      mr={2}
-      px={2}
-      py={0.5}
-      borderRadius={'6px'}
-      bg={'rgba(255, 245, 204, 1)'}
-      color={'rgba(227, 72, 49, 1)'}
-      border={'1px solid rgba(247, 214, 118, 1)'}
-      fontSize={'11px'}
-      fontWeight={'500'}
-      lineHeight={'16px'}
-    >
-      测试
-    </Box>
-  );
-});
 
 // 节点错误徽章组件
 const NodeStatusBadge = React.memo<{ status?: PluginStatusType; error?: string | null }>(

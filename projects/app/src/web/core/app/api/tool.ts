@@ -8,7 +8,6 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import type {
-  GetPathProps,
   ParentIdType,
   ParentTreePathItemType
 } from '@fastgpt/global/common/parentFolder/type';
@@ -16,7 +15,8 @@ import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { getMcpChildren } from './mcpTools';
 import type {
   GetPreviewNodeQuery,
-  GetSystemToolTemplatesBodyType
+  GetSystemToolTemplatesBodyType,
+  GetToolPathQueryType
 } from '@fastgpt/global/openapi/core/app/tool/api';
 
 /* ============ team plugin ============== */
@@ -88,7 +88,7 @@ export const getTeamAppTemplates = async (data?: {
 export const getAppToolTemplates = (data: GetSystemToolTemplatesBodyType) =>
   POST<NodeTemplateListItemType[]>('/core/app/tool/getSystemToolTemplates', data);
 
-export const getAppToolPaths = (data: GetPathProps) => {
+export const getAppToolPaths = (data: GetToolPathQueryType) => {
   if (!data.sourceId) return Promise.resolve<ParentTreePathItemType[]>([]);
   return GET<ParentTreePathItemType[]>('/core/app/tool/path', data);
 };

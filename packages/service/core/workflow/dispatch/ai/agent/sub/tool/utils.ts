@@ -114,6 +114,7 @@ export const getAgentRuntimeTools = async ({
     source: AppToolSourceEnum.systemTool | AppToolSourceEnum.commercial | string;
   }): Promise<AgentRuntimeNode> => {
     const systemToolRepo = SystemToolRepo.getInstance();
+    const toolConfigSource = isDebugToolSource(source) ? source : undefined;
     const toolDetail = await systemToolRepo.getSystemToolDetail({
       pluginId: toolId,
       lang,
@@ -170,6 +171,7 @@ export const getAgentRuntimeTools = async ({
                 ? {
                     systemToolSet: {
                       toolId,
+                      ...(toolConfigSource ? { source: toolConfigSource } : {}),
                       toolList:
                         toolDetail.children?.map((child) => ({
                           description: child.description ?? '',
@@ -180,7 +182,8 @@ export const getAgentRuntimeTools = async ({
                   }
                 : {
                     systemTool: {
-                      toolId
+                      toolId,
+                      ...(toolConfigSource ? { source: toolConfigSource } : {})
                     }
                   })
             }
@@ -445,6 +448,11 @@ export const getAgentRuntimeTools = async ({
     tools.map<Promise<SubAppInitType[]>>(async (tool) => {
       try {
         const { pluginId, authAppId, source } = splitCombineToolId(tool.id);
+        const runtimeSource =
+          tool.source ??
+          tool.toolConfig?.systemTool?.source ??
+          tool.toolConfig?.systemToolSet?.source ??
+          source;
         // 工具间整体并发；单个 App 类工具必须先鉴权拿到 app，才能读取对应版本节点。
         const authAppPromise = authAppId
           ? authAppByTmbId({
@@ -458,7 +466,7 @@ export const getAgentRuntimeTools = async ({
           authAppPromise,
           authAppPromise.then((authResult) =>
             getRuntimeToolNode({
-              source,
+              source: runtimeSource,
               pluginId,
               app: authResult?.app,
               toolId: tool.id
@@ -466,6 +474,9 @@ export const getAgentRuntimeTools = async ({
           )
         ]);
         const authApp = authResult?.app;
+        if (tool.toolConfig) {
+          toolNode.toolConfig = tool.toolConfig;
+        }
 
         // 合并用户在 Agent 工具面板里保存的配置；false/0/空字符串也是有效配置值。
         toolNode.inputs.forEach((input) => {
@@ -488,7 +499,7 @@ export const getAgentRuntimeTools = async ({
         }
 
         const toolType = (() => {
-          if (source === AppToolSourceEnum.commercial) {
+          if (runtimeSource === AppToolSourceEnum.commercial) {
             return 'commercialTool';
           }
           if (toolNode.flowNodeType === FlowNodeTypeEnum.appModule) {

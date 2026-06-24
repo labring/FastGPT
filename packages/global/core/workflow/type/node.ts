@@ -41,6 +41,9 @@ export const NodeToolConfigTypeSchema = z.object({
     .object({
       toolId: z.string().meta({
         description: '节点引用的系统工具 ID'
+      }),
+      source: z.string().optional().meta({
+        description: '系统工具来源。调试工具会写入 debug source'
       })
     })
     .optional()
@@ -51,6 +54,9 @@ export const NodeToolConfigTypeSchema = z.object({
     .object({
       toolId: z.string().meta({
         description: '系统工具集 ID'
+      }),
+      source: z.string().optional().meta({
+        description: '系统工具集来源。调试工具会写入 debug source'
       }),
       toolList: z
         .array(
@@ -164,6 +170,7 @@ export const FlowNodeCommonTypeSchema = z.object({
 
   // plugin data
   pluginId: z.string().optional(), // plugin id
+  source: z.string().optional(), // plugin source, e.g. debug source
   isFolder: BoolSchema.optional(),
   pluginData: ToolDataSchema.optional(),
 
@@ -219,6 +226,7 @@ export type FlowNodeTemplateType = z.infer<typeof FlowNodeTemplateTypeSchema>;
 // Api response
 export const NodeTemplateListItemTypeSchema = z.object({
   id: z.string(), // 系统节点-系统节点的 id， 系统插件-插件的 id，团队应用的 id
+  source: z.string().optional(), // 系统插件运行来源，例如 debug source
   flowNodeType: z.enum(FlowNodeTypeEnum), // render node card
   parentId: ParentIdSchema.optional(),
   isFolder: BoolSchema.optional(),

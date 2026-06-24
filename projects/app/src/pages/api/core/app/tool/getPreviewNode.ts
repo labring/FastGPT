@@ -20,13 +20,13 @@ async function handler(
   req: ApiRequestProps<Record<string, never>, GetPreviewNodeQuery>
 ): Promise<FlowNodeTemplateType> {
   const {
-    query: { appId, versionId, getLatestVersion }
+    query: { appId, versionId, getLatestVersion, source }
   } = parseApiInput({
     req,
     querySchema: GetPreviewNodeQuerySchema
   });
 
-  const { authAppId, source } = splitCombineToolId(appId);
+  const { authAppId } = splitCombineToolId(appId);
   if (authAppId) {
     await authApp({ req, authToken: true, appId: authAppId, per: ReadPermissionVal });
   }

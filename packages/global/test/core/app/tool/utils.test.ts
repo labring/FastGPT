@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   getToolNameCandidates,
   getToolRawId,
+  hasDebugToolInNodes,
+  hasDebugToolInSelectedTools,
+  parseDebugToolSource,
   parseToolsetToolId,
   splitCombineToolId,
   splitToolsetToolPluginId
@@ -114,6 +117,46 @@ describe('splitCombineToolId', () => {
     it('should throw error when pluginId is empty after split', () => {
       expect(() => splitCombineToolId('commercial-')).toThrow('toolId not found');
     });
+  });
+});
+
+describe('parseDebugToolSource', () => {
+  it('should parse stable tmb debug source', () => {
+    expect(parseDebugToolSource('debug:tmbId:tmb-1')).toEqual({
+      tmbId: 'tmb-1'
+    });
+  });
+
+  it('should ignore invalid debug source', () => {
+    expect(parseDebugToolSource('debug:invalid')).toBeUndefined();
+    expect(parseDebugToolSource('debug:tmbId:tmb-1:session:dbg-1')).toBeUndefined();
+    expect(parseDebugToolSource('system')).toBeUndefined();
+  });
+});
+
+describe('debug tool detection', () => {
+  it('detects explicit debug source in selected tools', () => {
+    expect(
+      hasDebugToolInSelectedTools([
+        {
+          id: 'node-id',
+          pluginId: 'systemTool-weather',
+          source: 'debug:tmbId:tmb-1'
+        } as any
+      ])
+    ).toBe(true);
+  });
+
+  it('detects explicit debug source in workflow nodes', () => {
+    expect(
+      hasDebugToolInNodes([
+        {
+          pluginId: 'systemTool-weather',
+          source: 'debug:tmbId:tmb-1',
+          inputs: []
+        } as any
+      ])
+    ).toBe(true);
   });
 });
 

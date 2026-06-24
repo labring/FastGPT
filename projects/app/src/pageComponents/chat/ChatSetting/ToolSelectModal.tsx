@@ -36,6 +36,8 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ToolTagFilterBox from '@fastgpt/web/components/core/plugin/tool/TagFilterBox';
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import ConfigToolModal from '@/pageComponents/app/detail/Edit/component/ConfigToolModal';
+import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
+import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
 
 type Props = {
   selectedTools: ChatSettingType['selectedTools'];
@@ -54,6 +56,7 @@ export const childAppSystemKey: string[] = [
 const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void }) => {
   const { t } = useTranslation();
   const [parentId, setParentId] = useState<ParentIdType>('');
+  const [parentSource, setParentSource] = useState<string>();
   const [searchKey, setSearchKey] = useState('');
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
 
@@ -64,16 +67,19 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
   } = useRequest(
     async ({
       parentId = '',
-      searchVal = searchKey
+      searchVal = searchKey,
+      source
     }: {
       parentId?: ParentIdType;
       searchVal?: string;
+      source?: string;
     }) => {
-      return getAppToolTemplates({ parentId, searchKey: searchVal });
+      return getAppToolTemplates({ parentId, searchKey: searchVal, source });
     },
     {
-      onSuccess(_, [{ parentId = '' }]) {
+      onSuccess(_, [{ parentId = '', source }]) {
         setParentId(parentId);
+        setParentSource(parentId ? (source ?? parentSource) : undefined);
       },
       refreshDeps: [searchKey, parentId]
     }
@@ -94,25 +100,27 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
 
   const { data: paths = [] } = useRequest(
     () => {
-      return getAppToolPaths({ sourceId: parentId, type: 'current' });
+      return getAppToolPaths({ sourceId: parentId, source: parentSource, type: 'current' });
     },
     {
       manual: false,
-      refreshDeps: [parentId]
+      refreshDeps: [parentId, parentSource]
     }
   );
 
   const onUpdateParentId = useCallback(
-    (parentId: ParentIdType) => {
+    (parentId: ParentIdType, source?: string) => {
       if (document.activeElement instanceof HTMLElement) {
         document.activeElement.blur();
       }
+      const nextParentSource = parentId ? (source ?? parentSource) : undefined;
 
       loadTemplates({
-        parentId
+        parentId,
+        source: nextParentSource
       });
     },
-    [loadTemplates]
+    [loadTemplates, parentSource]
   );
 
   useRequest(() => loadTemplates({ searchVal: searchKey }), {
@@ -191,7 +199,7 @@ const RenderList = React.memo(function RenderList({
   parentId: ParentIdType;
   searchKey: string;
   selectedTagIds: string[];
-  setParentId: (parentId: ParentIdType) => any;
+  setParentId: (parentId: ParentIdType, source?: string) => any;
 }) {
   const { t, i18n } = useTranslation();
   const { feConfigs } = useSystemStore();
@@ -208,7 +216,11 @@ const RenderList = React.memo(function RenderList({
 
   const { runAsync: onClickAdd, loading: isLoading } = useRequest(
     async (template: NodeTemplateListItemType) => {
-      const res = await getClientToolPreviewNode({ appId: template.id, versionId: '' });
+      const res = await getClientToolPreviewNode({
+        appId: template.id,
+        versionId: '',
+        source: template.source
+      });
       const isToolSetTemplate = template.flowNodeType === FlowNodeTypeEnum.toolSet;
 
       /* Invalid plugin check
@@ -312,6 +324,7 @@ const RenderList = React.memo(function RenderList({
       >
         {templates.map((template) => {
           const selected = selectedTools.some((tool) => tool.pluginId === template.id);
+          const isDebugTool = isDebugToolSource(template.source);
 
           return (
             <MyTooltip
@@ -330,6 +343,7 @@ const RenderList = React.memo(function RenderList({
                     <Box fontWeight={'bold'} color={'myGray.900'} flex={'1'}>
                       {template.name}
                     </Box>
+                    {isDebugTool && <DebugToolTag />}
                     <Box color={'myGray.500'}>By {template.author || feConfigs?.systemTitle}</Box>
                   </Flex>
                   <Box pt={2} color={'myGray.500'} maxH={'100px'} overflow={'hidden'}>
@@ -355,15 +369,18 @@ const RenderList = React.memo(function RenderList({
                   borderRadius={'sm'}
                   flexShrink={0}
                 />
-                <Box flex={'1 0 0'}>
-                  <Box
-                    color={'myGray.900'}
-                    fontWeight={'500'}
-                    fontSize={'sm'}
-                    className="textEllipsis"
-                  >
-                    {t(parseI18nString(template.name, i18n.language))}
-                  </Box>
+                <Box flex={'1 0 0'} minW={0}>
+                  <Flex alignItems={'center'} gap={2} minW={0}>
+                    <Box
+                      color={'myGray.900'}
+                      fontWeight={'500'}
+                      fontSize={'sm'}
+                      className="textEllipsis"
+                    >
+                      {t(parseI18nString(template.name, i18n.language))}
+                    </Box>
+                    {isDebugTool && <DebugToolTag />}
+                  </Flex>
                 </Box>
 
                 {selected ? (
@@ -384,7 +401,7 @@ const RenderList = React.memo(function RenderList({
                       variant={'whiteBase'}
                       isLoading={isLoading}
                       leftIcon={<MyIcon name={'common/arrowRight'} w={'16px'} mr={-1.5} />}
-                      onClick={() => setParentId(template.id)}
+                      onClick={() => setParentId(template.id, template.source)}
                       px={2}
                       fontSize={'mini'}
                     >
@@ -407,7 +424,7 @@ const RenderList = React.memo(function RenderList({
                     size={'sm'}
                     variant={'whiteBase'}
                     leftIcon={<MyIcon name={'common/arrowRight'} w={'16px'} mr={-1.5} />}
-                    onClick={() => setParentId(template.id)}
+                    onClick={() => setParentId(template.id, template.source)}
                     px={2}
                     fontSize={'mini'}
                   >

@@ -7,7 +7,8 @@ describe('GetPreviewNodeQuerySchema', () => {
     expect(
       GetPreviewNodeQuerySchema.safeParse({
         appId: 'systemTool-weather',
-        versionId: ''
+        versionId: '',
+        source: 'debug:tmbId:tmb-1'
       }).success
     ).toBe(true);
 

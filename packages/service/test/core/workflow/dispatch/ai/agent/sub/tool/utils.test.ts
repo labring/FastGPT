@@ -413,6 +413,56 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].requestSchema.function.parameters).toBe(systemToolInputSchema);
   });
 
+  it('keeps debug source in selected system tool config', async () => {
+    getSystemToolDetailMock.mockResolvedValue({
+      id: 'systemTool-gpjj5s',
+      name: '热榜工具',
+      avatar: 'hot-list.png',
+      intro: '获取热榜信息',
+      toolDescription: '获取热榜信息',
+      status: 'active',
+      source: 'debug:tmbId:tmb-1',
+      isToolSet: false,
+      hasSystemSecret: false,
+      systemSecretStatus: 'none',
+      currentCost: 0,
+      systemKeyCost: 0,
+      hasTokenFee: false,
+      tags: [],
+      author: '',
+      version: '1.0.0',
+      isLatestVersion: true,
+      inputSchema: systemToolInputSchema
+    });
+
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [
+        {
+          id: 'systemTool-gpjj5s',
+          source: 'debug:tmbId:tmb-1',
+          toolConfig: {
+            systemTool: {
+              toolId: 'systemTool-gpjj5s',
+              source: 'debug:tmbId:tmb-1'
+            }
+          },
+          config: {}
+        }
+      ]
+    });
+
+    expect(getSystemToolDetailMock).toHaveBeenCalledWith({
+      pluginId: 'systemTool-gpjj5s',
+      lang: undefined,
+      source: 'debug:tmbId:tmb-1'
+    });
+    expect(tools[0].toolConfig?.systemTool).toEqual({
+      toolId: 'systemTool-gpjj5s',
+      source: 'debug:tmbId:tmb-1'
+    });
+  });
+
   it('does not rebuild system tool params from node inputs when input schema is missing', async () => {
     getSystemToolDetailMock.mockResolvedValue({
       id: 'systemTool-gpjj5s',

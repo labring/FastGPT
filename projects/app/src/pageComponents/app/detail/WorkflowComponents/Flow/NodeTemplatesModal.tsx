@@ -24,6 +24,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
   const {
     templateType,
     parentId,
+    parentSource,
     searchKey,
     setSearchKey,
     templatesIsLoading,
@@ -86,6 +87,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
           templateType={templateType}
           onUpdateTemplateType={onUpdateTemplateType}
           parentId={parentId}
+          parentSource={parentSource}
           searchKey={searchKey}
           setSearchKey={setSearchKey}
           onUpdateParentId={onUpdateParentId}

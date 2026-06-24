@@ -24,7 +24,7 @@ export type pathResponse = Promise<GetToolPathResponseType>;
 
 export async function handler(req: ApiRequestProps<pathBody, pathQuery>): Promise<pathResponse> {
   const {
-    query: { sourceId: pluginId, type = 'current' }
+    query: { sourceId: pluginId, source, type = 'current' }
   } = parseApiInput({
     req,
     querySchema: GetToolPathQuerySchema
@@ -33,7 +33,7 @@ export async function handler(req: ApiRequestProps<pathBody, pathQuery>): Promis
 
   if (!pluginId) return GetToolPathResponseSchema.parse([]);
 
-  const parentToolId = getParentToolId(pluginId);
+  const parentToolId = getParentToolId({ toolId: pluginId, source });
   const pathToolIds = type === 'parent' ? (parentToolId ? [parentToolId] : []) : [];
 
   if (type === 'current') {
@@ -44,18 +44,26 @@ export async function handler(req: ApiRequestProps<pathBody, pathQuery>): Promis
   }
 
   return GetToolPathResponseSchema.parse(
-    await Promise.all(pathToolIds.map((toolId) => getToolPathItem({ toolId, lang })))
+    await Promise.all(pathToolIds.map((toolId) => getToolPathItem({ toolId, source, lang })))
   );
 }
 
 export default NextAPI(handler);
 
-function getParentToolId(toolId: string) {
-  const { source, pluginId } = splitCombineToolId(toolId);
+function getParentToolId({ toolId, source }: { toolId: string; source?: string }) {
+  if (isDebugToolSource(source)) {
+    const [parentPluginId, childPluginId] = toolId.split('/');
+    if (!parentPluginId || !childPluginId) return;
+    return parentPluginId;
+  }
+
+  const { source: parsedToolSource, pluginId } = splitCombineToolId(toolId);
 
   if (
-    ![AppToolSourceEnum.systemTool, AppToolSourceEnum.commercial].includes(source as any) &&
-    !isDebugToolSource(source)
+    ![AppToolSourceEnum.systemTool, AppToolSourceEnum.commercial].includes(
+      parsedToolSource as any
+    ) &&
+    !isDebugToolSource(parsedToolSource)
   ) {
     return;
   }
@@ -63,24 +71,30 @@ function getParentToolId(toolId: string) {
   const [parentPluginId, childPluginId] = pluginId.split('/');
   if (!parentPluginId || !childPluginId) return;
 
-  return isDebugToolSource(source)
-    ? encodeDebugToolId({ source, pluginId: parentPluginId })
-    : `${source}-${parentPluginId}`;
+  return isDebugToolSource(parsedToolSource)
+    ? encodeDebugToolId({ source: parsedToolSource, pluginId: parentPluginId })
+    : `${parsedToolSource}-${parentPluginId}`;
 }
 
 async function getToolPathItem({
   toolId,
+  source,
   lang
 }: {
   toolId: string;
+  source?: string;
   lang: ReturnType<typeof getLocale>;
 }): Promise<GetToolPathResponseType[number]> {
   const systemToolRepo = SystemToolRepo.getInstance();
-  const { source } = splitCombineToolId(toolId);
+  const parsedSource = source ? undefined : splitCombineToolId(toolId).source;
+  const toolSource = source ?? parsedSource;
   const tool = await systemToolRepo.getSystemToolDisplayInfo({
     pluginId: toolId,
     lang,
-    source: source === AppToolSourceEnum.commercial || isDebugToolSource(source) ? source : 'system'
+    source:
+      toolSource === AppToolSourceEnum.commercial || isDebugToolSource(toolSource)
+        ? toolSource
+        : 'system'
   });
 
   return {

@@ -26,10 +26,11 @@ export type NodeTemplateListHeaderProps = {
   isPopover?: boolean;
   templateType: TemplateTypeEnum;
   parentId: ParentIdType;
+  parentSource?: string;
   searchKey: string;
   setSearchKey: Dispatch<SetStateAction<string>>;
   onUpdateTemplateType: (type: TemplateTypeEnum) => void;
-  onUpdateParentId: (parentId: ParentIdType) => void;
+  onUpdateParentId: (parentId: ParentIdType, source?: string) => void;
 
   selectedTagIds: string[];
   setSelectedTagIds: (e: string[]) => any;
@@ -41,6 +42,7 @@ const NodeTemplateListHeader = ({
   isPopover = false,
   templateType,
   parentId,
+  parentSource,
   searchKey,
   setSearchKey,
   onUpdateTemplateType,
@@ -57,12 +59,12 @@ const NodeTemplateListHeader = ({
   const { data: paths = [] } = useRequest(
     () => {
       if (templateType === TemplateTypeEnum.systemTools)
-        return getAppToolPaths({ sourceId: parentId, type: 'current' });
+        return getAppToolPaths({ sourceId: parentId, source: parentSource, type: 'current' });
       return getAppFolderPath({ sourceId: parentId, type: 'current' });
     },
     {
       manual: false,
-      refreshDeps: [parentId]
+      refreshDeps: [parentId, parentSource]
     }
   );
 

@@ -1,84 +1,116 @@
 import z from 'zod';
 
-/* ============================================================================
- * API: 创建插件调试会话
- * Route: POST /api/core/plugin/debug/session
- * Method: POST
- * Description: 为当前团队成员创建本地插件调试会话，并返回 CLI 连接地址和命令
- * Tags: ['插件调试', 'Write']
- * ============================================================================ */
+export const PluginDebugChannelStatusSchema = z.enum([
+  'enabled',
+  'connected',
+  'disconnected',
+  'revoked'
+]);
 
-export const CreatePluginDebugSessionBodySchema = z
-  .object({
-    ttlMs: z.number().int().positive().optional().meta({
-      example: 14400000,
-      description: '调试会话有效期，单位毫秒。默认 4 小时，到期后主动断连并释放资源'
-    })
-  })
-  .optional()
-  .default({});
+export const PluginDebugChannelActionBodySchema = z.object({}).optional().default({});
 
-export type CreatePluginDebugSessionBodyType = z.infer<typeof CreatePluginDebugSessionBodySchema>;
+export type PluginDebugChannelActionBodyType = z.infer<typeof PluginDebugChannelActionBodySchema>;
 
-export const PluginDebugSessionCreateResultSchema = z.object({
-  debugSessionId: z.string().min(1).meta({
-    example: 'dbg_xxx',
-    description: '调试会话 ID'
-  }),
+const PluginDebugChannelBaseSchema = z.object({
   tmbId: z.string().min(1).meta({
     example: 'tmb_xxx',
     description: '当前团队成员 ID'
   }),
-  source: z.string().min(1).meta({
-    example: 'debug:tmbId:tmb_xxx:session:dbg_xxx',
+  source: z.string().min(1).optional().meta({
+    example: 'debug:tmbId:tmb_xxx',
     description: 'plugin-server 返回的调试 source，后续查询和运行必须原样透传'
   }),
-  ticket: z.string().min(1).meta({
-    example: 'opaque-one-time-ticket',
-    description: '一次性 CLI 连接票据。仅创建会话时返回给前端用于生成 CLI 命令'
+  status: PluginDebugChannelStatusSchema.meta({
+    example: 'enabled',
+    description: '调试通道状态'
   }),
-  ticketExpiresAt: z.number().int().positive().meta({
-    example: 1781500000000,
-    description: 'ticket 过期时间戳，单位毫秒'
+  enabled: z.boolean().meta({
+    example: true,
+    description: '调试通道是否开启'
   }),
-  expiresAt: z.number().int().positive().meta({
+  keyId: z.string().min(1).optional().meta({
+    example: 'dbg_key_xxx',
+    description: 'plugin-server 当前连接密钥 ID'
+  }),
+  createdAt: z.number().int().positive().optional().meta({
     example: 1781500000000,
-    description: '调试会话过期时间戳，单位毫秒'
+    description: '调试通道创建时间戳，单位毫秒'
+  }),
+  updatedAt: z.number().int().positive().optional().meta({
+    example: 1781500000000,
+    description: '调试通道更新时间戳，单位毫秒'
+  }),
+  refreshedAt: z.number().int().positive().optional().meta({
+    example: 1781500000000,
+    description: '连接密钥最近刷新时间戳，单位毫秒'
+  }),
+  revokedAt: z.number().int().positive().optional().meta({
+    example: 1781500000000,
+    description: '调试通道关闭时间戳，单位毫秒'
   })
 });
 
-export const CreatePluginDebugSessionResponseSchema = PluginDebugSessionCreateResultSchema.extend({
-  connectUrl: z.string().url().meta({
-    example: 'https://fastgpt.example.com/api/plugin/debug/connect?ticket=opaque-one-time-ticket',
-    description: 'CLI 访问 FastGPT 的 ticket 兑换地址'
+/* ============================================================================
+ * API: 开启插件调试通道
+ * Route: POST /api/plugin/debug-channel/enable
+ * Method: POST
+ * Description: 为当前登录团队成员开启插件调试通道，并返回 plugin-server 生成的 source 和长期 connectionKey
+ * Tags: ['插件调试', 'Write']
+ * ============================================================================ */
+
+export const EnablePluginDebugChannelBodySchema = PluginDebugChannelActionBodySchema;
+
+export type EnablePluginDebugChannelBodyType = z.infer<typeof EnablePluginDebugChannelBodySchema>;
+
+export const EnablePluginDebugChannelResponseSchema = PluginDebugChannelBaseSchema.extend({
+  connectionKey: z.string().min(1).optional().meta({
+    example: 'fgdbg_xxx',
+    description: '长期连接密钥，仅在开启或刷新时返回，供 CLI 连接使用'
   }),
-  cliCommand: z.string().min(1).meta({
+  connectionUrl: z.string().url().optional().meta({
     example:
-      'fastgpt-plugin debug ./plugin-a --connect "https://fastgpt.example.com/api/plugin/debug/connect?ticket=opaque-one-time-ticket"',
-    description: '可复制到终端执行的插件调试命令'
+      'https://fastgpt.example.com/api/plugin/debug-channel/connection-key:exchange?connectionKey=fgdbg_xxx',
+    description: '本地 CLI 可直接访问的 FastGPT HTTP 调试连接链接'
   })
+}).required({
+  source: true
 });
 
-export type CreatePluginDebugSessionResponseType = z.infer<
-  typeof CreatePluginDebugSessionResponseSchema
+export type EnablePluginDebugChannelResponseType = z.infer<
+  typeof EnablePluginDebugChannelResponseSchema
 >;
 
-export const PluginDebugSessionStatusSchema = z.enum([
-  'pending',
-  'connected',
-  'disconnected',
-  'revoked',
-  'expired'
-]);
+/* ============================================================================
+ * API: 刷新插件调试连接密钥
+ * Route: POST /api/plugin/debug-channel/key:refresh
+ * Method: POST
+ * Description: 刷新当前登录团队成员的插件调试 connectionKey，旧连接密钥会失效
+ * Tags: ['插件调试', 'Write']
+ * ============================================================================ */
 
-export const PluginDebugSessionPluginSchema = z
+export const RefreshPluginDebugConnectionKeyBodySchema = PluginDebugChannelActionBodySchema;
+
+export type RefreshPluginDebugConnectionKeyBodyType = z.infer<
+  typeof RefreshPluginDebugConnectionKeyBodySchema
+>;
+
+export const RefreshPluginDebugConnectionKeyResponseSchema =
+  EnablePluginDebugChannelResponseSchema.required({
+    connectionKey: true
+  });
+
+export type RefreshPluginDebugConnectionKeyResponseType = z.infer<
+  typeof RefreshPluginDebugConnectionKeyResponseSchema
+>;
+
+export const PluginDebugChannelPluginSchema = z
   .object({
     pluginId: z.string().min(1).meta({
       example: 'getTime',
       description: '调试插件 ID'
     }),
     source: z.string().min(1).meta({
-      example: 'debug:tmbId:tmb_xxx:session:dbg_xxx',
+      example: 'debug:tmbId:tmb_xxx',
       description: '调试插件来源'
     }),
     version: z.string().min(1).meta({
@@ -116,25 +148,21 @@ export const PluginDebugSessionPluginSchema = z
   })
   .catchall(z.unknown());
 
-export const PluginDebugSessionStatusResponseSchema = z.object({
-  debugSessionId: z.string().min(1).meta({
-    example: 'dbg_xxx',
-    description: '调试会话 ID'
-  }),
-  tmbId: z.string().min(1).meta({
-    example: 'tmb_xxx',
-    description: '当前团队成员 ID'
-  }),
-  source: z.string().min(1).meta({
-    example: 'debug:tmbId:tmb_xxx:session:dbg_xxx',
-    description: 'plugin-server 返回的调试 source'
-  }),
-  status: PluginDebugSessionStatusSchema.meta({
-    example: 'connected',
-    description: '调试会话状态'
-  }),
-  plugins: z.array(PluginDebugSessionPluginSchema).meta({
-    description: '当前调试会话已挂载的插件列表'
+/* ============================================================================
+ * API: 获取插件调试通道状态
+ * Route: GET /api/plugin/debug-channel
+ * Method: GET
+ * Description: 获取当前登录团队成员的插件调试状态、source、keyId 和已挂载调试插件
+ * Tags: ['插件调试', 'Read']
+ * ============================================================================ */
+
+export const GetPluginDebugChannelQuerySchema = z.object({}).optional().default({});
+
+export type GetPluginDebugChannelQueryType = z.infer<typeof GetPluginDebugChannelQuerySchema>;
+
+export const GetPluginDebugChannelResponseSchema = PluginDebugChannelBaseSchema.extend({
+  plugins: z.array(PluginDebugChannelPluginSchema).meta({
+    description: '当前调试通道已挂载的插件列表'
   }),
   gateway: z
     .object({
@@ -154,83 +182,83 @@ export const PluginDebugSessionStatusResponseSchema = z.object({
     .optional()
     .meta({
       description: 'gateway 状态'
-    }),
-  expiresAt: z.number().int().positive().meta({
-    example: 1781500000000,
-    description: '调试会话过期时间戳，单位毫秒'
-  })
+    })
 });
 
-export type PluginDebugSessionStatusResponseType = z.infer<
-  typeof PluginDebugSessionStatusResponseSchema
->;
+export type GetPluginDebugChannelResponseType = z.infer<typeof GetPluginDebugChannelResponseSchema>;
 
-export const PluginDebugSessionIdQuerySchema = z.object({
-  debugSessionId: z.string().min(1).meta({
-    example: 'dbg_xxx',
-    description: '调试会话 ID'
-  })
-});
+/* ============================================================================
+ * API: 关闭插件调试通道
+ * Route: POST /api/plugin/debug-channel/revoke
+ * Method: POST
+ * Description: 关闭当前登录团队成员的插件调试通道，并断开对应 gateway session
+ * Tags: ['插件调试', 'Write']
+ * ============================================================================ */
 
-export type PluginDebugSessionIdQueryType = z.infer<typeof PluginDebugSessionIdQuerySchema>;
+export const RevokePluginDebugChannelBodySchema = PluginDebugChannelActionBodySchema;
 
-export const DisconnectPluginDebugSessionResponseSchema = z.object({
+export type RevokePluginDebugChannelBodyType = z.infer<typeof RevokePluginDebugChannelBodySchema>;
+
+export const RevokePluginDebugChannelResponseSchema = z.object({
   revoked: z.boolean().meta({
     example: true,
-    description: '是否成功断开调试会话'
+    description: 'plugin-server 是否执行了关闭；false 表示目标状态已达成'
   })
 });
 
-export type DisconnectPluginDebugSessionResponseType = z.infer<
-  typeof DisconnectPluginDebugSessionResponseSchema
+export type RevokePluginDebugChannelResponseType = z.infer<
+  typeof RevokePluginDebugChannelResponseSchema
 >;
 
 /* ============================================================================
  * API: 兑换插件调试连接信息
- * Route: GET /api/plugin/debug/connect
- * Method: GET
- * Description: 使用一次性 ticket 兑换 connection-gateway 连接信息，供 fastgpt-plugin CLI 使用
- * Tags: ['插件调试', 'Public', 'Read']
+ * Route: GET/POST /api/plugin/debug-channel/connection-key:exchange
+ * Method: GET/POST
+ * Description: CLI 使用 HTTP 连接链接或 connectionKey 兑换短期 WSS connectToken 和 gateway 连接信息
+ * Tags: ['插件调试', 'Public', 'Write']
  * ============================================================================ */
 
-export const ExchangePluginDebugTicketQuerySchema = z.object({
-  ticket: z.string().min(1).meta({
-    example: 'opaque-one-time-ticket',
-    description: '一次性 CLI 连接票据'
+export const ExchangePluginDebugConnectionKeyBodySchema = z.object({
+  connectionKey: z.string().min(1).meta({
+    example: 'fgdbg_xxx',
+    description: '长期插件调试连接密钥'
   })
 });
 
-export type ExchangePluginDebugTicketQueryType = z.infer<
-  typeof ExchangePluginDebugTicketQuerySchema
+export type ExchangePluginDebugConnectionKeyBodyType = z.infer<
+  typeof ExchangePluginDebugConnectionKeyBodySchema
 >;
 
-export const PluginDebugSessionExchangeResultSchema = z.object({
-  tcpUrl: z.string().min(1).meta({
-    example: 'tcp://tcp.example.com:39430',
-    description: 'connection-gateway TCP 连接地址'
+export const ExchangePluginDebugConnectionKeyQuerySchema =
+  ExchangePluginDebugConnectionKeyBodySchema;
+
+export type ExchangePluginDebugConnectionKeyQueryType = z.infer<
+  typeof ExchangePluginDebugConnectionKeyQuerySchema
+>;
+
+export const ExchangePluginDebugConnectionKeyResponseSchema = z.object({
+  gatewayUrl: z.string().min(1).meta({
+    example: 'wss://gateway.example.com/debug',
+    description: 'connection-gateway WebSocket 地址'
+  }),
+  transport: z.literal('websocket').meta({
+    example: 'websocket',
+    description: '调试连接传输协议'
   }),
   source: z.string().min(1).meta({
-    example: 'debug:tmbId:tmb_xxx:session:dbg_xxx',
-    description: '本次调试会话对应的 source'
-  }),
-  sessionId: z.string().min(1).meta({
-    example: 'gateway-session-id',
-    description: 'connection-gateway session ID'
-  }),
-  session: z.record(z.string(), z.unknown()).meta({
-    example: {},
-    description: 'connection-gateway session 原始信息'
+    example: 'debug:tmbId:tmb_xxx',
+    description: 'plugin-server 返回的调试 source'
   }),
   connectToken: z.string().min(1).meta({
-    example: 'scoped-connection-token',
-    description: '作用域受限的连接 token，仅返回给 CLI'
+    example: 'short_lived_connect_token',
+    description: '短期 WSS 绑定令牌，仅供 CLI 使用'
   }),
   expiresAt: z.number().int().positive().meta({
     example: 1781500000000,
-    description: '连接信息过期时间戳，单位毫秒'
+    description: 'connectToken 过期时间戳，单位毫秒'
   })
 });
 
-export type PluginDebugSessionExchangeResultType = z.infer<
-  typeof PluginDebugSessionExchangeResultSchema
+export type ExchangePluginDebugConnectionKeyResponseType = z.infer<
+  typeof ExchangePluginDebugConnectionKeyResponseSchema
 >;

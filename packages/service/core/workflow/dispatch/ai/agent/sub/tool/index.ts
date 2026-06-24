@@ -91,6 +91,15 @@ export const dispatchTool = async ({
   };
 
   const logger = getLogger(LogCategories.MODULE.APP.TOOL);
+  const getSystemToolSource = (toolId: string) => {
+    const toolConfigSource = toolConfig?.systemTool?.source;
+    if (isDebugToolSource(toolConfigSource)) return toolConfigSource;
+
+    const { source: parsedSource } = splitCombineToolId(toolId);
+    if (isDebugToolSource(parsedSource)) return parsedSource;
+
+    return 'system';
+  };
 
   try {
     /**
@@ -106,8 +115,7 @@ export const dispatchTool = async ({
     };
 
     if (toolConfig?.systemTool?.toolId) {
-      const { source: parsedSource } = splitCombineToolId(toolConfig.systemTool.toolId);
-      const toolSource = isDebugToolSource(parsedSource) ? parsedSource : 'system';
+      const toolSource = getSystemToolSource(toolConfig.systemTool.toolId);
       const systemToolRepo = SystemToolRepo.getInstance();
       const tool = await systemToolRepo.getSystemToolRuntime({
         pluginId: toolConfig.systemTool.toolId,
@@ -124,6 +132,7 @@ export const dispatchTool = async ({
             });
           case SystemToolSecretInputTypeEnum.system:
           default:
+            if (isDebugToolSource(toolSource)) return {};
             return tool.secretsVal ?? {};
         }
       })();

@@ -10,7 +10,10 @@ const mocks = vi.hoisted(() => ({
   getSystemToolDetail: vi.fn(),
   getSystemToolDisplayInfo: vi.fn(),
   getSystemToolDisplayInfoWithChildIcons: vi.fn(),
-  getInstance: vi.fn()
+  getInstance: vi.fn(),
+  pluginClient: {
+    getDebugSessionStatus: vi.fn()
+  }
 }));
 
 vi.mock('@fastgpt/service/support/permission/auth/common', () => ({
@@ -29,6 +32,10 @@ vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
   SystemToolRepo: {
     getInstance: mocks.getInstance
   }
+}));
+
+vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin', () => ({
+  pluginClient: mocks.pluginClient
 }));
 
 import {
@@ -51,6 +58,12 @@ describe('get system tool templates handler', () => {
       getSystemToolDetail: mocks.getSystemToolDetail,
       getSystemToolDisplayInfo: mocks.getSystemToolDisplayInfo,
       getSystemToolDisplayInfoWithChildIcons: mocks.getSystemToolDisplayInfoWithChildIcons
+    });
+    mocks.pluginClient.getDebugSessionStatus.mockResolvedValue({
+      tmbId: 'tmb-1',
+      status: 'revoked',
+      enabled: false,
+      plugins: []
     });
   });
 
@@ -96,8 +109,97 @@ describe('get system tool templates handler', () => {
     expect(result.map((item) => item.id)).toEqual(['weather']);
     expect(mocks.getSystemToolList).toHaveBeenCalledWith({
       lang: 'zh',
+      op: 'or',
       sources: ['system', 'team-1'],
       tags: ['life']
+    });
+  });
+
+  it('keeps production tools when a debug session is active', async () => {
+    mocks.pluginClient.getDebugSessionStatus.mockResolvedValueOnce({
+      tmbId: 'tmb-1',
+      source: 'debug:tmbId:tmb-1',
+      status: 'connected',
+      enabled: true,
+      plugins: []
+    });
+    mocks.getSystemToolList.mockResolvedValue([
+      {
+        id: 'debug-tool',
+        source: 'debug:tmbId:tmb-1',
+        name: 'Debug Tool',
+        intro: '',
+        toolDescription: '',
+        isToolSet: false,
+        status: PluginStatusEnum.Normal,
+        tags: []
+      },
+      {
+        id: 'system-tool',
+        source: 'system',
+        name: 'System Tool',
+        intro: '',
+        toolDescription: '',
+        isToolSet: false,
+        status: PluginStatusEnum.Normal,
+        tags: []
+      }
+    ]);
+
+    const result = await handler({
+      body: {
+        source: 'debug:tmbId:tmb-1'
+      }
+    } as ApiRequestProps<GetSystemPluginTemplatesBody>);
+
+    expect(result.map((item) => item.id)).toEqual(['debug-tool', 'system-tool']);
+    expect(result[0]?.source).toBe('debug:tmbId:tmb-1');
+    expect(mocks.pluginClient.getDebugSessionStatus).toHaveBeenCalledWith({
+      tmbId: 'tmb-1'
+    });
+    expect(mocks.getSystemToolList).toHaveBeenCalledWith({
+      lang: 'zh',
+      op: 'or',
+      sources: ['system', 'team-1', 'debug:tmbId:tmb-1'],
+      tags: undefined
+    });
+  });
+
+  it('keeps production tools when debug channel is not active', async () => {
+    mocks.getSystemToolList.mockResolvedValue([]);
+
+    await handler({
+      body: {}
+    } as ApiRequestProps<GetSystemPluginTemplatesBody>);
+
+    expect(mocks.getSystemToolList).toHaveBeenCalledWith({
+      lang: 'zh',
+      op: 'or',
+      sources: ['system', 'team-1'],
+      tags: undefined
+    });
+  });
+
+  it('does not append debug source without explicit source parameter', async () => {
+    mocks.pluginClient.getDebugSessionStatus.mockResolvedValueOnce({
+      tmbId: 'tmb-1',
+      source: 'debug:tmbId:tmb-1',
+      status: 'connected',
+      enabled: true,
+      plugins: []
+    });
+    mocks.getSystemToolList.mockResolvedValue([]);
+
+    await handler({
+      body: {}
+    } as ApiRequestProps<GetSystemPluginTemplatesBody>);
+
+    expect(mocks.pluginClient.getDebugSessionStatus).not.toHaveBeenCalled();
+    expect(mocks.getSystemToolList).toHaveBeenCalledWith({
+      lang: 'zh',
+      op: 'or',
+      sources: ['system', 'team-1'],
+      tags: undefined
     });
   });
 
@@ -153,6 +255,50 @@ describe('get system tool templates handler', () => {
     });
     expect(mocks.getSystemToolDisplayInfo).not.toHaveBeenCalled();
     expect(mocks.getSystemToolDetail).not.toHaveBeenCalled();
+  });
+
+  it('uses the parent tool source when opening a production toolset during debug', async () => {
+    mocks.pluginClient.getDebugSessionStatus.mockResolvedValueOnce({
+      tmbId: 'tmb-1',
+      source: 'debug:tmbId:tmb-1',
+      status: 'connected',
+      enabled: true,
+      plugins: []
+    });
+    mocks.getSystemToolDisplayInfo.mockResolvedValue({
+      id: 'systemTool-toolset',
+      name: 'Production Toolset',
+      intro: '',
+      avatar: '',
+      status: PluginStatusEnum.Normal,
+      source: 'system',
+      children: [
+        {
+          id: 'child',
+          name: 'Production Child',
+          status: PluginStatusEnum.Normal,
+          description: '',
+          currentCost: 0,
+          systemKeyCost: 0
+        }
+      ],
+      hasTokenFee: false
+    });
+
+    const result = await handler({
+      body: {
+        parentId: 'systemTool-toolset',
+        source: 'system'
+      }
+    } as ApiRequestProps<GetSystemPluginTemplatesBody>);
+
+    expect(result.map((item) => item.id)).toEqual(['systemTool-toolset/child']);
+    expect(mocks.pluginClient.getDebugSessionStatus).not.toHaveBeenCalled();
+    expect(mocks.getSystemToolDisplayInfo).toHaveBeenCalledWith({
+      pluginId: 'systemTool-toolset',
+      lang: 'zh',
+      source: 'system'
+    });
   });
 
   it('filters soon offline and offline tools from root system tool candidates', async () => {

@@ -70,6 +70,16 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
   const systemToolId = toolConfig?.systemTool?.toolId;
   let toolInput: Record<string, any> = {};
 
+  const getSystemToolSource = (toolId: string) => {
+    const toolConfigSource = toolConfig?.systemTool?.source;
+    if (isDebugToolSource(toolConfigSource)) return toolConfigSource;
+
+    const { source: parsedSource } = splitCombineToolId(toolId);
+    if (isDebugToolSource(parsedSource)) return parsedSource;
+
+    return 'system';
+  };
+
   try {
     /**
      * HTTP/MCP 子工具的 toolId 可由工作流 JSON 持久化，运行时必须用当前工作流执行身份
@@ -85,8 +95,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
 
     // run system tool
     if (toolConfig?.systemTool?.toolId) {
-      const { source: parsedSource } = splitCombineToolId(toolConfig.systemTool.toolId);
-      const toolSource = isDebugToolSource(parsedSource) ? parsedSource : 'system';
+      const toolSource = getSystemToolSource(toolConfig.systemTool.toolId);
       const systemToolRepo = SystemToolRepo.getInstance();
       const tool = await systemToolRepo.getSystemToolRuntime({
         pluginId: toolConfig.systemTool.toolId,
@@ -105,6 +114,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
             });
           case SystemToolSecretInputTypeEnum.system:
           default:
+            if (isDebugToolSource(toolSource)) return {};
             return tool.secretsVal ?? {};
         }
       })();

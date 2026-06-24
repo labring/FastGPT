@@ -18,7 +18,8 @@ import { PluginStatusEnum, PluginStatusMap } from '@fastgpt/global/core/plugin/t
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
-import { isDebugToolId } from '@fastgpt/global/core/app/tool/utils';
+import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
+import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
 
 const ToolSelect = ({
   topAgentSelectedTools,
@@ -82,7 +83,7 @@ const ToolSelect = ({
           const hasFormInput =
             item.configStatus === 'configured' || item.configStatus === 'waitingForConfig';
           const isUnconfigured = item.configStatus === 'waitingForConfig';
-          const isDebugTool = isDebugToolId(item.pluginId);
+          const isDebugTool = isDebugToolSource(item.source);
 
           return (
             <MyTooltip key={item.id} label={item.intro}>
@@ -144,11 +145,7 @@ const ToolSelect = ({
                       {t('app:wait_for_config')}
                     </MyTag>
                   )}
-                  {isDebugTool && (
-                    <MyTag colorSchema="yellow" type="fill" className="unHoverStyle">
-                      测试
-                    </MyTag>
-                  )}
+                  {isDebugTool && <DebugToolTag className="unHoverStyle" />}
                   {/* Edit icon */}
                   {hasFormInput && !toolError && (
                     <MyIconButton

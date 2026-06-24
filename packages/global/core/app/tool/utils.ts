@@ -96,6 +96,16 @@ export function isDebugToolSource(source?: string): source is string {
   return typeof source === 'string' && source.startsWith(DebugToolIdPrefix);
 }
 
+export function parseDebugToolSource(source?: string): { tmbId: string } | undefined {
+  if (!isDebugToolSource(source)) return;
+  const tmbMatch = /^debug:tmbId:([^:]+)$/.exec(source);
+  if (tmbMatch) {
+    return {
+      tmbId: tmbMatch[1]
+    };
+  }
+}
+
 export function encodeDebugToolId({ source, pluginId }: { source: string; pluginId: string }) {
   return `${source}${DebugToolIdSeparator}${pluginId}`;
 }
@@ -121,7 +131,10 @@ export function parseDebugToolId(id: string):
 
 export function hasDebugToolInSelectedTools(selectedTools?: SelectedToolItemType[] | null) {
   return (
-    selectedTools?.some((tool) => isDebugToolId(tool.pluginId) || isDebugToolId(tool.id)) ?? false
+    selectedTools?.some(
+      (tool) =>
+        isDebugToolId(tool.pluginId) || isDebugToolId(tool.id) || isDebugToolSource(tool.source)
+    ) ?? false
   );
 }
 
@@ -132,11 +145,13 @@ export function hasDebugToolInSelectedTools(selectedTools?: SelectedToolItemType
 export function hasDebugToolInNodes(nodes?: StoreNodeItemType[] | null) {
   return (
     nodes?.some((node) => {
-      if (isDebugToolId(node.pluginId)) return true;
+      if (isDebugToolId(node.pluginId) || isDebugToolSource(node.source)) return true;
 
       const toolConfig = node.toolConfig;
       if (isDebugToolId(toolConfig?.systemTool?.toolId)) return true;
+      if (isDebugToolSource(toolConfig?.systemTool?.source)) return true;
       if (isDebugToolId(toolConfig?.systemToolSet?.toolId)) return true;
+      if (isDebugToolSource(toolConfig?.systemToolSet?.source)) return true;
       if (toolConfig?.systemToolSet?.toolList?.some((tool) => isDebugToolId(tool.toolId))) {
         return true;
       }

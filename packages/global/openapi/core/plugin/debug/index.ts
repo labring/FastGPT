@@ -1,87 +1,146 @@
 import type { OpenAPIPath } from '../../../type';
 import { TagsMap } from '../../../tag';
 import {
-  CreatePluginDebugSessionBodySchema,
-  CreatePluginDebugSessionResponseSchema,
-  DisconnectPluginDebugSessionResponseSchema,
-  ExchangePluginDebugTicketQuerySchema,
-  PluginDebugSessionExchangeResultSchema,
-  PluginDebugSessionStatusResponseSchema
+  EnablePluginDebugChannelBodySchema,
+  EnablePluginDebugChannelResponseSchema,
+  ExchangePluginDebugConnectionKeyBodySchema,
+  ExchangePluginDebugConnectionKeyQuerySchema,
+  ExchangePluginDebugConnectionKeyResponseSchema,
+  GetPluginDebugChannelResponseSchema,
+  RefreshPluginDebugConnectionKeyBodySchema,
+  RefreshPluginDebugConnectionKeyResponseSchema,
+  RevokePluginDebugChannelBodySchema,
+  RevokePluginDebugChannelResponseSchema
 } from './api';
 
 export const PluginDebugPath: OpenAPIPath = {
-  '/core/plugin/debug/session': {
+  '/plugin/debug-channel/enable': {
     post: {
-      summary: '创建插件调试会话',
-      description: '为当前登录团队成员创建插件调试会话，并返回 CLI 连接地址和命令',
+      summary: '开启插件调试通道',
+      description:
+        '为当前登录团队成员开启插件调试通道，并返回 plugin-server 生成的 source 和长期 connectionKey',
       tags: [TagsMap.pluginDebug],
       requestBody: {
         content: {
           'application/json': {
-            schema: CreatePluginDebugSessionBodySchema
+            schema: EnablePluginDebugChannelBodySchema
           }
         }
       },
       responses: {
         200: {
-          description: '创建插件调试会话成功',
+          description: '开启插件调试通道成功',
           content: {
             'application/json': {
-              schema: CreatePluginDebugSessionResponseSchema
+              schema: EnablePluginDebugChannelResponseSchema
             }
           }
         }
       }
     }
   },
-  '/core/plugin/debug/session/{debugSessionId}': {
-    get: {
-      summary: '获取插件调试会话状态',
-      description: '查询当前登录团队成员的插件调试会话状态和已挂载调试插件',
-      tags: [TagsMap.pluginDebug],
-      responses: {
-        200: {
-          description: '获取插件调试会话状态成功',
-          content: {
-            'application/json': {
-              schema: PluginDebugSessionStatusResponseSchema
-            }
-          }
-        }
-      }
-    }
-  },
-  '/core/plugin/debug/session/{debugSessionId}/disconnect': {
+  '/plugin/debug-channel/key:refresh': {
     post: {
-      summary: '断开插件调试会话',
-      description: '断开当前登录团队成员的插件调试会话，并关闭对应 gateway session',
+      summary: '刷新插件调试连接密钥',
+      description: '刷新当前登录团队成员的插件调试 connectionKey，旧连接密钥会失效',
       tags: [TagsMap.pluginDebug],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: RefreshPluginDebugConnectionKeyBodySchema
+          }
+        }
+      },
       responses: {
         200: {
-          description: '断开插件调试会话成功',
+          description: '刷新插件调试连接密钥成功',
           content: {
             'application/json': {
-              schema: DisconnectPluginDebugSessionResponseSchema
+              schema: RefreshPluginDebugConnectionKeyResponseSchema
             }
           }
         }
       }
     }
   },
-  '/plugin/debug/connect': {
+  '/plugin/debug-channel': {
     get: {
-      summary: '兑换插件调试连接信息',
-      description: '使用一次性 ticket 兑换 connection-gateway 连接信息，供 CLI 连接本地调试通道',
+      summary: '获取插件调试通道状态',
+      description: '获取当前登录团队成员的插件调试状态、source、keyId 和已挂载调试插件',
+      tags: [TagsMap.pluginDebug],
+      responses: {
+        200: {
+          description: '获取插件调试通道状态成功',
+          content: {
+            'application/json': {
+              schema: GetPluginDebugChannelResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/plugin/debug-channel/revoke': {
+    post: {
+      summary: '关闭插件调试通道',
+      description: '关闭当前登录团队成员的插件调试通道，并断开对应 gateway session',
+      tags: [TagsMap.pluginDebug],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: RevokePluginDebugChannelBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '关闭插件调试通道成功',
+          content: {
+            'application/json': {
+              schema: RevokePluginDebugChannelResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/plugin/debug-channel/connection-key:exchange': {
+    get: {
+      summary: '通过连接链接兑换插件调试连接信息',
+      description:
+        'CLI 使用包含 connectionKey 的 HTTP 连接链接兑换短期 WSS connectToken 和 gateway 连接信息',
       tags: [TagsMap.pluginDebug],
       requestParams: {
-        query: ExchangePluginDebugTicketQuerySchema
+        query: ExchangePluginDebugConnectionKeyQuerySchema
       },
       responses: {
         200: {
           description: '兑换插件调试连接信息成功',
           content: {
             'application/json': {
-              schema: PluginDebugSessionExchangeResultSchema
+              schema: ExchangePluginDebugConnectionKeyResponseSchema
+            }
+          }
+        }
+      }
+    },
+    post: {
+      summary: '兑换插件调试连接信息',
+      description: 'CLI 使用 connectionKey 兑换短期 WSS connectToken 和 gateway 连接信息',
+      tags: [TagsMap.pluginDebug],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: ExchangePluginDebugConnectionKeyBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '兑换插件调试连接信息成功',
+          content: {
+            'application/json': {
+              schema: ExchangePluginDebugConnectionKeyResponseSchema
             }
           }
         }

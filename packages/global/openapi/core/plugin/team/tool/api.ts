@@ -14,12 +14,7 @@ import { SystemToolVersionSchema } from '../../../../../core/app/tool/systemTool
  * Tags: ['团队插件管理', 'Read']
  * ============================================================================ */
 
-export const GetTeamSystemPluginListQuerySchema = z.object({
-  debugSessionId: z.string().optional().meta({
-    example: 'dbg_xxx',
-    description: '调试会话 ID。传入后会把当前登录团队成员的调试插件追加到列表'
-  })
-});
+export const GetTeamSystemPluginListQuerySchema = z.object({});
 
 export type GetTeamSystemPluginListQueryType = z.infer<typeof GetTeamSystemPluginListQuerySchema>;
 
@@ -32,7 +27,7 @@ export type GetTeamPluginListResponseType = z.infer<typeof GetTeamPluginListResp
 
 export const GetTeamToolDetailSourceSchema = z.union([
   z.enum(['system', 'team']),
-  z.string().startsWith('debug:')
+  z.string().regex(/^debug:tmbId:[^:]+$/)
 ]);
 
 /* ============================================================================
@@ -53,8 +48,9 @@ export const GetTeamToolDetailQuerySchema = z.object({
     description: '工具版本 ID。为空时返回最新版本详情'
   }),
   source: GetTeamToolDetailSourceSchema.optional().meta({
-    example: 'system',
-    description: '工具来源。system 表示系统工具，team 表示当前团队工具，debug:* 表示当前调试来源'
+    example: 'debug:tmbId:tmb_xxx',
+    description:
+      '工具来源。system 表示系统工具，team 表示当前团队工具，debug:tmbId:* 表示当前调试来源'
   })
 });
 

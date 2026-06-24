@@ -1,18 +1,22 @@
 import { GET, POST } from '@/web/common/api/request';
 import type {
-  CreatePluginDebugSessionBodyType,
-  CreatePluginDebugSessionResponseType,
-  DisconnectPluginDebugSessionResponseType,
-  PluginDebugSessionStatusResponseType
+  EnablePluginDebugChannelBodyType,
+  EnablePluginDebugChannelResponseType,
+  GetPluginDebugChannelResponseType,
+  RefreshPluginDebugConnectionKeyBodyType,
+  RefreshPluginDebugConnectionKeyResponseType,
+  RevokePluginDebugChannelResponseType
 } from '@fastgpt/global/openapi/core/plugin/debug/api';
 
-export const createPluginDebugSession = (data: CreatePluginDebugSessionBodyType = {}) =>
-  POST<CreatePluginDebugSessionResponseType>('/core/plugin/debug/session', data);
+export const enablePluginDebugChannel = (data: EnablePluginDebugChannelBodyType = {}) =>
+  POST<EnablePluginDebugChannelResponseType>('/plugin/debug-channel/enable', data);
 
-export const getPluginDebugSessionStatus = (debugSessionId: string) =>
-  GET<PluginDebugSessionStatusResponseType>(`/core/plugin/debug/session/${debugSessionId}`);
+export const refreshPluginDebugConnectionKey = (
+  data: RefreshPluginDebugConnectionKeyBodyType = {}
+) => POST<RefreshPluginDebugConnectionKeyResponseType>('/plugin/debug-channel/key:refresh', data);
 
-export const disconnectPluginDebugSession = (debugSessionId: string) =>
-  POST<DisconnectPluginDebugSessionResponseType>(
-    `/core/plugin/debug/session/${debugSessionId}/disconnect`
-  );
+export const getPluginDebugChannel = () =>
+  GET<GetPluginDebugChannelResponseType>('/plugin/debug-channel', {});
+
+export const revokePluginDebugChannel = () =>
+  POST<RevokePluginDebugChannelResponseType>('/plugin/debug-channel/revoke', {});

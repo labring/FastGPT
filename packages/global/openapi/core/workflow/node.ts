@@ -75,6 +75,9 @@ const OpenAPIToolRefSchema = z
   .object({
     toolId: z.string().meta({
       description: '节点引用的工具 ID'
+    }),
+    source: z.string().optional().meta({
+      description: '节点引用的工具来源。调试工具会写入 debug source'
     })
   })
   .meta({

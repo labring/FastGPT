@@ -672,6 +672,64 @@ describe('SystemToolRepo.getSystemToolDisplayInfo', () => {
   });
 });
 
+describe('SystemToolRepo.getSystemToolRuntime', () => {
+  it('does not return configured system secrets for debug source', async () => {
+    mocks.findSystemTool.mockReturnValue({
+      lean: () =>
+        Promise.resolve({
+          pluginId: 'systemTool-weather',
+          currentCost: 1,
+          systemKeyCost: 2,
+          secretsVal: { apiKey: 'prod-secret' },
+          customConfig: {}
+        })
+    });
+    mocks.getTool.mockResolvedValue({
+      pluginId: 'weather',
+      version: '1.0.0',
+      permission: []
+    });
+
+    const tool = await SystemToolRepo.getInstance().getSystemToolRuntime({
+      pluginId: 'systemTool-weather',
+      source: 'debug:tmbId:tmb-1'
+    });
+
+    expect(mocks.getTool).toHaveBeenCalledWith({
+      pluginId: 'weather',
+      version: undefined,
+      source: 'debug:tmbId:tmb-1',
+      fallbackLatestVersion: true
+    });
+    expect(tool.secretsVal).toBeUndefined();
+  });
+
+  it('keeps configured system secrets for production source', async () => {
+    mocks.findSystemTool.mockReturnValue({
+      lean: () =>
+        Promise.resolve({
+          pluginId: 'systemTool-weather',
+          currentCost: 1,
+          systemKeyCost: 2,
+          secretsVal: { apiKey: 'prod-secret' },
+          customConfig: {}
+        })
+    });
+    mocks.getTool.mockResolvedValue({
+      pluginId: 'weather',
+      version: '1.0.0',
+      permission: []
+    });
+
+    const tool = await SystemToolRepo.getInstance().getSystemToolRuntime({
+      pluginId: 'systemTool-weather',
+      source: 'system'
+    });
+
+    expect(tool.secretsVal).toEqual({ apiKey: 'prod-secret' });
+  });
+});
+
 describe('SystemToolRepo.getVersions', () => {
   it('returns app version ids and names for workflow tools', async () => {
     const sortedAppVersions = [

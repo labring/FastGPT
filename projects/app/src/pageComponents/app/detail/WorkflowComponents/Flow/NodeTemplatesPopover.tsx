@@ -26,6 +26,7 @@ const NodeTemplatesPopover = () => {
   const {
     templateType,
     parentId,
+    parentSource,
     searchKey,
     setSearchKey,
     templatesIsLoading,
@@ -123,6 +124,7 @@ const NodeTemplatesPopover = () => {
               templateType={templateType}
               onUpdateTemplateType={onUpdateTemplateType}
               parentId={parentId}
+              parentSource={parentSource}
               onUpdateParentId={onUpdateParentId}
               searchKey={searchKey}
               setSearchKey={setSearchKey}

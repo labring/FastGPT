@@ -12,7 +12,7 @@ import { SystemToolRepo } from '@fastgpt/service/core/app/tool/systemTool/system
 import { getUserDetail } from '@fastgpt/service/support/user/controller';
 import type { UserTagsType } from '@fastgpt/global/support/user/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { getPluginDebugSessionStatus } from '@fastgpt/service/thirdProvider/fastgptPlugin/debugSession';
+import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
 
 export type listQuery = GetTeamSystemPluginListQueryType;
 
@@ -32,24 +32,13 @@ const hasMatchedUserTag = ({
 
 async function handler(req: ApiRequestProps<listBody, listQuery>): Promise<listResponse> {
   const lang = getLocale(req);
-  const {
-    query: { debugSessionId }
-  } = parseApiInput({
+  parseApiInput({
     req,
     querySchema: GetTeamSystemPluginListQuerySchema
   });
 
   const { teamId, tmbId } = await authCert({ req, authToken: true });
-  const debugSession = debugSessionId
-    ? await getPluginDebugSessionStatus({
-        tmbId,
-        debugSessionId
-      }).catch(() => undefined)
-    : undefined;
-  const debugSource =
-    debugSession && !['revoked', 'expired'].includes(debugSession.status)
-      ? debugSession.source
-      : undefined;
+  const debugSource = await getActiveDebugSource(tmbId);
 
   const systemToolRepo = SystemToolRepo.getInstance();
   const [tools, userDetail] = await Promise.all([
@@ -81,4 +70,16 @@ export default NextAPI(handler);
 
 function isDebugSource(source?: string) {
   return !!source?.startsWith('debug:');
+}
+
+async function getActiveDebugSource(tmbId: string) {
+  const status = await pluginClient.getDebugSessionStatus({ tmbId }).catch(() => undefined);
+
+  if (
+    status?.enabled &&
+    (status.status === 'enabled' || status.status === 'connected') &&
+    status.source
+  ) {
+    return status.source;
+  }
 }

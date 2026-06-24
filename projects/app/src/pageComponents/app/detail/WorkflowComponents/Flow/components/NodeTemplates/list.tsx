@@ -48,14 +48,15 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { WorkflowModalContext } from '../../../context/workflowModalContext';
-import { isDebugToolId } from '@fastgpt/global/core/app/tool/utils';
+import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
+import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
 
 export type TemplateListProps = {
   onAddNode: ({ newNodes }: { newNodes: Node<FlowNodeItemType>[] }) => void;
   isPopover?: boolean;
   templates: NodeTemplateListItemType[];
   templateType: TemplateTypeEnum;
-  onUpdateParentId: (parentId: string) => void;
+  onUpdateParentId: (parentId: string, source?: string) => void;
 };
 
 const NodeTemplateListItem = ({
@@ -72,18 +73,17 @@ const NodeTemplateListItem = ({
     position: { x: number; y: number };
   }) => void;
   isPopover?: boolean;
-  onUpdateParentId: (parentId: string) => void;
+  onUpdateParentId: (parentId: string, source?: string) => void;
 }) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
 
   const { screenToFlowPosition } = useReactFlow();
   const handleParams = useContextSelector(WorkflowModalContext, (v) => v.handleParams);
-  const isToolHandle = handleParams?.handleId === 'selectedTools';
   const isSystemTool = templateType === TemplateTypeEnum.systemTools;
   const isSystemToolSet = isSystemTool && template.flowNodeType === FlowNodeTypeEnum.toolSet;
   const showExpandArrow = template.isFolder || isSystemToolSet;
-  const isDebugTool = isDebugToolId(template.id);
+  const isDebugTool = isDebugToolSource(template.source);
 
   return (
     <MyTooltip
@@ -149,9 +149,8 @@ const NodeTemplateListItem = ({
           });
         }}
         onClick={() => {
-          // Not tool handle, cannot add toolset
-          if (!isToolHandle && template.flowNodeType === FlowNodeTypeEnum.toolSet) {
-            onUpdateParentId(template.id);
+          if (isSystemToolSet) {
+            onUpdateParentId(template.id, template.source);
             return;
           }
           // Team folder
@@ -200,7 +199,7 @@ const NodeTemplateListItem = ({
             display="none"
             onClick={(e) => {
               e.stopPropagation();
-              onUpdateParentId(template.id);
+              onUpdateParentId(template.id, template.source);
             }}
           >
             <MyIcon name="common/arrowRight" w={isPopover ? '16px' : '20px'} />
@@ -219,25 +218,6 @@ const NodeTemplateListItem = ({
     </MyTooltip>
   );
 };
-
-const DebugToolTag = React.memo(function DebugToolTag() {
-  return (
-    <Box
-      flexShrink={0}
-      px={2}
-      py={0.5}
-      borderRadius={'6px'}
-      bg={'rgba(255, 245, 204, 1)'}
-      color={'rgba(227, 72, 49, 1)'}
-      border={'1px solid rgba(247, 214, 118, 1)'}
-      fontSize={'11px'}
-      fontWeight={'500'}
-      lineHeight={'16px'}
-    >
-      测试
-    </Box>
-  );
-});
 
 const NodeTemplateList = ({
   onAddNode,
@@ -274,7 +254,8 @@ const NodeTemplateList = ({
             if (shouldLoadPreviewNode) {
               const node = await getClientToolPreviewNode({
                 appId: template.id,
-                getLatestVersion: true
+                getLatestVersion: true,
+                source: template.source
               });
               return {
                 ...node,

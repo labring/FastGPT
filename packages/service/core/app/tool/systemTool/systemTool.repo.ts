@@ -194,7 +194,6 @@ export class SystemToolRepo {
       SystemToolCodec.attachToolConfig({
         tool,
         config:
-          DBPluginsMap.get(SystemToolCodec.getDBPluginId(tool.pluginId, tool.source)) ??
           DBPluginsMap.get(SystemToolCodec.getDBPluginId(tool.pluginId)) ??
           DBPluginsMap.get(tool.pluginId),
         lang
@@ -441,20 +440,18 @@ export class SystemToolRepo {
       };
     }
 
-    const pluginSource =
-      source === AppToolSourceEnum.commercial ? AppToolSourceEnum.commercial : 'system';
+    const pluginSource: string =
+      source === AppToolSourceEnum.commercial || isDebugToolSource(source) ? source : 'system';
     const tools = await pluginClient.listTools({
       sources: [pluginSource]
     });
     const tool = tools.find((item) => item.pluginId === parentPluginId);
     if (!tool) return Promise.reject(PluginErrEnum.unExist);
 
-    const parentCombinedPluginId = [
-      AppToolSourceEnum.systemTool,
-      AppToolSourceEnum.commercial
-    ].includes(toolSource)
-      ? `${toolSource}-${parentPluginId}`
-      : parentPluginId;
+    const parentCombinedPluginId =
+      toolSource === AppToolSourceEnum.systemTool || toolSource === AppToolSourceEnum.commercial
+        ? `${toolSource}-${parentPluginId}`
+        : parentPluginId;
     const parentConfigIds = Array.from(
       new Set([
         parentCombinedPluginId,
@@ -626,6 +623,7 @@ export class SystemToolRepo {
   }): Promise<SystemToolRuntimeType> => {
     const { pluginId: rawPluginId, source: parsedSource } = splitCombineToolId(pluginId);
     source = isDebugToolSource(parsedSource) ? parsedSource : source;
+    const isDebugSource = isDebugToolSource(source);
     const [parentPluginId] = rawPluginId.split('/');
 
     const dbTool = await MongoSystemTool.findOne({ pluginId }).lean();
@@ -643,7 +641,7 @@ export class SystemToolRepo {
         version: tool.version,
         currentCost: dbTool?.currentCost ?? 0,
         systemKeyCost: dbTool?.systemKeyCost ?? 0,
-        secretsVal: SystemToolCodec.getConfiguredSecretsVal(dbTool),
+        secretsVal: isDebugSource ? undefined : SystemToolCodec.getConfiguredSecretsVal(dbTool),
         permissions: tool.permission
       };
     }
