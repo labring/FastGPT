@@ -325,7 +325,10 @@ export class SandboxClient {
   }
 
   async stop() {
-    if (this.provider.status.state === 'UnExist') {
+    // ensureRunning is needed unless the provider is already connected.
+    // BaseSandboxAdapter initializes _status to { state: "Creating" }, not "UnExist",
+    // so we must cover all non-Running states (Creating, Starting, Error, UnExist, etc.).
+    if (this.provider.status.state !== 'Running') {
       try {
         await this.provider.ensureRunning();
       } catch (e) {
