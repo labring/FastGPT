@@ -41,6 +41,8 @@ import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { defaultProvider } from '@fastgpt/global/core/ai/provider';
 
+const PRIORITY_PROVIDER = 'SangforAICP';
+
 const ModelEditModal = dynamic(() => import('../AddModelBox').then((mod) => mod.ModelEditModal));
 
 const LabelStyles: BoxProps = {
@@ -110,16 +112,22 @@ const EditChannelModal = ({
     manual: false
   });
   const modelList = useMemo(() => {
-    return systemModelList.map((item) => {
-      const provider = getModelProvider(item.provider, i18n.language);
+    return systemModelList
+      .map((item) => {
+        const provider = getModelProvider(item.provider, i18n.language);
 
-      return {
-        provider: item.provider,
-        icon: provider?.avatar,
-        label: item.model,
-        value: item.model
-      };
-    });
+        return {
+          provider: item.provider,
+          icon: provider?.avatar,
+          label: item.model,
+          value: item.model
+        };
+      })
+      .sort((a, b) => {
+        if (a.provider === PRIORITY_PROVIDER && b.provider !== PRIORITY_PROVIDER) return -1;
+        if (a.provider !== PRIORITY_PROVIDER && b.provider === PRIORITY_PROVIDER) return 1;
+        return 0;
+      });
   }, [getModelProvider, i18n.language, systemModelList]);
 
   const modelMapping = watch('model_mapping');
