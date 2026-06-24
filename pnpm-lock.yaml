@@ -403,8 +403,8 @@ importers:
         specifier: ^1.2.8
         version: 1.2.8
       '@fastgpt-plugin/sdk-client':
-        specifier: file:/Volumes/Code/fastgpt-plugin/sdk/client
-        version: file:../fastgpt-plugin/sdk/client(zod@4.1.12)
+        specifier: 0.0.1-alpha.10
+        version: 0.0.1-alpha.10(zod@4.1.12)
       axios:
         specifier: 'catalog:'
         version: 1.16.0
@@ -3628,8 +3628,8 @@ packages:
     resolution: {integrity: sha512-OEl393iCOoo/z8bMezRlJu+GlRGlsKbUAN7jKB6LhnKoqKve5DXRpalbItIIcwnCjs1k/FOPjFzcA6Qn+H+YbA==}
     engines: {node: '>=18.0.0', npm: '>=9.0.0'}
 
-  '@fastgpt-plugin/sdk-client@file:../fastgpt-plugin/sdk/client':
-    resolution: {directory: ../fastgpt-plugin/sdk/client, type: directory}
+  '@fastgpt-plugin/sdk-client@0.0.1-alpha.10':
+    resolution: {integrity: sha512-qmqgAxSVvh2aPclhMtSVMrH1SzD5DYALRfEAmroXqvN0UTOQp53wqD4zZMw88mzGcEjW5cmPsbG2q7BKBBCNPg==}
     peerDependencies:
       zod: ^4
 
@@ -17549,7 +17549,7 @@ snapshots:
 
   '@faker-js/faker@9.9.0': {}
 
-  '@fastgpt-plugin/sdk-client@file:../fastgpt-plugin/sdk/client(zod@4.1.12)':
+  '@fastgpt-plugin/sdk-client@0.0.1-alpha.10(zod@4.1.12)':
     dependencies:
       zod: 4.1.12
 
