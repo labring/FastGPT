@@ -3,7 +3,10 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
+import {
+  beforeUpdateAppFormat,
+  validatePublishAppAgentSkillReadPermissions
+} from '@fastgpt/service/core/app/controller';
 import { getNextTimeByCronStringAndTimezone } from '@fastgpt/global/common/string/time';
 import { type PostPublishAppProps } from '@/global/core/app/api';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -31,7 +34,7 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
     bodySchema: PublishAppBodySchema
   });
 
-  const { app, tmbId, teamId } = await authApp({
+  const { app, tmbId, teamId, isRoot } = await authApp({
     appId,
     req,
     per: WritePermissionVal,
@@ -41,6 +44,13 @@ async function handler(req: ApiRequestProps<PostPublishAppProps>) {
   beforeUpdateAppFormat({
     nodes
   });
+  if (isPublish) {
+    await validatePublishAppAgentSkillReadPermissions({
+      nodes,
+      tmbId,
+      isRoot
+    });
+  }
   const resourceRefs = extractAppResourceRefsFromNodes(nodes);
   updateParentFoldersUpdateTime({
     parentId: app.parentId

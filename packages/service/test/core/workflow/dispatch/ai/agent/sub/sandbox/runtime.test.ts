@@ -111,6 +111,7 @@ describe('ensureAgentSandboxRuntime', () => {
       userId: 'user_1',
       chatId: 'chat_1',
       teamId: 'team_1',
+      tmbId: 'tmb_1',
       needSandboxRuntime: true,
       sandboxBootstrap: sandboxBootstrapMock,
       sandboxEntrypoint: 'pip install -r requirements.txt',
@@ -121,6 +122,24 @@ describe('ensureAgentSandboxRuntime', () => {
           name: 'current.pdf',
           type: ChatFileTypeEnum.file,
           url: 'https://files/current.pdf'
+        },
+        {
+          id: 'file_2',
+          name: '../current.pdf',
+          type: ChatFileTypeEnum.file,
+          url: 'https://files/unsafe-current.pdf'
+        },
+        {
+          id: 'file_3',
+          name: 'folder/report.txt',
+          type: ChatFileTypeEnum.file,
+          url: 'https://files/report.txt'
+        },
+        {
+          id: 'file_4',
+          name: '..',
+          type: ChatFileTypeEnum.file,
+          url: 'https://files/nameless'
         }
       ]
     });
@@ -140,11 +159,24 @@ describe('ensureAgentSandboxRuntime', () => {
       sandbox: expect.any(Object),
       skillIds: ['skill_1'],
       teamId: 'team_1',
+      tmbId: 'tmb_1',
       workDirectory: '/workspace'
     });
     expect(sandboxWriteFilesMock).toHaveBeenCalledWith([
       {
         path: 'user_files/current.pdf',
+        data: expect.any(ArrayBuffer)
+      },
+      {
+        path: 'user_files/current-1.pdf',
+        data: expect.any(ArrayBuffer)
+      },
+      {
+        path: 'user_files/report.txt',
+        data: expect.any(ArrayBuffer)
+      },
+      {
+        path: 'user_files/file-3',
         data: expect.any(ArrayBuffer)
       }
     ]);
