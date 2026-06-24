@@ -4,7 +4,8 @@ import {
   htmlTable2Md,
   uploadMarkdownBase64,
   markdownProcess,
-  matchMdImg
+  matchMdImg,
+  matchHtmlImg
 } from '@fastgpt/global/common/string/markdown';
 
 describe('markdown 字符串处理函数测试', () => {
@@ -361,6 +362,172 @@ describe('markdown 字符串处理函数测试', () => {
     });
   });
 
+  describe('matchHtmlImg', () => {
+    it('应该提取单个 HTML base64 图片', () => {
+      const base64Data =
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+      const html = `<img src="data:image/png;base64,${base64Data}" />`;
+      const result = matchHtmlImg(html);
+
+      expect(result.imageList).toHaveLength(1);
+      expect(result.imageList[0].base64).toBe(base64Data);
+      expect(result.imageList[0].mime).toBe('image/png');
+      expect(result.imageList[0].uuid).toMatch(/^IMAGE_[a-zA-Z0-9]+_IMAGE$/);
+      expect(result.text).toContain('IMAGE_');
+      expect(result.text).not.toContain('data:image');
+    });
+
+    it('应该提取多个 HTML base64 图片', () => {
+      const base64Data1 = 'DATA1==';
+      const base64Data2 = 'DATA2==';
+      const html = `<div><img src="data:image/png;base64,${base64Data1}" /><img src="data:image/jpeg;base64,${base64Data2}" /></div>`;
+      const result = matchHtmlImg(html);
+
+      expect(result.imageList).toHaveLength(2);
+      expect(result.imageList[0].base64).toBe(base64Data1);
+      expect(result.imageList[0].mime).toBe('image/png');
+      expect(result.imageList[1].base64).toBe(base64Data2);
+      expect(result.imageList[1].mime).toBe('image/jpeg');
+    });
+
+    it('应该处理不同的 MIME 类型', () => {
+      const formats = ['png', 'jpeg', 'gif', 'webp', 'svg+xml'];
+      let html = '';
+
+      formats.forEach((fmt, i) => {
+        html += `<img src="data:image/${fmt};base64,DATA${i}==" />\n`;
+      });
+
+      const result = matchHtmlImg(html);
+
+      expect(result.imageList).toHaveLength(formats.length);
+      formats.forEach((fmt, i) => {
+        expect(result.imageList[i].mime).toBe(`image/${fmt}`);
+      });
+    });
+
+    it('应该处理不包含 base64 图片的 HTML', () => {
+      const html = '<img src="https://example.com/image.png" /><p>No base64 here</p>';
+      const result = matchHtmlImg(html);
+
+      expect(result.imageList).toHaveLength(0);
+      expect(result.text).toBe(html);
+    });
+
+    it('应该处理混合的图片类型', () => {
+      const base64Data = 'BASE64==';
+      const html = `<img src="data:image/png;base64,${base64Data}" /><img src="https://example.com/image.jpg" />`;
+      const result = matchHtmlImg(html);
+
+      expect(result.imageList).toHaveLength(1);
+      expect(result.text).toContain('https://example.com/image.jpg');
+      expect(result.text).not.toContain('data:image/png');
+    });
+
+    it('应该处理空文本', () => {
+      const result = matchHtmlImg('');
+
+      expect(result.imageList).toHaveLength(0);
+      expect(result.text).toBe('');
+    });
+
+    it('应该为每个图片生成唯一的 UUID', () => {
+      const base64Data = 'SAME==';
+      const html = `<img src="data:image/png;base64,${base64Data}" /><img src="data:image/png;base64,${base64Data}" />`;
+      const result = matchHtmlImg(html);
+
+      expect(result.imageList).toHaveLength(2);
+      expect(result.imageList[0].uuid).not.toBe(result.imageList[1].uuid);
+    });
+
+    it('应该处理 base64 填充字符', () => {
+      const testCases = ['ABC=', 'ABCD==', 'ABCDEF'];
+
+      testCases.forEach((base64Data) => {
+        const html = `<img src="data:image/png;base64,${base64Data}" />`;
+        const result = matchHtmlImg(html);
+
+        expect(result.imageList).toHaveLength(1);
+        expect(result.imageList[0].base64).toBe(base64Data);
+      });
+    });
+
+    it('应该在图文混合的 HTML 中正确提取所有图片', () => {
+      const html = `
+        <div>
+          <p>段落文本内容</p>
+          <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" />
+          <p>中间段落文本</p>
+          <a href="https://example.com">链接文本</a>
+          <img src="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQECAgICAgICAgIC" />
+          <p>结尾段落</p>
+          <img src="data:image/gif;base64,R0lGODdhAQABAIAAAP///////ywAAAAAAQABAAACAkQBADs=" />
+        </div>
+      `;
+
+      const result = matchHtmlImg(html);
+
+      expect(result.imageList).toHaveLength(3);
+      expect(result.imageList[0].mime).toBe('image/png');
+      expect(result.imageList[1].mime).toBe('image/jpeg');
+      expect(result.imageList[2].mime).toBe('image/gif');
+
+      // 所有图片的 base64 数据应被 uuid 替换，原 base64 不应出现在输出文本中
+      expect(result.text).not.toContain('iVBORw0KGgoAAAANSUhEUg');
+      expect(result.text).not.toContain('/9j/4AAQSkZJRgABAQAAAQABAAD');
+      expect(result.text).not.toContain('R0lGODdhAQABAIAAAP///////w');
+
+      // 非图片的 HTML 结构应保持不变
+      expect(result.text).toContain('<p>段落文本内容</p>');
+      expect(result.text).toContain('<p>中间段落文本</p>');
+      expect(result.text).toContain('<a href="https://example.com">链接文本</a>');
+      expect(result.text).toContain('<p>结尾段落</p>');
+      expect(result.text).toContain('<div>');
+
+      // 每个图片应被 uuid 替换
+      expect(result.text).toContain('src="IMAGE_');
+      const uuidMatches = result.text.match(/src="IMAGE_[a-zA-Z0-9]+_IMAGE"/g);
+      expect(uuidMatches).toHaveLength(3);
+    });
+
+    it('应该处理超大 base64 图片（500KB+），不应抛出 Maximum call stack size exceeded', () => {
+      const largeBase64 = 'A'.repeat(500 * 1024); // ~500KB
+      const html = `<img src="data:image/png;base64,${largeBase64}" />`;
+
+      let error: Error | null = null;
+      let result: ReturnType<typeof matchHtmlImg> | null = null;
+      try {
+        result = matchHtmlImg(html);
+      } catch (e) {
+        error = e as Error;
+      }
+
+      expect(error).toBeNull();
+      expect(result).not.toBeNull();
+      expect(result!.imageList).toHaveLength(1);
+      expect(result!.imageList[0].base64).toBe(largeBase64);
+      expect(result!.imageList[0].base64.length).toBe(500 * 1024);
+    });
+
+    it('应该处理超大 base64 图片（1MB+），不应抛出 Maximum call stack size exceeded', () => {
+      const largeBase64 = 'B'.repeat(1024 * 1024); // 1MB
+      const html = `<img src="data:image/jpeg;base64,${largeBase64}" />`;
+
+      let error: Error | null = null;
+      let result: ReturnType<typeof matchHtmlImg> | null = null;
+      try {
+        result = matchHtmlImg(html);
+      } catch (e) {
+        error = e as Error;
+      }
+
+      expect(error).toBeNull();
+      expect(result).not.toBeNull();
+      expect(result!.imageList).toHaveLength(1);
+      expect(result!.imageList[0].base64).toBe(largeBase64);
+    });
+  });
+
   describe('matchMdImg', () => {
     it('应该提取单个 base64 图片', () => {
       const base64Data =
@@ -547,6 +714,43 @@ describe('markdown 字符串处理函数测试', () => {
       // alt 文本中的 [ 应被转义为 \[，防止 CommonMark 括号嵌套问题
       expect(result.text).toContain('![图表说明 \\[Using the fundamental Poisson brackets\\]');
       expect(result.text).not.toMatch(/!\[图表说明 \[Using/); // 不应有未转义的 [
+    });
+
+    it('应该处理超大 base64 图片（500KB+），不应抛出 Maximum call stack size exceeded', () => {
+      const largeBase64 = 'A'.repeat(500 * 1024); // ~500KB
+      const text = `![large](data:image/png;base64,${largeBase64})`;
+
+      let error: Error | null = null;
+      let result: ReturnType<typeof matchMdImg> | null = null;
+      try {
+        result = matchMdImg(text);
+      } catch (e) {
+        error = e as Error;
+      }
+
+      expect(error).toBeNull();
+      expect(result).not.toBeNull();
+      expect(result!.imageList).toHaveLength(1);
+      expect(result!.imageList[0].base64).toBe(largeBase64);
+      expect(result!.imageList[0].base64.length).toBe(500 * 1024);
+    });
+
+    it('应该处理超大 base64 图片（1MB+），不应抛出 Maximum call stack size exceeded', () => {
+      const largeBase64 = 'B'.repeat(1024 * 1024); // 1MB
+      const text = `![huge](data:image/jpeg;base64,${largeBase64})`;
+
+      let error: Error | null = null;
+      let result: ReturnType<typeof matchMdImg> | null = null;
+      try {
+        result = matchMdImg(text);
+      } catch (e) {
+        error = e as Error;
+      }
+
+      expect(error).toBeNull();
+      expect(result).not.toBeNull();
+      expect(result!.imageList).toHaveLength(1);
+      expect(result!.imageList[0].base64).toBe(largeBase64);
     });
   });
 
