@@ -13,7 +13,8 @@ import { defineConfig } from 'tsdown';
 export default defineConfig({
   entry: {
     index: 'src/index.ts',
-    worker: 'src/pool/worker.ts'
+    worker: 'src/pool/worker.ts',
+    'python-isolated-runner': 'src/isolated/python-isolated-runner.ts'
   },
   format: 'esm',
   platform: 'node',

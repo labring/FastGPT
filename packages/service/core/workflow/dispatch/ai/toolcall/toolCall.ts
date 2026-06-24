@@ -159,6 +159,8 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
      */
     canBatchTool: () => false,
     onAfterCompressContext({ usage, requestIds, seconds }) {
+      if (!usage) return;
+
       appendContextCompressNodeResponse({
         usage,
         requestIds,

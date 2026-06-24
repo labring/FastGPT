@@ -16,7 +16,7 @@ export const SandboxStatusEnum = {
 export type SandboxStatusType = (typeof SandboxStatusEnum)[keyof typeof SandboxStatusEnum];
 
 // ---- 暂停阈值（分钟） ----
-export const SANDBOX_SUSPEND_MINUTES = 5;
+export const SANDBOX_SUSPEND_MINUTES = 10;
 
 // ---- sandboxId 生成 ----
 export const generateSandboxId = (appId: string, userId: string, chatId: string): string => {

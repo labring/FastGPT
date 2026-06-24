@@ -15,6 +15,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { Trans, useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import {
   DndContext,
   useSensor,
@@ -153,7 +154,6 @@ const DroppableRootBox = ({
 };
 
 const FileTree = ({
-  width = 250,
   filteredTree,
   searchQuery,
   setSearchQuery,
@@ -525,7 +525,7 @@ const FileTree = ({
       title: t('chat:sandbox_confirm_delete_title'),
       customContent: (
         <Trans
-          i18nKey="chat:sandbox_confirm_delete_content"
+          i18nKey={i18nT('chat:sandbox_confirm_delete_content')}
           values={{ name: node.name }}
           components={{
             name: <Text as="span" fontWeight="600" color="red.600" />

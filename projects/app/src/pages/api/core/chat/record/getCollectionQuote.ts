@@ -108,6 +108,7 @@ async function handleInitialLoad({
 }): Promise<GetCollectionQuoteResType> {
   const centerNode = await MongoDatasetData.findOne(
     {
+      ...baseMatch,
       _id: new Types.ObjectId(initialId)
     },
     quoteDataFieldSelector

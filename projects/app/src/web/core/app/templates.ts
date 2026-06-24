@@ -352,7 +352,7 @@ export const getEmptyAppsTemplate = (t: any) => {
             {
               id: 'userChatInput',
               key: 'userChatInput',
-              label: 'common:core.module.input.label.user question',
+              label: i18nT('common:core.module.input.label.user question'),
               type: FlowNodeOutputTypeEnum.static,
               valueType: WorkflowIOValueTypeEnum.string
             }
@@ -656,7 +656,7 @@ export const parsePluginFromCurlString = (
             label: '',
             description:
               '自定义请求头，请严格填入 JSON 字符串。\n1. 确保最后一个属性没有逗号\n2. 确保 key 包含双引号\n例如：{"Authorization":"Bearer xxx"}',
-            placeholder: 'common:core.module.input.description.Http Request Header',
+            placeholder: i18nT('common:core.module.input.description.Http Request Header'),
             required: false,
             valueDesc: '',
             debugLabel: '',

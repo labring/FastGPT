@@ -1,5 +1,5 @@
 /**
- * ProcessPool / PythonProcessPool 单元测试
+ * ProcessPool / PythonIsolatedRunner 单元测试
  *
  * 覆盖进程池核心逻辑：
  * - 生命周期（init / shutdown / stats）
@@ -10,7 +10,7 @@
  */
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { ProcessPool } from '../../src/pool/process-pool';
-import { PythonProcessPool } from '../../src/pool/python-process-pool';
+import { PythonIsolatedRunner } from '../../src/isolated/python-isolated-runner';
 
 // ============================================================
 // JS ProcessPool
@@ -343,7 +343,7 @@ describe('ProcessPool 返回值序列化与参数校验', () => {
 // ============================================================
 describe('JS + Python 混合并发', () => {
   let jsPool: ProcessPool;
-  let pyPool: PythonProcessPool;
+  let pyPool: PythonIsolatedRunner;
 
   afterEach(async () => {
     try {
@@ -355,7 +355,7 @@ describe('JS + Python 混合并发', () => {
   it('JS 和 Python 混合并发执行', async () => {
     jsPool = new ProcessPool(1);
     await jsPool.init();
-    pyPool = new PythonProcessPool(1);
+    pyPool = new PythonIsolatedRunner(1);
     await pyPool.init();
 
     const jsPromise = jsPool.execute({
@@ -579,269 +579,10 @@ describe('ProcessPool 健康检查失败路径', () => {
 });
 
 // ============================================================
-// Python PythonProcessPool - Worker Ping/Pong 健康检查
+// PythonIsolatedRunner - 生命周期、恢复、排队
 // ============================================================
-describe('PythonProcessPool Worker 健康检查 (ping/pong)', () => {
-  let pool: PythonProcessPool;
-
-  afterEach(async () => {
-    try {
-      await pool?.shutdown();
-    } catch {}
-  });
-
-  it('worker 正常响应 ping 后仍可执行任务', async () => {
-    pool = new PythonProcessPool(1);
-    await pool.init();
-
-    const r1 = await pool.execute({
-      code: `def main():\n    return {'step': 1}`,
-      variables: {}
-    });
-    expect(r1.success).toBe(true);
-    expect(r1.data?.codeReturn.step).toBe(1);
-
-    // 触发 ping
-    (pool as any).pingWorker((pool as any).idleWorkers[0]);
-    await new Promise((r) => setTimeout(r, 500));
-
-    const r2 = await pool.execute({
-      code: `def main():\n    return {'step': 2}`,
-      variables: {}
-    });
-    expect(r2.success).toBe(true);
-    expect(r2.data?.codeReturn.step).toBe(2);
-    expect(pool.stats.total).toBe(1);
-  });
-
-  it('连续多次 ping 不影响 worker 状态', async () => {
-    pool = new PythonProcessPool(2);
-    await pool.init();
-
-    for (let i = 0; i < 3; i++) {
-      for (const w of [...(pool as any).idleWorkers]) {
-        (pool as any).pingWorker(w);
-      }
-      await new Promise((r) => setTimeout(r, 300));
-    }
-
-    expect(pool.stats.total).toBe(2);
-    expect(pool.stats.idle).toBe(2);
-
-    const result = await pool.execute({
-      code: `def main():\n    return {'alive': True}`,
-      variables: {}
-    });
-    expect(result.success).toBe(true);
-  });
-});
-
-// ============================================================
-// Python PythonProcessPool - 健康检查失败路径
-// ============================================================
-describe('PythonProcessPool 健康检查失败路径', () => {
-  let pool: PythonProcessPool;
-
-  afterEach(async () => {
-    try {
-      await pool?.shutdown();
-    } catch {}
-  });
-
-  it('ping timeout: worker 不响应 pong 时被替换', async () => {
-    pool = new PythonProcessPool(1);
-    await pool.init();
-    expect(pool.stats.total).toBe(1);
-
-    const worker = (pool as any).idleWorkers[0];
-    // 拦截 stdin.write 使 ping 不到达 worker，触发真正的 timeout
-    const origWrite = worker.proc.stdin!.write.bind(worker.proc.stdin!);
-    let interceptPing = true;
-    worker.proc.stdin!.write = (...args: any[]) => {
-      if (interceptPing) {
-        interceptPing = false;
-        return true;
-      }
-      return origWrite(...args);
-    };
-
-    (pool as any).pingWorker(worker);
-
-    await new Promise((r) => setTimeout(r, 8000));
-
-    expect(pool.stats.total).toBe(1);
-
-    const result = await pool.execute({
-      code: `def main():\n    return {'ok': True}`,
-      variables: {}
-    });
-    expect(result.success).toBe(true);
-  }, 15000);
-
-  it('stdin not writable: worker stdin 关闭时被替换', async () => {
-    pool = new PythonProcessPool(1);
-    await pool.init();
-    expect(pool.stats.total).toBe(1);
-
-    const worker = (pool as any).idleWorkers[0];
-    worker.proc.stdin!.destroy();
-
-    (pool as any).pingWorker(worker);
-
-    await new Promise((r) => setTimeout(r, 3000));
-
-    expect(pool.stats.total).toBe(1);
-
-    const result = await pool.execute({
-      code: `def main():\n    return {'replaced': True}`,
-      variables: {}
-    });
-    expect(result.success).toBe(true);
-  }, 10000);
-
-  it('health check invalid response: worker 返回错误类型时被替换', async () => {
-    pool = new PythonProcessPool(1);
-    await pool.init();
-    expect(pool.stats.total).toBe(1);
-
-    const worker = (pool as any).idleWorkers[0];
-    const origWrite = worker.proc.stdin!.write.bind(worker.proc.stdin!);
-    let intercepted = false;
-    worker.proc.stdin!.write = (...args: any[]) => {
-      if (!intercepted) {
-        intercepted = true;
-        setTimeout(() => worker.rl.emit('line', JSON.stringify({ type: 'wrong' })), 50);
-        return true;
-      }
-      return origWrite(...args);
-    };
-
-    (pool as any).pingWorker(worker);
-
-    await new Promise((r) => setTimeout(r, 3000));
-
-    expect(pool.stats.total).toBe(1);
-
-    const result = await pool.execute({
-      code: `def main():\n    return {'invalidResp': True}`,
-      variables: {}
-    });
-    expect(result.success).toBe(true);
-  }, 10000);
-
-  it('returnToIdle with waiter: ping 期间有等待请求时直接分配', async () => {
-    pool = new PythonProcessPool(1);
-    await pool.init();
-
-    const worker = (pool as any).idleWorkers[0];
-    (pool as any).pingWorker(worker);
-
-    const p1 = pool.execute({
-      code: `def main():\n    return {'fromWaiter': True}`,
-      variables: {}
-    });
-
-    const result = await p1;
-    expect(result.success).toBe(true);
-    expect(result.data?.codeReturn.fromWaiter).toBe(true);
-  });
-
-  it('health check parse error: worker 返回非 JSON 时被替换', async () => {
-    pool = new PythonProcessPool(1);
-    await pool.init();
-    expect(pool.stats.total).toBe(1);
-
-    const worker = (pool as any).idleWorkers[0];
-    const origWrite = worker.proc.stdin!.write.bind(worker.proc.stdin!);
-    let intercepted = false;
-    worker.proc.stdin!.write = (...args: any[]) => {
-      if (!intercepted) {
-        intercepted = true;
-        setTimeout(() => worker.rl.emit('line', 'not-json'), 50);
-        return true;
-      }
-      return origWrite(...args);
-    };
-
-    (pool as any).pingWorker(worker);
-
-    await new Promise((r) => setTimeout(r, 3000));
-
-    expect(pool.stats.total).toBe(1);
-
-    const result = await pool.execute({
-      code: `def main():\n    return {'parseError': True}`,
-      variables: {}
-    });
-    expect(result.success).toBe(true);
-  }, 10000);
-
-  it('health check write error: stdin.write 抛异常时被替换', async () => {
-    pool = new PythonProcessPool(1);
-    await pool.init();
-    expect(pool.stats.total).toBe(1);
-
-    const worker = (pool as any).idleWorkers[0];
-    worker.proc.stdin!.write = () => {
-      throw new Error('mock write error');
-    };
-
-    (pool as any).pingWorker(worker);
-
-    await new Promise((r) => setTimeout(r, 3000));
-
-    expect(pool.stats.total).toBe(1);
-
-    const result = await pool.execute({
-      code: `def main():\n    return {'writeError': True}`,
-      variables: {}
-    });
-    expect(result.success).toBe(true);
-  }, 10000);
-});
-
-// ============================================================
-// Python PythonProcessPool - shutdown reject waiters
-// ============================================================
-describe('PythonProcessPool shutdown reject waiters', () => {
-  it('shutdown 后 waitQueue 中的请求被 reject', async () => {
-    const pool = new PythonProcessPool(1);
-    await pool.init();
-
-    // 发起一个长时间运行的任务占住唯一 worker
-    const p1 = pool.execute({
-      code: `import time\ndef main():\n    time.sleep(3)\n    return {'done': True}`,
-      variables: {}
-    });
-
-    // 等一下确保 p1 已经拿到 worker
-    await new Promise((r) => setTimeout(r, 200));
-
-    // 发起第二个请求，它会进入 waitQueue
-    const p2 = pool.execute({
-      code: `def main():\n    return {'queued': True}`,
-      variables: {}
-    });
-
-    // 确认有排队请求
-    expect(pool.stats.queued).toBe(1);
-
-    // shutdown 应该 reject waitQueue 中的请求
-    await pool.shutdown();
-
-    // p2 应该被 reject
-    await expect(p2).rejects.toThrow('shutting down');
-
-    // p1 可能成功也可能因 worker 被 kill 而失败，不关心
-    await p1.catch(() => {});
-  });
-});
-
-// ============================================================
-// Python PythonProcessPool
-// ============================================================
-describe('PythonProcessPool 生命周期', () => {
-  let pool: PythonProcessPool;
+describe('PythonIsolatedRunner 生命周期', () => {
+  let pool: PythonIsolatedRunner;
 
   afterEach(async () => {
     try {
@@ -850,7 +591,7 @@ describe('PythonProcessPool 生命周期', () => {
   });
 
   it('init 后 stats 正确', async () => {
-    pool = new PythonProcessPool(2);
+    pool = new PythonIsolatedRunner(2);
     await pool.init();
     const s = pool.stats;
     expect(s.total).toBe(2);
@@ -860,31 +601,37 @@ describe('PythonProcessPool 生命周期', () => {
     expect(s.poolSize).toBe(2);
   });
 
-  it('shutdown 后 stats 归零', async () => {
-    pool = new PythonProcessPool(2);
+  it('shutdown 后不再接受新任务', async () => {
+    pool = new PythonIsolatedRunner(1);
     await pool.init();
     await pool.shutdown();
-    const s = pool.stats;
-    expect(s.total).toBe(0);
-    expect(s.idle).toBe(0);
-    expect(s.busy).toBe(0);
-  });
 
-  it('execute 后 worker 归还到 idle', async () => {
-    pool = new PythonProcessPool(1);
-    await pool.init();
-    await pool.execute({
+    const result = await pool.execute({
       code: `def main():\n    return {'ok': True}`,
       variables: {}
     });
+    expect(result.success).toBe(false);
+    expect(result.message).toMatch(/not ready/i);
+  });
+
+  it('execute 后销毁已执行进程并补充干净空闲进程', async () => {
+    pool = new PythonIsolatedRunner(1);
+    await pool.init();
+    const result = await pool.execute({
+      code: `def main():\n    return {'ok': True}`,
+      variables: {}
+    });
+    expect(result.success).toBe(true);
+    await new Promise((resolve) => setTimeout(resolve, 200));
     const s = pool.stats;
+    expect(s.total).toBe(1);
     expect(s.idle).toBe(1);
     expect(s.busy).toBe(0);
   });
 });
 
-describe('PythonProcessPool Worker 恢复', () => {
-  let pool: PythonProcessPool;
+describe('PythonIsolatedRunner 恢复能力', () => {
+  let pool: PythonIsolatedRunner;
 
   afterEach(async () => {
     try {
@@ -892,8 +639,8 @@ describe('PythonProcessPool Worker 恢复', () => {
     } catch {}
   });
 
-  it('超时后 worker 被 kill 并 respawn', async () => {
-    pool = new PythonProcessPool(1);
+  it('超时子进程被清理后，后续请求正常', async () => {
+    pool = new PythonIsolatedRunner(1);
     await pool.init();
 
     const result = await pool.execute({
@@ -903,19 +650,64 @@ describe('PythonProcessPool Worker 恢复', () => {
     expect(result.success).toBe(false);
     expect(result.message).toContain('timed out');
 
-    // 等 respawn
-    await new Promise((r) => setTimeout(r, 2000));
-
     const result2 = await pool.execute({
       code: `def main():\n    return {'ok': True}`,
       variables: {}
     });
     expect(result2.success).toBe(true);
+    expect(result2.data?.codeReturn.ok).toBe(true);
+  });
+
+  it('运行时异常不会污染下一次执行', async () => {
+    pool = new PythonIsolatedRunner(1);
+    await pool.init();
+
+    const result = await pool.execute({
+      code: `def main():\n    raise ValueError('boom')`,
+      variables: {}
+    });
+    expect(result.success).toBe(false);
+    expect(result.message).toContain('boom');
+
+    const result2 = await pool.execute({
+      code: `def main():\n    return {'recovered': True}`,
+      variables: {}
+    });
+    expect(result2.success).toBe(true);
+    expect(result2.data?.codeReturn.recovered).toBe(true);
   });
 });
 
-describe('PythonProcessPool 并发与排队', () => {
-  let pool: PythonProcessPool;
+describe('PythonIsolatedRunner shutdown reject waiters', () => {
+  it('shutdown 后排队中的请求返回 not ready 或被 reject', async () => {
+    const pool = new PythonIsolatedRunner(1);
+    await pool.init();
+
+    const p1 = pool.execute({
+      code: `import time\ndef main():\n    time.sleep(3)\n    return {'done': True}`,
+      variables: {}
+    });
+
+    await new Promise((r) => setTimeout(r, 200));
+
+    const p2 = pool.execute({
+      code: `def main():\n    return {'queued': True}`,
+      variables: {}
+    });
+
+    expect(pool.stats.queued).toBe(1);
+    await pool.shutdown();
+
+    const r2 = await p2;
+    expect(r2.success).toBe(false);
+    expect(r2.message).toMatch(/not ready/i);
+
+    await p1.catch(() => {});
+  });
+});
+
+describe('PythonIsolatedRunner 并发与排队', () => {
+  let pool: PythonIsolatedRunner;
 
   afterEach(async () => {
     try {
@@ -923,17 +715,18 @@ describe('PythonProcessPool 并发与排队', () => {
     } catch {}
   });
 
-  it('pool size=2，3 个并发请求，1 个排队', async () => {
-    pool = new PythonProcessPool(2);
+  it('maxConcurrency=2，3 个并发请求，1 个排队', async () => {
+    pool = new PythonIsolatedRunner(2);
     await pool.init();
 
     const promises = Array.from({ length: 3 }, (_, i) =>
       pool.execute({
-        code: `import time\ndef main(variables):\n    time.sleep(0.2)\n    return {'idx': variables['idx']}`,
+        code: `import time\ndef main(idx):\n    time.sleep(0.2)\n    return {'idx': idx}`,
         variables: { idx: i }
       })
     );
 
+    expect(pool.stats.queued).toBe(1);
     const results = await Promise.all(promises);
     for (let i = 0; i < 3; i++) {
       expect(results[i].success).toBe(true);
@@ -941,13 +734,13 @@ describe('PythonProcessPool 并发与排队', () => {
     }
   });
 
-  it('pool size=1，10 个并发请求全部正确完成（串行排队）', async () => {
-    pool = new PythonProcessPool(1);
+  it('maxConcurrency=1，10 个并发请求全部正确完成（串行排队）', async () => {
+    pool = new PythonIsolatedRunner(1);
     await pool.init();
 
     const promises = Array.from({ length: 10 }, (_, i) =>
       pool.execute({
-        code: `def main(variables):\n    return {'n': variables['n'] * 2}`,
+        code: `def main(n):\n    return {'n': n * 2}`,
         variables: { n: i }
       })
     );

@@ -69,6 +69,12 @@ const VariableEditModal = ({
       ) {
         setValue('defaultValue', '');
       }
+      if (
+        (typeEnum === VariableInputEnum.select || typeEnum === VariableInputEnum.multipleSelect) &&
+        !value.list?.length
+      ) {
+        setValue('list', [{ label: '', value: '' }]);
+      }
       if (typeEnum === VariableInputEnum.datasetSelect && !value.datasetOptions) {
         setValue('datasetOptions', []);
       }

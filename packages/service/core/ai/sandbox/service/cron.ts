@@ -23,7 +23,9 @@ export const cronJob = async () => {
     );
     if (!instances.length) return;
 
-    logger.info('Found running sandboxes inactive > 5 min', { count: instances.length });
+    logger.info(`Found running sandboxes inactive > ${SANDBOX_SUSPEND_MINUTES} min`, {
+      count: instances.length
+    });
 
     await stopSandboxResources(instances);
   });

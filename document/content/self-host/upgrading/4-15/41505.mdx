@@ -57,6 +57,8 @@ curl --location --request POST 'https://{{host}}/api/admin/initSandboxArchive' \
 4. 知识库训练出现错误时的提示，同时支持一键全部重试。
 5. 过滤掉无效的知识库引用角标。
 6. 工具运行空响应时候，自动补充 "none"，避免部分模型报错。
+7. 系统工具运行前，再次进行二次权限校验。
+8. 优化重定向后 SSRF 校验。
 
 ## 🐛 修复
 

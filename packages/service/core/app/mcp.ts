@@ -17,10 +17,182 @@ import { isInternalAddress, PRIVATE_URL_TEXT } from '../../common/system/utils';
 
 const logger = getLogger(LogCategories.MODULE.APP.MCP_TOOLS);
 
+const MCP_SAFE_FETCH_MAX_REDIRECTS = 5;
+const MCP_REDIRECT_STATUS_CODES = new Set([301, 302, 303, 307, 308]);
+const MCP_SENSITIVE_REDIRECT_HEADERS = new Set(['authorization', 'cookie', 'proxy-authorization']);
+
+type McpFetch = (url: string | URL, init?: RequestInit) => Promise<Response>;
+
 export const assertMCPUrlNotInternal = async (url: string) => {
   if (await isInternalAddress(url)) {
     return Promise.reject(PRIVATE_URL_TEXT);
   }
+};
+
+const headersInitToRecord = (headers?: HeadersInit): Record<string, string> => {
+  const record: Record<string, string> = {};
+
+  if (!headers) return record;
+
+  if (headers instanceof Headers) {
+    headers.forEach((value, key) => {
+      record[key] = value;
+    });
+    return record;
+  }
+
+  if (Array.isArray(headers)) {
+    headers.forEach(([key, value]) => {
+      record[key] = value;
+    });
+    return record;
+  }
+
+  Object.entries(headers).forEach(([key, value]) => {
+    record[key] = String(value);
+  });
+  return record;
+};
+
+const isMcpRedirectResponse = (response: Response) => {
+  return MCP_REDIRECT_STATUS_CODES.has(response.status) && !!response.headers.get('location');
+};
+
+const resolveMcpRedirectUrl = (location: string, currentUrl: string) => {
+  const redirectUrl = new URL(location, currentUrl);
+
+  if (redirectUrl.protocol !== 'http:' && redirectUrl.protocol !== 'https:') {
+    throw new Error('MCP redirect target only supports http/https protocol');
+  }
+
+  return redirectUrl.toString();
+};
+
+const getMcpRedirectHeaders = ({
+  headers,
+  currentUrl,
+  redirectUrl,
+  shouldSwitchToGet
+}: {
+  headers?: HeadersInit;
+  currentUrl: string;
+  redirectUrl: string;
+  shouldSwitchToGet: boolean;
+}) => {
+  const current = new URL(currentUrl);
+  const redirect = new URL(redirectUrl);
+  const shouldDropSensitiveHeaders =
+    current.protocol !== redirect.protocol || current.host !== redirect.host;
+
+  return Object.entries(headersInitToRecord(headers)).reduce<Record<string, string>>(
+    (acc, [key, value]) => {
+      const lowerKey = key.toLowerCase();
+
+      // 301/302 POST 与 303 会转成 GET，继续携带 content-* 容易让目标端误判请求体。
+      if (shouldSwitchToGet && lowerKey.startsWith('content-')) {
+        return acc;
+      }
+
+      // MCP header 中常带有鉴权密钥，跨 host/protocol 重定向时不能泄露给新目标。
+      if (shouldDropSensitiveHeaders && MCP_SENSITIVE_REDIRECT_HEADERS.has(lowerKey)) {
+        return acc;
+      }
+
+      if (lowerKey === 'host') {
+        return acc;
+      }
+
+      acc[key] = value;
+      return acc;
+    },
+    {}
+  );
+};
+
+const getMcpRedirectRequestInit = ({
+  init,
+  response,
+  currentUrl,
+  redirectUrl
+}: {
+  init?: RequestInit;
+  response: Response;
+  currentUrl: string;
+  redirectUrl: string;
+}): RequestInit => {
+  const method = (init?.method || 'GET').toUpperCase();
+  const shouldSwitchToGet =
+    ((response.status === 301 || response.status === 302) && method === 'POST') ||
+    (response.status === 303 && method !== 'GET' && method !== 'HEAD');
+
+  return {
+    ...init,
+    // Node fetch 默认会自动跟随重定向；这里必须保持 manual，才能逐跳做 SSRF 校验。
+    redirect: 'manual',
+    method: shouldSwitchToGet ? 'GET' : init?.method,
+    body: shouldSwitchToGet ? undefined : init?.body,
+    headers: getMcpRedirectHeaders({
+      headers: init?.headers,
+      currentUrl,
+      redirectUrl,
+      shouldSwitchToGet
+    })
+  };
+};
+
+/**
+ * 为 MCP SDK transport 注入安全 fetch。
+ *
+ * MCP 连接本身会先校验初始 URL，但 SDK 内部默认使用 fetch 自动跟随重定向。
+ * 这会让“初始 URL 合法，Location 跳到内网地址”的场景绕过 SSRF 防护。
+ * 该 fetch 通过 `redirect: manual` 接管重定向流程，并对每一跳目标重新执行
+ * 内网地址校验；跨 host/protocol 跳转时还会移除鉴权类 header，避免 MCP 密钥泄露。
+ */
+export const createMcpSafeFetch = ({
+  maxRedirects = MCP_SAFE_FETCH_MAX_REDIRECTS,
+  fetchImpl = fetch as McpFetch
+}: {
+  maxRedirects?: number;
+  fetchImpl?: McpFetch;
+} = {}): McpFetch => {
+  const redirectLimit = Math.max(0, maxRedirects);
+
+  return async (url, init) => {
+    let currentUrl = new URL(url.toString()).toString();
+    let currentInit: RequestInit = {
+      ...init,
+      redirect: 'manual'
+    };
+
+    for (let redirectCount = 0; redirectCount <= redirectLimit; redirectCount++) {
+      await assertMCPUrlNotInternal(currentUrl);
+
+      const response = await fetchImpl(currentUrl, currentInit);
+
+      if (!isMcpRedirectResponse(response)) {
+        return response;
+      }
+
+      if (redirectCount === redirectLimit) {
+        throw new Error(`Maximum MCP redirects exceeded: ${redirectLimit}`);
+      }
+
+      const redirectUrl = resolveMcpRedirectUrl(response.headers.get('location')!, currentUrl);
+      await assertMCPUrlNotInternal(redirectUrl);
+
+      currentInit = getMcpRedirectRequestInit({
+        init: currentInit,
+        response,
+        currentUrl,
+        redirectUrl
+      });
+      currentUrl = redirectUrl;
+
+      await response.body?.cancel().catch(() => undefined);
+    }
+
+    throw new Error(`Maximum MCP redirects exceeded: ${redirectLimit}`);
+  };
 };
 
 const shouldFallbackToSSE = (error: unknown): boolean => {
@@ -71,6 +243,7 @@ export class MCPClient {
 
   private async doConnect(): Promise<Client> {
     await assertMCPUrlNotInternal(this.url);
+    const safeFetch = createMcpSafeFetch();
 
     // 避免连接重复，强制关闭一次
     await this.client.close().catch(() => {});
@@ -78,6 +251,7 @@ export class MCPClient {
     logger.debug('Start connect mcp client', { url: this.url });
     try {
       const transport = new StreamableHTTPClientTransport(new URL(this.url), {
+        fetch: safeFetch,
         requestInit: {
           headers: this.headers
         }
@@ -92,26 +266,19 @@ export class MCPClient {
       try {
         await this.client.connect(
           new SSEClientTransport(new URL(this.url), {
+            fetch: safeFetch,
             requestInit: {
               headers: this.headers
             },
             eventSourceInit: {
               fetch: (url, init) => {
-                const mergedHeaders: Record<string, string> = {
+                const mergedHeaders = {
                   ...this.headers
                 };
 
-                if (init?.headers) {
-                  if (init.headers instanceof Headers) {
-                    init.headers.forEach((value, key) => {
-                      mergedHeaders[key] = value;
-                    });
-                  } else if (typeof init.headers === 'object') {
-                    Object.assign(mergedHeaders, init.headers);
-                  }
-                }
+                Object.assign(mergedHeaders, headersInitToRecord(init?.headers));
 
-                return fetch(url, {
+                return safeFetch(url, {
                   ...init,
                   headers: mergedHeaders
                 });

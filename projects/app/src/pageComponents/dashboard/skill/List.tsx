@@ -48,6 +48,7 @@ import ListCreateCard from '@/pageComponents/dashboard/ListCreateCard';
 import { useVirtualGridList } from '@fastgpt/web/hooks/useVirtualGridList';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
@@ -367,7 +368,7 @@ const List = ({
               openConfirmDelete({
                 customContent: (
                   <Trans
-                    i18nKey={'skill:confirm_delete_with_refs'}
+                    i18nKey={i18nT('skill:confirm_delete_with_refs')}
                     values={{ count: isFolder ? 0 : relatedAppsCount }}
                     components={{ bold: <Box as={'span'} fontWeight={'600'} /> }}
                   />

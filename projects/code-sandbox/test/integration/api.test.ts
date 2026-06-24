@@ -80,6 +80,9 @@ describe('API Routes', () => {
     expect(res.status).toBe(200);
     const data = await res.json();
     expect(data.status).toBe('ok');
+    expect(data.pools.js.total).toBeGreaterThan(0);
+    expect(data.pools.python.ready).toBe(true);
+    expect(data.pools.python.total).toBeGreaterThan(0);
   });
 
   // ===== JS =====

@@ -7,13 +7,17 @@ import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockCreateLLMResponseQueue, text, toolCall } from './_mocks/llmQueue';
 
-const { createLLMResponseMock, compressRequestMessagesMock, compressToolResponseMock } = vi.hoisted(
-  () => ({
-    createLLMResponseMock: vi.fn(),
-    compressRequestMessagesMock: vi.fn(),
-    compressToolResponseMock: vi.fn()
-  })
-);
+const {
+  createLLMResponseMock,
+  compressRequestMessagesMock,
+  compressToolResponseMock,
+  countGptMessagesTokensMock
+} = vi.hoisted(() => ({
+  createLLMResponseMock: vi.fn(),
+  compressRequestMessagesMock: vi.fn(),
+  compressToolResponseMock: vi.fn(),
+  countGptMessagesTokensMock: vi.fn(async () => 100)
+}));
 
 vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
   createLLMResponse: createLLMResponseMock
@@ -46,7 +50,7 @@ vi.mock('@fastgpt/service/core/ai/llm/utils', () => ({
 }));
 
 vi.mock('@fastgpt/service/common/string/tiktoken/index', () => ({
-  countGptMessagesTokens: vi.fn(async () => 100)
+  countGptMessagesTokens: countGptMessagesTokensMock
 }));
 
 vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
@@ -77,6 +81,7 @@ const searchTool: ChatCompletionTool = {
 describe('runAgentLoop with mocked createLLMResponse', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    countGptMessagesTokensMock.mockResolvedValue(100);
     compressRequestMessagesMock.mockImplementation(async ({ messages }) => ({
       messages
     }));
@@ -193,6 +198,125 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
       })
     );
     expect(usagePush).toHaveBeenCalledWith([compressedUsage]);
+  });
+
+  it('applies local context checkpoint compression even without usage', async () => {
+    const contextCheckpoint = '<context_checkpoint>local structured history</context_checkpoint>';
+    const usagePush = vi.fn();
+    const onAfterCompressContext = vi.fn();
+
+    compressRequestMessagesMock.mockImplementation(async () => ({
+      messages: [
+        {
+          role: ChatCompletionRequestMessageRoleEnum.User,
+          content: contextCheckpoint,
+          hideInUI: true
+        }
+      ],
+      requestIds: [],
+      contextCheckpoint
+    }));
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      text({ requestId: 'req_direct', content: 'direct answer' })
+    ]);
+
+    const result = await runAgentLoop({
+      maxRunAgentTimes: 5,
+      body: {
+        model: 'gpt-4',
+        stream: true,
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'hello'
+          }
+        ],
+        tools: []
+      },
+      usagePush,
+      isAborted: () => false,
+      onRunTool: vi.fn(),
+      onRunInteractiveTool: vi.fn(),
+      onAfterCompressContext
+    });
+
+    expect(result.contextCheckpoint).toEqual(contextCheckpoint);
+    expect(createLLMResponseMock.mock.calls[0][0].body.messages[0]).toEqual({
+      role: ChatCompletionRequestMessageRoleEnum.User,
+      content: contextCheckpoint,
+      hideInUI: true
+    });
+    expect(onAfterCompressContext).toHaveBeenCalledWith(
+      expect.objectContaining({
+        usage: undefined,
+        requestIds: [],
+        contextCheckpoint
+      })
+    );
+    expect(usagePush).not.toHaveBeenCalledWith([undefined]);
+  });
+
+  it('reuses request message tokens and counts only appended messages between turns', async () => {
+    countGptMessagesTokensMock
+      .mockResolvedValueOnce(11)
+      .mockResolvedValueOnce(17)
+      .mockResolvedValue(100);
+    compressRequestMessagesMock.mockImplementation(async ({ messages, messageTokens }) => ({
+      messages,
+      messageTokens: messageTokens ?? 1000
+    }));
+    const onRunTool = vi.fn(async () => ({
+      response: 'search result',
+      assistantMessages: [],
+      usages: []
+    }));
+
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      toolCall({
+        id: 'call_search',
+        name: 'search',
+        args: {
+          q: 'FastGPT'
+        }
+      }),
+      text({ requestId: 'req_final', content: 'final answer' })
+    ]);
+
+    await runAgentLoop({
+      maxRunAgentTimes: 5,
+      body: {
+        model: 'gpt-4',
+        stream: true,
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'search FastGPT'
+          }
+        ],
+        tools: [searchTool]
+      },
+      usagePush: vi.fn(),
+      isAborted: () => false,
+      onRunTool,
+      onRunInteractiveTool: vi.fn()
+    });
+
+    expect(compressRequestMessagesMock).toHaveBeenCalledTimes(2);
+    expect(compressRequestMessagesMock.mock.calls[0][0].messageTokens).toBeUndefined();
+    expect(compressRequestMessagesMock.mock.calls[0][0].tools).toEqual([searchTool]);
+    expect(compressRequestMessagesMock.mock.calls[1][0].messageTokens).toBe(1028);
+    expect(compressRequestMessagesMock.mock.calls[1][0].tools).toEqual([searchTool]);
+    expect(countGptMessagesTokensMock.mock.calls[0][0].messages).toEqual([
+      expect.objectContaining({
+        role: ChatCompletionRequestMessageRoleEnum.Assistant
+      })
+    ]);
+    expect(countGptMessagesTokensMock.mock.calls[1][0].messages).toEqual([
+      expect.objectContaining({
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        content: 'search result'
+      })
+    ]);
   });
 
   it('uses request control tool choice while streaming immediately', async () => {

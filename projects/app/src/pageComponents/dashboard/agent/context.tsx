@@ -15,6 +15,7 @@ import dynamic from 'next/dynamic';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
+import { resolveDashboardAppListTypes } from './utils/appListTypes';
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
 
 type AppListContextType = {
@@ -72,35 +73,10 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
     loading: isFetchingApps
   } = useRequest(
     () => {
-      const formatType = (() => {
-        // chat page show all apps
-        if (router.pathname.includes('/chat')) {
-          return [
-            AppTypeEnum.folder,
-            AppTypeEnum.toolFolder,
-            AppTypeEnum.simple,
-            AppTypeEnum.workflow,
-            AppTypeEnum.workflowTool
-          ];
-        }
-
-        // agent page
-        if (router.pathname.includes('/agent')) {
-          return !type || type === 'all'
-            ? [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.chatAgent]
-            : [AppTypeEnum.folder, type];
-        }
-
-        // tool page
-        return !type || type === 'all'
-          ? [
-              AppTypeEnum.toolFolder,
-              AppTypeEnum.workflowTool,
-              AppTypeEnum.mcpToolSet,
-              AppTypeEnum.httpToolSet
-            ]
-          : [AppTypeEnum.toolFolder, type];
-      })();
+      const formatType = resolveDashboardAppListTypes({
+        pathname: router.pathname,
+        type
+      });
 
       return getMyApps({ parentId, type: formatType, searchKey });
     },

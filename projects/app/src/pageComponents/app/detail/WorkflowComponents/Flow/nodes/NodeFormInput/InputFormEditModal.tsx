@@ -123,6 +123,13 @@ const InputFormEditModal = ({
             onTypeChange={(type) => {
               setValue('type', type as FlowNodeInputTypeEnum);
               setValue('defaultValue', '');
+              if (
+                (type === FlowNodeInputTypeEnum.select ||
+                  type === FlowNodeInputTypeEnum.multipleSelect) &&
+                !form.getValues('list')?.length
+              ) {
+                setValue('list', [{ label: '', value: '' }]);
+              }
             }}
           />
         </Stack>

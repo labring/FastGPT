@@ -9,7 +9,7 @@ export const AgentUsageModuleName = {
 export const AgentNodeResponseDisplay = {
   master: {
     moduleName: i18nT('chat:master_agent_call'),
-    moduleLogo: 'core/workflow/template/agent'
+    moduleLogo: 'core/app/type/agentFill'
   },
   piMaster: {
     moduleName: i18nT('chat:master_agent_call'),

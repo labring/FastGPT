@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const cronMocks = vi.hoisted(() => ({
   setCron: vi.fn(),
@@ -39,8 +39,14 @@ import { cronJob } from '@fastgpt/service/core/ai/sandbox/service/cron';
 describe('sandbox cron service', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-24T01:00:00.000Z'));
     cronMocks.checkTimerLock.mockResolvedValue(true);
     cronMocks.archiveInactiveSandboxes.mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('registers a cron task and skips when no inactive sandbox exists', async () => {
@@ -51,7 +57,9 @@ describe('sandbox cron service', () => {
     await callback();
 
     expect(cronMocks.setCron).toHaveBeenCalledWith('*/5 * * * *', expect.any(Function));
-    expect(cronMocks.findInactiveRunningSandboxResources).toHaveBeenCalledWith(expect.any(Date));
+    expect(cronMocks.findInactiveRunningSandboxResources).toHaveBeenCalledWith(
+      new Date('2026-06-24T00:50:00.000Z')
+    );
     expect(cronMocks.stopSandboxResources).not.toHaveBeenCalled();
   });
 

@@ -24,6 +24,8 @@ import { pluginClient } from '../../../../thirdProvider/fastgptPlugin';
 import { SystemToolRepo } from '../../../app/tool/systemTool/systemTool.repo';
 import { InvokeProcessor } from '../../../../support/invoke/invoke';
 import { getLogger, LogCategories } from '../../../../common/logger';
+import { authAppByTmbId } from '../../../../support/permission/app/auth';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 
 type SystemInputConfigType = {
   type: SystemToolSecretInputTypeEnum;
@@ -66,6 +68,18 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
   let toolInput: Record<string, any> = {};
 
   try {
+    /**
+     * HTTP/MCP 子工具的 toolId 可由工作流 JSON 持久化，运行时必须用当前工作流执行身份
+     * 重新校验父工具集权限，避免脏数据或绕过保存接口的跨用户工具集引用被执行。
+     */
+    const authRuntimeToolset = async (parentId: string) => {
+      await authAppByTmbId({
+        tmbId: runningAppInfo.tmbId,
+        appId: parentId,
+        per: ReadPermissionVal
+      });
+    };
+
     // run system tool
     if (toolConfig?.systemTool?.toolId) {
       const systemToolRepo = SystemToolRepo.getInstance();
@@ -214,6 +228,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       if (!parentId || !toolName) {
         throw new Error(`Invalid MCP tool id: ${toolConfig.mcpTool.toolId}`);
       }
+      await authRuntimeToolset(parentId);
 
       const tool = await getAppVersionById({
         appId: parentId,
@@ -250,6 +265,11 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       };
     } else if (toolConfig?.httpTool?.toolId) {
       const { parentId, toolName } = parseToolId(toolConfig.httpTool.toolId);
+      if (!parentId || !toolName) {
+        throw new Error(`Invalid HTTP tool id: ${toolConfig.httpTool.toolId}`);
+      }
+      await authRuntimeToolset(parentId);
+
       const toolset = await getAppVersionById({
         appId: parentId,
         versionId: version

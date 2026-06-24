@@ -70,20 +70,96 @@ ${anchors.map((anchor) => `- ${anchor}`).join('\n')}
 /**
  * 将历史消息格式化成 checkpoint 压缩模型可读的 JSON。
  *
- * 这里只暴露压缩需要的协议字段，避免把无关运行时字段塞进 prompt 增加 token 和噪声。
+ * 这里只保留可继续工作的 user/assistant 文本历史。assistant 发起的 tool 调用会和对应 tool
+ * 结果合并成一条 assistant content，避免压缩模型看到旧工具协议字段，同时保留函数名、参数和结果绑定。
  */
-const formatMessagesForCheckpoint = (messages: ChatCompletionMessageParam[]) =>
-  JSON.stringify(
-    messages.map((message) => ({
-      role: message.role,
-      content: message.content,
-      reasoning_content: message.reasoning_content,
-      tool_calls: message.role === 'assistant' ? message.tool_calls : undefined,
-      tool_call_id: message.role === 'tool' ? message.tool_call_id : undefined
-    })),
-    null,
-    2
-  );
+const getMessageContentText = (content: ChatCompletionMessageParam['content']) => {
+  if (typeof content === 'string') return content;
+  if (Array.isArray(content)) {
+    return content
+      .map((item) => {
+        if (typeof item === 'string') return item;
+        if (item && typeof item === 'object' && 'text' in item && typeof item.text === 'string') {
+          return item.text;
+        }
+        return '';
+      })
+      .filter(Boolean)
+      .join('\n');
+  }
+  return '';
+};
+
+const escapeXmlText = (text: string) =>
+  text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+const escapeXmlAttribute = (text: string) =>
+  escapeXmlText(text).replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+
+const formatMessagesForCheckpoint = (messages: ChatCompletionMessageParam[]) => {
+  const toolResultByCallId = new Map<string, string>();
+  for (const message of messages) {
+    if (message.role !== 'tool' || !message.tool_call_id) continue;
+
+    const content = getMessageContentText(message.content).trim();
+    if (content) {
+      toolResultByCallId.set(message.tool_call_id, content);
+    }
+  }
+
+  const consumedToolCallIds = new Set<string>();
+
+  const formattedMessages = messages.flatMap((message) => {
+    const content = getMessageContentText(message.content).trim();
+
+    if (message.role === 'user') {
+      if (!content) return [];
+      return [{ role: 'user', content }];
+    }
+
+    if (message.role === 'assistant') {
+      const toolCalls = message.tool_calls ?? [];
+      const toolCallBlocks = toolCalls.flatMap((toolCall) => {
+        const functionCall = toolCall.function;
+        if (!functionCall?.name) return [];
+
+        return [
+          [
+            `<tool name="${escapeXmlAttribute(functionCall.name)}">`,
+            `<param>${escapeXmlText(functionCall.arguments || '{}')}</param>`,
+            toolResultByCallId.has(toolCall.id)
+              ? `<response>${escapeXmlText(toolResultByCallId.get(toolCall.id) || '')}</response>`
+              : '<response></response>',
+            '</tool>'
+          ].join('\n')
+        ];
+      });
+      toolCalls.forEach((toolCall) => {
+        if (toolResultByCallId.has(toolCall.id)) {
+          consumedToolCallIds.add(toolCall.id);
+        }
+      });
+
+      const toolsContent =
+        toolCallBlocks.length > 0 ? ['<tools>', ...toolCallBlocks, '</tools>'].join('\n') : '';
+      const mergedContent = [content, toolsContent].filter(Boolean).join('\n\n').trim();
+      if (!mergedContent) return [];
+
+      return [{ role: 'assistant', content: mergedContent }];
+    }
+
+    if (message.role === 'tool') {
+      // 已经合并到对应 assistant tool call 中；孤立 tool 结果才作为 assistant 上下文保留。
+      if (message.tool_call_id && consumedToolCallIds.has(message.tool_call_id)) return [];
+      if (!content) return [];
+      return [{ role: 'assistant', content }];
+    }
+
+    return [];
+  });
+
+  return JSON.stringify(formattedMessages, null, 2);
+};
 
 export const getCompressRequestMessagesPrompt = async () => {
   return `你是 Agent 历史上下文 checkpoint 压缩专家。你的任务是把用户提供的对话历史压缩成一段可继续工作的高保真上下文摘要 string。
@@ -120,7 +196,8 @@ export const getCompressRequestMessagesPrompt = async () => {
 
 ## 结构锚点规则
 
-- 对 structural_anchor_candidates 和 tool_call_memory 里的字段名、函数名、参数名、ID、路径、URL、错误码、数字、日期，优先原样保留。
+- 对 histories 和 structural_anchor_candidates 里的字段名、函数名、参数名、ID、路径、URL、错误码、数字、日期，优先原样保留。
+- histories 中 assistant content 里的 <tools> 表示已经执行过的工具调用；<tool name="..."> 是工具名，<param> 是调用参数，<response> 是对应结果。压缩时必须保留仍影响后续任务的工具名、参数和关键结果。
 - 不要为了保留锚点而堆无关关键词；锚点必须服务于后续执行、定位资源、复现工具结果或理解约束。
 - 不要把具体工具名、机构名、文件名、接口名压成“相关工具/某机构/该文件/接口”。
 
@@ -165,12 +242,10 @@ export const getCompressRequestMessagesPrompt = async () => {
 
 export const getCompressRequestMessagesUserPrompt = async ({
   messages,
-  outputTokenLimit,
-  toolCallMemory
+  outputTokenLimit
 }: {
   messages: ChatCompletionMessageParam[];
   outputTokenLimit?: number;
-  toolCallMemory?: string;
 }) => {
   const histories = formatMessagesForCheckpoint(messages);
 
@@ -178,7 +253,7 @@ export const getCompressRequestMessagesUserPrompt = async ({
 ${histories}
 </histories>
 
-${outputTokenLimit ? `<output_budget>\nTarget maximum output tokens: ${outputTokenLimit}. Use compact bullets and omit nonessential prose.\n</output_budget>\n\n` : ''}${toolCallMemory ? `${toolCallMemory}\n\n` : ''}${renderExactAnchors(histories, 100)}
+${outputTokenLimit ? `<output_budget>\nTarget maximum output tokens: ${outputTokenLimit}. Use compact bullets and omit nonessential prose.\n</output_budget>\n\n` : ''}${renderExactAnchors(histories, 100)}
 请执行历史上下文 checkpoint 压缩，只输出 <context_checkpoint>...</context_checkpoint>。
 `;
 };

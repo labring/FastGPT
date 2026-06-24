@@ -4,7 +4,7 @@ import { bearerAuth } from 'hono/bearer-auth';
 import { serve } from '@hono/node-server';
 import { z } from 'zod';
 import { ProcessPool } from './pool/process-pool';
-import { PythonProcessPool } from './pool/python-process-pool';
+import { PythonIsolatedRunner } from './isolated/python-isolated-runner';
 import type { ExecuteOptions } from './types';
 import { getErrText } from './utils';
 import { configureLogger, getLogger, LogCategories } from './utils/logger';
@@ -91,7 +91,7 @@ const app = new Hono();
 
 /** 进程池 */
 const jsPool = new ProcessPool(env.SANDBOX_POOL_SIZE);
-const pythonPool = new PythonProcessPool(env.SANDBOX_POOL_SIZE);
+const pythonRunner = new PythonIsolatedRunner();
 const queueIdLimiter = new QueueIdLimiter(env.SANDBOX_QUEUE_ID_CONCURRENCY);
 
 if (queueIdLimiter.enabled) {
@@ -100,11 +100,9 @@ if (queueIdLimiter.enabled) {
   );
 }
 
-const poolReady = Promise.all([jsPool.init(), pythonPool.init()])
+const poolReady = Promise.all([jsPool.init(), pythonRunner.init()])
   .then(() => {
-    serverLogger.info(
-      `Process pools ready: JS=${env.SANDBOX_POOL_SIZE}, Python=${env.SANDBOX_POOL_SIZE} workers`
-    );
+    serverLogger.info(`Process pools ready: JS=${env.SANDBOX_POOL_SIZE}, Python=isolated`);
   })
   .catch((err) => {
     serverLogger.error('Failed to init process pool:', err.message);
@@ -114,9 +112,18 @@ const poolReady = Promise.all([jsPool.init(), pythonPool.init()])
 /** 健康检查（不需要认证） */
 app.get('/health', (c) => {
   const jsStats = jsPool.stats;
-  const pyStats = pythonPool.stats;
-  const isReady = jsStats.total > 0 && pyStats.total > 0;
-  return c.json({ status: isReady ? 'ok' : 'degraded' }, isReady ? 200 : 503);
+  const pythonStats = pythonRunner.stats;
+  const isReady = jsStats.total > 0 && pythonStats.ready;
+  return c.json(
+    {
+      status: isReady ? 'ok' : 'degraded',
+      pools: {
+        js: jsStats,
+        python: pythonStats
+      }
+    },
+    isReady ? 200 : 503
+  );
 });
 
 // 增加日志中间件，打印请求信息
@@ -219,7 +226,7 @@ app.post('/sandbox/python', async (c) => {
       );
     }
     const result = await queueIdLimiter.run(parsed.data.queueId, () =>
-      pythonPool.execute(parsed.data as ExecuteOptions)
+      pythonRunner.execute(parsed.data as ExecuteOptions)
     );
     return c.json(result);
   } catch (err: any) {

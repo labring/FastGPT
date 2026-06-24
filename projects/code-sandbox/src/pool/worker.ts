@@ -369,14 +369,26 @@ const earlyDangerousMethods = [
   'initgroups'
 ];
 
-// 延迟删除：会被 https/dns/tsx 等内部使用，要等 hardenRuntime 预加载完白名单后再删
-const lateDangerousMethods = ['kill', 'exit', 'emitWarning', 'abort'];
+// 延迟处理：会被 https/dns/tsx/url 等内部使用，要等 hardenRuntime 预加载完白名单后再收紧。
+const lateDangerousMethods = ['kill', 'exit', 'abort'];
 
 function deleteProcessMethods(methods: readonly string[]): void {
   for (const method of methods) {
     try {
       Object.defineProperty(process, method, {
         value: undefined,
+        writable: false,
+        configurable: false
+      });
+    } catch {}
+  }
+}
+
+function stubProcessMethods(methods: readonly string[]): void {
+  for (const method of methods) {
+    try {
+      Object.defineProperty(process, method, {
+        value: () => undefined,
         writable: false,
         configurable: false
       });
@@ -466,15 +478,6 @@ const SystemHelper = {
     if (!REQUEST_LIMITS.allowedProtocols.includes(parsed.protocol)) {
       throw new Error('Protocol not allowed');
     }
-    // 先检查 URL 是否指向内部地址
-    if (await isInternalAddress(url)) {
-      throw new Error('Request to private network not allowed');
-    }
-    const ips = await dnsResolve(parsed.hostname);
-    // 防 DNS rebinding TOCTOU：对真正用于建连的 IP 再次校验
-    if (ips.length === 0 || ips.some((ip) => isInternalResolvedIP(ip))) {
-      throw new Error('Request to private network not allowed');
-    }
     const method = (opts.method || 'GET').toUpperCase();
     const headers = opts.headers || {};
     const body =
@@ -486,11 +489,26 @@ const SystemHelper = {
     if (body && body.length > REQUEST_LIMITS.maxRequestBodySize) {
       throw new Error('Request body too large');
     }
-    const timeoutSeconds =
-      typeof opts.timeout === 'number' && Number.isFinite(opts.timeout) && opts.timeout > 0
-        ? opts.timeout
-        : REQUEST_LIMITS.timeoutMs / 1000;
-    const timeout = Math.min(Math.ceil(timeoutSeconds * 1000), REQUEST_LIMITS.timeoutMs);
+    // 先完成协议和请求体大小校验，再解析网络目标，避免本地错误被外部网络状态掩盖。
+    if (await isInternalAddress(url)) {
+      throw new Error('Request to private network not allowed');
+    }
+    const ips = await dnsResolve(parsed.hostname);
+    // 防 DNS rebinding TOCTOU：对真正用于建连的 IP 再次校验
+    if (ips.length === 0 || ips.some((ip) => isInternalResolvedIP(ip))) {
+      throw new Error('Request to private network not allowed');
+    }
+    const timeout =
+      typeof opts.timeoutMs === 'number' && Number.isFinite(opts.timeoutMs) && opts.timeoutMs > 0
+        ? Math.min(Math.ceil(opts.timeoutMs), REQUEST_LIMITS.timeoutMs)
+        : Math.min(
+            Math.ceil(
+              typeof opts.timeout === 'number' && Number.isFinite(opts.timeout) && opts.timeout > 0
+                ? opts.timeout * 1000
+                : REQUEST_LIMITS.timeoutMs
+            ),
+            REQUEST_LIMITS.timeoutMs
+          );
     if (body && !headers['Content-Type'] && !headers['content-type']) {
       headers['Content-Type'] = 'application/json';
     }
@@ -559,9 +577,12 @@ function hardenRuntime(): void {
     } catch {}
   }
 
-  // 白名单模块已加载完毕，此时再删除 kill/exit/emitWarning/abort：
+  // 白名单模块已加载完毕，此时再删除 kill/exit/abort：
   // 这些方法仅在模块初始化时被 https/dns/tsx 等使用，预加载后不再需要。
   deleteProcessMethods(lateDangerousMethods);
+  // Node 内置 url.parse 在运行时仍会调用 process.emitWarning。
+  // 用户代码拿到的是下方 _sandboxProcess，这里只给真实 process 保留不可写 no-op 兼容内置模块。
+  stubProcessMethods(['emitWarning']);
 
   for (const intrinsic of hardenedIntrinsics) {
     if (intrinsic) _ObjectFreeze(intrinsic);
@@ -885,13 +906,10 @@ rl.on('line', async (line: string) => {
     })();
 
     const timeoutPromise = new _OriginalPromise((_, reject) => {
-      timer = _workerSetTimeout(
-        () => {
-          timedOut = true;
-          reject(new _OriginalError(`Script execution timed out after ${timeoutMs}ms`));
-        },
-        timeoutMs || 10000
-      );
+      timer = _workerSetTimeout(() => {
+        timedOut = true;
+        reject(new _OriginalError(`Script execution timed out after ${timeoutMs}ms`));
+      }, timeoutMs || 10000);
     });
 
     const result = await _PromiseRace([resultPromise, timeoutPromise]);

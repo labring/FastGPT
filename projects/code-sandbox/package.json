@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
+    "build:native:python": "cd native/python-sandbox && go build -buildmode=c-shared -o ../../src/isolated/fastgpt_python_sandbox.so ./cmd/lib",
     "build": "sh build.sh",
     "test": "vitest run",
     "test:watch": "vitest"

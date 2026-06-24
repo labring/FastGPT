@@ -192,6 +192,13 @@ const FieldEditModal = ({
               if (targetItem) {
                 setValue('renderTypeList', targetItem.value);
                 setValue('defaultValue', '');
+                if (
+                  (type === FlowNodeInputTypeEnum.select ||
+                    type === FlowNodeInputTypeEnum.multipleSelect) &&
+                  !form.getValues('list')?.length
+                ) {
+                  setValue('list', [{ label: '', value: '' }]);
+                }
               }
             }}
           />

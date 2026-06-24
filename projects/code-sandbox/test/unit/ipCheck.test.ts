@@ -98,6 +98,15 @@ describe('isInternalResolvedIP', () => {
   });
 
   describe('私网段：CHECK_INTERNAL_IP 控制', () => {
+    it('未显式设置 CHECK_INTERNAL_IP 时使用 env 默认值阻止私网', async () => {
+      vi.unstubAllEnvs();
+      delete process.env.CHECK_INTERNAL_IP;
+      vi.stubEnv('NODE_ENV', 'production');
+      vi.resetModules();
+      const mod = await import('../../src/utils/ipCheck.util');
+      expect(mod.isInternalResolvedIP('10.0.0.1')).toBe(true);
+    });
+
     it('CHECK_INTERNAL_IP=false 时放行 10.0.0.1', async () => {
       vi.stubEnv('CHECK_INTERNAL_IP', 'false');
       vi.resetModules();

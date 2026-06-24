@@ -31,6 +31,7 @@ import dynamic from 'next/dynamic';
 import type { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { i18nT } from '@fastgpt/global/common/i18n/utils';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
@@ -225,7 +226,7 @@ export const LeftHeader = () => {
               openConfirmDelete({
                 customContent: (
                   <Trans
-                    i18nKey={'skill:confirm_delete_with_refs'}
+                    i18nKey={i18nT('skill:confirm_delete_with_refs')}
                     values={{ count: skillDetail?.appCount ?? 0 }}
                     components={{ bold: <Box as={'span'} fontWeight={'600'} /> }}
                   />

@@ -28,7 +28,7 @@ export const AgentNode: FlowNodeTemplateType = {
   templateType: FlowNodeTemplateTypeEnum.ai,
   showSourceHandle: true,
   showTargetHandle: true,
-  avatar: 'core/workflow/template/agent',
+  avatar: 'core/app/type/agentFill',
   avatarLinear: 'core/workflow/template/agentLinear',
   colorSchema: 'emerald',
   name: i18nT('workflow:template.agent_module'),

@@ -54,6 +54,7 @@ export const env = createEnv({
     SANDBOX_API_MAX_BODY_MB: IntSchema.min(1).max(100).default(8),
     SANDBOX_MAX_TIMEOUT: IntSchema.min(1000).max(600000).default(60000),
     SANDBOX_MAX_MEMORY_MB: IntSchema.min(32).max(4096).default(256),
+    SANDBOX_MAX_TMP_MB: IntSchema.min(1).max(1024).default(16),
     SANDBOX_MAX_OUTPUT_MB: IntSchema.min(1).max(100).default(10),
 
     // ===== 网络请求限制 =====
@@ -81,7 +82,7 @@ export const env = createEnv({
           'json,csv,base64,binascii,struct,' +
           'hashlib,hmac,secrets,uuid,' +
           'typing,abc,enum,dataclasses,contextlib,' +
-          'pprint,' +
+          'pprint,weakref,' +
           'numpy,pandas,matplotlib'
       )
       .transform(parseAllowedModules)
