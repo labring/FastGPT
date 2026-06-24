@@ -160,7 +160,7 @@ services:
 
   fastgpt-app:
     container_name: fastgpt-app
-    image: ghcr.io/labring/fastgpt:v4.14.22
+    image: ghcr.io/labring/fastgpt:v4.14.26
     ports:
       - 3000:3000
     networks:
@@ -400,7 +400,7 @@ services:
 
   # AI Proxy
   fastgpt-aiproxy:
-    image: ghcr.io/labring/aiproxy:v0.5.8
+    image: ghcr.io/labring/aiproxy:v0.6.2
     container_name: fastgpt-aiproxy
     restart: unless-stopped
     depends_on:
