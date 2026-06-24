@@ -1,16 +1,23 @@
 import { promises as fs } from 'fs';
 import path from 'path';
-import { createHash } from 'crypto';
 import type { FileWriteEntry, ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import { getLogger, LogCategories } from '../../../../common/logger';
-import { joinSandboxPath, shellQuote } from '../utils';
 import { getSandboxBuiltinSkillsRootPath } from '../../sandbox/runtime/profile/utils';
 import { isProVersion } from '../../../../common/system/constants';
+import { resolveSandboxHome } from '../../sandbox/runtime/home';
+import { buildRuntimeHash, joinSandboxPath, shellQuote } from '../../sandbox/runtime/utils';
+import {
+  getRuntimeStateHash,
+  readSandboxRuntimeState,
+  setRuntimeStateHash,
+  writeSandboxRuntimeState
+} from '../../sandbox/runtime/state';
 
 const logger = getLogger(LogCategories.MODULE.AI.AGENT);
 
 const PRO_BUILTIN_SKILL_RELATIVE_ROOT = 'pro/admin/src/service/core/ai/skill/builtin';
-const BUILTIN_SKILL_MANIFEST_FILENAME = '.fastgpt-builtin-manifest.json';
+const BUILTIN_SKILL_STATE_HASH_PREFIX = 'builtinSkill:';
+const EDIT_DEBUG_BUILTIN_SKILL_NAMES = ['skill-creator'];
 
 export type BuiltinSkillSource = {
   name: string;
@@ -20,10 +27,6 @@ export type BuiltinSkillSource = {
 type BuiltinSkillSourceFile = {
   relativePath: string;
   content: Buffer;
-};
-
-type BuiltinSkillManifest = {
-  etag: string;
 };
 
 type BuiltinSkillSyncSource = BuiltinSkillSource & {
@@ -104,6 +107,25 @@ export function getBuiltinSkillsRootPath(homeDirectory: string): string {
 }
 
 /**
+ * 注入 edit-debug runtime 需要的平台内置 Skill。
+ *
+ * 该入口隐藏 HOME 解析和内置 skill 名单，调用方只表达“当前 sandbox 需要补齐
+ * edit-debug 内置能力”。目前只预置 skill-creator。
+ */
+export async function injectEditDebugBuiltinSkillsToSandbox(sandbox: ISandbox): Promise<void> {
+  const homeDirectory = await resolveSandboxHome(sandbox);
+  if (!homeDirectory) {
+    throw new Error('Failed to resolve sandbox HOME for builtin skill sync');
+  }
+
+  await syncBuiltinSkillsToSandbox({
+    sandbox,
+    homeDirectory,
+    includeNames: EDIT_DEBUG_BUILTIN_SKILL_NAMES
+  });
+}
+
+/**
  * 将内置 Skill 源码注入 sandbox 用户主目录。
  *
  * 目标路径位于 `<homeDirectory>/.fastgpt/skills/<name>`，不在用户 workspace
@@ -125,12 +147,12 @@ export async function syncBuiltinSkillsToSandbox({
   if (syncSources.length === 0) return;
 
   const builtinSkillsRootPath = getBuiltinSkillsRootPath(homeDirectory);
+  const runtimeStateContext = await readSandboxRuntimeState({ sandbox, homeDirectory });
 
   for (const source of syncSources) {
     const targetDirectory = joinSandboxPath(builtinSkillsRootPath, source.name);
-    const manifestPath = joinSandboxPath(targetDirectory, BUILTIN_SKILL_MANIFEST_FILENAME);
-    const currentManifest = await readSandboxBuiltinSkillManifest(sandbox, manifestPath);
-    if (currentManifest?.etag === source.etag) {
+    const stateKey = getBuiltinSkillStateHashKey(source.name);
+    if (getRuntimeStateHash(runtimeStateContext.state, stateKey) === source.etag) {
       continue;
     }
 
@@ -145,16 +167,15 @@ export async function syncBuiltinSkillsToSandbox({
       path: joinSandboxPath(targetDirectory, sourceFile.relativePath),
       data: sourceFile.content
     }));
-    writeEntries.push({
-      path: manifestPath,
-      data: Buffer.from(JSON.stringify({ etag: source.etag } satisfies BuiltinSkillManifest))
-    });
 
     const writeResults = await sandbox.writeFiles(writeEntries);
     const failedWrite = writeResults.find((result) => result.error);
     if (failedWrite) {
       throw new Error(`Failed to write builtin skill files: ${failedWrite.error?.message}`);
     }
+
+    setRuntimeStateHash(runtimeStateContext.state, stateKey, source.etag);
+    await writeSandboxRuntimeState(sandbox, runtimeStateContext);
   }
 }
 
@@ -197,32 +218,14 @@ function computeBuiltinSkillEtag(files: BuiltinSkillSourceFile[]): string {
   const fileEtags = files
     .map((file) => ({
       relativePath: file.relativePath,
-      etag: createHash('sha256').update(file.content).digest('hex')
+      etag: buildRuntimeHash(file.content)
     }))
     .sort((a, b) => a.relativePath.localeCompare(b.relativePath));
 
-  const skillHash = createHash('sha256');
-  fileEtags.forEach((file) => {
-    skillHash.update(`${file.relativePath}:${file.etag}\n`);
-  });
-
-  return `sha256:${skillHash.digest('hex')}`;
+  return buildRuntimeHash(fileEtags.map((file) => `${file.relativePath}:${file.etag}\n`).join(''));
 }
 
-async function readSandboxBuiltinSkillManifest(
-  sandbox: ISandbox,
-  manifestPath: string
-): Promise<BuiltinSkillManifest | undefined> {
-  const result = await sandbox.execute(`cat ${shellQuote(manifestPath)} 2>/dev/null || true`);
-  if (result.exitCode !== 0 || !result.stdout.trim()) return;
-
-  try {
-    const manifest = JSON.parse(result.stdout) as Partial<BuiltinSkillManifest>;
-    return typeof manifest.etag === 'string' ? { etag: manifest.etag } : undefined;
-  } catch {
-    return;
-  }
-}
+const getBuiltinSkillStateHashKey = (name: string) => `${BUILTIN_SKILL_STATE_HASH_PREFIX}${name}`;
 
 /**
  * 从当前工作目录向上寻找 pro 内置 Skill 源码根目录。

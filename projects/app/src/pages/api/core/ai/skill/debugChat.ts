@@ -41,7 +41,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getDefaultLLMModel } from '@fastgpt/service/core/ai/model';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { getEditDebugSandboxId } from '@fastgpt/service/core/ai/skill/edit/config';
-import { SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
+import { SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { findSandboxInstanceBySandboxId } from '@fastgpt/service/core/ai/sandbox/instance/repository';
 import { getSandboxProviderConfig } from '@fastgpt/service/core/ai/sandbox/provider/config';
 import {

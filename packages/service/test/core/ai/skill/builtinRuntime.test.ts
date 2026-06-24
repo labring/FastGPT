@@ -7,6 +7,7 @@ import {
   getBuiltinSkillsRootPath,
   syncBuiltinSkillsToSandbox
 } from '@fastgpt/service/core/ai/skill/runtime/builtin';
+import { buildRuntimeHash } from '@fastgpt/service/core/ai/sandbox/runtime/utils';
 
 describe('builtin skill runtime', () => {
   const originalFeConfigs = global.feConfigs;
@@ -83,7 +84,14 @@ describe('builtin skill runtime', () => {
 
     const sandbox = {
       execute: vi.fn(async () => ({ exitCode: 0, stdout: '', stderr: '' })),
-      writeFiles: vi.fn(async (entries: Array<{ path: string; data: Buffer }>) =>
+      readFiles: vi.fn(async (paths: string[]) =>
+        paths.map((path) => ({
+          path,
+          content: Buffer.from(''),
+          error: new Error('not found')
+        }))
+      ),
+      writeFiles: vi.fn(async (entries: Array<{ path: string; data: Buffer | string }>) =>
         entries.map((entry) => ({
           path: entry.path,
           bytesWritten: entry.data.length,
@@ -101,7 +109,11 @@ describe('builtin skill runtime', () => {
     expect(getBuiltinSkillsRootPath('/home/sandbox')).toBe('/home/sandbox/.fastgpt/skills');
     expect(sandbox.execute).toHaveBeenNthCalledWith(
       1,
-      "cat '/home/sandbox/.fastgpt/skills/skill-creator/.fastgpt-builtin-manifest.json' 2>/dev/null || true"
+      "mkdir -p '/home/sandbox/.fastgpt/runtime'",
+      {
+        maxOutputBytes: 1024,
+        timeoutMs: 5000
+      }
     );
     expect(sandbox.execute).toHaveBeenNthCalledWith(
       2,
@@ -113,17 +125,19 @@ describe('builtin skill runtime', () => {
         expect.objectContaining({
           path: '/home/sandbox/.fastgpt/skills/skill-creator/SKILL.md',
           data: expect.any(Buffer)
-        }),
-        expect.objectContaining({
-          path: '/home/sandbox/.fastgpt/skills/skill-creator/.fastgpt-builtin-manifest.json',
-          data: expect.any(Buffer)
         })
       ])
     );
     expect(writeEntries.every((entry) => !entry.path.includes('/workspace/'))).toBe(true);
+    expect(sandbox.writeFiles.mock.calls[1][0]).toEqual([
+      expect.objectContaining({
+        path: '/home/sandbox/.fastgpt/runtime/state.json',
+        data: expect.stringContaining('builtinSkill:skill-creator')
+      })
+    ]);
   });
 
-  it('skips writing builtin skill when sandbox manifest etag is current', async () => {
+  it('skips writing builtin skill when runtime state etag is current', async () => {
     const builtinRoot = await createTempBuiltinSkillRoot();
     const sources = [
       {
@@ -134,19 +148,22 @@ describe('builtin skill runtime', () => {
         )
       }
     ];
+    const currentEtag = await getSourceEtagForTest(sources[0].sourceDirectory);
     const sandbox = {
-      execute: vi.fn(async (command: string) => {
-        if (command.startsWith('cat ')) {
-          return {
-            exitCode: 0,
-            stdout: JSON.stringify({
-              etag: await getSourceEtagForTest(sources[0].sourceDirectory)
-            }),
-            stderr: ''
-          };
-        }
-        return { exitCode: 0, stdout: '', stderr: '' };
-      }),
+      execute: vi.fn(async () => ({ exitCode: 0, stdout: '', stderr: '' })),
+      readFiles: vi.fn(async (paths: string[]) =>
+        paths.map((path) => ({
+          path,
+          content: Buffer.from(
+            JSON.stringify({
+              hashes: {
+                'builtinSkill:skill-creator': currentEtag
+              }
+            })
+          ),
+          error: null
+        }))
+      ),
       writeFiles: vi.fn()
     };
 
@@ -158,6 +175,7 @@ describe('builtin skill runtime', () => {
 
     expect(sandbox.writeFiles).not.toHaveBeenCalled();
     expect(sandbox.execute).toHaveBeenCalledTimes(1);
+    expect(sandbox.readFiles).toHaveBeenCalledWith(['/home/sandbox/.fastgpt/runtime/state.json']);
   });
 
   async function createTempBuiltinSkillRoot() {
@@ -184,7 +202,6 @@ description: Create FastGPT skills.
 
 async function getSourceEtagForTest(sourceDirectory: string) {
   const { promises: fs } = await import('fs');
-  const { createHash } = await import('crypto');
   const path = await import('path');
 
   const collect = async (
@@ -212,12 +229,8 @@ async function getSourceEtagForTest(sourceDirectory: string) {
   const fileEtags = files
     .map((file) => ({
       relativePath: file.relativePath,
-      etag: createHash('sha256').update(file.data).digest('hex')
+      etag: buildRuntimeHash(file.data)
     }))
     .sort((a, b) => a.relativePath.localeCompare(b.relativePath));
-  const skillHash = createHash('sha256');
-  fileEtags.forEach((file) => {
-    skillHash.update(`${file.relativePath}:${file.etag}\n`);
-  });
-  return `sha256:${skillHash.digest('hex')}`;
+  return buildRuntimeHash(fileEtags.map((file) => `${file.relativePath}:${file.etag}\n`).join(''));
 }

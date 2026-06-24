@@ -3,6 +3,7 @@
  *
  * 这里只放无副作用的 SKILL.md 文本解析和模板拼装，不访问数据库、对象存储、sandbox 或 LLM。
  */
+import { joinSandboxPath, shellQuote } from '../sandbox/runtime/utils';
 
 /* ==================== YAML Frontmatter 解析 (原 skillMarkdown.ts) ==================== */
 
@@ -183,24 +184,9 @@ export function extractSkillNameFromSkillMd(content: string): string {
   return headerMatch ? getSafeSkillDirectoryName(headerMatch[1]).toLowerCase() : 'unnamed-skill';
 }
 
-/* ==================== Shell 安全辅助 (原 shell.ts) ==================== */
-
-/**
- * 智能转义参数以防止 Shell 注入。
- */
-export const shellQuote = (value: string): string => `'${value.replace(/'/g, `'\\''`)}'`;
-
 /* ==================== 沙盒路径与命名清洗辅助 (自 runtime 移入) ==================== */
 
 export const MAX_SKILL_DIRECTORY_NAME_LENGTH = 50;
-
-const trimSandboxPathRight = (value: string) => (value === '/' ? '' : value.replace(/\/+$/, ''));
-
-/**
- * 拼接沙盒路径。
- */
-export const joinSandboxPath = (basePath: string, path: string): string =>
-  `${trimSandboxPathRight(basePath)}/${path}`;
 
 /**
  * 获取运行态 selected skill version 的 projects 根目录。

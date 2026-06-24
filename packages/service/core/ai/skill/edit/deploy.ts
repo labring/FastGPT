@@ -13,8 +13,7 @@ import {
   updateSandboxInstanceRecordBySandboxId
 } from '../../sandbox/instance/repository';
 import { MongoAgentSkills } from '../model/schema';
-import { SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
-import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
+import { SandboxStatusEnum, SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import type { SaveDeploySkillResponse } from '@fastgpt/global/core/ai/skill/api';

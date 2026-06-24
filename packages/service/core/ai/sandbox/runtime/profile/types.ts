@@ -1,4 +1,4 @@
-import type { SandboxImageConfigType } from '@fastgpt/global/core/ai/skill/type';
+import type { SandboxImageConfigType } from '@fastgpt/global/core/ai/sandbox/type';
 import type { SandboxCreateSpec, SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
 import type { VolumeManagerResult } from '../../volume/service';
 
@@ -33,7 +33,6 @@ export type SandboxRuntimeProfile = {
   provider: SandboxProviderType;
   defaultImage?: SandboxImageConfigType;
   workDirectory: string;
-  homeDirectory: string;
   entrypoint: string;
   skillsRootPath: string;
   buildConfig: (input?: SandboxRuntimeCreateConfigInput) => SandboxCreateSpec | undefined;

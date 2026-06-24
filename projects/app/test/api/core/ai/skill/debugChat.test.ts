@@ -1,6 +1,7 @@
 import { buildDebugRuntimeNodes } from '@/pages/api/core/ai/skill/debugChat';
 import * as debugChatApi from '@/pages/api/core/ai/skill/debugChat';
-import { AgentSkillSourceEnum, SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
+import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
+import { SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import {
   FlowNodeTypeEnum,
   FlowNodeInputTypeEnum,

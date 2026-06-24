@@ -1,4 +1,3 @@
-export { ensureAgentSandboxRuntime } from './runtime';
-export { agentSandboxBootstrap } from './bootstrap';
+export { ensureAgentSandboxRuntime } from './prepare';
 export { dispatchSandboxTool } from './tool';
 export { streamAgentSandboxInitStatus } from './status';

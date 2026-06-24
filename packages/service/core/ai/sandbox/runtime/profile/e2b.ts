@@ -2,7 +2,6 @@ import type { SandboxRuntimeProfile } from './types';
 import { getSandboxSkillsRootPath, mergeStringRecord, mergeUnknownRecord } from './utils';
 
 const E2B_DEFAULT_WORK_DIRECTORY = '/home/user';
-const E2B_DEFAULT_HOME_DIRECTORY = '/home/user';
 
 /**
  * 构建 E2B 的 FastGPT 运行态 profile。
@@ -13,7 +12,6 @@ export function buildE2BRuntimeProfile(): SandboxRuntimeProfile {
   return {
     provider: 'e2b',
     workDirectory: E2B_DEFAULT_WORK_DIRECTORY,
-    homeDirectory: E2B_DEFAULT_HOME_DIRECTORY,
     entrypoint: '',
     skillsRootPath: getSandboxSkillsRootPath(E2B_DEFAULT_WORK_DIRECTORY),
     buildConfig(input = {}) {

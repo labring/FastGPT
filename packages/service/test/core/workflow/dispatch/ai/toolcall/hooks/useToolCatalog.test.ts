@@ -29,7 +29,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/toolCall', async (importOriginal) => {
   };
 });
 
-vi.mock('@fastgpt/service/core/ai/skill/runtime/entrypoint', () => ({
+vi.mock('@fastgpt/service/core/ai/sandbox/runtime/entrypoint', () => ({
   runAgentSandboxEntrypoint: runAgentSandboxEntrypointMock,
   withAgentSandboxInitLease: withAgentSandboxInitLeaseMock
 }));

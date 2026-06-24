@@ -15,6 +15,12 @@ export const SandboxStatusEnum = {
 } as const;
 export type SandboxStatusType = (typeof SandboxStatusEnum)[keyof typeof SandboxStatusEnum];
 
+// ---- 沙盒实例类型 ----
+export enum SandboxTypeEnum {
+  editDebug = 'edit-debug',
+  sessionRuntime = 'session-runtime'
+}
+
 // ---- 暂停阈值（分钟） ----
 export const SANDBOX_SUSPEND_MINUTES = 10;
 

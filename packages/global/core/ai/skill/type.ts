@@ -3,10 +3,12 @@ import {
   AgentSkillSourceEnum,
   AgentSkillCategoryEnum,
   AgentSkillTypeEnum,
-  AgentSkillCreationStatusEnum,
-  SandboxTypeEnum
+  AgentSkillCreationStatusEnum
 } from './constants';
-import { SandboxStatusEnum } from '../sandbox/constants';
+import { SandboxStatusEnum, SandboxTypeEnum } from '../sandbox/constants';
+import { SandboxImageConfigSchema } from '../sandbox/type';
+export { SandboxImageConfigSchema };
+export type { SandboxImageConfigType } from '../sandbox/type';
 
 const LooseObjectSchema = z.object({}).catchall(z.any());
 const BufferSchema = z.custom<Buffer>(
@@ -120,12 +122,6 @@ export const ExtractedSkillPackageSchema = z.object({
   totalSize: z.number()
 });
 export type ExtractedSkillPackage = z.infer<typeof ExtractedSkillPackageSchema>;
-
-export const SandboxImageConfigSchema = z.object({
-  repository: z.string(),
-  tag: z.string().optional()
-});
-export type SandboxImageConfigType = z.infer<typeof SandboxImageConfigSchema>;
 
 export const SandboxProviderStatusSchema = z.object({
   state: z.string(),

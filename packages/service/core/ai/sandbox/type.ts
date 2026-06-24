@@ -1,6 +1,5 @@
 import z from 'zod';
-import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
-import { SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
+import { SandboxStatusEnum, SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 
 // ---- 沙盒实例 DB 类型 ----
 export const SandboxProviderSchema = z.enum(['sealosdevbox', 'opensandbox', 'e2b']);

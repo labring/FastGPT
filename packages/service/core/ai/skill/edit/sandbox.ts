@@ -2,7 +2,8 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { ISandbox, SandboxCreateSpec } from '@fastgpt-sdk/sandbox-adapter';
 import { MongoAgentSkills } from '../model/schema';
 import { MongoAgentSkillsVersion } from '../version/schema';
-import { shellQuote, joinSandboxPath, parseGitignoreRules } from '../utils';
+import { parseGitignoreRules } from '../utils';
+import { joinSandboxPath, shellQuote } from '../../sandbox/runtime/utils';
 import {
   downloadSkillPackage,
   DEFAULT_GITIGNORE_CONTENT,
@@ -16,9 +17,8 @@ import {
   getSandboxAdapterConfig
 } from '../../sandbox/provider/config';
 import { getSandboxRuntimeProfile } from '../../sandbox/runtime/profile';
-import { syncBuiltinSkillsToSandbox } from '../runtime/builtin';
 import type { SandboxImageConfigType } from '@fastgpt/global/core/ai/skill/type';
-import { SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
+import { SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import {
   connectReadySandboxByInstance,
   connectToSandbox,
@@ -258,7 +258,6 @@ export async function createEditDebugSandbox(
           storageKey: currentVersion.storageKey
         });
         await uploadAndDecompressPackage(sandbox, instance.sandboxId, packageBuffer);
-        await syncRuntimeBuiltinSkills(sandbox);
 
         await updateSandboxInstanceRecordBySandboxId({
           provider: providerConfig.provider,
@@ -286,8 +285,6 @@ export async function createEditDebugSandbox(
           status: { state: 'Running' }
         };
       }
-
-      await syncRuntimeBuiltinSkills(sandbox);
 
       await updateSandboxInstanceRecordBySandboxId({
         provider: providerConfig.provider,
@@ -368,14 +365,6 @@ export async function createEditDebugSandbox(
     }
   };
 
-  const syncRuntimeBuiltinSkills = async (sandbox: ISandbox) => {
-    await syncBuiltinSkillsToSandbox({
-      sandbox,
-      homeDirectory: runtimeProfile.homeDirectory,
-      includeNames: ['skill-creator']
-    });
-  };
-
   const cleanWorkspace = async (sandbox: ISandbox) => {
     // 已有实例重部署时先清空工作区；保留挂载点本身，避免 volume 根目录权限问题。
     const cleanCmd = `find ${shellQuote(runtimeProfile.workDirectory)} -mindepth 1 -delete || (rm -rf ${shellQuote(runtimeProfile.workDirectory)}/* && rm -rf ${shellQuote(runtimeProfile.workDirectory)}/.[!.]*)`;
@@ -418,7 +407,6 @@ export async function createEditDebugSandbox(
     await cleanWorkspace(sandbox);
 
     await uploadAndDecompressPackage(sandbox, instance.sandboxId, packageBuffer);
-    await syncRuntimeBuiltinSkills(sandbox);
 
     const existingMetadata = instance.metadata || {};
     const newMetadata = {
@@ -637,8 +625,6 @@ export async function createEditDebugSandbox(
         }
       );
     }
-
-    await syncRuntimeBuiltinSkills(client.provider);
 
     const newSandboxDoc = await updateSandboxInstanceRecordBySandboxId({
       provider: providerConfig.provider,

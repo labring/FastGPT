@@ -4,7 +4,7 @@ import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { ExportSkillQuerySchema } from '@fastgpt/global/openapi/core/ai/skill/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { AgentSkillTypeEnum, SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
+import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
@@ -12,7 +12,7 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/nex
 import { findSandboxInstanceByAppChatType } from '@fastgpt/service/core/ai/sandbox/instance/repository';
 import { getSandboxProviderConfig } from '@fastgpt/service/core/ai/sandbox/provider/config';
 import { getSandboxRuntimeProfile } from '@fastgpt/service/core/ai/sandbox/runtime/profile';
-import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
+import { SandboxStatusEnum, SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import {
   EDIT_DEBUG_SANDBOX_CHAT_ID,
   packageSkillInSandbox
