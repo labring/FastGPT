@@ -39,7 +39,6 @@ type EnsureAgentSandboxRuntimeResult = {
 type AgentSandboxPrepareContext = {
   sandboxClient: SandboxClient;
   workDirectory: string;
-  currentFiles: AgentInputFile[];
   currentWorkingDirectory?: string;
   deployedSkillVersions: DeployedSkillVersion[];
   skillInfos: DeployedSkillInfo[];
@@ -84,7 +83,6 @@ export async function ensureAgentSandboxRuntime({
     fn: () => {
       const context = {
         ...sandboxContext,
-        currentFiles,
         deployedSkillVersions: [],
         skillInfos: []
       };
@@ -92,7 +90,7 @@ export async function ensureAgentSandboxRuntime({
       return editSkillId
         ? prepareSandbox(
             context,
-            injectCurrentInputFiles(),
+            injectCurrentInputFiles(currentFiles),
             injectEditDebugBuiltinSkills(),
             readCurrentWorkingDirectory(),
             scanEditDebugSkillInfos()
@@ -100,7 +98,7 @@ export async function ensureAgentSandboxRuntime({
         : prepareSandbox(
             context,
             injectSelectedSkillFiles({ teamId, skillIds }),
-            injectCurrentInputFiles(),
+            injectCurrentInputFiles(currentFiles),
             readCurrentWorkingDirectory(),
             runSandboxEntrypoint({ sandboxEntrypoint }),
             runSelectedSkillEntrypoints(),
@@ -127,10 +125,12 @@ const prepareSandbox = async (
   return currentContext;
 };
 
-const injectCurrentInputFiles = (): AgentSandboxPrepareStep => async (context) => {
-  await injectInputFilesToSandbox(context.sandboxClient.provider, context.currentFiles);
-  return context;
-};
+const injectCurrentInputFiles =
+  (currentFiles: AgentInputFile[]): AgentSandboxPrepareStep =>
+  async (context) => {
+    await injectInputFilesToSandbox(context.sandboxClient.provider, currentFiles);
+    return context;
+  };
 
 const readCurrentWorkingDirectory = (): AgentSandboxPrepareStep => async (context) => ({
   ...context,
