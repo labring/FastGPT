@@ -43,7 +43,7 @@ RUN [ -z "$proxy" ] || sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /
 
 # 安装 Python、依赖包及工具
 RUN apk add --no-cache python3 py3-pip libffi util-linux && \
-    apk add --no-cache --virtual .build-deps gcc g++ musl-dev python3-dev libffi-dev
+    apk add --no-cache --virtual .build-deps gcc g++ musl-dev python3-dev libffi-dev patch git
 COPY projects/code-sandbox/requirements.txt /tmp/requirements.txt
 RUN pip3 install --no-cache-dir --break-system-packages -r /tmp/requirements.txt && \
     rm /tmp/requirements.txt && \
