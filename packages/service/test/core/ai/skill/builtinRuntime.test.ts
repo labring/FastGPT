@@ -1,4 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { mkdtemp, mkdir, rm, writeFile } from 'fs/promises';
+import path from 'path';
+import os from 'os';
 import {
   getAvailableBuiltinSkillSources,
   getBuiltinSkillsRootPath,
@@ -7,6 +10,7 @@ import {
 
 describe('builtin skill runtime', () => {
   const originalFeConfigs = global.feConfigs;
+  let tempDirs: string[] = [];
 
   beforeEach(() => {
     global.feConfigs = {
@@ -15,23 +19,33 @@ describe('builtin skill runtime', () => {
     };
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     global.feConfigs = originalFeConfigs;
+    await Promise.all(tempDirs.map((dir) => rm(dir, { recursive: true, force: true })));
+    tempDirs = [];
   });
 
   it('discovers pro builtin skill sources without exposing them in workspace', async () => {
-    const sources = await getAvailableBuiltinSkillSources();
+    const builtinRoot = await createTempBuiltinSkillRoot();
+    const cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(builtinRoot);
 
-    expect(sources).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          name: 'skill-creator',
-          sourceDirectory: expect.stringContaining(
-            'pro/admin/src/service/core/ai/skill/builtin/skill-creator'
-          )
-        })
-      ])
-    );
+    try {
+      const sources = await getAvailableBuiltinSkillSources();
+
+      expect(sources).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            name: 'skill-creator',
+            sourceDirectory: path.join(
+              builtinRoot,
+              'pro/admin/src/service/core/ai/skill/builtin/skill-creator'
+            )
+          })
+        ])
+      );
+    } finally {
+      cwdSpy.mockRestore();
+    }
   });
 
   it('skips requested builtin skills when pro builtin source root is unavailable', async () => {
@@ -58,9 +72,14 @@ describe('builtin skill runtime', () => {
   });
 
   it('injects builtin skill files into runtime directory instead of user workspace', async () => {
-    const sources = await getAvailableBuiltinSkillSources();
-    const skillCreatorSource = sources.find((source) => source.name === 'skill-creator');
-    expect(skillCreatorSource).toBeDefined();
+    const builtinRoot = await createTempBuiltinSkillRoot();
+    const skillCreatorSource = {
+      name: 'skill-creator',
+      sourceDirectory: path.join(
+        builtinRoot,
+        'pro/admin/src/service/core/ai/skill/builtin/skill-creator'
+      )
+    };
 
     const sandbox = {
       execute: vi.fn(async () => ({ exitCode: 0, stdout: '', stderr: '' })),
@@ -105,7 +124,16 @@ describe('builtin skill runtime', () => {
   });
 
   it('skips writing builtin skill when sandbox manifest etag is current', async () => {
-    const sources = await getAvailableBuiltinSkillSources({ includeNames: ['skill-creator'] });
+    const builtinRoot = await createTempBuiltinSkillRoot();
+    const sources = [
+      {
+        name: 'skill-creator',
+        sourceDirectory: path.join(
+          builtinRoot,
+          'pro/admin/src/service/core/ai/skill/builtin/skill-creator'
+        )
+      }
+    ];
     const sandbox = {
       execute: vi.fn(async (command: string) => {
         if (command.startsWith('cat ')) {
@@ -131,6 +159,27 @@ describe('builtin skill runtime', () => {
     expect(sandbox.writeFiles).not.toHaveBeenCalled();
     expect(sandbox.execute).toHaveBeenCalledTimes(1);
   });
+
+  async function createTempBuiltinSkillRoot() {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'fastgpt-builtin-skill-'));
+    tempDirs.push(root);
+
+    const skillDir = path.join(root, 'pro/admin/src/service/core/ai/skill/builtin/skill-creator');
+    await mkdir(path.join(skillDir, 'scripts'), { recursive: true });
+    await writeFile(
+      path.join(skillDir, 'SKILL.md'),
+      `---
+name: skill-creator
+description: Create FastGPT skills.
+---
+
+# Skill Creator
+`
+    );
+    await writeFile(path.join(skillDir, 'scripts/init_skill.py'), 'print("init")\n');
+
+    return root;
+  }
 });
 
 async function getSourceEtagForTest(sourceDirectory: string) {
