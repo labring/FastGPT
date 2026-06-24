@@ -183,7 +183,7 @@ const AccountContainer = ({
       >
         <BgDecoration />
         {header && (
-          <Box px={6} h={'64px'} flexShrink={0} display={'flex'} alignItems={'center'}>
+          <Box px={4} h={'64px'} flexShrink={0} display={'flex'} alignItems={'center'}>
             {header}
           </Box>
         )}

@@ -50,7 +50,7 @@ const Evaluation = () => {
   return (
     <DashboardContainer>
       {({ MenuIcon }) => (
-        <Flex h={'full'} p={6} flexDirection="column">
+        <Flex h={'full'} pt={6} pb={4} px={4} flexDirection="column">
           <Flex h={'100%'} flexDirection={'column'} gap={4}>
             {evaluationTab === 'tasks' && <EvaluationTasks Tab={Tab} />}
             {evaluationTab === 'datasets' && <EvaluationDatasets Tab={Tab} />}
