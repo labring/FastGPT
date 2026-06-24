@@ -38,5 +38,5 @@ The execution state is stored in the `~/.fastgpt/agent-skill-entrypoints/state.j
 
 To ensure the smooth execution of the AI workflow, the skill initialization script must adhere to the same execution constraints and fault tolerance rules as the application startup script:
 
-- **Execution Constraints and Non-blocking Fault Tolerance**: The timeout protection (default 30 seconds), non-blocking workflow (failures do not block main execution), and 8KB log truncation limits are identical to those of the application startup script. For detailed parameters, please refer to [Application Startup Script Execution Constraints](../agentv2/startup#execution-constraints--fault-tolerance).
+- **Execution Constraints and Non-blocking Fault Tolerance**: The timeout protection (default 30 seconds), non-blocking workflow (failures do not block main execution), and 8KB log truncation limits are identical to those of the application startup script. For detailed parameters, please refer to [Application Startup Script Execution Constraints](../agentv2/vm#execution-constraints--fault-tolerance).
 - **Debug Mode Limitation**: In the skill edit mode, the virtual machine will not automatically execute the `entrypoint.sh` script. To verify the script's behavior, the skill developer can manually execute the commands inside the Workspace Terminal.

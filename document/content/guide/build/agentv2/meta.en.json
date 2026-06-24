@@ -4,7 +4,6 @@
   "pages": [
     "settings",
     "debug",
-    "vm",
-    "startup"
+    "vm"
   ]
 }
