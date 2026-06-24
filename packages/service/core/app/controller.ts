@@ -20,7 +20,10 @@ import { MongoChatInputGuide } from '../chat/inputGuide/schema';
 import { MongoChatFavouriteApp } from '../chat/favouriteApp/schema';
 import { MongoChatSetting } from '../chat/setting/schema';
 import { MongoResourcePermission } from '../../support/permission/schema';
-import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import {
+  PerResourceTypeEnum,
+  ReadPermissionVal
+} from '@fastgpt/global/support/permission/constant';
 import { removeImageByPath } from '../../common/file/image/controller';
 import { MongoAppLogKeys } from './logs/logkeysSchema';
 import { MongoChatItemResponse } from '../chat/chatItemResponseSchema';
@@ -39,6 +42,7 @@ import {
 } from '@fastgpt/global/core/app/formEdit/type';
 import z from 'zod';
 import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
+import { authSkillByTmbId } from '../../support/permission/skill/auth';
 
 const logger = getLogger(LogCategories.MODULE.APP.FOLDER);
 
@@ -123,6 +127,45 @@ export const beforeUpdateAppFormat = ({ nodes }: { nodes?: StoreNodeItemType[] }
       }
     });
   });
+};
+
+/**
+ * 发布应用前校验静态绑定的 Agent Skill 对当前成员可读。
+ * 引用输入在发布阶段没有确定值，运行时会按实际值再次过滤。
+ */
+export const validatePublishAppAgentSkillReadPermissions = async ({
+  nodes,
+  tmbId,
+  isRoot = false
+}: {
+  nodes?: StoreNodeItemType[];
+  tmbId: string;
+  isRoot?: boolean;
+}) => {
+  if (!nodes) return;
+
+  const skillIds = new Set<string>();
+  for (const node of nodes) {
+    for (const input of node.inputs) {
+      if (input.key !== NodeInputKeyEnum.skills || nodeInputIsReference(input)) continue;
+
+      const skills = z.array(SelectedAgentSkillItemTypeSchema).parse(input.value);
+      for (const skill of skills) {
+        skillIds.add(skill.skillId);
+      }
+    }
+  }
+
+  await Promise.all(
+    Array.from(skillIds).map((skillId) =>
+      authSkillByTmbId({
+        tmbId,
+        skillId,
+        per: ReadPermissionVal,
+        isRoot
+      })
+    )
+  );
 };
 
 /* Get apps */

@@ -11,6 +11,7 @@ import {
   buildAgentSkillsPrompt,
   buildAgentInputFilesPrompt,
   buildAgentUserReminderInput,
+  parseAgentInputFiles,
   useUserContext
 } from '@fastgpt/service/core/workflow/dispatch/ai/agent/adapter/userContext';
 import type { DeployedSkillInfo } from '@fastgpt/service/core/ai/skill/runtime/types';
@@ -171,6 +172,44 @@ describe('buildAgentInputFilesPrompt', () => {
 
   it('returns empty string when there are no files', () => {
     expect(buildAgentInputFilesPrompt()).toBe('');
+  });
+});
+
+describe('parseAgentInputFiles', () => {
+  it('sanitizes file names into single sandbox path segments and deduplicates collisions', () => {
+    const files = parseAgentInputFiles({
+      files: [
+        {
+          name: '../report.pdf',
+          type: ChatFileTypeEnum.file,
+          url: '/api/system/file/download/a?filename=ignored.pdf'
+        },
+        {
+          type: ChatFileTypeEnum.file,
+          url: '/api/system/file/download/b?filename=%2E%2E%2Freport.pdf'
+        },
+        {
+          name: 'folder/image.png',
+          type: ChatFileTypeEnum.image,
+          url: '/api/system/file/download/c?filename=image.png'
+        },
+        {
+          name: '..',
+          type: ChatFileTypeEnum.file,
+          url: '/api/system/file/download/d?filename=..'
+        }
+      ],
+      prefixId: 'current',
+      maxFiles: 10
+    });
+
+    expect(files.map((file) => file.name)).toEqual([
+      'report.pdf',
+      'report-1.pdf',
+      'image.png',
+      'file-3'
+    ]);
+    expect(files.every((file) => !file.name.includes('/'))).toBe(true);
   });
 });
 
@@ -873,7 +912,7 @@ describe('useUserContext', () => {
     );
   });
 
-  it('falls back to url as file name when neither chat metadata nor parsed url has a filename', async () => {
+  it('falls back to a safe url basename when neither chat metadata nor parsed url has a filename', async () => {
     await runWithContextAsync(
       {
         queryUrlTypeMap: {
@@ -903,12 +942,12 @@ describe('useUserContext', () => {
         });
 
         const { text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
-        expect(text).toContain('<name>/api/file/raw</name>');
+        expect(text).toContain('<name>raw</name>');
       }
     );
   });
 
-  it('uses url as the final defensive file name fallback when parser returns an empty name', async () => {
+  it('uses a safe url basename as the final defensive file name fallback', async () => {
     const parseUrlToFileTypeSpy = vi
       .spyOn(workflowContext, 'parseUrlToFileType')
       .mockReturnValueOnce({
@@ -935,7 +974,7 @@ describe('useUserContext', () => {
         });
 
         const { text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
-        expect(text).toContain('<name>/nameless</name>');
+        expect(text).toContain('<name>nameless</name>');
       }
     );
 

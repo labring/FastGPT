@@ -19,6 +19,13 @@ import { MongoAgentSkillsVersion } from '@fastgpt/service/core/ai/skill/version/
 import { uploadSkillPackage } from '@fastgpt/service/core/ai/skill/package';
 import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { Types } from '@fastgpt/service/common/mongo';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { getUser } from '@test/datas/users';
+import {
+  PerResourceTypeEnum,
+  ReadPermissionVal
+} from '@fastgpt/global/support/permission/constant';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 
 const makePackage = async (entries: Array<{ path: string; name: string; description: string }>) => {
   const zip = new JSZip();
@@ -582,6 +589,127 @@ description: Latest current skill
         skillMdPath: latestSkillMdPath
       }
     ]);
+  });
+
+  it('filters unauthorized runtime skills instead of injecting them', async () => {
+    const owner = await getUser(`runtime-skill-owner-${getNanoid(6)}`);
+    const runner = await getUser(`runtime-skill-runner-${getNanoid(6)}`, owner.teamId);
+
+    const [readableSkill, protectedSkill] = await MongoAgentSkills.create([
+      {
+        name: 'Readable',
+        description: '',
+        teamId: owner.teamId,
+        tmbId: owner.tmbId,
+        source: AgentSkillSourceEnum.personal
+      },
+      {
+        name: 'Protected',
+        description: '',
+        teamId: owner.teamId,
+        tmbId: owner.tmbId,
+        source: AgentSkillSourceEnum.personal
+      }
+    ]);
+    await MongoResourcePermission.create({
+      resourceType: PerResourceTypeEnum.agentSkill,
+      teamId: owner.teamId,
+      resourceId: String(readableSkill._id),
+      tmbId: runner.tmbId,
+      permission: ReadPermissionVal
+    });
+
+    const readableVersionId = new Types.ObjectId();
+    const protectedVersionId = new Types.ObjectId();
+    const [readablePackage, protectedPackage] = await Promise.all([
+      makePackage([{ path: 'skill.md', name: 'readable', description: 'Readable skill' }]),
+      makePackage([{ path: 'skill.md', name: 'protected', description: 'Protected skill' }])
+    ]);
+    const [readableStorage, protectedStorage] = await Promise.all([
+      uploadSkillPackage({
+        teamId: owner.teamId,
+        skillId: String(readableSkill._id),
+        packageObjectId: 'runtime-readable-version',
+        zipBuffer: readablePackage
+      }),
+      uploadSkillPackage({
+        teamId: owner.teamId,
+        skillId: String(protectedSkill._id),
+        packageObjectId: 'runtime-protected-version',
+        zipBuffer: protectedPackage
+      })
+    ]);
+    await MongoAgentSkillsVersion.create([
+      {
+        _id: readableVersionId,
+        skillId: readableSkill._id,
+        tmbId: owner.tmbId,
+        storageKey: readableStorage.key
+      },
+      {
+        _id: protectedVersionId,
+        skillId: protectedSkill._id,
+        tmbId: owner.tmbId,
+        storageKey: protectedStorage.key
+      }
+    ]);
+    await Promise.all([
+      MongoAgentSkills.updateOne(
+        { _id: readableSkill._id },
+        { $set: { currentVersionId: readableVersionId } }
+      ),
+      MongoAgentSkills.updateOne(
+        { _id: protectedSkill._id },
+        { $set: { currentVersionId: protectedVersionId } }
+      )
+    ]);
+
+    const readableTargetDir = `/workspace/projects/${String(readableVersionId)}`;
+    const protectedTargetDir = `/workspace/projects/${String(protectedVersionId)}`;
+    const sandbox = {
+      writeFiles: vi.fn(async (entries: Array<{ path: string; data: Buffer }>) =>
+        makeWriteResults(entries)
+      ),
+      execute: vi.fn(async (command: string) => {
+        if (command === "mkdir -p '/workspace/projects'") {
+          return { exitCode: 0, stdout: '', stderr: '' };
+        }
+        if (command === LIST_VERSION_DIRS_COMMAND) {
+          return { exitCode: 0, stdout: '', stderr: '' };
+        }
+        if (command.includes('unzip')) {
+          return { exitCode: 0, stdout: '', stderr: '' };
+        }
+        if (command.startsWith('mkdir -p ')) return { exitCode: 0, stdout: '', stderr: '' };
+
+        throw new Error(`Unexpected command: ${command}`);
+      }),
+      readFiles: vi.fn()
+    };
+
+    const deployedVersions = await injectAgentSkillFilesToSandbox({
+      sandbox: sandbox as any,
+      skillIds: [String(readableSkill._id), String(protectedSkill._id)],
+      teamId: owner.teamId,
+      tmbId: runner.tmbId,
+      workDirectory: '/workspace'
+    });
+
+    expect(deployedVersions).toEqual([
+      {
+        versionId: String(readableVersionId),
+        targetDir: readableTargetDir
+      }
+    ]);
+    expect(sandbox.writeFiles).toHaveBeenCalledTimes(1);
+    const writtenFilePaths = sandbox.writeFiles.mock.calls[0][0].map(
+      (entry: { path: string }) => entry.path
+    );
+    expect(writtenFilePaths).toEqual([
+      expect.stringContaining(`/workspace/projects/.tmp-${String(readableVersionId)}`)
+    ]);
+    expect(writtenFilePaths.join('\n')).not.toContain(String(protectedVersionId));
+    expect(sandbox.execute).not.toHaveBeenCalledWith(expect.stringContaining(protectedTargetDir));
   });
 
   it('skips existing current version directories and removes unselected version directories', async () => {

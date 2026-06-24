@@ -36,6 +36,7 @@ import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
 import {
   beforeUpdateAppFormat,
+  validatePublishAppAgentSkillReadPermissions,
   updateParentFoldersUpdateTime
 } from '@fastgpt/service/core/app/controller';
 import { copyAvatarImage } from '@fastgpt/service/common/file/image/controller';
@@ -109,7 +110,8 @@ async function handler(req: ApiRequestProps<CreateAppBodyType>) {
     tmbId,
     userAvatar: tmb?.avatar,
     username: tmb?.user?.username,
-    templateId
+    templateId,
+    isRoot
   });
 
   pushTrack.createApp({
@@ -141,6 +143,7 @@ export const onCreateApp = async ({
   username,
   userAvatar,
   templateId,
+  isRoot,
   session
 }: {
   parentId?: ParentIdType;
@@ -157,6 +160,7 @@ export const onCreateApp = async ({
   username?: string;
   userAvatar?: string;
   templateId?: string;
+  isRoot?: boolean;
   session?: ClientSession;
 }) => {
   if (parentId) {
@@ -173,6 +177,13 @@ export const onCreateApp = async ({
   beforeUpdateAppFormat({
     nodes: modules
   });
+  if (!AppFolderTypeList.includes(type!)) {
+    await validatePublishAppAgentSkillReadPermissions({
+      nodes: modules,
+      tmbId,
+      isRoot
+    });
+  }
 
   const create = async (session: ClientSession) => {
     const resourceRefs = extractAppResourceRefsFromNodes(modules);

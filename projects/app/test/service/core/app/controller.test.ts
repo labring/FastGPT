@@ -1,11 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
+import {
+  beforeUpdateAppFormat,
+  validatePublishAppAgentSkillReadPermissions
+} from '@fastgpt/service/core/app/controller';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
+import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { getUser } from '@test/datas/users';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 
 describe('beforeUpdateAppFormat', () => {
   it('保存前统一压缩知识库选择项，去掉编辑态删除标记和快照字段', () => {
@@ -231,5 +239,49 @@ describe('beforeUpdateAppFormat', () => {
         name: 'Normal Skill'
       }
     ]);
+  });
+});
+
+describe('validatePublishAppAgentSkillReadPermissions', () => {
+  it('发布应用时校验静态绑定的 Agent Skill 读权限', async () => {
+    const owner = await getUser(`publish-skill-owner-${getNanoid(6)}`);
+    const member = await getUser(`publish-skill-member-${getNanoid(6)}`, owner.teamId);
+    const skill = await MongoAgentSkills.create({
+      name: 'Protected Skill',
+      source: AgentSkillSourceEnum.personal,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId
+    });
+    const nodes = [
+      {
+        flowNodeType: FlowNodeTypeEnum.agent,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.skills,
+            value: [
+              {
+                skillId: String(skill._id),
+                name: 'Protected Skill',
+                description: ''
+              }
+            ]
+          }
+        ]
+      } as StoreNodeItemType
+    ];
+
+    await expect(
+      validatePublishAppAgentSkillReadPermissions({
+        nodes,
+        tmbId: member.tmbId
+      })
+    ).rejects.toBe(SkillErrEnum.unAuthSkill);
+
+    await expect(
+      validatePublishAppAgentSkillReadPermissions({
+        nodes,
+        tmbId: owner.tmbId
+      })
+    ).resolves.toBeUndefined();
   });
 });

@@ -16,6 +16,7 @@ import { getSandboxClient, type SandboxClient } from '../../../../../../ai/sandb
 import { pickOutboundAxios } from '../../../../../../../common/api/axios';
 import { checkTeamSandboxPermission } from '../../../../../../../support/permission/teamLimit';
 import { createAgentSandboxPermissionDeniedError } from '../../../../../../ai/sandbox/error';
+import { getSafeAgentInputFilename } from '../../adapter/fileName';
 
 export type AgentSandboxBootstrap = (context: {
   sandboxClient: SandboxClient;
@@ -29,6 +30,7 @@ type EnsureAgentSandboxRuntimeParams = {
   chatId: string;
   sandboxId?: string;
   teamId: string;
+  tmbId: string;
   needSandboxRuntime: boolean;
   sandboxBootstrap?: AgentSandboxBootstrap;
   sandboxEntrypoint?: string;
@@ -49,6 +51,7 @@ type SandboxRuntimeContext = {
 
 type InitRuntimeSandboxParams = SandboxRuntimeContext & {
   teamId: string;
+  tmbId: string;
   skillIds: string[];
   sandboxBootstrap?: AgentSandboxBootstrap;
   sandboxEntrypoint?: string;
@@ -82,9 +85,11 @@ const readSandboxPwd = async (sandboxClient: SandboxClient) => {
  */
 const injectInputFilesToSandbox = async (sandbox: ISandbox, files: AgentInputFile[]) => {
   const writeFileTasks: Promise<FileWriteEntry>[] = [];
+  const usedNames = new Map<string, number>();
 
-  for (const file of files) {
-    const path = `${SANDBOX_USER_FILES_PATH}${file.name}`;
+  for (const [index, file] of files.entries()) {
+    const filename = getSafeAgentInputFilename(file.name, index, usedNames);
+    const path = `${SANDBOX_USER_FILES_PATH}${filename}`;
     writeFileTasks.push(
       pickOutboundAxios(file.url)
         .get<ArrayBuffer>(file.url, {
@@ -135,6 +140,7 @@ const initRuntimeSandbox = async ({
   sandboxClient,
   workDirectory,
   teamId,
+  tmbId,
   skillIds,
   sandboxBootstrap,
   sandboxEntrypoint,
@@ -156,6 +162,7 @@ const initRuntimeSandbox = async ({
           sandbox,
           skillIds,
           teamId,
+          tmbId,
           workDirectory
         }),
         injectInputFilesToSandbox(sandbox, currentFiles),
@@ -207,6 +214,7 @@ export async function ensureAgentSandboxRuntime({
   chatId,
   sandboxId,
   teamId,
+  tmbId,
   needSandboxRuntime,
   sandboxBootstrap,
   sandboxEntrypoint,
@@ -255,6 +263,7 @@ export async function ensureAgentSandboxRuntime({
   const { currentWorkingDirectory, skillInfos } = await initRuntimeSandbox({
     ...context,
     teamId,
+    tmbId,
     skillIds,
     sandboxBootstrap,
     sandboxEntrypoint,

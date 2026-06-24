@@ -18,7 +18,7 @@ The Configuration Panel is used to configure and bind all the core capabilities 
   | :---------------------------------------------------------: | :---------------------------------------------------------------: |
   | ![`@` Tool Quick Binding](/imgs/agent_prompt_editor_at.png) | ![Rich Text Prompt Editor](/imgs/agent_prompt_editor_mention.png) |
 
-- **Virtual Machine**: Once enabled, the system assigns a dedicated Linux sandbox environment for each session, supporting code execution, file operations, and startup command configuration. For architecture and debugging details, refer to [Virtual Machine](./vm). For startup script details and execution limits, see [Startup Script](./startup).
+- **Virtual Machine**: Once enabled, the system assigns a dedicated Linux sandbox environment for each session, supporting code execution, file operations, and startup command configuration. For architecture and debugging details, refer to [Virtual Machine](./vm). For startup script details and execution limits, see [Virtual Machine Lifecycle](./vm#virtual-machine-lifecycle).
 
 ---
 
@@ -38,10 +38,3 @@ The Configuration Panel is used to configure and bind all the core capabilities 
 
 - **Knowledge Base**: Associate specific corporate documents and adjust search settings (Hybrid Search, Re-ranking, etc.). It also supports configuring team member authorization permissions.
 - **File Uploads**: Toggle file uploads for end-users, permitting images, audio, video, or custom file extensions. File upload capabilities automatically adapt based on the multimodal features of the selected LLM. For detailed configurations, see [File Input](../general/fileInput).
-
----
-
-## Welcome Text & Voice Input
-
-- **Welcome Text**: The initial welcome message sent automatically by the system before each conversation starts, supporting standard Markdown. It also supports `[Quick Question]` format, allowing users to send preset questions with a single click.
-- **Voice Input**: Enables users to input voice messages which are automatically converted to text. Once enabled, you can configure **Auto Send** (automatically send the message after recording completes) and **Auto Voice Response** (the AI will reply in audio format directly, requiring voice playback to be enabled).

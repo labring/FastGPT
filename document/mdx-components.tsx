@@ -23,20 +23,15 @@ function getMdxImageSrc(src: unknown): string | undefined {
 }
 
 function MdxImage(props: ComponentProps<'img'>) {
-  const hasWidth = props.width !== undefined && props.width !== null && props.width !== '';
-  const hasHeight = props.height !== undefined && props.height !== null && props.height !== '';
+  const src = getMdxImageSrc(props.src);
 
-  if (hasWidth && hasHeight) {
-    return <ImageZoom {...(props as any)} />;
-  }
+  if (!src) return null;
 
+  // 文档中的多数 Markdown 图片没有 width/height，使用自定义 img 保留现有布局，并只复用预览能力。
   return (
-    <img
-      {...props}
-      src={getMdxImageSrc(props.src)}
-      alt={props.alt ?? ''}
-      loading={props.loading ?? 'lazy'}
-    />
+    <ImageZoom {...(props as any)} src={src} zoomInProps={{ alt: props.alt ?? '' }}>
+      <img {...props} src={src} alt={props.alt ?? ''} loading={props.loading ?? 'lazy'} />
+    </ImageZoom>
   );
 }
 

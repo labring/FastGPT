@@ -12,6 +12,7 @@ import type { DeployedSkillInfo } from '../../../../../ai/skill/runtime/types';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
 import { SANDBOX_READ_FILE_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
+import { getSafeAgentInputFilename } from './fileName';
 
 export type AgentInputFile = {
   id: string;
@@ -111,6 +112,8 @@ export function parseAgentInputFiles({
       .values()
   );
 
+  const usedNames = new Map<string, number>();
+
   return uniqueFiles
     .slice(0, maxFiles)
     .map(({ file, url }, index) => {
@@ -119,7 +122,7 @@ export function parseAgentInputFiles({
 
       return {
         id: `${prefixId}-${index}`,
-        name: file.name || parsedFile.name || url,
+        name: getSafeAgentInputFilename(file.name || parsedFile.name || url, index, usedNames),
         type: parsedFile.type,
         url: parsedFile.url
       };
