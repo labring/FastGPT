@@ -1689,6 +1689,8 @@
   "core.dataset.error.collectionNameExtensionMismatch": "The file extension is inconsistent with the original file. The extension cannot be modified.",
   "core.dataset.error.noDataTables": "The database knowledge base has no data tables. Please add data tables first.",
   "core.dataset.error.noFiles": "The knowledge base has no files. Please upload files first.",
+  "core.dataset.error.vectorModelIdInvalid": "The vector model ID is invalid.",
+  "core.dataset.error.vectorModelSame": "The new vector model is the same as the current one.",
   "dataset.data.deleted": "The data has been deleted.",
   "count_in_bracket": "({{count}})",
   "list_separator": ",",
