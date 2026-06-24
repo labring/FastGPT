@@ -100,7 +100,6 @@ const Dataset = () => {
               FirstPathDom={
                 <Flex flex={1} alignItems={'center'}>
                   <Box
-                    pl={2}
                     letterSpacing={1}
                     fontSize={'1.25rem'}
                     fontWeight={'medium'}
