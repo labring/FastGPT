@@ -625,6 +625,7 @@
   "import_missing_department_column": "Missing required column: Department",
   "import_no_valid_rows": "No valid data rows in file",
   "import_user_already_exists": "Username already exists: {{usernames}}",
+  "import_too_many_rows": "Maximum 20000 rows per import",
   "importing": "Importing",
   "click_to_select_file": "Click to select file",
   "password": "Password",

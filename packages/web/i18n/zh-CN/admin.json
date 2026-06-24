@@ -625,6 +625,7 @@
   "import_missing_department_column": "缺少必需列: 部门",
   "import_no_valid_rows": "文件中没有有效数据行",
   "import_user_already_exists": "用户名已存在: {{usernames}}",
+  "import_too_many_rows": "单次最多导入 20000 行数据",
   "importing": "导入中",
   "click_to_select_file": "点击选择文件",
   "password": "密码",
