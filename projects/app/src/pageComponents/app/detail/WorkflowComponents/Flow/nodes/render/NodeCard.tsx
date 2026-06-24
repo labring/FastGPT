@@ -560,6 +560,7 @@ const NodeIntro = React.memo(function NodeIntro({
   nodeId: string;
   intro?: string;
 }) {
+  const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const handleSave = useCallback(
@@ -585,7 +586,7 @@ const NodeIntro = React.memo(function NodeIntro({
         onSave={handleSave}
         type={'textarea'}
         maxLength={500}
-        placeholder={'app:node_not_intro'}
+        placeholder={t('app:node_not_intro')}
         fontSize={'sm'}
         lineHeight={'short'}
         color={'myGray.500'}

@@ -159,9 +159,21 @@ const InputTypeConfig = ({
     name: 'list'
   });
 
-  const mergedSelectEnums = selectEnums.map((field, index) => ({
-    ...field,
-    ...listValue[index]
+  const isSelectInput =
+    inputType === FlowNodeInputTypeEnum.select || inputType === VariableInputEnum.select;
+  const isMultipleSelectInput =
+    inputType === FlowNodeInputTypeEnum.multipleSelect ||
+    inputType === VariableInputEnum.multipleSelect;
+  const isOptionInput = isSelectInput || isMultipleSelectInput;
+  const optionFields = (listValue.length ? listValue : selectEnums) as {
+    id?: string;
+    label?: string;
+    value?: string;
+  }[];
+  const optionDragList = optionFields.map((item, index) => ({
+    id: item.id || `${index}`,
+    label: item.label || '',
+    value: item.value || item.label || ''
   }));
 
   const handleRemoveEnum = useCallback(
@@ -171,7 +183,7 @@ const InputTypeConfig = ({
 
       if (!removedValue) return;
 
-      if (inputType === FlowNodeInputTypeEnum.multipleSelect) {
+      if (isMultipleSelectInput) {
         const cur = getValues('defaultValue');
         if (Array.isArray(cur) && cur.includes(removedValue)) {
           setValue(
@@ -179,16 +191,16 @@ const InputTypeConfig = ({
             cur.filter((v: string) => v !== removedValue)
           );
         }
-      } else if (inputType === FlowNodeInputTypeEnum.select) {
+      } else if (isSelectInput) {
         if (getValues('defaultValue') === removedValue) {
           setValue('defaultValue', '');
         }
       }
     },
-    [removeEnums, inputType, getValues, setValue]
+    [removeEnums, isMultipleSelectInput, isSelectInput, getValues, setValue]
   );
 
-  const isLastEnumEmpty = !mergedSelectEnums[mergedSelectEnums.length - 1]?.label;
+  const isOptionLimitReached = optionFields.length >= 50;
 
   const valueTypeSelectList = Object.values(FlowValueTypeMap)
     .filter((item) => !item.abandon)
@@ -255,8 +267,8 @@ const InputTypeConfig = ({
       [VariableInputEnum.datasetSelect]: true
     };
 
-    return map[inputType as keyof typeof map];
-  }, [inputType]);
+    return isOptionInput || map[inputType as keyof typeof map];
+  }, [inputType, isOptionInput]);
 
   const showIsToolInput = useMemo(() => {
     const list = [
@@ -287,6 +299,21 @@ const InputTypeConfig = ({
         defaultValue: data.defaultValue
       };
 
+      if (isOptionInput) {
+        const cleanList = (data.list ?? []).filter(
+          (item: { label?: string; value?: string }) => !!item?.label
+        );
+        commonData.list = cleanList;
+        const validValues = new Set(cleanList.map((item: { value: string }) => item.value));
+        if (isMultipleSelectInput) {
+          commonData.defaultValue = Array.isArray(commonData.defaultValue)
+            ? commonData.defaultValue.filter((v: string) => validValues.has(v))
+            : commonData.defaultValue;
+        } else if (commonData.defaultValue && !validValues.has(commonData.defaultValue)) {
+          commonData.defaultValue = '';
+        }
+      }
+
       switch (inputType) {
         case FlowNodeInputTypeEnum.input:
         case FlowNodeInputTypeEnum.textarea:
@@ -296,22 +323,6 @@ const InputTypeConfig = ({
           commonData.max = data.max;
           commonData.min = data.min;
           break;
-        case FlowNodeInputTypeEnum.select:
-        case FlowNodeInputTypeEnum.multipleSelect: {
-          const cleanList = (data.list ?? []).filter(
-            (item: { label?: string; value?: string }) => !!item?.label
-          );
-          commonData.list = cleanList;
-          const validValues = new Set(cleanList.map((item: { value: string }) => item.value));
-          if (inputType === FlowNodeInputTypeEnum.multipleSelect) {
-            commonData.defaultValue = Array.isArray(commonData.defaultValue)
-              ? commonData.defaultValue.filter((v: string) => validValues.has(v))
-              : commonData.defaultValue;
-          } else if (commonData.defaultValue && !validValues.has(commonData.defaultValue)) {
-            commonData.defaultValue = '';
-          }
-          break;
-        }
         case FlowNodeInputTypeEnum.addInputParam:
           commonData.customInputConfig = data.customInputConfig;
           break;
@@ -372,7 +383,7 @@ const InputTypeConfig = ({
 
       return commonData;
     },
-    [inputType]
+    [inputType, isMultipleSelectInput, isOptionInput]
   );
 
   return (
@@ -615,7 +626,7 @@ const InputTypeConfig = ({
                   <Switch {...register('defaultValue')} />
                 </Flex>
               )}
-              {inputType === FlowNodeInputTypeEnum.select && (
+              {isSelectInput && (
                 <MySelect<string>
                   list={[defaultListValue, ...listValue]
                     .filter((item) => item.label !== '')
@@ -634,7 +645,7 @@ const InputTypeConfig = ({
                   w={'200px'}
                 />
               )}
-              {inputType === FlowNodeInputTypeEnum.multipleSelect && (
+              {isMultipleSelectInput && (
                 <MultipleSelect<string>
                   flex={'1 0 0'}
                   size={'md'}
@@ -799,18 +810,13 @@ const InputTypeConfig = ({
           </>
         )}
 
-        {(inputType === FlowNodeInputTypeEnum.select ||
-          inputType == FlowNodeInputTypeEnum.multipleSelect) && (
+        {isOptionInput && (
           <>
-            <DndDrag<{ id: string; value: string }>
+            <DndDrag<{ id: string; label: string; value: string }>
               onDragEndCb={(list) => {
-                const newOrder = list.map((item) => item.id);
-                const newSelectEnums = newOrder
-                  .map((id) => mergedSelectEnums.find((item) => item.id === id))
-                  .filter(Boolean) as { id: string; value: string }[];
                 removeEnums();
-                newSelectEnums.forEach((item) =>
-                  appendEnums({ label: item.value, value: item.value })
+                list.forEach((item) =>
+                  appendEnums({ label: item.label || item.value, value: item.value || item.label })
                 );
 
                 // 防止最后一个元素被focus
@@ -820,7 +826,7 @@ const InputTypeConfig = ({
                   }
                 }, 0);
               }}
-              dataList={mergedSelectEnums}
+              dataList={optionDragList}
               renderClone={(provided, snapshot, rubric) => {
                 return (
                   <Box
@@ -833,7 +839,7 @@ const InputTypeConfig = ({
                     {...provided.draggableProps}
                     {...provided.dragHandleProps}
                   >
-                    {mergedSelectEnums[rubric.source.index].value}
+                    {optionDragList[rubric.source.index]?.value}
                   </Box>
                 );
               }}
@@ -846,7 +852,7 @@ const InputTypeConfig = ({
                   flexDirection={'column'}
                   gap={4}
                 >
-                  {mergedSelectEnums.map((item, i) => (
+                  {optionFields.map((item, i) => (
                     <Draggable key={i} draggableId={i.toString()} index={i}>
                       {(provided, snapshot) => (
                         <Box
@@ -915,10 +921,10 @@ const InputTypeConfig = ({
               variant={'whiteBase'}
               leftIcon={<MyIcon name={'common/addLight'} w={'16px'} />}
               onClick={() => {
-                if (isLastEnumEmpty) return;
+                if (isOptionLimitReached) return;
                 appendEnums({ label: '', value: '' });
               }}
-              isDisabled={isLastEnumEmpty}
+              isDisabled={isOptionLimitReached}
               fontWeight={'medium'}
               fontSize={'12px'}
               w={'24'}
