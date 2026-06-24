@@ -4,6 +4,8 @@ import type { SandboxRuntimeProfile } from './types';
 import { getSandboxSkillsRootPath, mergeStringRecord, mergeUnknownRecord } from './utils';
 import { parseImageSpec } from '@fastgpt-sdk/sandbox-adapter';
 
+const SEALOS_DEVBOX_HOME_DIRECTORY = '/home/devbox';
+
 /**
  * 构建 Sealos Devbox 的 FastGPT 运行态 profile。
  *
@@ -18,6 +20,7 @@ export function buildSealosRuntimeProfile(): SandboxRuntimeProfile {
     provider: 'sealosdevbox',
     defaultImage,
     workDirectory,
+    homeDirectory: SEALOS_DEVBOX_HOME_DIRECTORY,
     entrypoint: '',
     skillsRootPath: getSandboxSkillsRootPath(workDirectory),
     buildConfig(input = {}) {

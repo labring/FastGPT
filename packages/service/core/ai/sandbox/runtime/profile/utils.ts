@@ -10,6 +10,10 @@ export const joinSandboxPath = (basePath: string, path: string) =>
 export const getSandboxSkillsRootPath = (workDirectory: string) =>
   joinSandboxPath(workDirectory, 'skills');
 
+/** 内置 Skill 注入到 sandbox 用户主目录，不属于用户可编辑 workspace。 */
+export const getSandboxBuiltinSkillsRootPath = (homeDirectory: string) =>
+  joinSandboxPath(joinSandboxPath(homeDirectory, '.fastgpt'), 'skills');
+
 /**
  * 合并环境变量时让业务场景入参覆盖已有 createConfig。
  *

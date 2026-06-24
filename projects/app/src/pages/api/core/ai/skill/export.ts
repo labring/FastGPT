@@ -63,7 +63,8 @@ async function handler(req: ApiRequestProps, res: ApiResponseType<any>) {
   const runtimeProfile = getSandboxRuntimeProfile(providerConfig.provider);
   const zipBuffer = await packageSkillInSandbox({
     sandboxId: sandboxInfo.sandboxId,
-    workDirectory: runtimeProfile.workDirectory
+    workDirectory: runtimeProfile.workDirectory,
+    validationMode: 'basicZip'
   });
 
   const filename = `${skill.name}.zip`;

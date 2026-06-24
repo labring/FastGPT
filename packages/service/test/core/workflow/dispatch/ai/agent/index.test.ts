@@ -217,6 +217,8 @@ const createProps = () =>
   }) as any;
 
 const getEditWorkDirectory = () => getSandboxRuntimeProfile().workDirectory;
+const getBuiltinSkillsDirectory = () =>
+  `${getSandboxRuntimeProfile().homeDirectory}/.fastgpt/skills`;
 
 describe('dispatchRunAgent user context', () => {
   beforeEach(() => {
@@ -506,7 +508,7 @@ describe('dispatchRunAgent user context', () => {
     });
     expect(getAgentSkillInfosMock).toHaveBeenCalledWith({
       sandbox: expect.any(Object),
-      workDirectory: getEditWorkDirectory()
+      skillDirectories: [getEditWorkDirectory(), getBuiltinSkillsDirectory()]
     });
     expect(injectAgentSkillFilesToSandboxMock).not.toHaveBeenCalled();
 

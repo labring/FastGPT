@@ -12,6 +12,9 @@ node_modules/
 .pnpm-store/
 package.zip
 
+# FastGPT internal runtime files
+.fastgpt/
+
 # Python dependencies & cache
 __pycache__/
 *.pyc

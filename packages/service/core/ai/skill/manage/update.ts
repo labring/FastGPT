@@ -59,8 +59,8 @@ export async function updateCurrentVersion(
 /**
  * 将异步创建的 skill 标记为失败，并保留可见行用于删除和问题诊断。
  *
- * creationPayload 可能包含用户输入的生成要求。记录终态失败后，保留短错误文本
- * 已足够支撑 UI 展示，同时避免继续保存不必要的生成输入。
+ * 记录终态失败后，保留短错误文本已足够支撑 UI 展示。
+ * `$unset.creationPayload` 仅用于清理历史版本遗留的创建期临时字段。
  */
 export async function updateSkillCreationFailed({
   skillId,

@@ -44,6 +44,7 @@ describe('sandbox runtime profile', () => {
         tag: 'stable'
       },
       workDirectory: '/workspace',
+      homeDirectory: '/home/sandbox',
       entrypoint: '/home/sandbox/entrypoint.sh'
     });
     expect(runtimeProfile.skillsRootPath).toBe('/workspace/skills');
@@ -58,6 +59,7 @@ describe('sandbox runtime profile', () => {
     expect(runtimeProfile).toMatchObject({
       provider: 'sealosdevbox',
       workDirectory: '/home/devbox/workspace',
+      homeDirectory: '/home/devbox',
       entrypoint: ''
     });
     expect(runtimeProfile.skillsRootPath).toBe('/home/devbox/workspace/skills');

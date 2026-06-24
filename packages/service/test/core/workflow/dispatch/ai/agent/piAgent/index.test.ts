@@ -141,6 +141,8 @@ vi.mock('@fastgpt/service/core/dataset/utils', async (importOriginal) => {
 });
 
 const getEditWorkDirectory = () => getSandboxRuntimeProfile().workDirectory;
+const getBuiltinSkillsDirectory = () =>
+  `${getSandboxRuntimeProfile().homeDirectory}/.fastgpt/skills`;
 
 const createProps = () =>
   ({
@@ -613,7 +615,7 @@ describe('dispatchPiAgent user context', () => {
     });
     expect(getAgentSkillInfosMock).toHaveBeenCalledWith({
       sandbox: expect.any(Object),
-      workDirectory: getEditWorkDirectory()
+      skillDirectories: [getEditWorkDirectory(), getBuiltinSkillsDirectory()]
     });
     expect(injectAgentSkillFilesToSandboxMock).not.toHaveBeenCalled();
 

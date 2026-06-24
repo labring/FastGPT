@@ -5,8 +5,6 @@ import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import { useTranslation } from 'next-i18next';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar';
@@ -20,7 +18,6 @@ type FormType = {
   avatar: string;
   name: string;
   intro?: string;
-  requirement: string;
 };
 
 type Props = {
@@ -36,13 +33,11 @@ const CreateSkillModal = ({ parentId, onClose }: Props) => {
     defaultValues: {
       avatar: DEFAULT_SKILL_AVATAR,
       name: '',
-      intro: '',
-      requirement: t('skill:skill_requirement_default')
+      intro: ''
     }
   });
 
   const avatar = useWatch({ control, name: 'avatar' });
-  const requirement = useWatch({ control, name: 'requirement' });
 
   const { Component: AvatarUploader, handleFileSelectorOpen: handleAvatarSelectorOpen } =
     useUploadAvatar(getUploadAvatarPresignedUrl, {
@@ -52,19 +47,11 @@ const CreateSkillModal = ({ parentId, onClose }: Props) => {
     });
 
   const { runAsync: onCreate, loading: isCreating } = useRequest(
-    async ({ avatar, name, intro, requirement }: FormType) => {
-      const trimmedRequirement = requirement.trim();
-      const defaultRequirement = t('skill:skill_requirement_default').trim();
-      const resolvedRequirement =
-        trimmedRequirement && trimmedRequirement !== defaultRequirement
-          ? trimmedRequirement
-          : undefined;
-
+    async ({ avatar, name, intro }: FormType) => {
       return postCreateSkill({
         parentId: parentId ?? null,
         name: name.trim(),
         description: intro?.trim() || undefined,
-        requirements: resolvedRequirement,
         avatar: avatar || undefined
       });
     },
@@ -137,56 +124,6 @@ const CreateSkillModal = ({ parentId, onClose }: Props) => {
               h={'60px'}
               minH={'60px'}
               placeholder={t('skill:skill_intro_placeholder')}
-              resize={'vertical'}
-            />
-          </Box>
-
-          {/* Skill 需求 */}
-          <Box>
-            <Flex alignItems={'center'} mb={2}>
-              <FormLabel>
-                <Box as="span" color={'red.600'} mr={0.5}>
-                  *
-                </Box>
-                {t('skill:skill_requirement_label')}
-              </FormLabel>
-              <MyPopover
-                trigger={'hover'}
-                placement={'right-start'}
-                hasArrow={false}
-                p={0}
-                w={'320px'}
-                Trigger={
-                  <Box ml={1} display={'inline-flex'} alignItems={'center'} cursor={'default'}>
-                    <MyIcon name={'help' as any} w={'16px'} color={'myGray.500'} />
-                  </Box>
-                }
-              >
-                {() => (
-                  <Box p={'12px'}>
-                    <Box fontSize={'xs'} color={'#333'} mb={2}>
-                      {t('skill:skill_requirement_tooltip_title')}
-                    </Box>
-                    <Box
-                      fontSize={'xs'}
-                      color={'#333'}
-                      border={'1px solid #E8EBF0'}
-                      borderRadius={'4px'}
-                      p={'10px'}
-                      whiteSpace={'pre-wrap'}
-                      cursor={'default'}
-                    >
-                      {t('skill:skill_requirement_tooltip_example')}
-                    </Box>
-                  </Box>
-                )}
-              </MyPopover>
-            </Flex>
-            <Textarea
-              value={requirement}
-              onChange={(e) => setValue('requirement', e.target.value)}
-              h={'150px'}
-              minH={'150px'}
               resize={'vertical'}
             />
           </Box>

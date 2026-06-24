@@ -9,8 +9,6 @@ export enum SkillErrEnum {
   invalidDescription = 'invalidDescription',
   invalidCategory = 'invalidCategory',
   invalidConfig = 'invalidConfig',
-  missingModel = 'missingModel',
-  requirementsTooLong = 'requirementsTooLong',
   noStorage = 'noStorage',
   noFieldsToUpdate = 'noFieldsToUpdate',
   invalidArchiveFormat = 'invalidArchiveFormat',
@@ -53,16 +51,6 @@ const skillErrList = [
   {
     statusText: SkillErrEnum.invalidConfig,
     message: i18nT('common:code_error.skill_error.invalid_config'),
-    httpStatus: 400
-  },
-  {
-    statusText: SkillErrEnum.missingModel,
-    message: i18nT('common:code_error.skill_error.missing_model'),
-    httpStatus: 400
-  },
-  {
-    statusText: SkillErrEnum.requirementsTooLong,
-    message: i18nT('common:code_error.skill_error.requirements_too_long'),
     httpStatus: 400
   },
   {

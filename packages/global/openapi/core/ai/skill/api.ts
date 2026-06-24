@@ -63,7 +63,6 @@ export const CreateSkillBodySchema = z.object({
   parentId: NullableParentIdSchema,
   name: z.string().describe('技能名称'),
   description: z.string().optional().describe('技能描述'),
-  requirements: z.string().optional().describe('用于 AI 生成技能的需求描述'),
   category: z.array(AgentSkillCategorySchema).optional().describe('技能分类'),
   avatar: z.string().optional().describe('技能头像')
 });

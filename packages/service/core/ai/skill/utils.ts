@@ -124,8 +124,8 @@ export type BuildSkillMdParams = {
 /**
  * 生成一个最小可用的 SKILL.md。
  *
- * 该模板只包含 frontmatter，不生成正文说明，主要用于没有 AI 辅助生成需求的
- * 初次创建流程。后续用户可在 edit sandbox 中继续补充正文和其他文件。
+ * 该模板只包含 frontmatter，不生成正文说明。它只作为通用文本工具保留；
+ * 新建 Skill 的初始版本不再调用它生成默认技能文件。
  */
 export function buildSkillMd(params: BuildSkillMdParams): string {
   return generateFrontmatter(params.name, params.description);

@@ -9,6 +9,7 @@ import {
 import { OPEN_SANDBOX_DEFAULT_ROOT_PATH } from '@fastgpt-sdk/sandbox-adapter';
 
 const OPEN_SANDBOX_ENTRYPOINT = '/home/sandbox/entrypoint.sh';
+const OPEN_SANDBOX_HOME_DIRECTORY = '/home/sandbox';
 const OPEN_SANDBOX_DOCKER_LOCAL_NETWORK_POLICY = {
   defaultAction: 'allow' as const,
   egress: [
@@ -39,6 +40,7 @@ export function buildOpenSandboxRuntimeProfile(): SandboxRuntimeProfile {
     provider: 'opensandbox',
     defaultImage,
     workDirectory,
+    homeDirectory: OPEN_SANDBOX_HOME_DIRECTORY,
     entrypoint: OPEN_SANDBOX_ENTRYPOINT,
     skillsRootPath: getSandboxSkillsRootPath(workDirectory),
     buildConfig(input = {}) {

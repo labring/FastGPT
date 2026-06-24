@@ -13,17 +13,7 @@ import {
 } from '@fastgpt/global/support/user/team/constant';
 import type { AgentSkillSchemaType } from '@fastgpt/global/core/ai/skill/type';
 
-/**
- * Agent Skill 主表模型类型。
- *
- * creationPayload 只用于 AI 辅助创建阶段保存临时生成上下文，不属于发布后的
- * SKILL.md 运行时元数据，因此只在 service 层模型里补充。
- */
-export type MongoAgentSkillSchemaType = AgentSkillSchemaType & {
-  creationPayload?: {
-    requirements?: string;
-  };
-};
+export type MongoAgentSkillSchemaType = AgentSkillSchemaType;
 
 const { Schema } = connectionMongo;
 
@@ -104,9 +94,6 @@ const AgentSkillsSchema = new Schema({
   },
   creationError: {
     type: String
-  },
-  creationPayload: {
-    requirements: String
   }
 });
 

@@ -33,6 +33,7 @@ export type SandboxRuntimeProfile = {
   provider: SandboxProviderType;
   defaultImage?: SandboxImageConfigType;
   workDirectory: string;
+  homeDirectory: string;
   entrypoint: string;
   skillsRootPath: string;
   buildConfig: (input?: SandboxRuntimeCreateConfigInput) => SandboxCreateSpec | undefined;

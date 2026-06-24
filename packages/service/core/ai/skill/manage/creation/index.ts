@@ -9,10 +9,8 @@ import { Types } from '../../../../../common/mongo';
 import { mongoSessionRun } from '../../../../../common/mongo/sessionRun';
 import { MongoAgentSkills } from '../../model/schema';
 import { updateCurrentVersion, updateSkillCreationFailed } from '../update';
-import { buildSkillMd, extractSkillNameFromSkillMd } from '../../utils';
-import { generateSkillMd } from './skillMdGenerator';
 import {
-  createSkillPackage,
+  createBlankSkillWorkspacePackage,
   deleteSkillPackage,
   removeSkillPackageTTL,
   type SkillStorageInfo,
@@ -22,8 +20,6 @@ import { createVersion } from '../../version';
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { AgentSkillCreationStatusEnum } from '@fastgpt/global/core/ai/skill/constants';
-import { createSkillGenerationUsage } from './usage';
-import { getSkillCreationLLMModel } from '../../../model';
 
 const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS.CREATION);
 
@@ -31,9 +27,6 @@ export type AgentSkillCreateJobData = {
   skillId: string;
   teamId: string;
   tmbId: string;
-  name: string;
-  description: string;
-  requirements?: string;
 };
 
 const agentSkillCreateQueue = getQueue<AgentSkillCreateJobData>(QueueNames.agentSkillCreate, {
@@ -88,10 +81,7 @@ async function resumePendingSkillCreationJobs(): Promise<void> {
     {
       _id: 1,
       teamId: 1,
-      tmbId: 1,
-      name: 1,
-      description: 1,
-      creationPayload: 1
+      tmbId: 1
     }
   ).lean();
 
@@ -108,10 +98,7 @@ async function resumePendingSkillCreationJobs(): Promise<void> {
       return addAgentSkillCreateJob({
         skillId: skill._id.toString(),
         teamId: skill.teamId.toString(),
-        tmbId: skill.tmbId.toString(),
-        name: skill.name,
-        description: skill.description,
-        requirements: skill.creationPayload?.requirements
+        tmbId: skill.tmbId.toString()
       });
     })
   );
@@ -126,14 +113,14 @@ async function resumePendingSkillCreationJobs(): Promise<void> {
 }
 
 /**
- * 完成一个 pending skill 的初始包生成、上传和 v0 版本绑定。
+ * 完成一个 pending skill 的空白初始工作区上传和 v0 版本绑定。
  *
  * API 先创建可见 skill 行，保证详情页拥有稳定 skillId；worker 再执行较慢的
- * SKILL.md 生成、zip 打包、对象存储上传和版本初始化。失败会写回 skill 行，
- * 这样刷新页面或后续访问都能看到确定的终态，而不是依赖队列状态。
+ * workspace zip 打包、对象存储上传和版本初始化。真正的 `skills/<name>/SKILL.md`
+ * 由用户或内置辅助生成 Skill 在编辑沙盒里生成，避免新建时制造一个无需求来源的同名 Skill。
  */
 export async function completePendingSkillCreation(data: AgentSkillCreateJobData): Promise<void> {
-  const { skillId, teamId, tmbId, name, description } = data;
+  const { skillId, teamId, tmbId } = data;
   let uploadedStorageInfo: SkillStorageInfo | undefined;
 
   const skill = await MongoAgentSkills.findOne({
@@ -154,38 +141,7 @@ export async function completePendingSkillCreation(data: AgentSkillCreateJobData
   }
 
   try {
-    const requirements = data.requirements ?? skill.creationPayload?.requirements;
-    let skillMd: string;
-
-    if (requirements) {
-      // 有用户需求时走模型辅助生成；否则只创建一个最小 SKILL.md 模板。
-      const model = getSkillCreationLLMModel();
-      const [generatedSkillMd, usage] = await generateSkillMd({
-        teamId,
-        name,
-        description,
-        requirements: requirements.trim(),
-        model
-      });
-
-      skillMd = generatedSkillMd;
-
-      // 只有模型辅助生成才产生 token 用量；普通模板创建不计入模型消耗。
-      await createSkillGenerationUsage({
-        teamId,
-        tmbId,
-        model,
-        usage
-      });
-    } else {
-      skillMd = buildSkillMd({
-        name,
-        description
-      });
-    }
-
-    const packageRootName = extractSkillNameFromSkillMd(skillMd);
-    const zipBuffer = await createSkillPackage({ name: `skills/${packageRootName}`, skillMd });
+    const zipBuffer = await createBlankSkillWorkspacePackage();
     const versionId = new Types.ObjectId().toString();
 
     const storageInfo = await uploadSkillPackage({
@@ -207,7 +163,7 @@ export async function completePendingSkillCreation(data: AgentSkillCreateJobData
           versionId,
           skillId,
           tmbId,
-          versionName: 'Initial creation',
+          versionName: 'Initial blank workspace',
           storageKey: storageInfo.key
         },
         session

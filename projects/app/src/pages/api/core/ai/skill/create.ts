@@ -29,7 +29,6 @@ import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { getSkillCreationLLMModel } from '@fastgpt/service/core/ai/model';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS.CREATION);
@@ -39,14 +38,12 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
     parentId,
     name,
     description,
-    requirements,
     category = [],
     avatar
   } = parseApiInput({ req, bodySchema: CreateSkillBodySchema }).body;
 
   const requestedName = name.trim();
   const requestedDescription = description?.trim() || '';
-  const requestedRequirements = requirements?.trim() || undefined;
 
   // Authenticate user: if parentId exists, verify parent folder permission
   const { teamId, tmbId } = parentId
@@ -74,13 +71,6 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
   if (requestedDescription.length > 500) {
     return Promise.reject(SkillErrEnum.invalidDescription);
   }
-  if (requestedRequirements && !getSkillCreationLLMModel()) {
-    return Promise.reject(SkillErrEnum.missingModel);
-  }
-  if (requestedRequirements && requestedRequirements.length > 8000) {
-    return Promise.reject(SkillErrEnum.requirementsTooLong);
-  }
-
   const validCategories = Object.values(AgentSkillCategoryEnum) as string[];
   if (category.length > 0 && category.some((c) => !validCategories.includes(c))) {
     return Promise.reject(SkillErrEnum.invalidCategory);
@@ -98,8 +88,7 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
         avatar,
         teamId,
         tmbId,
-        creationStatus: AgentSkillCreationStatusEnum.creating,
-        creationPayload: requestedRequirements ? { requirements: requestedRequirements } : undefined
+        creationStatus: AgentSkillCreationStatusEnum.creating
       },
       session
     );
@@ -123,10 +112,7 @@ async function handler(req: ApiRequestProps<CreateSkillBody>): Promise<CreateSki
   const createJobData = {
     skillId,
     teamId,
-    tmbId,
-    name: requestedName,
-    description: requestedDescription,
-    requirements: requestedRequirements
+    tmbId
   };
 
   try {

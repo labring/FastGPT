@@ -25,7 +25,11 @@ vi.mock('@fastgpt/service/core/ai/skill/version/schema', () => ({
 
 vi.mock('@fastgpt/service/core/ai/skill/package', () => ({
   downloadSkillPackage: vi.fn(),
-  DEFAULT_GITIGNORE_CONTENT: '.venv/\nnode_modules/\n',
+  DEFAULT_GITIGNORE_CONTENT: '.venv/\nnode_modules/\n.fastgpt/\n',
+  validateDeployableSkillWorkspacePackage: vi.fn(async () => ({
+    valid: true,
+    files: []
+  })),
   validateZipStructure: vi.fn(async () => ({
     valid: true,
     hasSkillMd: true,
@@ -64,6 +68,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/runtime/profile', () => ({
   getSandboxRuntimeProfile: () => ({
     provider: 'opensandbox',
     workDirectory: '/workspace',
+    homeDirectory: '/home/sandbox',
     skillsRootPath: '/workspace/skills',
     entrypoint: 'sleep infinity',
     buildConfig: vi.fn()
@@ -116,6 +121,10 @@ vi.mock('@fastgpt/service/core/ai/skill/runtime', () => {
   };
 });
 
+vi.mock('@fastgpt/service/core/ai/skill/runtime/builtin', () => ({
+  syncBuiltinSkillsToSandbox: vi.fn()
+}));
+
 vi.mock('@fastgpt/service/common/logger', () => ({
   getLogger: () => mocks.logger,
   LogCategories: {
@@ -133,11 +142,16 @@ vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
 
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { MongoAgentSkillsVersion } from '@fastgpt/service/core/ai/skill/version/schema';
-import { downloadSkillPackage, validateZipStructure } from '@fastgpt/service/core/ai/skill/package';
+import {
+  downloadSkillPackage,
+  validateDeployableSkillWorkspacePackage,
+  validateZipStructure
+} from '@fastgpt/service/core/ai/skill/package';
 import {
   createEditDebugSandbox,
   packageSkillInSandbox
 } from '@fastgpt/service/core/ai/skill/edit/sandbox';
+import { syncBuiltinSkillsToSandbox } from '@fastgpt/service/core/ai/skill/runtime/builtin';
 import { getReadySandboxInfo } from '@fastgpt/service/core/ai/sandbox/provider/lifecycle';
 import { buildSandboxAdapter } from '@fastgpt/service/core/ai/sandbox/provider/adapter';
 import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/service/runtime';
@@ -212,10 +226,34 @@ describe('packageSkillInSandbox', () => {
 
     expect(sandbox.readFiles).toHaveBeenCalledWith(['/workspace/package.zip']);
     expect(sandbox.execute).toHaveBeenCalledWith("rm -f '/workspace/package.zip'");
+    expect(validateDeployableSkillWorkspacePackage).toHaveBeenCalledWith(Buffer.from(zipContent), {
+      maxUncompressedBytes: 1024 * 1024
+    });
+    expect(validateZipStructure).not.toHaveBeenCalled();
+    expect(mocks.disconnectSandbox).toHaveBeenCalledWith(sandbox);
+  });
+
+  it('uses basic zip validation when packaging for export', async () => {
+    const zipContent = new Uint8Array([1, 2, 3]);
+    const sandbox = createSandbox({
+      readFilesResult: [
+        {
+          path: '/workspace/package.zip',
+          content: zipContent,
+          error: null
+        }
+      ]
+    });
+    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
+
+    await expect(
+      packageSkillInSandbox({ sandboxId: 'sandbox-1', validationMode: 'basicZip' })
+    ).resolves.toEqual(Buffer.from(zipContent));
+
     expect(validateZipStructure).toHaveBeenCalledWith(Buffer.from(zipContent), {
       maxUncompressedBytes: 1024 * 1024
     });
-    expect(mocks.disconnectSandbox).toHaveBeenCalledWith(sandbox);
+    expect(validateDeployableSkillWorkspacePackage).not.toHaveBeenCalled();
   });
 
   it('throws when the final package zip exceeds the skill package limit', async () => {
@@ -235,6 +273,7 @@ describe('packageSkillInSandbox', () => {
       'Skill package size'
     );
 
+    expect(validateDeployableSkillWorkspacePackage).not.toHaveBeenCalled();
     expect(validateZipStructure).not.toHaveBeenCalled();
     expect(sandbox.execute).toHaveBeenCalledWith("rm -f '/workspace/package.zip'");
     expect(mocks.disconnectSandbox).toHaveBeenCalledWith(sandbox);
@@ -329,10 +368,12 @@ temp_data.csv
     );
 
     expect(sandbox.execute).toHaveBeenCalledWith(
-      expect.stringContaining("-name '.venv' -o -name 'node_modules'")
+      expect.stringContaining("-name '.venv' -o -name 'node_modules' -o -name '.fastgpt'")
     );
     expect(sandbox.execute).toHaveBeenCalledWith(expect.stringContaining("-x '.venv/*'"));
     expect(sandbox.execute).toHaveBeenCalledWith(expect.stringContaining("-x '*/.venv/*'"));
+    expect(sandbox.execute).toHaveBeenCalledWith(expect.stringContaining("-x '.fastgpt/*'"));
+    expect(sandbox.execute).toHaveBeenCalledWith(expect.stringContaining("-x '*/.fastgpt/*'"));
   });
 
   it('only reads root gitignore when packaging', async () => {
@@ -480,6 +521,11 @@ describe('createEditDebugSandbox', () => {
     ]);
     expect(provider.execute).toHaveBeenCalledWith("mkdir -p '/workspace/skills'");
     expect(provider.execute).toHaveBeenCalledWith(expect.stringContaining('unzip'));
+    expect(syncBuiltinSkillsToSandbox).toHaveBeenCalledWith({
+      sandbox: provider,
+      homeDirectory: '/home/sandbox',
+      includeNames: ['skill-creator']
+    });
     expect(mocks.disconnectSandbox).toHaveBeenCalledWith(provider);
   });
 

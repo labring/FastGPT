@@ -11,6 +11,7 @@ import {
   runAgentSkillVersionEntrypoints,
   withAgentSandboxInitLease
 } from '../../../../../../ai/skill/runtime/entrypoint';
+import { getBuiltinSkillsRootPath } from '../../../../../../ai/skill/runtime/builtin';
 import { getSandboxRuntimeProfile } from '../../../../../../ai/sandbox/runtime/profile';
 import { getSandboxClient, type SandboxClient } from '../../../../../../ai/sandbox/service/runtime';
 import { pickOutboundAxios } from '../../../../../../../common/api/axios';
@@ -47,6 +48,7 @@ type EnsureAgentSandboxRuntimeResult = {
 type SandboxRuntimeContext = {
   sandboxClient: SandboxClient;
   workDirectory: string;
+  homeDirectory: string;
 };
 
 type InitRuntimeSandboxParams = SandboxRuntimeContext & {
@@ -114,14 +116,16 @@ const injectInputFilesToSandbox = async (sandbox: ISandbox, files: AgentInputFil
 const initEditSkillSandbox = async ({
   sandboxClient,
   workDirectory,
+  homeDirectory,
   currentFiles
 }: InitEditSkillSandboxParams): Promise<Omit<EnsureAgentSandboxRuntimeResult, 'sandboxClient'>> => {
+  const builtinSkillsRootPath = getBuiltinSkillsRootPath(homeDirectory);
   const [, currentWorkingDirectory, skillInfos] = await Promise.all([
     injectInputFilesToSandbox(sandboxClient.provider, currentFiles),
     readSandboxPwd(sandboxClient),
     getAgentSkillInfos({
       sandbox: sandboxClient.provider,
-      workDirectory
+      skillDirectories: [workDirectory, builtinSkillsRootPath]
     })
   ]);
 
@@ -244,7 +248,8 @@ export async function ensureAgentSandboxRuntime({
   const runtimeProfile = getSandboxRuntimeProfile();
   const context = {
     sandboxClient,
-    workDirectory: runtimeProfile.workDirectory
+    workDirectory: runtimeProfile.workDirectory,
+    homeDirectory: runtimeProfile.homeDirectory
   };
 
   if (hasEditSkill) {

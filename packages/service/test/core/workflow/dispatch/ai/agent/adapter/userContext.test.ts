@@ -343,6 +343,19 @@ describe('buildAgentUserReminderInput', () => {
     expect(result).toContain('执行这个技能');
   });
 
+  it('adds sandbox file write boundary reminder when current working directory exists', () => {
+    const result = buildAgentUserReminderInput({
+      query: '帮我生成一个编写小说的 skill',
+      currentWorkingDirectory: '/workspace'
+    });
+
+    expect(result).toContain('## Sandbox 文件写入边界');
+    expect(result).toContain('用户 Skill 产物根目录：/workspace/skills');
+    expect(result).toContain('/workspace/skills/<skill-name>/SKILL.md');
+    expect(result).toContain('禁止写入：/workspace/<skill-name>/ 或 /workspace/SKILL.md');
+    expect(result).toContain('/home/sandbox/.fastgpt/skills/');
+  });
+
   it('escapes XML fields in skill metadata', () => {
     const result = buildAgentSkillsPrompt([
       {

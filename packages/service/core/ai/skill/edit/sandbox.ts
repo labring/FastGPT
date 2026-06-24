@@ -3,7 +3,12 @@ import type { ISandbox, SandboxCreateSpec } from '@fastgpt-sdk/sandbox-adapter';
 import { MongoAgentSkills } from '../model/schema';
 import { MongoAgentSkillsVersion } from '../version/schema';
 import { shellQuote, joinSandboxPath, parseGitignoreRules } from '../utils';
-import { downloadSkillPackage, DEFAULT_GITIGNORE_CONTENT, validateZipStructure } from '../package';
+import {
+  downloadSkillPackage,
+  DEFAULT_GITIGNORE_CONTENT,
+  validateDeployableSkillWorkspacePackage,
+  validateZipStructure
+} from '../package';
 import { EDIT_DEBUG_SANDBOX_CHAT_ID, getEditDebugSandboxId } from './config';
 import {
   getSandboxProviderConfig,
@@ -11,6 +16,7 @@ import {
   getSandboxAdapterConfig
 } from '../../sandbox/provider/config';
 import { getSandboxRuntimeProfile } from '../../sandbox/runtime/profile';
+import { syncBuiltinSkillsToSandbox } from '../runtime/builtin';
 import type { SandboxImageConfigType } from '@fastgpt/global/core/ai/skill/type';
 import { SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import {
@@ -252,6 +258,7 @@ export async function createEditDebugSandbox(
           storageKey: currentVersion.storageKey
         });
         await uploadAndDecompressPackage(sandbox, instance.sandboxId, packageBuffer);
+        await syncRuntimeBuiltinSkills(sandbox);
 
         await updateSandboxInstanceRecordBySandboxId({
           provider: providerConfig.provider,
@@ -279,6 +286,8 @@ export async function createEditDebugSandbox(
           status: { state: 'Running' }
         };
       }
+
+      await syncRuntimeBuiltinSkills(sandbox);
 
       await updateSandboxInstanceRecordBySandboxId({
         provider: providerConfig.provider,
@@ -359,6 +368,14 @@ export async function createEditDebugSandbox(
     }
   };
 
+  const syncRuntimeBuiltinSkills = async (sandbox: ISandbox) => {
+    await syncBuiltinSkillsToSandbox({
+      sandbox,
+      homeDirectory: runtimeProfile.homeDirectory,
+      includeNames: ['skill-creator']
+    });
+  };
+
   const cleanWorkspace = async (sandbox: ISandbox) => {
     // 已有实例重部署时先清空工作区；保留挂载点本身，避免 volume 根目录权限问题。
     const cleanCmd = `find ${shellQuote(runtimeProfile.workDirectory)} -mindepth 1 -delete || (rm -rf ${shellQuote(runtimeProfile.workDirectory)}/* && rm -rf ${shellQuote(runtimeProfile.workDirectory)}/.[!.]*)`;
@@ -401,6 +418,7 @@ export async function createEditDebugSandbox(
     await cleanWorkspace(sandbox);
 
     await uploadAndDecompressPackage(sandbox, instance.sandboxId, packageBuffer);
+    await syncRuntimeBuiltinSkills(sandbox);
 
     const existingMetadata = instance.metadata || {};
     const newMetadata = {
@@ -620,6 +638,8 @@ export async function createEditDebugSandbox(
       );
     }
 
+    await syncRuntimeBuiltinSkills(client.provider);
+
     const newSandboxDoc = await updateSandboxInstanceRecordBySandboxId({
       provider: providerConfig.provider,
       sandboxId: sessionId,
@@ -689,8 +709,9 @@ export async function createEditDebugSandbox(
 export async function packageSkillInSandbox(params: {
   sandboxId: string;
   workDirectory?: string;
+  validationMode?: 'basicZip' | 'deployableWorkspace';
 }): Promise<Buffer> {
-  const { sandboxId, workDirectory } = params;
+  const { sandboxId, workDirectory, validationMode = 'deployableWorkspace' } = params;
   const maxBytes = serviceEnv.AGENT_SANDBOX_SKILL_MAX_SIZE * 1024 * 1024;
 
   const providerConfig = getSandboxProviderConfig();
@@ -780,9 +801,14 @@ export async function packageSkillInSandbox(params: {
         );
       }
 
-      const validation = await validateZipStructure(zipBuffer, {
-        maxUncompressedBytes: maxBytes
-      });
+      const validation =
+        validationMode === 'deployableWorkspace'
+          ? await validateDeployableSkillWorkspacePackage(zipBuffer, {
+              maxUncompressedBytes: maxBytes
+            })
+          : await validateZipStructure(zipBuffer, {
+              maxUncompressedBytes: maxBytes
+            });
       if (!validation.valid) {
         throw new Error(validation.error || 'Invalid skill package structure');
       }

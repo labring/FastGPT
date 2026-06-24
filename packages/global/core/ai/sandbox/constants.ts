@@ -35,6 +35,5 @@ export const SANDBOX_SYSTEM_PROMPT = `## 沙盒能力
 - 使用 ${SANDBOX_WRITE_FILE_TOOL_NAME} 创建或覆盖文本文件
 - 使用 ${SANDBOX_EDIT_FILE_TOOL_NAME} 对已有文件做精确查找替换
 - 使用 ${SANDBOX_SEARCH_TOOL_NAME} 搜索沙盒内的文件路径
-- 生成的文件内容保存在当前工作区即可
-- 若需要把沙盒中生成的文件提供给用户下载，必须先使用 ${SANDBOX_GET_FILE_URL_TOOL_NAME} 获取临时访问链接
-- 最终回复中不得直接输出 sandbox:/、/workspace/、/home/devbox/workspace/、/home/user/ 等沙盒内部路径`;
+- 默认将生成文件保存在当前 sandbox 工作目录；若本轮 system-reminder 指定了更具体的产物目录或禁止目录，必须优先遵守
+- 若需要将生成的文件链接，可使用 ${SANDBOX_GET_FILE_URL_TOOL_NAME} 获取临时访问链接`;

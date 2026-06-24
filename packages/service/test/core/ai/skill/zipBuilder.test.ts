@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import JSZip from 'jszip';
 import {
+  createBlankSkillWorkspacePackage,
   createSkillPackage,
+  validateDeployableSkillWorkspacePackage,
   validateZipStructure,
   extractSkillPackage,
   standardizeSkillPackageBySkillMdName
@@ -112,6 +114,24 @@ ${largeMarkdown}`;
     });
   });
 
+  // ==================== createBlankSkillWorkspacePackage ====================
+  describe('createBlankSkillWorkspacePackage', () => {
+    it('should create an initial blank workspace with .gitignore and empty skills directory', async () => {
+      const zipBuffer = await createBlankSkillWorkspacePackage();
+
+      expect(Buffer.isBuffer(zipBuffer)).toBe(true);
+      expect(zipBuffer.length).toBeGreaterThan(0);
+
+      const zip = await JSZip.loadAsync(zipBuffer);
+      const files = Object.keys(zip.files);
+
+      expect(files).toContain('.gitignore');
+      expect(files).toContain('skills/');
+      expect(files).not.toContain('skills/SKILL.md');
+      expect(files.some((file) => /^skills\/[^/]+\/SKILL\.md$/i.test(file))).toBe(false);
+    });
+  });
+
   // ==================== validateZipStructure ====================
   describe('validateZipStructure', () => {
     it('should validate zip with SKILL.md at root', async () => {
@@ -169,6 +189,82 @@ ${largeMarkdown}`;
 
       const buffer = await zip.generateAsync({ type: 'nodebuffer' });
       const result = await validateZipStructure(buffer);
+
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('Unsafe ZIP entry path');
+    });
+  });
+
+  // ==================== validateDeployableSkillWorkspacePackage ====================
+  describe('validateDeployableSkillWorkspacePackage', () => {
+    it('should reject blank initial workspace during publish validation', async () => {
+      const buffer = await createBlankSkillWorkspacePackage();
+      const result = await validateDeployableSkillWorkspacePackage(buffer);
+
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('at least one first-level skill folder');
+    });
+
+    it('should accept a workspace with at least one first-level skill folder containing SKILL.md', async () => {
+      const zip = new JSZip();
+      zip.file('.gitignore', 'node_modules/\n');
+      zip.file(
+        'skills/seo-title-generator/SKILL.md',
+        '---\nname: seo-title-generator\ndescription: SEO title generator\n---\n'
+      );
+      zip.file('skills/seo-title-generator/examples/input.md', '# Example');
+
+      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+      const result = await validateDeployableSkillWorkspacePackage(buffer);
+
+      expect(result.valid).toBe(true);
+    });
+
+    it('should accept workspace entries prefixed by ./ from sandbox zip command', async () => {
+      const zip = new JSZip();
+      zip.file(
+        './skills/seo-title-generator/SKILL.md',
+        '---\nname: seo-title-generator\ndescription: SEO title generator\n---\n'
+      );
+
+      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+      const result = await validateDeployableSkillWorkspacePackage(buffer);
+
+      expect(result.valid).toBe(true);
+    });
+
+    it('should reject when any first-level skill folder misses SKILL.md', async () => {
+      const zip = new JSZip();
+      zip.folder('skills/valid-skill');
+      zip.file('skills/valid-skill/SKILL.md', '---\nname: valid-skill\n---\n');
+      zip.folder('skills/missing-entry');
+      zip.file('skills/missing-entry/README.md', '# Missing entry');
+
+      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+      const result = await validateDeployableSkillWorkspacePackage(buffer);
+
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('missing-entry');
+    });
+
+    it('should require uppercase SKILL.md for deployable skill folders', async () => {
+      const zip = new JSZip();
+      zip.file('skills/lowercase-entry/skill.md', '---\nname: lowercase-entry\n---\n');
+
+      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+      const result = await validateDeployableSkillWorkspacePackage(buffer);
+
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('lowercase-entry');
+    });
+
+    it('should reject unsafe zip entry paths before workspace structure validation', async () => {
+      const zip = new JSZip();
+      zip.file('skills/valid-skill/SKILL.md', '---\nname: valid-skill\n---\n');
+      zip.file('../escape.txt', 'escape');
+
+      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+      const result = await validateDeployableSkillWorkspacePackage(buffer);
 
       expect(result.valid).toBe(false);
       expect(result.error).toContain('Unsafe ZIP entry path');
