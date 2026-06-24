@@ -1,6 +1,6 @@
 {
   "name": "@fastgpt/app",
-  "version": "4.14.20",
+  "version": "4.14.26",
   "private": false,
   "browserslist": [
     "Chrome >= 80",
@@ -94,7 +94,7 @@
     "remark-math": "^6.0.0",
     "request-ip": "catalog:",
     "sass": "^1.58.3",
-    "undici": "^7.18.2",
+    "undici": "catalog:",
     "use-context-selector": "^1.4.4",
     "zod": "catalog:"
   },

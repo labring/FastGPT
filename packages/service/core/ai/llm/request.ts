@@ -259,6 +259,14 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
       ...(toolCalls?.length && { tool_calls: toolCalls })
     };
 
+    if (error) {
+      finish_reason = 'error';
+
+      if (throwError) {
+        throw error;
+      }
+    }
+
     // Usage count
     const inputTokens =
       usage?.prompt_tokens ||
@@ -282,14 +290,6 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
         error
       }
     });
-
-    if (error) {
-      finish_reason = 'error';
-
-      if (throwError) {
-        throw error;
-      }
-    }
 
     const getEmptyResponseTip = () => {
       if (userKey?.baseUrl) {

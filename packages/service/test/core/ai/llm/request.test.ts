@@ -67,12 +67,17 @@ vi.mock('@fastgpt/service/core/ai/utils', () => ({
   parseReasoningContent: vi.fn((content: string) => ['', content])
 }));
 
+vi.mock('@fastgpt/service/core/ai/record/controller', () => ({
+  saveLLMRequestRecord: vi.fn()
+}));
+
 // Import mocked modules
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import { getLLMModel } from '@fastgpt/service/core/ai/model';
 import { loadRequestMessages } from '@fastgpt/service/core/ai/llm/utils';
 import { countGptMessagesTokens } from '@fastgpt/service/common/string/tiktoken/index';
 import { parseLLMStreamResponse, parseReasoningContent } from '@fastgpt/service/core/ai/utils';
+import { saveLLMRequestRecord } from '@fastgpt/service/core/ai/record/controller';
 
 // Import the function to test
 import {
@@ -87,6 +92,7 @@ const mockLoadRequestMessages = vi.mocked(loadRequestMessages);
 const mockCountGptMessagesTokens = vi.mocked(countGptMessagesTokens);
 const mockParseLLMStreamResponse = vi.mocked(parseLLMStreamResponse);
 const mockParseReasoningContent = vi.mocked(parseReasoningContent);
+const mockSaveLLMRequestRecord = vi.mocked(saveLLMRequestRecord);
 
 // Helper to create mock model data
 const createMockModelData = (overrides?: Partial<LLMModelItemType>): LLMModelItemType => ({
@@ -1055,6 +1061,69 @@ describe('createLLMResponse', () => {
 
       expect(result.answerText).toBe('Hello');
       expect(result.error).toBeDefined();
+    });
+
+    it('should save stream error record only once when throwError=true', async () => {
+      const generator = (async function* () {
+        yield {
+          choices: [{ delta: { content: 'Hello' }, finish_reason: null }]
+        };
+        throw new Error('Stream interrupted');
+      })();
+
+      const mockStreamResponse = Object.assign(generator, {
+        controller: { abort: vi.fn() }
+      }) as unknown as StreamResponseType;
+
+      const mockAI = {
+        chat: {
+          completions: {
+            create: vi.fn().mockResolvedValue(mockStreamResponse)
+          }
+        }
+      };
+      mockGetAIApi.mockReturnValue(mockAI as any);
+
+      let capturedError: any = null;
+      mockParseLLMStreamResponse.mockReturnValue({
+        parsePart: ({ part }: { part: any }) => ({
+          reasoningContent: '',
+          content: part.choices?.[0]?.delta?.content || '',
+          responseContent: part.choices?.[0]?.delta?.content || '',
+          finishReason: part.choices?.[0]?.finish_reason || null
+        }),
+        getResponseData: () => ({
+          error: capturedError,
+          reasoningContent: '',
+          content: 'Hello',
+          finish_reason: null,
+          usage: { prompt_tokens: 5, completion_tokens: 1, total_tokens: 6 }
+        }),
+        updateFinishReason: vi.fn(),
+        updateError: (error: any) => {
+          capturedError = error;
+        }
+      });
+
+      await expect(
+        createLLMResponse({
+          throwError: true,
+          body: {
+            model: 'gpt-4',
+            messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' }],
+            stream: true
+          }
+        })
+      ).rejects.toThrow('Stream interrupted');
+
+      expect(mockSaveLLMRequestRecord).toHaveBeenCalledTimes(1);
+      expect(mockSaveLLMRequestRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          response: expect.objectContaining({
+            error: 'Stream interrupted'
+          })
+        })
+      );
     });
   });
 
