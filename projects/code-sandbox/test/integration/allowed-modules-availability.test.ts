@@ -183,7 +183,7 @@ const pythonModuleCases: Record<string, ModuleCase> = {
     code: `import pandas as pd\ndef main():\n    df = pd.DataFrame([{'team': 'a', 'score': 1}, {'team': 'a', 'score': 3}, {'team': 'b', 'score': 2}])\n    grouped = df.groupby('team')['score'].sum().to_dict()\n    return {'ok': int(grouped['a']) == 4 and int(grouped['b']) == 2}`
   },
   matplotlib: {
-    code: `import matplotlib\nmatplotlib.use('Agg')\ndef main():\n    return {'ok': bool(matplotlib.__version__) and matplotlib.get_backend().lower() == 'agg'}`,
+    code: `import matplotlib\nmatplotlib.use('Agg')\nimport matplotlib.pyplot as plt\ndef main():\n    fig, ax = plt.subplots(figsize=(2, 1))\n    ax.plot([1, 2, 3], [1, 4, 9])\n    axes_count = len(fig.axes)\n    plt.close(fig)\n    return {'ok': bool(matplotlib.__version__) and matplotlib.get_backend().lower() == 'agg' and axes_count == 1}`,
     timeoutMs: 30000
   }
 };

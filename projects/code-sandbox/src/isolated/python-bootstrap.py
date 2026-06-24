@@ -63,6 +63,7 @@ _timeout_stage = 0
 _audit_hook_installed = False
 _native_isolation_ready = False
 _task_tmpdir = None
+_matplotlib_tmpdir = None
 
 _FORBIDDEN_ATTRS = frozenset({
     '__class__', '__base__', '__bases__', '__mro__', '__subclasses__',
@@ -413,6 +414,20 @@ def _is_path_under_task_tmp(path):
         _path_guard = False
 
 
+def _is_called_from_matplotlib():
+    try:
+        frame = sys._getframe(1)
+        while frame:
+            filename = frame.f_code.co_filename or ''
+            normalized = filename.replace('\\', '/')
+            if '/matplotlib/' in normalized:
+                return True
+            frame = frame.f_back
+    except Exception:
+        return False
+    return False
+
+
 def _first_external_caller_filename():
     try:
         frame = sys._getframe(1)
@@ -505,16 +520,62 @@ def _install_os_guards():
         wrap_write_pair(name)
 
 
+def _install_matplotlib_tmpdir_patch():
+    if not _matplotlib_tmpdir:
+        return
+    try:
+        import tempfile as _tempfile
+    except Exception:
+        return
+
+    original_gettempdir = _tempfile.gettempdir
+    original_gettempdirb = getattr(_tempfile, 'gettempdirb', None)
+    original_candidate_tempdir_list = getattr(_tempfile, '_candidate_tempdir_list', None)
+
+    def matplotlib_gettempdir():
+        if _is_called_from_matplotlib():
+            return _matplotlib_tmpdir
+        return original_gettempdir()
+
+    _tempfile.gettempdir = matplotlib_gettempdir
+
+    if original_gettempdirb is not None:
+        def matplotlib_gettempdirb():
+            if _is_called_from_matplotlib():
+                return _os.fsencode(_matplotlib_tmpdir)
+            return original_gettempdirb()
+
+        _tempfile.gettempdirb = matplotlib_gettempdirb
+
+    if original_candidate_tempdir_list is not None:
+        def matplotlib_candidate_tempdir_list():
+            if _is_called_from_matplotlib():
+                return [_matplotlib_tmpdir]
+            return original_candidate_tempdir_list()
+
+        _tempfile._candidate_tempdir_list = matplotlib_candidate_tempdir_list
+
+
 def _init_task_tmpdir(path):
-    global _task_tmpdir
+    global _task_tmpdir, _matplotlib_tmpdir
     _task_tmpdir = path or _os.environ.get('FASTGPT_TASK_TMPDIR') or '/tmp'
     try:
         _os.makedirs(_task_tmpdir, mode=0o700, exist_ok=True)
         _os.environ['HOME'] = _task_tmpdir
         _os.environ['TMPDIR'] = _task_tmpdir
         mpl_config_dir = _os.path.join(_task_tmpdir, 'matplotlib')
+        mpl_cache_dir = _os.path.join(mpl_config_dir, 'cache')
+        mpl_xdg_config_dir = _os.path.join(mpl_config_dir, 'config')
+        mpl_tmp_dir = _os.path.join(mpl_config_dir, 'tmp')
         _os.makedirs(mpl_config_dir, mode=0o700, exist_ok=True)
+        _os.makedirs(mpl_cache_dir, mode=0o700, exist_ok=True)
+        _os.makedirs(mpl_xdg_config_dir, mode=0o700, exist_ok=True)
+        _os.makedirs(mpl_tmp_dir, mode=0o700, exist_ok=True)
         _os.environ['MPLCONFIGDIR'] = mpl_config_dir
+        _os.environ['XDG_CACHE_HOME'] = mpl_cache_dir
+        _os.environ['XDG_CONFIG_HOME'] = mpl_xdg_config_dir
+        _os.environ['MATPLOTLIB_TMPDIR'] = mpl_tmp_dir
+        _matplotlib_tmpdir = mpl_tmp_dir
     except Exception as e:
         raise RuntimeError(f"Failed to initialize task temporary directory: {e}")
 
@@ -713,6 +774,7 @@ def _run_task(msg):
         _init_native_isolation(msg.get('isolation') or {})
         _init_task_tmpdir(msg.get('taskTmpDir'))
         _install_os_guards()
+        _install_matplotlib_tmpdir_patch()
 
         signal.signal(signal.SIGALRM, _timeout_handler)
         signal.alarm(timeout_s)

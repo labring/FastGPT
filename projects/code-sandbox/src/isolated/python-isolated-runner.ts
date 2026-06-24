@@ -43,6 +43,10 @@ const BOOTSTRAP_SCRIPT = join(__dirname, 'python-bootstrap.py');
 const NATIVE_SANDBOX_LIBRARY = getBundledPythonNativeLibraryPath(__dirname);
 const RSS_POLL_INTERVAL = 500;
 const TMP_USAGE_POLL_INTERVAL = 500;
+const PYTHON_TASK_MATPLOTLIB_DIR = 'matplotlib';
+const PYTHON_TASK_MATPLOTLIB_CACHE_DIR = join(PYTHON_TASK_MATPLOTLIB_DIR, 'cache');
+const PYTHON_TASK_MATPLOTLIB_CONFIG_DIR = join(PYTHON_TASK_MATPLOTLIB_DIR, 'config');
+const PYTHON_TASK_MATPLOTLIB_TMP_DIR = join(PYTHON_TASK_MATPLOTLIB_DIR, 'tmp');
 const serverLogger = getLogger(LogCategories.MODULE.SANDBOX.SERVER);
 
 type RunningChild = {
@@ -178,7 +182,10 @@ export class PythonIsolatedRunner {
         HOME: taskTmpDir.sandboxPath,
         TMPDIR: taskTmpDir.sandboxPath,
         FASTGPT_TASK_TMPDIR: taskTmpDir.sandboxPath,
-        MPLCONFIGDIR: `${taskTmpDir.sandboxPath}/matplotlib`,
+        MPLCONFIGDIR: `${taskTmpDir.sandboxPath}/${PYTHON_TASK_MATPLOTLIB_DIR}`,
+        XDG_CACHE_HOME: `${taskTmpDir.sandboxPath}/${PYTHON_TASK_MATPLOTLIB_CACHE_DIR}`,
+        XDG_CONFIG_HOME: `${taskTmpDir.sandboxPath}/${PYTHON_TASK_MATPLOTLIB_CONFIG_DIR}`,
+        MATPLOTLIB_TMPDIR: `${taskTmpDir.sandboxPath}/${PYTHON_TASK_MATPLOTLIB_TMP_DIR}`,
         PYTHONDONTWRITEBYTECODE: '1',
         // numpy/OpenBLAS may create worker threads while importing native extensions.
         // Keep it single-threaded so seccomp does not need to allow clone/fork.
@@ -215,15 +222,25 @@ export class PythonIsolatedRunner {
     }
 
     const hostPath = mkdtempSync(join(hostTmpRoot, 'task-'));
-    const matplotlibHostPath = join(hostPath, 'matplotlib');
-    mkdirSync(matplotlibHostPath, { recursive: true });
+    const taskWritableDirs = [
+      hostPath,
+      join(hostPath, PYTHON_TASK_MATPLOTLIB_DIR),
+      join(hostPath, PYTHON_TASK_MATPLOTLIB_CACHE_DIR),
+      join(hostPath, PYTHON_TASK_MATPLOTLIB_CONFIG_DIR),
+      join(hostPath, PYTHON_TASK_MATPLOTLIB_TMP_DIR)
+    ];
+    for (const dir of taskWritableDirs) {
+      mkdirSync(dir, { recursive: true });
+    }
 
     if (nativeIsolation) {
-      chownSync(hostPath, PYTHON_SANDBOX_UID, PYTHON_SANDBOX_GID);
-      chownSync(matplotlibHostPath, PYTHON_SANDBOX_UID, PYTHON_SANDBOX_GID);
+      for (const dir of taskWritableDirs) {
+        chownSync(dir, PYTHON_SANDBOX_UID, PYTHON_SANDBOX_GID);
+      }
     }
-    chmodSync(hostPath, 0o700);
-    chmodSync(matplotlibHostPath, 0o700);
+    for (const dir of taskWritableDirs) {
+      chmodSync(dir, 0o700);
+    }
 
     return {
       hostPath,

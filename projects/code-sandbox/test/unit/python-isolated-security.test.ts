@@ -304,12 +304,17 @@ def main():
     const result = await runner.execute({
       code: `import matplotlib
 matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 def main():
+    fig, ax = plt.subplots(figsize=(2, 1))
+    ax.plot([1, 2, 3], [1, 4, 9])
+    plt.close(fig)
     return {
         'backend': matplotlib.get_backend(),
         'config': matplotlib.get_configdir(),
-        'cache': matplotlib.get_cachedir()
+        'cache': matplotlib.get_cachedir(),
+        'figure_axes': len(fig.axes)
     }`,
       variables: {}
     });
@@ -318,6 +323,7 @@ def main():
     expect(result.data?.codeReturn.backend.toLowerCase()).toContain('agg');
     expect(result.data?.codeReturn.config).toContain('/matplotlib');
     expect(result.data?.codeReturn.cache).toContain('/matplotlib');
+    expect(result.data?.codeReturn.figure_axes).toBe(1);
   });
 
   it('Linux native 隔离下 chroot /tmp 由 root 持有，仅 task 临时目录可写', async () => {
