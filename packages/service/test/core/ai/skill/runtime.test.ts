@@ -52,6 +52,7 @@ const makeWriteResults = (entries: Array<{ path: string; data: unknown }>) =>
 
 const LIST_VERSION_DIRS_COMMAND =
   "find '/workspace/projects' -mindepth 1 -maxdepth 1 -type d -print0 2>/dev/null";
+const WORKSPACE_SKILL_INFO_FIND_COMMAND = `find '/workspace' \\( -name 'node_modules' -o -name '.venv' -o -name 'venv' \\) -prune -o -iname "SKILL.md" -print0 2>/dev/null`;
 
 describe('getAgentSkillInfos', () => {
   it('scans every recursive skill.md from every selected version directory', async () => {
@@ -266,9 +267,7 @@ description: Zeta skill
       .filter((command) => command.includes('-iname "SKILL.md"'));
     expect(findSkillCommands.some((c) => c.includes(`'${skill1TargetDir}'`))).toBe(true);
     expect(findSkillCommands.some((c) => c.includes(`'${skill2TargetDir}'`))).toBe(true);
-    expect(findSkillCommands).not.toContain(
-      `find '/workspace' -iname "SKILL.md" -print0 2>/dev/null`
-    );
+    expect(findSkillCommands).not.toContain(WORKSPACE_SKILL_INFO_FIND_COMMAND);
     expect(result).toHaveLength(6);
     expect(result.map((item) => item.name)).toEqual(
       expect.arrayContaining(['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta'])
@@ -1027,9 +1026,7 @@ description: Write reports
       sandbox: sandbox as any
     });
 
-    expect(sandbox.execute).toHaveBeenCalledWith(
-      `find '/workspace' -iname "SKILL.md" -print0 2>/dev/null`
-    );
+    expect(sandbox.execute).toHaveBeenCalledWith(WORKSPACE_SKILL_INFO_FIND_COMMAND);
     expect(sandbox.readFiles).toHaveBeenCalledWith(['/workspace/Report/SKILL.md']);
     expect(skillInfos).toEqual([
       {

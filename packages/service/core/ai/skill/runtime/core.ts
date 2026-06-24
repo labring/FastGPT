@@ -12,6 +12,15 @@ export type { DeployedSkillInfo, DeployedSkillVersion } from './types';
 
 const logger = getLogger(LogCategories.MODULE.AI.AGENT);
 const parseCommandOutputNulls = (stdout: string) => stdout.split('\0').filter(Boolean);
+const SKILL_INFO_SCAN_PRUNE_DIRS = ['node_modules', '.venv', 'venv'];
+
+const buildSkillInfoFindCommand = (dir: string) => {
+  const pruneClause = SKILL_INFO_SCAN_PRUNE_DIRS.map((name) => `-name ${shellQuote(name)}`).join(
+    ' -o '
+  );
+
+  return `find ${shellQuote(dir)} \\( ${pruneClause} \\) -prune -o -iname "SKILL.md" -print0 2>/dev/null`;
+};
 
 type GetAgentSkillInfosParams = {
   workDirectory?: string;
@@ -35,9 +44,7 @@ export const getAgentSkillInfos = async ({
   // 并发 find 所有目录，过滤出错目录，避免级联报错
   const findResults = await Promise.all(
     scanDirectories.map(async (dir) => {
-      const { exitCode, stdout, stderr } = await sandbox.execute(
-        `find ${shellQuote(dir)} -iname "SKILL.md" -print0 2>/dev/null`
-      );
+      const { exitCode, stdout, stderr } = await sandbox.execute(buildSkillInfoFindCommand(dir));
       if (exitCode !== 0) {
         logger.warn('[Agent Skills] Find command failed for directory', { dir, stderr });
         return [];
