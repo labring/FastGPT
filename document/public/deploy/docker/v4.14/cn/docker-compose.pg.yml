@@ -155,7 +155,7 @@ services:
 
   fastgpt-app:
     container_name: fastgpt-app
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.14.22
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.14.26
     ports:
       - 3000:3000
     networks:
@@ -395,7 +395,7 @@ services:
 
   # AI Proxy
   fastgpt-aiproxy:
-    image: registry.cn-hangzhou.aliyuncs.com/labring/aiproxy:v0.5.8
+    image: registry.cn-hangzhou.aliyuncs.com/labring/aiproxy:v0.6.2
     container_name: fastgpt-aiproxy
     restart: unless-stopped
     depends_on:

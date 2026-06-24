@@ -9,12 +9,12 @@
 #   - fastgpt-mcp-server: 3003
 #   - fastgpt-plugin: 3004
 #   - fastgpt-volume-manager: 3005
-#   - fastgpt-agent-sandbox-proxy: 1006
 #   - opensandbox-server: 8090
 #   - fastgpt-aiproxy: 3010
 #   - fastgpt-aiproxy-pg: 5432
 # - 使用 pgvector 作为默认的向量库
-# - fastgpt-agent-sandbox-proxy 通过端口映射暴露给浏览器，内部回源宿主机服务
+# - 配置 opensandbox-config 的 network_mode 为 docker 网络，如 dev_fastgpt
+# - 配置 opensandbox-config 的 host_ip 为宿主机 LAN IP，如 192.168.1.100
 
 # plugin auth token
 x-plugin-auth-token: &x-plugin-auth-token 'token'
@@ -22,8 +22,6 @@ x-plugin-auth-token: &x-plugin-auth-token 'token'
 x-code-sandbox-token: &x-code-sandbox-token 'codesandbox'
 # volume manager auth token
 x-volume-manager-auth-token: &x-volume-manager-auth-token 'vmtoken'
-# agent sandbox proxy secret, must match AGENT_SANDBOX_PROXY_SECRET in local FastGPT app
-x-agent-sandbox-proxy-secret: &x-agent-sandbox-proxy-secret 'default_fastgpt_agent_sandbox_proxy_secret'
 # aiproxy token
 x-aiproxy-token: &x-aiproxy-token 'token'
 # 数据库连接相关配置
@@ -52,8 +50,8 @@ x-log-config: &x-log-config
 # 容器运行环境可能会自动注入 HTTP_PROXY/HTTPS_PROXY。
 # 明确绕过 compose 内部服务，避免内部请求被代理劫持。
 x-no-proxy-config: &x-no-proxy-config
-  NO_PROXY: localhost,127.0.0.1,::1,fastgpt,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-agent-sandbox-proxy,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-minio,fastgpt-mongo,fastgpt-redis,fastgpt-pg,fastgpt-mcp-server,opensandbox-server,fastgpt-volume-manager,host.docker.internal,*.orb.internal,*.orb.local
-  no_proxy: localhost,127.0.0.1,::1,fastgpt,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-agent-sandbox-proxy,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-minio,fastgpt-mongo,fastgpt-redis,fastgpt-pg,fastgpt-mcp-server,opensandbox-server,fastgpt-volume-manager,host.docker.internal,*.orb.internal,*.orb.local
+  NO_PROXY: localhost,127.0.0.1,::1,fastgpt,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-minio,fastgpt-mongo,fastgpt-redis,fastgpt-pg,fastgpt-mcp-server,opensandbox-server,fastgpt-volume-manager,host.docker.internal,*.orb.internal,*.orb.local
+  no_proxy: localhost,127.0.0.1,::1,fastgpt,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-minio,fastgpt-mongo,fastgpt-redis,fastgpt-pg,fastgpt-mcp-server,opensandbox-server,fastgpt-volume-manager,host.docker.internal,*.orb.internal,*.orb.local
 
 services:
   # Vector DB
@@ -235,24 +233,6 @@ services:
       interval: 30s
       timeout: 20s
       retries: 3
-  fastgpt-agent-sandbox-proxy:
-    container_name: fastgpt-agent-sandbox-proxy
-    image: ghcr.io/labring/fastgpt-agent-sandbox-proxy:v0.2.0-beta2
-    ports:
-      - 1006:1006
-    networks:
-      - fastgpt
-    restart: always
-    extra_hosts:
-      - 'host.docker.internal:host-gateway'
-    environment:
-      <<: [*x-no-proxy-config]
-      PORT: 1006
-      # dev compose 不包含 FastGPT 主站，默认回调宿主机本地启动的 app。
-      FASTGPT_APP_URL: http://host.docker.internal:3000
-      # 主站返回 localhost upstream endpoint 时，proxy 容器需要改写为宿主机别名再连接。
-      AGENT_SANDBOX_PROXY_REWRITE_HOST: host.docker.internal
-      AGENT_SANDBOX_PROXY_SECRET: *x-agent-sandbox-proxy-secret
   fastgpt-mcp-server:
     container_name: fastgpt-mcp-server
     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server:v4.15.0-beta1
@@ -318,7 +298,7 @@ services:
       retries: 5
   # Pre-pull only: not started by `docker compose up` (uses profile `prepull`).
   opensandbox-agent-sandbox-image:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.2.0-beta2
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.2.0
     profiles:
       - prepull
   opensandbox-execd-image:
