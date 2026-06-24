@@ -2,7 +2,6 @@ import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { countGptMessagesTokens, countPromptTokens } from '../../../../common/string/tiktoken';
 import {
   APPROX_CHARS_PER_TOKEN,
-  CHECKPOINT_OUTPUT_MIN_TOKENS,
   CHECKPOINT_OUTPUT_TARGET_RATIO,
   CONTEXT_CHECKPOINT_END_TAG,
   CONTEXT_CHECKPOINT_START_TAG,
@@ -14,7 +13,8 @@ import {
   TOOL_RESPONSE_DIRECT_RETURN_CONTEXT_RATIO,
   TOOL_RESPONSE_LIGHT_PROCESS_CONTEXT_RATIO,
   TRUNCATED_MARKER,
-  calculateCompressionThresholds
+  calculateCompressionThresholds,
+  getCompressionTokenLimit
 } from './constants';
 import type { CreateLLMResponseProps } from '../request';
 import { createLLMResponse } from '../request';
@@ -482,15 +482,21 @@ const createContextCheckpointMessage = (
 });
 
 const getRequestCheckpointOutputTargetTokens = (maxContext: number) =>
-  Math.max(CHECKPOINT_OUTPUT_MIN_TOKENS, Math.floor(maxContext * CHECKPOINT_OUTPUT_TARGET_RATIO));
+  getCompressionTokenLimit(maxContext, CHECKPOINT_OUTPUT_TARGET_RATIO);
 
 const getToolResponseCompressionLimits = ({ maxContext }: { maxContext: number }) => {
-  const directReturnTokenLimit = Math.floor(maxContext * TOOL_RESPONSE_DIRECT_RETURN_CONTEXT_RATIO);
+  const directReturnTokenLimit = getCompressionTokenLimit(
+    maxContext,
+    TOOL_RESPONSE_DIRECT_RETURN_CONTEXT_RATIO
+  );
 
   return {
     // 原始结果不超过 20% context 时不处理；LLM 压缩目标也默认回到这个预算。
     directReturnTokenLimit,
-    lightProcessTokenLimit: Math.floor(maxContext * TOOL_RESPONSE_LIGHT_PROCESS_CONTEXT_RATIO),
+    lightProcessTokenLimit: getCompressionTokenLimit(
+      maxContext,
+      TOOL_RESPONSE_LIGHT_PROCESS_CONTEXT_RATIO
+    ),
     llmCompressedTokenLimit: directReturnTokenLimit
   };
 };
@@ -572,8 +578,13 @@ export const compressRequestMessages = async ({
   }
 
   const checkpointTargetTokenLimit = getRequestCheckpointOutputTargetTokens(model.maxContext);
-  const checkpointCompletionTokenLimit = Math.floor(
-    model.maxContext * REQUEST_CHECKPOINT_COMPLETION_ACCEPT_CONTEXT_RATIO
+  const checkpointCompletionTokenLimit = getCompressionTokenLimit(
+    model.maxContext,
+    REQUEST_CHECKPOINT_COMPLETION_ACCEPT_CONTEXT_RATIO
+  );
+  const checkpointWarnTokenLimit = getCompressionTokenLimit(
+    model.maxContext,
+    CHECKPOINT_OUTPUT_TARGET_RATIO
   );
 
   logger.info('Message compression started');
@@ -672,12 +683,12 @@ export const compressRequestMessages = async ({
       });
     }
 
-    if (compressedTokens > thresholds.threshold) {
-      logger.warn('Message compression result still exceeds threshold', {
+    if (compressedTokens > checkpointWarnTokenLimit) {
+      logger.warn('Message compression result still exceeds target', {
         reason: 'compressed_messages_over_threshold',
         originalTokens: messageTokens,
         compressedTokens,
-        threshold: thresholds.threshold,
+        compressedTokenLimit: checkpointWarnTokenLimit,
         maxContext: model.maxContext,
         requestId,
         outputTokens: usage.outputTokens

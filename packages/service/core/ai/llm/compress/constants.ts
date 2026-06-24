@@ -35,10 +35,16 @@ export const FINAL_HEAD_RATIO = 0.6;
 export const CHECKPOINT_OUTPUT_TARGET_RATIO = 0.2;
 
 /**
- * request messages 调用 LLM 生成 checkpoint 时的最小软目标 token 数。
- * 用于避免小上下文模型的 checkpoint output_budget 过小。
+ * 压缩相关比例阈值的最小 token 数。
+ * 用于避免小上下文模型按比例计算出的压缩目标过小；实际值不会超过模型 maxContext。
  */
-export const CHECKPOINT_OUTPUT_MIN_TOKENS = 4096;
+export const COMPRESSION_MIN_TOKEN_LIMIT = 4096;
+
+/**
+ * request messages 调用 LLM 生成 checkpoint 时的最小软目标 token 数。
+ * 保留旧常量名，避免调用方理解成本；实际值与通用压缩最小值一致。
+ */
+export const CHECKPOINT_OUTPUT_MIN_TOKENS = COMPRESSION_MIN_TOKEN_LIMIT;
 
 /**
  * request checkpoint LLM 输出 token 可接受比例。
@@ -118,6 +124,15 @@ export const CHUNK_SIZE_RATIO = 0.5;
 export const DATASET_SEARCH_SELECTION_RATIO = 0.2;
 
 /**
+ * 计算压缩场景中的比例 token 阈值。
+ *
+ * 压缩阈值按比例计算后至少保留 4096 token，避免小上下文模型过早压缩或 output_budget 过小；
+ * 但阈值不会超过模型 maxContext，避免压缩目标反向大于模型可承载上下文。
+ */
+export const getCompressionTokenLimit = (maxContext: number, ratio: number) =>
+  Math.min(maxContext, Math.max(COMPRESSION_MIN_TOKEN_LIMIT, Math.floor(maxContext * ratio)));
+
+/**
  * 计算各场景的压缩阈值
  * @param maxContext - 模型的最大上下文长度
  * @returns 各场景的具体 token 数阈值
@@ -130,12 +145,12 @@ export const calculateCompressionThresholds = (maxContext: number) => {
     },
     // 对话历史压缩阈值
     messages: {
-      threshold: Math.floor(maxContext * MESSAGE_THRESHOLD_RATIO)
+      threshold: getCompressionTokenLimit(maxContext, MESSAGE_THRESHOLD_RATIO)
     },
 
     // 单个 tool response 兼容阈值；新链路直接使用 0.2/0.5 分层常量。
     singleTool: {
-      threshold: Math.floor(maxContext * TOOL_RESPONSE_LIGHT_PROCESS_CONTEXT_RATIO)
+      threshold: getCompressionTokenLimit(maxContext, TOOL_RESPONSE_LIGHT_PROCESS_CONTEXT_RATIO)
     },
 
     // 文件读取结果压缩阈值

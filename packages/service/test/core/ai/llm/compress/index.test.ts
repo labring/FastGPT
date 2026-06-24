@@ -13,12 +13,14 @@ const {
   createLLMResponseMock,
   countGptMessagesTokensMock,
   countPromptTokensMock,
-  formatModelChars2PointsMock
+  formatModelChars2PointsMock,
+  loggerWarnMock
 } = vi.hoisted(() => ({
   createLLMResponseMock: vi.fn(),
   countGptMessagesTokensMock: vi.fn(),
   countPromptTokensMock: vi.fn(),
-  formatModelChars2PointsMock: vi.fn()
+  formatModelChars2PointsMock: vi.fn(),
+  loggerWarnMock: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
@@ -39,6 +41,22 @@ vi.mock('@fastgpt/service/support/wallet/usage/utils', () => ({
   formatModelChars2Points: formatModelChars2PointsMock
 }));
 
+vi.mock('@fastgpt/service/common/logger', () => ({
+  LogCategories: {
+    MODULE: {
+      AI: {
+        LLM_COMPRESS: 'ai:llm_compress'
+      }
+    }
+  },
+  getLogger: () => ({
+    debug: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    warn: loggerWarnMock
+  })
+}));
+
 import {
   compressLargeContent,
   compressRequestMessages,
@@ -57,6 +75,16 @@ const model: LLMModelItemType = {
   functionCall: true,
   toolChoice: true,
   reasoning: false
+};
+
+const largeContextModel: LLMModelItemType = {
+  ...model,
+  maxContext: 32000
+};
+
+const toolCompressionModel: LLMModelItemType = {
+  ...model,
+  maxContext: 12000
 };
 
 const createMessages = (): ChatCompletionMessageParam[] => [
@@ -193,7 +221,7 @@ describe('compressRequestMessages', () => {
     expect(userPrompt).toContain('<histories>');
     expect(userPrompt).toContain('recent user 3');
     expect(userPrompt).toContain('<output_budget>');
-    expect(userPrompt).toContain('Target maximum output tokens: 4096');
+    expect(userPrompt).toContain('Target maximum output tokens: 4000');
     expect(compressPrompt).not.toContain('最近消息预览');
     expect(createLLMResponseMock.mock.calls[0][0].body.max_tokens).toBeUndefined();
   });
@@ -288,8 +316,8 @@ describe('compressRequestMessages', () => {
     expect(createLLMResponseMock.mock.calls[0][0].body.max_tokens).toBeUndefined();
   });
 
-  it('should keep the LLM checkpoint when final checkpoint tokens still exceed threshold', async () => {
-    countGptMessagesTokensMock.mockResolvedValueOnce(5000).mockResolvedValueOnce(4500);
+  it('should keep the LLM checkpoint when final checkpoint tokens still exceed 20 percent context target', async () => {
+    countGptMessagesTokensMock.mockResolvedValueOnce(30000).mockResolvedValueOnce(7000);
     createLLMResponseMock.mockResolvedValue({
       answerText: '<context_checkpoint>\nLLM checkpoint summary\n</context_checkpoint>',
       usage: {
@@ -303,17 +331,27 @@ describe('compressRequestMessages', () => {
     const messages = createMessages();
     const result = await compressRequestMessages({
       messages,
-      model
+      model: largeContextModel
     });
 
-    expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
+    expect(createLLMResponseMock).toHaveBeenCalled();
     expect(result.messages).not.toBe(messages);
-    expect(result.messageTokens).toBe(4500);
+    expect(result.messageTokens).toBe(7000);
     expect(result.contextCheckpoint).toBe(
       '<context_checkpoint>\nLLM checkpoint summary\n</context_checkpoint>'
     );
     expect(result.contextCheckpoint).not.toContain('## Source History Excerpts');
     expect(countGptMessagesTokensMock).toHaveBeenCalledTimes(2);
+    expect(loggerWarnMock).toHaveBeenCalledWith(
+      'Message compression result still exceeds target',
+      expect.objectContaining({
+        reason: 'compressed_messages_over_threshold',
+        compressedTokens: 7000,
+        compressedTokenLimit: 6400,
+        maxContext: 32000,
+        requestId: 'req_llm_checkpoint_only'
+      })
+    );
   });
 
   it('should keep original messages when below compression threshold', async () => {
@@ -799,7 +837,7 @@ describe('compressRequestMessages', () => {
     ];
     countGptMessagesTokensMock.mockImplementation(
       async (input: { messages: ChatCompletionMessageParam[] }) =>
-        input.messages === messages ? 4000 : 100
+        input.messages === messages ? 4001 : 100
     );
 
     const result = await compressRequestMessages({
@@ -1405,9 +1443,9 @@ describe('compressToolResponse', () => {
 
   it('should minify JSON tool responses without LLM when minified content fits the budget', async () => {
     countPromptTokensMock
-      .mockResolvedValueOnce(1200)
-      .mockResolvedValueOnce(700)
-      .mockResolvedValueOnce(700);
+      .mockResolvedValueOnce(5000)
+      .mockResolvedValueOnce(3000)
+      .mockResolvedValueOnce(3000);
     const response = JSON.stringify(
       {
         source: 'tool_call_log',
@@ -1469,7 +1507,7 @@ describe('compressToolResponse', () => {
 
     const result = await compressToolResponse({
       response,
-      model
+      model: toolCompressionModel
     });
 
     expect(createLLMResponseMock).not.toHaveBeenCalled();
@@ -1486,8 +1524,8 @@ describe('compressToolResponse', () => {
 
   it('should summarize larger JSON tool responses structurally without LLM', async () => {
     countPromptTokensMock
-      .mockResolvedValueOnce(1200)
-      .mockResolvedValueOnce(900)
+      .mockResolvedValueOnce(5000)
+      .mockResolvedValueOnce(4500)
       .mockResolvedValueOnce(180)
       .mockResolvedValueOnce(180);
     const response = JSON.stringify({
@@ -1524,7 +1562,7 @@ describe('compressToolResponse', () => {
 
     const result = await compressToolResponse({
       response,
-      model
+      model: toolCompressionModel
     });
 
     expect(createLLMResponseMock).not.toHaveBeenCalled();
@@ -1542,12 +1580,12 @@ describe('compressToolResponse', () => {
   });
 
   it('should lightly process medium tool responses without LLM compression', async () => {
-    countPromptTokensMock.mockResolvedValueOnce(1200).mockResolvedValueOnce(1000);
+    countPromptTokensMock.mockResolvedValueOnce(5000).mockResolvedValueOnce(4500);
 
     const result = await compressToolResponse({
       response:
         'tool response https://example.com/a/b/c with image ![chart](https://example.com/chart.png)\n\n\nend',
-      model,
+      model: toolCompressionModel,
       reasoningEffort: 'high'
     });
 
@@ -1559,13 +1597,13 @@ describe('compressToolResponse', () => {
 
   it('should compress large tool responses with 20 percent context as target', async () => {
     countPromptTokensMock
-      .mockResolvedValueOnce(2400)
-      .mockResolvedValueOnce(2200)
-      .mockResolvedValueOnce(2200)
-      .mockResolvedValueOnce(2200)
-      .mockResolvedValueOnce(2200)
+      .mockResolvedValueOnce(7000)
+      .mockResolvedValueOnce(6500)
+      .mockResolvedValueOnce(6500)
+      .mockResolvedValueOnce(6500)
+      .mockResolvedValueOnce(6500)
       .mockResolvedValueOnce(50)
-      .mockResolvedValue(2400);
+      .mockResolvedValue(4200);
     createLLMResponseMock.mockResolvedValue({
       answerText: 'compressed tool response',
       usage: {
@@ -1577,17 +1615,29 @@ describe('compressToolResponse', () => {
 
     const result = await compressToolResponse({
       response: 'tool response',
-      model,
+      model: toolCompressionModel,
       reasoningEffort: 'high'
     });
 
-    expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
+    expect(createLLMResponseMock).toHaveBeenCalled();
     expect(result.compressed).toBe('compressed tool response');
     expect(result.usage?.moduleName).toBe('account_usage:tool_response_compress');
     expect(result.requestIds).toEqual(['req_tool']);
     expect(createLLMResponseMock.mock.calls[0][0].body.reasoning_effort).toBe('high');
     expect(createLLMResponseMock.mock.calls[0][0].body.messages[1].content).toContain(
-      'Target maximum output tokens: 520'
+      'Target maximum output tokens: 2662'
+    );
+    expect(loggerWarnMock).toHaveBeenCalledWith(
+      'Tool response compression result still exceeds target',
+      expect.objectContaining({
+        reason: 'compressed_tool_response_over_target',
+        originalTokens: 7000,
+        lightProcessedTokens: 6500,
+        compressedTokens: 4200,
+        compressedTokenLimit: 4096,
+        maxContext: 12000,
+        requestIds: ['req_tool']
+      })
     );
   });
 });
