@@ -1379,6 +1379,8 @@
   "core.dataset.error.unAuthDatasetFile": "无权操作该文件",
   "core.dataset.error.unCreateCollection": "无权操作该数据",
   "core.dataset.error.unLinkCollection": "不是网络链接集合",
+  "core.dataset.error.vectorModelIdInvalid": "向量模型ID无效",
+  "core.dataset.error.vectorModelSame": "新向量模型与当前模型相同",
   "core.dataset.import.Data process params": "数据处理参数",
   "core.dataset.import.Down load csv template": "点击下载 CSV 模板",
   "core.dataset.import.Preview chunks": "预览分段（最多 15 段）",
