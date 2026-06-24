@@ -395,6 +395,9 @@ export async function uploadSynonymFile({
         $set: {
           synonymProcessing: 'standardize',
           synonymFileIds: [String(result._id)]
+        },
+        $unset: {
+          indexingCompleteTime: ''
         }
       }
     );

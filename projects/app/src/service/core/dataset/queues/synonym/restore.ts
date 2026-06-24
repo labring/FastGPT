@@ -105,7 +105,8 @@ export const processSynonymRestore = async ({
             { _id: dataId },
             {
               $set: {
-                indexes: newIndexes
+                indexes: newIndexes,
+                indexingCompleteTime: new Date()
               }
             },
             { session }

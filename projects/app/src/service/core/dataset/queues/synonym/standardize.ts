@@ -297,7 +297,8 @@ export const processSynonymStandardize = async ({
             {
               $set: {
                 // q/a 不修改,保持原文
-                indexes: newIndexes
+                indexes: newIndexes,
+                indexingCompleteTime: new Date()
               }
             },
             { session }
@@ -427,6 +428,13 @@ export const processSynonymStandardize = async ({
               { upsert: true, session }
             );
           }
+
+          // 标记 data 已完成同义词处理，计入 processedCount
+          await MongoDatasetData.updateOne(
+            { _id: dataId },
+            { $set: { indexingCompleteTime: new Date() } },
+            { session }
+          );
 
           await MongoDatasetTraining.deleteOne({ _id: trainingData._id }, { session });
         });
