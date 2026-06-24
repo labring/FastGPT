@@ -174,45 +174,116 @@ export const markdownProcess = async ({
 };
 
 export const matchHtmlImg = (html: string) => {
-  const base64Regex = /src="data:([^;]+);base64,([A-Za-z0-9+/=]+)"/g;
   const imageList: ImageType[] = [];
+  const parts: string[] = [];
+  let lastIndex = 0;
+  const prefix = 'src="data:';
+  const base64Marker = ';base64,';
 
-  const text = html.replace(base64Regex, (_match, mime, base64Data) => {
+  let searchFrom = 0;
+  while (searchFrom < html.length) {
+    const startIdx = html.indexOf(prefix, searchFrom);
+    if (startIdx === -1) break;
+
+    const mimeStart = startIdx + prefix.length;
+    const mimeEnd = html.indexOf(base64Marker, mimeStart);
+    if (mimeEnd === -1) {
+      searchFrom = mimeStart;
+      continue;
+    }
+
+    const base64Start = mimeEnd + base64Marker.length;
+    const base64End = html.indexOf('"', base64Start);
+    if (base64End === -1) {
+      searchFrom = mimeStart;
+      continue;
+    }
+
+    const mime = html.slice(mimeStart, mimeEnd);
+    const base64Data = html.slice(base64Start, base64End);
     const uuid = `IMAGE_${getNanoid(12)}_IMAGE`;
     imageList.push({ uuid, base64: base64Data, mime });
-    return `src="${uuid}"`;
-  });
 
-  return { text, imageList };
+    parts.push(html.slice(lastIndex, startIdx));
+    parts.push(`src="${uuid}"`);
+    lastIndex = base64End + 1;
+    searchFrom = lastIndex;
+  }
+
+  parts.push(html.slice(lastIndex));
+
+  return { text: parts.join(''), imageList };
 };
 
 export const matchMdImg = (text: string) => {
-  // 优化后的正则:
-  // 1. 使用 [\s\S]*? 惰性匹配 alt 文本，允许其中包含 ] 和换行（如图表描述、公式等复杂文本）
-  // 2. 使用 [\s\S]*? 惰性匹配 base64 数据，配合 \) 锚定结束，支持换行包装的 base64
-  // 3. 明确匹配 data:image/ 前缀，确保 alt 结束位置唯一确定
-  const base64Regex = /!\[([\s\S]*?)\]\((data:image\/([^;]+);base64,([\sA-Za-z0-9+/=]+?))\)/g;
   const imageList: ImageType[] = [];
+  const parts: string[] = [];
+  let lastIndex = 0;
+  const imgStart = '![';
+  const base64Marker = ';base64,';
 
-  text = text.replace(base64Regex, (_match, altText, _fullDataUrl, mime, base64Data) => {
-    const uuid = `IMAGE_${getNanoid(12)}_IMAGE`;
-    // 移除 base64 数据中的空白字符（文档解析器可能对长 base64 数据进行换行包装）
+  let searchFrom = 0;
+  while (searchFrom < text.length) {
+    const startIdx = text.indexOf(imgStart, searchFrom);
+    if (startIdx === -1) break;
+
+    const altStart = startIdx + 2;
+    // Find the first '](' after '![' to locate the end of alt text
+    const bracketIdx = text.indexOf('](', altStart);
+    if (bracketIdx === -1) {
+      searchFrom = altStart;
+      continue;
+    }
+
+    const urlStart = bracketIdx + 2;
+    const dataPrefix = 'data:image/';
+    if (!text.startsWith(dataPrefix, urlStart)) {
+      // Regular image URL, not base64 data URI. Skip it.
+      searchFrom = urlStart;
+      continue;
+    }
+
+    const altText = text.slice(altStart, bracketIdx);
+
+    const mimeStart = urlStart + dataPrefix.length;
+    const mimeEnd = text.indexOf(base64Marker, mimeStart);
+    if (mimeEnd === -1) {
+      searchFrom = urlStart;
+      continue;
+    }
+
+    const mime = text.slice(mimeStart, mimeEnd);
+
+    const base64Start = mimeEnd + base64Marker.length;
+    const base64End = text.indexOf(')', base64Start);
+    if (base64End === -1) {
+      searchFrom = urlStart;
+      continue;
+    }
+
+    const base64Data = text.slice(base64Start, base64End);
     const cleanBase64 = base64Data.replace(/\s/g, '');
 
+    const uuid = `IMAGE_${getNanoid(12)}_IMAGE`;
     imageList.push({
       uuid,
       base64: cleanBase64,
       mime: `image/${mime}`
     });
 
-    // 转义 alt 文本中未转义的 [，防止 CommonMark 解析时产生未闭合的括号嵌套。
-    // 若 alt 文本中有 [foo\] 这样的结构，[ 打开嵌套但 \] 不关闭，导致图片解析失败。
+    // Escape unescaped [ in alt text to prevent CommonMark bracket nesting issues
     const sanitizedAlt = altText.replace(/(?<!\\)\[/g, '\\[');
-    return `![${sanitizedAlt}](${uuid})`;
-  });
+
+    parts.push(text.slice(lastIndex, startIdx));
+    parts.push(`![${sanitizedAlt}](${uuid})`);
+    lastIndex = base64End + 1;
+    searchFrom = lastIndex;
+  }
+
+  parts.push(text.slice(lastIndex));
 
   return {
-    text,
+    text: parts.join(''),
     imageList
   };
 };
