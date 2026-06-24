@@ -1,5 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { statSync } from 'fs';
 import { PythonIsolatedRunner } from '../../src/isolated/python-isolated-runner';
+import { shouldEnablePythonNativeIsolation } from '../../src/isolated/python-isolation-config';
 
 let runner: PythonIsolatedRunner;
 
@@ -191,6 +193,100 @@ def main():
     });
     expect(result.success).toBe(false);
     expect(result.message).toContain('not allowed');
+  });
+
+  it('阻止标准库或三方库间接写入共享 /tmp，只允许当前任务临时目录', async () => {
+    const result = await runner.execute({
+      code: `import pandas as pd
+def main():
+    pd.DataFrame({'a': [1]}).to_csv(task_tmpdir + '/allowed.csv', index=False)
+    try:
+        pd.DataFrame({'a': [2]}).to_csv('/tmp/shared.csv', index=False)
+        shared_tmp_blocked = False
+    except Exception:
+        shared_tmp_blocked = True
+    return {'tmp': task_tmpdir, 'shared_tmp_blocked': shared_tmp_blocked}`,
+      variables: {}
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data?.codeReturn.tmp).toMatch(/task-/);
+    expect(result.data?.codeReturn.shared_tmp_blocked).toBe(true);
+  });
+
+  it('阻止通过允许标准库间接拿到 os 后读取宿主文件系统', async () => {
+    const result = await runner.execute({
+      code: `import platform
+def main():
+    os_ref = platform.os
+    read_blocked = False
+    list_blocked = False
+    stat_blocked = False
+    try:
+        fd = os_ref.open('/etc/passwd', os_ref.O_RDONLY)
+        os_ref.close(fd)
+    except Exception:
+        read_blocked = True
+    try:
+        os_ref.listdir('/')
+    except Exception:
+        list_blocked = True
+    try:
+        os_ref.stat('/etc/passwd')
+    except Exception:
+        stat_blocked = True
+    return {
+        'read_blocked': read_blocked,
+        'list_blocked': list_blocked,
+        'stat_blocked': stat_blocked
+    }`,
+      variables: {}
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data?.codeReturn).toEqual({
+      read_blocked: true,
+      list_blocked: true,
+      stat_blocked: true
+    });
+  });
+
+  it('允许通过标准库 os 引用访问当前任务临时目录', async () => {
+    const result = await runner.execute({
+      code: `import platform
+def main():
+    os_ref = platform.os
+    path = task_tmpdir + '/allowed.txt'
+    fd = os_ref.open(path, os_ref.O_CREAT | os_ref.O_WRONLY, 0o600)
+    os_ref.write(fd, b'ok')
+    os_ref.close(fd)
+    fd = os_ref.open(path, os_ref.O_RDONLY)
+    data = os_ref.read(fd, 16).decode()
+    os_ref.close(fd)
+    return {'data': data, 'items': os_ref.listdir(task_tmpdir)}`,
+      variables: {}
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data?.codeReturn.data).toBe('ok');
+    expect(result.data?.codeReturn.items).toContain('allowed.txt');
+  });
+
+  it('Linux native 隔离下 chroot /tmp 由 root 持有，仅 task 临时目录可写', async () => {
+    if (!shouldEnablePythonNativeIsolation()) {
+      return;
+    }
+
+    const result = await runner.execute({
+      code: `def main():
+    return {'tmp': task_tmpdir}`,
+      variables: {}
+    });
+
+    expect(result.success).toBe(true);
+    const tmpStat = statSync('/tmp/fastgpt-python-sandbox/tmp');
+    expect(tmpStat.uid).toBe(0);
+    expect(tmpStat.mode & 0o777).toBe(0o755);
   });
 
   it('变量值包含 Python 代码不会被执行', async () => {

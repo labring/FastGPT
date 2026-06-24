@@ -333,6 +333,32 @@ describe('runToolCall compression node responses', () => {
     );
   });
 
+  it('ignores context compression callbacks without usage', async () => {
+    runAgentLoopMock.mockImplementation(async (options) => {
+      options.onAfterCompressContext({
+        requestIds: [],
+        seconds: 0.1
+      });
+
+      return createLoopResult();
+    });
+
+    const nodeResponseWriter = createWriter();
+    const result = await runToolCall(createProps({ nodeResponseWriter }));
+    await Promise.resolve();
+
+    expect(result.requestIds).toEqual(['req_main']);
+    expect(nodeResponseWriter.recordWithParent).not.toHaveBeenCalled();
+    expect(result.toolTotalPoints).toBe(0);
+    expect(result.runtimeNodeResponseSummary).toEqual(
+      expect.objectContaining({
+        responseIds: [],
+        finishedNodeIds: [],
+        runningTime: 0
+      })
+    );
+  });
+
   it('records only the compression child after onAfterToolCall when the tool workflow wrote details', async () => {
     const toolResponseCompressUsage = {
       moduleName: 'account_usage:tool_response_compress',

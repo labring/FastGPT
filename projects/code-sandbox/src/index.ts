@@ -112,8 +112,18 @@ const poolReady = Promise.all([jsPool.init(), pythonRunner.init()])
 /** 健康检查（不需要认证） */
 app.get('/health', (c) => {
   const jsStats = jsPool.stats;
-  const isReady = jsStats.total > 0;
-  return c.json({ status: isReady ? 'ok' : 'degraded' }, isReady ? 200 : 503);
+  const pythonStats = pythonRunner.stats;
+  const isReady = jsStats.total > 0 && pythonStats.ready;
+  return c.json(
+    {
+      status: isReady ? 'ok' : 'degraded',
+      pools: {
+        js: jsStats,
+        python: pythonStats
+      }
+    },
+    isReady ? 200 : 503
+  );
 });
 
 // 增加日志中间件，打印请求信息

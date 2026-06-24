@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import http from 'http';
+import { existsSync } from 'fs';
 import { PythonIsolatedRunner } from '../../src/isolated/python-isolated-runner';
+import {
+  PYTHON_SANDBOX_ROOT,
+  shouldEnablePythonNativeIsolation
+} from '../../src/isolated/python-isolation-config';
 
 describe('PythonIsolatedRunner 兼容性', () => {
   let runner: PythonIsolatedRunner | undefined;
@@ -39,6 +44,16 @@ describe('PythonIsolatedRunner 兼容性', () => {
     expect(result.success).toBe(true);
     expect(result.data?.codeReturn).toEqual({ ok: true, none: null });
     expect(result.data?.log).toContain('debug');
+  });
+
+  it('预热阶段没有 ready 子进程时 init fail closed', async () => {
+    const r = new PythonIsolatedRunner(1);
+    (r as any).replenishWarmChildren = async () => undefined;
+    runner = r;
+
+    await expect(r.init()).rejects.toThrow(/warmup failed/);
+    expect(r.stats.ready).toBe(false);
+    expect(r.stats.total).toBe(0);
   });
 
   it('支持 main(variables) 和 main(a, b) 旧写法', async () => {
@@ -103,6 +118,27 @@ def main():
     expect(second.success).toBe(true);
     expect(second.data?.codeReturn.json).toBe('{"a": 1}');
     expect(second.data?.codeReturn.has_leaked).toBe(false);
+  });
+
+  it('每个任务使用独立临时目录，结束后由父进程清理', async () => {
+    const r = await createRunner(1);
+
+    const result = await r.execute({
+      code: `import pandas as pd
+def main():
+    path = task_tmpdir + '/allowed.csv'
+    pd.DataFrame({'a': [1]}).to_csv(path, index=False)
+    return {"tmp": task_tmpdir}`,
+      variables: {}
+    });
+
+    expect(result.success).toBe(true);
+    const taskTmp = result.data?.codeReturn.tmp;
+    expect(taskTmp).toMatch(/task-/);
+    const hostTaskTmp = shouldEnablePythonNativeIsolation()
+      ? `${PYTHON_SANDBOX_ROOT}${taskTmp}`
+      : taskTmp;
+    expect(existsSync(hostTaskTmp)).toBe(false);
   });
 
   it('预热进程执行一次后销毁，不归还给后续任务复用', async () => {

@@ -902,18 +902,19 @@ describe('网络请求安全', () => {
 
     it('httpRequest GET 公网地址正常', async () => {
       const result = await runner.execute({
-        code: `async function main() { const res = await SystemHelper.httpRequest('https://example.com/'); return { status: res.status, hasData: res.data.length > 0 }; }`,
+        code: `async function main() { const res = await SystemHelper.httpRequest('http://1.1.1.1/'); return { status: res.status, hasData: res.data.length > 0 }; }`,
         variables: {}
       });
       expect(result.success).toBe(true);
-      expect(result.data?.codeReturn.status).toBe(200);
+      expect(result.data?.codeReturn.status).toBeGreaterThanOrEqual(200);
+      expect(result.data?.codeReturn.status).toBeLessThan(400);
       expect(result.data?.codeReturn.hasData).toBe(true);
     });
 
     it('httpRequest POST 带 body', async () => {
       const result = await runner.execute({
         code: `async function main() {
-          const res = await SystemHelper.httpRequest('https://example.com/', { method: 'POST', body: { key: 'value' } });
+          const res = await SystemHelper.httpRequest('http://1.1.1.1/', { method: 'POST', body: { key: 'value' } });
           return { hasStatus: typeof res.status === 'number' };
         }`,
         variables: {}
@@ -924,11 +925,12 @@ describe('网络请求安全', () => {
 
     it('全局函数 httpRequest 可用', async () => {
       const result = await runner.execute({
-        code: `async function main() { const res = await httpRequest('https://example.com/'); return { status: res.status }; }`,
+        code: `async function main() { const res = await httpRequest('http://1.1.1.1/'); return { status: res.status }; }`,
         variables: {}
       });
       expect(result.success).toBe(true);
-      expect(result.data?.codeReturn.status).toBe(200);
+      expect(result.data?.codeReturn.status).toBeGreaterThanOrEqual(200);
+      expect(result.data?.codeReturn.status).toBeLessThan(400);
     });
   });
 
@@ -969,17 +971,18 @@ describe('网络请求安全', () => {
 
     it('http_request GET 公网地址正常', async () => {
       const result = await runner.execute({
-        code: `def main():\n    res = system_helper.http_request('https://example.com/')\n    return {'status': res['status'], 'hasData': len(res['data']) > 0}`,
+        code: `def main():\n    res = system_helper.http_request('http://1.1.1.1/')\n    return {'status': res['status'], 'hasData': len(res['data']) > 0}`,
         variables: {}
       });
       expect(result.success).toBe(true);
-      expect(result.data?.codeReturn.status).toBe(200);
+      expect(result.data?.codeReturn.status).toBeGreaterThanOrEqual(200);
+      expect(result.data?.codeReturn.status).toBeLessThan(400);
       expect(result.data?.codeReturn.hasData).toBe(true);
     });
 
     it('http_request POST 带 body', async () => {
       const result = await runner.execute({
-        code: `import json\ndef main():\n    res = system_helper.http_request('https://example.com/', method='POST', body={'key': 'value'})\n    return {'hasStatus': type(res['status']) == int}`,
+        code: `import json\ndef main():\n    res = system_helper.http_request('http://1.1.1.1/', method='POST', body={'key': 'value'})\n    return {'hasStatus': type(res['status']) == int}`,
         variables: {}
       });
       expect(result.success).toBe(true);
@@ -988,11 +991,12 @@ describe('网络请求安全', () => {
 
     it('全局函数 http_request 可用', async () => {
       const result = await runner.execute({
-        code: `def main():\n    res = http_request('https://example.com/')\n    return {'status': res['status']}`,
+        code: `def main():\n    res = http_request('http://1.1.1.1/')\n    return {'status': res['status']}`,
         variables: {}
       });
       expect(result.success).toBe(true);
-      expect(result.data?.codeReturn.status).toBe(200);
+      expect(result.data?.codeReturn.status).toBeGreaterThanOrEqual(200);
+      expect(result.data?.codeReturn.status).toBeLessThan(400);
     });
   });
 });

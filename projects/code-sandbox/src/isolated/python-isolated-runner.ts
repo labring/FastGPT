@@ -1,7 +1,18 @@
 import { spawn, type ChildProcess } from 'child_process';
 import { createInterface } from 'readline';
-import { dirname, join } from 'path';
+import { basename, dirname, join } from 'path';
 import { fileURLToPath } from 'url';
+import {
+  chmodSync,
+  chownSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  rmSync,
+  statSync
+} from 'fs';
+import { tmpdir } from 'os';
 import { env, RUNTIME_MEMORY_OVERHEAD_MB } from '../env';
 import type { ExecuteOptions, ExecuteResult } from '../types';
 import { Semaphore } from '../utils/semaphore';
@@ -31,6 +42,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const BOOTSTRAP_SCRIPT = join(__dirname, 'python-bootstrap.py');
 const NATIVE_SANDBOX_LIBRARY = getBundledPythonNativeLibraryPath(__dirname);
 const RSS_POLL_INTERVAL = 500;
+const TMP_USAGE_POLL_INTERVAL = 500;
 const serverLogger = getLogger(LogCategories.MODULE.SANDBOX.SERVER);
 
 type RunningChild = {
@@ -38,6 +50,10 @@ type RunningChild = {
   stderrBuf: string[];
   stdoutRl: ReturnType<typeof createInterface>;
   stderrRl: ReturnType<typeof createInterface>;
+  taskTmpDir?: {
+    hostPath: string;
+    sandboxPath: string;
+  };
   lineHandler?: (line: string) => void;
   closeHandler?: (code: number | null, signal: NodeJS.Signals | null) => void;
   errorHandler?: (err: Error) => void;
@@ -66,7 +82,19 @@ export class PythonIsolatedRunner {
   async init(): Promise<void> {
     assertPythonNativeIsolationReady(NATIVE_SANDBOX_LIBRARY);
     this.ready = true;
-    await this.replenishWarmChildren(true);
+
+    try {
+      await this.replenishWarmChildren(true);
+      if (this.idleChildren.size < this.warmIdleTarget) {
+        throw new Error(
+          `Python isolated runner warmup failed: ready=${this.idleChildren.size}/${this.warmIdleTarget}`
+        );
+      }
+    } catch (err) {
+      await this.shutdown();
+      throw err;
+    }
+
     serverLogger.info(
       `PythonIsolatedRunner ready: maxConcurrency=${this.maxConcurrency}, ` +
         `warmIdleTarget=${this.warmIdleTarget}, nativeIsolation=${shouldEnablePythonNativeIsolation()}`
@@ -90,8 +118,11 @@ export class PythonIsolatedRunner {
       total: this.running.size + this.idleChildren.size + this.warmingChildren.size,
       idle: this.idleChildren.size,
       busy: this.running.size,
+      warming: this.warmingChildren.size,
       queued: semaphoreStats.queued,
-      poolSize: semaphoreStats.max
+      poolSize: semaphoreStats.max,
+      ready:
+        this.ready && this.idleChildren.size + this.running.size + this.warmingChildren.size > 0
     };
   }
 
@@ -135,6 +166,7 @@ export class PythonIsolatedRunner {
   }
 
   private createChild(): RunningChild {
+    const taskTmpDir = this.createTaskTmpDir();
     const proc = spawn('python3', ['-u', BOOTSTRAP_SCRIPT], {
       stdio: ['pipe', 'pipe', 'pipe'],
       detached: PROCESS_GROUP_SUPPORTED,
@@ -143,9 +175,10 @@ export class PythonIsolatedRunner {
         PATH: process.env.PATH || '/usr/local/bin:/usr/bin:/bin',
         CHECK_INTERNAL_IP: String(env.CHECK_INTERNAL_IP),
         PYTHONISOLATED: '1',
-        HOME: '/tmp',
-        TMPDIR: '/tmp',
-        MPLCONFIGDIR: '/tmp/matplotlib',
+        HOME: taskTmpDir.sandboxPath,
+        TMPDIR: taskTmpDir.sandboxPath,
+        FASTGPT_TASK_TMPDIR: taskTmpDir.sandboxPath,
+        MPLCONFIGDIR: `${taskTmpDir.sandboxPath}/matplotlib`,
         PYTHONDONTWRITEBYTECODE: '1',
         // numpy/OpenBLAS may create worker threads while importing native extensions.
         // Keep it single-threaded so seccomp does not need to allow clone/fork.
@@ -157,7 +190,7 @@ export class PythonIsolatedRunner {
     });
     const stdoutRl = createInterface({ input: proc.stdout!, terminal: false });
     const stderrRl = createInterface({ input: proc.stderr!, terminal: false });
-    const child: RunningChild = { proc, stderrBuf: [], stdoutRl, stderrRl };
+    const child: RunningChild = { proc, stderrBuf: [], stdoutRl, stderrRl, taskTmpDir };
 
     stderrRl.on('line', (line: string) => {
       child.stderrBuf.push(line);
@@ -165,6 +198,37 @@ export class PythonIsolatedRunner {
     });
 
     return child;
+  }
+
+  /**
+   * 为 one-shot Python 子进程创建独立临时目录。
+   *
+   * native chroot 模式下目录位于 sandbox root 的 /tmp 内，并 chown 给降权后的 sandbox
+   * 用户；非 Linux 本地开发模式下使用系统临时目录。父进程在 child cleanup 时递归删除，
+   * 覆盖超时/内存超限等 Python finally 无法执行的路径。
+   */
+  private createTaskTmpDir() {
+    const nativeIsolation = shouldEnablePythonNativeIsolation();
+    const hostTmpRoot = nativeIsolation ? join(PYTHON_SANDBOX_ROOT, 'tmp') : tmpdir();
+    if (!existsSync(hostTmpRoot)) {
+      mkdirSync(hostTmpRoot, { recursive: true });
+    }
+
+    const hostPath = mkdtempSync(join(hostTmpRoot, 'task-'));
+    const matplotlibHostPath = join(hostPath, 'matplotlib');
+    mkdirSync(matplotlibHostPath, { recursive: true });
+
+    if (nativeIsolation) {
+      chownSync(hostPath, PYTHON_SANDBOX_UID, PYTHON_SANDBOX_GID);
+      chownSync(matplotlibHostPath, PYTHON_SANDBOX_UID, PYTHON_SANDBOX_GID);
+    }
+    chmodSync(hostPath, 0o700);
+    chmodSync(matplotlibHostPath, 0o700);
+
+    return {
+      hostPath,
+      sandboxPath: nativeIsolation ? `/tmp/${basename(hostPath)}` : hostPath
+    };
   }
 
   private cleanupChild(child: RunningChild) {
@@ -177,6 +241,13 @@ export class PythonIsolatedRunner {
     if (child.closeHandler) child.proc.off('close', child.closeHandler);
     if (child.errorHandler) child.proc.off('error', child.errorHandler);
     child.proc.removeAllListeners();
+    if (child.taskTmpDir) {
+      try {
+        rmSync(child.taskTmpDir.hostPath, { recursive: true, force: true });
+      } catch (err) {
+        serverLogger.warn(`Failed to remove python task tmp dir: ${getErrText(err)}`);
+      }
+    }
     this.running.delete(child);
     this.idleChildren.delete(child);
     this.warmingChildren.delete(child);
@@ -307,6 +378,7 @@ export class PythonIsolatedRunner {
       let settled = false;
       let outputBytes = 0;
       let rssTimer: ReturnType<typeof setInterval> | undefined;
+      let tmpUsageTimer: ReturnType<typeof setInterval> | undefined;
       const httpState: SandboxHttpState = { requestCount: 0 };
       const httpLimits = {
         maxRequests: env.SANDBOX_REQUEST_MAX_COUNT,
@@ -318,6 +390,7 @@ export class PythonIsolatedRunner {
       const cleanup = () => {
         clearTimeout(timer);
         if (rssTimer) clearInterval(rssTimer);
+        if (tmpUsageTimer) clearInterval(tmpUsageTimer);
         this.cleanupChild(child);
       };
 
@@ -419,6 +492,25 @@ export class PythonIsolatedRunner {
         }, RSS_POLL_INTERVAL);
       }
 
+      if (env.SANDBOX_MAX_TMP_MB > 0 && child.taskTmpDir) {
+        const limitBytes = env.SANDBOX_MAX_TMP_MB * 1024 * 1024;
+        tmpUsageTimer = setInterval(() => {
+          if (settled || !child.taskTmpDir) return;
+          const size = this.getDirectorySize(child.taskTmpDir.hostPath);
+          if (size !== null && size > limitBytes) {
+            settle(
+              {
+                success: false,
+                message: `Temporary file limit exceeded (size: ${Math.ceil(
+                  size / 1024 / 1024
+                )}MB, limit: ${env.SANDBOX_MAX_TMP_MB}MB)`
+              },
+              { kill: true }
+            );
+          }
+        }, TMP_USAGE_POLL_INTERVAL);
+      }
+
       const payload = {
         code: task.code,
         variables: task.variables,
@@ -431,6 +523,7 @@ export class PythonIsolatedRunner {
           maxRequestBodySize: env.SANDBOX_REQUEST_MAX_BODY_MB * 1024 * 1024,
           maxOutputSize: env.SANDBOX_MAX_OUTPUT_MB * 1024 * 1024
         },
+        taskTmpDir: child.taskTmpDir?.sandboxPath,
         isolation: {
           ...this.buildIsolationPayload()
         }
@@ -479,6 +572,29 @@ export class PythonIsolatedRunner {
       writeResponse({ success: true, payload: data });
     } catch (err) {
       writeResponse({ success: false, message: getErrText(err, 'HTTP request failed') });
+    }
+  }
+
+  private getDirectorySize(root: string): number | null {
+    let total = 0;
+    const stack = [root];
+
+    try {
+      while (stack.length > 0) {
+        const current = stack.pop()!;
+        const stat = statSync(current);
+        if (stat.isDirectory()) {
+          for (const entry of readdirSync(current)) {
+            stack.push(join(current, entry));
+          }
+        } else {
+          total += stat.size;
+        }
+      }
+      return total;
+    } catch (err) {
+      serverLogger.warn(`Failed to calculate python task tmp dir size: ${getErrText(err)}`);
+      return null;
     }
   }
 }

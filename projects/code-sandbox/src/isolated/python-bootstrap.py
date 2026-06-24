@@ -13,6 +13,7 @@ import inspect as _inspect_mod
 import ipaddress as _ipaddress
 import json
 import math as _math
+import os as _os
 import signal
 import sys
 import sysconfig as _sysconfig
@@ -52,13 +53,16 @@ _original_json_dumps = json.dumps
 _builtins_proxy = None
 _import_guard = False
 _original_open = open
+_original_os_functions = {}
 _open_guard = False
+_path_guard = False
 _logs = []
 _log_size = 0
 _MAX_LOG_SIZE = 1024 * 1024
 _timeout_stage = 0
 _audit_hook_installed = False
 _native_isolation_ready = False
+_task_tmpdir = None
 
 _FORBIDDEN_ATTRS = frozenset({
     '__class__', '__base__', '__bases__', '__mro__', '__subclasses__',
@@ -337,6 +341,8 @@ def _validate_user_code(code: str):
 
 def _restricted_open(*args, **kwargs):
     global _open_guard
+    path = args[0] if args else None
+    mode = kwargs.get('mode', args[1] if len(args) > 1 else 'r')
     if _open_guard:
         return _original_open(*args, **kwargs)
     _open_guard = True
@@ -346,11 +352,171 @@ def _restricted_open(*args, **kwargs):
         _open_guard = False
     if len(stack) >= 2:
         caller_fn = stack[-2].filename or ''
-        if caller_fn in ('<string>', '<test>', '<module>'):
+        if _is_user_code_filename(caller_fn) and not _is_path_under_task_tmp(path):
             raise PermissionError("File system access is not allowed in sandbox")
-        if not _is_stdlib_frame(caller_fn) and not _is_site_packages_frame(caller_fn) and caller_fn != __file__:
+        if (
+            not _is_stdlib_frame(caller_fn)
+            and not _is_site_packages_frame(caller_fn)
+            and caller_fn != __file__
+            and not _is_path_under_task_tmp(path)
+        ):
             raise PermissionError("File system access is not allowed in sandbox")
+    if _is_write_mode(mode) and not _is_path_under_task_tmp(path):
+        raise PermissionError("File writes are only allowed in the task temporary directory")
     return _original_open(*args, **kwargs)
+
+
+def _is_user_code_filename(filename):
+    return filename in ('<string>', '<test>', '<module>')
+
+
+def _is_write_mode(mode):
+    mode_text = str(mode or 'r')
+    return any(flag in mode_text for flag in ('w', 'a', 'x', '+'))
+
+
+def _is_write_flags(flags):
+    try:
+        flags_int = int(flags)
+    except Exception:
+        return False
+    return bool(
+        flags_int
+        & (
+            _os.O_WRONLY
+            | _os.O_RDWR
+            | _os.O_CREAT
+            | _os.O_APPEND
+            | _os.O_TRUNC
+        )
+    )
+
+
+def _is_path_under_task_tmp(path):
+    global _path_guard
+    if not _task_tmpdir:
+        return False
+    try:
+        path_text = _os.fspath(path)
+    except Exception:
+        return False
+    if not isinstance(path_text, str):
+        return False
+    try:
+        _path_guard = True
+        root = _os.path.realpath(_task_tmpdir)
+        candidate = _os.path.realpath(path_text if _os.path.isabs(path_text) else _os.path.join(_os.getcwd(), path_text))
+        return candidate == root or candidate.startswith(root.rstrip(_os.sep) + _os.sep)
+    except Exception:
+        return False
+    finally:
+        _path_guard = False
+
+
+def _first_external_caller_filename():
+    try:
+        frame = sys._getframe(1)
+        while frame:
+            filename = frame.f_code.co_filename or ''
+            if filename != __file__:
+                return filename
+            frame = frame.f_back
+    except Exception:
+        return ''
+    return ''
+
+
+def _is_direct_user_fs_access():
+    return _is_user_code_filename(_first_external_caller_filename())
+
+
+def _guard_fs_read_path(path):
+    if _path_guard:
+        return
+    if _is_direct_user_fs_access() and not _is_path_under_task_tmp(path):
+        raise PermissionError("File system access is only allowed in the task temporary directory")
+
+
+def _guard_fs_write_path(path):
+    if _path_guard:
+        return
+    if not _is_path_under_task_tmp(path):
+        raise PermissionError("File system writes are only allowed in the task temporary directory")
+
+
+def _install_os_guards():
+    if _original_os_functions:
+        return
+
+    def wrap_read_path(name):
+        original = getattr(_os, name, None)
+        if original is None:
+            return
+        _original_os_functions[name] = original
+
+        def guarded(path, *args, **kwargs):
+            _guard_fs_read_path(path)
+            return original(path, *args, **kwargs)
+
+        setattr(_os, name, guarded)
+
+    def wrap_write_path(name):
+        original = getattr(_os, name, None)
+        if original is None:
+            return
+        _original_os_functions[name] = original
+
+        def guarded(path, *args, **kwargs):
+            _guard_fs_write_path(path)
+            return original(path, *args, **kwargs)
+
+        setattr(_os, name, guarded)
+
+    def wrap_write_pair(name):
+        original = getattr(_os, name, None)
+        if original is None:
+            return
+        _original_os_functions[name] = original
+
+        def guarded(src, dst, *args, **kwargs):
+            _guard_fs_write_path(src)
+            _guard_fs_write_path(dst)
+            return original(src, dst, *args, **kwargs)
+
+        setattr(_os, name, guarded)
+
+    original_open = _os.open
+    _original_os_functions['open'] = original_open
+
+    def guarded_open(path, flags, *args, **kwargs):
+        if _is_write_flags(flags):
+            _guard_fs_write_path(path)
+        else:
+            _guard_fs_read_path(path)
+        return original_open(path, flags, *args, **kwargs)
+
+    _os.open = guarded_open
+
+    for name in ('listdir', 'scandir', 'stat', 'lstat', 'access', 'chdir'):
+        wrap_read_path(name)
+    for name in ('mkdir', 'makedirs', 'remove', 'unlink', 'rmdir', 'truncate', 'chmod', 'chown', 'utime'):
+        wrap_write_path(name)
+    for name in ('rename', 'replace', 'symlink', 'link'):
+        wrap_write_pair(name)
+
+
+def _init_task_tmpdir(path):
+    global _task_tmpdir
+    _task_tmpdir = path or _os.environ.get('FASTGPT_TASK_TMPDIR') or '/tmp'
+    try:
+        _os.makedirs(_task_tmpdir, mode=0o700, exist_ok=True)
+        _os.environ['HOME'] = _task_tmpdir
+        _os.environ['TMPDIR'] = _task_tmpdir
+        mpl_config_dir = _os.path.join(_task_tmpdir, 'matplotlib')
+        _os.makedirs(mpl_config_dir, mode=0o700, exist_ok=True)
+        _os.environ['MPLCONFIGDIR'] = mpl_config_dir
+    except Exception as e:
+        raise RuntimeError(f"Failed to initialize task temporary directory: {e}")
 
 
 def _safe_print(*args, **kwargs):
@@ -377,9 +543,50 @@ def _install_audit_hook():
     _audit_hook_installed = True
 
     def _audit(event, args):
+        if event == 'open':
+            path = args[0] if len(args) > 0 else None
+            mode = args[1] if len(args) > 1 else 'r'
+            flags = args[2] if len(args) > 2 else 0
+            if not _is_path_under_task_tmp(path) and (_is_write_mode(mode) or _is_write_flags(flags)):
+                raise RuntimeError("File writes are only allowed in the task temporary directory")
+            if _is_direct_user_fs_access() and not _is_path_under_task_tmp(path):
+                raise RuntimeError("File system access is only allowed in the task temporary directory")
+            return
+        if event in (
+            'os.listdir',
+            'os.scandir',
+            'os.stat',
+            'os.lstat',
+            'os.access',
+            'os.chdir',
+        ):
+            path = args[0] if len(args) > 0 else None
+            if _is_direct_user_fs_access() and not _is_path_under_task_tmp(path):
+                raise RuntimeError("File system access is only allowed in the task temporary directory")
+            return
+        if event in (
+            'os.mkdir',
+            'os.makedirs',
+            'os.remove',
+            'os.unlink',
+            'os.rmdir',
+            'os.rename',
+            'os.replace',
+            'os.symlink',
+            'os.link',
+            'os.truncate',
+            'os.chmod',
+            'os.chown',
+            'os.utime',
+            'shutil.rmtree'
+        ):
+            path = args[0] if len(args) > 0 else None
+            target = args[1] if event in ('os.rename', 'os.replace', 'os.symlink', 'os.link') and len(args) > 1 else None
+            if not _is_path_under_task_tmp(path) or (target is not None and not _is_path_under_task_tmp(target)):
+                raise RuntimeError("File system writes are only allowed in the task temporary directory")
+            return
         if (
             event == 'os.system'
-            or event.startswith('subprocess.')
             or event.startswith('os.exec')
             or event.startswith('os.spawn')
             or event.startswith('os.posix_spawn')
@@ -387,8 +594,47 @@ def _install_audit_hook():
             or event.startswith('ctypes.')
         ):
             raise RuntimeError(f"Operation {event} is not allowed in sandbox")
+        if event.startswith('subprocess.'):
+            if _is_allowed_matplotlib_font_probe(event, args):
+                return
+            raise RuntimeError(f"Operation {event} is not allowed in sandbox")
 
     sys.addaudithook(_audit)
+
+
+def _is_allowed_matplotlib_font_probe(event, args):
+    if event != 'subprocess.Popen':
+        return False
+    if not _is_called_from_matplotlib_font_manager():
+        return False
+
+    command = args[1] if len(args) > 1 else args[0] if args else None
+    if isinstance(command, (list, tuple)):
+        parts = [str(item) for item in command]
+    elif isinstance(command, str):
+        parts = command.split()
+    else:
+        return False
+
+    if parts[:2] == ['fc-list', '--help']:
+        return True
+    if parts[:2] == ['fc-list', '--format=%{file}\\n']:
+        return True
+    if parts == ['system_profiler', '-xml', 'SPFontsDataType']:
+        return True
+    return False
+
+
+def _is_called_from_matplotlib_font_manager():
+    try:
+        for frame in _inspect_mod.stack()[2:]:
+            filename = frame.filename or ''
+            normalized = filename.replace('\\', '/')
+            if normalized.endswith('/matplotlib/font_manager.py'):
+                return True
+    except Exception:
+        return False
+    return False
 
 
 _PROTECTED_MODULES = [json, _math, _time, _base64, _hashlib, _hmac, _copy]
@@ -465,6 +711,8 @@ def _run_task(msg):
 
     try:
         _init_native_isolation(msg.get('isolation') or {})
+        _init_task_tmpdir(msg.get('taskTmpDir'))
+        _install_os_guards()
 
         signal.signal(signal.SIGALRM, _timeout_handler)
         signal.alarm(timeout_s)
@@ -494,6 +742,7 @@ def _run_task(msg):
             'variables': variables,
             'SystemHelper': system_helper,
             'system_helper': system_helper,
+            'task_tmpdir': _task_tmpdir,
             'count_token': count_token,
             'str_to_base64': str_to_base64,
             'create_hmac': create_hmac,

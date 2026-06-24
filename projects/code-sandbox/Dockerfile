@@ -88,7 +88,7 @@ RUN set -eux; \
       "$root/etc" \
       "$root/dev" \
       "$root/tmp"; \
-    chmod 1777 "$root/tmp"; \
+    chmod 755 "$root/tmp"; \
     cp -a /app/code-sandbox/. "$root/app/code-sandbox/"; \
     cp -a /usr/bin/python3 /usr/bin/python3.* "$root/usr/bin/" 2>/dev/null || true; \
     cp -a /usr/lib/python3* "$root/usr/lib/"; \
@@ -107,21 +107,19 @@ RUN set -eux; \
     mknod -m 666 "$root/dev/zero" c 1 5 || true; \
     mknod -m 666 "$root/dev/random" c 1 8 || true; \
     mknod -m 666 "$root/dev/urandom" c 1 9 || true; \
-    mkdir -p "$root/tmp/matplotlib"; \
     chmod -R a+rX "$root"; \
-    chmod 1777 "$root/tmp"; \
-    chmod 1777 "$root/tmp/matplotlib"
+    chmod 755 "$root/tmp"
 
 
 # 创建沙箱用户。code-sandbox 主进程默认保留 root，以便 Python 子进程
 # 在 native 隔离初始化阶段执行 chroot/setuid；用户代码会降权到 sandbox。
 RUN groupadd -g 65537 sandbox && useradd -u 65537 -g 65537 -M -r -s /usr/sbin/nologin sandbox && \
     mkdir -p /tmp/fastgpt-python-sandbox && \
-    chown -R sandbox:sandbox /app /tmp/fastgpt-python-sandbox && \
-    chmod 1777 /tmp/fastgpt-python-sandbox/tmp && \
-    mkdir -p /tmp/fastgpt-python-sandbox/tmp/matplotlib && \
-    chown sandbox:sandbox /tmp/fastgpt-python-sandbox/tmp/matplotlib && \
-    chmod 1777 /tmp/fastgpt-python-sandbox/tmp/matplotlib
+    chown -R sandbox:sandbox /app && \
+    chown root:root /tmp/fastgpt-python-sandbox && \
+    chmod 755 /tmp/fastgpt-python-sandbox && \
+    chown root:root /tmp/fastgpt-python-sandbox/tmp && \
+    chmod 755 /tmp/fastgpt-python-sandbox/tmp
 
 ENV NODE_ENV=production
 ENV SANDBOX_PORT=3000

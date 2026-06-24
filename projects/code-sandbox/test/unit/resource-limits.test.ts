@@ -5,6 +5,7 @@
  * - 内存限制（RSS 轮询监控）
  * - CPU 密集型超时（JS / Python）
  * - 运行时长限制（wall-clock timeout 验证）
+ * - Python 任务临时目录大小限制
  * - 网络请求限制（次数、请求体大小、响应大小）
 
  */
@@ -548,7 +549,68 @@ describe('Python 输出大小限制', () => {
 });
 
 // ============================================================
-// 5. 网络请求次数限制
+// 5. Python 临时目录大小限制
+// ============================================================
+describe('Python 临时目录大小限制', () => {
+  let pool: PythonIsolatedRunner;
+
+  afterEach(async () => {
+    try {
+      await pool?.shutdown();
+    } catch {}
+  });
+
+  it('写入 task_tmpdir 超过 maxTmpSize 被终止且 runner 可恢复', async () => {
+    pool = new PythonIsolatedRunner(1);
+    await pool.init();
+
+    const result = await pool.execute({
+      code: `import time
+def main():
+    path = task_tmpdir + '/too-large.bin'
+    chunk = b'x' * (1024 * 1024)
+    with open(path, 'wb') as f:
+        for _ in range(${env.SANDBOX_MAX_TMP_MB + 1}):
+            f.write(chunk)
+            f.flush()
+    time.sleep(2)
+    return {'done': True}`,
+      variables: {}
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.message).toMatch(/temporary file limit/i);
+
+    const recovery = await pool.execute({
+      code: `def main():
+    with open(task_tmpdir + '/small.txt', 'w') as f:
+        f.write('ok')
+    return {'ok': True}`,
+      variables: {}
+    });
+    expect(recovery.success).toBe(true);
+    expect(recovery.data?.codeReturn.ok).toBe(true);
+  }, 20000);
+
+  it('写入 task_tmpdir 限制内文件正常', async () => {
+    pool = new PythonIsolatedRunner(1);
+    await pool.init();
+
+    const result = await pool.execute({
+      code: `def main():
+    with open(task_tmpdir + '/allowed.bin', 'wb') as f:
+        f.write(b'x' * 1024)
+    return {'ok': True}`,
+      variables: {}
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data?.codeReturn.ok).toBe(true);
+  });
+});
+
+// ============================================================
+// 6. 网络请求次数限制
 // ============================================================
 describe('JS 网络请求次数限制', () => {
   let pool: ProcessPool;
@@ -664,7 +726,7 @@ describe('Python 网络请求次数限制', () => {
 });
 
 // ============================================================
-// 6. 网络请求大小限制
+// 7. 网络请求大小限制
 // ============================================================
 describe('JS 请求体大小限制', () => {
   let pool: ProcessPool;
@@ -757,7 +819,7 @@ describe('Python 请求体大小限制', () => {
 });
 
 // ============================================================
-// 7. 网络协议限制
+// 8. 网络协议限制
 // ============================================================
 describe('JS 网络协议限制', () => {
   let pool: ProcessPool;

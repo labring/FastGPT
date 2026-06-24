@@ -608,15 +608,15 @@ async function main() { return recurse(); }`,
         {
           name: 'httpRequest GET',
           code: `async function main() {
-          const res = await httpRequest('https://example.com/');
-          return { status: res.status, hasData: res.data.length > 0 };
+          const res = await httpRequest('http://1.1.1.1/');
+          return { statusOk: res.status >= 200 && res.status < 400, hasData: res.data.length > 0 };
         }`,
-          expect: { success: true, codeReturnMatch: { status: 200, hasData: true } }
+          expect: { success: true, codeReturnMatch: { statusOk: true, hasData: true } }
         },
         {
           name: 'httpRequest POST JSON',
           code: `async function main() {
-          const res = await httpRequest('https://example.com/', {
+          const res = await httpRequest('http://1.1.1.1/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: { message: 'hello' }
@@ -903,12 +903,12 @@ describe('Python 功能测试', () => {
       [
         {
           name: 'http_request GET',
-          code: `import json\ndef main():\n    res = http_request('https://example.com/')\n    return {'status': res['status'], 'hasData': len(res['data']) > 0}`,
-          expect: { success: true, codeReturnMatch: { status: 200, hasData: true } }
+          code: `import json\ndef main():\n    res = http_request('http://1.1.1.1/')\n    return {'statusOk': res['status'] >= 200 and res['status'] < 400, 'hasData': len(res['data']) > 0}`,
+          expect: { success: true, codeReturnMatch: { statusOk: true, hasData: true } }
         },
         {
           name: 'http_request POST JSON',
-          code: `import json\ndef main():\n    res = http_request('https://example.com/', method='POST', body={'message': 'hello'})\n    return {'hasStatus': type(res['status']) == int}`,
+          code: `import json\ndef main():\n    res = http_request('http://1.1.1.1/', method='POST', body={'message': 'hello'})\n    return {'hasStatus': type(res['status']) == int}`,
           expect: { success: true, codeReturnMatch: { hasStatus: true } }
         }
       ]

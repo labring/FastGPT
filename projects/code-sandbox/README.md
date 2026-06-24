@@ -92,9 +92,18 @@ docker run -p 3000:3000 \
 ```json
 {
   "status": "ok",
-  "version": "5.0.0",
-  "jsPool": { "total": 20, "idle": 18, "busy": 2, "queued": 0 },
-  "pythonPool": { "total": 0, "idle": 0, "busy": 0, "queued": 0, "poolSize": 20 }
+  "pools": {
+    "js": { "total": 20, "idle": 18, "busy": 2, "queued": 0, "poolSize": 20 },
+    "python": {
+      "total": 20,
+      "idle": 18,
+      "busy": 2,
+      "warming": 0,
+      "queued": 0,
+      "poolSize": 20,
+      "ready": true
+    }
+  }
 }
 ```
 
@@ -148,6 +157,7 @@ Python 隔离不再提供运行时关闭开关。Linux 环境固定启用 native
 | `SANDBOX_API_MAX_BODY_MB` | API JSON 请求体总大小上限（包含 variables） | `8` |
 | `SANDBOX_MAX_TIMEOUT` | 超时上限（ms），请求不可超过此值 | `60000` |
 | `SANDBOX_MAX_MEMORY_MB` | 内存上限（MB） | `256` |
+| `SANDBOX_MAX_TMP_MB` | Python 单任务临时目录写入上限（MB） | `16` |
 | `SANDBOX_MAX_OUTPUT_MB` | 单次执行输出 JSON 大小上限（包含返回值和日志） | `10` |
 
 ### 网络请求限制
