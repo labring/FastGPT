@@ -241,7 +241,7 @@ describe('createWorkflowAgentLoopRuntime', () => {
         nodeId: 'agent_node-main_agent-1',
         moduleName: 'chat:master_agent_call',
         moduleType: FlowNodeTypeEnum.agent,
-        moduleLogo: 'core/workflow/template/agent',
+        moduleLogo: 'core/app/type/agentFill',
         model: 'GPT-4',
         llmRequestIds: ['req_1'],
         inputTokens: 10,
@@ -257,7 +257,7 @@ describe('createWorkflowAgentLoopRuntime', () => {
         nodeId: 'agent_node-main_agent-2',
         moduleName: 'chat:master_agent_call',
         moduleType: FlowNodeTypeEnum.agent,
-        moduleLogo: 'core/workflow/template/agent',
+        moduleLogo: 'core/app/type/agentFill',
         model: 'GPT-4',
         llmRequestIds: ['req_2'],
         inputTokens: 6,
@@ -392,19 +392,19 @@ describe('createWorkflowAgentLoopRuntime', () => {
       expect.objectContaining({
         id: 'agent_node-1-req_empty_start',
         moduleName: 'chat:master_agent_call',
-        moduleLogo: 'core/workflow/template/agent',
+        moduleLogo: 'core/app/type/agentFill',
         llmRequestIds: ['req_empty_start']
       }),
       expect.objectContaining({
         id: 'agent_node-2-req_tool_round',
         moduleName: 'chat:master_agent_call',
-        moduleLogo: 'core/workflow/template/agent',
+        moduleLogo: 'core/app/type/agentFill',
         llmRequestIds: ['req_tool_round']
       }),
       expect.objectContaining({
         id: 'agent_node-3-req_empty_end',
         moduleName: 'chat:master_agent_call',
-        moduleLogo: 'core/workflow/template/agent',
+        moduleLogo: 'core/app/type/agentFill',
         llmRequestIds: ['req_empty_end']
       })
     ]);

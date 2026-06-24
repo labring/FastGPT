@@ -13,6 +13,8 @@ var allowBaseSyscalls = []int{
 	syscall.SYS_READ, syscall.SYS_WRITE, syscall.SYS_CLOSE,
 	syscall.SYS_FSTATAT, syscall.SYS_FSTAT, syscall.SYS_FCNTL, syscall.SYS_IOCTL,
 	syscall.SYS_OPENAT, syscall.SYS_FACCESSAT, syscall.SYS_READLINKAT,
+	// Python tempfile/matplotlib 需要在每个 task 临时目录内建目录；路径边界由 Python guard 和 chroot 权限控制。
+	syscall.SYS_MKDIRAT,
 	syscall.SYS_PREAD64, syscall.SYS_LSEEK, syscall.SYS_GETDENTS64,
 	syscall.SYS_MMAP, syscall.SYS_MPROTECT, syscall.SYS_MUNMAP, syscall.SYS_BRK,
 	syscall.SYS_MREMAP, syscall.SYS_MADVISE,
@@ -30,7 +32,7 @@ var allowBaseSyscalls = []int{
 }
 
 var errnoSyscalls = []int{
-	syscall.SYS_CLONE, sysClone3, syscall.SYS_MKDIRAT,
+	syscall.SYS_CLONE, sysClone3,
 }
 
 var allowNetworkSyscalls = []int{

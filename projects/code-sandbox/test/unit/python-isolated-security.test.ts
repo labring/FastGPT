@@ -272,6 +272,54 @@ def main():
     expect(result.data?.codeReturn.items).toContain('allowed.txt');
   });
 
+  it('允许三方库在当前任务临时目录内创建子目录，但不能写共享 /tmp', async () => {
+    const result = await runner.execute({
+      code: `import platform
+def main():
+    os_ref = platform.os
+    nested = task_tmpdir + '/nested/cache'
+    os_ref.makedirs(nested, exist_ok=True)
+    try:
+        os_ref.makedirs('/tmp/shared-blocked', exist_ok=True)
+        outside_created = True
+        outside_error = ''
+    except Exception as e:
+        outside_created = False
+        outside_error = str(e)
+    return {
+        'nested_exists': os_ref.path.isdir(nested),
+        'outside_created': outside_created,
+        'outside_error': outside_error
+    }`,
+      variables: {}
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.data?.codeReturn.nested_exists).toBe(true);
+    expect(result.data?.codeReturn.outside_created).toBe(false);
+    expect(result.data?.codeReturn.outside_error).toMatch(/task temporary directory|not allowed/i);
+  });
+
+  it('matplotlib 可以使用任务临时目录初始化 config/cache', async () => {
+    const result = await runner.execute({
+      code: `import matplotlib
+matplotlib.use('Agg')
+
+def main():
+    return {
+        'backend': matplotlib.get_backend(),
+        'config': matplotlib.get_configdir(),
+        'cache': matplotlib.get_cachedir()
+    }`,
+      variables: {}
+    });
+
+    expect(result.success, JSON.stringify(result)).toBe(true);
+    expect(result.data?.codeReturn.backend.toLowerCase()).toContain('agg');
+    expect(result.data?.codeReturn.config).toContain('/matplotlib');
+    expect(result.data?.codeReturn.cache).toContain('/matplotlib');
+  });
+
   it('Linux native 隔离下 chroot /tmp 由 root 持有，仅 task 临时目录可写', async () => {
     if (!shouldEnablePythonNativeIsolation()) {
       return;
