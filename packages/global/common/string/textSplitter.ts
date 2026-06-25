@@ -245,6 +245,13 @@ const strIsHtmlTable = (str: string) => {
     return false;
   }
 
+  // 确保只有一张顶层表格：第一个 </table> 必须就是末尾
+  // 防止整个多表格文档被误判为单张表格，导致表格间文字被 htmlTableSplit 丢弃
+  const firstCloseIdx = trimmedStr.indexOf('</table>');
+  if (firstCloseIdx !== trimmedStr.length - '</table>'.length) {
+    return false;
+  }
+
   // 检查是否包含 tr 标签
   if (!str.includes('<tr')) {
     return false;
@@ -835,6 +842,10 @@ export const splitText2Chunks = (props: SplitProps): SplitResponse => {
   }
 
   // 第三步：最终去重 - 去除相邻分片中重复的父标题
+  if (mergedChunks.length === 0) {
+    return { chunks: [], chars: 0 };
+  }
+
   const finalChunks: string[] = [mergedChunks[0]]; // 第一个分片保持不变
 
   for (let i = 1; i < mergedChunks.length; i++) {
