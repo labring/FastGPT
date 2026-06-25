@@ -38,7 +38,8 @@ const RenderAgentPlanAskInteractive = React.memo(function RenderAgentPlanAskInte
     selectedAnswerPlacement,
     shouldShowOptions,
     scheduleCollapse,
-    toggleOptionsExpanded
+    toggleOptionsExpanded,
+    handleOptionsCollapseExited
   } = useInteractiveChoiceCollapse(effectiveAnswer);
   const showOtherInput = !!answeredOther || isOtherSelected;
   const radioValue =
@@ -93,13 +94,17 @@ const RenderAgentPlanAskInteractive = React.memo(function RenderAgentPlanAskInte
           )}
           <Collapse
             in={shouldShowOptions}
-            animateOpacity
+            onTransitionEnd={() => {
+              if (!shouldShowOptions) {
+                handleOptionsCollapseExited();
+              }
+            }}
             transitionEnd={{
               enter: { overflow: 'visible' },
-              exit: { overflow: 'hidden' }
+              exit: { overflow: 'visible' }
             }}
           >
-            <Flex w={'360px'} maxW={'100%'} flexDirection={'column'} gap={3}>
+            <Flex w={'360px'} maxW={'100%'} flexDirection={'column'} gap={3} p={'3px'} mx={'-3px'}>
               <LeftRadio<string>
                 px={4}
                 py={4}
