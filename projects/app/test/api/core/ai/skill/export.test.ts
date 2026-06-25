@@ -147,6 +147,7 @@ describe('GET /api/core/ai/skill/export', () => {
     expect(mockJsonRes).not.toHaveBeenCalled();
     expect(skillExportMocks.packageSkillInSandboxMock).toHaveBeenCalledWith({
       sandboxId: 'edit-sandbox-1',
+      validationMode: 'basicZip',
       workDirectory: expect.any(String)
     });
     expect(res.setHeader).toHaveBeenCalledWith('Content-Type', 'application/zip');

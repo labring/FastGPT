@@ -84,7 +84,7 @@ export const SkillPath: OpenAPIPath = {
   '/core/ai/skill/create': {
     post: {
       summary: '创建技能',
-      description: '创建一个新的技能，可选使用 AI 根据 requirements 生成 SKILL.md',
+      description: '创建一个新的技能，并初始化空白 skills 工作区',
       tags: [DevApiTagsMap.aiSkill],
       requestBody: {
         content: {

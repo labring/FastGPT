@@ -22,7 +22,6 @@ export async function createSkill(data: CreateSkillData, session?: ClientSession
     type: AgentSkillTypeEnum.skill,
     source: AgentSkillSourceEnum.personal,
     creationStatus: createData.creationStatus ?? AgentSkillCreationStatusEnum.ready,
-    creationPayload: createData.creationPayload,
     updateTime: new Date()
   });
   await skill.save({ session });

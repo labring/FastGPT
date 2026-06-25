@@ -36,7 +36,6 @@ export const getDefaultChatTitleModel = () => global?.systemDefaultModel.chatTit
 export const getDefaultHelperBotModel = (): LLMModelItemType =>
   global?.systemDefaultModel.helperBotLLM || getDefaultLLMModel();
 
-export const getSkillCreationLLMModel = () => getDefaultLLMModel().model;
 export const getDefaultEmbeddingModel = () => global?.systemDefaultModel.embedding!;
 export const getEmbeddingModel = (model?: string | EmbeddingModelItemType) => {
   if (!model) return getDefaultEmbeddingModel();

@@ -40,11 +40,13 @@ const logger = getLogger(LogCategories.MODULE.DATASET.FILE_PARSE);
 const requestLLMPargraph = async ({
   rawText,
   model,
+  teamId,
   billId,
   paragraphChunkAIMode
 }: {
   rawText: string;
   model: string;
+  teamId: string;
   billId: string;
   paragraphChunkAIMode?: ParagraphChunkAIModeEnum;
 }) => {
@@ -85,6 +87,7 @@ const requestLLMPargraph = async ({
     {
       rawText,
       model,
+      teamId,
       billId
     },
     { timeout: 600000 }
@@ -268,6 +271,7 @@ export const datasetParseQueue = async (): Promise<any> => {
         const { resultText, totalInputTokens, totalOutputTokens } = await requestLLMPargraph({
           rawText,
           model: dataset.agentModel,
+          teamId: String(data.teamId),
           billId: data.billId,
           paragraphChunkAIMode: collection.paragraphChunkAIMode
         });

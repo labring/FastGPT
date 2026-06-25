@@ -1,6 +1,5 @@
 import type { SandboxStatusType } from '@fastgpt/global/core/ai/sandbox/constants';
-import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
-import type { SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
+import { SandboxStatusEnum, type SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { MongoSandboxInstance } from './schema';
 import type { SandboxInstanceSchemaType, SandboxProviderType } from '../type';
 

@@ -10,7 +10,7 @@ import { getLogger } from '@fastgpt/service/common/logger';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { getConfiguredSandboxProvider } from '@fastgpt/service/core/ai/sandbox/provider/config';
 import type { SandboxProviderType } from '@fastgpt/service/core/ai/sandbox/type';
-import { SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
+import { SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { subDays } from 'date-fns';
 import z from 'zod';
 

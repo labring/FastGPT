@@ -1,6 +1,7 @@
-import { buildDebugRuntimeNodes } from '@/pages/api/core/ai/skill/debugChat';
+import { buildDebugRuntimeNodes } from '@fastgpt/service/core/ai/skill/debugChat';
 import * as debugChatApi from '@/pages/api/core/ai/skill/debugChat';
-import { AgentSkillSourceEnum, SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
+import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
+import { SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import {
   FlowNodeTypeEnum,
   FlowNodeInputTypeEnum,
@@ -76,8 +77,8 @@ vi.mock('@fastgpt/service/support/user/team/utils', () => ({
   getRunningUserInfoByTmbId: debugChatMocks.getRunningUserInfoByTmbId
 }));
 
-vi.mock('@/service/core/workflow/streamResponseContext', () => ({
-  createWorkflowStreamResponseContext: debugChatMocks.createWorkflowStreamResponseContext
+vi.mock('@fastgpt/service/core/ai/skill/debugChat/streamResponseContext', () => ({
+  createSkillDebugStreamResponseContext: debugChatMocks.createWorkflowStreamResponseContext
 }));
 
 // ── Constants mirrored from the implementation ──
@@ -483,7 +484,8 @@ describe('debugChat handler — parameter validation', () => {
     expect(debugChatMocks.dispatchWorkFlow).toHaveBeenCalledWith(
       expect.objectContaining({
         chatId: 'prepared-debug-chat-id',
-        responseChatItemId: 'prepared-debug-response-id'
+        responseChatItemId: 'prepared-debug-response-id',
+        agentSandboxPrepareActions: undefined
       })
     );
     expect(debugChatMocks.finalizeChatRound).toHaveBeenCalledWith(

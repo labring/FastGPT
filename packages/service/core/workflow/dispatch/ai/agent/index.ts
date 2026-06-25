@@ -34,9 +34,9 @@ import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { InteractiveNodeResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import {
-  agentSandboxBootstrap,
   ensureAgentSandboxRuntime,
-  streamAgentSandboxInitStatus
+  streamAgentSandboxInitStatus,
+  type AgentSandboxPrepareAction
 } from './sub/sandbox';
 import type { WorkflowNodeResponseWriter } from '../../../../chat/nodeResponseStorage';
 import type { RuntimeNodeResponseSummary } from '../../type';
@@ -78,6 +78,7 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.sandboxEntrypoint]?: string;
 }> & {
   nodeResponseWriter?: WorkflowNodeResponseWriter;
+  agentSandboxPrepareActions?: AgentSandboxPrepareAction[];
 };
 
 type Response = DispatchNodeResultType<{
@@ -138,6 +139,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     runningAppInfo,
     runningUserInfo,
     workflowStreamResponse,
+    agentSandboxPrepareActions,
     usagePush,
     chatId,
     uid,
@@ -223,10 +225,10 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       teamId: runningAppInfo.teamId,
       tmbId: runningUserInfo.tmbId,
       needSandboxRuntime: effectiveUseAgentSandbox,
-      sandboxBootstrap: agentSandboxBootstrap,
       sandboxEntrypoint: effectiveSandboxEntrypoint,
       skillIds,
       editSkillId,
+      prepareActions: agentSandboxPrepareActions,
       currentFiles: userContext.currentFiles
     });
     // 获取请求上下文

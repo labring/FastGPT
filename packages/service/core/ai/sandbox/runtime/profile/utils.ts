@@ -1,14 +1,12 @@
-/** 去掉 sandbox 路径右侧斜杠，根路径保持可继续拼接的空前缀。 */
-export const trimSandboxPathRight = (value: string) =>
-  value === '/' ? '' : value.replace(/\/+$/, '');
-
-/** 用 sandbox 语义拼接路径，避免不同 provider 工作目录末尾斜杠导致双斜杠。 */
-export const joinSandboxPath = (basePath: string, path: string) =>
-  `${trimSandboxPathRight(basePath)}/${path}`;
+import { joinSandboxPath } from '../utils';
 
 /** FastGPT 约定所有 skill 包都写入运行态工作目录下的 skills 子目录。 */
 export const getSandboxSkillsRootPath = (workDirectory: string) =>
   joinSandboxPath(workDirectory, 'skills');
+
+/** 内置 Skill 注入到 sandbox 用户主目录，不属于用户可编辑 workspace。 */
+export const getSandboxBuiltinSkillsRootPath = (homeDirectory: string) =>
+  joinSandboxPath(joinSandboxPath(homeDirectory, '.fastgpt'), 'skills');
 
 /**
  * 合并环境变量时让业务场景入参覆盖已有 createConfig。

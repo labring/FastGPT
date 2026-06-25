@@ -283,6 +283,22 @@ const buildAgentEnvPrompt = ({
 ${currentTime ? `当前时间: ${currentTime}` : ''}
 ${currentWorkingDirectory ? `当前 sandbox 工作目录: ${currentWorkingDirectory}` : ''}`;
 };
+
+const buildSandboxFileWriteBoundaryPrompt = ({
+  currentWorkingDirectory
+}: {
+  currentWorkingDirectory?: string;
+}) => {
+  if (!currentWorkingDirectory) return '';
+
+  return `## Sandbox 文件写入边界
+生成或修改文件时，必须严格区分系统目录和用户产物目录：
+- 用户 Skill 产物根目录：${currentWorkingDirectory}/skills
+- 如果任务需要创建或修改用户 Skill，只能写入：${currentWorkingDirectory}/skills/<skill-name>/
+- 用户 Skill 主文件必须是：${currentWorkingDirectory}/skills/<skill-name>/SKILL.md
+- 禁止写入：${currentWorkingDirectory}/<skill-name>/ 或 ${currentWorkingDirectory}/SKILL.md
+- 禁止写入：/home/sandbox/.fastgpt/skills/、~/.fastgpt/skills/ 或任何 .fastgpt/skills/ 路径；这些路径只用于系统内置 Skill。`;
+};
 // 当前轮动态上下文统一包在 user message 内。它不是系统角色 prompt，
 // 但对模型来说是回答本轮问题时可用的事实提醒。
 export const buildAgentUserReminderInput = ({
@@ -302,6 +318,7 @@ export const buildAgentUserReminderInput = ({
 }) => {
   const reminder = [
     buildAgentSkillsPrompt(skillInfos),
+    buildSandboxFileWriteBoundaryPrompt({ currentWorkingDirectory }),
     buildAgentInputFilesPrompt(filesInfo),
     buildAgentInputDatasetsPrompt(selectedDataset),
     buildAgentEnvPrompt({ currentTime, currentWorkingDirectory })

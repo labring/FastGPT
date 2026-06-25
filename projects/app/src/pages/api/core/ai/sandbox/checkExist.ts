@@ -9,7 +9,7 @@ import {
   type SandboxCheckExistResponse
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { EDIT_DEBUG_SANDBOX_CHAT_ID } from '@fastgpt/service/core/ai/skill/edit/config';
-import { SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
+import { SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 
 async function handler(req: ApiRequestProps): Promise<SandboxCheckExistResponse> {
   if (!global.feConfigs?.show_agent_sandbox) {

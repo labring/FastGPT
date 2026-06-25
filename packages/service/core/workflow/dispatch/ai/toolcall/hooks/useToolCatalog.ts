@@ -15,7 +15,7 @@ import { getSandboxRuntimeProfile } from '../../../../../ai/sandbox/runtime/prof
 import {
   runAgentSandboxEntrypoint,
   withAgentSandboxInitLease
-} from '../../../../../ai/skill/runtime/entrypoint';
+} from '../../../../../ai/sandbox/runtime/entrypoint';
 import type { SandboxClient } from '../../../../../ai/sandbox/service/runtime';
 import type { FileInputType, ToolNodeItemType } from '../type';
 import { ReadFileTooData, ReadFileToolSchema } from '../tools/file';

@@ -1,5 +1,4 @@
 import { serviceEnv } from '../../../../../env';
-import { SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import type { SandboxRuntimeProfile } from './types';
 import { getSandboxSkillsRootPath, mergeStringRecord, mergeUnknownRecord } from './utils';
 import { parseImageSpec } from '@fastgpt-sdk/sandbox-adapter';

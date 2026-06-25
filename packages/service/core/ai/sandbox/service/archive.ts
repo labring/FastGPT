@@ -9,7 +9,7 @@ import { serviceEnv } from '../../../../env';
 import { getSandboxAdapterConfig } from '../provider/config';
 import { connectToSandbox, disconnectSandbox } from '../provider/lifecycle';
 import { getSandboxRuntimeProfile } from '../runtime/profile';
-import { joinSandboxPath } from '../runtime/profile/utils';
+import { joinSandboxPath, shellQuote } from '../runtime/utils';
 import {
   deleteSessionVolume,
   getSessionVolumeConfig,
@@ -76,8 +76,6 @@ export interface SandboxArchiveOptions {
   ensureZipInSandbox?: boolean;
   onProgress?: (progress: SandboxArchiveProgress) => void | Promise<void>;
 }
-
-const shellQuote = (value: string): string => `'${value.replace(/'/g, `'\\''`)}'`;
 
 const runSandboxCommand = async (
   sandbox: ISandbox,

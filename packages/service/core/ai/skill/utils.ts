@@ -3,6 +3,7 @@
  *
  * 这里只放无副作用的 SKILL.md 文本解析和模板拼装，不访问数据库、对象存储、sandbox 或 LLM。
  */
+import { joinSandboxPath, shellQuote } from '../sandbox/runtime/utils';
 
 /* ==================== YAML Frontmatter 解析 (原 skillMarkdown.ts) ==================== */
 
@@ -124,8 +125,8 @@ export type BuildSkillMdParams = {
 /**
  * 生成一个最小可用的 SKILL.md。
  *
- * 该模板只包含 frontmatter，不生成正文说明，主要用于没有 AI 辅助生成需求的
- * 初次创建流程。后续用户可在 edit sandbox 中继续补充正文和其他文件。
+ * 该模板只包含 frontmatter，不生成正文说明。它只作为通用文本工具保留；
+ * 新建 Skill 的初始版本不再调用它生成默认技能文件。
  */
 export function buildSkillMd(params: BuildSkillMdParams): string {
   return generateFrontmatter(params.name, params.description);
@@ -183,24 +184,9 @@ export function extractSkillNameFromSkillMd(content: string): string {
   return headerMatch ? getSafeSkillDirectoryName(headerMatch[1]).toLowerCase() : 'unnamed-skill';
 }
 
-/* ==================== Shell 安全辅助 (原 shell.ts) ==================== */
-
-/**
- * 智能转义参数以防止 Shell 注入。
- */
-export const shellQuote = (value: string): string => `'${value.replace(/'/g, `'\\''`)}'`;
-
 /* ==================== 沙盒路径与命名清洗辅助 (自 runtime 移入) ==================== */
 
 export const MAX_SKILL_DIRECTORY_NAME_LENGTH = 50;
-
-const trimSandboxPathRight = (value: string) => (value === '/' ? '' : value.replace(/\/+$/, ''));
-
-/**
- * 拼接沙盒路径。
- */
-export const joinSandboxPath = (basePath: string, path: string): string =>
-  `${trimSandboxPathRight(basePath)}/${path}`;
 
 /**
  * 获取运行态 selected skill version 的 projects 根目录。

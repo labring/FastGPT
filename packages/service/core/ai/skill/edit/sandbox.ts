@@ -2,8 +2,14 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { ISandbox, SandboxCreateSpec } from '@fastgpt-sdk/sandbox-adapter';
 import { MongoAgentSkills } from '../model/schema';
 import { MongoAgentSkillsVersion } from '../version/schema';
-import { shellQuote, joinSandboxPath, parseGitignoreRules } from '../utils';
-import { downloadSkillPackage, DEFAULT_GITIGNORE_CONTENT, validateZipStructure } from '../package';
+import { parseGitignoreRules } from '../utils';
+import { joinSandboxPath, shellQuote } from '../../sandbox/runtime/utils';
+import {
+  downloadSkillPackage,
+  DEFAULT_GITIGNORE_CONTENT,
+  validateDeployableSkillWorkspacePackage,
+  validateZipStructure
+} from '../package';
 import { EDIT_DEBUG_SANDBOX_CHAT_ID, getEditDebugSandboxId } from './config';
 import {
   getSandboxProviderConfig,
@@ -12,7 +18,7 @@ import {
 } from '../../sandbox/provider/config';
 import { getSandboxRuntimeProfile } from '../../sandbox/runtime/profile';
 import type { SandboxImageConfigType } from '@fastgpt/global/core/ai/skill/type';
-import { SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
+import { SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import {
   connectReadySandboxByInstance,
   connectToSandbox,
@@ -689,8 +695,9 @@ export async function createEditDebugSandbox(
 export async function packageSkillInSandbox(params: {
   sandboxId: string;
   workDirectory?: string;
+  validationMode?: 'basicZip' | 'deployableWorkspace';
 }): Promise<Buffer> {
-  const { sandboxId, workDirectory } = params;
+  const { sandboxId, workDirectory, validationMode = 'deployableWorkspace' } = params;
   const maxBytes = serviceEnv.AGENT_SANDBOX_SKILL_MAX_SIZE * 1024 * 1024;
 
   const providerConfig = getSandboxProviderConfig();
@@ -780,9 +787,14 @@ export async function packageSkillInSandbox(params: {
         );
       }
 
-      const validation = await validateZipStructure(zipBuffer, {
-        maxUncompressedBytes: maxBytes
-      });
+      const validation =
+        validationMode === 'deployableWorkspace'
+          ? await validateDeployableSkillWorkspacePackage(zipBuffer, {
+              maxUncompressedBytes: maxBytes
+            })
+          : await validateZipStructure(zipBuffer, {
+              maxUncompressedBytes: maxBytes
+            });
       if (!validation.valid) {
         throw new Error(validation.error || 'Invalid skill package structure');
       }

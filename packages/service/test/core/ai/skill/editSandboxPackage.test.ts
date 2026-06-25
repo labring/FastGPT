@@ -26,6 +26,10 @@ vi.mock('@fastgpt/service/core/ai/skill/version/schema', () => ({
 vi.mock('@fastgpt/service/core/ai/skill/package', () => ({
   downloadSkillPackage: vi.fn(),
   DEFAULT_GITIGNORE_CONTENT: '.venv/\nnode_modules/\n',
+  validateDeployableSkillWorkspacePackage: vi.fn(async () => ({
+    valid: true,
+    files: []
+  })),
   validateZipStructure: vi.fn(async () => ({
     valid: true,
     hasSkillMd: true,
@@ -133,7 +137,11 @@ vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
 
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { MongoAgentSkillsVersion } from '@fastgpt/service/core/ai/skill/version/schema';
-import { downloadSkillPackage, validateZipStructure } from '@fastgpt/service/core/ai/skill/package';
+import {
+  downloadSkillPackage,
+  validateDeployableSkillWorkspacePackage,
+  validateZipStructure
+} from '@fastgpt/service/core/ai/skill/package';
 import {
   createEditDebugSandbox,
   packageSkillInSandbox
@@ -212,10 +220,34 @@ describe('packageSkillInSandbox', () => {
 
     expect(sandbox.readFiles).toHaveBeenCalledWith(['/workspace/package.zip']);
     expect(sandbox.execute).toHaveBeenCalledWith("rm -f '/workspace/package.zip'");
+    expect(validateDeployableSkillWorkspacePackage).toHaveBeenCalledWith(Buffer.from(zipContent), {
+      maxUncompressedBytes: 1024 * 1024
+    });
+    expect(validateZipStructure).not.toHaveBeenCalled();
+    expect(mocks.disconnectSandbox).toHaveBeenCalledWith(sandbox);
+  });
+
+  it('uses basic zip validation when packaging for export', async () => {
+    const zipContent = new Uint8Array([1, 2, 3]);
+    const sandbox = createSandbox({
+      readFilesResult: [
+        {
+          path: '/workspace/package.zip',
+          content: zipContent,
+          error: null
+        }
+      ]
+    });
+    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
+
+    await expect(
+      packageSkillInSandbox({ sandboxId: 'sandbox-1', validationMode: 'basicZip' })
+    ).resolves.toEqual(Buffer.from(zipContent));
+
     expect(validateZipStructure).toHaveBeenCalledWith(Buffer.from(zipContent), {
       maxUncompressedBytes: 1024 * 1024
     });
-    expect(mocks.disconnectSandbox).toHaveBeenCalledWith(sandbox);
+    expect(validateDeployableSkillWorkspacePackage).not.toHaveBeenCalled();
   });
 
   it('throws when the final package zip exceeds the skill package limit', async () => {
@@ -235,6 +267,7 @@ describe('packageSkillInSandbox', () => {
       'Skill package size'
     );
 
+    expect(validateDeployableSkillWorkspacePackage).not.toHaveBeenCalled();
     expect(validateZipStructure).not.toHaveBeenCalled();
     expect(sandbox.execute).toHaveBeenCalledWith("rm -f '/workspace/package.zip'");
     expect(mocks.disconnectSandbox).toHaveBeenCalledWith(sandbox);

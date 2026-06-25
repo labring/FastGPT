@@ -1,4 +1,4 @@
-import type { SandboxImageConfigType } from '@fastgpt/global/core/ai/skill/type';
+import type { SandboxImageConfigType } from '@fastgpt/global/core/ai/sandbox/type';
 import type { SandboxCreateSpec, SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
 import type { VolumeManagerResult } from '../../volume/service';
 

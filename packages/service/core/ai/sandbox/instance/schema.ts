@@ -1,8 +1,7 @@
 import { connectionMongo, getMongoModel } from '../../../../common/mongo';
 const { Schema } = connectionMongo;
 import type { SandboxInstanceSchemaType } from '../type';
-import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
-import { SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
+import { SandboxStatusEnum, SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { SandboxLimitSchema, SandboxProviderSchema } from '../type';
 
 /**

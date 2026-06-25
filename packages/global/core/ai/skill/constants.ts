@@ -28,8 +28,3 @@ export enum AgentSkillTypeEnum {
   folder = 'folder',
   skill = 'skill'
 }
-// Sandbox types
-export enum SandboxTypeEnum {
-  editDebug = 'edit-debug',
-  sessionRuntime = 'session-runtime'
-}

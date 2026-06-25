@@ -10,9 +10,6 @@ export type CreateSkillData = {
   teamId: string;
   tmbId: string;
   creationStatus?: AgentSkillCreationStatusEnum;
-  creationPayload?: {
-    requirements?: string;
-  };
 };
 
 // UpdateSkillData excludes markdown to ensure consistency with version management.

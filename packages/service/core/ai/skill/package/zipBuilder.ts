@@ -46,6 +46,19 @@ export type ZipValidationResult = {
   totalUncompressedBytes?: number;
 };
 
+export type DeployableSkillWorkspaceValidationResult = {
+  valid: boolean;
+  files: string[];
+  error?: string;
+};
+
+type ZipSafetyValidationResult = {
+  valid: boolean;
+  files: string[];
+  error?: string;
+  totalUncompressedBytes?: number;
+};
+
 export type ExtractSkillPackageResult = {
   success: boolean;
   skillMd?: string;
@@ -100,6 +113,21 @@ export async function createSkillPackage(params: CreateSkillPackageParams): Prom
 }
 
 /**
+ * 创建新建 Skill 的空白工作区包。
+ *
+ * 初始版本只建立工作区外壳，不生成任何可执行 Skill。空目录在 ZIP 中需要显式写入，
+ * 否则解压后 `skills/` 不会存在。
+ */
+export async function createBlankSkillWorkspacePackage(): Promise<Buffer> {
+  const zip = new JSZip();
+
+  zip.file('.gitignore', DEFAULT_GITIGNORE_CONTENT);
+  zip.folder('skills');
+
+  return generateZipBuffer(zip);
+}
+
+/**
  * 向 ZIP 中写入单个文件，并统一处理 Buffer、Uint8Array 和字符串内容。
  */
 function addFileToZip(zip: JSZip, path: string, content: Buffer | string | Uint8Array): void {
@@ -139,53 +167,17 @@ export async function validateZipStructure(
 ): Promise<ZipValidationResult> {
   try {
     const zip = await JSZip.loadAsync(zipBuffer);
-    const files = Object.keys(zip.files);
+    const safety = validateZipSafety(zip, options);
+    const files = safety.files;
 
-    if (files.length === 0) {
+    if (!safety.valid) {
       return {
         valid: false,
         hasSkillMd: false,
         files,
-        error: 'ZIP archive is empty'
+        totalUncompressedBytes: safety.totalUncompressedBytes,
+        error: safety.error
       };
-    }
-
-    let totalUncompressedBytes = 0;
-    for (const file of Object.values(zip.files)) {
-      const unsafePath = file.unsafeOriginalName ?? file.name;
-      if (!isSafeZipEntryPath(unsafePath)) {
-        return {
-          valid: false,
-          hasSkillMd: false,
-          files,
-          error: `Unsafe ZIP entry path: ${unsafePath}`
-        };
-      }
-
-      if (isZipSymlink(file)) {
-        return {
-          valid: false,
-          hasSkillMd: false,
-          files,
-          error: `ZIP symlink entries are not allowed: ${unsafePath}`
-        };
-      }
-
-      if (!file.dir) {
-        totalUncompressedBytes += getZipEntryUncompressedSize(file);
-        if (
-          options.maxUncompressedBytes !== undefined &&
-          totalUncompressedBytes > options.maxUncompressedBytes
-        ) {
-          return {
-            valid: false,
-            hasSkillMd: false,
-            files,
-            totalUncompressedBytes,
-            error: 'ZIP archive uncompressed size exceeds maximum allowed size'
-          };
-        }
-      }
     }
 
     // 兼容根目录直接放 SKILL.md 的历史包。
@@ -219,7 +211,7 @@ export async function validateZipStructure(
       hasSkillMd: true,
       files,
       skillMdPath,
-      totalUncompressedBytes
+      totalUncompressedBytes: safety.totalUncompressedBytes
     };
   } catch (error) {
     return {
@@ -229,6 +221,165 @@ export async function validateZipStructure(
       error: `Invalid ZIP archive: ${error instanceof Error ? error.message : 'Unknown error'}`
     };
   }
+}
+
+/**
+ * 发布/保存版本时校验可部署工作区。
+ *
+ * 这里只校验 workspace 级最小结构，不解析 SKILL.md frontmatter。创建阶段的空白初始包
+ * 不应调用该校验；用户主动发布时必须至少存在一个可执行 Skill 目录。
+ */
+export async function validateDeployableSkillWorkspacePackage(
+  zipBuffer: Buffer,
+  options: { maxUncompressedBytes?: number } = {}
+): Promise<DeployableSkillWorkspaceValidationResult> {
+  try {
+    const zip = await JSZip.loadAsync(zipBuffer);
+    const safety = validateZipSafety(zip, options);
+    const files = safety.files;
+
+    if (!safety.valid) {
+      return {
+        valid: false,
+        files,
+        error: safety.error
+      };
+    }
+
+    const hasSkillsDirectory = files.some((path) => {
+      const normalized = normalizeDeployableWorkspaceEntryPath(path);
+      return normalized === 'skills/' || normalized.startsWith('skills/');
+    });
+
+    if (!hasSkillsDirectory) {
+      return {
+        valid: false,
+        files,
+        error: 'Missing required directory: skills/'
+      };
+    }
+
+    const firstLevelSkillDirs = new Set<string>();
+    const executableSkillDirs = new Set<string>();
+
+    for (const path of files) {
+      const normalized = normalizeDeployableWorkspaceEntryPath(path);
+
+      const firstLevelDirMatch = normalized.match(/^skills\/([^/]+)(?:\/|$)/);
+      if (firstLevelDirMatch?.[1] && normalized !== `skills/${firstLevelDirMatch[1]}`) {
+        firstLevelSkillDirs.add(firstLevelDirMatch[1]);
+      }
+
+      const skillMdMatch = normalized.match(/^skills\/([^/]+)\/SKILL\.md$/);
+      if (skillMdMatch?.[1]) {
+        executableSkillDirs.add(skillMdMatch[1]);
+      }
+    }
+
+    if (firstLevelSkillDirs.size === 0) {
+      return {
+        valid: false,
+        files,
+        error: 'The skills/ directory must contain at least one first-level skill folder'
+      };
+    }
+
+    const missingSkillMdDirs = [...firstLevelSkillDirs].filter(
+      (dir) => !executableSkillDirs.has(dir)
+    );
+    if (missingSkillMdDirs.length > 0) {
+      return {
+        valid: false,
+        files,
+        error: `Each first-level skill folder under skills/ must contain SKILL.md: ${missingSkillMdDirs.join(', ')}`
+      };
+    }
+
+    return {
+      valid: true,
+      files
+    };
+  } catch (error) {
+    return {
+      valid: false,
+      files: [],
+      error: `Invalid ZIP archive: ${error instanceof Error ? error.message : 'Unknown error'}`
+    };
+  }
+}
+
+function normalizeDeployableWorkspaceEntryPath(path: string): string {
+  return path.replace(/\\/g, '/').replace(/^\.\/+/, '');
+}
+
+function isZipRootDirectoryEntry(path: string): boolean {
+  const normalized = path.replace(/\\/g, '/');
+  return normalized === '/' || normalized === './' || normalized === '.';
+}
+
+function normalizeZipEntryPathForSafety(path: string): string {
+  return path.replace(/\\/g, '/').replace(/^\.\/+/, '');
+}
+
+function validateZipSafety(
+  zip: JSZip,
+  options: { maxUncompressedBytes?: number } = {}
+): ZipSafetyValidationResult {
+  const files = Object.keys(zip.files);
+
+  if (files.length === 0) {
+    return {
+      valid: false,
+      files,
+      error: 'ZIP archive is empty'
+    };
+  }
+
+  let totalUncompressedBytes = 0;
+  for (const file of Object.values(zip.files)) {
+    const unsafePath = file.unsafeOriginalName ?? file.name;
+    if (file.dir && isZipRootDirectoryEntry(unsafePath)) {
+      continue;
+    }
+
+    const normalizedUnsafePath = normalizeZipEntryPathForSafety(unsafePath);
+    if (!isSafeZipEntryPath(normalizedUnsafePath)) {
+      return {
+        valid: false,
+        files,
+        error: `Unsafe ZIP entry path: ${unsafePath}`
+      };
+    }
+
+    if (isZipSymlink(file)) {
+      return {
+        valid: false,
+        files,
+        error: `ZIP symlink entries are not allowed: ${unsafePath}`
+      };
+    }
+
+    if (!file.dir) {
+      totalUncompressedBytes += getZipEntryUncompressedSize(file);
+      if (
+        options.maxUncompressedBytes !== undefined &&
+        totalUncompressedBytes > options.maxUncompressedBytes
+      ) {
+        return {
+          valid: false,
+          files,
+          totalUncompressedBytes,
+          error: 'ZIP archive uncompressed size exceeds maximum allowed size'
+        };
+      }
+    }
+  }
+
+  return {
+    valid: true,
+    files,
+    totalUncompressedBytes
+  };
 }
 
 function isSafeZipEntryPath(path: string): boolean {

@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/instance/schema';
 import {
-  buildSandboxInstanceLookup,
   countRunningSandboxInstancesByType,
   createSandboxResourcesToArchiveCursor,
   deleteSandboxInstanceRecord,
@@ -28,8 +27,7 @@ import {
   upsertRunningSandboxInstance,
   type SandboxResourceDoc
 } from '@fastgpt/service/core/ai/sandbox/instance/repository';
-import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
-import { SandboxTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
+import { SandboxStatusEnum, SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 const collectArchiveCursor = async (
