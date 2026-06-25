@@ -158,102 +158,74 @@ export const pushDataListToTrainingQueue = async ({
   });
 
   // insert data to db
-  const batchSize = 500; // Batch insert size
-  const maxBatchesPerTransaction = 20; // Every session can insert at most 20 batches
+  const batchSize = 500;
 
-  const insertDataIterative = async (
-    dataToInsert: typeof data,
-    session: ClientSession
-  ): Promise<number> => {
-    let insertedCount = 0;
+  const insertBatch = async (batch: typeof data, batchSession: ClientSession): Promise<number> => {
+    if (batch.length === 0) return 0;
 
-    for (let i = 0; i < dataToInsert.length; i += batchSize) {
-      const batch = dataToInsert.slice(i, i + batchSize);
+    const result = await MongoDatasetTraining.insertMany(
+      batch.map((item) => ({
+        teamId,
+        tmbId,
+        datasetId,
+        collectionId,
+        billId,
+        mode,
+        ...(item.q && { q: item.q }),
+        ...(item.a && { a: item.a }),
+        ...(item.imageId && { imageId: item.imageId }),
+        ...(item.id && { dataId: item.id }),
+        chunkIndex: item.chunkIndex ?? 0,
+        indexSize,
+        weight: weight ?? 0,
+        indexes: item.indexes,
+        ...(item.metadata && { dataMetadata: item.metadata }),
+        retryCount: 5
+      })),
+      {
+        session: batchSession,
+        ordered: true,
+        rawResult: true,
+        includeResultMetadata: false
+      }
+    );
 
-      if (batch.length === 0) continue;
-
-      const result = await MongoDatasetTraining.insertMany(
-        batch.map((item) => ({
-          teamId,
-          tmbId,
-          datasetId,
-          collectionId,
-          billId,
-          mode,
-          ...(item.q && { q: item.q }),
-          ...(item.a && { a: item.a }),
-          ...(item.imageId && { imageId: item.imageId }),
-          ...(item.id && { dataId: item.id }),
-          chunkIndex: item.chunkIndex ?? 0,
-          indexSize,
-          weight: weight ?? 0,
-          indexes: item.indexes,
-          ...(item.metadata && { dataMetadata: item.metadata }),
-          retryCount: 5
-        })),
-        {
-          session,
-          ordered: true, // 改为 true: 任何失败立即停止,事务回滚
-          rawResult: true,
-          includeResultMetadata: false
-        }
-      );
-
-      // ordered: true 模式下,成功必定等于批次大小
-      insertedCount += result.insertedCount;
-
-      logger.debug('Training data insert progress', {
-        insertedCount,
-        total: dataToInsert.length
-      });
-    }
-
-    return insertedCount;
+    return result.insertedCount;
   };
 
-  // 大数据量分段事务处理 (避免事务超时)
-  const chunkSize = maxBatchesPerTransaction * batchSize; // 10,000 条
   let start = Date.now();
+  let insertedCount = 0;
 
-  if (data.length > chunkSize) {
-    logger.info('Large dataset detected, using chunked transactions', {
-      itemCount: data.length,
-      chunkSize
-    });
-
-    let totalInserted = 0;
-
-    for (let i = 0; i < data.length; i += chunkSize) {
-      const chunk = data.slice(i, i + chunkSize);
-
-      // mongoSessionRun has its own internal retryFn — no outer retry needed.
-      const inserted = await mongoSessionRun(async (chunkSession) => {
-        return insertDataIterative(chunk, chunkSession);
-      });
-      totalInserted += inserted;
-    }
-
-    logger.info('Chunked transactions completed', { durationMs: Date.now() - start });
-
-    pushCollectionUpdateJob({
-      collectionId: String(collectionId),
-      datasetId: String(datasetId),
-      teamId: String(teamId)
-    });
-
-    return { insertLen: totalInserted };
-  }
-
-  // 小数据量单事务处理
-  let insertedCount;
   if (session) {
-    insertedCount = await insertDataIterative(data, session);
-    logger.info('Single transaction completed', { durationMs: Date.now() - start });
-  } else {
-    insertedCount = await mongoSessionRun(async (session) => {
-      return insertDataIterative(data, session);
+    // Caller's session: all batches share one transaction (backward compatible)
+    for (let i = 0; i < data.length; i += batchSize) {
+      insertedCount += await insertBatch(data.slice(i, i + batchSize), session);
+      logger.debug('Training batch progress (shared session)', {
+        insertedCount,
+        total: data.length
+      });
+    }
+    logger.info('Training inserts completed (shared session)', {
+      durationMs: Date.now() - start,
+      insertedCount
     });
-    logger.info('Single transaction completed', { durationMs: Date.now() - start });
+  } else {
+    // No session: each batch is its own independent transaction
+    for (let i = 0; i < data.length; i += batchSize) {
+      const batchCount = await mongoSessionRun(async (batchSession) => {
+        return insertBatch(data.slice(i, i + batchSize), batchSession);
+      });
+      insertedCount += batchCount;
+      logger.debug('Training batch committed (per-batch txn)', {
+        done: i + batchSize,
+        total: data.length,
+        insertedCount
+      });
+    }
+    logger.info('Training inserts completed (per-batch txns)', {
+      durationMs: Date.now() - start,
+      insertedCount
+    });
   }
 
   pushCollectionUpdateJob({

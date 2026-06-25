@@ -225,3 +225,51 @@ export const markDataTrainingPhaseTrace = async ({
     logger.warn('Failed to write training phase trace', { dataId, mode, error: err });
   }
 };
+
+/**
+ * Batch version of markDataTrainingPhaseTrace.
+ * Uses bulkWrite with ordered:false — individual failures don't block the batch.
+ * Chunks at BATCH_SIZE to avoid oversized write commands.
+ *
+ * Non-critical: errors are logged but never thrown.
+ */
+const BULK_BATCH_SIZE = 500;
+
+export const markDataTrainingPhaseTraceBatch = async ({
+  items,
+  mode,
+  startTime,
+  endTime
+}: {
+  items: { dataId: string }[];
+  mode: TrainingModeEnum;
+  startTime?: Date | null;
+  endTime?: Date | null;
+}) => {
+  if (items.length === 0) return;
+
+  const st = startTime || new Date();
+  const et = endTime || new Date();
+
+  for (let offset = 0; offset < items.length; offset += BULK_BATCH_SIZE) {
+    const batch = items.slice(offset, offset + BULK_BATCH_SIZE);
+    try {
+      await MongoDatasetData.bulkWrite(
+        batch.map(({ dataId }) => ({
+          updateOne: {
+            filter: { _id: dataId },
+            update: { $push: { phaseTimings: { phase: mode, startTime: st, endTime: et } } }
+          }
+        })),
+        { ordered: false }
+      );
+    } catch (err) {
+      logger.warn('Failed to write training phase trace batch', {
+        mode,
+        batchStart: offset,
+        batchSize: batch.length,
+        error: err
+      });
+    }
+  }
+};

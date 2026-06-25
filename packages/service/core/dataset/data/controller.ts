@@ -217,130 +217,101 @@ export async function createDataDrafts({
   }
 
   const BATCH_SIZE = 500;
-  const MAX_BATCHES_PER_TRANSACTION = 20; // Same as pushDataListToTrainingQueue
-  const CHUNK_SIZE = MAX_BATCHES_PER_TRANSACTION * BATCH_SIZE; // 10,000 per transaction
 
   /**
-   * Insert data for one chunk within a single session/transaction.
+   * Insert a single batch (up to BATCH_SIZE items) within the given session.
    */
-  const insertChunk = async (
-    chunkItems: typeof items,
-    chunkSession: ClientSession
+  const insertBatch = async (
+    batch: typeof items,
+    batchSession: ClientSession
   ): Promise<{ _id: any }[]> => {
-    const results: { _id: any }[] = [];
+    // 1. Build Data documents for this batch
+    const draftDataItems = batch.map((item, i) => {
+      const q = item.q || '';
+      const a = item.a || '';
+      const detectedLanguage = detectLang(q);
+      const mergedMetadata = { ...(item.metadata || {}), detectedLanguage };
+      return {
+        ...(item.id && { _id: item.id }),
+        teamId,
+        tmbId,
+        datasetId,
+        collectionId,
+        q,
+        a,
+        ...(item.imageId && { imageId: item.imageId }),
+        ...(item.imageDescMap && { imageDescMap: item.imageDescMap }),
+        chunkIndex: item.chunkIndex,
+        indexes: [],
+        createTime: new Date(),
+        ...(Object.keys(mergedMetadata).length > 0 && { metadata: mergedMetadata })
+      };
+    });
 
-    for (let offset = 0; offset < chunkItems.length; offset += BATCH_SIZE) {
-      const batch = chunkItems.slice(offset, offset + BATCH_SIZE);
+    // 2. Batch insert Data records
+    const draftDocs = await MongoDatasetData.create(draftDataItems, {
+      session: batchSession,
+      ordered: true
+    });
 
-      // 1. Build Data documents for this batch
-      const draftDataItems = batch.map((item, i) => {
-        const q = item.q || '';
-        const a = item.a || '';
-        const detectedLanguage = detectLang(q);
-        const mergedMetadata = { ...(item.metadata || {}), detectedLanguage };
-        return {
-          ...(item.id && { _id: item.id }),
-          teamId,
-          tmbId,
-          datasetId,
-          collectionId,
-          q,
-          a,
-          ...(item.imageId && { imageId: item.imageId }),
-          ...(item.imageDescMap && { imageDescMap: item.imageDescMap }),
-          chunkIndex: item.chunkIndex ?? offset + i,
-          indexes: [],
-          createTime: new Date(),
-          ...(Object.keys(mergedMetadata).length > 0 && { metadata: mergedMetadata })
-        };
-      });
+    // 3. Compute jieba tokens and batch insert DataText records
+    const textTokens = await Promise.all(
+      draftDocs.map((doc) => {
+        const fullText = `${doc.q}\n${doc.a || ''}`.trim();
+        return fullText ? jiebaSplit({ text: fullText }) : '';
+      })
+    );
+    await MongoDatasetDataText.create(
+      textTokens.map((token, i) => ({
+        teamId,
+        datasetId,
+        collectionId,
+        dataId: draftDocs[i]._id,
+        fullTextToken: token
+      })),
+      { session: batchSession, ordered: true }
+    );
 
-      // 2. Batch insert Data records
-      const draftDocs = await MongoDatasetData.create(draftDataItems, {
-        session: chunkSession,
-        ordered: true
-      });
-
-      // 3. Compute jieba tokens and batch insert DataText records
-      const textTokens = await Promise.all(
-        draftDocs.map((doc) => {
-          const fullText = `${doc.q}\n${doc.a || ''}`.trim();
-          return fullText ? jiebaSplit({ text: fullText }) : '';
-        })
+    // 4. Remove S3 TTL for images in this batch (parallel)
+    const batchImageIds = draftDocs
+      .map((doc) => doc.imageId)
+      .filter((id): id is string => !!id && isS3ObjectKey(id, 'dataset'));
+    if (batchImageIds.length > 0) {
+      await Promise.all(
+        batchImageIds.map((key) =>
+          removeS3TTL({ key, bucketName: 'private', session: batchSession })
+        )
       );
-      await MongoDatasetDataText.create(
-        textTokens.map((token, i) => ({
-          teamId,
-          datasetId,
-          collectionId,
-          dataId: draftDocs[i]._id,
-          fullTextToken: token
-        })),
-        { session: chunkSession, ordered: true }
-      );
-
-      // 4. Remove S3 TTL for images in this batch (parallel)
-      const batchImageIds = draftDocs
-        .map((doc) => doc.imageId)
-        .filter((id): id is string => !!id && isS3ObjectKey(id, 'dataset'));
-      if (batchImageIds.length > 0) {
-        await Promise.all(
-          batchImageIds.map((key) =>
-            removeS3TTL({ key, bucketName: 'private', session: chunkSession })
-          )
-        );
-      }
-
-      results.push(...draftDocs);
-
-      addLog.debug('createDataDrafts batch progress', {
-        done: offset + batch.length,
-        chunkTotal: chunkItems.length
-      });
     }
 
-    return results;
+    return draftDocs;
   };
 
-  // Large dataset: split into multiple independent transactions to avoid timeout.
-  // Same strategy as pushDataListToTrainingQueue — ignores the incoming session
-  // because a single transaction cannot hold >10,000 writes.
-  if (items.length > CHUNK_SIZE) {
-    addLog.info('createDataDrafts: large dataset, using chunked transactions', {
-      itemCount: items.length,
-      chunkSize: CHUNK_SIZE
-    });
+  const results: { _id: any }[] = [];
 
-    const allResults: { _id: any }[] = [];
-
-    for (let i = 0; i < items.length; i += CHUNK_SIZE) {
-      const chunk = items.slice(i, i + CHUNK_SIZE);
-
-      // mongoSessionRun has its own internal retryFn that handles transaction
-      // failures with proper rollback — no outer retry needed.
-      const chunkResults = await mongoSessionRun(async (chunkSession) => {
-        return insertChunk(chunk, chunkSession);
-      });
-      allResults.push(...chunkResults);
-    }
-
-    pushCollectionUpdateJob({
-      collectionId: String(collectionId),
-      datasetId: String(datasetId),
-      teamId: String(teamId)
-    });
-
-    return allResults.map((doc) => ({ _id: doc._id }));
-  }
-
-  // Small dataset: use the caller's session if provided, otherwise create our own.
-  let results;
   if (session) {
-    results = await insertChunk(items, session);
+    // Caller's session: all batches share one transaction (backward compatible)
+    for (let offset = 0; offset < items.length; offset += BATCH_SIZE) {
+      const batch = items.slice(offset, offset + BATCH_SIZE);
+      results.push(...(await insertBatch(batch, session)));
+      addLog.debug('createDataDrafts batch progress (shared session)', {
+        done: offset + batch.length,
+        total: items.length
+      });
+    }
   } else {
-    results = await mongoSessionRun(async (newSession) => {
-      return insertChunk(items, newSession);
-    });
+    // No session: each batch is its own independent transaction
+    for (let offset = 0; offset < items.length; offset += BATCH_SIZE) {
+      const batch = items.slice(offset, offset + BATCH_SIZE);
+      const batchResults = await mongoSessionRun(async (batchSession) => {
+        return insertBatch(batch, batchSession);
+      });
+      results.push(...batchResults);
+      addLog.debug('createDataDrafts batch committed (per-batch txn)', {
+        done: offset + batch.length,
+        total: items.length
+      });
+    }
   }
 
   pushCollectionUpdateJob({

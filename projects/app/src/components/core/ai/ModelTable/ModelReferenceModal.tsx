@@ -1,4 +1,16 @@
-import { Box, Button, ModalBody, ModalFooter, Table, TableContainer, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
+import {
+  Box,
+  Button,
+  ModalBody,
+  ModalFooter,
+  Table,
+  TableContainer,
+  Tbody,
+  Td,
+  Th,
+  Thead,
+  Tr
+} from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import type { ModelReference } from '@fastgpt/service/support/permission/model/reference';
@@ -15,12 +27,7 @@ const ModelReferenceModal = ({
   const { t } = useTranslation();
 
   return (
-    <MyModal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={t('common:Notice')}
-      maxW="400px"
-    >
+    <MyModal isOpen={isOpen} onClose={onClose} title={t('common:Notice')} maxW="400px">
       <ModalBody px={7}>
         <Box fontSize="14px" color="myGray.700" mb={4}>
           {t('account_model:model_referenced_by_resources')}
