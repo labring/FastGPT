@@ -192,7 +192,7 @@ const AIChatSettingsModal = ({
                     <Box> {t('app:ai_point_price')}</Box>
                     <ModelPriceModal>
                       {({ onOpen }) => (
-                        <QuestionTip label={t('app:look_ai_point_price')} onClick={onOpen} />
+                        <QuestionTip label={t('app:look_ai_point_price')} pointerEvents={'auto'} onClick={onOpen} />
                       )}
                     </ModelPriceModal>
                   </HStack>
