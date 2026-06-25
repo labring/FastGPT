@@ -224,6 +224,31 @@ describe('rewriteHistoriesByInteractiveResponse', () => {
       status: ChatStatusEnum.loading
     });
   });
+
+  it('persists agentPlanAskQuery answer on the previous AI message for query responses', () => {
+    const interactive = {
+      ...baseInteractive,
+      planId: 'plan-1',
+      type: 'agentPlanAskQuery',
+      params: {
+        content: 'Need more detail',
+        options: ['A', 'B', 'C']
+      }
+    } as WorkflowInteractiveResponseType;
+
+    const histories = [createAiRecord(interactive), createHumanRecord(), createAiPlaceholder()];
+    const result = rewriteHistoriesByInteractiveResponse({
+      histories,
+      interactive,
+      interactiveVal: 'B'
+    });
+
+    expect((result[0].value[0] as any).interactive.params.answer).toBe('B');
+    expect(result[2]).toEqual({
+      ...histories[2],
+      status: ChatStatusEnum.loading
+    });
+  });
 });
 
 describe('resolveInteractiveResponseChatItemId', () => {

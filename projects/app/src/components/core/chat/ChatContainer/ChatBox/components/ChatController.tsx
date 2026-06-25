@@ -320,7 +320,7 @@ const ChatController = ({
                     h={'22px'}
                     color={'primary.600'}
                     borderRadius={'sm'}
-                    _hover={{ bg: 'primary.50' }}
+                    _hover={{ bg: 'rgba(17, 24, 36, 0.05)' }}
                     isLoading={isLoadingOnToggleFeedbackReadStatus}
                     onClick={requestOnToggleFeedbackReadStatus}
                   >

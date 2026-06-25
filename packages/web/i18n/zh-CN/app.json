@@ -489,6 +489,7 @@
   "type.hidden": "隐藏应用",
   "type_http_tool_set_intro": "批量导入 API 工具",
   "type_mcp_intro": "连接 MCP 服务",
+  "type_not_recognized": "无法识别应用类型，请检查导入的 JSON 配置",
   "type_plugin_description": "一键输出指定结果。",
   "type_plugin_intro": "常用于封装工作流",
   "type_simple_description": "最基础的对话应用，无需复杂配置，快速创建和使用。",

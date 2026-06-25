@@ -489,6 +489,7 @@
   "type.hidden": "Hide app",
   "type_http_tool_set_intro": "Batch import API tool",
   "type_mcp_intro": "Connect to MCP service",
+  "type_not_recognized": "Unable to recognize app type. Please check the imported JSON configuration.",
   "type_plugin_description": "Output the specified results with one click.",
   "type_plugin_intro": "Commonly used to encapsulate workflow",
   "type_simple_description": "The most basic conversation application, no complicated configuration is required, and it can be created and used quickly.",

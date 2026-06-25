@@ -476,6 +476,7 @@
   "type.hidden": "隱藏應用",
   "type_http_tool_set_intro": "批量導入 API 工具",
   "type_mcp_intro": "連接 MCP 服務",
+  "type_not_recognized": "無法識別應用類型，請檢查匯入的 JSON 設定",
   "type_plugin_description": "一鍵輸出指定結果。",
   "type_plugin_intro": "常用於封裝工作流",
   "type_simple_description": "最基礎的對話應用，無需複雜配置，快速創建和使用。",
