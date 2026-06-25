@@ -9,7 +9,7 @@ const {
   runAgentSandboxEntrypointMock,
   resolveSandboxHomeMock,
   injectAgentSkillFilesToSandboxMock,
-  injectEditDebugBuiltinSkillsToSandboxMock,
+  syncBuiltinSkillsToSandboxMock,
   runAgentSkillVersionEntrypointsMock,
   getAgentSkillInfosMock,
   sandboxClientMock,
@@ -22,7 +22,7 @@ const {
   runAgentSandboxEntrypointMock: vi.fn(),
   resolveSandboxHomeMock: vi.fn(),
   injectAgentSkillFilesToSandboxMock: vi.fn(),
-  injectEditDebugBuiltinSkillsToSandboxMock: vi.fn(),
+  syncBuiltinSkillsToSandboxMock: vi.fn(),
   runAgentSkillVersionEntrypointsMock: vi.fn(),
   getAgentSkillInfosMock: vi.fn(),
   sandboxProviderMock: {},
@@ -56,7 +56,7 @@ vi.mock('@fastgpt/service/core/ai/skill/runtime', () => ({
   getAgentSkillInfos: getAgentSkillInfosMock,
   getBuiltinSkillsRootPath: (homeDirectory: string) => `${homeDirectory}/.fastgpt/skills`,
   injectAgentSkillFilesToSandbox: injectAgentSkillFilesToSandboxMock,
-  injectEditDebugBuiltinSkillsToSandbox: injectEditDebugBuiltinSkillsToSandboxMock,
+  syncBuiltinSkillsToSandbox: syncBuiltinSkillsToSandboxMock,
   runAgentSkillVersionEntrypoints: runAgentSkillVersionEntrypointsMock
 }));
 
@@ -157,7 +157,43 @@ describe('ensureAgentSandboxRuntime', () => {
     });
   });
 
-  it('runs edit-debug lifecycle without deploying selected skills', async () => {
+  it('runs custom prepare actions in selected skill lifecycle', async () => {
+    const { ensureAgentSandboxRuntime } =
+      await import('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/sandbox/prepare');
+    const prepareAction = vi.fn(async (context) => ({
+      ...context,
+      skillScanDirectories: [...context.skillScanDirectories, '/home/sandbox/.fastgpt/skills']
+    }));
+
+    await ensureAgentSandboxRuntime({
+      appId: 'app_1',
+      userId: 'user_1',
+      chatId: 'chat_1',
+      teamId: 'team_1',
+      needSandboxRuntime: true,
+      skillIds: ['skill_1'],
+      prepareActions: [prepareAction],
+      currentFiles
+    });
+
+    expect(prepareAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        deployedSkillVersions: [
+          {
+            versionId: 'version_1',
+            targetDir: '/workspace/skills/version_1'
+          }
+        ],
+        skillScanDirectories: []
+      })
+    );
+    expect(getAgentSkillInfosMock).toHaveBeenCalledWith({
+      sandbox: sandboxProviderMock,
+      skillDirectories: ['/workspace/skills/version_1', '/home/sandbox/.fastgpt/skills']
+    });
+  });
+
+  it('runs edit-debug lifecycle without deploying selected skills or builtin skills by default', async () => {
     const { ensureAgentSandboxRuntime } =
       await import('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/sandbox/prepare');
 
@@ -174,14 +210,81 @@ describe('ensureAgentSandboxRuntime', () => {
     });
 
     expect(injectInputFilesToSandboxMock).toHaveBeenCalledWith(sandboxProviderMock, currentFiles);
-    expect(injectEditDebugBuiltinSkillsToSandboxMock).toHaveBeenCalledWith(sandboxProviderMock);
+    expect(syncBuiltinSkillsToSandboxMock).not.toHaveBeenCalled();
     expect(getAgentSkillInfosMock).toHaveBeenCalledWith({
       sandbox: sandboxProviderMock,
-      skillDirectories: ['/workspace', '/home/sandbox/.fastgpt/skills']
+      skillDirectories: ['/workspace']
     });
     expect(injectAgentSkillFilesToSandboxMock).not.toHaveBeenCalled();
     expect(runAgentSandboxEntrypointMock).not.toHaveBeenCalled();
     expect(runAgentSkillVersionEntrypointsMock).not.toHaveBeenCalled();
+  });
+
+  it('runs custom prepare actions in edit-debug lifecycle', async () => {
+    const { ensureAgentSandboxRuntime } =
+      await import('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/sandbox/prepare');
+    const prepareAction = vi.fn(async (context) => ({
+      ...context,
+      skillScanDirectories: [...context.skillScanDirectories, '/home/sandbox/.fastgpt/skills']
+    }));
+
+    await ensureAgentSandboxRuntime({
+      appId: 'app_1',
+      userId: 'user_1',
+      chatId: 'chat_1',
+      teamId: 'team_1',
+      needSandboxRuntime: true,
+      skillIds: [],
+      editSkillId: 'edit_skill_1',
+      prepareActions: [prepareAction],
+      currentFiles
+    });
+
+    expect(prepareAction).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sandboxClient: sandboxClientMock,
+        workDirectory: '/workspace',
+        skillScanDirectories: []
+      })
+    );
+    expect(getAgentSkillInfosMock).toHaveBeenCalledWith({
+      sandbox: sandboxProviderMock,
+      skillDirectories: ['/workspace', '/home/sandbox/.fastgpt/skills']
+    });
+  });
+
+  it('creates builtin skill prepare action with lazy source loading', async () => {
+    const { createBuiltinSkillPrepareAction } =
+      await import('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/sandbox/prepare');
+    const builtinSkillSources = [
+      {
+        name: 'skill-creator',
+        files: [
+          {
+            relativePath: 'SKILL.md',
+            content: Buffer.from('# Skill Creator')
+          }
+        ]
+      }
+    ];
+    const getSources = vi.fn(async () => builtinSkillSources);
+
+    const result = await createBuiltinSkillPrepareAction({ getSources })({
+      sandboxClient: sandboxClientMock,
+      workDirectory: '/workspace',
+      deployedSkillVersions: [],
+      skillInfos: [],
+      skillScanDirectories: []
+    });
+
+    expect(getSources).toHaveBeenCalledTimes(1);
+    expect(resolveSandboxHomeMock).toHaveBeenCalledWith(sandboxProviderMock);
+    expect(syncBuiltinSkillsToSandboxMock).toHaveBeenCalledWith({
+      sandbox: sandboxProviderMock,
+      homeDirectory: '/home/sandbox',
+      sources: builtinSkillSources
+    });
+    expect(result.skillScanDirectories).toEqual(['/home/sandbox/.fastgpt/skills/skill-creator']);
   });
 
   it('returns empty skill infos when sandbox runtime is not needed', async () => {

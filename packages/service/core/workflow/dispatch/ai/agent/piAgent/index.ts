@@ -46,6 +46,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
     runningAppInfo,
     runningUserInfo,
     workflowStreamResponse,
+    agentSandboxPrepareActions,
     usagePush,
     chatId,
     uid,
@@ -160,6 +161,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       sandboxEntrypoint: effectiveSandboxEntrypoint,
       skillIds,
       editSkillId,
+      prepareActions: agentSandboxPrepareActions,
       currentFiles: userContext.currentFiles
     });
 

@@ -1,7 +1,7 @@
 import { type FastGPTConfigFileType } from '@fastgpt/global/common/system/types';
 import { isIPv6 } from 'net';
 import { getLogger, LogCategories } from '../logger';
-import { serviceEnv } from '../../env';
+import { hasAgentSandboxConfig, serviceEnv } from '../../env';
 
 const logger = getLogger(LogCategories.ERROR);
 
@@ -20,6 +20,7 @@ export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
     !!config.systemEnv.customPdfParse?.textinAppId ||
     !!config.systemEnv.customPdfParse?.doc2xKey;
   config.feConfigs.customPdfParsePrice = config.systemEnv.customPdfParse?.price || 0;
+  config.feConfigs.show_agent_sandbox = hasAgentSandboxConfig();
   config.feConfigs.uploadFileMaxSize = serviceEnv.UPLOAD_FILE_MAX_SIZE;
   config.feConfigs.uploadFileMaxAmount = serviceEnv.UPLOAD_FILE_MAX_AMOUNT;
   config.feConfigs.limit = {

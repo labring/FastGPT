@@ -152,13 +152,15 @@ export const streamSkillDebugChat = ({
   data: SkillDebugChatBody;
   onMessage: StartChatFnProps['generatingMessage'];
   abortCtrl: AbortController;
-}): Promise<StreamResponseType> =>
-  streamFetch({
-    url: '/api/core/ai/skill/debugChat',
+}): Promise<StreamResponseType> => {
+  const { feConfigs } = useSystemStore.getState();
+  return streamFetch({
+    url: feConfigs?.isPlus ? '/api/proApi/core/ai/skill/debugChat' : '/api/core/ai/skill/debugChat',
     data,
     onMessage,
     abortCtrl
   });
+};
 
 /** 创建 Skill 文件夹 */
 export const postCreateSkillFolder = (data: CreateSkillFolderBody) =>

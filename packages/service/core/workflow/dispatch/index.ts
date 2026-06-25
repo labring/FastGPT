@@ -83,6 +83,7 @@ import {
   type WorkflowObservedStepResult
 } from './utils/trace';
 import { getWorkflowNodeRunParams } from './utils/runtime';
+import type { AgentSandboxPrepareAction } from './ai/agent/sub/sandbox';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
 
@@ -102,6 +103,7 @@ type Props = Omit<
   req?: IncomingMessage;
   defaultSkipNodeQueue?: WorkflowDebugResponse['skipNodeQueue'];
   nodeResponseWriteConfig: WorkflowNodeResponseWriteConfig;
+  agentSandboxPrepareActions?: AgentSandboxPrepareAction[];
 };
 type NodeResponseType = DispatchNodeResultType<{
   [key: string]: any;
