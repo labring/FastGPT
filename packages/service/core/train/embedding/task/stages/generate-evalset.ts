@@ -15,7 +15,12 @@ import {
   EvalDatasetDataCreateFromEnum,
   EvalDatasetDataKeyEnum
 } from '@fastgpt/global/core/evaluation/dataset/constants';
-import { sampleDataFromDataset, pLimit, fetchSampledContent } from '../../utils';
+import {
+  sampleDataFromDataset,
+  pLimit,
+  fetchSampledContent,
+  propagateAbortFromResults
+} from '../../utils';
 import { createEmbeddingEnhancedError } from '../../utils';
 import {
   EmbeddingTrainErrEnum,
@@ -26,6 +31,7 @@ import { getDefaultLLMModel } from '../../../../ai/model';
 import { getModelEndpointConfig } from '../../../../ai/config';
 import { addLog } from '../../../../../common/system/log';
 import { trainEnv } from '../../../common/env';
+import { getTrainTaskAbortSignal } from '../../../common/task-abort-signal';
 import { TrainTaskUnrecoverableError, TrainTaskRetriableError } from '../../../common/errors';
 import { MongoEmbeddingTrainTask } from '../schema';
 
@@ -117,6 +123,27 @@ async function generateEvalDatasetFromDatasets(
   const ditingResults = await Promise.allSettled(
     sampledDataWithContent.map((sample) =>
       ditingLimit(async () => {
+        const abortReason = await getTrainTaskAbortSignal({
+          type: 'embedding',
+          taskId: String(task._id)
+        });
+        if (abortReason === 'deleted') {
+          const enhancedError = createEmbeddingEnhancedError(
+            EmbeddingTaskCheckpointStageEnum.generate_evaldataset,
+            EmbeddingTrainErrEnum.embeddingTaskNotExist,
+            EmbeddingTrainSuggestionEnum.embeddingTaskNotExist
+          );
+          throw new TrainTaskUnrecoverableError(enhancedError);
+        }
+        if (abortReason === 'cancelled') {
+          const enhancedError = createEmbeddingEnhancedError(
+            EmbeddingTaskCheckpointStageEnum.generate_evaldataset,
+            EmbeddingTrainErrEnum.embeddingFinetuneCancelled,
+            EmbeddingTrainSuggestionEnum.embeddingFinetuneCancelled
+          );
+          throw new TrainTaskUnrecoverableError(enhancedError);
+        }
+
         const context = [sample.q, sample.a].filter(Boolean);
 
         const response = await synthesizeEmbeddingEvalData({
@@ -154,6 +181,8 @@ async function generateEvalDatasetFromDatasets(
       })
     )
   );
+
+  propagateAbortFromResults(ditingResults);
 
   // Flatten 1-to-many results: each DiTing call returns multiple qaPairs
   const evalDataItems = ditingResults
@@ -296,6 +325,24 @@ async function generateEvalJsonlFromDB(
   const searchResults = await Promise.allSettled(
     evalDataItems.map((item: any) =>
       searchLimit(async () => {
+        const abortReason = await getTrainTaskAbortSignal({ type: 'embedding', taskId });
+        if (abortReason === 'deleted') {
+          const enhancedError = createEmbeddingEnhancedError(
+            EmbeddingTaskCheckpointStageEnum.generate_evaldataset,
+            EmbeddingTrainErrEnum.embeddingTaskNotExist,
+            EmbeddingTrainSuggestionEnum.embeddingTaskNotExist
+          );
+          throw new TrainTaskUnrecoverableError(enhancedError);
+        }
+        if (abortReason === 'cancelled') {
+          const enhancedError = createEmbeddingEnhancedError(
+            EmbeddingTaskCheckpointStageEnum.generate_evaldataset,
+            EmbeddingTrainErrEnum.embeddingFinetuneCancelled,
+            EmbeddingTrainSuggestionEnum.embeddingFinetuneCancelled
+          );
+          throw new TrainTaskUnrecoverableError(enhancedError);
+        }
+
         const query = (item[EvalDatasetDataKeyEnum.UserInput] as string) || '';
         const rsp = await dispatchDatasetSearch({
           mode: 'test',
@@ -359,6 +406,8 @@ async function generateEvalJsonlFromDB(
       })
     )
   );
+
+  propagateAbortFromResults(searchResults);
 
   // Build pos/neg items
   const allDocIds = new Set<string>();

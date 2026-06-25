@@ -14,6 +14,7 @@ import { TrainTaskUnrecoverableError } from '../../../common/errors';
 import { computeRankingMetrics } from '../../../common/metrics/rankingMetrics';
 import { pLimit } from '../../../common/utils';
 import { trainEnv } from '../../../common/env';
+import { getTrainTaskAbortSignal } from '../../../common/task-abort-signal';
 
 const K_VALUES = [5, 10, 15];
 
@@ -97,6 +98,24 @@ export async function evaluateRerankModelHelper(
   const cases = await Promise.all(
     validItems.map((item) =>
       limit(async () => {
+        const abortReason = await getTrainTaskAbortSignal({ type: 'rerank', taskId });
+        if (abortReason === 'deleted') {
+          const enhancedError = createRerankEnhancedError(
+            stage,
+            RerankTrainErrEnum.rerankTaskNotExist,
+            RerankTrainSuggestionEnum.rerankTaskNotExist
+          );
+          throw new TrainTaskUnrecoverableError(enhancedError);
+        }
+        if (abortReason === 'cancelled') {
+          const enhancedError = createRerankEnhancedError(
+            stage,
+            RerankTrainErrEnum.rerankFinetuneCancelled,
+            RerankTrainSuggestionEnum.rerankFinetuneCancelled
+          );
+          throw new TrainTaskUnrecoverableError(enhancedError);
+        }
+
         const query = item.userInput;
         const expectedIds = item.expectedContextIds || [];
         const candidates = item.retrievalContextsFull || [];
