@@ -100,6 +100,7 @@ export type AgentLoopToolExecutionResult<TChildrenResponse = unknown> = {
 };
 
 export type AgentLoopRuntime = {
+  teamId: string;
   model: string;
   reasoningEffort?: CreateLLMResponseProps['body']['reasoning_effort'];
   userKey?: CreateLLMResponseProps['userKey'];

@@ -38,6 +38,7 @@ type RunAgentCallProps<TChildrenResponse = unknown> = {
   usagePush: (usages: ChatNodeUsageType[]) => void;
   isAborted: CreateLLMResponseProps['isAborted'];
   userKey?: CreateLLMResponseProps['userKey'];
+  teamId: string;
 
   childrenInteractiveParams?: AgentLoopChildrenInteractiveParams<TChildrenResponse>;
   // LLM 压缩后回调
@@ -129,7 +130,8 @@ export const onCompressContext = async ({
   modelData,
   reasoningEffort,
   tools,
-  userKey
+  userKey,
+  teamId
 }: {
   isAborted: RunAgentCallProps['isAborted'];
   messageTokens?: number;
@@ -138,6 +140,7 @@ export const onCompressContext = async ({
   reasoningEffort?: CreateLLMResponseProps['body']['reasoning_effort'];
   tools?: ChatCompletionTool[];
   userKey: RunAgentCallProps['userKey'];
+  teamId: RunAgentCallProps['teamId'];
 }) => {
   const compressStartTime = Date.now();
   const result = await compressRequestMessages({
@@ -147,7 +150,8 @@ export const onCompressContext = async ({
     model: modelData,
     reasoningEffort,
     tools,
-    userKey
+    userKey,
+    teamId
   });
   if (result.usage || result.contextCheckpoint || result.messages !== requestMessages) {
     return {
@@ -184,6 +188,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
   body: { model, messages, max_tokens, ...body },
 
   userKey,
+  teamId,
   usagePush,
   isAborted,
 
@@ -322,7 +327,8 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
         modelData,
         reasoningEffort: body.reasoning_effort,
         tools: body.tools,
-        userKey
+        userKey,
+        teamId
       });
       if (compressResult) {
         requestMessagesTokenCount = compressResult.messageTokens ?? requestMessagesTokenCount;
@@ -378,6 +384,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
         parallel_tool_calls: body.parallel_tool_calls ?? true
       },
       userKey,
+      teamId,
       isAborted,
       onReasoning,
       onStreaming,
@@ -506,7 +513,8 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
             response,
             model: modelData,
             reasoningEffort: body.reasoning_effort,
-            userKey
+            userKey,
+            teamId
           });
           const { compressed: compressed_context, usage: compressionUsage } = compressionResult;
           const normalizedCompressedContext = normalizeToolResponseContent(compressed_context);

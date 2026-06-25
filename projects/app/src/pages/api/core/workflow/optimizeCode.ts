@@ -110,6 +110,8 @@ async function handler(req: ApiRequestProps<OptimizeCodeBody>, res: ApiResponseT
     ];
 
     const llmResponse = await createLLMResponse({
+      teamId,
+      saveLLMResponseRecord: false,
       body: {
         model,
         messages,

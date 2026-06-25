@@ -318,6 +318,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       detail,
       writeChatTitle: (payload) => streamResponseContext?.responseWrite(payload)
     });
+    if (stream) {
+      void titleSender.send();
+    }
 
     /* start flow controller */
     const {

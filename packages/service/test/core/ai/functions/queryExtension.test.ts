@@ -56,7 +56,8 @@ describe('queryExtension', () => {
       query: 'original query',
       histories: [],
       llmModel: 'gpt-query',
-      embeddingModel: 'embedding-query'
+      embeddingModel: 'embedding-query',
+      teamId: 'team_1'
     });
 
     expect(result).toEqual({
@@ -88,7 +89,8 @@ describe('queryExtension', () => {
       query: 'original query',
       histories: [],
       llmModel: 'gpt-query',
-      embeddingModel: 'embedding-query'
+      embeddingModel: 'embedding-query',
+      teamId: 'team_1'
     });
 
     expect(lazyGreedyQuerySelectionMock).toHaveBeenCalledWith({
@@ -114,7 +116,8 @@ describe('queryExtension', () => {
       query: 'original query',
       histories: [],
       llmModel: 'gpt-query',
-      embeddingModel: 'embedding-query'
+      embeddingModel: 'embedding-query',
+      teamId: 'team_1'
     });
 
     expect(lazyGreedyQuerySelectionMock).not.toHaveBeenCalled();
@@ -149,6 +152,7 @@ describe('queryExtension', () => {
       histories: [],
       llmModel: 'gpt-query',
       embeddingModel: 'embedding-query',
+      teamId: 'team_1',
       generateCount: 4
     });
 

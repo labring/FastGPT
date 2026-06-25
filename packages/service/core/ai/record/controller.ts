@@ -69,12 +69,14 @@ export const sanitizeLLMRequestRecordPayload = <T>(payload: T, key?: string): T 
  * @param params - 包含 requestId, body, response 的对象
  */
 export const saveLLMRequestRecord = async (params: {
+  teamId: string;
   requestId: string;
   body: any;
   response: any;
 }) => {
   try {
     await MongoLLMRequestRecord.create({
+      teamId: params.teamId,
       requestId: params.requestId,
       body: sanitizeLLMRequestRecordPayload(params.body),
       response: sanitizeLLMRequestRecordPayload(params.response)
@@ -91,23 +93,28 @@ export const saveLLMRequestRecord = async (params: {
 /**
  * 根据 requestId 查询追踪记录
  * @param requestId - 请求ID
+ * @param teamId - 调用方团队 ID，用于隔离不同团队的请求详情
  * @returns LLM 请求追踪记录
  */
 export const getLLMRequestRecord = async (
-  requestId: string
+  requestId: string,
+  teamId: string
 ): Promise<LLMRequestRecordSchemaType | null> => {
-  return await MongoLLMRequestRecord.findOne({ requestId }).lean();
+  return await MongoLLMRequestRecord.findOne({ requestId, teamId }).lean();
 };
 
 /**
  * 批量查询追踪记录
  * @param requestIds - 请求ID数组
+ * @param teamId - 调用方团队 ID，用于隔离不同团队的请求详情
  * @returns LLM 请求追踪记录列表
  */
 export const getLLMRequestRecords = async (
-  requestIds: string[]
+  requestIds: string[],
+  teamId: string
 ): Promise<LLMRequestRecordSchemaType[]> => {
   return MongoLLMRequestRecord.find({
-    requestId: { $in: requestIds }
+    requestId: { $in: requestIds },
+    teamId
   });
 };

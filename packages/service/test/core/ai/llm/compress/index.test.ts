@@ -58,11 +58,28 @@ vi.mock('@fastgpt/service/common/logger', () => ({
 }));
 
 import {
-  compressLargeContent,
-  compressRequestMessages,
-  compressToolResponse
+  compressLargeContent as rawCompressLargeContent,
+  compressRequestMessages as rawCompressRequestMessages,
+  compressToolResponse as rawCompressToolResponse
 } from '@fastgpt/service/core/ai/llm/compress';
 import { extractExactAnchors } from '@fastgpt/service/core/ai/llm/compress/prompt';
+
+const testTeamId = 'team_1';
+const compressLargeContent: typeof rawCompressLargeContent = ((args: any) =>
+  rawCompressLargeContent({
+    teamId: testTeamId,
+    ...args
+  })) as typeof rawCompressLargeContent;
+const compressRequestMessages: typeof rawCompressRequestMessages = ((args: any) =>
+  rawCompressRequestMessages({
+    teamId: testTeamId,
+    ...args
+  })) as typeof rawCompressRequestMessages;
+const compressToolResponse: typeof rawCompressToolResponse = ((args: any) =>
+  rawCompressToolResponse({
+    teamId: testTeamId,
+    ...args
+  })) as typeof rawCompressToolResponse;
 
 const model: LLMModelItemType = {
   type: ModelTypeEnum.llm,

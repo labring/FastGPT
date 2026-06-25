@@ -100,6 +100,8 @@ async function handler(req: ApiRequestProps<OptimizePromptBody>, res: ApiRespons
     const {
       usage: { inputTokens, outputTokens }
     } = await createLLMResponse({
+      teamId,
+      saveLLMResponseRecord: false,
       body: {
         model,
         messages,

@@ -139,6 +139,7 @@ version: "1.0.0"
       } as any);
 
       const result = await getSkillGuidance({
+        teamId: 'team_1',
         name: 'summarize-doc',
         description: 'Summarize documents',
         requirements: 'Create a skill that summarizes documents into 200 words max',
@@ -160,6 +161,7 @@ version: "1.0.0"
       } as any);
 
       const result = await getSkillGuidance({
+        teamId: 'team_1',
         name: 'test-skill',
         description: 'My description',
         requirements: 'Some requirements',
@@ -177,6 +179,7 @@ version: "1.0.0"
       } as any);
 
       const result = await getSkillGuidance({
+        teamId: 'team_1',
         name: 'fallback-skill',
         description: '',
         requirements: 'Some requirements',
@@ -193,6 +196,7 @@ version: "1.0.0"
       } as any);
 
       const result = await getSkillGuidance({
+        teamId: 'team_1',
         name: 'test-skill',
         description: 'Test description',
         requirements: 'Test requirements',
@@ -212,6 +216,7 @@ version: "1.0.0"
       } as any);
 
       const result = await getSkillGuidance({
+        teamId: 'team_1',
         name: 'skill',
         description: 'desc',
         requirements: 'reqs',
@@ -296,6 +301,7 @@ version: "1.0.0"
       } as any);
 
       const [content, usage] = await generateSkillMd({
+        teamId: 'team_1',
         name: 'code-review',
         description: 'Review code',
         requirements: 'Analyze code quality and suggest improvements',
@@ -320,6 +326,7 @@ version: "1.0.0"
       } as any);
 
       await generateSkillMd({
+        teamId: 'team_1',
         name: 'test-skill',
         description: 'Test description',
         requirements: 'Test requirements',
@@ -347,6 +354,7 @@ version: "1.0.0"
       } as any);
 
       await generateSkillMd({
+        teamId: 'team_1',
         name: 'chinese-skill',
         description: '生成中文技能',
         requirements: '请生成一个中文技能说明',
@@ -379,6 +387,7 @@ version: "1.0.0"
       } as any);
 
       await generateSkillMd({
+        teamId: 'team_1',
         name: 'test',
         description: '',
         requirements: 'reqs',
@@ -418,6 +427,7 @@ version: "1.0.0"
       } as any);
 
       await generateSkillMd({
+        teamId: 'team_1',
         name: 'test',
         description: '',
         requirements: 'reqs',
@@ -454,6 +464,7 @@ version: "1.0.0"
       } as any);
 
       await generateSkillMd({
+        teamId: 'team_1',
         name: 'test',
         description: '',
         requirements: 'reqs',
@@ -475,6 +486,7 @@ version: "1.0.0"
       } as any);
 
       await generateSkillMd({
+        teamId: 'team_1',
         name: 'test',
         description: '',
         requirements: 'reqs',

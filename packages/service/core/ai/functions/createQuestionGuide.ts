@@ -13,11 +13,13 @@ const logger = getLogger(LogCategories.MODULE.AI.FUNCTIONS);
 export async function createQuestionGuide({
   messages,
   model,
-  customPrompt
+  customPrompt,
+  teamId
 }: {
   messages: ChatCompletionMessageParam[];
   model: string;
   customPrompt?: string;
+  teamId: string;
 }): Promise<{
   result: string[];
   inputTokens: number;
@@ -36,6 +38,8 @@ export async function createQuestionGuide({
     answerText: answer,
     usage: { inputTokens, outputTokens }
   } = await createLLMResponse({
+    teamId,
+    saveLLMResponseRecord: false,
     body: {
       model,
       messages: concatMessages,

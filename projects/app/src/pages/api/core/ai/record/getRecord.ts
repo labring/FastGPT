@@ -21,7 +21,7 @@ export type GetRecordBody = Record<string, never>;
 export type GetRecordResponse = LLMRequestRecordSchemaType;
 
 async function handler(req: ApiRequestProps): Promise<GetRecordResponse | undefined> {
-  const { tmbId } = await authCert({ req, authToken: true });
+  const { teamId, tmbId } = await authCert({ req, authToken: true });
 
   await authFrequencyLimit({
     eventId: `${tmbId}-getrecords`,
@@ -36,7 +36,7 @@ async function handler(req: ApiRequestProps): Promise<GetRecordResponse | undefi
     querySchema: GetLLMRequestRecordParamsSchema
   }).query;
 
-  const record = await getLLMRequestRecord(requestId);
+  const record = await getLLMRequestRecord(requestId, teamId);
 
   if (!record) {
     return Promise.reject(i18nT('common:error.llm_track_expired'));

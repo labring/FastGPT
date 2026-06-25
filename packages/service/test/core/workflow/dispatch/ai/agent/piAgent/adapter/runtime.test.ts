@@ -17,6 +17,9 @@ const createProps = (overrides = {}) =>
     externalProvider: {
       openaiAccount: { key: 'user-key' }
     },
+    runningUserInfo: {
+      teamId: 'team_1'
+    },
     ...overrides
   }) as any;
 

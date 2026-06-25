@@ -205,7 +205,8 @@ const completions = async (props: ActionProps) => {
       messages: chats2GPTMessages({ messages, reserveId: false, reserveReason: false }),
       stream: true
     },
-    userKey: externalProvider.openaiAccount
+    userKey: externalProvider.openaiAccount,
+    teamId: props.runningUserInfo.teamId
   });
 
   // parse response

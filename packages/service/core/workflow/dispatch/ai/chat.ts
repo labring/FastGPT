@@ -208,6 +208,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         requestOrigin
       },
       userKey: externalProvider.openaiAccount,
+      teamId: runningUserInfo.teamId,
       isAborted: checkIsStopping,
       onReasoning({ text }) {
         if (!aiChatReasoning) return;

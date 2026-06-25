@@ -105,6 +105,7 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
 const completions = async ({
   cqModel,
   externalProvider,
+  runningUserInfo,
   histories,
   lastMemory,
   params: { agents, systemPrompt = '', userChatInput }
@@ -148,7 +149,8 @@ const completions = async ({
       messages: chats2GPTMessages({ messages, reserveId: false, reserveReason: false }),
       stream: true
     },
-    userKey: externalProvider.openaiAccount
+    userKey: externalProvider.openaiAccount,
+    teamId: runningUserInfo.teamId
   });
 
   // console.log(JSON.stringify(chats2GPTMessages({ messages, reserveId: false }), null, 2));

@@ -15,6 +15,7 @@ type ModelAgentConfig = {
 };
 
 type DispatchModelAgentProps = ModelAgentConfig & {
+  teamId: string;
   systemPrompt: string;
   task: string;
   onReasoning: ResponseEvents['onReasoning'];
@@ -32,6 +33,7 @@ type DispatchModelAgentResponse = {
  * 该函数不参与 agent loop，只负责按给定 systemPrompt/task 调一次 LLM 并返回文本和 usage。
  */
 export async function dispatchModelAgent({
+  teamId,
   model,
   temperature,
   top_p,
@@ -67,6 +69,7 @@ export async function dispatchModelAgent({
       top_p,
       stream
     },
+    teamId,
     onReasoning,
     onStreaming
   });

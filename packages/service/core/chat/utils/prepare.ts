@@ -295,6 +295,7 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
     const titleGeneration = syncGeneratedChatTitleFromUserContent({
       appId: params.appId,
       chatId,
+      teamId: params.teamId,
       userContent: params.userContent,
       shouldGenerateTitle: preparedChatRound.shouldGenerateTitle,
       fixedTitle: params.fixedTitle

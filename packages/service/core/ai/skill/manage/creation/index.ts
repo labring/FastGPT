@@ -161,6 +161,7 @@ export async function completePendingSkillCreation(data: AgentSkillCreateJobData
       // 有用户需求时走模型辅助生成；否则只创建一个最小 SKILL.md 模板。
       const model = getSkillCreationLLMModel();
       const [generatedSkillMd, usage] = await generateSkillMd({
+        teamId,
         name,
         description,
         requirements: requirements.trim(),

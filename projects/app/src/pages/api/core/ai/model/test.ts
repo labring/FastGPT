@@ -26,7 +26,7 @@ export type testBody = Record<string, never>;
 export type testResponse = any;
 
 async function handler(req: ApiRequestProps<testBody, testQuery>): Promise<testResponse> {
-  await authSystemAdmin({ req });
+  const { teamId } = await authSystemAdmin({ req });
 
   const { model, channelId } = req.query;
   const modelData = findModelFromAlldata(model);
@@ -46,7 +46,7 @@ async function handler(req: ApiRequestProps<testBody, testQuery>): Promise<testR
   logger.debug(`Test model`, modelData);
 
   if (modelData.type === 'llm') {
-    return testLLMModel(modelData, headers);
+    return testLLMModel(modelData, headers, teamId);
   }
   if (modelData.type === 'embedding') {
     return testEmbeddingModel(modelData, headers);
@@ -66,8 +66,14 @@ async function handler(req: ApiRequestProps<testBody, testQuery>): Promise<testR
 
 export default NextAPI(handler);
 
-const testLLMModel = async (model: LLMModelItemType, headers: Record<string, string>) => {
+const testLLMModel = async (
+  model: LLMModelItemType,
+  headers: Record<string, string>,
+  teamId: string
+) => {
   const { answerText } = await createLLMResponse({
+    teamId,
+    saveLLMResponseRecord: false,
     body: {
       model, // 传递实体 model 进去，保障底层不会去拿内存里的实体。
       messages: [{ role: 'user', content: 'hi' }],

@@ -45,7 +45,8 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
     custonHeaders,
     userKey,
     maxContinuations = 1,
-    saveLLMResponseRecord = true
+    saveLLMResponseRecord = true,
+    teamId
   } = args;
   const { messages, useVision, useAudio, useVideo, extractFiles, tools, toolCallMode } = body;
   const model = getLLMModel(body.model);
@@ -77,6 +78,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
   let aiRequestMeta: AIApiRequestMeta = {
     usedUserOpenAIKey: false
   };
+  let hasSavedLLMRequestRecord = false;
 
   try {
     // 自带“继续”的循环：finish_reason=length 时追加已生成内容后继续请求。
@@ -210,9 +212,10 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
       (finish_reason === 'stop' || !finish_reason || isEmptyToolCallsFinish);
     const responseEmptyTip = isNotResponse ? getEmptyResponseTip() : undefined;
 
-    if (saveLLMResponseRecord) {
+    if (saveLLMResponseRecord && teamId) {
       // 保存详情只记录实际请求与模型响应，不把用于计费分支的 usedUserOpenAIKey 写入详情。
       persistLLMResponseRecord({
+        teamId,
         requestId,
         requestBody: requestBody as ChatCompletionCreateParams,
         answerText,
@@ -224,6 +227,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
         outputTokens,
         error: error ?? responseEmptyTip
       });
+      hasSavedLLMRequestRecord = true;
     }
 
     if (error && throwError) {
@@ -252,8 +256,10 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
     };
   } catch (error) {
     // createChatCompletion 抛错或解析阶段抛错都会落到这里，保证 requestId 对应的错误详情被保存。
-    if (saveLLMResponseRecord) {
+    // 如果已拿到模型响应并保存过包含 error 的详情，throwError 再抛出时不重复写同一个 requestId。
+    if (saveLLMResponseRecord && teamId && !hasSavedLLMRequestRecord) {
       persistLLMErrorRecord({
+        teamId,
         requestId,
         requestBody: requestBody as ChatCompletionCreateParams,
         error

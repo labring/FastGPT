@@ -68,6 +68,8 @@ export type CreateLLMResponseProps<
   maxContinuations?: number;
   // 是否保存 LLM 请求响应详情。内部辅助调用可关闭，避免污染用户可见的请求记录。
   saveLLMResponseRecord?: boolean;
+  // 请求详情会通过 requestId 暴露给前端查询，必须绑定团队后才能落库。
+  teamId: string;
 } & ResponseEvents;
 
 export type LLMResponse = {

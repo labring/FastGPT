@@ -65,12 +65,14 @@ const selectRelevantChunksByLLM = async ({
   query,
   chunks,
   model,
-  userKey
+  userKey,
+  teamId
 }: {
   query: string;
   chunks: SearchDataResponseItemType[];
   model: string;
   userKey?: OpenaiAccountType;
+  teamId: string;
 }): Promise<
   | {
       ids: string[];
@@ -120,6 +122,7 @@ ${chunkSummaries}
     const llmStartTime = Date.now();
     const response = await createLLMResponse({
       userKey,
+      teamId,
       body: {
         model,
         messages: [{ role: 'user', content: prompt }],
@@ -321,7 +324,8 @@ export const dispatchAgentDatasetSearch = async ({
       query,
       chunks: searchRes,
       model: llmModel,
-      userKey
+      userKey,
+      teamId
     });
     if (pickResults) {
       if (pickResults.ids.length > 0) {

@@ -189,6 +189,7 @@ export const runUnifiedAgentLoop = async ({
       }),
       parallel_tool_calls: true
     },
+    teamId: runtime.teamId,
     userKey: runtime.userKey,
     usagePush: (usages) => runtime.usageSink?.(usages),
     isAborted: runtime.checkIsStopping,

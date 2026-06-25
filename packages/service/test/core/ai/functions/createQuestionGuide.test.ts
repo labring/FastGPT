@@ -35,7 +35,8 @@ describe('createQuestionGuide', () => {
 
     await createQuestionGuide({
       messages: [],
-      model: 'deepseek-r1'
+      model: 'deepseek-r1',
+      teamId: 'team_1'
     });
 
     expect(createLLMResponseMock.mock.calls[0][0].body).toMatchObject({
@@ -52,7 +53,8 @@ describe('createQuestionGuide', () => {
 
     await createQuestionGuide({
       messages: [],
-      model: 'gpt-4o'
+      model: 'gpt-4o',
+      teamId: 'team_1'
     });
 
     expect(createLLMResponseMock.mock.calls[0][0].body).not.toHaveProperty('reasoning_effort');

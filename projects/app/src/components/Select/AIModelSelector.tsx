@@ -166,6 +166,7 @@ const OneRowSelector = ({
     () => allModels.find((model) => model.model === props.value),
     [allModels, props.value]
   );
+  const selectedUnsetLabel = canBeUnset && props.value === UNSET_MODEL_VALUE;
 
   const avatarList = useMemo(() => {
     const modelOptions = list
@@ -239,7 +240,9 @@ const OneRowSelector = ({
           isDisabled={!!disableTip}
           list={avatarList}
           valueLabel={
-            selectedModelData ? (
+            selectedUnsetLabel ? (
+              <UnsetOptionLabel label={unsetLabel ?? t('common:not_model_config')} />
+            ) : selectedModelData ? (
               <Flex alignItems={'center'} py={1} minW={0} overflow={'hidden'}>
                 <Avatar
                   borderRadius={'0'}

@@ -82,7 +82,13 @@ export const getFallbackChatTitleFromUserContent = (
   return questionText.slice(0, FALLBACK_CHAT_TITLE_MAX_LENGTH);
 };
 
-const generateChatTitleFromQuestion = async (question: string): Promise<string | undefined> => {
+const generateChatTitleFromQuestion = async ({
+  question,
+  teamId
+}: {
+  question: string;
+  teamId: string;
+}): Promise<string | undefined> => {
   const titleModel = getDefaultChatTitleModel();
   if (!titleModel?.model) return question.slice(0, FALLBACK_CHAT_TITLE_MAX_LENGTH);
   const questionForTitle = question.slice(0, CHAT_TITLE_QUESTION_MAX_LENGTH);
@@ -97,6 +103,7 @@ Return only the title.`;
   let answerText = '';
   try {
     const response = await createLLMResponse({
+      teamId,
       throwError: false,
       saveLLMResponseRecord: false,
       body: {
@@ -165,12 +172,14 @@ export type GeneratedChatTitleResult = {
 export const syncGeneratedChatTitleFromUserContent = async ({
   appId,
   chatId,
+  teamId,
   userContent,
   shouldGenerateTitle = true,
   fixedTitle
 }: {
   appId: string;
   chatId: string;
+  teamId: string;
   userContent: UserChatItemType;
   shouldGenerateTitle?: boolean;
   fixedTitle?: string;
@@ -182,7 +191,8 @@ export const syncGeneratedChatTitleFromUserContent = async ({
     if (!questionText && !fixedTitle) return;
 
     const nextTitle =
-      normalizeFixedChatTitle(fixedTitle) || (await generateChatTitleFromQuestion(questionText));
+      normalizeFixedChatTitle(fixedTitle) ||
+      (await generateChatTitleFromQuestion({ question: questionText, teamId }));
     if (!nextTitle) return;
 
     const customTitleCondition = {
@@ -229,6 +239,7 @@ export const syncGeneratedChatTitleFromUserContent = async ({
 export const scheduleGeneratedChatTitleFromUserContent = (params: {
   appId: string;
   chatId: string;
+  teamId: string;
   userContent: UserChatItemType;
   shouldGenerateTitle?: boolean;
   fixedTitle?: string;

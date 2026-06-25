@@ -34,6 +34,12 @@ async function handler(
 
   const { llm, embedding, tts, stt, rerank, datasetTextLLM, datasetImageLLM, chatTitleLLM } =
     parseApiInput({ req, bodySchema: UpdateDefaultBodySchema }).body;
+  const defaultModelNames = [llm, embedding, tts, stt, rerank].filter(
+    (model): model is string => !!model
+  );
+  const datasetTextModelName = datasetTextLLM || null;
+  const datasetImageModelName = datasetImageLLM || null;
+  const chatTitleModelName = chatTitleLLM || null;
 
   await mongoSessionRun(async (session) => {
     // 用 pipeline update 一次性重算所有默认标记，避免多次 updateOne 造成额外数据库往返。
@@ -43,20 +49,16 @@ async function handler(
         {
           $set: {
             'metadata.isDefault': {
-              $cond: [
-                { $in: ['$model', [llm, embedding, tts, stt, rerank].filter(Boolean)] },
-                true,
-                '$$REMOVE'
-              ]
+              $cond: [{ $in: ['$model', defaultModelNames] }, true, '$$REMOVE']
             },
             'metadata.isDefaultDatasetTextModel': {
-              $cond: [{ $eq: ['$model', datasetTextLLM] }, true, '$$REMOVE']
+              $cond: [{ $eq: ['$model', datasetTextModelName] }, true, '$$REMOVE']
             },
             'metadata.isDefaultDatasetImageModel': {
-              $cond: [{ $eq: ['$model', datasetImageLLM] }, true, '$$REMOVE']
+              $cond: [{ $eq: ['$model', datasetImageModelName] }, true, '$$REMOVE']
             },
             'metadata.isDefaultChatTitleModel': {
-              $cond: [{ $eq: ['$model', chatTitleLLM] }, true, '$$REMOVE']
+              $cond: [{ $eq: ['$model', chatTitleModelName] }, true, '$$REMOVE']
             }
           }
         }

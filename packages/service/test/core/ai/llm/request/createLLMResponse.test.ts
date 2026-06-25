@@ -79,7 +79,7 @@ import { getLLMSupportParams } from '@fastgpt/global/core/ai/llm/utils';
 import { promptToolCallMessageRewrite } from '@fastgpt/service/core/ai/llm/promptCall';
 import { saveLLMRequestRecord } from '@fastgpt/service/core/ai/record/controller';
 
-import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request/createLLMResponse';
+import { createLLMResponse as rawCreateLLMResponse } from '@fastgpt/service/core/ai/llm/request/createLLMResponse';
 
 const mockGetAIApi = vi.mocked(getAIApi);
 const mockGetLLMModel = vi.mocked(getLLMModel);
@@ -90,6 +90,12 @@ const mockParseReasoningContent = vi.mocked(parseReasoningContent);
 const mockGetLLMSupportParams = vi.mocked(getLLMSupportParams);
 const mockPromptToolCallMessageRewrite = vi.mocked(promptToolCallMessageRewrite);
 const mockSaveLLMRequestRecord = vi.mocked(saveLLMRequestRecord);
+
+const createLLMResponse: typeof rawCreateLLMResponse = ((args: any) =>
+  rawCreateLLMResponse({
+    teamId: 'team_1',
+    ...args
+  })) as typeof rawCreateLLMResponse;
 
 const createMockAIApiResult = (
   ai: any,
@@ -1558,6 +1564,65 @@ describe('createLLMResponse', () => {
       expect(result.finish_reason).toBe('error');
       expect(result.usage.inputTokens).toBe(10);
       expect(result.usage.outputTokens).toBe(2);
+    });
+
+    it('should not save duplicate error record when response error is rethrown', async () => {
+      const mockResponse = {
+        choices: [
+          {
+            message: {
+              role: 'assistant',
+              content: ''
+            },
+            finish_reason: 'stop'
+          }
+        ],
+        error: new Error('Some error'),
+        usage: {
+          prompt_tokens: 10,
+          completion_tokens: 2,
+          total_tokens: 12
+        }
+      };
+
+      const mockAI = {
+        chat: {
+          completions: {
+            create: vi.fn().mockResolvedValue(mockResponse)
+          }
+        }
+      };
+      mockGetAIApi.mockReturnValue(createMockAIApiResult(mockAI));
+
+      const messages: ChatCompletionMessageParam[] = [
+        { role: ChatCompletionRequestMessageRoleEnum.User, content: 'Hello' }
+      ];
+
+      await expect(
+        createLLMResponse({
+          throwError: true,
+          body: {
+            model: 'gpt-4',
+            messages,
+            stream: false
+          }
+        })
+      ).rejects.toThrow('Some error');
+
+      expect(mockSaveLLMRequestRecord).toHaveBeenCalledTimes(1);
+      expect(mockSaveLLMRequestRecord).toHaveBeenCalledWith(
+        expect.objectContaining({
+          requestId: 'test-request-id',
+          response: expect.objectContaining({
+            finish_reason: 'error',
+            usage: {
+              inputTokens: 10,
+              outputTokens: 2
+            },
+            error: expect.any(Error)
+          })
+        })
+      );
     });
 
     it('should keep usage when stream is interrupted with partial response', async () => {

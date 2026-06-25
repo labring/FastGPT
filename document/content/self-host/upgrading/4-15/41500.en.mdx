@@ -106,6 +106,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initSandboxArchive' \
 
 1. API Key behavior has changed. FastGPT no longer distinguishes between app keys and system keys; only system keys are kept. For OpenAI SDK compatibility, pass the token as `apikey-appId`. Existing API keys remain compatible and continue to work. For details, see the [FastGPT API documentation](../../../openapi/intro).
 2. Some APIs now enforce stricter data format validation. If you see a `zod parse error`, please submit an issue. It may be caused by legacy data or custom data structures that do not match the declared schema.
+3. LLM request traces now enforce team isolation. `llm_request_records` stores `teamId`, `GET /api/core/ai/record/getRecord` queries by `{ requestId, teamId }`, and the unique index changes to `{ teamId, requestId }`. Trace records written before this upgrade do not contain `teamId` and can no longer be queried; the UI will treat them as expired. Export relevant logs or keep original request details before upgrading if you need to investigate historical calls. If your self-hosted deployment has `SYNC_INDEX` disabled, run an index sync after upgrading so the old `requestId_1` unique index is removed.
 
 ## 🚀 New Features
 
@@ -165,6 +166,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initSandboxArchive' \
 30. Improved the login page UI.
 31. Deduplicated site sync rate-limit error prompts.
 32. Image processing workers now support configuring whether images are converted to base64 before being sent to the model.
+33. LLM request traces now use team-isolated queries to prevent request IDs from exposing request bodies, retrieved Knowledge Base chunks, and model responses across teams.
 
 ## 🐛 Bug Fixes
 
