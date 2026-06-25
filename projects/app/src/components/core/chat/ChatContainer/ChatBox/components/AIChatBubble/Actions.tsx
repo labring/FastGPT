@@ -28,6 +28,8 @@ type AIChatBubbleActionsProps = {
   responseData?: ChatHistoryItemResType[];
 };
 
+const footerActionTransition = 'color 180ms ease, transform 180ms ease, filter 180ms ease';
+
 const AIChatBubbleActions = ({
   chatControllerProps,
   historyItem,
@@ -38,7 +40,11 @@ const AIChatBubbleActions = ({
   responseData
 }: AIChatBubbleActionsProps) => {
   const { t } = useTranslation();
-  const { onRetry, feedbackUserName } = chatControllerProps;
+  const { onRetry, feedbackUserName, disableFooterHoverTranslate } = chatControllerProps;
+  const footerActionHoverStyle = {
+    color: 'primary.600',
+    ...(!disableFooterHoverTranslate ? { transform: 'translateY(-1px)' } : {})
+  };
   const { isPc } = useSystem();
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
   const showRetry = chatType !== ChatTypeEnum.log && !!onRetry;
@@ -85,7 +91,8 @@ const AIChatBubbleActions = ({
       p={'4px'}
       cursor={'pointer'}
       color={'myGray.400'}
-      _hover={{ color: 'primary.600' }}
+      transition={footerActionTransition}
+      _hover={footerActionHoverStyle}
       onClick={onOpenWholeModal}
     >
       <MyIcon name={'core/chat/terminal'} w={'16px'} />
@@ -122,7 +129,8 @@ const AIChatBubbleActions = ({
                 p={'4px'}
                 cursor={'pointer'}
                 color={'myGray.400'}
-                _hover={{ color: 'primary.600' }}
+                transition={footerActionTransition}
+                _hover={footerActionHoverStyle}
                 onClick={onRetry}
               />
             </MyTooltip>
