@@ -41,7 +41,8 @@ async function handler(
   // 查询数据库中该知识库下指定文件夹内所有文件类型的集合名称（含图片类型）
   const query: Record<string, any> = {
     datasetId,
-    type: { $in: [DatasetCollectionTypeEnum.file, DatasetCollectionTypeEnum.images] }
+    type: { $in: [DatasetCollectionTypeEnum.file, DatasetCollectionTypeEnum.images] },
+    deleteTime: null
   };
 
   // 处理 parentId 查询条件
