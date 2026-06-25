@@ -147,9 +147,7 @@ describe('get system tool templates handler', () => {
     ]);
 
     const result = await handler({
-      body: {
-        source: 'debug:tmbId:tmb-1'
-      }
+      body: {}
     } as ApiRequestProps<GetSystemPluginTemplatesBody>);
 
     expect(result.map((item) => item.id)).toEqual(['debug-tool', 'system-tool']);
@@ -180,7 +178,7 @@ describe('get system tool templates handler', () => {
     });
   });
 
-  it('does not append debug source without explicit source parameter', async () => {
+  it('automatically appends the active debug source for root templates', async () => {
     mocks.pluginClient.getDebugSessionStatus.mockResolvedValueOnce({
       tmbId: 'tmb-1',
       source: 'debug:tmbId:tmb-1',
@@ -194,11 +192,13 @@ describe('get system tool templates handler', () => {
       body: {}
     } as ApiRequestProps<GetSystemPluginTemplatesBody>);
 
-    expect(mocks.pluginClient.getDebugSessionStatus).not.toHaveBeenCalled();
+    expect(mocks.pluginClient.getDebugSessionStatus).toHaveBeenCalledWith({
+      tmbId: 'tmb-1'
+    });
     expect(mocks.getSystemToolList).toHaveBeenCalledWith({
       lang: 'zh',
       op: 'or',
-      sources: ['system', 'team-1'],
+      sources: ['system', 'team-1', 'debug:tmbId:tmb-1'],
       tags: undefined
     });
   });
@@ -265,7 +265,7 @@ describe('get system tool templates handler', () => {
       enabled: true,
       plugins: []
     });
-    mocks.getSystemToolDisplayInfo.mockResolvedValue({
+    mocks.getSystemToolDisplayInfoWithChildIcons.mockResolvedValue({
       id: 'systemTool-toolset',
       name: 'Production Toolset',
       intro: '',
@@ -294,7 +294,7 @@ describe('get system tool templates handler', () => {
 
     expect(result.map((item) => item.id)).toEqual(['systemTool-toolset/child']);
     expect(mocks.pluginClient.getDebugSessionStatus).not.toHaveBeenCalled();
-    expect(mocks.getSystemToolDisplayInfo).toHaveBeenCalledWith({
+    expect(mocks.getSystemToolDisplayInfoWithChildIcons).toHaveBeenCalledWith({
       pluginId: 'systemTool-toolset',
       lang: 'zh',
       source: 'system'

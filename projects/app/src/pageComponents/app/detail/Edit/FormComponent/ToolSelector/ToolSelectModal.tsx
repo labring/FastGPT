@@ -44,7 +44,6 @@ import {
   getToolConfigStatus,
   validateToolConfiguration
 } from '@fastgpt/global/core/app/formEdit/utils';
-import { useLocalPluginDebugSession } from '@/web/core/plugin/debug/localDebugSession';
 import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
 
@@ -73,7 +72,6 @@ enum TemplateTypeEnum {
 const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void }) => {
   const { t } = useTranslation();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
-  const { session: debugSession } = useLocalPluginDebugSession();
 
   const [templateType, setTemplateType] = useState(TemplateTypeEnum.systemTools);
   const [parentId, setParentId] = useState<ParentIdType>('');
@@ -101,7 +99,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
         return getAppToolTemplates({
           parentId,
           searchKey: searchVal,
-          source: parentId ? source : debugSession?.source
+          source: parentId ? source : undefined
         });
       } else if (type === TemplateTypeEnum.myTools) {
         return getTeamAppTemplates({
@@ -128,7 +126,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
         setParentId(parentId);
         setParentSource(parentId ? (source ?? parentSource) : undefined);
       },
-      refreshDeps: [templateType, searchKey, parentId, debugSession?.source]
+      refreshDeps: [templateType, searchKey, parentId]
     }
   );
 

@@ -11,10 +11,8 @@ import { useDebounceEffect } from 'ahooks';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { getPluginToolTags } from '@/web/core/plugin/toolTag/api';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { useLocalPluginDebugSession } from '@/web/core/plugin/debug/localDebugSession';
 
 export const useNodeTemplates = () => {
-  const { session: debugSession } = useLocalPluginDebugSession();
   const [templateType, setTemplateType] = useState(TemplateTypeEnum.basic);
 
   const [searchKey, setSearchKey] = useState('');
@@ -120,7 +118,7 @@ export const useNodeTemplates = () => {
         return getAppToolTemplates({
           searchKey: searchVal,
           parentId,
-          source: parentId ? source : debugSession?.source,
+          source: parentId ? source : undefined,
           tags
         });
       }
@@ -145,7 +143,7 @@ export const useNodeTemplates = () => {
         source: parentSource
       });
     },
-    [searchKey, debugSession?.source, parentSource],
+    [searchKey, parentSource],
     {
       wait: 300
     }
@@ -159,15 +157,7 @@ export const useNodeTemplates = () => {
       tags: selectedTagIds,
       source: parentSource
     });
-  }, [
-    debugSession?.source,
-    loadNodeTemplates,
-    parentId,
-    parentSource,
-    searchKey,
-    selectedTagIds,
-    templateType
-  ]);
+  }, [loadNodeTemplates, parentId, parentSource, searchKey, selectedTagIds, templateType]);
 
   const onUpdateParentId = useCallback(
     (parentId: ParentIdType, source?: string) => {

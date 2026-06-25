@@ -41,14 +41,21 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import {
   enablePluginDebugChannel,
+  getPluginDebugChannel,
   refreshPluginDebugConnectionKey,
   revokePluginDebugChannel
 } from '@/web/core/plugin/debug/api';
-import {
-  type LocalPluginDebugSession,
-  useLocalPluginDebugSession
-} from '@/web/core/plugin/debug/localDebugSession';
+import type {
+  EnablePluginDebugChannelResponseType,
+  GetPluginDebugChannelResponseType
+} from '@fastgpt/global/openapi/core/plugin/debug/api';
 import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
+
+type PluginDebugSessionState = Pick<
+  GetPluginDebugChannelResponseType,
+  'tmbId' | 'source' | 'status' | 'enabled' | 'keyId' | 'createdAt' | 'updatedAt'
+> &
+  Partial<Pick<EnablePluginDebugChannelResponseType, 'connectionKey' | 'connectionUrl'>>;
 
 const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   const router = useRouter();
@@ -70,18 +77,19 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
 
   // TODO: 把 filter 放到后端
   const [tools, setTools] = useState<GetTeamPluginListResponseType>([]);
-  const {
-    session: debugSession,
-    setSession: setLocalDebugSession,
-    clearSession: clearLocalDebugSession
-  } = useLocalPluginDebugSession();
+  const [debugSession, setDebugSession] = useState<PluginDebugSessionState | null>(null);
 
   const loadTools = useCallback(() => getTeamSystemPluginList({}), []);
-  const { loading: loadingTools } = useRequest(loadTools, {
+  const { loading: loadingTools, runAsync: refreshTools } = useRequest(loadTools, {
     manual: false,
-    refreshDeps: [debugSession?.source],
     onSuccess(data) {
       setTools(data);
+    }
+  });
+  useRequest(getPluginDebugChannel, {
+    manual: false,
+    onSuccess(data) {
+      setDebugSession(isActiveDebugSession(data) ? data : null);
     }
   });
 
@@ -336,14 +344,25 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
       {debugDisclosure.isOpen && (
         <PluginDebugModal
           session={debugSession}
-          setSession={setLocalDebugSession}
-          clearSession={clearLocalDebugSession}
+          setSession={setDebugSession}
+          clearSession={() => setDebugSession(null)}
+          onRefreshTools={refreshTools}
           onClose={debugDisclosure.onClose}
         />
       )}
     </Box>
   );
 };
+
+function isActiveDebugSession(
+  session?: PluginDebugSessionState | null
+): session is PluginDebugSessionState {
+  return (
+    !!session?.source &&
+    session.enabled === true &&
+    (session.status === 'enabled' || session.status === 'connected')
+  );
+}
 
 const terminalCommandStyle = {
   fontFamily: 'Menlo, Monaco, Consolas, monospace',
@@ -371,11 +390,13 @@ function PluginDebugModal({
   session,
   setSession,
   clearSession,
+  onRefreshTools,
   onClose
 }: {
-  session: LocalPluginDebugSession | null;
-  setSession: (session: LocalPluginDebugSession) => void;
+  session: PluginDebugSessionState | null;
+  setSession: (session: PluginDebugSessionState) => void;
   clearSession: () => void;
+  onRefreshTools: () => Promise<GetTeamPluginListResponseType>;
   onClose: () => void;
 }) {
   const { copyData } = useCopyData();
@@ -386,7 +407,7 @@ function PluginDebugModal({
   );
   const tutorialUrl = getDocPath('/plugin/system-tool-development');
 
-  const saveDebugSession = (data: LocalPluginDebugSession) => {
+  const saveDebugSession = (data: EnablePluginDebugChannelResponseType) => {
     setSession({
       tmbId: data.tmbId,
       source: data.source,
@@ -404,6 +425,7 @@ function PluginDebugModal({
     manual: true,
     onSuccess(data) {
       saveDebugSession(data);
+      onRefreshTools().catch(() => undefined);
     }
   });
 
@@ -413,6 +435,7 @@ function PluginDebugModal({
       manual: true,
       onSuccess(data) {
         saveDebugSession(data);
+        onRefreshTools().catch(() => undefined);
       }
     }
   );
@@ -427,9 +450,11 @@ function PluginDebugModal({
       errorToast: '',
       onSuccess() {
         clearSession();
+        onRefreshTools().catch(() => undefined);
       },
       onError() {
         clearSession();
+        onRefreshTools().catch(() => undefined);
       }
     }
   );

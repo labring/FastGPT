@@ -38,15 +38,17 @@ export async function handler(
 
   // const tools = await getSystemToolsWithInstalled({ teamId, isRoot, userTags });
   const systemToolRepo = SystemToolRepo.getInstance();
-  const debugSource = await getActiveDebugSource({
-    tmbId,
-    source
-  });
   if (parentId) {
+    const parentSource = isDebugSource(source)
+      ? await getActiveDebugSource({
+          tmbId,
+          source
+        })
+      : source;
     const parent = await systemToolRepo.getSystemToolDisplayInfoWithChildIcons({
       pluginId: parentId,
       lang,
-      source: debugSource ?? 'system'
+      source: parentSource ?? 'system'
     });
     if (!isSelectableToolStatus(parent.status)) {
       return GetSystemToolTemplatesResponseSchema.parse([]);
@@ -79,6 +81,7 @@ export async function handler(
     );
   }
   // no parentId, get all tools
+  const debugSource = await getActiveDebugSource({ tmbId });
   const tools = await systemToolRepo.getSystemToolList({
     lang,
     op: 'or',
@@ -116,14 +119,13 @@ function isDebugSource(source?: string) {
 }
 
 async function getActiveDebugSource({ tmbId, source }: { tmbId: string; source?: string }) {
-  if (!isDebugSource(source)) return;
-
   const status = await pluginClient.getDebugSessionStatus({ tmbId }).catch(() => undefined);
 
   if (
     status?.enabled &&
     (status.status === 'enabled' || status.status === 'connected') &&
-    status.source === source
+    isDebugSource(status.source) &&
+    (!source || status.source === source)
   ) {
     return status.source;
   }
