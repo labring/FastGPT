@@ -11,6 +11,66 @@ import { normalizeFormInputResultFile } from '../../../components/FormInputResul
 import type { ChatSiteItemType } from '../type';
 
 /**
+ * 用户选择规划 Agent 选项后，前端会立即追加 Human/AI 占位消息。
+ * 这里把答案乐观写回对应的 agentPlanAskQuery，避免旧消息在失去 isLastChild 后丢失选中态。
+ */
+export const persistAgentPlanAskAnswerToHistories = ({
+  histories,
+  interactive,
+  answer
+}: {
+  histories: ChatSiteItemType[];
+  interactive: WorkflowInteractiveResponseType;
+  answer: string;
+}): ChatSiteItemType[] => {
+  const sourceInteractive = extractDeepestInteractive(interactive);
+  if (sourceInteractive.type !== 'agentPlanAskQuery') {
+    return histories;
+  }
+
+  const targetPlanId = sourceInteractive.planId;
+  let hasUpdated = false;
+
+  const nextHistories = histories.map((item) => {
+    if (item.obj !== ChatRoleEnum.AI) return item;
+
+    let itemUpdated = false;
+    const nextValues = item.value.map((val) => {
+      if (!('interactive' in val) || !val.interactive) return val;
+
+      const finalInteractive = extractDeepestInteractive(val.interactive);
+      if (finalInteractive.type !== 'agentPlanAskQuery') return val;
+      if (finalInteractive.params.answer) return val;
+
+      if (targetPlanId && finalInteractive.planId && finalInteractive.planId !== targetPlanId) {
+        return val;
+      }
+
+      itemUpdated = true;
+      hasUpdated = true;
+      return {
+        ...val,
+        interactive: {
+          ...finalInteractive,
+          params: {
+            ...finalInteractive.params,
+            answer
+          }
+        }
+      };
+    });
+
+    if (!itemUpdated) return item;
+    return {
+      ...item,
+      value: nextValues
+    };
+  });
+
+  return hasUpdated ? nextHistories : histories;
+};
+
+/**
  * 恢复流收到 `flowNodeResponse` 且带 `formInputResult` 时，把节点结果写回已提交的表单交互节点。
  *
  * 匹配目标交互节点（二者满足其一即可）：
@@ -208,8 +268,24 @@ export const rewriteHistoriesByInteractiveResponse = ({
     return histories.slice(0, -2);
   })();
 
-  const newHistories = formatHistories.map((item, i) => {
-    if (i !== formatHistories.length - 1) return item;
+  const workingHistories =
+    status === 'query'
+      ? persistAgentPlanAskAnswerToHistories({
+          histories: formatHistories,
+          interactive,
+          answer: interactiveVal
+        })
+      : formatHistories;
+
+  const newHistories = workingHistories.map((item, i) => {
+    if (i !== workingHistories.length - 1) return item;
+
+    if (status === 'query') {
+      return {
+        ...item,
+        status: ChatStatusEnum.loading
+      } as ChatSiteItemType;
+    }
 
     const value = item.value.map((val, i) => {
       if (i !== item.value.length - 1) {
