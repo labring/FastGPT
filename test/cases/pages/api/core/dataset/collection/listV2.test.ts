@@ -29,6 +29,7 @@ const getFileStatus = (item: {
   hasActive?: boolean;
   allParse?: boolean;
   parseStartTime?: Date;
+  processedCount?: number;
 }): CollectionStatusEnum => {
   if (item.tableSchemaExist === false) return CollectionStatusEnum.notExist;
   if (item.hasError) return CollectionStatusEnum.error;
@@ -36,6 +37,11 @@ const getFileStatus = (item: {
     if (item.allParse && !item.parseStartTime) return CollectionStatusEnum.queued;
     if (item.allParse) return CollectionStatusEnum.parsing;
     return CollectionStatusEnum.indexing;
+  }
+  if (item.dataAmount > 0 && (item.processedCount ?? 0) < item.dataAmount) {
+    return (item.processedCount ?? 0) === 0
+      ? CollectionStatusEnum.queued
+      : CollectionStatusEnum.indexing;
   }
   return CollectionStatusEnum.ready;
 };
@@ -87,8 +93,22 @@ describe('getFileStatus', () => {
     );
   });
 
-  it('trainingAmount=0 + data >0 → ready', () => {
-    expect(getFileStatus({ dataAmount: 100, trainingAmount: 0 })).toBe(CollectionStatusEnum.ready);
+  it('trainingAmount=0 + data >0 + processedCount=0 → queued（未开始处理）', () => {
+    expect(getFileStatus({ dataAmount: 100, trainingAmount: 0, processedCount: 0 })).toBe(
+      CollectionStatusEnum.queued
+    );
+  });
+
+  it('trainingAmount=0 + 0 < processedCount < dataAmount → indexing（处理中断）', () => {
+    expect(getFileStatus({ dataAmount: 100, trainingAmount: 0, processedCount: 50 })).toBe(
+      CollectionStatusEnum.indexing
+    );
+  });
+
+  it('trainingAmount=0 + data >0 + processedCount=dataAmount → ready（已全部完成）', () => {
+    expect(getFileStatus({ dataAmount: 100, trainingAmount: 0, processedCount: 100 })).toBe(
+      CollectionStatusEnum.ready
+    );
   });
 
   it('trainingAmount=0 + data=0 → ready（空文档）', () => {

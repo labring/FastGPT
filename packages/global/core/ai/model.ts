@@ -41,7 +41,8 @@ export const defaultVectorModels: EmbeddingModelItemType[] = [
     charsPointsPrice: 0,
     defaultToken: 500,
     maxToken: 3000,
-    weight: 100
+    weight: 100,
+    batchSize: 10
   }
 ];
 

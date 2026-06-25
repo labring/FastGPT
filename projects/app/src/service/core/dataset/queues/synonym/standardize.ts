@@ -298,7 +298,8 @@ export const processSynonymStandardize = async ({
               $set: {
                 // q/a 不修改,保持原文
                 indexes: newIndexes,
-                indexingCompleteTime: new Date()
+                indexingCompleteTime: new Date(),
+                updateTime: new Date()
               }
             },
             { session }
@@ -429,7 +430,10 @@ export const processSynonymStandardize = async ({
             );
           }
 
-          // 标记 data 已完成同义词处理，计入 processedCount
+          // 标记 data 已完成同义词处理
+          // 注：indexingCompleteTime 被上传时 $unset 清掉，此处设回以保证 pushCollectionUpdateJob
+          // 能正确统计 processedCount，前端进度条依赖此字段
+          // 注：indexes 未变化，不更新 updateTime，因为数据本身未被修改
           await MongoDatasetData.updateOne(
             { _id: dataId },
             { $set: { indexingCompleteTime: new Date() } },

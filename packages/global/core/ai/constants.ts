@@ -50,7 +50,8 @@ export const defaultVectorModels: EmbeddingModelItemType[] = [
     charsPointsPrice: 0,
     defaultToken: 500,
     maxToken: 3000,
-    weight: 100
+    weight: 100,
+    batchSize: 10
   }
 ];
 
@@ -104,14 +105,18 @@ export const completionFinishReasonMap = {
 };
 
 // 千问模型内置指令
-export const QWEN_EMBEDDING_RERANK_INSTRUCTION = 'Given a web search query, retrieve relevant passages that answer the query';
+export const QWEN_EMBEDDING_RERANK_INSTRUCTION =
+  'Given a web search query, retrieve relevant passages that answer the query';
 
 /**
  * 若模型为 Qwen3 系列的向量或重排模型（前缀匹配 Qwen3-Embedding / Qwen3-Reranker），
  * 返回内置的默认指令，否则返回 undefined。
  * 该指令用于在查询时附加任务描述，提升检索效果。
  */
-export function getQwenEmbeddingRerankInstruction(type: ModelTypeEnum, model: string): string | undefined {
+export function getQwenEmbeddingRerankInstruction(
+  type: ModelTypeEnum,
+  model: string
+): string | undefined {
   const modelId = model.trim();
   if (type === ModelTypeEnum.embedding && /^Qwen3-Embedding/i.test(modelId)) {
     return QWEN_EMBEDDING_RERANK_INSTRUCTION;

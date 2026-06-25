@@ -40,6 +40,7 @@ function getFileStatus(item: {
   allParse?: boolean; // 是否所有训练记录都是 parse 模式（用于区分 parse 前排队 vs parse 后排队）
   parseStartTime?: Date; // 持久化标记：parse 任务创建时设置，用于判断处理是否已启动
   statsUpdatedAt?: Date; // stats 上次计算时间，undefined 表示尚未初始化
+  processedCount?: number; // 已处理的数据条数
 }): CollectionStatusEnum {
   // 不存在状态：数据库知识库的表被删除
   if (item.tableSchemaExist === false) {
@@ -65,9 +66,14 @@ function getFileStatus(item: {
     // 存在非 parse 模式任务（chunk/qa 等）→ 索引中
     return CollectionStatusEnum.indexing;
   }
-  // 没有训练任务时，无论是否有数据，都表示训练已完成
-  // - 有数据：正常完成
-  // - 无数据：空文档（训练完成但无内容可提取）
+  // 没有训练任务时，检查是否还有未处理的数据
+  // 例如：同义词上传后 trainingAmount=0 但 processedCount 尚未恢复
+  if (item.dataAmount > 0 && (item.processedCount ?? 0) < item.dataAmount) {
+    return (item.processedCount ?? 0) === 0
+      ? CollectionStatusEnum.queued // 尚未开始
+      : CollectionStatusEnum.indexing; // 处理中断/进行中
+  }
+  // 有数据：正常完成 | 无数据：空文档（训练完成但无内容可提取）
   return CollectionStatusEnum.ready;
 }
 
@@ -529,7 +535,8 @@ async function handleFieldSort({
           allParse,
           parseStartTime: item.parseStartTime,
           tableSchemaExist: item.tableSchema?.exist,
-          statsUpdatedAt: item.statsUpdatedAt
+          statsUpdatedAt: item.statsUpdatedAt,
+          processedCount
         });
         return {
           ...item,
@@ -649,7 +656,8 @@ async function handleFieldSort({
         allParse,
         parseStartTime: item.parseStartTime,
         tableSchemaExist: item.tableSchema?.exist,
-        statsUpdatedAt: item.statsUpdatedAt
+        statsUpdatedAt: item.statsUpdatedAt,
+        processedCount
       });
       return {
         ...item,
@@ -805,7 +813,8 @@ async function handleDataAmountSortOrStatusFilter({
           allParse: item.allParse ?? false,
           parseStartTime: item.parseStartTime,
           tableSchemaExist: item.tableSchema?.exist,
-          statsUpdatedAt: item.statsUpdatedAt
+          statsUpdatedAt: item.statsUpdatedAt,
+          processedCount: item.processedCount || 0
         });
         return {
           ...item,
@@ -922,7 +931,8 @@ async function handleStatusFilterWithMemoryPagination({
         allParse: allParseVal,
         parseStartTime: item.parseStartTime,
         tableSchemaExist: item.tableSchema?.exist,
-        statsUpdatedAt: item.statsUpdatedAt
+        statsUpdatedAt: item.statsUpdatedAt,
+        processedCount: processedCountVal
       });
       return {
         ...item,

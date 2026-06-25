@@ -487,18 +487,21 @@ export async function uploadSynonymFile({
     }
 
     // 触发所有受影响的 collection 的 stats 更新，使前端状态从 ready 变为 indexing
-    const affectedCollections = await MongoDatasetTraining.distinct('collectionId', {
+    // 直接查 MongoDatasetData，因为前面 updateMany 已标记了知识库全部数据
+    const affectedCollections = await MongoDatasetData.distinct('collectionId', {
       teamId: new Types.ObjectId(teamId),
-      datasetId: new Types.ObjectId(datasetId),
-      mode: TrainingModeEnum.synonymStandardize
+      datasetId: new Types.ObjectId(datasetId)
     });
 
     for (const collectionId of affectedCollections) {
-      pushCollectionUpdateJob({
-        collectionId: String(collectionId),
-        datasetId,
-        teamId
-      });
+      pushCollectionUpdateJob(
+        {
+          collectionId: String(collectionId),
+          datasetId,
+          teamId
+        },
+        0
+      );
     }
 
     // 12. 清除同义词词汇缓存
@@ -588,6 +591,9 @@ export async function deleteSynonymFile({
   //     $set: {
   //       synonymProcessing: 'restore',
   //       synonymFileIds: [synonymId]
+  //     },
+  //     $unset: {
+  //       indexingCompleteTime: ''
   //     }
   //   }
   // );
