@@ -18,6 +18,8 @@ type Props = SelectProps & {
   disableTip?: string;
   noOfLines?: ResponsiveValue<number>;
   cacheModel?: boolean;
+  canBeUnset?: boolean;
+  unsetLabel?: string;
 };
 
 const modelAvatarSizeMap = {
@@ -40,6 +42,22 @@ const isTestModeModel = (model?: SystemModelItemType) => {
 const isMultimodalEmbeddingModel = (model?: SystemModelItemType) => {
   return model?.type === ModelTypeEnum.embedding && !!model.vision;
 };
+
+const UNSET_MODEL_VALUE = '';
+
+const UnsetOptionLabel = React.memo(function UnsetOptionLabel({
+  label
+}: {
+  label: string | React.ReactNode;
+}) {
+  return (
+    <Flex alignItems={'center'} py={1} w={'100%'} minW={0}>
+      <Box noOfLines={1} flex={'1 1 0'} minW={0} overflow={'hidden'}>
+        {label}
+      </Box>
+    </Flex>
+  );
+});
 
 const SelectorActiveModelTags = React.memo(function SelectorActiveModelTags({
   model
@@ -104,6 +122,8 @@ const OneRowSelector = ({
   disableTip,
   noOfLines,
   cacheModel = true,
+  canBeUnset = false,
+  unsetLabel,
   ...props
 }: Props) => {
   const { t } = useTranslation(['common', 'account']);
@@ -148,7 +168,7 @@ const OneRowSelector = ({
   );
 
   const avatarList = useMemo(() => {
-    return list
+    const modelOptions = list
       .map((item) => {
         const modelData = allModels.find((model) => model.model === item.value);
         if (!modelData) return;
@@ -182,7 +202,27 @@ const OneRowSelector = ({
       value: any;
       label: React.JSX.Element;
     }[];
-  }, [allModels, list, getModelProvider, avatarSize, noOfLines, myModels]);
+
+    if (!canBeUnset) return modelOptions;
+
+    return [
+      {
+        value: UNSET_MODEL_VALUE,
+        label: <UnsetOptionLabel label={unsetLabel ?? t('common:not_model_config')} />
+      },
+      ...modelOptions
+    ];
+  }, [
+    allModels,
+    list,
+    getModelProvider,
+    avatarSize,
+    noOfLines,
+    myModels,
+    canBeUnset,
+    unsetLabel,
+    t
+  ]);
 
   return (
     <Box
@@ -237,6 +277,8 @@ const MultipleRowSelector = ({
   disableTip,
   placeholder,
   noOfLines,
+  canBeUnset = false,
+  unsetLabel,
   ...props
 }: Props) => {
   const { t, i18n } = useTranslation(['common', 'account']);
@@ -283,8 +325,13 @@ const MultipleRowSelector = ({
     [modelList, props.value]
   );
   const value = useMemo(
-    () => (selectedModelData ? [selectedModelData.provider, selectedModelData.model] : []),
-    [selectedModelData]
+    () =>
+      selectedModelData
+        ? [selectedModelData.provider, selectedModelData.model]
+        : canBeUnset && props.value === UNSET_MODEL_VALUE
+          ? [UNSET_MODEL_VALUE]
+          : [],
+    [canBeUnset, props.value, selectedModelData]
   );
 
   const selectorList = useMemo(() => {
@@ -309,6 +356,14 @@ const MultipleRowSelector = ({
       children: []
     }));
 
+    if (canBeUnset) {
+      renderList.unshift({
+        label: <UnsetOptionLabel label={unsetLabel ?? t('common:not_model_config')} />,
+        value: UNSET_MODEL_VALUE,
+        children: []
+      });
+    }
+
     for (const item of list) {
       const modelData = modelList.find((model) => model?.model === item.value);
       if (!modelData) continue;
@@ -330,18 +385,23 @@ const MultipleRowSelector = ({
       });
     }
 
-    return renderList.filter((item) => item.children.length > 0);
-  }, [getModelProviders, i18n.language, avatarSize, list, modelList]);
+    return renderList.filter(
+      (item) => item.value === UNSET_MODEL_VALUE || item.children.length > 0
+    );
+  }, [getModelProviders, i18n.language, avatarSize, canBeUnset, unsetLabel, t, list, modelList]);
 
   const onSelect = useCallback(
-    (e: string[]) => {
-      return onChange?.(e[1]);
+    (e: (string | undefined)[]) => {
+      return onChange?.(e[0] === UNSET_MODEL_VALUE ? UNSET_MODEL_VALUE : e[1]);
     },
     [onChange]
   );
 
   const SelectedLabel = useMemo(() => {
     if (loading) return <>{t('common:model_loading')}</>;
+    if (canBeUnset && props.value === UNSET_MODEL_VALUE) {
+      return <UnsetOptionLabel label={unsetLabel ?? t('common:not_model_config')} />;
+    }
     if (!props.value) return <>{t('common:not_model_config')}</>;
     if (!selectedModelData) return <>{t('common:not_model_config')}</>;
 
@@ -364,7 +424,17 @@ const MultipleRowSelector = ({
         />
       </Flex>
     );
-  }, [loading, props.value, t, selectedModelData, getModelProvider, avatarSize, noOfLines]);
+  }, [
+    loading,
+    canBeUnset,
+    props.value,
+    unsetLabel,
+    t,
+    selectedModelData,
+    getModelProvider,
+    avatarSize,
+    noOfLines
+  ]);
 
   return (
     <Box

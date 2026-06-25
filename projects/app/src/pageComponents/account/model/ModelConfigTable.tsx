@@ -282,6 +282,7 @@ const ModelTable = ({ Tab }: { Tab: React.ReactNode }) => {
       isDefault: false,
       isDefaultDatasetTextModel: false,
       isDefaultDatasetImageModel: false,
+      isDefaultChatTitleModel: false,
       type,
       ...(type === ModelTypeEnum.llm
         ? {
@@ -727,6 +728,30 @@ const DefaultModelModal = ({
             />
           </Box>
         </Box>
+        <Box>
+          <Flex mt={4} {...labelStyles} alignItems={'center'}>
+            <Box mr={0.5}>{t('account_model:chat_title_model')}</Box>
+            <QuestionTip label={t('account_model:chat_title_model_tip')} />
+          </Flex>
+          <Box flex={1}>
+            <AIModelSelector
+              bg="myGray.50"
+              value={defaultData.chatTitleLLM?.model || ''}
+              canBeUnset
+              unsetLabel={t('account_model:not_set_chat_title_model')}
+              list={llmModelList.map((item) => ({
+                value: item.model,
+                label: item.name
+              }))}
+              onChange={(e) => {
+                setDefaultData((state) => ({
+                  ...state,
+                  chatTitleLLM: llmModelList.find((item) => item.model === e)
+                }));
+              }}
+            />
+          </Box>
+        </Box>
       </ModalBody>
       <ModalFooter>
         <Button variant={'whiteBase'} mr={4} onClick={onClose}>
@@ -742,7 +767,8 @@ const DefaultModelModal = ({
               [ModelTypeEnum.stt]: defaultData.stt?.model,
               [ModelTypeEnum.rerank]: defaultData.rerank?.model,
               datasetTextLLM: defaultData.datasetTextLLM?.model,
-              datasetImageLLM: defaultData.datasetImageLLM?.model
+              datasetImageLLM: defaultData.datasetImageLLM?.model,
+              chatTitleLLM: defaultData.chatTitleLLM?.model
             })
           }
         >

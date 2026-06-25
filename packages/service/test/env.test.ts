@@ -4,7 +4,6 @@ const validInvokeTokenSecret = 'fastgpt_test_invoke_token_secret_32';
 
 const originalEnv = {
   SYSTEM_MAX_STRING_LENGTH_M: process.env.SYSTEM_MAX_STRING_LENGTH_M,
-  CHAT_TITLE_MODEL: process.env.CHAT_TITLE_MODEL,
   FILE_TOKEN_KEY: process.env.FILE_TOKEN_KEY,
   AES256_SECRET_KEY: process.env.AES256_SECRET_KEY,
   INVOKE_TOKEN_SECRET: process.env.INVOKE_TOKEN_SECRET,
@@ -21,7 +20,6 @@ const importServiceEnv = async () => {
 describe('serviceEnv', () => {
   afterEach(() => {
     vi.stubEnv('SYSTEM_MAX_STRING_LENGTH_M', originalEnv.SYSTEM_MAX_STRING_LENGTH_M);
-    vi.stubEnv('CHAT_TITLE_MODEL', originalEnv.CHAT_TITLE_MODEL);
     vi.stubEnv('FILE_TOKEN_KEY', originalEnv.FILE_TOKEN_KEY);
     vi.stubEnv('AES256_SECRET_KEY', originalEnv.AES256_SECRET_KEY);
     vi.stubEnv('INVOKE_TOKEN_SECRET', originalEnv.INVOKE_TOKEN_SECRET);
@@ -64,19 +62,6 @@ describe('serviceEnv', () => {
 
     vi.stubEnv('SYSTEM_MAX_STRING_LENGTH_M', 'not-a-number');
     await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
-  });
-
-  it('validates chat title generation env during service env init', async () => {
-    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
-    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
-    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
-
-    vi.stubEnv('CHAT_TITLE_MODEL', 'title-model');
-    await expect(importServiceEnv()).resolves.toMatchObject({
-      serviceEnv: {
-        CHAT_TITLE_MODEL: 'title-model'
-      }
-    });
   });
 
   it('requires INVOKE_TOKEN_SECRET during service env init', async () => {

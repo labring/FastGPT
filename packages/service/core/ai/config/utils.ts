@@ -77,6 +77,9 @@ export const loadSystemModels = async (init = false, language = 'en') => {
         if (model.isDefaultDatasetImageModel) {
           _systemDefaultModel.datasetImageLLM = model;
         }
+        if (model.isDefaultChatTitleModel) {
+          _systemDefaultModel.chatTitleLLM = model;
+        }
         if (model.model === serviceEnv.HELPER_BOT_MODEL) {
           _systemDefaultModel.helperBotLLM = model;
         }
@@ -270,7 +273,7 @@ export const watchSystemModelUpdate = () => {
         await loadSystemModels(true);
         // All node reaload buffer
         await reloadFastGPTConfigBuffer();
-      } catch (error) {}
+      } catch {}
     }, 500)
   );
 };

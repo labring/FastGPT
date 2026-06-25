@@ -1,0 +1,16 @@
+---
+title: 'V4.15.0-beta6'
+description: 'FastGPT V4.15.0-beta6 Release Notes'
+---
+
+## 📦 Upgrade Guide
+
+### 1. Update the default model configuration
+
+The chat title generation model is no longer configured through the `CHAT_TITLE_MODEL` environment variable. After upgrading, select the Chat Title Model in Model Configuration > Default Model Configuration. This setting can be left unset. When unset, FastGPT does not call a model to generate the title and uses a truncated user question instead.
+
+If you previously configured `CHAT_TITLE_MODEL`, remove it from the `fastgpt` and `fastgpt-pro` environment variables, then select the corresponding model in the UI.
+
+## ⚙️ Improvements
+
+1. Chat title generation now uses the system default model configuration, making it easier to switch at runtime and manage consistently.

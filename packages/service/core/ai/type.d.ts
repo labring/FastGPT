@@ -8,7 +8,6 @@ import type {
 } from '@fastgpt/global/core/ai/model.schema';
 import type {
   I18nStringStrictType,
-  AIProxyChannelsType,
   AiproxyMapProviderItemType
 } from '@fastgpt/global/sdk/fastgpt-plugin';
 import type { langType, ModelProviderItemType } from '@fastgpt/global/core/ai/provider';
@@ -30,6 +29,7 @@ export type SystemDefaultModelType = {
   [ModelTypeEnum.llm]?: LLMModelItemType;
   datasetTextLLM?: LLMModelItemType;
   datasetImageLLM?: LLMModelItemType;
+  chatTitleLLM?: LLMModelItemType;
   helperBotLLM?: LLMModelItemType;
 
   [ModelTypeEnum.embedding]?: EmbeddingModelItemType;

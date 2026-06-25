@@ -31,6 +31,8 @@ export const getVlmModel = (model?: string) => {
   return list.find((item) => item.model === model || item.name === model) || list[0];
 };
 
+export const getDefaultChatTitleModel = () => global?.systemDefaultModel.chatTitleLLM;
+
 export const getDefaultHelperBotModel = (): LLMModelItemType =>
   global?.systemDefaultModel.helperBotLLM || getDefaultLLMModel();
 

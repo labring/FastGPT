@@ -169,9 +169,28 @@ jobs:
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
         run: |
+          retry_imagetools_create() {
+            local tag="$1"
+            local sources
+            sources="$(printf 'ghcr.io/${{ github.repository_owner }}/${{ matrix.sub_routes.repo }}@sha256:%s ' *)"
+
+            for attempt in 1 2 3 4; do
+              if docker buildx imagetools create -t "$tag" $sources; then
+                return 0
+              fi
+
+              if [ "$attempt" -eq 4 ]; then
+                echo "::error::Failed to push manifest ${tag} after 3 retries."
+                return 1
+              fi
+
+              echo "::warning::Failed to push manifest ${tag}; retrying in $((attempt * 15)) seconds (${attempt}/3)."
+              sleep $((attempt * 15))
+            done
+          }
+
           TAGS="$(echo -e "${Git_Tag}\n${Git_Latest}\n${Ali_Tag}\n${Ali_Latest}")"
           for TAG in $TAGS; do
-            docker buildx imagetools create -t $TAG \
-              $(printf 'ghcr.io/${{ github.repository_owner }}/${{ matrix.sub_routes.repo }}@sha256:%s ' *)
+            retry_imagetools_create "$TAG"
             sleep 5
           done

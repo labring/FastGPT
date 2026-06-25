@@ -8,14 +8,14 @@ import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { syncGeneratedChatTitleFromUserContent } from '@fastgpt/service/core/chat/title';
 
 const createLLMResponseMock = vi.hoisted(() => vi.fn());
-const getLLMModelMock = vi.hoisted(() => vi.fn());
+const getDefaultChatTitleModelMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
   createLLMResponse: createLLMResponseMock
 }));
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getLLMModel: getLLMModelMock
+  getDefaultChatTitleModel: getDefaultChatTitleModelMock
 }));
 
 const base = {
@@ -38,7 +38,7 @@ const createChat = (override: Record<string, unknown> = {}) =>
 describe('syncGeneratedChatTitleFromUserContent', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
-    getLLMModelMock.mockReturnValue({
+    getDefaultChatTitleModelMock.mockReturnValue({
       model: 'gpt-title',
       reasoning: true
     });
@@ -122,7 +122,7 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
   });
 
   it('uses local question text fallback when title model is unavailable', async () => {
-    getLLMModelMock.mockReturnValue(undefined);
+    getDefaultChatTitleModelMock.mockReturnValue(undefined);
     await createChat();
 
     const result = await syncGeneratedChatTitleFromUserContent({
