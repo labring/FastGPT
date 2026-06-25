@@ -7,6 +7,9 @@ import { getLogger, LogCategories } from '../../../../common/logger';
 import type { DeployedSkillInfo, DeployedSkillVersion } from './types';
 import { serviceEnv } from '../../../../env';
 import { joinSandboxPath, shellQuote } from '../../sandbox/runtime/utils';
+import { authSkillByTmbId } from '../../../../support/permission/skill/auth';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 
 export type { DeployedSkillInfo, DeployedSkillVersion } from './types';
 
@@ -108,11 +111,13 @@ export const injectAgentSkillFilesToSandbox = async ({
   sandbox,
   skillIds,
   teamId,
+  tmbId,
   workDirectory
 }: {
   sandbox: ISandbox;
   skillIds: string[];
   teamId: string;
+  tmbId: string;
   workDirectory: string;
 }): Promise<DeployedSkillVersion[]> => {
   const skillsRootPath = getSkillsRootPath(workDirectory);
@@ -153,13 +158,43 @@ export const injectAgentSkillFilesToSandbox = async ({
     return [];
   }
 
-  const skills = await MongoAgentSkills.find({
+  const teamSkills = await MongoAgentSkills.find({
     _id: { $in: skillIds },
     teamId,
     deleteTime: null
   });
-  if (skills.length === 0) {
+  if (teamSkills.length === 0) {
     logger.warn('[Agent Skills] No valid skills found from input skillIds', { skillIds });
+    await cleanupStaleDirs(new Set());
+    return [];
+  }
+
+  const skills = (
+    await Promise.all(
+      teamSkills.map(async (skill) => {
+        try {
+          await authSkillByTmbId({
+            tmbId,
+            skillId: String(skill._id),
+            per: ReadPermissionVal
+          });
+          return skill;
+        } catch (error) {
+          if (error !== SkillErrEnum.unAuthSkill && error !== SkillErrEnum.unExist) {
+            throw error;
+          }
+
+          logger.warn('[Agent Skills] Skip unauthorized skill during runtime injection', {
+            skillId: String(skill._id),
+            tmbId
+          });
+          return null;
+        }
+      })
+    )
+  ).filter((skill): skill is (typeof teamSkills)[number] => !!skill);
+
+  if (skills.length === 0) {
     await cleanupStaleDirs(new Set());
     return [];
   }

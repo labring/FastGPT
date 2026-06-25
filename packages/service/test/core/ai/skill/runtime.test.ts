@@ -56,8 +56,8 @@ const WORKSPACE_SKILL_INFO_FIND_COMMAND = `find '/workspace' \\( -name 'node_mod
 
 describe('getAgentSkillInfos', () => {
   it('scans every recursive skill.md from every selected version directory', async () => {
-    const teamId = new Types.ObjectId().toHexString();
-    const tmbId = new Types.ObjectId().toHexString();
+    const user = await getUser(`runtime-skill-scan-${getNanoid(6)}`);
+    const { teamId, tmbId } = user;
 
     const [skill1, skill2] = await MongoAgentSkills.create([
       {
@@ -234,6 +234,7 @@ description: Zeta skill
       sandbox: sandbox as any,
       skillIds: [String(skill1._id), String(skill2._id)],
       teamId,
+      tmbId,
       workDirectory: '/workspace'
     });
     const result = await getAgentSkillInfos({
@@ -246,8 +247,12 @@ description: Zeta skill
     const writtenFilePaths = sandbox.writeFiles.mock.calls[0][0].map(
       (entry: { path: string }) => entry.path
     );
-    expect(writtenFilePaths[0]).toContain(`/workspace/projects/.tmp-${String(skill1VersionId)}`);
-    expect(writtenFilePaths[1]).toContain(`/workspace/projects/.tmp-${String(skill2VersionId)}`);
+    expect(writtenFilePaths).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining(`/workspace/projects/.tmp-${String(skill1VersionId)}`),
+        expect.stringContaining(`/workspace/projects/.tmp-${String(skill2VersionId)}`)
+      ])
+    );
     expect(writtenFilePaths.every((path: string) => path.endsWith('/package.zip'))).toBe(true);
     const unzipCommands = sandbox.execute.mock.calls
       .map(([command]) => command)
@@ -285,8 +290,8 @@ description: Zeta skill
   });
 
   it('deploys every selected current version into version directories', async () => {
-    const teamId = new Types.ObjectId().toHexString();
-    const tmbId = new Types.ObjectId().toHexString();
+    const user = await getUser(`runtime-skill-deploy-${getNanoid(6)}`);
+    const { teamId, tmbId } = user;
 
     const [existingSkill, missingSkill] = await MongoAgentSkills.create([
       {
@@ -426,6 +431,7 @@ description: Missing skill
       sandbox: sandbox as any,
       skillIds: [String(existingSkill._id), String(missingSkill._id)],
       teamId,
+      tmbId,
       workDirectory: '/workspace'
     });
     const result = await getAgentSkillInfos({
@@ -455,8 +461,8 @@ description: Missing skill
   });
 
   it('uses the version pointed to by skill.currentVersionId', async () => {
-    const teamId = new Types.ObjectId().toHexString();
-    const tmbId = new Types.ObjectId().toHexString();
+    const user = await getUser(`runtime-skill-current-version-${getNanoid(6)}`);
+    const { teamId, tmbId } = user;
 
     const skill = await MongoAgentSkills.create({
       name: 'MultiActive',
@@ -564,6 +570,7 @@ description: Latest current skill
       sandbox: sandbox as any,
       skillIds: [String(skill._id)],
       teamId,
+      tmbId,
       workDirectory: '/workspace'
     });
     const result = await getAgentSkillInfos({
@@ -712,8 +719,8 @@ description: Latest current skill
   });
 
   it('skips existing current version directories and removes unselected version directories', async () => {
-    const teamId = new Types.ObjectId().toHexString();
-    const tmbId = new Types.ObjectId().toHexString();
+    const user = await getUser(`runtime-skill-cached-${getNanoid(6)}`);
+    const { teamId, tmbId } = user;
 
     const skill = await MongoAgentSkills.create({
       name: 'CachedVersion',
@@ -784,6 +791,7 @@ description: Latest current skill
       sandbox: sandbox as any,
       skillIds: [String(skill._id)],
       teamId,
+      tmbId,
       workDirectory: '/workspace'
     });
 
@@ -799,8 +807,8 @@ description: Latest current skill
   });
 
   it('throws when a skill package file fails to write', async () => {
-    const teamId = new Types.ObjectId().toHexString();
-    const tmbId = new Types.ObjectId().toHexString();
+    const user = await getUser(`runtime-skill-write-fail-${getNanoid(6)}`);
+    const { teamId, tmbId } = user;
 
     const skill = await MongoAgentSkills.create({
       name: 'Broken',
@@ -878,6 +886,7 @@ description: Latest current skill
         sandbox: sandbox as any,
         skillIds: [String(skill._id)],
         teamId,
+        tmbId,
         workDirectory: '/workspace'
       })
     ).rejects.toThrow('Failed to write skill ZIP packages: write failed');
@@ -886,8 +895,8 @@ description: Latest current skill
   });
 
   it('returns empty array when skills are invalid/deleted or missing current version', async () => {
-    const teamId = new Types.ObjectId().toHexString();
-    const tmbId = new Types.ObjectId().toHexString();
+    const user = await getUser(`runtime-skill-empty-${getNanoid(6)}`);
+    const { teamId, tmbId } = user;
 
     const sandbox = {
       writeFiles: vi.fn(),
@@ -908,6 +917,7 @@ description: Latest current skill
       sandbox: sandbox as any,
       skillIds: [new Types.ObjectId().toHexString()],
       teamId,
+      tmbId,
       workDirectory: '/workspace'
     });
     expect(resultNoSkills).toEqual([]);
@@ -924,12 +934,14 @@ description: Latest current skill
       sandbox: sandbox as any,
       skillIds: [String(skill._id)],
       teamId,
+      tmbId,
       workDirectory: '/workspace'
     });
     expect(resultNoVersion).toEqual([]);
   });
 
   it('cleans stale version directories when no skills are selected', async () => {
+    const tmbId = new Types.ObjectId().toHexString();
     const sandbox = {
       writeFiles: vi.fn(),
       execute: vi.fn(async (command: string) => {
@@ -955,6 +967,7 @@ description: Latest current skill
       sandbox: sandbox as any,
       skillIds: [],
       teamId: new Types.ObjectId().toHexString(),
+      tmbId,
       workDirectory: '/workspace'
     });
 

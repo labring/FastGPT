@@ -25,6 +25,7 @@ type EnsureAgentSandboxRuntimeParams = {
   chatId: string;
   sandboxId?: string;
   teamId: string;
+  tmbId: string;
   needSandboxRuntime: boolean;
   sandboxEntrypoint?: string;
   skillIds: string[];
@@ -58,6 +59,7 @@ export async function ensureAgentSandboxRuntime({
   chatId,
   sandboxId,
   teamId,
+  tmbId,
   needSandboxRuntime,
   sandboxEntrypoint,
   skillIds,
@@ -97,7 +99,7 @@ export async function ensureAgentSandboxRuntime({
           )
         : prepareSandbox(
             context,
-            injectSelectedSkillFiles({ teamId, skillIds }),
+            injectSelectedSkillFiles({ teamId, tmbId, skillIds }),
             injectCurrentInputFiles(currentFiles),
             readCurrentWorkingDirectory(),
             runSandboxEntrypoint({ sandboxEntrypoint }),
@@ -158,12 +160,21 @@ const scanEditDebugSkillInfos = (): AgentSandboxPrepareStep => async (context) =
 };
 
 const injectSelectedSkillFiles =
-  ({ teamId, skillIds }: { teamId: string; skillIds: string[] }): AgentSandboxPrepareStep =>
+  ({
+    teamId,
+    tmbId,
+    skillIds
+  }: {
+    teamId: string;
+    tmbId: string;
+    skillIds: string[];
+  }): AgentSandboxPrepareStep =>
   async (context) => ({
     ...context,
     deployedSkillVersions: await injectAgentSkillFilesToSandbox({
       sandbox: context.sandboxClient.provider,
       teamId,
+      tmbId,
       skillIds,
       workDirectory: context.workDirectory
     })

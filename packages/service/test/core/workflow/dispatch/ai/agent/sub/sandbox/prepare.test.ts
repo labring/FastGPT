@@ -104,6 +104,7 @@ describe('ensureAgentSandboxRuntime', () => {
       userId: 'user_1',
       chatId: 'chat_1',
       teamId: 'team_1',
+      tmbId: 'tmb_1',
       needSandboxRuntime: true,
       sandboxEntrypoint: 'pip install -r requirements.txt',
       skillIds: ['skill_1'],
@@ -117,6 +118,7 @@ describe('ensureAgentSandboxRuntime', () => {
     expect(injectAgentSkillFilesToSandboxMock).toHaveBeenCalledWith({
       sandbox: sandboxProviderMock,
       teamId: 'team_1',
+      tmbId: 'tmb_1',
       skillIds: ['skill_1'],
       workDirectory: '/workspace'
     });
@@ -164,6 +166,7 @@ describe('ensureAgentSandboxRuntime', () => {
       userId: 'user_1',
       chatId: 'chat_1',
       teamId: 'team_1',
+      tmbId: 'tmb_1',
       needSandboxRuntime: true,
       skillIds: [],
       editSkillId: 'edit_skill_1',
@@ -192,6 +195,7 @@ describe('ensureAgentSandboxRuntime', () => {
         userId: 'user_1',
         chatId: 'chat_1',
         teamId: 'team_1',
+        tmbId: 'tmb_1',
         needSandboxRuntime: false,
         skillIds: [],
         currentFiles: []
