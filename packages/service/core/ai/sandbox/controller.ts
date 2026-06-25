@@ -325,13 +325,28 @@ export class SandboxClient {
   }
 
   async stop() {
-    // Stop the provider container first — if this fails we leave the DB
-    // state as-is so cronJob can retry later.
-    const stopError = await this.provider.stop().catch((e) => {
-      logger.error('provider.stop failed in stop()', { sandboxId: this.sandboxId, error: e });
-      return e;
-    });
-    if (stopError) return;
+    // ensureRunning is needed unless the provider is already connected.
+    // BaseSandboxAdapter initializes _status to { state: "Creating" }, not "UnExist",
+    // so we must cover all non-Running states (Creating, Starting, Error, UnExist, etc.).
+    if (this.provider.status.state !== 'Running') {
+      try {
+        await this.provider.ensureRunning();
+      } catch (e) {
+        logger.warn('Cannot connect sandbox, cleaning up DB record', {
+          sandboxId: this.sandboxId,
+          error: e
+        });
+      }
+    }
+
+    // Only attempt provider.stop() when the provider is now initialized.
+    if (this.provider.status.state !== 'UnExist') {
+      const stopError = await this.provider.stop().catch((e) => {
+        logger.error('provider.stop failed in stop()', { sandboxId: this.sandboxId, error: e });
+        return e;
+      });
+      if (stopError) return;
+    }
 
     // Atomically transition running → stopped. Only the winner releases the semaphore.
     const doc = await MongoSandboxInstance.findOneAndUpdate(

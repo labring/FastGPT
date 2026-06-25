@@ -63,8 +63,8 @@ const SkillPageContent = () => {
         flex={'1 0 0'}
         flexDirection={'column'}
         h={'100%'}
-        pr={6}
-        pl={6}
+        pr={4}
+        pl={4}
         pt={6}
         gap={4}
         overflowY={'auto'}

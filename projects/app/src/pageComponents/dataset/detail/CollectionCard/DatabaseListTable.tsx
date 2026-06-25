@@ -87,17 +87,17 @@ const DatabaseListTable: React.FC<DatabaseListTableProps> = ({
   );
 
   return (
-    <TableContainer mt={3} overflowY={'auto'} fontSize={'sm'} flex={'1 0 0'} h={0}>
-      <Table variant={'simple'} draggable={false} sx={{ tableLayout: 'fixed', width: '100%' }}>
+    <TableContainer mt={3} overflowY={'auto'} overflowX={'auto'} fontSize={'sm'} flex={'1 0 0'} h={0}>
+      <Table variant={'simple'} draggable={false} sx={{ tableLayout: 'fixed', width: '100%', minW: '900px' }}>
         <Thead draggable={false}>
           <Tr>
-            <Th py={4}>
+            <Th py={4} w="22%" maxW="250px">
               <HStack spacing={1} cursor={'pointer'} onClick={() => handleSort('name')}>
                 <Box>{t('common:Name')}</Box>
                 {renderSortIcon('name')}
               </HStack>
             </Th>
-            <Th py={4}>{t('dataset:description')}</Th>
+            <Th py={4} w="24%" maxW="400px">{t('dataset:description')}</Th>
             <Th py={4} w="100px">
               <HStack spacing={1}>
                 <Box>{t('common:Status')}</Box>
@@ -126,14 +126,14 @@ const DatabaseListTable: React.FC<DatabaseListTableProps> = ({
           <Tr h={'5px'} />
           {formatCollections.map((collection) => (
             <Tr key={collection._id} _hover={{ bg: 'myGray.50' }} cursor={'pointer'}>
-              <Td py={2} maxW={'250px'}>
+              <Td py={2} w="22%" maxW="250px">
                 <MyTooltip label={collection.name} shouldWrapChildren={false}>
                   <Box fontSize={'xs'} color={'myWhite.1000'} className="textEllipsis">
                     {collection.name}
                   </Box>
                 </MyTooltip>
               </Td>
-              <Td py={2} minW={'200px'} maxW={'400px'}>
+              <Td py={2} w="24%" maxW="400px">
                 <MyTooltip label={collection.tableSchema?.description} shouldWrapChildren={false}>
                   <Text fontSize={'xs'} color={'myWhite.1000'} className={'textEllipsis'}>
                     {collection.tableSchema?.description}

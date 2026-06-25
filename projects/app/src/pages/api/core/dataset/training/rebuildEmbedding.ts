@@ -17,6 +17,7 @@ import {
 import { assertModelAvailable, authModel } from '@fastgpt/service/support/permission/model/auth';
 import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import { pushCollectionUpdateJob } from '@fastgpt/service/core/dataset/collection/mq';
 
 async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> {
   const { datasetId, vectorModelId } = RebuildEmbeddingBodySchema.parse(req.body);
@@ -83,6 +84,9 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
       {
         $set: {
           rebuilding: true
+        },
+        $unset: {
+          indexingCompleteTime: ''
         }
       },
       {
@@ -147,6 +151,20 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
         break;
       }
     } catch (error) {}
+  }
+
+  // 触发所有受影响的 collection 的 stats 更新，使前端状态从 ready 变为 indexing
+  const affectedCollections = await MongoDatasetTraining.distinct('collectionId', {
+    teamId,
+    datasetId
+  });
+
+  for (const collectionId of affectedCollections) {
+    pushCollectionUpdateJob({
+      collectionId: String(collectionId),
+      datasetId,
+      teamId
+    });
   }
 
   return RebuildEmbeddingResponseSchema.parse({});

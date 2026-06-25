@@ -17,6 +17,7 @@ import { Types } from '@fastgpt/service/common/mongo';
 import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken/index';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { retryFn } from '@fastgpt/global/common/system/utils';
+import { pushCollectionUpdateJob } from '@fastgpt/service/core/dataset/collection/mq';
 
 // Import synonym utilities
 import { getDatasetSynonymConfig } from '@fastgpt/service/core/dataset/indexTransform/controller';
@@ -296,7 +297,8 @@ export const processSynonymStandardize = async ({
             {
               $set: {
                 // q/a 不修改,保持原文
-                indexes: newIndexes
+                indexes: newIndexes,
+                indexingCompleteTime: new Date()
               }
             },
             { session }
@@ -332,6 +334,16 @@ export const processSynonymStandardize = async ({
         });
       },
       3 // 最多重试3次
+    );
+
+    // 更新 collection stats，确保前端状态反映当前处理进度
+    pushCollectionUpdateJob(
+      {
+        collectionId: String(trainingData.collectionId),
+        datasetId: String(trainingData.datasetId),
+        teamId: String(trainingData.teamId)
+      },
+      0
     );
 
     // 8. 链式处理:查找下一条需要处理的数据
@@ -417,10 +429,27 @@ export const processSynonymStandardize = async ({
             );
           }
 
+          // 标记 data 已完成同义词处理，计入 processedCount
+          await MongoDatasetData.updateOne(
+            { _id: dataId },
+            { $set: { indexingCompleteTime: new Date() } },
+            { session }
+          );
+
           await MongoDatasetTraining.deleteOne({ _id: trainingData._id }, { session });
         });
       },
       3 // 最多重试3次
+    );
+
+    // 更新 collection stats，确保前端状态反映当前处理进度
+    pushCollectionUpdateJob(
+      {
+        collectionId: String(trainingData.collectionId),
+        datasetId: String(trainingData.datasetId),
+        teamId: String(trainingData.teamId)
+      },
+      0
     );
 
     // 链式处理下一条

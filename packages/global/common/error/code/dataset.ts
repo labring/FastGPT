@@ -40,6 +40,7 @@ export enum DatasetErrEnum {
   imageDatasetRequiresVlmModelOrCustomParse = 'imageDatasetRequiresVlmModelOrCustomParse',
   // Collaborator errors
   cannotChangeOwner = 'cannotChangeOwner',
+  collaboratorNotInTeam = 'collaboratorNotInTeam',
   permissionSyncEnabled = 'permissionSyncEnabled'
 }
 const datasetErr = [
@@ -158,10 +159,6 @@ const datasetErr = [
   {
     statusText: DatasetErrEnum.cannotChangeOwner,
     message: i18nT('common:core.dataset.error.cannotChangeOwner')
-  },
-  {
-    statusText: DatasetErrEnum.permissionSyncEnabled,
-    message: i18nT('dataset:permission_sync_disabled_tip')
   }
 ];
 export default datasetErr.reduce((acc, cur, index) => {

@@ -14,6 +14,7 @@ import type {
   DatasetTrainingSchemaType
 } from '@fastgpt/global/core/dataset/type';
 import { retryFn } from '@fastgpt/global/common/system/utils';
+import { pushCollectionUpdateJob } from '@fastgpt/service/core/dataset/collection/mq';
 
 // Import synonym utilities
 import { restoreOriginalText } from '@fastgpt/service/core/dataset/indexTransform/utils';
@@ -104,7 +105,8 @@ export const processSynonymRestore = async ({
             { _id: dataId },
             {
               $set: {
-                indexes: newIndexes
+                indexes: newIndexes,
+                indexingCompleteTime: new Date()
               }
             },
             { session }
@@ -133,6 +135,16 @@ export const processSynonymRestore = async ({
         });
       },
       3 // 最多重试3次
+    );
+
+    // 更新 collection stats，确保前端状态反映当前处理进度
+    pushCollectionUpdateJob(
+      {
+        collectionId: String(trainingData.collectionId),
+        datasetId: String(trainingData.datasetId),
+        teamId: String(trainingData.teamId)
+      },
+      0
     );
 
     // 7. 链式处理下一条

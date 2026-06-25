@@ -530,11 +530,11 @@ const CollectionCard = () => {
             }}
           />
         ) : (
-          <TableContainer ref={scrollContainerRef} overflowY={'auto'} fontSize={'sm'} flex={'1 0 0'} h={0}>
-            <Table variant={'simple'} draggable={false}>
+          <TableContainer ref={scrollContainerRef} overflowY={'auto'} overflowX={'auto'} fontSize={'sm'} flex={'1 0 0'} h={0}>
+            <Table variant={'simple'} draggable={false} sx={{ tableLayout: 'fixed', width: '100%', minW: '1100px' }}>
               <Thead draggable={false}>
                 <Tr>
-                  <Th py={4}>
+                  <Th py={4} w="25%" maxW="350px">
                     <HStack>
                       <Checkbox isChecked={isSelecteAll} onChange={selectAllTrigger} />
                       <HStack spacing={1} cursor={'pointer'} onClick={() => handleSort('name')}>
@@ -545,7 +545,7 @@ const CollectionCard = () => {
                   </Th>
                   {isStructureDocument ? (
                     <>
-                      <Th py={4} w="100px">
+                      <Th py={4} w="14%">
                         <Box>{t('dataset:collection_data_count')}</Box>
                       </Th>
                       <Th py={4} w="150px">
@@ -581,7 +581,7 @@ const CollectionCard = () => {
                           {renderSortIcon('dataAmount')}
                         </HStack>
                       </Th>
-                      <Th py={4} w="200px">
+                      <Th py={4} w="180px">
                         <HStack spacing={1}>
                           <Box>{t('common:Status')}</Box>
                           <StatusFilter
@@ -681,7 +681,7 @@ const CollectionCard = () => {
                       }
                     }}
                   >
-                    <Td minW={'150px'} maxW={['200px', '300px']} draggable py={2}>
+                    <Td w="25%" maxW={'350px'} draggable py={2}>
                       <HStack>
                         <Box onClick={(e) => e.stopPropagation()}>
                           <Checkbox
@@ -698,9 +698,11 @@ const CollectionCard = () => {
                               flexShrink={0}
                             />
                             {isStructureDocument ? (
-                              <Box fontSize={'xs'} color={'myWhite.1000'} className="textEllipsis">
-                                {collection.name}
-                              </Box>
+                              <MyTooltip label={collection.name} shouldWrapChildren={false}>
+                                <Box fontSize={'xs'} color={'myWhite.1000'} className="textEllipsis">
+                                  {collection.name}
+                                </Box>
+                              </MyTooltip>
                             ) : (
                               <MyTooltip
                                 label={t('common:click_drag_tip')}
@@ -721,7 +723,7 @@ const CollectionCard = () => {
                     </Td>
                     {isStructureDocument ? (
                       <>
-                        <Td fontSize={'xs'} py={2} color={'myWhite.1000'} w="100px">
+                        <Td fontSize={'xs'} py={2} color={'myWhite.1000'} w="14%">
                           {formatDataAmount(collection, isStructureDocument)}
                         </Td>
                         <Td fontSize={'xs'} py={2} color={'myWhite.1000'} w="150px">
@@ -733,10 +735,10 @@ const CollectionCard = () => {
                       </>
                     ) : (
                       <>
-                        <Td fontSize={'xs'} py={2} color={'myWhite.1000'} w="100px">
+                        <Td fontSize={'xs'} py={2} color={'myWhite.1000'} w="8%">
                           {formatDataAmount(collection, isStructureDocument)}
                         </Td>
-                        <Td py={2} w="200px">
+                        <Td py={2} w="180px">
                           {collection.statusKey === 'folder' ? (
                             <Box fontSize={'xs'} color={'myWhite.1000'}>
                               {collection.statusText}

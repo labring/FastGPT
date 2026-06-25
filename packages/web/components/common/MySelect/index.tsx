@@ -244,7 +244,12 @@ const MySelect = <T = any,>(
   const isShowClearable = clearable && value !== undefined && value !== '';
 
   // Calculate dropdown position relative to viewport
-  const getDropdownPosition = () => {
+  const getDropdownPosition = (): {
+    top?: number;
+    bottom?: number;
+    left: number;
+    w: number;
+  } => {
     if (typeof window === 'undefined') return { top: 0, left: 0, w: 0 };
     const rect = ButtonRef.current?.getBoundingClientRect();
     if (!rect) return { top: 0, left: 0, w: 0 };
@@ -252,16 +257,24 @@ const MySelect = <T = any,>(
     const viewportHeight = window.innerHeight;
     const estimatedDropdownH = 300;
 
-    let top = rect.bottom + 4;
-    if (top + estimatedDropdownH > viewportHeight && rect.top > estimatedDropdownH) {
-      top = rect.top - estimatedDropdownH - 4;
-    }
+    const spaceBelow = viewportHeight - rect.bottom;
+    const spaceAbove = rect.top;
 
-    return {
-      top: Math.max(4, top),
-      left: rect.left,
-      w: rect.width
-    };
+    if (spaceBelow >= estimatedDropdownH || spaceBelow >= spaceAbove) {
+      // Position below the trigger
+      return {
+        top: Math.max(0, rect.bottom + 4),
+        left: rect.left,
+        w: rect.width
+      };
+    } else {
+      // Position above the trigger: use bottom so the dropdown's bottom edge is just above the trigger
+      return {
+        bottom: viewportHeight - rect.top + 4,
+        left: rect.left,
+        w: rect.width
+      };
+    }
   };
 
   const dropdownPos = isOpen ? getDropdownPosition() : null;
@@ -393,7 +406,8 @@ const MySelect = <T = any,>(
             className={props.className}
             position="fixed"
             zIndex={1500}
-            top={`${dropdownPos.top}px`}
+            top={dropdownPos.top !== undefined ? `${dropdownPos.top}px` : undefined}
+            bottom={dropdownPos.bottom !== undefined ? `${dropdownPos.bottom}px` : undefined}
             left={`${dropdownPos.left}px`}
             width={`${dropdownPos.w}px`}
             px={'6px'}
