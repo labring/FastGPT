@@ -574,8 +574,9 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       }
     }
 
+    const modelData = getLLMModelById(modelId);
+
     if ((totalInputTokens > 0 || totalOutputTokens > 0) && usagePush) {
-      const modelData = getLLMModelById(modelId);
       const totalPoints = props.externalProvider?.openaiAccount?.key
         ? 0
         : formatModelChars2Points({
@@ -593,17 +594,6 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
           outputTokens: totalOutputTokens
         }
       ]);
-
-      nodeResponses.push({
-        nodeId,
-        id: nodeId,
-        moduleType: FlowNodeTypeEnum.agent,
-        moduleName: i18nT('account_usage:agent_call'),
-        modelId: modelData?.id,
-        inputTokens: totalInputTokens,
-        outputTokens: totalOutputTokens,
-        totalPoints
-      });
     }
 
     // Surface API errors that pi-agent-core stores instead of throwing
@@ -612,16 +602,22 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
     }
 
     // Build agent nodeResponse with textOutput and historyPreview
-    // Extract token usage from agent state messages
+    // Extract token usage from agent state messages, aligned with usagePush filtering.
+    // pi-agent-core AssistantMessage stores tokens in msg.usage.input / msg.usage.output.
     let inputTokens = 0;
     let outputTokens = 0;
-    let totalTokens = 0;
     const messageList = agent.state.messages as any[];
     for (const msg of messageList) {
-      if (msg.usage) {
-        inputTokens += msg.usage.input_tokens || msg.usage.inputTokens || 0;
-        outputTokens += msg.usage.output_tokens || msg.usage.outputTokens || 0;
-        totalTokens += msg.usage.total_tokens || msg.usage.totalTokens || 0;
+      if (msg.role === 'assistant' && 'usage' in msg) {
+        const assistantMsg = msg as import('@mariozechner/pi-ai').AssistantMessage;
+        if (
+          assistantMsg.stopReason !== 'error' &&
+          assistantMsg.stopReason !== 'aborted' &&
+          assistantMsg.usage
+        ) {
+          inputTokens += assistantMsg.usage.input;
+          outputTokens += assistantMsg.usage.output;
+        }
       }
     }
 
@@ -643,12 +639,19 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       moduleLogo: 'core/app/type/agentFill',
       inputTokens: inputTokens || undefined,
       outputTokens: outputTokens || undefined,
-      totalPoints: 0, // Will be calculated by the dispatch layer
+      // Master agent's own LLM points; children's totalPoints are carried in
+      // childrenResponses and aggregated after flattenNodeResponses in getChatDataLog.
+      totalPoints: modelData
+        ? formatModelChars2Points({
+            modelId,
+            inputTokens,
+            outputTokens
+          }).totalPoints
+        : 0,
       childrenResponses: nodeResponses.length > 0 ? [...nodeResponses] : undefined,
       textOutput: answerText || undefined,
       historyPreview,
       runningTime: +((Date.now() - startTime) / 1000).toFixed(2)
-      // Clear nodeResponses so we don't double-count — the nodeResponse itself carries childrenResponses
     };
 
     // Push the agent nodeResponse as the only top-level response

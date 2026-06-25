@@ -228,6 +228,22 @@ const formatAiContent = ({
   };
 };
 
+const flattenNodeResponses = (
+  responses: ChatHistoryItemResType[]
+): ChatHistoryItemResType[] => {
+  const result: ChatHistoryItemResType[] = [];
+  const walk = (items: ChatHistoryItemResType[]) => {
+    for (const item of items) {
+      result.push(item);
+      if ((item as any).childrenResponses?.length) {
+        walk((item as any).childrenResponses);
+      }
+    }
+  };
+  walk(responses);
+  return result;
+};
+
 const getChatDataLog = async ({
   nodeResponses
 }: {
@@ -236,13 +252,16 @@ const getChatDataLog = async ({
   const now = new Date();
   const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000);
 
-  const errorCount = nodeResponses?.some((item) => item.errorText) ? 1 : 0;
+  // Flatten nested childrenResponses so agent-style parent wrappers don't hide token data
+  const flatResponses = nodeResponses?.length ? flattenNodeResponses(nodeResponses) : nodeResponses;
+
+  const errorCount = flatResponses?.some((item) => item.errorText) ? 1 : 0;
   const totalPoints =
-    nodeResponses?.reduce((sum: number, item: any) => sum + (item.totalPoints || 0), 0) || 0;
+    flatResponses?.reduce((sum: number, item: any) => sum + (item.totalPoints || 0), 0) || 0;
   const inputTokens =
-    nodeResponses?.reduce((sum: number, item: any) => sum + (item.inputTokens || 0), 0) || 0;
+    flatResponses?.reduce((sum: number, item: any) => sum + (item.inputTokens || 0), 0) || 0;
   const outputTokens =
-    nodeResponses?.reduce((sum: number, item: any) => sum + (item.outputTokens || 0), 0) || 0;
+    flatResponses?.reduce((sum: number, item: any) => sum + (item.outputTokens || 0), 0) || 0;
 
   return {
     fifteenMinutesAgo,
