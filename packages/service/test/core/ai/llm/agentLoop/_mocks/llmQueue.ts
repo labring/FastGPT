@@ -33,14 +33,17 @@ const stringifyArgs = (args: string | Record<string, unknown>) =>
 export const toolCall = ({
   id,
   name,
-  args = {}
+  args = {},
+  reasoning
 }: {
   id?: string;
   name: string;
   args?: string | Record<string, unknown>;
+  reasoning?: string;
 }): LLMQueueItem => ({
   requestId: `req_${id || name}`,
   finishReason: 'tool_calls',
+  reasoningText: reasoning || '',
   toolCalls: [
     {
       id: id || `call_${name}`,

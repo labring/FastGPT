@@ -95,18 +95,11 @@ export const useLLMResponseAccumulator = () => {
     }): ChatCompletionMessageParam[] {
       return [
         ...baseMessages,
-        ...(toolCalls
-          ? [
-              {
-                role: ChatCompletionRequestMessageRoleEnum.Assistant as 'assistant',
-                tool_calls: toolCalls
-              }
-            ]
-          : []),
         {
           role: ChatCompletionRequestMessageRoleEnum.Assistant as 'assistant',
           ...(answerText && { content: answerText }),
-          ...(reasoningText && { reasoning_content: reasoningText })
+          ...(reasoningText && { reasoning_content: reasoningText }),
+          ...(toolCalls?.length && { tool_calls: toolCalls })
         },
         {
           role: ChatCompletionRequestMessageRoleEnum.User as 'user',

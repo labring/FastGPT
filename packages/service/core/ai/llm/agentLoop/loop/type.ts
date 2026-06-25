@@ -117,6 +117,7 @@ export type AgentLoopRuntime = {
   executeTool: (e: {
     call: ChatCompletionMessageToolCall;
     messages: ChatCompletionMessageParam[];
+    assistantMessage?: ChatCompletionMessageParam;
   }) => Promise<AgentLoopToolExecutionResult>;
   emitEvent?: (event: AgentLoopEvent) => void;
   usageSink?: (usages: ChatNodeUsageType[]) => void;

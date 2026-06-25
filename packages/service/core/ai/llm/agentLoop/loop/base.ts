@@ -56,6 +56,7 @@ type RunAgentCallProps<TChildrenResponse = unknown> = {
   onRunTool: (e: {
     call: ChatCompletionMessageToolCall;
     messages: ChatCompletionMessageParam[];
+    assistantMessage?: ChatCompletionMessageParam;
   }) => Promise<AgentLoopToolExecutionResult<TChildrenResponse>>;
   // 模型准备以无工具调用结束时的本地停止检查。
   // 返回 feedbackMessage 时会把消息追加回同一个 loop，而不是让外层重新开一层循环。
@@ -484,7 +485,8 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           try {
             return await onRunTool({
               call: tool,
-              messages: cloneRequestMessages
+              messages: cloneRequestMessages,
+              assistantMessage: llmAssistantMessage
             });
           } catch (error) {
             toolErrorMessage = `Tool error: ${getErrText(error)}`;

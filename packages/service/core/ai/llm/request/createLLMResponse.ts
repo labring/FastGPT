@@ -7,6 +7,7 @@ import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/co
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { countGptMessagesTokens } from '../../../../common/string/tiktoken/index';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import { mergeAssistantFieldMessages } from '@fastgpt/global/core/chat/adapt';
 import { getLLMModel } from '../../model';
 import { promptToolCallMessageRewrite } from '../promptCall';
 import { loadRequestMessages } from '../utils';
@@ -73,7 +74,10 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
     messages: rewriteMessages
   });
   const accumulator = useLLMResponseAccumulator();
-  let currentMessages = [...requestBody.messages];
+  const initialRequestMessages = mergeAssistantFieldMessages(
+    requestBody.messages as ChatCompletionMessageParam[]
+  );
+  let currentMessages = [...initialRequestMessages];
   let continuationCount = 0;
   let aiRequestMeta: AIApiRequestMeta = {
     usedUserOpenAIKey: false
@@ -104,7 +108,6 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
       aiRequestMeta = requestMeta;
       // 连续输出补偿请求可能多次进入循环，但本次调用对外只认第一次响应形态。
       accumulator.setFirstResponseType(currentIsStreamResponse);
-
       const parsedResponse = await (async () => {
         if (currentIsStreamResponse) {
           return createStreamResponse({
@@ -131,9 +134,11 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
 
       if (accumulator.shouldContinue()) {
         // 继续输出时，用原始 requestBody.messages 做基础，避免把 rewrite 前 messages 混回上下文。
-        currentMessages = accumulator.buildContinuationMessages({
-          baseMessages: requestBody.messages as ChatCompletionMessageParam[]
-        }) as typeof currentMessages;
+        currentMessages = mergeAssistantFieldMessages(
+          accumulator.buildContinuationMessages({
+            baseMessages: requestBody.messages as ChatCompletionMessageParam[]
+          })
+        ) as typeof currentMessages;
 
         logger.debug(`Continue LLM response due to length limit`, {
           continuationCount,
@@ -250,9 +255,9 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
       rawUsage: usage,
       requestId,
 
-      requestMessages,
+      requestMessages: initialRequestMessages,
       assistantMessage,
-      completeMessages: [...requestMessages, assistantMessage]
+      completeMessages: [...initialRequestMessages, assistantMessage]
     };
   } catch (error) {
     // createChatCompletion 抛错或解析阶段抛错都会落到这里，保证 requestId 对应的错误详情被保存。
@@ -282,8 +287,8 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
         outputTokens: 0,
         usedUserOpenAIKey: false
       },
-      requestMessages: requestBody.messages as ChatCompletionMessageParam[],
-      completeMessages: [...requestBody.messages] as ChatCompletionMessageParam[]
+      requestMessages: initialRequestMessages,
+      completeMessages: [...initialRequestMessages]
     };
   }
 };

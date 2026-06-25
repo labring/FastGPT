@@ -704,6 +704,7 @@ describe('runUnifiedAgentLoop', () => {
       toolCall({
         id: 'call_ask',
         name: 'ask_agent',
+        reasoning: 'Need to ask before planning can continue.',
         args: {
           reason: 'Need private repository path',
           blockerType: 'missing_required_input',
@@ -739,6 +740,7 @@ describe('runUnifiedAgentLoop', () => {
     expect(result.pendingMainContext?.askToolCallId).toBe('call_ask');
     expect(result.pendingMainContext?.messages.at(-1)).toEqual({
       role: 'assistant',
+      reasoning_content: 'Need to ask before planning can continue.',
       tool_calls: [
         {
           id: 'call_ask',
