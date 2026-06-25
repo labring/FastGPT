@@ -69,7 +69,8 @@ async function handler(
       {
         datasetId,
         type: { $in: [DatasetCollectionTypeEnum.file, DatasetCollectionTypeEnum.images] },
-        fileMd5: { $in: uniqueMd5Values }
+        fileMd5: { $in: uniqueMd5Values },
+        deleteTime: null
       },
       {
         name: 1,

@@ -99,7 +99,7 @@ export async function findCollectionAndAllChildren({
   // BFS：每层一次批量查询，复杂度从 O(N) 降为 O(depth)
   while (currentQueue.length > 0) {
     const children = await MongoDatasetCollection.find(
-      { teamId, parentId: { $in: currentQueue } },
+      { teamId, parentId: { $in: currentQueue }, deleteTime: null },
       fields
     ).lean();
     allCollections.push(...children);
