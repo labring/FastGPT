@@ -4,6 +4,7 @@ import { sliceJsonStr } from '@fastgpt/global/common/string/tools';
 import json5 from 'json5';
 
 export type GenerateSkillParam = {
+  teamId: string;
   name: string;
   description: string;
   requirements: string;
@@ -210,7 +211,8 @@ export async function getSkillGuidance({
   name,
   description,
   requirements,
-  model
+  model,
+  teamId
 }: GenerateSkillParam): Promise<{
   guidance: SkillGuidance;
   usage: SkillMdGenerationUsage;
@@ -231,6 +233,8 @@ export async function getSkillGuidance({
   ];
 
   const { answerText, usage } = await createLLMResponse({
+    teamId,
+    saveLLMResponseRecord: false,
     body: {
       model,
       messages,
@@ -275,7 +279,8 @@ export async function generateSkillMd(
     name: params.name,
     description: params.description,
     requirements: params.requirements,
-    model
+    model,
+    teamId: params.teamId
   });
 
   const messages: ChatCompletionMessageParam[] = [
@@ -295,6 +300,8 @@ export async function generateSkillMd(
   ];
 
   const { answerText, usage: generateUsage } = await createLLMResponse({
+    teamId: params.teamId,
+    saveLLMResponseRecord: false,
     body: {
       model,
       messages,

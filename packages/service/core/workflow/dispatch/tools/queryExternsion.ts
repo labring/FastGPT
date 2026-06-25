@@ -24,6 +24,7 @@ export const dispatchQueryExtension = async ({
   histories,
   node,
   usagePush,
+  runningUserInfo,
   params: { model, systemPrompt, history, userChatInput }
 }: Props): Promise<Response> => {
   if (!userChatInput) {
@@ -46,7 +47,8 @@ export const dispatchQueryExtension = async ({
     query: userChatInput,
     histories: chatHistories,
     llmModel: queryExtensionModel.model,
-    embeddingModel: embeddingModel.model
+    embeddingModel: embeddingModel.model,
+    teamId: runningUserInfo.teamId
   });
 
   extensionQueries.unshift(userChatInput);

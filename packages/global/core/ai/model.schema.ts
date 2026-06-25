@@ -50,7 +50,6 @@ const BaseModelItemSchema = z.object({
   // Test mode: when enabled, classify/extract/tool call/evaluation scenarios are disabled
   testMode: z.boolean().optional() // test mode flag
 });
-type BaseModelItemType = z.infer<typeof BaseModelItemSchema>;
 
 export const LLMModelItemSchema = PriceTypeSchema.extend(BaseModelItemSchema.shape).extend({
   type: z.literal(ModelTypeEnum.llm),
@@ -81,6 +80,7 @@ export const LLMModelItemSchema = PriceTypeSchema.extend(BaseModelItemSchema.sha
   // LLM
   isDefaultDatasetTextModel: z.boolean().optional(),
   isDefaultDatasetImageModel: z.boolean().optional(),
+  isDefaultChatTitleModel: z.boolean().optional(),
   isDefaultHelperBotModel: z.boolean().optional(),
 
   /** @deprecated */

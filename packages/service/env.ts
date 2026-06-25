@@ -227,9 +227,6 @@ export const serviceEnv = createEnv({
       .string()
       .optional()
       .meta({ description: '辅助生成模型（暂时只能指定一个，需保证系统中已激活该模型）' }),
-    CHAT_TITLE_MODEL: z.string().optional().meta({
-      description: '对话标题生成模型；不配置或未命中已启用模型时，回退到系统默认 LLM'
-    }),
     SKIP_FILE_TYPE_CHECK: BoolSchema.default(false).meta({
       description: '是否跳过文件类型检查'
     }),
@@ -315,9 +312,7 @@ export const serviceEnv = createEnv({
     YUQUE_DATASET_BASE_URL: UrlSchema.default('https://www.yuque.com'),
 
     // Invoke 反向调用相关。该密钥用于签发/校验插件反向调用 JWT，必须显式配置，避免未配置时落到公开默认值。
-    INVOKE_TOKEN_SECRET: z
-      .string()
-      .min(32, 'INVOKE_TOKEN_SECRET must be at least 32 characters')
+    INVOKE_TOKEN_SECRET: z.string().min(32, 'INVOKE_TOKEN_SECRET must be at least 32 characters')
   },
   emptyStringAsUndefined: true,
   runtimeEnv: getRuntimeEnv(),

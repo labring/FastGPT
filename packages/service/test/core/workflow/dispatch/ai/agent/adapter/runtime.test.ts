@@ -22,6 +22,9 @@ const createContext = (overrides = {}) =>
       openaiAccount: { key: 'user-key' }
     },
     stream: true,
+    runningUserInfo: {
+      teamId: 'team_1'
+    },
     node: {
       nodeId: 'agent_node',
       flowNodeType: FlowNodeTypeEnum.agent

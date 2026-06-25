@@ -1,7 +1,17 @@
-import { describe, expect, it } from 'vitest';
-import { sanitizeLLMRequestRecordPayload } from '@fastgpt/service/core/ai/record/controller';
+import { beforeEach, describe, expect, it } from 'vitest';
+import {
+  getLLMRequestRecord,
+  getLLMRequestRecords,
+  sanitizeLLMRequestRecordPayload,
+  saveLLMRequestRecord
+} from '@fastgpt/service/core/ai/record/controller';
+import { MongoLLMRequestRecord } from '@fastgpt/service/core/ai/record/schema';
 
 const createBase64 = (length = 320) => 'a'.repeat(length);
+
+beforeEach(async () => {
+  await MongoLLMRequestRecord.deleteMany({});
+});
 
 describe('sanitizeLLMRequestRecordPayload', () => {
   it('redacts base64 data urls without changing surrounding request structure', () => {
@@ -71,5 +81,61 @@ describe('sanitizeLLMRequestRecordPayload', () => {
     expect(sanitizeLLMRequestRecordPayload(payload)).toEqual({
       markdown: '![image](data:image/jpeg;base64,[base64 omitted])'
     });
+  });
+});
+
+describe('LLM request record team isolation', () => {
+  it('saves records with teamId and only reads them from the same team', async () => {
+    await saveLLMRequestRecord({
+      teamId: '507f1f77bcf86cd799439011',
+      requestId: 'req_team_a',
+      body: { prompt: 'team a prompt' },
+      response: { answerText: 'team a answer' }
+    });
+
+    await expect(getLLMRequestRecord('req_team_a', '507f1f77bcf86cd799439012')).resolves.toBeNull();
+
+    const record = await getLLMRequestRecord('req_team_a', '507f1f77bcf86cd799439011');
+
+    expect(record).toMatchObject({
+      requestId: 'req_team_a',
+      body: { prompt: 'team a prompt' },
+      response: { answerText: 'team a answer' }
+    });
+    expect(String(record?.teamId)).toBe('507f1f77bcf86cd799439011');
+  });
+
+  it('scopes batch record reads by teamId', async () => {
+    await saveLLMRequestRecord({
+      teamId: '507f1f77bcf86cd799439011',
+      requestId: 'same_request_id',
+      body: { prompt: 'team a prompt' },
+      response: { answerText: 'team a answer' }
+    });
+    await saveLLMRequestRecord({
+      teamId: '507f1f77bcf86cd799439012',
+      requestId: 'same_request_id',
+      body: { prompt: 'team b prompt' },
+      response: { answerText: 'team b answer' }
+    });
+
+    const records = await getLLMRequestRecords(['same_request_id'], '507f1f77bcf86cd799439011');
+
+    expect(records).toHaveLength(1);
+    expect(records[0]).toMatchObject({
+      requestId: 'same_request_id',
+      body: { prompt: 'team a prompt' },
+      response: { answerText: 'team a answer' }
+    });
+    expect(String(records[0]?.teamId)).toBe('507f1f77bcf86cd799439011');
+
+    const teamBRecord = await getLLMRequestRecord('same_request_id', '507f1f77bcf86cd799439012');
+
+    expect(teamBRecord).toMatchObject({
+      requestId: 'same_request_id',
+      body: { prompt: 'team b prompt' },
+      response: { answerText: 'team b answer' }
+    });
+    expect(String(teamBRecord?.teamId)).toBe('507f1f77bcf86cd799439012');
   });
 });

@@ -2,10 +2,9 @@ import type { UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { serviceEnv } from '../../env';
 import { getLogger, LogCategories } from '../../common/logger';
 import { createLLMResponse } from '../ai/llm/request';
-import { getLLMModel } from '../ai/model';
+import { getDefaultChatTitleModel } from '../ai/model';
 import { MongoChat } from './chatSchema';
 
 const logger = getLogger(LogCategories.MODULE.CHAT);
@@ -83,8 +82,14 @@ export const getFallbackChatTitleFromUserContent = (
   return questionText.slice(0, FALLBACK_CHAT_TITLE_MAX_LENGTH);
 };
 
-const generateChatTitleFromQuestion = async (question: string): Promise<string | undefined> => {
-  const titleModel = getLLMModel(serviceEnv.CHAT_TITLE_MODEL);
+const generateChatTitleFromQuestion = async ({
+  question,
+  teamId
+}: {
+  question: string;
+  teamId: string;
+}): Promise<string | undefined> => {
+  const titleModel = getDefaultChatTitleModel();
   if (!titleModel?.model) return question.slice(0, FALLBACK_CHAT_TITLE_MAX_LENGTH);
   const questionForTitle = question.slice(0, CHAT_TITLE_QUESTION_MAX_LENGTH);
   const userPrompt = `Generate a title for the following source text. Do not answer it.
@@ -98,6 +103,7 @@ Return only the title.`;
   let answerText = '';
   try {
     const response = await createLLMResponse({
+      teamId,
       throwError: false,
       saveLLMResponseRecord: false,
       body: {
@@ -166,12 +172,14 @@ export type GeneratedChatTitleResult = {
 export const syncGeneratedChatTitleFromUserContent = async ({
   appId,
   chatId,
+  teamId,
   userContent,
   shouldGenerateTitle = true,
   fixedTitle
 }: {
   appId: string;
   chatId: string;
+  teamId: string;
   userContent: UserChatItemType;
   shouldGenerateTitle?: boolean;
   fixedTitle?: string;
@@ -183,7 +191,8 @@ export const syncGeneratedChatTitleFromUserContent = async ({
     if (!questionText && !fixedTitle) return;
 
     const nextTitle =
-      normalizeFixedChatTitle(fixedTitle) || (await generateChatTitleFromQuestion(questionText));
+      normalizeFixedChatTitle(fixedTitle) ||
+      (await generateChatTitleFromQuestion({ question: questionText, teamId }));
     if (!nextTitle) return;
 
     const customTitleCondition = {
@@ -230,6 +239,7 @@ export const syncGeneratedChatTitleFromUserContent = async ({
 export const scheduleGeneratedChatTitleFromUserContent = (params: {
   appId: string;
   chatId: string;
+  teamId: string;
   userContent: UserChatItemType;
   shouldGenerateTitle?: boolean;
   fixedTitle?: string;

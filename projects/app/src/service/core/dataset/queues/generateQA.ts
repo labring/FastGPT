@@ -141,6 +141,8 @@ export async function generateQA(): Promise<any> {
           answerText: answer,
           usage: { inputTokens, outputTokens }
         } = await createLLMResponse({
+          teamId: data.teamId,
+          saveLLMResponseRecord: false,
           body: {
             model: modelData.model,
             messages,

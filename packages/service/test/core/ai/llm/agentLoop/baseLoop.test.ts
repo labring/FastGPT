@@ -418,6 +418,19 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
 
     expect(createLLMResponseMock).toHaveBeenCalledTimes(2);
     expect(onRunTool).toHaveBeenCalledWith({
+      assistantMessage: {
+        role: 'assistant',
+        tool_calls: [
+          {
+            id: 'call_search',
+            type: 'function',
+            function: {
+              name: 'search',
+              arguments: '{"q":"FastGPT"}'
+            }
+          }
+        ]
+      },
       call: {
         id: 'call_search',
         type: 'function',

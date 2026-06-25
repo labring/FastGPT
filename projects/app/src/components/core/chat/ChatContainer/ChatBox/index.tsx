@@ -599,7 +599,6 @@ const ChatBox = ({
       ) : (
         <ChatInput
           onSendMessage={sendPromptWithDisabledGuard}
-          onStop={() => abortRequest('stop')}
           onStopChat={requestStopChat}
           onStopSettled={handleStopSettled}
           disableSend={isRoundPending || (!isReady && !disabledSendTip)}
@@ -667,7 +666,6 @@ const ChatBox = ({
                 <ChatInput
                   onSendMessage={sendPromptWithDisabledGuard}
                   lastInteractive={lastInteractive}
-                  onStop={() => abortRequest('stop')}
                   onStopChat={requestStopChat}
                   onStopSettled={handleStopSettled}
                   disableSend={isRoundPending}

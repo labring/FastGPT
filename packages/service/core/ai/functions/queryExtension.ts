@@ -112,6 +112,7 @@ export const queryExtension = async ({
   llmModel,
   embeddingModel,
   userKey,
+  teamId,
   generateCount = 10 // 生成优化问题集的数量，默认为10个
 }: {
   chatBg?: string;
@@ -120,6 +121,7 @@ export const queryExtension = async ({
   llmModel: string;
   embeddingModel: string;
   userKey?: OpenaiAccountType;
+  teamId: string;
   generateCount?: number;
 }): Promise<{
   rawQuery: string;
@@ -178,6 +180,7 @@ export const queryExtension = async ({
     usage: { inputTokens, outputTokens, usedUserOpenAIKey }
   } = await createLLMResponse({
     userKey,
+    teamId,
     body: {
       stream: true,
       model: modelData.model,

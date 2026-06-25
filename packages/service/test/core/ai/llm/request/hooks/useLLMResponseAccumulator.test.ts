@@ -79,12 +79,9 @@ describe('useLLMResponseAccumulator', () => {
       ...baseMessages,
       {
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
-        tool_calls: [createToolCall('call_1', 'search', '{"q":"x"}')]
-      },
-      {
-        role: ChatCompletionRequestMessageRoleEnum.Assistant,
         content: 'partial',
-        reasoning_content: 'reasoning'
+        reasoning_content: 'reasoning',
+        tool_calls: [createToolCall('call_1', 'search', '{"q":"x"}')]
       },
       {
         role: ChatCompletionRequestMessageRoleEnum.User,

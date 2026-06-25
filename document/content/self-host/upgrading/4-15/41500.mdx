@@ -12,8 +12,6 @@ description: 'FastGPT V4.15.0 更新说明'
 `fastgpt-app` 和 `fastgpt-pro` 本次升级需关注下面新增或变更语义的配置。同时需检查是否都包含 `AES256_SECRET_KEY` 且相等。
 
 ```dotenv
-# 自动生成对话标题使用的模型
-CHAT_TITLE_MODEL=deepseek-v4-flash
 # 文件解析 worker 并发数
 PARSE_FILE_WORKERS=10
 # 文件解析超时时间，单位秒
@@ -97,6 +95,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initSandboxArchive' \
 
 1. ApiKey 功能调整，不再区分应用 key 和系统 key，只保留系统 key，如需兼容 openai sdk 用法，可使用 `apikey-appId` 的方式传递 Token。已有的 apikey 保持兼容，不影响使用。具体和查阅 [FastGPT API 文档说明](../../../openapi/intro)
 2. 部分 API 增加了更为严格的数据格式校验，如过遇到报错: `zod parse error` 可提交 issue 反馈，可能因一些旧数据或者自定义数据结构与声明不一致。
+3. LLM 请求追踪记录新增团队隔离：`llm_request_records` 写入 `teamId`，`GET /api/core/ai/record/getRecord` 按 `{ requestId, teamId }` 查询，唯一索引调整为 `{ teamId, requestId }`。升级前没有 `teamId` 的旧追踪记录将无法继续查询，页面会提示追踪记录已过期；如需排查历史调用详情，请在升级前导出相关日志或保留原始请求信息。自托管环境如关闭了 `SYNC_INDEX`，升级后需要执行一次索引同步，确保旧的 `requestId_1` 唯一索引被移除。
 
 ## 🚀 新增内容
 
@@ -156,6 +155,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initSandboxArchive' \
 29. 登录页 UI 优化。
 30. 站点同步限流错误提示去重。
 31. 应用/知识库增加虚拟列表渲染，优化大列表加载性能。
+32. LLM 请求追踪记录增加团队隔离，避免 `requestId` 被跨团队用于读取请求体、知识库召回片段和模型响应。
 
 ## 🐛 修复
 

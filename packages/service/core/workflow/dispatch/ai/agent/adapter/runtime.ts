@@ -153,6 +153,7 @@ export const createWorkflowAgentLoopRuntime = ({
   return {
     artifacts,
     runtime: {
+      teamId: context.runningUserInfo.teamId,
       model: context.params.model,
       batchToolSize: 5,
       reasoningEffort: context.params.aiChatReasoningEffort,

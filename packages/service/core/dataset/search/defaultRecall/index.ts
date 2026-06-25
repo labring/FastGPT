@@ -64,7 +64,8 @@ export async function searchDatasetData(
   const imageCaptionQueries = await getImageCaptionQueries({
     vlmModel,
     imageQueries,
-    userKey
+    userKey,
+    teamId
   });
 
   // caption 结果需要回传给工作流计费与响应详情；没有生成出有效描述时不输出该段。

@@ -311,6 +311,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       detail,
       writeChatTitle: workflowResponseWrite
     });
+    if (stream) {
+      void titleSender.send();
+    }
 
     /* start flow controller */
     const {

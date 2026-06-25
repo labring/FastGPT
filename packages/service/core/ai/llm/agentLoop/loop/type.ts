@@ -100,6 +100,7 @@ export type AgentLoopToolExecutionResult<TChildrenResponse = unknown> = {
 };
 
 export type AgentLoopRuntime = {
+  teamId: string;
   model: string;
   reasoningEffort?: CreateLLMResponseProps['body']['reasoning_effort'];
   userKey?: CreateLLMResponseProps['userKey'];
@@ -116,6 +117,7 @@ export type AgentLoopRuntime = {
   executeTool: (e: {
     call: ChatCompletionMessageToolCall;
     messages: ChatCompletionMessageParam[];
+    assistantMessage?: ChatCompletionMessageParam;
   }) => Promise<AgentLoopToolExecutionResult>;
   emitEvent?: (event: AgentLoopEvent) => void;
   usageSink?: (usages: ChatNodeUsageType[]) => void;

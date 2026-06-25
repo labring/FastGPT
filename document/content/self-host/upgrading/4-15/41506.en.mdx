@@ -1,0 +1,25 @@
+---
+title: 'V4.15.0-beta6'
+description: 'FastGPT V4.15.0-beta6 Release Notes'
+---
+
+## 📦 Upgrade Guide
+
+### 1. Update the default model configuration
+
+The chat title generation model is no longer configured through the `CHAT_TITLE_MODEL` environment variable. After upgrading, select the Chat Title Model in Model Configuration > Default Model Configuration. This setting can be left unset. When unset, FastGPT does not call a model to generate the title and uses a truncated user question instead.
+
+If you previously configured `CHAT_TITLE_MODEL`, remove it from the `fastgpt` and `fastgpt-pro` environment variables, then select the corresponding model in the UI.
+
+### 2. Add team isolation to LLM request traces
+
+LLM request traces (`llm_request_records`) now include a `teamId` field. `GET /api/core/ai/record/getRecord` queries records by `{ requestId, teamId }` for the current team, preventing a `requestId` from being used to read another team's request body, retrieved Knowledge Base chunks, or model response.
+
+The unique index on `llm_request_records` has also changed from the single `requestId` field to the compound unique index `{ teamId: 1, requestId: 1 }`. If your self-hosted deployment has `SYNC_INDEX` disabled, run an index sync after upgrading so the old `requestId_1` unique index is removed.
+
+Risk: trace records written before this upgrade do not have `teamId`, so they can no longer be queried by `requestId` after the upgrade. The UI will treat them as expired. These records already have a TTL and are intended only for temporary debugging. Export the relevant logs or keep the original request details before upgrading if you need to investigate historical calls.
+
+## ⚙️ Improvements
+
+1. Chat title generation now uses the system default model configuration, making it easier to switch at runtime and manage consistently.
+2. LLM request traces are now queried with team isolation, and the unique index is now `{ teamId, requestId }` to prevent request IDs from exposing sensitive traces across teams.

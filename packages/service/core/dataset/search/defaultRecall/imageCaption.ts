@@ -33,11 +33,13 @@ const emptyImageCaptionQueries = (): ImageCaptionQueries => ({
 export const getImageCaptionQueries = async ({
   vlmModel,
   imageQueries,
-  userKey
+  userKey,
+  teamId
 }: {
   vlmModel?: string;
   imageQueries: string[];
   userKey?: OpenaiAccountType;
+  teamId: string;
 }): Promise<ImageCaptionQueries> => {
   if (!vlmModel || imageQueries.length === 0) {
     return emptyImageCaptionQueries();
@@ -58,6 +60,8 @@ export const getImageCaptionQueries = async ({
           usage: { inputTokens, outputTokens, usedUserOpenAIKey }
         } = await createLLMResponse({
           userKey,
+          teamId,
+          saveLLMResponseRecord: false,
           body: {
             model: vlmModelData.model,
             stream: true,

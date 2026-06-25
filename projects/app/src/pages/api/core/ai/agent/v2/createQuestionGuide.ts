@@ -56,7 +56,8 @@ async function handler(req: ApiRequestProps<CreateQuestionGuideParams>, res: Nex
   const { result, inputTokens, outputTokens } = await createQuestionGuide({
     messages,
     model: qgModel,
-    customPrompt: questionGuide?.customPrompt
+    customPrompt: questionGuide?.customPrompt,
+    teamId
   });
 
   pushQuestionGuideUsage({

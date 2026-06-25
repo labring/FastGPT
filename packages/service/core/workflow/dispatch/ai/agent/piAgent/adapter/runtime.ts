@@ -293,6 +293,7 @@ export const createPiAgentWorkflowRuntime = ({
   let answerText = '';
   let reasoningText = '';
   const usedUserOpenAIKey = !!props.externalProvider.openaiAccount?.key;
+  const teamId = props.runningUserInfo.teamId;
 
   const appendChildNodeResponse = (nodeResponse: ChatHistoryItemResType) => {
     appendNodeResponse(nodeResponse);
@@ -306,6 +307,7 @@ export const createPiAgentWorkflowRuntime = ({
     response: Record<string, unknown>;
   }) => {
     void saveLLMRequestRecordFn({
+      teamId,
       requestId: request.requestId,
       body: request.body,
       response

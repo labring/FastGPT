@@ -151,6 +151,7 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     },
     childrenInteractiveParams,
     userKey: externalProvider.openaiAccount,
+    teamId: workflowProps.runningUserInfo.teamId,
     isAborted: checkIsStopping,
     usagePush,
     /**

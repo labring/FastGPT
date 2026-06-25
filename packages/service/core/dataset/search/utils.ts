@@ -71,6 +71,7 @@ export const datasetSearchQueryExtension = async ({
   llmModel,
   embeddingModel,
   userKey,
+  teamId,
   extensionBg = '',
   histories = []
 }: {
@@ -78,6 +79,7 @@ export const datasetSearchQueryExtension = async ({
   llmModel?: string;
   embeddingModel?: string;
   userKey?: OpenaiAccountType;
+  teamId: string;
   extensionBg?: string;
   histories?: ChatItemMiniType[];
 }) => {
@@ -115,7 +117,8 @@ export const datasetSearchQueryExtension = async ({
         histories,
         llmModel,
         embeddingModel,
-        userKey
+        userKey,
+        teamId
       });
       if (result.extensionQueries?.length === 0) return;
       return result;

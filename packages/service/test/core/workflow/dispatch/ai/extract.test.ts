@@ -46,6 +46,9 @@ const createProps = () =>
       }
     ],
     externalProvider: {},
+    runningUserInfo: {
+      teamId: 'team_1'
+    },
     usagePush: vi.fn(),
     params: {
       content: '张三来自杭州',

@@ -517,6 +517,7 @@ describe('dispatchPiAgent user context', () => {
       sandbox: expect.any(Object),
       skillIds: [],
       teamId: 'team_1',
+      tmbId: 'tmb_1',
       workDirectory: getSandboxRuntimeProfile().workDirectory
     });
     expect(agentConstructorArgs[0].initialState.systemPrompt).not.toContain('pwd: /workspace');

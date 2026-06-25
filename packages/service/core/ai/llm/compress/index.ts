@@ -514,7 +514,8 @@ export const compressRequestMessages = async ({
   model,
   reasoningEffort,
   tools,
-  userKey
+  userKey,
+  teamId
 }: {
   checkIsStopping?: CreateLLMResponseProps['isAborted'];
   messageTokens?: number;
@@ -523,6 +524,7 @@ export const compressRequestMessages = async ({
   reasoningEffort?: CreateLLMResponseProps['body']['reasoning_effort'];
   tools?: ChatCompletionTool[];
   userKey?: OpenaiAccountType;
+  teamId: string;
 }): Promise<{
   messages: ChatCompletionMessageParam[];
   messageTokens?: number;
@@ -600,6 +602,7 @@ export const compressRequestMessages = async ({
       throwError: false,
       isAborted: checkIsStopping,
       userKey,
+      teamId,
       body: {
         stream: true,
         model,
@@ -747,7 +750,8 @@ export const compressLargeContent = async ({
   compressedTokenLimit,
   moduleName = i18nT('account_usage:llm_compress_text'),
   reasoningEffort,
-  userKey
+  userKey,
+  teamId
 }: {
   content: string;
   model: LLMModelItemType;
@@ -755,6 +759,7 @@ export const compressLargeContent = async ({
   moduleName?: string;
   reasoningEffort?: CreateLLMResponseProps['body']['reasoning_effort'];
   userKey?: OpenaiAccountType;
+  teamId: string;
 }): Promise<{
   compressed: string;
   usage?: ChatNodeUsageType;
@@ -804,6 +809,8 @@ export const compressLargeContent = async ({
       const { answerText, usage, requestId } = await createLLMResponse({
         throwError: false,
         userKey,
+        teamId,
+        saveLLMResponseRecord: false,
         body: {
           model,
           messages: [
@@ -1081,12 +1088,14 @@ export const compressToolResponse = async ({
   response,
   model,
   reasoningEffort,
-  userKey
+  userKey,
+  teamId
 }: {
   response: string;
   model: LLMModelItemType;
   reasoningEffort?: CreateLLMResponseProps['body']['reasoning_effort'];
   userKey?: OpenaiAccountType;
+  teamId: string;
 }): Promise<{
   compressed: string;
   usage?: ChatNodeUsageType;
@@ -1131,7 +1140,8 @@ export const compressToolResponse = async ({
     compressedTokenLimit: llmCompressedTokenLimit,
     moduleName: i18nT('account_usage:tool_response_compress'),
     reasoningEffort,
-    userKey
+    userKey,
+    teamId
   });
 
   const compressedTokens = await countPromptTokens(result.compressed);

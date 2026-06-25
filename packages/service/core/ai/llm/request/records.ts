@@ -15,6 +15,7 @@ import type { LLMAccumulatedUsage } from './types';
  * 不写入详情，避免把计费分支信息混入模型响应快照。
  */
 export const saveLLMResponseRecord = ({
+  teamId,
   requestId,
   requestBody,
   answerText,
@@ -26,6 +27,7 @@ export const saveLLMResponseRecord = ({
   outputTokens,
   error
 }: {
+  teamId: string;
   requestId: string;
   requestBody: ChatCompletionCreateParams;
   answerText: string;
@@ -38,6 +40,7 @@ export const saveLLMResponseRecord = ({
   error?: any;
 }) => {
   void saveLLMRequestRecord({
+    teamId,
     requestId,
     body: requestBody,
     response: {
@@ -68,15 +71,18 @@ export const saveLLMResponseRecord = ({
  * 这里不记录 usage：失败请求不应参与用量累加，且底层错误通常没有可信 token 信息。
  */
 export const saveLLMErrorRecord = ({
+  teamId,
   requestId,
   requestBody,
   error
 }: {
+  teamId: string;
   requestId: string;
   requestBody: ChatCompletionCreateParams;
   error: any;
 }) => {
   void saveLLMRequestRecord({
+    teamId,
     requestId,
     body: requestBody,
     response: {

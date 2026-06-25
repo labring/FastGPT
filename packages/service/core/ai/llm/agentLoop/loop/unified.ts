@@ -85,28 +85,45 @@ const buildInitialMessages = ({
 const buildAskPendingContext = ({
   messages,
   call,
+  assistantMessage,
   activePlan,
   requirePlan,
   runtimeToolCalledSinceLastPlanUpdate
 }: {
   messages: ChatCompletionMessageParam[];
   call: ChatCompletionMessageToolCall;
+  assistantMessage?: ChatCompletionMessageParam;
   activePlan?: AgentPlanType;
   requirePlan?: boolean;
   runtimeToolCalledSinceLastPlanUpdate?: boolean;
-}): PendingMainContext => ({
-  messages: [
-    ...messages,
-    {
-      role: ChatCompletionRequestMessageRoleEnum.Assistant,
-      tool_calls: [call]
-    }
-  ],
-  askToolCallId: call.id,
-  activePlan,
-  requirePlan,
-  runtimeToolCalledSinceLastPlanUpdate
-});
+}): PendingMainContext => {
+  const assistantFields =
+    assistantMessage?.role === ChatCompletionRequestMessageRoleEnum.Assistant
+      ? {
+          ...(('content' in assistantMessage && assistantMessage.content
+            ? { content: assistantMessage.content }
+            : {}) as Pick<typeof assistantMessage, 'content'>),
+          ...(assistantMessage.reasoning_content
+            ? { reasoning_content: assistantMessage.reasoning_content }
+            : {})
+        }
+      : {};
+
+  return {
+    messages: [
+      ...messages,
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        ...assistantFields,
+        tool_calls: [call]
+      }
+    ],
+    askToolCallId: call.id,
+    activePlan,
+    requirePlan,
+    runtimeToolCalledSinceLastPlanUpdate
+  };
+};
 
 /**
  * 单主 Agent Loop。
@@ -189,6 +206,7 @@ export const runUnifiedAgentLoop = async ({
       }),
       parallel_tool_calls: true
     },
+    teamId: runtime.teamId,
     userKey: runtime.userKey,
     usagePush: (usages) => runtime.usageSink?.(usages),
     isAborted: runtime.checkIsStopping,
@@ -258,7 +276,7 @@ export const runUnifiedAgentLoop = async ({
         callId: call.id,
         argsDelta
       }),
-    onRunTool: async ({ call, messages }) => {
+    onRunTool: async ({ call, messages, assistantMessage }) => {
       // 先特殊处理系统级别工具
       if (call.function.name === askToolName) {
         const parsed = parsePlanAskToolCall(call);
@@ -271,6 +289,7 @@ export const runUnifiedAgentLoop = async ({
           context: buildAskPendingContext({
             messages,
             call,
+            assistantMessage,
             activePlan,
             requirePlan,
             runtimeToolCalledSinceLastPlanUpdate

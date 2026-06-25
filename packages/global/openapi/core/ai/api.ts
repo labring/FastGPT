@@ -16,6 +16,10 @@ export type GetLLMRequestRecordParamsType = z.infer<typeof GetLLMRequestRecordPa
 // Response
 export const LLMRequestRecordSchema = z.object({
   _id: ObjectIdSchema,
+  teamId: ObjectIdSchema.meta({
+    example: '60f6b3b3b3b3b3b3b3b3b3b3',
+    description: '所属团队 ID'
+  }),
   requestId: z.string().meta({
     example: 'V1StGXR8_Z5jdHi6B-myT',
     description: '请求追踪 ID'

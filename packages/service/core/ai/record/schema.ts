@@ -7,10 +7,13 @@ export const LLMRequestRecordCollectionName = 'llm_request_records';
 const expiredHours = serviceEnv.LLM_REQUEST_TRACKING_RETENTION_HOURS;
 
 const LLMRequestRecordSchema = new Schema({
+  teamId: {
+    type: Schema.Types.ObjectId,
+    required: true
+  },
   requestId: {
     type: String,
-    required: true,
-    unique: true
+    required: true
   },
   body: {
     type: Schema.Types.Mixed,
@@ -26,6 +29,8 @@ const LLMRequestRecordSchema = new Schema({
     expires: expiredHours * 60 * 60 // n hours
   }
 });
+
+LLMRequestRecordSchema.index({ teamId: 1, requestId: 1 }, { unique: true });
 
 export const MongoLLMRequestRecord = getMongoLogModel<LLMRequestRecordSchemaType>(
   LLMRequestRecordCollectionName,

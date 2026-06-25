@@ -1,101 +1,75 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
 import { updatedReloadSystemModel } from '@fastgpt/service/core/ai/config/utils';
-import type { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
+import { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { z } from 'zod';
 
-export type updateDefaultQuery = {};
+export type updateDefaultQuery = Record<string, never>;
 
-export type updateDefaultBody = {
-  [ModelTypeEnum.llm]?: string;
-  [ModelTypeEnum.embedding]?: string;
-  [ModelTypeEnum.tts]?: string;
-  [ModelTypeEnum.stt]?: string;
-  [ModelTypeEnum.rerank]?: string;
-  datasetTextLLM?: string;
-  datasetImageLLM?: string;
-};
+const UpdateDefaultBodySchema = z.object({
+  [ModelTypeEnum.llm]: z.string().optional(),
+  [ModelTypeEnum.embedding]: z.string().optional(),
+  [ModelTypeEnum.tts]: z.string().optional(),
+  [ModelTypeEnum.stt]: z.string().optional(),
+  [ModelTypeEnum.rerank]: z.string().optional(),
+  datasetTextLLM: z.string().optional(),
+  datasetImageLLM: z.string().optional(),
+  chatTitleLLM: z.string().optional()
+});
 
-export type updateDefaultResponse = {};
+const UpdateDefaultResponseSchema = z.object({});
+
+export type updateDefaultBody = z.infer<typeof UpdateDefaultBodySchema>;
+
+export type updateDefaultResponse = z.infer<typeof UpdateDefaultResponseSchema>;
 
 async function handler(
-  req: ApiRequestProps<updateDefaultBody, updateDefaultQuery>,
-  res: ApiResponseType<any>
+  req: ApiRequestProps<updateDefaultBody, updateDefaultQuery>
 ): Promise<updateDefaultResponse> {
   await authSystemAdmin({ req });
 
-  const { llm, embedding, tts, stt, rerank, datasetTextLLM, datasetImageLLM } = req.body;
+  const { llm, embedding, tts, stt, rerank, datasetTextLLM, datasetImageLLM, chatTitleLLM } =
+    parseApiInput({ req, bodySchema: UpdateDefaultBodySchema }).body;
+  const defaultModelNames = [llm, embedding, tts, stt, rerank].filter(
+    (model): model is string => !!model
+  );
+  const datasetTextModelName = datasetTextLLM || null;
+  const datasetImageModelName = datasetImageLLM || null;
+  const chatTitleModelName = chatTitleLLM || null;
 
   await mongoSessionRun(async (session) => {
-    // Remove all default flags
+    // 用 pipeline update 一次性重算所有默认标记，避免多次 updateOne 造成额外数据库往返。
     await MongoSystemModel.updateMany(
       {},
-      {
-        $unset: {
-          'metadata.isDefault': 1,
-          'metadata.isDefaultDatasetTextModel': 1,
-          'metadata.isDefaultDatasetImageModel': 1
+      [
+        {
+          $set: {
+            'metadata.isDefault': {
+              $cond: [{ $in: ['$model', defaultModelNames] }, true, '$$REMOVE']
+            },
+            'metadata.isDefaultDatasetTextModel': {
+              $cond: [{ $eq: ['$model', datasetTextModelName] }, true, '$$REMOVE']
+            },
+            'metadata.isDefaultDatasetImageModel': {
+              $cond: [{ $eq: ['$model', datasetImageModelName] }, true, '$$REMOVE']
+            },
+            'metadata.isDefaultChatTitleModel': {
+              $cond: [{ $eq: ['$model', chatTitleModelName] }, true, '$$REMOVE']
+            }
+          }
         }
-      },
+      ],
       { session }
     );
-
-    if (llm) {
-      await MongoSystemModel.updateOne(
-        { model: llm },
-        { $set: { 'metadata.isDefault': true } },
-        { session }
-      );
-    }
-    if (datasetTextLLM) {
-      await MongoSystemModel.updateOne(
-        { model: datasetTextLLM },
-        { $set: { 'metadata.isDefaultDatasetTextModel': true } },
-        { session }
-      );
-    }
-    if (datasetImageLLM) {
-      await MongoSystemModel.updateOne(
-        { model: datasetImageLLM },
-        { $set: { 'metadata.isDefaultDatasetImageModel': true } },
-        { session }
-      );
-    }
-    if (embedding) {
-      await MongoSystemModel.updateOne(
-        { model: embedding },
-        { $set: { 'metadata.isDefault': true } },
-        { session }
-      );
-    }
-    if (tts) {
-      await MongoSystemModel.updateOne(
-        { model: tts },
-        { $set: { 'metadata.isDefault': true } },
-        { session }
-      );
-    }
-    if (stt) {
-      await MongoSystemModel.updateOne(
-        { model: stt },
-        { $set: { 'metadata.isDefault': true } },
-        { session }
-      );
-    }
-    if (rerank) {
-      await MongoSystemModel.updateOne(
-        { model: rerank },
-        { $set: { 'metadata.isDefault': true } },
-        { session }
-      );
-    }
   });
 
   await updatedReloadSystemModel();
 
-  return {};
+  return UpdateDefaultResponseSchema.parse({});
 }
 
 export default NextAPI(handler);

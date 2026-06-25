@@ -5,17 +5,21 @@ import {
   ChatSourceEnum
 } from '@fastgpt/global/core/chat/constants';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import { syncGeneratedChatTitleFromUserContent } from '@fastgpt/service/core/chat/title';
+import {
+  createGeneratedChatTitleSender,
+  syncGeneratedChatTitleFromUserContent
+} from '@fastgpt/service/core/chat/title';
+import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
 const createLLMResponseMock = vi.hoisted(() => vi.fn());
-const getLLMModelMock = vi.hoisted(() => vi.fn());
+const getDefaultChatTitleModelMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
   createLLMResponse: createLLMResponseMock
 }));
 
 vi.mock('@fastgpt/service/core/ai/model', () => ({
-  getLLMModel: getLLMModelMock
+  getDefaultChatTitleModel: getDefaultChatTitleModelMock
 }));
 
 const base = {
@@ -38,7 +42,7 @@ const createChat = (override: Record<string, unknown> = {}) =>
 describe('syncGeneratedChatTitleFromUserContent', () => {
   beforeEach(async () => {
     vi.clearAllMocks();
-    getLLMModelMock.mockReturnValue({
+    getDefaultChatTitleModelMock.mockReturnValue({
       model: 'gpt-title',
       reasoning: true
     });
@@ -76,6 +80,7 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
     });
     expect(createLLMResponseMock).toHaveBeenCalledWith(
       expect.objectContaining({
+        teamId: base.teamId,
         throwError: false,
         saveLLMResponseRecord: false,
         body: expect.objectContaining({
@@ -122,7 +127,7 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
   });
 
   it('uses local question text fallback when title model is unavailable', async () => {
-    getLLMModelMock.mockReturnValue(undefined);
+    getDefaultChatTitleModelMock.mockReturnValue(undefined);
     await createChat();
 
     const result = await syncGeneratedChatTitleFromUserContent({
@@ -411,5 +416,65 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
       updated: true
     });
     expect(createLLMResponseMock).toHaveBeenCalled();
+  });
+});
+
+describe('createGeneratedChatTitleSender', () => {
+  it('writes a stream title as soon as generation resolves', async () => {
+    const writeChatTitle = vi.fn();
+    const titleSender = createGeneratedChatTitleSender({
+      titleGeneration: Promise.resolve({
+        title: 'Generated Title',
+        updated: true
+      }),
+      stream: true,
+      detail: true,
+      writeChatTitle
+    });
+
+    const title = await titleSender.send();
+
+    expect(title).toBe('Generated Title');
+    expect(writeChatTitle).toHaveBeenCalledWith({
+      event: SseResponseEventEnum.chatTitle,
+      data: {
+        title: 'Generated Title'
+      }
+    });
+  });
+
+  it('reuses the in-flight title send promise without writing duplicate title events', async () => {
+    const writeChatTitle = vi.fn();
+    let resolveTitle:
+      | ((value: { title: string; updated: boolean } | undefined) => void)
+      | undefined;
+    const titleGeneration = new Promise<{ title: string; updated: boolean } | undefined>(
+      (resolve) => {
+        resolveTitle = resolve;
+      }
+    );
+    const titleSender = createGeneratedChatTitleSender({
+      titleGeneration,
+      stream: true,
+      detail: true,
+      writeChatTitle
+    });
+
+    const firstTitle = titleSender.send();
+    const secondTitle = titleSender.send();
+    resolveTitle?.({
+      title: 'Generated Title',
+      updated: true
+    });
+
+    await expect(firstTitle).resolves.toBe('Generated Title');
+    await expect(secondTitle).resolves.toBe('Generated Title');
+    expect(writeChatTitle).toHaveBeenCalledTimes(1);
+    expect(writeChatTitle).toHaveBeenCalledWith({
+      event: SseResponseEventEnum.chatTitle,
+      data: {
+        title: 'Generated Title'
+      }
+    });
   });
 });
