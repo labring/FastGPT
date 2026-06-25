@@ -12,7 +12,7 @@ import {
   type StopChatFnResult
 } from '../type';
 import { ChatInputDefaultHeight, ChatTypeEnum, textareaMinH } from '../constants';
-import { useFieldArray, type UseFormReturn } from 'react-hook-form';
+import { useFieldArray, useWatch, type UseFormReturn } from 'react-hook-form';
 import { ChatBoxContext } from '../Provider';
 import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
@@ -42,7 +42,6 @@ const fileTypeFilter = (file: File) => {
 type ChatInputProps = BoxProps & {
   lastInteractive?: WorkflowInteractiveResponseType;
   onSendMessage: SendPromptFnType;
-  onStop: () => void;
   onStopChat: () => Promise<StopChatFnResult>;
   onStopSettled?: (status: ChatGenerateStatusEnum, completed: boolean) => void;
   disableSend?: boolean;
@@ -54,7 +53,6 @@ type ChatInputProps = BoxProps & {
 const ChatInput = ({
   lastInteractive,
   onSendMessage,
-  onStop,
   onStopChat,
   onStopSettled,
   disableSend,
@@ -68,8 +66,11 @@ const ChatInput = ({
   const { isPc } = useSystem();
   const VoiceInputRef = useRef<VoiceInputComponentRef>(null);
 
-  const { setValue, watch, control } = chatForm;
-  const inputValue = watch('input');
+  const { setValue, control } = chatForm;
+  const inputValue = useWatch({
+    control,
+    name: 'input'
+  });
 
   const [focusing, { on: onFocus, off: offFocus }] = useBoolean();
 
@@ -179,8 +180,6 @@ const ChatInput = ({
       }
     } catch {
       onStopSettled?.(ChatGenerateStatusEnum.generating, false);
-    } finally {
-      onStop();
     }
   });
 
@@ -242,7 +241,10 @@ const ChatInput = ({
                 textarea.style.overflowY = 'hidden';
               }
 
-              setValue('input', textarea.value);
+              setValue('input', textarea.value, {
+                shouldDirty: true,
+                shouldTouch: true
+              });
             }}
             onKeyDown={(e) => {
               // enter send.(pc or iframe && enter and unPress shift)
@@ -542,7 +544,10 @@ const ChatInput = ({
               appId={appId}
               text={inputValue}
               onSelect={(e) => {
-                setValue('input', e);
+                setValue('input', e, {
+                  shouldDirty: true,
+                  shouldTouch: true
+                });
               }}
               onSend={(e) => {
                 handleSend(e);

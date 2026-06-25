@@ -499,5 +499,13 @@ describe('debugChat handler — parameter validation', () => {
         })
       })
     );
+
+    const doneWriteIndex = debugChatMocks.responseWrite.mock.calls.findIndex(
+      ([payload]) => payload.data === '[DONE]'
+    );
+    expect(doneWriteIndex).toBeGreaterThanOrEqual(0);
+    expect(debugChatMocks.finalizeChatRound.mock.invocationCallOrder[0]).toBeLessThan(
+      debugChatMocks.responseWrite.mock.invocationCallOrder[doneWriteIndex]
+    );
   });
 });

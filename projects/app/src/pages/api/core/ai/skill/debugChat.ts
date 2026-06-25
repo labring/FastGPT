@@ -401,16 +401,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       }
     });
 
-    // Send finish signals
-    streamResponseContext.responseWrite({
-      event: SseResponseEventEnum.answer,
-      data: textAdaptGptResponse({ text: null, finish_reason: 'stop' })
-    });
-    streamResponseContext.responseWrite({
-      event: SseResponseEventEnum.answer,
-      data: '[DONE]'
-    });
-
     // Save chat records (using skillId as virtual appId)
     const aiResponse: AIChatItemType & { dataId?: string } = {
       dataId: finalResponseChatItemId,
@@ -455,6 +445,16 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         status: ChatGenerateStatusEnum.done
       });
     }
+
+    // 落库完成后再发送结束信号，避免前端先退出 chatting 而服务端仍停留在 generating。
+    streamResponseContext.responseWrite({
+      event: SseResponseEventEnum.answer,
+      data: textAdaptGptResponse({ text: null, finish_reason: 'stop' })
+    });
+    streamResponseContext.responseWrite({
+      event: SseResponseEventEnum.answer,
+      data: '[DONE]'
+    });
 
     await streamResponseContext.flushResume();
   } catch (err: any) {

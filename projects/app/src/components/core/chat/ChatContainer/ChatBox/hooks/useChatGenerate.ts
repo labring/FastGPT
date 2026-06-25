@@ -90,10 +90,10 @@ const isAbortByLeave = (reason: unknown) => {
  * 这个 hook 承接原 `ChatBox/index.tsx` 中最核心的运行时逻辑：
  * - `generatingMessage`：按 SSE event 增量更新最后一条 AI 消息。
  * - `sendPrompt`：校验输入、创建 human/AI placeholder、调用 `onStartChat`、处理完成和失败。
- * - `abortRequest`：统一中断 chat、question guide、plugin 和 resume 请求。
+ * - `abortRequest`：统一中断 chat、question guide、plugin 和 resume 请求，仅用于页面切换、重开会话等前端生命周期清理。
  *
  * 输入约定：
- * - refs 仍由 ChatBox 持有，保证停止按钮、页面切换、恢复生成共用同一组 controller。
+ * - refs 仍由 ChatBox 持有，保证页面切换、恢复生成等生命周期清理共用同一组 controller。
  * - `resetInputVal`、`createQuestionGuide`、`scrollToBottom`、`generatingScroll` 都来自前面 PR
  *   已抽出的基础 hook，`useChatGenerate` 只编排它们，不重新实现输入或滚动细节。
  * - `syncSidebarChatGenerateStatus` 负责侧边栏历史状态，本 hook 只在普通发送开始/完成/失败时调用它。
