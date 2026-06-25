@@ -97,20 +97,24 @@ const buildAskPendingContext = ({
   requirePlan?: boolean;
   runtimeToolCalledSinceLastPlanUpdate?: boolean;
 }): PendingMainContext => {
-  const assistantContent =
-    assistantMessage && 'content' in assistantMessage ? assistantMessage.content : undefined;
-  const assistantReasoning =
+  const assistantFields =
     assistantMessage?.role === ChatCompletionRequestMessageRoleEnum.Assistant
-      ? assistantMessage.reasoning_content
-      : undefined;
+      ? {
+          ...(('content' in assistantMessage && assistantMessage.content
+            ? { content: assistantMessage.content }
+            : {}) as Pick<typeof assistantMessage, 'content'>),
+          ...(assistantMessage.reasoning_content
+            ? { reasoning_content: assistantMessage.reasoning_content }
+            : {})
+        }
+      : {};
 
   return {
     messages: [
       ...messages,
       {
         role: ChatCompletionRequestMessageRoleEnum.Assistant,
-        ...(assistantContent && { content: assistantContent }),
-        ...(assistantReasoning && { reasoning_content: assistantReasoning }),
+        ...assistantFields,
         tool_calls: [call]
       }
     ],

@@ -76,8 +76,8 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
   const accumulator = useLLMResponseAccumulator();
   const initialRequestMessages = mergeAssistantFieldMessages(
     requestBody.messages as ChatCompletionMessageParam[]
-  );
-  let currentMessages = [...initialRequestMessages];
+  ) as ChatCompletionMessageParam[];
+  let currentMessages: ChatCompletionMessageParam[] = [...initialRequestMessages];
   let continuationCount = 0;
   let aiRequestMeta: AIApiRequestMeta = {
     usedUserOpenAIKey: false
@@ -94,7 +94,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
       } = await createChatCompletion({
         body: {
           ...requestBody,
-          messages: currentMessages
+          messages: currentMessages as typeof requestBody.messages
         },
         modelData,
         userKey,
@@ -138,7 +138,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
           accumulator.buildContinuationMessages({
             baseMessages: requestBody.messages as ChatCompletionMessageParam[]
           })
-        ) as typeof currentMessages;
+        ) as ChatCompletionMessageParam[];
 
         logger.debug(`Continue LLM response due to length limit`, {
           continuationCount,
