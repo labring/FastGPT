@@ -82,6 +82,13 @@ const NodeTemplateListItem = ({
   const handleParams = useContextSelector(WorkflowModalContext, (v) => v.handleParams);
   const isSystemTool = templateType === TemplateTypeEnum.systemTools;
   const isSystemToolSet = isSystemTool && template.flowNodeType === FlowNodeTypeEnum.toolSet;
+  const isToolSelector = handleParams?.handleId === NodeOutputKeyEnum.selectedTools;
+  // 系统工具集只有在工具调用的工具选择器里才允许直接创建节点。
+  const allowDirectAddSystemToolSet = isSystemToolSet && isToolSelector;
+  const canDragCreateNode =
+    !isPopover &&
+    (!template.isFolder || template.flowNodeType === FlowNodeTypeEnum.toolSet) &&
+    (!isSystemToolSet || allowDirectAddSystemToolSet);
   const showExpandArrow = template.isFolder || isSystemToolSet;
   const isDebugTool = isDebugToolSource(template.source);
 
@@ -137,10 +144,9 @@ const NodeTemplateListItem = ({
         whiteSpace={'nowrap'}
         overflow={'hidden'}
         textOverflow={'ellipsis'}
-        draggable={
-          !isPopover && (!template.isFolder || template.flowNodeType === FlowNodeTypeEnum.toolSet)
-        }
+        draggable={canDragCreateNode}
         onDragEnd={(e) => {
+          if (!canDragCreateNode) return;
           if (e.clientX < sliderWidth) return;
           const nodePosition = screenToFlowPosition({ x: e.clientX, y: e.clientY });
           handleAddNode({
@@ -149,7 +155,7 @@ const NodeTemplateListItem = ({
           });
         }}
         onClick={() => {
-          if (isSystemToolSet) {
+          if (isSystemToolSet && !allowDirectAddSystemToolSet) {
             onUpdateParentId(template.id, template.source);
             return;
           }

@@ -132,6 +132,10 @@ describe('parseDebugToolSource', () => {
     expect(parseDebugToolSource('debug:tmbId:tmb-1:session:dbg-1')).toBeUndefined();
     expect(parseDebugToolSource('system')).toBeUndefined();
   });
+
+  it('does not parse debug source from combined tool id', () => {
+    expect(() => splitCombineToolId('debug:tmbId:tmb-1|weather')).toThrow('Invalid tool id');
+  });
 });
 
 describe('debug tool detection', () => {
@@ -145,6 +149,17 @@ describe('debug tool detection', () => {
         } as any
       ])
     ).toBe(true);
+  });
+
+  it('ignores debug-looking ids without explicit debug source', () => {
+    expect(
+      hasDebugToolInSelectedTools([
+        {
+          id: 'debug:tmbId:tmb-1|node-id',
+          pluginId: 'debug:tmbId:tmb-1|weather'
+        } as any
+      ])
+    ).toBe(false);
   });
 
   it('detects explicit debug source in workflow nodes', () => {

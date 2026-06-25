@@ -229,7 +229,7 @@ const NodeCard = (props: Props) => {
   const isLoopNode = isNestedParentNodeType(node?.flowNodeType ?? '');
   const showVersion = useMemo(() => {
     const source = node?.pluginId ? splitCombineToolId(node.pluginId).source : undefined;
-    if (isDebugToolSource(node?.source) || isDebugToolSource(source)) return false;
+    if (isDebugToolSource(node?.source)) return false;
     // 1. MCP/HTTP single tools use the latest toolset content and do not expose version selection.
     if (source === AppToolSourceEnum.mcp || source === AppToolSourceEnum.http) return false;
 

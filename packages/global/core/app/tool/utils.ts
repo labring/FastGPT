@@ -19,9 +19,6 @@ export function splitCombineToolId(id: string): {
   pluginId: string;
   authAppId?: string;
 } {
-  const debugTool = parseDebugToolId(id);
-  if (debugTool) return debugTool;
-
   const splitRes = id.split('-');
   if (splitRes.length === 1) {
     // app id
@@ -85,15 +82,10 @@ export function splitCombineToolId(id: string): {
   throw new Error('Invalid tool id');
 }
 
-const DebugToolIdPrefix = 'debug:';
-const DebugToolIdSeparator = '|';
-
-export function isDebugToolId(id?: string): id is string {
-  return typeof id === 'string' && id.startsWith(DebugToolIdPrefix);
-}
+const DebugToolSourcePrefix = 'debug:tmbId:';
 
 export function isDebugToolSource(source?: string): source is string {
-  return typeof source === 'string' && source.startsWith(DebugToolIdPrefix);
+  return typeof source === 'string' && source.startsWith(DebugToolSourcePrefix);
 }
 
 export function parseDebugToolSource(source?: string): { tmbId: string } | undefined {
@@ -106,36 +98,8 @@ export function parseDebugToolSource(source?: string): { tmbId: string } | undef
   }
 }
 
-export function encodeDebugToolId({ source, pluginId }: { source: string; pluginId: string }) {
-  return `${source}${DebugToolIdSeparator}${pluginId}`;
-}
-
-export function parseDebugToolId(id: string):
-  | {
-      source: string;
-      pluginId: string;
-    }
-  | undefined {
-  if (!isDebugToolId(id)) return;
-
-  const separatorIndex = id.lastIndexOf(DebugToolIdSeparator);
-  if (separatorIndex <= DebugToolIdPrefix.length || separatorIndex === id.length - 1) {
-    throw new Error('Invalid debug tool id');
-  }
-
-  return {
-    source: id.slice(0, separatorIndex),
-    pluginId: id.slice(separatorIndex + 1)
-  };
-}
-
 export function hasDebugToolInSelectedTools(selectedTools?: SelectedToolItemType[] | null) {
-  return (
-    selectedTools?.some(
-      (tool) =>
-        isDebugToolId(tool.pluginId) || isDebugToolId(tool.id) || isDebugToolSource(tool.source)
-    ) ?? false
-  );
+  return selectedTools?.some((tool) => isDebugToolSource(tool.source)) ?? false;
 }
 
 /**
@@ -145,16 +109,11 @@ export function hasDebugToolInSelectedTools(selectedTools?: SelectedToolItemType
 export function hasDebugToolInNodes(nodes?: StoreNodeItemType[] | null) {
   return (
     nodes?.some((node) => {
-      if (isDebugToolId(node.pluginId) || isDebugToolSource(node.source)) return true;
+      if (isDebugToolSource(node.source)) return true;
 
       const toolConfig = node.toolConfig;
-      if (isDebugToolId(toolConfig?.systemTool?.toolId)) return true;
       if (isDebugToolSource(toolConfig?.systemTool?.source)) return true;
-      if (isDebugToolId(toolConfig?.systemToolSet?.toolId)) return true;
       if (isDebugToolSource(toolConfig?.systemToolSet?.source)) return true;
-      if (toolConfig?.systemToolSet?.toolList?.some((tool) => isDebugToolId(tool.toolId))) {
-        return true;
-      }
 
       const selectedToolsInput = node.inputs.find(
         (input) => input.key === NodeInputKeyEnum.selectedTools

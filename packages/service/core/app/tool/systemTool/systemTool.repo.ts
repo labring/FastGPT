@@ -116,6 +116,18 @@ const workflowToolNodes2JsonSchema = ({ nodes }: { nodes: StoreNodeItemType[] })
   };
 };
 
+const getPluginClientSource = ({
+  idSource,
+  runtimeSource = 'system'
+}: {
+  idSource?: string;
+  runtimeSource?: string;
+}) => {
+  if (isDebugToolSource(runtimeSource)) return runtimeSource;
+  if (idSource === AppToolSourceEnum.commercial) return AppToolSourceEnum.commercial;
+  return runtimeSource || 'system';
+};
+
 /**
  * SystemTool Repo
  * 系统工具仓储层
@@ -217,7 +229,7 @@ export class SystemToolRepo {
   getSystemToolDetail = async ({
     pluginId,
     version,
-    source = 'system',
+    source: toolSource = 'system',
     lang,
     fallbackLatestVersion = false
   }: {
@@ -227,8 +239,7 @@ export class SystemToolRepo {
     lang?: `${LangEnum}`;
     fallbackLatestVersion?: boolean;
   }): Promise<SystemToolDetailType> => {
-    const { pluginId: rawPluginId, source: parsedSource } = splitCombineToolId(pluginId);
-    source = isDebugToolSource(parsedSource) ? parsedSource : source;
+    const { pluginId: rawPluginId, source: idSource } = splitCombineToolId(pluginId);
     const [parentPluginId, childPluginId] = rawPluginId.split('/');
     const getChildToolDetail = !!childPluginId;
 
@@ -292,10 +303,11 @@ export class SystemToolRepo {
     }
 
     // System tool
+    const pluginSource = getPluginClientSource({ idSource, runtimeSource: toolSource });
     const tool = await pluginClient.getTool({
       pluginId: parentPluginId,
       version,
-      source,
+      source: pluginSource,
       ...(fallbackLatestVersion ? { fallbackLatestVersion: true } : {})
     });
 
@@ -409,7 +421,7 @@ export class SystemToolRepo {
     source?: string;
     lang?: `${LangEnum}`;
   }): Promise<SystemToolDisplayInfoType> => {
-    const { pluginId: rawPluginId, source: toolSource } = splitCombineToolId(pluginId);
+    const { pluginId: rawPluginId, source: idSource } = splitCombineToolId(pluginId);
     const [parentPluginId, childPluginId] = rawPluginId.split('/');
 
     const exactDbTool = await MongoSystemTool.findOne({ pluginId });
@@ -440,8 +452,7 @@ export class SystemToolRepo {
       };
     }
 
-    const pluginSource: string =
-      source === AppToolSourceEnum.commercial || isDebugToolSource(source) ? source : 'system';
+    const pluginSource = getPluginClientSource({ idSource, runtimeSource: source });
     const tools = await pluginClient.listTools({
       sources: [pluginSource]
     });
@@ -449,8 +460,8 @@ export class SystemToolRepo {
     if (!tool) return Promise.reject(PluginErrEnum.unExist);
 
     const parentCombinedPluginId =
-      toolSource === AppToolSourceEnum.systemTool || toolSource === AppToolSourceEnum.commercial
-        ? `${toolSource}-${parentPluginId}`
+      idSource === AppToolSourceEnum.systemTool || idSource === AppToolSourceEnum.commercial
+        ? `${idSource}-${parentPluginId}`
         : parentPluginId;
     const parentConfigIds = Array.from(
       new Set([
@@ -547,8 +558,8 @@ export class SystemToolRepo {
     const [parentPluginId, childPluginId] = rawPluginId.split('/');
     if (!parentPluginId || childPluginId) return parent;
 
-    const pluginSource =
-      source === AppToolSourceEnum.commercial ? AppToolSourceEnum.commercial : 'system';
+    const { source: idSource } = splitCombineToolId(pluginId);
+    const pluginSource = getPluginClientSource({ idSource, runtimeSource: source });
     const childIconMap = await this.getToolsetChildIconMap({
       pluginId: parentPluginId,
       source: pluginSource
@@ -577,7 +588,7 @@ export class SystemToolRepo {
     source?: string;
     lang?: `${LangEnum}`;
   }): Promise<SystemToolVersionType[]> => {
-    const { pluginId: rawPluginId, source: pluginSource } = splitCombineToolId(pluginId);
+    const { pluginId: rawPluginId, source: idSource } = splitCombineToolId(pluginId);
     const tool = await MongoSystemTool.findOne({ pluginId });
     if (tool?.customConfig?.associatedPluginId) {
       const { associatedPluginId } = tool.customConfig;
@@ -601,10 +612,7 @@ export class SystemToolRepo {
 
     const versions = await pluginClient.listPluginVersions({
       pluginId: parentToolId,
-      source:
-        pluginSource === AppToolSourceEnum.commercial || isDebugToolSource(pluginSource)
-          ? pluginSource
-          : source
+      source: getPluginClientSource({ idSource, runtimeSource: source })
     });
 
     return versions.map((item) => ({
@@ -621,9 +629,9 @@ export class SystemToolRepo {
     version?: string;
     source?: string;
   }): Promise<SystemToolRuntimeType> => {
-    const { pluginId: rawPluginId, source: parsedSource } = splitCombineToolId(pluginId);
-    source = isDebugToolSource(parsedSource) ? parsedSource : source;
-    const isDebugSource = isDebugToolSource(source);
+    const { pluginId: rawPluginId, source: idSource } = splitCombineToolId(pluginId);
+    const pluginSource = getPluginClientSource({ idSource, runtimeSource: source });
+    const isDebugSource = isDebugToolSource(pluginSource);
     const [parentPluginId] = rawPluginId.split('/');
 
     const dbTool = await MongoSystemTool.findOne({ pluginId }).lean();
@@ -632,7 +640,7 @@ export class SystemToolRepo {
       const tool = await pluginClient.getTool({
         pluginId: parentPluginId,
         version,
-        source,
+        source: pluginSource,
         fallbackLatestVersion: true
       });
 

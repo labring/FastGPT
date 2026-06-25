@@ -4,8 +4,7 @@ import type { DispatchSubAppResponse } from '../../type';
 import {
   getToolNameCandidates,
   getToolRawId,
-  isDebugToolSource,
-  splitCombineToolId
+  isDebugToolSource
 } from '@fastgpt/global/core/app/tool/utils';
 import { getSecretValue } from '../../../../../../../common/secret/utils';
 import type {
@@ -91,12 +90,9 @@ export const dispatchTool = async ({
   };
 
   const logger = getLogger(LogCategories.MODULE.APP.TOOL);
-  const getSystemToolSource = (toolId: string) => {
+  const getSystemToolSource = () => {
     const toolConfigSource = toolConfig?.systemTool?.source;
     if (isDebugToolSource(toolConfigSource)) return toolConfigSource;
-
-    const { source: parsedSource } = splitCombineToolId(toolId);
-    if (isDebugToolSource(parsedSource)) return parsedSource;
 
     return 'system';
   };
@@ -115,7 +111,7 @@ export const dispatchTool = async ({
     };
 
     if (toolConfig?.systemTool?.toolId) {
-      const toolSource = getSystemToolSource(toolConfig.systemTool.toolId);
+      const toolSource = getSystemToolSource();
       const systemToolRepo = SystemToolRepo.getInstance();
       const tool = await systemToolRepo.getSystemToolRuntime({
         pluginId: toolConfig.systemTool.toolId,

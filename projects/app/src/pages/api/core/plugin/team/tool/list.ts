@@ -13,6 +13,7 @@ import { getUserDetail } from '@fastgpt/service/support/user/controller';
 import type { UserTagsType } from '@fastgpt/global/support/user/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
+import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
 
 export type listQuery = GetTeamSystemPluginListQueryType;
 
@@ -54,7 +55,7 @@ async function handler(req: ApiRequestProps<listBody, listQuery>): Promise<listR
 
   return GetTeamPluginListResponseSchema.parse(
     tools
-      .sort((a, b) => Number(isDebugSource(b.source)) - Number(isDebugSource(a.source)))
+      .sort((a, b) => Number(isDebugToolSource(b.source)) - Number(isDebugToolSource(a.source)))
       .filter((tool) => {
         if (hasMatchedUserTag({ userTags, targetTags: tool.hideTags })) return false;
         return true;
@@ -68,17 +69,13 @@ async function handler(req: ApiRequestProps<listBody, listQuery>): Promise<listR
 
 export default NextAPI(handler);
 
-function isDebugSource(source?: string) {
-  return !!source?.startsWith('debug:');
-}
-
 async function getActiveDebugSource(tmbId: string) {
   const status = await pluginClient.getDebugSessionStatus({ tmbId }).catch(() => undefined);
 
   if (
     status?.enabled &&
     (status.status === 'enabled' || status.status === 'connected') &&
-    status.source
+    isDebugToolSource(status.source)
   ) {
     return status.source;
   }

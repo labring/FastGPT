@@ -22,8 +22,7 @@ import { getWorkflowContext } from '../../utils/context';
 import {
   getToolNameCandidates,
   getToolRawId,
-  isDebugToolSource,
-  splitCombineToolId
+  isDebugToolSource
 } from '@fastgpt/global/core/app/tool/utils';
 import { pluginClient } from '../../../../thirdProvider/fastgptPlugin';
 import { SystemToolRepo } from '../../../app/tool/systemTool/systemTool.repo';
@@ -70,12 +69,9 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
   const systemToolId = toolConfig?.systemTool?.toolId;
   let toolInput: Record<string, any> = {};
 
-  const getSystemToolSource = (toolId: string) => {
+  const getSystemToolSource = () => {
     const toolConfigSource = toolConfig?.systemTool?.source;
     if (isDebugToolSource(toolConfigSource)) return toolConfigSource;
-
-    const { source: parsedSource } = splitCombineToolId(toolId);
-    if (isDebugToolSource(parsedSource)) return parsedSource;
 
     return 'system';
   };
@@ -95,7 +91,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
 
     // run system tool
     if (toolConfig?.systemTool?.toolId) {
-      const toolSource = getSystemToolSource(toolConfig.systemTool.toolId);
+      const toolSource = getSystemToolSource();
       const systemToolRepo = SystemToolRepo.getInstance();
       const tool = await systemToolRepo.getSystemToolRuntime({
         pluginId: toolConfig.systemTool.toolId,

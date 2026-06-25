@@ -1,7 +1,7 @@
 import { type ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { type AppToolRuntimeType } from '@fastgpt/global/core/app/tool/type';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
-import { isDebugToolSource, splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
+import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 
 /*
   Tool points calculation:
@@ -28,7 +28,7 @@ export const computedAppToolUsage = async ({
     AppToolSourceEnum.community,
     AppToolSourceEnum.systemTool
   ]);
-  if (isDebugToolSource(source) || set.has(source as AppToolSourceEnum)) {
+  if (set.has(source as AppToolSourceEnum)) {
     if (error) return 0;
 
     const pluginCurrentCost = plugin.currentCost ?? 0;

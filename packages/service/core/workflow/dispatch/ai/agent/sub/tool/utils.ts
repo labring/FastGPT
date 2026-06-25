@@ -107,19 +107,20 @@ export const getAgentRuntimeTools = async ({
   const formatSystemToolNode = async ({
     toolId,
     nodeId,
-    source
+    idSource,
+    runtimeSource
   }: {
     toolId: string;
     nodeId: string;
-    source: AppToolSourceEnum.systemTool | AppToolSourceEnum.commercial | string;
+    idSource: AppToolSourceEnum.systemTool | AppToolSourceEnum.commercial;
+    runtimeSource?: string;
   }): Promise<AgentRuntimeNode> => {
     const systemToolRepo = SystemToolRepo.getInstance();
-    const toolConfigSource = isDebugToolSource(source) ? source : undefined;
+    const toolConfigSource = isDebugToolSource(runtimeSource) ? runtimeSource : undefined;
     const toolDetail = await systemToolRepo.getSystemToolDetail({
       pluginId: toolId,
       lang,
-      source:
-        source === AppToolSourceEnum.commercial || isDebugToolSource(source) ? source : 'system'
+      source: toolConfigSource ?? (idSource === AppToolSourceEnum.commercial ? idSource : 'system')
     });
     const isWorkflowTool = !!toolDetail.associatedPluginId;
     const secrets = jsonSchema2SecretInput({ jsonSchema: toolDetail.secretSchema });
@@ -352,33 +353,32 @@ export const getAgentRuntimeTools = async ({
   };
 
   const getRuntimeToolNode = async ({
-    source,
+    idSource,
+    runtimeSource,
     pluginId,
     toolId,
     app
   }: {
-    source: AppToolSourceEnum | string;
+    idSource: AppToolSourceEnum | string;
+    runtimeSource?: string;
     pluginId: string;
     toolId: string;
     app?: AppSchemaType;
   }): Promise<AgentRuntimeNode> => {
     // Agent 运行时只需要节点执行和 schema 信息，不能依赖面向前端展示的 preview controller。
-    if (
-      source === AppToolSourceEnum.systemTool ||
-      source === AppToolSourceEnum.commercial ||
-      isDebugToolSource(source)
-    ) {
+    if (idSource === AppToolSourceEnum.systemTool || idSource === AppToolSourceEnum.commercial) {
       return formatSystemToolNode({
         toolId,
         nodeId: pluginId,
-        source
+        idSource,
+        runtimeSource
       });
     }
     if (!app) return Promise.reject(PluginErrEnum.unExist);
-    if (source === AppToolSourceEnum.mcp) {
+    if (idSource === AppToolSourceEnum.mcp) {
       return formatMcpToolNode({ app, pluginId });
     }
-    if (source === AppToolSourceEnum.http) {
+    if (idSource === AppToolSourceEnum.http) {
       return formatHttpToolNode({ app, pluginId });
     }
     return formatPersonalAppNode({ app });
@@ -447,12 +447,11 @@ export const getAgentRuntimeTools = async ({
   return Promise.all(
     tools.map<Promise<SubAppInitType[]>>(async (tool) => {
       try {
-        const { pluginId, authAppId, source } = splitCombineToolId(tool.id);
+        const { pluginId, authAppId, source: idSource } = splitCombineToolId(tool.id);
         const runtimeSource =
           tool.source ??
           tool.toolConfig?.systemTool?.source ??
-          tool.toolConfig?.systemToolSet?.source ??
-          source;
+          tool.toolConfig?.systemToolSet?.source;
         // 工具间整体并发；单个 App 类工具必须先鉴权拿到 app，才能读取对应版本节点。
         const authAppPromise = authAppId
           ? authAppByTmbId({
@@ -466,7 +465,8 @@ export const getAgentRuntimeTools = async ({
           authAppPromise,
           authAppPromise.then((authResult) =>
             getRuntimeToolNode({
-              source: runtimeSource,
+              idSource,
+              runtimeSource,
               pluginId,
               app: authResult?.app,
               toolId: tool.id

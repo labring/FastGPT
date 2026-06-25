@@ -136,7 +136,7 @@ export async function getClientSystemToolPreviewNode({
   const systemToolRepo = SystemToolRepo.getInstance();
   const toolDetail = await systemToolRepo.getSystemToolDetail({
     pluginId,
-    version: versionId || undefined,
+    version: versionId,
     lang,
     source: toolSource
   });
@@ -252,35 +252,22 @@ export async function getClientToolPreviewNode({
   source?: string;
 }): Promise<FlowNodeTemplateType> {
   const { source: idSource, pluginId } = splitCombineToolId(appId);
-  const previewSource = isDebugToolSource(toolSource)
-    ? toolSource
-    : isDebugToolSource(idSource)
-      ? idSource
-      : undefined;
-  const source = previewSource ?? idSource;
 
   const data = await (async () => {
-    if (
-      source === AppToolSourceEnum.systemTool ||
-      source === AppToolSourceEnum.commercial ||
-      isDebugToolSource(source)
-    ) {
-      const systemToolPluginId =
-        idSource === AppToolSourceEnum.systemTool || isDebugToolSource(idSource) ? appId : pluginId;
-
+    if (idSource === AppToolSourceEnum.systemTool || idSource === AppToolSourceEnum.commercial) {
       return getClientSystemToolPreviewNode({
-        pluginId: source === AppToolSourceEnum.commercial ? appId : systemToolPluginId,
+        pluginId: appId,
         versionId,
         getLatestVersion,
         lang,
-        source: source === AppToolSourceEnum.commercial ? AppToolSourceEnum.commercial : source
+        source: toolSource
       });
     }
 
     // 存在 app 里面的插件的情况
     const app: AppToolType = await (async () => {
       // App / Mcp toolset / Http toolset
-      if (source === AppToolSourceEnum.personal) {
+      if (idSource === AppToolSourceEnum.personal) {
         const item = await MongoApp.findById(pluginId).lean();
         if (!item) return Promise.reject(PluginErrEnum.unExist);
         if (AppFolderTypeList.includes(item.type)) return Promise.reject(PluginErrEnum.unExist);
@@ -338,7 +325,7 @@ export async function getClientToolPreviewNode({
         };
       }
       // mcp tool
-      else if (source === AppToolSourceEnum.mcp) {
+      else if (idSource === AppToolSourceEnum.mcp) {
         const { parentId, toolName } = splitToolsetToolPluginId(pluginId);
         // 1. get parentApp
         const item = await MongoApp.findById(parentId).lean();
@@ -390,7 +377,7 @@ export async function getClientToolPreviewNode({
         };
       }
       // http tool
-      else if (source === AppToolSourceEnum.http) {
+      else if (idSource === AppToolSourceEnum.http) {
         const { parentId, toolName } = splitToolsetToolPluginId(pluginId);
         const item = await MongoApp.findById(parentId).lean();
         if (!item) return Promise.reject(PluginErrEnum.unExist);
@@ -493,7 +480,7 @@ export async function getClientToolPreviewNode({
     return {
       id: getNanoid(),
       pluginId: app.id,
-      source: isDebugToolSource(source) ? source : undefined,
+      source: isDebugToolSource(toolSource) ? toolSource : undefined,
       flowNodeType,
       avatar: app.avatar,
       name: parseI18nString(app.name, lang),

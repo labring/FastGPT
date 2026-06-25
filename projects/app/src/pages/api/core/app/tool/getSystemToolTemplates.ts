@@ -16,6 +16,7 @@ import {
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
 import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
+import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
 
 export type GetSystemPluginTemplatesBody = GetSystemToolTemplatesBodyType;
 
@@ -39,7 +40,7 @@ export async function handler(
   // const tools = await getSystemToolsWithInstalled({ teamId, isRoot, userTags });
   const systemToolRepo = SystemToolRepo.getInstance();
   if (parentId) {
-    const parentSource = isDebugSource(source)
+    const parentSource = isDebugToolSource(source)
       ? await getActiveDebugSource({
           tmbId,
           source
@@ -91,7 +92,7 @@ export async function handler(
   });
 
   const templates = tools
-    .sort((a, b) => Number(isDebugSource(b.source)) - Number(isDebugSource(a.source)))
+    .sort((a, b) => Number(isDebugToolSource(b.source)) - Number(isDebugToolSource(a.source)))
     .filter((item) => {
       if (!isSelectableToolStatus(item.status)) return false;
       if (isRoot) return true;
@@ -114,17 +115,13 @@ export async function handler(
   return GetSystemToolTemplatesResponseSchema.parse(templates);
 }
 
-function isDebugSource(source?: string) {
-  return !!source?.startsWith('debug:');
-}
-
 async function getActiveDebugSource({ tmbId, source }: { tmbId: string; source?: string }) {
   const status = await pluginClient.getDebugSessionStatus({ tmbId }).catch(() => undefined);
 
   if (
     status?.enabled &&
     (status.status === 'enabled' || status.status === 'connected') &&
-    isDebugSource(status.source) &&
+    isDebugToolSource(status.source) &&
     (!source || status.source === source)
   ) {
     return status.source;

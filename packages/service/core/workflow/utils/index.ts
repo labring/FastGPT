@@ -6,7 +6,7 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { SystemToolRepo } from '../../app/tool/systemTool/systemTool.repo';
 import { jsonSchema2NodeInput, jsonSchema2NodeOutput } from '@fastgpt/global/core/app/jsonschema';
-import { isDebugToolSource, splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
+import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
 
 /* filter search result */
 export const filterSearchResultsByMaxChars = async (
@@ -46,9 +46,6 @@ export async function getSystemToolRunTimeNodeFromSystemToolset({
   const systemToolSource = (() => {
     const toolConfigSource = toolSetNode.toolConfig?.systemToolSet?.source;
     if (isDebugToolSource(toolConfigSource)) return toolConfigSource;
-
-    const { source: parsedSource } = splitCombineToolId(systemToolId);
-    if (isDebugToolSource(parsedSource)) return parsedSource;
 
     return 'system';
   })();

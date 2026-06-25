@@ -2,11 +2,7 @@ import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { SystemToolRepo } from '@fastgpt/service/core/app/tool/systemTool/systemTool.repo';
-import {
-  encodeDebugToolId,
-  isDebugToolSource,
-  splitCombineToolId
-} from '@fastgpt/global/core/app/tool/utils';
+import { isDebugToolSource, splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import {
   GetToolPathQuerySchema,
@@ -52,28 +48,22 @@ export default NextAPI(handler);
 
 function getParentToolId({ toolId, source }: { toolId: string; source?: string }) {
   if (isDebugToolSource(source)) {
-    const [parentPluginId, childPluginId] = toolId.split('/');
+    const { pluginId, hasIdPrefix, idSource } = parseToolIdForPath(toolId);
+    const [parentPluginId, childPluginId] = pluginId.split('/');
     if (!parentPluginId || !childPluginId) return;
-    return parentPluginId;
+    return hasIdPrefix ? `${idSource}-${parentPluginId}` : parentPluginId;
   }
 
-  const { source: parsedToolSource, pluginId } = splitCombineToolId(toolId);
+  const { source: idSource, pluginId } = splitCombineToolId(toolId);
 
-  if (
-    ![AppToolSourceEnum.systemTool, AppToolSourceEnum.commercial].includes(
-      parsedToolSource as any
-    ) &&
-    !isDebugToolSource(parsedToolSource)
-  ) {
+  if (![AppToolSourceEnum.systemTool, AppToolSourceEnum.commercial].includes(idSource as any)) {
     return;
   }
 
   const [parentPluginId, childPluginId] = pluginId.split('/');
   if (!parentPluginId || !childPluginId) return;
 
-  return isDebugToolSource(parsedToolSource)
-    ? encodeDebugToolId({ source: parsedToolSource, pluginId: parentPluginId })
-    : `${parsedToolSource}-${parentPluginId}`;
+  return `${idSource}-${parentPluginId}`;
 }
 
 async function getToolPathItem({
@@ -86,19 +76,41 @@ async function getToolPathItem({
   lang: ReturnType<typeof getLocale>;
 }): Promise<GetToolPathResponseType[number]> {
   const systemToolRepo = SystemToolRepo.getInstance();
-  const parsedSource = source ? undefined : splitCombineToolId(toolId).source;
-  const toolSource = source ?? parsedSource;
+  const idSource = isDebugToolSource(source)
+    ? parseToolIdForPath(toolId).idSource
+    : splitCombineToolId(toolId).source;
+  const toolSource = isDebugToolSource(source)
+    ? source
+    : idSource === AppToolSourceEnum.commercial
+      ? AppToolSourceEnum.commercial
+      : 'system';
   const tool = await systemToolRepo.getSystemToolDisplayInfo({
     pluginId: toolId,
     lang,
-    source:
-      toolSource === AppToolSourceEnum.commercial || isDebugToolSource(toolSource)
-        ? toolSource
-        : 'system'
+    source: toolSource
   });
 
   return {
     parentId: toolId,
     parentName: tool.name
   };
+}
+
+function parseToolIdForPath(toolId: string) {
+  try {
+    const parsed = splitCombineToolId(toolId);
+    return {
+      idSource: parsed.source,
+      pluginId: parsed.pluginId,
+      hasIdPrefix: [AppToolSourceEnum.systemTool, AppToolSourceEnum.commercial].includes(
+        parsed.source as AppToolSourceEnum
+      )
+    };
+  } catch {
+    return {
+      idSource: undefined,
+      pluginId: toolId,
+      hasIdPrefix: false
+    };
+  }
 }
