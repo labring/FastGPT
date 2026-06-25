@@ -22,10 +22,10 @@ const MainLayout = () => {
   return (
     <HeaderProvider>
       <Flex h={'100%'} bg={'myGray.25'} overflow={'hidden'}>
-        {/* 左栏: 488px 预览对话区域 */}
+        {/* 左栏: 预览对话区域，默认占 1/3，最小 488px */}
         <Flex
-          w={'488px'}
-          flexShrink={0}
+          flex={1}
+          minW={'488px'}
           direction={'column'}
           h={'100%'}
           sx={{
@@ -44,7 +44,7 @@ const MainLayout = () => {
         </Flex>
 
         {/* 右栏: 文件树 + 编辑器区域 */}
-        <Box flex={1} h={'100%'} overflow={'hidden'}>
+        <Box flex={2} minW={0} h={'100%'} overflow={'hidden'}>
           <Content />
         </Box>
       </Flex>

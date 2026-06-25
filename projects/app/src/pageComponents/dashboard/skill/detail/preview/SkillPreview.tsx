@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { SkillDetailContext } from '../context';
@@ -22,6 +22,7 @@ import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/conf
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import { useMemoizedFn } from 'ahooks';
 import ProModal from '@/components/ProTip/ProModal';
+import { useSkillDebugChatStore } from '../useSkillDebugChatStore';
 
 const fileSelectConfig: AppFileSelectConfigType = {
   maxFiles: 10,
@@ -45,14 +46,20 @@ const SkillPreview = () => {
   const { llmModelList, defaultModels, feConfigs } = useSystemStore();
   const setChatBoxData = useContextSelector(ChatItemContext, (v) => v.setChatBoxData);
   const defaultModel = defaultModels.llm?.model || llmModelList[0]?.model || '';
-  const [selectedModel, setSelectedModel] = useState('');
   const [proModalOpen, setProModalOpen] = useState(false);
-  const userSelectedModelRef = useRef(false);
+  const selectedModel = useSkillDebugChatStore((state) => state.selectedModel);
+  const setSelectedModel = useSkillDebugChatStore((state) => state.setSelectedModel);
 
   const modelSelectList = useMemo(
     () => llmModelList.map((item) => ({ label: item.name, value: item.model })),
     [llmModelList]
   );
+  const fallbackModel = useMemo(() => {
+    const modelSet = new Set(llmModelList.map((item) => item.model));
+    if (selectedModel && modelSet.has(selectedModel)) return selectedModel;
+    if (defaultModel && modelSet.has(defaultModel)) return defaultModel;
+    return llmModelList[0]?.model || '';
+  }, [defaultModel, llmModelList, selectedModel]);
 
   const isReady = sandboxState === 'ready';
 
@@ -78,12 +85,6 @@ const SkillPreview = () => {
     });
   }, [skillId, chatId, setChatBoxData]);
 
-  useEffect(() => {
-    if (!userSelectedModelRef.current && defaultModel && selectedModel !== defaultModel) {
-      setSelectedModel(defaultModel);
-    }
-  }, [defaultModel, selectedModel]);
-
   const ModelSelectorInput = useMemo(() => {
     return (
       <ChatAIModelSelector
@@ -92,15 +93,12 @@ const SkillPreview = () => {
         size={'sm'}
         bg={'myGray.50'}
         rounded={'10px'}
-        value={selectedModel}
+        value={fallbackModel}
         list={modelSelectList}
-        onChange={(val) => {
-          userSelectedModelRef.current = true;
-          setSelectedModel(val);
-        }}
+        onChange={setSelectedModel}
       />
     );
-  }, [selectedModel, modelSelectList]);
+  }, [fallbackModel, modelSelectList, setSelectedModel]);
 
   const onStartChat = useMemoizedFn(
     async ({ messages, responseChatItemId, controller, generatingMessage }: StartChatFnProps) => {
@@ -111,7 +109,7 @@ const SkillPreview = () => {
           skillId,
           chatId,
           messages: histories,
-          model: selectedModel,
+          model: fallbackModel,
           responseChatItemId
         },
         onMessage: generatingMessage,

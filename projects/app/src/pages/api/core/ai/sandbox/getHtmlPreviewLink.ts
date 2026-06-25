@@ -11,18 +11,6 @@ import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/service/runti
 import { getSandboxFileContent } from '@/service/core/sandbox/fileService';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
-// 在 <head> 中注入 CSP，禁止外部脚本加载，仅允许 inline（沙箱预览场景）
-function injectCspMetaTag(html: string): string {
-  const cspMeta =
-    "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'self' data: blob:; script-src 'none'; style-src 'unsafe-inline' 'self' data:;\">";
-
-  if (/<head[^>]*>/i.test(html)) {
-    return html.replace(/(<head[^>]*>)/i, `$1${cspMeta}`);
-  }
-  // 没有 <head> 标签时，直接前置
-  return cspMeta + html;
-}
-
 async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void> {
   const { appId, chatId, filePath, outLinkAuthData } = parseApiInput({
     req,
@@ -45,8 +33,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
     return jsonRes(res, { code: 400, message: 'File is not an HTML file' });
   }
 
-  // 3. 注入 CSP meta tag 后上传到 S3
-  const safeHtml = injectCspMetaTag(content.toString('utf-8'));
+  // 3. 保持 HTML 原始内容上传到 S3，避免预览时移除或禁用脚本逻辑。
   const bucket = new S3PrivateBucket();
   const { fileKey } = getFileS3Key.temp({ teamId, filename: 'preview.html' });
   const expiredTime = addMinutes(new Date(), 30);
@@ -55,7 +42,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
     accessUrl: { url }
   } = await bucket.uploadFileByBody({
     key: fileKey,
-    body: Buffer.from(safeHtml, 'utf-8'),
+    body: content,
     filename: 'preview.html',
     contentType: 'text/html; charset=utf-8',
     expiredTime
