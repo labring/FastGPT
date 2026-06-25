@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Box, Flex, IconButton, Center } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import Editor from '@monaco-editor/react';
 import { useTranslation } from 'next-i18next';
 import { useLatest } from 'ahooks';
@@ -181,7 +182,7 @@ const EditorContent = ({
             overviewRulerBorder: false,
             fontSize: 13,
             lineNumbers: 'on',
-            lineNumbersMinChars: 4,
+            lineNumbersMinChars: 5,
             scrollBeyondLastLine: false,
             automaticLayout: true,
             lineHeight: 20,
@@ -260,14 +261,16 @@ const EditorContent = ({
         <Flex align="center" gap={2}>
           {/* HTML Preview Icon */}
           {activeFile?.language === 'html' && (
-            <IconButton
-              size="sm"
-              icon={<MyIcon name="common/htmlPreview" w="16px" />}
-              aria-label={t('chat:sandbox_html_preview')}
-              isLoading={generatingLink}
-              onClick={handleHtmlPreview}
-              variant="whiteBase"
-            />
+            <MyTooltip label={t('chat:sandbox_html_preview')}>
+              <IconButton
+                size="sm"
+                icon={<MyIcon name="common/htmlPreview" w="16px" />}
+                aria-label={t('chat:sandbox_html_preview')}
+                isLoading={generatingLink}
+                onClick={handleHtmlPreview}
+                variant="whiteBase"
+              />
+            </MyTooltip>
           )}
           {/* Source/Preview Toggle Switch */}
           {supportsPreviewToggle && (
@@ -300,14 +303,16 @@ const EditorContent = ({
             />
           )}
           {showDownload && activeFilePath && (
-            <IconButton
-              size="sm"
-              icon={<MyIcon name="common/downloadLine" w="16px" />}
-              aria-label={t('chat:sandbox_download')}
-              onClick={downloadCurrentFile}
-              isLoading={downloadingFile}
-              variant="whiteBase"
-            />
+            <MyTooltip label={t('chat:sandbox_download')}>
+              <IconButton
+                size="sm"
+                icon={<MyIcon name="common/downloadLine" w="16px" />}
+                aria-label={t('chat:sandbox_download')}
+                onClick={downloadCurrentFile}
+                isLoading={downloadingFile}
+                variant="whiteBase"
+              />
+            </MyTooltip>
           )}
         </Flex>
       </Flex>

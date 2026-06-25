@@ -11,7 +11,7 @@ import {
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getSkillDetail, streamCreateEditDebugSandbox } from '@/web/core/skill/api';
 import { SkillPermission } from '@fastgpt/global/support/permission/skill/controller';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { useSkillDebugChatStore } from './useSkillDebugChatStore';
 
 export enum TabEnum {
   config = 'config',
@@ -71,12 +71,16 @@ const formatTimestamp = () => {
     .join(':');
 };
 
-const CHAT_ID_STORAGE_KEY = (skillId: string) => `skill_debug_chatId_${skillId}`;
-
 const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
   const { t } = useTranslation();
-  const { skillId = '' } = router.query as { skillId: string };
+  const { skillId: querySkillId } = router.query;
+  const skillId = (Array.isArray(querySkillId) ? querySkillId[0] : querySkillId) ?? '';
+  const activeSkillId = useSkillDebugChatStore((state) => state.skillId);
+  const activeChatId = useSkillDebugChatStore((state) => state.chatId);
+  const setSkillId = useSkillDebugChatStore((state) => state.setSkillId);
+  const setChatId = useSkillDebugChatStore((state) => state.setChatId);
+  const chatId = activeSkillId === skillId ? activeChatId : '';
 
   const [showHistories, setShowHistories] = useState(false);
 
@@ -88,31 +92,15 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
   const hasStartedRef = useRef(false);
   const saveAllRef = useRef<() => Promise<void>>();
 
-  // 调试会话管理：当 skillId 发生改变时，在渲染期同步调整状态（React 官方标准最佳实践），避免 useEffect 二次级联渲染
-  const getInitialChatId = useCallback((id: string) => {
-    if (!id || typeof window === 'undefined') return '';
-    const stored = localStorage.getItem(CHAT_ID_STORAGE_KEY(id));
-    if (stored) return stored;
-    const newId = getNanoid(24);
-    localStorage.setItem(CHAT_ID_STORAGE_KEY(id), newId);
-    return newId;
-  }, []);
-
-  const [prevSkillId, setPrevSkillId] = useState(skillId);
-  const [chatId, setChatId] = useState(() => getInitialChatId(skillId));
-
-  // 路由就绪、skillId 改变时，在渲染期同步调整状态（React 官方标准推荐方案）
-  if (skillId !== prevSkillId) {
-    setPrevSkillId(skillId);
-    setChatId(getInitialChatId(skillId));
-  }
+  useEffect(() => {
+    if (skillId && activeSkillId !== skillId) {
+      setSkillId(skillId);
+    }
+  }, [skillId, activeSkillId, setSkillId]);
 
   const restartChat = useCallback(() => {
-    if (!skillId) return;
-    const newId = getNanoid(24);
-    localStorage.setItem(CHAT_ID_STORAGE_KEY(skillId), newId);
-    setChatId(newId);
-  }, [skillId]);
+    setChatId();
+  }, [setChatId]);
 
   const phaseToMessage = useCallback(
     (status: SandboxStatusItemType): string => {

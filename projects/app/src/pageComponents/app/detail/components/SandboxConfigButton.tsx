@@ -1,6 +1,5 @@
 import React from 'react';
 import { Box, Button, Flex, HStack, Switch, useDisclosure, type FlexProps } from '@chakra-ui/react';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
@@ -70,10 +69,9 @@ function SandboxConfigButton({
         <SandboxNotSupportTip type={showSandbox ? 'freeDisable' : 'systemDisable'} />
       )}
 
-      <MyTooltip label={t('common:Config')}>
+      <MyTooltip label={t('app:sandbox_config_tooltip')}>
         <Button
           variant={'transparentBase'}
-          leftIcon={<MyIcon name={'common/settingLight'} w={'14px'} />}
           iconSpacing={1}
           size={'sm'}
           mr={'-5px'}
@@ -81,7 +79,7 @@ function SandboxConfigButton({
           isDisabled={!canOpenConfig}
           onClick={openConfig}
         >
-          {t('common:Config')}
+          {isEnabled ? t('app:sandbox_enable') : t('app:sandbox_disable')}
         </Button>
       </MyTooltip>
 
