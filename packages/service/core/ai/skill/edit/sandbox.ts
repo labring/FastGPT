@@ -29,6 +29,7 @@ import { buildSandboxAdapter } from '../../sandbox/provider/adapter';
 import type { SandboxClient } from '../../sandbox/service/runtime';
 import { getSandboxClient } from '../../sandbox/service/runtime';
 import { deleteSandboxResource } from '../../sandbox/service/resource';
+import { archiveSandboxResourceForRuntimeUpgrade } from '../../sandbox/service/archive';
 import {
   countRunningSandboxInstancesByType,
   deleteSandboxInstanceRecord,
@@ -64,6 +65,7 @@ export type CreateEditDebugSandboxParams = {
   tmbId: string;
   image?: SandboxImageConfigType;
   entrypoint?: SandboxCreateSpec['entrypoint'];
+  archiveForUpgrade?: boolean;
   onProgress?: (status: SandboxStatusItemType) => void;
 };
 
@@ -85,7 +87,7 @@ export type CreateEditDebugSandboxResult = {
 export async function createEditDebugSandbox(
   params: CreateEditDebugSandboxParams
 ): Promise<CreateEditDebugSandboxResult> {
-  const { skillId, teamId, tmbId, image, entrypoint, onProgress } = params;
+  const { skillId, teamId, tmbId, image, entrypoint, archiveForUpgrade, onProgress } = params;
 
   try {
     await checkTeamSandboxPermission(teamId);
@@ -180,6 +182,74 @@ export async function createEditDebugSandbox(
           sandboxId: existingInstance.sandboxId
         }
       : null;
+
+  const normalizeImage = (image?: SandboxImageConfigType | null) => {
+    if (!image?.repository) return undefined;
+    return {
+      repository: image.repository,
+      tag: image.tag || ''
+    };
+  };
+
+  const runtimeImage = normalizeImage(createConfig.image);
+  const existingRuntimeImage = normalizeImage(existingInstance?.metadata?.image);
+  const requiresRuntimeImageUpgrade =
+    !!existingInstance &&
+    !shouldRecoverArchivedInstance &&
+    !!runtimeImage &&
+    (!existingRuntimeImage ||
+      existingRuntimeImage.repository !== runtimeImage.repository ||
+      existingRuntimeImage.tag !== runtimeImage.tag);
+
+  if (requiresRuntimeImageUpgrade && existingInstance) {
+    addLog.info('[Sandbox] Edit-debug sandbox runtime image upgrade required', {
+      sandboxId: existingInstance.sandboxId,
+      existingImage: existingInstance.metadata?.image,
+      runtimeImage
+    });
+
+    if (!archiveForUpgrade) {
+      onProgress?.({
+        sandboxId: existingInstance.sandboxId,
+        phase: 'runtimeUpgradeRequired'
+      });
+      return {
+        sandboxId: existingInstance.sandboxId,
+        status: {
+          state: 'UpgradeRequired'
+        }
+      };
+    }
+
+    onProgress?.({
+      sandboxId: existingInstance.sandboxId,
+      phase: 'runtimeUpgradeArchiving'
+    });
+    const archiveResult = await archiveSandboxResourceForRuntimeUpgrade(existingInstance, {
+      ensureZipInSandbox: true
+    });
+
+    if (!archiveResult.success) {
+      const message = archiveResult.error || 'Failed to archive outdated sandbox';
+      onProgress?.({
+        sandboxId: existingInstance.sandboxId,
+        phase: 'failed',
+        message
+      });
+      throw new Error(message);
+    }
+
+    onProgress?.({
+      sandboxId: existingInstance.sandboxId,
+      phase: 'runtimeUpgradeArchived'
+    });
+    return {
+      sandboxId: existingInstance.sandboxId,
+      status: {
+        state: 'Archived'
+      }
+    };
+  }
 
   const forceCleanupStaleSandbox = async (instance: NonNullable<typeof existingInstance>) => {
     try {

@@ -333,6 +333,29 @@ export async function markSandboxArchiving(resource: SandboxResourceDoc, inactiv
 }
 
 /**
+ * 用户主动升级 edit-debug runtime 时抢占实例进行归档。
+ *
+ * 该入口不依赖 inactive/stopped 判断，因为升级由 Skill detail 显式触发；
+ * 但仍使用 archive state CAS，避免与恢复、定时归档或重复点击并发抢同一条记录。
+ */
+export async function markSandboxArchivingForRuntimeUpgrade(resource: SandboxResourceDoc) {
+  return MongoSandboxInstance.findOneAndUpdate(
+    {
+      ...buildSandboxResourceRecordFilter(resource),
+      lastActiveAt: resource.lastActiveAt,
+      'metadata.archive.state': { $exists: false }
+    },
+    {
+      $set: {
+        status: SandboxStatusEnum.stopped,
+        'metadata.archive.state': 'archiving'
+      }
+    },
+    { new: true }
+  ).lean<SandboxResourceDoc | null>();
+}
+
+/**
  * 标记归档成功。
  *
  * 只有仍处于同一轮 archiving 的 stopped 记录才能切到 archived。
@@ -387,6 +410,29 @@ export async function clearSandboxArchiveState(resource: SandboxResourceRef) {
       'metadata.archive.state': 'archiving'
     },
     {
+      $unset: {
+        'metadata.archive': ''
+      }
+    }
+  );
+}
+
+/**
+ * 清理用户升级归档的中间状态，并恢复抢占归档前的本地 status。
+ *
+ * 升级归档会临时把 running 实例标为 stopped 来复用 archived CAS；失败时必须恢复原状态，
+ * 否则用户重试前 Mongo 记录会短暂呈现为 stopped。
+ */
+export async function clearSandboxRuntimeUpgradeArchiveState(resource: SandboxResourceDoc) {
+  return MongoSandboxInstance.updateOne(
+    {
+      ...buildSandboxResourceRecordFilter(resource),
+      'metadata.archive.state': 'archiving'
+    },
+    {
+      $set: {
+        status: resource.status
+      },
       $unset: {
         'metadata.archive': ''
       }

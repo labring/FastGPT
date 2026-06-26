@@ -17,8 +17,10 @@ import {
   findSandboxResourcesBySourceChatIds,
   findSkillRelatedSandboxResources,
   isSandboxStillArchiving,
+  clearSandboxRuntimeUpgradeArchiveState,
   markSandboxArchived,
   markSandboxArchiving,
+  markSandboxArchivingForRuntimeUpgrade,
   migrateArchivedSandboxInstanceRecord,
   markSandboxRestored,
   markSandboxRestoring,
@@ -561,6 +563,52 @@ describe('sandbox instance helpers', () => {
     expect(stored?.metadata?.archive).toBeUndefined();
     expect(stored?.metadata?.provider).toBeUndefined();
     expect(stored?.storage).toBeUndefined();
+  });
+
+  it('claims running records for runtime upgrade archive and restores original status on rollback', async () => {
+    const sandboxId = `instance-helper-${getNanoid()}`;
+    const doc = await MongoSandboxInstance.create({
+      provider: 'opensandbox',
+      sandboxId,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: `instance-helper-${getNanoid()}`,
+      userId: 'user-1',
+      chatId: 'edit-debug',
+      type: SandboxTypeEnum.editDebug,
+      status: SandboxStatusEnum.running,
+      lastActiveAt: new Date('2026-01-01T00:00:00.000Z'),
+      createdAt: new Date(),
+      metadata: {
+        image: { repository: 'old-image' }
+      }
+    });
+
+    const archiving = await markSandboxArchivingForRuntimeUpgrade(doc);
+    expect(archiving).toMatchObject({
+      status: SandboxStatusEnum.stopped,
+      metadata: {
+        archive: {
+          state: 'archiving'
+        }
+      }
+    });
+    await expect(
+      markSandboxArchivingForRuntimeUpgrade({
+        ...doc.toObject(),
+        lastActiveAt: new Date('2025-01-01T00:00:00.000Z')
+      } as SandboxResourceDoc)
+    ).resolves.toBeNull();
+
+    await clearSandboxRuntimeUpgradeArchiveState(doc);
+
+    const stored = await MongoSandboxInstance.findOne({ sandboxId }).lean();
+    expect(stored).toMatchObject({
+      status: SandboxStatusEnum.running,
+      metadata: {
+        image: { repository: 'old-image' }
+      }
+    });
+    expect(stored?.metadata?.archive).toBeUndefined();
   });
 
   it('streams archive candidates by lastActiveAt descending', async () => {

@@ -18,11 +18,13 @@ import {
 } from '../volume/service';
 import {
   clearSandboxArchiveState,
+  clearSandboxRuntimeUpgradeArchiveState,
   createSandboxResourcesToArchiveCursor,
   findSandboxInstanceArchiveState,
   isSandboxStillArchiving,
   markSandboxArchived,
   markSandboxArchiving,
+  markSandboxArchivingForRuntimeUpgrade,
   markSandboxRestored,
   markSandboxRestoring,
   markSandboxResourceStopped,
@@ -320,24 +322,57 @@ async function restoreWorkspaceArchive(params: {
   logger.info('Sandbox workspace restored from archive', { sandboxId });
 }
 
-/**
- * 归档单个 sandbox 实例。
- *
- * inactiveBefore 是归档判断边界，调用方负责用同一个边界查询候选资源并执行归档，
- * 避免同一轮任务中查询时间和二次活跃检查时间不一致。
- */
-export async function archiveSandboxResource(
-  resource: SandboxResourceDoc,
-  inactiveBefore: Date,
-  options: SandboxArchiveOptions = {}
-): Promise<{ success: boolean; error?: string }> {
-  const archivingDoc = await markSandboxArchiving(resource, inactiveBefore);
-  if (!archivingDoc) {
-    return { success: false, error: 'Resource was modified or occupied' };
-  }
+type SandboxArchiveFlowParams = {
+  archivingDoc: SandboxResourceDoc;
+  options?: Pick<SandboxArchiveOptions, 'ensureZipInSandbox'>;
+  logLabel: string;
+  rollbackResource: SandboxResourceDoc;
+  rollbackArchiveState: () => Promise<unknown>;
+  beforeRemoteDelete?: () => Promise<{ success: true } | { success: false; error: string }>;
+};
 
+/**
+ * 执行归档的公共流水线。
+ *
+ * 不同入口只负责抢占记录、回滚策略和是否需要删除远端前的二次检查；
+ * zip workspace、上传 S3、删除远端资源、标记 archived 以及失败清理由这里统一维护。
+ */
+async function runSandboxArchiveFlow({
+  archivingDoc,
+  options = {},
+  logLabel,
+  rollbackResource,
+  rollbackArchiveState,
+  beforeRemoteDelete
+}: SandboxArchiveFlowParams): Promise<{ success: boolean; error?: string }> {
   let connectedSandbox: ISandbox | undefined;
   let remoteResourceDeleted = false;
+  const rollbackBeforeRemoteDelete = async (params: {
+    error: string;
+    deleteArchiveLog: string;
+    stopLog: string;
+  }) => {
+    await rollbackArchiveState();
+    await getS3SandboxSource()
+      .deleteWorkspaceArchive({
+        sandboxId: archivingDoc.sandboxId
+      })
+      .catch((error) => {
+        logger.error(params.deleteArchiveLog, {
+          sandboxId: archivingDoc.sandboxId,
+          provider: archivingDoc.provider,
+          error
+        });
+      });
+    await stopTemporaryLiftedSandbox(rollbackResource).catch((error) => {
+      logger.error(params.stopLog, {
+        sandboxId: archivingDoc.sandboxId,
+        error
+      });
+    });
+    return { success: false, error: params.error };
+  };
+
   try {
     const { sandbox, profile } = await connectSandboxForArchive(archivingDoc);
     connectedSandbox = sandbox;
@@ -359,71 +394,35 @@ export async function archiveSandboxResource(
       body: archiveBuffer
     });
 
-    const stillArchiving = await isSandboxStillArchiving(archivingDoc, inactiveBefore);
-    if (!stillArchiving) {
-      await clearSandboxArchiveState(archivingDoc);
-      await getS3SandboxSource()
-        .deleteWorkspaceArchive({
-          sandboxId: archivingDoc.sandboxId
-        })
-        .catch((error) => {
-          logger.error('Failed to delete aborted sandbox archive', {
-            sandboxId: archivingDoc.sandboxId,
-            error
-          });
-        });
-      await stopTemporaryLiftedSandbox(archivingDoc).catch((error) => {
-        logger.error('Failed to stop temporary lifted sandbox after archive abort', {
-          sandboxId: archivingDoc.sandboxId,
-          error
-        });
+    const beforeRemoteDeleteResult = await beforeRemoteDelete?.();
+    if (beforeRemoteDeleteResult && !beforeRemoteDeleteResult.success) {
+      return rollbackBeforeRemoteDelete({
+        error: beforeRemoteDeleteResult.error,
+        deleteArchiveLog: `Failed to delete aborted ${logLabel} archive`,
+        stopLog: `Failed to stop temporary lifted sandbox after ${logLabel} archive abort`
       });
-      return { success: false, error: 'Archive aborted because of subsequent user activity' };
     }
 
     try {
       await deleteArchivedRemoteResource(archivingDoc);
       remoteResourceDeleted = true;
     } catch (error: unknown) {
-      logger.error('Failed to cleanup archived sandbox remote resource', {
+      logger.error(`Failed to cleanup archived ${logLabel} remote resource`, {
         sandboxId: archivingDoc.sandboxId,
         provider: archivingDoc.provider,
         error
       });
       const errorMessage = getErrText(error);
-      await getS3SandboxSource()
-        .deleteWorkspaceArchive({
-          sandboxId: archivingDoc.sandboxId
-        })
-        .catch((deleteError) => {
-          logger.error('Failed to delete sandbox archive after remote cleanup failure', {
-            sandboxId: archivingDoc.sandboxId,
-            provider: archivingDoc.provider,
-            error: deleteError
-          });
-        });
-      await clearSandboxArchiveState(archivingDoc).catch((clearError) => {
-        logger.error('Failed to clear archive state after remote cleanup failure', {
-          sandboxId: archivingDoc.sandboxId,
-          provider: archivingDoc.provider,
-          error: clearError
-        });
+      return rollbackBeforeRemoteDelete({
+        error: `Failed to delete remote resource: ${errorMessage}`,
+        deleteArchiveLog: `Failed to delete ${logLabel} archive after remote cleanup failure`,
+        stopLog: `Failed to stop temporary lifted sandbox after ${logLabel} remote cleanup failure`
       });
-      await stopTemporaryLiftedSandbox(archivingDoc).catch((stopError) => {
-        logger.error('Failed to stop temporary lifted sandbox after remote cleanup failure', {
-          sandboxId: archivingDoc.sandboxId,
-          error: stopError
-        });
-      });
-      return {
-        success: false,
-        error: `Failed to delete remote resource: ${errorMessage}`
-      };
     }
 
     const archivedResult = await markSandboxArchived(archivingDoc);
     if (archivedResult.matchedCount === 0) {
-      logger.error('Sandbox archive state changed after remote resource deletion', {
+      logger.error(`${logLabel} archive state changed after remote resource deletion`, {
         sandboxId: archivingDoc.sandboxId,
         provider: archivingDoc.provider
       });
@@ -437,13 +436,13 @@ export async function archiveSandboxResource(
     const errorMessage = getErrText(error);
     if (remoteResourceDeleted) {
       await markSandboxArchived(archivingDoc).catch((markError) => {
-        logger.error('Failed to mark sandbox archived after remote resource deletion', {
+        logger.error(`Failed to mark ${logLabel} archived after remote resource deletion`, {
           sandboxId: archivingDoc.sandboxId,
           provider: archivingDoc.provider,
           error: markError
         });
       });
-      logger.error('Failed to archive sandbox after remote resource deletion', {
+      logger.error(`Failed to archive ${logLabel} after remote resource deletion`, {
         sandboxId: archivingDoc.sandboxId,
         provider: archivingDoc.provider,
         error
@@ -451,14 +450,14 @@ export async function archiveSandboxResource(
       return { success: false, error: errorMessage };
     }
 
-    await clearSandboxArchiveState(archivingDoc);
-    await stopTemporaryLiftedSandbox(archivingDoc).catch((stopError) => {
-      logger.error('Failed to stop temporary lifted sandbox after archive failure', {
+    await rollbackArchiveState();
+    await stopTemporaryLiftedSandbox(rollbackResource).catch((stopError) => {
+      logger.error(`Failed to stop temporary lifted sandbox after ${logLabel} archive failure`, {
         sandboxId: archivingDoc.sandboxId,
         error: stopError
       });
     });
-    logger.error('Failed to archive sandbox', {
+    logger.error(`Failed to archive ${logLabel}`, {
       sandboxId: archivingDoc.sandboxId,
       provider: archivingDoc.provider,
       error
@@ -469,6 +468,61 @@ export async function archiveSandboxResource(
       await disconnectSandbox(connectedSandbox).catch(() => undefined);
     }
   }
+}
+
+/**
+ * 归档单个 sandbox 实例。
+ *
+ * inactiveBefore 是归档判断边界，调用方负责用同一个边界查询候选资源并执行归档，
+ * 避免同一轮任务中查询时间和二次活跃检查时间不一致。
+ */
+export async function archiveSandboxResource(
+  resource: SandboxResourceDoc,
+  inactiveBefore: Date,
+  options: SandboxArchiveOptions = {}
+): Promise<{ success: boolean; error?: string }> {
+  const archivingDoc = await markSandboxArchiving(resource, inactiveBefore);
+  if (!archivingDoc) {
+    return { success: false, error: 'Resource was modified or occupied' };
+  }
+
+  return runSandboxArchiveFlow({
+    archivingDoc,
+    options,
+    logLabel: 'sandbox',
+    rollbackResource: archivingDoc,
+    rollbackArchiveState: () => clearSandboxArchiveState(archivingDoc),
+    beforeRemoteDelete: async () => {
+      const stillArchiving = await isSandboxStillArchiving(archivingDoc, inactiveBefore);
+      return stillArchiving
+        ? { success: true }
+        : { success: false, error: 'Archive aborted because of subsequent user activity' };
+    }
+  });
+}
+
+/**
+ * 用户点击升级 edit-debug runtime 时归档旧实例。
+ *
+ * 该流程复用 workspace zip/upload/delete/mark archived 能力，但不做 inactive 二次检查；
+ * 调用方已经确认这是当前 Skill detail 的旧 runtime 实例，归档完成后由常规启动流程恢复到新镜像。
+ */
+export async function archiveSandboxResourceForRuntimeUpgrade(
+  resource: SandboxResourceDoc,
+  options: Pick<SandboxArchiveOptions, 'ensureZipInSandbox'> = {}
+): Promise<{ success: boolean; error?: string }> {
+  const archivingDoc = await markSandboxArchivingForRuntimeUpgrade(resource);
+  if (!archivingDoc) {
+    return { success: false, error: 'Resource was modified or occupied' };
+  }
+
+  return runSandboxArchiveFlow({
+    archivingDoc,
+    options,
+    logLabel: 'upgraded sandbox',
+    rollbackResource: resource,
+    rollbackArchiveState: () => clearSandboxRuntimeUpgradeArchiveState(resource)
+  });
 }
 
 /**

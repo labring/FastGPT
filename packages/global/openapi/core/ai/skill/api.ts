@@ -152,7 +152,8 @@ export type ImportSkillResponse = z.infer<typeof ImportSkillResponseSchema>;
 
 export const CreateEditDebugSandboxBodySchema = z.object({
   skillId: IdSchema,
-  image: SandboxImageConfigSchema.optional()
+  image: SandboxImageConfigSchema.optional(),
+  archiveForUpgrade: z.boolean().optional()
 });
 export type CreateEditDebugSandboxBody = z.infer<typeof CreateEditDebugSandboxBodySchema>;
 

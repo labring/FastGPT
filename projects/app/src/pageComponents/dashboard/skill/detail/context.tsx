@@ -10,7 +10,6 @@ import {
 } from '@fastgpt/global/core/ai/skill/constants';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getSkillDetail, streamCreateEditDebugSandbox } from '@/web/core/skill/api';
-import { SkillPermission } from '@fastgpt/global/support/permission/skill/controller';
 import { useSkillDebugChatStore } from './useSkillDebugChatStore';
 
 export enum TabEnum {
@@ -18,7 +17,13 @@ export enum TabEnum {
   preview = 'preview'
 }
 
-export type SandboxState = 'idle' | 'loading' | 'ready' | 'failed';
+export type SandboxState =
+  | 'idle'
+  | 'loading'
+  | 'ready'
+  | 'failed'
+  | 'upgradeRequired'
+  | 'upgrading';
 
 export type SandboxLogEntry = {
   timestamp: string;
@@ -36,9 +41,11 @@ type SkillDetailContextType = {
   sandboxState: SandboxState;
   sandboxLogs: SandboxLogEntry[];
   sandboxError: string | null;
+  isUpgradeModalOpen: boolean;
   isSkillReady: boolean;
   startSandbox: () => void;
   restartSandbox: () => void;
+  upgradeSandboxRuntime: () => void;
   saveAllRef: React.MutableRefObject<(() => Promise<void>) | undefined>;
   handleSandboxError: (err: string) => void;
   chatId: string;
@@ -55,9 +62,11 @@ export const SkillDetailContext = createContext<SkillDetailContextType>({
   sandboxState: 'idle',
   sandboxLogs: [],
   sandboxError: null,
+  isUpgradeModalOpen: false,
   isSkillReady: false,
   startSandbox: () => {},
   restartSandbox: () => {},
+  upgradeSandboxRuntime: () => {},
   saveAllRef: { current: undefined },
   handleSandboxError: () => {},
   chatId: '',
@@ -88,6 +97,7 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
   const [sandboxState, setSandboxState] = useState<SandboxState>('idle');
   const [sandboxLogs, setSandboxLogs] = useState<SandboxLogEntry[]>([]);
   const [sandboxError, setSandboxError] = useState<string | null>(null);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const abortCtrlRef = useRef<AbortController | null>(null);
   const hasStartedRef = useRef(false);
   const saveAllRef = useRef<() => Promise<void>>();
@@ -114,6 +124,9 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
         downloadingPackage: t('skill:sandbox_downloading'),
         uploadingPackage: t('skill:sandbox_uploading'),
         extractingPackage: t('skill:sandbox_extracting'),
+        runtimeUpgradeRequired: t('skill:sandbox_runtime_upgrade_required'),
+        runtimeUpgradeArchiving: t('skill:sandbox_runtime_upgrade_archiving'),
+        runtimeUpgradeArchived: t('skill:sandbox_runtime_upgrade_archived'),
         lazyInit: t('skill:sandbox_lazy_init'),
         ready: isWarmStart ? t('skill:sandbox_ready_warm') : t('skill:sandbox_ready'),
         failed: t('skill:sandbox_failed', { message: message || '' })
@@ -123,59 +136,99 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
     [t]
   );
 
-  const startSandbox = useCallback(() => {
-    if (!skillId) return;
+  const startSandbox = useCallback(
+    (options?: { archiveForUpgrade?: boolean }) => {
+      if (!skillId) return;
 
-    // Abort previous if any
-    abortCtrlRef.current?.abort();
+      // Abort previous if any
+      abortCtrlRef.current?.abort();
 
-    const abortCtrl = new AbortController();
-    abortCtrlRef.current = abortCtrl;
+      const abortCtrl = new AbortController();
+      abortCtrlRef.current = abortCtrl;
 
-    setSandboxState('idle');
-    setSandboxLogs([]);
-    setSandboxError(null);
-
-    let hasReceivedFirstEvent = false;
-
-    streamCreateEditDebugSandbox({
-      data: { skillId },
-      onStatus: (status) => {
-        // 收到第一条 SSE 消息后才从 idle 切到 loading（终端日志）
-        if (!hasReceivedFirstEvent) {
-          hasReceivedFirstEvent = true;
-          setSandboxState('loading');
+      const runSandboxStream = async (runOptions?: { archiveForUpgrade?: boolean }) => {
+        setSandboxState('idle');
+        setSandboxLogs([]);
+        setSandboxError(null);
+        if (!runOptions?.archiveForUpgrade) {
+          setIsUpgradeModalOpen(false);
         }
 
-        const entry: SandboxLogEntry = {
-          timestamp: formatTimestamp(),
-          message: phaseToMessage(status),
-          phase: status.phase
+        let hasReceivedFirstEvent = false;
+        let shouldRestartAfterArchive = false;
+
+        const handleSandboxPhase = (status: SandboxStatusItemType) => {
+          switch (status.phase) {
+            case 'ready':
+              setSandboxState('ready');
+              return;
+            case 'runtimeUpgradeRequired':
+              setIsUpgradeModalOpen(true);
+              setSandboxState('upgradeRequired');
+              return;
+            case 'runtimeUpgradeArchiving':
+              setSandboxState('upgrading');
+              return;
+            case 'runtimeUpgradeArchived':
+              setIsUpgradeModalOpen(false);
+              shouldRestartAfterArchive = true;
+              return;
+            case 'failed':
+              setSandboxError(status.message || t('skill:sandbox_error_title'));
+              setSandboxState('failed');
+              return;
+            default:
+              return;
+          }
         };
-        setSandboxLogs((prev) => [...prev, entry]);
 
-        if (status.phase === 'ready') {
-          setSandboxState('ready');
-        } else if (status.phase === 'failed') {
-          setSandboxError(status.message || t('skill:sandbox_error_title'));
-          setSandboxState('failed');
-        }
-      },
-      onError: (err) => {
-        setSandboxError(err);
+        await streamCreateEditDebugSandbox({
+          data: { skillId, ...(runOptions?.archiveForUpgrade ? { archiveForUpgrade: true } : {}) },
+          onStatus: (status) => {
+            // 收到第一条 SSE 消息后才从 idle 切到 loading（终端日志）
+            if (!hasReceivedFirstEvent) {
+              hasReceivedFirstEvent = true;
+              setSandboxState(runOptions?.archiveForUpgrade ? 'upgrading' : 'loading');
+            }
+
+            const entry: SandboxLogEntry = {
+              timestamp: formatTimestamp(),
+              message: phaseToMessage(status),
+              phase: status.phase
+            };
+            setSandboxLogs((prev) => [...prev, entry]);
+
+            handleSandboxPhase(status);
+          },
+          onError: (err) => {
+            setSandboxError(err);
+            setSandboxState('failed');
+          },
+          abortCtrl
+        });
+
+        if (abortCtrl.signal.aborted || !shouldRestartAfterArchive) return;
+        await runSandboxStream();
+      };
+
+      void runSandboxStream(options).catch((err) => {
+        if (abortCtrl.signal.aborted) return;
+        setSandboxError(typeof err === 'string' ? err : err?.message || String(err));
         setSandboxState('failed');
-      },
-      abortCtrl
-    }).catch((err) => {
-      if (abortCtrl.signal.aborted) return;
-      setSandboxError(typeof err === 'string' ? err : err?.message || String(err));
-      setSandboxState('failed');
-    });
-  }, [skillId, phaseToMessage, t]);
+      });
+    },
+    [skillId, phaseToMessage, t]
+  );
 
   const restartSandbox = useCallback(() => {
     hasStartedRef.current = true;
     startSandbox();
+  }, [startSandbox]);
+
+  const upgradeSandboxRuntime = useCallback(() => {
+    hasStartedRef.current = true;
+    setIsUpgradeModalOpen(false);
+    startSandbox({ archiveForUpgrade: true });
   }, [startSandbox]);
 
   const handleSandboxError = useCallback((err: string) => {
@@ -273,9 +326,11 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
       sandboxState: visibleSandboxState,
       sandboxLogs,
       sandboxError: visibleSandboxError,
+      isUpgradeModalOpen,
       isSkillReady,
       startSandbox,
       restartSandbox,
+      upgradeSandboxRuntime,
       saveAllRef,
       handleSandboxError,
       chatId,
@@ -290,9 +345,11 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
       visibleSandboxState,
       sandboxLogs,
       visibleSandboxError,
+      isUpgradeModalOpen,
       isSkillReady,
       startSandbox,
       restartSandbox,
+      upgradeSandboxRuntime,
       handleSandboxError,
       chatId,
       restartChat

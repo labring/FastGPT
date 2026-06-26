@@ -36,7 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   res.flushHeaders();
 
   try {
-    const { skillId, image } = parseApiInput({
+    const { skillId, image, archiveForUpgrade } = parseApiInput({
       req,
       bodySchema: CreateEditDebugSandboxBodySchema
     }).body;
@@ -84,6 +84,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       teamId,
       tmbId,
       image,
+      archiveForUpgrade,
       onProgress
     });
 
