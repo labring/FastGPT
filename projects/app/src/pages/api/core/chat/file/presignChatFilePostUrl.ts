@@ -10,8 +10,9 @@ import { addSeconds } from 'date-fns';
 import { PresignChatFilePostUrlSchema } from '@fastgpt/global/openapi/core/chat/file/api';
 import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { ReadPermissionVal, WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { S3ErrEnum } from '@fastgpt/global/common/error/code/s3';
+import { isEqual } from 'lodash';
 
 async function handler(req: ApiRequestProps): Promise<CreatePostPresignedUrlResponseType> {
   const { filename, appId, chatId, outLinkAuthData, fileSelectConfig } =
@@ -31,11 +32,16 @@ async function handler(req: ApiRequestProps): Promise<CreatePostPresignedUrlResp
   ]);
   const effectiveFileSelectConfig = fileSelectConfig
     ? await (async () => {
+        // 仅当传入配置与 app 存储配置不一致时（调试/编辑态覆盖），才需要 Write 权限
+        // Home 首页等场景传入默认配置与存储配置一致，只需 Read 权限即可
+        const storedConfig = app?.chatConfig?.fileSelectConfig;
+        const isOverriding = storedConfig != null && !isEqual(fileSelectConfig, storedConfig);
+
         await authApp({
           req,
           authToken: true,
           appId,
-          per: WritePermissionVal
+          per: isOverriding ? WritePermissionVal : ReadPermissionVal
         });
         return fileSelectConfig;
       })()
