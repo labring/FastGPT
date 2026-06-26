@@ -14,6 +14,7 @@ export const DEFAULT_CHAT_TITLE = '新对话';
 const GENERATED_CHAT_TITLE_MAX_LENGTH = 80;
 const FALLBACK_CHAT_TITLE_MAX_LENGTH = 20;
 const CHAT_TITLE_QUESTION_MAX_LENGTH = 1000;
+const CHAT_TITLE_GENERATION_TIMEOUT_MS = 5000;
 const titlePlaceholderValues = ['', DEFAULT_CHAT_TITLE, '历史记录'];
 const prompt = `You generate chat titles.
 
@@ -63,6 +64,29 @@ export const canWriteGeneratedTitle = (
 const getQuestionText = (userContent: UserChatItemType) =>
   chatValue2RuntimePrompt(userContent.value).text.trim();
 
+const getFallbackTitleFromQuestion = (question: string) =>
+  question.slice(0, FALLBACK_CHAT_TITLE_MAX_LENGTH);
+
+const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number) => {
+  const timeoutToken = Symbol('timeout');
+  let timer: ReturnType<typeof setTimeout> | undefined;
+
+  try {
+    const result = await Promise.race([
+      promise,
+      new Promise<typeof timeoutToken>((resolve) => {
+        timer = setTimeout(() => resolve(timeoutToken), timeoutMs);
+      })
+    ]);
+
+    return result === timeoutToken ? undefined : result;
+  } finally {
+    if (timer) {
+      clearTimeout(timer);
+    }
+  }
+};
+
 const normalizeGeneratedTitle = (title: string) =>
   title
     .trim()
@@ -79,7 +103,7 @@ export const getFallbackChatTitleFromUserContent = (
   const questionText = userContent ? getQuestionText(userContent) : '';
   if (!questionText) return defaultValue;
 
-  return questionText.slice(0, FALLBACK_CHAT_TITLE_MAX_LENGTH);
+  return getFallbackTitleFromQuestion(questionText);
 };
 
 const generateChatTitleFromQuestion = async ({
@@ -89,8 +113,9 @@ const generateChatTitleFromQuestion = async ({
   question: string;
   teamId: string;
 }): Promise<string | undefined> => {
+  const fallbackTitle = getFallbackTitleFromQuestion(question);
   const titleModel = getDefaultChatTitleModel();
-  if (!titleModel?.model) return question.slice(0, FALLBACK_CHAT_TITLE_MAX_LENGTH);
+  if (!titleModel?.model) return fallbackTitle;
   const questionForTitle = question.slice(0, CHAT_TITLE_QUESTION_MAX_LENGTH);
   const userPrompt = `Generate a title for the following source text. Do not answer it.
 
@@ -102,26 +127,39 @@ Return only the title.`;
 
   let answerText = '';
   try {
-    const response = await createLLMResponse({
-      teamId,
-      throwError: false,
-      saveLLMResponseRecord: false,
-      body: {
+    const response = await withTimeout(
+      createLLMResponse({
+        teamId,
+        throwError: false,
+        saveLLMResponseRecord: false,
+        body: {
+          model: titleModel.model,
+          stream: false,
+          messages: [
+            {
+              role: ChatCompletionRequestMessageRoleEnum.System,
+              content: prompt
+            },
+            {
+              role: ChatCompletionRequestMessageRoleEnum.User,
+              content: userPrompt
+            }
+          ],
+          ...(titleModel.reasoning ? { reasoning_effort: 'none' as const } : {})
+        }
+      }),
+      CHAT_TITLE_GENERATION_TIMEOUT_MS
+    );
+
+    if (!response) {
+      logger.warn('Generate chat title timeout, fallback to question text', {
         model: titleModel.model,
-        stream: false,
-        messages: [
-          {
-            role: ChatCompletionRequestMessageRoleEnum.System,
-            content: prompt
-          },
-          {
-            role: ChatCompletionRequestMessageRoleEnum.User,
-            content: userPrompt
-          }
-        ],
-        ...(titleModel.reasoning ? { reasoning_effort: 'none' as const } : {})
-      }
-    });
+        timeoutMs: CHAT_TITLE_GENERATION_TIMEOUT_MS,
+        fallbackTitle
+      });
+      return fallbackTitle;
+    }
+
     answerText = response.answerText;
     logger.info('Generate title success', {
       usage: response.rawUsage
@@ -129,9 +167,10 @@ Return only the title.`;
   } catch (error) {
     logger.warn('Failed to generate chat title with model', {
       model: titleModel.model,
-      error
+      error,
+      fallbackTitle
     });
-    return;
+    return fallbackTitle;
   }
 
   const normalizedTitle = normalizeGeneratedTitle(answerText);
@@ -139,9 +178,10 @@ Return only the title.`;
     logger.warn('Failed to generate chat title with model', {
       model: titleModel.model,
       reason: 'empty_or_placeholder_title',
-      answerText
+      answerText,
+      fallbackTitle
     });
-    return;
+    return fallbackTitle;
   }
 
   return normalizedTitle;
@@ -161,8 +201,8 @@ const normalizeFixedChatTitle = (title?: string) => {
  *
  * 调用方先用当前 Chat 状态判断是否值得发起模型请求；这里在最终写入时仍会再次校验
  * `customTitle` 和 `title`，避免异步生成结果覆盖用户手动改名或已有有效标题。
- * 标题模型失败、当前问题无可用文本或返回空标题时不写库、不返回给客户端，让下一轮标题
- * 仍为空的对话继续尝试。
+ * 标题模型不可用、失败或返回空标题时，会回退到用户问题截断标题，避免辅助标题能力影响
+ * 主对话链路。
  */
 export type GeneratedChatTitleResult = {
   title: string;
@@ -250,9 +290,10 @@ export const scheduleGeneratedChatTitleFromUserContent = (params: {
 /**
  * 创建一个可重复调用的标题发送器。
  *
- * completion 接口在流式场景会尽早尝试发送标题，结束前还会再等一次以保证 title event
- * 尽量排在 done 前；非流式场景则复用同一个结果写入最终 JSON。这里缓存 promise 并静默
- * 吞掉标题生成/发送错误，避免标题辅助能力影响主回答链路。
+ * completion 接口在流式场景会尽早尝试发送标题；主回答结束时调用 `close()` 后，
+ * 迟到的标题不再写入当前 SSE，避免标题模型阻塞或污染已经结束的流。非流式场景则复用
+ * 同一个结果写入最终 JSON。这里缓存 promise 并静默吞掉标题生成/发送错误，避免标题
+ * 辅助能力影响主回答链路。
  */
 export const createGeneratedChatTitleSender = ({
   titleGeneration,
@@ -269,6 +310,7 @@ export const createGeneratedChatTitleSender = ({
   }) => void;
 }) => {
   let titleSendPromise: Promise<string | undefined> | undefined;
+  let closed = false;
 
   const send = () => {
     titleSendPromise ??= (async () => {
@@ -280,7 +322,7 @@ export const createGeneratedChatTitleSender = ({
 
         const { title } = titleResult;
 
-        if (stream && detail) {
+        if (stream && detail && !closed) {
           writeChatTitle?.({
             event: SseResponseEventEnum.chatTitle,
             data: {
@@ -299,6 +341,9 @@ export const createGeneratedChatTitleSender = ({
   };
 
   return {
-    send
+    send,
+    close() {
+      closed = true;
+    }
   };
 };

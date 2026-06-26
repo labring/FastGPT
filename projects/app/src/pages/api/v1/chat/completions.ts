@@ -438,7 +438,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       responseDetail: showCite
     });
     if (stream) {
-      await titleSender.send();
+      titleSender.close();
 
       workflowResponseWrite({
         event: SseResponseEventEnum.answer,

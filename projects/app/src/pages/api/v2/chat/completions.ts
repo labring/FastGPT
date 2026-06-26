@@ -451,7 +451,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     });
 
     if (stream) {
-      await titleSender.send();
+      titleSender.close();
 
       streamResponseContext.responseWrite({
         event: SseResponseEventEnum.answer,

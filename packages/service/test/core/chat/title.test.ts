@@ -97,7 +97,7 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
     expect(systemPrompt).toContain("Never answer the user's message");
   });
 
-  it('does not write or return a title when title generation fails', async () => {
+  it('falls back to local question text when title generation fails', async () => {
     createLLMResponseMock.mockResolvedValue({
       answerText: '',
       usage: {
@@ -122,8 +122,11 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
     });
 
     const chat = await MongoChat.findOne({ appId: base.appId, chatId: base.chatId }).lean();
-    expect(chat?.title).toBe('');
-    expect(result).toBeUndefined();
+    expect(chat?.title).toBe('介绍一下知识库配置');
+    expect(result).toEqual({
+      title: '介绍一下知识库配置',
+      updated: true
+    });
   });
 
   it('uses local question text fallback when title model is unavailable', async () => {
@@ -151,6 +154,40 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
       updated: true
     });
     expect(createLLMResponseMock).not.toHaveBeenCalled();
+  });
+
+  it('falls back to local question text when title generation is too slow', async () => {
+    vi.useFakeTimers();
+    try {
+      createLLMResponseMock.mockReturnValue(new Promise(() => {}));
+      await createChat();
+
+      const resultPromise = syncGeneratedChatTitleFromUserContent({
+        ...base,
+        userContent: {
+          obj: ChatRoleEnum.Human,
+          value: [
+            {
+              text: {
+                content: 'How do I deploy FastGPT with Docker and Kubernetes?'
+              }
+            }
+          ]
+        }
+      });
+
+      await vi.advanceTimersByTimeAsync(5000);
+      const result = await resultPromise;
+
+      const chat = await MongoChat.findOne({ appId: base.appId, chatId: base.chatId }).lean();
+      expect(chat?.title).toBe('How do I deploy Fast');
+      expect(result).toEqual({
+        title: 'How do I deploy Fast',
+        updated: true
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('truncates model title input question to 1000 characters', async () => {
@@ -208,7 +245,7 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
     expect(createLLMResponseMock).not.toHaveBeenCalled();
   });
 
-  it('does not write or return a title when model returns a placeholder title', async () => {
+  it('falls back to local question text when model returns a placeholder title', async () => {
     createLLMResponseMock.mockResolvedValue({
       answerText: '新对话',
       usage: {
@@ -233,8 +270,11 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
     });
 
     const chat = await MongoChat.findOne({ appId: base.appId, chatId: base.chatId }).lean();
-    expect(chat?.title).toBe('');
-    expect(result).toBeUndefined();
+    expect(chat?.title).toBe('介绍一下知识库配置');
+    expect(result).toEqual({
+      title: '介绍一下知识库配置',
+      updated: true
+    });
   });
 
   it('does not call title model when caller says title is not writable', async () => {
@@ -476,5 +516,33 @@ describe('createGeneratedChatTitleSender', () => {
         title: 'Generated Title'
       }
     });
+  });
+
+  it('does not write a stream title after the sender is closed', async () => {
+    const writeChatTitle = vi.fn();
+    let resolveTitle:
+      | ((value: { title: string; updated: boolean } | undefined) => void)
+      | undefined;
+    const titleGeneration = new Promise<{ title: string; updated: boolean } | undefined>(
+      (resolve) => {
+        resolveTitle = resolve;
+      }
+    );
+    const titleSender = createGeneratedChatTitleSender({
+      titleGeneration,
+      stream: true,
+      detail: true,
+      writeChatTitle
+    });
+
+    const title = titleSender.send();
+    titleSender.close();
+    resolveTitle?.({
+      title: 'Slow Generated Title',
+      updated: true
+    });
+
+    await expect(title).resolves.toBe('Slow Generated Title');
+    expect(writeChatTitle).not.toHaveBeenCalled();
   });
 });
