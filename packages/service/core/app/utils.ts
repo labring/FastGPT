@@ -79,7 +79,7 @@ export async function rewriteAppWorkflowToDetail({
     } catch (error) {
       return {
         success: false,
-        error: getErrText(error)
+        error: getErrText(error, '', lang)
       };
     }
   };

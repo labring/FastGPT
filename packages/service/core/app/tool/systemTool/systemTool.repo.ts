@@ -16,7 +16,7 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import type { PluginListParamsType } from '@fastgpt/global/sdk/fastgpt-plugin';
-import { pluginClient } from '../../../../thirdProvider/fastgptPlugin';
+import { pluginClient, withPluginClientLocale } from '../../../../thirdProvider/fastgptPlugin';
 import { MongoSystemTool } from '../../../plugin/tool/systemToolSchema';
 import { MongoApp } from '../../schema';
 import {
@@ -165,13 +165,17 @@ export class SystemToolRepo {
    */
   private async getToolsetChildIconMap({
     pluginId,
-    source
+    source,
+    lang
   }: {
     pluginId: string;
     source: string;
+    lang?: `${LangEnum}`;
   }): Promise<Map<string, string>> {
     try {
-      const detail = await pluginClient.getTool({ pluginId, source });
+      const detail = await withPluginClientLocale(lang, () =>
+        pluginClient.getTool({ pluginId, source })
+      );
       return getChildIconMap(detail.children);
     } catch {
       return new Map();
@@ -192,11 +196,13 @@ export class SystemToolRepo {
   }): Promise<SystemToolListItemType[]> => {
     // 1. get all tools from plugin by sources
     const filteredTags = tags ? filterPluginTags(tags) : undefined;
-    const tools = await pluginClient.listTools({
-      op,
-      sources,
-      tags: filteredTags
-    });
+    const tools = await withPluginClientLocale(lang, () =>
+      pluginClient.listTools({
+        op,
+        sources,
+        tags: filteredTags
+      })
+    );
 
     // 2. 加载数据库中的插件配置，将所有插件 normalize
     const DBPlugins = await this.getAllSystemToolRecords();
@@ -304,12 +310,14 @@ export class SystemToolRepo {
 
     // System tool
     const pluginSource = getPluginClientSource({ idSource, runtimeSource: toolSource });
-    const tool = await pluginClient.getTool({
-      pluginId: parentPluginId,
-      version,
-      source: pluginSource,
-      ...(fallbackLatestVersion ? { fallbackLatestVersion: true } : {})
-    });
+    const tool = await withPluginClientLocale(lang, () =>
+      pluginClient.getTool({
+        pluginId: parentPluginId,
+        version,
+        source: pluginSource,
+        ...(fallbackLatestVersion ? { fallbackLatestVersion: true } : {})
+      })
+    );
 
     const getToolParent = tool.isToolset && !getChildToolDetail;
 
@@ -453,9 +461,11 @@ export class SystemToolRepo {
     }
 
     const pluginSource = getPluginClientSource({ idSource, runtimeSource: source });
-    const tools = await pluginClient.listTools({
-      sources: [pluginSource]
-    });
+    const tools = await withPluginClientLocale(lang, () =>
+      pluginClient.listTools({
+        sources: [pluginSource]
+      })
+    );
     const tool = tools.find((item) => item.pluginId === parentPluginId);
     if (!tool) return Promise.reject(PluginErrEnum.unExist);
 
@@ -562,7 +572,8 @@ export class SystemToolRepo {
     const pluginSource = getPluginClientSource({ idSource, runtimeSource: source });
     const childIconMap = await this.getToolsetChildIconMap({
       pluginId: parentPluginId,
-      source: pluginSource
+      source: pluginSource,
+      lang
     });
     if (childIconMap.size === 0) return parent;
 
@@ -582,7 +593,8 @@ export class SystemToolRepo {
 
   getVersions = async ({
     pluginId,
-    source = 'system'
+    source = 'system',
+    lang
   }: {
     pluginId: string;
     source?: string;
@@ -610,10 +622,12 @@ export class SystemToolRepo {
 
     const parentToolId = rawPluginId.split('/')[0];
 
-    const versions = await pluginClient.listPluginVersions({
-      pluginId: parentToolId,
-      source: getPluginClientSource({ idSource, runtimeSource: source })
-    });
+    const versions = await withPluginClientLocale(lang, () =>
+      pluginClient.listPluginVersions({
+        pluginId: parentToolId,
+        source: getPluginClientSource({ idSource, runtimeSource: source })
+      })
+    );
 
     return versions.map((item) => ({
       version: item.version

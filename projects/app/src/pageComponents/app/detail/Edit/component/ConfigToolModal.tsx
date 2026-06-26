@@ -137,6 +137,7 @@ const ConfigToolModal = ({
                             courseUrl={configTool?.courseUrl}
                             readmeUrl={configTool?.readmeUrl}
                             parentId={configTool?.pluginId}
+                            source={configTool?.source}
                             onClose={setFalseSecretModal}
                             onSubmit={(data) => {
                               onChange(data);

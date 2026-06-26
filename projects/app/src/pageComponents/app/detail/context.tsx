@@ -25,6 +25,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { AppTypeList } from '@fastgpt/global/core/app/constants';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { hasDebugToolInNodes } from '@fastgpt/global/core/app/tool/utils';
+import { ToastHandledError } from '@fastgpt/global/common/error/utils';
 
 const InfoModal = dynamic(() => import('./InfoModal'));
 const TagsEditModal = dynamic(() => import('./TagsEditModal'));
@@ -172,7 +173,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
             title: '存在本地调试插件，请移除后再发布',
             status: 'warning'
           });
-          return Promise.reject(new Error('Debug tool cannot be published'));
+          return Promise.reject(new ToastHandledError('Debug tool cannot be published'));
         }
         await postPublishApp(appId, data);
         setAppDetail((state) => ({

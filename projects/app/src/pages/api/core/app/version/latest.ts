@@ -5,6 +5,7 @@ import { WritePermissionVal } from '@fastgpt/global/support/permission/constant'
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import { rewriteAppWorkflowToDetail } from '@fastgpt/service/core/app/utils';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import {
   GetLatestAppVersionQuerySchema,
   GetLatestAppVersionResponseSchema,
@@ -34,7 +35,8 @@ async function handler(
     nodes: version.nodes,
     teamId,
     isRoot,
-    ownerTmbId: app.tmbId
+    ownerTmbId: app.tmbId,
+    lang: getLocale(req)
   });
 
   return GetLatestAppVersionResponseSchema.parse(version);

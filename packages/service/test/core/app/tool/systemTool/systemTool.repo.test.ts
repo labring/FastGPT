@@ -24,7 +24,8 @@ vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin', () => ({
     listTools: mocks.listTools,
     listPluginVersions: mocks.listPluginVersions,
     getTool: mocks.getTool
-  }
+  },
+  withPluginClientLocale: (_lang: string | undefined, fn: () => Promise<unknown>) => fn()
 }));
 
 vi.mock('@fastgpt/service/core/plugin/tool/systemToolSchema', () => ({

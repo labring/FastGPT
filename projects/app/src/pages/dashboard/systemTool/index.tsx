@@ -17,7 +17,6 @@ import {
   Input,
   InputGroup,
   ModalBody,
-  Textarea,
   VStack,
   useDisclosure
 } from '@chakra-ui/react';
@@ -146,6 +145,9 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
               >
                 {t('app:core.module.template.System Tools')}
               </Box>
+              <Button mr={4} variant={'whiteBase'} onClick={debugDisclosure.onOpen}>
+                本地调试
+              </Button>
               {feConfigs?.docUrl && (
                 <Button
                   mr={4}
@@ -156,16 +158,6 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                   {t('app:toolkit_contribute_resource')}
                 </Button>
               )}
-              <Button
-                mr={4}
-                variant={debugSession ? 'primaryOutline' : 'whiteBase'}
-                leftIcon={
-                  <MyIcon name={debugSession ? 'common/check' : 'core/workflow/debug'} w={'16px'} />
-                }
-                onClick={debugDisclosure.onOpen}
-              >
-                {debugSession ? '正在调试' : '本地调试'}
-              </Button>
               {feConfigs?.submitPluginRequestUrl && (
                 <Button
                   variant={'whiteBase'}
@@ -366,7 +358,7 @@ function isActiveDebugSession(
 
 const terminalCommandStyle = {
   fontFamily: 'Menlo, Monaco, Consolas, monospace',
-  whiteSpace: 'pre-wrap',
+  whiteSpace: 'pre-wrap' as const,
   wordBreak: 'break-all' as const
 };
 
@@ -405,6 +397,7 @@ function PluginDebugModal({
     () => session?.connectionUrl || buildPluginDebugConnectionLink(connectionKey),
     [connectionKey, session?.connectionUrl]
   );
+  const hasConnectionUrl = Boolean(connectionUrl);
   const tutorialUrl = getDocPath('/plugin/system-tool-development');
 
   const saveDebugSession = (data: EnablePluginDebugChannelResponseType) => {
@@ -458,14 +451,15 @@ function PluginDebugModal({
       }
     }
   );
+  const isRefreshingConnection = isCreating || isRefreshingKey;
 
   return (
     <MyModal
       isOpen
       onClose={onClose}
       showCloseButton={false}
-      w={'560px'}
-      maxW={['calc(100vw - 20px)', '560px']}
+      w={'580px'}
+      maxW={['calc(100vw - 20px)', '580px']}
       borderRadius={'10px'}
       overflow={'hidden'}
     >
@@ -494,62 +488,109 @@ function PluginDebugModal({
         </Box>
 
         <Box mt={6}>
-          <Box color={'myGray.900'} fontSize={'14px'} fontWeight={'500'} lineHeight={'20px'}>
-            连接链接
-          </Box>
           <Flex
+            color={'myGray.900'}
+            fontSize={'14px'}
+            fontWeight={'500'}
+            lineHeight={'20px'}
+            alignItems={'center'}
+            justifyContent={'space-between'}
+          >
+            <Box>调试链接</Box>
+            {session && (
+              <Button
+                variant={'unstyled'}
+                minW={'auto'}
+                h={'20px'}
+                px={1}
+                display={'flex'}
+                alignItems={'center'}
+                justifyContent={'center'}
+                gap={1}
+                color={'primary.600'}
+                fontSize={'14px'}
+                fontWeight={'500'}
+                isLoading={isRefreshingConnection}
+                onClick={() => refreshConnectionKey({})}
+                aria-label={'刷新连接链接'}
+              >
+                <MyIcon name={'common/refresh'} w={'16px'} />
+                <Box as={'span'} lineHeight={'20px'}>
+                  刷新链接
+                </Box>
+              </Button>
+            )}
+          </Flex>
+          <Box
             mt={2}
-            minH={session ? '76px' : '36px'}
-            alignItems={session ? 'stretch' : 'center'}
-            border={'base'}
+            position={'relative'}
+            minH={'36px'}
+            border={'1px solid'}
             borderColor={'myGray.200'}
             borderRadius={'6px'}
             bg={'white'}
-            pl={session ? 0 : 3}
-            pr={2}
-            overflow={'hidden'}
+            px={3}
+            py={2}
+            pr={'44px'}
           >
-            <Box flex={'1 1 0'} minW={0} color={session ? 'myGray.900' : 'myGray.500'}>
-              {session ? (
-                <Textarea
-                  value={connectionUrl || '请刷新连接链接后复制'}
-                  readOnly
-                  resize={'none'}
-                  border={'none'}
-                  minH={'74px'}
-                  px={3}
-                  py={2}
-                  fontSize={'13px'}
+            {session ? (
+              <>
+                <Box
+                  color={'myGray.900'}
+                  fontSize={'14px'}
                   lineHeight={'20px'}
                   sx={terminalCommandStyle}
-                  _focusVisible={{ boxShadow: 'none' }}
-                />
-              ) : (
-                <Box fontSize={'14px'} lineHeight={'20px'}>
+                >
+                  {connectionUrl || '请刷新连接链接后复制'}
+                </Box>
+                <Flex
+                  position={'absolute'}
+                  top={'8px'}
+                  right={'10px'}
+                  h={'18px'}
+                  alignItems={'center'}
+                  justifyContent={'center'}
+                >
+                  <Button
+                    variant={'unstyled'}
+                    minW={'18px'}
+                    h={'18px'}
+                    color={hasConnectionUrl ? 'myGray.500' : 'myGray.300'}
+                    cursor={hasConnectionUrl ? 'pointer' : 'not-allowed'}
+                    onClick={() => hasConnectionUrl && copyData(connectionUrl)}
+                    aria-label={'复制连接链接'}
+                    isDisabled={!hasConnectionUrl}
+                  >
+                    <MyIcon name={'copy'} w={'18px'} />
+                  </Button>
+                </Flex>
+              </>
+            ) : (
+              <>
+                <Box color={'myGray.500'} fontSize={'14px'} lineHeight={'20px'}>
                   点击右边“生成链接”查看
                 </Box>
-              )}
-            </Box>
-            <Button
-              variant={'unstyled'}
-              minW={'auto'}
-              h={session ? '34px' : '28px'}
-              alignSelf={session ? 'center' : 'auto'}
-              px={1}
-              color={'primary.600'}
-              fontSize={'14px'}
-              fontWeight={'500'}
-              isLoading={isCreating || isRefreshingKey}
-              onClick={() => {
-                if (session && connectionUrl) return copyData(connectionUrl);
-                if (session) return refreshConnectionKey({});
-                return createSession({});
-              }}
-              aria-label={session ? '复制连接链接' : '生成连接链接'}
-            >
-              {session ? (connectionUrl ? '复制链接' : '刷新链接') : '生成链接'}
-            </Button>
-          </Flex>
+                <Button
+                  variant={'unstyled'}
+                  position={'absolute'}
+                  top={'50%'}
+                  right={'10px'}
+                  transform={'translateY(-50%)'}
+                  minW={'auto'}
+                  h={'20px'}
+                  px={1}
+                  color={'primary.600'}
+                  fontSize={'14px'}
+                  fontWeight={'500'}
+                  isLoading={isCreating}
+                  onClick={() => createSession({})}
+                  aria-label={'生成连接链接'}
+                >
+                  生成链接
+                </Button>
+              </>
+            )}
+          </Box>
         </Box>
 
         <Flex mt={6} h={'32px'} alignItems={'center'} justifyContent={'space-between'} gap={4}>
@@ -570,7 +611,11 @@ function PluginDebugModal({
               variant={'whiteBase'}
               h={'32px'}
               minW={'82px'}
-              fontSize={'14px'}
+              px={3.5}
+              fontSize={'12px'}
+              fontWeight={'500'}
+              color={'primary.700'}
+              borderColor={'primary.300'}
               isLoading={isDisconnecting}
               onClick={() => disconnectSession()}
             >

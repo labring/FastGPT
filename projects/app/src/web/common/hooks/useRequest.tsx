@@ -1,7 +1,7 @@
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useMutation } from '@tanstack/react-query';
 import type { UseMutationOptions } from '@tanstack/react-query';
-import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getErrText, ToastHandledError } from '@fastgpt/global/common/error/utils';
 import { useTranslation } from 'next-i18next';
 
 interface Props extends UseMutationOptions<any, any, any, any> {
@@ -24,6 +24,7 @@ export const useRequest = ({ successToast, errorToast, onSuccess, onError, ...pr
     },
     onError(err: any, variables: void, context: unknown) {
       onError?.(err, variables, context);
+      if (err instanceof ToastHandledError) return;
 
       if (errorToast !== undefined) {
         const errText = t(getErrText(err, errorToast || '') as any);

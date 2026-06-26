@@ -4,13 +4,60 @@ import {
   type ToolAnswerType,
   type ToolHandlerReturnType
 } from '@fastgpt/global/sdk/fastgpt-plugin';
+import type { localeType } from '@fastgpt/global/common/i18n/type';
+import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
+import { AsyncLocalStorage } from 'async_hooks';
 
 export const PLUGIN_BASE_URL = serviceEnv.PLUGIN_BASE_URL ?? '';
 export const PLUGIN_TOKEN = serviceEnv.PLUGIN_TOKEN;
 
+const PluginClientLocaleContext = new AsyncLocalStorage<localeType | undefined>();
+
+export const withPluginClientLocale = <T>(lang: localeType | undefined, fn: () => Promise<T>) => {
+  return PluginClientLocaleContext.run(lang, fn);
+};
+
+const localizePluginErrorResponse = async (response: Response): Promise<Response> => {
+  const lang = PluginClientLocaleContext.getStore();
+  if (response.ok || !lang) return response;
+
+  const contentType = response.headers.get('Content-Type') ?? '';
+  if (!contentType.includes('application/json')) return response;
+
+  const payload = await response
+    .clone()
+    .json()
+    .catch(() => undefined);
+  const reason = payload?.error?.reason;
+  if (!reason || typeof reason !== 'object' || typeof reason.en !== 'string') return response;
+  const headers = new Headers(response.headers);
+  headers.delete('Content-Length');
+
+  return new Response(
+    JSON.stringify({
+      ...payload,
+      error: {
+        ...payload.error,
+        message: parseI18nString(reason, lang)
+      }
+    }),
+    {
+      status: response.status,
+      statusText: response.statusText,
+      headers
+    }
+  );
+};
+
+const localizedFetch: typeof globalThis.fetch = async (input, init) => {
+  const response = await fetch(input, init);
+  return localizePluginErrorResponse(response);
+};
+
 export const pluginClient = new FastGPTPluginClient({
   baseUrl: PLUGIN_BASE_URL,
-  token: PLUGIN_TOKEN
+  token: PLUGIN_TOKEN,
+  fetch: localizedFetch
 });
 
 type RunPluginToolStreamParams = {

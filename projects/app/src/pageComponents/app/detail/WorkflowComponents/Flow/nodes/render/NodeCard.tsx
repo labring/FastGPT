@@ -418,6 +418,7 @@ const NodeCard = (props: Props) => {
                       readmeUrl={node?.readmeUrl}
                       hasSystemSecret={node?.hasSystemSecret}
                       pluginId={node?.pluginId}
+                      source={node?.source}
                       systemKeyCost={node?.systemKeyCost}
                       inputConfig={inputConfig}
                     />
@@ -793,6 +794,7 @@ const MenuRender = React.memo(function MenuRender({
           outputs: node.data.outputs,
 
           pluginId: node.data.pluginId,
+          source: node.data.source,
           isFolder: node.data.isFolder,
           pluginData: node.data.pluginData,
 
@@ -822,6 +824,7 @@ const MenuRender = React.memo(function MenuRender({
               position: { x: node.position.x + 200, y: node.position.y + 50 },
               showStatus: template.showStatus,
               pluginId: template.pluginId,
+              source: template.source,
               inputs: template.inputs,
               outputs: template.outputs,
               version: template.version,
@@ -1075,6 +1078,7 @@ const NodeSecret = React.memo(function NodeSecret({
   readmeUrl,
   hasSystemSecret,
   pluginId,
+  source,
   systemKeyCost,
   inputConfig
 }: {
@@ -1084,6 +1088,7 @@ const NodeSecret = React.memo(function NodeSecret({
   readmeUrl?: string;
   hasSystemSecret?: boolean;
   pluginId?: string;
+  source?: string;
   systemKeyCost?: number;
   inputConfig: FlowNodeInputItemType | undefined;
 }) {
@@ -1134,6 +1139,7 @@ const NodeSecret = React.memo(function NodeSecret({
           inputConfig={inputConfig}
           hasSystemSecret={hasSystemSecret}
           parentId={pluginId}
+          source={source}
           secretCost={systemKeyCost}
         />
       )}
