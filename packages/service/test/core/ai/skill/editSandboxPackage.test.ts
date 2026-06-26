@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 const mocks = vi.hoisted(() => ({
   connectToSandbox: vi.fn(),
@@ -514,6 +515,8 @@ describe('createEditDebugSandbox', () => {
     expect(getSandboxClient).toHaveBeenCalledWith(
       {
         appId: skillId,
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        sourceId: skillId,
         sandboxId: `edit-debug-${skillId}`,
         userId: '',
         chatId: 'edit-debug'
@@ -679,6 +682,8 @@ describe('createEditDebugSandbox', () => {
       source: archivedStaleInstance,
       provider: 'test-provider',
       appId: skillId,
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: skillId,
       userId: '',
       chatId: 'edit-debug',
       type: 'edit-debug'

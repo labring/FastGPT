@@ -48,6 +48,8 @@ describe('prepareAgentSandboxRuntime', () => {
 
     expect(mocks.getSandboxClient).toHaveBeenCalledWith({
       sandboxId: generateSandboxId('app_1', 'user_1', 'chat_1'),
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app_1',
       appId: 'app_1',
       userId: 'user_1',
       chatId: 'chat_1'
@@ -68,6 +70,8 @@ describe('prepareAgentSandboxRuntime', () => {
 
     expect(mocks.getSandboxClient).toHaveBeenCalledWith({
       sandboxId: getEditDebugSandboxId('skill_1'),
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: 'skill_1',
       appId: 'skill_1',
       userId: '',
       chatId: 'edit-debug'

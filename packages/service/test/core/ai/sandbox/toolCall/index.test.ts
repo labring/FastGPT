@@ -90,7 +90,12 @@ describe('sandbox toolCall index', () => {
     });
 
     expect(runtimeMock.getSandboxClient).toHaveBeenCalledWith({
-      sandboxId: generateSandboxId('app', 'user', 'chat')
+      sandboxId: generateSandboxId('app', 'user', 'chat'),
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app',
+      appId: 'app',
+      userId: 'user',
+      chatId: 'chat'
     });
   });
 
