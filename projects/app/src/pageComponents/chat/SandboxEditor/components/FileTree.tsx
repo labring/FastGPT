@@ -16,6 +16,7 @@ import { Trans, useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import type { ExecuteResult } from '@fastgpt-sdk/sandbox-adapter';
 import {
   DndContext,
   useSensor,
@@ -89,11 +90,17 @@ type Props = {
   onMoveFile: (srcPath: string, targetDirPath: string) => Promise<void>;
   onDeleteFile: (path: string) => Promise<void>;
   onUploadFiles: (files: FileList, targetDirPath: string) => Promise<void>;
+  onExecCommand: (command: string, timeoutMs?: number) => Promise<ExecuteResult>;
+  onRefreshWorkspace: (options?: { preserveExpandedDirs?: boolean }) => Promise<void>;
   setExpandedDirs: React.Dispatch<React.SetStateAction<Set<string>>>;
   sandboxTarget: ChatTargetInputType;
   chatId: string;
   outLinkAuthData?: OutLinkChatAuthProps;
   showFileOps?: boolean;
+  showDownload?: boolean;
+  enablePathCopy?: boolean;
+  enableZipExtract?: boolean;
+  enableMultiSelect?: boolean;
   isLoading?: boolean;
 };
 
@@ -111,6 +118,27 @@ const FileTreeSkeleton = () => {
     </VStack>
   );
 };
+
+const shellQuote = (value: string) => `'${value.replace(/'/g, `'\\''`)}'`;
+
+const getSandboxCommandPath = (path: string) =>
+  path === '.' ? '.' : `./${path.replace(/^\.\//, '')}`;
+
+const buildResolveAbsolutePathsCommand = (paths: string[]) => {
+  const quotedPaths = paths.map((path) => shellQuote(getSandboxCommandPath(path))).join(' ');
+  return [
+    'workspace_root=$(pwd -P)',
+    `for path in ${quotedPaths}; do`,
+    '  if [ "$path" = "." ]; then',
+    "    printf '%s\\n' \"$workspace_root\"",
+    '  else',
+    "    printf '%s/%s\\n' \"$workspace_root\" \"${path#./}\"",
+    '  fi',
+    'done'
+  ].join('\n');
+};
+
+const getIsZipFile = (node: TreeNode) => node.type === 'file' && /\.zip$/i.test(node.name);
 
 const DroppableRootBox = ({
   children,
@@ -170,11 +198,17 @@ const FileTree = ({
   onMoveFile,
   onDeleteFile,
   onUploadFiles,
+  onExecCommand,
+  onRefreshWorkspace,
   setExpandedDirs,
   sandboxTarget,
   chatId,
   outLinkAuthData,
   showFileOps = true,
+  showDownload = true,
+  enablePathCopy = false,
+  enableZipExtract = false,
+  enableMultiSelect = false,
   isLoading = false
 }: Props) => {
   const { t } = useTranslation(['chat', 'common']);
@@ -190,6 +224,11 @@ const FileTree = ({
 
   const [activeNode, setActiveNode] = useState<TreeNode | null>(null);
   const [activeOverPath, setActiveOverPath] = useState<string | null>(null);
+  const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
+  const effectiveSelectedPaths =
+    enableMultiSelect && selectedPath && !selectedPaths.has(selectedPath)
+      ? new Set([selectedPath])
+      : selectedPaths;
 
   const findNodeByPath = (nodes: TreeNode[], targetPath: string): TreeNode | null => {
     for (const node of nodes) {
@@ -208,6 +247,57 @@ const FileTree = ({
     return parts.join('/') || '.';
   };
 
+  // 父目录和子项同时被选中时，只操作父目录，避免重复移动/删除同一棵子树。
+  const getTopLevelPaths = (paths: string[]) => {
+    const uniquePaths = Array.from(new Set(paths)).filter((path) => path && path !== '.');
+    const result: string[] = [];
+
+    uniquePaths
+      .sort((a, b) => a.split('/').length - b.split('/').length || a.localeCompare(b))
+      .forEach((path) => {
+        if (!result.some((parentPath) => path.startsWith(parentPath + '/'))) {
+          result.push(path);
+        }
+      });
+
+    return result;
+  };
+
+  const getOperationSelectedPaths = (basePath: string) => {
+    if (enableMultiSelect && effectiveSelectedPaths.has(basePath)) {
+      return getTopLevelPaths(Array.from(effectiveSelectedPaths));
+    }
+    return basePath === '.' ? [] : [basePath];
+  };
+
+  const selectSingleNode = (path: string) => {
+    setSelectedPath(path);
+    setSelectedPaths(new Set([path]));
+  };
+
+  const toggleSelectedNode = (path: string) => {
+    if (!enableMultiSelect) {
+      selectSingleNode(path);
+      return;
+    }
+
+    const next = new Set(effectiveSelectedPaths);
+    if (next.has(path)) {
+      next.delete(path);
+      if (next.size === 0) {
+        next.add(path);
+        setSelectedPath(path);
+      } else {
+        const remainingPaths = Array.from(next);
+        setSelectedPath(remainingPaths[remainingPaths.length - 1] || '');
+      }
+    } else {
+      next.add(path);
+      setSelectedPath(path);
+    }
+    setSelectedPaths(next);
+  };
+
   const getRealOverDestPath = () => {
     if (!activeOverPath) return null;
     if (activeOverPath === '.') return '.';
@@ -222,6 +312,11 @@ const FileTree = ({
   const handleDragStart = (event: DragStartEvent) => {
     const node = event.active.data.current?.node as TreeNode | undefined;
     if (node) {
+      if (!enableMultiSelect || !effectiveSelectedPaths.has(node.path)) {
+        selectSingleNode(node.path);
+      } else {
+        setSelectedPath(node.path);
+      }
       setActiveNode(node);
       setActiveOverPath(null);
     }
@@ -303,7 +398,14 @@ const FileTree = ({
       }
     }
 
-    if (destDirPath === srcPath || destDirPath.startsWith(srcPath + '/')) {
+    const sourcePaths = getOperationSelectedPaths(srcPath);
+    if (sourcePaths.length === 0) return;
+
+    if (
+      sourcePaths.some(
+        (sourcePath) => destDirPath === sourcePath || destDirPath.startsWith(sourcePath + '/')
+      )
+    ) {
       toast({
         title: t('chat:sandbox_move_failed'),
         description: t('chat:sandbox_move_into_self_forbidden'),
@@ -312,19 +414,31 @@ const FileTree = ({
       return;
     }
 
-    const lastSlash = srcPath.lastIndexOf('/');
-    const currentParentPath = lastSlash === -1 ? '.' : srcPath.substring(0, lastSlash);
-    if (currentParentPath === destDirPath) {
-      return;
-    }
+    const movePlan = sourcePaths.map((sourcePath) => {
+      const lastSlash = sourcePath.lastIndexOf('/');
+      const currentParentPath = lastSlash === -1 ? '.' : sourcePath.substring(0, lastSlash);
+      const sourceName = sourcePath.substring(lastSlash + 1);
+      const newPath = destDirPath === '.' ? sourceName : `${destDirPath}/${sourceName}`;
 
-    // 计算移动后的新绝对路径，并在前端同步更新展开的文件夹列表状态，防止移动后因路径失效导致文件夹自动折叠
-    const srcName = srcPath.substring(lastSlash + 1);
-    const newPath = destDirPath === '.' ? srcName : `${destDirPath}/${srcName}`;
+      return {
+        sourcePath,
+        currentParentPath,
+        newPath
+      };
+    });
+    const moveItems = movePlan.filter((item) => item.currentParentPath !== destDirPath);
+
+    if (moveItems.length === 0) return;
 
     // 校验重名冲突：目标路径是否已经存在同名节点
-    const conflictNode = findNodeByPath(filteredTree, newPath);
-    if (conflictNode) {
+    const newPathSet = new Set<string>();
+    const hasConflict =
+      moveItems.some((item) => {
+        if (newPathSet.has(item.newPath)) return true;
+        newPathSet.add(item.newPath);
+        return false;
+      }) || moveItems.some((item) => findNodeByPath(filteredTree, item.newPath));
+    if (hasConflict) {
       toast({
         title: t('chat:sandbox_move_failed'),
         description: t('chat:sandbox_file_already_exists'),
@@ -337,30 +451,53 @@ const FileTree = ({
     const shouldExpandDest = destDirPath !== '.' && destNode && destNode.loaded;
 
     setExpandedDirs((prev) => {
-      const next = new Set<string>();
-      prev.forEach((path) => {
-        if (path === srcPath) {
-          next.add(newPath);
-        } else if (path.startsWith(srcPath + '/')) {
-          next.add(newPath + path.substring(srcPath.length));
-        } else {
-          next.add(path);
-        }
+      let next = new Set(prev);
+
+      moveItems.forEach((item) => {
+        const updated = new Set<string>();
+        next.forEach((path) => {
+          if (path === item.sourcePath) {
+            updated.add(item.newPath);
+          } else if (path.startsWith(item.sourcePath + '/')) {
+            updated.add(item.newPath + path.substring(item.sourcePath.length));
+          } else {
+            updated.add(path);
+          }
+        });
+        next = updated;
       });
+
       if (shouldExpandDest) {
         next.add(destDirPath);
       }
       return next;
     });
 
+    const movedItems: typeof moveItems = [];
     try {
-      await onMoveFile(srcPath, destDirPath);
+      for (const item of moveItems) {
+        await onMoveFile(item.sourcePath, destDirPath);
+        movedItems.push(item);
+      }
+
+      const movedPathMap = new Map(movedItems.map((item) => [item.sourcePath, item.newPath]));
+      const activeMovedPath = movedPathMap.get(srcPath);
+      const nextSelectedPath =
+        activeMovedPath || movePlan.find((item) => item.sourcePath === srcPath)?.sourcePath || '';
+      setSelectedPaths(
+        new Set(movePlan.map((item) => movedPathMap.get(item.sourcePath) || item.sourcePath))
+      );
+      setSelectedPath(nextSelectedPath);
     } catch (error) {
-      toast({
-        title: t('chat:sandbox_move_failed'),
-        description: getErrText(error),
-        status: 'error'
-      });
+      if (movedItems.length > 0) {
+        const movedPathMap = new Map(movedItems.map((item) => [item.sourcePath, item.newPath]));
+        setSelectedPaths(
+          new Set(movePlan.map((item) => movedPathMap.get(item.sourcePath) || item.sourcePath))
+        );
+        const nextSelectedPath = movedPathMap.get(srcPath) || srcPath;
+        setSelectedPath(nextSelectedPath);
+      }
+      console.error('Failed to move selected files:', error);
     }
   };
 
@@ -441,13 +578,25 @@ const FileTree = ({
     setExpandedDirs(new Set());
   };
 
+  const getContextSelectedPaths = () => {
+    if (!contextMenu) return [];
+    if (enableMultiSelect && effectiveSelectedPaths.has(contextMenu.node.path)) {
+      return Array.from(effectiveSelectedPaths);
+    }
+    return [contextMenu.node.path];
+  };
+
   // 右键菜单动作分发
   const handleContextMenu = (e: React.MouseEvent, node: TreeNode) => {
     e.preventDefault();
     if (node.path === '.') {
       if (!showFileOps) return;
     }
-    setSelectedPath(node.path);
+    if (enableMultiSelect && effectiveSelectedPaths.has(node.path)) {
+      setSelectedPath(node.path);
+    } else {
+      selectSingleNode(node.path);
+    }
     setContextMenu({
       x: e.clientX,
       y: e.clientY,
@@ -458,6 +607,7 @@ const FileTree = ({
   const handleBlankContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     if (!showFileOps) return;
+    selectSingleNode('.');
     setContextMenu({
       x: e.clientX,
       y: e.clientY,
@@ -521,13 +671,20 @@ const FileTree = ({
   const handleCtxDelete = () => {
     if (!contextMenu) return;
     const node = contextMenu.node;
+    const deletePaths = getOperationSelectedPaths(node.path);
+    if (deletePaths.length === 0) return;
+
+    const deleteName =
+      deletePaths.length > 1
+        ? t('chat:sandbox_selected_items_count', { count: deletePaths.length })
+        : node.name;
     setContextMenu(null);
     openConfirm({
       title: t('chat:sandbox_confirm_delete_title'),
       customContent: (
         <Trans
           i18nKey={i18nT('chat:sandbox_confirm_delete_content')}
-          values={{ name: node.name }}
+          values={{ name: deleteName }}
           components={{
             name: <Text as="span" fontWeight="600" color="red.600" />
           }}
@@ -536,13 +693,19 @@ const FileTree = ({
       confirmButtonVariant: 'dangerFill',
       onConfirm: async () => {
         try {
-          await onDeleteFile(node.path);
+          for (const path of deletePaths) {
+            await onDeleteFile(path);
+            setSelectedPaths(
+              (prev) =>
+                new Set(
+                  Array.from(prev).filter(
+                    (selectedPath) => selectedPath !== path && !selectedPath.startsWith(path + '/')
+                  )
+                )
+            );
+          }
+          setSelectedPaths(new Set());
         } catch (error) {
-          toast({
-            title: t('chat:sandbox_delete_failed'),
-            description: getErrText(error),
-            status: 'error'
-          });
           throw error;
         }
       }
@@ -551,18 +714,92 @@ const FileTree = ({
 
   const handleCtxDownload = async () => {
     if (!contextMenu) return;
-    const path = contextMenu.node.path;
+    const paths = getContextSelectedPaths();
     setContextMenu(null);
     try {
-      await downloadSandbox({
-        ...sandboxTarget,
-        chatId,
-        outLinkAuthData,
-        path: path
-      });
+      for (const path of paths) {
+        await downloadSandbox({
+          ...sandboxTarget,
+          chatId,
+          outLinkAuthData,
+          path
+        });
+      }
     } catch (error) {
       toast({
         title: t('chat:sandbox_download_failed'),
+        description: getErrText(error),
+        status: 'error'
+      });
+    }
+  };
+
+  const handleCtxCopyAbsolutePath = async () => {
+    if (!contextMenu) return;
+    const selectedPaths = getContextSelectedPaths();
+    setContextMenu(null);
+
+    try {
+      const result = await onExecCommand(buildResolveAbsolutePathsCommand(selectedPaths), 5000);
+      if (result.exitCode !== 0) {
+        throw new Error(result.stderr || result.stdout || t('chat:sandbox_copy_path_failed'));
+      }
+
+      const stdout = result.stdout.replace(/\r?\n$/, '');
+      const absolutePaths = stdout ? stdout.split(/\r?\n/) : [];
+      if (absolutePaths.length !== selectedPaths.length) {
+        throw new Error(t('chat:sandbox_copy_path_failed'));
+      }
+
+      await navigator.clipboard.writeText(absolutePaths.join('\n'));
+      toast({
+        title: t('chat:sandbox_copy_path_success'),
+        status: 'success'
+      });
+    } catch (error) {
+      toast({
+        title: t('chat:sandbox_copy_path_failed'),
+        description: getErrText(error),
+        status: 'error'
+      });
+    }
+  };
+
+  const handleCtxExtractZip = async () => {
+    if (!contextMenu || !getIsZipFile(contextMenu.node)) return;
+    const path = contextMenu.node.path;
+    setContextMenu(null);
+
+    const parentPath = getParentPath(path);
+
+    try {
+      const result = await onExecCommand(
+        `unzip -o ${shellQuote(getSandboxCommandPath(path))} -d ${shellQuote(
+          getSandboxCommandPath(parentPath)
+        )}`,
+        30000
+      );
+
+      if (result.exitCode !== 0) {
+        throw new Error(result.stderr || result.stdout || t('chat:sandbox_unzip_failed'));
+      }
+
+      setExpandedDirs((prev) => {
+        const next = new Set(prev);
+        if (parentPath !== '.') {
+          next.add(parentPath);
+        }
+        return next;
+      });
+      await onRefreshWorkspace({ preserveExpandedDirs: true });
+
+      toast({
+        title: t('chat:sandbox_unzip_success'),
+        status: 'success'
+      });
+    } catch (error) {
+      toast({
+        title: t('chat:sandbox_unzip_failed'),
         description: getErrText(error),
         status: 'error'
       });
@@ -578,7 +815,9 @@ const FileTree = ({
         loadingDirs={loadingDirs}
         activeFilePath={activeFilePath}
         selectedPath={selectedPath}
-        setSelectedPath={setSelectedPath}
+        selectedPaths={effectiveSelectedPaths}
+        selectSingleNode={selectSingleNode}
+        toggleSelectedNode={toggleSelectedNode}
         realOverDestPath={realOverDestPath}
         openFile={openFile}
         toggleDirectory={toggleDirectory}
@@ -591,9 +830,14 @@ const FileTree = ({
         onConfirmCreate={handleConfirmCreate}
         onCancelCreate={() => setCreatingNode(null)}
         showFileOps={showFileOps}
+        enableMultiSelect={enableMultiSelect}
       />
     ));
   };
+
+  const contextSelectedPaths = getContextSelectedPaths();
+  const isMultiContextMenu = contextSelectedPaths.length > 1;
+  const showContextSingleNodeOps = !isMultiContextMenu;
 
   return (
     <Box
@@ -856,16 +1100,38 @@ const FileTree = ({
               <ContextMenuItem label={t('chat:sandbox_new_folder')} onClick={handleCtxCreateDir} />
             </>
           )}
+          {contextMenu.node.path === '.' && showDownload && (
+            <>
+              {showFileOps && <Box borderBottom="1px solid" borderColor="myGray.100" my={1} />}
+              <ContextMenuItem label={t('chat:sandbox_download_all')} onClick={handleCtxDownload} />
+            </>
+          )}
           {contextMenu.node.path !== '.' && (
             <>
               {showFileOps && <Box borderBottom="1px solid" borderColor="myGray.100" my={1} />}
-              {showFileOps && (
+              {showContextSingleNodeOps && showFileOps && (
                 <ContextMenuItem label={t('chat:sandbox_rename')} onClick={handleCtxRename} />
               )}
-              <ContextMenuItem label={t('chat:sandbox_download')} onClick={handleCtxDownload} />
+              {enablePathCopy && (
+                <ContextMenuItem
+                  label={t('chat:sandbox_copy_absolute_path')}
+                  onClick={handleCtxCopyAbsolutePath}
+                />
+              )}
+              {showContextSingleNodeOps &&
+                showFileOps &&
+                enableZipExtract &&
+                getIsZipFile(contextMenu.node) && (
+                  <ContextMenuItem label={t('chat:sandbox_unzip')} onClick={handleCtxExtractZip} />
+                )}
+              {showDownload && (
+                <ContextMenuItem label={t('chat:sandbox_download')} onClick={handleCtxDownload} />
+              )}
               {showFileOps && (
                 <>
-                  <Box borderBottom="1px solid" borderColor="myGray.100" my={1} />
+                  {(showContextSingleNodeOps || enablePathCopy || showDownload) && (
+                    <Box borderBottom="1px solid" borderColor="myGray.100" my={1} />
+                  )}
                   <ContextMenuItem
                     label={t('chat:sandbox_delete')}
                     onClick={handleCtxDelete}

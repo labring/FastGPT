@@ -12,23 +12,17 @@ const EDIT_DEBUG_CHAT_ID = 'edit-debug';
 
 const Content = () => {
   const { t } = useTranslation();
-  const {
-    sandboxState,
-    skillId,
-    isSkillReady,
-    isUpgradeModalOpen,
-    handleSandboxError,
-    upgradeSandboxRuntime
-  } = useContextSelector(SkillDetailContext, (v) => ({
-    sandboxState: v.sandboxState,
-    skillId: v.skillId,
-    isSkillReady: v.isSkillReady,
-    isUpgradeModalOpen: v.isUpgradeModalOpen,
-    handleSandboxError: v.handleSandboxError,
-    upgradeSandboxRuntime: v.upgradeSandboxRuntime
-  }));
+  const { sandboxState, skillId, isSkillReady, handleSandboxError, upgradeSandboxRuntime } =
+    useContextSelector(SkillDetailContext, (v) => ({
+      sandboxState: v.sandboxState,
+      skillId: v.skillId,
+      isSkillReady: v.isSkillReady,
+      handleSandboxError: v.handleSandboxError,
+      upgradeSandboxRuntime: v.upgradeSandboxRuntime
+    }));
   const isSandboxReady = sandboxState === 'ready';
   const isUpgrading = sandboxState === 'upgrading';
+  const isUpgradeModalOpen = sandboxState === 'upgradeRequired';
   const canOperateSandbox = isSkillReady && isSandboxReady;
 
   return (
@@ -51,9 +45,13 @@ const Content = () => {
           chatId={EDIT_DEBUG_CHAT_ID}
           showFileOps={true}
           showDownload={false}
+          showFileTreeDownload={true}
           defaultViewMode={'source'}
           isPreparing={!isSandboxReady}
           showTerminal={true}
+          enablePathCopy={true}
+          enableZipExtract={true}
+          enableMultiSelect={true}
           onError={(err) => handleSandboxError(err.message)}
           headerRight={canOperateSandbox ? <RightHeader /> : undefined}
         />

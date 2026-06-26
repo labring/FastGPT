@@ -41,7 +41,6 @@ type SkillDetailContextType = {
   sandboxState: SandboxState;
   sandboxLogs: SandboxLogEntry[];
   sandboxError: string | null;
-  isUpgradeModalOpen: boolean;
   isSkillReady: boolean;
   startSandbox: () => void;
   restartSandbox: () => void;
@@ -62,7 +61,6 @@ export const SkillDetailContext = createContext<SkillDetailContextType>({
   sandboxState: 'idle',
   sandboxLogs: [],
   sandboxError: null,
-  isUpgradeModalOpen: false,
   isSkillReady: false,
   startSandbox: () => {},
   restartSandbox: () => {},
@@ -97,7 +95,6 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
   const [sandboxState, setSandboxState] = useState<SandboxState>('idle');
   const [sandboxLogs, setSandboxLogs] = useState<SandboxLogEntry[]>([]);
   const [sandboxError, setSandboxError] = useState<string | null>(null);
-  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const abortCtrlRef = useRef<AbortController | null>(null);
   const hasStartedRef = useRef(false);
   const saveAllRef = useRef<() => Promise<void>>();
@@ -150,9 +147,6 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
         setSandboxState('idle');
         setSandboxLogs([]);
         setSandboxError(null);
-        if (!runOptions?.archiveForUpgrade) {
-          setIsUpgradeModalOpen(false);
-        }
 
         let hasReceivedFirstEvent = false;
         let shouldRestartAfterArchive = false;
@@ -163,14 +157,12 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
               setSandboxState('ready');
               return;
             case 'runtimeUpgradeRequired':
-              setIsUpgradeModalOpen(true);
               setSandboxState('upgradeRequired');
               return;
             case 'runtimeUpgradeArchiving':
               setSandboxState('upgrading');
               return;
             case 'runtimeUpgradeArchived':
-              setIsUpgradeModalOpen(false);
               shouldRestartAfterArchive = true;
               return;
             case 'failed':
@@ -227,7 +219,6 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
 
   const upgradeSandboxRuntime = useCallback(() => {
     hasStartedRef.current = true;
-    setIsUpgradeModalOpen(false);
     startSandbox({ archiveForUpgrade: true });
   }, [startSandbox]);
 
@@ -326,7 +317,6 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
       sandboxState: visibleSandboxState,
       sandboxLogs,
       sandboxError: visibleSandboxError,
-      isUpgradeModalOpen,
       isSkillReady,
       startSandbox,
       restartSandbox,
@@ -345,7 +335,6 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
       visibleSandboxState,
       sandboxLogs,
       visibleSandboxError,
-      isUpgradeModalOpen,
       isSkillReady,
       startSandbox,
       restartSandbox,

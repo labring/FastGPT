@@ -1,11 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Box, Center, VStack, Flex } from '@chakra-ui/react';
-import { useTranslation } from 'next-i18next';
+import { Box, Flex } from '@chakra-ui/react';
 import { SkillDetailContext } from '../../dashboard/skill/detail/context';
 import { useContextSelector } from 'use-context-selector';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import type Editor from '@monaco-editor/react';
-import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 import FileTree from './components/FileTree';
@@ -27,9 +24,13 @@ export type Props = {
   outLinkAuthData?: OutLinkChatAuthProps;
   showFileOps?: boolean;
   showDownload?: boolean;
+  showFileTreeDownload?: boolean;
   defaultViewMode?: 'source' | 'preview';
   isPreparing?: boolean;
   showTerminal?: boolean;
+  enablePathCopy?: boolean;
+  enableZipExtract?: boolean;
+  enableMultiSelect?: boolean;
   onError?: (err: Error) => void;
   headerRight?: React.ReactNode;
   bg?: string;
@@ -42,14 +43,17 @@ const SandboxEditor = ({
   outLinkAuthData,
   showFileOps = true,
   showDownload = true,
+  showFileTreeDownload,
   defaultViewMode,
   isPreparing = false,
   showTerminal = false,
+  enablePathCopy = false,
+  enableZipExtract = false,
+  enableMultiSelect = false,
   onError,
   headerRight,
   bg
 }: Props) => {
-  const { t } = useTranslation();
   const saveAllRef = useContextSelector(SkillDetailContext, (v) => v.saveAllRef);
   const editorRef = useRef<SandboxEditorInstance>();
   const editorLayoutRef = useRef<HTMLDivElement>(null);
@@ -59,6 +63,7 @@ const SandboxEditor = ({
     () => resolveSandboxTarget({ appId, chatTarget }),
     [appId, chatTarget?.appId, chatTarget?.skillId]
   );
+  const fileTreeShowDownload = showFileTreeDownload ?? showDownload;
 
   const {
     fileTree,
@@ -78,6 +83,7 @@ const SandboxEditor = ({
     searchQuery,
     setSearchQuery,
     activeFile,
+    refreshWorkspace,
     openFile,
     closeFile,
     saveFile,
@@ -88,6 +94,7 @@ const SandboxEditor = ({
     onMoveFile,
     onDeleteFile,
     onUploadFiles,
+    onExecCommand,
     toggleDirectory
   } = useSandboxFileStore({
     sandboxTarget,
@@ -188,11 +195,17 @@ const SandboxEditor = ({
         onMoveFile={onMoveFile}
         onDeleteFile={onDeleteFile}
         onUploadFiles={onUploadFiles}
+        onExecCommand={onExecCommand}
+        onRefreshWorkspace={refreshWorkspace}
         setExpandedDirs={setExpandedDirs}
         sandboxTarget={sandboxTarget}
         chatId={chatId}
         outLinkAuthData={outLinkAuthData}
         showFileOps={showFileOps}
+        showDownload={fileTreeShowDownload}
+        enablePathCopy={enablePathCopy}
+        enableZipExtract={enableZipExtract}
+        enableMultiSelect={enableMultiSelect}
         isLoading={isInitialLoading}
       />
     );

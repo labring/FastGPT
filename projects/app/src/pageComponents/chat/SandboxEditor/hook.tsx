@@ -18,6 +18,7 @@ import type { TreeNode } from './components/FileTree';
 import type { OpenedFile } from './components/FileTabs';
 import type { ChatTargetInputType } from '@fastgpt/global/openapi/core/chat/api';
 import { getSandboxTargetId, resolveSandboxTarget } from './types';
+import type { ExecuteResult } from '@fastgpt-sdk/sandbox-adapter';
 import {
   getLanguageByFileName,
   getIsBinaryByLanguage,
@@ -408,7 +409,11 @@ export const useSandboxFileStore = ({
 
   // RPC 调用
   const rpcCall = useCallback(
-    async <T = unknown,>(method: string, params: unknown): Promise<T> => {
+    async <T = unknown,>(
+      method: string,
+      params: unknown,
+      options: { timeoutMs?: number } = {}
+    ): Promise<T> => {
       if (stoppedConnectErrorRef.current) {
         throw stoppedConnectErrorRef.current;
       }
@@ -426,7 +431,7 @@ export const useSandboxFileStore = ({
         const timer = window.setTimeout(() => {
           pendingRpcRequestsRef.current.delete(id);
           reject(new Error(`Sandbox RPC timeout: ${method}`));
-        }, RPC_TIMEOUT_MS);
+        }, options.timeoutMs ?? RPC_TIMEOUT_MS);
 
         pendingRpcRequestsRef.current.set(id, {
           resolve: (res) => {
@@ -1300,6 +1305,7 @@ export const useSandboxFileStore = ({
         updateStatePaths(destPath, srcPath);
         setFileTree((prevTree) => moveTreeNodeInTree(prevTree, destPath, srcParentPath));
         await refreshWorkspace({ preserveExpandedDirs: true });
+        throw error;
       }
     },
     [rpcCall, toast, t, refreshWorkspace]
@@ -1319,9 +1325,24 @@ export const useSandboxFileStore = ({
           description: getErrText(error),
           status: 'error'
         });
+        throw error;
       }
     },
     [rpcCall, toast, t]
+  );
+
+  const onExecCommand = useCallback(
+    async (command: string, timeoutMs?: number) => {
+      const execTimeoutMs = timeoutMs ?? RPC_TIMEOUT_MS;
+      return rpcCall<ExecuteResult>(
+        'fs/exec',
+        { command, timeoutMs },
+        {
+          timeoutMs: execTimeoutMs + 1000
+        }
+      );
+    },
+    [rpcCall]
   );
 
   // 上传文件
@@ -1491,6 +1512,7 @@ export const useSandboxFileStore = ({
     onMoveFile,
     onDeleteFile,
     onUploadFiles,
+    onExecCommand,
     toggleDirectory
   };
 };
