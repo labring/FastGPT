@@ -136,7 +136,7 @@ export async function getClientSystemToolPreviewNode({
   const systemToolRepo = SystemToolRepo.getInstance();
   const toolDetail = await systemToolRepo.getSystemToolDetail({
     pluginId,
-    version: versionId,
+    version: versionId || undefined,
     lang,
     source: toolSource
   });
