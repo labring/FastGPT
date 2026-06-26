@@ -22,7 +22,11 @@ async fn main() {
     );
 
     if !workspace.exists() {
-        let _ = tokio::fs::create_dir_all(workspace).await;
+        tokio::fs::create_dir_all(workspace)
+            .await
+            .unwrap_or_else(|err| {
+                panic!("Failed to create workspace root {:?}: {}", workspace, err)
+            });
     }
 
     let password = Arc::new(

@@ -1,5 +1,6 @@
 use std::collections::{BTreeSet, HashSet};
 use std::path::Path;
+use std::process::Stdio;
 use std::sync::{Arc, OnceLock};
 use std::time::{Duration, SystemTime};
 
@@ -10,8 +11,11 @@ use notify::{Config, Event, EventKind, EventKindMask, RecommendedWatcher, Recurs
 use notify_debouncer_full::{
     DebounceEventResult, DebouncedEvent, RecommendedCache, new_debouncer_opt,
 };
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use tokio::io::{AsyncRead, AsyncReadExt};
+use tokio::process::Command;
 use tokio::sync::{broadcast, mpsc};
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::tungstenite::protocol::frame::CloseFrame;
@@ -27,6 +31,99 @@ const FS_CHANGE_DEBOUNCE_MS: u64 = 500;
 const FS_CHANGE_MAX_PATHS: usize = 200;
 const FS_WATCH_BROADCAST_CAPACITY: usize = 128;
 const DEFAULT_MAX_FILE_BYTES: u64 = 10 * 1024 * 1024;
+const EXEC_TIMEOUT_MS: u64 = 30_000;
+const EXEC_MAX_OUTPUT_BYTES: usize = 1024 * 1024;
+const DEFAULT_WORKSPACE_PATH: &str = ".";
+const DEFAULT_MAX_DEPTH: u64 = 20;
+
+// JSON-RPC 的 params 入口统一走强类型反序列化，避免各 handler 分散手写 Value 字段读取。
+fn parse_params<T>(params: Option<serde_json::Value>) -> Result<T, String>
+where
+    T: DeserializeOwned,
+{
+    let params = params.ok_or_else(|| "Params required".to_string())?;
+    serde_json::from_value(params).map_err(|err| err.to_string())
+}
+
+fn mtime_secs(metadata: &std::fs::Metadata) -> u64 {
+    metadata
+        .modified()
+        .unwrap_or(SystemTime::UNIX_EPOCH)
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_secs()
+}
+
+#[derive(Debug, Deserialize)]
+struct PathParams {
+    path: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct WriteFileParams {
+    path: String,
+    content: String,
+    #[serde(default, rename = "old_mtime")]
+    old_mtime: Option<u64>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+struct ReadDirRecursiveParams {
+    path: String,
+    max_depth: u64,
+    exclude_names: Option<Vec<String>>,
+}
+
+impl Default for ReadDirRecursiveParams {
+    fn default() -> Self {
+        Self {
+            path: DEFAULT_WORKSPACE_PATH.to_string(),
+            max_depth: DEFAULT_MAX_DEPTH,
+            exclude_names: None,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+struct MoveParams {
+    from: String,
+    to: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ExecParams {
+    command: String,
+    #[serde(default)]
+    timeout_ms: Option<u64>,
+}
+
+impl ExecParams {
+    fn timeout_ms(&self) -> u64 {
+        self.timeout_ms.unwrap_or(EXEC_TIMEOUT_MS)
+    }
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum FsPermission {
+    Read,
+    Write,
+}
+
+impl FsPermission {
+    pub fn parse(value: &str) -> Option<Self> {
+        match value {
+            "read" => Some(Self::Read),
+            "write" => Some(Self::Write),
+            _ => None,
+        }
+    }
+
+    fn can_write(self) -> bool {
+        matches!(self, Self::Write)
+    }
+}
 
 #[derive(Debug, Clone)]
 struct FsChangeBatch {
@@ -42,12 +139,16 @@ struct FsWatchHub {
 
 static FS_WATCH_HUB: OnceLock<FsWatchHub> = OnceLock::new();
 
-fn max_file_bytes() -> u64 {
-    std::env::var("FASTGPT_IDE_MAX_FILE_BYTES")
-        .ok()
+fn parse_max_file_bytes(value: Option<&str>) -> u64 {
+    value
         .and_then(|value| value.parse::<u64>().ok())
         .filter(|value| *value > 0)
         .unwrap_or(DEFAULT_MAX_FILE_BYTES)
+}
+
+fn max_file_bytes() -> u64 {
+    let value = std::env::var("FASTGPT_IDE_MAX_FILE_BYTES").ok();
+    parse_max_file_bytes(value.as_deref())
 }
 
 fn default_exclude_names() -> HashSet<String> {
@@ -271,12 +372,8 @@ async fn forward_fs_change_batches(
 }
 
 async fn handle_read_dir(params: Option<serde_json::Value>) -> Result<serde_json::Value, String> {
-    let params = params.ok_or("Params required")?;
-    let path_str = params
-        .get("path")
-        .and_then(|v| v.as_str())
-        .ok_or("path param required")?;
-    let clean_path = sanitize_path(path_str).await?;
+    let params: PathParams = parse_params(params)?;
+    let clean_path = sanitize_path(&params.path).await?;
 
     let mut entries = Vec::new();
     let mut dir = tokio::fs::read_dir(clean_path)
@@ -288,12 +385,7 @@ async fn handle_read_dir(params: Option<serde_json::Value>) -> Result<serde_json
         let name = entry.file_name().to_string_lossy().into_owned();
         let is_dir = metadata.is_dir();
         let size = metadata.len();
-        let mtime = metadata
-            .modified()
-            .unwrap_or(SystemTime::UNIX_EPOCH)
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
+        let mtime = mtime_secs(&metadata);
 
         entries.push(json!({
             "name": name,
@@ -307,12 +399,8 @@ async fn handle_read_dir(params: Option<serde_json::Value>) -> Result<serde_json
 }
 
 async fn handle_read_file(params: Option<serde_json::Value>) -> Result<serde_json::Value, String> {
-    let params = params.ok_or("Params required")?;
-    let path_str = params
-        .get("path")
-        .and_then(|v| v.as_str())
-        .ok_or("path param required")?;
-    let clean_path = sanitize_path(path_str).await?;
+    let params: PathParams = parse_params(params)?;
+    let clean_path = sanitize_path(&params.path).await?;
 
     let mut file = tokio::fs::File::open(&clean_path)
         .await
@@ -332,19 +420,13 @@ async fn handle_read_file(params: Option<serde_json::Value>) -> Result<serde_jso
     }
 
     let mut content_bytes = Vec::with_capacity(file_size as usize);
-    use tokio::io::AsyncReadExt;
     file.read_to_end(&mut content_bytes)
         .await
         .map_err(|e| e.to_string())?;
 
     let mut content_b64 = String::with_capacity(content_bytes.len().div_ceil(3) * 4);
     base64::engine::general_purpose::STANDARD.encode_string(&content_bytes, &mut content_b64);
-    let mtime = metadata
-        .modified()
-        .unwrap_or(SystemTime::UNIX_EPOCH)
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs();
+    let mtime = mtime_secs(&metadata);
 
     Ok(json!({
         "content": content_b64,
@@ -353,33 +435,19 @@ async fn handle_read_file(params: Option<serde_json::Value>) -> Result<serde_jso
 }
 
 async fn handle_write_file(params: Option<serde_json::Value>) -> Result<serde_json::Value, String> {
-    let params = params.ok_or("Params required")?;
-    let path_str = params
-        .get("path")
-        .and_then(|v| v.as_str())
-        .ok_or("path param required")?;
-    let content_b64 = params
-        .get("content")
-        .and_then(|v| v.as_str())
-        .ok_or("content param required")?;
+    let params: WriteFileParams = parse_params(params)?;
 
-    let clean_path = sanitize_create_path(path_str).await?;
+    let clean_path = sanitize_create_path(&params.path).await?;
 
     if clean_path.exists() {
         let metadata = tokio::fs::metadata(&clean_path)
             .await
             .map_err(|e| e.to_string())?;
-        let actual_mtime = metadata
-            .modified()
-            .unwrap_or(SystemTime::UNIX_EPOCH)
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
+        let actual_mtime = mtime_secs(&metadata);
 
         // 校验修改时间防冲突
         if params
-            .get("old_mtime")
-            .and_then(|v| v.as_u64())
+            .old_mtime
             .is_some_and(|old_val| old_val != actual_mtime)
         {
             return Err("conflict".to_string());
@@ -387,7 +455,7 @@ async fn handle_write_file(params: Option<serde_json::Value>) -> Result<serde_js
     }
 
     let raw_bytes = base64::engine::general_purpose::STANDARD
-        .decode(content_b64)
+        .decode(&params.content)
         .map_err(|e| e.to_string())?;
     let max_file_bytes = max_file_bytes();
     if raw_bytes.len() as u64 > max_file_bytes {
@@ -418,12 +486,7 @@ async fn handle_write_file(params: Option<serde_json::Value>) -> Result<serde_js
         .map_err(|e| e.to_string())?;
     let metadata = file.metadata().await.map_err(|e| e.to_string())?;
 
-    let new_mtime = metadata
-        .modified()
-        .unwrap_or(SystemTime::UNIX_EPOCH)
-        .duration_since(SystemTime::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_secs();
+    let new_mtime = mtime_secs(&metadata);
 
     Ok(json!({ "mtime": new_mtime }))
 }
@@ -482,12 +545,7 @@ async fn scan_dir_recursive(
         tasks.push(async move {
             let metadata = entry.metadata().await.map_err(|e| e.to_string())?;
             let size = metadata.len();
-            let mtime = metadata
-                .modified()
-                .unwrap_or(SystemTime::UNIX_EPOCH)
-                .duration_since(SystemTime::UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs();
+            let mtime = mtime_secs(&metadata);
 
             let mut children = None;
             if is_dir && level < max_depth {
@@ -540,25 +598,12 @@ async fn scan_dir_recursive(
 async fn handle_read_dir_recursive(
     params: Option<serde_json::Value>,
 ) -> Result<serde_json::Value, String> {
-    let params = params.ok_or("Params required")?;
-    let path_str = params.get("path").and_then(|v| v.as_str()).unwrap_or(".");
-    let clean_path = sanitize_path(path_str).await?;
-    let max_depth = params
-        .get("maxDepth")
-        .and_then(|v| v.as_u64())
-        .map(|depth| depth.min(50) as usize)
-        .unwrap_or(20);
-
+    let params: ReadDirRecursiveParams = parse_params(params)?;
+    let clean_path = sanitize_path(&params.path).await?;
+    let max_depth = params.max_depth.min(50) as usize;
     let exclude_set: HashSet<String> = params
-        .get("excludeNames")
-        .and_then(|v| v.as_array())
-        .map(|items| {
-            items
-                .iter()
-                .filter_map(|item| item.as_str())
-                .map(str::to_string)
-                .collect()
-        })
+        .exclude_names
+        .map(|items| items.into_iter().collect())
         .unwrap_or_else(default_exclude_names);
 
     let exclude_names = Arc::new(exclude_set);
@@ -581,12 +626,8 @@ async fn handle_read_dir_recursive(
 }
 
 async fn handle_mkdir(params: Option<serde_json::Value>) -> Result<serde_json::Value, String> {
-    let params = params.ok_or("Params required")?;
-    let path_str = params
-        .get("path")
-        .and_then(|v| v.as_str())
-        .ok_or("path param required")?;
-    let clean_path = sanitize_create_path(path_str).await?;
+    let params: PathParams = parse_params(params)?;
+    let clean_path = sanitize_create_path(&params.path).await?;
 
     tokio::fs::create_dir_all(&clean_path)
         .await
@@ -595,12 +636,8 @@ async fn handle_mkdir(params: Option<serde_json::Value>) -> Result<serde_json::V
 }
 
 async fn handle_delete(params: Option<serde_json::Value>) -> Result<serde_json::Value, String> {
-    let params = params.ok_or("Params required")?;
-    let path_str = params
-        .get("path")
-        .and_then(|v| v.as_str())
-        .ok_or("path param required")?;
-    let clean_path = sanitize_path(path_str).await?;
+    let params: PathParams = parse_params(params)?;
+    let clean_path = sanitize_path(&params.path).await?;
     if is_workspace_root_path(&clean_path) {
         return Err("Refusing to delete workspace root".to_string());
     }
@@ -618,18 +655,10 @@ async fn handle_delete(params: Option<serde_json::Value>) -> Result<serde_json::
 }
 
 async fn handle_move(params: Option<serde_json::Value>) -> Result<serde_json::Value, String> {
-    let params = params.ok_or("Params required")?;
-    let from_str = params
-        .get("from")
-        .and_then(|v| v.as_str())
-        .ok_or("from param required")?;
-    let to_str = params
-        .get("to")
-        .and_then(|v| v.as_str())
-        .ok_or("to param required")?;
+    let params: MoveParams = parse_params(params)?;
 
-    let clean_from = sanitize_existing_workspace_entry_path(from_str).await?;
-    let clean_to = sanitize_create_path(to_str).await?;
+    let clean_from = sanitize_existing_workspace_entry_path(&params.from).await?;
+    let clean_to = sanitize_create_path(&params.to).await?;
     if is_workspace_root_path(&clean_from) {
         return Err("Refusing to move workspace root".to_string());
     }
@@ -651,15 +680,93 @@ async fn handle_move(params: Option<serde_json::Value>) -> Result<serde_json::Va
     Ok(json!({ "success": true }))
 }
 
+async fn read_limited_output<R>(mut reader: R) -> Result<Vec<u8>, String>
+where
+    R: AsyncRead + Unpin,
+{
+    let mut output = Vec::new();
+    let mut buffer = [0u8; 8192];
+
+    loop {
+        let read_len = reader.read(&mut buffer).await.map_err(|e| e.to_string())?;
+        if read_len == 0 {
+            break;
+        }
+
+        // 达到返回上限后继续 drain pipe，避免子进程因 stdout/stderr 写满而卡住。
+        let remaining = EXEC_MAX_OUTPUT_BYTES.saturating_sub(output.len());
+        if remaining > 0 {
+            output.extend_from_slice(&buffer[..read_len.min(remaining)]);
+        }
+    }
+
+    Ok(output)
+}
+
+async fn handle_exec(params: Option<serde_json::Value>) -> Result<serde_json::Value, String> {
+    let params: ExecParams = parse_params(params)?;
+    if params.command.trim().is_empty() {
+        return Err("command param required".to_string());
+    }
+    let timeout_ms = params.timeout_ms();
+
+    let mut child = Command::new("sh")
+        .arg("-lc")
+        .arg(params.command)
+        .current_dir(get_workspace_root())
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .kill_on_drop(true)
+        .spawn()
+        .map_err(|e| e.to_string())?;
+
+    let stdout = child
+        .stdout
+        .take()
+        .ok_or_else(|| "Failed to capture command stdout".to_string())?;
+    let stderr = child
+        .stderr
+        .take()
+        .ok_or_else(|| "Failed to capture command stderr".to_string())?;
+
+    let output = match tokio::time::timeout(Duration::from_millis(timeout_ms), async {
+        let (status, stdout, stderr) = tokio::try_join!(
+            async { child.wait().await.map_err(|e| e.to_string()) },
+            read_limited_output(stdout),
+            read_limited_output(stderr)
+        )?;
+        Ok::<_, String>((status, stdout, stderr))
+    })
+    .await
+    {
+        Ok(output) => output?,
+        Err(_) => {
+            return Ok(json!({
+                "exitCode": -1,
+                "stdout": "",
+                "stderr": format!("Command timed out after {}ms", timeout_ms),
+            }));
+        }
+    };
+
+    let (status, stdout, stderr) = output;
+    Ok(json!({
+        "exitCode": status.code().unwrap_or(-1),
+        "stdout": String::from_utf8_lossy(&stdout).to_string(),
+        "stderr": String::from_utf8_lossy(&stderr).to_string(),
+    }))
+}
+
 fn is_write_fs_method(method: &str) -> bool {
     matches!(
         method,
-        "fs/write_file" | "fs/mkdir" | "fs/delete" | "fs/move"
+        "fs/write_file" | "fs/mkdir" | "fs/delete" | "fs/move" | "fs/exec"
     )
 }
 
-async fn handle_fs_request(req: JsonRpcRequest, permission: &str) -> JsonRpcResponse {
-    if permission != "write" && is_write_fs_method(req.method.as_str()) {
+async fn handle_fs_request(req: JsonRpcRequest, permission: FsPermission) -> JsonRpcResponse {
+    if !permission.can_write() && is_write_fs_method(req.method.as_str()) {
         return JsonRpcResponse {
             jsonrpc: "2.0".to_string(),
             id: req.id,
@@ -690,6 +797,7 @@ async fn handle_fs_request(req: JsonRpcRequest, permission: &str) -> JsonRpcResp
         "fs/mkdir" => handle_mkdir(req.params).await.map_err(|e| (-32603, e)),
         "fs/delete" => handle_delete(req.params).await.map_err(|e| (-32603, e)),
         "fs/move" => handle_move(req.params).await.map_err(|e| (-32603, e)),
+        "fs/exec" => handle_exec(req.params).await.map_err(|e| (-32603, e)),
         _ => Err((-32601, "Method not found".to_string())),
     };
 
@@ -711,7 +819,7 @@ async fn handle_fs_request(req: JsonRpcRequest, permission: &str) -> JsonRpcResp
 
 pub async fn handle_fs_session<S>(
     ws_stream: tokio_tungstenite::WebSocketStream<S>,
-    permission: String,
+    permission: FsPermission,
 ) where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
 {
@@ -767,7 +875,7 @@ pub async fn handle_fs_session<S>(
                 continue;
             };
 
-            let response = handle_fs_request(req, &permission).await;
+            let response = handle_fs_request(req, permission).await;
             if let Ok(response_text) = serde_json::to_string(&response)
                 && outbound_tx
                     .send(Message::Text(response_text.into()))
@@ -811,101 +919,85 @@ mod tests {
     use super::*;
     use crate::workspace::init_test_workspace;
     use notify::event::{CreateKind, EventAttributes, EventKind};
-    use serde_json::json;
+    use serde_json::{Value, json};
     use std::fs;
+    use std::path::PathBuf;
     use std::time::Instant;
 
+    fn fs_request(method: &str, params: Option<Value>) -> JsonRpcRequest {
+        JsonRpcRequest {
+            jsonrpc: "2.0".to_string(),
+            id: json!(1),
+            method: method.to_string(),
+            params,
+        }
+    }
+
+    async fn fs_ok(method: &str, params: Value) -> Value {
+        let resp = handle_fs_request(fs_request(method, Some(params)), FsPermission::Write).await;
+        match (resp.result, resp.error) {
+            (Some(result), None) => result,
+            (_, Some(error)) => panic!("unexpected fs error for {method}: {error:?}"),
+            (None, None) => panic!("missing fs result for {method}"),
+        }
+    }
+
+    async fn fs_err(method: &str, params: Option<Value>, permission: FsPermission) -> JsonRpcError {
+        let resp = handle_fs_request(fs_request(method, params), permission).await;
+        match (resp.result, resp.error) {
+            (None, Some(error)) => error,
+            (Some(result), _) => panic!("unexpected fs result for {method}: {result:?}"),
+            (None, None) => panic!("missing fs error for {method}"),
+        }
+    }
+
+    fn notify_event(kind: EventKind, paths: Vec<PathBuf>) -> Event {
+        Event {
+            kind,
+            paths,
+            attrs: EventAttributes::new(),
+        }
+    }
+
     #[tokio::test]
-    async fn test_handle_fs_request_jsonrpc_workflow() {
+    async fn test_fs_crud_and_tree_workflow() {
         let temp_workspace = init_test_workspace();
         let _ = fs::remove_dir_all(temp_workspace.join("src_test"));
 
-        // 1. 测试创建目录 (fs/mkdir)
-        let mkdir_req = JsonRpcRequest {
-            jsonrpc: "2.0".to_string(),
-            id: serde_json::Value::Number(1.into()),
-            method: "fs/mkdir".to_string(),
-            params: Some(json!({ "path": "src_test" })),
-        };
-        let resp = handle_fs_request(mkdir_req, "write").await;
-        assert!(resp.error.is_none());
-        assert_eq!(
-            resp.result.unwrap().get("success").unwrap().as_bool(),
-            Some(true)
-        );
+        let mkdir_result = fs_ok("fs/mkdir", json!({ "path": "src_test" })).await;
+        assert_eq!(mkdir_result["success"], json!(true));
 
-        // 2. 测试写入文件 (fs/write_file) - Base64 编码的 "Hello Rust!" 是 "SGVsbG8gUnVzdCE="
-        let write_req = JsonRpcRequest {
-            jsonrpc: "2.0".to_string(),
-            id: serde_json::Value::Number(2.into()),
-            method: "fs/write_file".to_string(),
-            params: Some(json!({
+        let write_result = fs_ok(
+            "fs/write_file",
+            json!({
                 "path": "src_test/hello.txt",
                 "content": "SGVsbG8gUnVzdCE="
-            })),
-        };
-        let resp = handle_fs_request(write_req, "write").await;
-        assert!(resp.error.is_none());
-        let mtime = resp.result.unwrap().get("mtime").unwrap().as_u64();
-        assert!(mtime.is_some());
+            }),
+        )
+        .await;
+        assert!(write_result["mtime"].as_u64().is_some());
 
-        // 2.1 测试写入嵌套缺失父目录时会自动创建父目录
-        let nested_write_req = JsonRpcRequest {
-            jsonrpc: "2.0".to_string(),
-            id: serde_json::Value::Number(21.into()),
-            method: "fs/write_file".to_string(),
-            params: Some(json!({
+        fs_ok(
+            "fs/write_file",
+            json!({
                 "path": "missing_parent/a/hello.txt",
                 "content": "SGVsbG8gUnVzdCE="
-            })),
-        };
-        let resp = handle_fs_request(nested_write_req, "write").await;
-        assert!(resp.error.is_none());
+            }),
+        )
+        .await;
         assert!(temp_workspace.join("missing_parent/a/hello.txt").exists());
 
-        // 3. 测试读取文件 (fs/read_file)
-        let read_req = JsonRpcRequest {
-            jsonrpc: "2.0".to_string(),
-            id: serde_json::Value::Number(3.into()),
-            method: "fs/read_file".to_string(),
-            params: Some(json!({ "path": "src_test/hello.txt" })),
-        };
-        let resp = handle_fs_request(read_req, "write").await;
-        assert!(resp.error.is_none());
-        let result_obj = resp.result.unwrap();
-        let content_b64 = result_obj.get("content").unwrap().as_str().unwrap();
-        assert_eq!(content_b64, "SGVsbG8gUnVzdCE=");
+        let read_result = fs_ok("fs/read_file", json!({ "path": "src_test/hello.txt" })).await;
+        assert_eq!(read_result["content"], json!("SGVsbG8gUnVzdCE="));
 
-        // 4. 测试递归读取文件树 (fs/read_dir_recursive)
-        let read_tree_req = JsonRpcRequest {
-            jsonrpc: "2.0".to_string(),
-            id: serde_json::Value::Number(4.into()),
-            method: "fs/read_dir_recursive".to_string(),
-            params: Some(json!({ "path": "." })),
-        };
-        let resp = handle_fs_request(read_tree_req, "write").await;
-        assert!(resp.error.is_none());
-        let tree_res = resp.result.unwrap();
-        let files = tree_res.get("files").unwrap().as_array().unwrap();
+        let tree_result = fs_ok("fs/read_dir_recursive", json!({ "path": "." })).await;
+        let files = tree_result["files"].as_array().unwrap();
         assert!(!files.is_empty());
         let src_node = files
             .iter()
-            .find(|node| node.get("name").and_then(|value| value.as_str()) == Some("src_test"))
+            .find(|node| node["name"] == json!("src_test"))
             .expect("src_test node should be present");
-        assert_eq!(src_node.get("type").unwrap().as_str(), Some("directory"));
-
-        // 5. 测试非法方法名 (fs/invalid_method) - 应返回标准错误
-        let invalid_req = JsonRpcRequest {
-            jsonrpc: "2.0".to_string(),
-            id: serde_json::Value::Number(5.into()),
-            method: "fs/invalid_method".to_string(),
-            params: None,
-        };
-        let resp = handle_fs_request(invalid_req, "write").await;
-        assert!(resp.result.is_none());
-        let err = resp.error.unwrap();
-        assert_eq!(err.code, -32601);
-        assert!(err.message.contains("Method not found"));
+        assert_eq!(src_node["type"], json!("directory"));
     }
 
     #[tokio::test]
@@ -913,28 +1005,18 @@ mod tests {
         let temp_workspace = init_test_workspace();
         let _ = fs::remove_dir_all(temp_workspace.join("nested_create_test"));
 
-        let mkdir_req = JsonRpcRequest {
-            jsonrpc: "2.0".to_string(),
-            id: serde_json::Value::Number(1.into()),
-            method: "fs/mkdir".to_string(),
-            params: Some(json!({ "path": "nested_create_test/a/b" })),
-        };
-        let resp = handle_fs_request(mkdir_req, "write").await;
-        assert!(resp.error.is_none());
+        fs_ok("fs/mkdir", json!({ "path": "nested_create_test/a/b" })).await;
         assert!(temp_workspace.join("nested_create_test/a/b").is_dir());
 
         fs::write(temp_workspace.join("nested_create_test/source.txt"), "move").unwrap();
-        let move_req = JsonRpcRequest {
-            jsonrpc: "2.0".to_string(),
-            id: serde_json::Value::Number(2.into()),
-            method: "fs/move".to_string(),
-            params: Some(json!({
+        fs_ok(
+            "fs/move",
+            json!({
                 "from": "nested_create_test/source.txt",
                 "to": "nested_create_test/c/d/target.txt"
-            })),
-        };
-        let resp = handle_fs_request(move_req, "write").await;
-        assert!(resp.error.is_none());
+            }),
+        )
+        .await;
         assert!(
             temp_workspace
                 .join("nested_create_test/c/d/target.txt")
@@ -954,18 +1036,15 @@ mod tests {
         let _ = fs::remove_dir_all(&moved_link_path);
         std::os::unix::fs::symlink(outside.path(), &link_path).unwrap();
 
-        let move_req = JsonRpcRequest {
-            jsonrpc: "2.0".to_string(),
-            id: serde_json::Value::Number(1.into()),
-            method: "fs/move".to_string(),
-            params: Some(json!({
+        fs_ok(
+            "fs/move",
+            json!({
                 "from": "move_symlink_source",
                 "to": "move_symlink_target"
-            })),
-        };
-        let resp = handle_fs_request(move_req, "write").await;
+            }),
+        )
+        .await;
 
-        assert!(resp.error.is_none());
         assert!(!link_path.exists());
         assert!(
             fs::symlink_metadata(&moved_link_path)
@@ -980,70 +1059,108 @@ mod tests {
     async fn test_read_only_ticket_rejects_write_methods() {
         let _temp_workspace = init_test_workspace();
 
-        let write_req = JsonRpcRequest {
-            jsonrpc: "2.0".to_string(),
-            id: serde_json::Value::Number(1.into()),
-            method: "fs/write_file".to_string(),
-            params: Some(json!({
+        let write_err = fs_err(
+            "fs/write_file",
+            Some(json!({
                 "path": "readonly.txt",
                 "content": "SGVsbG8="
             })),
-        };
+            FsPermission::Read,
+        )
+        .await;
+        assert_eq!(write_err.code, -32003);
+        assert!(write_err.message.contains("read-only"));
 
-        let resp = handle_fs_request(write_req, "read").await;
-        assert!(resp.result.is_none());
-        let err = resp.error.unwrap();
-        assert_eq!(err.code, -32003);
-        assert!(err.message.contains("read-only"));
+        let exec_err = fs_err(
+            "fs/exec",
+            Some(json!({ "command": "echo denied" })),
+            FsPermission::Read,
+        )
+        .await;
+        assert_eq!(exec_err.code, -32003);
+        assert!(exec_err.message.contains("read-only"));
     }
 
     #[tokio::test]
     async fn test_delete_and_move_reject_workspace_root() {
         let _temp_workspace = init_test_workspace();
 
-        let delete_req = JsonRpcRequest {
-            jsonrpc: "2.0".to_string(),
-            id: serde_json::Value::Number(1.into()),
-            method: "fs/delete".to_string(),
-            params: Some(json!({ "path": "." })),
-        };
-        let resp = handle_fs_request(delete_req, "write").await;
-        assert!(resp.result.is_none());
-        assert!(resp.error.unwrap().message.contains("workspace root"));
+        let delete_err = fs_err(
+            "fs/delete",
+            Some(json!({ "path": "." })),
+            FsPermission::Write,
+        )
+        .await;
+        assert!(delete_err.message.contains("workspace root"));
 
-        let move_req = JsonRpcRequest {
-            jsonrpc: "2.0".to_string(),
-            id: serde_json::Value::Number(2.into()),
-            method: "fs/move".to_string(),
-            params: Some(json!({ "from": ".", "to": "moved-root" })),
-        };
-        let resp = handle_fs_request(move_req, "write").await;
-        assert!(resp.result.is_none());
-        assert!(resp.error.unwrap().message.contains("workspace root"));
+        let move_err = fs_err(
+            "fs/move",
+            Some(json!({ "from": ".", "to": "moved-root" })),
+            FsPermission::Write,
+        )
+        .await;
+        assert!(move_err.message.contains("workspace root"));
+    }
+
+    #[tokio::test]
+    async fn test_unknown_fs_method_returns_jsonrpc_error() {
+        let _temp_workspace = init_test_workspace();
+
+        let err = fs_err("fs/invalid_method", None, FsPermission::Write).await;
+        assert_eq!(err.code, -32601);
+        assert!(err.message.contains("Method not found"));
     }
 
     #[test]
-    fn test_max_file_bytes_reads_positive_env() {
-        unsafe {
-            std::env::set_var("FASTGPT_IDE_MAX_FILE_BYTES", "2048");
-        }
-        assert_eq!(max_file_bytes(), 2048);
-        unsafe {
-            std::env::remove_var("FASTGPT_IDE_MAX_FILE_BYTES");
-        }
+    fn test_parse_max_file_bytes() {
+        assert_eq!(parse_max_file_bytes(Some("2048")), 2048);
+        assert_eq!(parse_max_file_bytes(Some("0")), DEFAULT_MAX_FILE_BYTES);
+        assert_eq!(parse_max_file_bytes(Some("bad")), DEFAULT_MAX_FILE_BYTES);
+        assert_eq!(parse_max_file_bytes(None), DEFAULT_MAX_FILE_BYTES);
+    }
+
+    #[tokio::test]
+    async fn test_exec_runs_in_workspace_and_returns_output() {
+        let temp_workspace = init_test_workspace();
+
+        let result = fs_ok("fs/exec", json!({ "command": "pwd && printf done" })).await;
+
+        assert_eq!(result["exitCode"], json!(0));
+        let stdout = result["stdout"].as_str().unwrap();
+        assert!(stdout.contains(temp_workspace.to_str().unwrap()));
+        assert!(stdout.contains("done"));
+    }
+
+    #[tokio::test]
+    async fn test_exec_returns_non_zero_exit_code_and_stderr() {
+        let _temp_workspace = init_test_workspace();
+
+        let result = fs_ok("fs/exec", json!({ "command": "printf err >&2; exit 7" })).await;
+
+        assert_eq!(result["exitCode"], json!(7));
+        assert_eq!(result["stderr"], json!("err"));
+    }
+
+    #[tokio::test]
+    async fn test_exec_respects_timeout_ms() {
+        let _temp_workspace = init_test_workspace();
+
+        let result = fs_ok("fs/exec", json!({ "command": "sleep 2", "timeoutMs": 1 })).await;
+
+        assert_eq!(result["exitCode"], json!(-1));
+        assert!(result["stderr"].as_str().unwrap().contains("timed out"));
     }
 
     #[test]
     fn test_collect_fs_event_paths_normalizes_paths() {
         let temp_workspace = init_test_workspace();
-        let event = Event {
-            kind: EventKind::Create(CreateKind::File),
-            paths: vec![
+        let event = notify_event(
+            EventKind::Create(CreateKind::File),
+            vec![
                 temp_workspace.join("src").join("index.ts"),
                 temp_workspace.join("package.json"),
             ],
-            attrs: EventAttributes::new(),
-        };
+        );
 
         let paths = collect_fs_event_paths(&event);
         assert_eq!(paths, vec!["src/index.ts", "package.json"]);
@@ -1052,9 +1169,9 @@ mod tests {
     #[test]
     fn test_collect_fs_event_paths_does_not_hardcode_common_build_dirs() {
         let temp_workspace = init_test_workspace();
-        let event = Event {
-            kind: EventKind::Create(CreateKind::File),
-            paths: vec![
+        let event = notify_event(
+            EventKind::Create(CreateKind::File),
+            vec![
                 temp_workspace
                     .join("node_modules")
                     .join("pkg")
@@ -1063,8 +1180,7 @@ mod tests {
                 temp_workspace.join("dist").join("index.js"),
                 temp_workspace.join("build").join("index.js"),
             ],
-            attrs: EventAttributes::new(),
-        };
+        );
 
         let paths = collect_fs_event_paths(&event);
         assert_eq!(
@@ -1082,13 +1198,12 @@ mod tests {
     fn test_collect_debounced_event_paths_ignores_access_events() {
         let temp_workspace = init_test_workspace();
         let events = vec![DebouncedEvent::new(
-            Event {
-                kind: EventKind::Access(notify::event::AccessKind::Open(
+            notify_event(
+                EventKind::Access(notify::event::AccessKind::Open(
                     notify::event::AccessMode::Read,
                 )),
-                paths: vec![temp_workspace.join("skills")],
-                attrs: EventAttributes::new(),
-            },
+                vec![temp_workspace.join("skills")],
+            ),
             Instant::now(),
         )];
 
