@@ -148,24 +148,24 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
               <Button mr={4} variant={'whiteBase'} onClick={debugDisclosure.onOpen}>
                 本地调试
               </Button>
-              {feConfigs?.docUrl && (
-                <Button
-                  mr={4}
-                  onClick={() =>
-                    window.open(getDocPath('/plugin/system-tool-development'), '_blank')
-                  }
-                >
-                  {t('app:toolkit_contribute_resource')}
-                </Button>
-              )}
               {feConfigs?.submitPluginRequestUrl && (
                 <Button
+                  mr={4}
                   variant={'whiteBase'}
                   onClick={() => {
                     window.open(feConfigs.submitPluginRequestUrl);
                   }}
                 >
                   {t('app:toolkit_marketplace_submit_request')}
+                </Button>
+              )}
+              {feConfigs?.docUrl && (
+                <Button
+                  onClick={() =>
+                    window.open(getDocPath('/plugin/system-tool-development'), '_blank')
+                  }
+                >
+                  {t('app:toolkit_contribute_resource')}
                 </Button>
               )}
             </Flex>
@@ -458,6 +458,7 @@ function PluginDebugModal({
       isOpen
       onClose={onClose}
       showCloseButton={false}
+      isCentered
       w={'580px'}
       maxW={['calc(100vw - 20px)', '580px']}
       borderRadius={'10px'}
