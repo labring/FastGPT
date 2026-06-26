@@ -50,10 +50,10 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
   /**
    * 删除一组服务端聊天记录。
    *
-   * `delFile` 默认是 true，表示删除消息时一起删除关联文件；重试流程会传 false，
-   * 因为同一轮历史可能需要继续复用原文件输入，不能在删除旧记录时把文件也删掉。
+   * 这里只软删除 chat item 记录；聊天附件由 chat 级资源清理流程统一回收，避免单条消息删除
+   * 误删后续重试、编辑流程仍可能复用的文件。
    */
-  const onDelMessages = useMemoizedFn((contentIds: string[], delFile = true) => {
+  const onDelMessages = useMemoizedFn((contentIds: string[]) => {
     const targetContentIds = uniqueDataIds(contentIds);
     if (targetContentIds.length === 0) return Promise.resolve();
 
@@ -61,7 +61,6 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
       ...chatTarget,
       chatId,
       contentIds: targetContentIds,
-      delFile,
       ...outLinkAuthData
     });
   });
@@ -85,10 +84,7 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
       const delHistory = chatRecords.slice(index);
 
       try {
-        await onDelMessages(
-          delHistory.map((item) => item.dataId),
-          false
-        );
+        await onDelMessages(delHistory.map((item) => item.dataId));
         setChatRecords((state) => (index === 0 ? [] : state.slice(0, index)));
 
         sendPrompt({
@@ -123,10 +119,7 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
       try {
         if (index < 0 || delHistory[0]?.obj !== ChatRoleEnum.Human) return;
 
-        await onDelMessages(
-          delHistory.map((item) => item.dataId),
-          false
-        );
+        await onDelMessages(delHistory.map((item) => item.dataId));
         setChatRecords((state) => (index === 0 ? [] : state.slice(0, index)));
 
         sendPrompt({

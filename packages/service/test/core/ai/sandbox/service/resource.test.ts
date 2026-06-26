@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   deleteSandboxResourceRecord: vi.fn(),
   findSandboxResourcesBySource: vi.fn(),
   findSandboxResourcesBySourceChatIds: vi.fn(),
+  findSkillRelatedSandboxResources: vi.fn(),
   markSandboxResourceStopped: vi.fn()
 }));
 
@@ -44,13 +45,15 @@ vi.mock('@fastgpt/service/core/ai/sandbox/instance/repository', () => ({
   deleteSandboxResourceRecord: mocks.deleteSandboxResourceRecord,
   findSandboxResourcesBySource: mocks.findSandboxResourcesBySource,
   findSandboxResourcesBySourceChatIds: mocks.findSandboxResourcesBySourceChatIds,
+  findSkillRelatedSandboxResources: mocks.findSkillRelatedSandboxResources,
   markSandboxResourceStopped: mocks.markSandboxResourceStopped
 }));
 
 import {
   deleteAppSandboxes,
+  deleteAppChatRuntimeSandboxes,
   deleteSandboxResource,
-  deleteSandboxesBySourceChatIds,
+  deleteSkillEditSandboxes,
   stopSandboxResource,
   stopSandboxResources
 } from '@fastgpt/service/core/ai/sandbox/service/resource';
@@ -60,7 +63,8 @@ const createResource = (sandboxId = 'sandbox-1') =>
   ({
     provider: 'opensandbox',
     sandboxId,
-    appId: 'app-1',
+    sourceType: ChatSourceTypeEnum.app,
+    sourceId: 'app-1',
     userId: 'user-1',
     chatId: 'chat-1'
   }) as any;
@@ -78,6 +82,7 @@ describe('sandbox resource service', () => {
     mocks.deleteSandboxResourceRecord.mockResolvedValue(undefined);
     mocks.findSandboxResourcesBySource.mockResolvedValue([]);
     mocks.findSandboxResourcesBySourceChatIds.mockResolvedValue([]);
+    mocks.findSkillRelatedSandboxResources.mockResolvedValue([]);
     mocks.markSandboxResourceStopped.mockResolvedValue(undefined);
   });
 
@@ -159,9 +164,8 @@ describe('sandbox resource service', () => {
   });
 
   it('returns early when chat or app cleanup finds no resources', async () => {
-    await deleteSandboxesBySourceChatIds({
-      sourceType: ChatSourceTypeEnum.app,
-      sourceId: 'app-1',
+    await deleteAppChatRuntimeSandboxes({
+      appId: 'app-1',
       chatIds: ['chat-1']
     });
     await deleteAppSandboxes('app-1');
@@ -179,9 +183,8 @@ describe('sandbox resource service', () => {
       })
     });
 
-    await deleteSandboxesBySourceChatIds({
-      sourceType: ChatSourceTypeEnum.app,
-      sourceId: 'app-1',
+    await deleteAppChatRuntimeSandboxes({
+      appId: 'app-1',
       chatIds: ['chat-1']
     });
 
@@ -191,6 +194,20 @@ describe('sandbox resource service', () => {
         sandboxId: 'sandbox-1'
       })
     );
+  });
+
+  it('deletes skill edit sandboxes through skill source repository lookup', async () => {
+    const resource = {
+      ...createResource('skill-sandbox-1'),
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: 'skill-1'
+    };
+    mocks.findSkillRelatedSandboxResources.mockResolvedValueOnce([resource]);
+
+    await deleteSkillEditSandboxes(['skill-1']);
+
+    expect(mocks.findSkillRelatedSandboxResources).toHaveBeenCalledWith(['skill-1']);
+    expect(mocks.deleteSandboxResourceRecord).toHaveBeenCalledWith(resource);
   });
 
   it('logs stop failures while processing inactive resources', async () => {

@@ -52,10 +52,11 @@ curl -X POST 'https://你的域名/api/admin/4150/init4150-beta6' \
 迁移逻辑：
 
 1. 查询 `skills` 表拿到全部 `_id`。
-2. 在 `agent_sandbox_instances` 中匹配 `appId=skillId` 或 `metadata.skillId=skillId` 的记录，写入 `sourceType=skillEdit` 和 `sourceId=skillId`。
-3. 剩余未命中 Skill 且存在非空 `appId` 的 sandbox 实例，写入 `sourceType=app` 和 `sourceId=appId`。
-4. 没有 `appId`、`appId=null` 或 `appId=""` 且无法通过 `metadata.skillId` 归属到 Skill 的 orphan sandbox，会在非 dry-run 模式下删除远端 sandbox、OpenSandbox volume、S3 归档和 Mongo 记录；dry-run 只通过 `orphanMatchedCount` 统计。
-5. 清理旧 Skill Debug chat：先用 `apps` 表去掉与 App `_id` 重复的 Skill ID，再删除剩余 Skill ID 下匹配到的旧 `chats`、`chatitems`、`chat_item_responses` 和旧格式 Chat S3 文件前缀。
+2. 对缺少 `sourceType` 或 `sourceId` 的 `agent_sandbox_instances`，如果匹配 `appId=skillId` 或 `metadata.skillId=skillId`，写入 `sourceType=skillEdit` 和 `sourceId=skillId`，并清理旧 `appId` / `metadata.skillId` 字段。
+3. 对剩余缺少 `sourceType` 或 `sourceId`、未命中 Skill 且存在非空 `appId` 的 sandbox 实例，写入 `sourceType=app` 和 `sourceId=appId`，并清理旧 `appId` / `metadata.skillId` 字段。
+4. 对已经具备 `sourceType/sourceId` 但残留旧 `appId` 或 `metadata.skillId` 的 sandbox 实例，只清理旧字段，不覆盖现有标准归属。
+5. 没有 `appId`、`appId=null` 或 `appId=""` 且无法通过 `metadata.skillId` 归属到 Skill 的 orphan sandbox，会在非 dry-run 模式下删除远端 sandbox、OpenSandbox volume、S3 归档和 Mongo 记录；dry-run 只通过 `orphanMatchedCount` 统计。
+6. 清理旧 Skill Debug chat：先用 `apps` 表去掉与 App `_id` 重复的 Skill ID，再删除剩余 Skill ID 下匹配到的旧 `chats`、`chatitems`、`chat_item_responses` 和旧格式 Chat S3 文件前缀。
 
 该接口不会回填几亿条历史 App Chat 的 `sourceType`。
 

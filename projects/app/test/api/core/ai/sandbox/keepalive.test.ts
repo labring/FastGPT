@@ -47,7 +47,8 @@ describe('sandbox keepalive API', () => {
     vi.clearAllMocks();
     mocks.buildSandboxClientQueryFromChatSource.mockReturnValue({
       sandboxId: 'sandbox-1',
-      appId: 'app-1',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app-1',
       userId: 'user-1',
       chatId: 'chat-1'
     });
@@ -69,7 +70,8 @@ describe('sandbox keepalive API', () => {
     expect(mocks.getSandboxClient).toHaveBeenCalledWith(
       expect.objectContaining({
         sandboxId: 'sandbox-1',
-        appId: 'app-1',
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: 'app-1',
         userId: 'user-1',
         chatId: 'chat-1'
       }),

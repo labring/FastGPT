@@ -64,21 +64,14 @@ const buildSandboxResourcesToArchiveQuery = (params: {
 };
 
 /**
- * sandbox 实例表暂时复用物理 appId 字段保存 sourceId。
+ * 按标准 source 构造 sandbox 资源查询条件。
  *
- * App 旧数据和新数据在该表中没有额外 sourceType 字段，因此 App 删除天然按 appId 兼容；
- * Skill Edit 资源额外兼容 metadata.skillId，覆盖编辑沙盒历史写法。
+ * 运行时业务操作只认 `sourceType/sourceId`。旧 `appId`、`metadata.skillId`
+ * 只允许在 4.15.0-beta6 一次性迁移脚本里读取和清理。
  */
 const buildSandboxResourceSourceQuery = ({ sourceType, sourceId }: SandboxSourceParams) => {
-  if (sourceType === ChatSourceTypeEnum.app) {
-    return { appId: sourceId };
-  }
-
-  if (sourceType === ChatSourceTypeEnum.skillEdit) {
-    return {
-      $or: [{ appId: sourceId }, { 'metadata.skillId': sourceId }]
-    };
-  }
+  if (sourceType === ChatSourceTypeEnum.app) return { sourceType, sourceId };
+  if (sourceType === ChatSourceTypeEnum.skillEdit) return { sourceType, sourceId };
 
   const exhaustiveCheck: never = sourceType;
   throw new Error(`Unsupported sandbox source type: ${exhaustiveCheck}`);
@@ -94,25 +87,14 @@ export async function upsertRunningSandboxInstance(params: {
   sandboxId: string;
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
-  appId?: string;
   userId?: string;
   chatId?: string;
   storage?: SandboxInstanceSchemaType['storage'];
   limit?: Partial<NonNullable<SandboxInstanceSchemaType['limit']>>;
   metadata?: Record<string, unknown>;
 }) {
-  const {
-    provider,
-    sandboxId,
-    sourceType,
-    sourceId,
-    appId,
-    userId,
-    chatId,
-    storage,
-    limit,
-    metadata
-  } = params;
+  const { provider, sandboxId, sourceType, sourceId, userId, chatId, storage, limit, metadata } =
+    params;
   const archiveStateFilter = { 'metadata.archive.state': { $exists: false } };
   const runningUpdate = {
     $set: {
@@ -131,7 +113,6 @@ export async function upsertRunningSandboxInstance(params: {
   const insertUpdate = {
     ...runningUpdate,
     $setOnInsert: {
-      ...(appId !== undefined ? { appId } : {}),
       ...(userId !== undefined ? { userId } : {}),
       ...(chatId !== undefined ? { chatId } : {}),
       storage,
@@ -244,37 +225,22 @@ export async function findSandboxResourcesBySource(params: SandboxSourceParams) 
 }
 
 /**
- * 按 sandboxId 查询业务归属 appId。
- *
- * 运行态入口允许只传 sandboxId 复用已有实例；权限校验需要先从实例记录反查 appId。
- */
-export async function findSandboxAppIdBySandboxId(sandboxId: string) {
-  const doc = await MongoSandboxInstance.findOne({ sandboxId }, 'appId').lean<{
-    appId?: string;
-  } | null>();
-
-  return doc?.appId ? String(doc.appId) : undefined;
-}
-
-/**
  * 按显式 sandboxId 查询单条 sandbox 实例。
  *
  * 适用于调用方已经拥有稳定 sandboxId 的场景，避免再把资源定位退回
- * appId/userId/chatId 推导规则。
+ * sourceType/sourceId/userId/chatId 推导规则。
  */
 export async function findSandboxInstanceBySandboxId(params: {
   provider?: SandboxProviderType;
   sandboxId: string;
-  appId?: string;
   type?: SandboxTypeEnum;
   status?: SandboxStatusType;
 }) {
-  const { provider, sandboxId, appId, type, status } = params;
+  const { provider, sandboxId, type, status } = params;
 
   return MongoSandboxInstance.findOne({
     ...(provider ? { provider } : {}),
     sandboxId,
-    ...(appId ? { appId } : {}),
     ...(type ? { type } : {}),
     ...(status ? { status } : {})
   });
@@ -283,8 +249,7 @@ export async function findSandboxInstanceBySandboxId(params: {
 /**
  * 按标准 source 查询单条 sandbox 实例。
  *
- * 新数据优先按 `sourceType/sourceId` 命中；Skill Edit 额外兼容历史编辑沙盒写法
- * `appId=skillId` 或 `metadata.skillId=skillId`，避免升级前后的调试沙盒不可复用。
+ * sourceType/sourceId 由迁移脚本补齐，业务查询不再兼容旧 appId/metadata.skillId 字段。
  */
 export async function findSandboxInstanceBySandboxIdAndSource(params: {
   provider?: SandboxProviderType;
@@ -295,22 +260,12 @@ export async function findSandboxInstanceBySandboxIdAndSource(params: {
   status?: SandboxStatusType;
 }) {
   const { provider, sandboxId, sourceType, sourceId, type, status } = params;
-  const sourceQuery =
-    sourceType === ChatSourceTypeEnum.skillEdit
-      ? {
-          $or: [{ sourceType, sourceId }, { appId: sourceId }, { 'metadata.skillId': sourceId }]
-        }
-      : {
-          $or: [
-            { sourceType, sourceId },
-            { appId: sourceId, sourceType: { $exists: false } }
-          ]
-        };
 
   return MongoSandboxInstance.findOne({
     ...(provider ? { provider } : {}),
     sandboxId,
-    ...sourceQuery,
+    sourceType,
+    sourceId,
     ...(type ? { type } : {}),
     ...(status ? { status } : {})
   });
@@ -482,7 +437,6 @@ export async function markSandboxRestored(
   params: {
     sourceType: ChatSourceTypeEnum;
     sourceId: string;
-    appId?: string;
     userId?: string;
     chatId?: string;
     storage?: SandboxInstanceSchemaType['storage'];
@@ -514,7 +468,6 @@ export async function markSandboxRestored(
         lastActiveAt: new Date(),
         sourceType: params.sourceType,
         sourceId: params.sourceId,
-        ...(params.appId !== undefined ? { appId: params.appId } : {}),
         ...(params.userId !== undefined ? { userId: params.userId } : {}),
         ...(params.chatId !== undefined ? { chatId: params.chatId } : {}),
         ...(params.storage !== undefined ? { storage: params.storage } : {}),
@@ -528,22 +481,24 @@ export async function markSandboxRestored(
 }
 
 /**
- * 按 app/chat/type 查询单条 sandbox 实例。
+ * 按 source/chat/type 查询单条 sandbox 实例。
  *
  * provider 可选是为了兼容“当前 provider 查询”和“只按业务归属查询”两类场景。
  */
-export async function findSandboxInstanceByAppChatType(params: {
+export async function findSandboxInstanceBySourceChatType(params: {
   provider?: SandboxProviderType;
-  appId: string;
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
   chatId: string;
   type: SandboxTypeEnum;
   status?: SandboxStatusType;
 }) {
-  const { provider, appId, chatId, type, status } = params;
+  const { provider, sourceType, sourceId, chatId, type, status } = params;
 
   return MongoSandboxInstance.findOne({
     ...(provider ? { provider } : {}),
-    appId,
+    sourceType,
+    sourceId,
     chatId,
     ...(status ? { status } : {}),
     type
@@ -551,19 +506,21 @@ export async function findSandboxInstanceByAppChatType(params: {
 }
 
 /**
- * 按 app/chat/type 查询资源清理所需的实例记录。
+ * 按 source/chat/type 查询资源清理所需的实例记录。
  */
-export async function findSandboxResourcesByAppChatType(params: {
+export async function findSandboxResourcesBySourceChatType(params: {
   provider?: SandboxProviderType;
-  appId: string;
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
   chatId: string;
   type: SandboxTypeEnum;
 }) {
-  const { provider, appId, chatId, type } = params;
+  const { provider, sourceType, sourceId, chatId, type } = params;
 
   return MongoSandboxInstance.find({
     ...(provider ? { provider } : {}),
-    appId,
+    sourceType,
+    sourceId,
     chatId,
     type
   }).lean<SandboxResourceDoc[]>();
@@ -574,17 +531,19 @@ export async function findSandboxResourcesByAppChatType(params: {
  *
  * provider 切换后用这个入口找出旧 provider 留下的实例，再逐条删除。
  */
-export async function findSandboxResourcesByAppChatTypeExcludeProvider(params: {
+export async function findSandboxResourcesBySourceChatTypeExcludeProvider(params: {
   provider: SandboxProviderType;
-  appId: string;
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
   chatId: string;
   type: SandboxTypeEnum;
 }) {
-  const { provider, appId, chatId, type } = params;
+  const { provider, sourceType, sourceId, chatId, type } = params;
 
   return MongoSandboxInstance.find({
     provider: { $ne: provider },
-    appId,
+    sourceType,
+    sourceId,
     chatId,
     type
   }).lean<SandboxResourceDoc[]>();
@@ -620,20 +579,19 @@ export async function deleteSandboxInstanceRecord(instanceId: unknown) {
  *
  * edit-debug sandboxId 由 skillId + edit-debug 稳定生成，不随 provider 变化；provider 切换后，
  * archive restore 入口只按当前 provider + sandboxId 查询归档状态。这里仅迁移 Mongo 索引记录，
- * 不触碰 S3 归档对象；如果新 provider 已有上次失败留下的
- * 占位记录，则把归档 metadata 转移过去并删除旧记录，释放 appId/chatId 唯一键。
+ * 不触碰 S3 归档对象；如果新 provider 已有上次失败留下的占位记录，则把归档
+ * metadata 转移过去并删除旧记录。
  */
 export async function migrateArchivedSandboxInstanceRecord(params: {
   source: SandboxResourceRef;
   provider: SandboxProviderType;
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
-  appId: string;
   userId: string;
   chatId: string;
   type: SandboxTypeEnum;
 }) {
-  const { source, provider, sourceType, sourceId, appId, userId, chatId, type } = params;
+  const { source, provider, sourceType, sourceId, userId, chatId, type } = params;
   const sourceFilter = {
     ...buildSandboxResourceRecordFilter(source),
     'metadata.archive.state': 'archived'
@@ -643,7 +601,6 @@ export async function migrateArchivedSandboxInstanceRecord(params: {
     sandboxId: source.sandboxId,
     sourceType,
     sourceId,
-    appId,
     userId,
     chatId,
     type,
@@ -670,14 +627,13 @@ export async function migrateArchivedSandboxInstanceRecord(params: {
 
     type ArchivedSandboxMigrationDoc = Pick<
       SandboxInstanceSchemaType,
-      'appId' | 'userId' | 'chatId' | 'type' | 'metadata' | 'storage' | 'limit'
+      'userId' | 'chatId' | 'type' | 'metadata' | 'storage' | 'limit'
     > & { _id: unknown };
 
     const sourceDoc = await MongoSandboxInstance.findOneAndUpdate(
       sourceFilter,
       {
         $unset: {
-          appId: '',
           userId: '',
           chatId: '',
           type: ''
@@ -695,7 +651,6 @@ export async function migrateArchivedSandboxInstanceRecord(params: {
         },
         {
           $set: {
-            ...(sourceDoc.appId !== undefined ? { appId: sourceDoc.appId } : {}),
             ...(sourceDoc.userId !== undefined ? { userId: sourceDoc.userId } : {}),
             ...(sourceDoc.chatId !== undefined ? { chatId: sourceDoc.chatId } : {}),
             ...(sourceDoc.type !== undefined ? { type: sourceDoc.type } : {})
@@ -751,13 +706,14 @@ export async function migrateArchivedSandboxInstanceRecord(params: {
 export async function updateSandboxInstanceRecordBySandboxId(params: {
   provider?: SandboxProviderType;
   sandboxId: string;
-  appId?: string;
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
   userId?: string;
   chatId?: string;
   type?: SandboxTypeEnum;
   metadata?: Record<string, unknown>;
 }): Promise<SandboxInstanceSchemaType | null> {
-  const { provider, sandboxId, appId, userId, chatId, type, metadata } = params;
+  const { provider, sandboxId, sourceType, sourceId, userId, chatId, type, metadata } = params;
 
   return MongoSandboxInstance.findOneAndUpdate(
     {
@@ -766,7 +722,8 @@ export async function updateSandboxInstanceRecordBySandboxId(params: {
     },
     {
       $set: {
-        ...(appId !== undefined ? { appId } : {}),
+        sourceType,
+        sourceId,
         ...(userId !== undefined ? { userId } : {}),
         ...(chatId !== undefined ? { chatId } : {}),
         ...(type !== undefined ? { type } : {}),
@@ -818,10 +775,11 @@ export async function findSandboxResourceBySandboxIdAndTeam(params: {
 /**
  * 查询与一组 skill 相关的 sandbox 资源。
  *
- * skill 可能以 appId 作为编辑态归属，也可能记录在 metadata.skillId 中；删除 skill 时两种都要清理。
+ * 业务删除只按标准 source 查询；旧字段在迁移脚本中一次性清洗。
  */
 export async function findSkillRelatedSandboxResources(skillIds: string[]) {
   return MongoSandboxInstance.find({
-    $or: [{ appId: { $in: skillIds } }, { 'metadata.skillId': { $in: skillIds } }]
+    sourceType: ChatSourceTypeEnum.skillEdit,
+    sourceId: { $in: skillIds }
   }).lean<SandboxResourceDoc[]>();
 }

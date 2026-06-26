@@ -3,9 +3,7 @@ import { S3Sources } from '../../contracts/type';
 import {
   type CheckChatFileKeys,
   type DelChatFileByPrefixParams,
-  type DelLegacyAppChatFileByPrefixParams,
   ChatFileUploadSchema,
-  DelLegacyAppChatFileByPrefixSchema,
   DelChatFileByPrefixSchema,
   UploadChatFileSchema,
   type UploadFileParams
@@ -65,7 +63,7 @@ export class S3ChatSource extends S3PrivateBucket {
         extension: extension.replace('.', ''),
         imageParsePrefix: `${pathname.replace(`/${S3Buckets.private}/`, '').replace(extension, '')}-parsed`
       };
-    } catch (error) {
+    } catch {
       return {
         filename: '',
         extension: '',
@@ -126,23 +124,6 @@ export class S3ChatSource extends S3PrivateBucket {
       await this.addDeleteJob({ prefix: legacyPrefix });
       await publicBucket.addDeleteJob({ prefix: legacyPrefix });
     }
-
-    return prefix;
-  }
-
-  /**
-   * 只删除旧版 App chat key：`chat/${sourceId}/${uId}/${chatId}/...`。
-   *
-   * 旧 Skill Debug 初始化清理需要删除曾被写成 legacy App 格式的文件，但不能同时清理
-   * `chat/app/${sourceId}` 或 `chat/skillEdit/${sourceId}` 新前缀，否则在极端 ID 碰撞时会误删新数据。
-   */
-  async deleteLegacyAppChatFilesByPrefix(params: DelLegacyAppChatFileByPrefixParams) {
-    const { sourceId, chatId, uId } = DelLegacyAppChatFileByPrefixSchema.parse(params);
-    const prefix = [S3Sources.chat, sourceId, uId, chatId].filter(Boolean).join('/');
-    const publicBucket = global.s3BucketMap[S3Buckets.public];
-
-    await this.addDeleteJob({ prefix });
-    await publicBucket.addDeleteJob({ prefix });
 
     return prefix;
   }

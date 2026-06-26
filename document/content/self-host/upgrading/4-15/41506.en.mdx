@@ -52,10 +52,11 @@ This endpoint always scans the full `skills` collection and does not support pas
 Migration logic:
 
 1. Read all `_id` values from the `skills` collection.
-2. In `agent_sandbox_instances`, records matching `appId=skillId` or `metadata.skillId=skillId` are updated with `sourceType=skillEdit` and `sourceId=skillId`.
-3. Remaining sandbox instances that do not match a Skill and have a non-empty `appId` are updated with `sourceType=app` and `sourceId=appId`.
-4. Orphan sandboxes with no `appId`, `appId=null`, or `appId=""`, and that cannot be associated with a Skill through `metadata.skillId`, are deleted in non-dry-run mode. This removes the remote sandbox, OpenSandbox volume, S3 archive, and Mongo record. Dry-run only reports them through `orphanMatchedCount`.
-5. Legacy Skill Debug chat cleanup first removes Skill IDs that also exist in the `apps` collection, then deletes legacy `chats`, `chatitems`, `chat_item_responses`, and legacy-format Chat S3 prefixes for the remaining Skill IDs.
+2. For `agent_sandbox_instances` missing `sourceType` or `sourceId`, records matching `appId=skillId` or `metadata.skillId=skillId` are updated with `sourceType=skillEdit` and `sourceId=skillId`, and the legacy `appId` / `metadata.skillId` fields are unset.
+3. Remaining sandbox instances that are still missing `sourceType` or `sourceId`, do not match a Skill, and have a non-empty `appId` are updated with `sourceType=app` and `sourceId=appId`, and the legacy `appId` / `metadata.skillId` fields are unset.
+4. Sandbox instances that already have `sourceType/sourceId` but still retain legacy `appId` or `metadata.skillId` only have the legacy fields unset. Their existing standard ownership is not overwritten.
+5. Orphan sandboxes with no `appId`, `appId=null`, or `appId=""`, and that cannot be associated with a Skill through `metadata.skillId`, are deleted in non-dry-run mode. This removes the remote sandbox, OpenSandbox volume, S3 archive, and Mongo record. Dry-run only reports them through `orphanMatchedCount`.
+6. Legacy Skill Debug chat cleanup first removes Skill IDs that also exist in the `apps` collection, then deletes legacy `chats`, `chatitems`, `chat_item_responses`, and legacy-format Chat S3 prefixes for the remaining Skill IDs.
 
 This endpoint does not backfill `sourceType` for existing App Chat records.
 

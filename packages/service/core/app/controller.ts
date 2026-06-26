@@ -248,8 +248,7 @@ export const deleteAppDataProcessor = async ({
   await deleteAppSandboxes(appId);
   await deleteChatResourcesBySource({
     sourceType: ChatSourceTypeEnum.app,
-    sourceId: appId,
-    deleteSandboxResources: false
+    sourceId: appId
   });
   await MongoAppChatLog.deleteMany({ teamId, appId });
 

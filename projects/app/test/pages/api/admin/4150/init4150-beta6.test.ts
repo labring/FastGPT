@@ -16,10 +16,10 @@ import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemRespon
 
 const mocks = vi.hoisted(() => ({
   authCert: vi.fn(),
-  deleteSandboxesBySourceChatIds: vi.fn(),
   deleteSandboxResource: vi.fn(),
   deleteChatFilesByPrefix: vi.fn(),
-  deleteLegacyAppChatFilesByPrefix: vi.fn()
+  addChatDeleteJob: vi.fn(),
+  addPublicDeleteJob: vi.fn()
 }));
 
 vi.mock('@/service/middleware/entry', () => ({
@@ -31,16 +31,27 @@ vi.mock('@fastgpt/service/support/permission/auth/common', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/service/resource', () => ({
-  deleteSandboxesBySourceChatIds: mocks.deleteSandboxesBySourceChatIds,
   deleteSandboxResource: mocks.deleteSandboxResource
 }));
 
 vi.mock('@fastgpt/service/common/s3/sources/chat', () => ({
   getS3ChatSource: () => ({
     deleteChatFilesByPrefix: mocks.deleteChatFilesByPrefix,
-    deleteLegacyAppChatFilesByPrefix: mocks.deleteLegacyAppChatFilesByPrefix
+    addDeleteJob: mocks.addChatDeleteJob
   })
 }));
+
+vi.mock('@fastgpt/service/common/s3/config/constants', () => ({
+  S3Buckets: {
+    public: 'public'
+  }
+}));
+
+vi.stubGlobal('s3BucketMap', {
+  public: {
+    addDeleteJob: mocks.addPublicDeleteJob
+  }
+});
 
 import { runInit4150Beta6Migration } from '@/pages/api/admin/4150/init4150-beta6';
 
@@ -148,10 +159,16 @@ describe('init4150-beta6 migration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.authCert.mockResolvedValue(undefined);
-    mocks.deleteSandboxesBySourceChatIds.mockResolvedValue(undefined);
-    mocks.deleteSandboxResource.mockResolvedValue(undefined);
+    mocks.deleteSandboxResource.mockImplementation(
+      async (resource: { _id?: unknown; sandboxId: string }) => {
+        await MongoSandboxInstance.deleteOne(
+          resource._id ? { _id: resource._id } : { sandboxId: resource.sandboxId }
+        );
+      }
+    );
     mocks.deleteChatFilesByPrefix.mockResolvedValue(undefined);
-    mocks.deleteLegacyAppChatFilesByPrefix.mockResolvedValue(undefined);
+    mocks.addChatDeleteJob.mockResolvedValue(undefined);
+    mocks.addPublicDeleteJob.mockResolvedValue(undefined);
   });
 
   it('dry-runs sandbox source migration and legacy skill debug chat cleanup', async () => {
@@ -174,6 +191,8 @@ describe('init4150-beta6 migration', () => {
         skillModifiedCount: 0,
         appMatchedCount: 1,
         appModifiedCount: 0,
+        legacyFieldMatchedCount: 0,
+        legacyFieldModifiedCount: 0,
         orphanMatchedCount: 0,
         orphanDeletedCount: 0,
         orphanFailedCount: 0
@@ -196,7 +215,8 @@ describe('init4150-beta6 migration', () => {
         sourceId: skillId
       })
     ).toBe(0);
-    expect(mocks.deleteLegacyAppChatFilesByPrefix).not.toHaveBeenCalled();
+    expect(mocks.addChatDeleteJob).not.toHaveBeenCalled();
+    expect(mocks.addPublicDeleteJob).not.toHaveBeenCalled();
   });
 
   it('migrates sandbox source fields and deletes only non-conflicting legacy skill debug chats', async () => {
@@ -270,8 +290,10 @@ describe('init4150-beta6 migration', () => {
       sandboxMigration: {
         skillMatchedCount: 3,
         skillModifiedCount: 3,
-        appMatchedCount: 2,
-        appModifiedCount: 2,
+        appMatchedCount: 1,
+        appModifiedCount: 1,
+        legacyFieldMatchedCount: 1,
+        legacyFieldModifiedCount: 1,
         orphanMatchedCount: 3,
         orphanDeletedCount: 3,
         orphanFailedCount: 0
@@ -298,16 +320,24 @@ describe('init4150-beta6 migration', () => {
     );
     expect(await MongoChat.countDocuments({ appId: deletableSkillId })).toBe(0);
     expect(await MongoChat.countDocuments({ appId: conflictSkillId })).toBe(1);
-    expect(await MongoSandboxInstance.countDocuments({ appId: deletableSkillId })).toBe(1);
-    expect(await MongoSandboxInstance.countDocuments({ 'metadata.skillId': conflictSkillId })).toBe(
-      2
-    );
+    expect(await MongoSandboxInstance.countDocuments({ appId: { $exists: true } })).toBe(0);
+    expect(
+      await MongoSandboxInstance.countDocuments({ 'metadata.skillId': { $exists: true } })
+    ).toBe(0);
     await expect(
       MongoSandboxInstance.findOne({ sandboxId: 'legacy-sandbox-2' }).lean()
     ).resolves.toMatchObject({
       sourceType: ChatSourceTypeEnum.skillEdit,
       sourceId: deletableSkillId
     });
+    await expect(
+      MongoSandboxInstance.findOne({ sandboxId: 'legacy-sandbox-2' }).lean()
+    ).resolves.toEqual(
+      expect.not.objectContaining({
+        appId: expect.anything(),
+        metadata: expect.objectContaining({ skillId: expect.anything() })
+      })
+    );
     await expect(
       MongoSandboxInstance.findOne({ sandboxId: 'legacy-sandbox-3' }).lean()
     ).resolves.toMatchObject({
@@ -323,11 +353,21 @@ describe('init4150-beta6 migration', () => {
     await expect(
       MongoSandboxInstance.findOne({ sandboxId: 'app-sandbox-3' }).lean()
     ).resolves.toMatchObject({
-      sourceType: ChatSourceTypeEnum.app,
-      sourceId: '65f000000000000000000098'
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: 'legacy-wrong-source'
     });
-    expect(mocks.deleteLegacyAppChatFilesByPrefix).toHaveBeenCalledWith({
-      sourceId: deletableSkillId
+    await expect(
+      MongoSandboxInstance.findOne({ sandboxId: 'app-sandbox-3' }).lean()
+    ).resolves.toEqual(
+      expect.not.objectContaining({
+        appId: expect.anything()
+      })
+    );
+    expect(mocks.addChatDeleteJob).toHaveBeenCalledWith({
+      prefix: `chat/${deletableSkillId}`
+    });
+    expect(mocks.addPublicDeleteJob).toHaveBeenCalledWith({
+      prefix: `chat/${deletableSkillId}`
     });
     expect(mocks.deleteSandboxResource).toHaveBeenCalledWith(
       expect.objectContaining({

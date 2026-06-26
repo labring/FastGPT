@@ -599,7 +599,6 @@ export async function restoreArchivedSandboxBeforeUse(params: {
   sandboxId: string;
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
-  appId?: string;
   userId?: string;
   chatId?: string;
   vmConfig?: VolumeManagerResult | null;
@@ -663,7 +662,6 @@ export async function restoreArchivedSandboxBeforeUse(params: {
     const restoredDoc = await markSandboxRestored(restoringDoc, {
       sourceType: params.sourceType,
       sourceId: params.sourceId,
-      appId: params.appId,
       userId: params.userId,
       chatId: params.chatId,
       storage: restoredStorage,

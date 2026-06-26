@@ -33,7 +33,7 @@ import {
   countRunningSandboxInstancesByType,
   deleteSandboxInstanceRecord,
   findSandboxInstanceBySandboxId,
-  findSandboxResourcesByAppChatTypeExcludeProvider,
+  findSandboxResourcesBySourceChatTypeExcludeProvider,
   migrateArchivedSandboxInstanceRecord,
   updateSandboxInstanceRecordBySandboxId
 } from '../../sandbox/instance/repository';
@@ -293,7 +293,8 @@ export async function createEditDebugSandbox(
       await updateSandboxInstanceRecordBySandboxId({
         provider: providerConfig.provider,
         sandboxId: instance.sandboxId,
-        appId: skillId,
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        sourceId: skillId,
         userId: '',
         chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
         metadata: preparedContext.workspaceHasContent
@@ -375,7 +376,8 @@ export async function createEditDebugSandbox(
     await updateSandboxInstanceRecordBySandboxId({
       provider: providerConfig.provider,
       sandboxId: instance.sandboxId,
-      appId: skillId,
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: skillId,
       userId: '',
       chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
       metadata: newMetadata
@@ -443,9 +445,10 @@ export async function createEditDebugSandbox(
     });
   }
 
-  const staleProviderInstances = await findSandboxResourcesByAppChatTypeExcludeProvider({
+  const staleProviderInstances = await findSandboxResourcesBySourceChatTypeExcludeProvider({
     provider: providerConfig.provider,
-    appId: skillId,
+    sourceType: ChatSourceTypeEnum.skillEdit,
+    sourceId: skillId,
     chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
     type: SandboxTypeEnum.editDebug
   });
@@ -473,7 +476,6 @@ export async function createEditDebugSandbox(
             provider: providerConfig.provider,
             sourceType: ChatSourceTypeEnum.skillEdit,
             sourceId: skillId,
-            appId: skillId,
             userId: '',
             chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
             type: SandboxTypeEnum.editDebug
@@ -516,7 +518,6 @@ export async function createEditDebugSandbox(
           sandboxId: sessionId,
           sourceType: ChatSourceTypeEnum.skillEdit,
           sourceId: skillId,
-          appId: skillId,
           userId: '',
           chatId: EDIT_DEBUG_SANDBOX_CHAT_ID
         },
@@ -606,14 +607,14 @@ export async function createEditDebugSandbox(
     const newSandboxDoc = await updateSandboxInstanceRecordBySandboxId({
       provider: providerConfig.provider,
       sandboxId: sessionId,
-      appId: skillId,
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: skillId,
       userId: '',
       chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
       type: SandboxTypeEnum.editDebug,
       metadata: {
         teamId,
         tmbId,
-        skillId,
         sessionId,
         ...(sandboxInfo.image ? { image: sandboxInfo.image } : {}),
         providerCreatedAt: sandboxInfo.createdAt,

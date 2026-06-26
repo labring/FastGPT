@@ -1,6 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { generateSandboxId } from '@fastgpt/global/core/ai/sandbox/constants';
-
 vi.mock('@fastgpt/service/env', () => ({
   serviceEnv: {
     AGENT_SANDBOX_PROVIDER: 'sealosdevbox'
@@ -21,7 +19,6 @@ const mocks = vi.hoisted(() => ({
   upsertRunningSandboxInstance: vi.fn(),
   assertSandboxNotArchivedOrBusy: vi.fn(),
   restoreArchivedSandboxBeforeUse: vi.fn(),
-  findSandboxAppIdBySandboxId: vi.fn(),
   mongoAppFindById: vi.fn(),
   mongoAgentSkillsFindById: vi.fn(),
   checkTeamSandboxPermission: vi.fn()
@@ -56,7 +53,6 @@ vi.mock('@fastgpt/service/core/ai/sandbox/volume/service', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/instance/repository', () => ({
-  findSandboxAppIdBySandboxId: mocks.findSandboxAppIdBySandboxId,
   upsertRunningSandboxInstance: mocks.upsertRunningSandboxInstance
 }));
 
@@ -108,7 +104,6 @@ const createSandboxIdQuery = (sandboxId: string) => ({
   sandboxId,
   sourceType: ChatSourceTypeEnum.app,
   sourceId: 'app-1',
-  appId: 'app-1',
   userId: 'user-1',
   chatId: 'chat-1'
 });
@@ -125,7 +120,6 @@ describe('sandbox runtime service', () => {
     mocks.deleteSandboxResource.mockResolvedValue(undefined);
     mocks.stopSandboxResource.mockResolvedValue(undefined);
     mocks.buildRuntimeSandboxAdapter.mockReturnValue(createProvider());
-    mocks.findSandboxAppIdBySandboxId.mockResolvedValue(undefined);
     mocks.mongoAppFindById.mockReturnValue(mockLeanResult(null));
     mocks.mongoAgentSkillsFindById.mockReturnValue(mockLeanResult(null));
     mocks.checkTeamSandboxPermission.mockResolvedValue(undefined);
@@ -213,36 +207,9 @@ describe('sandbox runtime service', () => {
     expect(mocks.upsertRunningSandboxInstance).not.toHaveBeenCalled();
   });
 
-  it('builds sandbox id from app/user/chat triplet and omits user for edit-debug chat', async () => {
-    const client = await getSandboxClient({
-      appId: 'app-1',
-      userId: 'user-1',
-      chatId: 'edit-debug'
-    });
-
-    expect(client.getSandboxId()).toBe(generateSandboxId('app-1', '', 'edit-debug'));
-  });
-
-  it('builds sandbox id from app/user/chat triplet for normal chat', async () => {
-    const client = await getSandboxClient({
-      appId: 'app-1',
-      userId: 'user-1',
-      chatId: 'normal-chat'
-    });
-
-    expect(client.getSandboxId()).toBe(generateSandboxId('app-1', 'user-1', 'normal-chat'));
-    expect(mocks.buildRuntimeSandboxAdapter).toHaveBeenCalledWith(
-      'sealosdevbox',
-      client.getSandboxId(),
-      expect.not.objectContaining({
-        createConfig: expect.anything()
-      })
-    );
-  });
-
-  it('rejects incomplete app/chat query instead of deriving a shared empty sandbox id', async () => {
-    await expect(getSandboxClient({ appId: 'app-1' } as any)).rejects.toThrow(
-      'appId and chatId are required'
+  it('rejects legacy appId query instead of deriving sandbox id in runtime service', async () => {
+    await expect(getSandboxClient({ appId: 'app-1', chatId: 'chat-1' } as any)).rejects.toThrow(
+      'sandboxId is required'
     );
     expect(mocks.buildRuntimeSandboxAdapter).not.toHaveBeenCalled();
   });

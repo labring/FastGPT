@@ -18,11 +18,11 @@ import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 const mocks = vi.hoisted(() => ({
-  deleteSandboxesBySourceChatIds: vi.fn()
+  deleteAppChatRuntimeSandboxes: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/service/resource', () => ({
-  deleteSandboxesBySourceChatIds: mocks.deleteSandboxesBySourceChatIds
+  deleteAppChatRuntimeSandboxes: mocks.deleteAppChatRuntimeSandboxes
 }));
 
 type EmptyQuery = Record<string, never>;
@@ -34,7 +34,7 @@ describe('batchDelete api test', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
-    mocks.deleteSandboxesBySourceChatIds.mockResolvedValue(undefined);
+    mocks.deleteAppChatRuntimeSandboxes.mockResolvedValue(undefined);
     testUser = await getUser('test-user-batch-delete');
 
     // Create test app
@@ -122,9 +122,8 @@ describe('batchDelete api test', () => {
 
     expect(res.code).toBe(200);
     expect(res.error).toBeUndefined();
-    expect(mocks.deleteSandboxesBySourceChatIds).toHaveBeenCalledWith({
-      sourceType: ChatSourceTypeEnum.app,
-      sourceId: appId,
+    expect(mocks.deleteAppChatRuntimeSandboxes).toHaveBeenCalledWith({
+      appId,
       chatIds: deleteIds
     });
 
@@ -217,7 +216,7 @@ describe('batchDelete api test', () => {
 
     expect(res.code).toBe(200);
     expect(res.error).toBeUndefined();
-    expect(mocks.deleteSandboxesBySourceChatIds).not.toHaveBeenCalled();
+    expect(mocks.deleteAppChatRuntimeSandboxes).not.toHaveBeenCalled();
     expect(
       await MongoChat.countDocuments({
         sourceType: ChatSourceTypeEnum.skillEdit,

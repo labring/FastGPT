@@ -5,8 +5,8 @@ import {
   deleteSandboxResourceRecord,
   findSandboxResourcesBySource,
   findSandboxResourcesBySourceChatIds,
+  findSkillRelatedSandboxResources,
   markSandboxResourceStopped,
-  type SandboxSourceParams,
   type SandboxResourceRef
 } from '../instance/repository';
 import { buildSandboxResourceAdapter } from '../provider/adapter';
@@ -14,6 +14,19 @@ import { deleteSessionVolume } from '../volume/service';
 import { getS3SandboxSource } from '../../../../common/s3/sources/sandbox';
 
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
+
+const deleteSandboxResources = async (instances: SandboxResourceRef[]) => {
+  if (!instances.length) return;
+
+  await Promise.allSettled(
+    instances.map(async (doc) => {
+      await deleteSandboxResource(doc).catch((err) => {
+        logger.error('Failed to delete sandbox', { sandboxId: doc.sandboxId, error: err });
+        return Promise.reject(err);
+      });
+    })
+  );
+};
 
 /**
  * 停止一条已存在的 sandbox 资源记录。
@@ -66,46 +79,26 @@ export async function deleteSandboxResource(
 }
 
 /**
- * 删除某个 source 下指定 chat 会话关联的 sandbox 资源。
+ * 删除某个 App 下指定 chat 会话绑定的 runtime sandbox。
  *
- * 这里用于聊天记录删除等批量清理场景；单个资源清理失败会记录日志并继续处理剩余资源。
+ * 只服务 App chat 删除、批量历史清理和 Pro 过期 chat 清理；Skill Edit 编辑沙盒不跟 chat
+ * 生命周期绑定，必须通过 deleteSkillEditSandboxes 处理。
  */
-export const deleteSandboxesBySourceChatIds = async ({
-  sourceType,
-  sourceId,
+export const deleteAppChatRuntimeSandboxes = async ({
+  appId,
   chatIds
-}: SandboxSourceParams & {
+}: {
+  appId: string;
   chatIds: string[];
 }) => {
-  const instances = await findSandboxResourcesBySourceChatIds({ sourceType, sourceId, chatIds });
-  if (!instances.length) return;
+  if (chatIds.length === 0) return;
 
-  await Promise.allSettled(
-    instances.map(async (doc) => {
-      await deleteSandboxResource(doc).catch((err) => {
-        logger.error('Failed to delete sandbox', { sandboxId: doc.sandboxId, error: err });
-        return Promise.reject(err);
-      });
-    })
-  );
-};
-
-/**
- * 删除某个 source 下的全部 sandbox 资源。
- *
- * App 删除流程可能遇到多个 chat、edit-debug 或历史 provider 资源，因此统一从实例记录查询后逐条清理。
- */
-export const deleteSandboxesBySource = async (params: SandboxSourceParams) => {
-  const instances = await findSandboxResourcesBySource(params);
-  if (!instances.length) return;
-
-  await Promise.allSettled(
-    instances.map(async (doc) => {
-      await deleteSandboxResource(doc).catch((err) => {
-        logger.error('Failed to delete sandbox', { sandboxId: doc.sandboxId, error: err });
-      });
-    })
-  );
+  const instances = await findSandboxResourcesBySourceChatIds({
+    sourceType: ChatSourceTypeEnum.app,
+    sourceId: appId,
+    chatIds
+  });
+  await deleteSandboxResources(instances);
 };
 
 /**
@@ -114,10 +107,27 @@ export const deleteSandboxesBySource = async (params: SandboxSourceParams) => {
  * 这是 App 删除场景的语义化入口；内部仍走 source-aware 查询，避免上层继续拼物理字段。
  */
 export const deleteAppSandboxes = async (appId: string) => {
-  return deleteSandboxesBySource({
+  const instances = await findSandboxResourcesBySource({
     sourceType: ChatSourceTypeEnum.app,
     sourceId: appId
   });
+  await deleteSandboxResources(instances);
+};
+
+/**
+ * 删除一批 Skill Edit 相关的全部 sandbox 资源。
+ *
+ * 只在 Skill 删除时调用。Skill Edit 对话删除、过期聊天清理不应调用这里。
+ */
+export const deleteSkillEditSandboxes = async (skillIds: string[]) => {
+  if (skillIds.length === 0) return;
+
+  const instances = await findSkillRelatedSandboxResources(skillIds);
+  logger.info('Deleting skill edit sandboxes', {
+    skillIds,
+    count: instances.length
+  });
+  await deleteSandboxResources(instances);
 };
 
 /**

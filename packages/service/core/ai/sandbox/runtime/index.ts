@@ -45,8 +45,6 @@ export async function prepareAgentSandboxRuntime({
     sandboxId,
     sourceType,
     sourceId,
-    // sandbox 实例表暂时仍复用物理 appId 字段；业务层统一传 sourceType/sourceId。
-    appId: sourceId,
     userId: sourceType === ChatSourceTypeEnum.app ? userId : '',
     chatId
   });

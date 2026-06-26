@@ -109,7 +109,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/instance/repository', () => ({
   countRunningSandboxInstancesByType: vi.fn(),
   deleteSandboxInstanceRecord: vi.fn(),
   findSandboxInstanceBySandboxId: vi.fn(),
-  findSandboxResourcesByAppChatTypeExcludeProvider: vi.fn(),
+  findSandboxResourcesBySourceChatTypeExcludeProvider: vi.fn(),
   migrateArchivedSandboxInstanceRecord: vi.fn(),
   updateSandboxInstanceRecordBySandboxId: vi.fn()
 }));
@@ -148,7 +148,7 @@ import {
   countRunningSandboxInstancesByType,
   deleteSandboxInstanceRecord,
   findSandboxInstanceBySandboxId,
-  findSandboxResourcesByAppChatTypeExcludeProvider,
+  findSandboxResourcesBySourceChatTypeExcludeProvider,
   migrateArchivedSandboxInstanceRecord,
   updateSandboxInstanceRecordBySandboxId
 } from '@fastgpt/service/core/ai/sandbox/instance/repository';
@@ -402,7 +402,7 @@ describe('createEditDebugSandbox', () => {
       storageKey: 'storage-key'
     } as any);
     vi.mocked(findSandboxInstanceBySandboxId).mockResolvedValueOnce(null);
-    vi.mocked(findSandboxResourcesByAppChatTypeExcludeProvider).mockResolvedValueOnce([]);
+    vi.mocked(findSandboxResourcesBySourceChatTypeExcludeProvider).mockResolvedValueOnce([]);
     vi.mocked(countRunningSandboxInstancesByType).mockResolvedValueOnce(0);
     vi.mocked(downloadSkillPackage).mockResolvedValueOnce(packageBuffer);
     vi.mocked(getSandboxClient).mockResolvedValueOnce({
@@ -480,7 +480,7 @@ describe('createEditDebugSandbox', () => {
       storageKey: 'storage-key'
     } as any);
     vi.mocked(findSandboxInstanceBySandboxId).mockResolvedValueOnce(archivedInstance as any);
-    vi.mocked(findSandboxResourcesByAppChatTypeExcludeProvider).mockResolvedValueOnce([]);
+    vi.mocked(findSandboxResourcesBySourceChatTypeExcludeProvider).mockResolvedValueOnce([]);
     vi.mocked(countRunningSandboxInstancesByType).mockResolvedValueOnce(0);
     vi.mocked(getSandboxClient).mockResolvedValueOnce({
       provider,
@@ -514,7 +514,6 @@ describe('createEditDebugSandbox', () => {
     expect(deleteSandboxInstanceRecord).not.toHaveBeenCalled();
     expect(getSandboxClient).toHaveBeenCalledWith(
       {
-        appId: skillId,
         sourceType: ChatSourceTypeEnum.skillEdit,
         sourceId: skillId,
         sandboxId: `edit-debug-${skillId}`,
@@ -571,7 +570,7 @@ describe('createEditDebugSandbox', () => {
       storageKey: 'storage-key'
     } as any);
     vi.mocked(findSandboxInstanceBySandboxId).mockResolvedValueOnce(archivedInstance as any);
-    vi.mocked(findSandboxResourcesByAppChatTypeExcludeProvider).mockResolvedValueOnce([]);
+    vi.mocked(findSandboxResourcesBySourceChatTypeExcludeProvider).mockResolvedValueOnce([]);
     vi.mocked(countRunningSandboxInstancesByType).mockResolvedValueOnce(0);
     vi.mocked(getSandboxClient)
       .mockRejectedValueOnce(noSuchKeyError)
@@ -626,7 +625,8 @@ describe('createEditDebugSandbox', () => {
       _id: 'archived-stale-provider-instance',
       provider: 'opensandbox',
       sandboxId: `edit-debug-${skillId}`,
-      appId: skillId,
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: skillId,
       chatId: 'edit-debug',
       type: 'editDebug',
       metadata: {
@@ -646,7 +646,7 @@ describe('createEditDebugSandbox', () => {
       storageKey: 'storage-key'
     } as any);
     vi.mocked(findSandboxInstanceBySandboxId).mockResolvedValueOnce(null);
-    vi.mocked(findSandboxResourcesByAppChatTypeExcludeProvider).mockResolvedValueOnce([
+    vi.mocked(findSandboxResourcesBySourceChatTypeExcludeProvider).mockResolvedValueOnce([
       archivedStaleInstance as any
     ]);
     vi.mocked(countRunningSandboxInstancesByType).mockResolvedValueOnce(0);
@@ -681,7 +681,6 @@ describe('createEditDebugSandbox', () => {
     expect(migrateArchivedSandboxInstanceRecord).toHaveBeenCalledWith({
       source: archivedStaleInstance,
       provider: 'test-provider',
-      appId: skillId,
       sourceType: ChatSourceTypeEnum.skillEdit,
       sourceId: skillId,
       userId: '',
@@ -696,7 +695,8 @@ describe('createEditDebugSandbox', () => {
       expect.objectContaining({
         provider: 'test-provider',
         sandboxId: `edit-debug-${skillId}`,
-        appId: skillId,
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        sourceId: skillId,
         chatId: 'edit-debug'
       })
     );

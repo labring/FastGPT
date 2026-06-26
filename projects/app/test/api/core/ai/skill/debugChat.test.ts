@@ -404,7 +404,6 @@ describe('debugChat handler — parameter validation', () => {
       sandboxId: getEditDebugSandboxId(skillId),
       sourceType: ChatSourceTypeEnum.skillEdit,
       sourceId: skillId,
-      appId: skillId,
       chatId: 'edit-debug',
       userId: testUser.tmbId,
       type: SandboxTypeEnum.editDebug,
@@ -412,7 +411,6 @@ describe('debugChat handler — parameter validation', () => {
       metadata: {
         teamId: testUser.teamId,
         tmbId: testUser.tmbId,
-        skillId,
         provider: 'opensandbox',
         image: { repository: 'test-image', tag: 'latest' },
         providerCreatedAt: new Date()
@@ -446,7 +444,6 @@ describe('debugChat handler — parameter validation', () => {
       sandboxId: getEditDebugSandboxId(skillId),
       sourceType: ChatSourceTypeEnum.skillEdit,
       sourceId: skillId,
-      appId: skillId,
       chatId: 'edit-debug',
       userId: testUser.tmbId,
       type: SandboxTypeEnum.editDebug,
@@ -454,7 +451,6 @@ describe('debugChat handler — parameter validation', () => {
       metadata: {
         teamId: testUser.teamId,
         tmbId: testUser.tmbId,
-        skillId,
         provider: 'opensandbox',
         image: { repository: 'test-image', tag: 'latest' },
         providerCreatedAt: new Date()

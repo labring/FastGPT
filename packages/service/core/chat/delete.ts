@@ -1,6 +1,6 @@
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getS3ChatSource } from '../../common/s3/sources/chat';
-import { deleteSandboxesBySourceChatIds } from '../ai/sandbox/service/resource';
+import { deleteAppChatRuntimeSandboxes } from '../ai/sandbox/service/resource';
 import { MongoChatItemResponse } from './chatItemResponseSchema';
 import { MongoChatItem } from './chatItemSchema';
 import { MongoChat } from './chatSchema';
@@ -8,8 +8,6 @@ import { buildChatSourceQuery, type ChatSourceParams } from './source';
 
 export type DeleteChatResourcesBySourceParams = ChatSourceParams & {
   chatIds?: string[];
-  legacySkillDebug?: boolean;
-  deleteSandboxResources?: boolean;
 };
 
 type ChatResourceRecord = {
@@ -40,23 +38,6 @@ const deleteChatFilesBySourcePrefix = async ({
   });
 };
 
-const deleteLegacySkillDebugChatFilesByPrefix = async ({
-  sourceId,
-  chatId,
-  uId
-}: Pick<DeleteChatResourcesBySourceParams, 'sourceId'> & {
-  chatId?: string;
-  uId?: string;
-}) => {
-  // 旧 Skill Debug 曾按 App legacy key 写入：chat/${skillId}/${uid}/${chatId}/...
-  // 这里不能删除 chat/app/${skillId} 或 chat/skillEdit/${skillId}，避免清理旧数据时误删新数据。
-  await getS3ChatSource().deleteLegacyAppChatFilesByPrefix({
-    sourceId,
-    chatId,
-    uId
-  });
-};
-
 /**
  * 按统一 chat source 硬删除标准 chat 资源。
  *
@@ -66,9 +47,7 @@ const deleteLegacySkillDebugChatFilesByPrefix = async ({
 export async function deleteChatResourcesBySource({
   sourceType,
   sourceId,
-  chatIds,
-  legacySkillDebug,
-  deleteSandboxResources = sourceType === ChatSourceTypeEnum.app
+  chatIds
 }: DeleteChatResourcesBySourceParams) {
   if (chatIds && chatIds.length === 0) {
     // 显式传空数组表示没有目标 chat，不能退化为整 source 删除。
@@ -77,8 +56,7 @@ export async function deleteChatResourcesBySource({
 
   const sourceQuery = buildChatSourceQuery({
     sourceType,
-    sourceId,
-    legacySkillDebug
+    sourceId
   });
   const chatIdQuery = chatIds?.length ? { chatId: { $in: chatIds } } : {};
   const chatQuery = {
@@ -104,37 +82,21 @@ export async function deleteChatResourcesBySource({
     });
   })();
   const existingChatIds = chatList.map((chat) => chat.chatId).filter(Boolean);
-  const itemQuery =
-    legacySkillDebug && existingChatIds.length > 0
-      ? {
-          appId: sourceId,
-          sourceType: { $exists: false },
-          chatId: { $in: existingChatIds }
-        }
-      : chatQuery;
-  const shouldDeleteChatItems = !legacySkillDebug || existingChatIds.length > 0;
-
   await Promise.all([
-    shouldDeleteChatItems ? MongoChatItemResponse.deleteMany(itemQuery) : Promise.resolve(),
-    sourceType === ChatSourceTypeEnum.app && deleteSandboxResources && existingChatIds.length
-      ? deleteSandboxesBySourceChatIds({ sourceType, sourceId, chatIds: existingChatIds })
+    MongoChatItemResponse.deleteMany(chatQuery),
+    sourceType === ChatSourceTypeEnum.app && existingChatIds.length
+      ? deleteAppChatRuntimeSandboxes({ appId: sourceId, chatIds: existingChatIds })
       : Promise.resolve()
   ]);
 
-  if (shouldDeleteChatItems) {
-    await MongoChatItem.deleteMany(itemQuery);
-  }
+  await MongoChatItem.deleteMany(chatQuery);
   await MongoChat.deleteMany(chatQuery);
 
   if (!chatIds?.length) {
-    if (legacySkillDebug) {
-      await deleteLegacySkillDebugChatFilesByPrefix({ sourceId });
-    } else {
-      await deleteChatFilesBySourcePrefix({
-        sourceType,
-        sourceId
-      });
-    }
+    await deleteChatFilesBySourcePrefix({
+      sourceType,
+      sourceId
+    });
     return;
   }
 
@@ -143,18 +105,12 @@ export async function deleteChatResourcesBySource({
       const uId = getChatResourceUid(chat);
       if (!uId) return Promise.resolve();
 
-      return legacySkillDebug
-        ? deleteLegacySkillDebugChatFilesByPrefix({
-            sourceId,
-            chatId: chat.chatId,
-            uId
-          })
-        : deleteChatFilesBySourcePrefix({
-            sourceType,
-            sourceId,
-            chatId: chat.chatId,
-            uId
-          });
+      return deleteChatFilesBySourcePrefix({
+        sourceType,
+        sourceId,
+        chatId: chat.chatId,
+        uId
+      });
     })
   );
 }

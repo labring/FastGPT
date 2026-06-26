@@ -93,7 +93,6 @@ describe('sandbox toolCall index', () => {
       sandboxId: generateSandboxId('app', 'user', 'chat'),
       sourceType: ChatSourceTypeEnum.app,
       sourceId: 'app',
-      appId: 'app',
       userId: 'user',
       chatId: 'chat'
     });

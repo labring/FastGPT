@@ -26,13 +26,6 @@ export const DelChatFileByPrefixSchema = z.object({
 });
 export type DelChatFileByPrefixParams = z.input<typeof DelChatFileByPrefixSchema>;
 
-export const DelLegacyAppChatFileByPrefixSchema = z.object({
-  sourceId: ObjectIdSchema,
-  chatId: z.string().nonempty().optional(),
-  uId: z.string().nonempty().optional()
-});
-export type DelLegacyAppChatFileByPrefixParams = z.input<typeof DelLegacyAppChatFileByPrefixSchema>;
-
 export const UploadChatFileSchema = z.object({
   sourceType: ChatS3SourceTypeSchema,
   sourceId: ObjectIdSchema,

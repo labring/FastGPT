@@ -29,7 +29,7 @@ describe('prepareAgentSandboxRuntime', () => {
     mocks.getSandboxClient.mockResolvedValue({ getSandboxId: () => 'sandbox' });
   });
 
-  it('converts app source into sandbox client compatibility fields internally', async () => {
+  it('passes app source into sandbox client without legacy appId fields', async () => {
     const { prepareAgentSandboxRuntime } = await import('@fastgpt/service/core/ai/sandbox/runtime');
 
     await expect(
@@ -50,7 +50,6 @@ describe('prepareAgentSandboxRuntime', () => {
       sandboxId: generateSandboxId('app_1', 'user_1', 'chat_1'),
       sourceType: ChatSourceTypeEnum.app,
       sourceId: 'app_1',
-      appId: 'app_1',
       userId: 'user_1',
       chatId: 'chat_1'
     });
@@ -72,7 +71,6 @@ describe('prepareAgentSandboxRuntime', () => {
       sandboxId: getEditDebugSandboxId('skill_1'),
       sourceType: ChatSourceTypeEnum.skillEdit,
       sourceId: 'skill_1',
-      appId: 'skill_1',
       userId: '',
       chatId: 'edit-debug'
     });

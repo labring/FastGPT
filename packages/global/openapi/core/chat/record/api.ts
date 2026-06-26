@@ -47,10 +47,6 @@ const DeleteChatRecordPropsSchema = {
   contentIds: QueryStringArraySchema.meta({
     example: ['content123', 'content456'],
     description: '要删除的消息 ID 列表'
-  }),
-  delFile: z.coerce.boolean().optional().meta({
-    example: false,
-    description: '是否同时删除关联文件'
   })
 };
 export const DeleteChatRecordBodyRawSchema = createOutLinkChatTargetInputSchema(

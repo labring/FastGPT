@@ -23,7 +23,8 @@ const SandboxInstanceSchema = new Schema({
     type: String,
     required: true
   },
-  // Chat 模式和 skill sandbox 都会复用这组根字段。
+  // @deprecated 仅保留给 4.15.0-beta6 一次性迁移脚本识别旧 sandbox 归属。
+  // 运行时业务必须使用 sourceType/sourceId。
   appId: String,
   sourceType: {
     type: String,
@@ -68,6 +69,7 @@ const SandboxInstanceSchema = new Schema({
   }
 });
 
+// @deprecated 旧 appId 维度索引仅用于迁移窗口和历史数据观察，新业务查询必须使用 sourceType/sourceId。
 SandboxInstanceSchema.index(
   { provider: 1, appId: 1, userId: 1, chatId: 1 },
   {
@@ -83,6 +85,7 @@ SandboxInstanceSchema.index(
 );
 SandboxInstanceSchema.index({ status: 1, lastActiveAt: 1, 'metadata.archive.state': 1 });
 SandboxInstanceSchema.index({ provider: 1, sandboxId: 1 }, { unique: true });
+// @deprecated 旧 appId 维度索引仅用于迁移窗口和历史数据观察，新业务查询必须使用 sourceType/sourceId。
 SandboxInstanceSchema.index(
   { appId: 1, chatId: 1 },
   {
@@ -94,6 +97,7 @@ SandboxInstanceSchema.index(
     }
   }
 );
+// @deprecated 旧 Skill Edit 归属索引仅用于迁移窗口，新业务不得写入或查询 metadata.skillId。
 SandboxInstanceSchema.index({ 'metadata.skillId': 1 });
 SandboxInstanceSchema.index({ type: 1, chatId: 1 });
 SandboxInstanceSchema.index({ sourceType: 1, sourceId: 1, chatId: 1 });

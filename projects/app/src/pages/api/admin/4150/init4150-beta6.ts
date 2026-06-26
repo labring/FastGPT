@@ -1,16 +1,18 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatSourceEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
-import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/instance/schema';
 import type { SandboxResourceRef } from '@fastgpt/service/core/ai/sandbox/instance/repository';
+import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
+import { S3Sources } from '@fastgpt/service/common/s3/contracts/type';
+import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 import z from 'zod';
 
 const Init4150Beta6BodySchema = z.object({
@@ -34,6 +36,8 @@ const Init4150Beta6ResponseSchema = z.object({
     skillModifiedCount: z.number().int().nonnegative(),
     appMatchedCount: z.number().int().nonnegative(),
     appModifiedCount: z.number().int().nonnegative(),
+    legacyFieldMatchedCount: z.number().int().nonnegative(),
+    legacyFieldModifiedCount: z.number().int().nonnegative(),
     orphanMatchedCount: z.number().int().nonnegative(),
     orphanDeletedCount: z.number().int().nonnegative(),
     orphanFailedCount: z.number().int().nonnegative()
@@ -59,6 +63,21 @@ type SandboxSourceUpdateOperation = {
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
 };
+type LegacySandboxSourceDoc = {
+  _id: unknown;
+  appId?: string | null;
+  metadata?: {
+    skillId?: string | null;
+  };
+};
+
+const sandboxInstanceCollection = () => MongoSandboxInstance.collection;
+
+const buildLegacySkillDebugChatQuery = (skillId: string) => ({
+  appId: skillId,
+  source: ChatSourceEnum.test,
+  sourceType: { $exists: false }
+});
 
 const getAllSkillIds = async () => {
   const skillList = await MongoAgentSkills.find({}, '_id').lean();
@@ -78,23 +97,33 @@ const getConflictAppSkillIds = async (skillIds: string[]) => {
   return new Set(appList.map((app) => String(app._id)));
 };
 
+const buildMissingSandboxSourceQuery = () => {
+  return {
+    $or: [
+      { sourceType: { $exists: false } },
+      { sourceType: { $exists: true, $nin: Object.values(ChatSourceTypeEnum) } },
+      { sourceId: { $exists: false } },
+      { sourceId: { $in: ['', null] } }
+    ]
+  };
+};
+
 const buildSkillSandboxQuery = (skillIds: string[]) => {
   return {
-    $or: [{ appId: { $in: skillIds } }, { 'metadata.skillId': { $in: skillIds } }]
+    $and: [
+      buildMissingSandboxSourceQuery(),
+      {
+        $or: [{ appId: { $in: skillIds } }, { 'metadata.skillId': { $in: skillIds } }]
+      }
+    ]
   };
 };
 
 const buildRemainingAppSandboxQuery = (skillIds: string[]) => {
   return {
     appId: { $exists: true, $nin: ['', null, ...skillIds] },
-    $or: [{ 'metadata.skillId': { $exists: false } }, { 'metadata.skillId': { $nin: skillIds } }]
-  };
-};
-
-const buildOrphanSandboxQuery = (skillIds: string[]) => {
-  return {
-    $or: [{ appId: { $exists: false } }, { appId: { $in: ['', null] } }],
     $and: [
+      buildMissingSandboxSourceQuery(),
       {
         $or: [
           { 'metadata.skillId': { $exists: false } },
@@ -105,17 +134,34 @@ const buildOrphanSandboxQuery = (skillIds: string[]) => {
   };
 };
 
+const buildOrphanSandboxQuery = (skillIds: string[]) => {
+  return {
+    $and: [
+      buildMissingSandboxSourceQuery(),
+      { $or: [{ appId: { $exists: false } }, { appId: { $in: ['', null] } }] },
+      {
+        $or: [
+          { 'metadata.skillId': { $exists: false } },
+          { 'metadata.skillId': { $nin: skillIds } }
+        ]
+      }
+    ]
+  };
+};
+
+const buildLegacySandboxFieldCleanupQuery = () => {
+  return {
+    sourceType: { $in: Object.values(ChatSourceTypeEnum) },
+    sourceId: { $exists: true, $nin: ['', null] },
+    $or: [{ appId: { $exists: true } }, { 'metadata.skillId': { $exists: true } }]
+  };
+};
+
 const getSkillSourceIdFromSandbox = ({
   doc,
   skillIdSet
 }: {
-  doc: {
-    _id: unknown;
-    appId?: string;
-    metadata?: {
-      skillId?: string;
-    };
-  };
+  doc: LegacySandboxSourceDoc;
   skillIdSet: Set<string>;
 }) => {
   const metadataSkillId = doc.metadata?.skillId;
@@ -128,10 +174,14 @@ const getSkillSourceIdFromSandbox = ({
 const updateSandboxSources = async (operations: SandboxSourceUpdateOperation[]) => {
   const results = await Promise.all(
     operations.map((operation) =>
-      MongoSandboxInstance.updateOne(operation.filter, {
+      sandboxInstanceCollection().updateOne(operation.filter, {
         $set: {
           sourceType: operation.sourceType,
           sourceId: operation.sourceId
+        },
+        $unset: {
+          appId: '',
+          'metadata.skillId': ''
         }
       })
     )
@@ -155,18 +205,15 @@ const migrateSandboxInstances = async ({
   skillIds: string[];
 }): Promise<Init4150Beta6ResponseType['sandboxMigration']> => {
   const skillIdSet = new Set(skillIds);
-  const skillSandboxDocs = await MongoSandboxInstance.find(
-    buildSkillSandboxQuery(skillIds),
-    '_id appId metadata.skillId'
-  ).lean<
-    {
-      _id: unknown;
-      appId?: string;
-      metadata?: {
-        skillId?: string;
-      };
-    }[]
-  >();
+  const skillSandboxDocs = (await sandboxInstanceCollection()
+    .find(buildSkillSandboxQuery(skillIds), {
+      projection: {
+        _id: 1,
+        appId: 1,
+        'metadata.skillId': 1
+      }
+    })
+    .toArray()) as LegacySandboxSourceDoc[];
   const skillUpdateOperations: SandboxSourceUpdateOperation[] = skillSandboxDocs.flatMap((doc) => {
     const sourceId = getSkillSourceIdFromSandbox({
       doc,
@@ -187,9 +234,10 @@ const migrateSandboxInstances = async ({
   const orphanSandboxQuery = buildOrphanSandboxQuery(skillIds);
 
   if (dryRun) {
-    const [appMatchedCount, orphanMatchedCount] = await Promise.all([
-      MongoSandboxInstance.countDocuments(appDryRunQuery),
-      MongoSandboxInstance.countDocuments(orphanSandboxQuery)
+    const [appMatchedCount, legacyFieldMatchedCount, orphanMatchedCount] = await Promise.all([
+      sandboxInstanceCollection().countDocuments(appDryRunQuery),
+      sandboxInstanceCollection().countDocuments(buildLegacySandboxFieldCleanupQuery()),
+      sandboxInstanceCollection().countDocuments(orphanSandboxQuery)
     ]);
 
     return {
@@ -197,6 +245,8 @@ const migrateSandboxInstances = async ({
       skillModifiedCount: 0,
       appMatchedCount,
       appModifiedCount: 0,
+      legacyFieldMatchedCount,
+      legacyFieldModifiedCount: 0,
       orphanMatchedCount,
       orphanDeletedCount: 0,
       orphanFailedCount: 0
@@ -207,9 +257,14 @@ const migrateSandboxInstances = async ({
     skillUpdateOperations.length > 0
       ? await updateSandboxSources(skillUpdateOperations)
       : undefined;
-  const appSandboxDocs = await MongoSandboxInstance.find(appDryRunQuery, '_id appId').lean<
-    { _id: unknown; appId?: string }[]
-  >();
+  const appSandboxDocs = (await sandboxInstanceCollection()
+    .find(appDryRunQuery, {
+      projection: {
+        _id: 1,
+        appId: 1
+      }
+    })
+    .toArray()) as { _id: unknown; appId?: string | null }[];
   const appUpdateOperations: SandboxSourceUpdateOperation[] = appSandboxDocs.flatMap((doc) => {
     if (!doc.appId) return [];
 
@@ -223,10 +278,26 @@ const migrateSandboxInstances = async ({
   });
   const appUpdateResult =
     appUpdateOperations.length > 0 ? await updateSandboxSources(appUpdateOperations) : undefined;
-  const orphanSandboxDocs = await MongoSandboxInstance.find(
-    orphanSandboxQuery,
-    '_id provider sandboxId status lastActiveAt'
-  ).lean<SandboxResourceRef[]>();
+  const legacyFieldCleanupResult = await sandboxInstanceCollection().updateMany(
+    buildLegacySandboxFieldCleanupQuery(),
+    {
+      $unset: {
+        appId: '',
+        'metadata.skillId': ''
+      }
+    }
+  );
+  const orphanSandboxDocs = (await sandboxInstanceCollection()
+    .find(orphanSandboxQuery, {
+      projection: {
+        _id: 1,
+        provider: 1,
+        sandboxId: 1,
+        status: 1,
+        lastActiveAt: 1
+      }
+    })
+    .toArray()) as SandboxResourceRef[];
   const { deleteSandboxResource } =
     await import('@fastgpt/service/core/ai/sandbox/service/resource');
   const orphanDeleteResults = await Promise.allSettled(
@@ -238,6 +309,14 @@ const migrateSandboxInstances = async ({
     skillModifiedCount: skillUpdateResult?.modifiedCount ?? 0,
     appMatchedCount: appUpdateOperations.length,
     appModifiedCount: appUpdateResult?.modifiedCount ?? 0,
+    legacyFieldMatchedCount:
+      typeof legacyFieldCleanupResult.matchedCount === 'number'
+        ? legacyFieldCleanupResult.matchedCount
+        : 0,
+    legacyFieldModifiedCount:
+      typeof legacyFieldCleanupResult.modifiedCount === 'number'
+        ? legacyFieldCleanupResult.modifiedCount
+        : 0,
     orphanMatchedCount: orphanSandboxDocs.length,
     orphanDeletedCount: orphanDeleteResults.filter((item) => item.status === 'fulfilled').length,
     orphanFailedCount: orphanDeleteResults.filter((item) => item.status === 'rejected').length
@@ -245,11 +324,7 @@ const migrateSandboxInstances = async ({
 };
 
 const getLegacyDebugChatStats = async (skillId: string): Promise<LegacyDebugChatCleanupItem> => {
-  const legacyQuery = buildChatSourceQuery({
-    sourceType: ChatSourceTypeEnum.skillEdit,
-    sourceId: skillId,
-    legacySkillDebug: true
-  });
+  const legacyQuery = buildLegacySkillDebugChatQuery(skillId);
   const legacyChatList = await MongoChat.find(legacyQuery, 'chatId').lean();
   const legacyChatIds = legacyChatList.map((chat) => chat.chatId).filter(Boolean);
   const legacyChatItemQuery = {
@@ -274,6 +349,34 @@ const getLegacyDebugChatStats = async (skillId: string): Promise<LegacyDebugChat
   };
 };
 
+const cleanupLegacySkillDebugChatResources = async (skillId: string) => {
+  const legacyQuery = buildLegacySkillDebugChatQuery(skillId);
+  const legacyChatList = await MongoChat.find(legacyQuery, 'chatId').lean();
+  const legacyChatIds = legacyChatList.map((chat) => chat.chatId).filter(Boolean);
+  const itemQuery = {
+    appId: skillId,
+    sourceType: { $exists: false },
+    chatId: { $in: legacyChatIds }
+  };
+
+  if (legacyChatIds.length > 0) {
+    await Promise.all([
+      MongoChatItemResponse.deleteMany(itemQuery),
+      MongoChatItem.deleteMany(itemQuery)
+    ]);
+  }
+  await MongoChat.deleteMany(legacyQuery);
+
+  // 旧 Skill Debug 曾按 App legacy key 写入：chat/${skillId}/...。
+  // 这里只清 legacy prefix，不能删除 chat/app/${skillId} 或 chat/skillEdit/${skillId}。
+  const legacyPrefix = [S3Sources.chat, skillId].join('/');
+  const chatBucket = getS3ChatSource();
+  const publicBucket = global.s3BucketMap[S3Buckets.public];
+
+  await chatBucket.addDeleteJob({ prefix: legacyPrefix });
+  await publicBucket.addDeleteJob({ prefix: legacyPrefix });
+};
+
 const cleanupLegacyDebugChats = async ({
   dryRun,
   skillIds,
@@ -290,17 +393,9 @@ const cleanupLegacyDebugChats = async ({
 
   if (!dryRun) {
     const deletableList = list.filter((item) => item.chatCount > 0);
-    // dry-run 不应加载真实删除链路，避免本地缺少 sandbox adapter 构建产物时无法统计。
-    const { deleteChatResourcesBySource } = await import('@fastgpt/service/core/chat/delete');
 
     await Promise.all(
-      deletableList.map((item) =>
-        deleteChatResourcesBySource({
-          sourceType: ChatSourceTypeEnum.skillEdit,
-          sourceId: item.skillId,
-          legacySkillDebug: true
-        })
-      )
+      deletableList.map((item) => cleanupLegacySkillDebugChatResources(item.skillId))
     );
 
     deletableList.forEach((item) => {

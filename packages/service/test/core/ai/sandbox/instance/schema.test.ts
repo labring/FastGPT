@@ -46,4 +46,9 @@ describe('MongoSandboxInstance schema indexes', () => {
 
     expect(targetIndex).toBeDefined();
   });
+
+  it('requires sourceType and sourceId for new sandbox instance records', () => {
+    expect(MongoSandboxInstance.schema.path('sourceType').isRequired).toBe(true);
+    expect(MongoSandboxInstance.schema.path('sourceId').isRequired).toBe(true);
+  });
 });

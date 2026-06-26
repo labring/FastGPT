@@ -96,8 +96,7 @@ export async function authSandboxSession({
 /**
  * 将标准 chat source 映射为 sandbox runtime client 的物理寻址参数。
  *
- * App 会话继续保留 appId/userId/chatId 三元组；Skill Edit 的 sandboxId 由
- * sourceType/sourceId 统一计算，但实例表的物理归属字段仍复用 appId 兼容存量清理与恢复逻辑。
+ * sandbox runtime 只接收标准 source；App/Skill 的权限语义留在鉴权层处理。
  */
 export function buildSandboxClientQueryFromChatSource({
   sourceType,
@@ -122,7 +121,6 @@ export function buildSandboxClientQueryFromChatSource({
       sandboxId,
       sourceType,
       sourceId,
-      appId: sourceId,
       userId,
       chatId
     };
@@ -133,7 +131,6 @@ export function buildSandboxClientQueryFromChatSource({
       sandboxId,
       sourceType,
       sourceId,
-      appId: sourceId,
       userId: '',
       chatId
     };

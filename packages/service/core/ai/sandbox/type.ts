@@ -48,6 +48,7 @@ export const SandboxMetadataSchema = z.object({
     })
     .optional(),
 
+  /** @deprecated 旧 Skill Edit 归属字段，仅迁移脚本/历史数据观察使用。 */
   skillId: z.string().optional(),
   sessionId: z.string().optional(),
   skillIds: z.array(z.string()).optional(),
@@ -61,6 +62,7 @@ export type SandboxMetadataType = z.infer<typeof SandboxMetadataSchema>;
 export const SandboxInstanceZodSchema = z.object({
   _id: z.string(),
   sandboxId: z.string(),
+  /** @deprecated 旧 sandbox 归属字段，仅迁移脚本/历史数据观察使用。 */
   appId: z.string().nullish(),
   sourceType: z.enum(ChatSourceTypeEnum),
   sourceId: z.string(),

@@ -1,5 +1,4 @@
-import { generateSandboxId } from '@fastgpt/global/core/ai/sandbox/constants';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import {
@@ -23,26 +22,18 @@ import {
 
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
-export type SandboxClientQuery =
-  | {
-      sandboxId: string;
-      sourceType: ChatSourceTypeEnum;
-      sourceId: string;
-      appId?: string;
-      userId?: string;
-      chatId?: string;
-    }
-  | {
-      appId: string;
-      userId?: string;
-      chatId: string;
-    };
+export type SandboxClientQuery = {
+  sandboxId: string;
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
+  userId?: string;
+  chatId?: string;
+};
 
 type SandboxClientProps = {
   sandboxId: string;
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
-  appId?: string;
   userId?: string;
   chatId?: string;
 };
@@ -64,7 +55,6 @@ type SandboxClientOptions = {
 export class SandboxClient {
   private sourceType: ChatSourceTypeEnum;
   private sourceId: string;
-  private appId?: string;
   private userId?: string;
   private chatId?: string;
   private sandboxId: string;
@@ -78,7 +68,6 @@ export class SandboxClient {
     this.sandboxId = props.sandboxId;
     this.sourceType = props.sourceType;
     this.sourceId = props.sourceId;
-    this.appId = props.appId;
     this.userId = props.userId;
     this.chatId = props.chatId;
 
@@ -100,7 +89,6 @@ export class SandboxClient {
       sandboxId: this.sandboxId,
       sourceType: this.sourceType,
       sourceId: this.sourceId,
-      appId: this.appId,
       userId: this.userId,
       chatId: this.chatId,
       storage: this.opts?.vmConfig?.storage,
@@ -182,33 +170,17 @@ export class SandboxClient {
 }
 
 const resolveSandboxClientProps = (props: SandboxClientQuery): SandboxClientProps => {
-  if ('sandboxId' in props) {
-    if (!props.sandboxId) {
-      throw new Error('sandboxId is required');
-    }
-    if (!props.sourceType || !props.sourceId) {
-      throw new Error('sourceType and sourceId are required when sandboxId is provided');
-    }
-    return {
-      sandboxId: props.sandboxId,
-      sourceType: props.sourceType,
-      sourceId: props.sourceId,
-      appId: props.appId,
-      userId: props.userId,
-      chatId: props.chatId
-    };
+  if (!props.sandboxId) {
+    throw new Error('sandboxId is required');
+  }
+  if (!props.sourceType || !props.sourceId) {
+    throw new Error('sourceType and sourceId are required');
   }
 
-  if (!props.appId || !props.chatId) {
-    throw new Error('appId and chatId are required when sandboxId is not provided');
-  }
-
-  const sandboxUserId = props.chatId === 'edit-debug' ? '' : (props.userId ?? '');
   return {
-    sandboxId: generateSandboxId(props.appId, sandboxUserId, props.chatId),
-    sourceType: ChatSourceTypeEnum.app,
-    sourceId: props.appId,
-    appId: props.appId,
+    sandboxId: props.sandboxId,
+    sourceType: props.sourceType,
+    sourceId: props.sourceId,
     userId: props.userId,
     chatId: props.chatId
   };
@@ -217,7 +189,8 @@ const resolveSandboxClientProps = (props: SandboxClientQuery): SandboxClientProp
 /**
  * 获取当前业务会话的运行态 sandbox client。
  *
- * 传入 sandboxId 时直接使用指定实例；传入 app/user/chat 三元组时使用稳定规则生成 sandboxId。
+ * 调用方必须按 sourceType/sourceId 计算 sandboxId；这里不再接收 appId 等旧业务字段，
+ * 避免运行态写入或恢复时继续污染 sandbox 实例归属。
  * 返回前会准备 volume 配置并确保 sandbox 可用。
  */
 export const getSandboxClient = async (
@@ -225,7 +198,7 @@ export const getSandboxClient = async (
   opts: Omit<SandboxClientOptions, 'vmConfig'> = {}
 ) => {
   const sandboxClientProps = resolveSandboxClientProps(props);
-  const { sandboxId, appId, userId, chatId } = sandboxClientProps;
+  const { sandboxId, userId, chatId } = sandboxClientProps;
   const providerName = opts.providerName ?? getConfiguredSandboxProvider();
   let vmConfig: VolumeManagerResult | undefined;
 
@@ -241,7 +214,6 @@ export const getSandboxClient = async (
       sandboxId,
       sourceType: sandboxClientProps.sourceType,
       sourceId: sandboxClientProps.sourceId,
-      appId,
       userId,
       chatId,
       resourceLimit: opts.resourceLimits

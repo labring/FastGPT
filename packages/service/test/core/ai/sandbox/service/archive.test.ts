@@ -339,7 +339,6 @@ describe('sandbox archive service', () => {
       sandboxId: archivedResource.sandboxId,
       sourceType: ChatSourceTypeEnum.app,
       sourceId: 'app-1',
-      appId: 'app-1',
       userId: 'user-1',
       chatId: 'chat-1'
     });
@@ -370,7 +369,8 @@ describe('sandbox archive service', () => {
         }
       }),
       expect.objectContaining({
-        appId: 'app-1',
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: 'app-1',
         userId: 'user-1',
         chatId: 'chat-1',
         storage: { mountPath: '/workspace' },

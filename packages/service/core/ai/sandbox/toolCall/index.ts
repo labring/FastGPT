@@ -91,7 +91,6 @@ export const runSandboxTools = async ({
       sandboxId,
       sourceType,
       sourceId,
-      appId: sourceId,
       userId: sourceType === ChatSourceTypeEnum.app ? userId : '',
       chatId
     }));
@@ -141,7 +140,6 @@ export const prepareSandboxToolRuntime = async ({
     sandboxId,
     sourceType,
     sourceId,
-    appId: sourceId,
     userId: sourceType === ChatSourceTypeEnum.app ? userId : '',
     chatId
   });
