@@ -66,8 +66,28 @@ const EditForm = ({
 
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
 
+  const {
+    selectedAgentSkills,
+    isAgentSkillSandboxUnavailable,
+    isOpenSkillSelect,
+    onCloseSkillSelect,
+    openSkillSelect,
+    onAddAgentSkill,
+    onRemoveAgentSkill,
+    onChangeAgentSandbox,
+    ConfirmModal,
+    isOpenRecharge,
+    onCloseRecharge
+  } = useAgentSkillSelect({
+    appForm,
+    showSandbox,
+    enableSandbox,
+    setAppForm
+  });
+
   const { skillOption, selectedSkills, onClickSkill, onRemoveSkill, SkillModal } = useSkillManager({
     selectedTools: appForm.selectedTools,
+    selectedAgentSkills,
     onDeleteTool: (id) => {
       setAppForm((state) => ({
         ...state,
@@ -93,6 +113,7 @@ const EditForm = ({
         }
       });
     },
+    onAddAgentSkill,
     canUploadFile: !!(
       appForm.chatConfig.fileSelectConfig?.canSelectFile ||
       appForm.chatConfig.fileSelectConfig?.canSelectImg ||
@@ -116,24 +137,6 @@ const EditForm = ({
   } = useDisclosure();
 
   const selectedModel = getWebLLMModel(appForm.aiSettings.model);
-  const {
-    selectedAgentSkills,
-    isAgentSkillSandboxUnavailable,
-    isOpenSkillSelect,
-    onCloseSkillSelect,
-    openSkillSelect,
-    onAddAgentSkill,
-    onRemoveAgentSkill,
-    onChangeAgentSandbox,
-    ConfirmModal,
-    isOpenRecharge,
-    onCloseRecharge
-  } = useAgentSkillSelect({
-    appForm,
-    showSandbox,
-    enableSandbox,
-    setAppForm
-  });
   const promptSkillOption = useMemo(
     () => ({
       ...skillOption,

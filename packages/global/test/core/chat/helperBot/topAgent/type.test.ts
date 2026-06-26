@@ -14,6 +14,14 @@ describe('topAgentParamsSchema', () => {
       systemPrompt: 'You are a helpful assistant',
       selectedTools: ['tool1', 'tool2'],
       selectedDatasets: ['dataset1'],
+      selectedAgentSkills: [
+        {
+          skillId: 'skill1',
+          name: 'Research Skill',
+          description: 'Research workflow',
+          isDeleted: false
+        }
+      ],
       fileUpload: true
     });
     expect(result.success).toBe(true);
@@ -34,6 +42,7 @@ describe('topAgentParamsSchema', () => {
       systemPrompt: null,
       selectedTools: null,
       selectedDatasets: null,
+      selectedAgentSkills: null,
       fileUpload: null
     });
     expect(result.success).toBe(true);
@@ -59,9 +68,33 @@ describe('topAgentParamsSchema', () => {
     }
   });
 
+  it('should validate selectedAgentSkills as selected skill item array', () => {
+    const result = topAgentParamsSchema.safeParse({
+      selectedAgentSkills: [
+        {
+          skillId: 'skill1',
+          name: 'Research Skill',
+          description: 'Research workflow'
+        }
+      ]
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.selectedAgentSkills).toHaveLength(1);
+      expect(result.data.selectedAgentSkills?.[0]?.isDeleted).toBe(false);
+    }
+  });
+
   it('should reject invalid selectedTools type', () => {
     const result = topAgentParamsSchema.safeParse({
       selectedTools: 'not-an-array'
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject invalid selectedAgentSkills type', () => {
+    const result = topAgentParamsSchema.safeParse({
+      selectedAgentSkills: ['skill1']
     });
     expect(result.success).toBe(false);
   });

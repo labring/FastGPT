@@ -182,7 +182,13 @@ describe('ensureAgentSandboxRuntime', () => {
     );
     expect(getAgentSkillInfosMock).toHaveBeenCalledWith({
       sandbox: sandboxProviderMock,
-      skillDirectories: ['/workspace/skills/version_1', '/home/sandbox/.fastgpt/skills']
+      skillDirectories: ['/workspace/skills/version_1', '/home/sandbox/.fastgpt/skills'],
+      deployedSkillVersions: [
+        {
+          versionId: 'version_1',
+          targetDir: '/workspace/skills/version_1'
+        }
+      ]
     });
     expect(result).toEqual({
       sandboxClient: sandboxClientMock,

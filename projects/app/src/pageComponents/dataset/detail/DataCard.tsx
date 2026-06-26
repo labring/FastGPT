@@ -381,6 +381,7 @@ const DataCard = () => {
                   position={'absolute'}
                   bottom={2}
                   right={2}
+                  zIndex={2}
                   overflow={'hidden'}
                   alignItems={'flex-end'}
                   visibility={'hidden'}

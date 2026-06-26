@@ -1,6 +1,7 @@
 import type { AgentInputFile } from '../../adapter/userContext';
 import type { DeployedSkillInfo, DeployedSkillVersion } from '../../../../../../ai/skill/runtime';
 import type { BuiltinSkillSource } from '@fastgpt/global/core/ai/skill/runtime/builtin';
+import type { SelectedAgentSkillItemType } from '@fastgpt/global/core/app/formEdit/type';
 import {
   getAgentSkillInfos,
   getBuiltinSkillsRootPath,
@@ -46,6 +47,7 @@ type EnsureAgentSandboxRuntimeParams = {
   needSandboxRuntime: boolean;
   sandboxEntrypoint?: string;
   skillIds: string[];
+  selectedSkills?: SelectedAgentSkillItemType[];
   editSkillId?: string;
   prepareActions?: AgentSandboxPrepareAction[];
   currentFiles: AgentInputFile[];
@@ -72,6 +74,7 @@ export async function ensureAgentSandboxRuntime({
   needSandboxRuntime,
   sandboxEntrypoint,
   skillIds,
+  selectedSkills,
   editSkillId,
   prepareActions = [],
   currentFiles
@@ -113,7 +116,7 @@ export async function ensureAgentSandboxRuntime({
         : prepareSandbox(
             context,
             preparePackageMirrors(),
-            injectSelectedSkillFiles({ teamId, tmbId, skillIds }),
+            injectSelectedSkillFiles({ teamId, tmbId, skillIds, selectedSkills }),
             injectCurrentInputFiles(currentFiles),
             ...prepareActions,
             readCurrentWorkingDirectory(),
@@ -183,22 +186,42 @@ const injectSelectedSkillFiles =
   ({
     teamId,
     tmbId,
-    skillIds
+    skillIds,
+    selectedSkills
   }: {
     teamId: string;
     tmbId: string;
     skillIds: string[];
+    selectedSkills?: SelectedAgentSkillItemType[];
   }): AgentSandboxPrepareStep =>
-  async (context) => ({
-    ...context,
-    deployedSkillVersions: await injectAgentSkillFilesToSandbox({
+  async (context) => {
+    const deployedSkillVersions = await injectAgentSkillFilesToSandbox({
       sandbox: context.sandbox,
       teamId,
       tmbId,
       skillIds,
       workDirectory: context.workDirectory
-    })
-  });
+    });
+    const selectedSkillMap = new Map(selectedSkills?.map((skill) => [skill.skillId, skill]) || []);
+
+    return {
+      ...context,
+      deployedSkillVersions: deployedSkillVersions.map((version) => {
+        const selectedSkill = version.skillId ? selectedSkillMap.get(version.skillId) : undefined;
+
+        return {
+          ...version,
+          ...(selectedSkill
+            ? {
+                name: selectedSkill.name,
+                description: selectedSkill.description,
+                avatar: selectedSkill.avatar
+              }
+            : {})
+        };
+      })
+    };
+  };
 
 const runSelectedSkillEntrypoints = (): AgentSandboxPrepareStep => async (context) => {
   if (context.deployedSkillVersions.length > 0) {
@@ -220,7 +243,8 @@ const scanSelectedSkillInfos = (): AgentSandboxPrepareStep => async (context) =>
     return skillDirectories.length > 0
       ? getAgentSkillInfos({
           sandbox: context.sandbox,
-          skillDirectories
+          skillDirectories,
+          deployedSkillVersions: context.deployedSkillVersions
         })
       : Promise.resolve([]);
   })()

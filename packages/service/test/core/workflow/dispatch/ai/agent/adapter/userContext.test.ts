@@ -372,6 +372,29 @@ describe('buildAgentUserReminderInput', () => {
     expect(result).toContain('<directory>/workspace/Report &amp; Review</directory>');
     expect(result).toContain('<path>/workspace/Report &amp; Review/SKILL.md</path>');
   });
+
+  it('includes parent skill app metadata for injected child skills', () => {
+    const result = buildAgentSkillsPrompt([
+      {
+        id: 'skill_report',
+        appId: 'app_skill_1',
+        appName: 'Research <App>',
+        appDescription: 'Includes fetch & summarize skills',
+        name: 'fetch-webpage',
+        description: 'Read webpages',
+        directory: '/workspace/.skills/version_1/fetch-webpage',
+        skillMdPath: '/workspace/.skills/version_1/fetch-webpage/SKILL.md'
+      }
+    ]);
+
+    expect(result).toContain('<app_id>app_skill_1</app_id>');
+    expect(result).toContain('<app_name>Research &lt;App&gt;</app_name>');
+    expect(result).toContain(
+      '<app_description>Includes fetch &amp; summarize skills</app_description>'
+    );
+    expect(result).toContain('<name>fetch-webpage</name>');
+    expect(result).toContain('<path>/workspace/.skills/version_1/fetch-webpage/SKILL.md</path>');
+  });
 });
 
 describe('useUserContext', () => {

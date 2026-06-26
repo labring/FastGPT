@@ -83,9 +83,31 @@ export const useAgentSkillSelect = ({
 
   const onAddAgentSkill = useCallback(
     (skill: SelectedAgentSkillItemType) => {
+      if (!showSandbox) {
+        toast({
+          status: 'warning',
+          title: t('skill:sandbox_skill_system_not_configured_toast')
+        });
+        return false;
+      }
+      if (!enableSandbox) {
+        openConfirm({
+          title: t('skill:sandbox_plan_not_supported_title'),
+          customContent: t('skill:sandbox_skill_plan_not_supported_content'),
+          onConfirm: isTeamAdmin ? onOpenRecharge : undefined,
+          confirmText: isTeamAdmin ? t('skill:sandbox_upgrade_action') : t('common:Close'),
+          cancelText: t('common:Close'),
+          showCancel: isTeamAdmin
+        })();
+        return false;
+      }
+
       setAppForm((state) => ({
         ...state,
-        selectedAgentSkills: [skill, ...(state.selectedAgentSkills || [])],
+        selectedAgentSkills: [
+          skill,
+          ...(state.selectedAgentSkills || []).filter((item) => item.skillId !== skill.skillId)
+        ],
         aiSettings: {
           ...state.aiSettings,
           useAgentSandbox: true
@@ -97,8 +119,19 @@ export const useAgentSkillSelect = ({
           title: t('skill:sandbox_auto_enabled_for_skill')
         });
       }
+      return true;
     },
-    [appForm.aiSettings.useAgentSandbox, setAppForm, t, toast]
+    [
+      appForm.aiSettings.useAgentSandbox,
+      enableSandbox,
+      isTeamAdmin,
+      onOpenRecharge,
+      openConfirm,
+      setAppForm,
+      showSandbox,
+      t,
+      toast
+    ]
   );
 
   const onRemoveAgentSkill = useCallback(

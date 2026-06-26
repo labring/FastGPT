@@ -160,6 +160,7 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
       needSandboxRuntime: effectiveUseAgentSandbox,
       sandboxEntrypoint: effectiveSandboxEntrypoint,
       skillIds,
+      selectedSkills,
       editSkillId,
       prepareActions: agentSandboxPrepareActions,
       currentFiles: userContext.currentFiles

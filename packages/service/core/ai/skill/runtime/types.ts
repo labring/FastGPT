@@ -6,9 +6,16 @@ export type DeployedSkillInfo = {
   avatar?: string;
   directory: string;
   skillMdPath: string;
+  appId?: string;
+  appName?: string;
+  appDescription?: string;
 };
 
 export type DeployedSkillVersion = {
+  skillId?: string;
+  name?: string;
+  description?: string;
+  avatar?: string;
   versionId: string;
   targetDir: string;
 };

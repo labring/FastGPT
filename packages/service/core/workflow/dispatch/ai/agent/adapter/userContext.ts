@@ -237,18 +237,27 @@ export function buildAgentSkillsPrompt(skillInfos: DeployedSkillInfo[] = []): st
 
   return `## 技能
 你可以使用可复用的技能。每个技能都提供针对特定任务的操作说明。当用户任务与某个技能的描述匹配时，先读取该技能的 SKILL.md 路径，然后再继续执行。不要仅凭技能描述推断完整工作流。
+如果技能包含 app_name 或 app_description，它们表示平台 Skill 应用的名称和描述；name 和 description 表示该应用包内展开后的具体子 Skill。匹配任务时同时参考平台 Skill 应用信息和子 Skill 信息。如果用户、系统提示词或应用配置提到某个平台 Skill 应用名，应在该应用下选择最匹配的子 Skill。
 当技能引用相对路径文件时，应以该技能的 SKILL.md 所在目录作为基准目录进行解析。
+实际执行入口始终是子 Skill 的 path；平台 Skill 应用信息只用于帮助你把应用层语义对齐到具体子 Skill。
 你可以通过 ${SANDBOX_READ_FILE_TOOL_NAME} 工具来读取完整的技能。
 下面是可用的技能：
 
 ${skillInfos
-  .map(
-    (info) => `<skill>
-<name>${escapeXml(info.name)}</name>
-<description>${escapeXml(info.description)}</description>
-<directory>${escapeXml(info.directory)}</directory>
-<path>${escapeXml(info.skillMdPath)}</path>
-</skill>`
+  .map((info) =>
+    [
+      '<skill>',
+      ...(info.appId ? [`<app_id>${escapeXml(info.appId)}</app_id>`] : []),
+      ...(info.appName ? [`<app_name>${escapeXml(info.appName)}</app_name>`] : []),
+      ...(info.appDescription
+        ? [`<app_description>${escapeXml(info.appDescription)}</app_description>`]
+        : []),
+      `<name>${escapeXml(info.name)}</name>`,
+      `<description>${escapeXml(info.description)}</description>`,
+      `<directory>${escapeXml(info.directory)}</directory>`,
+      `<path>${escapeXml(info.skillMdPath)}</path>`,
+      '</skill>'
+    ].join('\n')
   )
   .join('\n')}`;
 }
