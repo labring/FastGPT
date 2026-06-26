@@ -4,12 +4,18 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { getModelListWithPermission } from '@fastgpt/service/support/permission/model/controller';
-import type { ListModelsResponse } from '@fastgpt/global/openapi/core/ai/model/api';
+import type {
+  ListModelsResponse,
+  ModelListItem,
+  ListModelsBody
+} from '@fastgpt/global/openapi/core/ai/model/api';
+import type { PaginationResponse } from '@fastgpt/global/openapi/api';
+import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 
 async function handler(
-  req: ApiRequestProps<any, any>,
+  req: ApiRequestProps<ListModelsBody, any>,
   res: ApiResponseType<any>
-): Promise<ListModelsResponse> {
+): Promise<ListModelsResponse | PaginationResponse<ModelListItem>> {
   const {
     tmbId,
     teamId,
@@ -37,7 +43,7 @@ async function handler(
   ).lean();
   const tmbMap = new Map(tmbList.map((t) => [String(t._id), t]));
 
-  return filteredModels.map((model) => {
+  let result: ModelListItem[] = filteredModels.map((model) => {
     const member = model.tmbId ? tmbMap.get(String(model.tmbId)) : undefined;
 
     return {
@@ -69,6 +75,36 @@ async function handler(
       permission: model.permission
     };
   });
+
+  // Apply filters
+  const { provider, type, search, isActive } = req.body;
+  if (provider) {
+    result = result.filter((m) => m.provider === provider);
+  }
+  if (type) {
+    result = result.filter((m) => m.type === type);
+  }
+  if (search) {
+    const regx = new RegExp(search, 'i');
+    result = result.filter((m) => regx.test(m.name));
+  }
+  if (isActive === 'active') {
+    result = result.filter((m) => m.isActive);
+  } else if (isActive === 'inactive') {
+    result = result.filter((m) => !m.isActive);
+  }
+
+  // Pagination: only slice when pageSize is explicitly provided
+  if (req.body.pageSize !== undefined) {
+    const { offset, pageSize } = parsePaginationRequest(req);
+    return {
+      list: result.slice(offset, offset + pageSize),
+      total: result.length,
+      activeTotal: result.filter((m) => m.isActive).length
+    };
+  }
+
+  return result;
 }
 
 export default NextAPI(handler);

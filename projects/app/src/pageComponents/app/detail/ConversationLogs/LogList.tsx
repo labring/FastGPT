@@ -53,8 +53,7 @@ const LogList: React.FC<LogListProps> = ({ filters, onTotalChange }) => {
     Pagination,
     getData,
     pageNum,
-    total,
-    pageSize
+    total
   } = usePagination(getAppChatLogs, {
     defaultPageSize: 20,
     params: params || undefined,
@@ -227,11 +226,9 @@ const LogList: React.FC<LogListProps> = ({ filters, onTotalChange }) => {
         )}
       </TableContainer>
 
-      {total && total >= pageSize && (
-        <Flex mt={3} justifyContent={'center'}>
-          <Pagination />
-        </Flex>
-      )}
+      <Flex mt={3} justifyContent={'center'}>
+        <Pagination />
+      </Flex>
 
       {!!detailLogsId && (
         <DetailLogsModal

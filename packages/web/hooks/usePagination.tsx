@@ -95,6 +95,9 @@ export function usePagination<DataT, ResT = {}>(
     }
   }, [defaultPageNum]);
 
+  const apiRef = useRef(api);
+  apiRef.current = api;
+
   const isEmpty = total === 0 && !isLoading;
   const noMore = data.length > 0 && data.length >= totalDataLength;
 
@@ -111,7 +114,7 @@ export function usePagination<DataT, ResT = {}>(
       setError(null);
 
       try {
-        const res = await api({
+        const res = await apiRef.current({
           pageNum: num,
           pageSize,
           ...params
