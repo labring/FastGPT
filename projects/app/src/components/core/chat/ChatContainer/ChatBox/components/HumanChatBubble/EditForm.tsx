@@ -45,7 +45,7 @@ const HumanChatBubbleEditForm = ({
 
   const fileSelectConfig = useContextSelector(ChatBoxContext, (v) => v.fileSelectConfig);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
-  const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
+  const sourceTarget = useContextSelector(WorkflowRuntimeContext, (v) => v.sourceTarget);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const editForm = useForm<ChatBoxInputFormType>({
     defaultValues: {
@@ -76,7 +76,7 @@ const HumanChatBubbleEditForm = ({
     fileSelectConfig,
     fileCtrl,
     outLinkAuthData,
-    appId,
+    sourceTarget,
     chatId
   });
   const canUploadFile =

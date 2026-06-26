@@ -4,9 +4,13 @@ import { DevApiTagsMap } from '../../../tag';
 import {
   HelperBotCompletionsParamsSchema,
   DeleteHelperBotChatParamsSchema,
+  GetHelperBotFilePresignParamsSchema,
+  GetHelperBotFilePreviewParamsSchema,
+  GetHelperBotFilePreviewResponseSchema,
   GetHelperBotChatRecordsParamsSchema,
   GetHelperBotChatRecordsResponseSchema
 } from './api';
+import { CreatePostPresignedUrlResponseSchema } from '../../../../common/file/s3/type';
 
 export const HelperBotPath: OpenAPIPath = {
   '/proApi/core/chat/helperBot/completions': {
@@ -71,6 +75,54 @@ export const HelperBotPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: z.any()
+            }
+          }
+        }
+      }
+    }
+  },
+  '/core/chat/helperBot/getFilePresign': {
+    post: {
+      summary: '获取辅助助手文件上传签名',
+      description: '获取辅助助手文件上传签名',
+      tags: [DevApiTagsMap.helperBot],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: GetHelperBotFilePresignParamsSchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功返回文件上传签名',
+          content: {
+            'application/json': {
+              schema: CreatePostPresignedUrlResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/core/chat/helperBot/getFilePreviewUrl': {
+    post: {
+      summary: '获取辅助助手文件预览链接',
+      description: '获取辅助助手文件预览链接',
+      tags: [DevApiTagsMap.helperBot],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: GetHelperBotFilePreviewParamsSchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功返回文件预览链接',
+          content: {
+            'application/json': {
+              schema: GetHelperBotFilePreviewResponseSchema
             }
           }
         }

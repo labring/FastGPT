@@ -1,6 +1,6 @@
 import handler from '@/pages/api/core/chat/history/delHistory';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatSourceEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
@@ -9,7 +9,12 @@ import { Call } from '@test/utils/request';
 import { describe, expect, it, beforeEach } from 'vitest';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
-import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import {
+  PerResourceTypeEnum,
+  ReadPermissionVal
+} from '@fastgpt/global/support/permission/constant';
+import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
+import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
 
 describe('delHistory api test', () => {
   let testUser: Awaited<ReturnType<typeof getUser>>;
@@ -139,5 +144,117 @@ describe('delHistory api test', () => {
 
     expect(res.code).toBe(200);
     expect(res.error).toBeUndefined();
+  });
+
+  it('should soft delete skill edit history by skillId with write permission', async () => {
+    const skill = await MongoAgentSkills.create({
+      name: 'Delete Skill History',
+      source: AgentSkillSourceEnum.personal,
+      teamId: testUser.teamId,
+      tmbId: testUser.tmbId
+    });
+    const skillId = String(skill._id);
+    const skillChatId = getNanoid();
+    const legacyChatId = getNanoid();
+
+    await Promise.all([
+      MongoChat.create({
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        appId: skillId,
+        chatId: skillChatId,
+        source: ChatSourceEnum.test
+      }),
+      MongoChat.create({
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        appId: skillId,
+        chatId: legacyChatId,
+        source: ChatSourceEnum.test
+      })
+    ]);
+
+    const res = await Call<any, { skillId: string; chatId: string }, any>(handler, {
+      auth: testUser,
+      query: {
+        skillId,
+        chatId: skillChatId
+      }
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.error).toBeUndefined();
+
+    const [deletedSkillChat, legacyChat] = await Promise.all([
+      MongoChat.findOne(
+        {
+          sourceType: ChatSourceTypeEnum.skillEdit,
+          appId: skillId,
+          chatId: skillChatId
+        },
+        { deleteTime: 1 }
+      ).lean(),
+      MongoChat.findOne(
+        {
+          appId: skillId,
+          chatId: legacyChatId
+        },
+        { deleteTime: 1 }
+      ).lean()
+    ]);
+
+    expect(deletedSkillChat?.deleteTime).toBeInstanceOf(Date);
+    expect(legacyChat?.deleteTime).toBeNull();
+  });
+
+  it('should reject read-only skill collaborator when deleting skill edit history', async () => {
+    const readonlyUser = await getUser(`readonly-del-history-${getNanoid(6)}`, testUser.teamId);
+    const skill = await MongoAgentSkills.create({
+      name: 'Readonly Delete Skill History',
+      source: AgentSkillSourceEnum.personal,
+      teamId: testUser.teamId,
+      tmbId: testUser.tmbId
+    });
+    const skillId = String(skill._id);
+    const skillChatId = getNanoid();
+
+    await Promise.all([
+      MongoResourcePermission.create({
+        resourceType: PerResourceTypeEnum.agentSkill,
+        teamId: testUser.teamId,
+        resourceId: skillId,
+        tmbId: readonlyUser.tmbId,
+        permission: ReadPermissionVal
+      }),
+      MongoChat.create({
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        appId: skillId,
+        chatId: skillChatId,
+        source: ChatSourceEnum.test
+      })
+    ]);
+
+    const res = await Call<any, { skillId: string; chatId: string }, any>(handler, {
+      auth: readonlyUser,
+      query: {
+        skillId,
+        chatId: skillChatId
+      }
+    });
+
+    expect(res.code).not.toBe(200);
+
+    const chat = await MongoChat.findOne(
+      {
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        appId: skillId,
+        chatId: skillChatId
+      },
+      { deleteTime: 1 }
+    ).lean();
+    expect(chat?.deleteTime).toBeNull();
   });
 });

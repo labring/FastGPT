@@ -8,7 +8,6 @@ const SelectMarkCollection = dynamic(() => import('./SelectMarkCollection'));
 type AdminMarkState = AdminMarkType & { dataId: string };
 
 type ChatBoxModalsProps = {
-  appId?: string;
   chatId?: string;
   feedbackId?: string;
   adminMarkData?: AdminMarkState;
@@ -32,7 +31,6 @@ type ChatBoxModalsProps = {
  *   多步选择过程中保留，所以 `onAdminMarkChange` 会继续补回当前 `dataId`。
  */
 const ChatBoxModals = ({
-  appId,
   chatId,
   feedbackId,
   adminMarkData,
@@ -44,9 +42,8 @@ const ChatBoxModals = ({
 }: ChatBoxModalsProps) => {
   return (
     <>
-      {!!feedbackId && appId && chatId && (
+      {!!feedbackId && chatId && (
         <FeedbackModal
-          appId={appId}
           chatId={chatId}
           dataId={feedbackId}
           onClose={onCloseFeedback}

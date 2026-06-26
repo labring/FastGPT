@@ -2,9 +2,15 @@ export const CHAT_GENERATING_SCROLL_BOTTOM_THRESHOLD = 150;
 export const CHAT_SCROLL_BOTTOM_VISIBILITY_THRESHOLD = 4;
 export const CHAT_SCROLL_TO_BOTTOM_BUTTON_DISTANCE_THRESHOLD = 48;
 
-export const getChatScrollTargetKey = ({ appId, chatId }: { appId?: string; chatId?: string }) => {
-  if (!appId || !chatId) return;
-  return `${appId}:${chatId}`;
+export const getChatScrollTargetKey = ({
+  sourceKey,
+  chatId
+}: {
+  sourceKey?: string;
+  chatId?: string;
+}) => {
+  if (!sourceKey || !chatId) return;
+  return `${sourceKey}:${chatId}`;
 };
 
 export const shouldForceScrollAfterRecordsLoaded = ({

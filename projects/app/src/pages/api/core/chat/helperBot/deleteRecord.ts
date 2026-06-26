@@ -1,21 +1,27 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import type { DeleteHelperBotChatParamsType } from '@fastgpt/global/openapi/core/chat/helperBot/api';
+import {
+  DeleteHelperBotChatParamsSchema,
+  type DeleteHelperBotChatParamsType
+} from '@fastgpt/global/openapi/core/chat/helperBot/api';
 import { authHelperBotChatCrud } from '@/service/support/permission/auth/chat';
 import { MongoHelperBotChatItem } from '@fastgpt/service/core/chat/HelperBot/chatItemSchema';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 export type deleteRecordQuery = DeleteHelperBotChatParamsType;
 
-export type deleteRecordBody = {};
+export type deleteRecordBody = Record<string, never>;
 
-export type deleteRecordResponse = {};
+export type deleteRecordResponse = Record<string, never>;
 
 async function handler(
-  req: ApiRequestProps<deleteRecordBody, deleteRecordQuery>,
-  res: ApiResponseType<any>
+  req: ApiRequestProps<deleteRecordBody, deleteRecordQuery>
 ): Promise<deleteRecordResponse> {
-  const { type, chatId, chatItemId } = req.query;
-  const { chat, userId } = await authHelperBotChatCrud({
+  const { type, chatId, chatItemId } = parseApiInput({
+    req,
+    querySchema: DeleteHelperBotChatParamsSchema
+  }).query;
+  const { userId } = await authHelperBotChatCrud({
     type,
     chatId,
     req,

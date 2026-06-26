@@ -2,19 +2,25 @@ import React from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import { useInteractiveTerminal } from './useInteractiveTerminal';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import type { ChatTargetInputType } from '@fastgpt/global/openapi/core/chat/api';
 
 import '@xterm/xterm/css/xterm.css';
 
 type Props = {
-  appId: string;
+  sandboxTarget: ChatTargetInputType;
   chatId: string;
   outLinkAuthData?: OutLinkChatAuthProps;
   canWrite?: boolean;
 };
 
-const InteractiveTerminalCore = ({ appId, chatId, outLinkAuthData, canWrite = true }: Props) => {
+const InteractiveTerminalCore = ({
+  sandboxTarget,
+  chatId,
+  outLinkAuthData,
+  canWrite = true
+}: Props) => {
   const { containerRef } = useInteractiveTerminal({
-    appId,
+    sandboxTarget,
     chatId,
     outLinkAuthData,
     canWrite

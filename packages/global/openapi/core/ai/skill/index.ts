@@ -24,13 +24,6 @@ import {
   SaveDeploySkillBodySchema,
   SaveDeploySkillResponseSchema,
   SkillDebugChatBodySchema,
-  SkillDebugSessionControlBodySchema,
-  SkillDebugSessionStopResponseSchema,
-  SkillDebugRecordsBodySchema,
-  SkillDebugRecordsResponseSchema,
-  SkillDebugSessionDeleteBodySchema,
-  SkillDebugSessionListQuerySchema,
-  SkillDebugSessionListResponseSchema,
   SwitchSkillVersionBodySchema,
   UpdateSkillBodySchema,
   UpdateSkillVersionBodySchema
@@ -318,93 +311,6 @@ export const SkillPath: OpenAPIPath = {
               schema: {
                 type: 'string'
               }
-            }
-          }
-        }
-      }
-    }
-  },
-  '/core/ai/skill/debugSession/list': {
-    get: {
-      summary: '获取技能调试会话列表',
-      description: '分页获取技能的调试会话',
-      tags: [DevApiTagsMap.aiSkill],
-      requestParams: {
-        query: SkillDebugSessionListQuerySchema
-      },
-      responses: {
-        200: {
-          description: '成功返回调试会话列表',
-          content: {
-            'application/json': {
-              schema: SkillDebugSessionListResponseSchema
-            }
-          }
-        }
-      }
-    }
-  },
-  '/core/ai/skill/debugSession/delete': {
-    post: {
-      summary: '删除技能调试会话',
-      description: '软删除一个技能调试会话',
-      tags: [DevApiTagsMap.aiSkill],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: SkillDebugSessionDeleteBodySchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          description: '成功删除调试会话'
-        }
-      }
-    }
-  },
-  '/core/ai/skill/debugSession/stop': {
-    post: {
-      summary: '停止技能调试对话',
-      description: '停止指定技能调试会话中正在运行的工作流',
-      tags: [DevApiTagsMap.aiSkill],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: SkillDebugSessionControlBodySchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          description: '成功停止调试对话',
-          content: {
-            'application/json': {
-              schema: SkillDebugSessionStopResponseSchema
-            }
-          }
-        }
-      }
-    }
-  },
-  '/core/ai/skill/debugSession/records': {
-    post: {
-      summary: '获取技能调试会话记录',
-      description: '分页获取技能调试会话的聊天记录',
-      tags: [DevApiTagsMap.aiSkill],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: SkillDebugRecordsBodySchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          description: '成功返回调试记录',
-          content: {
-            'application/json': {
-              schema: SkillDebugRecordsResponseSchema
             }
           }
         }

@@ -1,6 +1,10 @@
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatGenerateStatusEnum,
+  ChatRoleEnum,
+  ChatSourceTypeEnum
+} from '@fastgpt/global/core/chat/constants';
 import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
@@ -16,6 +20,7 @@ import {
   syncGeneratedChatTitleFromUserContent,
   type GeneratedChatTitleResult
 } from '../title';
+import { buildChatSourceQuery, buildChatSourceWriteFields, type ChatSourceParams } from '../source';
 
 export const NO_RECORD_CHAT_ID = 'NO_RECORD_HISTORIES';
 
@@ -39,18 +44,16 @@ export const stripUserContentFileUrls = (userContent: UserChatItemType & { dataI
   });
 };
 
-export type EnsurePendingChatRoundParams = {
+export type EnsurePendingChatRoundParams = ChatSourceParams & {
   chatId: string;
-  appId: string;
   teamId: string;
   tmbId: string;
   userContent: UserChatItemType & { dataId?: string };
   responseChatItemId: string;
 };
 
-export type PrepareChatRoundParams = {
+export type PrepareChatRoundParams = ChatSourceParams & {
   chatId: string;
-  appId: string;
   teamId: string;
   tmbId: string;
   source: `${ChatSourceEnum}`;
@@ -115,17 +118,13 @@ export const getPreparedRoundDataIds = ({
 export const prepareChatRound = async (
   params: PrepareChatRoundParams
 ): Promise<PrepareChatRoundResult> => {
-  const {
-    chatId,
-    appId,
-    teamId,
-    tmbId,
-    source,
-    sourceName,
-    shareId,
-    outLinkUid,
-    responseChatItemId
-  } = params;
+  const { chatId, teamId, tmbId, source, sourceName, shareId, outLinkUid, responseChatItemId } =
+    params;
+  const chatSource = {
+    sourceType: params.sourceType,
+    sourceId: params.sourceId
+  };
+  const sourceWriteFields = buildChatSourceWriteFields(chatSource);
 
   if (isSkipSaveChatId(chatId)) {
     return {
@@ -154,14 +153,14 @@ export const prepareChatRound = async (
   await mongoSessionRun(async (session) => {
     const previousChat = await MongoChat.findOneAndUpdate(
       {
-        appId,
+        ...buildChatSourceQuery(chatSource),
         chatId
       },
       {
         $set: {
           teamId,
           tmbId,
-          appId,
+          ...sourceWriteFields,
           chatId,
           source,
           sourceName,
@@ -192,14 +191,14 @@ export const prepareChatRound = async (
           teamId,
           tmbId,
           chatId,
-          appId,
+          ...sourceWriteFields,
           ...userPayload
         },
         {
           teamId,
           tmbId,
           chatId,
-          appId,
+          ...sourceWriteFields,
           ...aiPlaceholder
         }
       ],
@@ -239,7 +238,8 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
   }
 
   const canStartGenerate = await tryStartGenerateChat({
-    appId: params.appId,
+    sourceType: params.sourceType,
+    sourceId: params.sourceId,
     chatId,
     teamId: params.teamId,
     tmbId: params.tmbId,
@@ -257,7 +257,7 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
     if (isInteractiveContinue) {
       const previousAiItem = await MongoChatItem.findOne(
         {
-          appId: params.appId,
+          ...buildChatSourceQuery({ sourceType: params.sourceType, sourceId: params.sourceId }),
           chatId,
           obj: ChatRoleEnum.AI
         },
@@ -280,7 +280,8 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
     }
 
     await validateChatRoundDataIds({
-      appId: params.appId,
+      sourceType: params.sourceType,
+      sourceId: params.sourceId,
       chatId,
       userContent: params.userContent,
       responseChatItemId
@@ -293,7 +294,8 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
     });
 
     const titleGeneration = syncGeneratedChatTitleFromUserContent({
-      appId: params.appId,
+      sourceType: params.sourceType,
+      sourceId: params.sourceId,
       chatId,
       teamId: params.teamId,
       userContent: params.userContent,
@@ -310,7 +312,8 @@ export const preChatRound = async (params: PreChatRoundParams): Promise<PreChatR
     };
   } catch (error) {
     await updateChatGenerateStatus({
-      appId: params.appId,
+      sourceType: params.sourceType,
+      sourceId: params.sourceId,
       chatId,
       status: ChatGenerateStatusEnum.error
     });

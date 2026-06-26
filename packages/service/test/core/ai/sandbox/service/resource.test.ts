@@ -10,8 +10,8 @@ const mocks = vi.hoisted(() => ({
   deleteSessionVolume: vi.fn(),
   deleteWorkspaceArchive: vi.fn(),
   deleteSandboxResourceRecord: vi.fn(),
-  findSandboxResourcesByAppId: vi.fn(),
-  findSandboxResourcesByChatIds: vi.fn(),
+  findSandboxResourcesBySource: vi.fn(),
+  findSandboxResourcesBySourceChatIds: vi.fn(),
   markSandboxResourceStopped: vi.fn()
 }));
 
@@ -42,18 +42,19 @@ vi.mock('@fastgpt/service/common/s3/sources/sandbox', () => ({
 
 vi.mock('@fastgpt/service/core/ai/sandbox/instance/repository', () => ({
   deleteSandboxResourceRecord: mocks.deleteSandboxResourceRecord,
-  findSandboxResourcesByAppId: mocks.findSandboxResourcesByAppId,
-  findSandboxResourcesByChatIds: mocks.findSandboxResourcesByChatIds,
+  findSandboxResourcesBySource: mocks.findSandboxResourcesBySource,
+  findSandboxResourcesBySourceChatIds: mocks.findSandboxResourcesBySourceChatIds,
   markSandboxResourceStopped: mocks.markSandboxResourceStopped
 }));
 
 import {
+  deleteAppSandboxes,
   deleteSandboxResource,
-  deleteSandboxesByAppId,
-  deleteSandboxesByChatIds,
+  deleteSandboxesBySourceChatIds,
   stopSandboxResource,
   stopSandboxResources
 } from '@fastgpt/service/core/ai/sandbox/service/resource';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 const createResource = (sandboxId = 'sandbox-1') =>
   ({
@@ -75,8 +76,8 @@ describe('sandbox resource service', () => {
 
     mocks.deleteWorkspaceArchive.mockResolvedValue(undefined);
     mocks.deleteSandboxResourceRecord.mockResolvedValue(undefined);
-    mocks.findSandboxResourcesByAppId.mockResolvedValue([]);
-    mocks.findSandboxResourcesByChatIds.mockResolvedValue([]);
+    mocks.findSandboxResourcesBySource.mockResolvedValue([]);
+    mocks.findSandboxResourcesBySourceChatIds.mockResolvedValue([]);
     mocks.markSandboxResourceStopped.mockResolvedValue(undefined);
   });
 
@@ -158,15 +159,19 @@ describe('sandbox resource service', () => {
   });
 
   it('returns early when chat or app cleanup finds no resources', async () => {
-    await deleteSandboxesByChatIds({ appId: 'app-1', chatIds: ['chat-1'] });
-    await deleteSandboxesByAppId('app-1');
+    await deleteSandboxesBySourceChatIds({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app-1',
+      chatIds: ['chat-1']
+    });
+    await deleteAppSandboxes('app-1');
 
     expect(mocks.buildSandboxResourceAdapter).not.toHaveBeenCalled();
   });
 
   it('logs delete failures while processing chat resources', async () => {
     const resource = createResource();
-    mocks.findSandboxResourcesByChatIds.mockResolvedValueOnce([resource]);
+    mocks.findSandboxResourcesBySourceChatIds.mockResolvedValueOnce([resource]);
     mocks.buildSandboxResourceAdapter.mockReturnValueOnce({
       stop: vi.fn(async () => undefined),
       delete: vi.fn(async () => {
@@ -174,7 +179,11 @@ describe('sandbox resource service', () => {
       })
     });
 
-    await deleteSandboxesByChatIds({ appId: 'app-1', chatIds: ['chat-1'] });
+    await deleteSandboxesBySourceChatIds({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app-1',
+      chatIds: ['chat-1']
+    });
 
     expect(mocks.logger.error).toHaveBeenCalledWith(
       'Failed to delete sandbox',

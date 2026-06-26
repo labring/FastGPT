@@ -2,15 +2,15 @@ import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap } from '../../../tag';
 import { SystemOpenApiTagMap } from '../../../tag';
 import {
-  UpdateFeedbackReadStatusBodySchema,
+  UpdateFeedbackReadStatusBodyRawSchema,
   UpdateFeedbackReadStatusResponseSchema,
-  AdminUpdateFeedbackBodySchema,
+  AdminUpdateFeedbackBodyRawSchema,
   AdminUpdateFeedbackResponseSchema,
-  CloseCustomFeedbackBodySchema,
+  CloseCustomFeedbackBodyRawSchema,
   CloseCustomFeedbackResponseSchema,
-  UpdateUserFeedbackBodySchema,
+  UpdateUserFeedbackBodyRawSchema,
   UpdateUserFeedbackResponseSchema,
-  GetFeedbackRecordIdsBodySchema,
+  GetFeedbackRecordIdsBodyRawSchema,
   GetFeedbackRecordIdsResponseSchema
 } from './api';
 
@@ -23,7 +23,7 @@ export const ChatFeedbackPath: OpenAPIPath = {
       requestBody: {
         content: {
           'application/json': {
-            schema: UpdateUserFeedbackBodySchema
+            schema: UpdateUserFeedbackBodyRawSchema
           }
         }
       },
@@ -47,7 +47,7 @@ export const ChatFeedbackPath: OpenAPIPath = {
       requestBody: {
         content: {
           'application/json': {
-            schema: GetFeedbackRecordIdsBodySchema
+            schema: GetFeedbackRecordIdsBodyRawSchema
           }
         }
       },
@@ -65,13 +65,13 @@ export const ChatFeedbackPath: OpenAPIPath = {
   },
   '/core/chat/feedback/updateFeedbackReadStatus': {
     post: {
-      summary: '应用管理员-更新反馈阅读状态',
+      summary: '更新反馈阅读状态',
       description: '标记指定消息的反馈为已读或未读状态',
       tags: [DevApiTagsMap.chatFeedback],
       requestBody: {
         content: {
           'application/json': {
-            schema: UpdateFeedbackReadStatusBodySchema
+            schema: UpdateFeedbackReadStatusBodyRawSchema
           }
         }
       },
@@ -89,13 +89,13 @@ export const ChatFeedbackPath: OpenAPIPath = {
   },
   '/core/chat/feedback/adminUpdate': {
     post: {
-      summary: '应用管理员-标注反馈',
-      description: '管理员为指定消息添加或更新标注反馈，包含数据集关联信息',
+      summary: '标注反馈',
+      description: '为指定消息添加或更新标注反馈，包含数据集关联信息',
       tags: [DevApiTagsMap.chatFeedback],
       requestBody: {
         content: {
           'application/json': {
-            schema: AdminUpdateFeedbackBodySchema
+            schema: AdminUpdateFeedbackBodyRawSchema
           }
         }
       },
@@ -113,13 +113,13 @@ export const ChatFeedbackPath: OpenAPIPath = {
   },
   '/core/chat/feedback/closeCustom': {
     post: {
-      summary: '应用管理员-关闭自定义反馈',
+      summary: '关闭自定义反馈',
       description: '删除或关闭指定索引位置的自定义反馈条目',
       tags: [DevApiTagsMap.chatFeedback],
       requestBody: {
         content: {
           'application/json': {
-            schema: CloseCustomFeedbackBodySchema
+            schema: CloseCustomFeedbackBodyRawSchema
           }
         }
       },

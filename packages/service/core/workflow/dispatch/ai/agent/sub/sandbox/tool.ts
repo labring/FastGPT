@@ -5,6 +5,7 @@ import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { runSandboxTools } from '../../../../../../ai/sandbox/toolCall';
 import type { DispatchSubAppResponse } from '../../type';
 import type { SandboxClient } from '../../../../../../ai/sandbox/service/runtime';
+import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 /**
  * Agent 子工具层的 sandbox tool 适配器。
@@ -15,29 +16,29 @@ import type { SandboxClient } from '../../../../../../ai/sandbox/service/runtime
 export const dispatchSandboxTool = async ({
   toolName,
   rawArgs,
-  appId,
+  sourceType,
+  sourceId,
   userId,
   chatId,
-  sandboxId,
   lang,
   sandboxClient
 }: {
   toolName: string;
   rawArgs: string;
-  appId: string;
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
   userId: string;
   chatId: string;
-  sandboxId?: string;
   lang?: localeType;
   sandboxClient?: SandboxClient;
 }): Promise<DispatchSubAppResponse> => {
   const { input, response } = await runSandboxTools({
     toolName,
     args: rawArgs,
-    appId,
+    sourceType,
+    sourceId,
     userId,
     chatId,
-    sandboxId,
     sandboxClient
   });
 

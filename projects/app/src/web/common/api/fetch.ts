@@ -30,6 +30,7 @@ import type { UserInputInteractive } from '@fastgpt/global/core/workflow/templat
 import type { AgentPlanStatusType, AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import type { StreamNoNeedToBeResumeType } from '@fastgpt/global/openapi/core/ai/api';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import type { ChatTargetInputType } from '@fastgpt/global/openapi/core/chat/api';
 
 type StreamFetchProps = {
   url?: string;
@@ -651,8 +652,7 @@ export const streamFetch = ({
   });
 };
 
-type StreamResumeFetchParams = {
-  appId: string;
+type StreamResumeFetchParams = ChatTargetInputType & {
   chatId: string;
   outLinkAuthData?: OutLinkChatAuthProps;
   onmessage: StartChatFnProps['generatingMessage'];
@@ -663,8 +663,13 @@ type StreamResumeFetchParams = {
 let activeResumeController: AbortController | undefined;
 
 export async function streamResumeFetch(params: StreamResumeFetchParams) {
-  const { appId, chatId, outLinkAuthData, onmessage, onResumeUnavailable, controller } = params;
-  const query = new URLSearchParams({ appId, chatId });
+  const { chatId, outLinkAuthData, onmessage, onResumeUnavailable, controller } = params;
+  const query = new URLSearchParams({ chatId });
+  if ('skillId' in params && params.skillId) {
+    query.set('skillId', params.skillId);
+  } else {
+    query.set('appId', params.appId!);
+  }
 
   Object.entries(outLinkAuthData || {}).forEach(([key, value]) => {
     if (!value) return;

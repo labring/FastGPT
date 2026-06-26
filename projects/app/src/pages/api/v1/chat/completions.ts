@@ -1,7 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { sseErrRes, jsonRes } from '@fastgpt/service/common/response';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatRoleEnum,
+  ChatSourceEnum,
+  ChatSourceTypeEnum
+} from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import {
@@ -22,6 +26,7 @@ import {
 } from '@fastgpt/service/core/chat/saveChat';
 import { preChatRound, type PreChatRoundResult } from '@fastgpt/service/core/chat/utils/prepare';
 import { createGeneratedChatTitleSender } from '@fastgpt/service/core/chat/title';
+import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { authOutLinkChatStart } from '@/service/support/permission/auth/outLink';
 import { recordAppUsage } from '@fastgpt/service/core/app/record/utils';
@@ -98,7 +103,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const originIp = getIpFromRequest(req);
   const roundState = {
     preparedRound: undefined as PreChatRoundResult | undefined,
-    appId: undefined as string | undefined,
+    sourceId: undefined as string | undefined,
     chatId: undefined as string | undefined,
     responseChatItemId
   };
@@ -228,16 +233,23 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     // Get and concat history;
     const limit = getMaxHistoryLimitFromNodes(app.modules);
+    const chatSource = {
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: String(app._id)
+    };
     const [{ histories }, { versionId, nodes, edges, chatConfig }, chatDetail] = await Promise.all([
       getChatItems({
-        appId: app._id,
+        ...chatSource,
         chatId,
         offset: 0,
         limit,
         field: `obj value nodeOutputs`
       }),
       getAppLatestVersion(app._id, app),
-      MongoChat.findOne({ appId: app._id, chatId }, 'source variableList variables')
+      MongoChat.findOne(
+        { ...buildChatSourceQuery(chatSource), chatId },
+        'source variableList variables'
+      )
     ]);
 
     // Get store variables(Api variable precedence)
@@ -276,7 +288,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     })();
 
     const preparedRound = await preChatRound({
-      appId: String(app._id),
+      ...chatSource,
       chatId,
       teamId,
       tmbId: String(tmbId),
@@ -293,7 +305,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const finalResponseChatItemId = preparedRound.responseChatItemId;
     const runningAppId = String(app._id);
     roundState.preparedRound = preparedRound;
-    roundState.appId = runningAppId;
+    roundState.sourceId = runningAppId;
     roundState.chatId = saveChatId;
     roundState.responseChatItemId = finalResponseChatItemId;
 
@@ -337,7 +349,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
           usageSource: getUsageSourceByAuthType({ shareId, authType }),
           runningAppInfo: {
-            id: String(app._id),
+            sourceType: ChatSourceTypeEnum.app,
+            sourceId: String(app._id),
             name: app.name,
             teamId: String(app.teamId),
             tmbId: String(app.tmbId)
@@ -377,8 +390,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     };
 
     const params: SaveChatProps = {
+      ...chatSource,
       chatId: saveChatId,
-      appId: String(app._id),
       versionId,
       teamId,
       tmbId: tmbId,
@@ -410,7 +423,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     if (!preparedRound.shouldFinalizePreparedRound && preparedRound.shouldPersistChatRound) {
       await updateChatGenerateStatus({
-        appId: runningAppId,
+        ...chatSource,
         chatId: saveChatId,
         status: ChatGenerateStatusEnum.done
       });
@@ -572,17 +585,19 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
   } catch (err) {
     const { preparedRound } = roundState;
-    if (preparedRound?.shouldPersistChatRound && roundState.appId && roundState.chatId) {
+    if (preparedRound?.shouldPersistChatRound && roundState.sourceId && roundState.chatId) {
       if (preparedRound.shouldFinalizePreparedRound) {
         await failChatRound({
-          appId: roundState.appId,
+          sourceType: ChatSourceTypeEnum.app,
+          sourceId: roundState.sourceId,
           chatId: roundState.chatId,
           responseChatItemId: roundState.responseChatItemId,
           error: err
         });
       } else {
         await updateChatGenerateStatus({
-          appId: roundState.appId,
+          sourceType: ChatSourceTypeEnum.app,
+          sourceId: roundState.sourceId,
           chatId: roundState.chatId,
           status: ChatGenerateStatusEnum.error
         });
@@ -626,7 +641,10 @@ const authShareChat = async ({
   }
 
   // get chat
-  const chat = await MongoChat.findOne({ appId, chatId }).lean();
+  const chat = await MongoChat.findOne({
+    ...buildChatSourceQuery({ sourceType: ChatSourceTypeEnum.app, sourceId: String(appId) }),
+    chatId
+  }).lean();
   if (chat && (chat.shareId !== data.shareId || chat.outLinkUid !== uid)) {
     return Promise.reject(ChatErrEnum.unAuthChat);
   }
@@ -670,7 +688,12 @@ const authTeamSpaceChat = async ({
     return Promise.reject(ChatErrEnum.unAuthChat);
   }
 
-  const chat = chatId ? await MongoChat.findOne({ appId, chatId }).lean() : null;
+  const chat = chatId
+    ? await MongoChat.findOne({
+        ...buildChatSourceQuery({ sourceType: ChatSourceTypeEnum.app, sourceId: String(appId) }),
+        chatId
+      }).lean()
+    : null;
 
   if (chat && (String(chat.teamId) !== teamId || chat.outLinkUid !== uid)) {
     return Promise.reject(ChatErrEnum.unAuthChat);

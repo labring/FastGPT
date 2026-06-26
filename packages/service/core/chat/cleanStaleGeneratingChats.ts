@@ -1,5 +1,5 @@
 import { subMilliseconds, subMinutes } from 'date-fns';
-import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getLogger, LogCategories } from '../../common/logger';
 import { MongoChat } from './chatSchema';
 import {
@@ -16,6 +16,7 @@ export const STALE_GENERATING_CHAT_MINUTES = 30;
 type GeneratingChat = {
   _id: unknown;
   teamId: { toString: () => string } | string;
+  sourceType?: ChatSourceTypeEnum;
   appId: { toString: () => string } | string;
   chatId: string;
   updateTime?: Date;
@@ -67,6 +68,7 @@ export const cleanStaleGeneratingChats = async (): Promise<CleanStaleGeneratingC
     {
       _id: 1,
       teamId: 1,
+      sourceType: 1,
       appId: 1,
       chatId: 1,
       updateTime: 1
@@ -92,7 +94,8 @@ export const cleanStaleGeneratingChats = async (): Promise<CleanStaleGeneratingC
     try {
       const activeState = await getStreamResumeActiveState({
         teamId: chat.teamId.toString(),
-        appId: chat.appId.toString(),
+        sourceType: chat.sourceType ?? ChatSourceTypeEnum.app,
+        sourceId: chat.appId.toString(),
         chatId: chat.chatId
       });
 

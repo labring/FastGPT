@@ -4,6 +4,7 @@ import { checkInteractiveResponseStatus } from '@fastgpt/global/core/chat/utils'
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { MongoChatItem } from './chatItemSchema';
+import { buildChatSourceQuery, type ChatSourceParams } from './source';
 
 /**
  * 解析本轮 workflow 写入 nodeResponse 时应该归属的 AI chat item dataId。
@@ -29,13 +30,13 @@ export const getInteractiveResponseStatus = ({
 };
 
 export const resolveResponseChatItemId = async ({
-  appId,
+  sourceType,
+  sourceId,
   chatId,
   responseChatItemId,
   interactive,
   userContent
-}: {
-  appId: string;
+}: ChatSourceParams & {
   chatId?: string;
   responseChatItemId: string;
   interactive?: WorkflowInteractiveResponseType;
@@ -48,7 +49,7 @@ export const resolveResponseChatItemId = async ({
 
   const chatItem = await MongoChatItem.findOne(
     {
-      appId,
+      ...buildChatSourceQuery({ sourceType, sourceId }),
       chatId,
       obj: ChatRoleEnum.AI
     },

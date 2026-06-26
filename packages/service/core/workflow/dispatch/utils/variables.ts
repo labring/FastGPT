@@ -134,9 +134,11 @@ export class WorkflowVariableState implements WorkflowVariableStateLike {
     }
 
     state.setRuntimeOnlyVariables(externalVariables);
+    const appId = runningAppInfo.sourceType === 'app' ? String(runningAppInfo.sourceId) : undefined;
+
     state.setRuntimeOnlyVariables({
       userId: uid,
-      appId: String(runningAppInfo.id),
+      ...(appId ? { appId } : {}),
       chatId,
       responseChatItemId,
       histories,

@@ -227,6 +227,8 @@ overrides:
   react: ^18
   react-dom: ^18
 
+packageExtensionsChecksum: sha256-n2WBeRAb8arF4yewIvrByuptxk2N5rGXAZZCplMikdY=
+
 importers:
 
   .:
@@ -8376,15 +8378,6 @@ packages:
       supports-color:
         optional: true
 
-  debug@4.4.0:
-    resolution: {integrity: sha512-6WTZ/IxCY/T6BALoZHaE4ctp9xm+Z5kY/pzYaCHRFeyVhojxlrm+46y68HA6hr0TcwEssoxNiDEUJQjfPZ/RYA==}
-    engines: {node: '>=6.0'}
-    peerDependencies:
-      supports-color: '*'
-    peerDependenciesMeta:
-      supports-color:
-        optional: true
-
   debug@4.4.3:
     resolution: {integrity: sha512-RGwwWnwQvkVfavKVt22FGLw+xYSdzARwm0ru6DhTVA3umU5hZc28V3kO4stgYryrTlLpuvgI9GiijltAjNbcqA==}
     engines: {node: '>=6.0'}
@@ -14850,6 +14843,7 @@ snapshots:
   '@alicloud/credentials@2.4.4':
     dependencies:
       '@alicloud/tea-typescript': 1.8.0
+      debug: 4.4.3
       httpx: 2.3.3
       ini: 1.3.8
       kitx: 2.2.0
@@ -23104,10 +23098,6 @@ snapshots:
     dependencies:
       ms: 2.1.3
 
-  debug@4.4.0:
-    dependencies:
-      ms: 2.1.3
-
   debug@4.4.3:
     dependencies:
       ms: 2.1.3
@@ -25385,7 +25375,7 @@ snapshots:
     dependencies:
       '@ioredis/commands': 1.2.0
       cluster-key-slot: 1.1.2
-      debug: 4.4.0
+      debug: 4.4.3
       denque: 2.1.0
       lodash.defaults: 4.2.0
       lodash.isarguments: 3.1.0

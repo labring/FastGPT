@@ -2,27 +2,30 @@ import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import z from 'zod';
 import { AppTypeEnum } from '../../../../core/app/constants';
-import { ChatGenerateStatusEnum } from '../../../../core/chat/constants';
+import { ChatGenerateStatusEnum, ChatSourceTypeEnum } from '../../../../core/chat/constants';
 import { OpenAPIFlowNodeInputItemTypeSchema } from '../../workflow/node';
 import { OpenAPIAppChatConfigSchema } from '../../app/common/api';
-import { ChatGenerateStatusSchema } from '../api';
+import {
+  ChatGenerateStatusSchema,
+  createChatTargetInputSchema,
+  transformChatTargetInput
+} from '../api';
 
 /* Init */
 // Online chat
-export const InitChatQuerySchema = z
-  .object({
-    appId: ObjectIdSchema.describe('应用ID'),
-    chatId: z.string().min(1).describe('会话ID'),
-    loadCustomFeedbacks: z.coerce.boolean().optional().describe('是否加载自定义反馈')
-  })
-  .meta({
-    example: {
-      appId: '1234567890',
-      chatId: '1234567890',
-      loadCustomFeedbacks: true
-    }
-  });
-export type InitChatQueryType = z.infer<typeof InitChatQuerySchema>;
+export const InitChatQueryRawSchema = createChatTargetInputSchema({
+  chatId: z.string().min(1).describe('会话ID'),
+  loadCustomFeedbacks: z.coerce.boolean().optional().describe('是否加载自定义反馈')
+}).meta({
+  example: {
+    appId: '1234567890',
+    chatId: '1234567890',
+    loadCustomFeedbacks: true
+  }
+});
+export const InitChatQuerySchema = InitChatQueryRawSchema.transform(transformChatTargetInput);
+export type InitChatQueryType = z.infer<typeof InitChatQueryRawSchema>;
+export type InitChatQueryRuntimeType = z.infer<typeof InitChatQuerySchema>;
 
 /** 团队空间 init：`/api/core/chat/team/init` */
 export const InitTeamChatQuerySchema = z.object({
@@ -35,7 +38,9 @@ export type InitTeamChatQueryType = z.infer<typeof InitTeamChatQuerySchema>;
 
 export const InitChatResponseSchema = z.object({
   chatId: z.string().optional().describe('会话ID'),
-  appId: ObjectIdSchema.describe('应用ID'),
+  sourceType: z.enum(ChatSourceTypeEnum).describe('会话所属资源类型'),
+  sourceId: ObjectIdSchema.describe('会话所属资源 ID'),
+  appId: ObjectIdSchema.optional().describe('真实应用 ID，仅 sourceType=app 时返回'),
   userAvatar: z.string().optional().describe('用户头像'),
   title: z.string().describe('对话标题'),
   variables: z.record(z.string(), z.any()).optional().describe('全局变量值'),
@@ -58,23 +63,22 @@ export const InitChatResponseSchema = z.object({
 export type InitChatResponseType = z.infer<typeof InitChatResponseSchema>;
 
 /* ============ v2/chat/stop ============ */
-export const StopV2ChatSchema = z
-  .object({
-    appId: ObjectIdSchema.describe('应用ID'),
-    chatId: z.string().min(1).describe('会话ID'),
-    outLinkAuthData: OutLinkChatAuthSchema.optional().describe('外链鉴权数据')
-  })
-  .meta({
-    example: {
-      appId: '1234567890',
-      chatId: '1234567890',
-      outLinkAuthData: {
-        shareId: '1234567890',
-        outLinkUid: '1234567890'
-      }
+export const StopV2ChatRawSchema = createChatTargetInputSchema({
+  chatId: z.string().min(1).describe('会话ID'),
+  outLinkAuthData: OutLinkChatAuthSchema.optional().describe('外链鉴权数据')
+}).meta({
+  example: {
+    appId: '1234567890',
+    chatId: '1234567890',
+    outLinkAuthData: {
+      shareId: '1234567890',
+      outLinkUid: '1234567890'
     }
-  });
-export type StopV2ChatParams = z.infer<typeof StopV2ChatSchema>;
+  }
+});
+export const StopV2ChatSchema = StopV2ChatRawSchema.transform(transformChatTargetInput);
+export type StopV2ChatParams = z.infer<typeof StopV2ChatRawSchema>;
+export type StopV2ChatRuntimeParams = z.infer<typeof StopV2ChatSchema>;
 
 export const StopV2ChatResponseSchema = z
   .object({

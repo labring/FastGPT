@@ -1,13 +1,13 @@
 import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap } from '../../../tag';
 import {
-  SandboxDownloadBodySchema,
+  SandboxDownloadBodyRawSchema,
   SandboxDownloadResponseSchema,
-  SandboxCheckExistBodySchema,
+  SandboxCheckExistBodyRawSchema,
   SandboxCheckExistResponseSchema,
-  SandboxGetTicketBodySchema,
+  SandboxGetTicketBodyRawSchema,
   SandboxGetTicketResponseSchema,
-  SandboxGetHtmlPreviewLinkBodySchema,
+  SandboxGetHtmlPreviewLinkBodyRawSchema,
   SandboxGetHtmlPreviewLinkResponseSchema
 } from './api';
 
@@ -20,7 +20,7 @@ export const SandboxPath: OpenAPIPath = {
       requestBody: {
         content: {
           'application/json': {
-            schema: SandboxDownloadBodySchema
+            schema: SandboxDownloadBodyRawSchema
           }
         }
       },
@@ -44,7 +44,7 @@ export const SandboxPath: OpenAPIPath = {
       requestBody: {
         content: {
           'application/json': {
-            schema: SandboxGetHtmlPreviewLinkBodySchema
+            schema: SandboxGetHtmlPreviewLinkBodyRawSchema
           }
         }
       },
@@ -69,7 +69,7 @@ export const SandboxPath: OpenAPIPath = {
       requestBody: {
         content: {
           'application/json': {
-            schema: SandboxCheckExistBodySchema
+            schema: SandboxCheckExistBodyRawSchema
           }
         }
       },
@@ -94,7 +94,7 @@ export const SandboxPath: OpenAPIPath = {
       requestBody: {
         content: {
           'application/json': {
-            schema: SandboxGetTicketBodySchema
+            schema: SandboxGetTicketBodyRawSchema
           }
         }
       },

@@ -3,7 +3,11 @@ import { getChatItems, updateChatFeedbackCount } from '@fastgpt/service/core/cha
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
-import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatRoleEnum,
+  ChatSourceEnum,
+  ChatSourceTypeEnum
+} from '@fastgpt/global/core/chat/constants';
 import { getUser } from '@test/datas/users';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -15,6 +19,11 @@ describe('getChatItems', () => {
   let testUser: Awaited<ReturnType<typeof getUser>>;
   let appId: string;
   let chatId: string;
+
+  const chatSource = () => ({
+    sourceType: ChatSourceTypeEnum.app,
+    sourceId: appId
+  });
 
   beforeEach(async () => {
     testUser = await getUser('test-user');
@@ -60,7 +69,7 @@ describe('getChatItems', () => {
   describe('Normal Pagination Mode', () => {
     it('should return empty array when chatId is not provided', async () => {
       const result = await getChatItems({
-        appId,
+        ...chatSource(),
         chatId: undefined,
         offset: 0,
         limit: 10,
@@ -73,7 +82,7 @@ describe('getChatItems', () => {
 
     it('should return empty array when no chat items exist', async () => {
       const result = await getChatItems({
-        appId,
+        ...chatSource(),
         chatId,
         offset: 0,
         limit: 10,
@@ -88,7 +97,7 @@ describe('getChatItems', () => {
       await createChatItems(20);
 
       const result = await getChatItems({
-        appId,
+        ...chatSource(),
         chatId,
         offset: 0,
         limit: 5,
@@ -105,7 +114,7 @@ describe('getChatItems', () => {
       await createChatItems(20);
 
       const result = await getChatItems({
-        appId,
+        ...chatSource(),
         chatId,
         offset: 5,
         limit: 5,
@@ -124,7 +133,7 @@ describe('getChatItems', () => {
       await createChatItems(5);
 
       const result = await getChatItems({
-        appId,
+        ...chatSource(),
         chatId,
         offset: 0,
         limit: 10,
@@ -139,7 +148,7 @@ describe('getChatItems', () => {
       await createChatItems(5);
 
       const result = await getChatItems({
-        appId,
+        ...chatSource(),
         chatId,
         offset: 0,
         limit: 5,
@@ -160,7 +169,7 @@ describe('getChatItems', () => {
       await createChatItems(3);
 
       const result = await getChatItems({
-        appId,
+        ...chatSource(),
         chatId,
         offset: 0,
         limit: 3,
@@ -189,7 +198,7 @@ describe('getChatItems', () => {
       });
 
       const result = await getChatItems({
-        appId,
+        ...chatSource(),
         chatId,
         offset: 0,
         limit: 3,
@@ -210,7 +219,7 @@ describe('getChatItems', () => {
       await createChatItems(1);
 
       const result = await getChatItems({
-        appId,
+        ...chatSource(),
         chatId,
         offset: 0,
         limit: 10,
@@ -225,7 +234,7 @@ describe('getChatItems', () => {
       await createChatItems(5);
 
       const result = await getChatItems({
-        appId,
+        ...chatSource(),
         chatId,
         offset: 10,
         limit: 5,
@@ -240,7 +249,7 @@ describe('getChatItems', () => {
       await createChatItems(5);
 
       const result = await getChatItems({
-        appId,
+        ...chatSource(),
         chatId,
         offset: 0,
         limit: 0,
@@ -270,7 +279,7 @@ describe('getChatItems', () => {
       });
 
       const result = await getChatItems({
-        appId,
+        ...chatSource(),
         chatId,
         offset: 0,
         limit: 10,
@@ -288,7 +297,7 @@ describe('getChatItems', () => {
       const items = await createChatItems(10);
 
       const result = await getChatItems({
-        appId,
+        ...chatSource(),
         chatId,
         offset: 0,
         limit: 10,
@@ -309,7 +318,7 @@ describe('getChatItems', () => {
       const targetItem = items[4]; // Middle item
 
       const result = await getChatItems({
-        appId,
+        ...chatSource(),
         chatId,
         initialId: targetItem.dataId,
         limit: 5,
@@ -328,7 +337,7 @@ describe('getChatItems', () => {
       const firstItem = items[0];
 
       const result = await getChatItems({
-        appId,
+        ...chatSource(),
         chatId,
         initialId: firstItem.dataId,
         limit: 5,
@@ -346,7 +355,7 @@ describe('getChatItems', () => {
       const lastItem = items[9];
 
       const result = await getChatItems({
-        appId,
+        ...chatSource(),
         chatId,
         initialId: lastItem.dataId,
         limit: 5,
@@ -364,7 +373,7 @@ describe('getChatItems', () => {
       const middleItem = items[10];
 
       const result = await getChatItems({
-        appId,
+        ...chatSource(),
         chatId,
         initialId: middleItem.dataId,
         limit: 5,
@@ -381,7 +390,7 @@ describe('getChatItems', () => {
 
       await expect(
         getChatItems({
-          appId,
+          ...chatSource(),
           chatId,
           initialId: 'non-existent-id',
           limit: 5,
@@ -395,7 +404,7 @@ describe('getChatItems', () => {
       const middleItem = items[5];
 
       const result = await getChatItems({
-        appId,
+        ...chatSource(),
         chatId,
         initialId: middleItem.dataId,
         limit: 3,
@@ -413,7 +422,7 @@ describe('getChatItems', () => {
       const middleItem = items[7];
 
       const result = await getChatItems({
-        appId,
+        ...chatSource(),
         chatId,
         initialId: middleItem.dataId,
         limit: 7,
@@ -431,7 +440,7 @@ describe('getChatItems', () => {
       const middleItem = items[7];
 
       const result = await getChatItems({
-        appId,
+        ...chatSource(),
         chatId,
         initialId: middleItem.dataId,
         limit: 6,
@@ -448,7 +457,7 @@ describe('getChatItems', () => {
       const items = await createChatItems(20);
 
       const result = await getChatItems({
-        appId,
+        ...chatSource(),
         chatId,
         limit: 5,
         field: 'obj value'
@@ -468,7 +477,7 @@ describe('getChatItems', () => {
       const targetItem = items[5];
 
       const result = await getChatItems({
-        appId,
+        ...chatSource(),
         chatId,
         prevId: targetItem.dataId,
         limit: 3,
@@ -488,7 +497,7 @@ describe('getChatItems', () => {
       const targetItem = items[15];
 
       const result = await getChatItems({
-        appId,
+        ...chatSource(),
         chatId,
         prevId: targetItem.dataId,
         limit: 5,
@@ -506,7 +515,7 @@ describe('getChatItems', () => {
       const earlyItem = items[2];
 
       const result = await getChatItems({
-        appId,
+        ...chatSource(),
         chatId,
         prevId: earlyItem.dataId,
         limit: 5,
@@ -525,7 +534,7 @@ describe('getChatItems', () => {
 
       await expect(
         getChatItems({
-          appId,
+          ...chatSource(),
           chatId,
           prevId: 'non-existent-id',
           limit: 5,
@@ -539,7 +548,7 @@ describe('getChatItems', () => {
       const firstItem = items[0];
 
       const result = await getChatItems({
-        appId,
+        ...chatSource(),
         chatId,
         prevId: firstItem.dataId,
         limit: 5,
@@ -557,7 +566,7 @@ describe('getChatItems', () => {
       const targetItem = items[7];
 
       const result = await getChatItems({
-        appId,
+        ...chatSource(),
         chatId,
         prevId: targetItem.dataId,
         limit: 4,
@@ -578,7 +587,7 @@ describe('getChatItems', () => {
       const targetItem = items[4];
 
       const result = await getChatItems({
-        appId,
+        ...chatSource(),
         chatId,
         nextId: targetItem.dataId,
         limit: 3,
@@ -598,7 +607,7 @@ describe('getChatItems', () => {
       const targetItem = items[5];
 
       const result = await getChatItems({
-        appId,
+        ...chatSource(),
         chatId,
         nextId: targetItem.dataId,
         limit: 5,
@@ -616,7 +625,7 @@ describe('getChatItems', () => {
       const lateItem = items[7];
 
       const result = await getChatItems({
-        appId,
+        ...chatSource(),
         chatId,
         nextId: lateItem.dataId,
         limit: 5,
@@ -635,7 +644,7 @@ describe('getChatItems', () => {
 
       await expect(
         getChatItems({
-          appId,
+          ...chatSource(),
           chatId,
           nextId: 'non-existent-id',
           limit: 5,
@@ -649,7 +658,7 @@ describe('getChatItems', () => {
       const lastItem = items[9];
 
       const result = await getChatItems({
-        appId,
+        ...chatSource(),
         chatId,
         nextId: lastItem.dataId,
         limit: 5,
@@ -667,7 +676,7 @@ describe('getChatItems', () => {
       const targetItem = items[2];
 
       const result = await getChatItems({
-        appId,
+        ...chatSource(),
         chatId,
         nextId: targetItem.dataId,
         limit: 4,
@@ -687,7 +696,7 @@ describe('getChatItems', () => {
       const items = await createChatItems(10);
 
       const result = await getChatItems({
-        appId,
+        ...chatSource(),
         chatId,
         offset: 0,
         initialId: items[5].dataId,
@@ -704,7 +713,7 @@ describe('getChatItems', () => {
       const items = await createChatItems(10);
 
       const result = await getChatItems({
-        appId,
+        ...chatSource(),
         chatId,
         prevId: items[5].dataId,
         nextId: items[7].dataId,
@@ -764,7 +773,7 @@ describe('getChatItems', () => {
       ]);
 
       const result = await getChatItems({
-        appId,
+        ...chatSource(),
         chatId,
         offset: 0,
         limit: 10,
@@ -819,7 +828,7 @@ describe('getChatItems', () => {
       });
 
       const result = await getChatItems({
-        appId,
+        ...chatSource(),
         chatId,
         offset: 0,
         limit: 10,
@@ -857,7 +866,7 @@ describe('getChatItems', () => {
       });
 
       const result = await getChatItems({
-        appId,
+        ...chatSource(),
         chatId,
         offset: 0,
         limit: 10,
@@ -973,7 +982,7 @@ describe('getChatItems', () => {
       ]);
 
       const result = await getChatItems({
-        appId,
+        ...chatSource(),
         chatId,
         offset: 0,
         limit: 10,
@@ -1014,6 +1023,11 @@ describe('updateChatFeedbackCount', () => {
   let testUser: Awaited<ReturnType<typeof getUser>>;
   let appId: string;
   let chatId: string;
+
+  const chatSource = () => ({
+    sourceType: ChatSourceTypeEnum.app,
+    sourceId: appId
+  });
 
   beforeEach(async () => {
     testUser = await getUser('test-user-feedback-count');
@@ -1066,7 +1080,7 @@ describe('updateChatFeedbackCount', () => {
     await createChatItemWithFeedback({}, ChatRoleEnum.AI);
     await createChatItemWithFeedback({}, ChatRoleEnum.AI);
 
-    await updateChatFeedbackCount({ appId, chatId });
+    await updateChatFeedbackCount({ ...chatSource(), chatId });
 
     const chat = await MongoChat.findOne({ appId, chatId }).lean();
     expect(chat?.hasGoodFeedback).toBeUndefined();
@@ -1080,7 +1094,7 @@ describe('updateChatFeedbackCount', () => {
       userGoodFeedback: 'Great response!'
     });
 
-    await updateChatFeedbackCount({ appId, chatId });
+    await updateChatFeedbackCount({ ...chatSource(), chatId });
 
     const chat = await MongoChat.findOne({ appId, chatId }).lean();
     expect(chat?.hasGoodFeedback).toBe(true);
@@ -1092,7 +1106,7 @@ describe('updateChatFeedbackCount', () => {
       userBadFeedback: 'Incorrect answer'
     });
 
-    await updateChatFeedbackCount({ appId, chatId });
+    await updateChatFeedbackCount({ ...chatSource(), chatId });
 
     const chat = await MongoChat.findOne({ appId, chatId }).lean();
     expect(chat?.hasGoodFeedback).toBeUndefined();
@@ -1107,7 +1121,7 @@ describe('updateChatFeedbackCount', () => {
       userBadFeedback: 'Incorrect answer'
     });
 
-    await updateChatFeedbackCount({ appId, chatId });
+    await updateChatFeedbackCount({ ...chatSource(), chatId });
 
     const chat = await MongoChat.findOne({ appId, chatId }).lean();
     expect(chat?.hasGoodFeedback).toBe(true);
@@ -1120,7 +1134,7 @@ describe('updateChatFeedbackCount', () => {
       isFeedbackRead: false
     });
 
-    await updateChatFeedbackCount({ appId, chatId });
+    await updateChatFeedbackCount({ ...chatSource(), chatId });
 
     const chat = await MongoChat.findOne({ appId, chatId }).lean();
     expect(chat?.hasGoodFeedback).toBe(true);
@@ -1133,7 +1147,7 @@ describe('updateChatFeedbackCount', () => {
       isFeedbackRead: true
     });
 
-    await updateChatFeedbackCount({ appId, chatId });
+    await updateChatFeedbackCount({ ...chatSource(), chatId });
 
     const chat = await MongoChat.findOne({ appId, chatId }).lean();
     expect(chat?.hasGoodFeedback).toBe(true);
@@ -1146,7 +1160,7 @@ describe('updateChatFeedbackCount', () => {
       isFeedbackRead: false
     });
 
-    await updateChatFeedbackCount({ appId, chatId });
+    await updateChatFeedbackCount({ ...chatSource(), chatId });
 
     const chat = await MongoChat.findOne({ appId, chatId }).lean();
     expect(chat?.hasBadFeedback).toBe(true);
@@ -1159,7 +1173,7 @@ describe('updateChatFeedbackCount', () => {
       isFeedbackRead: true
     });
 
-    await updateChatFeedbackCount({ appId, chatId });
+    await updateChatFeedbackCount({ ...chatSource(), chatId });
 
     const chat = await MongoChat.findOne({ appId, chatId }).lean();
     expect(chat?.hasBadFeedback).toBe(true);
@@ -1188,7 +1202,7 @@ describe('updateChatFeedbackCount', () => {
       isFeedbackRead: true
     });
 
-    await updateChatFeedbackCount({ appId, chatId });
+    await updateChatFeedbackCount({ ...chatSource(), chatId });
 
     const chat = await MongoChat.findOne({ appId, chatId }).lean();
     expect(chat?.hasGoodFeedback).toBe(true);
@@ -1209,7 +1223,7 @@ describe('updateChatFeedbackCount', () => {
     // AI message without feedback
     await createChatItemWithFeedback({}, ChatRoleEnum.AI);
 
-    await updateChatFeedbackCount({ appId, chatId });
+    await updateChatFeedbackCount({ ...chatSource(), chatId });
 
     const chat = await MongoChat.findOne({ appId, chatId }).lean();
     expect(chat?.hasGoodFeedback).toBeUndefined();
@@ -1228,7 +1242,7 @@ describe('updateChatFeedbackCount', () => {
       userGoodFeedback: 'Great response 3!'
     });
 
-    await updateChatFeedbackCount({ appId, chatId });
+    await updateChatFeedbackCount({ ...chatSource(), chatId });
 
     const chat = await MongoChat.findOne({ appId, chatId }).lean();
     expect(chat?.hasGoodFeedback).toBe(true);
@@ -1241,7 +1255,7 @@ describe('updateChatFeedbackCount', () => {
       userGoodFeedback: 'Great response!'
     });
 
-    await updateChatFeedbackCount({ appId, chatId });
+    await updateChatFeedbackCount({ ...chatSource(), chatId });
 
     let chat = await MongoChat.findOne({ appId, chatId }).lean();
     expect(chat?.hasGoodFeedback).toBe(true);
@@ -1249,7 +1263,7 @@ describe('updateChatFeedbackCount', () => {
     // Remove feedback
     await MongoChatItem.updateOne({ _id: item._id }, { $unset: { userGoodFeedback: '' } });
 
-    await updateChatFeedbackCount({ appId, chatId });
+    await updateChatFeedbackCount({ ...chatSource(), chatId });
 
     chat = await MongoChat.findOne({ appId, chatId }).lean();
     expect(chat?.hasGoodFeedback).toBeUndefined();
@@ -1259,7 +1273,7 @@ describe('updateChatFeedbackCount', () => {
     // Create only human messages
     await createChatItemWithFeedback({}, ChatRoleEnum.Human);
 
-    await updateChatFeedbackCount({ appId, chatId });
+    await updateChatFeedbackCount({ ...chatSource(), chatId });
 
     const chat = await MongoChat.findOne({ appId, chatId }).lean();
     expect(chat?.hasGoodFeedback).toBeUndefined();
@@ -1275,7 +1289,7 @@ describe('updateChatFeedbackCount', () => {
       // isFeedbackRead is undefined
     });
 
-    await updateChatFeedbackCount({ appId, chatId });
+    await updateChatFeedbackCount({ ...chatSource(), chatId });
 
     const chat = await MongoChat.findOne({ appId, chatId }).lean();
     expect(chat?.hasGoodFeedback).toBe(true);
@@ -1299,7 +1313,7 @@ describe('updateChatFeedbackCount', () => {
       });
     }
 
-    await updateChatFeedbackCount({ appId, chatId });
+    await updateChatFeedbackCount({ ...chatSource(), chatId });
 
     const chat = await MongoChat.findOne({ appId, chatId }).lean();
     expect(chat?.hasGoodFeedback).toBe(true);
@@ -1314,7 +1328,7 @@ describe('updateChatFeedbackCount', () => {
     });
 
     // Test that it works with session parameter (session will be undefined in this test)
-    await updateChatFeedbackCount({ appId, chatId, session: undefined });
+    await updateChatFeedbackCount({ ...chatSource(), chatId, session: undefined });
 
     const chat = await MongoChat.findOne({ appId, chatId }).lean();
     expect(chat?.hasGoodFeedback).toBe(true);
@@ -1326,7 +1340,7 @@ describe('updateChatFeedbackCount', () => {
       userGoodFeedback: ''
     });
 
-    await updateChatFeedbackCount({ appId, chatId });
+    await updateChatFeedbackCount({ ...chatSource(), chatId });
 
     const chat = await MongoChat.findOne({ appId, chatId }).lean();
     // Empty string is still truthy in MongoDB's $ifNull check, so it counts as feedback

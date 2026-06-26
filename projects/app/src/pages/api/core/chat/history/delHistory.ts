@@ -1,37 +1,37 @@
 import type { NextApiResponse } from 'next';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { DelChatHistorySchema } from '@fastgpt/global/openapi/core/chat/history/api';
-import { authChatCrud } from '@/service/support/permission/auth/chat';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
+import { buildChatHistoryMatch } from '@/service/core/chat/history';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ReadPermissionVal, WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 
 /* delete single chat history (soft delete) */
 export async function handler(req: ApiRequestProps, res: NextApiResponse) {
   const { query } = parseApiInput({ req, querySchema: DelChatHistorySchema });
-  const { appId, chatId } = query;
+  const { sourceType, sourceId, chatId, shareId, outLinkUid, teamId, teamToken } = query;
 
-  const {
-    appId: authAppId,
-    authType,
-    uid
-  } = await authChatCrud({
-    ...query,
+  const per = sourceType === ChatSourceTypeEnum.skillEdit ? WritePermissionVal : ReadPermissionVal;
+  const match = await buildChatHistoryMatch({
     req,
-    authToken: true,
-    authApiKey: true
+    sourceType,
+    sourceId,
+    chatId,
+    shareId,
+    outLinkUid,
+    teamId,
+    teamToken,
+    per
   });
-  const matchAppId = appId || authAppId;
-  if (!matchAppId) return Promise.reject('Param are error');
+  if (!match) return Promise.reject(ChatErrEnum.unAuthChat);
 
   await MongoChat.updateOne(
     {
-      appId: matchAppId,
-      chatId,
-      ...(authType === AuthUserTypeEnum.outLink || authType === AuthUserTypeEnum.teamDomain
-        ? { outLinkUid: uid }
-        : {})
+      ...match,
+      chatId
     },
     {
       $set: {

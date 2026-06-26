@@ -15,6 +15,7 @@ import {
   GetQuoteDataResponseSchema,
   type GetQuoteDataResponse
 } from '@fastgpt/global/openapi/core/dataset/data/api';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 async function handler(req: ApiRequestProps): Promise<GetQuoteDataResponse> {
   const body = parseApiInput({ req, bodySchema: GetQuoteDataBodySchema }).body;
@@ -53,7 +54,8 @@ async function handler(req: ApiRequestProps): Promise<GetQuoteDataResponse> {
           teamToken
         }),
         authCollectionInChat({
-          appId,
+          sourceType: ChatSourceTypeEnum.app,
+          sourceId: appId,
           chatId,
           collectionIds: [datasetData.collectionId]
         })

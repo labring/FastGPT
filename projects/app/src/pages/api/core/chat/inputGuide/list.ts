@@ -11,12 +11,16 @@ import {
   ChatInputGuideListResponseSchema,
   type ChatInputGuideListResponseType
 } from '@fastgpt/global/openapi/core/chat/inputGuide/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(
   req: ApiRequestProps,
   res: NextApiResponse<any>
 ): Promise<ChatInputGuideListResponseType> {
-  const { appId, searchKey } = ChatInputGuideListBodySchema.parse(req.body);
+  const { appId, searchKey } = parseApiInput({
+    req,
+    bodySchema: ChatInputGuideListBodySchema
+  }).body;
   const { offset, pageSize } = parsePaginationRequest(req);
 
   await authApp({ req, appId, authToken: true, per: ReadPermissionVal });

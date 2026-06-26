@@ -10,17 +10,21 @@ import { MongoHelperBotChatItem } from '../../../../../../../../packages/service
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 import { addPreviewUrlToChatItems } from '@fastgpt/service/core/chat/utils';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 export type getRecordsQuery = GetHelperBotChatRecordsParamsType;
 
-export type getRecordsBody = {};
+export type getRecordsBody = Record<string, never>;
 
 export type getRecordsResponse = GetHelperBotChatRecordsResponseType;
 
 async function handler(
   req: ApiRequestProps<getRecordsBody, getRecordsQuery>
 ): Promise<getRecordsResponse> {
-  const { type, chatId } = GetHelperBotChatRecordsParamsSchema.parse(req.query);
+  const { type, chatId } = parseApiInput({
+    req,
+    querySchema: GetHelperBotChatRecordsParamsSchema
+  }).query;
   const { userId } = await authHelperBotChatCrud({
     type,
     chatId,

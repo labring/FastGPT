@@ -1,5 +1,6 @@
 import z from 'zod';
 import { SandboxStatusEnum, SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 // ---- 沙盒实例 DB 类型 ----
 export const SandboxProviderSchema = z.enum(['sealosdevbox', 'opensandbox', 'e2b']);
@@ -61,6 +62,8 @@ export const SandboxInstanceZodSchema = z.object({
   _id: z.string(),
   sandboxId: z.string(),
   appId: z.string().nullish(),
+  sourceType: z.enum(ChatSourceTypeEnum),
+  sourceId: z.string(),
   userId: z.string().nullish(),
   chatId: z.string().nullish(),
   type: z.enum(SandboxTypeEnum).nullish(),

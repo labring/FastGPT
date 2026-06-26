@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { sandboxShellTool } from '@fastgpt/service/core/ai/sandbox/toolCall/shell.tool';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 const createSandboxInstance = () =>
   ({
@@ -26,7 +27,8 @@ describe('sandboxShellTool', () => {
     const sandbox = createSandboxInstance();
 
     const result = await sandboxShellTool.execute({
-      appId: 'app',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app',
       userId: 'user',
       chatId: 'chat',
       sandboxInstance: sandbox,

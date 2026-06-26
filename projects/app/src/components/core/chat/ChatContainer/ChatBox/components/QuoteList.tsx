@@ -7,8 +7,8 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { getQuoteDataList } from '@/web/core/chat/record/api';
+import { useChatApiTarget } from '@/web/core/chat/utils';
 
 const QuoteList = React.memo(function QuoteList({
   chatItemDataId = '',
@@ -18,14 +18,16 @@ const QuoteList = React.memo(function QuoteList({
   rawSearch: SearchDataResponseQuoteListItemType[];
 }) {
   const theme = useTheme();
-  const { appId, outLinkAuthData } = useChatStore();
 
   const RawSourceBoxProps = useContextSelector(WorkflowRuntimeContext, (v) => ({
     chatItemDataId,
-    appId: v.appId,
+    appId: v.appId || '',
     chatId: v.chatId,
     ...(v.outLinkAuthData || {})
   }));
+  const sourceTarget = useContextSelector(WorkflowRuntimeContext, (v) => v.sourceTarget);
+  const chatTarget = useChatApiTarget(sourceTarget);
+  const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
   const canDownloadSource = useContextSelector(ChatItemContext, (v) => v.canDownloadSource);
   const showRouteToDatasetDetail = useContextSelector(
     ChatItemContext,
@@ -39,7 +41,7 @@ const QuoteList = React.memo(function QuoteList({
             datasetDataIdList: rawSearch.map((item) => item.id),
             collectionIdList: [...new Set(rawSearch.map((item) => item.collectionId))],
             chatItemDataId,
-            appId,
+            ...chatTarget,
             chatId: RawSourceBoxProps.chatId,
             ...outLinkAuthData
           })

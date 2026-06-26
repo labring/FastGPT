@@ -41,14 +41,18 @@ catalog:
   '@types/react-dom': ^18
   '@types/request-ip': ^0.0.38
   '@vitest/coverage-v8': ^4.1.5
+  '@xterm/addon-fit': ^0.10.0
+  '@xterm/xterm': ^5.5.0
   ahooks: ^3.9.5
   axios: ^1.16.0
   chalk: ^5.6.2
   date-fns: ^3.6.0
   dayjs: 1.11.19
+  debug: ^4.4.3
   express: ^4
   file-type: 21.3.0
   gpt-tokenizer: 3.4.0
+  hono: 4.12.25
   i18next: 23.16.8
   ipaddr.js: ^2.4.0
   js-yaml: ^4.1.1
@@ -76,13 +80,10 @@ catalog:
   tsdown: 0.21.10
   tsx: ^4.20.6
   typescript: ^6.0.3
+  undici: ^7.28.0
   vaul: ^1.1.2
   vitest: ^4.1.5
-  '@xterm/addon-fit': ^0.10.0
-  '@xterm/xterm': ^5.5.0
   zod: ^4
-  undici: ^7.28.0
-  hono: 4.12.25
 
 catalogMode: prefer
 
@@ -116,3 +117,8 @@ overrides:
   '@types/react-dom': ^18
   react: ^18
   react-dom: ^18
+
+packageExtensions:
+  '@alicloud/credentials@*':
+    dependencies:
+      debug: ^4.4.3

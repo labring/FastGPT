@@ -12,7 +12,7 @@ import { GET, POST, DELETE } from '@/web/common/api/request';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 
 /**
- * get detail responseData by dataId appId chatId
+ * get detail responseData by dataId, chat target and chatId
  */
 export const getChatResData = (data: GetResDataQueryType) =>
   GET<ChatHistoryItemResType[]>(`/core/chat/record/getResData`, data);

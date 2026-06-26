@@ -9,10 +9,10 @@ import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 import { formatChatValue2InputType } from '../utils/chatValue';
 import type { ChatBoxInputType, SendPromptFnType } from '../type';
+import { useChatApiTarget } from '@/web/core/chat/utils';
 
 type UseChatRecordActionsProps = {
   sendPrompt: SendPromptFnType;
-  onDeleteChatItem?: (contentId: string, delFile?: boolean) => Promise<void>;
 };
 
 const uniqueDataIds = (dataIds: Array<string | undefined>) =>
@@ -25,8 +25,8 @@ const uniqueDataIds = (dataIds: Array<string | undefined>) =>
  * - `retryInput` 会删除目标 human 消息及其后续记录，再用旧输入重新发送。
  * - `editInput` 会删除目标 human 消息及其后续记录，再用编辑后的文本重新发送。
  * - `delOneMessage` 会删除一条 human 消息，并顺带删除紧随其后的 AI 回复。
- * - `onDelMessage` 是 hook 内部的删除通道，优先走外部覆盖的 `onDeleteChatItem`，
- *   否则使用默认 `delChatRecordById` API，并自动带上当前 app/chat/outLink 鉴权信息。
+ * - `onDelMessage` 是 hook 内部的删除通道，统一使用标准 `delChatRecordById` API，
+ *   并自动带上当前 chat target、chatId 和外链鉴权信息。
  *
  * 设计边界：
  * - 本 hook 只处理删除和重试，不处理点赞、点踩、admin mark、log read status。
@@ -36,16 +36,14 @@ const uniqueDataIds = (dataIds: Array<string | undefined>) =>
  * - 本地 `chatRecords` 会先按现有逻辑乐观更新；远端删除失败时只对重试流程 toast，
  *   单条删除仍保持原来的 fire-and-forget 行为，不在本次拆分里改变用户可见语义。
  */
-export const useChatRecordActions = ({
-  sendPrompt,
-  onDeleteChatItem
-}: UseChatRecordActionsProps) => {
+export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) => {
   const { toast } = useToast();
   const [isRecordActionLoading, setIsRecordActionLoading] = useState(false);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
-  const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
+  const sourceTarget = useContextSelector(WorkflowRuntimeContext, (v) => v.sourceTarget);
+  const chatTarget = useChatApiTarget(sourceTarget);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
 
@@ -59,12 +57,8 @@ export const useChatRecordActions = ({
     const targetContentIds = uniqueDataIds(contentIds);
     if (targetContentIds.length === 0) return Promise.resolve();
 
-    if (onDeleteChatItem) {
-      return Promise.all(targetContentIds.map((contentId) => onDeleteChatItem(contentId, delFile)));
-    }
-
     return delChatRecordById({
-      appId,
+      ...chatTarget,
       chatId,
       contentIds: targetContentIds,
       delFile,

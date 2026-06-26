@@ -1,9 +1,9 @@
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-  authChatCrud: vi.fn(),
+  authChatTargetCrud: vi.fn(),
   findChatItem: vi.fn(),
   getChatItemResponseData: vi.fn()
 }));
@@ -13,7 +13,7 @@ vi.mock('@/service/middleware/entry', () => ({
 }));
 
 vi.mock('@/service/support/permission/auth/chat', () => ({
-  authChatCrud: mocks.authChatCrud
+  authChatTargetCrud: mocks.authChatTargetCrud
 }));
 
 vi.mock('@fastgpt/service/core/chat/chatItemSchema', () => ({
@@ -51,7 +51,7 @@ describe('getResData handler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mocks.authChatCrud.mockResolvedValue({ showCite: true });
+    mocks.authChatTargetCrud.mockResolvedValue({ showCite: true });
     mocks.getChatItemResponseData.mockResolvedValue([{ id: 'persisted-root' }]);
   });
 
@@ -62,15 +62,17 @@ describe('getResData handler', () => {
     });
 
     await expect(callHandler()).resolves.toEqual([{ id: 'persisted-root' }]);
-    expect(mocks.authChatCrud).toHaveBeenCalledWith(
+    expect(mocks.authChatTargetCrud).toHaveBeenCalledWith(
       expect.objectContaining({
         authApiKey: true,
-        appId,
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: appId,
         chatId
       })
     );
     expect(mocks.getChatItemResponseData).toHaveBeenCalledWith({
-      appId,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
       chatId,
       chatItemDataId: dataId,
       fallbackResponseData: [{ id: 'legacy-root' }]
@@ -86,7 +88,8 @@ describe('getResData handler', () => {
 
     await expect(callHandler()).resolves.toEqual([]);
     expect(mocks.getChatItemResponseData).toHaveBeenCalledWith({
-      appId,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
       chatId,
       chatItemDataId: dataId,
       fallbackResponseData: []
@@ -100,7 +103,8 @@ describe('getResData handler', () => {
 
     await expect(callHandler()).resolves.toEqual([{ id: 'persisted-root' }]);
     expect(mocks.getChatItemResponseData).toHaveBeenCalledWith({
-      appId,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
       chatId,
       chatItemDataId: dataId,
       fallbackResponseData: undefined

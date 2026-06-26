@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatFileTypeEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 const {
   prepareAgentSandboxRuntimeMock,
@@ -120,7 +120,8 @@ describe('ensureAgentSandboxRuntime', () => {
     }));
 
     const result = await ensureAgentSandboxRuntime({
-      appId: 'app_1',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app_1',
       userId: 'user_1',
       chatId: 'chat_1',
       teamId: 'team_1',
@@ -201,17 +202,51 @@ describe('ensureAgentSandboxRuntime', () => {
   it('runs edit-debug lifecycle without deploying selected skills or builtin skills by default', async () => {
     const { ensureAgentSandboxRuntime } =
       await import('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/sandbox/prepare');
+
+    await ensureAgentSandboxRuntime({
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: 'edit_skill_1',
+      userId: 'user_1',
+      chatId: 'chat_1',
+      teamId: 'team_1',
+      tmbId: 'tmb_1',
+      needSandboxRuntime: true,
+      skillIds: [],
+      editSkillId: 'edit_skill_1',
+      currentFiles
+    });
+
+    expect(prepareAgentSandboxRuntimeMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        sourceId: 'edit_skill_1'
+      })
+    );
+    expect(injectInputFilesToSandboxMock).toHaveBeenCalledWith(sandboxProviderMock, currentFiles);
+    expect(syncBuiltinSkillsToSandboxMock).not.toHaveBeenCalled();
+    expect(getAgentSkillInfosMock).toHaveBeenCalledWith({
+      sandbox: sandboxProviderMock,
+      skillDirectories: ['/workspace']
+    });
+    expect(injectAgentSkillFilesToSandboxMock).not.toHaveBeenCalled();
+    expect(runAgentSandboxEntrypointMock).not.toHaveBeenCalled();
+    expect(runAgentSkillVersionEntrypointsMock).not.toHaveBeenCalled();
+  });
+
+  it('runs custom prepare actions in edit-debug lifecycle', async () => {
+    const { ensureAgentSandboxRuntime } =
+      await import('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/sandbox/prepare');
     const prepareAction = vi.fn(async (context) => ({
       ...context,
       skillScanDirectories: [...context.skillScanDirectories, '/home/sandbox/.fastgpt/skills']
     }));
 
     await ensureAgentSandboxRuntime({
-      appId: 'app_1',
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: 'edit_skill_1',
       userId: 'user_1',
       chatId: 'chat_1',
       teamId: 'team_1',
-      tmbId: 'tmb_1',
       needSandboxRuntime: true,
       skillIds: [],
       editSkillId: 'edit_skill_1',
@@ -284,7 +319,8 @@ describe('ensureAgentSandboxRuntime', () => {
 
     await expect(
       ensureAgentSandboxRuntime({
-        appId: 'app_1',
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: 'app_1',
         userId: 'user_1',
         chatId: 'chat_1',
         teamId: 'team_1',

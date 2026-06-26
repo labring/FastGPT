@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { outlinkInvokeChat } from '@fastgpt/service/support/outLink/runtime/utils';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
@@ -165,7 +165,8 @@ describe('outlinkInvokeChat', () => {
 
     expect(preChatRound).toHaveBeenCalledWith(
       expect.objectContaining({
-        appId: 'app-id',
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: 'app-id',
         chatId: 'chat-id',
         sourceName: 'OutLink',
         shareId: 'share-id',
@@ -215,7 +216,8 @@ describe('outlinkInvokeChat', () => {
 
     expect(finalizeChatRound).not.toHaveBeenCalled();
     expect(failChatRound).toHaveBeenCalledWith({
-      appId: 'app-id',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app-id',
       chatId: 'prepared-chat-id',
       responseChatItemId: 'message-id',
       error

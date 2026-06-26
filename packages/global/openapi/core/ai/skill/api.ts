@@ -13,14 +13,13 @@ import {
   ZipEntryInfoSchema
 } from '../../../../core/ai/skill/type';
 import { SkillPermissionSchema } from '../../../../support/permission/skill/controller.schema';
-import { ChatGenerateStatusSchema } from '../../chat/api';
+import { ChatCompletionMessageParamSchema } from '../../../../core/ai/llm/type';
 
 const IdSchema = z.string().min(1).meta({ description: '资源 ID' });
 const SandboxInstanceKeySchema = z.string().min(1).describe('FastGPT sandbox instance key');
 const NullableParentIdSchema = z.string().nullable().optional().meta({
   description: '父级目录 ID'
 });
-const LooseObjectSchema = z.object({}).catchall(z.any());
 
 export const ListSkillsQuerySchema = z.object({
   source: z.enum(['store', 'mine']).optional().describe('技能来源: store=系统技能, mine=我的技能'),
@@ -218,49 +217,11 @@ export const SkillDebugChatBodySchema = z.object({
   skillId: IdSchema,
   chatId: z.string().min(1),
   responseChatItemId: z.string().optional(),
-  messages: z.array(LooseObjectSchema),
+  messages: z.array(ChatCompletionMessageParamSchema),
   model: z.string().optional(),
   systemPrompt: z.string().optional()
 });
 export type SkillDebugChatBody = z.infer<typeof SkillDebugChatBodySchema>;
-
-export const SkillDebugSessionListQuerySchema = z.object({
-  skillId: IdSchema,
-  pageNum: z.coerce.number().int().positive().optional(),
-  pageSize: z.coerce.number().int().positive().optional()
-});
-export type SkillDebugSessionListQuery = z.infer<typeof SkillDebugSessionListQuerySchema>;
-
-export const SkillDebugSessionListResponseSchema = z.object({
-  list: z.array(
-    z.object({
-      chatId: z.string(),
-      title: z.string(),
-      updateTime: z.string()
-    })
-  ),
-  total: z.number()
-});
-export type SkillDebugSessionListResponse = z.infer<typeof SkillDebugSessionListResponseSchema>;
-
-export const SkillDebugSessionDeleteBodySchema = z.object({
-  skillId: IdSchema,
-  chatId: z.string().min(1)
-});
-export type SkillDebugSessionDeleteBody = z.infer<typeof SkillDebugSessionDeleteBodySchema>;
-
-export const SkillDebugSessionControlBodySchema = z.object({
-  skillId: IdSchema,
-  chatId: z.string().min(1)
-});
-export type SkillDebugSessionControlBody = z.infer<typeof SkillDebugSessionControlBodySchema>;
-
-export const SkillDebugSessionStopResponseSchema = z.object({
-  success: z.boolean(),
-  completed: z.boolean().describe('工作流是否已在本次请求等待窗口内完成停止'),
-  chatGenerateStatus: ChatGenerateStatusSchema
-});
-export type SkillDebugSessionStopResponse = z.infer<typeof SkillDebugSessionStopResponseSchema>;
 
 export const ListAppsBySkillIdQuerySchema = z.object({
   skillId: IdSchema
@@ -319,31 +280,6 @@ export const ExportSkillQuerySchema = z.object({
   skillId: IdSchema
 });
 export type ExportSkillQuery = z.infer<typeof ExportSkillQuerySchema>;
-
-export const SkillDebugDeleteChatItemBodySchema = z.object({
-  skillId: IdSchema,
-  chatId: z.string(),
-  contentId: z.string()
-});
-export type SkillDebugDeleteChatItemBody = z.infer<typeof SkillDebugDeleteChatItemBodySchema>;
-
-export const SkillDebugRecordsBodySchema = z.object({
-  skillId: IdSchema,
-  chatId: z.string(),
-  pageSize: z.coerce.number().int().positive().optional(),
-  initialId: z.string().optional(),
-  nextId: z.string().optional(),
-  prevId: z.string().optional()
-});
-export type SkillDebugRecordsBody = z.infer<typeof SkillDebugRecordsBodySchema>;
-
-export const SkillDebugRecordsResponseSchema = z.object({
-  list: z.array(z.any()),
-  total: z.number(),
-  hasMorePrev: z.boolean(),
-  hasMoreNext: z.boolean()
-});
-export type SkillDebugRecordsResponse = z.infer<typeof SkillDebugRecordsResponseSchema>;
 
 export const ListSkillVersionsBodySchema = z.object({
   skillId: IdSchema,

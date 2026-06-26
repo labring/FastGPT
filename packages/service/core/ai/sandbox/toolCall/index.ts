@@ -13,6 +13,8 @@ import { parseJsonArgs } from '../../utils';
 import { writeUrlFilesToSandbox } from '../service/file';
 import { getSandboxRuntimeProfile } from '../runtime/profile';
 import { preparePackageMirrors, prepareSandbox } from '../runtime/prepare';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { getRunningSandboxId } from '../runtime/id';
 
 const ToolMap = {
   ...editFileToolMap,
@@ -37,18 +39,18 @@ export type SandboxToolCallResult = {
  * 未传入 client 时会按 app/user/chat 获取运行态 sandbox。
  */
 export const runSandboxTools = async ({
-  appId,
+  sourceType,
+  sourceId,
   userId,
   chatId,
-  sandboxId,
   toolName,
   args,
   sandboxClient
 }: {
-  appId: string;
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
   userId: string;
   chatId: string;
-  sandboxId?: string;
   toolName: string;
   args: string;
   sandboxClient?: SandboxClient;
@@ -77,11 +79,25 @@ export const runSandboxTools = async ({
     };
   }
 
+  const sandboxId = getRunningSandboxId({
+    sourceType,
+    sourceId,
+    userId,
+    chatId
+  });
   const instance =
     sandboxClient ??
-    (await getSandboxClient(sandboxId ? { sandboxId } : { appId, userId, chatId }));
+    (await getSandboxClient({
+      sandboxId,
+      sourceType,
+      sourceId,
+      appId: sourceId,
+      userId: sourceType === ChatSourceTypeEnum.app ? userId : '',
+      chatId
+    }));
   const result = await tool.execute({
-    appId,
+    sourceType,
+    sourceId,
     userId,
     chatId,
     sandboxInstance: instance,
@@ -103,19 +119,32 @@ export const runSandboxTools = async ({
  * 即使没有文件也会返回 sandbox client，供 sandbox entrypoint 和后续工具调用复用。
  */
 export const prepareSandboxToolRuntime = async ({
-  appId,
+  sourceType,
+  sourceId,
   userId,
   chatId,
-  sandboxId,
   files
 }: {
-  appId: string;
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
   userId: string;
   chatId: string;
-  sandboxId?: string;
   files: { path: string; url: string }[];
 }) => {
-  const instance = await getSandboxClient(sandboxId ? { sandboxId } : { appId, userId, chatId });
+  const sandboxId = getRunningSandboxId({
+    sourceType,
+    sourceId,
+    userId,
+    chatId
+  });
+  const instance = await getSandboxClient({
+    sandboxId,
+    sourceType,
+    sourceId,
+    appId: sourceId,
+    userId: sourceType === ChatSourceTypeEnum.app ? userId : '',
+    chatId
+  });
   const runtimeProfile = getSandboxRuntimeProfile();
   await prepareSandbox(
     {

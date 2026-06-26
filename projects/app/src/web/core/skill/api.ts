@@ -23,19 +23,14 @@ import type {
   CreateEditDebugSandboxResponse,
   CreateSkillFolderBody,
   SkillDebugChatBody,
-  SkillDebugRecordsBody,
-  SkillDebugSessionControlBody,
-  SkillDebugSessionStopResponse,
   ListAppsBySkillIdResponse,
   ListSkillVersionsBody,
   ListSkillVersionsResponse,
   SwitchSkillVersionBody,
   UpdateSkillVersionBody
 } from '@fastgpt/global/core/ai/skill/api';
-import type { SkillDebugDeleteChatItemBody } from '@fastgpt/global/core/ai/skill/api';
 import type { GetResourceFolderListProps } from '@fastgpt/global/common/parentFolder/type';
 import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
-import type { GetRecordsV2ResponseType } from '@fastgpt/global/openapi/core/chat/record/api';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 
 /** 获取 Skill 列表（支持分页、搜索、分类、文件夹过滤） */
@@ -186,18 +181,6 @@ export const exportSkill = (skillId: string, skillName: string) => {
 /** 获取引用了某个 Skill 的应用列表 */
 export const getAppsBySkillId = (skillId: string) =>
   GET<ListAppsBySkillIdResponse>('/core/ai/skill/apps', { skillId });
-
-/** 删除 Skill 调试会话中的单条对话消息（用于"重新生成"时清除旧记录） */
-export const delSkillDebugChatItem = (data: SkillDebugDeleteChatItemBody) =>
-  POST('/core/ai/skill/debugSession/chatItem/delete', data);
-
-/** 停止 Skill 调试会话中正在运行的对话 */
-export const postStopSkillDebugChat = (data: SkillDebugSessionControlBody) =>
-  POST<SkillDebugSessionStopResponse>('/core/ai/skill/debugSession/stop', data);
-
-/** 获取 Skill 调试会话的对话记录（用于预览界面加载历史记录） */
-export const getSkillDebugRecords = (data: SkillDebugRecordsBody) =>
-  POST<GetRecordsV2ResponseType>('/core/ai/skill/debugSession/records', data);
 
 /** 获取 Skill 历史版本列表（支持分页滚动加载） */
 export const getSkillVersionList = (data: ListSkillVersionsBody) =>

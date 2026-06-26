@@ -14,8 +14,8 @@ import type { ChatBoxInputFormType, ChatBoxInputType } from '../type';
  * `resetInputVal`，再决定是否允许触发真正的发送流程。
  *
  * 输入约定：
- * - `appId/chatId` 来自当前运行时上下文，用于区分不同 app 和不同会话。
- * - `chatBoxAppId` 来自当前 ChatBox 数据，用于避免 app 切换过程复用旧表单状态。
+ * - `sourceKey/chatId` 来自当前运行时上下文，用于区分不同 chat target 和不同会话。
+ * - `chatBoxSourceKey` 来自当前 ChatBox 数据，用于避免 source 切换过程复用旧表单状态。
  * - `chatRecordsLength` 只用长度判断会话是否已有记录，避免把完整 records 传进输入 hook。
  * - `TextareaDom` 只在重置输入后恢复 textarea 高度，不参与渲染状态计算。
  *
@@ -26,21 +26,21 @@ import type { ChatBoxInputFormType, ChatBoxInputType } from '../type';
  *
  * 关键边界：
  * - 草稿按 `chatInput_${chatId}` 存储，避免不同会话之间串输入内容。
- * - `chatStarted` 必须先确认 app 匹配；否则 app 切换时旧 records 或旧表单可能让新会话误判已开始。
+ * - `chatStarted` 必须先确认 source 匹配；否则 target 切换时旧 records 或旧表单可能让新会话误判已开始。
  * - custom 变量属于外部变量输入，internal 变量不需要用户填写，二者都不应当按普通变量阻塞开始。
  */
 export const useChatInputForm = ({
-  appId,
+  sourceKey,
   chatId,
-  chatBoxAppId,
+  chatBoxSourceKey,
   chatRecordsLength,
   chatType,
   variableList,
   TextareaDom
 }: {
-  appId?: string;
+  sourceKey?: string;
   chatId?: string;
-  chatBoxAppId?: string;
+  chatBoxSourceKey?: string;
   chatRecordsLength: number;
   chatType: ChatTypeEnum;
   variableList: VariableItemType[];
@@ -98,7 +98,7 @@ export const useChatInputForm = ({
   // 原 ChatBox 语义：同一个 app 下，有历史记录、用户手动开始，或没有需要填写的变量时，
   // 都认为对话已经开始。这里不检查变量值是否有效，真正的变量校验仍由发送流程负责。
   const chatStarted =
-    chatBoxAppId === appId &&
+    chatBoxSourceKey === sourceKey &&
     (chatRecordsLength > 0 ||
       chatStartedWatch ||
       (commonVariableList.length === 0 && !showExternalVariable));

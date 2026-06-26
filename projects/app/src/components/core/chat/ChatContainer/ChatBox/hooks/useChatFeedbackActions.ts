@@ -15,10 +15,11 @@ import type { AdminMarkType } from '../components/SelectMarkCollection';
 import { ChatTypeEnum, FeedbackTypeEnum } from '../constants';
 import { formatChatValue2InputType } from '../utils/chatValue';
 import type { ChatSiteItemType } from '../type';
+import { hasChatTargetInput, useChatApiTarget } from '@/web/core/chat/utils';
 
 type UseChatFeedbackActionsProps = {
   feedbackType?: `${FeedbackTypeEnum}`;
-  showMarkIcon: boolean;
+  enableMark: boolean;
   chatType: `${ChatTypeEnum}`;
   onTriggerRefresh?: () => void;
 };
@@ -45,7 +46,7 @@ type LikeFeedbackEffectState = {
  */
 export const useChatFeedbackActions = ({
   feedbackType,
-  showMarkIcon,
+  enableMark,
   chatType,
   onTriggerRefresh
 }: UseChatFeedbackActionsProps) => {
@@ -56,9 +57,11 @@ export const useChatFeedbackActions = ({
   const likeFeedbackEffectTimer = useRef<ReturnType<typeof setTimeout>>();
 
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
-  const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
+  const sourceTarget = useContextSelector(WorkflowRuntimeContext, (v) => v.sourceTarget);
+  const chatTarget = useChatApiTarget(sourceTarget);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
+  const hasChatTarget = hasChatTargetInput(chatTarget);
 
   useEffect(() => {
     return () => {
@@ -80,12 +83,12 @@ export const useChatFeedbackActions = ({
   /**
    * 生成 admin mark 入口回调。
    *
-   * 只有开启 `showMarkIcon` 且目标消息是 AI 时才允许标注。已有 adminFeedback 时进入编辑态，
+   * 只有开启 `enableMark` 且目标消息是 AI 时才允许标注。已有 adminFeedback 时进入编辑态，
    * 会带回原 dataset/collection/dataId；没有 adminFeedback 时用上一条 human 文本作为 q，
    * 用当前 AI 文本作为 a，保持原来的默认标注内容。
    */
   const onMark = useMemoizedFn((chat: ChatSiteItemType, q = '') => {
-    if (!showMarkIcon || chat.obj !== ChatRoleEnum.AI) return;
+    if (!enableMark || chat.obj !== ChatRoleEnum.AI) return;
 
     return () => {
       if (!chat.dataId) return;
@@ -119,7 +122,7 @@ export const useChatFeedbackActions = ({
     if (feedbackType !== FeedbackTypeEnum.user || chat.obj !== ChatRoleEnum.AI) return;
 
     return () => {
-      if (!chat.dataId || !chatId || !appId) return;
+      if (!chat.dataId || !chatId || !hasChatTarget) return;
 
       const isGoodFeedback = !!chat.userGoodFeedback;
       setChatRecords((state) =>
@@ -151,7 +154,7 @@ export const useChatFeedbackActions = ({
 
       try {
         updateChatUserFeedback({
-          appId,
+          ...chatTarget,
           chatId,
           dataId: chat.dataId,
           userGoodFeedback: isGoodFeedback ? undefined : 'yes',
@@ -174,7 +177,7 @@ export const useChatFeedbackActions = ({
     if (chat.userBadFeedback) {
       return () => {
         clearLikeFeedbackEffect();
-        if (!chat.dataId || !chatId || !appId) return;
+        if (!chat.dataId || !chatId || !hasChatTarget) return;
         setChatRecords((state) =>
           state.map((chatItem) =>
             chatItem.dataId === chat.dataId ? { ...chatItem, userBadFeedback: undefined } : chatItem
@@ -183,7 +186,7 @@ export const useChatFeedbackActions = ({
 
         try {
           updateChatUserFeedback({
-            appId,
+            ...chatTarget,
             chatId,
             dataId: chat.dataId,
             ...outLinkAuthData
@@ -206,9 +209,9 @@ export const useChatFeedbackActions = ({
    */
   const onCloseCustomFeedback = useMemoizedFn((chat: ChatSiteItemType, i: number) => {
     return (e: ChangeEvent<HTMLInputElement>) => {
-      if (e.target.checked && appId && chatId && chat.dataId) {
+      if (e.target.checked && hasChatTarget && chatId && chat.dataId) {
         closeCustomFeedback({
-          appId,
+          ...chatTarget,
           chatId,
           dataId: chat.dataId,
           index: i
@@ -238,13 +241,13 @@ export const useChatFeedbackActions = ({
     if (chatType !== ChatTypeEnum.log || chat.obj !== ChatRoleEnum.AI) return;
 
     return async () => {
-      if (!appId || !chatId || !chat.dataId) return;
+      if (!hasChatTarget || !chatId || !chat.dataId) return;
 
       const newReadStatus = !chat.isFeedbackRead;
 
       try {
         await updateFeedbackReadStatus({
-          appId,
+          ...chatTarget,
           chatId,
           dataId: chat.dataId,
           isRead: newReadStatus
@@ -291,10 +294,10 @@ export const useChatFeedbackActions = ({
    * 和原实现一致，不额外弹错。成功后把完整 adminFeedback 写回本地消息用于即时展示。
    */
   const onAdminMarkSuccess = useMemoizedFn((adminFeedback: AdminFbkType) => {
-    if (!appId || !chatId || !adminMarkData?.dataId) return;
+    if (!hasChatTarget || !chatId || !adminMarkData?.dataId) return;
 
     updateChatAdminFeedback({
-      appId,
+      ...chatTarget,
       chatId,
       dataId: adminMarkData.dataId,
       ...adminFeedback

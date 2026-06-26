@@ -26,6 +26,7 @@ import { InvokeProcessor } from '../../../../support/invoke/invoke';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { authAppByTmbId } from '../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { getWorkflowAppId } from '../utils/source';
 
 type SystemInputConfigType = {
   type: SystemToolSecretInputTypeEnum;
@@ -58,11 +59,8 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
   const cTime = String(variableState.get('cTime') ?? '');
   const logger = getLogger(LogCategories.MODULE.APP.TOOL);
 
-  const {
-    uid: uId,
-    chatId = '',
-    runningAppInfo: { id: appId }
-  } = props;
+  const { uid: uId, chatId = '' } = props;
+  const appId = getWorkflowAppId(runningAppInfo);
 
   const systemToolId = toolConfig?.systemTool?.toolId;
   let toolInput: Record<string, any> = {};
@@ -107,14 +105,16 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         Object.entries(params).filter(([key]) => key !== NodeInputKeyEnum.systemInputConfig)
       );
 
-      const invokeToken = new InvokeProcessor({
-        appId,
-        chatId,
-        uId,
-        teamId: String(runningUserInfo.teamId),
-        tmbId: String(runningUserInfo.tmbId),
-        permissions: tool.permissions ?? []
-      }).generateToken();
+      const invokeToken = appId
+        ? new InvokeProcessor({
+            appId,
+            chatId,
+            uId,
+            teamId: String(runningUserInfo.teamId),
+            tmbId: String(runningUserInfo.tmbId),
+            permissions: tool.permissions ?? []
+          }).generateToken()
+        : undefined;
 
       const formatToolId = getToolRawId(toolConfig.systemTool!.toolId);
       const childId = toolConfig.systemTool.toolId.split('/')[1];
@@ -129,14 +129,14 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         ...(childId ? { childId } : {}),
         systemVar: {
           app: {
-            id: runningAppInfo.id,
-            name: runningAppInfo.name
+            id: appId || '',
+            name: appId ? runningAppInfo.name : ''
           },
           chat: {
             chatId,
             uid: uId
           },
-          invokeToken,
+          invokeToken: invokeToken || '',
           time: cTime
         },
         onMessage: ({ type, content }) => {

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Center, VStack, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { SkillDetailContext } from '../../dashboard/skill/detail/context';
@@ -12,7 +12,8 @@ import FileTree from './components/FileTree';
 import EditorWorkspace from './components/EditorWorkspace';
 import { filterTree } from './utils';
 import { useSandboxFileStore } from './hook';
-import type { SandboxEditorInstance } from './types';
+import type { SandboxEditorInstance, SandboxTargetInput } from './types';
+import { resolveSandboxTarget } from './types';
 
 const FILE_TREE_DEFAULT_WIDTH = 260;
 const FILE_TREE_MIN_WIDTH = 260;
@@ -20,7 +21,8 @@ const FILE_TREE_MAX_WIDTH = 600;
 const EDITOR_MIN_WIDTH = 360;
 
 export type Props = {
-  appId: string;
+  appId?: string;
+  chatTarget?: SandboxTargetInput['chatTarget'];
   chatId: string;
   outLinkAuthData?: OutLinkChatAuthProps;
   showFileOps?: boolean;
@@ -35,6 +37,7 @@ export type Props = {
 
 const SandboxEditor = ({
   appId,
+  chatTarget,
   chatId,
   outLinkAuthData,
   showFileOps = true,
@@ -52,6 +55,10 @@ const SandboxEditor = ({
   const editorLayoutRef = useRef<HTMLDivElement>(null);
   const [fileTreeWidth, setFileTreeWidth] = useState(FILE_TREE_DEFAULT_WIDTH);
   const [isFileTreeResizing, setIsFileTreeResizing] = useState(false);
+  const sandboxTarget = useMemo(
+    () => resolveSandboxTarget({ appId, chatTarget }),
+    [appId, chatTarget?.appId, chatTarget?.skillId]
+  );
 
   const {
     fileTree,
@@ -83,7 +90,7 @@ const SandboxEditor = ({
     onUploadFiles,
     toggleDirectory
   } = useSandboxFileStore({
-    appId,
+    sandboxTarget,
     chatId,
     outLinkAuthData,
     isPreparing,
@@ -182,7 +189,7 @@ const SandboxEditor = ({
         onDeleteFile={onDeleteFile}
         onUploadFiles={onUploadFiles}
         setExpandedDirs={setExpandedDirs}
-        appId={appId}
+        sandboxTarget={sandboxTarget}
         chatId={chatId}
         outLinkAuthData={outLinkAuthData}
         showFileOps={showFileOps}
@@ -227,7 +234,7 @@ const SandboxEditor = ({
 
     const workspaceComponent = (
       <EditorWorkspace
-        appId={appId}
+        sandboxTarget={sandboxTarget}
         chatId={chatId}
         outLinkAuthData={outLinkAuthData}
         showDownload={showDownload}

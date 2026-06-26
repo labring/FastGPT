@@ -18,7 +18,10 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 */
 async function handler(req: ApiRequestProps, res: NextApiResponse) {
   try {
-    const { ttsConfig, input } = parseApiInput({ req, bodySchema: GetChatSpeechBodySchema }).body;
+    const { ttsConfig, input, ...authProps } = parseApiInput({
+      req,
+      bodySchema: GetChatSpeechBodySchema
+    }).body;
 
     if (!ttsConfig.model || !ttsConfig.voice) {
       throw new Error('model or voice not found');
@@ -28,7 +31,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       req,
       authToken: true,
       authApiKey: true,
-      ...req.body
+      ...authProps
     });
 
     const ttsModel = getTTSModel(ttsConfig.model);

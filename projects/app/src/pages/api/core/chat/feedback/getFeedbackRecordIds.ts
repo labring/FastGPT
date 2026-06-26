@@ -1,6 +1,6 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { authChatCrud } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
@@ -9,14 +9,15 @@ import {
   type GetFeedbackRecordIdsResponseType
 } from '@fastgpt/global/openapi/core/chat/feedback/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 
 async function handler(req: ApiRequestProps): Promise<GetFeedbackRecordIdsResponseType> {
-  const { appId, chatId, feedbackType, unreadOnly } = parseApiInput({
+  const { sourceType, sourceId, chatId, feedbackType, unreadOnly } = parseApiInput({
     req,
     bodySchema: GetFeedbackRecordIdsBodySchema
   }).body;
 
-  if (!appId || !chatId) {
+  if (!sourceId || !chatId) {
     return {
       total: 0,
       dataIds: []
@@ -24,11 +25,13 @@ async function handler(req: ApiRequestProps): Promise<GetFeedbackRecordIdsRespon
   }
 
   // Auth check
-  await authChatCrud({
+  await authChatTargetCrud({
     req,
     authToken: true,
     authApiKey: true,
-    ...req.body
+    sourceType,
+    sourceId,
+    chatId
   });
 
   // Build feedback filter condition
@@ -70,13 +73,14 @@ async function handler(req: ApiRequestProps): Promise<GetFeedbackRecordIdsRespon
   };
 
   const feedbackCondition = buildFeedbackCondition();
+  const chatSourceQuery = buildChatSourceQuery({ sourceType, sourceId });
 
   // Query feedback records, only return dataId field
   const [items, total] = await Promise.all([
-    MongoChatItem.find({ appId, chatId, ...feedbackCondition }, 'dataId')
+    MongoChatItem.find({ ...chatSourceQuery, chatId, ...feedbackCondition }, 'dataId')
       .sort({ _id: 1 }) // Sort in chronological order
       .lean(),
-    MongoChatItem.countDocuments({ appId, chatId, ...feedbackCondition })
+    MongoChatItem.countDocuments({ ...chatSourceQuery, chatId, ...feedbackCondition })
   ]);
 
   const dataIds = items.map((item) => item.dataId).filter(Boolean);

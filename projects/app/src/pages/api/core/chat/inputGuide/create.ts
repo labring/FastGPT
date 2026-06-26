@@ -9,12 +9,16 @@ import {
   CreateChatInputGuideResponseSchema,
   type CreateChatInputGuideResponseType
 } from '@fastgpt/global/openapi/core/chat/inputGuide/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(
   req: ApiRequestProps,
   _res: NextApiResponse
 ): Promise<CreateChatInputGuideResponseType> {
-  const { appId, textList } = CreateChatInputGuideBodySchema.parse(req.body);
+  const { appId, textList } = parseApiInput({
+    req,
+    bodySchema: CreateChatInputGuideBodySchema
+  }).body;
   await authApp({ req, appId, authToken: true, per: WritePermissionVal });
 
   try {

@@ -2,10 +2,8 @@ import type {
   ChatCompletionMessageParam,
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/llm/type';
-import {
-  generateSandboxId,
-  SANDBOX_SYSTEM_PROMPT
-} from '@fastgpt/global/core/ai/sandbox/constants';
+import { SANDBOX_SYSTEM_PROMPT } from '@fastgpt/global/core/ai/sandbox/constants';
+import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { SANDBOX_TOOLS } from '@fastgpt/global/core/ai/sandbox/tools';
 import { nodeInputs2JsonSchema } from '@fastgpt/global/core/app/jsonschema';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
@@ -16,6 +14,7 @@ import {
   runAgentSandboxEntrypoint,
   withAgentSandboxInitLease
 } from '../../../../../ai/sandbox/runtime/entrypoint';
+import { getRunningSandboxId } from '../../../../../ai/sandbox/runtime/id';
 import type { SandboxClient } from '../../../../../ai/sandbox/service/runtime';
 import type { FileInputType, ToolNodeItemType } from '../type';
 import { ReadFileTooData, ReadFileToolSchema } from '../tools/file';
@@ -69,10 +68,10 @@ export const useToolCatalog = async ({
   currentInputFiles,
   useAgentSandbox,
   lang,
-  appId,
+  sourceType,
+  sourceId,
   userId,
   chatId,
-  sandboxId,
   sandboxEntrypoint
 }: {
   messages: ChatCompletionMessageParam[];
@@ -80,10 +79,10 @@ export const useToolCatalog = async ({
   currentInputFiles: FileInputType[];
   useAgentSandbox?: boolean;
   lang?: localeType;
-  appId: string;
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
   userId: string;
   chatId: string;
-  sandboxId?: string;
   sandboxEntrypoint?: string;
 }) => {
   let finalMessages = messages;
@@ -119,16 +118,20 @@ export const useToolCatalog = async ({
     const shouldPrepareSandboxRuntime =
       currentInputFiles.length > 0 || !!effectiveSandboxEntrypoint;
     if (shouldPrepareSandboxRuntime) {
-      const sandboxLeaseId =
-        sandboxId || generateSandboxId(appId, chatId === 'edit-debug' ? '' : userId, chatId);
+      const sandboxId = getRunningSandboxId({
+        sourceType,
+        sourceId,
+        userId,
+        chatId
+      });
       sandboxClient = await withAgentSandboxInitLease({
-        sandboxId: sandboxLeaseId,
+        sandboxId,
         fn: async () => {
           const runtime = await prepareSandboxToolRuntime({
-            appId,
+            sourceType,
+            sourceId,
             userId,
             chatId,
-            sandboxId,
             files: currentInputFiles.map((file) => ({
               path: file.sandboxPath!,
               url: file.url

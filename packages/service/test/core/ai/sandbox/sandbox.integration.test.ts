@@ -5,16 +5,18 @@ import {
   type SandboxClient
 } from '@fastgpt/service/core/ai/sandbox/service/runtime';
 import {
-  deleteSandboxesByChatIds,
-  deleteSandboxesByAppId
+  deleteAppSandboxes,
+  deleteSandboxesBySourceChatIds
 } from '@fastgpt/service/core/ai/sandbox/service/resource';
 import { connectionMongo } from '@fastgpt/service/common/mongo';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { delay } from '@fastgpt/global/common/system/utils';
 
 const { Types } = connectionMongo;
 
 const hasSandboxEnv =
+  process.env.SANDBOX_INTEGRATION === 'true' &&
   !!process.env.AGENT_SANDBOX_PROVIDER &&
   (process.env.AGENT_SANDBOX_PROVIDER === 'e2b'
     ? !!process.env.AGENT_SANDBOX_E2B_API_KEY
@@ -130,10 +132,14 @@ describe.skipIf(!hasSandboxEnv).sequential('Sandbox Integration', () => {
     expect(result.stdout).toContain('test-integration.txt');
   });
 
-  it('should delete sandbox and clean DB on deleteSandboxesByChatIds', async () => {
+  it('should delete sandbox and clean DB on deleteSandboxesBySourceChatIds', async () => {
     const params = createSandboxParams('delete-chat');
     await getSandboxClient(params);
-    await deleteSandboxesByChatIds({ appId: params.appId, chatIds: [params.chatId] });
+    await deleteSandboxesBySourceChatIds({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: params.appId,
+      chatIds: [params.chatId]
+    });
 
     const count = await MongoSandboxInstance.countDocuments({ chatId: params.chatId });
     expect(count).toBe(0);
@@ -224,8 +230,9 @@ describe.skipIf(!hasSandboxEnv).sequential('Sandbox Integration', () => {
       await getSandboxClient({ ...testParams, chatId: chatId1 });
       await getSandboxClient({ ...testParams, chatId: chatId2 });
 
-      await deleteSandboxesByChatIds({
-        appId: testParams.appId,
+      await deleteSandboxesBySourceChatIds({
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: testParams.appId,
         chatIds: [chatId1, chatId2]
       });
 
@@ -243,7 +250,7 @@ describe.skipIf(!hasSandboxEnv).sequential('Sandbox Integration', () => {
       await getSandboxClient({ ...params, chatId: chatId1 });
       await getSandboxClient({ ...params, chatId: chatId2 });
 
-      await deleteSandboxesByAppId(params.appId);
+      await deleteAppSandboxes(params.appId);
 
       const count = await MongoSandboxInstance.countDocuments({ appId: params.appId });
       expect(count).toBe(0);
@@ -251,14 +258,19 @@ describe.skipIf(!hasSandboxEnv).sequential('Sandbox Integration', () => {
 
     it('should handle empty chatIds array gracefully', async () => {
       await expect(
-        deleteSandboxesByChatIds({ appId: testParams.appId, chatIds: [] })
+        deleteSandboxesBySourceChatIds({
+          sourceType: ChatSourceTypeEnum.app,
+          sourceId: testParams.appId,
+          chatIds: []
+        })
       ).resolves.not.toThrow();
     });
 
     it('should handle non-existent chatIds gracefully', async () => {
       await expect(
-        deleteSandboxesByChatIds({
-          appId: testParams.appId,
+        deleteSandboxesBySourceChatIds({
+          sourceType: ChatSourceTypeEnum.app,
+          sourceId: testParams.appId,
           chatIds: ['non-existent-chat-id']
         })
       ).resolves.not.toThrow();
@@ -304,8 +316,16 @@ describe.skipIf(!hasSandboxEnv).sequential('Sandbox Integration', () => {
       await getSandboxClient(params);
 
       await Promise.all([
-        deleteSandboxesByChatIds({ appId: params.appId, chatIds: [params.chatId] }),
-        deleteSandboxesByChatIds({ appId: params.appId, chatIds: [params.chatId] })
+        deleteSandboxesBySourceChatIds({
+          sourceType: ChatSourceTypeEnum.app,
+          sourceId: params.appId,
+          chatIds: [params.chatId]
+        }),
+        deleteSandboxesBySourceChatIds({
+          sourceType: ChatSourceTypeEnum.app,
+          sourceId: params.appId,
+          chatIds: [params.chatId]
+        })
       ]);
 
       const count = await MongoSandboxInstance.countDocuments({ chatId: params.chatId });

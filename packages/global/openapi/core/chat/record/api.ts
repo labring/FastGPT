@@ -6,6 +6,12 @@ import { LinkedListResponseSchema, LinkedPaginationSchema, PaginationSchema } fr
 import { ChatItemMiniSchema } from '../../../../core/chat/type';
 import { AppTTSConfigTypeSchema } from '../../../../core/app/type';
 import { GetChatTypeEnum } from '../../../../core/chat/constants';
+import {
+  createChatTargetInputSchema,
+  createOutLinkChatTargetInputSchema,
+  refineRequiredChatTargetInput,
+  transformChatTargetInput
+} from '../api';
 
 const QueryStringArraySchema = z
   .union([z.string(), z.array(z.string())])
@@ -24,22 +30,15 @@ const QueryStringArraySchema = z
  * Description: 根据 dataId 获取对话中某条 AI 回复的详细响应数据
  * ============================================================================ */
 
-export const GetResDataQuerySchema = OutLinkChatAuthSchema.extend({
-  appId: z.string().describe('应用ID'),
+export const GetResDataQueryRawSchema = createOutLinkChatTargetInputSchema({
   chatId: z.string().optional().describe('会话ID'),
   dataId: z.string().describe('对话数据ID')
 });
-export type GetResDataQueryType = z.infer<typeof GetResDataQuerySchema>;
+export const GetResDataQuerySchema = GetResDataQueryRawSchema.transform(transformChatTargetInput);
+export type GetResDataQueryType = z.infer<typeof GetResDataQueryRawSchema>;
+export type GetResDataQueryRuntimeType = z.infer<typeof GetResDataQuerySchema>;
 
-/* ============================================================================
- * API: 删除对话
- * Route: DELETE /api/core/chat/record/delete
- * Method: DELETE
- * Description: 软删除指定的对话消息（设置 deleteTime）
- * ============================================================================ */
-
-export const DeleteChatRecordBodySchema = OutLinkChatAuthSchema.extend({
-  appId: ObjectIdSchema.meta({ example: '68ad85a7463006c963799a05', description: '应用 ID' }),
+const DeleteChatRecordPropsSchema = {
   chatId: z.string().meta({ example: 'chat123', description: '会话 ID' }),
   contentId: z.string().optional().meta({
     example: 'content123',
@@ -53,25 +52,17 @@ export const DeleteChatRecordBodySchema = OutLinkChatAuthSchema.extend({
     example: false,
     description: '是否同时删除关联文件'
   })
-});
-export type DeleteChatRecordBodyType = z.infer<typeof DeleteChatRecordBodySchema>;
+};
+export const DeleteChatRecordBodyRawSchema = createOutLinkChatTargetInputSchema(
+  DeleteChatRecordPropsSchema
+);
+export const DeleteChatRecordBodySchema =
+  DeleteChatRecordBodyRawSchema.transform(transformChatTargetInput);
+export type DeleteChatRecordBodyType = z.infer<typeof DeleteChatRecordBodyRawSchema>;
+export type DeleteChatRecordBodyRuntimeType = z.infer<typeof DeleteChatRecordBodySchema>;
 
-export const DeleteChatRecordResponseSchema = z.undefined().meta({ description: '删除成功' });
-export type DeleteChatRecordResponseType = z.infer<typeof DeleteChatRecordResponseSchema>;
-
-/* ============================================================================
- * API: 获取对话引用数据
- * Route: POST /api/core/chat/quote/getQuote
- * Method: POST
- * Description: 获取指定对话消息的数据集引用列表
- * ============================================================================ */
-
-export const GetQuoteBodySchema = OutLinkChatAuthSchema.extend({
-  appId: ObjectIdSchema.describe('应用 ID'),
-  chatId: z.string().min(1).max(256).meta({
-    example: 'chat_abc123',
-    description: '会话 ID'
-  }),
+const QuoteBodyPropsSchema = {
+  chatId: z.string().min(1).max(256).describe('会话ID'),
   chatItemDataId: z.string().min(1).max(256).meta({
     example: 'item_abc123',
     description: '对话消息 dataId'
@@ -90,8 +81,36 @@ export const GetQuoteBodySchema = OutLinkChatAuthSchema.extend({
       example: ['68ad85a7463006c963799a06'],
       description: '集合 ID 列表'
     })
-});
-export type GetQuoteBodyType = z.infer<typeof GetQuoteBodySchema>;
+};
+
+export const GetQuoteBodyRawSchema = createOutLinkChatTargetInputSchema(QuoteBodyPropsSchema);
+export const GetQuoteBodySchema = GetQuoteBodyRawSchema.transform(transformChatTargetInput);
+export type GetQuoteBodyType = z.infer<typeof GetQuoteBodyRawSchema>;
+export type GetQuoteBodyRuntimeType = z.infer<typeof GetQuoteBodySchema>;
+
+export const DeleteChatRecordResponseSchema = z.undefined().meta({ description: '删除成功' });
+export type DeleteChatRecordResponseType = z.infer<typeof DeleteChatRecordResponseSchema>;
+
+/* ============================================================================
+ * API: 获取对话引用数据
+ * Route: POST /api/core/chat/quote/getQuote
+ * Method: POST
+ * Description: 获取指定对话消息的数据集引用列表
+ * ============================================================================ */
+
+const CollectionQuoteBodyPropsSchema = {
+  chatId: z.string().min(1).max(256).describe('会话 ID'),
+  chatItemDataId: z.string().min(1).max(256).meta({
+    example: 'item_abc123',
+    description: '对话消息 dataId'
+  }),
+  collectionId: ObjectIdSchema.describe('集合 ID'),
+  pageSize: z.number().int().min(1).max(30).default(15).describe('每页条数，范围 [1, 30]'),
+  anchor: z.number().optional().describe('当前锚点 chunkIndex'),
+  initialId: z.string().optional().describe('初始定位数据 ID'),
+  nextId: z.string().optional().describe('向后翻页的游标 ID'),
+  prevId: z.string().optional().describe('向前翻页的游标 ID')
+};
 
 export const GetQuoteResponseSchema = z.array(DatasetCiteItemSchema);
 export type GetQuoteResponseType = z.infer<typeof GetQuoteResponseSchema>;
@@ -103,18 +122,13 @@ export type GetQuoteResponseType = z.infer<typeof GetQuoteResponseSchema>;
  * Description: 以链式分页方式获取指定集合的引用数据，支持前后翻页
  * ============================================================================ */
 
-export const GetCollectionQuoteBodySchema = OutLinkChatAuthSchema.extend({
-  appId: ObjectIdSchema.describe('应用 ID'),
-  chatId: z.string().min(1).max(256).describe('会话 ID'),
-  chatItemDataId: z.string().min(1).max(256).describe('对话消息 dataId'),
-  collectionId: ObjectIdSchema.describe('集合 ID'),
-  pageSize: z.number().int().min(1).max(30).default(15).describe('每页条数，范围 [1, 30]'),
-  anchor: z.number().optional().describe('当前锚点 chunkIndex'),
-  initialId: z.string().optional().describe('初始定位数据 ID'),
-  nextId: z.string().optional().describe('向后翻页的游标 ID'),
-  prevId: z.string().optional().describe('向前翻页的游标 ID')
-});
-export type GetCollectionQuoteBodyType = z.infer<typeof GetCollectionQuoteBodySchema>;
+export const GetCollectionQuoteBodyRawSchema = createOutLinkChatTargetInputSchema(
+  CollectionQuoteBodyPropsSchema
+);
+export const GetCollectionQuoteBodySchema =
+  GetCollectionQuoteBodyRawSchema.transform(transformChatTargetInput);
+export type GetCollectionQuoteBodyType = z.infer<typeof GetCollectionQuoteBodyRawSchema>;
+export type GetCollectionQuoteBodyRuntimeType = z.infer<typeof GetCollectionQuoteBodySchema>;
 
 export const GetCollectionQuoteResSchema = z.object({
   list: z.array(
@@ -132,11 +146,10 @@ export type GetCollectionQuoteResType = z.infer<typeof GetCollectionQuoteResSche
  * API: 分页获取对话
  * Route: POST /api/core/chat/record/getPaginationRecords
  * Method: POST
- * Description: 分页获取指定应用和会话的对话，支持多种鉴权模式
+ * Description: 分页获取指定会话的对话，支持多种鉴权模式
  * ============================================================================ */
 
-const GetRecordPropsSchema = z.object({
-  appId: ObjectIdSchema.meta({ example: '68ad85a7463006c963799a05', description: '应用 ID' }),
+const GetRecordPropsSchema = {
   chatId: z.string().optional().meta({ example: 'chat123', description: '会话 ID' }),
   loadCustomFeedbacks: z.boolean().optional().meta({
     example: false,
@@ -150,11 +163,14 @@ const GetRecordPropsSchema = z.object({
     example: false,
     description: '是否包含已删除的记录'
   })
-});
-export const GetPaginationRecordsBodySchema = PaginationSchema.extend(
-  OutLinkChatAuthSchema.shape
-).extend(GetRecordPropsSchema.shape);
-export type GetPaginationRecordsBodyType = z.infer<typeof GetPaginationRecordsBodySchema>;
+};
+export const GetPaginationRecordsBodyRawSchema = PaginationSchema.extend(
+  createOutLinkChatTargetInputSchema(GetRecordPropsSchema).shape
+).superRefine(refineRequiredChatTargetInput);
+export const GetPaginationRecordsBodySchema =
+  GetPaginationRecordsBodyRawSchema.transform(transformChatTargetInput);
+export type GetPaginationRecordsBodyType = z.infer<typeof GetPaginationRecordsBodyRawSchema>;
+export type GetPaginationRecordsBodyRuntimeType = z.infer<typeof GetPaginationRecordsBodySchema>;
 
 export const GetPaginationRecordsResponseSchema = z.object({
   list: z.array(z.any()).meta({ description: '对话列表' }),
@@ -168,8 +184,12 @@ export type GetPaginationRecordsResponseType = z.infer<typeof GetPaginationRecor
  * Method: POST
  * Description: 获取对话（v2）
  * ============================================================================ */
-export const GetRecordsV2BodySchema = LinkedPaginationSchema(GetRecordPropsSchema.shape);
-export type GetRecordsV2BodyType = z.infer<typeof GetRecordsV2BodySchema>;
+export const GetRecordsV2BodyRawSchema = LinkedPaginationSchema(
+  createChatTargetInputSchema(GetRecordPropsSchema).shape
+).superRefine(refineRequiredChatTargetInput);
+export const GetRecordsV2BodySchema = GetRecordsV2BodyRawSchema.transform(transformChatTargetInput);
+export type GetRecordsV2BodyType = z.infer<typeof GetRecordsV2BodyRawSchema>;
+export type GetRecordsV2BodyRuntimeType = z.infer<typeof GetRecordsV2BodySchema>;
 export const GetRecordsV2ResponseSchema = LinkedListResponseSchema(ChatItemMiniSchema).extend({
   total: z.int()
 });
@@ -188,3 +208,27 @@ export const GetChatSpeechBodySchema = OutLinkChatAuthSchema.extend({
   input: z.string().meta({ example: '你好，世界', description: '要转换的文本内容' })
 });
 export type GetChatSpeechBodyType = z.infer<typeof GetChatSpeechBodySchema>;
+
+/* ============================================================================
+ * API: 语音转文字
+ * Route: POST /api/v1/audio/transcriptions
+ * Method: POST
+ * Description: 将 multipart 表单里的音频转换为文本
+ * ============================================================================ */
+
+export const AudioTranscriptionsDataRawSchema = createOutLinkChatTargetInputSchema({
+  chatId: z.string().min(1).max(256).describe('会话 ID'),
+  duration: z.coerce.number().optional().describe('录音时长，单位秒')
+});
+export const AudioTranscriptionsDataSchema =
+  AudioTranscriptionsDataRawSchema.transform(transformChatTargetInput);
+export type AudioTranscriptionsDataType = z.infer<typeof AudioTranscriptionsDataRawSchema>;
+export type AudioTranscriptionsDataRuntimeType = z.infer<typeof AudioTranscriptionsDataSchema>;
+
+export const AudioTranscriptionsFormRawSchema = z.object({
+  file: z.any().meta({ format: 'binary', description: '上传的音频文件（二进制）' }),
+  data: AudioTranscriptionsDataRawSchema.meta({
+    description: '语音识别参数（JSON 序列化后传入）'
+  })
+});
+export type AudioTranscriptionsFormType = z.infer<typeof AudioTranscriptionsFormRawSchema>;

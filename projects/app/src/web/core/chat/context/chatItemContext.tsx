@@ -11,6 +11,7 @@ import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/i
 import { type SearchDataResponseQuoteListItemType } from '@fastgpt/global/core/dataset/type';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import type { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import type { ChatTargetInputType } from '@fastgpt/global/openapi/core/chat/api';
 
 type ContextProps = {
   showRouteToDatasetDetail: boolean;
@@ -26,6 +27,11 @@ type ContextProps = {
 };
 type ChatBoxDataType = {
   chatId?: string;
+  /**
+   * 前端 ChatBox 内部状态隔离 key，格式为 `${sourceType}:${sourceId}`。
+   * `appId` 字段仍保留为历史 UI 和 App-only 展示兼容字段，不再作为标准状态隔离依据。
+   */
+  sourceKey?: string;
   appId: string;
   title?: string;
   userAvatar?: string;
@@ -47,8 +53,7 @@ type ChatBoxDataType = {
 };
 
 // 知识库引用相关 type
-export type GetQuoteDataBasicProps = {
-  appId: string;
+export type GetQuoteDataBasicProps = ChatTargetInputType & {
   chatId: string;
   chatItemDataId: string;
   outLinkAuthData?: OutLinkChatAuthProps;

@@ -3,9 +3,11 @@ import { FitAddon } from '@xterm/addon-fit';
 import { Terminal } from '@xterm/xterm';
 import { getSandboxProxyWsUrl, getSandboxTicket } from '../api';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import type { ChatTargetInputType } from '@fastgpt/global/openapi/core/chat/api';
+import { getSandboxTargetId } from '../types';
 
 type UseTerminalProps = {
-  appId: string;
+  sandboxTarget: ChatTargetInputType;
   chatId: string;
   outLinkAuthData?: OutLinkChatAuthProps;
   canWrite?: boolean;
@@ -15,7 +17,7 @@ const MAX_RECONNECT_ATTEMPTS = 3;
 const STABLE_CONNECTION_MS = 2000;
 
 export const useInteractiveTerminal = ({
-  appId,
+  sandboxTarget,
   chatId,
   outLinkAuthData,
   canWrite = true
@@ -23,10 +25,11 @@ export const useInteractiveTerminal = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
+  const sandboxTargetId = getSandboxTargetId(sandboxTarget);
 
   // 1. 初始化 Terminal 终端与 WebSocket 数据通信流
   useEffect(() => {
-    if (!containerRef.current || !appId || !chatId) return;
+    if (!containerRef.current || !sandboxTargetId || !chatId) return;
 
     let isDestroyed = false;
     let ws: WebSocket | null = null;
@@ -97,7 +100,7 @@ export const useInteractiveTerminal = ({
     const connect = async () => {
       try {
         const res = await getSandboxTicket({
-          appId,
+          ...sandboxTarget,
           chatId,
           outLinkAuthData,
           channel: 'terminal',
@@ -233,7 +236,8 @@ export const useInteractiveTerminal = ({
       term.dispose();
     };
   }, [
-    appId,
+    sandboxTarget,
+    sandboxTargetId,
     chatId,
     canWrite,
     outLinkAuthData?.shareId,

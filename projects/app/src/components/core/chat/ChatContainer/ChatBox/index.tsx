@@ -11,10 +11,9 @@ import Script from 'next/script';
 import { Box, type BoxProps } from '@chakra-ui/react';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { useTranslation } from 'next-i18next';
-import { postMarkChatRead } from '@/web/core/chat/history/api';
 import type { MarkChatReadBodyType } from '@fastgpt/global/openapi/core/chat/history/api';
 import { postStopV2Chat } from '@/web/core/chat/api';
-import type { ChatBoxInputType, StopChatFnResult } from './type';
+import type { ChatBoxInputType, StopChatFnResult, ChatGenerateStatusChangeHandler } from './type';
 import type { StartChatFnProps } from '../type';
 import ChatInput from './Input/ChatInput';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
@@ -49,7 +48,6 @@ import { useChatInputForm } from './hooks/useChatInputForm';
 import { useChatScroll } from './hooks/useChatScroll';
 import { useVariableInputVisibility } from './hooks/useVariableInputVisibility';
 import { useQuestionGuide } from './hooks/useQuestionGuide';
-import { useSidebarChatGenerateStatus } from './hooks/useSidebarChatGenerateStatus';
 import { useChatResume } from './hooks/useChatResume';
 import { useChatGenerate } from './hooks/useChatGenerate';
 import { useChatRecordActions } from './hooks/useChatRecordActions';
@@ -64,6 +62,8 @@ import {
   QuickReplyContextProvider,
   useRegisterQuickReplyClickHandler
 } from '../context/quickReplyContext';
+import type { ChatTargetInputType } from '@fastgpt/global/openapi/core/chat/api';
+import { useChatApiTarget } from '@/web/core/chat/utils';
 
 const ChatHomeVariablesForm = dynamic(() => import('./components/home/ChatHomeVariablesForm'));
 const DesktopHomeLayout = dynamic(() => import('./components/home/DesktopHomeLayout'));
@@ -74,14 +74,8 @@ type Props = OutLinkChatAuthProps &
   ChatProviderProps &
   BoxProps & {
     isReady: boolean;
-    feedbackType?: `${FeedbackTypeEnum}`;
-    showMarkIcon?: boolean; // admin mark dataset
-    showVoiceIcon?: boolean;
+    features?: ChatBoxFeatures;
     active?: boolean; // can use
-    showWorkorder?: boolean;
-    enableAutoResume?: boolean;
-    /** 是否执行普通 App Chat 的已读标记；Skill 调试会话没有普通 Chat history，需要关闭。 */
-    enableMarkChatRead?: boolean;
     disabledSendTip?: string;
 
     onStartChat?: (e: StartChatFnProps) => Promise<
@@ -90,45 +84,76 @@ type Props = OutLinkChatAuthProps &
       }
     >;
     onTriggerRefresh?: () => void;
-    /** 覆盖默认消息删除接口；Skill 调试会话需要走 skill 专属 chat item 删除接口。 */
-    onDeleteChatItem?: (contentId: string, delFile?: boolean) => Promise<void>;
-    /** 覆盖默认停止会话接口；Skill 调试会话不能走普通 App Chat 的 /v2/chat/stop 鉴权。 */
-    onStopChat?: () => Promise<StopChatFnResult>;
-    /** 覆盖默认已读接口；不传则使用普通 App Chat 的 postMarkChatRead。 */
+    /** 已读标记由外部页面注入，ChatBox 不直接耦合普通 App history 接口。 */
     onMarkChatRead?: (data: MarkChatReadBodyType) => Promise<unknown>;
+    /** 生成状态变化只通过 props 通知外部，ChatBox 不直接同步侧栏历史或最近使用。 */
+    onChatGenerateStatusChange?: ChatGenerateStatusChangeHandler;
     EmptyState?: React.ReactNode;
-    /** 是否启用 AI 正文 quick-replies 快捷回复渲染，默认关闭。 */
-    enableQuickReplies?: boolean;
-    /** 是否禁用 footer actions hover 时的上移动画。 */
-    disableFooterHoverTranslate?: boolean;
-    /** footer 中运行详情的位置，默认保持原有顺序。 */
-    footerRunDetailPosition?: 'default' | 'afterCopy';
     /** 日志详情中展示用户反馈内容时使用的用户显示名。 */
     feedbackUserName?: string;
   };
 
+export type ChatBoxFeatures = {
+  feedbackType?: `${FeedbackTypeEnum}`;
+  mark?: boolean;
+  /** 语音识别输入开关。 */
+  voice?: boolean;
+  /** AI 回复朗读和自动 TTS 开关。 */
+  tts?: boolean;
+  /** 输入引导和回答后的推荐问题开关。 */
+  inputGuide?: boolean;
+  /** AI 回复底部的 sandbox 打开入口开关。 */
+  sandbox?: boolean;
+  workorder?: boolean;
+  autoResume?: boolean;
+  markRead?: boolean;
+  quickReplies?: boolean;
+  disableFooterHoverTranslate?: boolean;
+  footerRunDetailPosition?: 'default' | 'afterCopy';
+};
+
+const resolveChatBoxFeatures = (
+  features?: ChatBoxFeatures
+): Required<Omit<ChatBoxFeatures, 'feedbackType'>> & {
+  feedbackType: `${FeedbackTypeEnum}`;
+} => ({
+  feedbackType: features?.feedbackType ?? FeedbackTypeEnum.hidden,
+  mark: features?.mark ?? false,
+  voice: features?.voice ?? true,
+  tts: features?.tts ?? true,
+  inputGuide: features?.inputGuide ?? true,
+  sandbox: features?.sandbox ?? true,
+  workorder: features?.workorder ?? false,
+  autoResume: features?.autoResume ?? false,
+  markRead: features?.markRead ?? true,
+  quickReplies: features?.quickReplies ?? false,
+  disableFooterHoverTranslate: features?.disableFooterHoverTranslate ?? false,
+  footerRunDetailPosition: features?.footerRunDetailPosition ?? 'default'
+});
+
 const ChatBox = ({
   isReady = true,
-  feedbackType = FeedbackTypeEnum.hidden,
-  showMarkIcon = false,
-  showVoiceIcon = true,
+  features,
   active = true,
-  showWorkorder,
-  enableAutoResume = false,
-  enableMarkChatRead = true,
   disabledSendTip,
   onStartChat,
   chatType,
   onTriggerRefresh,
-  onDeleteChatItem,
-  onStopChat,
   onMarkChatRead,
+  onChatGenerateStatusChange,
   boxBodyProps,
   inputBodyProps,
+  sourceTarget: _sourceTarget,
+  chatId: _chatId,
+  outLinkAuthData: _outLinkAuthData,
+  InputLeftComponent: _InputLeftComponent,
+  dialogTips: _dialogTips,
+  wideLogo: _wideLogo,
+  squareLogo: _squareLogo,
+  slogan: _slogan,
+  quickAppList: _quickAppList,
+  onSwitchQuickApp: _onSwitchQuickApp,
   EmptyState,
-  enableQuickReplies = false,
-  disableFooterHoverTranslate = false,
-  footerRunDetailPosition = 'default',
   feedbackUserName,
   ...props
 }: Props) => {
@@ -142,6 +167,7 @@ const ChatBox = ({
   const resumeController = useRef<AbortController>();
   const resumedChatTargetRef = useRef<string>();
   const lastRecordsLoadedScrollTargetRef = useRef<string>();
+  const resolvedFeatures = useMemo(() => resolveChatBoxFeatures(features), [features]);
 
   const [questionGuides, setQuestionGuide] = useState<string[]>([]);
   const [expandedDeletedGroups, setExpandedDeletedGroups] = useState<Set<string>>(new Set());
@@ -160,17 +186,20 @@ const ChatBox = ({
   const ScrollData = useContextSelector(ChatRecordContext, (v) => v.ScrollData);
   const itemRefs = useContextSelector(ChatRecordContext, (v) => v.itemRefs);
 
+  const sourceKey = useContextSelector(WorkflowRuntimeContext, (v) => v.sourceKey);
   const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
+  const sourceTarget = useContextSelector(WorkflowRuntimeContext, (v) => v.sourceTarget);
+  const chatTarget = useChatApiTarget(sourceTarget);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
-  const activeAppIdRef = useRef<string | undefined>(appId);
+  const activeSourceKeyRef = useRef<string | undefined>(sourceKey);
   const activeChatIdRef = useRef<string | undefined>(chatId);
   useLayoutEffect(() => {
-    activeAppIdRef.current = appId;
+    activeSourceKeyRef.current = sourceKey;
     activeChatIdRef.current = chatId;
-  }, [appId, chatId]);
+  }, [sourceKey, chatId]);
   const chatScrollTargetKey = useMemo(
-    () => getChatScrollTargetKey({ appId, chatId }),
-    [appId, chatId]
+    () => getChatScrollTargetKey({ sourceKey, chatId }),
+    [sourceKey, chatId]
   );
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
   const welcomeText = useContextSelector(ChatBoxContext, (v) => v.welcomeText);
@@ -180,26 +209,46 @@ const ChatBox = ({
   const isRoundPending = isChatRoundPending({
     isChatting,
     chatGenerateStatus:
-      chatBoxData.appId === appId && chatBoxData.chatId === chatId
+      chatBoxData.sourceKey === sourceKey && chatBoxData.chatId === chatId
         ? chatBoxData.chatGenerateStatus
         : undefined,
     lastChat: chatRecords[chatRecords.length - 1]
   });
 
-  const syncSidebarChatGenerateStatus = useSidebarChatGenerateStatus();
+  const notifyChatGenerateStatusChange = useMemoizedFn(
+    (
+      status: ChatGenerateStatusEnum,
+      options?: {
+        hasBeenRead?: boolean;
+        targetSourceKey?: string;
+        targetChatId?: string;
+        title?: string;
+      }
+    ) => {
+      const targetSourceKey = options?.targetSourceKey ?? sourceKey;
+      if (targetSourceKey !== sourceKey) return;
+
+      const targetChatId = options?.targetChatId ?? chatId;
+      if (!targetChatId) return;
+
+      onChatGenerateStatusChange?.({
+        sourceTarget,
+        chatId: targetChatId,
+        status,
+        hasBeenRead: options?.hasBeenRead,
+        title: options?.title
+      });
+    }
+  );
 
   const markChatRead = useMemoizedFn(async (data: MarkChatReadBodyType) => {
-    if (!enableMarkChatRead) return;
+    if (!resolvedFeatures.markRead || !onMarkChatRead) return;
 
-    return onMarkChatRead?.(data) ?? postMarkChatRead(data);
+    return onMarkChatRead(data);
   });
   const requestStopChat = useMemoizedFn(async (): Promise<StopChatFnResult> => {
-    if (onStopChat) {
-      return onStopChat();
-    }
-
     const result = await postStopV2Chat({
-      appId,
+      ...chatTarget,
       chatId,
       outLinkAuthData
     });
@@ -213,21 +262,23 @@ const ChatBox = ({
     ({
       status,
       finishedInActiveChat,
-      targetAppId = appId,
+      targetChatTarget = chatTarget,
+      targetSourceKey = sourceKey,
       targetChatId = chatId,
       shouldUpdateChatBoxData
     }: {
       status: ChatGenerateStatusEnum;
       finishedInActiveChat: boolean;
-      targetAppId?: string;
+      targetChatTarget?: ChatTargetInputType;
+      targetSourceKey?: string;
       targetChatId?: string;
       shouldUpdateChatBoxData?: (state: typeof chatBoxData) => boolean;
     }) => {
-      if (!targetAppId || !targetChatId) return;
+      if (!targetSourceKey || !targetChatId) return;
 
       setChatBoxData((state) =>
         (shouldUpdateChatBoxData?.(state) ??
-        (state.appId === targetAppId && state.chatId === targetChatId))
+        (state.sourceKey === targetSourceKey && state.chatId === targetChatId))
           ? {
               ...state,
               chatGenerateStatus: status,
@@ -237,8 +288,8 @@ const ChatBox = ({
       );
 
       const syncStatus = (hasBeenRead: boolean) => {
-        syncSidebarChatGenerateStatus(status, {
-          targetAppId,
+        notifyChatGenerateStatusChange(status, {
+          targetSourceKey,
           targetChatId,
           hasBeenRead
         });
@@ -250,7 +301,7 @@ const ChatBox = ({
       }
 
       void markChatRead({
-        appId: targetAppId,
+        ...targetChatTarget,
         chatId: targetChatId,
         ...outLinkAuthData
       })
@@ -278,16 +329,16 @@ const ChatBox = ({
   );
 
   const { chatForm, setValue, chatStarted, chatStartedWatch, resetInputVal } = useChatInputForm({
-    appId,
+    sourceKey,
     chatId,
-    chatBoxAppId: chatBoxData?.appId,
+    chatBoxSourceKey: chatBoxData?.sourceKey,
     chatRecordsLength: chatRecords.length,
     chatType,
     variableList,
     TextareaDom
   });
   const createQuestionGuide = useQuestionGuide({
-    appId,
+    appId: resolvedFeatures.inputGuide ? appId || '' : '',
     chatId,
     questionGuide,
     outLinkAuthData,
@@ -305,6 +356,7 @@ const ChatBox = ({
     pluginControllerRef: pluginController,
     resumeControllerRef: resumeController,
     resumedChatTargetRef,
+    activeSourceKeyRef,
     activeChatIdRef,
     TextareaDom,
     resetInputVal,
@@ -312,7 +364,7 @@ const ChatBox = ({
     createQuestionGuide,
     scrollToBottom,
     generatingScroll,
-    syncSidebarChatGenerateStatus,
+    notifyChatGenerateStatusChange,
     finishChatGenerateStatus
   });
   const sendPromptWithDisabledGuard = useMemoizedFn((input: ChatBoxInputType) => {
@@ -329,7 +381,7 @@ const ChatBox = ({
   const handleStopSettled = useMemoizedFn((status: ChatGenerateStatusEnum, completed: boolean) => {
     const nextStatus = completed ? status : ChatGenerateStatusEnum.generating;
     setChatBoxData((state) =>
-      state.chatId === chatId && state.appId === appId
+      state.chatId === chatId && state.sourceKey === sourceKey
         ? {
             ...state,
             chatGenerateStatus: nextStatus,
@@ -337,12 +389,11 @@ const ChatBox = ({
           }
         : state
     );
-    syncSidebarChatGenerateStatus(nextStatus, { hasBeenRead: false });
+    notifyChatGenerateStatusChange(nextStatus, { hasBeenRead: false });
   });
 
   const { isRecordActionLoading, retryInput, editInput } = useChatRecordActions({
-    sendPrompt,
-    onDeleteChatItem
+    sendPrompt
   });
   const {
     feedbackId,
@@ -358,8 +409,8 @@ const ChatBox = ({
     onFeedbackSuccess,
     onAdminMarkSuccess
   } = useChatFeedbackActions({
-    feedbackType,
-    showMarkIcon,
+    feedbackType: resolvedFeatures.feedbackType,
+    enableMark: resolvedFeatures.mark,
     chatType,
     onTriggerRefresh
   });
@@ -387,7 +438,7 @@ const ChatBox = ({
     return () => {
       abortRequest('leave');
     };
-  }, [chatId, appId, abortRequest, setValue]);
+  }, [chatId, sourceKey, abortRequest, setValue]);
 
   useEffect(() => {
     if (
@@ -405,10 +456,10 @@ const ChatBox = ({
   }, [chatScrollTargetKey, isChatRecordsLoaded, scrollToBottom]);
 
   useChatResume({
-    enableAutoResume,
+    enableAutoResume: resolvedFeatures.autoResume,
     isReady,
     resumeTargetAiDataId,
-    activeAppIdRef,
+    activeSourceKeyRef,
     activeChatIdRef,
     resumedChatTargetRef,
     resumeControllerRef: resumeController,
@@ -471,7 +522,9 @@ const ChatBox = ({
     });
   });
 
-  useRegisterQuickReplyClickHandler(enableQuickReplies ? handleQuickReplyClick : undefined);
+  useRegisterQuickReplyClickHandler(
+    resolvedFeatures.quickReplies ? handleQuickReplyClick : undefined
+  );
 
   // Auto send prompt
   useDebounceEffect(
@@ -551,8 +604,9 @@ const ChatBox = ({
       records: processedRecords,
       expandedDeletedGroups,
       itemRefs,
-      showVoiceIcon,
-      showMarkIcon,
+      enableTTS: resolvedFeatures.tts,
+      enableMark: resolvedFeatures.mark,
+      enableSandbox: resolvedFeatures.sandbox,
       statusBoxData,
       questionGuides,
       onToggleDeletedGroup: toggleDeletedGroup,
@@ -562,8 +616,8 @@ const ChatBox = ({
       onAddUserLike,
       onAddUserDislike,
       likeFeedbackEffect,
-      disableFooterHoverTranslate,
-      footerRunDetailPosition,
+      disableFooterHoverTranslate: resolvedFeatures.disableFooterHoverTranslate,
+      footerRunDetailPosition: resolvedFeatures.footerRunDetailPosition,
       feedbackUserName,
       onCloseCustomFeedback,
       onToggleFeedbackReadStatus
@@ -572,8 +626,10 @@ const ChatBox = ({
       processedRecords,
       expandedDeletedGroups,
       itemRefs,
-      showVoiceIcon,
-      showMarkIcon,
+      resolvedFeatures.voice,
+      resolvedFeatures.tts,
+      resolvedFeatures.mark,
+      resolvedFeatures.sandbox,
       statusBoxData,
       questionGuides,
       toggleDeletedGroup,
@@ -583,8 +639,8 @@ const ChatBox = ({
       onAddUserLike,
       onAddUserDislike,
       likeFeedbackEffect,
-      disableFooterHoverTranslate,
-      footerRunDetailPosition,
+      resolvedFeatures.disableFooterHoverTranslate,
+      resolvedFeatures.footerRunDetailPosition,
       feedbackUserName,
       onCloseCustomFeedback,
       onToggleFeedbackReadStatus
@@ -601,6 +657,8 @@ const ChatBox = ({
           onSendMessage={sendPromptWithDisabledGuard}
           onStopChat={requestStopChat}
           onStopSettled={handleStopSettled}
+          enableInputGuide={resolvedFeatures.inputGuide}
+          enableVoiceInput={resolvedFeatures.voice}
           disableSend={isRoundPending || (!isReady && !disabledSendTip)}
           TextareaDom={TextareaDom}
           resetInputVal={resetInputVal}
@@ -656,7 +714,7 @@ const ChatBox = ({
           />
           {canRenderChatInput && (
             <Box {...ChatInputWrapperStyle} {...inputBodyProps}>
-              {showWorkorder && <WorkorderEntrance />}
+              {resolvedFeatures.workorder && <WorkorderEntrance />}
               <Box position="relative">
                 <ScrollToBottomButton
                   isVisible={canRenderScrollToBottomButton}
@@ -668,6 +726,8 @@ const ChatBox = ({
                   lastInteractive={lastInteractive}
                   onStopChat={requestStopChat}
                   onStopSettled={handleStopSettled}
+                  enableInputGuide={resolvedFeatures.inputGuide}
+                  enableVoiceInput={resolvedFeatures.voice}
                   disableSend={isRoundPending}
                   TextareaDom={TextareaDom}
                   resetInputVal={resetInputVal}
@@ -680,7 +740,6 @@ const ChatBox = ({
       )}
 
       <ChatBoxModals
-        appId={appId}
         chatId={chatId}
         feedbackId={feedbackId}
         adminMarkData={adminMarkData}
@@ -694,11 +753,11 @@ const ChatBox = ({
   );
 };
 const ChatBoxContainer = (props: Props) => {
-  const { enableQuickReplies = false } = props;
+  const resolvedFeatures = resolveChatBoxFeatures(props.features);
 
   return (
-    <ChatProvider {...props}>
-      <QuickReplyContextProvider enableQuickReplies={enableQuickReplies}>
+    <ChatProvider {...props} enableTTS={resolvedFeatures.tts}>
+      <QuickReplyContextProvider enableQuickReplies={resolvedFeatures.quickReplies}>
         <ChatBox {...props} />
       </QuickReplyContextProvider>
     </ChatProvider>

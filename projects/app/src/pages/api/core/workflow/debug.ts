@@ -4,7 +4,7 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
-import type { PostWorkflowDebugProps, PostWorkflowDebugResponse } from '@/global/core/workflow/api';
+import type { PostWorkflowDebugResponse } from '@/global/core/workflow/api';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
@@ -19,6 +19,7 @@ import {
   composeDebugNodeResponseMap,
   getWorkflowFinalResponseData
 } from '@/service/core/workflow/nodeResponse';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 const WorkflowDebugBodySchema = z.object({
   // Runtime node 仍包含大量未完全 schema 化的动态配置，这里只在 API 边界约束数组结构。
@@ -32,6 +33,7 @@ const WorkflowDebugBodySchema = z.object({
   chatConfig: z.any().optional(),
   usageId: z.string().optional()
 });
+type WorkflowDebugBody = z.infer<typeof WorkflowDebugBodySchema>;
 
 async function handler(
   req: NextApiRequest,
@@ -47,7 +49,7 @@ async function handler(
     history = [],
     chatConfig,
     usageId
-  } = parseApiInput({ req, bodySchema: WorkflowDebugBodySchema }).body as PostWorkflowDebugProps;
+  }: WorkflowDebugBody = parseApiInput({ req, bodySchema: WorkflowDebugBodySchema }).body;
 
   /* user auth */
   const [{ tmbId }, { app }] = await Promise.all([
@@ -79,7 +81,8 @@ async function handler(
     uid: tmbId,
     usageId: newUsageId,
     runningAppInfo: {
-      id: app._id,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: String(app._id),
       name: app.name,
       teamId: app.teamId,
       tmbId: app.tmbId

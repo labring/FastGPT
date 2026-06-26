@@ -1,9 +1,10 @@
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-  authChatCrud: vi.fn(),
+  authChatTargetCrud: vi.fn(),
   createGetChatFileURL: vi.fn()
 }));
 
@@ -12,7 +13,7 @@ vi.mock('@/service/middleware/entry', () => ({
 }));
 
 vi.mock('@/service/support/permission/auth/chat', () => ({
-  authChatCrud: mocks.authChatCrud
+  authChatTargetCrud: mocks.authChatTargetCrud
 }));
 
 vi.mock('@fastgpt/service/common/s3/sources/chat', () => ({
@@ -37,7 +38,7 @@ describe('presignChatFileGetUrl', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mocks.authChatCrud.mockResolvedValue({
+    mocks.authChatTargetCrud.mockResolvedValue({
       teamId: 'team-id',
       uid
     });
@@ -46,16 +47,53 @@ describe('presignChatFileGetUrl', () => {
     });
   });
 
-  it('signs a chat file only when the key belongs to the authorized app and uid', async () => {
+  it('signs a legacy app chat file only when the key belongs to the authorized app and uid', async () => {
     await expect(
       callHandler({
         appId,
+        chatId,
         key: `chat/${appId}/${uid}/${chatId}/demo.pdf`
       })
     ).resolves.toBe('https://example.com/download-token');
 
+    expect(mocks.authChatTargetCrud).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: appId,
+        chatId,
+        authToken: true,
+        authApiKey: true
+      })
+    );
     expect(mocks.createGetChatFileURL).toHaveBeenCalledWith({
       key: `chat/${appId}/${uid}/${chatId}/demo.pdf`,
+      external: true,
+      mode: undefined
+    });
+  });
+
+  it('signs a source-aware skill chat file', async () => {
+    const skillId = '507f1f77bcf86cd799439012';
+
+    await expect(
+      callHandler({
+        skillId,
+        chatId,
+        key: `chat/${ChatSourceTypeEnum.skillEdit}/${skillId}/${uid}/${chatId}/demo.pdf`
+      })
+    ).resolves.toBe('https://example.com/download-token');
+
+    expect(mocks.authChatTargetCrud).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        sourceId: skillId,
+        chatId,
+        authToken: true,
+        authApiKey: true
+      })
+    );
+    expect(mocks.createGetChatFileURL).toHaveBeenCalledWith({
+      key: `chat/${ChatSourceTypeEnum.skillEdit}/${skillId}/${uid}/${chatId}/demo.pdf`,
       external: true,
       mode: undefined
     });
@@ -65,6 +103,7 @@ describe('presignChatFileGetUrl', () => {
     await expect(
       callHandler({
         appId,
+        chatId,
         key: `chat/507f1f77bcf86cd799439099/${uid}/${chatId}/demo.pdf`
       })
     ).rejects.toBe(ChatErrEnum.unAuthChat);
@@ -76,7 +115,20 @@ describe('presignChatFileGetUrl', () => {
     await expect(
       callHandler({
         appId,
+        chatId,
         key: `chat/${appId}/victim-uid/${chatId}/demo.pdf`
+      })
+    ).rejects.toBe(ChatErrEnum.unAuthChat);
+
+    expect(mocks.createGetChatFileURL).not.toHaveBeenCalled();
+  });
+
+  it('rejects a key from another chat id before signing', async () => {
+    await expect(
+      callHandler({
+        appId,
+        chatId,
+        key: `chat/${appId}/${uid}/another-chat/demo.pdf`
       })
     ).rejects.toBe(ChatErrEnum.unAuthChat);
 

@@ -1,32 +1,43 @@
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
-import { authChatCrud } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { updateChatFeedbackCount } from '@fastgpt/service/core/chat/controller';
 import { MongoAppChatLog } from '@fastgpt/service/core/app/logs/chatLogsSchema';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   UpdateUserFeedbackBodySchema,
   UpdateUserFeedbackResponseSchema,
   type UpdateUserFeedbackResponseType
 } from '@fastgpt/global/openapi/core/chat/feedback/api';
+import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 
 async function handler(req: ApiRequestProps): Promise<UpdateUserFeedbackResponseType> {
-  const { appId, chatId, dataId, userBadFeedback, userGoodFeedback } = parseApiInput({
-    req,
-    bodySchema: UpdateUserFeedbackBodySchema
-  }).body;
+  const { sourceType, sourceId, chatId, dataId, userBadFeedback, userGoodFeedback } = parseApiInput(
+    {
+      req,
+      bodySchema: UpdateUserFeedbackBodySchema
+    }
+  ).body;
+  const chatSourceQuery = buildChatSourceQuery({ sourceType, sourceId });
 
-  const { teamId } = await authChatCrud({
+  const { teamId } = await authChatTargetCrud({
     req,
     authToken: true,
     authApiKey: true,
-    ...req.body
+    sourceType,
+    sourceId,
+    chatId
   });
 
-  const chatItem = await MongoChatItem.findOne({ appId, chatId, dataId, obj: ChatRoleEnum.AI });
+  const chatItem = await MongoChatItem.findOne({
+    ...chatSourceQuery,
+    chatId,
+    dataId,
+    obj: ChatRoleEnum.AI
+  });
   if (!chatItem) {
     return Promise.reject('Chat item not found');
   }
@@ -34,7 +45,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateUserFeedbackResponse
   await mongoSessionRun(async (session) => {
     // Update ChatItem feedback
     await MongoChatItem.updateOne(
-      { appId, chatId, dataId, obj: ChatRoleEnum.AI },
+      { ...chatSourceQuery, chatId, dataId, obj: ChatRoleEnum.AI },
       {
         $unset: {
           ...(userBadFeedback === undefined && { userBadFeedback: '' }),
@@ -50,13 +61,14 @@ async function handler(req: ApiRequestProps): Promise<UpdateUserFeedbackResponse
 
     // Update Chat table feedback statistics (redundant fields for performance)
     await updateChatFeedbackCount({
-      appId,
+      sourceType,
+      sourceId,
       chatId,
       session
     });
 
     // Update ChatLog table statistics (data analytics table)
-    if (chatItem.obj === ChatRoleEnum.AI) {
+    if (sourceType === ChatSourceTypeEnum.app && chatItem.obj === ChatRoleEnum.AI) {
       const goodFeedbackDelta = (() => {
         if (!userGoodFeedback && chatItem.userGoodFeedback) {
           return -1;
@@ -78,7 +90,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateUserFeedbackResponse
       await MongoAppChatLog.findOneAndUpdate(
         {
           teamId,
-          appId,
+          appId: sourceId,
           chatId
         },
         {

@@ -40,6 +40,7 @@ const RenderText = React.memo(function RenderText({
   }, [text, isShowCite]);
 
   const chatAuthData = useCreation(() => {
+    if (!appId) return undefined;
     return { appId, chatId, chatItemDataId, ...outLinkAuthData };
   }, [appId, chatId, chatItemDataId, outLinkAuthData]);
 

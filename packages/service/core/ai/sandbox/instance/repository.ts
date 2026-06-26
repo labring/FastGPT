@@ -1,5 +1,6 @@
 import type { SandboxStatusType } from '@fastgpt/global/core/ai/sandbox/constants';
 import { SandboxStatusEnum, type SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoSandboxInstance } from './schema';
 import type { SandboxInstanceSchemaType, SandboxProviderType } from '../type';
 
@@ -25,6 +26,11 @@ export type SandboxResourceRef = {
   _id?: unknown;
 };
 
+export type SandboxSourceParams = {
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
+};
+
 export const buildSandboxInstanceLookup = (sandboxId: string) => ({ sandboxId });
 
 const buildSandboxResourceRecordFilter = (resource: SandboxResourceRef) => {
@@ -36,6 +42,12 @@ const buildSandboxResourceRecordFilter = (resource: SandboxResourceRef) => {
     sandboxId: resource.sandboxId
   };
 };
+
+const isMongoDuplicateKeyError = (error: unknown) =>
+  typeof error === 'object' &&
+  error !== null &&
+  'code' in error &&
+  (error as { code?: unknown }).code === 11000;
 
 const buildSandboxResourcesToArchiveQuery = (params: {
   inactiveBefore: Date;
@@ -52,6 +64,27 @@ const buildSandboxResourcesToArchiveQuery = (params: {
 };
 
 /**
+ * sandbox 实例表暂时复用物理 appId 字段保存 sourceId。
+ *
+ * App 旧数据和新数据在该表中没有额外 sourceType 字段，因此 App 删除天然按 appId 兼容；
+ * Skill Edit 资源额外兼容 metadata.skillId，覆盖编辑沙盒历史写法。
+ */
+const buildSandboxResourceSourceQuery = ({ sourceType, sourceId }: SandboxSourceParams) => {
+  if (sourceType === ChatSourceTypeEnum.app) {
+    return { appId: sourceId };
+  }
+
+  if (sourceType === ChatSourceTypeEnum.skillEdit) {
+    return {
+      $or: [{ appId: sourceId }, { 'metadata.skillId': sourceId }]
+    };
+  }
+
+  const exhaustiveCheck: never = sourceType;
+  throw new Error(`Unsupported sandbox source type: ${exhaustiveCheck}`);
+};
+
+/**
  * 记录运行态 sandbox 的最新活跃状态；不存在时创建会话归属和资源元信息。
  *
  * 这是运行态 client 唯一的实例写入口，避免业务层直接拼 Mongo upsert 细节。
@@ -59,6 +92,8 @@ const buildSandboxResourcesToArchiveQuery = (params: {
 export async function upsertRunningSandboxInstance(params: {
   provider: SandboxProviderType;
   sandboxId: string;
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
   appId?: string;
   userId?: string;
   chatId?: string;
@@ -66,12 +101,25 @@ export async function upsertRunningSandboxInstance(params: {
   limit?: Partial<NonNullable<SandboxInstanceSchemaType['limit']>>;
   metadata?: Record<string, unknown>;
 }) {
-  const { provider, sandboxId, appId, userId, chatId, storage, limit, metadata } = params;
+  const {
+    provider,
+    sandboxId,
+    sourceType,
+    sourceId,
+    appId,
+    userId,
+    chatId,
+    storage,
+    limit,
+    metadata
+  } = params;
   const archiveStateFilter = { 'metadata.archive.state': { $exists: false } };
   const runningUpdate = {
     $set: {
       status: SandboxStatusEnum.running,
-      lastActiveAt: new Date()
+      lastActiveAt: new Date(),
+      ...(sourceType !== undefined ? { sourceType } : {}),
+      ...(sourceId !== undefined ? { sourceId } : {})
     }
   };
   const existingUpdate = {
@@ -115,7 +163,9 @@ export async function upsertRunningSandboxInstance(params: {
       upsert: true,
       new: true
     });
-  } catch {
+  } catch (error) {
+    if (!isMongoDuplicateKeyError(error)) throw error;
+
     return MongoSandboxInstance.findOneAndUpdate(
       {
         provider,
@@ -171,21 +221,26 @@ export async function deleteSandboxResourceRecord(resource: SandboxResourceRef) 
 }
 
 /**
- * 查询某个 app 下指定 chat 列表关联的资源记录。
+ * 查询某个 source 下指定 chat 列表关联的资源记录。
  */
-export async function findSandboxResourcesByChatIds(params: { appId: string; chatIds: string[] }) {
-  const { appId, chatIds } = params;
+export async function findSandboxResourcesBySourceChatIds(
+  params: SandboxSourceParams & { chatIds: string[] }
+) {
+  const { chatIds } = params;
 
-  return MongoSandboxInstance.find({ appId, chatId: { $in: chatIds } }).lean<
-    SandboxResourceDoc[]
-  >();
+  return MongoSandboxInstance.find({
+    ...buildSandboxResourceSourceQuery(params),
+    chatId: { $in: chatIds }
+  }).lean<SandboxResourceDoc[]>();
 }
 
 /**
- * 查询某个 app 下的所有 sandbox 资源记录。
+ * 查询某个 source 下的所有 sandbox 资源记录。
  */
-export async function findSandboxResourcesByAppId(appId: string) {
-  return MongoSandboxInstance.find({ appId }).lean<SandboxResourceDoc[]>();
+export async function findSandboxResourcesBySource(params: SandboxSourceParams) {
+  return MongoSandboxInstance.find(buildSandboxResourceSourceQuery(params)).lean<
+    SandboxResourceDoc[]
+  >();
 }
 
 /**
@@ -220,6 +275,42 @@ export async function findSandboxInstanceBySandboxId(params: {
     ...(provider ? { provider } : {}),
     sandboxId,
     ...(appId ? { appId } : {}),
+    ...(type ? { type } : {}),
+    ...(status ? { status } : {})
+  });
+}
+
+/**
+ * 按标准 source 查询单条 sandbox 实例。
+ *
+ * 新数据优先按 `sourceType/sourceId` 命中；Skill Edit 额外兼容历史编辑沙盒写法
+ * `appId=skillId` 或 `metadata.skillId=skillId`，避免升级前后的调试沙盒不可复用。
+ */
+export async function findSandboxInstanceBySandboxIdAndSource(params: {
+  provider?: SandboxProviderType;
+  sandboxId: string;
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
+  type?: SandboxTypeEnum;
+  status?: SandboxStatusType;
+}) {
+  const { provider, sandboxId, sourceType, sourceId, type, status } = params;
+  const sourceQuery =
+    sourceType === ChatSourceTypeEnum.skillEdit
+      ? {
+          $or: [{ sourceType, sourceId }, { appId: sourceId }, { 'metadata.skillId': sourceId }]
+        }
+      : {
+          $or: [
+            { sourceType, sourceId },
+            { appId: sourceId, sourceType: { $exists: false } }
+          ]
+        };
+
+  return MongoSandboxInstance.findOne({
+    ...(provider ? { provider } : {}),
+    sandboxId,
+    ...sourceQuery,
     ...(type ? { type } : {}),
     ...(status ? { status } : {})
   });
@@ -389,6 +480,8 @@ export async function rollbackSandboxRestoring(resource: SandboxResourceRef) {
 export async function markSandboxRestored(
   resource: SandboxResourceRef,
   params: {
+    sourceType: ChatSourceTypeEnum;
+    sourceId: string;
     appId?: string;
     userId?: string;
     chatId?: string;
@@ -419,6 +512,8 @@ export async function markSandboxRestored(
       $set: {
         status: SandboxStatusEnum.running,
         lastActiveAt: new Date(),
+        sourceType: params.sourceType,
+        sourceId: params.sourceId,
         ...(params.appId !== undefined ? { appId: params.appId } : {}),
         ...(params.userId !== undefined ? { userId: params.userId } : {}),
         ...(params.chatId !== undefined ? { chatId: params.chatId } : {}),
@@ -531,12 +626,14 @@ export async function deleteSandboxInstanceRecord(instanceId: unknown) {
 export async function migrateArchivedSandboxInstanceRecord(params: {
   source: SandboxResourceRef;
   provider: SandboxProviderType;
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
   appId: string;
   userId: string;
   chatId: string;
   type: SandboxTypeEnum;
 }) {
-  const { source, provider, appId, userId, chatId, type } = params;
+  const { source, provider, sourceType, sourceId, appId, userId, chatId, type } = params;
   const sourceFilter = {
     ...buildSandboxResourceRecordFilter(source),
     'metadata.archive.state': 'archived'
@@ -544,6 +641,8 @@ export async function migrateArchivedSandboxInstanceRecord(params: {
   const baseSet = {
     provider,
     sandboxId: source.sandboxId,
+    sourceType,
+    sourceId,
     appId,
     userId,
     chatId,
@@ -551,11 +650,6 @@ export async function migrateArchivedSandboxInstanceRecord(params: {
     status: SandboxStatusEnum.stopped,
     lastActiveAt: new Date()
   };
-  const isMongoDuplicateKeyError = (error: unknown) =>
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    (error as { code?: unknown }).code === 11000;
 
   try {
     return await MongoSandboxInstance.findOneAndUpdate(

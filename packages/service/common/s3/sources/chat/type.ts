@@ -1,9 +1,14 @@
 import z from 'zod';
 import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
 import { UploadFileByBodySchema } from '../../contracts/type';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+
+export const ChatS3SourceTypeSchema = z.enum(ChatSourceTypeEnum);
+export type ChatS3SourceType = z.infer<typeof ChatS3SourceTypeSchema>;
 
 export const ChatFileUploadSchema = z.object({
-  appId: ObjectIdSchema,
+  sourceType: ChatS3SourceTypeSchema,
+  sourceId: ObjectIdSchema,
   chatId: z.string().nonempty(),
   uId: z.string().nonempty(),
   filename: z.string().nonempty(),
@@ -11,17 +16,26 @@ export const ChatFileUploadSchema = z.object({
   maxFileSize: z.number().positive().optional(),
   allowedExtensions: z.array(z.string().nonempty()).optional()
 });
-export type CheckChatFileKeys = z.infer<typeof ChatFileUploadSchema>;
+export type CheckChatFileKeys = z.input<typeof ChatFileUploadSchema>;
 
 export const DelChatFileByPrefixSchema = z.object({
-  appId: ObjectIdSchema,
+  sourceType: ChatS3SourceTypeSchema,
+  sourceId: ObjectIdSchema,
   chatId: z.string().nonempty().optional(),
   uId: z.string().nonempty().optional()
 });
-export type DelChatFileByPrefixParams = z.infer<typeof DelChatFileByPrefixSchema>;
+export type DelChatFileByPrefixParams = z.input<typeof DelChatFileByPrefixSchema>;
+
+export const DelLegacyAppChatFileByPrefixSchema = z.object({
+  sourceId: ObjectIdSchema,
+  chatId: z.string().nonempty().optional(),
+  uId: z.string().nonempty().optional()
+});
+export type DelLegacyAppChatFileByPrefixParams = z.input<typeof DelLegacyAppChatFileByPrefixSchema>;
 
 export const UploadChatFileSchema = z.object({
-  appId: ObjectIdSchema,
+  sourceType: ChatS3SourceTypeSchema,
+  sourceId: ObjectIdSchema,
   chatId: z.string().nonempty(),
   uId: z.string().nonempty(),
   filename: UploadFileByBodySchema.shape.filename,
@@ -30,4 +44,4 @@ export const UploadChatFileSchema = z.object({
   expiredTime: UploadFileByBodySchema.shape.expiredTime
 });
 
-export type UploadFileParams = z.infer<typeof UploadChatFileSchema>;
+export type UploadFileParams = z.input<typeof UploadChatFileSchema>;

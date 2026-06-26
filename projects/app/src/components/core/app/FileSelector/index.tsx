@@ -48,6 +48,7 @@ import {
   sanitizeFileSelectValue
 } from './utils';
 import { isEqual } from 'lodash';
+import { hasChatTargetInput, useChatApiTarget } from '@/web/core/chat/utils';
 
 type WebkitFileSystemFileEntry = {
   isFile: true;
@@ -179,7 +180,8 @@ const FileSelector = ({
   const { toast } = useToast();
   const { t } = useSafeTranslation();
 
-  const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
+  const sourceTarget = useContextSelector(WorkflowRuntimeContext, (v) => v.sourceTarget);
+  const chatTarget = useChatApiTarget(sourceTarget);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
   const setFileUploadingCount = useContextSelector(
@@ -236,7 +238,7 @@ const FileSelector = ({
   // 后端存储值只保留 key；组件渲染时再为 key-only 文件补临时预览 URL。
   // 这里不会触发 onChange，避免把预览 URL 写回全局变量或表单存储值。
   useEffect(() => {
-    if (!appId) return;
+    if (!hasChatTargetInput(chatTarget)) return;
 
     const filesNeedPreviewUrl = fileList.filter(
       (file): file is FileSelectorRenderItemType & { key: string; url?: undefined } =>
@@ -255,7 +257,8 @@ const FileSelector = ({
         const key = file.key;
         const url = await getPresignedChatFileGetUrl({
           key,
-          appId,
+          ...chatTarget,
+          chatId,
           outLinkAuthData
         });
 
@@ -303,7 +306,7 @@ const FileSelector = ({
     return () => {
       isUnmounted = true;
     };
-  }, [appId, fileList, outLinkAuthData]);
+  }, [chatTarget, chatId, fileList, outLinkAuthData]);
 
   const fileType = useMemo(() => {
     return getUploadFileType({
@@ -372,7 +375,7 @@ const FileSelector = ({
             // Get Upload Post Presigned URL
             const { url, key, headers, previewUrl } = await getUploadChatFilePresignedUrl({
               filename: file.rawFile.name,
-              appId,
+              ...chatTarget,
               chatId,
               fileSelectConfig,
               outLinkAuthData
@@ -420,7 +423,7 @@ const FileSelector = ({
     [
       handleChangeFiles,
       setFileUploadingCount,
-      appId,
+      chatTarget,
       chatId,
       fileSelectConfig,
       outLinkAuthData,

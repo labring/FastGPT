@@ -46,7 +46,7 @@ export const useQuestionGuide = ({
   return useCallback(async () => {
     // 保留拆分前语义：只用主聊天请求的 abort 状态阻止回答结束后的问题引导。
     // question guide 自身的旧 controller 可能在新一轮发送开始时被 abort，不能阻断新请求。
-    if (!questionGuide.open || chatControllerRef.current?.signal?.aborted) {
+    if (!appId || !questionGuide.open || chatControllerRef.current?.signal?.aborted) {
       return;
     }
     try {

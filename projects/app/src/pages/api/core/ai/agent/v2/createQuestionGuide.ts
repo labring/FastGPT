@@ -10,6 +10,7 @@ import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
 import { getDefaultLLMModel } from '@fastgpt/service/core/ai/model';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 export type CreateQuestionGuideParams = OutLinkChatAuthProps & {
   appId: string;
@@ -43,7 +44,8 @@ async function handler(req: ApiRequestProps<CreateQuestionGuideParams>, res: Nex
 
   // Get histories
   const { histories } = await getChatItems({
-    appId,
+    sourceType: ChatSourceTypeEnum.app,
+    sourceId: appId,
     chatId,
     offset: 0,
     limit: 6,

@@ -1,7 +1,7 @@
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { runWorkflow } from '../index';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
   getWorkflowEntryNodeIds,
@@ -107,7 +107,8 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     // Rewrite children app variables
     const { externalProvider } = await getUserChatInfo(appData.tmbId);
     const childRunningAppInfo = {
-      id: String(appData._id),
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: String(appData._id),
       teamId: appData.teamId,
       tmbId: appData.tmbId,
       name: appData.name,
@@ -162,7 +163,8 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
           }
         : {}),
       runningAppInfo: {
-        id: String(appData._id),
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: String(appData._id),
         name: appData.name,
         teamId: String(appData.teamId),
         tmbId: String(appData.tmbId),

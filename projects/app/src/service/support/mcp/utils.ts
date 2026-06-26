@@ -21,7 +21,8 @@ import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/to
 import {
   ChatFileTypeEnum,
   ChatRoleEnum,
-  ChatSourceEnum
+  ChatSourceEnum,
+  ChatSourceTypeEnum
 } from '@fastgpt/global/core/chat/constants';
 import {
   getWorkflowEntryNodeIds,
@@ -224,9 +225,13 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
 
     const chatId = getNanoid();
     const responseChatItemId = getNanoid(24);
+    const chatSource = {
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: String(app._id)
+    };
     const preparedRound = await preChatRound({
+      ...chatSource,
       chatId,
-      appId: String(app._id),
       teamId: String(app.teamId),
       tmbId: String(app.tmbId),
       source: ChatSourceEnum.mcp,
@@ -249,7 +254,8 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
         mode: 'chat',
         usageSource: UsageSourceEnum.mcp,
         runningAppInfo: {
-          id: String(app._id),
+          sourceType: ChatSourceTypeEnum.app,
+          sourceId: String(app._id),
           name: app.name,
           teamId: String(app.teamId),
           tmbId: String(app.tmbId)
@@ -279,8 +285,8 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
         memories: system_memories
       };
       const saveParams: SaveChatProps = {
+        ...chatSource,
         chatId: preparedRound.chatId,
-        appId: String(app._id),
         versionId,
         teamId: String(app.teamId),
         tmbId: String(app.tmbId),
@@ -318,7 +324,7 @@ export const callMcpServerTool = async ({ key, toolName, inputs }: toolCallProps
     } catch (error) {
       if (!chatRoundFinalized && preparedRound.shouldPersistChatRound) {
         await failChatRound({
-          appId: String(app._id),
+          ...chatSource,
           chatId: preparedRound.chatId,
           responseChatItemId: preparedRound.responseChatItemId,
           error

@@ -6,12 +6,12 @@
 
 **Redis Key 结构:**
 ```typescript
-// Key 格式: agent_runtime_stopping:{appId}:{chatId}
+// Key 格式: agent_runtime_stopping:{sourceType}:{sourceId}:{chatId}
 const WORKFLOW_STATUS_PREFIX = 'agent_runtime_stopping';
 
-type WorkflowStatusKey = `${typeof WORKFLOW_STATUS_PREFIX}:${string}:${string}`;
+type WorkflowStatusKey = `${typeof WORKFLOW_STATUS_PREFIX}:${string}:${string}:${string}`;
 
-// 示例: agent_runtime_stopping:app_123456:chat_789012
+// 示例: agent_runtime_stopping:app:app_123456:chat_789012
 ```
 
 **状态值设计:**
@@ -22,7 +22,8 @@ type WorkflowStatusKey = `${typeof WORKFLOW_STATUS_PREFIX}:${string}:${string}`;
 **参数类型定义:**
 ```typescript
 type WorkflowStatusParams = {
-  appId: string;
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
   chatId: string;
 };
 ```
@@ -45,23 +46,23 @@ type WorkflowStatusParams = {
 
 **1. setAgentRuntimeStop**
 - **功能**: 设置停止标志
-- **参数**: `{ appId, chatId }`
+- **参数**: `{ sourceType, sourceId, chatId }`
 - **实现**: 使用 `SETEX` 命令,设置键值为 1,TTL 60 秒
 
 **2. shouldWorkflowStop**
 - **功能**: 检查工作流是否应该停止
-- **参数**: `{ appId, chatId }`
+- **参数**: `{ sourceType, sourceId, chatId }`
 - **返回**: `Promise<boolean>` - true=应该停止, false=继续运行
 - **实现**: GET 命令获取键值,存在则返回 true
 
 **3. delAgentRuntimeStopSign**
 - **功能**: 删除停止标志
-- **参数**: `{ appId, chatId }`
+- **参数**: `{ sourceType, sourceId, chatId }`
 - **实现**: DEL 命令删除键
 
 **4. waitForWorkflowComplete**
 - **功能**: 等待工作流完成(停止标志被删除)
-- **参数**: `{ appId, chatId, timeout?, pollInterval? }`
+- **参数**: `{ sourceType, sourceId, chatId, timeout?, pollInterval? }`
 - **实现**: 轮询检查停止标志是否被删除,超时返回
 
 ### 1.4 边界情况处理
@@ -303,7 +304,8 @@ const checkStoppingTimer =
   apiVersion === 'v2'
     ? setInterval(async () => {
         stopping = await shouldWorkflowStop({
-          appId: runningAppInfo.id,
+          sourceType: runningAppInfo.sourceType,
+          sourceId: runningAppInfo.sourceId,
           chatId
         });
       }, 100)
@@ -340,7 +342,8 @@ return runWorkflow({
 
   // 工作流完成后删除 Redis 记录
   await delAgentRuntimeStopSign({
-    appId: runningAppInfo.id,
+    sourceType: runningAppInfo.sourceType,
+    sourceId: runningAppInfo.sourceId,
     chatId
   });
 });
@@ -362,7 +365,8 @@ private async checkNodeCanRun(
   // Check queue status
   if (data.maxRunTimes <= 0) {
     getLogger(LogCategories.MODULE.CHAT).error('Max run times is 0', {
-      appId: data.runningAppInfo.id
+      sourceType: data.runningAppInfo.sourceType,
+      sourceId: data.runningAppInfo.sourceId
     });
     return;
   }
@@ -370,7 +374,8 @@ private async checkNodeCanRun(
   // 停止检测
   if (checkIsStopping()) {
     getLogger(LogCategories.MODULE.CHAT).warn('Workflow stopped', {
-      appId: data.runningAppInfo.id,
+      sourceType: data.runningAppInfo.sourceType,
+      sourceId: data.runningAppInfo.sourceId,
       nodeId: node.nodeId,
       nodeName: node.name
     });
@@ -666,4 +671,3 @@ describe('Workflow Status Redis Functions', () => {
   test('should handle concurrent stop sign operations')
 });
 ```
-

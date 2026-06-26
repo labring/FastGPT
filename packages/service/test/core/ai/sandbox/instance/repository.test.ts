@@ -9,12 +9,13 @@ import {
   findSandboxAppIdBySandboxId,
   findSandboxInstanceByAppChatType,
   findSandboxInstanceBySandboxId,
+  findSandboxInstanceBySandboxIdAndSource,
   findSandboxInstanceBySandboxIdAndTeam,
   findSandboxResourceBySandboxIdAndTeam,
   findSandboxResourcesByAppChatType,
   findSandboxResourcesByAppChatTypeExcludeProvider,
-  findSandboxResourcesByAppId,
-  findSandboxResourcesByChatIds,
+  findSandboxResourcesBySource,
+  findSandboxResourcesBySourceChatIds,
   findSkillRelatedSandboxResources,
   isSandboxStillArchiving,
   markSandboxArchived,
@@ -28,6 +29,7 @@ import {
   type SandboxResourceDoc
 } from '@fastgpt/service/core/ai/sandbox/instance/repository';
 import { SandboxStatusEnum, SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 const collectArchiveCursor = async (
@@ -58,6 +60,8 @@ describe('sandbox instance helpers', () => {
     const oldProviderDoc = await MongoSandboxInstance.create({
       provider: 'opensandbox',
       sandboxId: `instance-helper-${getNanoid()}`,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
       appId,
       userId: getNanoid(),
       chatId,
@@ -76,6 +80,8 @@ describe('sandbox instance helpers', () => {
     await MongoSandboxInstance.create({
       provider: 'opensandbox',
       sandboxId: `instance-helper-${getNanoid()}`,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
       appId,
       userId: getNanoid(),
       chatId: 'normal-chat',
@@ -111,6 +117,8 @@ describe('sandbox instance helpers', () => {
     await upsertRunningSandboxInstance({
       provider: 'opensandbox',
       sandboxId,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
       appId,
       userId: 'user-1',
       chatId,
@@ -155,10 +163,19 @@ describe('sandbox instance helpers', () => {
     await expect(
       countRunningSandboxInstancesByType(SandboxTypeEnum.editDebug, 'opensandbox')
     ).resolves.toBe(1);
-    await expect(findSandboxResourcesByChatIds({ appId, chatIds: [chatId] })).resolves.toHaveLength(
-      1
-    );
-    await expect(findSandboxResourcesByAppId(appId)).resolves.toHaveLength(1);
+    await expect(
+      findSandboxResourcesBySourceChatIds({
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: appId,
+        chatIds: [chatId]
+      })
+    ).resolves.toHaveLength(1);
+    await expect(
+      findSandboxResourcesBySource({
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: appId
+      })
+    ).resolves.toHaveLength(1);
     await expect(findSandboxAppIdBySandboxId(sandboxId)).resolves.toBe(appId);
     await expect(findSandboxAppIdBySandboxId(`instance-helper-${getNanoid()}`)).resolves.toBe(
       undefined
@@ -168,6 +185,15 @@ describe('sandbox instance helpers', () => {
         provider: 'opensandbox',
         sandboxId,
         appId,
+        type: SandboxTypeEnum.editDebug
+      })
+    ).resolves.toMatchObject({ sandboxId });
+    await expect(
+      findSandboxInstanceBySandboxIdAndSource({
+        provider: 'opensandbox',
+        sandboxId,
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        sourceId: skillId,
         type: SandboxTypeEnum.editDebug
       })
     ).resolves.toMatchObject({ sandboxId });
@@ -204,11 +230,45 @@ describe('sandbox instance helpers', () => {
     await expect(MongoSandboxInstance.countDocuments({ sandboxId })).resolves.toBe(0);
   });
 
+  it('writes source fields and finds sandbox records by source-aware ownership', async () => {
+    const skillId = `instance-helper-${getNanoid()}`;
+    const sandboxId = `instance-helper-${getNanoid()}`;
+
+    await upsertRunningSandboxInstance({
+      provider: 'opensandbox',
+      sandboxId,
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: skillId,
+      appId: skillId,
+      userId: '',
+      chatId: 'edit-debug',
+      metadata: {
+        skillId
+      }
+    });
+
+    await expect(MongoSandboxInstance.findOne({ sandboxId }).lean()).resolves.toMatchObject({
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: skillId,
+      appId: skillId
+    });
+    await expect(
+      findSandboxInstanceBySandboxIdAndSource({
+        provider: 'opensandbox',
+        sandboxId,
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        sourceId: skillId
+      })
+    ).resolves.toMatchObject({ sandboxId });
+  });
+
   it('finds inactive running resources and deletes records by id', async () => {
     const appId = `instance-helper-${getNanoid()}`;
     const inactiveDoc = await MongoSandboxInstance.create({
       provider: 'opensandbox',
       sandboxId: `instance-helper-${getNanoid()}`,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
       appId,
       userId: 'user-1',
       chatId: 'inactive-chat',
@@ -223,6 +283,8 @@ describe('sandbox instance helpers', () => {
     await MongoSandboxInstance.create({
       provider: 'opensandbox',
       sandboxId: `instance-helper-${getNanoid()}`,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
       appId,
       userId: 'user-1',
       chatId: 'active-chat',
@@ -250,6 +312,8 @@ describe('sandbox instance helpers', () => {
     const doc = await MongoSandboxInstance.create({
       provider: 'opensandbox',
       sandboxId,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
       appId,
       userId: 'user-1',
       chatId: 'record-only-chat',
@@ -271,6 +335,8 @@ describe('sandbox instance helpers', () => {
         _id: doc._id
       },
       provider: 'sealosdevbox',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
       appId,
       userId: '',
       chatId: 'record-only-chat',
@@ -280,6 +346,8 @@ describe('sandbox instance helpers', () => {
     expect(migratedDoc).toMatchObject({
       provider: 'sealosdevbox',
       sandboxId,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
       appId,
       userId: '',
       chatId: 'record-only-chat',
@@ -302,6 +370,8 @@ describe('sandbox instance helpers', () => {
     const oldDoc = await MongoSandboxInstance.create({
       provider: 'opensandbox',
       sandboxId,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
       appId,
       userId: 'user-1',
       chatId,
@@ -319,6 +389,8 @@ describe('sandbox instance helpers', () => {
     const placeholderDoc = await MongoSandboxInstance.create({
       provider: 'sealosdevbox',
       sandboxId,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: `placeholder-${appId}`,
       appId: `placeholder-${appId}`,
       userId: '',
       chatId: `placeholder-${chatId}`,
@@ -337,6 +409,8 @@ describe('sandbox instance helpers', () => {
         _id: oldDoc._id
       },
       provider: 'sealosdevbox',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
       appId,
       userId: '',
       chatId,
@@ -365,10 +439,13 @@ describe('sandbox instance helpers', () => {
   it('archives inactive stopped records and restores them into the current provider', async () => {
     const inactiveBefore = new Date('2026-02-01T00:00:00.000Z');
     const sandboxId = `instance-helper-${getNanoid()}`;
+    const appId = `instance-helper-${getNanoid()}`;
     const doc = await MongoSandboxInstance.create({
       provider: 'opensandbox',
       sandboxId,
-      appId: `instance-helper-${getNanoid()}`,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
+      appId,
       userId: 'user-1',
       chatId: 'archive-chat',
       type: SandboxTypeEnum.sessionRuntime,
@@ -397,7 +474,10 @@ describe('sandbox instance helpers', () => {
     await expect(
       upsertRunningSandboxInstance({
         provider: doc.provider,
-        sandboxId
+        sandboxId,
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: appId,
+        appId
       })
     ).resolves.toBeNull();
 
@@ -425,6 +505,8 @@ describe('sandbox instance helpers', () => {
     });
 
     const restoredDoc = await markSandboxRestored(doc, {
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
       appId: doc.appId,
       userId: 'user-1',
       chatId: 'restore-provider-chat',
@@ -454,6 +536,8 @@ describe('sandbox instance helpers', () => {
       {
         provider: 'opensandbox',
         sandboxId: `instance-helper-${getNanoid()}`,
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: appId,
         appId,
         userId: 'user-1',
         chatId: 'archive-old-chat',
@@ -468,6 +552,8 @@ describe('sandbox instance helpers', () => {
       {
         provider: 'opensandbox',
         sandboxId: `instance-helper-${getNanoid()}`,
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: appId,
         appId,
         userId: 'user-1',
         chatId: 'archive-new-chat',
@@ -482,6 +568,8 @@ describe('sandbox instance helpers', () => {
       {
         provider: 'opensandbox',
         sandboxId: `instance-helper-${getNanoid()}`,
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: appId,
         appId,
         userId: 'user-1',
         chatId: 'archive-active-chat',
@@ -515,6 +603,8 @@ describe('sandbox instance helpers', () => {
     await MongoSandboxInstance.create({
       provider: 'opensandbox',
       sandboxId,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
       appId,
       userId: 'user-1',
       chatId,

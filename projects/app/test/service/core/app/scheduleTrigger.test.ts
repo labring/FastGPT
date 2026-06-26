@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatRoleEnum,
+  ChatSourceEnum,
+  ChatSourceTypeEnum
+} from '@fastgpt/global/core/chat/constants';
 
 const mocks = vi.hoisted(() => ({
   appFindLean: vi.fn(),
@@ -167,7 +171,8 @@ describe('getScheduleTriggerApp', () => {
 
     expect(mocks.finalizeChatRound).not.toHaveBeenCalled();
     expect(mocks.failChatRound).toHaveBeenCalledWith({
-      appId: 'app-id',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app-id',
       chatId: 'prepared-chat-id',
       responseChatItemId: 'prepared-response-id',
       error

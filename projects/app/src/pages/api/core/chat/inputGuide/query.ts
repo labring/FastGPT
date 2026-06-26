@@ -11,12 +11,16 @@ import {
   QueryChatInputGuideResponseSchema,
   type QueryChatInputGuideResponseType
 } from '@fastgpt/global/openapi/core/chat/inputGuide/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(
   req: ApiRequestProps,
   _res: NextApiResponse
 ): Promise<QueryChatInputGuideResponseType> {
-  const { appId, searchKey, ...authProps } = QueryChatInputGuideBodySchema.parse(req.body);
+  const { appId, searchKey, ...authProps } = parseApiInput({
+    req,
+    bodySchema: QueryChatInputGuideBodySchema
+  }).body;
 
   // tmp auth
   const { teamId } = await authChatCrud({ req, authToken: true, appId, ...authProps });

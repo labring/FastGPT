@@ -4,13 +4,21 @@
 
 import { describe, it, expect } from 'vitest';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/instance/schema';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+
+const appId = '507f1f77bcf86cd799439011';
+const createAppSourceFields = (sourceId = appId) => ({
+  sourceType: ChatSourceTypeEnum.app,
+  sourceId
+});
 
 describe('SandboxInstance Schema', () => {
   it('should create a sandbox instance document with required fields', async () => {
     const mockInstance = {
       provider: 'opensandbox',
       sandboxId: 'provider-sandbox-abc123',
-      appId: '507f1f77bcf86cd799439011',
+      ...createAppSourceFields(),
+      appId,
       userId: '507f1f77bcf86cd799439013',
       chatId: 'edit-debug',
       type: 'edit-debug',
@@ -40,7 +48,8 @@ describe('SandboxInstance Schema', () => {
     const doc = new MongoSandboxInstance({
       provider: 'opensandbox',
       sandboxId: 'provider-sandbox-def456',
-      appId: '507f1f77bcf86cd799439011',
+      ...createAppSourceFields(),
+      appId,
       userId: '507f1f77bcf86cd799439013',
       chatId: 'session-chat-001',
       type: 'session-runtime',
@@ -64,7 +73,8 @@ describe('SandboxInstance Schema', () => {
     const doc = new MongoSandboxInstance({
       provider: 'opensandbox',
       sandboxId: 'provider-sandbox-ghi789',
-      appId: '507f1f77bcf86cd799439011',
+      ...createAppSourceFields(),
+      appId,
       userId: '507f1f77bcf86cd799439013',
       chatId: 'edit-debug',
       type: 'edit-debug',
@@ -87,7 +97,8 @@ describe('SandboxInstance Schema', () => {
     const doc = new MongoSandboxInstance({
       provider: 'opensandbox',
       sandboxId: 'provider-sandbox-mno345',
-      appId: '507f1f77bcf86cd799439011',
+      ...createAppSourceFields(),
+      appId,
       userId: '507f1f77bcf86cd799439013',
       chatId: 'edit-debug',
       type: 'edit-debug',
@@ -112,6 +123,7 @@ describe('SandboxInstance Schema', () => {
     const doc = new MongoSandboxInstance({
       provider: 'opensandbox',
       sandboxId: 'provider-sandbox-pqr678',
+      ...createAppSourceFields('507f1f77bcf86cd799439012'),
       appId: '507f1f77bcf86cd799439012',
       userId: '507f1f77bcf86cd799439013',
       chatId: 'session-chat-002',
@@ -130,5 +142,21 @@ describe('SandboxInstance Schema', () => {
     expect(doc.status).toBe('stopped');
     expect(doc.type).toBe('session-runtime');
     expect(doc.metadata?.skillIds).toHaveLength(2);
+  });
+
+  it('should require source fields', async () => {
+    const doc = new MongoSandboxInstance({
+      provider: 'opensandbox',
+      sandboxId: 'provider-sandbox-required-source',
+      appId,
+      userId: '507f1f77bcf86cd799439013',
+      chatId: 'session-chat-003',
+      type: 'session-runtime',
+      status: 'running'
+    });
+
+    const validation = doc.validateSync();
+    expect(validation?.errors?.sourceType).toBeDefined();
+    expect(validation?.errors?.sourceId).toBeDefined();
   });
 });

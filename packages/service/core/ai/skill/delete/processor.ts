@@ -13,6 +13,8 @@ import { MongoAgentSkills } from '../model/schema';
 import { MongoAgentSkillsVersion } from '../version/schema';
 import { deleteSkillRelatedSandboxes } from '../sandbox/controller';
 import { findSkillAndAllChildren } from '../manage/folder';
+import { deleteChatResourcesBySource } from '../../../chat/delete';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS.CREATION);
 
@@ -38,6 +40,16 @@ const deleteSkillExternalData = async ({
   const nonFolderSkillIds = nonFolderSkills.map((skill) => String(skill._id));
   if (nonFolderSkillIds.length > 0) {
     await deleteSkillRelatedSandboxes(nonFolderSkillIds);
+    await batchRun(
+      nonFolderSkillIds,
+      async (skillId) => {
+        await deleteChatResourcesBySource({
+          sourceType: ChatSourceTypeEnum.skillEdit,
+          sourceId: skillId
+        });
+      },
+      3
+    );
   }
 };
 

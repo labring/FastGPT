@@ -11,9 +11,11 @@ import {
 } from '@/components/core/chat/ChatContainer/ChatBox/utils/scrollUtils';
 
 describe('ChatBox scrollUtils', () => {
-  it('should build stable scroll target keys only when appId and chatId exist', () => {
-    expect(getChatScrollTargetKey({ appId: 'app-1', chatId: 'chat-1' })).toBe('app-1:chat-1');
-    expect(getChatScrollTargetKey({ appId: 'app-1' })).toBeUndefined();
+  it('should build stable scroll target keys only when sourceKey and chatId exist', () => {
+    expect(getChatScrollTargetKey({ sourceKey: 'app:app-1', chatId: 'chat-1' })).toBe(
+      'app:app-1:chat-1'
+    );
+    expect(getChatScrollTargetKey({ sourceKey: 'app:app-1' })).toBeUndefined();
     expect(getChatScrollTargetKey({ chatId: 'chat-1' })).toBeUndefined();
   });
 

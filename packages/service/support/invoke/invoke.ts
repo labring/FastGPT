@@ -8,6 +8,7 @@ import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/consta
 import type { InvokeUserInfoResponseType } from '@fastgpt/global/openapi/plugin/invoke';
 import { getS3ChatSource } from '../../common/s3/sources/chat';
 import { serviceEnv } from '../../env';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getGroupsByTmbId } from '../permission/memberGroup/controllers';
 import { getOrgsByTmbId } from '../permission/org/controllers';
 import { MongoOrgModel } from '../permission/org/orgSchema';
@@ -73,7 +74,8 @@ export class InvokeProcessor {
 
     const { filename, body, contentType, expiredTime } = InvokeFileUploadSchema.parse(params);
     const result = await getS3ChatSource().uploadChatFile({
-      appId,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
       chatId,
       uId,
       filename,

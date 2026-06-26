@@ -5,7 +5,8 @@ import { batchRun, retryFn } from '@fastgpt/global/common/system/utils';
 import {
   ChatGenerateStatusEnum,
   ChatRoleEnum,
-  ChatSourceEnum
+  ChatSourceEnum,
+  ChatSourceTypeEnum
 } from '@fastgpt/global/core/chat/constants';
 import type {
   UserChatItemType,
@@ -94,10 +95,14 @@ export const getScheduleTriggerApp = async () => {
         obj: ChatRoleEnum.Human,
         value: userQuery
       };
+      const chatSource = {
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: String(app._id)
+      };
 
       const preparedRound = await preChatRound({
+        ...chatSource,
         chatId,
-        appId: String(app._id),
         teamId: String(app.teamId),
         tmbId: String(app.tmbId),
         source: ChatSourceEnum.cronJob,
@@ -125,8 +130,8 @@ export const getScheduleTriggerApp = async () => {
         }
 
         const saveParams: SaveChatProps = {
+          ...chatSource,
           chatId: preparedRound.chatId,
-          appId: String(app._id),
           versionId,
           teamId: String(app.teamId),
           tmbId: String(app.tmbId),
@@ -165,7 +170,8 @@ export const getScheduleTriggerApp = async () => {
             mode: 'chat',
             usageId,
             runningAppInfo: {
-              id: String(app._id),
+              sourceType: ChatSourceTypeEnum.app,
+              sourceId: String(app._id),
               name: app.name,
               teamId: String(app.teamId),
               tmbId: String(app.tmbId)
@@ -210,14 +216,14 @@ export const getScheduleTriggerApp = async () => {
         if (!chatRoundFinalized && preparedRound?.shouldPersistChatRound) {
           if (preparedRound.shouldFinalizePreparedRound) {
             await failChatRound({
-              appId: String(app._id),
+              ...chatSource,
               chatId: preparedRound.chatId,
               responseChatItemId: preparedRound.responseChatItemId,
               error
             }).catch();
           } else {
             await updateChatGenerateStatus({
-              appId: String(app._id),
+              ...chatSource,
               chatId: preparedRound.chatId,
               status: ChatGenerateStatusEnum.error
             }).catch();

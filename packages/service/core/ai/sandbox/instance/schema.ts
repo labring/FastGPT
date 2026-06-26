@@ -3,6 +3,7 @@ const { Schema } = connectionMongo;
 import type { SandboxInstanceSchemaType } from '../type';
 import { SandboxStatusEnum, SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { SandboxLimitSchema, SandboxProviderSchema } from '../type';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 /**
  * sandbox 实例记录集合。
@@ -24,6 +25,15 @@ const SandboxInstanceSchema = new Schema({
   },
   // Chat 模式和 skill sandbox 都会复用这组根字段。
   appId: String,
+  sourceType: {
+    type: String,
+    enum: Object.values(ChatSourceTypeEnum),
+    required: true
+  },
+  sourceId: {
+    type: String,
+    required: true
+  },
   userId: String,
   chatId: String,
   type: {
@@ -86,6 +96,7 @@ SandboxInstanceSchema.index(
 );
 SandboxInstanceSchema.index({ 'metadata.skillId': 1 });
 SandboxInstanceSchema.index({ type: 1, chatId: 1 });
+SandboxInstanceSchema.index({ sourceType: 1, sourceId: 1, chatId: 1 });
 
 /**
  * sandbox 实例 Mongo model。

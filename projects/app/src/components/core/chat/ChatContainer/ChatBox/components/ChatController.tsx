@@ -18,7 +18,7 @@ import LikeFeedbackButton from './LikeFeedbackButton';
 export type ChatControllerProps = {
   isLastChild: boolean;
   chat: ChatSiteItemType;
-  showVoiceIcon?: boolean;
+  enableTTS?: boolean;
   onRetry?: () => void;
   onDelete?: () => void;
   onMark?: () => void;
@@ -57,7 +57,7 @@ const footerIconStyle = {
 
 const ChatController = ({
   chat,
-  showVoiceIcon,
+  enableTTS,
   onMark,
   onRetry,
   onDelete,
@@ -198,7 +198,7 @@ const ChatController = ({
               )}
             </>
           )}
-          {showVoiceIcon &&
+          {enableTTS &&
             hasAudio &&
             (() => {
               const isPlayingChat = chat.dataId === audioPlayingChatId;

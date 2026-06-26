@@ -1,10 +1,12 @@
 import { batchRun } from '@fastgpt/global/common/system/utils';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import {
   deleteSandboxResourceRecord,
-  findSandboxResourcesByAppId,
-  findSandboxResourcesByChatIds,
+  findSandboxResourcesBySource,
+  findSandboxResourcesBySourceChatIds,
   markSandboxResourceStopped,
+  type SandboxSourceParams,
   type SandboxResourceRef
 } from '../instance/repository';
 import { buildSandboxResourceAdapter } from '../provider/adapter';
@@ -64,18 +66,18 @@ export async function deleteSandboxResource(
 }
 
 /**
- * 删除某个 app 下指定 chat 会话关联的 sandbox 资源。
+ * 删除某个 source 下指定 chat 会话关联的 sandbox 资源。
  *
  * 这里用于聊天记录删除等批量清理场景；单个资源清理失败会记录日志并继续处理剩余资源。
  */
-export const deleteSandboxesByChatIds = async ({
-  appId,
+export const deleteSandboxesBySourceChatIds = async ({
+  sourceType,
+  sourceId,
   chatIds
-}: {
-  appId: string;
+}: SandboxSourceParams & {
   chatIds: string[];
 }) => {
-  const instances = await findSandboxResourcesByChatIds({ appId, chatIds });
+  const instances = await findSandboxResourcesBySourceChatIds({ sourceType, sourceId, chatIds });
   if (!instances.length) return;
 
   await Promise.allSettled(
@@ -89,12 +91,12 @@ export const deleteSandboxesByChatIds = async ({
 };
 
 /**
- * 删除某个 app 下的全部 sandbox 资源。
+ * 删除某个 source 下的全部 sandbox 资源。
  *
- * app 删除流程可能遇到多个 chat、edit-debug 或历史 provider 资源，因此统一从实例记录查询后逐条清理。
+ * App 删除流程可能遇到多个 chat、edit-debug 或历史 provider 资源，因此统一从实例记录查询后逐条清理。
  */
-export const deleteSandboxesByAppId = async (appId: string) => {
-  const instances = await findSandboxResourcesByAppId(appId);
+export const deleteSandboxesBySource = async (params: SandboxSourceParams) => {
+  const instances = await findSandboxResourcesBySource(params);
   if (!instances.length) return;
 
   await Promise.allSettled(
@@ -104,6 +106,18 @@ export const deleteSandboxesByAppId = async (appId: string) => {
       });
     })
   );
+};
+
+/**
+ * 删除某个 App 下的全部 sandbox 资源。
+ *
+ * 这是 App 删除场景的语义化入口；内部仍走 source-aware 查询，避免上层继续拼物理字段。
+ */
+export const deleteAppSandboxes = async (appId: string) => {
+  return deleteSandboxesBySource({
+    sourceType: ChatSourceTypeEnum.app,
+    sourceId: appId
+  });
 };
 
 /**

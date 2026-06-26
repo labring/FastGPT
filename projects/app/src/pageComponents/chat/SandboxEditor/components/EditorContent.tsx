@@ -17,6 +17,7 @@ import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/ch
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { SandboxEditorInstance } from '../types';
+import type { ChatTargetInputType } from '@fastgpt/global/openapi/core/chat/api';
 
 type Props = {
   activeFile: OpenedFile | undefined;
@@ -27,7 +28,7 @@ type Props = {
   setOpenedFiles: React.Dispatch<React.SetStateAction<OpenedFile[]>>;
   openedFiles: OpenedFile[];
   editorRef: React.MutableRefObject<SandboxEditorInstance | undefined>;
-  appId: string;
+  sandboxTarget: ChatTargetInputType;
   chatId: string;
   outLinkAuthData?: OutLinkChatAuthProps;
   showDownload?: boolean;
@@ -44,7 +45,7 @@ const EditorContent = ({
   setOpenedFiles,
   openedFiles,
   editorRef,
-  appId,
+  sandboxTarget,
   chatId,
   outLinkAuthData,
   showDownload = true,
@@ -67,7 +68,7 @@ const EditorContent = ({
     try {
       setGeneratingLink(true);
       const url = await getHtmlPreviewLink({
-        appId,
+        ...sandboxTarget,
         chatId,
         filePath: activeFile.path,
         outLinkAuthData

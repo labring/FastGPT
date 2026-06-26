@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatFileTypeEnum,
+  ChatRoleEnum,
+  ChatSourceTypeEnum
+} from '@fastgpt/global/core/chat/constants';
 import { runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -180,7 +184,8 @@ const createProps = () =>
       }
     },
     runningAppInfo: {
-      id: 'app_1',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app_1',
       teamId: 'team_1',
       tmbId: 'tmb_1',
       name: 'App'
@@ -465,16 +470,17 @@ describe('dispatchPiAgent user context', () => {
     await resultPromise!;
 
     expect(ensureAgentSandboxRuntimeMock).toHaveBeenCalledWith({
-      appId: 'app_1',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app_1',
       userId: 'user_1',
       chatId: 'chat_1',
-      sandboxId: undefined,
       teamId: 'team_1',
       tmbId: 'tmb_1',
       needSandboxRuntime: true,
       sandboxEntrypoint: undefined,
       skillIds: [],
       editSkillId: undefined,
+      prepareActions: undefined,
       currentFiles: [
         expect.objectContaining({
           url: '/current.pdf'
@@ -529,16 +535,17 @@ describe('dispatchPiAgent user context', () => {
     await resultPromise!;
 
     expect(ensureAgentSandboxRuntimeMock).toHaveBeenCalledWith({
-      appId: 'app_1',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app_1',
       userId: 'user_1',
       chatId: 'chat_1',
-      sandboxId: undefined,
       teamId: 'team_1',
       tmbId: 'tmb_1',
       needSandboxRuntime: true,
       sandboxEntrypoint: undefined,
       skillIds: ['skill_1'],
       editSkillId: undefined,
+      prepareActions: undefined,
       currentFiles: [
         expect.objectContaining({
           url: '/current.pdf'
@@ -605,16 +612,17 @@ describe('dispatchPiAgent user context', () => {
     await resultPromise!;
 
     expect(ensureAgentSandboxRuntimeMock).toHaveBeenCalledWith({
-      appId: 'app_1',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app_1',
       userId: 'user_1',
       chatId: 'chat_1',
-      sandboxId: undefined,
       teamId: 'team_1',
       tmbId: 'tmb_1',
       needSandboxRuntime: true,
       sandboxEntrypoint: undefined,
       skillIds: ['edit_skill_1'],
       editSkillId: 'edit_skill_1',
+      prepareActions: undefined,
       currentFiles: [
         expect.objectContaining({
           url: '/current.pdf'

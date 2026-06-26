@@ -92,6 +92,7 @@ vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
 }));
 
 import { getSandboxClient, SandboxClient } from '@fastgpt/service/core/ai/sandbox/service/runtime';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 const mockLeanResult = <T>(value: T) => ({
   lean: vi.fn(async () => value)
@@ -102,6 +103,15 @@ const createProvider = () =>
     provider: 'sealosdevbox',
     execute: vi.fn(async () => ({ stdout: 'ok', stderr: '', exitCode: 0 }))
   }) as any;
+
+const createSandboxIdQuery = (sandboxId: string) => ({
+  sandboxId,
+  sourceType: ChatSourceTypeEnum.app,
+  sourceId: 'app-1',
+  appId: 'app-1',
+  userId: 'user-1',
+  chatId: 'chat-1'
+});
 
 describe('sandbox runtime service', () => {
   beforeEach(() => {
@@ -122,9 +132,7 @@ describe('sandbox runtime service', () => {
   });
 
   it('gets a sandbox client by stable sandbox id and ensures it is available', async () => {
-    const client = await getSandboxClient({
-      sandboxId: 'sandbox-ready-check'
-    });
+    const client = await getSandboxClient(createSandboxIdQuery('sandbox-ready-check'));
 
     expect(client.getSandboxId()).toBe('sandbox-ready-check');
     expect(mocks.getSessionVolumeConfig).not.toHaveBeenCalled();
@@ -139,6 +147,8 @@ describe('sandbox runtime service', () => {
       expect.objectContaining({
         provider: 'sealosdevbox',
         sandboxId: 'sandbox-ready-check',
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: 'app-1',
         metadata: {
           volumeEnabled: false
         }
@@ -154,12 +164,9 @@ describe('sandbox runtime service', () => {
     };
     mocks.getSessionVolumeConfig.mockResolvedValue(vmConfig);
 
-    await getSandboxClient(
-      { sandboxId: 'opensandbox-volume' },
-      {
-        providerName: 'opensandbox'
-      }
-    );
+    await getSandboxClient(createSandboxIdQuery('opensandbox-volume'), {
+      providerName: 'opensandbox'
+    });
 
     expect(mocks.getSessionVolumeConfig).toHaveBeenCalledWith('opensandbox-volume');
     expect(mocks.getSessionVolumeConfig).toHaveBeenCalledTimes(1);
@@ -167,6 +174,8 @@ describe('sandbox runtime service', () => {
       expect.objectContaining({
         provider: 'opensandbox',
         sandboxId: 'opensandbox-volume',
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: 'app-1',
         vmConfig,
         storage: { mountPath: '/workspace' }
       })
@@ -179,6 +188,8 @@ describe('sandbox runtime service', () => {
       expect.objectContaining({
         provider: 'opensandbox',
         sandboxId: 'opensandbox-volume',
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: 'app-1',
         storage: { mountPath: '/workspace' }
       })
     );
@@ -188,7 +199,7 @@ describe('sandbox runtime service', () => {
     mocks.assertSandboxNotArchivedOrBusy.mockRejectedValueOnce(new Error('Sandbox is archived'));
 
     await expect(
-      getSandboxClient({ sandboxId: 'archived-sandbox' }, { restoreArchived: false })
+      getSandboxClient(createSandboxIdQuery('archived-sandbox'), { restoreArchived: false })
     ).rejects.toThrow('Sandbox is archived');
     expect(mocks.upsertRunningSandboxInstance).not.toHaveBeenCalled();
   });
@@ -196,7 +207,7 @@ describe('sandbox runtime service', () => {
   it('blocks archiving sandbox access before runtime can recreate it', async () => {
     mocks.restoreArchivedSandboxBeforeUse.mockRejectedValueOnce(new Error('Sandbox is archiving'));
 
-    await expect(getSandboxClient({ sandboxId: 'archiving-sandbox' })).rejects.toThrow(
+    await expect(getSandboxClient(createSandboxIdQuery('archiving-sandbox'))).rejects.toThrow(
       'Sandbox is archiving'
     );
     expect(mocks.upsertRunningSandboxInstance).not.toHaveBeenCalled();
@@ -236,23 +247,27 @@ describe('sandbox runtime service', () => {
     expect(mocks.buildRuntimeSandboxAdapter).not.toHaveBeenCalled();
   });
 
+  it('rejects sandboxId-only query before creating an orphan runtime record', async () => {
+    await expect(getSandboxClient({ sandboxId: 'sandbox-without-source' } as any)).rejects.toThrow(
+      'sourceType and sourceId are required'
+    );
+    expect(mocks.buildRuntimeSandboxAdapter).not.toHaveBeenCalled();
+  });
+
   it('passes resource limits into running instance records and command timeout into exec', async () => {
     const provider = createProvider();
     mocks.buildRuntimeSandboxAdapter.mockReturnValueOnce(provider);
-    const client = new SandboxClient(
-      { sandboxId: 'sandbox-with-limits' },
-      {
-        resourceLimits: {
-          cpuCount: 2,
-          memoryMiB: 1024,
-          diskGiB: 4
-        },
-        vmConfig: {
-          volumes: [{ name: 'workspace', pvc: { claimName: 'claim-1' }, mountPath: '/workspace' }],
-          storage: { mountPath: '/workspace' }
-        }
+    const client = new SandboxClient(createSandboxIdQuery('sandbox-with-limits'), {
+      resourceLimits: {
+        cpuCount: 2,
+        memoryMiB: 1024,
+        diskGiB: 4
+      },
+      vmConfig: {
+        volumes: [{ name: 'workspace', pvc: { claimName: 'claim-1' }, mountPath: '/workspace' }],
+        storage: { mountPath: '/workspace' }
       }
-    );
+    });
 
     await expect(client.exec('echo ok', 2)).resolves.toEqual({
       stdout: 'ok',
@@ -263,6 +278,8 @@ describe('sandbox runtime service', () => {
     expect(mocks.upsertRunningSandboxInstance).toHaveBeenCalledWith(
       expect.objectContaining({
         sandboxId: 'sandbox-with-limits',
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: 'app-1',
         storage: { mountPath: '/workspace' },
         limit: {
           cpuCount: 2,
@@ -277,7 +294,7 @@ describe('sandbox runtime service', () => {
   });
 
   it('uses resource service when runtime client stop and delete are called', async () => {
-    const client = new SandboxClient({ sandboxId: 'runtime-cleanup-sandbox' });
+    const client = new SandboxClient(createSandboxIdQuery('runtime-cleanup-sandbox'));
 
     await client.stop();
     await client.delete();
@@ -294,7 +311,7 @@ describe('sandbox runtime service', () => {
 
   it('returns execute result error when ensureAvailable fails before exec', async () => {
     mocks.ensureConnectedSandboxRunning.mockRejectedValueOnce(new Error('ensure failed'));
-    const client = new SandboxClient({ sandboxId: 'sandbox-ensure-fail' });
+    const client = new SandboxClient(createSandboxIdQuery('sandbox-ensure-fail'));
 
     await expect(client.exec('echo never')).resolves.toMatchObject({
       stdout: '',
@@ -307,15 +324,12 @@ describe('sandbox runtime service', () => {
     const provider = createProvider();
     provider.execute.mockRejectedValueOnce(new Error('execute failed'));
     mocks.buildRuntimeSandboxAdapter.mockReturnValueOnce(provider);
-    const client = new SandboxClient(
-      { sandboxId: 'sandbox-execute-fail' },
-      {
-        providerName: 'opensandbox',
-        createConfig: {
-          image: { repository: 'test-image' }
-        }
+    const client = new SandboxClient(createSandboxIdQuery('sandbox-execute-fail'), {
+      providerName: 'opensandbox',
+      createConfig: {
+        image: { repository: 'test-image' }
       }
-    );
+    });
 
     await expect(client.exec('echo fail')).resolves.toMatchObject({
       stdout: '',

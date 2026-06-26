@@ -257,7 +257,7 @@ describe('getFeedbackRecordIds api test', () => {
     expect(res.data?.dataIds).toContain('data-4');
   });
 
-  it('should return empty result when no appId or chatId', async () => {
+  it('should reject when chat target is missing or empty', async () => {
     const res = await Call<
       GetFeedbackRecordIdsBodyType,
       Record<string, never>,
@@ -272,9 +272,8 @@ describe('getFeedbackRecordIds api test', () => {
       }
     });
 
-    expect(res.code).toBe(200);
-    expect(res.data?.total).toBe(0);
-    expect(res.data?.dataIds).toHaveLength(0);
+    expect(res.code).toBe(500);
+    expect(res.error).toBeDefined();
   });
 
   it('should fail when user does not have permission', async () => {

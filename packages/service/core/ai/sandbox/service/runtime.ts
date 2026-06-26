@@ -1,4 +1,5 @@
 import { generateSandboxId } from '@fastgpt/global/core/ai/sandbox/constants';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import {
@@ -25,6 +26,11 @@ const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 export type SandboxClientQuery =
   | {
       sandboxId: string;
+      sourceType: ChatSourceTypeEnum;
+      sourceId: string;
+      appId?: string;
+      userId?: string;
+      chatId?: string;
     }
   | {
       appId: string;
@@ -34,6 +40,8 @@ export type SandboxClientQuery =
 
 type SandboxClientProps = {
   sandboxId: string;
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
   appId?: string;
   userId?: string;
   chatId?: string;
@@ -54,6 +62,8 @@ type SandboxClientOptions = {
  * resource.ts 中的 stopSandboxResource/deleteSandboxResource，避免误触发 create/resume。
  */
 export class SandboxClient {
+  private sourceType: ChatSourceTypeEnum;
+  private sourceId: string;
   private appId?: string;
   private userId?: string;
   private chatId?: string;
@@ -66,6 +76,8 @@ export class SandboxClient {
     private readonly opts: SandboxClientOptions = {}
   ) {
     this.sandboxId = props.sandboxId;
+    this.sourceType = props.sourceType;
+    this.sourceId = props.sourceId;
     this.appId = props.appId;
     this.userId = props.userId;
     this.chatId = props.chatId;
@@ -86,6 +98,8 @@ export class SandboxClient {
     const instance = await upsertRunningSandboxInstance({
       provider: this.providerName,
       sandboxId: this.sandboxId,
+      sourceType: this.sourceType,
+      sourceId: this.sourceId,
       appId: this.appId,
       userId: this.userId,
       chatId: this.chatId,
@@ -172,8 +186,16 @@ const resolveSandboxClientProps = (props: SandboxClientQuery): SandboxClientProp
     if (!props.sandboxId) {
       throw new Error('sandboxId is required');
     }
+    if (!props.sourceType || !props.sourceId) {
+      throw new Error('sourceType and sourceId are required when sandboxId is provided');
+    }
     return {
-      sandboxId: props.sandboxId
+      sandboxId: props.sandboxId,
+      sourceType: props.sourceType,
+      sourceId: props.sourceId,
+      appId: props.appId,
+      userId: props.userId,
+      chatId: props.chatId
     };
   }
 
@@ -184,6 +206,8 @@ const resolveSandboxClientProps = (props: SandboxClientQuery): SandboxClientProp
   const sandboxUserId = props.chatId === 'edit-debug' ? '' : (props.userId ?? '');
   return {
     sandboxId: generateSandboxId(props.appId, sandboxUserId, props.chatId),
+    sourceType: ChatSourceTypeEnum.app,
+    sourceId: props.appId,
     appId: props.appId,
     userId: props.userId,
     chatId: props.chatId
@@ -215,6 +239,8 @@ export const getSandboxClient = async (
     await restoreArchivedSandboxBeforeUse({
       provider: providerName,
       sandboxId,
+      sourceType: sandboxClientProps.sourceType,
+      sourceId: sandboxClientProps.sourceId,
       appId,
       userId,
       chatId,

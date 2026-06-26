@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { getSseErrorResponse } from '@fastgpt/service/common/response';
 import { clearCookie } from '@fastgpt/service/support/permission/auth/common';
 import { STREAM_RESUME_REQUEST_HEADER } from '@fastgpt/global/core/chat/constants';
+import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getStreamResumeMirror } from '@fastgpt/service/core/chat/resume';
 import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
 
@@ -11,7 +12,8 @@ type CreateWorkflowStreamResponseContextParams = {
   stream: boolean;
   detail: boolean;
   teamId: string;
-  appId: string;
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
   chatId: string;
   responseId?: string;
   showNodeStatus?: boolean;
@@ -29,7 +31,8 @@ export const createWorkflowStreamResponseContext = async ({
   stream,
   detail,
   teamId,
-  appId,
+  sourceType,
+  sourceId,
   chatId,
   responseId,
   showNodeStatus = true
@@ -38,7 +41,8 @@ export const createWorkflowStreamResponseContext = async ({
     ? await getStreamResumeMirror({
         resumeRequestHeaderValue: req.headers?.[STREAM_RESUME_REQUEST_HEADER],
         teamId,
-        appId,
+        sourceType,
+        sourceId,
         chatId
       })
     : undefined;

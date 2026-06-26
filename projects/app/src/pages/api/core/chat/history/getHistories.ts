@@ -1,8 +1,6 @@
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import { ChatGenerateStatusEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
-import { authOutLink } from '@/service/support/permission/auth/outLink';
-import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps, type ApiResponseType } from '@fastgpt/service/type/next';
 import {
@@ -11,12 +9,9 @@ import {
   type GetHistoriesResponseType
 } from '@fastgpt/global/openapi/core/chat/history/api';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
-import { addMonths } from 'date-fns';
 import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
-import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { buildChatHistoryMatch } from '@/service/core/chat/history';
 
 /* get chat histories list */
 export async function handler(
@@ -24,7 +19,8 @@ export async function handler(
   _res: ApiResponseType
 ): Promise<GetHistoriesResponseType> {
   const {
-    appId,
+    sourceType,
+    sourceId,
     shareId,
     outLinkUid,
     teamId,
@@ -37,54 +33,16 @@ export async function handler(
   } = parseApiInput({ req, bodySchema: GetHistoriesBodySchema }).body;
   const { offset, pageSize } = parsePaginationRequest(req);
 
-  const match = await (async () => {
-    if (shareId && outLinkUid) {
-      const { uid } = await authOutLink({ shareId, outLinkUid });
-
-      return {
-        shareId,
-        outLinkUid: uid,
-        updateTime: {
-          $gte: addMonths(new Date(), -1)
-        }
-      };
-    }
-    if (appId && teamId && teamToken) {
-      const { uid, tags } = await authTeamSpaceToken({ teamId, teamToken });
-
-      const app = await MongoApp.findOne({
-        _id: appId,
-        teamId,
-        $or: [
-          { teamTags: { $size: 0 } },
-          { teamTags: { $exists: false } },
-          { teamTags: { $in: tags } }
-        ]
-      }).lean();
-      if (!app) return undefined;
-
-      return {
-        appId,
-        outLinkUid: uid,
-        source: ChatSourceEnum.team
-      };
-    }
-    if (appId) {
-      const { tmbId } = await authApp({
-        req,
-        authToken: true,
-        authApiKey: true,
-        appId,
-        per: ReadPermissionVal
-      });
-
-      return {
-        appId,
-        tmbId,
-        ...(source && { source })
-      };
-    }
-  })();
+  const match = await buildChatHistoryMatch({
+    req,
+    sourceType,
+    sourceId,
+    shareId,
+    outLinkUid,
+    teamId,
+    teamToken,
+    source
+  });
 
   if (!match) {
     return Promise.reject(ChatErrEnum.unAuthChat);

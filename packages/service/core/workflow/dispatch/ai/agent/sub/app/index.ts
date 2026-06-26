@@ -21,6 +21,7 @@ import type { RunWorkflowProps } from '../../../../../../../core/workflow/dispat
 import { anyValueDecrypt } from '../../../../../../../common/secret/utils';
 import { WorkflowVariableState } from '../../../../utils/variables';
 import { getRuntimeNodeResponseSummary } from '../../../../utils';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 type Props = Pick<
   RunWorkflowProps,
@@ -78,7 +79,8 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
   // Rewrite children app variables
   const { externalProvider } = await getUserChatInfo(appData.tmbId);
   const childRunningAppInfo = {
-    id: String(appData._id),
+    sourceType: ChatSourceTypeEnum.app,
+    sourceId: String(appData._id),
     teamId: String(appData.teamId),
     tmbId: String(appData.tmbId),
     name: appData.name,
@@ -105,7 +107,8 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
   const { assistantResponses, flowUsages, runtimeNodeResponseSummary } = await runWorkflow({
     ...data,
     runningAppInfo: {
-      id: String(appData._id),
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: String(appData._id),
       name: appData.name,
       teamId: String(appData.teamId),
       tmbId: String(appData.tmbId),
@@ -177,7 +180,8 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
   // Rewrite children app variables
   const { externalProvider } = await getUserChatInfo(appData.tmbId);
   const childRunningAppInfo = {
-    id: String(appData._id),
+    sourceType: ChatSourceTypeEnum.app,
+    sourceId: String(appData._id),
     teamId: String(appData.teamId || runningAppInfo.teamId),
     tmbId: String(appData.tmbId || runningAppInfo.tmbId),
     name: appData.name,
@@ -242,7 +246,8 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
   const { flowUsages, runtimeNodeResponseSummary } = await runWorkflow({
     ...data,
     runningAppInfo: {
-      id: String(appData._id),
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: String(appData._id),
       // 如果系统插件有 teamId 和 tmbId，则使用系统插件的 teamId 和 tmbId（管理员指定了插件作为系统插件）
       name: appData.name,
       teamId: appData.teamId || runningAppInfo.teamId,

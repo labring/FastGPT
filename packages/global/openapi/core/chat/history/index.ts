@@ -1,27 +1,27 @@
 import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap, SystemOpenApiTagMap } from '../../../tag';
 import {
-  GetHistoriesBodySchema,
+  GetHistoriesBodyRawSchema,
   GetHistoriesResponseSchema,
-  GetHistoryStatusBodySchema,
+  GetHistoryStatusBodyRawSchema,
   GetHistoryStatusResponseSchema,
-  MarkChatReadBodySchema,
-  UpdateHistoryBodySchema,
-  ChatBatchDeleteBodySchema,
-  DelChatHistorySchema,
-  ClearChatHistoriesSchema
+  MarkChatReadBodyRawSchema,
+  UpdateHistoryBodyRawSchema,
+  ChatBatchDeleteBodyRawSchema,
+  DelChatHistoryRawSchema,
+  ClearChatHistoriesRawSchema
 } from './api';
 
 export const ChatHistoryPath: OpenAPIPath = {
   '/core/chat/history/getHistories': {
     post: {
       summary: '获取会话列表',
-      description: '分页获取指定应用的会话',
+      description: '分页获取会话列表',
       tags: [DevApiTagsMap.chatHistory, SystemOpenApiTagMap.chatHistory],
       requestBody: {
         content: {
           'application/json': {
-            schema: GetHistoriesBodySchema
+            schema: GetHistoriesBodyRawSchema
           }
         }
       },
@@ -46,7 +46,7 @@ export const ChatHistoryPath: OpenAPIPath = {
       requestBody: {
         content: {
           'application/json': {
-            schema: GetHistoryStatusBodySchema
+            schema: GetHistoryStatusBodyRawSchema
           }
         }
       },
@@ -70,7 +70,7 @@ export const ChatHistoryPath: OpenAPIPath = {
       requestBody: {
         content: {
           'application/json': {
-            schema: MarkChatReadBodySchema
+            schema: MarkChatReadBodyRawSchema
           }
         }
       },
@@ -89,7 +89,7 @@ export const ChatHistoryPath: OpenAPIPath = {
       requestBody: {
         content: {
           'application/json': {
-            schema: UpdateHistoryBodySchema
+            schema: UpdateHistoryBodyRawSchema
           }
         }
       },
@@ -106,7 +106,7 @@ export const ChatHistoryPath: OpenAPIPath = {
       description: '软删除指定的单个会话，不会物理删除',
       tags: [DevApiTagsMap.chatHistory, SystemOpenApiTagMap.chatHistory],
       requestParams: {
-        query: DelChatHistorySchema
+        query: DelChatHistoryRawSchema
       },
       responses: {
         200: {
@@ -117,11 +117,11 @@ export const ChatHistoryPath: OpenAPIPath = {
   },
   '/core/chat/history/clearHistories': {
     delete: {
-      summary: '清空应用会话',
-      description: '清空指定应用的所有会话(软删除)',
+      summary: '清空会话',
+      description: '清空所有会话（软删除）',
       tags: [DevApiTagsMap.chatHistory, SystemOpenApiTagMap.chatHistory],
       requestParams: {
-        query: ClearChatHistoriesSchema
+        query: ClearChatHistoriesRawSchema
       },
       responses: {
         200: {
@@ -133,12 +133,12 @@ export const ChatHistoryPath: OpenAPIPath = {
   '/core/chat/history/batchDelete': {
     post: {
       summary: '批量删除会话',
-      description: '批量删除指定应用的多个会话(真实删除)，需应用日志管理权限。',
+      description: '批量删除多个会话（真实删除），需对应会话目标的管理权限。',
       tags: [DevApiTagsMap.chatHistory, SystemOpenApiTagMap.chatHistory],
       requestBody: {
         content: {
           'application/json': {
-            schema: ChatBatchDeleteBodySchema
+            schema: ChatBatchDeleteBodyRawSchema
           }
         }
       },

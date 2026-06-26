@@ -3,7 +3,7 @@ import { Types } from 'mongoose';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-  authChatCrud: vi.fn(),
+  authChatTargetCrud: vi.fn(),
   authCollectionInChat: vi.fn(),
   getCollectionWithDataset: vi.fn(),
   findChatItem: vi.fn(),
@@ -16,7 +16,7 @@ vi.mock('@/service/middleware/entry', () => ({
 }));
 
 vi.mock('@/service/support/permission/auth/chat', () => ({
-  authChatCrud: mocks.authChatCrud,
+  authChatTargetCrud: mocks.authChatTargetCrud,
   authCollectionInChat: mocks.authCollectionInChat
 }));
 
@@ -102,7 +102,7 @@ describe('getCollectionQuote handler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mocks.authChatCrud.mockResolvedValue({ chat: { _id: chatId }, showFullText: true });
+    mocks.authChatTargetCrud.mockResolvedValue({ chat: { _id: chatId }, showFullText: true });
     mocks.authCollectionInChat.mockResolvedValue(undefined);
     mocks.getCollectionWithDataset.mockResolvedValue({
       _id: collectionId,
@@ -136,10 +136,18 @@ describe('getCollectionQuote handler', () => {
     });
 
     expect(mocks.authCollectionInChat).toHaveBeenCalledWith({
-      appId,
+      sourceType: 'app',
+      sourceId: appId,
       chatId,
       collectionIds: [collectionId]
     });
+    expect(mocks.authChatTargetCrud).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceType: 'app',
+        sourceId: appId,
+        chatId
+      })
+    );
     expect(mocks.findDatasetDataByInitialId).toHaveBeenCalledWith(
       expect.objectContaining({
         teamId,

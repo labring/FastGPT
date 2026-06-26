@@ -52,6 +52,10 @@ import MobileModelSelectorDrawer from './MobileModelSelectorDrawer';
 import { mobileChatHeaderIconButtonStyle } from './headerIconButtonStyle';
 import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
 import { getDisplayHistoryTitle } from '@/web/core/chat/context/historyTitleUtils';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { getAppChatSourceKey } from '@/web/core/chat/utils';
+import { useAppChatGenerateStatusSync } from './useAppChatGenerateStatusSync';
+import { postMarkChatRead } from '@/web/core/chat/history/api';
 
 const defaultFileSelectConfig: AppFileSelectConfigType = {
   maxFiles: 20,
@@ -97,6 +101,7 @@ const HomeChatWindow = () => {
   const refreshRecentlyUsed = useContextSelector(ChatPageContext, (v) => v.refreshRecentlyUsed);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
+  const onChatGenerateStatusChange = useAppChatGenerateStatusSync();
 
   const isCurrentChatReady = chatBoxData.appId === appId && chatBoxData.chatId === chatId;
   const chatWindowTitle = getDisplayHistoryTitle({
@@ -190,7 +195,11 @@ const HomeChatWindow = () => {
         };
       }
 
-      setChatBoxData(res);
+      setChatBoxData({
+        ...res,
+        appId,
+        sourceKey: getAppChatSourceKey(appId)
+      });
 
       resetVariables({
         variables: res.variables,
@@ -472,11 +481,18 @@ const HomeChatWindow = () => {
 
         <Box flex={'1 0 0'} bg={'white'}>
           <ChatBox
-            appId={appId}
+            sourceTarget={{ sourceType: ChatSourceTypeEnum.app, sourceId: appId }}
             chatId={chatId}
             isReady={!loading && !!appId && isCurrentChatReady}
-            enableAutoResume
-            feedbackType={'user'}
+            features={{
+              autoResume: true,
+              feedbackType: 'user',
+              quickReplies: true,
+              inputGuide: true,
+              voice: true,
+              tts: true,
+              sandbox: true
+            }}
             chatType={ChatTypeEnum.home}
             slogan={chatSettings?.slogan}
             outLinkAuthData={outLinkAuthData}
@@ -485,9 +501,10 @@ const HomeChatWindow = () => {
             dialogTips={chatSettings?.dialogTips}
             InputLeftComponent={InputLeftComponent}
             onStartChat={onStartChat}
+            onMarkChatRead={postMarkChatRead}
+            onChatGenerateStatusChange={onChatGenerateStatusChange}
             quickAppList={(chatSettings?.quickAppList || []).slice(0, 3)}
             onSwitchQuickApp={handleSwitchQuickApp}
-            enableQuickReplies
           />
         </Box>
         <SandboxEditorModal />

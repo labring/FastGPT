@@ -18,18 +18,20 @@ import { getUploadChatFilePresignedUrl } from '@/web/common/file/api';
 import { getUploadFileType } from '@fastgpt/global/core/app/constants';
 import { putFileToS3 } from '@fastgpt/web/common/file/utils';
 import { getUploadChatFileType } from '../utils/file';
+import { type ChatSourceTarget, useChatApiTarget } from '@/web/core/chat/utils';
 
 type UseFileUploadOptions = {
   fileSelectConfig: AppFileSelectConfigType;
   fileCtrl: UseFieldArrayReturn<ChatBoxInputFormType, 'files', 'id'>;
 
   outLinkAuthData?: OutLinkChatAuthProps;
-  appId: string;
+  sourceTarget: ChatSourceTarget;
   chatId: string;
 };
 
 export const useFileUpload = (props: UseFileUploadOptions) => {
-  const { fileSelectConfig, fileCtrl, outLinkAuthData, appId, chatId } = props;
+  const { fileSelectConfig, fileCtrl, outLinkAuthData, sourceTarget, chatId } = props;
+  const chatTarget = useChatApiTarget(sourceTarget);
   const { toast } = useToast();
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
@@ -190,7 +192,7 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
           // Get Upload Post Presigned URL
           const { url, key, headers, maxSize, previewUrl } = await getUploadChatFilePresignedUrl({
             filename: copyFile.rawFile.name,
-            appId,
+            ...chatTarget,
             chatId,
             fileSelectConfig,
             outLinkAuthData
@@ -229,7 +231,7 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
 
     removeFiles(errorFileIndex);
   }, [
-    appId,
+    chatTarget,
     chatId,
     fileList,
     fileSelectConfig,

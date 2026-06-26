@@ -1,7 +1,11 @@
 import handler from '@/pages/api/core/chat/record/delete';
 import type { DeleteChatRecordBodyType } from '@fastgpt/global/openapi/core/chat/record/api';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatRoleEnum,
+  ChatSourceEnum,
+  ChatSourceTypeEnum
+} from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
@@ -9,6 +13,13 @@ import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { getUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { beforeEach, describe, expect, it } from 'vitest';
+import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
+import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import {
+  PerResourceTypeEnum,
+  ReadPermissionVal
+} from '@fastgpt/global/support/permission/constant';
 
 describe('delete chat record api', () => {
   let testUser: Awaited<ReturnType<typeof getUser>>;
@@ -155,6 +166,139 @@ describe('delete chat record api', () => {
     expect(res.code).toBe(200);
 
     const item = await MongoChatItem.findOne({ appId, chatId, dataId: 'keep-empty-target' }).lean();
+    expect(item?.deleteTime).toBeNull();
+  });
+
+  it('should delete skill edit chat item by skillId without touching legacy skill debug rows', async () => {
+    const skill = await MongoAgentSkills.create({
+      name: 'Delete Skill Chat Item',
+      source: AgentSkillSourceEnum.personal,
+      teamId: testUser.teamId,
+      tmbId: testUser.tmbId
+    });
+    const skillId = String(skill._id);
+    const skillChatId = getNanoid();
+    const contentId = getNanoid();
+
+    await Promise.all([
+      MongoChat.create({
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        appId: skillId,
+        chatId: skillChatId,
+        source: ChatSourceEnum.test
+      }),
+      MongoChatItem.create({
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        userId: testUser.userId,
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        appId: skillId,
+        chatId: skillChatId,
+        dataId: contentId,
+        obj: ChatRoleEnum.AI,
+        value: [{ type: 'text', text: { content: 'skill answer' } }]
+      }),
+      MongoChatItem.create({
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        userId: testUser.userId,
+        appId: skillId,
+        chatId: skillChatId,
+        dataId: contentId,
+        obj: ChatRoleEnum.AI,
+        value: [{ type: 'text', text: { content: 'legacy answer' } }]
+      })
+    ]);
+
+    const res = await Call<DeleteChatRecordBodyType, Record<string, never>>(handler, {
+      auth: testUser,
+      body: {
+        skillId,
+        chatId: skillChatId,
+        contentId
+      }
+    });
+
+    expect(res.code).toBe(200);
+
+    const [skillItem, legacyItem] = await Promise.all([
+      MongoChatItem.findOne({
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        appId: skillId,
+        chatId: skillChatId,
+        dataId: contentId
+      }).lean(),
+      MongoChatItem.findOne({
+        sourceType: { $exists: false },
+        appId: skillId,
+        chatId: skillChatId,
+        dataId: contentId
+      }).lean()
+    ]);
+    expect(skillItem?.deleteTime).toBeInstanceOf(Date);
+    expect(legacyItem?.deleteTime).toBeNull();
+  });
+
+  it('should reject read-only skill collaborator when deleting skill edit chat item', async () => {
+    const readonlyUser = await getUser(`readonly-record-delete-${getNanoid(6)}`, testUser.teamId);
+    const skill = await MongoAgentSkills.create({
+      name: 'Readonly Delete Skill Chat Item',
+      source: AgentSkillSourceEnum.personal,
+      teamId: testUser.teamId,
+      tmbId: testUser.tmbId
+    });
+    const skillId = String(skill._id);
+    const skillChatId = getNanoid();
+    const contentId = getNanoid();
+
+    await Promise.all([
+      MongoResourcePermission.create({
+        resourceType: PerResourceTypeEnum.agentSkill,
+        teamId: testUser.teamId,
+        resourceId: skillId,
+        tmbId: readonlyUser.tmbId,
+        permission: ReadPermissionVal
+      }),
+      MongoChat.create({
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        appId: skillId,
+        chatId: skillChatId,
+        source: ChatSourceEnum.test
+      }),
+      MongoChatItem.create({
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        userId: testUser.userId,
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        appId: skillId,
+        chatId: skillChatId,
+        dataId: contentId,
+        obj: ChatRoleEnum.AI,
+        value: [{ type: 'text', text: { content: 'debug answer' } }]
+      })
+    ]);
+
+    const res = await Call<DeleteChatRecordBodyType, Record<string, never>>(handler, {
+      auth: readonlyUser,
+      body: {
+        skillId,
+        chatId: skillChatId,
+        contentId
+      }
+    });
+
+    expect(res.code).not.toBe(200);
+
+    const item = await MongoChatItem.findOne({
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      appId: skillId,
+      chatId: skillChatId,
+      dataId: contentId
+    }).lean();
     expect(item?.deleteTime).toBeNull();
   });
 });

@@ -1,6 +1,6 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { SANDBOX_SYSTEM_PROMPT } from '@fastgpt/global/core/ai/sandbox/constants';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType
@@ -144,17 +144,17 @@ export const dispatchPiAgent = async (props: DispatchAgentModuleProps): Promise<
     if (effectiveUseAgentSandbox) {
       streamAgentSandboxInitStatus({
         workflowStreamResponse,
-        appId: runningAppInfo.id,
+        sourceType: runningAppInfo.sourceType,
+        sourceId: runningAppInfo.sourceId,
         userId: uid,
-        chatId,
-        sandboxId: runningAppInfo.sandboxId
+        chatId
       });
     }
     const { sandboxClient, currentWorkingDirectory, skillInfos } = await ensureAgentSandboxRuntime({
-      appId: runningAppInfo.id,
+      sourceType: runningAppInfo.sourceType,
+      sourceId: runningAppInfo.sourceId,
       userId: uid,
       chatId,
-      sandboxId: runningAppInfo.sandboxId,
       teamId: runningAppInfo.teamId,
       tmbId: runningUserInfo.tmbId,
       needSandboxRuntime: effectiveUseAgentSandbox,

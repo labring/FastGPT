@@ -8,9 +8,13 @@ import {
   UpdateChatInputGuideResponseSchema,
   type UpdateChatInputGuideResponseType
 } from '@fastgpt/global/openapi/core/chat/inputGuide/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps): Promise<UpdateChatInputGuideResponseType> {
-  const { appId, dataId, text } = UpdateChatInputGuideBodySchema.parse(req.body);
+  const { appId, dataId, text } = parseApiInput({
+    req,
+    bodySchema: UpdateChatInputGuideBodySchema
+  }).body;
   await authApp({ req, appId, authToken: true, per: WritePermissionVal });
 
   await MongoChatInputGuide.findOneAndUpdate(

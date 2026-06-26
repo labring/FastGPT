@@ -13,7 +13,7 @@ const SandboxGetFileUrlToolSchema = z.object({
 
 export const sandboxGetFileUrlTool = defineTool({
   zodSchema: SandboxGetFileUrlToolSchema,
-  execute: async ({ appId, userId, chatId, sandboxInstance, params }) => {
+  execute: async ({ sourceType, sourceId, userId, chatId, sandboxInstance, params }) => {
     const result = await Promise.all(
       params.paths.map(async (filePath) => {
         const filename = path.basename(filePath);
@@ -23,7 +23,8 @@ export const sandboxGetFileUrlTool = defineTool({
         const chatBucket = getS3ChatSource();
         const expiredTime = addHours(new Date(), 2);
         const { key } = await chatBucket.uploadChatFile({
-          appId,
+          sourceType,
+          sourceId,
           chatId,
           uId: userId,
           filename,

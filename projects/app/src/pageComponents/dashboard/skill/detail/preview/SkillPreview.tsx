@@ -1,28 +1,24 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { SkillDetailContext } from '../context';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext';
-import {
-  delSkillDebugChatItem,
-  getSkillDebugRecords,
-  postStopSkillDebugChat,
-  streamSkillDebugChat
-} from '@/web/core/skill/api';
-import type { LinkedPaginationProps } from '@fastgpt/global/openapi/api';
+import { streamSkillDebugChat } from '@/web/core/skill/api';
 import type { GetPaginationRecordsBodyType } from '@fastgpt/global/openapi/core/chat/record/api';
 import ChatAIModelSelector from '@/pageComponents/chat/ChatWindow/ChatAIModelSelector';
 import ChatBox from '@/components/core/chat/ChatContainer/ChatBox';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import { useTranslation } from 'next-i18next';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
 import { useMemoizedFn } from 'ahooks';
 import ProModal from '@/components/ProTip/ProModal';
 import { useSkillDebugChatStore } from '../useSkillDebugChatStore';
+import { getSkillEditChatSourceKey } from '@/web/core/chat/utils';
 
 const fileSelectConfig: AppFileSelectConfigType = {
   maxFiles: 10,
@@ -65,11 +61,13 @@ const SkillPreview = () => {
 
   useEffect(() => {
     setChatBoxData((prev) => {
-      const isSameChat = prev.appId === skillId && prev.chatId === chatId;
+      const sourceKey = getSkillEditChatSourceKey(skillId);
+      const isSameChat = prev.sourceKey === sourceKey && prev.chatId === chatId;
 
       return {
         ...prev,
-        appId: skillId,
+        sourceKey,
+        appId: '',
         chatId,
         title: isSameChat ? prev.title : undefined,
         chatGenerateStatus: isSameChat ? prev.chatGenerateStatus : undefined,
@@ -120,29 +118,21 @@ const SkillPreview = () => {
     }
   );
 
-  // 使用 skill 专属的删除接口，避免走 /api/core/chat/item/delete 时用 skillId 查 App 报错
-  const onDeleteChatItem = useMemoizedFn((contentId: string) =>
-    delSkillDebugChatItem({ skillId, chatId, contentId })
-  );
-  const onStopChat = useMemoizedFn(async () => {
-    const result = await postStopSkillDebugChat({ skillId, chatId });
-    return {
-      chatGenerateStatus: result.chatGenerateStatus,
-      completed: result.completed
-    };
-  });
-
   return (
     <Box h={'100%'} w={'100%'} overflow={'hidden'}>
       <ChatBox
         isReady={isReady}
-        appId={skillId}
+        sourceTarget={{ sourceType: ChatSourceTypeEnum.skillEdit, sourceId: skillId }}
         chatId={chatId}
         chatType={ChatTypeEnum.test}
-        enableMarkChatRead={false}
+        features={{
+          markRead: false,
+          voice: false,
+          tts: false,
+          inputGuide: false,
+          sandbox: false
+        }}
         onStartChat={onStartChat}
-        onDeleteChatItem={onDeleteChatItem}
-        onStopChat={onStopChat}
         InputLeftComponent={ModelSelectorInput}
         disabledSendTip={isReady ? undefined : t('sandbox_lazy_init')}
         dialogTips={t('common:core.chat.Type a message')}
@@ -194,25 +184,12 @@ const Render = () => {
     chatId: v.chatId
   }));
 
-  const chatRecordProviderParams = useMemo(
+  const chatRecordProviderParams = useMemo<GetPaginationRecordsBodyType>(
     () => ({
-      appId: skillId,
+      skillId,
       chatId
     }),
     [skillId, chatId]
-  );
-
-  const skillFetchFn = useCallback(
-    (data: LinkedPaginationProps<GetPaginationRecordsBodyType>) =>
-      getSkillDebugRecords({
-        skillId,
-        chatId: data.chatId!,
-        pageSize: data.pageSize,
-        initialId: data.initialId,
-        nextId: data.nextId,
-        prevId: data.prevId
-      }),
-    [skillId]
   );
 
   return (
@@ -226,9 +203,8 @@ const Render = () => {
       showWholeResponse={false}
       showPoints={true}
       showAvatar={false}
-      showSandboxAction={false}
     >
-      <ChatRecordContextProvider params={chatRecordProviderParams} fetchFn={skillFetchFn}>
+      <ChatRecordContextProvider params={chatRecordProviderParams}>
         <SkillPreview />
       </ChatRecordContextProvider>
     </ChatItemContextProvider>

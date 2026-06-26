@@ -521,12 +521,13 @@ pub async fn handle_relay(
             tokio::time::sleep(Duration::from_secs(120)).await;
 
             debug!(
-                "[KeepAlive] Sending heartbeat for appId: {}, chatId: {}",
-                claims.app_id, claims.chat_id
+                "[KeepAlive] Sending heartbeat for sourceType: {}, sourceId: {}, chatId: {}",
+                claims.source_type, claims.source_id, claims.chat_id
             );
 
             let body = serde_json::json!({
-                "appId": claims.app_id,
+                "sourceType": claims.source_type,
+                "sourceId": claims.source_id,
                 "userId": claims.user_id,
                 "chatId": claims.chat_id,
                 "teamId": claims.team_id,

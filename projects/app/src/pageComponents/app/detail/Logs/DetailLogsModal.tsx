@@ -10,7 +10,7 @@ import dynamic from 'next/dynamic';
 import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { PluginRunBoxTabEnum } from '@/components/core/chat/ChatContainer/PluginRunBox/constants';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
-import { GetChatTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatSourceTypeEnum, GetChatTypeEnum } from '@fastgpt/global/core/chat/constants';
 import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import ChatRecordContextProvider, {
   ChatRecordContext
@@ -22,6 +22,7 @@ import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/const
 import { DetailLogsModalFeedbackTypeFilter } from './FeedbackTypeFilter';
 import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import { getAppChatSourceKey } from '@/web/core/chat/utils';
 
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
 const ChatBox = dynamic(() => import('@/components/core/chat/ChatContainer/ChatBox'));
@@ -66,7 +67,11 @@ const DetailLogsModal = ({
       const res = await getInitChatInfo({ appId, chatId, loadCustomFeedbacks: true });
       res.userAvatar = HUMAN_ICON;
 
-      setChatBoxData(res);
+      setChatBoxData({
+        ...res,
+        appId,
+        sourceKey: getAppChatSourceKey(appId)
+      });
       resetVariables({
         variables: res.variables,
         variableList: res.app?.chatConfig?.variables
@@ -193,14 +198,19 @@ const DetailLogsModal = ({
               ) : (
                 <ChatBox
                   isReady
-                  appId={appId}
+                  sourceTarget={{ sourceType: ChatSourceTypeEnum.app, sourceId: appId }}
                   chatId={chatId}
-                  feedbackType={'admin'}
-                  showMarkIcon
-                  showVoiceIcon={false}
+                  features={{
+                    feedbackType: 'admin',
+                    mark: true,
+                    voice: false,
+                    tts: false,
+                    inputGuide: false,
+                    sandbox: false,
+                    disableFooterHoverTranslate: true,
+                    footerRunDetailPosition: 'afterCopy'
+                  }}
                   chatType={ChatTypeEnum.log}
-                  disableFooterHoverTranslate
-                  footerRunDetailPosition={'afterCopy'}
                   feedbackUserName={feedbackUserName}
                   onTriggerRefresh={() => setRefreshTrigger((prev) => !prev)}
                 />

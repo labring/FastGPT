@@ -4,6 +4,8 @@ import {
   SANDBOX_SHELL_TOOL_NAME,
   SANDBOX_WRITE_FILE_TOOL_NAME
 } from '@fastgpt/global/core/ai/sandbox/tools';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { generateSandboxId } from '@fastgpt/global/core/ai/sandbox/constants';
 
 const runtimeMock = vi.hoisted(() => ({
   getSandboxClient: vi.fn()
@@ -60,6 +62,11 @@ const createSandboxInstance = () =>
   }) as any;
 
 describe('sandbox toolCall index', () => {
+  const appSource = {
+    sourceType: ChatSourceTypeEnum.app,
+    sourceId: 'app'
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
     runtimeMock.getSandboxClient.mockResolvedValue(createSandboxInstance());
@@ -70,7 +77,7 @@ describe('sandbox toolCall index', () => {
   it('executes known tools through a fetched sandbox client', async () => {
     await expect(
       runSandboxTools({
-        appId: 'app',
+        ...appSource,
         userId: 'user',
         chatId: 'chat',
         toolName: SANDBOX_SHELL_TOOL_NAME,
@@ -83,9 +90,7 @@ describe('sandbox toolCall index', () => {
     });
 
     expect(runtimeMock.getSandboxClient).toHaveBeenCalledWith({
-      appId: 'app',
-      userId: 'user',
-      chatId: 'chat'
+      sandboxId: generateSandboxId('app', 'user', 'chat')
     });
   });
 
@@ -94,7 +99,7 @@ describe('sandbox toolCall index', () => {
 
     await expect(
       runSandboxTools({
-        appId: 'app',
+        ...appSource,
         userId: 'user',
         chatId: 'chat',
         toolName: 'unknown-tool',
@@ -108,7 +113,7 @@ describe('sandbox toolCall index', () => {
 
     await expect(
       runSandboxTools({
-        appId: 'app',
+        ...appSource,
         userId: 'user',
         chatId: 'chat',
         toolName: SANDBOX_READ_FILE_TOOL_NAME,
@@ -125,7 +130,7 @@ describe('sandbox toolCall index', () => {
 
     await expect(
       runSandboxTools({
-        appId: 'app',
+        ...appSource,
         userId: 'user',
         chatId: 'chat',
         toolName: SANDBOX_SHELL_TOOL_NAME,
@@ -147,7 +152,7 @@ describe('sandbox toolCall index', () => {
 
     await expect(
       prepareSandboxToolRuntime({
-        appId: 'app',
+        ...appSource,
         userId: 'user',
         chatId: 'chat',
         files

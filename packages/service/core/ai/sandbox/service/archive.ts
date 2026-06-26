@@ -2,6 +2,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { subDays } from 'date-fns';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
+import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { ISandbox, SandboxCreateSpec } from '@fastgpt-sdk/sandbox-adapter';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { getS3SandboxSource } from '../../../../common/s3/sources/sandbox';
@@ -596,6 +597,8 @@ async function createRestoreSandbox(params: {
 export async function restoreArchivedSandboxBeforeUse(params: {
   provider: SandboxProviderType;
   sandboxId: string;
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
   appId?: string;
   userId?: string;
   chatId?: string;
@@ -658,6 +661,8 @@ export async function restoreArchivedSandboxBeforeUse(params: {
     const restoredStorage = params.storage ?? restoreTarget.storage;
 
     const restoredDoc = await markSandboxRestored(restoringDoc, {
+      sourceType: params.sourceType,
+      sourceId: params.sourceId,
       appId: params.appId,
       userId: params.userId,
       chatId: params.chatId,

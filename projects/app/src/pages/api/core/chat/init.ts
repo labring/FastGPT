@@ -14,11 +14,82 @@ import { MongoAppRecord } from '@fastgpt/service/core/app/record/schema';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { InitChatQuerySchema } from '@fastgpt/global/openapi/core/chat/controler/api';
-import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
+import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 async function handler(req: NextApiRequest, res: NextApiResponse): Promise<InitChatResponseType> {
-  const { appId, chatId } = parseApiInput({ req, querySchema: InitChatQuerySchema }).query;
+  const { sourceType, sourceId, chatId } = parseApiInput({
+    req,
+    querySchema: InitChatQuerySchema
+  }).query;
+
+  if (sourceType === ChatSourceTypeEnum.skillEdit) {
+    const [{ skill }, chat] = await Promise.all([
+      authSkill({
+        req,
+        authToken: true,
+        authApiKey: true,
+        skillId: sourceId,
+        per: ReadPermissionVal
+      }),
+      chatId
+        ? MongoChat.findOne({ ...buildChatSourceQuery({ sourceType, sourceId }), chatId })
+        : undefined
+    ]);
+
+    if (chat && String(chat.teamId) !== String(skill.teamId)) {
+      return Promise.reject(ChatErrEnum.unAuthChat);
+    }
+
+    const chatGenerateStatus = chat?.chatGenerateStatus ?? ChatGenerateStatusEnum.done;
+    if (chat?.hasBeenRead === false && chatGenerateStatus !== ChatGenerateStatusEnum.generating) {
+      await MongoChat.updateOne(
+        { ...buildChatSourceQuery({ sourceType, sourceId }), chatId },
+        { $set: { hasBeenRead: true } }
+      );
+      chat.hasBeenRead = true;
+    }
+
+    return {
+      chatId,
+      sourceType,
+      sourceId,
+      title: chat?.title || '',
+      userAvatar: undefined,
+      variables: {},
+      chatGenerateStatus: chat?.chatGenerateStatus,
+      hasBeenRead: chat?.hasBeenRead,
+      app: {
+        chatConfig: {
+          fileSelectConfig: {
+            maxFiles: 10,
+            canSelectFile: false,
+            canSelectImg: false,
+            customPdfParse: false,
+            canSelectVideo: false,
+            canSelectAudio: false,
+            canSelectCustomFileExtension: false,
+            customFileExtensionList: []
+          }
+        },
+        chatModels: [],
+        name: skill.name,
+        avatar: skill.avatar || '',
+        intro: skill.description || '',
+        type: AppTypeEnum.simple,
+        pluginInputs: []
+      }
+    };
+  }
+
+  if (sourceType !== ChatSourceTypeEnum.app) {
+    const exhaustiveCheck: never = sourceType;
+    throw new Error(`Unsupported chat source type: ${exhaustiveCheck}`);
+  }
+  const appId = sourceId;
 
   try {
     // auth app permission
@@ -30,7 +101,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<InitC
         appId,
         per: ReadPermissionVal
       }),
-      chatId ? MongoChat.findOne({ appId, chatId }) : undefined
+      chatId
+        ? MongoChat.findOne({ ...buildChatSourceQuery({ sourceType, sourceId }), chatId })
+        : undefined
     ]);
 
     // auth chat permission
@@ -40,7 +113,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<InitC
 
     const chatGenerateStatus = chat?.chatGenerateStatus ?? ChatGenerateStatusEnum.done;
     if (chat?.hasBeenRead === false && chatGenerateStatus !== ChatGenerateStatusEnum.generating) {
-      await MongoChat.updateOne({ appId, chatId }, { $set: { hasBeenRead: true } });
+      await MongoChat.updateOne(
+        { ...buildChatSourceQuery({ sourceType, sourceId }), chatId },
+        { $set: { hasBeenRead: true } }
+      );
       chat.hasBeenRead = true;
     }
 
@@ -66,6 +142,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<InitC
 
     return {
       chatId,
+      sourceType,
+      sourceId,
       appId,
       title: chat?.title || '',
       userAvatar: undefined,

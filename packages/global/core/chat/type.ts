@@ -3,7 +3,8 @@ import {
   ChatFileTypeEnum,
   ChatGenerateStatusEnum,
   ChatRoleEnum,
-  ChatSourceEnum
+  ChatSourceEnum,
+  ChatSourceTypeEnum
 } from './constants';
 import { FlowNodeTypeEnum } from '../workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '../workflow/runtime/constants';
@@ -89,8 +90,11 @@ export const ChatSchema = z.object({
   userId: ObjectIdSchema,
   teamId: ObjectIdSchema,
   tmbId: ObjectIdSchema,
+  sourceType: z.enum(ChatSourceTypeEnum).default(ChatSourceTypeEnum.app).meta({
+    description: '会话所属资源类型。旧数据可能缺失，业务查询层按 app 兼容。'
+  }),
   appId: ObjectIdSchema.meta({
-    description: '目前已经变成 sourceId，可能是 app 的，也可能是 skill 的'
+    description: '历史物理字段名。业务语义为 sourceId，可能是 appId 或 skillId。'
   }),
   appVersionId: ObjectIdSchema.optional().meta({ description: 'appId 为 app 时候才有' }),
   createTime: z.coerce.date(),
@@ -272,6 +276,7 @@ export const ChatItemDBSchema = ChatItemObjItemSchema.and(
     userId: z.string(),
     teamId: z.string(),
     tmbId: z.string(),
+    sourceType: z.enum(ChatSourceTypeEnum).default(ChatSourceTypeEnum.app),
     appId: z.string(),
     time: z.coerce.date(),
     deleteTime: z.coerce.date().nullish()
@@ -289,6 +294,7 @@ export type ErrorTextItemType = z.infer<typeof ErrorTextItemSchema>;
 /* --------- chat item response ---------- */
 export const ChatItemResponseSchema = z.object({
   teamId: z.string(),
+  sourceType: z.enum(ChatSourceTypeEnum).default(ChatSourceTypeEnum.app),
   appId: z.string(),
   chatId: z.string(),
   chatItemDataId: z.string(),

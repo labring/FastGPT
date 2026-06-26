@@ -9,6 +9,7 @@ import { type BoxProps } from '@chakra-ui/react';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import type { GetPaginationRecordsBodyType } from '@fastgpt/global/openapi/core/chat/record/api';
 import type { GetRecordsV2ResponseType } from '@fastgpt/global/openapi/core/chat/record/api';
+import { hasChatTargetInput } from '../utils';
 
 type ChatRecordContextType = {
   isLoadingRecords: boolean;
@@ -78,7 +79,7 @@ const ChatRecordContextProvider = ({
     async (
       data: LinkedPaginationProps<GetPaginationRecordsBodyType>
     ): Promise<LinkedListResponse<ChatSiteItemType>> => {
-      if (!data.appId) {
+      if (!hasChatTargetInput(data)) {
         return {
           list: [],
           hasMorePrev: false,

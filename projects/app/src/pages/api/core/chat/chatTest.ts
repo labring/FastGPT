@@ -29,7 +29,11 @@ import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/to
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 
-import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatRoleEnum,
+  ChatSourceEnum,
+  ChatSourceTypeEnum
+} from '@fastgpt/global/core/chat/constants';
 import {
   failChatRound,
   finalizeChatRound,
@@ -51,6 +55,7 @@ import {
   createWorkflowStreamResponseContext,
   type WorkflowStreamResponseContext
 } from '@/service/core/workflow/streamResponseContext';
+import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   let streamResponseContext: WorkflowStreamResponseContext | undefined;
@@ -68,7 +73,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   } = chatTestProps;
   const roundState = {
     preparedRound: undefined as PreChatRoundResult | undefined,
-    appId: undefined as string | undefined,
+    sourceId: undefined as string | undefined,
     chatId: undefined as string | undefined,
     responseChatItemId: responseChatItemIdFromBody ?? getNanoid(24)
   };
@@ -132,15 +137,28 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     // 获取历史记录
     const limit = getMaxHistoryLimitFromNodes(nodes);
+    const chatSource = {
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: String(app._id)
+    };
     const [{ histories }, chatDetail] = await Promise.all([
       getChatItems({
-        appId,
+        ...chatSource,
         chatId,
         offset: 0,
         limit,
         field: `obj value memories`
       }),
-      MongoChat.findOne({ appId: app._id, chatId }, 'source variableList variables')
+      MongoChat.findOne(
+        {
+          ...buildChatSourceQuery({
+            sourceType: ChatSourceTypeEnum.app,
+            sourceId: String(app._id)
+          }),
+          chatId
+        },
+        'source variableList variables'
+      )
       // auth balance
     ]);
 
@@ -164,7 +182,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     runtimeNodes = rewriteNodeOutputByHistories(runtimeNodes, interactive);
 
     const preparedRound = await preChatRound({
-      appId: String(app._id),
+      ...chatSource,
       chatId,
       teamId: String(teamId),
       tmbId: String(tmbId),
@@ -177,10 +195,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     });
 
     const runningChatId = preparedRound.chatId;
-    const runningAppId = String(app._id);
+    const runningSourceId = String(app._id);
     const responseChatItemId = preparedRound.responseChatItemId;
     roundState.preparedRound = preparedRound;
-    roundState.appId = runningAppId;
+    roundState.sourceId = runningSourceId;
     roundState.chatId = runningChatId;
     roundState.responseChatItemId = responseChatItemId;
 
@@ -190,7 +208,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       stream: true,
       detail: true,
       teamId: String(teamId),
-      appId: runningAppId,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: runningSourceId,
       chatId: runningChatId,
       responseId: runningChatId,
       showNodeStatus: true
@@ -215,7 +234,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       uid: tmbId,
 
       runningAppInfo: {
-        id: appId,
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: runningSourceId,
         name: appName,
         teamId: app.teamId,
         tmbId: app.tmbId
@@ -262,8 +282,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       customFeedbacks
     };
     const params = {
+      ...chatSource,
       chatId: runningChatId,
-      appId: String(app._id),
       teamId,
       tmbId: tmbId,
       nodes,
@@ -293,7 +313,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     if (!preparedRound.shouldFinalizePreparedRound && preparedRound.shouldPersistChatRound) {
       // 与线上流式一致：会话结束后必须落 done，否则前端会认为仍在 generating 并不断请求 /api/core/chat/resume
       await updateChatGenerateStatus({
-        appId: String(app._id),
+        ...chatSource,
         chatId: runningChatId,
         status: ChatGenerateStatusEnum.done
       });
@@ -302,17 +322,19 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     await streamResponseContext.flushResume();
   } catch (err: any) {
     const { preparedRound } = roundState;
-    if (preparedRound?.shouldPersistChatRound && roundState.appId && roundState.chatId) {
+    if (preparedRound?.shouldPersistChatRound && roundState.sourceId && roundState.chatId) {
       if (preparedRound.shouldFinalizePreparedRound) {
         await failChatRound({
-          appId: roundState.appId,
+          sourceType: ChatSourceTypeEnum.app,
+          sourceId: roundState.sourceId,
           chatId: roundState.chatId,
           responseChatItemId: roundState.responseChatItemId,
           error: err
         });
       } else {
         await updateChatGenerateStatus({
-          appId: roundState.appId,
+          sourceType: ChatSourceTypeEnum.app,
+          sourceId: roundState.sourceId,
           chatId: roundState.chatId,
           status: ChatGenerateStatusEnum.error
         });

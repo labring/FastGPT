@@ -37,4 +37,13 @@ describe('MongoSandboxInstance schema indexes', () => {
       }
     });
   });
+
+  it('declares source-aware lookup index for migrated sandbox instances', () => {
+    const indexes = MongoSandboxInstance.schema.indexes();
+    const targetIndex = indexes.find(
+      ([keys]) => keys.sourceType === 1 && keys.sourceId === 1 && keys.chatId === 1
+    );
+
+    expect(targetIndex).toBeDefined();
+  });
 });

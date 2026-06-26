@@ -4,12 +4,17 @@ import type { ChatItemResponseSchemaType } from '@fastgpt/global/core/chat/type'
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
 import { AppCollectionName } from '../app/schema';
 import { ChatItemResponseCollectionName } from './constants';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 const ChatItemResponseSchema = new Schema({
   teamId: {
     type: Schema.Types.ObjectId,
     ref: TeamCollectionName,
     required: true
+  },
+  sourceType: {
+    type: String,
+    enum: Object.values(ChatSourceTypeEnum)
   },
   appId: {
     type: Schema.Types.ObjectId,
@@ -37,6 +42,13 @@ const ChatItemResponseSchema = new Schema({
 
 // 按 chat item 拉取完整 nodeResponse rows；复合索引包含 _id，避免详情读取时额外排序。
 ChatItemResponseSchema.index({ appId: 1, chatId: 1, chatItemDataId: 1, _id: 1 });
+ChatItemResponseSchema.index({
+  sourceType: 1,
+  appId: 1,
+  chatId: 1,
+  chatItemDataId: 1,
+  _id: 1
+});
 
 // Clear expired response
 ChatItemResponseSchema.index({ teamId: 1, time: -1 });

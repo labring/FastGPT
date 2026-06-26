@@ -11,8 +11,9 @@ import { NextAPI } from '@/service/middleware/entry';
 import { getRandomUserAvatar } from '@fastgpt/global/support/user/utils';
 import { presignVariablesFileUrls } from '@fastgpt/service/core/chat/utils';
 import { InitOutLinkChatQuerySchema } from '@fastgpt/global/openapi/core/chat/outLink/api';
-import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { chatId, shareId, outLinkUid } = parseApiInput({
@@ -25,7 +26,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   // auth app permission
   const [chat, app] = await Promise.all([
-    MongoChat.findOne({ appId, chatId }).lean(),
+    MongoChat.findOne({
+      ...buildChatSourceQuery({ sourceType: ChatSourceTypeEnum.app, sourceId: String(appId) }),
+      chatId
+    }).lean(),
     MongoApp.findById(appId).lean()
   ]);
 
@@ -40,7 +44,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   const chatGenerateStatus = chat?.chatGenerateStatus ?? ChatGenerateStatusEnum.done;
   if (chat?.hasBeenRead === false && chatGenerateStatus !== ChatGenerateStatusEnum.generating) {
-    await MongoChat.updateOne({ appId, chatId }, { $set: { hasBeenRead: true } });
+    await MongoChat.updateOne(
+      {
+        ...buildChatSourceQuery({ sourceType: ChatSourceTypeEnum.app, sourceId: String(appId) }),
+        chatId
+      },
+      { $set: { hasBeenRead: true } }
+    );
     chat.hasBeenRead = true;
   }
 
@@ -65,6 +75,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   return {
     chatId,
+    sourceType: ChatSourceTypeEnum.app,
+    sourceId: String(app._id),
     appId: app._id,
     title: chat?.title || '',
     userAvatar: getRandomUserAvatar(),
