@@ -13,6 +13,7 @@ import type { SandboxResourceRef } from '@fastgpt/service/core/ai/sandbox/instan
 import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
 import { S3Sources } from '@fastgpt/service/common/s3/contracts/type';
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
+import type { Types } from '@fastgpt/service/common/mongo';
 import z from 'zod';
 
 const Init4150Beta6BodySchema = z.object({
@@ -58,13 +59,13 @@ type LegacyDebugChatCleanupItem =
   Init4150Beta6ResponseType['legacyDebugChatCleanup']['list'][number];
 type SandboxSourceUpdateOperation = {
   filter: {
-    _id: unknown;
+    _id: Types.ObjectId;
   };
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
 };
 type LegacySandboxSourceDoc = {
-  _id: unknown;
+  _id: Types.ObjectId;
   appId?: string | null;
   metadata?: {
     skillId?: string | null;
@@ -264,7 +265,7 @@ const migrateSandboxInstances = async ({
         appId: 1
       }
     })
-    .toArray()) as { _id: unknown; appId?: string | null }[];
+    .toArray()) as { _id: Types.ObjectId; appId?: string | null }[];
   const appUpdateOperations: SandboxSourceUpdateOperation[] = appSandboxDocs.flatMap((doc) => {
     if (!doc.appId) return [];
 
