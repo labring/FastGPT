@@ -10,7 +10,7 @@ import { getLLMModelById } from '@fastgpt/service/core/ai/model';
 import { checkTeamAiPointsAndLock } from './utils';
 import {
   markIndexingStart,
-  markDataTrainingPhaseTrace
+  markDataTrainingPhaseTraceBatch
 } from '@fastgpt/service/core/dataset/training/utils';
 import { addMinutes } from 'date-fns';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
@@ -223,19 +223,15 @@ export async function generateQA(): Promise<any> {
           await MongoDatasetTraining.findByIdAndDelete(data._id, { session });
         });
 
-        // Write QA phase trace on each new Data record
+        // Write QA phase trace on each new Data record (batch bulkWrite)
         // (startTime + endTime in a single $push — 2 writes → 1 write).
         const qaDataIds = qaItems.map((item) => item.id).filter((id): id is string => !!id);
         if (qaDataIds.length > 0) {
-          await Promise.all(
-            qaDataIds.map((dataId) =>
-              markDataTrainingPhaseTrace({
-                dataId,
-                mode: TrainingModeEnum.qa,
-                startTime: phaseStartTime
-              })
-            )
-          );
+          await markDataTrainingPhaseTraceBatch({
+            items: qaDataIds.map((dataId) => ({ dataId })),
+            mode: TrainingModeEnum.qa,
+            startTime: phaseStartTime
+          });
         }
 
         // Push usage (outside transaction — fire-and-forget, non-critical)

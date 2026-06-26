@@ -122,17 +122,18 @@ const ModelTable = () => {
       .map((item) => ({
         ...item,
         typeLabel: t('common:model.type.embedding'),
-        priceLabel: typeof item.charsPointsPrice === 'number' ? (
-          <Flex color={'myGray.700'}>
-            {`${t('common:Input')}: `}
-            <Box fontWeight={'bold'} color={'myGray.900'} mx={0.5}>
-              {item.charsPointsPrice}
-            </Box>
-            {` ${t('common:support.wallet.subscription.point')}/1K tokens`}
-          </Flex>
-        ) : (
-          '-'
-        ),
+        priceLabel:
+          typeof item.charsPointsPrice === 'number' ? (
+            <Flex color={'myGray.700'}>
+              {`${t('common:Input')}: `}
+              <Box fontWeight={'bold'} color={'myGray.900'} mx={0.5}>
+                {item.charsPointsPrice}
+              </Box>
+              {` ${t('common:support.wallet.subscription.point')}/1K tokens`}
+            </Flex>
+          ) : (
+            '-'
+          ),
         tagColor: 'yellow'
       }));
     const formatAudioSpeechModelList = systemModelList
@@ -140,16 +141,17 @@ const ModelTable = () => {
       .map((item) => ({
         ...item,
         typeLabel: t('common:model.type.tts'),
-        priceLabel: typeof item.charsPointsPrice === 'number' ? (
-          <Flex color={'myGray.700'}>
-            <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-              {item.charsPointsPrice}
-            </Box>
-            {` ${t('common:support.wallet.subscription.point')}/1K ${t('common:unit.character')}`}
-          </Flex>
-        ) : (
-          '-'
-        ),
+        priceLabel:
+          typeof item.charsPointsPrice === 'number' ? (
+            <Flex color={'myGray.700'}>
+              <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
+                {item.charsPointsPrice}
+              </Box>
+              {` ${t('common:support.wallet.subscription.point')}/1K ${t('common:unit.character')}`}
+            </Flex>
+          ) : (
+            '-'
+          ),
         tagColor: 'green'
       }));
     const formatWhisperModel = systemModelList
@@ -157,16 +159,17 @@ const ModelTable = () => {
       .map((item) => ({
         ...item,
         typeLabel: t('common:model.type.stt'),
-        priceLabel: typeof item.charsPointsPrice === 'number' ? (
-          <Flex color={'myGray.700'}>
-            <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
-              {item.charsPointsPrice}
-            </Box>
-            {` ${t('common:support.wallet.subscription.point')}/60${t('common:unit.seconds')}`}
-          </Flex>
-        ) : (
-          '-'
-        ),
+        priceLabel:
+          typeof item.charsPointsPrice === 'number' ? (
+            <Flex color={'myGray.700'}>
+              <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
+                {item.charsPointsPrice}
+              </Box>
+              {` ${t('common:support.wallet.subscription.point')}/60${t('common:unit.seconds')}`}
+            </Flex>
+          ) : (
+            '-'
+          ),
         tagColor: 'purple'
       }));
     const formatRerankModelList = systemModelList
@@ -174,17 +177,18 @@ const ModelTable = () => {
       .map((item) => ({
         ...item,
         typeLabel: t('common:model.type.reRank'),
-        priceLabel: typeof item.charsPointsPrice === 'number' ? (
-          <Flex color={'myGray.700'}>
-            {`${t('common:Input')}: `}
-            <Box fontWeight={'bold'} color={'myGray.900'} mx={0.5}>
-              {item.charsPointsPrice}
-            </Box>
-            {` ${t('common:support.wallet.subscription.point')}/1K tokens`}
-          </Flex>
-        ) : (
-          '-'
-        ),
+        priceLabel:
+          typeof item.charsPointsPrice === 'number' ? (
+            <Flex color={'myGray.700'}>
+              {`${t('common:Input')}: `}
+              <Box fontWeight={'bold'} color={'myGray.900'} mx={0.5}>
+                {item.charsPointsPrice}
+              </Box>
+              {` ${t('common:support.wallet.subscription.point')}/1K tokens`}
+            </Flex>
+          ) : (
+            '-'
+          ),
         tagColor: 'adora'
       }));
 

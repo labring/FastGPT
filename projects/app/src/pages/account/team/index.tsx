@@ -119,9 +119,7 @@ const Team = () => {
           <Flex align={'center'}>
             <Flex gap={2} color={'myGray.900'} alignItems={'center'}>
               <Icon name="support/user/usersLight" w={'1.25rem'} h={'1.25rem'} />
-              <Box fontSize={'1rem'}>
-                {t('common:team')}
-              </Box>
+              <Box fontSize={'1rem'}>{t('common:team')}</Box>
             </Flex>
             <Flex align={'center'} ml={6}>
               <TeamSelector height={'28px'} />

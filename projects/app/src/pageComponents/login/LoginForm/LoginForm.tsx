@@ -1,5 +1,13 @@
 import React, { useEffect, useState, type Dispatch } from 'react';
-import { FormControl, Flex, Input, Button, Box, InputGroup, InputRightElement } from '@chakra-ui/react';
+import {
+  FormControl,
+  Flex,
+  Input,
+  Button,
+  Box,
+  InputGroup,
+  InputRightElement
+} from '@chakra-ui/react';
 import { ViewOffIcon, ViewIcon } from '@chakra-ui/icons';
 import { useForm } from 'react-hook-form';
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';

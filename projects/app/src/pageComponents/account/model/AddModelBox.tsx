@@ -22,7 +22,10 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MultipleSelect from '@fastgpt/web/components/common/MySelect/MultipleSelect';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import { ModelTypeEnum, getQwenEmbeddingRerankInstruction } from '@fastgpt/global/core/ai/constants';
+import {
+  ModelTypeEnum,
+  getQwenEmbeddingRerankInstruction
+} from '@fastgpt/global/core/ai/constants';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';

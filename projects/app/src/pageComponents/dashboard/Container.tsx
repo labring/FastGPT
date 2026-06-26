@@ -353,7 +353,7 @@ const SubNavSettings = ({
               h="36px"
               px="44px"
               bg={
-                                item.path && isPathActive(currentPath, item.path)
+                item.path && isPathActive(currentPath, item.path)
                   ? 'rgba(50, 136, 250, 0.1)'
                   : 'transparent'
               }
@@ -365,10 +365,10 @@ const SubNavSettings = ({
             >
               <Text
                 fontSize="13px"
-                fontWeight={                item.path && isPathActive(currentPath, item.path) ? 600 : 'normal'}
-                color={                item.path && isPathActive(currentPath, item.path) ? '#156AD9' : '#3E4A59'}
+                fontWeight={item.path && isPathActive(currentPath, item.path) ? 600 : 'normal'}
+                color={item.path && isPathActive(currentPath, item.path) ? '#156AD9' : '#3E4A59'}
                 _groupHover={{
-                  color:                 item.path && isPathActive(currentPath, item.path) ? '#156AD9' : '#3E4A59'
+                  color: item.path && isPathActive(currentPath, item.path) ? '#156AD9' : '#3E4A59'
                 }}
                 whiteSpace="nowrap"
               >

@@ -486,7 +486,7 @@ export const CreateDatasetDataPropsSchema = z.object({
   tmbId: ObjectIdSchema.meta({ description: '团队成员 ID' }),
   datasetId: ObjectIdSchema.meta({ description: '数据集 ID' }),
   collectionId: ObjectIdSchema.meta({ description: '集合 ID' }),
-  chunkIndex: z.int().min(0).optional().meta({ description: '块索引' }),
+  chunkIndex: z.int().min(0).meta({ description: '块索引' }),
   q: z.string().meta({ description: '问题/主文本' }),
   a: z.string().optional().meta({ description: '回答/补充文本' }),
   imageId: z.string().optional().meta({ description: '图片 ID' }),

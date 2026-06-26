@@ -26,15 +26,15 @@ import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
 import { getTrainingModeByCollection } from '@fastgpt/service/core/dataset/collection/utils';
 import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
-import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import {
   markParseStart,
   markParseEnd,
-  markDataTrainingPhaseTrace
+  markDataTrainingPhaseTraceBatch
 } from '@fastgpt/service/core/dataset/training/utils';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { createDataDrafts } from '@fastgpt/service/core/dataset/data/controller';
+import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import type { PushDataChunkType } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
@@ -251,7 +251,6 @@ const runParseQueue = async ({
           collection.trainingType === DatasetCollectionDataProcessModeEnum.backup ||
           collection.trainingType === DatasetCollectionDataProcessModeEnum.template;
 
-        // 1. Parse rawtext
         let title: string | undefined;
         let rawText = '';
 
@@ -411,41 +410,119 @@ const runParseQueue = async ({
           metadata: item.metadata
         }));
 
-        await mongoSessionRun(async (session) => {
-          // 5. Update collection title(Link)
-          await MongoDatasetCollection.updateOne(
-            { _id: collection._id },
-            {
-              ...(title && collection.type === DatasetCollectionTypeEnum.link && { name: title }),
-              rawTextLength: resultText.length,
-              hashRawText: hashStr(resultText),
-              // backup/template 模式：原始内容已解析完成，标记为已解析
-              ...(isBackupMode ? { updateTime: new Date() } : {})
-            },
-            { session }
-          );
+        // 5. Update collection metadata
+        await MongoDatasetCollection.updateOne(
+          { _id: collection._id },
+          {
+            ...(title && collection.type === DatasetCollectionTypeEnum.link && { name: title }),
+            rawTextLength: resultText.length,
+            hashRawText: hashStr(resultText),
+            // backup/template 模式：原始内容已解析完成，标记为已解析
+            ...(isBackupMode ? { updateTime: new Date() } : {})
+          }
+        );
 
-          // 5.5 Create Data drafts after parsing completes.
-          //     Subsequent training stages (vector/image/auto etc.) only UPDATE these records.
-          const draftResults = await createDataDrafts({
-            items: parsedDatas.map((item, i) => ({
-              q: item.q || '',
-              a: item.a || '',
-              chunkIndex: i,
-              metadata: item.metadata
-            })),
-            teamId: data.teamId,
-            tmbId: data.tmbId,
-            datasetId: dataset._id,
-            collectionId: collection._id,
-            session
-          });
-          // Associate dataId with training records → generateVector uses UPDATE path
-          draftResults.forEach((result, i) => {
-            parsedDatas[i].id = String(result._id);
-          });
+        // 5.5 Create Data drafts — skip chunkIndex already covered by existing Data.
+        // Two queries: one for chunkIndex/id lookup (all Data), one for vectorized
+        // Data ids (DB-level filter is faster than in-memory for large datasets).
+        const allExistingData = await MongoDatasetData.find(
+          { teamId: data.teamId, datasetId: dataset._id, collectionId: collection._id },
+          '_id chunkIndex'
+        ).lean();
 
-          // 6. Push to chunk queue
+        const coveredChunkIndexes = new Set(allExistingData.map((d) => d.chunkIndex));
+
+        // Data with non-empty indexes was already consumed by generateVector.
+        // Pushing duplicate Training would waste embedding cost on rebuildData.
+        const completedDataIds = new Set(
+          (
+            await MongoDatasetData.find(
+              {
+                teamId: data.teamId,
+                datasetId: dataset._id,
+                collectionId: collection._id,
+                'indexes.0': { $exists: true }
+              },
+              '_id'
+            ).lean()
+          ).map((d) => String(d._id))
+        );
+
+        const newItems = parsedDatas
+          .map((item, i) => ({ item, i }))
+          .filter(({ i }) => !coveredChunkIndexes.has(i));
+
+        const draftResults =
+          newItems.length > 0
+            ? await createDataDrafts({
+                items: newItems.map(({ item, i }) => ({
+                  q: item.q || '',
+                  a: item.a || '',
+                  chunkIndex: i,
+                  metadata: item.metadata
+                })),
+                teamId: data.teamId,
+                tmbId: data.tmbId,
+                datasetId: dataset._id,
+                collectionId: collection._id
+                // No session → per-batch independent transactions
+              })
+            : [];
+
+        // Build chunkIndex → _id lookup from existing Data, then patch in newly-created
+        // ids so every parsedDatas item has a valid id for Training dedup.
+        const chunkIndexToId = new Map(
+          allExistingData.map((d) => [d.chunkIndex, String(d._id)] as const)
+        );
+        newItems.forEach(({ i }, newIdx) => {
+          chunkIndexToId.set(i, String(draftResults[newIdx]._id));
+        });
+        parsedDatas.forEach((item, idx) => {
+          const dataId = chunkIndexToId.get(idx);
+          if (!dataId) {
+            logger.warn(`[${queueName}] chunkIndex ${idx} not found in existing Data`, {
+              collectionId: collection._id
+            });
+          }
+          item.id = dataId || '';
+        });
+
+        logger.info(
+          `[${queueName}] Data drafts: ${newItems.length} new, ${parsedDatas.length - newItems.length} existing`
+        );
+
+        // 6. Push Training records, dedup by dataId + completion status.
+        // - Training already exists for this dataId → skip (still pending / being processed)
+        // - Data already has non-empty indexes → skip (generateVector already consumed it;
+        //   creating a duplicate would waste embedding cost on rebuildData)
+        const existingTrainingDataIds = new Set(
+          (
+            await MongoDatasetTraining.find(
+              {
+                teamId: data.teamId,
+                datasetId: dataset._id,
+                collectionId: collection._id,
+                mode: TrainingModeEnum.chunk
+              },
+              'dataId'
+            ).lean()
+          )
+            .filter((t) => t.dataId)
+            .map((t) => String(t.dataId))
+        );
+
+        const newTrainingData = parsedDatas.filter((item) => {
+          if (!item.id) return true; // No Data → create (generateVector will clean up)
+          if (existingTrainingDataIds.has(item.id)) return false; // Training exists → skip
+          if (completedDataIds.has(item.id)) return false; // Already vectorized → skip
+          return true;
+        });
+
+        logger.info(
+          `[${queueName}] Training dedup: ${existingTrainingDataIds.size} training, ${completedDataIds.size} completed, ${newTrainingData.length} new (of ${parsedDatas.length} total)`
+        );
+
+        if (newTrainingData.length > 0) {
           await pushDataListToTrainingQueue({
             teamId: data.teamId,
             tmbId: data.tmbId,
@@ -457,54 +534,22 @@ const runParseQueue = async ({
             indexSize: collection.indexSize,
             mode: trainingMode,
             billId: data.billId,
-            data: parsedDatas,
-            session
+            data: newTrainingData
+            // No session → per-batch independent transactions
           });
+        }
 
-          // 7. Delete task
-          try {
-            await MongoDatasetTraining.deleteOne(
-              {
-                _id: data._id
-              },
-              {
-                session
-              }
-            );
-          } catch (deleteErr: any) {
-            // Session may have been aborted by server (e.g. transaction timeout).
-            // Only safe to retry without session when pushDataListToTrainingQueue used its own
-            // independent transactions (large dataset path: parsedDatas.length > 10000).
-            // For small datasets, pushDataListToTrainingQueue reuses the outer session, so a
-            // session abort means training data was also rolled back — rethrow to let the outer
-            // error handler retry the entire parse task and avoid silent data loss.
-            const usedIndependentTransaction = parsedDatas.length > 10000;
-            if (
-              usedIndependentTransaction &&
-              (deleteErr?.codeName === 'NoSuchTransaction' ||
-                deleteErr?.message?.includes('has been aborted'))
-            ) {
-              addLog.warn(`[${queueName}] deleteOne session aborted, retrying without session`);
-              await MongoDatasetTraining.deleteOne({ _id: data._id });
-            } else {
-              throw deleteErr;
-            }
-          }
-        });
+        // 7. Delete parse task (standalone, no transaction needed)
+        await MongoDatasetTraining.deleteOne({ _id: data._id });
 
-        // Write parse phase trace on each newly created Data record
-        // (startTime + endTime in a single DB $push — 2 writes → 1 write).
-        const parsedDataIds = parsedDatas.map((p) => p.id).filter(Boolean);
-        if (parsedDataIds.length > 0) {
-          await Promise.all(
-            parsedDataIds.map((dataId) =>
-              markDataTrainingPhaseTrace({
-                dataId: String(dataId),
-                mode: TrainingModeEnum.parse,
-                startTime: parseStartTime
-              })
-            )
-          );
+        // Write parse phase trace on each newly created Data record (batch bulkWrite)
+        const createdDataIds = draftResults.map((r) => String(r._id));
+        if (createdDataIds.length > 0) {
+          await markDataTrainingPhaseTraceBatch({
+            items: createdDataIds.map((dataId) => ({ dataId })),
+            mode: TrainingModeEnum.parse,
+            startTime: parseStartTime
+          });
         }
 
         // Throttled parse completion check: once all parse tasks for this collection

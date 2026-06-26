@@ -597,12 +597,7 @@ const CreateModal = ({
                       }
                     ] as const
                   ).map((item) => (
-                    <HStack
-                      key={item.key}
-                      spacing={2}
-                      h={'32px'}
-                      alignItems={'center'}
-                    >
+                    <HStack key={item.key} spacing={2} h={'32px'} alignItems={'center'}>
                       <Box fontSize={'12px'} color={'#333'}>
                         {item.label}
                       </Box>
@@ -615,23 +610,29 @@ const CreateModal = ({
                     </HStack>
                   ))}
 
-                    {/* 编辑模式知识处理提示 */}
-                    {isEditMode && (
-                      <HStack
-                        mt={2}
-                        px={3}
-                        py={2}
-                        bg={'#F5F9FF'}
-                        borderRadius={'md'}
-                        spacing={2}
-                        align={'center'}
-                      >
-                        <MyIcon name={'common/info'} w={'16px'} flexShrink={0} color={'#1464CC'} mt={'1px'} />
-                        <Box fontSize={'12px'} color={'#1464CC'}>
-                          {t('dataset:knowledge_process_edit_tip')}
-                        </Box>
-                      </HStack>
-                    )}
+                  {/* 编辑模式知识处理提示 */}
+                  {isEditMode && (
+                    <HStack
+                      mt={2}
+                      px={3}
+                      py={2}
+                      bg={'#F5F9FF'}
+                      borderRadius={'md'}
+                      spacing={2}
+                      align={'center'}
+                    >
+                      <MyIcon
+                        name={'common/info'}
+                        w={'16px'}
+                        flexShrink={0}
+                        color={'#1464CC'}
+                        mt={'1px'}
+                      />
+                      <Box fontSize={'12px'} color={'#1464CC'}>
+                        {t('dataset:knowledge_process_edit_tip')}
+                      </Box>
+                    </HStack>
+                  )}
                 </Box>
               </Collapse>
             </Box>
