@@ -6,9 +6,9 @@ import type {
 import { getSandboxBuiltinSkillsRootPath } from '../../sandbox/runtime/profile/utils';
 import { buildRuntimeHash, joinSandboxPath, shellQuote } from '../../sandbox/runtime/utils';
 import {
-  getRuntimeStateHash,
+  getRuntimeStateValue,
   readSandboxRuntimeState,
-  setRuntimeStateHash,
+  setRuntimeStateValue,
   writeSandboxRuntimeState
 } from '../../sandbox/runtime/state';
 
@@ -47,7 +47,7 @@ export async function syncBuiltinSkillsToSandbox({
   for (const source of syncSources) {
     const targetDirectory = joinSandboxPath(builtinSkillsRootPath, source.name);
     const stateKey = getBuiltinSkillStateHashKey(source.name);
-    if (getRuntimeStateHash(runtimeStateContext.state, stateKey) === source.etag) {
+    if (getRuntimeStateValue(runtimeStateContext.state, stateKey) === source.etag) {
       continue;
     }
 
@@ -69,7 +69,7 @@ export async function syncBuiltinSkillsToSandbox({
       throw new Error(`Failed to write builtin skill files: ${failedWrite.error?.message}`);
     }
 
-    setRuntimeStateHash(runtimeStateContext.state, stateKey, source.etag);
+    setRuntimeStateValue(runtimeStateContext.state, stateKey, source.etag);
     await writeSandboxRuntimeState(sandbox, runtimeStateContext);
   }
 }

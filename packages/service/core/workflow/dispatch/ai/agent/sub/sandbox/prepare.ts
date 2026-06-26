@@ -11,19 +11,21 @@ import {
 import { prepareAgentSandboxRuntime } from '../../../../../../ai/sandbox/runtime';
 import type { SandboxClient } from '../../../../../../ai/sandbox/service/runtime';
 import {
-  injectInputFilesToSandbox,
-  readSandboxPwd
-} from '../../../../../../ai/sandbox/runtime/files';
+  injectCurrentInputFiles,
+  preparePackageMirrors,
+  prepareSandbox,
+  readCurrentWorkingDirectory,
+  type SandboxPrepareContext,
+  type SandboxPrepareStep
+} from '../../../../../../ai/sandbox/runtime/prepare';
 import {
-  runAgentSandboxEntrypoint,
+  runSandboxEntrypoint,
   withAgentSandboxInitLease
 } from '../../../../../../ai/sandbox/runtime/entrypoint';
 import { resolveSandboxHome } from '../../../../../../ai/sandbox/runtime/home';
 
-export type AgentSandboxPrepareContext = {
+export type AgentSandboxPrepareContext = SandboxPrepareContext & {
   sandboxClient: SandboxClient;
-  workDirectory: string;
-  currentWorkingDirectory?: string;
   deployedSkillVersions: DeployedSkillVersion[];
   skillInfos: DeployedSkillInfo[];
   skillScanDirectories: string[];
@@ -52,9 +54,7 @@ type EnsureAgentSandboxRuntimeResult = {
   currentWorkingDirectory?: string;
   skillInfos: DeployedSkillInfo[];
 };
-type AgentSandboxPrepareStep = (
-  context: AgentSandboxPrepareContext
-) => Promise<AgentSandboxPrepareContext>;
+type AgentSandboxPrepareStep = SandboxPrepareStep<AgentSandboxPrepareContext>;
 
 /**
  * 确保 Agent 本轮 sandbox runtime 可用。
@@ -75,25 +75,26 @@ export async function ensureAgentSandboxRuntime({
   prepareActions = [],
   currentFiles
 }: EnsureAgentSandboxRuntimeParams): Promise<EnsureAgentSandboxRuntimeResult> {
+  if (!needSandboxRuntime) {
+    return {
+      skillInfos: []
+    };
+  }
+
   const sandboxContext = await prepareAgentSandboxRuntime({
     appId,
     userId,
     chatId,
     sandboxId,
-    teamId,
-    needSandboxRuntime
+    teamId
   });
-  if (!sandboxContext) {
-    return {
-      skillInfos: []
-    };
-  }
 
   const preparedContext = await withAgentSandboxInitLease({
     sandboxId: sandboxContext.sandboxClient.getSandboxId(),
     fn: () => {
       const context = {
         ...sandboxContext,
+        sandbox: sandboxContext.sandboxClient.provider,
         deployedSkillVersions: [],
         skillInfos: [],
         skillScanDirectories: []
@@ -102,6 +103,7 @@ export async function ensureAgentSandboxRuntime({
       return editSkillId
         ? prepareSandbox(
             context,
+            preparePackageMirrors(),
             injectCurrentInputFiles(currentFiles),
             ...prepareActions,
             readCurrentWorkingDirectory(),
@@ -109,6 +111,7 @@ export async function ensureAgentSandboxRuntime({
           )
         : prepareSandbox(
             context,
+            preparePackageMirrors(),
             injectSelectedSkillFiles({ teamId, tmbId, skillIds }),
             injectCurrentInputFiles(currentFiles),
             ...prepareActions,
@@ -126,29 +129,6 @@ export async function ensureAgentSandboxRuntime({
     skillInfos: preparedContext.skillInfos
   };
 }
-
-const prepareSandbox = async (
-  context: AgentSandboxPrepareContext,
-  ...steps: AgentSandboxPrepareStep[]
-): Promise<AgentSandboxPrepareContext> => {
-  let currentContext = context;
-  for (const step of steps) {
-    currentContext = await step(currentContext);
-  }
-  return currentContext;
-};
-
-const injectCurrentInputFiles =
-  (currentFiles: AgentInputFile[]): AgentSandboxPrepareStep =>
-  async (context) => {
-    await injectInputFilesToSandbox(context.sandboxClient.provider, currentFiles);
-    return context;
-  };
-
-const readCurrentWorkingDirectory = (): AgentSandboxPrepareStep => async (context) => ({
-  ...context,
-  currentWorkingDirectory: await readSandboxPwd(context.sandboxClient)
-});
 
 /**
  * 创建“同步内置 Skill 到当前 sandbox”的 prepare action。
@@ -168,13 +148,13 @@ export const createBuiltinSkillPrepareAction =
     const sources = await getSources();
     if (sources.length === 0) return context;
 
-    const homeDirectory = await resolveSandboxHome(context.sandboxClient.provider);
+    const homeDirectory = await resolveSandboxHome(context.sandbox);
     if (!homeDirectory) {
       throw new Error('Failed to resolve sandbox HOME for builtin skill sync');
     }
 
     await injectToSandbox({
-      sandbox: context.sandboxClient.provider,
+      sandbox: context.sandbox,
       homeDirectory,
       sources
     });
@@ -193,7 +173,7 @@ export const createBuiltinSkillPrepareAction =
 const scanEditDebugSkillInfos = (): AgentSandboxPrepareStep => async (context) => ({
   ...context,
   skillInfos: await getAgentSkillInfos({
-    sandbox: context.sandboxClient.provider,
+    sandbox: context.sandbox,
     skillDirectories: [context.workDirectory, ...context.skillScanDirectories]
   })
 });
@@ -211,7 +191,7 @@ const injectSelectedSkillFiles =
   async (context) => ({
     ...context,
     deployedSkillVersions: await injectAgentSkillFilesToSandbox({
-      sandbox: context.sandboxClient.provider,
+      sandbox: context.sandbox,
       teamId,
       tmbId,
       skillIds,
@@ -219,21 +199,10 @@ const injectSelectedSkillFiles =
     })
   });
 
-const runSandboxEntrypoint =
-  ({ sandboxEntrypoint }: { sandboxEntrypoint?: string }): AgentSandboxPrepareStep =>
-  async (context) => {
-    await runAgentSandboxEntrypoint({
-      sandbox: context.sandboxClient.provider,
-      sandboxEntrypoint,
-      workDirectory: context.workDirectory
-    });
-    return context;
-  };
-
 const runSelectedSkillEntrypoints = (): AgentSandboxPrepareStep => async (context) => {
   if (context.deployedSkillVersions.length > 0) {
     await runAgentSkillVersionEntrypoints({
-      sandbox: context.sandboxClient.provider,
+      sandbox: context.sandbox,
       versions: context.deployedSkillVersions
     });
   }
@@ -249,7 +218,7 @@ const scanSelectedSkillInfos = (): AgentSandboxPrepareStep => async (context) =>
     ];
     return skillDirectories.length > 0
       ? getAgentSkillInfos({
-          sandbox: context.sandboxClient.provider,
+          sandbox: context.sandbox,
           skillDirectories
         })
       : Promise.resolve([]);

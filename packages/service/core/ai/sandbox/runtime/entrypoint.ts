@@ -3,11 +3,12 @@ import { getLogger, LogCategories } from '../../../../common/logger';
 import { serviceEnv } from '../../../../env';
 import { isRedisLeaseError, withRedisLease } from '../../../../common/redis/lock';
 import { createAgentSandboxInitializingError } from '../error';
+import type { SandboxPrepareContext, SandboxPrepareStep } from './prepare';
 import { buildRuntimeHash, shellQuote } from './utils';
 import {
-  getRuntimeStateHash,
+  getRuntimeStateValue,
   readSandboxRuntimeState,
-  setRuntimeStateHash,
+  setRuntimeStateValue,
   writeSandboxRuntimeState
 } from './state';
 
@@ -66,7 +67,7 @@ export const runAgentSandboxEntrypoint = async ({
 
   const stateContext = await readSandboxRuntimeState({ sandbox });
   const scriptHash = buildRuntimeHash(script);
-  if (getRuntimeStateHash(stateContext.state, SANDBOX_ENTRYPOINT_STATE_HASH_KEY) === scriptHash) {
+  if (getRuntimeStateValue(stateContext.state, SANDBOX_ENTRYPOINT_STATE_HASH_KEY) === scriptHash) {
     return;
   }
 
@@ -79,9 +80,25 @@ export const runAgentSandboxEntrypoint = async ({
 
   if (!result) return;
 
-  setRuntimeStateHash(stateContext.state, SANDBOX_ENTRYPOINT_STATE_HASH_KEY, scriptHash);
+  setRuntimeStateValue(stateContext.state, SANDBOX_ENTRYPOINT_STATE_HASH_KEY, scriptHash);
   await writeSandboxRuntimeState(sandbox, stateContext);
 };
+
+/** 将 sandbox entrypoint 包装为 prepare step，便于和文件注入、skill 扫描按顺序编排。 */
+export const runSandboxEntrypoint =
+  <Context extends SandboxPrepareContext>({
+    sandboxEntrypoint
+  }: {
+    sandboxEntrypoint?: string;
+  }): SandboxPrepareStep<Context> =>
+  async (context) => {
+    await runAgentSandboxEntrypoint({
+      sandbox: context.sandbox,
+      sandboxEntrypoint,
+      workDirectory: context.workDirectory
+    });
+    return context;
+  };
 
 export const executeEntrypointCommand = async ({
   sandbox,

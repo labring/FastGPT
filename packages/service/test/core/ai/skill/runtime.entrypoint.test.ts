@@ -93,7 +93,7 @@ describe('runtime entrypoint', () => {
       sandbox: sandbox as any,
       sandboxEntrypoint: 'echo first'
     });
-    const firstHash = sandbox.getState()?.hashes?.sandboxEntrypoint;
+    const firstHash = sandbox.getState()?.values?.sandboxEntrypoint;
 
     await runAgentSandboxEntrypoint({
       sandbox: sandbox as any,
@@ -109,8 +109,8 @@ describe('runtime entrypoint', () => {
       .filter(isSandboxEntrypointCommand);
 
     expect(entrypointCommands).toHaveLength(2);
-    expect(sandbox.getState()?.hashes?.sandboxEntrypoint).toMatch(/^sha256:/);
-    expect(sandbox.getState()?.hashes?.sandboxEntrypoint).not.toBe(firstHash);
+    expect(sandbox.getState()?.values?.sandboxEntrypoint).toMatch(/^sha256:/);
+    expect(sandbox.getState()?.values?.sandboxEntrypoint).not.toBe(firstHash);
   });
 
   it('runs sandbox entrypoint from the configured work directory', async () => {
@@ -128,27 +128,25 @@ describe('runtime entrypoint', () => {
     expect(entrypointCommand).toMatch(/^cd '\/workspace' && \/bin\/bash -c /);
   });
 
-  it('does not write sandbox entrypoint state when execution fails', async () => {
-    const sandbox = createSandbox({ entrypointExitCode: 1 });
+  it('does not write sandbox entrypoint state when execution fails or throws', async () => {
+    const failedSandbox = createSandbox({ entrypointExitCode: 1 });
 
     await runAgentSandboxEntrypoint({
-      sandbox: sandbox as any,
+      sandbox: failedSandbox as any,
       sandboxEntrypoint: 'exit 1'
     });
 
-    expect(sandbox.getState()?.hashes?.sandboxEntrypoint).toBeUndefined();
-  });
-
-  it('does not throw or write state when sandbox entrypoint execution throws', async () => {
-    const sandbox = createSandbox({ entrypointThrows: true });
+    const throwingSandbox = createSandbox({ entrypointThrows: true });
 
     await expect(
       runAgentSandboxEntrypoint({
-        sandbox: sandbox as any,
+        sandbox: throwingSandbox as any,
         sandboxEntrypoint: 'echo throw'
       })
     ).resolves.toBeUndefined();
-    expect(sandbox.getState()?.hashes?.sandboxEntrypoint).toBeUndefined();
+
+    expect(failedSandbox.getState()?.values?.sandboxEntrypoint).toBeUndefined();
+    expect(throwingSandbox.getState()?.values?.sandboxEntrypoint).toBeUndefined();
   });
 
   it('uses skill version state to skip successful skill entrypoints', async () => {
@@ -168,7 +166,7 @@ describe('runtime entrypoint', () => {
       .filter(isSkillEntrypointCommand);
 
     expect(runCommands).toHaveLength(1);
-    expect(sandbox.getState()?.lists?.skillEntrypoints).toEqual(['version-1']);
+    expect(sandbox.getState()?.values?.skillEntrypoints).toEqual(['version-1']);
   });
 
   it('retries skill entrypoint after a failed run', async () => {
@@ -188,6 +186,6 @@ describe('runtime entrypoint', () => {
       .filter(isSkillEntrypointCommand);
 
     expect(runCommands).toHaveLength(2);
-    expect(sandbox.getState()?.lists?.skillEntrypoints).toBeUndefined();
+    expect(sandbox.getState()?.values?.skillEntrypoints).toBeUndefined();
   });
 });

@@ -19,18 +19,14 @@ export async function prepareAgentSandboxRuntime({
   userId,
   chatId,
   sandboxId,
-  teamId,
-  needSandboxRuntime
+  teamId
 }: {
   appId: string;
   userId: string;
   chatId: string;
   sandboxId?: string;
   teamId: string;
-  needSandboxRuntime: boolean;
-}): Promise<AgentSandboxRuntimeContext | undefined> {
-  if (!needSandboxRuntime) return;
-
+}): Promise<AgentSandboxRuntimeContext> {
   try {
     await checkTeamSandboxPermission(teamId);
   } catch {
