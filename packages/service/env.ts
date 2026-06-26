@@ -10,7 +10,6 @@ const defaultableIntSchema = (defaultValue: number) =>
     (value) => (value === '' || value === undefined ? defaultValue : value),
     z.coerce.number<number>().int().nonnegative()
   );
-
 // 系统最大字符串处理长度
 const SYSTEM_STRING_LENGTH_UNIT = 1_000_000;
 
@@ -108,6 +107,8 @@ export const serviceEnv = createEnv({
     AGENT_SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS: IntSchema.min(1).max(600).default(30).meta({
       description: 'Agent sandbox entrypoint 执行超时时间（秒）'
     }),
+    AGENT_SANDBOX_NPM_REGISTRY: z.string().optional(),
+    AGENT_SANDBOX_PYPI_INDEX_URL: z.string().optional(),
 
     // ==================== 数据库与缓存 ====================
     // Redisg

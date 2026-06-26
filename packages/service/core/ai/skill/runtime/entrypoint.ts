@@ -7,9 +7,9 @@ import {
 } from '../../sandbox/runtime/entrypoint';
 import { joinSandboxPath, shellQuote } from '../../sandbox/runtime/utils';
 import {
-  getRuntimeStateList,
+  getRuntimeStateValue,
   readSandboxRuntimeState,
-  setRuntimeStateList,
+  setRuntimeStateValue,
   writeSandboxRuntimeState
 } from '../../sandbox/runtime/state';
 
@@ -36,14 +36,15 @@ export const runAgentSkillVersionEntrypoints = async ({
   const stateContext = await readSandboxRuntimeState({ sandbox });
   const state = stateContext.state;
 
-  const originalSkillEntrypoints = getRuntimeStateList(state, SKILL_ENTRYPOINT_STATE_LIST_KEY);
+  const stateValue = getRuntimeStateValue(state, SKILL_ENTRYPOINT_STATE_LIST_KEY);
+  const originalSkillEntrypoints = Array.isArray(stateValue) ? stateValue : [];
   const selectedVersionIds = new Set(versions.map(({ versionId }) => versionId));
   const executedVersionIds = new Set(
     originalSkillEntrypoints.filter((versionId) => selectedVersionIds.has(versionId))
   );
   let stateDirty = originalSkillEntrypoints.length !== executedVersionIds.size;
   const writeSkillEntrypointState = async () => {
-    setRuntimeStateList(stateContext.state, SKILL_ENTRYPOINT_STATE_LIST_KEY, [
+    setRuntimeStateValue(stateContext.state, SKILL_ENTRYPOINT_STATE_LIST_KEY, [
       ...executedVersionIds
     ]);
     await writeSandboxRuntimeState(sandbox, stateContext);

@@ -5,7 +5,6 @@ import { MongoAgentSkillsVersion } from '../version/schema';
 import { parseGitignoreRules } from '../utils';
 import { joinSandboxPath, shellQuote } from '../../sandbox/runtime/utils';
 import {
-  downloadSkillPackage,
   DEFAULT_GITIGNORE_CONTENT,
   validateDeployableSkillWorkspacePackage,
   validateZipStructure
@@ -42,6 +41,19 @@ import { serviceEnv } from '../../../../env';
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
 import { checkTeamSandboxPermission } from '../../../../support/permission/teamLimit';
 import { createAgentSandboxPermissionDeniedError } from '../../sandbox/error';
+import {
+  emptyWorkDirectory,
+  inspectWorkDirectoryContent,
+  preparePackageMirrors,
+  prepareWorkDirectory,
+  prepareSandbox
+} from '../../sandbox/runtime/prepare';
+import {
+  deployDownloadedSkillPackage,
+  downloadSkillPackageToContext,
+  reportSkillPrepareProgress,
+  type SkillPackagePrepareContext
+} from '../runtime/prepare';
 
 const addLog = getLogger(LogCategories.MODULE.AI.AGENT);
 
@@ -218,6 +230,14 @@ export async function createEditDebugSandbox(
     return false;
   };
 
+  const prepareContext = (sandbox: ISandbox): SkillPackagePrepareContext => ({
+    sandbox,
+    workDirectory: runtimeProfile.workDirectory
+  });
+
+  const reportProgress = (sandboxId: string) => (phase: SandboxStatusItemType['phase']) =>
+    onProgress?.({ sandboxId, phase });
+
   const reuseExistingEditDebugSandbox = async (
     instance: NonNullable<typeof existingInstance>
   ): Promise<CreateEditDebugSandboxResult | null> => {
@@ -242,10 +262,13 @@ export async function createEditDebugSandbox(
 
       const connected = await connectReadySandboxByInstance(providerConfig, instance, createConfig);
       sandbox = connected.sandbox;
+      let preparedContext = await prepareSandbox(
+        prepareContext(sandbox),
+        preparePackageMirrors(),
+        inspectWorkDirectoryContent()
+      );
 
-      const existingMetadata = instance.metadata || {};
-      const workspaceHasContent = await hasWorkspaceContent(sandbox);
-      if (!workspaceHasContent) {
+      if (!preparedContext.workspaceHasContent) {
         addLog.warn(
           '[Sandbox] Existing edit-debug sandbox workspace is empty, redeploying package',
           {
@@ -253,46 +276,36 @@ export async function createEditDebugSandbox(
           }
         );
 
-        onProgress?.({ sandboxId: instance.sandboxId, phase: 'downloadingPackage' });
-        const packageBuffer = await downloadSkillPackage({
-          storageKey: currentVersion.storageKey
-        });
-        await uploadAndDecompressPackage(sandbox, instance.sandboxId, packageBuffer);
-
-        await updateSandboxInstanceRecordBySandboxId({
-          provider: providerConfig.provider,
-          sandboxId: instance.sandboxId,
-          appId: skillId,
-          userId: '',
-          chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
-          metadata: {
-            ...existingMetadata,
-            versionId: targetVersionId,
-            storage: {
-              key: currentVersion.storageKey,
-              uploadedAt: new Date()
-            }
-          }
-        });
-
-        onProgress?.({
-          sandboxId: instance.sandboxId,
-          phase: 'ready'
-        });
-
-        return {
-          sandboxId: instance.sandboxId,
-          status: { state: 'Running' }
-        };
+        preparedContext = await prepareSandbox(
+          preparedContext,
+          downloadSkillPackageToContext({
+            storageKey: currentVersion.storageKey,
+            onProgress: reportProgress(instance.sandboxId)
+          }),
+          deployDownloadedSkillPackage({
+            skillsRootPath: runtimeProfile.skillsRootPath,
+            onProgress: reportProgress(instance.sandboxId)
+          })
+        );
       }
 
+      const existingMetadata = instance.metadata || {};
       await updateSandboxInstanceRecordBySandboxId({
         provider: providerConfig.provider,
         sandboxId: instance.sandboxId,
         appId: skillId,
         userId: '',
         chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
-        metadata: existingMetadata
+        metadata: preparedContext.workspaceHasContent
+          ? existingMetadata
+          : {
+              ...existingMetadata,
+              versionId: targetVersionId,
+              storage: {
+                key: currentVersion.storageKey,
+                uploadedAt: new Date()
+              }
+            }
       });
 
       onProgress?.({
@@ -321,72 +334,6 @@ export async function createEditDebugSandbox(
     }
   };
 
-  const uploadAndDecompressPackage = async (
-    sandbox: ISandbox,
-    sandboxId: string,
-    packageBuffer: Buffer
-  ) => {
-    onProgress?.({ sandboxId, phase: 'uploadingPackage' });
-    const prepareSkillsRootResult = await sandbox.execute(
-      `mkdir -p ${shellQuote(runtimeProfile.skillsRootPath)}`
-    );
-    if (prepareSkillsRootResult.exitCode !== 0) {
-      throw new Error(`Failed to prepare skill directory: ${prepareSkillsRootResult.stderr}`);
-    }
-
-    const zipPath = joinSandboxPath(runtimeProfile.skillsRootPath, 'package.zip');
-    const maxPackageBytes = serviceEnv.AGENT_SANDBOX_SKILL_MAX_SIZE * 1024 * 1024;
-
-    const writeResults = await sandbox.writeFiles([
-      {
-        path: zipPath,
-        data: packageBuffer
-      }
-    ]);
-    const failedWrite = writeResults.find((result) => result.error);
-    if (failedWrite) {
-      throw new Error(`Failed to write skill package ZIP: ${failedWrite.error?.message}`);
-    }
-
-    onProgress?.({ sandboxId, phase: 'extractingPackage' });
-
-    const unzipCmd = [
-      `cd ${shellQuote(runtimeProfile.workDirectory)}`,
-      `unzip -Z -t ${shellQuote(zipPath)} | awk -v max=${maxPackageBytes} 'BEGIN { ok=0 } /uncompressed,/ { ok=(($3 + 0) <= max) } END { exit ok ? 0 : 1 }'`,
-      `unzip -Z1 ${shellQuote(zipPath)} | awk 'BEGIN { ok=1 } /^\\// || /(^|\\/)\\.\\.($|\\/)/ { ok=0 } END { exit ok ? 0 : 1 }'`,
-      `unzip -o -q ${shellQuote(zipPath)} -d .`,
-      `rm -f ${shellQuote(zipPath)}`,
-      `if [ ! -f .gitignore ]; then echo ${shellQuote(DEFAULT_GITIGNORE_CONTENT)} > .gitignore; fi`
-    ].join(' && ');
-
-    const extractResult = await sandbox.execute(unzipCmd);
-    if (extractResult.exitCode !== 0) {
-      throw new Error(`Failed to decompress package inside sandbox: ${extractResult.stderr}`);
-    }
-  };
-
-  const cleanWorkspace = async (sandbox: ISandbox) => {
-    // 已有实例重部署时先清空工作区；保留挂载点本身，避免 volume 根目录权限问题。
-    const cleanCmd = `find ${shellQuote(runtimeProfile.workDirectory)} -mindepth 1 -delete || (rm -rf ${shellQuote(runtimeProfile.workDirectory)}/* && rm -rf ${shellQuote(runtimeProfile.workDirectory)}/.[!.]*)`;
-
-    const cleanResult = await sandbox.execute(cleanCmd);
-    if (cleanResult.exitCode !== 0) {
-      throw new Error(`Failed to clean workspace processes and files: ${cleanResult.stderr}`);
-    }
-  };
-
-  const hasWorkspaceContent = async (sandbox: ISandbox): Promise<boolean> => {
-    const quotedWorkDirectory = shellQuote(runtimeProfile.workDirectory);
-    const result = await sandbox.execute(
-      `mkdir -p ${quotedWorkDirectory} && test -n "$(find ${quotedWorkDirectory} -mindepth 1 -print -quit 2>/dev/null)"`
-    );
-
-    if (result.exitCode === 0) return true;
-    if (result.exitCode === 1) return false;
-
-    throw new Error(`Failed to inspect workspace content: ${result.stderr || result.stdout}`);
-  };
-
   const reloadExistingEditDebugSandbox = async (
     instance: NonNullable<typeof existingInstance>,
     sandbox: ISandbox
@@ -397,16 +344,23 @@ export async function createEditDebugSandbox(
       targetVersionId: currentVersion._id.toString()
     });
 
-    onProgress?.({ sandboxId: instance.sandboxId, phase: 'downloadingPackage' });
-    const packageBuffer = await downloadSkillPackage({
-      storageKey: currentVersion.storageKey
-    });
-
-    onProgress?.({ sandboxId: instance.sandboxId, phase: 'deployingSkills' });
-
-    await cleanWorkspace(sandbox);
-
-    await uploadAndDecompressPackage(sandbox, instance.sandboxId, packageBuffer);
+    await prepareSandbox(
+      prepareContext(sandbox),
+      preparePackageMirrors(),
+      downloadSkillPackageToContext({
+        storageKey: currentVersion.storageKey,
+        onProgress: reportProgress(instance.sandboxId)
+      }),
+      reportSkillPrepareProgress({
+        phase: 'deployingSkills',
+        onProgress: reportProgress(instance.sandboxId)
+      }),
+      emptyWorkDirectory(),
+      deployDownloadedSkillPackage({
+        skillsRootPath: runtimeProfile.skillsRootPath,
+        onProgress: reportProgress(instance.sandboxId)
+      })
+    );
 
     const existingMetadata = instance.metadata || {};
     const newMetadata = {
@@ -599,30 +553,48 @@ export async function createEditDebugSandbox(
       status: client.provider.status
     });
 
-    const prepareWorkDirectoryResult = await client.provider.execute(
-      `mkdir -p ${shellQuote(runtimeProfile.workDirectory)}`
-    );
-    if (prepareWorkDirectoryResult.exitCode !== 0) {
-      throw new Error(
-        `Failed to prepare workspace directory: ${prepareWorkDirectoryResult.stderr}`
-      );
-    }
-
     if (shouldUnzipFromS3) {
-      onProgress?.({ sandboxId: sessionId, phase: 'downloadingPackage' });
-      const packageBuffer = await downloadSkillPackage({
-        storageKey: currentVersion.storageKey
-      });
       if (existingInstance) {
-        await cleanWorkspace(client.provider);
+        await prepareSandbox(
+          prepareContext(client.provider),
+          preparePackageMirrors(),
+          prepareWorkDirectory(),
+          downloadSkillPackageToContext({
+            storageKey: currentVersion.storageKey,
+            onProgress: reportProgress(sessionId)
+          }),
+          emptyWorkDirectory(),
+          deployDownloadedSkillPackage({
+            skillsRootPath: runtimeProfile.skillsRootPath,
+            onProgress: reportProgress(sessionId)
+          })
+        );
+      } else {
+        await prepareSandbox(
+          prepareContext(client.provider),
+          preparePackageMirrors(),
+          prepareWorkDirectory(),
+          downloadSkillPackageToContext({
+            storageKey: currentVersion.storageKey,
+            onProgress: reportProgress(sessionId)
+          }),
+          deployDownloadedSkillPackage({
+            skillsRootPath: runtimeProfile.skillsRootPath,
+            onProgress: reportProgress(sessionId)
+          })
+        );
       }
-      await uploadAndDecompressPackage(client.provider, sessionId, packageBuffer);
     } else {
       addLog.info(
         '[Sandbox] Skill sandbox resumed with existing volume, skip initial S3 download/unzip',
         {
           sandboxId: sessionId
         }
+      );
+      await prepareSandbox(
+        prepareContext(client.provider),
+        preparePackageMirrors(),
+        prepareWorkDirectory()
       );
     }
 

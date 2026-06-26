@@ -62,12 +62,13 @@ describe('builtin skill runtime', () => {
     expect(sandbox.writeFiles.mock.calls[1][0]).toEqual([
       expect.objectContaining({
         path: '/home/sandbox/.fastgpt/runtime/state.json',
-        data: expect.stringContaining('builtinSkill:skill-creator')
+        data: expect.stringContaining('"values"')
       })
     ]);
+    expect(sandbox.writeFiles.mock.calls[1][0][0].data).toContain('builtinSkill:skill-creator');
   });
 
-  it('skips writing builtin skill when runtime state etag is current', async () => {
+  it('skips writing builtin skill when legacy runtime hash state is current', async () => {
     const sources = [
       {
         name: 'skill-creator',

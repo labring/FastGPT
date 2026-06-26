@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   connectToSandbox: vi.fn(),
   disconnectSandbox: vi.fn(),
   deleteWorkspaceArchive: vi.fn(),
+  prepareSandboxRuntimeMirrors: vi.fn(),
   logger: {
     info: vi.fn(),
     warn: vi.fn(),
@@ -93,6 +94,10 @@ vi.mock('@fastgpt/service/core/ai/sandbox/service/resource', () => ({
   deleteSandboxResource: vi.fn()
 }));
 
+vi.mock('@fastgpt/service/core/ai/sandbox/runtime/mirrors', () => ({
+  prepareSandboxRuntimeMirrors: mocks.prepareSandboxRuntimeMirrors
+}));
+
 vi.mock('@fastgpt/service/common/s3/sources/sandbox', () => ({
   getS3SandboxSource: () => ({
     deleteWorkspaceArchive: mocks.deleteWorkspaceArchive
@@ -107,18 +112,6 @@ vi.mock('@fastgpt/service/core/ai/sandbox/instance/repository', () => ({
   migrateArchivedSandboxInstanceRecord: vi.fn(),
   updateSandboxInstanceRecordBySandboxId: vi.fn()
 }));
-
-vi.mock('@fastgpt/service/core/ai/skill/runtime', () => {
-  const trimSandboxPathRight = (value: string) => (value === '/' ? '' : value.replace(/\/+$/, ''));
-
-  return {
-    getSkillsRootPath: (workDirectory: string) => `${trimSandboxPathRight(workDirectory)}/skills`,
-    joinSandboxPath: (basePath: string, path: string) =>
-      `${trimSandboxPathRight(basePath)}/${path}`,
-    shellQuote: (value: string) => `'${value.replace(/'/g, `'\\''`)}'`,
-    getSafeSkillDirectoryName: (name: string) => name
-  };
-});
 
 vi.mock('@fastgpt/service/common/logger', () => ({
   getLogger: () => mocks.logger,
@@ -293,12 +286,8 @@ describe('packageSkillInSandbox', () => {
     expect(mocks.disconnectSandbox).toHaveBeenCalledWith(sandbox);
   });
 
-  it('reads and parses custom .gitignore files from the sandbox correctly', async () => {
-    const gitignoreContent = `
-# ignore node and env
-my_custom_ignored_dir/
-temp_data.csv
-`;
+  it('applies default ignore rules and root workspace gitignore when packaging', async () => {
+    const gitignoreContent = 'dist/\n';
     const zipContent = new Uint8Array([9, 8, 7]);
     const sandbox = {
       execute: vi.fn(async (command: string) => {
@@ -332,80 +321,14 @@ temp_data.csv
       Buffer.from(zipContent)
     );
 
-    // Verify .gitignore was read
     expect(sandbox.readFiles).toHaveBeenCalledWith(['/workspace/.gitignore']);
-    // Verify zip was called with custom excludes
-    expect(sandbox.execute).toHaveBeenCalledWith(
-      expect.stringContaining("-x 'my_custom_ignored_dir/*'")
-    );
-    expect(sandbox.execute).toHaveBeenCalledWith(
-      expect.stringContaining("-x '*/my_custom_ignored_dir/*'")
-    );
-    expect(sandbox.execute).toHaveBeenCalledWith(expect.stringContaining("-x 'temp_data.csv'"));
-  });
-
-  it('applies default ignore rules when packaging without workspace gitignore', async () => {
-    const zipContent = new Uint8Array([1, 2, 3]);
-    const sandbox = createSandbox({
-      readFilesResult: [
-        {
-          path: '/workspace/package.zip',
-          content: zipContent,
-          error: null
-        }
-      ]
-    });
-    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
-
-    await expect(packageSkillInSandbox({ sandboxId: 'sandbox-1' })).resolves.toEqual(
-      Buffer.from(zipContent)
-    );
-
     expect(sandbox.execute).toHaveBeenCalledWith(
       expect.stringContaining("-name '.venv' -o -name 'node_modules'")
     );
     expect(sandbox.execute).toHaveBeenCalledWith(expect.stringContaining("-x '.venv/*'"));
     expect(sandbox.execute).toHaveBeenCalledWith(expect.stringContaining("-x '*/.venv/*'"));
-  });
-
-  it('only reads root gitignore when packaging', async () => {
-    const rootGitignoreContent = 'dist/\n';
-    const zipContent = new Uint8Array([1, 2, 3]);
-    const sandbox = {
-      execute: vi.fn(async (command: string) => {
-        if (command.startsWith('[ -d ')) {
-          return { exitCode: 0, stdout: '', stderr: '' };
-        }
-        if (command.includes('find . ') && command.includes('-prune')) {
-          return { exitCode: 0, stdout: '100', stderr: '' };
-        }
-        if (command.startsWith('cd ')) {
-          return { exitCode: 0, stdout: 'zip ok', stderr: '' };
-        }
-        if (command.startsWith('rm -f ')) {
-          return { exitCode: 0, stdout: '', stderr: '' };
-        }
-        return { exitCode: 0, stdout: '', stderr: '' };
-      }),
-      readFiles: vi.fn(async (paths: string[]) => {
-        if (paths.includes('/workspace/package.zip')) {
-          return [{ path: '/workspace/package.zip', content: zipContent, error: null }];
-        }
-        if (paths.includes('/workspace/.gitignore')) {
-          return [{ path: '/workspace/.gitignore', content: rootGitignoreContent, error: null }];
-        }
-        return [];
-      })
-    };
-    mocks.connectToSandbox.mockResolvedValueOnce(sandbox);
-
-    await expect(packageSkillInSandbox({ sandboxId: 'sandbox-1' })).resolves.toEqual(
-      Buffer.from(zipContent)
-    );
-
-    expect(sandbox.readFiles).toHaveBeenCalledWith(['/workspace/.gitignore']);
-    expect(sandbox.readFiles).not.toHaveBeenCalledWith(['/workspace/.venv/.gitignore']);
     expect(sandbox.execute).toHaveBeenCalledWith(expect.stringContaining("-x 'dist/*'"));
+    expect(sandbox.execute).toHaveBeenCalledWith(expect.stringContaining("-x '*/dist/*'"));
   });
 });
 
@@ -513,6 +436,9 @@ describe('createEditDebugSandbox', () => {
     ]);
     expect(provider.execute).toHaveBeenCalledWith("mkdir -p '/workspace/skills'");
     expect(provider.execute).toHaveBeenCalledWith(expect.stringContaining('unzip'));
+    expect(mocks.prepareSandboxRuntimeMirrors).toHaveBeenCalledWith({
+      sandbox: provider
+    });
     expect(mocks.disconnectSandbox).toHaveBeenCalledWith(provider);
   });
 

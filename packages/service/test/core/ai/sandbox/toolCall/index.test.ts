@@ -13,6 +13,10 @@ const fileServiceMock = vi.hoisted(() => ({
   writeUrlFilesToSandbox: vi.fn()
 }));
 
+const mirrorMock = vi.hoisted(() => ({
+  prepareSandboxRuntimeMirrors: vi.fn()
+}));
+
 const s3Mock = vi.hoisted(() => ({
   uploadChatFile: vi.fn(),
   jwtSignS3ObjectKey: vi.fn()
@@ -24,6 +28,10 @@ vi.mock('@fastgpt/service/core/ai/sandbox/service/runtime', () => ({
 
 vi.mock('@fastgpt/service/core/ai/sandbox/service/file', () => ({
   writeUrlFilesToSandbox: fileServiceMock.writeUrlFilesToSandbox
+}));
+
+vi.mock('@fastgpt/service/core/ai/sandbox/runtime/mirrors', () => ({
+  prepareSandboxRuntimeMirrors: mirrorMock.prepareSandboxRuntimeMirrors
 }));
 
 vi.mock('@fastgpt/service/common/s3/sources/chat', () => ({
@@ -147,6 +155,12 @@ describe('sandbox toolCall index', () => {
     ).resolves.toBe(sandbox);
 
     expect(sandbox.ensureAvailable).not.toHaveBeenCalled();
+    expect(mirrorMock.prepareSandboxRuntimeMirrors).toHaveBeenCalledWith({
+      sandbox: sandbox.provider
+    });
+    expect(mirrorMock.prepareSandboxRuntimeMirrors.mock.invocationCallOrder[0]).toBeLessThan(
+      fileServiceMock.writeUrlFilesToSandbox.mock.invocationCallOrder[0]
+    );
     expect(fileServiceMock.writeUrlFilesToSandbox).toHaveBeenCalledWith(sandbox.provider, files);
   });
 

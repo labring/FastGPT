@@ -8,9 +8,10 @@ const logger = getLogger(LogCategories.MODULE.AI.AGENT);
 const RUNTIME_STATE_DIR_RELATIVE_PATH = '.fastgpt/runtime';
 const RUNTIME_STATE_FILE_NAME = 'state.json';
 
+type RuntimeStateValue = string | string[];
+
 export type SandboxRuntimeState = {
-  hashes?: Record<string, string>;
-  lists?: Record<string, string[]>;
+  values?: Record<string, RuntimeStateValue>;
 };
 
 export type SandboxRuntimeStateContext = {
@@ -119,38 +120,26 @@ export const writeSandboxRuntimeState = async (
   }
 };
 
-export const getRuntimeStateHash = (state: SandboxRuntimeState, key: string): string | undefined =>
-  state.hashes?.[key];
+export const getRuntimeStateValue = (state: SandboxRuntimeState, key: string): RuntimeStateValue =>
+  state.values?.[key] ?? '';
 
-export const setRuntimeStateHash = (
+export const setRuntimeStateValue = (
   state: SandboxRuntimeState,
   key: string,
-  hash: string
+  value: RuntimeStateValue
 ): void => {
-  state.hashes = {
-    ...(state.hashes ?? {}),
-    [key]: hash
+  const normalizedValue = Array.isArray(value) ? Array.from(new Set(value)) : value;
+  state.values = {
+    ...(state.values ?? {}),
+    ...(Array.isArray(normalizedValue) && normalizedValue.length === 0
+      ? {}
+      : { [key]: normalizedValue })
   };
-};
-
-export const getRuntimeStateList = (state: SandboxRuntimeState, key: string): string[] =>
-  state.lists?.[key] ?? [];
-
-export const setRuntimeStateList = (
-  state: SandboxRuntimeState,
-  key: string,
-  values: string[]
-): void => {
-  const uniqueValues = Array.from(new Set(values));
-  state.lists = {
-    ...(state.lists ?? {}),
-    ...(uniqueValues.length > 0 ? { [key]: uniqueValues } : {})
-  };
-  if (uniqueValues.length === 0) {
-    delete state.lists[key];
+  if (Array.isArray(normalizedValue) && normalizedValue.length === 0) {
+    delete state.values[key];
   }
-  if (Object.keys(state.lists).length === 0) {
-    delete state.lists;
+  if (Object.keys(state.values).length === 0) {
+    delete state.values;
   }
 };
 
@@ -193,13 +182,13 @@ const resolveRuntimeStateLocation = async ({
 const normalizeRuntimeState = (value: unknown): SandboxRuntimeState => {
   if (!value || typeof value !== 'object') return {};
   const raw = value as SandboxRuntimeState;
-  const hashes = normalizeStringRecord(raw.hashes);
-  const lists = normalizeStringListRecord(raw.lists);
-
-  return {
-    ...(hashes ? { hashes } : {}),
-    ...(lists ? { lists } : {})
+  const values = {
+    ...normalizeStringRecord((raw as { hashes?: unknown }).hashes),
+    ...normalizeStringListRecord((raw as { lists?: unknown }).lists),
+    ...normalizeRuntimeStateValueRecord(raw.values)
   };
+
+  return Object.keys(values).length > 0 ? { values } : {};
 };
 
 const normalizeStringRecord = (value: unknown): Record<string, string> | undefined => {
@@ -221,5 +210,27 @@ const normalizeStringListRecord = (value: unknown): Record<string, string[]> | u
     const values = Array.from(new Set(list.filter((item) => typeof item === 'string')));
     return values.length > 0 ? [[key, values] as const] : [];
   });
+  return entries.length > 0 ? Object.fromEntries(entries) : undefined;
+};
+
+const normalizeRuntimeStateValueRecord = (
+  value: unknown
+): Record<string, RuntimeStateValue> | undefined => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return;
+
+  const entries: Array<[string, RuntimeStateValue]> = [];
+
+  Object.entries(value).forEach(([key, item]) => {
+    if (typeof item === 'string') {
+      entries.push([key, item]);
+      return;
+    }
+    if (!Array.isArray(item)) return;
+    const values = Array.from(new Set(item.filter((value) => typeof value === 'string')));
+    if (values.length > 0) {
+      entries.push([key, values]);
+    }
+  });
+
   return entries.length > 0 ? Object.fromEntries(entries) : undefined;
 };

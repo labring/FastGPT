@@ -11,6 +11,8 @@ import { toolMap as writeFileToolMap } from './writeFile.tool';
 import { getSandboxClient, type SandboxClient } from '../service/runtime';
 import { parseJsonArgs } from '../../utils';
 import { writeUrlFilesToSandbox } from '../service/file';
+import { getSandboxRuntimeProfile } from '../runtime/profile';
+import { preparePackageMirrors, prepareSandbox } from '../runtime/prepare';
 
 const ToolMap = {
   ...editFileToolMap,
@@ -114,6 +116,15 @@ export const prepareSandboxToolRuntime = async ({
   files: { path: string; url: string }[];
 }) => {
   const instance = await getSandboxClient(sandboxId ? { sandboxId } : { appId, userId, chatId });
+  const runtimeProfile = getSandboxRuntimeProfile();
+  await prepareSandbox(
+    {
+      sandbox: instance.provider,
+      sandboxClient: instance,
+      workDirectory: runtimeProfile.workDirectory
+    },
+    preparePackageMirrors()
+  );
   await writeUrlFilesToSandbox(instance.provider, files);
   return instance;
 };

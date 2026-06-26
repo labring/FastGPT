@@ -1,7 +1,7 @@
 import type { FileWriteEntry, ISandbox } from '@fastgpt-sdk/sandbox-adapter';
 import { SANDBOX_USER_FILES_PATH } from '@fastgpt/global/core/ai/sandbox/constants';
 import { pickOutboundAxios } from '../../../../common/api/axios';
-import { getSafeAgentInputFilename } from '../../../workflow/dispatch/ai/agent/adapter/fileName';
+import { getSafeSandboxInputFilename } from './utils';
 
 export type SandboxInputFile = {
   name: string;
@@ -41,7 +41,7 @@ export const injectInputFilesToSandbox = async (sandbox: ISandbox, files: Sandbo
   const usedNames = new Map<string, number>();
 
   for (const [index, file] of files.entries()) {
-    const filename = getSafeAgentInputFilename(file.name, index, usedNames);
+    const filename = getSafeSandboxInputFilename(file.name, index, usedNames);
     const path = `${SANDBOX_USER_FILES_PATH}${filename}`;
     writeFileTasks.push(
       pickOutboundAxios(file.url)
