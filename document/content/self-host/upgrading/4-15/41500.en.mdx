@@ -51,6 +51,10 @@ WORKFLOW_PARALLEL_MAX_CONCURRENCY=10
 AGENT_SANDBOX_ARCHIVE_MAX_SIZE=50
 # Skill sandbox package size limit, in MB
 AGENT_SANDBOX_SKILL_MAX_SIZE=10
+# Registry used by npm/yarn/bun inside Agent Sandbox
+AGENT_SANDBOX_NPM_REGISTRY=
+# Python package index used by pip/uv inside Agent Sandbox
+AGENT_SANDBOX_PYPI_INDEX_URL=
 ```
 
 This release adds environment variable validation. Check that both `fastgpt-app` and `fastgpt-pro` include `AES256_SECRET_KEY` and `FILE_TOKEN_KEY`, and that the values are the same in both services.

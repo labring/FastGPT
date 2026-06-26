@@ -60,8 +60,22 @@ Migration logic:
 
 This endpoint does not backfill `sourceType` for existing App Chat records.
 
+### 4. Configure package registry mirrors for Agent Sandbox
+
+Agent Sandbox now supports package registry mirror configuration. When configured, FastGPT writes mirror configuration files for npm, yarn, bun, pip, and uv under the sandbox HOME directory during sandbox initialization. This improves dependency installation stability in private networks or cross-region network environments.
+
+```dotenv
+# Registry used by npm/yarn/bun inside Agent Sandbox
+AGENT_SANDBOX_NPM_REGISTRY=
+# Python package index used by pip/uv inside Agent Sandbox
+AGENT_SANDBOX_PYPI_INDEX_URL=
+```
+
+The configuration is cached by content hash in the sandbox runtime state, so the same sandbox only rewrites these files when the configuration changes.
+
 ## ⚙️ Improvements
 
 1. Chat title generation now uses the system default model configuration, making it easier to switch at runtime and manage consistently.
 2. LLM request traces are now queried with team isolation, and the unique index is now `{ teamId, requestId }` to prevent request IDs from exposing sensitive traces across teams.
 3. Skill Edit chats now use the standard Chat storage and cleanup flow, and legacy Skill Debug chats can be cleaned through the initialization API.
+4. Agent Sandbox now supports npm and PyPI mirror configuration. During initialization, it writes common package manager configuration files to reduce dependency installation failures inside the sandbox.

@@ -60,8 +60,22 @@ curl -X POST 'https://你的域名/api/admin/4150/init4150-beta6' \
 
 该接口不会回填几亿条历史 App Chat 的 `sourceType`。
 
+### 4. Agent Sandbox 包管理镜像源配置
+
+Agent Sandbox 新增包管理镜像源配置。配置后，Agent Sandbox 初始化时会在 sandbox HOME 下写入 npm、yarn、bun、pip 和 uv 的镜像配置文件，提升在私有网络或跨境网络环境中安装依赖的稳定性。
+
+```dotenv
+# Agent Sandbox 内 npm/yarn/bun 使用的 registry
+AGENT_SANDBOX_NPM_REGISTRY=
+# Agent Sandbox 内 pip/uv 使用的 Python package index
+AGENT_SANDBOX_PYPI_INDEX_URL=
+```
+
+该配置会按内容 hash 缓存在 sandbox runtime state 中，同一个 sandbox 仅在配置变化时重新写入。
+
 ## ⚙️ 优化
 
 1. 对话标题生成模型改为使用系统默认模型配置管理，便于运行时切换和统一维护。
 2. LLM 请求追踪记录按团队隔离查询，唯一索引调整为 `{ teamId, requestId }`，避免 `requestId` 被其他团队复用读取敏感 trace。
 3. Skill Edit 对话统一使用标准 Chat 存储和清理链路，历史 Skill Debug 对话可通过初始化接口清理。
+4. Agent Sandbox 支持配置 npm 和 PyPI 镜像源，初始化时自动写入常见包管理器配置，减少 sandbox 内依赖安装失败。
