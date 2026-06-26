@@ -153,8 +153,9 @@ async function handler(req: ApiRequestProps): Promise<RebuildEmbeddingResponse> 
     } catch (error) {}
   }
 
-  // 触发所有受影响的 collection 的 stats 更新，使前端状态从 ready 变为 indexing
-  const affectedCollections = await MongoDatasetTraining.distinct('collectionId', {
+  // 触发知识库下所有 collection 的 stats 更新，使前端状态从 ready 变为 indexing
+  // 使用 dataset_data 而不是 training 表查询，因为初始批次只创建部分任务，training 表未覆盖全部 collection
+  const affectedCollections = await MongoDatasetData.distinct('collectionId', {
     teamId,
     datasetId
   });

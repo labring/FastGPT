@@ -67,7 +67,7 @@ export async function createEmbeddingModelConfig(params: {
     maxToken: params.maxToken ?? 512,
     weight: params.weight ?? 0,
     normalization: params.normalization,
-    batchSize: params.batchSize,
+    batchSize: params.batchSize ?? 10,
     defaultConfig: params.defaultConfig,
     instruction: params.instruction
   };

@@ -201,12 +201,20 @@ const CollectionCard = () => {
             };
           }
           // trainingAmount === 0 时，以 API 返回的 status 为准
-          // （新创建 / stats 未初始化的 collection 会返回 queued）
+          // （新创建 / stats 未初始化的 collection 会返回 queued
+          //   同义词处理中断的 collection 会返回 queued 或 indexing）
           if (collection.status === CollectionStatusEnum.queued) {
             return {
               statusText: t('common:core.dataset.collection.status.queued'),
               colorSchema: 'gray',
               statusKey: 'queued'
+            };
+          }
+          if (collection.status === CollectionStatusEnum.indexing) {
+            return {
+              statusText: `${t('common:core.dataset.collection.status.indexing')}(${collection.processedCount ?? 0}/${collection.dataAmount ?? 0})`,
+              colorSchema: 'blue',
+              statusKey: 'indexing'
             };
           }
           return {
@@ -530,8 +538,19 @@ const CollectionCard = () => {
             }}
           />
         ) : (
-          <TableContainer ref={scrollContainerRef} overflowY={'auto'} overflowX={'auto'} fontSize={'sm'} flex={'1 0 0'} h={0}>
-            <Table variant={'simple'} draggable={false} sx={{ tableLayout: 'fixed', width: '100%', minW: '1100px' }}>
+          <TableContainer
+            ref={scrollContainerRef}
+            overflowY={'auto'}
+            overflowX={'auto'}
+            fontSize={'sm'}
+            flex={'1 0 0'}
+            h={0}
+          >
+            <Table
+              variant={'simple'}
+              draggable={false}
+              sx={{ tableLayout: 'fixed', width: '100%', minW: '1100px' }}
+            >
               <Thead draggable={false}>
                 <Tr>
                   <Th py={4} w="25%" maxW="350px">
@@ -699,7 +718,11 @@ const CollectionCard = () => {
                             />
                             {isStructureDocument ? (
                               <MyTooltip label={collection.name} shouldWrapChildren={false}>
-                                <Box fontSize={'xs'} color={'myWhite.1000'} className="textEllipsis">
+                                <Box
+                                  fontSize={'xs'}
+                                  color={'myWhite.1000'}
+                                  className="textEllipsis"
+                                >
                                   {collection.name}
                                 </Box>
                               </MyTooltip>
