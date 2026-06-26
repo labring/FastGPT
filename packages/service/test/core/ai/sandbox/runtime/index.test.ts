@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { generateSandboxId } from '@fastgpt/global/core/ai/sandbox/constants';
 import { getEditDebugSandboxId } from '@fastgpt/service/core/ai/skill/edit/config';
+import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
 
 const mocks = vi.hoisted(() => ({
   getSandboxClient: vi.fn(),
@@ -38,8 +39,7 @@ describe('prepareAgentSandboxRuntime', () => {
         sourceId: 'app_1',
         userId: 'user_1',
         chatId: 'chat_1',
-        teamId: 'team_1',
-        needSandboxRuntime: true
+        teamId: 'team_1'
       })
     ).resolves.toEqual({
       sandboxClient: expect.any(Object),
@@ -63,8 +63,7 @@ describe('prepareAgentSandboxRuntime', () => {
       sourceId: 'skill_1',
       userId: 'user_1',
       chatId: 'edit-debug',
-      teamId: 'team_1',
-      needSandboxRuntime: true
+      teamId: 'team_1'
     });
 
     expect(mocks.getSandboxClient).toHaveBeenCalledWith({
@@ -76,8 +75,9 @@ describe('prepareAgentSandboxRuntime', () => {
     });
   });
 
-  it('does not touch sandbox service when runtime is not needed', async () => {
+  it('throws structured permission error before creating sandbox client', async () => {
     const { prepareAgentSandboxRuntime } = await import('@fastgpt/service/core/ai/sandbox/runtime');
+    mocks.checkTeamSandboxPermission.mockRejectedValueOnce(new Error('no permission'));
 
     await expect(
       prepareAgentSandboxRuntime({
@@ -85,12 +85,12 @@ describe('prepareAgentSandboxRuntime', () => {
         sourceId: 'app_1',
         userId: 'user_1',
         chatId: 'chat_1',
-        teamId: 'team_1',
-        needSandboxRuntime: false
+        teamId: 'team_1'
       })
-    ).resolves.toBeUndefined();
+    ).rejects.toMatchObject({
+      message: SandboxErrEnum.agentSandboxPermissionDenied
+    });
 
-    expect(mocks.checkTeamSandboxPermission).not.toHaveBeenCalled();
     expect(mocks.getSandboxClient).not.toHaveBeenCalled();
   });
 });
