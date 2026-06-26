@@ -91,9 +91,18 @@ const buildSandboxRuntimeMirrorFiles = (config: SandboxRuntimeMirrorsConfig) => 
     });
   }
 
+  let pypiTrustedHost: string | undefined;
+  if (normalized.pypiIndexUrl) {
+    try {
+      pypiTrustedHost = new URL(normalized.pypiIndexUrl).host || undefined;
+    } catch {
+      pypiTrustedHost = undefined;
+    }
+  }
   const pipConfig = [
     '[global]',
-    ...(normalized.pypiIndexUrl ? [`index-url = ${normalized.pypiIndexUrl}`] : [])
+    ...(normalized.pypiIndexUrl ? [`index-url = ${normalized.pypiIndexUrl}`] : []),
+    ...(pypiTrustedHost ? [`trusted-host = ${pypiTrustedHost}`] : [])
   ];
   if (pipConfig.length > 1) {
     files.push({
@@ -106,7 +115,12 @@ const buildSandboxRuntimeMirrorFiles = (config: SandboxRuntimeMirrorsConfig) => 
     });
     files.push({
       path: '.config/uv/uv.toml',
-      content: `default-index = "${escapeTomlString(normalized.pypiIndexUrl!)}"\n`
+      content: `${[
+        `default-index = "${escapeTomlString(normalized.pypiIndexUrl!)}"`,
+        ...(pypiTrustedHost
+          ? [`allow-insecure-host = ["${escapeTomlString(pypiTrustedHost)}"]`]
+          : [])
+      ].join('\n')}\n`
     });
   }
 

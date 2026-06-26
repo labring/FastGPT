@@ -69,15 +69,18 @@ describe('sandbox runtime mirrors', () => {
       },
       {
         path: '.pip/pip.conf',
-        content: '[global]\nindex-url = https://pypi.example.com/simple\n'
+        content:
+          '[global]\nindex-url = https://pypi.example.com/simple\ntrusted-host = pypi.example.com\n'
       },
       {
         path: '.config/pip/pip.conf',
-        content: '[global]\nindex-url = https://pypi.example.com/simple\n'
+        content:
+          '[global]\nindex-url = https://pypi.example.com/simple\ntrusted-host = pypi.example.com\n'
       },
       {
         path: '.config/uv/uv.toml',
-        content: 'default-index = "https://pypi.example.com/simple"\n'
+        content:
+          'default-index = "https://pypi.example.com/simple"\nallow-insecure-host = ["pypi.example.com"]\n'
       }
     ];
     const expectedScript = [
