@@ -52,6 +52,13 @@ const Init4150Beta6ResponseSchema = z.object({
 type Init4150Beta6ResponseType = z.infer<typeof Init4150Beta6ResponseSchema>;
 type LegacyDebugChatCleanupItem =
   Init4150Beta6ResponseType['legacyDebugChatCleanup']['list'][number];
+type SandboxSourceUpdateOperation = {
+  filter: {
+    _id: unknown;
+  };
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
+};
 
 const getAllSkillIds = async () => {
   const skillList = await MongoAgentSkills.find({}, '_id').lean();
@@ -118,6 +125,28 @@ const getSkillSourceIdFromSandbox = ({
   if (appId && skillIdSet.has(appId)) return appId;
 };
 
+const updateSandboxSources = async (operations: SandboxSourceUpdateOperation[]) => {
+  const results = await Promise.all(
+    operations.map((operation) =>
+      MongoSandboxInstance.updateOne(operation.filter, {
+        $set: {
+          sourceType: operation.sourceType,
+          sourceId: operation.sourceId
+        }
+      })
+    )
+  );
+  const getUpdateCount = (item: { matchedCount?: number; modifiedCount?: number }) => ({
+    matchedCount: typeof item.matchedCount === 'number' ? item.matchedCount : 0,
+    modifiedCount: typeof item.modifiedCount === 'number' ? item.modifiedCount : 0
+  });
+
+  return {
+    matchedCount: results.reduce((sum, item) => sum + getUpdateCount(item).matchedCount, 0),
+    modifiedCount: results.reduce((sum, item) => sum + getUpdateCount(item).modifiedCount, 0)
+  };
+};
+
 const migrateSandboxInstances = async ({
   dryRun,
   skillIds
@@ -138,7 +167,7 @@ const migrateSandboxInstances = async ({
       };
     }[]
   >();
-  const skillUpdateOperations = skillSandboxDocs.flatMap((doc) => {
+  const skillUpdateOperations: SandboxSourceUpdateOperation[] = skillSandboxDocs.flatMap((doc) => {
     const sourceId = getSkillSourceIdFromSandbox({
       doc,
       skillIdSet
@@ -148,15 +177,9 @@ const migrateSandboxInstances = async ({
 
     return [
       {
-        updateOne: {
-          filter: { _id: doc._id },
-          update: {
-            $set: {
-              sourceType: ChatSourceTypeEnum.skillEdit,
-              sourceId
-            }
-          }
-        }
+        filter: { _id: doc._id },
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        sourceId
       }
     ];
   });
@@ -182,32 +205,24 @@ const migrateSandboxInstances = async ({
 
   const skillUpdateResult =
     skillUpdateOperations.length > 0
-      ? await MongoSandboxInstance.bulkWrite(skillUpdateOperations)
+      ? await updateSandboxSources(skillUpdateOperations)
       : undefined;
   const appSandboxDocs = await MongoSandboxInstance.find(appDryRunQuery, '_id appId').lean<
     { _id: unknown; appId?: string }[]
   >();
-  const appUpdateOperations = appSandboxDocs.flatMap((doc) => {
+  const appUpdateOperations: SandboxSourceUpdateOperation[] = appSandboxDocs.flatMap((doc) => {
     if (!doc.appId) return [];
 
     return [
       {
-        updateOne: {
-          filter: { _id: doc._id },
-          update: {
-            $set: {
-              sourceType: ChatSourceTypeEnum.app,
-              sourceId: String(doc.appId)
-            }
-          }
-        }
+        filter: { _id: doc._id },
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: String(doc.appId)
       }
     ];
   });
   const appUpdateResult =
-    appUpdateOperations.length > 0
-      ? await MongoSandboxInstance.bulkWrite(appUpdateOperations)
-      : undefined;
+    appUpdateOperations.length > 0 ? await updateSandboxSources(appUpdateOperations) : undefined;
   const orphanSandboxDocs = await MongoSandboxInstance.find(
     orphanSandboxQuery,
     '_id provider sandboxId status lastActiveAt'
