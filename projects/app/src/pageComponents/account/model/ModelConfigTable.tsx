@@ -23,18 +23,19 @@ import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import dynamic from 'next/dynamic';
+import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import {
   deleteSystemModel,
   getModelConfigJson,
   getSystemModelDetail,
-  getSystemModelList,
+  getSystemModelPageList,
   getTestModel,
   putSystemModel
 } from '@/web/core/ai/config';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import type { GetModelDetailResponse } from '@fastgpt/global/openapi/core/ai/model/api';
+import type { GetModelDetailResponse, ListModelsBody } from '@fastgpt/global/openapi/core/ai/model/api';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { clientInitData } from '@/web/common/system/staticData';
@@ -90,40 +91,72 @@ const ModelTable = () => {
 
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
+  const [activeTotal, setActiveTotal] = useState(0);
+
+  const filterParams = useMemo<ListModelsBody>(() => ({
+    provider: provider || undefined,
+    type: modelType || undefined,
+    search: search || undefined,
+    isActive: statusFilter || undefined
+  }), [provider, modelType, search, statusFilter]);
+
+  const fetchModels = useCallback(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    async (data: any) => {
+      const res = await getSystemModelPageList(data);
+      if (res.activeTotal !== undefined) {
+        setActiveTotal(res.activeTotal);
+      }
+      return res;
+    },
+    []
+  );
 
   const {
     data: systemModelList = [],
-    runAsync: refreshSystemModelList,
-    loading: loadingModels
-  } = useRequest(getSystemModelList, {
-    manual: false
+    refresh,
+    isLoading: loadingModels,
+    Pagination
+  } = usePagination(fetchModels, {
+    defaultPageSize: 20,
+    params: filterParams,
+    refreshDeps: [filterParams]
   });
   const refreshModels = useCallback(async () => {
     clientInitData();
-    refreshSystemModelList();
-  }, [refreshSystemModelList]);
+    refresh();
+  }, [refresh]);
 
   const modelList = useMemo(() => {
-    const formatLLMModelList = systemModelList
-      .filter((item) => item.type === ModelTypeEnum.llm)
-      .map((item) => ({
-        ...item,
-        typeLabel: t('common:model.type.chat'),
-        priceLabel: (
-          <PriceTiersLabel
-            config={item}
-            unitLabel={`${t('common:support.wallet.subscription.point')} / 1K Tokens`}
-          />
-        ),
-        tagColor: 'blue'
-      }));
-    const formatVectorModelList = systemModelList
-      .filter((item) => item.type === ModelTypeEnum.embedding)
-      .map((item) => ({
-        ...item,
-        typeLabel: t('common:model.type.embedding'),
-        priceLabel:
-          typeof item.charsPointsPrice === 'number' ? (
+    const formatList = systemModelList.map((item) => {
+      const typeLabel = (() => {
+        switch (item.type) {
+          case ModelTypeEnum.llm:
+            return t('common:model.type.chat');
+          case ModelTypeEnum.embedding:
+            return t('common:model.type.embedding');
+          case ModelTypeEnum.tts:
+            return t('common:model.type.tts');
+          case ModelTypeEnum.stt:
+            return t('common:model.type.stt');
+          case ModelTypeEnum.rerank:
+            return t('common:model.type.reRank');
+          default:
+            return '';
+        }
+      })();
+
+      const priceLabel = (() => {
+        if (item.type === ModelTypeEnum.llm) {
+          return (
+            <PriceTiersLabel
+              config={item}
+              unitLabel={`${t('common:support.wallet.subscription.point')} / 1K Tokens`}
+            />
+          );
+        }
+        if (item.type === ModelTypeEnum.embedding || item.type === ModelTypeEnum.rerank) {
+          return typeof item.charsPointsPrice === 'number' ? (
             <Flex color={'myGray.700'}>
               {`${t('common:Input')}: `}
               <Box fontWeight={'bold'} color={'myGray.900'} mx={0.5}>
@@ -133,16 +166,10 @@ const ModelTable = () => {
             </Flex>
           ) : (
             '-'
-          ),
-        tagColor: 'yellow'
-      }));
-    const formatAudioSpeechModelList = systemModelList
-      .filter((item) => item.type === ModelTypeEnum.tts)
-      .map((item) => ({
-        ...item,
-        typeLabel: t('common:model.type.tts'),
-        priceLabel:
-          typeof item.charsPointsPrice === 'number' ? (
+          );
+        }
+        if (item.type === ModelTypeEnum.tts) {
+          return typeof item.charsPointsPrice === 'number' ? (
             <Flex color={'myGray.700'}>
               <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
                 {item.charsPointsPrice}
@@ -151,16 +178,10 @@ const ModelTable = () => {
             </Flex>
           ) : (
             '-'
-          ),
-        tagColor: 'green'
-      }));
-    const formatWhisperModel = systemModelList
-      .filter((item) => item.type === ModelTypeEnum.stt)
-      .map((item) => ({
-        ...item,
-        typeLabel: t('common:model.type.stt'),
-        priceLabel:
-          typeof item.charsPointsPrice === 'number' ? (
+          );
+        }
+        if (item.type === ModelTypeEnum.stt) {
+          return typeof item.charsPointsPrice === 'number' ? (
             <Flex color={'myGray.700'}>
               <Box fontWeight={'bold'} color={'myGray.900'} mr={0.5}>
                 {item.charsPointsPrice}
@@ -169,49 +190,34 @@ const ModelTable = () => {
             </Flex>
           ) : (
             '-'
-          ),
-        tagColor: 'purple'
-      }));
-    const formatRerankModelList = systemModelList
-      .filter((item) => item.type === ModelTypeEnum.rerank)
-      .map((item) => ({
-        ...item,
-        typeLabel: t('common:model.type.reRank'),
-        priceLabel:
-          typeof item.charsPointsPrice === 'number' ? (
-            <Flex color={'myGray.700'}>
-              {`${t('common:Input')}: `}
-              <Box fontWeight={'bold'} color={'myGray.900'} mx={0.5}>
-                {item.charsPointsPrice}
-              </Box>
-              {` ${t('common:support.wallet.subscription.point')}/1K tokens`}
-            </Flex>
-          ) : (
-            '-'
-          ),
-        tagColor: 'adora'
-      }));
+          );
+        }
+        return '-';
+      })();
 
-    const list = (() => {
-      if (modelType === ModelTypeEnum.llm) return formatLLMModelList;
-      if (modelType === ModelTypeEnum.embedding) return formatVectorModelList;
-      if (modelType === ModelTypeEnum.tts) return formatAudioSpeechModelList;
-      if (modelType === ModelTypeEnum.stt) return formatWhisperModel;
-      if (modelType === ModelTypeEnum.rerank) return formatRerankModelList;
+      const tagColor = (() => {
+        switch (item.type) {
+          case ModelTypeEnum.llm:
+            return 'blue';
+          case ModelTypeEnum.embedding:
+            return 'yellow';
+          case ModelTypeEnum.tts:
+            return 'green';
+          case ModelTypeEnum.stt:
+            return 'purple';
+          case ModelTypeEnum.rerank:
+            return 'adora';
+          default:
+            return 'blue';
+        }
+      })();
 
-      return [
-        ...formatLLMModelList,
-        ...formatVectorModelList,
-        ...formatAudioSpeechModelList,
-        ...formatWhisperModel,
-        ...formatRerankModelList
-      ];
-    })();
-
-    const formatList = list.map((item) => {
       const provider = getModelProvider(item.provider, i18n.language);
       return {
         ...item,
+        typeLabel,
+        priceLabel,
+        tagColor,
         avatar: provider.avatar,
         providerId: provider.id,
         providerName: t(provider.name as any),
@@ -220,43 +226,11 @@ const ModelTable = () => {
     });
     formatList.sort((a, b) => a.order - b.order);
 
-    const filterList = formatList.filter((item) => {
-      const providerFilter = provider ? item.providerId === provider : true;
-
-      const regx = new RegExp(search, 'i');
-      const nameFilter = search ? regx.test(item.name) : true;
-
-      const activeFilter = statusFilter
-        ? statusFilter === 'active'
-          ? item.isActive
-          : !item.isActive
-        : true;
-
-      return providerFilter && nameFilter && activeFilter;
-    });
-
-    return filterList;
-  }, [
-    systemModelList,
-    t,
-    modelType,
-    getModelProvider,
-    i18n.language,
-    provider,
-    search,
-    statusFilter
-  ]);
-  const activeModelLength = useMemo(() => {
-    return modelList.filter((item) => item.isActive).length;
-  }, [modelList]);
-
+    return formatList;
+  }, [systemModelList, t, getModelProvider, i18n.language]);
   const filterProviderList = useMemo(() => {
-    const allProviderIds: string[] = systemModelList.map((model) => model.provider);
-
-    return providerList.current.filter(
-      (item) => allProviderIds.includes(item.value) || item.value === ''
-    );
-  }, [systemModelList]);
+    return providerList.current;
+  }, []);
 
   const { runAsync: onTestModel, loading: testingModel } = useRequest(getTestModel, {
     manual: true,
@@ -351,8 +325,8 @@ const ModelTable = () => {
         )}
         {canCreateModel && <AddModelButton h={'36px'} onCreate={onCreateModel} />}
       </Flex>
-      <MyBox flex={'1 0 0'} h={0} isLoading={isLoading}>
-        <TableContainer h={'100%'} overflowY={'auto'}>
+      <MyBox flex={'1 0 0'} h={0} isLoading={isLoading} display={'flex'} flexDirection={'column'}>
+        <TableContainer flex={'1 0 0'} h={0} overflowY={'auto'}>
           <Table>
             <Thead>
               <Tr color={'myGray.600'}>
@@ -383,7 +357,7 @@ const ModelTable = () => {
                 <Th fontSize={'xs'}>{t('account:model.permission_label')}</Th>
                 <Th fontSize={'xs'}>
                   <TableHeaderFilter
-                    label={`${t('account:model.active')}(${activeModelLength})`}
+                    label={`${t('account:model.active')}(${activeTotal})`}
                     value={statusFilter}
                     onChange={setStatusFilter}
                     options={[
@@ -535,6 +509,9 @@ const ModelTable = () => {
             </Tbody>
           </Table>
         </TableContainer>
+        <Flex mt={3} justifyContent={'center'}>
+          <Pagination />
+        </Flex>
       </MyBox>
 
       {!!editModelData && (

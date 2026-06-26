@@ -1,5 +1,6 @@
 import z from 'zod';
 import { ModelTypeEnum } from '../../../../core/ai/constants';
+import type { PaginationResponse } from '../../../api';
 import {
   ModelPriceTierSchema,
   LLMModelItemSchema,
@@ -121,6 +122,37 @@ export type ModelListItem = z.infer<typeof ModelListItemSchema>;
 export const ListModelsResponseSchema = z.array(ModelListItemSchema);
 
 export type ListModelsResponse = z.infer<typeof ListModelsResponseSchema>;
+
+/** 分页查询模型列表的响应类型，包含全量启用数量 */
+export type ListModelsPaginationResponse = PaginationResponse<ModelListItem> & {
+  activeTotal?: number;
+};
+
+export const ListModelsBodySchema = z.object({
+  provider: z.string().optional().meta({
+    description: '按提供商过滤'
+  }),
+  type: z.string().optional().meta({
+    description: '按模型类型过滤'
+  }),
+  search: z.string().optional().meta({
+    description: '按名称搜索'
+  }),
+  isActive: z.string().optional().meta({
+    description: '按激活状态过滤: active | inactive'
+  }),
+  pageSize: z.union([z.number(), z.string()]).optional().meta({
+    description: '每页条数,不传则返回全量'
+  }),
+  pageNum: z.union([z.number(), z.string()]).optional().meta({
+    description: '页码'
+  }),
+  offset: z.union([z.number(), z.string()]).optional().meta({
+    description: '偏移量'
+  })
+});
+
+export type ListModelsBody = z.infer<typeof ListModelsBodySchema>;
 
 /* ============================================================================
  * API: 创建模型

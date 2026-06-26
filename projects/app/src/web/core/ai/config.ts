@@ -1,6 +1,8 @@
 import { GET, PUT, DELETE, POST } from '@/web/common/api/request';
 import type {
   ListModelsResponse,
+  ListModelsBody,
+  ListModelsPaginationResponse,
   CreateModelBody,
   UpdateModelBody,
   DeleteModelQuery,
@@ -15,6 +17,9 @@ import type {
 export function getSystemModelList() {
   return POST<ListModelsResponse>('/core/ai/model/list', {});
 }
+
+export const getSystemModelPageList = (data: ListModelsBody) =>
+  POST<ListModelsPaginationResponse>('/core/ai/model/list', data);
 
 export const getSystemModelDetail = (id: string) =>
   GET<GetModelDetailResponse>('/core/ai/model/detail', { id });
