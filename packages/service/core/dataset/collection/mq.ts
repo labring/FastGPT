@@ -52,7 +52,7 @@ export const initCollectionUpdateWorker = () => {
             }
           ]),
           MongoDatasetTraining.aggregate<
-            { count: number; hasError: boolean; allParse: boolean } | undefined
+            { count: number; hasError: boolean; allParse: boolean; errorCount: number } | undefined
           >([
             {
               $match: {
@@ -70,6 +70,9 @@ export const initCollectionUpdateWorker = () => {
                 },
                 allParse: {
                   $min: { $eq: ['$mode', TrainingModeEnum.parse] }
+                },
+                errorCount: {
+                  $sum: { $cond: [{ $ifNull: ['$errorMsg', false] }, 1, 0] }
                 }
               }
             }
@@ -90,6 +93,7 @@ export const initCollectionUpdateWorker = () => {
               processedCount: processedCount,
               remainingCount: dataCount - processedCount,
               hasError: trainingResult?.hasError || false,
+              errorCount: trainingResult?.errorCount || 0,
               allParse: trainingResult ? trainingResult.allParse : true,
               statsUpdatedAt: new Date(),
               updateTime: new Date()

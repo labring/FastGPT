@@ -189,6 +189,10 @@ const DatasetCollectionSchema = new Schema({
     type: Boolean,
     default: false
   },
+  errorCount: {
+    type: Number,
+    default: 0
+  },
   allParse: {
     type: Boolean,
     default: false

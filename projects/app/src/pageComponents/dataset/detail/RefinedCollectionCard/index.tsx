@@ -172,7 +172,7 @@ const CollectionCard = () => {
               statusKey: 'notExist'
             };
           }
-          if (collection.hasError) {
+          if (collection.status === CollectionStatusEnum.error) {
             return {
               statusText: t('dataset:exception_state'),
               colorSchema: 'red',
@@ -219,7 +219,13 @@ const CollectionCard = () => {
         return {
           ...collection,
           icon,
-          ...status
+          ...status,
+          // 部分错误：有错误但状态不是 error（如解析中/索引中但有部分分片出错）
+          hasPartialError:
+            (collection.errorCount ?? 0) > 0 &&
+            status.statusKey !== 'error' &&
+            status.statusKey !== 'ready' &&
+            status.statusKey !== 'folder'
         };
       }),
     [displayedCollections, t]
@@ -761,15 +767,32 @@ const CollectionCard = () => {
                               </MyTag>
                             </MyTooltip>
                           ) : (
-                            <MyTag
-                              colorSchema={collection.colorSchema as any}
-                              type={'fill'}
-                              h={'28px'}
-                            >
-                              <Flex fontWeight={'medium'} alignItems={'center'} gap={1}>
-                                {t(collection.statusText as any)}
-                              </Flex>
-                            </MyTag>
+                            <Flex alignItems={'center'} gap={2}>
+                              <MyTag
+                                colorSchema={collection.colorSchema as any}
+                                type={'fill'}
+                                h={'28px'}
+                              >
+                                <Flex fontWeight={'medium'} alignItems={'center'} gap={1}>
+                                  {t(collection.statusText as any)}
+                                </Flex>
+                              </MyTag>
+                              {collection.hasPartialError && (
+                                <MyTooltip label={t('common:Click_to_expand')}>
+                                  <MyIcon
+                                    name={'common/circleAlert'}
+                                    w={'16px'}
+                                    cursor={'pointer'}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setExceptionInfoCollection({
+                                        collectionId: collection._id
+                                      });
+                                    }}
+                                  />
+                                </MyTooltip>
+                              )}
+                            </Flex>
                           )}
                         </Td>
                         {feConfigs?.isPlus && (

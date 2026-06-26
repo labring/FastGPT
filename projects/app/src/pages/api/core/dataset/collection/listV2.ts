@@ -36,6 +36,7 @@ function getFileStatus(item: {
   dataAmount: number;
   trainingAmount: number;
   hasError?: boolean;
+  errorCount?: number;
   tableSchemaExist?: boolean; // 数据库表是否存在（仅数据库类型知识库）
   allParse?: boolean; // 是否所有训练记录都是 parse 模式（用于区分 parse 前排队 vs parse 后排队）
   parseStartTime?: Date; // 持久化标记：parse 任务创建时设置，用于判断处理是否已启动
@@ -49,7 +50,12 @@ function getFileStatus(item: {
   if (!item.statsUpdatedAt) {
     return CollectionStatusEnum.queued;
   }
-  if (item.hasError) {
+  // 只有全部数据都出错时，状态才为 error（errorCount 存在且等于 dataAmount）
+  if (
+    item.errorCount != null &&
+    item.errorCount > 0 &&
+    item.errorCount === item.dataAmount
+  ) {
     return CollectionStatusEnum.error;
   }
   if (item.trainingAmount > 0) {
@@ -263,6 +269,7 @@ async function handler(
     processedCount: 1,
     remainingCount: 1,
     hasError: 1,
+    errorCount: 1,
     allParse: 1,
     statsUpdatedAt: 1,
     ...(isDatabaseDataset ? { tableSchema: 1 } : {}),
@@ -304,6 +311,7 @@ async function handler(
             indexAmount: 0,
             trainingAmount: 0,
             hasError: false,
+            errorCount: 0,
             status:
               item.type === DatasetCollectionTypeEnum.folder
                 ? CollectionStatusEnum.ready
@@ -353,6 +361,7 @@ async function handler(
           indexAmount: 0,
           trainingAmount: 0,
           hasError: false,
+          errorCount: 0,
           status:
             item.type === DatasetCollectionTypeEnum.folder
               ? CollectionStatusEnum.ready
@@ -471,6 +480,7 @@ async function handleFieldSort({
         {
           count: item.trainingAmount || 0,
           hasError: item.hasError || false,
+          errorCount: item.errorCount || 0,
           allParse: item.allParse ?? false
         }
       ])
@@ -500,6 +510,7 @@ async function handleFieldSort({
       const processedCount = data?.processedCount || 0;
       const remainingCount = data?.remainingCount || 0;
       const hasError = training?.hasError || false;
+      const errorCount = training?.errorCount || 0;
       const allParse = training?.allParse || false;
 
       const isFolder = item.type === DatasetCollectionTypeEnum.folder;
@@ -513,6 +524,7 @@ async function handleFieldSort({
           processedCount,
           remainingCount,
           hasError,
+          errorCount,
           permission,
           ...(isDatabaseDataset && item.tableSchema
             ? { tableSchemaDescription: item.tableSchema.description }
@@ -526,6 +538,7 @@ async function handleFieldSort({
           dataAmount,
           trainingAmount,
           hasError,
+          errorCount,
           allParse,
           parseStartTime: item.parseStartTime,
           tableSchemaExist: item.tableSchema?.exist,
@@ -539,6 +552,7 @@ async function handleFieldSort({
           processedCount,
           remainingCount,
           hasError,
+          errorCount,
           status: fileStatus,
           permission,
           ...(isDatabaseDataset && item.tableSchema
@@ -588,6 +602,7 @@ async function handleFieldSort({
       {
         count: item.trainingAmount || 0,
         hasError: item.hasError || false,
+        errorCount: item.errorCount || 0,
         allParse: item.allParse ?? false
       }
     ])
@@ -619,6 +634,7 @@ async function handleFieldSort({
     const processedCount = data?.processedCount || 0;
     const remainingCount = data?.remainingCount || 0;
     const hasError = training?.hasError || false;
+    const errorCount = training?.errorCount || 0;
     const allParse = training?.allParse || false;
     const itemPermission = permissionsMap.get(itemId) ?? parentFolderPermission;
 
@@ -633,6 +649,7 @@ async function handleFieldSort({
         processedCount,
         remainingCount,
         hasError,
+        errorCount,
         permission: itemPermission,
         ...(isDatabaseDataset && item.tableSchema
           ? { tableSchemaDescription: item.tableSchema.description }
@@ -646,6 +663,7 @@ async function handleFieldSort({
         dataAmount,
         trainingAmount,
         hasError,
+        errorCount,
         allParse,
         parseStartTime: item.parseStartTime,
         tableSchemaExist: item.tableSchema?.exist,
@@ -659,6 +677,7 @@ async function handleFieldSort({
         processedCount,
         remainingCount,
         hasError,
+        errorCount,
         status: fileStatus,
         permission: itemPermission,
         ...(isDatabaseDataset && item.tableSchema
@@ -802,6 +821,7 @@ async function handleDataAmountSortOrStatusFilter({
           dataAmount: item.dataAmount || 0,
           trainingAmount: item.trainingAmount || 0,
           hasError: item.hasError || false,
+          errorCount: item.errorCount || 0,
           allParse: item.allParse ?? false,
           parseStartTime: item.parseStartTime,
           tableSchemaExist: item.tableSchema?.exist,
@@ -875,6 +895,7 @@ async function handleStatusFilterWithMemoryPagination({
       {
         count: item.trainingAmount || 0,
         hasError: item.hasError || false,
+        errorCount: item.errorCount || 0,
         allParse: item.allParse ?? false
       }
     ])
@@ -901,6 +922,7 @@ async function handleStatusFilterWithMemoryPagination({
     const processedCountVal = data?.processedCount || 0;
     const remainingCountVal = data?.remainingCount || 0;
     const hasErrorVal = training?.hasError || false;
+    const errorCountVal = training?.errorCount || 0;
     const allParseVal = training?.allParse || false;
 
     const isFolder = item.type === DatasetCollectionTypeEnum.folder;
@@ -912,13 +934,15 @@ async function handleStatusFilterWithMemoryPagination({
         dataAmount: dataAmountVal,
         processedCount: processedCountVal,
         remainingCount: remainingCountVal,
-        hasError: hasErrorVal
+        hasError: hasErrorVal,
+        errorCount: errorCountVal
       };
     } else {
       const fileStatus = getFileStatus({
         dataAmount: dataAmountVal,
         trainingAmount: trainingAmountVal,
         hasError: hasErrorVal,
+        errorCount: errorCountVal,
         allParse: allParseVal,
         parseStartTime: item.parseStartTime,
         tableSchemaExist: item.tableSchema?.exist,
@@ -931,6 +955,7 @@ async function handleStatusFilterWithMemoryPagination({
         processedCount: processedCountVal,
         remainingCount: remainingCountVal,
         hasError: hasErrorVal,
+        errorCount: errorCountVal,
         status: fileStatus
       };
     }

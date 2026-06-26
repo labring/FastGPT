@@ -1,4 +1,5 @@
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { pushCollectionUpdateJob } from '@fastgpt/service/core/dataset/collection/mq';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
@@ -170,6 +171,11 @@ const processSmall2BigTask = async (data: TrainingDataType, phaseStartTime: Date
         lockTime: addMinutes(new Date(), -9)
       }
     );
+    pushCollectionUpdateJob({
+      collectionId: String(data.collectionId),
+      datasetId: String(data.datasetId),
+      teamId: String(data.teamId)
+    });
   }
 };
 

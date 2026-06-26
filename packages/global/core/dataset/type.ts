@@ -222,6 +222,7 @@ export const DatasetCollectionSchema = ChunkSettingsSchema.omit({
   processedCount: z.number().optional().meta({ description: '已完成索引的数据量' }),
   remainingCount: z.number().optional().meta({ description: '未完成索引的数据量' }),
   hasError: z.boolean().optional().meta({ description: '是否有训练任务报错' }),
+  errorCount: z.number().optional().meta({ description: '错误训练任务数量' }),
   allParse: z.boolean().optional().meta({ description: '是否所有训练任务都是 parse 模式' }),
   statsUpdatedAt: z.coerce.date().optional().meta({ description: '统计数据最后更新时间' })
 });
@@ -681,6 +682,7 @@ export type DatasetCollectionsListItemType = {
   processedCount?: number;
   remainingCount?: number;
   hasError?: boolean;
+  errorCount?: number;
 
   // 计算得出的状态字段
   // - 对于普通文件：单一状态值

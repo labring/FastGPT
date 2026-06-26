@@ -148,6 +148,7 @@ export const DatasetCollectionsListItemSchema = z.object({
   remainingCount: z.number().optional().meta({ description: '剩余待处理数据量' }),
   indexAmount: z.number().optional().meta({ description: '索引数量（simple 模式）' }),
   hasError: z.boolean().optional().meta({ description: '是否错误' }),
+  errorCount: z.number().optional().meta({ description: '错误训练任务数量' }),
 
   // 计算得出的状态字段
   status: z

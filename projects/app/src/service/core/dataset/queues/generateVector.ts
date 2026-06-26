@@ -8,6 +8,7 @@ import {
   markIndexingEnd,
   markDataTrainingPhaseTrace
 } from '@fastgpt/service/core/dataset/training/utils';
+import { pushCollectionUpdateJob } from '@fastgpt/service/core/dataset/collection/mq';
 import { addMinutes } from 'date-fns';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
@@ -247,6 +248,11 @@ export async function generateVector(): Promise<any> {
             errorMsg: getErrText(err, 'unknown error')
           }
         );
+        pushCollectionUpdateJob({
+          collectionId: String(data.collectionId),
+          datasetId: String(data.datasetId),
+          teamId: String(data.teamId)
+        });
         await delay(100);
       }
     }

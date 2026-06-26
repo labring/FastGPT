@@ -1,4 +1,5 @@
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { pushCollectionUpdateJob } from '@fastgpt/service/core/dataset/collection/mq';
 import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
@@ -267,6 +268,11 @@ export async function generateQA(): Promise<any> {
             errorMsg: getErrText(err, 'unknown error')
           }
         );
+        pushCollectionUpdateJob({
+          collectionId: String(data.collectionId),
+          datasetId: String(data.datasetId),
+          teamId: String(data.teamId)
+        });
 
         await delay(100);
       }

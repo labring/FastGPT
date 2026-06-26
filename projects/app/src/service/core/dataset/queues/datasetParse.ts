@@ -14,6 +14,7 @@ import type {
 } from '@fastgpt/global/core/dataset/type';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
+import { pushCollectionUpdateJob } from '@fastgpt/service/core/dataset/collection/mq';
 import { addMinutes } from 'date-fns';
 import { checkTeamAiPointsAndLock } from './utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -582,6 +583,11 @@ const runParseQueue = async ({
               lockTime: new Date('2999/5/5')
             }
           );
+          pushCollectionUpdateJob({
+            collectionId: String(data.collectionId),
+            datasetId: String(data.datasetId),
+            teamId: String(data.teamId)
+          });
 
           continue;
         }
@@ -602,6 +608,11 @@ const runParseQueue = async ({
             lockTime: addMinutes(new Date(), -10)
           }
         );
+        pushCollectionUpdateJob({
+          collectionId: String(data.collectionId),
+          datasetId: String(data.datasetId),
+          teamId: String(data.teamId)
+        });
 
         await delay(100);
       }
