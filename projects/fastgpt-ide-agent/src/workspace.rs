@@ -189,40 +189,41 @@ pub fn init_test_workspace() -> &'static Path {
 mod tests {
     use super::*;
     use std::fs;
+    use std::path::PathBuf;
+
+    fn assert_path_ok(result: Result<PathBuf, String>, expected_suffix: &str) -> PathBuf {
+        let path = result.expect("path should be valid");
+        assert!(path.ends_with(expected_suffix));
+        path
+    }
+
+    fn assert_path_err(result: Result<PathBuf, String>) {
+        assert!(result.is_err());
+    }
 
     #[tokio::test]
     async fn test_sanitize_path_success() {
         let temp_workspace = init_test_workspace();
 
-        // 写入一个虚拟测试文件，以确保 validate_path 能正常通过
         let test_file = temp_workspace.join("dummy.txt");
         fs::write(&test_file, "dummy").unwrap();
 
-        let res = sanitize_path("dummy.txt").await;
-        assert!(res.is_ok());
-        let path = res.unwrap();
-        assert!(path.ends_with("dummy.txt"));
-
-        let res = sanitize_path("./dummy.txt").await;
-        assert!(res.is_ok());
-        let path = res.unwrap();
-        assert!(path.ends_with("dummy.txt"));
+        assert_path_ok(sanitize_path("dummy.txt").await, "dummy.txt");
+        assert_path_ok(sanitize_path("./dummy.txt").await, "dummy.txt");
     }
 
     #[tokio::test]
     async fn test_sanitize_path_absolute_denied() {
         let _temp_workspace = init_test_workspace();
 
-        let res = sanitize_path("/dummy.txt").await;
-        assert!(res.is_err());
+        assert_path_err(sanitize_path("/dummy.txt").await);
     }
 
     #[tokio::test]
     async fn test_sanitize_path_traversal_denied() {
         let _temp_workspace = init_test_workspace();
 
-        let res = sanitize_path("../../../etc/passwd").await;
-        assert!(res.is_err());
+        assert_path_err(sanitize_path("../../../etc/passwd").await);
     }
 
     #[tokio::test]
@@ -231,17 +232,17 @@ mod tests {
         let target = temp_workspace.join("nested_missing_parent");
         let _ = fs::remove_dir_all(&target);
 
-        let res = sanitize_create_path("nested_missing_parent/a/file.txt").await;
-        assert!(res.is_ok());
-        assert!(res.unwrap().ends_with("nested_missing_parent/a/file.txt"));
+        assert_path_ok(
+            sanitize_create_path("nested_missing_parent/a/file.txt").await,
+            "nested_missing_parent/a/file.txt",
+        );
     }
 
     #[tokio::test]
     async fn test_sanitize_create_path_traversal_denied() {
         let _temp_workspace = init_test_workspace();
 
-        let res = sanitize_create_path("nested/../../../etc/passwd").await;
-        assert!(res.is_err());
+        assert_path_err(sanitize_create_path("nested/../../../etc/passwd").await);
     }
 
     #[cfg(unix)]
@@ -253,9 +254,10 @@ mod tests {
         let _ = fs::remove_file(&link_path);
         std::os::unix::fs::symlink(outside.path(), &link_path).unwrap();
 
-        let res = sanitize_existing_workspace_entry_path("move_source_link")
-            .await
-            .unwrap();
+        let res = assert_path_ok(
+            sanitize_existing_workspace_entry_path("move_source_link").await,
+            "move_source_link",
+        );
 
         assert_eq!(res.file_name(), link_path.file_name());
         assert_ne!(res, outside.path());
@@ -270,7 +272,6 @@ mod tests {
         let _ = fs::remove_file(&link_path);
         std::os::unix::fs::symlink(outside.path(), &link_path).unwrap();
 
-        let res = sanitize_create_path("outside_link_for_create/file.txt").await;
-        assert!(res.is_err());
+        assert_path_err(sanitize_create_path("outside_link_for_create/file.txt").await);
     }
 }

@@ -2,10 +2,16 @@ use std::sync::Arc;
 
 use tokio::net::TcpStream;
 
-use crate::fs::handle_fs_session;
+use crate::fs::{FsPermission, handle_fs_session};
 const MAX_WS_MESSAGE_SIZE: usize = 16 * 1024 * 1024;
 const MAX_WS_FRAME_SIZE: usize = 4 * 1024 * 1024;
 use crate::terminal::handle_terminal_session;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum Channel {
+    Fs,
+    Terminal,
+}
 
 fn ws_config() -> tokio_tungstenite::tungstenite::protocol::WebSocketConfig {
     tokio_tungstenite::tungstenite::protocol::WebSocketConfig::default()
@@ -40,23 +46,26 @@ fn build_unauthorized_response(
     resp
 }
 
+fn parse_channel(path: &str) -> Option<Channel> {
+    match path {
+        "/fs" => Some(Channel::Fs),
+        "/terminal" => Some(Channel::Terminal),
+        _ => None,
+    }
+}
+
 #[allow(clippy::result_large_err)]
 pub async fn handle_connection(stream: TcpStream, expected_password: Arc<String>) {
-    let mut path = String::new();
-    let mut fs_permission = "write".to_string();
+    let mut channel = None;
+    let mut fs_permission = FsPermission::Read;
 
     let ws_stream = match tokio_tungstenite::accept_hdr_async_with_config(
         stream,
         |req: &tokio_tungstenite::tungstenite::handshake::server::Request,
          response: tokio_tungstenite::tungstenite::handshake::server::Response| {
-            path = req.uri().path().to_string();
-            let expected_channel = if path.ends_with("/terminal") {
-                "terminal"
-            } else if path.ends_with("/fs") {
-                "fs"
-            } else {
-                return Err(build_unauthorized_response("Unknown websocket path"));
-            };
+            let parsed_channel = parse_channel(req.uri().path())
+                .ok_or_else(|| build_unauthorized_response("Unknown websocket path"))?;
+            channel = Some(parsed_channel);
 
             let token_opt = extract_token(req);
 
@@ -66,13 +75,13 @@ pub async fn handle_connection(stream: TcpStream, expected_password: Arc<String>
                 ));
             }
 
-            fs_permission =
-                extract_query_value(req, "permission").unwrap_or_else(|| "read".to_string());
-            if fs_permission != "read" && fs_permission != "write" {
-                return Err(build_unauthorized_response("Invalid fs permission"));
-            }
+            fs_permission = match extract_query_value(req, "permission") {
+                Some(value) => FsPermission::parse(&value)
+                    .ok_or_else(|| build_unauthorized_response("Invalid fs permission"))?,
+                None => FsPermission::Read,
+            };
 
-            if expected_channel == "terminal" && fs_permission != "write" {
+            if parsed_channel == Channel::Terminal && fs_permission != FsPermission::Write {
                 return Err(build_unauthorized_response(
                     "Terminal connection requires write permission",
                 ));
@@ -91,11 +100,9 @@ pub async fn handle_connection(stream: TcpStream, expected_password: Arc<String>
         }
     };
 
-    if path.ends_with("/terminal") {
-        handle_terminal_session(ws_stream).await;
-    } else if path.ends_with("/fs") {
-        handle_fs_session(ws_stream, fs_permission).await;
-    } else {
-        eprintln!("Unknown request path for websocket: {}", path);
+    match channel {
+        Some(Channel::Terminal) => handle_terminal_session(ws_stream).await,
+        Some(Channel::Fs) => handle_fs_session(ws_stream, fs_permission).await,
+        None => eprintln!("Unknown request path after websocket handshake"),
     }
 }
