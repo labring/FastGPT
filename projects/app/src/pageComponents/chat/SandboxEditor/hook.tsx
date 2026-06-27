@@ -160,12 +160,14 @@ export const useSandboxStatus = ({
   appId,
   chatTarget,
   chatId,
-  outLinkAuthData
+  outLinkAuthData,
+  enabled = true
 }: {
   appId?: string;
   chatTarget?: ChatTargetInputType;
   chatId: string;
   outLinkAuthData?: OutLinkChatAuthProps;
+  enabled?: boolean;
 }) => {
   const { t } = useTranslation();
   const [apiSandboxStatus, setApiSandboxStatus] = useState({
@@ -174,10 +176,10 @@ export const useSandboxStatus = ({
     exists: false
   });
   const sandboxTarget = useMemo(
-    () => resolveSandboxTarget({ appId, chatTarget }),
-    [appId, chatTarget?.appId, chatTarget?.skillId]
+    () => (enabled ? resolveSandboxTarget({ appId, chatTarget }) : undefined),
+    [appId, chatTarget?.appId, chatTarget?.skillId, enabled]
   );
-  const sandboxTargetId = getSandboxTargetId(sandboxTarget);
+  const sandboxTargetId = sandboxTarget ? getSandboxTargetId(sandboxTarget) : '';
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => {
     return v.chatRecords;
@@ -193,7 +195,7 @@ export const useSandboxStatus = ({
   }, [chatRecords, isChatRecordsLoaded]);
 
   useEffect(() => {
-    if (!sandboxTargetId || !chatId) return;
+    if (!sandboxTarget || !sandboxTargetId || !chatId) return;
     let cancelled = false;
     checkSandboxExist({ ...sandboxTarget, chatId, outLinkAuthData })
       .then((result) => {

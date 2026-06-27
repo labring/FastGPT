@@ -60,7 +60,8 @@ const ToolMenu = ({
   const { sandboxExists, setSandboxExists, SandboxEntryIcon } = useSandboxStatus({
     appId: isShareAuthReady ? currentAppId : '',
     chatId,
-    outLinkAuthData
+    outLinkAuthData,
+    enabled: isShareAuthReady
   });
 
   // UI Hook: 负责弹窗渲染

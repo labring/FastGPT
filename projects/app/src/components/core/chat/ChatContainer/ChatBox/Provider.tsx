@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { type BoxProps } from '@chakra-ui/react';
 import { useAudioPlay } from '@/web/common/utils/voice';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
@@ -27,7 +27,7 @@ import { useCreation } from 'ahooks';
 import type { ChatTypeEnum } from './constants';
 import type { ChatQuickAppType } from '@fastgpt/global/core/chat/setting/type';
 import { WorkflowRuntimeContextProvider } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
-import { type ChatSourceTarget, toChatApiTarget } from '@/web/core/chat/utils';
+import { getChatSourceKey, type ChatSourceTarget, toChatApiTarget } from '@/web/core/chat/utils';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 export type ChatProviderProps = {
@@ -195,6 +195,10 @@ const Provider = ({
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
   const resolvedChatTarget = useMemo(() => toChatApiTarget(sourceTarget), [sourceTarget]);
+  const audioScopeKey = useMemo(
+    () => `${getChatSourceKey(sourceTarget)}:${chatId}`,
+    [sourceTarget, chatId]
+  );
   const resolvedAppId = useMemo(
     () => (sourceTarget.sourceType === ChatSourceTypeEnum.app ? sourceTarget.sourceId : undefined),
     [sourceTarget]
@@ -216,6 +220,15 @@ const Provider = ({
     ttsConfig: enableTTS ? ttsConfig : defaultTTSConfig,
     ...formatOutLinkAuth
   });
+
+  const lastAudioScopeKeyRef = useRef(audioScopeKey);
+  useEffect(() => {
+    if (lastAudioScopeKeyRef.current === audioScopeKey) return;
+
+    lastAudioScopeKeyRef.current = audioScopeKey;
+    cancelAudio();
+    setAudioPlayingChatId(undefined);
+  }, [audioScopeKey, cancelAudio]);
 
   const autoTTSResponse =
     enableTTS &&

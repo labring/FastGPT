@@ -49,6 +49,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import { getAppChatSourceKey } from '@/web/core/chat/utils';
 import { useAppChatGenerateStatusSync } from '@/pageComponents/chat/ChatWindow/useAppChatGenerateStatusSync';
 import { postMarkChatRead } from '@/web/core/chat/history/api';
+import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
@@ -115,7 +116,11 @@ const OutLink = (props: Props) => {
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const isChatRecordsLoaded = useContextSelector(ChatRecordContext, (v) => v.isChatRecordsLoaded);
   const onChatGenerateStatusChange = useAppChatGenerateStatusSync();
+  const currentHistory = useContextSelector(ChatContext, (v) =>
+    v.histories.find((item) => item.chatId === chatId && item.appId === appId)
+  );
   const chatWindowTitle = getDisplayHistoryTitle({
+    customTitle: currentHistory?.customTitle,
     title: chatBoxData.title,
     fallbackTitle: t('common:core.chat.New Chat')
   });
@@ -159,6 +164,19 @@ const OutLink = (props: Props) => {
   );
   const mobileHeaderAppName = props.appName || data?.app?.name || chatBoxData.app.name;
   const mobileHeaderAppAvatar = props.appAvatar || data?.app?.avatar || chatBoxData.app.avatar;
+  const isShareAuthReady = !!outLinkAuthData.shareId && !!outLinkAuthData.outLinkUid;
+  const { SandboxEntryIcon } = useSandboxStatus({
+    appId: isShareAuthReady ? appId : '',
+    chatId,
+    outLinkAuthData,
+    enabled: isShareAuthReady
+  });
+  const { SandboxEditorModal, onOpenSandboxModal } = useSandboxEditor({
+    appId,
+    chatId,
+    outLinkAuthData,
+    enabled: isShareAuthReady
+  });
 
   useEffect(() => {
     if (initSign.current === false && data && isChatRecordsLoaded) {
@@ -312,13 +330,12 @@ const OutLink = (props: Props) => {
                 {/* header */}
                 {showHead === '1' &&
                   (isPc ? (
-                    !isPlugin && (
-                      <ChatWindowHeader
-                        title={chatWindowTitle}
-                        history={chatRecords}
-                        chatType={ChatTypeEnum.share}
-                      />
-                    )
+                    <ChatWindowHeader
+                      title={chatWindowTitle}
+                      history={chatRecords}
+                      chatType={ChatTypeEnum.chat}
+                      rightActions={<SandboxEntryIcon onOpen={onOpenSandboxModal} />}
+                    />
                   ) : (
                     <Flex
                       h="48px"
@@ -426,6 +443,7 @@ const OutLink = (props: Props) => {
                     />
                   )}
                 </Box>
+                <SandboxEditorModal />
               </Flex>
             </Flex>
           </PageContainer>

@@ -85,7 +85,31 @@ const ChatContextProvider = ({
 
   const forbidLoadChat = useRef(false);
   const { chatId, setChatId, outLinkAuthData } = useChatStore();
-  const historyAppId = String(params.appId ?? '');
+  const historyAppId = typeof params.appId === 'string' ? params.appId : '';
+  const historySkillId = typeof params.skillId === 'string' ? params.skillId : '';
+  const historyTarget = useMemo(
+    () => ({
+      ...(historyAppId ? { appId: historyAppId } : {}),
+      ...(historySkillId ? { skillId: historySkillId } : {})
+    }),
+    [historyAppId, historySkillId]
+  );
+  const historyAuthData = useMemo(
+    () => ({
+      ...outLinkAuthData,
+      ...(typeof params.shareId === 'string' ? { shareId: params.shareId } : {}),
+      ...(typeof params.outLinkUid === 'string' ? { outLinkUid: params.outLinkUid } : {}),
+      ...(typeof params.teamId === 'string' ? { teamId: params.teamId } : {}),
+      ...(typeof params.teamToken === 'string' ? { teamToken: params.teamToken } : {})
+    }),
+    [
+      outLinkAuthData,
+      params.outLinkUid,
+      params.shareId,
+      params.teamId,
+      params.teamToken
+    ]
+  );
 
   const { isOpen: isOpenSlider, onClose: onCloseSlider, onOpen: openSlider } = useDisclosure();
   const openSliderTimerRef = useRef<ReturnType<typeof setTimeout>>();
@@ -167,9 +191,9 @@ const ChatContextProvider = ({
   const { runAsync: onUpdateHistory } = useRequest(
     (data: UpdateHistoryParams) =>
       putChatHistory({
-        appId: historyAppId,
+        ...historyTarget,
         ...data,
-        ...outLinkAuthData
+        ...historyAuthData
       }),
     {
       onBefore(params) {
@@ -180,7 +204,7 @@ const ChatContextProvider = ({
             if (history.chatId === chatId) {
               return {
                 ...history,
-                customTitle: customTitle || history.customTitle,
+                customTitle: customTitle !== undefined ? customTitle : history.customTitle,
                 top: top !== undefined ? top : history.top
               };
             }
@@ -192,7 +216,7 @@ const ChatContextProvider = ({
             : updatedHistories;
         });
       },
-      refreshDeps: [outLinkAuthData, historyAppId],
+      refreshDeps: [historyAuthData, historyTarget],
       errorToast: undefined
     }
   );
@@ -200,9 +224,9 @@ const ChatContextProvider = ({
   const { runAsync: onDelHistory, loading: isDeletingHistory } = useRequest(
     (chatId: string) =>
       delChatHistoryById({
-        ...(historyAppId ? { appId: historyAppId } : {}),
+        ...historyTarget,
         chatId,
-        ...outLinkAuthData
+        ...historyAuthData
       }),
     {
       onSuccess(data, params) {
@@ -214,18 +238,18 @@ const ChatContextProvider = ({
           setHistoriesTotal((total) => Math.max(total - 1, 0));
         }
       },
-      refreshDeps: [outLinkAuthData, historyAppId]
+      refreshDeps: [historyAuthData, historyTarget]
     }
   );
 
   const { runAsync: onClearHistories, loading: isClearingHistory } = useRequest(
     () =>
       delClearChatHistories({
-        ...(historyAppId ? { appId: historyAppId } : {}),
-        ...outLinkAuthData
+        ...historyTarget,
+        ...historyAuthData
       }),
     {
-      refreshDeps: [outLinkAuthData, historyAppId],
+      refreshDeps: [historyAuthData, historyTarget],
       onSuccess() {
         setHistories([]);
         setHistoriesTotal(0);
@@ -305,9 +329,9 @@ const ChatContextProvider = ({
     const poll = () => {
       const chatIds = historiesRef.current.map((h) => h.chatId);
       getChatHistoryStatus({
-        ...(historyAppId ? { appId: historyAppId } : {}),
+        ...historyTarget,
         chatIds,
-        ...outLinkAuthData
+        ...historyAuthData
       })
         .then((res) => {
           const map = new Map(res.list.map((i) => [i.chatId, i]));
@@ -356,7 +380,7 @@ const ChatContextProvider = ({
       window.clearInterval(timer);
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [historyAppId, historyChatIdsKey, hasGeneratingInSidebar, outLinkAuthData, setHistories]);
+  }, [historyTarget, historyChatIdsKey, hasGeneratingInSidebar, historyAuthData, setHistories]);
 
   const isLoading = isDeletingHistory || isClearingHistory || isPaginationLoading;
 

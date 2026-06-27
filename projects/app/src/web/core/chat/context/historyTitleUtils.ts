@@ -3,14 +3,17 @@ import type { ChatHistoryItemType } from '@fastgpt/global/core/chat/type';
 import i18next from 'i18next';
 
 export const getDisplayHistoryTitle = ({
+  customTitle,
   title,
   fallbackTitle = i18next.t('common:core.chat.New Chat')
 }: {
+  customTitle?: string;
   title?: string;
   fallbackTitle?: string;
 }) => {
+  const normalizedCustomTitle = customTitle?.trim();
   const normalizedTitle = title?.trim();
-  return normalizedTitle || fallbackTitle;
+  return normalizedCustomTitle || normalizedTitle || fallbackTitle;
 };
 
 export const normalizeHistoryTitle = (history: ChatHistoryItemType) => ({

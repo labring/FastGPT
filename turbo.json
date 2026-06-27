@@ -11,11 +11,6 @@
       "cache": false,
       "persistent": true
     },
-    "dev:pro": {
-      "with": ["@fastgpt/admin#dev"],
-      "cache": false,
-      "persistent": true
-    },
     "build": {
       "dependsOn": ["^build"],
       "outputs": [".next/**", "dist/**", "worker/**"]
