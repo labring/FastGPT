@@ -17,6 +17,7 @@ import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import type { OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
 import { Types } from 'mongoose';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 
 vi.mock('@fastgpt/service/core/chat/chatSchema', () => ({
   MongoChat: {
@@ -545,6 +546,32 @@ describe('authChatCrud', () => {
 describe('authChatTargetCrud', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('should pass requested app permission to app auth', async () => {
+    vi.mocked(authApp).mockResolvedValue({
+      teamId: 'team1',
+      tmbId: 'tmb1',
+      permission: new AppPermission({
+        isOwner: true
+      }),
+      authType: AuthUserTypeEnum.token
+    } as any);
+
+    await authChatTargetCrud({
+      req: {} as any,
+      authToken: true,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app1',
+      per: WritePermissionVal
+    });
+
+    expect(authApp).toHaveBeenCalledWith(
+      expect.objectContaining({
+        appId: 'app1',
+        per: WritePermissionVal
+      })
+    );
   });
 
   it('should auth skill edit target and query chat by source-aware condition', async () => {

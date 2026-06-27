@@ -4,7 +4,11 @@ import {
   type GetFeedbackRecordIdsResponseType
 } from '@fastgpt/global/openapi/core/chat/feedback/api';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatRoleEnum,
+  ChatSourceEnum,
+  ChatSourceTypeEnum
+} from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
@@ -122,6 +126,21 @@ describe('getFeedbackRecordIds api test', () => {
       value: [{ type: 'text', text: { content: 'Question' } }],
       userGoodFeedback: 'Good question'
     });
+
+    // Item 7: Same physical appId/chatId under another source type should not be included.
+    await MongoChatItem.create({
+      teamId: testUser.teamId,
+      tmbId: testUser.tmbId,
+      userId: testUser.userId,
+      appId,
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      chatId,
+      dataId: 'data-skill-edit',
+      obj: ChatRoleEnum.AI,
+      value: [{ type: 'text', text: { content: 'Skill edit response' } }],
+      userGoodFeedback: 'Skill edit feedback',
+      isFeedbackRead: false
+    });
   });
 
   it('should return all good feedback records', async () => {
@@ -233,6 +252,7 @@ describe('getFeedbackRecordIds api test', () => {
     expect(res.data?.dataIds).toContain('data-3');
     expect(res.data?.dataIds).toContain('data-4');
     expect(res.data?.dataIds).not.toContain('data-6');
+    expect(res.data?.dataIds).not.toContain('data-skill-edit');
   });
 
   it('should return only unread feedback records with has_feedback type', async () => {

@@ -78,13 +78,14 @@ async function handler(req: ApiRequestProps): Promise<GetFeedbackRecordIdsRespon
 
   const feedbackCondition = buildFeedbackCondition();
   const chatSourceQuery = buildChatSourceQuery({ sourceType, sourceId: resolvedSourceId });
+  const feedbackQuery = { $and: [chatSourceQuery, { chatId }, feedbackCondition] };
 
   // Query feedback records, only return dataId field
   const [items, total] = await Promise.all([
-    MongoChatItem.find({ ...chatSourceQuery, chatId, ...feedbackCondition }, 'dataId')
+    MongoChatItem.find(feedbackQuery, 'dataId')
       .sort({ _id: 1 }) // Sort in chronological order
       .lean(),
-    MongoChatItem.countDocuments({ ...chatSourceQuery, chatId, ...feedbackCondition })
+    MongoChatItem.countDocuments(feedbackQuery)
   ]);
 
   const dataIds = items.map((item) => item.dataId).filter(Boolean);

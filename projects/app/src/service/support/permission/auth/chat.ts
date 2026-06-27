@@ -139,7 +139,7 @@ export async function authChatCrud({
     authToken: true,
     authApiKey: true,
     appId,
-    per: ReadPermissionVal
+    per: props.per ?? ReadPermissionVal
   });
 
   if (!chatId) {
