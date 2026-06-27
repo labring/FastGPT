@@ -229,9 +229,6 @@ export const useChatGenerate = ({
               downloadingPackage: t('chat:sandbox_status_downloadingPackage'),
               uploadingPackage: t('chat:sandbox_status_uploadingPackage'),
               extractingPackage: t('chat:sandbox_status_extractingPackage'),
-              runtimeUpgradeRequired: t('chat:sandbox_status_runtimeUpgradeRequired'),
-              runtimeUpgradeArchiving: t('chat:sandbox_status_runtimeUpgradeArchiving'),
-              runtimeUpgradeArchived: t('chat:sandbox_status_runtimeUpgradeArchived'),
               lazyInit: t('chat:sandbox_status_lazyInit')
             };
 

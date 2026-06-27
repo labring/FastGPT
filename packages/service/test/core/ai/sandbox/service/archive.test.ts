@@ -18,7 +18,6 @@ const archiveMocks = vi.hoisted(() => ({
   getSessionVolumeConfig: vi.fn(),
   deleteSessionVolume: vi.fn(),
   clearSandboxArchiveState: vi.fn(),
-  clearSandboxRuntimeUpgradeArchiveState: vi.fn(),
   createSandboxResourcesToArchiveCursor: vi.fn(),
   findSandboxInstanceArchiveState: vi.fn(),
   isSandboxStillArchiving: vi.fn(),
@@ -72,7 +71,6 @@ vi.mock('@fastgpt/service/core/ai/sandbox/volume/service', () => ({
 
 vi.mock('@fastgpt/service/core/ai/sandbox/instance/repository', () => ({
   clearSandboxArchiveState: archiveMocks.clearSandboxArchiveState,
-  clearSandboxRuntimeUpgradeArchiveState: archiveMocks.clearSandboxRuntimeUpgradeArchiveState,
   createSandboxResourcesToArchiveCursor: archiveMocks.createSandboxResourcesToArchiveCursor,
   findSandboxInstanceArchiveState: archiveMocks.findSandboxInstanceArchiveState,
   isSandboxStillArchiving: archiveMocks.isSandboxStillArchiving,
@@ -93,7 +91,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/provider/adapter', () => ({
 import {
   archiveInactiveSandboxes,
   archiveSandboxResource,
-  archiveSandboxResourceForRuntimeUpgrade,
+  startSandboxRuntimeUpgradeArchive,
   restoreArchivedSandboxBeforeUse
 } from '@fastgpt/service/core/ai/sandbox/service/archive';
 
@@ -173,7 +171,7 @@ describe('sandbox archive service', () => {
     archiveMocks.deleteWorkspaceArchive.mockResolvedValue(undefined);
     archiveMocks.disconnectSandbox.mockResolvedValue(undefined);
     archiveMocks.clearSandboxArchiveState.mockResolvedValue(undefined);
-    archiveMocks.clearSandboxRuntimeUpgradeArchiveState.mockResolvedValue(undefined);
+    archiveMocks.markSandboxRuntimeUpgradeArchiveFailed.mockResolvedValue(undefined);
     archiveMocks.markSandboxArchived.mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
     archiveMocks.isSandboxStillArchiving.mockResolvedValue(true);
     archiveMocks.markSandboxRestored.mockImplementation(async (resource, params) => ({
@@ -353,19 +351,21 @@ describe('sandbox archive service', () => {
     archiveMocks.connectToSandbox.mockResolvedValue(sandbox);
     archiveMocks.buildSandboxResourceAdapter.mockReturnValue(remoteResource);
 
-    const result = await archiveSandboxResourceForRuntimeUpgrade(resource, {
+    const result = await startSandboxRuntimeUpgradeArchive(resource, {
       ensureZipInSandbox: true
     });
 
-    expect(result).toEqual({ success: true });
+    expect(result).toEqual({ success: true, archivingDoc: archivingResource });
     expect(archiveMocks.markSandboxArchivingForRuntimeUpgrade).toHaveBeenCalledWith(resource);
+    await vi.waitFor(() =>
+      expect(archiveMocks.markSandboxArchived).toHaveBeenCalledWith(archivingResource)
+    );
     expect(archiveMocks.isSandboxStillArchiving).not.toHaveBeenCalled();
     expect(sandbox.execute).toHaveBeenCalledWith(expect.stringContaining('command -v zip'), {
       timeoutMs: 600_000,
       maxOutputBytes: 8 * 1024
     });
     expect(remoteResource.delete).toHaveBeenCalledTimes(1);
-    expect(archiveMocks.markSandboxArchived).toHaveBeenCalledWith(archivingResource);
   });
 
   it('marks runtime upgrade archive failed so users can retry after archive failure', async () => {
@@ -390,16 +390,17 @@ describe('sandbox archive service', () => {
     archiveMocks.connectToSandbox.mockResolvedValue(sandbox);
     archiveMocks.uploadWorkspaceArchive.mockRejectedValueOnce(new Error('upload failed'));
 
-    const result = await archiveSandboxResourceForRuntimeUpgrade(resource, {
+    const result = await startSandboxRuntimeUpgradeArchive(resource, {
       ensureZipInSandbox: true
     });
 
-    expect(result).toMatchObject({
-      success: false,
-      error: 'upload failed'
-    });
-    expect(archiveMocks.markSandboxRuntimeUpgradeArchiveFailed).toHaveBeenCalledWith(resource);
-    expect(archiveMocks.clearSandboxRuntimeUpgradeArchiveState).not.toHaveBeenCalled();
+    expect(result).toEqual({ success: true, archivingDoc: archivingResource });
+    await vi.waitFor(() =>
+      expect(archiveMocks.markSandboxRuntimeUpgradeArchiveFailed).toHaveBeenCalledWith(
+        resource,
+        'upload failed'
+      )
+    );
     expect(archiveMocks.markSandboxArchived).not.toHaveBeenCalled();
   });
 
@@ -460,6 +461,80 @@ describe('sandbox archive service', () => {
         }
       })
     );
+  });
+
+  it('waits for concurrent restore instead of reporting runtime upgrade in progress', async () => {
+    vi.useFakeTimers();
+    try {
+      const restoringResource = createResource({
+        metadata: {
+          archive: {
+            state: 'restoring'
+          }
+        }
+      });
+      const restoredResource = createResource({
+        metadata: {}
+      });
+      archiveMocks.findSandboxInstanceArchiveState
+        .mockResolvedValueOnce(restoringResource)
+        .mockResolvedValueOnce(restoredResource);
+
+      const restorePromise = restoreArchivedSandboxBeforeUse({
+        provider: 'opensandbox',
+        sandboxId: restoringResource.sandboxId,
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: 'app-1'
+      });
+
+      await vi.advanceTimersByTimeAsync(1000);
+
+      await expect(restorePromise).resolves.toBeUndefined();
+      expect(archiveMocks.markSandboxRestoring).not.toHaveBeenCalled();
+      expect(archiveMocks.connectToSandbox).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('continues restoring when concurrent archive finishes while waiting', async () => {
+    vi.useFakeTimers();
+    try {
+      const archivingResource = createResource({
+        metadata: {
+          archive: {
+            state: 'archiving'
+          }
+        }
+      });
+      const archivedResource = createResource({
+        metadata: {
+          archive: {
+            state: 'archived'
+          }
+        }
+      });
+      const sandbox = createSandbox();
+      archiveMocks.findSandboxInstanceArchiveState
+        .mockResolvedValueOnce(archivingResource)
+        .mockResolvedValueOnce(archivedResource);
+      archiveMocks.connectToSandbox.mockResolvedValue(sandbox);
+
+      const restorePromise = restoreArchivedSandboxBeforeUse({
+        provider: 'opensandbox',
+        sandboxId: archivingResource.sandboxId,
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: 'app-1'
+      });
+
+      await vi.advanceTimersByTimeAsync(1000);
+
+      await expect(restorePromise).resolves.toBeUndefined();
+      expect(archiveMocks.markSandboxRestoring).toHaveBeenCalledWith(archivedResource);
+      expect(archiveMocks.connectToSandbox).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('stops restored sandbox and rejects when the archive record is deleted during restore', async () => {

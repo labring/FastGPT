@@ -4,7 +4,7 @@ import { SystemOpenApiTagMap } from '../../../tag';
 import {
   DeleteCollectionBodySchema,
   DeleteCollectionQuerySchema,
-  ExportCollectionBodySchema,
+  ExportCollectionBodyRawSchema,
   GetCollectionDetailQuerySchema,
   GetCollectionPathsQuerySchema,
   GetCollectionTrainingDetailQuerySchema,
@@ -175,7 +175,7 @@ export const DatasetCollectionPath: OpenAPIPath = {
       requestBody: {
         content: {
           'application/json': {
-            schema: ExportCollectionBodySchema
+            schema: ExportCollectionBodyRawSchema
           }
         }
       },

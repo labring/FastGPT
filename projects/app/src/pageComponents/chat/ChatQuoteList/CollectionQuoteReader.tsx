@@ -39,7 +39,7 @@ const CollectionReader = ({
   const canDownloadSource = useContextSelector(ChatItemContext, (v) => v.canDownloadSource);
 
   const { collectionId, datasetId, chatItemDataId, sourceName, quoteId } = metadata;
-  const appId = metadata.appId;
+  const chatAuthTarget = useMemo(() => getChatAuthTargetInput(metadata), [metadata]);
   const [selectedQuote, setSelectedQuote] = useState<{ sourceQuoteId?: string; id: string }>();
 
   // Get dataset permission
@@ -95,11 +95,11 @@ const CollectionReader = ({
   const params = useMemo(
     () => ({
       collectionId,
-      ...getChatAuthTargetInput(metadata),
+      ...chatAuthTarget,
       chatId: metadata.chatId,
       chatItemDataId
     }),
-    [chatItemDataId, collectionId, metadata]
+    [chatAuthTarget, chatItemDataId, collectionId, metadata.chatId]
   );
 
   const {
@@ -133,24 +133,36 @@ const CollectionReader = ({
     [currentQuoteItem?.id, datasetDataList, filterResults]
   );
 
+  const canShowSourceActions = useMemo(
+    () =>
+      canDownloadSource &&
+      !!metadata.chatId &&
+      !!chatItemDataId &&
+      !!(
+        chatAuthTarget.appId ||
+        chatAuthTarget.skillId ||
+        (chatAuthTarget.outLinkAuthData?.shareId && chatAuthTarget.outLinkAuthData.outLinkUid)
+      ),
+    [canDownloadSource, chatAuthTarget, chatItemDataId, metadata.chatId]
+  );
+
   const { runAsync: handleDownload } = useRequest(async () => {
-    if (!appId) return;
+    if (!canShowSourceActions) return;
 
     await downloadFetch({
       url: '/api/core/dataset/collection/export',
       filename: 'data.csv',
       body: {
-        appId,
+        ...chatAuthTarget,
         chatId: metadata.chatId,
         chatItemDataId,
-        collectionId,
-        outLinkAuthData: metadata.outLinkAuthData
+        collectionId
       }
     });
   });
 
   const handleRead = getCollectionSourceAndOpen({
-    ...getChatAuthTargetInput(metadata),
+    ...chatAuthTarget,
     chatId: metadata.chatId,
     chatItemDataId,
     collectionId
@@ -197,7 +209,7 @@ const CollectionReader = ({
           </Box>
 
           <Flex alignItems={'center'} gap={'8px'}>
-            {canDownloadSource && appId && (
+            {canShowSourceActions && (
               <DownloadButton
                 canAccessRawData={true}
                 onDownload={handleDownload}

@@ -4,7 +4,6 @@ import {
   ParentTreePathItemSchema
 } from '../../../../common/parentFolder/type';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
-import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 import {
   DatasetCollectionSyncResultEnum,
   DatasetCollectionDataProcessModeEnum,
@@ -20,6 +19,7 @@ import { PaginationResponseSchema, PaginationSchema } from '../../../api';
 import z from 'zod';
 import {
   createOptionalOutLinkChatTargetInputSchema,
+  transformChatAuthTargetInput,
   transformOptionalChatAuthTargetInput
 } from '../../chat/api';
 
@@ -56,6 +56,7 @@ const BasicExportSchema = z
   .object({
     collectionId: ObjectIdSchema.describe('集合ID')
   })
+  .strict()
   .meta({
     description: '通过身份鉴权导出集合',
     example: {
@@ -63,23 +64,29 @@ const BasicExportSchema = z
     }
   });
 
-// Schema 2: Export from chat context with outlink authentication
-const ChatExportSchema = z
-  .object({
-    collectionId: ObjectIdSchema.describe('集合ID'),
-    outLinkAuthData: OutLinkChatAuthSchema.optional().meta({
-      description: '外链鉴权数据。share 模式传 shareId/outLinkUid。'
-    }),
-    appId: ObjectIdSchema.describe('应用ID'),
-    chatId: ObjectIdSchema.describe('会话ID'),
-    chatItemDataId: z.string().describe('对话ID'),
-    chatTime: z.coerce.date().optional().describe('对话时间')
+// Schema 2: Export from chat context with app/skill/outLink authentication
+const ChatExportRawSchema = createOptionalOutLinkChatTargetInputSchema({
+  collectionId: ObjectIdSchema.describe('集合ID'),
+  chatId: z.string().min(1).max(256).describe('会话ID'),
+  chatItemDataId: z.string().min(1).max(256).describe('对话ID'),
+  chatTime: z.coerce.date().optional().describe('对话时间')
+})
+  .superRefine((data, ctx) => {
+    const hasAppTarget = !!data.appId;
+    const hasSkillTarget = !!data.skillId;
+    const hasShareAuth = !!(data.outLinkAuthData?.shareId && data.outLinkAuthData?.outLinkUid);
+
+    if (!hasAppTarget && !hasSkillTarget && !hasShareAuth) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: '对话导出必须提供 appId、skillId 或 share auth'
+      });
+    }
   })
   .meta({
     description: '对话中导出集合，可通过 chatId 等身份信息',
     example: {
       collectionId: '1234567890',
-      appId: '1234567890',
       chatId: '1234567890',
       chatItemDataId: '1234567890',
       chatTime: '2025-12-30T00:00:00.000Z',
@@ -90,8 +97,13 @@ const ChatExportSchema = z
     }
   });
 
-export const ExportCollectionBodySchema = z.union([BasicExportSchema, ChatExportSchema]);
-export type ExportCollectionBodyType = z.infer<typeof ExportCollectionBodySchema>;
+export const ExportCollectionBodyRawSchema = z.union([ChatExportRawSchema, BasicExportSchema]);
+export const ExportCollectionBodySchema = z.union([
+  ChatExportRawSchema.transform(transformChatAuthTargetInput),
+  BasicExportSchema
+]);
+export type ExportCollectionBodyType = z.infer<typeof ExportCollectionBodyRawSchema>;
+export type ExportCollectionRuntimeBodyType = z.infer<typeof ExportCollectionBodySchema>;
 
 // ============= Delete Collection =============
 export const DeleteCollectionQuerySchema = z.object({

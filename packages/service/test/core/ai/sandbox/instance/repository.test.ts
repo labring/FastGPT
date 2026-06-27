@@ -17,7 +17,6 @@ import {
   findSandboxResourcesBySourceChatIds,
   findSkillRelatedSandboxResources,
   isSandboxStillArchiving,
-  clearSandboxRuntimeUpgradeArchiveState,
   markSandboxArchived,
   markSandboxArchiving,
   markSandboxArchivingForRuntimeUpgrade,
@@ -566,7 +565,7 @@ describe('sandbox instance helpers', () => {
     expect(stored?.storage).toBeUndefined();
   });
 
-  it('claims running records for runtime upgrade archive and restores original status on rollback', async () => {
+  it('claims running records for runtime upgrade archive', async () => {
     const sandboxId = `instance-helper-${getNanoid()}`;
     const doc = await MongoSandboxInstance.create({
       provider: 'opensandbox',
@@ -599,17 +598,6 @@ describe('sandbox instance helpers', () => {
         lastActiveAt: new Date('2025-01-01T00:00:00.000Z')
       } as SandboxResourceDoc)
     ).resolves.toBeNull();
-
-    await clearSandboxRuntimeUpgradeArchiveState(doc);
-
-    const stored = await MongoSandboxInstance.findOne({ sandboxId }).lean();
-    expect(stored).toMatchObject({
-      status: SandboxStatusEnum.running,
-      metadata: {
-        image: { repository: 'old-image' }
-      }
-    });
-    expect(stored?.metadata?.archive).toBeUndefined();
   });
 
   it('marks runtime upgrade archive as failed and allows retrying archive claim', async () => {
@@ -641,6 +629,7 @@ describe('sandbox instance helpers', () => {
     });
 
     await markSandboxRuntimeUpgradeArchiveFailed(doc, 'archive failed');
+    await markSandboxRuntimeUpgradeArchiveFailed(doc, 'archive failed again');
 
     const failed = await MongoSandboxInstance.findOne({ sandboxId }).lean();
     expect(failed).toMatchObject({
@@ -648,7 +637,7 @@ describe('sandbox instance helpers', () => {
       metadata: {
         archive: {
           state: 'failed',
-          error: 'archive failed'
+          error: 'archive failed again'
         }
       }
     });

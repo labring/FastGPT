@@ -21,6 +21,7 @@ import { InitOutLinkChatQuerySchema } from '../../../../openapi/core/chat/outLin
 import { PresignChatFileGetUrlSchema } from '../../../../openapi/core/chat/file/api';
 import { SandboxCheckExistBodySchema } from '../../../../openapi/core/ai/sandbox/api';
 import { CreateQuestionGuideV2BodySchema } from '../../../../openapi/core/ai/agent/api';
+import { ExportCollectionBodySchema } from '../../../../openapi/core/dataset/collection/api';
 
 const appId = '68ad85a7463006c963799a05';
 const skillId = '68ad85a7463006c963799a06';
@@ -272,6 +273,43 @@ describe('openapi/core/chat target schema', () => {
       },
       chatId: 'chat-1'
     });
+  });
+
+  it('transforms outLink-only dataset collection export to unresolved app source', () => {
+    const result = ExportCollectionBodySchema.parse({
+      collectionId: appId,
+      chatId: 'chat-1',
+      chatItemDataId: 'chat-item-1',
+      outLinkAuthData: {
+        shareId,
+        outLinkUid
+      }
+    });
+
+    expect(result).toMatchObject({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: undefined,
+      collectionId: appId,
+      chatId: 'chat-1',
+      chatItemDataId: 'chat-item-1',
+      outLinkAuthData: {
+        shareId,
+        outLinkUid
+      }
+    });
+
+    expect(() =>
+      ExportCollectionBodySchema.parse({
+        collectionId: appId,
+        appId,
+        chatId: 'chat-1',
+        chatItemDataId: 'chat-item-1',
+        outLinkAuthData: {
+          shareId,
+          outLinkUid
+        }
+      })
+    ).toThrow();
   });
 
   it('parses string outLinkAuthData for DELETE chat query schemas', () => {

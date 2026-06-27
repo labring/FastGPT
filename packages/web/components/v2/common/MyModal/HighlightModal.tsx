@@ -41,7 +41,6 @@ const HighlightModal = ({
       onClose={onClose}
       showCloseButton={showCloseButton}
       w={'400px'}
-      minH={'392px'}
       isCentered
       bodyStyles={{
         userSelect: 'none',

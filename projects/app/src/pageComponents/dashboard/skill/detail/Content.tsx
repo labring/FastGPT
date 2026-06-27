@@ -77,7 +77,13 @@ const Content = () => {
           </Button>
         }
       >
-        <Box color={'myGray.900'} fontSize={'18px'} lineHeight={'26px'} mt={7}>
+        <Box
+          color={'myGray.900'}
+          fontSize={'18px'}
+          lineHeight={'26px'}
+          mt={7}
+          whiteSpace="pre-wrap"
+        >
           {t('skill:sandbox_runtime_upgrade_desc')}
         </Box>
       </HighlightModal>

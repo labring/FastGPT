@@ -149,20 +149,38 @@ export type ImportSkillBody = z.infer<typeof ImportSkillBodySchema>;
 export const ImportSkillResponseSchema = IdSchema;
 export type ImportSkillResponse = z.infer<typeof ImportSkillResponseSchema>;
 
-export const CreateEditDebugSandboxBodySchema = z.object({
-  skillId: IdSchema,
-  archiveForUpgrade: z.boolean().optional()
-});
-export type CreateEditDebugSandboxBody = z.infer<typeof CreateEditDebugSandboxBodySchema>;
+export const SkillRuntimeStatusSchema = z.enum(['readyToInit', 'upgradeRequired', 'upgrading']);
+export const SkillRuntimeArchiveStateSchema = z.enum([
+  'archiving',
+  'archived',
+  'restoring',
+  'failed'
+]);
 
-export const CreateEditDebugSandboxResponseSchema = z.object({
-  sandboxId: z.string().describe('FastGPT sandbox instance key'),
-  status: SandboxProviderStatusSchema.pick({
-    state: true,
-    message: true
-  })
+export const SkillRuntimeBodySchema = z.object({
+  skillId: IdSchema.describe('技能 ID')
 });
-export type CreateEditDebugSandboxResponse = z.infer<typeof CreateEditDebugSandboxResponseSchema>;
+export type SkillRuntimeBody = z.infer<typeof SkillRuntimeBodySchema>;
+
+export const SkillRuntimeStatusResponseSchema = z.object({
+  sandboxId: z.string().describe('FastGPT sandbox instance key'),
+  status: SkillRuntimeStatusSchema.describe('Skill Edit runtime 当前状态'),
+  archiveState: SkillRuntimeArchiveStateSchema.optional().describe('底层 sandbox 归档状态'),
+  canUpgrade: z.boolean().describe('当前是否允许触发 runtime 升级'),
+  shouldPoll: z.boolean().describe('客户端是否应继续轮询 getStatus'),
+  shouldInit: z.boolean().describe('客户端是否应执行 runtime init'),
+  lastError: z.string().optional().describe('上次 runtime 升级归档失败原因')
+});
+export type SkillRuntimeStatusResponse = z.infer<typeof SkillRuntimeStatusResponseSchema>;
+
+export const SkillRuntimeInitEventSchema = z
+  .object({
+    sandboxId: z.string().describe('FastGPT sandbox instance key'),
+    phase: z.string().describe('Sandbox 初始化阶段'),
+    message: z.string().optional().describe('阶段消息或错误信息')
+  })
+  .describe('Skill Edit runtime init SSE sandboxStatus event');
+export type SkillRuntimeInitEvent = z.infer<typeof SkillRuntimeInitEventSchema>;
 
 export const GetSandboxInfoQuerySchema = z.object({
   sandboxId: SandboxInstanceKeySchema

@@ -427,29 +427,6 @@ export async function clearSandboxArchiveState(resource: SandboxResourceRef) {
 }
 
 /**
- * 清理用户升级归档的中间状态，并恢复抢占归档前的本地 status。
- *
- * 升级归档会临时把 running 实例标为 stopped 来复用 archived CAS；失败时必须恢复原状态，
- * 否则用户重试前 Mongo 记录会短暂呈现为 stopped。
- */
-export async function clearSandboxRuntimeUpgradeArchiveState(resource: SandboxResourceDoc) {
-  return MongoSandboxInstance.updateOne(
-    {
-      ...buildSandboxResourceRecordFilter(resource),
-      'metadata.archive.state': 'archiving'
-    },
-    {
-      $set: {
-        status: resource.status
-      },
-      $unset: {
-        'metadata.archive': ''
-      }
-    }
-  );
-}
-
-/**
  * 标记用户主动升级 edit-debug runtime 的归档失败。
  *
  * 失败记录保留在 Mongo 中，方便刷新页面后识别本轮升级已失败；后续用户再次点击升级时，
@@ -462,7 +439,7 @@ export async function markSandboxRuntimeUpgradeArchiveFailed(
   return MongoSandboxInstance.updateOne(
     {
       ...buildSandboxResourceRecordFilter(resource),
-      'metadata.archive.state': 'archiving'
+      'metadata.archive.state': { $in: ['archiving', 'failed'] }
     },
     {
       $set: {
@@ -473,19 +450,6 @@ export async function markSandboxRuntimeUpgradeArchiveFailed(
       }
     }
   );
-}
-
-/**
- * 清理卡在 runtime 升级归档中的 edit-debug 记录。
- *
- * 只允许处理仍处于 archiving 的同一条资源；调用方随后会删除远端资源并从当前发布包重建。
- * 这里直接删除 Mongo 记录，避免刷新后继续命中 archiving 状态。
- */
-export async function deleteStaleRuntimeUpgradeArchivingRecord(resource: SandboxResourceDoc) {
-  return MongoSandboxInstance.deleteOne({
-    ...buildSandboxResourceRecordFilter(resource),
-    'metadata.archive.state': 'archiving'
-  });
 }
 
 /**

@@ -127,7 +127,7 @@ export async function handleSkillDebugChat(
     });
     if (!sandboxInstance) {
       throw new UserError(
-        'Edit debug sandbox not found. Please create it via /api/core/ai/skill/edit first.'
+        'Edit debug sandbox not found. Please initialize it via /api/core/ai/skill/runtime/init first.'
       );
     }
     logger.debug('Edit debug sandbox found', { skillId, sandboxId: sandboxInstance.sandboxId });

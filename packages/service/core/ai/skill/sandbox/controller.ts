@@ -8,10 +8,10 @@ import { deleteSandboxResource } from '../../sandbox/service/resource';
 import { getLogger, LogCategories } from '../../../../common/logger';
 
 export {
-  createEditDebugSandbox,
+  initSkillEditRuntimeSandbox,
   packageSkillInSandbox,
-  type CreateEditDebugSandboxParams,
-  type CreateEditDebugSandboxResult
+  type InitSkillEditRuntimeSandboxParams,
+  type SkillEditRuntimeContext
 } from '../edit/sandbox';
 
 const addLog = getLogger(LogCategories.MODULE.AI.AGENT);

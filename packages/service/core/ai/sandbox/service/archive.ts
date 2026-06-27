@@ -40,6 +40,8 @@ const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 export const SANDBOX_ARCHIVE_INACTIVE_DAYS = 7;
 const SANDBOX_ARCHIVE_BATCH_SIZE = 5;
 const SANDBOX_ARCHIVE_COMMAND_TIMEOUT_MS = 10 * 60 * 1000;
+const SANDBOX_RESTORE_WAIT_TIMEOUT_MS = 60 * 1000;
+const SANDBOX_RESTORE_WAIT_INTERVAL_MS = 1000;
 
 const TEMP_ARCHIVE_FILE = '.fastgpt-sandbox-archive.zip';
 const RESTORE_ARCHIVE_FILE = '.fastgpt-sandbox-restore.zip';
@@ -55,6 +57,8 @@ export class SandboxArchiveStateError extends Error {
     this.name = 'SandboxArchiveStateError';
   }
 }
+
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export interface SandboxArchiveFailure {
   sandboxId: string;
@@ -503,27 +507,59 @@ export async function archiveSandboxResource(
 }
 
 /**
- * 用户点击升级 edit-debug runtime 时归档旧实例。
+ * 用户点击升级 edit-debug runtime 时启动后台归档。
  *
- * 该流程复用 workspace zip/upload/delete/mark archived 能力，但不做 inactive 二次检查；
- * 调用方已经确认这是当前 Skill detail 的旧 runtime 实例，归档完成后由常规启动流程恢复到新镜像。
+ * 该入口同步完成 archive state CAS，把记录推进到 archiving 后立即返回；
+ * 实际 workspace 打包、上传、远端删除在后台执行。后台失败必须把状态落到 failed，
+ * 让 getStatus 轮询能恢复为“可重试”。
  */
-export async function archiveSandboxResourceForRuntimeUpgrade(
+export async function startSandboxRuntimeUpgradeArchive(
   resource: SandboxResourceDoc,
   options: Pick<SandboxArchiveOptions, 'ensureZipInSandbox'> = {}
-): Promise<{ success: boolean; error?: string }> {
+): Promise<
+  { success: true; archivingDoc: SandboxResourceDoc } | { success: false; error: string }
+> {
   const archivingDoc = await markSandboxArchivingForRuntimeUpgrade(resource);
   if (!archivingDoc) {
     return { success: false, error: 'Resource was modified or occupied' };
   }
 
-  return runSandboxArchiveFlow({
+  void runSandboxArchiveFlow({
     archivingDoc,
     options,
     logLabel: 'upgraded sandbox',
     rollbackResource: resource,
     rollbackArchiveState: () => markSandboxRuntimeUpgradeArchiveFailed(resource)
-  });
+  })
+    .then(async (result) => {
+      if (result.success) return;
+      await markSandboxRuntimeUpgradeArchiveFailed(resource, result.error).catch((error) => {
+        logger.error('Failed to mark runtime upgrade archive failed after background failure', {
+          sandboxId: resource.sandboxId,
+          provider: resource.provider,
+          originalError: result.error,
+          error
+        });
+      });
+    })
+    .catch(async (error) => {
+      const errorMessage = getErrText(error);
+      logger.error('Unexpected runtime upgrade archive task failure', {
+        sandboxId: resource.sandboxId,
+        provider: resource.provider,
+        error
+      });
+      await markSandboxRuntimeUpgradeArchiveFailed(resource, errorMessage).catch((markError) => {
+        logger.error('Failed to mark runtime upgrade archive failed after unexpected failure', {
+          sandboxId: resource.sandboxId,
+          provider: resource.provider,
+          originalError: errorMessage,
+          error: markError
+        });
+      });
+    });
+
+  return { success: true, archivingDoc };
 }
 
 /**
@@ -661,18 +697,41 @@ export async function restoreArchivedSandboxBeforeUse(params: {
   resourceLimit?: Partial<NonNullable<SandboxInstanceSchemaType['limit']>>;
   createConfig?: SandboxCreateSpec;
 }) {
-  const currentProviderInstance = await findSandboxInstanceArchiveState({
+  const waitForArchiveBusyDone = async () => {
+    const startAt = Date.now();
+    while (Date.now() - startAt < SANDBOX_RESTORE_WAIT_TIMEOUT_MS) {
+      await delay(SANDBOX_RESTORE_WAIT_INTERVAL_MS);
+      const latest = await findSandboxInstanceArchiveState({
+        provider: params.provider,
+        sandboxId: params.sandboxId
+      });
+      const latestArchiveState = latest?.metadata?.archive?.state;
+
+      if (!latestArchiveState) return;
+      if (latestArchiveState === 'archived') {
+        return latest;
+      }
+      if (latestArchiveState !== 'archiving' && latestArchiveState !== 'restoring') return;
+    }
+
+    throw new SandboxArchiveStateError('restoring');
+  };
+
+  let currentProviderInstance = await findSandboxInstanceArchiveState({
     provider: params.provider,
     sandboxId: params.sandboxId
   });
-  const archiveState = currentProviderInstance?.metadata?.archive?.state;
+  let archiveState = currentProviderInstance?.metadata?.archive?.state;
 
   if (!archiveState) {
     return;
   }
 
   if (archiveState === 'archiving' || archiveState === 'restoring') {
-    throw new SandboxArchiveStateError(archiveState);
+    const archivedAfterWait = await waitForArchiveBusyDone();
+    if (!archivedAfterWait) return;
+    currentProviderInstance = archivedAfterWait;
+    archiveState = currentProviderInstance.metadata?.archive?.state;
   }
 
   if (archiveState !== 'archived') {
