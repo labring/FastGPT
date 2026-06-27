@@ -325,7 +325,32 @@ export async function markSandboxArchiving(resource: SandboxResourceDoc, inactiv
     },
     {
       $set: {
-        'metadata.archive.state': 'archiving'
+        'metadata.archive.state': 'archiving',
+        'metadata.archive.startedAt': new Date()
+      }
+    },
+    { new: true }
+  ).lean<SandboxResourceDoc | null>();
+}
+
+/**
+ * 用户主动升级 edit-debug runtime 时抢占实例进行归档。
+ *
+ * 该入口不依赖 inactive/stopped 判断，因为升级由 Skill detail 显式触发；
+ * 但仍使用 archive state CAS，避免与恢复、定时归档或重复点击并发抢同一条记录。
+ */
+export async function markSandboxArchivingForRuntimeUpgrade(resource: SandboxResourceDoc) {
+  return MongoSandboxInstance.findOneAndUpdate(
+    {
+      ...buildSandboxResourceRecordFilter(resource),
+      lastActiveAt: resource.lastActiveAt,
+      'metadata.archive.state': { $exists: false }
+    },
+    {
+      $set: {
+        status: SandboxStatusEnum.stopped,
+        'metadata.archive.state': 'archiving',
+        'metadata.archive.startedAt': new Date()
       }
     },
     { new: true }
@@ -392,6 +417,42 @@ export async function clearSandboxArchiveState(resource: SandboxResourceRef) {
       }
     }
   );
+}
+
+/**
+ * 清理用户升级归档的中间状态，并恢复抢占归档前的本地 status。
+ *
+ * 升级归档会临时把 running 实例标为 stopped 来复用 archived CAS；失败时必须恢复原状态，
+ * 否则用户重试前 Mongo 记录会短暂呈现为 stopped。
+ */
+export async function clearSandboxRuntimeUpgradeArchiveState(resource: SandboxResourceDoc) {
+  return MongoSandboxInstance.updateOne(
+    {
+      ...buildSandboxResourceRecordFilter(resource),
+      'metadata.archive.state': 'archiving'
+    },
+    {
+      $set: {
+        status: resource.status
+      },
+      $unset: {
+        'metadata.archive': ''
+      }
+    }
+  );
+}
+
+/**
+ * 清理卡在 runtime 升级归档中的 edit-debug 记录。
+ *
+ * 只允许处理仍处于 archiving 的同一条资源；调用方随后会删除远端资源并从当前发布包重建。
+ * 这里直接删除 Mongo 记录，避免刷新后继续命中 archiving 状态。
+ */
+export async function deleteStaleRuntimeUpgradeArchivingRecord(resource: SandboxResourceDoc) {
+  return MongoSandboxInstance.deleteOne({
+    ...buildSandboxResourceRecordFilter(resource),
+    'metadata.archive.state': 'archiving'
+  });
 }
 
 /**

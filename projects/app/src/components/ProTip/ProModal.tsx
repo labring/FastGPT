@@ -4,9 +4,22 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getDocPath } from '@/web/common/system/doc';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
+import type { ReactNode } from 'react';
 import { useState } from 'react';
 
-const ProModal = (props: { isOpen?: boolean; onClose?: () => void }) => {
+type ProModalProps = {
+  isOpen?: boolean;
+  onClose?: () => void;
+  forceShow?: boolean;
+  title?: ReactNode;
+  content?: ReactNode;
+  primaryButtonText?: ReactNode;
+  primaryButtonLoading?: boolean;
+  onPrimaryClick?: () => void;
+  showSecondaryButton?: boolean;
+};
+
+const ProModal = (props: ProModalProps) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
 
@@ -14,14 +27,26 @@ const ProModal = (props: { isOpen?: boolean; onClose?: () => void }) => {
 
   const openModal = props?.isOpen ?? isOpen;
   const onClose = props?.onClose ?? (() => setIsOpen(false));
+  const {
+    forceShow = false,
+    title = t('common:pro_modal_title'),
+    content,
+    primaryButtonText = t('common:pro_modal_unlock_button'),
+    primaryButtonLoading = false,
+    onPrimaryClick = () => {
+      window.open(getDocPath('/guide/version/commercial'), '_blank');
+    },
+    showSecondaryButton = true
+  } = props;
 
-  return feConfigs?.isPlus ? null : (
+  return feConfigs?.isPlus && !forceShow ? null : (
     <MyModal
       isOpen={openModal}
       onClose={onClose}
       showCloseButton={false}
       w={'400px'}
       minH={'392px'}
+      isCentered
     >
       <ModalBody
         userSelect={'none'}
@@ -52,50 +77,53 @@ const ProModal = (props: { isOpen?: boolean; onClose?: () => void }) => {
             <MyIcon name={'star'} w={9} h={9} transform={'translateY(40%)'} />
           </Flex>
           <Box color={'myGray.900'} fontSize={'26px'} fontWeight={'bold'} lineHeight={'34px'}>
-            {t('common:pro_modal_title')}
+            {title}
           </Box>
-          <VStack
-            w={'full'}
-            color={'myGray.900'}
-            fontSize={'18px'}
-            alignItems={'center'}
-            gap={0}
-            mt={7}
-          >
-            <Box lineHeight={'26px'}>{t('common:pro_modal_subtitle')}</Box>
-            <Box lineHeight={'26px'}>{t('common:pro_modal_feature_1')}</Box>
-            <Box lineHeight={'26px'}>{t('common:pro_modal_feature_2')}</Box>
-            <Box lineHeight={'26px'}>{t('common:pro_modal_feature_3')}</Box>
-            <Box color={'myGray.500'} letterSpacing={'2px'} lineHeight={'26px'}>
-              ......
-            </Box>
-          </VStack>
+          {content || (
+            <VStack
+              w={'full'}
+              color={'myGray.900'}
+              fontSize={'18px'}
+              alignItems={'center'}
+              gap={0}
+              mt={7}
+            >
+              <Box lineHeight={'26px'}>{t('common:pro_modal_subtitle')}</Box>
+              <Box lineHeight={'26px'}>{t('common:pro_modal_feature_1')}</Box>
+              <Box lineHeight={'26px'}>{t('common:pro_modal_feature_2')}</Box>
+              <Box lineHeight={'26px'}>{t('common:pro_modal_feature_3')}</Box>
+              <Box color={'myGray.500'} letterSpacing={'2px'} lineHeight={'26px'}>
+                ......
+              </Box>
+            </VStack>
+          )}
           <Flex gap={3} flexDirection={'column'} w={'full'} mt={6}>
             <Button
               w={'full'}
               h={'48px'}
               borderRadius={'10px'}
-              onClick={() => {
-                window.open(getDocPath('/guide/version/commercial'), '_blank');
-              }}
+              onClick={onPrimaryClick}
+              isLoading={primaryButtonLoading}
               fontSize={'16px'}
               fontWeight={'medium'}
             >
-              {t('common:pro_modal_unlock_button')}
+              {primaryButtonText}
             </Button>
-            <Button
-              w={'full'}
-              h={'48px'}
-              borderRadius={'10px'}
-              variant={'whiteBase'}
-              fontSize={'16px'}
-              fontWeight={'medium'}
-              borderColor={'#E4E7ED'}
-              boxShadow={'0 2px 5px rgba(15, 23, 42, 0.06)'}
-              onClick={onClose}
-            >
-              {t('common:pro_modal_later_button')}
-            </Button>
+            {showSecondaryButton && (
+              <Button
+                w={'full'}
+                h={'48px'}
+                borderRadius={'10px'}
+                variant={'whiteBase'}
+                fontSize={'16px'}
+                fontWeight={'medium'}
+                borderColor={'#E4E7ED'}
+                boxShadow={'0 2px 5px rgba(15, 23, 42, 0.06)'}
+                onClick={onClose}
+              >
+                {t('common:pro_modal_later_button')}
+              </Button>
+            )}
           </Flex>
         </VStack>
       </ModalBody>

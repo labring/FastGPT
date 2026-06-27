@@ -1,11 +1,12 @@
 import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
+import { shellQuote } from '@fastgpt/global/common/string/utils';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import type { DeployedSkillVersion } from './types';
 import {
   buildLimitedOutputShellCommand,
   executeEntrypointCommand
 } from '../../sandbox/runtime/entrypoint';
-import { joinSandboxPath, shellQuote } from '../../sandbox/runtime/utils';
+import { joinSandboxPath } from '../../sandbox/runtime/utils';
 import {
   getRuntimeStateValue,
   readSandboxRuntimeState,

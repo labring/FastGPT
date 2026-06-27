@@ -3,7 +3,8 @@
  *
  * 这里只放无副作用的 SKILL.md 文本解析和模板拼装，不访问数据库、对象存储、sandbox 或 LLM。
  */
-import { joinSandboxPath, shellQuote } from '../sandbox/runtime/utils';
+import { shellQuote } from '@fastgpt/global/common/string/utils';
+import { joinSandboxPath } from '../sandbox/runtime/utils';
 
 /* ==================== YAML Frontmatter 解析 (原 skillMarkdown.ts) ==================== */
 

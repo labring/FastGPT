@@ -1,10 +1,11 @@
 import type { FileWriteEntry, ISandbox } from '@fastgpt-sdk/sandbox-adapter';
+import { shellQuote } from '@fastgpt/global/common/string/utils';
 import type {
   BuiltinSkillSource,
   BuiltinSkillSourceFile
 } from '@fastgpt/global/core/ai/skill/runtime/builtin';
 import { getSandboxBuiltinSkillsRootPath } from '../../sandbox/runtime/profile/utils';
-import { buildRuntimeHash, joinSandboxPath, shellQuote } from '../../sandbox/runtime/utils';
+import { buildRuntimeHash, joinSandboxPath } from '../../sandbox/runtime/utils';
 import {
   getRuntimeStateValue,
   readSandboxRuntimeState,

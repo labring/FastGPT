@@ -57,6 +57,10 @@ export type SandboxStatusPhase =
   | 'downloadingPackage' // downloading skill package from MinIO
   | 'uploadingPackage' // uploading package into sandbox container
   | 'extractingPackage' // extracting package in sandbox
+  // Runtime image upgrade phases
+  | 'runtimeUpgradeRequired' // existing edit-debug sandbox uses an outdated runtime image
+  | 'runtimeUpgradeArchiving' // archiving workspace before recreating with current image
+  | 'runtimeUpgradeArchived' // outdated runtime is archived or removed; caller should refresh/restart
   // Lazy-init phases
   | 'lazyInit' // LLM first calls sandbox tool, triggers container creation
   // Terminal phases

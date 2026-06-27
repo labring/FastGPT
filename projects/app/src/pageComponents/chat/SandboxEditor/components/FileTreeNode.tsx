@@ -12,7 +12,9 @@ type Props = {
   loadingDirs: Set<string>;
   activeFilePath: string;
   selectedPath: string;
-  setSelectedPath: (path: string) => void;
+  selectedPaths: Set<string>;
+  selectSingleNode: (path: string) => void;
+  toggleSelectedNode: (path: string) => void;
   realOverDestPath: string | null;
   openFile: (path: string) => void;
   toggleDirectory: (node: TreeNode) => void;
@@ -25,6 +27,7 @@ type Props = {
   onConfirmCreate: (name: string) => void;
   onCancelCreate: () => void;
   showFileOps?: boolean;
+  enableMultiSelect?: boolean;
 };
 
 const FileTreeNode = ({
@@ -33,7 +36,9 @@ const FileTreeNode = ({
   loadingDirs,
   activeFilePath,
   selectedPath,
-  setSelectedPath,
+  selectedPaths,
+  selectSingleNode,
+  toggleSelectedNode,
   realOverDestPath,
   openFile,
   toggleDirectory,
@@ -45,12 +50,14 @@ const FileTreeNode = ({
   renderTreeNodes,
   onConfirmCreate,
   onCancelCreate,
-  showFileOps = true
+  showFileOps = true,
+  enableMultiSelect = false
 }: Props) => {
   const isExpanded = expandedDirs.has(node.path);
   const isLoading = loadingDirs.has(node.path);
   const isActive = node.type === 'file' && activeFilePath === node.path;
-  const isSelected = selectedPath === node.path;
+  const shouldShowActiveBg = isActive && !enableMultiSelect;
+  const isSelected = enableMultiSelect ? selectedPaths.has(node.path) : selectedPath === node.path;
   const isRenaming = renamingPath === node.path;
   const shouldShowArrow = node.type === 'directory';
 
@@ -75,6 +82,14 @@ const FileTreeNode = ({
 
   // 完美VSCode拖放体验：只允许文件夹节点和根目录Box显示放置高亮
   const isOverNode = node.type === 'directory' && (isOver || realOverDestPath === node.path);
+  const nodeBg = isOverNode
+    ? 'rgba(56, 139, 253, 0.08)'
+    : isSelected
+      ? 'primary.100'
+      : shouldShowActiveBg
+        ? 'myGray.05'
+        : 'transparent';
+  const hoverBg = isOverNode || isSelected ? nodeBg : 'myGray.05';
 
   return (
     <Box>
@@ -88,22 +103,20 @@ const FileTreeNode = ({
         h="28px"
         cursor="pointer"
         opacity={isDragging ? 0.4 : 1}
-        _hover={{ bg: 'myGray.05' }}
-        bg={
-          isOverNode
-            ? 'rgba(56, 139, 253, 0.08)'
-            : isSelected
-              ? 'primary.100'
-              : isActive
-                ? 'myGray.05'
-                : 'transparent'
-        }
+        _hover={{ bg: hoverBg }}
+        bg={nodeBg}
         border={isOverNode ? '1px dashed #2B5FD9' : '1px solid transparent'}
         borderRadius="xs"
-        onClick={() => {
+        onClick={(e) => {
           if (!node || !node.path) return;
+
+          if (enableMultiSelect && (e.ctrlKey || e.metaKey)) {
+            toggleSelectedNode(node.path);
+            return;
+          }
+
+          selectSingleNode(node.path);
           if (node.type === 'file') {
-            setSelectedPath(node.path);
             openFile(node.path);
           } else {
             toggleDirectory(node);

@@ -18,11 +18,13 @@ const archiveMocks = vi.hoisted(() => ({
   getSessionVolumeConfig: vi.fn(),
   deleteSessionVolume: vi.fn(),
   clearSandboxArchiveState: vi.fn(),
+  clearSandboxRuntimeUpgradeArchiveState: vi.fn(),
   createSandboxResourcesToArchiveCursor: vi.fn(),
   findSandboxInstanceArchiveState: vi.fn(),
   isSandboxStillArchiving: vi.fn(),
   markSandboxArchived: vi.fn(),
   markSandboxArchiving: vi.fn(),
+  markSandboxArchivingForRuntimeUpgrade: vi.fn(),
   markSandboxRestored: vi.fn(),
   markSandboxRestoring: vi.fn(),
   markSandboxResourceStopped: vi.fn(),
@@ -69,11 +71,13 @@ vi.mock('@fastgpt/service/core/ai/sandbox/volume/service', () => ({
 
 vi.mock('@fastgpt/service/core/ai/sandbox/instance/repository', () => ({
   clearSandboxArchiveState: archiveMocks.clearSandboxArchiveState,
+  clearSandboxRuntimeUpgradeArchiveState: archiveMocks.clearSandboxRuntimeUpgradeArchiveState,
   createSandboxResourcesToArchiveCursor: archiveMocks.createSandboxResourcesToArchiveCursor,
   findSandboxInstanceArchiveState: archiveMocks.findSandboxInstanceArchiveState,
   isSandboxStillArchiving: archiveMocks.isSandboxStillArchiving,
   markSandboxArchived: archiveMocks.markSandboxArchived,
   markSandboxArchiving: archiveMocks.markSandboxArchiving,
+  markSandboxArchivingForRuntimeUpgrade: archiveMocks.markSandboxArchivingForRuntimeUpgrade,
   markSandboxRestored: archiveMocks.markSandboxRestored,
   markSandboxRestoring: archiveMocks.markSandboxRestoring,
   markSandboxResourceStopped: archiveMocks.markSandboxResourceStopped,
@@ -87,6 +91,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/provider/adapter', () => ({
 import {
   archiveInactiveSandboxes,
   archiveSandboxResource,
+  archiveSandboxResourceForRuntimeUpgrade,
   restoreArchivedSandboxBeforeUse
 } from '@fastgpt/service/core/ai/sandbox/service/archive';
 
@@ -108,7 +113,7 @@ const createResource = (overrides: Partial<any> = {}) => ({
 
 const createSandbox = () =>
   ({
-    execute: vi.fn(async (command: string, _options?: unknown) => ({
+    execute: vi.fn(async (command: string) => ({
       stdout: command.includes('wc -l') ? '1\n' : command.includes("awk '{s+=$7}") ? '12\n' : '',
       stderr: '',
       exitCode: 0
@@ -166,6 +171,7 @@ describe('sandbox archive service', () => {
     archiveMocks.deleteWorkspaceArchive.mockResolvedValue(undefined);
     archiveMocks.disconnectSandbox.mockResolvedValue(undefined);
     archiveMocks.clearSandboxArchiveState.mockResolvedValue(undefined);
+    archiveMocks.clearSandboxRuntimeUpgradeArchiveState.mockResolvedValue(undefined);
     archiveMocks.markSandboxArchived.mockResolvedValue({ matchedCount: 1, modifiedCount: 1 });
     archiveMocks.isSandboxStillArchiving.mockResolvedValue(true);
     archiveMocks.markSandboxRestored.mockImplementation(async (resource, params) => ({
@@ -320,6 +326,44 @@ describe('sandbox archive service', () => {
     expect(remoteResource.delete).not.toHaveBeenCalled();
     expect(remoteResource.stop).not.toHaveBeenCalled();
     expect(archiveMocks.markSandboxArchived).not.toHaveBeenCalled();
+  });
+
+  it('archives runtime upgrade resources without inactive checks', async () => {
+    const resource = createResource({
+      status: SandboxStatusEnum.running,
+      metadata: {
+        image: { repository: 'old-runtime' }
+      }
+    });
+    const archivingResource = {
+      ...resource,
+      status: SandboxStatusEnum.stopped,
+      metadata: {
+        ...resource.metadata,
+        archive: {
+          state: 'archiving'
+        }
+      }
+    };
+    const sandbox = createSandbox();
+    const remoteResource = { delete: vi.fn(async () => undefined), stop: vi.fn() };
+    archiveMocks.markSandboxArchivingForRuntimeUpgrade.mockResolvedValue(archivingResource);
+    archiveMocks.connectToSandbox.mockResolvedValue(sandbox);
+    archiveMocks.buildSandboxResourceAdapter.mockReturnValue(remoteResource);
+
+    const result = await archiveSandboxResourceForRuntimeUpgrade(resource, {
+      ensureZipInSandbox: true
+    });
+
+    expect(result).toEqual({ success: true });
+    expect(archiveMocks.markSandboxArchivingForRuntimeUpgrade).toHaveBeenCalledWith(resource);
+    expect(archiveMocks.isSandboxStillArchiving).not.toHaveBeenCalled();
+    expect(sandbox.execute).toHaveBeenCalledWith(expect.stringContaining('command -v zip'), {
+      timeoutMs: 600_000,
+      maxOutputBytes: 8 * 1024
+    });
+    expect(remoteResource.delete).toHaveBeenCalledTimes(1);
+    expect(archiveMocks.markSandboxArchived).toHaveBeenCalledWith(archivingResource);
   });
 
   it('restores archive from the current provider record before runtime use', async () => {

@@ -18,6 +18,7 @@ import type { TreeNode } from './components/FileTree';
 import type { OpenedFile } from './components/FileTabs';
 import type { ChatTargetInputType } from '@fastgpt/global/openapi/core/chat/api';
 import { getSandboxTargetId, resolveSandboxTarget } from './types';
+import type { ExecuteResult } from '@fastgpt-sdk/sandbox-adapter';
 import {
   getLanguageByFileName,
   getIsBinaryByLanguage,
@@ -27,7 +28,13 @@ import {
   renameTreeNodeInTree,
   findNodeByPath,
   sortTreeNodes,
-  updateTreeNode
+  updateTreeNode,
+  replacePathPrefix,
+  getSandboxPathName,
+  getSandboxParentPath,
+  joinSandboxPath,
+  applySandboxMoveOperationsToExpandedDirs,
+  type SandboxMoveOperation
 } from './utils';
 
 const SYSTEM_FILE_NAMES = ['.DS_Store'];
@@ -72,12 +79,6 @@ const encodeBase64 = (content: string) => {
 
 const isValidPathSegment = (name: string) =>
   !!name && name !== '.' && name !== '..' && !INVALID_PATH_SEGMENT_CHARS.test(name);
-
-const replacePathPrefix = (path: string, oldPath: string, newPath: string) => {
-  if (path === oldPath) return newPath;
-  if (path.startsWith(oldPath + '/')) return `${newPath}${path.slice(oldPath.length)}`;
-  return path;
-};
 
 /**
  * useSandboxEditor —— UI Hook
@@ -408,7 +409,11 @@ export const useSandboxFileStore = ({
 
   // RPC 调用
   const rpcCall = useCallback(
-    async <T = unknown,>(method: string, params: unknown): Promise<T> => {
+    async <T = unknown,>(
+      method: string,
+      params: unknown,
+      options: { timeoutMs?: number } = {}
+    ): Promise<T> => {
       if (stoppedConnectErrorRef.current) {
         throw stoppedConnectErrorRef.current;
       }
@@ -426,7 +431,7 @@ export const useSandboxFileStore = ({
         const timer = window.setTimeout(() => {
           pendingRpcRequestsRef.current.delete(id);
           reject(new Error(`Sandbox RPC timeout: ${method}`));
-        }, RPC_TIMEOUT_MS);
+        }, options.timeoutMs ?? RPC_TIMEOUT_MS);
 
         pendingRpcRequestsRef.current.set(id, {
           resolve: (res) => {
@@ -1228,10 +1233,8 @@ export const useSandboxFileStore = ({
       }
 
       const oldName = oldPath.split('/').pop() || '';
-      const parts = oldPath.split('/');
-      parts.pop();
-      const parentPath = parts.join('/');
-      const newPath = parentPath ? `${parentPath}/${newName}` : newName;
+      const parentPath = getSandboxParentPath(oldPath);
+      const newPath = joinSandboxPath(parentPath, newName);
 
       if (oldPath === newPath) return;
 
@@ -1271,25 +1274,34 @@ export const useSandboxFileStore = ({
   );
 
   // 移动文件/目录（拖拽移动） (乐观更新)
-  const onMoveFile = useCallback(
-    async (srcPath: string, targetDirPath: string) => {
-      const parts = srcPath.split('/');
-      const fileName = parts.pop() || '';
-      const srcParentPath = parts.join('/') || '.';
-      const destPath = targetDirPath === '.' ? fileName : `${targetDirPath}/${fileName}`;
+  const onMoveFiles = useCallback(
+    async (operations: SandboxMoveOperation[], options?: { expandPath?: string | null }) => {
+      if (operations.length === 0) return [];
 
-      if (srcPath === destPath) return;
+      operations.forEach((item) => {
+        updateStatePaths(item.sourcePath, item.newPath);
+      });
+      setExpandedDirs((prev) =>
+        applySandboxMoveOperationsToExpandedDirs(prev, operations, options?.expandPath)
+      );
+      setFileTree((prevTree) =>
+        operations.reduce(
+          (tree, item) => moveTreeNodeInTree(tree, item.sourcePath, item.targetDirPath),
+          prevTree
+        )
+      );
 
-      // 1. 乐观更新
-      updateStatePaths(srcPath, destPath);
-      setFileTree((prevTree) => moveTreeNodeInTree(prevTree, srcPath, targetDirPath));
-
-      // 2. 异步请求，失败时回滚
+      const movedItems: SandboxMoveOperation[] = [];
       try {
-        await rpcCall('fs/move', {
-          from: srcPath,
-          to: destPath
-        });
+        for (const item of operations) {
+          await rpcCall('fs/move', {
+            from: item.sourcePath,
+            to: item.newPath
+          });
+          movedItems.push(item);
+        }
+
+        return movedItems;
       } catch (error) {
         console.error('Failed to move file:', error);
         toast({
@@ -1297,12 +1309,62 @@ export const useSandboxFileStore = ({
           description: getErrText(error),
           status: 'error'
         });
-        updateStatePaths(destPath, srcPath);
-        setFileTree((prevTree) => moveTreeNodeInTree(prevTree, destPath, srcParentPath));
+
+        const movedPathSet = new Set(movedItems.map((item) => item.newPath));
+        const rollbackOperations = operations
+          .filter((item) => !movedPathSet.has(item.newPath))
+          .map((item) => ({
+            sourcePath: item.newPath,
+            currentParentPath: item.targetDirPath,
+            targetDirPath: item.currentParentPath,
+            newPath: item.sourcePath
+          }));
+        operations
+          .slice()
+          .reverse()
+          .forEach((item) => {
+            if (!movedPathSet.has(item.newPath)) {
+              updateStatePaths(item.newPath, item.sourcePath);
+            }
+          });
+        setExpandedDirs((prev) =>
+          applySandboxMoveOperationsToExpandedDirs(prev, rollbackOperations.reverse())
+        );
+        setFileTree((prevTree) =>
+          operations
+            .slice()
+            .reverse()
+            .reduce((tree, item) => {
+              return movedPathSet.has(item.newPath)
+                ? tree
+                : moveTreeNodeInTree(tree, item.newPath, item.currentParentPath);
+            }, prevTree)
+        );
         await refreshWorkspace({ preserveExpandedDirs: true });
+        throw Object.assign(error instanceof Error ? error : new Error(getErrText(error)), {
+          movedItems
+        });
       }
     },
     [rpcCall, toast, t, refreshWorkspace]
+  );
+
+  const onMoveFile = useCallback(
+    async (srcPath: string, targetDirPath: string) => {
+      const fileName = getSandboxPathName(srcPath);
+      const destPath = joinSandboxPath(targetDirPath, fileName);
+      if (srcPath === destPath) return;
+
+      await onMoveFiles([
+        {
+          sourcePath: srcPath,
+          currentParentPath: getSandboxParentPath(srcPath),
+          targetDirPath,
+          newPath: destPath
+        }
+      ]);
+    },
+    [onMoveFiles]
   );
 
   // 删除文件/目录
@@ -1319,9 +1381,24 @@ export const useSandboxFileStore = ({
           description: getErrText(error),
           status: 'error'
         });
+        throw error;
       }
     },
     [rpcCall, toast, t]
+  );
+
+  const onExecCommand = useCallback(
+    async (command: string, timeoutMs?: number) => {
+      const execTimeoutMs = timeoutMs ?? RPC_TIMEOUT_MS;
+      return rpcCall<ExecuteResult>(
+        'fs/exec',
+        { command, timeoutMs },
+        {
+          timeoutMs: execTimeoutMs + 1000
+        }
+      );
+    },
+    [rpcCall]
   );
 
   // 上传文件
@@ -1489,8 +1566,10 @@ export const useSandboxFileStore = ({
     onCreateNode,
     onRenameComplete,
     onMoveFile,
+    onMoveFiles,
     onDeleteFile,
     onUploadFiles,
+    onExecCommand,
     toggleDirectory
   };
 };

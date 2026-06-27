@@ -42,6 +42,7 @@ function MemberItemCard({
       justifyContent="space-between"
       alignItems="center"
       key={key}
+      minW={0}
       px="1"
       py="1"
       gap="2"
@@ -63,13 +64,14 @@ function MemberItemCard({
         p="1"
         alignItems={'center'}
         gap="2"
-        w="full"
+        flex="1 1 0"
+        minW={0}
       >
         {isChecked !== undefined && (
           <Checkbox isDisabled={disabled} isChecked={isChecked} pointerEvents="none" />
         )}
-        <Avatar src={avatar} w="1.5rem" borderRadius={'50%'} />
-        <Box flex={'1 0 0'} w={0}>
+        <Avatar src={avatar} w="1.5rem" flexShrink={0} borderRadius={'50%'} />
+        <Box flex={'1 1 0'} minW={0}>
           <Box fontSize={'sm'} w={'100%'} noOfLines={1}>
             {name === DefaultGroupName ? userInfo?.team.teamName : name}
           </Box>
@@ -79,31 +81,40 @@ function MemberItemCard({
         </Box>
       </Flex>
       {showRoleSelect && (
-        <RoleSelect
-          disabled={disabled}
-          value={role}
-          Button={
-            <Flex
-              bg={'myGray.50'}
-              border="base"
-              fontSize={'sm'}
-              borderRadius={'md'}
-              minH={'18px'}
-              w="300px"
-              p="1"
-              alignItems={'end'}
-              justifyContent={'space-between'}
-            >
-              <RoleTags permission={role} />
-              <Flex h="18px" alignItems={'center'} justifyContent={'center'}>
-                <ChevronDownIcon fontSize="md" />
+        <Box flex="0 1 300px" minW="160px" maxW="300px">
+          <RoleSelect
+            disabled={disabled}
+            value={role}
+            Button={
+              <Flex
+                bg={'myGray.50'}
+                border="base"
+                fontSize={'sm'}
+                borderRadius={'md'}
+                minH={'18px'}
+                w="full"
+                p="1"
+                alignItems={'end'}
+                justifyContent={'space-between'}
+                overflow="hidden"
+              >
+                <RoleTags permission={role} />
+                <Flex h="18px" flexShrink={0} alignItems={'center'} justifyContent={'center'}>
+                  <ChevronDownIcon fontSize="md" />
+                </Flex>
               </Flex>
-            </Flex>
-          }
-          onChange={onRoleChange}
-        />
+            }
+            onChange={onRoleChange}
+            width="100%"
+          />
+        </Box>
       )}
-      <Flex flexDirection={'row'} h={showRoleSelect ? '36px' : 'unset'} alignItems={'center'}>
+      <Flex
+        flexDirection={'row'}
+        h={showRoleSelect ? '36px' : 'unset'}
+        flexShrink={0}
+        alignItems={'center'}
+      >
         {onDelete !== undefined && !disabled ? (
           <MyIcon
             name="common/closeLight"
