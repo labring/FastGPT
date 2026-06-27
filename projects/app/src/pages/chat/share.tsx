@@ -50,6 +50,7 @@ import { getAppChatSourceKey } from '@/web/core/chat/utils';
 import { useAppChatGenerateStatusSync } from '@/pageComponents/chat/ChatWindow/useAppChatGenerateStatusSync';
 import { postMarkChatRead } from '@/web/core/chat/history/api';
 import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
+import type { GetHistoriesBodyType } from '@fastgpt/global/openapi/core/chat/history/api';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
@@ -134,8 +135,10 @@ const OutLink = (props: Props) => {
 
       const res = await getInitOutLinkChatInfo({
         chatId,
-        shareId,
-        outLinkUid
+        outLinkAuthData: {
+          shareId,
+          outLinkUid
+        }
       });
 
       setChatBoxData({
@@ -218,7 +221,7 @@ const OutLink = (props: Props) => {
           },
           responseChatItemId,
           chatId: completionChatId,
-          ...outLinkAuthData,
+          outLinkAuthData,
           retainDatasetCite: isShowCite,
           showSkillReferences: props.showSkillReferences
         },
@@ -480,18 +483,28 @@ const Render = (props: Props) => {
   const { localUId, setLocalUId, loaded } = useShareChatStore();
   const { source, chatId, setSource, setAppId, setOutLinkAuthData } = useChatStore();
 
-  const chatHistoryProviderParams = useMemoEnhance(() => {
-    return { shareId, outLinkUid: authToken || customUid || localUId || '' };
-  }, [authToken, customUid, localUId, shareId]);
+  const outLinkUid = authToken || customUid || localUId || '';
+  const chatHistoryProviderParams = useMemoEnhance<GetHistoriesBodyType>(() => {
+    return {
+      outLinkAuthData: {
+        shareId,
+        outLinkUid
+      }
+    };
+  }, [outLinkUid, shareId]);
+  const outLinkAuthData = useMemoEnhance(() => {
+    return {
+      shareId,
+      outLinkUid
+    };
+  }, [outLinkUid, shareId]);
   const chatRecordProviderParams = useMemoEnhance(() => {
     return {
-      appId,
-      shareId,
-      outLinkUid: chatHistoryProviderParams.outLinkUid,
+      outLinkAuthData,
       chatId,
       type: GetChatTypeEnum.outLink
     };
-  }, [appId, chatHistoryProviderParams.outLinkUid, chatId, shareId]);
+  }, [outLinkAuthData, chatId]);
 
   useMount(() => {
     setSource('share');
@@ -508,16 +521,13 @@ const Render = (props: Props) => {
 
   // Init outLinkAuthData
   useEffect(() => {
-    if (chatHistoryProviderParams.outLinkUid) {
-      setOutLinkAuthData({
-        shareId,
-        outLinkUid: chatHistoryProviderParams.outLinkUid
-      });
+    if (outLinkAuthData.outLinkUid) {
+      setOutLinkAuthData(outLinkAuthData);
     }
     return () => {
       setOutLinkAuthData({});
     };
-  }, [chatHistoryProviderParams.outLinkUid, setOutLinkAuthData, shareId]);
+  }, [outLinkAuthData, setOutLinkAuthData]);
 
   // Watch appId
   useEffect(() => {
@@ -532,7 +542,7 @@ const Render = (props: Props) => {
     }
   });
 
-  return source === ChatSourceEnum.share && chatHistoryProviderParams.outLinkUid ? (
+  return source === ChatSourceEnum.share && outLinkAuthData.outLinkUid ? (
     <ChatContextProvider params={chatHistoryProviderParams}>
       <ChatItemContextProvider
         showRouteToDatasetDetail={false}

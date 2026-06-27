@@ -17,7 +17,6 @@ export const defaultApp: AppDetailType = {
   chatConfig: {},
   teamId: '',
   tmbId: '',
-  teamTags: [],
   edges: [],
   version: 'v2',
   permission: new AppPermission(),

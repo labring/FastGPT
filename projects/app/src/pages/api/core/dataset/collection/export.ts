@@ -42,7 +42,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       };
     }
 
-    const { appId, chatId, shareId, outLinkUid, teamId, teamToken, chatTime } = parseBody;
+    const { appId, chatId, outLinkAuthData, chatTime } = parseBody;
     /*
       1. auth chat read permission
       2. auth collection quote in chat
@@ -54,10 +54,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
         authToken: true,
         appId,
         chatId,
-        shareId,
-        outLinkUid,
-        teamId,
-        teamToken
+        ...outLinkAuthData
       }),
       getCollectionWithDataset(collectionId),
       authCollectionInChat({

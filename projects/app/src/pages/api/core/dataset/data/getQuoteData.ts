@@ -1,5 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { authChatCrud, authCollectionInChat } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud, authCollectionInChat } from '@/service/support/permission/auth/chat';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authDatasetData } from '@fastgpt/service/support/permission/dataset/auth';
@@ -15,7 +15,6 @@ import {
   GetQuoteDataResponseSchema,
   type GetQuoteDataResponse
 } from '@fastgpt/global/openapi/core/dataset/data/api';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 async function handler(req: ApiRequestProps): Promise<GetQuoteDataResponse> {
   const body = parseApiInput({ req, bodySchema: GetQuoteDataBodySchema }).body;
@@ -23,39 +22,28 @@ async function handler(req: ApiRequestProps): Promise<GetQuoteDataResponse> {
 
   // Auth
   const { collection, q, a } = await (async () => {
-    if (body.chatId && body.appId && body.chatItemDataId) {
-      const { appId, chatId, shareId, outLinkUid, teamId, teamToken } = body;
-      await authChatCrud({
+    if (body.chatId && body.sourceType && body.chatItemDataId) {
+      const { sourceType, sourceId, chatId, outLinkAuthData } = body;
+      const authRes = await authChatTargetCrud({
         req,
         authToken: true,
-        appId,
+        sourceType,
+        sourceId,
         chatId,
-        shareId,
-        outLinkUid,
-        teamId,
-        teamToken
+        outLinkAuthData
       });
+      const resolvedSourceId = authRes.sourceId;
 
       const datasetData = await MongoDatasetData.findById(dataId).lean();
       if (!datasetData) {
         return Promise.reject(new UserError(i18nT('common:data_not_found')));
       }
 
-      const [collection, { showCite }] = await Promise.all([
+      const [collection] = await Promise.all([
         MongoDatasetCollection.findById(datasetData.collectionId).lean(),
-        authChatCrud({
-          req,
-          authToken: true,
-          appId,
-          chatId,
-          shareId,
-          outLinkUid,
-          teamId,
-          teamToken
-        }),
         authCollectionInChat({
-          sourceType: ChatSourceTypeEnum.app,
-          sourceId: appId,
+          sourceType,
+          sourceId: resolvedSourceId,
           chatId,
           collectionIds: [datasetData.collectionId]
         })
@@ -63,7 +51,7 @@ async function handler(req: ApiRequestProps): Promise<GetQuoteDataResponse> {
       if (!collection) {
         return Promise.reject(new UserError('Can not find the collection'));
       }
-      if (!showCite) {
+      if (!authRes.showCite) {
         return Promise.reject(new UserError(ChatErrEnum.unAuthChat));
       }
 

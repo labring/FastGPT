@@ -58,33 +58,45 @@ export const ChatCompletionAuthProxySchema = z
   });
 export type ChatCompletionAuthProxy = z.infer<typeof ChatCompletionAuthProxySchema>;
 
-export const CompletionsPropsSchema = OutLinkChatAuthSchema.extend(WebCompletionsSchema.shape)
-  .extend(ChatCompletionCreateParamsSchema.shape)
-  .extend({
-    authProxy: nullishToUndefined(ChatCompletionAuthProxySchema.optional()).meta({
-      description: 'API Key 代理调用身份'
-    }),
-    variables: nullishToUndefined(z.record(z.string(), z.any()).default({})).meta({
-      description: '全局变量或插件输入'
-    }),
-    responseChatItemId: nullishToUndefined(
-      z
-        .string()
-        .default(() => getNanoid())
-        .meta({
-          description: '自定义响应的 assistant 的消息 ID，如果不传入，则自动生成一个'
-        })
-    ),
-    detail: nullishToUndefined(z.boolean().default(false)).meta({
-      description: '是否返回详细信息，包括 reasoning_content, tool_calls, usage 等'
-    }),
-    retainDatasetCite: nullishToUndefined(z.boolean().default(false)).meta({
-      description: '是否保留数据集引用'
-    }),
-    showSkillReferences: nullishToUndefined(z.boolean().default(false)).meta({
-      description: '是否显示技能引用'
-    })
-  });
+export const CompletionsPropsSchema = WebCompletionsSchema.extend({
+  ...ChatCompletionCreateParamsSchema.shape,
+  outLinkAuthData: nullishToUndefined(OutLinkChatAuthSchema.optional()).meta({
+    description: '外链鉴权数据。share 模式传 shareId/outLinkUid。'
+  }),
+  authProxy: nullishToUndefined(ChatCompletionAuthProxySchema.optional()).meta({
+    description: 'API Key 代理调用身份'
+  }),
+  variables: nullishToUndefined(z.record(z.string(), z.any()).default({})).meta({
+    description: '全局变量或插件输入'
+  }),
+  responseChatItemId: nullishToUndefined(
+    z
+      .string()
+      .default(() => getNanoid())
+      .meta({
+        description: '自定义响应的 assistant 的消息 ID，如果不传入，则自动生成一个'
+      })
+  ),
+  detail: nullishToUndefined(z.boolean().default(false)).meta({
+    description: '是否返回详细信息，包括 reasoning_content, tool_calls, usage 等'
+  }),
+  retainDatasetCite: nullishToUndefined(z.boolean().default(false)).meta({
+    description: '是否保留数据集引用'
+  }),
+  showSkillReferences: nullishToUndefined(z.boolean().default(false)).meta({
+    description: '是否显示技能引用'
+  })
+}).superRefine(({ outLinkAuthData }, ctx) => {
+  const hasShareId = !!outLinkAuthData?.shareId;
+  const hasOutLinkUid = !!outLinkAuthData?.outLinkUid;
+
+  if (hasShareId !== hasOutLinkUid) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'outLinkAuthData.shareId and outLinkAuthData.outLinkUid must be provided together'
+    });
+  }
+});
 export type CompletionsProps = z.infer<typeof CompletionsPropsSchema>;
 
 /* =============== Response =============== */

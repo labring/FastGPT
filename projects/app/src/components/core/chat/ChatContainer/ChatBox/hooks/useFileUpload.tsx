@@ -18,7 +18,7 @@ import { getUploadChatFilePresignedUrl } from '@/web/common/file/api';
 import { getUploadFileType } from '@fastgpt/global/core/app/constants';
 import { putFileToS3 } from '@fastgpt/web/common/file/utils';
 import { getUploadChatFileType } from '../utils/file';
-import { type ChatSourceTarget, useChatApiTarget } from '@/web/core/chat/utils';
+import { type ChatSourceTarget, useChatAuthApiTarget } from '@/web/core/chat/utils';
 
 type UseFileUploadOptions = {
   fileSelectConfig: AppFileSelectConfigType;
@@ -31,7 +31,7 @@ type UseFileUploadOptions = {
 
 export const useFileUpload = (props: UseFileUploadOptions) => {
   const { fileSelectConfig, fileCtrl, outLinkAuthData, sourceTarget, chatId } = props;
-  const chatTarget = useChatApiTarget(sourceTarget);
+  const chatAuthTarget = useChatAuthApiTarget({ sourceTarget, outLinkAuthData });
   const { toast } = useToast();
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
@@ -192,10 +192,9 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
           // Get Upload Post Presigned URL
           const { url, key, headers, maxSize, previewUrl } = await getUploadChatFilePresignedUrl({
             filename: copyFile.rawFile.name,
-            ...chatTarget,
+            ...chatAuthTarget,
             chatId,
-            fileSelectConfig,
-            outLinkAuthData
+            fileSelectConfig
           });
 
           // Upload File to S3
@@ -231,11 +230,10 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
 
     removeFiles(errorFileIndex);
   }, [
-    chatTarget,
+    chatAuthTarget,
     chatId,
     fileList,
     fileSelectConfig,
-    outLinkAuthData,
     removeFiles,
     replaceFiles,
     t,

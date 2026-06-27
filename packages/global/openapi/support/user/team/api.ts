@@ -22,9 +22,6 @@ export const UpdateTeamBodySchema = z.object({
   avatar: z.string().optional().meta({
     description: '团队头像 URL'
   }),
-  teamDomain: z.string().optional().meta({
-    description: '团队域名'
-  }),
   openaiAccount: OpenaiAccountSchema.optional().meta({
     description: 'OpenAI 账号配置'
   }),

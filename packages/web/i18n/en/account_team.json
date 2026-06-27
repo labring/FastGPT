@@ -116,7 +116,6 @@
   "join_team": "Join the team",
   "join_update_time": "Join/Update Time",
   "kick_out_team": "Remove members",
-  "label_sync": "Tag sync",
   "leave": "Resigned",
   "link_forbidden": "Forbidden",
   "log_admin_add_plan": "【{{name}}】A package will be added to a team with a team id [{{teamId}}]",

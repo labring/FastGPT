@@ -122,9 +122,6 @@ const AppSchema = new Schema(
     /** @deprecated */
     defaultPermission: Number,
     inited: Boolean,
-    teamTags: {
-      type: [String]
-    },
 
     // 软删除标记字段
     deleteTime: {

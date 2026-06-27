@@ -12,6 +12,7 @@ import {
 } from '@fastgpt/global/core/chat/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { StartChatFnProps } from '@/components/core/chat/ChatContainer/type';
+import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
 import {
   EventStreamContentType,
   fetchEventSource,
@@ -29,8 +30,6 @@ import type { TopAgentFormDataType } from '@fastgpt/global/core/chat/helperBot/t
 import type { UserInputInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { AgentPlanStatusType, AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import type { StreamNoNeedToBeResumeType } from '@fastgpt/global/openapi/core/ai/api';
-import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import type { ChatTargetInputType } from '@fastgpt/global/openapi/core/chat/api';
 
 type StreamFetchProps = {
   url?: string;
@@ -654,9 +653,8 @@ export const streamFetch = ({
   });
 };
 
-type StreamResumeFetchParams = ChatTargetInputType & {
+type StreamResumeFetchParams = ChatAuthTargetInput & {
   chatId: string;
-  outLinkAuthData?: OutLinkChatAuthProps;
   onmessage: StartChatFnProps['generatingMessage'];
   onResumeUnavailable?: (data: ResumeUnavailableType) => void;
   controller: AbortController;
@@ -667,16 +665,13 @@ let activeResumeController: AbortController | undefined;
 export async function streamResumeFetch(params: StreamResumeFetchParams) {
   const { chatId, outLinkAuthData, onmessage, onResumeUnavailable, controller } = params;
   const query = new URLSearchParams({ chatId });
-  if ('skillId' in params && params.skillId) {
+  if (outLinkAuthData?.shareId && outLinkAuthData?.outLinkUid) {
+    query.set('outLinkAuthData', JSON.stringify(outLinkAuthData));
+  } else if ('skillId' in params && params.skillId) {
     query.set('skillId', params.skillId);
   } else {
     query.set('appId', params.appId!);
   }
-
-  Object.entries(outLinkAuthData || {}).forEach(([key, value]) => {
-    if (!value) return;
-    query.set(key, value);
-  });
 
   const url = `/api/core/chat/resume?${query}`;
 

@@ -330,10 +330,6 @@ export const GetAppDetailResponseSchema = AppSchemaTypeSchema.extend({
     description: '旧版初始化状态',
     deprecated: true
   }),
-  teamTags: AppSchemaTypeSchema.shape.teamTags.meta({
-    description: '旧版团队标签',
-    deprecated: true
-  }),
   permission: AppPermissionSchema
 }).meta({
   description: '应用详情'
@@ -368,11 +364,7 @@ export const UpdateAppBodySchema = z
     intro: z.string().optional().meta({ description: '应用介绍' }),
     nodes: z.array(OpenAPIStoreNodeItemTypeSchema).optional().meta({ description: '应用节点配置' }),
     edges: AppSchemaTypeSchema.shape.edges.optional().meta({ description: '应用连线' }),
-    chatConfig: OpenAPIAppChatConfigSchema.optional().meta({ description: '聊天配置' }),
-    teamTags: AppSchemaTypeSchema.shape.teamTags.optional().meta({
-      description: '旧版团队标签',
-      deprecated: true
-    })
+    chatConfig: OpenAPIAppChatConfigSchema.optional().meta({ description: '聊天配置' })
   })
   .meta({
     example: {

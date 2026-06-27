@@ -10,6 +10,35 @@ import type {
 import { parseContentDispositionFilename } from '@fastgpt/global/common/file/tools';
 import { POST } from '@/web/common/api/request';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+
+type SandboxRawTargetRequest = {
+  appId?: unknown;
+  skillId?: unknown;
+  outLinkAuthData?: OutLinkChatAuthProps;
+};
+
+type SandboxClientBody<T> = Omit<T, 'outLinkAuthData'> & {
+  outLinkAuthData?: OutLinkChatAuthProps;
+};
+type SandboxDownloadClientBody = SandboxClientBody<SandboxDownloadBody>;
+type SandboxCheckExistClientBody = SandboxClientBody<SandboxCheckExistBody>;
+type SandboxGetTicketClientBody = SandboxClientBody<SandboxGetTicketBody>;
+type SandboxGetHtmlPreviewLinkClientBody = SandboxClientBody<SandboxGetHtmlPreviewLinkBody>;
+
+/**
+ * share 模式下后端 schema 要求只传 outLinkAuthData，真实 appId 由鉴权解析。
+ * 这里统一规整 sandbox 请求，避免各入口都重复判断分享外链上下文。
+ */
+const normalizeSandboxRequest = <T extends SandboxRawTargetRequest>(data: T): T => {
+  const hasShareAuth = !!(data.outLinkAuthData?.shareId && data.outLinkAuthData.outLinkUid);
+
+  if (!hasShareAuth || typeof data.appId !== 'string' || data.skillId) {
+    return data;
+  }
+
+  return { ...data, appId: undefined } as T;
+};
 
 /**
  * 生成浏览器直连 sandbox proxy 的 WebSocket 地址。
@@ -34,11 +63,11 @@ export const getSandboxProxyWsUrl = ({
 /**
  * 下载文件或目录（强制下载）
  */
-export const downloadSandbox = async (data: SandboxDownloadBody) => {
+export const downloadSandbox = async (data: SandboxDownloadClientBody) => {
   const response = await fetch('/api/core/ai/sandbox/download', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data)
+    body: JSON.stringify(normalizeSandboxRequest(data))
   });
 
   if (!response.ok) {
@@ -64,14 +93,17 @@ export const downloadSandbox = async (data: SandboxDownloadBody) => {
 /**
  * 检查沙盒是否存在
  */
-export const checkSandboxExist = async (data: SandboxCheckExistBody) =>
-  POST<SandboxCheckExistResponse>('/core/ai/sandbox/checkExist', data);
+export const checkSandboxExist = async (data: SandboxCheckExistClientBody) =>
+  POST<SandboxCheckExistResponse>('/core/ai/sandbox/checkExist', normalizeSandboxRequest(data));
 
 /**
  * 获取 HTML 预览链接 (S3 托管)
  */
-export const getHtmlPreviewLink = (data: SandboxGetHtmlPreviewLinkBody) =>
-  POST<SandboxGetHtmlPreviewLinkResponse>('/core/ai/sandbox/getHtmlPreviewLink', data);
+export const getHtmlPreviewLink = (data: SandboxGetHtmlPreviewLinkClientBody) =>
+  POST<SandboxGetHtmlPreviewLinkResponse>(
+    '/core/ai/sandbox/getHtmlPreviewLink',
+    normalizeSandboxRequest(data)
+  );
 
-export const getSandboxTicket = async (data: SandboxGetTicketBody) =>
-  POST<SandboxGetTicketResponse>('/core/ai/sandbox/getTicket', data);
+export const getSandboxTicket = async (data: SandboxGetTicketClientBody) =>
+  POST<SandboxGetTicketResponse>('/core/ai/sandbox/getTicket', normalizeSandboxRequest(data));

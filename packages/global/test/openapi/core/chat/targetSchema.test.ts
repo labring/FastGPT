@@ -8,6 +8,7 @@ import {
 } from '../../../../openapi/core/chat/record/api';
 import {
   ClearChatHistoriesSchema,
+  DelChatHistorySchema,
   GetHistoriesBodySchema,
   GetHistoryStatusBodySchema,
   MarkChatReadBodySchema
@@ -16,6 +17,7 @@ import { UpdateUserFeedbackBodySchema } from '../../../../openapi/core/chat/feed
 import { ResumeStreamParamsSchema } from '../../../../openapi/core/ai/api';
 import { ChatSourceTypeEnum } from '../../../../core/chat/constants';
 import { StopV2ChatSchema } from '../../../../openapi/core/chat/controler/api';
+import { InitOutLinkChatQuerySchema } from '../../../../openapi/core/chat/outLink/api';
 import { PresignChatFileGetUrlSchema } from '../../../../openapi/core/chat/file/api';
 import { SandboxCheckExistBodySchema } from '../../../../openapi/core/ai/sandbox/api';
 import { CreateQuestionGuideV2BodySchema } from '../../../../openapi/core/ai/agent/api';
@@ -24,8 +26,6 @@ const appId = '68ad85a7463006c963799a05';
 const skillId = '68ad85a7463006c963799a06';
 const shareId = 'share-1';
 const outLinkUid = 'outlink-user-1';
-const teamId = '68ad85a7463006c963799a07';
-const teamToken = 'team-token-1';
 
 describe('openapi/core/chat target schema', () => {
   it('transforms raw appId to internal app source', () => {
@@ -108,10 +108,22 @@ describe('openapi/core/chat target schema', () => {
     expect(() => MarkChatReadBodySchema.parse({ chatId: 'chat-1' })).toThrow();
   });
 
-  it('transforms share auth without appId to unresolved app source', () => {
+  it('rejects top-level share auth without outLinkAuthData', () => {
+    expect(() =>
+      GetHistoryStatusBodySchema.parse({
+        shareId,
+        outLinkUid,
+        chatIds: ['chat-1']
+      })
+    ).toThrow();
+  });
+
+  it('transforms outLinkAuthData without appId to unresolved app source', () => {
     const historyStatus = GetHistoryStatusBodySchema.parse({
-      shareId,
-      outLinkUid,
+      outLinkAuthData: {
+        shareId,
+        outLinkUid
+      },
       chatIds: ['chat-1']
     });
 
@@ -129,8 +141,10 @@ describe('openapi/core/chat target schema', () => {
     expect('outLinkUid' in historyStatus).toBe(false);
 
     const records = GetRecordsV2BodySchema.parse({
-      shareId,
-      outLinkUid,
+      outLinkAuthData: {
+        shareId,
+        outLinkUid
+      },
       chatId: 'chat-1',
       pageSize: 10
     });
@@ -222,32 +236,101 @@ describe('openapi/core/chat target schema', () => {
     });
   });
 
-  it('keeps outlink auth fields when app target is provided', () => {
-    const result = UpdateUserFeedbackBodySchema.parse({
-      appId,
-      shareId,
-      outLinkUid,
+  it('parses outLink init query string auth data for GET requests', () => {
+    const result = InitOutLinkChatQuerySchema.parse({
       chatId: 'chat-1',
-      dataId: 'data-1',
-      userGoodFeedback: 'good'
+      outLinkAuthData: JSON.stringify({
+        shareId,
+        outLinkUid
+      })
+    });
+
+    expect(result).toEqual({
+      chatId: 'chat-1',
+      outLinkAuthData: {
+        shareId,
+        outLinkUid
+      }
+    });
+  });
+
+  it('parses string outLinkAuthData before business transforms for chat APIs', () => {
+    const result = MarkChatReadBodySchema.parse({
+      chatId: 'chat-1',
+      outLinkAuthData: JSON.stringify({
+        shareId,
+        outLinkUid
+      })
     });
 
     expect(result).toMatchObject({
       sourceType: ChatSourceTypeEnum.app,
-      sourceId: appId,
+      sourceId: undefined,
       outLinkAuthData: {
         shareId,
         outLinkUid
       },
-      chatId: 'chat-1',
-      dataId: 'data-1'
+      chatId: 'chat-1'
     });
+  });
+
+  it('parses string outLinkAuthData for DELETE chat query schemas', () => {
+    const history = DelChatHistorySchema.parse({
+      chatId: 'chat-1',
+      outLinkAuthData: JSON.stringify({
+        shareId,
+        outLinkUid
+      })
+    });
+
+    expect(history).toMatchObject({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: undefined,
+      outLinkAuthData: {
+        shareId,
+        outLinkUid
+      },
+      chatId: 'chat-1'
+    });
+
+    const clear = ClearChatHistoriesSchema.parse({
+      outLinkAuthData: JSON.stringify({
+        shareId,
+        outLinkUid
+      })
+    });
+
+    expect(clear).toMatchObject({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: undefined,
+      outLinkAuthData: {
+        shareId,
+        outLinkUid
+      }
+    });
+  });
+
+  it('rejects app target when share auth is also provided', () => {
+    expect(() =>
+      UpdateUserFeedbackBodySchema.parse({
+        appId,
+        outLinkAuthData: {
+          shareId,
+          outLinkUid
+        },
+        chatId: 'chat-1',
+        dataId: 'data-1',
+        userGoodFeedback: 'good'
+      })
+    ).toThrow();
   });
 
   it('rejects incomplete or ambiguous auth context', () => {
     expect(() =>
       GetHistoryStatusBodySchema.parse({
-        shareId,
+        outLinkAuthData: {
+          shareId
+        },
         chatIds: ['chat-1']
       })
     ).toThrow();
@@ -255,8 +338,10 @@ describe('openapi/core/chat target schema', () => {
     expect(() =>
       GetRecordsV2BodySchema.parse({
         skillId,
-        shareId,
-        outLinkUid,
+        outLinkAuthData: {
+          shareId,
+          outLinkUid
+        },
         chatId: 'chat-1',
         pageSize: 10
       })
@@ -264,8 +349,9 @@ describe('openapi/core/chat target schema', () => {
 
     expect(() =>
       GetRecordsV2BodySchema.parse({
-        teamId,
-        teamToken,
+        outLinkAuthData: {
+          shareId
+        },
         chatId: 'chat-1',
         pageSize: 10
       })
@@ -301,7 +387,14 @@ describe('openapi/core/chat target schema', () => {
       sourceId: appId
     });
 
-    expect(ClearChatHistoriesSchema.parse({ shareId, outLinkUid })).toMatchObject({
+    expect(
+      ClearChatHistoriesSchema.parse({
+        outLinkAuthData: {
+          shareId,
+          outLinkUid
+        }
+      })
+    ).toMatchObject({
       sourceType: ChatSourceTypeEnum.app,
       sourceId: undefined,
       outLinkAuthData: {
@@ -311,29 +404,42 @@ describe('openapi/core/chat target schema', () => {
     });
   });
 
-  it('keeps audio transcription OpenAPI form raw while runtime data transforms to source', () => {
+  it('keeps audio transcription form and runtime data on source target contract', () => {
     const form = AudioTranscriptionsFormRawSchema.parse({
       file: 'binary-file-placeholder',
       data: {
-        skillId,
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        sourceId: skillId,
         chatId: 'chat-1',
+        outLinkAuthData: {
+          shareId,
+          outLinkUid
+        },
         duration: 3
       }
     });
 
     expect(form.data).toMatchObject({
-      skillId,
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: skillId,
       chatId: 'chat-1',
+      outLinkAuthData: {
+        shareId,
+        outLinkUid
+      },
       duration: 3
     });
-    expect('sourceType' in form.data).toBe(false);
-    expect('sourceId' in form.data).toBe(false);
+    expect('skillId' in form.data).toBe(false);
 
     const runtimeData = AudioTranscriptionsDataSchema.parse(form.data);
     expect(runtimeData).toMatchObject({
       sourceType: ChatSourceTypeEnum.skillEdit,
       sourceId: skillId,
       chatId: 'chat-1',
+      outLinkAuthData: {
+        shareId,
+        outLinkUid
+      },
       duration: 3
     });
     expect('skillId' in runtimeData).toBe(false);

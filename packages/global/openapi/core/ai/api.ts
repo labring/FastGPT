@@ -3,10 +3,9 @@ import z from 'zod';
 import {
   ChatGenerateStatusSchema,
   createOutLinkChatTargetInputSchema,
-  createOutLinkChatTargetInputSchemaWithOptions,
-  transformChatAuthTargetInput,
-  transformChatTargetInput
+  transformChatAuthTargetInput
 } from '../chat/api';
+import { OutLinkChatAuthSchema } from '../../../support/permission/chat';
 
 // Query Params
 export const GetLLMRequestRecordParamsSchema = z.object({
@@ -65,18 +64,15 @@ export const ChatMessageSchema = z.object({
 });
 
 /* ============================================================================
- * 断线续传：GET /api/core/chat/resume（与 v2/chat/completions 配套；支持站内、分享、团队域名鉴权）
+ * 断线续传：GET /api/core/chat/resume（与 v2/chat/completions 配套；支持站内和分享鉴权）
  * ============================================================================ */
 
-export const ResumeStreamParamsRawSchema = createOutLinkChatTargetInputSchemaWithOptions(
-  {
-    teamId: ObjectIdSchema.optional(),
-    shareId: z.string().optional(),
-    outLinkUid: z.string().optional(),
-    chatId: z.string().meta({ example: 'bEdzC6PNupZrr1RoVutMF2DL', description: '聊天 ID' })
-  },
-  { allowTeamIdWithoutToken: true }
-);
+export const ResumeStreamParamsRawSchema = createOutLinkChatTargetInputSchema({
+  outLinkAuthData: OutLinkChatAuthSchema.optional().meta({
+    description: '外链鉴权数据。GET query 中需 JSON 序列化。'
+  }),
+  chatId: z.string().meta({ example: 'bEdzC6PNupZrr1RoVutMF2DL', description: '聊天 ID' })
+});
 export const ResumeStreamParamsSchema = ResumeStreamParamsRawSchema.transform(
   transformChatAuthTargetInput
 );

@@ -35,7 +35,7 @@ export const AgentPath: OpenAPIPath = {
   '/core/ai/agent/v2/createQuestionGuide': {
     post: {
       summary: '创建会话问题引导',
-      description: '基于指定会话历史生成推荐问题，支持普通 App、外链、团队空间和 Skill Edit 调试',
+      description: '基于指定会话历史生成推荐问题，支持普通 App、外链和 Skill Edit 调试',
       tags: [DevApiTagsMap.aiCommon],
       requestBody: {
         content: {

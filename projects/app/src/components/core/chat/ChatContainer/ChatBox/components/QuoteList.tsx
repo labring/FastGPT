@@ -8,7 +8,7 @@ import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getQuoteDataList } from '@/web/core/chat/record/api';
-import { useChatApiTarget } from '@/web/core/chat/utils';
+import { toChatAuthApiTarget } from '@/web/core/chat/utils';
 
 const QuoteList = React.memo(function QuoteList({
   chatItemDataId = '',
@@ -19,15 +19,21 @@ const QuoteList = React.memo(function QuoteList({
 }) {
   const theme = useTheme();
 
-  const RawSourceBoxProps = useContextSelector(WorkflowRuntimeContext, (v) => ({
-    chatItemDataId,
-    appId: v.appId || '',
-    chatId: v.chatId,
-    ...(v.outLinkAuthData || {})
-  }));
   const sourceTarget = useContextSelector(WorkflowRuntimeContext, (v) => v.sourceTarget);
-  const chatTarget = useChatApiTarget(sourceTarget);
+  const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
+  const chatAuthTarget = useMemo(
+    () => toChatAuthApiTarget({ sourceTarget, outLinkAuthData }),
+    [sourceTarget, outLinkAuthData]
+  );
+  const rawSourceBoxProps = useMemo(
+    () => ({
+      ...chatAuthTarget,
+      chatId,
+      chatItemDataId
+    }),
+    [chatAuthTarget, chatId, chatItemDataId]
+  );
   const canDownloadSource = useContextSelector(ChatItemContext, (v) => v.canDownloadSource);
   const showRouteToDatasetDetail = useContextSelector(
     ChatItemContext,
@@ -40,14 +46,13 @@ const QuoteList = React.memo(function QuoteList({
         ? await getQuoteDataList({
             datasetDataIdList: rawSearch.map((item) => item.id),
             collectionIdList: [...new Set(rawSearch.map((item) => item.collectionId))],
-            chatItemDataId,
-            ...chatTarget,
-            chatId: RawSourceBoxProps.chatId,
-            ...outLinkAuthData
+            ...chatAuthTarget,
+            chatId,
+            chatItemDataId
           })
         : [],
     {
-      refreshDeps: [rawSearch, RawSourceBoxProps.chatId],
+      refreshDeps: [rawSearch, chatId, chatItemDataId, chatAuthTarget],
       manual: false
     }
   );
@@ -92,7 +97,7 @@ const QuoteList = React.memo(function QuoteList({
             canDownloadSource={canDownloadSource}
             canEditData={showRouteToDatasetDetail}
             canEditDataset={showRouteToDatasetDetail}
-            {...RawSourceBoxProps}
+            {...rawSourceBoxProps}
           />
         </Box>
       ))}

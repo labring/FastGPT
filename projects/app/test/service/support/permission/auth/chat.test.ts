@@ -12,8 +12,6 @@ import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
 import { authOutLink } from '@/service/support/permission/auth/outLink';
-import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
-import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import type { OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
@@ -32,20 +30,9 @@ vi.mock('@fastgpt/service/core/chat/chatItemSchema', () => ({
   }
 }));
 
-vi.mock('@fastgpt/service/core/app/schema', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@fastgpt/service/core/app/schema')>();
-  return {
-    ...actual,
-    MongoApp: {
-      findOne: vi.fn()
-    }
-  };
-});
-
 vi.mock('@fastgpt/service/support/permission/app/auth');
 vi.mock('@fastgpt/service/support/permission/skill/auth');
 vi.mock('@/service/support/permission/auth/outLink');
-vi.mock('@/service/support/permission/auth/team');
 
 const buildOutLinkConfig = (
   overrides: Partial<OutLinkSchemaType> = {},
@@ -99,168 +86,6 @@ describe('authChatCrud', () => {
     it('should reject if appId is null', async () => {
       await expect(
         authChatCrud({ appId: null as any, req: {} as any, authToken: true })
-      ).rejects.toBe(ChatErrEnum.unAuthChat);
-    });
-  });
-
-  describe('teamDomain authentication', () => {
-    it('should auth with teamId and teamToken without chatId', async () => {
-      vi.mocked(authTeamSpaceToken).mockResolvedValue({
-        uid: 'user1',
-        tmbId: 'tmb1',
-        tags: ['tag1']
-      });
-      vi.mocked(MongoApp.findOne).mockReturnValue({
-        lean: () => Promise.resolve({ _id: 'app1', teamId: 'team1' })
-      } as any);
-
-      const result = await authChatCrud({
-        appId: 'app1',
-        teamId: 'team1',
-        teamToken: 'token1',
-        req: {} as any,
-        authToken: true
-      });
-
-      expect(result).toEqual({
-        teamId: 'team1',
-        tmbId: 'tmb1',
-        uid: 'user1',
-        showCite: true,
-        showRunningStatus: true,
-        showSkillReferences: true,
-        showFullText: true,
-        canDownloadSource: true,
-        authType: AuthUserTypeEnum.teamDomain
-      });
-    });
-
-    it('should reject if app does not belong to team or tags mismatch', async () => {
-      vi.mocked(authTeamSpaceToken).mockResolvedValue({
-        uid: 'user1',
-        tmbId: 'tmb1',
-        tags: ['tag1']
-      });
-      vi.mocked(MongoApp.findOne).mockReturnValue({
-        lean: () => Promise.resolve(null)
-      } as any);
-
-      await expect(
-        authChatCrud({
-          appId: 'app1',
-          teamId: 'team1',
-          teamToken: 'token1',
-          req: {} as any,
-          authToken: true
-        })
-      ).rejects.toBe(ChatErrEnum.unAuthChat);
-    });
-
-    it('should auth with teamId and teamToken with valid chatId', async () => {
-      const mockChat = {
-        appId: 'app1',
-        outLinkUid: 'user1',
-        teamId: 'team1'
-      };
-
-      vi.mocked(authTeamSpaceToken).mockResolvedValue({
-        uid: 'user1',
-        tmbId: 'tmb1',
-        tags: ['tag1']
-      });
-      vi.mocked(MongoApp.findOne).mockReturnValue({
-        lean: () => Promise.resolve({ _id: 'app1', teamId: 'team1' })
-      } as any);
-      vi.mocked(MongoChat.findOne).mockReturnValue({
-        lean: () => Promise.resolve(mockChat)
-      } as any);
-
-      const result = await authChatCrud({
-        appId: 'app1',
-        chatId: 'chat1',
-        teamId: 'team1',
-        teamToken: 'token1',
-        req: {} as any,
-        authToken: true
-      });
-
-      expect(result).toEqual({
-        teamId: 'team1',
-        tmbId: 'tmb1',
-        uid: 'user1',
-        chat: mockChat,
-        showCite: true,
-        showRunningStatus: true,
-        showSkillReferences: true,
-        showFullText: true,
-        canDownloadSource: true,
-        authType: AuthUserTypeEnum.teamDomain
-      });
-    });
-
-    it('should handle missing chat for teamDomain auth', async () => {
-      vi.mocked(authTeamSpaceToken).mockResolvedValue({
-        uid: 'user1',
-        tmbId: 'tmb1',
-        tags: ['tag1']
-      });
-      vi.mocked(MongoApp.findOne).mockReturnValue({
-        lean: () => Promise.resolve({ _id: 'app1', teamId: 'team1' })
-      } as any);
-      vi.mocked(MongoChat.findOne).mockReturnValue({
-        lean: () => Promise.resolve(null)
-      } as any);
-
-      const result = await authChatCrud({
-        appId: 'app1',
-        chatId: 'chat1',
-        teamId: 'team1',
-        teamToken: 'token1',
-        req: {} as any,
-        authToken: true
-      });
-
-      expect(result).toEqual({
-        teamId: 'team1',
-        tmbId: 'tmb1',
-        uid: 'user1',
-        showCite: true,
-        showRunningStatus: true,
-        showSkillReferences: true,
-        showFullText: true,
-        canDownloadSource: true,
-        authType: AuthUserTypeEnum.teamDomain
-      });
-    });
-
-    it('should reject if chat outLinkUid does not match user for teamDomain', async () => {
-      const mockChat = {
-        appId: 'app1',
-        outLinkUid: 'different-user',
-        teamId: 'team1'
-      };
-
-      vi.mocked(authTeamSpaceToken).mockResolvedValue({
-        uid: 'user1',
-        tmbId: 'tmb1',
-        tags: ['tag1']
-      });
-      vi.mocked(MongoApp.findOne).mockReturnValue({
-        lean: () => Promise.resolve({ _id: 'app1', teamId: 'team1' })
-      } as any);
-      vi.mocked(MongoChat.findOne).mockReturnValue({
-        lean: () => Promise.resolve(mockChat)
-      } as any);
-
-      await expect(
-        authChatCrud({
-          appId: 'app1',
-          chatId: 'chat1',
-          teamId: 'team1',
-          teamToken: 'token1',
-          req: {} as any,
-          authToken: true
-        })
       ).rejects.toBe(ChatErrEnum.unAuthChat);
     });
   });
@@ -489,7 +314,7 @@ describe('authChatCrud', () => {
         permission: new AppPermission({
           isOwner: true
         }),
-        authType: AuthUserTypeEnum.teamDomain
+        authType: AuthUserTypeEnum.token
       } as any);
 
       const result = await authChatCrud({
@@ -507,7 +332,7 @@ describe('authChatCrud', () => {
         showSkillReferences: true,
         showFullText: true,
         canDownloadSource: true,
-        authType: AuthUserTypeEnum.teamDomain
+        authType: AuthUserTypeEnum.token
       });
     });
 
@@ -550,7 +375,7 @@ describe('authChatCrud', () => {
         permission: new AppPermission({
           isOwner: true
         }),
-        authType: AuthUserTypeEnum.teamDomain
+        authType: AuthUserTypeEnum.token
       } as any);
 
       vi.mocked(MongoChat.findOne).mockReturnValue({
@@ -574,7 +399,7 @@ describe('authChatCrud', () => {
         showSkillReferences: true,
         showFullText: true,
         canDownloadSource: true,
-        authType: AuthUserTypeEnum.teamDomain
+        authType: AuthUserTypeEnum.token
       });
     });
 
@@ -592,7 +417,7 @@ describe('authChatCrud', () => {
           isOwner: false,
           role: 8 // ReadChatLogRole value 0b1000
         }),
-        authType: AuthUserTypeEnum.teamDomain
+        authType: AuthUserTypeEnum.token
       } as any);
 
       vi.mocked(MongoChat.findOne).mockReturnValue({
@@ -616,7 +441,7 @@ describe('authChatCrud', () => {
         showSkillReferences: true,
         showFullText: true,
         canDownloadSource: true,
-        authType: AuthUserTypeEnum.teamDomain
+        authType: AuthUserTypeEnum.token
       });
     });
 
@@ -627,7 +452,7 @@ describe('authChatCrud', () => {
         permission: new AppPermission({
           isOwner: true
         }),
-        authType: AuthUserTypeEnum.teamDomain
+        authType: AuthUserTypeEnum.token
       } as any);
 
       vi.mocked(MongoChat.findOne).mockReturnValue({
@@ -650,7 +475,7 @@ describe('authChatCrud', () => {
         showSkillReferences: true,
         showFullText: true,
         canDownloadSource: true,
-        authType: AuthUserTypeEnum.teamDomain
+        authType: AuthUserTypeEnum.token
       });
     });
 
@@ -667,7 +492,7 @@ describe('authChatCrud', () => {
         permission: new AppPermission({
           isOwner: true
         }),
-        authType: AuthUserTypeEnum.teamDomain
+        authType: AuthUserTypeEnum.token
       } as any);
 
       vi.mocked(MongoChat.findOne).mockReturnValue({
@@ -698,7 +523,7 @@ describe('authChatCrud', () => {
           isOwner: false,
           role: 0 // no role/permissions
         }),
-        authType: AuthUserTypeEnum.teamDomain
+        authType: AuthUserTypeEnum.token
       } as any);
 
       vi.mocked(MongoChat.findOne).mockReturnValue({

@@ -10,7 +10,6 @@ import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { publishStatusStyle } from '../constants';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { WorkflowUtilsContext } from './context/workflowUtilsContext';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
@@ -21,11 +20,9 @@ const ExportConfigPopover = dynamic(
 
 const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved: boolean }) => {
   const { t } = useTranslation();
-  const { feConfigs } = useSystemStore();
 
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const onOpenInfoEdit = useContextSelector(AppContext, (v) => v.onOpenInfoEdit);
-  const onOpenTeamTagModal = useContextSelector(AppContext, (v) => v.onOpenTeamTagModal);
   const onDelApp = useContextSelector(AppContext, (v) => v.onDelApp);
   const flowData2StoreData = useContextSelector(WorkflowUtilsContext, (v) => v.flowData2StoreData);
 
@@ -101,26 +98,6 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
                   getWorkflowData={flowData2StoreData}
                 />
               </MyBox>
-              {appDetail.permission.hasWritePer && feConfigs?.show_team_chat && (
-                <>
-                  <Box w={'full'} h={'1px'} bg={'myGray.200'} my={1} />
-
-                  <MyBox
-                    display={'flex'}
-                    size={'md'}
-                    px={1}
-                    py={1.5}
-                    rounded={'4px'}
-                    _hover={{ color: 'primary.600', bg: 'rgba(17, 24, 36, 0.05)' }}
-                    cursor={'pointer'}
-                    onClick={onOpenTeamTagModal}
-                  >
-                    <MyIcon name={'core/dataset/tag'} w={'16px'} mr={2} />
-                    <Box fontSize={'sm'}>{t('app:Team_Tags')}</Box>
-                  </MyBox>
-                </>
-              )}
-
               {appDetail.permission.isOwner && (
                 <>
                   <Box w={'full'} h={'1px'} bg={'myGray.200'} my={1} />
@@ -150,15 +127,12 @@ const AppCard = ({ showSaveStatus, isSaved }: { showSaveStatus: boolean; isSaved
       appDetail.chatConfig,
       appDetail.intro,
       appDetail.name,
-      appDetail.permission.hasWritePer,
       appDetail.permission.isOwner,
       appDetail.type,
-      feConfigs?.show_team_chat,
       flowData2StoreData,
       onDelApp,
       onOpenImport,
       onOpenInfoEdit,
-      onOpenTeamTagModal,
       t
     ]
   );

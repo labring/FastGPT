@@ -12,7 +12,10 @@ import { createOutLinkChatTargetInputSchema, transformChatAuthTargetInput } from
  * Tags: ['AI', 'Agent', 'Read']
  * ============================================================================ */
 
-export const CreateQuestionGuideBodySchema = OutLinkChatAuthSchema.extend({
+export const CreateQuestionGuideBodySchema = z.object({
+  outLinkAuthData: OutLinkChatAuthSchema.optional().meta({
+    description: '外链鉴权数据。share 模式传 shareId/outLinkUid。'
+  }),
   messages: z.array(ChatMessageSchema).meta({
     description: '对话历史消息列表'
   })
@@ -31,7 +34,7 @@ export type CreateQuestionGuideResponseType = z.infer<typeof CreateQuestionGuide
  * API: 创建会话问题引导
  * Route: POST /api/core/ai/agent/v2/createQuestionGuide
  * Method: POST
- * Description: 基于指定会话历史生成推荐问题，支持普通 App、外链、团队空间和 Skill Edit 调试
+ * Description: 基于指定会话历史生成推荐问题，支持普通 App、外链和 Skill Edit 调试
  * Tags: ['AI', 'Agent', 'Chat', 'Read']
  * ============================================================================ */
 
@@ -48,7 +51,6 @@ export const CreateQuestionGuideV2BodyRawSchema = createOutLinkChatTargetInputSc
   })
 }).meta({
   example: {
-    appId: '68ad85a7463006c963799a05',
     chatId: 'chat-1',
     questionGuide: {
       open: true,

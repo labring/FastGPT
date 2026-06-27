@@ -40,8 +40,8 @@ import { formatChatRequestVariables } from '../utils/requestVariables';
 import type { ChatSiteItemType, ChatBoxInputType, SendPromptFnType } from '../type';
 import type { StartChatFnProps, generatingMessageProps } from '../../type';
 import { cloneDeep } from 'lodash';
-import type { ChatTargetInputType } from '@fastgpt/global/openapi/core/chat/api';
-import { useChatApiTarget } from '@/web/core/chat/utils';
+import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
+import { useChatAuthApiTarget } from '@/web/core/chat/utils';
 
 type HumanChatSiteItemType = Extract<ChatSiteItemType, { obj: ChatRoleEnum.Human }>;
 
@@ -58,7 +58,7 @@ type NotifyChatGenerateStatusChange = (
 type FinishChatGenerateStatus = (params: {
   status: ChatGenerateStatusEnum;
   finishedInActiveChat: boolean;
-  targetChatTarget?: ChatTargetInputType;
+  targetChatTarget?: ChatAuthTargetInput;
   targetSourceKey?: string;
   targetChatId?: string;
   shouldUpdateChatBoxData?: (state: {
@@ -149,7 +149,8 @@ export const useChatGenerate = ({
   const setAudioPlayingChatId = useContextSelector(ChatBoxContext, (v) => v.setAudioPlayingChatId);
   const splitText2Audio = useContextSelector(ChatBoxContext, (v) => v.splitText2Audio);
   const sourceTarget = useContextSelector(WorkflowRuntimeContext, (v) => v.sourceTarget);
-  const chatTarget = useChatApiTarget(sourceTarget);
+  const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
+  const chatAuthTarget = useChatAuthApiTarget({ sourceTarget, outLinkAuthData });
 
   const generatingMessageQueueRef = useRef<
     Array<generatingMessageProps & { autoTTSResponse?: boolean }>
@@ -609,7 +610,7 @@ export const useChatGenerate = ({
           const requestVariables = formatChatRequestVariables({ variableList, variables });
 
           const humanChatId = getNanoid(24);
-          const currentChatTarget = chatTarget;
+          const currentChatTarget = chatAuthTarget;
           const responseChatId = resolveInteractiveResponseChatItemId({
             histories: history,
             interactive,

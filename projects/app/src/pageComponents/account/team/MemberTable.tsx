@@ -52,7 +52,6 @@ import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConf
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 
 const InviteModal = dynamic(() => import('./Invite/InviteModal'));
-const TeamTagModal = dynamic(() => import('@/components/support/user/team/TeamTagModal'));
 const TransferOwnershipModal = dynamic(() => import('./TransferOwnershipModal'));
 
 function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
@@ -88,12 +87,6 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
       : [])
   ];
   const [status, setStatus] = useState<string>();
-
-  const {
-    isOpen: isOpenTeamTagsAsync,
-    onOpen: onOpenTeamTagsAsync,
-    onClose: onCloseTeamTagsAsync
-  } = useDisclosure();
 
   const isWecomTeam = useMemo(() => {
     return !!userInfo?.team?.isWecomTeam;
@@ -196,20 +189,6 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
               onChange={(e) => setSearchKey(e.target.value)}
             />
           </Box>
-          {userInfo?.team.permission.hasManagePer && feConfigs?.show_team_chat && (
-            <Button
-              variant={'whitePrimary'}
-              size="md"
-              borderRadius={'md'}
-              ml={3}
-              leftIcon={<MyIcon name="core/dataset/tag" w={'16px'} />}
-              onClick={() => {
-                onOpenTeamTagsAsync();
-              }}
-            >
-              {t('account_team:label_sync')}
-            </Button>
-          )}
           {userInfo?.team.permission.hasManagePer && isSyncMode && (
             <Button
               variant={'primary'}
@@ -403,7 +382,6 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
       </MyBox>
 
       {isOpenInvite && userInfo?.team?.teamId && <InviteModal onClose={onCloseInvite} />}
-      {isOpenTeamTagsAsync && <TeamTagModal onClose={onCloseTeamTagsAsync} />}
       {isOpenTransferModal && (
         <TransferOwnershipModal
           onClose={onCloseTransferModal}

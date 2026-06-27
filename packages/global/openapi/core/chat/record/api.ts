@@ -5,13 +5,18 @@ import { DatasetCiteItemSchema } from '../../../../core/dataset/type';
 import { LinkedListResponseSchema, LinkedPaginationSchema, PaginationSchema } from '../../../api';
 import { ChatItemMiniSchema } from '../../../../core/chat/type';
 import { AppTTSConfigTypeSchema } from '../../../../core/app/type';
-import { GetChatTypeEnum } from '../../../../core/chat/constants';
+import { ChatSourceTypeEnum, GetChatTypeEnum } from '../../../../core/chat/constants';
 import {
   createOutLinkChatTargetInputSchema,
   refineRequiredChatTargetInput,
-  transformChatAuthTargetInput,
-  transformChatTargetInput
+  transformChatAuthTargetInput
 } from '../api';
+
+const GetRecordTypeSchema = z.enum([
+  GetChatTypeEnum.normal,
+  GetChatTypeEnum.outLink,
+  GetChatTypeEnum.home
+]);
 
 const QueryStringArraySchema = z
   .union([z.string(), z.array(z.string())])
@@ -155,10 +160,10 @@ const GetRecordPropsSchema = {
     example: false,
     description: '是否加载自定义反馈'
   }),
-  type: z
-    .enum(GetChatTypeEnum)
-    .optional()
-    .meta({ example: 'normal', description: '获取类型，影响数据过滤规则' }),
+  type: GetRecordTypeSchema.optional().meta({
+    example: GetChatTypeEnum.normal,
+    description: '获取类型，影响数据过滤规则'
+  }),
   includeDeleted: z.boolean().optional().meta({
     example: false,
     description: '是否包含已删除的记录'
@@ -191,7 +196,7 @@ export const GetRecordsV2BodyRawSchema = LinkedPaginationSchema(
 export const GetRecordsV2BodySchema = GetRecordsV2BodyRawSchema.transform(
   transformChatAuthTargetInput
 );
-export type GetRecordsV2BodyType = z.infer<typeof GetRecordsV2BodyRawSchema>;
+export type GetRecordsV2BodyType = z.input<typeof GetRecordsV2BodyRawSchema>;
 export type GetRecordsV2BodyRuntimeType = z.infer<typeof GetRecordsV2BodySchema>;
 export const GetRecordsV2ResponseSchema = LinkedListResponseSchema(ChatItemMiniSchema).extend({
   total: z.int()
@@ -218,13 +223,14 @@ export type GetChatSpeechBodyType = z.infer<typeof GetChatSpeechBodySchema>;
  * Description: 将 multipart 表单里的音频转换为文本
  * ============================================================================ */
 
-export const AudioTranscriptionsDataRawSchema = createOutLinkChatTargetInputSchema({
+export const AudioTranscriptionsDataRawSchema = z.object({
+  sourceType: z.enum(ChatSourceTypeEnum).describe('会话归属资源类型'),
+  sourceId: ObjectIdSchema.describe('会话归属资源 ID'),
   chatId: z.string().min(1).max(256).describe('会话 ID'),
+  outLinkAuthData: OutLinkChatAuthSchema.optional().describe('外链鉴权数据'),
   duration: z.coerce.number().optional().describe('录音时长，单位秒')
 });
-export const AudioTranscriptionsDataSchema = AudioTranscriptionsDataRawSchema.transform(
-  transformChatAuthTargetInput
-);
+export const AudioTranscriptionsDataSchema = AudioTranscriptionsDataRawSchema;
 export type AudioTranscriptionsDataType = z.infer<typeof AudioTranscriptionsDataRawSchema>;
 export type AudioTranscriptionsDataRuntimeType = z.infer<typeof AudioTranscriptionsDataSchema>;
 

@@ -16,6 +16,8 @@ import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/con
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
+import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
+import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 
 describe('getHistories api test', () => {
   let testUser: Awaited<ReturnType<typeof getUser>>;
@@ -262,6 +264,75 @@ describe('getHistories api test', () => {
     expect(res.code).toBe(200);
     expect(res.data.list).toHaveLength(3);
     expect(res.data.list.find((chat) => chat.chatId === otherChatId)).toBeUndefined();
+  });
+
+  it('should list share histories by outLinkAuthData without appId', async () => {
+    const shareId = `share-${getNanoid(8)}`;
+    const outLinkUid = `share-user-${getNanoid(8)}`;
+    const otherOutLinkUid = `share-user-${getNanoid(8)}`;
+    const shareChatId = getNanoid();
+    const otherShareChatId = getNanoid();
+
+    await MongoOutLink.create({
+      shareId,
+      teamId: testUser.teamId,
+      tmbId: testUser.tmbId,
+      appId,
+      type: PublishChannelEnum.share,
+      name: 'History Share Link',
+      showCite: true,
+      showRunningStatus: true,
+      showSkillReferences: false,
+      showFullText: false,
+      canDownloadSource: false,
+      showWholeResponse: false
+    });
+
+    await Promise.all([
+      MongoChat.create({
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        appId,
+        chatId: shareChatId,
+        source: ChatSourceEnum.share,
+        shareId,
+        outLinkUid,
+        title: 'Current Share Chat'
+      }),
+      MongoChat.create({
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        appId,
+        chatId: otherShareChatId,
+        source: ChatSourceEnum.share,
+        shareId,
+        outLinkUid: otherOutLinkUid,
+        title: 'Other Share Chat'
+      })
+    ]);
+
+    const res = await Call<GetHistoriesBodyType, any, GetHistoriesResponseType>(handler, {
+      body: {
+        outLinkAuthData: {
+          shareId,
+          outLinkUid
+        }
+      },
+      query: {
+        offset: 0,
+        pageSize: 10
+      }
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data.total).toBe(1);
+    expect(res.data.list).toHaveLength(1);
+    expect(res.data.list[0]).toMatchObject({
+      chatId: shareChatId,
+      appId,
+      title: 'Current Share Chat'
+    });
+    expect(res.data.list.find((chat) => chat.chatId === otherShareChatId)).toBeUndefined();
   });
 
   it('should fail when appId does not exist', async () => {

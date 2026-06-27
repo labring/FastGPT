@@ -71,7 +71,6 @@ export async function handler(req: ApiRequestProps): Promise<GetPaginationRecord
   const fieldMap = {
     [GetChatTypeEnum.normal]: `${commonField} ${loadCustomFeedbacks ? 'customFeedbacks' : ''}`,
     [GetChatTypeEnum.outLink]: commonField,
-    [GetChatTypeEnum.team]: commonField,
     [GetChatTypeEnum.home]: commonField
   };
 

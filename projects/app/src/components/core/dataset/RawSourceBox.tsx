@@ -11,47 +11,43 @@ import type { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/con
 type Props = BoxProps &
   ReadCollectionSourceBodyType & {
     collectionType?: DatasetCollectionTypeEnum;
-    sourceName?: string;
-    sourceId?: string;
+    rawSourceName?: string;
+    rawSourceId?: string;
     canView?: boolean;
   };
 
 const RawSourceBox = ({
-  sourceId,
+  rawSourceId,
   collectionType,
-  sourceName = '',
+  rawSourceName = '',
   canView = true,
 
   collectionId,
   appId,
+  skillId,
   chatId,
   chatItemDataId,
-  shareId,
-  outLinkUid,
-  teamId,
-  teamToken,
+  outLinkAuthData,
 
   ...props
 }: Props) => {
   const { t } = useTranslation();
 
-  const canPreview = !!sourceId && canView;
+  const canPreview = !!rawSourceId && canView;
 
   const icon = useMemo(
-    () => getCollectionIcon({ type: collectionType, sourceId, name: sourceName }),
-    [collectionType, sourceId, sourceName]
+    () => getCollectionIcon({ type: collectionType, sourceId: rawSourceId, name: rawSourceName }),
+    [collectionType, rawSourceId, rawSourceName]
   );
   const read = getCollectionSourceAndOpen({
     collectionId,
     appId,
+    skillId,
     chatId,
     chatItemDataId,
-    shareId,
-    outLinkUid,
-    teamId,
-    teamToken
+    outLinkAuthData
   });
-  const displaySourceName = sourceName || t('common:unknow_source');
+  const displaySourceName = rawSourceName || t('common:unknow_source');
 
   return (
     <Box

@@ -23,6 +23,7 @@ import { DetailLogsModalFeedbackTypeFilter } from './FeedbackTypeFilter';
 import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getAppChatSourceKey } from '@/web/core/chat/utils';
+import type { GetPaginationRecordsBodyType } from '@fastgpt/global/openapi/core/chat/record/api';
 
 const PluginRunBox = dynamic(() => import('@/components/core/chat/ChatContainer/PluginRunBox'));
 const ChatBox = dynamic(() => import('@/components/core/chat/ChatContainer/ChatBox'));
@@ -278,7 +279,7 @@ const Render = (props: Props) => {
   const { appId, chatId } = props;
   const [feedbackRecordId, setFeedbackRecordId] = useState<string | undefined>(undefined);
 
-  const params = useMemo(() => {
+  const params = useMemo<GetPaginationRecordsBodyType>(() => {
     return {
       chatId,
       appId,

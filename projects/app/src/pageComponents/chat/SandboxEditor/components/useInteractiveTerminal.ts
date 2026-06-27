@@ -241,9 +241,7 @@ export const useInteractiveTerminal = ({
     chatId,
     canWrite,
     outLinkAuthData?.shareId,
-    outLinkAuthData?.outLinkUid,
-    outLinkAuthData?.teamId,
-    outLinkAuthData?.teamToken
+    outLinkAuthData?.outLinkUid
   ]);
 
   return {

@@ -29,15 +29,6 @@ export const InitChatQuerySchema = InitChatQueryRawSchema.transform(transformCha
 export type InitChatQueryType = z.infer<typeof InitChatQueryRawSchema>;
 export type InitChatQueryRuntimeType = z.infer<typeof InitChatQuerySchema>;
 
-/** 团队空间 init：`/api/core/chat/team/init` */
-export const InitTeamChatQuerySchema = z.object({
-  teamId: z.string().min(1),
-  appId: z.string().min(1),
-  chatId: z.string().optional(),
-  teamToken: z.string().min(1)
-});
-export type InitTeamChatQueryType = z.infer<typeof InitTeamChatQuerySchema>;
-
 export const InitChatResponseSchema = createChatTargetResponseSchema({
   chatId: z.string().optional().describe('会话ID'),
   userAvatar: z.string().optional().describe('用户头像'),
@@ -67,7 +58,6 @@ export const StopV2ChatRawSchema = createOutLinkChatTargetInputSchema({
   outLinkAuthData: OutLinkChatAuthSchema.optional().describe('外链鉴权数据')
 }).meta({
   example: {
-    appId: '1234567890',
     chatId: '1234567890',
     outLinkAuthData: {
       shareId: '1234567890',

@@ -109,8 +109,7 @@ describe('pushChatRecords', () => {
       ownerId: user._id,
       avatar: 'test-avatar',
       createTime: new Date(),
-      balance: 0,
-      teamDomain: 'test-domain'
+      balance: 0
     });
     testTeamId = String(team._id);
 

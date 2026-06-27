@@ -15,7 +15,6 @@ export const PresignChatFileGetUrlRawSchema = createOutLinkChatTargetInputSchema
 }).meta({
   example: {
     key: '1234567890',
-    appId: '1234567890',
     chatId: '1234567890',
     outLinkAuthData: {
       shareId: '1234567890',
@@ -40,7 +39,6 @@ export const PresignChatFilePostUrlRawSchema = createOutLinkChatTargetInputSchem
 }).meta({
   example: {
     filename: '1234567890',
-    appId: '1234567890',
     chatId: '1234567890',
     fileSelectConfig: {
       canSelectFile: true,

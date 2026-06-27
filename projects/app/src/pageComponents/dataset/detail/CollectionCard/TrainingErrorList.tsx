@@ -646,8 +646,8 @@ const TrainingErrorList = ({
                   <RawSourceBox
                     collectionId={group.collection.collectionId}
                     collectionType={group.collection.type as DatasetCollectionTypeEnum}
-                    sourceName={group.collection.sourceName || group.collection.name}
-                    sourceId={group.collection.sourceId}
+                    rawSourceName={group.collection.sourceName || group.collection.name}
+                    rawSourceId={group.collection.sourceId}
                     canView={false}
                     alignItems={'center'}
                     fontSize={'12px'}

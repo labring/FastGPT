@@ -6,8 +6,7 @@ export enum AuthUserTypeEnum {
   token = 'token',
   root = 'root',
   apikey = 'apikey',
-  outLink = 'outLink',
-  teamDomain = 'teamDomain'
+  outLink = 'outLink'
 }
 
 export enum PermissionTypeEnum {

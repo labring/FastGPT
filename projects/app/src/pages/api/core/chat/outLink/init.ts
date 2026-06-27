@@ -21,10 +21,11 @@ import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 import { buildChatTargetResponse } from '@fastgpt/global/openapi/core/chat/api';
 
 async function handler(req: NextApiRequest): Promise<InitOutLinkChatResponseType> {
-  const { chatId, shareId, outLinkUid } = parseApiInput({
+  const { chatId, outLinkAuthData } = parseApiInput({
     req,
     querySchema: InitOutLinkChatQuerySchema
   }).query;
+  const { shareId, outLinkUid } = outLinkAuthData;
 
   // auth link permission
   const { uid, appId } = await authOutLink({ shareId, outLinkUid });

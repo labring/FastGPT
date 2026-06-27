@@ -19,7 +19,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { getCollectionSourceAndOpen } from '@/web/core/dataset/hooks/readCollectionSource';
 import { useContextSelector } from 'use-context-selector';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
-import { getAppIdFromChatTarget, getChatTargetInput } from '@/web/core/chat/utils';
+import { getChatAuthTargetInput } from '@/web/core/chat/utils';
 
 const CollectionReader = ({
   rawSearch,
@@ -39,7 +39,7 @@ const CollectionReader = ({
   const canDownloadSource = useContextSelector(ChatItemContext, (v) => v.canDownloadSource);
 
   const { collectionId, datasetId, chatItemDataId, sourceName, quoteId } = metadata;
-  const appId = getAppIdFromChatTarget(metadata);
+  const appId = metadata.appId;
   const [selectedQuote, setSelectedQuote] = useState<{ sourceQuoteId?: string; id: string }>();
 
   // Get dataset permission
@@ -95,10 +95,9 @@ const CollectionReader = ({
   const params = useMemo(
     () => ({
       collectionId,
-      chatItemDataId,
+      ...getChatAuthTargetInput(metadata),
       chatId: metadata.chatId,
-      ...getChatTargetInput(metadata),
-      ...metadata.outLinkAuthData
+      chatItemDataId
     }),
     [chatItemDataId, collectionId, metadata]
   );
@@ -145,17 +144,16 @@ const CollectionReader = ({
         chatId: metadata.chatId,
         chatItemDataId,
         collectionId,
-        ...metadata.outLinkAuthData
+        outLinkAuthData: metadata.outLinkAuthData
       }
     });
   });
 
   const handleRead = getCollectionSourceAndOpen({
-    appId: appId || '',
+    ...getChatAuthTargetInput(metadata),
     chatId: metadata.chatId,
     chatItemDataId,
-    collectionId,
-    ...metadata.outLinkAuthData
+    collectionId
   });
 
   return (

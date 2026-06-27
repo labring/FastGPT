@@ -27,7 +27,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import VoiceInput, { type VoiceInputComponentRef } from './VoiceInput';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 const InputGuideBox = dynamic(() => import('./InputGuideBox'));
 const PLACEHOLDER_APP_NAME_TOKEN = '__APP_NAME__';
@@ -84,7 +84,6 @@ const ChatInput = ({
   const InputLeftComponent = useContextSelector(ChatBoxContext, (v) => v.InputLeftComponent);
 
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
-  const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
   const sourceTarget = useContextSelector(WorkflowRuntimeContext, (v) => v.sourceTarget);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
@@ -153,7 +152,11 @@ const ChatInput = ({
     showSelectVideo ||
     showSelectAudio ||
     showSelectCustomFileExtension;
-  const canUseInputGuide = enableInputGuide && !!appId && !!chatInputGuide.open;
+  const canUseInputGuide =
+    enableInputGuide &&
+    sourceTarget.sourceType === ChatSourceTypeEnum.app &&
+    !!sourceTarget.sourceId &&
+    !!chatInputGuide.open;
   const canUseVoiceInput = enableVoiceInput && !!sourceTarget.sourceId && !!whisperConfig?.open;
   const isDefaultInputHeight =
     !mobilePreSpeak && !inputValue && fileList.length === 0 && !canUseInputGuide;
@@ -548,7 +551,7 @@ const ChatInput = ({
           {/* Chat input guide box */}
           {canUseInputGuide && (
             <InputGuideBox
-              appId={appId}
+              sourceTarget={sourceTarget}
               text={inputValue}
               onSelect={(e) => {
                 setValue('input', e, {

@@ -73,7 +73,6 @@ async function handler(req: ApiRequestProps): Promise<GetRecordsV2ResponseType> 
   const fieldMap = {
     [GetChatTypeEnum.normal]: `${commonField} ${loadCustomFeedbacks ? 'customFeedbacks isFeedbackRead deleteTime' : ''}`,
     [GetChatTypeEnum.outLink]: commonField,
-    [GetChatTypeEnum.team]: commonField,
     [GetChatTypeEnum.home]: commonField
   };
 

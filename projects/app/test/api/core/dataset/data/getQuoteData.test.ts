@@ -8,7 +8,7 @@ const VALID_APP_ID = '68ad85a7463006c963799a10';
  * 回归测试：历史上 GetQuoteDataBodySchema 使用 z.union([简单, 复杂])，
  * 由于 z.object 默认会剥离未知字段 + union 按顺序匹配第一个成功分支，
  * 导致当请求体包含 appId/chatId/shareId 等字段时被静默丢弃，走到错误的鉴权分支。
- * 本套 schema 测试锁死："对话模式字段必须被完整保留"。
+ * 本套 schema 测试锁死："对话模式字段必须转换为内部 source，并保留外链鉴权上下文"。
  */
 describe('GetQuoteDataBodySchema', () => {
   describe('API 模式（仅 id）', () => {
@@ -31,7 +31,7 @@ describe('GetQuoteDataBodySchema', () => {
   });
 
   describe('对话模式（id + appId + chatId + chatItemDataId）', () => {
-    it('should preserve all chat fields', () => {
+    it('should convert all chat fields', () => {
       const body = {
         id: VALID_ID,
         appId: VALID_APP_ID,
@@ -40,38 +40,28 @@ describe('GetQuoteDataBodySchema', () => {
       };
       const result = GetQuoteDataBodySchema.parse(body);
       expect(result.id).toBe(VALID_ID);
-      expect(result.appId).toBe(VALID_APP_ID);
+      expect(result.sourceType).toBe('app');
+      expect(result.sourceId).toBe(VALID_APP_ID);
       expect(result.chatId).toBe('chat_123');
       expect(result.chatItemDataId).toBe('item_456');
     });
 
-    // 这是核心回归用例 —— 以前 shareId/outLinkUid 会被静默剥离
-    it('should preserve shareId / outLinkUid in chat mode', () => {
+    // 这是核心回归用例 —— share 模式没有 appId，sourceId 必须留给鉴权层解析。
+    it('should preserve outLinkAuthData in share chat mode', () => {
       const body = {
         id: VALID_ID,
-        appId: VALID_APP_ID,
         chatId: 'chat_123',
         chatItemDataId: 'item_456',
-        shareId: 'share_abc',
-        outLinkUid: 'uid_xyz'
+        outLinkAuthData: {
+          shareId: 'share_abc',
+          outLinkUid: 'uid_xyz'
+        }
       };
       const result = GetQuoteDataBodySchema.parse(body);
-      expect(result.shareId).toBe('share_abc');
-      expect(result.outLinkUid).toBe('uid_xyz');
-    });
-
-    it('should preserve teamId / teamToken in chat mode', () => {
-      const body = {
-        id: VALID_ID,
-        appId: VALID_APP_ID,
-        chatId: 'chat_123',
-        chatItemDataId: 'item_456',
-        teamId: 'team_abc',
-        teamToken: 'token_xyz'
-      };
-      const result = GetQuoteDataBodySchema.parse(body);
-      expect(result.teamId).toBe('team_abc');
-      expect(result.teamToken).toBe('token_xyz');
+      expect(result.sourceType).toBe('app');
+      expect(result.sourceId).toBeUndefined();
+      expect(result.outLinkAuthData?.shareId).toBe('share_abc');
+      expect(result.outLinkAuthData?.outLinkUid).toBe('uid_xyz');
     });
   });
 
@@ -108,7 +98,7 @@ describe('GetQuoteDataBodySchema', () => {
  * - API 模式：走 authDatasetData
  * 并且字段会完整传给下游鉴权函数（防止上游 schema 剥字段后神不知鬼不觉）。
  */
-const authChatCrudMock = vi.fn();
+const authChatTargetCrudMock = vi.fn();
 const authCollectionInChatMock = vi.fn();
 const authDatasetDataMock = vi.fn();
 const findByIdDatasetDataMock = vi.fn();
@@ -116,7 +106,7 @@ const findByIdCollectionMock = vi.fn();
 const formatDatasetDataValueMock = vi.fn();
 
 vi.mock('@/service/support/permission/auth/chat', () => ({
-  authChatCrud: (props: any) => authChatCrudMock(props),
+  authChatTargetCrud: (props: any) => authChatTargetCrudMock(props),
   authCollectionInChat: (props: any) => authCollectionInChatMock(props)
 }));
 
@@ -162,7 +152,7 @@ describe('getQuoteData handler', () => {
     formatDatasetDataValueMock.mockImplementation(({ q, a }: any) => ({ q, a }));
   });
 
-  it('chat mode: forwards shareId / outLinkUid / teamId / teamToken to authChatCrud', async () => {
+  it('chat mode: forwards outLinkAuthData to authChatCrud', async () => {
     findByIdDatasetDataMock.mockResolvedValue({
       _id: VALID_ID,
       collectionId: 'col_1',
@@ -171,32 +161,34 @@ describe('getQuoteData handler', () => {
       imageId: undefined
     });
     findByIdCollectionMock.mockResolvedValue(makeCollection());
-    authChatCrudMock.mockResolvedValue({ showCite: true });
+    authChatTargetCrudMock.mockResolvedValue({ sourceId: VALID_APP_ID, showCite: true });
     authCollectionInChatMock.mockResolvedValue(undefined);
 
     const res = await Call(handler, {
       body: {
         id: VALID_ID,
-        appId: VALID_APP_ID,
         chatId: 'chat_123',
         chatItemDataId: 'item_456',
-        shareId: 'share_abc',
-        outLinkUid: 'uid_xyz',
-        teamId: 'team_abc',
-        teamToken: 'token_xyz'
+        outLinkAuthData: {
+          shareId: 'share_abc',
+          outLinkUid: 'uid_xyz'
+        }
       }
     });
 
     expect(res.code).toBe(200);
     // 核心断言：对话模式字段被完整透传给鉴权层
-    expect(authChatCrudMock).toHaveBeenCalled();
-    const call = authChatCrudMock.mock.calls[0][0];
-    expect(call.appId).toBe(VALID_APP_ID);
-    expect(call.chatId).toBe('chat_123');
-    expect(call.shareId).toBe('share_abc');
-    expect(call.outLinkUid).toBe('uid_xyz');
-    expect(call.teamId).toBe('team_abc');
-    expect(call.teamToken).toBe('token_xyz');
+    expect(authChatTargetCrudMock).toHaveBeenCalledTimes(1);
+    const firstCall = authChatTargetCrudMock.mock.calls[0][0];
+    expect(firstCall.sourceType).toBe('app');
+    expect(firstCall.sourceId).toBeUndefined();
+    expect(firstCall.chatId).toBe('chat_123');
+    expect(firstCall.outLinkAuthData).toEqual({
+      shareId: 'share_abc',
+      outLinkUid: 'uid_xyz'
+    });
+    expect(firstCall.shareId).toBeUndefined();
+    expect(firstCall.outLinkUid).toBeUndefined();
 
     expect(authCollectionInChatMock).toHaveBeenCalledWith({
       sourceType: 'app',
@@ -215,7 +207,7 @@ describe('getQuoteData handler', () => {
       a: 'A'
     });
     findByIdCollectionMock.mockResolvedValue(makeCollection());
-    authChatCrudMock.mockResolvedValue({ showCite: false });
+    authChatTargetCrudMock.mockResolvedValue({ sourceId: VALID_APP_ID, showCite: false });
     authCollectionInChatMock.mockResolvedValue(undefined);
 
     const res = await Call(handler, {
@@ -233,7 +225,7 @@ describe('getQuoteData handler', () => {
 
   it('chat mode: rejects when dataset data not found', async () => {
     findByIdDatasetDataMock.mockResolvedValue(null);
-    authChatCrudMock.mockResolvedValue({ showCite: true });
+    authChatTargetCrudMock.mockResolvedValue({ sourceId: VALID_APP_ID, showCite: true });
 
     const res = await Call(handler, {
       body: {
@@ -256,7 +248,7 @@ describe('getQuoteData handler', () => {
       a: 'A'
     });
     findByIdCollectionMock.mockResolvedValue(null);
-    authChatCrudMock.mockResolvedValue({ showCite: true });
+    authChatTargetCrudMock.mockResolvedValue({ sourceId: VALID_APP_ID, showCite: true });
     authCollectionInChatMock.mockResolvedValue(undefined);
 
     const res = await Call(handler, {
@@ -284,7 +276,7 @@ describe('getQuoteData handler', () => {
 
     expect(res.code).toBe(200);
     expect(authDatasetDataMock).toHaveBeenCalledWith(expect.objectContaining({ dataId: VALID_ID }));
-    expect(authChatCrudMock).not.toHaveBeenCalled();
+    expect(authChatTargetCrudMock).not.toHaveBeenCalled();
     expect(authCollectionInChatMock).not.toHaveBeenCalled();
   });
 

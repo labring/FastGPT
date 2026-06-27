@@ -22,14 +22,15 @@ import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection
 import Markdown from '.';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import { isObjectId } from '@fastgpt/global/common/string/utils';
-import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
+
+type MarkdownChatAuthData = ChatAuthTargetInput & {
+  chatId: string;
+  chatItemDataId: string;
+};
 
 export type AProps = {
-  chatAuthData?: {
-    appId: string;
-    chatId: string;
-    chatItemDataId: string;
-  } & OutLinkChatAuthProps;
+  chatAuthData?: MarkdownChatAuthData;
   allowedCitationIds?: Set<string>;
   onOpenCiteModal?: (e?: {
     collectionId?: string;

@@ -9,6 +9,10 @@ import {
 import { DatasetCollectionDataProcessModeEnum } from '../../../../core/dataset/constants';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 import { PaginationSchema, PaginationResponseSchema } from '../../../api';
+import {
+  createOptionalOutLinkChatTargetInputSchema,
+  transformOptionalChatAuthTargetInput
+} from '../../chat/api';
 
 const PushDataChunkSchema = z.object({
   q: z.string().optional().meta({
@@ -145,15 +149,10 @@ export type DeleteDatasetDataIndexResponse = z.infer<typeof DeleteDatasetDataInd
  * API: 获取引用数据
  * Route: POST /api/core/dataset/data/getQuoteData
  * ============================================================================ */
-export const GetQuoteDataBodySchema = OutLinkChatAuthSchema.extend({
+export const GetQuoteDataBodyRawSchema = createOptionalOutLinkChatTargetInputSchema({
   id: ObjectIdSchema.meta({
     example: '68ad85a7463006c963799a05',
     description: '数据 ID'
-  }),
-  // 对话模式下的额外字段（三者必须同时提供，否则走 API 模式）
-  appId: ObjectIdSchema.optional().meta({
-    example: '68ad85a7463006c963799a10',
-    description: '应用 ID（对话模式必填）'
   }),
   chatId: z.string().optional().meta({
     example: '68ad85a7463006c963799a11',
@@ -165,10 +164,23 @@ export const GetQuoteDataBodySchema = OutLinkChatAuthSchema.extend({
   })
 }).refine(
   (d) =>
-    (!!d.chatId && !!d.appId && !!d.chatItemDataId) || (!d.chatId && !d.appId && !d.chatItemDataId),
-  { message: '对话模式下 appId / chatId / chatItemDataId 必须同时提供' }
+    (!!d.chatId &&
+      (!!d.appId ||
+        !!d.skillId ||
+        !!(d.outLinkAuthData?.shareId && d.outLinkAuthData?.outLinkUid)) &&
+      !!d.chatItemDataId) ||
+    (!d.chatId &&
+      !d.appId &&
+      !d.skillId &&
+      !(d.outLinkAuthData?.shareId || d.outLinkAuthData?.outLinkUid) &&
+      !d.chatItemDataId),
+  { message: '对话模式下 chat target / chatId / chatItemDataId 必须同时提供' }
 );
-export type GetQuoteDataBody = z.infer<typeof GetQuoteDataBodySchema>;
+export const GetQuoteDataBodySchema = GetQuoteDataBodyRawSchema.transform(
+  transformOptionalChatAuthTargetInput
+);
+export type GetQuoteDataBody = z.infer<typeof GetQuoteDataBodyRawSchema>;
+export type GetQuoteDataRuntimeBody = z.infer<typeof GetQuoteDataBodySchema>;
 
 export const GetQuoteDataResponseSchema = z.object({
   q: z.string().meta({

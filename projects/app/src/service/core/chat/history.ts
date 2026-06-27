@@ -25,7 +25,7 @@ type ClearChatHistoriesAuthProps = Omit<ChatHistoryAuthProps, 'sourceType'> & {
 /**
  * 将历史会话接口的鉴权上下文转换为 chat 表查询条件。
  *
- * 外链和团队空间仍沿用 App-only 鉴权，并通过真实 appId 生成 source-aware 查询；
+ * 外链仍沿用 App-only 鉴权，并通过真实 appId 生成 source-aware 查询；
  * 标准 App/Skill Edit 请求必须先在 API schema 中转换为 `sourceType/sourceId`。
  */
 export async function buildChatHistoryMatch({
@@ -69,14 +69,6 @@ export async function buildChatHistoryMatch({
       updateTime: {
         $gte: addMonths(new Date(), -1)
       }
-    };
-  }
-
-  if (authType === AuthUserTypeEnum.teamDomain) {
-    return {
-      ...buildChatSourceQuery({ sourceType: resolvedSourceType, sourceId: resolvedSourceId }),
-      outLinkUid: uid,
-      source: ChatSourceEnum.team
     };
   }
 
@@ -130,7 +122,7 @@ export async function buildClearChatHistoriesMatch({
     outLinkAuthData
   });
 
-  if (authType === AuthUserTypeEnum.outLink || authType === AuthUserTypeEnum.teamDomain) {
+  if (authType === AuthUserTypeEnum.outLink) {
     return {
       ...buildChatSourceQuery({ sourceType: resolvedSourceType, sourceId: resolvedSourceId }),
       outLinkUid: uid

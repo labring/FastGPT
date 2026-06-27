@@ -9,7 +9,7 @@ import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 import { formatChatValue2InputType } from '../utils/chatValue';
 import type { ChatBoxInputType, SendPromptFnType } from '../type';
-import { useChatApiTarget } from '@/web/core/chat/utils';
+import { useChatAuthApiTarget } from '@/web/core/chat/utils';
 
 type UseChatRecordActionsProps = {
   sendPrompt: SendPromptFnType;
@@ -43,9 +43,9 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
   const sourceTarget = useContextSelector(WorkflowRuntimeContext, (v) => v.sourceTarget);
-  const chatTarget = useChatApiTarget(sourceTarget);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
+  const chatAuthTarget = useChatAuthApiTarget({ sourceTarget, outLinkAuthData });
 
   /**
    * 删除一组服务端聊天记录。
@@ -58,10 +58,9 @@ export const useChatRecordActions = ({ sendPrompt }: UseChatRecordActionsProps) 
     if (targetContentIds.length === 0) return Promise.resolve();
 
     return delChatRecordById({
-      ...chatTarget,
+      ...chatAuthTarget,
       chatId,
-      contentIds: targetContentIds,
-      ...outLinkAuthData
+      contentIds: targetContentIds
     });
   });
 

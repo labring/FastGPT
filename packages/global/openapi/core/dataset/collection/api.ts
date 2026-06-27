@@ -18,6 +18,10 @@ import {
 import { PermissionSchema } from '../../../../support/permission/controller';
 import { PaginationResponseSchema, PaginationSchema } from '../../../api';
 import z from 'zod';
+import {
+  createOptionalOutLinkChatTargetInputSchema,
+  transformOptionalChatAuthTargetInput
+} from '../../chat/api';
 
 // ============= Scroll Collections =============
 /**
@@ -60,24 +64,31 @@ const BasicExportSchema = z
   });
 
 // Schema 2: Export from chat context with outlink authentication
-const ChatExportSchema = OutLinkChatAuthSchema.extend({
-  collectionId: ObjectIdSchema.describe('集合ID'),
-  appId: ObjectIdSchema.describe('应用ID'),
-  chatId: ObjectIdSchema.describe('会话ID'),
-  chatItemDataId: z.string().describe('对话ID'),
-  chatTime: z.coerce.date().optional().describe('对话时间')
-}).meta({
-  description: '对话中导出集合，可通过 chatId 等身份信息',
-  example: {
-    collectionId: '1234567890',
-    appId: '1234567890',
-    chatId: '1234567890',
-    chatItemDataId: '1234567890',
-    chatTime: '2025-12-30T00:00:00.000Z',
-    shareId: '1234567890',
-    outLinkUid: '1234567890'
-  }
-});
+const ChatExportSchema = z
+  .object({
+    collectionId: ObjectIdSchema.describe('集合ID'),
+    outLinkAuthData: OutLinkChatAuthSchema.optional().meta({
+      description: '外链鉴权数据。share 模式传 shareId/outLinkUid。'
+    }),
+    appId: ObjectIdSchema.describe('应用ID'),
+    chatId: ObjectIdSchema.describe('会话ID'),
+    chatItemDataId: z.string().describe('对话ID'),
+    chatTime: z.coerce.date().optional().describe('对话时间')
+  })
+  .meta({
+    description: '对话中导出集合，可通过 chatId 等身份信息',
+    example: {
+      collectionId: '1234567890',
+      appId: '1234567890',
+      chatId: '1234567890',
+      chatItemDataId: '1234567890',
+      chatTime: '2025-12-30T00:00:00.000Z',
+      outLinkAuthData: {
+        shareId: '1234567890',
+        outLinkUid: '1234567890'
+      }
+    }
+  });
 
 export const ExportCollectionBodySchema = z.union([BasicExportSchema, ChatExportSchema]);
 export type ExportCollectionBodyType = z.infer<typeof ExportCollectionBodySchema>;
@@ -151,13 +162,16 @@ export const GetCollectionPathsResponseSchema = z.array(ParentTreePathItemSchema
 export type GetCollectionPathsResponseType = z.infer<typeof GetCollectionPathsResponseSchema>;
 
 // ============= Read Collection Source =============
-export const ReadCollectionSourceBodySchema = OutLinkChatAuthSchema.extend({
+export const ReadCollectionSourceBodyRawSchema = createOptionalOutLinkChatTargetInputSchema({
   collectionId: ObjectIdSchema.meta({ description: '集合 ID' }),
-  appId: ObjectIdSchema.optional().meta({ description: '应用 ID（对话中使用）' }),
   chatId: z.string().min(1).optional().meta({ description: '对话 ID（对话中使用）' }),
   chatItemDataId: z.string().min(1).optional().meta({ description: '对话消息 ID（对话中使用）' })
 });
-export type ReadCollectionSourceBodyType = z.infer<typeof ReadCollectionSourceBodySchema>;
+export const ReadCollectionSourceBodySchema = ReadCollectionSourceBodyRawSchema.transform(
+  transformOptionalChatAuthTargetInput
+);
+export type ReadCollectionSourceBodyType = z.infer<typeof ReadCollectionSourceBodyRawSchema>;
+export type ReadCollectionSourceRuntimeBodyType = z.infer<typeof ReadCollectionSourceBodySchema>;
 
 export const ReadCollectionSourceResponseSchema = z.object({
   type: z.literal('url').meta({ description: '资源类型' }),

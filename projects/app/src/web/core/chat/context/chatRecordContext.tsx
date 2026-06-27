@@ -7,9 +7,16 @@ import { getChatRecords } from '../record/api';
 import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { type BoxProps } from '@chakra-ui/react';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
-import type { GetPaginationRecordsBodyType } from '@fastgpt/global/openapi/core/chat/record/api';
-import type { GetRecordsV2ResponseType } from '@fastgpt/global/openapi/core/chat/record/api';
-import { hasChatTargetInput } from '../utils';
+import type {
+  GetRecordsV2BodyType,
+  GetRecordsV2ResponseType
+} from '@fastgpt/global/openapi/core/chat/record/api';
+import { hasChatAuthTargetInput, type ChatAuthTargetInput } from '../utils';
+
+type ChatRecordProviderParams = Omit<GetRecordsV2BodyType, 'pageSize' | 'outLinkAuthData'> &
+  ChatAuthTargetInput & {
+    pageSize?: number | string;
+  };
 
 type ChatRecordContextType = {
   isLoadingRecords: boolean;
@@ -58,10 +65,10 @@ const ChatRecordContextProvider = ({
   fetchFn
 }: {
   children: ReactNode;
-  params: GetPaginationRecordsBodyType;
+  params: ChatRecordProviderParams;
   feedbackRecordId?: string;
   fetchFn?: (
-    data: LinkedPaginationProps<GetPaginationRecordsBodyType>
+    data: LinkedPaginationProps<ChatRecordProviderParams>
   ) => Promise<GetRecordsV2ResponseType>;
 }) => {
   const [isChatRecordsLoaded, setIsChatRecordsLoaded] = useState(false);
@@ -77,9 +84,9 @@ const ChatRecordContextProvider = ({
     itemRefs
   } = useLinkedScroll(
     async (
-      data: LinkedPaginationProps<GetPaginationRecordsBodyType>
+      data: LinkedPaginationProps<ChatRecordProviderParams>
     ): Promise<LinkedListResponse<ChatSiteItemType>> => {
-      if (!hasChatTargetInput(data)) {
+      if (!hasChatAuthTargetInput(data)) {
         return {
           list: [],
           hasMorePrev: false,

@@ -27,7 +27,11 @@ import { useCreation } from 'ahooks';
 import type { ChatTypeEnum } from './constants';
 import type { ChatQuickAppType } from '@fastgpt/global/core/chat/setting/type';
 import { WorkflowRuntimeContextProvider } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
-import { getChatSourceKey, type ChatSourceTarget, toChatApiTarget } from '@/web/core/chat/utils';
+import {
+  getChatSourceKey,
+  type ChatSourceTarget,
+  toChatAuthApiTarget
+} from '@/web/core/chat/utils';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 export type ChatProviderProps = {
@@ -194,7 +198,10 @@ const Provider = ({
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
-  const resolvedChatTarget = useMemo(() => toChatApiTarget(sourceTarget), [sourceTarget]);
+  const resolvedChatAuthTarget = useMemo(
+    () => toChatAuthApiTarget({ sourceTarget, outLinkAuthData: formatOutLinkAuth }),
+    [sourceTarget, formatOutLinkAuth]
+  );
   const audioScopeKey = useMemo(
     () => `${getChatSourceKey(sourceTarget)}:${chatId}`,
     [sourceTarget, chatId]
@@ -218,7 +225,7 @@ const Provider = ({
   } = useAudioPlay({
     appId: enableTTS ? resolvedAppId : undefined,
     ttsConfig: enableTTS ? ttsConfig : defaultTTSConfig,
-    ...formatOutLinkAuth
+    outLinkAuthData: formatOutLinkAuth
   });
 
   const lastAudioScopeKeyRef = useRef(audioScopeKey);
@@ -251,10 +258,9 @@ const Provider = ({
       }
 
       const resData = await getChatResData({
-        ...resolvedChatTarget,
+        ...resolvedChatAuthTarget,
         chatId: chatId,
-        dataId,
-        ...formatOutLinkAuth
+        dataId
       });
       const nextResponseData = resData.length ? resData : aimItem?.responseData || [];
       setChatRecords((state) =>
@@ -264,7 +270,7 @@ const Provider = ({
       );
       return nextResponseData;
     },
-    [chatRecords, chatId, resolvedChatTarget, formatOutLinkAuth, setChatRecords]
+    [chatRecords, chatId, resolvedChatAuthTarget, setChatRecords]
   );
   const value: useChatStoreType = {
     ...props,

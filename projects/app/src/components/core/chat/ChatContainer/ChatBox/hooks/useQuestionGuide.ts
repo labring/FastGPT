@@ -1,8 +1,7 @@
 import { useCallback, type MutableRefObject } from 'react';
 import type { AppQGConfigType } from '@fastgpt/global/core/app/type';
 import { postQuestionGuide } from '@/web/core/ai/api';
-import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import type { ChatTargetInputType } from '@fastgpt/global/openapi/core/chat/api';
+import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
 
 /**
  * 创建回答后的问题引导。
@@ -11,7 +10,7 @@ import type { ChatTargetInputType } from '@fastgpt/global/openapi/core/chat/api'
  * AI 回答完成、且没有 interactive 等更高优先级 UI 时调用返回的 `createQuestionGuide`。
  *
  * 输入约定：
- * - `chatTarget/chatId/outLinkAuthData` 组成请求目标和鉴权上下文。
+ * - `chatTarget/chatId` 组成请求目标和鉴权上下文。
  * - `questionGuide` 是 app 的问题引导配置，hook 只读取 `open` 和请求所需配置。
  * - `chatControllerRef` 指向主聊天请求，用于判断当前回答是否已经被用户停止。
  * - `questionGuideControllerRef` 指向问题引导自己的请求，用于让 `abortRequest` 可以同时停止它。
@@ -29,16 +28,14 @@ export const useQuestionGuide = ({
   chatTarget,
   chatId,
   questionGuide,
-  outLinkAuthData,
   chatControllerRef,
   questionGuideControllerRef,
   setQuestionGuide,
   generatingScroll
 }: {
-  chatTarget?: ChatTargetInputType;
+  chatTarget?: ChatAuthTargetInput;
   chatId: string;
   questionGuide: AppQGConfigType;
-  outLinkAuthData?: OutLinkChatAuthProps;
   chatControllerRef: MutableRefObject<AbortController>;
   questionGuideControllerRef: MutableRefObject<AbortController>;
   setQuestionGuide: (guides: string[]) => void;
@@ -60,8 +57,7 @@ export const useQuestionGuide = ({
         {
           ...chatTarget,
           chatId,
-          questionGuide,
-          ...outLinkAuthData
+          questionGuide
         },
         abortSignal
       );
@@ -79,7 +75,6 @@ export const useQuestionGuide = ({
     questionGuideControllerRef,
     chatTarget,
     chatId,
-    outLinkAuthData,
     setQuestionGuide,
     generatingScroll
   ]);

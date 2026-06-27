@@ -48,7 +48,11 @@ import {
   sanitizeFileSelectValue
 } from './utils';
 import { isEqual } from 'lodash';
-import { hasChatTargetInput, useChatApiTarget } from '@/web/core/chat/utils';
+import {
+  getChatAuthTargetInput,
+  hasChatTargetInput,
+  useChatApiTarget
+} from '@/web/core/chat/utils';
 
 type WebkitFileSystemFileEntry = {
   isFile: true;
@@ -184,6 +188,10 @@ const FileSelector = ({
   const chatTarget = useChatApiTarget(sourceTarget);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
+  const chatAuthTarget = useMemo(
+    () => getChatAuthTargetInput({ ...chatTarget, outLinkAuthData }),
+    [chatTarget, outLinkAuthData]
+  );
   const setFileUploadingCount = useContextSelector(
     WorkflowRuntimeContext,
     (v) => v.setFileUploadingCount
@@ -257,9 +265,8 @@ const FileSelector = ({
         const key = file.key;
         const url = await getPresignedChatFileGetUrl({
           key,
-          ...chatTarget,
-          chatId,
-          outLinkAuthData
+          ...chatAuthTarget,
+          chatId
         });
 
         return {
@@ -306,7 +313,7 @@ const FileSelector = ({
     return () => {
       isUnmounted = true;
     };
-  }, [chatTarget, chatId, fileList, outLinkAuthData]);
+  }, [chatTarget, chatAuthTarget, chatId, fileList]);
 
   const fileType = useMemo(() => {
     return getUploadFileType({
@@ -375,10 +382,9 @@ const FileSelector = ({
             // Get Upload Post Presigned URL
             const { url, key, headers, previewUrl } = await getUploadChatFilePresignedUrl({
               filename: file.rawFile.name,
-              ...chatTarget,
+              ...chatAuthTarget,
               chatId,
-              fileSelectConfig,
-              outLinkAuthData
+              fileSelectConfig
             });
 
             await putFileToS3({
@@ -420,16 +426,7 @@ const FileSelector = ({
         })
       );
     },
-    [
-      handleChangeFiles,
-      setFileUploadingCount,
-      chatTarget,
-      chatId,
-      fileSelectConfig,
-      outLinkAuthData,
-      t,
-      maxSize
-    ]
+    [handleChangeFiles, setFileUploadingCount, chatAuthTarget, chatId, fileSelectConfig, t, maxSize]
   );
 
   // Selector props

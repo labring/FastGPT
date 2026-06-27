@@ -215,9 +215,7 @@ export const useSandboxStatus = ({
     sandboxTargetId,
     chatId,
     outLinkAuthData?.shareId,
-    outLinkAuthData?.outLinkUid,
-    outLinkAuthData?.teamId,
-    outLinkAuthData?.teamToken
+    outLinkAuthData?.outLinkUid
   ]);
 
   const apiSandboxExists =
@@ -789,8 +787,6 @@ export const useSandboxFileStore = ({
     chatId,
     outLinkAuthData?.shareId,
     outLinkAuthData?.outLinkUid,
-    outLinkAuthData?.teamId,
-    outLinkAuthData?.teamToken,
     isPreparing,
     canWrite,
     refreshWorkspaceRef,

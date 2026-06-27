@@ -8,10 +8,6 @@ import { type AuthModeType } from '@fastgpt/service/support/permission/type';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { authOutLinkValid } from '@fastgpt/service/support/permission/publish/authLink';
 import { authOutLinkInit } from '@fastgpt/service/support/outLink/runtime/auth';
-import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
-import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
-import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
-import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getDefaultLLMModel } from '@fastgpt/service/core/ai/model';
 import {
@@ -61,8 +57,7 @@ export default NextAPI(handler);
   Different chat source
   1. token (header)
   2. apikey (header)
-  3. share page (body: shareId outLinkUid)
-  4. team chat page (body: teamId teamToken)
+  3. share page (body: outLinkAuthData)
 */
 async function authChatCert(props: AuthModeType): Promise<{
   teamId: string;
@@ -73,7 +68,8 @@ async function authChatCert(props: AuthModeType): Promise<{
   canWrite: boolean;
   outLinkUid?: string;
 }> {
-  const { teamId, teamToken, shareId, outLinkUid } = props.req.body as OutLinkChatAuthProps;
+  const { shareId, outLinkUid } =
+    (props.req.body as { outLinkAuthData?: OutLinkChatAuthProps }).outLinkAuthData || {};
 
   if (shareId && outLinkUid) {
     const { outLinkConfig } = await authOutLinkValid({ shareId });
@@ -92,25 +88,5 @@ async function authChatCert(props: AuthModeType): Promise<{
       outLinkUid: uid
     };
   }
-  if (teamId && teamToken) {
-    const { uid } = await authTeamSpaceToken({ teamId, teamToken });
-    const tmb = await MongoTeamMember.findOne(
-      { teamId, role: TeamMemberRoleEnum.owner },
-      'tmbId'
-    ).lean();
-
-    if (!tmb) return Promise.reject(ChatErrEnum.unAuthChat);
-
-    return {
-      teamId,
-      tmbId: String(tmb._id),
-      authType: AuthUserTypeEnum.teamDomain,
-      apikey: '',
-      isOwner: false,
-      canWrite: false,
-      outLinkUid: uid
-    };
-  }
-
   return authCert(props);
 }

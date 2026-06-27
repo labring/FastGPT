@@ -24,13 +24,13 @@ import {
 } from '../utils/resume';
 import type { ChatSiteItemType } from '../type';
 import type { generatingMessageProps } from '../../type';
-import type { ChatTargetInputType } from '@fastgpt/global/openapi/core/chat/api';
-import { useChatApiTarget } from '@/web/core/chat/utils';
+import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
+import { useChatAuthApiTarget } from '@/web/core/chat/utils';
 
 type FinishChatGenerateStatus = (params: {
   status: ChatGenerateStatusEnum;
   finishedInActiveChat: boolean;
-  targetChatTarget?: ChatTargetInputType;
+  targetChatTarget?: ChatAuthTargetInput;
   targetSourceKey?: string;
   targetChatId?: string;
   shouldUpdateChatBoxData?: (state: {
@@ -100,9 +100,9 @@ export const useChatResume = ({
   const { toast } = useToast();
   const sourceKey = useContextSelector(WorkflowRuntimeContext, (v) => v.sourceKey);
   const sourceTarget = useContextSelector(WorkflowRuntimeContext, (v) => v.sourceTarget);
-  const chatTarget = useChatApiTarget(sourceTarget);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
+  const chatAuthTarget = useChatAuthApiTarget({ sourceTarget, outLinkAuthData });
   const chatBoxSourceKey = useContextSelector(ChatItemContext, (v) => v.chatBoxData.sourceKey);
   const chatBoxChatId = useContextSelector(ChatItemContext, (v) => v.chatBoxData.chatId);
   const chatGenerateStatus = useContextSelector(
@@ -132,7 +132,7 @@ export const useChatResume = ({
     resumedChatTargetRef.current = `${sourceKey}:${chatId}`;
 
     const resumeForSourceKey = sourceKey;
-    const resumeForChatTarget = chatTarget;
+    const resumeForChatTarget = chatAuthTarget;
     const resumeForChatId = chatId;
     const responseChatId = resumeTargetAiDataId ?? getNanoid(24);
     const controller = new AbortController();
@@ -213,9 +213,8 @@ export const useChatResume = ({
     (async () => {
       try {
         const { responseText, completedChat, resumeUnavailable } = await streamResumeFetch({
-          ...chatTarget,
+          ...chatAuthTarget,
           chatId,
-          outLinkAuthData,
           controller,
           onResumeUnavailable: () => {
             if (
@@ -392,14 +391,13 @@ export const useChatResume = ({
     isReady,
     isChatRecordsLoaded,
     sourceKey,
-    chatTarget,
+    chatAuthTarget,
     chatId,
     isChatting,
     chatBoxSourceKey,
     chatBoxChatId,
     chatGenerateStatus,
     generatingMessage,
-    outLinkAuthData,
     resumeTargetAiDataId,
     scrollToBottom,
     setChatRecords,

@@ -5,7 +5,7 @@ import {
   GetDatasetDataDetailQuerySchema,
   UpdateDatasetDataBodySchema,
   DeleteDatasetDataQuerySchema,
-  GetQuoteDataBodySchema,
+  GetQuoteDataBodyRawSchema,
   InsertDataBodySchema,
   InsertImagesBodySchema,
   PushDataBodySchema,
@@ -196,7 +196,7 @@ export const DatasetDataPath: OpenAPIPath = {
       requestBody: {
         content: {
           'application/json': {
-            schema: GetQuoteDataBodySchema
+            schema: GetQuoteDataBodyRawSchema
           }
         }
       },

@@ -3,7 +3,6 @@ import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { type AuthModeType } from '@fastgpt/service/support/permission/type';
 import { authOutLink } from './outLink';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
-import { authTeamSpaceToken } from './team';
 import { AuthUserTypeEnum, ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
@@ -13,7 +12,6 @@ import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/cons
 import type { HelperBotTypeEnum } from '@fastgpt/global/core/chat/helperBot/type';
 import { MongoHelperBotChat } from '@fastgpt/service/core/chat/HelperBot/chatSchema';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { MongoApp } from '@fastgpt/service/core/app/schema';
 import {
   buildChatSourceAggregateMatch,
   buildChatSourceQuery
@@ -22,12 +20,11 @@ import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/ch
 
 /* 
   检查chat的权限：
-  1. 无 chatId，仅校验 cookie、shareChat、teamChat 秘钥是否合法
+  1. 无 chatId，仅校验 cookie、shareChat 秘钥是否合法
   2. 有 chatId，校验用户是否有权限操作该 chat
 
   * cookie + appId 校验
   * shareId + outLinkUid 校验
-  * teamId + teamToken + appId 校验
 
   Chat没有读写的权限之分，鉴权过了，都可以操作。
 */
@@ -42,8 +39,6 @@ type AuthChatCommonProps = {
   appId?: string;
   shareId?: string;
   outLinkUid?: string;
-  teamId?: string;
-  teamToken?: string;
 };
 
 const buildAppChatAuthQuery = (appId: string) =>
@@ -58,9 +53,6 @@ export async function authChatCrud({
 
   shareId,
   outLinkUid,
-
-  teamId: spaceTeamId,
-  teamToken,
   ...props
 }: AuthModeType &
   AuthChatCommonProps & {
@@ -78,65 +70,6 @@ export async function authChatCrud({
   canDownloadSource: boolean;
   authType?: `${AuthUserTypeEnum}`;
 }> {
-  if (spaceTeamId && teamToken) {
-    if (!appId) return Promise.reject(ChatErrEnum.unAuthChat);
-
-    const { uid, tmbId, tags } = await authTeamSpaceToken({
-      teamId: spaceTeamId,
-      teamToken
-    });
-
-    // Verify app belongs to the authenticated team and tag-based access
-    const app = await MongoApp.findOne(
-      {
-        _id: appId,
-        teamId: spaceTeamId,
-        $or: [
-          { teamTags: { $size: 0 } },
-          { teamTags: { $exists: false } },
-          { teamTags: { $in: tags } }
-        ]
-      },
-      'teamId'
-    ).lean();
-    if (!app) {
-      return Promise.reject(ChatErrEnum.unAuthChat);
-    }
-
-    if (!chatId) {
-      return {
-        teamId: spaceTeamId,
-        tmbId,
-        uid,
-        ...defaultResponseShow,
-        authType: AuthUserTypeEnum.teamDomain
-      };
-    }
-
-    const chat = await MongoChat.findOne({ ...buildAppChatAuthQuery(appId), chatId }).lean();
-    if (!chat) {
-      return {
-        teamId: spaceTeamId,
-        tmbId,
-        uid,
-        ...defaultResponseShow,
-        authType: AuthUserTypeEnum.teamDomain
-      };
-    }
-
-    if (String(chat.teamId) !== spaceTeamId || chat.outLinkUid !== uid)
-      return Promise.reject(ChatErrEnum.unAuthChat);
-
-    return {
-      teamId: spaceTeamId,
-      tmbId,
-      uid,
-      chat,
-      ...defaultResponseShow,
-      authType: AuthUserTypeEnum.teamDomain
-    };
-  }
-
   if (shareId && outLinkUid) {
     const {
       outLinkConfig,
