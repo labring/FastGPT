@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Call } from '@test/utils/request';
 
 const mocks = vi.hoisted(() => ({
@@ -19,7 +19,14 @@ vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin', () => ({
 import handler from '@/pages/api/plugin/debug-channel/connection-key:exchange';
 
 describe('plugin debug channel connection key exchange handler', () => {
+  let originalIsPlus: unknown;
+
   beforeEach(() => {
+    originalIsPlus = global.feConfigs?.isPlus;
+    global.feConfigs = {
+      ...global.feConfigs,
+      isPlus: true
+    } as any;
     mocks.pluginClient.exchangeDebugSessionConnectionKey.mockReset();
     mocks.pluginClient.exchangeDebugSessionConnectionKey.mockResolvedValue({
       gatewayUrl: 'wss://gateway.example.com/debug',
@@ -28,6 +35,13 @@ describe('plugin debug channel connection key exchange handler', () => {
       connectToken: 'connect_token',
       expiresAt: 1_781_500_300_000
     });
+  });
+
+  afterEach(() => {
+    global.feConfigs = {
+      ...global.feConfigs,
+      isPlus: originalIsPlus
+    } as any;
   });
 
   it('exchanges connectionKey through plugin client without exposing internal token', async () => {

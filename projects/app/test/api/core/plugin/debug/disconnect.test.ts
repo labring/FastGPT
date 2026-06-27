@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Call } from '@test/utils/request';
 
 const mocks = vi.hoisted(() => ({
@@ -19,14 +19,28 @@ vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin', () => ({
 import handler from '@/pages/api/plugin/debug-channel/revoke';
 
 describe('plugin debug channel revoke handler', () => {
+  let originalIsPlus: unknown;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    originalIsPlus = global.feConfigs?.isPlus;
+    global.feConfigs = {
+      ...global.feConfigs,
+      isPlus: true
+    } as any;
     mocks.authCert.mockResolvedValue({
       tmbId: 'tmb_test'
     });
     mocks.pluginClient.revokeDebugSession.mockResolvedValue({
       revoked: true
     });
+  });
+
+  afterEach(() => {
+    global.feConfigs = {
+      ...global.feConfigs,
+      isPlus: originalIsPlus
+    } as any;
   });
 
   it('uses current tmbId to revoke debug channel', async () => {

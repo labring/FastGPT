@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Call } from '@test/utils/request';
 
 const mocks = vi.hoisted(() => ({
@@ -19,8 +19,15 @@ vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin', () => ({
 import handler from '@/pages/api/plugin/debug-channel/key:refresh';
 
 describe('plugin debug channel key refresh handler', () => {
+  let originalIsPlus: unknown;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    originalIsPlus = global.feConfigs?.isPlus;
+    global.feConfigs = {
+      ...global.feConfigs,
+      isPlus: true
+    } as any;
     mocks.authCert.mockResolvedValue({
       tmbId: 'tmb_test'
     });
@@ -35,6 +42,13 @@ describe('plugin debug channel key refresh handler', () => {
       updatedAt: 1_781_500_100_000,
       refreshedAt: 1_781_500_100_000
     });
+  });
+
+  afterEach(() => {
+    global.feConfigs = {
+      ...global.feConfigs,
+      isPlus: originalIsPlus
+    } as any;
   });
 
   it('returns a refreshed connection key from plugin client', async () => {
