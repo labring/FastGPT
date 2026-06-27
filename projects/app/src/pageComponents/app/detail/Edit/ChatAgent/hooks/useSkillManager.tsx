@@ -5,7 +5,7 @@ import type {
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   checkNeedsUserConfiguration,
   getToolConfigStatus,
@@ -16,7 +16,10 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type { SkillLabelItemType } from '@fastgpt/web/components/common/Textarea/PromptEditor/plugins/SkillLabelPlugin';
 import dynamic from 'next/dynamic';
-import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/type';
+import type {
+  SelectedAgentSkillItemType,
+  SelectedToolItemType
+} from '@fastgpt/global/core/app/formEdit/type';
 import {
   getAppToolTemplates,
   getClientToolPreviewNode,
@@ -33,8 +36,12 @@ import { SubAppIds, systemSubInfo } from '@fastgpt/global/core/workflow/node/age
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { AGENT_SANDBOX_TOOLSET_ID } from '@fastgpt/global/core/ai/sandbox/tools';
 import type { SkillClickResult } from '@fastgpt/web/components/common/Textarea/PromptEditor/plugins/SkillPickerPlugin';
+import { getSkillList } from '@/web/core/skill/api';
+import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
+import type { ListSkillsResponse } from '@fastgpt/global/core/ai/skill/api';
 
 const ConfigToolModal = dynamic(() => import('../../component/ConfigToolModal'));
+type AgentSkillListItemType = ListSkillsResponse['list'][number];
 
 const isSubApp = (flowNodeType: FlowNodeTypeEnum) => {
   const subAppTypeMap: Record<string, boolean> = {
@@ -56,16 +63,42 @@ const toSkillLabelItem = (
   configStatus
 });
 
+const toAgentSkillItem = (item: AgentSkillListItemType): SkillItemType => {
+  const isFolder = item.type === AgentSkillTypeEnum.folder;
+
+  return {
+    id: item._id,
+    label: item.name,
+    icon: item.avatar || (isFolder ? 'common/folderFill' : 'core/skill/default'),
+    description: item.description,
+    isFolder,
+    canClick: item.type === AgentSkillTypeEnum.skill
+  };
+};
+
+const toAgentSkillLabelItem = (skill: SelectedAgentSkillItemType): SkillLabelItemType => ({
+  id: skill.skillId,
+  name: skill.name,
+  avatar: skill.avatar || 'core/skill/default',
+  intro: skill.description,
+  flowNodeType: FlowNodeTypeEnum.tool,
+  configStatus: skill.isDeleted ? 'invalid' : 'noConfig'
+});
+
 export const useSkillManager = ({
   selectedTools,
+  selectedAgentSkills = [],
   onUpdateOrAddTool,
+  onAddAgentSkill,
   canUploadFile,
   hasSelectedDataset,
   useAgentSandbox
 }: {
   selectedTools: SelectedToolItemType[];
+  selectedAgentSkills?: SelectedAgentSkillItemType[];
   onDeleteTool: (id: string) => void;
   onUpdateOrAddTool: (tool: SelectedToolItemType) => void;
+  onAddAgentSkill?: (skill: SelectedAgentSkillItemType) => boolean;
   canUploadFile: boolean;
   hasSelectedDataset: boolean;
   useAgentSandbox: boolean;
@@ -195,7 +228,82 @@ export const useSkillManager = ({
     });
   }, []);
 
+  /* ===== Agent skills ===== */
+  const agentSkillMapRef = useRef<Map<string, AgentSkillListItemType>>(new Map());
+  const cacheAgentSkillList = useCallback((list: AgentSkillListItemType[]) => {
+    list.forEach((item) => {
+      if (item.type === AgentSkillTypeEnum.skill) {
+        agentSkillMapRef.current.set(item._id, item);
+      }
+    });
+
+    return list.map(toAgentSkillItem);
+  }, []);
+
+  const { data: agentSkills = [] } = useRequest(
+    async () => {
+      if (!onAddAgentSkill) return [];
+
+      const { list } = await getSkillList({
+        source: 'mine',
+        parentId: '',
+        withAppCount: false
+      });
+      return cacheAgentSkillList(list);
+    },
+    {
+      manual: false
+    }
+  );
+
+  const onFolderLoadAgentSkills = useCallback(
+    async (folderId: string) => {
+      const { list } = await getSkillList({
+        source: 'mine',
+        parentId: folderId,
+        withAppCount: false
+      });
+      return cacheAgentSkillList(list);
+    },
+    [cacheAgentSkillList]
+  );
+
   const lastSelectedTools = useLatest(selectedTools);
+  const lastSelectedAgentSkills = useLatest(selectedAgentSkills);
+  const onAddSkill = useCallback(
+    async (skillId: string): Promise<SkillClickResult | undefined> => {
+      const existsSkill = lastSelectedAgentSkills.current?.find((item) => item.skillId === skillId);
+      if (existsSkill) {
+        const skill = toAgentSkillLabelItem(existsSkill);
+
+        return {
+          id: skill.id,
+          skill
+        };
+      }
+
+      const targetSkill = agentSkillMapRef.current.get(skillId);
+
+      if (!targetSkill) return;
+
+      const selectedSkill: SelectedAgentSkillItemType = {
+        skillId: targetSkill._id,
+        name: targetSkill.name,
+        description: targetSkill.description,
+        avatar: targetSkill.avatar,
+        isDeleted: false
+      };
+      if (!onAddAgentSkill?.(selectedSkill)) return;
+      const skill = toAgentSkillLabelItem(selectedSkill);
+
+      return {
+        id: skill.id,
+        skill
+      };
+    },
+    [lastSelectedAgentSkills, onAddAgentSkill]
+  );
+
   const onAddAppOrTool = useCallback(
     async (toolId: string): Promise<SkillClickResult | undefined> => {
       // Check tool exists, if exists, not update/add tool
@@ -317,6 +425,13 @@ export const useSkillManager = ({
             onFolderLoad: (folderId: string) => onFolderLoadTeamApps(folderId, AppTypeList),
             onClick: onAddAppOrTool
           };
+        } else if (id === 'agentSkill') {
+          return {
+            description: t('app:space_to_expand_folder'),
+            list: agentSkills,
+            onFolderLoad: onFolderLoadAgentSkills,
+            onClick: onAddSkill
+          };
         }
         return undefined;
       },
@@ -339,9 +454,31 @@ export const useSkillManager = ({
           icon: 'core/workflow/template/runApp',
           canClick: false
         }
-      ]
+      ].concat(
+        onAddAgentSkill
+          ? [
+              {
+                id: 'agentSkill',
+                label: t('skill:associated_skills'),
+                icon: 'core/skill/default',
+                canClick: false
+              }
+            ]
+          : []
+      )
     };
-  }, [onAddAppOrTool, onLoadSystemTool, myTools, myAgents, onFolderLoadTeamApps, t]);
+  }, [
+    onAddAppOrTool,
+    onAddSkill,
+    onAddAgentSkill,
+    onLoadSystemTool,
+    myTools,
+    myAgents,
+    agentSkills,
+    onFolderLoadTeamApps,
+    onFolderLoadAgentSkills,
+    t
+  ]);
 
   /* ===== Selected skills ===== */
   const selectedSkills = useMemoEnhance<SkillLabelItemType[]>(() => {
@@ -413,12 +550,23 @@ export const useSkillManager = ({
       });
     }
 
-    return tools;
-  }, [selectedTools, canUploadFile, hasSelectedDataset, useAgentSandbox, i18n.language]);
+    return [...tools, ...selectedAgentSkills.map(toAgentSkillLabelItem)];
+  }, [
+    selectedTools,
+    selectedAgentSkills,
+    canUploadFile,
+    hasSelectedDataset,
+    useAgentSandbox,
+    i18n.language
+  ]);
 
   const [configTool, setConfigTool] = useState<SelectedToolItemType>();
   const onClickSkill = useCallback(
     (id: string) => {
+      if (selectedAgentSkills.some((skill) => skill.skillId === id)) {
+        return;
+      }
+
       const tool = selectedTools.find((tool) => tool.pluginId === id);
       if (!tool) return;
 
@@ -431,7 +579,7 @@ export const useSkillManager = ({
         setConfigTool(tool);
       }
     },
-    [selectedTools]
+    [selectedAgentSkills, selectedTools]
   );
   const onRemoveSkill = useCallback(() => {}, []);
 

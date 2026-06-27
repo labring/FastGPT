@@ -387,6 +387,7 @@ describe('dispatchRunAgent user context', () => {
       needSandboxRuntime: true,
       sandboxEntrypoint: 'pip install -r requirements.txt',
       skillIds: [],
+      selectedSkills: [],
       editSkillId: undefined,
       prepareActions: undefined,
       currentFiles: [
@@ -493,6 +494,7 @@ describe('dispatchRunAgent user context', () => {
       needSandboxRuntime: true,
       sandboxEntrypoint: undefined,
       skillIds: ['edit_skill_1'],
+      selectedSkills: [],
       editSkillId: 'edit_skill_1',
       prepareActions: undefined,
       currentFiles: [

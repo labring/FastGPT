@@ -479,6 +479,7 @@ describe('dispatchPiAgent user context', () => {
       needSandboxRuntime: true,
       sandboxEntrypoint: undefined,
       skillIds: [],
+      selectedSkills: [],
       editSkillId: undefined,
       prepareActions: undefined,
       currentFiles: [
@@ -544,6 +545,7 @@ describe('dispatchPiAgent user context', () => {
       needSandboxRuntime: true,
       sandboxEntrypoint: undefined,
       skillIds: ['skill_1'],
+      selectedSkills: [{ skillId: 'skill_1' }],
       editSkillId: undefined,
       prepareActions: undefined,
       currentFiles: [
@@ -621,6 +623,7 @@ describe('dispatchPiAgent user context', () => {
       needSandboxRuntime: true,
       sandboxEntrypoint: undefined,
       skillIds: ['edit_skill_1'],
+      selectedSkills: [],
       editSkillId: 'edit_skill_1',
       prepareActions: undefined,
       currentFiles: [

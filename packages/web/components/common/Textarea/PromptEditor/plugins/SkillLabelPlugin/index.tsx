@@ -17,7 +17,12 @@ import type { SelectedToolItemType } from '@fastgpt/global/core/app/formEdit/typ
 
 const REGEX = new RegExp(getSkillRegexString(), 'i');
 
-export type SkillLabelItemType = SelectedToolItemType & {
+export type SkillLabelItemType = Partial<SelectedToolItemType> & {
+  id: string;
+  name: string;
+  avatar?: string;
+  flowNodeType: FlowNodeTypeEnum;
+  configStatus?: SelectedToolItemType['configStatus'];
   tooltip?: string;
 };
 

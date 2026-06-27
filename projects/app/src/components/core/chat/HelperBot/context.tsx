@@ -30,6 +30,7 @@ export const HelperBotContext = createContext<HelperBotContextType>({
     taskObject: '',
     selectedTools: [],
     selectedDatasets: [],
+    selectedAgentSkills: [],
     fileUpload: false,
     enableSandbox: false
   },

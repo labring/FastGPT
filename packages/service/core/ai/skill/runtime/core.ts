@@ -28,6 +28,7 @@ const buildSkillInfoFindCommand = (dir: string) => {
 type GetAgentSkillInfosParams = {
   workDirectory?: string;
   skillDirectories?: string[];
+  deployedSkillVersions?: DeployedSkillVersion[];
   sandbox: ISandbox;
 };
 
@@ -40,9 +41,13 @@ type GetAgentSkillInfosParams = {
 export const getAgentSkillInfos = async ({
   workDirectory,
   skillDirectories,
+  deployedSkillVersions,
   sandbox
 }: GetAgentSkillInfosParams): Promise<DeployedSkillInfo[]> => {
   const scanDirectories = skillDirectories?.length ? skillDirectories : [workDirectory || '.'];
+  const deployedVersionByTargetDir = new Map(
+    deployedSkillVersions?.map((version) => [normalizeSandboxDir(version.targetDir), version]) || []
+  );
 
   // 并发 find 所有目录，过滤出错目录，避免级联报错
   const findResults = await Promise.all(
@@ -89,12 +94,22 @@ export const getAgentSkillInfos = async ({
         return null;
       }
 
+      const directory = file.path.replace(/\/skill\.md$/i, '');
+      const deployedVersion = findDeployedVersionByPath(directory, deployedVersionByTargetDir);
+
       return {
         id: file.path,
         name: String(frontmatter.name),
         description: frontmatter.description ? String(frontmatter.description) : '',
-        directory: file.path.replace(/\/skill\.md$/i, ''),
-        skillMdPath: file.path
+        directory,
+        skillMdPath: file.path,
+        ...(deployedVersion
+          ? {
+              appId: deployedVersion.skillId,
+              appName: deployedVersion.name,
+              appDescription: deployedVersion.description
+            }
+          : {})
       };
     })
     .filter((info): info is DeployedSkillInfo => !!info);
@@ -330,13 +345,35 @@ export const injectAgentSkillFilesToSandbox = async ({
 
   await cleanupStaleDirs(expectedTargetDirs);
 
-  return deployableSkills.map(({ versionId, targetDir }) => ({
+  return deployableSkills.map(({ skill, versionId, targetDir }) => ({
+    skillId: String(skill._id),
+    name: skill.name,
+    description: skill.description || '',
+    avatar: skill.avatar,
     versionId,
     targetDir
   }));
 };
 
 const getSafeRuntimePathSegment = (value: string): string => value.replace(/[^a-zA-Z0-9_-]/g, '-');
+
+const normalizeSandboxDir = (dir: string): string => dir.replace(/\/+$/, '');
+
+const findDeployedVersionByPath = (
+  path: string,
+  deployedVersionByTargetDir: Map<string, DeployedSkillVersion>
+): DeployedSkillVersion | undefined => {
+  const normalizedPath = normalizeSandboxDir(path);
+  const sortedTargetDirs = Array.from(deployedVersionByTargetDir.keys()).sort(
+    (a, b) => b.length - a.length
+  );
+
+  return deployedVersionByTargetDir.get(
+    sortedTargetDirs.find((targetDir) => {
+      return normalizedPath === targetDir || normalizedPath.startsWith(`${targetDir}/`);
+    }) || ''
+  );
+};
 
 const isSafeDirectSkillVersionDir = (dir: string, skillsRootPath: string): boolean => {
   const root = skillsRootPath === '/' ? '' : skillsRootPath.replace(/\/+$/, '');

@@ -230,7 +230,7 @@ description: Zeta skill
       )
     };
 
-    const deployedVersions = await injectAgentSkillFilesToSandbox({
+    const deployedSkillVersions = await injectAgentSkillFilesToSandbox({
       sandbox: sandbox as any,
       skillIds: [String(skill1._id), String(skill2._id)],
       teamId,
@@ -239,7 +239,7 @@ description: Zeta skill
     });
     const result = await getAgentSkillInfos({
       sandbox: sandbox as any,
-      skillDirectories: deployedVersions.map(({ targetDir }) => targetDir)
+      skillDirectories: deployedSkillVersions.map(({ targetDir }) => targetDir)
     });
 
     expect(sandbox.writeFiles).toHaveBeenCalledTimes(1);
@@ -427,7 +427,7 @@ description: Missing skill
       )
     };
 
-    const deployedVersions = await injectAgentSkillFilesToSandbox({
+    const deployedSkillVersions = await injectAgentSkillFilesToSandbox({
       sandbox: sandbox as any,
       skillIds: [String(existingSkill._id), String(missingSkill._id)],
       teamId,
@@ -436,7 +436,7 @@ description: Missing skill
     });
     const result = await getAgentSkillInfos({
       sandbox: sandbox as any,
-      skillDirectories: deployedVersions.map(({ targetDir }) => targetDir)
+      skillDirectories: deployedSkillVersions.map(({ targetDir }) => targetDir)
     });
 
     expect(sandbox.writeFiles).toHaveBeenCalledTimes(1);
@@ -566,7 +566,7 @@ description: Latest current skill
       ])
     };
 
-    const deployedVersions = await injectAgentSkillFilesToSandbox({
+    const deployedSkillVersions = await injectAgentSkillFilesToSandbox({
       sandbox: sandbox as any,
       skillIds: [String(skill._id)],
       teamId,
@@ -575,7 +575,7 @@ description: Latest current skill
     });
     const result = await getAgentSkillInfos({
       sandbox: sandbox as any,
-      skillDirectories: deployedVersions.map(({ targetDir }) => targetDir)
+      skillDirectories: deployedSkillVersions.map(({ targetDir }) => targetDir)
     });
 
     expect(
@@ -693,7 +693,7 @@ description: Latest current skill
       readFiles: vi.fn()
     };
 
-    const deployedVersions = await injectAgentSkillFilesToSandbox({
+    const deployedSkillVersions = await injectAgentSkillFilesToSandbox({
       sandbox: sandbox as any,
       skillIds: [String(readableSkill._id), String(protectedSkill._id)],
       teamId: owner.teamId,
@@ -701,8 +701,12 @@ description: Latest current skill
       workDirectory: '/workspace'
     });
 
-    expect(deployedVersions).toEqual([
+    expect(deployedSkillVersions).toEqual([
       {
+        skillId: String(readableSkill._id),
+        name: 'Readable',
+        description: '',
+        avatar: undefined,
         versionId: String(readableVersionId),
         targetDir: readableTargetDir
       }
@@ -787,7 +791,7 @@ description: Latest current skill
       readFiles: vi.fn()
     };
 
-    const deployedVersions = await injectAgentSkillFilesToSandbox({
+    const deployedSkillVersions = await injectAgentSkillFilesToSandbox({
       sandbox: sandbox as any,
       skillIds: [String(skill._id)],
       teamId,
@@ -795,8 +799,12 @@ description: Latest current skill
       workDirectory: '/workspace'
     });
 
-    expect(deployedVersions).toEqual([
+    expect(deployedSkillVersions).toEqual([
       {
+        skillId: String(skill._id),
+        name: 'CachedVersion',
+        description: '',
+        avatar: undefined,
         versionId: String(currentVersionId),
         targetDir: currentTargetDir
       }
@@ -1048,6 +1056,54 @@ description: Write reports
         description: 'Write reports',
         directory: '/workspace/Report',
         skillMdPath: '/workspace/Report/SKILL.md'
+      }
+    ]);
+  });
+
+  it('attaches parent skill app metadata by deployed version directory', async () => {
+    const sandbox = {
+      execute: vi.fn(async () => ({
+        exitCode: 0,
+        stdout: '/workspace/.skills/version_1/fetch-webpage/SKILL.md\0',
+        stderr: ''
+      })),
+      readFiles: vi.fn(async () => [
+        {
+          path: '/workspace/.skills/version_1/fetch-webpage/SKILL.md',
+          content: `---
+name: fetch-webpage
+description: Read webpages
+---
+
+# Fetch webpage`
+        }
+      ])
+    };
+
+    const skillInfos = await getAgentSkillInfos({
+      skillDirectories: ['/workspace/.skills/version_1'],
+      deployedSkillVersions: [
+        {
+          skillId: 'skill_app_1',
+          name: 'Web Research App',
+          description: 'Contains webpage fetch and summary skills',
+          versionId: 'version_1',
+          targetDir: '/workspace/.skills/version_1'
+        }
+      ],
+      sandbox: sandbox as any
+    });
+
+    expect(skillInfos).toEqual([
+      {
+        id: '/workspace/.skills/version_1/fetch-webpage/SKILL.md',
+        appId: 'skill_app_1',
+        appName: 'Web Research App',
+        appDescription: 'Contains webpage fetch and summary skills',
+        name: 'fetch-webpage',
+        description: 'Read webpages',
+        directory: '/workspace/.skills/version_1/fetch-webpage',
+        skillMdPath: '/workspace/.skills/version_1/fetch-webpage/SKILL.md'
       }
     ]);
   });

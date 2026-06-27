@@ -8,6 +8,7 @@ export * from './types';
 export * from './create';
 export * from './update';
 export * from './query';
+export * from './list';
 export * from './folder';
 export * from './delete';
 export * from './import';

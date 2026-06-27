@@ -11,6 +11,11 @@ import { Call } from '@test/utils/request';
 import type { ListSkillsQuery, ListSkillsResponse } from '@fastgpt/global/core/ai/skill/api';
 import { onCreateApp } from '@/pages/api/core/app/create';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import {
+  PerResourceTypeEnum,
+  ReadPermissionVal
+} from '@fastgpt/global/support/permission/constant';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
@@ -60,6 +65,84 @@ describe('POST /api/core/ai/skill/list', () => {
 
     expect(res.code).toBe(200);
     expect(res.data.list.map((item) => String(item._id))).toEqual([String(activeSkill._id)]);
+  });
+
+  it('按 skillIds 查询时会在查询阶段过滤当前成员无权读取的 Skill', async () => {
+    const owner = await getUser(`agent-skill-list-owner-${getNanoid(6)}`);
+    const member = await getUser(`agent-skill-list-member-${getNanoid(6)}`, owner.teamId);
+
+    const [ownedSkill, protectedSkill] = await MongoAgentSkills.create([
+      {
+        name: 'Owned Skill',
+        type: AgentSkillTypeEnum.skill,
+        source: AgentSkillSourceEnum.personal,
+        teamId: owner.teamId,
+        tmbId: member.tmbId
+      },
+      {
+        name: 'Protected Skill',
+        type: AgentSkillTypeEnum.skill,
+        source: AgentSkillSourceEnum.personal,
+        teamId: owner.teamId,
+        tmbId: owner.tmbId
+      }
+    ]);
+
+    const res = await Call<ListSkillsQuery, Record<string, never>, ListSkillsResponse>(handler, {
+      auth: member,
+      body: {
+        source: 'mine',
+        skillIds: [String(ownedSkill._id), String(protectedSkill._id)],
+        parentId: null,
+        withAppCount: false
+      }
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data.list.map((item) => String(item._id))).toEqual([String(ownedSkill._id)]);
+  });
+
+  it('按 skillIds 查询时保留继承父目录读权限的 Skill', async () => {
+    const owner = await getUser(`agent-skill-list-inherit-owner-${getNanoid(6)}`);
+    const member = await getUser(`agent-skill-list-inherit-member-${getNanoid(6)}`, owner.teamId);
+
+    const folder = await MongoAgentSkills.create({
+      name: 'Shared Folder',
+      type: AgentSkillTypeEnum.folder,
+      source: AgentSkillSourceEnum.personal,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId
+    });
+    const inheritedSkill = await MongoAgentSkills.create({
+      name: 'Inherited Skill',
+      type: AgentSkillTypeEnum.skill,
+      source: AgentSkillSourceEnum.personal,
+      parentId: folder._id,
+      inheritPermission: true,
+      teamId: owner.teamId,
+      tmbId: owner.tmbId
+    });
+
+    await MongoResourcePermission.create({
+      resourceType: PerResourceTypeEnum.agentSkill,
+      teamId: owner.teamId,
+      resourceId: folder._id,
+      tmbId: member.tmbId,
+      permission: ReadPermissionVal
+    });
+
+    const res = await Call<ListSkillsQuery, Record<string, never>, ListSkillsResponse>(handler, {
+      auth: member,
+      body: {
+        source: 'mine',
+        skillIds: [String(inheritedSkill._id)],
+        parentId: null,
+        withAppCount: false
+      }
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data.list.map((item) => String(item._id))).toEqual([String(inheritedSkill._id)]);
   });
 
   it('appCount 基于已发布版本的 resourceRefs，草稿保存不影响统计', async () => {

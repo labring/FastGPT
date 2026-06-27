@@ -115,6 +115,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
       systemPrompt: appForm.aiSettings.systemPrompt,
       selectedTools: appForm.selectedTools.map((tool) => tool.id),
       selectedDatasets: appForm.dataset.datasets.map((dataset) => dataset.datasetId),
+      selectedAgentSkills: appForm.selectedAgentSkills || [],
       fileUpload: appForm.chatConfig.fileSelectConfig?.canSelectFile || false,
       enableSandbox: appForm.aiSettings.useAgentSandbox || false,
       modelConfig: {
@@ -209,6 +210,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
                   const newForm: AppFormEditFormType = {
                     ...prev,
                     selectedTools: [...newTools],
+                    selectedAgentSkills: formData.selectedAgentSkills || [],
                     dataset:
                       formData.datasets && formData.datasets.length > 0
                         ? {
@@ -219,7 +221,8 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
                     aiSettings: {
                       ...prev.aiSettings,
                       systemPrompt: formData.systemPrompt || prev.aiSettings.systemPrompt,
-                      useAgentSandbox: enableSandboxEnabled
+                      useAgentSandbox:
+                        enableSandboxEnabled || (formData.selectedAgentSkills?.length || 0) > 0
                     },
                     chatConfig: {
                       ...prev.chatConfig,
