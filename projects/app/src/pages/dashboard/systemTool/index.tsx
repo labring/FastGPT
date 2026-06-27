@@ -60,7 +60,7 @@ type PluginDebugSessionState = Pick<
 const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   const router = useRouter();
   const { t, i18n } = useTranslation();
-  const { feConfigs, initd } = useSystemStore();
+  const { feConfigs, initd, setShowProModal } = useSystemStore();
   const { isPc } = useSystem();
   const { userInfo } = useUserStore();
   const { toast } = useToast();
@@ -89,6 +89,10 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   });
 
   const onOpenDebugModal = useCallback(() => {
+    if (!feConfigs?.isPlus) {
+      return setShowProModal(true);
+    }
+
     if (!initd || !feConfigs?.pluginRemoteDebug) {
       return toast({
         title: t('app:toolkit_debug_remote_disabled'),
@@ -96,11 +100,19 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
       });
     }
     debugDisclosure.onOpen();
-  }, [debugDisclosure, feConfigs?.pluginRemoteDebug, initd, t, toast]);
+  }, [
+    debugDisclosure,
+    feConfigs?.isPlus,
+    feConfigs?.pluginRemoteDebug,
+    initd,
+    setShowProModal,
+    t,
+    toast
+  ]);
 
   useRequest(
     async () => {
-      if (!initd || !feConfigs?.pluginRemoteDebug) {
+      if (!initd || !feConfigs?.isPlus || !feConfigs?.pluginRemoteDebug) {
         return {
           tmbId: 'remote-debug-disabled',
           status: 'revoked',
@@ -113,7 +125,7 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
     },
     {
       manual: false,
-      refreshDeps: [feConfigs?.pluginRemoteDebug, initd],
+      refreshDeps: [feConfigs?.isPlus, feConfigs?.pluginRemoteDebug, initd],
       onSuccess(data) {
         setDebugSession(isActiveDebugSession(data) ? data : null);
       }

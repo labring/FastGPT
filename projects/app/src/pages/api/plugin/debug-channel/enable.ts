@@ -4,6 +4,7 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { buildPluginDebugConnectionUrl } from '@/service/core/plugin/debug/connectionUrl';
+import { assertCommercialPluginDebugEnabled } from '@/service/core/plugin/debug/authCommercialDebug';
 import {
   EnablePluginDebugChannelBodySchema,
   EnablePluginDebugChannelResponseSchema,
@@ -22,6 +23,7 @@ async function handler(
     bodySchema: EnablePluginDebugChannelBodySchema
   });
   const { tmbId } = await authCert({ req, authToken: true });
+  assertCommercialPluginDebugEnabled();
   const result = await pluginClient.createDebugSession({ tmbId });
   const connectionUrl = buildPluginDebugConnectionUrl({
     req,

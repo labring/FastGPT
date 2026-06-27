@@ -3,6 +3,7 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import { isProVersion } from '@fastgpt/service/common/system/constants';
 import {
   GetPluginDebugChannelQuerySchema,
   GetPluginDebugChannelResponseSchema,
@@ -32,6 +33,14 @@ async function handler(
     querySchema: GetPluginDebugChannelQuerySchema
   });
   const { tmbId } = await authCert({ req, authToken: true });
+  if (!isProVersion()) {
+    return GetPluginDebugChannelResponseSchema.parse({
+      tmbId,
+      status: 'revoked',
+      enabled: false,
+      plugins: []
+    });
+  }
   const result = await pluginClient.getDebugSessionStatus({ tmbId }).catch((error) => {
     if (isNotFoundError(error)) {
       return {

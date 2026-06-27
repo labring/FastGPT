@@ -3,6 +3,7 @@ import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequency
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import { assertCommercialPluginDebugEnabled } from '@/service/core/plugin/debug/authCommercialDebug';
 import {
   ExchangePluginDebugConnectionKeyBodySchema,
   ExchangePluginDebugConnectionKeyQuerySchema,
@@ -29,6 +30,7 @@ async function handler(
           req,
           bodySchema: ExchangePluginDebugConnectionKeyBodySchema
         }).body;
+  assertCommercialPluginDebugEnabled();
   const result = await pluginClient.exchangeDebugSessionConnectionKey({
     connectionKey: input.connectionKey
   });

@@ -3,6 +3,7 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import { isProVersion } from '@fastgpt/service/common/system/constants';
 import {
   RevokePluginDebugChannelBodySchema,
   RevokePluginDebugChannelResponseSchema,
@@ -32,6 +33,11 @@ async function handler(
     bodySchema: RevokePluginDebugChannelBodySchema
   });
   const { tmbId } = await authCert({ req, authToken: true });
+  if (!isProVersion()) {
+    return RevokePluginDebugChannelResponseSchema.parse({
+      revoked: false
+    });
+  }
   const result = await pluginClient
     .revokeDebugSession({
       tmbId,
