@@ -1,12 +1,12 @@
 import React from 'react';
-import { Box, Button } from '@chakra-ui/react';
+import { Box } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { useTranslation } from 'next-i18next';
 import { SkillDetailContext } from './context';
 import SandboxEditor from '@/pageComponents/chat/SandboxEditor/Editor';
 import SandboxError from './config/SandboxError';
 import { RightHeader } from '@/pageComponents/dashboard/skill/detail/Header';
-import MyModal from '@fastgpt/web/components/v2/common/MyModal';
+import ProModal from '@/components/ProTip/ProModal';
 
 const EDIT_DEBUG_CHAT_ID = 'edit-debug';
 
@@ -56,21 +56,20 @@ const Content = () => {
           headerRight={canOperateSandbox ? <RightHeader /> : undefined}
         />
       )}
-      <MyModal
+      <ProModal
         isOpen={isUpgradeModalOpen}
+        forceShow
         title={t('skill:sandbox_runtime_upgrade_required')}
-        size={'md'}
-        isCentered
-        closeOnOverlayClick={false}
-        showCloseButton={false}
-        footer={
-          <Button isLoading={isUpgrading} onClick={upgradeSandboxRuntime}>
-            {t('skill:sandbox_runtime_upgrade_confirm')}
-          </Button>
+        content={
+          <Box color={'myGray.900'} fontSize={'18px'} lineHeight={'26px'} mt={7}>
+            {t('skill:sandbox_runtime_upgrade_desc')}
+          </Box>
         }
-      >
-        <Box color={'myGray.600'}>{t('skill:sandbox_runtime_upgrade_desc')}</Box>
-      </MyModal>
+        primaryButtonText={t('skill:sandbox_runtime_upgrade_confirm')}
+        primaryButtonLoading={isUpgrading}
+        onPrimaryClick={upgradeSandboxRuntime}
+        showSecondaryButton={false}
+      />
     </Box>
   );
 };
