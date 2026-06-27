@@ -94,6 +94,7 @@ const AIChatBubbleActions = ({
       p={'4px'}
       cursor={'pointer'}
       color={'myGray.400'}
+      userSelect={'none'}
       transition={footerActionTransition}
       _hover={footerActionHoverStyle}
       onClick={onOpenWholeModal}
@@ -148,6 +149,7 @@ const AIChatBubbleActions = ({
               p={'4px'}
               cursor={'pointer'}
               color={'myGray.400'}
+              userSelect={'none'}
               _hover={{ color: 'primary.600' }}
               onClick={onOpenSandboxModal}
             >
