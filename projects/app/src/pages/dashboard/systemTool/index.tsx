@@ -38,6 +38,7 @@ import DashboardContainer from '@/pageComponents/dashboard/Container';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import {
   enablePluginDebugChannel,
   getPluginDebugChannel,
@@ -59,9 +60,10 @@ type PluginDebugSessionState = Pick<
 const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
   const router = useRouter();
   const { t, i18n } = useTranslation();
-  const { feConfigs } = useSystemStore();
+  const { feConfigs, initd } = useSystemStore();
   const { isPc } = useSystem();
   const { userInfo } = useUserStore();
+  const { toast } = useToast();
 
   const [searchText, setSearchText] = useState('');
 
@@ -85,12 +87,38 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
       setTools(data);
     }
   });
-  useRequest(getPluginDebugChannel, {
-    manual: false,
-    onSuccess(data) {
-      setDebugSession(isActiveDebugSession(data) ? data : null);
+
+  const onOpenDebugModal = useCallback(() => {
+    if (!initd || !feConfigs?.pluginRemoteDebug) {
+      return toast({
+        title: t('app:toolkit_debug_remote_disabled'),
+        status: 'warning'
+      });
     }
-  });
+    debugDisclosure.onOpen();
+  }, [debugDisclosure, feConfigs?.pluginRemoteDebug, initd, t, toast]);
+
+  useRequest(
+    async () => {
+      if (!initd || !feConfigs?.pluginRemoteDebug) {
+        return {
+          tmbId: 'remote-debug-disabled',
+          status: 'revoked',
+          enabled: false,
+          plugins: []
+        } satisfies GetPluginDebugChannelResponseType;
+      }
+
+      return getPluginDebugChannel();
+    },
+    {
+      manual: false,
+      refreshDeps: [feConfigs?.pluginRemoteDebug, initd],
+      onSuccess(data) {
+        setDebugSession(isActiveDebugSession(data) ? data : null);
+      }
+    }
+  );
 
   const displayTools = useMemo(() => {
     return tools
@@ -145,7 +173,7 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
               >
                 {t('app:core.module.template.System Tools')}
               </Box>
-              <Button mr={4} variant={'whiteBase'} onClick={debugDisclosure.onOpen}>
+              <Button mr={4} variant={'whiteBase'} onClick={onOpenDebugModal}>
                 {t('app:toolkit_debug_local')}
               </Button>
               {feConfigs?.submitPluginRequestUrl && (

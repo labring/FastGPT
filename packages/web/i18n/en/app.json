@@ -410,6 +410,7 @@
   "toolkit_debug_local_desc": "Paste this link into your local development environment to connect a test plugin in the platform. Test plugins are visible only to the debugger.",
   "toolkit_debug_refresh_link": "Refresh Link",
   "toolkit_debug_refresh_link_before_copy": "Refresh the connection link before copying",
+  "toolkit_debug_remote_disabled": "Remote debugging is not enabled",
   "toolkit_debug_stop": "Stop Debugging",
   "toolkit_debug_tag": "Debug",
   "toolkit_hide_tags": "Hide Tags",

@@ -25,8 +25,10 @@ import { serviceEnv } from '@fastgpt/service/env';
 import { hasAIProxyApiEndpoint } from '@fastgpt/service/thirdProvider/aiproxy/config';
 import { appEnv } from '@/env';
 import { pluginTagList } from '@fastgpt/global/sdk/fastgpt-plugin';
+import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
 
 const logger = getLogger(LogCategories.SYSTEM);
+const pluginFeaturesProbeTimeoutMs = 3000;
 const defaultOpenSourceLoginGuideDocUrl =
   'https://doc.fastgpt.io/zh-CN/guide/version/cloud/faq#%E8%B4%A6%E5%8F%B7%E7%99%BB%E5%BD%95%E9%97%AE%E9%A2%98';
 
@@ -141,11 +143,24 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   uploadFileMaxAmount: serviceEnv.UPLOAD_FILE_MAX_AMOUNT
 };
 
+async function getPluginRemoteDebugEnabled() {
+  try {
+    const features = await pluginClient.getPluginServiceFeatures({
+      signal: AbortSignal.timeout(pluginFeaturesProbeTimeoutMs)
+    });
+    return features.remoteDebug === true;
+  } catch (error) {
+    logger.warn('Plugin service features resolve failed', { error });
+    return false;
+  }
+}
+
 export async function initSystemConfig() {
   // load config
-  const [{ fastgptConfig, licenseData }, fileConfig] = await Promise.all([
+  const [{ fastgptConfig, licenseData }, fileConfig, pluginRemoteDebug] = await Promise.all([
     getFastGPTConfigFromDB(),
-    readConfigData('config.json')
+    readConfigData('config.json'),
+    getPluginRemoteDebugEnabled()
   ]);
   global.licenseData = licenseData;
 
@@ -169,6 +184,7 @@ export async function initSystemConfig() {
       show_discount_coupon: appEnv.SHOW_DISCOUNT_COUPON,
       show_dataset_enhance: licenseData?.functions?.datasetEnhance,
       show_batch_eval: licenseData?.functions?.batchEval,
+      pluginRemoteDebug,
       payFormUrl: appEnv.PAY_FORM_URL || '',
 
       agentSandboxFree: appEnv.AGENT_SANDBOX_FREE_TIP,

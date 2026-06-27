@@ -410,6 +410,7 @@
   "toolkit_debug_local_desc": "将该链接粘贴到本地开发环境，即可在平台内接入测试插件。测试插件仅对调试者本人可见。",
   "toolkit_debug_refresh_link": "刷新链接",
   "toolkit_debug_refresh_link_before_copy": "请刷新连接链接后复制",
+  "toolkit_debug_remote_disabled": "远程调试未启用",
   "toolkit_debug_stop": "结束调试",
   "toolkit_debug_tag": "调试",
   "toolkit_hide_tags": "隐藏标签",

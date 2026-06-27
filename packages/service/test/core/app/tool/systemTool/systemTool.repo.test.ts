@@ -633,6 +633,64 @@ describe('SystemToolRepo.getSystemToolDisplayInfo', () => {
     });
   });
 
+  it('applies saved child status when reading a debug toolset child by raw plugin id', async () => {
+    const childConfig = {
+      pluginId: 'systemTool-weather/forecast',
+      status: PluginStatusEnum.Offline,
+      currentCost: 3,
+      systemKeyCost: 2,
+      customConfig: {
+        toolDescription: 'Configured forecast'
+      }
+    };
+
+    mocks.findSystemTools.mockResolvedValueOnce([childConfig]).mockResolvedValueOnce([
+      {
+        pluginId: 'systemTool-weather',
+        status: PluginStatusEnum.Normal,
+        customConfig: {}
+      },
+      childConfig
+    ]);
+    mocks.listTools.mockResolvedValue([
+      {
+        source: 'debug:tmbId:tmb-1',
+        isToolset: true,
+        name: { en: 'Weather' },
+        description: { en: 'Weather intro' },
+        pluginId: 'weather',
+        version: '1.0.0',
+        icon: 'weather.svg',
+        tags: ['life'],
+        toolDescription: 'Weather tool',
+        hasSecret: false,
+        children: [
+          {
+            id: 'forecast',
+            name: { en: 'Forecast' },
+            description: { en: 'Forecast intro' },
+            toolDescription: 'Forecast tool',
+            icon: 'forecast.svg'
+          }
+        ]
+      }
+    ]);
+
+    const tool = await SystemToolRepo.getInstance().getSystemToolDisplayInfo({
+      pluginId: 'weather/forecast',
+      source: 'debug:tmbId:tmb-1'
+    });
+
+    expect(tool).toMatchObject({
+      id: 'weather/forecast',
+      source: 'debug:tmbId:tmb-1',
+      status: PluginStatusEnum.Offline,
+      currentCost: 3,
+      systemKeyCost: 2,
+      toolDescription: 'Configured forecast'
+    });
+  });
+
   it('keeps parent toolset display lightweight when list omits child icons', async () => {
     mocks.findSystemTool.mockResolvedValue(undefined);
     mocks.listTools.mockResolvedValue([

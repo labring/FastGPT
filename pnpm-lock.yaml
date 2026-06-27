@@ -403,8 +403,8 @@ importers:
         specifier: ^1.2.8
         version: 1.2.8
       '@fastgpt-plugin/sdk-client':
-        specifier: 0.0.1-alpha.10
-        version: 0.0.1-alpha.10(zod@4.1.12)
+        specifier: 0.0.1-alpha.11
+        version: 0.0.1-alpha.11(zod@4.1.12)
       axios:
         specifier: 'catalog:'
         version: 1.16.0
@@ -3628,8 +3628,8 @@ packages:
     resolution: {integrity: sha512-OEl393iCOoo/z8bMezRlJu+GlRGlsKbUAN7jKB6LhnKoqKve5DXRpalbItIIcwnCjs1k/FOPjFzcA6Qn+H+YbA==}
     engines: {node: '>=18.0.0', npm: '>=9.0.0'}
 
-  '@fastgpt-plugin/sdk-client@0.0.1-alpha.10':
-    resolution: {integrity: sha512-qmqgAxSVvh2aPclhMtSVMrH1SzD5DYALRfEAmroXqvN0UTOQp53wqD4zZMw88mzGcEjW5cmPsbG2q7BKBBCNPg==}
+  '@fastgpt-plugin/sdk-client@0.0.1-alpha.11':
+    resolution: {integrity: sha512-XSKSRhW8NLPgSt393jQIhw73q8EvcMjRSwc6GfLgeklhRACuUiCm9kdlraycnWxyaslNASd4w9lQH7NAqpOoMA==}
     peerDependencies:
       zod: ^4
 
@@ -17549,7 +17549,7 @@ snapshots:
 
   '@faker-js/faker@9.9.0': {}
 
-  '@fastgpt-plugin/sdk-client@0.0.1-alpha.10(zod@4.1.12)':
+  '@fastgpt-plugin/sdk-client@0.0.1-alpha.11(zod@4.1.12)':
     dependencies:
       zod: 4.1.12
 
@@ -21475,7 +21475,7 @@ snapshots:
       obug: 2.1.1
       std-env: 4.1.0
       tinyrainbow: 3.1.0
-      vitest: 4.1.5(@opentelemetry/api@1.9.0)(@types/node@20.17.24)(@vitest/coverage-v8@4.1.5)(jsdom@26.1.0(bufferutil@4.1.0)(canvas@3.2.3)(utf-8-validate@5.0.10))(vite@6.2.2(@types/node@20.17.24)(jiti@2.7.0)(lightningcss@1.32.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.4))
+      vitest: 4.1.5(@opentelemetry/api@1.9.0)(@types/node@20.17.24)(@vitest/coverage-v8@4.1.5)(jsdom@26.1.0(bufferutil@4.1.0)(canvas@3.2.3)(utf-8-validate@5.0.10))(vite@6.2.2(@types/node@20.17.24)(jiti@1.21.7)(lightningcss@1.32.0)(sass@1.85.1)(terser@5.39.0)(tsx@4.20.6)(yaml@2.8.4))
 
   '@vitest/expect@4.1.5':
     dependencies:
