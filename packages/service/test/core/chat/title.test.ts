@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ChatFileTypeEnum,
   ChatRoleEnum,
@@ -7,6 +7,8 @@ import {
 } from '@fastgpt/global/core/chat/constants';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import {
+  CHAT_TITLE_GENERATION_TIMEOUT_MS,
+  CHAT_TITLE_SEND_WAIT_TIMEOUT_MS,
   createGeneratedChatTitleSender,
   syncGeneratedChatTitleFromUserContent
 } from '@fastgpt/service/core/chat/title';
@@ -41,6 +43,10 @@ const createChat = (override: Record<string, unknown> = {}) =>
     source: ChatSourceEnum.online,
     ...override
   });
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe('syncGeneratedChatTitleFromUserContent', () => {
   beforeEach(async () => {
@@ -448,7 +454,11 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
       title: 'FastGPT Docker Deployment',
       updated: true
     });
-    expect(createLLMResponseMock).toHaveBeenCalled();
+    expect(createLLMResponseMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        timeout: CHAT_TITLE_GENERATION_TIMEOUT_MS
+      })
+    );
   });
 });
 
@@ -509,5 +519,134 @@ describe('createGeneratedChatTitleSender', () => {
         title: 'Generated Title'
       }
     });
+  });
+
+  it('does not wait more than the send timeout for slow title generation', async () => {
+    const writeChatTitle = vi.fn();
+    const titleGeneration = new Promise<{ title: string; updated: boolean } | undefined>(() => {});
+    const titleSender = createGeneratedChatTitleSender({
+      titleGeneration,
+      stream: true,
+      detail: true,
+      writeChatTitle
+    });
+
+    vi.useFakeTimers();
+    const titlePromise = titleSender.send();
+
+    await vi.advanceTimersByTimeAsync(CHAT_TITLE_SEND_WAIT_TIMEOUT_MS);
+
+    await expect(titlePromise).resolves.toBeUndefined();
+    expect(writeChatTitle).not.toHaveBeenCalled();
+  });
+
+  it('can send a title after an earlier send call timed out', async () => {
+    const writeChatTitle = vi.fn();
+    let resolveTitle:
+      | ((value: { title: string; updated: boolean } | undefined) => void)
+      | undefined;
+    const titleGeneration = new Promise<{ title: string; updated: boolean } | undefined>(
+      (resolve) => {
+        resolveTitle = resolve;
+      }
+    );
+    const titleSender = createGeneratedChatTitleSender({
+      titleGeneration,
+      stream: true,
+      detail: true,
+      writeChatTitle
+    });
+
+    vi.useFakeTimers();
+    const timeoutTitle = titleSender.send();
+    await vi.advanceTimersByTimeAsync(CHAT_TITLE_SEND_WAIT_TIMEOUT_MS);
+    await expect(timeoutTitle).resolves.toBeUndefined();
+
+    resolveTitle?.({
+      title: 'Generated Title',
+      updated: true
+    });
+    await vi.runAllTimersAsync();
+
+    await expect(titleSender.send()).resolves.toBe('Generated Title');
+    expect(writeChatTitle).toHaveBeenCalledTimes(1);
+    expect(writeChatTitle).toHaveBeenCalledWith({
+      event: SseResponseEventEnum.chatTitle,
+      data: {
+        title: 'Generated Title'
+      }
+    });
+  });
+
+  it('keeps the background sender alive after the workflow end wait times out', async () => {
+    const writeChatTitle = vi.fn();
+    let resolveTitle:
+      | ((value: { title: string; updated: boolean } | undefined) => void)
+      | undefined;
+    const titleGeneration = new Promise<{ title: string; updated: boolean } | undefined>(
+      (resolve) => {
+        resolveTitle = resolve;
+      }
+    );
+    const titleSender = createGeneratedChatTitleSender({
+      titleGeneration,
+      stream: true,
+      detail: true,
+      writeChatTitle
+    });
+
+    vi.useFakeTimers();
+    const backgroundTitle = titleSender.start();
+    const workflowEndTitle = titleSender.send();
+
+    await vi.advanceTimersByTimeAsync(CHAT_TITLE_SEND_WAIT_TIMEOUT_MS);
+    await expect(workflowEndTitle).resolves.toBeUndefined();
+    expect(writeChatTitle).not.toHaveBeenCalled();
+
+    resolveTitle?.({
+      title: 'Generated Title',
+      updated: true
+    });
+    await expect(backgroundTitle).resolves.toBe('Generated Title');
+    expect(writeChatTitle).toHaveBeenCalledTimes(1);
+    expect(writeChatTitle).toHaveBeenCalledWith({
+      event: SseResponseEventEnum.chatTitle,
+      data: {
+        title: 'Generated Title'
+      }
+    });
+  });
+
+  it('does not write a late stream title after the response is closed', async () => {
+    const writeChatTitle = vi.fn();
+    let resolveTitle:
+      | ((value: { title: string; updated: boolean } | undefined) => void)
+      | undefined;
+    const titleGeneration = new Promise<{ title: string; updated: boolean } | undefined>(
+      (resolve) => {
+        resolveTitle = resolve;
+      }
+    );
+    const titleSender = createGeneratedChatTitleSender({
+      titleGeneration,
+      stream: true,
+      detail: true,
+      writeChatTitle
+    });
+
+    vi.useFakeTimers();
+    const backgroundTitle = titleSender.start();
+    const workflowEndTitle = titleSender.send();
+
+    await vi.advanceTimersByTimeAsync(CHAT_TITLE_SEND_WAIT_TIMEOUT_MS);
+    await expect(workflowEndTitle).resolves.toBeUndefined();
+    titleSender.close();
+
+    resolveTitle?.({
+      title: 'Generated Title',
+      updated: true
+    });
+    await expect(backgroundTitle).resolves.toBe('Generated Title');
+    expect(writeChatTitle).not.toHaveBeenCalled();
   });
 });

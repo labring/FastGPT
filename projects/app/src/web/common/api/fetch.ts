@@ -60,7 +60,9 @@ const shouldSendStreamResumeHeader = (url: string) =>
   new Set([
     '/api/v2/chat/completions',
     '/api/proApi/core/chat/chatHome',
-    '/api/core/chat/chatTest'
+    '/api/core/chat/chatTest',
+    '/api/core/ai/skill/debugChat',
+    '/api/proApi/core/ai/skill/debugChat'
   ]).has(url);
 
 type CommonResponseType = {

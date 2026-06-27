@@ -73,7 +73,7 @@ import {
 import {
   createWorkflowStreamResponseContext,
   type WorkflowStreamResponseContext
-} from '@/service/core/workflow/streamResponseContext';
+} from '@fastgpt/service/core/workflow/utils/streamResponseContext';
 import { authChatCompletionHeaderRequest } from '@/service/support/permission/auth/chatCompletion';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
@@ -104,6 +104,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   const startTime = Date.now();
   let streamResponseContext: WorkflowStreamResponseContext | undefined;
+  let titleSender: ReturnType<typeof createGeneratedChatTitleSender> | undefined;
   const roundState = {
     preparedRound: undefined as PreChatRoundResult | undefined,
     sourceId: undefined as string | undefined,
@@ -331,14 +332,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       showNodeStatus: showRunningStatus
     });
     const shouldCollectFinalResponseData = (!stream && detail) || !!shareId;
-    const titleSender = createGeneratedChatTitleSender({
+    titleSender = createGeneratedChatTitleSender({
       titleGeneration: preparedRound.titleGeneration,
       stream,
       detail,
       writeChatTitle: (payload) => streamResponseContext?.responseWrite(payload)
     });
     if (stream) {
-      void titleSender.send();
+      void titleSender.start();
     }
 
     /* start flow controller */
@@ -487,7 +488,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
 
       await streamResponseContext.flushResume();
-      res.end();
     } else {
       const generatedTitle = await titleSender.send();
       const formatResponseContent = removeAIResponseCite(assistantResponses, retainDatasetCite);
@@ -594,13 +594,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         sseErrRes(res, err);
       }
       await streamResponseContext?.flushResume();
-      res.end();
     } else {
       const errKey = typeof err === 'string' ? err : (err as Error)?.message;
       jsonRes(res, {
         code: errKey === ChatErrEnum.chatIsGenerating ? 409 : 500,
         error: err
       });
+    }
+  } finally {
+    titleSender?.close();
+    if (stream) {
+      res.end();
     }
   }
 }

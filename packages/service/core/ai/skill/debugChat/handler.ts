@@ -47,9 +47,9 @@ import {
 import { preChatRound, type PreChatRoundResult } from '../../../chat/utils/prepare';
 import { updateChatGenerateStatus } from '../../../chat/chatGenerateStatus';
 import {
-  createSkillDebugStreamResponseContext,
-  type SkillDebugStreamResponseContext
-} from './streamResponseContext';
+  createWorkflowStreamResponseContext,
+  type WorkflowStreamResponseContext
+} from '../../../workflow/utils/streamResponseContext';
 import { buildDebugRuntimeNodes } from './runtime';
 import type { AgentSandboxPrepareAction } from '../../../workflow/dispatch/ai/agent/sub/sandbox';
 
@@ -69,7 +69,7 @@ export async function handleSkillDebugChat(
   } = {}
 ) {
   let skillId = '';
-  let streamResponseContext: SkillDebugStreamResponseContext | undefined;
+  let streamResponseContext: WorkflowStreamResponseContext | undefined;
   const roundState = {
     preparedRound: undefined as PreChatRoundResult | undefined,
     sourceType: undefined as ChatSourceTypeEnum | undefined,
@@ -172,7 +172,7 @@ export async function handleSkillDebugChat(
       systemPrompt
     );
 
-    streamResponseContext = await createSkillDebugStreamResponseContext({
+    streamResponseContext = await createWorkflowStreamResponseContext({
       req,
       res,
       stream: true,

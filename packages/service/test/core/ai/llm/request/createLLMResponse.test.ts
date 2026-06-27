@@ -82,7 +82,7 @@ import { getLLMSupportParams } from '@fastgpt/global/core/ai/llm/utils';
 import { promptToolCallMessageRewrite } from '@fastgpt/service/core/ai/llm/promptCall';
 import { saveLLMRequestRecord } from '@fastgpt/service/core/ai/record/controller';
 
-import { createLLMResponse as rawCreateLLMResponse } from '@fastgpt/service/core/ai/llm/request/createLLMResponse';
+import { createLLMResponse as rawCreateLLMResponse } from '@fastgpt/service/core/ai/llm/request';
 
 const mockGetAIApi = vi.mocked(getAIApi);
 const mockGetLLMModel = vi.mocked(getLLMModel);
@@ -296,6 +296,33 @@ describe('createLLMResponse', () => {
           })
         })
       );
+    });
+
+    it('should pass custom timeout to the AI client', async () => {
+      const createMock = vi.fn().mockResolvedValue(mockTextResponse);
+      mockGetAIApi.mockReturnValue(
+        createMockAIApiResult({
+          chat: {
+            completions: {
+              create: createMock
+            }
+          }
+        })
+      );
+
+      await createLLMResponse({
+        timeout: 15_000,
+        body: {
+          model: 'gpt-4',
+          messages: [{ role: ChatCompletionRequestMessageRoleEnum.User, content: 'hi' }],
+          stream: false
+        }
+      });
+
+      expect(mockGetAIApi).toHaveBeenCalledWith({
+        userKey: undefined,
+        timeout: 15_000
+      });
     });
 
     it('should not save usage when user request fails', async () => {

@@ -120,7 +120,6 @@ const AppChatWindow = () => {
     {
       manual: false,
       refreshDeps: [appId, chatId],
-      errorToast: '',
       onError(e: any) {
         if (e?.code && e.code >= 502000) {
           if (e?.statusText === ChatErrEnum.unAuthChat) {

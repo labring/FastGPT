@@ -89,6 +89,23 @@ const service2 = (props: {id:string; service1: typeof service1 }) => {
 - 多个 schema 文件（如 `evalSchema.ts` + `evalItemSchema.ts`）**合并**到单个 `schema.ts`
 
 ## 代码风格
+
+### 统一导出入口
+
+目录需要对外聚合导出时，只在该目录的 `index.ts` 中统一 re-export。不要为了兼容旧路径创建“转发文件”，也不要让已迁移的旧文件继续 `export ... from ...`。
+
+- 对外引用优先从目录入口导入，例如 `@fastgpt/service/core/ai/llm/request`
+- 非 `index.ts` 文件应承载实际实现、类型定义或模块私有逻辑，不作为兼容层 re-export
+- 旧路径迁移时，直接修改所有引用到新的统一入口；确认无引用后删除旧文件
+
+```typescript
+// ❌ 不好的实践：兼容旧路径的转发文件
+export { createWorkflowStreamResponseContext } from '@fastgpt/service/core/workflow/utils/streamResponseContext';
+
+// ✅ 好的实践：只在 index.ts 聚合导出
+export { createLLMResponse } from './createLLMResponse';
+```
+
 ### 使用 `type` 进行类型声明，不使用 `interface`
 
 ```typescript

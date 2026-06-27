@@ -64,6 +64,8 @@ export type CreateLLMResponseProps<
   // 上层中断时返回 true。底层会 abort stream 并用 finish_reason=close 表达正常关闭。
   isAborted?: () => boolean | undefined | null;
   custonHeaders?: Record<string, string>;
+  // 单次底层模型请求超时时间。辅助类 LLM 请求可传较短值，避免阻塞主链路。
+  timeout?: number;
   // finish_reason=length 时最多连续请求的次数，避免模型一直返回 length 造成死循环。
   maxContinuations?: number;
   // 是否保存 LLM 请求响应详情。内部辅助调用可关闭，避免污染用户可见的请求记录。
