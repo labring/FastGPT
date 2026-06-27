@@ -150,7 +150,8 @@ const AIChatBubbleActions = ({
               cursor={'pointer'}
               color={'myGray.400'}
               userSelect={'none'}
-              _hover={{ color: 'primary.600' }}
+              transition={footerActionTransition}
+              _hover={footerActionHoverStyle}
               onClick={onOpenSandboxModal}
             >
               <MyIcon
