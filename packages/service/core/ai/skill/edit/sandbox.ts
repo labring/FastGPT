@@ -351,7 +351,7 @@ export async function getSkillEditRuntimeStatus(
       }
 ): Promise<SkillRuntimeStatusResponse> {
   const context = 'context' in params ? params.context : await getSkillEditRuntimeContext(params);
-  const { sessionId, runtimeImage } = context;
+  const { sessionId, providerConfig, runtimeImage } = context;
   const statusInstance = getRuntimeStatusInstance(context);
   const archiveState = statusInstance?.metadata?.archive?.state;
   const isRuntimeImageOutdated =
@@ -395,6 +395,19 @@ export async function getSkillEditRuntimeStatus(
       sandboxId: statusInstance.sandboxId,
       status: 'upgrading',
       archiveState: 'restoring'
+    });
+  }
+
+  if (
+    statusInstance &&
+    archiveState === 'archived' &&
+    statusInstance.provider !== providerConfig.provider
+  ) {
+    // 跨 provider 的归档记录已经没有旧 provider 运行态依赖，放行 init 走迁移和恢复归档包流程。
+    return buildRuntimeStatusResponse({
+      sandboxId: statusInstance.sandboxId,
+      status: 'readyToInit',
+      archiveState: 'archived'
     });
   }
 

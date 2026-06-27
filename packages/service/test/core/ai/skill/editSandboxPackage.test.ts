@@ -758,6 +758,48 @@ describe('skill edit runtime status split APIs', () => {
     expect(getSandboxClient).not.toHaveBeenCalled();
   });
 
+  it('allows stale-provider archived runtime instance to init for migration restore', async () => {
+    const skillId = 'skill-1';
+    const archivedInstance = {
+      _id: 'stale-provider-archived-instance',
+      provider: 'old-provider',
+      sandboxId: `edit-debug-${skillId}`,
+      status: 'stopped',
+      lastActiveAt: new Date(),
+      metadata: {
+        image: { repository: 'old-runtime', tag: 'v1' },
+        archive: {
+          state: 'archived'
+        },
+        versionId: 'version-1'
+      }
+    };
+
+    setupReadySkillVersion(skillId);
+    vi.mocked(findSandboxInstanceBySandboxId).mockResolvedValueOnce(null);
+    vi.mocked(findSandboxInstanceArchiveState).mockResolvedValueOnce(null);
+    vi.mocked(findSandboxResourcesBySourceChatTypeExcludeProvider).mockResolvedValueOnce([
+      archivedInstance as any
+    ]);
+
+    await expect(
+      getSkillEditRuntimeStatus({
+        skillId,
+        teamId: 'team-1',
+        tmbId: 'tmb-1'
+      })
+    ).resolves.toMatchObject({
+      sandboxId: `edit-debug-${skillId}`,
+      status: 'readyToInit',
+      archiveState: 'archived',
+      canUpgrade: false,
+      shouldPoll: false,
+      shouldInit: true
+    });
+
+    expect(getSandboxClient).not.toHaveBeenCalled();
+  });
+
   it('marks archived outdated-runtime image current and returns ready after upgrade confirmation', async () => {
     const skillId = 'skill-1';
     const archivedInstance = {
