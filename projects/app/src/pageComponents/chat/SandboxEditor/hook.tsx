@@ -16,6 +16,8 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { TreeNode } from './components/FileTree';
 import type { OpenedFile } from './components/FileTabs';
+import type { ChatTargetInputType } from '@fastgpt/global/openapi/core/chat/api';
+import { getSandboxTargetId, resolveSandboxTarget } from './types';
 import {
   getLanguageByFileName,
   getIsBinaryByLanguage,
@@ -84,24 +86,33 @@ const replacePathPrefix = (path: string, oldPath: string, newPath: string) => {
  */
 export const useSandboxEditor = ({
   appId,
+  chatTarget,
   chatId,
   outLinkAuthData,
   afterClose,
+  enabled = true,
   showFileOps = false,
   showDownload = true
 }: {
-  appId: string;
+  appId?: string;
+  chatTarget?: ChatTargetInputType;
   chatId: string;
   outLinkAuthData?: OutLinkChatAuthProps;
   afterClose?: () => void;
+  enabled?: boolean;
   showFileOps?: boolean;
   showDownload?: boolean;
 }) => {
   const [sandboxModalOpen, setSandboxModalOpen] = useState(false);
+  const sandboxTarget = useMemo(
+    () => (enabled ? resolveSandboxTarget({ appId, chatTarget }) : undefined),
+    [appId, chatTarget?.appId, chatTarget?.skillId, enabled]
+  );
 
   const onOpenSandboxModal = useCallback(() => {
+    if (!sandboxTarget) return;
     setSandboxModalOpen(true);
-  }, []);
+  }, [sandboxTarget]);
 
   const onCloseSandboxModal = useCallback(() => {
     setSandboxModalOpen(false);
@@ -109,10 +120,10 @@ export const useSandboxEditor = ({
   }, [afterClose]);
 
   const SandboxEditorModalDom = useCallback(() => {
-    return sandboxModalOpen ? (
+    return sandboxModalOpen && sandboxTarget ? (
       <SandboxEditorModal
         onClose={onCloseSandboxModal}
-        appId={appId}
+        chatTarget={sandboxTarget}
         chatId={chatId}
         outLinkAuthData={outLinkAuthData}
         showFileOps={showFileOps}
@@ -122,7 +133,7 @@ export const useSandboxEditor = ({
   }, [
     sandboxModalOpen,
     onCloseSandboxModal,
-    appId,
+    sandboxTarget,
     chatId,
     outLinkAuthData,
     showFileOps,
@@ -147,19 +158,26 @@ export const useSandboxEditor = ({
  */
 export const useSandboxStatus = ({
   appId,
+  chatTarget,
   chatId,
   outLinkAuthData
 }: {
-  appId: string;
+  appId?: string;
+  chatTarget?: ChatTargetInputType;
   chatId: string;
   outLinkAuthData?: OutLinkChatAuthProps;
 }) => {
   const { t } = useTranslation();
   const [apiSandboxStatus, setApiSandboxStatus] = useState({
-    appId: '',
+    targetId: '',
     chatId: '',
     exists: false
   });
+  const sandboxTarget = useMemo(
+    () => resolveSandboxTarget({ appId, chatTarget }),
+    [appId, chatTarget?.appId, chatTarget?.skillId]
+  );
+  const sandboxTargetId = getSandboxTargetId(sandboxTarget);
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => {
     return v.chatRecords;
@@ -175,11 +193,12 @@ export const useSandboxStatus = ({
   }, [chatRecords, isChatRecordsLoaded]);
 
   useEffect(() => {
-    if (!appId || !chatId) return;
+    if (!sandboxTargetId || !chatId) return;
     let cancelled = false;
-    checkSandboxExist({ appId, chatId, outLinkAuthData })
+    checkSandboxExist({ ...sandboxTarget, chatId, outLinkAuthData })
       .then((result) => {
-        if (!cancelled) setApiSandboxStatus({ appId, chatId, exists: result.exists });
+        if (!cancelled)
+          setApiSandboxStatus({ targetId: sandboxTargetId, chatId, exists: result.exists });
       })
       .catch((error) => {
         console.error('Failed to check sandbox status:', error);
@@ -189,7 +208,8 @@ export const useSandboxStatus = ({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    appId,
+    sandboxTarget,
+    sandboxTargetId,
     chatId,
     outLinkAuthData?.shareId,
     outLinkAuthData?.outLinkUid,
@@ -198,16 +218,16 @@ export const useSandboxStatus = ({
   ]);
 
   const apiSandboxExists =
-    apiSandboxStatus.appId === appId &&
+    apiSandboxStatus.targetId === sandboxTargetId &&
     apiSandboxStatus.chatId === chatId &&
     apiSandboxStatus.exists;
   const sandboxExists = apiSandboxExists || hasSandboxInHistory;
 
   const setSandboxExists = useCallback(
     (exists: boolean) => {
-      setApiSandboxStatus({ appId, chatId, exists });
+      setApiSandboxStatus({ targetId: sandboxTargetId, chatId, exists });
     },
-    [appId, chatId]
+    [sandboxTargetId, chatId]
   );
 
   const SandboxEntryIcon = useCallback(
@@ -300,14 +320,14 @@ const getMimeTypeByFileName = (fileName: string): string => {
  * 职责：整合 Sandbox 的文件树与 Tab 状态，收拢乐观更新、异步请求及细粒度失败回滚。
  */
 export const useSandboxFileStore = ({
-  appId,
+  sandboxTarget,
   chatId,
   outLinkAuthData,
   isPreparing = false,
   canWrite = true,
   onError
 }: {
-  appId: string;
+  sandboxTarget: ChatTargetInputType;
   chatId: string;
   outLinkAuthData?: OutLinkChatAuthProps;
   isPreparing?: boolean;
@@ -316,6 +336,7 @@ export const useSandboxFileStore = ({
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const sandboxTargetId = getSandboxTargetId(sandboxTarget);
   const maxFileBytes =
     useSystemStore((state) => state.feConfigs.limit?.agentSandboxMaxFileBytes) ??
     DEFAULT_MAX_FILE_SIZE_MB * 1024 * 1024;
@@ -588,7 +609,7 @@ export const useSandboxFileStore = ({
 
   // 维持长连接连接
   useEffect(() => {
-    if (!appId || !chatId) return;
+    if (!sandboxTargetId || !chatId) return;
 
     reconnectAttemptsRef.current = 0;
     stoppedConnectErrorRef.current = null;
@@ -642,7 +663,7 @@ export const useSandboxFileStore = ({
       }
       try {
         const res = await getSandboxTicket({
-          appId,
+          ...sandboxTarget,
           chatId,
           outLinkAuthData,
           channel: 'fs',
@@ -756,7 +777,8 @@ export const useSandboxFileStore = ({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    appId,
+    sandboxTarget,
+    sandboxTargetId,
     chatId,
     outLinkAuthData?.shareId,
     outLinkAuthData?.outLinkUid,
@@ -960,7 +982,7 @@ export const useSandboxFileStore = ({
     if (!activeFile) return;
     setDownloadingFile(true);
     try {
-      await downloadSandbox({ appId, chatId, outLinkAuthData, path: activeFile.path });
+      await downloadSandbox({ ...sandboxTarget, chatId, outLinkAuthData, path: activeFile.path });
     } finally {
       setDownloadingFile(false);
     }

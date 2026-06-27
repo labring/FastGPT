@@ -210,7 +210,8 @@ if (
   const { input, response, durationSeconds } = await callSandboxTool({
     toolName: call.function.name,
     rawArgs: call.function.arguments ?? '',
-    appId: String(workflowProps.runningAppInfo.id),
+    sourceType: workflowProps.runningAppInfo.sourceType,
+    sourceId: workflowProps.runningAppInfo.sourceId,
     userId: String(workflowProps.uid),
     chatId: workflowProps.chatId
   });
@@ -239,7 +240,8 @@ if (toolId === SANDBOX_GET_FILE_URL_TOOL_NAME) {
 
   const result = await dispatchSandboxGetFileUrl({
     filePath: toolParams.data.paths[0],  // Agent 模式单文件路径
-    appId: runningAppInfo.id,
+    sourceType: runningAppInfo.sourceType,
+    sourceId: runningAppInfo.sourceId,
     userId: props.uid,
     chatId,
     lang: props.lang

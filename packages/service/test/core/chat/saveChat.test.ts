@@ -16,7 +16,8 @@ import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemRespon
 import {
   ChatFileTypeEnum,
   ChatGenerateStatusEnum,
-  ChatRoleEnum
+  ChatRoleEnum,
+  ChatSourceTypeEnum
 } from '@fastgpt/global/core/chat/constants';
 import {
   FlowNodeTypeEnum,
@@ -51,7 +52,8 @@ const createMockProps = (
   ids?: { appId?: string; teamId?: string; tmbId?: string }
 ): Props => ({
   chatId: 'test-chat-id',
-  appId: ids?.appId || '67e0d5535c02d1d5cdede71f',
+  sourceType: ChatSourceTypeEnum.app,
+  sourceId: ids?.appId || '67e0d5535c02d1d5cdede71f',
   teamId: ids?.teamId || '654a4107c32f3bf5f998452f',
   tmbId: ids?.tmbId || '65ab7007462ada7dbb899948',
   nodes: [
@@ -625,7 +627,8 @@ describe('pushChatRecords', () => {
       });
 
       await failChatRound({
-        appId: testAppId,
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: testAppId,
         chatId: props.chatId,
         responseChatItemId,
         error: new Error('stream failed')
@@ -1544,7 +1547,8 @@ describe('pushChatRecords', () => {
       expect(responses.map((item) => item.data.id)).toEqual(['existing-root', 'new-root']);
 
       const records = await getChatItems({
-        appId: testAppId,
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: testAppId,
         chatId: props.chatId,
         offset: 0,
         limit: 10,

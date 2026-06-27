@@ -38,6 +38,17 @@ export enum ChatSourceEnum {
   mcp = 'mcp'
 }
 
+/**
+ * 会话所属资源类型。
+ *
+ * `ChatSourceEnum` 表示对话入口来源，例如 test/api/online。
+ * `ChatSourceTypeEnum` 表示会话归属资源类型，用于在同一套 chat 表中隔离 App 和 Skill Edit。
+ */
+export enum ChatSourceTypeEnum {
+  app = 'app',
+  skillEdit = 'skillEdit'
+}
+
 export const ChatSourceMap = {
   [ChatSourceEnum.test]: {
     name: i18nT('common:core.chat.logs.test'),

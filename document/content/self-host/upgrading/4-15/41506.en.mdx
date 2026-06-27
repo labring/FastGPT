@@ -19,7 +19,63 @@ The unique index on `llm_request_records` has also changed from the single `requ
 
 Risk: trace records written before this upgrade do not have `teamId`, so they can no longer be queried by `requestId` after the upgrade. The UI will treat them as expired. These records already have a TTL and are intended only for temporary debugging. Export the relevant logs or keep the original request details before upgrading if you need to investigate historical calls.
 
+### 3. Clean up legacy Skill Debug chat data
+
+This version migrates Skill Edit chats to the standard Chat storage model. Historical Skill Debug data wrote `skillId` into the physical `appId` field in the three Chat collections and did not include `sourceType`. Historical sandbox instance records also need `sourceType/sourceId` backfilled. After the upgrade, new Skill Edit chats will not read those legacy records, but we recommend running the root-only initialization API once to migrate sandbox instance ownership fields and clean up legacy Skill Debug chats. This endpoint is only for this upgrade migration and is not exposed as an OpenAPI endpoint.
+
+Before running it, make sure the new Chat source indexes have been created. The initialization API defaults to dry-run mode and only reports matched records:
+
+```bash
+curl -X POST 'https://your-domain/api/admin/4150/init4150-beta6' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: YOUR_ROOT_KEY' \
+  -d '{"dryRun":true}'
+```
+
+After confirming the dry-run result, set `dryRun` to `false` to run the migration and cleanup:
+
+```bash
+curl -X POST 'https://your-domain/api/admin/4150/init4150-beta6' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: YOUR_ROOT_KEY' \
+  -d '{"dryRun":false}'
+```
+
+Parameters:
+
+| Parameter | Type    | Default | Description                                                    |
+| --------- | ------- | ------- | -------------------------------------------------------------- |
+| `dryRun`  | boolean | `true`  | Whether to only report matched data without executing changes. |
+
+This endpoint always scans the full `skills` collection and does not support passing a partial Skill list. Sandbox instance migration must identify all Skills first, then treat the remaining records with `appId` as App sandboxes. Scanning only part of the Skill list could incorrectly mark unscanned Skill sandboxes as App sandboxes.
+
+Migration logic:
+
+1. Read all `_id` values from the `skills` collection.
+2. For `agent_sandbox_instances` missing `sourceType` or `sourceId`, records matching `appId=skillId` or `metadata.skillId=skillId` are updated with `sourceType=skillEdit` and `sourceId=skillId`, and the legacy `appId` / `metadata.skillId` fields are unset.
+3. Remaining sandbox instances that are still missing `sourceType` or `sourceId`, do not match a Skill, and have a non-empty `appId` are updated with `sourceType=app` and `sourceId=appId`, and the legacy `appId` / `metadata.skillId` fields are unset.
+4. Sandbox instances that already have `sourceType/sourceId` but still retain legacy `appId` or `metadata.skillId` only have the legacy fields unset. Their existing standard ownership is not overwritten.
+5. Orphan sandboxes with no `appId`, `appId=null`, or `appId=""`, and that cannot be associated with a Skill through `metadata.skillId`, are deleted in non-dry-run mode. This removes the remote sandbox, OpenSandbox volume, S3 archive, and Mongo record. Dry-run only reports them through `orphanMatchedCount`.
+6. Legacy Skill Debug chat cleanup first removes Skill IDs that also exist in the `apps` collection, then deletes legacy `chats`, `chatitems`, `chat_item_responses`, and legacy-format Chat S3 prefixes for the remaining Skill IDs.
+
+This endpoint does not backfill `sourceType` for existing App Chat records.
+
+### 4. Configure package registry mirrors for Agent Sandbox
+
+Agent Sandbox now supports package registry mirror configuration. When configured, FastGPT writes mirror configuration files for npm, yarn, bun, pip, and uv under the sandbox HOME directory during sandbox initialization. This improves dependency installation stability in private networks or cross-region network environments.
+
+```dotenv
+# Registry used by npm/yarn/bun inside Agent Sandbox
+AGENT_SANDBOX_NPM_REGISTRY=
+# Python package index used by pip/uv inside Agent Sandbox
+AGENT_SANDBOX_PYPI_INDEX_URL=
+```
+
+The configuration is cached by content hash in the sandbox runtime state, so the same sandbox only rewrites these files when the configuration changes.
+
 ## ⚙️ Improvements
 
 1. Chat title generation now uses the system default model configuration, making it easier to switch at runtime and manage consistently.
 2. LLM request traces are now queried with team isolation, and the unique index is now `{ teamId, requestId }` to prevent request IDs from exposing sensitive traces across teams.
+3. Skill Edit chats now use the standard Chat storage and cleanup flow, and legacy Skill Debug chats can be cleaned through the initialization API.
+4. Agent Sandbox now supports npm and PyPI mirror configuration. During initialization, it writes common package manager configuration files to reduce dependency installation failures inside the sandbox.

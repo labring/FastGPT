@@ -20,7 +20,7 @@ export const ChatInputGuidePath: OpenAPIPath = {
   '/core/chat/inputGuide/list': {
     post: {
       summary: '获取对话输入引导列表',
-      description: '获取指定应用的对话输入引导列表，支持关键词模糊搜索和分页',
+      description: '获取对话输入引导列表，支持关键词模糊搜索和分页',
       tags: [DevApiTagsMap.chatInputGuide],
       requestBody: {
         content: {
@@ -44,7 +44,7 @@ export const ChatInputGuidePath: OpenAPIPath = {
   '/core/chat/inputGuide/countTotal': {
     get: {
       summary: '统计对话输入引导总数',
-      description: '获取指定应用的对话输入引导总数',
+      description: '获取对话输入引导总数',
       tags: [DevApiTagsMap.chatInputGuide],
       parameters: [
         {
@@ -116,8 +116,8 @@ export const ChatInputGuidePath: OpenAPIPath = {
   },
   '/core/chat/inputGuide/deleteAll': {
     delete: {
-      summary: '删除应用所有对话输入引导',
-      description: '删除指定应用的所有对话输入引导',
+      summary: '删除所有对话输入引导',
+      description: '删除所有对话输入引导',
       tags: [DevApiTagsMap.chatInputGuide],
       requestBody: {
         content: {

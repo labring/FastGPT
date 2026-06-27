@@ -9,6 +9,8 @@ import {
 import { getLogger, LogCategories } from '../../common/logger';
 import { serviceEnv } from '../../env';
 import { getChatItemResponseData } from './nodeResponseStorage';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { buildChatSourceQuery } from './source';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.RECORD);
 
@@ -91,7 +93,10 @@ const pushChatLogInternal = async ({
       return;
     }
 
-    const chat = await MongoChat.findOne({ chatId }).lean();
+    const chat = await MongoChat.findOne({
+      ...buildChatSourceQuery({ sourceType: ChatSourceTypeEnum.app, sourceId: appId }),
+      chatId
+    }).lean();
 
     if (!chat) {
       return;
@@ -157,7 +162,8 @@ ${JSON.stringify(item.interactive, null, 2)}
     }
 
     const responseData = await getChatItemResponseData({
-      appId,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
       chatId,
       chatItemDataId: chatItemAi.dataId
     });

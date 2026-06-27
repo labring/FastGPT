@@ -37,4 +37,18 @@ describe('MongoSandboxInstance schema indexes', () => {
       }
     });
   });
+
+  it('declares source-aware lookup index for migrated sandbox instances', () => {
+    const indexes = MongoSandboxInstance.schema.indexes();
+    const targetIndex = indexes.find(
+      ([keys]) => keys.sourceType === 1 && keys.sourceId === 1 && keys.chatId === 1
+    );
+
+    expect(targetIndex).toBeDefined();
+  });
+
+  it('requires sourceType and sourceId for new sandbox instance records', () => {
+    expect(MongoSandboxInstance.schema.path('sourceType').isRequired).toBe(true);
+    expect(MongoSandboxInstance.schema.path('sourceId').isRequired).toBe(true);
+  });
 });

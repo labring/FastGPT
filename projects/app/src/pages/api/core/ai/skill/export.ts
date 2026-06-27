@@ -9,10 +9,12 @@ import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/aud
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
-import { findSandboxInstanceByAppChatType } from '@fastgpt/service/core/ai/sandbox/instance/repository';
+import { findSandboxInstanceBySandboxId } from '@fastgpt/service/core/ai/sandbox/instance/repository';
 import { getSandboxProviderConfig } from '@fastgpt/service/core/ai/sandbox/provider/config';
 import { getSandboxRuntimeProfile } from '@fastgpt/service/core/ai/sandbox/runtime/profile';
 import { SandboxStatusEnum, SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/runtime/id';
 import {
   EDIT_DEBUG_SANDBOX_CHAT_ID,
   packageSkillInSandbox
@@ -48,10 +50,15 @@ async function handler(req: ApiRequestProps, res: ApiResponseType<any>) {
   logger.debug('Exporting skill edit workspace', { skillId, skillName: skill.name });
 
   const providerConfig = getSandboxProviderConfig();
-  const sandboxInfo = await findSandboxInstanceByAppChatType({
+  const sandboxId = getRunningSandboxId({
+    sourceType: ChatSourceTypeEnum.skillEdit,
+    sourceId: skillId,
+    userId: String(tmbId),
+    chatId: EDIT_DEBUG_SANDBOX_CHAT_ID
+  });
+  const sandboxInfo = await findSandboxInstanceBySandboxId({
     provider: providerConfig.provider,
-    appId: skillId,
-    chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
+    sandboxId,
     status: SandboxStatusEnum.running,
     type: SandboxTypeEnum.editDebug
   });

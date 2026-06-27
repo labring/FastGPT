@@ -1,5 +1,6 @@
 import type { WorkflowNodeResponseWriter } from '../../../chat/nodeResponseStorage';
 import { createWorkflowNodeResponseWriter } from '../../../chat/nodeResponseStorage';
+import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 export type WorkflowNodeResponseWriteConfig = {
   /** 是否把本轮 nodeResponse rows 持久化到 chat_item_responses。 */
@@ -16,13 +17,15 @@ export type WorkflowNodeResponseWriteConfig = {
  */
 export const createWorkflowEntryNodeResponseWriter = async ({
   teamId,
-  appId,
+  sourceType,
+  sourceId,
   chatId,
   chatItemDataId,
   nodeResponseWriteConfig
 }: {
   teamId: string;
-  appId: string;
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
   chatId: string;
   chatItemDataId: string;
   nodeResponseWriteConfig: WorkflowNodeResponseWriteConfig;
@@ -32,7 +35,8 @@ export const createWorkflowEntryNodeResponseWriter = async ({
   return {
     nodeResponseWriter: await createWorkflowNodeResponseWriter({
       teamId,
-      appId,
+      sourceType,
+      sourceId,
       chatId,
       chatItemDataId,
       persistToDb: nodeResponseWriteConfig.persistToDb,

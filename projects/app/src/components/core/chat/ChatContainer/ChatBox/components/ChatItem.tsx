@@ -21,6 +21,7 @@ import type { ChatBoxInputType } from '../type';
 import { hasAiAnswerContent } from './AIChatBubble/utils';
 import ChatErrorCard from './ChatErrorCard';
 import { shouldShowChatItemInlineError } from '../utils/error';
+import { useChatApiTarget } from '@/web/core/chat/utils';
 
 const colorMap = {
   [ChatStatusEnum.loading]: {
@@ -43,12 +44,21 @@ type Props = {
     name: string;
   };
   questionGuides?: string[];
+  enableSandbox?: boolean;
   onEditSubmit?: (input: ChatBoxInputType) => void | Promise<void>;
   children?: React.ReactNode;
 } & ChatControllerProps;
 
 const ChatItem = (props: Props) => {
-  const { statusBoxData, children, isLastChild, questionGuides = [], chat, onEditSubmit } = props;
+  const {
+    statusBoxData,
+    children,
+    isLastChild,
+    questionGuides = [],
+    enableSandbox = true,
+    chat,
+    onEditSubmit
+  } = props;
 
   const { t } = useTranslation();
 
@@ -72,6 +82,8 @@ const ChatItem = (props: Props) => {
   const { isPc } = useSystem();
 
   const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
+  const sourceTarget = useContextSelector(WorkflowRuntimeContext, (v) => v.sourceTarget);
+  const chatTarget = useChatApiTarget(sourceTarget);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
   const isShowFullText = useContextSelector(ChatItemContext, (v) => v.isShowFullText);
@@ -200,7 +212,7 @@ const ChatItem = (props: Props) => {
         metadata:
           item?.collectionId && isShowFullText
             ? {
-                appId: appId,
+                ...chatTarget,
                 chatId: chatId,
                 chatItemDataId: chat.dataId,
                 collectionId: item.collectionId,
@@ -212,7 +224,7 @@ const ChatItem = (props: Props) => {
                 quoteId: item.quoteId
               }
             : {
-                appId: appId,
+                ...chatTarget,
                 chatId: chatId,
                 chatItemDataId: chat.dataId,
                 collectionIdList,
@@ -316,6 +328,7 @@ const ChatItem = (props: Props) => {
               isChatting={isChatting}
               loadingText={showRunningStatus ? statusBoxData?.name : undefined}
               questionGuides={questionGuides}
+              enableSandbox={enableSandbox}
               allowedCitationIds={allowedCitationIds}
               onOpenCiteModal={onOpenCiteModal}
               chatControllerProps={{

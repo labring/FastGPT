@@ -5,7 +5,8 @@ import {
   updateChatGenerateStatus
 } from '@fastgpt/service/core/chat/chatGenerateStatus';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 
 vi.mock('@fastgpt/service/core/chat/chatSchema', () => ({
   MongoChat: {
@@ -16,7 +17,8 @@ vi.mock('@fastgpt/service/core/chat/chatSchema', () => ({
 }));
 
 const baseParams = {
-  appId: 'app1',
+  sourceType: ChatSourceTypeEnum.app,
+  sourceId: 'app1',
   chatId: 'chat1',
   teamId: 'team1',
   tmbId: 'tmb1',
@@ -42,12 +44,21 @@ describe('chatGenerateStatus', () => {
 
     expect(MongoChat.updateOne).toHaveBeenCalledWith(
       {
-        appId: baseParams.appId,
+        ...buildChatSourceQuery({
+          sourceType: baseParams.sourceType,
+          sourceId: baseParams.sourceId
+        }),
         chatId: baseParams.chatId
       },
       {
         $set: expect.objectContaining({
-          ...baseParams,
+          sourceType: baseParams.sourceType,
+          appId: baseParams.sourceId,
+          chatId: baseParams.chatId,
+          teamId: baseParams.teamId,
+          tmbId: baseParams.tmbId,
+          source: baseParams.source,
+          sourceName: baseParams.sourceName,
           hasBeenRead: false,
           chatGenerateStatus: ChatGenerateStatusEnum.generating,
           updateTime: expect.any(Date)
@@ -67,13 +78,22 @@ describe('chatGenerateStatus', () => {
 
     expect(MongoChat.findOneAndUpdate).toHaveBeenCalledWith(
       {
-        appId: baseParams.appId,
+        ...buildChatSourceQuery({
+          sourceType: baseParams.sourceType,
+          sourceId: baseParams.sourceId
+        }),
         chatId: baseParams.chatId,
         chatGenerateStatus: { $ne: ChatGenerateStatusEnum.generating }
       },
       {
         $set: expect.objectContaining({
-          ...baseParams,
+          sourceType: baseParams.sourceType,
+          appId: baseParams.sourceId,
+          chatId: baseParams.chatId,
+          teamId: baseParams.teamId,
+          tmbId: baseParams.tmbId,
+          source: baseParams.source,
+          sourceName: baseParams.sourceName,
           hasBeenRead: false,
           chatGenerateStatus: ChatGenerateStatusEnum.generating,
           updateTime: expect.any(Date)
@@ -112,7 +132,10 @@ describe('chatGenerateStatus', () => {
 
     expect(MongoChat.findOneAndUpdate).toHaveBeenCalledWith(
       {
-        appId: baseParams.appId,
+        ...buildChatSourceQuery({
+          sourceType: baseParams.sourceType,
+          sourceId: baseParams.sourceId
+        }),
         chatId: baseParams.chatId,
         chatGenerateStatus: { $ne: ChatGenerateStatusEnum.generating }
       },
@@ -145,14 +168,18 @@ describe('chatGenerateStatus', () => {
     vi.mocked(MongoChat.updateOne).mockResolvedValue({} as any);
 
     await updateChatGenerateStatus({
-      appId: baseParams.appId,
+      sourceType: baseParams.sourceType,
+      sourceId: baseParams.sourceId,
       chatId: baseParams.chatId,
       status: ChatGenerateStatusEnum.done
     });
 
     expect(MongoChat.updateOne).toHaveBeenCalledWith(
       {
-        appId: baseParams.appId,
+        ...buildChatSourceQuery({
+          sourceType: baseParams.sourceType,
+          sourceId: baseParams.sourceId
+        }),
         chatId: baseParams.chatId
       },
       {

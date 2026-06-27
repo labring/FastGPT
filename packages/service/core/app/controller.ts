@@ -11,8 +11,6 @@ import { encryptSecretValue, storeSecretValue } from '../../common/secret/utils'
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import { MongoEvaluation } from './evaluation/evalSchema';
 import { removeEvaluationJob } from './evaluation/mq';
-import { MongoChatItem } from '../chat/chatItemSchema';
-import { MongoChat } from '../chat/chatSchema';
 import { MongoOutLink } from '../../support/outLink/schema';
 import { MongoOpenApi } from '../../support/openapi/schema';
 import { MongoAppVersion } from './version/schema';
@@ -26,15 +24,13 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import { removeImageByPath } from '../../common/file/image/controller';
 import { MongoAppLogKeys } from './logs/logkeysSchema';
-import { MongoChatItemResponse } from '../chat/chatItemResponseSchema';
-import { getS3ChatSource } from '../../common/s3/sources/chat';
 import { MongoAppChatLog } from './logs/chatLogsSchema';
 import { MongoAppRegistration } from '../../support/appRegistration/schema';
 import { MongoMcpKey } from '../../support/mcp/schema';
 import { MongoAppRecord } from './record/schema';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { getLogger, LogCategories } from '../../common/logger';
-import { deleteSandboxesByAppId, deleteSandboxesByChatIds } from '../ai/sandbox/service/resource';
+import { deleteAppSandboxes } from '../ai/sandbox/service/resource';
 import { MongoSystemTool } from '../plugin/tool/systemToolSchema';
 import {
   SelectedAgentSkillItemTypeSchema,
@@ -43,6 +39,8 @@ import {
 import z from 'zod';
 import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
 import { authSkillByTmbId } from '../../support/permission/skill/auth';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { deleteChatResourcesBySource } from '../chat/delete';
 
 const logger = getLogger(LogCategories.MODULE.APP.FOLDER);
 
@@ -246,23 +244,13 @@ export const deleteAppDataProcessor = async ({
   // 1. 删除应用头像
   await removeImageByPath(app.avatar);
 
-  // 2. 删除聊天记录和S3文件
-  // 删除沙盒实例
-  {
-    // 对话生成的
-    await deleteSandboxesByAppId(appId);
-    // 编辑 skill 生成的
-    const appChatIds = (await MongoChat.find({ appId }, { _id: 1 }).lean()).map((c) =>
-      String(c._id)
-    );
-    await deleteSandboxesByChatIds({ appId, chatIds: appChatIds });
-  }
-
-  await getS3ChatSource().deleteChatFilesByPrefix({ appId });
+  // 2. 删除聊天记录、S3 文件和 sandbox 资源。App logs 属于应用统计域，单独清理。
+  await deleteAppSandboxes(appId);
+  await deleteChatResourcesBySource({
+    sourceType: ChatSourceTypeEnum.app,
+    sourceId: appId
+  });
   await MongoAppChatLog.deleteMany({ teamId, appId });
-  await MongoChatItemResponse.deleteMany({ appId });
-  await MongoChatItem.deleteMany({ appId });
-  await MongoChat.deleteMany({ appId });
 
   // 3. 删除应用相关数据（使用事务）
   {

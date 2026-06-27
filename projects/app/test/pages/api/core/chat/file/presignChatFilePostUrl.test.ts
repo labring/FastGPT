@@ -1,9 +1,10 @@
 import { S3ErrEnum } from '@fastgpt/global/common/error/code/s3';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-  authChatCrud: vi.fn(),
+  authChatTargetCrud: vi.fn(),
   getTeamPlanStatus: vi.fn(),
   authFrequencyLimit: vi.fn(),
   createUploadChatFileURL: vi.fn(),
@@ -17,7 +18,7 @@ vi.mock('@/service/middleware/entry', () => ({
 }));
 
 vi.mock('@/service/support/permission/auth/chat', () => ({
-  authChatCrud: mocks.authChatCrud
+  authChatTargetCrud: mocks.authChatTargetCrud
 }));
 
 vi.mock('@fastgpt/service/support/wallet/sub/utils', () => ({
@@ -72,7 +73,7 @@ describe('presignChatFilePostUrl', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mocks.authChatCrud.mockResolvedValue({
+    mocks.authChatTargetCrud.mockResolvedValue({
       teamId: 'team-id',
       uid: 'user-id'
     });
@@ -111,7 +112,8 @@ describe('presignChatFilePostUrl', () => {
     expect(mocks.authApp).not.toHaveBeenCalled();
     expect(mocks.createUploadChatFileURL).toHaveBeenCalledWith(
       expect.objectContaining({
-        appId,
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: appId,
         chatId,
         filename,
         uId: 'user-id',
@@ -123,6 +125,47 @@ describe('presignChatFilePostUrl', () => {
           '.bmp',
           '.webp'
         ])
+      })
+    );
+  });
+
+  it('uses skillId as source-aware upload target', async () => {
+    const skillId = '507f1f77bcf86cd799439012';
+    mocks.authChatTargetCrud.mockResolvedValueOnce({
+      teamId: 'team-id',
+      uid: 'skill-user-id'
+    });
+
+    await expect(
+      callHandler({
+        filename,
+        skillId,
+        chatId,
+        fileSelectConfig: {
+          canSelectFile: true,
+          customFileExtensionList: ['.txt']
+        }
+      })
+    ).resolves.toMatchObject({
+      url: 'https://example.com/upload-token'
+    });
+
+    expect(mocks.authChatTargetCrud).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        sourceId: skillId,
+        chatId,
+        authToken: true,
+        authApiKey: true
+      })
+    );
+    expect(mocks.createUploadChatFileURL).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        sourceId: skillId,
+        chatId,
+        filename,
+        uId: 'skill-user-id'
       })
     );
   });

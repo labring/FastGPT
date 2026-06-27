@@ -4,10 +4,15 @@ import { MongoChat } from './chatSchema';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoChatItemResponse } from './chatItemResponseSchema';
 import type { ClientSession } from '../../common/mongo';
-import { Types } from '../../common/mongo';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getLogger, LogCategories } from '../../common/logger';
 import { composeChatItemResponseData } from './nodeResponseStorage';
+import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  buildChatSourceAggregateMatch,
+  buildChatSourceQuery,
+  type ChatSourceParams
+} from './source';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.HISTORY);
 
@@ -35,7 +40,8 @@ const defaultNodeResponsePreviewProjection = {
 
 export async function getChatItems({
   includeDeleted = false,
-  appId,
+  sourceType,
+  sourceId,
   chatId,
   field,
   limit,
@@ -48,7 +54,8 @@ export async function getChatItems({
   nextId
 }: {
   includeDeleted?: boolean;
-  appId: string;
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
   chatId?: string;
   field: string;
   limit: number;
@@ -69,10 +76,13 @@ export async function getChatItems({
     return { histories: [], total: 0, hasMorePrev: false, hasMoreNext: false };
   }
 
+  const chatSource = { sourceType, sourceId };
   const shouldReadNodeResponse = nodeResponseMode || 'none';
   field = `dataId ${field}`;
 
-  const baseCondition = includeDeleted ? { appId, chatId } : { appId, chatId, deleteTime: null };
+  const baseCondition = includeDeleted
+    ? { ...buildChatSourceQuery(chatSource), chatId }
+    : { ...buildChatSourceQuery(chatSource), chatId, deleteTime: null };
 
   const { histories, total, hasMorePrev, hasMoreNext } = await (async () => {
     // Mode 1: offset pagination (original logic)
@@ -198,7 +208,7 @@ export async function getChatItems({
       const isPreview = shouldReadNodeResponse === 'preview';
       const rows = await MongoChatItemResponse.find(
         {
-          appId,
+          ...buildChatSourceQuery(chatSource),
           chatId,
           chatItemDataId: { $in: chatItemDataIds }
         },
@@ -245,26 +255,32 @@ export async function getChatItems({
  * Update feedback count statistics for a chat in Chat table
  * This method aggregates feedback data from chatItems and updates the Chat table
  *
- * @param appId - Application ID
+ * @param sourceType - Chat source type
+ * @param sourceId - Chat source ID
  * @param chatId - Chat ID
  * @param session - Optional MongoDB session for transaction support
  */
 export async function updateChatFeedbackCount({
-  appId,
+  sourceType,
+  sourceId,
   chatId,
   session
 }: {
-  appId: string;
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
   chatId: string;
   session?: ClientSession;
 }): Promise<void> {
+  const chatSource = { sourceType, sourceId };
+  const sourceQuery = buildChatSourceQuery(chatSource);
+  const sourceAggregateMatch = buildChatSourceAggregateMatch(chatSource);
   try {
     // Aggregate feedback statistics from chatItems
     const stats = await MongoChatItem.aggregate(
       [
         {
           $match: {
-            appId: new Types.ObjectId(appId),
+            ...sourceAggregateMatch,
             chatId,
             obj: ChatRoleEnum.AI
           }
@@ -371,7 +387,7 @@ export async function updateChatFeedbackCount({
     // Update Chat table with aggregated statistics and boolean flags
     await MongoChat.updateOne(
       {
-        appId,
+        ...sourceQuery,
         chatId
       },
       updateQuery,
@@ -381,7 +397,8 @@ export async function updateChatFeedbackCount({
     );
 
     logger.debug('Chat feedback count updated', {
-      appId,
+      sourceType: chatSource.sourceType,
+      sourceId: chatSource.sourceId,
       chatId,
       stats: feedbackStats,
       hasGoodFeedback,
@@ -390,7 +407,12 @@ export async function updateChatFeedbackCount({
       hasUnreadBadFeedback
     });
   } catch (error) {
-    logger.error('Failed to update chat feedback count', { appId, chatId, error });
+    logger.error('Failed to update chat feedback count', {
+      sourceType: chatSource.sourceType,
+      sourceId: chatSource.sourceId,
+      chatId,
+      error
+    });
     throw error;
   }
 }

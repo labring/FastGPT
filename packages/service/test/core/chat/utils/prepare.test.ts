@@ -14,7 +14,8 @@ import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import {
   ChatFileTypeEnum,
   ChatGenerateStatusEnum,
-  ChatRoleEnum
+  ChatRoleEnum,
+  ChatSourceTypeEnum
 } from '@fastgpt/global/core/chat/constants';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
@@ -28,7 +29,8 @@ const createPrepareParams = (
   ids?: { appId?: string; teamId?: string; tmbId?: string }
 ): PrepareChatRoundParams => ({
   chatId: 'test-chat-id',
-  appId: ids?.appId || '67e0d5535c02d1d5cdede71f',
+  sourceType: ChatSourceTypeEnum.app,
+  sourceId: ids?.appId || '67e0d5535c02d1d5cdede71f',
   teamId: ids?.teamId || '654a4107c32f3bf5f998452f',
   tmbId: ids?.tmbId || '65ab7007462ada7dbb899948',
   source: 'online' as any,
@@ -101,7 +103,8 @@ describe('prepare chat round', () => {
 
     const result = await preChatRound({
       chatId: params.chatId,
-      appId: testAppId,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: testAppId,
       teamId: testTeamId,
       tmbId: testTmbId,
       source: params.source,
@@ -216,7 +219,8 @@ describe('prepare chat round', () => {
     await expect(
       preChatRound({
         chatId: params.chatId,
-        appId: testAppId,
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: testAppId,
         teamId: testTeamId,
         tmbId: testTmbId,
         source: params.source,
@@ -262,7 +266,8 @@ describe('prepare chat round', () => {
 
     const result = await preChatRound({
       chatId: params.chatId,
-      appId: testAppId,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: testAppId,
       teamId: testTeamId,
       tmbId: testTmbId,
       source: params.source,
@@ -339,7 +344,8 @@ describe('prepare chat round', () => {
 
     const result = await prepareChatRound({
       chatId: params.chatId,
-      appId: testAppId,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: testAppId,
       teamId: testTeamId,
       tmbId: testTmbId,
       source: params.source,
@@ -388,7 +394,8 @@ describe('prepare chat round', () => {
 
     const result = await prepareChatRound({
       chatId: params.chatId,
-      appId: testAppId,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: testAppId,
       teamId: testTeamId,
       tmbId: testTmbId,
       source: params.source,

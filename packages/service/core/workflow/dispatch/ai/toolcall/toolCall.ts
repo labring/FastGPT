@@ -77,10 +77,10 @@ export const runToolCall = async (props: DispatchToolModuleProps): Promise<Respo
     currentInputFiles,
     useAgentSandbox,
     lang: workflowProps.lang,
-    appId: workflowProps.runningAppInfo.id,
+    sourceType: workflowProps.runningAppInfo.sourceType,
+    sourceId: workflowProps.runningAppInfo.sourceId,
     userId: workflowProps.uid,
     chatId: workflowProps.chatId,
-    sandboxId: workflowProps.runningAppInfo.sandboxId,
     sandboxEntrypoint
   });
   // ToolCall 的一次运行会横跨 LLM loop、真实工具执行、SSE 预览和运行详情落库。

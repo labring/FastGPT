@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   createVersion: vi.fn(),
-  findSandboxInstanceByAppChatType: vi.fn(),
+  findSandboxInstanceBySandboxId: vi.fn(),
   mongoAgentSkillsUpdateOne: vi.fn(),
   mongoSessionRun: vi.fn(async (fn: (session: unknown) => Promise<unknown>) =>
     fn({ id: 'mock-session' })
@@ -62,7 +62,8 @@ vi.mock('@fastgpt/service/core/ai/sandbox/provider/config', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/instance/repository', () => ({
-  findSandboxInstanceByAppChatType: mocks.findSandboxInstanceByAppChatType
+  findSandboxInstanceBySandboxId: mocks.findSandboxInstanceBySandboxId,
+  updateSandboxInstanceRecordBySandboxId: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/ai/skill/model/schema', () => ({
@@ -73,12 +74,13 @@ vi.mock('@fastgpt/service/core/ai/skill/model/schema', () => ({
 
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { saveDeploySkillFromSandbox } from '@fastgpt/service/core/ai/skill/edit/deploy';
+import { getEditDebugSandboxId } from '@fastgpt/service/core/ai/skill/edit/config';
 
 describe('saveDeploySkillFromSandbox', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mocks.findSandboxInstanceByAppChatType.mockResolvedValue({
+    mocks.findSandboxInstanceBySandboxId.mockResolvedValue({
       sandboxId: 'sandbox-1',
       status: SandboxStatusEnum.running
     });
@@ -105,6 +107,12 @@ describe('saveDeploySkillFromSandbox', () => {
     ).rejects.toThrow('Skill not found');
 
     expect(mocks.uploadSkillPackage).toHaveBeenCalled();
+    expect(mocks.findSandboxInstanceBySandboxId).toHaveBeenCalledWith({
+      provider: 'test-provider',
+      sandboxId: getEditDebugSandboxId('skill-1'),
+      status: SandboxStatusEnum.running,
+      type: 'edit-debug'
+    });
     expect(mocks.createVersion).not.toHaveBeenCalled();
     expect(mocks.mongoAgentSkillsUpdateOne).not.toHaveBeenCalled();
     expect(mocks.removeSkillPackageTTL).not.toHaveBeenCalled();

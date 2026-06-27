@@ -1,7 +1,7 @@
-import { generateSandboxId } from '@fastgpt/global/core/ai/sandbox/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { EDIT_DEBUG_SANDBOX_CHAT_ID } from '../../../../../../ai/skill/edit/config';
 import type { WorkflowResponseType } from '../../../../type';
+import { getRunningSandboxId } from '../../../../../../ai/sandbox/runtime/id';
+import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 /**
  * 发送 Agent 对话中的 sandbox runtime 准备状态。
@@ -10,20 +10,23 @@ import type { WorkflowResponseType } from '../../../../type';
  */
 export const streamAgentSandboxInitStatus = ({
   workflowStreamResponse,
-  appId,
+  sourceType,
+  sourceId,
   userId,
-  chatId,
-  sandboxId
+  chatId
 }: {
   workflowStreamResponse?: WorkflowResponseType;
-  appId: string;
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
   userId: string;
   chatId: string;
-  sandboxId?: string;
 }) => {
-  const effectiveSandboxId =
-    sandboxId ||
-    generateSandboxId(appId, chatId === EDIT_DEBUG_SANDBOX_CHAT_ID ? '' : userId, chatId);
+  const effectiveSandboxId = getRunningSandboxId({
+    sourceType,
+    sourceId,
+    userId,
+    chatId
+  });
 
   workflowStreamResponse?.({
     event: SseResponseEventEnum.sandboxStatus,

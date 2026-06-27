@@ -23,6 +23,7 @@ import {
 } from '@fastgpt/service/core/chat/nodeResponseStorage';
 import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 const makeInput = ({
   key,
@@ -238,7 +239,8 @@ describe('runWorkflow node response persistence', () => {
     ];
     const nodeResponseWriter = await createWorkflowNodeResponseWriter({
       teamId: '654a4107c32f3bf5f998452f',
-      appId,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
       chatId,
       chatItemDataId: responseChatItemId,
       persistToDb,
@@ -317,7 +319,8 @@ describe('runWorkflow node response persistence', () => {
       expect('flowResponses' in result).toBe(false);
 
       const detail = await getChatItemResponseData({
-        appId,
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: appId,
         chatId,
         chatItemDataId: responseChatItemId
       });
@@ -355,7 +358,8 @@ describe('runWorkflow node response persistence', () => {
       expect('flowResponses' in result).toBe(false);
 
       const detail = await getChatItemResponseData({
-        appId,
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: appId,
         chatId,
         chatItemDataId: responseChatItemId
       });
@@ -428,7 +432,8 @@ describe('runWorkflow node response persistence', () => {
       };
       const nodeResponseWriter = await createWorkflowNodeResponseWriter({
         teamId: runningAppInfo.teamId,
-        appId,
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: appId,
         chatId,
         chatItemDataId: 'workflow-debug-ai-item',
         persistToDb: false,
@@ -553,7 +558,8 @@ describe('runWorkflow node response persistence', () => {
       ];
       const nodeResponseWriter = await createWorkflowNodeResponseWriter({
         teamId: runningAppInfo.teamId,
-        appId,
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: appId,
         chatId,
         chatItemDataId: responseChatItemId
       });
@@ -603,7 +609,8 @@ describe('runWorkflow node response persistence', () => {
       await nodeResponseWriter.close();
 
       const detail = await getChatItemResponseData({
-        appId,
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: appId,
         chatId,
         chatItemDataId: responseChatItemId
       });
@@ -660,7 +667,8 @@ describe('runWorkflow node response persistence', () => {
     ];
     const nodeResponseWriter = await createWorkflowNodeResponseWriter({
       teamId: runningAppInfo.teamId,
-      appId,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
       chatId,
       chatItemDataId: responseChatItemId
     });
@@ -771,7 +779,8 @@ describe('runWorkflow node response persistence', () => {
       ];
       const nodeResponseWriter = await createWorkflowNodeResponseWriter({
         teamId: runningAppInfo.teamId,
-        appId,
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: appId,
         chatId,
         chatItemDataId: responseChatItemId
       });
@@ -845,7 +854,8 @@ describe('runWorkflow node response persistence', () => {
     const responseEvents: unknown[] = [];
     const nodeResponseWriter = await createWorkflowNodeResponseWriter({
       teamId: '654a4107c32f3bf5f998452f',
-      appId: '67e0d5535c02d1d5cdede71f',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: '67e0d5535c02d1d5cdede71f',
       chatId: 'workflow-persistence-chat',
       chatItemDataId: 'workflow-persistence-ai-item'
     });
@@ -950,7 +960,8 @@ describe('runWorkflow node response persistence', () => {
       });
 
     const detail = await getChatItemResponseData({
-      appId: '67e0d5535c02d1d5cdede71f',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: '67e0d5535c02d1d5cdede71f',
       chatId: 'workflow-persistence-chat',
       chatItemDataId: 'workflow-persistence-ai-item'
     });

@@ -76,6 +76,7 @@ import {
   createWorkflowEntryNodeResponseWriter,
   type WorkflowNodeResponseWriteConfig
 } from './utils/entry';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
   addWorkflowStepEvent,
   getWorkflowStepStatus,
@@ -84,6 +85,7 @@ import {
 } from './utils/trace';
 import { getWorkflowNodeRunParams } from './utils/runtime';
 import type { AgentSandboxPrepareAction } from './ai/agent/sub/sandbox';
+import { getWorkflowSource } from './utils/source';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.DISPATCH);
 
@@ -141,6 +143,7 @@ export async function dispatchWorkFlow({
     apiVersion
   } = data;
   const responseChatItemId = data.responseChatItemId;
+  const chatSource = getWorkflowSource(runningAppInfo);
 
   // Check url valid
   const invalidInput = query.some((item) => {
@@ -170,7 +173,14 @@ export async function dispatchWorkFlow({
       if (usageSource) {
         return createChatUsageRecord({
           appName: runningAppInfo.name,
-          appId: runningAppInfo.id,
+          appId:
+            runningAppInfo.sourceType === ChatSourceTypeEnum.app
+              ? runningAppInfo.sourceId
+              : undefined,
+          skillId:
+            runningAppInfo.sourceType === ChatSourceTypeEnum.skillEdit
+              ? runningAppInfo.sourceId
+              : undefined,
           teamId: runningUserInfo.teamId,
           tmbId: runningUserInfo.tmbId,
           source: usageSource
@@ -187,7 +197,7 @@ export async function dispatchWorkFlow({
     }),
     // Remove stopping sign
     delAgentRuntimeStopSign({
-      appId: runningAppInfo.id,
+      ...chatSource,
       chatId
     })
   ]);
@@ -252,7 +262,7 @@ export async function dispatchWorkFlow({
           if (stopping) return;
 
           const shouldStop = await shouldWorkflowStop({
-            appId: runningAppInfo.id,
+            ...chatSource,
             chatId
           });
           if (shouldStop) {
@@ -263,7 +273,8 @@ export async function dispatchWorkFlow({
 
   const { nodeResponseWriter } = await createWorkflowEntryNodeResponseWriter({
     teamId: data.runningAppInfo.teamId,
-    appId: data.runningAppInfo.id,
+    sourceType: data.runningAppInfo.sourceType,
+    sourceId: data.runningAppInfo.sourceId,
     chatId,
     chatItemDataId: responseChatItemId,
     nodeResponseWriteConfig: data.nodeResponseWriteConfig
@@ -323,7 +334,7 @@ export async function dispatchWorkFlow({
 
             // 工作流完成后删除 Redis 记录
             await delAgentRuntimeStopSign({
-              appId: runningAppInfo.id,
+              ...chatSource,
               chatId
             });
           });
@@ -1293,13 +1304,13 @@ export class WorkflowQueue {
     // Check queue status
     if (this.data.maxRunTimes <= 0) {
       logger.error('Workflow max run times reached', {
-        appId: this.data.runningAppInfo.id
+        ...getWorkflowSource(this.data.runningAppInfo)
       });
       return;
     }
     if (this.data.checkIsStopping()) {
       logger.warn('Workflow stopped', {
-        appId: this.data.runningAppInfo.id,
+        ...getWorkflowSource(this.data.runningAppInfo),
         nodeId: node.nodeId,
         nodeName: node.name
       });
@@ -1573,7 +1584,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
             data.runtimeEdges = filterOrphanEdges({
               edges: data.runtimeEdges,
               nodes: data.runtimeNodes,
-              workflowId: data.runningAppInfo.id
+              workflowId: data.runningAppInfo.sourceId
             });
             // Init default value
             data.retainDatasetCite = data.retainDatasetCite ?? true;
@@ -1597,7 +1608,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
             const workflowQueue = await new Promise<WorkflowQueue>((resolve) => {
               logger.info('Workflow run start', {
                 maxRunTimes: data.maxRunTimes,
-                appId: data.runningAppInfo.id
+                ...getWorkflowSource(data.runningAppInfo)
               });
               const workflowQueue = new WorkflowQueue({
                 data,

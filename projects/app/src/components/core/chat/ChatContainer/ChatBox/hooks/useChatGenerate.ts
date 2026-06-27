@@ -40,14 +40,16 @@ import { formatChatRequestVariables } from '../utils/requestVariables';
 import type { ChatSiteItemType, ChatBoxInputType, SendPromptFnType } from '../type';
 import type { StartChatFnProps, generatingMessageProps } from '../../type';
 import { cloneDeep } from 'lodash';
+import type { ChatTargetInputType } from '@fastgpt/global/openapi/core/chat/api';
+import { useChatApiTarget } from '@/web/core/chat/utils';
 
 type HumanChatSiteItemType = Extract<ChatSiteItemType, { obj: ChatRoleEnum.Human }>;
 
-type SyncSidebarChatGenerateStatus = (
+type NotifyChatGenerateStatusChange = (
   status: ChatGenerateStatusEnum,
   options?: {
     hasBeenRead?: boolean;
-    targetAppId?: string;
+    targetSourceKey?: string;
     targetChatId?: string;
     title?: string;
   }
@@ -56,9 +58,14 @@ type SyncSidebarChatGenerateStatus = (
 type FinishChatGenerateStatus = (params: {
   status: ChatGenerateStatusEnum;
   finishedInActiveChat: boolean;
-  targetAppId?: string;
+  targetChatTarget?: ChatTargetInputType;
+  targetSourceKey?: string;
   targetChatId?: string;
-  shouldUpdateChatBoxData?: (state: { appId?: string; chatId?: string }) => boolean;
+  shouldUpdateChatBoxData?: (state: {
+    sourceKey?: string;
+    appId?: string;
+    chatId?: string;
+  }) => boolean;
 }) => void;
 
 type UseChatGenerateProps = {
@@ -69,6 +76,7 @@ type UseChatGenerateProps = {
   pluginControllerRef: MutableRefObject<AbortController>;
   resumeControllerRef: MutableRefObject<AbortController | undefined>;
   resumedChatTargetRef: MutableRefObject<string | undefined>;
+  activeSourceKeyRef: MutableRefObject<string | undefined>;
   activeChatIdRef: MutableRefObject<string | undefined>;
   TextareaDom: MutableRefObject<HTMLTextAreaElement | null>;
   resetInputVal: (value: ChatBoxInputType) => void;
@@ -76,7 +84,7 @@ type UseChatGenerateProps = {
   createQuestionGuide: () => Promise<void>;
   scrollToBottom: (behavior?: 'smooth' | 'auto', delay?: number) => void;
   generatingScroll: (force?: boolean) => void;
-  syncSidebarChatGenerateStatus: SyncSidebarChatGenerateStatus;
+  notifyChatGenerateStatusChange: NotifyChatGenerateStatusChange;
   finishChatGenerateStatus: FinishChatGenerateStatus;
 };
 
@@ -96,7 +104,7 @@ const isAbortByLeave = (reason: unknown) => {
  * - refs 仍由 ChatBox 持有，保证页面切换、恢复生成等生命周期清理共用同一组 controller。
  * - `resetInputVal`、`createQuestionGuide`、`scrollToBottom`、`generatingScroll` 都来自前面 PR
  *   已抽出的基础 hook，`useChatGenerate` 只编排它们，不重新实现输入或滚动细节。
- * - `syncSidebarChatGenerateStatus` 负责侧边栏历史状态，本 hook 只在普通发送开始/完成/失败时调用它。
+ * - `notifyChatGenerateStatusChange` 只负责把生成状态变化抛给外部，不感知侧栏历史等外部模型。
  *
  * 边界行为：
  * - `generatingMessage` 仍只更新最后一条 AI 消息；如果最后一条不是 AI，则直接跳过。
@@ -112,6 +120,7 @@ export const useChatGenerate = ({
   pluginControllerRef,
   resumeControllerRef,
   resumedChatTargetRef,
+  activeSourceKeyRef,
   activeChatIdRef,
   TextareaDom,
   resetInputVal,
@@ -119,7 +128,7 @@ export const useChatGenerate = ({
   createQuestionGuide,
   scrollToBottom,
   generatingScroll,
-  syncSidebarChatGenerateStatus,
+  notifyChatGenerateStatusChange,
   finishChatGenerateStatus
 }: UseChatGenerateProps) => {
   const { t } = useTranslation();
@@ -132,13 +141,15 @@ export const useChatGenerate = ({
   const resetVariables = useContextSelector(ChatItemContext, (v) => v.resetVariables);
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
-  const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
+  const sourceKey = useContextSelector(WorkflowRuntimeContext, (v) => v.sourceKey);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const variableList = useContextSelector(ChatBoxContext, (v) => v.variableList);
   const startSegmentedAudio = useContextSelector(ChatBoxContext, (v) => v.startSegmentedAudio);
   const finishSegmentedAudio = useContextSelector(ChatBoxContext, (v) => v.finishSegmentedAudio);
   const setAudioPlayingChatId = useContextSelector(ChatBoxContext, (v) => v.setAudioPlayingChatId);
   const splitText2Audio = useContextSelector(ChatBoxContext, (v) => v.splitText2Audio);
+  const sourceTarget = useContextSelector(WorkflowRuntimeContext, (v) => v.sourceTarget);
+  const chatTarget = useChatApiTarget(sourceTarget);
 
   const generatingMessageQueueRef = useRef<
     Array<generatingMessageProps & { autoTTSResponse?: boolean }>
@@ -517,16 +528,16 @@ export const useChatGenerate = ({
     (message: generatingMessageProps & { autoTTSResponse?: boolean }) => {
       if (message.event === SseResponseEventEnum.chatTitle && message.title) {
         setChatBoxData((state) =>
-          state.appId === appId && state.chatId === chatId
+          state.sourceKey === sourceKey && state.chatId === chatId
             ? {
                 ...state,
                 title: message.title
               }
             : state
         );
-        syncSidebarChatGenerateStatus(ChatGenerateStatusEnum.generating, {
+        notifyChatGenerateStatusChange(ChatGenerateStatusEnum.generating, {
           title: message.title,
-          targetAppId: appId,
+          targetSourceKey: sourceKey,
           targetChatId: chatId
         });
         return;
@@ -595,6 +606,7 @@ export const useChatGenerate = ({
           const requestVariables = formatChatRequestVariables({ variableList, variables });
 
           const humanChatId = getNanoid(24);
+          const currentChatTarget = chatTarget;
           const responseChatId = resolveInteractiveResponseChatItemId({
             histories: history,
             interactive,
@@ -653,10 +665,10 @@ export const useChatGenerate = ({
             }
           ];
 
-          resumedChatTargetRef.current = `${appId}:${chatId}`;
+          resumedChatTargetRef.current = `${sourceKey}:${chatId}`;
 
           setChatBoxData((state) =>
-            state.appId === appId && state.chatId === chatId
+            state.sourceKey === sourceKey && state.chatId === chatId
               ? {
                   ...state,
                   chatGenerateStatus: ChatGenerateStatusEnum.generating,
@@ -664,9 +676,9 @@ export const useChatGenerate = ({
                 }
               : state
           );
-          syncSidebarChatGenerateStatus(ChatGenerateStatusEnum.generating, {
+          notifyChatGenerateStatusChange(ChatGenerateStatusEnum.generating, {
             hasBeenRead: false,
-            targetAppId: appId,
+            targetSourceKey: sourceKey,
             targetChatId: chatId
           });
 
@@ -768,13 +780,16 @@ export const useChatGenerate = ({
             if (autoTTSResponse) {
               splitText2Audio(responseText, true);
             }
-            const finishedInActiveChat = activeChatIdRef.current === chatId;
+            const finishedInActiveChat =
+              activeSourceKeyRef.current === sourceKey && activeChatIdRef.current === chatId;
             finishChatGenerateStatus({
               status: ChatGenerateStatusEnum.done,
               finishedInActiveChat,
-              targetAppId: appId,
+              targetChatTarget: currentChatTarget,
+              targetSourceKey: sourceKey,
               targetChatId: chatId,
-              shouldUpdateChatBoxData: (state) => state.appId === appId && state.chatId === chatId
+              shouldUpdateChatBoxData: (state) =>
+                state.sourceKey === sourceKey && state.chatId === chatId
             });
           } catch (err: any) {
             if (isAbortByLeave(err)) {
@@ -801,13 +816,16 @@ export const useChatGenerate = ({
               resetInputVal({ text, files });
             }
 
-            const finishedInActiveChat = activeChatIdRef.current === chatId;
+            const finishedInActiveChat =
+              activeSourceKeyRef.current === sourceKey && activeChatIdRef.current === chatId;
             finishChatGenerateStatus({
               status: ChatGenerateStatusEnum.error,
               finishedInActiveChat,
-              targetAppId: appId,
+              targetChatTarget: currentChatTarget,
+              targetSourceKey: sourceKey,
               targetChatId: chatId,
-              shouldUpdateChatBoxData: (state) => state.appId === appId && state.chatId === chatId
+              shouldUpdateChatBoxData: (state) =>
+                state.sourceKey === sourceKey && state.chatId === chatId
             });
           }
 

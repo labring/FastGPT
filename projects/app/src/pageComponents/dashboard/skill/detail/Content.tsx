@@ -6,6 +6,8 @@ import SandboxEditor from '@/pageComponents/chat/SandboxEditor/Editor';
 import SandboxError from './config/SandboxError';
 import { RightHeader } from '@/pageComponents/dashboard/skill/detail/Header';
 
+const EDIT_DEBUG_CHAT_ID = 'edit-debug';
+
 const Content = () => {
   const { sandboxState, skillId, isSkillReady, handleSandboxError } = useContextSelector(
     SkillDetailContext,
@@ -35,8 +37,8 @@ const Content = () => {
         <SandboxError />
       ) : (
         <SandboxEditor
-          appId={skillId}
-          chatId={'edit-debug'}
+          chatTarget={{ skillId }}
+          chatId={EDIT_DEBUG_CHAT_ID}
           showFileOps={true}
           showDownload={false}
           defaultViewMode={'source'}

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 const archiveMocks = vi.hoisted(() => ({
   logger: {
@@ -336,7 +337,8 @@ describe('sandbox archive service', () => {
     await restoreArchivedSandboxBeforeUse({
       provider: 'opensandbox',
       sandboxId: archivedResource.sandboxId,
-      appId: 'app-1',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app-1',
       userId: 'user-1',
       chatId: 'chat-1'
     });
@@ -367,7 +369,8 @@ describe('sandbox archive service', () => {
         }
       }),
       expect.objectContaining({
-        appId: 'app-1',
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: 'app-1',
         userId: 'user-1',
         chatId: 'chat-1',
         storage: { mountPath: '/workspace' },
@@ -396,7 +399,9 @@ describe('sandbox archive service', () => {
     await expect(
       restoreArchivedSandboxBeforeUse({
         provider: 'opensandbox',
-        sandboxId: archivedResource.sandboxId
+        sandboxId: archivedResource.sandboxId,
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: 'app-1'
       })
     ).rejects.toThrow('Sandbox archive record was deleted during restore');
 

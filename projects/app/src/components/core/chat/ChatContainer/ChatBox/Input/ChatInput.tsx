@@ -44,6 +44,8 @@ type ChatInputProps = BoxProps & {
   onSendMessage: SendPromptFnType;
   onStopChat: () => Promise<StopChatFnResult>;
   onStopSettled?: (status: ChatGenerateStatusEnum, completed: boolean) => void;
+  enableInputGuide: boolean;
+  enableVoiceInput: boolean;
   disableSend?: boolean;
   TextareaDom: React.MutableRefObject<HTMLTextAreaElement | null>;
   resetInputVal: (val: ChatBoxInputType) => void;
@@ -55,6 +57,8 @@ const ChatInput = ({
   onSendMessage,
   onStopChat,
   onStopSettled,
+  enableInputGuide,
+  enableVoiceInput,
   disableSend,
   TextareaDom,
   resetInputVal,
@@ -81,6 +85,7 @@ const ChatInput = ({
 
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
   const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
+  const sourceTarget = useContextSelector(WorkflowRuntimeContext, (v) => v.sourceTarget);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
   const inputBodyProps = useContextSelector(ChatBoxContext, (v) => v.inputBodyProps);
@@ -137,7 +142,7 @@ const ChatInput = ({
     fileSelectConfig,
     fileCtrl,
     outLinkAuthData,
-    appId,
+    sourceTarget,
     chatId
   });
   const havInput = !!inputValue || fileList.length > 0;
@@ -148,8 +153,10 @@ const ChatInput = ({
     showSelectVideo ||
     showSelectAudio ||
     showSelectCustomFileExtension;
+  const canUseInputGuide = enableInputGuide && !!appId && !!chatInputGuide.open;
+  const canUseVoiceInput = enableVoiceInput && !!appId && !!whisperConfig?.open;
   const isDefaultInputHeight =
-    !mobilePreSpeak && !inputValue && fileList.length === 0 && !chatInputGuide.open;
+    !mobilePreSpeak && !inputValue && fileList.length === 0 && !canUseInputGuide;
 
   // Upload files
   useRequest(uploadFiles, {
@@ -395,7 +402,7 @@ const ChatInput = ({
             )}
 
             {/* Voice input button */}
-            {whisperConfig?.open && !inputValue && (
+            {canUseVoiceInput && !inputValue && (
               <Flex
                 alignItems={'center'}
                 justifyContent={'center'}
@@ -418,7 +425,7 @@ const ChatInput = ({
           </Flex>
 
           {/* Divider Container */}
-          {((whisperConfig?.open && !inputValue) || canUploadFile) && (
+          {((canUseVoiceInput && !inputValue) || canUploadFile) && (
             <Flex alignItems={'center'} justifyContent={'center'} w={2} h={4} mr={2}>
               <Box w={'2px'} h={5} bg={'myGray.200'} />
             </Flex>
@@ -466,7 +473,7 @@ const ChatInput = ({
     selectFileLabel,
     selectFileIcon,
     File,
-    whisperConfig?.open,
+    canUseVoiceInput,
     inputValue,
     t,
     isStopping,
@@ -539,7 +546,7 @@ const ChatInput = ({
       >
         <Box flex={1}>
           {/* Chat input guide box */}
-          {chatInputGuide.open && (
+          {canUseInputGuide && (
             <InputGuideBox
               appId={appId}
               text={inputValue}
@@ -562,7 +569,7 @@ const ChatInput = ({
           )}
 
           {/* voice input and loading container */}
-          {!inputValue && (
+          {canUseVoiceInput && !inputValue && (
             <VoiceInput
               ref={VoiceInputRef}
               handleSend={(text) => {

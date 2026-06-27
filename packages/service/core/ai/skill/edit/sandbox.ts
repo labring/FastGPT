@@ -18,6 +18,7 @@ import {
 import { getSandboxRuntimeProfile } from '../../sandbox/runtime/profile';
 import type { SandboxImageConfigType } from '@fastgpt/global/core/ai/skill/type';
 import { SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
   connectReadySandboxByInstance,
   connectToSandbox,
@@ -31,8 +32,8 @@ import { deleteSandboxResource } from '../../sandbox/service/resource';
 import {
   countRunningSandboxInstancesByType,
   deleteSandboxInstanceRecord,
-  findSandboxInstanceByAppChatType,
-  findSandboxResourcesByAppChatTypeExcludeProvider,
+  findSandboxInstanceBySandboxId,
+  findSandboxResourcesBySourceChatTypeExcludeProvider,
   migrateArchivedSandboxInstanceRecord,
   updateSandboxInstanceRecordBySandboxId
 } from '../../sandbox/instance/repository';
@@ -156,10 +157,9 @@ export async function createEditDebugSandbox(
    * 只有这个旧 wrapper，启动时顺手展开一层，避免每次加载继续制造
    * skills/<edit-dir>/<real-skill>/SKILL.md 这种嵌套结构。
    */
-  const existingInstance = await findSandboxInstanceByAppChatType({
+  const existingInstance = await findSandboxInstanceBySandboxId({
     provider: providerConfig.provider,
-    appId: skillId,
-    chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
+    sandboxId: sessionId,
     type: SandboxTypeEnum.editDebug
   });
 
@@ -293,7 +293,8 @@ export async function createEditDebugSandbox(
       await updateSandboxInstanceRecordBySandboxId({
         provider: providerConfig.provider,
         sandboxId: instance.sandboxId,
-        appId: skillId,
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        sourceId: skillId,
         userId: '',
         chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
         metadata: preparedContext.workspaceHasContent
@@ -375,7 +376,8 @@ export async function createEditDebugSandbox(
     await updateSandboxInstanceRecordBySandboxId({
       provider: providerConfig.provider,
       sandboxId: instance.sandboxId,
-      appId: skillId,
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: skillId,
       userId: '',
       chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
       metadata: newMetadata
@@ -443,9 +445,10 @@ export async function createEditDebugSandbox(
     });
   }
 
-  const staleProviderInstances = await findSandboxResourcesByAppChatTypeExcludeProvider({
+  const staleProviderInstances = await findSandboxResourcesBySourceChatTypeExcludeProvider({
     provider: providerConfig.provider,
-    appId: skillId,
+    sourceType: ChatSourceTypeEnum.skillEdit,
+    sourceId: skillId,
     chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
     type: SandboxTypeEnum.editDebug
   });
@@ -471,7 +474,8 @@ export async function createEditDebugSandbox(
           const migratedInstance = await migrateArchivedSandboxInstanceRecord({
             source: instance,
             provider: providerConfig.provider,
-            appId: skillId,
+            sourceType: ChatSourceTypeEnum.skillEdit,
+            sourceId: skillId,
             userId: '',
             chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
             type: SandboxTypeEnum.editDebug
@@ -511,7 +515,9 @@ export async function createEditDebugSandbox(
     const createRuntimeSandboxClient = () =>
       getSandboxClient(
         {
-          appId: skillId,
+          sandboxId: sessionId,
+          sourceType: ChatSourceTypeEnum.skillEdit,
+          sourceId: skillId,
           userId: '',
           chatId: EDIT_DEBUG_SANDBOX_CHAT_ID
         },
@@ -601,14 +607,14 @@ export async function createEditDebugSandbox(
     const newSandboxDoc = await updateSandboxInstanceRecordBySandboxId({
       provider: providerConfig.provider,
       sandboxId: sessionId,
-      appId: skillId,
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: skillId,
       userId: '',
       chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
       type: SandboxTypeEnum.editDebug,
       metadata: {
         teamId,
         tmbId,
-        skillId,
         sessionId,
         ...(sandboxInfo.image ? { image: sandboxInfo.image } : {}),
         providerCreatedAt: sandboxInfo.createdAt,

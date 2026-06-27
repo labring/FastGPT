@@ -7,10 +7,12 @@ import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { AuthUserTypeEnum, ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { notLeaveStatus } from '@fastgpt/global/support/user/team/constant';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
+import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 import { authApp, authAppByTmbId } from '@fastgpt/service/support/permission/app/auth';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 /**
  * 解析 Chat Completions 请求最终应归属的团队成员。
@@ -170,7 +172,12 @@ export const authChatCompletionHeaderRequest = async ({
   })();
 
   appId = String(app._id);
-  const chat = chatId ? await MongoChat.findOne({ appId, chatId }).lean() : null;
+  const chat = chatId
+    ? await MongoChat.findOne({
+        ...buildChatSourceQuery({ sourceType: ChatSourceTypeEnum.app, sourceId: appId }),
+        chatId
+      }).lean()
+    : null;
 
   if (
     chat &&

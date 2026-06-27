@@ -10,6 +10,7 @@ import { UsageCollectionName, UsageItemCollectionName } from './constants';
 import { AppCollectionName } from '../../../core/app/schema';
 import { DatasetCollectionName } from '../../../core/dataset/schema';
 import { getLogger, LogCategories } from '../../../common/logger';
+import { agentSkillsCollectionName } from '@fastgpt/global/core/ai/skill/constants';
 
 const UsageSchema = new Schema(
   {
@@ -46,6 +47,10 @@ const UsageSchema = new Schema(
     appId: {
       type: Schema.Types.ObjectId,
       ref: AppCollectionName
+    },
+    skillId: {
+      type: Schema.Types.ObjectId,
+      ref: agentSkillsCollectionName
     },
     datasetId: {
       type: Schema.Types.ObjectId,

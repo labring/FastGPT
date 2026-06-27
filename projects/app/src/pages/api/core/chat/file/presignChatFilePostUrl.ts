@@ -3,7 +3,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import type { CreatePostPresignedUrlResponseType } from '@fastgpt/global/common/file/s3/type';
 import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
 import { getAllowedExtensionsFromFileSelectConfig } from '@fastgpt/service/common/s3/utils/uploadConstraints';
-import { authChatCrud } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
 import { authFrequencyLimit } from '@fastgpt/service/common/system/frequencyLimit/utils';
 import { addSeconds } from 'date-fns';
 import { PresignChatFilePostUrlSchema } from '@fastgpt/global/openapi/core/chat/file/api';
@@ -13,16 +13,19 @@ import { serviceEnv } from '@fastgpt/service/env';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps): Promise<CreatePostPresignedUrlResponseType> {
-  const { filename, appId, chatId, outLinkAuthData, fileSelectConfig } = parseApiInput({
-    req,
-    bodySchema: PresignChatFilePostUrlSchema
-  }).body;
+  const { filename, sourceType, sourceId, chatId, outLinkAuthData, fileSelectConfig } =
+    parseApiInput({
+      req,
+      bodySchema: PresignChatFilePostUrlSchema
+    }).body;
 
-  const { teamId, uid } = await authChatCrud({
+  const { teamId, uid } = await authChatTargetCrud({
     req,
     authToken: true,
     authApiKey: true,
-    appId,
+    sourceType,
+    sourceId,
+    chatId,
     ...outLinkAuthData
   });
 
@@ -40,7 +43,8 @@ async function handler(req: ApiRequestProps): Promise<CreatePostPresignedUrlResp
   });
 
   return await getS3ChatSource().createUploadChatFileURL({
-    appId,
+    sourceType,
+    sourceId,
     chatId,
     filename,
     uId: uid,

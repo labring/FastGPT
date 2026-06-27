@@ -5,16 +5,19 @@ import {
   type SandboxClient
 } from '@fastgpt/service/core/ai/sandbox/service/runtime';
 import {
-  deleteSandboxesByChatIds,
-  deleteSandboxesByAppId
+  deleteAppSandboxes,
+  deleteAppChatRuntimeSandboxes
 } from '@fastgpt/service/core/ai/sandbox/service/resource';
 import { connectionMongo } from '@fastgpt/service/common/mongo';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { delay } from '@fastgpt/global/common/system/utils';
+import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/runtime/id';
 
 const { Types } = connectionMongo;
 
 const hasSandboxEnv =
+  process.env.SANDBOX_INTEGRATION === 'true' &&
   !!process.env.AGENT_SANDBOX_PROVIDER &&
   (process.env.AGENT_SANDBOX_PROVIDER === 'e2b'
     ? !!process.env.AGENT_SANDBOX_E2B_API_KEY
@@ -63,6 +66,18 @@ describe.skipIf(!hasSandboxEnv).sequential('Sandbox Integration', () => {
     userId: 'integration-user',
     chatId: `integration-chat-${suffix}-${Date.now()}`
   });
+  const toAppSandboxQuery = (params: { appId: string; userId: string; chatId: string }) => ({
+    sandboxId: getRunningSandboxId({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: params.appId,
+      userId: params.userId,
+      chatId: params.chatId
+    }),
+    sourceType: ChatSourceTypeEnum.app,
+    sourceId: params.appId,
+    userId: params.userId,
+    chatId: params.chatId
+  });
   const execReadySandbox = (command: string, timeout?: number, target: SandboxClient = sandbox) =>
     target.provider.execute(command, {
       timeoutMs: timeout ? timeout * 1000 : undefined
@@ -70,7 +85,7 @@ describe.skipIf(!hasSandboxEnv).sequential('Sandbox Integration', () => {
 
   // 测试开始前，确认 workspace 存在
   beforeAll(async () => {
-    sandbox = await getSandboxClient(testParams);
+    sandbox = await getSandboxClient(toAppSandboxQuery(testParams));
     const result = await execReadySandbox(`mkdir -p ${testDir} && cd ${testDir}`);
     expect(result.exitCode).toBe(0);
     await delay(2000);
@@ -111,7 +126,7 @@ describe.skipIf(!hasSandboxEnv).sequential('Sandbox Integration', () => {
       memoryMiB: 256,
       diskGiB: 1
     };
-    const limitedSandbox = await getSandboxClient(params, { resourceLimits });
+    const limitedSandbox = await getSandboxClient(toAppSandboxQuery(params), { resourceLimits });
 
     try {
       const doc = await MongoSandboxInstance.findOne({ chatId: params.chatId });
@@ -130,10 +145,13 @@ describe.skipIf(!hasSandboxEnv).sequential('Sandbox Integration', () => {
     expect(result.stdout).toContain('test-integration.txt');
   });
 
-  it('should delete sandbox and clean DB on deleteSandboxesByChatIds', async () => {
+  it('should delete sandbox and clean DB on deleteAppChatRuntimeSandboxes', async () => {
     const params = createSandboxParams('delete-chat');
-    await getSandboxClient(params);
-    await deleteSandboxesByChatIds({ appId: params.appId, chatIds: [params.chatId] });
+    await getSandboxClient(toAppSandboxQuery(params));
+    await deleteAppChatRuntimeSandboxes({
+      appId: params.appId,
+      chatIds: [params.chatId]
+    });
 
     const count = await MongoSandboxInstance.countDocuments({ chatId: params.chatId });
     expect(count).toBe(0);
@@ -177,7 +195,7 @@ describe.skipIf(!hasSandboxEnv).sequential('Sandbox Integration', () => {
 
     it('should stop sandbox and update status', async () => {
       const params = createSandboxParams('stop');
-      const stopSandbox = await getSandboxClient(params);
+      const stopSandbox = await getSandboxClient(toAppSandboxQuery(params));
       await stopSandbox.stop();
 
       const doc = await MongoSandboxInstance.findOne({ chatId: params.chatId });
@@ -221,10 +239,10 @@ describe.skipIf(!hasSandboxEnv).sequential('Sandbox Integration', () => {
       const chatId1 = `${testParams.chatId}-1`;
       const chatId2 = `${testParams.chatId}-2`;
 
-      await getSandboxClient({ ...testParams, chatId: chatId1 });
-      await getSandboxClient({ ...testParams, chatId: chatId2 });
+      await getSandboxClient(toAppSandboxQuery({ ...testParams, chatId: chatId1 }));
+      await getSandboxClient(toAppSandboxQuery({ ...testParams, chatId: chatId2 }));
 
-      await deleteSandboxesByChatIds({
+      await deleteAppChatRuntimeSandboxes({
         appId: testParams.appId,
         chatIds: [chatId1, chatId2]
       });
@@ -240,24 +258,30 @@ describe.skipIf(!hasSandboxEnv).sequential('Sandbox Integration', () => {
       const chatId1 = `${params.chatId}-app-1`;
       const chatId2 = `${params.chatId}-app-2`;
 
-      await getSandboxClient({ ...params, chatId: chatId1 });
-      await getSandboxClient({ ...params, chatId: chatId2 });
+      await getSandboxClient(toAppSandboxQuery({ ...params, chatId: chatId1 }));
+      await getSandboxClient(toAppSandboxQuery({ ...params, chatId: chatId2 }));
 
-      await deleteSandboxesByAppId(params.appId);
+      await deleteAppSandboxes(params.appId);
 
-      const count = await MongoSandboxInstance.countDocuments({ appId: params.appId });
+      const count = await MongoSandboxInstance.countDocuments({
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: params.appId
+      });
       expect(count).toBe(0);
     }, 180_000);
 
     it('should handle empty chatIds array gracefully', async () => {
       await expect(
-        deleteSandboxesByChatIds({ appId: testParams.appId, chatIds: [] })
+        deleteAppChatRuntimeSandboxes({
+          appId: testParams.appId,
+          chatIds: []
+        })
       ).resolves.not.toThrow();
     });
 
     it('should handle non-existent chatIds gracefully', async () => {
       await expect(
-        deleteSandboxesByChatIds({
+        deleteAppChatRuntimeSandboxes({
           appId: testParams.appId,
           chatIds: ['non-existent-chat-id']
         })
@@ -283,8 +307,8 @@ describe.skipIf(!hasSandboxEnv).sequential('Sandbox Integration', () => {
     });
 
     it('should handle concurrent sandbox creation with same chatId', async () => {
-      const sandbox1 = await getSandboxClient(testParams);
-      const sandbox2 = await getSandboxClient(testParams);
+      const sandbox1 = await getSandboxClient(toAppSandboxQuery(testParams));
+      const sandbox2 = await getSandboxClient(toAppSandboxQuery(testParams));
 
       const results = await Promise.all([
         execReadySandbox('echo test1', undefined, sandbox1),
@@ -301,11 +325,17 @@ describe.skipIf(!hasSandboxEnv).sequential('Sandbox Integration', () => {
 
     it('should handle concurrent delete operations', async () => {
       const params = createSandboxParams('concurrent-delete');
-      await getSandboxClient(params);
+      await getSandboxClient(toAppSandboxQuery(params));
 
       await Promise.all([
-        deleteSandboxesByChatIds({ appId: params.appId, chatIds: [params.chatId] }),
-        deleteSandboxesByChatIds({ appId: params.appId, chatIds: [params.chatId] })
+        deleteAppChatRuntimeSandboxes({
+          appId: params.appId,
+          chatIds: [params.chatId]
+        }),
+        deleteAppChatRuntimeSandboxes({
+          appId: params.appId,
+          chatIds: [params.chatId]
+        })
       ]);
 
       const count = await MongoSandboxInstance.countDocuments({ chatId: params.chatId });

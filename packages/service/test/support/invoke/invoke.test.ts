@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PluginPermissionEnum } from '@fastgpt/global/sdk/fastgpt-plugin';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 const mockGetToolFilePrefix = vi.hoisted(() => vi.fn());
 const mockUploadChatFile = vi.hoisted(() => vi.fn());
@@ -48,7 +49,8 @@ describe('InvokeProcessor.handleFileUpload', () => {
     });
 
     expect(mockUploadChatFile).toHaveBeenCalledWith({
-      appId: 'app-1',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app-1',
       chatId: 'chat-1',
       uId: 'user-1',
       filename: 'image.png',

@@ -15,6 +15,7 @@ import {
   ReadCollectionSourceResponseSchema,
   type ReadCollectionSourceResponseType
 } from '@fastgpt/global/openapi/core/dataset/collection/api';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 async function handler(req: ApiRequestProps): Promise<ReadCollectionSourceResponseType> {
   const { collectionId, appId, chatId, chatItemDataId, shareId, outLinkUid, teamId, teamToken } =
@@ -48,7 +49,12 @@ async function handler(req: ApiRequestProps): Promise<ReadCollectionSourceRespon
         teamToken
       }),
       getCollectionWithDataset(collectionId),
-      authCollectionInChat({ appId, chatId, collectionIds: [collectionId] })
+      authCollectionInChat({
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: appId,
+        chatId,
+        collectionIds: [collectionId]
+      })
     ]);
 
     if (!authRes.canDownloadSource) {

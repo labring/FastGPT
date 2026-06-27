@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { AppTTSConfigType } from '@fastgpt/global/core/app/type';
@@ -19,7 +19,7 @@ const isMediaSourceSupported = () => {
 };
 
 export const useAudioPlay = (
-  props?: OutLinkChatAuthProps & { appId: string; ttsConfig?: AppTTSConfigType }
+  props?: OutLinkChatAuthProps & { appId?: string; ttsConfig?: AppTTSConfigType }
 ) => {
   const { t } = useTranslation();
   const { appId, ttsConfig, shareId, outLinkUid, teamId, teamToken } = props || {};
@@ -32,6 +32,7 @@ export const useAudioPlay = (
   // Check whether the voice is supported
   const hasAudio = (() => {
     if (typeof window === 'undefined') return false;
+    if (!appId) return false;
     if (ttsConfig?.type === TTSTypeEnum.none) return false;
     if (ttsConfig?.type === TTSTypeEnum.model) return true;
     const voices = window?.speechSynthesis?.getVoices?.() || []; // 获取语言包
@@ -44,6 +45,7 @@ export const useAudioPlay = (
   const getAudioStream = useCallback(
     async (input: string) => {
       if (!input) return Promise.reject('Text is empty');
+      if (!appId) return Promise.reject('App ID is empty');
 
       setAudioLoading(true);
       audioController.current = new AbortController();
@@ -73,7 +75,7 @@ export const useAudioPlay = (
       }
       return response.body;
     },
-    [appId, outLinkUid, shareId, t, teamId, teamToken, toast, ttsConfig]
+    [appId, outLinkUid, shareId, teamId, teamToken, ttsConfig]
   );
   const playWebAudio = useCallback((text: string) => {
     // window speech
@@ -99,8 +101,10 @@ export const useAudioPlay = (
   const cancelAudio = useCallback(() => {
     try {
       window.speechSynthesis?.cancel();
-      !audioController.current.signal.aborted && audioController.current.abort();
-    } catch (error) {}
+      if (!audioController.current.signal.aborted) {
+        audioController.current.abort();
+      }
+    } catch {}
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.src = '';
@@ -127,7 +131,7 @@ export const useAudioPlay = (
           // 不支持 MediaSource 时，直接读取完整流并播放
           return new Promise<Uint8Array>(async (resolve) => {
             const reader = stream.getReader();
-            let chunks: Uint8Array[] = [];
+            const chunks: Uint8Array[] = [];
 
             while (true) {
               const { done, value } = await reader.read();
@@ -223,7 +227,7 @@ export const useAudioPlay = (
         }
       });
     },
-    [cancelAudio, getAudioStream, playWebAudio, t, toast, ttsConfig?.type]
+    [cancelAudio, getAudioStream, playWebAudio, t, toast, ttsConfig]
   );
 
   // segmented params
@@ -248,7 +252,9 @@ export const useAudioPlay = (
     /* reset all source */
     const buffer = segmentedSourceBuffer.current;
     if (buffer) {
-      buffer.updating && (await new Promise((resolve) => (buffer.onupdateend = resolve)));
+      if (buffer.updating) {
+        await new Promise((resolve) => (buffer.onupdateend = resolve));
+      }
       segmentedSourceBuffer.current = undefined;
     }
     if (segmentedMediaSource.current) {
@@ -305,7 +311,9 @@ export const useAudioPlay = (
             const { done, value } = await reader.read();
 
             if (done || !audioRef.current?.played) {
-              buffer.updating && (await new Promise((resolve) => (buffer.onupdateend = resolve)));
+              if (buffer.updating) {
+                await new Promise((resolve) => (buffer.onupdateend = resolve));
+              }
               return resolve(u8Arr);
             }
 
@@ -333,7 +341,7 @@ export const useAudioPlay = (
             try {
               const stream = await getAudioStream(text);
               const reader = stream.getReader();
-              let chunks: Uint8Array[] = [];
+              const chunks: Uint8Array[] = [];
 
               while (true) {
                 const { done, value } = await reader.read();
@@ -428,14 +436,13 @@ export const useAudioPlay = (
   });
 
   return {
-    audio: audioRef.current,
     audioLoading,
     audioPlaying,
     setAudioPlaying,
     getAudioStream,
     cancelAudio,
     audioController,
-    hasAudio: useMemo(() => hasAudio, [hasAudio]),
+    hasAudio,
     playAudioByText,
     startSegmentedAudio,
     finishSegmentedAudio,

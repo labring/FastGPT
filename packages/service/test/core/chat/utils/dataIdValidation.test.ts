@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import {
   CHAT_DATA_ID_DUPLICATE_ERROR_MESSAGE,
@@ -30,6 +30,11 @@ describe('chat dataId validation', () => {
       modules: []
     });
     appId = String(app._id);
+  });
+
+  const chatSource = () => ({
+    sourceType: ChatSourceTypeEnum.app,
+    sourceId: appId
   });
 
   it('should collect only valid dataIds from chat messages', () => {
@@ -66,7 +71,7 @@ describe('chat dataId validation', () => {
   it('should allow human and ai sharing one round dataId', async () => {
     await expect(
       validateChatRoundDataIds({
-        appId,
+        ...chatSource(),
         chatId,
         userContent: {
           obj: ChatRoleEnum.Human,
@@ -91,7 +96,7 @@ describe('chat dataId validation', () => {
 
     await expect(
       validateChatRoundDataIds({
-        appId,
+        ...chatSource(),
         chatId,
         userContent: {
           obj: ChatRoleEnum.Human,
@@ -116,7 +121,7 @@ describe('chat dataId validation', () => {
 
     await expect(
       validateChatRoundDataIds({
-        appId,
+        ...chatSource(),
         chatId,
         userContent: {
           obj: ChatRoleEnum.Human,
@@ -131,7 +136,7 @@ describe('chat dataId validation', () => {
   it('should allow unique current round dataIds', async () => {
     await expect(
       validateChatRoundDataIds({
-        appId,
+        ...chatSource(),
         chatId,
         userContent: {
           obj: ChatRoleEnum.Human,
@@ -146,7 +151,7 @@ describe('chat dataId validation', () => {
   it('should skip current round AI dataId validation when responseChatItemId is missing', async () => {
     await expect(
       validateChatRoundDataIds({
-        appId,
+        ...chatSource(),
         chatId,
         userContent: {
           obj: ChatRoleEnum.Human,
@@ -170,7 +175,7 @@ describe('chat dataId validation', () => {
 
     await expect(
       assertNoExistingChatDataIds({
-        appId,
+        ...chatSource(),
         chatId,
         dataIds: ['missing', 'existing-human']
       })
@@ -180,7 +185,7 @@ describe('chat dataId validation', () => {
   it('should skip generic history validation when all dataIds are empty', async () => {
     await expect(
       assertNoExistingChatDataIds({
-        appId,
+        ...chatSource(),
         chatId,
         dataIds: [undefined, '']
       })
@@ -200,7 +205,7 @@ describe('chat dataId validation', () => {
 
     await expect(
       validateChatRoundDataIds({
-        appId,
+        ...chatSource(),
         chatId,
         userContent: {
           obj: ChatRoleEnum.Human,

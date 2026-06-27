@@ -25,6 +25,7 @@ import { InvokeProcessor } from '../../../../../../../support/invoke/invoke';
 import { getLogger, LogCategories } from '../../../../../../../common/logger';
 import { authAppByTmbId } from '../../../../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { getWorkflowAppId } from '../../../../utils/source';
 
 type SystemInputConfigType = {
   type: SystemToolSecretInputTypeEnum;
@@ -122,15 +123,18 @@ export const dispatchTool = async ({
 
       const formatToolId = getToolRawId(tool.id);
       let answerText = '';
+      const appId = getWorkflowAppId(runningAppInfo);
 
-      const invokeToken = new InvokeProcessor({
-        appId: runningAppInfo.id,
-        chatId,
-        uId: uid,
-        permissions: tool.permissions ?? [],
-        teamId: runningAppInfo.teamId,
-        tmbId: runningAppInfo.tmbId
-      }).generateToken();
+      const invokeToken = appId
+        ? new InvokeProcessor({
+            appId,
+            chatId,
+            uId: uid,
+            permissions: tool.permissions ?? [],
+            teamId: runningAppInfo.teamId,
+            tmbId: runningAppInfo.tmbId
+          }).generateToken()
+        : undefined;
 
       const childId = toolConfig.systemTool.toolId.split('/')[1];
 
@@ -143,15 +147,15 @@ export const dispatchTool = async ({
         secrets: inputConfigParams,
         systemVar: {
           app: {
-            id: runningAppInfo.id,
-            name: runningAppInfo.id
+            id: appId || '',
+            name: appId ? runningAppInfo.name : ''
           },
           chat: {
             chatId,
             uid
           },
           time: String(variableState.get('cTime') ?? ''),
-          invokeToken
+          invokeToken: invokeToken || ''
         },
         onMessage: ({ type, content }) => {
           if (workflowStreamResponse && content) {

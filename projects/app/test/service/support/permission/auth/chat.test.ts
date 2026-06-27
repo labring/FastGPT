@@ -1,11 +1,16 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { authChatCrud, authCollectionInChat } from '@/service/support/permission/auth/chat';
+import {
+  authChatCrud,
+  authChatTargetCrud,
+  authCollectionInChat
+} from '@/service/support/permission/auth/chat';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
 import { authOutLink } from '@/service/support/permission/auth/outLink';
 import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
@@ -13,6 +18,7 @@ import { AppPermission } from '@fastgpt/global/support/permission/app/controller
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import type { OutLinkSchemaType } from '@fastgpt/global/support/outLink/type';
 import { Types } from 'mongoose';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 vi.mock('@fastgpt/service/core/chat/chatSchema', () => ({
   MongoChat: {
@@ -37,6 +43,7 @@ vi.mock('@fastgpt/service/core/app/schema', async (importOriginal) => {
 });
 
 vi.mock('@fastgpt/service/support/permission/app/auth');
+vi.mock('@fastgpt/service/support/permission/skill/auth');
 vi.mock('@/service/support/permission/auth/outLink');
 vi.mock('@/service/support/permission/auth/team');
 
@@ -710,6 +717,85 @@ describe('authChatCrud', () => {
   });
 });
 
+describe('authChatTargetCrud', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should auth skill edit target and query chat by source-aware condition', async () => {
+    const mockChat = {
+      appId: '507f1f77bcf86cd799439021',
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      teamId: 'team1'
+    };
+
+    vi.mocked(authSkill).mockResolvedValue({
+      teamId: 'team1',
+      tmbId: 'tmb1',
+      authType: AuthUserTypeEnum.token
+    } as any);
+    vi.mocked(MongoChat.findOne).mockReturnValue({
+      lean: () => Promise.resolve(mockChat)
+    } as any);
+
+    const result = await authChatTargetCrud({
+      req: {} as any,
+      authToken: true,
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: '507f1f77bcf86cd799439021',
+      chatId: 'chat1'
+    });
+
+    expect(authSkill).toHaveBeenCalledWith(
+      expect.objectContaining({
+        skillId: '507f1f77bcf86cd799439021'
+      })
+    );
+    expect(MongoChat.findOne).toHaveBeenCalledWith({
+      appId: '507f1f77bcf86cd799439021',
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      chatId: 'chat1'
+    });
+    expect(result).toMatchObject({
+      teamId: 'team1',
+      tmbId: 'tmb1',
+      uid: 'tmb1',
+      chat: mockChat,
+      showCite: true,
+      showRunningStatus: true,
+      showSkillReferences: true,
+      showFullText: true,
+      canDownloadSource: true
+    });
+  });
+
+  it('should reject skill edit chat when chat team mismatches authorized skill team', async () => {
+    vi.mocked(authSkill).mockResolvedValue({
+      teamId: 'team1',
+      tmbId: 'tmb1',
+      authType: AuthUserTypeEnum.token
+    } as any);
+    vi.mocked(MongoChat.findOne).mockReturnValue({
+      lean: () =>
+        Promise.resolve({
+          appId: '507f1f77bcf86cd799439021',
+          sourceType: ChatSourceTypeEnum.skillEdit,
+          teamId: 'other-team'
+        })
+    } as any);
+
+    await expect(
+      authChatTargetCrud({
+        req: {} as any,
+        authToken: true,
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        sourceId: '507f1f77bcf86cd799439021',
+        chatId: 'chat1'
+      })
+    ).rejects.toBe(ChatErrEnum.unAuthChat);
+  });
+});
+
 describe('authCollectionInChat', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -721,7 +807,8 @@ describe('authCollectionInChat', () => {
 
     const result = await authCollectionInChat({
       collectionIds: ['507f1f77bcf86cd799439011', '507f1f77bcf86cd799439012'],
-      appId: '507f1f77bcf86cd799439010',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: '507f1f77bcf86cd799439010',
       chatId: 'chat1'
     });
 
@@ -734,7 +821,8 @@ describe('authCollectionInChat', () => {
     await expect(
       authCollectionInChat({
         collectionIds: ['507f1f77bcf86cd799439011', '507f1f77bcf86cd799439012'],
-        appId: '507f1f77bcf86cd799439010',
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: '507f1f77bcf86cd799439010',
         chatId: 'chat1'
       })
     ).rejects.toBe(DatasetErrEnum.unAuthDatasetFile);
@@ -746,7 +834,8 @@ describe('authCollectionInChat', () => {
     await expect(
       authCollectionInChat({
         collectionIds: ['507f1f77bcf86cd799439011'],
-        appId: '507f1f77bcf86cd799439010',
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: '507f1f77bcf86cd799439010',
         chatId: 'chat1'
       })
     ).rejects.toBe(DatasetErrEnum.unAuthDatasetFile);
@@ -759,7 +848,8 @@ describe('authCollectionInChat', () => {
 
     await authCollectionInChat({
       collectionIds,
-      appId,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
       chatId: 'chat1'
     });
 
@@ -768,6 +858,7 @@ describe('authCollectionInChat', () => {
     expect(pipeline[0]).toEqual({
       $match: {
         appId: new Types.ObjectId(appId),
+        $or: [{ sourceType: ChatSourceTypeEnum.app }, { sourceType: { $exists: false } }],
         chatId: 'chat1',
         obj: 'AI'
       }

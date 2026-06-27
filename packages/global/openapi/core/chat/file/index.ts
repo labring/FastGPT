@@ -1,6 +1,6 @@
 import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap } from '../../../tag';
-import { PresignChatFilePostUrlSchema, PresignChatFileGetUrlSchema } from './api';
+import { PresignChatFilePostUrlRawSchema, PresignChatFileGetUrlRawSchema } from './api';
 import { CreatePostPresignedUrlResponseSchema } from '../../../../common/file/s3/type';
 import { z } from 'zod';
 
@@ -13,7 +13,7 @@ export const ChatFilePath: OpenAPIPath = {
       requestBody: {
         content: {
           'application/json': {
-            schema: PresignChatFilePostUrlSchema
+            schema: PresignChatFilePostUrlRawSchema
           }
         }
       },
@@ -37,7 +37,7 @@ export const ChatFilePath: OpenAPIPath = {
       requestBody: {
         content: {
           'application/json': {
-            schema: PresignChatFileGetUrlSchema
+            schema: PresignChatFileGetUrlRawSchema
           }
         }
       },

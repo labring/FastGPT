@@ -21,7 +21,11 @@ import { Call } from '@test/utils/request';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getEditDebugSandboxId } from '@fastgpt/service/core/ai/skill/edit/config';
-import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatRoleEnum,
+  ChatSourceEnum,
+  ChatSourceTypeEnum
+} from '@fastgpt/global/core/chat/constants';
 
 const debugChatMocks = vi.hoisted(() => ({
   dispatchWorkFlow: vi.fn(),
@@ -398,7 +402,8 @@ describe('debugChat handler — parameter validation', () => {
     await MongoSandboxInstance.create({
       provider: 'opensandbox',
       sandboxId: getEditDebugSandboxId(skillId),
-      appId: skillId,
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: skillId,
       chatId: 'edit-debug',
       userId: testUser.tmbId,
       type: SandboxTypeEnum.editDebug,
@@ -406,7 +411,6 @@ describe('debugChat handler — parameter validation', () => {
       metadata: {
         teamId: testUser.teamId,
         tmbId: testUser.tmbId,
-        skillId,
         provider: 'opensandbox',
         image: { repository: 'test-image', tag: 'latest' },
         providerCreatedAt: new Date()
@@ -438,7 +442,8 @@ describe('debugChat handler — parameter validation', () => {
     await MongoSandboxInstance.create({
       provider: 'opensandbox',
       sandboxId: getEditDebugSandboxId(skillId),
-      appId: skillId,
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: skillId,
       chatId: 'edit-debug',
       userId: testUser.tmbId,
       type: SandboxTypeEnum.editDebug,
@@ -446,7 +451,6 @@ describe('debugChat handler — parameter validation', () => {
       metadata: {
         teamId: testUser.teamId,
         tmbId: testUser.tmbId,
-        skillId,
         provider: 'opensandbox',
         image: { repository: 'test-image', tag: 'latest' },
         providerCreatedAt: new Date()
@@ -470,7 +474,8 @@ describe('debugChat handler — parameter validation', () => {
 
     expect(debugChatMocks.preChatRound).toHaveBeenCalledWith(
       expect.objectContaining({
-        appId: skillId,
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        sourceId: skillId,
         chatId: 'debug-chat-id',
         teamId: testUser.teamId,
         tmbId: testUser.tmbId,
@@ -491,7 +496,8 @@ describe('debugChat handler — parameter validation', () => {
     expect(debugChatMocks.finalizeChatRound).toHaveBeenCalledWith(
       expect.objectContaining({
         chatId: 'prepared-debug-chat-id',
-        appId: skillId,
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        sourceId: skillId,
         source: ChatSourceEnum.test,
         aiContent: expect.objectContaining({
           dataId: 'prepared-debug-response-id',

@@ -13,6 +13,8 @@ import {
   SandboxTicketPermissionSchema
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { serviceEnv } from '@fastgpt/service/env';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { buildSandboxClientQueryFromChatSource } from '@/service/core/sandbox/auth';
 
 const DEFAULT_IDE_AGENT_PORT = 1318;
 const IDE_AGENT_PASSWORD_READ_COMMAND = 'sh -c "cat ~/.fastgpt-ide-agent-password"';
@@ -21,13 +23,16 @@ const VerifyTicketQuerySchema = z.object({
   ticket: z.string()
 });
 
-const SandboxTicketClaimsSchema = z.object({
-  appId: z.string(),
+const BaseSandboxTicketClaimsSchema = z.object({
   userId: z.string(),
   chatId: z.string(),
   teamId: z.string(),
   channel: SandboxChannelSchema,
   permission: SandboxTicketPermissionSchema
+});
+const SandboxTicketClaimsSchema = BaseSandboxTicketClaimsSchema.extend({
+  sourceType: z.enum(ChatSourceTypeEnum),
+  sourceId: z.string()
 });
 
 const getIdeAgentPort = () => {
@@ -83,9 +88,16 @@ async function handler(req: ApiRequestProps) {
     throw new Error('Invalid ticket signature: ' + err.message);
   }
 
-  const { appId, userId, chatId } = decoded;
+  const { sourceType, sourceId, userId, chatId } = decoded;
 
-  const sandbox = await getSandboxClient({ appId, userId, chatId });
+  const sandbox = await getSandboxClient(
+    buildSandboxClientQueryFromChatSource({
+      sourceType,
+      sourceId,
+      userId,
+      chatId
+    })
+  );
   const agentPassword = await readIdeAgentPassword(sandbox);
 
   const endpoint = await sandbox.provider.getEndpoint(getIdeAgentPort());

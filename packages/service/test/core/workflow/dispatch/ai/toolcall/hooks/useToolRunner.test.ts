@@ -5,6 +5,7 @@ import { useToolRunner } from '@fastgpt/service/core/workflow/dispatch/ai/toolca
 import { summarizeRuntimeNodeResponses } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 const { dispatchReadFileToolMock, runSandboxToolsMock, runWorkflowMock } = vi.hoisted(() => ({
   dispatchReadFileToolMock: vi.fn(),
@@ -66,7 +67,9 @@ const createCall = ({
 const createWorkflowProps = () =>
   ({
     runningAppInfo: {
-      id: 'app_1'
+      id: 'app_1',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app_1'
     },
     uid: 'user_1',
     chatId: 'chat_1',
@@ -191,7 +194,8 @@ describe('useToolRunner', () => {
     expect(runSandboxToolsMock).toHaveBeenCalledWith({
       toolName: 'sandbox_shell',
       args: '{"cmd":"ls"}',
-      appId: 'app_1',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app_1',
       userId: 'user_1',
       chatId: 'chat_1',
       sandboxClient

@@ -18,10 +18,13 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { presignVariablesFileUrls } from '@fastgpt/service/core/chat/utils';
-import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 
 async function handler(req: ApiRequestProps<InitTeamChatQueryType>, res: NextApiResponse) {
-  const { teamId, appId, chatId, teamToken } = InitTeamChatQuerySchema.parse(req.query);
+  const { query } = parseApiInput({ req, querySchema: InitTeamChatQuerySchema });
+  const { teamId, appId, chatId, teamToken } = query;
 
   const { uid, tags } = await authTeamSpaceToken({
     teamId,
@@ -45,7 +48,12 @@ async function handler(req: ApiRequestProps<InitTeamChatQueryType>, res: NextApi
     return Promise.reject(AppErrEnum.unExist);
   }
 
-  const chat = chatId ? await MongoChat.findOne({ appId, chatId }).lean() : null;
+  const chat = chatId
+    ? await MongoChat.findOne({
+        ...buildChatSourceQuery({ sourceType: ChatSourceTypeEnum.app, sourceId: String(appId) }),
+        chatId
+      }).lean()
+    : null;
 
   // auth chat permission
   if (chat && (String(chat.teamId) !== teamId || chat.outLinkUid !== uid)) {
@@ -54,7 +62,13 @@ async function handler(req: ApiRequestProps<InitTeamChatQueryType>, res: NextApi
 
   const chatGenerateStatus = chat?.chatGenerateStatus ?? ChatGenerateStatusEnum.done;
   if (chat?.hasBeenRead === false && chatGenerateStatus !== ChatGenerateStatusEnum.generating) {
-    await MongoChat.updateOne({ appId, chatId }, { $set: { hasBeenRead: true } });
+    await MongoChat.updateOne(
+      {
+        ...buildChatSourceQuery({ sourceType: ChatSourceTypeEnum.app, sourceId: String(appId) }),
+        chatId
+      },
+      { $set: { hasBeenRead: true } }
+    );
     chat.hasBeenRead = true;
   }
 
@@ -81,6 +95,8 @@ async function handler(req: ApiRequestProps<InitTeamChatQueryType>, res: NextApi
   jsonRes<InitChatResponseType>(res, {
     data: {
       chatId,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: String(appId),
       appId,
       title: chat?.title || '',
       userAvatar: team?.avatar,

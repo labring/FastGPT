@@ -1,4 +1,4 @@
-import { generateSandboxId } from '@fastgpt/global/core/ai/sandbox/constants';
+import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import {
@@ -22,19 +22,18 @@ import {
 
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
-export type SandboxClientQuery =
-  | {
-      sandboxId: string;
-    }
-  | {
-      appId: string;
-      userId?: string;
-      chatId: string;
-    };
+export type SandboxClientQuery = {
+  sandboxId: string;
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
+  userId?: string;
+  chatId?: string;
+};
 
 type SandboxClientProps = {
   sandboxId: string;
-  appId?: string;
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
   userId?: string;
   chatId?: string;
 };
@@ -54,7 +53,8 @@ type SandboxClientOptions = {
  * resource.ts 中的 stopSandboxResource/deleteSandboxResource，避免误触发 create/resume。
  */
 export class SandboxClient {
-  private appId?: string;
+  private sourceType: ChatSourceTypeEnum;
+  private sourceId: string;
   private userId?: string;
   private chatId?: string;
   private sandboxId: string;
@@ -66,7 +66,8 @@ export class SandboxClient {
     private readonly opts: SandboxClientOptions = {}
   ) {
     this.sandboxId = props.sandboxId;
-    this.appId = props.appId;
+    this.sourceType = props.sourceType;
+    this.sourceId = props.sourceId;
     this.userId = props.userId;
     this.chatId = props.chatId;
 
@@ -86,7 +87,8 @@ export class SandboxClient {
     const instance = await upsertRunningSandboxInstance({
       provider: this.providerName,
       sandboxId: this.sandboxId,
-      appId: this.appId,
+      sourceType: this.sourceType,
+      sourceId: this.sourceId,
       userId: this.userId,
       chatId: this.chatId,
       storage: this.opts?.vmConfig?.storage,
@@ -168,23 +170,17 @@ export class SandboxClient {
 }
 
 const resolveSandboxClientProps = (props: SandboxClientQuery): SandboxClientProps => {
-  if ('sandboxId' in props) {
-    if (!props.sandboxId) {
-      throw new Error('sandboxId is required');
-    }
-    return {
-      sandboxId: props.sandboxId
-    };
+  if (!props.sandboxId) {
+    throw new Error('sandboxId is required');
+  }
+  if (!props.sourceType || !props.sourceId) {
+    throw new Error('sourceType and sourceId are required');
   }
 
-  if (!props.appId || !props.chatId) {
-    throw new Error('appId and chatId are required when sandboxId is not provided');
-  }
-
-  const sandboxUserId = props.chatId === 'edit-debug' ? '' : (props.userId ?? '');
   return {
-    sandboxId: generateSandboxId(props.appId, sandboxUserId, props.chatId),
-    appId: props.appId,
+    sandboxId: props.sandboxId,
+    sourceType: props.sourceType,
+    sourceId: props.sourceId,
     userId: props.userId,
     chatId: props.chatId
   };
@@ -193,7 +189,8 @@ const resolveSandboxClientProps = (props: SandboxClientQuery): SandboxClientProp
 /**
  * 获取当前业务会话的运行态 sandbox client。
  *
- * 传入 sandboxId 时直接使用指定实例；传入 app/user/chat 三元组时使用稳定规则生成 sandboxId。
+ * 调用方必须按 sourceType/sourceId 计算 sandboxId；这里不再接收 appId 等旧业务字段，
+ * 避免运行态写入或恢复时继续污染 sandbox 实例归属。
  * 返回前会准备 volume 配置并确保 sandbox 可用。
  */
 export const getSandboxClient = async (
@@ -201,7 +198,7 @@ export const getSandboxClient = async (
   opts: Omit<SandboxClientOptions, 'vmConfig'> = {}
 ) => {
   const sandboxClientProps = resolveSandboxClientProps(props);
-  const { sandboxId, appId, userId, chatId } = sandboxClientProps;
+  const { sandboxId, userId, chatId } = sandboxClientProps;
   const providerName = opts.providerName ?? getConfiguredSandboxProvider();
   let vmConfig: VolumeManagerResult | undefined;
 
@@ -215,7 +212,8 @@ export const getSandboxClient = async (
     await restoreArchivedSandboxBeforeUse({
       provider: providerName,
       sandboxId,
-      appId,
+      sourceType: sandboxClientProps.sourceType,
+      sourceId: sandboxClientProps.sourceId,
       userId,
       chatId,
       resourceLimit: opts.resourceLimits

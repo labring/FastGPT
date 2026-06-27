@@ -1,4 +1,4 @@
-import { authChatCrud } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
@@ -8,22 +8,25 @@ import { filterPublicNodeResponseData } from '@fastgpt/global/core/chat/utils';
 import { GetResDataQuerySchema } from '@fastgpt/global/openapi/core/chat/record/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { getChatItemResponseData } from '@fastgpt/service/core/chat/nodeResponseStorage';
+import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 
 export async function handler(req: ApiRequestProps): Promise<ChatHistoryItemResType[]> {
-  const { appId, chatId, dataId, shareId, outLinkUid, teamId, teamToken } = parseApiInput({
-    req,
-    querySchema: GetResDataQuerySchema
-  }).query;
-  if (!appId || !chatId || !dataId) {
+  const { sourceType, sourceId, chatId, dataId, shareId, outLinkUid, teamId, teamToken } =
+    parseApiInput({
+      req,
+      querySchema: GetResDataQuerySchema
+    }).query;
+  if (!sourceId || !chatId || !dataId) {
     return [];
   }
 
   const [{ showCite }, chatData] = await Promise.all([
-    authChatCrud({
+    authChatTargetCrud({
       req,
       authToken: true,
       authApiKey: true,
-      appId,
+      sourceType,
+      sourceId,
       chatId,
       shareId,
       outLinkUid,
@@ -32,7 +35,7 @@ export async function handler(req: ApiRequestProps): Promise<ChatHistoryItemResT
     }),
     MongoChatItem.findOne(
       {
-        appId,
+        ...buildChatSourceQuery({ sourceType, sourceId }),
         chatId,
         dataId,
         obj: ChatRoleEnum.AI
@@ -48,7 +51,8 @@ export async function handler(req: ApiRequestProps): Promise<ChatHistoryItemResT
   // 新数据优先从独立表拼详情；旧数据如果只有 chat_items.responseData，则作为 fallback 返回。
   const hasInlineResponseData = Object.prototype.hasOwnProperty.call(chatData, 'responseData');
   const flowResponses = await getChatItemResponseData({
-    appId,
+    sourceType,
+    sourceId,
     chatId,
     chatItemDataId: dataId,
     fallbackResponseData: hasInlineResponseData ? chatData.responseData || [] : undefined

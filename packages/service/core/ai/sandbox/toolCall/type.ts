@@ -1,8 +1,10 @@
 import type { z } from 'zod';
 import type { SandboxClient } from '../service/runtime';
+import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 type ToolExecuteContext<P> = {
-  appId: string;
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
   userId: string;
   chatId: string;
   sandboxInstance: SandboxClient;

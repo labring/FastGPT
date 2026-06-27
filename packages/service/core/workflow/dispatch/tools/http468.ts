@@ -30,6 +30,7 @@ import { serviceRequestMaxContentLength } from '../../../../common/system/consta
 import { axios, httpsCertificateIgnoreAgent } from '../../../../common/api/axios';
 import { replaceEditorVariable } from '../utils/replaceEditorVariable';
 import { checkStrOversize, logOversizeString } from '../../../../common/string/replaceVariable';
+import { getWorkflowAppId } from '../utils/source';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.TOOLS);
 
@@ -94,7 +95,7 @@ const UNDEFINED_SIGN = 'UNDEFINED_SIGN';
 
 export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<HttpResponse> => {
   const {
-    runningAppInfo: { id: appId },
+    runningAppInfo,
     chatId,
     responseChatItemId,
     variableState,
@@ -110,6 +111,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       ...body
     }
   } = props;
+  const appId = getWorkflowAppId(runningAppInfo);
   const httpMethod = props.params.system_httpMethod || 'POST';
   const httpContentType = props.params.system_httpContentType || ContentTypes.json;
   const httpTimeout = props.params.system_httpTimeout || 60;
@@ -121,7 +123,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
   }
 
   const systemVariables = {
-    appId,
+    ...(appId ? { appId } : {}),
     chatId,
     responseChatItemId,
     histories: histories?.slice(-10) || []

@@ -28,6 +28,7 @@ import { SearchDataResponseQuoteListItemSchema } from '../../dataset/type';
 import type { localeType } from '../../../common/i18n/type';
 import { type ChatFileStoreValue, type UserChatItemValueItemType } from '../../chat/type';
 import { DatasetSearchModeEnum } from '../../dataset/constants';
+import type { ChatSourceTypeEnum } from '../../chat/constants';
 import { ChatRoleEnum } from '../../chat/constants';
 import z from 'zod';
 import type { JSONSchemaInputType } from '../../app/jsonschema';
@@ -71,13 +72,12 @@ export type ChatDispatchProps = {
   externalProvider: ExternalProviderType;
 
   runningAppInfo: {
-    id: string; // May be the id of the system plug-in (cannot be used directly to look up the table)
+    sourceType: ChatSourceTypeEnum;
+    sourceId: string;
     teamId: string;
     tmbId: string; // App tmbId
     name: string;
     isChildApp?: boolean;
-    /** 显式指定本轮工作流使用的 sandbox 资源，避免由 appId/userId/chatId 重新生成。 */
-    sandboxId?: string;
   };
   runningUserInfo: {
     username: string;
@@ -127,7 +127,7 @@ export type ModuleDispatchProps<T> = ChatDispatchProps & {
 
 export type SystemVariablesType = {
   userId: string;
-  appId: string;
+  appId?: string;
   chatId?: string;
   responseChatItemId?: string;
   histories: ChatItemMiniType[];

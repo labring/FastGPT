@@ -6,10 +6,10 @@ import {
 } from '@/global/core/chat/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
-import { authChatCrud } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
   filterPublicNodeResponseData,
   removeAIResponseCite
@@ -24,7 +24,8 @@ import {
 
 async function handler(req: ApiRequestProps): Promise<GetRecordsV2ResponseType> {
   const {
-    appId,
+    sourceType,
+    sourceId,
     chatId,
     loadCustomFeedbacks = false,
     type = GetChatTypeEnum.normal,
@@ -32,10 +33,11 @@ async function handler(req: ApiRequestProps): Promise<GetRecordsV2ResponseType> 
     initialId,
     nextId,
     prevId,
-    includeDeleted = false
+    includeDeleted = false,
+    ...authProps
   } = parseApiInput({ req, bodySchema: GetRecordsV2BodySchema }).body;
 
-  if (!appId || !chatId) {
+  if (!sourceId || !chatId) {
     return {
       list: [],
       total: 0,
@@ -45,19 +47,22 @@ async function handler(req: ApiRequestProps): Promise<GetRecordsV2ResponseType> 
   }
 
   const [app, { showCite, showRunningStatus, showSkillReferences, authType }] = await Promise.all([
-    MongoApp.findById(appId, 'type').lean(),
-    authChatCrud({
+    sourceType === ChatSourceTypeEnum.app ? MongoApp.findById(sourceId, 'type').lean() : null,
+    authChatTargetCrud({
       req,
       authToken: true,
       authApiKey: true,
-      ...req.body
+      ...authProps,
+      sourceType,
+      sourceId,
+      chatId
     })
   ]);
 
-  if (!app) {
+  if (sourceType === ChatSourceTypeEnum.app && !app) {
     return Promise.reject(AppErrEnum.unExist);
   }
-  const isPlugin = app.type === AppTypeEnum.workflowTool;
+  const isPlugin = app?.type === AppTypeEnum.workflowTool;
   const isOutLink = authType === GetChatTypeEnum.outLink;
 
   const commonField =
@@ -71,7 +76,8 @@ async function handler(req: ApiRequestProps): Promise<GetRecordsV2ResponseType> 
 
   const result = await getChatItems({
     includeDeleted,
-    appId,
+    sourceType,
+    sourceId,
     chatId,
     field: fieldMap[type],
     limit: pageSize,
@@ -86,7 +92,7 @@ async function handler(req: ApiRequestProps): Promise<GetRecordsV2ResponseType> 
   await addPreviewUrlToChatItems(result.histories, isPlugin ? 'workflowTool' : 'chatFlow');
 
   // Remove important information
-  if (isOutLink && app.type !== AppTypeEnum.workflowTool) {
+  if (isOutLink && app?.type !== AppTypeEnum.workflowTool) {
     result.histories.forEach((item) => {
       if (item.obj === ChatRoleEnum.AI) {
         item.responseData = filterPublicNodeResponseData({

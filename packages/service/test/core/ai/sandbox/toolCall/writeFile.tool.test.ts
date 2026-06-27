@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { sandboxWriteFileTool } from '@fastgpt/service/core/ai/sandbox/toolCall/writeFile.tool';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 const createSandboxInstance = () =>
   ({
@@ -21,7 +22,8 @@ describe('sandboxWriteFileTool', () => {
 
     await expect(
       sandboxWriteFileTool.execute({
-        appId: 'app',
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: 'app',
         userId: 'user',
         chatId: 'chat',
         sandboxInstance: sandbox,
@@ -47,7 +49,8 @@ describe('sandboxWriteFileTool', () => {
 
     await expect(
       sandboxWriteFileTool.execute({
-        appId: 'app',
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: 'app',
         userId: 'user',
         chatId: 'chat',
         sandboxInstance: sandbox,
@@ -62,7 +65,8 @@ describe('sandboxWriteFileTool', () => {
 
     await expect(
       sandboxWriteFileTool.execute({
-        appId: 'app',
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: 'app',
         userId: 'user',
         chatId: 'chat',
         sandboxInstance: sandbox,

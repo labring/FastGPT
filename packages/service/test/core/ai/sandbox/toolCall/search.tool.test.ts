@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { sandboxSearchTool } from '@fastgpt/service/core/ai/sandbox/toolCall/search.tool';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 const createSandboxInstance = () =>
   ({
@@ -14,7 +15,8 @@ describe('sandboxSearchTool', () => {
     const sandbox = createSandboxInstance();
 
     const result = await sandboxSearchTool.execute({
-      appId: 'app',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app',
       userId: 'user',
       chatId: 'chat',
       sandboxInstance: sandbox,
@@ -31,7 +33,8 @@ describe('sandboxSearchTool', () => {
     sandbox.provider.search.mockResolvedValueOnce(undefined);
 
     const result = await sandboxSearchTool.execute({
-      appId: 'app',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app',
       userId: 'user',
       chatId: 'chat',
       sandboxInstance: sandbox,

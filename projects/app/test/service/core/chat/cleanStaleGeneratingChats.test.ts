@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import {
   cleanStaleGeneratingChats,
@@ -20,6 +20,10 @@ vi.mock('@fastgpt/service/core/chat/chatSchema', () => ({
 
 const teamId = '507f1f77bcf86cd799439011';
 const appId = '507f1f77bcf86cd799439012';
+const appSource = {
+  sourceType: ChatSourceTypeEnum.app,
+  sourceId: appId
+};
 const baseNow = new Date('2026-05-13T08:00:00.000Z');
 
 const mockGeneratingChats = (chats: any[]) => {
@@ -68,13 +72,13 @@ describe('cleanStaleGeneratingChats', () => {
 
     const redis = getGlobalRedisConnection() as any;
     await redis.set(
-      getStreamResumeRedisKeys({ teamId, appId, chatId: activeChat.chatId }).keyOfActive,
+      getStreamResumeRedisKeys({ teamId, ...appSource, chatId: activeChat.chatId }).keyOfActive,
       JSON.stringify({ updatedAt: baseNow.getTime() - STREAM_RESUME_INACTIVE_MS + 1000 }),
       'EX',
       1800
     );
     await redis.set(
-      getStreamResumeRedisKeys({ teamId, appId, chatId: staleChat.chatId }).keyOfActive,
+      getStreamResumeRedisKeys({ teamId, ...appSource, chatId: staleChat.chatId }).keyOfActive,
       JSON.stringify({ updatedAt: baseNow.getTime() - STREAM_RESUME_INACTIVE_MS - 1000 }),
       'EX',
       1800
@@ -90,6 +94,7 @@ describe('cleanStaleGeneratingChats', () => {
       {
         _id: 1,
         teamId: 1,
+        sourceType: 1,
         appId: 1,
         chatId: 1,
         updateTime: 1

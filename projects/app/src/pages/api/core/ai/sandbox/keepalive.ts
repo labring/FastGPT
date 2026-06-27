@@ -3,12 +3,19 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/service/runtime';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { z } from 'zod';
-import { authAgentSandboxProxy } from '@/service/core/sandbox/auth';
+import {
+  authAgentSandboxProxy,
+  buildSandboxClientQueryFromChatSource
+} from '@/service/core/sandbox/auth';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
-const KeepAliveBodySchema = z.object({
-  appId: z.string(),
+const KeepAliveBaseBodySchema = z.object({
   userId: z.string(),
   chatId: z.string()
+});
+const KeepAliveBodySchema = KeepAliveBaseBodySchema.extend({
+  sourceType: z.enum(ChatSourceTypeEnum),
+  sourceId: z.string()
 });
 
 /**
@@ -22,12 +29,20 @@ const KeepAliveBodySchema = z.object({
 async function handler(req: ApiRequestProps): Promise<void> {
   authAgentSandboxProxy(req);
 
-  const { appId, userId, chatId } = parseApiInput({
+  const { sourceType, sourceId, userId, chatId } = parseApiInput({
     req,
     bodySchema: KeepAliveBodySchema
   }).body;
 
-  await getSandboxClient({ appId, userId, chatId }, { restoreArchived: false });
+  await getSandboxClient(
+    buildSandboxClientQueryFromChatSource({
+      sourceType,
+      sourceId,
+      userId,
+      chatId
+    }),
+    { restoreArchived: false }
+  );
 }
 
 export default NextAPI(handler);

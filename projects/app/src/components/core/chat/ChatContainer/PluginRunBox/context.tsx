@@ -5,7 +5,7 @@ import { type AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { PluginRunBoxTabEnum } from './constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { type generatingMessageProps } from '../type';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { useTranslation } from 'next-i18next';
@@ -276,7 +276,7 @@ const PluginRunContextProvider = ({
   };
   return (
     <WorkflowRuntimeContextProvider
-      appId={props.appId}
+      sourceTarget={{ sourceType: ChatSourceTypeEnum.app, sourceId: props.appId }}
       chatId={props.chatId}
       outLinkAuthData={props.outLinkAuthData || {}}
     >

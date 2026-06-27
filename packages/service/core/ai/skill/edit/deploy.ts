@@ -4,16 +4,17 @@ import { getLogger, LogCategories } from '../../../../common/logger';
 import { updateCurrentVersion } from '../manage';
 import { removeSkillPackageTTL, uploadSkillPackage } from '../package';
 import { packageSkillInSandbox } from './sandbox';
-import { EDIT_DEBUG_SANDBOX_CHAT_ID } from './config';
+import { getEditDebugSandboxId } from './config';
 import { createVersion } from '../version';
 import { getSandboxRuntimeProfile } from '../../sandbox/runtime/profile';
 import { getSandboxProviderConfig } from '../../sandbox/provider/config';
 import {
-  findSandboxInstanceByAppChatType,
+  findSandboxInstanceBySandboxId,
   updateSandboxInstanceRecordBySandboxId
 } from '../../sandbox/instance/repository';
 import { MongoAgentSkills } from '../model/schema';
 import { SandboxStatusEnum, SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import type { SaveDeploySkillResponse } from '@fastgpt/global/core/ai/skill/api';
@@ -41,10 +42,9 @@ export async function saveDeploySkillFromSandbox({
   versionName
 }: SaveDeploySkillFromSandboxParams): Promise<SaveDeploySkillResponse> {
   const providerConfig = getSandboxProviderConfig();
-  const sandboxInfo = await findSandboxInstanceByAppChatType({
+  const sandboxInfo = await findSandboxInstanceBySandboxId({
     provider: providerConfig.provider,
-    appId: skillId,
-    chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
+    sandboxId: getEditDebugSandboxId(skillId),
     status: SandboxStatusEnum.running,
     type: SandboxTypeEnum.editDebug
   });
@@ -126,6 +126,8 @@ export async function saveDeploySkillFromSandbox({
   await updateSandboxInstanceRecordBySandboxId({
     provider: providerConfig.provider,
     sandboxId: sandboxInfo.sandboxId,
+    sourceType: ChatSourceTypeEnum.skillEdit,
+    sourceId: skillId,
     metadata: {
       ...(sandboxInfo.metadata || {}),
       versionId

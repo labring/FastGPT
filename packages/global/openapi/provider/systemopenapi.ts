@@ -25,7 +25,7 @@ export const tagGroups = [
     tags: [ApiKeyTagNameMap[SystemOpenApiTagMap.appLog]]
   },
   {
-    name: '应用对话',
+    name: '对话',
     tags: [
       ApiKeyTagNameMap[SystemOpenApiTagMap.chatHistory],
       ApiKeyTagNameMap[SystemOpenApiTagMap.chat],

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { sandboxReadFileTool } from '@fastgpt/service/core/ai/sandbox/toolCall/readFile.tool';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 const createSandboxInstance = (content: unknown) =>
   ({
@@ -27,7 +28,8 @@ describe('sandboxReadFileTool', () => {
     const sandboxInstance = createSandboxInstance('line 1\nline 2\nline 3');
 
     const result = await sandboxReadFileTool.execute({
-      appId: 'app_1',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app_1',
       userId: 'user_1',
       chatId: 'chat_1',
       sandboxInstance,
@@ -51,7 +53,8 @@ describe('sandboxReadFileTool', () => {
     const sandboxInstance = createSandboxInstance('line 1\nline 2\nline 3\nline 4');
 
     const result = await sandboxReadFileTool.execute({
-      appId: 'app_1',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app_1',
       userId: 'user_1',
       chatId: 'chat_1',
       sandboxInstance,
@@ -81,7 +84,8 @@ describe('sandboxReadFileTool', () => {
     ]);
 
     const result = await sandboxReadFileTool.execute({
-      appId: 'app_1',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app_1',
       userId: 'user_1',
       chatId: 'chat_1',
       sandboxInstance,
@@ -104,7 +108,8 @@ describe('sandboxReadFileTool', () => {
     const sandboxInstance = createSandboxInstance(null);
 
     const result = await sandboxReadFileTool.execute({
-      appId: 'app_1',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app_1',
       userId: 'user_1',
       chatId: 'chat_1',
       sandboxInstance,
@@ -127,7 +132,8 @@ describe('sandboxReadFileTool', () => {
 
     await expect(
       sandboxReadFileTool.execute({
-        appId: 'app_1',
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: 'app_1',
         userId: 'user_1',
         chatId: 'chat_1',
         sandboxInstance,
@@ -147,7 +153,8 @@ describe('sandboxReadFileTool', () => {
 
     await expect(
       sandboxReadFileTool.execute({
-        appId: 'app_1',
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: 'app_1',
         userId: 'user_1',
         chatId: 'chat_1',
         sandboxInstance,

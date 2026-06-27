@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
 import {
   WorkflowNodeResponseWriter,
@@ -15,9 +16,18 @@ import {
 
 const base = {
   teamId: '654a4107c32f3bf5f998452f',
-  appId: '67e0d5535c02d1d5cdede71f',
+  sourceType: ChatSourceTypeEnum.app,
+  sourceId: '67e0d5535c02d1d5cdede71f',
   chatId: 'chat-id',
   chatItemDataId: 'ai-data-id'
+};
+
+const dbBase = {
+  teamId: base.teamId,
+  sourceType: base.sourceType,
+  appId: base.sourceId,
+  chatId: base.chatId,
+  chatItemDataId: base.chatItemDataId
 };
 
 const makeResponse = (
@@ -78,7 +88,7 @@ describe('createChatItemResponseRows', () => {
     expect(rows.map((row) => row.data.id)).toEqual(['root']);
     expect(rows.map((row) => row.data.parentId)).toEqual([undefined]);
     expect(rows[0]).toMatchObject({
-      ...base,
+      ...dbBase,
       data: {
         id: 'root',
         nodeId: 'root',
@@ -360,13 +370,13 @@ describe('composeNodeResponseDetail', () => {
 
 describe('getChatItemResponseData', () => {
   beforeEach(async () => {
-    await MongoChatItemResponse.deleteMany(base);
+    await MongoChatItemResponse.deleteMany(dbBase);
   });
 
   it('reads persisted rows before fallback responseData', async () => {
     await MongoChatItemResponse.create([
       {
-        ...base,
+        ...dbBase,
         data: makeResponse({
           id: 'child',
           parentId: 'root',
@@ -374,7 +384,7 @@ describe('getChatItemResponseData', () => {
         })
       },
       {
-        ...base,
+        ...dbBase,
         data: makeResponse({
           id: 'root',
           moduleName: 'Root'
@@ -966,7 +976,7 @@ describe('WorkflowNodeResponseWriter', () => {
 
     expect(create).toHaveBeenCalledTimes(1);
     expect(create.mock.calls[0][0][0]).toMatchObject({
-      ...base,
+      ...dbBase,
       data: expect.objectContaining({
         id: 'factory-root'
       })

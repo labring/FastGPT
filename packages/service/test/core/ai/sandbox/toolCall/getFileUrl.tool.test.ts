@@ -1,5 +1,6 @@
 import { Readable } from 'stream';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 const s3Mock = vi.hoisted(() => ({
   uploadChatFile: vi.fn(),
@@ -36,7 +37,8 @@ describe('sandboxGetFileUrlTool', () => {
     const sandbox = createSandboxInstance();
 
     const result = await sandboxGetFileUrlTool.execute({
-      appId: 'app',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app',
       userId: 'user',
       chatId: 'chat',
       sandboxInstance: sandbox,
@@ -47,7 +49,8 @@ describe('sandboxGetFileUrlTool', () => {
     expect(sandbox.provider.readFileStream).toHaveBeenCalledWith('/workspace/file.txt');
     expect(s3Mock.uploadChatFile).toHaveBeenCalledWith(
       expect.objectContaining({
-        appId: 'app',
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: 'app',
         chatId: 'chat',
         uId: 'user',
         filename: 'file.txt'

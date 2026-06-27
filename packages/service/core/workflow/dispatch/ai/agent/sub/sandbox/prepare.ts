@@ -23,6 +23,7 @@ import {
   withAgentSandboxInitLease
 } from '../../../../../../ai/sandbox/runtime/entrypoint';
 import { resolveSandboxHome } from '../../../../../../ai/sandbox/runtime/home';
+import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 export type AgentSandboxPrepareContext = SandboxPrepareContext & {
   sandboxClient: SandboxClient;
@@ -36,10 +37,10 @@ export type AgentSandboxPrepareAction = (
 ) => Promise<AgentSandboxPrepareContext>;
 
 type EnsureAgentSandboxRuntimeParams = {
-  appId: string;
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
   userId: string;
   chatId: string;
-  sandboxId?: string;
   teamId: string;
   tmbId: string;
   needSandboxRuntime: boolean;
@@ -62,10 +63,10 @@ type AgentSandboxPrepareStep = SandboxPrepareStep<AgentSandboxPrepareContext>;
  * workflow 层显式编排本轮 sandbox 生命周期；runtime 层只暴露具体原子能力。
  */
 export async function ensureAgentSandboxRuntime({
-  appId,
+  sourceType,
+  sourceId,
   userId,
   chatId,
-  sandboxId,
   teamId,
   tmbId,
   needSandboxRuntime,
@@ -82,10 +83,10 @@ export async function ensureAgentSandboxRuntime({
   }
 
   const sandboxContext = await prepareAgentSandboxRuntime({
-    appId,
+    sourceType,
+    sourceId,
     userId,
     chatId,
-    sandboxId,
     teamId
   });
 

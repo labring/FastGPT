@@ -199,7 +199,8 @@ describe('getQuoteData handler', () => {
     expect(call.teamToken).toBe('token_xyz');
 
     expect(authCollectionInChatMock).toHaveBeenCalledWith({
-      appId: VALID_APP_ID,
+      sourceType: 'app',
+      sourceId: VALID_APP_ID,
       chatId: 'chat_123',
       collectionIds: ['col_1']
     });

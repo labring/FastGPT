@@ -1,7 +1,10 @@
 import type { NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
-import { authSandboxSession } from '@/service/core/sandbox/auth';
+import {
+  authSandboxSession,
+  buildSandboxClientQueryFromChatSource
+} from '@/service/core/sandbox/auth';
 import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/service/runtime';
 import archiver from 'archiver';
 import { SandboxDownloadBodySchema } from '@fastgpt/global/openapi/core/ai/sandbox/api';
@@ -55,20 +58,28 @@ export const writeDirectoryArchiveResponse = async ({
 };
 
 async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void> {
-  const { appId, chatId, path, outLinkAuthData } = parseApiInput({
+  const { sourceType, sourceId, chatId, path, outLinkAuthData } = parseApiInput({
     req,
     bodySchema: SandboxDownloadBodySchema
   }).body;
 
-  const { uid, teamId } = await authSandboxSession({
+  const { uid } = await authSandboxSession({
     req,
-    appId,
+    sourceType,
+    sourceId,
     chatId,
     outLinkAuthData,
     per: ReadPermissionVal
   });
 
-  const sandbox = await getSandboxClient({ appId, userId: uid, chatId });
+  const sandbox = await getSandboxClient(
+    buildSandboxClientQueryFromChatSource({
+      sourceType,
+      sourceId,
+      userId: uid,
+      chatId
+    })
+  );
 
   const isDirectory = await isSandboxPathDirectory(sandbox, path);
 

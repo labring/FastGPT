@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 const mocks = vi.hoisted(() => ({
   connectToSandbox: vi.fn(),
@@ -107,8 +108,8 @@ vi.mock('@fastgpt/service/common/s3/sources/sandbox', () => ({
 vi.mock('@fastgpt/service/core/ai/sandbox/instance/repository', () => ({
   countRunningSandboxInstancesByType: vi.fn(),
   deleteSandboxInstanceRecord: vi.fn(),
-  findSandboxInstanceByAppChatType: vi.fn(),
-  findSandboxResourcesByAppChatTypeExcludeProvider: vi.fn(),
+  findSandboxInstanceBySandboxId: vi.fn(),
+  findSandboxResourcesBySourceChatTypeExcludeProvider: vi.fn(),
   migrateArchivedSandboxInstanceRecord: vi.fn(),
   updateSandboxInstanceRecordBySandboxId: vi.fn()
 }));
@@ -146,8 +147,8 @@ import { deleteSandboxResource } from '@fastgpt/service/core/ai/sandbox/service/
 import {
   countRunningSandboxInstancesByType,
   deleteSandboxInstanceRecord,
-  findSandboxInstanceByAppChatType,
-  findSandboxResourcesByAppChatTypeExcludeProvider,
+  findSandboxInstanceBySandboxId,
+  findSandboxResourcesBySourceChatTypeExcludeProvider,
   migrateArchivedSandboxInstanceRecord,
   updateSandboxInstanceRecordBySandboxId
 } from '@fastgpt/service/core/ai/sandbox/instance/repository';
@@ -400,8 +401,8 @@ describe('createEditDebugSandbox', () => {
       _id: 'version-1',
       storageKey: 'storage-key'
     } as any);
-    vi.mocked(findSandboxInstanceByAppChatType).mockResolvedValueOnce(null);
-    vi.mocked(findSandboxResourcesByAppChatTypeExcludeProvider).mockResolvedValueOnce([]);
+    vi.mocked(findSandboxInstanceBySandboxId).mockResolvedValueOnce(null);
+    vi.mocked(findSandboxResourcesBySourceChatTypeExcludeProvider).mockResolvedValueOnce([]);
     vi.mocked(countRunningSandboxInstancesByType).mockResolvedValueOnce(0);
     vi.mocked(downloadSkillPackage).mockResolvedValueOnce(packageBuffer);
     vi.mocked(getSandboxClient).mockResolvedValueOnce({
@@ -478,8 +479,8 @@ describe('createEditDebugSandbox', () => {
       _id: 'version-1',
       storageKey: 'storage-key'
     } as any);
-    vi.mocked(findSandboxInstanceByAppChatType).mockResolvedValueOnce(archivedInstance as any);
-    vi.mocked(findSandboxResourcesByAppChatTypeExcludeProvider).mockResolvedValueOnce([]);
+    vi.mocked(findSandboxInstanceBySandboxId).mockResolvedValueOnce(archivedInstance as any);
+    vi.mocked(findSandboxResourcesBySourceChatTypeExcludeProvider).mockResolvedValueOnce([]);
     vi.mocked(countRunningSandboxInstancesByType).mockResolvedValueOnce(0);
     vi.mocked(getSandboxClient).mockResolvedValueOnce({
       provider,
@@ -513,7 +514,9 @@ describe('createEditDebugSandbox', () => {
     expect(deleteSandboxInstanceRecord).not.toHaveBeenCalled();
     expect(getSandboxClient).toHaveBeenCalledWith(
       {
-        appId: skillId,
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        sourceId: skillId,
+        sandboxId: `edit-debug-${skillId}`,
         userId: '',
         chatId: 'edit-debug'
       },
@@ -566,8 +569,8 @@ describe('createEditDebugSandbox', () => {
       _id: 'version-1',
       storageKey: 'storage-key'
     } as any);
-    vi.mocked(findSandboxInstanceByAppChatType).mockResolvedValueOnce(archivedInstance as any);
-    vi.mocked(findSandboxResourcesByAppChatTypeExcludeProvider).mockResolvedValueOnce([]);
+    vi.mocked(findSandboxInstanceBySandboxId).mockResolvedValueOnce(archivedInstance as any);
+    vi.mocked(findSandboxResourcesBySourceChatTypeExcludeProvider).mockResolvedValueOnce([]);
     vi.mocked(countRunningSandboxInstancesByType).mockResolvedValueOnce(0);
     vi.mocked(getSandboxClient)
       .mockRejectedValueOnce(noSuchKeyError)
@@ -622,7 +625,8 @@ describe('createEditDebugSandbox', () => {
       _id: 'archived-stale-provider-instance',
       provider: 'opensandbox',
       sandboxId: `edit-debug-${skillId}`,
-      appId: skillId,
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: skillId,
       chatId: 'edit-debug',
       type: 'editDebug',
       metadata: {
@@ -641,8 +645,8 @@ describe('createEditDebugSandbox', () => {
       _id: 'version-1',
       storageKey: 'storage-key'
     } as any);
-    vi.mocked(findSandboxInstanceByAppChatType).mockResolvedValueOnce(null);
-    vi.mocked(findSandboxResourcesByAppChatTypeExcludeProvider).mockResolvedValueOnce([
+    vi.mocked(findSandboxInstanceBySandboxId).mockResolvedValueOnce(null);
+    vi.mocked(findSandboxResourcesBySourceChatTypeExcludeProvider).mockResolvedValueOnce([
       archivedStaleInstance as any
     ]);
     vi.mocked(countRunningSandboxInstancesByType).mockResolvedValueOnce(0);
@@ -677,7 +681,8 @@ describe('createEditDebugSandbox', () => {
     expect(migrateArchivedSandboxInstanceRecord).toHaveBeenCalledWith({
       source: archivedStaleInstance,
       provider: 'test-provider',
-      appId: skillId,
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: skillId,
       userId: '',
       chatId: 'edit-debug',
       type: 'edit-debug'
@@ -690,7 +695,8 @@ describe('createEditDebugSandbox', () => {
       expect.objectContaining({
         provider: 'test-provider',
         sandboxId: `edit-debug-${skillId}`,
-        appId: skillId,
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        sourceId: skillId,
         chatId: 'edit-debug'
       })
     );

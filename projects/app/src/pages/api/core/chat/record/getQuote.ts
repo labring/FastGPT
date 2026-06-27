@@ -1,5 +1,6 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { authChatCrud, authCollectionInChat } from '@/service/support/permission/auth/chat';
+import { authCollectionInChat } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { quoteDataFieldSelector } from '@/service/core/chat/constants';
@@ -12,10 +13,13 @@ import {
   GetQuoteResponseSchema,
   type GetQuoteResponseType
 } from '@fastgpt/global/openapi/core/chat/record/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 
 async function handler(req: ApiRequestProps): Promise<GetQuoteResponseType> {
   const {
-    appId,
+    sourceType,
+    sourceId,
     chatId,
     chatItemDataId,
     shareId,
@@ -24,21 +28,26 @@ async function handler(req: ApiRequestProps): Promise<GetQuoteResponseType> {
     teamToken,
     collectionIdList,
     datasetDataIdList
-  } = GetQuoteBodySchema.parse(req.body);
+  } = parseApiInput({ req, bodySchema: GetQuoteBodySchema }).body;
 
   const [{ chat, showCite }, chatItem] = await Promise.all([
-    authChatCrud({
+    authChatTargetCrud({
       req,
       authToken: true,
-      appId,
+      authApiKey: true,
+      sourceType,
+      sourceId,
       chatId,
       shareId,
       outLinkUid,
       teamId,
       teamToken
     }),
-    MongoChatItem.findOne({ appId, chatId, dataId: chatItemDataId }, 'time').lean(),
-    authCollectionInChat({ appId, chatId, collectionIds: collectionIdList })
+    MongoChatItem.findOne(
+      { ...buildChatSourceQuery({ sourceType, sourceId }), chatId, dataId: chatItemDataId },
+      'time'
+    ).lean(),
+    authCollectionInChat({ sourceType, sourceId, chatId: chatId!, collectionIds: collectionIdList })
   ]);
   if (!chat || !chatItem || !showCite) return Promise.reject(ChatErrEnum.unAuthChat);
 

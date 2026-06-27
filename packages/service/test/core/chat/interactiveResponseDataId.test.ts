@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { resolveResponseChatItemId } from '@fastgpt/service/core/chat/interactiveResponseDataId';
 
@@ -8,6 +8,11 @@ const base = {
   tmbId: '654a4107c32f3bf5f9984530',
   appId: '67e0d5535c02d1d5cdede71f',
   chatId: 'interactive-chat-id'
+};
+
+const chatSource = {
+  sourceType: ChatSourceTypeEnum.app,
+  sourceId: base.appId
 };
 
 describe('resolveResponseChatItemId', () => {
@@ -25,7 +30,7 @@ describe('resolveResponseChatItemId', () => {
 
     await expect(
       resolveResponseChatItemId({
-        appId: base.appId,
+        ...chatSource,
         chatId: base.chatId,
         responseChatItemId: 'client-response-id',
         interactive: {
@@ -56,7 +61,7 @@ describe('resolveResponseChatItemId', () => {
 
     await expect(
       resolveResponseChatItemId({
-        appId: base.appId,
+        ...chatSource,
         chatId: base.chatId,
         responseChatItemId: 'client-response-id',
         interactive: {

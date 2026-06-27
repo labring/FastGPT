@@ -1,5 +1,5 @@
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
-import { authChatCrud } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import {
@@ -8,6 +8,9 @@ import {
   type DeleteChatRecordResponseType
 } from '@fastgpt/global/openapi/core/chat/record/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 
 const hasRequestBodyPayload = (body: unknown) =>
   !!body && typeof body === 'object' && Object.keys(body).length > 0;
@@ -16,13 +19,15 @@ async function handler(req: ApiRequestProps): Promise<DeleteChatRecordResponseTy
   const params = hasRequestBodyPayload(req.body)
     ? parseApiInput({ req, bodySchema: DeleteChatRecordBodySchema }).body
     : parseApiInput({ req, querySchema: DeleteChatRecordBodySchema }).query;
-  const { appId, chatId, contentId, contentIds, ...authProps } = params;
-  await authChatCrud({
+  const { sourceType, sourceId, chatId, contentId, contentIds, ...authProps } = params;
+  await authChatTargetCrud({
     req,
     authToken: true,
     authApiKey: true,
-    appId,
+    sourceType,
+    sourceId,
     chatId,
+    ...(sourceType === ChatSourceTypeEnum.skillEdit ? { per: WritePermissionVal } : {}),
     ...authProps
   });
 
@@ -36,7 +41,7 @@ async function handler(req: ApiRequestProps): Promise<DeleteChatRecordResponseTy
 
   await MongoChatItem.updateMany(
     {
-      appId,
+      ...buildChatSourceQuery({ sourceType, sourceId }),
       chatId,
       dataId: { $in: targetContentIds }
     },

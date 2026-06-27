@@ -5,7 +5,6 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type';
-import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { concatHistories, removeEmptyUserInput } from '@fastgpt/global/core/chat/utils';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -16,12 +15,10 @@ import {
 import {
   ChatGenerateStatusEnum,
   ChatRoleEnum,
+  ChatSourceTypeEnum,
   ChatSourceEnum
 } from '@fastgpt/global/core/chat/constants';
-import {
-  SkillDebugChatBodySchema,
-  type SkillDebugChatBody
-} from '@fastgpt/global/core/ai/skill/api';
+import { SkillDebugChatBodySchema } from '@fastgpt/global/core/ai/skill/api';
 import { SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -36,7 +33,7 @@ import { getRunningUserInfoByTmbId } from '../../../../support/user/team/utils';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import { getDefaultLLMModel } from '../../model';
 import { getEditDebugSandboxId } from '../edit/config';
-import { findSandboxInstanceBySandboxId } from '../../sandbox/instance/repository';
+import { findSandboxInstanceBySandboxIdAndSource } from '../../sandbox/instance/repository';
 import { getSandboxProviderConfig } from '../../sandbox/provider/config';
 import { dispatchWorkFlow } from '../../../workflow/dispatch';
 import { WORKFLOW_MAX_RUN_TIMES } from '../../../workflow/constants';
@@ -58,10 +55,6 @@ import type { AgentSandboxPrepareAction } from '../../../workflow/dispatch/ai/ag
 
 const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS);
 
-type SkillDebugChatProps = Omit<SkillDebugChatBody, 'messages'> & {
-  messages: ChatCompletionMessageParam[];
-};
-
 /**
  * 处理 Skill 调试对话的共享主流程。
  *
@@ -79,7 +72,8 @@ export async function handleSkillDebugChat(
   let streamResponseContext: SkillDebugStreamResponseContext | undefined;
   const roundState = {
     preparedRound: undefined as PreChatRoundResult | undefined,
-    appId: '',
+    sourceType: undefined as ChatSourceTypeEnum | undefined,
+    sourceId: '',
     chatId: '',
     responseChatItemId: '',
     finalized: false
@@ -96,8 +90,12 @@ export async function handleSkillDebugChat(
     } = parseApiInput({
       req,
       bodySchema: SkillDebugChatBodySchema
-    }).body as SkillDebugChatProps;
+    }).body;
     skillId = parsedSkillId;
+    const chatSource = {
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: skillId
+    };
 
     if (!Array.isArray(messages) || messages.length === 0) {
       throw new UserError('messages is required');
@@ -120,10 +118,11 @@ export async function handleSkillDebugChat(
 
     const providerConfig = getSandboxProviderConfig();
     const editDebugSandboxId = getEditDebugSandboxId(skillId);
-    const sandboxInstance = await findSandboxInstanceBySandboxId({
+    const sandboxInstance = await findSandboxInstanceBySandboxIdAndSource({
       provider: providerConfig.provider,
       sandboxId: editDebugSandboxId,
-      appId: skillId,
+      sourceType: chatSource.sourceType,
+      sourceId: chatSource.sourceId,
       type: SandboxTypeEnum.editDebug
     });
     if (!sandboxInstance) {
@@ -140,7 +139,7 @@ export async function handleSkillDebugChat(
     }
 
     const { histories } = await getChatItems({
-      appId: skillId,
+      ...chatSource,
       chatId,
       offset: 0,
       limit: 20,
@@ -150,7 +149,7 @@ export async function handleSkillDebugChat(
     const newHistories = concatHistories(histories, chatMessages);
     const interactive = getLastInteractiveValue(newHistories);
     const preparedRound = await preChatRound({
-      appId: skillId,
+      ...chatSource,
       chatId,
       teamId,
       tmbId,
@@ -162,7 +161,8 @@ export async function handleSkillDebugChat(
     const runningChatId = preparedRound.chatId;
     const finalResponseChatItemId = preparedRound.responseChatItemId;
     roundState.preparedRound = preparedRound;
-    roundState.appId = skillId;
+    roundState.sourceType = chatSource.sourceType;
+    roundState.sourceId = chatSource.sourceId;
     roundState.chatId = runningChatId;
     roundState.responseChatItemId = finalResponseChatItemId;
 
@@ -178,7 +178,8 @@ export async function handleSkillDebugChat(
       stream: true,
       detail: true,
       teamId,
-      appId: skillId,
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: skillId,
       chatId: runningChatId,
       responseId: runningChatId,
       showNodeStatus: true
@@ -202,11 +203,11 @@ export async function handleSkillDebugChat(
       usageSource: UsageSourceEnum.fastgpt,
       uid: tmbId,
       runningAppInfo: {
-        id: skillId,
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        sourceId: skillId,
         name: skill.name,
         teamId,
-        tmbId,
-        sandboxId: editDebugSandboxId
+        tmbId
       },
       runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
       chatId: runningChatId,
@@ -282,8 +283,8 @@ export async function handleSkillDebugChat(
     };
 
     const saveParams: SaveChatProps = {
+      ...chatSource,
       chatId: runningChatId,
-      appId: skillId,
       teamId,
       tmbId,
       nodes: [],
@@ -310,7 +311,7 @@ export async function handleSkillDebugChat(
 
     if (!preparedRound.shouldFinalizePreparedRound && preparedRound.shouldPersistChatRound) {
       await updateChatGenerateStatus({
-        appId: skillId,
+        ...chatSource,
         chatId: runningChatId,
         status: ChatGenerateStatusEnum.done
       });
@@ -327,19 +328,22 @@ export async function handleSkillDebugChat(
     if (
       !roundState.finalized &&
       preparedRound?.shouldPersistChatRound &&
-      roundState.appId &&
+      roundState.sourceType &&
+      roundState.sourceId &&
       roundState.chatId
     ) {
       if (preparedRound.shouldFinalizePreparedRound) {
         await failChatRound({
-          appId: roundState.appId,
+          sourceType: roundState.sourceType,
+          sourceId: roundState.sourceId,
           chatId: roundState.chatId,
           responseChatItemId: roundState.responseChatItemId,
           error: err
         });
       } else {
         await updateChatGenerateStatus({
-          appId: roundState.appId,
+          sourceType: roundState.sourceType,
+          sourceId: roundState.sourceId,
           chatId: roundState.chatId,
           status: ChatGenerateStatusEnum.error
         });

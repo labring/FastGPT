@@ -7,7 +7,7 @@ import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
  * API: 获取对话输入引导列表
  * Route: POST /api/core/chat/inputGuide/list
  * Method: POST
- * Description: 获取指定应用的对话输入引导列表，支持关键词搜索
+ * Description: 获取对话输入引导列表，支持关键词搜索
  * Tags: ['Chat', 'InputGuide', 'Read']
  * ============================================================================ */
 
@@ -36,7 +36,7 @@ export type ChatInputGuideListResponseType = z.infer<typeof ChatInputGuideListRe
  * API: 统计对话输入引导总数
  * Route: GET /api/core/chat/inputGuide/countTotal
  * Method: GET
- * Description: 获取指定应用的对话输入引导总数
+ * Description: 获取对话输入引导总数
  * Tags: ['Chat', 'InputGuide', 'Read']
  * ============================================================================ */
 
@@ -102,10 +102,10 @@ export const DeleteChatInputGuideResponseSchema = z.undefined().meta({ descripti
 export type DeleteChatInputGuideResponseType = z.infer<typeof DeleteChatInputGuideResponseSchema>;
 
 /* ============================================================================
- * API: 删除应用所有对话输入引导
+ * API: 删除所有对话输入引导
  * Route: DELETE /api/core/chat/inputGuide/deleteAll
  * Method: DELETE
- * Description: 删除指定应用的所有对话输入引导
+ * Description: 删除所有对话输入引导
  * Tags: ['Chat', 'InputGuide', 'Delete']
  * ============================================================================ */
 

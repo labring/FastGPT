@@ -16,6 +16,7 @@ import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
 import { addDays } from 'date-fns';
 import { ExportCollectionBodySchema } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 const logger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
 
 async function handler(req: ApiRequestProps, res: NextApiResponse) {
@@ -59,7 +60,12 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
         teamToken
       }),
       getCollectionWithDataset(collectionId),
-      authCollectionInChat({ appId, chatId, collectionIds: [collectionId] })
+      authCollectionInChat({
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: appId,
+        chatId,
+        collectionIds: [collectionId]
+      })
     ]);
 
     if (!authRes.canDownloadSource) {

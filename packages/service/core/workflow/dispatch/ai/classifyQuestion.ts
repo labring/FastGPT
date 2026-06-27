@@ -15,6 +15,7 @@ import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runti
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { createLLMResponse } from '../../../ai/llm/request';
 import { getLogger, LogCategories } from '../../../../common/logger';
+import { getWorkflowSourceNodeKey } from '../utils/source';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.AI);
 
@@ -48,7 +49,7 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
 
   const cqModel = getLLMModel(model);
 
-  const memoryKey = `${runningAppInfo.id}-${nodeId}`;
+  const memoryKey = getWorkflowSourceNodeKey({ runningAppInfo, nodeId });
   const chatHistories = getHistories(history, histories);
   // @ts-ignore
   const lastMemory = chatHistories[chatHistories.length - 1]?.memories?.[

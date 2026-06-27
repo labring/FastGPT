@@ -4,6 +4,7 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { updateChatFeedbackCount } from '@fastgpt/service/core/chat/controller';
 import { batchRun } from '@fastgpt/global/common/system/utils';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 const logger = getLogger(LogCategories.SYSTEM);
 
 /**
@@ -182,7 +183,8 @@ export async function migrateFeedbackFlags() {
     async (chat) => {
       try {
         await updateChatFeedbackCount({
-          appId: chat.appId,
+          sourceType: ChatSourceTypeEnum.app,
+          sourceId: chat.appId,
           chatId: chat.chatId
         });
         succeeded++;

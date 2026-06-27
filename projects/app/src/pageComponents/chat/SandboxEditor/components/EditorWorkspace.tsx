@@ -8,13 +8,14 @@ import EditorContent from './EditorContent';
 import InteractiveTerminal from './InteractiveTerminal';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import type { ChatTargetInputType } from '@fastgpt/global/openapi/core/chat/api';
 import ParticleLoading from '@fastgpt/web/components/common/MyLoading/ParticleLoading';
 import RandomGridBackground from './RandomGridBackground';
 import type { TreeNode } from './FileTree';
 import type { SandboxEditorInstance } from '../types';
 
 type Props = {
-  appId: string;
+  sandboxTarget: ChatTargetInputType;
   chatId: string;
   outLinkAuthData?: OutLinkChatAuthProps;
   showDownload?: boolean;
@@ -40,7 +41,7 @@ type Props = {
 };
 
 const EditorWorkspace = ({
-  appId,
+  sandboxTarget,
   chatId,
   outLinkAuthData,
   showDownload = true,
@@ -197,7 +198,7 @@ const EditorWorkspace = ({
           setOpenedFiles={setOpenedFiles}
           openedFiles={openedFiles}
           editorRef={editorRef}
-          appId={appId}
+          sandboxTarget={sandboxTarget}
           chatId={chatId}
           outLinkAuthData={outLinkAuthData}
           showDownload={showDownload}
@@ -337,7 +338,7 @@ const EditorWorkspace = ({
             {showTerminal && (
               <Box flex={1} minH={0} w="100%">
                 <InteractiveTerminal
-                  appId={appId}
+                  sandboxTarget={sandboxTarget}
                   chatId={chatId}
                   outLinkAuthData={outLinkAuthData}
                   canWrite={canWrite}

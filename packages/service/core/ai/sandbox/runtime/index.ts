@@ -2,6 +2,8 @@ import { getSandboxClient, type SandboxClient } from '../service/runtime';
 import { createAgentSandboxPermissionDeniedError } from '../error';
 import { checkTeamSandboxPermission } from '../../../../support/permission/teamLimit';
 import { getSandboxRuntimeProfile } from './profile';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { getRunningSandboxId } from './id';
 
 export type AgentSandboxRuntimeContext = {
   sandboxClient: SandboxClient;
@@ -15,16 +17,16 @@ export type AgentSandboxRuntimeContext = {
  * skill 注入、entrypoint 和扫描由 skill runtime 自己处理。
  */
 export async function prepareAgentSandboxRuntime({
-  appId,
+  sourceType,
+  sourceId,
   userId,
   chatId,
-  sandboxId,
   teamId
 }: {
-  appId: string;
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
   userId: string;
   chatId: string;
-  sandboxId?: string;
   teamId: string;
 }): Promise<AgentSandboxRuntimeContext> {
   try {
@@ -33,9 +35,19 @@ export async function prepareAgentSandboxRuntime({
     throw createAgentSandboxPermissionDeniedError();
   }
 
-  const sandboxClient = await getSandboxClient(
-    sandboxId ? { sandboxId } : { appId, userId, chatId }
-  );
+  const sandboxId = getRunningSandboxId({
+    sourceType,
+    sourceId,
+    userId,
+    chatId
+  });
+  const sandboxClient = await getSandboxClient({
+    sandboxId,
+    sourceType,
+    sourceId,
+    userId: sourceType === ChatSourceTypeEnum.app ? userId : '',
+    chatId
+  });
   const runtimeProfile = getSandboxRuntimeProfile();
 
   return {

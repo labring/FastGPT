@@ -23,6 +23,7 @@ import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runti
 import { getExtractJsonPrompt } from '@fastgpt/global/core/ai/prompt/agent';
 import { createLLMResponse } from '../../../ai/llm/request';
 import type { JsonSchemaPropertiesItemType } from '@fastgpt/global/core/app/jsonschema';
+import { getWorkflowSourceNodeKey } from '../utils/source';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemMiniType[];
@@ -54,7 +55,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   const extractModel = getLLMModel(model);
   const chatHistories = getHistories(history, histories);
 
-  const memoryKey = `${runningAppInfo.id}-${nodeId}`;
+  const memoryKey = getWorkflowSourceNodeKey({ runningAppInfo, nodeId });
   // @ts-ignore
   const lastMemory = chatHistories[chatHistories.length - 1]?.memories?.[memoryKey] as Record<
     string,

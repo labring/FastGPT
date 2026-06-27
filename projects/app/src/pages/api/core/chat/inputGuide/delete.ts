@@ -8,9 +8,13 @@ import {
   DeleteChatInputGuideResponseSchema,
   type DeleteChatInputGuideResponseType
 } from '@fastgpt/global/openapi/core/chat/inputGuide/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps): Promise<DeleteChatInputGuideResponseType> {
-  const { appId, dataIdList } = DeleteChatInputGuideBodySchema.parse(req.body);
+  const { appId, dataIdList } = parseApiInput({
+    req,
+    bodySchema: DeleteChatInputGuideBodySchema
+  }).body;
   await authApp({ req, appId, authToken: true, per: WritePermissionVal });
 
   await MongoChatInputGuide.deleteMany({

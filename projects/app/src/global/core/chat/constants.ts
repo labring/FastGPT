@@ -1,8 +1,11 @@
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { InitChatResponseType } from '@fastgpt/global/openapi/core/chat/controler/api';
 
-export const defaultChatData: InitChatResponseType = {
+export const defaultChatData = {
   chatId: '',
+  sourceType: ChatSourceTypeEnum.app,
+  sourceId: '',
   appId: '',
   app: {
     name: 'Loading',
@@ -14,4 +17,4 @@ export const defaultChatData: InitChatResponseType = {
   },
   title: '',
   variables: {}
-};
+} satisfies InitChatResponseType;

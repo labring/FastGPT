@@ -14,7 +14,8 @@ pub struct SandboxAddress {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Claims {
-    pub app_id: String,
+    pub source_type: String,
+    pub source_id: String,
     pub user_id: String,
     pub chat_id: String,
     pub team_id: String,
@@ -171,7 +172,8 @@ mod tests {
             + 60; // 60 seconds validity
 
         let claims = Claims {
-            app_id: "app-id-123".to_string(),
+            source_type: "app".to_string(),
+            source_id: "app-id-123".to_string(),
             user_id: "user-id-456".to_string(),
             chat_id: "chat-id-789".to_string(),
             team_id: "team-id-abc".to_string(),
@@ -188,7 +190,8 @@ mod tests {
         .unwrap();
 
         let verified_claims = verify_jwt_ticket(&token).unwrap();
-        assert_eq!(verified_claims.app_id, "app-id-123");
+        assert_eq!(verified_claims.source_type, "app");
+        assert_eq!(verified_claims.source_id, "app-id-123");
         assert_eq!(verified_claims.user_id, "user-id-456");
         assert_eq!(verified_claims.chat_id, "chat-id-789");
         assert_eq!(verified_claims.team_id, "team-id-abc");
@@ -209,7 +212,8 @@ mod tests {
             + 60;
 
         let claims = Claims {
-            app_id: "app-id".to_string(),
+            source_type: "app".to_string(),
+            source_id: "app-id".to_string(),
             user_id: "user-id".to_string(),
             chat_id: "chat-id".to_string(),
             team_id: "team-id".to_string(),
@@ -242,7 +246,8 @@ mod tests {
             - 10; // Expired 10 seconds ago
 
         let claims = Claims {
-            app_id: "app-id".to_string(),
+            source_type: "app".to_string(),
+            source_id: "app-id".to_string(),
             user_id: "user-id".to_string(),
             chat_id: "chat-id".to_string(),
             team_id: "team-id".to_string(),

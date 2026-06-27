@@ -24,20 +24,27 @@ import {
 } from '../utils/resume';
 import type { ChatSiteItemType } from '../type';
 import type { generatingMessageProps } from '../../type';
+import type { ChatTargetInputType } from '@fastgpt/global/openapi/core/chat/api';
+import { useChatApiTarget } from '@/web/core/chat/utils';
 
 type FinishChatGenerateStatus = (params: {
   status: ChatGenerateStatusEnum;
   finishedInActiveChat: boolean;
-  targetAppId?: string;
+  targetChatTarget?: ChatTargetInputType;
+  targetSourceKey?: string;
   targetChatId?: string;
-  shouldUpdateChatBoxData?: (state: { appId?: string; chatId?: string }) => boolean;
+  shouldUpdateChatBoxData?: (state: {
+    sourceKey?: string;
+    appId?: string;
+    chatId?: string;
+  }) => boolean;
 }) => void;
 
 type UseChatResumeProps = {
   enableAutoResume: boolean;
   isReady: boolean;
   resumeTargetAiDataId?: string;
-  activeAppIdRef: MutableRefObject<string | undefined>;
+  activeSourceKeyRef: MutableRefObject<string | undefined>;
   activeChatIdRef: MutableRefObject<string | undefined>;
   resumedChatTargetRef: MutableRefObject<string | undefined>;
   resumeControllerRef: MutableRefObject<AbortController | undefined>;
@@ -58,12 +65,12 @@ const isAbortByLeave = (reason: unknown) => {
  * - 调用 `streamResumeFetch` 接收恢复流。
  * - 在本地补齐或复用 AI placeholder。
  * - 用调用方传入的 `generatingMessage` 复用现有 SSE 增量合并逻辑。
- * - 收尾同步当前 ChatBox 状态、侧边栏状态和已读状态。
+ * - 收尾同步当前 ChatBox 状态，并把生成状态变化交给调用方回调。
  *
  * 输入约定：
  * - `generatingMessage` 仍由 ChatBox 提供，确保普通发送和恢复生成继续共享同一套
  *   answer/reasoning/tool/plan/interactive 合并逻辑。
- * - `activeAppIdRef/activeChatIdRef` 保存当前页面真实目标，用于防止恢复流异步返回后
+ * - `activeSourceKeyRef/activeChatIdRef` 保存当前页面真实目标，用于防止恢复流异步返回后
  *   写入已经切走的会话。
  * - `resumedChatTargetRef` 记录本轮已经尝试恢复的 app/chat，避免同一个 generating
  *   会话在多次 render 后重复发起恢复请求。
@@ -71,7 +78,7 @@ const isAbortByLeave = (reason: unknown) => {
  *   能在页面切换时中断恢复流。
  *
  * 关键边界：
- * - 只有 records 已加载、当前 ChatBox 数据和 runtime app/chat 对齐，并且状态仍为
+ * - 只有 records 已加载、当前 ChatBox 数据和 runtime source/chat 对齐，并且状态仍为
  *   generating 时才恢复。
  * - 恢复流可能先到达 SSE 增量，再拿到完整 completedChat；因此需要按可见事件提前
  *   创建 AI placeholder，保证 `generatingMessage` 仍然只更新最后一条 AI 消息。
@@ -81,7 +88,7 @@ export const useChatResume = ({
   enableAutoResume,
   isReady,
   resumeTargetAiDataId,
-  activeAppIdRef,
+  activeSourceKeyRef,
   activeChatIdRef,
   resumedChatTargetRef,
   resumeControllerRef,
@@ -91,10 +98,12 @@ export const useChatResume = ({
 }: UseChatResumeProps) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
+  const sourceKey = useContextSelector(WorkflowRuntimeContext, (v) => v.sourceKey);
+  const sourceTarget = useContextSelector(WorkflowRuntimeContext, (v) => v.sourceTarget);
+  const chatTarget = useChatApiTarget(sourceTarget);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
-  const chatBoxAppId = useContextSelector(ChatItemContext, (v) => v.chatBoxData.appId);
+  const chatBoxSourceKey = useContextSelector(ChatItemContext, (v) => v.chatBoxData.sourceKey);
   const chatBoxChatId = useContextSelector(ChatItemContext, (v) => v.chatBoxData.chatId);
   const chatGenerateStatus = useContextSelector(
     ChatItemContext,
@@ -109,20 +118,21 @@ export const useChatResume = ({
       !enableAutoResume ||
       !isReady ||
       !isChatRecordsLoaded ||
-      !appId ||
+      !sourceKey ||
       !chatId ||
       isChatting ||
-      chatBoxAppId !== appId ||
+      chatBoxSourceKey !== sourceKey ||
       chatBoxChatId !== chatId ||
       chatGenerateStatus !== ChatGenerateStatusEnum.generating ||
-      resumedChatTargetRef.current === `${appId}:${chatId}`
+      resumedChatTargetRef.current === `${sourceKey}:${chatId}`
     ) {
       return;
     }
 
-    resumedChatTargetRef.current = `${appId}:${chatId}`;
+    resumedChatTargetRef.current = `${sourceKey}:${chatId}`;
 
-    const resumeForAppId = appId;
+    const resumeForSourceKey = sourceKey;
+    const resumeForChatTarget = chatTarget;
     const resumeForChatId = chatId;
     const responseChatId = resumeTargetAiDataId ?? getNanoid(24);
     const controller = new AbortController();
@@ -133,8 +143,8 @@ export const useChatResume = ({
     let hasPreparedResumeAiRecord = false;
     let hasReceivedResumeOutput = false;
 
-    const isActiveResumeTarget = ({ appId, chatId }: { appId: string; chatId: string }) =>
-      activeAppIdRef.current === appId && activeChatIdRef.current === chatId;
+    const isActiveResumeTarget = ({ sourceKey, chatId }: { sourceKey: string; chatId: string }) =>
+      activeSourceKeyRef.current === sourceKey && activeChatIdRef.current === chatId;
 
     const getResumeUnavailablePlaceholderText = () => t('chat:resume_placeholder_generating');
 
@@ -203,12 +213,18 @@ export const useChatResume = ({
     (async () => {
       try {
         const { responseText, completedChat, resumeUnavailable } = await streamResumeFetch({
-          appId,
+          ...chatTarget,
           chatId,
           outLinkAuthData,
           controller,
           onResumeUnavailable: () => {
-            if (!isActiveResumeTarget({ appId: resumeForAppId, chatId: resumeForChatId })) return;
+            if (
+              !isActiveResumeTarget({
+                sourceKey: resumeForSourceKey,
+                chatId: resumeForChatId
+              })
+            )
+              return;
             resumeFinalStatus = ChatGenerateStatusEnum.generating;
             upsertResumeAiPlaceholder(
               responseChatId,
@@ -217,7 +233,13 @@ export const useChatResume = ({
             );
           },
           onmessage: (message) => {
-            if (!isActiveResumeTarget({ appId: resumeForAppId, chatId: resumeForChatId })) return;
+            if (
+              !isActiveResumeTarget({
+                sourceKey: resumeForSourceKey,
+                chatId: resumeForChatId
+              })
+            )
+              return;
             if (shouldCreateResumeAiPlaceholder(message.event)) {
               upsertResumeAiPlaceholder(responseChatId, '', ChatStatusEnum.loading, {
                 resetExistingValue: shouldResetResumeAiPlaceholder({
@@ -232,7 +254,8 @@ export const useChatResume = ({
           }
         });
 
-        if (!isActiveResumeTarget({ appId: resumeForAppId, chatId: resumeForChatId })) return;
+        if (!isActiveResumeTarget({ sourceKey: resumeForSourceKey, chatId: resumeForChatId }))
+          return;
 
         if (completedChat) {
           resumeFinalStatus = completedChat.chatGenerateStatus;
@@ -294,7 +317,8 @@ export const useChatResume = ({
         scrollToBottom('auto');
       } catch (error) {
         if (controller.signal.aborted) return;
-        if (!isActiveResumeTarget({ appId: resumeForAppId, chatId: resumeForChatId })) return;
+        if (!isActiveResumeTarget({ sourceKey: resumeForSourceKey, chatId: resumeForChatId }))
+          return;
 
         const isStreamError = (error as ResumeStreamErrorType | undefined)?.isStreamError === true;
         resumeFinalStatus = isStreamError
@@ -344,7 +368,7 @@ export const useChatResume = ({
           resumeControllerRef.current = undefined;
         }
         const finishedInActiveChat = isActiveResumeTarget({
-          appId: resumeForAppId,
+          sourceKey: resumeForSourceKey,
           chatId: resumeForChatId
         });
         const leftWhileResuming =
@@ -357,7 +381,8 @@ export const useChatResume = ({
         finishChatGenerateStatus({
           status: resumeFinalStatus,
           finishedInActiveChat,
-          targetAppId: resumeForAppId,
+          targetChatTarget: resumeForChatTarget,
+          targetSourceKey: resumeForSourceKey,
           targetChatId: resumeForChatId
         });
       }
@@ -366,10 +391,11 @@ export const useChatResume = ({
     enableAutoResume,
     isReady,
     isChatRecordsLoaded,
-    appId,
+    sourceKey,
+    chatTarget,
     chatId,
     isChatting,
-    chatBoxAppId,
+    chatBoxSourceKey,
     chatBoxChatId,
     chatGenerateStatus,
     generatingMessage,
@@ -380,7 +406,7 @@ export const useChatResume = ({
     finishChatGenerateStatus,
     t,
     toast,
-    activeAppIdRef,
+    activeSourceKeyRef,
     activeChatIdRef,
     resumedChatTargetRef,
     resumeControllerRef

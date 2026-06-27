@@ -3,6 +3,7 @@ import type {
   ChatGenerateStatusEnum,
   ChatStatusEnum
 } from '@fastgpt/global/core/chat/constants';
+import type { ChatSourceTarget } from '@/web/core/chat/utils';
 import type {
   ChatHistoryItemResType,
   ChatItemObjItemType,
@@ -50,6 +51,16 @@ export type StopChatFnResult = {
   chatGenerateStatus: ChatGenerateStatusEnum;
   completed: boolean;
 };
+
+export type ChatGenerateStatusChangePayload = {
+  sourceTarget: ChatSourceTarget;
+  chatId: string;
+  status: ChatGenerateStatusEnum;
+  hasBeenRead?: boolean;
+  title?: string;
+};
+
+export type ChatGenerateStatusChangeHandler = (data: ChatGenerateStatusChangePayload) => void;
 
 export type ComponentRef = {
   restartChat: () => void;

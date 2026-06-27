@@ -26,6 +26,7 @@ import dynamic from 'next/dynamic';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import ChatWindowHeader from './ChatWindowHeader';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import ToolMenu from '@/pageComponents/chat/ToolMenu';
@@ -33,6 +34,9 @@ import { mobileChatHeaderIconButtonStyle } from './headerIconButtonStyle';
 import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { getDisplayHistoryTitle } from '@/web/core/chat/context/historyTitleUtils';
+import { getAppChatSourceKey } from '@/web/core/chat/utils';
+import { useAppChatGenerateStatusSync } from './useAppChatGenerateStatusSync';
+import { postMarkChatRead } from '@/web/core/chat/history/api';
 
 const CustomPluginRunBox = dynamic(() => import('@/pageComponents/chat/CustomPluginRunBox'));
 
@@ -81,6 +85,7 @@ const AppChatWindow = () => {
     ChatPageContext,
     (v) => v.upsertRecentlyUsedAppPlaceholder
   );
+  const onChatGenerateStatusChange = useAppChatGenerateStatusSync();
 
   const { loading } = useRequest(
     async () => {
@@ -89,11 +94,15 @@ const AppChatWindow = () => {
       const res = await getInitChatInfo({ appId, chatId });
       res.userAvatar = userInfo?.avatar;
 
-      setChatBoxData(res);
-      const isHomeApp = pane === ChatSidebarPaneEnum.HOME || res.appId === chatSettings?.appId;
+      setChatBoxData({
+        ...res,
+        appId,
+        sourceKey: getAppChatSourceKey(appId)
+      });
+      const isHomeApp = pane === ChatSidebarPaneEnum.HOME || appId === chatSettings?.appId;
       if (!isHomeApp) {
         upsertRecentlyUsedAppPlaceholder({
-          appId: res.appId,
+          appId,
           name: res.app.name,
           avatar: res.app.avatar
         });
@@ -260,15 +269,23 @@ const AppChatWindow = () => {
             />
           ) : (
             <ChatBox
-              appId={appId}
+              sourceTarget={{ sourceType: ChatSourceTypeEnum.app, sourceId: appId }}
               chatId={chatId}
               isReady={!loading && !!appId && isCurrentChatReady}
-              enableAutoResume
-              feedbackType={'user'}
+              features={{
+                autoResume: true,
+                feedbackType: 'user',
+                quickReplies: true,
+                inputGuide: true,
+                voice: true,
+                tts: true,
+                sandbox: true
+              }}
               chatType={ChatTypeEnum.chat}
               outLinkAuthData={outLinkAuthData}
               onStartChat={onStartChat}
-              enableQuickReplies
+              onMarkChatRead={postMarkChatRead}
+              onChatGenerateStatusChange={onChatGenerateStatusChange}
             />
           )}
         </Box>

@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   ChatFileTypeEnum,
   ChatRoleEnum,
-  ChatSourceEnum
+  ChatSourceEnum,
+  ChatSourceTypeEnum
 } from '@fastgpt/global/core/chat/constants';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import {
@@ -24,6 +25,8 @@ vi.mock('@fastgpt/service/core/ai/model', () => ({
 
 const base = {
   appId: '67e0d5535c02d1d5cdede71f',
+  sourceType: ChatSourceTypeEnum.app,
+  sourceId: '67e0d5535c02d1d5cdede71f',
   chatId: 'chat-title-test',
   teamId: '654a4107c32f3bf5f998452f',
   tmbId: '65ab7007462ada7dbb899948'
@@ -205,6 +208,36 @@ describe('syncGeneratedChatTitleFromUserContent', () => {
       title: '2026-06-16 12:30',
       updated: true
     });
+    expect(createLLMResponseMock).not.toHaveBeenCalled();
+  });
+
+  it('skips title generation for skill edit debug chats', async () => {
+    const skillId = '67e0d5535c02d1d5cdede720';
+    await createChat({
+      appId: skillId,
+      sourceType: ChatSourceTypeEnum.skillEdit
+    });
+
+    const result = await syncGeneratedChatTitleFromUserContent({
+      ...base,
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: skillId,
+      fixedTitle: 'Should Not Write',
+      userContent: {
+        obj: ChatRoleEnum.Human,
+        value: [
+          {
+            text: {
+              content: 'Debug this skill'
+            }
+          }
+        ]
+      }
+    });
+
+    const chat = await MongoChat.findOne({ appId: skillId, chatId: base.chatId }).lean();
+    expect(chat?.title).toBe('');
+    expect(result).toBeUndefined();
     expect(createLLMResponseMock).not.toHaveBeenCalled();
   });
 

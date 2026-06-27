@@ -2,6 +2,7 @@ import { serviceEnv } from '../../env';
 import { getLogger, LogCategories } from '../../common/logger';
 import { FASTGPT_REDIS_PREFIX, getGlobalRedisConnection } from '../../common/redis';
 import type { NextApiResponse } from 'next';
+import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { StreamResumeUnavailableReasonEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.RESUME);
@@ -38,18 +39,20 @@ let lastLoggedMemoryPressureState: boolean | undefined;
 
 type StreamResumeRedisKeysParams = {
   teamId: string;
-  appId: string;
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
   chatId: string;
 };
 
 export const getStreamResumeRedisKeys = ({
   teamId,
-  appId,
+  sourceType,
+  sourceId,
   chatId
 }: StreamResumeRedisKeysParams) => ({
-  keyOfStream: `stream:resume:data:${teamId}:${appId}:${chatId}`,
-  keyOfUnavailable: `stream:resume:unavailable:${teamId}:${appId}:${chatId}`,
-  keyOfActive: `stream:resume:active:${teamId}:${appId}:${chatId}`
+  keyOfStream: `stream:resume:data:${teamId}:${sourceType}:${sourceId}:${chatId}`,
+  keyOfUnavailable: `stream:resume:unavailable:${teamId}:${sourceType}:${sourceId}:${chatId}`,
+  keyOfActive: `stream:resume:active:${teamId}:${sourceType}:${sourceId}:${chatId}`
 });
 
 type StreamResumeKeys = ReturnType<typeof getStreamResumeRedisKeys>;

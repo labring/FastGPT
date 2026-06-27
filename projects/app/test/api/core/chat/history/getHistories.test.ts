@@ -4,7 +4,7 @@ import type {
   GetHistoriesResponseType
 } from '@fastgpt/global/openapi/core/chat/history/api';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatSourceEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
@@ -14,6 +14,8 @@ import { describe, expect, it, beforeEach } from 'vitest';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
+import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
 
 describe('getHistories api test', () => {
   let testUser: Awaited<ReturnType<typeof getUser>>;
@@ -373,5 +375,70 @@ describe('getHistories api test', () => {
 
     expect(res.code).toBe(500);
     expect(res.error).toBeDefined();
+  });
+
+  it('should list skill edit histories by skillId and source-aware match', async () => {
+    const skill = await MongoAgentSkills.create({
+      name: 'History Skill',
+      source: AgentSkillSourceEnum.personal,
+      teamId: testUser.teamId,
+      tmbId: testUser.tmbId
+    });
+    const skillId = String(skill._id);
+    const debugChatId = getNanoid();
+    const onlineChatId = getNanoid();
+    const legacyChatId = getNanoid();
+
+    await Promise.all([
+      MongoChat.create({
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        appId: skillId,
+        chatId: debugChatId,
+        source: ChatSourceEnum.test,
+        title: 'Skill Debug Session'
+      }),
+      MongoChat.create({
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        appId: skillId,
+        chatId: onlineChatId,
+        source: ChatSourceEnum.online,
+        title: 'Skill Online Session'
+      }),
+      MongoChat.create({
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        appId: skillId,
+        chatId: legacyChatId,
+        source: ChatSourceEnum.test,
+        title: 'Legacy Skill Debug Session'
+      })
+    ]);
+
+    const res = await Call<GetHistoriesBodyType, any, GetHistoriesResponseType>(handler, {
+      auth: testUser,
+      body: {
+        skillId,
+        source: ChatSourceEnum.test
+      },
+      query: {
+        offset: 0,
+        pageSize: 10
+      }
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data.total).toBe(1);
+    expect(res.data.list).toHaveLength(1);
+    expect(res.data.list[0]).toMatchObject({
+      chatId: debugChatId,
+      appId: skillId,
+      title: 'Skill Debug Session'
+    });
+    expect(res.data.list.find((item) => item.chatId === onlineChatId)).toBeUndefined();
+    expect(res.data.list.find((item) => item.chatId === legacyChatId)).toBeUndefined();
   });
 });

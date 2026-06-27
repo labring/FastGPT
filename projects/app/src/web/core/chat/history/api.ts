@@ -28,7 +28,7 @@ export const putChatHistory = (data: UpdateHistoryBodyType) =>
 export const delChatHistoryById = (data: DelChatHistoryType) =>
   DELETE(`/core/chat/history/delHistory`, data);
 
-// clear all history by appId
+// clear all histories by chat target
 export const delClearChatHistories = (data: ClearChatHistoriesType) =>
   DELETE(`/core/chat/history/clearHistories`, data);
 

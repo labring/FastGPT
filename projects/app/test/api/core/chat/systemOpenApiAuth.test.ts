@@ -9,7 +9,8 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
   ChatGenerateStatusEnum,
   ChatRoleEnum,
-  ChatSourceEnum
+  ChatSourceEnum,
+  ChatSourceTypeEnum
 } from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type { StopV2ChatParams } from '@fastgpt/global/openapi/core/chat/controler/api';
@@ -130,6 +131,8 @@ describe('system openapi chat auth', () => {
       }
     });
     expect(initRes.code).toBe(200);
+    expect(initRes.data.sourceType).toBe(ChatSourceTypeEnum.app);
+    expect(initRes.data.sourceId).toBe(appId);
     expect(initRes.data.appId).toBe(appId);
     expect(initRes.data.chatId).toBe(chatId);
 
@@ -186,9 +189,14 @@ describe('system openapi chat auth', () => {
     });
     expect(stopRes.code).toBe(200);
     expect(stopRes.data.success).toBe(true);
-    expect(vi.mocked(setAgentRuntimeStop)).toHaveBeenCalledWith({ appId, chatId });
+    expect(vi.mocked(setAgentRuntimeStop)).toHaveBeenCalledWith({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
+      chatId
+    });
     expect(vi.mocked(waitForWorkflowComplete)).toHaveBeenCalledWith({
-      appId,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
       chatId,
       timeout: 5000
     });

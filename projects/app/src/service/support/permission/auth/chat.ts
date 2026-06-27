@@ -6,14 +6,19 @@ import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { authTeamSpaceToken } from './team';
 import { AuthUserTypeEnum, ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { HelperBotTypeEnum } from '@fastgpt/global/core/chat/helperBot/type';
 import { MongoHelperBotChat } from '@fastgpt/service/core/chat/HelperBot/chatSchema';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { Types } from 'mongoose';
+import {
+  buildChatSourceAggregateMatch,
+  buildChatSourceQuery
+} from '@fastgpt/service/core/chat/source';
+import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 /* 
   检查chat的权限：
@@ -40,6 +45,12 @@ type AuthChatCommonProps = {
   teamId?: string;
   teamToken?: string;
 };
+
+const buildAppChatAuthQuery = (appId: string) =>
+  buildChatSourceQuery({
+    sourceType: ChatSourceTypeEnum.app,
+    sourceId: appId
+  });
 
 export async function authChatCrud({
   appId,
@@ -102,7 +113,7 @@ export async function authChatCrud({
       };
     }
 
-    const chat = await MongoChat.findOne({ appId, chatId }).lean();
+    const chat = await MongoChat.findOne({ ...buildAppChatAuthQuery(appId), chatId }).lean();
     if (!chat) {
       return {
         teamId: spaceTeamId,
@@ -152,7 +163,10 @@ export async function authChatCrud({
       };
     }
 
-    const chat = await MongoChat.findOne({ appId: resolvedAppId, chatId }).lean();
+    const chat = await MongoChat.findOne({
+      ...buildAppChatAuthQuery(resolvedAppId),
+      chatId
+    }).lean();
 
     if (!chat) {
       return {
@@ -206,7 +220,7 @@ export async function authChatCrud({
     };
   }
 
-  const chat = await MongoChat.findOne({ appId, chatId }).lean();
+  const chat = await MongoChat.findOne({ ...buildAppChatAuthQuery(appId), chatId }).lean();
   if (!chat) {
     return {
       teamId,
@@ -243,6 +257,84 @@ export async function authChatCrud({
   return Promise.reject(ChatErrEnum.unAuthChat);
 }
 
+export type ChatTargetAuthParams = AuthModeType &
+  OutLinkChatAuthProps & {
+    sourceType: ChatSourceTypeEnum;
+    sourceId: string;
+    chatId?: string;
+    per?: number;
+  };
+
+/**
+ * 标准 chat target 鉴权入口。
+ *
+ * API 边界已经把 `appId/skillId` 转换为 `sourceType/sourceId`；这里按 source 类型分发
+ * 到现有 App Chat 或 Skill Edit 权限体系，并返回后续 chat 查询需要的 uid/team 信息。
+ */
+export async function authChatTargetCrud({
+  sourceType,
+  sourceId,
+  chatId,
+  per = ReadPermissionVal,
+  ...props
+}: ChatTargetAuthParams): Promise<{
+  appId?: string;
+  teamId: string;
+  tmbId: string;
+  uid: string;
+  chat?: ChatSchemaType;
+  showCite: boolean;
+  showRunningStatus: boolean;
+  showSkillReferences: boolean;
+  showFullText: boolean;
+  canDownloadSource: boolean;
+  authType?: string;
+}> {
+  if (sourceType === ChatSourceTypeEnum.app) {
+    return authChatCrud({
+      ...props,
+      appId: sourceId,
+      chatId,
+      per
+    });
+  }
+
+  if (sourceType === ChatSourceTypeEnum.skillEdit) {
+    const authRes = await authSkill({
+      ...props,
+      skillId: sourceId,
+      per
+    });
+    const chat =
+      (chatId
+        ? await MongoChat.findOne({
+            ...buildChatSourceQuery({ sourceType, sourceId }),
+            chatId
+          }).lean()
+        : undefined) ?? undefined;
+
+    if (chat && String(chat.teamId) !== String(authRes.teamId)) {
+      return Promise.reject(ChatErrEnum.unAuthChat);
+    }
+
+    return {
+      teamId: authRes.teamId,
+      tmbId: authRes.tmbId,
+      uid: authRes.tmbId,
+      chat,
+      showCite: true,
+      showRunningStatus: true,
+      showSkillReferences: true,
+      showFullText: true,
+      canDownloadSource: true,
+      authType: authRes.authType
+    };
+  }
+
+  const exhaustiveCheck: never = sourceType;
+  throw new Error(`Unsupported chat source type: ${exhaustiveCheck}`);
+}
+
 /**
  * 校验文档是否来自当前会话引用。
  *
@@ -251,22 +343,21 @@ export async function authChatCrud({
  */
 export const authCollectionInChat = async ({
   collectionIds,
-  appId,
+  sourceType,
+  sourceId,
   chatId
 }: {
   collectionIds: string[];
-  appId: string;
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
   chatId: string;
 }) => {
-  const appObjectId = Types.ObjectId.isValid(String(appId))
-    ? new Types.ObjectId(String(appId))
-    : appId;
   const targetCollectionIds = collectionIds.map(String);
 
   const [authResult] = await MongoChatItem.aggregate<{ isAuthorized: boolean }>([
     {
       $match: {
-        appId: appObjectId,
+        ...buildChatSourceAggregateMatch({ sourceType, sourceId }),
         chatId,
         obj: ChatRoleEnum.AI
       }

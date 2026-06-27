@@ -28,6 +28,7 @@ type AIChatBubbleProps = {
   isChatting: boolean;
   loadingText?: string;
   questionGuides: string[];
+  enableSandbox: boolean;
   allowedCitationIds?: Set<string>;
   onOpenCiteModal: (e?: OnOpenCiteModalProps) => void;
   chatControllerProps: ChatControllerProps;
@@ -43,6 +44,7 @@ const AIChatBubble = ({
   isChatting,
   loadingText,
   questionGuides,
+  enableSandbox,
   allowedCitationIds,
   onOpenCiteModal,
   chatControllerProps,
@@ -115,6 +117,7 @@ const AIChatBubble = ({
           historyItem={chat}
           questionGuides={isLastChild ? questionGuides : []}
           showWholeResponse={canShowWholeResponse}
+          enableSandbox={enableSandbox}
           onOpenWholeModal={onOpenWholeModal}
           durationSeconds={chat.durationSeconds || 0}
           responseData={chat.responseData}

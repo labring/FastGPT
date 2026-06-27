@@ -209,19 +209,19 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     if (effectiveUseAgentSandbox) {
       streamAgentSandboxInitStatus({
         workflowStreamResponse,
-        appId: runningAppInfo.id,
+        sourceType: runningAppInfo.sourceType,
+        sourceId: runningAppInfo.sourceId,
         userId: uid,
-        chatId,
-        sandboxId: runningAppInfo.sandboxId
+        chatId
       });
     }
 
     // 初始化 sandbox：初始化、注入 skills、files
     const { sandboxClient, currentWorkingDirectory, skillInfos } = await ensureAgentSandboxRuntime({
-      appId: runningAppInfo.id,
+      sourceType: runningAppInfo.sourceType,
+      sourceId: runningAppInfo.sourceId,
       userId: uid,
       chatId,
-      sandboxId: runningAppInfo.sandboxId,
       teamId: runningAppInfo.teamId,
       tmbId: runningUserInfo.tmbId,
       needSandboxRuntime: effectiveUseAgentSandbox,

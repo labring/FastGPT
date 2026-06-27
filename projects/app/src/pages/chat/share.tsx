@@ -18,7 +18,7 @@ import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import NextHead from '@/components/common/NextHead';
 import { useContextSelector } from 'use-context-selector';
 import ChatContextProvider, { ChatContext } from '@/web/core/chat/context/chatContext';
-import { GetChatTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatSourceTypeEnum, GetChatTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { useMount } from 'ahooks';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -46,6 +46,9 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import ToolMenu from '@/pageComponents/chat/ToolMenu';
 import { mobileChatHeaderIconButtonStyle } from '@/pageComponents/chat/ChatWindow/headerIconButtonStyle';
 import Avatar from '@fastgpt/web/components/common/Avatar';
+import { getAppChatSourceKey } from '@/web/core/chat/utils';
+import { useAppChatGenerateStatusSync } from '@/pageComponents/chat/ChatWindow/useAppChatGenerateStatusSync';
+import { postMarkChatRead } from '@/web/core/chat/history/api';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
@@ -111,6 +114,7 @@ const OutLink = (props: Props) => {
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const isChatRecordsLoaded = useContextSelector(ChatRecordContext, (v) => v.isChatRecordsLoaded);
+  const onChatGenerateStatusChange = useAppChatGenerateStatusSync();
   const chatWindowTitle = getDisplayHistoryTitle({
     title: chatBoxData.title,
     fallbackTitle: t('common:core.chat.New Chat')
@@ -129,7 +133,11 @@ const OutLink = (props: Props) => {
         outLinkUid
       });
 
-      setChatBoxData(res);
+      setChatBoxData({
+        ...res,
+        appId,
+        sourceKey: getAppChatSourceKey(appId)
+      });
 
       resetVariables({
         variables: {
@@ -398,15 +406,23 @@ const OutLink = (props: Props) => {
                   ) : (
                     <ChatBox
                       isReady={!loading}
-                      appId={appId}
+                      sourceTarget={{ sourceType: ChatSourceTypeEnum.app, sourceId: appId }}
                       chatId={chatId}
                       outLinkAuthData={outLinkAuthData}
-                      enableAutoResume
-                      feedbackType={'user'}
+                      features={{
+                        autoResume: true,
+                        feedbackType: 'user',
+                        workorder: showWorkorder === '1',
+                        quickReplies: true,
+                        inputGuide: true,
+                        voice: true,
+                        tts: true,
+                        sandbox: true
+                      }}
                       onStartChat={startChat}
+                      onMarkChatRead={postMarkChatRead}
+                      onChatGenerateStatusChange={onChatGenerateStatusChange}
                       chatType={ChatTypeEnum.share}
-                      showWorkorder={showWorkorder === '1'}
-                      enableQuickReplies
                     />
                   )}
                 </Box>

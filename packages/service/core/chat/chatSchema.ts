@@ -2,7 +2,11 @@ import { connectionMongo, getMongoModel } from '../../common/mongo';
 import { getLogger, LogCategories } from '../../common/logger';
 const { Schema } = connectionMongo;
 import { type ChatSchemaType } from '@fastgpt/global/core/chat/type';
-import { ChatGenerateStatusEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatGenerateStatusEnum,
+  ChatSourceEnum,
+  ChatSourceTypeEnum
+} from '@fastgpt/global/core/chat/constants';
 import {
   TeamCollectionName,
   TeamMemberCollectionName
@@ -26,6 +30,11 @@ const ChatSchema = new Schema({
     ref: TeamMemberCollectionName,
     required: true
   },
+  sourceType: {
+    type: String,
+    enum: Object.values(ChatSourceTypeEnum)
+  },
+  // 历史物理字段名，业务语义为 sourceId；App 场景才是真实 appId。
   appId: {
     type: Schema.Types.ObjectId,
     ref: AppCollectionName,
@@ -130,6 +139,10 @@ try {
   ChatSchema.index({ chatId: 1 });
   // Delete by appid; init chat; update chat; auth chat;
   ChatSchema.index({ appId: 1, chatId: 1 }, { unique: true });
+  ChatSchema.index(
+    { sourceType: 1, appId: 1, chatId: 1 },
+    { unique: true, name: 'sourceType_1_appId_1_chatId_1' }
+  );
 
   // Clear history(share),Init 4121
   ChatSchema.index(
@@ -143,6 +156,14 @@ try {
 
   // get user history
   ChatSchema.index({ tmbId: 1, appId: 1, deleteTime: 1, top: -1, updateTime: -1 });
+  ChatSchema.index({
+    sourceType: 1,
+    tmbId: 1,
+    appId: 1,
+    deleteTime: 1,
+    top: -1,
+    updateTime: -1
+  });
   // get share chat history
   ChatSchema.index(
     { shareId: 1, outLinkUid: 1, updateTime: -1 },

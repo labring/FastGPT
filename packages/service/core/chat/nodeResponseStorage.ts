@@ -13,6 +13,7 @@ import {
 import { MongoChatItemResponse } from './chatItemResponseSchema';
 import { getLogger, LogCategories } from '../../common/logger';
 import { writePrimary } from '../../common/mongo/utils';
+import { buildChatSourceQuery, buildChatSourceWriteFields, type ChatSourceParams } from './source';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.HISTORY);
 // 常规写入失败后最多重试 3 次；仍失败再进入瘦身 fallback，避免异常详情阻断主流程。
@@ -20,17 +21,9 @@ const NODE_RESPONSE_WRITE_RETRY_TIMES = 3;
 
 type ChatItemResponseBase = Pick<
   ChatItemResponseSchemaType,
-  'teamId' | 'appId' | 'chatId' | 'chatItemDataId'
->;
-
-export type ChatItemResponseStorageRow = ChatItemResponseBase & {
-  /**
-   * 完整 nodeResponse 数据。身份字段也放在 data 内：
-   * - data.id: 本次节点响应实例 ID。
-   * - data.parentId: 父响应实例 ID，用于详情读取时重新拼 childrenResponses。
-   */
-  data: ChatHistoryItemResType;
-};
+  'teamId' | 'chatId' | 'chatItemDataId'
+> &
+  ChatSourceParams;
 
 /**
  * saveChat 仍需要同步得到本轮引用、错误数和根节点费用。
@@ -51,6 +44,21 @@ type ChatItemResponseRowLike = {
 
 type CreateRowsParams = ChatItemResponseBase & {
   nodeResponses?: ChatHistoryItemResType[];
+};
+
+type ChatItemResponseStorageBase = Pick<
+  ChatItemResponseSchemaType,
+  'teamId' | 'chatId' | 'chatItemDataId'
+> &
+  ReturnType<typeof buildChatSourceWriteFields>;
+
+export type ChatItemResponseStorageRow = ChatItemResponseStorageBase & {
+  /**
+   * 完整 nodeResponse 数据。身份字段也放在 data 内：
+   * - data.id: 本次节点响应实例 ID。
+   * - data.parentId: 父响应实例 ID，用于详情读取时重新拼 childrenResponses。
+   */
+  data: ChatHistoryItemResType;
 };
 
 /**
@@ -291,6 +299,13 @@ export const createChatItemResponseRows = ({
   nodeResponses = [],
   ...base
 }: CreateRowsParams): ChatItemResponseStorageRow[] => {
+  const chatSource = {
+    sourceType: base.sourceType,
+    sourceId: base.sourceId
+  };
+  const sourceWriteFields = buildChatSourceWriteFields(chatSource);
+  const { sourceType: _sourceType, sourceId: _sourceId, ...restBase } = base;
+
   return nodeResponses.map((response) => {
     const id = getResponseId(response);
     const currentParentId = getParentId(response);
@@ -305,7 +320,8 @@ export const createChatItemResponseRows = ({
     });
 
     return {
-      ...base,
+      ...restBase,
+      ...sourceWriteFields,
       data
     };
   });
@@ -338,18 +354,21 @@ export const composeChatItemResponseData = ({ rows = [] }: { rows?: ChatItemResp
   composeNodeResponseDetail(rows);
 
 export const getChatItemResponseData = async ({
-  appId,
+  sourceType,
+  sourceId,
   chatId,
   chatItemDataId,
   fallbackResponseData
 }: {
-  appId: string;
+  sourceType: ChatSourceParams['sourceType'];
+  sourceId: string;
   chatId: string;
   chatItemDataId: string;
   fallbackResponseData?: ChatHistoryItemResType[];
 }) => {
   const rows = await getChatItemResponseRows({
-    appId,
+    sourceType,
+    sourceId,
     chatId,
     chatItemDataId
   });
@@ -362,23 +381,30 @@ export const getChatItemResponseData = async ({
 };
 
 export const getChatItemResponseRows = async ({
-  appId,
+  sourceType,
+  sourceId,
   chatId,
   chatItemDataId
 }: {
-  appId: string;
+  sourceType: ChatSourceParams['sourceType'];
+  sourceId: string;
   chatId: string;
   chatItemDataId: string;
-}) =>
-  // _id 顺序就是 writer create 顺序；详情拼树后，同级 children 也按运行时写入顺序展示。
-  MongoChatItemResponse.find(
-    { appId, chatId, chatItemDataId },
-    {
-      data: 1
-    }
-  )
-    .sort({ _id: 1 })
-    .lean();
+}) => {
+  const chatSource = { sourceType, sourceId };
+
+  return (
+    // _id 顺序就是 writer create 顺序；详情拼树后，同级 children 也按运行时写入顺序展示。
+    MongoChatItemResponse.find(
+      { ...buildChatSourceQuery(chatSource), chatId, chatItemDataId },
+      {
+        data: 1
+      }
+    )
+      .sort({ _id: 1 })
+      .lean()
+  );
+};
 
 /**
  * 请求级 nodeResponse 写入器。

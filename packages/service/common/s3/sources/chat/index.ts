@@ -11,7 +11,31 @@ import {
 import { differenceInHours } from 'date-fns';
 import { S3Buckets } from '../../config/constants';
 import path from 'path';
-import { getFileS3Key } from '../../utils';
+import { getFormatedFilename } from '../../utils';
+import type { ChatS3SourceType } from './type';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+
+const getChatFileS3Key = ({
+  sourceType,
+  sourceId,
+  chatId,
+  uId,
+  filename
+}: {
+  sourceType: ChatS3SourceType;
+  sourceId: string;
+  chatId: string;
+  uId: string;
+  filename?: string;
+}) => {
+  const { formatedFilename, extension } = getFormatedFilename(filename);
+  const basePrefix = [S3Sources.chat, sourceType, sourceId, uId, chatId].filter(Boolean).join('/');
+
+  return {
+    fileKey: [basePrefix, `${formatedFilename}${extension ? `.${extension}` : ''}`].join('/'),
+    fileParsedPrefix: [basePrefix, `${formatedFilename}-parsed`].join('/')
+  };
+};
 
 export class S3ChatSource extends S3PrivateBucket {
   constructor() {
@@ -39,7 +63,7 @@ export class S3ChatSource extends S3PrivateBucket {
         extension: extension.replace('.', ''),
         imageParsePrefix: `${pathname.replace(`/${S3Buckets.private}/`, '').replace(extension, '')}-parsed`
       };
-    } catch (error) {
+    } catch {
       return {
         filename: '',
         extension: '',
@@ -63,9 +87,17 @@ export class S3ChatSource extends S3PrivateBucket {
   }
 
   async createUploadChatFileURL(params: CheckChatFileKeys) {
-    const { appId, chatId, uId, filename, expiredTime, maxFileSize, allowedExtensions } =
-      ChatFileUploadSchema.parse(params);
-    const { fileKey } = getFileS3Key.chat({ appId, chatId, uId, filename });
+    const {
+      sourceType,
+      sourceId,
+      chatId,
+      uId,
+      filename,
+      expiredTime,
+      maxFileSize,
+      allowedExtensions
+    } = ChatFileUploadSchema.parse(params);
+    const { fileKey } = getChatFileS3Key({ sourceType, sourceId, chatId, uId, filename });
     return await this.createPresignedPutUrl(
       { rawKey: fileKey, filename },
       {
@@ -79,13 +111,19 @@ export class S3ChatSource extends S3PrivateBucket {
   }
 
   async deleteChatFilesByPrefix(params: DelChatFileByPrefixParams) {
-    const { appId, chatId, uId } = DelChatFileByPrefixSchema.parse(params);
+    const { sourceType, sourceId, chatId, uId } = DelChatFileByPrefixSchema.parse(params);
 
-    const prefix = [S3Sources.chat, appId, uId, chatId].filter(Boolean).join('/');
+    const prefix = [S3Sources.chat, sourceType, sourceId, uId, chatId].filter(Boolean).join('/');
     const publicBucket = global.s3BucketMap[S3Buckets.public];
 
     await this.addDeleteJob({ prefix });
     await publicBucket.addDeleteJob({ prefix });
+
+    if (sourceType === ChatSourceTypeEnum.app) {
+      const legacyPrefix = [S3Sources.chat, sourceId, uId, chatId].filter(Boolean).join('/');
+      await this.addDeleteJob({ prefix: legacyPrefix });
+      await publicBucket.addDeleteJob({ prefix: legacyPrefix });
+    }
 
     return prefix;
   }
@@ -96,10 +134,11 @@ export class S3ChatSource extends S3PrivateBucket {
   }
 
   async uploadChatFile(params: UploadFileParams) {
-    const { appId, chatId, uId, filename, body, contentType, expiredTime } =
+    const { sourceType, sourceId, chatId, uId, filename, body, contentType, expiredTime } =
       UploadChatFileSchema.parse(params);
-    const { fileKey } = getFileS3Key.chat({
-      appId,
+    const { fileKey } = getChatFileS3Key({
+      sourceType,
+      sourceId,
       chatId,
       uId,
       filename
@@ -114,9 +153,14 @@ export class S3ChatSource extends S3PrivateBucket {
     });
   }
 
-  getToolFilePrefix(params: { appId: string; chatId: string; uId: string }) {
-    const { appId, chatId, uId } = params;
-    return [S3Sources.chat, appId, uId, chatId].filter(Boolean).join('/');
+  getToolFilePrefix(params: {
+    sourceType: ChatS3SourceType;
+    sourceId: string;
+    chatId: string;
+    uId: string;
+  }) {
+    const { sourceType, sourceId, chatId, uId } = params;
+    return [S3Sources.chat, sourceType, sourceId, uId, chatId].filter(Boolean).join('/');
   }
 }
 

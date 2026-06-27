@@ -27,9 +27,12 @@ import { useCreation } from 'ahooks';
 import type { ChatTypeEnum } from './constants';
 import type { ChatQuickAppType } from '@fastgpt/global/core/chat/setting/type';
 import { WorkflowRuntimeContextProvider } from '@/components/core/chat/ChatContainer/context/workflowRuntimeContext';
+import { type ChatSourceTarget, toChatApiTarget } from '@/web/core/chat/utils';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 export type ChatProviderProps = {
-  appId: string;
+  /** 标准内部 chat target。ChatBox 不再接收 appId/skillId raw 形态。 */
+  sourceTarget: ChatSourceTarget;
   chatId: string;
   outLinkAuthData?: OutLinkChatAuthProps;
 
@@ -47,7 +50,7 @@ export type ChatProviderProps = {
   inputBodyProps?: BoxProps;
 };
 
-type useChatStoreType = Omit<ChatProviderProps, 'appId' | 'chatId' | 'outLinkAuthData'> & {
+type useChatStoreType = Omit<ChatProviderProps, 'sourceTarget' | 'chatId' | 'outLinkAuthData'> & {
   welcomeText: string;
   variableList: VariableItemType[];
   questionGuide: AppQGConfigType;
@@ -138,13 +141,16 @@ export const ChatBoxContext = createContext<useChatStoreType>({
 });
 
 const Provider = ({
-  appId,
+  sourceTarget,
   chatId,
   outLinkAuthData,
   chatType,
+  enableTTS = true,
   children,
   ...props
 }: ChatProviderProps & {
+  /** AI 回复朗读和自动 TTS 能力开关，由 ChatBox features 下沉。 */
+  enableTTS?: boolean;
   children: React.ReactNode;
 }) => {
   const formatOutLinkAuth = useCreation(() => {
@@ -188,6 +194,11 @@ const Provider = ({
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
+  const resolvedChatTarget = useMemo(() => toChatApiTarget(sourceTarget), [sourceTarget]);
+  const resolvedAppId = useMemo(
+    () => (sourceTarget.sourceType === ChatSourceTypeEnum.app ? sourceTarget.sourceId : undefined),
+    [sourceTarget]
+  );
 
   // segment audio
   const [audioPlayingChatId, setAudioPlayingChatId] = useState<string>();
@@ -201,13 +212,17 @@ const Provider = ({
     finishSegmentedAudio,
     splitText2Audio
   } = useAudioPlay({
-    appId,
-    ttsConfig,
+    appId: enableTTS ? resolvedAppId : undefined,
+    ttsConfig: enableTTS ? ttsConfig : defaultTTSConfig,
     ...formatOutLinkAuth
   });
 
   const autoTTSResponse =
-    whisperConfig?.open && whisperConfig?.autoSend && whisperConfig?.autoTTSResponse && hasAudio;
+    enableTTS &&
+    whisperConfig?.open &&
+    whisperConfig?.autoSend &&
+    whisperConfig?.autoTTSResponse &&
+    hasAudio;
 
   const isChatting = useMemo(
     () =>
@@ -223,7 +238,7 @@ const Provider = ({
       }
 
       const resData = await getChatResData({
-        appId: appId,
+        ...resolvedChatTarget,
         chatId: chatId,
         dataId,
         ...formatOutLinkAuth
@@ -236,7 +251,7 @@ const Provider = ({
       );
       return nextResponseData;
     },
-    [chatRecords, chatId, appId, formatOutLinkAuth, setChatRecords]
+    [chatRecords, chatId, resolvedChatTarget, formatOutLinkAuth, setChatRecords]
   );
   const value: useChatStoreType = {
     ...props,
@@ -264,7 +279,7 @@ const Provider = ({
   };
   return (
     <WorkflowRuntimeContextProvider
-      appId={appId}
+      sourceTarget={sourceTarget}
       chatId={chatId}
       outLinkAuthData={formatOutLinkAuth}
     >

@@ -253,10 +253,10 @@ export const getExecuteTool = ({
           const result = await dispatchSandboxTool({
             toolName: toolId,
             rawArgs: args,
-            appId: runningAppInfo.id,
+            sourceType: runningAppInfo.sourceType,
+            sourceId: runningAppInfo.sourceId,
             userId: uid,
             chatId,
-            sandboxId: runningAppInfo.sandboxId,
             lang,
             sandboxClient
           });

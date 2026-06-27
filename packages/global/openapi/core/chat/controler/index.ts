@@ -1,9 +1,9 @@
 import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap, SystemOpenApiTagMap } from '../../../tag';
 import {
-  StopV2ChatSchema,
+  StopV2ChatRawSchema,
   StopV2ChatResponseSchema,
-  InitChatQuerySchema,
+  InitChatQueryRawSchema,
   InitChatResponseSchema
 } from './api';
 
@@ -14,7 +14,7 @@ export const ChatControllerPath: OpenAPIPath = {
       description: '',
       tags: [DevApiTagsMap.chatHistory, SystemOpenApiTagMap.chatHistory],
       requestParams: {
-        query: InitChatQuerySchema
+        query: InitChatQueryRawSchema
       },
       responses: {
         200: {
@@ -37,7 +37,7 @@ export const ChatControllerPath: OpenAPIPath = {
       requestBody: {
         content: {
           'application/json': {
-            schema: StopV2ChatSchema
+            schema: StopV2ChatRawSchema
           }
         }
       },

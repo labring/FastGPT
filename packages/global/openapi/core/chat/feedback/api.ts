@@ -1,11 +1,7 @@
 import z from 'zod';
+import { createChatTargetInputSchema, transformChatTargetInput } from '../api';
 
-/* =============== updateFeedbackReadStatus =============== */
-export const UpdateFeedbackReadStatusBodySchema = z.object({
-  appId: z.string().min(1).meta({
-    example: '68ad85a7463006c963799a05',
-    description: '应用 ID'
-  }),
+const FeedbackTargetSchema = {
   chatId: z.string().min(1).meta({
     example: 'chat123',
     description: '对话 ID'
@@ -13,13 +9,25 @@ export const UpdateFeedbackReadStatusBodySchema = z.object({
   dataId: z.string().min(1).meta({
     example: 'data123',
     description: '消息数据 ID'
-  }),
+  })
+};
+
+/* =============== updateFeedbackReadStatus =============== */
+export const UpdateFeedbackReadStatusBodyRawSchema = createChatTargetInputSchema({
+  ...FeedbackTargetSchema,
   isRead: z.boolean().meta({
     example: true,
     description: '是否已读'
   })
 });
-export type UpdateFeedbackReadStatusBodyType = z.infer<typeof UpdateFeedbackReadStatusBodySchema>;
+export const UpdateFeedbackReadStatusBodySchema =
+  UpdateFeedbackReadStatusBodyRawSchema.transform(transformChatTargetInput);
+export type UpdateFeedbackReadStatusBodyType = z.infer<
+  typeof UpdateFeedbackReadStatusBodyRawSchema
+>;
+export type UpdateFeedbackReadStatusBodyRuntimeType = z.infer<
+  typeof UpdateFeedbackReadStatusBodySchema
+>;
 
 export const UpdateFeedbackReadStatusResponseSchema = z.object({
   success: z.boolean().meta({
@@ -32,19 +40,8 @@ export type UpdateFeedbackReadStatusResponseType = z.infer<
 >;
 
 /* =============== adminUpdate =============== */
-export const AdminUpdateFeedbackBodySchema = z.object({
-  appId: z.string().min(1).meta({
-    example: '68ad85a7463006c963799a05',
-    description: '应用 ID'
-  }),
-  chatId: z.string().min(1).meta({
-    example: 'chat123',
-    description: '对话 ID'
-  }),
-  dataId: z.string().min(1).meta({
-    example: 'data123',
-    description: '消息数据 ID'
-  }),
+export const AdminUpdateFeedbackBodyRawSchema = createChatTargetInputSchema({
+  ...FeedbackTargetSchema,
   datasetId: z.string().min(1).meta({
     example: 'dataset123',
     description: '数据集 ID'
@@ -62,49 +59,33 @@ export const AdminUpdateFeedbackBodySchema = z.object({
     description: '答案内容（可选）'
   })
 });
-export type AdminUpdateFeedbackBodyType = z.infer<typeof AdminUpdateFeedbackBodySchema>;
+export const AdminUpdateFeedbackBodySchema =
+  AdminUpdateFeedbackBodyRawSchema.transform(transformChatTargetInput);
+export type AdminUpdateFeedbackBodyType = z.infer<typeof AdminUpdateFeedbackBodyRawSchema>;
+export type AdminUpdateFeedbackBodyRuntimeType = z.infer<typeof AdminUpdateFeedbackBodySchema>;
 
 export const AdminUpdateFeedbackResponseSchema = z.undefined().meta({ description: '更新成功' });
 export type AdminUpdateFeedbackResponseType = z.infer<typeof AdminUpdateFeedbackResponseSchema>;
 
 /* =============== closeCustom =============== */
-export const CloseCustomFeedbackBodySchema = z.object({
-  appId: z.string().min(1).meta({
-    example: '68ad85a7463006c963799a05',
-    description: '应用 ID'
-  }),
-  chatId: z.string().min(1).meta({
-    example: 'chat123',
-    description: '对话 ID'
-  }),
-  dataId: z.string().min(1).meta({
-    example: 'data123',
-    description: '消息数据 ID'
-  }),
+export const CloseCustomFeedbackBodyRawSchema = createChatTargetInputSchema({
+  ...FeedbackTargetSchema,
   index: z.number().int().nonnegative().meta({
     example: 0,
     description: '自定义反馈的索引位置'
   })
 });
-export type CloseCustomFeedbackBodyType = z.infer<typeof CloseCustomFeedbackBodySchema>;
+export const CloseCustomFeedbackBodySchema =
+  CloseCustomFeedbackBodyRawSchema.transform(transformChatTargetInput);
+export type CloseCustomFeedbackBodyType = z.infer<typeof CloseCustomFeedbackBodyRawSchema>;
+export type CloseCustomFeedbackBodyRuntimeType = z.infer<typeof CloseCustomFeedbackBodySchema>;
 
 export const CloseCustomFeedbackResponseSchema = z.undefined().meta({ description: '关闭成功' });
 export type CloseCustomFeedbackResponseType = z.infer<typeof CloseCustomFeedbackResponseSchema>;
 
 /* =============== updateUserFeedback =============== */
-export const UpdateUserFeedbackBodySchema = z.object({
-  appId: z.string().min(1).meta({
-    example: '68ad85a7463006c963799a05',
-    description: '应用 ID'
-  }),
-  chatId: z.string().min(1).meta({
-    example: 'chat123',
-    description: '对话 ID'
-  }),
-  dataId: z.string().min(1).meta({
-    example: 'data123',
-    description: '消息数据 ID'
-  }),
+export const UpdateUserFeedbackBodyRawSchema = createChatTargetInputSchema({
+  ...FeedbackTargetSchema,
   userGoodFeedback: z.string().nullish().meta({
     example: '回答很好',
     description: '用户好评反馈内容'
@@ -114,17 +95,16 @@ export const UpdateUserFeedbackBodySchema = z.object({
     description: '用户差评反馈内容'
   })
 });
-export type UpdateUserFeedbackBodyType = z.infer<typeof UpdateUserFeedbackBodySchema>;
+export const UpdateUserFeedbackBodySchema =
+  UpdateUserFeedbackBodyRawSchema.transform(transformChatTargetInput);
+export type UpdateUserFeedbackBodyType = z.infer<typeof UpdateUserFeedbackBodyRawSchema>;
+export type UpdateUserFeedbackBodyRuntimeType = z.infer<typeof UpdateUserFeedbackBodySchema>;
 
 export const UpdateUserFeedbackResponseSchema = z.undefined().meta({ description: '更新成功' });
 export type UpdateUserFeedbackResponseType = z.infer<typeof UpdateUserFeedbackResponseSchema>;
 
 /* =============== getFeedbackRecordIds =============== */
-export const GetFeedbackRecordIdsBodySchema = z.object({
-  appId: z.string().meta({
-    example: '68ad85a7463006c963799a05',
-    description: '应用 ID'
-  }),
+export const GetFeedbackRecordIdsBodyRawSchema = createChatTargetInputSchema({
   chatId: z.string().meta({
     example: 'chat123',
     description: '对话 ID'
@@ -138,7 +118,10 @@ export const GetFeedbackRecordIdsBodySchema = z.object({
     description: '是否只返回未读的反馈'
   })
 });
-export type GetFeedbackRecordIdsBodyType = z.infer<typeof GetFeedbackRecordIdsBodySchema>;
+export const GetFeedbackRecordIdsBodySchema =
+  GetFeedbackRecordIdsBodyRawSchema.transform(transformChatTargetInput);
+export type GetFeedbackRecordIdsBodyType = z.infer<typeof GetFeedbackRecordIdsBodyRawSchema>;
+export type GetFeedbackRecordIdsBodyRuntimeType = z.infer<typeof GetFeedbackRecordIdsBodySchema>;
 
 export const GetFeedbackRecordIdsResponseSchema = z.object({
   total: z.number().int().nonnegative().meta({

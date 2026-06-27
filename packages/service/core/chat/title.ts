@@ -6,6 +6,8 @@ import { getLogger, LogCategories } from '../../common/logger';
 import { createLLMResponse } from '../ai/llm/request';
 import { getDefaultChatTitleModel } from '../ai/model';
 import { MongoChat } from './chatSchema';
+import { buildChatSourceQuery, type ChatSourceParams } from './source';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 const logger = getLogger(LogCategories.MODULE.CHAT);
 
@@ -170,21 +172,23 @@ export type GeneratedChatTitleResult = {
 };
 
 export const syncGeneratedChatTitleFromUserContent = async ({
-  appId,
+  sourceType,
+  sourceId,
   chatId,
   teamId,
   userContent,
   shouldGenerateTitle = true,
   fixedTitle
 }: {
-  appId: string;
   chatId: string;
   teamId: string;
   userContent: UserChatItemType;
   shouldGenerateTitle?: boolean;
   fixedTitle?: string;
-}): Promise<GeneratedChatTitleResult | undefined> => {
+} & ChatSourceParams): Promise<GeneratedChatTitleResult | undefined> => {
   try {
+    // Skill Edit 调试会话不需要模型生成标题，也不写入固定标题，避免调试链路产生额外模型调用。
+    if (sourceType === ChatSourceTypeEnum.skillEdit) return;
     if (!shouldGenerateTitle) return;
 
     const questionText = getQuestionText(userContent);
@@ -208,7 +212,7 @@ export const syncGeneratedChatTitleFromUserContent = async ({
 
     const result = await MongoChat.updateOne(
       {
-        appId,
+        ...buildChatSourceQuery({ sourceType, sourceId }),
         chatId,
         $and: [customTitleCondition, titleCondition]
       },
@@ -226,7 +230,7 @@ export const syncGeneratedChatTitleFromUserContent = async ({
       updated: result.modifiedCount > 0
     };
   } catch (error) {
-    logger.warn('Failed to generate chat title', { appId, chatId, error });
+    logger.warn('Failed to generate chat title', { sourceType, sourceId, chatId, error });
   }
 };
 
@@ -236,14 +240,15 @@ export const syncGeneratedChatTitleFromUserContent = async ({
  * 这里故意不 await 标题模型请求，避免 `preChatRound` 阻塞主对话流启动。内部 helper 已经
  * 自行捕获错误，因此调度失败不会影响对话保存。
  */
-export const scheduleGeneratedChatTitleFromUserContent = (params: {
-  appId: string;
-  chatId: string;
-  teamId: string;
-  userContent: UserChatItemType;
-  shouldGenerateTitle?: boolean;
-  fixedTitle?: string;
-}) => {
+export const scheduleGeneratedChatTitleFromUserContent = (
+  params: {
+    chatId: string;
+    teamId: string;
+    userContent: UserChatItemType;
+    shouldGenerateTitle?: boolean;
+    fixedTitle?: string;
+  } & ChatSourceParams
+) => {
   return syncGeneratedChatTitleFromUserContent(params);
 };
 

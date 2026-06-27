@@ -4,10 +4,11 @@ import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { getRootUser } from '@test/datas/users';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
+import { SandboxStatusEnum, SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
+import { getEditDebugSandboxId } from '@fastgpt/service/core/ai/skill/edit';
 
 const skillExportMocks = vi.hoisted(() => ({
-  findSandboxInstanceByAppChatTypeMock: vi.fn(),
+  findSandboxInstanceBySandboxIdMock: vi.fn(),
   packageSkillInSandboxMock: vi.fn()
 }));
 
@@ -34,7 +35,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/instance/repository', async (importOri
     await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/instance/repository')>();
   return {
     ...actual,
-    findSandboxInstanceByAppChatType: skillExportMocks.findSandboxInstanceByAppChatTypeMock
+    findSandboxInstanceBySandboxId: skillExportMocks.findSandboxInstanceBySandboxIdMock
   };
 });
 
@@ -104,13 +105,19 @@ describe('GET /api/core/ai/skill/export', () => {
       tmbId: user.tmbId
     });
 
-    skillExportMocks.findSandboxInstanceByAppChatTypeMock.mockResolvedValueOnce(null);
+    skillExportMocks.findSandboxInstanceBySandboxIdMock.mockResolvedValueOnce(null);
 
     const res = makeMockRes();
     const req = makeMockReq({ auth: user, query: { skillId: String(skill._id) } });
 
     await handler(req, res);
 
+    expect(skillExportMocks.findSandboxInstanceBySandboxIdMock).toHaveBeenCalledWith({
+      provider: 'opensandbox',
+      sandboxId: getEditDebugSandboxId(String(skill._id)),
+      status: SandboxStatusEnum.running,
+      type: SandboxTypeEnum.editDebug
+    });
     expect(mockJsonRes).toHaveBeenCalledWith(res, {
       code: 404,
       error: 'Edit sandbox not found or not running'
@@ -133,7 +140,7 @@ describe('GET /api/core/ai/skill/export', () => {
     });
 
     const workspaceZip = Buffer.from('PK workspace zip content');
-    skillExportMocks.findSandboxInstanceByAppChatTypeMock.mockResolvedValueOnce({
+    skillExportMocks.findSandboxInstanceBySandboxIdMock.mockResolvedValueOnce({
       sandboxId: 'edit-sandbox-1',
       status: SandboxStatusEnum.running
     });
@@ -145,6 +152,12 @@ describe('GET /api/core/ai/skill/export', () => {
     await handler(req, res);
 
     expect(mockJsonRes).not.toHaveBeenCalled();
+    expect(skillExportMocks.findSandboxInstanceBySandboxIdMock).toHaveBeenCalledWith({
+      provider: 'opensandbox',
+      sandboxId: getEditDebugSandboxId(String(skill._id)),
+      status: SandboxStatusEnum.running,
+      type: SandboxTypeEnum.editDebug
+    });
     expect(skillExportMocks.packageSkillInSandboxMock).toHaveBeenCalledWith({
       sandboxId: 'edit-sandbox-1',
       validationMode: 'basicZip',

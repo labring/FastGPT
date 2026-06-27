@@ -1,5 +1,6 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { authChatCrud, authCollectionInChat } from '@/service/support/permission/auth/chat';
+import { authCollectionInChat } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
 import { type DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
@@ -14,6 +15,8 @@ import {
   GetCollectionQuoteBodySchema,
   type GetCollectionQuoteResType
 } from '@fastgpt/global/openapi/core/chat/record/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 
 type BaseMatchType = FilterQuery<DatasetDataSchemaType>;
 
@@ -26,31 +29,37 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionQuoteResType>
 
     collectionId,
     chatItemDataId,
-    appId,
+    sourceType,
+    sourceId,
     chatId,
     shareId,
     outLinkUid,
     teamId,
     teamToken,
     pageSize
-  } = GetCollectionQuoteBodySchema.parse(req.body);
+  } = parseApiInput({ req, bodySchema: GetCollectionQuoteBodySchema }).body;
 
   const limitedPageSize = pageSize;
 
   const [collection, { chat, showFullText }, chatItem] = await Promise.all([
     getCollectionWithDataset(collectionId),
-    authChatCrud({
+    authChatTargetCrud({
       req,
       authToken: true,
-      appId,
+      authApiKey: true,
+      sourceType,
+      sourceId,
       chatId,
       shareId,
       outLinkUid,
       teamId,
       teamToken
     }),
-    MongoChatItem.findOne({ appId, chatId, dataId: chatItemDataId }, 'time').lean(),
-    authCollectionInChat({ appId, chatId, collectionIds: [collectionId] })
+    MongoChatItem.findOne(
+      { ...buildChatSourceQuery({ sourceType, sourceId }), chatId, dataId: chatItemDataId },
+      'time'
+    ).lean(),
+    authCollectionInChat({ sourceType, sourceId, chatId, collectionIds: [collectionId] })
   ]);
 
   if (!showFullText || !chat || !chatItem || initialAnchor === undefined) {

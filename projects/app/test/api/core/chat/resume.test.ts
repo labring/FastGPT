@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Call } from '@test/utils/request';
 import { FASTGPT_REDIS_PREFIX, getGlobalRedisConnection } from '@fastgpt/service/common/redis';
-import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatGenerateStatusEnum,
+  ChatRoleEnum,
+  ChatSourceTypeEnum
+} from '@fastgpt/global/core/chat/constants';
 import {
   StreamResumeCompletedEvent,
   StreamResumePhaseEnum,
@@ -11,7 +15,7 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import handler from '@/pages/api/core/chat/resume';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import { authChatCrud } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { addPreviewUrlToChatItems } from '@fastgpt/service/core/chat/utils';
 import {
@@ -37,7 +41,7 @@ vi.mock('@fastgpt/service/core/chat/chatSchema', () => ({
 }));
 
 vi.mock('@/service/support/permission/auth/chat', () => ({
-  authChatCrud: vi.fn()
+  authChatTargetCrud: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/chat/controller', () => ({
@@ -60,7 +64,15 @@ type StreamEntry = [string, string[]];
 const teamId = '507f1f77bcf86cd799439011';
 const appId = '507f1f77bcf86cd799439012';
 const chatId = 'chat-test';
-const keyOfStream = `stream:resume:data:${teamId}:${appId}:${chatId}`;
+const appSource = {
+  sourceType: ChatSourceTypeEnum.app,
+  sourceId: appId
+};
+const appChatQuery = {
+  appId,
+  $or: [{ sourceType: ChatSourceTypeEnum.app }, { sourceType: { $exists: false } }]
+};
+const keyOfStream = `stream:resume:data:${teamId}:${ChatSourceTypeEnum.app}:${appId}:${chatId}`;
 const rawKeyOfStream = `${FASTGPT_REDIS_PREFIX}${keyOfStream}`;
 
 const createFindOneResult = (data: any) =>
@@ -218,7 +230,7 @@ describe('stream resume api', () => {
     delete redis.call;
     delete redis.duplicate;
 
-    vi.mocked(authChatCrud).mockResolvedValue({
+    vi.mocked(authChatTargetCrud).mockResolvedValue({
       teamId,
       tmbId: 'tmb-test',
       uid: 'user-test',
@@ -374,11 +386,11 @@ describe('stream resume api', () => {
     });
 
     expect(MongoChat.updateOne).toHaveBeenCalledWith(
-      { appId, chatId },
+      { ...appChatQuery, chatId },
       { $set: { hasBeenRead: true } }
     );
     expect(getChatItems).toHaveBeenCalledWith({
-      appId,
+      ...appSource,
       chatId,
       field:
         'obj value adminFeedback userGoodFeedback userBadFeedback time hideInUI durationSeconds errorMsg customFeedbacks isFeedbackRead deleteTime',
@@ -560,7 +572,7 @@ describe('stream resume api', () => {
       await getStreamResumeMirror({
         resumeRequestHeaderValue: 'true',
         teamId,
-        appId,
+        ...appSource,
         chatId
       });
 
@@ -625,7 +637,7 @@ describe('stream resume api', () => {
         }
       });
       expect(MongoChat.updateOne).toHaveBeenCalledWith(
-        { appId, chatId },
+        { ...appChatQuery, chatId },
         { $set: { hasBeenRead: true } }
       );
       expect(redis.call).not.toHaveBeenCalled();
@@ -653,7 +665,7 @@ describe('stream resume api', () => {
       await getStreamResumeMirror({
         resumeRequestHeaderValue: 'true',
         teamId,
-        appId,
+        ...appSource,
         chatId
       });
 
@@ -700,7 +712,7 @@ describe('stream resume api', () => {
     }
   });
 
-  it('should forward share auth params to authChatCrud when resuming a shared chat', async () => {
+  it('should forward share auth params to authChatTargetCrud when resuming a shared chat', async () => {
     vi.mocked(MongoChat.findOne).mockReturnValue(
       createFindOneResult({
         hasBeenRead: false,
@@ -724,9 +736,10 @@ describe('stream resume api', () => {
       }
     });
 
-    expect(authChatCrud).toHaveBeenCalledWith(
+    expect(authChatTargetCrud).toHaveBeenCalledWith(
       expect.objectContaining({
-        appId,
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: appId,
         chatId,
         shareId: 'share-test',
         outLinkUid: 'outlink-user',
@@ -758,7 +771,7 @@ describe('stream resume helpers', () => {
 
       const mirror = mirrorChatStream({
         teamId,
-        appId,
+        ...appSource,
         chatId
       });
 
@@ -767,7 +780,7 @@ describe('stream resume helpers', () => {
 
       await mirror.flush();
 
-      const keys = getStreamResumeRedisKeys({ teamId, appId, chatId });
+      const keys = getStreamResumeRedisKeys({ teamId, ...appSource, chatId });
       const rawStream = `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`;
 
       expect(redis.del).toHaveBeenCalledWith(keys.keyOfUnavailable);
@@ -798,7 +811,7 @@ describe('stream resume helpers', () => {
         'EX',
         STREAM_RESUME_TTL_SECONDS
       );
-      expect(await getStreamResumeActiveState({ teamId, appId, chatId })).toEqual({
+      expect(await getStreamResumeActiveState({ teamId, ...appSource, chatId })).toEqual({
         updatedAt: expect.any(Number)
       });
 
@@ -815,8 +828,8 @@ describe('stream resume helpers', () => {
 
   it('should set short ttl after shrinkTTLAfterComplete', async () => {
     const redis = getGlobalRedisConnection() as any;
-    const keys = getStreamResumeRedisKeys({ teamId, appId, chatId });
-    const mirror = mirrorChatStream({ teamId, appId, chatId });
+    const keys = getStreamResumeRedisKeys({ teamId, ...appSource, chatId });
+    const mirror = mirrorChatStream({ teamId, ...appSource, chatId });
     await mirror.enqueueRaw('data: x\n\n');
     await mirror.flush();
     redis.expire.mockClear?.();
@@ -837,7 +850,7 @@ describe('stream resume helpers', () => {
     redis.del.mockClear?.();
     const { keyOfStream } = getStreamResumeRedisKeys({
       teamId,
-      appId,
+      ...appSource,
       chatId
     });
 
@@ -845,7 +858,7 @@ describe('stream resume helpers', () => {
 
     const mirror = mirrorChatStream({
       teamId,
-      appId,
+      ...appSource,
       chatId
     });
 
@@ -855,7 +868,7 @@ describe('stream resume helpers', () => {
     expect(redis.del).toHaveBeenCalledWith(
       getStreamResumeRedisKeys({
         teamId,
-        appId,
+        ...appSource,
         chatId
       }).keyOfActive
     );
@@ -868,7 +881,7 @@ describe('stream resume helpers', () => {
 
     const mirror = mirrorChatStream({
       teamId,
-      appId,
+      ...appSource,
       chatId
     });
 
@@ -877,7 +890,7 @@ describe('stream resume helpers', () => {
 
     await mirror.flush();
 
-    const keys = getStreamResumeRedisKeys({ teamId, appId, chatId });
+    const keys = getStreamResumeRedisKeys({ teamId, ...appSource, chatId });
     const rawStream = `${FASTGPT_REDIS_PREFIX}${keys.keyOfStream}`;
 
     expect(redis.del).toHaveBeenCalledWith(keys.keyOfUnavailable);
@@ -894,13 +907,13 @@ describe('stream resume helpers', () => {
     const withoutHeader = await getStreamResumeMirror({
       resumeRequestHeaderValue: undefined,
       teamId,
-      appId,
+      ...appSource,
       chatId
     });
     const withHeader = await getStreamResumeMirror({
       resumeRequestHeaderValue: '1',
       teamId,
-      appId,
+      ...appSource,
       chatId
     });
 
@@ -918,14 +931,14 @@ describe('stream resume helpers', () => {
     const mirror = await getStreamResumeMirror({
       resumeRequestHeaderValue: 'true',
       teamId,
-      appId,
+      ...appSource,
       chatId
     });
 
     expect(mirror).toBeUndefined();
     expect(redis.info).toHaveBeenCalledTimes(1);
     expect(redis.set).toHaveBeenCalledWith(
-      getStreamResumeRedisKeys({ teamId, appId, chatId }).keyOfUnavailable,
+      getStreamResumeRedisKeys({ teamId, ...appSource, chatId }).keyOfUnavailable,
       JSON.stringify({
         reason: StreamResumeUnavailableReasonEnum.memoryPressure
       }),

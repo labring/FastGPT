@@ -12,6 +12,7 @@ export type UsageSchemaType = {
   source: `${UsageSourceEnum}`;
 
   appId?: string;
+  skillId?: string;
   datasetId?: string;
 
   /** @deprecated */

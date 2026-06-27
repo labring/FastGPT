@@ -1,4 +1,8 @@
-import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatGenerateStatusEnum,
+  ChatRoleEnum,
+  ChatSourceTypeEnum
+} from '@fastgpt/global/core/chat/constants';
 import type { UserChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import {
   getWorkflowEntryNodeIds,
@@ -34,6 +38,7 @@ import {
 import { WORKFLOW_MAX_RUN_TIMES } from '../../../core/workflow/constants';
 import { mongoSessionRun } from '../../../common/mongo/sessionRun';
 import { MongoChat } from '../../../core/chat/chatSchema';
+import { buildChatSourceQuery, type ChatSourceParams } from '../../../core/chat/source';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { MongoChatItem } from '../../../core/chat/chatItemSchema';
 
@@ -45,12 +50,27 @@ const RESET_CHAT_INPUT: Record<string, boolean> = {
   '/reset': true
 };
 const RESET_CHAT_REPLY = '对话已重置。\n\n The chat records have been reset.';
-export const resetChat = ({ appId, chatId }: { appId: string; chatId: string }) => {
+/**
+ * 重置指定 chat source 下的 outLink 会话。
+ *
+ * 该函数会直接改写 chats/chatitems 物理记录，因此入参必须使用业务层
+ * `sourceType/sourceId`，避免 outLink App 调用链继续把 sourceId 命名为 appId。
+ */
+export const resetChat = ({
+  sourceType,
+  sourceId,
+  chatId
+}: ChatSourceParams & { chatId: string }) => {
   const newChatId = getNanoid(26);
+  const chatSourceQuery = buildChatSourceQuery({
+    sourceType,
+    sourceId
+  });
+
   return mongoSessionRun(async (session) => {
     await MongoChat.updateOne(
       {
-        appId,
+        ...chatSourceQuery,
         chatId
       },
       {
@@ -62,7 +82,7 @@ export const resetChat = ({ appId, chatId }: { appId: string; chatId: string }) 
     );
     await MongoChatItem.updateMany(
       {
-        appId,
+        ...chatSourceQuery,
         chatId
       },
       {
@@ -108,7 +128,7 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
   const streamResKey = `${STREAM_CACHE_KEY_PREFIX}${streamId}`;
   const roundState = {
     preparedRound: undefined as PreChatRoundResult | undefined,
-    appId: '',
+    sourceId: '',
     finalized: false
   };
 
@@ -122,11 +142,19 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
     if (!nodes || !chatConfig || !app) {
       return Promise.reject('Invalid chat');
     }
+    const chatSource = {
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: String(app._id)
+    };
 
     // Check whether the chatId is valid
     const userQuestion = query.find((item) => item.text)?.text?.content || '';
     if (RESET_CHAT_INPUT[userQuestion]) {
-      await resetChat({ appId: outLinkConfig.appId, chatId });
+      await resetChat({
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: outLinkConfig.appId,
+        chatId
+      });
       await onReply?.(RESET_CHAT_REPLY);
       if (streamId) {
         await appendRedisCache(streamResKey, RESET_CHAT_REPLY, 60);
@@ -138,13 +166,16 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
     // Load chat histories and global variables in parallel
     const [{ histories }, chatDetail] = await Promise.all([
       getChatItems({
-        appId: outLinkConfig.appId,
+        ...chatSource,
         chatId,
         offset: 0,
         limit: getMaxHistoryLimitFromNodes(nodes),
         field: `obj value`
       }),
-      MongoChat.findOne({ appId: outLinkConfig.appId, chatId }, 'source variableList variables')
+      MongoChat.findOne(
+        { ...buildChatSourceQuery(chatSource), chatId },
+        'source variableList variables'
+      )
     ]);
 
     // dedupe
@@ -207,7 +238,7 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
       value: query
     };
     const preparedRound = await preChatRound({
-      appId: String(app._id),
+      ...chatSource,
       chatId,
       teamId: String(outLinkConfig.teamId),
       tmbId: String(outLinkConfig.tmbId),
@@ -219,7 +250,7 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
       responseChatItemId: messageId
     });
     roundState.preparedRound = preparedRound;
-    roundState.appId = String(app._id);
+    roundState.sourceId = chatSource.sourceId;
 
     const {
       assistantResponses,
@@ -234,7 +265,8 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
       mode: 'chat',
       usageSource: getUsageSourceByPublishChannel(outLinkConfig.type),
       runningAppInfo: {
-        id: String(app._id),
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: String(app._id),
         name: app.name,
         teamId: app.teamId,
         tmbId: app.tmbId
@@ -291,8 +323,8 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
 
     // Save and reply
     const saveParams: SaveChatProps = {
+      ...chatSource,
       chatId: preparedRound.chatId,
-      appId: String(app._id),
       teamId: outLinkConfig.teamId,
       tmbId: outLinkConfig.tmbId,
       outLinkUid: chatUserId,
@@ -328,10 +360,11 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
     }
   } catch (error) {
     const { preparedRound } = roundState;
-    if (!roundState.finalized && preparedRound?.shouldPersistChatRound && roundState.appId) {
+    if (!roundState.finalized && preparedRound?.shouldPersistChatRound && roundState.sourceId) {
       if (preparedRound.shouldFinalizePreparedRound) {
         await failChatRound({
-          appId: roundState.appId,
+          sourceType: ChatSourceTypeEnum.app,
+          sourceId: roundState.sourceId,
           chatId: preparedRound.chatId,
           responseChatItemId: preparedRound.responseChatItemId,
           error
@@ -345,7 +378,8 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
         });
       } else {
         await updateChatGenerateStatus({
-          appId: roundState.appId,
+          sourceType: ChatSourceTypeEnum.app,
+          sourceId: roundState.sourceId,
           chatId: preparedRound.chatId,
           status: ChatGenerateStatusEnum.error
         }).catch((saveError) => {

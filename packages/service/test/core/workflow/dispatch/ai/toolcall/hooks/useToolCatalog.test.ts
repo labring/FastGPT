@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { SANDBOX_SYSTEM_PROMPT } from '@fastgpt/global/core/ai/sandbox/constants';
 import { SANDBOX_TOOLS } from '@fastgpt/global/core/ai/sandbox/tools';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { useToolCatalog } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/hooks/useToolCatalog';
 import { ReadFileTooData } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/tools/file';
@@ -108,7 +109,8 @@ describe('useToolCatalog', () => {
       currentInputFiles: [],
       useAgentSandbox: false,
       lang: 'en' as any,
-      appId: 'app_1',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app_1',
       userId: 'user_1',
       chatId: 'chat_1'
     });
@@ -208,7 +210,8 @@ describe('useToolCatalog', () => {
       useAgentSandbox: true,
       sandboxEntrypoint: 'pip install -r requirements.txt',
       lang: 'en' as any,
-      appId: 'app_1',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app_1',
       userId: 'user_1',
       chatId: 'chat_1'
     });
@@ -219,7 +222,8 @@ describe('useToolCatalog', () => {
       content: `system prompt\n\n${SANDBOX_SYSTEM_PROMPT}`
     });
     expect(prepareSandboxToolRuntimeMock).toHaveBeenCalledWith({
-      appId: 'app_1',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app_1',
       userId: 'user_1',
       chatId: 'chat_1',
       files: [
@@ -256,7 +260,8 @@ describe('useToolCatalog', () => {
       toolNodes: [],
       currentInputFiles: [],
       useAgentSandbox: true,
-      appId: 'app_1',
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app_1',
       userId: 'user_1',
       chatId: 'chat_1'
     });

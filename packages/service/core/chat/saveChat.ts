@@ -1,6 +1,10 @@
 import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type';
 import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
-import { ChatGenerateStatusEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatGenerateStatusEnum,
+  ChatRoleEnum,
+  ChatSourceTypeEnum
+} from '@fastgpt/global/core/chat/constants';
 import { MongoChatItem } from './chatItemSchema';
 import { MongoChat } from './chatSchema';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
@@ -32,12 +36,12 @@ import {
   isSkipSaveChatId,
   stripUserContentFileUrls
 } from './utils/prepare';
+import { buildChatSourceQuery, buildChatSourceWriteFields, type ChatSourceParams } from './source';
 
 const logger = getLogger(LogCategories.MODULE.CHAT);
 
-export type Props = {
+export type Props = ChatSourceParams & {
   chatId: string;
-  appId: string;
   versionId?: string;
   teamId: string;
   tmbId: string;
@@ -198,9 +202,8 @@ const getChatDataLog = async ({
   };
 };
 
-type FailChatRoundParams = {
+type FailChatRoundParams = ChatSourceParams & {
   chatId: string;
-  appId: string;
   responseChatItemId?: string;
   error: unknown;
 };
@@ -220,7 +223,6 @@ export const finalizeChatRound = async (props: Props) => {
 
   const {
     chatId,
-    appId,
     versionId,
     teamId,
     tmbId,
@@ -237,6 +239,12 @@ export const finalizeChatRound = async (props: Props) => {
     errorMsg,
     metadata = {}
   } = props;
+  const chatSource = {
+    sourceType: props.sourceType,
+    sourceId: props.sourceId
+  };
+  const sourceWriteFields = buildChatSourceWriteFields(chatSource);
+  const appSourceId = chatSource.sourceId;
 
   if (isSkipSaveChatId(chatId)) return;
 
@@ -266,7 +274,7 @@ export const finalizeChatRound = async (props: Props) => {
   await mongoSessionRun(async (session) => {
     const chat = await MongoChat.findOne(
       {
-        appId,
+        ...buildChatSourceQuery(chatSource),
         chatId
       },
       '_id metadata'
@@ -292,7 +300,12 @@ export const finalizeChatRound = async (props: Props) => {
 
     const [humanDoc, aiDoc] = await Promise.all([
       MongoChatItem.findOneAndUpdate(
-        { appId, chatId, dataId: humanDataId, obj: ChatRoleEnum.Human },
+        {
+          ...buildChatSourceQuery(chatSource),
+          chatId,
+          dataId: humanDataId,
+          obj: ChatRoleEnum.Human
+        },
         {
           $set: humanUpdate
         },
@@ -302,7 +315,7 @@ export const finalizeChatRound = async (props: Props) => {
         }
       ),
       MongoChatItem.findOneAndUpdate(
-        { appId, chatId, dataId: aiDataId, obj: ChatRoleEnum.AI },
+        { ...buildChatSourceQuery(chatSource), chatId, dataId: aiDataId, obj: ChatRoleEnum.AI },
         {
           $set: aiUpdate
         },
@@ -320,14 +333,14 @@ export const finalizeChatRound = async (props: Props) => {
     // chat 记录在 prepare 阶段已经存在，这里补齐运行结果相关的会话级字段并释放 generating 状态。
     await MongoChat.updateOne(
       {
-        appId,
+        ...buildChatSourceQuery(chatSource),
         chatId
       },
       {
         $set: {
           teamId,
           tmbId,
-          appId,
+          ...sourceWriteFields,
           appVersionId: versionId,
           chatId,
           variableList,
@@ -357,70 +370,78 @@ export const finalizeChatRound = async (props: Props) => {
       session
     });
 
-    pushChatLog({
-      chatId,
-      chatItemIdHuman: String(humanDoc._id),
-      chatItemIdAi: String(aiDoc._id),
-      appId
-    });
+    if (chatSource.sourceType === ChatSourceTypeEnum.app) {
+      pushChatLog({
+        chatId,
+        chatItemIdHuman: String(humanDoc._id),
+        chatItemIdAi: String(aiDoc._id),
+        appId: appSourceId
+      });
+    }
   });
 
-  // 统计日志不是主链路强依赖，失败只记录日志，不影响 chat item 和 chat 主数据保存。
-  try {
-    const { fifteenMinutesAgo, errorCount, totalPoints, now } = await getChatDataLog({
-      nodeResponseSummary: props.nodeResponseSummary
-    });
-    const userId = String(outLinkUid || tmbId);
+  // App 统计日志不是主链路强依赖，失败只记录日志，不影响 chat item 和 chat 主数据保存。
+  if (chatSource.sourceType === ChatSourceTypeEnum.app) {
+    try {
+      const { fifteenMinutesAgo, errorCount, totalPoints, now } = await getChatDataLog({
+        nodeResponseSummary: props.nodeResponseSummary
+      });
+      const userId = String(outLinkUid || tmbId);
 
-    const hasHistoryChat = await MongoAppChatLog.exists({
-      teamId,
-      appId,
-      userId,
-      createTime: { $lt: now }
-    });
-
-    await MongoAppChatLog.updateOne(
-      {
+      const hasHistoryChat = await MongoAppChatLog.exists({
         teamId,
-        appId,
-        chatId,
-        updateTime: { $gte: fifteenMinutesAgo }
-      },
-      {
-        $inc: {
-          chatItemCount: 1,
-          errorCount,
-          totalPoints,
-          totalResponseTime: durationSeconds
-        },
-        $set: {
-          updateTime: now,
-          sourceName
-        },
-        $setOnInsert: {
-          appId,
+        appId: appSourceId,
+        userId,
+        createTime: { $lt: now }
+      });
+
+      await MongoAppChatLog.updateOne(
+        {
           teamId,
+          appId: appSourceId,
           chatId,
-          userId,
-          source,
-          createTime: now,
-          goodFeedbackCount: 0,
-          badFeedbackCount: 0,
-          isFirstChat: !hasHistoryChat
+          updateTime: { $gte: fifteenMinutesAgo }
+        },
+        {
+          $inc: {
+            chatItemCount: 1,
+            errorCount,
+            totalPoints,
+            totalResponseTime: durationSeconds
+          },
+          $set: {
+            updateTime: now,
+            sourceName
+          },
+          $setOnInsert: {
+            appId: appSourceId,
+            teamId,
+            chatId,
+            userId,
+            source,
+            createTime: now,
+            goodFeedbackCount: 0,
+            badFeedbackCount: 0,
+            isFirstChat: !hasHistoryChat
+          }
+        },
+        {
+          upsert: true,
+          ...writePrimary
         }
-      },
-      {
-        upsert: true,
-        ...writePrimary
-      }
-    );
-  } catch (error) {
-    logger.error('Failed to push chat log', { chatId, error });
+      );
+    } catch (error) {
+      logger.error('Failed to push chat log', { chatId, error });
+    }
   }
 };
 
 export const failChatRound = async (params: FailChatRoundParams) => {
-  const { chatId, appId, responseChatItemId, error } = params;
+  const { chatId, responseChatItemId, error } = params;
+  const chatSource = {
+    sourceType: params.sourceType,
+    sourceId: params.sourceId
+  };
 
   if (isSkipSaveChatId(chatId)) return;
 
@@ -430,7 +451,7 @@ export const failChatRound = async (params: FailChatRoundParams) => {
 
     await mongoSessionRun(async (session) => {
       await MongoChat.updateOne(
-        { appId, chatId },
+        { ...buildChatSourceQuery(chatSource), chatId },
         {
           $set: {
             chatGenerateStatus: ChatGenerateStatusEnum.error,
@@ -445,7 +466,12 @@ export const failChatRound = async (params: FailChatRoundParams) => {
 
       if (responseChatItemId) {
         await MongoChatItem.updateOne(
-          { appId, chatId, dataId: responseChatItemId, obj: ChatRoleEnum.AI },
+          {
+            ...buildChatSourceQuery(chatSource),
+            chatId,
+            dataId: responseChatItemId,
+            obj: ChatRoleEnum.AI
+          },
           {
             $set: {
               errorMsg
@@ -467,7 +493,6 @@ export const pushChatRecords = async (props: Props) => {
 
   const {
     chatId,
-    appId,
     versionId,
     teamId,
     tmbId,
@@ -485,13 +510,19 @@ export const pushChatRecords = async (props: Props) => {
     nodeResponseSummary,
     metadata = {}
   } = props;
+  const chatSource = {
+    sourceType: props.sourceType,
+    sourceId: props.sourceId
+  };
+  const sourceWriteFields = buildChatSourceWriteFields(chatSource);
+  const appSourceId = chatSource.sourceId;
 
   if (!chatId || isSkipSaveChatId(chatId)) return;
 
   try {
     const chat = await MongoChat.findOne(
       {
-        appId,
+        ...buildChatSourceQuery(chatSource),
         chatId
       },
       '_id metadata'
@@ -526,7 +557,7 @@ export const pushChatRecords = async (props: Props) => {
           chatId,
           teamId,
           tmbId,
-          appId,
+          ...sourceWriteFields,
           ...item
         })),
         { session, ordered: true, ...writePrimary }
@@ -534,14 +565,14 @@ export const pushChatRecords = async (props: Props) => {
 
       await MongoChat.updateOne(
         {
-          appId,
+          ...buildChatSourceQuery(chatSource),
           chatId
         },
         {
           $set: {
             teamId,
             tmbId,
-            appId,
+            ...sourceWriteFields,
             appVersionId: versionId,
             chatId,
             variableList,
@@ -574,65 +605,69 @@ export const pushChatRecords = async (props: Props) => {
         session
       });
 
-      pushChatLog({
-        chatId,
-        chatItemIdHuman: String(chatItemIdHuman),
-        chatItemIdAi: String(chatItemIdAi),
-        appId
-      });
+      if (chatSource.sourceType === ChatSourceTypeEnum.app) {
+        pushChatLog({
+          chatId,
+          chatItemIdHuman: String(chatItemIdHuman),
+          chatItemIdAi: String(chatItemIdAi),
+          appId: appSourceId
+        });
+      }
     });
 
-    // Create chat data log
-    try {
-      const { fifteenMinutesAgo, errorCount, totalPoints, now } = await getChatDataLog({
-        nodeResponseSummary
-      });
-      const userId = String(outLinkUid || tmbId);
+    // Create app chat data log
+    if (chatSource.sourceType === ChatSourceTypeEnum.app) {
+      try {
+        const { fifteenMinutesAgo, errorCount, totalPoints, now } = await getChatDataLog({
+          nodeResponseSummary
+        });
+        const userId = String(outLinkUid || tmbId);
 
-      const hasHistoryChat = await MongoAppChatLog.exists({
-        teamId,
-        appId,
-        userId,
-        createTime: { $lt: now }
-      });
-
-      await MongoAppChatLog.updateOne(
-        {
+        const hasHistoryChat = await MongoAppChatLog.exists({
           teamId,
-          appId,
-          chatId,
-          updateTime: { $gte: fifteenMinutesAgo }
-        },
-        {
-          $inc: {
-            chatItemCount: 1,
-            errorCount,
-            totalPoints,
-            totalResponseTime: durationSeconds
-          },
-          $set: {
-            updateTime: now,
-            sourceName
-          },
-          $setOnInsert: {
-            appId,
+          appId: appSourceId,
+          userId,
+          createTime: { $lt: now }
+        });
+
+        await MongoAppChatLog.updateOne(
+          {
             teamId,
+            appId: appSourceId,
             chatId,
-            userId,
-            source,
-            createTime: now,
-            goodFeedbackCount: 0,
-            badFeedbackCount: 0,
-            isFirstChat: !hasHistoryChat
+            updateTime: { $gte: fifteenMinutesAgo }
+          },
+          {
+            $inc: {
+              chatItemCount: 1,
+              errorCount,
+              totalPoints,
+              totalResponseTime: durationSeconds
+            },
+            $set: {
+              updateTime: now,
+              sourceName
+            },
+            $setOnInsert: {
+              appId: appSourceId,
+              teamId,
+              chatId,
+              userId,
+              source,
+              createTime: now,
+              goodFeedbackCount: 0,
+              badFeedbackCount: 0,
+              isFirstChat: !hasHistoryChat
+            }
+          },
+          {
+            upsert: true,
+            ...writePrimary
           }
-        },
-        {
-          upsert: true,
-          ...writePrimary
-        }
-      );
-    } catch (error) {
-      logger.error('Failed to push chat log', { chatId, error });
+        );
+      } catch (error) {
+        logger.error('Failed to push chat log', { chatId, error });
+      }
     }
   } catch (error) {
     logger.error('Failed to update chat history', { chatId, error });
@@ -657,7 +692,6 @@ export const updateInteractiveChat = async ({
   const {
     teamId,
     chatId,
-    appId,
     nodes,
     appChatConfig,
     userContent,
@@ -666,6 +700,11 @@ export const updateInteractiveChat = async ({
     durationSeconds,
     errorMsg
   } = props;
+  const chatSource = {
+    sourceType: props.sourceType,
+    sourceId: props.sourceId
+  };
+  const appSourceId = chatSource.sourceId;
   if (!chatId) return;
 
   const { variables: variableList } = getAppChatConfig({
@@ -674,7 +713,11 @@ export const updateInteractiveChat = async ({
     isPublicFetch: false
   });
 
-  const chatItem = await MongoChatItem.findOne({ appId, chatId, obj: ChatRoleEnum.AI }).sort({
+  const chatItem = await MongoChatItem.findOne({
+    ...buildChatSourceQuery(chatSource),
+    chatId,
+    obj: ChatRoleEnum.AI
+  }).sort({
     _id: -1
   });
 
@@ -702,7 +745,7 @@ export const updateInteractiveChat = async ({
       finalInteractive.params.answer = userInteractiveVal;
 
       const interactiveChatItem = await MongoChatItem.findOne({
-        appId,
+        ...buildChatSourceQuery(chatSource),
         chatId,
         obj: ChatRoleEnum.AI,
         'value.interactive': { $exists: true }
@@ -832,7 +875,7 @@ export const updateInteractiveChat = async ({
     await chatItem.save({ session });
     await MongoChat.updateOne(
       {
-        appId,
+        ...buildChatSourceQuery(chatSource),
         chatId
       },
       {
@@ -855,7 +898,11 @@ export const updateInteractiveChat = async ({
     });
   });
 
-  // Push chat data logs
+  // Push app chat data logs
+  if (chatSource.sourceType !== ChatSourceTypeEnum.app) {
+    return;
+  }
+
   try {
     const { fifteenMinutesAgo, errorCount, totalPoints, now } = await getChatDataLog({
       nodeResponseSummary: props.nodeResponseSummary
@@ -864,7 +911,7 @@ export const updateInteractiveChat = async ({
     await MongoAppChatLog.updateOne(
       {
         teamId,
-        appId,
+        appId: appSourceId,
         chatId,
         updateTime: { $gte: fifteenMinutesAgo }
       },

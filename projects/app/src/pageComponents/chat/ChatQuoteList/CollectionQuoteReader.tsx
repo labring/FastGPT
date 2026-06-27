@@ -19,6 +19,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { getCollectionSourceAndOpen } from '@/web/core/dataset/hooks/readCollectionSource';
 import { useContextSelector } from 'use-context-selector';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
+import { getAppIdFromChatTarget, getChatTargetInput } from '@/web/core/chat/utils';
 
 const CollectionReader = ({
   rawSearch,
@@ -38,6 +39,7 @@ const CollectionReader = ({
   const canDownloadSource = useContextSelector(ChatItemContext, (v) => v.canDownloadSource);
 
   const { collectionId, datasetId, chatItemDataId, sourceName, quoteId } = metadata;
+  const appId = getAppIdFromChatTarget(metadata);
   const [selectedQuote, setSelectedQuote] = useState<{ sourceQuoteId?: string; id: string }>();
 
   // Get dataset permission
@@ -95,10 +97,10 @@ const CollectionReader = ({
       collectionId,
       chatItemDataId,
       chatId: metadata.chatId,
-      appId: metadata.appId,
+      ...getChatTargetInput(metadata),
       ...metadata.outLinkAuthData
     }),
-    [chatItemDataId, collectionId, metadata.appId, metadata.chatId, metadata.outLinkAuthData]
+    [chatItemDataId, collectionId, metadata]
   );
 
   const {
@@ -133,11 +135,13 @@ const CollectionReader = ({
   );
 
   const { runAsync: handleDownload } = useRequest(async () => {
+    if (!appId) return;
+
     await downloadFetch({
       url: '/api/core/dataset/collection/export',
       filename: 'data.csv',
       body: {
-        appId: metadata.appId,
+        appId,
         chatId: metadata.chatId,
         chatItemDataId,
         collectionId,
@@ -147,7 +151,7 @@ const CollectionReader = ({
   });
 
   const handleRead = getCollectionSourceAndOpen({
-    appId: metadata.appId,
+    appId: appId || '',
     chatId: metadata.chatId,
     chatItemDataId,
     collectionId,
@@ -195,7 +199,7 @@ const CollectionReader = ({
           </Box>
 
           <Flex alignItems={'center'} gap={'8px'}>
-            {canDownloadSource && (
+            {canDownloadSource && appId && (
               <DownloadButton
                 canAccessRawData={true}
                 onDownload={handleDownload}

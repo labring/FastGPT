@@ -1,31 +1,33 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
-import { authChatCrud } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   AdminUpdateFeedbackBodySchema,
   AdminUpdateFeedbackResponseSchema,
   type AdminUpdateFeedbackResponseType
 } from '@fastgpt/global/openapi/core/chat/feedback/api';
+import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 
 async function handler(req: ApiRequestProps): Promise<AdminUpdateFeedbackResponseType> {
-  const { appId, chatId, dataId, datasetId, feedbackDataId, q, a } = parseApiInput({
+  const { sourceType, sourceId, chatId, dataId, datasetId, feedbackDataId, q, a } = parseApiInput({
     req,
     bodySchema: AdminUpdateFeedbackBodySchema
   }).body;
 
-  await authChatCrud({
+  await authChatTargetCrud({
     req,
     authToken: true,
     authApiKey: true,
-    appId,
+    sourceType,
+    sourceId,
     chatId
   });
 
   await MongoChatItem.updateOne(
     {
-      appId,
+      ...buildChatSourceQuery({ sourceType, sourceId }),
       chatId,
       dataId
     },

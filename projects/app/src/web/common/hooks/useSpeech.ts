@@ -4,8 +4,11 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import type { ChatTargetInputType } from '@fastgpt/global/openapi/core/chat/api';
 
-export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => {
+export const useSpeech = (
+  props?: OutLinkChatAuthProps & ChatTargetInputType & { chatId: string }
+) => {
   const { t } = useTranslation();
   const { toast } = useToast();
 

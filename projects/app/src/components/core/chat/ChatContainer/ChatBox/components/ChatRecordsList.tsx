@@ -23,8 +23,9 @@ export type ChatRecordsListProps = {
   records: ChatSiteItemType[];
   expandedDeletedGroups: Set<string>;
   itemRefs: MutableRefObject<Map<string, HTMLElement | null>>;
-  showVoiceIcon: boolean;
-  showMarkIcon: boolean;
+  enableTTS: boolean;
+  enableMark: boolean;
+  enableSandbox: boolean;
   statusBoxData:
     | {
         status: `${ChatStatusEnum}`;
@@ -68,8 +69,9 @@ const ChatRecordsList = ({
   records,
   expandedDeletedGroups,
   itemRefs,
-  showVoiceIcon,
-  showMarkIcon,
+  enableTTS,
+  enableMark,
+  enableSandbox,
   statusBoxData,
   questionGuides,
   onToggleDeletedGroup,
@@ -214,7 +216,8 @@ const ChatRecordsList = ({
                       chat={item}
                       isLastChild={lastSourceIndex === records.length - 1}
                       {...{
-                        showVoiceIcon,
+                        enableTTS,
+                        enableSandbox,
                         statusBoxData,
                         questionGuides,
                         onRetry: retryPreviousHuman,
@@ -256,7 +259,7 @@ const ChatRecordsList = ({
                           ))}
                         </Box>
                       )}
-                      {showMarkIcon && item.adminFeedback && (
+                      {enableMark && item.adminFeedback && (
                         <Box fontSize={'sm'}>
                           <ChatBoxDivider
                             icon="core/app/markLight"

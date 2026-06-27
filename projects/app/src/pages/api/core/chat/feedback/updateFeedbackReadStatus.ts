@@ -1,6 +1,6 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { authChatCrud } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
@@ -11,24 +11,27 @@ import {
 import { updateChatFeedbackCount } from '@fastgpt/service/core/chat/controller';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 
 async function handler(req: ApiRequestProps): Promise<UpdateFeedbackReadStatusResponseType> {
-  const { appId, chatId, dataId, isRead } = parseApiInput({
+  const { sourceType, sourceId, chatId, dataId, isRead } = parseApiInput({
     req,
     bodySchema: UpdateFeedbackReadStatusBodySchema
   }).body;
+  const chatSourceQuery = buildChatSourceQuery({ sourceType, sourceId });
 
-  await authChatCrud({
+  await authChatTargetCrud({
     req,
     authToken: true,
-    appId,
+    sourceType,
+    sourceId,
     chatId
   });
 
   await mongoSessionRun(async (session) => {
     await MongoChatItem.updateOne(
       {
-        appId,
+        ...chatSourceQuery,
         chatId,
         dataId,
         obj: ChatRoleEnum.AI
@@ -43,7 +46,8 @@ async function handler(req: ApiRequestProps): Promise<UpdateFeedbackReadStatusRe
 
     // Update Chat table feedback statistics to refresh unread feedback flags
     await updateChatFeedbackCount({
-      appId,
+      sourceType,
+      sourceId,
       chatId,
       session
     });

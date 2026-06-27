@@ -1,6 +1,7 @@
 import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import {
   FlowNodeInputTypeEnum,
@@ -193,7 +194,8 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
 
     const { externalProvider } = await getUserChatInfo(runningAppInfo.tmbId);
     const childRunningAppInfo = {
-      id: String(workflowTool.id),
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: String(workflowTool.id),
       name: workflowTool.name,
       teamId: workflowTool.teamId || runningAppInfo.teamId,
       tmbId: workflowTool.tmbId || runningAppInfo.tmbId,
@@ -232,7 +234,8 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
           }
         : {}),
       runningAppInfo: {
-        id: String(workflowTool.id),
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: String(workflowTool.id),
         name: workflowTool.name,
         // 如果系统插件有 teamId 和 tmbId，则使用系统插件的 teamId 和 tmbId（管理员指定了插件作为系统插件）
         teamId: workflowTool.teamId || runningAppInfo.teamId,

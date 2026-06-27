@@ -9,31 +9,44 @@ import { serviceEnv } from '@fastgpt/service/env';
 import { timingSafeEqual } from 'crypto';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { createAgentSandboxPermissionDeniedError } from '@fastgpt/service/core/ai/sandbox/error';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/runtime/id';
+import type { SandboxClientQuery } from '@fastgpt/service/core/ai/sandbox/service/runtime';
+import { EDIT_DEBUG_SANDBOX_CHAT_ID } from '@fastgpt/service/core/ai/skill/edit/config';
+
+type SandboxClientQueryWithId = SandboxClientQuery & { sandboxId: string };
 
 /**
  * 统一沙盒 API 会话访问控制鉴权。
- * 支持普通聊天会话（authChatCrud）及编辑调试态（authSkill）的自动感知和鉴权路由。
+ * API 边界已将 appId/skillId 转成 sourceType/sourceId；这里仅按标准 chat source
+ * 分发到 App Chat 或 Skill Edit 权限体系。
  */
 export async function authSandboxSession({
   req,
-  appId,
+  sourceType,
+  sourceId,
   chatId,
   outLinkAuthData,
   per = ReadPermissionVal
 }: {
   req: ApiRequestProps;
-  appId: string;
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
   chatId: string;
   outLinkAuthData?: OutLinkChatAuthProps;
   per?: number;
 }): Promise<{ uid: string; teamId: string }> {
   const result = await (async () => {
-    if (chatId === 'edit-debug') {
+    if (sourceType === ChatSourceTypeEnum.skillEdit) {
+      if (chatId !== EDIT_DEBUG_SANDBOX_CHAT_ID) {
+        throw new Error('Skill edit sandbox only supports edit-debug chat');
+      }
+
       const authResult = await authSkill({
         req,
         authToken: true,
         authApiKey: true,
-        skillId: appId,
+        skillId: sourceId,
         per
       });
       return {
@@ -46,7 +59,7 @@ export async function authSandboxSession({
       req,
       authToken: true,
       authApiKey: true,
-      appId,
+      appId: sourceId,
       chatId,
       shareId: outLinkAuthData?.shareId,
       outLinkUid: outLinkAuthData?.outLinkUid,
@@ -60,7 +73,7 @@ export async function authSandboxSession({
         req,
         authToken: true,
         authApiKey: true,
-        appId,
+        appId: sourceId,
         per
       });
     }
@@ -78,6 +91,53 @@ export async function authSandboxSession({
   }
 
   return result;
+}
+
+/**
+ * 将标准 chat source 映射为 sandbox runtime client 的物理寻址参数。
+ *
+ * sandbox runtime 只接收标准 source；App/Skill 的权限语义留在鉴权层处理。
+ */
+export function buildSandboxClientQueryFromChatSource({
+  sourceType,
+  sourceId,
+  userId,
+  chatId
+}: {
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
+  userId: string;
+  chatId: string;
+}): SandboxClientQueryWithId {
+  const sandboxId = getRunningSandboxId({
+    sourceType,
+    sourceId,
+    userId,
+    chatId
+  });
+
+  if (sourceType === ChatSourceTypeEnum.app) {
+    return {
+      sandboxId,
+      sourceType,
+      sourceId,
+      userId,
+      chatId
+    };
+  }
+
+  if (sourceType === ChatSourceTypeEnum.skillEdit) {
+    return {
+      sandboxId,
+      sourceType,
+      sourceId,
+      userId: '',
+      chatId
+    };
+  }
+
+  const exhaustiveCheck: never = sourceType;
+  throw new Error(`Unsupported chat source type: ${exhaustiveCheck}`);
 }
 
 export const AGENT_SANDBOX_PROXY_HEADER = 'x-proxy-token';

@@ -3,7 +3,7 @@ import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { type SelectAppItemType } from '@fastgpt/global/core/workflow/template/system/abandoned/runApp/type';
 import { runWorkflow } from '../index';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
   getWorkflowEntryNodeIds,
@@ -62,7 +62,8 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
   const chatHistories = getHistories(history, histories);
   const { files } = chatValue2RuntimePrompt(query);
   const childRunningAppInfo = {
-    id: String(appData._id),
+    sourceType: ChatSourceTypeEnum.app,
+    sourceId: String(appData._id),
     name: appData.name,
     teamId: String(appData.teamId),
     tmbId: String(appData.tmbId),

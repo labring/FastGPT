@@ -113,6 +113,7 @@ export const pushLLMTrainingUsage = async ({
 export const createChatUsageRecord = async ({
   appName,
   appId,
+  skillId,
   pluginId,
   teamId,
   tmbId,
@@ -120,6 +121,7 @@ export const createChatUsageRecord = async ({
 }: {
   appName: string;
   appId?: string;
+  skillId?: string;
   pluginId?: string;
   teamId: string;
   tmbId: string;
@@ -131,6 +133,7 @@ export const createChatUsageRecord = async ({
         teamId,
         tmbId,
         appId,
+        skillId,
         pluginId,
         appName,
         source,

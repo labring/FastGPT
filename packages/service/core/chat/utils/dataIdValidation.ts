@@ -1,7 +1,9 @@
 import type { ChatItemMiniType, UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { MongoChatItem } from '../chatItemSchema';
+import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { buildChatSourceQuery, type ChatSourceParams } from '../source';
 
 export const CHAT_DATA_ID_DUPLICATE_ERROR_MESSAGE = 'Chat dataId already exists';
 
@@ -11,8 +13,7 @@ export const CHAT_DATA_ID_DUPLICATE_ERROR_MESSAGE = 'Chat dataId already exists'
  * 当前运行前唯一性只约束 AI responseChatItemId；Human 消息允许与 AI 消息使用同一个
  * dataId 表示同一轮对话。
  */
-type ValidateChatRoundDataIdsParams = {
-  appId: string;
+type ValidateChatRoundDataIdsParams = ChatSourceParams & {
   chatId: string;
   userContent: UserChatItemType & { dataId?: string };
   responseChatItemId?: string;
@@ -56,11 +57,13 @@ export const assertNoDuplicateChatDataIdsInRequest = (dataIds: Array<string | un
  * dataId 校验应使用 validateChatRoundDataIds。
  */
 export const assertNoExistingChatDataIds = async ({
-  appId,
+  sourceType,
+  sourceId,
   chatId,
   dataIds
 }: {
-  appId: string;
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
   chatId: string;
   dataIds: Array<string | undefined>;
 }) => {
@@ -69,7 +72,7 @@ export const assertNoExistingChatDataIds = async ({
 
   const existingChatItem = await MongoChatItem.findOne(
     {
-      appId,
+      ...buildChatSourceQuery({ sourceType, sourceId }),
       chatId,
       dataId: { $in: validDataIds }
     },
@@ -90,7 +93,8 @@ export const assertNoExistingChatDataIds = async ({
  * AI placeholder 或最终回复覆盖已有 AI 消息。
  */
 export const validateChatRoundDataIds = async ({
-  appId,
+  sourceType,
+  sourceId,
   chatId,
   responseChatItemId
 }: ValidateChatRoundDataIdsParams) => {
@@ -98,7 +102,7 @@ export const validateChatRoundDataIds = async ({
 
   const existingChatItem = await MongoChatItem.findOne(
     {
-      appId,
+      ...buildChatSourceQuery({ sourceType, sourceId }),
       chatId,
       obj: ChatRoleEnum.AI,
       dataId: responseChatItemId

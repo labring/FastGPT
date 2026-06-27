@@ -1,13 +1,17 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import type { GetHelperBotFilePresignParamsType } from '@fastgpt/global/openapi/core/chat/helperBot/api';
+import {
+  GetHelperBotFilePresignParamsSchema,
+  type GetHelperBotFilePresignParamsType
+} from '@fastgpt/global/openapi/core/chat/helperBot/api';
 import type { CreatePostPresignedUrlResponseType } from '@fastgpt/global/common/file/s3/type';
 import { authHelperBotChatCrud } from '@/service/support/permission/auth/chat';
 import { getS3HelperBotSource } from '../../../../../../../../packages/service/common/s3/sources/helperbot/index';
 import { authFrequencyLimit } from '@fastgpt/service/common/system/frequencyLimit/utils';
 import { addSeconds } from 'date-fns';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
-export type getFilePresignQuery = {};
+export type getFilePresignQuery = Record<string, never>;
 
 export type getFilePresignBody = GetHelperBotFilePresignParamsType;
 
@@ -25,7 +29,10 @@ const authUploadLimit = (tmbId: string) => {
 async function handler(
   req: ApiRequestProps<getFilePresignBody, getFilePresignQuery>
 ): Promise<getFilePresignResponse> {
-  const { type, chatId, filename } = req.body;
+  const { type, chatId, filename } = parseApiInput({
+    req,
+    bodySchema: GetHelperBotFilePresignParamsSchema
+  }).body;
 
   const { userId } = await authHelperBotChatCrud({
     type,
