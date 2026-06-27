@@ -25,7 +25,7 @@ import { useDebug } from '../../hooks/useDebug';
 import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
 import { getAppVersionList } from '@/web/core/app/api/version';
 import { getTeamToolVersions } from '@/web/core/plugin/team/api';
-import { storeNode2FlowNode } from '@/web/core/workflow/utils';
+import { storeNode2FlowNode, getWorkflowCheckIssueUIStatus } from '@/web/core/workflow/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useContextSelector } from 'use-context-selector';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
@@ -58,6 +58,7 @@ import { getAppPermission } from '@/web/core/app/api';
 import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import type { SystemToolVersionType } from '@fastgpt/global/core/app/tool/systemTool/type/base';
+import type { WorkflowCheckIssue } from '@fastgpt/global/core/workflow/type/node';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -99,6 +100,7 @@ const NodeCard = (props: Props) => {
     menuForbid,
     isTool = false,
     isError = false,
+    workflowCheckIssues,
     debugResult,
     isFolded,
     customStyle,
@@ -192,6 +194,11 @@ const NodeCard = (props: Props) => {
       </Flex>
     );
   }, [isFolded, avatar, avatarLinear, name, handleDoubleClick, t]);
+
+  const errorIssues = useMemo(
+    () => workflowCheckIssues?.filter((issue) => issue.level === 'error') ?? [],
+    [workflowCheckIssues]
+  );
 
   const { outlineColor, outlineWidth } = useMemo(() => {
     // error mode
@@ -302,10 +309,11 @@ const NodeCard = (props: Props) => {
 
   return (
     <Flex
+      flexDirection={'column'}
+      alignItems={'stretch'}
       outline={selected && (presentationMode || isFolded) ? '16px solid' : undefined}
       outlineColor={'rgba(17, 24, 36, 0.05)'}
       borderRadius={isFolded ? 26 : 'lg'}
-      boxShadow={'0 24px 40px 0 rgba(0, 0, 0, 0.05)'}
       {...customStyle}
     >
       <Flex
@@ -326,6 +334,7 @@ const NodeCard = (props: Props) => {
         outline={outlineWidth}
         outlineColor={outlineColor}
         borderRadius={isFolded ? 26 : 'lg'}
+        boxShadow={'0 24px 40px 0 rgba(0, 0, 0, 0.05)'}
         _hover={{
           boxShadow: '0 24px 40px 0 rgba(0, 0, 0, 0.08)',
           '& .controller-menu': {
@@ -444,11 +453,125 @@ const NodeCard = (props: Props) => {
           />
         )}
       </Flex>
+      {!isFolded && errorIssues.length > 0 && <NodeWorkflowCheckIssues issues={errorIssues} />}
     </Flex>
   );
 };
 
 export default React.memo(NodeCard);
+
+/** 待处理/待完善状态图标：待完善用设计稿虚线圆环，待处理用圆形 info。 */
+const WorkflowCheckIssueStatusIcon = React.memo(function WorkflowCheckIssueStatusIcon({
+  status
+}: {
+  status: ReturnType<typeof getWorkflowCheckIssueUIStatus>;
+}) {
+  if (status === 'pending_handle') {
+    return (
+      <Box
+        as={'svg'}
+        xmlns={'http://www.w3.org/2000/svg'}
+        w={'24px'}
+        h={'24px'}
+        flexShrink={0}
+        viewBox={'0 0 24 24'}
+        fill={'none'}
+      >
+        <path
+          fillRule={'evenodd'}
+          clipRule={'evenodd'}
+          d={
+            'M12.0001 3.51953C7.31642 3.51953 3.51953 7.31642 3.51953 12.0001C3.51953 16.6838 7.31642 20.4807 12.0001 20.4807C16.6838 20.4807 20.4807 16.6838 20.4807 12.0001C20.4807 7.31642 16.6838 3.51953 12.0001 3.51953ZM1.51953 12.0001C1.51953 6.21185 6.21185 1.51953 12.0001 1.51953C17.7884 1.51953 22.4807 6.21185 22.4807 12.0001C22.4807 17.7884 17.7884 22.4807 12.0001 22.4807C6.21185 22.4807 1.51953 17.7884 1.51953 12.0001ZM11.0001 8.20789C11.0001 7.6556 11.4478 7.20789 12.0001 7.20789H12.0096C12.5619 7.20789 13.0096 7.6556 13.0096 8.20789C13.0096 8.76017 12.5619 9.20789 12.0096 9.20789H12.0001C11.4478 9.20789 11.0001 8.76017 11.0001 8.20789ZM12.0001 11.0001C12.5524 11.0001 13.0001 11.4478 13.0001 12.0001V15.7924C13.0001 16.3446 12.5524 16.7924 12.0001 16.7924C11.4478 16.7924 11.0001 16.3446 11.0001 15.7924V12.0001C11.0001 11.4478 11.4478 11.0001 12.0001 11.0001Z'
+          }
+          fill={'#485264'}
+        />
+      </Box>
+    );
+  }
+
+  return (
+    <Box
+      as={'svg'}
+      xmlns={'http://www.w3.org/2000/svg'}
+      w={'24px'}
+      h={'24px'}
+      flexShrink={0}
+      viewBox={'0 0 24 24'}
+      fill={'none'}
+    >
+      <path
+        d={
+          'M10.2902 3.16394C11.4197 2.94535 12.5807 2.94535 13.7102 3.16394M13.7102 20.8361C12.5807 21.0546 11.4197 21.0546 10.2902 20.8361M17.048 4.54903C18.0033 5.19632 18.8252 6.02128 19.469 6.97897M3.16394 13.71C2.94535 12.5805 2.94535 11.4196 3.16394 10.2901M19.4512 17.0479C18.8039 18.0032 17.9789 18.8251 17.0212 19.4688M20.8361 10.2901C21.0546 11.4196 21.0546 12.5805 20.8361 13.71M4.54905 6.95195C5.19634 5.99665 6.02131 5.17475 6.97902 4.53102M6.952 19.451C5.99669 18.8037 5.17478 17.9787 4.53103 17.021'
+        }
+        stroke={'#485264'}
+        strokeWidth={2}
+        strokeLinecap={'round'}
+        strokeLinejoin={'round'}
+      />
+    </Box>
+  );
+});
+
+const workflowCheckIssueTextStyle = {
+  color: 'myGray.600',
+  fontFamily: 'PingFang SC, PingFang, sans-serif',
+  fontSize: '16px',
+  fontStyle: 'normal',
+  fontWeight: 500,
+  lineHeight: '24px',
+  letterSpacing: '0.15px'
+} as const;
+
+/** 节点下方校验问题提示条，使用灰色轻量样式而非红色错误条。 */
+const NodeWorkflowCheckIssues = React.memo(function NodeWorkflowCheckIssues({
+  issues
+}: {
+  issues: WorkflowCheckIssue[];
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <Flex flexDirection={'column'} alignItems={'flex-start'} gap={'8px'} mt={2}>
+      {issues.map((issue, index) => {
+        const status = getWorkflowCheckIssueUIStatus(issue.code);
+        const statusPrefixKey =
+          status === 'pending_handle'
+            ? 'common:core.workflow.check.status.pending_handle'
+            : 'common:core.workflow.check.status.pending_improve';
+
+        return (
+          <Flex
+            key={`${issue.code}-${issue.inputKey ?? ''}-${index}`}
+            display={'inline-flex'}
+            alignItems={'center'}
+            gap={'8px'}
+            px={'16px'}
+            py={'8px'}
+            w={'fit-content'}
+            maxW={'min(720px, 100%)'}
+            bg={'#E8EBF0'}
+            opacity={0.8}
+            borderRadius={'8px'}
+          >
+            <WorkflowCheckIssueStatusIcon status={status} />
+            <Box as={'span'} flexShrink={0} {...workflowCheckIssueTextStyle}>
+              {t(statusPrefixKey)}:
+            </Box>
+            <Box
+              as={'span'}
+              minW={0}
+              whiteSpace={'normal'}
+              wordBreak={'break-word'}
+              {...workflowCheckIssueTextStyle}
+            >
+              {issue.message.trim()}
+            </Box>
+          </Flex>
+        );
+      })}
+    </Flex>
+  );
+});
 
 // 节点标题区域组件
 const NodeTitleSection = React.memo<{
