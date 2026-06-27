@@ -151,11 +151,16 @@ export class SandboxClient {
   /**
    * 删除当前运行态 client 对应的资源记录和远端资源。
    */
-  async delete() {
-    await deleteSandboxResource({
-      provider: this.providerName,
-      sandboxId: this.sandboxId
-    });
+  async delete({ keepArchive = false }: { keepArchive?: boolean } = {}) {
+    await deleteSandboxResource(
+      {
+        provider: this.providerName,
+        sandboxId: this.sandboxId
+      },
+      {
+        keepArchive
+      }
+    );
   }
 
   /**

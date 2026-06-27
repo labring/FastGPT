@@ -4,6 +4,7 @@ import type { ISandbox, SandboxCreateSpec } from '@fastgpt-sdk/sandbox-adapter';
 import { MongoAgentSkills } from '../model/schema';
 import { MongoAgentSkillsVersion } from '../version/schema';
 import { parseGitignoreRules } from '../utils';
+import { resolveSandboxHome } from '../../sandbox/runtime/home';
 import { joinSandboxPath } from '../../sandbox/runtime/utils';
 import {
   DEFAULT_GITIGNORE_CONTENT,
@@ -35,6 +36,7 @@ import { archiveSandboxResourceForRuntimeUpgrade } from '../../sandbox/service/a
 import {
   countRunningSandboxInstancesByType,
   findSandboxInstanceBySandboxId,
+  findSandboxInstanceArchiveState,
   findSandboxResourcesBySourceChatTypeExcludeProvider,
   markSandboxRuntimeUpgradeArchiveFailed,
   migrateArchivedSandboxInstanceRecord,
@@ -647,8 +649,16 @@ export async function createEditDebugSandbox(
     }
   }
 
+  const currentProviderInstanceBeforeRuntimeClient =
+    existingInstance ??
+    (await findSandboxInstanceArchiveState({
+      provider: providerConfig.provider,
+      sandboxId: sessionId
+    }));
   let sandbox: ISandbox | null = null;
   let sandboxClient: SandboxClient | null = null;
+  const shouldCleanupCreatedSandboxOnFailure =
+    !currentProviderInstanceBeforeRuntimeClient && !archivedRestoreRecord;
 
   try {
     onProgress?.({ sandboxId: sessionId, phase: 'creatingContainer' });
@@ -750,9 +760,9 @@ export async function createEditDebugSandbox(
       rawBody: (error as any)?.cause?.rawBody ?? (error as any)?.rawBody
     });
 
-    if (sandboxClient) {
+    if (sandboxClient && shouldCleanupCreatedSandboxOnFailure) {
       try {
-        await sandboxClient.delete();
+        await sandboxClient.delete({ keepArchive: true });
         sandbox = null;
       } catch (cleanupError) {
         addLog.error('[Sandbox] Failed to cleanup sandbox after error', { cleanupError });
@@ -796,6 +806,23 @@ export async function packageSkillInSandbox(params: {
       throw new Error(`Skill directory does not exist: ${targetDir}`);
     }
     const quotedTargetDir = shellQuote(targetDir);
+    const homeDirectory = await resolveSandboxHome(newSandbox);
+    if (!homeDirectory) {
+      throw new Error('Failed to resolve sandbox HOME for package temp directory');
+    }
+    const packageTempDir = joinSandboxPath(joinSandboxPath(homeDirectory, '.fastgpt'), 'tmp');
+    const packageZipFilename = `skill-package-${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2)}.zip`;
+    const zipFilePath = joinSandboxPath(packageTempDir, packageZipFilename);
+    const preparePackageTempDirResult = await newSandbox.execute(
+      `mkdir -p ${shellQuote(packageTempDir)}`
+    );
+    if (preparePackageTempDirResult.exitCode !== 0) {
+      throw new Error(
+        `Failed to prepare package temp directory: ${preparePackageTempDirResult.stderr || preparePackageTempDirResult.stdout}`
+      );
+    }
 
     let gitignoreContents: string[] = [];
     try {
@@ -839,14 +866,13 @@ export async function packageSkillInSandbox(params: {
     }
 
     const excludeArgs = allExcludes.map((pattern) => `-x ${shellQuote(pattern)}`).join(' ');
-    const zipCommand = `cd ${quotedTargetDir} && zip -r -y package.zip . ${excludeArgs}`;
+    const zipCommand = `cd ${quotedTargetDir} && zip -r -y ${shellQuote(zipFilePath)} . ${excludeArgs}`;
     const zipResult = await newSandbox.execute(zipCommand);
 
     if (zipResult.exitCode !== 0) {
       throw new Error(`Failed to package skill directory: ${zipResult.stderr || zipResult.stdout}`);
     }
 
-    const zipFilePath = joinSandboxPath(targetDir, 'package.zip');
     try {
       const files = await newSandbox.readFiles([zipFilePath]);
       const file = files?.[0];

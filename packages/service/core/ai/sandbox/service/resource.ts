@@ -52,7 +52,7 @@ export async function stopSandboxResource(resource: SandboxResourceRef): Promise
  */
 export async function deleteSandboxResource(
   resource: SandboxResourceRef,
-  opts: { keepVolume?: boolean } = {}
+  opts: { keepVolume?: boolean; keepArchive?: boolean } = {}
 ): Promise<void> {
   const sandbox = buildSandboxResourceAdapter(resource);
 
@@ -66,16 +66,18 @@ export async function deleteSandboxResource(
     });
   }
   await deleteSandboxResourceRecord(resource);
-  await getS3SandboxSource()
-    .deleteWorkspaceArchive({
-      sandboxId: resource.sandboxId
-    })
-    .catch((err) => {
-      logger.error('Failed to delete sandbox archive', {
-        sandboxId: resource.sandboxId,
-        error: err
+  if (!opts.keepArchive) {
+    await getS3SandboxSource()
+      .deleteWorkspaceArchive({
+        sandboxId: resource.sandboxId
+      })
+      .catch((err) => {
+        logger.error('Failed to delete sandbox archive', {
+          sandboxId: resource.sandboxId,
+          error: err
+        });
       });
-    });
+  }
 }
 
 /**

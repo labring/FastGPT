@@ -7,7 +7,7 @@ import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants'
 import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { concatHistories, removeEmptyUserInput } from '@fastgpt/global/core/chat/utils';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import {
   getLastInteractiveValue,
   textAdaptGptResponse
@@ -109,7 +109,7 @@ export async function handleSkillDebugChat(
       authToken: true,
       authApiKey: true,
       skillId,
-      per: ReadPermissionVal
+      per: WritePermissionVal
     });
 
     if (!(await teamFrequencyLimit({ teamId, type: LimitTypeEnum.chat, res }))) {

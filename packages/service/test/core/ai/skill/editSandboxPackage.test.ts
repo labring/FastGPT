@@ -116,6 +116,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/instance/repository', () => ({
   deleteStaleRuntimeUpgradeArchivingRecord: vi.fn(),
   deleteSandboxInstanceRecord: vi.fn(),
   findSandboxInstanceBySandboxId: vi.fn(),
+  findSandboxInstanceArchiveState: vi.fn(),
   findSandboxResourcesBySourceChatTypeExcludeProvider: vi.fn(),
   markSandboxRuntimeUpgradeArchiveFailed: mocks.markSandboxRuntimeUpgradeArchiveFailed,
   migrateArchivedSandboxInstanceRecord: vi.fn(),
@@ -160,6 +161,7 @@ import {
   deleteStaleRuntimeUpgradeArchivingRecord,
   deleteSandboxInstanceRecord,
   findSandboxInstanceBySandboxId,
+  findSandboxInstanceArchiveState,
   findSandboxResourcesBySourceChatTypeExcludeProvider,
   migrateArchivedSandboxInstanceRecord,
   updateSandboxInstanceRecordBySandboxId
@@ -177,6 +179,9 @@ type MockReadFileResult = {
 const createSandbox = ({ readFilesResult }: { readFilesResult: MockReadFileResult }) => {
   const sandbox = {
     execute: vi.fn(async (command: string) => {
+      if (command === 'printf "%s" "$HOME"') {
+        return { exitCode: 0, stdout: '/home/sandbox', stderr: '' };
+      }
       if (command.startsWith('[ -d ')) {
         return { exitCode: 0, stdout: '', stderr: '' };
       }
@@ -192,7 +197,7 @@ const createSandbox = ({ readFilesResult }: { readFilesResult: MockReadFileResul
       return { exitCode: 0, stdout: '', stderr: '' };
     }),
     readFiles: vi.fn(async (paths: string[]) => {
-      if (paths.includes('/workspace/package.zip')) {
+      if (paths.some((path) => path.startsWith('/home/sandbox/.fastgpt/tmp/'))) {
         return readFilesResult;
       }
       return [];
@@ -212,7 +217,7 @@ describe('packageSkillInSandbox', () => {
     const sandbox = createSandbox({
       readFilesResult: [
         {
-          path: '/workspace/package.zip',
+          path: '/home/sandbox/.fastgpt/tmp/skill-package.zip',
           content: zipContent,
           error: null
         }
@@ -224,8 +229,20 @@ describe('packageSkillInSandbox', () => {
       Buffer.from(zipContent)
     );
 
-    expect(sandbox.readFiles).toHaveBeenCalledWith(['/workspace/package.zip']);
-    expect(sandbox.execute).toHaveBeenCalledWith("rm -f '/workspace/package.zip'");
+    const zipReadCall = vi
+      .mocked(sandbox.readFiles)
+      .mock.calls.find(([paths]) => paths.some((path) => path.endsWith('.zip')));
+    expect(zipReadCall?.[0][0]).toMatch(/^\/home\/sandbox\/\.fastgpt\/tmp\/skill-package-.+\.zip$/);
+    expect(sandbox.execute).toHaveBeenCalledWith("mkdir -p '/home/sandbox/.fastgpt/tmp'");
+    expect(sandbox.execute).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /^cd '\/workspace' && zip -r -y '\/home\/sandbox\/\.fastgpt\/tmp\/skill-package-.+\.zip' \./
+      )
+    );
+    expect(sandbox.execute).toHaveBeenCalledWith(
+      expect.stringMatching(/^rm -f '\/home\/sandbox\/\.fastgpt\/tmp\/skill-package-.+\.zip'$/)
+    );
+    expect(sandbox.execute).not.toHaveBeenCalledWith("rm -f '/workspace/package.zip'");
     expect(validateDeployableSkillWorkspacePackage).toHaveBeenCalledWith(Buffer.from(zipContent), {
       maxUncompressedBytes: 1024 * 1024
     });
@@ -238,7 +255,7 @@ describe('packageSkillInSandbox', () => {
     const sandbox = createSandbox({
       readFilesResult: [
         {
-          path: '/workspace/package.zip',
+          path: '/home/sandbox/.fastgpt/tmp/skill-package.zip',
           content: zipContent,
           error: null
         }
@@ -261,7 +278,7 @@ describe('packageSkillInSandbox', () => {
     const sandbox = createSandbox({
       readFilesResult: [
         {
-          path: '/workspace/package.zip',
+          path: '/home/sandbox/.fastgpt/tmp/skill-package.zip',
           content: zipContent,
           error: null
         }
@@ -275,7 +292,9 @@ describe('packageSkillInSandbox', () => {
 
     expect(validateDeployableSkillWorkspacePackage).not.toHaveBeenCalled();
     expect(validateZipStructure).not.toHaveBeenCalled();
-    expect(sandbox.execute).toHaveBeenCalledWith("rm -f '/workspace/package.zip'");
+    expect(sandbox.execute).toHaveBeenCalledWith(
+      expect.stringMatching(/^rm -f '\/home\/sandbox\/\.fastgpt\/tmp\/skill-package-.+\.zip'$/)
+    );
     expect(mocks.disconnectSandbox).toHaveBeenCalledWith(sandbox);
   });
 
@@ -283,7 +302,7 @@ describe('packageSkillInSandbox', () => {
     const sandbox = createSandbox({
       readFilesResult: [
         {
-          path: '/workspace/package.zip',
+          path: '/home/sandbox/.fastgpt/tmp/skill-package.zip',
           content: new Uint8Array(),
           error: new Error('read failed')
         }
@@ -295,7 +314,9 @@ describe('packageSkillInSandbox', () => {
       'Failed to read package file in sandbox: read failed'
     );
 
-    expect(sandbox.execute).toHaveBeenCalledWith("rm -f '/workspace/package.zip'");
+    expect(sandbox.execute).toHaveBeenCalledWith(
+      expect.stringMatching(/^rm -f '\/home\/sandbox\/\.fastgpt\/tmp\/skill-package-.+\.zip'$/)
+    );
     expect(mocks.disconnectSandbox).toHaveBeenCalledWith(sandbox);
   });
 
@@ -304,6 +325,9 @@ describe('packageSkillInSandbox', () => {
     const zipContent = new Uint8Array([9, 8, 7]);
     const sandbox = {
       execute: vi.fn(async (command: string) => {
+        if (command === 'printf "%s" "$HOME"') {
+          return { exitCode: 0, stdout: '/home/sandbox', stderr: '' };
+        }
         if (command.startsWith('[ -d ')) {
           return { exitCode: 0, stdout: '', stderr: '' };
         }
@@ -322,8 +346,14 @@ describe('packageSkillInSandbox', () => {
         if (paths.includes('/workspace/.gitignore')) {
           return [{ path: '/workspace/.gitignore', content: gitignoreContent, error: null }];
         }
-        if (paths.includes('/workspace/package.zip')) {
-          return [{ path: '/workspace/package.zip', content: zipContent, error: null }];
+        if (paths.some((path) => path.startsWith('/home/sandbox/.fastgpt/tmp/'))) {
+          return [
+            {
+              path: '/home/sandbox/.fastgpt/tmp/skill-package.zip',
+              content: zipContent,
+              error: null
+            }
+          ];
         }
         return [];
       })
@@ -350,6 +380,7 @@ describe('createEditDebugSandbox', () => {
     vi.clearAllMocks();
     vi.mocked(checkTeamSandboxPermission).mockResolvedValue(undefined);
     mocks.markSandboxRuntimeUpgradeArchiveFailed.mockResolvedValue(undefined);
+    vi.mocked(findSandboxInstanceArchiveState).mockResolvedValue(null);
     vi.mocked(buildSandboxAdapter).mockReturnValue({
       getInfo: vi.fn(async () => ({
         status: { state: 'Running' }
@@ -535,6 +566,65 @@ describe('createEditDebugSandbox', () => {
       })
     );
     expect(downloadSkillPackage).not.toHaveBeenCalled();
+  });
+
+  it('keeps restored archived edit-debug sandbox when startup fails after runtime restore', async () => {
+    const skillId = 'skill-1';
+    const provider = {
+      status: { state: 'Running' },
+      execute: vi.fn(),
+      writeFiles: vi.fn()
+    };
+    const deleteSandbox = vi.fn(async () => undefined);
+    const readyError = new Error('prepare runtime image failed');
+    const archivedInstance = {
+      _id: 'archived-current-provider-instance',
+      provider: 'test-provider',
+      sandboxId: `edit-debug-${skillId}`,
+      metadata: {
+        archive: {
+          state: 'archived'
+        },
+        versionId: 'version-1',
+        storage: {
+          key: 'storage-key'
+        }
+      }
+    };
+
+    vi.mocked(MongoAgentSkills.findOne).mockResolvedValueOnce({
+      _id: skillId,
+      name: '测试的',
+      currentVersionId: 'version-1'
+    } as any);
+    vi.mocked(MongoAgentSkillsVersion.findOne).mockResolvedValueOnce({
+      _id: 'version-1',
+      storageKey: 'storage-key'
+    } as any);
+    vi.mocked(findSandboxInstanceBySandboxId).mockResolvedValueOnce(archivedInstance as any);
+    vi.mocked(findSandboxResourcesBySourceChatTypeExcludeProvider).mockResolvedValueOnce([]);
+    vi.mocked(countRunningSandboxInstancesByType).mockResolvedValueOnce(0);
+    vi.mocked(getSandboxClient).mockResolvedValueOnce({
+      provider,
+      delete: deleteSandbox
+    } as any);
+    vi.mocked(getReadySandboxInfo).mockRejectedValueOnce(readyError);
+
+    await expect(
+      createEditDebugSandbox({
+        skillId,
+        teamId: 'team-1',
+        tmbId: 'tmb-1'
+      })
+    ).rejects.toThrow(readyError);
+
+    expect(deleteSandbox).not.toHaveBeenCalled();
+    expect(deleteSandboxResource).not.toHaveBeenCalled();
+    expect(deleteSandboxInstanceRecord).not.toHaveBeenCalledWith(archivedInstance._id);
+    expect(mocks.deleteWorkspaceArchive).not.toHaveBeenCalled();
+    expect(downloadSkillPackage).not.toHaveBeenCalled();
+    expect(updateSandboxInstanceRecordBySandboxId).not.toHaveBeenCalled();
+    expect(mocks.disconnectSandbox).toHaveBeenCalledWith(provider);
   });
 
   it('rejects when existing edit-debug sandbox is unavailable without cleanup or rebuild', async () => {

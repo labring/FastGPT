@@ -151,6 +151,18 @@ describe('sandbox resource service', () => {
     expect(mocks.deleteSandboxResourceRecord).toHaveBeenCalledWith(resource);
   });
 
+  it('deletes a resource record but keeps S3 archive when keepArchive is true', async () => {
+    const resource = createResource();
+
+    await deleteSandboxResource(resource, { keepArchive: true });
+
+    const adapter = mocks.buildSandboxResourceAdapter.mock.results[0].value;
+    expect(adapter.delete).toHaveBeenCalledTimes(1);
+    expect(mocks.deleteSessionVolume).toHaveBeenCalledWith('sandbox-1');
+    expect(mocks.deleteSandboxResourceRecord).toHaveBeenCalledWith(resource);
+    expect(mocks.deleteWorkspaceArchive).not.toHaveBeenCalled();
+  });
+
   it('skips FastGPT volume deletion for Sealos resources', async () => {
     const resource = {
       ...createResource(),
