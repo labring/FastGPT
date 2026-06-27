@@ -9,7 +9,7 @@ import {
 } from '@fastgpt/global/core/app/jsonschema';
 import { SystemToolCodec } from '@fastgpt/global/core/app/tool/systemTool/codec';
 import { isDebugToolSource, splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
-import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
+import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
 import { filterPluginTags } from '@fastgpt/global/core/plugin/utils';
 import {
   FlowNodeOutputTypeEnum,
@@ -189,6 +189,17 @@ const parseSystemToolId = ({ pluginId, source }: { pluginId: string; source?: st
   return splitCombineToolId(pluginId);
 };
 
+const getVisiblePluginStatus = ({
+  status,
+  source
+}: {
+  status?: PluginStatusType;
+  source?: string;
+}): PluginStatusType => {
+  if (isDebugToolSource(source)) return PluginStatusEnum.Normal;
+  return status ?? PluginStatusEnum.Normal;
+};
+
 /**
  * SystemTool Repo
  * 系统工具仓储层
@@ -269,13 +280,21 @@ export class SystemToolRepo {
     const DBPlugins = await this.getAllSystemToolRecords();
     const DBPluginsMap = new Map(DBPlugins.map((plugin) => [plugin.pluginId, plugin]));
 
-    const formattedTools = tools.map((tool) =>
-      SystemToolCodec.attachToolConfig({
+    const formattedTools = tools.map((tool) => {
+      const item = SystemToolCodec.attachToolConfig({
         tool,
         config: getFirstSystemToolConfig(DBPluginsMap, tool.pluginId),
         lang
-      })
-    );
+      });
+
+      return {
+        ...item,
+        status: getVisiblePluginStatus({
+          status: item.status,
+          source: tool.source
+        })
+      };
+    });
 
     /** 工作流插件，admin 后台配的 */
     const DBWorkflowPlugins = DBPlugins.filter((item) => item.customConfig?.associatedPluginId);
@@ -304,6 +323,7 @@ export class SystemToolRepo {
     lang?: `${LangEnum}`;
     fallbackLatestVersion?: boolean;
   }): Promise<SystemToolDetailType> => {
+    const isDebugSource = isDebugToolSource(toolSource);
     const { pluginId: rawPluginId, source: idSource } = parseSystemToolId({
       pluginId,
       source: toolSource
@@ -341,7 +361,7 @@ export class SystemToolRepo {
       return {
         id: pluginId,
         name: dbTool.customConfig.name,
-        status: dbTool.status,
+        status: getVisiblePluginStatus({ status: dbTool.status, source: toolSource }),
         toolDescription: dbTool.customConfig.toolDescription ?? dbTool.customConfig.intro ?? '',
         version: appVersion.versionId,
         versionLabel: appVersion.versionName,
@@ -404,7 +424,10 @@ export class SystemToolRepo {
           return {
             id: item.id,
             name: parseI18nString(item.name, lang),
-            status: dbChild?.status ?? PluginStatusEnum.Normal,
+            status: getVisiblePluginStatus({
+              status: dbChild?.status,
+              source: toolSource
+            }),
             description: parseI18nString(item.description, lang),
             systemKeyCost: dbChild?.systemKeyCost ?? 0,
             currentCost: dbChild?.currentCost ?? 0,
@@ -442,7 +465,10 @@ export class SystemToolRepo {
         dbTool?.customConfig?.name ??
         parseI18nString(childPluginId ? child!.name : tool.name, lang),
 
-      status: dbTool?.status ?? PluginStatusEnum.Normal,
+      status: getVisiblePluginStatus({
+        status: dbTool?.status,
+        source: isDebugSource ? toolSource : undefined
+      }),
       systemKeyCost: dbTool?.systemKeyCost ?? 0,
       tags: dbTool?.customConfig?.tags ?? tool.tags ?? [],
       source: tool.source,
@@ -489,6 +515,7 @@ export class SystemToolRepo {
     source?: string;
     lang?: `${LangEnum}`;
   }): Promise<SystemToolDisplayInfoType> => {
+    const isDebugSource = isDebugToolSource(source);
     const { pluginId: rawPluginId, source: idSource } = parseSystemToolId({ pluginId, source });
     const [parentPluginId, childPluginId] = rawPluginId.split('/');
 
@@ -497,7 +524,7 @@ export class SystemToolRepo {
       return {
         id: pluginId,
         version: exactDbTool.customConfig.version,
-        status: exactDbTool.status ?? PluginStatusEnum.Normal,
+        status: getVisiblePluginStatus({ status: exactDbTool.status, source }),
         source: 'system',
         isToolSet: false,
         avatar: exactDbTool.customConfig.avatar ?? '',
@@ -549,6 +576,10 @@ export class SystemToolRepo {
       config: parentConfig,
       lang
     });
+    parent.status = getVisiblePluginStatus({
+      status: parent.status,
+      source: isDebugSource ? source : undefined
+    });
     const listChildIconMap = getChildIconMap(tool.children);
 
     const children =
@@ -562,7 +593,10 @@ export class SystemToolRepo {
         return {
           id: item.id,
           name: parseI18nString(item.name, lang),
-          status: childConfig?.status ?? PluginStatusEnum.Normal,
+          status: getVisiblePluginStatus({
+            status: childConfig?.status,
+            source: isDebugSource ? source : undefined
+          }),
           description: parseI18nString(item.description, lang),
           toolDescription: childConfig?.customConfig?.toolDescription ?? item.toolDescription,
           icon: childIcon,

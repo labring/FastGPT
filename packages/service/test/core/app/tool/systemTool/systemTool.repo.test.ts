@@ -209,7 +209,7 @@ describe('SystemToolRepo.getSystemToolList', () => {
     expect(mocks.getTool).not.toHaveBeenCalled();
   });
 
-  it('applies saved system status to debug tools with the same plugin id', async () => {
+  it('keeps debug tools visible as normal even when system config is soon offline', async () => {
     mocks.listTools.mockResolvedValue([
       createPluginTool({
         pluginId: 'getTime',
@@ -233,7 +233,7 @@ describe('SystemToolRepo.getSystemToolList', () => {
     expect(tools[0]).toMatchObject({
       id: 'systemTool-getTime',
       source: 'debug:tmbId:tmb-1',
-      status: PluginStatusEnum.SoonOffline
+      status: PluginStatusEnum.Normal
     });
   });
 });
@@ -589,7 +589,7 @@ describe('SystemToolRepo.getSystemToolDisplayInfo', () => {
     expect(mocks.getTool).not.toHaveBeenCalled();
   });
 
-  it('applies saved status when reading a debug tool by raw plugin id', async () => {
+  it('keeps debug tool display status normal when reading by raw plugin id', async () => {
     mocks.findSystemTool.mockResolvedValue(undefined);
     mocks.findSystemTools
       .mockResolvedValueOnce([
@@ -627,13 +627,13 @@ describe('SystemToolRepo.getSystemToolDisplayInfo', () => {
     expect(tool).toMatchObject({
       id: 'weather',
       source: 'debug:tmbId:tmb-1',
-      status: PluginStatusEnum.Offline,
+      status: PluginStatusEnum.Normal,
       currentCost: 2,
       systemKeyCost: 1
     });
   });
 
-  it('applies saved child status when reading a debug toolset child by raw plugin id', async () => {
+  it('keeps debug toolset child display status normal when reading by raw plugin id', async () => {
     const childConfig = {
       pluginId: 'systemTool-weather/forecast',
       status: PluginStatusEnum.Offline,
@@ -684,7 +684,7 @@ describe('SystemToolRepo.getSystemToolDisplayInfo', () => {
     expect(tool).toMatchObject({
       id: 'weather/forecast',
       source: 'debug:tmbId:tmb-1',
-      status: PluginStatusEnum.Offline,
+      status: PluginStatusEnum.Normal,
       currentCost: 3,
       systemKeyCost: 2,
       toolDescription: 'Configured forecast'
