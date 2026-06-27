@@ -17,6 +17,7 @@ import {
   findSandboxResourcesBySourceChatIds,
   findSkillRelatedSandboxResources,
   isSandboxStillArchiving,
+  markArchivedSandboxRuntimeImageCurrent,
   markSandboxArchived,
   markSandboxArchiving,
   markSandboxArchivingForRuntimeUpgrade,
@@ -598,6 +599,72 @@ describe('sandbox instance helpers', () => {
         lastActiveAt: new Date('2025-01-01T00:00:00.000Z')
       } as SandboxResourceDoc)
     ).resolves.toBeNull();
+  });
+
+  it('writes current provider runtime image when archive is marked archived', async () => {
+    const sandboxId = `instance-helper-${getNanoid()}`;
+    const doc = await MongoSandboxInstance.create({
+      provider: 'opensandbox',
+      sandboxId,
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: `instance-helper-${getNanoid()}`,
+      userId: 'user-1',
+      chatId: 'edit-debug',
+      type: SandboxTypeEnum.editDebug,
+      status: SandboxStatusEnum.running,
+      lastActiveAt: new Date('2026-01-01T00:00:00.000Z'),
+      createdAt: new Date(),
+      metadata: {
+        image: { repository: 'old-image', tag: 'v1' }
+      }
+    });
+
+    const archiving = await markSandboxArchivingForRuntimeUpgrade(doc);
+    await markSandboxArchived(archiving!);
+
+    await expect(MongoSandboxInstance.findOne({ sandboxId }).lean()).resolves.toMatchObject({
+      status: SandboxStatusEnum.stopped,
+      metadata: {
+        image: { repository: 'fastgpt-agent-sandbox', tag: 'latest' },
+        archive: {
+          state: 'archived'
+        }
+      }
+    });
+  });
+
+  it('updates archived runtime image to current provider image after upgrade confirmation', async () => {
+    const sandboxId = `instance-helper-${getNanoid()}`;
+    const doc = await MongoSandboxInstance.create({
+      provider: 'opensandbox',
+      sandboxId,
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: `instance-helper-${getNanoid()}`,
+      userId: 'user-1',
+      chatId: 'edit-debug',
+      type: SandboxTypeEnum.editDebug,
+      status: SandboxStatusEnum.stopped,
+      lastActiveAt: new Date('2026-01-01T00:00:00.000Z'),
+      createdAt: new Date(),
+      metadata: {
+        image: { repository: 'old-image', tag: 'v1' },
+        archive: {
+          state: 'archived'
+        }
+      }
+    });
+
+    await markArchivedSandboxRuntimeImageCurrent(doc);
+
+    await expect(MongoSandboxInstance.findOne({ sandboxId }).lean()).resolves.toMatchObject({
+      status: SandboxStatusEnum.stopped,
+      metadata: {
+        image: { repository: 'fastgpt-agent-sandbox', tag: 'latest' },
+        archive: {
+          state: 'archived'
+        }
+      }
+    });
   });
 
   it('marks runtime upgrade archive as failed and allows retrying archive claim', async () => {

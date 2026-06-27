@@ -46,6 +46,7 @@ import {
   findSandboxInstanceArchiveState,
   findSandboxInstanceBySandboxId,
   findSandboxResourcesBySourceChatTypeExcludeProvider,
+  markArchivedSandboxRuntimeImageCurrent,
   markSandboxRuntimeUpgradeArchiveFailed,
   migrateArchivedSandboxInstanceRecord,
   updateSandboxInstanceRecordBySandboxId,
@@ -452,18 +453,21 @@ export async function triggerSkillEditRuntimeUpgrade(
     throw new UserError(RUNTIME_UPGRADE_IN_PROGRESS_MESSAGE);
   }
 
-  const runtimeUpgradeInstance = getRuntimeUpgradeInstance(context);
-  if (!runtimeUpgradeInstance) {
-    const statusInstance = getRuntimeStatusInstance(context);
-    if (statusInstance?.metadata?.archive?.state === 'archived') {
-      return buildRuntimeStatusResponse({
-        sandboxId: statusInstance.sandboxId,
-        status: 'readyToInit',
-        archiveState: 'archived'
-      });
-    }
-    return status;
+  const statusInstance = getRuntimeStatusInstance(context);
+  const archiveState = statusInstance?.metadata?.archive?.state;
+  if (statusInstance && archiveState === 'archived') {
+    const updateResult = await markArchivedSandboxRuntimeImageCurrent(statusInstance);
+    if (updateResult.matchedCount === 0) return status;
+
+    return buildRuntimeStatusResponse({
+      sandboxId: statusInstance.sandboxId,
+      status: 'readyToInit',
+      archiveState: 'archived'
+    });
   }
+
+  const runtimeUpgradeInstance = getRuntimeUpgradeInstance(context);
+  if (!runtimeUpgradeInstance) return status;
 
   const archiveResult = await startSandboxRuntimeUpgradeArchive(runtimeUpgradeInstance, {
     ensureZipInSandbox: true

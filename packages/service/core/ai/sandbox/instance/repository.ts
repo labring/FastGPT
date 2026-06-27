@@ -3,6 +3,7 @@ import { SandboxStatusEnum, type SandboxTypeEnum } from '@fastgpt/global/core/ai
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoSandboxInstance } from './schema';
 import type { SandboxInstanceSchemaType, SandboxProviderType } from '../type';
+import { getSandboxRuntimeProfile } from '../runtime/profile';
 
 const SANDBOX_ARCHIVE_CURSOR_BATCH_SIZE = 100;
 
@@ -41,6 +42,11 @@ const buildSandboxResourceRecordFilter = (resource: SandboxResourceRef) => {
     provider: resource.provider,
     sandboxId: resource.sandboxId
   };
+};
+
+const getCurrentRuntimeImageUpdate = (provider: SandboxProviderType) => {
+  const targetRuntimeImage = getSandboxRuntimeProfile(provider).defaultImage;
+  return targetRuntimeImage !== undefined ? { 'metadata.image': targetRuntimeImage } : {};
 };
 
 const isMongoDuplicateKeyError = (error: unknown) =>
@@ -368,6 +374,8 @@ export async function markSandboxArchivingForRuntimeUpgrade(resource: SandboxRes
  * 标记归档成功。
  *
  * 只有仍处于同一轮 archiving 的 stopped 记录才能切到 archived。
+ * 归档成功后远端 sandbox 已删除；这里在同一个 Mongo update 中写入当前 provider 的目标 runtime 镜像，
+ * 保证后续 getStatus/init 都按新 runtime 解释状态。
  */
 export async function markSandboxArchived(resource: SandboxResourceDoc) {
   return MongoSandboxInstance.updateOne(
@@ -381,10 +389,36 @@ export async function markSandboxArchived(resource: SandboxResourceDoc) {
       $set: {
         status: SandboxStatusEnum.stopped,
         'metadata.archive.state': 'archived',
-        'metadata.archive.archivedAt': new Date()
+        'metadata.archive.archivedAt': new Date(),
+        ...getCurrentRuntimeImageUpdate(resource.provider)
       }
     }
   );
+}
+
+/**
+ * 用户确认 runtime 升级时，把已经完整归档的记录推进到当前 provider 的目标镜像。
+ *
+ * archived 代表远端 sandbox 已删除，只剩归档包可恢复；此时不需要再次启动归档任务，
+ * 只需要更新 Mongo 里的 runtime 镜像解释口径，让后续 getStatus/init 进入 ready/restore 流程。
+ */
+export async function markArchivedSandboxRuntimeImageCurrent(resource: SandboxResourceRef) {
+  const runtimeImageUpdate = getCurrentRuntimeImageUpdate(resource.provider);
+  if (Object.keys(runtimeImageUpdate).length === 0) {
+    return { matchedCount: 0 };
+  }
+
+  const result = await MongoSandboxInstance.updateOne(
+    {
+      ...buildSandboxResourceRecordFilter(resource),
+      'metadata.archive.state': 'archived'
+    },
+    {
+      $set: runtimeImageUpdate
+    }
+  );
+
+  return { matchedCount: result.matchedCount };
 }
 
 /**

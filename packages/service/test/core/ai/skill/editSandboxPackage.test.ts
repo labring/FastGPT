@@ -131,6 +131,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/instance/repository', () => ({
   findSandboxInstanceArchiveState: vi.fn(),
   findSandboxInstanceBySandboxId: vi.fn(),
   findSandboxResourcesBySourceChatTypeExcludeProvider: vi.fn(),
+  markArchivedSandboxRuntimeImageCurrent: vi.fn(),
   markSandboxRuntimeUpgradeArchiveFailed: mocks.markSandboxRuntimeUpgradeArchiveFailed,
   migrateArchivedSandboxInstanceRecord: vi.fn(),
   updateSandboxInstanceRecordBySandboxId: vi.fn()
@@ -179,6 +180,7 @@ import {
   findSandboxInstanceArchiveState,
   findSandboxInstanceBySandboxId,
   findSandboxResourcesBySourceChatTypeExcludeProvider,
+  markArchivedSandboxRuntimeImageCurrent,
   migrateArchivedSandboxInstanceRecord,
   updateSandboxInstanceRecordBySandboxId
 } from '@fastgpt/service/core/ai/sandbox/instance/repository';
@@ -419,6 +421,7 @@ describe('skill edit runtime status split APIs', () => {
     vi.clearAllMocks();
     vi.mocked(checkTeamSandboxPermission).mockResolvedValue(undefined);
     vi.mocked(deleteSandboxResourceRecord).mockResolvedValue({} as any);
+    vi.mocked(markArchivedSandboxRuntimeImageCurrent).mockResolvedValue({ matchedCount: 1 });
     mocks.markSandboxRuntimeUpgradeArchiveFailed.mockResolvedValue(undefined);
     vi.mocked(findSandboxInstanceArchiveState).mockResolvedValue(null);
   });
@@ -755,7 +758,7 @@ describe('skill edit runtime status split APIs', () => {
     expect(getSandboxClient).not.toHaveBeenCalled();
   });
 
-  it('allows archived outdated-runtime instance to initialize after upgrade confirmation', async () => {
+  it('marks archived outdated-runtime image current and returns ready after upgrade confirmation', async () => {
     const skillId = 'skill-1';
     const archivedInstance = {
       _id: 'archived-outdated-runtime-instance',
@@ -790,6 +793,49 @@ describe('skill edit runtime status split APIs', () => {
       canUpgrade: false,
       shouldPoll: false,
       shouldInit: true
+    });
+
+    expect(markArchivedSandboxRuntimeImageCurrent).toHaveBeenCalledWith(archivedInstance);
+    expect(mocks.startSandboxRuntimeUpgradeArchive).not.toHaveBeenCalled();
+    expect(getSandboxClient).not.toHaveBeenCalled();
+  });
+
+  it('keeps archived outdated-runtime upgradeRequired when image update is not matched', async () => {
+    const skillId = 'skill-1';
+    const archivedInstance = {
+      _id: 'archived-outdated-runtime-instance',
+      provider: 'test-provider',
+      sandboxId: `edit-debug-${skillId}`,
+      status: 'stopped',
+      lastActiveAt: new Date(),
+      metadata: {
+        image: { repository: 'old-runtime', tag: 'v1' },
+        archive: {
+          state: 'archived'
+        },
+        versionId: 'version-1'
+      }
+    };
+
+    setupReadySkillVersion(skillId);
+    vi.mocked(findSandboxInstanceBySandboxId).mockResolvedValueOnce(null);
+    vi.mocked(findSandboxInstanceArchiveState).mockResolvedValueOnce(archivedInstance as any);
+    vi.mocked(findSandboxResourcesBySourceChatTypeExcludeProvider).mockResolvedValueOnce([]);
+    vi.mocked(markArchivedSandboxRuntimeImageCurrent).mockResolvedValueOnce({ matchedCount: 0 });
+
+    await expect(
+      triggerSkillEditRuntimeUpgrade({
+        skillId,
+        teamId: 'team-1',
+        tmbId: 'tmb-1'
+      })
+    ).resolves.toMatchObject({
+      sandboxId: `edit-debug-${skillId}`,
+      status: 'upgradeRequired',
+      archiveState: 'archived',
+      canUpgrade: true,
+      shouldPoll: false,
+      shouldInit: false
     });
 
     expect(mocks.startSandboxRuntimeUpgradeArchive).not.toHaveBeenCalled();
@@ -853,6 +899,7 @@ describe('initSkillEditRuntimeSandbox', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(checkTeamSandboxPermission).mockResolvedValue(undefined);
+    vi.mocked(markArchivedSandboxRuntimeImageCurrent).mockResolvedValue({ matchedCount: 1 });
     mocks.markSandboxRuntimeUpgradeArchiveFailed.mockResolvedValue(undefined);
     vi.mocked(findSandboxInstanceArchiveState).mockResolvedValue(null);
     vi.mocked(buildSandboxAdapter).mockReturnValue({

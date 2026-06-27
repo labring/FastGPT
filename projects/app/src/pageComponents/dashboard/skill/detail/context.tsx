@@ -412,7 +412,7 @@ const SkillDetailContextProviderInner = ({
 
         try {
           const status = await postUpgradeSkillRuntime({ skillId });
-          await applyRuntimeStatus(status, { hasSeenUpgrading: true });
+          await applyRuntimeStatus(status);
         } catch (err) {
           if (!isCurrentRequest()) return;
 
