@@ -27,7 +27,7 @@ const sandboxErr = [
   },
   {
     statusText: SandboxErrEnum.runtimeUpgradeInProgress,
-    message: i18nT('common:code_error.sandbox_error.runtime_upgrade_in_progress'),
+    message: i18nT('skill:sandbox_runtime_upgrade_in_progress'),
     httpStatus: 409
   }
 ];

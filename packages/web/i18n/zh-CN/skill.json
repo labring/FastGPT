@@ -62,7 +62,7 @@
   "sandbox_runtime_upgrade_confirm": "立即升级",
   "sandbox_runtime_upgrade_desc": "检测到当前虚拟机环境有新版，需要升级后才能正常使用。升级版本不会影响工作区的文件，但需要重新安装依赖包。",
   "sandbox_runtime_upgrade_failed": "升级失败，请重新尝试",
-  "sandbox_runtime_upgrade_in_progress": "有新版本沙盒，正在升级中",
+  "sandbox_runtime_upgrade_in_progress": "沙盒正在升级中",
   "sandbox_runtime_upgrade_required": "虚拟机环境升级提示",
   "sandbox_skill_plan_not_supported_content": "skill运行依赖虚拟机环境。当前套餐不支持虚拟机功能，请升级套餐后继续使用。",
   "sandbox_skill_system_not_configured_toast": "skill运行依赖虚拟机环境。当前系统未配置虚拟机，暂时无法使用相关功能，请联系管理员配置。",

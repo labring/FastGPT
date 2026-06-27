@@ -398,9 +398,10 @@ export async function getSkillEditRuntimeStatus(
   }
 
   if (statusInstance && archiveState === 'archived') {
+    // 走到这里说明镜像不一致；归档包已经保留 workspace，但仍需要用户确认 runtime 升级。
     return buildRuntimeStatusResponse({
       sandboxId: statusInstance.sandboxId,
-      status: 'readyToInit',
+      status: 'upgradeRequired',
       archiveState: 'archived'
     });
   }
@@ -452,7 +453,17 @@ export async function triggerSkillEditRuntimeUpgrade(
   }
 
   const runtimeUpgradeInstance = getRuntimeUpgradeInstance(context);
-  if (!runtimeUpgradeInstance) return status;
+  if (!runtimeUpgradeInstance) {
+    const statusInstance = getRuntimeStatusInstance(context);
+    if (statusInstance?.metadata?.archive?.state === 'archived') {
+      return buildRuntimeStatusResponse({
+        sandboxId: statusInstance.sandboxId,
+        status: 'readyToInit',
+        archiveState: 'archived'
+      });
+    }
+    return status;
+  }
 
   const archiveResult = await startSandboxRuntimeUpgradeArchive(runtimeUpgradeInstance, {
     ensureZipInSandbox: true

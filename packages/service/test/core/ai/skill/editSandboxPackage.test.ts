@@ -715,6 +715,87 @@ describe('skill edit runtime status split APIs', () => {
     expect(getSandboxClient).not.toHaveBeenCalled();
   });
 
+  it('requires confirmation for archived outdated-runtime instance before init restore', async () => {
+    const skillId = 'skill-1';
+    const archivedInstance = {
+      _id: 'archived-outdated-runtime-instance',
+      provider: 'test-provider',
+      sandboxId: `edit-debug-${skillId}`,
+      status: 'stopped',
+      lastActiveAt: new Date(),
+      metadata: {
+        image: { repository: 'old-runtime', tag: 'v1' },
+        archive: {
+          state: 'archived'
+        },
+        versionId: 'version-1'
+      }
+    };
+
+    setupReadySkillVersion(skillId);
+    vi.mocked(findSandboxInstanceBySandboxId).mockResolvedValueOnce(null);
+    vi.mocked(findSandboxInstanceArchiveState).mockResolvedValueOnce(archivedInstance as any);
+    vi.mocked(findSandboxResourcesBySourceChatTypeExcludeProvider).mockResolvedValueOnce([]);
+
+    await expect(
+      getSkillEditRuntimeStatus({
+        skillId,
+        teamId: 'team-1',
+        tmbId: 'tmb-1'
+      })
+    ).resolves.toMatchObject({
+      sandboxId: `edit-debug-${skillId}`,
+      status: 'upgradeRequired',
+      archiveState: 'archived',
+      canUpgrade: true,
+      shouldPoll: false,
+      shouldInit: false
+    });
+
+    expect(getSandboxClient).not.toHaveBeenCalled();
+  });
+
+  it('allows archived outdated-runtime instance to initialize after upgrade confirmation', async () => {
+    const skillId = 'skill-1';
+    const archivedInstance = {
+      _id: 'archived-outdated-runtime-instance',
+      provider: 'test-provider',
+      sandboxId: `edit-debug-${skillId}`,
+      status: 'stopped',
+      lastActiveAt: new Date(),
+      metadata: {
+        image: { repository: 'old-runtime', tag: 'v1' },
+        archive: {
+          state: 'archived'
+        },
+        versionId: 'version-1'
+      }
+    };
+
+    setupReadySkillVersion(skillId);
+    vi.mocked(findSandboxInstanceBySandboxId).mockResolvedValueOnce(null);
+    vi.mocked(findSandboxInstanceArchiveState).mockResolvedValueOnce(archivedInstance as any);
+    vi.mocked(findSandboxResourcesBySourceChatTypeExcludeProvider).mockResolvedValueOnce([]);
+
+    await expect(
+      triggerSkillEditRuntimeUpgrade({
+        skillId,
+        teamId: 'team-1',
+        tmbId: 'tmb-1'
+      })
+    ).resolves.toMatchObject({
+      sandboxId: `edit-debug-${skillId}`,
+      status: 'readyToInit',
+      archiveState: 'archived',
+      canUpgrade: false,
+      shouldPoll: false,
+      shouldInit: true
+    });
+
+    expect(mocks.startSandboxRuntimeUpgradeArchive).not.toHaveBeenCalled();
+    expect(getSandboxClient).not.toHaveBeenCalled();
+  });
+
   it('retries stale-provider failed runtime upgrade archive', async () => {
     const skillId = 'skill-1';
     const staleFailedInstance = {

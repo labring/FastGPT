@@ -62,7 +62,7 @@
   "sandbox_runtime_upgrade_confirm": "Upgrade now",
   "sandbox_runtime_upgrade_desc": "It is detected that the current virtual machine environment has a new version and needs to be upgraded before it can be used normally. \nUpgrading the version will not affect the files in the workspace, but requires reinstalling dependent packages.",
   "sandbox_runtime_upgrade_failed": "Upgrade failed. Please try again.",
-  "sandbox_runtime_upgrade_in_progress": "New sandbox version available. Upgrading...",
+  "sandbox_runtime_upgrade_in_progress": "Sandbox is upgrading...",
   "sandbox_runtime_upgrade_required": "Virtual machine runtime upgrade notice",
   "sandbox_skill_plan_not_supported_content": "Skills depend on the virtual machine runtime. The current plan does not support virtual machine features. Upgrade your plan to continue.",
   "sandbox_skill_system_not_configured_toast": "Skills depend on the virtual machine runtime. The current system has not configured a virtual machine, so related features are temporarily unavailable. Contact an administrator to configure it.",
