@@ -794,6 +794,7 @@ export async function migrateArchivedSandboxInstanceRecord(params: {
  * 更新指定 sandboxId 的业务归属和 metadata。
  *
  * provider 可选；传入 provider 时可以避免同 sandboxId 在不同 provider 下的历史记录互相影响。
+ * touchActive 只用于调用方已经确认远端 sandbox 可用的路径，并且不会唤醒 archive 流程接管中的记录。
  */
 export async function updateSandboxInstanceRecordBySandboxId(params: {
   provider?: SandboxProviderType;
@@ -804,13 +805,30 @@ export async function updateSandboxInstanceRecordBySandboxId(params: {
   chatId?: string;
   type?: SandboxTypeEnum;
   metadata?: Record<string, unknown>;
+  touchActive?: boolean;
 }): Promise<SandboxInstanceSchemaType | null> {
-  const { provider, sandboxId, sourceType, sourceId, userId, chatId, type, metadata } = params;
+  const { provider, sandboxId, sourceType, sourceId, userId, chatId, type, metadata, touchActive } =
+    params;
+  const touchActiveFilter = (() => {
+    if (!touchActive) return {};
+
+    return {
+      'metadata.archive.state': { $exists: false },
+      $or: [
+        { sourceType, sourceId },
+        {
+          sourceType: { $exists: false },
+          sourceId: { $exists: false }
+        }
+      ]
+    };
+  })();
 
   return MongoSandboxInstance.findOneAndUpdate(
     {
       sandboxId,
-      ...(provider ? { provider } : {})
+      ...(provider ? { provider } : {}),
+      ...touchActiveFilter
     },
     {
       $set: {
@@ -819,7 +837,13 @@ export async function updateSandboxInstanceRecordBySandboxId(params: {
         ...(userId !== undefined ? { userId } : {}),
         ...(chatId !== undefined ? { chatId } : {}),
         ...(type !== undefined ? { type } : {}),
-        ...(metadata !== undefined ? { metadata } : {})
+        ...(metadata !== undefined ? { metadata } : {}),
+        ...(touchActive
+          ? {
+              status: SandboxStatusEnum.running,
+              lastActiveAt: new Date()
+            }
+          : {})
       }
     },
     { new: true }

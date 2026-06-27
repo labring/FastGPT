@@ -56,6 +56,54 @@ describe('sandbox instance helpers', () => {
     await MongoSandboxInstance.deleteMany({ sandboxId: /^instance-helper-/ });
   });
 
+  const oldStoppedActiveAt = new Date('2026-01-01T00:00:00.000Z');
+
+  const createStoppedEditDebugRecord = async ({
+    sandboxId,
+    sourceId,
+    metadata = { teamId: 'team-1' }
+  }: {
+    sandboxId: string;
+    sourceId?: string;
+    metadata?: Record<string, unknown>;
+  }) => {
+    const record = {
+      provider: 'opensandbox',
+      sandboxId,
+      ...(sourceId
+        ? {
+            sourceType: ChatSourceTypeEnum.skillEdit,
+            sourceId
+          }
+        : {}),
+      userId: '',
+      chatId: 'edit-debug',
+      type: SandboxTypeEnum.editDebug,
+      status: SandboxStatusEnum.stopped,
+      lastActiveAt: oldStoppedActiveAt,
+      createdAt: oldStoppedActiveAt,
+      metadata
+    };
+
+    // Legacy records were created before source fields became required.
+    return sourceId
+      ? MongoSandboxInstance.create(record)
+      : MongoSandboxInstance.collection.insertOne(record);
+  };
+
+  const touchEditDebugRecord = ({ sandboxId, sourceId }: { sandboxId: string; sourceId: string }) =>
+    updateSandboxInstanceRecordBySandboxId({
+      provider: 'opensandbox',
+      sandboxId,
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId,
+      metadata: {
+        teamId: 'team-1',
+        versionId: 'version-1'
+      },
+      touchActive: true
+    });
+
   it('finds stale app-chat sandbox records from inactive providers only', async () => {
     const appId = `instance-helper-${getNanoid()}`;
     const chatId = 'edit-debug';
@@ -251,6 +299,107 @@ describe('sandbox instance helpers', () => {
         sourceId: skillId
       })
     ).resolves.toMatchObject({ sandboxId });
+  });
+
+  it('touches stopped sandbox records as running when ownership update confirms activity', async () => {
+    const skillId = `instance-helper-${getNanoid()}`;
+    const sandboxId = `instance-helper-${getNanoid()}`;
+
+    await createStoppedEditDebugRecord({ sandboxId, sourceId: skillId });
+    await touchEditDebugRecord({ sandboxId, sourceId: skillId });
+
+    const touchedDoc = await MongoSandboxInstance.findOne({ sandboxId }).lean();
+    expect(touchedDoc).toMatchObject({
+      status: SandboxStatusEnum.running,
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: skillId,
+      metadata: {
+        teamId: 'team-1',
+        versionId: 'version-1'
+      }
+    });
+    expect(touchedDoc?.lastActiveAt.getTime()).toBeGreaterThan(oldStoppedActiveAt.getTime());
+  });
+
+  it('touches legacy records without source fields and writes current ownership', async () => {
+    const skillId = `instance-helper-${getNanoid()}`;
+    const sandboxId = `instance-helper-${getNanoid()}`;
+
+    await createStoppedEditDebugRecord({ sandboxId });
+
+    await expect(touchEditDebugRecord({ sandboxId, sourceId: skillId })).resolves.toMatchObject({
+      sandboxId,
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: skillId,
+      status: SandboxStatusEnum.running
+    });
+
+    const touchedDoc = await MongoSandboxInstance.findOne({ sandboxId }).lean();
+    expect(touchedDoc).toMatchObject({
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: skillId,
+      status: SandboxStatusEnum.running,
+      metadata: {
+        teamId: 'team-1',
+        versionId: 'version-1'
+      }
+    });
+    expect(touchedDoc?.lastActiveAt.getTime()).toBeGreaterThan(oldStoppedActiveAt.getTime());
+  });
+
+  it('does not touch records that already belong to another source', async () => {
+    const skillId = `instance-helper-${getNanoid()}`;
+    const otherSkillId = `instance-helper-${getNanoid()}`;
+    const sandboxId = `instance-helper-${getNanoid()}`;
+
+    await createStoppedEditDebugRecord({
+      sandboxId,
+      sourceId: otherSkillId,
+      metadata: {
+        teamId: 'team-other'
+      }
+    });
+
+    await expect(touchEditDebugRecord({ sandboxId, sourceId: skillId })).resolves.toBeNull();
+
+    await expect(MongoSandboxInstance.findOne({ sandboxId }).lean()).resolves.toMatchObject({
+      status: SandboxStatusEnum.stopped,
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: otherSkillId,
+      lastActiveAt: oldStoppedActiveAt,
+      metadata: {
+        teamId: 'team-other'
+      }
+    });
+  });
+
+  it('does not touch archived sandbox records back to running', async () => {
+    const skillId = `instance-helper-${getNanoid()}`;
+    const sandboxId = `instance-helper-${getNanoid()}`;
+
+    await createStoppedEditDebugRecord({
+      sandboxId,
+      sourceId: skillId,
+      metadata: {
+        teamId: 'team-1',
+        archive: {
+          state: 'archived'
+        }
+      }
+    });
+
+    await expect(touchEditDebugRecord({ sandboxId, sourceId: skillId })).resolves.toBeNull();
+
+    await expect(MongoSandboxInstance.findOne({ sandboxId }).lean()).resolves.toMatchObject({
+      status: SandboxStatusEnum.stopped,
+      lastActiveAt: oldStoppedActiveAt,
+      metadata: {
+        teamId: 'team-1',
+        archive: {
+          state: 'archived'
+        }
+      }
+    });
   });
 
   it('finds sandbox resources by new source fields without legacy appId fallbacks', async () => {

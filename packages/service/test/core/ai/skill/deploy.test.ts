@@ -2,13 +2,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   createVersion: vi.fn(),
-  findSandboxInstanceBySandboxId: vi.fn(),
+  findSandboxInstanceBySandboxIdAndSource: vi.fn(),
   mongoAgentSkillsUpdateOne: vi.fn(),
   mongoSessionRun: vi.fn(async (fn: (session: unknown) => Promise<unknown>) =>
     fn({ id: 'mock-session' })
   ),
   packageSkillInSandbox: vi.fn(),
   removeSkillPackageTTL: vi.fn(),
+  updateSandboxInstanceRecordBySandboxId: vi.fn(),
   updateCurrentVersion: vi.fn(),
   uploadSkillPackage: vi.fn(),
   validateZipStructure: vi.fn()
@@ -62,8 +63,8 @@ vi.mock('@fastgpt/service/core/ai/sandbox/provider/config', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/instance/repository', () => ({
-  findSandboxInstanceBySandboxId: mocks.findSandboxInstanceBySandboxId,
-  updateSandboxInstanceRecordBySandboxId: vi.fn()
+  findSandboxInstanceBySandboxIdAndSource: mocks.findSandboxInstanceBySandboxIdAndSource,
+  updateSandboxInstanceRecordBySandboxId: mocks.updateSandboxInstanceRecordBySandboxId
 }));
 
 vi.mock('@fastgpt/service/core/ai/skill/model/schema', () => ({
@@ -80,9 +81,12 @@ describe('saveDeploySkillFromSandbox', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mocks.findSandboxInstanceBySandboxId.mockResolvedValue({
+    mocks.findSandboxInstanceBySandboxIdAndSource.mockResolvedValue({
       sandboxId: 'sandbox-1',
-      status: SandboxStatusEnum.running
+      status: SandboxStatusEnum.running,
+      metadata: {
+        teamId: 'team-1'
+      }
     });
     mocks.packageSkillInSandbox.mockResolvedValue(Buffer.from('mock zip'));
     mocks.validateZipStructure.mockResolvedValue({ valid: true });
@@ -93,6 +97,9 @@ describe('saveDeploySkillFromSandbox', () => {
     mocks.createVersion.mockResolvedValue('version-1');
     mocks.mongoAgentSkillsUpdateOne.mockResolvedValue({ matchedCount: 1 });
     mocks.removeSkillPackageTTL.mockResolvedValue(undefined);
+    mocks.updateSandboxInstanceRecordBySandboxId.mockResolvedValue({
+      sandboxId: 'sandbox-1'
+    });
   });
 
   it('keeps the uploaded package TTL when the skill was deleted before version linking', async () => {
@@ -107,14 +114,63 @@ describe('saveDeploySkillFromSandbox', () => {
     ).rejects.toThrow('Skill not found');
 
     expect(mocks.uploadSkillPackage).toHaveBeenCalled();
-    expect(mocks.findSandboxInstanceBySandboxId).toHaveBeenCalledWith({
+    expect(mocks.findSandboxInstanceBySandboxIdAndSource).toHaveBeenCalledWith({
       provider: 'test-provider',
       sandboxId: getEditDebugSandboxId('skill-1'),
+      sourceType: 'skillEdit',
+      sourceId: 'skill-1',
       status: SandboxStatusEnum.running,
       type: 'edit-debug'
     });
     expect(mocks.createVersion).not.toHaveBeenCalled();
     expect(mocks.mongoAgentSkillsUpdateOne).not.toHaveBeenCalled();
     expect(mocks.removeSkillPackageTTL).not.toHaveBeenCalled();
+  });
+
+  it('touches the sandbox version metadata after deploy only when archive state has not changed', async () => {
+    await expect(
+      saveDeploySkillFromSandbox({
+        skillId: 'skill-1',
+        teamId: 'team-1',
+        tmbId: 'tmb-1'
+      })
+    ).resolves.toMatchObject({
+      skillId: 'skill-1',
+      storageKey: 'agent-skills/team-1/skill-1/version-1.zip'
+    });
+
+    expect(mocks.updateSandboxInstanceRecordBySandboxId).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: 'test-provider',
+        sandboxId: 'sandbox-1',
+        sourceType: 'skillEdit',
+        sourceId: 'skill-1',
+        touchActive: true,
+        metadata: expect.objectContaining({
+          teamId: 'team-1'
+        })
+      })
+    );
+  });
+
+  it('rejects sandbox records that do not belong to the deploying team', async () => {
+    mocks.findSandboxInstanceBySandboxIdAndSource.mockResolvedValueOnce({
+      sandboxId: 'sandbox-1',
+      status: SandboxStatusEnum.running,
+      metadata: {
+        teamId: 'team-other'
+      }
+    });
+
+    await expect(
+      saveDeploySkillFromSandbox({
+        skillId: 'skill-1',
+        teamId: 'team-1',
+        tmbId: 'tmb-1'
+      })
+    ).rejects.toThrow('Edit sandbox not found or not running');
+
+    expect(mocks.packageSkillInSandbox).not.toHaveBeenCalled();
+    expect(mocks.uploadSkillPackage).not.toHaveBeenCalled();
   });
 });

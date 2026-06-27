@@ -678,7 +678,7 @@ describe('skill edit runtime status split APIs', () => {
     expect(getSandboxClient).not.toHaveBeenCalled();
   });
 
-  it('treats restoring target-runtime instance as ready instead of runtime upgrade', async () => {
+  it('reports restoring target-runtime instance as upgrading until archive flow finishes', async () => {
     const skillId = 'skill-1';
     const restoringInstance = {
       _id: 'restoring-current-runtime-instance',
@@ -708,11 +708,11 @@ describe('skill edit runtime status split APIs', () => {
       })
     ).resolves.toMatchObject({
       sandboxId: `edit-debug-${skillId}`,
-      status: 'readyToInit',
+      status: 'upgrading',
       archiveState: 'restoring',
       canUpgrade: false,
-      shouldPoll: false,
-      shouldInit: true
+      shouldPoll: true,
+      shouldInit: false
     });
 
     expect(getSandboxClient).not.toHaveBeenCalled();
@@ -951,6 +951,78 @@ describe('initSkillEditRuntimeSandbox', () => {
     } as any);
   });
 
+  const setupReadySkillVersion = (skillId = 'skill-1') => {
+    vi.mocked(MongoAgentSkills.findOne).mockResolvedValueOnce({
+      _id: skillId,
+      name: '测试的',
+      currentVersionId: 'version-1'
+    } as any);
+    vi.mocked(MongoAgentSkillsVersion.findOne).mockResolvedValueOnce({
+      _id: 'version-1',
+      storageKey: 'storage-key'
+    } as any);
+  };
+
+  const createRunningProvider = ({ allowSkillDeploy = false } = {}) => ({
+    status: { state: 'Running' },
+    execute: vi.fn(async (command: string) => {
+      if (
+        command === "mkdir -p '/workspace'" ||
+        (allowSkillDeploy &&
+          (command === "mkdir -p '/workspace/skills'" ||
+            command === "rm -rf '/workspace/skills' && mkdir -p '/workspace/skills'" ||
+            command.includes('find') ||
+            command.includes('unzip')))
+      ) {
+        return { exitCode: 0, stdout: '', stderr: '' };
+      }
+
+      return { exitCode: 1, stdout: '', stderr: `Unexpected command: ${command}` };
+    }),
+    writeFiles: vi.fn(async (entries: Array<{ path: string; data: Buffer }>) =>
+      entries.map((entry) => ({
+        path: entry.path,
+        bytesWritten: entry.data.length,
+        error: null
+      }))
+    )
+  });
+
+  const setupReusableEditSandbox = ({
+    skillId,
+    provider,
+    versionId = 'version-1',
+    updateResult = { _id: 'existing-instance' },
+    packageBuffer
+  }: {
+    skillId: string;
+    provider: ReturnType<typeof createRunningProvider>;
+    versionId?: string;
+    updateResult?: unknown;
+    packageBuffer?: Buffer;
+  }) => {
+    setupReadySkillVersion(skillId);
+    vi.mocked(findSandboxInstanceBySandboxId).mockResolvedValueOnce({
+      _id: 'existing-instance',
+      provider: 'test-provider',
+      sandboxId: `edit-debug-${skillId}`,
+      status: 'stopped',
+      metadata: {
+        image: { repository: 'test-image' },
+        versionId
+      }
+    } as any);
+    vi.mocked(findSandboxResourcesBySourceChatTypeExcludeProvider).mockResolvedValueOnce([]);
+    vi.mocked(countRunningSandboxInstancesByType).mockResolvedValueOnce(0);
+    vi.mocked(connectReadySandboxByInstance).mockResolvedValueOnce({
+      sandbox: provider
+    } as any);
+    if (packageBuffer) {
+      vi.mocked(downloadSkillPackage).mockResolvedValueOnce(packageBuffer);
+    }
+    vi.mocked(updateSandboxInstanceRecordBySandboxId).mockResolvedValueOnce(updateResult as any);
+  };
+
   it('throws structured sandbox error when team has no sandbox permission', async () => {
     vi.mocked(checkTeamSandboxPermission).mockRejectedValueOnce(new Error('no permission'));
 
@@ -1124,6 +1196,106 @@ describe('initSkillEditRuntimeSandbox', () => {
       })
     );
     expect(downloadSkillPackage).not.toHaveBeenCalled();
+  });
+
+  it('marks reused stopped edit-debug sandbox as active after successful prepare', async () => {
+    const skillId = 'skill-1';
+    const provider = createRunningProvider();
+    setupReusableEditSandbox({
+      skillId,
+      provider,
+      updateResult: { _id: 'existing-stopped-instance' }
+    });
+
+    await expect(
+      initEditDebugSandbox({
+        skillId,
+        teamId: 'team-1',
+        tmbId: 'tmb-1'
+      })
+    ).resolves.toBeUndefined();
+
+    expect(updateSandboxInstanceRecordBySandboxId).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: 'test-provider',
+        sandboxId: `edit-debug-${skillId}`,
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        sourceId: skillId,
+        chatId: 'edit-debug',
+        touchActive: true,
+        metadata: expect.objectContaining({
+          teamId: 'team-1',
+          tmbId: 'tmb-1',
+          sessionId: `edit-debug-${skillId}`,
+          skillName: '测试的'
+        })
+      })
+    );
+    expect(getSandboxClient).not.toHaveBeenCalled();
+    expect(mocks.disconnectSandbox).toHaveBeenCalledWith(provider);
+  });
+
+  it('rejects reused edit-debug sandbox when archive state wins the touch race', async () => {
+    const skillId = 'skill-1';
+    const provider = createRunningProvider();
+    setupReusableEditSandbox({
+      skillId,
+      provider,
+      updateResult: null
+    });
+
+    await expect(
+      initEditDebugSandbox({
+        skillId,
+        teamId: 'team-1',
+        tmbId: 'tmb-1'
+      })
+    ).rejects.toThrow(SandboxErrEnum.runtimeUpgradeInProgress);
+
+    expect(mocks.disconnectSandbox).toHaveBeenCalledWith(provider);
+    expect(getSandboxClient).not.toHaveBeenCalled();
+  });
+
+  it('marks hot-reloaded edit-debug sandbox as active after deploying target version', async () => {
+    const skillId = 'skill-1';
+    const packageBuffer = Buffer.from('zip');
+    const provider = createRunningProvider({ allowSkillDeploy: true });
+    setupReusableEditSandbox({
+      skillId,
+      provider,
+      versionId: 'old-version',
+      packageBuffer,
+      updateResult: { _id: 'existing-mismatched-instance' }
+    });
+
+    await expect(
+      initEditDebugSandbox({
+        skillId,
+        teamId: 'team-1',
+        tmbId: 'tmb-1'
+      })
+    ).resolves.toBeUndefined();
+
+    expect(downloadSkillPackage).toHaveBeenCalledWith({ storageKey: 'storage-key' });
+    expect(updateSandboxInstanceRecordBySandboxId).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: 'test-provider',
+        sandboxId: `edit-debug-${skillId}`,
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        sourceId: skillId,
+        chatId: 'edit-debug',
+        touchActive: true,
+        metadata: expect.objectContaining({
+          teamId: 'team-1',
+          tmbId: 'tmb-1',
+          sessionId: `edit-debug-${skillId}`,
+          skillName: '测试的',
+          versionId: 'version-1'
+        })
+      })
+    );
+    expect(getSandboxClient).not.toHaveBeenCalled();
+    expect(mocks.disconnectSandbox).toHaveBeenCalledWith(provider);
   });
 
   it('keeps restored archived edit-debug sandbox when startup fails after runtime restore', async () => {

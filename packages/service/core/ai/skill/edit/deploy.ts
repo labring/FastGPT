@@ -9,7 +9,7 @@ import { createVersion } from '../version';
 import { getSandboxRuntimeProfile } from '../../sandbox/runtime/profile';
 import { getSandboxProviderConfig } from '../../sandbox/provider/config';
 import {
-  findSandboxInstanceBySandboxId,
+  findSandboxInstanceBySandboxIdAndSource,
   updateSandboxInstanceRecordBySandboxId
 } from '../../sandbox/instance/repository';
 import { MongoAgentSkills } from '../model/schema';
@@ -42,14 +42,20 @@ export async function saveDeploySkillFromSandbox({
   versionName
 }: SaveDeploySkillFromSandboxParams): Promise<SaveDeploySkillResponse> {
   const providerConfig = getSandboxProviderConfig();
-  const sandboxInfo = await findSandboxInstanceBySandboxId({
+  const sandboxInfo = await findSandboxInstanceBySandboxIdAndSource({
     provider: providerConfig.provider,
     sandboxId: getEditDebugSandboxId(skillId),
+    sourceType: ChatSourceTypeEnum.skillEdit,
+    sourceId: skillId,
     status: SandboxStatusEnum.running,
     type: SandboxTypeEnum.editDebug
   });
 
-  if (!sandboxInfo || sandboxInfo.status !== SandboxStatusEnum.running) {
+  if (
+    !sandboxInfo ||
+    sandboxInfo.status !== SandboxStatusEnum.running ||
+    sandboxInfo.metadata?.teamId !== teamId
+  ) {
     return Promise.reject(new UserError('Edit sandbox not found or not running'));
   }
 
@@ -123,7 +129,7 @@ export async function saveDeploySkillFromSandbox({
   });
 
   // 发布新版本成功后，更新运行中沙盒实例的 versionId，保证后续版本切换时能够正确执行版本比对和容器重建
-  await updateSandboxInstanceRecordBySandboxId({
+  const updatedSandboxInfo = await updateSandboxInstanceRecordBySandboxId({
     provider: providerConfig.provider,
     sandboxId: sandboxInfo.sandboxId,
     sourceType: ChatSourceTypeEnum.skillEdit,
@@ -131,14 +137,25 @@ export async function saveDeploySkillFromSandbox({
     metadata: {
       ...(sandboxInfo.metadata || {}),
       versionId
-    }
+    },
+    touchActive: true
   }).catch((err) => {
     logger.error('[Sandbox] Failed to update sandbox versionId after deploy', {
       sandboxId: sandboxInfo.sandboxId,
       versionId,
       error: err
     });
+    return null;
   });
+  if (!updatedSandboxInfo) {
+    logger.warn(
+      '[Sandbox] Skip updating sandbox versionId after deploy because sandbox state changed',
+      {
+        sandboxId: sandboxInfo.sandboxId,
+        versionId
+      }
+    );
+  }
 
   return deployResult;
 }

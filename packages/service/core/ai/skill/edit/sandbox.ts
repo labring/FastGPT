@@ -24,7 +24,7 @@ import type {
   SandboxImageConfigType
 } from '@fastgpt/global/core/ai/skill/type';
 import type { SkillRuntimeStatusResponse } from '@fastgpt/global/core/ai/skill/api';
-import { SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
+import { SandboxStatusEnum, SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
 import {
@@ -357,16 +357,6 @@ export async function getSkillEditRuntimeStatus(
   const isRuntimeImageOutdated =
     !!statusInstance && !isRuntimeImageMatched(runtimeImage, statusInstance.metadata?.image);
 
-  // 镜像一致说明当前记录已经是目标 runtime。archive state 只代表普通启动/恢复状态，
-  // 不能再解释成“有新版本沙盒升级中”。
-  if (statusInstance && !isRuntimeImageOutdated) {
-    return buildRuntimeStatusResponse({
-      sandboxId: statusInstance.sandboxId,
-      status: 'readyToInit',
-      ...(archiveState ? { archiveState } : {})
-    });
-  }
-
   if (statusInstance && archiveState === 'archiving') {
     if (!isRuntimeUpgradeArchivingTimedOut(statusInstance)) {
       return buildRuntimeStatusResponse({
@@ -408,6 +398,16 @@ export async function getSkillEditRuntimeStatus(
       sandboxId: statusInstance.sandboxId,
       status: 'readyToInit',
       archiveState: 'archived'
+    });
+  }
+
+  // 镜像一致说明当前记录已经是目标 runtime。archiving/restoring 仍需由归档流程接管，
+  // 其他 archive state 只代表普通启动/恢复状态，不能再解释成“有新版本沙盒升级中”。
+  if (statusInstance && !isRuntimeImageOutdated) {
+    return buildRuntimeStatusResponse({
+      sandboxId: statusInstance.sandboxId,
+      status: 'readyToInit',
+      ...(archiveState ? { archiveState } : {})
     });
   }
 
@@ -555,6 +555,34 @@ export async function initSkillEditRuntimeSandbox({
   const reportProgress = (sandboxId: string) => (phase: SandboxStatusItemType['phase']) =>
     onProgress?.({ sandboxId, phase });
 
+  const maxEditDebug =
+    global.feConfigs?.limit?.agentSandboxMaxEditDebug ?? serviceEnv.AGENT_SANDBOX_MAX_EDIT_DEBUG;
+
+  const ensureCanActivateEditDebugSandbox = async (params: {
+    sandboxId: string;
+    status?: string;
+  }) => {
+    if (maxEditDebug === undefined || params.status === SandboxStatusEnum.running) return;
+
+    const activeCount = await countRunningSandboxInstancesByType(
+      SandboxTypeEnum.editDebug,
+      providerConfig.provider
+    );
+    if (activeCount < maxEditDebug) return;
+
+    const message = `Active edit-debug sandbox limit reached (${activeCount}/${maxEditDebug}). Please try again later.`;
+    onProgress?.({ sandboxId: params.sandboxId, phase: 'failed', message });
+    throw new Error(message);
+  };
+
+  const withSkillEditMetadata = (metadata: Record<string, unknown> = {}) => ({
+    ...metadata,
+    teamId,
+    tmbId,
+    sessionId,
+    skillName: skill.name
+  });
+
   const reuseExistingEditDebugSandbox = async (
     instance: NonNullable<typeof existingInstance>
   ): Promise<boolean> => {
@@ -582,6 +610,10 @@ export async function initSkillEditRuntimeSandbox({
         return false;
       }
 
+      await ensureCanActivateEditDebugSandbox({
+        sandboxId: instance.sandboxId,
+        status: instance.status
+      });
       onProgress?.({ sandboxId: instance.sandboxId, phase: 'creatingContainer' });
 
       const connected = await connectReadySandboxByInstance(providerConfig, instance, createConfig);
@@ -594,18 +626,22 @@ export async function initSkillEditRuntimeSandbox({
 
       const existingMetadata = instance.metadata || {};
       const normalizedExistingMetadata = {
-        ...existingMetadata,
+        ...withSkillEditMetadata(existingMetadata),
         ...(runtimeImage ? { image: runtimeImage } : {})
       };
-      await updateSandboxInstanceRecordBySandboxId({
+      const updatedInstance = await updateSandboxInstanceRecordBySandboxId({
         provider: providerConfig.provider,
         sandboxId: instance.sandboxId,
         sourceType: ChatSourceTypeEnum.skillEdit,
         sourceId: skillId,
         userId: '',
         chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
-        metadata: normalizedExistingMetadata
+        metadata: normalizedExistingMetadata,
+        touchActive: true
       });
+      if (!updatedInstance) {
+        throw new UserError(RUNTIME_UPGRADE_IN_PROGRESS_MESSAGE);
+      }
 
       onProgress?.({
         sandboxId: instance.sandboxId,
@@ -638,6 +674,11 @@ export async function initSkillEditRuntimeSandbox({
       targetVersionId: currentVersion._id.toString()
     });
 
+    await ensureCanActivateEditDebugSandbox({
+      sandboxId: instance.sandboxId,
+      status: instance.status
+    });
+
     await prepareSandbox(
       prepareContext(sandbox),
       preparePackageMirrors(),
@@ -658,7 +699,7 @@ export async function initSkillEditRuntimeSandbox({
 
     const existingMetadata = instance.metadata || {};
     const newMetadata = {
-      ...existingMetadata,
+      ...withSkillEditMetadata(existingMetadata),
       ...(runtimeImage ? { image: runtimeImage } : {}),
       versionId: currentVersion._id.toString(),
       storage: {
@@ -667,15 +708,19 @@ export async function initSkillEditRuntimeSandbox({
       }
     };
 
-    await updateSandboxInstanceRecordBySandboxId({
+    const updatedInstance = await updateSandboxInstanceRecordBySandboxId({
       provider: providerConfig.provider,
       sandboxId: instance.sandboxId,
       sourceType: ChatSourceTypeEnum.skillEdit,
       sourceId: skillId,
       userId: '',
       chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
-      metadata: newMetadata
+      metadata: newMetadata,
+      touchActive: true
     });
+    if (!updatedInstance) {
+      throw new UserError(RUNTIME_UPGRADE_IN_PROGRESS_MESSAGE);
+    }
 
     onProgress?.({
       sandboxId: instance.sandboxId,
@@ -777,26 +822,16 @@ export async function initSkillEditRuntimeSandbox({
     );
   }
 
-  const maxEditDebug =
-    global.feConfigs?.limit?.agentSandboxMaxEditDebug ?? serviceEnv.AGENT_SANDBOX_MAX_EDIT_DEBUG;
-  if (maxEditDebug !== undefined) {
-    const activeCount = await countRunningSandboxInstancesByType(
-      SandboxTypeEnum.editDebug,
-      providerConfig.provider
-    );
-    if (activeCount >= maxEditDebug) {
-      const message = `Active edit-debug sandbox limit reached (${activeCount}/${maxEditDebug}). Please try again later.`;
-      onProgress?.({ sandboxId: sessionId, phase: 'failed', message });
-      throw new Error(message);
-    }
-  }
-
   const currentProviderInstanceBeforeRuntimeClient =
     existingInstance ??
     (await findSandboxInstanceArchiveState({
       provider: providerConfig.provider,
       sandboxId: sessionId
     }));
+  await ensureCanActivateEditDebugSandbox({
+    sandboxId: sessionId,
+    status: currentProviderInstanceBeforeRuntimeClient?.status
+  });
   let sandbox: ISandbox | null = null;
   let sandboxClient: SandboxClient | null = null;
   const shouldCleanupCreatedSandboxOnFailure =
@@ -867,6 +902,7 @@ export async function initSkillEditRuntimeSandbox({
       userId: '',
       chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
       type: SandboxTypeEnum.editDebug,
+      touchActive: true,
       metadata: {
         teamId,
         tmbId,

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import handler from '@/pages/api/core/ai/skill/export';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { AgentSkillSourceEnum, AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
@@ -8,7 +8,7 @@ import { SandboxStatusEnum, SandboxTypeEnum } from '@fastgpt/global/core/ai/sand
 import { getEditDebugSandboxId } from '@fastgpt/service/core/ai/skill/edit';
 
 const skillExportMocks = vi.hoisted(() => ({
-  findSandboxInstanceBySandboxIdMock: vi.fn(),
+  findSandboxInstanceBySandboxIdAndSourceMock: vi.fn(),
   packageSkillInSandboxMock: vi.fn()
 }));
 
@@ -35,7 +35,8 @@ vi.mock('@fastgpt/service/core/ai/sandbox/instance/repository', async (importOri
     await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/instance/repository')>();
   return {
     ...actual,
-    findSandboxInstanceBySandboxId: skillExportMocks.findSandboxInstanceBySandboxIdMock
+    findSandboxInstanceBySandboxIdAndSource:
+      skillExportMocks.findSandboxInstanceBySandboxIdAndSourceMock
   };
 });
 
@@ -88,76 +89,92 @@ function makeMockReq(opts: { method?: string; query?: Record<string, any>; auth?
 }
 
 describe('GET /api/core/ai/skill/export', () => {
+  const createdSkillIds: string[] = [];
+
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('编辑沙盒未运行时应返回 404', async () => {
-    const user = await getRootUser();
+  afterEach(async () => {
+    if (createdSkillIds.length === 0) return;
 
+    await MongoAgentSkills.deleteMany({ _id: { $in: createdSkillIds } });
+    createdSkillIds.length = 0;
+  });
+
+  const createPersonalSkill = async ({
+    user,
+    name
+  }: {
+    user: Awaited<ReturnType<typeof getRootUser>>;
+    name: string;
+  }) => {
     const skill = await MongoAgentSkills.create({
       type: AgentSkillTypeEnum.skill,
       source: AgentSkillSourceEnum.personal,
-      name: 'skill-without-sandbox',
+      name,
       description: '',
       category: [],
       teamId: user.teamId,
       tmbId: user.tmbId
     });
+    createdSkillIds.push(String(skill._id));
 
-    skillExportMocks.findSandboxInstanceBySandboxIdMock.mockResolvedValueOnce(null);
+    return skill;
+  };
 
-    const res = makeMockRes();
-    const req = makeMockReq({ auth: user, query: { skillId: String(skill._id) } });
-
-    await handler(req, res);
-
-    expect(skillExportMocks.findSandboxInstanceBySandboxIdMock).toHaveBeenCalledWith({
+  const expectSandboxLookupForSkill = (skillId: string) => {
+    expect(skillExportMocks.findSandboxInstanceBySandboxIdAndSourceMock).toHaveBeenCalledWith({
       provider: 'opensandbox',
-      sandboxId: getEditDebugSandboxId(String(skill._id)),
+      sandboxId: getEditDebugSandboxId(skillId),
+      sourceType: 'skillEdit',
+      sourceId: skillId,
       status: SandboxStatusEnum.running,
       type: SandboxTypeEnum.editDebug
     });
+  };
+
+  it('编辑沙盒未运行时应返回 404', async () => {
+    const user = await getRootUser();
+    const skill = await createPersonalSkill({ user, name: 'skill-without-sandbox' });
+    const skillId = String(skill._id);
+
+    skillExportMocks.findSandboxInstanceBySandboxIdAndSourceMock.mockResolvedValueOnce(null);
+
+    const res = makeMockRes();
+    const req = makeMockReq({ auth: user, query: { skillId } });
+
+    await handler(req, res);
+
+    expectSandboxLookupForSkill(skillId);
     expect(mockJsonRes).toHaveBeenCalledWith(res, {
       code: 404,
       error: 'Edit sandbox not found or not running'
     });
-
-    await MongoAgentSkills.deleteOne({ _id: skill._id });
   });
 
   it('同 team 用户可成功导出 edit sandbox 工作区内容', async () => {
     const user = await getRootUser();
-
-    const skill = await MongoAgentSkills.create({
-      type: AgentSkillTypeEnum.skill,
-      source: AgentSkillSourceEnum.personal,
-      name: 'workspace-skill',
-      description: '',
-      category: [],
-      teamId: user.teamId,
-      tmbId: user.tmbId
-    });
+    const skill = await createPersonalSkill({ user, name: 'workspace-skill' });
+    const skillId = String(skill._id);
 
     const workspaceZip = Buffer.from('PK workspace zip content');
-    skillExportMocks.findSandboxInstanceBySandboxIdMock.mockResolvedValueOnce({
+    skillExportMocks.findSandboxInstanceBySandboxIdAndSourceMock.mockResolvedValueOnce({
       sandboxId: 'edit-sandbox-1',
-      status: SandboxStatusEnum.running
+      status: SandboxStatusEnum.running,
+      metadata: {
+        teamId: user.teamId
+      }
     });
     skillExportMocks.packageSkillInSandboxMock.mockResolvedValueOnce(workspaceZip);
 
     const res = makeMockRes();
-    const req = makeMockReq({ auth: user, query: { skillId: String(skill._id) } });
+    const req = makeMockReq({ auth: user, query: { skillId } });
 
     await handler(req, res);
 
     expect(mockJsonRes).not.toHaveBeenCalled();
-    expect(skillExportMocks.findSandboxInstanceBySandboxIdMock).toHaveBeenCalledWith({
-      provider: 'opensandbox',
-      sandboxId: getEditDebugSandboxId(String(skill._id)),
-      status: SandboxStatusEnum.running,
-      type: SandboxTypeEnum.editDebug
-    });
+    expectSandboxLookupForSkill(skillId);
     expect(skillExportMocks.packageSkillInSandboxMock).toHaveBeenCalledWith({
       sandboxId: 'edit-sandbox-1',
       validationMode: 'basicZip',
@@ -172,7 +189,29 @@ describe('GET /api/core/ai/skill/export', () => {
     expect(res.setHeader).toHaveBeenCalledWith('Cache-Control', 'no-store');
     expect(res.status).toHaveBeenCalledWith(200);
     expect(Buffer.compare(res.endData, workspaceZip)).toBe(0);
+  });
 
-    await MongoAgentSkills.deleteOne({ _id: skill._id });
+  it('sandbox team 不匹配时应返回 404 且不打包工作区', async () => {
+    const user = await getRootUser();
+    const skill = await createPersonalSkill({ user, name: 'workspace-skill-team-mismatch' });
+
+    skillExportMocks.findSandboxInstanceBySandboxIdAndSourceMock.mockResolvedValueOnce({
+      sandboxId: 'edit-sandbox-1',
+      status: SandboxStatusEnum.running,
+      metadata: {
+        teamId: 'other-team'
+      }
+    });
+
+    const res = makeMockRes();
+    const req = makeMockReq({ auth: user, query: { skillId: String(skill._id) } });
+
+    await handler(req, res);
+
+    expect(mockJsonRes).toHaveBeenCalledWith(res, {
+      code: 404,
+      error: 'Edit sandbox not found or not running'
+    });
+    expect(skillExportMocks.packageSkillInSandboxMock).not.toHaveBeenCalled();
   });
 });
