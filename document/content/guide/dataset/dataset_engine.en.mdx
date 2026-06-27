@@ -1,7 +1,6 @@
 ---
 title: Knowledge Base Search Methods and Parameters
-description:
-  This section covers FastGPT's knowledge base architecture, including its QA
+description: This section covers FastGPT's knowledge base architecture, including its QA
   storage format and multi-vector mapping, to help you build better knowledge bases. It also explains each search parameter. This guide focuses on practical usage rather than in-depth theory.
 ---
 
@@ -9,16 +8,15 @@ description:
 
 FastGPT uses an Embedding-based RAG approach for its knowledge base. To use FastGPT effectively, you need a basic understanding of how `Embedding` vectors work and their characteristics.
 
-Human text, images, videos, and other media cannot be directly understood by computers. To determine whether two pieces of text are similar or related, they typically need to be converted into a computer-readable format — vectors are one such method.
+Human text, images, and other media cannot be directly understood by computers. To determine whether two pieces of text are similar or related, they typically need to be converted into a computer-readable format — vectors are one such method.
 
-A vector is essentially an array of numbers. The "distance" between two vectors can be calculated using mathematical formulas — the smaller the distance, the more similar the vectors. This maps back to text, images, videos, and other media to measure similarity between them. Vector search leverages this principle.
+A vector is essentially an array of numbers. The "distance" between two vectors can be calculated using mathematical formulas — the smaller the distance, the more similar the vectors. This maps back to text, images, and other media to measure similarity between them. Vector search leverages this principle.
 
 Since text comes in many types with countless combinations, exact matching is hard to guarantee when converting to vectors for similarity comparison. In vector-based knowledge bases, a `top-k` recall approach is typically used — finding the top `k` most similar results and passing them to an LLM for further `semantic evaluation`, `logical reasoning`, and `summarization`, enabling knowledge base Q&A. This makes vector search the most critical step in the process.
 
 Many factors affect vector search accuracy, including: vector model quality, data quality (length, completeness, diversity), and retriever precision (the speed vs. accuracy tradeoff). Search query quality is equally important.
 
 Retriever precision is relatively straightforward to address, and training vector models is more complex, so optimizing data and query quality becomes a key focus.
-
 
 ### Improving Vector Search Accuracy
 
@@ -40,7 +38,7 @@ In FastGPT, a knowledge base consists of three parts: libraries, collections, an
 
 FastGPT uses `PostgreSQL`'s `PG Vector` extension as the vector retriever, with `HNSW` indexing. `PostgreSQL` is used solely for vector search (this engine can be swapped for other databases), while `MongoDB` handles all other data storage.
 
-In `MongoDB`'s `dataset.datas` collection, vector source data is stored along with an `indexes` field that records corresponding vector IDs. This is an array, meaning a single data entry can map to multiple vectors.
+In `MongoDB`'s `dataset.datas` collection, vector source data is stored along with an `indexes` field that records corresponding vector IDs. This is an array, meaning a single data entry can map to multiple vectors. In addition to default text indexes, image content can also generate image description indexes or image vector indexes when the configured models support it.
 
 In `PostgreSQL`, a `vector` field stores the vectors. During search, vectors are recalled first, then their IDs are used to look up the original data in `MongoDB`. If multiple vectors map to the same source data, they are merged and the highest vector score is used.
 
@@ -54,20 +52,68 @@ You can add multiple vectors to a longer text so that if any one vector is match
 
 This means you can continuously improve data chunk accuracy through annotation.
 
-### Search Pipeline
+### Overall Search Strategy
+
+A Knowledge Base search is not simply "user question -> vector database -> result." Depending on the input and search parameters, FastGPT combines text, images, semantic recall, full-text recall, query optimization, and reranking, then fuses multiple result paths into the final quoted content.
 
 1. Use `Query Optimization` for coreference resolution and query expansion, improving multi-turn conversation search capability and semantic richness.
-2. Use `Concat Query` to improve `Rerank` accuracy during multi-turn conversations.
-3. Use `RRF` (Reciprocal Rank Fusion) to merge results from multiple search channels.
-4. Use `Rerank` for secondary sorting to improve precision.
+2. Use `Semantic Search`, `Full-Text Search`, or `Hybrid Search` to recall candidate content.
+3. If the input contains images, use image description search or image vector search depending on model capability.
+4. Use `RRF` (Reciprocal Rank Fusion) to merge results from multiple search channels.
+5. Use `Rerank` for secondary sorting to improve text result relevance.
+6. Apply similarity filtering and the reference limit to produce the final quoted content sent to the model.
 
 ![](/imgs/dataset_search_process.png)
 
+### Image Search Method
+
+In Knowledge Base search, images can participate in retrieval in addition to text questions. FastGPT handles images differently depending on the configured model capabilities.
+
+Image search mainly works in two ways:
+
+1. Image description search: If an available vision model is configured, the system can understand the image first, generate a text description, and use that description in regular text retrieval.
+2. Image vector search: If the selected embedding model supports image input, the system can generate vectors for images directly and match them against image vectors in the Knowledge Base.
+
+Image search is not a separate system outside the Knowledge Base. It adds an image-input path to the existing Knowledge Base search pipeline.
+
+Common usage patterns include:
+
+- Text-to-image search: enter text to find semantically related image content.
+- Image-to-image search: enter an image to find visually or semantically similar image content.
+- Text + image search: enter both text and an image, using the text question as an additional constraint on image search results.
+
+Image search quality usually depends on image clarity, whether the image content is easy for the model to understand, whether a vision model is configured, and whether the embedding model supports image vectors.
+
+Whether an image can be retrieved does not only depend on uploading an image at search time. It also depends on which indexes were created during ingestion:
+
+| Knowledge Base capability                         | Text-only query                              | Image-only query                                                | Text + image query                                |
+| ------------------------------------------------- | -------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------- |
+| Regular embedding model, no vision model          | Normal text retrieval                        | Usually unavailable                                             | Mainly uses the text part                         |
+| Regular embedding model with a vision model       | Normal text retrieval                        | Converts the image into a description, then uses text retrieval | Text + image description participate in retrieval |
+| Image-capable embedding model, no vision model    | Normal text retrieval                        | Image vector retrieval                                          | Text retrieval + image vector retrieval           |
+| Image-capable embedding model with a vision model | Text retrieval, including image descriptions | Image description + image vector retrieval                      | Text + image description + image vector retrieval |
+
+So when image-to-image search performs poorly, do not only adjust search parameters. Also check whether the Knowledge Base is configured with a vision model or an image-capable embedding model, and whether valid image indexes were generated during ingestion.
+
+### Result Ranking and Fusion
+
+FastGPT fuses results from different recall paths instead of using only one path. Common paths include text vector recall, full-text recall, image description recall, image vector recall, and reranked results.
+
+Keep these points in mind:
+
+1. `Semantic Search` relies more on vector similarity and is better for natural-language questions and semantically related content.
+2. `Full-Text Search` relies more on keyword matches and is better for IDs, model numbers, proper nouns, error codes, and other exact queries.
+3. `Hybrid Search` uses both semantic recall and full-text recall, then merges the results with `RRF`.
+4. `Rerank` re-sorts candidate text results and works best when the question is clear and there are enough candidates.
+5. Image search adds image description or image vector results, which are then fused with text-side results.
+
+This means final quoted content may not be strictly sorted by a single vector similarity score. Content matched by multiple recall paths is usually more likely to rank higher.
 
 ## Search Parameters
-| | | |
-| --- |---| --- |
-|![](/imgs/dataset_search_params1.png)| ![](/imgs/dataset_search_params2.png) | ![](/imgs/dataset_search_params3.png) |
+
+|                                       |                                       |                                       |
+| ------------------------------------- | ------------------------------------- | ------------------------------------- |
+| ![](/imgs/dataset_search_params1.png) | ![](/imgs/dataset_search_params2.png) | ![](/imgs/dataset_search_params3.png) |
 
 ### Search Modes
 
@@ -76,11 +122,13 @@ This means you can continuously improve data chunk accuracy through annotation.
 Semantic search calculates the vector distance between the user's query and knowledge base content to determine "similarity" — mathematical similarity, not linguistic.
 
 Pros:
+
 - Understands similar semantics
 - Cross-language understanding (e.g., Chinese query matching English content)
-- Multimodal understanding (text, images, audio/video, etc.)
+- Multimodal understanding (text, images, etc., depending on model capability)
 
 Cons:
+
 - Depends on model training quality
 - Inconsistent accuracy
 - Affected by keywords and sentence completeness
@@ -115,6 +163,8 @@ A value between `0-1` that filters out low-relevance search results.
 
 This only takes effect when using `Semantic Search` or `Result Reranking`.
 
+Note that minimum relevance is a filtering threshold, not the final sorting rule. After query optimization, hybrid search, image search, or result reranking is enabled, final results may be fused from multiple recall paths and may not be strictly sorted by a single vector similarity score.
+
 ### Query Optimization
 
 #### Background
@@ -132,3 +182,20 @@ When the user asks "What's the second point?", the system searches for "What's t
 #### How It Works
 
 Before performing `data retrieval`, the model first performs `coreference resolution` and `query expansion`. This resolves ambiguous references and enriches the query's semantic content. You can view the optimized query in the conversation details after each interaction.
+
+Query Optimization adds an extra model call before the actual search. It often improves retrieval in multi-turn conversations, but it also increases total latency. If the current question is already clear, or response speed is more important, decide whether to enable it based on actual results.
+
+### Common Tuning Tips
+
+If search results are not as expected, start from the symptom. Avoid changing every parameter at once.
+
+| Symptom                                            | What to check or adjust first                                                                                                                                               |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| No results found                                   | Confirm the data has finished training; lower the minimum relevance; increase the reference limit; check whether the question is too short or missing a subject             |
+| Results are too broad or off-topic                 | Raise the minimum relevance; reduce the reference limit; improve chunking; check whether recalled content contains too many unrelated chunks                                |
+| IDs, model numbers, or proper nouns are inaccurate | Use full-text or hybrid search; reduce semantic search weight; avoid overusing query optimization for exact ID queries                                                      |
+| Natural-language questions do not retrieve well    | Use semantic or hybrid search; enable query optimization; add more accurate indexes to the data                                                                             |
+| Query optimization makes search slower             | Query optimization adds an extra model call. Use a faster optimization model, or enable it only for follow-up questions and short queries                                   |
+| Rerank still gives poor ordering                   | Check whether the user question is complete; make sure enough candidates are recalled; adjust minimum relevance and reference limit                                         |
+| Image-to-image search is weak                      | Confirm the embedding model supports image input; confirm image vector indexes were generated during ingestion; check whether the image is clear and has an obvious subject |
+| Text + image search is unstable                    | Clarify whether text or image should be more important; if you only want visual similarity, reduce extra text constraints                                                   |

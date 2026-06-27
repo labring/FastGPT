@@ -3,8 +3,7 @@ title: File Input
 description: FastGPT file input feature overview
 ---
 
-Starting from version 4.8.9, FastGPT supports configuring file and image uploads in both `Basic Mode` and `Workflows`. This guide covers how to use the file input feature and explains how document parsing works under the hood.
-
+Starting from version 4.8.9, FastGPT supports configuring file uploads in both `Basic Mode` and `Workflows`. This guide covers how to use file input and explains the difference between document parsing and multimodal file handling.
 
 ## Using in Basic Mode
 
@@ -30,8 +29,8 @@ In Workflows, find the `File Input` option in the system configuration panel and
 
 There are many ways to use files in Workflows. The simplest approach, shown below, connects document parsing via tool calling — achieving the same result as Basic Mode.
 
-| | |
-| --------------------- | --------------------- |
+|                        |                        |
+| ---------------------- | ---------------------- |
 | ![](/imgs/image-5.png) | ![](/imgs/image-6.png) |
 
 You can also use Workflows to extract or analyze document content, then pass the results to HTTP requests or other modules to build a document processing pipeline.
@@ -40,7 +39,7 @@ You can also use Workflows to extract or analyze document content, then pass the
 
 ## How Document Parsing Works
 
-Unlike image recognition, LLMs currently cannot parse documents directly. All document "understanding" is achieved by converting documents to text and injecting it into the prompt. The following FAQs explain how this works — understanding the mechanics helps you use document parsing more effectively in Workflows.
+Unlike multimodal recognition, LLMs currently cannot parse regular documents directly. All document "understanding" is achieved by converting documents to text and injecting it into the prompt. The following FAQs explain how this works — understanding the mechanics helps you use document parsing more effectively in Workflows.
 
 ### How are uploaded files stored in the database?
 
@@ -48,31 +47,37 @@ In FastGPT's chat history, messages with role=user store their value in this str
 
 ```ts
 type UserChatItemValueItemType = {
-  type: 'text' | 'file'
+  type: 'text' | 'file';
   text?: {
     content: string;
   };
   file?: {
-    type: 'img' | 'doc'
+    type: 'image' | 'audio' | 'video' | 'file';
     name?: string;
+    key?: string;
     url: string;
   };
 };
 ```
 
-Uploaded images and documents are stored as URLs — the parsed document content is not stored.
+Uploaded files are stored as URLs — parsed document content is not stored.
 
-### How are images handled?
+### How are images, audio, and video handled?
 
-The document parsing node does not process images. Image URLs are filtered out. For image recognition, use an LLM that supports vision.
+The document parsing node does not parse multimodal files such as images, audio, or video. These files should be handled by an LLM that supports the corresponding multimodal capability, with multimodal recognition enabled in [AI Settings](./ai_settings).
+
+In practice, file input has two different handling paths:
+
+1. Document parsing: handles document files such as PDF, Word, Excel, Markdown, and HTML, converts their content to text, and provides that text to the AI.
+2. Multimodal recognition: handles media files such as images, audio, and video. FastGPT converts them into model-readable input, and a model with the corresponding capability reads them.
 
 ### How does the document parsing node work?
 
 The document parsing node accepts an `array<string>` input (file URLs) and outputs a `string` (the parsed content).
 
-* The node only parses URLs with document-type file extensions. If you upload both documents and images, images are ignored.
-* **The document parsing node only processes files from the current workflow run, not files from chat history.**
-* How multiple documents are concatenated:
+- The node only parses URLs with document-type file extensions. If you upload both documents and multimodal files, multimodal files are ignored.
+- **The document parsing node only processes files from the current workflow run, not files from chat history.**
+- How multiple documents are concatenated:
 
 Multiple files are concatenated using the following template — filename + content, separated by `\n******\n`:
 
