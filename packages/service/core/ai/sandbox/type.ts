@@ -44,6 +44,7 @@ export const SandboxMetadataSchema = z.object({
   archive: z
     .object({
       state: SandboxArchiveStateSchema,
+      startedAt: z.coerce.date().optional(),
       archivedAt: z.coerce.date().optional()
     })
     .optional(),

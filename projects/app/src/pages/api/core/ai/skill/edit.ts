@@ -9,6 +9,7 @@ import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/cons
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
 import { isValidObjectId } from 'mongoose';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
+import { UserError } from '@fastgpt/global/common/error/utils';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { AgentSkillCreationStatusEnum } from '@fastgpt/global/core/ai/skill/constants';
 import {
@@ -94,7 +95,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // 请求参数错误是 API 边界可预期错误；运行时异常仍统一隐藏实现细节。
     sseErrRes(
       res,
-      getZodParseErrorInputSource(error) ? error : new Error('Failed to create sandbox')
+      getZodParseErrorInputSource(error) || error instanceof UserError
+        ? error
+        : new Error('Failed to create sandbox')
     );
     res.end();
   }

@@ -63,7 +63,7 @@ function RoleSelect({
   const roleOptions = useMemo(() => {
     if (!permissionList) return { singleOptions: [], checkboxList: [] };
 
-    const list = Object.entries(permissionList).map(([_, value]) => {
+    const list = Object.values(permissionList).map((value) => {
       return {
         name: value.name,
         value: value.value,
@@ -104,6 +104,8 @@ function RoleSelect({
       .map((item) => item.value);
   }, [role, roleOptions.checkboxList]);
 
+  const menuMinWidth = typeof width === 'number' ? `${width}px !important` : width;
+
   const onSelectRole = (newRole: RoleValueType) => {
     if (newRole === role) return;
     onChange(newRole);
@@ -121,7 +123,7 @@ function RoleSelect({
     <Menu offset={offset} isOpen={isOpen} autoSelect={false} direction={'ltr'}>
       <Box
         ref={ref}
-        w="fit-content"
+        w={width}
         onMouseEnter={() => {
           if (disabled) return;
           if (trigger === 'hover') {
@@ -139,6 +141,7 @@ function RoleSelect({
       >
         <MenuButton
           position={'relative'}
+          w="full"
           cursor={disabled ? 'not-allowed' : 'pointer'}
           onClickCapture={() => {
             if (trigger === 'click') {
@@ -150,7 +153,7 @@ function RoleSelect({
           {Button}
         </MenuButton>
         <MenuList
-          minW={isOpen ? `${width}px !important` : 0}
+          minW={isOpen ? menuMinWidth : 0}
           p="3"
           border={'1px solid #fff'}
           boxShadow={

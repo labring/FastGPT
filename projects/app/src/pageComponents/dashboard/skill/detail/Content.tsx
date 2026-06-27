@@ -22,7 +22,7 @@ const Content = () => {
     }));
   const isSandboxReady = sandboxState === 'ready';
   const isUpgrading = sandboxState === 'upgrading';
-  const isUpgradeModalOpen = sandboxState === 'upgradeRequired';
+  const isUpgradeModalOpen = sandboxState === 'upgradeRequired' || isUpgrading;
   const canOperateSandbox = isSkillReady && isSandboxReady;
 
   return (

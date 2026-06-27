@@ -60,7 +60,7 @@ export type SandboxStatusPhase =
   // Runtime image upgrade phases
   | 'runtimeUpgradeRequired' // existing edit-debug sandbox uses an outdated runtime image
   | 'runtimeUpgradeArchiving' // archiving workspace before recreating with current image
-  | 'runtimeUpgradeArchived' // workspace archive is ready; caller can start sandbox again
+  | 'runtimeUpgradeArchived' // outdated runtime is archived or removed; caller should refresh/restart
   // Lazy-init phases
   | 'lazyInit' // LLM first calls sandbox tool, triggers container creation
   // Terminal phases

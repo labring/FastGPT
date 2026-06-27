@@ -13,12 +13,49 @@ description: 'FastGPT V4.15.0-beta5 更新说明'
 CHAT_TITLE_MODEL=deepseek-v4-flash
 ```
 
+如果启用 Agent Sandbox，`fastgpt` 还需要增加下面环境变量：
+
+```shell
+# 与 fastgpt-agent-sandbox-proxy 共用，生产环境请改为 32 位以上随机密钥
+AGENT_SANDBOX_PROXY_SECRET=replace_with_32_chars_random_secret
+# 浏览器可访问的 agent-sandbox-proxy WebSocket 地址；如已通过 HTTPS 域名代理，请使用 wss://
+AGENT_SANDBOX_PROXY_URL=ws://{{host}}:1006
+```
+
 ### 2. 镜像变更
 
 - 更新 fastgpt-app(fastgpt 主服务) 镜像 tag: v4.15.0-beta5
 - 更新 fastgpt-pro(fastgpt 商业版) 镜像 tag: v4.15.0-beta5
 - 更新 fastgpt-plugin 镜像 tag: v1.0.0-beta5
 - 更新 aiproxy 镜像 tag: v0.6.2
+
+如果启用 Agent Sandbox，需同步更新下面镜像：
+
+- 新增 fastgpt-agent-sandbox-proxy 镜像 tag: v0.2.0-beta3
+- 更新 fastgpt-agent-sandbox 镜像 tag: v0.2.0-beta3
+
+同时在 `docker-compose.yml` 中新增 `fastgpt-agent-sandbox-proxy` 服务。下面示例使用国内镜像源，海外部署可将镜像改为 `ghcr.io/labring/fastgpt-agent-sandbox-proxy:v0.2.0-beta3`：
+
+```yml
+fastgpt-agent-sandbox-proxy:
+  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox-proxy:v0.2.0-beta3
+  container_name: fastgpt-agent-sandbox-proxy
+  restart: always
+  ports:
+    - 1006:1006
+  networks:
+    - fastgpt
+  environment:
+    PORT: 1006
+    # 必须与 fastgpt 中的 AGENT_SANDBOX_PROXY_SECRET 完全一致
+    AGENT_SANDBOX_PROXY_SECRET: replace_with_32_chars_random_secret
+    # 主站容器内网地址；如果服务名不是 fastgpt，请按实际 docker-compose 服务名调整
+    FASTGPT_APP_URL: http://fastgpt:3000
+    FASTGPT_APP_REQUEST_TIMEOUT_SECS: 10
+    RUST_LOG: info,fastgpt_agent_sandbox_proxy=debug
+    # 当上游 sandbox endpoint 返回 localhost/127.0.0.1 且 proxy 容器无法访问时再配置
+    # AGENT_SANDBOX_PROXY_REWRITE_HOST: host.docker.internal
+```
 
 ### 3. 升级脚本
 

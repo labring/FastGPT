@@ -1,7 +1,72 @@
 ---
-title: 'V4.15.0-beta5 (In Progress)'
+title: 'V4.15.0-beta5'
 description: 'FastGPT V4.15.0-beta5 Release Notes'
 ---
+
+## 📦 Upgrade Guide
+
+### 1. Update Environment Variables
+
+Add the `CHAT_TITLE_MODEL` environment variable to `fastgpt` and `fastgpt-pro`. It is used to automatically generate chat titles. For example:
+
+```shell
+CHAT_TITLE_MODEL=deepseek-v4-flash
+```
+
+If Agent Sandbox is enabled, also add the following environment variables to `fastgpt`:
+
+```shell
+# Shared with fastgpt-agent-sandbox-proxy. In production, replace it with a random secret longer than 32 characters.
+AGENT_SANDBOX_PROXY_SECRET=replace_with_32_chars_random_secret
+# Browser-accessible WebSocket URL for agent-sandbox-proxy. Use wss:// if it is proxied through an HTTPS domain.
+AGENT_SANDBOX_PROXY_URL=ws://{{host}}:1006
+```
+
+### 2. Image Changes
+
+- Update the fastgpt-app (FastGPT main service) image tag to v4.15.0-beta5.
+- Update the fastgpt-pro (FastGPT commercial edition) image tag to v4.15.0-beta5.
+- Update the fastgpt-plugin image tag to v1.0.0-beta5.
+- Update the aiproxy image tag to v0.6.2.
+
+If Agent Sandbox is enabled, also update the following images:
+
+- Add the fastgpt-agent-sandbox-proxy image with tag v0.2.0-beta3.
+- Update the fastgpt-agent-sandbox image tag to v0.2.0-beta3.
+
+Also add the `fastgpt-agent-sandbox-proxy` service to `docker-compose.yml`. The example below uses the China Mainland image registry. For global deployments, change the image to `ghcr.io/labring/fastgpt-agent-sandbox-proxy:v0.2.0-beta3`:
+
+```yml
+fastgpt-agent-sandbox-proxy:
+  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox-proxy:v0.2.0-beta3
+  container_name: fastgpt-agent-sandbox-proxy
+  restart: always
+  ports:
+    - 1006:1006
+  networks:
+    - fastgpt
+  environment:
+    PORT: 1006
+    # Must exactly match AGENT_SANDBOX_PROXY_SECRET in fastgpt.
+    AGENT_SANDBOX_PROXY_SECRET: replace_with_32_chars_random_secret
+    # Internal URL of the main app container. If your service name is not fastgpt, update it accordingly.
+    FASTGPT_APP_URL: http://fastgpt:3000
+    FASTGPT_APP_REQUEST_TIMEOUT_SECS: 10
+    RUST_LOG: info,fastgpt_agent_sandbox_proxy=debug
+    # Configure this only when the upstream sandbox endpoint returns localhost/127.0.0.1 and the proxy container cannot reach it.
+    # AGENT_SANDBOX_PROXY_REWRITE_HOST: host.docker.internal
+```
+
+### 3. Upgrade Script
+
+Archive all old sandbox workspaces to S3 to more thoroughly release inactive sandboxes. Some old sandboxes may fail to install zip packages because of timeouts. Because most old sandboxes are tied to old chats, you may also remove all old sandboxes directly instead of running this script. This script only affects old sandboxes and does not affect newly created sandboxes.
+
+```shell
+curl --location --request POST 'https://{{host}}/api/admin/initSandboxArchive' \
+--header 'rootkey: {{rootkey}}' \
+--header 'Content-Type: application/json' \
+-d '{"runArchive":true,"inactiveDays":0}'
+```
 
 ## Breaking Changes
 
@@ -10,12 +75,34 @@ description: 'FastGPT V4.15.0-beta5 Release Notes'
 ## 🚀 New Features
 
 1. The HTTP node now supports ignoring TLS certificate verification, which is useful when calling HTTPS services that use self-signed or internal certificates.
+2. Added an environment variable for maximum folder depth to prevent unlimited nested folders.
+3. Chat windows now support a quick scroll-to-bottom button.
+4. Optimized streaming output animations based on Lobe UI.
+5. Added model-generated chat titles. Configure the `CHAT_TITLE_MODEL` variable to enable this feature.
+6. Adjusted the Skill Edit editing experience.
+7. The HTTP node now supports returning the complete error object.
+8. Knowledge Base search in agent mode now supports permission filtering.
+9. Optimized API key logic by unifying APIKey management and requiring requests to explicitly pass the app context.
+10. Optimized agent context compression.
+11. Added output syntax for quick replies.
 
 ## ⚙️ Improvements
 
 1. HTML output now automatically switches to preview mode after generation, reducing the need to open the preview manually.
-2. Improved long-name display for apps, datasets, files, and folders: names are truncated when they exceed the available width, and the full name is shown when hovering over the name.
+2. Improved long-name display for apps, Knowledge Bases, files, and folders: names are truncated when they exceed the available width, and the full name is shown on hover.
+3. Removed `temperature` and `max_tokens` from all built-in LLM requests to avoid incompatibility with some models.
+4. Improved error prompts for Knowledge Base training failures, including one-click retry for all failed items.
+5. Filtered out invalid Knowledge Base citation markers.
+6. When a tool returns an empty response, FastGPT now automatically fills in `"none"` to avoid errors from some models.
+7. Added a second permission check before system tools run.
+8. Optimized SSRF checks after redirects.
 
 ## 🐛 Bug Fixes
 
 1. Fixed a potential cross-resource file access risk when private S3 object keys were not bound to the already-authorized resource.
+2. Fixed abnormal tool call parameter schemas for `array` and `object` types in Workflow tools.
+3. Fixed a UI offset issue in the portal publish channel.
+
+## Code Improvements
+
+1. Added a length guard for system string processing. When the string is too long, synchronous replacement stops to avoid high CPU load. You can adjust the limit with the `SYSTEM_MAX_STRING_LENGTH_M` environment variable.

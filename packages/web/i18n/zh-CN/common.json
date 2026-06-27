@@ -184,6 +184,7 @@
   "code_error.skill_error.un_auth_skill": "无权操作该技能",
   "code_error.sandbox_error.agent_sandbox_initializing": "虚拟机正在初始化，请稍后重试。",
   "code_error.sandbox_error.agent_sandbox_permission_denied": "当前应用无权使用虚拟机，请联系管理员配置。",
+  "code_error.sandbox_error.runtime_upgrade_failed": "虚拟机运行环境升级失败，请重新尝试。",
   "code_error.system_error.community_version_num_limit": "超出社区版数量限制，请升级商业版: https://fastgpt.in",
   "code_error.system_error.license_app_amount_limit": "超出系统最大应用数量",
   "code_error.system_error.license_dataset_amount_limit": "超出系统最大知识库数量",

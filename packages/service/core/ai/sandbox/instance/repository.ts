@@ -325,7 +325,8 @@ export async function markSandboxArchiving(resource: SandboxResourceDoc, inactiv
     },
     {
       $set: {
-        'metadata.archive.state': 'archiving'
+        'metadata.archive.state': 'archiving',
+        'metadata.archive.startedAt': new Date()
       }
     },
     { new: true }
@@ -348,7 +349,8 @@ export async function markSandboxArchivingForRuntimeUpgrade(resource: SandboxRes
     {
       $set: {
         status: SandboxStatusEnum.stopped,
-        'metadata.archive.state': 'archiving'
+        'metadata.archive.state': 'archiving',
+        'metadata.archive.startedAt': new Date()
       }
     },
     { new: true }
@@ -438,6 +440,19 @@ export async function clearSandboxRuntimeUpgradeArchiveState(resource: SandboxRe
       }
     }
   );
+}
+
+/**
+ * 清理卡在 runtime 升级归档中的 edit-debug 记录。
+ *
+ * 只允许处理仍处于 archiving 的同一条资源；调用方随后会删除远端资源并从当前发布包重建。
+ * 这里直接删除 Mongo 记录，避免刷新后继续命中 archiving 状态。
+ */
+export async function deleteStaleRuntimeUpgradeArchivingRecord(resource: SandboxResourceDoc) {
+  return MongoSandboxInstance.deleteOne({
+    ...buildSandboxResourceRecordFilter(resource),
+    'metadata.archive.state': 'archiving'
+  });
 }
 
 /**
