@@ -534,6 +534,32 @@ describe('dispatchRunAgent user context', () => {
     ]);
   });
 
+  it('treats user aborted result as normal finish without error text', async () => {
+    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    runUnifiedAgentLoopMock.mockResolvedValueOnce({
+      status: 'aborted',
+      completeMessages: [],
+      assistantMessages: [],
+      requestIds: []
+    });
+
+    let resultPromise: Promise<any>;
+    runWithContext(
+      {
+        queryUrlTypeMap: {},
+        mcpClientMemory: {}
+      },
+      () => {
+        resultPromise = dispatchRunAgent(createProps());
+      }
+    );
+    const result = await resultPromise!;
+
+    expect(result.data.answerText).toBe('');
+    expect(result.error).toBeUndefined();
+    expect(result[DispatchNodeResponseKeyEnum.assistantResponses]).toEqual([]);
+  });
+
   it('keeps reasoning with hideReason when reasoning display is disabled', async () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const props = createProps();
