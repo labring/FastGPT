@@ -45,11 +45,12 @@ export type GetHistoriesResponseType = z.infer<typeof GetHistoriesResponseSchema
 const GetHistoryStatusPropsSchema = {
   chatIds: z.array(z.string().min(1)).min(1).max(200).describe('需要刷新状态的会话 ID 列表')
 };
-export const GetHistoryStatusBodyRawSchema = createOutLinkChatTargetInputSchema(
+export const GetHistoryStatusBodyRawSchema = createOptionalOutLinkChatTargetInputSchema(
   GetHistoryStatusPropsSchema
 );
-export const GetHistoryStatusBodySchema =
-  GetHistoryStatusBodyRawSchema.transform(transformChatTargetInput);
+export const GetHistoryStatusBodySchema = GetHistoryStatusBodyRawSchema.transform(
+  transformOptionalChatTargetInput
+);
 export type GetHistoryStatusBodyType = z.infer<typeof GetHistoryStatusBodyRawSchema>;
 export type GetHistoryStatusBodyRuntimeType = z.infer<typeof GetHistoryStatusBodySchema>;
 
@@ -82,9 +83,10 @@ const UpdateHistoryPropsSchema = {
   top: z.boolean().optional().describe('是否置顶')
 };
 export const UpdateHistoryBodyRawSchema =
-  createOutLinkChatTargetInputSchema(UpdateHistoryPropsSchema);
-export const UpdateHistoryBodySchema =
-  UpdateHistoryBodyRawSchema.transform(transformChatTargetInput);
+  createOptionalOutLinkChatTargetInputSchema(UpdateHistoryPropsSchema);
+export const UpdateHistoryBodySchema = UpdateHistoryBodyRawSchema.transform(
+  transformOptionalChatTargetInput
+);
 export type UpdateHistoryBodyType = z.infer<typeof UpdateHistoryBodyRawSchema>;
 export type UpdateHistoryBodyRuntimeType = z.infer<typeof UpdateHistoryBodySchema>;
 

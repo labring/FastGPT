@@ -13,6 +13,11 @@ import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 const splitMarker = 'SPLIT_MARKER';
 const contentType = 'audio/mpeg';
 
+const isAbortError = (error: unknown) =>
+  error instanceof DOMException
+    ? error.name === 'AbortError'
+    : error instanceof Error && error.name === 'AbortError';
+
 // 添加 MediaSource 支持检测函数
 const isMediaSourceSupported = () => {
   return typeof MediaSource !== 'undefined' && MediaSource.isTypeSupported?.(contentType);
@@ -129,25 +134,31 @@ export const useAudioPlay = (
 
         if (!isMediaSourceSupported()) {
           // 不支持 MediaSource 时，直接读取完整流并播放
-          return new Promise<Uint8Array>(async (resolve) => {
+          return new Promise<Uint8Array>(async (resolve, reject) => {
             const reader = stream.getReader();
             const chunks: Uint8Array[] = [];
 
-            while (true) {
-              const { done, value } = await reader.read();
-              if (done) break;
-              chunks.push(value);
-            }
+            try {
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                chunks.push(value);
+              }
 
-            const fullBuffer = new Uint8Array(chunks.reduce((acc, chunk) => acc + chunk.length, 0));
-            let offset = 0;
-            for (const chunk of chunks) {
-              fullBuffer.set(chunk, offset);
-              offset += chunk.length;
-            }
+              const fullBuffer = new Uint8Array(
+                chunks.reduce((acc, chunk) => acc + chunk.length, 0)
+              );
+              let offset = 0;
+              for (const chunk of chunks) {
+                fullBuffer.set(chunk, offset);
+                offset += chunk.length;
+              }
 
-            playAudioBuffer(fullBuffer);
-            resolve(fullBuffer);
+              playAudioBuffer(fullBuffer);
+              resolve(fullBuffer);
+            } catch (error) {
+              reject(error);
+            }
           });
         }
 
@@ -219,6 +230,10 @@ export const useAudioPlay = (
             resolve({});
           }
         } catch (error) {
+          if (isAbortError(error)) {
+            return resolve({});
+          }
+
           toast({
             status: 'error',
             title: getErrText(error, t('common:core.chat.Audio Speech Error'))

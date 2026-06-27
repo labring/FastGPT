@@ -12,6 +12,7 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { getDisplayHistoryTitle } from '@/web/core/chat/context/historyTitleUtils';
 
 const ChatSliderList = () => {
   const { isPc } = useSystem();
@@ -31,7 +32,6 @@ const ChatSliderList = () => {
 
   const concatHistory = useMemo(() => {
     const newChatTitle = t('common:core.chat.New Chat');
-    const getHistoryDisplayTitle = (title?: string) => title?.trim() || newChatTitle;
     const scopedHistories = histories.filter((item) => item.appId === appId);
 
     const formatHistories: {
@@ -50,11 +50,14 @@ const ChatSliderList = () => {
         chatBoxData.appId === item.appId;
       const customTitle = item.customTitle?.trim() ? item.customTitle : undefined;
       const realtimeTitle = chatBoxData.title?.trim() ? chatBoxData.title : undefined;
-      const title = (isActiveChat ? realtimeTitle : undefined) || customTitle || item.title;
 
       return {
         id: item.chatId,
-        title: getHistoryDisplayTitle(title),
+        title: getDisplayHistoryTitle({
+          customTitle,
+          title: (isActiveChat ? realtimeTitle : undefined) || item.title,
+          fallbackTitle: newChatTitle
+        }),
         customTitle,
         top: item.top,
         updateTime: item.updateTime,
@@ -76,7 +79,10 @@ const ChatSliderList = () => {
       isTemporary?: boolean;
     } = {
       id: activeChatId,
-      title: getHistoryDisplayTitle(chatBoxData.chatId === activeChatId ? chatBoxData.title : ''),
+      title: getDisplayHistoryTitle({
+        title: chatBoxData.chatId === activeChatId ? chatBoxData.title : '',
+        fallbackTitle: newChatTitle
+      }),
       updateTime: new Date(),
       isTemporary: true,
       chatGenerateStatus:

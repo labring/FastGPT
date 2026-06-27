@@ -5,12 +5,14 @@ import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
+import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { getUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { describe, expect, it, beforeEach } from 'vitest';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 
 describe('updateHistory api test', () => {
   let testUser: Awaited<ReturnType<typeof getUser>>;
@@ -115,6 +117,51 @@ describe('updateHistory api test', () => {
     const updatedChat = await MongoChat.findOne({
       appId,
       chatId
+    });
+
+    expect(updatedChat?.top).toBe(true);
+  });
+
+  it('should update top status for share history without appId', async () => {
+    const shareId = `share-update-history-${getNanoid()}`;
+    const outLinkUid = `share-user-${getNanoid()}`;
+
+    await MongoOutLink.create({
+      shareId,
+      teamId: testUser.teamId,
+      tmbId: testUser.tmbId,
+      appId,
+      type: PublishChannelEnum.share,
+      name: 'Share Link'
+    });
+    await MongoChat.updateOne(
+      { appId, chatId },
+      {
+        $set: {
+          shareId,
+          outLinkUid,
+          source: ChatSourceEnum.share
+        }
+      }
+    );
+
+    const res = await Call<UpdateHistoryBodyType, {}>(handler, {
+      body: {
+        shareId,
+        outLinkUid,
+        chatId,
+        top: true
+      }
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.error).toBeUndefined();
+
+    const updatedChat = await MongoChat.findOne({
+      appId,
+      chatId,
+      shareId,
+      outLinkUid
     });
 
     expect(updatedChat?.top).toBe(true);

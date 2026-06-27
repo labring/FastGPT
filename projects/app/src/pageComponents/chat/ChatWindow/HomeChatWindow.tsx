@@ -87,6 +87,9 @@ const HomeChatWindow = () => {
 
   const forbidLoadChatRef = useContextSelector(ChatContext, (v) => v.forbidLoadChat);
   const onOpenSlider = useContextSelector(ChatContext, (v) => v.onOpenSlider);
+  const currentHistory = useContextSelector(ChatContext, (v) =>
+    v.histories.find((item) => item.chatId === chatId && item.appId === appId)
+  );
 
   const chatBoxData = useContextSelector(ChatItemContext, (v) => v.chatBoxData);
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
@@ -105,6 +108,7 @@ const HomeChatWindow = () => {
 
   const isCurrentChatReady = chatBoxData.appId === appId && chatBoxData.chatId === chatId;
   const chatWindowTitle = getDisplayHistoryTitle({
+    customTitle: currentHistory?.customTitle,
     title: isCurrentChatReady ? chatBoxData.title : undefined,
     fallbackTitle: t('common:core.chat.New Chat')
   });
