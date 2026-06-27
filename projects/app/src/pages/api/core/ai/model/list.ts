@@ -7,15 +7,15 @@ import { getModelListWithPermission } from '@fastgpt/service/support/permission/
 import type {
   ListModelsResponse,
   ModelListItem,
-  ListModelsBody
+  ListModelsBody,
+  ListModelsPaginationResponse
 } from '@fastgpt/global/openapi/core/ai/model/api';
-import type { PaginationResponse } from '@fastgpt/global/openapi/api';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
 
 async function handler(
   req: ApiRequestProps<ListModelsBody, any>,
   res: ApiResponseType<any>
-): Promise<ListModelsResponse | PaginationResponse<ModelListItem>> {
+): Promise<ListModelsResponse | ListModelsPaginationResponse> {
   const {
     tmbId,
     teamId,
