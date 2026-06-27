@@ -734,7 +734,7 @@ export async function restoreArchivedSandboxBeforeUse(params: {
     archiveState = currentProviderInstance.metadata?.archive?.state;
   }
 
-  if (archiveState !== 'archived') {
+  if (archiveState !== 'archived' || !currentProviderInstance) {
     return;
   }
 
