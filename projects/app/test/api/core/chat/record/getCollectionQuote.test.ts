@@ -102,7 +102,12 @@ describe('getCollectionQuote handler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mocks.authChatTargetCrud.mockResolvedValue({ chat: { _id: chatId }, showFullText: true });
+    mocks.authChatTargetCrud.mockResolvedValue({
+      sourceType: 'app',
+      sourceId: appId,
+      chat: { _id: chatId },
+      showFullText: true
+    });
     mocks.authCollectionInChat.mockResolvedValue(undefined);
     mocks.getCollectionWithDataset.mockResolvedValue({
       _id: collectionId,

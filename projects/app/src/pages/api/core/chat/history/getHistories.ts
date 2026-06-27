@@ -19,10 +19,7 @@ export async function handler(req: ApiRequestProps): Promise<GetHistoriesRespons
   const {
     sourceType,
     sourceId,
-    shareId,
-    outLinkUid,
-    teamId,
-    teamToken,
+    outLinkAuthData,
     source,
     startCreateTime,
     endCreateTime,
@@ -35,10 +32,7 @@ export async function handler(req: ApiRequestProps): Promise<GetHistoriesRespons
     req,
     sourceType,
     sourceId,
-    shareId,
-    outLinkUid,
-    teamId,
-    teamToken,
+    outLinkAuthData,
     source
   });
 

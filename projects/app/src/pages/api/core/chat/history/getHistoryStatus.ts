@@ -17,7 +17,7 @@ export async function handler(
   req: ApiRequestProps,
   _res: ApiResponseType
 ): Promise<GetHistoryStatusResponseType> {
-  const { sourceType, sourceId, chatIds, shareId, outLinkUid, teamId, teamToken } = parseApiInput({
+  const { sourceType, sourceId, chatIds, outLinkAuthData } = parseApiInput({
     req,
     bodySchema: GetHistoryStatusBodySchema
   }).body;
@@ -26,10 +26,7 @@ export async function handler(
     req,
     sourceType,
     sourceId,
-    shareId,
-    outLinkUid,
-    teamId,
-    teamToken
+    outLinkAuthData
   });
 
   if (!match) {

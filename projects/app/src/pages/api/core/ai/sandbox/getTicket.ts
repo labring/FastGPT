@@ -23,7 +23,7 @@ async function handler(req: ApiRequestProps): Promise<SandboxGetTicketResponse> 
   if (!secret) {
     throw new Error('AGENT_SANDBOX_PROXY_SECRET environment variable is missing');
   }
-  const { sourceType, sourceId, chatId, outLinkAuthData, channel, permission } = parseApiInput({
+  const { sourceType, sourceId, chatId, channel, permission, outLinkAuthData } = parseApiInput({
     req,
     bodySchema: SandboxGetTicketBodySchema
   }).body;
@@ -34,7 +34,12 @@ async function handler(req: ApiRequestProps): Promise<SandboxGetTicketResponse> 
   }
 
   // 1. 复用 FastGPT 现有的多租户与 Session 安全鉴权
-  const { uid, teamId } = await authSandboxSession({
+  const {
+    uid,
+    teamId,
+    sourceType: resolvedSourceType,
+    sourceId: resolvedSourceId
+  } = await authSandboxSession({
     req,
     sourceType,
     sourceId,
@@ -43,8 +48,8 @@ async function handler(req: ApiRequestProps): Promise<SandboxGetTicketResponse> 
     per: ticketPermission === 'write' ? WritePermissionVal : ReadPermissionVal
   });
   const sandboxQuery = buildSandboxClientQueryFromChatSource({
-    sourceType,
-    sourceId,
+    sourceType: resolvedSourceType,
+    sourceId: resolvedSourceId,
     userId: uid,
     chatId
   });
@@ -55,8 +60,8 @@ async function handler(req: ApiRequestProps): Promise<SandboxGetTicketResponse> 
   // 签发短期 HMAC 凭证，内含租户元数据，不包含任何物理寻址信息。
   const ticket = jwt.sign(
     {
-      sourceType,
-      sourceId,
+      sourceType: resolvedSourceType,
+      sourceId: resolvedSourceId,
       userId: uid,
       chatId,
       teamId,

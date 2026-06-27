@@ -14,20 +14,22 @@ import {
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 
 async function handler(req: ApiRequestProps): Promise<CloseCustomFeedbackResponseType> {
-  const { sourceType, sourceId, chatId, dataId, index } = parseApiInput({
+  const { sourceType, sourceId, chatId, dataId, index, outLinkAuthData } = parseApiInput({
     req,
     bodySchema: CloseCustomFeedbackBodySchema
   }).body;
-  const chatSourceQuery = buildChatSourceQuery({ sourceType, sourceId });
 
-  await authChatTargetCrud({
+  const authRes = await authChatTargetCrud({
     req,
     authToken: true,
     authApiKey: true,
     sourceType,
     sourceId,
-    chatId
+    chatId,
+    outLinkAuthData
   });
+  const resolvedSourceId = authRes.sourceId;
+  const chatSourceQuery = buildChatSourceQuery({ sourceType, sourceId: resolvedSourceId });
   await authCert({ req, authToken: true });
 
   await mongoSessionRun(async (session) => {
@@ -48,7 +50,7 @@ async function handler(req: ApiRequestProps): Promise<CloseCustomFeedbackRespons
     // Update ChatLog feedback statistics
     await updateChatFeedbackCount({
       sourceType,
-      sourceId,
+      sourceId: resolvedSourceId,
       chatId,
       session
     });

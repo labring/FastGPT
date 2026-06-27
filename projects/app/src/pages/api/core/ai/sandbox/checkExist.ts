@@ -25,7 +25,11 @@ async function handler(req: ApiRequestProps): Promise<SandboxCheckExistResponse>
     bodySchema: SandboxCheckExistBodySchema
   }).body;
 
-  const { uid } = await authSandboxSession({
+  const {
+    uid,
+    sourceType: resolvedSourceType,
+    sourceId: resolvedSourceId
+  } = await authSandboxSession({
     req,
     sourceType,
     sourceId,
@@ -35,8 +39,8 @@ async function handler(req: ApiRequestProps): Promise<SandboxCheckExistResponse>
 
   const providerConfig = getSandboxProviderConfig();
   const sandboxQuery = buildSandboxClientQueryFromChatSource({
-    sourceType,
-    sourceId,
+    sourceType: resolvedSourceType,
+    sourceId: resolvedSourceId,
     userId: uid,
     chatId
   });

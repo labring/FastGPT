@@ -14,19 +14,21 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 
 async function handler(req: ApiRequestProps): Promise<UpdateFeedbackReadStatusResponseType> {
-  const { sourceType, sourceId, chatId, dataId, isRead } = parseApiInput({
+  const { sourceType, sourceId, chatId, dataId, isRead, outLinkAuthData } = parseApiInput({
     req,
     bodySchema: UpdateFeedbackReadStatusBodySchema
   }).body;
-  const chatSourceQuery = buildChatSourceQuery({ sourceType, sourceId });
 
-  await authChatTargetCrud({
+  const authRes = await authChatTargetCrud({
     req,
     authToken: true,
     sourceType,
     sourceId,
-    chatId
+    chatId,
+    outLinkAuthData
   });
+  const resolvedSourceId = authRes.sourceId;
+  const chatSourceQuery = buildChatSourceQuery({ sourceType, sourceId: resolvedSourceId });
 
   await mongoSessionRun(async (session) => {
     await MongoChatItem.updateOne(
@@ -47,7 +49,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateFeedbackReadStatusRe
     // Update Chat table feedback statistics to refresh unread feedback flags
     await updateChatFeedbackCount({
       sourceType,
-      sourceId,
+      sourceId: resolvedSourceId,
       chatId,
       session
     });

@@ -19,8 +19,8 @@ async function handler(req: ApiRequestProps): Promise<DeleteChatRecordResponseTy
   const params = hasRequestBodyPayload(req.body)
     ? parseApiInput({ req, bodySchema: DeleteChatRecordBodySchema }).body
     : parseApiInput({ req, querySchema: DeleteChatRecordBodySchema }).query;
-  const { sourceType, sourceId, chatId, contentId, contentIds, ...authProps } = params;
-  await authChatTargetCrud({
+  const { sourceType, sourceId, chatId, contentId, contentIds, outLinkAuthData } = params;
+  const authRes = await authChatTargetCrud({
     req,
     authToken: true,
     authApiKey: true,
@@ -28,8 +28,9 @@ async function handler(req: ApiRequestProps): Promise<DeleteChatRecordResponseTy
     sourceId,
     chatId,
     ...(sourceType === ChatSourceTypeEnum.skillEdit ? { per: WritePermissionVal } : {}),
-    ...authProps
+    outLinkAuthData
   });
+  const resolvedSourceId = authRes.sourceId;
 
   const targetContentIds = Array.from(
     new Set([...(contentIds ?? []), ...(contentId ? [contentId] : [])])
@@ -41,7 +42,7 @@ async function handler(req: ApiRequestProps): Promise<DeleteChatRecordResponseTy
 
   await MongoChatItem.updateMany(
     {
-      ...buildChatSourceQuery({ sourceType, sourceId }),
+      ...buildChatSourceQuery({ sourceType, sourceId: resolvedSourceId }),
       chatId,
       dataId: { $in: targetContentIds }
     },

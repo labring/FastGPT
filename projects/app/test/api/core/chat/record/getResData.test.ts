@@ -51,7 +51,11 @@ describe('getResData handler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mocks.authChatTargetCrud.mockResolvedValue({ showCite: true });
+    mocks.authChatTargetCrud.mockResolvedValue({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
+      showCite: true
+    });
     mocks.getChatItemResponseData.mockResolvedValue([{ id: 'persisted-root' }]);
   });
 

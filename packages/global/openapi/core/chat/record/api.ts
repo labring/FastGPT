@@ -7,9 +7,9 @@ import { ChatItemMiniSchema } from '../../../../core/chat/type';
 import { AppTTSConfigTypeSchema } from '../../../../core/app/type';
 import { GetChatTypeEnum } from '../../../../core/chat/constants';
 import {
-  createChatTargetInputSchema,
   createOutLinkChatTargetInputSchema,
   refineRequiredChatTargetInput,
+  transformChatAuthTargetInput,
   transformChatTargetInput
 } from '../api';
 
@@ -34,7 +34,9 @@ export const GetResDataQueryRawSchema = createOutLinkChatTargetInputSchema({
   chatId: z.string().optional().describe('会话ID'),
   dataId: z.string().describe('对话数据ID')
 });
-export const GetResDataQuerySchema = GetResDataQueryRawSchema.transform(transformChatTargetInput);
+export const GetResDataQuerySchema = GetResDataQueryRawSchema.transform(
+  transformChatAuthTargetInput
+);
 export type GetResDataQueryType = z.infer<typeof GetResDataQueryRawSchema>;
 export type GetResDataQueryRuntimeType = z.infer<typeof GetResDataQuerySchema>;
 
@@ -52,8 +54,9 @@ const DeleteChatRecordPropsSchema = {
 export const DeleteChatRecordBodyRawSchema = createOutLinkChatTargetInputSchema(
   DeleteChatRecordPropsSchema
 );
-export const DeleteChatRecordBodySchema =
-  DeleteChatRecordBodyRawSchema.transform(transformChatTargetInput);
+export const DeleteChatRecordBodySchema = DeleteChatRecordBodyRawSchema.transform(
+  transformChatAuthTargetInput
+);
 export type DeleteChatRecordBodyType = z.infer<typeof DeleteChatRecordBodyRawSchema>;
 export type DeleteChatRecordBodyRuntimeType = z.infer<typeof DeleteChatRecordBodySchema>;
 
@@ -80,7 +83,7 @@ const QuoteBodyPropsSchema = {
 };
 
 export const GetQuoteBodyRawSchema = createOutLinkChatTargetInputSchema(QuoteBodyPropsSchema);
-export const GetQuoteBodySchema = GetQuoteBodyRawSchema.transform(transformChatTargetInput);
+export const GetQuoteBodySchema = GetQuoteBodyRawSchema.transform(transformChatAuthTargetInput);
 export type GetQuoteBodyType = z.infer<typeof GetQuoteBodyRawSchema>;
 export type GetQuoteBodyRuntimeType = z.infer<typeof GetQuoteBodySchema>;
 
@@ -121,8 +124,9 @@ export type GetQuoteResponseType = z.infer<typeof GetQuoteResponseSchema>;
 export const GetCollectionQuoteBodyRawSchema = createOutLinkChatTargetInputSchema(
   CollectionQuoteBodyPropsSchema
 );
-export const GetCollectionQuoteBodySchema =
-  GetCollectionQuoteBodyRawSchema.transform(transformChatTargetInput);
+export const GetCollectionQuoteBodySchema = GetCollectionQuoteBodyRawSchema.transform(
+  transformChatAuthTargetInput
+);
 export type GetCollectionQuoteBodyType = z.infer<typeof GetCollectionQuoteBodyRawSchema>;
 export type GetCollectionQuoteBodyRuntimeType = z.infer<typeof GetCollectionQuoteBodySchema>;
 
@@ -163,8 +167,9 @@ const GetRecordPropsSchema = {
 export const GetPaginationRecordsBodyRawSchema = PaginationSchema.extend(
   createOutLinkChatTargetInputSchema(GetRecordPropsSchema).shape
 ).superRefine(refineRequiredChatTargetInput);
-export const GetPaginationRecordsBodySchema =
-  GetPaginationRecordsBodyRawSchema.transform(transformChatTargetInput);
+export const GetPaginationRecordsBodySchema = GetPaginationRecordsBodyRawSchema.transform(
+  transformChatAuthTargetInput
+);
 export type GetPaginationRecordsBodyType = z.infer<typeof GetPaginationRecordsBodyRawSchema>;
 export type GetPaginationRecordsBodyRuntimeType = z.infer<typeof GetPaginationRecordsBodySchema>;
 
@@ -181,9 +186,11 @@ export type GetPaginationRecordsResponseType = z.infer<typeof GetPaginationRecor
  * Description: 获取对话（v2）
  * ============================================================================ */
 export const GetRecordsV2BodyRawSchema = LinkedPaginationSchema(
-  createChatTargetInputSchema(GetRecordPropsSchema).shape
+  createOutLinkChatTargetInputSchema(GetRecordPropsSchema).shape
 ).superRefine(refineRequiredChatTargetInput);
-export const GetRecordsV2BodySchema = GetRecordsV2BodyRawSchema.transform(transformChatTargetInput);
+export const GetRecordsV2BodySchema = GetRecordsV2BodyRawSchema.transform(
+  transformChatAuthTargetInput
+);
 export type GetRecordsV2BodyType = z.infer<typeof GetRecordsV2BodyRawSchema>;
 export type GetRecordsV2BodyRuntimeType = z.infer<typeof GetRecordsV2BodySchema>;
 export const GetRecordsV2ResponseSchema = LinkedListResponseSchema(ChatItemMiniSchema).extend({
@@ -198,11 +205,10 @@ export type GetRecordsV2ResponseType = z.infer<typeof GetRecordsV2ResponseSchema
  * Description: 将文本转换为语音，返回二进制音频数据流
  * ============================================================================ */
 
-export const GetChatSpeechBodySchema = OutLinkChatAuthSchema.extend({
-  appId: z.string().meta({ example: '68ad85a7463006c963799a05', description: '应用 ID' }),
+export const GetChatSpeechBodySchema = createOutLinkChatTargetInputSchema({
   ttsConfig: AppTTSConfigTypeSchema.meta({ description: 'TTS 配置' }),
   input: z.string().meta({ example: '你好，世界', description: '要转换的文本内容' })
-});
+}).transform(transformChatAuthTargetInput);
 export type GetChatSpeechBodyType = z.infer<typeof GetChatSpeechBodySchema>;
 
 /* ============================================================================
@@ -216,8 +222,9 @@ export const AudioTranscriptionsDataRawSchema = createOutLinkChatTargetInputSche
   chatId: z.string().min(1).max(256).describe('会话 ID'),
   duration: z.coerce.number().optional().describe('录音时长，单位秒')
 });
-export const AudioTranscriptionsDataSchema =
-  AudioTranscriptionsDataRawSchema.transform(transformChatTargetInput);
+export const AudioTranscriptionsDataSchema = AudioTranscriptionsDataRawSchema.transform(
+  transformChatAuthTargetInput
+);
 export type AudioTranscriptionsDataType = z.infer<typeof AudioTranscriptionsDataRawSchema>;
 export type AudioTranscriptionsDataRuntimeType = z.infer<typeof AudioTranscriptionsDataSchema>;
 

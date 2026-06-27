@@ -154,7 +154,7 @@ const ChatInput = ({
     showSelectAudio ||
     showSelectCustomFileExtension;
   const canUseInputGuide = enableInputGuide && !!appId && !!chatInputGuide.open;
-  const canUseVoiceInput = enableVoiceInput && !!appId && !!whisperConfig?.open;
+  const canUseVoiceInput = enableVoiceInput && !!sourceTarget.sourceId && !!whisperConfig?.open;
   const isDefaultInputHeight =
     !mobilePreSpeak && !inputValue && fileList.length === 0 && !canUseInputGuide;
 

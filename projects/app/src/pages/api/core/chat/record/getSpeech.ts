@@ -3,7 +3,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 
 import { text2Speech } from '@fastgpt/service/core/ai/audio/speech';
 import { pushAudioSpeechUsage } from '@/service/support/wallet/usage/push';
-import { authChatCrud } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
 import { authType2UsageSource } from '@/service/support/wallet/usage/utils';
 import { getTTSModel } from '@fastgpt/service/core/ai/model';
 import { MongoTTSBuffer } from '@fastgpt/service/common/buffer/tts/schema';
@@ -18,7 +18,7 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 */
 async function handler(req: ApiRequestProps, res: NextApiResponse) {
   try {
-    const { ttsConfig, input, ...authProps } = parseApiInput({
+    const { ttsConfig, input, sourceType, sourceId, outLinkAuthData } = parseApiInput({
       req,
       bodySchema: GetChatSpeechBodySchema
     }).body;
@@ -27,11 +27,13 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       throw new Error('model or voice not found');
     }
 
-    const { teamId, tmbId, authType } = await authChatCrud({
+    const { teamId, tmbId, authType } = await authChatTargetCrud({
       req,
       authToken: true,
       authApiKey: true,
-      ...authProps
+      sourceType,
+      sourceId,
+      outLinkAuthData
     });
 
     const ttsModel = getTTSModel(ttsConfig.model);

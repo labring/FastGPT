@@ -73,6 +73,10 @@ AGENT_SANDBOX_PYPI_INDEX_URL=
 
 The configuration is cached by content hash in the sandbox runtime state, so the same sandbox only rewrites these files when the configuration changes.
 
+### 5. Upgrade the Agent Sandbox Proxy image
+
+If Agent Sandbox is enabled, upgrade the `fastgpt-agent-sandbox-proxy` image to `v0.2.0-beta3`.
+
 ## ⚙️ Improvements
 
 1. Chat title generation now uses the system default model configuration, making it easier to switch at runtime and manage consistently.

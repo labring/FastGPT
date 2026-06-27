@@ -73,6 +73,10 @@ AGENT_SANDBOX_PYPI_INDEX_URL=
 
 该配置会按内容 hash 缓存在 sandbox runtime state 中，同一个 sandbox 仅在配置变化时重新写入。
 
+### 5. 升级 Agent Sandbox Proxy 镜像
+
+启用 Agent Sandbox 的环境，需要将 `fastgpt-agent-sandbox-proxy` 镜像升级到 `v0.2.0-beta3`。
+
 ## ⚙️ 优化
 
 1. 对话标题生成模型改为使用系统默认模型配置管理，便于运行时切换和统一维护。

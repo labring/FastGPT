@@ -22,34 +22,41 @@ async function handler(req: ApiRequestProps): Promise<GetQuoteResponseType> {
     sourceId,
     chatId,
     chatItemDataId,
-    shareId,
-    outLinkUid,
-    teamId,
-    teamToken,
+    outLinkAuthData,
     collectionIdList,
     datasetDataIdList
   } = parseApiInput({ req, bodySchema: GetQuoteBodySchema }).body;
 
-  const [{ chat, showCite }, chatItem] = await Promise.all([
-    authChatTargetCrud({
-      req,
-      authToken: true,
-      authApiKey: true,
-      sourceType,
-      sourceId,
-      chatId,
-      shareId,
-      outLinkUid,
-      teamId,
-      teamToken
-    }),
+  const authRes = await authChatTargetCrud({
+    req,
+    authToken: true,
+    authApiKey: true,
+    sourceType,
+    sourceId,
+    chatId,
+    outLinkAuthData
+  });
+  const resolvedSourceId = authRes.sourceId;
+
+  const [chatItem] = await Promise.all([
     MongoChatItem.findOne(
-      { ...buildChatSourceQuery({ sourceType, sourceId }), chatId, dataId: chatItemDataId },
+      {
+        ...buildChatSourceQuery({ sourceType, sourceId: resolvedSourceId }),
+        chatId,
+        dataId: chatItemDataId
+      },
       'time'
     ).lean(),
-    authCollectionInChat({ sourceType, sourceId, chatId: chatId!, collectionIds: collectionIdList })
+    authCollectionInChat({
+      sourceType,
+      sourceId: resolvedSourceId,
+      chatId: chatId!,
+      collectionIds: collectionIdList
+    })
   ]);
-  if (!chat || !chatItem || !showCite) return Promise.reject(ChatErrEnum.unAuthChat);
+  if (!authRes.chat || !chatItem || !authRes.showCite) {
+    return Promise.reject(ChatErrEnum.unAuthChat);
+  }
 
   const list = await MongoDatasetData.find(
     { _id: { $in: datasetDataIdList }, collectionId: { $in: collectionIdList } },

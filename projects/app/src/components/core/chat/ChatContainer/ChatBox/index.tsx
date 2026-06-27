@@ -187,7 +187,6 @@ const ChatBox = ({
   const itemRefs = useContextSelector(ChatRecordContext, (v) => v.itemRefs);
 
   const sourceKey = useContextSelector(WorkflowRuntimeContext, (v) => v.sourceKey);
-  const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
   const sourceTarget = useContextSelector(WorkflowRuntimeContext, (v) => v.sourceTarget);
   const chatTarget = useChatApiTarget(sourceTarget);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
@@ -338,7 +337,7 @@ const ChatBox = ({
     TextareaDom
   });
   const createQuestionGuide = useQuestionGuide({
-    appId: resolvedFeatures.inputGuide ? appId || '' : '',
+    chatTarget: resolvedFeatures.inputGuide ? chatTarget : undefined,
     chatId,
     questionGuide,
     outLinkAuthData,

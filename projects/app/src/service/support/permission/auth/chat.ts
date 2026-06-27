@@ -257,13 +257,29 @@ export async function authChatCrud({
   return Promise.reject(ChatErrEnum.unAuthChat);
 }
 
-export type ChatTargetAuthParams = AuthModeType &
-  OutLinkChatAuthProps & {
-    sourceType: ChatSourceTypeEnum;
-    sourceId: string;
-    chatId?: string;
-    per?: number;
-  };
+export type ChatTargetAuthParams = AuthModeType & {
+  sourceType: ChatSourceTypeEnum;
+  sourceId?: string;
+  chatId?: string;
+  outLinkAuthData?: OutLinkChatAuthProps;
+  per?: number;
+};
+
+type AuthChatTargetCrudResult = {
+  appId?: string;
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
+  teamId: string;
+  tmbId: string;
+  uid: string;
+  chat?: ChatSchemaType;
+  showCite: boolean;
+  showRunningStatus: boolean;
+  showSkillReferences: boolean;
+  showFullText: boolean;
+  canDownloadSource: boolean;
+  authType?: `${AuthUserTypeEnum}`;
+};
 
 /**
  * 标准 chat target 鉴权入口。
@@ -275,31 +291,32 @@ export async function authChatTargetCrud({
   sourceType,
   sourceId,
   chatId,
+  outLinkAuthData,
   per = ReadPermissionVal,
   ...props
-}: ChatTargetAuthParams): Promise<{
-  appId?: string;
-  teamId: string;
-  tmbId: string;
-  uid: string;
-  chat?: ChatSchemaType;
-  showCite: boolean;
-  showRunningStatus: boolean;
-  showSkillReferences: boolean;
-  showFullText: boolean;
-  canDownloadSource: boolean;
-  authType?: string;
-}> {
+}: ChatTargetAuthParams): Promise<AuthChatTargetCrudResult> {
   if (sourceType === ChatSourceTypeEnum.app) {
-    return authChatCrud({
+    const authRes = await authChatCrud({
       ...props,
       appId: sourceId,
       chatId,
+      ...outLinkAuthData,
       per
     });
+
+    const resolvedSourceId = sourceId ?? authRes.appId;
+    if (!resolvedSourceId) return Promise.reject(ChatErrEnum.unAuthChat);
+
+    return {
+      ...authRes,
+      sourceType,
+      sourceId: resolvedSourceId
+    };
   }
 
   if (sourceType === ChatSourceTypeEnum.skillEdit) {
+    if (!sourceId) return Promise.reject(ChatErrEnum.unAuthChat);
+
     const authRes = await authSkill({
       ...props,
       skillId: sourceId,
@@ -327,6 +344,8 @@ export async function authChatTargetCrud({
       showSkillReferences: true,
       showFullText: true,
       canDownloadSource: true,
+      sourceType,
+      sourceId,
       authType: authRes.authType
     };
   }

@@ -1,5 +1,4 @@
-import { authChatCrud } from '@/service/support/permission/auth/chat';
-import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
+import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
@@ -31,56 +30,45 @@ export async function authSandboxSession({
 }: {
   req: ApiRequestProps;
   sourceType: ChatSourceTypeEnum;
-  sourceId: string;
+  sourceId?: string;
   chatId: string;
   outLinkAuthData?: OutLinkChatAuthProps;
   per?: number;
-}): Promise<{ uid: string; teamId: string }> {
+}): Promise<{ uid: string; teamId: string; sourceType: ChatSourceTypeEnum; sourceId: string }> {
   const result = await (async () => {
     if (sourceType === ChatSourceTypeEnum.skillEdit) {
       if (chatId !== EDIT_DEBUG_SANDBOX_CHAT_ID) {
         throw new Error('Skill edit sandbox only supports edit-debug chat');
       }
-
-      const authResult = await authSkill({
-        req,
-        authToken: true,
-        authApiKey: true,
-        skillId: sourceId,
-        per
-      });
-      return {
-        uid: authResult.tmbId,
-        teamId: authResult.teamId
-      };
     }
 
-    const authResult = await authChatCrud({
+    const authResult = await authChatTargetCrud({
       req,
       authToken: true,
       authApiKey: true,
-      appId: sourceId,
+      sourceType,
+      sourceId,
       chatId,
-      shareId: outLinkAuthData?.shareId,
-      outLinkUid: outLinkAuthData?.outLinkUid,
-      teamId: outLinkAuthData?.teamId,
-      teamToken: outLinkAuthData?.teamToken
+      outLinkAuthData,
+      per
     });
 
     // 普通 Chat 鉴权只证明会话可访问；写入沙盒文件时还需要显式校验 App 写权限。
-    if (per !== ReadPermissionVal) {
+    if (sourceType === ChatSourceTypeEnum.app && per !== ReadPermissionVal) {
       await authApp({
         req,
         authToken: true,
         authApiKey: true,
-        appId: sourceId,
+        appId: authResult.sourceId,
         per
       });
     }
 
     return {
       uid: authResult.uid,
-      teamId: authResult.teamId
+      teamId: authResult.teamId,
+      sourceType: authResult.sourceType,
+      sourceId: authResult.sourceId
     };
   })();
 

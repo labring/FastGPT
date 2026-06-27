@@ -1,6 +1,6 @@
 import { ObjectIdSchema } from '../../../common/type/mongo';
 import { ChatGenerateStatusEnum, ChatSourceTypeEnum } from '../../../core/chat/constants';
-import { OutLinkChatAuthSchema } from '../../../support/permission/chat';
+import { OutLinkChatAuthSchema, type OutLinkChatAuthProps } from '../../../support/permission/chat';
 import z from 'zod';
 
 export const ChatGenerateStatusSchema = z
@@ -21,7 +21,22 @@ const ChatTargetInputShape = {
 type ChatTargetInput = {
   appId?: unknown;
   skillId?: unknown;
+  shareId?: unknown;
+  outLinkUid?: unknown;
+  teamId?: unknown;
+  teamToken?: unknown;
+  outLinkAuthData?: unknown;
   [key: string]: unknown;
+};
+
+const OutLinkChatAuthInputShape = {
+  ...OutLinkChatAuthSchema.shape,
+  outLinkAuthData: OutLinkChatAuthSchema.optional().describe('外链或团队空间鉴权数据')
+};
+
+type RefineChatAuthTargetInputOptions = {
+  required: boolean;
+  allowTeamIdWithoutToken?: boolean;
 };
 
 export type ChatTargetInputType =
@@ -34,6 +49,33 @@ export type ChatTargetInputType =
       skillId: string;
     };
 export type ChatTargetResponseType = ChatTargetInputType;
+
+const getNestedOutLinkAuthData = (data: ChatTargetInput) => {
+  const outLinkAuthData = data.outLinkAuthData;
+
+  if (!outLinkAuthData || typeof outLinkAuthData !== 'object') {
+    return {};
+  }
+
+  return outLinkAuthData as {
+    shareId?: unknown;
+    outLinkUid?: unknown;
+    teamId?: unknown;
+    teamToken?: unknown;
+  };
+};
+
+const getNormalizedOutLinkAuthData = (data: ChatTargetInput): OutLinkChatAuthProps | undefined => {
+  const nestedAuthData = getNestedOutLinkAuthData(data);
+  const authData = {
+    shareId: data.shareId ?? nestedAuthData.shareId,
+    outLinkUid: data.outLinkUid ?? nestedAuthData.outLinkUid,
+    teamId: data.teamId ?? nestedAuthData.teamId,
+    teamToken: data.teamToken ?? nestedAuthData.teamToken
+  } as OutLinkChatAuthProps;
+
+  return Object.values(authData).some(Boolean) ? authData : undefined;
+};
 
 export const ChatTargetResponseSchema = z.union([
   z.object({
@@ -78,25 +120,108 @@ export const createChatTargetResponseSchema = <T extends z.ZodRawShape>(shape: T
   z.intersection(z.object(shape), ChatTargetResponseSchema);
 
 export const refineRequiredChatTargetInput = (
-  data: { appId?: unknown; skillId?: unknown },
+  data: {
+    appId?: unknown;
+    skillId?: unknown;
+    shareId?: unknown;
+    outLinkUid?: unknown;
+    teamId?: unknown;
+    teamToken?: unknown;
+    outLinkAuthData?: unknown;
+  },
   ctx: z.RefinementCtx
 ) => {
-  if (!!data.appId === !!data.skillId) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'appId or skillId must be provided, but not both'
-    });
-  }
+  refineChatAuthTargetInput(data, ctx, { required: true });
 };
 
 export const refineOptionalChatTargetInput = (
-  data: { appId?: unknown; skillId?: unknown },
+  data: {
+    appId?: unknown;
+    skillId?: unknown;
+    shareId?: unknown;
+    outLinkUid?: unknown;
+    teamId?: unknown;
+    teamToken?: unknown;
+    outLinkAuthData?: unknown;
+  },
   ctx: z.RefinementCtx
 ) => {
-  if (data.appId && data.skillId) {
+  refineChatAuthTargetInput(data, ctx, { required: false });
+};
+
+/**
+ * 校验 chat API 的资源 target 与授权上下文组合。
+ *
+ * `appId/skillId` 负责定位会话资源；share 模式可以只传 `shareId/outLinkUid`，
+ * 由后端鉴权解析真实 appId。团队空间 token 不能单独定位 App，仍必须带 appId。
+ */
+const refineChatAuthTargetInput = (
+  data: ChatTargetInput,
+  ctx: z.RefinementCtx,
+  { required, allowTeamIdWithoutToken = false }: RefineChatAuthTargetInputOptions
+) => {
+  const hasAppTarget = !!data.appId;
+  const hasSkillTarget = !!data.skillId;
+  const nestedAuthData = getNestedOutLinkAuthData(data);
+  const shareId = data.shareId ?? nestedAuthData.shareId;
+  const outLinkUid = data.outLinkUid ?? nestedAuthData.outLinkUid;
+  const teamId = data.teamId ?? nestedAuthData.teamId;
+  const teamToken = data.teamToken ?? nestedAuthData.teamToken;
+  const hasShareId = !!shareId;
+  const hasOutLinkUid = !!outLinkUid;
+  const hasTeamId = !!teamId;
+  const hasTeamToken = !!teamToken;
+  const hasShareAuth = hasShareId || hasOutLinkUid;
+  const hasTeamAuth = hasTeamId || hasTeamToken;
+  const hasCompleteShareAuth = hasShareId && hasOutLinkUid;
+  const hasCompleteTeamAuth = hasTeamId && hasTeamToken;
+
+  if (hasAppTarget && hasSkillTarget) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: 'appId and skillId cannot be provided at the same time'
+    });
+  }
+
+  if (hasShareAuth && !hasCompleteShareAuth) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'shareId and outLinkUid must be provided together'
+    });
+  }
+
+  if (hasTeamAuth && !hasCompleteTeamAuth && !(allowTeamIdWithoutToken && hasTeamId)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'teamId and teamToken must be provided together'
+    });
+  }
+
+  if (hasSkillTarget && (hasShareAuth || hasTeamAuth)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'skillId cannot be used with share or team auth'
+    });
+  }
+
+  if (!hasAppTarget && hasTeamAuth) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'team auth requires appId'
+    });
+  }
+
+  if (hasCompleteShareAuth && hasCompleteTeamAuth) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'share auth and team auth cannot be provided at the same time'
+    });
+  }
+
+  if (required && !hasAppTarget && !hasSkillTarget && !hasCompleteShareAuth) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'appId, skillId or share auth must be provided'
     });
   }
 };
@@ -119,25 +244,77 @@ export const transformChatTargetInput = <T extends ChatTargetInput>(data: T) => 
 };
 
 /**
+ * 将包含授权上下文的 chat target 转换为内部 source。
+ *
+ * share-only 模式没有显式 appId，运行时先输出 `sourceType=app/sourceId=undefined`；
+ * 外链/团队空间上下文统一收敛到 `outLinkAuthData`，再由 `authChatTargetCrud`
+ * 解析真实 sourceId。
+ */
+export const transformChatAuthTargetInput = <T extends ChatTargetInput>(data: T) => {
+  const { appId, skillId, shareId, outLinkUid, teamId, teamToken, outLinkAuthData, ...rest } = data;
+  const sourceId = (appId || skillId) as string | undefined;
+  const normalizedOutLinkAuthData = getNormalizedOutLinkAuthData(data);
+  const hasShareAuth = !!(
+    normalizedOutLinkAuthData?.shareId && normalizedOutLinkAuthData?.outLinkUid
+  );
+
+  if (!sourceId && hasShareAuth) {
+    return {
+      ...rest,
+      outLinkAuthData: normalizedOutLinkAuthData,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId
+    };
+  }
+
+  return {
+    ...rest,
+    ...(normalizedOutLinkAuthData ? { outLinkAuthData: normalizedOutLinkAuthData } : {}),
+    sourceType: appId ? ChatSourceTypeEnum.app : ChatSourceTypeEnum.skillEdit,
+    sourceId: sourceId!
+  };
+};
+
+/**
  * 可选 chat target 的转换函数。
  *
  * 仅用于外链、团队空间等允许从鉴权上下文推导 App 的接口；如果传入了 target，
  * 仍会转换为内部 `sourceType/sourceId`。
  */
 export const transformOptionalChatTargetInput = <T extends ChatTargetInput>(data: T) => {
-  const { appId, skillId, ...rest } = data;
+  const { appId, skillId, shareId, outLinkUid, teamId, teamToken, outLinkAuthData, ...rest } = data;
   const sourceId = (appId || skillId) as string | undefined;
+  const normalizedOutLinkAuthData = getNormalizedOutLinkAuthData(data);
+  const hasShareAuth = !!(
+    normalizedOutLinkAuthData?.shareId && normalizedOutLinkAuthData?.outLinkUid
+  );
+
+  if (!sourceId && hasShareAuth) {
+    return {
+      ...rest,
+      outLinkAuthData: normalizedOutLinkAuthData,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: undefined
+    };
+  }
 
   return {
     ...rest,
+    ...(normalizedOutLinkAuthData ? { outLinkAuthData: normalizedOutLinkAuthData } : {}),
     ...(appId || skillId
       ? {
           sourceType: appId ? ChatSourceTypeEnum.app : ChatSourceTypeEnum.skillEdit,
           sourceId: sourceId!
         }
-      : {})
+      : {
+          sourceType: undefined,
+          sourceId: undefined
+        })
   };
 };
+
+/** 包含授权上下文、且允许缺省 target 的转换函数。 */
+export const transformOptionalChatAuthTargetInput = transformOptionalChatTargetInput;
 
 /**
  * 构造对外 API 使用的 chat target 入参 schema。
@@ -175,10 +352,36 @@ export const createOptionalChatTargetInputSchema = <T extends z.ZodRawShape>(sha
  * 否则会丢失 `createChatTargetInputSchema` 上 appId/skillId 互斥校验。
  */
 export const createOutLinkChatTargetInputSchema = <T extends z.ZodRawShape>(shape: T) =>
-  createChatTargetInputSchema({
-    ...OutLinkChatAuthSchema.shape,
-    ...shape
-  });
+  z
+    .object({
+      ...ChatTargetInputShape,
+      ...OutLinkChatAuthInputShape,
+      ...shape
+    })
+    .superRefine(refineRequiredChatTargetInput);
+
+/**
+ * 构造包含外链/团队字段的 chat target schema，并允许调用方处理兼容字段。
+ *
+ * 少数旧接口会把业务上下文 `teamId` 放在顶层 query 中，它不是团队空间鉴权字段。
+ * 这类接口需要继续保留字段，但不能触发 `teamId/teamToken` 成对校验。
+ */
+export const createOutLinkChatTargetInputSchemaWithOptions = <T extends z.ZodRawShape>(
+  shape: T,
+  options: Partial<Omit<RefineChatAuthTargetInputOptions, 'required'>>
+) =>
+  z
+    .object({
+      ...ChatTargetInputShape,
+      ...OutLinkChatAuthInputShape,
+      ...shape
+    })
+    .superRefine((data, ctx) =>
+      refineChatAuthTargetInput(data, ctx, {
+        required: true,
+        ...options
+      })
+    );
 
 /**
  * 构造允许缺省 chat target、且包含外链/团队鉴权字段的入参 schema。
@@ -186,10 +389,13 @@ export const createOutLinkChatTargetInputSchema = <T extends z.ZodRawShape>(shap
  * 仅用于外链、团队空间等允许从鉴权上下文推导 App 的接口。
  */
 export const createOptionalOutLinkChatTargetInputSchema = <T extends z.ZodRawShape>(shape: T) =>
-  createOptionalChatTargetInputSchema({
-    ...OutLinkChatAuthSchema.shape,
-    ...shape
-  });
+  z
+    .object({
+      ...ChatTargetInputShape,
+      ...OutLinkChatAuthInputShape,
+      ...shape
+    })
+    .superRefine(refineOptionalChatTargetInput);
 
 /**
  * API route runtime schema helper.
@@ -209,11 +415,11 @@ export const withOptionalChatTarget = <T extends z.ZodRawShape>(shape: T) =>
 
 /** 包含外链/团队鉴权字段的必填 chat target runtime schema helper。 */
 export const withOutLinkChatTarget = <T extends z.ZodRawShape>(shape: T) =>
-  createOutLinkChatTargetInputSchema(shape).transform(transformChatTargetInput);
+  createOutLinkChatTargetInputSchema(shape).transform(transformChatAuthTargetInput);
 
 /** 包含外链/团队鉴权字段的可选 chat target runtime schema helper。 */
 export const withOptionalOutLinkChatTarget = <T extends z.ZodRawShape>(shape: T) =>
-  createOptionalOutLinkChatTargetInputSchema(shape).transform(transformOptionalChatTargetInput);
+  createOptionalOutLinkChatTargetInputSchema(shape).transform(transformOptionalChatAuthTargetInput);
 
 /* Recently Used Apps */
 export const GetRecentlyUsedAppsResponseSchema = z.array(

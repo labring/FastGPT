@@ -87,32 +87,26 @@ export const config = {
 
 // GET /api/core/chat/resume?chatId=xxx&appId=xxx 或 skillId=xxx（断线续传）
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const {
-    chatId,
-    sourceType,
-    sourceId,
-    teamId: requestTeamId,
-    teamToken,
-    shareId,
-    outLinkUid
-  } = parseApiInput({ req, querySchema: ResumeStreamParamsSchema }).query;
+  const { chatId, sourceType, sourceId, outLinkAuthData } = parseApiInput({
+    req,
+    querySchema: ResumeStreamParamsSchema
+  }).query;
   const respondWithSse = shouldRespondWithSse(req);
 
-  const { teamId, showCite = true } = await authChatTargetCrud({
+  const authRes = await authChatTargetCrud({
     sourceType,
     sourceId,
     req,
     chatId,
-    teamId: requestTeamId,
-    teamToken,
-    shareId,
-    outLinkUid,
+    outLinkAuthData,
     authToken: true
   });
+  const { teamId, showCite = true } = authRes;
+  const resolvedSourceId = authRes.sourceId;
 
   const findCurrentChat = async (): Promise<CurrentChatState> => {
     const chat = await MongoChat.findOne(
-      { chatId, ...buildChatSourceQuery({ sourceType, sourceId }) },
+      { chatId, ...buildChatSourceQuery({ sourceType, sourceId: resolvedSourceId }) },
       { hasBeenRead: 1, chatGenerateStatus: 1 }
     ).lean();
     if (!chat) {
@@ -128,7 +122,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const chat = await findCurrentChat();
     const result = await getChatItems({
       sourceType,
-      sourceId,
+      sourceId: resolvedSourceId,
       chatId,
       field:
         'obj value adminFeedback userGoodFeedback userBadFeedback time hideInUI durationSeconds errorMsg customFeedbacks isFeedbackRead deleteTime',
@@ -158,7 +152,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   const makeSureTheCompletedChatHasBeenRead = async () => {
     await MongoChat.updateOne(
-      { ...buildChatSourceQuery({ sourceType, sourceId }), chatId },
+      { ...buildChatSourceQuery({ sourceType, sourceId: resolvedSourceId }), chatId },
       { $set: { hasBeenRead: true } }
     );
   };
@@ -221,7 +215,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   const unavailableState = await getStreamResumeUnavailableState({
     teamId,
     sourceType,
-    sourceId,
+    sourceId: resolvedSourceId,
     chatId
   });
 
@@ -238,10 +232,16 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     return;
   }
 
-  const cursor = await catchUpAllHistoryItems({ res, teamId, sourceType, sourceId, chatId });
+  const cursor = await catchUpAllHistoryItems({
+    res,
+    teamId,
+    sourceType,
+    sourceId: resolvedSourceId,
+    chatId
+  });
 
   writeResumePhase(res, StreamResumePhaseEnum.live);
-  await _resume({ res, teamId, sourceType, sourceId, chatId, cursor });
+  await _resume({ res, teamId, sourceType, sourceId: resolvedSourceId, chatId, cursor });
 
   res.end();
 }

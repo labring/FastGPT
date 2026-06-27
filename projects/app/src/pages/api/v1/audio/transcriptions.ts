@@ -21,10 +21,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       sourceId,
       chatId,
       duration: rawDuration,
-      shareId,
-      outLinkUid,
-      teamId: spaceTeamId,
-      teamToken
+      outLinkAuthData
     } = parseApiInput({
       req: { body: result.data },
       bodySchema: AudioTranscriptionsDataSchema
@@ -48,10 +45,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       sourceType,
       sourceId,
       chatId,
-      shareId,
-      outLinkUid,
-      teamId: spaceTeamId,
-      teamToken
+      outLinkAuthData
     });
 
     const transcriptionsResult = await aiTranscriptions({

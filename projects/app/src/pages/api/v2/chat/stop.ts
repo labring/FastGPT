@@ -20,33 +20,34 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<StopV
     body: { sourceType, sourceId, chatId, outLinkAuthData }
   } = parseApiInput({ req, bodySchema: StopV2ChatSchema });
 
-  await authChatTargetCrud({
+  const authRes = await authChatTargetCrud({
     req,
     authToken: true,
     authApiKey: true,
     sourceType,
     sourceId,
     chatId,
-    ...outLinkAuthData
+    outLinkAuthData
   });
+  const resolvedSourceId = authRes.sourceId;
 
   // 设置停止状态
   await setAgentRuntimeStop({
     sourceType,
-    sourceId,
+    sourceId: resolvedSourceId,
     chatId
   });
 
   // 等待工作流完成 (最多等待 5 秒)
   await waitForWorkflowComplete({
     sourceType,
-    sourceId,
+    sourceId: resolvedSourceId,
     chatId,
     timeout: 5000
   });
 
   const chat = await MongoChat.findOne(
-    { ...buildChatSourceQuery({ sourceType, sourceId }), chatId },
+    { ...buildChatSourceQuery({ sourceType, sourceId: resolvedSourceId }), chatId },
     'chatGenerateStatus'
   ).lean();
   const chatGenerateStatus = chat?.chatGenerateStatus ?? ChatGenerateStatusEnum.done;

@@ -8,6 +8,8 @@ import {
   ChatGenerateStatusSchema,
   createChatTargetInputSchema,
   createChatTargetResponseSchema,
+  createOutLinkChatTargetInputSchema,
+  transformChatAuthTargetInput,
   transformChatTargetInput
 } from '../api';
 
@@ -60,7 +62,7 @@ export const InitChatResponseSchema = createChatTargetResponseSchema({
 export type InitChatResponseType = z.infer<typeof InitChatResponseSchema>;
 
 /* ============ v2/chat/stop ============ */
-export const StopV2ChatRawSchema = createChatTargetInputSchema({
+export const StopV2ChatRawSchema = createOutLinkChatTargetInputSchema({
   chatId: z.string().min(1).describe('会话ID'),
   outLinkAuthData: OutLinkChatAuthSchema.optional().describe('外链鉴权数据')
 }).meta({
@@ -73,7 +75,7 @@ export const StopV2ChatRawSchema = createChatTargetInputSchema({
     }
   }
 });
-export const StopV2ChatSchema = StopV2ChatRawSchema.transform(transformChatTargetInput);
+export const StopV2ChatSchema = StopV2ChatRawSchema.transform(transformChatAuthTargetInput);
 export type StopV2ChatParams = z.infer<typeof StopV2ChatRawSchema>;
 export type StopV2ChatRuntimeParams = z.infer<typeof StopV2ChatSchema>;
 

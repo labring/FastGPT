@@ -74,6 +74,8 @@ describe('presignChatFilePostUrl', () => {
     vi.clearAllMocks();
 
     mocks.authChatTargetCrud.mockResolvedValue({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
       teamId: 'team-id',
       uid: 'user-id'
     });
@@ -132,6 +134,8 @@ describe('presignChatFilePostUrl', () => {
   it('uses skillId as source-aware upload target', async () => {
     const skillId = '507f1f77bcf86cd799439012';
     mocks.authChatTargetCrud.mockResolvedValueOnce({
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: skillId,
       teamId: 'team-id',
       uid: 'skill-user-id'
     });
@@ -166,6 +170,56 @@ describe('presignChatFilePostUrl', () => {
         chatId,
         filename,
         uId: 'skill-user-id'
+      })
+    );
+  });
+
+  it('uses resolved app source for shared chat upload', async () => {
+    const resolvedAppId = '507f1f77bcf86cd799439099';
+    mocks.authChatTargetCrud.mockResolvedValueOnce({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: resolvedAppId,
+      teamId: 'team-id',
+      uid: 'share-user-id'
+    });
+
+    await expect(
+      callHandler({
+        filename,
+        chatId,
+        fileSelectConfig: {
+          canSelectFile: true,
+          customFileExtensionList: ['.txt']
+        },
+        outLinkAuthData: {
+          shareId: 'share-id',
+          outLinkUid: 'share-user-id'
+        }
+      })
+    ).resolves.toMatchObject({
+      url: 'https://example.com/upload-token'
+    });
+
+    expect(mocks.authChatTargetCrud).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: undefined,
+        outLinkAuthData: {
+          shareId: 'share-id',
+          outLinkUid: 'share-user-id'
+        },
+        chatId,
+        authToken: true,
+        authApiKey: true
+      })
+    );
+    expect(mocks.createUploadChatFileURL).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: resolvedAppId,
+        chatId,
+        filename,
+        uId: 'share-user-id'
       })
     );
   });

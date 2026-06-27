@@ -231,6 +231,8 @@ describe('stream resume api', () => {
     delete redis.duplicate;
 
     vi.mocked(authChatTargetCrud).mockResolvedValue({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
       teamId,
       tmbId: 'tmb-test',
       uid: 'user-test',
@@ -741,8 +743,10 @@ describe('stream resume api', () => {
         sourceType: ChatSourceTypeEnum.app,
         sourceId: appId,
         chatId,
-        shareId: 'share-test',
-        outLinkUid: 'outlink-user',
+        outLinkAuthData: {
+          shareId: 'share-test',
+          outLinkUid: 'outlink-user'
+        },
         authToken: true
       })
     );

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { PaginationSchema } from '../../../api';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
+import { refineRequiredChatTargetInput, transformChatAuthTargetInput } from '../api';
 
 /* ============================================================================
  * API: 获取对话输入引导列表
@@ -129,11 +130,19 @@ export type DeleteAllChatInputGuideResponseType = z.infer<
  * Tags: ['Chat', 'InputGuide', 'Read']
  * ============================================================================ */
 
-export const QueryChatInputGuideBodySchema = OutLinkChatAuthSchema.extend({
-  appId: z.string().meta({ example: '68ad85a7463006c963799a05', description: '应用 ID' }),
-  searchKey: z.string().meta({ example: '如何使用', description: '搜索关键词' })
-});
-export type QueryChatInputGuideBodyType = z.infer<typeof QueryChatInputGuideBodySchema>;
+export const QueryChatInputGuideBodyRawSchema = z
+  .object({
+    ...OutLinkChatAuthSchema.shape,
+    outLinkAuthData: OutLinkChatAuthSchema.optional().describe('外链鉴权数据'),
+    appId: ObjectIdSchema.meta({ example: '68ad85a7463006c963799a05', description: '应用 ID' }),
+    searchKey: z.string().meta({ example: '如何使用', description: '搜索关键词' })
+  })
+  .superRefine(refineRequiredChatTargetInput);
+export const QueryChatInputGuideBodySchema = QueryChatInputGuideBodyRawSchema.transform(
+  transformChatAuthTargetInput
+);
+export type QueryChatInputGuideBodyType = z.infer<typeof QueryChatInputGuideBodyRawSchema>;
+export type QueryChatInputGuideRuntimeBodyType = z.infer<typeof QueryChatInputGuideBodySchema>;
 
 export const QueryChatInputGuideResponseSchema = z.array(
   z.string().meta({ example: '如何开始使用？', description: '引导文本' })

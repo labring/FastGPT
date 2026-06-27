@@ -63,7 +63,11 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
     bodySchema: SandboxDownloadBodySchema
   }).body;
 
-  const { uid } = await authSandboxSession({
+  const {
+    uid,
+    sourceType: resolvedSourceType,
+    sourceId: resolvedSourceId
+  } = await authSandboxSession({
     req,
     sourceType,
     sourceId,
@@ -74,8 +78,8 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
 
   const sandbox = await getSandboxClient(
     buildSandboxClientQueryFromChatSource({
-      sourceType,
-      sourceId,
+      sourceType: resolvedSourceType,
+      sourceId: resolvedSourceId,
       userId: uid,
       chatId
     })

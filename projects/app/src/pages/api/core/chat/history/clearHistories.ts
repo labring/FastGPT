@@ -10,16 +10,13 @@ import { buildClearChatHistoriesMatch } from '@/service/core/chat/history';
 /* clear all chat histories of an app */
 export async function handler(req: ApiRequestProps, res: NextApiResponse) {
   const { query } = parseApiInput({ req, querySchema: ClearChatHistoriesSchema });
-  const { sourceType, sourceId, shareId, outLinkUid, teamId, teamToken } = query;
+  const { sourceType, sourceId, outLinkAuthData } = query;
 
   const match = await buildClearChatHistoriesMatch({
     req,
     sourceType,
     sourceId,
-    shareId,
-    outLinkUid,
-    teamId,
-    teamToken
+    outLinkAuthData
   });
   if (!match) return Promise.reject(ChatErrEnum.unAuthChat);
 

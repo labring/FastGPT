@@ -19,6 +19,7 @@ import { useMemoizedFn } from 'ahooks';
 import ProModal from '@/components/ProTip/ProModal';
 import { useSkillDebugChatStore } from '../useSkillDebugChatStore';
 import { getSkillEditChatSourceKey } from '@/web/core/chat/utils';
+import { defaultQGConfig, defaultWhisperConfig } from '@fastgpt/global/core/app/constants';
 
 const fileSelectConfig: AppFileSelectConfigType = {
   maxFiles: 10,
@@ -73,7 +74,18 @@ const SkillPreview = () => {
         chatGenerateStatus: isSameChat ? prev.chatGenerateStatus : undefined,
         hasBeenRead: isSameChat ? prev.hasBeenRead : undefined,
         app: {
-          chatConfig: { fileSelectConfig },
+          chatConfig: {
+            fileSelectConfig,
+            questionGuide: {
+              ...defaultQGConfig,
+              open: true,
+              model: fallbackModel
+            },
+            whisperConfig: {
+              ...defaultWhisperConfig,
+              open: true
+            }
+          },
           name: 'Skill Preview',
           avatar: '',
           type: AppTypeEnum.simple,
@@ -81,7 +93,7 @@ const SkillPreview = () => {
         }
       };
     });
-  }, [skillId, chatId, setChatBoxData]);
+  }, [skillId, chatId, fallbackModel, setChatBoxData]);
 
   const ModelSelectorInput = useMemo(() => {
     return (
@@ -127,9 +139,9 @@ const SkillPreview = () => {
         chatType={ChatTypeEnum.test}
         features={{
           markRead: false,
-          voice: false,
+          voice: true,
           tts: false,
-          inputGuide: false,
+          inputGuide: true,
           sandbox: false
         }}
         onStartChat={onStartChat}

@@ -10,7 +10,7 @@ import {
   DeleteChatInputGuideResponseSchema,
   DeleteAllChatInputGuideBodySchema,
   DeleteAllChatInputGuideResponseSchema,
-  QueryChatInputGuideBodySchema,
+  QueryChatInputGuideBodyRawSchema,
   QueryChatInputGuideResponseSchema,
   UpdateChatInputGuideBodySchema,
   UpdateChatInputGuideResponseSchema
@@ -146,7 +146,7 @@ export const ChatInputGuidePath: OpenAPIPath = {
       requestBody: {
         content: {
           'application/json': {
-            schema: QueryChatInputGuideBodySchema
+            schema: QueryChatInputGuideBodyRawSchema
           }
         }
       },

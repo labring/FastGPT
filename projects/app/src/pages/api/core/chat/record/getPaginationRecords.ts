@@ -31,36 +31,40 @@ export async function handler(req: ApiRequestProps): Promise<GetPaginationRecord
     chatId,
     loadCustomFeedbacks = false,
     type = GetChatTypeEnum.normal,
-    ...authProps
+    outLinkAuthData
   } = parseApiInput({ req, bodySchema: GetPaginationRecordsBodySchema }).body;
 
   const { offset, pageSize } = parsePaginationRequest(req);
 
-  if (!sourceId || !chatId) {
+  if (!chatId) {
     return {
       list: [],
       total: 0
     };
   }
 
-  const [app, { showCite, showRunningStatus, showSkillReferences, authType }] = await Promise.all([
-    sourceType === ChatSourceTypeEnum.app ? MongoApp.findById(sourceId, 'type').lean() : null,
-    authChatTargetCrud({
-      req,
-      authToken: true,
-      authApiKey: true,
-      sourceType,
-      sourceId,
-      chatId,
-      ...authProps
-    })
+  const authRes = await authChatTargetCrud({
+    req,
+    authToken: true,
+    authApiKey: true,
+    sourceType,
+    sourceId,
+    chatId,
+    outLinkAuthData
+  });
+  const resolvedSourceId = authRes.sourceId;
+
+  const [app] = await Promise.all([
+    sourceType === ChatSourceTypeEnum.app
+      ? MongoApp.findById(resolvedSourceId, 'type').lean()
+      : null
   ]);
 
   if (sourceType === ChatSourceTypeEnum.app && !app) {
     return Promise.reject(AppErrEnum.unExist);
   }
   const isPlugin = app?.type === AppTypeEnum.workflowTool;
-  const isOutLink = authType === GetChatTypeEnum.outLink;
+  const isOutLink = authRes.authType === GetChatTypeEnum.outLink;
 
   const commonField =
     'obj value adminFeedback userGoodFeedback userBadFeedback time hideInUI durationSeconds errorMsg';
@@ -73,7 +77,7 @@ export async function handler(req: ApiRequestProps): Promise<GetPaginationRecord
 
   const { total, histories } = await getChatItems({
     sourceType,
-    sourceId,
+    sourceId: resolvedSourceId,
     chatId,
     field: fieldMap[type],
     offset,
@@ -91,18 +95,18 @@ export async function handler(req: ApiRequestProps): Promise<GetPaginationRecord
       if (item.obj === ChatRoleEnum.AI) {
         item.responseData = filterPublicNodeResponseData({
           nodeRespones: item.responseData,
-          responseDetail: showCite
+          responseDetail: authRes.showCite
         });
 
-        if (showRunningStatus === false) {
+        if (authRes.showRunningStatus === false) {
           item.value = item.value.filter((v) => !('tool' in v) && !v.tools && !v.skills);
-        } else if (showSkillReferences === false) {
+        } else if (authRes.showSkillReferences === false) {
           item.value = item.value.filter((v) => !v.skills);
         }
       }
     }
 
-    if (!showCite) {
+    if (!authRes.showCite) {
       if (item.obj === ChatRoleEnum.AI) {
         item.value = removeAIResponseCite(item.value, false);
       }
@@ -133,7 +137,7 @@ export async function handler(req: ApiRequestProps): Promise<GetPaginationRecord
   });
 
   return GetPaginationRecordsResponseSchema.parse({
-    list: isPlugin ? histories : transformPreviewHistories(histories, showCite),
+    list: isPlugin ? histories : transformPreviewHistories(histories, authRes.showCite),
     total
   });
 }
