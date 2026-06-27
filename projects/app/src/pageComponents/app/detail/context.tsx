@@ -170,7 +170,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
         if (!appDetail.permission.hasWritePer) return;
         if (data.isPublish && hasDebugToolInNodes(data.nodes)) {
           toast({
-            title: '存在本地调试插件，请移除后再发布',
+            title: t('app:publish_remove_debug_tool_tip'),
             status: 'warning'
           });
           return Promise.reject(new ToastHandledError('Debug tool cannot be published'));

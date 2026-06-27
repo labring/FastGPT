@@ -146,7 +146,7 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
                 {t('app:core.module.template.System Tools')}
               </Box>
               <Button mr={4} variant={'whiteBase'} onClick={debugDisclosure.onOpen}>
-                本地调试
+                {t('app:toolkit_debug_local')}
               </Button>
               {feConfigs?.submitPluginRequestUrl && (
                 <Button
@@ -277,7 +277,7 @@ const ToolKitProvider = ({ MenuIcon }: { MenuIcon: JSX.Element }) => {
               {displayTools.map((tool) => {
                 return (
                   <ToolCard
-                    key={tool.id}
+                    key={getToolListItemKey(tool)}
                     item={tool}
                     systemTitle={feConfigs?.systemTitle}
                     mode="team"
@@ -367,6 +367,10 @@ function getTeamToolQuerySource(source?: string) {
   return source === 'system' ? 'system' : 'team';
 }
 
+function getToolListItemKey(tool: ToolCardItemType) {
+  return `${tool.source ?? 'unknown'}:${tool.id}`;
+}
+
 function buildPluginDebugConnectionLink(connectionKey?: string) {
   if (!connectionKey || typeof window === 'undefined') return '';
 
@@ -391,6 +395,7 @@ function PluginDebugModal({
   onRefreshTools: () => Promise<GetTeamPluginListResponseType>;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const { copyData } = useCopyData();
   const connectionKey = session?.connectionKey ?? '';
   const connectionUrl = useMemo(
@@ -476,16 +481,16 @@ function PluginDebugModal({
           borderRadius={'4px'}
           color={'myGray.900'}
           onClick={onClose}
-          aria-label={'关闭'}
+          aria-label={t('common:Close')}
         >
           <MyIcon name={'common/closeLight'} w={'20px'} />
         </Button>
 
         <Box fontSize={'20px'} fontWeight={'500'} color={'black'} lineHeight={'26px'}>
-          本地调试
+          {t('app:toolkit_debug_local')}
         </Box>
         <Box mt={6} color={'black'} fontSize={'14px'} lineHeight={'20px'}>
-          将该链接粘贴到本地开发环境，即可在平台内接入测试插件。测试插件仅对调试者本人可见。
+          {t('app:toolkit_debug_local_desc')}
         </Box>
 
         <Box mt={6}>
@@ -497,7 +502,7 @@ function PluginDebugModal({
             alignItems={'center'}
             justifyContent={'space-between'}
           >
-            <Box>调试链接</Box>
+            <Box>{t('app:toolkit_debug_connection_link')}</Box>
             {session && (
               <Button
                 variant={'unstyled'}
@@ -513,11 +518,11 @@ function PluginDebugModal({
                 fontWeight={'500'}
                 isLoading={isRefreshingConnection}
                 onClick={() => refreshConnectionKey({})}
-                aria-label={'刷新连接链接'}
+                aria-label={t('app:toolkit_debug_refresh_link')}
               >
                 <MyIcon name={'common/refresh'} w={'16px'} />
                 <Box as={'span'} lineHeight={'20px'}>
-                  刷新链接
+                  {t('app:toolkit_debug_refresh_link')}
                 </Box>
               </Button>
             )}
@@ -542,7 +547,7 @@ function PluginDebugModal({
                   lineHeight={'20px'}
                   sx={terminalCommandStyle}
                 >
-                  {connectionUrl || '请刷新连接链接后复制'}
+                  {connectionUrl || t('app:toolkit_debug_refresh_link_before_copy')}
                 </Box>
                 <Flex
                   position={'absolute'}
@@ -559,7 +564,7 @@ function PluginDebugModal({
                     color={hasConnectionUrl ? 'myGray.500' : 'myGray.300'}
                     cursor={hasConnectionUrl ? 'pointer' : 'not-allowed'}
                     onClick={() => hasConnectionUrl && copyData(connectionUrl)}
-                    aria-label={'复制连接链接'}
+                    aria-label={t('app:toolkit_debug_copy_link')}
                     isDisabled={!hasConnectionUrl}
                   >
                     <MyIcon name={'copy'} w={'18px'} />
@@ -569,7 +574,7 @@ function PluginDebugModal({
             ) : (
               <>
                 <Box color={'myGray.500'} fontSize={'14px'} lineHeight={'20px'}>
-                  点击右边“生成链接”查看
+                  {t('app:toolkit_debug_create_link_tip')}
                 </Box>
                 <Button
                   variant={'unstyled'}
@@ -585,9 +590,9 @@ function PluginDebugModal({
                   fontWeight={'500'}
                   isLoading={isCreating}
                   onClick={() => createSession({})}
-                  aria-label={'生成连接链接'}
+                  aria-label={t('app:toolkit_debug_create_link')}
                 >
-                  生成链接
+                  {t('app:toolkit_debug_create_link')}
                 </Button>
               </>
             )}
@@ -605,7 +610,7 @@ function PluginDebugModal({
             p={0}
             onClick={() => tutorialUrl && window.open(tutorialUrl, '_blank')}
           >
-            使用教程
+            {t('app:toolkit_user_guide')}
           </Button>
           {session && (
             <Button
@@ -620,7 +625,7 @@ function PluginDebugModal({
               isLoading={isDisconnecting}
               onClick={() => disconnectSession()}
             >
-              结束调试
+              {t('app:toolkit_debug_stop')}
             </Button>
           )}
         </Flex>

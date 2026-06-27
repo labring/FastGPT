@@ -26,20 +26,20 @@ System tool plugins run in the runtime provided by the FastGPT Plugin service. T
 
 Clarify these items before coding:
 
-| Information | Description |
-| --- | --- |
-| Plugin type | `tool` or `tool-suite`. |
-| Plugin ID | `pluginId`, globally stable and unique. Keep it unchanged after release. |
-| Child tool ID | Required for tool suites. `children[].id` stays unchanged after release. |
-| Chinese and English names | `name.en` and `name.zh-CN`. |
-| Chinese and English descriptions | `description.en` and `description.zh-CN`. |
-| Inputs | Type, constraints, default value, UI title, and description for each field. |
-| Outputs | Type, meaning, and downstream usage for each field. |
-| Secrets | API Key, Base URL, username/password, and similar values, described through `secretSchema`. |
-| External API | Request method, auth method, timeout, rate limit, error response, and test account. |
-| File capability | Use `ctx.invoke.uploadFile()` when file upload is needed. |
-| Streaming output | Use `ctx.streamResponse()` when intermediate progress should be shown to the user. |
-| Test cases | Include at least success, invalid parameters, auth failure, and upstream failure. |
+| Information                      | Description                                                                                 |
+| -------------------------------- | ------------------------------------------------------------------------------------------- |
+| Plugin type                      | `tool` or `tool-suite`.                                                                     |
+| Plugin ID                        | `pluginId`, globally stable and unique. Keep it unchanged after release.                    |
+| Child tool ID                    | Required for tool suites. `children[].id` stays unchanged after release.                    |
+| Chinese and English names        | `name.en` and `name.zh-CN`.                                                                 |
+| Chinese and English descriptions | `description.en` and `description.zh-CN`.                                                   |
+| Inputs                           | Type, constraints, default value, UI title, and description for each field.                 |
+| Outputs                          | Type, meaning, and downstream usage for each field.                                         |
+| Secrets                          | API Key, Base URL, username/password, and similar values, described through `secretSchema`. |
+| External API                     | Request method, auth method, timeout, rate limit, error response, and test account.         |
+| File capability                  | Use `ctx.invoke.uploadFile()` when file upload is needed.                                   |
+| Streaming output                 | Use `ctx.streamResponse()` when intermediate progress should be shown to the user.          |
+| Test cases                       | Include at least success, invalid parameters, auth failure, and upstream failure.           |
 
 Missing information that affects plugin ID, auth method, billing, or listing security should be confirmed first. Other missing information can use reasonable defaults, with assumptions recorded in the submission notes.
 
@@ -115,14 +115,14 @@ pnpx @fastgpt-plugin/cli create
 
 The CLI creates the plugin directory and common files:
 
-| File | Purpose |
-| --- | --- |
-| `index.ts` | Plugin entry, default-exporting `defineTool()` or `defineToolSet()`. |
-| `package.json` | Plugin dependencies and `build`, `build:dev`, `pack`, and `test` scripts. |
-| `tsconfig.json` | TypeScript config. |
-| `vitest.config.ts` | Test config. |
-| `README.md` | Plugin description. |
-| `logo.svg` | Main plugin icon. |
+| File               | Purpose                                                                   |
+| ------------------ | ------------------------------------------------------------------------- |
+| `index.ts`         | Plugin entry, default-exporting `defineTool()` or `defineToolSet()`.      |
+| `package.json`     | Plugin dependencies and `build`, `build:dev`, `pack`, and `test` scripts. |
+| `tsconfig.json`    | TypeScript config.                                                        |
+| `vitest.config.ts` | Test config.                                                              |
+| `README.md`        | Plugin description.                                                       |
+| `logo.svg`         | Main plugin icon.                                                         |
 
 ## 3. Implement Single Tool
 
@@ -139,18 +139,24 @@ import {
 import z from 'zod';
 
 const secretSchema = z.object({
-  apiKey: z.string().min(1).meta({
-    title: 'API Key',
-    isSecret: true
-  } satisfies SecretSchemaMetaType)
+  apiKey: z
+    .string()
+    .min(1)
+    .meta({
+      title: 'API Key',
+      isSecret: true
+    } satisfies SecretSchemaMetaType)
 });
 
 const handler = createToolHandler({
   inputSchema: z.object({
-    query: z.string().min(1).meta({
-      title: 'Query',
-      description: 'Search keyword'
-    } satisfies InputSchemaMetaType)
+    query: z
+      .string()
+      .min(1)
+      .meta({
+        title: 'Query',
+        description: 'Search keyword'
+      } satisfies InputSchemaMetaType)
   }),
   outputSchema: z.object({
     result: z.string().meta({
@@ -287,10 +293,10 @@ export default defineToolSet({
 
 During build, the CLI scans icons in the plugin root and writes them into the built `manifest.json`.
 
-| Scenario | File name |
-| --- | --- |
-| Main plugin icon | `logo.svg`, `logo.png`, `logo.jpg`, `logo.jpeg`, `logo.webp`, or `logo.gif` |
-| Tool-suite child icon | `<childId>.logo.svg`, `<childId>.logo.png`, and similar names |
+| Scenario              | File name                                                                   |
+| --------------------- | --------------------------------------------------------------------------- |
+| Main plugin icon      | `logo.svg`, `logo.png`, `logo.jpg`, `logo.jpeg`, `logo.webp`, or `logo.gif` |
+| Tool-suite child icon | `<childId>.logo.svg`, `<childId>.logo.png`, and similar names               |
 
 Notes:
 
@@ -340,7 +346,82 @@ Local debug boundaries:
 - Local debug does not simulate the production child-process pool, real Node.js IPC, network environment, server timeout, or queue scheduling.
 - Before listing official plugins, still manually install plugins in a test environment and complete end-to-end testing.
 
-## 7. Build, Check, And Pack
+## 7. Remote Debugging
+
+Remote debugging connects a locally developed plugin to a FastGPT test environment. The FastGPT page authenticates the user and generates a debug link, while the CLI uses that link to create a WSS debug channel. Debug plugins are visible only to the current debugger.
+
+Before using it, confirm that the test environment has deployed the FastGPT Plugin service and Connection Gateway, and that your local machine can reach the Gateway WSS endpoint returned by the test environment.
+
+### 7.1 Generate A Debug Link
+
+1. Sign in to the FastGPT test environment.
+2. Go to the System Tools page and click Local Debug.
+
+![System Tools local debug entry](/imgs/plugins/system-tool-debug-entry.png)
+
+3. In the modal, click Generate Link and copy the debug link.
+4. If a debug session already exists, click Refresh Link to generate a new connection key; the old link becomes invalid.
+
+![Generate local debug link](/imgs/plugins/system-tool-debug-link.png)
+
+The debug link is only for connecting your local CLI to the test environment. Do not commit it to code repositories, documentation examples, or chat logs.
+
+### 7.2 Start A Local Remote-Debug Session
+
+Run this command in a plugin directory or a workspace that contains multiple plugin directories:
+
+```bash
+fastgpt-plugin dev
+```
+
+After startup, paste the debug link copied from FastGPT into the TUI. The CLI exchanges the connection key from the link for a short-lived WSS connect token, then mounts local plugins to the FastGPT debug channel.
+
+Scripts and Agents can use non-interactive mode:
+
+```bash
+fastgpt-plugin dev --no-interactive \
+  --connect "https://fastgpt.example.com/api/plugin/debug-channel/connection-key:exchange?connectionKey=fpg_dbg_..."
+```
+
+When passing only a raw connection key, tell the CLI where the exchange endpoint is:
+
+```bash
+FASTGPT_PLUGIN_DEBUG_CONNECT_URL=https://fastgpt.example.com/api/plugin/debug-channel/connection-key:exchange \
+  fastgpt-plugin dev --no-interactive --connect "fpg_dbg_..."
+```
+
+After `--connect` connects successfully, it saves the connection key so later `fastgpt-plugin dev` runs can reuse the local config. In the TUI, press `c` to enter and save a new debug link or connection key.
+
+### 7.3 Specify Plugin Directories And Watch Changes
+
+When no plugin directory is passed, `dev` auto-discovers plugins from the current directory. If the current directory contains `index.ts`, it is used as the plugin entry; otherwise, the CLI scans one level of child directories for `index.ts`.
+
+You can also pass one or more plugin directories explicitly:
+
+```bash
+fastgpt-plugin dev ./plugins/getTime ./plugins/dbops --watch
+```
+
+`--watch` reloads local plugins and recreates the remote-debug session after local file changes. The CLI reconnects by default when disconnected; use `--no-reconnect` to disable automatic reconnect.
+
+### 7.4 Verify In FastGPT
+
+After the CLI reports that remote debugging is ready, return to the FastGPT test environment:
+
+1. Check the debug plugin on the System Tools page.
+2. Select the debug tool in an app, workflow, or Agent.
+3. Fill in secrets and input parameters, then start a real invocation.
+4. Check local handler logs and errors in the CLI terminal.
+
+The debug tool `source` is bound to the currently signed-in member, so other members do not see that debug plugin by default.
+
+### 7.5 End Debugging
+
+Press `Ctrl+C` in the local terminal to close the current CLI debug session; press `Ctrl+C` again to force exit.
+
+The End Debugging action in FastGPT revokes the current member's debug channel and removes the debug plugin entry from the page. If the debug link is exposed, the signed-in member changes, or authorization needs to be renewed, use Refresh Link to generate a new link.
+
+## 8. Build, Check, And Pack
 
 Inside a plugin directory, usually run:
 
@@ -369,7 +450,7 @@ Build artifacts should include:
 
 Packaging produces a `.pkg` file. Uploading, installation, and listing should all use that `.pkg` file.
 
-## 8. Verification Checklist
+## 9. Verification Checklist
 
 Before submitting, confirm:
 
@@ -384,9 +465,10 @@ Before submitting, confirm:
 - `pnpm run test` passes, or the reason it cannot be tested is documented.
 - `build`, `check`, and `pack` pass.
 - Icons and schemas in `dist/manifest.json` are as expected.
+- Remote debugging completes a real invocation in the test environment, or the reason remote debugging is not needed for this change is documented.
 - `.pkg` can be installed in a test environment and complete a real invocation.
 
-## 9. Release Flow
+## 10. Release Flow
 
 ### Community Plugins
 

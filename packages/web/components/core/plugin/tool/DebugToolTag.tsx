@@ -1,7 +1,10 @@
 import React from 'react';
 import { Box, type BoxProps } from '@chakra-ui/react';
+import { useTranslation } from 'next-i18next';
 
 const DebugToolTag = React.memo(function DebugToolTag(props: BoxProps) {
+  const { t } = useTranslation();
+
   return (
     <Box
       flexShrink={0}
@@ -16,7 +19,7 @@ const DebugToolTag = React.memo(function DebugToolTag(props: BoxProps) {
       lineHeight={'16px'}
       {...props}
     >
-      调试
+      {t('app:toolkit_debug_tag')}
     </Box>
   );
 });

@@ -128,6 +128,67 @@ const getPluginClientSource = ({
   return runtimeSource || 'system';
 };
 
+const getSystemToolConfigIds = (pluginId: string) => {
+  const systemToolPrefix = `${AppToolSourceEnum.systemTool}-`;
+  const commercialPrefix = `${AppToolSourceEnum.commercial}-`;
+
+  if (pluginId.startsWith(systemToolPrefix)) {
+    const rawPluginId = pluginId.slice(systemToolPrefix.length);
+    return Array.from(new Set([pluginId, rawPluginId]));
+  }
+
+  if (pluginId.startsWith(commercialPrefix)) {
+    const rawPluginId = pluginId.slice(commercialPrefix.length);
+    return Array.from(new Set([pluginId, rawPluginId, SystemToolCodec.getDBPluginId(rawPluginId)]));
+  }
+
+  return Array.from(new Set([SystemToolCodec.getDBPluginId(pluginId), pluginId]));
+};
+
+const getFirstSystemToolConfig = (
+  configMap: Map<string, SystemPluginToolCollectionType>,
+  pluginId: string
+) =>
+  getSystemToolConfigIds(pluginId)
+    .map((id) => configMap.get(id))
+    .find(Boolean);
+
+const getSystemToolConfig = async (pluginId: string) => {
+  const configIds = getSystemToolConfigIds(pluginId);
+  if (configIds[0] === pluginId) {
+    const exactConfig = await MongoSystemTool.findOne({ pluginId });
+    if (exactConfig) return exactConfig;
+  }
+
+  return getFirstSystemToolConfig(
+    new Map(
+      (
+        await MongoSystemTool.find({
+          pluginId: {
+            $in: configIds
+          }
+        })
+      ).map((item) => [item.pluginId, item])
+    ),
+    pluginId
+  );
+};
+
+const parseSystemToolId = ({ pluginId, source }: { pluginId: string; source?: string }) => {
+  if (isDebugToolSource(source)) {
+    try {
+      return splitCombineToolId(pluginId);
+    } catch {
+      return {
+        source: undefined,
+        pluginId
+      };
+    }
+  }
+
+  return splitCombineToolId(pluginId);
+};
+
 /**
  * SystemTool Repo
  * 系统工具仓储层
@@ -211,9 +272,7 @@ export class SystemToolRepo {
     const formattedTools = tools.map((tool) =>
       SystemToolCodec.attachToolConfig({
         tool,
-        config:
-          DBPluginsMap.get(SystemToolCodec.getDBPluginId(tool.pluginId)) ??
-          DBPluginsMap.get(tool.pluginId),
+        config: getFirstSystemToolConfig(DBPluginsMap, tool.pluginId),
         lang
       })
     );
@@ -245,13 +304,14 @@ export class SystemToolRepo {
     lang?: `${LangEnum}`;
     fallbackLatestVersion?: boolean;
   }): Promise<SystemToolDetailType> => {
-    const { pluginId: rawPluginId, source: idSource } = splitCombineToolId(pluginId);
+    const { pluginId: rawPluginId, source: idSource } = parseSystemToolId({
+      pluginId,
+      source: toolSource
+    });
     const [parentPluginId, childPluginId] = rawPluginId.split('/');
     const getChildToolDetail = !!childPluginId;
 
-    const dbTool = await MongoSystemTool.findOne({
-      pluginId
-    });
+    const dbTool = await getSystemToolConfig(pluginId);
 
     if (!childPluginId && dbTool?.customConfig?.associatedPluginId) {
       // 说明是 workflow 工具，需要拿这个 app
@@ -328,7 +388,7 @@ export class SystemToolRepo {
     if (getChildToolDetail && !child) return Promise.reject(PluginErrEnum.unExist);
 
     const childrenPluginIds = getToolParent
-      ? tool.children?.map((item) => `${pluginId}/${item.id}`)
+      ? tool.children?.flatMap((item) => getSystemToolConfigIds(`${pluginId}/${item.id}`))
       : [];
 
     const dbChildren = await MongoSystemTool.find({
@@ -340,7 +400,7 @@ export class SystemToolRepo {
     const dbChildrenMap = new Map(dbChildren.map((item) => [item.pluginId, item]));
     const children = tool.isToolset
       ? tool.children?.map((item) => {
-          const dbChild = dbChildrenMap.get(`${pluginId}/${item.id}`);
+          const dbChild = getFirstSystemToolConfig(dbChildrenMap, `${pluginId}/${item.id}`);
           return {
             id: item.id,
             name: parseI18nString(item.name, lang),
@@ -429,10 +489,10 @@ export class SystemToolRepo {
     source?: string;
     lang?: `${LangEnum}`;
   }): Promise<SystemToolDisplayInfoType> => {
-    const { pluginId: rawPluginId, source: idSource } = splitCombineToolId(pluginId);
+    const { pluginId: rawPluginId, source: idSource } = parseSystemToolId({ pluginId, source });
     const [parentPluginId, childPluginId] = rawPluginId.split('/');
 
-    const exactDbTool = await MongoSystemTool.findOne({ pluginId });
+    const exactDbTool = await getSystemToolConfig(pluginId);
     if (!childPluginId && exactDbTool?.customConfig?.associatedPluginId) {
       return {
         id: pluginId,
@@ -469,30 +529,21 @@ export class SystemToolRepo {
     const tool = tools.find((item) => item.pluginId === parentPluginId);
     if (!tool) return Promise.reject(PluginErrEnum.unExist);
 
-    const parentCombinedPluginId =
-      idSource === AppToolSourceEnum.systemTool || idSource === AppToolSourceEnum.commercial
-        ? `${idSource}-${parentPluginId}`
-        : parentPluginId;
-    const parentConfigIds = Array.from(
-      new Set([
-        parentCombinedPluginId,
-        parentPluginId,
-        SystemToolCodec.getDBPluginId(parentPluginId)
-      ])
-    );
+    const requestedParentPluginId = pluginId.split('/')[0];
+    const parentConfigIds = getSystemToolConfigIds(requestedParentPluginId);
     const childConfigIds =
-      tool.children?.flatMap((child) => [
-        `${parentCombinedPluginId}/${child.id}`,
-        `${parentPluginId}/${child.id}`,
-        `${SystemToolCodec.getDBPluginId(parentPluginId)}/${child.id}`
-      ]) ?? [];
+      tool.children?.flatMap((child) =>
+        getSystemToolConfigIds(`${requestedParentPluginId}/${child.id}`)
+      ) ?? [];
     const dbTools = await MongoSystemTool.find({
       pluginId: {
         $in: [...parentConfigIds, ...childConfigIds]
       }
     });
     const dbToolsMap = new Map(dbTools.map((item) => [item.pluginId, item]));
-    const parentConfig = parentConfigIds.map((id) => dbToolsMap.get(id)).find(Boolean);
+    const parentConfig = !childPluginId
+      ? (exactDbTool ?? getFirstSystemToolConfig(dbToolsMap, requestedParentPluginId))
+      : getFirstSystemToolConfig(dbToolsMap, requestedParentPluginId);
     const parent = SystemToolCodec.attachToolConfig({
       tool,
       config: parentConfig,
@@ -503,13 +554,10 @@ export class SystemToolRepo {
     const children =
       tool.children?.map<SystemToolDisplayChildType>((item) => {
         const childIcon = listChildIconMap.get(item.id);
-        const childConfig = [
-          `${parentCombinedPluginId}/${item.id}`,
-          `${parentPluginId}/${item.id}`,
-          `${SystemToolCodec.getDBPluginId(parentPluginId)}/${item.id}`
-        ]
-          .map((id) => dbToolsMap.get(id))
-          .find(Boolean);
+        const childConfig = getFirstSystemToolConfig(
+          dbToolsMap,
+          `${requestedParentPluginId}/${item.id}`
+        );
 
         return {
           id: item.id,
@@ -535,6 +583,7 @@ export class SystemToolRepo {
         name: child.name,
         intro: child.description ?? '',
         toolDescription: child.toolDescription ?? '',
+        status: child.status,
         currentCost: child.currentCost,
         systemKeyCost: child.systemKeyCost
       };
@@ -564,11 +613,11 @@ export class SystemToolRepo {
     const missingChildIcon = parent.children?.some((child) => !child.icon) === true;
     if (!parent.isToolSet || !parent.children || !missingChildIcon) return parent;
 
-    const { pluginId: rawPluginId } = splitCombineToolId(pluginId);
+    const { pluginId: rawPluginId } = parseSystemToolId({ pluginId, source });
     const [parentPluginId, childPluginId] = rawPluginId.split('/');
     if (!parentPluginId || childPluginId) return parent;
 
-    const { source: idSource } = splitCombineToolId(pluginId);
+    const { source: idSource } = parseSystemToolId({ pluginId, source });
     const pluginSource = getPluginClientSource({ idSource, runtimeSource: source });
     const childIconMap = await this.getToolsetChildIconMap({
       pluginId: parentPluginId,
@@ -600,8 +649,8 @@ export class SystemToolRepo {
     source?: string;
     lang?: `${LangEnum}`;
   }): Promise<SystemToolVersionType[]> => {
-    const { pluginId: rawPluginId, source: idSource } = splitCombineToolId(pluginId);
-    const tool = await MongoSystemTool.findOne({ pluginId });
+    const { pluginId: rawPluginId, source: idSource } = parseSystemToolId({ pluginId, source });
+    const tool = await getSystemToolConfig(pluginId);
     if (tool?.customConfig?.associatedPluginId) {
       const { associatedPluginId } = tool.customConfig;
       const appVersions = await MongoAppVersion.find(
@@ -643,12 +692,12 @@ export class SystemToolRepo {
     version?: string;
     source?: string;
   }): Promise<SystemToolRuntimeType> => {
-    const { pluginId: rawPluginId, source: idSource } = splitCombineToolId(pluginId);
+    const { pluginId: rawPluginId, source: idSource } = parseSystemToolId({ pluginId, source });
     const pluginSource = getPluginClientSource({ idSource, runtimeSource: source });
     const isDebugSource = isDebugToolSource(pluginSource);
     const [parentPluginId] = rawPluginId.split('/');
 
-    const dbTool = await MongoSystemTool.findOne({ pluginId }).lean();
+    const dbTool = await getSystemToolConfig(pluginId);
 
     if (!dbTool?.customConfig?.associatedPluginId) {
       const tool = await pluginClient.getTool({
