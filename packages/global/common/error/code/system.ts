@@ -3,6 +3,7 @@ import { i18nT } from '../../i18n/utils';
 /* dataset: 509000 */
 export enum SystemErrEnum {
   communityVersionNumLimit = 'communityVersionNumLimit',
+  commercialFeature = 'commercialFeature',
   licenseAppAmountLimit = 'licenseAppAmountLimit',
   licenseDatasetAmountLimit = 'licenseDatasetAmountLimit',
   licenseUserAmountLimit = 'licenseUserAmountLimit'
@@ -12,6 +13,11 @@ const systemErr = [
   {
     statusText: SystemErrEnum.communityVersionNumLimit,
     message: i18nT('common:code_error.system_error.community_version_num_limit')
+  },
+  {
+    statusText: SystemErrEnum.commercialFeature,
+    message: i18nT('common:code_error.system_error.commercial_feature'),
+    httpStatus: 403
   },
   {
     statusText: SystemErrEnum.licenseAppAmountLimit,
@@ -34,7 +40,8 @@ export default systemErr.reduce((acc, cur, index) => {
       code: 509000 + index,
       statusText: cur.statusText,
       message: cur.message,
-      data: null
+      data: null,
+      httpStatus: cur.httpStatus
     }
   };
 }, {} as ErrType<`${SystemErrEnum}`>);

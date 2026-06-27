@@ -282,6 +282,58 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
     );
   });
 
+  it('按当前语言展示调试工具 metadata 缺失错误', async () => {
+    getClientToolPreviewNodeMock.mockRejectedValueOnce({
+      response: {
+        data: {
+          error: {
+            message: 'Debug plugin metadata not found: debug:tmbId:tmb-1',
+            reason: {
+              en: 'Debug plugin metadata not found: debug:tmbId:tmb-1',
+              'zh-CN': '调试插件元数据不存在: debug:tmbId:tmb-1'
+            }
+          }
+        }
+      }
+    });
+
+    const toolInput = {
+      key: NodeInputKeyEnum.selectedTools,
+      value: [
+        {
+          id: 'systemTool-weather',
+          source: 'debug:tmbId:tmb-1',
+          config: {}
+        }
+      ]
+    };
+    const nodes = [
+      {
+        nodeId: 'agent',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        inputs: [toolInput],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false,
+      lang: 'zh-CN'
+    });
+
+    expect(toolInput.value).toMatchObject([
+      {
+        pluginData: {
+          error: '调试插件元数据不存在: debug:tmbId:tmb-1'
+        },
+        configStatus: 'invalid'
+      }
+    ]);
+  });
+
   it('保留 Agent 知识库选择输入的引用模式值，不按知识库列表重写', async () => {
     const user = await getUser(`agent-dataset-reference-${getNanoid(6)}`);
     const dataset = await MongoDataset.create({

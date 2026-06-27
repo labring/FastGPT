@@ -1,7 +1,9 @@
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
 import {
+  GetTeamSystemPluginListQuerySchema,
   type GetTeamSystemPluginListQueryType,
+  GetTeamPluginListResponseSchema,
   type GetTeamPluginListResponseType
 } from '@fastgpt/global/openapi/core/plugin/team/tool/api';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
@@ -9,6 +11,9 @@ import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { SystemToolRepo } from '@fastgpt/service/core/app/tool/systemTool/systemTool.repo';
 import { getUserDetail } from '@fastgpt/service/support/user/controller';
 import type { UserTagsType } from '@fastgpt/global/support/user/type';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
+import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
 
 export type listQuery = GetTeamSystemPluginListQueryType;
 
@@ -28,29 +33,50 @@ const hasMatchedUserTag = ({
 
 async function handler(req: ApiRequestProps<listBody, listQuery>): Promise<listResponse> {
   const lang = getLocale(req);
+  parseApiInput({
+    req,
+    querySchema: GetTeamSystemPluginListQuerySchema
+  });
 
   const { teamId, tmbId } = await authCert({ req, authToken: true });
+  const debugSource = await getActiveDebugSource(tmbId);
 
   const systemToolRepo = SystemToolRepo.getInstance();
   const [tools, userDetail] = await Promise.all([
     systemToolRepo.getSystemToolList({
       op: 'or',
-      sources: ['system', teamId],
+      // 调试 source 作为额外来源追加，保留 system/team 的生产插件可见性。
+      sources: ['system', teamId, ...(debugSource ? [debugSource] : [])],
       lang
     }),
     getUserDetail({ tmbId })
   ]);
   const userTags = userDetail.tags || [];
 
-  return tools
-    .filter((tool) => {
-      if (hasMatchedUserTag({ userTags, targetTags: tool.hideTags })) return false;
-      return true;
-    })
-    .map((tool) => ({
-      ...tool,
-      isPromoted: hasMatchedUserTag({ userTags, targetTags: tool.promoteTags })
-    }));
+  return GetTeamPluginListResponseSchema.parse(
+    tools
+      .sort((a, b) => Number(isDebugToolSource(b.source)) - Number(isDebugToolSource(a.source)))
+      .filter((tool) => {
+        if (hasMatchedUserTag({ userTags, targetTags: tool.hideTags })) return false;
+        return true;
+      })
+      .map((tool) => ({
+        ...tool,
+        isPromoted: hasMatchedUserTag({ userTags, targetTags: tool.promoteTags })
+      }))
+  );
 }
 
 export default NextAPI(handler);
+
+async function getActiveDebugSource(tmbId: string) {
+  const status = await pluginClient.getDebugSessionStatus({ tmbId }).catch(() => undefined);
+
+  if (
+    status?.enabled &&
+    (status.status === 'enabled' || status.status === 'connected') &&
+    isDebugToolSource(status.source)
+  ) {
+    return status.source;
+  }
+}

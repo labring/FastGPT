@@ -193,6 +193,86 @@ describe('getClientSystemToolPreviewNode', () => {
     expect(result.versionLabel).toBeUndefined();
   });
 
+  it('passes explicit debug source without encoding it into plugin id', async () => {
+    mocks.getSystemToolDetail.mockResolvedValueOnce({
+      id: 'systemTool-weather',
+      version: '1.0.0',
+      status: 1,
+      source: 'debug:tmbId:tmb-1',
+      isToolSet: false,
+      avatar: 'weather.svg',
+      name: 'Weather',
+      intro: 'Weather query',
+      author: 'FastGPT',
+      tags: [],
+      toolDescription: 'Weather query',
+      currentCost: 0,
+      systemKeyCost: 0,
+      hasTokenFee: false,
+      hasSystemSecret: false
+    });
+
+    const result = await getClientSystemToolPreviewNode({
+      pluginId: 'systemTool-weather',
+      versionId: '',
+      lang: 'en',
+      source: 'debug:tmbId:tmb-1'
+    });
+
+    expect(mocks.getSystemToolDetail).toHaveBeenCalledWith({
+      pluginId: 'systemTool-weather',
+      version: undefined,
+      lang: 'en',
+      source: 'debug:tmbId:tmb-1'
+    });
+    expect(result.pluginId).toBe('systemTool-weather');
+    expect(result.source).toBe('debug:tmbId:tmb-1');
+    expect(result.toolConfig?.systemTool).toEqual({
+      toolId: 'systemTool-weather',
+      source: 'debug:tmbId:tmb-1'
+    });
+  });
+
+  it('writes explicit debug source into system toolset config', async () => {
+    mocks.getSystemToolDetail.mockResolvedValueOnce({
+      id: 'systemTool-search',
+      version: '1.0.0',
+      status: 1,
+      source: 'debug:tmbId:tmb-1',
+      isToolSet: true,
+      avatar: 'search.svg',
+      name: 'Search',
+      intro: 'Search tools',
+      author: 'FastGPT',
+      tags: [],
+      toolDescription: 'Search tools',
+      currentCost: 0,
+      systemKeyCost: 0,
+      hasTokenFee: false,
+      hasSystemSecret: false,
+      children: [
+        {
+          id: 'web',
+          name: 'Web Search',
+          description: 'Search web'
+        }
+      ]
+    });
+
+    const result = await getClientSystemToolPreviewNode({
+      pluginId: 'systemTool-search',
+      versionId: '',
+      lang: 'en',
+      source: 'debug:tmbId:tmb-1'
+    });
+
+    expect(result.source).toBe('debug:tmbId:tmb-1');
+    expect(result.toolConfig?.systemToolSet).toMatchObject({
+      toolId: 'systemTool-search',
+      source: 'debug:tmbId:tmb-1'
+    });
+  });
+
   it('returns plugin module preview for commercial workflow tools', async () => {
     mocks.getSystemToolDetail.mockResolvedValueOnce({
       id: 'commercial-workflow-tool',

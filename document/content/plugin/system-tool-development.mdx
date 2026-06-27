@@ -26,20 +26,20 @@ description: FastGPT 系统工具开发指南
 
 开始编码前先明确这些信息：
 
-| 信息 | 说明 |
-| --- | --- |
-| 插件类型 | `tool` 或 `tool-suite`。 |
-| 插件 ID | `pluginId`，全局稳定唯一，发布后保持不变。 |
-| 子工具 ID | 工具集需要，`children[].id` 发布后保持不变。 |
-| 中英文名称 | `name.en` 和 `name.zh-CN`。 |
-| 中英文描述 | `description.en` 和 `description.zh-CN`。 |
-| 输入 | 每个字段的类型、约束、默认值、UI 标题和说明。 |
-| 输出 | 每个字段的类型、含义和下游使用方式。 |
-| 密钥 | API Key、Base URL、账号密码等，通过 `secretSchema` 描述。 |
-| 外部 API | 请求方式、鉴权方式、超时、限流、错误响应和测试账号。 |
-| 文件能力 | 需要上传文件时使用 `ctx.invoke.uploadFile()`。 |
-| 流式输出 | 需要展示中间进度时使用 `ctx.streamResponse()`。 |
-| 测试样例 | 至少包含成功路径、参数错误、鉴权失败和上游失败。 |
+| 信息       | 说明                                                      |
+| ---------- | --------------------------------------------------------- |
+| 插件类型   | `tool` 或 `tool-suite`。                                  |
+| 插件 ID    | `pluginId`，全局稳定唯一，发布后保持不变。                |
+| 子工具 ID  | 工具集需要，`children[].id` 发布后保持不变。              |
+| 中英文名称 | `name.en` 和 `name.zh-CN`。                               |
+| 中英文描述 | `description.en` 和 `description.zh-CN`。                 |
+| 输入       | 每个字段的类型、约束、默认值、UI 标题和说明。             |
+| 输出       | 每个字段的类型、含义和下游使用方式。                      |
+| 密钥       | API Key、Base URL、账号密码等，通过 `secretSchema` 描述。 |
+| 外部 API   | 请求方式、鉴权方式、超时、限流、错误响应和测试账号。      |
+| 文件能力   | 需要上传文件时使用 `ctx.invoke.uploadFile()`。            |
+| 流式输出   | 需要展示中间进度时使用 `ctx.streamResponse()`。           |
+| 测试样例   | 至少包含成功路径、参数错误、鉴权失败和上游失败。          |
 
 影响插件 ID、鉴权方式、计费或上架安全性的信息需要先确认。其他信息可以使用合理默认值继续推进，并在提交说明中记录假设。
 
@@ -115,14 +115,14 @@ pnpx @fastgpt-plugin/cli create
 
 CLI 会创建插件目录，并生成常见文件：
 
-| 文件 | 作用 |
-| --- | --- |
-| `index.ts` | 插件入口，默认导出 `defineTool()` 或 `defineToolSet()`。 |
-| `package.json` | 插件依赖和 `build`、`build:dev`、`pack`、`test` 脚本。 |
-| `tsconfig.json` | TypeScript 配置。 |
-| `vitest.config.ts` | 测试配置。 |
-| `README.md` | 插件说明。 |
-| `logo.svg` | 插件主图标。 |
+| 文件               | 作用                                                     |
+| ------------------ | -------------------------------------------------------- |
+| `index.ts`         | 插件入口，默认导出 `defineTool()` 或 `defineToolSet()`。 |
+| `package.json`     | 插件依赖和 `build`、`build:dev`、`pack`、`test` 脚本。   |
+| `tsconfig.json`    | TypeScript 配置。                                        |
+| `vitest.config.ts` | 测试配置。                                               |
+| `README.md`        | 插件说明。                                               |
+| `logo.svg`         | 插件主图标。                                             |
 
 ## 3. 实现单工具
 
@@ -139,18 +139,24 @@ import {
 import z from 'zod';
 
 const secretSchema = z.object({
-  apiKey: z.string().min(1).meta({
-    title: 'API Key',
-    isSecret: true
-  } satisfies SecretSchemaMetaType)
+  apiKey: z
+    .string()
+    .min(1)
+    .meta({
+      title: 'API Key',
+      isSecret: true
+    } satisfies SecretSchemaMetaType)
 });
 
 const handler = createToolHandler({
   inputSchema: z.object({
-    query: z.string().min(1).meta({
-      title: 'Query',
-      description: 'Search keyword'
-    } satisfies InputSchemaMetaType)
+    query: z
+      .string()
+      .min(1)
+      .meta({
+        title: 'Query',
+        description: 'Search keyword'
+      } satisfies InputSchemaMetaType)
   }),
   outputSchema: z.object({
     result: z.string().meta({
@@ -287,10 +293,10 @@ export default defineToolSet({
 
 CLI 构建时会扫描插件根目录中的图标并写入构建后的 `manifest.json`。
 
-| 场景 | 文件名 |
-| --- | --- |
-| 主插件图标 | `logo.svg`、`logo.png`、`logo.jpg`、`logo.jpeg`、`logo.webp` 或 `logo.gif` |
-| 工具集子工具图标 | `<childId>.logo.svg`、`<childId>.logo.png` 等 |
+| 场景             | 文件名                                                                     |
+| ---------------- | -------------------------------------------------------------------------- |
+| 主插件图标       | `logo.svg`、`logo.png`、`logo.jpg`、`logo.jpeg`、`logo.webp` 或 `logo.gif` |
+| 工具集子工具图标 | `<childId>.logo.svg`、`<childId>.logo.png` 等                              |
 
 注意事项：
 
@@ -340,7 +346,82 @@ pnpx @fastgpt-plugin/cli debug . --run --input-file input.json --secrets-file se
 - 本地 debug 不模拟生产子进程池、真实 Node.js IPC、网络环境、服务端超时和队列调度。
 - 上架官方插件前仍需在测试环境中手动安装插件并完成端到端测试。
 
-## 7. 构建、检查和打包
+## 7. 远程调试
+
+远程调试用于把本地正在开发的插件接入 FastGPT 测试环境。FastGPT 页面负责鉴权并生成调试链接，CLI 通过该链接建立 WSS 调试通道；调试插件仅对当前调试者本人可见。
+
+使用前确认测试环境已部署 FastGPT Plugin 服务和 Connection Gateway，并且本地开发机可以访问测试环境返回的 Gateway WSS 地址。
+
+### 7.1 生成调试链接
+
+1. 登录 FastGPT 测试环境。
+2. 进入「系统工具」页面，点击「本地调试」。
+
+![系统工具本地调试入口](/imgs/plugins/system-tool-debug-entry.png)
+
+3. 在弹窗中点击「生成链接」，复制生成的调试链接。
+4. 已有调试会话时，可点击「刷新链接」生成新的 connection key；旧链接会失效。
+
+![生成本地调试链接](/imgs/plugins/system-tool-debug-link.png)
+
+调试链接只用于本地 CLI 连接测试环境，不应提交到代码仓库、文档示例或聊天记录中。
+
+### 7.2 启动本地远程调试会话
+
+在插件目录或包含多个插件目录的工作区中运行：
+
+```bash
+fastgpt-plugin dev
+```
+
+启动后，将 FastGPT 页面复制的调试链接粘贴到 TUI 中。CLI 会用链接中的 connection key 换取短期 WSS connect token，并把本地插件挂载到 FastGPT 的调试通道。
+
+脚本或 Agent 场景可以使用非交互模式：
+
+```bash
+fastgpt-plugin dev --no-interactive \
+  --connect "https://fastgpt.example.com/api/plugin/debug-channel/connection-key:exchange?connectionKey=fpg_dbg_..."
+```
+
+如果只传入裸 connection key，需要让 CLI 知道 exchange 接口地址：
+
+```bash
+FASTGPT_PLUGIN_DEBUG_CONNECT_URL=https://fastgpt.example.com/api/plugin/debug-channel/connection-key:exchange \
+  fastgpt-plugin dev --no-interactive --connect "fpg_dbg_..."
+```
+
+`--connect` 成功连接后会保存 connection key，后续可直接运行 `fastgpt-plugin dev` 复用本地配置。TUI 中按 `c` 可重新输入并保存新的调试链接或 connection key。
+
+### 7.3 指定插件目录和监听变化
+
+`dev` 未传插件目录时会自动探测当前目录：当前目录存在 `index.ts` 时使用当前目录；否则扫描下一层子目录中的 `index.ts`。
+
+也可以手动传入一个或多个插件目录：
+
+```bash
+fastgpt-plugin dev ./plugins/getTime ./plugins/dbops --watch
+```
+
+`--watch` 会在本地文件变化后重新加载插件并重建远程调试会话。CLI 默认开启断线重连；如需关闭自动重连，可加 `--no-reconnect`。
+
+### 7.4 在 FastGPT 中验证
+
+CLI 显示远程调试已就绪后，回到 FastGPT 测试环境：
+
+1. 在「系统工具」页面查看调试插件。
+2. 在应用、工作流或 Agent 中选择该调试工具。
+3. 填写密钥和输入参数，发起真实调用。
+4. 在 CLI 终端查看本地 handler 日志和错误信息。
+
+调试工具的 `source` 会绑定到当前登录成员，其他成员默认看不到该调试插件。
+
+### 7.5 结束调试
+
+本地终端按 `Ctrl+C` 会关闭当前 CLI 调试会话；再次按 `Ctrl+C` 会强制退出。
+
+FastGPT 页面中的「结束调试」会撤销当前成员的 debug channel，并清理页面上的调试插件入口。调试链接泄露、成员切换或需要重新授权时，优先使用「刷新链接」生成新链接。
+
+## 8. 构建、检查和打包
 
 插件目录中通常可以直接运行：
 
@@ -369,7 +450,7 @@ pnpx @fastgpt-plugin/cli pack --entry packages/tools/my-tool --dist ./dist --out
 
 打包后会生成 `.pkg` 文件。上传、安装和上架都应使用该 `.pkg` 文件。
 
-## 8. 验证清单
+## 9. 验证清单
 
 提交前至少确认：
 
@@ -384,9 +465,10 @@ pnpx @fastgpt-plugin/cli pack --entry packages/tools/my-tool --dist ./dist --out
 - `pnpm run test` 通过，或明确说明无法测试的原因。
 - `build`、`check`、`pack` 通过。
 - `dist/manifest.json` 中图标和 schema 符合预期。
+- 使用远程调试完成测试环境真实调用，或明确说明本次无需远程调试的原因。
 - `.pkg` 能在测试环境中安装并完成真实调用。
 
-## 9. 发布流程
+## 10. 发布流程
 
 ### 社区插件
 

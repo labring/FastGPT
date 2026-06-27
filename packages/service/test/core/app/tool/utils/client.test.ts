@@ -3,7 +3,8 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 const mocks = vi.hoisted(() => ({
   findById: vi.fn(),
-  getAppVersionById: vi.fn()
+  getAppVersionById: vi.fn(),
+  getSystemToolDetail: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/core/app/schema', () => ({
@@ -19,7 +20,9 @@ vi.mock('@fastgpt/service/core/app/version/controller', () => ({
 
 vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
   SystemToolRepo: {
-    getInstance: vi.fn()
+    getInstance: vi.fn(() => ({
+      getSystemToolDetail: mocks.getSystemToolDetail
+    }))
   }
 }));
 
@@ -28,6 +31,42 @@ import { getClientToolPreviewNode } from '@fastgpt/service/core/app/tool/utils/c
 describe('getClientToolPreviewNode', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it('uses explicit debug source for system tool preview without encoding appId', async () => {
+    mocks.getSystemToolDetail.mockResolvedValueOnce({
+      id: 'systemTool-weather',
+      version: '1.0.0',
+      status: 1,
+      source: 'debug:tmbId:tmb-1',
+      isToolSet: false,
+      avatar: 'weather.svg',
+      name: 'Weather',
+      intro: 'Weather query',
+      author: 'FastGPT',
+      tags: [],
+      toolDescription: 'Weather query',
+      currentCost: 0,
+      systemKeyCost: 0,
+      hasTokenFee: false,
+      hasSystemSecret: false
+    });
+
+    const result = await getClientToolPreviewNode({
+      appId: 'systemTool-weather',
+      versionId: '',
+      lang: 'en',
+      source: 'debug:tmbId:tmb-1'
+    });
+
+    expect(mocks.getSystemToolDetail).toHaveBeenCalledWith({
+      pluginId: 'systemTool-weather',
+      version: undefined,
+      lang: 'en',
+      source: 'debug:tmbId:tmb-1'
+    });
+    expect(result.pluginId).toBe('systemTool-weather');
+    expect(result.source).toBe('debug:tmbId:tmb-1');
   });
 
   it('omits runtime schema fields from client preview response', async () => {

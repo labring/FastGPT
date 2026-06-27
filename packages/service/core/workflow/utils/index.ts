@@ -6,6 +6,7 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { SystemToolRepo } from '../../app/tool/systemTool/systemTool.repo';
 import { jsonSchema2NodeInput, jsonSchema2NodeOutput } from '@fastgpt/global/core/app/jsonschema';
+import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
 
 /* filter search result */
 export const filterSearchResultsByMaxChars = async (
@@ -42,6 +43,12 @@ export async function getSystemToolRunTimeNodeFromSystemToolset({
   lang?: localeType;
 }): Promise<RuntimeNodeItemType[]> {
   const systemToolId = toolSetNode.toolConfig?.systemToolSet?.toolId!;
+  const systemToolSource = (() => {
+    const toolConfigSource = toolSetNode.toolConfig?.systemToolSet?.source;
+    if (isDebugToolSource(toolConfigSource)) return toolConfigSource;
+
+    return 'system';
+  })();
   const selectedTools = toolSetNode.toolConfig?.systemToolSet?.toolList ?? [];
   if (!selectedTools.length) return [];
 
@@ -52,8 +59,7 @@ export async function getSystemToolRunTimeNodeFromSystemToolset({
   const tool = await systemToolRepo.getSystemToolDetail({
     pluginId: systemToolId,
     lang,
-    // source: toolSetNode.toolConfig?.systemToolSet?.source,
-    source: 'system',
+    source: systemToolSource,
     version: toolSetNode.version,
     fallbackLatestVersion: true
   });
@@ -94,7 +100,8 @@ export async function getSystemToolRunTimeNodeFromSystemToolset({
       toolDescription,
       toolConfig: {
         systemTool: {
-          toolId: pluginId
+          toolId: pluginId,
+          ...(isDebugToolSource(systemToolSource) ? { source: systemToolSource } : {})
         }
       },
       pluginId

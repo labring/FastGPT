@@ -24,6 +24,8 @@ import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { AppTypeList } from '@fastgpt/global/core/app/constants';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import { hasDebugToolInNodes } from '@fastgpt/global/core/app/tool/utils';
+import { ToastHandledError } from '@fastgpt/global/common/error/utils';
 
 const InfoModal = dynamic(() => import('./InfoModal'));
 const TagsEditModal = dynamic(() => import('./TagsEditModal'));
@@ -166,6 +168,13 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
     async (data: PostPublishAppProps) => {
       try {
         if (!appDetail.permission.hasWritePer) return;
+        if (data.isPublish && hasDebugToolInNodes(data.nodes)) {
+          toast({
+            title: t('app:publish_remove_debug_tool_tip'),
+            status: 'warning'
+          });
+          return Promise.reject(new ToastHandledError('Debug tool cannot be published'));
+        }
         await postPublishApp(appId, data);
         setAppDetail((state) => ({
           ...state,

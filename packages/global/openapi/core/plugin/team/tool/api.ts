@@ -25,7 +25,10 @@ export const TeamSystemPluginListItemSchema = SystemToolListItemSchema.extend({
 export const GetTeamPluginListResponseSchema = z.array(TeamSystemPluginListItemSchema);
 export type GetTeamPluginListResponseType = z.infer<typeof GetTeamPluginListResponseSchema>;
 
-export const GetTeamToolDetailSourceEnum = z.enum(['system', 'team']);
+export const GetTeamToolDetailSourceSchema = z.union([
+  z.enum(['system', 'team']),
+  z.string().regex(/^debug:tmbId:[^:]+$/)
+]);
 
 /* ============================================================================
  * API: 获取团队工具详情
@@ -44,9 +47,10 @@ export const GetTeamToolDetailQuerySchema = z.object({
     example: '68ad85a7463006c963799a05',
     description: '工具版本 ID。为空时返回最新版本详情'
   }),
-  source: GetTeamToolDetailSourceEnum.optional().meta({
-    example: 'system',
-    description: '工具来源。system 表示系统工具，team 表示当前团队工具'
+  source: GetTeamToolDetailSourceSchema.optional().meta({
+    example: 'debug:tmbId:tmb_xxx',
+    description:
+      '工具来源。system 表示系统工具，team 表示当前团队工具，debug:tmbId:* 表示当前调试来源'
   })
 });
 

@@ -52,12 +52,17 @@ import {
   PluginStatusMap,
   type PluginStatusType
 } from '@fastgpt/global/core/plugin/type';
-import { splitCombineToolId, getToolRawId } from '@fastgpt/global/core/app/tool/utils';
+import {
+  splitCombineToolId,
+  getToolRawId,
+  isDebugToolSource
+} from '@fastgpt/global/core/app/tool/utils';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 import { getAppPermission } from '@/web/core/app/api';
 import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import type { SystemToolVersionType } from '@fastgpt/global/core/app/tool/systemTool/type/base';
+import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -224,6 +229,7 @@ const NodeCard = (props: Props) => {
   const isLoopNode = isNestedParentNodeType(node?.flowNodeType ?? '');
   const showVersion = useMemo(() => {
     const source = node?.pluginId ? splitCombineToolId(node.pluginId).source : undefined;
+    if (isDebugToolSource(node?.source)) return false;
     // 1. MCP/HTTP single tools use the latest toolset content and do not expose version selection.
     if (source === AppToolSourceEnum.mcp || source === AppToolSourceEnum.http) return false;
 
@@ -376,6 +382,8 @@ const NodeCard = (props: Props) => {
 
                     <Box mr={1} />
 
+                    {isDebugToolSource(node?.source) && <DebugToolTag mr={2} />}
+
                     {showVersion && <NodeVersion node={node!} />}
 
                     <NodeActionButtons
@@ -410,6 +418,7 @@ const NodeCard = (props: Props) => {
                       readmeUrl={node?.readmeUrl}
                       hasSystemSecret={node?.hasSystemSecret}
                       pluginId={node?.pluginId}
+                      source={node?.source}
                       systemKeyCost={node?.systemKeyCost}
                       inputConfig={inputConfig}
                     />
@@ -640,10 +649,7 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
 
       return getTeamToolVersions({
         toolId: node.pluginId,
-        source:
-          toolSource === AppToolSourceEnum.systemTool || toolSource === AppToolSourceEnum.commercial
-            ? 'system'
-            : 'team'
+        source: toolSource === AppToolSourceEnum.personal ? 'team' : 'system'
       });
     },
     {
@@ -658,7 +664,8 @@ const NodeVersion = React.memo(function NodeVersion({ node }: { node: FlowNodeIt
       if (node.pluginId) {
         const template = await getClientToolPreviewNode({
           appId: node.pluginId,
-          versionId
+          versionId,
+          source: node.source
         });
 
         if (!!template) {
@@ -787,6 +794,7 @@ const MenuRender = React.memo(function MenuRender({
           outputs: node.data.outputs,
 
           pluginId: node.data.pluginId,
+          source: node.data.source,
           isFolder: node.data.isFolder,
           pluginData: node.data.pluginData,
 
@@ -816,6 +824,7 @@ const MenuRender = React.memo(function MenuRender({
               position: { x: node.position.x + 200, y: node.position.y + 50 },
               showStatus: template.showStatus,
               pluginId: template.pluginId,
+              source: template.source,
               inputs: template.inputs,
               outputs: template.outputs,
               version: template.version,
@@ -1069,6 +1078,7 @@ const NodeSecret = React.memo(function NodeSecret({
   readmeUrl,
   hasSystemSecret,
   pluginId,
+  source,
   systemKeyCost,
   inputConfig
 }: {
@@ -1078,6 +1088,7 @@ const NodeSecret = React.memo(function NodeSecret({
   readmeUrl?: string;
   hasSystemSecret?: boolean;
   pluginId?: string;
+  source?: string;
   systemKeyCost?: number;
   inputConfig: FlowNodeInputItemType | undefined;
 }) {
@@ -1128,6 +1139,7 @@ const NodeSecret = React.memo(function NodeSecret({
           inputConfig={inputConfig}
           hasSystemSecret={hasSystemSecret}
           parentId={pluginId}
+          source={source}
           secretCost={systemKeyCost}
         />
       )}

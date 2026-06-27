@@ -159,6 +159,7 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
   const makeToolSetNode = (
     overrides: Partial<{
       toolId: string;
+      source: string;
       toolList: { toolId: string; name: string; description: string }[];
       inputs: any[];
       nodeId: string;
@@ -168,6 +169,7 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
     toolConfig: {
       systemToolSet: {
         toolId: overrides.toolId ?? 'systemTool-toolset-1',
+        source: overrides.source,
         toolList: overrides.toolList ?? []
       }
     },
@@ -488,5 +490,30 @@ describe('getSystemToolRunTimeNodeFromSystemToolset', () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].pluginId).toBe('systemTool-toolset-1/child-1');
+  });
+
+  it('should pass debug source from toolset config to child runtime node', async () => {
+    const toolSetNode = makeToolSetNode({
+      source: 'debug:tmbId:tmb-1',
+      toolList: [{ toolId: 'child-1', name: 'Debug Tool', description: 'Debug Desc' }]
+    });
+    mockToolDetail();
+
+    const result = await getSystemToolRunTimeNodeFromSystemToolset({
+      toolSetNode,
+      lang: 'en'
+    });
+
+    expect(mockGetSystemToolDetail).toHaveBeenCalledWith({
+      pluginId: 'systemTool-toolset-1',
+      lang: 'en',
+      source: 'debug:tmbId:tmb-1',
+      version: undefined,
+      fallbackLatestVersion: true
+    });
+    expect(result[0].toolConfig?.systemTool).toEqual({
+      toolId: 'systemTool-toolset-1/child-1',
+      source: 'debug:tmbId:tmb-1'
+    });
   });
 });

@@ -15,6 +15,8 @@ import {
 } from '@fastgpt/global/openapi/core/app/tool/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
+import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
+import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
 
 export type GetSystemPluginTemplatesBody = GetSystemToolTemplatesBodyType;
 
@@ -23,7 +25,7 @@ export async function handler(
 ): Promise<NodeTemplateListItemType[]> {
   const { teamId, tmbId, isRoot } = await authCert({ req, authToken: true });
   const {
-    body: { tags, parentId, searchKey }
+    body: { tags, parentId, searchKey, source }
   } = parseApiInput({
     req,
     bodySchema: GetSystemToolTemplatesBodySchema
@@ -38,10 +40,16 @@ export async function handler(
   // const tools = await getSystemToolsWithInstalled({ teamId, isRoot, userTags });
   const systemToolRepo = SystemToolRepo.getInstance();
   if (parentId) {
+    const parentSource = isDebugToolSource(source)
+      ? await getActiveDebugSource({
+          tmbId,
+          source
+        })
+      : source;
     const parent = await systemToolRepo.getSystemToolDisplayInfoWithChildIcons({
       pluginId: parentId,
       lang,
-      source: 'system'
+      source: parentSource ?? 'system'
     });
     if (!isSelectableToolStatus(parent.status)) {
       return GetSystemToolTemplatesResponseSchema.parse([]);
@@ -61,6 +69,7 @@ export async function handler(
           intro: child.description,
           toolDescription: child.toolDescription,
           id: `${parentId}/${child.id}`,
+          source: parent.source,
           avatar: child.icon ?? parent.avatar,
           currentCost: child.currentCost,
           systemKeyCost: child.systemKeyCost,
@@ -73,13 +82,17 @@ export async function handler(
     );
   }
   // no parentId, get all tools
+  const debugSource = await getActiveDebugSource({ tmbId });
   const tools = await systemToolRepo.getSystemToolList({
     lang,
-    sources: ['system', teamId],
+    op: 'or',
+    // 调试状态下追加 debug source，Agent/Workflow 仍保留生产环境插件可选。
+    sources: ['system', teamId, ...(debugSource ? [debugSource] : [])],
     tags
   });
 
   const templates = tools
+    .sort((a, b) => Number(isDebugToolSource(b.source)) - Number(isDebugToolSource(a.source)))
     .filter((item) => {
       if (!isSelectableToolStatus(item.status)) return false;
       if (isRoot) return true;
@@ -90,6 +103,7 @@ export async function handler(
       ...tool,
       templateType: FlowNodeTemplateTypeEnum.tools,
       flowNodeType: tool.isToolSet ? FlowNodeTypeEnum.toolSet : FlowNodeTypeEnum.tool,
+      source: tool.source,
       name: tool.name,
       intro: tool.intro,
       instructions: tool.userGuide ?? '',
@@ -99,6 +113,19 @@ export async function handler(
     .filter((item) => filterTemplateBySearchKey(item, searchRegex));
 
   return GetSystemToolTemplatesResponseSchema.parse(templates);
+}
+
+async function getActiveDebugSource({ tmbId, source }: { tmbId: string; source?: string }) {
+  const status = await pluginClient.getDebugSessionStatus({ tmbId }).catch(() => undefined);
+
+  if (
+    status?.enabled &&
+    (status.status === 'enabled' || status.status === 'connected') &&
+    isDebugToolSource(status.source) &&
+    (!source || status.source === source)
+  ) {
+    return status.source;
+  }
 }
 
 export default NextAPI(handler);

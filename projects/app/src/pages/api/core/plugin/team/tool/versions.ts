@@ -10,6 +10,7 @@ import {
   type GetTeamToolVersionsResponseType
 } from '@fastgpt/global/openapi/core/plugin/team/tool/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
 
 export type getSystemToolVersionsQuery = GetTeamToolVersionsQueryType;
 
@@ -33,7 +34,7 @@ async function handler(
   const systemToolRepo = SystemToolRepo.getInstance();
   const versions = await systemToolRepo.getVersions({
     pluginId: toolId,
-    source: source === 'team' ? teamId : 'system',
+    source: getQuerySource({ source, teamId }),
     lang
   });
 
@@ -41,3 +42,9 @@ async function handler(
 }
 
 export default NextAPI(handler);
+
+function getQuerySource({ source, teamId }: { source?: string; teamId: string }) {
+  if (source === 'team') return teamId;
+  if (isDebugToolSource(source)) return source;
+  return 'system';
+}

@@ -72,7 +72,7 @@ export const openAPITagGroups = [
   },
   {
     name: '核心-插件系统',
-    tags: [DevApiTagsMap.pluginToolTag, DevApiTagsMap.pluginTeam]
+    tags: [DevApiTagsMap.pluginToolTag, DevApiTagsMap.pluginTeam, DevApiTagsMap.pluginDebug]
   },
   {
     name: '辅助-用户体系',

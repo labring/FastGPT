@@ -23,6 +23,7 @@ import { handler } from '@/pages/api/core/app/tool/path';
 describe('system tool path handler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.getSystemToolDisplayInfo.mockReset();
     mocks.getLocale.mockReturnValue('en');
     mocks.getInstance.mockReturnValue({
       getSystemToolDetail: mocks.getSystemToolDetail,
@@ -67,6 +68,38 @@ describe('system tool path handler', () => {
       source: 'system'
     });
     expect(mocks.getSystemToolDetail).not.toHaveBeenCalled();
+  });
+
+  it('uses explicit debug source when resolving debug toolset paths', async () => {
+    mocks.getSystemToolDisplayInfo.mockResolvedValueOnce({
+      name: 'Debug Toolset'
+    });
+
+    const result = await handler(
+      {
+        query: {
+          sourceId: 'debug-toolset',
+          source: 'debug:tmbId:tmb-1',
+          type: 'current'
+        }
+      } as ApiRequestProps<
+        Record<string, never>,
+        { sourceId: string; source: string; type: 'current' }
+      >,
+      {} as ApiResponseType<any>
+    );
+
+    expect(result).toEqual([
+      {
+        parentId: 'debug-toolset',
+        parentName: 'Debug Toolset'
+      }
+    ]);
+    expect(mocks.getSystemToolDisplayInfo).toHaveBeenCalledWith({
+      pluginId: 'debug-toolset',
+      lang: 'en',
+      source: 'debug:tmbId:tmb-1'
+    });
   });
 
   it('returns parent and child paths for system toolset child', async () => {

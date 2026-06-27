@@ -192,6 +192,43 @@ describe('form2AppWorkflow', () => {
 
     expect(restored.dataset.authTmbId).toBe(true);
   });
+
+  it('should preserve debug tool source when roundtripping simple app tools', () => {
+    const form = getDefaultAppForm();
+    form.aiSettings = {
+      [NodeInputKeyEnum.aiModel]: 'gpt-4o-mini',
+      [NodeInputKeyEnum.aiSystemPrompt]: 'You are a helpful assistant',
+      maxHistories: 5,
+      [NodeInputKeyEnum.aiChatIsResponseText]: true
+    };
+    form.selectedTools = [
+      {
+        id: 'tool-node-1',
+        pluginId: 'systemTool-weather',
+        source: 'debug:tmbId:tmb-1',
+        flowNodeType: FlowNodeTypeEnum.tool,
+        templateType: 'other',
+        name: 'Weather Tool',
+        avatar: '',
+        intro: '',
+        inputs: [],
+        outputs: [],
+        showStatus: true
+      } as any
+    ];
+
+    const workflow = form2AppWorkflow(form, mockT);
+    const toolNode = workflow.nodes.find((node) => node.pluginId === 'systemTool-weather');
+
+    expect(toolNode?.source).toBe('debug:tmbId:tmb-1');
+
+    const restored = appWorkflow2Form({
+      nodes: workflow.nodes,
+      chatConfig: workflow.chatConfig
+    });
+
+    expect(restored.selectedTools[0]?.source).toBe('debug:tmbId:tmb-1');
+  });
 });
 
 describe('filterSensitiveFormData', () => {

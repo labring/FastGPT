@@ -1,4 +1,7 @@
 import { AppToolSourceEnum } from '../tool/constants';
+import { NodeInputKeyEnum } from '../../workflow/constants';
+import type { StoreNodeItemType } from '../../workflow/type/node';
+import type { SelectedToolItemType } from '../formEdit/type';
 
 /**
   Tool id rule:
@@ -12,7 +15,7 @@ import { AppToolSourceEnum } from '../tool/constants';
   (deprecated) community: community-id
 */
 export function splitCombineToolId(id: string): {
-  source: AppToolSourceEnum;
+  source: AppToolSourceEnum | string;
   pluginId: string;
   authAppId?: string;
 } {
@@ -77,6 +80,51 @@ export function splitCombineToolId(id: string): {
   }
 
   throw new Error('Invalid tool id');
+}
+
+const DebugToolSourcePrefix = 'debug:tmbId:';
+
+export function isDebugToolSource(source?: string): source is string {
+  return typeof source === 'string' && source.startsWith(DebugToolSourcePrefix);
+}
+
+export function parseDebugToolSource(source?: string): { tmbId: string } | undefined {
+  if (!isDebugToolSource(source)) return;
+  const tmbMatch = /^debug:tmbId:([^:]+)$/.exec(source);
+  if (tmbMatch) {
+    return {
+      tmbId: tmbMatch[1]
+    };
+  }
+}
+
+export function hasDebugToolInSelectedTools(selectedTools?: SelectedToolItemType[] | null) {
+  return selectedTools?.some((tool) => isDebugToolSource(tool.source)) ?? false;
+}
+
+/**
+ * 检查发布数据中是否包含本地调试工具。
+ * 需要同时覆盖普通工具节点、工具集配置和 Agent 节点 selectedTools 输入，避免调试 source 被发布到线上版本。
+ */
+export function hasDebugToolInNodes(nodes?: StoreNodeItemType[] | null) {
+  return (
+    nodes?.some((node) => {
+      if (isDebugToolSource(node.source)) return true;
+
+      const toolConfig = node.toolConfig;
+      if (isDebugToolSource(toolConfig?.systemTool?.source)) return true;
+      if (isDebugToolSource(toolConfig?.systemToolSet?.source)) return true;
+
+      const selectedToolsInput = node.inputs.find(
+        (input) => input.key === NodeInputKeyEnum.selectedTools
+      );
+      const selectedTools = Array.isArray(selectedToolsInput?.value)
+        ? (selectedToolsInput.value as SelectedToolItemType[])
+        : [];
+
+      return hasDebugToolInSelectedTools(selectedTools);
+    }) ?? false
+  );
 }
 
 export const getToolRawId = (id: string) => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
+import { getErrText, ToastHandledError, UserError } from '@fastgpt/global/common/error/utils';
 import { ERROR_ENUM, ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 
 describe('getErrText', () => {
@@ -52,6 +52,42 @@ describe('getErrText', () => {
     };
     expect(getErrText(err)).toBe('Sandbox is not configured');
   });
+
+  it('should use localized reason when locale is provided', () => {
+    const err = {
+      response: {
+        data: {
+          error: {
+            message: 'English message',
+            reason: {
+              en: 'English reason',
+              'zh-CN': '中文原因'
+            }
+          }
+        }
+      }
+    };
+
+    expect(getErrText(err, '', 'zh-CN')).toBe('中文原因');
+  });
+
+  it('should keep existing nested object behavior when locale is not provided', () => {
+    const err = {
+      response: {
+        data: {
+          error: {
+            message: 'English message',
+            reason: {
+              en: 'English reason',
+              'zh-CN': '中文原因'
+            }
+          }
+        }
+      }
+    };
+
+    expect(getErrText(err)).toBe('');
+  });
 });
 
 describe('UserError', () => {
@@ -61,5 +97,15 @@ describe('UserError', () => {
     expect(err).toBeInstanceOf(Error);
     expect(err.name).toBe('UserError');
     expect(err.message).toBe('boom');
+  });
+});
+
+describe('ToastHandledError', () => {
+  it('should set name to ToastHandledError', () => {
+    const err = new ToastHandledError('handled');
+
+    expect(err).toBeInstanceOf(Error);
+    expect(err.name).toBe('ToastHandledError');
+    expect(err.message).toBe('handled');
   });
 });

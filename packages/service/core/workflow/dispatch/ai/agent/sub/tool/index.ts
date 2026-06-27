@@ -1,7 +1,11 @@
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import type { DispatchSubAppResponse } from '../../type';
-import { getToolNameCandidates, getToolRawId } from '@fastgpt/global/core/app/tool/utils';
+import {
+  getToolNameCandidates,
+  getToolRawId,
+  isDebugToolSource
+} from '@fastgpt/global/core/app/tool/utils';
 import { getSecretValue } from '../../../../../../../common/secret/utils';
 import type {
   ChatDispatchProps,
@@ -86,6 +90,12 @@ export const dispatchTool = async ({
   };
 
   const logger = getLogger(LogCategories.MODULE.APP.TOOL);
+  const getSystemToolSource = () => {
+    const toolConfigSource = toolConfig?.systemTool?.source;
+    if (isDebugToolSource(toolConfigSource)) return toolConfigSource;
+
+    return 'system';
+  };
 
   try {
     /**
@@ -101,10 +111,11 @@ export const dispatchTool = async ({
     };
 
     if (toolConfig?.systemTool?.toolId) {
+      const toolSource = getSystemToolSource();
       const systemToolRepo = SystemToolRepo.getInstance();
       const tool = await systemToolRepo.getSystemToolRuntime({
         pluginId: toolConfig.systemTool.toolId,
-        source: 'system',
+        source: toolSource,
         version
       });
       const inputConfigParams = await (async () => {
@@ -117,6 +128,7 @@ export const dispatchTool = async ({
             });
           case SystemToolSecretInputTypeEnum.system:
           default:
+            if (isDebugToolSource(toolSource)) return {};
             return tool.secretsVal ?? {};
         }
       })();
@@ -142,7 +154,7 @@ export const dispatchTool = async ({
         pluginId: formatToolId,
         ...(childId ? { childId } : {}),
         version: tool.version ?? version ?? '',
-        source: 'system', // TODO: 后续 source 需要从节点配置中获取到
+        source: toolSource,
         input: Object.fromEntries(Object.entries(params)),
         secrets: inputConfigParams,
         systemVar: {

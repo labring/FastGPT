@@ -44,6 +44,10 @@ export const GetSystemToolTemplatesBodySchema = z.object({
     example: 'systemTool-map',
     description: '工具集父工具 ID。传入后返回该工具集下的子工具模板'
   }),
+  source: z.string().optional().meta({
+    example: 'debug:tmbId:tmb_xxx',
+    description: '工具来源。调试状态下由前端显式传入 debug source，不再拼接到工具 ID 中'
+  }),
   tags: z
     .array(z.string())
     .optional()
@@ -72,6 +76,10 @@ export const GetToolPathQuerySchema = z.object({
   sourceId: z.string().nullish().meta({
     example: 'systemTool-map/geocode',
     description: '工具 ID。为空时返回空路径'
+  }),
+  source: z.string().optional().meta({
+    example: 'debug:tmbId:tmb_xxx',
+    description: '工具来源。调试状态下显式传入 debug source，不再拼接到工具 ID 中'
   }),
   type: z.enum(['current', 'parent']).optional().meta({
     example: 'current',
@@ -108,6 +116,10 @@ const GetPreviewNodeBaseQuerySchema = z.object({
     example: 'systemTool-weather',
     description:
       '工具 ID，支持系统工具 systemTool/commercial、我的工具 personal/mcp/http 组合 ID 及工具集子工具 ID'
+  }),
+  source: z.string().optional().meta({
+    example: 'debug:tmbId:tmb_xxx',
+    description: '工具来源。调试状态下显式传入 debug source，不再拼接到 appId 中'
   })
 });
 

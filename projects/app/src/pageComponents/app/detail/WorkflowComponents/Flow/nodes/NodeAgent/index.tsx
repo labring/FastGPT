@@ -50,6 +50,8 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import WorkflowSandboxConfig, {
   createSandboxEntrypointInput
 } from '../components/WorkflowSandboxConfig';
+import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
+import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
 
 const PromptEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea/PromptEditor'));
 const SkillSelectModal = dynamic(
@@ -804,6 +806,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                           >
                             {item.name}
                           </Box>
+                          {isDebugToolSource(item.source) && <DebugToolTag />}
                           <Box className="delete-btn" display={'none'}>
                             <MyIconButton
                               icon="delete"

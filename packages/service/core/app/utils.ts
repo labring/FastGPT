@@ -41,7 +41,15 @@ export async function rewriteAppWorkflowToDetail({
     Partial<SelectedDatasetType>;
   const defaultDeletedDatasetAvatar = DatasetTypeMap[DatasetTypeEnum.dataset].avatar;
 
-  const loadToolNode = async ({ id, versionId }: { id: string; versionId?: string }) => {
+  const loadToolNode = async ({
+    id,
+    versionId,
+    source
+  }: {
+    id: string;
+    versionId?: string;
+    source?: string;
+  }) => {
     const { authAppId } = splitCombineToolId(id);
 
     try {
@@ -49,7 +57,8 @@ export async function rewriteAppWorkflowToDetail({
         getClientToolPreviewNode({
           appId: id,
           versionId,
-          lang
+          lang,
+          source
         }),
         ...(authAppId
           ? [
@@ -70,7 +79,7 @@ export async function rewriteAppWorkflowToDetail({
     } catch (error) {
       return {
         success: false,
-        error: getErrText(error)
+        error: getErrText(error, '', lang)
       };
     }
   };
@@ -142,10 +151,15 @@ export async function rewriteAppWorkflowToDetail({
       if (node.pluginId) {
         const result = await loadToolNode({
           id: node.pluginId,
-          versionId: node.version ?? ''
+          versionId: node.version ?? '',
+          source:
+            node.source ??
+            node.toolConfig?.systemTool?.source ??
+            node.toolConfig?.systemToolSet?.source
         });
         if (result.success) {
           const preview = result.data!;
+          node.source = preview.source ?? node.source;
           node.avatar = preview.avatar ?? node.avatar;
           node.isFolder = preview.isFolder;
           node.pluginData = {
@@ -216,7 +230,7 @@ export async function rewriteAppWorkflowToDetail({
           const tools = toolsParse.success ? toolsParse.data : [];
           const nodes = await Promise.all(
             tools.map(async (tool) => {
-              const result = await loadToolNode({ id: tool.id });
+              const result = await loadToolNode({ id: tool.id, source: tool.source });
               if (result.success) {
                 const data = result.data!;
                 // Merge saved config back into inputs
@@ -230,6 +244,8 @@ export async function rewriteAppWorkflowToDetail({
 
                 return {
                   ...data,
+                  source: tool.source ?? data.source,
+                  toolConfig: tool.toolConfig ?? data.toolConfig,
                   inputs: mergedInputs
                 };
               } else {

@@ -6,6 +6,7 @@ import { useTranslation } from 'next-i18next';
 import MyIcon from '../../../common/Icon';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
+import DebugToolTag from './DebugToolTag';
 
 export type ToolCardItemType = {
   id: string;
@@ -23,6 +24,7 @@ export type ToolCardItemType = {
   downloadCount?: number;
   associatedPluginId?: string;
   source?: string;
+  isDebug?: boolean;
 };
 
 /**
@@ -172,7 +174,7 @@ const ToolCard = ({
       }}
     >
       {/* Update badge in top-right corner */}
-      {item.update && mode === 'admin' && (
+      {item.update && mode === 'admin' && !item.isDebug && (
         <Flex
           alignItems="center"
           position={'absolute'}
@@ -207,13 +209,20 @@ const ToolCard = ({
         </Flex>
       )}
 
-      <HStack>
+      <HStack minW={0}>
         <Avatar src={item.icon} borderRadius={'sm'} w={'1.5rem'} />
-        <Box color={'myGray.900'} fontWeight={'medium'}>
+        <Box color={'myGray.900'} fontWeight={'medium'} minW={0} className={'textEllipsis'}>
           {parseI18nString(item.name, i18n.language)}
         </Box>
+        {item.isDebug && <DebugToolTag />}
         {statusLabel && (
-          <Flex fontSize={'12px'} fontWeight={'medium'} color={statusLabel.color} gap={1}>
+          <Flex
+            flexShrink={0}
+            fontSize={'12px'}
+            fontWeight={'medium'}
+            color={statusLabel.color}
+            gap={1}
+          >
             {statusLabel.icon && <MyIcon name={statusLabel.icon as any} w={4} />}
             {statusLabel.label}
           </Flex>

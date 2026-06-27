@@ -26,6 +26,7 @@ export type ToolParamsFormType = {
 
 const SecretInputModal = ({
   parentId,
+  source,
   hasSystemSecret,
   secretCost = 0,
   isFolder,
@@ -36,6 +37,7 @@ const SecretInputModal = ({
   onSubmit
 }: {
   parentId?: string;
+  source?: string;
   isFolder?: boolean;
   inputConfig: FlowNodeInputItemType;
   hasSystemSecret?: boolean;
@@ -78,11 +80,11 @@ const SecretInputModal = ({
   const { data: childTools = [] } = useRequest<NodeTemplateListItemType[], []>(
     async () => {
       if (!isFolder) return [];
-      return getAppToolTemplates({ parentId });
+      return getAppToolTemplates({ parentId, source });
     },
     {
       manual: false,
-      refreshDeps: [isFolder, parentId]
+      refreshDeps: [isFolder, parentId, source]
     }
   );
 

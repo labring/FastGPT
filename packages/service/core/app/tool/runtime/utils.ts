@@ -28,7 +28,7 @@ export const computedAppToolUsage = async ({
     AppToolSourceEnum.community,
     AppToolSourceEnum.systemTool
   ]);
-  if (set.has(source)) {
+  if (set.has(source as AppToolSourceEnum)) {
     if (error) return 0;
 
     const pluginCurrentCost = plugin.currentCost ?? 0;

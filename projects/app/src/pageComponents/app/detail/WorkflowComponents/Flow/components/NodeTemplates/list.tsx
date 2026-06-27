@@ -48,13 +48,15 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { WorkflowModalContext } from '../../../context/workflowModalContext';
+import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
+import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
 
 export type TemplateListProps = {
   onAddNode: ({ newNodes }: { newNodes: Node<FlowNodeItemType>[] }) => void;
   isPopover?: boolean;
   templates: NodeTemplateListItemType[];
   templateType: TemplateTypeEnum;
-  onUpdateParentId: (parentId: string) => void;
+  onUpdateParentId: (parentId: string, source?: string) => void;
 };
 
 const NodeTemplateListItem = ({
@@ -71,17 +73,24 @@ const NodeTemplateListItem = ({
     position: { x: number; y: number };
   }) => void;
   isPopover?: boolean;
-  onUpdateParentId: (parentId: string) => void;
+  onUpdateParentId: (parentId: string, source?: string) => void;
 }) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
 
   const { screenToFlowPosition } = useReactFlow();
   const handleParams = useContextSelector(WorkflowModalContext, (v) => v.handleParams);
-  const isToolHandle = handleParams?.handleId === 'selectedTools';
   const isSystemTool = templateType === TemplateTypeEnum.systemTools;
   const isSystemToolSet = isSystemTool && template.flowNodeType === FlowNodeTypeEnum.toolSet;
+  const isToolSelector = handleParams?.handleId === NodeOutputKeyEnum.selectedTools;
+  // 系统工具集只有在工具调用的工具选择器里才允许直接创建节点。
+  const allowDirectAddSystemToolSet = isSystemToolSet && isToolSelector;
+  const canDragCreateNode =
+    !isPopover &&
+    (!template.isFolder || template.flowNodeType === FlowNodeTypeEnum.toolSet) &&
+    (!isSystemToolSet || allowDirectAddSystemToolSet);
   const showExpandArrow = template.isFolder || isSystemToolSet;
+  const isDebugTool = isDebugToolSource(template.source);
 
   return (
     <MyTooltip
@@ -95,9 +104,12 @@ const NodeTemplateListItem = ({
               objectFit={'contain'}
               borderRadius={'sm'}
             />
-            <Box fontWeight={'bold'} ml={3} color={'myGray.900'} flex={'1'}>
-              {template.name}
-            </Box>
+            <Flex alignItems={'center'} gap={2} ml={3} flex={'1'} minW={0}>
+              <Box fontWeight={'bold'} color={'myGray.900'} className="textEllipsis">
+                {template.name}
+              </Box>
+              {isDebugTool && <DebugToolTag />}
+            </Flex>
             {isSystemTool && (
               <Box color={'myGray.500'}>By {template.author || feConfigs?.systemTitle}</Box>
             )}
@@ -132,10 +144,9 @@ const NodeTemplateListItem = ({
         whiteSpace={'nowrap'}
         overflow={'hidden'}
         textOverflow={'ellipsis'}
-        draggable={
-          !isPopover && (!template.isFolder || template.flowNodeType === FlowNodeTypeEnum.toolSet)
-        }
+        draggable={canDragCreateNode}
         onDragEnd={(e) => {
+          if (!canDragCreateNode) return;
           if (e.clientX < sliderWidth) return;
           const nodePosition = screenToFlowPosition({ x: e.clientX, y: e.clientY });
           handleAddNode({
@@ -144,9 +155,8 @@ const NodeTemplateListItem = ({
           });
         }}
         onClick={() => {
-          // Not tool handle, cannot add toolset
-          if (!isToolHandle && template.flowNodeType === FlowNodeTypeEnum.toolSet) {
-            onUpdateParentId(template.id);
+          if (isSystemToolSet && !allowDirectAddSystemToolSet) {
+            onUpdateParentId(template.id, template.source);
             return;
           }
           // Team folder
@@ -169,15 +179,18 @@ const NodeTemplateListItem = ({
           borderRadius={'sm'}
           flexShrink={0}
         />
-        <Box flex={'1 0 0'} ml={3}>
-          <Box
-            color={'myGray.900'}
-            fontWeight={'500'}
-            fontSize={isPopover ? 'xs' : 'sm'}
-            className="textEllipsis"
-          >
-            {t(template.name as any)}
-          </Box>
+        <Box flex={'1 0 0'} ml={3} minW={0}>
+          <Flex alignItems={'center'} gap={2} minW={0}>
+            <Box
+              color={'myGray.900'}
+              fontWeight={'500'}
+              fontSize={isPopover ? 'xs' : 'sm'}
+              className="textEllipsis"
+            >
+              {t(template.name as any)}
+            </Box>
+            {isDebugTool && <DebugToolTag />}
+          </Flex>
         </Box>
         {showExpandArrow && (
           <Box
@@ -192,7 +205,7 @@ const NodeTemplateListItem = ({
             display="none"
             onClick={(e) => {
               e.stopPropagation();
-              onUpdateParentId(template.id);
+              onUpdateParentId(template.id, template.source);
             }}
           >
             <MyIcon name="common/arrowRight" w={isPopover ? '16px' : '20px'} />
@@ -247,7 +260,8 @@ const NodeTemplateList = ({
             if (shouldLoadPreviewNode) {
               const node = await getClientToolPreviewNode({
                 appId: template.id,
-                getLatestVersion: true
+                getLatestVersion: true,
+                source: template.source
               });
               return {
                 ...node,

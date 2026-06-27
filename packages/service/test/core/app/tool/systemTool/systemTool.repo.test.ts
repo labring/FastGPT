@@ -5,6 +5,7 @@ import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
+import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
 
 const mocks = vi.hoisted(() => ({
   listTools: vi.fn(),
@@ -24,7 +25,8 @@ vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin', () => ({
     listTools: mocks.listTools,
     listPluginVersions: mocks.listPluginVersions,
     getTool: mocks.getTool
-  }
+  },
+  withPluginClientLocale: (_lang: string | undefined, fn: () => Promise<unknown>) => fn()
 }));
 
 vi.mock('@fastgpt/service/core/plugin/tool/systemToolSchema', () => ({
@@ -60,14 +62,16 @@ const createPluginTool = ({
   pluginId,
   name,
   tags = [],
-  hasSecret = false
+  hasSecret = false,
+  source = 'system'
 }: {
   pluginId: string;
   name: string;
   tags?: string[];
   hasSecret?: boolean;
+  source?: string;
 }) => ({
-  source: 'system',
+  source,
   isToolset: false,
   hasSecret,
   type: 'tool',
@@ -85,15 +89,18 @@ const createToolConfig = ({
   pluginId,
   pluginOrder,
   tags,
-  secretsVal
+  secretsVal,
+  status
 }: {
   pluginId: string;
   pluginOrder: number;
   tags: string[];
   secretsVal?: Record<string, unknown>;
+  status?: PluginStatusType;
 }) => ({
   pluginId: `systemTool-${pluginId}`,
   pluginOrder,
+  status,
   secretsVal,
   customConfig: {
     name: pluginId,
@@ -200,6 +207,34 @@ describe('SystemToolRepo.getSystemToolList', () => {
       SystemToolSystemSecretStatusEnum.configured
     );
     expect(mocks.getTool).not.toHaveBeenCalled();
+  });
+
+  it('keeps debug tools visible as normal even when system config is soon offline', async () => {
+    mocks.listTools.mockResolvedValue([
+      createPluginTool({
+        pluginId: 'getTime',
+        name: 'Get Time',
+        source: 'debug:tmbId:tmb-1'
+      })
+    ]);
+    mocks.findSystemTools.mockResolvedValue([
+      createToolConfig({
+        pluginId: 'getTime',
+        pluginOrder: 1,
+        tags: [],
+        status: PluginStatusEnum.SoonOffline
+      })
+    ]);
+
+    const tools = await SystemToolRepo.getInstance().getSystemToolList({
+      sources: ['system', 'debug:tmbId:tmb-1']
+    });
+
+    expect(tools[0]).toMatchObject({
+      id: 'systemTool-getTime',
+      source: 'debug:tmbId:tmb-1',
+      status: PluginStatusEnum.Normal
+    });
   });
 });
 
@@ -554,6 +589,108 @@ describe('SystemToolRepo.getSystemToolDisplayInfo', () => {
     expect(mocks.getTool).not.toHaveBeenCalled();
   });
 
+  it('keeps debug tool display status normal when reading by raw plugin id', async () => {
+    mocks.findSystemTool.mockResolvedValue(undefined);
+    mocks.findSystemTools
+      .mockResolvedValueOnce([
+        {
+          pluginId: 'systemTool-weather',
+          status: PluginStatusEnum.Offline,
+          currentCost: 2,
+          systemKeyCost: 1,
+          customConfig: {
+            name: 'Configured Weather'
+          }
+        }
+      ])
+      .mockResolvedValueOnce([]);
+    mocks.listTools.mockResolvedValue([
+      {
+        source: 'debug:tmbId:tmb-1',
+        isToolset: false,
+        name: { en: 'Weather' },
+        description: { en: 'Weather intro' },
+        pluginId: 'weather',
+        version: '1.0.0',
+        icon: 'weather.svg',
+        tags: ['life'],
+        toolDescription: 'Weather tool',
+        hasSecret: false
+      }
+    ]);
+
+    const tool = await SystemToolRepo.getInstance().getSystemToolDisplayInfo({
+      pluginId: 'weather',
+      source: 'debug:tmbId:tmb-1'
+    });
+
+    expect(tool).toMatchObject({
+      id: 'weather',
+      source: 'debug:tmbId:tmb-1',
+      status: PluginStatusEnum.Normal,
+      currentCost: 2,
+      systemKeyCost: 1
+    });
+  });
+
+  it('keeps debug toolset child display status normal when reading by raw plugin id', async () => {
+    const childConfig = {
+      pluginId: 'systemTool-weather/forecast',
+      status: PluginStatusEnum.Offline,
+      currentCost: 3,
+      systemKeyCost: 2,
+      customConfig: {
+        toolDescription: 'Configured forecast'
+      }
+    };
+
+    mocks.findSystemTools.mockResolvedValueOnce([childConfig]).mockResolvedValueOnce([
+      {
+        pluginId: 'systemTool-weather',
+        status: PluginStatusEnum.Normal,
+        customConfig: {}
+      },
+      childConfig
+    ]);
+    mocks.listTools.mockResolvedValue([
+      {
+        source: 'debug:tmbId:tmb-1',
+        isToolset: true,
+        name: { en: 'Weather' },
+        description: { en: 'Weather intro' },
+        pluginId: 'weather',
+        version: '1.0.0',
+        icon: 'weather.svg',
+        tags: ['life'],
+        toolDescription: 'Weather tool',
+        hasSecret: false,
+        children: [
+          {
+            id: 'forecast',
+            name: { en: 'Forecast' },
+            description: { en: 'Forecast intro' },
+            toolDescription: 'Forecast tool',
+            icon: 'forecast.svg'
+          }
+        ]
+      }
+    ]);
+
+    const tool = await SystemToolRepo.getInstance().getSystemToolDisplayInfo({
+      pluginId: 'weather/forecast',
+      source: 'debug:tmbId:tmb-1'
+    });
+
+    expect(tool).toMatchObject({
+      id: 'weather/forecast',
+      source: 'debug:tmbId:tmb-1',
+      status: PluginStatusEnum.Normal,
+      currentCost: 3,
+      systemKeyCost: 2,
+      toolDescription: 'Configured forecast'
+    });
+  });
+
   it('keeps parent toolset display lightweight when list omits child icons', async () => {
     mocks.findSystemTool.mockResolvedValue(undefined);
     mocks.listTools.mockResolvedValue([
@@ -669,6 +806,58 @@ describe('SystemToolRepo.getSystemToolDisplayInfo', () => {
       pluginId: 'weather',
       source: 'system'
     });
+  });
+});
+
+describe('SystemToolRepo.getSystemToolRuntime', () => {
+  it('does not return configured system secrets for debug source', async () => {
+    mocks.findSystemTool.mockResolvedValue({
+      pluginId: 'systemTool-weather',
+      currentCost: 1,
+      systemKeyCost: 2,
+      secretsVal: { apiKey: 'prod-secret' },
+      customConfig: {}
+    });
+    mocks.getTool.mockResolvedValue({
+      pluginId: 'weather',
+      version: '1.0.0',
+      permission: []
+    });
+
+    const tool = await SystemToolRepo.getInstance().getSystemToolRuntime({
+      pluginId: 'systemTool-weather',
+      source: 'debug:tmbId:tmb-1'
+    });
+
+    expect(mocks.getTool).toHaveBeenCalledWith({
+      pluginId: 'weather',
+      version: undefined,
+      source: 'debug:tmbId:tmb-1',
+      fallbackLatestVersion: true
+    });
+    expect(tool.secretsVal).toBeUndefined();
+  });
+
+  it('keeps configured system secrets for production source', async () => {
+    mocks.findSystemTool.mockResolvedValue({
+      pluginId: 'systemTool-weather',
+      currentCost: 1,
+      systemKeyCost: 2,
+      secretsVal: { apiKey: 'prod-secret' },
+      customConfig: {}
+    });
+    mocks.getTool.mockResolvedValue({
+      pluginId: 'weather',
+      version: '1.0.0',
+      permission: []
+    });
+
+    const tool = await SystemToolRepo.getInstance().getSystemToolRuntime({
+      pluginId: 'systemTool-weather',
+      source: 'system'
+    });
+
+    expect(tool.secretsVal).toEqual({ apiKey: 'prod-secret' });
   });
 });
 

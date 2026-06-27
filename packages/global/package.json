@@ -13,7 +13,7 @@
   "dependencies": {
     "@apidevtools/swagger-parser": "^10.1.0",
     "@bany/curl-to-json": "^1.2.8",
-    "@fastgpt-plugin/sdk-client": "0.0.1-alpha.9",
+    "@fastgpt-plugin/sdk-client": "0.0.1-alpha.11",
     "axios": "catalog:",
     "ipaddr.js": "catalog:",
     "cron-parser": "^4.9.0",

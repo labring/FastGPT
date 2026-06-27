@@ -1,0 +1,211 @@
+---
+title: 系统插件的远程调试功能套件配置
+description: FastGPT 接入系统插件的远程调试功能套件
+---
+
+import { Alert } from '@/components/docs/Alert';
+
+## 适用场景
+
+系统插件的远程调试功能套件用于把开发者本地运行的 FastGPT 系统插件临时接入 FastGPT 测试环境。它适合系统插件开发、联调和验收，不适合作为生产插件运行时。
+
+<Alert icon="🤖" context="warning">
+
+系统插件的远程调试功能套件仅商业版支持。
+
+优先推荐在 FastGPT 云服务版本中使用远程调试能力。自部署需要额外维护 Plugin Server、Connection Gateway、Redis、反向代理、TLS 和密钥轮换，运维成本更高。
+
+</Alert>
+
+默认的 Docker Compose 部署脚本只包含 FastGPT 主服务和常规 `fastgpt-plugin` 运行环境，不包含 Connection Gateway 的公网 WebSocket 接入配置。自部署环境需要按本文额外部署系统插件的远程调试功能套件。
+
+## 组件关系
+
+远程调试链路包含以下组件：
+
+| 组件                 | 作用                                                            |
+| -------------------- | --------------------------------------------------------------- |
+| FastGPT 主服务       | 提供开启、刷新、关闭调试通道的页面和 API。                      |
+| Plugin Server        | 管理 `connectionKey`、调试 source，并把调试调用转发给 Gateway。 |
+| Connection Gateway   | 维护 CLI WebSocket 长连接、session、mailbox 和调试调用流转。    |
+| Redis                | 保存 Gateway session、source owner 和 mailbox 数据。            |
+| `fastgpt-plugin dev` | 在开发者本地运行插件，并通过 WebSocket 连接 Gateway。           |
+
+主路径如下：
+
+```mermaid
+sequenceDiagram
+    participant User as Developer
+    participant FastGPT as FastGPT
+    participant Plugin as Plugin Server
+    participant Gateway as Connection Gateway
+    participant CLI as fastgpt-plugin dev
+
+    User->>FastGPT: 开启调试通道
+    FastGPT->>Plugin: 创建 debug channel
+    Plugin-->>FastGPT: connectionKey / connectionUrl / source
+    User->>CLI: fastgpt-plugin dev --connect <connectionUrl>
+    CLI->>FastGPT: 兑换 connectionKey
+    FastGPT->>Plugin: 转发 connectionKey exchange
+    Plugin-->>CLI: gatewayUrl / connectToken / source
+    CLI->>Gateway: WebSocket bind
+    FastGPT->>Plugin: 调用 debug source 下的插件
+    Plugin->>Gateway: 发送 plugin-debug.run
+    Gateway->>CLI: 转发调试请求
+    CLI-->>Gateway: 返回执行结果
+    Gateway-->>Plugin: 流式返回结果
+```
+
+## 部署前提
+
+1. FastGPT 主服务已能正常访问 `fastgpt-plugin`，并且两侧的 `PLUGIN_TOKEN` / `AUTH_TOKEN` 一致。
+2. `fastgpt-plugin` 版本需要包含远程调试能力；建议与当前 FastGPT 版本要求的 plugin 版本保持一致。
+3. Gateway WebSocket 地址需要从开发者本地可访问，生产建议使用 HTTPS 反向代理暴露为 `wss://`。
+4. Gateway internal HTTP API 只允许 Plugin Server 所在内网访问。
+5. Gateway 使用的 Redis 必须支持 Stream。
+6. 所有生产密钥至少 32 位，且不要使用示例值、默认值或弱口令。
+
+## 部署 Connection Gateway
+
+Connection Gateway 由 `fastgpt-plugin` 仓库维护。部署时按网络环境选择国内版或海外版镜像：
+
+```dotenv
+# 国内版
+CONNECTION_GATEWAY_IMAGE=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin-connection-gateway:8a52896d1d5b866308778871526cfdff9d22c547
+
+# 海外版
+CONNECTION_GATEWAY_IMAGE=ghcr.io/labring/fastgpt-plugin-connection-gateway:8a52896d1d5b866308778871526cfdff9d22c547
+```
+
+最小配置形态如下：
+
+```yaml
+services:
+  connection-gateway:
+    image: ${CONNECTION_GATEWAY_IMAGE}
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      REDIS_URL: redis://default:mypassword@fastgpt-redis:6379
+      AUTH_TOKEN: ${CONNECTION_GATEWAY_AUTH_TOKEN}
+      CONNECTION_GATEWAY_AUTH_TOKEN: ${CONNECTION_GATEWAY_AUTH_TOKEN}
+      JWT_SECRET: ${CONNECTION_GATEWAY_JWT_SECRET}
+      CONNECTION_GATEWAY_PORT: 3000
+      CONNECTION_GATEWAY_WS_PORT: 3001
+      CONNECTION_GATEWAY_WS_PATH: /connection-gateway/v1
+    ports:
+      - '3010:3000'
+      - '3011:3001'
+```
+
+端口说明：
+
+| 端口   | 用途                                                                             | 暴露要求                                                                |
+| ------ | -------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `3010` | Gateway HTTP API，对应容器内 `3000`，包含 `/health`、`/internal/*`、`/metrics`。 | 不需要公网暴露，Plugin Server 可通过内网访问即可。                      |
+| `3011` | Gateway WebSocket，对应容器内 `3001`，默认路径 `/connection-gateway/v1`。        | 需要让开发者本地 CLI 可访问，通常通过反向代理暴露为公网 `wss://` 地址。 |
+| Redis  | Gateway session、source owner 和 mailbox 存储。                                  | 不需要公网暴露；Redis 版本必须支持 Stream。                             |
+
+## 配置 Plugin Server
+
+在 `fastgpt-plugin` 服务中增加 Gateway 相关环境变量：
+
+```dotenv
+# Plugin Server 调用 Gateway internal HTTP API 的内网地址
+CONNECTION_GATEWAY_BASE_URL=http://connection-gateway:3000
+
+# 返回给本地 CLI 的 WebSocket 地址，必须能从开发者本地访问
+CONNECTION_GATEWAY_PUBLIC_URL=wss://debug-gateway.example.com/connection-gateway/v1
+
+# Plugin Server 调用 Gateway /internal/* 和 /metrics 的 bearer token
+CONNECTION_GATEWAY_AUTH_TOKEN=replace-with-a-random-token-at-least-32-chars
+
+# Gateway connect token 的 HMAC secret，必须与 Connection Gateway 完全一致
+JWT_SECRET=replace-with-a-random-jwt-secret-at-least-32-chars
+```
+
+配置后重启 `fastgpt-plugin`。`CONNECTION_GATEWAY_BASE_URL` 未配置时，Plugin Server 会关闭远程调试能力。
+
+## 配置 FastGPT 主服务
+
+FastGPT 主服务继续使用常规插件配置：
+
+```dotenv
+PLUGIN_BASE_URL=http://fastgpt-plugin:3000
+PLUGIN_TOKEN=replace-with-the-same-value-as-plugin-auth-token
+NEXT_PUBLIC_BASE_URL=https://fastgpt.example.com
+```
+
+`NEXT_PUBLIC_BASE_URL` 会影响调试连接链接的生成。公网用户访问 FastGPT 时，应配置为浏览器可访问的 FastGPT 地址。
+
+## 配置反向代理
+
+建议只暴露 Gateway WebSocket 入口，对 Gateway internal HTTP API 保持内网访问。
+
+Nginx 示例：
+
+```nginx
+location /connection-gateway/v1 {
+  proxy_pass http://connection-gateway:3001;
+  proxy_http_version 1.1;
+  proxy_set_header Upgrade $http_upgrade;
+  proxy_set_header Connection "upgrade";
+  proxy_set_header Host $host;
+  proxy_read_timeout 3600s;
+}
+```
+
+`/internal/*`、`/metrics` 和 Gateway HTTP 端口不要直接暴露到公网。
+
+## 开发者连接
+
+1. 在 FastGPT 插件调试入口开启调试通道，复制页面返回的连接链接。
+2. 在本地插件目录运行：
+
+```bash
+fastgpt-plugin dev --connect '<connectionUrl>'
+```
+
+连接成功后，本地 CLI 会通过 Gateway 上报插件 metadata。FastGPT 工具列表中会出现当前调试 source 下的本地插件。调试 source 的格式为：
+
+```text
+debug:tmbId:{tmbId}
+```
+
+## 验证
+
+1. 访问 Gateway 健康检查：
+
+```bash
+curl http://connection-gateway:3000/health
+```
+
+2. 在 FastGPT 页面开启调试通道，确认状态从 `enabled` 变为 `connected`。
+3. 运行本地 `fastgpt-plugin dev`，确认 CLI 显示 WebSocket 已连接。
+4. 在 FastGPT 中选择调试 source 下的工具并触发一次调用，确认结果由本地插件返回。
+
+## 安全注意事项
+
+- `CONNECTION_GATEWAY_AUTH_TOKEN`、`JWT_SECRET`、`connectionKey` 和 `connectToken` 都属于敏感信息，禁止写入日志、截图或公开文档。
+- `CONNECTION_GATEWAY_AUTH_TOKEN` 只给 Plugin Server 使用，本地 CLI 不需要也不应获取。
+- `connectionKey` 是长期调试连接密钥，只在开启或刷新调试通道时明文返回；泄露后应立即刷新或关闭调试通道。
+- 调试 source 命中后按远程调试路径处理，断连或 session 不存在时会失败，不会回退到生产插件运行时。
+- 多副本 Gateway 部署需要保证 session 删除请求能路由到持有 WebSocket 的节点，或接受 Redis session 删除后后续调用失败。
+
+## 常见问题
+
+### 页面可以开启调试，但 CLI 连接失败
+
+检查 `CONNECTION_GATEWAY_PUBLIC_URL` 是否为开发者本地可访问地址。浏览器和 CLI 在开发者电脑上运行，不能使用 Docker 内网域名。
+
+### CLI 已连接，但 FastGPT 显示 disconnected
+
+检查 Plugin Server 是否能访问 `CONNECTION_GATEWAY_BASE_URL`，并确认 `CONNECTION_GATEWAY_AUTH_TOKEN` 与 Gateway 配置一致。
+
+### 连接后调用工具超时
+
+检查 Gateway Redis 是否正常、反向代理是否保留 WebSocket upgrade、`proxy_read_timeout` 是否过短，以及本地 CLI 是否仍在线。
+
+### connect token 校验失败
+
+检查 Plugin Server 和 Connection Gateway 的 `JWT_SECRET` 是否完全一致。

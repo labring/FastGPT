@@ -303,6 +303,8 @@ export function agentForm2AppWorkflow(
               value: data.selectedTools.map((tool) => {
                 return {
                   id: tool.pluginId,
+                  source: tool.source,
+                  toolConfig: tool.toolConfig,
 
                   config: tool.inputs.reduce(
                     (acc, input) => {

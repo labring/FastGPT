@@ -13,6 +13,7 @@ import { getHTTPToolRuntimeNode } from '@fastgpt/global/core/app/tool/httpTool/u
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import {
   getToolNameCandidates,
+  isDebugToolSource,
   splitCombineToolId,
   splitToolsetToolPluginId
 } from '@fastgpt/global/core/app/tool/utils';
@@ -161,10 +162,12 @@ export async function getClientSystemToolPreviewNode({
     ...schemaInputs
   ];
   const isWorkflowTool = !!toolDetail.associatedPluginId;
+  const toolConfigSource = isDebugToolSource(toolSource) ? toolSource : undefined;
 
   return {
     id: getNanoid(),
     pluginId: pluginId,
+    source: toolConfigSource,
     flowNodeType: isWorkflowTool
       ? FlowNodeTypeEnum.pluginModule
       : toolDetail.isToolSet
@@ -209,6 +212,7 @@ export async function getClientSystemToolPreviewNode({
               ? {
                   systemToolSet: {
                     toolId: pluginId,
+                    ...(toolConfigSource ? { source: toolConfigSource } : {}),
                     toolList:
                       toolDetail.children?.map((child) => ({
                         description: child.description ?? '',
@@ -219,7 +223,8 @@ export async function getClientSystemToolPreviewNode({
                 }
               : {
                   systemTool: {
-                    toolId: pluginId
+                    toolId: pluginId,
+                    ...(toolConfigSource ? { source: toolConfigSource } : {})
                   }
                 })
           }
@@ -246,23 +251,23 @@ export async function getClientToolPreviewNode({
   lang?: localeType;
   source?: string;
 }): Promise<FlowNodeTemplateType> {
-  const { source, pluginId } = splitCombineToolId(appId);
+  const { source: idSource, pluginId } = splitCombineToolId(appId);
 
   const data = await (async () => {
-    if (source === AppToolSourceEnum.systemTool || source === AppToolSourceEnum.commercial) {
+    if (idSource === AppToolSourceEnum.systemTool || idSource === AppToolSourceEnum.commercial) {
       return getClientSystemToolPreviewNode({
         pluginId: appId,
         versionId,
         getLatestVersion,
         lang,
-        source: source === AppToolSourceEnum.commercial ? AppToolSourceEnum.commercial : toolSource
+        source: toolSource
       });
     }
 
     // 存在 app 里面的插件的情况
     const app: AppToolType = await (async () => {
       // App / Mcp toolset / Http toolset
-      if (source === AppToolSourceEnum.personal) {
+      if (idSource === AppToolSourceEnum.personal) {
         const item = await MongoApp.findById(pluginId).lean();
         if (!item) return Promise.reject(PluginErrEnum.unExist);
         if (AppFolderTypeList.includes(item.type)) return Promise.reject(PluginErrEnum.unExist);
@@ -320,7 +325,7 @@ export async function getClientToolPreviewNode({
         };
       }
       // mcp tool
-      else if (source === AppToolSourceEnum.mcp) {
+      else if (idSource === AppToolSourceEnum.mcp) {
         const { parentId, toolName } = splitToolsetToolPluginId(pluginId);
         // 1. get parentApp
         const item = await MongoApp.findById(parentId).lean();
@@ -372,7 +377,7 @@ export async function getClientToolPreviewNode({
         };
       }
       // http tool
-      else if (source === AppToolSourceEnum.http) {
+      else if (idSource === AppToolSourceEnum.http) {
         const { parentId, toolName } = splitToolsetToolPluginId(pluginId);
         const item = await MongoApp.findById(parentId).lean();
         if (!item) return Promise.reject(PluginErrEnum.unExist);
@@ -475,6 +480,7 @@ export async function getClientToolPreviewNode({
     return {
       id: getNanoid(),
       pluginId: app.id,
+      source: isDebugToolSource(toolSource) ? toolSource : undefined,
       flowNodeType,
       avatar: app.avatar,
       name: parseI18nString(app.name, lang),

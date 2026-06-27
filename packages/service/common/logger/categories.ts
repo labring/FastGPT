@@ -133,6 +133,7 @@ export const LogCategories = {
       ADMIN_MARKETPLACE: ['plugin', 'admin', 'marketplace'],
       ADMIN_PKG: ['plugin', 'admin', 'pkg'],
       ADMIN_TOOL: ['plugin', 'admin', 'tool'],
+      DEBUG: ['plugin', 'debug'],
       TEAM: ['plugin', 'team'],
       TOOL_TAG: ['plugin', 'tool-tag']
     }),

@@ -8,15 +8,15 @@ import {
   nodeOutputs2JsonSchema
 } from '@fastgpt/global/core/app/jsonschema';
 import { SystemToolCodec } from '@fastgpt/global/core/app/tool/systemTool/codec';
-import { splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
-import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
+import { isDebugToolSource, splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
+import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
 import { filterPluginTags } from '@fastgpt/global/core/plugin/utils';
 import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import type { PluginListParamsType } from '@fastgpt/global/sdk/fastgpt-plugin';
-import { pluginClient } from '../../../../thirdProvider/fastgptPlugin';
+import { pluginClient, withPluginClientLocale } from '../../../../thirdProvider/fastgptPlugin';
 import { MongoSystemTool } from '../../../plugin/tool/systemToolSchema';
 import { MongoApp } from '../../schema';
 import {
@@ -116,6 +116,90 @@ const workflowToolNodes2JsonSchema = ({ nodes }: { nodes: StoreNodeItemType[] })
   };
 };
 
+const getPluginClientSource = ({
+  idSource,
+  runtimeSource = 'system'
+}: {
+  idSource?: string;
+  runtimeSource?: string;
+}) => {
+  if (isDebugToolSource(runtimeSource)) return runtimeSource;
+  if (idSource === AppToolSourceEnum.commercial) return AppToolSourceEnum.commercial;
+  return runtimeSource || 'system';
+};
+
+const getSystemToolConfigIds = (pluginId: string) => {
+  const systemToolPrefix = `${AppToolSourceEnum.systemTool}-`;
+  const commercialPrefix = `${AppToolSourceEnum.commercial}-`;
+
+  if (pluginId.startsWith(systemToolPrefix)) {
+    const rawPluginId = pluginId.slice(systemToolPrefix.length);
+    return Array.from(new Set([pluginId, rawPluginId]));
+  }
+
+  if (pluginId.startsWith(commercialPrefix)) {
+    const rawPluginId = pluginId.slice(commercialPrefix.length);
+    return Array.from(new Set([pluginId, rawPluginId, SystemToolCodec.getDBPluginId(rawPluginId)]));
+  }
+
+  return Array.from(new Set([SystemToolCodec.getDBPluginId(pluginId), pluginId]));
+};
+
+const getFirstSystemToolConfig = (
+  configMap: Map<string, SystemPluginToolCollectionType>,
+  pluginId: string
+) =>
+  getSystemToolConfigIds(pluginId)
+    .map((id) => configMap.get(id))
+    .find(Boolean);
+
+const getSystemToolConfig = async (pluginId: string) => {
+  const configIds = getSystemToolConfigIds(pluginId);
+  if (configIds[0] === pluginId) {
+    const exactConfig = await MongoSystemTool.findOne({ pluginId });
+    if (exactConfig) return exactConfig;
+  }
+
+  return getFirstSystemToolConfig(
+    new Map(
+      (
+        await MongoSystemTool.find({
+          pluginId: {
+            $in: configIds
+          }
+        })
+      ).map((item) => [item.pluginId, item])
+    ),
+    pluginId
+  );
+};
+
+const parseSystemToolId = ({ pluginId, source }: { pluginId: string; source?: string }) => {
+  if (isDebugToolSource(source)) {
+    try {
+      return splitCombineToolId(pluginId);
+    } catch {
+      return {
+        source: undefined,
+        pluginId
+      };
+    }
+  }
+
+  return splitCombineToolId(pluginId);
+};
+
+const getVisiblePluginStatus = ({
+  status,
+  source
+}: {
+  status?: PluginStatusType;
+  source?: string;
+}): PluginStatusType => {
+  if (isDebugToolSource(source)) return PluginStatusEnum.Normal;
+  return status ?? PluginStatusEnum.Normal;
+};
+
 /**
  * SystemTool Repo
  * 系统工具仓储层
@@ -153,13 +237,17 @@ export class SystemToolRepo {
    */
   private async getToolsetChildIconMap({
     pluginId,
-    source
+    source,
+    lang
   }: {
     pluginId: string;
     source: string;
+    lang?: `${LangEnum}`;
   }): Promise<Map<string, string>> {
     try {
-      const detail = await pluginClient.getTool({ pluginId, source });
+      const detail = await withPluginClientLocale(lang, () =>
+        pluginClient.getTool({ pluginId, source })
+      );
       return getChildIconMap(detail.children);
     } catch {
       return new Map();
@@ -180,25 +268,33 @@ export class SystemToolRepo {
   }): Promise<SystemToolListItemType[]> => {
     // 1. get all tools from plugin by sources
     const filteredTags = tags ? filterPluginTags(tags) : undefined;
-    const tools = await pluginClient.listTools({
-      op,
-      sources,
-      tags: filteredTags
-    });
+    const tools = await withPluginClientLocale(lang, () =>
+      pluginClient.listTools({
+        op,
+        sources,
+        tags: filteredTags
+      })
+    );
 
     // 2. 加载数据库中的插件配置，将所有插件 normalize
     const DBPlugins = await this.getAllSystemToolRecords();
     const DBPluginsMap = new Map(DBPlugins.map((plugin) => [plugin.pluginId, plugin]));
 
-    const formattedTools = tools.map((tool) =>
-      SystemToolCodec.attachToolConfig({
+    const formattedTools = tools.map((tool) => {
+      const item = SystemToolCodec.attachToolConfig({
         tool,
-        config:
-          DBPluginsMap.get(SystemToolCodec.getDBPluginId(tool.pluginId)) ??
-          DBPluginsMap.get(tool.pluginId),
+        config: getFirstSystemToolConfig(DBPluginsMap, tool.pluginId),
         lang
-      })
-    );
+      });
+
+      return {
+        ...item,
+        status: getVisiblePluginStatus({
+          status: item.status,
+          source: tool.source
+        })
+      };
+    });
 
     /** 工作流插件，admin 后台配的 */
     const DBWorkflowPlugins = DBPlugins.filter((item) => item.customConfig?.associatedPluginId);
@@ -217,7 +313,7 @@ export class SystemToolRepo {
   getSystemToolDetail = async ({
     pluginId,
     version,
-    source = 'system',
+    source: toolSource = 'system',
     lang,
     fallbackLatestVersion = false
   }: {
@@ -227,13 +323,15 @@ export class SystemToolRepo {
     lang?: `${LangEnum}`;
     fallbackLatestVersion?: boolean;
   }): Promise<SystemToolDetailType> => {
-    const { pluginId: rawPluginId } = splitCombineToolId(pluginId);
+    const isDebugSource = isDebugToolSource(toolSource);
+    const { pluginId: rawPluginId, source: idSource } = parseSystemToolId({
+      pluginId,
+      source: toolSource
+    });
     const [parentPluginId, childPluginId] = rawPluginId.split('/');
     const getChildToolDetail = !!childPluginId;
 
-    const dbTool = await MongoSystemTool.findOne({
-      pluginId
-    });
+    const dbTool = await getSystemToolConfig(pluginId);
 
     if (!childPluginId && dbTool?.customConfig?.associatedPluginId) {
       // 说明是 workflow 工具，需要拿这个 app
@@ -263,7 +361,7 @@ export class SystemToolRepo {
       return {
         id: pluginId,
         name: dbTool.customConfig.name,
-        status: dbTool.status,
+        status: getVisiblePluginStatus({ status: dbTool.status, source: toolSource }),
         toolDescription: dbTool.customConfig.toolDescription ?? dbTool.customConfig.intro ?? '',
         version: appVersion.versionId,
         versionLabel: appVersion.versionName,
@@ -291,12 +389,15 @@ export class SystemToolRepo {
     }
 
     // System tool
-    const tool = await pluginClient.getTool({
-      pluginId: parentPluginId,
-      version,
-      source,
-      ...(fallbackLatestVersion ? { fallbackLatestVersion: true } : {})
-    });
+    const pluginSource = getPluginClientSource({ idSource, runtimeSource: toolSource });
+    const tool = await withPluginClientLocale(lang, () =>
+      pluginClient.getTool({
+        pluginId: parentPluginId,
+        version,
+        source: pluginSource,
+        ...(fallbackLatestVersion ? { fallbackLatestVersion: true } : {})
+      })
+    );
 
     const getToolParent = tool.isToolset && !getChildToolDetail;
 
@@ -307,7 +408,7 @@ export class SystemToolRepo {
     if (getChildToolDetail && !child) return Promise.reject(PluginErrEnum.unExist);
 
     const childrenPluginIds = getToolParent
-      ? tool.children?.map((item) => `${pluginId}/${item.id}`)
+      ? tool.children?.flatMap((item) => getSystemToolConfigIds(`${pluginId}/${item.id}`))
       : [];
 
     const dbChildren = await MongoSystemTool.find({
@@ -319,11 +420,14 @@ export class SystemToolRepo {
     const dbChildrenMap = new Map(dbChildren.map((item) => [item.pluginId, item]));
     const children = tool.isToolset
       ? tool.children?.map((item) => {
-          const dbChild = dbChildrenMap.get(`${pluginId}/${item.id}`);
+          const dbChild = getFirstSystemToolConfig(dbChildrenMap, `${pluginId}/${item.id}`);
           return {
             id: item.id,
             name: parseI18nString(item.name, lang),
-            status: dbChild?.status ?? PluginStatusEnum.Normal,
+            status: getVisiblePluginStatus({
+              status: dbChild?.status,
+              source: toolSource
+            }),
             description: parseI18nString(item.description, lang),
             systemKeyCost: dbChild?.systemKeyCost ?? 0,
             currentCost: dbChild?.currentCost ?? 0,
@@ -361,7 +465,10 @@ export class SystemToolRepo {
         dbTool?.customConfig?.name ??
         parseI18nString(childPluginId ? child!.name : tool.name, lang),
 
-      status: dbTool?.status ?? PluginStatusEnum.Normal,
+      status: getVisiblePluginStatus({
+        status: dbTool?.status,
+        source: isDebugSource ? toolSource : undefined
+      }),
       systemKeyCost: dbTool?.systemKeyCost ?? 0,
       tags: dbTool?.customConfig?.tags ?? tool.tags ?? [],
       source: tool.source,
@@ -408,15 +515,16 @@ export class SystemToolRepo {
     source?: string;
     lang?: `${LangEnum}`;
   }): Promise<SystemToolDisplayInfoType> => {
-    const { pluginId: rawPluginId, source: toolSource } = splitCombineToolId(pluginId);
+    const isDebugSource = isDebugToolSource(source);
+    const { pluginId: rawPluginId, source: idSource } = parseSystemToolId({ pluginId, source });
     const [parentPluginId, childPluginId] = rawPluginId.split('/');
 
-    const exactDbTool = await MongoSystemTool.findOne({ pluginId });
+    const exactDbTool = await getSystemToolConfig(pluginId);
     if (!childPluginId && exactDbTool?.customConfig?.associatedPluginId) {
       return {
         id: pluginId,
         version: exactDbTool.customConfig.version,
-        status: exactDbTool.status ?? PluginStatusEnum.Normal,
+        status: getVisiblePluginStatus({ status: exactDbTool.status, source }),
         source: 'system',
         isToolSet: false,
         avatar: exactDbTool.customConfig.avatar ?? '',
@@ -439,62 +547,56 @@ export class SystemToolRepo {
       };
     }
 
-    const pluginSource =
-      source === AppToolSourceEnum.commercial ? AppToolSourceEnum.commercial : 'system';
-    const tools = await pluginClient.listTools({
-      sources: [pluginSource]
-    });
+    const pluginSource = getPluginClientSource({ idSource, runtimeSource: source });
+    const tools = await withPluginClientLocale(lang, () =>
+      pluginClient.listTools({
+        sources: [pluginSource]
+      })
+    );
     const tool = tools.find((item) => item.pluginId === parentPluginId);
     if (!tool) return Promise.reject(PluginErrEnum.unExist);
 
-    const parentCombinedPluginId = [
-      AppToolSourceEnum.systemTool,
-      AppToolSourceEnum.commercial
-    ].includes(toolSource)
-      ? `${toolSource}-${parentPluginId}`
-      : parentPluginId;
-    const parentConfigIds = Array.from(
-      new Set([
-        parentCombinedPluginId,
-        parentPluginId,
-        SystemToolCodec.getDBPluginId(parentPluginId)
-      ])
-    );
+    const requestedParentPluginId = pluginId.split('/')[0];
+    const parentConfigIds = getSystemToolConfigIds(requestedParentPluginId);
     const childConfigIds =
-      tool.children?.flatMap((child) => [
-        `${parentCombinedPluginId}/${child.id}`,
-        `${parentPluginId}/${child.id}`,
-        `${SystemToolCodec.getDBPluginId(parentPluginId)}/${child.id}`
-      ]) ?? [];
+      tool.children?.flatMap((child) =>
+        getSystemToolConfigIds(`${requestedParentPluginId}/${child.id}`)
+      ) ?? [];
     const dbTools = await MongoSystemTool.find({
       pluginId: {
         $in: [...parentConfigIds, ...childConfigIds]
       }
     });
     const dbToolsMap = new Map(dbTools.map((item) => [item.pluginId, item]));
-    const parentConfig = parentConfigIds.map((id) => dbToolsMap.get(id)).find(Boolean);
+    const parentConfig = !childPluginId
+      ? (exactDbTool ?? getFirstSystemToolConfig(dbToolsMap, requestedParentPluginId))
+      : getFirstSystemToolConfig(dbToolsMap, requestedParentPluginId);
     const parent = SystemToolCodec.attachToolConfig({
       tool,
       config: parentConfig,
       lang
+    });
+    parent.status = getVisiblePluginStatus({
+      status: parent.status,
+      source: isDebugSource ? source : undefined
     });
     const listChildIconMap = getChildIconMap(tool.children);
 
     const children =
       tool.children?.map<SystemToolDisplayChildType>((item) => {
         const childIcon = listChildIconMap.get(item.id);
-        const childConfig = [
-          `${parentCombinedPluginId}/${item.id}`,
-          `${parentPluginId}/${item.id}`,
-          `${SystemToolCodec.getDBPluginId(parentPluginId)}/${item.id}`
-        ]
-          .map((id) => dbToolsMap.get(id))
-          .find(Boolean);
+        const childConfig = getFirstSystemToolConfig(
+          dbToolsMap,
+          `${requestedParentPluginId}/${item.id}`
+        );
 
         return {
           id: item.id,
           name: parseI18nString(item.name, lang),
-          status: childConfig?.status ?? PluginStatusEnum.Normal,
+          status: getVisiblePluginStatus({
+            status: childConfig?.status,
+            source: isDebugSource ? source : undefined
+          }),
           description: parseI18nString(item.description, lang),
           toolDescription: childConfig?.customConfig?.toolDescription ?? item.toolDescription,
           icon: childIcon,
@@ -515,6 +617,7 @@ export class SystemToolRepo {
         name: child.name,
         intro: child.description ?? '',
         toolDescription: child.toolDescription ?? '',
+        status: child.status,
         currentCost: child.currentCost,
         systemKeyCost: child.systemKeyCost
       };
@@ -544,15 +647,16 @@ export class SystemToolRepo {
     const missingChildIcon = parent.children?.some((child) => !child.icon) === true;
     if (!parent.isToolSet || !parent.children || !missingChildIcon) return parent;
 
-    const { pluginId: rawPluginId } = splitCombineToolId(pluginId);
+    const { pluginId: rawPluginId } = parseSystemToolId({ pluginId, source });
     const [parentPluginId, childPluginId] = rawPluginId.split('/');
     if (!parentPluginId || childPluginId) return parent;
 
-    const pluginSource =
-      source === AppToolSourceEnum.commercial ? AppToolSourceEnum.commercial : 'system';
+    const { source: idSource } = parseSystemToolId({ pluginId, source });
+    const pluginSource = getPluginClientSource({ idSource, runtimeSource: source });
     const childIconMap = await this.getToolsetChildIconMap({
       pluginId: parentPluginId,
-      source: pluginSource
+      source: pluginSource,
+      lang
     });
     if (childIconMap.size === 0) return parent;
 
@@ -572,14 +676,15 @@ export class SystemToolRepo {
 
   getVersions = async ({
     pluginId,
-    source = 'system'
+    source = 'system',
+    lang
   }: {
     pluginId: string;
     source?: string;
     lang?: `${LangEnum}`;
   }): Promise<SystemToolVersionType[]> => {
-    const { pluginId: rawPluginId, source: pluginSource } = splitCombineToolId(pluginId);
-    const tool = await MongoSystemTool.findOne({ pluginId });
+    const { pluginId: rawPluginId, source: idSource } = parseSystemToolId({ pluginId, source });
+    const tool = await getSystemToolConfig(pluginId);
     if (tool?.customConfig?.associatedPluginId) {
       const { associatedPluginId } = tool.customConfig;
       const appVersions = await MongoAppVersion.find(
@@ -600,10 +705,12 @@ export class SystemToolRepo {
 
     const parentToolId = rawPluginId.split('/')[0];
 
-    const versions = await pluginClient.listPluginVersions({
-      pluginId: parentToolId,
-      source: pluginSource === AppToolSourceEnum.commercial ? AppToolSourceEnum.commercial : source
-    });
+    const versions = await withPluginClientLocale(lang, () =>
+      pluginClient.listPluginVersions({
+        pluginId: parentToolId,
+        source: getPluginClientSource({ idSource, runtimeSource: source })
+      })
+    );
 
     return versions.map((item) => ({
       version: item.version
@@ -619,16 +726,18 @@ export class SystemToolRepo {
     version?: string;
     source?: string;
   }): Promise<SystemToolRuntimeType> => {
-    const { pluginId: rawPluginId } = splitCombineToolId(pluginId);
+    const { pluginId: rawPluginId, source: idSource } = parseSystemToolId({ pluginId, source });
+    const pluginSource = getPluginClientSource({ idSource, runtimeSource: source });
+    const isDebugSource = isDebugToolSource(pluginSource);
     const [parentPluginId] = rawPluginId.split('/');
 
-    const dbTool = await MongoSystemTool.findOne({ pluginId }).lean();
+    const dbTool = await getSystemToolConfig(pluginId);
 
     if (!dbTool?.customConfig?.associatedPluginId) {
       const tool = await pluginClient.getTool({
         pluginId: parentPluginId,
         version,
-        source,
+        source: pluginSource,
         fallbackLatestVersion: true
       });
 
@@ -637,7 +746,7 @@ export class SystemToolRepo {
         version: tool.version,
         currentCost: dbTool?.currentCost ?? 0,
         systemKeyCost: dbTool?.systemKeyCost ?? 0,
-        secretsVal: SystemToolCodec.getConfiguredSecretsVal(dbTool),
+        secretsVal: isDebugSource ? undefined : SystemToolCodec.getConfiguredSecretsVal(dbTool),
         permissions: tool.permission
       };
     }

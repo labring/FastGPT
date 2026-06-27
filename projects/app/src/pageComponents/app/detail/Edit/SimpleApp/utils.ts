@@ -171,6 +171,7 @@ export const appWorkflow2Form = ({
       defaultAppForm.selectedTools.push({
         id: node.nodeId,
         pluginId: node.pluginId,
+        source: node.source,
         isFolder: node.isFolder,
         name: node.name,
         avatar: node.avatar,
@@ -616,6 +617,7 @@ export function form2AppWorkflow(
             nodeId,
             id: tool.id,
             pluginId: tool.pluginId,
+            source: tool.source,
             name: tool.name,
             intro: tool.intro,
             toolDescription: tool.toolDescription,

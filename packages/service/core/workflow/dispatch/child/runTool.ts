@@ -19,7 +19,11 @@ import { getNodeErrResponse } from '../utils';
 import { getAppVersionById } from '../../../../core/app/version/controller';
 import { runHTTPTool } from '../../../app/http';
 import { getWorkflowContext } from '../../utils/context';
-import { getToolNameCandidates, getToolRawId } from '@fastgpt/global/core/app/tool/utils';
+import {
+  getToolNameCandidates,
+  getToolRawId,
+  isDebugToolSource
+} from '@fastgpt/global/core/app/tool/utils';
 import { pluginClient } from '../../../../thirdProvider/fastgptPlugin';
 import { SystemToolRepo } from '../../../app/tool/systemTool/systemTool.repo';
 import { InvokeProcessor } from '../../../../support/invoke/invoke';
@@ -65,6 +69,13 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
   const systemToolId = toolConfig?.systemTool?.toolId;
   let toolInput: Record<string, any> = {};
 
+  const getSystemToolSource = () => {
+    const toolConfigSource = toolConfig?.systemTool?.source;
+    if (isDebugToolSource(toolConfigSource)) return toolConfigSource;
+
+    return 'system';
+  };
+
   try {
     /**
      * HTTP/MCP 子工具的 toolId 可由工作流 JSON 持久化，运行时必须用当前工作流执行身份
@@ -80,10 +91,11 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
 
     // run system tool
     if (toolConfig?.systemTool?.toolId) {
+      const toolSource = getSystemToolSource();
       const systemToolRepo = SystemToolRepo.getInstance();
       const tool = await systemToolRepo.getSystemToolRuntime({
         pluginId: toolConfig.systemTool.toolId,
-        source: 'system', // TODO : 后续用户调用时传 teamId
+        source: toolSource,
         version
       });
 
@@ -98,6 +110,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
             });
           case SystemToolSecretInputTypeEnum.system:
           default:
+            if (isDebugToolSource(toolSource)) return {};
             return tool.secretsVal ?? {};
         }
       })();
@@ -123,7 +136,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       const res = await pluginClient.runToolStream({
         pluginId: formatToolId,
         version: tool.version ?? version ?? '',
-        source: 'system', // TODO: 后续用户调用时传 teamId
+        source: toolSource,
         input: toolInput,
         secrets: inputConfigParams,
         ...(childId ? { childId } : {}),
