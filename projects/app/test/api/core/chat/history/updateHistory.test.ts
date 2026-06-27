@@ -55,7 +55,7 @@ describe('updateHistory api test', () => {
   it('should update chat title successfully', async () => {
     const newTitle = 'Updated Title';
 
-    const res = await Call<UpdateHistoryBodyType, {}>(handler, {
+    const res = await Call<UpdateHistoryBodyType, unknown>(handler, {
       auth: testUser,
       body: {
         appId,
@@ -79,7 +79,7 @@ describe('updateHistory api test', () => {
   it('should update customTitle successfully', async () => {
     const customTitle = 'Custom Title';
 
-    const res = await Call<UpdateHistoryBodyType, {}>(handler, {
+    const res = await Call<UpdateHistoryBodyType, unknown>(handler, {
       auth: testUser,
       body: {
         appId,
@@ -101,7 +101,7 @@ describe('updateHistory api test', () => {
   });
 
   it('should update top status successfully', async () => {
-    const res = await Call<UpdateHistoryBodyType, {}>(handler, {
+    const res = await Call<UpdateHistoryBodyType, unknown>(handler, {
       auth: testUser,
       body: {
         appId,
@@ -145,10 +145,12 @@ describe('updateHistory api test', () => {
       }
     );
 
-    const res = await Call<UpdateHistoryBodyType, {}>(handler, {
+    const res = await Call<UpdateHistoryBodyType, unknown>(handler, {
       body: {
-        shareId,
-        outLinkUid,
+        outLinkAuthData: {
+          shareId,
+          outLinkUid
+        },
         chatId,
         top: true
       }
@@ -172,7 +174,7 @@ describe('updateHistory api test', () => {
     const customTitle = 'New Custom Title';
     const top = true;
 
-    const res = await Call<UpdateHistoryBodyType, {}>(handler, {
+    const res = await Call<UpdateHistoryBodyType, unknown>(handler, {
       auth: testUser,
       body: {
         appId,
@@ -204,7 +206,7 @@ describe('updateHistory api test', () => {
     // Wait a bit to ensure time difference
     await new Promise((resolve) => setTimeout(resolve, 10));
 
-    const res = await Call<UpdateHistoryBodyType, {}>(handler, {
+    const res = await Call<UpdateHistoryBodyType, unknown>(handler, {
       auth: testUser,
       body: {
         appId,
@@ -220,7 +222,7 @@ describe('updateHistory api test', () => {
   });
 
   it('should fail when chatId is missing', async () => {
-    const res = await Call<UpdateHistoryBodyType, {}>(handler, {
+    const res = await Call<UpdateHistoryBodyType, unknown>(handler, {
       auth: testUser,
       body: {
         appId,
@@ -234,7 +236,7 @@ describe('updateHistory api test', () => {
   });
 
   it('should fail when appId is missing', async () => {
-    const res = await Call<UpdateHistoryBodyType, {}>(handler, {
+    const res = await Call<UpdateHistoryBodyType, unknown>(handler, {
       auth: testUser,
       body: {
         appId: '',
@@ -250,7 +252,7 @@ describe('updateHistory api test', () => {
   it('should fail when user does not have permission', async () => {
     const unauthorizedUser = await getUser('unauthorized-user-update-history');
 
-    const res = await Call<UpdateHistoryBodyType, {}>(handler, {
+    const res = await Call<UpdateHistoryBodyType, unknown>(handler, {
       auth: unauthorizedUser,
       body: {
         appId,
