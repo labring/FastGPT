@@ -1,4 +1,4 @@
-import { Box, Button, Collapse, Flex, Textarea } from '@chakra-ui/react';
+import { Box, Button, Flex, Textarea } from '@chakra-ui/react';
 import type { AgentPlanAskQueryInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
 import { useTranslation } from 'next-i18next';
@@ -37,9 +37,8 @@ const RenderAgentPlanAskInteractive = React.memo(function RenderAgentPlanAskInte
     isOptionsExpanded,
     selectedAnswerPlacement,
     shouldShowOptions,
-    scheduleCollapse,
-    toggleOptionsExpanded,
-    handleOptionsCollapseExited
+    collapseOptions,
+    toggleOptionsExpanded
   } = useInteractiveChoiceCollapse(effectiveAnswer);
   const showOtherInput = !!answeredOther || isOtherSelected;
   const radioValue =
@@ -50,9 +49,9 @@ const RenderAgentPlanAskInteractive = React.memo(function RenderAgentPlanAskInte
     if (!value || isDisabled) return;
 
     setSubmittedAnswer(value);
-    scheduleCollapse();
+    collapseOptions();
     onSendPrompt(value);
-  }, [isDisabled, otherAnswer, scheduleCollapse]);
+  }, [collapseOptions, isDisabled, otherAnswer]);
   const radioOptions = useMemo(
     () => [
       ...normalizedOptions.map((option) => ({
@@ -92,18 +91,7 @@ const RenderAgentPlanAskInteractive = React.memo(function RenderAgentPlanAskInte
               <SelectedAnswerText answer={effectiveAnswer} />
             </Box>
           )}
-          <Collapse
-            in={shouldShowOptions}
-            onTransitionEnd={() => {
-              if (!shouldShowOptions) {
-                handleOptionsCollapseExited();
-              }
-            }}
-            transitionEnd={{
-              enter: { overflow: 'visible' },
-              exit: { overflow: 'visible' }
-            }}
-          >
+          {shouldShowOptions && (
             <Flex w={'360px'} maxW={'100%'} flexDirection={'column'} gap={3} p={'3px'} mx={'-3px'}>
               <LeftRadio<string>
                 px={4}
@@ -122,7 +110,7 @@ const RenderAgentPlanAskInteractive = React.memo(function RenderAgentPlanAskInte
                   }
                   setIsOtherSelected(false);
                   setSubmittedAnswer(value);
-                  scheduleCollapse();
+                  collapseOptions();
                   onSendPrompt(value);
                 }}
                 isDisabled={isDisabled}
@@ -158,7 +146,7 @@ const RenderAgentPlanAskInteractive = React.memo(function RenderAgentPlanAskInte
                 </Flex>
               )}
             </Flex>
-          </Collapse>
+          )}
           {selectedAnswerPlacement === 'below' && (
             <Box mt={3}>
               <SelectedAnswerText answer={effectiveAnswer} />

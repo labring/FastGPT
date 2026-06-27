@@ -67,6 +67,7 @@
   "mobile_clear_history_confirm_tip": "此操作不可撤銷",
   "mobile_clear_history_confirm_title": "確定清空歷史記錄？",
   "module_runtime_and": "模組執行總時間",
+  "chat_loading_content": "對話載入中...",
   "no_output_content": "應用無輸出內容",
   "plan_agent": "規劃 Agent",
   "plan_check_tip": "規劃已生成，您可繼續對話來微調當前規劃",

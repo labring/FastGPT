@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { SkillDetailContext } from '../context';
@@ -20,6 +20,8 @@ import ProModal from '@/components/ProTip/ProModal';
 import { useSkillDebugChatStore } from '../useSkillDebugChatStore';
 import { getSkillEditChatSourceKey } from '@/web/core/chat/utils';
 import { defaultQGConfig, defaultWhisperConfig } from '@fastgpt/global/core/app/constants';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { getInitChatInfo } from '@/web/core/chat/api';
 
 const fileSelectConfig: AppFileSelectConfigType = {
   maxFiles: 10,
@@ -59,41 +61,75 @@ const SkillPreview = () => {
   }, [defaultModel, llmModelList, selectedModel]);
 
   const isReady = sandboxState === 'ready';
+  const sourceKey = useMemo(() => getSkillEditChatSourceKey(skillId), [skillId]);
 
-  useEffect(() => {
-    setChatBoxData((prev) => {
-      const sourceKey = getSkillEditChatSourceKey(skillId);
-      const isSameChat = prev.sourceKey === sourceKey && prev.chatId === chatId;
+  useRequest(
+    async () => {
+      if (!skillId || !chatId) return;
 
-      return {
-        ...prev,
-        sourceKey,
-        appId: '',
-        chatId,
-        title: isSameChat ? prev.title : undefined,
-        chatGenerateStatus: isSameChat ? prev.chatGenerateStatus : undefined,
-        hasBeenRead: isSameChat ? prev.hasBeenRead : undefined,
-        app: {
-          chatConfig: {
-            fileSelectConfig,
-            questionGuide: {
-              ...defaultQGConfig,
-              open: true,
-              model: fallbackModel
+      /*
+        init 失败时仍先写入本地 preview 配置，保证调试页可以用默认态渲染。
+        同一个 chat 内刷新模型配置时保留已有生成状态，避免把恢复条件提前清掉。
+      */
+      setChatBoxData((prev) => {
+        const isSameChat = prev.sourceKey === sourceKey && prev.chatId === chatId;
+
+        return {
+          ...prev,
+          sourceKey,
+          appId: '',
+          chatId,
+          title: isSameChat ? prev.title : undefined,
+          chatGenerateStatus: isSameChat ? prev.chatGenerateStatus : undefined,
+          hasBeenRead: isSameChat ? prev.hasBeenRead : undefined,
+          app: {
+            chatConfig: {
+              fileSelectConfig,
+              questionGuide: {
+                ...defaultQGConfig,
+                open: true,
+                model: fallbackModel
+              },
+              whisperConfig: {
+                ...defaultWhisperConfig,
+                open: true
+              }
             },
-            whisperConfig: {
-              ...defaultWhisperConfig,
-              open: true
+            name: 'Skill Preview',
+            avatar: '',
+            type: AppTypeEnum.simple,
+            pluginInputs: []
+          }
+        };
+      });
+
+      const res = await getInitChatInfo({ skillId, chatId }).catch(() => undefined);
+      if (!res) return;
+
+      /*
+        Skill Debug 的流恢复依赖刷新后重新拿到 chatGenerateStatus。
+        这里只同步会话状态，调试页自己的模型和输入配置仍由本地 preview 配置控制。
+      */
+      setChatBoxData((prev) =>
+        prev.sourceKey === sourceKey && prev.chatId === chatId
+          ? {
+              ...prev,
+              sourceKey,
+              appId: '',
+              chatId: res.chatId || chatId,
+              title: res.title,
+              chatGenerateStatus: res.chatGenerateStatus,
+              hasBeenRead: res.hasBeenRead
             }
-          },
-          name: 'Skill Preview',
-          avatar: '',
-          type: AppTypeEnum.simple,
-          pluginInputs: []
-        }
-      };
-    });
-  }, [skillId, chatId, fallbackModel, setChatBoxData]);
+          : prev
+      );
+    },
+    {
+      manual: false,
+      refreshDeps: [skillId, chatId, sourceKey, fallbackModel],
+      errorToast: ''
+    }
+  );
 
   const ModelSelectorInput = useMemo(() => {
     return (
@@ -142,6 +178,7 @@ const SkillPreview = () => {
           voice: true,
           tts: false,
           inputGuide: true,
+          autoResume: true,
           sandbox: false
         }}
         onStartChat={onStartChat}

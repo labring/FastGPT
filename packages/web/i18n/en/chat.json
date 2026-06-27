@@ -68,6 +68,7 @@
   "mobile_clear_history_confirm_tip": "This action cannot be undone",
   "mobile_clear_history_confirm_title": "Clear history?",
   "module_runtime_and": "Total Module Runtime",
+  "chat_loading_content": "Loading conversation...",
   "no_output_content": "The app returned no output",
   "plan_agent": "Plan agent",
   "plan_check_tip": "Plan generated. Continue the chat to refine the plan",

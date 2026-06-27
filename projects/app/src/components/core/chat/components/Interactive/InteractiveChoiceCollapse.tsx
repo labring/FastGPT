@@ -6,10 +6,9 @@ type SelectedAnswerPlacement = 'above' | 'below';
 
 /**
  * 管理交互选项在提交答案后的展示状态。
- * 选中后先保留选项 1 秒用于反馈，再折叠为答案摘要；刷新后如果已有答案则默认折叠。
+ * 选中后立即隐藏选项并展示答案摘要；刷新后如果已有答案则默认隐藏选项。
  */
 export const useInteractiveChoiceCollapse = (selectedAnswer?: string) => {
-  const collapseTimerRef = React.useRef<ReturnType<typeof setTimeout>>();
   const [internalExpanded, setInternalExpanded] = React.useState(() => !selectedAnswer);
   const [internalPlacement, setInternalPlacement] = React.useState<SelectedAnswerPlacement>(() =>
     selectedAnswer ? 'above' : 'below'
@@ -18,55 +17,22 @@ export const useInteractiveChoiceCollapse = (selectedAnswer?: string) => {
   const isOptionsExpanded = selectedAnswer ? internalExpanded : true;
   const selectedAnswerPlacement = selectedAnswer ? internalPlacement : 'below';
 
-  const clearCollapseTimers = React.useCallback(() => {
-    if (collapseTimerRef.current) {
-      clearTimeout(collapseTimerRef.current);
-      collapseTimerRef.current = undefined;
-    }
+  const collapseOptions = React.useCallback(() => {
+    setInternalPlacement('above');
+    setInternalExpanded(false);
   }, []);
 
-  React.useEffect(() => {
-    if (!selectedAnswer) {
-      clearCollapseTimers();
-    }
-  }, [clearCollapseTimers, selectedAnswer]);
-
-  React.useEffect(() => {
-    return () => {
-      clearCollapseTimers();
-    };
-  }, [clearCollapseTimers]);
-
-  const scheduleCollapse = React.useCallback(() => {
-    clearCollapseTimers();
-    setInternalPlacement('below');
-    setInternalExpanded(true);
-    collapseTimerRef.current = setTimeout(() => {
-      setInternalExpanded(false);
-      collapseTimerRef.current = undefined;
-    }, 1000);
-  }, [clearCollapseTimers]);
-
   const toggleOptionsExpanded = React.useCallback(() => {
-    clearCollapseTimers();
     setInternalPlacement('above');
     setInternalExpanded((state) => !state);
-  }, [clearCollapseTimers]);
-
-  /** 选项区域收起动画结束后，将答案摘要移到选项上方，避免与硬编码动画时长不同步。 */
-  const handleOptionsCollapseExited = React.useCallback(() => {
-    if (selectedAnswer) {
-      setInternalPlacement('above');
-    }
-  }, [selectedAnswer]);
+  }, []);
 
   return {
     isOptionsExpanded,
     selectedAnswerPlacement,
     shouldShowOptions: !selectedAnswer || isOptionsExpanded,
-    scheduleCollapse,
-    toggleOptionsExpanded,
-    handleOptionsCollapseExited
+    collapseOptions,
+    toggleOptionsExpanded
   };
 };
 
