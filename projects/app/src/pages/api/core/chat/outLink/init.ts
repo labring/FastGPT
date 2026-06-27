@@ -1,4 +1,4 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type { NextApiRequest } from 'next';
 import { getGuideModule, getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { authOutLink } from '@/service/support/permission/auth/outLink';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
@@ -10,12 +10,17 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NextAPI } from '@/service/middleware/entry';
 import { getRandomUserAvatar } from '@fastgpt/global/support/user/utils';
 import { presignVariablesFileUrls } from '@fastgpt/service/core/chat/utils';
-import { InitOutLinkChatQuerySchema } from '@fastgpt/global/openapi/core/chat/outLink/api';
+import {
+  InitOutLinkChatQuerySchema,
+  InitOutLinkChatResponseSchema,
+  type InitOutLinkChatResponseType
+} from '@fastgpt/global/openapi/core/chat/outLink/api';
 import { ChatGenerateStatusEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
+import { buildChatTargetResponse } from '@fastgpt/global/openapi/core/chat/api';
 
-async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: NextApiRequest): Promise<InitOutLinkChatResponseType> {
   const { chatId, shareId, outLinkUid } = parseApiInput({
     req,
     querySchema: InitOutLinkChatQuerySchema
@@ -73,11 +78,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     variableConfig: appChatConfig.variables
   });
 
-  return {
+  return InitOutLinkChatResponseSchema.parse({
     chatId,
-    sourceType: ChatSourceTypeEnum.app,
-    sourceId: String(app._id),
-    appId: app._id,
+    ...buildChatTargetResponse({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: app._id
+    }),
     title: chat?.title || '',
     userAvatar: getRandomUserAvatar(),
     variables,
@@ -91,7 +97,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       type: app.type,
       pluginInputs
     }
-  };
+  });
 }
 
 export default NextAPI(handler);

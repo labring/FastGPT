@@ -1,8 +1,12 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type { NextApiRequest } from 'next';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { getGuideModule, getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { getChatModelNameListByModules } from '@/service/core/app/workflow';
-import type { InitChatResponseType } from '@fastgpt/global/openapi/core/chat/controler/api';
+import {
+  InitChatQuerySchema,
+  InitChatResponseSchema,
+  type InitChatResponseType
+} from '@fastgpt/global/openapi/core/chat/controler/api';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
@@ -13,14 +17,14 @@ import { presignVariablesFileUrls } from '@fastgpt/service/core/chat/utils';
 import { MongoAppRecord } from '@fastgpt/service/core/app/record/schema';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { InitChatQuerySchema } from '@fastgpt/global/openapi/core/chat/controler/api';
 import { ChatGenerateStatusEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { buildChatTargetResponse } from '@fastgpt/global/openapi/core/chat/api';
 
-async function handler(req: NextApiRequest, res: NextApiResponse): Promise<InitChatResponseType> {
+async function handler(req: NextApiRequest): Promise<InitChatResponseType> {
   const { sourceType, sourceId, chatId } = parseApiInput({
     req,
     querySchema: InitChatQuerySchema
@@ -53,10 +57,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<InitC
       chat.hasBeenRead = true;
     }
 
-    return {
+    return InitChatResponseSchema.parse({
       chatId,
-      sourceType,
-      sourceId,
+      ...buildChatTargetResponse({ sourceType, sourceId }),
       title: chat?.title || '',
       userAvatar: undefined,
       variables: {},
@@ -82,7 +85,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<InitC
         type: AppTypeEnum.simple,
         pluginInputs: []
       }
-    };
+    });
   }
 
   if (sourceType !== ChatSourceTypeEnum.app) {
@@ -140,11 +143,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<InitC
       variableConfig: appChatConfig.variables
     });
 
-    return {
+    return InitChatResponseSchema.parse({
       chatId,
-      sourceType,
-      sourceId,
-      appId,
+      ...buildChatTargetResponse({ sourceType, sourceId }),
       title: chat?.title || '',
       userAvatar: undefined,
       variables,
@@ -159,7 +160,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse): Promise<InitC
         type: app.type,
         pluginInputs
       }
-    };
+    });
   } catch (error: any) {
     if (error === AppErrEnum.unAuthApp && appId) {
       const { tmbId } = await authCert({

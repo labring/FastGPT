@@ -1,8 +1,9 @@
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { buildChatTargetResponse } from '@fastgpt/global/openapi/core/chat/api';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { NextAPI } from '@/service/middleware/entry';
-import { type ApiRequestProps, type ApiResponseType } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import {
   GetHistoriesBodySchema,
   GetHistoriesResponseSchema,
@@ -14,10 +15,7 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { buildChatHistoryMatch } from '@/service/core/chat/history';
 
 /* get chat histories list */
-export async function handler(
-  req: ApiRequestProps,
-  _res: ApiResponseType
-): Promise<GetHistoriesResponseType> {
+export async function handler(req: ApiRequestProps): Promise<GetHistoriesResponseType> {
   const {
     sourceType,
     sourceId,
@@ -49,10 +47,10 @@ export async function handler(
   }
 
   if (match.appId && !ObjectIdSchema.safeParse(match.appId).success) {
-    return {
+    return GetHistoriesResponseSchema.parse({
       list: [],
       total: 0
-    };
+    });
   }
 
   const timeMatch: Record<string, any> = {};
@@ -87,7 +85,10 @@ export async function handler(
     list: data.map((item) => ({
       chatId: item.chatId,
       updateTime: item.updateTime,
-      appId: item.appId,
+      ...buildChatTargetResponse({
+        sourceType: sourceType ?? ChatSourceTypeEnum.app,
+        sourceId: item.appId
+      }),
       customTitle: item.customTitle,
       title: item.title,
       top: item.top,

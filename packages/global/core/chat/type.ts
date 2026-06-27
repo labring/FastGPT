@@ -324,12 +324,23 @@ export const HistoryItemSchema = z.object({
 });
 export type HistoryItemType = z.infer<typeof HistoryItemSchema>;
 
-export const ChatHistoryItemSchema = HistoryItemSchema.extend({
-  appId: z.string(),
+const ChatHistoryItemExtraShape = {
   top: z.boolean().optional(),
   chatGenerateStatus: z.enum(ChatGenerateStatusEnum).optional(),
   hasBeenRead: z.boolean().optional()
-});
+};
+export const ChatHistoryItemSchema = z.union([
+  HistoryItemSchema.extend({
+    appId: z.string(),
+    skillId: z.undefined().optional(),
+    ...ChatHistoryItemExtraShape
+  }),
+  HistoryItemSchema.extend({
+    appId: z.undefined().optional(),
+    skillId: z.string(),
+    ...ChatHistoryItemExtraShape
+  })
+]);
 export type ChatHistoryItemType = z.infer<typeof ChatHistoryItemSchema>;
 
 /* ------- response data ------------ */

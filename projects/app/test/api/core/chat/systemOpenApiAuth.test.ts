@@ -131,8 +131,6 @@ describe('system openapi chat auth', () => {
       }
     });
     expect(initRes.code).toBe(200);
-    expect(initRes.data.sourceType).toBe(ChatSourceTypeEnum.app);
-    expect(initRes.data.sourceId).toBe(appId);
     expect(initRes.data.appId).toBe(appId);
     expect(initRes.data.chatId).toBe(chatId);
 

@@ -7,7 +7,6 @@ import {
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
-import { AppCollectionName } from '../app/schema';
 import { userCollectionName } from '../../support/user/schema';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { ChatItemCollectionName } from './constants';
@@ -40,9 +39,9 @@ const ChatItemSchema = new Schema({
     require: true,
     default: () => getNanoid(24)
   },
+  // 历史物理字段名，业务语义为 sourceId；App 场景才是真实 appId。
   appId: {
     type: Schema.Types.ObjectId,
-    ref: AppCollectionName,
     required: true
   },
   time: {

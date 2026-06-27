@@ -3,6 +3,7 @@ import { ChatSourceEnum } from '../../../../core/chat/constants';
 import { PaginationSchema, PaginationResponseSchema } from '../../../api';
 import {
   ChatGenerateStatusSchema,
+  createChatTargetResponseSchema,
   createChatTargetInputSchema,
   createOptionalOutLinkChatTargetInputSchema,
   createOutLinkChatTargetInputSchema,
@@ -28,18 +29,16 @@ export const GetHistoriesBodySchema = GetHistoriesBodyRawSchema.transform(
 export type GetHistoriesBodyType = z.infer<typeof GetHistoriesBodyRawSchema>;
 export type GetHistoriesBodyRuntimeType = z.infer<typeof GetHistoriesBodySchema>;
 
-export const GetHistoriesResponseSchema = PaginationResponseSchema(
-  z.object({
-    chatId: z.string(),
-    updateTime: z.coerce.date(),
-    appId: z.string(),
-    customTitle: z.string().optional(),
-    title: z.string(),
-    top: z.boolean().optional(),
-    chatGenerateStatus: ChatGenerateStatusSchema.optional(),
-    hasBeenRead: z.boolean().optional()
-  })
-);
+const GetHistoriesResponseItemSchema = createChatTargetResponseSchema({
+  chatId: z.string(),
+  updateTime: z.coerce.date(),
+  customTitle: z.string().optional(),
+  title: z.string(),
+  top: z.boolean().optional(),
+  chatGenerateStatus: ChatGenerateStatusSchema.optional(),
+  hasBeenRead: z.boolean().optional()
+});
+export const GetHistoriesResponseSchema = PaginationResponseSchema(GetHistoriesResponseItemSchema);
 export type GetHistoriesResponseType = z.infer<typeof GetHistoriesResponseSchema>;
 
 const GetHistoryStatusPropsSchema = {

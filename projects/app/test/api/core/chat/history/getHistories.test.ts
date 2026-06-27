@@ -435,9 +435,10 @@ describe('getHistories api test', () => {
     expect(res.data.list).toHaveLength(1);
     expect(res.data.list[0]).toMatchObject({
       chatId: debugChatId,
-      appId: skillId,
+      skillId,
       title: 'Skill Debug Session'
     });
+    expect(res.data.list[0]).not.toHaveProperty('appId');
     expect(res.data.list.find((item) => item.chatId === onlineChatId)).toBeUndefined();
     expect(res.data.list.find((item) => item.chatId === legacyChatId)).toBeUndefined();
   });

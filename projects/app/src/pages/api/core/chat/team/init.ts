@@ -3,6 +3,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { getGuideModule, getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { getChatModelNameListByModules } from '@/service/core/app/workflow';
 import {
+  InitChatResponseSchema,
   InitTeamChatQuerySchema,
   type InitChatResponseType,
   type InitTeamChatQueryType
@@ -21,6 +22,7 @@ import { presignVariablesFileUrls } from '@fastgpt/service/core/chat/utils';
 import { ChatGenerateStatusEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
+import { buildChatTargetResponse } from '@fastgpt/global/openapi/core/chat/api';
 
 async function handler(req: ApiRequestProps<InitTeamChatQueryType>, res: NextApiResponse) {
   const { query } = parseApiInput({ req, querySchema: InitTeamChatQuerySchema });
@@ -93,11 +95,12 @@ async function handler(req: ApiRequestProps<InitTeamChatQueryType>, res: NextApi
   });
 
   jsonRes<InitChatResponseType>(res, {
-    data: {
+    data: InitChatResponseSchema.parse({
       chatId,
-      sourceType: ChatSourceTypeEnum.app,
-      sourceId: String(appId),
-      appId,
+      ...buildChatTargetResponse({
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: appId
+      }),
       title: chat?.title || '',
       userAvatar: team?.avatar,
       variables,
@@ -112,7 +115,7 @@ async function handler(req: ApiRequestProps<InitTeamChatQueryType>, res: NextApi
         type: app.type,
         pluginInputs
       }
-    }
+    })
   });
 }
 

@@ -1,13 +1,13 @@
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
-import { ObjectIdSchema } from '../../../../common/type/mongo';
 import z from 'zod';
 import { AppTypeEnum } from '../../../../core/app/constants';
-import { ChatGenerateStatusEnum, ChatSourceTypeEnum } from '../../../../core/chat/constants';
+import { ChatGenerateStatusEnum } from '../../../../core/chat/constants';
 import { OpenAPIFlowNodeInputItemTypeSchema } from '../../workflow/node';
 import { OpenAPIAppChatConfigSchema } from '../../app/common/api';
 import {
   ChatGenerateStatusSchema,
   createChatTargetInputSchema,
+  createChatTargetResponseSchema,
   transformChatTargetInput
 } from '../api';
 
@@ -36,11 +36,8 @@ export const InitTeamChatQuerySchema = z.object({
 });
 export type InitTeamChatQueryType = z.infer<typeof InitTeamChatQuerySchema>;
 
-export const InitChatResponseSchema = z.object({
+export const InitChatResponseSchema = createChatTargetResponseSchema({
   chatId: z.string().optional().describe('会话ID'),
-  sourceType: z.enum(ChatSourceTypeEnum).describe('会话所属资源类型'),
-  sourceId: ObjectIdSchema.describe('会话所属资源 ID'),
-  appId: ObjectIdSchema.optional().describe('真实应用 ID，仅 sourceType=app 时返回'),
   userAvatar: z.string().optional().describe('用户头像'),
   title: z.string().describe('对话标题'),
   variables: z.record(z.string(), z.any()).optional().describe('全局变量值'),

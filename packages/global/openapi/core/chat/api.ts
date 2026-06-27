@@ -33,6 +33,49 @@ export type ChatTargetInputType =
       appId?: never;
       skillId: string;
     };
+export type ChatTargetResponseType = ChatTargetInputType;
+
+export const ChatTargetResponseSchema = z.union([
+  z.object({
+    appId: ObjectIdSchema.describe('应用 ID，仅 App 会话返回'),
+    skillId: z.undefined().optional()
+  }),
+  z.object({
+    appId: z.undefined().optional(),
+    skillId: ObjectIdSchema.describe('Skill Edit 调试 ID，仅 Skill Edit 会话返回')
+  })
+]);
+
+/**
+ * 将内部标准 chat source 转换为对外 API target 返回值。
+ *
+ * API handler 内部统一使用 `sourceType/sourceId`；返回到 OpenAPI 边界时恢复为
+ * `appId/skillId`，与请求入参保持同一套对外协议。
+ */
+export const buildChatTargetResponse = ({
+  sourceType,
+  sourceId
+}: {
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string | { toString(): string };
+}): ChatTargetResponseType => {
+  const id = String(sourceId);
+
+  if (sourceType === ChatSourceTypeEnum.app) {
+    return { appId: id };
+  }
+
+  if (sourceType === ChatSourceTypeEnum.skillEdit) {
+    return { skillId: id };
+  }
+
+  const exhaustiveCheck: never = sourceType;
+  throw new Error(`Unsupported chat source type: ${exhaustiveCheck}`);
+};
+
+/** 构造带 appId/skillId 互斥返回字段的 OpenAPI response schema。 */
+export const createChatTargetResponseSchema = <T extends z.ZodRawShape>(shape: T) =>
+  z.intersection(z.object(shape), ChatTargetResponseSchema);
 
 export const refineRequiredChatTargetInput = (
   data: { appId?: unknown; skillId?: unknown },
