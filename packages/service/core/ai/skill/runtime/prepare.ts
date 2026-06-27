@@ -1,6 +1,7 @@
 import type { SandboxStatusPhase } from '@fastgpt/global/core/chat/type';
+import { shellQuote } from '@fastgpt/global/common/string/utils';
 import type { SandboxPrepareContext, SandboxPrepareStep } from '../../sandbox/runtime/prepare';
-import { joinSandboxPath, shellQuote } from '../../sandbox/runtime/utils';
+import { joinSandboxPath } from '../../sandbox/runtime/utils';
 import { serviceEnv } from '../../../../env';
 import { DEFAULT_GITIGNORE_CONTENT, downloadSkillPackage } from '../package';
 

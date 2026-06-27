@@ -1,7 +1,8 @@
 import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
+import { shellQuote } from '@fastgpt/global/common/string/utils';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { resolveSandboxHome } from './home';
-import { joinSandboxPath, shellQuote } from './utils';
+import { joinSandboxPath } from './utils';
 
 const logger = getLogger(LogCategories.MODULE.AI.AGENT);
 

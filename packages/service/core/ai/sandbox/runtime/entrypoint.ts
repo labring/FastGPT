@@ -1,10 +1,11 @@
 import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
+import { shellQuote } from '@fastgpt/global/common/string/utils';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { serviceEnv } from '../../../../env';
 import { isRedisLeaseError, withRedisLease } from '../../../../common/redis/lock';
 import { createAgentSandboxInitializingError } from '../error';
 import type { SandboxPrepareContext, SandboxPrepareStep } from './prepare';
-import { buildRuntimeHash, shellQuote } from './utils';
+import { buildRuntimeHash } from './utils';
 import {
   getRuntimeStateValue,
   readSandboxRuntimeState,

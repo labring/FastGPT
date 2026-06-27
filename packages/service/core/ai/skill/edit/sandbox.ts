@@ -1,9 +1,10 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { shellQuote } from '@fastgpt/global/common/string/utils';
 import type { ISandbox, SandboxCreateSpec } from '@fastgpt-sdk/sandbox-adapter';
 import { MongoAgentSkills } from '../model/schema';
 import { MongoAgentSkillsVersion } from '../version/schema';
 import { parseGitignoreRules } from '../utils';
-import { joinSandboxPath, shellQuote } from '../../sandbox/runtime/utils';
+import { joinSandboxPath } from '../../sandbox/runtime/utils';
 import {
   DEFAULT_GITIGNORE_CONTENT,
   validateDeployableSkillWorkspacePackage,
@@ -159,7 +160,7 @@ export async function createEditDebugSandbox(
    * 只有这个旧 wrapper，启动时顺手展开一层，避免每次加载继续制造
    * skills/<edit-dir>/<real-skill>/SKILL.md 这种嵌套结构。
    */
-  const existingInstance = await findSandboxInstanceBySandboxId({
+  let existingInstance = await findSandboxInstanceBySandboxId({
     provider: providerConfig.provider,
     sandboxId: sessionId,
     type: SandboxTypeEnum.editDebug
@@ -182,6 +183,23 @@ export async function createEditDebugSandbox(
           sandboxId: existingInstance.sandboxId
         }
       : null;
+  let shouldCleanWorkspaceBeforeDeploy = !!existingInstance;
+
+  const forceCleanupStaleSandbox = async (instance: NonNullable<typeof existingInstance>) => {
+    try {
+      await deleteSandboxResource(instance, { keepVolume: true });
+    } catch (deleteError) {
+      addLog.error('[Sandbox] Failed to delete unavailable sandbox resource', {
+        sandboxId: instance.sandboxId,
+        error: deleteError
+      });
+      await deleteSandboxInstanceRecord(instance._id);
+    }
+    if (existingInstance?._id === instance._id) {
+      existingInstance = null;
+      shouldCleanWorkspaceBeforeDeploy = true;
+    }
+  };
 
   const normalizeImage = (image?: SandboxImageConfigType | null) => {
     if (!image?.repository) return undefined;
@@ -231,37 +249,38 @@ export async function createEditDebugSandbox(
 
     if (!archiveResult.success) {
       const message = archiveResult.error || 'Failed to archive outdated sandbox';
+      if (message === 'Resource was modified or occupied') {
+        onProgress?.({
+          sandboxId: existingInstance.sandboxId,
+          phase: 'failed',
+          message
+        });
+        throw new Error(message);
+      }
+
+      addLog.warn(
+        '[Sandbox] Failed to archive outdated edit-debug sandbox, rebuilding from current package',
+        {
+          sandboxId: existingInstance.sandboxId,
+          error: message
+        }
+      );
+      await forceCleanupStaleSandbox(existingInstance);
+      shouldUnzipFromS3 = true;
+      archivedRestoreRecord = null;
+    } else {
       onProgress?.({
         sandboxId: existingInstance.sandboxId,
-        phase: 'failed',
-        message
+        phase: 'runtimeUpgradeArchived'
       });
-      throw new Error(message);
+      return {
+        sandboxId: existingInstance.sandboxId,
+        status: {
+          state: 'Archived'
+        }
+      };
     }
-
-    onProgress?.({
-      sandboxId: existingInstance.sandboxId,
-      phase: 'runtimeUpgradeArchived'
-    });
-    return {
-      sandboxId: existingInstance.sandboxId,
-      status: {
-        state: 'Archived'
-      }
-    };
   }
-
-  const forceCleanupStaleSandbox = async (instance: NonNullable<typeof existingInstance>) => {
-    try {
-      await deleteSandboxResource(instance, { keepVolume: true });
-    } catch (deleteError) {
-      addLog.error('[Sandbox] Failed to delete unavailable sandbox resource', {
-        sandboxId: instance.sandboxId,
-        error: deleteError
-      });
-    }
-    await deleteSandboxInstanceRecord(instance._id);
-  };
 
   /**
    * edit-debug 是可从当前 skill package 重建的临时工作区。
@@ -538,7 +557,6 @@ export async function createEditDebugSandbox(
               error
             });
           });
-          await deleteSandboxInstanceRecord(instance._id);
         } else {
           // edit-debug sandboxId 由 skillId + edit-debug 稳定生成，不随 provider 变化；只需迁移 Mongo 索引记录。
           const migratedInstance = await migrateArchivedSandboxInstanceRecord({
@@ -630,36 +648,21 @@ export async function createEditDebugSandbox(
     });
 
     if (shouldUnzipFromS3) {
-      if (existingInstance) {
-        await prepareSandbox(
-          prepareContext(client.provider),
-          preparePackageMirrors(),
-          prepareWorkDirectory(),
-          downloadSkillPackageToContext({
-            storageKey: currentVersion.storageKey,
-            onProgress: reportProgress(sessionId)
-          }),
-          emptyWorkDirectory(),
-          deployDownloadedSkillPackage({
-            skillsRootPath: runtimeProfile.skillsRootPath,
-            onProgress: reportProgress(sessionId)
-          })
-        );
-      } else {
-        await prepareSandbox(
-          prepareContext(client.provider),
-          preparePackageMirrors(),
-          prepareWorkDirectory(),
-          downloadSkillPackageToContext({
-            storageKey: currentVersion.storageKey,
-            onProgress: reportProgress(sessionId)
-          }),
-          deployDownloadedSkillPackage({
-            skillsRootPath: runtimeProfile.skillsRootPath,
-            onProgress: reportProgress(sessionId)
-          })
-        );
-      }
+      const prepareSteps = [
+        preparePackageMirrors(),
+        prepareWorkDirectory(),
+        downloadSkillPackageToContext({
+          storageKey: currentVersion.storageKey,
+          onProgress: reportProgress(sessionId)
+        }),
+        ...(shouldCleanWorkspaceBeforeDeploy ? [emptyWorkDirectory()] : []),
+        deployDownloadedSkillPackage({
+          skillsRootPath: runtimeProfile.skillsRootPath,
+          onProgress: reportProgress(sessionId)
+        })
+      ];
+
+      await prepareSandbox(prepareContext(client.provider), ...prepareSteps);
     } else {
       addLog.info(
         '[Sandbox] Skill sandbox resumed with existing volume, skip initial S3 download/unzip',

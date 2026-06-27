@@ -1,4 +1,5 @@
 import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
+import { shellQuote } from '@fastgpt/global/common/string/utils';
 import { MongoAgentSkills } from '../model/schema';
 import { MongoAgentSkillsVersion } from '../version/schema';
 import { downloadSkillPackage } from '../package';
@@ -6,7 +7,7 @@ import { parseSkillMarkdown, getSkillsRootPath } from '../utils';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import type { DeployedSkillInfo, DeployedSkillVersion } from './types';
 import { serviceEnv } from '../../../../env';
-import { joinSandboxPath, shellQuote } from '../../sandbox/runtime/utils';
+import { joinSandboxPath } from '../../sandbox/runtime/utils';
 import { authSkillByTmbId } from '../../../../support/permission/skill/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';

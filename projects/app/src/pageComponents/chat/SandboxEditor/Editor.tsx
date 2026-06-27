@@ -91,7 +91,7 @@ const SandboxEditor = ({
     downloadCurrentFile,
     onCreateNode,
     onRenameComplete,
-    onMoveFile,
+    onMoveFiles,
     onDeleteFile,
     onUploadFiles,
     onExecCommand,
@@ -192,7 +192,7 @@ const SandboxEditor = ({
         toggleDirectory={toggleDirectory}
         onCreateNode={onCreateNode}
         onRenameComplete={onRenameComplete}
-        onMoveFile={onMoveFile}
+        onMoveFiles={onMoveFiles}
         onDeleteFile={onDeleteFile}
         onUploadFiles={onUploadFiles}
         onExecCommand={onExecCommand}

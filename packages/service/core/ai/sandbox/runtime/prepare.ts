@@ -1,4 +1,5 @@
 import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
+import { shellQuote } from '@fastgpt/global/common/string/utils';
 import {
   injectInputFilesToSandbox,
   readSandboxPwd,
@@ -6,7 +7,6 @@ import {
   type SandboxInputFile
 } from './files';
 import { prepareSandboxRuntimeMirrors } from './mirrors';
-import { shellQuote } from './utils';
 
 export type SandboxPrepareContext = {
   sandbox: ISandbox;

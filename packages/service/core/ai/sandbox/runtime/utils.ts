@@ -2,9 +2,6 @@ import { createHash } from 'crypto';
 
 type HashContent = string | Buffer | Uint8Array;
 
-/** Shell 单参数安全转义，用于拼接传给 sandbox 的命令。 */
-export const shellQuote = (value: string): string => `'${value.replace(/'/g, `'\\''`)}'`;
-
 /** 去掉 sandbox 路径右侧斜杠，根路径保持可继续拼接的空前缀。 */
 export const trimSandboxPathRight = (value: string) =>
   value === '/' ? '' : value.replace(/\/+$/, '');

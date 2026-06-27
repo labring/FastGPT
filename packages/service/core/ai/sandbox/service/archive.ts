@@ -1,4 +1,5 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { shellQuote } from '@fastgpt/global/common/string/utils';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { subDays } from 'date-fns';
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
@@ -10,7 +11,7 @@ import { serviceEnv } from '../../../../env';
 import { getSandboxAdapterConfig } from '../provider/config';
 import { connectToSandbox, disconnectSandbox } from '../provider/lifecycle';
 import { getSandboxRuntimeProfile } from '../runtime/profile';
-import { joinSandboxPath, shellQuote } from '../runtime/utils';
+import { joinSandboxPath } from '../runtime/utils';
 import {
   deleteSessionVolume,
   getSessionVolumeConfig,

@@ -1,7 +1,8 @@
 import type { ISandbox } from '@fastgpt-sdk/sandbox-adapter';
+import { shellQuote } from '@fastgpt/global/common/string/utils';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { serviceEnv } from '../../../../env';
-import { buildRuntimeHash, joinSandboxPath, shellQuote } from './utils';
+import { buildRuntimeHash, joinSandboxPath } from './utils';
 import {
   getRuntimeStateValue,
   readSandboxRuntimeState,

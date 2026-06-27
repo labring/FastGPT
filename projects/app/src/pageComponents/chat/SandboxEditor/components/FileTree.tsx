@@ -15,6 +15,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { Trans, useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { shellQuote } from '@fastgpt/global/common/string/utils';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { ExecuteResult } from '@fastgpt-sdk/sandbox-adapter';
 import {
@@ -29,7 +30,17 @@ import {
 } from '@dnd-kit/core';
 import type { DragEndEvent, DragStartEvent, CollisionDetection } from '@dnd-kit/core';
 import FileTreeNode, { InlineCreateNode } from './FileTreeNode';
-import { getIconByFilename } from '../utils';
+import {
+  buildSandboxMoveOperations,
+  findNodeByPath,
+  getIconByFilename,
+  getSandboxParentPath,
+  getSafeSandboxCommandPath,
+  getSafeSandboxPathSegment,
+  getTargetDirectoryPath,
+  getTopLevelSandboxPaths,
+  type SandboxMoveOperation
+} from '../utils';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import type { ChatTargetInputType } from '@fastgpt/global/openapi/core/chat/api';
 
@@ -87,7 +98,10 @@ type Props = {
   toggleDirectory: (node: TreeNode) => Promise<void> | void;
   onCreateNode: (parentPath: string, name: string, type: 'file' | 'directory') => Promise<void>;
   onRenameComplete: (oldPath: string, newName: string) => Promise<void>;
-  onMoveFile: (srcPath: string, targetDirPath: string) => Promise<void>;
+  onMoveFiles: (
+    operations: SandboxMoveOperation[],
+    options?: { expandPath?: string | null }
+  ) => Promise<SandboxMoveOperation[]>;
   onDeleteFile: (path: string) => Promise<void>;
   onUploadFiles: (files: FileList, targetDirPath: string) => Promise<void>;
   onExecCommand: (command: string, timeoutMs?: number) => Promise<ExecuteResult>;
@@ -119,26 +133,46 @@ const FileTreeSkeleton = () => {
   );
 };
 
-const shellQuote = (value: string) => `'${value.replace(/'/g, `'\\''`)}'`;
-
-const getSandboxCommandPath = (path: string) =>
-  path === '.' ? '.' : `./${path.replace(/^\.\//, '')}`;
-
 const buildResolveAbsolutePathsCommand = (paths: string[]) => {
-  const quotedPaths = paths.map((path) => shellQuote(getSandboxCommandPath(path))).join(' ');
+  const quotedPaths = paths.map((path) => shellQuote(getSafeSandboxCommandPath(path))).join(' ');
   return [
     'workspace_root=$(pwd -P)',
     `for path in ${quotedPaths}; do`,
     '  if [ "$path" = "." ]; then',
-    "    printf '%s\\n' \"$workspace_root\"",
+    '    printf \'%s\\n\' "$workspace_root"',
     '  else',
-    "    printf '%s/%s\\n' \"$workspace_root\" \"${path#./}\"",
+    '    printf \'%s/%s\\n\' "$workspace_root" "${path#./}"',
     '  fi',
     'done'
   ].join('\n');
 };
 
 const getIsZipFile = (node: TreeNode) => node.type === 'file' && /\.zip$/i.test(node.name);
+
+const stripZipExtension = (name: string) => name.replace(/\.zip$/i, '');
+
+const buildExtractZipToNamedDirCommand = (params: {
+  zipPath: string;
+  parentPath: string;
+  targetDirName: string;
+}) => {
+  const { zipPath, parentPath, targetDirName } = params;
+
+  return [
+    `zip_path=${shellQuote(getSafeSandboxCommandPath(zipPath))}`,
+    `parent_dir=${shellQuote(getSafeSandboxCommandPath(parentPath))}`,
+    `base_name=${shellQuote(getSafeSandboxPathSegment(targetDirName))}`,
+    'target_dir="$parent_dir/$base_name"',
+    'index=1',
+    'while [ -e "$target_dir" ]; do',
+    '  target_dir="$parent_dir/$base_name-$index"',
+    '  index=$((index + 1))',
+    'done',
+    'mkdir -p "$target_dir"',
+    'unzip -q "$zip_path" -d "$target_dir"',
+    'printf "%s\\n" "$target_dir"'
+  ].join('\n');
+};
 
 const DroppableRootBox = ({
   children,
@@ -195,7 +229,7 @@ const FileTree = ({
   toggleDirectory,
   onCreateNode,
   onRenameComplete,
-  onMoveFile,
+  onMoveFiles,
   onDeleteFile,
   onUploadFiles,
   onExecCommand,
@@ -230,42 +264,9 @@ const FileTree = ({
       ? new Set([selectedPath])
       : selectedPaths;
 
-  const findNodeByPath = (nodes: TreeNode[], targetPath: string): TreeNode | null => {
-    for (const node of nodes) {
-      if (node.path === targetPath) return node;
-      if (node.children) {
-        const res = findNodeByPath(node.children, targetPath);
-        if (res) return res;
-      }
-    }
-    return null;
-  };
-
-  const getParentPath = (path: string) => {
-    const parts = path.split('/');
-    parts.pop();
-    return parts.join('/') || '.';
-  };
-
-  // 父目录和子项同时被选中时，只操作父目录，避免重复移动/删除同一棵子树。
-  const getTopLevelPaths = (paths: string[]) => {
-    const uniquePaths = Array.from(new Set(paths)).filter((path) => path && path !== '.');
-    const result: string[] = [];
-
-    uniquePaths
-      .sort((a, b) => a.split('/').length - b.split('/').length || a.localeCompare(b))
-      .forEach((path) => {
-        if (!result.some((parentPath) => path.startsWith(parentPath + '/'))) {
-          result.push(path);
-        }
-      });
-
-    return result;
-  };
-
   const getOperationSelectedPaths = (basePath: string) => {
     if (enableMultiSelect && effectiveSelectedPaths.has(basePath)) {
-      return getTopLevelPaths(Array.from(effectiveSelectedPaths));
+      return getTopLevelSandboxPaths(Array.from(effectiveSelectedPaths));
     }
     return basePath === '.' ? [] : [basePath];
   };
@@ -303,7 +304,7 @@ const FileTree = ({
     if (activeOverPath === '.') return '.';
     const node = findNodeByPath(filteredTree, activeOverPath);
     if (node && node.type === 'file') {
-      return getParentPath(activeOverPath);
+      return getSandboxParentPath(activeOverPath);
     }
     return activeOverPath;
   };
@@ -394,7 +395,7 @@ const FileTree = ({
     if (overId !== '.') {
       const overNode = findNodeByPath(filteredTree, overId);
       if (overNode && overNode.type === 'file') {
-        destDirPath = getParentPath(overId);
+        destDirPath = getSandboxParentPath(overId);
       }
     }
 
@@ -414,19 +415,8 @@ const FileTree = ({
       return;
     }
 
-    const movePlan = sourcePaths.map((sourcePath) => {
-      const lastSlash = sourcePath.lastIndexOf('/');
-      const currentParentPath = lastSlash === -1 ? '.' : sourcePath.substring(0, lastSlash);
-      const sourceName = sourcePath.substring(lastSlash + 1);
-      const newPath = destDirPath === '.' ? sourceName : `${destDirPath}/${sourceName}`;
-
-      return {
-        sourcePath,
-        currentParentPath,
-        newPath
-      };
-    });
-    const moveItems = movePlan.filter((item) => item.currentParentPath !== destDirPath);
+    const movePlan = buildSandboxMoveOperations(sourcePaths, destDirPath);
+    const moveItems = movePlan;
 
     if (moveItems.length === 0) return;
 
@@ -450,35 +440,10 @@ const FileTree = ({
     const destNode = findNodeByPath(filteredTree, destDirPath);
     const shouldExpandDest = destDirPath !== '.' && destNode && destNode.loaded;
 
-    setExpandedDirs((prev) => {
-      let next = new Set(prev);
-
-      moveItems.forEach((item) => {
-        const updated = new Set<string>();
-        next.forEach((path) => {
-          if (path === item.sourcePath) {
-            updated.add(item.newPath);
-          } else if (path.startsWith(item.sourcePath + '/')) {
-            updated.add(item.newPath + path.substring(item.sourcePath.length));
-          } else {
-            updated.add(path);
-          }
-        });
-        next = updated;
-      });
-
-      if (shouldExpandDest) {
-        next.add(destDirPath);
-      }
-      return next;
-    });
-
-    const movedItems: typeof moveItems = [];
     try {
-      for (const item of moveItems) {
-        await onMoveFile(item.sourcePath, destDirPath);
-        movedItems.push(item);
-      }
+      const movedItems = await onMoveFiles(moveItems, {
+        expandPath: shouldExpandDest ? destDirPath : null
+      });
 
       const movedPathMap = new Map(movedItems.map((item) => [item.sourcePath, item.newPath]));
       const activeMovedPath = movedPathMap.get(srcPath);
@@ -489,6 +454,10 @@ const FileTree = ({
       );
       setSelectedPath(nextSelectedPath);
     } catch (error) {
+      const movedItems =
+        error instanceof Error && 'movedItems' in error
+          ? ((error as Error & { movedItems?: typeof moveItems }).movedItems ?? [])
+          : [];
       if (movedItems.length > 0) {
         const movedPathMap = new Map(movedItems.map((item) => [item.sourcePath, item.newPath]));
         setSelectedPaths(
@@ -497,35 +466,12 @@ const FileTree = ({
         const nextSelectedPath = movedPathMap.get(srcPath) || srcPath;
         setSelectedPath(nextSelectedPath);
       }
-      console.error('Failed to move selected files:', error);
     }
   };
 
   // 根据当前选中态，自动计算目标父文件夹路径
   const getTargetDirPathFromSelected = () => {
-    let parentPath = '.';
-    if (selectedPath) {
-      if (selectedPath === '.') {
-        parentPath = '.';
-      } else {
-        const selectedNode = findNodeByPath(filteredTree, selectedPath);
-        if (selectedNode) {
-          if (selectedNode.type === 'directory') {
-            parentPath = selectedPath;
-          } else {
-            parentPath = getParentPath(selectedPath);
-          }
-        } else {
-          const isFile = selectedPath.includes('.') && !selectedPath.startsWith('.');
-          if (isFile) {
-            parentPath = getParentPath(selectedPath);
-          } else {
-            parentPath = selectedPath;
-          }
-        }
-      }
-    }
-    return parentPath;
+    return getTargetDirectoryPath(filteredTree, selectedPath);
   };
 
   // 上端控制区触发
@@ -623,7 +569,7 @@ const FileTree = ({
   const handleCtxCreateFile = async () => {
     if (!contextMenu) return;
     const node = contextMenu.node;
-    const parentPath = node.type === 'directory' ? node.path : getParentPath(node.path);
+    const parentPath = node.type === 'directory' ? node.path : getSandboxParentPath(node.path);
 
     if (parentPath !== '.') {
       const parentNode = findNodeByPath(filteredTree, parentPath);
@@ -644,7 +590,7 @@ const FileTree = ({
   const handleCtxCreateDir = async () => {
     if (!contextMenu) return;
     const node = contextMenu.node;
-    const parentPath = node.type === 'directory' ? node.path : getParentPath(node.path);
+    const parentPath = node.type === 'directory' ? node.path : getSandboxParentPath(node.path);
 
     if (parentPath !== '.') {
       const parentNode = findNodeByPath(filteredTree, parentPath);
@@ -770,13 +716,15 @@ const FileTree = ({
     const path = contextMenu.node.path;
     setContextMenu(null);
 
-    const parentPath = getParentPath(path);
+    const parentPath = getSandboxParentPath(path);
 
     try {
       const result = await onExecCommand(
-        `unzip -o ${shellQuote(getSandboxCommandPath(path))} -d ${shellQuote(
-          getSandboxCommandPath(parentPath)
-        )}`,
+        buildExtractZipToNamedDirCommand({
+          zipPath: path,
+          parentPath,
+          targetDirName: stripZipExtension(contextMenu.node.name)
+        }),
         30000
       );
 

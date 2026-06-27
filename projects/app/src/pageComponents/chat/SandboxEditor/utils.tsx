@@ -1,5 +1,129 @@
 import type { IconNameType } from '@fastgpt/web/components/common/Icon/type';
 
+export const getSafeSandboxCommandPath = (path: string) => {
+  const normalizedPath = path.replace(/^\.\//, '');
+  const segments = normalizedPath.split('/');
+  if (
+    path.startsWith('/') ||
+    segments.some((segment) => segment === '..') ||
+    normalizedPath.includes('\u0000')
+  ) {
+    throw new Error('Invalid sandbox path');
+  }
+
+  return normalizedPath === '.' ? '.' : `./${normalizedPath}`;
+};
+
+export const getSafeSandboxPathSegment = (name: string) => {
+  if (!name || name === '.' || name === '..' || /[\/\\\u0000]/.test(name)) {
+    throw new Error('Invalid sandbox path');
+  }
+  return name;
+};
+
+export const getSandboxParentPath = (path: string) => {
+  const parts = path.split('/');
+  parts.pop();
+  return parts.join('/') || '.';
+};
+
+export const getSandboxPathName = (path: string) => {
+  const parts = path.split('/');
+  return parts.pop() || '';
+};
+
+export const joinSandboxPath = (parentPath: string, name: string) =>
+  parentPath === '.' ? name : `${parentPath}/${name}`;
+
+/** 将 oldPath 及其子路径替换为 newPath，用于移动/重命名后的状态同步。 */
+export const replacePathPrefix = (path: string, oldPath: string, newPath: string) => {
+  if (path === oldPath) return newPath;
+  if (path.startsWith(oldPath + '/')) return `${newPath}${path.slice(oldPath.length)}`;
+  return path;
+};
+
+/** 父子节点同时被选择时，仅保留父节点，避免重复操作同一棵子树。 */
+export const getTopLevelSandboxPaths = (paths: string[]) => {
+  const uniquePaths = Array.from(new Set(paths)).filter((path) => path && path !== '.');
+  const result: string[] = [];
+
+  uniquePaths
+    .sort((a, b) => a.split('/').length - b.split('/').length || a.localeCompare(b))
+    .forEach((path) => {
+      if (!result.some((parentPath) => path.startsWith(parentPath + '/'))) {
+        result.push(path);
+      }
+    });
+
+  return result;
+};
+
+export type SandboxMoveOperation = {
+  sourcePath: string;
+  currentParentPath: string;
+  targetDirPath: string;
+  newPath: string;
+};
+
+export const buildSandboxMoveOperations = (
+  sourcePaths: string[],
+  targetDirPath: string
+): SandboxMoveOperation[] => {
+  return sourcePaths
+    .map((sourcePath) => {
+      const currentParentPath = getSandboxParentPath(sourcePath);
+      const sourceName = getSandboxPathName(sourcePath);
+      const newPath = joinSandboxPath(targetDirPath, sourceName);
+
+      return {
+        sourcePath,
+        currentParentPath,
+        targetDirPath,
+        newPath
+      };
+    })
+    .filter((item) => item.currentParentPath !== targetDirPath);
+};
+
+export const applySandboxMoveOperationsToExpandedDirs = (
+  expandedDirs: Set<string>,
+  operations: SandboxMoveOperation[],
+  expandPath?: string | null
+) => {
+  let next = new Set(expandedDirs);
+
+  operations.forEach((item) => {
+    const updated = new Set<string>();
+    next.forEach((path) => {
+      updated.add(replacePathPrefix(path, item.sourcePath, item.newPath));
+    });
+    next = updated;
+  });
+
+  if (expandPath && expandPath !== '.') {
+    next.add(expandPath);
+  }
+
+  return next;
+};
+
+export const getTargetDirectoryPath = <
+  T extends { type: 'file' | 'directory'; path: string; children?: T[] }
+>(
+  tree: T[],
+  selectedPath: string
+) => {
+  if (!selectedPath || selectedPath === '.') return '.';
+
+  const selectedNode = findNodeByPath(tree, selectedPath);
+  if (selectedNode) {
+    return selectedNode.type === 'directory' ? selectedPath : getSandboxParentPath(selectedPath);
+  }
+
+  const looksLikeFile = selectedPath.includes('.') && !selectedPath.startsWith('.');
+  return looksLikeFile ? getSandboxParentPath(selectedPath) : selectedPath;
+};
+
 // Get icon by filename
 export const getIconByFilename = (filename: string): IconNameType => {
   const ext = filename.split('.').pop()?.toLowerCase();
