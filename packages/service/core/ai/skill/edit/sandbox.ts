@@ -36,6 +36,7 @@ import {
   countRunningSandboxInstancesByType,
   findSandboxInstanceBySandboxId,
   findSandboxResourcesBySourceChatTypeExcludeProvider,
+  markSandboxRuntimeUpgradeArchiveFailed,
   migrateArchivedSandboxInstanceRecord,
   updateSandboxInstanceRecordBySandboxId,
   type SandboxResourceDoc
@@ -61,6 +62,7 @@ import {
 
 const addLog = getLogger(LogCategories.MODULE.AI.AGENT);
 const RUNTIME_UPGRADE_FAILED_MESSAGE = SandboxErrEnum.runtimeUpgradeFailed;
+const RUNTIME_UPGRADE_IN_PROGRESS_MESSAGE = SandboxErrEnum.runtimeUpgradeInProgress;
 const RUNTIME_UPGRADE_ARCHIVING_TIMEOUT_MS = 10 * 60 * 1000;
 
 export type CreateEditDebugSandboxParams = {
@@ -173,7 +175,8 @@ export async function createEditDebugSandbox(
   let shouldUnzipFromS3 =
     !existingInstance || existingInstance.metadata?.versionId !== targetVersionId;
   const existingArchiveState = existingInstance?.metadata?.archive?.state;
-  const shouldRecoverArchivedInstance = existingArchiveState !== undefined;
+  const shouldRecoverArchivedInstance =
+    existingArchiveState !== undefined && existingArchiveState !== 'failed';
   let archivedRestoreRecord: {
     _id: unknown;
     provider: string;
@@ -209,6 +212,21 @@ export async function createEditDebugSandbox(
       message: RUNTIME_UPGRADE_FAILED_MESSAGE
     });
     throw new UserError(RUNTIME_UPGRADE_FAILED_MESSAGE);
+  };
+
+  const failRuntimeUpgradeInProgress = (): never => {
+    throw new UserError(RUNTIME_UPGRADE_IN_PROGRESS_MESSAGE);
+  };
+
+  const markRuntimeUpgradeFailed = async (instance: SandboxResourceDoc) => {
+    await markSandboxRuntimeUpgradeArchiveFailed(instance, RUNTIME_UPGRADE_FAILED_MESSAGE).catch(
+      (error) => {
+        addLog.error('[Sandbox] Failed to mark runtime upgrade archive failed', {
+          sandboxId: instance.sandboxId,
+          error
+        });
+      }
+    );
   };
 
   const isRuntimeUpgradeArchivingTimedOut = (instance: SandboxResourceDoc) => {
@@ -335,6 +353,10 @@ export async function createEditDebugSandbox(
     });
 
     if (!isRuntimeUpgradeArchivingTimedOut(existingInstance)) {
+      if (archiveForUpgrade) {
+        failRuntimeUpgradeInProgress();
+      }
+
       return {
         sandboxId: existingInstance.sandboxId,
         status: {
@@ -348,6 +370,7 @@ export async function createEditDebugSandbox(
       provider: existingInstance.provider,
       archiveStartedAt: existingInstance.metadata?.archive?.startedAt
     });
+    await markRuntimeUpgradeFailed(existingInstance);
     failRuntimeUpgrade(existingInstance.sandboxId);
   }
 

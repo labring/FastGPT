@@ -32,7 +32,7 @@ export const SandboxImageSchema = z.object({
   tag: z.string().optional()
 });
 
-export const SandboxArchiveStateSchema = z.enum(['archiving', 'archived', 'restoring']);
+export const SandboxArchiveStateSchema = z.enum(['archiving', 'archived', 'restoring', 'failed']);
 export type SandboxArchiveStateType = z.infer<typeof SandboxArchiveStateSchema>;
 
 export const SandboxMetadataSchema = z.object({
@@ -45,7 +45,9 @@ export const SandboxMetadataSchema = z.object({
     .object({
       state: SandboxArchiveStateSchema,
       startedAt: z.coerce.date().optional(),
-      archivedAt: z.coerce.date().optional()
+      archivedAt: z.coerce.date().optional(),
+      failedAt: z.coerce.date().optional(),
+      error: z.string().optional()
     })
     .optional(),
 

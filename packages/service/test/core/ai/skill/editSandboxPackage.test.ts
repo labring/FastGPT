@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   disconnectSandbox: vi.fn(),
   deleteWorkspaceArchive: vi.fn(),
   archiveSandboxResourceForRuntimeUpgrade: vi.fn(),
+  markSandboxRuntimeUpgradeArchiveFailed: vi.fn(),
   prepareSandboxRuntimeMirrors: vi.fn(),
   logger: {
     info: vi.fn(),
@@ -116,6 +117,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/instance/repository', () => ({
   deleteSandboxInstanceRecord: vi.fn(),
   findSandboxInstanceBySandboxId: vi.fn(),
   findSandboxResourcesBySourceChatTypeExcludeProvider: vi.fn(),
+  markSandboxRuntimeUpgradeArchiveFailed: mocks.markSandboxRuntimeUpgradeArchiveFailed,
   migrateArchivedSandboxInstanceRecord: vi.fn(),
   updateSandboxInstanceRecordBySandboxId: vi.fn()
 }));
@@ -347,6 +349,7 @@ describe('createEditDebugSandbox', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(checkTeamSandboxPermission).mockResolvedValue(undefined);
+    mocks.markSandboxRuntimeUpgradeArchiveFailed.mockResolvedValue(undefined);
     vi.mocked(buildSandboxAdapter).mockReturnValue({
       getInfo: vi.fn(async () => ({
         status: { state: 'Running' }
@@ -846,7 +849,59 @@ describe('createEditDebugSandbox', () => {
     expect(getSandboxClient).not.toHaveBeenCalled();
   });
 
-  it('rejects timed-out runtime upgrade archiving state without cleanup or rebuild', async () => {
+  it('rejects duplicate runtime upgrade confirmation during active archiving', async () => {
+    const skillId = 'skill-1';
+    const onProgress = vi.fn();
+    const archivingInstance = {
+      _id: 'archiving-instance',
+      provider: 'test-provider',
+      sandboxId: `edit-debug-${skillId}`,
+      status: 'stopped',
+      lastActiveAt: new Date(),
+      metadata: {
+        image: { repository: 'old-runtime', tag: 'v1' },
+        archive: {
+          state: 'archiving',
+          startedAt: new Date()
+        },
+        versionId: 'version-1'
+      }
+    };
+
+    vi.mocked(MongoAgentSkills.findOne).mockResolvedValueOnce({
+      _id: skillId,
+      name: '测试的',
+      currentVersionId: 'version-1'
+    } as any);
+    vi.mocked(MongoAgentSkillsVersion.findOne).mockResolvedValueOnce({
+      _id: 'version-1',
+      storageKey: 'storage-key'
+    } as any);
+    vi.mocked(findSandboxInstanceBySandboxId).mockResolvedValueOnce(archivingInstance as any);
+
+    await expect(
+      createEditDebugSandbox({
+        skillId,
+        teamId: 'team-1',
+        tmbId: 'tmb-1',
+        image: { repository: 'new-runtime', tag: 'v2' },
+        archiveForUpgrade: true,
+        onProgress
+      })
+    ).rejects.toThrow(SandboxErrEnum.runtimeUpgradeInProgress);
+
+    expect(onProgress).toHaveBeenCalledWith({
+      sandboxId: `edit-debug-${skillId}`,
+      phase: 'runtimeUpgradeArchiving'
+    });
+    expect(mocks.archiveSandboxResourceForRuntimeUpgrade).not.toHaveBeenCalled();
+    expect(mocks.markSandboxRuntimeUpgradeArchiveFailed).not.toHaveBeenCalled();
+    expect(deleteStaleRuntimeUpgradeArchivingRecord).not.toHaveBeenCalled();
+    expect(deleteSandboxResource).not.toHaveBeenCalled();
+    expect(getSandboxClient).not.toHaveBeenCalled();
+  });
+
+  it('marks timed-out runtime upgrade archiving state as failed without cleanup or rebuild', async () => {
     const skillId = 'skill-1';
     const onProgress = vi.fn();
     const archivingInstance = {
@@ -895,6 +950,10 @@ describe('createEditDebugSandbox', () => {
       phase: 'failed',
       message: SandboxErrEnum.runtimeUpgradeFailed
     });
+    expect(mocks.markSandboxRuntimeUpgradeArchiveFailed).toHaveBeenCalledWith(
+      archivingInstance,
+      SandboxErrEnum.runtimeUpgradeFailed
+    );
     expect(deleteStaleRuntimeUpgradeArchivingRecord).not.toHaveBeenCalled();
     expect(deleteSandboxResource).not.toHaveBeenCalled();
     expect(downloadSkillPackage).not.toHaveBeenCalled();

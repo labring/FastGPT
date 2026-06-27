@@ -21,6 +21,7 @@ import {
   markSandboxArchived,
   markSandboxArchiving,
   markSandboxArchivingForRuntimeUpgrade,
+  markSandboxRuntimeUpgradeArchiveFailed,
   migrateArchivedSandboxInstanceRecord,
   markSandboxRestored,
   markSandboxRestoring,
@@ -609,6 +610,60 @@ describe('sandbox instance helpers', () => {
       }
     });
     expect(stored?.metadata?.archive).toBeUndefined();
+  });
+
+  it('marks runtime upgrade archive as failed and allows retrying archive claim', async () => {
+    const sandboxId = `instance-helper-${getNanoid()}`;
+    const doc = await MongoSandboxInstance.create({
+      provider: 'opensandbox',
+      sandboxId,
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: `instance-helper-${getNanoid()}`,
+      userId: 'user-1',
+      chatId: 'edit-debug',
+      type: SandboxTypeEnum.editDebug,
+      status: SandboxStatusEnum.running,
+      lastActiveAt: new Date('2026-01-01T00:00:00.000Z'),
+      createdAt: new Date(),
+      metadata: {
+        image: { repository: 'old-image' }
+      }
+    });
+
+    const archiving = await markSandboxArchivingForRuntimeUpgrade(doc);
+    expect(archiving).toMatchObject({
+      status: SandboxStatusEnum.stopped,
+      metadata: {
+        archive: {
+          state: 'archiving'
+        }
+      }
+    });
+
+    await markSandboxRuntimeUpgradeArchiveFailed(doc, 'archive failed');
+
+    const failed = await MongoSandboxInstance.findOne({ sandboxId }).lean();
+    expect(failed).toMatchObject({
+      status: SandboxStatusEnum.running,
+      metadata: {
+        archive: {
+          state: 'failed',
+          error: 'archive failed'
+        }
+      }
+    });
+
+    const retrying = await markSandboxArchivingForRuntimeUpgrade(failed as SandboxResourceDoc);
+    expect(retrying).toMatchObject({
+      status: SandboxStatusEnum.stopped,
+      metadata: {
+        archive: {
+          state: 'archiving'
+        }
+      }
+    });
+    expect(retrying?.metadata?.archive?.error).toBeUndefined();
+    expect(retrying?.metadata?.archive?.failedAt).toBeUndefined();
   });
 
   it('streams archive candidates by lastActiveAt descending', async () => {

@@ -195,6 +195,11 @@ const ChatItem = (props: Props) => {
 
     return [];
   }, [chat.obj, chat.value, isChatting, isLastChild]);
+  const hasValidAiContent = useMemo(() => {
+    if (chat.obj !== ChatRoleEnum.AI) return false;
+
+    return chat.value.some((item) => !shouldFilterAiValue(item));
+  }, [chat.obj, chat.value]);
 
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
   const onOpenCiteModal = useMemoizedFn(
@@ -326,6 +331,7 @@ const ChatItem = (props: Props) => {
               isLastChild={isLastChild}
               isLastValueGroup={i === splitAiResponseResults.length - 1}
               isChatting={isChatting}
+              hasValidContent={hasValidAiContent}
               loadingText={showRunningStatus ? statusBoxData?.name : undefined}
               questionGuides={questionGuides}
               enableSandbox={enableSandbox}

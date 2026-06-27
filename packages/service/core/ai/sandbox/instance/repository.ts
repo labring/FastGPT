@@ -344,13 +344,20 @@ export async function markSandboxArchivingForRuntimeUpgrade(resource: SandboxRes
     {
       ...buildSandboxResourceRecordFilter(resource),
       lastActiveAt: resource.lastActiveAt,
-      'metadata.archive.state': { $exists: false }
+      $or: [
+        { 'metadata.archive.state': { $exists: false } },
+        { 'metadata.archive.state': 'failed' }
+      ]
     },
     {
       $set: {
         status: SandboxStatusEnum.stopped,
         'metadata.archive.state': 'archiving',
         'metadata.archive.startedAt': new Date()
+      },
+      $unset: {
+        'metadata.archive.failedAt': '',
+        'metadata.archive.error': ''
       }
     },
     { new: true }
@@ -437,6 +444,32 @@ export async function clearSandboxRuntimeUpgradeArchiveState(resource: SandboxRe
       },
       $unset: {
         'metadata.archive': ''
+      }
+    }
+  );
+}
+
+/**
+ * 标记用户主动升级 edit-debug runtime 的归档失败。
+ *
+ * 失败记录保留在 Mongo 中，方便刷新页面后识别本轮升级已失败；后续用户再次点击升级时，
+ * markSandboxArchivingForRuntimeUpgrade 会从 failed 状态重新抢占为 archiving。
+ */
+export async function markSandboxRuntimeUpgradeArchiveFailed(
+  resource: SandboxResourceDoc,
+  error?: string
+) {
+  return MongoSandboxInstance.updateOne(
+    {
+      ...buildSandboxResourceRecordFilter(resource),
+      'metadata.archive.state': 'archiving'
+    },
+    {
+      $set: {
+        status: resource.status,
+        'metadata.archive.state': 'failed',
+        'metadata.archive.failedAt': new Date(),
+        ...(error ? { 'metadata.archive.error': error } : {})
       }
     }
   );

@@ -19,7 +19,6 @@ import {
 } from '../volume/service';
 import {
   clearSandboxArchiveState,
-  clearSandboxRuntimeUpgradeArchiveState,
   createSandboxResourcesToArchiveCursor,
   findSandboxInstanceArchiveState,
   isSandboxStillArchiving,
@@ -29,6 +28,7 @@ import {
   markSandboxRestored,
   markSandboxRestoring,
   markSandboxResourceStopped,
+  markSandboxRuntimeUpgradeArchiveFailed,
   rollbackSandboxRestoring,
   type SandboxResourceDoc
 } from '../instance/repository';
@@ -522,7 +522,7 @@ export async function archiveSandboxResourceForRuntimeUpgrade(
     options,
     logLabel: 'upgraded sandbox',
     rollbackResource: resource,
-    rollbackArchiveState: () => clearSandboxRuntimeUpgradeArchiveState(resource)
+    rollbackArchiveState: () => markSandboxRuntimeUpgradeArchiveFailed(resource)
   });
 }
 

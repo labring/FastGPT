@@ -83,10 +83,26 @@ const RUNTIME_UPGRADE_POLL_INTERVAL_MS = 3000;
 
 const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
-  const { t } = useTranslation();
-  const { toast } = useToast();
   const { skillId: querySkillId } = router.query;
   const skillId = (Array.isArray(querySkillId) ? querySkillId[0] : querySkillId) ?? '';
+
+  return (
+    <SkillDetailContextProviderInner key={skillId || 'empty-skill'} skillId={skillId}>
+      {children}
+    </SkillDetailContextProviderInner>
+  );
+};
+
+const SkillDetailContextProviderInner = ({
+  children,
+  skillId
+}: {
+  children: ReactNode;
+  skillId: string;
+}) => {
+  const router = useRouter();
+  const { t } = useTranslation();
+  const { toast } = useToast();
   const activeSkillId = useSkillDebugChatStore((state) => state.skillId);
   const activeChatId = useSkillDebugChatStore((state) => state.chatId);
   const setSkillId = useSkillDebugChatStore((state) => state.setSkillId);
@@ -100,7 +116,7 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
   const [sandboxLogs, setSandboxLogs] = useState<SandboxLogEntry[]>([]);
   const [sandboxError, setSandboxError] = useState<string | null>(null);
   const abortCtrlRef = useRef<AbortController | null>(null);
-  const hasStartedRef = useRef(false);
+  const startedSkillIdRef = useRef('');
   const runtimeUpgradePollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveAllRef = useRef<() => Promise<void>>();
 
@@ -148,6 +164,8 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
     (options?: { archiveForUpgrade?: boolean }) => {
       if (!skillId) return;
 
+      startedSkillIdRef.current = skillId;
+
       // Abort previous if any
       abortCtrlRef.current?.abort();
       clearRuntimeUpgradePollTimer();
@@ -173,6 +191,7 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
         let shouldRestartAfterRuntimeUpgrade = false;
 
         const showSandboxError = (err: string) => {
+          if (abortCtrl.signal.aborted || abortCtrlRef.current !== abortCtrl) return;
           if (hasShownError) return;
           hasShownError = true;
           setSandboxError(err);
@@ -224,6 +243,8 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
               ...(runOptions?.archiveForUpgrade ? { archiveForUpgrade: true } : {})
             },
             onStatus: (status) => {
+              if (abortCtrl.signal.aborted || abortCtrlRef.current !== abortCtrl) return;
+
               // 收到第一条 SSE 消息后才从 idle 切到 loading（终端日志）
               if (!hasReceivedFirstEvent) {
                 hasReceivedFirstEvent = true;
@@ -244,6 +265,8 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
               handleSandboxPhase(status);
             },
             onError: (err) => {
+              if (abortCtrl.signal.aborted || abortCtrlRef.current !== abortCtrl) return;
+
               showSandboxError(
                 isRuntimeUpgradeFlow ? t('skill:sandbox_runtime_upgrade_failed') : err
               );
@@ -309,12 +332,10 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const restartSandbox = useCallback(() => {
-    hasStartedRef.current = true;
     startSandbox();
   }, [startSandbox]);
 
   const upgradeSandboxRuntime = useCallback(() => {
-    hasStartedRef.current = true;
     startSandbox({ archiveForUpgrade: true });
   }, [startSandbox]);
 
@@ -358,21 +379,22 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
     }
   );
 
-  const creationStatus = skillDetail?.creationStatus;
+  const currentSkillDetail = skillDetail?._id === skillId ? skillDetail : undefined;
+  const creationStatus = currentSkillDetail?.creationStatus;
   const isSkillCreating = creationStatus === AgentSkillCreationStatusEnum.creating;
   const isSkillCreateFailed = creationStatus === AgentSkillCreationStatusEnum.failed;
   const isSkillNoCurrentVersion =
-    !!skillDetail &&
+    !!currentSkillDetail &&
     creationStatus === AgentSkillCreationStatusEnum.ready &&
-    !skillDetail.currentVersionId;
+    !currentSkillDetail.currentVersionId;
   const isSkillReady =
-    !!skillDetail &&
+    !!currentSkillDetail &&
     creationStatus === AgentSkillCreationStatusEnum.ready &&
-    !!skillDetail.currentVersionId;
+    !!currentSkillDetail.currentVersionId;
   const visibleSandboxState: SandboxState =
     isSkillCreateFailed || isSkillNoCurrentVersion ? 'failed' : sandboxState;
   const visibleSandboxError = (() => {
-    if (isSkillCreateFailed) return skillDetail?.creationError || t('common:create_failed');
+    if (isSkillCreateFailed) return currentSkillDetail?.creationError || t('common:create_failed');
     if (isSkillNoCurrentVersion) return t('skill:no_current_version');
     return sandboxError;
   })();
@@ -389,8 +411,7 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
 
   // Auto-start sandbox when skillId is ready
   useEffect(() => {
-    if (skillId && isSkillReady && !hasStartedRef.current) {
-      hasStartedRef.current = true;
+    if (skillId && isSkillReady && startedSkillIdRef.current !== skillId) {
       startSandbox();
     }
   }, [skillId, isSkillReady, startSandbox]);
@@ -406,7 +427,7 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
   const contextValue: SkillDetailContextType = useMemo(
     () => ({
       skillId,
-      skillDetail,
+      skillDetail: currentSkillDetail,
       isFetchingSkillDetail,
       refreshSkillDetail,
       showHistories,
@@ -425,7 +446,7 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
     }),
     [
       skillId,
-      skillDetail,
+      currentSkillDetail,
       isFetchingSkillDetail,
       refreshSkillDetail,
       showHistories,

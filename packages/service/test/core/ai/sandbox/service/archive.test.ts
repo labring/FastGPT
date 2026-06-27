@@ -28,6 +28,7 @@ const archiveMocks = vi.hoisted(() => ({
   markSandboxRestored: vi.fn(),
   markSandboxRestoring: vi.fn(),
   markSandboxResourceStopped: vi.fn(),
+  markSandboxRuntimeUpgradeArchiveFailed: vi.fn(),
   rollbackSandboxRestoring: vi.fn(),
   buildSandboxResourceAdapter: vi.fn()
 }));
@@ -81,6 +82,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/instance/repository', () => ({
   markSandboxRestored: archiveMocks.markSandboxRestored,
   markSandboxRestoring: archiveMocks.markSandboxRestoring,
   markSandboxResourceStopped: archiveMocks.markSandboxResourceStopped,
+  markSandboxRuntimeUpgradeArchiveFailed: archiveMocks.markSandboxRuntimeUpgradeArchiveFailed,
   rollbackSandboxRestoring: archiveMocks.rollbackSandboxRestoring
 }));
 
@@ -364,6 +366,41 @@ describe('sandbox archive service', () => {
     });
     expect(remoteResource.delete).toHaveBeenCalledTimes(1);
     expect(archiveMocks.markSandboxArchived).toHaveBeenCalledWith(archivingResource);
+  });
+
+  it('marks runtime upgrade archive failed so users can retry after archive failure', async () => {
+    const resource = createResource({
+      status: SandboxStatusEnum.running,
+      metadata: {
+        image: { repository: 'old-runtime' }
+      }
+    });
+    const archivingResource = {
+      ...resource,
+      status: SandboxStatusEnum.stopped,
+      metadata: {
+        ...resource.metadata,
+        archive: {
+          state: 'archiving'
+        }
+      }
+    };
+    const sandbox = createSandbox();
+    archiveMocks.markSandboxArchivingForRuntimeUpgrade.mockResolvedValue(archivingResource);
+    archiveMocks.connectToSandbox.mockResolvedValue(sandbox);
+    archiveMocks.uploadWorkspaceArchive.mockRejectedValueOnce(new Error('upload failed'));
+
+    const result = await archiveSandboxResourceForRuntimeUpgrade(resource, {
+      ensureZipInSandbox: true
+    });
+
+    expect(result).toMatchObject({
+      success: false,
+      error: 'upload failed'
+    });
+    expect(archiveMocks.markSandboxRuntimeUpgradeArchiveFailed).toHaveBeenCalledWith(resource);
+    expect(archiveMocks.clearSandboxRuntimeUpgradeArchiveState).not.toHaveBeenCalled();
+    expect(archiveMocks.markSandboxArchived).not.toHaveBeenCalled();
   });
 
   it('restores archive from the current provider record before runtime use', async () => {

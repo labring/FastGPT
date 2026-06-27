@@ -11,9 +11,13 @@ import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../../Provider';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import AIChatLoading from '../AIChatLoading';
-import { hasAiAnswerContent, hasAiInteractiveContent, hasAiProcessingContent } from './utils';
+import { hasAiProcessingContent } from './utils';
 import { useTranslation } from 'next-i18next';
-import { ChatGenerateStatusEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatGenerateStatusEnum,
+  ChatRoleEnum,
+  ChatStatusEnum
+} from '@fastgpt/global/core/chat/constants';
 
 const ResponseTags = dynamic(() => import('../ResponseTags'));
 const WholeResponseModal = dynamic(() => import('../../../../components/WholeResponseModal'));
@@ -27,6 +31,7 @@ type AIChatBubbleProps = {
   isLastChild: boolean;
   isLastValueGroup: boolean;
   isChatting: boolean;
+  hasValidContent: boolean;
   loadingText?: string;
   questionGuides: string[];
   enableSandbox: boolean;
@@ -43,6 +48,7 @@ const AIChatBubble = ({
   isLastChild,
   isLastValueGroup,
   isChatting,
+  hasValidContent,
   loadingText,
   questionGuides,
   enableSandbox,
@@ -66,9 +72,6 @@ const AIChatBubble = ({
   const showFooterActions = isLastValueGroup && (!isLastChild || !isChatting);
   const canShowWholeResponse = chatType !== 'share' && showWholeResponse;
   const showLoading = isLastChild && isLastValueGroup && isChatting;
-  const hasFinalOutput = chatValue.some(
-    (item) => hasAiAnswerContent(item) || hasAiInteractiveContent(item)
-  );
   const hasProcessingContent = chatValue.some((item) => hasAiProcessingContent(item));
   const isCurrentChatGenerateStatusReady = chatGenerateStatus !== undefined;
   const isCurrentChatGenerating = chatGenerateStatus === ChatGenerateStatusEnum.generating;
@@ -81,15 +84,16 @@ const AIChatBubble = ({
     !isChatting &&
     !chat.errorMsg &&
     !chat.errorText &&
-    !hasFinalOutput;
+    !hasValidContent;
   const showNoOutputTip =
+    chat.obj === ChatRoleEnum.AI &&
     chat.status === ChatStatusEnum.finish &&
     isLastValueGroup &&
     !isChatting &&
     !shouldWaitCurrentChatStatus &&
     !chat.errorMsg &&
     !chat.errorText &&
-    !hasFinalOutput;
+    !hasValidContent;
   const placeholderText = showLoadingPlaceholder
     ? t('chat:chat_loading_content')
     : showNoOutputTip

@@ -68,6 +68,7 @@
   "sandbox_runtime_upgrade_confirm": "Upgrade now",
   "sandbox_runtime_upgrade_desc": "A newer virtual machine runtime is available. Upgrade before continuing. The upgrade will not affect workspace files, but dependencies need to be reinstalled.",
   "sandbox_runtime_upgrade_failed": "Upgrade failed. Please try again.",
+  "sandbox_runtime_upgrade_in_progress": "New sandbox version available. Upgrading...",
   "sandbox_runtime_upgrade_required": "Virtual machine runtime upgrade notice",
   "sandbox_ready": "Sandbox is ready",
   "sandbox_ready_warm": "Sandbox is ready (warm start)",

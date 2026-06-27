@@ -1,12 +1,12 @@
 import React from 'react';
-import { Box } from '@chakra-ui/react';
+import { Box, Button } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { useTranslation } from 'next-i18next';
 import { SkillDetailContext } from './context';
 import SandboxEditor from '@/pageComponents/chat/SandboxEditor/Editor';
 import SandboxError from './config/SandboxError';
 import { RightHeader } from '@/pageComponents/dashboard/skill/detail/Header';
-import ProModal from '@/components/ProTip/ProModal';
+import HighlightModal from '@fastgpt/web/components/v2/common/MyModal/HighlightModal';
 
 const EDIT_DEBUG_CHAT_ID = 'edit-debug';
 
@@ -23,6 +23,9 @@ const Content = () => {
   const isSandboxReady = sandboxState === 'ready';
   const isUpgrading = sandboxState === 'upgrading';
   const isUpgradeModalOpen = sandboxState === 'upgradeRequired' || isUpgrading;
+  const upgradeModalTitle = isUpgrading
+    ? t('skill:sandbox_runtime_upgrade_in_progress')
+    : t('skill:sandbox_runtime_upgrade_required');
   const canOperateSandbox = isSkillReady && isSandboxReady;
 
   return (
@@ -56,20 +59,28 @@ const Content = () => {
           headerRight={canOperateSandbox ? <RightHeader /> : undefined}
         />
       )}
-      <ProModal
+      <HighlightModal
         isOpen={isUpgradeModalOpen}
-        forceShow
-        title={t('skill:sandbox_runtime_upgrade_required')}
-        content={
-          <Box color={'myGray.900'} fontSize={'18px'} lineHeight={'26px'} mt={7}>
-            {t('skill:sandbox_runtime_upgrade_desc')}
-          </Box>
+        title={upgradeModalTitle}
+        footer={
+          <Button
+            w={'full'}
+            h={'48px'}
+            borderRadius={'10px'}
+            onClick={upgradeSandboxRuntime}
+            isLoading={isUpgrading}
+            isDisabled={isUpgrading}
+            fontSize={'16px'}
+            fontWeight={'medium'}
+          >
+            {t('skill:sandbox_runtime_upgrade_confirm')}
+          </Button>
         }
-        primaryButtonText={t('skill:sandbox_runtime_upgrade_confirm')}
-        primaryButtonLoading={isUpgrading}
-        onPrimaryClick={upgradeSandboxRuntime}
-        showSecondaryButton={false}
-      />
+      >
+        <Box color={'myGray.900'} fontSize={'18px'} lineHeight={'26px'} mt={7}>
+          {t('skill:sandbox_runtime_upgrade_desc')}
+        </Box>
+      </HighlightModal>
     </Box>
   );
 };

@@ -68,6 +68,7 @@
   "sandbox_runtime_upgrade_confirm": "立即升級",
   "sandbox_runtime_upgrade_desc": "檢測到目前虛擬機環境有新版，需要升級後才能正常使用。升級版本不會影響工作區的檔案，但需要重新安裝依賴包。",
   "sandbox_runtime_upgrade_failed": "升級失敗，請重新嘗試",
+  "sandbox_runtime_upgrade_in_progress": "有新版本沙盒，正在升級中",
   "sandbox_runtime_upgrade_required": "虛擬機環境升級提示",
   "sandbox_ready": "沙箱環境就緒",
   "sandbox_ready_warm": "沙箱環境就緒（熱啟動）",
