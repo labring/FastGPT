@@ -270,10 +270,15 @@ describe('sandbox runtime service', () => {
       provider: 'sealosdevbox',
       sandboxId: 'runtime-cleanup-sandbox'
     });
-    expect(mocks.deleteSandboxResource).toHaveBeenCalledWith({
-      provider: 'sealosdevbox',
-      sandboxId: 'runtime-cleanup-sandbox'
-    });
+    expect(mocks.deleteSandboxResource).toHaveBeenCalledWith(
+      {
+        provider: 'sealosdevbox',
+        sandboxId: 'runtime-cleanup-sandbox'
+      },
+      {
+        keepArchive: false
+      }
+    );
   });
 
   it('returns execute result error when ensureAvailable fails before exec', async () => {

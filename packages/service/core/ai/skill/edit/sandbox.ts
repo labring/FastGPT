@@ -31,10 +31,10 @@ import {
 import { buildSandboxAdapter } from '../../sandbox/provider/adapter';
 import type { SandboxClient } from '../../sandbox/service/runtime';
 import { getSandboxClient } from '../../sandbox/service/runtime';
-import { deleteSandboxResource } from '../../sandbox/service/resource';
 import { archiveSandboxResourceForRuntimeUpgrade } from '../../sandbox/service/archive';
 import {
   countRunningSandboxInstancesByType,
+  deleteSandboxResourceRecord,
   findSandboxInstanceBySandboxId,
   findSandboxInstanceArchiveState,
   findSandboxResourcesBySourceChatTypeExcludeProvider,
@@ -50,7 +50,6 @@ import { checkTeamSandboxPermission } from '../../../../support/permission/teamL
 import { createAgentSandboxPermissionDeniedError } from '../../sandbox/error';
 import {
   emptyWorkDirectory,
-  inspectWorkDirectoryContent,
   preparePackageMirrors,
   prepareWorkDirectory,
   prepareSandbox
@@ -71,7 +70,6 @@ export type CreateEditDebugSandboxParams = {
   skillId: string;
   teamId: string;
   tmbId: string;
-  image?: SandboxImageConfigType;
   entrypoint?: SandboxCreateSpec['entrypoint'];
   archiveForUpgrade?: boolean;
   onProgress?: (status: SandboxStatusItemType) => void;
@@ -95,7 +93,7 @@ export type CreateEditDebugSandboxResult = {
 export async function createEditDebugSandbox(
   params: CreateEditDebugSandboxParams
 ): Promise<CreateEditDebugSandboxResult> {
-  const { skillId, teamId, tmbId, image, entrypoint, archiveForUpgrade, onProgress } = params;
+  const { skillId, teamId, tmbId, entrypoint, archiveForUpgrade, onProgress } = params;
 
   try {
     await checkTeamSandboxPermission(teamId);
@@ -150,7 +148,6 @@ export async function createEditDebugSandbox(
     runtime: true,
     sessionId,
     createConfig: {
-      ...(image ? { image } : {}),
       entrypoint,
       metadata: runtimeMetadata
     }
@@ -286,18 +283,8 @@ export async function createEditDebugSandbox(
     chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
     type: SandboxTypeEnum.editDebug
   });
-  const staleRuntimeUpgradeInstance =
-    !existingInstance && !shouldRecoverArchivedInstance
-      ? staleProviderInstances.find(
-          (instance) =>
-            instance.metadata?.archive?.state === undefined &&
-            !isRuntimeImageMatched(instance.metadata?.image)
-        )
-      : undefined;
   const runtimeUpgradeInstance =
-    existingInstance && !shouldRecoverArchivedInstance
-      ? existingInstance
-      : staleRuntimeUpgradeInstance;
+    existingInstance && !shouldRecoverArchivedInstance ? existingInstance : undefined;
   const requiresRuntimeImageUpgrade =
     !!runtimeUpgradeInstance && !isRuntimeImageMatched(runtimeUpgradeInstance.metadata?.image);
 
@@ -395,45 +382,31 @@ export async function createEditDebugSandbox(
     let sandbox: ISandbox | null = null;
 
     try {
-      // 在连接前先校验物理容器是否存在。如果已被物理删除，则不应复用，应直接走重建流程以恢复文件。
+      // 物理容器丢失时不能直接失败；OpenSandbox 可能仍保留同名 PVC，需要交给运行态按同一 sandboxId 重新拉起。
       const preCheckSandbox = buildSandboxAdapter(providerConfig, {
         sandboxId: instance.sandboxId
       });
       const info = await preCheckSandbox.getInfo().catch(() => null);
       if (!info || info.status.state === 'UnExist' || info.status.state === 'Deleting') {
-        throw new Error('Sandbox container does not exist physically');
+        addLog.warn(
+          '[Sandbox] Existing edit-debug sandbox container is missing, recreating via runtime client',
+          {
+            sandboxId: instance.sandboxId,
+            status: info?.status.state
+          }
+        );
+        return null;
       }
 
       onProgress?.({ sandboxId: instance.sandboxId, phase: 'creatingContainer' });
 
       const connected = await connectReadySandboxByInstance(providerConfig, instance, createConfig);
       sandbox = connected.sandbox;
-      let preparedContext = await prepareSandbox(
+      await prepareSandbox(
         prepareContext(sandbox),
         preparePackageMirrors(),
-        inspectWorkDirectoryContent()
+        prepareWorkDirectory()
       );
-
-      if (!preparedContext.workspaceHasContent) {
-        addLog.warn(
-          '[Sandbox] Existing edit-debug sandbox workspace is empty, redeploying package',
-          {
-            sandboxId: instance.sandboxId
-          }
-        );
-
-        preparedContext = await prepareSandbox(
-          preparedContext,
-          downloadSkillPackageToContext({
-            storageKey: currentVersion.storageKey,
-            onProgress: reportProgress(instance.sandboxId)
-          }),
-          deployDownloadedSkillPackage({
-            skillsRootPath: runtimeProfile.skillsRootPath,
-            onProgress: reportProgress(instance.sandboxId)
-          })
-        );
-      }
 
       const existingMetadata = instance.metadata || {};
       const normalizedExistingMetadata = {
@@ -447,16 +420,7 @@ export async function createEditDebugSandbox(
         sourceId: skillId,
         userId: '',
         chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
-        metadata: preparedContext.workspaceHasContent
-          ? normalizedExistingMetadata
-          : {
-              ...normalizedExistingMetadata,
-              versionId: targetVersionId,
-              storage: {
-                key: currentVersion.storageKey,
-                uploadedAt: new Date()
-              }
-            }
+        metadata: normalizedExistingMetadata
       });
 
       onProgress?.({
@@ -591,48 +555,44 @@ export async function createEditDebugSandbox(
   }
 
   if (staleProviderInstances.length > 0) {
-    const staleInstancesToCleanup = staleProviderInstances.filter(
-      (instance) => instance._id !== staleRuntimeUpgradeInstance?._id
-    );
-    if (staleInstancesToCleanup.length > 0) {
-      addLog.info('[Sandbox] Removing stale edit-debug sandbox records for inactive provider', {
-        skillId,
-        provider: providerConfig.provider,
-        staleProviders: staleInstancesToCleanup.map((item) => item.provider)
-      });
-      await Promise.all(
-        staleInstancesToCleanup.map(async (instance) => {
-          if (instance.metadata?.archive?.state === undefined) {
-            await deleteSandboxResource(instance).catch((error) => {
-              addLog.error('[Sandbox] Failed to delete stale provider sandbox resource', {
-                sandboxId: instance.sandboxId,
-                provider: instance.provider,
-                error
-              });
+    addLog.info('[Sandbox] Removing stale edit-debug sandbox records for inactive provider', {
+      skillId,
+      provider: providerConfig.provider,
+      staleProviders: staleProviderInstances.map((item) => item.provider)
+    });
+    await Promise.all(
+      staleProviderInstances.map(async (instance) => {
+        if (instance.metadata?.archive?.state === undefined) {
+          // 当前 provider 已切换，非归档旧记录无法通过当前 provider 恢复；这里仅清理本地索引，避免创建链路依赖旧 provider 配置。
+          await deleteSandboxResourceRecord(instance).catch((error) => {
+            addLog.error('[Sandbox] Failed to delete stale provider sandbox record', {
+              sandboxId: instance.sandboxId,
+              provider: instance.provider,
+              error
             });
-          } else {
-            // edit-debug sandboxId 由 skillId + edit-debug 稳定生成，不随 provider 变化；只需迁移 Mongo 索引记录。
-            const migratedInstance = await migrateArchivedSandboxInstanceRecord({
-              source: instance,
-              provider: providerConfig.provider,
-              sourceType: ChatSourceTypeEnum.skillEdit,
-              sourceId: skillId,
-              userId: '',
-              chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
-              type: SandboxTypeEnum.editDebug
-            });
-            if (migratedInstance) {
-              shouldUnzipFromS3 = false;
-              archivedRestoreRecord = {
-                _id: migratedInstance._id,
-                provider: migratedInstance.provider,
-                sandboxId: migratedInstance.sandboxId
-              };
-            }
+          });
+        } else {
+          // edit-debug sandboxId 由 skillId + edit-debug 稳定生成，不随 provider 变化；只需迁移 Mongo 索引记录。
+          const migratedInstance = await migrateArchivedSandboxInstanceRecord({
+            source: instance,
+            provider: providerConfig.provider,
+            sourceType: ChatSourceTypeEnum.skillEdit,
+            sourceId: skillId,
+            userId: '',
+            chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
+            type: SandboxTypeEnum.editDebug
+          });
+          if (migratedInstance) {
+            shouldUnzipFromS3 = false;
+            archivedRestoreRecord = {
+              _id: migratedInstance._id,
+              provider: migratedInstance.provider,
+              sandboxId: migratedInstance.sandboxId
+            };
           }
-        })
-      );
-    }
+        }
+      })
+    );
   }
 
   const maxEditDebug =

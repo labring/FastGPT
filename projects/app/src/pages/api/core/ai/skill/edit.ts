@@ -37,7 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   res.flushHeaders();
 
   try {
-    const { skillId, image, archiveForUpgrade } = parseApiInput({
+    const { skillId, archiveForUpgrade } = parseApiInput({
       req,
       bodySchema: CreateEditDebugSandboxBodySchema
     }).body;
@@ -63,13 +63,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return;
     }
 
-    // Validate optional parameters
-    if (image && !image.repository) {
-      sseErrRes(res, SkillErrEnum.missingImageRepository);
-      res.end();
-      return;
-    }
-
     // Build onProgress callback: each phase emits a sandboxStatus SSE event
     const onProgress = (status: SandboxStatusItemType) => {
       responseWrite({
@@ -84,7 +77,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       skillId,
       teamId,
       tmbId,
-      image,
       archiveForUpgrade,
       onProgress
     });
