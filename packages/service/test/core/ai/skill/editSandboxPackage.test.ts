@@ -562,7 +562,7 @@ describe('skill edit runtime status split APIs', () => {
     expect(getSandboxClient).not.toHaveBeenCalled();
   });
 
-  it('rejects duplicate upgrade trigger while runtime archive is active', async () => {
+  it('returns upgrading for duplicate upgrade trigger while runtime archive is active', async () => {
     const skillId = 'skill-1';
     const archivingInstance = {
       _id: 'archiving-instance',
@@ -589,7 +589,14 @@ describe('skill edit runtime status split APIs', () => {
         teamId: 'team-1',
         tmbId: 'tmb-1'
       })
-    ).rejects.toThrow(SandboxErrEnum.runtimeUpgradeInProgress);
+    ).resolves.toMatchObject({
+      sandboxId: `edit-debug-${skillId}`,
+      status: 'upgrading',
+      archiveState: 'archiving',
+      canUpgrade: false,
+      shouldPoll: true,
+      shouldInit: false
+    });
 
     expect(mocks.startSandboxRuntimeUpgradeArchive).not.toHaveBeenCalled();
     expect(getSandboxClient).not.toHaveBeenCalled();
@@ -931,6 +938,48 @@ describe('skill edit runtime status split APIs', () => {
     });
 
     expect(mocks.startSandboxRuntimeUpgradeArchive).toHaveBeenCalledWith(staleFailedInstance, {
+      ensureZipInSandbox: true
+    });
+    expect(getSandboxClient).not.toHaveBeenCalled();
+  });
+
+  it('returns upgrading when runtime upgrade archive claim is occupied', async () => {
+    const skillId = 'skill-1';
+    const existingInstance = {
+      _id: 'existing-instance',
+      provider: 'test-provider',
+      sandboxId: `edit-debug-${skillId}`,
+      status: 'running',
+      lastActiveAt: new Date('2026-01-01T00:00:00.000Z'),
+      metadata: {
+        image: { repository: 'old-runtime', tag: 'v1' },
+        versionId: 'version-1'
+      }
+    };
+
+    setupReadySkillVersion(skillId);
+    vi.mocked(findSandboxInstanceBySandboxId).mockResolvedValueOnce(existingInstance as any);
+    mocks.startSandboxRuntimeUpgradeArchive.mockResolvedValueOnce({
+      success: false,
+      error: 'Resource was modified or occupied'
+    });
+
+    await expect(
+      triggerSkillEditRuntimeUpgrade({
+        skillId,
+        teamId: 'team-1',
+        tmbId: 'tmb-1'
+      })
+    ).resolves.toMatchObject({
+      sandboxId: `edit-debug-${skillId}`,
+      status: 'upgrading',
+      archiveState: 'archiving',
+      canUpgrade: false,
+      shouldPoll: true,
+      shouldInit: false
+    });
+
+    expect(mocks.startSandboxRuntimeUpgradeArchive).toHaveBeenCalledWith(existingInstance, {
       ensureZipInSandbox: true
     });
     expect(getSandboxClient).not.toHaveBeenCalled();

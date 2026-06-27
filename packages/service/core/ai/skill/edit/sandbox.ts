@@ -463,7 +463,7 @@ export async function triggerSkillEditRuntimeUpgrade(
   if (status.status === 'readyToInit') return status;
 
   if (status.status === 'upgrading') {
-    throw new UserError(RUNTIME_UPGRADE_IN_PROGRESS_MESSAGE);
+    return status;
   }
 
   const statusInstance = getRuntimeStatusInstance(context);
@@ -487,7 +487,11 @@ export async function triggerSkillEditRuntimeUpgrade(
   });
 
   if (!archiveResult.success) {
-    throw new UserError(RUNTIME_UPGRADE_IN_PROGRESS_MESSAGE);
+    return buildRuntimeStatusResponse({
+      sandboxId: runtimeUpgradeInstance.sandboxId,
+      status: 'upgrading',
+      archiveState: 'archiving'
+    });
   }
 
   return buildRuntimeStatusResponse({
