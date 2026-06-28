@@ -11,15 +11,7 @@ description: 'FastGPT V4.15.0-beta6 更新说明'
 
 如此前配置过 `CHAT_TITLE_MODEL`，升级后可从 `fastgpt` 和 `fastgpt-pro` 的环境变量中移除，并在页面中重新选择对应模型。
 
-### 2. LLM 请求追踪记录增加团队隔离
-
-LLM 请求追踪记录（`llm_request_records`）新增 `teamId` 字段，`GET /api/core/ai/record/getRecord` 会按当前登录团队查询 `{ requestId, teamId }`，避免仅凭 `requestId` 读取其他团队的请求体、知识库召回片段和模型响应。
-
-同时，`llm_request_records` 的唯一索引从单字段 `requestId` 调整为复合唯一索引 `{ teamId: 1, requestId: 1 }`。如自托管环境关闭了 `SYNC_INDEX`，升级后需要执行一次索引同步，确保旧的 `requestId_1` 唯一索引被移除。
-
-风险点：升级前已写入的旧追踪记录没有 `teamId`，升级后将无法再通过 `requestId` 查询，页面会按追踪记录已过期处理。该记录本身有 TTL，仅用于临时排查模型调用详情；如需排查历史问题，请在升级前导出相关日志或保留原始请求信息。
-
-### 3. 清理旧 Skill Debug 对话数据
+### 2. 清理旧 Skill Debug 对话数据
 
 本版本将 Skill Edit 对话迁移到标准 Chat 存储模型。历史 Skill Debug 数据曾把 `skillId` 写入 Chat 三表的物理 `appId` 字段，且没有 `sourceType`；历史 sandbox 实例也需要补齐 `sourceType/sourceId`。升级后旧 Skill Debug 对话不会被新 Skill Edit 对话读取，但建议执行一次 root-only 初始化接口完成 sandbox 实例字段迁移并清理旧 Skill Debug 对话。该接口仅用于本次升级迁移，不作为 OpenAPI 对外接口。
 
@@ -60,22 +52,44 @@ curl -X POST 'https://你的域名/api/admin/4150/init4150-beta6' \
 
 该接口不会回填几亿条历史 App Chat 的 `sourceType`。
 
-### 4. Agent Sandbox 包管理镜像源配置
+### 3. 更新环境变量（可选）
 
 Agent Sandbox 新增包管理镜像源配置。配置后，Agent Sandbox 初始化时会在 sandbox HOME 下写入 npm、yarn、bun、pip 和 uv 的镜像配置文件，提升在私有网络或跨境网络环境中安装依赖的稳定性。
 
 ```dotenv
-# Agent Sandbox 内 npm/yarn/bun 使用的 registry
+# Agent Sandbox 内 npm/yarn/pnpm/bun 使用的 npm registry
 AGENT_SANDBOX_NPM_REGISTRY=
-# Agent Sandbox 内 pip/uv 使用的 Python package index
+# Agent Sandbox 内 pip/python -m pip/uv 使用的 PyPI index URL
 AGENT_SANDBOX_PYPI_INDEX_URL=
 ```
 
 该配置会按内容 hash 缓存在 sandbox runtime state 中，同一个 sandbox 仅在配置变化时重新写入。
 
-### 5. 升级 Agent Sandbox Proxy 镜像
+### 4. 更新镜像
 
-启用 Agent Sandbox 的环境，需要将 `fastgpt-agent-sandbox-proxy` 镜像升级到 `v0.2.0-beta3`。
+- 更新 fastgpt-app(fastgpt 主服务) 镜像 tag: v4.15.0-beta6
+- 更新 fastgpt-pro(fastgpt 商业版) 镜像 tag: v4.15.0-beta6
+- 更新 fastgpt-plugin 镜像 tag: v1.0.0-beta6
+- 更新 aiproxy 镜像 tag: v0.6.2
+
+如果启用 Agent Sandbox，需同步更新下面镜像：
+
+- 更新 fastgpt-agent-sandbox-proxy 镜像 tag: v0.2.0-beta3
+- 更新 fastgpt-agent-sandbox 镜像 tag: v0.2.0-beta3
+
+## 风险点
+
+### 1. LLM 请求追踪记录增加团队隔离
+
+LLM 请求追踪记录（`llm_request_records`）新增 `teamId` 字段，`GET /api/core/ai/record/getRecord` 会按当前登录团队查询 `{ requestId, teamId }`，避免仅凭 `requestId` 读取其他团队的请求体、知识库召回片段和模型响应。
+
+同时，`llm_request_records` 的唯一索引从单字段 `requestId` 调整为复合唯一索引 `{ teamId: 1, requestId: 1 }`。如自托管环境关闭了 `SYNC_INDEX`，升级后需要执行一次索引同步，确保旧的 `requestId_1` 唯一索引被移除。
+
+风险点：升级前已写入的旧追踪记录没有 `teamId`，升级后将无法再通过 `requestId` 查询，页面会按追踪记录已过期处理。该记录本身有 TTL，仅用于临时排查模型调用详情；如需排查历史问题，请在升级前导出相关日志或保留原始请求信息。
+
+## 🚀 新增内容
+
+1. 商业版支持本地直连 FastGPT 调试插件。
 
 ## ⚙️ 优化
 
@@ -83,3 +97,7 @@ AGENT_SANDBOX_PYPI_INDEX_URL=
 2. LLM 请求追踪记录按团队隔离查询，唯一索引调整为 `{ teamId, requestId }`，避免 `requestId` 被其他团队复用读取敏感 trace。
 3. Skill Edit 对话统一使用标准 Chat 存储和清理链路，历史 Skill Debug 对话可通过初始化接口清理。
 4. Agent Sandbox 支持配置 npm 和 PyPI 镜像源，初始化时自动写入常见包管理器配置，减少 sandbox 内依赖安装失败。
+
+## 代码优化
+
+1. chat 接管接口抽象，不再绑定 app, 改成平台级别通用。

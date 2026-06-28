@@ -32,9 +32,9 @@ AGENT_SANDBOX_PROXY_URL=ws://{{host}}:1006
 如果启用 Agent Sandbox，需同步更新下面镜像：
 
 - 新增 fastgpt-agent-sandbox-proxy 镜像 tag: v0.2.0-beta2
-- 更新 fastgpt-agent-sandbox 镜像 tag: v0.2.0-beta3
+- 更新 fastgpt-agent-sandbox 镜像 tag: v0.2.0-beta2
 
-同时在 `docker-compose.yml` 中新增 `` 服务。下面示例使用国内镜像源，海外部署可将镜像改为 `ghcr.io/labring/fastgpt-agent-sandbox-proxy:v0.2.0-beta2`：
+同时在 `docker-compose.yml` 中新增 `fastgpt-agent-sandbox-proxy` 服务。下面示例使用国内镜像源，海外部署可将镜像改为 `ghcr.io/labring/fastgpt-agent-sandbox-proxy:v0.2.0-beta2`：
 
 ```yml
 fastgpt-agent-sandbox-proxy:
