@@ -123,7 +123,8 @@ const StyledButton = ({
 const HtmlPreviewIframe = ({ code }: { code: string }) => (
   <iframe
     srcDoc={code}
-    sandbox="allow-popups"
+    // 预览需要执行用户生成 HTML 内的 JS，但不开放 allow-same-origin，避免脚本拿到主站上下文。
+    sandbox="allow-scripts allow-popups"
     referrerPolicy="no-referrer"
     style={{
       display: 'block',
