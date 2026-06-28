@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 const mocks = vi.hoisted(() => ({
@@ -48,12 +48,6 @@ vi.mock('@fastgpt/service/core/ai/skill/package', () => ({
     hasSkillMd: true,
     files: []
   }))
-}));
-
-vi.mock('@fastgpt/service/env', () => ({
-  serviceEnv: {
-    AGENT_SANDBOX_DISK_MB: 2
-  }
 }));
 
 vi.mock('@fastgpt/service/core/ai/skill/edit/config', () => ({
@@ -185,6 +179,10 @@ import {
 import { checkTeamSandboxPermission } from '@fastgpt/service/support/permission/teamLimit';
 import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getAgentSandboxSkillMaxBytes } from '@fastgpt/service/core/ai/sandbox/interface/config';
+import { serviceEnv } from '@fastgpt/service/env';
+
+const originalAgentSandboxDiskMB = serviceEnv.AGENT_SANDBOX_DISK_MB;
 
 type MockReadFileResult = {
   path: string;
@@ -249,6 +247,11 @@ const initEditDebugSandbox = async ({
 describe('packageSkillInSandbox', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    serviceEnv.AGENT_SANDBOX_DISK_MB = 2;
+  });
+
+  afterEach(() => {
+    serviceEnv.AGENT_SANDBOX_DISK_MB = originalAgentSandboxDiskMB;
   });
 
   it('returns the packaged zip content and removes the temporary zip', async () => {
@@ -283,7 +286,7 @@ describe('packageSkillInSandbox', () => {
     );
     expect(sandbox.execute).not.toHaveBeenCalledWith("rm -f '/workspace/package.zip'");
     expect(validateDeployableSkillWorkspacePackage).toHaveBeenCalledWith(Buffer.from(zipContent), {
-      maxUncompressedBytes: 1024 * 1024
+      maxUncompressedBytes: getAgentSandboxSkillMaxBytes()
     });
     expect(validateZipStructure).not.toHaveBeenCalled();
     expect(mocks.disconnectSandbox).toHaveBeenCalledWith(sandbox);
@@ -307,13 +310,13 @@ describe('packageSkillInSandbox', () => {
     ).resolves.toEqual(Buffer.from(zipContent));
 
     expect(validateZipStructure).toHaveBeenCalledWith(Buffer.from(zipContent), {
-      maxUncompressedBytes: 1024 * 1024
+      maxUncompressedBytes: getAgentSandboxSkillMaxBytes()
     });
     expect(validateDeployableSkillWorkspacePackage).not.toHaveBeenCalled();
   });
 
   it('throws when the final package zip exceeds the skill package limit', async () => {
-    const zipContent = new Uint8Array(1024 * 1024 + 1);
+    const zipContent = new Uint8Array(getAgentSandboxSkillMaxBytes() + 1);
     const sandbox = createSandbox({
       readFilesResult: [
         {

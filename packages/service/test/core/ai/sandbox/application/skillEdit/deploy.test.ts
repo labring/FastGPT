@@ -119,8 +119,7 @@ describe('saveDeploySkillFromSandbox', () => {
       sandboxId: getEditDebugSandboxId('skill-1'),
       sourceType: 'skillEdit',
       sourceId: 'skill-1',
-      status: SandboxStatusEnum.running,
-      type: 'edit-debug'
+      status: SandboxStatusEnum.running
     });
     expect(mocks.createVersion).not.toHaveBeenCalled();
     expect(mocks.mongoAgentSkillsUpdateOne).not.toHaveBeenCalled();
