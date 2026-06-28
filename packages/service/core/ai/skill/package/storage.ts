@@ -8,7 +8,7 @@
 import { getS3SkillSource } from '../../../../common/s3/sources/skill';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import type { ClientSession } from '../../../../common/mongo';
-import { serviceEnv } from '../../../../env';
+import { getAgentSandboxSkillMaxBytes } from '../../sandbox/interface/config';
 import { readStreamToBuffer } from '../../../../common/s3/utils';
 
 export type SkillStorageInfo = {
@@ -35,7 +35,7 @@ export async function uploadSkillPackage(
   params: UploadSkillPackageParams
 ): Promise<SkillStorageInfo> {
   const { teamId, skillId, packageObjectId, zipBuffer } = params;
-  const maxBytes = serviceEnv.AGENT_SANDBOX_SKILL_MAX_SIZE * 1024 * 1024;
+  const maxBytes = getAgentSandboxSkillMaxBytes();
 
   if (zipBuffer.length > maxBytes) {
     throw new Error(SkillErrEnum.archiveTooLarge);
@@ -74,7 +74,7 @@ export async function removeSkillPackageTTL(
  */
 export async function downloadSkillPackage(params: DownloadSkillPackageParams): Promise<Buffer> {
   const { storageKey } = params;
-  const maxBytes = serviceEnv.AGENT_SANDBOX_SKILL_MAX_SIZE * 1024 * 1024;
+  const maxBytes = getAgentSandboxSkillMaxBytes();
 
   const bucket = getS3SkillSource();
 

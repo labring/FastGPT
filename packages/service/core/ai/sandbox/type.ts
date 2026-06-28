@@ -77,13 +77,17 @@ export type SandboxMetadataType = z.infer<typeof SandboxMetadataSchema>;
 export const SandboxInstanceZodSchema = z.object({
   _id: z.string(),
   sandboxId: z.string(),
-  /** @deprecated 旧 sandbox 归属字段，仅迁移脚本/历史数据观察使用。 */
-  appId: z.string().nullish(),
+  appId: z.string().nullish().meta({
+    deprecated: true
+  }),
   sourceType: z.enum(ChatSourceTypeEnum),
   sourceId: z.string(),
   userId: z.string().nullish(),
   chatId: z.string().nullish(),
-  type: z.enum(SandboxTypeEnum).nullish(),
+  type: z.enum(SandboxTypeEnum).nullish().meta({
+    deprecated: true,
+    description: '旧版 sandbox 场景字段；业务归属统一使用 sourceType/sourceId。'
+  }),
   status: SharedSandboxStatusSchema,
   lastActiveAt: z.coerce.date(),
   createdAt: z.coerce.date(),

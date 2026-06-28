@@ -1,19 +1,19 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/schema';
 import {
-  countRunningSandboxInstancesByType,
+  countRunningSandboxInstancesBySourceType,
   clearSandboxArchiveState,
   createSandboxResourcesToArchiveCursor,
   deleteSandboxInstanceRecord,
   deleteSandboxResourceRecord,
   findInactiveRunningSandboxResources,
-  findSandboxInstanceBySourceChatType,
+  findSandboxInstanceBySourceChat,
   findSandboxInstanceBySandboxId,
   findSandboxInstanceBySandboxIdAndSource,
   findSandboxInstanceBySandboxIdAndTeam,
   findSandboxResourceBySandboxIdAndTeam,
-  findSandboxResourcesBySourceChatType,
-  findSandboxResourcesBySourceChatTypeExcludeProvider,
+  findSandboxResourcesBySourceChat,
+  findSandboxResourcesBySourceChatExcludeProvider,
   findSandboxResourcesBySource,
   findSandboxResourcesBySourceChatIds,
   findSkillRelatedSandboxResources,
@@ -150,12 +150,11 @@ describe('sandbox instance repository', () => {
       }
     });
 
-    const staleRecords = await findSandboxResourcesBySourceChatTypeExcludeProvider({
+    const staleRecords = await findSandboxResourcesBySourceChatExcludeProvider({
       provider: 'sealosdevbox',
       sourceType: ChatSourceTypeEnum.app,
       sourceId: appId,
-      chatId,
-      type: SandboxTypeEnum.editDebug
+      chatId
     });
 
     expect(staleRecords.map((item) => String(item._id))).toEqual([String(oldProviderDoc._id)]);
@@ -194,21 +193,19 @@ describe('sandbox instance repository', () => {
     expect(doc?.appId).toBeUndefined();
 
     await expect(
-      findSandboxInstanceBySourceChatType({
+      findSandboxInstanceBySourceChat({
         provider: 'opensandbox',
         sourceType: ChatSourceTypeEnum.app,
         sourceId: appId,
-        chatId,
-        type: SandboxTypeEnum.editDebug
+        chatId
       })
-    ).resolves.toBeNull();
+    ).resolves.toMatchObject({ sandboxId });
 
     await updateSandboxInstanceRecordBySandboxId({
       provider: 'opensandbox',
       sandboxId,
       sourceType: ChatSourceTypeEnum.app,
       sourceId: appId,
-      type: SandboxTypeEnum.editDebug,
       metadata: {
         teamId,
         image: { repository: 'updated' }
@@ -216,7 +213,7 @@ describe('sandbox instance repository', () => {
     });
 
     await expect(
-      countRunningSandboxInstancesByType(SandboxTypeEnum.editDebug, 'opensandbox')
+      countRunningSandboxInstancesBySourceType(ChatSourceTypeEnum.app, 'opensandbox')
     ).resolves.toBe(1);
     await expect(
       findSandboxResourcesBySourceChatIds({
@@ -234,8 +231,7 @@ describe('sandbox instance repository', () => {
     await expect(
       findSandboxInstanceBySandboxId({
         provider: 'opensandbox',
-        sandboxId,
-        type: SandboxTypeEnum.editDebug
+        sandboxId
       })
     ).resolves.toMatchObject({ sandboxId });
     await expect(
@@ -243,17 +239,15 @@ describe('sandbox instance repository', () => {
         provider: 'opensandbox',
         sandboxId,
         sourceType: ChatSourceTypeEnum.app,
-        sourceId: appId,
-        type: SandboxTypeEnum.editDebug
+        sourceId: appId
       })
     ).resolves.toMatchObject({ sandboxId });
     await expect(
-      findSandboxResourcesBySourceChatType({
+      findSandboxResourcesBySourceChat({
         provider: 'opensandbox',
         sourceType: ChatSourceTypeEnum.app,
         sourceId: appId,
-        chatId,
-        type: SandboxTypeEnum.editDebug
+        chatId
       })
     ).resolves.toHaveLength(1);
     await expect(
@@ -539,8 +533,7 @@ describe('sandbox instance repository', () => {
       sourceType: ChatSourceTypeEnum.app,
       sourceId: appId,
       userId: '',
-      chatId: 'record-only-chat',
-      type: SandboxTypeEnum.editDebug
+      chatId: 'record-only-chat'
     });
 
     expect(migratedDoc).toMatchObject({
@@ -559,6 +552,9 @@ describe('sandbox instance repository', () => {
     });
     const migratedExists = await MongoSandboxInstance.exists({ _id: doc._id });
     expect(String(migratedExists?._id)).toBe(String(doc._id));
+    await expect(MongoSandboxInstance.findOne({ _id: doc._id }).lean()).resolves.not.toHaveProperty(
+      'type'
+    );
     await expect(MongoSandboxInstance.countDocuments({ sandboxId })).resolves.toBe(1);
   });
 
@@ -608,8 +604,7 @@ describe('sandbox instance repository', () => {
       sourceType: ChatSourceTypeEnum.app,
       sourceId: appId,
       userId: '',
-      chatId,
-      type: SandboxTypeEnum.editDebug
+      chatId
     });
 
     expect(String(migratedDoc?._id)).toBe(String(placeholderDoc._id));
@@ -620,7 +615,6 @@ describe('sandbox instance repository', () => {
       sourceId: appId,
       userId: '',
       chatId,
-      type: SandboxTypeEnum.editDebug,
       status: SandboxStatusEnum.stopped,
       metadata: {
         archive: {
@@ -629,6 +623,9 @@ describe('sandbox instance repository', () => {
       }
     });
     await expect(MongoSandboxInstance.exists({ _id: oldDoc._id })).resolves.toBeNull();
+    await expect(
+      MongoSandboxInstance.findOne({ _id: placeholderDoc._id }).lean()
+    ).resolves.not.toHaveProperty('type');
   });
 
   it('archives inactive stopped records and restores them into the current provider', async () => {
@@ -727,6 +724,7 @@ describe('sandbox instance repository', () => {
     });
     const stored = await MongoSandboxInstance.findOne({ sandboxId }).lean();
     expect(stored?.provider).toBe('opensandbox');
+    expect(stored).not.toHaveProperty('type');
     expect(stored?.metadata?.archive).toBeUndefined();
     expect(stored?.metadata?.provider).toBeUndefined();
     expect(stored?.storage).toBeUndefined();
@@ -1101,25 +1099,23 @@ describe('sandbox instance repository', () => {
     });
 
     await expect(
-      findSandboxInstanceBySourceChatType({
+      findSandboxInstanceBySourceChat({
         sourceType: ChatSourceTypeEnum.app,
         sourceId: appId,
         chatId,
-        type: SandboxTypeEnum.sessionRuntime,
         status: SandboxStatusEnum.running
       })
     ).resolves.toMatchObject({ sandboxId });
     await expect(
-      findSandboxResourcesBySourceChatType({
+      findSandboxResourcesBySourceChat({
         sourceType: ChatSourceTypeEnum.app,
         sourceId: appId,
-        chatId,
-        type: SandboxTypeEnum.sessionRuntime
+        chatId
       })
     ).resolves.toHaveLength(1);
-    expect(
-      await countRunningSandboxInstancesByType(SandboxTypeEnum.sessionRuntime)
-    ).toBeGreaterThan(0);
+    expect(await countRunningSandboxInstancesBySourceType(ChatSourceTypeEnum.app)).toBeGreaterThan(
+      0
+    );
 
     await updateSandboxInstanceRecordBySandboxId({
       sandboxId,
@@ -1134,11 +1130,13 @@ describe('sandbox instance repository', () => {
       sourceId: `${appId}-updated`,
       userId: 'user-2',
       chatId: `${chatId}-updated`,
-      type: SandboxTypeEnum.sessionRuntime,
       metadata: {
         teamId
       }
     });
+    await expect(MongoSandboxInstance.findOne({ sandboxId }).lean()).resolves.not.toHaveProperty(
+      'type'
+    );
     await expect(
       findSandboxInstanceBySandboxIdAndTeam({
         sandboxId,

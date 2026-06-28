@@ -42,6 +42,7 @@ const SandboxInstanceSchema = new Schema({
   },
   userId: String,
   chatId: String,
+  // @deprecated sandbox 归属统一使用 sourceType/sourceId；保留字段仅为历史数据迁移与兼容读取。
   type: {
     type: String,
     enum: Object.values(SandboxTypeEnum)
@@ -74,40 +75,12 @@ const SandboxInstanceSchema = new Schema({
   }
 });
 
-// @deprecated 旧 appId 维度索引仅用于迁移窗口和历史数据观察，新业务查询必须使用 sourceType/sourceId。
-SandboxInstanceSchema.index(
-  { provider: 1, appId: 1, userId: 1, chatId: 1 },
-  {
-    unique: true,
-    partialFilterExpression: {
-      // Keep the index compatible with Mongo-compatible backends that do not
-      // support `$ne: null` inside partial indexes.
-      appId: { $exists: true },
-      userId: { $exists: true },
-      chatId: { $exists: true }
-    }
-  }
-);
+SandboxInstanceSchema.index({ provider: 1, sandboxId: 1 }, { unique: true });
+SandboxInstanceSchema.index({ sourceType: 1, sourceId: 1, chatId: 1 });
+SandboxInstanceSchema.index({ sourceType: 1, status: 1, provider: 1, 'metadata.archive.state': 1 });
 SandboxInstanceSchema.index({ status: 1, lastActiveAt: 1, 'metadata.archive.state': 1 });
 SandboxInstanceSchema.index({ 'metadata.archive.state': 1, 'metadata.archive.startedAt': 1 });
 SandboxInstanceSchema.index({ 'metadata.archive.state': 1, 'metadata.archive.deleteStartedAt': 1 });
-SandboxInstanceSchema.index({ provider: 1, sandboxId: 1 }, { unique: true });
-// @deprecated 旧 appId 维度索引仅用于迁移窗口和历史数据观察，新业务查询必须使用 sourceType/sourceId。
-SandboxInstanceSchema.index(
-  { appId: 1, chatId: 1 },
-  {
-    unique: true,
-    partialFilterExpression: {
-      appId: { $exists: true },
-      chatId: { $exists: true },
-      type: { $exists: true }
-    }
-  }
-);
-// @deprecated 旧 Skill Edit 归属索引仅用于迁移窗口，新业务不得写入或查询 metadata.skillId。
-SandboxInstanceSchema.index({ 'metadata.skillId': 1 });
-SandboxInstanceSchema.index({ type: 1, chatId: 1 });
-SandboxInstanceSchema.index({ sourceType: 1, sourceId: 1, chatId: 1 });
 
 /**
  * sandbox 实例 Mongo model。

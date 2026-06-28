@@ -34,10 +34,8 @@ MAX_FOLDER_DEPTH=4
 WORKFLOW_MAX_LOOP_TIMES=100
 # 并行节点并发上限，最终会 clamp 到 [5, 100]
 WORKFLOW_PARALLEL_MAX_CONCURRENCY=10
-# Agent 沙箱冷归档包大小上限，单位 MB
-AGENT_SANDBOX_ARCHIVE_MAX_SIZE=50
-# Skill sandbox 包大小上限，单位 MB
-AGENT_SANDBOX_SKILL_MAX_SIZE=10
+# Agent 沙箱磁盘大小基准，单位 MB
+AGENT_SANDBOX_DISK_MB=1024
 # Agent Sandbox 内 npm/yarn/bun 使用的 registry
 AGENT_SANDBOX_NPM_REGISTRY=
 # Agent Sandbox 内 pip/uv 使用的 Python package index

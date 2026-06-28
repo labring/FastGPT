@@ -87,8 +87,8 @@ describe('storage', () => {
     });
 
     it('should reject zip buffers larger than the upload limit before uploading to S3', async () => {
-      const originalSkillSandboxMaxSize = serviceEnv.AGENT_SANDBOX_SKILL_MAX_SIZE;
-      serviceEnv.AGENT_SANDBOX_SKILL_MAX_SIZE = 1;
+      const originalAgentSandboxDiskMB = serviceEnv.AGENT_SANDBOX_DISK_MB;
+      serviceEnv.AGENT_SANDBOX_DISK_MB = 2;
 
       try {
         const tooLargeBuffer = Buffer.alloc(1024 * 1024 + 1);
@@ -105,7 +105,7 @@ describe('storage', () => {
         expect(getS3SkillSource).not.toHaveBeenCalled();
         expect(s3SkillSourceMocks.uploadPackageMock).not.toHaveBeenCalled();
       } finally {
-        serviceEnv.AGENT_SANDBOX_SKILL_MAX_SIZE = originalSkillSandboxMaxSize;
+        serviceEnv.AGENT_SANDBOX_DISK_MB = originalAgentSandboxDiskMB;
       }
     });
   });

@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('@fastgpt/service/env', () => ({
   serviceEnv: {
-    AGENT_SANDBOX_PROVIDER: 'sealosdevbox'
+    AGENT_SANDBOX_PROVIDER: 'sealosdevbox',
+    AGENT_SANDBOX_DISK_MB: 20
   }
 }));
 

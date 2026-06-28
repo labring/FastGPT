@@ -30,7 +30,7 @@ import type {
   SandboxImageConfigType
 } from '@fastgpt/global/core/ai/skill/type';
 import type { SkillRuntimeStatusResponse } from '@fastgpt/global/core/ai/skill/api';
-import { SandboxStatusEnum, SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
+import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
 import {
@@ -44,18 +44,19 @@ import type { SandboxClient } from '../runtime/client';
 import { getSandboxClient } from '../runtime/client';
 import { SandboxArchiveStateError, startSandboxRuntimeUpgradeArchive } from '../archive';
 import {
-  countRunningSandboxInstancesByType,
+  countRunningSandboxInstancesBySourceType,
   deleteSandboxResourceRecord,
   findSandboxInstanceArchiveState,
   findSandboxInstanceBySandboxId,
   findSandboxInstanceBySandboxIdAndSource,
-  findSandboxResourcesBySourceChatTypeExcludeProvider,
+  findSandboxResourcesBySourceChatExcludeProvider,
   migrateArchivedSandboxInstanceRecord,
   updateSandboxInstanceRecordBySandboxId,
   type SandboxResourceDoc
 } from '../../infrastructure/instance/repository';
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import { serviceEnv } from '../../../../../env';
+import { getAgentSandboxSkillMaxBytes } from '../../interface/config';
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
 import { checkTeamSandboxPermission } from '../../../../../support/permission/teamLimit';
 import { createAgentSandboxPermissionDeniedError } from '../../error';
@@ -75,6 +76,7 @@ import {
 const addLog = getLogger(LogCategories.MODULE.AI.AGENT);
 const RUNTIME_UPGRADE_IN_PROGRESS_MESSAGE = SandboxErrEnum.runtimeUpgradeInProgress;
 export const SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR = 'Edit sandbox not found or not running';
+const EDIT_DEBUG_SANDBOX_SCENARIO = 'edit-debug';
 
 export type SkillEditRuntimeContext = {
   skillId: string;
@@ -223,7 +225,7 @@ export async function getSkillEditRuntimeContext(params: {
     skillId,
     teamId,
     sessionId,
-    scenario: SandboxTypeEnum.editDebug
+    scenario: EDIT_DEBUG_SANDBOX_SCENARIO
   };
 
   const { createConfig } = getSandboxAdapterConfig({
@@ -242,20 +244,18 @@ export async function getSkillEditRuntimeContext(params: {
 
   const existingInstance = await findSandboxInstanceBySandboxId({
     provider: providerConfig.provider,
-    sandboxId: sessionId,
-    type: SandboxTypeEnum.editDebug
+    sandboxId: sessionId
   });
   const runtimeArchiveInstance = await findSandboxInstanceArchiveState({
     provider: providerConfig.provider,
     sandboxId: sessionId
   });
 
-  const staleProviderInstances = await findSandboxResourcesBySourceChatTypeExcludeProvider({
+  const staleProviderInstances = await findSandboxResourcesBySourceChatExcludeProvider({
     provider: providerConfig.provider,
     sourceType: ChatSourceTypeEnum.skillEdit,
     sourceId: skillId,
-    chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
-    type: SandboxTypeEnum.editDebug
+    chatId: EDIT_DEBUG_SANDBOX_CHAT_ID
   });
 
   return {
@@ -537,8 +537,8 @@ export async function initSkillEditRuntimeSandbox({
   }) => {
     if (maxEditDebug === undefined || params.status === SandboxStatusEnum.running) return;
 
-    const activeCount = await countRunningSandboxInstancesByType(
-      SandboxTypeEnum.editDebug,
+    const activeCount = await countRunningSandboxInstancesBySourceType(
+      ChatSourceTypeEnum.skillEdit,
       providerConfig.provider
     );
     if (activeCount < maxEditDebug) return;
@@ -779,8 +779,7 @@ export async function initSkillEditRuntimeSandbox({
             sourceType: ChatSourceTypeEnum.skillEdit,
             sourceId: skillId,
             userId: '',
-            chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
-            type: SandboxTypeEnum.editDebug
+            chatId: EDIT_DEBUG_SANDBOX_CHAT_ID
           });
           if (migratedInstance) {
             shouldUnzipFromS3 = false;
@@ -877,7 +876,6 @@ export async function initSkillEditRuntimeSandbox({
       sourceId: skillId,
       userId: '',
       chatId: EDIT_DEBUG_SANDBOX_CHAT_ID,
-      type: SandboxTypeEnum.editDebug,
       touchActive: true,
       metadata: {
         teamId,
@@ -943,7 +941,7 @@ export async function packageSkillInSandbox(params: {
   validationMode?: 'basicZip' | 'deployableWorkspace';
 }): Promise<Buffer> {
   const { sandboxId, workDirectory, validationMode = 'deployableWorkspace' } = params;
-  const maxBytes = serviceEnv.AGENT_SANDBOX_SKILL_MAX_SIZE * 1024 * 1024;
+  const maxBytes = getAgentSandboxSkillMaxBytes();
 
   const providerConfig = getSandboxProviderConfig();
   const runtimeProfile = getSandboxRuntimeProfile(providerConfig.provider);
@@ -1095,8 +1093,7 @@ export async function getRunningSkillEditSandbox(params: { skillId: string; team
     sandboxId: getEditDebugSandboxId(params.skillId),
     sourceType: ChatSourceTypeEnum.skillEdit,
     sourceId: params.skillId,
-    status: SandboxStatusEnum.running,
-    type: SandboxTypeEnum.editDebug
+    status: SandboxStatusEnum.running
   });
 
   if (

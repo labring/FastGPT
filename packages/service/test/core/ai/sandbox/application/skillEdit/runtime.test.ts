@@ -52,7 +52,7 @@ vi.mock('@fastgpt/service/core/ai/skill/package', () => ({
 
 vi.mock('@fastgpt/service/env', () => ({
   serviceEnv: {
-    AGENT_SANDBOX_SKILL_MAX_SIZE: 1
+    AGENT_SANDBOX_DISK_MB: 2
   }
 }));
 
@@ -125,12 +125,12 @@ vi.mock('@fastgpt/service/common/s3/sources/sandbox', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/instance/repository', () => ({
-  countRunningSandboxInstancesByType: vi.fn(),
+  countRunningSandboxInstancesBySourceType: vi.fn(),
   deleteSandboxResourceRecord: vi.fn(),
   deleteSandboxInstanceRecord: vi.fn(),
   findSandboxInstanceArchiveState: vi.fn(),
   findSandboxInstanceBySandboxId: vi.fn(),
-  findSandboxResourcesBySourceChatTypeExcludeProvider: vi.fn(),
+  findSandboxResourcesBySourceChatExcludeProvider: vi.fn(),
   markSandboxRuntimeUpgradeArchiveFailed: mocks.markSandboxRuntimeUpgradeArchiveFailed,
   migrateArchivedSandboxInstanceRecord: vi.fn(),
   updateSandboxInstanceRecordBySandboxId: vi.fn()
@@ -173,12 +173,12 @@ import { buildSandboxAdapter } from '@fastgpt/service/core/ai/sandbox/infrastruc
 import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/application/runtime/client';
 import { deleteSandboxResource } from '@fastgpt/service/core/ai/sandbox/application/resource';
 import {
-  countRunningSandboxInstancesByType,
+  countRunningSandboxInstancesBySourceType,
   deleteSandboxResourceRecord,
   deleteSandboxInstanceRecord,
   findSandboxInstanceArchiveState,
   findSandboxInstanceBySandboxId,
-  findSandboxResourcesBySourceChatTypeExcludeProvider,
+  findSandboxResourcesBySourceChatExcludeProvider,
   migrateArchivedSandboxInstanceRecord,
   updateSandboxInstanceRecordBySandboxId
 } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/repository';
@@ -743,7 +743,7 @@ describe('skill edit runtime status split APIs', () => {
 
     setupReadySkillVersion(skillId);
     vi.mocked(findSandboxInstanceBySandboxId).mockResolvedValueOnce(null);
-    vi.mocked(findSandboxResourcesBySourceChatTypeExcludeProvider).mockResolvedValueOnce([
+    vi.mocked(findSandboxResourcesBySourceChatExcludeProvider).mockResolvedValueOnce([
       staleDeletingInstance as any
     ]);
 
@@ -827,7 +827,7 @@ describe('skill edit runtime status split APIs', () => {
 
     setupReadySkillVersion(skillId);
     vi.mocked(findSandboxInstanceBySandboxId).mockResolvedValueOnce(null);
-    vi.mocked(findSandboxResourcesBySourceChatTypeExcludeProvider).mockResolvedValueOnce([
+    vi.mocked(findSandboxResourcesBySourceChatExcludeProvider).mockResolvedValueOnce([
       staleArchivingInstance as any
     ]);
 
@@ -870,7 +870,7 @@ describe('skill edit runtime status split APIs', () => {
     setupReadySkillVersion(skillId);
     vi.mocked(findSandboxInstanceBySandboxId).mockResolvedValueOnce(null);
     vi.mocked(findSandboxInstanceArchiveState).mockResolvedValueOnce(restoringInstance as any);
-    vi.mocked(findSandboxResourcesBySourceChatTypeExcludeProvider).mockResolvedValueOnce([]);
+    vi.mocked(findSandboxResourcesBySourceChatExcludeProvider).mockResolvedValueOnce([]);
 
     await expect(
       getSkillEditRuntimeStatus({
@@ -909,7 +909,7 @@ describe('skill edit runtime status split APIs', () => {
 
     setupReadySkillVersion(skillId);
     vi.mocked(findSandboxInstanceBySandboxId).mockResolvedValueOnce(null);
-    vi.mocked(findSandboxResourcesBySourceChatTypeExcludeProvider).mockResolvedValueOnce([
+    vi.mocked(findSandboxResourcesBySourceChatExcludeProvider).mockResolvedValueOnce([
       staleRestoringInstance as any
     ]);
 
@@ -952,7 +952,7 @@ describe('skill edit runtime status split APIs', () => {
     setupReadySkillVersion(skillId);
     vi.mocked(findSandboxInstanceBySandboxId).mockResolvedValueOnce(null);
     vi.mocked(findSandboxInstanceArchiveState).mockResolvedValueOnce(restoringInstance as any);
-    vi.mocked(findSandboxResourcesBySourceChatTypeExcludeProvider).mockResolvedValueOnce([]);
+    vi.mocked(findSandboxResourcesBySourceChatExcludeProvider).mockResolvedValueOnce([]);
 
     await expect(
       getSkillEditRuntimeStatus({
@@ -992,7 +992,7 @@ describe('skill edit runtime status split APIs', () => {
     setupReadySkillVersion(skillId);
     vi.mocked(findSandboxInstanceBySandboxId).mockResolvedValueOnce(null);
     vi.mocked(findSandboxInstanceArchiveState).mockResolvedValueOnce(archivedInstance as any);
-    vi.mocked(findSandboxResourcesBySourceChatTypeExcludeProvider).mockResolvedValueOnce([]);
+    vi.mocked(findSandboxResourcesBySourceChatExcludeProvider).mockResolvedValueOnce([]);
 
     await expect(
       getSkillEditRuntimeStatus({
@@ -1032,7 +1032,7 @@ describe('skill edit runtime status split APIs', () => {
     setupReadySkillVersion(skillId);
     vi.mocked(findSandboxInstanceBySandboxId).mockResolvedValueOnce(null);
     vi.mocked(findSandboxInstanceArchiveState).mockResolvedValueOnce(null);
-    vi.mocked(findSandboxResourcesBySourceChatTypeExcludeProvider).mockResolvedValueOnce([
+    vi.mocked(findSandboxResourcesBySourceChatExcludeProvider).mockResolvedValueOnce([
       archivedInstance as any
     ]);
 
@@ -1074,7 +1074,7 @@ describe('skill edit runtime status split APIs', () => {
     setupReadySkillVersion(skillId);
     vi.mocked(findSandboxInstanceBySandboxId).mockResolvedValueOnce(null);
     vi.mocked(findSandboxInstanceArchiveState).mockResolvedValueOnce(archivedInstance as any);
-    vi.mocked(findSandboxResourcesBySourceChatTypeExcludeProvider).mockResolvedValueOnce([]);
+    vi.mocked(findSandboxResourcesBySourceChatExcludeProvider).mockResolvedValueOnce([]);
 
     await expect(
       triggerSkillEditRuntimeUpgrade({
@@ -1115,7 +1115,7 @@ describe('skill edit runtime status split APIs', () => {
 
     setupReadySkillVersion(skillId);
     vi.mocked(findSandboxInstanceBySandboxId).mockResolvedValueOnce(null);
-    vi.mocked(findSandboxResourcesBySourceChatTypeExcludeProvider).mockResolvedValueOnce([
+    vi.mocked(findSandboxResourcesBySourceChatExcludeProvider).mockResolvedValueOnce([
       staleFailedInstance as any
     ]);
     mocks.startSandboxRuntimeUpgradeArchive.mockResolvedValueOnce({
@@ -1260,8 +1260,8 @@ describe('initSkillEditRuntimeSandbox', () => {
         versionId
       }
     } as any);
-    vi.mocked(findSandboxResourcesBySourceChatTypeExcludeProvider).mockResolvedValueOnce([]);
-    vi.mocked(countRunningSandboxInstancesByType).mockResolvedValueOnce(0);
+    vi.mocked(findSandboxResourcesBySourceChatExcludeProvider).mockResolvedValueOnce([]);
+    vi.mocked(countRunningSandboxInstancesBySourceType).mockResolvedValueOnce(0);
     vi.mocked(connectReadySandboxByInstance).mockResolvedValueOnce({
       sandbox: provider
     } as any);
@@ -1329,8 +1329,8 @@ describe('initSkillEditRuntimeSandbox', () => {
       storageKey: 'storage-key'
     } as any);
     vi.mocked(findSandboxInstanceBySandboxId).mockResolvedValueOnce(null);
-    vi.mocked(findSandboxResourcesBySourceChatTypeExcludeProvider).mockResolvedValueOnce([]);
-    vi.mocked(countRunningSandboxInstancesByType).mockResolvedValueOnce(0);
+    vi.mocked(findSandboxResourcesBySourceChatExcludeProvider).mockResolvedValueOnce([]);
+    vi.mocked(countRunningSandboxInstancesBySourceType).mockResolvedValueOnce(0);
     vi.mocked(downloadSkillPackage).mockResolvedValueOnce(packageBuffer);
     vi.mocked(getSandboxClient).mockResolvedValueOnce({
       provider,
@@ -1405,8 +1405,8 @@ describe('initSkillEditRuntimeSandbox', () => {
     } as any);
     vi.mocked(findSandboxInstanceBySandboxId).mockResolvedValueOnce(archivedInstance as any);
     vi.mocked(findSandboxInstanceArchiveState).mockResolvedValueOnce(archivedInstance as any);
-    vi.mocked(findSandboxResourcesBySourceChatTypeExcludeProvider).mockResolvedValueOnce([]);
-    vi.mocked(countRunningSandboxInstancesByType).mockResolvedValueOnce(0);
+    vi.mocked(findSandboxResourcesBySourceChatExcludeProvider).mockResolvedValueOnce([]);
+    vi.mocked(countRunningSandboxInstancesBySourceType).mockResolvedValueOnce(0);
     vi.mocked(getSandboxClient).mockResolvedValueOnce({
       provider,
       delete: vi.fn()
@@ -1581,8 +1581,8 @@ describe('initSkillEditRuntimeSandbox', () => {
     } as any);
     vi.mocked(findSandboxInstanceBySandboxId).mockResolvedValueOnce(archivedInstance as any);
     vi.mocked(findSandboxInstanceArchiveState).mockResolvedValueOnce(archivedInstance as any);
-    vi.mocked(findSandboxResourcesBySourceChatTypeExcludeProvider).mockResolvedValueOnce([]);
-    vi.mocked(countRunningSandboxInstancesByType).mockResolvedValueOnce(0);
+    vi.mocked(findSandboxResourcesBySourceChatExcludeProvider).mockResolvedValueOnce([]);
+    vi.mocked(countRunningSandboxInstancesBySourceType).mockResolvedValueOnce(0);
     vi.mocked(getSandboxClient).mockResolvedValueOnce({
       provider,
       delete: deleteSandbox
@@ -1644,11 +1644,11 @@ describe('initSkillEditRuntimeSandbox', () => {
       storageKey: 'storage-key'
     } as any);
     vi.mocked(findSandboxInstanceBySandboxId).mockResolvedValueOnce(existingInstance as any);
-    vi.mocked(findSandboxResourcesBySourceChatTypeExcludeProvider).mockResolvedValueOnce([]);
+    vi.mocked(findSandboxResourcesBySourceChatExcludeProvider).mockResolvedValueOnce([]);
     vi.mocked(buildSandboxAdapter).mockReturnValueOnce({
       getInfo: vi.fn(async () => null)
     } as any);
-    vi.mocked(countRunningSandboxInstancesByType).mockResolvedValueOnce(0);
+    vi.mocked(countRunningSandboxInstancesBySourceType).mockResolvedValueOnce(0);
     vi.mocked(getSandboxClient).mockResolvedValueOnce({
       provider,
       delete: vi.fn()
@@ -1702,7 +1702,7 @@ describe('initSkillEditRuntimeSandbox', () => {
       storageKey: 'storage-key'
     } as any);
     vi.mocked(findSandboxInstanceBySandboxId).mockResolvedValueOnce(existingInstance as any);
-    vi.mocked(findSandboxResourcesBySourceChatTypeExcludeProvider).mockResolvedValueOnce([]);
+    vi.mocked(findSandboxResourcesBySourceChatExcludeProvider).mockResolvedValueOnce([]);
     vi.mocked(connectReadySandboxByInstance).mockRejectedValueOnce(connectError);
 
     await expect(
@@ -1752,8 +1752,8 @@ describe('initSkillEditRuntimeSandbox', () => {
     } as any);
     vi.mocked(findSandboxInstanceBySandboxId).mockResolvedValueOnce(archivedInstance as any);
     vi.mocked(findSandboxInstanceArchiveState).mockResolvedValueOnce(archivedInstance as any);
-    vi.mocked(findSandboxResourcesBySourceChatTypeExcludeProvider).mockResolvedValueOnce([]);
-    vi.mocked(countRunningSandboxInstancesByType).mockResolvedValueOnce(0);
+    vi.mocked(findSandboxResourcesBySourceChatExcludeProvider).mockResolvedValueOnce([]);
+    vi.mocked(countRunningSandboxInstancesBySourceType).mockResolvedValueOnce(0);
     vi.mocked(getSandboxClient).mockRejectedValueOnce(noSuchKeyError);
 
     await expect(
@@ -1800,7 +1800,7 @@ describe('initSkillEditRuntimeSandbox', () => {
       storageKey: 'storage-key'
     } as any);
     vi.mocked(findSandboxInstanceBySandboxId).mockResolvedValueOnce(null);
-    vi.mocked(findSandboxResourcesBySourceChatTypeExcludeProvider).mockResolvedValueOnce([
+    vi.mocked(findSandboxResourcesBySourceChatExcludeProvider).mockResolvedValueOnce([
       staleProviderInstance as any
     ]);
     vi.mocked(getSandboxClient).mockRejectedValueOnce(createError);
@@ -1851,10 +1851,10 @@ describe('initSkillEditRuntimeSandbox', () => {
       storageKey: 'storage-key'
     } as any);
     vi.mocked(findSandboxInstanceBySandboxId).mockResolvedValueOnce(null);
-    vi.mocked(findSandboxResourcesBySourceChatTypeExcludeProvider).mockResolvedValueOnce([
+    vi.mocked(findSandboxResourcesBySourceChatExcludeProvider).mockResolvedValueOnce([
       archivedStaleInstance as any
     ]);
-    vi.mocked(countRunningSandboxInstancesByType).mockResolvedValueOnce(0);
+    vi.mocked(countRunningSandboxInstancesBySourceType).mockResolvedValueOnce(0);
     vi.mocked(migrateArchivedSandboxInstanceRecord).mockResolvedValueOnce({
       ...archivedStaleInstance,
       provider: 'test-provider'
@@ -1886,8 +1886,7 @@ describe('initSkillEditRuntimeSandbox', () => {
       sourceType: ChatSourceTypeEnum.skillEdit,
       sourceId: skillId,
       userId: '',
-      chatId: 'edit-debug',
-      type: 'edit-debug'
+      chatId: 'edit-debug'
     });
     expect(deleteSandboxResource).not.toHaveBeenCalledWith(archivedStaleInstance);
     expect(mocks.deleteWorkspaceArchive).not.toHaveBeenCalled();

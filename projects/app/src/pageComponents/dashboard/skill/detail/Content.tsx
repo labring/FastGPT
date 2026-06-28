@@ -20,14 +20,16 @@ const Content = () => {
     isSkillReady,
     handleSandboxError,
     upgradeSandboxRuntime,
-    canUpgradeSandboxRuntime
+    canUpgradeSandboxRuntime,
+    sandboxError
   } = useContextSelector(SkillDetailContext, (v) => ({
     sandboxState: v.sandboxState,
     skillId: v.skillId,
     isSkillReady: v.isSkillReady,
     handleSandboxError: v.handleSandboxError,
     upgradeSandboxRuntime: v.upgradeSandboxRuntime,
-    canUpgradeSandboxRuntime: v.canUpgradeSandboxRuntime
+    canUpgradeSandboxRuntime: v.canUpgradeSandboxRuntime,
+    sandboxError: v.sandboxError
   }));
   const isSandboxReady = sandboxState === 'ready';
   const isUpgrading = sandboxState === 'upgrading';
@@ -108,6 +110,11 @@ const Content = () => {
         >
           {t('skill:sandbox_runtime_upgrade_desc')}
         </Box>
+        {sandboxError && (
+          <Box color={'red.600'} fontSize={'14px'} lineHeight={'20px'} mt={4} whiteSpace="pre-wrap">
+            {sandboxError}
+          </Box>
+        )}
       </HighlightModal>
     </Box>
   );

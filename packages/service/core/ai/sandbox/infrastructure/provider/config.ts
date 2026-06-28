@@ -4,6 +4,7 @@
  * 只负责把环境变量转换成 adapter 可用的配置，不执行远端生命周期动作。
  */
 import { serviceEnv } from '../../../../../env';
+import { getAgentSandboxMaxFileBytes } from '../../interface/config';
 import type { SandboxCreateSpec, SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
 import type { VolumeManagerResult } from '../volume/service';
 import { getSandboxRuntimeProfile, buildBaseSandboxRuntimeEnv } from './runtimeProfile';
@@ -120,7 +121,7 @@ export function getSandboxAdapterConfig({
           sessionId,
           workDirectory: profile.workDirectory,
           ideAgentBindAddr: serviceEnv.IDE_AGENT_BIND_ADDR,
-          ideAgentMaxFileBytes: serviceEnv.AGENT_SANDBOX_MAX_FILE_SIZE * 1024 * 1024
+          ideAgentMaxFileBytes: getAgentSandboxMaxFileBytes()
         })
       : undefined;
 

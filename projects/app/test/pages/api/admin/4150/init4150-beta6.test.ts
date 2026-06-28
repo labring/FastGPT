@@ -324,6 +324,7 @@ describe('init4150-beta6 migration', () => {
     expect(
       await MongoSandboxInstance.countDocuments({ 'metadata.skillId': { $exists: true } })
     ).toBe(0);
+    expect(await MongoSandboxInstance.countDocuments({ type: { $exists: true } })).toBe(0);
     await expect(
       MongoSandboxInstance.findOne({ sandboxId: 'legacy-sandbox-2' }).lean()
     ).resolves.toMatchObject({
@@ -360,7 +361,8 @@ describe('init4150-beta6 migration', () => {
       MongoSandboxInstance.findOne({ sandboxId: 'app-sandbox-3' }).lean()
     ).resolves.toEqual(
       expect.not.objectContaining({
-        appId: expect.anything()
+        appId: expect.anything(),
+        type: expect.anything()
       })
     );
     expect(mocks.addChatDeleteJob).toHaveBeenCalledWith({

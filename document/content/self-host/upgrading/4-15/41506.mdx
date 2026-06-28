@@ -97,6 +97,11 @@ LLM 请求追踪记录（`llm_request_records`）新增 `teamId` 字段，`GET /
 2. LLM 请求追踪记录按团队隔离查询，唯一索引调整为 `{ teamId, requestId }`，避免 `requestId` 被其他团队复用读取敏感 trace。
 3. Skill Edit 对话统一使用标准 Chat 存储和清理链路，历史 Skill Debug 对话可通过初始化接口清理。
 4. Agent Sandbox 支持配置 npm 和 PyPI 镜像源，初始化时自动写入常见包管理器配置，减少 sandbox 内依赖安装失败。
+5. PDF 解析兼容 `linux/arm64 + Alpine/musl` 架构，回退到 `pdfjs` 解析方案。
+
+## 🐛 修复
+
+1. chat/completions 接口，返回 nodeResponse 时候，过滤掉了 q/a/index，该版本恢复返回。
 
 ## 代码优化
 

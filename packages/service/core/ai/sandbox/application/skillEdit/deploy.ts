@@ -19,7 +19,7 @@ import {
   updateSandboxInstanceRecordBySandboxId
 } from '../../infrastructure/instance/repository';
 import { MongoAgentSkills } from '../../../skill/model/schema';
-import { SandboxStatusEnum, SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
+import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { UserError } from '@fastgpt/global/common/error/utils';
@@ -53,8 +53,7 @@ export async function saveDeploySkillFromSandbox({
     sandboxId: getEditDebugSandboxId(skillId),
     sourceType: ChatSourceTypeEnum.skillEdit,
     sourceId: skillId,
-    status: SandboxStatusEnum.running,
-    type: SandboxTypeEnum.editDebug
+    status: SandboxStatusEnum.running
   });
 
   if (

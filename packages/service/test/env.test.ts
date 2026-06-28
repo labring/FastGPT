@@ -4,6 +4,7 @@ const validInvokeTokenSecret = 'fastgpt_test_invoke_token_secret_32';
 
 const originalEnv = {
   SYSTEM_MAX_STRING_LENGTH_M: process.env.SYSTEM_MAX_STRING_LENGTH_M,
+  AGENT_SANDBOX_DISK_MB: process.env.AGENT_SANDBOX_DISK_MB,
   FILE_TOKEN_KEY: process.env.FILE_TOKEN_KEY,
   AES256_SECRET_KEY: process.env.AES256_SECRET_KEY,
   INVOKE_TOKEN_SECRET: process.env.INVOKE_TOKEN_SECRET,
@@ -20,6 +21,7 @@ const importServiceEnv = async () => {
 describe('serviceEnv', () => {
   afterEach(() => {
     vi.stubEnv('SYSTEM_MAX_STRING_LENGTH_M', originalEnv.SYSTEM_MAX_STRING_LENGTH_M);
+    vi.stubEnv('AGENT_SANDBOX_DISK_MB', originalEnv.AGENT_SANDBOX_DISK_MB);
     vi.stubEnv('FILE_TOKEN_KEY', originalEnv.FILE_TOKEN_KEY);
     vi.stubEnv('AES256_SECRET_KEY', originalEnv.AES256_SECRET_KEY);
     vi.stubEnv('INVOKE_TOKEN_SECRET', originalEnv.INVOKE_TOKEN_SECRET);
@@ -95,5 +97,19 @@ describe('serviceEnv', () => {
         INVOKE_TOKEN_SECRET: validInvokeTokenSecret
       }
     });
+  });
+
+  it('validates AGENT_SANDBOX_DISK_MB during service env init', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+
+    vi.stubEnv('AGENT_SANDBOX_DISK_MB', undefined);
+    const defaultEnv = await importServiceEnv();
+    expect(defaultEnv.serviceEnv.AGENT_SANDBOX_DISK_MB).toBe(1024);
+
+    vi.stubEnv('AGENT_SANDBOX_DISK_MB', '333');
+    const customEnv = await importServiceEnv();
+    expect(customEnv.serviceEnv.AGENT_SANDBOX_DISK_MB).toBe(333);
   });
 });

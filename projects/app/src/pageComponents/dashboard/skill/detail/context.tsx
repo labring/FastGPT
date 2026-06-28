@@ -10,7 +10,6 @@ import {
   AgentSkillTypeEnum
 } from '@fastgpt/global/core/ai/skill/constants';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import {
   getSkillDetail,
   getSkillRuntimeStatus,
@@ -147,7 +146,6 @@ const SkillDetailContextProviderInner = ({
 }) => {
   const router = useRouter();
   const { t } = useTranslation();
-  const { toast } = useToast();
   const activeSkillId = useSkillDebugChatStore((state) => state.skillId);
   const activeChatId = useSkillDebugChatStore((state) => state.chatId);
   const setSkillId = useSkillDebugChatStore((state) => state.setSkillId);
@@ -268,17 +266,17 @@ const SkillDetailContextProviderInner = ({
         const translatedMessage = translateErrorMessage(message);
         clearRuntimeUpgradePollTimer();
         setSandboxError(translatedMessage);
+        setCanUpgradeSandboxRuntime(true);
         setSandboxState('upgradeRequired');
-        toast({
-          status: 'error',
-          title: translatedMessage
-        });
       };
       const getRuntimeUpgradeErrorMessage = (message?: string) => {
         if (!message || message === SandboxErrEnum.runtimeUpgradeFailed) {
           return t('skill:sandbox_runtime_upgrade_failed');
         }
         return translateErrorMessage(message);
+      };
+      const finishRuntimeUpgradeWithError = (message?: string) => {
+        showUpgradeError(getRuntimeUpgradeErrorMessage(message));
       };
 
       /**
@@ -292,6 +290,18 @@ const SkillDetailContextProviderInner = ({
         if (!isCurrentRequest()) return;
         setCanUpgradeSandboxRuntime(status.canUpgrade);
 
+        if (options?.hasSeenUpgrading && status.archiveState === 'failed') {
+          finishRuntimeUpgradeWithError(status.lastError);
+          return;
+        }
+
+        if (status.shouldPoll) {
+          setSandboxState('upgrading');
+          setSandboxError(status.lastError ? translateErrorMessage(status.lastError) : null);
+          scheduleRuntimeStatusPoll();
+          return;
+        }
+
         switch (status.status) {
           case 'readyToInit':
             clearRuntimeUpgradePollTimer();
@@ -302,7 +312,7 @@ const SkillDetailContextProviderInner = ({
           case 'upgradeRequired':
             clearRuntimeUpgradePollTimer();
             if (options?.hasSeenUpgrading) {
-              showUpgradeError(getRuntimeUpgradeErrorMessage(status.lastError));
+              finishRuntimeUpgradeWithError(status.lastError);
               return;
             }
             setSandboxError(status.lastError ? translateErrorMessage(status.lastError) : null);
@@ -437,7 +447,7 @@ const SkillDetailContextProviderInner = ({
 
       void (mode === 'check' ? runStatusCheck() : runUpgrade());
     },
-    [skillId, canUpgradeSandboxRuntime, clearRuntimeUpgradePollTimer, phaseToMessage, t, toast]
+    [skillId, canUpgradeSandboxRuntime, clearRuntimeUpgradePollTimer, phaseToMessage, t]
   );
 
   const startSandbox = useCallback(() => {

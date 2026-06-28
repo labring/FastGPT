@@ -4,7 +4,7 @@
  * 仅提供数据库原子操作，不编排归档、恢复、升级等业务流程。
  */
 import type { SandboxStatusType } from '@fastgpt/global/core/ai/sandbox/constants';
-import { SandboxStatusEnum, type SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
+import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoSandboxInstance } from './schema';
 import {
@@ -23,7 +23,7 @@ const SANDBOX_ARCHIVE_CURSOR_BATCH_SIZE = 100;
  */
 export type SandboxResourceDoc = Pick<
   SandboxInstanceSchemaType,
-  'provider' | 'sandboxId' | 'type' | 'status' | 'lastActiveAt' | 'metadata'
+  'provider' | 'sandboxId' | 'status' | 'lastActiveAt' | 'metadata'
 > & {
   _id: unknown;
 };
@@ -128,7 +128,8 @@ export async function upsertRunningSandboxInstance(params: {
   const existingUpdate = {
     ...runningUpdate,
     $unset: {
-      'metadata.archive': ''
+      'metadata.archive': '',
+      type: ''
     }
   };
   const insertUpdate = {
@@ -254,15 +255,13 @@ export async function findSandboxResourcesBySource(params: SandboxSourceParams) 
 export async function findSandboxInstanceBySandboxId(params: {
   provider?: SandboxProviderType;
   sandboxId: string;
-  type?: SandboxTypeEnum;
   status?: SandboxStatusType;
 }) {
-  const { provider, sandboxId, type, status } = params;
+  const { provider, sandboxId, status } = params;
 
   return MongoSandboxInstance.findOne({
     ...(provider ? { provider } : {}),
     sandboxId,
-    ...(type ? { type } : {}),
     ...(status ? { status } : {})
   });
 }
@@ -277,17 +276,15 @@ export async function findSandboxInstanceBySandboxIdAndSource(params: {
   sandboxId: string;
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
-  type?: SandboxTypeEnum;
   status?: SandboxStatusType;
 }) {
-  const { provider, sandboxId, sourceType, sourceId, type, status } = params;
+  const { provider, sandboxId, sourceType, sourceId, status } = params;
 
   return MongoSandboxInstance.findOne({
     ...(provider ? { provider } : {}),
     sandboxId,
     sourceType,
     sourceId,
-    ...(type ? { type } : {}),
     ...(status ? { status } : {})
   });
 }
@@ -466,7 +463,8 @@ export async function markSandboxArchived(resource: SandboxResourceDoc) {
       $unset: {
         'metadata.archive.deleteStartedAt': '',
         'metadata.archive.failedAt': '',
-        'metadata.archive.error': ''
+        'metadata.archive.error': '',
+        type: ''
       }
     }
   );
@@ -647,7 +645,8 @@ export async function markStaleDeletingSandboxStatesArchived(startedBefore: Date
         $unset: {
           'metadata.archive.deleteStartedAt': '',
           'metadata.archive.failedAt': '',
-          'metadata.archive.error': ''
+          'metadata.archive.error': '',
+          type: ''
         }
       }
     );
@@ -718,7 +717,8 @@ export async function markSandboxRestored(
   );
   const unsetFields: Record<string, string> = {
     'metadata.archive': '',
-    'metadata.provider': ''
+    'metadata.provider': '',
+    type: ''
   };
   if (params.storage === undefined) {
     unsetFields.storage = '';
@@ -748,48 +748,44 @@ export async function markSandboxRestored(
 }
 
 /**
- * 按 source/chat/type 查询单条 sandbox 实例。
+ * 按 source/chat 查询单条 sandbox 实例。
  *
  * provider 可选是为了兼容“当前 provider 查询”和“只按业务归属查询”两类场景。
  */
-export async function findSandboxInstanceBySourceChatType(params: {
+export async function findSandboxInstanceBySourceChat(params: {
   provider?: SandboxProviderType;
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
   chatId: string;
-  type: SandboxTypeEnum;
   status?: SandboxStatusType;
 }) {
-  const { provider, sourceType, sourceId, chatId, type, status } = params;
+  const { provider, sourceType, sourceId, chatId, status } = params;
 
   return MongoSandboxInstance.findOne({
     ...(provider ? { provider } : {}),
     sourceType,
     sourceId,
     chatId,
-    ...(status ? { status } : {}),
-    type
+    ...(status ? { status } : {})
   });
 }
 
 /**
- * 按 source/chat/type 查询资源清理所需的实例记录。
+ * 按 source/chat 查询资源清理所需的实例记录。
  */
-export async function findSandboxResourcesBySourceChatType(params: {
+export async function findSandboxResourcesBySourceChat(params: {
   provider?: SandboxProviderType;
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
   chatId: string;
-  type: SandboxTypeEnum;
 }) {
-  const { provider, sourceType, sourceId, chatId, type } = params;
+  const { provider, sourceType, sourceId, chatId } = params;
 
   return MongoSandboxInstance.find({
     ...(provider ? { provider } : {}),
     sourceType,
     sourceId,
-    chatId,
-    type
+    chatId
   }).lean<SandboxResourceDoc[]>();
 }
 
@@ -798,37 +794,36 @@ export async function findSandboxResourcesBySourceChatType(params: {
  *
  * provider 切换后用这个入口找出旧 provider 留下的实例，再逐条删除。
  */
-export async function findSandboxResourcesBySourceChatTypeExcludeProvider(params: {
+export async function findSandboxResourcesBySourceChatExcludeProvider(params: {
   provider: SandboxProviderType;
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
   chatId: string;
-  type: SandboxTypeEnum;
 }) {
-  const { provider, sourceType, sourceId, chatId, type } = params;
+  const { provider, sourceType, sourceId, chatId } = params;
 
   return MongoSandboxInstance.find({
     provider: { $ne: provider },
     sourceType,
     sourceId,
-    chatId,
-    type
+    chatId
   }).lean<SandboxResourceDoc[]>();
 }
 
 /**
- * 统计某种 sandbox 类型的运行中实例数量。
+ * 统计某类业务归属下的运行中实例数量。
  *
- * 用于 edit-debug 等有并发上限的场景；provider 可选，传入时只统计当前 provider。
+ * 用于 Skill Edit 等有并发上限的场景；provider 可选，传入时只统计当前 provider。
  */
-export async function countRunningSandboxInstancesByType(
-  type: SandboxTypeEnum,
+export async function countRunningSandboxInstancesBySourceType(
+  sourceType: ChatSourceTypeEnum,
   provider?: SandboxProviderType
 ) {
   return MongoSandboxInstance.countDocuments({
     ...(provider ? { provider } : {}),
-    status: SandboxStatusEnum.running,
-    type
+    sourceType,
+    'metadata.archive.state': { $exists: false },
+    status: SandboxStatusEnum.running
   });
 }
 
@@ -856,9 +851,8 @@ export async function migrateArchivedSandboxInstanceRecord(params: {
   sourceId: string;
   userId: string;
   chatId: string;
-  type: SandboxTypeEnum;
 }) {
-  const { source, provider, sourceType, sourceId, userId, chatId, type } = params;
+  const { source, provider, sourceType, sourceId, userId, chatId } = params;
   const sourceFilter = {
     ...buildSandboxResourceRecordFilter(source),
     'metadata.archive.state': 'archived'
@@ -870,7 +864,6 @@ export async function migrateArchivedSandboxInstanceRecord(params: {
     sourceId,
     userId,
     chatId,
-    type,
     status: SandboxStatusEnum.stopped,
     lastActiveAt: new Date()
   };
@@ -879,7 +872,10 @@ export async function migrateArchivedSandboxInstanceRecord(params: {
     return await MongoSandboxInstance.findOneAndUpdate(
       sourceFilter,
       {
-        $set: baseSet
+        $set: baseSet,
+        $unset: {
+          type: ''
+        }
       },
       { new: true }
     ).lean<SandboxResourceDoc | null>();
@@ -894,7 +890,7 @@ export async function migrateArchivedSandboxInstanceRecord(params: {
 
     type ArchivedSandboxMigrationDoc = Pick<
       SandboxInstanceSchemaType,
-      'userId' | 'chatId' | 'type' | 'metadata' | 'storage' | 'limit'
+      'userId' | 'chatId' | 'metadata' | 'storage' | 'limit'
     > & { _id: unknown };
 
     const sourceDoc = await MongoSandboxInstance.findOneAndUpdate(
@@ -919,8 +915,7 @@ export async function migrateArchivedSandboxInstanceRecord(params: {
         {
           $set: {
             ...(sourceDoc.userId !== undefined ? { userId: sourceDoc.userId } : {}),
-            ...(sourceDoc.chatId !== undefined ? { chatId: sourceDoc.chatId } : {}),
-            ...(sourceDoc.type !== undefined ? { type: sourceDoc.type } : {})
+            ...(sourceDoc.chatId !== undefined ? { chatId: sourceDoc.chatId } : {})
           }
         }
       );
@@ -939,6 +934,9 @@ export async function migrateArchivedSandboxInstanceRecord(params: {
             ...(sourceDoc.storage !== undefined ? { storage: sourceDoc.storage } : {}),
             ...(sourceDoc.limit !== undefined ? { limit: sourceDoc.limit } : {}),
             metadata: sourceDoc.metadata
+          },
+          $unset: {
+            type: ''
           }
         },
         { new: true }
@@ -949,10 +947,18 @@ export async function migrateArchivedSandboxInstanceRecord(params: {
     }
 
     if (!migratedDoc) {
-      const existingArchivedTarget = await MongoSandboxInstance.findOne({
-        _id: target._id,
-        'metadata.archive.state': 'archived'
-      }).lean<SandboxResourceDoc | null>();
+      const existingArchivedTarget = await MongoSandboxInstance.findOneAndUpdate(
+        {
+          _id: target._id,
+          'metadata.archive.state': 'archived'
+        },
+        {
+          $unset: {
+            type: ''
+          }
+        },
+        { new: true }
+      ).lean<SandboxResourceDoc | null>();
       if (!existingArchivedTarget) {
         await rollbackSourceBusinessKeys();
         return null;
@@ -978,11 +984,10 @@ export async function updateSandboxInstanceRecordBySandboxId(params: {
   sourceId: string;
   userId?: string;
   chatId?: string;
-  type?: SandboxTypeEnum;
   metadata?: Record<string, unknown>;
   touchActive?: boolean;
 }): Promise<SandboxInstanceSchemaType | null> {
-  const { provider, sandboxId, sourceType, sourceId, userId, chatId, type, metadata, touchActive } =
+  const { provider, sandboxId, sourceType, sourceId, userId, chatId, metadata, touchActive } =
     params;
   const touchActiveFilter = (() => {
     if (!touchActive) return {};
@@ -1011,7 +1016,6 @@ export async function updateSandboxInstanceRecordBySandboxId(params: {
         sourceId,
         ...(userId !== undefined ? { userId } : {}),
         ...(chatId !== undefined ? { chatId } : {}),
-        ...(type !== undefined ? { type } : {}),
         ...(metadata !== undefined ? { metadata } : {}),
         ...(touchActive
           ? {
@@ -1019,6 +1023,9 @@ export async function updateSandboxInstanceRecordBySandboxId(params: {
               lastActiveAt: new Date()
             }
           : {})
+      },
+      $unset: {
+        type: ''
       }
     },
     { new: true }

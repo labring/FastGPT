@@ -11,7 +11,7 @@ import { downloadSkillPackage } from '../../../../skill/package';
 import { parseSkillMarkdown } from '../../../../skill/utils';
 import { getLogger, LogCategories } from '../../../../../../common/logger';
 import type { DeployedSkillInfo, DeployedSkillVersion } from './types';
-import { serviceEnv } from '../../../../../../env';
+import { getAgentSandboxSkillMaxBytes } from '../../../interface/config';
 import { joinSandboxPath } from '../../../utils';
 import { authSkillByTmbId } from '../../../../../../support/permission/skill/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -268,7 +268,7 @@ export const injectAgentSkillFilesToSandbox = async ({
     ({ targetDir }) => !deployableTargetDirs.has(targetDir)
   );
 
-  const maxPackageBytes = serviceEnv.AGENT_SANDBOX_SKILL_MAX_SIZE * 1024 * 1024;
+  const maxPackageBytes = getAgentSandboxSkillMaxBytes();
   const results = await Promise.all(
     missingSkills.map(async ({ skill, version, versionId, targetDir }) => {
       try {

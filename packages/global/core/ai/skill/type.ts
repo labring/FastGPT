@@ -136,7 +136,10 @@ export const SandboxStorageSchema = z.object({
 });
 
 export const SandboxInstanceDetailSchema = z.object({
-  type: SandboxTypeSchema,
+  type: SandboxTypeSchema.optional().meta({
+    deprecated: true,
+    description: '旧版 sandbox 场景字段；业务归属统一使用 sourceType/sourceId。'
+  }),
   teamId: z.string(),
   tmbId: z.string(),
   skillId: z.string().optional(),

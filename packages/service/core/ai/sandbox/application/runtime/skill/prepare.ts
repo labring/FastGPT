@@ -7,7 +7,7 @@ import type { SandboxStatusPhase } from '@fastgpt/global/core/chat/type';
 import { shellQuote } from '@fastgpt/global/common/string/utils';
 import type { SandboxPrepareContext, SandboxPrepareStep } from '../prepare';
 import { joinSandboxPath } from '../../../utils';
-import { serviceEnv } from '../../../../../../env';
+import { getAgentSandboxSkillMaxBytes } from '../../../interface/config';
 import { DEFAULT_GITIGNORE_CONTENT, downloadSkillPackage } from '../../../../skill/package';
 
 export type SkillPackagePrepareContext = SandboxPrepareContext & {
@@ -71,7 +71,7 @@ export const deployDownloadedSkillPackage =
     }
 
     const zipPath = joinSandboxPath(skillsRootPath, 'package.zip');
-    const maxPackageBytes = serviceEnv.AGENT_SANDBOX_SKILL_MAX_SIZE * 1024 * 1024;
+    const maxPackageBytes = getAgentSandboxSkillMaxBytes();
 
     const writeResults = await context.sandbox.writeFiles([
       {

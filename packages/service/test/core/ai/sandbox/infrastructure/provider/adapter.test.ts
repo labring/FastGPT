@@ -19,7 +19,8 @@ vi.mock('@fastgpt/service/env', () => ({
     AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: 'test',
     AGENT_SANDBOX_SEALOS_BASEURL: 'http://mock-sealos.local',
     AGENT_SANDBOX_SEALOS_TOKEN: 'mock-sealos-token',
-    AGENT_SANDBOX_E2B_API_KEY: 'mock-e2b-token'
+    AGENT_SANDBOX_E2B_API_KEY: 'mock-e2b-token',
+    AGENT_SANDBOX_DISK_MB: 20
   }
 }));
 

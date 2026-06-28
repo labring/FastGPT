@@ -2,49 +2,50 @@ import { describe, expect, it } from 'vitest';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/schema';
 
 describe('MongoSandboxInstance schema indexes', () => {
-  it('uses a Mongo-compatible partial index for chat sandbox uniqueness', () => {
+  it('declares provider sandbox uniqueness for remote resource records', () => {
     const indexes = MongoSandboxInstance.schema.indexes();
     const targetIndex = indexes.find(
-      ([keys]) => keys.appId === 1 && keys.userId === 1 && keys.chatId === 1
+      ([keys, options]) => keys.provider === 1 && keys.sandboxId === 1 && options?.unique === true
     );
 
     expect(targetIndex).toBeDefined();
-    expect(targetIndex?.[1]).toMatchObject({
-      unique: true,
-      partialFilterExpression: {
-        appId: { $exists: true },
-        userId: { $exists: true },
-        chatId: { $exists: true }
-      }
-    });
-    expect(JSON.stringify(targetIndex?.[1] ?? {})).not.toContain('$ne');
+    expect(targetIndex?.[0]).toEqual({ provider: 1, sandboxId: 1 });
   });
 
-  it('keeps app-chat sandbox uniqueness provider-agnostic', () => {
+  it('does not keep deprecated appId/type sandbox indexes', () => {
     const indexes = MongoSandboxInstance.schema.indexes();
-    const targetIndex = indexes.find(
-      ([keys, options]) =>
-        options?.unique === true && !keys.provider && keys.appId === 1 && keys.chatId === 1
+    const legacyIndex = indexes.find(
+      ([keys]) => keys.appId !== undefined || keys.type !== undefined || keys['metadata.skillId']
     );
 
-    expect(targetIndex).toBeDefined();
-    expect(targetIndex?.[1]).toMatchObject({
-      unique: true,
-      partialFilterExpression: {
-        appId: { $exists: true },
-        chatId: { $exists: true },
-        type: { $exists: true }
-      }
-    });
+    expect(legacyIndex).toBeUndefined();
   });
 
-  it('declares source-aware lookup index for migrated sandbox instances', () => {
+  it('declares source lookup index for migrated sandbox instances', () => {
     const indexes = MongoSandboxInstance.schema.indexes();
-    const targetIndex = indexes.find(
+    const sourceChatIndex = indexes.find(
       ([keys]) => keys.sourceType === 1 && keys.sourceId === 1 && keys.chatId === 1
     );
 
-    expect(targetIndex).toBeDefined();
+    expect(sourceChatIndex).toBeDefined();
+  });
+
+  it('declares runtime count and inactive scan indexes', () => {
+    const indexes = MongoSandboxInstance.schema.indexes();
+    const runningCountIndex = indexes.find(
+      ([keys]) =>
+        keys.sourceType === 1 &&
+        keys.status === 1 &&
+        keys.provider === 1 &&
+        keys['metadata.archive.state'] === 1
+    );
+    const inactiveScanIndex = indexes.find(
+      ([keys]) =>
+        keys.status === 1 && keys.lastActiveAt === 1 && keys['metadata.archive.state'] === 1
+    );
+
+    expect(runningCountIndex).toBeDefined();
+    expect(inactiveScanIndex).toBeDefined();
   });
 
   it('declares archive cleanup indexes for archiving and deleting states', () => {

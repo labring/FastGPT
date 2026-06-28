@@ -1,6 +1,11 @@
 import { type FastGPTConfigFileType } from '@fastgpt/global/common/system/types';
 import { isIPv6 } from 'net';
 import { getLogger, LogCategories } from '../logger';
+import {
+  getAgentSandboxArchiveMaxBytes,
+  getAgentSandboxMaxFileBytes,
+  getAgentSandboxSkillMaxBytes
+} from '../../core/ai/sandbox/interface/config';
 import { hasAgentSandboxConfig, serviceEnv } from '../../env';
 
 const logger = getLogger(LogCategories.ERROR);
@@ -26,9 +31,9 @@ export const initFastGPTConfig = (config?: FastGPTConfigFileType) => {
   config.feConfigs.limit = {
     ...config.feConfigs.limit,
     agentSandboxMaxEditDebug: serviceEnv.AGENT_SANDBOX_MAX_EDIT_DEBUG,
-    agentSandboxArchiveMaxBytes: serviceEnv.AGENT_SANDBOX_ARCHIVE_MAX_SIZE * 1024 * 1024,
-    skillSandboxMaxBytes: serviceEnv.AGENT_SANDBOX_SKILL_MAX_SIZE * 1024 * 1024,
-    agentSandboxMaxFileBytes: serviceEnv.AGENT_SANDBOX_MAX_FILE_SIZE * 1024 * 1024,
+    agentSandboxArchiveMaxBytes: getAgentSandboxArchiveMaxBytes(),
+    skillSandboxMaxBytes: getAgentSandboxSkillMaxBytes(),
+    agentSandboxMaxFileBytes: getAgentSandboxMaxFileBytes(),
     maxFolderDepth: serviceEnv.MAX_FOLDER_DEPTH
   };
 

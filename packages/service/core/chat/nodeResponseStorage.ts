@@ -292,7 +292,7 @@ const getResponseChildResponseCount = (
  *
  * record 接收的 nodeResponses 已经是本次要写入的平铺数组：如果某个 response 自身带
  * childrenResponses，说明业务希望它作为该节点的内联详情保存，writer 不再二次展开。
- * 这里只补齐 id/parentId、重算/保留 child 统计并瘦身 quoteList；旧 detail 字段如果
+ * 这里只补齐 id/parentId、重算/保留 child 统计；旧 detail 字段如果
  * 已存在则原样保留，避免 writer 对节点返回结构做额外裁剪。
  */
 export const createChatItemResponseRows = ({
@@ -312,12 +312,12 @@ export const createChatItemResponseRows = ({
     const children = getChildrenResponses(response);
     const childResponseCount = getResponseChildResponseCount(response, children);
     // data 是当前 nodeResponse 本身：保留 childrenResponses，仅读取时再与 parentId child rows 合并。
-    const data = slimQuoteListForStorage({
+    const data = {
       ...response,
       id,
       ...(currentParentId ? { parentId: currentParentId } : {}),
       ...(childResponseCount !== undefined ? { childResponseCount } : {})
-    });
+    };
 
     return {
       ...restBase,
@@ -326,6 +326,14 @@ export const createChatItemResponseRows = ({
     };
   });
 };
+
+const slimRowsQuoteListForStorage = (
+  rows: ChatItemResponseStorageRow[]
+): ChatItemResponseStorageRow[] =>
+  rows.map((row) => ({
+    ...row,
+    data: slimQuoteListForStorage(row.data)
+  }));
 
 /**
  * 将 `MongoChatItemResponse` rows 还原为前端需要的嵌套 responseData。
@@ -527,8 +535,8 @@ export class WorkflowNodeResponseWriter {
    * 记录一批 nodeResponse。
    *
    * 输入就是本次要保存的 nodeResponses；writer 不再递归展开 childrenResponses。这里会
-   * 转成 rows、收集摘要，然后进入串行队列写入 buffer。buffer 达到 batchSize 时立即
-   * flush；返回值与实际写入的 row data 一致。
+   * 转成完整 rows、收集摘要，然后进入串行队列写入 buffer。buffer 达到 batchSize 时立即
+   * flush；返回值与请求内保留的完整 row data 一致。
    */
   async record(nodeResponses?: ChatHistoryItemResType[]) {
     const rows = createChatItemResponseRows({
@@ -579,7 +587,7 @@ export class WorkflowNodeResponseWriter {
    */
   private async persistRows(rows: ChatItemResponseStorageRow[], session?: ClientSession) {
     const time = new Date();
-    const rowsWithTime = rows.map((row) => ({
+    const rowsWithTime = slimRowsQuoteListForStorage(rows).map((row) => ({
       ...row,
       time
     }));

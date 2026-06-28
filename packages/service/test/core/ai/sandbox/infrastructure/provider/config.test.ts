@@ -12,7 +12,7 @@ const originalEnv = {
   AGENT_SANDBOX_OPENSANDBOX_RUNTIME: process.env.AGENT_SANDBOX_OPENSANDBOX_RUNTIME,
   AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO,
   AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG,
-  AGENT_SANDBOX_MAX_FILE_SIZE: process.env.AGENT_SANDBOX_MAX_FILE_SIZE,
+  AGENT_SANDBOX_DISK_MB: process.env.AGENT_SANDBOX_DISK_MB,
   AGENT_SANDBOX_PROXY_SECRET: process.env.AGENT_SANDBOX_PROXY_SECRET
 };
 
@@ -62,7 +62,7 @@ describe('sandbox provider config', () => {
       'AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG',
       originalEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG
     );
-    vi.stubEnv('AGENT_SANDBOX_MAX_FILE_SIZE', originalEnv.AGENT_SANDBOX_MAX_FILE_SIZE);
+    vi.stubEnv('AGENT_SANDBOX_DISK_MB', originalEnv.AGENT_SANDBOX_DISK_MB);
     vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', originalEnv.AGENT_SANDBOX_PROXY_SECRET);
     vi.unstubAllGlobals();
   });
@@ -162,7 +162,7 @@ describe('sandbox provider config', () => {
         FASTGPT_WORKDIR: '/home/devbox/workspace',
         IDE_AGENT_ENABLED: 'true',
         IDE_AGENT_BIND_ADDR: '0.0.0.0:1318',
-        FASTGPT_IDE_MAX_FILE_BYTES: '10485760'
+        FASTGPT_IDE_MAX_FILE_BYTES: '536870912'
       }
     });
 
@@ -203,7 +203,8 @@ describe('sandbox provider config', () => {
         AGENT_SANDBOX_PROVIDER: 'sealosdevbox',
         AGENT_SANDBOX_SEALOS_BASEURL: undefined,
         AGENT_SANDBOX_SEALOS_TOKEN: undefined,
-        AGENT_SANDBOX_E2B_API_KEY: undefined
+        AGENT_SANDBOX_E2B_API_KEY: undefined,
+        AGENT_SANDBOX_DISK_MB: 20
       }
     }));
 
@@ -417,7 +418,8 @@ describe('sandbox provider config', () => {
         AGENT_SANDBOX_OPENSANDBOX_RUNTIME: 'docker',
         AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: '',
         AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: undefined,
-        AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: true
+        AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: true,
+        AGENT_SANDBOX_DISK_MB: 20
       }
     }));
 

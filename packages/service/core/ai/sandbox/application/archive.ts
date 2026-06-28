@@ -12,7 +12,7 @@ import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { ISandbox, SandboxCreateSpec } from '@fastgpt-sdk/sandbox-adapter';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { getS3SandboxSource } from '../../../../common/s3/sources/sandbox';
-import { serviceEnv } from '../../../../env';
+import { getAgentSandboxArchiveMaxBytes } from '../interface/config';
 import { getSandboxAdapterConfig } from '../infrastructure/provider/config';
 import { connectToSandbox, disconnectSandbox } from '../infrastructure/provider/lifecycle';
 import { getSandboxRuntimeProfile } from '../infrastructure/provider/runtimeProfile';
@@ -276,7 +276,7 @@ async function createWorkspaceArchive(params: {
   sandboxId: string;
 }) {
   const { sandbox, workDirectory, sandboxId } = params;
-  const maxArchiveBytes = serviceEnv.AGENT_SANDBOX_ARCHIVE_MAX_SIZE * 1024 * 1024;
+  const maxArchiveBytes = getAgentSandboxArchiveMaxBytes();
   const archivePath = joinSandboxPath(workDirectory, TEMP_ARCHIVE_FILE);
   const quotedWorkDirectory = shellQuote(workDirectory);
   const quotedArchiveFile = shellQuote(TEMP_ARCHIVE_FILE);
@@ -353,7 +353,7 @@ async function restoreWorkspaceArchive(params: {
   archiveBody: Buffer;
 }) {
   const { sandbox, workDirectory, sandboxId, archiveBody } = params;
-  const maxArchiveBytes = serviceEnv.AGENT_SANDBOX_ARCHIVE_MAX_SIZE * 1024 * 1024;
+  const maxArchiveBytes = getAgentSandboxArchiveMaxBytes();
   const archivePath = joinSandboxPath(workDirectory, RESTORE_ARCHIVE_FILE);
   const quotedWorkDirectory = shellQuote(workDirectory);
   const quotedArchiveFile = shellQuote(RESTORE_ARCHIVE_FILE);
@@ -875,7 +875,7 @@ export async function restoreArchivedSandboxBeforeUse(params: {
 
     const archiveBody = await getS3SandboxSource().downloadWorkspaceArchive({
       sandboxId: params.sandboxId,
-      maxBytes: serviceEnv.AGENT_SANDBOX_ARCHIVE_MAX_SIZE * 1024 * 1024
+      maxBytes: getAgentSandboxArchiveMaxBytes()
     });
     await restoreWorkspaceArchive({
       sandbox,
