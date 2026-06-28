@@ -10,7 +10,6 @@ import { MongoResourcePermission } from '../../../permission/schema';
 import { delUserAllSession } from '../../session';
 import { MongoTeamMember } from '../teamMemberSchema';
 import { MongoTeam } from '../teamSchema';
-import { MongoTeamTags } from '../teamTagsSchema';
 import { MongoMcpKey } from '../../../mcp/schema';
 import { MongoChatSetting } from '../../../../core/chat/setting/schema';
 import { MongoChatFavouriteApp } from '../../../../core/chat/favouriteApp/schema';
@@ -110,11 +109,6 @@ export const teamDeleteProcessor: Processor<TeamDeleteJobData> = async (job) => 
       teamId
     });
     await MongoOrgMemberModel.deleteMany({
-      teamId
-    });
-
-    // 删除 teamTags
-    await MongoTeamTags.deleteMany({
       teamId
     });
 

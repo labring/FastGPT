@@ -62,8 +62,8 @@ import {
   QuickReplyContextProvider,
   useRegisterQuickReplyClickHandler
 } from '../context/quickReplyContext';
-import type { ChatTargetInputType } from '@fastgpt/global/openapi/core/chat/api';
-import { useChatApiTarget } from '@/web/core/chat/utils';
+import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
+import { useChatAuthApiTarget } from '@/web/core/chat/utils';
 
 const ChatHomeVariablesForm = dynamic(() => import('./components/home/ChatHomeVariablesForm'));
 const DesktopHomeLayout = dynamic(() => import('./components/home/DesktopHomeLayout'));
@@ -187,10 +187,10 @@ const ChatBox = ({
   const itemRefs = useContextSelector(ChatRecordContext, (v) => v.itemRefs);
 
   const sourceKey = useContextSelector(WorkflowRuntimeContext, (v) => v.sourceKey);
-  const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
   const sourceTarget = useContextSelector(WorkflowRuntimeContext, (v) => v.sourceTarget);
-  const chatTarget = useChatApiTarget(sourceTarget);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
+  const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
+  const chatAuthTarget = useChatAuthApiTarget({ sourceTarget, outLinkAuthData });
   const activeSourceKeyRef = useRef<string | undefined>(sourceKey);
   const activeChatIdRef = useRef<string | undefined>(chatId);
   useLayoutEffect(() => {
@@ -201,7 +201,6 @@ const ChatBox = ({
     () => getChatScrollTargetKey({ sourceKey, chatId }),
     [sourceKey, chatId]
   );
-  const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
   const welcomeText = useContextSelector(ChatBoxContext, (v) => v.welcomeText);
   const variableList = useContextSelector(ChatBoxContext, (v) => v.variableList);
   const questionGuide = useContextSelector(ChatBoxContext, (v) => v.questionGuide);
@@ -248,9 +247,8 @@ const ChatBox = ({
   });
   const requestStopChat = useMemoizedFn(async (): Promise<StopChatFnResult> => {
     const result = await postStopV2Chat({
-      ...chatTarget,
-      chatId,
-      outLinkAuthData
+      ...chatAuthTarget,
+      chatId
     });
 
     return {
@@ -262,14 +260,14 @@ const ChatBox = ({
     ({
       status,
       finishedInActiveChat,
-      targetChatTarget = chatTarget,
+      targetChatTarget = chatAuthTarget,
       targetSourceKey = sourceKey,
       targetChatId = chatId,
       shouldUpdateChatBoxData
     }: {
       status: ChatGenerateStatusEnum;
       finishedInActiveChat: boolean;
-      targetChatTarget?: ChatTargetInputType;
+      targetChatTarget?: ChatAuthTargetInput;
       targetSourceKey?: string;
       targetChatId?: string;
       shouldUpdateChatBoxData?: (state: typeof chatBoxData) => boolean;
@@ -302,8 +300,7 @@ const ChatBox = ({
 
       void markChatRead({
         ...targetChatTarget,
-        chatId: targetChatId,
-        ...outLinkAuthData
+        chatId: targetChatId
       })
         .catch(() => {})
         .finally(() => {
@@ -338,10 +335,9 @@ const ChatBox = ({
     TextareaDom
   });
   const createQuestionGuide = useQuestionGuide({
-    appId: resolvedFeatures.inputGuide ? appId || '' : '',
+    chatTarget: resolvedFeatures.inputGuide ? chatAuthTarget : undefined,
     chatId,
     questionGuide,
-    outLinkAuthData,
     chatControllerRef: chatController,
     questionGuideControllerRef: questionGuideController,
     setQuestionGuide,

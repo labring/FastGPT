@@ -1,13 +1,23 @@
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { type StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { getWebLLMModel } from '@/web/common/system/utils';
 import type { ChatTargetInputType } from '@fastgpt/global/openapi/core/chat/api';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { useMemo } from 'react';
+import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 type OptionalChatTargetInput = Partial<Record<'appId' | 'skillId', string>>;
+type OptionalChatSourceInput = {
+  sourceType?: ChatSourceTypeEnum;
+  sourceId?: string;
+};
+export type ChatAuthTargetInput = OptionalChatTargetInput & {
+  outLinkAuthData?: OutLinkChatAuthProps;
+};
+export type ChatAuthQueryTargetInput = OptionalChatTargetInput & {
+  outLinkAuthData?: string;
+};
 
 export type ChatSourceTarget = {
   sourceType: ChatSourceTypeEnum.app | ChatSourceTypeEnum.skillEdit;
@@ -48,9 +58,107 @@ export const toChatApiTarget = (target: ChatSourceTarget): ChatTargetInputType =
   return { appId: target.sourceId };
 };
 
+/**
+ * 将内部 source target 转成带鉴权上下文的 OpenAPI raw target。
+ *
+ * share 模式的 schema 要求只传 `outLinkAuthData`，真实 App 由 API 鉴权解析；
+ * 普通 App/Skill 调用继续传 `appId/skillId`。
+ */
+export const toChatAuthApiTarget = ({
+  sourceTarget,
+  outLinkAuthData
+}: {
+  sourceTarget: ChatSourceTarget;
+  outLinkAuthData?: OutLinkChatAuthProps;
+}): ChatAuthTargetInput => {
+  const hasShareAuth = !!(outLinkAuthData?.shareId && outLinkAuthData.outLinkUid);
+
+  if (hasShareAuth) {
+    return { outLinkAuthData };
+  }
+
+  return toChatApiTarget(sourceTarget);
+};
+
+/**
+ * 从已是 OpenAPI raw 格式的对象中提取 chat 鉴权 target。
+ *
+ * 引用详情、原文件读取等 metadata 会把数据集 sourceId/sourceName 一起携带；
+ * 这里只保留 chat 鉴权字段，避免和数据集来源字段混用。
+ */
+export const getChatAuthTargetInput = (target: ChatAuthTargetInput): ChatAuthTargetInput => {
+  const hasShareAuth = !!(target.outLinkAuthData?.shareId && target.outLinkAuthData.outLinkUid);
+
+  if (hasShareAuth) {
+    return { outLinkAuthData: target.outLinkAuthData };
+  }
+
+  if (target.skillId) {
+    return { skillId: target.skillId };
+  }
+
+  if (target.appId) {
+    return { appId: target.appId };
+  }
+
+  return {};
+};
+
+/**
+ * 将 chat 鉴权 target 转成 query 传输形态。
+ *
+ * GET/DELETE query 无法稳定保留嵌套对象，share 模式在 chat API 层统一序列化；
+ * API 边界的 zod schema 会再解析回对象，业务层仍只接收对象。
+ */
+export const toChatAuthQueryTarget = (target: ChatAuthTargetInput): ChatAuthQueryTargetInput => {
+  const chatAuthTarget = getChatAuthTargetInput(target);
+  const outLinkAuthData = chatAuthTarget.outLinkAuthData;
+
+  if (outLinkAuthData?.shareId && outLinkAuthData.outLinkUid) {
+    return {
+      outLinkAuthData: JSON.stringify(outLinkAuthData)
+    };
+  }
+
+  if (chatAuthTarget.skillId) {
+    return { skillId: chatAuthTarget.skillId };
+  }
+
+  if (chatAuthTarget.appId) {
+    return { appId: chatAuthTarget.appId };
+  }
+
+  return {};
+};
+
+/** 保留 chat API 其它 query 字段，只把鉴权 target 转成 query 传输形态。 */
+export const toChatAuthQueryInput = <T extends ChatAuthTargetInput & OptionalChatSourceInput>(
+  data: T
+): Omit<T, 'appId' | 'skillId' | 'outLinkAuthData'> & ChatAuthQueryTargetInput => {
+  const { appId, skillId, outLinkAuthData, ...rest } = data;
+
+  return {
+    ...rest,
+    ...toChatAuthQueryTarget({ appId, skillId, outLinkAuthData })
+  };
+};
+
 /** 在组件内把标准 source target 转为 OpenAPI raw target，避免各请求点重复拼 appId/skillId。 */
 export const useChatApiTarget = (target: ChatSourceTarget): ChatTargetInputType =>
   useMemo(() => toChatApiTarget(target), [target]);
+
+/** 在组件内把标准 source target 转为带分享鉴权语义的 OpenAPI raw target。 */
+export const useChatAuthApiTarget = ({
+  sourceTarget,
+  outLinkAuthData
+}: {
+  sourceTarget: ChatSourceTarget;
+  outLinkAuthData?: OutLinkChatAuthProps;
+}): ChatAuthTargetInput =>
+  useMemo(
+    () => toChatAuthApiTarget({ sourceTarget, outLinkAuthData }),
+    [sourceTarget, outLinkAuthData]
+  );
 
 /** 返回前端运行时状态隔离 key，避免 App 与 Skill Edit 只按裸 id 混用。 */
 export const getChatSourceKey = (target?: ChatSourceTarget | null) =>
@@ -78,8 +186,35 @@ export const getChatTargetInput = (target: ChatTargetInputType): ChatTargetInput
   return { appId: target.appId! };
 };
 
-export const hasChatTargetInput = (target?: OptionalChatTargetInput | null) =>
-  !!target?.appId || !!target?.skillId;
+export const hasChatTargetInput = (target?: { appId?: unknown; skillId?: unknown } | null) =>
+  typeof target?.appId === 'string' || typeof target?.skillId === 'string';
+
+/** 判断请求是否包含可用于 chat 鉴权的 target，share 模式只传 outLinkAuthData。 */
+export const hasChatAuthTargetInput = (
+  target?:
+    | ({
+        outLinkAuthData?: unknown;
+      } & {
+        appId?: unknown;
+        skillId?: unknown;
+      })
+    | null
+) => {
+  const outLinkAuthData =
+    target?.outLinkAuthData && typeof target.outLinkAuthData === 'object'
+      ? target.outLinkAuthData
+      : undefined;
+
+  return (
+    hasChatTargetInput(target) ||
+    !!(
+      'shareId' in (outLinkAuthData ?? {}) &&
+      (outLinkAuthData as OutLinkChatAuthProps).shareId &&
+      'outLinkUid' in (outLinkAuthData ?? {}) &&
+      (outLinkAuthData as OutLinkChatAuthProps).outLinkUid
+    )
+  );
+};
 
 export const getAppIdFromChatTarget = (target: ChatTargetInputType) =>
   'appId' in target ? target.appId : undefined;

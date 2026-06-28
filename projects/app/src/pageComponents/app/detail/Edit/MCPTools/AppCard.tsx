@@ -1,13 +1,11 @@
 import { Box, Button, Flex, HStack, IconButton } from '@chakra-ui/react';
-import React, { useState } from 'react';
+import React from 'react';
 import { AppContext } from '../../context';
 import { useContextSelector } from 'use-context-selector';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
-import { type AppSchemaType } from '@fastgpt/global/core/app/type';
-import TagsEditModal from '../../TagsEditModal';
 
 const AppCard = () => {
   const { t } = useTranslation();
@@ -15,8 +13,6 @@ const AppCard = () => {
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
   const onOpenInfoEdit = useContextSelector(AppContext, (v) => v.onOpenInfoEdit);
   const onDelApp = useContextSelector(AppContext, (v) => v.onDelApp);
-
-  const [TeamTagsSet, setTeamTagsSet] = useState<AppSchemaType>();
 
   return (
     <>
@@ -78,7 +74,6 @@ const AppCard = () => {
           <Box flex={1} />
         </HStack>
       </Box>
-      {TeamTagsSet && <TagsEditModal onClose={() => setTeamTagsSet(undefined)} />}
     </>
   );
 };

@@ -5,5 +5,3 @@
  * 不承载长期版本管理，也不直接暴露对象存储细节。
  */
 export * from './config';
-export * from './sandbox';
-export * from './deploy';

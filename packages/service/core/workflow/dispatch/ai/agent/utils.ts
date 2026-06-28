@@ -19,7 +19,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { dispatchTool } from './sub/tool';
 import type { WorkflowResponseItemType } from '../../type';
 import { dispatchApp, dispatchPlugin } from './sub/app';
-import type { SandboxClient } from '../../../../ai/sandbox/service/runtime';
+import type { SandboxClient } from '../../../../ai/sandbox/interface/runtime';
 import { SystemToolRepo } from '../../../../app/tool/systemTool/systemTool.repo';
 import type { WorkflowNodeResponseWriter } from '../../../../chat/nodeResponseStorage';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';

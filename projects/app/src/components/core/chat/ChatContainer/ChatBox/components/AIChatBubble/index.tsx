@@ -11,8 +11,13 @@ import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../../Provider';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import AIChatLoading from '../AIChatLoading';
-import { hasAiAnswerContent, hasAiInteractiveContent, hasAiProcessingContent } from './utils';
+import { hasAiProcessingContent } from './utils';
 import { useTranslation } from 'next-i18next';
+import {
+  ChatGenerateStatusEnum,
+  ChatRoleEnum,
+  ChatStatusEnum
+} from '@fastgpt/global/core/chat/constants';
 
 const ResponseTags = dynamic(() => import('../ResponseTags'));
 const WholeResponseModal = dynamic(() => import('../../../../components/WholeResponseModal'));
@@ -26,6 +31,7 @@ type AIChatBubbleProps = {
   isLastChild: boolean;
   isLastValueGroup: boolean;
   isChatting: boolean;
+  hasValidContent: boolean;
   loadingText?: string;
   questionGuides: string[];
   enableSandbox: boolean;
@@ -42,6 +48,7 @@ const AIChatBubble = ({
   isLastChild,
   isLastValueGroup,
   isChatting,
+  hasValidContent,
   loadingText,
   questionGuides,
   enableSandbox,
@@ -53,6 +60,10 @@ const AIChatBubble = ({
   const { t } = useTranslation();
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
   const showWholeResponse = useContextSelector(ChatItemContext, (v) => v.showWholeResponse ?? true);
+  const chatGenerateStatus = useContextSelector(
+    ChatItemContext,
+    (v) => v.chatBoxData.chatGenerateStatus
+  );
   const {
     isOpen: isOpenWholeModal,
     onOpen: onOpenWholeModal,
@@ -61,12 +72,33 @@ const AIChatBubble = ({
   const showFooterActions = isLastValueGroup && (!isLastChild || !isChatting);
   const canShowWholeResponse = chatType !== 'share' && showWholeResponse;
   const showLoading = isLastChild && isLastValueGroup && isChatting;
-  const hasFinalOutput = chatValue.some(
-    (item) => hasAiAnswerContent(item) || hasAiInteractiveContent(item)
-  );
   const hasProcessingContent = chatValue.some((item) => hasAiProcessingContent(item));
+  const isCurrentChatGenerateStatusReady = chatGenerateStatus !== undefined;
+  const isCurrentChatGenerating = chatGenerateStatus === ChatGenerateStatusEnum.generating;
+  const shouldWaitCurrentChatStatus =
+    isLastChild &&
+    isLastValueGroup &&
+    (!isCurrentChatGenerateStatusReady || isCurrentChatGenerating);
+  const showLoadingPlaceholder =
+    shouldWaitCurrentChatStatus &&
+    !isChatting &&
+    !chat.errorMsg &&
+    !chat.errorText &&
+    !hasValidContent;
   const showNoOutputTip =
-    isLastValueGroup && !isChatting && !chat.errorMsg && !chat.errorText && !hasFinalOutput;
+    chat.obj === ChatRoleEnum.AI &&
+    chat.status === ChatStatusEnum.finish &&
+    isLastValueGroup &&
+    !isChatting &&
+    !shouldWaitCurrentChatStatus &&
+    !chat.errorMsg &&
+    !chat.errorText &&
+    !hasValidContent;
+  const placeholderText = showLoadingPlaceholder
+    ? t('chat:chat_loading_content')
+    : showNoOutputTip
+      ? t('chat:no_output_content')
+      : '';
 
   return (
     <Box position={'relative'} w={'100%'} maxW={'100%'}>
@@ -86,14 +118,14 @@ const AIChatBubble = ({
           allowedCitationIds={allowedCitationIds}
           onOpenCiteModal={onOpenCiteModal}
         />
-        {showNoOutputTip && (
+        {placeholderText && (
           <Box
             mt={hasProcessingContent ? 4 : 0}
             fontSize="14px"
             lineHeight="20px"
             color="myGray.500"
           >
-            {t('chat:no_output_content')}
+            {placeholderText}
           </Box>
         )}
         {isLastValueGroup && (

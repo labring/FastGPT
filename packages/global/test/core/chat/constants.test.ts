@@ -63,7 +63,6 @@ describe('ChatSourceEnum', () => {
     expect(ChatSourceEnum.share).toBe('share');
     expect(ChatSourceEnum.api).toBe('api');
     expect(ChatSourceEnum.cronJob).toBe('cronJob');
-    expect(ChatSourceEnum.team).toBe('team');
     expect(ChatSourceEnum.feishu).toBe('feishu');
     expect(ChatSourceEnum.official_account).toBe('official_account');
     expect(ChatSourceEnum.wecom).toBe('wecom');

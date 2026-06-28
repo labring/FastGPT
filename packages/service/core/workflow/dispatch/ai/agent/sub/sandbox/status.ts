@@ -1,6 +1,6 @@
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { WorkflowResponseType } from '../../../../type';
-import { getRunningSandboxId } from '../../../../../../ai/sandbox/runtime/id';
+import { getRunningSandboxId } from '../../../../../../ai/sandbox/interface/runtime';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 /**

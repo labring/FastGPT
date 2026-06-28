@@ -4,13 +4,13 @@ import { SystemOpenApiTagMap } from '../../../tag';
 import {
   DeleteCollectionBodySchema,
   DeleteCollectionQuerySchema,
-  ExportCollectionBodySchema,
+  ExportCollectionBodyRawSchema,
   GetCollectionDetailQuerySchema,
   GetCollectionPathsQuerySchema,
   GetCollectionTrainingDetailQuerySchema,
   GetCollectionTrainingDetailResponseSchema,
   ListCollectionV2BodySchema,
-  ReadCollectionSourceBodySchema,
+  ReadCollectionSourceBodyRawSchema,
   ScrollCollectionsBodySchema,
   SyncCollectionBodySchema,
   UpdateDatasetCollectionBodySchema
@@ -137,7 +137,7 @@ export const DatasetCollectionPath: OpenAPIPath = {
       requestBody: {
         content: {
           'application/json': {
-            schema: ReadCollectionSourceBodySchema
+            schema: ReadCollectionSourceBodyRawSchema
           }
         }
       },
@@ -175,7 +175,7 @@ export const DatasetCollectionPath: OpenAPIPath = {
       requestBody: {
         content: {
           'application/json': {
-            schema: ExportCollectionBodySchema
+            schema: ExportCollectionBodyRawSchema
           }
         }
       },

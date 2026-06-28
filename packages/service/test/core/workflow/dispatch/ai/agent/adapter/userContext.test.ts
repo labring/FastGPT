@@ -14,7 +14,7 @@ import {
   parseAgentInputFiles,
   useUserContext
 } from '@fastgpt/service/core/workflow/dispatch/ai/agent/adapter/userContext';
-import type { DeployedSkillInfo } from '@fastgpt/service/core/ai/skill/runtime/types';
+import type { DeployedSkillInfo } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
 
 vi.mock('@fastgpt/global/common/time/timezone', () => ({
   getSystemTime: vi.fn(() => '2026-05-14 10:00:00 Thursday')

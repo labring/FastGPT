@@ -8,7 +8,7 @@ import { updateChatUserFeedback } from '@/web/core/chat/feedback/api';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 import FeedbackDrawer from './FeedbackDrawer';
-import { useChatApiTarget } from '@/web/core/chat/utils';
+import { useChatAuthApiTarget } from '@/web/core/chat/utils';
 
 type FeedbackContentProps = {
   textareaRef: React.RefObject<HTMLTextAreaElement>;
@@ -99,17 +99,16 @@ const FeedbackModal = ({
   const { isPc } = useSystem();
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
   const sourceTarget = useContextSelector(WorkflowRuntimeContext, (v) => v.sourceTarget);
-  const chatTarget = useChatApiTarget(sourceTarget);
+  const chatAuthTarget = useChatAuthApiTarget({ sourceTarget, outLinkAuthData });
 
   const { runAsync, loading: isLoading } = useRequest(
     async () => {
       const val = ref.current?.value || t('common:core.chat.feedback.No Content');
       return updateChatUserFeedback({
-        ...chatTarget,
+        ...chatAuthTarget,
         chatId,
         dataId,
-        userBadFeedback: val,
-        ...outLinkAuthData
+        userBadFeedback: val
       });
     },
     {

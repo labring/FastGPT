@@ -16,6 +16,7 @@ export const SandboxStatusEnum = {
 export type SandboxStatusType = (typeof SandboxStatusEnum)[keyof typeof SandboxStatusEnum];
 
 // ---- 沙盒实例类型 ----
+/** @deprecated sandbox 实例归属统一使用 sourceType/sourceId；该枚举仅用于历史数据迁移。 */
 export enum SandboxTypeEnum {
   editDebug = 'edit-debug',
   sessionRuntime = 'session-runtime'

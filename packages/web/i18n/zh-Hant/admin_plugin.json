@@ -1,0 +1,17 @@
+{
+  "toolkit_no_runtime_config": "暫無執行階段配置",
+  "toolkit_reset_runtime_config_confirm": "確認恢復預設執行階段配置？",
+  "toolkit_runtime_config": "執行階段配置",
+  "toolkit_runtime_config_invalid_integer": "{{label}} 需要填寫整數",
+  "toolkit_runtime_config_invalid_number": "{{label}} 需要填寫有效數字",
+  "toolkit_runtime_config_max_concurrent_requests_per_pod": "單 Pod 最大並發請求數",
+  "toolkit_runtime_config_max_concurrent_requests_per_pod_tip": "單個 Pod 同時處理的最大請求數量",
+  "toolkit_runtime_config_max_pods": "最大工作節點數",
+  "toolkit_runtime_config_max_pods_tip": "該工具執行階段最多可啟動的 Pod 數量",
+  "toolkit_runtime_config_min_pods": "最小工作節點數",
+  "toolkit_runtime_config_min_pods_over_max_pods": "最小工作節點數不能大於最大工作節點數",
+  "toolkit_runtime_config_min_pods_tip": "該工具執行階段需要保留的最小 Pod 數量，填 0 表示允許縮容到 0",
+  "toolkit_runtime_config_min_value": "{{label}} 不能小於 {{min}}",
+  "toolkit_runtime_config_pod_timeout": "Pod 超時時間",
+  "toolkit_runtime_config_pod_timeout_tip": "Pod 閒置超過該時間後會被回收"
+}

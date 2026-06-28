@@ -1,0 +1,45 @@
+/**
+ * 沙盒共用工具：提供跨层复用的纯函数。
+ *
+ * 只放路径、hash、文件名清洗等无副作用工具，不访问数据库、provider 或业务状态。
+ */
+import { createHash } from 'crypto';
+
+type HashContent = string | Buffer | Uint8Array;
+
+/** 去掉 sandbox 路径右侧斜杠，根路径保持可继续拼接的空前缀。 */
+export const trimSandboxPathRight = (value: string) =>
+  value === '/' ? '' : value.replace(/\/+$/, '');
+
+/** 用 sandbox 语义拼接路径，避免不同 provider 工作目录末尾斜杠导致双斜杠。 */
+export const joinSandboxPath = (basePath: string, path: string) =>
+  `${trimSandboxPathRight(basePath)}/${path}`;
+
+/** 构建 runtime 状态和 manifest 统一使用的内容 hash。 */
+export const buildRuntimeHash = (content: HashContent): string =>
+  `sha256:${createHash('sha256').update(content).digest('hex')}`;
+
+/**
+ * 将外部文件名收敛为可写入 sandbox user_files 的单个 path segment。
+ * URL query、API body 和模型上下文都可能携带文件名，因此调用方不能信任原始 name。
+ */
+export const getSafeSandboxInputFilename = (
+  filename: string,
+  index: number,
+  usedNames: Map<string, number>
+) => {
+  const fallbackName = `file-${index}`;
+  const normalized = filename.replace(/\\/g, '/').split('/').pop()?.trim() || fallbackName;
+  const withoutControlChars = normalized.replace(/[\u0000-\u001F\u007F]/g, '').trim();
+  const baseName =
+    withoutControlChars && withoutControlChars !== '.' && withoutControlChars !== '..'
+      ? withoutControlChars
+      : fallbackName;
+  const firstDotIndex = baseName.indexOf('.');
+  const stem = firstDotIndex > 0 ? baseName.slice(0, firstDotIndex) : baseName;
+  const extension = firstDotIndex > 0 ? baseName.slice(firstDotIndex) : '';
+  const count = usedNames.get(baseName) || 0;
+  usedNames.set(baseName, count + 1);
+
+  return count === 0 ? baseName : `${stem}-${count}${extension}`;
+};

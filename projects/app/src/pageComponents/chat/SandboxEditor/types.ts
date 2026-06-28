@@ -1,6 +1,6 @@
 import type Editor from '@monaco-editor/react';
 import type { ChatTargetInputType } from '@fastgpt/global/openapi/core/chat/api';
-import { getChatSourceKey, getChatTargetInput, toChatSourceTarget } from '@/web/core/chat/utils';
+import { getChatSourceKey, toChatSourceTarget } from '@/web/core/chat/utils';
 
 export type SandboxEditorInstance = Parameters<
   NonNullable<Parameters<typeof Editor>[0]['onMount']>
@@ -9,6 +9,18 @@ export type SandboxEditorInstance = Parameters<
 export type SandboxTargetInput = {
   appId?: string;
   chatTarget?: ChatTargetInputType;
+};
+
+const normalizeSandboxChatTarget = (chatTarget?: ChatTargetInputType) => {
+  if (!chatTarget) return;
+
+  if ('skillId' in chatTarget && chatTarget.skillId) {
+    return { skillId: chatTarget.skillId };
+  }
+
+  if ('appId' in chatTarget && chatTarget.appId) {
+    return { appId: chatTarget.appId };
+  }
 };
 
 /**
@@ -21,8 +33,9 @@ export function resolveSandboxTarget({
   appId,
   chatTarget
 }: SandboxTargetInput): ChatTargetInputType {
-  if (chatTarget) {
-    return getChatTargetInput(chatTarget);
+  const normalizedChatTarget = normalizeSandboxChatTarget(chatTarget);
+  if (normalizedChatTarget) {
+    return normalizedChatTarget;
   }
 
   if (appId) {
@@ -30,6 +43,24 @@ export function resolveSandboxTarget({
   }
 
   throw new Error('Sandbox target is required');
+}
+
+/** 尝试解析 Sandbox 目标；分享页首屏可能尚未拿到真实 appId，此时保持空态等待后续刷新。 */
+export function tryResolveSandboxTarget(
+  props: SandboxTargetInput
+): ChatTargetInputType | undefined {
+  const { appId, chatTarget } = props;
+  const normalizedChatTarget = normalizeSandboxChatTarget(chatTarget);
+
+  if (normalizedChatTarget) {
+    return normalizedChatTarget;
+  }
+
+  if (appId) {
+    return { appId };
+  }
+
+  return undefined;
 }
 
 export const getSandboxTargetId = (target: ChatTargetInputType) =>

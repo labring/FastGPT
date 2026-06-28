@@ -16,7 +16,7 @@ import { getQuoteDataList } from '@/web/core/chat/record/api';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { getChatTargetInput } from '@/web/core/chat/utils';
+import { getChatAuthTargetInput } from '@/web/core/chat/utils';
 
 type MobileQuoteTab = 'detail' | 'source';
 
@@ -44,10 +44,9 @@ const QuoteReader = ({
       await getQuoteDataList({
         datasetDataIdList: filterRawSearch.map((item) => item.id),
         collectionIdList: metadata.collectionIdList,
-        chatItemDataId: metadata.chatItemDataId,
-        ...getChatTargetInput(metadata),
+        ...getChatAuthTargetInput(metadata),
         chatId: metadata.chatId,
-        ...metadata.outLinkAuthData
+        chatItemDataId: metadata.chatItemDataId
       }),
     {
       refreshDeps: [metadata, filterRawSearch],
@@ -121,10 +120,9 @@ const QuoteReader = ({
     if (!sourceId) return;
 
     onOpenCollectionQuote({
-      ...getChatTargetInput(metadata),
+      ...getChatAuthTargetInput(metadata),
       chatId: metadata.chatId,
       chatItemDataId: metadata.chatItemDataId,
-      outLinkAuthData: metadata.outLinkAuthData,
       quoteId,
       collectionId,
       sourceId,

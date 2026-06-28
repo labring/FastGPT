@@ -28,7 +28,6 @@ import { hasDebugToolInNodes } from '@fastgpt/global/core/app/tool/utils';
 import { ToastHandledError } from '@fastgpt/global/common/error/utils';
 
 const InfoModal = dynamic(() => import('./InfoModal'));
-const TagsEditModal = dynamic(() => import('./TagsEditModal'));
 
 export enum TabEnum {
   'appEdit' = 'appEdit',
@@ -45,7 +44,6 @@ type AppContextType = {
   loadingApp: boolean;
   updateAppDetail: (data: UpdateAppBodyType) => Promise<void>;
   onOpenInfoEdit: () => void;
-  onOpenTeamTagModal: () => void;
   onDelApp: () => void;
   onSaveApp: (data: PostPublishAppProps) => Promise<void>;
   appLatestVersion:
@@ -74,9 +72,6 @@ export const AppContext = createContext<AppContextType>({
     throw new Error('Function not implemented.');
   },
   onOpenInfoEdit: function (): void {
-    throw new Error('Function not implemented.');
-  },
-  onOpenTeamTagModal: function (): void {
     throw new Error('Function not implemented.');
   },
   onDelApp: function (): void {
@@ -108,12 +103,6 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
     onOpen: onOpenInfoEdit,
     onClose: onCloseInfoEdit
   } = useDisclosure();
-  const {
-    isOpen: isOpenTeamTagModal,
-    onOpen: onOpenTeamTagModal,
-    onClose: onCloseTeamTagModal
-  } = useDisclosure();
-
   const route2Tab = useCallback(
     (currentTab: `${TabEnum}`) => {
       router.push({
@@ -236,7 +225,6 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
       loadingApp,
       updateAppDetail,
       onOpenInfoEdit,
-      onOpenTeamTagModal,
       onDelApp,
       onSaveApp,
       appLatestVersion,
@@ -251,7 +239,6 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
       loadingApp,
       onDelApp,
       onOpenInfoEdit,
-      onOpenTeamTagModal,
       onSaveApp,
       reloadApp,
       reloadAppLatestVersion,
@@ -264,7 +251,6 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
     <AppContext.Provider value={contextValue}>
       {children}
       {isOpenInfoEdit && <InfoModal onClose={onCloseInfoEdit} />}
-      {isOpenTeamTagModal && <TagsEditModal onClose={onCloseTeamTagModal} />}
 
       <ConfirmModal />
     </AppContext.Provider>

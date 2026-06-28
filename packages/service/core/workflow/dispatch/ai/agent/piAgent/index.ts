@@ -1,6 +1,6 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { SANDBOX_SYSTEM_PROMPT } from '@fastgpt/global/core/ai/sandbox/constants';
-import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType
@@ -26,7 +26,7 @@ import { buildPiModel, getModelApiKey, getPiThinkingLevel } from './modelBridge'
 import { buildAgentTools, createPiAgentToolEventHandler } from './toolAdapter';
 import type { RuntimeNodeResponseSummary } from '../../../type';
 import { createAgentNodeResponseCollector } from '../nodeResponseCollector';
-import { createAgentSandboxPermissionDeniedError } from '../../../../../ai/sandbox/error';
+import { createAgentSandboxPermissionDeniedError } from '../../../../../ai/sandbox/interface/runtime';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;

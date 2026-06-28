@@ -148,7 +148,7 @@ describe('createChatItemResponseRows', () => {
     expect(rows[0].data.nodeId).toBe('legacy-node');
   });
 
-  it('slims root dataset quote list before storage', () => {
+  it('keeps root dataset quote list complete when creating rows', () => {
     const rows = createChatItemResponseRows({
       ...base,
       nodeResponses: [
@@ -160,6 +160,9 @@ describe('createChatItemResponseRows', () => {
               id: 'quote-1',
               q: 'full question should not be stored',
               a: 'full answer should not be stored',
+              indexes: [
+                { type: 'qa', dataId: 'data-1', text: 'full question should not be stored' }
+              ],
               datasetId: 'dataset-1',
               collectionId: 'collection-1',
               sourceId: 'source-1',
@@ -172,14 +175,11 @@ describe('createChatItemResponseRows', () => {
       ]
     });
 
-    expect(rows[0].data.quoteList?.[0]).toEqual({
+    expect(rows[0].data.quoteList?.[0]).toMatchObject({
       id: 'quote-1',
-      chunkIndex: 0,
-      datasetId: 'dataset-1',
-      collectionId: 'collection-1',
-      sourceId: 'source-1',
-      sourceName: 'source',
-      score: []
+      q: 'full question should not be stored',
+      a: 'full answer should not be stored',
+      indexes: [{ type: 'qa', dataId: 'data-1', text: 'full question should not be stored' }]
     });
   });
 });
@@ -627,6 +627,62 @@ describe('WorkflowNodeResponseWriter', () => {
         childrenResponses: [expect.objectContaining({ id: 'child' })]
       })
     ]);
+  });
+
+  it('retains full dataset quoteList in memory while persisting slim rows', async () => {
+    const create = vi.fn().mockResolvedValue(undefined);
+    const writer = new WorkflowNodeResponseWriter({
+      ...base,
+      batchSize: 1,
+      retainInMemory: true,
+      model: {
+        create
+      }
+    });
+
+    const [returnedResponse] = await writer.record([
+      makeResponse({
+        id: 'dataset-root',
+        moduleType: FlowNodeTypeEnum.datasetSearchNode,
+        quoteList: [
+          {
+            id: 'quote-1',
+            q: 'full question',
+            a: 'full answer',
+            indexes: [{ type: 'qa', dataId: 'data-1', text: 'full question' }],
+            datasetId: 'dataset-1',
+            collectionId: 'collection-1',
+            sourceId: 'source-1',
+            sourceName: 'source',
+            chunkIndex: 0,
+            score: []
+          } as any
+        ]
+      })
+    ]);
+
+    expect(returnedResponse.quoteList?.[0]).toMatchObject({
+      id: 'quote-1',
+      q: 'full question',
+      a: 'full answer',
+      indexes: [{ type: 'qa', dataId: 'data-1', text: 'full question' }]
+    });
+    expect(writer.getFlatNodeResponses()[0].quoteList?.[0]).toMatchObject({
+      id: 'quote-1',
+      q: 'full question',
+      a: 'full answer',
+      indexes: [{ type: 'qa', dataId: 'data-1', text: 'full question' }]
+    });
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(create.mock.calls[0][0][0].data.quoteList?.[0]).toEqual({
+      id: 'quote-1',
+      chunkIndex: 0,
+      datasetId: 'dataset-1',
+      collectionId: 'collection-1',
+      sourceId: 'source-1',
+      sourceName: 'source',
+      score: []
+    });
   });
 
   it('retains all flat nodeResponse increments and folds them for composition', async () => {

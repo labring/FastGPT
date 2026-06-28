@@ -10,20 +10,22 @@ import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 /** 将对话标为已读（例如用户在本页看完流式回复后） */
 export async function handler(req: ApiRequestProps, _res: ApiResponseType): Promise<void> {
   const body = parseApiInput({ req, bodySchema: MarkChatReadBodySchema }).body;
-  const { sourceType, sourceId, chatId } = body;
+  const { sourceType, sourceId, chatId, outLinkAuthData } = body;
 
-  await authChatTargetCrud({
+  const authRes = await authChatTargetCrud({
     req,
     authToken: true,
     authApiKey: true,
     sourceType,
     sourceId,
     chatId,
+    outLinkAuthData,
     per: WritePermissionVal
   });
+  const resolvedSourceId = authRes.sourceId;
 
   await MongoChat.updateOne(
-    { ...buildChatSourceQuery({ sourceType, sourceId }), chatId },
+    { ...buildChatSourceQuery({ sourceType, sourceId: resolvedSourceId }), chatId },
     { $set: { hasBeenRead: true, updateTime: new Date() } }
   );
 }

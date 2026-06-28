@@ -1,6 +1,6 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
-import { saveDeploySkillFromSandbox } from '@fastgpt/service/core/ai/skill/edit/deploy';
+import { saveDeploySkillFromSandbox } from '@fastgpt/service/core/ai/sandbox/interface/skillEdit';
 import { AgentSkillCreationStatusEnum } from '@fastgpt/global/core/ai/skill/constants';
 import {
   SaveDeploySkillBodySchema,
@@ -20,7 +20,7 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
  * 从编辑态 sandbox 保存并发布 skill。
  *
  * API 层只保留请求校验、权限校验、创建状态校验和审计日志；实际打包、解析、
- * 上传对象存储和版本切换逻辑收敛到 service/core/ai/skill/edit/deploy。
+ * 上传对象存储和版本切换逻辑收敛到 sandbox/interface/skillEdit。
  */
 async function handler(
   req: ApiRequestProps<SaveDeploySkillBody>

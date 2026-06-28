@@ -14,14 +14,18 @@ import { type BoxProps, useDisclosure } from '@chakra-ui/react';
 import { useChatStore } from './useChatStore';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
-import type { UpdateHistoryBodyType } from '@fastgpt/global/openapi/core/chat/history/api';
-import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
+import type {
+  GetHistoriesBodyType,
+  UpdateHistoryBodyType
+} from '@fastgpt/global/openapi/core/chat/history/api';
+import { ChatGenerateStatusEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { normalizeHistoryTitle, upsertHistoryTitle } from './historyTitleUtils';
+import { toChatAuthApiTarget, type ChatSourceTarget } from '../utils';
 
 type UpdateHistoryParams = Pick<UpdateHistoryBodyType, 'chatId' | 'customTitle' | 'top'>;
 
 type ChatContextValueType = {
-  params: Record<string, string | number | boolean>;
+  params: GetHistoriesBodyType;
 };
 type ChatContextType = {
   onUpdateHistory: (data: UpdateHistoryParams) => void;
@@ -87,28 +91,37 @@ const ChatContextProvider = ({
   const { chatId, setChatId, outLinkAuthData } = useChatStore();
   const historyAppId = typeof params.appId === 'string' ? params.appId : '';
   const historySkillId = typeof params.skillId === 'string' ? params.skillId : '';
-  const historyTarget = useMemo(
-    () => ({
-      ...(historyAppId ? { appId: historyAppId } : {}),
-      ...(historySkillId ? { skillId: historySkillId } : {})
-    }),
+  const historyOutLinkAuthData = useMemo(() => {
+    const paramsOutLinkAuthData =
+      params.outLinkAuthData && typeof params.outLinkAuthData === 'object'
+        ? params.outLinkAuthData
+        : {};
+
+    return {
+      ...outLinkAuthData,
+      ...paramsOutLinkAuthData
+    };
+  }, [outLinkAuthData, params.outLinkAuthData]);
+  const historySourceTarget = useMemo<ChatSourceTarget>(
+    () =>
+      historySkillId
+        ? {
+            sourceType: ChatSourceTypeEnum.skillEdit,
+            sourceId: historySkillId
+          }
+        : {
+            sourceType: ChatSourceTypeEnum.app,
+            sourceId: historyAppId
+          },
     [historyAppId, historySkillId]
   );
-  const historyAuthData = useMemo(
-    () => ({
-      ...outLinkAuthData,
-      ...(typeof params.shareId === 'string' ? { shareId: params.shareId } : {}),
-      ...(typeof params.outLinkUid === 'string' ? { outLinkUid: params.outLinkUid } : {}),
-      ...(typeof params.teamId === 'string' ? { teamId: params.teamId } : {}),
-      ...(typeof params.teamToken === 'string' ? { teamToken: params.teamToken } : {})
-    }),
-    [
-      outLinkAuthData,
-      params.outLinkUid,
-      params.shareId,
-      params.teamId,
-      params.teamToken
-    ]
+  const historyTargetParams = useMemo(
+    () =>
+      toChatAuthApiTarget({
+        sourceTarget: historySourceTarget,
+        outLinkAuthData: historyOutLinkAuthData
+      }),
+    [historyOutLinkAuthData, historySourceTarget]
   );
 
   const { isOpen: isOpenSlider, onClose: onCloseSlider, onOpen: openSlider } = useDisclosure();
@@ -191,9 +204,8 @@ const ChatContextProvider = ({
   const { runAsync: onUpdateHistory } = useRequest(
     (data: UpdateHistoryParams) =>
       putChatHistory({
-        ...historyTarget,
-        ...data,
-        ...historyAuthData
+        ...historyTargetParams,
+        ...data
       }),
     {
       onBefore(params) {
@@ -216,7 +228,7 @@ const ChatContextProvider = ({
             : updatedHistories;
         });
       },
-      refreshDeps: [historyAuthData, historyTarget],
+      refreshDeps: [historyTargetParams],
       errorToast: undefined
     }
   );
@@ -224,9 +236,8 @@ const ChatContextProvider = ({
   const { runAsync: onDelHistory, loading: isDeletingHistory } = useRequest(
     (chatId: string) =>
       delChatHistoryById({
-        ...historyTarget,
-        chatId,
-        ...historyAuthData
+        ...historyTargetParams,
+        chatId
       }),
     {
       onSuccess(data, params) {
@@ -238,18 +249,17 @@ const ChatContextProvider = ({
           setHistoriesTotal((total) => Math.max(total - 1, 0));
         }
       },
-      refreshDeps: [historyAuthData, historyTarget]
+      refreshDeps: [historyTargetParams]
     }
   );
 
   const { runAsync: onClearHistories, loading: isClearingHistory } = useRequest(
     () =>
       delClearChatHistories({
-        ...historyTarget,
-        ...historyAuthData
+        ...historyTargetParams
       }),
     {
-      refreshDeps: [historyAuthData, historyTarget],
+      refreshDeps: [historyTargetParams],
       onSuccess() {
         setHistories([]);
         setHistoriesTotal(0);
@@ -329,9 +339,8 @@ const ChatContextProvider = ({
     const poll = () => {
       const chatIds = historiesRef.current.map((h) => h.chatId);
       getChatHistoryStatus({
-        ...historyTarget,
-        chatIds,
-        ...historyAuthData
+        ...historyTargetParams,
+        chatIds
       })
         .then((res) => {
           const map = new Map(res.list.map((i) => [i.chatId, i]));
@@ -380,7 +389,7 @@ const ChatContextProvider = ({
       window.clearInterval(timer);
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [historyTarget, historyChatIdsKey, hasGeneratingInSidebar, historyAuthData, setHistories]);
+  }, [historyTargetParams, historyChatIdsKey, hasGeneratingInSidebar, setHistories]);
 
   const isLoading = isDeletingHistory || isClearingHistory || isPaginationLoading;
 

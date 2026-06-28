@@ -1,5 +1,5 @@
 import z from 'zod';
-import { createChatTargetInputSchema, transformChatTargetInput } from '../api';
+import { createOutLinkChatTargetInputSchema, transformChatAuthTargetInput } from '../api';
 
 const FeedbackTargetSchema = {
   chatId: z.string().min(1).meta({
@@ -13,15 +13,16 @@ const FeedbackTargetSchema = {
 };
 
 /* =============== updateFeedbackReadStatus =============== */
-export const UpdateFeedbackReadStatusBodyRawSchema = createChatTargetInputSchema({
+export const UpdateFeedbackReadStatusBodyRawSchema = createOutLinkChatTargetInputSchema({
   ...FeedbackTargetSchema,
   isRead: z.boolean().meta({
     example: true,
     description: '是否已读'
   })
 });
-export const UpdateFeedbackReadStatusBodySchema =
-  UpdateFeedbackReadStatusBodyRawSchema.transform(transformChatTargetInput);
+export const UpdateFeedbackReadStatusBodySchema = UpdateFeedbackReadStatusBodyRawSchema.transform(
+  transformChatAuthTargetInput
+);
 export type UpdateFeedbackReadStatusBodyType = z.infer<
   typeof UpdateFeedbackReadStatusBodyRawSchema
 >;
@@ -40,7 +41,7 @@ export type UpdateFeedbackReadStatusResponseType = z.infer<
 >;
 
 /* =============== adminUpdate =============== */
-export const AdminUpdateFeedbackBodyRawSchema = createChatTargetInputSchema({
+export const AdminUpdateFeedbackBodyRawSchema = createOutLinkChatTargetInputSchema({
   ...FeedbackTargetSchema,
   datasetId: z.string().min(1).meta({
     example: 'dataset123',
@@ -59,8 +60,9 @@ export const AdminUpdateFeedbackBodyRawSchema = createChatTargetInputSchema({
     description: '答案内容（可选）'
   })
 });
-export const AdminUpdateFeedbackBodySchema =
-  AdminUpdateFeedbackBodyRawSchema.transform(transformChatTargetInput);
+export const AdminUpdateFeedbackBodySchema = AdminUpdateFeedbackBodyRawSchema.transform(
+  transformChatAuthTargetInput
+);
 export type AdminUpdateFeedbackBodyType = z.infer<typeof AdminUpdateFeedbackBodyRawSchema>;
 export type AdminUpdateFeedbackBodyRuntimeType = z.infer<typeof AdminUpdateFeedbackBodySchema>;
 
@@ -68,15 +70,16 @@ export const AdminUpdateFeedbackResponseSchema = z.undefined().meta({ descriptio
 export type AdminUpdateFeedbackResponseType = z.infer<typeof AdminUpdateFeedbackResponseSchema>;
 
 /* =============== closeCustom =============== */
-export const CloseCustomFeedbackBodyRawSchema = createChatTargetInputSchema({
+export const CloseCustomFeedbackBodyRawSchema = createOutLinkChatTargetInputSchema({
   ...FeedbackTargetSchema,
   index: z.number().int().nonnegative().meta({
     example: 0,
     description: '自定义反馈的索引位置'
   })
 });
-export const CloseCustomFeedbackBodySchema =
-  CloseCustomFeedbackBodyRawSchema.transform(transformChatTargetInput);
+export const CloseCustomFeedbackBodySchema = CloseCustomFeedbackBodyRawSchema.transform(
+  transformChatAuthTargetInput
+);
 export type CloseCustomFeedbackBodyType = z.infer<typeof CloseCustomFeedbackBodyRawSchema>;
 export type CloseCustomFeedbackBodyRuntimeType = z.infer<typeof CloseCustomFeedbackBodySchema>;
 
@@ -84,7 +87,7 @@ export const CloseCustomFeedbackResponseSchema = z.undefined().meta({ descriptio
 export type CloseCustomFeedbackResponseType = z.infer<typeof CloseCustomFeedbackResponseSchema>;
 
 /* =============== updateUserFeedback =============== */
-export const UpdateUserFeedbackBodyRawSchema = createChatTargetInputSchema({
+export const UpdateUserFeedbackBodyRawSchema = createOutLinkChatTargetInputSchema({
   ...FeedbackTargetSchema,
   userGoodFeedback: z.string().nullish().meta({
     example: '回答很好',
@@ -95,8 +98,9 @@ export const UpdateUserFeedbackBodyRawSchema = createChatTargetInputSchema({
     description: '用户差评反馈内容'
   })
 });
-export const UpdateUserFeedbackBodySchema =
-  UpdateUserFeedbackBodyRawSchema.transform(transformChatTargetInput);
+export const UpdateUserFeedbackBodySchema = UpdateUserFeedbackBodyRawSchema.transform(
+  transformChatAuthTargetInput
+);
 export type UpdateUserFeedbackBodyType = z.infer<typeof UpdateUserFeedbackBodyRawSchema>;
 export type UpdateUserFeedbackBodyRuntimeType = z.infer<typeof UpdateUserFeedbackBodySchema>;
 
@@ -104,7 +108,7 @@ export const UpdateUserFeedbackResponseSchema = z.undefined().meta({ description
 export type UpdateUserFeedbackResponseType = z.infer<typeof UpdateUserFeedbackResponseSchema>;
 
 /* =============== getFeedbackRecordIds =============== */
-export const GetFeedbackRecordIdsBodyRawSchema = createChatTargetInputSchema({
+export const GetFeedbackRecordIdsBodyRawSchema = createOutLinkChatTargetInputSchema({
   chatId: z.string().meta({
     example: 'chat123',
     description: '对话 ID'
@@ -118,8 +122,9 @@ export const GetFeedbackRecordIdsBodyRawSchema = createChatTargetInputSchema({
     description: '是否只返回未读的反馈'
   })
 });
-export const GetFeedbackRecordIdsBodySchema =
-  GetFeedbackRecordIdsBodyRawSchema.transform(transformChatTargetInput);
+export const GetFeedbackRecordIdsBodySchema = GetFeedbackRecordIdsBodyRawSchema.transform(
+  transformChatAuthTargetInput
+);
 export type GetFeedbackRecordIdsBodyType = z.infer<typeof GetFeedbackRecordIdsBodyRawSchema>;
 export type GetFeedbackRecordIdsBodyRuntimeType = z.infer<typeof GetFeedbackRecordIdsBodySchema>;
 

@@ -19,7 +19,7 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { getCollectionSourceAndOpen } from '@/web/core/dataset/hooks/readCollectionSource';
 import { useContextSelector } from 'use-context-selector';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
-import { getAppIdFromChatTarget, getChatTargetInput } from '@/web/core/chat/utils';
+import { getChatAuthTargetInput } from '@/web/core/chat/utils';
 
 const CollectionReader = ({
   rawSearch,
@@ -39,7 +39,7 @@ const CollectionReader = ({
   const canDownloadSource = useContextSelector(ChatItemContext, (v) => v.canDownloadSource);
 
   const { collectionId, datasetId, chatItemDataId, sourceName, quoteId } = metadata;
-  const appId = getAppIdFromChatTarget(metadata);
+  const chatAuthTarget = useMemo(() => getChatAuthTargetInput(metadata), [metadata]);
   const [selectedQuote, setSelectedQuote] = useState<{ sourceQuoteId?: string; id: string }>();
 
   // Get dataset permission
@@ -95,12 +95,11 @@ const CollectionReader = ({
   const params = useMemo(
     () => ({
       collectionId,
-      chatItemDataId,
+      ...chatAuthTarget,
       chatId: metadata.chatId,
-      ...getChatTargetInput(metadata),
-      ...metadata.outLinkAuthData
+      chatItemDataId
     }),
-    [chatItemDataId, collectionId, metadata]
+    [chatAuthTarget, chatItemDataId, collectionId, metadata.chatId]
   );
 
   const {
@@ -134,28 +133,39 @@ const CollectionReader = ({
     [currentQuoteItem?.id, datasetDataList, filterResults]
   );
 
+  const canShowSourceActions = useMemo(
+    () =>
+      canDownloadSource &&
+      !!metadata.chatId &&
+      !!chatItemDataId &&
+      !!(
+        chatAuthTarget.appId ||
+        chatAuthTarget.skillId ||
+        (chatAuthTarget.outLinkAuthData?.shareId && chatAuthTarget.outLinkAuthData.outLinkUid)
+      ),
+    [canDownloadSource, chatAuthTarget, chatItemDataId, metadata.chatId]
+  );
+
   const { runAsync: handleDownload } = useRequest(async () => {
-    if (!appId) return;
+    if (!canShowSourceActions) return;
 
     await downloadFetch({
       url: '/api/core/dataset/collection/export',
       filename: 'data.csv',
       body: {
-        appId,
+        ...chatAuthTarget,
         chatId: metadata.chatId,
         chatItemDataId,
-        collectionId,
-        ...metadata.outLinkAuthData
+        collectionId
       }
     });
   });
 
   const handleRead = getCollectionSourceAndOpen({
-    appId: appId || '',
+    ...chatAuthTarget,
     chatId: metadata.chatId,
     chatItemDataId,
-    collectionId,
-    ...metadata.outLinkAuthData
+    collectionId
   });
 
   return (
@@ -199,7 +209,7 @@ const CollectionReader = ({
           </Box>
 
           <Flex alignItems={'center'} gap={'8px'}>
-            {canDownloadSource && appId && (
+            {canShowSourceActions && (
               <DownloadButton
                 canAccessRawData={true}
                 onDownload={handleDownload}

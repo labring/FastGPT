@@ -9,6 +9,17 @@ import RoleSelect from './RoleSelect';
 import { ChevronDownIcon } from '@chakra-ui/icons';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+
+const userInfoColumnProps = {
+  flex: '2 1 0',
+  minW: 0
+};
+
+const roleActionColumnProps = {
+  flex: '3 1 0',
+  minW: 0
+};
 
 function MemberItemCard({
   avatar,
@@ -37,6 +48,8 @@ function MemberItemCard({
 }) {
   const showRoleSelect = onRoleChange !== undefined;
   const { userInfo } = useUserStore();
+  const displayName = name === DefaultGroupName ? (userInfo?.team.teamName ?? '') : name;
+
   return (
     <Flex
       justifyContent="space-between"
@@ -64,7 +77,7 @@ function MemberItemCard({
         p="1"
         alignItems={'center'}
         gap="2"
-        flex="1 1 0"
+        {...(showRoleSelect ? userInfoColumnProps : { flex: '1 1 0', minW: 0 })}
         minW={0}
       >
         {isChecked !== undefined && (
@@ -72,66 +85,89 @@ function MemberItemCard({
         )}
         <Avatar src={avatar} w="1.5rem" flexShrink={0} borderRadius={'50%'} />
         <Box flex={'1 1 0'} minW={0}>
-          <Box fontSize={'sm'} w={'100%'} noOfLines={1}>
-            {name === DefaultGroupName ? userInfo?.team.teamName : name}
-          </Box>
+          <MyTooltip label={displayName} showOnlyWhenOverflow shouldWrapChildren={false}>
+            <Box fontSize={'sm'} w={'100%'} noOfLines={1}>
+              {displayName}
+            </Box>
+          </MyTooltip>
           <Box lineHeight={1} w={'100%'}>
             {orgs && orgs.length > 0 && <OrgTags orgs={orgs} />}
           </Box>
         </Box>
       </Flex>
-      {showRoleSelect && (
-        <Box flex="0 1 300px" minW="160px" maxW="300px">
-          <RoleSelect
-            disabled={disabled}
-            value={role}
-            Button={
-              <Flex
-                bg={'myGray.50'}
-                border="base"
-                fontSize={'sm'}
-                borderRadius={'md'}
-                minH={'18px'}
-                w="full"
-                p="1"
-                alignItems={'end'}
-                justifyContent={'space-between'}
-                overflow="hidden"
-              >
-                <RoleTags permission={role} />
-                <Flex h="18px" flexShrink={0} alignItems={'center'} justifyContent={'center'}>
-                  <ChevronDownIcon fontSize="md" />
+      {showRoleSelect ? (
+        <Flex
+          flexDirection={'row'}
+          h="36px"
+          alignItems={'center'}
+          gap="2"
+          {...roleActionColumnProps}
+        >
+          <Box flex="1 1 0" minW={0}>
+            <RoleSelect
+              disabled={disabled}
+              value={role}
+              Button={
+                <Flex
+                  bg={'myGray.50'}
+                  border="base"
+                  fontSize={'sm'}
+                  borderRadius={'md'}
+                  minH={'18px'}
+                  w="full"
+                  p="1"
+                  alignItems={'end'}
+                  justifyContent={'space-between'}
+                  overflow="hidden"
+                >
+                  <RoleTags permission={role} />
+                  <Flex h="18px" flexShrink={0} alignItems={'center'} justifyContent={'center'}>
+                    <ChevronDownIcon fontSize="md" />
+                  </Flex>
                 </Flex>
-              </Flex>
-            }
-            onChange={onRoleChange}
-            width="100%"
-          />
-        </Box>
+              }
+              onChange={onRoleChange}
+              width="100%"
+            />
+          </Box>
+          {onDelete !== undefined && !disabled ? (
+            <MyIcon
+              name="common/closeLight"
+              w="1rem"
+              flexShrink={0}
+              cursor={disabled ? 'not-allowed' : 'pointer'}
+              _hover={{
+                color: 'red.600'
+              }}
+              onClick={() => {
+                if (disabled) return;
+                onDelete?.();
+              }}
+            />
+          ) : (
+            <Box minW="16px" flexShrink={0}></Box>
+          )}
+        </Flex>
+      ) : (
+        <Flex flexDirection={'row'} flexShrink={0} alignItems={'center'}>
+          {onDelete !== undefined && !disabled ? (
+            <MyIcon
+              name="common/closeLight"
+              w="1rem"
+              cursor={disabled ? 'not-allowed' : 'pointer'}
+              _hover={{
+                color: 'red.600'
+              }}
+              onClick={() => {
+                if (disabled) return;
+                onDelete?.();
+              }}
+            />
+          ) : (
+            <Box minW="16px"></Box>
+          )}
+        </Flex>
       )}
-      <Flex
-        flexDirection={'row'}
-        h={showRoleSelect ? '36px' : 'unset'}
-        flexShrink={0}
-        alignItems={'center'}
-      >
-        {onDelete !== undefined && !disabled ? (
-          <MyIcon
-            name="common/closeLight"
-            w="1rem"
-            cursor={disabled ? 'not-allowed' : 'pointer'}
-            _hover={{
-              color: 'red.600'
-            }}
-            onClick={() => {
-              if (disabled) return;
-              onDelete?.();
-            }}
-          />
-        ) : (
-          <Box minW="16px"></Box>
-        )}
-      </Flex>
       {!!rightSlot && rightSlot}
     </Flex>
   );

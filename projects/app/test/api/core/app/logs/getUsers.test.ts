@@ -13,6 +13,8 @@ import type {
   GetLogUsersResponse
 } from '@fastgpt/global/openapi/core/app/log/api';
 
+type EmptyQuery = Record<string, never>;
+
 describe('getUsers API', () => {
   let testAppId: string;
   let testTeamId: string;
@@ -34,8 +36,7 @@ describe('getUsers API', () => {
       ownerId: user._id,
       avatar: 'test-avatar',
       createTime: new Date(),
-      balance: 0,
-      teamDomain: 'test-domain-logs'
+      balance: 0
     });
     testTeamId = String(team._id);
 
@@ -75,7 +76,7 @@ describe('getUsers API', () => {
     const dateStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
     const dateEnd = now.toISOString();
 
-    const res = await Call<GetLogUsersBody, {}, GetLogUsersResponse>(getUsers.default, {
+    const res = await Call<GetLogUsersBody, EmptyQuery, GetLogUsersResponse>(getUsers.default, {
       auth: authUser,
       body: {
         appId: testAppId,
@@ -126,7 +127,7 @@ describe('getUsers API', () => {
     const dateStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
     const dateEnd = new Date(now.getTime() + 1000).toISOString();
 
-    const res = await Call<GetLogUsersBody, {}, GetLogUsersResponse>(getUsers.default, {
+    const res = await Call<GetLogUsersBody, EmptyQuery, GetLogUsersResponse>(getUsers.default, {
       auth: authUser,
       body: {
         appId: testAppId,
@@ -194,7 +195,7 @@ describe('getUsers API', () => {
     const dateEnd = new Date(now.getTime() + 1000).toISOString();
 
     // Search for "John"
-    const res = await Call<GetLogUsersBody, {}, GetLogUsersResponse>(getUsers.default, {
+    const res = await Call<GetLogUsersBody, EmptyQuery, GetLogUsersResponse>(getUsers.default, {
       auth: authUser,
       body: {
         appId: testAppId,
@@ -210,7 +211,7 @@ describe('getUsers API', () => {
     expect(johnUser).toBeDefined();
 
     // Search for "alice"
-    const res2 = await Call<GetLogUsersBody, {}, GetLogUsersResponse>(getUsers.default, {
+    const res2 = await Call<GetLogUsersBody, EmptyQuery, GetLogUsersResponse>(getUsers.default, {
       auth: authUser,
       body: {
         appId: testAppId,
@@ -277,7 +278,7 @@ describe('getUsers API', () => {
     const dateStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
     const dateEnd = new Date(now.getTime() + 1000).toISOString();
 
-    const res = await Call<GetLogUsersBody, {}, GetLogUsersResponse>(getUsers.default, {
+    const res = await Call<GetLogUsersBody, EmptyQuery, GetLogUsersResponse>(getUsers.default, {
       auth: authUser,
       body: {
         appId: testAppId,
@@ -337,7 +338,7 @@ describe('getUsers API', () => {
     const dateEnd = new Date(now.getTime() + 1000).toISOString();
 
     // Filter by 'share' source only
-    const res = await Call<GetLogUsersBody, {}, GetLogUsersResponse>(getUsers.default, {
+    const res = await Call<GetLogUsersBody, EmptyQuery, GetLogUsersResponse>(getUsers.default, {
       auth: authUser,
       body: {
         appId: testAppId,
@@ -359,7 +360,7 @@ describe('getUsers API', () => {
     expect(apiUser).toBeUndefined();
 
     // Filter by multiple sources
-    const res2 = await Call<GetLogUsersBody, {}, GetLogUsersResponse>(getUsers.default, {
+    const res2 = await Call<GetLogUsersBody, EmptyQuery, GetLogUsersResponse>(getUsers.default, {
       auth: authUser,
       body: {
         appId: testAppId,

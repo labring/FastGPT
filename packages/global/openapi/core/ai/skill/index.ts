@@ -2,8 +2,6 @@ import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap } from '../../../tag';
 import {
   ListAppsBySkillIdResponseSchema,
-  CreateEditDebugSandboxBodySchema,
-  CreateEditDebugSandboxResponseSchema,
   CreateSkillBodySchema,
   CreateSkillFolderBodySchema,
   CreateSkillFolderResponseSchema,
@@ -24,6 +22,9 @@ import {
   SaveDeploySkillBodySchema,
   SaveDeploySkillResponseSchema,
   SkillDebugChatBodySchema,
+  SkillRuntimeBodySchema,
+  SkillRuntimeInitEventSchema,
+  SkillRuntimeStatusResponseSchema,
   SwitchSkillVersionBodySchema,
   UpdateSkillBodySchema,
   UpdateSkillVersionBodySchema
@@ -243,15 +244,63 @@ export const SkillPath: OpenAPIPath = {
       }
     }
   },
-  '/core/ai/skill/edit': {
+  '/core/ai/skill/runtime/getStatus': {
     post: {
-      summary: '创建编辑调试沙盒',
-      description: '为技能创建 edit-debug 沙盒，返回 SSE sandboxStatus 事件流',
+      summary: '获取技能编辑沙盒 runtime 状态',
+      description: '检查 Skill Edit runtime 是否可直接初始化、需要升级或正在升级',
       tags: [DevApiTagsMap.aiSkill],
       requestBody: {
         content: {
           'application/json': {
-            schema: CreateEditDebugSandboxBodySchema
+            schema: SkillRuntimeBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功返回 runtime 状态',
+          content: {
+            'application/json': {
+              schema: SkillRuntimeStatusResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/core/ai/skill/runtime/upgrade': {
+    post: {
+      summary: '触发技能编辑沙盒 runtime 升级',
+      description: '触发旧 runtime 工作区归档，客户端随后通过 getStatus 轮询结果',
+      tags: [DevApiTagsMap.aiSkill],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: SkillRuntimeBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功返回触发后的 runtime 状态',
+          content: {
+            'application/json': {
+              schema: SkillRuntimeStatusResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/core/ai/skill/runtime/init': {
+    post: {
+      summary: '初始化技能编辑沙盒 runtime',
+      description: '启动、恢复或复用 Skill Edit sandbox，返回 SSE sandboxStatus 事件流',
+      tags: [DevApiTagsMap.aiSkill],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: SkillRuntimeBodySchema
           }
         }
       },
@@ -260,7 +309,7 @@ export const SkillPath: OpenAPIPath = {
           description: '返回 text/event-stream 事件流',
           content: {
             'text/event-stream': {
-              schema: CreateEditDebugSandboxResponseSchema
+              schema: SkillRuntimeInitEventSchema
             }
           }
         }

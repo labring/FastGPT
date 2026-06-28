@@ -1,6 +1,6 @@
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 import z from 'zod';
-import { createChatTargetInputSchema, transformChatTargetInput } from '../../chat/api';
+import { createOutLinkChatTargetInputSchema, transformChatAuthTargetInput } from '../../chat/api';
 
 const SandboxBaseShape = {
   chatId: z.string().meta({
@@ -11,15 +11,15 @@ const SandboxBaseShape = {
 };
 
 const withSandboxTarget = <T extends z.ZodRawShape>(shape: T) =>
-  createChatTargetInputSchema({
+  createOutLinkChatTargetInputSchema({
     ...SandboxBaseShape,
     ...shape
-  }).transform(transformChatTargetInput);
+  }).transform(transformChatAuthTargetInput);
 
 /**
  * 下载文件或目录 - 请求体（响应为文件流或 ZIP）
  */
-export const SandboxDownloadBodyRawSchema = createChatTargetInputSchema({
+export const SandboxDownloadBodyRawSchema = createOutLinkChatTargetInputSchema({
   ...SandboxBaseShape,
   path: z.string().optional().default('.').describe('要下载的路径(文件或目录)')
 });
@@ -36,7 +36,7 @@ export const SandboxDownloadResponseSchema = z
 /**
  * 检查沙盒是否存在
  */
-export const SandboxCheckExistBodyRawSchema = createChatTargetInputSchema(SandboxBaseShape);
+export const SandboxCheckExistBodyRawSchema = createOutLinkChatTargetInputSchema(SandboxBaseShape);
 export const SandboxCheckExistBodySchema = withSandboxTarget({});
 export const SandboxCheckExistResponseSchema = z.object({
   exists: z.boolean().describe('沙盒是否存在')
@@ -51,7 +51,7 @@ export type SandboxCheckExistResponse = z.infer<typeof SandboxCheckExistResponse
 export const SandboxChannelSchema = z.enum(['fs', 'terminal']).describe('沙盒 WebSocket 通道');
 export const SandboxTicketPermissionSchema = z.enum(['read', 'write']).describe('沙盒 Ticket 权限');
 
-export const SandboxGetTicketBodyRawSchema = createChatTargetInputSchema({
+export const SandboxGetTicketBodyRawSchema = createOutLinkChatTargetInputSchema({
   ...SandboxBaseShape,
   channel: SandboxChannelSchema,
   permission: SandboxTicketPermissionSchema.optional()
@@ -76,7 +76,7 @@ export type SandboxGetTicketResponse = z.infer<typeof SandboxGetTicketResponseSc
 /**
  * 获取 HTML 预览链接 - 请求/响应
  */
-export const SandboxGetHtmlPreviewLinkBodyRawSchema = createChatTargetInputSchema({
+export const SandboxGetHtmlPreviewLinkBodyRawSchema = createOutLinkChatTargetInputSchema({
   ...SandboxBaseShape,
   filePath: z.string().describe('文件路径')
 });

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { PaginationSchema } from '../../../api';
 import { ObjectIdSchema } from '../../../../common/type/mongo';
+import { ChatSourceTypeEnum } from '../../../../core/chat/constants';
 import { OutLinkChatAuthSchema } from '../../../../support/permission/chat';
 
 /* ============================================================================
@@ -125,15 +126,25 @@ export type DeleteAllChatInputGuideResponseType = z.infer<
  * API: 查询对话输入引导（公开接口）
  * Route: POST /api/core/chat/inputGuide/query
  * Method: POST
- * Description: 根据搜索词查询对话输入引导，支持分享链接和团队 Token 鉴权
+ * Description: 根据搜索词查询对话输入引导，支持应用和分享链接鉴权
  * Tags: ['Chat', 'InputGuide', 'Read']
  * ============================================================================ */
 
-export const QueryChatInputGuideBodySchema = OutLinkChatAuthSchema.extend({
-  appId: z.string().meta({ example: '68ad85a7463006c963799a05', description: '应用 ID' }),
+export const QueryChatInputGuideBodyRawSchema = z.object({
+  sourceType: z.enum(ChatSourceTypeEnum).meta({
+    example: ChatSourceTypeEnum.app,
+    description: '会话归属资源类型'
+  }),
+  sourceId: ObjectIdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '会话归属资源 ID'
+  }),
+  outLinkAuthData: OutLinkChatAuthSchema.optional().describe('外链鉴权数据'),
   searchKey: z.string().meta({ example: '如何使用', description: '搜索关键词' })
 });
-export type QueryChatInputGuideBodyType = z.infer<typeof QueryChatInputGuideBodySchema>;
+export const QueryChatInputGuideBodySchema = QueryChatInputGuideBodyRawSchema;
+export type QueryChatInputGuideBodyType = z.infer<typeof QueryChatInputGuideBodyRawSchema>;
+export type QueryChatInputGuideRuntimeBodyType = z.infer<typeof QueryChatInputGuideBodySchema>;
 
 export const QueryChatInputGuideResponseSchema = z.array(
   z.string().meta({ example: '如何开始使用？', description: '引导文本' })

@@ -57,10 +57,6 @@ export type SandboxStatusPhase =
   | 'downloadingPackage' // downloading skill package from MinIO
   | 'uploadingPackage' // uploading package into sandbox container
   | 'extractingPackage' // extracting package in sandbox
-  // Runtime image upgrade phases
-  | 'runtimeUpgradeRequired' // existing edit-debug sandbox uses an outdated runtime image
-  | 'runtimeUpgradeArchiving' // archiving workspace before recreating with current image
-  | 'runtimeUpgradeArchived' // outdated runtime is archived or removed; caller should refresh/restart
   // Lazy-init phases
   | 'lazyInit' // LLM first calls sandbox tool, triggers container creation
   // Terminal phases
@@ -324,12 +320,23 @@ export const HistoryItemSchema = z.object({
 });
 export type HistoryItemType = z.infer<typeof HistoryItemSchema>;
 
-export const ChatHistoryItemSchema = HistoryItemSchema.extend({
-  appId: z.string(),
+const ChatHistoryItemExtraShape = {
   top: z.boolean().optional(),
   chatGenerateStatus: z.enum(ChatGenerateStatusEnum).optional(),
   hasBeenRead: z.boolean().optional()
-});
+};
+export const ChatHistoryItemSchema = z.union([
+  HistoryItemSchema.extend({
+    appId: z.string(),
+    skillId: z.undefined().optional(),
+    ...ChatHistoryItemExtraShape
+  }),
+  HistoryItemSchema.extend({
+    appId: z.undefined().optional(),
+    skillId: z.string(),
+    ...ChatHistoryItemExtraShape
+  })
+]);
 export type ChatHistoryItemType = z.infer<typeof ChatHistoryItemSchema>;
 
 /* ------- response data ------------ */

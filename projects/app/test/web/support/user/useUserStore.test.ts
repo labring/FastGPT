@@ -51,7 +51,6 @@ const buildUser = (language: UserType['language']): UserType =>
       teamName: 'Team',
       memberName: 'Member',
       avatar: '',
-      teamDomain: '',
       role: 'owner',
       status: 'active',
       permission: new TeamPermission({ isOwner: true })

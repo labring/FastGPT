@@ -31,14 +31,14 @@ AGENT_SANDBOX_PROXY_URL=ws://{{host}}:1006
 
 If Agent Sandbox is enabled, also update the following images:
 
-- Add the fastgpt-agent-sandbox-proxy image with tag v0.2.0-beta3.
-- Update the fastgpt-agent-sandbox image tag to v0.2.0-beta3.
+- Add the fastgpt-agent-sandbox-proxy image with tag v0.2.0-beta2.
+- Update the fastgpt-agent-sandbox image tag to v0.2.0-beta2.
 
-Also add the `fastgpt-agent-sandbox-proxy` service to `docker-compose.yml`. The example below uses the China Mainland image registry. For global deployments, change the image to `ghcr.io/labring/fastgpt-agent-sandbox-proxy:v0.2.0-beta3`:
+Also add the `fastgpt-agent-sandbox-proxy` service to `docker-compose.yml`. The example below uses the China Mainland image registry. For global deployments, change the image to `ghcr.io/labring/fastgpt-agent-sandbox-proxy:v0.2.0-beta2`:
 
 ```yml
 fastgpt-agent-sandbox-proxy:
-  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox-proxy:v0.2.0-beta3
+  image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox-proxy:v0.2.0-beta2
   container_name: fastgpt-agent-sandbox-proxy
   restart: always
   ports:

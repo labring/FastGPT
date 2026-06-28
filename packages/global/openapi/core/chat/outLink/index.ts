@@ -1,6 +1,6 @@
 import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap } from '../../../tag';
-import { InitOutLinkChatQuerySchema } from './api';
+import { InitOutLinkChatQuerySchema, InitOutLinkChatResponseSchema } from './api';
 
 export const OutLinkChatPath: OpenAPIPath = {
   '/core/chat/outLink/init': {
@@ -13,7 +13,12 @@ export const OutLinkChatPath: OpenAPIPath = {
       },
       responses: {
         200: {
-          description: '成功返回会话初始化信息'
+          description: '成功返回会话初始化信息',
+          content: {
+            'application/json': {
+              schema: InitOutLinkChatResponseSchema
+            }
+          }
         }
       }
     }

@@ -168,7 +168,8 @@ const DataCard = () => {
                 <RawSourceBox
                   collectionType={collection.type}
                   collectionId={collection._id}
-                  {...getCollectionSourceData(collection)}
+                  rawSourceId={getCollectionSourceData(collection).sourceId}
+                  rawSourceName={getCollectionSourceData(collection).sourceName}
                   fontSize={['sm', 'md']}
                   color={'black'}
                   textDecoration={'none'}

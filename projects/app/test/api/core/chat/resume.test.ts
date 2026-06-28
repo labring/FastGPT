@@ -231,6 +231,8 @@ describe('stream resume api', () => {
     delete redis.duplicate;
 
     vi.mocked(authChatTargetCrud).mockResolvedValue({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
       teamId,
       tmbId: 'tmb-test',
       uid: 'user-test',
@@ -712,7 +714,7 @@ describe('stream resume api', () => {
     }
   });
 
-  it('should forward share auth params to authChatTargetCrud when resuming a shared chat', async () => {
+  it('should forward share-only auth params to authChatTargetCrud when resuming a shared chat', async () => {
     vi.mocked(MongoChat.findOne).mockReturnValue(
       createFindOneResult({
         hasBeenRead: false,
@@ -729,20 +731,23 @@ describe('stream resume api', () => {
 
     await Call(handler, {
       query: {
-        appId,
         chatId,
-        shareId: 'share-test',
-        outLinkUid: 'outlink-user'
+        outLinkAuthData: JSON.stringify({
+          shareId: 'share-test',
+          outLinkUid: 'outlink-user'
+        })
       }
     });
 
     expect(authChatTargetCrud).toHaveBeenCalledWith(
       expect.objectContaining({
         sourceType: ChatSourceTypeEnum.app,
-        sourceId: appId,
+        sourceId: undefined,
         chatId,
-        shareId: 'share-test',
-        outLinkUid: 'outlink-user',
+        outLinkAuthData: {
+          shareId: 'share-test',
+          outLinkUid: 'outlink-user'
+        },
         authToken: true
       })
     );

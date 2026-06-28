@@ -111,10 +111,10 @@ describe('getAppTemplatesAndLoadThem', () => {
 
     expect(template).toMatchObject({
       templateId: `${AppToolSourceEnum.community}-githubIssue`,
-      name: 'DB name',
-      intro: 'DB intro',
-      avatar: '/db-avatar',
-      tags: ['db-tag'],
+      name: 'Plugin name',
+      intro: 'Plugin intro',
+      avatar: '/core/app/templates/githubIssue',
+      tags: ['plugin-tag'],
       type: AppTypeEnum.workflow,
       isActive: false,
       isPromoted: true,

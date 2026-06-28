@@ -23,7 +23,6 @@ export type TeamSchema = {
   avatar: string;
   createTime: Date;
   balance: number;
-  teamDomain: string;
   limit: {
     lastExportDatasetTime: Date;
     lastWebsiteSyncTime: Date;
@@ -32,18 +31,6 @@ export type TeamSchema = {
   meta?: TeamMetaType;
   deleteTime?: Date;
 } & ThirdPartyAccountType;
-
-export type tagsType = {
-  label: string;
-  key: string;
-};
-
-export type TeamTagSchema = TeamTagItemType & {
-  _id: string;
-  teamId: string;
-  createTime: Date;
-  updateTime?: Date;
-};
 
 export type TeamMemberSchema = {
   _id: string;
@@ -71,7 +58,6 @@ export const TeamTmbItemSchema = ThidPartyAccountSchema.extend({
   avatar: z.string(),
   balance: z.number().optional(),
   tmbId: z.string(),
-  teamDomain: z.string(),
   role: z.enum(TeamMemberRoleEnum),
   status: z.enum(TeamMemberStatusEnum),
   notificationAccount: z.string().optional(),
@@ -112,11 +98,6 @@ export type TeamMemberItemType<
         groupRole?: `${GroupMemberRole}`;
       }
     : unknown);
-
-export type TeamTagItemType = {
-  label: string;
-  key: string;
-};
 
 export type TeamInvoiceHeaderType = {
   teamName: string;

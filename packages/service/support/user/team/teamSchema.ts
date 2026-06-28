@@ -23,9 +23,6 @@ const TeamSchema = new Schema({
     default: () => Date.now()
   },
   balance: Number,
-  teamDomain: {
-    type: String
-  },
   limit: {
     lastExportDatasetTime: {
       type: Date

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { openAPIDocument } from '@fastgpt/global/openapi/provider/devapi';
+import { apiDocOpenAPIDocument } from '@fastgpt/global/openapi/provider/systemopenapi';
 import { GetPreviewNodeQuerySchema } from '@fastgpt/global/openapi/core/app/tool/api';
 
 describe('GetPreviewNodeQuerySchema', () => {
@@ -63,5 +64,13 @@ describe('GetPreviewNodeQuerySchema', () => {
 
     expect(tags).toContain('会话管理');
     expect(tags.some((tag) => tag.startsWith('systemOpenAPI:'))).toBe(false);
+  });
+
+  it('includes chat quote APIs in System OpenAPI document', () => {
+    expect(apiDocOpenAPIDocument.paths['/core/chat/record/getQuote']?.post).toBeDefined();
+    expect(apiDocOpenAPIDocument.paths['/core/chat/record/getCollectionQuote']?.post).toBeDefined();
+    expect(apiDocOpenAPIDocument.paths['/core/chat/record/getQuote']?.post?.tags).toEqual([
+      '对话管理'
+    ]);
   });
 });

@@ -17,7 +17,6 @@ import { ChatBoxContext } from '../Provider';
 import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 import MyIconButton from '@/pageComponents/account/team/OrgManage/IconButton';
 import { isMobile } from '@fastgpt/web/common/system/utils';
-import { useChatApiTarget } from '@/web/core/chat/utils';
 
 export interface VoiceInputComponentRef {
   onSpeak: () => void;
@@ -291,9 +290,7 @@ const VoiceInput = forwardRef<VoiceInputComponentRef, VoiceInputProps>(
     const { isPc } = useSystem();
 
     const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
-    const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
     const sourceTarget = useContextSelector(WorkflowRuntimeContext, (v) => v.sourceTarget);
-    const chatTarget = useChatApiTarget(sourceTarget);
     const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
     const whisperConfig = useContextSelector(ChatBoxContext, (v) => v.whisperConfig);
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -307,7 +304,12 @@ const VoiceInput = forwardRef<VoiceInputComponentRef, VoiceInputProps>(
       renderAudioGraphPc,
       renderAudioGraphMobile,
       stream
-    } = useSpeech({ ...chatTarget, chatId, ...outLinkAuthData });
+    } = useSpeech({
+      sourceType: sourceTarget.sourceType,
+      sourceId: sourceTarget.sourceId,
+      chatId,
+      outLinkAuthData
+    });
 
     // Canvas render
     useEffect(() => {
@@ -383,7 +385,7 @@ const VoiceInput = forwardRef<VoiceInputComponentRef, VoiceInputProps>(
       getVoiceInputState: () => ({ isSpeaking: isSpeaking || mobilePreSpeak, isTransCription })
     }));
 
-    if (!appId || !whisperConfig?.open) return null;
+    if (!sourceTarget.sourceId || !whisperConfig?.open) return null;
     if (!mobilePreSpeak && !isSpeaking && !isTransCription) return null;
 
     return (

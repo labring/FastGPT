@@ -11,7 +11,6 @@ import {
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
-import { AppCollectionName } from '../app/schema';
 import { chatCollectionName } from './constants';
 import { AppVersionCollectionName } from '../app/version/schema';
 
@@ -37,7 +36,6 @@ const ChatSchema = new Schema({
   // 历史物理字段名，业务语义为 sourceId；App 场景才是真实 appId。
   appId: {
     type: Schema.Types.ObjectId,
-    ref: AppCollectionName,
     required: true
   },
   appVersionId: {

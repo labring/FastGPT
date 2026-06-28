@@ -21,7 +21,7 @@ import type { ChatBoxInputType } from '../type';
 import { hasAiAnswerContent } from './AIChatBubble/utils';
 import ChatErrorCard from './ChatErrorCard';
 import { shouldShowChatItemInlineError } from '../utils/error';
-import { useChatApiTarget } from '@/web/core/chat/utils';
+import { toChatAuthApiTarget } from '@/web/core/chat/utils';
 
 const colorMap = {
   [ChatStatusEnum.loading]: {
@@ -81,11 +81,13 @@ const ChatItem = (props: Props) => {
   const isHumanMessage = chat.obj === ChatRoleEnum.Human;
   const { isPc } = useSystem();
 
-  const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
   const sourceTarget = useContextSelector(WorkflowRuntimeContext, (v) => v.sourceTarget);
-  const chatTarget = useChatApiTarget(sourceTarget);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
+  const chatAuthTarget = useMemoEnhance(
+    () => toChatAuthApiTarget({ sourceTarget, outLinkAuthData }),
+    [sourceTarget, outLinkAuthData]
+  );
   const isShowFullText = useContextSelector(ChatItemContext, (v) => v.isShowFullText);
 
   const statisticalChatItem = useMemoEnhance(() => addStatisticalDataToHistoryItem(chat), [chat]);
@@ -193,6 +195,11 @@ const ChatItem = (props: Props) => {
 
     return [];
   }, [chat.obj, chat.value, isChatting, isLastChild]);
+  const hasValidAiContent = useMemo(() => {
+    if (chat.obj !== ChatRoleEnum.AI) return false;
+
+    return chat.value.some((item) => !shouldFilterAiValue(item));
+  }, [chat.obj, chat.value]);
 
   const setCiteModalData = useContextSelector(ChatItemContext, (v) => v.setCiteModalData);
   const onOpenCiteModal = useMemoizedFn(
@@ -212,7 +219,7 @@ const ChatItem = (props: Props) => {
         metadata:
           item?.collectionId && isShowFullText
             ? {
-                ...chatTarget,
+                ...chatAuthTarget,
                 chatId: chatId,
                 chatItemDataId: chat.dataId,
                 collectionId: item.collectionId,
@@ -220,17 +227,15 @@ const ChatItem = (props: Props) => {
                 sourceId: item.sourceId || '',
                 sourceName: item.sourceName || '',
                 datasetId: item.datasetId || '',
-                outLinkAuthData,
                 quoteId: item.quoteId
               }
             : {
-                ...chatTarget,
+                ...chatAuthTarget,
                 chatId: chatId,
                 chatItemDataId: chat.dataId,
                 collectionIdList,
                 sourceId: item?.sourceId,
-                sourceName: item?.sourceName,
-                outLinkAuthData
+                sourceName: item?.sourceName
               }
       });
     }
@@ -326,6 +331,7 @@ const ChatItem = (props: Props) => {
               isLastChild={isLastChild}
               isLastValueGroup={i === splitAiResponseResults.length - 1}
               isChatting={isChatting}
+              hasValidContent={hasValidAiContent}
               loadingText={showRunningStatus ? statusBoxData?.name : undefined}
               questionGuides={questionGuides}
               enableSandbox={enableSandbox}

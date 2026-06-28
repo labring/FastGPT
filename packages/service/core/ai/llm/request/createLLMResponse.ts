@@ -44,6 +44,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
     throwError = true,
     body,
     custonHeaders,
+    timeout,
     userKey,
     maxContinuations = 1,
     saveLLMResponseRecord = true,
@@ -98,6 +99,7 @@ export const createLLMResponse = async <T extends ChatCompletionCreateParams>(
         },
         modelData,
         userKey,
+        timeout,
         options: {
           headers: {
             Accept: 'application/json, text/plain, */*',

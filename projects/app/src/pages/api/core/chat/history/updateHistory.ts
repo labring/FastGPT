@@ -10,18 +10,7 @@ import { buildChatHistoryMatch } from '@/service/core/chat/history';
 
 /* update chat history: title, customTitle, top */
 export async function handler(req: ApiRequestProps, res: NextApiResponse) {
-  const {
-    sourceType,
-    sourceId,
-    chatId,
-    title,
-    customTitle,
-    top,
-    shareId,
-    outLinkUid,
-    teamId,
-    teamToken
-  } = parseApiInput({
+  const { sourceType, sourceId, chatId, title, customTitle, top, outLinkAuthData } = parseApiInput({
     req,
     bodySchema: UpdateHistoryBodySchema
   }).body;
@@ -31,10 +20,7 @@ export async function handler(req: ApiRequestProps, res: NextApiResponse) {
     sourceType,
     sourceId,
     chatId,
-    shareId,
-    outLinkUid,
-    teamId,
-    teamToken,
+    outLinkAuthData,
     per: WritePermissionVal
   });
   if (!match) return Promise.reject(ChatErrEnum.unAuthChat);

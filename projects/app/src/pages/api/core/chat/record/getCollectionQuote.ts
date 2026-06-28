@@ -32,37 +32,42 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionQuoteResType>
     sourceType,
     sourceId,
     chatId,
-    shareId,
-    outLinkUid,
-    teamId,
-    teamToken,
+    outLinkAuthData,
     pageSize
   } = parseApiInput({ req, bodySchema: GetCollectionQuoteBodySchema }).body;
 
   const limitedPageSize = pageSize;
 
-  const [collection, { chat, showFullText }, chatItem] = await Promise.all([
+  const authRes = await authChatTargetCrud({
+    req,
+    authToken: true,
+    authApiKey: true,
+    sourceType,
+    sourceId,
+    chatId,
+    outLinkAuthData
+  });
+  const resolvedSourceId = authRes.sourceId;
+
+  const [collection, chatItem] = await Promise.all([
     getCollectionWithDataset(collectionId),
-    authChatTargetCrud({
-      req,
-      authToken: true,
-      authApiKey: true,
-      sourceType,
-      sourceId,
-      chatId,
-      shareId,
-      outLinkUid,
-      teamId,
-      teamToken
-    }),
     MongoChatItem.findOne(
-      { ...buildChatSourceQuery({ sourceType, sourceId }), chatId, dataId: chatItemDataId },
+      {
+        ...buildChatSourceQuery({ sourceType, sourceId: resolvedSourceId }),
+        chatId,
+        dataId: chatItemDataId
+      },
       'time'
     ).lean(),
-    authCollectionInChat({ sourceType, sourceId, chatId, collectionIds: [collectionId] })
+    authCollectionInChat({
+      sourceType,
+      sourceId: resolvedSourceId,
+      chatId,
+      collectionIds: [collectionId]
+    })
   ]);
 
-  if (!showFullText || !chat || !chatItem || initialAnchor === undefined) {
+  if (!authRes.showFullText || !authRes.chat || !chatItem || initialAnchor === undefined) {
     return Promise.reject(ChatErrEnum.unAuthChat);
   }
 

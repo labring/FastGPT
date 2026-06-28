@@ -44,7 +44,6 @@ async function getTeamMember(match: Record<string, any>): Promise<TeamTmbItemTyp
     avatar: tmb.avatar,
     balance: tmb.team.balance,
     tmbId: String(tmb._id),
-    teamDomain: tmb.team?.teamDomain,
     role: tmb.role,
     status: tmb.status,
     permission: new TeamPermission({
@@ -152,7 +151,6 @@ export async function updateTeam({
   teamId,
   name,
   avatar,
-  teamDomain,
   openaiAccount,
   externalWorkflowVariable
 }: UpdateTeamProps & { teamId: string }) {
@@ -217,7 +215,6 @@ export async function updateTeam({
         $set: {
           ...(name ? { name } : {}),
           ...(avatar ? { avatar } : {}),
-          ...(teamDomain ? { teamDomain } : {}),
           ...setObj
         },
         ...unsetObj

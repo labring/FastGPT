@@ -2,7 +2,6 @@ import { connectionMongo, getMongoModel } from '../../common/mongo';
 const { Schema } = connectionMongo;
 import type { ChatItemResponseSchemaType } from '@fastgpt/global/core/chat/type';
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
-import { AppCollectionName } from '../app/schema';
 import { ChatItemResponseCollectionName } from './constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
@@ -16,9 +15,9 @@ const ChatItemResponseSchema = new Schema({
     type: String,
     enum: Object.values(ChatSourceTypeEnum)
   },
+  // 历史物理字段名，业务语义为 sourceId；App 场景才是真实 appId。
   appId: {
     type: Schema.Types.ObjectId,
-    ref: AppCollectionName,
     required: true
   },
   chatId: {

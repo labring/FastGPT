@@ -3,9 +3,14 @@ import { EventEmitter } from 'node:events';
 import { createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { runWorkflow, WorkflowQueue } from '@fastgpt/service/core/workflow/dispatch/index';
+import {
+  dispatchWorkFlow,
+  runWorkflow,
+  WorkflowQueue
+} from '@fastgpt/service/core/workflow/dispatch/index';
 import { getWorkflowNodeRunParams } from '@fastgpt/service/core/workflow/dispatch/utils/runtime';
 import { createClientAbortTracker } from '@fastgpt/service/core/workflow/dispatch/utils/clientAbort';
+import { getWorkflowResponseWrite } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { createNode, createEdge } from '../utils';
 import {
   NodeInputKeyEnum,
@@ -53,6 +58,36 @@ const createWorkflowVariableState = (
   toRuntimeRecord: () => ({ ...variables }),
   toStoreRecord: () => ({ ...variables }),
   clone: () => createWorkflowVariableState({ ...variables })
+});
+
+describe('dispatchWorkFlow SSE initialization guard', () => {
+  it('rejects stream responses when SSE was not initialized before dispatch', async () => {
+    const res = new EventEmitter() as any;
+    Object.assign(res, {
+      closed: false,
+      destroyed: false,
+      writableEnded: false,
+      headersSent: false,
+      setHeader: vi.fn(),
+      on: vi.fn(),
+      once: vi.fn(),
+      end: vi.fn()
+    });
+    const workflowStreamResponse = getWorkflowResponseWrite({
+      res,
+      detail: true,
+      streamResponse: true
+    });
+
+    await expect(
+      dispatchWorkFlow({
+        res,
+        stream: true,
+        workflowStreamResponse,
+        responseChatItemId: 'response-id'
+      } as any)
+    ).rejects.toThrow('Workflow SSE response must be initialized before dispatchWorkFlow');
+  });
 });
 
 describe('createClientAbortTracker', () => {

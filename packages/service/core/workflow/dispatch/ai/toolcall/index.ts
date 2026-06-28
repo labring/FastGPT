@@ -12,7 +12,7 @@ import { postTextCensor } from '../../../../chat/postTextCensor';
 import { useToolNodeList } from './hooks/useToolNodeList';
 import { useToolMessages } from './hooks/useToolMessages';
 import { checkTeamSandboxPermission } from '../../../../../support/permission/teamLimit';
-import { createAgentSandboxPermissionDeniedError } from '../../../../ai/sandbox/error';
+import { createAgentSandboxPermissionDeniedError } from '../../../../ai/sandbox/interface/runtime';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;

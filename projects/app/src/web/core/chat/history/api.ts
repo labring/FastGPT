@@ -1,4 +1,5 @@
 import { POST, PUT, DELETE } from '@/web/common/api/request';
+import { toChatAuthQueryInput } from '@/web/core/chat/utils';
 import type {
   ChatBatchDeleteBodyType,
   DelChatHistoryType,
@@ -26,11 +27,11 @@ export const putChatHistory = (data: UpdateHistoryBodyType) =>
 
 // delete one history (soft delete)
 export const delChatHistoryById = (data: DelChatHistoryType) =>
-  DELETE(`/core/chat/history/delHistory`, data);
+  DELETE(`/core/chat/history/delHistory`, toChatAuthQueryInput(data));
 
 // clear all histories by chat target
 export const delClearChatHistories = (data: ClearChatHistoriesType) =>
-  DELETE(`/core/chat/history/clearHistories`, data);
+  DELETE(`/core/chat/history/clearHistories`, toChatAuthQueryInput(data));
 
 // Log manger
 export const batchDeleteChatHistories = (data: ChatBatchDeleteBodyType) =>

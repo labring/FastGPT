@@ -11,15 +11,7 @@ The chat title generation model is no longer configured through the `CHAT_TITLE_
 
 If you previously configured `CHAT_TITLE_MODEL`, remove it from the `fastgpt` and `fastgpt-pro` environment variables, then select the corresponding model in the UI.
 
-### 2. Add team isolation to LLM request traces
-
-LLM request traces (`llm_request_records`) now include a `teamId` field. `GET /api/core/ai/record/getRecord` queries records by `{ requestId, teamId }` for the current team, preventing a `requestId` from being used to read another team's request body, retrieved Knowledge Base chunks, or model response.
-
-The unique index on `llm_request_records` has also changed from the single `requestId` field to the compound unique index `{ teamId: 1, requestId: 1 }`. If your self-hosted deployment has `SYNC_INDEX` disabled, run an index sync after upgrading so the old `requestId_1` unique index is removed.
-
-Risk: trace records written before this upgrade do not have `teamId`, so they can no longer be queried by `requestId` after the upgrade. The UI will treat them as expired. These records already have a TTL and are intended only for temporary debugging. Export the relevant logs or keep the original request details before upgrading if you need to investigate historical calls.
-
-### 3. Clean up legacy Skill Debug chat data
+### 2. Clean up legacy Skill Debug chat data
 
 This version migrates Skill Edit chats to the standard Chat storage model. Historical Skill Debug data wrote `skillId` into the physical `appId` field in the three Chat collections and did not include `sourceType`. Historical sandbox instance records also need `sourceType/sourceId` backfilled. After the upgrade, new Skill Edit chats will not read those legacy records, but we recommend running the root-only initialization API once to migrate sandbox instance ownership fields and clean up legacy Skill Debug chats. This endpoint is only for this upgrade migration and is not exposed as an OpenAPI endpoint.
 
@@ -60,18 +52,44 @@ Migration logic:
 
 This endpoint does not backfill `sourceType` for existing App Chat records.
 
-### 4. Configure package registry mirrors for Agent Sandbox
+### 3. Update environment variables (optional)
 
 Agent Sandbox now supports package registry mirror configuration. When configured, FastGPT writes mirror configuration files for npm, yarn, bun, pip, and uv under the sandbox HOME directory during sandbox initialization. This improves dependency installation stability in private networks or cross-region network environments.
 
 ```dotenv
-# Registry used by npm/yarn/bun inside Agent Sandbox
+# npm registry used by npm/yarn/pnpm/bun inside Agent Sandbox
 AGENT_SANDBOX_NPM_REGISTRY=
-# Python package index used by pip/uv inside Agent Sandbox
+# PyPI index URL used by pip/python -m pip/uv inside Agent Sandbox
 AGENT_SANDBOX_PYPI_INDEX_URL=
 ```
 
 The configuration is cached by content hash in the sandbox runtime state, so the same sandbox only rewrites these files when the configuration changes.
+
+### 4. Update images
+
+- Update the fastgpt-app (FastGPT main service) image tag to v4.15.0-beta6.
+- Update the fastgpt-pro (FastGPT commercial edition) image tag to v4.15.0-beta6.
+- Update the fastgpt-plugin image tag to v1.0.0-beta6.
+- Update the aiproxy image tag to v0.6.2.
+
+If Agent Sandbox is enabled, also update the following images:
+
+- Update the fastgpt-agent-sandbox-proxy image tag to v0.2.0-beta3.
+- Update the fastgpt-agent-sandbox image tag to v0.2.0.-beta3.
+
+## Risks
+
+### 1. Team isolation added to LLM request traces
+
+LLM request traces (`llm_request_records`) now include a `teamId` field. `GET /api/core/ai/record/getRecord` queries records by `{ requestId, teamId }` for the current team, preventing a `requestId` from being used to read another team's request body, retrieved Knowledge Base chunks, or model response.
+
+The unique index on `llm_request_records` has also changed from the single `requestId` field to the compound unique index `{ teamId: 1, requestId: 1 }`. If your self-hosted deployment has `SYNC_INDEX` disabled, run an index sync after upgrading so the old `requestId_1` unique index is removed.
+
+Risk: trace records written before this upgrade do not have `teamId`, so they can no longer be queried by `requestId` after the upgrade. The UI will treat them as expired. These records already have a TTL and are intended only for temporary debugging. Export the relevant logs or keep the original request details before upgrading if you need to investigate historical calls.
+
+## 🚀 New Features
+
+1. The commercial edition now supports local direct-connect debugging for FastGPT plugins.
 
 ## ⚙️ Improvements
 
@@ -79,3 +97,7 @@ The configuration is cached by content hash in the sandbox runtime state, so the
 2. LLM request traces are now queried with team isolation, and the unique index is now `{ teamId, requestId }` to prevent request IDs from exposing sensitive traces across teams.
 3. Skill Edit chats now use the standard Chat storage and cleanup flow, and legacy Skill Debug chats can be cleaned through the initialization API.
 4. Agent Sandbox now supports npm and PyPI mirror configuration. During initialization, it writes common package manager configuration files to reduce dependency installation failures inside the sandbox.
+
+## Code Improvements
+
+1. The chat takeover API has been abstracted from app-specific handling into a platform-level capability.

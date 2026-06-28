@@ -9,16 +9,10 @@ import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/aud
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
-import { findSandboxInstanceBySandboxId } from '@fastgpt/service/core/ai/sandbox/instance/repository';
-import { getSandboxProviderConfig } from '@fastgpt/service/core/ai/sandbox/provider/config';
-import { getSandboxRuntimeProfile } from '@fastgpt/service/core/ai/sandbox/runtime/profile';
-import { SandboxStatusEnum, SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/runtime/id';
 import {
-  EDIT_DEBUG_SANDBOX_CHAT_ID,
-  packageSkillInSandbox
-} from '@fastgpt/service/core/ai/skill/edit';
+  packageSkillEditWorkspace,
+  SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR
+} from '@fastgpt/service/core/ai/sandbox/interface/skillEdit';
 
 export const config = {
   api: {
@@ -49,30 +43,20 @@ async function handler(req: ApiRequestProps, res: ApiResponseType<any>) {
 
   logger.debug('Exporting skill edit workspace', { skillId, skillName: skill.name });
 
-  const providerConfig = getSandboxProviderConfig();
-  const sandboxId = getRunningSandboxId({
-    sourceType: ChatSourceTypeEnum.skillEdit,
-    sourceId: skillId,
-    userId: String(tmbId),
-    chatId: EDIT_DEBUG_SANDBOX_CHAT_ID
-  });
-  const sandboxInfo = await findSandboxInstanceBySandboxId({
-    provider: providerConfig.provider,
-    sandboxId,
-    status: SandboxStatusEnum.running,
-    type: SandboxTypeEnum.editDebug
-  });
+  let zipBuffer: Buffer;
+  try {
+    zipBuffer = await packageSkillEditWorkspace({
+      skillId,
+      teamId,
+      validationMode: 'basicZip'
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR) {
+      return jsonRes(res, { code: 404, error: SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR });
+    }
 
-  if (!sandboxInfo || sandboxInfo.status !== SandboxStatusEnum.running) {
-    return jsonRes(res, { code: 404, error: 'Edit sandbox not found or not running' });
+    throw error;
   }
-
-  const runtimeProfile = getSandboxRuntimeProfile(providerConfig.provider);
-  const zipBuffer = await packageSkillInSandbox({
-    sandboxId: sandboxInfo.sandboxId,
-    workDirectory: runtimeProfile.workDirectory,
-    validationMode: 'basicZip'
-  });
 
   const filename = `${skill.name}.zip`;
   res.setHeader('Content-Type', 'application/zip');

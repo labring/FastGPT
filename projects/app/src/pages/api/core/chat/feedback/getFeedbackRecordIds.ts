@@ -12,12 +12,14 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 
 async function handler(req: ApiRequestProps): Promise<GetFeedbackRecordIdsResponseType> {
-  const { sourceType, sourceId, chatId, feedbackType, unreadOnly } = parseApiInput({
-    req,
-    bodySchema: GetFeedbackRecordIdsBodySchema
-  }).body;
+  const { sourceType, sourceId, chatId, feedbackType, unreadOnly, outLinkAuthData } = parseApiInput(
+    {
+      req,
+      bodySchema: GetFeedbackRecordIdsBodySchema
+    }
+  ).body;
 
-  if (!sourceId || !chatId) {
+  if (!chatId) {
     return {
       total: 0,
       dataIds: []
@@ -25,14 +27,16 @@ async function handler(req: ApiRequestProps): Promise<GetFeedbackRecordIdsRespon
   }
 
   // Auth check
-  await authChatTargetCrud({
+  const authRes = await authChatTargetCrud({
     req,
     authToken: true,
     authApiKey: true,
     sourceType,
     sourceId,
-    chatId
+    chatId,
+    outLinkAuthData
   });
+  const resolvedSourceId = authRes.sourceId;
 
   // Build feedback filter condition
   const buildFeedbackCondition = () => {
@@ -73,14 +77,15 @@ async function handler(req: ApiRequestProps): Promise<GetFeedbackRecordIdsRespon
   };
 
   const feedbackCondition = buildFeedbackCondition();
-  const chatSourceQuery = buildChatSourceQuery({ sourceType, sourceId });
+  const chatSourceQuery = buildChatSourceQuery({ sourceType, sourceId: resolvedSourceId });
+  const feedbackQuery = { $and: [chatSourceQuery, { chatId }, feedbackCondition] };
 
   // Query feedback records, only return dataId field
   const [items, total] = await Promise.all([
-    MongoChatItem.find({ ...chatSourceQuery, chatId, ...feedbackCondition }, 'dataId')
+    MongoChatItem.find(feedbackQuery, 'dataId')
       .sort({ _id: 1 }) // Sort in chronological order
       .lean(),
-    MongoChatItem.countDocuments({ ...chatSourceQuery, chatId, ...feedbackCondition })
+    MongoChatItem.countDocuments(feedbackQuery)
   ]);
 
   const dataIds = items.map((item) => item.dataId).filter(Boolean);

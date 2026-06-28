@@ -66,6 +66,7 @@
     "node-cron": "^3.0.3",
     "p-limit": "^7.2.0",
     "papaparse": "5.4.1",
+    "pdfjs-dist": "4.10.38",
     "pg": "^8.10.0",
     "pino": "^9.7.0",
     "pino-opentelemetry-transport": "^1.0.1",

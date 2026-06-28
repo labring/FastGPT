@@ -13,23 +13,24 @@ import { serviceEnv } from '@fastgpt/service/env';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps): Promise<CreatePostPresignedUrlResponseType> {
-  const { filename, sourceType, sourceId, chatId, outLinkAuthData, fileSelectConfig } =
+  const { filename, sourceType, sourceId, chatId, fileSelectConfig, outLinkAuthData } =
     parseApiInput({
       req,
       bodySchema: PresignChatFilePostUrlSchema
     }).body;
 
-  const { teamId, uid } = await authChatTargetCrud({
+  const authRes = await authChatTargetCrud({
     req,
     authToken: true,
     authApiKey: true,
     sourceType,
     sourceId,
     chatId,
-    ...outLinkAuthData
+    outLinkAuthData
   });
+  const resolvedSourceId = authRes.sourceId;
 
-  const planStatus = await getTeamPlanStatus({ teamId });
+  const planStatus = await getTeamPlanStatus({ teamId: authRes.teamId });
   const allowedExtensions = getAllowedExtensionsFromFileSelectConfig(fileSelectConfig);
 
   if (!serviceEnv.SKIP_FILE_TYPE_CHECK && allowedExtensions.length === 0) {
@@ -37,17 +38,17 @@ async function handler(req: ApiRequestProps): Promise<CreatePostPresignedUrlResp
   }
 
   await authFrequencyLimit({
-    eventId: `${uid}-uploadfile`,
+    eventId: `${authRes.uid}-uploadfile`,
     maxAmount: planStatus.standard?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount,
     expiredTime: addSeconds(new Date(), 30) // 30s
   });
 
   return await getS3ChatSource().createUploadChatFileURL({
     sourceType,
-    sourceId,
+    sourceId: resolvedSourceId,
     chatId,
     filename,
-    uId: uid,
+    uId: authRes.uid,
     allowedExtensions,
     maxFileSize: planStatus.standard?.maxUploadFileSize ?? global.feConfigs.uploadFileMaxSize
   });

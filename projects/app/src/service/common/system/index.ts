@@ -21,6 +21,11 @@ import type {
 } from '@fastgpt/global/support/wallet/usage/api';
 import { isProVersion } from '@fastgpt/service/common/system/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
+import {
+  getAgentSandboxArchiveMaxBytes,
+  getAgentSandboxMaxFileBytes,
+  getAgentSandboxSkillMaxBytes
+} from '@fastgpt/service/core/ai/sandbox/interface/config';
 import { serviceEnv } from '@fastgpt/service/env';
 import { hasAIProxyApiEndpoint } from '@fastgpt/service/thirdProvider/aiproxy/config';
 import { appEnv } from '@/env';
@@ -130,9 +135,9 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
     exportDatasetLimitMinutes: 0,
     websiteSyncLimitMinuted: 0,
     agentSandboxMaxEditDebug: serviceEnv.AGENT_SANDBOX_MAX_EDIT_DEBUG,
-    agentSandboxArchiveMaxBytes: serviceEnv.AGENT_SANDBOX_ARCHIVE_MAX_SIZE * 1024 * 1024,
-    skillSandboxMaxBytes: serviceEnv.AGENT_SANDBOX_SKILL_MAX_SIZE * 1024 * 1024,
-    agentSandboxMaxFileBytes: serviceEnv.AGENT_SANDBOX_MAX_FILE_SIZE * 1024 * 1024,
+    agentSandboxArchiveMaxBytes: getAgentSandboxArchiveMaxBytes(),
+    skillSandboxMaxBytes: getAgentSandboxSkillMaxBytes(),
+    agentSandboxMaxFileBytes: getAgentSandboxMaxFileBytes(),
     workflowParallelRunMaxConcurrency: serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY,
     maxFolderDepth: serviceEnv.MAX_FOLDER_DEPTH
   },

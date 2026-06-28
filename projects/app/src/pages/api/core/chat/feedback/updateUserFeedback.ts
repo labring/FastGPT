@@ -15,22 +15,30 @@ import {
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 
 async function handler(req: ApiRequestProps): Promise<UpdateUserFeedbackResponseType> {
-  const { sourceType, sourceId, chatId, dataId, userBadFeedback, userGoodFeedback } = parseApiInput(
-    {
-      req,
-      bodySchema: UpdateUserFeedbackBodySchema
-    }
-  ).body;
-  const chatSourceQuery = buildChatSourceQuery({ sourceType, sourceId });
+  const {
+    sourceType,
+    sourceId,
+    chatId,
+    dataId,
+    userBadFeedback,
+    userGoodFeedback,
+    outLinkAuthData
+  } = parseApiInput({
+    req,
+    bodySchema: UpdateUserFeedbackBodySchema
+  }).body;
 
-  const { teamId } = await authChatTargetCrud({
+  const authRes = await authChatTargetCrud({
     req,
     authToken: true,
     authApiKey: true,
     sourceType,
     sourceId,
-    chatId
+    chatId,
+    outLinkAuthData
   });
+  const resolvedSourceId = authRes.sourceId;
+  const chatSourceQuery = buildChatSourceQuery({ sourceType, sourceId: resolvedSourceId });
 
   const chatItem = await MongoChatItem.findOne({
     ...chatSourceQuery,
@@ -62,7 +70,7 @@ async function handler(req: ApiRequestProps): Promise<UpdateUserFeedbackResponse
     // Update Chat table feedback statistics (redundant fields for performance)
     await updateChatFeedbackCount({
       sourceType,
-      sourceId,
+      sourceId: resolvedSourceId,
       chatId,
       session
     });
@@ -89,8 +97,8 @@ async function handler(req: ApiRequestProps): Promise<UpdateUserFeedbackResponse
 
       await MongoAppChatLog.findOneAndUpdate(
         {
-          teamId,
-          appId: sourceId,
+          teamId: authRes.teamId,
+          appId: resolvedSourceId,
           chatId
         },
         {

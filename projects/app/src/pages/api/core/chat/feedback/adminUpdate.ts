@@ -11,23 +11,26 @@ import {
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 
 async function handler(req: ApiRequestProps): Promise<AdminUpdateFeedbackResponseType> {
-  const { sourceType, sourceId, chatId, dataId, datasetId, feedbackDataId, q, a } = parseApiInput({
-    req,
-    bodySchema: AdminUpdateFeedbackBodySchema
-  }).body;
+  const { sourceType, sourceId, chatId, dataId, datasetId, feedbackDataId, q, a, outLinkAuthData } =
+    parseApiInput({
+      req,
+      bodySchema: AdminUpdateFeedbackBodySchema
+    }).body;
 
-  await authChatTargetCrud({
+  const authRes = await authChatTargetCrud({
     req,
     authToken: true,
     authApiKey: true,
     sourceType,
     sourceId,
-    chatId
+    chatId,
+    outLinkAuthData
   });
+  const resolvedSourceId = authRes.sourceId;
 
   await MongoChatItem.updateOne(
     {
-      ...buildChatSourceQuery({ sourceType, sourceId }),
+      ...buildChatSourceQuery({ sourceType, sourceId: resolvedSourceId }),
       chatId,
       dataId
     },

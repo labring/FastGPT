@@ -30,7 +30,6 @@ export enum ChatSourceEnum {
   share = 'share',
   api = 'api',
   cronJob = 'cronJob',
-  team = 'team',
   feishu = 'feishu',
   official_account = 'official_account',
   wecom = 'wecom',
@@ -70,10 +69,6 @@ export const ChatSourceMap = {
     name: i18nT('chat:source_cronJob'),
     color: '#FF81AE'
   },
-  [ChatSourceEnum.team]: {
-    name: i18nT('common:core.chat.logs.team'),
-    color: '#42CFC6'
-  },
   [ChatSourceEnum.feishu]: {
     name: i18nT('common:core.chat.logs.feishu'),
     color: '#39CC83'
@@ -105,7 +100,6 @@ export enum ChatStatusEnum {
 export enum GetChatTypeEnum {
   normal = 'normal',
   outLink = 'outLink',
-  team = 'team',
   home = 'home'
 }
 

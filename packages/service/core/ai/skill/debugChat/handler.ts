@@ -7,7 +7,7 @@ import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants'
 import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { concatHistories, removeEmptyUserInput } from '@fastgpt/global/core/chat/utils';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import {
   getLastInteractiveValue,
   textAdaptGptResponse
@@ -19,7 +19,6 @@ import {
   ChatSourceEnum
 } from '@fastgpt/global/core/chat/constants';
 import { SkillDebugChatBodySchema } from '@fastgpt/global/core/ai/skill/api';
-import { SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { sseErrRes } from '../../../../common/response';
@@ -32,9 +31,7 @@ import { getLogger, LogCategories } from '../../../../common/logger';
 import { getRunningUserInfoByTmbId } from '../../../../support/user/team/utils';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import { getDefaultLLMModel } from '../../model';
-import { getEditDebugSandboxId } from '../edit/config';
-import { findSandboxInstanceBySandboxIdAndSource } from '../../sandbox/instance/repository';
-import { getSandboxProviderConfig } from '../../sandbox/provider/config';
+import { getRunningSkillEditSandbox } from '../../sandbox/interface/skillEdit';
 import { dispatchWorkFlow } from '../../../workflow/dispatch';
 import { WORKFLOW_MAX_RUN_TIMES } from '../../../workflow/constants';
 import { getChatItems } from '../../../chat/controller';
@@ -47,9 +44,9 @@ import {
 import { preChatRound, type PreChatRoundResult } from '../../../chat/utils/prepare';
 import { updateChatGenerateStatus } from '../../../chat/chatGenerateStatus';
 import {
-  createSkillDebugStreamResponseContext,
-  type SkillDebugStreamResponseContext
-} from './streamResponseContext';
+  createWorkflowStreamResponseContext,
+  type WorkflowStreamResponseContext
+} from '../../../workflow/utils/streamResponseContext';
 import { buildDebugRuntimeNodes } from './runtime';
 import type { AgentSandboxPrepareAction } from '../../../workflow/dispatch/ai/agent/sub/sandbox';
 
@@ -69,7 +66,7 @@ export async function handleSkillDebugChat(
   } = {}
 ) {
   let skillId = '';
-  let streamResponseContext: SkillDebugStreamResponseContext | undefined;
+  let streamResponseContext: WorkflowStreamResponseContext | undefined;
   const roundState = {
     preparedRound: undefined as PreChatRoundResult | undefined,
     sourceType: undefined as ChatSourceTypeEnum | undefined,
@@ -109,25 +106,17 @@ export async function handleSkillDebugChat(
       authToken: true,
       authApiKey: true,
       skillId,
-      per: ReadPermissionVal
+      per: WritePermissionVal
     });
 
     if (!(await teamFrequencyLimit({ teamId, type: LimitTypeEnum.chat, res }))) {
       return;
     }
 
-    const providerConfig = getSandboxProviderConfig();
-    const editDebugSandboxId = getEditDebugSandboxId(skillId);
-    const sandboxInstance = await findSandboxInstanceBySandboxIdAndSource({
-      provider: providerConfig.provider,
-      sandboxId: editDebugSandboxId,
-      sourceType: chatSource.sourceType,
-      sourceId: chatSource.sourceId,
-      type: SandboxTypeEnum.editDebug
-    });
+    const sandboxInstance = await getRunningSkillEditSandbox({ skillId, teamId });
     if (!sandboxInstance) {
       throw new UserError(
-        'Edit debug sandbox not found. Please create it via /api/core/ai/skill/edit first.'
+        'Edit debug sandbox not found. Please initialize it via /api/core/ai/skill/runtime/init first.'
       );
     }
     logger.debug('Edit debug sandbox found', { skillId, sandboxId: sandboxInstance.sandboxId });
@@ -172,7 +161,7 @@ export async function handleSkillDebugChat(
       systemPrompt
     );
 
-    streamResponseContext = await createSkillDebugStreamResponseContext({
+    streamResponseContext = await createWorkflowStreamResponseContext({
       req,
       res,
       stream: true,

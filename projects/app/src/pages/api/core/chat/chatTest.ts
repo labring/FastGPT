@@ -54,7 +54,7 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   createWorkflowStreamResponseContext,
   type WorkflowStreamResponseContext
-} from '@/service/core/workflow/streamResponseContext';
+} from '@fastgpt/service/core/workflow/utils/streamResponseContext';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -347,8 +347,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       sseErrRes(res, err);
     }
     await streamResponseContext?.flushResume();
+  } finally {
+    res.end();
   }
-  res.end();
 }
 
 export default NextAPI(handler);

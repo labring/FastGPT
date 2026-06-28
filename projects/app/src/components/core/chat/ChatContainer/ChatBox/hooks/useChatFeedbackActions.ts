@@ -15,7 +15,7 @@ import type { AdminMarkType } from '../components/SelectMarkCollection';
 import { ChatTypeEnum, FeedbackTypeEnum } from '../constants';
 import { formatChatValue2InputType } from '../utils/chatValue';
 import type { ChatSiteItemType } from '../type';
-import { hasChatTargetInput, useChatApiTarget } from '@/web/core/chat/utils';
+import { hasChatTargetInput, useChatApiTarget, useChatAuthApiTarget } from '@/web/core/chat/utils';
 
 type UseChatFeedbackActionsProps = {
   feedbackType?: `${FeedbackTypeEnum}`;
@@ -61,6 +61,7 @@ export const useChatFeedbackActions = ({
   const chatTarget = useChatApiTarget(sourceTarget);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
+  const chatAuthTarget = useChatAuthApiTarget({ sourceTarget, outLinkAuthData });
   const hasChatTarget = hasChatTargetInput(chatTarget);
 
   useEffect(() => {
@@ -154,11 +155,10 @@ export const useChatFeedbackActions = ({
 
       try {
         updateChatUserFeedback({
-          ...chatTarget,
+          ...chatAuthTarget,
           chatId,
           dataId: chat.dataId,
-          userGoodFeedback: isGoodFeedback ? undefined : 'yes',
-          ...outLinkAuthData
+          userGoodFeedback: isGoodFeedback ? undefined : 'yes'
         });
       } catch {}
     };
@@ -186,10 +186,9 @@ export const useChatFeedbackActions = ({
 
         try {
           updateChatUserFeedback({
-            ...chatTarget,
+            ...chatAuthTarget,
             chatId,
-            dataId: chat.dataId,
-            ...outLinkAuthData
+            dataId: chat.dataId
           });
         } catch {}
       };
@@ -211,7 +210,7 @@ export const useChatFeedbackActions = ({
     return (e: ChangeEvent<HTMLInputElement>) => {
       if (e.target.checked && hasChatTarget && chatId && chat.dataId) {
         closeCustomFeedback({
-          ...chatTarget,
+          ...chatAuthTarget,
           chatId,
           dataId: chat.dataId,
           index: i
@@ -247,7 +246,7 @@ export const useChatFeedbackActions = ({
 
       try {
         await updateFeedbackReadStatus({
-          ...chatTarget,
+          ...chatAuthTarget,
           chatId,
           dataId: chat.dataId,
           isRead: newReadStatus
@@ -297,7 +296,7 @@ export const useChatFeedbackActions = ({
     if (!hasChatTarget || !chatId || !adminMarkData?.dataId) return;
 
     updateChatAdminFeedback({
-      ...chatTarget,
+      ...chatAuthTarget,
       chatId,
       dataId: adminMarkData.dataId,
       ...adminFeedback

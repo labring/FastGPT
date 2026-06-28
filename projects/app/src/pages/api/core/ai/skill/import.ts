@@ -23,7 +23,7 @@ import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { serviceEnv } from '@fastgpt/service/env';
+import { getAgentSandboxSkillMaxBytes } from '@fastgpt/service/core/ai/sandbox/interface/config';
 
 const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS.IMPORT);
 
@@ -67,7 +67,7 @@ async function handler(req: ApiRequestProps<ImportSkillBody>): Promise<ImportSki
 
   try {
     // Read env limit before multer so both use the same value
-    const maxSkillPackageSize = serviceEnv.AGENT_SANDBOX_SKILL_MAX_SIZE * 1024 * 1024;
+    const maxSkillPackageSize = getAgentSandboxSkillMaxBytes();
     // Convert bytes to MB for multer (multer expects MB)
     const maxSkillPackageSizeMB = Math.ceil(maxSkillPackageSize / 1024 / 1024);
 

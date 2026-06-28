@@ -7,7 +7,7 @@ import {
   ChatSourceEnum,
   ChatSourceTypeEnum
 } from '@fastgpt/global/core/chat/constants';
-import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/instance/schema';
+import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/schema';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
@@ -30,7 +30,7 @@ vi.mock('@fastgpt/service/support/permission/auth/common', () => ({
   authCert: mocks.authCert
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/service/resource', () => ({
+vi.mock('@fastgpt/service/core/ai/sandbox/application/resource', () => ({
   deleteSandboxResource: mocks.deleteSandboxResource
 }));
 
@@ -324,6 +324,7 @@ describe('init4150-beta6 migration', () => {
     expect(
       await MongoSandboxInstance.countDocuments({ 'metadata.skillId': { $exists: true } })
     ).toBe(0);
+    expect(await MongoSandboxInstance.countDocuments({ type: { $exists: true } })).toBe(0);
     await expect(
       MongoSandboxInstance.findOne({ sandboxId: 'legacy-sandbox-2' }).lean()
     ).resolves.toMatchObject({
@@ -360,7 +361,8 @@ describe('init4150-beta6 migration', () => {
       MongoSandboxInstance.findOne({ sandboxId: 'app-sandbox-3' }).lean()
     ).resolves.toEqual(
       expect.not.objectContaining({
-        appId: expect.anything()
+        appId: expect.anything(),
+        type: expect.anything()
       })
     );
     expect(mocks.addChatDeleteJob).toHaveBeenCalledWith({

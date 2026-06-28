@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   extractPageLines,
   postprocessLiteParsePages
-} from '@fastgpt/service/worker/readFile/utils/pdfTextPostprocess';
+} from '@fastgpt/service/worker/readFile/utils/LiteParse/pdfTextPostprocess';
 
 const textItem = ({
   text,

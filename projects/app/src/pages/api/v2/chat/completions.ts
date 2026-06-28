@@ -30,7 +30,6 @@ import { authOutLinkChatStart } from '@/service/support/permission/auth/outLink'
 import { recordAppUsage } from '@fastgpt/service/core/app/record/utils';
 import { pushResult2Remote, addOutLinkUsage } from '@fastgpt/service/support/outLink/tools';
 import { getUsageSourceByAuthType } from '@fastgpt/global/support/wallet/usage/tools';
-import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
 import {
   concatHistories,
   removeAIResponseCite,
@@ -73,7 +72,7 @@ import {
 import {
   createWorkflowStreamResponseContext,
   type WorkflowStreamResponseContext
-} from '@/service/core/workflow/streamResponseContext';
+} from '@fastgpt/service/core/workflow/utils/streamResponseContext';
 import { authChatCompletionHeaderRequest } from '@/service/support/permission/auth/chatCompletion';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
@@ -84,12 +83,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     chatId,
     appId,
     customUid,
-    // share chat
-    shareId,
-    outLinkUid,
-    // team chat
-    teamId: spaceTeamId,
-    teamToken,
+    outLinkAuthData,
 
     stream,
     showSkillReferences,
@@ -99,11 +93,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     authProxy
   } = completionBody;
   let { detail, retainDatasetCite, variables } = completionBody;
+  const shareId = outLinkAuthData?.shareId;
+  const outLinkUid = outLinkAuthData?.outLinkUid;
 
   const originIp = getIpFromRequest(req);
 
   const startTime = Date.now();
   let streamResponseContext: WorkflowStreamResponseContext | undefined;
+  let titleSender: ReturnType<typeof createGeneratedChatTitleSender> | undefined;
   const roundState = {
     preparedRound: undefined as PreChatRoundResult | undefined,
     sourceId: undefined as string | undefined,
@@ -164,19 +161,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           chatId,
           ip: originIp,
           question: startHookText
-        });
-      }
-      // team space chat
-      if (spaceTeamId && appId && teamToken) {
-        if (authProxy) {
-          return Promise.reject(ChatErrEnum.unAuthChat);
-        }
-
-        return authTeamSpaceChat({
-          teamId: spaceTeamId,
-          teamToken,
-          appId,
-          chatId
         });
       }
 
@@ -289,9 +273,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       if (authType === 'apikey') {
         return ChatSourceEnum.api;
       }
-      if (spaceTeamId) {
-        return ChatSourceEnum.team;
-      }
       return ChatSourceEnum.online;
     })();
 
@@ -331,14 +312,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       showNodeStatus: showRunningStatus
     });
     const shouldCollectFinalResponseData = (!stream && detail) || !!shareId;
-    const titleSender = createGeneratedChatTitleSender({
+    titleSender = createGeneratedChatTitleSender({
       titleGeneration: preparedRound.titleGeneration,
       stream,
       detail,
       writeChatTitle: (payload) => streamResponseContext?.responseWrite(payload)
     });
     if (stream) {
-      void titleSender.send();
+      void titleSender.start();
     }
 
     /* start flow controller */
@@ -443,8 +424,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         status: ChatGenerateStatusEnum.done
       });
     }
-
-    const isOwnerUse = !shareId && !spaceTeamId;
+    const isOwnerUse = !shareId;
     if (isOwnerUse && source === ChatSourceEnum.online) {
       await recordAppUsage({
         appId: app._id,
@@ -472,6 +452,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     if (stream) {
       await titleSender.send();
+      titleSender.close();
 
       streamResponseContext.responseWrite({
         event: SseResponseEventEnum.answer,
@@ -487,7 +468,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
 
       await streamResponseContext.flushResume();
-      res.end();
     } else {
       const generatedTitle = await titleSender.send();
       const formatResponseContent = removeAIResponseCite(assistantResponses, retainDatasetCite);
@@ -588,19 +568,23 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       }
     }
     if (stream) {
+      titleSender?.close();
       if (streamResponseContext) {
         streamResponseContext.writeStreamError(err);
       } else {
         sseErrRes(res, err);
       }
       await streamResponseContext?.flushResume();
-      res.end();
     } else {
       const errKey = typeof err === 'string' ? err : (err as Error)?.message;
       jsonRes(res, {
         code: errKey === ChatErrEnum.chatIsGenerating ? 409 : 500,
         error: err
       });
+    }
+  } finally {
+    if (stream) {
+      res.end();
     }
   }
 }
@@ -651,53 +635,6 @@ const authShareChat = async ({
     outLinkUserId: uid,
     showRunningStatus,
     showSkillReferences
-  };
-};
-const authTeamSpaceChat = async ({
-  appId,
-  teamId,
-  teamToken,
-  chatId
-}: {
-  appId: string;
-  teamId: string;
-  teamToken: string;
-  chatId?: string;
-}): Promise<AuthResponseType> => {
-  const { uid, tags } = await authTeamSpaceToken({
-    teamId,
-    teamToken
-  });
-
-  const app = await MongoApp.findOne({
-    _id: appId,
-    teamId,
-    $or: [{ teamTags: { $size: 0 } }, { teamTags: { $exists: false } }, { teamTags: { $in: tags } }]
-  }).lean();
-  if (!app) {
-    return Promise.reject(ChatErrEnum.unAuthChat);
-  }
-
-  const chat = chatId
-    ? await MongoChat.findOne({
-        ...buildChatSourceQuery({ sourceType: ChatSourceTypeEnum.app, sourceId: String(appId) }),
-        chatId
-      }).lean()
-    : null;
-
-  if (chat && (String(chat.teamId) !== teamId || chat.outLinkUid !== uid)) {
-    return Promise.reject(ChatErrEnum.unAuthChat);
-  }
-
-  return {
-    teamId,
-    tmbId: app.tmbId,
-    app,
-    authType: AuthUserTypeEnum.outLink,
-    apikey: '',
-    responseAllData: false,
-    showCite: true,
-    outLinkUserId: uid
   };
 };
 export const config = {

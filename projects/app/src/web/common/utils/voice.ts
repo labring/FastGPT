@@ -23,11 +23,13 @@ const isMediaSourceSupported = () => {
   return typeof MediaSource !== 'undefined' && MediaSource.isTypeSupported?.(contentType);
 };
 
-export const useAudioPlay = (
-  props?: OutLinkChatAuthProps & { appId?: string; ttsConfig?: AppTTSConfigType }
-) => {
+export const useAudioPlay = (props?: {
+  appId?: string;
+  ttsConfig?: AppTTSConfigType;
+  outLinkAuthData?: OutLinkChatAuthProps;
+}) => {
   const { t } = useTranslation();
-  const { appId, ttsConfig, shareId, outLinkUid, teamId, teamToken } = props || {};
+  const { appId, ttsConfig, outLinkAuthData } = props || {};
   const { toast } = useToast();
   const audioRef = useRef<HTMLAudioElement>();
   const [audioLoading, setAudioLoading] = useState(false);
@@ -54,6 +56,7 @@ export const useAudioPlay = (
 
       setAudioLoading(true);
       audioController.current = new AbortController();
+      const hasOutLinkAuth = !!(outLinkAuthData?.shareId && outLinkAuthData.outLinkUid);
 
       const response = await fetch(getWebReqUrl('/api/core/chat/record/getSpeech'), {
         method: 'POST',
@@ -62,13 +65,9 @@ export const useAudioPlay = (
         },
         signal: audioController.current.signal,
         body: JSON.stringify({
-          appId,
+          ...(hasOutLinkAuth ? { outLinkAuthData } : { appId }),
           ttsConfig,
-          input: input.trim(),
-          shareId,
-          outLinkUid,
-          teamId,
-          teamToken
+          input: input.trim()
         })
       }).finally(() => {
         setAudioLoading(false);
@@ -80,7 +79,7 @@ export const useAudioPlay = (
       }
       return response.body;
     },
-    [appId, outLinkUid, shareId, teamId, teamToken, ttsConfig]
+    [appId, outLinkAuthData, ttsConfig]
   );
   const playWebAudio = useCallback((text: string) => {
     // window speech

@@ -10,13 +10,10 @@ import {
   ModalFooter
 } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
-import { type AppSchemaType } from '@fastgpt/global/core/app/type';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { useTranslation } from 'next-i18next';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import TagsEditModal from '../../TagsEditModal';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import { useContextSelector } from 'use-context-selector';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
@@ -48,8 +45,6 @@ const AppCard = ({
   const onDelApp = useContextSelector(AppContext, (v) => v.onDelApp);
 
   const appId = appDetail._id;
-  const { feConfigs } = useSystemStore();
-  const [TeamTagsSet, setTeamTagsSet] = useState<AppSchemaType>();
   const [filterSensitiveInfo, setFilterSensitiveInfo] = useState(true);
 
   // transition to workflow
@@ -165,16 +160,7 @@ const AppCard = ({
                             icon: 'core/app/type/workflow',
                             label: t('app:transition_to_workflow'),
                             onClick: () => setTransitionCreateNew(true)
-                          },
-                          ...(appDetail.permission.hasWritePer && feConfigs?.show_team_chat
-                            ? [
-                                {
-                                  icon: 'core/chat/fileSelect',
-                                  label: t('app:team_tags_set'),
-                                  onClick: () => setTeamTagsSet(appDetail)
-                                }
-                              ]
-                            : [])
+                          }
                         ]
                       },
                       {
@@ -217,7 +203,6 @@ const AppCard = ({
           {appDetail.intro || t('common:core.app.tip.Add a intro to app')}
         </Box>
       </Box>
-      {TeamTagsSet && <TagsEditModal onClose={() => setTeamTagsSet(undefined)} />}
       {transitionCreateNew !== undefined && (
         <MyModal isOpen title={t('app:transition_to_workflow')} iconSrc="core/app/type/workflow">
           <ModalBody>

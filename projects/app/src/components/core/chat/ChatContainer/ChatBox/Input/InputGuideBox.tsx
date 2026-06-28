@@ -9,14 +9,15 @@ import HighlightText from '@fastgpt/web/components/common/String/HighlightText';
 import { ChatBoxContext } from '../Provider';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
+import type { ChatSourceTarget } from '@/web/core/chat/utils';
 
 export default function InputGuideBox({
-  appId,
+  sourceTarget,
   text,
   onSelect,
   onSend
 }: {
-  appId: string;
+  sourceTarget: ChatSourceTarget;
   text: string;
   onSelect: (text: string) => void;
   onSend: (text: string) => void;
@@ -32,9 +33,10 @@ export default function InputGuideBox({
       if (text.length > 20) return [];
       return await queryChatInputGuideList(
         {
-          appId,
+          sourceType: sourceTarget.sourceType,
+          sourceId: sourceTarget.sourceId,
           searchKey: text,
-          ...outLinkAuthData
+          outLinkAuthData
         },
         chatInputGuide.customUrl ? chatInputGuide.customUrl : undefined
       );

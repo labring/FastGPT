@@ -34,10 +34,10 @@ async function handler(req: ApiRequestProps): Promise<GetRecordsV2ResponseType> 
     nextId,
     prevId,
     includeDeleted = false,
-    ...authProps
+    outLinkAuthData
   } = parseApiInput({ req, bodySchema: GetRecordsV2BodySchema }).body;
 
-  if (!sourceId || !chatId) {
+  if (!chatId) {
     return {
       list: [],
       total: 0,
@@ -46,38 +46,40 @@ async function handler(req: ApiRequestProps): Promise<GetRecordsV2ResponseType> 
     };
   }
 
-  const [app, { showCite, showRunningStatus, showSkillReferences, authType }] = await Promise.all([
-    sourceType === ChatSourceTypeEnum.app ? MongoApp.findById(sourceId, 'type').lean() : null,
-    authChatTargetCrud({
-      req,
-      authToken: true,
-      authApiKey: true,
-      ...authProps,
-      sourceType,
-      sourceId,
-      chatId
-    })
-  ]);
+  const authRes = await authChatTargetCrud({
+    req,
+    authToken: true,
+    authApiKey: true,
+    outLinkAuthData,
+    sourceType,
+    sourceId,
+    chatId
+  });
+  const resolvedSourceId = authRes.sourceId;
+
+  const app =
+    sourceType === ChatSourceTypeEnum.app
+      ? await MongoApp.findById(resolvedSourceId, 'type').lean()
+      : null;
 
   if (sourceType === ChatSourceTypeEnum.app && !app) {
     return Promise.reject(AppErrEnum.unExist);
   }
   const isPlugin = app?.type === AppTypeEnum.workflowTool;
-  const isOutLink = authType === GetChatTypeEnum.outLink;
+  const isOutLink = authRes.authType === GetChatTypeEnum.outLink;
 
   const commonField =
     'obj value adminFeedback userGoodFeedback userBadFeedback time hideInUI durationSeconds errorMsg';
   const fieldMap = {
     [GetChatTypeEnum.normal]: `${commonField} ${loadCustomFeedbacks ? 'customFeedbacks isFeedbackRead deleteTime' : ''}`,
     [GetChatTypeEnum.outLink]: commonField,
-    [GetChatTypeEnum.team]: commonField,
     [GetChatTypeEnum.home]: commonField
   };
 
   const result = await getChatItems({
     includeDeleted,
     sourceType,
-    sourceId,
+    sourceId: resolvedSourceId,
     chatId,
     field: fieldMap[type],
     limit: pageSize,
@@ -97,10 +99,10 @@ async function handler(req: ApiRequestProps): Promise<GetRecordsV2ResponseType> 
       if (item.obj === ChatRoleEnum.AI) {
         item.responseData = filterPublicNodeResponseData({
           nodeRespones: item.responseData,
-          responseDetail: showCite
+          responseDetail: authRes.showCite
         });
 
-        if (showRunningStatus === false) {
+        if (authRes.showRunningStatus === false) {
           item.value = item.value.filter(
             (v) =>
               v.text?.content ||
@@ -110,13 +112,13 @@ async function handler(req: ApiRequestProps): Promise<GetRecordsV2ResponseType> 
               // 不返回 tool 和 skill
               (!v.tools && !v.skills)
           );
-        } else if (showSkillReferences === false) {
+        } else if (authRes.showSkillReferences === false) {
           item.value = item.value.filter((v) => !v.skills);
         }
       }
     });
   }
-  if (!showCite) {
+  if (!authRes.showCite) {
     result.histories.forEach((item) => {
       if (item.obj === ChatRoleEnum.AI) {
         item.value = removeAIResponseCite(item.value, false);
@@ -124,7 +126,9 @@ async function handler(req: ApiRequestProps): Promise<GetRecordsV2ResponseType> 
     });
   }
 
-  const list = isPlugin ? result.histories : transformPreviewHistories(result.histories, showCite);
+  const list = isPlugin
+    ? result.histories
+    : transformPreviewHistories(result.histories, authRes.showCite);
 
   return {
     list: list.map((item) => ({

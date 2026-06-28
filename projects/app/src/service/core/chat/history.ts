@@ -4,29 +4,28 @@ import { ChatSourceEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/co
 import { AuthUserTypeEnum, ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
-import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
-import { authOutLink } from '../../support/permission/auth/outLink';
-import { authTeamSpaceToken } from '../../support/permission/auth/team';
 import { authChatTargetCrud } from '../../support/permission/auth/chat';
+import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 type ChatHistoryAuthProps = {
   req: ApiRequestProps;
   sourceType?: ChatSourceTypeEnum;
   sourceId?: string;
   chatId?: string;
-  shareId?: string;
-  outLinkUid?: string;
-  teamId?: string;
-  teamToken?: string;
+  outLinkAuthData?: OutLinkChatAuthProps;
   source?: ChatSourceEnum;
   per?: PermissionValueType;
+};
+
+type ClearChatHistoriesAuthProps = Omit<ChatHistoryAuthProps, 'sourceType'> & {
+  sourceType: ChatSourceTypeEnum;
 };
 
 /**
  * 将历史会话接口的鉴权上下文转换为 chat 表查询条件。
  *
- * 外链和团队空间仍沿用 App-only 鉴权，并通过真实 appId 生成 source-aware 查询；
+ * 外链仍沿用 App-only 鉴权，并通过真实 appId 生成 source-aware 查询；
  * 标准 App/Skill Edit 请求必须先在 API schema 中转换为 `sourceType/sourceId`。
  */
 export async function buildChatHistoryMatch({
@@ -34,22 +33,38 @@ export async function buildChatHistoryMatch({
   sourceType,
   sourceId,
   chatId,
-  shareId,
-  outLinkUid,
-  teamId,
-  teamToken,
+  outLinkAuthData,
   source,
   per = ReadPermissionVal
 }: ChatHistoryAuthProps) {
-  if (shareId && outLinkUid) {
-    const { uid, appId } = await authOutLink({ shareId, outLinkUid });
+  const hasShareAuth = !!(outLinkAuthData?.shareId && outLinkAuthData?.outLinkUid);
+  const authSourceType = sourceType ?? (hasShareAuth ? ChatSourceTypeEnum.app : undefined);
 
+  if (!authSourceType || (!sourceId && !hasShareAuth)) {
+    return undefined;
+  }
+
+  const {
+    sourceType: resolvedSourceType,
+    sourceId: resolvedSourceId,
+    tmbId,
+    uid,
+    authType
+  } = await authChatTargetCrud({
+    req,
+    authToken: true,
+    authApiKey: true,
+    sourceType: authSourceType,
+    sourceId,
+    chatId,
+    outLinkAuthData,
+    per
+  });
+
+  if (authType === AuthUserTypeEnum.outLink) {
     return {
-      ...buildChatSourceQuery({
-        sourceType: ChatSourceTypeEnum.app,
-        sourceId: String(appId)
-      }),
-      shareId,
+      ...buildChatSourceQuery({ sourceType: resolvedSourceType, sourceId: resolvedSourceId }),
+      shareId: outLinkAuthData?.shareId,
       outLinkUid: uid,
       updateTime: {
         $gte: addMonths(new Date(), -1)
@@ -57,50 +72,9 @@ export async function buildChatHistoryMatch({
     };
   }
 
-  if (sourceType === ChatSourceTypeEnum.app && sourceId && teamId && teamToken) {
-    const { uid, tags } = await authTeamSpaceToken({ teamId, teamToken });
-
-    const app = await MongoApp.findOne({
-      _id: sourceId,
-      teamId,
-      $or: [
-        { teamTags: { $size: 0 } },
-        { teamTags: { $exists: false } },
-        { teamTags: { $in: tags } }
-      ]
-    }).lean();
-    if (!app) return undefined;
-
-    return {
-      ...buildChatSourceQuery({ sourceType, sourceId }),
-      outLinkUid: uid,
-      source: ChatSourceEnum.team
-    };
-  }
-
-  if (!sourceType || !sourceId) {
-    return undefined;
-  }
-
-  const { tmbId, uid, authType } = await authChatTargetCrud({
-    req,
-    authToken: true,
-    authApiKey: true,
-    sourceType,
-    sourceId,
-    chatId,
-    shareId,
-    outLinkUid,
-    teamId,
-    teamToken,
-    per
-  });
-
   return {
-    ...buildChatSourceQuery({ sourceType, sourceId }),
-    ...(authType === AuthUserTypeEnum.outLink || authType === AuthUserTypeEnum.teamDomain
-      ? { outLinkUid: uid }
-      : { tmbId }),
+    ...buildChatSourceQuery({ sourceType: resolvedSourceType, sourceId: resolvedSourceId }),
+    tmbId,
     ...(source && { source })
   };
 }
@@ -115,59 +89,56 @@ export async function buildClearChatHistoriesMatch({
   req,
   sourceType,
   sourceId,
-  shareId,
-  outLinkUid,
-  teamId,
-  teamToken
-}: ChatHistoryAuthProps) {
+  outLinkAuthData
+}: ClearChatHistoriesAuthProps) {
   const match = await buildChatHistoryMatch({
     req,
     sourceType,
     sourceId,
-    shareId,
-    outLinkUid,
-    teamId,
-    teamToken
+    outLinkAuthData
   });
   if (!match) return undefined;
 
-  if (shareId && outLinkUid) {
+  if (outLinkAuthData?.shareId && outLinkAuthData?.outLinkUid) {
     return match;
   }
 
-  if (!sourceType || !sourceId) {
+  if (!sourceId) {
     return undefined;
   }
 
-  const { tmbId, uid, authType } = await authChatTargetCrud({
+  const {
+    sourceType: resolvedSourceType,
+    sourceId: resolvedSourceId,
+    tmbId,
+    uid,
+    authType
+  } = await authChatTargetCrud({
     req,
     authToken: true,
     authApiKey: true,
     sourceType,
     sourceId,
-    shareId,
-    outLinkUid,
-    teamId,
-    teamToken
+    outLinkAuthData
   });
 
-  if (authType === AuthUserTypeEnum.outLink || authType === AuthUserTypeEnum.teamDomain) {
+  if (authType === AuthUserTypeEnum.outLink) {
     return {
-      ...buildChatSourceQuery({ sourceType, sourceId }),
+      ...buildChatSourceQuery({ sourceType: resolvedSourceType, sourceId: resolvedSourceId }),
       outLinkUid: uid
     };
   }
 
   if (sourceType === ChatSourceTypeEnum.skillEdit) {
     return {
-      ...buildChatSourceQuery({ sourceType, sourceId }),
+      ...buildChatSourceQuery({ sourceType: resolvedSourceType, sourceId: resolvedSourceId }),
       tmbId
     };
   }
 
   if (authType === AuthUserTypeEnum.token) {
     return {
-      ...buildChatSourceQuery({ sourceType, sourceId }),
+      ...buildChatSourceQuery({ sourceType: resolvedSourceType, sourceId: resolvedSourceId }),
       tmbId,
       source: ChatSourceEnum.online
     };
@@ -175,7 +146,7 @@ export async function buildClearChatHistoriesMatch({
 
   if (authType === AuthUserTypeEnum.apikey) {
     return {
-      ...buildChatSourceQuery({ sourceType, sourceId }),
+      ...buildChatSourceQuery({ sourceType: resolvedSourceType, sourceId: resolvedSourceId }),
       source: ChatSourceEnum.api
     };
   }

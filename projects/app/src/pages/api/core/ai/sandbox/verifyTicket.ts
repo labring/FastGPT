@@ -3,7 +3,7 @@ import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import {
   getSandboxClient,
   type SandboxClient
-} from '@fastgpt/service/core/ai/sandbox/service/runtime';
+} from '@fastgpt/service/core/ai/sandbox/interface/runtime';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';

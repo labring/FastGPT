@@ -90,8 +90,8 @@ describe('wallet/usage/tools', () => {
       expect(result).toBe(UsageSourceEnum.fastgpt);
     });
 
-    it('should handle teamDomain authType', () => {
-      const result = getUsageSourceByAuthType({ authType: AuthUserTypeEnum.teamDomain });
+    it('should handle token authType', () => {
+      const result = getUsageSourceByAuthType({ authType: AuthUserTypeEnum.token });
       expect(result).toBe(UsageSourceEnum.fastgpt);
     });
   });

@@ -73,9 +73,7 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
       key: NodeInputKeyEnum.skills,
       value: [
         {
-          skillId: String(activeSkill._id),
-          name: 'Old Skill Name',
-          description: 'Old skill description'
+          skillId: String(activeSkill._id)
         },
         {
           skillId: String(deletedSkill._id),

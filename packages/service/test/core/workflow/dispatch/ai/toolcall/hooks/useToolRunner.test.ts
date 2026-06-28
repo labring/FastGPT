@@ -21,9 +21,9 @@ vi.mock('@fastgpt/service/support/permission/teamLimit', () => ({
   checkTeamSandboxPermission: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/toolCall', async (importOriginal) => {
+vi.mock('@fastgpt/service/core/ai/sandbox/interface/toolCall', async (importOriginal) => {
   const original =
-    await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/toolCall')>();
+    await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/interface/toolCall')>();
 
   return {
     ...original,

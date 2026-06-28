@@ -51,7 +51,7 @@ import {
 async function handler(req: ApiRequestProps<UpdateAppBodyType, UpdateAppQueryType>) {
   const {
     query: { appId },
-    body: { parentId, name, avatar, type, intro, nodes, edges, chatConfig, teamTags }
+    body: { parentId, name, avatar, type, intro, nodes, edges, chatConfig }
   } = parseApiInput({
     req,
     querySchema: UpdateAppQuerySchema,
@@ -150,7 +150,6 @@ async function handler(req: ApiRequestProps<UpdateAppBodyType, UpdateAppQueryTyp
         ...(type && { type }),
         ...(avatar && { avatar }),
         ...(intro !== undefined && { intro }),
-        ...(teamTags && { teamTags }),
         ...(nodes && {
           modules: nodes
         }),

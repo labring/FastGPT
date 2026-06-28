@@ -20,10 +20,19 @@ async function handler(req: ApiRequestProps): Promise<string> {
     sourceType,
     sourceId,
     chatId,
-    ...outLinkAuthData
+    outLinkAuthData
   });
+  const resolvedSourceId = authRes.sourceId;
 
-  if (!isAuthorizedChatFileS3Key({ key, sourceType, sourceId, uid: authRes.uid, chatId })) {
+  if (
+    !isAuthorizedChatFileS3Key({
+      key,
+      sourceType,
+      sourceId: resolvedSourceId,
+      uid: authRes.uid,
+      chatId
+    })
+  ) {
     return Promise.reject(ChatErrEnum.unAuthChat);
   }
 

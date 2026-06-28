@@ -1,0 +1,17 @@
+{
+  "toolkit_no_runtime_config": "No runtime configuration",
+  "toolkit_reset_runtime_config_confirm": "Confirm reset runtime configuration to defaults?",
+  "toolkit_runtime_config": "Runtime Configuration",
+  "toolkit_runtime_config_invalid_integer": "{{label}} must be an integer",
+  "toolkit_runtime_config_invalid_number": "{{label}} must be a valid number",
+  "toolkit_runtime_config_max_concurrent_requests_per_pod": "Max concurrent requests per Pod",
+  "toolkit_runtime_config_max_concurrent_requests_per_pod_tip": "The maximum number of requests a single Pod can process at the same time",
+  "toolkit_runtime_config_max_pods": "Max worker nodes",
+  "toolkit_runtime_config_max_pods_tip": "The maximum number of Pods that can be started for this tool runtime",
+  "toolkit_runtime_config_min_pods": "Min worker nodes",
+  "toolkit_runtime_config_min_pods_over_max_pods": "Min worker nodes cannot exceed max worker nodes",
+  "toolkit_runtime_config_min_pods_tip": "The minimum number of Pods to keep for this tool runtime. Set to 0 to allow scaling down to 0",
+  "toolkit_runtime_config_min_value": "{{label}} cannot be less than {{min}}",
+  "toolkit_runtime_config_pod_timeout": "Pod timeout",
+  "toolkit_runtime_config_pod_timeout_tip": "A Pod will be recycled after it stays idle longer than this value"
+}

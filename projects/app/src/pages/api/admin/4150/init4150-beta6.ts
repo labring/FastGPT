@@ -8,8 +8,9 @@ import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
-import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/instance/schema';
-import type { SandboxResourceRef } from '@fastgpt/service/core/ai/sandbox/instance/repository';
+import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/schema';
+import type { SandboxResourceRef } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/repository';
+import { SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
 import { S3Sources } from '@fastgpt/service/common/s3/contracts/type';
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
@@ -67,6 +68,7 @@ type SandboxSourceUpdateOperation = {
 type LegacySandboxSourceDoc = {
   _id: Types.ObjectId;
   appId?: string | null;
+  type?: SandboxTypeEnum | string | null;
   metadata?: {
     skillId?: string | null;
   };
@@ -109,44 +111,9 @@ const buildMissingSandboxSourceQuery = () => {
   };
 };
 
-const buildSkillSandboxQuery = (skillIds: string[]) => {
+const buildSandboxSourceMigrationQuery = () => {
   return {
-    $and: [
-      buildMissingSandboxSourceQuery(),
-      {
-        $or: [{ appId: { $in: skillIds } }, { 'metadata.skillId': { $in: skillIds } }]
-      }
-    ]
-  };
-};
-
-const buildRemainingAppSandboxQuery = (skillIds: string[]) => {
-  return {
-    appId: { $exists: true, $nin: ['', null, ...skillIds] },
-    $and: [
-      buildMissingSandboxSourceQuery(),
-      {
-        $or: [
-          { 'metadata.skillId': { $exists: false } },
-          { 'metadata.skillId': { $nin: skillIds } }
-        ]
-      }
-    ]
-  };
-};
-
-const buildOrphanSandboxQuery = (skillIds: string[]) => {
-  return {
-    $and: [
-      buildMissingSandboxSourceQuery(),
-      { $or: [{ appId: { $exists: false } }, { appId: { $in: ['', null] } }] },
-      {
-        $or: [
-          { 'metadata.skillId': { $exists: false } },
-          { 'metadata.skillId': { $nin: skillIds } }
-        ]
-      }
-    ]
+    $and: [buildMissingSandboxSourceQuery()]
   };
 };
 
@@ -154,22 +121,12 @@ const buildLegacySandboxFieldCleanupQuery = () => {
   return {
     sourceType: { $in: Object.values(ChatSourceTypeEnum) },
     sourceId: { $exists: true, $nin: ['', null] },
-    $or: [{ appId: { $exists: true } }, { 'metadata.skillId': { $exists: true } }]
+    $or: [
+      { appId: { $exists: true } },
+      { 'metadata.skillId': { $exists: true } },
+      { type: { $exists: true } }
+    ]
   };
-};
-
-const getSkillSourceIdFromSandbox = ({
-  doc,
-  skillIdSet
-}: {
-  doc: LegacySandboxSourceDoc;
-  skillIdSet: Set<string>;
-}) => {
-  const metadataSkillId = doc.metadata?.skillId;
-  if (metadataSkillId && skillIdSet.has(metadataSkillId)) return metadataSkillId;
-
-  const appId = doc.appId ? String(doc.appId) : undefined;
-  if (appId && skillIdSet.has(appId)) return appId;
 };
 
 const updateSandboxSources = async (operations: SandboxSourceUpdateOperation[]) => {
@@ -182,7 +139,8 @@ const updateSandboxSources = async (operations: SandboxSourceUpdateOperation[]) 
         },
         $unset: {
           appId: '',
-          'metadata.skillId': ''
+          'metadata.skillId': '',
+          type: ''
         }
       })
     )
@@ -198,57 +156,97 @@ const updateSandboxSources = async (operations: SandboxSourceUpdateOperation[]) 
   };
 };
 
+/**
+ * 解析旧 sandbox 实例归属。
+ *
+ * 4.15.0-beta6 之前的 Skill Edit sandbox 已经写入过 type=edit-debug；
+ * 缺少 type 的旧记录统一按 App 处理。
+ */
+const resolveLegacySandboxSource = ({
+  doc
+}: {
+  doc: LegacySandboxSourceDoc;
+}): Omit<SandboxSourceUpdateOperation, 'filter'> | undefined => {
+  const appId = doc.appId ? String(doc.appId) : undefined;
+  const metadataSkillId = doc.metadata?.skillId || undefined;
+
+  if (doc.type === SandboxTypeEnum.editDebug) {
+    const sourceId = metadataSkillId || appId;
+    if (!sourceId) return;
+
+    return {
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId
+    };
+  }
+
+  if (appId) {
+    return {
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId
+    };
+  }
+};
+
 const migrateSandboxInstances = async ({
-  dryRun,
-  skillIds
+  dryRun
 }: {
   dryRun: boolean;
-  skillIds: string[];
 }): Promise<Init4150Beta6ResponseType['sandboxMigration']> => {
-  const skillIdSet = new Set(skillIds);
-  const skillSandboxDocs = (await sandboxInstanceCollection()
-    .find(buildSkillSandboxQuery(skillIds), {
+  const legacySandboxDocs = (await sandboxInstanceCollection()
+    .find(buildSandboxSourceMigrationQuery(), {
       projection: {
         _id: 1,
         appId: 1,
+        type: 1,
+        provider: 1,
+        sandboxId: 1,
+        status: 1,
+        lastActiveAt: 1,
         'metadata.skillId': 1
       }
     })
-    .toArray()) as LegacySandboxSourceDoc[];
-  const skillUpdateOperations: SandboxSourceUpdateOperation[] = skillSandboxDocs.flatMap((doc) => {
-    const sourceId = getSkillSourceIdFromSandbox({
-      doc,
-      skillIdSet
-    });
+    .toArray()) as Array<LegacySandboxSourceDoc & SandboxResourceRef>;
+  const sourceUpdateOperations: SandboxSourceUpdateOperation[] = legacySandboxDocs.flatMap(
+    (doc) => {
+      const source = resolveLegacySandboxSource({ doc });
 
-    if (!sourceId) return [];
+      if (!source) return [];
 
-    return [
-      {
-        filter: { _id: doc._id },
-        sourceType: ChatSourceTypeEnum.skillEdit,
-        sourceId
-      }
-    ];
-  });
-  const appDryRunQuery = buildRemainingAppSandboxQuery(skillIds);
-  const orphanSandboxQuery = buildOrphanSandboxQuery(skillIds);
+      return [
+        {
+          filter: { _id: doc._id },
+          ...source
+        }
+      ];
+    }
+  );
+  const sourceUpdateIdSet = new Set(
+    sourceUpdateOperations.map((operation) => String(operation.filter._id))
+  );
+  const orphanSandboxDocs = legacySandboxDocs.filter(
+    (doc) => !sourceUpdateIdSet.has(String(doc._id))
+  );
+  const skillUpdateOperations = sourceUpdateOperations.filter(
+    (operation) => operation.sourceType === ChatSourceTypeEnum.skillEdit
+  );
+  const appUpdateOperations = sourceUpdateOperations.filter(
+    (operation) => operation.sourceType === ChatSourceTypeEnum.app
+  );
 
   if (dryRun) {
-    const [appMatchedCount, legacyFieldMatchedCount, orphanMatchedCount] = await Promise.all([
-      sandboxInstanceCollection().countDocuments(appDryRunQuery),
-      sandboxInstanceCollection().countDocuments(buildLegacySandboxFieldCleanupQuery()),
-      sandboxInstanceCollection().countDocuments(orphanSandboxQuery)
-    ]);
+    const legacyFieldMatchedCount = await sandboxInstanceCollection().countDocuments(
+      buildLegacySandboxFieldCleanupQuery()
+    );
 
     return {
       skillMatchedCount: skillUpdateOperations.length,
       skillModifiedCount: 0,
-      appMatchedCount,
+      appMatchedCount: appUpdateOperations.length,
       appModifiedCount: 0,
       legacyFieldMatchedCount,
       legacyFieldModifiedCount: 0,
-      orphanMatchedCount,
+      orphanMatchedCount: orphanSandboxDocs.length,
       orphanDeletedCount: 0,
       orphanFailedCount: 0
     };
@@ -258,25 +256,6 @@ const migrateSandboxInstances = async ({
     skillUpdateOperations.length > 0
       ? await updateSandboxSources(skillUpdateOperations)
       : undefined;
-  const appSandboxDocs = (await sandboxInstanceCollection()
-    .find(appDryRunQuery, {
-      projection: {
-        _id: 1,
-        appId: 1
-      }
-    })
-    .toArray()) as { _id: Types.ObjectId; appId?: string | null }[];
-  const appUpdateOperations: SandboxSourceUpdateOperation[] = appSandboxDocs.flatMap((doc) => {
-    if (!doc.appId) return [];
-
-    return [
-      {
-        filter: { _id: doc._id },
-        sourceType: ChatSourceTypeEnum.app,
-        sourceId: String(doc.appId)
-      }
-    ];
-  });
   const appUpdateResult =
     appUpdateOperations.length > 0 ? await updateSandboxSources(appUpdateOperations) : undefined;
   const legacyFieldCleanupResult = await sandboxInstanceCollection().updateMany(
@@ -284,23 +263,13 @@ const migrateSandboxInstances = async ({
     {
       $unset: {
         appId: '',
-        'metadata.skillId': ''
+        'metadata.skillId': '',
+        type: ''
       }
     }
   );
-  const orphanSandboxDocs = (await sandboxInstanceCollection()
-    .find(orphanSandboxQuery, {
-      projection: {
-        _id: 1,
-        provider: 1,
-        sandboxId: 1,
-        status: 1,
-        lastActiveAt: 1
-      }
-    })
-    .toArray()) as SandboxResourceRef[];
   const { deleteSandboxResource } =
-    await import('@fastgpt/service/core/ai/sandbox/service/resource');
+    await import('@fastgpt/service/core/ai/sandbox/application/resource');
   const orphanDeleteResults = await Promise.allSettled(
     orphanSandboxDocs.map((doc) => deleteSandboxResource(doc))
   );
@@ -420,9 +389,9 @@ const cleanupLegacyDebugChats = async ({
  * 执行 4.15.0-beta6 迁移初始化。
  *
  * 该逻辑只服务本次升级脚本，不下沉为通用 service：
- * 1. 全量读取 skills 表，将命中 skillId 的 sandbox instance 标记为 skillEdit source。
- * 2. 将剩余未命中 Skill 且带 appId 的 sandbox instance 标记为 app source。
- * 3. 删除没有 appId 且无法归属到 Skill 的旧 orphan sandbox，包含远端资源、volume、S3 归档和 Mongo 记录。
+ * 1. 用历史 type=edit-debug 将 sandbox instance 标记为 skillEdit source。
+ * 2. 缺少 type 但带 appId 的旧记录按 App sandbox 标记。
+ * 3. 删除缺少 appId 且无法归属的旧 orphan sandbox，包含远端资源、volume、S3 归档和 Mongo 记录。
  * 4. 清理旧 Skill Debug chat：先用 apps 表去掉同 ID App，再删除剩余 skillId 的旧 debug chat。
  *
  * 这里不能支持传入部分 skillIds，否则“剩余 sandbox 视为 App”会把未扫描到的 Skill sandbox
@@ -434,8 +403,7 @@ export async function runInit4150Beta6Migration({
   const skillIds = await getAllSkillIds();
   const conflictAppSkillIds = await getConflictAppSkillIds(skillIds);
   const sandboxMigration = await migrateSandboxInstances({
-    dryRun,
-    skillIds
+    dryRun
   });
   const legacyDebugChatCleanup = await cleanupLegacyDebugChats({
     dryRun,

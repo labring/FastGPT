@@ -22,6 +22,7 @@ import type account_model from './zh-CN/account_model.json';
 import type account_custom_domain from './zh-CN/account_custom_domain.json';
 import type dashboard_mcp from './zh-CN/dashboard_mcp.json';
 import type dashboard_evaluation from './zh-CN/dashboard_evaluation.json';
+import type admin_plugin from './zh-CN/admin_plugin.json';
 import type skill from './zh-CN/skill.json';
 import type { I18N_NAMESPACES } from './constants';
 
@@ -49,6 +50,7 @@ export interface I18nNamespaces {
   account_custom_domain: typeof account_custom_domain;
   dashboard_mcp: typeof dashboard_mcp;
   dashboard_evaluation: typeof dashboard_evaluation;
+  admin_plugin: typeof admin_plugin;
   skill: typeof skill;
 }
 

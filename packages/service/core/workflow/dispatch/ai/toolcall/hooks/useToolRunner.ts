@@ -6,8 +6,8 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { AgentLoopChildrenInteractiveParams } from '../../../../../ai/llm/agentLoop';
-import { runSandboxTools } from '../../../../../ai/sandbox/toolCall';
-import type { SandboxClient } from '../../../../../ai/sandbox/service/runtime';
+import { runSandboxTools } from '../../../../../ai/sandbox/interface/toolCall';
+import type { SandboxClient } from '../../../../../ai/sandbox/interface/runtime';
 import { parseJsonArgs } from '../../../../../ai/utils';
 import { runWorkflow } from '../../../index';
 import { getRuntimeNodeResponseSummary } from '../../../utils';
@@ -19,7 +19,7 @@ import { dispatchReadFileTool, ReadFileToolParamsSchema } from '../tools/file';
 import { initToolCallEdges, initToolNodes } from '../utils';
 import type { ToolInfo } from './useToolCatalog';
 import { checkTeamSandboxPermission } from '../../../../../../support/permission/teamLimit';
-import { createAgentSandboxPermissionDeniedError } from '../../../../../ai/sandbox/error';
+import { createAgentSandboxPermissionDeniedError } from '../../../../../ai/sandbox/interface/runtime';
 
 type WorkflowProps = Omit<
   DispatchToolModuleProps,

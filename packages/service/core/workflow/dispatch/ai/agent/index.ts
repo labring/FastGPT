@@ -30,7 +30,6 @@ import {
   getWorkflowAgentLoopMemoryKeys,
   readWorkflowAgentLoopMemory
 } from './adapter';
-import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { InteractiveNodeResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import {
@@ -41,7 +40,7 @@ import {
 import type { WorkflowNodeResponseWriter } from '../../../../chat/nodeResponseStorage';
 import type { RuntimeNodeResponseSummary } from '../../type';
 import { createAgentNodeResponseCollector } from './nodeResponseCollector';
-import { createAgentSandboxPermissionDeniedError } from '../../../../ai/sandbox/error';
+import { createAgentSandboxPermissionDeniedError } from '../../../../ai/sandbox/interface/runtime';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemMiniType[];
@@ -384,13 +383,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     }
 
     // 4. 结束态归一化。
-    // done 正常落 answer；error/aborted 转成可见文本，同时保留 error 输出给 workflow。
-    const errorText =
-      result.status === 'error'
-        ? getErrText(result.error)
-        : result.status === 'aborted'
-          ? i18nT('chat:completion_finish_error')
-          : undefined;
+    // done 正常落 answer；error 转成可见文本并保留 error 输出给 workflow。
+    // 用户主动停止属于正常结束，不写 error，避免前端按报错卡片展示。
+    const errorText = result.status === 'error' ? getErrText(result.error) : undefined;
     const reasoningValue = result.reasoningText
       ? {
           reasoning: {

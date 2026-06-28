@@ -37,8 +37,6 @@ export const getMyApps = (data?: ListAppBodyType) =>
 export const postCreateApp = (data: CreateAppBodyType) =>
   POST<CreateAppResponseType>('/core/app/create', data);
 
-export const getMyAppsByTags = (data: Record<string, unknown>) =>
-  POST(`/proApi/core/chat/team/getApps`, data);
 /**
  * 根据 ID 删除应用
  */

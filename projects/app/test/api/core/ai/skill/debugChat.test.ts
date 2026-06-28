@@ -14,13 +14,19 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
-import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/instance/schema';
+import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/schema';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import * as responseModule from '@fastgpt/service/common/response';
 import { getUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getEditDebugSandboxId } from '@fastgpt/service/core/ai/skill/edit/config';
+import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
+import {
+  PerResourceTypeEnum,
+  ReadPermissionVal
+} from '@fastgpt/global/support/permission/constant';
 import {
   ChatRoleEnum,
   ChatSourceEnum,
@@ -81,8 +87,8 @@ vi.mock('@fastgpt/service/support/user/team/utils', () => ({
   getRunningUserInfoByTmbId: debugChatMocks.getRunningUserInfoByTmbId
 }));
 
-vi.mock('@fastgpt/service/core/ai/skill/debugChat/streamResponseContext', () => ({
-  createSkillDebugStreamResponseContext: debugChatMocks.createWorkflowStreamResponseContext
+vi.mock('@fastgpt/service/core/workflow/utils/streamResponseContext', () => ({
+  createWorkflowStreamResponseContext: debugChatMocks.createWorkflowStreamResponseContext
 }));
 
 // ── Constants mirrored from the implementation ──
@@ -436,6 +442,58 @@ describe('debugChat handler — parameter validation', () => {
     const calls = getSseErrResMock().mock.calls;
     const hasSandboxError = calls.some(([, err]) => /sandbox/i.test(err?.message ?? ''));
     expect(hasSandboxError).toBe(false);
+  });
+
+  it('should reject read-only collaborators before running edit-debug sandbox', async () => {
+    const reader = await getUser(`debug-chat-reader-${getNanoid(6)}`, testUser.teamId);
+
+    await MongoResourcePermission.create({
+      resourceType: PerResourceTypeEnum.agentSkill,
+      teamId: testUser.teamId,
+      resourceId: skillId,
+      tmbId: reader.tmbId,
+      permission: ReadPermissionVal
+    });
+
+    await MongoSandboxInstance.create({
+      provider: 'opensandbox',
+      sandboxId: getEditDebugSandboxId(skillId),
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: skillId,
+      chatId: 'edit-debug',
+      userId: testUser.tmbId,
+      type: SandboxTypeEnum.editDebug,
+      status: 'running',
+      metadata: {
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        provider: 'opensandbox',
+        image: { repository: 'test-image', tag: 'latest' },
+        providerCreatedAt: new Date()
+      }
+    });
+
+    await Call(debugChatApi.default, {
+      auth: reader,
+      cookies: {},
+      headers: {
+        origin: 'http://test.local'
+      },
+      body: {
+        skillId,
+        chatId: getNanoid(),
+        responseChatItemId: getNanoid(),
+        model: 'gpt-4o',
+        messages: [{ role: 'user', content: 'hi' }]
+      }
+    });
+
+    expect(getSseErrResMock()).toHaveBeenCalled();
+    const err = getSseErrResMock().mock.calls[0][1];
+    expect(err?.message ?? err).toBe(SkillErrEnum.unAuthSkill);
+    expect(debugChatMocks.preChatRound).not.toHaveBeenCalled();
+    expect(debugChatMocks.createWorkflowStreamResponseContext).not.toHaveBeenCalled();
+    expect(debugChatMocks.dispatchWorkFlow).not.toHaveBeenCalled();
   });
 
   it('should prepare and finalize a skill debug chat round with prepared ids', async () => {

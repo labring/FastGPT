@@ -231,12 +231,10 @@ describe('beforeUpdateAppFormat', () => {
 
     expect(nodes[0].inputs[0].value).toEqual([
       {
-        skillId: 'skill-1',
-        name: 'Deleted Skill'
+        skillId: 'skill-1'
       },
       {
-        skillId: 'skill-2',
-        name: 'Normal Skill'
+        skillId: 'skill-2'
       }
     ]);
   });
@@ -260,9 +258,7 @@ describe('validatePublishAppAgentSkillReadPermissions', () => {
             key: NodeInputKeyEnum.skills,
             value: [
               {
-                skillId: String(skill._id),
-                name: 'Protected Skill',
-                description: ''
+                skillId: String(skill._id)
               }
             ]
           }

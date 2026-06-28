@@ -25,6 +25,7 @@ import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
+import type { GetPaginationRecordsBodyType } from '@fastgpt/global/openapi/core/chat/record/api';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
@@ -166,7 +167,7 @@ const ChatContent = (props: ChatPageProps) => {
     [currentAppId]
   );
 
-  const chatRecordProviderParams = useMemo(() => {
+  const chatRecordProviderParams = useMemo<GetPaginationRecordsBodyType>(() => {
     return {
       appId: currentAppId,
       type: GetChatTypeEnum.normal,

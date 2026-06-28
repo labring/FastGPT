@@ -1,6 +1,6 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
-import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/service/runtime';
+import { keepaliveSandboxSession } from '@fastgpt/service/core/ai/sandbox/interface/session';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { z } from 'zod';
 import {
@@ -34,14 +34,13 @@ async function handler(req: ApiRequestProps): Promise<void> {
     bodySchema: KeepAliveBodySchema
   }).body;
 
-  await getSandboxClient(
+  await keepaliveSandboxSession(
     buildSandboxClientQueryFromChatSource({
       sourceType,
       sourceId,
       userId,
       chatId
-    }),
-    { restoreArchived: false }
+    })
   );
 }
 

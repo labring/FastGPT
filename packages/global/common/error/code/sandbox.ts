@@ -7,7 +7,8 @@ const startCode = 510000;
 export enum SandboxErrEnum {
   agentSandboxPermissionDenied = 'agentSandboxPermissionDenied',
   agentSandboxInitializing = 'agentSandboxInitializing',
-  runtimeUpgradeFailed = 'runtimeUpgradeFailed'
+  runtimeUpgradeFailed = 'runtimeUpgradeFailed',
+  runtimeUpgradeInProgress = 'runtimeUpgradeInProgress'
 }
 
 const sandboxErr = [
@@ -23,6 +24,11 @@ const sandboxErr = [
   {
     statusText: SandboxErrEnum.runtimeUpgradeFailed,
     message: i18nT('common:code_error.sandbox_error.runtime_upgrade_failed')
+  },
+  {
+    statusText: SandboxErrEnum.runtimeUpgradeInProgress,
+    message: i18nT('skill:sandbox_runtime_upgrade_in_progress'),
+    httpStatus: 409
   }
 ];
 

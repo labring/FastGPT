@@ -1,3 +1,8 @@
+/**
+ * 沙盒模块共享类型。
+ *
+ * 只定义 sandbox 实例、provider、archive 和 metadata schema，不访问服务端资源。
+ */
 import z from 'zod';
 import { SandboxStatusEnum, SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -32,7 +37,13 @@ export const SandboxImageSchema = z.object({
   tag: z.string().optional()
 });
 
-export const SandboxArchiveStateSchema = z.enum(['archiving', 'archived', 'restoring']);
+export const SandboxArchiveStateSchema = z.enum([
+  'archiving',
+  'deleting',
+  'archived',
+  'restoring',
+  'failed'
+]);
 export type SandboxArchiveStateType = z.infer<typeof SandboxArchiveStateSchema>;
 
 export const SandboxMetadataSchema = z.object({
@@ -45,7 +56,10 @@ export const SandboxMetadataSchema = z.object({
     .object({
       state: SandboxArchiveStateSchema,
       startedAt: z.coerce.date().optional(),
-      archivedAt: z.coerce.date().optional()
+      deleteStartedAt: z.coerce.date().optional(),
+      archivedAt: z.coerce.date().optional(),
+      failedAt: z.coerce.date().optional(),
+      error: z.string().optional()
     })
     .optional(),
 
@@ -63,13 +77,17 @@ export type SandboxMetadataType = z.infer<typeof SandboxMetadataSchema>;
 export const SandboxInstanceZodSchema = z.object({
   _id: z.string(),
   sandboxId: z.string(),
-  /** @deprecated 旧 sandbox 归属字段，仅迁移脚本/历史数据观察使用。 */
-  appId: z.string().nullish(),
+  appId: z.string().nullish().meta({
+    deprecated: true
+  }),
   sourceType: z.enum(ChatSourceTypeEnum),
   sourceId: z.string(),
   userId: z.string().nullish(),
   chatId: z.string().nullish(),
-  type: z.enum(SandboxTypeEnum).nullish(),
+  type: z.enum(SandboxTypeEnum).nullish().meta({
+    deprecated: true,
+    description: '旧版 sandbox 场景字段；业务归属统一使用 sourceType/sourceId。'
+  }),
   status: SharedSandboxStatusSchema,
   lastActiveAt: z.coerce.date(),
   createdAt: z.coerce.date(),

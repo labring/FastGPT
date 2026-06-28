@@ -25,11 +25,7 @@ import type {
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 import { filterNodeResponseTreeData } from '@fastgpt/global/core/chat/utils';
-import {
-  filterWorkflowEdges,
-  textAdaptGptResponse,
-  valueTypeFormat
-} from '@fastgpt/global/core/workflow/runtime/utils';
+import { filterWorkflowEdges, valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import type {
   InteractiveNodeResponseType,
   WorkflowInteractiveResponseType
@@ -77,6 +73,7 @@ import {
   type WorkflowNodeResponseWriteConfig
 } from './utils/entry';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { isWorkflowSseResponseInitialized } from '../utils/streamResponseContext';
 import {
   addWorkflowStepEvent,
   getWorkflowStepStatus,
@@ -143,6 +140,13 @@ export async function dispatchWorkFlow({
     apiVersion
   } = data;
   const responseChatItemId = data.responseChatItemId;
+
+  if (stream && res && !isWorkflowSseResponseInitialized(res)) {
+    // HTTP SSE 响应必须由调用入口提前初始化，dispatch 只执行 workflow，不隐式管理响应协议。
+    return Promise.reject(
+      new Error('Workflow SSE response must be initialized before dispatchWorkFlow')
+    );
+  }
   const chatSource = getWorkflowSource(runningAppInfo);
 
   // Check url valid
@@ -202,36 +206,8 @@ export async function dispatchWorkFlow({
     })
   ]);
 
-  let streamCheckTimer: NodeJS.Timeout | null = null;
   const clientAbortTracker =
     apiVersion === 'v1' ? createClientAbortTracker({ req: data.req, res }) : undefined;
-
-  // set sse response headers
-  if (res) {
-    res.setHeader('Connection', 'keep-alive'); // Set keepalive for long connection
-    if (stream) {
-      res.on('close', () => res.end());
-      res.on('error', () => {
-        logger.error('Workflow stream response error');
-        res.end();
-      });
-
-      res.setHeader('Content-Type', 'text/event-stream;charset=utf-8');
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('X-Accel-Buffering', 'no');
-      res.setHeader('Cache-Control', 'no-cache, no-transform');
-
-      // 10s sends a message to prevent the browser from thinking that the connection is disconnected
-      streamCheckTimer = setInterval(() => {
-        data?.workflowStreamResponse?.({
-          event: SseResponseEventEnum.answer,
-          data: textAdaptGptResponse({
-            text: ''
-          })
-        });
-      }, 10000);
-    }
-  }
 
   const variableState = await WorkflowVariableState.create({
     timezone,
@@ -319,9 +295,6 @@ export async function dispatchWorkFlow({
             reject(error);
           })
           .finally(async () => {
-            if (streamCheckTimer) {
-              clearInterval(streamCheckTimer);
-            }
             if (checkStoppingTimer) {
               clearInterval(checkStoppingTimer);
             }

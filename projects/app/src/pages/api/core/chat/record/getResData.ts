@@ -11,38 +11,34 @@ import { getChatItemResponseData } from '@fastgpt/service/core/chat/nodeResponse
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 
 export async function handler(req: ApiRequestProps): Promise<ChatHistoryItemResType[]> {
-  const { sourceType, sourceId, chatId, dataId, shareId, outLinkUid, teamId, teamToken } =
-    parseApiInput({
-      req,
-      querySchema: GetResDataQuerySchema
-    }).query;
-  if (!sourceId || !chatId || !dataId) {
+  const { sourceType, sourceId, chatId, dataId, outLinkAuthData } = parseApiInput({
+    req,
+    querySchema: GetResDataQuerySchema
+  }).query;
+  if (!chatId || !dataId) {
     return [];
   }
 
-  const [{ showCite }, chatData] = await Promise.all([
-    authChatTargetCrud({
-      req,
-      authToken: true,
-      authApiKey: true,
-      sourceType,
-      sourceId,
+  const authRes = await authChatTargetCrud({
+    req,
+    authToken: true,
+    authApiKey: true,
+    sourceType,
+    sourceId,
+    chatId,
+    outLinkAuthData
+  });
+  const resolvedSourceId = authRes.sourceId;
+
+  const chatData = await MongoChatItem.findOne(
+    {
+      ...buildChatSourceQuery({ sourceType, sourceId: resolvedSourceId }),
       chatId,
-      shareId,
-      outLinkUid,
-      teamId,
-      teamToken
-    }),
-    MongoChatItem.findOne(
-      {
-        ...buildChatSourceQuery({ sourceType, sourceId }),
-        chatId,
-        dataId,
-        obj: ChatRoleEnum.AI
-      },
-      'dataId obj responseData'
-    ).lean()
-  ]);
+      dataId,
+      obj: ChatRoleEnum.AI
+    },
+    'dataId obj responseData'
+  ).lean();
 
   if (chatData?.obj !== ChatRoleEnum.AI) {
     return [];
@@ -52,14 +48,14 @@ export async function handler(req: ApiRequestProps): Promise<ChatHistoryItemResT
   const hasInlineResponseData = Object.prototype.hasOwnProperty.call(chatData, 'responseData');
   const flowResponses = await getChatItemResponseData({
     sourceType,
-    sourceId,
+    sourceId: resolvedSourceId,
     chatId,
     chatItemDataId: dataId,
     fallbackResponseData: hasInlineResponseData ? chatData.responseData || [] : undefined
   });
-  return shareId
+  return outLinkAuthData?.shareId
     ? filterPublicNodeResponseData({
-        responseDetail: showCite,
+        responseDetail: authRes.showCite,
         nodeRespones: flowResponses
       })
     : flowResponses;

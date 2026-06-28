@@ -11,7 +11,7 @@ import { type FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/i
 import { type SearchDataResponseQuoteListItemType } from '@fastgpt/global/core/dataset/type';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import type { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
-import type { ChatTargetInputType } from '@fastgpt/global/openapi/core/chat/api';
+import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
 
 type ContextProps = {
   showRouteToDatasetDetail: boolean;
@@ -53,10 +53,9 @@ type ChatBoxDataType = {
 };
 
 // 知识库引用相关 type
-export type GetQuoteDataBasicProps = ChatTargetInputType & {
+export type GetQuoteDataBasicProps = ChatAuthTargetInput & {
   chatId: string;
   chatItemDataId: string;
-  outLinkAuthData?: OutLinkChatAuthProps;
 };
 export type GetCollectionQuoteDataProps = GetQuoteDataBasicProps & {
   quoteId?: string;

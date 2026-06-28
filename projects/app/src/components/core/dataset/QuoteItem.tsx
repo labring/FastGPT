@@ -207,8 +207,8 @@ const QuoteItem = ({
             fontWeight={'bold'}
             color={'black'}
             collectionId={quoteItem.collectionId}
-            sourceName={quoteItem.sourceName}
-            sourceId={quoteItem.sourceId}
+            rawSourceName={quoteItem.sourceName}
+            rawSourceId={quoteItem.sourceId}
             canView={canDownloadSource}
             {...RawSourceBoxProps}
           />

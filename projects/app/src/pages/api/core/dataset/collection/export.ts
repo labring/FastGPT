@@ -1,5 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { authChatCrud, authCollectionInChat } from '@/service/support/permission/auth/chat';
+import { authChatTargetCrud, authCollectionInChat } from '@/service/support/permission/auth/chat';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { useIPFrequencyLimit } from '@fastgpt/service/common/middle/reqFrequencyLimit';
@@ -16,7 +16,6 @@ import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
 import { addDays } from 'date-fns';
 import { ExportCollectionBodySchema } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 const logger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
 
 async function handler(req: ApiRequestProps, res: NextApiResponse) {
@@ -42,27 +41,28 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
       };
     }
 
-    const { appId, chatId, shareId, outLinkUid, teamId, teamToken, chatTime } = parseBody;
+    const { sourceType, sourceId, chatId, outLinkAuthData, chatTime } = parseBody;
     /*
       1. auth chat read permission
       2. auth collection quote in chat
       3. auth outlink open show quote
     */
-    const [authRes, collection] = await Promise.all([
-      authChatCrud({
-        req,
-        authToken: true,
-        appId,
-        chatId,
-        shareId,
-        outLinkUid,
-        teamId,
-        teamToken
-      }),
+    const authRes = await authChatTargetCrud({
+      req,
+      authToken: true,
+      authApiKey: true,
+      sourceType,
+      sourceId,
+      chatId,
+      outLinkAuthData
+    });
+    const resolvedSourceId = authRes.sourceId;
+
+    const [collection] = await Promise.all([
       getCollectionWithDataset(collectionId),
       authCollectionInChat({
-        sourceType: ChatSourceTypeEnum.app,
-        sourceId: appId,
+        sourceType,
+        sourceId: resolvedSourceId,
         chatId,
         collectionIds: [collectionId]
       })

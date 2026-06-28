@@ -40,6 +40,5 @@ export enum ChatTypeEnum {
   chat = 'chat',
   log = 'log',
   share = 'share',
-  team = 'team',
   home = 'home'
 }

@@ -5,6 +5,20 @@ import { MongoAppTemplate } from './templateSchema';
 import { pluginClient } from '../../../thirdProvider/fastgptPlugin';
 import { addMinutes } from 'date-fns';
 
+type PluginSystemTemplateDbConfig = Pick<AppTemplateSchemaType, 'templateId'> &
+  Partial<
+    Pick<
+      AppTemplateSchemaType,
+      | 'isActive'
+      | 'isPromoted'
+      | 'promoteTags'
+      | 'hideTags'
+      | 'recommendText'
+      | 'isQuickTemplate'
+      | 'order'
+    >
+  >;
+
 const getFileTemplates = async (): Promise<AppTemplateSchemaType[]> => {
   return (await pluginClient.listWorkflows()) as AppTemplateSchemaType[];
 };
@@ -22,18 +36,11 @@ const formatTemplateAvatar = (avatar?: string | null) => {
 };
 
 /**
- * 提取系统模板允许由数据库覆盖的运营字段。
- *
- * 系统模板来自 plugin 服务，workflow、userGuide、type 等内容字段必须始终以 plugin 返回为准。
- * 数据库只作为展示卡片、上下线、推荐和标签等运营配置层，避免后台保存的旧 workflow 覆盖新版模板。
+ * 社区模板由 fastgpt-plugin 维护内容，Mongo 只保存平台运营态配置。
  */
-const pickPluginSystemTemplateEditableConfig = (config: AppTemplateSchemaType) => ({
+export const pickPluginSystemTemplateDbConfig = (config: PluginSystemTemplateDbConfig) => ({
   ...Object.fromEntries(
     Object.entries({
-      name: config.name,
-      intro: config.intro,
-      avatar: formatTemplateAvatar(config.avatar),
-      tags: config.tags,
       isActive: config.isActive,
       isPromoted: config.isPromoted,
       promoteTags: config.promoteTags,
@@ -44,6 +51,25 @@ const pickPluginSystemTemplateEditableConfig = (config: AppTemplateSchemaType) =
     }).filter(([, value]) => value !== undefined)
   )
 });
+
+export const pluginSystemTemplateDbUnsetFields = {
+  name: '',
+  intro: '',
+  avatar: '',
+  author: '',
+  tags: '',
+  type: '',
+  userGuide: '',
+  workflow: ''
+} as const;
+
+/**
+ * 提取系统模板允许由数据库覆盖的运营字段。
+ *
+ * 系统模板来自 plugin 服务，workflow、userGuide、type 等内容字段必须始终以 plugin 返回为准。
+ * 数据库只作为展示卡片、上下线、推荐和标签等运营配置层，避免后台保存的旧 workflow 覆盖新版模板。
+ */
+const pickPluginSystemTemplateEditableConfig = pickPluginSystemTemplateDbConfig;
 
 const getAppTemplates = async () => {
   const originCommunityTemplates = await getFileTemplates();
@@ -104,7 +130,7 @@ export const getAppTemplatesAndLoadThem = async (refresh = false) => {
     global.appTemplates = appTemplates;
     global.templatesRefreshTime = addMinutes(new Date(), 30).getTime(); // 缓存30分钟
     return appTemplates;
-  } catch (error) {
+  } catch {
     return [];
   }
 };

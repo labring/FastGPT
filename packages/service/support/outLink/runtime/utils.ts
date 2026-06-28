@@ -24,7 +24,6 @@ import { updateChatGenerateStatus } from '../../../core/chat/chatGenerateStatus'
 import { dispatchWorkFlow } from '../../../core/workflow/dispatch';
 import { getRunningUserInfoByTmbId } from '../../../support/user/team/utils';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import type { NextApiResponse } from 'next';
 import { authOutLinkLimit } from './auth';
 import { addOutLinkUsage } from '../../../support/outLink/tools';
 import { getLogger, LogCategories } from '../../../common/logger';
@@ -99,7 +98,6 @@ export type outLinkInvokeChatProps<T extends OutlinkAppType> = {
   outLinkConfig: OutLinkSchemaType<T>;
   chatId: string; // specific chat
   query: UserChatItemValueItemType[];
-  res?: NextApiResponse;
   messageId: string;
   chatUserId: string;
   // Called once with complete response content (all channels except wecom)
@@ -118,7 +116,6 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
   outLinkConfig,
   chatId,
   query,
-  res,
   messageId,
   chatUserId,
   onReply,
@@ -261,7 +258,6 @@ export async function outlinkInvokeChat<T extends OutlinkAppType>({
       nodeResponseSummary
     } = await dispatchWorkFlow({
       apiVersion: 'v2',
-      res,
       mode: 'chat',
       usageSource: getUsageSourceByPublishChannel(outLinkConfig.type),
       runningAppInfo: {

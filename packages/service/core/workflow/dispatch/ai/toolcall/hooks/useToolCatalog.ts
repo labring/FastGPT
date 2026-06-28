@@ -8,14 +8,17 @@ import { SANDBOX_TOOLS } from '@fastgpt/global/core/ai/sandbox/tools';
 import { nodeInputs2JsonSchema } from '@fastgpt/global/core/app/jsonschema';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
-import { getSandboxToolInfo, prepareSandboxToolRuntime } from '../../../../../ai/sandbox/toolCall';
-import { getSandboxRuntimeProfile } from '../../../../../ai/sandbox/runtime/profile';
 import {
+  getSandboxToolInfo,
+  prepareSandboxToolRuntime
+} from '../../../../../ai/sandbox/interface/toolCall';
+import {
+  getRunningSandboxId,
+  getSandboxRuntimeProfile,
   runAgentSandboxEntrypoint,
-  withAgentSandboxInitLease
-} from '../../../../../ai/sandbox/runtime/entrypoint';
-import { getRunningSandboxId } from '../../../../../ai/sandbox/runtime/id';
-import type { SandboxClient } from '../../../../../ai/sandbox/service/runtime';
+  withAgentSandboxInitLease,
+  type SandboxClient
+} from '../../../../../ai/sandbox/interface/runtime';
 import type { FileInputType, ToolNodeItemType } from '../type';
 import { ReadFileTooData, ReadFileToolSchema } from '../tools/file';
 

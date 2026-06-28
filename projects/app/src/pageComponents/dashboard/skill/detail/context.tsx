@@ -4,14 +4,20 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import type { AgentSkillDetailType } from '@fastgpt/global/core/ai/skill/type';
 import type { SandboxStatusItemType, SandboxStatusPhase } from '@fastgpt/global/core/chat/type';
+import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
 import {
   AgentSkillCreationStatusEnum,
   AgentSkillTypeEnum
 } from '@fastgpt/global/core/ai/skill/constants';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { useToast } from '@fastgpt/web/hooks/useToast';
-import { getSkillDetail, streamCreateEditDebugSandbox } from '@/web/core/skill/api';
+import {
+  getSkillDetail,
+  getSkillRuntimeStatus,
+  postUpgradeSkillRuntime,
+  streamInitSkillRuntime
+} from '@/web/core/skill/api';
 import { useSkillDebugChatStore } from './useSkillDebugChatStore';
+import type { SkillRuntimeStatusResponse } from '@fastgpt/global/core/ai/skill/api';
 
 export enum TabEnum {
   config = 'config',
@@ -42,6 +48,7 @@ type SkillDetailContextType = {
   sandboxState: SandboxState;
   sandboxLogs: SandboxLogEntry[];
   sandboxError: string | null;
+  canUpgradeSandboxRuntime: boolean;
   isSkillReady: boolean;
   startSandbox: () => void;
   restartSandbox: () => void;
@@ -62,6 +69,7 @@ export const SkillDetailContext = createContext<SkillDetailContextType>({
   sandboxState: 'idle',
   sandboxLogs: [],
   sandboxError: null,
+  canUpgradeSandboxRuntime: true,
   isSkillReady: false,
   startSandbox: () => {},
   restartSandbox: () => {},
@@ -81,12 +89,63 @@ const formatTimestamp = () => {
 
 const RUNTIME_UPGRADE_POLL_INTERVAL_MS = 3000;
 
+const isRuntimeUpgradeInProgressError = (err: unknown) => {
+  const isRuntimeUpgradeInProgressText = (value: unknown) => {
+    const text = String(value);
+    return (
+      text.includes(SandboxErrEnum.runtimeUpgradeInProgress) ||
+      text.includes('runtime_upgrade_in_progress')
+    );
+  };
+
+  if (typeof err === 'string') return isRuntimeUpgradeInProgressText(err);
+  if (!err || typeof err !== 'object') return false;
+
+  const errorData = err as {
+    statusText?: unknown;
+    message?: unknown;
+    code?: unknown;
+    response?: {
+      data?: {
+        statusText?: unknown;
+        message?: unknown;
+        code?: unknown;
+      };
+    };
+  };
+  const values = [
+    errorData.statusText,
+    errorData.message,
+    errorData.code,
+    errorData.response?.data?.statusText,
+    errorData.response?.data?.message,
+    errorData.response?.data?.code
+  ];
+
+  return values.some(isRuntimeUpgradeInProgressText);
+};
+
 const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
   const router = useRouter();
-  const { t } = useTranslation();
-  const { toast } = useToast();
   const { skillId: querySkillId } = router.query;
   const skillId = (Array.isArray(querySkillId) ? querySkillId[0] : querySkillId) ?? '';
+
+  return (
+    <SkillDetailContextProviderInner key={skillId || 'empty-skill'} skillId={skillId}>
+      {children}
+    </SkillDetailContextProviderInner>
+  );
+};
+
+const SkillDetailContextProviderInner = ({
+  children,
+  skillId
+}: {
+  children: ReactNode;
+  skillId: string;
+}) => {
+  const router = useRouter();
+  const { t } = useTranslation();
   const activeSkillId = useSkillDebugChatStore((state) => state.skillId);
   const activeChatId = useSkillDebugChatStore((state) => state.chatId);
   const setSkillId = useSkillDebugChatStore((state) => state.setSkillId);
@@ -99,8 +158,9 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
   const [sandboxState, setSandboxState] = useState<SandboxState>('idle');
   const [sandboxLogs, setSandboxLogs] = useState<SandboxLogEntry[]>([]);
   const [sandboxError, setSandboxError] = useState<string | null>(null);
+  const [canUpgradeSandboxRuntime, setCanUpgradeSandboxRuntime] = useState(true);
   const abortCtrlRef = useRef<AbortController | null>(null);
-  const hasStartedRef = useRef(false);
+  const startedSkillIdRef = useRef('');
   const runtimeUpgradePollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveAllRef = useRef<() => Promise<void>>();
 
@@ -132,9 +192,6 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
         downloadingPackage: t('skill:sandbox_downloading'),
         uploadingPackage: t('skill:sandbox_uploading'),
         extractingPackage: t('skill:sandbox_extracting'),
-        runtimeUpgradeRequired: t('skill:sandbox_runtime_upgrade_required'),
-        runtimeUpgradeArchiving: t('skill:sandbox_runtime_upgrade_archiving'),
-        runtimeUpgradeArchived: t('skill:sandbox_runtime_upgrade_archived'),
         lazyInit: t('skill:sandbox_lazy_init'),
         ready: isWarmStart ? t('skill:sandbox_ready_warm') : t('skill:sandbox_ready'),
         failed: t('skill:sandbox_failed', { message: message || '' })
@@ -144,72 +201,179 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
     [t]
   );
 
-  const startSandbox = useCallback(
-    (options?: { archiveForUpgrade?: boolean }) => {
+  const startRuntimeFlow = useCallback(
+    (mode: 'check' | 'upgrade') => {
       if (!skillId) return;
 
-      // Abort previous if any
+      if (mode === 'check') {
+        startedSkillIdRef.current = skillId;
+      }
+
       abortCtrlRef.current?.abort();
       clearRuntimeUpgradePollTimer();
 
       const abortCtrl = new AbortController();
       abortCtrlRef.current = abortCtrl;
 
-      const runSandboxStream = async (runOptions?: {
-        archiveForUpgrade?: boolean;
-        keepUpgradeState?: boolean;
-      }) => {
-        if (!runOptions?.keepUpgradeState) {
-          setSandboxState(runOptions?.archiveForUpgrade ? 'upgrading' : 'idle');
-          setSandboxLogs([]);
-          setSandboxError(null);
+      const isCurrentRequest = () =>
+        !abortCtrl.signal.aborted && abortCtrlRef.current === abortCtrl;
+      const translateErrorMessage = (message: string) => {
+        if (
+          message === SandboxErrEnum.runtimeUpgradeInProgress ||
+          message.includes('runtime_upgrade_in_progress')
+        ) {
+          return t('skill:sandbox_runtime_upgrade_in_progress');
+        }
+        if (
+          message === SandboxErrEnum.runtimeUpgradeFailed ||
+          message.includes('runtime_upgrade_failed')
+        ) {
+          return t('skill:sandbox_runtime_upgrade_failed');
+        }
+        return t(message, { defaultValue: message });
+      };
+      const getErrorMessage = (err: unknown, fallback = t('skill:sandbox_error_title')): string => {
+        if (typeof err === 'string') return translateErrorMessage(err);
+        if (err instanceof Error) return translateErrorMessage(err.message);
+        if (!err || typeof err !== 'object') return fallback;
+
+        const errorData = err as {
+          message?: unknown;
+          response?: {
+            data?: {
+              message?: unknown;
+            };
+          };
+        };
+        const message = errorData.message ?? errorData.response?.data?.message;
+        return typeof message === 'string' && message ? translateErrorMessage(message) : fallback;
+      };
+      const enterRuntimeUpgradePolling = () => {
+        if (!isCurrentRequest()) return;
+        setSandboxState('upgrading');
+        setSandboxError(null);
+        scheduleRuntimeStatusPoll();
+      };
+
+      const showInitError = (message: string) => {
+        if (!isCurrentRequest()) return;
+        setSandboxError(translateErrorMessage(message));
+        setSandboxState('failed');
+      };
+
+      const showUpgradeError = (message = t('skill:sandbox_runtime_upgrade_failed')) => {
+        if (!isCurrentRequest()) return;
+        const translatedMessage = translateErrorMessage(message);
+        clearRuntimeUpgradePollTimer();
+        setSandboxError(translatedMessage);
+        setCanUpgradeSandboxRuntime(true);
+        setSandboxState('upgradeRequired');
+      };
+      const getRuntimeUpgradeErrorMessage = (message?: string) => {
+        if (!message || message === SandboxErrEnum.runtimeUpgradeFailed) {
+          return t('skill:sandbox_runtime_upgrade_failed');
+        }
+        return translateErrorMessage(message);
+      };
+      const finishRuntimeUpgradeWithError = (message?: string) => {
+        showUpgradeError(getRuntimeUpgradeErrorMessage(message));
+      };
+
+      /**
+       * Skill Edit runtime 的唯一前端状态机入口。
+       * check/upgrade/轮询都复用该分支，避免主动升级和其他用户升级中的处理结果不一致。
+       */
+      async function applyRuntimeStatus(
+        status: SkillRuntimeStatusResponse,
+        options?: { hasSeenUpgrading?: boolean }
+      ) {
+        if (!isCurrentRequest()) return;
+        setCanUpgradeSandboxRuntime(status.canUpgrade);
+
+        if (options?.hasSeenUpgrading && status.archiveState === 'failed') {
+          finishRuntimeUpgradeWithError(status.lastError);
+          return;
         }
 
-        let hasReceivedFirstEvent = false;
-        let hasShownError = false;
-        let isRuntimeUpgradeFlow =
-          !!runOptions?.archiveForUpgrade || !!runOptions?.keepUpgradeState;
-        let shouldPollRuntimeUpgrade = false;
-        let shouldRestartAfterRuntimeUpgrade = false;
+        if (status.shouldPoll) {
+          setSandboxState('upgrading');
+          setSandboxError(status.lastError ? translateErrorMessage(status.lastError) : null);
+          scheduleRuntimeStatusPoll();
+          return;
+        }
 
-        const showSandboxError = (err: string) => {
-          if (hasShownError) return;
-          hasShownError = true;
-          setSandboxError(err);
-          if (isRuntimeUpgradeFlow) {
-            toast({
-              status: 'error',
-              title: err
-            });
-          }
-          setSandboxState(isRuntimeUpgradeFlow ? 'upgradeRequired' : 'failed');
+        switch (status.status) {
+          case 'readyToInit':
+            clearRuntimeUpgradePollTimer();
+            setSandboxState('loading');
+            setSandboxError(null);
+            await initSandboxRuntime();
+            return;
+          case 'upgradeRequired':
+            clearRuntimeUpgradePollTimer();
+            if (options?.hasSeenUpgrading) {
+              finishRuntimeUpgradeWithError(status.lastError);
+              return;
+            }
+            setSandboxError(status.lastError ? translateErrorMessage(status.lastError) : null);
+            setSandboxState('upgradeRequired');
+            return;
+          case 'upgrading':
+            setSandboxState('upgrading');
+            setSandboxError(null);
+            scheduleRuntimeStatusPoll();
+            return;
+        }
+      }
+
+      async function pollRuntimeStatus() {
+        if (!isCurrentRequest()) return;
+
+        const status = await getSkillRuntimeStatus({ skillId });
+        if (!isCurrentRequest()) return;
+
+        await applyRuntimeStatus(status, { hasSeenUpgrading: true });
+      }
+
+      function scheduleRuntimeStatusPoll() {
+        if (!isCurrentRequest()) return;
+
+        clearRuntimeUpgradePollTimer();
+        runtimeUpgradePollTimerRef.current = setTimeout(() => {
+          runtimeUpgradePollTimerRef.current = null;
+          void pollRuntimeStatus().catch(() => {
+            showUpgradeError();
+          });
+        }, RUNTIME_UPGRADE_POLL_INTERVAL_MS);
+      }
+
+      async function initSandboxRuntime() {
+        if (!isCurrentRequest()) return;
+
+        setSandboxState('loading');
+        setSandboxLogs([]);
+        setSandboxError(null);
+        setCanUpgradeSandboxRuntime(true);
+
+        let hasShownInitError = false;
+        const finishWithInitError = (message: string) => {
+          if (!isCurrentRequest() || hasShownInitError) return;
+          hasShownInitError = true;
+          showInitError(message);
         };
 
         const handleSandboxPhase = (status: SandboxStatusItemType) => {
           switch (status.phase) {
             case 'ready':
-              shouldPollRuntimeUpgrade = false;
+              clearRuntimeUpgradePollTimer();
+              setSandboxError(null);
               setSandboxState('ready');
               return;
-            case 'runtimeUpgradeRequired':
-              setSandboxState('upgradeRequired');
-              return;
-            case 'runtimeUpgradeArchiving':
-              isRuntimeUpgradeFlow = true;
-              setSandboxState('upgrading');
-              shouldPollRuntimeUpgrade = true;
-              return;
-            case 'runtimeUpgradeArchived':
-              isRuntimeUpgradeFlow = true;
-              shouldPollRuntimeUpgrade = false;
-              shouldRestartAfterRuntimeUpgrade = true;
-              setSandboxState('upgrading');
-              return;
             case 'failed':
-              showSandboxError(
-                isRuntimeUpgradeFlow
-                  ? t('skill:sandbox_runtime_upgrade_failed')
-                  : status.message || t('skill:sandbox_error_title')
+              finishWithInitError(
+                status.message
+                  ? translateErrorMessage(status.message)
+                  : t('skill:sandbox_error_title')
               );
               return;
             default:
@@ -218,21 +382,10 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
         };
 
         try {
-          await streamCreateEditDebugSandbox({
-            data: {
-              skillId,
-              ...(runOptions?.archiveForUpgrade ? { archiveForUpgrade: true } : {})
-            },
+          await streamInitSkillRuntime({
+            data: { skillId },
             onStatus: (status) => {
-              // 收到第一条 SSE 消息后才从 idle 切到 loading（终端日志）
-              if (!hasReceivedFirstEvent) {
-                hasReceivedFirstEvent = true;
-                setSandboxState(
-                  runOptions?.archiveForUpgrade || runOptions?.keepUpgradeState
-                    ? 'upgrading'
-                    : 'loading'
-                );
-              }
+              if (!isCurrentRequest()) return;
 
               const entry: SandboxLogEntry = {
                 timestamp: formatTimestamp(),
@@ -244,78 +397,69 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
               handleSandboxPhase(status);
             },
             onError: (err) => {
-              showSandboxError(
-                isRuntimeUpgradeFlow ? t('skill:sandbox_runtime_upgrade_failed') : err
-              );
+              finishWithInitError(err);
             },
             abortCtrl
           });
         } catch (err) {
-          if (abortCtrl.signal.aborted) return;
-          showSandboxError(
-            isRuntimeUpgradeFlow
-              ? t('skill:sandbox_runtime_upgrade_failed')
-              : typeof err === 'string'
-                ? err
-                : err instanceof Error
-                  ? err.message
-                  : String(err)
-          );
-          return;
+          if (!isCurrentRequest()) return;
+          finishWithInitError(getErrorMessage(err));
         }
+      }
 
-        if (
-          shouldRestartAfterRuntimeUpgrade &&
-          !abortCtrl.signal.aborted &&
-          abortCtrlRef.current === abortCtrl
-        ) {
-          await runSandboxStream({ keepUpgradeState: true });
-          return;
-        }
+      const runStatusCheck = async () => {
+        setSandboxState('loading');
+        setSandboxLogs([]);
+        setSandboxError(null);
+        setCanUpgradeSandboxRuntime(true);
 
-        if (
-          shouldPollRuntimeUpgrade &&
-          !abortCtrl.signal.aborted &&
-          abortCtrlRef.current === abortCtrl
-        ) {
-          runtimeUpgradePollTimerRef.current = setTimeout(() => {
-            if (abortCtrlRef.current !== abortCtrl) return;
-            void runSandboxStream({ keepUpgradeState: true }).catch(() => {
-              if (abortCtrl.signal.aborted || abortCtrlRef.current !== abortCtrl) return;
-              showSandboxError(t('skill:sandbox_runtime_upgrade_failed'));
-            });
-          }, RUNTIME_UPGRADE_POLL_INTERVAL_MS);
+        try {
+          const status = await getSkillRuntimeStatus({ skillId });
+          await applyRuntimeStatus(status);
+        } catch (err) {
+          if (!isCurrentRequest()) return;
+          showInitError(getErrorMessage(err));
         }
       };
 
-      void runSandboxStream(options).catch((err) => {
-        if (abortCtrl.signal.aborted) return;
-        const message = options?.archiveForUpgrade
-          ? t('skill:sandbox_runtime_upgrade_failed')
-          : typeof err === 'string'
-            ? err
-            : err?.message || String(err);
-        setSandboxError(message);
-        if (options?.archiveForUpgrade) {
-          toast({
-            status: 'error',
-            title: message
-          });
+      const runUpgrade = async () => {
+        if (!canUpgradeSandboxRuntime) return;
+
+        setSandboxState('upgrading');
+        setSandboxError(null);
+        setCanUpgradeSandboxRuntime(false);
+
+        try {
+          const status = await postUpgradeSkillRuntime({ skillId });
+          await applyRuntimeStatus(status);
+        } catch (err) {
+          if (!isCurrentRequest()) return;
+
+          // 并发触发时后端会拒绝重复 upgrade；客户端进入 upgrading 并轮询最终状态。
+          if (isRuntimeUpgradeInProgressError(err)) {
+            enterRuntimeUpgradePolling();
+            return;
+          }
+
+          showUpgradeError(getErrorMessage(err, t('skill:sandbox_runtime_upgrade_failed')));
         }
-        setSandboxState(options?.archiveForUpgrade ? 'upgradeRequired' : 'failed');
-      });
+      };
+
+      void (mode === 'check' ? runStatusCheck() : runUpgrade());
     },
-    [skillId, clearRuntimeUpgradePollTimer, phaseToMessage, t, toast]
+    [skillId, canUpgradeSandboxRuntime, clearRuntimeUpgradePollTimer, phaseToMessage, t]
   );
 
-  const restartSandbox = useCallback(() => {
-    hasStartedRef.current = true;
-    startSandbox();
-  }, [startSandbox]);
+  const startSandbox = useCallback(() => {
+    startRuntimeFlow('check');
+  }, [startRuntimeFlow]);
 
   const upgradeSandboxRuntime = useCallback(() => {
-    hasStartedRef.current = true;
-    startSandbox({ archiveForUpgrade: true });
+    startRuntimeFlow('upgrade');
+  }, [startRuntimeFlow]);
+
+  const restartSandbox = useCallback(() => {
+    startSandbox();
   }, [startSandbox]);
 
   const handleSandboxError = useCallback((err: string) => {
@@ -358,21 +502,22 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
     }
   );
 
-  const creationStatus = skillDetail?.creationStatus;
+  const currentSkillDetail = skillDetail?._id === skillId ? skillDetail : undefined;
+  const creationStatus = currentSkillDetail?.creationStatus;
   const isSkillCreating = creationStatus === AgentSkillCreationStatusEnum.creating;
   const isSkillCreateFailed = creationStatus === AgentSkillCreationStatusEnum.failed;
   const isSkillNoCurrentVersion =
-    !!skillDetail &&
+    !!currentSkillDetail &&
     creationStatus === AgentSkillCreationStatusEnum.ready &&
-    !skillDetail.currentVersionId;
+    !currentSkillDetail.currentVersionId;
   const isSkillReady =
-    !!skillDetail &&
+    !!currentSkillDetail &&
     creationStatus === AgentSkillCreationStatusEnum.ready &&
-    !!skillDetail.currentVersionId;
+    !!currentSkillDetail.currentVersionId;
   const visibleSandboxState: SandboxState =
     isSkillCreateFailed || isSkillNoCurrentVersion ? 'failed' : sandboxState;
   const visibleSandboxError = (() => {
-    if (isSkillCreateFailed) return skillDetail?.creationError || t('common:create_failed');
+    if (isSkillCreateFailed) return currentSkillDetail?.creationError || t('common:create_failed');
     if (isSkillNoCurrentVersion) return t('skill:no_current_version');
     return sandboxError;
   })();
@@ -389,8 +534,7 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
 
   // Auto-start sandbox when skillId is ready
   useEffect(() => {
-    if (skillId && isSkillReady && !hasStartedRef.current) {
-      hasStartedRef.current = true;
+    if (skillId && isSkillReady && startedSkillIdRef.current !== skillId) {
       startSandbox();
     }
   }, [skillId, isSkillReady, startSandbox]);
@@ -406,7 +550,7 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
   const contextValue: SkillDetailContextType = useMemo(
     () => ({
       skillId,
-      skillDetail,
+      skillDetail: currentSkillDetail,
       isFetchingSkillDetail,
       refreshSkillDetail,
       showHistories,
@@ -414,6 +558,7 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
       sandboxState: visibleSandboxState,
       sandboxLogs,
       sandboxError: visibleSandboxError,
+      canUpgradeSandboxRuntime,
       isSkillReady,
       startSandbox,
       restartSandbox,
@@ -425,13 +570,14 @@ const SkillDetailContextProvider = ({ children }: { children: ReactNode }) => {
     }),
     [
       skillId,
-      skillDetail,
+      currentSkillDetail,
       isFetchingSkillDetail,
       refreshSkillDetail,
       showHistories,
       visibleSandboxState,
       sandboxLogs,
       visibleSandboxError,
+      canUpgradeSandboxRuntime,
       isSkillReady,
       startSandbox,
       restartSandbox,

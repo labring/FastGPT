@@ -34,6 +34,7 @@ import { removeUnauthModels } from '@fastgpt/global/core/workflow/utils';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
+import { isPluginSystemTemplate } from '@fastgpt/service/core/app/templates/register';
 import {
   beforeUpdateAppFormat,
   validatePublishAppAgentSkillReadPermissions,
@@ -188,7 +189,7 @@ export const onCreateApp = async ({
   const create = async (session: ClientSession) => {
     const resourceRefs = extractAppResourceRefsFromNodes(modules);
     const _avatar = await (async () => {
-      if (!templateId) return avatar;
+      if (!templateId || isPluginSystemTemplate(templateId)) return avatar;
 
       const template = await MongoAppTemplate.findOne({ templateId }, 'avatar').lean();
       if (!template?.avatar) return avatar;

@@ -1,3 +1,8 @@
+/**
+ * 沙盒模块错误工厂。
+ *
+ * 统一把 sandbox 业务错误转换成 UserError，不承载 provider 或数据库逻辑。
+ */
 import { SandboxErrEnum } from '@fastgpt/global/common/error/code/sandbox';
 import { UserError } from '@fastgpt/global/common/error/utils';
 

@@ -10,7 +10,7 @@ import {
   DeleteChatInputGuideResponseSchema,
   DeleteAllChatInputGuideBodySchema,
   DeleteAllChatInputGuideResponseSchema,
-  QueryChatInputGuideBodySchema,
+  QueryChatInputGuideBodyRawSchema,
   QueryChatInputGuideResponseSchema,
   UpdateChatInputGuideBodySchema,
   UpdateChatInputGuideResponseSchema
@@ -141,12 +141,12 @@ export const ChatInputGuidePath: OpenAPIPath = {
   '/core/chat/inputGuide/query': {
     post: {
       summary: '查询对话输入引导（公开接口）',
-      description: '根据搜索词查询对话输入引导，支持分享链接和团队 Token 鉴权',
+      description: '根据搜索词查询对话输入引导，支持应用和分享链接鉴权',
       tags: [DevApiTagsMap.chatInputGuide],
       requestBody: {
         content: {
           'application/json': {
-            schema: QueryChatInputGuideBodySchema
+            schema: QueryChatInputGuideBodyRawSchema
           }
         }
       },

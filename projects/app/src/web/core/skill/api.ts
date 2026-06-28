@@ -19,13 +19,13 @@ import type {
   SaveDeploySkillResponse,
   GetSkillFolderPathQuery,
   GetSkillFolderPathResponse,
-  CreateEditDebugSandboxBody,
-  CreateEditDebugSandboxResponse,
   CreateSkillFolderBody,
   SkillDebugChatBody,
   ListAppsBySkillIdResponse,
   ListSkillVersionsBody,
   ListSkillVersionsResponse,
+  SkillRuntimeBody,
+  SkillRuntimeStatusResponse,
   SwitchSkillVersionBody,
   UpdateSkillVersionBody
 } from '@fastgpt/global/core/ai/skill/api';
@@ -74,18 +74,22 @@ export const importSkill = (formData: FormData) => POST<string>('/core/ai/skill/
 export const postSaveDeploySkill = (data: SaveDeploySkillBody) =>
   POST<SaveDeploySkillResponse>('/core/ai/skill/save-deploy', data);
 
-/** 创建编辑调试沙箱（SSE 流式返回状态，最终推送 endpoint 信息） */
-export const postCreateEditDebugSandbox = (data: CreateEditDebugSandboxBody) =>
-  POST<CreateEditDebugSandboxResponse>('/core/ai/skill/edit', data);
+/** 获取 Skill Edit runtime 状态 */
+export const getSkillRuntimeStatus = (data: SkillRuntimeBody) =>
+  POST<SkillRuntimeStatusResponse>('/core/ai/skill/runtime/getStatus', data);
 
-/** 创建编辑调试沙箱 — SSE 流式版本，逐阶段回调 */
-export const streamCreateEditDebugSandbox = ({
+/** 触发 Skill Edit runtime 升级归档 */
+export const postUpgradeSkillRuntime = (data: SkillRuntimeBody) =>
+  POST<SkillRuntimeStatusResponse>('/core/ai/skill/runtime/upgrade', data);
+
+/** 初始化 Skill Edit runtime sandbox — SSE 流式版本，逐阶段回调 */
+export const streamInitSkillRuntime = ({
   data,
   onStatus,
   onError,
   abortCtrl
 }: {
-  data: CreateEditDebugSandboxBody;
+  data: SkillRuntimeBody;
   onStatus: (status: SandboxStatusItemType) => void;
   onError: (err: string) => void;
   abortCtrl: AbortController;
@@ -95,7 +99,7 @@ export const streamCreateEditDebugSandbox = ({
       abortCtrl.abort('Timeout');
     }, 60000);
 
-    fetchEventSource(getWebReqUrl('/api/core/ai/skill/edit'), {
+    fetchEventSource(getWebReqUrl('/api/core/ai/skill/runtime/init'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -132,7 +136,7 @@ export const streamCreateEditDebugSandbox = ({
       onerror(err) {
         clearTimeout(timeoutId);
         reject(err?.message || String(err) || 'SSE connection error');
-        throw err; // stop retrying
+        throw err;
       },
       openWhenHidden: true
     });

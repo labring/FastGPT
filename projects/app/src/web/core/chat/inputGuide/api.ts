@@ -1,4 +1,4 @@
-import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
+import { GET, POST, PUT } from '@/web/common/api/request';
 import type {
   ChatInputGuideListBodyType,
   ChatInputGuideListResponseType,
@@ -12,6 +12,7 @@ import type {
   QueryChatInputGuideResponseType,
   DeleteAllChatInputGuideBodyType
 } from '@fastgpt/global/openapi/core/chat/inputGuide/api';
+import { toChatAuthQueryInput } from '@/web/core/chat/utils';
 
 export const getCountChatInputGuideTotal = (data: CountChatInputGuideTotalQueryType) =>
   GET<CountChatInputGuideTotalResponseType>(`/core/chat/inputGuide/countTotal`, data);
@@ -23,7 +24,7 @@ export const getChatInputGuideList = (data: ChatInputGuideListBodyType) =>
 
 export const queryChatInputGuideList = (data: QueryChatInputGuideBodyType, url?: string) => {
   if (url) {
-    return GET<QueryChatInputGuideResponseType>(url, data, {
+    return GET<QueryChatInputGuideResponseType>(url, toChatAuthQueryInput(data), {
       withCredentials: !url
     });
   }

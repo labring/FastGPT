@@ -114,7 +114,6 @@
   "join_team": "加入團隊",
   "join_update_time": "加入/更新時間",
   "kick_out_team": "移除成員",
-  "label_sync": "標籤同步",
   "leave": "已離職",
   "link_forbidden": "禁用",
   "log_admin_add_plan": "【{{name}}】將給團隊id為【{{teamId}}】的團隊添加了套餐",

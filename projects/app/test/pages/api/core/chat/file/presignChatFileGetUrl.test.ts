@@ -39,6 +39,8 @@ describe('presignChatFileGetUrl', () => {
     vi.clearAllMocks();
 
     mocks.authChatTargetCrud.mockResolvedValue({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
       teamId: 'team-id',
       uid
     });
@@ -74,6 +76,12 @@ describe('presignChatFileGetUrl', () => {
 
   it('signs a source-aware skill chat file', async () => {
     const skillId = '507f1f77bcf86cd799439012';
+    mocks.authChatTargetCrud.mockResolvedValueOnce({
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: skillId,
+      teamId: 'team-id',
+      uid
+    });
 
     await expect(
       callHandler({
@@ -94,6 +102,46 @@ describe('presignChatFileGetUrl', () => {
     );
     expect(mocks.createGetChatFileURL).toHaveBeenCalledWith({
       key: `chat/${ChatSourceTypeEnum.skillEdit}/${skillId}/${uid}/${chatId}/demo.pdf`,
+      external: true,
+      mode: undefined
+    });
+  });
+
+  it('signs a shared chat file with source resolved by authChatTargetCrud', async () => {
+    const resolvedAppId = '507f1f77bcf86cd799439099';
+    mocks.authChatTargetCrud.mockResolvedValueOnce({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: resolvedAppId,
+      teamId: 'team-id',
+      uid
+    });
+
+    await expect(
+      callHandler({
+        chatId,
+        key: `chat/${resolvedAppId}/${uid}/${chatId}/demo.pdf`,
+        outLinkAuthData: {
+          shareId: 'share-id',
+          outLinkUid: uid
+        }
+      })
+    ).resolves.toBe('https://example.com/download-token');
+
+    expect(mocks.authChatTargetCrud).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: undefined,
+        outLinkAuthData: {
+          shareId: 'share-id',
+          outLinkUid: uid
+        },
+        chatId,
+        authToken: true,
+        authApiKey: true
+      })
+    );
+    expect(mocks.createGetChatFileURL).toHaveBeenCalledWith({
+      key: `chat/${resolvedAppId}/${uid}/${chatId}/demo.pdf`,
       external: true,
       mode: undefined
     });

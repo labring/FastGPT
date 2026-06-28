@@ -1,28 +1,42 @@
 import React from 'react';
-import { Box } from '@chakra-ui/react';
+import { Box, Button, VStack } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { useTranslation } from 'next-i18next';
+import { useRouter } from 'next/router';
 import { SkillDetailContext } from './context';
 import SandboxEditor from '@/pageComponents/chat/SandboxEditor/Editor';
 import SandboxError from './config/SandboxError';
 import { RightHeader } from '@/pageComponents/dashboard/skill/detail/Header';
-import ProModal from '@/components/ProTip/ProModal';
+import HighlightModal from '@fastgpt/web/components/v2/common/MyModal/HighlightModal';
 
 const EDIT_DEBUG_CHAT_ID = 'edit-debug';
 
 const Content = () => {
   const { t } = useTranslation();
-  const { sandboxState, skillId, isSkillReady, handleSandboxError, upgradeSandboxRuntime } =
-    useContextSelector(SkillDetailContext, (v) => ({
-      sandboxState: v.sandboxState,
-      skillId: v.skillId,
-      isSkillReady: v.isSkillReady,
-      handleSandboxError: v.handleSandboxError,
-      upgradeSandboxRuntime: v.upgradeSandboxRuntime
-    }));
+  const router = useRouter();
+  const {
+    sandboxState,
+    skillId,
+    isSkillReady,
+    handleSandboxError,
+    upgradeSandboxRuntime,
+    canUpgradeSandboxRuntime,
+    sandboxError
+  } = useContextSelector(SkillDetailContext, (v) => ({
+    sandboxState: v.sandboxState,
+    skillId: v.skillId,
+    isSkillReady: v.isSkillReady,
+    handleSandboxError: v.handleSandboxError,
+    upgradeSandboxRuntime: v.upgradeSandboxRuntime,
+    canUpgradeSandboxRuntime: v.canUpgradeSandboxRuntime,
+    sandboxError: v.sandboxError
+  }));
   const isSandboxReady = sandboxState === 'ready';
   const isUpgrading = sandboxState === 'upgrading';
   const isUpgradeModalOpen = sandboxState === 'upgradeRequired' || isUpgrading;
+  const upgradeModalTitle = isUpgrading
+    ? t('skill:sandbox_runtime_upgrade_in_progress')
+    : t('skill:sandbox_runtime_upgrade_required');
   const canOperateSandbox = isSkillReady && isSandboxReady;
 
   return (
@@ -56,20 +70,52 @@ const Content = () => {
           headerRight={canOperateSandbox ? <RightHeader /> : undefined}
         />
       )}
-      <ProModal
+      <HighlightModal
         isOpen={isUpgradeModalOpen}
-        forceShow
-        title={t('skill:sandbox_runtime_upgrade_required')}
-        content={
-          <Box color={'myGray.900'} fontSize={'18px'} lineHeight={'26px'} mt={7}>
-            {t('skill:sandbox_runtime_upgrade_desc')}
-          </Box>
+        title={upgradeModalTitle}
+        footer={
+          <VStack w={'full'} gap={3}>
+            <Button
+              w={'full'}
+              h={'48px'}
+              borderRadius={'10px'}
+              onClick={upgradeSandboxRuntime}
+              isLoading={isUpgrading}
+              isDisabled={isUpgrading || !canUpgradeSandboxRuntime}
+              fontSize={'16px'}
+              fontWeight={'medium'}
+            >
+              {t('skill:sandbox_runtime_upgrade_confirm')}
+            </Button>
+            <Button
+              w={'full'}
+              h={'48px'}
+              borderRadius={'10px'}
+              variant={'whitePrimary'}
+              onClick={() => router.back()}
+              fontSize={'16px'}
+              fontWeight={'medium'}
+            >
+              {t('common:Exit')}
+            </Button>
+          </VStack>
         }
-        primaryButtonText={t('skill:sandbox_runtime_upgrade_confirm')}
-        primaryButtonLoading={isUpgrading}
-        onPrimaryClick={upgradeSandboxRuntime}
-        showSecondaryButton={false}
-      />
+      >
+        <Box
+          color={'myGray.900'}
+          fontSize={'18px'}
+          lineHeight={'26px'}
+          mt={7}
+          whiteSpace="pre-wrap"
+        >
+          {t('skill:sandbox_runtime_upgrade_desc')}
+        </Box>
+        {sandboxError && (
+          <Box color={'red.600'} fontSize={'14px'} lineHeight={'20px'} mt={4} whiteSpace="pre-wrap">
+            {sandboxError}
+          </Box>
+        )}
+      </HighlightModal>
     </Box>
   );
 };

@@ -218,9 +218,6 @@ export const AppSchemaTypeSchema = z.object({
   }),
   inited: BoolSchema.optional().meta({
     deprecated: true
-  }),
-  teamTags: z.array(z.string()).optional().meta({
-    deprecated: true
   })
 });
 export type AppSchemaType = z.infer<typeof AppSchemaTypeSchema>;

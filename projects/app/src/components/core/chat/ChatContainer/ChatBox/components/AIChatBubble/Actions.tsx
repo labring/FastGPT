@@ -17,6 +17,7 @@ import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { getFlatAppResponses } from '@fastgpt/global/core/chat/utils';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
+import { toChatApiTarget } from '@/web/core/chat/utils';
 
 type AIChatBubbleActionsProps = {
   chatControllerProps: ChatControllerProps;
@@ -50,17 +51,18 @@ const AIChatBubbleActions = ({
   const { isPc } = useSystem();
   const chatType = useContextSelector(ChatBoxContext, (v) => v.chatType);
   const showRetry = chatType !== ChatTypeEnum.log && !!onRetry;
-  const appId = useContextSelector(WorkflowRuntimeContext, (v) => v.appId);
+  const sourceTarget = useContextSelector(WorkflowRuntimeContext, (v) => v.sourceTarget);
+  const chatTarget = useMemo(() => toChatApiTarget(sourceTarget), [sourceTarget]);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
   const { useAgentSandbox } = useMemo(
     () => addStatisticalDataToHistoryItem(historyItem),
     [historyItem]
   );
-  const canUseAgentSandbox = enableSandbox && !!appId && isPc && useAgentSandbox;
+  const canUseAgentSandbox = enableSandbox && !!sourceTarget.sourceId && isPc && useAgentSandbox;
   const { onOpenSandboxModal, SandboxEditorModal } = useSandboxEditor({
     enabled: canUseAgentSandbox,
-    appId,
+    chatTarget,
     chatId,
     outLinkAuthData
   });
@@ -150,7 +152,8 @@ const AIChatBubbleActions = ({
               cursor={'pointer'}
               color={'myGray.400'}
               userSelect={'none'}
-              _hover={{ color: 'primary.600' }}
+              transition={footerActionTransition}
+              _hover={footerActionHoverStyle}
               onClick={onOpenSandboxModal}
             >
               <MyIcon

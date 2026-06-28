@@ -16,6 +16,8 @@ import type {
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
+type EmptyQuery = Record<string, never>;
+
 describe('logs list API - errorFilter', () => {
   let testAppId: string;
   let testTeamId: string;
@@ -37,8 +39,7 @@ describe('logs list API - errorFilter', () => {
       ownerId: user._id,
       avatar: 'test-avatar',
       createTime: new Date(),
-      balance: 0,
-      teamDomain: 'test-domain-logs-list'
+      balance: 0
     });
     testTeamId = String(team._id);
 
@@ -77,7 +78,7 @@ describe('logs list API - errorFilter', () => {
     const now = new Date();
 
     // Create chats - some with errors, some without
-    const chat1 = await MongoChat.create({
+    await MongoChat.create({
       chatId: 'chat-all-1',
       appId: testAppId,
       teamId: testTeamId,
@@ -88,7 +89,7 @@ describe('logs list API - errorFilter', () => {
       errorCount: 0
     });
 
-    const chat2 = await MongoChat.create({
+    await MongoChat.create({
       chatId: 'chat-all-2',
       appId: testAppId,
       teamId: testTeamId,
@@ -132,17 +133,20 @@ describe('logs list API - errorFilter', () => {
     const dateStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
     const dateEnd = new Date(now.getTime() + 1000).toISOString();
 
-    const res = await Call<getAppChatLogsBody, {}, getAppChatLogsResponseType>(listApi.default, {
-      auth: authUser,
-      cookies: {
-        NEXT_LOCALE: 'zh-CN'
-      },
-      body: {
-        appId: testAppId,
-        dateStart,
-        dateEnd
+    const res = await Call<getAppChatLogsBody, EmptyQuery, getAppChatLogsResponseType>(
+      listApi.default,
+      {
+        auth: authUser,
+        cookies: {
+          NEXT_LOCALE: 'zh-CN'
+        },
+        body: {
+          appId: testAppId,
+          dateStart,
+          dateEnd
+        }
       }
-    });
+    );
 
     expect(res.code).toBe(200);
     expect(res.data.total).toBe(2);
@@ -228,18 +232,21 @@ describe('logs list API - errorFilter', () => {
     const dateStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
     const dateEnd = new Date(now.getTime() + 1000).toISOString();
 
-    const res = await Call<getAppChatLogsBody, {}, getAppChatLogsResponseType>(listApi.default, {
-      auth: authUser,
-      cookies: {
-        NEXT_LOCALE: 'zh-CN'
-      },
-      body: {
-        appId: testAppId,
-        dateStart,
-        dateEnd,
-        errorFilter: 'has_error'
+    const res = await Call<getAppChatLogsBody, EmptyQuery, getAppChatLogsResponseType>(
+      listApi.default,
+      {
+        auth: authUser,
+        cookies: {
+          NEXT_LOCALE: 'zh-CN'
+        },
+        body: {
+          appId: testAppId,
+          dateStart,
+          dateEnd,
+          errorFilter: 'has_error'
+        }
       }
-    });
+    );
 
     expect(res.code).toBe(200);
     expect(res.data.total).toBe(1);
@@ -318,19 +325,22 @@ describe('logs list API - errorFilter', () => {
     const dateEnd = new Date(now.getTime() + 1000).toISOString();
 
     // Request first page with errorFilter
-    const res = await Call<getAppChatLogsBody, {}, getAppChatLogsResponseType>(listApi.default, {
-      auth: authUser,
-      cookies: {
-        NEXT_LOCALE: 'zh-CN'
-      },
-      body: {
-        appId: testAppId,
-        dateStart,
-        dateEnd,
-        errorFilter: 'has_error',
-        pageSize: 3
+    const res = await Call<getAppChatLogsBody, EmptyQuery, getAppChatLogsResponseType>(
+      listApi.default,
+      {
+        auth: authUser,
+        cookies: {
+          NEXT_LOCALE: 'zh-CN'
+        },
+        body: {
+          appId: testAppId,
+          dateStart,
+          dateEnd,
+          errorFilter: 'has_error',
+          pageSize: 3
+        }
       }
-    });
+    );
 
     expect(res.code).toBe(200);
     expect(res.data.total).toBe(5); // Total chats with errors
@@ -446,19 +456,22 @@ describe('logs list API - errorFilter', () => {
     const dateEnd = new Date(now.getTime() + 1000).toISOString();
 
     // Filter by user 1 AND has_error
-    const res = await Call<getAppChatLogsBody, {}, getAppChatLogsResponseType>(listApi.default, {
-      auth: authUser,
-      cookies: {
-        NEXT_LOCALE: 'zh-CN'
-      },
-      body: {
-        appId: testAppId,
-        dateStart,
-        dateEnd,
-        tmbIds: [testTmbId],
-        errorFilter: 'has_error'
+    const res = await Call<getAppChatLogsBody, EmptyQuery, getAppChatLogsResponseType>(
+      listApi.default,
+      {
+        auth: authUser,
+        cookies: {
+          NEXT_LOCALE: 'zh-CN'
+        },
+        body: {
+          appId: testAppId,
+          dateStart,
+          dateEnd,
+          tmbIds: [testTmbId],
+          errorFilter: 'has_error'
+        }
       }
-    });
+    );
 
     expect(res.code).toBe(200);
     expect(res.data.total).toBe(1);

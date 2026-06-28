@@ -17,7 +17,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { TreeNode } from './components/FileTree';
 import type { OpenedFile } from './components/FileTabs';
 import type { ChatTargetInputType } from '@fastgpt/global/openapi/core/chat/api';
-import { getSandboxTargetId, resolveSandboxTarget } from './types';
+import { getSandboxTargetId, tryResolveSandboxTarget } from './types';
 import type { ExecuteResult } from '@fastgpt-sdk/sandbox-adapter';
 import {
   getLanguageByFileName,
@@ -106,8 +106,8 @@ export const useSandboxEditor = ({
 }) => {
   const [sandboxModalOpen, setSandboxModalOpen] = useState(false);
   const sandboxTarget = useMemo(
-    () => (enabled ? resolveSandboxTarget({ appId, chatTarget }) : undefined),
-    [appId, chatTarget?.appId, chatTarget?.skillId, enabled]
+    () => (enabled ? tryResolveSandboxTarget({ appId, chatTarget }) : undefined),
+    [appId, chatTarget, enabled]
   );
 
   const onOpenSandboxModal = useCallback(() => {
@@ -177,8 +177,8 @@ export const useSandboxStatus = ({
     exists: false
   });
   const sandboxTarget = useMemo(
-    () => (enabled ? resolveSandboxTarget({ appId, chatTarget }) : undefined),
-    [appId, chatTarget?.appId, chatTarget?.skillId, enabled]
+    () => (enabled ? tryResolveSandboxTarget({ appId, chatTarget }) : undefined),
+    [appId, chatTarget, enabled]
   );
   const sandboxTargetId = sandboxTarget ? getSandboxTargetId(sandboxTarget) : '';
 
@@ -215,16 +215,14 @@ export const useSandboxStatus = ({
     sandboxTargetId,
     chatId,
     outLinkAuthData?.shareId,
-    outLinkAuthData?.outLinkUid,
-    outLinkAuthData?.teamId,
-    outLinkAuthData?.teamToken
+    outLinkAuthData?.outLinkUid
   ]);
 
   const apiSandboxExists =
     apiSandboxStatus.targetId === sandboxTargetId &&
     apiSandboxStatus.chatId === chatId &&
     apiSandboxStatus.exists;
-  const sandboxExists = apiSandboxExists || hasSandboxInHistory;
+  const sandboxExists = !!sandboxTarget && (apiSandboxExists || hasSandboxInHistory);
 
   const setSandboxExists = useCallback(
     (exists: boolean) => {
@@ -789,8 +787,6 @@ export const useSandboxFileStore = ({
     chatId,
     outLinkAuthData?.shareId,
     outLinkAuthData?.outLinkUid,
-    outLinkAuthData?.teamId,
-    outLinkAuthData?.teamToken,
     isPreparing,
     canWrite,
     refreshWorkspaceRef,

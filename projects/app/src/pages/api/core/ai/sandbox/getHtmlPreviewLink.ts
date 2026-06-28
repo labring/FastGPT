@@ -10,8 +10,8 @@ import { SandboxGetHtmlPreviewLinkBodySchema } from '@fastgpt/global/openapi/cor
 import { S3PrivateBucket } from '@fastgpt/service/common/s3/buckets/private';
 import { getFileS3Key } from '@fastgpt/service/common/s3/utils';
 import { addMinutes } from 'date-fns';
-import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/service/runtime';
-import { getSandboxFileContent } from '@/service/core/sandbox/fileService';
+import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
+import { getSandboxFileContent } from '@fastgpt/service/core/ai/sandbox/interface/file';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void> {
@@ -21,7 +21,12 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
   }).body;
 
   // 1. 鉴权
-  const { uid, teamId } = await authSandboxSession({
+  const {
+    uid,
+    teamId,
+    sourceType: resolvedSourceType,
+    sourceId: resolvedSourceId
+  } = await authSandboxSession({
     req,
     sourceType,
     sourceId,
@@ -32,11 +37,14 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
   // 2. 从沙箱读取实际文件内容，避免客户端传入任意 HTML
   const sandbox = await getSandboxClient(
     buildSandboxClientQueryFromChatSource({
-      sourceType,
-      sourceId,
+      sourceType: resolvedSourceType,
+      sourceId: resolvedSourceId,
       userId: uid,
       chatId
-    })
+    }),
+    {
+      failedArchivePolicy: 'clearAndContinue'
+    }
   );
   const { content, contentType } = await getSandboxFileContent(sandbox, filePath, true);
 

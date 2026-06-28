@@ -14,7 +14,9 @@ import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { SkillToolSchema } from '@fastgpt/global/core/ai/skill/type';
 import {
   SelectedAgentSkillItemTypeSchema,
+  StoredSelectedAgentSkillItemTypeSchema,
   type AppFormEditFormType,
+  type StoredSelectedAgentSkillItemType,
   type SelectedAgentSkillItemType
 } from '@fastgpt/global/core/app/formEdit/type';
 import { authSkillByTmbId } from '../../support/permission/skill/auth';
@@ -83,8 +85,13 @@ export async function rewriteAppWorkflowToDetail({
       };
     }
   };
+  type AgentSkillSnapshot = StoredSelectedAgentSkillItemType & Partial<SelectedAgentSkillItemType>;
+  const AgentSkillSnapshotSchema = SelectedAgentSkillItemTypeSchema.partial().extend({
+    skillId: StoredSelectedAgentSkillItemTypeSchema.shape.skillId
+  });
+
   const loadAgentSkill = async (
-    selectedSkill: SelectedAgentSkillItemType
+    selectedSkill: AgentSkillSnapshot
   ): Promise<SelectedAgentSkillItemType> => {
     try {
       const { skill } = await authSkillByTmbId({
@@ -103,7 +110,10 @@ export async function rewriteAppWorkflowToDetail({
       };
     } catch {
       return {
-        ...selectedSkill,
+        skillId: selectedSkill.skillId,
+        name: selectedSkill.name ?? 'Invalid',
+        description: selectedSkill.description ?? '',
+        avatar: selectedSkill.avatar,
         isDeleted: true
       };
     }
@@ -276,9 +286,7 @@ export async function rewriteAppWorkflowToDetail({
         // Skill load
         const skillsInput = node.inputs.find((item) => item.key === NodeInputKeyEnum.skills);
         if (skillsInput && !nodeInputIsReference(skillsInput)) {
-          const skillParse = z
-            .array(SelectedAgentSkillItemTypeSchema)
-            .safeParse(skillsInput.value || []);
+          const skillParse = z.array(AgentSkillSnapshotSchema).safeParse(skillsInput.value || []);
           const skills = skillParse.success ? skillParse.data : [];
           if (skills.length > 0) {
             skillsInput.value = await Promise.all(skills.map(loadAgentSkill));

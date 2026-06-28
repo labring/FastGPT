@@ -14,7 +14,7 @@ import { MongoAgentSkillsVersion } from '../version/schema';
 import { findSkillAndAllChildren } from '../manage/folder';
 import { deleteChatResourcesBySource } from '../../../chat/delete';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { deleteSkillEditSandboxes } from '../../sandbox/service/resource';
+import { deleteSkillEditSandboxes } from '../../sandbox/interface/resource';
 
 const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS.CREATION);
 

@@ -2,6 +2,7 @@ import type { UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { delay, withTimeout } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../../common/logger';
 import { createLLMResponse } from '../ai/llm/request';
 import { getDefaultChatTitleModel } from '../ai/model';
@@ -16,6 +17,8 @@ export const DEFAULT_CHAT_TITLE = '新对话';
 const GENERATED_CHAT_TITLE_MAX_LENGTH = 80;
 const FALLBACK_CHAT_TITLE_MAX_LENGTH = 20;
 const CHAT_TITLE_QUESTION_MAX_LENGTH = 1000;
+export const CHAT_TITLE_GENERATION_TIMEOUT_MS = 30_000;
+export const CHAT_TITLE_SEND_WAIT_TIMEOUT_MS = 3_000;
 const titlePlaceholderValues = ['', DEFAULT_CHAT_TITLE, '历史记录'];
 const prompt = `You generate chat titles.
 
@@ -101,13 +104,13 @@ ${questionForTitle}
 </user_message>
 
 Return only the title.`;
-
   let answerText = '';
   try {
     const response = await createLLMResponse({
       teamId,
       throwError: false,
       saveLLMResponseRecord: false,
+      timeout: CHAT_TITLE_GENERATION_TIMEOUT_MS,
       body: {
         model: titleModel.model,
         stream: false,
@@ -255,9 +258,9 @@ export const scheduleGeneratedChatTitleFromUserContent = (
 /**
  * 创建一个可重复调用的标题发送器。
  *
- * completion 接口在流式场景会尽早尝试发送标题，结束前还会再等一次以保证 title event
- * 尽量排在 done 前；非流式场景则复用同一个结果写入最终 JSON。这里缓存 promise 并静默
- * 吞掉标题生成/发送错误，避免标题辅助能力影响主回答链路。
+ * `start` 用于在工作流执行前挂起后台监听，标题生成一完成就尽快写入 SSE；
+ * `send` 用于响应结束前的补偿等待，最多等待 3 秒，避免短工作流在标题即将完成时过早结束；
+ * `close` 用于响应结束后阻止迟到的标题事件继续写入已经结束的 SSE/resume。
  */
 export const createGeneratedChatTitleSender = ({
   titleGeneration,
@@ -273,25 +276,41 @@ export const createGeneratedChatTitleSender = ({
     data: { title: string };
   }) => void;
 }) => {
-  let titleSendPromise: Promise<string | undefined> | undefined;
+  const titleResultPromise = titleGeneration?.catch(() => undefined);
+  let titleEventWritten = false;
+  let closed = false;
+  let backgroundSendPromise: Promise<string | undefined> | undefined;
 
-  const send = () => {
-    titleSendPromise ??= (async () => {
+  const waitForTitleResult = (timeoutMs?: number) => {
+    if (!titleResultPromise) return;
+
+    if (timeoutMs === undefined) {
+      return titleResultPromise;
+    }
+
+    return withTimeout(
+      titleResultPromise,
+      timeoutMs,
+      `Send chat title timed out after ${timeoutMs}ms`
+    ).catch(() => undefined);
+  };
+
+  const sendTitle = (timeoutMs?: number) => {
+    return (async () => {
       try {
-        if (!titleGeneration) return;
-
-        const titleResult = await titleGeneration;
+        const titleResult = await waitForTitleResult(timeoutMs);
         if (!titleResult) return;
 
         const { title } = titleResult;
 
-        if (stream && detail) {
+        if (stream && detail && !titleEventWritten && !closed) {
           writeChatTitle?.({
             event: SseResponseEventEnum.chatTitle,
             data: {
               title
             }
           });
+          titleEventWritten = true;
         }
 
         return title;
@@ -299,11 +318,20 @@ export const createGeneratedChatTitleSender = ({
         return;
       }
     })();
-
-    return titleSendPromise;
   };
 
   return {
-    send
+    start() {
+      if (!backgroundSendPromise) {
+        backgroundSendPromise = sendTitle();
+      }
+      return backgroundSendPromise;
+    },
+    send() {
+      return sendTitle(CHAT_TITLE_SEND_WAIT_TIMEOUT_MS);
+    },
+    close() {
+      closed = true;
+    }
   };
 };

@@ -1,0 +1,17 @@
+{
+  "toolkit_no_runtime_config": "暂无运行时配置",
+  "toolkit_reset_runtime_config_confirm": "确认恢复默认运行时配置？",
+  "toolkit_runtime_config": "运行时配置",
+  "toolkit_runtime_config_invalid_integer": "{{label}} 需要填写整数",
+  "toolkit_runtime_config_invalid_number": "{{label}} 需要填写有效数字",
+  "toolkit_runtime_config_max_concurrent_requests_per_pod": "单 Pod 最大并发请求数",
+  "toolkit_runtime_config_max_concurrent_requests_per_pod_tip": "单个 Pod 同时处理的最大请求数量",
+  "toolkit_runtime_config_max_pods": "最大工作节点数",
+  "toolkit_runtime_config_max_pods_tip": "该工具运行时最多可启动的 Pod 数量",
+  "toolkit_runtime_config_min_pods": "最小工作节点数",
+  "toolkit_runtime_config_min_pods_over_max_pods": "最小工作节点数不能大于最大工作节点数",
+  "toolkit_runtime_config_min_pods_tip": "该工具运行时需要保留的最小 Pod 数量，填 0 表示允许缩容到 0",
+  "toolkit_runtime_config_min_value": "{{label}} 不能小于 {{min}}",
+  "toolkit_runtime_config_pod_timeout": "Pod 超时时间",
+  "toolkit_runtime_config_pod_timeout_tip": "Pod 空闲超过该时间后会被回收"
+}
