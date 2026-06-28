@@ -21,7 +21,7 @@ const mocks = vi.hoisted(() => ({
   deleteAppChatRuntimeSandboxes: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/service/resource', () => ({
+vi.mock('@fastgpt/service/core/ai/sandbox/interface/resource', () => ({
   deleteAppChatRuntimeSandboxes: mocks.deleteAppChatRuntimeSandboxes
 }));
 

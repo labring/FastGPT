@@ -30,10 +30,10 @@ import { MongoMcpKey } from '../../support/mcp/schema';
 import { MongoAppRecord } from './record/schema';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { getLogger, LogCategories } from '../../common/logger';
-import { deleteAppSandboxes } from '../ai/sandbox/service/resource';
+import { deleteAppSandboxes } from '../ai/sandbox/interface/resource';
 import { MongoSystemTool } from '../plugin/tool/systemToolSchema';
 import {
-  SelectedAgentSkillItemTypeSchema,
+  StoredSelectedAgentSkillItemTypeSchema,
   type AppFormEditFormType
 } from '@fastgpt/global/core/app/formEdit/type';
 import z from 'zod';
@@ -120,8 +120,7 @@ export const beforeUpdateAppFormat = ({ nodes }: { nodes?: StoreNodeItemType[] }
 
       // Skills
       if (input.key === NodeInputKeyEnum.skills) {
-        const skills = z.array(SelectedAgentSkillItemTypeSchema).parse(input.value);
-        input.value = skills.map(({ isDeleted, description, avatar, ...skill }) => skill);
+        input.value = z.array(StoredSelectedAgentSkillItemTypeSchema).parse(input.value);
       }
     });
   });
@@ -147,7 +146,7 @@ export const validatePublishAppAgentSkillReadPermissions = async ({
     for (const input of node.inputs) {
       if (input.key !== NodeInputKeyEnum.skills || nodeInputIsReference(input)) continue;
 
-      const skills = z.array(SelectedAgentSkillItemTypeSchema).parse(input.value);
+      const skills = z.array(StoredSelectedAgentSkillItemTypeSchema).parse(input.value);
       for (const skill of skills) {
         skillIds.add(skill.skillId);
       }

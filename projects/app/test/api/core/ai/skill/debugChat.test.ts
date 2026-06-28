@@ -14,7 +14,7 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
-import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/instance/schema';
+import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import * as responseModule from '@fastgpt/service/common/response';
 import { getUser } from '@test/datas/users';

@@ -1,7 +1,8 @@
 import React from 'react';
-import { Box, Button } from '@chakra-ui/react';
+import { Box, Button, VStack } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
 import { useTranslation } from 'next-i18next';
+import { useRouter } from 'next/router';
 import { SkillDetailContext } from './context';
 import SandboxEditor from '@/pageComponents/chat/SandboxEditor/Editor';
 import SandboxError from './config/SandboxError';
@@ -12,14 +13,22 @@ const EDIT_DEBUG_CHAT_ID = 'edit-debug';
 
 const Content = () => {
   const { t } = useTranslation();
-  const { sandboxState, skillId, isSkillReady, handleSandboxError, upgradeSandboxRuntime } =
-    useContextSelector(SkillDetailContext, (v) => ({
-      sandboxState: v.sandboxState,
-      skillId: v.skillId,
-      isSkillReady: v.isSkillReady,
-      handleSandboxError: v.handleSandboxError,
-      upgradeSandboxRuntime: v.upgradeSandboxRuntime
-    }));
+  const router = useRouter();
+  const {
+    sandboxState,
+    skillId,
+    isSkillReady,
+    handleSandboxError,
+    upgradeSandboxRuntime,
+    canUpgradeSandboxRuntime
+  } = useContextSelector(SkillDetailContext, (v) => ({
+    sandboxState: v.sandboxState,
+    skillId: v.skillId,
+    isSkillReady: v.isSkillReady,
+    handleSandboxError: v.handleSandboxError,
+    upgradeSandboxRuntime: v.upgradeSandboxRuntime,
+    canUpgradeSandboxRuntime: v.canUpgradeSandboxRuntime
+  }));
   const isSandboxReady = sandboxState === 'ready';
   const isUpgrading = sandboxState === 'upgrading';
   const isUpgradeModalOpen = sandboxState === 'upgradeRequired' || isUpgrading;
@@ -63,18 +72,31 @@ const Content = () => {
         isOpen={isUpgradeModalOpen}
         title={upgradeModalTitle}
         footer={
-          <Button
-            w={'full'}
-            h={'48px'}
-            borderRadius={'10px'}
-            onClick={upgradeSandboxRuntime}
-            isLoading={isUpgrading}
-            isDisabled={isUpgrading}
-            fontSize={'16px'}
-            fontWeight={'medium'}
-          >
-            {t('skill:sandbox_runtime_upgrade_confirm')}
-          </Button>
+          <VStack w={'full'} gap={3}>
+            <Button
+              w={'full'}
+              h={'48px'}
+              borderRadius={'10px'}
+              onClick={upgradeSandboxRuntime}
+              isLoading={isUpgrading}
+              isDisabled={isUpgrading || !canUpgradeSandboxRuntime}
+              fontSize={'16px'}
+              fontWeight={'medium'}
+            >
+              {t('skill:sandbox_runtime_upgrade_confirm')}
+            </Button>
+            <Button
+              w={'full'}
+              h={'48px'}
+              borderRadius={'10px'}
+              variant={'whitePrimary'}
+              onClick={() => router.back()}
+              fontSize={'16px'}
+              fontWeight={'medium'}
+            >
+              {t('common:Exit')}
+            </Button>
+          </VStack>
         }
       >
         <Box

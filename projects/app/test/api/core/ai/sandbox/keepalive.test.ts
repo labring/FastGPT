@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   authAgentSandboxProxy: vi.fn(),
   buildSandboxClientQueryFromChatSource: vi.fn(),
-  getSandboxClient: vi.fn()
+  keepaliveSandboxSession: vi.fn()
 }));
 
 vi.mock('@/service/middleware/entry', () => ({
@@ -16,8 +16,8 @@ vi.mock('@/service/core/sandbox/auth', () => ({
   buildSandboxClientQueryFromChatSource: mocks.buildSandboxClientQueryFromChatSource
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/service/runtime', () => ({
-  getSandboxClient: mocks.getSandboxClient
+vi.mock('@fastgpt/service/core/ai/sandbox/interface/session', () => ({
+  keepaliveSandboxSession: mocks.keepaliveSandboxSession
 }));
 
 import handler from '@/pages/api/core/ai/sandbox/keepalive';
@@ -52,7 +52,7 @@ describe('sandbox keepalive API', () => {
       userId: 'user-1',
       chatId: 'chat-1'
     });
-    mocks.getSandboxClient.mockResolvedValue(undefined);
+    mocks.keepaliveSandboxSession.mockResolvedValue(undefined);
   });
 
   it('refreshes runtime sandbox without triggering archived restore', async () => {
@@ -67,17 +67,14 @@ describe('sandbox keepalive API', () => {
       userId: 'user-1',
       chatId: 'chat-1'
     });
-    expect(mocks.getSandboxClient).toHaveBeenCalledWith(
+    expect(mocks.keepaliveSandboxSession).toHaveBeenCalledWith(
       expect.objectContaining({
         sandboxId: 'sandbox-1',
         sourceType: ChatSourceTypeEnum.app,
         sourceId: 'app-1',
         userId: 'user-1',
         chatId: 'chat-1'
-      }),
-      {
-        restoreArchived: false
-      }
+      })
     );
   });
 });

@@ -1,15 +1,15 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/instance/schema';
+import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/schema';
 import {
   archiveSandboxResources,
-  type SandboxArchiveResult
-} from '@fastgpt/service/core/ai/sandbox/service/archive';
+  getConfiguredSandboxProvider,
+  type SandboxArchiveResult,
+  type SandboxProviderType
+} from '@fastgpt/service/core/ai/sandbox/interface/admin';
 import { getLogger } from '@fastgpt/service/common/logger';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
-import { getConfiguredSandboxProvider } from '@fastgpt/service/core/ai/sandbox/provider/config';
-import type { SandboxProviderType } from '@fastgpt/service/core/ai/sandbox/type';
 import { SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { subDays } from 'date-fns';
 import z from 'zod';
@@ -23,7 +23,7 @@ const InitSandboxArchiveBodySchema = z.object({
   inactiveBefore: z.coerce.date().optional()
 });
 
-interface MigrationResult {
+type MigrationResult = {
   statusUpdateCount: number;
   lastActiveUpdatedCount: number;
   legacyMetadataUpdatedCount: number;
@@ -31,7 +31,7 @@ interface MigrationResult {
   archiveResult: SandboxArchiveResult | null;
   duration: number;
   activeProvider?: string;
-}
+};
 
 const countSandboxArchiveCandidates = (params: {
   provider: SandboxProviderType;
@@ -207,7 +207,6 @@ export async function migrateSandboxArchiveData(params: {
       inactiveBefore: calculatedInactiveBefore,
       providers: [activeProvider],
       options: {
-        ensureZipInSandbox: true,
         onProgress: (progress) => {
           const percent =
             archiveCandidateCount > 0
@@ -219,6 +218,7 @@ export async function migrateSandboxArchiveData(params: {
             total: archiveCandidateCount,
             processed: progress.processedCount,
             success: progress.successCount,
+            skipped: progress.skippedCount,
             failed: progress.failCount,
             batchSize: progress.batchSize,
             percent,

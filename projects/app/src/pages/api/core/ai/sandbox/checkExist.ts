@@ -4,13 +4,12 @@ import {
   authSandboxSession,
   buildSandboxClientQueryFromChatSource
 } from '@/service/core/sandbox/auth';
-import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/instance/schema';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { getSandboxProviderConfig } from '@fastgpt/service/core/ai/sandbox/provider/config';
 import {
   SandboxCheckExistBodySchema,
   type SandboxCheckExistResponse
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
+import { checkSandboxSessionExist } from '@fastgpt/service/core/ai/sandbox/interface/session';
 
 async function handler(req: ApiRequestProps): Promise<SandboxCheckExistResponse> {
   if (!global.feConfigs?.show_agent_sandbox) {
@@ -37,23 +36,15 @@ async function handler(req: ApiRequestProps): Promise<SandboxCheckExistResponse>
     outLinkAuthData
   });
 
-  const providerConfig = getSandboxProviderConfig();
   const sandboxQuery = buildSandboxClientQueryFromChatSource({
     sourceType: resolvedSourceType,
     sourceId: resolvedSourceId,
     userId: uid,
     chatId
   });
-  const sandboxInstance = await MongoSandboxInstance.findOne(
-    {
-      provider: providerConfig.provider,
-      sandboxId: sandboxQuery.sandboxId
-    },
-    '_id'
-  ).lean();
 
   return {
-    exists: !!sandboxInstance
+    exists: await checkSandboxSessionExist(sandboxQuery)
   };
 }
 

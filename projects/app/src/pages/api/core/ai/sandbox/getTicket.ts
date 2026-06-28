@@ -4,7 +4,7 @@ import {
   authSandboxSession,
   buildSandboxClientQueryFromChatSource
 } from '@/service/core/sandbox/auth';
-import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/service/runtime';
+import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { serviceEnv } from '@fastgpt/service/env';
 import jwt from 'jsonwebtoken';
@@ -55,7 +55,9 @@ async function handler(req: ApiRequestProps): Promise<SandboxGetTicketResponse> 
   });
 
   // 2. 调度并确保沙盒已拉起可用
-  await getSandboxClient(sandboxQuery);
+  await getSandboxClient(sandboxQuery, {
+    failedArchivePolicy: 'clearAndContinue'
+  });
 
   // 签发短期 HMAC 凭证，内含租户元数据，不包含任何物理寻址信息。
   const ticket = jwt.sign(

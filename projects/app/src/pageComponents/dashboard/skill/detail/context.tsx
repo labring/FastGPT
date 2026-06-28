@@ -49,6 +49,7 @@ type SkillDetailContextType = {
   sandboxState: SandboxState;
   sandboxLogs: SandboxLogEntry[];
   sandboxError: string | null;
+  canUpgradeSandboxRuntime: boolean;
   isSkillReady: boolean;
   startSandbox: () => void;
   restartSandbox: () => void;
@@ -69,6 +70,7 @@ export const SkillDetailContext = createContext<SkillDetailContextType>({
   sandboxState: 'idle',
   sandboxLogs: [],
   sandboxError: null,
+  canUpgradeSandboxRuntime: true,
   isSkillReady: false,
   startSandbox: () => {},
   restartSandbox: () => {},
@@ -158,6 +160,7 @@ const SkillDetailContextProviderInner = ({
   const [sandboxState, setSandboxState] = useState<SandboxState>('idle');
   const [sandboxLogs, setSandboxLogs] = useState<SandboxLogEntry[]>([]);
   const [sandboxError, setSandboxError] = useState<string | null>(null);
+  const [canUpgradeSandboxRuntime, setCanUpgradeSandboxRuntime] = useState(true);
   const abortCtrlRef = useRef<AbortController | null>(null);
   const startedSkillIdRef = useRef('');
   const runtimeUpgradePollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -287,6 +290,7 @@ const SkillDetailContextProviderInner = ({
         options?: { hasSeenUpgrading?: boolean }
       ) {
         if (!isCurrentRequest()) return;
+        setCanUpgradeSandboxRuntime(status.canUpgrade);
 
         switch (status.status) {
           case 'readyToInit':
@@ -339,6 +343,7 @@ const SkillDetailContextProviderInner = ({
         setSandboxState('loading');
         setSandboxLogs([]);
         setSandboxError(null);
+        setCanUpgradeSandboxRuntime(true);
 
         let hasShownInitError = false;
         const finishWithInitError = (message: string) => {
@@ -396,6 +401,7 @@ const SkillDetailContextProviderInner = ({
         setSandboxState('loading');
         setSandboxLogs([]);
         setSandboxError(null);
+        setCanUpgradeSandboxRuntime(true);
 
         try {
           const status = await getSkillRuntimeStatus({ skillId });
@@ -407,8 +413,11 @@ const SkillDetailContextProviderInner = ({
       };
 
       const runUpgrade = async () => {
+        if (!canUpgradeSandboxRuntime) return;
+
         setSandboxState('upgrading');
         setSandboxError(null);
+        setCanUpgradeSandboxRuntime(false);
 
         try {
           const status = await postUpgradeSkillRuntime({ skillId });
@@ -428,7 +437,7 @@ const SkillDetailContextProviderInner = ({
 
       void (mode === 'check' ? runStatusCheck() : runUpgrade());
     },
-    [skillId, clearRuntimeUpgradePollTimer, phaseToMessage, t, toast]
+    [skillId, canUpgradeSandboxRuntime, clearRuntimeUpgradePollTimer, phaseToMessage, t, toast]
   );
 
   const startSandbox = useCallback(() => {
@@ -539,6 +548,7 @@ const SkillDetailContextProviderInner = ({
       sandboxState: visibleSandboxState,
       sandboxLogs,
       sandboxError: visibleSandboxError,
+      canUpgradeSandboxRuntime,
       isSkillReady,
       startSandbox,
       restartSandbox,
@@ -557,6 +567,7 @@ const SkillDetailContextProviderInner = ({
       visibleSandboxState,
       sandboxLogs,
       visibleSandboxError,
+      canUpgradeSandboxRuntime,
       isSkillReady,
       startSandbox,
       restartSandbox,

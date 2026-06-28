@@ -8,8 +8,8 @@ import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
-import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/instance/schema';
-import type { SandboxResourceRef } from '@fastgpt/service/core/ai/sandbox/instance/repository';
+import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/schema';
+import type { SandboxResourceRef } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/repository';
 import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
 import { S3Sources } from '@fastgpt/service/common/s3/contracts/type';
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
@@ -300,7 +300,7 @@ const migrateSandboxInstances = async ({
     })
     .toArray()) as SandboxResourceRef[];
   const { deleteSandboxResource } =
-    await import('@fastgpt/service/core/ai/sandbox/service/resource');
+    await import('@fastgpt/service/core/ai/sandbox/application/resource');
   const orphanDeleteResults = await Promise.allSettled(
     orphanSandboxDocs.map((doc) => deleteSandboxResource(doc))
   );

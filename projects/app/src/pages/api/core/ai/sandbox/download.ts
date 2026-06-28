@@ -5,7 +5,10 @@ import {
   authSandboxSession,
   buildSandboxClientQueryFromChatSource
 } from '@/service/core/sandbox/auth';
-import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/service/runtime';
+import {
+  getSandboxClient,
+  type SandboxClient
+} from '@fastgpt/service/core/ai/sandbox/interface/runtime';
 import archiver from 'archiver';
 import { SandboxDownloadBodySchema } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
@@ -13,10 +16,9 @@ import {
   isSandboxPathDirectory,
   getSandboxFileContent,
   addDirectoryToArchive
-} from '@/service/core/sandbox/fileService';
+} from '@fastgpt/service/core/ai/sandbox/interface/file';
 
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import type { SandboxClient } from '@fastgpt/service/core/ai/sandbox/service/runtime';
 
 export const writeDirectoryArchiveResponse = async ({
   sandbox,
@@ -82,7 +84,10 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
       sourceId: resolvedSourceId,
       userId: uid,
       chatId
-    })
+    }),
+    {
+      failedArchivePolicy: 'clearAndContinue'
+    }
   );
 
   const isDirectory = await isSandboxPathDirectory(sandbox, path);

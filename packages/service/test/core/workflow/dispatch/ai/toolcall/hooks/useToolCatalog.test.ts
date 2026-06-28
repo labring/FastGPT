@@ -19,9 +19,9 @@ const {
   withAgentSandboxInitLeaseMock: vi.fn(async ({ fn }: { fn: () => Promise<unknown> }) => fn())
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/toolCall', async (importOriginal) => {
+vi.mock('@fastgpt/service/core/ai/sandbox/interface/toolCall', async (importOriginal) => {
   const original =
-    await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/toolCall')>();
+    await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/interface/toolCall')>();
 
   return {
     ...original,
@@ -30,10 +30,15 @@ vi.mock('@fastgpt/service/core/ai/sandbox/toolCall', async (importOriginal) => {
   };
 });
 
-vi.mock('@fastgpt/service/core/ai/sandbox/runtime/entrypoint', () => ({
-  runAgentSandboxEntrypoint: runAgentSandboxEntrypointMock,
-  withAgentSandboxInitLease: withAgentSandboxInitLeaseMock
-}));
+vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', async (importOriginal) => {
+  const original =
+    await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/interface/runtime')>();
+  return {
+    ...original,
+    runAgentSandboxEntrypoint: runAgentSandboxEntrypointMock,
+    withAgentSandboxInitLease: withAgentSandboxInitLeaseMock
+  };
+});
 
 const createToolNode = (overrides: Record<string, any> = {}) =>
   ({

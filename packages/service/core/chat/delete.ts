@@ -1,6 +1,6 @@
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getS3ChatSource } from '../../common/s3/sources/chat';
-import { deleteAppChatRuntimeSandboxes } from '../ai/sandbox/service/resource';
+import { deleteAppChatRuntimeSandboxes } from '../ai/sandbox/interface/resource';
 import { MongoChatItemResponse } from './chatItemResponseSchema';
 import { MongoChatItem } from './chatItemSchema';
 import { MongoChat } from './chatSchema';

@@ -16,6 +16,12 @@ export const SelectedAgentSkillItemTypeSchema = z.object({
   isDeleted: z.boolean().default(false)
 });
 export type SelectedAgentSkillItemType = z.infer<typeof SelectedAgentSkillItemTypeSchema>;
+export const StoredSelectedAgentSkillItemTypeSchema = SelectedAgentSkillItemTypeSchema.pick({
+  skillId: true
+});
+export type StoredSelectedAgentSkillItemType = z.infer<
+  typeof StoredSelectedAgentSkillItemTypeSchema
+>;
 
 /* ===== Tool ===== */
 export const SelectedToolItemTypeSchema = FlowNodeTemplateTypeSchema.extend({

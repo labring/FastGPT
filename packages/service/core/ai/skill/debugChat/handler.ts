@@ -19,7 +19,6 @@ import {
   ChatSourceEnum
 } from '@fastgpt/global/core/chat/constants';
 import { SkillDebugChatBodySchema } from '@fastgpt/global/core/ai/skill/api';
-import { SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { UserError } from '@fastgpt/global/common/error/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { sseErrRes } from '../../../../common/response';
@@ -32,9 +31,7 @@ import { getLogger, LogCategories } from '../../../../common/logger';
 import { getRunningUserInfoByTmbId } from '../../../../support/user/team/utils';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import { getDefaultLLMModel } from '../../model';
-import { getEditDebugSandboxId } from '../edit/config';
-import { findSandboxInstanceBySandboxIdAndSource } from '../../sandbox/instance/repository';
-import { getSandboxProviderConfig } from '../../sandbox/provider/config';
+import { getRunningSkillEditSandbox } from '../../sandbox/interface/skillEdit';
 import { dispatchWorkFlow } from '../../../workflow/dispatch';
 import { WORKFLOW_MAX_RUN_TIMES } from '../../../workflow/constants';
 import { getChatItems } from '../../../chat/controller';
@@ -116,15 +113,7 @@ export async function handleSkillDebugChat(
       return;
     }
 
-    const providerConfig = getSandboxProviderConfig();
-    const editDebugSandboxId = getEditDebugSandboxId(skillId);
-    const sandboxInstance = await findSandboxInstanceBySandboxIdAndSource({
-      provider: providerConfig.provider,
-      sandboxId: editDebugSandboxId,
-      sourceType: chatSource.sourceType,
-      sourceId: chatSource.sourceId,
-      type: SandboxTypeEnum.editDebug
-    });
+    const sandboxInstance = await getRunningSkillEditSandbox({ skillId, teamId });
     if (!sandboxInstance) {
       throw new UserError(
         'Edit debug sandbox not found. Please initialize it via /api/core/ai/skill/runtime/init first.'

@@ -1,3 +1,8 @@
+/**
+ * 沙盒模块共享类型。
+ *
+ * 只定义 sandbox 实例、provider、archive 和 metadata schema，不访问服务端资源。
+ */
 import z from 'zod';
 import { SandboxStatusEnum, SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -32,7 +37,13 @@ export const SandboxImageSchema = z.object({
   tag: z.string().optional()
 });
 
-export const SandboxArchiveStateSchema = z.enum(['archiving', 'archived', 'restoring', 'failed']);
+export const SandboxArchiveStateSchema = z.enum([
+  'archiving',
+  'deleting',
+  'archived',
+  'restoring',
+  'failed'
+]);
 export type SandboxArchiveStateType = z.infer<typeof SandboxArchiveStateSchema>;
 
 export const SandboxMetadataSchema = z.object({
@@ -45,6 +56,7 @@ export const SandboxMetadataSchema = z.object({
     .object({
       state: SandboxArchiveStateSchema,
       startedAt: z.coerce.date().optional(),
+      deleteStartedAt: z.coerce.date().optional(),
       archivedAt: z.coerce.date().optional(),
       failedAt: z.coerce.date().optional(),
       error: z.string().optional()

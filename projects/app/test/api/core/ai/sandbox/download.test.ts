@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { NextApiResponse } from 'next';
-import type { SandboxClient } from '@fastgpt/service/core/ai/sandbox/service/runtime';
+import type { SandboxClient } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
 
 const mocks = vi.hoisted(() => ({
   addDirectoryToArchive: vi.fn()
@@ -15,11 +15,11 @@ vi.mock('@/service/core/sandbox/auth', () => ({
   authSandboxSession: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/service/runtime', () => ({
+vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', () => ({
   getSandboxClient: vi.fn()
 }));
 
-vi.mock('@/service/core/sandbox/fileService', () => ({
+vi.mock('@fastgpt/service/core/ai/sandbox/interface/file', () => ({
   addDirectoryToArchive: mocks.addDirectoryToArchive,
   getSandboxFileContent: vi.fn(),
   isSandboxPathDirectory: vi.fn()

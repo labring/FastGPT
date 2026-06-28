@@ -4,7 +4,6 @@
  * 这里只放无副作用的 SKILL.md 文本解析和模板拼装，不访问数据库、对象存储、sandbox 或 LLM。
  */
 import { shellQuote } from '@fastgpt/global/common/string/utils';
-import { joinSandboxPath } from '../sandbox/runtime/utils';
 
 /* ==================== YAML Frontmatter 解析 (原 skillMarkdown.ts) ==================== */
 
@@ -185,15 +184,9 @@ export function extractSkillNameFromSkillMd(content: string): string {
   return headerMatch ? getSafeSkillDirectoryName(headerMatch[1]).toLowerCase() : 'unnamed-skill';
 }
 
-/* ==================== 沙盒路径与命名清洗辅助 (自 runtime 移入) ==================== */
+/* ==================== 命名清洗辅助 ==================== */
 
 export const MAX_SKILL_DIRECTORY_NAME_LENGTH = 50;
-
-/**
- * 获取运行态 selected skill version 的 projects 根目录。
- */
-export const getSkillsRootPath = (workDirectory: string): string =>
-  joinSandboxPath(workDirectory, 'projects');
 
 /**
  * 安全地将用户命名的 Skill Name 转换为适合容器目录存储的合法目录名。

@@ -7,13 +7,12 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { serviceEnv } from '@fastgpt/service/env';
 import { timingSafeEqual } from 'crypto';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
-import { createAgentSandboxPermissionDeniedError } from '@fastgpt/service/core/ai/sandbox/error';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/runtime/id';
-import type { SandboxClientQuery } from '@fastgpt/service/core/ai/sandbox/service/runtime';
-import { EDIT_DEBUG_SANDBOX_CHAT_ID } from '@fastgpt/service/core/ai/skill/edit/config';
-
-type SandboxClientQueryWithId = SandboxClientQuery & { sandboxId: string };
+import {
+  buildSandboxClientQueryFromChatSource,
+  createAgentSandboxPermissionDeniedError
+} from '@fastgpt/service/core/ai/sandbox/interface/runtime';
+import { EDIT_DEBUG_SANDBOX_CHAT_ID } from '@fastgpt/service/core/ai/sandbox/interface/skillEdit';
 
 /**
  * 统一沙盒 API 会话访问控制鉴权。
@@ -81,52 +80,7 @@ export async function authSandboxSession({
   return result;
 }
 
-/**
- * 将标准 chat source 映射为 sandbox runtime client 的物理寻址参数。
- *
- * sandbox runtime 只接收标准 source；App/Skill 的权限语义留在鉴权层处理。
- */
-export function buildSandboxClientQueryFromChatSource({
-  sourceType,
-  sourceId,
-  userId,
-  chatId
-}: {
-  sourceType: ChatSourceTypeEnum;
-  sourceId: string;
-  userId: string;
-  chatId: string;
-}): SandboxClientQueryWithId {
-  const sandboxId = getRunningSandboxId({
-    sourceType,
-    sourceId,
-    userId,
-    chatId
-  });
-
-  if (sourceType === ChatSourceTypeEnum.app) {
-    return {
-      sandboxId,
-      sourceType,
-      sourceId,
-      userId,
-      chatId
-    };
-  }
-
-  if (sourceType === ChatSourceTypeEnum.skillEdit) {
-    return {
-      sandboxId,
-      sourceType,
-      sourceId,
-      userId: '',
-      chatId
-    };
-  }
-
-  const exhaustiveCheck: never = sourceType;
-  throw new Error(`Unsupported chat source type: ${exhaustiveCheck}`);
-}
+export { buildSandboxClientQueryFromChatSource };
 
 export const AGENT_SANDBOX_PROXY_HEADER = 'x-proxy-token';
 

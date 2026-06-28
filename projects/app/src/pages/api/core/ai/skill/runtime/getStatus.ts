@@ -15,7 +15,7 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   getSkillEditRuntimeContext,
   getSkillEditRuntimeStatus
-} from '@fastgpt/service/core/ai/skill/edit/sandbox';
+} from '@fastgpt/service/core/ai/sandbox/interface/skillEdit';
 
 async function handler(
   req: ApiRequestProps<SkillRuntimeBody>

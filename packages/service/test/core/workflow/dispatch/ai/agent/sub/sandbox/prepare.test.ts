@@ -36,17 +36,23 @@ const {
 
 sandboxClientMock.provider = sandboxProviderMock;
 
-vi.mock('@fastgpt/service/core/ai/sandbox/runtime', () => ({
-  prepareAgentSandboxRuntime: prepareAgentSandboxRuntimeMock
-}));
-
-vi.mock('@fastgpt/service/core/ai/sandbox/runtime/files', () => ({
-  injectInputFilesToSandbox: injectInputFilesToSandboxMock,
-  readSandboxPwd: readSandboxPwdMock
-}));
-
-vi.mock('@fastgpt/service/core/ai/sandbox/runtime/entrypoint', () => ({
-  runAgentSandboxEntrypoint: runAgentSandboxEntrypointMock,
+vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/interface/runtime')>()),
+  prepareAgentSandboxRuntime: prepareAgentSandboxRuntimeMock,
+  injectCurrentInputFiles: (currentFiles: unknown[]) => async (context: { sandbox: unknown }) => {
+    await injectInputFilesToSandboxMock(context.sandbox, currentFiles);
+    return context;
+  },
+  preparePackageMirrors: () => async (context: { sandbox: unknown }) => {
+    await prepareSandboxRuntimeMirrorsMock({
+      sandbox: context.sandbox
+    });
+    return context;
+  },
+  readCurrentWorkingDirectory: () => async (context: { sandboxClient: unknown }) => ({
+    ...context,
+    currentWorkingDirectory: await readSandboxPwdMock(context.sandboxClient)
+  }),
   runSandboxEntrypoint:
     ({ sandboxEntrypoint }: { sandboxEntrypoint?: string }) =>
     async (context: { sandbox: unknown; workDirectory: string }) => {
@@ -57,18 +63,8 @@ vi.mock('@fastgpt/service/core/ai/sandbox/runtime/entrypoint', () => ({
       });
       return context;
     },
-  withAgentSandboxInitLease: withAgentSandboxInitLeaseMock
-}));
-
-vi.mock('@fastgpt/service/core/ai/sandbox/runtime/home', () => ({
-  resolveSandboxHome: resolveSandboxHomeMock
-}));
-
-vi.mock('@fastgpt/service/core/ai/sandbox/runtime/mirrors', () => ({
-  prepareSandboxRuntimeMirrors: prepareSandboxRuntimeMirrorsMock
-}));
-
-vi.mock('@fastgpt/service/core/ai/skill/runtime', () => ({
+  withAgentSandboxInitLease: withAgentSandboxInitLeaseMock,
+  resolveSandboxHome: resolveSandboxHomeMock,
   getAgentSkillInfos: getAgentSkillInfosMock,
   getBuiltinSkillsRootPath: (homeDirectory: string) => `${homeDirectory}/.fastgpt/skills`,
   injectAgentSkillFilesToSandbox: injectAgentSkillFilesToSandboxMock,

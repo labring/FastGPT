@@ -152,6 +152,7 @@ export type ImportSkillResponse = z.infer<typeof ImportSkillResponseSchema>;
 export const SkillRuntimeStatusSchema = z.enum(['readyToInit', 'upgradeRequired', 'upgrading']);
 export const SkillRuntimeArchiveStateSchema = z.enum([
   'archiving',
+  'deleting',
   'archived',
   'restoring',
   'failed'

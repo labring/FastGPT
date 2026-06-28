@@ -2,9 +2,9 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { SANDBOX_ICON, SANDBOX_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
-import { runSandboxTools } from '../../../../../../ai/sandbox/toolCall';
+import { runSandboxTools } from '../../../../../../ai/sandbox/interface/toolCall';
 import type { DispatchSubAppResponse } from '../../type';
-import type { SandboxClient } from '../../../../../../ai/sandbox/service/runtime';
+import type { SandboxClient } from '../../../../../../ai/sandbox/interface/runtime';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 /**

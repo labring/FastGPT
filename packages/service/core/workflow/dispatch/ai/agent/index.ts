@@ -40,7 +40,7 @@ import {
 import type { WorkflowNodeResponseWriter } from '../../../../chat/nodeResponseStorage';
 import type { RuntimeNodeResponseSummary } from '../../type';
 import { createAgentNodeResponseCollector } from './nodeResponseCollector';
-import { createAgentSandboxPermissionDeniedError } from '../../../../ai/sandbox/error';
+import { createAgentSandboxPermissionDeniedError } from '../../../../ai/sandbox/interface/runtime';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemMiniType[];

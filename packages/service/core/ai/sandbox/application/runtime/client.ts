@@ -1,0 +1,277 @@
+/**
+ * 沙盒业务层：提供运行态 SandboxClient。
+ *
+ * 负责 ensureAvailable、执行命令和文件读写等运行态用例，不承载工具调用或 Skill 部署编排。
+ */
+import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getLogger, LogCategories } from '../../../../../common/logger';
+import {
+  type ExecuteResult,
+  type ISandbox,
+  type ResourceLimits,
+  type SandboxCreateSpec
+} from '@fastgpt-sdk/sandbox-adapter';
+import {
+  getSessionVolumeConfig,
+  type VolumeManagerResult
+} from '../../infrastructure/volume/service';
+import { buildRuntimeSandboxAdapter } from '../../infrastructure/provider/adapter';
+import { getConfiguredSandboxProvider } from '../../infrastructure/provider/config';
+import { ensureConnectedSandboxRunning } from '../../infrastructure/provider/lifecycle';
+import { deleteSandboxResource, stopSandboxResource } from '../resource';
+import {
+  existsSandboxInstanceBySandboxId,
+  upsertRunningSandboxInstance
+} from '../../infrastructure/instance/repository';
+import type { SandboxProviderType } from '../../type';
+import {
+  assertSandboxNotArchivedOrBusy,
+  SandboxArchiveStateError,
+  restoreArchivedSandboxBeforeUse
+} from '../archive';
+
+const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
+
+export type SandboxClientQuery = {
+  sandboxId: string;
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
+  userId?: string;
+  chatId?: string;
+};
+
+type SandboxClientProps = {
+  sandboxId: string;
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
+  userId?: string;
+  chatId?: string;
+};
+
+type SandboxClientOptions = {
+  providerName?: SandboxProviderType;
+  resourceLimits?: ResourceLimits;
+  vmConfig?: VolumeManagerResult | undefined;
+  createConfig?: SandboxCreateSpec;
+  restoreArchived?: boolean;
+  failedArchivePolicy?: 'throw' | 'clearAndContinue';
+};
+
+/**
+ * 当前会话运行态 sandbox client。
+ *
+ * 它负责 ensureAvailable/exec 等“使用 sandbox”的语义；历史资源清理请使用
+ * resource.ts 中的 stopSandboxResource/deleteSandboxResource，避免误触发 create/resume。
+ */
+export class SandboxClient {
+  private sourceType: ChatSourceTypeEnum;
+  private sourceId: string;
+  private userId?: string;
+  private chatId?: string;
+  private sandboxId: string;
+  private providerName: SandboxProviderType;
+  readonly provider: ISandbox;
+
+  constructor(
+    private readonly props: SandboxClientProps,
+    private readonly opts: SandboxClientOptions = {}
+  ) {
+    this.sandboxId = props.sandboxId;
+    this.sourceType = props.sourceType;
+    this.sourceId = props.sourceId;
+    this.userId = props.userId;
+    this.chatId = props.chatId;
+
+    this.providerName = opts.providerName ?? getConfiguredSandboxProvider();
+    this.provider = buildRuntimeSandboxAdapter(this.providerName, this.sandboxId, opts);
+  }
+
+  /**
+   * 确保当前运行态 sandbox 可用，并刷新实例活跃时间。
+   *
+   * 这个方法可能触发 provider 创建或恢复 sandbox，因此只允许运行态使用；
+   * 历史资源 stop/delete 必须走 resource service，避免误创建已失效资源。
+   */
+  async ensureAvailable() {
+    // 先写 running 记录是有意设计：运行态入口需要先占位并暴露资源归属，
+    // 后续 provider ready 检查失败时会由调用方返回错误，后台兜底检查/cron 再修正不可用实例。
+    const instance = await upsertRunningSandboxInstance({
+      provider: this.providerName,
+      sandboxId: this.sandboxId,
+      sourceType: this.sourceType,
+      sourceId: this.sourceId,
+      userId: this.userId,
+      chatId: this.chatId,
+      storage: this.opts?.vmConfig?.storage,
+      ...(this.opts?.resourceLimits && {
+        limit: {
+          cpuCount: this.opts.resourceLimits.cpuCount,
+          memoryMiB: this.opts.resourceLimits.memoryMiB,
+          diskGiB: this.opts.resourceLimits.diskGiB
+        }
+      }),
+      metadata: {
+        volumeEnabled: !!this.opts?.vmConfig
+      }
+    });
+    if (!instance) {
+      await assertSandboxNotArchivedOrBusy({
+        provider: this.providerName,
+        sandboxId: this.sandboxId
+      });
+      throw new SandboxArchiveStateError('archiving');
+    }
+    await ensureConnectedSandboxRunning(this.provider);
+  }
+
+  getSandboxId() {
+    return this.sandboxId;
+  }
+
+  /**
+   * 在可用 sandbox 中执行命令。
+   *
+   * 执行前会先 ensureAvailable；失败时返回标准 ExecuteResult，让 workflow 能把错误当作工具输出处理。
+   */
+  async exec(command: string, timeout?: number): Promise<ExecuteResult> {
+    try {
+      await this.ensureAvailable();
+    } catch (err) {
+      logger.error('Failed to ensure sandbox available', { sandboxId: this.sandboxId, error: err });
+      return {
+        stdout: '',
+        stderr: `Sandbox service is not available: ${getErrText(err)}`,
+        exitCode: -1
+      };
+    }
+
+    return await this.provider
+      .execute(command, {
+        timeoutMs: timeout ? timeout * 1000 : undefined
+      })
+      .catch((err: unknown) => {
+        logger.error('Failed to execute sandbox', { sandboxId: this.sandboxId, error: err });
+        return {
+          stdout: '',
+          stderr: `Failed to execute sandbox: ${getErrText(err)}`,
+          exitCode: -1
+        };
+      });
+  }
+
+  /**
+   * 删除当前运行态 client 对应的资源记录和远端资源。
+   */
+  async delete({ keepArchive = false }: { keepArchive?: boolean } = {}) {
+    await deleteSandboxResource(
+      {
+        provider: this.providerName,
+        sandboxId: this.sandboxId
+      },
+      {
+        keepArchive
+      }
+    );
+  }
+
+  /**
+   * 暂停当前运行态 client 对应的远端资源，并把实例状态标记为 stopped。
+   */
+  async stop() {
+    await stopSandboxResource({
+      provider: this.providerName,
+      sandboxId: this.sandboxId
+    });
+  }
+}
+
+const resolveSandboxClientProps = (props: SandboxClientQuery): SandboxClientProps => {
+  if (!props.sandboxId) {
+    throw new Error('sandboxId is required');
+  }
+  if (!props.sourceType || !props.sourceId) {
+    throw new Error('sourceType and sourceId are required');
+  }
+
+  return {
+    sandboxId: props.sandboxId,
+    sourceType: props.sourceType,
+    sourceId: props.sourceId,
+    userId: props.userId,
+    chatId: props.chatId
+  };
+};
+
+/**
+ * 检查指定运行态 sandbox 是否已有本地实例记录。
+ *
+ * 只读本地实例表，不连接 provider，也不触发归档恢复或远端创建。
+ */
+export async function checkSandboxRuntimeInstanceExists(
+  props: Pick<SandboxClientQuery, 'sandboxId'>,
+  opts: { providerName?: SandboxProviderType } = {}
+) {
+  if (!props.sandboxId) {
+    throw new Error('sandboxId is required');
+  }
+
+  const providerName = opts.providerName ?? getConfiguredSandboxProvider();
+  return existsSandboxInstanceBySandboxId({
+    provider: providerName,
+    sandboxId: props.sandboxId
+  });
+}
+
+/**
+ * 获取当前业务会话的运行态 sandbox client。
+ *
+ * 调用方必须按 sourceType/sourceId 计算 sandboxId；这里不再接收 appId 等旧业务字段，
+ * 避免运行态写入或恢复时继续污染 sandbox 实例归属。
+ * 返回前会准备 volume 配置并确保 sandbox 可用。
+ */
+export const getSandboxClient = async (
+  props: SandboxClientQuery,
+  opts: Omit<SandboxClientOptions, 'vmConfig'> = {}
+) => {
+  const sandboxClientProps = resolveSandboxClientProps(props);
+  const { sandboxId, userId, chatId } = sandboxClientProps;
+  const providerName = opts.providerName ?? getConfiguredSandboxProvider();
+  let vmConfig: VolumeManagerResult | undefined;
+
+  if (opts.restoreArchived === false) {
+    await assertSandboxNotArchivedOrBusy({
+      provider: providerName,
+      sandboxId
+    });
+  } else {
+    vmConfig = providerName === 'opensandbox' ? await getSessionVolumeConfig(sandboxId) : undefined;
+    await restoreArchivedSandboxBeforeUse({
+      provider: providerName,
+      sandboxId,
+      sourceType: sandboxClientProps.sourceType,
+      sourceId: sandboxClientProps.sourceId,
+      userId,
+      chatId,
+      resourceLimit: opts.resourceLimits
+        ? {
+            cpuCount: opts.resourceLimits.cpuCount,
+            memoryMiB: opts.resourceLimits.memoryMiB,
+            diskGiB: opts.resourceLimits.diskGiB
+          }
+        : undefined,
+      vmConfig: vmConfig ?? null,
+      storage: vmConfig?.storage,
+      createConfig: opts.createConfig,
+      failedArchivePolicy: opts.failedArchivePolicy ?? 'throw'
+    });
+  }
+  vmConfig ??= providerName === 'opensandbox' ? await getSessionVolumeConfig(sandboxId) : undefined;
+  const sandbox = new SandboxClient(sandboxClientProps, {
+    ...opts,
+    providerName,
+    vmConfig
+  });
+  await sandbox.ensureAvailable();
+  return sandbox;
+};

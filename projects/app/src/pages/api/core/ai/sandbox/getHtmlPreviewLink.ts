@@ -10,8 +10,8 @@ import { SandboxGetHtmlPreviewLinkBodySchema } from '@fastgpt/global/openapi/cor
 import { S3PrivateBucket } from '@fastgpt/service/common/s3/buckets/private';
 import { getFileS3Key } from '@fastgpt/service/common/s3/utils';
 import { addMinutes } from 'date-fns';
-import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/service/runtime';
-import { getSandboxFileContent } from '@/service/core/sandbox/fileService';
+import { getSandboxClient } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
+import { getSandboxFileContent } from '@fastgpt/service/core/ai/sandbox/interface/file';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void> {
@@ -41,7 +41,10 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
       sourceId: resolvedSourceId,
       userId: uid,
       chatId
-    })
+    }),
+    {
+      failedArchivePolicy: 'clearAndContinue'
+    }
   );
   const { content, contentType } = await getSandboxFileContent(sandbox, filePath, true);
 

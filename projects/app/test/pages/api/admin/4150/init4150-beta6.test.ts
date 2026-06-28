@@ -7,7 +7,7 @@ import {
   ChatSourceEnum,
   ChatSourceTypeEnum
 } from '@fastgpt/global/core/chat/constants';
-import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/instance/schema';
+import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/schema';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
@@ -30,7 +30,7 @@ vi.mock('@fastgpt/service/support/permission/auth/common', () => ({
   authCert: mocks.authCert
 }));
 
-vi.mock('@fastgpt/service/core/ai/sandbox/service/resource', () => ({
+vi.mock('@fastgpt/service/core/ai/sandbox/application/resource', () => ({
   deleteSandboxResource: mocks.deleteSandboxResource
 }));
 
