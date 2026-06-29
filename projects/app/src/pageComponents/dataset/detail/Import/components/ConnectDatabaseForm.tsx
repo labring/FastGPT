@@ -275,17 +275,19 @@ const ConnectDatabaseConfig = () => {
           </FormLabel>
           <MyInput
             rightIcon={
-              <>
-                <MyIcon
-                  cursor={'pointer'}
-                  onClick={() => setShowPassword((e) => !e)}
-                  name={showPassword ? 'visible' : 'invisible'}
-                  w={4}
-                  h={4}
-                ></MyIcon>
-              </>
+              isEditMode ? undefined : (
+                <>
+                  <MyIcon
+                    cursor={'pointer'}
+                    onClick={() => setShowPassword((e) => !e)}
+                    name={showPassword ? 'visible' : 'invisible'}
+                    w={4}
+                    h={4}
+                  ></MyIcon>
+                </>
+              )
             }
-            type={showPassword ? 'text' : 'password'}
+            type={isEditMode ? 'password' : showPassword ? 'text' : 'password'}
             maxLength={255}
             isInvalid={!!errors.password}
             {...register('password', {
