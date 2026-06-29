@@ -5,10 +5,27 @@ use std::sync::{LazyLock, OnceLock};
 use std::time::Duration;
 use tracing::{debug, error};
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct WsLimits {
+    pub max_message_bytes: usize,
+    pub max_frame_bytes: usize,
+}
+
+impl Default for WsLimits {
+    fn default() -> Self {
+        Self {
+            max_message_bytes: 64 * 1024 * 1024,
+            max_frame_bytes: 16 * 1024 * 1024,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SandboxAddress {
     pub sandbox_url: Option<String>,
     pub agent_token: Option<String>,
+    #[serde(default)]
+    pub ws_limits: WsLimits,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
