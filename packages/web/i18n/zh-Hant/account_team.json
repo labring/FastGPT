@@ -322,7 +322,7 @@
   "enterprise_auth_bank_name": "開戶銀行",
   "enterprise_auth_bank_name_placeholder": "請選擇開戶銀行總行",
   "enterprise_auth_bank_loading_placeholder": "銀行列表載入中",
-  "enterprise_auth_bank_account_first_placeholder": "請先填寫銀行帳號",
+  "enterprise_auth_invalid_format_tip": "請填寫正確的資訊",
   "enterprise_auth_contact_info": "個人資訊",
   "enterprise_auth_contact_name": "您的姓名",
   "enterprise_auth_contact_name_placeholder": "請填寫您的稱呼方式",

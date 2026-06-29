@@ -18,13 +18,17 @@ async function handler(
     return;
   }
 
-  const { teamId } = await authUserPer({
+  const { teamId, userId, tmbId } = await authUserPer({
     req,
     authToken: true,
     per: ManagePermissionVal
   });
 
-  const result = await getEnterpriseAuthCurrentTaskDetail(teamId);
+  const result = await getEnterpriseAuthCurrentTaskDetail({
+    teamId,
+    userId,
+    tmbId
+  });
   return GetEnterpriseAuthCurrentTaskDetailResponseSchema.parse(result);
 }
 

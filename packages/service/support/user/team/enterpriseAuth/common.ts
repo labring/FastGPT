@@ -74,3 +74,29 @@ export const isEnterpriseAuthTimesExhausted = (usedTimes?: number) =>
 
 export const buildVerifiedEnterpriseName = (auth?: TeamEnterpriseAuthType | null) =>
   auth?.enterpriseName;
+
+/**
+ * 判断当前操作者是否为企业认证任务发起人。
+ *
+ * 历史任务可能没有操作者字段，为避免已在流程中的团队被升级阻断，缺失 tmbId 时保留旧任务可继续处理。
+ * 新任务都会写入 tmbId，其他团队成员访问时会被拦截为 processing。
+ */
+export const isEnterpriseAuthTaskOperator = ({
+  task,
+  operator
+}: {
+  task?: EnterpriseAuthTaskType | null;
+  operator: AuthOperator;
+}) => !task?.tmbId || task.tmbId.toString() === operator.tmbId;
+
+export const assertEnterpriseAuthTaskOperator = ({
+  task,
+  operator
+}: {
+  task?: EnterpriseAuthTaskType | null;
+  operator: AuthOperator;
+}) => {
+  if (!isEnterpriseAuthTaskOperator({ task, operator })) {
+    throw new Error(EnterpriseAuthErrEnum.processing);
+  }
+};

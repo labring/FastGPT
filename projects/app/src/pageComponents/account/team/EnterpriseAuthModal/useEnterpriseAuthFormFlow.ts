@@ -48,6 +48,7 @@ export const useEnterpriseAuthFormFlow = ({
   );
   // 历史 amount_failed 只表示本任务曾填错金额；重新打开弹窗时不应继续展示上次的输入错误。
   const [showAmountError, setShowAmountError] = useState(false);
+  const [hasSubmittedStartForm, setHasSubmittedStartForm] = useState(false);
   const startForm = useForm<StartEnterpriseAuthBodyType>({
     mode: 'onChange',
     defaultValues: {
@@ -110,10 +111,8 @@ export const useEnterpriseAuthFormFlow = ({
       })),
     [banks]
   );
-  const bankAccount = useWatch({ control: startForm.control, name: 'bankAccount' });
-  const canSelectBank = !!bankAccount?.trim();
   const hasBankLoadError = !!bankLoadError && !bankOptions.length;
-  const isBankLoading = canSelectBank && loadingBanks;
+  const isBankLoading = loadingBanks;
   const amountFenValue = useWatch({ control: amountForm.control, name: 'amountFen' });
   const hasLoadedTaskDetail = !!taskDetail?.taskId;
   const canSubmitAmount =
@@ -160,6 +159,19 @@ export const useEnterpriseAuthFormFlow = ({
     },
     [loadTaskDetail, onClose, onStart, onSuccess, t, toast]
   );
+
+  /**
+   * 点击开始认证时一次性校验全部字段，并禁止 react-hook-form 自动聚焦首个错误项。
+   * 这样空值红框不会被“先聚焦企业信用代码/银行卡号”的流程卡住。
+   */
+  const handleStartClick = useCallback(async () => {
+    setHasSubmittedStartForm(true);
+
+    const isValid = await startForm.trigger(undefined, { shouldFocus: false });
+    if (!isValid) return;
+
+    await handleStart(startForm.getValues());
+  }, [handleStart, startForm]);
 
   const handleVerify = useCallback(
     async ({ amountFen }: AmountFormType) => {
@@ -234,6 +246,7 @@ export const useEnterpriseAuthFormFlow = ({
     }
     amountForm.reset({ amountFen: '' });
     setShowAmountError(false);
+    setHasSubmittedStartForm(false);
     onSuccess();
     setStep('form');
   }, [amountForm, onReset, onSuccess, startForm, taskDetail]);
@@ -244,10 +257,10 @@ export const useEnterpriseAuthFormFlow = ({
     startForm,
     amountForm,
     bankOptions,
-    canSelectBank,
     hasBankLoadError,
     isBankLoading,
     reloadBanks,
+    hasSubmittedStartForm,
     taskDetail,
     loadingTaskDetail,
     starting,
@@ -259,6 +272,7 @@ export const useEnterpriseAuthFormFlow = ({
     shouldBlockEnterpriseAuthForm,
     setShowAmountError,
     handleStart,
+    handleStartClick,
     handleVerify,
     handleReset
   };

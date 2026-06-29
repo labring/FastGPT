@@ -49,7 +49,7 @@ const EnterpriseAuthModal = ({ defaultStatus, onClose, onSuccess }: EnterpriseAu
             t={flow.t}
             startForm={flow.startForm}
             bankOptions={flow.bankOptions}
-            canSelectBank={flow.canSelectBank}
+            hasSubmittedStartForm={flow.hasSubmittedStartForm}
             hasBankLoadError={flow.hasBankLoadError}
             isBankLoading={flow.isBankLoading}
             reloadBanks={flow.reloadBanks}
@@ -88,16 +88,9 @@ const EnterpriseAuthModal = ({ defaultStatus, onClose, onSuccess }: EnterpriseAu
               fontSize={'12px'}
               bg={'#3370FF'}
               color={'white'}
-              isDisabled={!flow.startForm.formState.isValid}
               isLoading={flow.starting}
-              onClick={flow.startForm.handleSubmit(flow.handleStart)}
+              onClick={flow.handleStartClick}
               _hover={{ bg: '#2152D9' }}
-              _disabled={{
-                bg: 'rgba(51, 112, 255, 0.3)',
-                color: 'white',
-                opacity: 1,
-                cursor: 'not-allowed'
-              }}
             >
               {flow.t('account_team:enterprise_auth_start')}
             </Button>

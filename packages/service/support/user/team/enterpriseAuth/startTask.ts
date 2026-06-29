@@ -8,6 +8,8 @@ import {
   TeamEnterpriseAuthTaskStatusEnum
 } from '@fastgpt/global/support/user/team/enterpriseAuth/constant';
 import {
+  assertEnterpriseAuthTaskOperator,
+  type AuthOperator,
   createEnterpriseAuthTaskId,
   enabledGuard,
   isEnterpriseAuthTimesExhausted,
@@ -39,9 +41,11 @@ const getCurrentEnterpriseAuthTask = async (teamId: string) => {
 
 const checkStartPreconditions = async ({
   teamId,
+  operator,
   normalizedUnifiedCreditCode
 }: {
   teamId: string;
+  operator: AuthOperator;
   normalizedUnifiedCreditCode: string;
 }) => {
   await expireCurrentTaskIfNeeded(teamId);
@@ -57,6 +61,7 @@ const checkStartPreconditions = async ({
 
   const usedTimes = teamTask?.usedTimes ?? 0;
   if (currentTask) {
+    assertEnterpriseAuthTaskOperator({ task: currentTask, operator });
     return {
       restore: true as const,
       task: currentTask
@@ -98,9 +103,11 @@ const startingTaskCleanupUnset = {
 
 const buildStartConflictResponse = async ({
   teamId,
+  operator,
   normalizedUnifiedCreditCode
 }: {
   teamId: string;
+  operator: AuthOperator;
   normalizedUnifiedCreditCode: string;
 }) => {
   const [verifiedAfterPrecheck, currentTask, teamTask] = await Promise.all([
@@ -118,6 +125,7 @@ const buildStartConflictResponse = async ({
     throw new Error(EnterpriseAuthErrEnum.enterpriseOccupied);
   }
   if (currentTask) {
+    assertEnterpriseAuthTaskOperator({ task: currentTask, operator });
     return {
       status: TeamEnterpriseAuthStatusEnum.verifying,
       currentTask: buildLightTask({ currentTask }),
@@ -179,18 +187,23 @@ const markStartAsFailed = async ({
  * 发起企业认证。外部打款调用不放进 Mongo 事务，抢到本地 starting 任务后再调用服务。
  */
 export const startEnterpriseAuth = async ({
-  teamId,
+  operator,
   data
 }: {
-  teamId: string;
+  operator: AuthOperator;
   data: StartEnterpriseAuthBodyType;
 }) => {
   enabledGuard();
   serviceConfigGuard();
 
+  const { teamId } = operator;
   const normalizedUnifiedCreditCode = normalizeUnifiedCreditCode(data.unifiedCreditCode);
   const bankAccount = normalizeBankAccount(data.bankAccount);
-  const precheck = await checkStartPreconditions({ teamId, normalizedUnifiedCreditCode });
+  const precheck = await checkStartPreconditions({
+    teamId,
+    operator,
+    normalizedUnifiedCreditCode
+  });
   if (precheck.restore) {
     return {
       status: TeamEnterpriseAuthStatusEnum.verifying,
@@ -205,6 +218,8 @@ export const startEnterpriseAuth = async ({
   const taskId = createEnterpriseAuthTaskId();
   const startingTask = {
     teamId: toObjectId(teamId),
+    userId: toObjectId(operator.userId),
+    tmbId: toObjectId(operator.tmbId),
     taskId,
     status: TeamEnterpriseAuthTaskStatusEnum.starting,
     enterpriseName: data.enterpriseName.trim(),
@@ -239,6 +254,7 @@ export const startEnterpriseAuth = async ({
     }
     const currentTask = await getCurrentEnterpriseAuthTask(teamId);
     if (currentTask) {
+      assertEnterpriseAuthTaskOperator({ task: currentTask, operator });
       return {
         status: TeamEnterpriseAuthStatusEnum.verifying,
         currentTask: buildLightTask({ currentTask }),
@@ -276,11 +292,11 @@ export const startEnterpriseAuth = async ({
       }
     ).lean();
     if (!claimedTask || claimedTask.taskId !== taskId) {
-      return await buildStartConflictResponse({ teamId, normalizedUnifiedCreditCode });
+      return await buildStartConflictResponse({ teamId, operator, normalizedUnifiedCreditCode });
     }
   } catch (error) {
     if (isMongoDuplicateKeyError(error)) {
-      return await buildStartConflictResponse({ teamId, normalizedUnifiedCreditCode });
+      return await buildStartConflictResponse({ teamId, operator, normalizedUnifiedCreditCode });
     }
     throw error;
   }

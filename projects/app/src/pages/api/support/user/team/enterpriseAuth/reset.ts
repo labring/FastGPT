@@ -18,13 +18,17 @@ async function handler(
     return;
   }
 
-  const { teamId } = await authUserPer({
+  const { teamId, userId, tmbId } = await authUserPer({
     req,
     authToken: true,
     per: ManagePermissionVal
   });
 
-  await resetEnterpriseAuthTask(teamId);
+  await resetEnterpriseAuthTask({
+    teamId,
+    userId,
+    tmbId
+  });
   return ResetEnterpriseAuthResponseSchema.parse(undefined);
 }
 

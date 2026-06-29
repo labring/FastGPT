@@ -29,6 +29,13 @@ const { getEnterpriseAuthCurrentTaskDetail } =
   await import('@fastgpt/service/support/user/team/enterpriseAuth/readModel');
 
 const teamId = '507f1f77bcf86cd799439011';
+const userId = '507f1f77bcf86cd799439012';
+const tmbId = '507f1f77bcf86cd799439013';
+const operator = {
+  teamId,
+  userId,
+  tmbId
+};
 
 const mockLean = <T>(value: T) => ({
   lean: vi.fn().mockResolvedValue(value)
@@ -44,6 +51,8 @@ const mockSortedLean = <T>(value: T) => ({
 const buildTask = (status: TeamEnterpriseAuthTaskStatusEnum, overrides: Record<string, any> = {}) =>
   ({
     teamId,
+    userId,
+    tmbId,
     taskId: `task_${status}`,
     status,
     enterpriseName: '示例科技有限公司',
@@ -80,7 +89,7 @@ describe('getEnterpriseAuthCurrentTaskDetail', () => {
     const task = buildTask(status);
     mocks.findTask.mockReturnValueOnce(mockSortedLean(task));
 
-    const result = await getEnterpriseAuthCurrentTaskDetail(teamId);
+    const result = await getEnterpriseAuthCurrentTaskDetail(operator);
 
     expect(result).toEqual(
       expect.objectContaining({
@@ -102,7 +111,7 @@ describe('getEnterpriseAuthCurrentTaskDetail', () => {
       });
       mocks.findTask.mockReturnValueOnce(mockSortedLean(task));
 
-      await expect(getEnterpriseAuthCurrentTaskDetail(teamId)).rejects.toThrow(
+      await expect(getEnterpriseAuthCurrentTaskDetail(operator)).rejects.toThrow(
         EnterpriseAuthErrEnum.taskNotFound
       );
     }
@@ -115,7 +124,7 @@ describe('getEnterpriseAuthCurrentTaskDetail', () => {
     });
     mocks.findTask.mockReturnValueOnce(mockSortedLean(task));
 
-    await expect(getEnterpriseAuthCurrentTaskDetail(teamId)).rejects.toThrow(
+    await expect(getEnterpriseAuthCurrentTaskDetail(operator)).rejects.toThrow(
       EnterpriseAuthErrEnum.taskExpired
     );
   });
@@ -126,8 +135,19 @@ describe('getEnterpriseAuthCurrentTaskDetail', () => {
     });
     mocks.findTask.mockReturnValueOnce(mockSortedLean(task));
 
-    await expect(getEnterpriseAuthCurrentTaskDetail(teamId)).rejects.toThrow(
+    await expect(getEnterpriseAuthCurrentTaskDetail(operator)).rejects.toThrow(
       EnterpriseAuthErrEnum.serviceTimeout
+    );
+  });
+
+  it('其他成员不能读取当前金额验证任务详情', async () => {
+    const task = buildTask(TeamEnterpriseAuthTaskStatusEnum.pending_amount, {
+      tmbId: '507f1f77bcf86cd799439099'
+    });
+    mocks.findTask.mockReturnValueOnce(mockSortedLean(task));
+
+    await expect(getEnterpriseAuthCurrentTaskDetail(operator)).rejects.toThrow(
+      EnterpriseAuthErrEnum.processing
     );
   });
 });

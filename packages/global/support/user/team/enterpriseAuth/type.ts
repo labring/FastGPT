@@ -5,6 +5,8 @@ import { TeamEnterpriseAuthTaskStatusEnum } from './constant';
 export const EnterpriseAuthTaskSchema = z.object({
   _id: ObjectIdSchema,
   teamId: ObjectIdSchema,
+  userId: ObjectIdSchema.optional(),
+  tmbId: ObjectIdSchema.optional(),
   taskId: z.string(),
   status: z.enum(TeamEnterpriseAuthTaskStatusEnum),
   enterpriseName: z.string(),

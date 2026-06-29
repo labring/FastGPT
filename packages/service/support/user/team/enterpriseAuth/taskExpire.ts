@@ -3,7 +3,12 @@ import {
   TeamEnterpriseAuthTaskStatusEnum
 } from '@fastgpt/global/support/user/team/enterpriseAuth/constant';
 import { serviceEnv } from '../../../../env';
-import { enabledGuard, pendingTaskStatuses } from './common';
+import {
+  assertEnterpriseAuthTaskOperator,
+  type AuthOperator,
+  enabledGuard,
+  pendingTaskStatuses
+} from './common';
 import { MongoTeamEnterpriseAuthTask } from './schema';
 import { deriveExpiredTaskPatch, isPendingAmountTask } from './status';
 
@@ -168,17 +173,18 @@ export const expireCurrentTaskIfNeeded = async (teamId: string) => {
   return MongoTeamEnterpriseAuthTask.findOne({ teamId, taskId: task.taskId }).lean();
 };
 
-export const resetEnterpriseAuthTask = async (teamId: string) => {
+export const resetEnterpriseAuthTask = async (operator: AuthOperator) => {
   enabledGuard();
-  const task = await expireCurrentTaskIfNeeded(teamId);
+  const task = await expireCurrentTaskIfNeeded(operator.teamId);
   if (!task || !isPendingAmountTask(task)) {
     return;
   }
+  assertEnterpriseAuthTaskOperator({ task, operator });
 
   const now = new Date();
   await MongoTeamEnterpriseAuthTask.updateOne(
     {
-      teamId,
+      teamId: operator.teamId,
       taskId: task.taskId,
       status: {
         $in: [

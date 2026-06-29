@@ -10,7 +10,7 @@ import {
 import { mongoSessionRun } from '../../../../common/mongo/sessionRun';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { clearTeamPlanCache } from '../../../wallet/sub/utils';
-import { enabledGuard, type AuthOperator } from './common';
+import { assertEnterpriseAuthTaskOperator, enabledGuard, type AuthOperator } from './common';
 import { MongoTeamEnterpriseAuth, MongoTeamEnterpriseAuthTask } from './schema';
 import { expireCurrentTaskIfNeeded } from './taskExpire';
 import { isPendingAmountTask, toTerminalTaskError } from './status';
@@ -198,6 +198,8 @@ export const verifyEnterpriseAuthAmount = async ({
     throw new Error(EnterpriseAuthErrEnum.taskNotFound);
   }
   if (task.taskId === data.taskId) {
+    assertEnterpriseAuthTaskOperator({ task, operator });
+
     const terminalError = toTerminalTaskError(task);
     if (terminalError) throw new Error(terminalError);
 

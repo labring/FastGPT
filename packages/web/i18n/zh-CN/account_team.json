@@ -326,7 +326,7 @@
   "enterprise_auth_bank_name": "开户银行",
   "enterprise_auth_bank_name_placeholder": "请选择开户银行总行",
   "enterprise_auth_bank_loading_placeholder": "银行列表加载中",
-  "enterprise_auth_bank_account_first_placeholder": "请先填写银行账号",
+  "enterprise_auth_invalid_format_tip": "请填写正确的信息",
   "enterprise_auth_contact_info": "个人信息",
   "enterprise_auth_contact_name": "您的姓名",
   "enterprise_auth_contact_name_placeholder": "请填写您的称呼方式",
