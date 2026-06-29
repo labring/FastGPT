@@ -81,9 +81,7 @@ describe('initWorkflowData data clean API', () => {
       writeSuccessDocumentCount: 0,
       writeBlockedDocumentCount: 0,
       writeErrorDocumentCount: 0,
-      byExpression: {},
-      validationIssuesByPath: {},
-      samples: []
+      byExpression: {}
     };
     const result = formatWorkflowDocument({
       doc: {
@@ -110,8 +108,7 @@ describe('initWorkflowData data clean API', () => {
         collectionName: 'apps',
         documentId: appId
       },
-      rootPath: 'modules',
-      sampleSize: 20
+      rootPath: 'modules'
     });
 
     expect(result.nodes).toEqual(
@@ -149,7 +146,7 @@ describe('initWorkflowData data clean API', () => {
       ]
     });
     expect(result.chatConfig).not.toHaveProperty('scheduledTriggerConfig');
-    expect(result.formatChanges.length).toBeGreaterThan(0);
+    expect(result.formatChanges.count).toBeGreaterThan(0);
   });
 
   it('dry-runs without writing formatted data', async () => {
@@ -217,6 +214,95 @@ describe('initWorkflowData data clean API', () => {
     });
   });
 
+  it('skips folder-like apps when cleaning app workflow data', async () => {
+    await MongoApp.create({
+      _id: appId,
+      teamId,
+      tmbId,
+      name: 'folder app',
+      type: AppTypeEnum.folder,
+      modules: null,
+      edges: null,
+      chatConfig: null
+    });
+
+    const result = await runInitWorkflowDataMigration({
+      dryRun: false
+    });
+
+    expect(result.apps).toMatchObject({
+      scannedDocumentCount: 0,
+      formatChangedDocumentCount: 0,
+      writeSuccessDocumentCount: 0
+    });
+    await expect(MongoApp.findById(appId).lean()).resolves.toMatchObject({
+      type: AppTypeEnum.folder,
+      modules: null,
+      edges: null,
+      chatConfig: null
+    });
+  });
+
+  it('fills missing system tool set child toolId before zod validation', async () => {
+    await MongoApp.create({
+      _id: appId,
+      teamId,
+      tmbId,
+      name: 'system tool set app',
+      type: AppTypeEnum.workflow,
+      version: 'v2',
+      modules: [
+        ...dirtyV2Nodes,
+        {
+          nodeId: 'toolSet',
+          flowNodeType: FlowNodeTypeEnum.toolSet,
+          name: 'Tool Set',
+          inputs: [],
+          outputs: [],
+          toolConfig: {
+            systemToolSet: {
+              toolId: 'system-tool-set',
+              toolList: [
+                {
+                  key: 'searchByKey',
+                  description: 'Search tool'
+                },
+                {
+                  name: 'read',
+                  description: 'Read tool'
+                }
+              ]
+            }
+          }
+        }
+      ],
+      edges: [],
+      chatConfig: null
+    });
+
+    const result = await runInitWorkflowDataMigration({
+      dryRun: false
+    });
+
+    expect(result.apps).toMatchObject({
+      scannedDocumentCount: 1,
+      saveApiValidationErrorDocumentCount: 0,
+      writeSuccessDocumentCount: 1
+    });
+    const app = await MongoApp.findById(appId).lean();
+    const toolSetNode = app?.modules.find((node) => node.nodeId === 'toolSet');
+    expect(toolSetNode?.toolConfig?.systemToolSet?.toolList).toEqual([
+      expect.objectContaining({
+        name: 'searchByKey',
+        toolId: 'searchByKey'
+      }),
+      expect.objectContaining({
+        name: 'read',
+        toolId: 'read'
+      })
+    ]);
+  });
+
   it('blocks writes when formatted data still fails zod parse', async () => {
     await MongoApp.create({
       _id: appId,
@@ -241,11 +327,6 @@ describe('initWorkflowData data clean API', () => {
       saveApiValidationErrorDocumentCount: 1,
       writeBlockedDocumentCount: 1,
       writeSuccessDocumentCount: 0
-    });
-    expect(result.zodErrors[0]).toMatchObject({
-      collectionName: 'apps',
-      fieldName: 'modules',
-      stage: 'saveApi'
     });
     await expect(MongoApp.findById(appId).lean()).resolves.toMatchObject({
       modules: expect.arrayContaining([expect.objectContaining({ flowNodeType: 'lafModule' })])

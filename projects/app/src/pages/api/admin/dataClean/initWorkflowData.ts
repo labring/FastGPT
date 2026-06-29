@@ -5,6 +5,7 @@ import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import type { AnyBulkWriteOperation, Model } from '@fastgpt/service/common/mongo';
+import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
@@ -33,7 +34,6 @@ const logger = getLogger(['initWorkflowData']);
 const PROGRESS_LOG_EVERY = 1000;
 const DEFAULT_BATCH_SIZE = 1000;
 const DEFAULT_WRITE_BATCH_SIZE = 10;
-const SAMPLE_SIZE = 20;
 const validFlowNodeTypes = new Set(Object.values(FlowNodeTypeEnum));
 const validFlowNodeInputTypes = new Set(Object.values(FlowNodeInputTypeEnum));
 const validFlowNodeOutputTypes = new Set(Object.values(FlowNodeOutputTypeEnum));
@@ -172,18 +172,6 @@ const EnumExpressionEntrySchema = z.object({
   fixedValue: z.string().optional().meta({ description: '修复后的值' }),
   count: z.number().int().nonnegative().meta({ description: '出现次数' })
 });
-const EnumSampleSchema = z.object({
-  collectionName: z.string().meta({ description: '集合名' }),
-  documentId: z.string().optional().meta({ description: '文档 ID' }),
-  appId: z.string().optional().meta({ description: '应用 ID' }),
-  appVersion: z.string().optional().meta({ description: '应用版本号' }),
-  name: z.string().optional().meta({ description: '应用名称' }),
-  path: z.string().meta({ description: '字段路径' }),
-  field: z.enum(['renderTypeList', 'outputType', 'valueType']).meta({ description: '字段名' }),
-  expression: z.string().meta({ description: '历史枚举表达式' }),
-  known: z.boolean().meta({ description: '是否能映射到当前枚举' }),
-  fixedValue: z.string().optional().meta({ description: '修复后的值' })
-});
 const ValidationIssueSchema = z.object({
   code: z.string().meta({ description: 'Zod 错误码' }),
   path: z.string().meta({ description: '错误字段路径' }),
@@ -191,14 +179,6 @@ const ValidationIssueSchema = z.object({
   expected: z.unknown().optional().meta({ description: '期望值' }),
   received: z.unknown().optional().meta({ description: '实际类型' }),
   actualValue: z.unknown().optional().meta({ description: '压缩后的实际值' })
-});
-const ValidationIssueSummarySchema = z.object({
-  stage: z.enum(['saveApi', 'clean', 'write']).meta({ description: '报错阶段' }),
-  schemaName: z.string().meta({ description: 'Schema 名称' }),
-  path: z.string().meta({ description: '错误字段路径' }),
-  message: z.string().meta({ description: '错误信息' }),
-  actualValue: z.unknown().optional().meta({ description: '压缩后的实际值' }),
-  count: z.number().int().nonnegative().meta({ description: '出现次数' })
 });
 const ValidationErrorRecordSchema = z.object({
   collectionName: z.string().meta({ description: '集合名' }),
@@ -211,23 +191,6 @@ const ValidationErrorRecordSchema = z.object({
   stage: z.enum(['saveApi', 'clean', 'write']).meta({ description: '报错阶段' }),
   issueCount: z.number().int().nonnegative().meta({ description: '错误数量' }),
   issues: z.array(ValidationIssueSchema).meta({ description: '错误明细' })
-});
-const FormatChangeSchema = z.object({
-  path: z.string().meta({ description: '字段路径' }),
-  before: z.unknown().meta({ description: '变更前压缩值' }),
-  after: z.unknown().meta({ description: '变更后压缩值' }),
-  reason: z.string().meta({ description: '变更原因' })
-});
-const FormatChangeRecordSchema = z.object({
-  collectionName: z.string().meta({ description: '集合名' }),
-  fieldName: z.string().meta({ description: '工作流字段名' }),
-  documentId: z.string().optional().meta({ description: '文档 ID' }),
-  appId: z.string().optional().meta({ description: '应用 ID' }),
-  appVersion: z.string().optional().meta({ description: '应用版本号' }),
-  name: z.string().optional().meta({ description: '应用名称' }),
-  changeCount: z.number().int().nonnegative().meta({ description: '变更数量' }),
-  changes: z.array(FormatChangeSchema).meta({ description: '变更样本' }),
-  omittedChangeCount: z.number().int().nonnegative().meta({ description: '未返回的变更数量' })
 });
 const CollectionStatsSchema = z.object({
   collectionName: z.string().meta({ description: '集合名' }),
@@ -281,11 +244,7 @@ const CollectionStatsSchema = z.object({
     .nonnegative()
     .meta({ description: '因校验失败阻断写入文档数' }),
   writeErrorDocumentCount: z.number().int().nonnegative().meta({ description: '写入失败文档数' }),
-  byExpression: z.array(EnumExpressionEntrySchema).meta({ description: '枚举表达式分布' }),
-  validationIssuesByPath: z
-    .array(ValidationIssueSummarySchema)
-    .meta({ description: 'Zod 报错聚合' }),
-  samples: z.array(EnumSampleSchema).meta({ description: '枚举样本' })
+  byExpression: z.array(EnumExpressionEntrySchema).meta({ description: '枚举表达式分布' })
 });
 export type CollectionStatsType = z.infer<typeof CollectionStatsSchema>;
 
@@ -295,9 +254,7 @@ const InitWorkflowDataResponseSchema = z.object({
   writeBatchSize: z.number().int().positive().meta({ description: '每次 bulkWrite 的文档数量' }),
   apps: CollectionStatsSchema,
   appVersions: CollectionStatsSchema,
-  total: CollectionStatsSchema,
-  zodErrors: z.array(ValidationErrorRecordSchema).meta({ description: 'Zod/清洗/写库错误样本' }),
-  formatChanges: z.array(FormatChangeRecordSchema).meta({ description: 'format 变更样本' })
+  total: CollectionStatsSchema
 });
 export type InitWorkflowDataResponseType = z.infer<typeof InitWorkflowDataResponseSchema>;
 
@@ -339,19 +296,13 @@ type DocumentContext = {
   name?: string;
 };
 type EnumExpressionEntry = z.infer<typeof EnumExpressionEntrySchema>;
-type EnumSample = z.infer<typeof EnumSampleSchema>;
 type ValidationIssue = z.infer<typeof ValidationIssueSchema>;
 type ValidationErrorRecord = z.infer<typeof ValidationErrorRecordSchema>;
-type ValidationIssueSummary = z.infer<typeof ValidationIssueSummarySchema>;
-type FormatChange = z.infer<typeof FormatChangeSchema>;
-type FormatChangeRecord = z.infer<typeof FormatChangeRecordSchema>;
-type MutableCollectionStats = Omit<
-  CollectionStatsType,
-  'byExpression' | 'validationIssuesByPath' | 'samples'
-> & {
+type FormatChangeTracker = {
+  count: number;
+};
+type MutableCollectionStats = Omit<CollectionStatsType, 'byExpression'> & {
   byExpression: Record<string, EnumExpressionEntry>;
-  validationIssuesByPath: Record<string, ValidationIssueSummary>;
-  samples: EnumSample[];
 };
 type CleanResult = {
   nodes: unknown[];
@@ -361,13 +312,10 @@ type CleanResult = {
   outputTypeFixedCount: number;
   valueTypeFixedCount: number;
   unknownEnumExpressionCount: number;
-  formatChanges: FormatChange[];
+  formatChanges: FormatChangeTracker;
 };
 type RuntimeContext = Pick<InitWorkflowDataBodyType, 'dryRun'> & {
   writeBatchSize: number;
-  sampleSize: number;
-  zodErrors: ValidationErrorRecord[];
-  formatChanges: FormatChangeRecord[];
 };
 type PendingWriteOperation = {
   docContext: DocumentContext;
@@ -438,45 +386,16 @@ const compactIssueValue = (value: unknown): unknown => {
   return String(value);
 };
 
-const compactChangeValue = (value: unknown): unknown => {
-  if (value == null) return value;
-  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-    return value;
-  }
-  if (Array.isArray(value)) {
-    return {
-      type: 'array',
-      length: value.length
-    };
-  }
-  if (typeof value === 'object') {
-    return {
-      type: 'object',
-      keys: Object.keys(value).slice(0, 20)
-    };
-  }
-  return String(value);
-};
-
 const recordFormatChange = ({
-  changes,
-  path: fieldPath,
-  before,
-  after,
-  reason
+  changes
 }: {
-  changes: FormatChange[];
+  changes: FormatChangeTracker;
   path: string;
   before: unknown;
   after: unknown;
   reason: string;
 }) => {
-  changes.push({
-    path: fieldPath,
-    before: compactChangeValue(before),
-    after: compactChangeValue(after),
-    reason
-  });
+  changes.count += 1;
 };
 
 const deleteNullOptionalField = ({
@@ -489,7 +408,7 @@ const deleteNullOptionalField = ({
   target: Record<string, unknown>;
   key: string;
   path: string;
-  changes: FormatChange[];
+  changes: FormatChangeTracker;
   reason: string;
 }) => {
   if (target[key] !== null) return;
@@ -516,7 +435,7 @@ const normalizeStringFallback = ({
   key: string;
   fallback: string;
   path: string;
-  changes: FormatChange[];
+  changes: FormatChangeTracker;
   reason: string;
 }) => {
   if (typeof target[key] === 'string') return;
@@ -541,7 +460,7 @@ const normalizeBooleanOptionalField = ({
   target: Record<string, unknown>;
   key: string;
   path: string;
-  changes: FormatChange[];
+  changes: FormatChangeTracker;
   reason: string;
 }) => {
   if (target[key] !== null) return;
@@ -566,7 +485,7 @@ const normalizeStringOptionalFields = ({
   target: Record<string, unknown>;
   keys: readonly string[];
   basePath: string;
-  changes: FormatChange[];
+  changes: FormatChangeTracker;
   reason: string;
 }) => {
   keys.forEach((key) =>
@@ -590,7 +509,7 @@ const normalizeNullOptionalFields = ({
   target: Record<string, unknown>;
   keys: readonly string[];
   basePath: string;
-  changes: FormatChange[];
+  changes: FormatChangeTracker;
   reason: string;
 }) => {
   keys.forEach((key) =>
@@ -612,7 +531,7 @@ const normalizeValueType = ({
 }: {
   value: unknown;
   path: string;
-  changes: FormatChange[];
+  changes: FormatChangeTracker;
   reason: string;
 }) => {
   if (value === undefined) return value;
@@ -640,7 +559,7 @@ const normalizeValueTypeList = ({
 }: {
   list: unknown;
   path: string;
-  changes: FormatChange[];
+  changes: FormatChangeTracker;
 }) => {
   if (!Array.isArray(list)) return list;
 
@@ -661,7 +580,7 @@ const normalizeSelectValueTypeList = ({
 }: {
   item: Record<string, unknown>;
   basePath: string;
-  changes: FormatChange[];
+  changes: FormatChangeTracker;
 }) => {
   ['customInputConfig', 'customFieldConfig'].forEach((configKey) => {
     const configValue = item[configKey];
@@ -700,7 +619,7 @@ const normalizeRenderTypeList = ({
 }: {
   list: unknown;
   path: string;
-  changes: FormatChange[];
+  changes: FormatChangeTracker;
 }) => {
   if (!Array.isArray(list)) return list;
 
@@ -732,7 +651,7 @@ const normalizePluginStatus = ({
 }: {
   value: unknown;
   path: string;
-  changes: FormatChange[];
+  changes: FormatChangeTracker;
 }) => {
   const normalizedStatus = (() => {
     if (typeof value === 'string' && validPluginStatusValues.has(value as PluginStatusType)) {
@@ -789,7 +708,7 @@ const normalizeOptionListLabels = ({
   item: Record<string, unknown>;
   listKey: 'list' | 'enums';
   basePath: string;
-  changes: FormatChange[];
+  changes: FormatChangeTracker;
 }) => {
   const list = item[listKey];
   if (!Array.isArray(list)) return;
@@ -836,7 +755,7 @@ const normalizeJsonStringArrayField = ({
   item: Record<string, unknown>;
   key: string;
   path: string;
-  changes: FormatChange[];
+  changes: FormatChangeTracker;
   reason: string;
 }) => {
   if (typeof item[key] !== 'string') return;
@@ -875,7 +794,7 @@ const normalizeNonNegativeIntOptionalField = ({
   item: Record<string, unknown>;
   key: string;
   path: string;
-  changes: FormatChange[];
+  changes: FormatChangeTracker;
   reason: string;
 }) => {
   if (item[key] === undefined) return;
@@ -898,7 +817,7 @@ const normalizeVariableType = ({
 }: {
   variable: Record<string, unknown>;
   variableIndex: number;
-  changes: FormatChange[];
+  changes: FormatChangeTracker;
 }) => {
   const currentType = variable.type;
   const normalizedType = (() => {
@@ -937,7 +856,7 @@ const normalizeVariableBaseFields = ({
 }: {
   variable: Record<string, unknown>;
   variableIndex: number;
-  changes: FormatChange[];
+  changes: FormatChangeTracker;
 }) => {
   if (typeof variable.key !== 'string' || variable.key.length === 0) {
     const fallbackKey =
@@ -980,7 +899,7 @@ const removePropertyRequiredFlags = ({
 }: {
   value: unknown;
   basePath: string;
-  changes: FormatChange[];
+  changes: FormatChangeTracker;
 }) => {
   if (Array.isArray(value)) {
     value.forEach((item, index) =>
@@ -1018,7 +937,7 @@ const normalizeToolConfig = ({
 }: {
   toolConfig: unknown;
   basePath: string;
-  changes: FormatChange[];
+  changes: FormatChangeTracker;
 }) => {
   if (toolConfig === null) {
     recordFormatChange({
@@ -1033,6 +952,57 @@ const normalizeToolConfig = ({
   if (!isRecord(toolConfig)) return toolConfig;
 
   removePropertyRequiredFlags({ value: toolConfig, basePath, changes });
+  const systemToolSet = toolConfig.systemToolSet;
+  if (isRecord(systemToolSet) && Array.isArray(systemToolSet.toolList)) {
+    systemToolSet.toolList = systemToolSet.toolList
+      .map((tool, toolIndex) => {
+        if (!isRecord(tool)) {
+          recordFormatChange({
+            changes,
+            path: `${basePath}.systemToolSet.toolList[${toolIndex}]`,
+            before: tool,
+            after: undefined,
+            reason: 'legacy invalid system tool set child removed'
+          });
+          return undefined;
+        }
+
+        const nextTool: Record<string, unknown> = { ...tool };
+        normalizeStringFallback({
+          target: nextTool,
+          key: 'toolId',
+          fallback:
+            typeof tool.key === 'string' && tool.key.length > 0
+              ? tool.key
+              : typeof tool.name === 'string' && tool.name.length > 0
+                ? tool.name
+                : `${String(systemToolSet.toolId ?? 'systemTool')}_${toolIndex}`,
+          path: `${basePath}.systemToolSet.toolList[${toolIndex}].toolId`,
+          changes,
+          reason: 'legacy system tool set child missing toolId'
+        });
+        normalizeStringFallback({
+          target: nextTool,
+          key: 'name',
+          fallback: typeof nextTool.toolId === 'string' ? nextTool.toolId : `tool_${toolIndex}`,
+          path: `${basePath}.systemToolSet.toolList[${toolIndex}].name`,
+          changes,
+          reason: 'legacy system tool set child missing name'
+        });
+        normalizeStringFallback({
+          target: nextTool,
+          key: 'description',
+          fallback: '',
+          path: `${basePath}.systemToolSet.toolList[${toolIndex}].description`,
+          changes,
+          reason: 'legacy system tool set child missing description'
+        });
+
+        return nextTool;
+      })
+      .filter((tool) => tool !== undefined);
+  }
+
   const httpToolSet = toolConfig.httpToolSet;
   if (isRecord(httpToolSet) && typeof httpToolSet.customHeaders !== 'string') {
     recordFormatChange({
@@ -1054,7 +1024,7 @@ const normalizeInputListValue = ({
 }: {
   inputList: unknown;
   basePath: string;
-  changes: FormatChange[];
+  changes: FormatChangeTracker;
 }) => {
   if (inputList === null) {
     recordFormatChange({
@@ -1101,7 +1071,7 @@ const normalizeWorkflowIOItem = ({
 }: {
   item: Record<string, unknown>;
   basePath: string;
-  changes: FormatChange[];
+  changes: FormatChangeTracker;
   kind: 'inputs' | 'outputs';
   itemIndex: number;
 }) => {
@@ -1223,7 +1193,7 @@ const normalizePluginData = ({
 }: {
   pluginData: unknown;
   basePath: string;
-  changes: FormatChange[];
+  changes: FormatChangeTracker;
 }) => {
   if (pluginData === null) {
     recordFormatChange({
@@ -1275,7 +1245,7 @@ const buildEmptyNode = ({
   nodeIndex: number;
   rootPath: string;
   docContext: DocumentContext;
-  changes: FormatChange[];
+  changes: FormatChangeTracker;
   reason: string;
 }): WorkflowNode => {
   const fallbackNode = {
@@ -1328,9 +1298,7 @@ const emptyStats = ({
   writeSuccessDocumentCount: 0,
   writeBlockedDocumentCount: 0,
   writeErrorDocumentCount: 0,
-  byExpression: {},
-  validationIssuesByPath: {},
-  samples: []
+  byExpression: {}
 });
 
 const createDocContext = ({
@@ -1375,11 +1343,9 @@ const parseEnumExpressionValue = <T extends Record<string, string>>({
 const recordExpression = ({
   stats,
   docResult,
-  docContext,
   path: fieldPath,
   field,
-  value,
-  sampleSize
+  value
 }: {
   stats: MutableCollectionStats;
   docResult: Pick<
@@ -1388,11 +1354,9 @@ const recordExpression = ({
   > & {
     unknownEnumExpressionCount: number;
   };
-  docContext: DocumentContext;
   path: string;
   field: EnumField;
   value: unknown;
-  sampleSize: number;
 }) => {
   const enumConfig = enumConfigs[field];
   const parsed = parseEnumExpressionValue({
@@ -1432,17 +1396,6 @@ const recordExpression = ({
     stats.unknownEnumExpressionCount += 1;
   }
 
-  if (stats.samples.length < sampleSize) {
-    stats.samples.push({
-      ...docContext,
-      path: fieldPath,
-      field,
-      expression: parsed.expression,
-      known: parsed.known,
-      fixedValue: parsed.fixedValue
-    });
-  }
-
   if (parsed.known && parsed.fixedValue !== value) {
     recordFormatChange({
       changes: docResult.formatChanges,
@@ -1460,20 +1413,16 @@ const fixWorkflowIOList = ({
   list,
   stats,
   docResult,
-  docContext,
   basePath,
   kind,
-  node,
-  sampleSize
+  node
 }: {
   list: unknown;
   stats: MutableCollectionStats;
   docResult: CleanResult;
-  docContext: DocumentContext;
   basePath: string;
   kind: 'inputs' | 'outputs';
   node: WorkflowNode;
-  sampleSize: number;
 }) => {
   if (!Array.isArray(list)) {
     recordFormatChange({
@@ -1521,11 +1470,9 @@ const fixWorkflowIOList = ({
         recordExpression({
           stats,
           docResult,
-          docContext,
           path: `${basePath}[${itemIndex}].renderTypeList[${renderTypeIndex}]`,
           field: 'renderTypeList',
-          value: renderType,
-          sampleSize
+          value: renderType
         })
       );
     }
@@ -1540,22 +1487,18 @@ const fixWorkflowIOList = ({
       nextItem.type = recordExpression({
         stats,
         docResult,
-        docContext,
         path: `${basePath}[${itemIndex}].type`,
         field: 'outputType',
-        value: item.type,
-        sampleSize
+        value: item.type
       });
     }
 
     nextItem.valueType = recordExpression({
       stats,
       docResult,
-      docContext,
       path: `${basePath}[${itemIndex}].valueType`,
       field: 'valueType',
-      value: item.valueType,
-      sampleSize
+      value: item.valueType
     });
     nextItem.valueType = normalizeValueType({
       value: nextItem.valueType,
@@ -1600,7 +1543,7 @@ const formatChatConfig = ({
   formatChanges
 }: {
   chatConfig: unknown;
-  formatChanges: FormatChange[];
+  formatChanges: FormatChangeTracker;
 }) => {
   if (chatConfig == null) {
     recordFormatChange({
@@ -1806,7 +1749,7 @@ const formatEdges = ({
   formatChanges
 }: {
   edges: unknown;
-  formatChanges: FormatChange[];
+  formatChanges: FormatChangeTracker;
 }) => {
   if (edges == null) {
     recordFormatChange({
@@ -1860,15 +1803,13 @@ export const formatWorkflowDocument = ({
   fieldName,
   stats,
   docContext,
-  rootPath,
-  sampleSize
+  rootPath
 }: {
   doc: WorkflowDocument;
   fieldName: CollectionConfig['fieldName'];
   stats: MutableCollectionStats;
   docContext: DocumentContext;
   rootPath: string;
-  sampleSize: number;
 }): CleanResult => {
   const docResult: CleanResult = {
     nodes: [],
@@ -1878,7 +1819,9 @@ export const formatWorkflowDocument = ({
     outputTypeFixedCount: 0,
     valueTypeFixedCount: 0,
     unknownEnumExpressionCount: 0,
-    formatChanges: []
+    formatChanges: {
+      count: 0
+    }
   };
 
   const nodes = doc[fieldName];
@@ -1987,21 +1930,17 @@ export const formatWorkflowDocument = ({
       list: node.inputs,
       stats,
       docResult,
-      docContext,
       basePath: `${rootPath}[${nodeIndex}].inputs`,
       kind: 'inputs',
-      node,
-      sampleSize
+      node
     });
     nextNode.outputs = fixWorkflowIOList({
       list: node.outputs,
       stats,
       docResult,
-      docContext,
       basePath: `${rootPath}[${nodeIndex}].outputs`,
       kind: 'outputs',
-      node,
-      sampleSize
+      node
     });
     const normalizedPluginData = normalizePluginData({
       pluginData: node.pluginData,
@@ -2063,41 +2002,12 @@ const normalizeZodIssue = ({
   };
 };
 
-const recordValidationIssueSummary = ({
-  stats,
-  issues,
-  stage,
-  schemaName
-}: {
-  stats: MutableCollectionStats;
-  issues: ValidationIssue[];
-  stage: ValidationErrorRecord['stage'];
-  schemaName: string;
-}) => {
-  issues.forEach((issue) => {
-    const actualValueKey = JSON.stringify(issue.actualValue);
-    const key = `${stage}|${schemaName}|${issue.path}|${issue.message}|${actualValueKey}`;
-    const existing = stats.validationIssuesByPath[key];
-    stats.validationIssuesByPath[key] = existing || {
-      stage,
-      schemaName,
-      path: issue.path,
-      message: issue.message,
-      actualValue: issue.actualValue,
-      count: 0
-    };
-    stats.validationIssuesByPath[key].count += 1;
-  });
-};
-
 const recordValidationError = ({
   record,
-  stats,
-  runtime
+  stats
 }: {
   record: ValidationErrorRecord;
   stats: MutableCollectionStats;
-  runtime: RuntimeContext;
 }) => {
   if (record.stage === 'saveApi') {
     stats.saveApiValidationErrorDocumentCount += 1;
@@ -2107,16 +2017,18 @@ const recordValidationError = ({
     stats.writeErrorDocumentCount += 1;
   }
 
-  recordValidationIssueSummary({
-    stats,
-    issues: record.issues,
+  logger.warn('Workflow data clean validation blocked', {
+    collectionName: record.collectionName,
+    fieldName: record.fieldName,
+    documentId: record.documentId,
+    appId: record.appId,
+    appVersion: record.appVersion,
+    name: record.name,
+    schemaName: record.schemaName,
     stage: record.stage,
-    schemaName: record.schemaName
+    issueCount: record.issueCount,
+    issues: record.issues
   });
-
-  if (runtime.zodErrors.length < runtime.sampleSize) {
-    runtime.zodErrors.push(record);
-  }
 };
 
 const validateAndRecord = ({
@@ -2125,8 +2037,7 @@ const validateAndRecord = ({
   data,
   config,
   docContext,
-  stats,
-  runtime
+  stats
 }: {
   schemaName: string;
   stage: ValidationErrorRecord['stage'];
@@ -2134,7 +2045,6 @@ const validateAndRecord = ({
   config: CollectionConfig;
   docContext: DocumentContext;
   stats: MutableCollectionStats;
-  runtime: RuntimeContext;
 }) => {
   const result = saveApiSchema.safeParse(data);
   if (result.success) return true;
@@ -2142,7 +2052,6 @@ const validateAndRecord = ({
   const issues = result.error.issues.map((issue) => normalizeZodIssue({ issue, data }));
   recordValidationError({
     stats,
-    runtime,
     record: {
       ...docContext,
       collectionName: config.collectionName,
@@ -2158,30 +2067,13 @@ const validateAndRecord = ({
 
 const recordFormatChanges = ({
   cleanResult,
-  config,
-  docContext,
-  stats,
-  runtime
+  stats
 }: {
   cleanResult: CleanResult;
-  config: CollectionConfig;
-  docContext: DocumentContext;
   stats: MutableCollectionStats;
-  runtime: RuntimeContext;
 }) => {
-  if (cleanResult.formatChanges.length === 0) return;
-
+  if (cleanResult.formatChanges.count === 0) return;
   stats.formatChangedDocumentCount += 1;
-  if (runtime.formatChanges.length >= runtime.sampleSize) return;
-
-  runtime.formatChanges.push({
-    ...docContext,
-    collectionName: config.collectionName,
-    fieldName: config.fieldName,
-    changeCount: cleanResult.formatChanges.length,
-    changes: cleanResult.formatChanges.slice(0, runtime.sampleSize),
-    omittedChangeCount: Math.max(cleanResult.formatChanges.length - runtime.sampleSize, 0)
-  });
 };
 
 const buildUpdatePayload = ({
@@ -2200,18 +2092,15 @@ const recordWriteError = ({
   config,
   docContext,
   stats,
-  runtime,
   message
 }: {
   config: CollectionConfig;
   docContext: DocumentContext;
   stats: MutableCollectionStats;
-  runtime: RuntimeContext;
   message: string;
 }) => {
   recordValidationError({
     stats,
-    runtime,
     record: {
       ...docContext,
       collectionName: config.collectionName,
@@ -2281,21 +2170,14 @@ const flushWriteOperations = async ({
       if (unmatchedCount <= 0) return;
 
       stats.writeErrorDocumentCount += unmatchedCount;
-      if (runtime.zodErrors.length >= runtime.sampleSize) return;
-
-      runtime.zodErrors.push({
+      logger.warn('Workflow data clean write unmatched', {
         collectionName: config.collectionName,
         fieldName: config.fieldName,
-        schemaName: 'bulkWriteWorkflowDirtyData',
-        stage: 'write',
-        issueCount: 1,
-        issues: [
-          {
-            code: 'write_unmatched',
-            path: config.fieldName,
-            message: `bulkWrite matched ${result.matchedCount}/${batchOperations.length} documents.`
-          }
-        ]
+        batchSize: batchOperations.length,
+        matchedCount: result.matchedCount,
+        unmatchedCount,
+        firstDocumentId: batchOperations[0]?.docContext.documentId,
+        lastDocumentId: batchOperations[batchOperations.length - 1]?.docContext.documentId
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -2314,7 +2196,6 @@ const flushWriteOperations = async ({
           config,
           docContext,
           stats,
-          runtime,
           message
         });
       });
@@ -2371,8 +2252,7 @@ const processWorkflowDocument = ({
       fieldName: config.fieldName,
       stats,
       docContext,
-      rootPath: config.fieldName,
-      sampleSize: runtime.sampleSize
+      rootPath: config.fieldName
     });
 
     if (
@@ -2389,10 +2269,7 @@ const processWorkflowDocument = ({
 
     recordFormatChanges({
       cleanResult,
-      config,
-      docContext,
-      stats,
-      runtime
+      stats
     });
 
     const saveApiValid = validateAndRecord({
@@ -2405,8 +2282,7 @@ const processWorkflowDocument = ({
       },
       config,
       docContext,
-      stats,
-      runtime
+      stats
     });
     const valid = saveApiValid && cleanResult.unknownEnumExpressionCount === 0;
 
@@ -2415,7 +2291,7 @@ const processWorkflowDocument = ({
       return {};
     }
 
-    if (runtime.dryRun || cleanResult.formatChanges.length === 0) {
+    if (runtime.dryRun || cleanResult.formatChanges.count === 0) {
       return {};
     }
 
@@ -2435,7 +2311,6 @@ const processWorkflowDocument = ({
   } catch (error) {
     recordValidationError({
       stats,
-      runtime,
       record: {
         ...docContext,
         collectionName: config.collectionName,
@@ -2497,12 +2372,7 @@ const serializeStats = (stats: MutableCollectionStats): CollectionStatsType => (
   byExpression: Object.values(stats.byExpression).sort((left, right) => {
     if (right.count !== left.count) return right.count - left.count;
     return left.expression.localeCompare(right.expression);
-  }),
-  validationIssuesByPath: Object.values(stats.validationIssuesByPath).sort((left, right) => {
-    if (right.count !== left.count) return right.count - left.count;
-    return left.path.localeCompare(right.path);
-  }),
-  samples: stats.samples
+  })
 });
 
 const mergeTotalStats = (statsList: MutableCollectionStats[]) => {
@@ -2545,21 +2415,6 @@ const mergeTotalStats = (statsList: MutableCollectionStats[]) => {
       };
       total.byExpression[expressionKey].count += entry.count;
     });
-
-    Object.values(stats.validationIssuesByPath).forEach((entry) => {
-      const actualValueKey = JSON.stringify(entry.actualValue);
-      const key = `${entry.stage}|${entry.schemaName}|${entry.path}|${entry.message}|${actualValueKey}`;
-      const existing = total.validationIssuesByPath[key];
-      total.validationIssuesByPath[key] = existing || {
-        stage: entry.stage,
-        schemaName: entry.schemaName,
-        path: entry.path,
-        message: entry.message,
-        actualValue: entry.actualValue,
-        count: 0
-      };
-      total.validationIssuesByPath[key].count += entry.count;
-    });
   });
 
   return total;
@@ -2576,7 +2431,7 @@ const scanCollection = async ({
   runtime: RuntimeContext;
   batchSize: number;
 }) => {
-  const query = {};
+  const query = config.key === 'apps' ? { type: { $nin: AppFolderTypeList } } : {};
   const stats = emptyStats({
     collectionName: config.collectionName,
     fieldName: config.fieldName
@@ -2636,10 +2491,7 @@ export async function runInitWorkflowDataMigration(
   };
   const runtime: RuntimeContext = {
     dryRun: normalizedOptions.dryRun,
-    writeBatchSize: normalizedOptions.writeBatchSize,
-    sampleSize: SAMPLE_SIZE,
-    zodErrors: [],
-    formatChanges: []
+    writeBatchSize: normalizedOptions.writeBatchSize
   };
 
   const appsStats = await scanCollection({
@@ -2662,9 +2514,7 @@ export async function runInitWorkflowDataMigration(
     writeBatchSize: normalizedOptions.writeBatchSize,
     apps: serializeStats(appsStats),
     appVersions: serializeStats(appVersionsStats),
-    total: serializeStats(totalStats),
-    zodErrors: runtime.zodErrors,
-    formatChanges: runtime.formatChanges
+    total: serializeStats(totalStats)
   });
 }
 
