@@ -1,8 +1,7 @@
-import fs, { existsSync } from 'fs';
+import fs from 'fs';
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/index';
 import type { FastGPTConfigFileType } from '@fastgpt/global/common/system/types/index';
 import { getFastGPTConfigFromDB } from '@fastgpt/service/common/system/config/controller';
-import { isProduction } from '@fastgpt/global/common/system/constants';
 import { initFastGPTConfig } from '@fastgpt/service/common/system/tools';
 import json5 from 'json5';
 import { defaultTemplateTypes } from '@fastgpt/web/core/workflow/constants';
@@ -36,29 +35,6 @@ const logger = getLogger(LogCategories.SYSTEM);
 const pluginFeaturesProbeTimeoutMs = 3000;
 const defaultOpenSourceLoginGuideDocUrl =
   'https://doc.fastgpt.io/zh-CN/guide/version/cloud/faq#%E8%B4%A6%E5%8F%B7%E7%99%BB%E5%BD%95%E9%97%AE%E9%A2%98';
-
-export const readConfigData = async (name: string) => {
-  const splitName = name.split('.');
-  const devName = `${splitName[0]}.local.${splitName[1]}`;
-
-  const filename = (() => {
-    if (!isProduction) {
-      // check local file exists
-      const hasLocalFile = existsSync(`data/${devName}`);
-      if (hasLocalFile) {
-        return `data/${devName}`;
-      }
-      return `data/${name}`;
-    }
-    // Fallback to default production path
-    const envPath = appEnv.CONFIG_JSON_PATH || '/app/data';
-    return `${envPath}/${name}`;
-  })();
-
-  const content = await fs.promises.readFile(filename, 'utf-8');
-
-  return content;
-};
 
 /* Init global variables */
 export function initGlobalVariables() {
@@ -161,24 +137,18 @@ async function getPluginRemoteDebugEnabled() {
 }
 
 export async function initSystemConfig() {
-  // load config
-  const [{ fastgptConfig, licenseData }, fileConfig, pluginRemoteDebug] = await Promise.all([
+  const [{ fastgptConfig, licenseData }, pluginRemoteDebug] = await Promise.all([
     getFastGPTConfigFromDB(),
-    readConfigData('config.json'),
     getPluginRemoteDebugEnabled()
   ]);
   global.licenseData = licenseData;
 
-  const fileRes = json5.parse(fileConfig) as FastGPTConfigFileType;
-
-  // get config from database
   const config: FastGPTConfigFileType = {
     feConfigs: {
-      ...fileRes?.feConfigs,
       ...defaultFeConfigs,
+      mcpServerProxyEndpoint: appEnv.MCP_SERVER_PROXY_ENDPOINT,
       ...(fastgptConfig.feConfigs || {}),
       limit: {
-        ...fileRes?.feConfigs?.limit,
         ...defaultFeConfigs.limit,
         ...(fastgptConfig.feConfigs?.limit || {})
       },
@@ -193,12 +163,35 @@ export async function initSystemConfig() {
       payFormUrl: appEnv.PAY_FORM_URL || '',
 
       agentSandboxFree: appEnv.AGENT_SANDBOX_FREE_TIP,
-      agentSandboxProxyUrl: appEnv.AGENT_SANDBOX_PROXY_URL || ''
+      agentSandboxProxyUrl: serviceEnv.AGENT_SANDBOX_PROXY_URL || ''
     },
-    systemEnv: {
-      ...fileRes.systemEnv,
-      ...(fastgptConfig.systemEnv || {})
-    },
+    systemEnv: Object.assign(
+      {
+        datasetParseMaxProcess: serviceEnv.DATASET_PARSE_MAX_PROCESS,
+        vectorMaxProcess: serviceEnv.VECTOR_MAX_PROCESS,
+        qaMaxProcess: serviceEnv.QA_MAX_PROCESS,
+        vlmMaxProcess: serviceEnv.VLM_MAX_PROCESS,
+        hnswEfSearch: serviceEnv.HNSW_EF_SEARCH,
+        hnswMaxScanTuples: serviceEnv.HNSW_MAX_SCAN_TUPLES,
+        customPdfParse: {
+          url: serviceEnv.CUSTOM_PDF_PARSE_URL,
+          key: serviceEnv.CUSTOM_PDF_PARSE_KEY,
+          doc2xKey: serviceEnv.DOC2X_KEY,
+          textinAppId: serviceEnv.TEXTIN_APP_ID,
+          textinSecretCode: serviceEnv.TEXTIN_SECRET_CODE,
+          price: serviceEnv.CUSTOM_PDF_PARSE_PRICE
+        },
+        fileUrlWhitelist: serviceEnv.FILE_URL_WHITELIST
+          ? serviceEnv.FILE_URL_WHITELIST.split(/[,;\s]+/)
+              .map((item) => item.trim())
+              .filter(Boolean)
+          : undefined,
+        workflowHttpNode: {
+          ignoreHttpsCertificate: serviceEnv.WORKFLOW_HTTP_IGNORE_HTTPS_CERT
+        }
+      },
+      fastgptConfig.systemEnv || {}
+    ),
     subPlans: fastgptConfig.subPlans
   };
 
