@@ -15,9 +15,6 @@ mod relay;
 use auth::resolve_sandbox_address;
 use relay::handle_relay;
 
-const MAX_WS_MESSAGE_SIZE: usize = 16 * 1024 * 1024;
-const MAX_WS_FRAME_SIZE: usize = 4 * 1024 * 1024;
-
 #[derive(Deserialize)]
 struct WsQuery {
     ticket: Option<String>,
@@ -124,8 +121,9 @@ async fn fs_handler(ws: WebSocketUpgrade, Query(query): Query<WsQuery>) -> impl 
             info!(
                 "[Auth] Ticket verified & address resolved successfully. Upgrading to WebSocket (FS)..."
             );
-            ws.max_message_size(MAX_WS_MESSAGE_SIZE)
-                .max_frame_size(MAX_WS_FRAME_SIZE)
+            let ws_limits = address.ws_limits;
+            ws.max_message_size(ws_limits.max_message_bytes)
+                .max_frame_size(ws_limits.max_frame_bytes)
                 .on_upgrade(move |socket| handle_relay(socket, address, claims, false))
                 .into_response()
         }
@@ -139,8 +137,9 @@ async fn terminal_handler(ws: WebSocketUpgrade, Query(query): Query<WsQuery>) ->
             info!(
                 "[Auth] Ticket verified & address resolved successfully. Upgrading to WebSocket (TERMINAL)..."
             );
-            ws.max_message_size(MAX_WS_MESSAGE_SIZE)
-                .max_frame_size(MAX_WS_FRAME_SIZE)
+            let ws_limits = address.ws_limits;
+            ws.max_message_size(ws_limits.max_message_bytes)
+                .max_frame_size(ws_limits.max_frame_bytes)
                 .on_upgrade(move |socket| handle_relay(socket, address, claims, true))
                 .into_response()
         }

@@ -3,9 +3,18 @@ use std::sync::Arc;
 use tokio::net::TcpStream;
 
 use crate::fs::{FsPermission, handle_fs_session};
-const MAX_WS_MESSAGE_SIZE: usize = 16 * 1024 * 1024;
-const MAX_WS_FRAME_SIZE: usize = 4 * 1024 * 1024;
 use crate::terminal::handle_terminal_session;
+
+const WS_MAX_MESSAGE_BYTES_ENV: &str = "FASTGPT_IDE_WS_MAX_MESSAGE_BYTES";
+const WS_MAX_FRAME_BYTES_ENV: &str = "FASTGPT_IDE_WS_MAX_FRAME_BYTES";
+
+fn read_positive_usize_env(key: &str) -> Option<usize> {
+    std::env::var(key)
+        .ok()?
+        .parse::<usize>()
+        .ok()
+        .filter(|value| *value > 0)
+}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 enum Channel {
@@ -14,9 +23,16 @@ enum Channel {
 }
 
 fn ws_config() -> tokio_tungstenite::tungstenite::protocol::WebSocketConfig {
-    tokio_tungstenite::tungstenite::protocol::WebSocketConfig::default()
-        .max_message_size(Some(MAX_WS_MESSAGE_SIZE))
-        .max_frame_size(Some(MAX_WS_FRAME_SIZE))
+    let config = tokio_tungstenite::tungstenite::protocol::WebSocketConfig::default();
+    let config = match read_positive_usize_env(WS_MAX_MESSAGE_BYTES_ENV) {
+        Some(max_message_bytes) => config.max_message_size(Some(max_message_bytes)),
+        None => config,
+    };
+
+    match read_positive_usize_env(WS_MAX_FRAME_BYTES_ENV) {
+        Some(max_frame_bytes) => config.max_frame_size(Some(max_frame_bytes)),
+        None => config,
+    }
 }
 
 fn extract_token(
