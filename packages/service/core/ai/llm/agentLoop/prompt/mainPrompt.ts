@@ -71,9 +71,14 @@ ${
 调用 update_plan 时保持计划可执行、可验证、简洁。
 update_plan 使用 updates 数组；如果多个 step 在同一轮工具结果或推理中同时变化，把这些 update_step 合并到一次调用里。
 创建计划时，set_plan 必须传完整 plan 对象，不要把 status/reason/evidence 直接放在 set_plan operation 上。
+更新步骤时，update_step 只允许传 stepId、status、evidence、outputSummary、blocker、needsReplan、reason；不要传 plan。
+如果要更新多个步骤，必须在 updates 数组里写多个 update_step；不要把完整 plan.steps 放进单个 update_step。
 正确格式：
 {"updates":[{"action":"set_plan","plan":{"task":"...","description":"...","steps":[{"id":"1","title":"...","description":"...","acceptanceCriteria":["..."],"status":"pending","evidence":[]}]}}]}
+批量更新步骤的正确格式：
+{"updates":[{"action":"update_step","stepId":"1","status":"done","outputSummary":"..."},{"action":"update_step","stepId":"2","status":"done","outputSummary":"..."}]}
 不要使用这种格式：{"updates":[{"action":"set_plan","status":"in_progress","reason":"..."},{"action":"update_step","stepId":"1","status":"pending"}]}
+也不要使用这种格式：{"updates":[{"action":"update_step","stepId":"1","status":"done","plan":{"steps":[...]}}]}
 每个 step 都要有明确 title、description、acceptanceCriteria，新 step 初始 status 通常为 pending。
 更新步骤时，完成步骤要写 outputSummary 并尽量附 evidence；阻塞步骤必须写 blocker；如果原计划不适用，调用 replace_plan 或标记 needsReplan。
 </plan_update_rules>
