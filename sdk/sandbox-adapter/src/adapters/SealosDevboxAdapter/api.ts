@@ -10,6 +10,15 @@ import {
   type UploadFileParams,
   type UploadResponseData
 } from './type';
+import { isReadableStreamData } from '@/utils/files';
+
+type StreamingRequestInit = RequestInit & {
+  /**
+   * Node fetch requires this extension when the request body is a stream.
+   * Browser typings do not expose it yet, but undici accepts the field.
+   */
+  duplex?: 'half';
+};
 
 export class DevboxApiError extends Error {
   constructor(
@@ -138,11 +147,16 @@ export class DevboxApi {
     if (params.timeoutSeconds != null) queryParams.timeoutSeconds = String(params.timeoutSeconds);
     if (params.container) queryParams.container = params.container;
 
-    return this.request(this.url(`/api/v1/devbox/${name}/files/upload`, queryParams), {
+    const requestInit: StreamingRequestInit = {
       method: 'POST',
       headers: { 'Content-Type': 'application/octet-stream' },
       body: content
-    });
+    };
+    if (isReadableStreamData(content)) {
+      requestInit.duplex = 'half';
+    }
+
+    return this.request(this.url(`/api/v1/devbox/${name}/files/upload`, queryParams), requestInit);
   }
 
   private buildDownloadFileUrl(name: string, params: DownloadFileParams): string {
