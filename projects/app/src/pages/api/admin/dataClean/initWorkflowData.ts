@@ -2629,9 +2629,14 @@ const scanCollection = async ({
 export async function runInitWorkflowDataMigration(
   options: InitWorkflowDataBodyType
 ): Promise<InitWorkflowDataResponseType> {
-  const runtime: RuntimeContext = {
+  const normalizedOptions = {
     dryRun: options.dryRun,
-    writeBatchSize: options.writeBatchSize,
+    batchSize: options.batchSize ?? DEFAULT_BATCH_SIZE,
+    writeBatchSize: options.writeBatchSize ?? DEFAULT_WRITE_BATCH_SIZE
+  };
+  const runtime: RuntimeContext = {
+    dryRun: normalizedOptions.dryRun,
+    writeBatchSize: normalizedOptions.writeBatchSize,
     sampleSize: SAMPLE_SIZE,
     zodErrors: [],
     formatChanges: []
@@ -2641,20 +2646,20 @@ export async function runInitWorkflowDataMigration(
     model: MongoApp,
     config: collectionConfigs.apps,
     runtime,
-    batchSize: options.batchSize
+    batchSize: normalizedOptions.batchSize
   });
   const appVersionsStats = await scanCollection({
     model: MongoAppVersion,
     config: collectionConfigs.appVersions,
     runtime,
-    batchSize: options.batchSize
+    batchSize: normalizedOptions.batchSize
   });
   const totalStats = mergeTotalStats([appsStats, appVersionsStats]);
 
   return InitWorkflowDataResponseSchema.parse({
-    dryRun: options.dryRun,
-    batchSize: options.batchSize,
-    writeBatchSize: options.writeBatchSize,
+    dryRun: normalizedOptions.dryRun,
+    batchSize: normalizedOptions.batchSize,
+    writeBatchSize: normalizedOptions.writeBatchSize,
     apps: serializeStats(appsStats),
     appVersions: serializeStats(appVersionsStats),
     total: serializeStats(totalStats),
