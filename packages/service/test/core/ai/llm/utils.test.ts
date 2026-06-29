@@ -712,6 +712,49 @@ describe('loadRequestMessages function tests', () => {
       expect(content.some((item: any) => item.type === 'image_url')).toBe(true);
     });
 
+    it('should extract clean image url from markdown link in json-like text', async () => {
+      serviceEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      const imageUrl =
+        'https://proxy.file.fastgpt.io/chat/image.png?X-Amz-Signature=test&x-id=GetObject';
+      const messages: ChatCompletionMessageParam[] = [
+        {
+          role: ChatCompletionRequestMessageRoleEnum.User,
+          content: `"url": "[${imageUrl}](${imageUrl})\\"]"`
+        }
+      ];
+
+      const result = await loadRequestMessages({ messages, useVision: true });
+
+      expect(result).toHaveLength(1);
+      const content = result[0].content as any[];
+      const imageParts = content.filter((item: any) => item.type === 'image_url');
+      expect(imageParts).toHaveLength(1);
+      expect(imageParts[0].image_url.url).toBe(imageUrl);
+      expect(mockAxiosHead).toHaveBeenCalledWith(imageUrl, {
+        timeout: 10000
+      });
+    });
+
+    it('should extract image url before newline terminators', async () => {
+      serviceEnv.MULTIPLE_DATA_TO_BASE64 = false;
+      const imageUrl =
+        'https://proxy.file.fastgpt.io/chat/%E7%AE%80%E5%8E%86.png?X-Amz-Signature=test&x-id=GetObject';
+      const messages: ChatCompletionMessageParam[] = [
+        {
+          role: ChatCompletionRequestMessageRoleEnum.User,
+          content: `${imageUrl}\n${imageUrl}\\n`
+        }
+      ];
+
+      const result = await loadRequestMessages({ messages, useVision: true });
+
+      expect(result).toHaveLength(1);
+      const content = result[0].content as any[];
+      const imageParts = content.filter((item: any) => item.type === 'image_url');
+      expect(imageParts).toHaveLength(1);
+      expect(imageParts[0].image_url.url).toBe(imageUrl);
+    });
+
     it('should not extract images from very long text (>500 chars)', async () => {
       const longText = 'A'.repeat(600) + ' https://example.com/image.png';
       const messages: ChatCompletionMessageParam[] = [

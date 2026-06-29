@@ -80,12 +80,7 @@ export const nodeInputIsReference = (input: FlowNodeInputItemType) => {
 
 /* node  */
 export const getGuideModule = (nodes: StoreNodeItemType[]) =>
-  nodes.find(
-    (item) =>
-      item.flowNodeType === FlowNodeTypeEnum.systemConfig ||
-      // @ts-ignore (adapt v1)
-      item.flowType === FlowNodeTypeEnum.systemConfig
-  );
+  nodes.find((item) => item.flowNodeType === FlowNodeTypeEnum.systemConfig);
 export const splitGuideModule = (guideModules?: StoreNodeItemType) => {
   const welcomeText: string =
     guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.welcomeText)?.value ?? '';

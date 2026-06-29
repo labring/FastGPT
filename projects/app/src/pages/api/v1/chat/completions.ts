@@ -328,49 +328,44 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       customFeedbacks,
       nodeResponseSummary,
       flatNodeResponses
-    } = await (async () => {
-      if (app.version === 'v2') {
-        return dispatchWorkFlow({
-          apiVersion: 'v1',
-          req,
-          res,
-          lang: getLocale(req),
-          requestOrigin: req.headers.origin,
-          mode: 'chat',
+    } = await dispatchWorkFlow({
+      apiVersion: 'v1',
+      req,
+      res,
+      lang: getLocale(req),
+      requestOrigin: req.headers.origin,
+      mode: 'chat',
 
-          usageSource: getUsageSourceByAuthType({ shareId, authType }),
-          runningAppInfo: {
-            sourceType: ChatSourceTypeEnum.app,
-            sourceId: String(app._id),
-            name: app.name,
-            teamId: String(app.teamId),
-            tmbId: String(app.tmbId)
-          },
-          runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
-          uid: String(outLinkUserId || tmbId),
+      usageSource: getUsageSourceByAuthType({ shareId, authType }),
+      runningAppInfo: {
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: String(app._id),
+        name: app.name,
+        teamId: String(app.teamId),
+        tmbId: String(app.tmbId)
+      },
+      runningUserInfo: await getRunningUserInfoByTmbId(tmbId),
+      uid: String(outLinkUserId || tmbId),
 
-          chatId: saveChatId,
-          responseChatItemId: finalResponseChatItemId,
-          runtimeNodes,
-          runtimeEdges: storeEdges2RuntimeEdges(edges, interactive),
-          variables,
-          query: removeEmptyUserInput(userQuestion.value),
-          lastInteractive: interactive,
-          chatConfig,
-          histories: newHistories,
-          stream,
-          retainDatasetCite,
-          showSkillReferences: finalShowSkillReferences,
-          maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
-          workflowStreamResponse: workflowResponseWrite,
-          nodeResponseWriteConfig: {
-            persistToDb: preparedRound.shouldPersistChatRound,
-            retainInMemory: shouldCollectFinalResponseData
-          }
-        });
+      chatId: saveChatId,
+      responseChatItemId: finalResponseChatItemId,
+      runtimeNodes,
+      runtimeEdges: storeEdges2RuntimeEdges(edges, interactive),
+      variables,
+      query: removeEmptyUserInput(userQuestion.value),
+      lastInteractive: interactive,
+      chatConfig,
+      histories: newHistories,
+      stream,
+      retainDatasetCite,
+      showSkillReferences: finalShowSkillReferences,
+      maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
+      workflowStreamResponse: workflowResponseWrite,
+      nodeResponseWriteConfig: {
+        persistToDb: preparedRound.shouldPersistChatRound,
+        retainInMemory: shouldCollectFinalResponseData
       }
-      return Promise.reject('您的工作流版本过低，请重新发布一次');
-    })();
+    });
 
     const aiResponse: AIChatItemType & { dataId?: string } = {
       dataId: finalResponseChatItemId,

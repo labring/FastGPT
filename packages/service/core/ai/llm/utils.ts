@@ -278,11 +278,19 @@ export const loadRequestMessages = async ({
    * 仅从短文本中识别媒体 URL。普通文档 URL 仍作为文本保留，不在这里转成 LLM 媒体输入。
    */
   const extractMediaUrls = (input: string) => {
-    const urlRegex = /(https?:\/\/[^\s]+)/gi;
+    const urlRegex = /(https?:\/\/[^\s<>"'\\]+)/gi;
+    const normalizeExtractedUrl = (rawUrl: string) => {
+      // Markdown 链接里的 URL 可能同时出现在 label 和 href 中，避免把 `](...)` 当成 URL 的一部分。
+      const markdownLinkSeparatorIndex = rawUrl.indexOf('](');
+      const urlWithoutMarkdownTail =
+        markdownLinkSeparatorIndex === -1 ? rawUrl : rawUrl.slice(0, markdownLinkSeparatorIndex);
 
-    return Array.from(new Set(input.matchAll(urlRegex)), (m) =>
-      m[0].replace(/[，。,.!?;:]+$/, '')
-    ).filter((url) => getFileTypeFromUrl(url) !== 'file');
+      return urlWithoutMarkdownTail.replace(/[)\]\}，。,.!?;:]+$/, '');
+    };
+
+    const normalizedUrls = Array.from(input.matchAll(urlRegex), (m) => normalizeExtractedUrl(m[0]));
+
+    return Array.from(new Set(normalizedUrls)).filter((url) => getFileTypeFromUrl(url) !== 'file');
   };
 
   /**
