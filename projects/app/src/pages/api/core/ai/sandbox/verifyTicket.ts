@@ -8,6 +8,7 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { authAgentSandboxProxy } from '@/service/core/sandbox/auth';
+import { IntSchema } from '@fastgpt/global/common/zod';
 import {
   SandboxChannelSchema,
   SandboxTicketPermissionSchema
@@ -22,6 +23,16 @@ const IDE_AGENT_PASSWORD_READ_COMMAND = 'sh -c "cat ~/.fastgpt-ide-agent-passwor
 const VerifyTicketQuerySchema = z.object({
   ticket: z.string()
 });
+
+const SandboxVerifyTicketResponseSchema = z.object({
+  sandbox_url: z.string().min(1),
+  agent_token: z.string(),
+  ws_limits: z.object({
+    max_message_bytes: IntSchema.min(1),
+    max_frame_bytes: IntSchema.min(1)
+  })
+});
+type SandboxVerifyTicketResponse = z.infer<typeof SandboxVerifyTicketResponseSchema>;
 
 const BaseSandboxTicketClaimsSchema = z.object({
   userId: z.string(),
@@ -73,7 +84,7 @@ async function readIdeAgentPassword(sandbox: SandboxClient) {
 /**
  * 校验 proxy ticket，并返回 IDE Agent 的代理连接地址和一次性 agent 口令。
  */
-async function handler(req: ApiRequestProps) {
+async function handler(req: ApiRequestProps): Promise<SandboxVerifyTicketResponse> {
   const secret = authAgentSandboxProxy(req);
 
   const { ticket } = parseApiInput({
@@ -102,10 +113,14 @@ async function handler(req: ApiRequestProps) {
 
   const endpoint = await sandbox.provider.getEndpoint(getIdeAgentPort());
 
-  return {
+  return SandboxVerifyTicketResponseSchema.parse({
     sandbox_url: endpoint.url,
-    agent_token: agentPassword
-  };
+    agent_token: agentPassword,
+    ws_limits: {
+      max_message_bytes: serviceEnv.AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES,
+      max_frame_bytes: serviceEnv.AGENT_SANDBOX_WS_MAX_FRAME_BYTES
+    }
+  });
 }
 
 export default NextAPI(handler);

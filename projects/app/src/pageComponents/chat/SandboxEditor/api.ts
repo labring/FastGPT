@@ -5,7 +5,9 @@ import type {
   SandboxGetTicketBody,
   SandboxGetTicketResponse,
   SandboxGetHtmlPreviewLinkBody,
-  SandboxGetHtmlPreviewLinkResponse
+  SandboxGetHtmlPreviewLinkResponse,
+  SandboxUploadBody,
+  SandboxUploadResponse
 } from '@fastgpt/global/openapi/core/ai/sandbox/api';
 import { parseContentDispositionFilename } from '@fastgpt/global/common/file/tools';
 import { POST } from '@/web/common/api/request';
@@ -25,6 +27,7 @@ type SandboxDownloadClientBody = SandboxClientBody<SandboxDownloadBody>;
 type SandboxCheckExistClientBody = SandboxClientBody<SandboxCheckExistBody>;
 type SandboxGetTicketClientBody = SandboxClientBody<SandboxGetTicketBody>;
 type SandboxGetHtmlPreviewLinkClientBody = SandboxClientBody<SandboxGetHtmlPreviewLinkBody>;
+type SandboxUploadClientBody = SandboxClientBody<SandboxUploadBody>;
 
 /**
  * share 模式下后端 schema 要求只传 outLinkAuthData，真实 appId 由鉴权解析。
@@ -63,12 +66,15 @@ export const getSandboxProxyWsUrl = ({
 /**
  * 下载文件或目录（强制下载）
  */
-export const downloadSandbox = async (data: SandboxDownloadClientBody) => {
-  const response = await fetch('/api/core/ai/sandbox/download', {
+const fetchSandboxDownloadResponse = (data: SandboxDownloadClientBody) =>
+  fetch('/api/core/ai/sandbox/download', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(normalizeSandboxRequest(data))
   });
+
+export const downloadSandbox = async (data: SandboxDownloadClientBody) => {
+  const response = await fetchSandboxDownloadResponse(data);
 
   if (!response.ok) {
     throw new Error('Download failed');
@@ -91,6 +97,19 @@ export const downloadSandbox = async (data: SandboxDownloadClientBody) => {
 };
 
 /**
+ * 读取沙盒文件原始字节，供大文件绕过 ide-agent WebSocket JSON RPC 读取。
+ */
+export const readSandboxFile = async (data: SandboxDownloadClientBody) => {
+  const response = await fetchSandboxDownloadResponse(data);
+
+  if (!response.ok) {
+    throw new Error('Read failed');
+  }
+
+  return new Uint8Array(await response.arrayBuffer());
+};
+
+/**
  * 检查沙盒是否存在
  */
 export const checkSandboxExist = async (data: SandboxCheckExistClientBody) =>
@@ -107,3 +126,19 @@ export const getHtmlPreviewLink = (data: SandboxGetHtmlPreviewLinkClientBody) =>
 
 export const getSandboxTicket = async (data: SandboxGetTicketClientBody) =>
   POST<SandboxGetTicketResponse>('/core/ai/sandbox/getTicket', normalizeSandboxRequest(data));
+
+/**
+ * 通过主站 API 复用 sandbox provider 文件上传能力，避免走 ide-agent WebSocket base64。
+ */
+export const uploadSandboxFile = async ({
+  file,
+  ...data
+}: SandboxUploadClientBody & { file: File }) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('data', JSON.stringify(normalizeSandboxRequest(data)));
+
+  return POST<SandboxUploadResponse>('/core/ai/sandbox/upload', formData, {
+    timeout: 10 * 60 * 1000
+  });
+};

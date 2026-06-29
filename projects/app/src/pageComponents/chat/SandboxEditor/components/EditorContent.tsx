@@ -87,6 +87,9 @@ const EditorContent = ({
 
   const renderFileContent = () => {
     if (!activeFile) return null;
+    const editorReadOnly = !canWrite || !!activeFile.readOnly;
+
+    if (activeFile.isLoading) return null;
 
     // 非媒体文件 UTF-8 解码失败 → 走兜底（如 xlsx/zip 等真二进制）
     if (activeFile.isUnknown) {
@@ -190,7 +193,7 @@ const EditorContent = ({
             fontFamily: "'Monaco', 'Menlo', 'Consolas', 'Courier New', monospace",
             tabSize: 2,
             wordWrap: 'on',
-            readOnly: !canWrite,
+            readOnly: editorReadOnly,
             smoothScrolling: true,
             cursorBlinking: 'smooth',
             renderLineHighlight: 'line',
@@ -204,7 +207,7 @@ const EditorContent = ({
 
             // 保存快捷键 Ctrl/Cmd + S
             editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
-              if (!canWrite) return;
+              if (editorReadOnly) return;
               saveFile();
             });
 
@@ -212,7 +215,7 @@ const EditorContent = ({
             editor.addCommand(
               monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyS,
               () => {
-                if (!canWrite) return;
+                if (editorReadOnly) return;
                 openedFilesRef.current?.forEach((file) => {
                   if (file.isDirty) {
                     saveFile(file.path);
@@ -222,7 +225,7 @@ const EditorContent = ({
             );
           }}
           onChange={(value) => {
-            if (!canWrite) return;
+            if (editorReadOnly) return;
             // 更新当前文件内容
             if (activeFilePath && value !== undefined && value !== activeFile?.content) {
               setOpenedFiles((prev) =>
@@ -246,7 +249,9 @@ const EditorContent = ({
           </Box>
           {activeFile && (
             <Flex alignItems={'center'} h={'20px'}>
-              {activeFile.isDirty ? (
+              {activeFile.isLoading ? (
+                <MyIcon name={'common/loading'} w={'12px'} color={'myGray.500'} />
+              ) : activeFile.isDirty ? (
                 <Flex alignItems={'center'} gap={1} color={'myGray.500'} fontSize={'xs'}>
                   <MyIcon name={'common/loading'} w={'12px'} />
                   <Box>{t('common:core.app.saving')}</Box>

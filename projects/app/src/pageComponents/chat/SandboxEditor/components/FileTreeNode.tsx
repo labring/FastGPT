@@ -98,6 +98,7 @@ const FileTreeNode = ({
           setDragRef(el);
           setDropRef(el);
         }}
+        data-file-tree-node="true"
         pl={`${node.level * 16 + 4}px`}
         pr={2}
         h="28px"

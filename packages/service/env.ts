@@ -102,6 +102,18 @@ export const serviceEnv = createEnv({
     AGENT_SANDBOX_ENTRYPOINT_TIMEOUT_SECONDS: IntSchema.min(1).max(600).default(30).meta({
       description: 'Agent sandbox entrypoint 执行超时时间（秒）'
     }),
+    AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES: IntSchema.min(1)
+      .default(64 * 1024 * 1024)
+      .meta({
+        description:
+          'Agent sandbox WebSocket 单消息上限（字节），由 FastGPT app 统一下发给 proxy/IDE Agent'
+      }),
+    AGENT_SANDBOX_WS_MAX_FRAME_BYTES: IntSchema.min(1)
+      .default(16 * 1024 * 1024)
+      .meta({
+        description:
+          'Agent sandbox WebSocket 单帧上限（字节），由 FastGPT app 统一下发给 proxy/IDE Agent'
+      }),
     AGENT_SANDBOX_NPM_REGISTRY: z.string().optional(),
     AGENT_SANDBOX_PYPI_INDEX_URL: z.string().optional(),
 
