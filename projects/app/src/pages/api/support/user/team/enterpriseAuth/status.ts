@@ -17,9 +17,14 @@ async function handler(
     return;
   }
 
-  const { teamId, permission } = await authUserPer({ req, authToken: true });
+  const { teamId, userId, tmbId, permission } = await authUserPer({ req, authToken: true });
 
   const result = await getEnterpriseAuthStatus({
+    operator: {
+      teamId,
+      userId,
+      tmbId
+    },
     teamId,
     canManage: permission.hasManagePer
   });

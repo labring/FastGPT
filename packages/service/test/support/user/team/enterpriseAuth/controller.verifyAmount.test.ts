@@ -101,6 +101,8 @@ const addDays = (date: Date, days: number) => new Date(date.getTime() + days * 2
 const buildTask = (amountErrorTimes: number, overrides: Record<string, any> = {}) =>
   ({
     teamId,
+    userId,
+    tmbId,
     taskId,
     status:
       amountErrorTimes > 0
@@ -330,6 +332,28 @@ describe('verifyEnterpriseAuthAmount', () => {
         }
       })
     ).rejects.toThrow(EnterpriseAuthErrEnum.serviceTimeout);
+  });
+
+  it('其他成员不能验证当前认证任务金额', async () => {
+    setupPendingTask(
+      buildTask(0, {
+        tmbId: '507f1f77bcf86cd799439099'
+      })
+    );
+
+    await expect(
+      verifyEnterpriseAuthAmount({
+        operator: {
+          teamId,
+          userId,
+          tmbId
+        },
+        data: {
+          taskId,
+          amountFen: 13
+        }
+      })
+    ).rejects.toThrow(EnterpriseAuthErrEnum.processing);
   });
 
   it('金额验证成功时写入纯成功信息表，任务表只记录状态且不触发飞书同步', async () => {

@@ -326,7 +326,7 @@
   "enterprise_auth_bank_name": "Bank",
   "enterprise_auth_bank_name_placeholder": "Select the bank head office",
   "enterprise_auth_bank_loading_placeholder": "Loading bank list",
-  "enterprise_auth_bank_account_first_placeholder": "Enter bank account first",
+  "enterprise_auth_invalid_format_tip": "Enter valid information",
   "enterprise_auth_contact_info": "Personal information",
   "enterprise_auth_contact_name": "Your name",
   "enterprise_auth_contact_name_placeholder": "Enter how we should address you",

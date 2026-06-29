@@ -47,6 +47,8 @@ const TeamEnterpriseAuthTaskSchema = new Schema({
     ref: TeamCollectionName,
     required: true
   },
+  userId: { type: Schema.Types.ObjectId },
+  tmbId: { type: Schema.Types.ObjectId },
   taskId: { type: String, required: true },
   status: {
     type: String,

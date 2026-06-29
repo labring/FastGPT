@@ -10,6 +10,7 @@ import {
   BankAccountPattern,
   UnifiedCreditCodePattern,
   fieldRules,
+  invalidInputStyles,
   inputStyles,
   normalizeBankAccount,
   normalizeUnifiedCreditCode,
@@ -24,7 +25,7 @@ type EnterpriseAuthInfoFormProps = {
     value: string;
     alias: string;
   }[];
-  canSelectBank: boolean;
+  hasSubmittedStartForm: boolean;
   hasBankLoadError: boolean;
   isBankLoading: boolean;
   reloadBanks: () => void;
@@ -34,7 +35,7 @@ const EnterpriseAuthInfoForm = ({
   t,
   startForm,
   bankOptions,
-  canSelectBank,
+  hasSubmittedStartForm,
   hasBankLoadError,
   isBankLoading,
   reloadBanks
@@ -48,6 +49,9 @@ const EnterpriseAuthInfoForm = ({
   const bankAccount = useWatch({
     control: startForm.control,
     name: 'bankAccount'
+  });
+  const watchedFields = useWatch({
+    control: startForm.control
   });
   const unifiedCreditCodeRegister = useMemo(
     () =>
@@ -66,10 +70,23 @@ const EnterpriseAuthInfoForm = ({
     [startForm]
   );
   const shouldShowUnifiedCreditCodeError =
-    hasBlurredUnifiedCreditCode &&
-    !UnifiedCreditCodePattern.test(normalizeUnifiedCreditCode(unifiedCreditCode || ''));
+    !!unifiedCreditCode?.trim() &&
+    (hasBlurredUnifiedCreditCode || startForm.formState.isSubmitted) &&
+    !UnifiedCreditCodePattern.test(normalizeUnifiedCreditCode(unifiedCreditCode));
   const shouldShowBankAccountError =
-    hasBlurredBankAccount && !BankAccountPattern.test(normalizeBankAccount(bankAccount || ''));
+    !!bankAccount?.trim() &&
+    (hasBlurredBankAccount || startForm.formState.isSubmitted) &&
+    !BankAccountPattern.test(normalizeBankAccount(bankAccount));
+  const fieldErrors = startForm.formState.errors;
+  const isEmptyAfterSubmit = (value?: string) => hasSubmittedStartForm && !value?.trim();
+  const shouldShowUnifiedCreditCodeEmptyError =
+    isEmptyAfterSubmit(unifiedCreditCode) ||
+    (!!fieldErrors.unifiedCreditCode && !unifiedCreditCode?.trim());
+  const shouldShowBankAccountEmptyError =
+    isEmptyAfterSubmit(bankAccount) || (!!fieldErrors.bankAccount && !bankAccount?.trim());
+  const shouldShowBankNameEmptyError =
+    isEmptyAfterSubmit(watchedFields.bankName) ||
+    (!!fieldErrors.bankName && !watchedFields.bankName?.trim());
 
   return (
     <Flex flexDirection={'column'} gap={'24px'}>
@@ -100,18 +117,26 @@ const EnterpriseAuthInfoForm = ({
             <Input
               placeholder={t('account_team:enterprise_auth_enterprise_name_placeholder')}
               {...inputStyles}
+              isInvalid={
+                isEmptyAfterSubmit(watchedFields.enterpriseName) || !!fieldErrors.enterpriseName
+              }
+              _invalid={invalidInputStyles}
               {...startForm.register('enterpriseName', fieldRules.enterpriseName)}
             />
           </Field>
-          <Field label={t('account_team:enterprise_auth_unified_credit_code')}>
+          <Field
+            label={t('account_team:enterprise_auth_unified_credit_code')}
+            errorText={
+              shouldShowUnifiedCreditCodeError
+                ? t('account_team:enterprise_auth_invalid_format_tip')
+                : undefined
+            }
+          >
             <Input
               placeholder={t('account_team:enterprise_auth_unified_credit_code_placeholder')}
               {...inputStyles}
-              isInvalid={shouldShowUnifiedCreditCodeError}
-              _invalid={{
-                borderColor: '#D92D20',
-                boxShadow: '0 0 0 1px #D92D20'
-              }}
+              isInvalid={shouldShowUnifiedCreditCodeEmptyError}
+              _invalid={invalidInputStyles}
               {...unifiedCreditCodeRegister}
               onBlur={(event) => {
                 setHasBlurredUnifiedCreditCode(true);
@@ -123,18 +148,26 @@ const EnterpriseAuthInfoForm = ({
             <Input
               placeholder={t('account_team:enterprise_auth_legal_person_placeholder')}
               {...inputStyles}
+              isInvalid={
+                isEmptyAfterSubmit(watchedFields.legalPersonName) || !!fieldErrors.legalPersonName
+              }
+              _invalid={invalidInputStyles}
               {...startForm.register('legalPersonName', fieldRules.legalPersonName)}
             />
           </Field>
-          <Field label={t('account_team:enterprise_auth_bank_account')}>
+          <Field
+            label={t('account_team:enterprise_auth_bank_account')}
+            errorText={
+              shouldShowBankAccountError
+                ? t('account_team:enterprise_auth_invalid_format_tip')
+                : undefined
+            }
+          >
             <Input
               placeholder={t('account_team:enterprise_auth_bank_account_placeholder')}
               {...inputStyles}
-              isInvalid={shouldShowBankAccountError}
-              _invalid={{
-                borderColor: '#D92D20',
-                boxShadow: '0 0 0 1px #D92D20'
-              }}
+              isInvalid={shouldShowBankAccountEmptyError}
+              _invalid={invalidInputStyles}
               {...bankAccountRegister}
               onBlur={(event) => {
                 setHasBlurredBankAccount(true);
@@ -153,18 +186,17 @@ const EnterpriseAuthInfoForm = ({
                   showAliasInValue={false}
                   list={bankOptions}
                   isSearch
-                  isDisabled={!canSelectBank || hasBankLoadError}
+                  isDisabled={hasBankLoadError}
+                  isInvalid={shouldShowBankNameEmptyError}
                   isLoading={isBankLoading}
                   placeholder={
-                    !canSelectBank
-                      ? t('account_team:enterprise_auth_bank_account_first_placeholder')
-                      : hasBankLoadError
-                        ? t('account_team:enterprise_auth_bank_load_failed')
-                        : bankOptions.length
-                          ? t('account_team:enterprise_auth_bank_name_placeholder')
-                          : isBankLoading
-                            ? t('account_team:enterprise_auth_bank_loading_placeholder')
-                            : t('account_team:enterprise_auth_bank_name_placeholder')
+                    hasBankLoadError
+                      ? t('account_team:enterprise_auth_bank_load_failed')
+                      : bankOptions.length
+                        ? t('account_team:enterprise_auth_bank_name_placeholder')
+                        : isBankLoading
+                          ? t('account_team:enterprise_auth_bank_loading_placeholder')
+                          : t('account_team:enterprise_auth_bank_name_placeholder')
                   }
                   opacity={1}
                   _disabled={{
@@ -175,21 +207,21 @@ const EnterpriseAuthInfoForm = ({
                     color: '#8A95A7'
                   }}
                   _hover={
-                    canSelectBank
-                      ? {
-                          borderColor: 'primary.300'
-                        }
-                      : {
-                          borderColor: '#F4F4F7'
-                        }
+                    shouldShowBankNameEmptyError
+                      ? { borderColor: '#D92D20' }
+                      : { borderColor: 'primary.300' }
                   }
                   h={'32px'}
                   borderRadius={'6px'}
                   fontSize={'12px'}
                   lineHeight={'16px'}
                   letterSpacing={'0.048px'}
-                  borderColor={'#E8EBF0'}
-                  onChange={(value) => field.onChange(value)}
+                  borderColor={shouldShowBankNameEmptyError ? '#D92D20' : '#E8EBF0'}
+                  boxShadow={shouldShowBankNameEmptyError ? '0 0 0 1px #D92D20' : undefined}
+                  onChange={(value) => {
+                    field.onChange(value);
+                    startForm.clearErrors('bankName');
+                  }}
                 />
               )}
             />
@@ -233,6 +265,8 @@ const EnterpriseAuthInfoForm = ({
             <Input
               placeholder={t('account_team:enterprise_auth_contact_name_placeholder')}
               {...inputStyles}
+              isInvalid={isEmptyAfterSubmit(watchedFields.contactName) || !!fieldErrors.contactName}
+              _invalid={invalidInputStyles}
               {...startForm.register('contactName', fieldRules.contactName)}
             />
           </Field>
@@ -240,6 +274,10 @@ const EnterpriseAuthInfoForm = ({
             <Input
               placeholder={t('account_team:enterprise_auth_contact_title_placeholder')}
               {...inputStyles}
+              isInvalid={
+                isEmptyAfterSubmit(watchedFields.contactTitle) || !!fieldErrors.contactTitle
+              }
+              _invalid={invalidInputStyles}
               {...startForm.register('contactTitle', fieldRules.contactTitle)}
             />
           </Field>
@@ -247,6 +285,10 @@ const EnterpriseAuthInfoForm = ({
             <Input
               placeholder={t('account_team:enterprise_auth_contact_phone_placeholder')}
               {...inputStyles}
+              isInvalid={
+                isEmptyAfterSubmit(watchedFields.contactPhone) || !!fieldErrors.contactPhone
+              }
+              _invalid={invalidInputStyles}
               {...startForm.register('contactPhone', fieldRules.contactPhone)}
             />
           </Field>
@@ -254,6 +296,8 @@ const EnterpriseAuthInfoForm = ({
             <Textarea
               {...textareaStyles}
               placeholder={t('account_team:enterprise_auth_demand_placeholder')}
+              isInvalid={isEmptyAfterSubmit(watchedFields.demand) || !!fieldErrors.demand}
+              _invalid={invalidInputStyles}
               {...startForm.register('demand', fieldRules.demand)}
             />
           </Field>

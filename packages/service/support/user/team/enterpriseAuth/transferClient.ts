@@ -74,6 +74,26 @@ const parseFenAmount = (amount: string | number | undefined) => {
   return num;
 };
 
+const parseFailedTransferResult = (
+  result: z.infer<typeof EnterpriseAuthTransferResponseSchema>['data'],
+  fallbackMessage?: string
+): EnterpriseAuthTransferResult => {
+  // 没有上游响应码时无法证明是企业信息校验失败，应按认证服务异常处理，避免误导用户反复修改表单。
+  if (!result?.respCode) {
+    return {
+      type: 'service_failed',
+      message: result?.respMsg || fallbackMessage
+    };
+  }
+
+  return {
+    type: 'info_failed',
+    message: result.respMsg || fallbackMessage,
+    transferRespCode: result.respCode,
+    transferRespMsg: result.respMsg
+  };
+};
+
 export const createEnterpriseAuthTransfer = async (
   data: Pick<
     StartEnterpriseAuthBodyType,
@@ -105,12 +125,7 @@ export const createEnterpriseAuthTransfer = async (
 
     const result = parsed.data.data;
     if (!result.isTransactionSuccess) {
-      return {
-        type: 'info_failed',
-        message: result.respMsg || parsed.data.message,
-        transferRespCode: result.respCode,
-        transferRespMsg: result.respMsg
-      };
+      return parseFailedTransferResult(result, parsed.data.message);
     }
 
     const amountFen = parseFenAmount(result.transAmt);

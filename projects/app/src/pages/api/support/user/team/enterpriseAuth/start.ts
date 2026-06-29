@@ -21,14 +21,18 @@ async function handler(
   }
 
   const { body } = parseApiInput({ req, bodySchema: StartEnterpriseAuthBodySchema });
-  const { teamId } = await authUserPer({
+  const { teamId, userId, tmbId } = await authUserPer({
     req,
     authToken: true,
     per: ManagePermissionVal
   });
 
   const result = await startEnterpriseAuth({
-    teamId,
+    operator: {
+      teamId,
+      userId,
+      tmbId
+    },
     data: body
   });
 

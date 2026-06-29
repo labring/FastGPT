@@ -115,6 +115,8 @@ const EnterpriseAuthStatusRow = ({
     hasCurrentTask: !!data?.currentTask
   });
   const canOpenCurrentTask = canOpenEnterpriseAuthAmountStep(data?.currentTask?.status);
+  const hasOtherMemberProcessingTask =
+    data?.status === TeamEnterpriseAuthStatusEnum.verifying && !data?.currentTask;
 
   const handleOpen = useCallback(() => {
     if (data?.status === TeamEnterpriseAuthStatusEnum.verified) return;
@@ -122,6 +124,13 @@ const EnterpriseAuthStatusRow = ({
     if (!data?.canManage) {
       toast({
         title: t('account_team:enterprise_auth_contact_admin_tip'),
+        status: 'warning'
+      });
+      return;
+    }
+    if (hasOtherMemberProcessingTask) {
+      toast({
+        title: t('common:enterprise_auth.error.processing'),
         status: 'warning'
       });
       return;
@@ -139,6 +148,7 @@ const EnterpriseAuthStatusRow = ({
     data?.canManage,
     data?.currentTask,
     data?.status,
+    hasOtherMemberProcessingTask,
     needContactBusiness,
     onOpen,
     onOpenContactBusiness,
@@ -173,6 +183,14 @@ const EnterpriseAuthStatusRow = ({
       onAutoOpenFinish?.();
       return;
     }
+    if (hasOtherMemberProcessingTask) {
+      toast({
+        title: t('common:enterprise_auth.error.processing'),
+        status: 'warning'
+      });
+      onAutoOpenFinish?.();
+      return;
+    }
     if (needContactBusiness) {
       onOpenContactBusiness();
       onAutoOpenFinish?.();
@@ -195,6 +213,7 @@ const EnterpriseAuthStatusRow = ({
     data?.status,
     error,
     feConfigs?.show_enterprise_auth,
+    hasOtherMemberProcessingTask,
     loading,
     needContactBusiness,
     onAutoOpenFinish,

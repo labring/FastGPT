@@ -58,12 +58,24 @@ export const fieldRules = {
 };
 
 export const formLabelStyles = {
-  mb: '8px',
   color: '#24282C',
   fontSize: '12px',
   lineHeight: '16px',
   letterSpacing: '0.5px',
   fontWeight: 500
+};
+
+export const formErrorTextStyles = {
+  color: '#D92D20',
+  fontSize: '10px',
+  lineHeight: '14px',
+  letterSpacing: '0.2px',
+  fontWeight: 500
+};
+
+export const invalidInputStyles = {
+  borderColor: '#D92D20',
+  boxShadow: '0 0 0 1px #D92D20'
 };
 
 export const inputStyles = {
@@ -117,15 +129,24 @@ export const Section = ({ title, children }: { title: string; children: React.Re
 
 export const Field = ({
   label,
+  errorText,
   children,
   colSpan = 1
 }: {
   label: string;
+  errorText?: string;
   children: React.ReactNode;
   colSpan?: number;
 }) => (
   <Box gridColumn={['span 1', `span ${colSpan}`]} minW={0}>
-    <Box {...formLabelStyles}>{label}</Box>
+    <Flex mb={'8px'} alignItems={'center'} justifyContent={'space-between'} gap={'8px'}>
+      <Box {...formLabelStyles}>{label}</Box>
+      {errorText && (
+        <Box {...formErrorTextStyles} flexShrink={0}>
+          {errorText}
+        </Box>
+      )}
+    </Flex>
     {children}
   </Box>
 );

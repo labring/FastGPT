@@ -43,6 +43,13 @@ const { getEnterpriseAuthStatus, resetEnterpriseAuthTask, startEnterpriseAuth } 
   await import('@fastgpt/service/support/user/team/enterpriseAuth/controller');
 
 const teamId = '507f1f77bcf86cd799439011';
+const userId = '507f1f77bcf86cd799439012';
+const tmbId = '507f1f77bcf86cd799439013';
+const operator = {
+  teamId,
+  userId,
+  tmbId
+};
 
 const validStartBody = {
   enterpriseName: '示例科技有限公司',
@@ -70,6 +77,8 @@ const mockSortedLean = <T>(value: T) => ({
 const buildTask = (status: TeamEnterpriseAuthTaskStatusEnum, overrides: Record<string, any> = {}) =>
   ({
     teamId,
+    userId,
+    tmbId,
     taskId: `task_${status}`,
     status,
     enterpriseName: '示例科技有限公司',
@@ -131,7 +140,7 @@ describe('startEnterpriseAuth', () => {
 
   it('发起认证时按 teamId 写入唯一任务行，认证服务返回成功后递增认证次数', async () => {
     const result = await startEnterpriseAuth({
-      teamId,
+      operator,
       data: validStartBody
     });
 
@@ -152,6 +161,8 @@ describe('startEnterpriseAuth', () => {
       expect.objectContaining({
         taskId: expect.any(String),
         status: TeamEnterpriseAuthTaskStatusEnum.starting,
+        userId: expect.any(Object),
+        tmbId: expect.any(Object),
         unifiedCreditCode: '91310000MA1K000000',
         bankAccount: '6222000000000000',
         usedTimes: 0
@@ -230,7 +241,7 @@ describe('startEnterpriseAuth', () => {
       .mockReturnValueOnce(mockSortedLean(null));
 
     const result = await startEnterpriseAuth({
-      teamId,
+      operator,
       data: validStartBody
     });
 
@@ -293,7 +304,7 @@ describe('startEnterpriseAuth', () => {
 
     await expect(
       startEnterpriseAuth({
-        teamId,
+        operator,
         data: validStartBody
       })
     ).rejects.toThrow(EnterpriseAuthErrEnum.infoFailed);
@@ -325,7 +336,7 @@ describe('startEnterpriseAuth', () => {
 
   it('抢锁前按统一信用代码释放已过期或超时任务', async () => {
     await startEnterpriseAuth({
-      teamId,
+      operator,
       data: validStartBody
     });
 
@@ -368,7 +379,7 @@ describe('startEnterpriseAuth', () => {
 
   it('抢锁前清理历史 granting 临时态，且新任务锁集合不包含 granting', async () => {
     await startEnterpriseAuth({
-      teamId,
+      operator,
       data: validStartBody
     });
 
@@ -419,7 +430,7 @@ describe('startEnterpriseAuth', () => {
 
     await expect(
       startEnterpriseAuth({
-        teamId,
+        operator,
         data: validStartBody
       })
     ).resolves.toEqual(
@@ -432,6 +443,24 @@ describe('startEnterpriseAuth', () => {
         usedTimes: 1
       })
     );
+    expect(mocks.createTask).not.toHaveBeenCalled();
+  });
+
+  it('已有其他成员发起的未完成任务时拒绝恢复任务', async () => {
+    const currentTask = buildTask(TeamEnterpriseAuthTaskStatusEnum.pending_amount, {
+      tmbId: '507f1f77bcf86cd799439099'
+    });
+    mocks.findTask
+      .mockReturnValueOnce(mockSortedLean(null))
+      .mockReturnValueOnce(mockSortedLean(currentTask))
+      .mockReturnValueOnce(mockSortedLean(null));
+
+    await expect(
+      startEnterpriseAuth({
+        operator,
+        data: validStartBody
+      })
+    ).rejects.toThrow(EnterpriseAuthErrEnum.processing);
     expect(mocks.createTask).not.toHaveBeenCalled();
   });
 
@@ -449,7 +478,7 @@ describe('startEnterpriseAuth', () => {
 
     await expect(
       startEnterpriseAuth({
-        teamId,
+        operator,
         data: validStartBody
       })
     ).rejects.toThrow(EnterpriseAuthErrEnum.noRemainingTimes);
@@ -472,6 +501,22 @@ describe('startEnterpriseAuth', () => {
     expect(mocks.createTask).not.toHaveBeenCalled();
   });
 
+  it('状态接口对其他成员隐藏当前未完成任务详情', async () => {
+    const currentTask = buildTask(TeamEnterpriseAuthTaskStatusEnum.pending_amount, {
+      tmbId: '507f1f77bcf86cd799439099'
+    });
+    mocks.findAuth.mockReturnValueOnce(mockLean(null));
+    mocks.findTask.mockReturnValueOnce(mockSortedLean(currentTask));
+
+    await expect(getEnterpriseAuthStatus({ operator, teamId, canManage: true })).resolves.toEqual(
+      expect.objectContaining({
+        status: TeamEnterpriseAuthStatusEnum.verifying,
+        usedTimes: currentTask.usedTimes,
+        currentTask: undefined
+      })
+    );
+  });
+
   it('重置信息时取消金额验证任务并清理旧错误提示', async () => {
     const task = buildTask(TeamEnterpriseAuthTaskStatusEnum.amount_failed, {
       amountErrorTimes: 1,
@@ -483,7 +528,7 @@ describe('startEnterpriseAuth', () => {
       matchedCount: 1
     });
 
-    await resetEnterpriseAuthTask(teamId);
+    await resetEnterpriseAuthTask(operator);
 
     const [, updateDoc] = mocks.updateTask.mock.calls.at(-1)!;
     expect(updateDoc.$set).toEqual(

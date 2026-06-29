@@ -8,9 +8,12 @@ import type {
 } from '@fastgpt/global/support/user/team/enterpriseAuth/type';
 import { serviceEnv } from '../../../../env';
 import {
+  assertEnterpriseAuthTaskOperator,
+  type AuthOperator,
   buildVerifiedEnterpriseName,
   enabledGuard,
   getDefaultAuthStatusRecord,
+  isEnterpriseAuthTaskOperator,
   pendingTaskStatuses,
   type EnterpriseAuthReadonlyStatusRecord
 } from './common';
@@ -86,9 +89,11 @@ const buildReadonlyAuthStatusRecord = (
  * 若认证服务 URL 未配置则直接返回 disabled；否则查询当前认证记录并推导展示态，不触发写库。
  */
 export const getEnterpriseAuthStatus = async ({
+  operator,
   teamId,
   canManage
 }: {
+  operator?: AuthOperator;
   teamId: string;
   canManage: boolean;
 }) => {
@@ -108,7 +113,11 @@ export const getEnterpriseAuthStatus = async ({
     usedTimes: record.usedTimes,
     canManage,
     verifiedEnterpriseName: record.verifiedEnterpriseName,
-    currentTask: buildLightTask(record),
+    currentTask:
+      !record.currentTask ||
+      (operator && isEnterpriseAuthTaskOperator({ task: record.currentTask, operator }))
+        ? buildLightTask(record)
+        : undefined,
     lastErrorCode: record.lastErrorCode,
     lastErrorMessage: record.lastErrorMessage
   };
@@ -118,13 +127,14 @@ export const getEnterpriseAuthStatus = async ({
  * 获取当前对公打款任务的敏感详情。
  * 仅在对公打款待确认阶段可调用，会先尝试过期超时任务；无有效任务时抛出 taskNotFound。
  */
-export const getEnterpriseAuthCurrentTaskDetail = async (teamId: string) => {
+export const getEnterpriseAuthCurrentTaskDetail = async (operator: AuthOperator) => {
   enabledGuard();
 
   const task =
-    (await expireCurrentTaskIfNeeded(teamId)) ||
-    (await MongoTeamEnterpriseAuthTask.findOne({ teamId }).lean());
+    (await expireCurrentTaskIfNeeded(operator.teamId)) ||
+    (await MongoTeamEnterpriseAuthTask.findOne({ teamId: operator.teamId }).lean());
   if (!task) throw new Error(EnterpriseAuthErrEnum.taskNotFound);
+  assertEnterpriseAuthTaskOperator({ task, operator });
 
   const terminalError = toTerminalTaskError(task);
   if (terminalError) throw new Error(terminalError);
