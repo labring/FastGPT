@@ -6,7 +6,6 @@ import { Box, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useSimpleAppSnapshots } from '../FormComponent/useSnapshots';
 import { useDebounceEffect, useMount } from 'ahooks';
-import { v1Workflow2V2 } from '@/web/core/workflow/adapt';
 import { defaultAppSelectFileConfig } from '@fastgpt/global/core/app/constants';
 import { form2AppWorkflow, appWorkflow2Form } from './utils';
 import PublishChannel from '../../Publish';
@@ -22,13 +21,6 @@ const SimpleEdit = () => {
   );
 
   const [appForm, setAppForm] = useState(() => {
-    if (appDetail.version !== 'v2') {
-      return appWorkflow2Form({
-        nodes: v1Workflow2V2((appDetail.modules || []) as any)?.nodes,
-        chatConfig: appDetail.chatConfig
-      });
-    }
-
     if (past.length === 0) {
       return appWorkflow2Form({
         nodes: appDetail.modules,

@@ -172,21 +172,6 @@ describe('getGuideModule', () => {
     const result = getGuideModule([]);
     expect(result).toBeUndefined();
   });
-
-  it('should find node with v1 flowType (adapt v1)', () => {
-    const nodes = [
-      {
-        nodeId: 'node1',
-        flowType: FlowNodeTypeEnum.systemConfig,
-        flowNodeType: FlowNodeTypeEnum.chatNode,
-        name: 'System Config',
-        inputs: [],
-        outputs: []
-      }
-    ] as any;
-    const result = getGuideModule(nodes);
-    expect(result?.nodeId).toBe('node1');
-  });
 });
 
 describe('splitGuideModule', () => {
