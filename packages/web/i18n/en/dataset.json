@@ -609,7 +609,7 @@
   "sync": "Sync",
   "sync_failed": "Failed to sync",
   "permission_sync_disabled_tip": "Knowledge base has enabled permission synchronization and no longer supports settings here.",
-  "knowledge_process": "Knowledge Processing",
+  "knowledge_process": "Knowledge Processing (PDF only)",
   "keep_header_footer": "Retain Headers & Footers",
   "keep_header_footer_tip": "Enable this if headers or footers contain important information. When disabled, headers and footers will be ignored and not retained in chunks.",
   "keep_appendix": "Retain Appendix",

@@ -108,7 +108,7 @@ const CreateModal = ({
       },
       autoSync: false,
       keep_header_footer: false,
-      keep_appendix: false,
+      keep_appendix: true,
       image_analysis: false,
       chart_analysis: false
     }
