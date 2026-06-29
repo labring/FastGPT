@@ -2431,7 +2431,8 @@ const scanCollection = async ({
   runtime: RuntimeContext;
   batchSize: number;
 }) => {
-  const query = config.key === 'apps' ? { type: { $nin: AppFolderTypeList } } : {};
+  const query: Record<string, unknown> =
+    config.key === 'apps' ? { type: { $nin: AppFolderTypeList } } : {};
   const stats = emptyStats({
     collectionName: config.collectionName,
     fieldName: config.fieldName
