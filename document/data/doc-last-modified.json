@@ -294,7 +294,7 @@
   "content/self-host/upgrading/4-14/4149.en.mdx": "2026-04-26T21:08:47+08:00",
   "content/self-host/upgrading/4-14/4149.mdx": "2026-04-26T21:08:47+08:00",
   "content/self-host/upgrading/4-15/41500.en.mdx": "2026-06-29T00:47:43+08:00",
-  "content/self-host/upgrading/4-15/41500.mdx": "2026-06-29T21:48:35+08:00",
+  "content/self-host/upgrading/4-15/41500.mdx": "2026-06-29T23:38:28+08:00",
   "content/self-host/upgrading/4-15/41501.mdx": "2026-06-23T21:09:39+08:00",
   "content/self-host/upgrading/4-15/41502.en.mdx": "2026-05-25T11:21:30+08:00",
   "content/self-host/upgrading/4-15/41502.mdx": "2026-06-23T13:54:06+08:00",
@@ -306,6 +306,8 @@
   "content/self-host/upgrading/4-15/41505.mdx": "2026-06-29T10:45:58+08:00",
   "content/self-host/upgrading/4-15/41506.en.mdx": "2026-06-29T00:47:43+08:00",
   "content/self-host/upgrading/4-15/41506.mdx": "2026-06-29T00:47:43+08:00",
+  "content/self-host/upgrading/4-15/41507.en.mdx": "2026-06-29T23:38:28+08:00",
+  "content/self-host/upgrading/4-15/41507.mdx": "2026-06-29T23:38:28+08:00",
   "content/self-host/upgrading/outdated/40.en.mdx": "2026-04-26T21:08:47+08:00",
   "content/self-host/upgrading/outdated/40.mdx": "2026-04-26T21:08:47+08:00",
   "content/self-host/upgrading/outdated/41.en.mdx": "2026-04-26T21:08:47+08:00",
@@ -446,6 +448,6 @@
   "content/self-host/upgrading/outdated/499.mdx": "2026-05-07T15:06:40+08:00",
   "content/self-host/upgrading/upgrade-intruction.en.mdx": "2026-04-26T21:08:47+08:00",
   "content/self-host/upgrading/upgrade-intruction.mdx": "2026-04-26T21:08:47+08:00",
-  "content/toc.en.mdx": "2026-06-29T21:48:35+08:00",
-  "content/toc.mdx": "2026-06-29T21:48:35+08:00"
+  "content/toc.en.mdx": "2026-06-29T23:38:28+08:00",
+  "content/toc.mdx": "2026-06-29T23:38:28+08:00"
 }

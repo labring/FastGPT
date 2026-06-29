@@ -1,11 +1,13 @@
 ---
-title: 'V4.15.0-beta7'
+title: 'V4.15.0-beta7 (In Progress)'
 description: 'FastGPT V4.15.0-beta7 Release Notes'
 ---
 
 ## 📦 Upgrade Guide
 
-### 1. Run the Workflow V1 to V2 Migration
+### 1. Run the Workflow V1 to V2 Migration (Optional)
+
+Only users who have deployed a FastGPT version earlier than `<4.8` need to run this step.
 
 Starting from V4.15.0-beta7, workflow save payloads use the V2 structure consistently. Historical `apps.modules` and `app_versions.nodes` records may still use the V1 structure. Run the V1 -> V2 migration first, then run the V2 dirty-data cleanup in the next step.
 
@@ -106,11 +108,11 @@ The response includes separate statistics for `apps`, `appVersions`, and `total`
 
 ### 3. Update Images
 
-- Update the fastgpt-app (FastGPT main service) image tag to v4.15.0-beta7.
-- Update the fastgpt-pro (FastGPT commercial edition) image tag to v4.15.0-beta7.
-- Update the fastgpt-plugin image tag to v1.0.0-beta7.
+- Update the fastgpt-app (FastGPT main service) image tag to v4.15.0.
+- Update the fastgpt-pro (FastGPT commercial edition) image tag to v4.15.0.
 
 ## 🐛 Fixes
 
 1. Fixed historical V1 workflow data that could fail validation under the new save payload structure.
 2. Fixed dirty `FlowNodeInputTypeEnum.*`, `FlowNodeOutputTypeEnum.*`, and `WorkflowIOValueTypeEnum.*` expression strings in workflow nodes that could break input rendering and IO type checks.
+3. Fixed AgentV2 MCP not being able to retrieve schemas.
