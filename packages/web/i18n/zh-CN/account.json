@@ -19,7 +19,7 @@
   "custom_config_details": "定制配置详情",
   "day": "天",
   "extra_ai_points": "额外 AI 积分",
-  "extra_dataset_size": "额外知识库容量",
+  "extra_dataset_size": "额外知识库索引量",
   "generation_time": "生成时间",
   "has_invoice": "是否已开票",
   "hour": "小时",
