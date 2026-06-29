@@ -582,6 +582,31 @@ describe('OpenSandboxAdapter', () => {
     });
   });
 
+  describe('readFileStream', () => {
+    it('should stream file through OpenSandbox native readBytesStream', async () => {
+      const adapter = makeAdapter();
+      async function* streamChunks() {
+        yield new TextEncoder().encode('native ');
+        yield new TextEncoder().encode('stream');
+      }
+      const mockReadBytesStream = vi.fn(() => streamChunks());
+
+      (adapter as any).sandbox = {
+        files: {
+          readBytesStream: mockReadBytesStream
+        }
+      };
+
+      const received: Uint8Array[] = [];
+      for await (const chunk of adapter.readFileStream('test.txt')) {
+        received.push(chunk);
+      }
+
+      expect(new TextDecoder().decode(Buffer.concat(received))).toBe('native stream');
+      expect(mockReadBytesStream).toHaveBeenCalledWith('/workspace/test.txt');
+    });
+  });
+
   describe('writeFiles', () => {
     it('should slice Uint8Array with byte offset and pass clean ArrayBuffer to SDK', async () => {
       const adapter = makeAdapter();

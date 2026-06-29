@@ -755,6 +755,10 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
     return results;
   }
 
+  override readFileStream(path: string): AsyncIterable<Uint8Array> {
+    return this.sandbox.files.readBytesStream(this.normalizePath(path));
+  }
+
   // ==================== Command Execution ====================
   async execute(command: string, options?: ExecuteOptions): Promise<ExecuteResult> {
     const maxBytes = options?.maxOutputBytes ?? DEFAULT_MAX_OUTPUT_BYTES;

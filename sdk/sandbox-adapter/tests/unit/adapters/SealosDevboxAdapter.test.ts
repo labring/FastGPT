@@ -579,4 +579,42 @@ describe('SealosDevboxAdapter', () => {
       })
     );
   });
+
+  it('should stream file through SealosDevbox native download response body', async () => {
+    const chunks = [new TextEncoder().encode('native '), new TextEncoder().encode('stream')];
+    const arrayBuffer = vi.fn();
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      body: new ReadableStream<Uint8Array>({
+        start(controller) {
+          for (const chunk of chunks) {
+            controller.enqueue(chunk);
+          }
+          controller.close();
+        }
+      }),
+      arrayBuffer
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const adapter = new SealosDevboxAdapter(CONFIG, {
+      workingDir: '/home/devbox/workspace'
+    });
+
+    const received: Uint8Array[] = [];
+    for await (const chunk of adapter.readFileStream('test.txt')) {
+      received.push(chunk);
+    }
+
+    expect(new TextDecoder().decode(Buffer.concat(received))).toBe('native stream');
+    expect(arrayBuffer).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://devbox-server.example.com/api/v1/devbox/devbox-1/files/download?path=%2Fhome%2Fdevbox%2Fworkspace%2Ftest.txt',
+      expect.objectContaining({
+        headers: {
+          Authorization: 'Bearer test-token'
+        }
+      })
+    );
+  });
 });

@@ -145,14 +145,20 @@ export class DevboxApi {
     });
   }
 
-  /** GET /api/v1/devbox/{name}/files/download */
-  async downloadFile(name: string, params: DownloadFileParams): Promise<ArrayBuffer> {
+  private buildDownloadFileUrl(name: string, params: DownloadFileParams): string {
     const queryParams: Record<string, string> = { path: params.path };
     if (params.filename) queryParams.filename = params.filename;
     if (params.timeoutSeconds != null) queryParams.timeoutSeconds = String(params.timeoutSeconds);
     if (params.container) queryParams.container = params.container;
 
-    const url = this.url(`/api/v1/devbox/${name}/files/download`, queryParams);
+    return this.url(`/api/v1/devbox/${name}/files/download`, queryParams);
+  }
+
+  private async fetchDownloadFileResponse(
+    name: string,
+    params: DownloadFileParams
+  ): Promise<Response> {
+    const url = this.buildDownloadFileUrl(name, params);
     const res = await fetch(url, {
       headers: { Authorization: `Bearer ${this.token}` }
     });
@@ -165,6 +171,44 @@ export class DevboxApi {
         url
       );
     }
+    return res;
+  }
+
+  /** GET /api/v1/devbox/{name}/files/download */
+  async downloadFile(name: string, params: DownloadFileParams): Promise<ArrayBuffer> {
+    const res = await this.fetchDownloadFileResponse(name, params);
     return res.arrayBuffer();
+  }
+
+  /**
+   * GET /api/v1/devbox/{name}/files/download as the native HTTP response stream.
+   *
+   * This intentionally bypasses `arrayBuffer()` so callers can pipe large files without buffering
+   * the full payload in Node memory.
+   */
+  downloadFileStream(name: string, params: DownloadFileParams): AsyncIterable<Uint8Array> {
+    return this.readDownloadFileStream(name, params);
+  }
+
+  private async *readDownloadFileStream(
+    name: string,
+    params: DownloadFileParams
+  ): AsyncIterable<Uint8Array> {
+    const res = await this.fetchDownloadFileResponse(name, params);
+    const body = res.body;
+    if (!body) return;
+
+    const reader = body.getReader();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) return;
+        if (value) {
+          yield value;
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
   }
 }
