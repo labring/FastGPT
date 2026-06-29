@@ -265,7 +265,7 @@ const DatasetSchema = new Schema({
   // 保留附录
   keep_appendix: {
     type: Boolean,
-    default: false
+    default: true
   },
 
   // 文档图片识别

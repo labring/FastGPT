@@ -608,7 +608,7 @@
   "sync": "同步",
   "sync_failed": "同步失败",
   "permission_sync_disabled_tip": "知识库已开启权限同步，不再支持此处设置",
-  "knowledge_process": "知识处理",
+  "knowledge_process": "知识处理（仅针对PDF）",
   "keep_header_footer": "保留页眉页脚",
   "keep_header_footer_tip": "如页眉页脚中包含重要信息，可开启，未开启时将忽略页眉页脚，不在分块中保留。",
   "keep_appendix": "保留附录",
