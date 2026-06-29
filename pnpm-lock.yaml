@@ -320,6 +320,9 @@ importers:
       lucide-react:
         specifier: ^0.525.0
         version: 0.525.0(react@18.3.1)
+      mermaid:
+        specifier: ^10.9.6
+        version: 10.9.6
       next:
         specifier: ^15.5.18
         version: 15.5.18(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1)

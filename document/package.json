@@ -27,6 +27,7 @@
     "fumadocs-ui": "15.6.3",
     "gray-matter": "^4.0.3",
     "lucide-react": "^0.525.0",
+    "mermaid": "^10.9.6",
     "next": "^15.5.18",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
