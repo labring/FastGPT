@@ -382,6 +382,12 @@ export class SealosDevboxAdapter extends BaseSandboxAdapter {
     return results;
   }
 
+  override readFileStream(path: string): AsyncIterable<Uint8Array> {
+    return this.api.downloadFileStream(this._id, {
+      path: this.normalizePath(path)
+    });
+  }
+
   override async writeFileStream(path: string, stream: ReadableStream<Uint8Array>): Promise<void> {
     const normalizedPath = this.normalizePath(path);
     const results = await this.writeFiles([

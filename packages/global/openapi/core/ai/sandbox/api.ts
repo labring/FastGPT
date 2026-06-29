@@ -34,6 +34,44 @@ export const SandboxDownloadResponseSchema = z
   .meta({ format: 'binary', description: '文件流或 ZIP 包' });
 
 /**
+ * 上传文件到沙盒工作区 - multipart/form-data 文档结构。
+ */
+export const SandboxUploadMultipartSchema = z.object({
+  file: z.any().meta({
+    format: 'binary',
+    description: '上传文件，multipart/form-data 的 file 字段'
+  }),
+  data: createOutLinkChatTargetInputSchema({
+    ...SandboxBaseShape,
+    path: z.string().meta({
+      example: 'src/main.py',
+      description: '目标文件路径，相对于沙盒工作区根目录'
+    })
+  }).meta({
+    description: '上传参数，JSON 序列化后传入 multipart/form-data 的 data 字段'
+  })
+});
+export const SandboxUploadBodySchema = withSandboxTarget({
+  path: z.string().meta({
+    example: 'src/main.py',
+    description: '目标文件路径，相对于沙盒工作区根目录'
+  })
+});
+export const SandboxUploadResponseSchema = z.object({
+  path: z.string().meta({
+    example: 'src/main.py',
+    description: '上传成功后的目标文件路径'
+  }),
+  bytesWritten: z.number().int().nonnegative().meta({
+    example: 1024,
+    description: '写入字节数'
+  })
+});
+export type SandboxUploadBody = z.input<typeof SandboxUploadBodySchema>;
+export type SandboxUploadRuntimeBody = z.output<typeof SandboxUploadBodySchema>;
+export type SandboxUploadResponse = z.infer<typeof SandboxUploadResponseSchema>;
+
+/**
  * 检查沙盒是否存在
  */
 export const SandboxCheckExistBodyRawSchema = createOutLinkChatTargetInputSchema(SandboxBaseShape);

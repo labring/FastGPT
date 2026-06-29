@@ -3,6 +3,8 @@ import { DevApiTagsMap } from '../../../tag';
 import {
   SandboxDownloadBodyRawSchema,
   SandboxDownloadResponseSchema,
+  SandboxUploadMultipartSchema,
+  SandboxUploadResponseSchema,
   SandboxCheckExistBodyRawSchema,
   SandboxCheckExistResponseSchema,
   SandboxGetTicketBodyRawSchema,
@@ -29,6 +31,35 @@ export const SandboxPath: OpenAPIPath = {
           content: {
             'application/octet-stream': {
               schema: SandboxDownloadResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+
+  '/core/ai/sandbox/upload': {
+    post: {
+      summary: '上传文件到沙盒',
+      description:
+        '通过 multipart/form-data 上传文件，并写入指定沙盒工作区路径。`file` 字段为二进制文件，`data` 字段为 JSON 序列化的上传参数对象',
+      tags: [DevApiTagsMap.sandbox],
+      requestBody: {
+        content: {
+          'multipart/form-data': {
+            schema: SandboxUploadMultipartSchema,
+            encoding: {
+              data: { contentType: 'application/json' }
+            }
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '上传结果',
+          content: {
+            'application/json': {
+              schema: SandboxUploadResponseSchema
             }
           }
         }
