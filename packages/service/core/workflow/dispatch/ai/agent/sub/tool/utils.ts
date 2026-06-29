@@ -44,12 +44,13 @@ import {
 } from '@fastgpt/global/core/workflow/utils';
 import type { AppSchemaType } from '@fastgpt/global/core/app/type';
 import { getAppVersionById } from '../../../../../../app/version/controller';
-import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
+import { AppFolderTypeList, AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { SystemToolRepo } from '../../../../../../app/tool/systemTool/systemTool.repo';
 import { Output_Template_Error_Message } from '@fastgpt/global/core/workflow/template/output';
 import type { NodeToolConfigType } from '@fastgpt/global/core/workflow/type/node';
+import { getMCPChildren } from '../../../../../../app/mcp';
 
 type AgentRuntimeNode = RuntimeNodeItemType & {
   currentCost?: number;
@@ -62,8 +63,8 @@ type AgentRuntimeNode = RuntimeNodeItemType & {
  * 将 Agent 选择的工具配置转换成 LLM function calling 与 runtime 执行共用的工具描述。
  *
  * 这里刻意不调用面向前端预览的 getClientToolPreviewNode：Agent runtime 只关心鉴权后的执行
- * 节点、toolConfig 和 JSON Schema。App 类工具统一读取当前发布版本；MCP/HTTP 工具集只使用
- * 当前版本节点里保存的 toolList，不额外兼容旧版 MCP 数据源。
+ * 节点、toolConfig 和 JSON Schema。App 类工具统一读取当前发布版本；MCP 工具会在运行态补齐
+ * 旧版子 App 数据或前端预览数据中被裁剪的 schema。
  */
 export const getAgentRuntimeTools = async ({
   tools,
@@ -205,6 +206,55 @@ export const getAgentRuntimeTools = async ({
     };
   };
 
+  const hasMcpInputSchemaProperties = (schema?: JSONSchemaInputType) => {
+    return !!schema?.properties && Object.keys(schema.properties).length > 0;
+  };
+
+  const findToolByName = <T extends { name: string }>(toolList: T[], toolName: string) => {
+    return getToolNameCandidates(toolName)
+      .map((name) => toolList.find((item) => item.name === name))
+      .find(Boolean);
+  };
+
+  /**
+   * Agent 工具面板保存的 MCP toolset 可能来自前端 preview，toolList 仍有工具名但
+   * inputSchema.properties 已被裁剪。运行态按名称从 MCP app 的 children 中补回完整 schema。
+   */
+  const getMcpToolListWithRuntimeSchema = async ({
+    app,
+    toolList
+  }: {
+    app?: AppSchemaType;
+    toolList?: McpToolConfigType[];
+  }): Promise<McpToolConfigType[]> => {
+    const currentToolList = toolList ?? [];
+    if (!app) return currentToolList;
+
+    if (!currentToolList.length) {
+      return getMCPChildren(app);
+    }
+
+    const hasStrippedSchema = currentToolList.some(
+      (tool) => !hasMcpInputSchemaProperties(tool.inputSchema)
+    );
+    if (!hasStrippedSchema) return currentToolList;
+
+    const runtimeToolList = await getMCPChildren(app);
+    if (!runtimeToolList.length) return currentToolList;
+
+    return currentToolList.map((tool) => {
+      if (hasMcpInputSchemaProperties(tool.inputSchema)) return tool;
+
+      const runtimeTool = findToolByName(runtimeToolList, tool.name);
+      if (!hasMcpInputSchemaProperties(runtimeTool?.inputSchema)) return tool;
+
+      return {
+        ...tool,
+        inputSchema: runtimeTool.inputSchema
+      };
+    });
+  };
+
   /**
    * 普通 App 需要根据当前版本节点形态判断运行时类型：
    * - pluginInput: 插件工作流
@@ -284,7 +334,8 @@ export const getAgentRuntimeTools = async ({
 
   /**
    * 解析单个 MCP 工具 id: mcp-${appId}/${toolName}。
-   * 只读取当前版本 toolConfig.mcpToolSet.toolList；不再通过 getMCPChildren 补旧版数据。
+   * 新版数据从当前版本 toolConfig.mcpToolSet.toolList 读取；旧版 MCP 子工具 schema
+   * 只保存在子 App 的 toolData 中，需要回退到 getMCPChildren。
    */
   const formatMcpToolNode = async ({
     app,
@@ -295,10 +346,12 @@ export const getAgentRuntimeTools = async ({
   }): Promise<AgentRuntimeNode> => {
     const { toolName } = splitToolsetToolPluginId(pluginId);
     const version = await getVersionNodes({ app });
-    const toolList = version.nodes[0]?.toolConfig?.mcpToolSet?.toolList ?? [];
-    const tool = getToolNameCandidates(toolName)
-      .map((name) => toolList.find((item) => item.name === name))
-      .find(Boolean);
+    const mcpToolSet = version.nodes[0]?.toolConfig?.mcpToolSet;
+    const toolList = await getMcpToolListWithRuntimeSchema({
+      app,
+      toolList: mcpToolSet?.toolList
+    });
+    const tool = findToolByName(toolList, toolName);
     if (!tool) return Promise.reject(PluginErrEnum.unExist);
 
     const node = getMCPToolRuntimeNode({
@@ -540,6 +593,8 @@ export const getAgentRuntimeTools = async ({
           const systemToolId = toolNode.toolConfig?.systemToolSet?.toolId;
           const mcpToolsetVal = toolNode.toolConfig?.mcpToolSet ?? toolNode.inputs[0]?.value;
           const httpToolsetVal = toolNode.toolConfig?.httpToolSet;
+          const isLegacyMcpToolSet =
+            authApp?.type === AppTypeEnum.mcpToolSet && !toolNode.toolConfig?.mcpToolSet;
 
           if (systemToolId) {
             // System toolset 的子工具由系统工具仓库展开，可能包含内置运行配置。
@@ -554,12 +609,15 @@ export const getAgentRuntimeTools = async ({
             });
 
             return children.map((child) => buildSubApp(child));
-          } else if (mcpToolsetVal) {
-            // MCP toolset 已在当前版本节点保存 toolList；展开时不再触发 DB 查询。
-            const toolList: McpToolConfigType[] = mcpToolsetVal.toolList ?? [];
+          } else if (mcpToolsetVal || isLegacyMcpToolSet) {
+            // 新版 MCP toolset 在当前版本节点保存 toolList；旧版数据只有子 App 存 toolData。
+            const finalToolList = await getMcpToolListWithRuntimeSchema({
+              app: authApp,
+              toolList: mcpToolsetVal?.toolList
+            });
 
-            const toolSetId = mcpToolsetVal.toolId || toolNode.pluginId || pluginId;
-            const children = toolList.map((tool, index) => {
+            const toolSetId = mcpToolsetVal?.toolId || toolNode.pluginId || pluginId;
+            const children = finalToolList.map((tool, index) => {
               const newToolNode = getMCPToolRuntimeNode({
                 toolSetId,
                 toolsetName: toolNode.name,

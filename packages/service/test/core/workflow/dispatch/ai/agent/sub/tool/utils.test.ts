@@ -4,11 +4,13 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getAgentRuntimeTools } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool/utils';
 import type { NodeToolConfigType } from '@fastgpt/global/core/workflow/type/node';
 
-const { authAppByTmbIdMock, getAppVersionByIdMock, getSystemToolDetailMock } = vi.hoisted(() => ({
-  authAppByTmbIdMock: vi.fn(),
-  getAppVersionByIdMock: vi.fn(),
-  getSystemToolDetailMock: vi.fn()
-}));
+const { authAppByTmbIdMock, getAppVersionByIdMock, getMCPChildrenMock, getSystemToolDetailMock } =
+  vi.hoisted(() => ({
+    authAppByTmbIdMock: vi.fn(),
+    getAppVersionByIdMock: vi.fn(),
+    getMCPChildrenMock: vi.fn(),
+    getSystemToolDetailMock: vi.fn()
+  }));
 
 vi.mock('@fastgpt/service/support/permission/app/auth', () => ({
   authAppByTmbId: authAppByTmbIdMock
@@ -16,6 +18,10 @@ vi.mock('@fastgpt/service/support/permission/app/auth', () => ({
 
 vi.mock('@fastgpt/service/core/app/version/controller', () => ({
   getAppVersionById: getAppVersionByIdMock
+}));
+
+vi.mock('@fastgpt/service/core/app/mcp', () => ({
+  getMCPChildren: getMCPChildrenMock
 }));
 
 vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
@@ -48,6 +54,10 @@ const mcpInputSchema = {
     }
   },
   required: ['query']
+};
+
+const strippedMcpInputSchema = {
+  type: 'object'
 };
 
 const httpInputSchema = {
@@ -132,7 +142,7 @@ const createToolsetApp = ({
 }: {
   id: string;
   type: AppTypeEnum.mcpToolSet | AppTypeEnum.httpToolSet;
-  toolConfig: NodeToolConfigType;
+  toolConfig?: NodeToolConfigType;
 }) => ({
   _id: id,
   teamId: 'team_1',
@@ -151,7 +161,7 @@ const createToolsetApp = ({
       intro: `${id} intro`,
       inputs: [],
       outputs: [],
-      toolConfig
+      ...(toolConfig ? { toolConfig } : {})
     }
   ],
   edges: [],
@@ -161,6 +171,7 @@ const createToolsetApp = ({
 describe('getAgentRuntimeTools schema loading', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getMCPChildrenMock.mockResolvedValue([]);
     getSystemToolDetailMock.mockReset();
 
     authAppByTmbIdMock.mockImplementation(async ({ appId }: { appId: string }) => {
@@ -209,6 +220,26 @@ describe('getAgentRuntimeTools schema loading', () => {
           url: 'https://mcp.example.com',
           headerSecret: {},
           toolList: [mcpTool]
+        }
+      }
+    }),
+    legacy_mcp_app: createToolsetApp({
+      id: 'legacy_mcp_app',
+      type: AppTypeEnum.mcpToolSet
+    }),
+    stripped_mcp_app: createToolsetApp({
+      id: 'stripped_mcp_app',
+      type: AppTypeEnum.mcpToolSet,
+      toolConfig: {
+        mcpToolSet: {
+          url: 'https://mcp.example.com',
+          headerSecret: {},
+          toolList: [
+            {
+              ...mcpTool,
+              inputSchema: strippedMcpInputSchema
+            }
+          ]
         }
       }
     }),
@@ -290,6 +321,103 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].id).toBe('123_appsearch');
     expect(tools[0].requestSchema.function.name).toBe('t123_appsearch');
     expect(tools[0].requestSchema.function.parameters).toEqual(mcpInputSchema);
+  });
+
+  it('fills stripped MCP toolset child schema from runtime children', async () => {
+    getMCPChildrenMock.mockResolvedValue([
+      {
+        avatar: 'mcp_app.png',
+        id: 'mcp-mcp_app/search',
+        ...mcpTool
+      }
+    ]);
+
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [
+        {
+          id: 'mcp_app',
+          config: {},
+          toolConfig: {
+            mcpToolSet: {
+              url: '',
+              toolList: [
+                {
+                  ...mcpTool,
+                  inputSchema: strippedMcpInputSchema
+                }
+              ]
+            }
+          }
+        }
+      ]
+    });
+
+    expect(getMCPChildrenMock).toHaveBeenCalledWith(appMap.mcp_app);
+    expect(tools).toHaveLength(1);
+    expect(tools[0].requestSchema.function.parameters).toEqual(mcpInputSchema);
+  });
+
+  it('fills stripped selected MCP tool schema from runtime children', async () => {
+    getMCPChildrenMock.mockResolvedValue([
+      {
+        avatar: 'stripped_mcp_app.png',
+        id: 'mcp-stripped_mcp_app/search',
+        ...mcpTool
+      }
+    ]);
+
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'mcp-stripped_mcp_app/search', config: {} }]
+    });
+
+    expect(getMCPChildrenMock).toHaveBeenCalledWith(appMap.stripped_mcp_app);
+    expect(tools).toHaveLength(1);
+    expect(tools[0].requestSchema.function.parameters).toEqual(mcpInputSchema);
+  });
+
+  it('loads legacy MCP toolset children from stored child tool data', async () => {
+    getMCPChildrenMock.mockResolvedValue([
+      {
+        avatar: 'legacy_mcp_app.png',
+        id: 'mcp-legacy_mcp_app/search',
+        ...mcpTool
+      }
+    ]);
+
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'legacy_mcp_app', config: {} }]
+    });
+
+    expect(getMCPChildrenMock).toHaveBeenCalledWith(appMap.legacy_mcp_app);
+    expect(tools).toHaveLength(1);
+    expect(tools[0].requestSchema.function.name).toBe('legacy_mcp_app0');
+    expect(tools[0].requestSchema.function.parameters).toEqual(mcpInputSchema);
+    expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-legacy_mcp_app/search');
+  });
+
+  it('loads a selected legacy MCP tool with its input schema', async () => {
+    getMCPChildrenMock.mockResolvedValue([
+      {
+        avatar: 'legacy_mcp_app.png',
+        id: 'mcp-legacy_mcp_app/search',
+        ...mcpTool
+      }
+    ]);
+
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [{ id: 'mcp-legacy_mcp_app/search', config: {} }]
+    });
+
+    expect(getMCPChildrenMock).toHaveBeenCalledWith(appMap.legacy_mcp_app);
+    expect(tools).toHaveLength(1);
+    expect(tools[0].id).toBe('legacy_mcp_appsearch');
+    expect(tools[0].name).toBe('search');
+    expect(tools[0].requestSchema.function.parameters).toEqual(mcpInputSchema);
+    expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-legacy_mcp_app/search');
   });
 
   it('loads HTTP toolset children with their request schema', async () => {
