@@ -605,7 +605,7 @@ export const useSandboxFileStore = ({
           if (!hasPendingWorkspaceRefreshRef.current) {
             const filesToReload =
               openedFilesRef.current
-                ?.filter((f) => !f.isDirty && !f.isLoading && !f.isBinary && !f.isUnknown)
+                ?.filter((f) => !f.isDirty && !f.isLoading && !f.isUnknown)
                 .map((f) => ({
                   path: f.path,
                   language: f.language,
@@ -654,6 +654,14 @@ export const useSandboxFileStore = ({
                       item.content === snapshot.content &&
                       item.etag === snapshot.etag
                     ) {
+                      if (
+                        item.isBinary &&
+                        item.content.startsWith('blob:') &&
+                        item.content !== update.content
+                      ) {
+                        URL.revokeObjectURL(item.content);
+                      }
+
                       return {
                         ...item,
                         content: update.content,
@@ -1579,6 +1587,7 @@ export const useSandboxFileStore = ({
         uploadTasks.push({ path, file });
       }
 
+      let hasUploaded = false;
       try {
         for (const task of uploadTasks) {
           await uploadSandboxFile({
@@ -1588,6 +1597,7 @@ export const useSandboxFileStore = ({
             path: task.path,
             file: task.file
           });
+          hasUploaded = true;
         }
       } catch (error) {
         console.error('Failed to upload files:', error);
@@ -1596,9 +1606,23 @@ export const useSandboxFileStore = ({
           description: getErrText(error),
           status: 'error'
         });
+      } finally {
+        if (hasUploaded) {
+          await refreshWorkspace({ preserveExpandedDirs: true });
+        }
       }
     },
-    [chatId, fileTree, maxFileBytes, maxFileSizeMB, outLinkAuthData, sandboxTarget, toast, t]
+    [
+      chatId,
+      fileTree,
+      maxFileBytes,
+      maxFileSizeMB,
+      outLinkAuthData,
+      refreshWorkspace,
+      sandboxTarget,
+      toast,
+      t
+    ]
   );
 
   // 展开折叠目录
