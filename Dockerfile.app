@@ -53,7 +53,7 @@ RUN npm config set registry http://mirrors.sangfor.org/nexus/repository/npm
 
 RUN apk add --no-cache libc6-compat && npm install -g pnpm@9
 
-ENV NODE_OPTIONS="--max-old-space-size=4096"
+ENV NODE_OPTIONS="--max-old-space-size=8192"
 ENV NEXT_PUBLIC_BASE_URL=$base_url
 RUN pnpm --filter=app build
 
@@ -112,4 +112,5 @@ EXPOSE 3000
 
 USER nextjs
 
-ENTRYPOINT ["sh","-c","node --max-old-space-size=4096 ./projects/app/server.js"]
+ENTRYPOINT ["sh","-c","node --max-old-space-size=8192 ./projects/app/server.js"]
+
