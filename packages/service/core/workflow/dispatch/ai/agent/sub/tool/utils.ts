@@ -246,7 +246,7 @@ export const getAgentRuntimeTools = async ({
       if (hasMcpInputSchemaProperties(tool.inputSchema)) return tool;
 
       const runtimeTool = findToolByName(runtimeToolList, tool.name);
-      if (!hasMcpInputSchemaProperties(runtimeTool?.inputSchema)) return tool;
+      if (!runtimeTool || !hasMcpInputSchemaProperties(runtimeTool.inputSchema)) return tool;
 
       return {
         ...tool,
