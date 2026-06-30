@@ -4,6 +4,7 @@ import type { UseFormReturn } from 'react-hook-form';
 import type { TFunction } from 'next-i18next';
 import type { GetEnterpriseAuthCurrentTaskDetailResponseType } from '@fastgpt/global/openapi/support/user/team/enterpriseAuth/api';
 import { enterpriseAuthContactBusinessUrl } from '../utils';
+import { webPushTrack } from '@/web/common/middle/tracks/utils';
 import {
   AmountInfoRow,
   formatBankAccountForDisplay,
@@ -84,6 +85,11 @@ const EnterpriseAuthAmountForm = ({
             color={'#3370FF'}
             cursor={'pointer'}
             _hover={{ textDecoration: 'none' }}
+            onClick={() => {
+              webPushTrack.enterpriseAuthContactBusiness({
+                source: 'amountStep'
+              });
+            }}
           >
             {t('account_team:enterprise_auth_contact_business')}
           </Box>

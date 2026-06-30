@@ -12,7 +12,7 @@ import type {
   TeamSubSchemaType
 } from '@fastgpt/global/support/wallet/sub/type';
 import dayjs from 'dayjs';
-import { type ClientSession } from '../../../common/mongo';
+import { ReadPreference, type ClientSession } from '../../../common/mongo';
 import { addMonths, addDays } from 'date-fns';
 import { readFromSecondary } from '../../../common/mongo/utils';
 import {
@@ -208,7 +208,13 @@ const getStandardPlanConstants = (
       ]
     : undefined;
 
-// 获取团队标准套餐
+/**
+ * 获取团队当前生效的标准套餐。
+ *
+ * 常规路径优先读 secondary 降低主库压力；如果 secondary 没有读到 active 套餐，
+ * 再回 primary 做强一致复查，避免副本延迟把刚购买/发放的付费套餐误判为缺失，
+ * 从而触发免费套餐初始化写入。
+ */
 export const getTeamStandPlan = async ({
   teamId
 }: {
@@ -216,6 +222,9 @@ export const getTeamStandPlan = async ({
 }): Promise<{
   [SubTypeEnum.standard]: TeamPlanStandardType | undefined;
 }> => {
+  const getActiveStandardPlan = (plans: TeamSubSchemaType[]) =>
+    sortStandPlans(plans.filter((plan) => isActiveStandardSub(plan, new Date())))[0];
+
   const plans = await MongoTeamSub.find(
     {
       teamId,
@@ -226,12 +235,26 @@ export const getTeamStandPlan = async ({
       ...readFromSecondary
     }
   ).lean();
-  const activeStandardPlans = sortStandPlans(
-    plans.filter((plan) => isActiveStandardSub(plan, new Date()))
-  );
 
   const standardPlans = global.subPlans?.standard;
-  let standard = activeStandardPlans[0];
+  let standard = getActiveStandardPlan(plans);
+
+  if (!standard) {
+    const primaryPlans = await MongoTeamSub.find(
+      {
+        teamId,
+        type: SubTypeEnum.standard
+      },
+      undefined,
+      {
+        readPreference: ReadPreference.PRIMARY,
+        readConcern: {
+          level: 'majority' as any
+        }
+      }
+    ).lean();
+    standard = getActiveStandardPlan(primaryPlans);
+  }
 
   if (!standard) {
     logger.info('Initializing free standard plan for stand plan query', { teamId });

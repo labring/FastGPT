@@ -1,10 +1,19 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import { Box, Button, Flex, Skeleton, useDisclosure, type BoxProps } from '@chakra-ui/react';
+import {
+  Box,
+  Button,
+  Flex,
+  Skeleton,
+  useDisclosure,
+  type BoxProps,
+  type ButtonProps
+} from '@chakra-ui/react';
 import dynamic from 'next/dynamic';
 import { useTranslation } from 'next-i18next';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { webPushTrack } from '@/web/common/middle/tracks/utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { getEnterpriseAuthStatus } from '@/web/support/user/team/enterpriseAuth/api';
 import {
@@ -24,6 +33,7 @@ const EnterpriseAuthContactBusinessModal = dynamic(
 
 type EnterpriseAuthStatusRowProps = BoxProps & {
   labelStyles?: BoxProps;
+  buttonProps?: ButtonProps;
   autoOpen?: boolean;
   onAutoOpenFinish?: () => void;
 };
@@ -71,6 +81,7 @@ const getStatusCopy = ({
 
 const EnterpriseAuthStatusRow = ({
   labelStyles,
+  buttonProps,
   autoOpen = false,
   onAutoOpenFinish,
   ...props
@@ -118,9 +129,24 @@ const EnterpriseAuthStatusRow = ({
   const hasOtherMemberProcessingTask =
     data?.status === TeamEnterpriseAuthStatusEnum.verifying && !data?.currentTask;
 
+  const trackOpen = useCallback(
+    (source: 'statusRow' | 'notice') => {
+      webPushTrack.enterpriseAuthOpen({
+        source,
+        status: data?.status,
+        taskStatus: data?.currentTask?.status,
+        hasCurrentTask: !!data?.currentTask,
+        canManage: data?.canManage,
+        needContactBusiness
+      });
+    },
+    [data?.canManage, data?.currentTask, data?.status, needContactBusiness]
+  );
+
   const handleOpen = useCallback(() => {
     if (data?.status === TeamEnterpriseAuthStatusEnum.verified) return;
 
+    trackOpen('statusRow');
     if (!data?.canManage) {
       toast({
         title: t('account_team:enterprise_auth_contact_admin_tip'),
@@ -136,6 +162,12 @@ const EnterpriseAuthStatusRow = ({
       return;
     }
     if (needContactBusiness) {
+      webPushTrack.enterpriseAuthContactBusiness({
+        source: 'statusRow',
+        status: data?.status,
+        taskStatus: data?.currentTask?.status,
+        usedTimes: data?.usedTimes
+      });
       onOpenContactBusiness();
       return;
     }
@@ -148,11 +180,13 @@ const EnterpriseAuthStatusRow = ({
     data?.canManage,
     data?.currentTask,
     data?.status,
+    data?.usedTimes,
     hasOtherMemberProcessingTask,
     needContactBusiness,
     onOpen,
     onOpenContactBusiness,
     t,
+    trackOpen,
     toast
   ]);
 
@@ -171,6 +205,7 @@ const EnterpriseAuthStatusRow = ({
     if (loading || !data?.enabled) return;
 
     autoOpenHandledRef.current = true;
+    trackOpen('notice');
     if (data.status === TeamEnterpriseAuthStatusEnum.verified) {
       onAutoOpenFinish?.();
       return;
@@ -192,6 +227,12 @@ const EnterpriseAuthStatusRow = ({
       return;
     }
     if (needContactBusiness) {
+      webPushTrack.enterpriseAuthContactBusiness({
+        source: 'statusRow',
+        status: data?.status,
+        taskStatus: data?.currentTask?.status,
+        usedTimes: data?.usedTimes
+      });
       onOpenContactBusiness();
       onAutoOpenFinish?.();
       return;
@@ -211,6 +252,7 @@ const EnterpriseAuthStatusRow = ({
     data?.currentTask,
     data?.enabled,
     data?.status,
+    data?.usedTimes,
     error,
     feConfigs?.show_enterprise_auth,
     hasOtherMemberProcessingTask,
@@ -220,6 +262,7 @@ const EnterpriseAuthStatusRow = ({
     onOpen,
     onOpenContactBusiness,
     t,
+    trackOpen,
     toast
   ]);
 
@@ -256,24 +299,11 @@ const EnterpriseAuthStatusRow = ({
           </Box>
           {data.status !== TeamEnterpriseAuthStatusEnum.verified && statusCopy.buttonText && (
             <Button
+              size={'sm'}
+              variant={'primary'}
               flexShrink={0}
               ml={3}
-              minW={'39px'}
-              h={'24px'}
-              minH={'24px'}
-              px={'8px'}
-              py={'4px'}
-              borderRadius={'4px'}
-              bg={'primary.600'}
-              boxShadow={'0px 1px 2px rgba(19, 51, 107, 0.05), 0px 0px 1px rgba(19, 51, 107, 0.08)'}
-              color={'white'}
-              fontFamily={'"PingFang SC"'}
-              fontSize={'11px'}
-              fontWeight={500}
-              lineHeight={'16px'}
-              letterSpacing={'0.5px'}
-              _hover={{ bg: 'primary.600' }}
-              _active={{ bg: 'primary.600' }}
+              {...buttonProps}
               onClick={handleOpen}
             >
               {statusCopy.buttonText}
