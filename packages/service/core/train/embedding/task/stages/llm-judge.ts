@@ -10,8 +10,9 @@ import { MongoDatasetData } from '../../../../../core/dataset/data/schema';
 import { judgeRelevantChunks } from '../../external';
 import { computeRankingMetrics } from '../../../common/metrics/rankingMetrics';
 import type { RankingCase } from '../../../common/metrics/rankingMetrics';
-import { pLimit } from '../../../common/utils';
+import { pLimit, propagateAbortFromResults } from '../../../common/utils';
 import { trainEnv } from '../../../common/env';
+import { getTrainTaskAbortSignal } from '../../../common/task-abort-signal';
 import { addLog } from '../../../../../common/system/log';
 import { TrainTaskUnrecoverableError, TrainTaskRetriableError } from '../../../common/errors';
 import { getDefaultLLMModel } from '../../../../ai/model';
@@ -185,6 +186,27 @@ export async function runLLMJudgeStage(task: EmbeddingTrainTaskSchemaType): Prom
   const judgeResults = await Promise.allSettled(
     judgeItems.map((item) =>
       limit(async () => {
+        const abortReason = await getTrainTaskAbortSignal({
+          type: 'embedding',
+          taskId: String(task._id)
+        });
+        if (abortReason === 'deleted') {
+          const enhancedError = createEmbeddingEnhancedError(
+            EmbeddingTaskCheckpointStageEnum.llm_judge,
+            EmbeddingTrainErrEnum.embeddingTaskNotExist,
+            EmbeddingTrainSuggestionEnum.embeddingTaskNotExist
+          );
+          throw new TrainTaskUnrecoverableError(enhancedError);
+        }
+        if (abortReason === 'cancelled') {
+          const enhancedError = createEmbeddingEnhancedError(
+            EmbeddingTaskCheckpointStageEnum.llm_judge,
+            EmbeddingTrainErrEnum.embeddingFinetuneCancelled,
+            EmbeddingTrainSuggestionEnum.embeddingFinetuneCancelled
+          );
+          throw new TrainTaskUnrecoverableError(enhancedError);
+        }
+
         const response = await judgeRelevantChunks({
           question: item.question,
           retrieval_reference_list: item.retrieval_reference_list,
@@ -222,6 +244,8 @@ export async function runLLMJudgeStage(task: EmbeddingTrainTaskSchemaType): Prom
       })
     )
   );
+
+  propagateAbortFromResults(judgeResults);
 
   // Collect successful results
   const successfulResults = judgeResults

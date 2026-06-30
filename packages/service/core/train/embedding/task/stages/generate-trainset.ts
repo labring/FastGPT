@@ -15,6 +15,7 @@ import {
   EmbeddingTrainsetStatusEnum
 } from '@fastgpt/global/core/train/embedding/constants';
 import { TrainTaskUnrecoverableError, TrainTaskRetriableError } from '../../../common/errors';
+import { getTrainTaskAbortSignal } from '../../../common/task-abort-signal';
 import { calculateEmbeddingTrainsetStats } from '../../data/controller';
 import type { EnhancedErrorMessage } from '@fastgpt/global/core/train/embedding/error';
 import { createEmbeddingTrainset } from '../../trainset/controller';
@@ -29,6 +30,7 @@ import { embeddingTrainDataGenerateQueue } from '../../data/mq';
  */
 async function waitForTrainsetReady(
   trainsetId: string,
+  taskId: string,
   maxAttempts: number = 360,
   interval: number = 10000
 ): Promise<void> {
@@ -36,11 +38,30 @@ async function waitForTrainsetReady(
 
   addLog.info('Waiting for embedding trainset to be ready', {
     trainsetId,
+    taskId,
     maxAttempts,
     interval
   });
 
   while (attempts < maxAttempts) {
+    const abortReason = await getTrainTaskAbortSignal({ type: 'embedding', taskId });
+    if (abortReason === 'deleted') {
+      const enhancedError = createEmbeddingEnhancedError(
+        EmbeddingTaskCheckpointStageEnum.generate_trainset,
+        EmbeddingTrainErrEnum.embeddingTaskNotExist,
+        EmbeddingTrainSuggestionEnum.embeddingTaskNotExist
+      );
+      throw new TrainTaskUnrecoverableError(enhancedError);
+    }
+    if (abortReason === 'cancelled') {
+      const enhancedError = createEmbeddingEnhancedError(
+        EmbeddingTaskCheckpointStageEnum.generate_trainset,
+        EmbeddingTrainErrEnum.embeddingFinetuneCancelled,
+        EmbeddingTrainSuggestionEnum.embeddingFinetuneCancelled
+      );
+      throw new TrainTaskUnrecoverableError(enhancedError);
+    }
+
     const trainset = await MongoEmbeddingTrainset.findById(trainsetId).lean();
 
     if (!trainset) {
@@ -276,7 +297,7 @@ export async function runGenerateTrainsetStage(task: EmbeddingTrainTaskSchemaTyp
   }
 
   // Wait for trainset to be ready (both modes)
-  await waitForTrainsetReady(trainsetId);
+  await waitForTrainsetReady(trainsetId, String(task._id));
 
   // Generate JSONL file from trainset data
   const jsonlResult = await generateTrainsetJsonl({ ...task, trainsetId });

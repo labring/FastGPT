@@ -26,6 +26,7 @@ import {
 } from '@fastgpt/global/common/error/code/train';
 import { createRerankEnhancedError } from '../utils';
 import { TrainTaskUnrecoverableError } from '../../common/errors';
+import { getTrainTaskAbortSignal } from '../../common/task-abort-signal';
 
 /**
  * Rerank training task processor
@@ -67,7 +68,9 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
     }
 
     // Stage 1: generate_trainset
-    if (shouldRunStage(currentStage, RerankTaskCheckpointStageEnum.generate_trainset)) {
+    if (
+      await shouldRunStage(taskId, currentStage, RerankTaskCheckpointStageEnum.generate_trainset)
+    ) {
       const result = await runGenerateTrainsetStage(task);
       await updateRerankCheckpointData(taskId, 'generate_trainset', {
         trainDatasetId: result.trainDatasetId,
@@ -78,7 +81,9 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
     }
 
     // Stage 2: generate_evaldataset
-    if (shouldRunStage(currentStage, RerankTaskCheckpointStageEnum.generate_evaldataset)) {
+    if (
+      await shouldRunStage(taskId, currentStage, RerankTaskCheckpointStageEnum.generate_evaldataset)
+    ) {
       const taskAfterStage1 = await getRerankTrainTask(taskId);
       if (!taskAfterStage1) {
         const enhancedError = createRerankEnhancedError(
@@ -99,7 +104,7 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
     }
 
     // Stage 3: eval_basemodel
-    if (shouldRunStage(currentStage, RerankTaskCheckpointStageEnum.eval_basemodel)) {
+    if (await shouldRunStage(taskId, currentStage, RerankTaskCheckpointStageEnum.eval_basemodel)) {
       const taskAfterStage2 = await getRerankTrainTask(taskId);
       if (!taskAfterStage2) {
         const enhancedError = createRerankEnhancedError(
@@ -119,7 +124,7 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
     }
 
     // Stage 4: finetuning
-    if (shouldRunStage(currentStage, RerankTaskCheckpointStageEnum.finetuning)) {
+    if (await shouldRunStage(taskId, currentStage, RerankTaskCheckpointStageEnum.finetuning)) {
       const taskAfterStage3 = await getRerankTrainTask(taskId);
       if (!taskAfterStage3) {
         const enhancedError = createRerankEnhancedError(
@@ -139,7 +144,7 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
     }
 
     // Stage 5: registering
-    if (shouldRunStage(currentStage, RerankTaskCheckpointStageEnum.registering)) {
+    if (await shouldRunStage(taskId, currentStage, RerankTaskCheckpointStageEnum.registering)) {
       const taskAfterFinetune = await getRerankTrainTask(taskId);
       if (!taskAfterFinetune) {
         const enhancedError = createRerankEnhancedError(
@@ -158,7 +163,7 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
     }
 
     // Stage 6: eval_tunedmodel
-    if (shouldRunStage(currentStage, RerankTaskCheckpointStageEnum.eval_tunedmodel)) {
+    if (await shouldRunStage(taskId, currentStage, RerankTaskCheckpointStageEnum.eval_tunedmodel)) {
       const taskAfterRegister = await getRerankTrainTask(taskId);
       if (!taskAfterRegister) {
         const enhancedError = createRerankEnhancedError(
@@ -178,7 +183,7 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
     }
 
     // Stage 7: llm_judge
-    if (shouldRunStage(currentStage, RerankTaskCheckpointStageEnum.llm_judge)) {
+    if (await shouldRunStage(taskId, currentStage, RerankTaskCheckpointStageEnum.llm_judge)) {
       const taskAfterStage6 = await getRerankTrainTask(taskId);
       if (!taskAfterStage6) {
         const enhancedError = createRerankEnhancedError(
@@ -221,7 +226,8 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
             finalCheckpoint.generate_trainset?.trainDatasetFilePath ?? undefined,
           tunedModelId: finalCheckpoint.registering?.tunedModelId ?? undefined,
           evalDatasetId: finalCheckpoint.generate_evaldataset?.evalDatasetId ?? undefined,
-          evalDatasetFilePath: finalCheckpoint.generate_evaldataset?.evalDatasetFilePath ?? undefined,
+          evalDatasetFilePath:
+            finalCheckpoint.generate_evaldataset?.evalDatasetFilePath ?? undefined,
           baseModelEvalResult: finalCheckpoint.eval_basemodel?.baseModelEvalResult,
           tunedModelEvalResult: finalCheckpoint.eval_tunedmodel?.tunedModelEvalResult,
           baseModelRejudgedResult: finalCheckpoint.llm_judge?.baseModelRejudgedResult,
@@ -249,10 +255,11 @@ export const rerankTrainTaskProcessor: Processor<RerankTrainTaskJobData> = async
 /**
  * Determine whether to run a stage (skip completed stages, run remaining stages)
  */
-function shouldRunStage(
+async function shouldRunStage(
+  taskId: string,
   currentStage: `${RerankTaskCheckpointStageEnum}` | null,
   targetStage: `${RerankTaskCheckpointStageEnum}`
-): boolean {
+): Promise<boolean> {
   if (currentStage === null) return true;
 
   const stageOrder: RerankTaskCheckpointStageEnum[] = [
@@ -268,5 +275,28 @@ function shouldRunStage(
   const currentStageEnum = currentStage as RerankTaskCheckpointStageEnum;
   const targetStageEnum = targetStage as RerankTaskCheckpointStageEnum;
 
-  return stageOrder.indexOf(targetStageEnum) > stageOrder.indexOf(currentStageEnum);
+  if (stageOrder.indexOf(targetStageEnum) <= stageOrder.indexOf(currentStageEnum)) {
+    return false;
+  }
+
+  const reason = await getTrainTaskAbortSignal({ type: 'rerank', taskId });
+  if (reason === 'deleted') {
+    throw new TrainTaskUnrecoverableError(
+      createRerankEnhancedError(
+        targetStage as RerankTaskCheckpointStageEnum,
+        RerankTrainErrEnum.rerankTaskNotExist,
+        RerankTrainSuggestionEnum.rerankTaskNotExist
+      )
+    );
+  }
+  if (reason === 'cancelled') {
+    throw new TrainTaskUnrecoverableError(
+      createRerankEnhancedError(
+        targetStage as RerankTaskCheckpointStageEnum,
+        RerankTrainErrEnum.rerankFinetuneCancelled,
+        RerankTrainSuggestionEnum.rerankFinetuneCancelled
+      )
+    );
+  }
+  return true;
 }

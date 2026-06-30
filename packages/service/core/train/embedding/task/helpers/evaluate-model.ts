@@ -9,6 +9,7 @@ import {
 import { getEmbeddingModelById } from '../../../../ai/model';
 import { addLog } from '../../../../../common/system/log';
 import { TrainTaskUnrecoverableError } from '../../../common/errors';
+import { getTrainTaskAbortSignal } from '../../../common/task-abort-signal';
 import { computeRankingMetrics } from '../../../common/metrics/rankingMetrics';
 import { dispatchDatasetSearch } from '../../../../../core/workflow/dispatch/dataset/search';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -90,6 +91,24 @@ export async function evaluateEmbeddingModelHelper(
   const cases = await Promise.all(
     evalDataItems.map((item) =>
       limit(async () => {
+        const abortReason = await getTrainTaskAbortSignal({ type: 'embedding', taskId });
+        if (abortReason === 'deleted') {
+          const enhancedError = createEmbeddingEnhancedError(
+            stage,
+            EmbeddingTrainErrEnum.embeddingTaskNotExist,
+            EmbeddingTrainSuggestionEnum.embeddingTaskNotExist
+          );
+          throw new TrainTaskUnrecoverableError(enhancedError);
+        }
+        if (abortReason === 'cancelled') {
+          const enhancedError = createEmbeddingEnhancedError(
+            stage,
+            EmbeddingTrainErrEnum.embeddingFinetuneCancelled,
+            EmbeddingTrainSuggestionEnum.embeddingFinetuneCancelled
+          );
+          throw new TrainTaskUnrecoverableError(enhancedError);
+        }
+
         const query = item.userInput;
         const expectedIds = item.expectedContextIds || [];
 

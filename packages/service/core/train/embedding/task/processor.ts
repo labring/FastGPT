@@ -26,6 +26,7 @@ import {
 } from '@fastgpt/global/common/error/code/train';
 import { createEmbeddingEnhancedError } from '../utils';
 import { TrainTaskUnrecoverableError } from '../../common/errors';
+import { getTrainTaskAbortSignal } from '../../common/task-abort-signal';
 
 /**
  * Embedding training task processor
@@ -67,7 +68,9 @@ export const embeddingTrainTaskProcessor: Processor<EmbeddingTrainTaskJobData> =
     }
 
     // Stage 1: generate_trainset
-    if (shouldRunStage(currentStage, EmbeddingTaskCheckpointStageEnum.generate_trainset)) {
+    if (
+      await shouldRunStage(taskId, currentStage, EmbeddingTaskCheckpointStageEnum.generate_trainset)
+    ) {
       const result = await runGenerateTrainsetStage(task);
       await updateEmbeddingCheckpointData(taskId, 'generate_trainset', {
         trainDatasetId: result.trainDatasetId,
@@ -81,7 +84,13 @@ export const embeddingTrainTaskProcessor: Processor<EmbeddingTrainTaskJobData> =
     }
 
     // Stage 2: generate_evaldataset
-    if (shouldRunStage(currentStage, EmbeddingTaskCheckpointStageEnum.generate_evaldataset)) {
+    if (
+      await shouldRunStage(
+        taskId,
+        currentStage,
+        EmbeddingTaskCheckpointStageEnum.generate_evaldataset
+      )
+    ) {
       const taskAfterStage1 = await getEmbeddingTrainTask(taskId);
       if (!taskAfterStage1) {
         const enhancedError = createEmbeddingEnhancedError(
@@ -105,7 +114,9 @@ export const embeddingTrainTaskProcessor: Processor<EmbeddingTrainTaskJobData> =
     }
 
     // Stage 3: eval_basemodel
-    if (shouldRunStage(currentStage, EmbeddingTaskCheckpointStageEnum.eval_basemodel)) {
+    if (
+      await shouldRunStage(taskId, currentStage, EmbeddingTaskCheckpointStageEnum.eval_basemodel)
+    ) {
       const taskAfterStage2 = await getEmbeddingTrainTask(taskId);
       if (!taskAfterStage2) {
         const enhancedError = createEmbeddingEnhancedError(
@@ -125,7 +136,7 @@ export const embeddingTrainTaskProcessor: Processor<EmbeddingTrainTaskJobData> =
     }
 
     // Stage 4: finetuning
-    if (shouldRunStage(currentStage, EmbeddingTaskCheckpointStageEnum.finetuning)) {
+    if (await shouldRunStage(taskId, currentStage, EmbeddingTaskCheckpointStageEnum.finetuning)) {
       const taskAfterStage3 = await getEmbeddingTrainTask(taskId);
       if (!taskAfterStage3) {
         const enhancedError = createEmbeddingEnhancedError(
@@ -145,7 +156,7 @@ export const embeddingTrainTaskProcessor: Processor<EmbeddingTrainTaskJobData> =
     }
 
     // Stage 5: registering
-    if (shouldRunStage(currentStage, EmbeddingTaskCheckpointStageEnum.registering)) {
+    if (await shouldRunStage(taskId, currentStage, EmbeddingTaskCheckpointStageEnum.registering)) {
       const taskAfterFinetune = await getEmbeddingTrainTask(taskId);
       if (!taskAfterFinetune) {
         const enhancedError = createEmbeddingEnhancedError(
@@ -164,7 +175,9 @@ export const embeddingTrainTaskProcessor: Processor<EmbeddingTrainTaskJobData> =
     }
 
     // Stage 6: eval_tunedmodel
-    if (shouldRunStage(currentStage, EmbeddingTaskCheckpointStageEnum.eval_tunedmodel)) {
+    if (
+      await shouldRunStage(taskId, currentStage, EmbeddingTaskCheckpointStageEnum.eval_tunedmodel)
+    ) {
       const taskAfterRegister = await getEmbeddingTrainTask(taskId);
       if (!taskAfterRegister) {
         const enhancedError = createEmbeddingEnhancedError(
@@ -187,7 +200,7 @@ export const embeddingTrainTaskProcessor: Processor<EmbeddingTrainTaskJobData> =
     }
 
     // Stage 7: llm_judge
-    if (shouldRunStage(currentStage, EmbeddingTaskCheckpointStageEnum.llm_judge)) {
+    if (await shouldRunStage(taskId, currentStage, EmbeddingTaskCheckpointStageEnum.llm_judge)) {
       const taskAfterStage6 = await getEmbeddingTrainTask(taskId);
       if (!taskAfterStage6) {
         const enhancedError = createEmbeddingEnhancedError(
@@ -230,7 +243,8 @@ export const embeddingTrainTaskProcessor: Processor<EmbeddingTrainTaskJobData> =
             finalCheckpoint.generate_trainset?.trainDatasetFilePath ?? undefined,
           tunedModelId: finalCheckpoint.registering?.tunedModelId ?? undefined,
           evalDatasetId: finalCheckpoint.generate_evaldataset?.evalDatasetId ?? undefined,
-          evalDatasetFilePath: finalCheckpoint.generate_evaldataset?.evalDatasetFilePath ?? undefined,
+          evalDatasetFilePath:
+            finalCheckpoint.generate_evaldataset?.evalDatasetFilePath ?? undefined,
           baseModelEvalResult: finalCheckpoint.eval_basemodel?.baseModelEvalResult,
           tunedModelEvalResult: finalCheckpoint.eval_tunedmodel?.tunedModelEvalResult,
           baseModelRejudgedResult: finalCheckpoint.llm_judge?.baseModelRejudgedResult,
@@ -258,10 +272,11 @@ export const embeddingTrainTaskProcessor: Processor<EmbeddingTrainTaskJobData> =
 /**
  * Determine whether to run a stage (skip completed stages, run remaining stages)
  */
-function shouldRunStage(
+async function shouldRunStage(
+  taskId: string,
   currentStage: `${EmbeddingTaskCheckpointStageEnum}` | null,
   targetStage: `${EmbeddingTaskCheckpointStageEnum}`
-): boolean {
+): Promise<boolean> {
   if (currentStage === null) return true;
 
   const stageOrder: EmbeddingTaskCheckpointStageEnum[] = [
@@ -277,5 +292,28 @@ function shouldRunStage(
   const currentStageEnum = currentStage as EmbeddingTaskCheckpointStageEnum;
   const targetStageEnum = targetStage as EmbeddingTaskCheckpointStageEnum;
 
-  return stageOrder.indexOf(targetStageEnum) > stageOrder.indexOf(currentStageEnum);
+  if (stageOrder.indexOf(targetStageEnum) <= stageOrder.indexOf(currentStageEnum)) {
+    return false;
+  }
+
+  const reason = await getTrainTaskAbortSignal({ type: 'embedding', taskId });
+  if (reason === 'deleted') {
+    throw new TrainTaskUnrecoverableError(
+      createEmbeddingEnhancedError(
+        targetStage as EmbeddingTaskCheckpointStageEnum,
+        EmbeddingTrainErrEnum.embeddingTaskNotExist,
+        EmbeddingTrainSuggestionEnum.embeddingTaskNotExist
+      )
+    );
+  }
+  if (reason === 'cancelled') {
+    throw new TrainTaskUnrecoverableError(
+      createEmbeddingEnhancedError(
+        targetStage as EmbeddingTaskCheckpointStageEnum,
+        EmbeddingTrainErrEnum.embeddingFinetuneCancelled,
+        EmbeddingTrainSuggestionEnum.embeddingFinetuneCancelled
+      )
+    );
+  }
+  return true;
 }

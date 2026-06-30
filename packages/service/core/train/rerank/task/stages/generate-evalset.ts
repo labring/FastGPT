@@ -10,7 +10,12 @@ import {
   EvalDatasetDataCreateFromEnum,
   EvalDatasetDataKeyEnum
 } from '@fastgpt/global/core/evaluation/dataset/constants';
-import { sampleDataFromDataset, pLimit, fetchSampledContent } from '../../utils';
+import {
+  sampleDataFromDataset,
+  pLimit,
+  fetchSampledContent,
+  propagateAbortFromResults
+} from '../../utils';
 import { createRerankEnhancedError } from '../../utils';
 import {
   RerankTrainErrEnum,
@@ -21,6 +26,7 @@ import { getDefaultLLMModel } from '../../../../ai/model';
 import { getModelEndpointConfig } from '../../../../ai/config';
 import { addLog } from '../../../../../common/system/log';
 import { trainEnv } from '../../../common/env';
+import { getTrainTaskAbortSignal } from '../../../common/task-abort-signal';
 import { TrainTaskUnrecoverableError, TrainTaskRetriableError } from '../../../common/errors';
 import { MongoRerankTrainTask } from '../schema';
 import { performDatasetSearch } from '../helpers/dataset-search';
@@ -109,6 +115,27 @@ async function generateEvalDatasetFromDatasets(task: RerankTrainTaskSchemaType):
   const ditingResults = await Promise.allSettled(
     sampledDataWithContent.map((sample) =>
       ditingLimit(async () => {
+        const abortReason = await getTrainTaskAbortSignal({
+          type: 'rerank',
+          taskId: String(task._id)
+        });
+        if (abortReason === 'deleted') {
+          const enhancedError = createRerankEnhancedError(
+            RerankTaskCheckpointStageEnum.generate_evaldataset,
+            RerankTrainErrEnum.rerankTaskNotExist,
+            RerankTrainSuggestionEnum.rerankTaskNotExist
+          );
+          throw new TrainTaskUnrecoverableError(enhancedError);
+        }
+        if (abortReason === 'cancelled') {
+          const enhancedError = createRerankEnhancedError(
+            RerankTaskCheckpointStageEnum.generate_evaldataset,
+            RerankTrainErrEnum.rerankFinetuneCancelled,
+            RerankTrainSuggestionEnum.rerankFinetuneCancelled
+          );
+          throw new TrainTaskUnrecoverableError(enhancedError);
+        }
+
         const context = [sample.q, sample.a].filter(Boolean);
 
         const response = await synthesizeRerankEvalData({
@@ -144,6 +171,8 @@ async function generateEvalDatasetFromDatasets(task: RerankTrainTaskSchemaType):
       })
     )
   );
+
+  propagateAbortFromResults(ditingResults);
 
   // Flatten 1-to-many results: each DiTing call returns multiple qaPairs
   const evalDataItems = ditingResults
@@ -202,6 +231,27 @@ async function generateEvalDatasetFromDatasets(task: RerankTrainTaskSchemaType):
   const searchResults = await Promise.allSettled(
     evalDataItems.map((item) =>
       searchLimit(async () => {
+        const abortReason = await getTrainTaskAbortSignal({
+          type: 'rerank',
+          taskId: String(task._id)
+        });
+        if (abortReason === 'deleted') {
+          const enhancedError = createRerankEnhancedError(
+            RerankTaskCheckpointStageEnum.generate_evaldataset,
+            RerankTrainErrEnum.rerankTaskNotExist,
+            RerankTrainSuggestionEnum.rerankTaskNotExist
+          );
+          throw new TrainTaskUnrecoverableError(enhancedError);
+        }
+        if (abortReason === 'cancelled') {
+          const enhancedError = createRerankEnhancedError(
+            RerankTaskCheckpointStageEnum.generate_evaldataset,
+            RerankTrainErrEnum.rerankFinetuneCancelled,
+            RerankTrainSuggestionEnum.rerankFinetuneCancelled
+          );
+          throw new TrainTaskUnrecoverableError(enhancedError);
+        }
+
         const retrievalResults = await performDatasetSearch(task, datasetIds, item.question);
 
         return {
@@ -215,6 +265,8 @@ async function generateEvalDatasetFromDatasets(task: RerankTrainTaskSchemaType):
       })
     )
   );
+
+  propagateAbortFromResults(searchResults);
 
   const enrichedEvalDataItems = searchResults
     .filter((result): result is PromiseFulfilledResult<any> => result.status === 'fulfilled')

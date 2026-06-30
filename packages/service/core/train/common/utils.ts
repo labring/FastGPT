@@ -4,6 +4,22 @@ import { Types } from 'mongoose';
 import type { GenericEnhancedErrorMessage } from '@fastgpt/global/core/train/common/error';
 import { trainEnv } from './env';
 import type { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
+import { TrainTaskUnrecoverableError } from './errors';
+
+/**
+ * Check Promise.allSettled results and re-throw any TrainTaskUnrecoverableError.
+ *
+ * When pLimit callbacks check abort signals and throw, Promise.allSettled silently
+ * collects them as rejections. This must be called immediately after allSettled
+ * to propagate abort signals before any "not enough results" fallthrough logic.
+ */
+export function propagateAbortFromResults(results: PromiseSettledResult<any>[]): void {
+  for (const result of results) {
+    if (result.status === 'rejected' && result.reason instanceof TrainTaskUnrecoverableError) {
+      throw result.reason;
+    }
+  }
+}
 
 /**
  * Concurrency control utility using promise limiting
@@ -473,7 +489,8 @@ export async function sampleDataFromDataset(
         : undefined;
 
   const wasExplicitlyCapped = sampleSize != null && sampleSize > trainEnv.TRAIN_MAX_CHUNK_COUNT;
-  const wasAutomaticallyCapped = sampleSize == null && totalKbCount > trainEnv.TRAIN_MAX_CHUNK_COUNT;
+  const wasAutomaticallyCapped =
+    sampleSize == null && totalKbCount > trainEnv.TRAIN_MAX_CHUNK_COUNT;
 
   if (effectiveSampleSize != null && (wasExplicitlyCapped || wasAutomaticallyCapped)) {
     addLog.info('Sampling capped to max chunk count', {

@@ -15,7 +15,8 @@ import {
   buildModelEndpoint,
   getTrainStageKey,
   formatTrainTaskError,
-  makeCreateEnhancedError
+  makeCreateEnhancedError,
+  propagateAbortFromResults
 } from '../common/utils';
 
 // Re-export common utilities for backward compatibility
@@ -25,7 +26,8 @@ export {
   fetchSampledContent,
   buildModelEndpoint,
   getTrainStageKey,
-  formatTrainTaskError
+  formatTrainTaskError,
+  propagateAbortFromResults
 };
 
 // Re-export constants used by rerank-specific callers
