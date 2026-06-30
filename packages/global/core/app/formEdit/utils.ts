@@ -1,4 +1,4 @@
-import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '../../workflow/constants';
+import { NodeInputKeyEnum } from '../../workflow/constants';
 import { FlowNodeInputTypeEnum } from '../../workflow/node/constant';
 import type { FlowNodeInputItemType } from '../../workflow/type/io';
 import type { FlowNodeTemplateType } from '../../workflow/type/node';
@@ -23,6 +23,7 @@ const agentGeneratedDenyRenderTypes = new Set<FlowNodeInputTypeEnum>([
   FlowNodeInputTypeEnum.settingLLMModel,
   FlowNodeInputTypeEnum.hidden,
   FlowNodeInputTypeEnum.customVariable,
+  FlowNodeInputTypeEnum.custom,
   FlowNodeInputTypeEnum.addInputParam,
   FlowNodeInputTypeEnum.selectDataset,
   FlowNodeInputTypeEnum.selectDatasetParamsModal,
@@ -53,7 +54,11 @@ export const canInputBeAgentGenerated = (
 export const initToolInputTypeByDefaultMode = <T extends FlowNodeInputItemType>(input: T): T => {
   if (isAgentGeneratedToolInput(input)) return input;
 
-  if (!input.toolDescription || !canInputBeAgentGenerated(input)) {
+  if (
+    !input.toolDescription ||
+    !canInputBeAgentGenerated(input) ||
+    input.renderTypeList.includes(FlowNodeInputTypeEnum.agentGenerated)
+  ) {
     return input;
   }
 
@@ -137,8 +142,10 @@ export const checkNeedsUserConfiguration = (toolTemplate: {
   return (
     (toolTemplate.inputs.length > 0 &&
       toolTemplate.inputs.some((input) => {
+        const normalizedInput = initToolInputTypeByDefaultMode(input);
         // Agent 生成字段不需要开发者配置
-        if (isAgentGeneratedToolInput(input) && canInputBeAgentGenerated(input)) return false;
+        if (isAgentGeneratedToolInput(normalizedInput) && canInputBeAgentGenerated(normalizedInput))
+          return false;
         // 禁用流的不需要配置
         if (input.key === NodeInputKeyEnum.forbidStream) return false;
         // 历史记录不需要配置
@@ -180,10 +187,12 @@ export const getToolConfigStatus = ({
 
   // Find all inputs that need configuration(Only check the required items)
   const configInputs = tool.inputs.filter((input) => {
+    const normalizedInput = initToolInputTypeByDefaultMode(input);
     if (input.key === NodeInputKeyEnum.forbidStream) return false;
     if (input.key === NodeInputKeyEnum.history) return false;
     if (input.key === NodeInputKeyEnum.systemInputConfig) return true;
-    if (isAgentGeneratedToolInput(input) && canInputBeAgentGenerated(input)) return false;
+    if (isAgentGeneratedToolInput(normalizedInput) && canInputBeAgentGenerated(normalizedInput))
+      return false;
     if (input.required !== true) return false;
     return input.renderTypeList.some((type) => formRenderTypesMap[type]);
   });

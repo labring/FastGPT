@@ -396,7 +396,7 @@ describe('checkNeedsUserConfiguration', () => {
           }),
           createMockInput({
             key: 'input3',
-            renderTypeList: [FlowNodeInputTypeEnum.input],
+            renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
             toolDescription: 'Has description'
           })
         ]
@@ -709,7 +709,7 @@ describe('getToolConfigStatus', () => {
       const tool = {
         inputs: [
           createMockInput({
-            renderTypeList: [FlowNodeInputTypeEnum.input],
+            renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
             required: true,
             toolDescription: 'Legacy description',
             value: ''
@@ -829,6 +829,21 @@ describe('agent generated tool input helpers', () => {
     expect(isAgentGeneratedToolInput(input)).toBe(false);
   });
 
+  it('should keep user-selected developer mode when agentGenerated is available', () => {
+    const input = initToolInputTypeByDefaultMode(
+      createMockInput({
+        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
+        toolDescription: 'Prompt to model'
+      })
+    );
+
+    expect(input.renderTypeList).toEqual([
+      FlowNodeInputTypeEnum.input,
+      FlowNodeInputTypeEnum.agentGenerated
+    ]);
+    expect(isAgentGeneratedToolInput(input)).toBe(false);
+  });
+
   it('should not initialize file fields as agent generated', () => {
     const input = initToolInputTypeByDefaultMode(
       createMockInput({
@@ -850,6 +865,18 @@ describe('agent generated tool input helpers', () => {
     );
 
     expect(input.renderTypeList).toEqual([FlowNodeInputTypeEnum.password]);
+    expect(isAgentGeneratedToolInput(input)).toBe(false);
+  });
+
+  it('should not initialize custom render fields as agent generated', () => {
+    const input = initToolInputTypeByDefaultMode(
+      createMockInput({
+        renderTypeList: [FlowNodeInputTypeEnum.custom],
+        toolDescription: 'Custom renderer'
+      })
+    );
+
+    expect(input.renderTypeList).toEqual([FlowNodeInputTypeEnum.custom]);
     expect(isAgentGeneratedToolInput(input)).toBe(false);
   });
 });

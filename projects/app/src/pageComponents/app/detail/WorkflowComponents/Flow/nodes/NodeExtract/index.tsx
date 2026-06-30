@@ -25,7 +25,7 @@ import ExtractFieldModal, { defaultField } from './ExtractFieldModal';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import RenderToolInput from '../render/RenderToolInput';
+import RenderToolInput, { hasDynamicToolInput } from '../render/RenderToolInput';
 import {
   type FlowNodeInputItemType,
   type FlowNodeOutputItemType
@@ -160,7 +160,7 @@ const NodeExtract = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
   return (
     <NodeCard minW={'400px'} selected={selected} {...data}>
-      {isTool && (
+      {isTool && hasDynamicToolInput(inputs) && (
         <>
           <Container>
             <RenderToolInput nodeId={nodeId} inputs={inputs} />
@@ -173,6 +173,7 @@ const NodeExtract = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           nodeId={nodeId}
           flowInputList={commonInputs}
           CustomComponent={CustomComponent}
+          isTool={isTool}
         />
       </Container>
       <Container>

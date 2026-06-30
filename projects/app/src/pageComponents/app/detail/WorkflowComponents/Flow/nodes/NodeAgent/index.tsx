@@ -18,7 +18,7 @@ import NodeCard from '../render/NodeCard';
 import Container from '../../components/Container';
 import RenderInput from '../render/RenderInput';
 import RenderOutput from '../render/RenderOutput';
-import RenderToolInput from '../render/RenderToolInput';
+import RenderToolInput, { hasDynamicToolInput } from '../render/RenderToolInput';
 import IOTitle from '../../components/IOTitle';
 import InputLabel from '../render/RenderInput/Label';
 import CatchError from '../render/RenderOutput/CatchError';
@@ -440,7 +440,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
   return (
     <NodeCard minW={'524px'} selected={selected} {...data}>
-      {isTool && (
+      {isTool && hasDynamicToolInput(inputs) && (
         <Container>
           <RenderToolInput nodeId={nodeId} inputs={inputs} />
         </Container>
@@ -839,7 +839,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           </Box>
         )}
         {datasetOtherInputs.length > 0 && (
-          <RenderInput nodeId={nodeId} flowInputList={datasetOtherInputs} />
+          <RenderInput nodeId={nodeId} flowInputList={datasetOtherInputs} isTool={isTool} />
         )}
       </Container>
 
