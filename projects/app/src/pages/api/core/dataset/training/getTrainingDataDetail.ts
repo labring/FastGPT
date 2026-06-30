@@ -3,7 +3,8 @@ import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/sch
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
-import { isS3ObjectKey, jwtSignS3DownloadToken } from '@fastgpt/service/common/s3/utils';
+import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
+import { jwtSignS3DownloadToken } from '@fastgpt/service/common/s3/security/token';
 import { addMinutes } from 'date-fns';
 import {
   GetTrainingDataDetailBodySchema,

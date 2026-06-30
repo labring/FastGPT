@@ -11,7 +11,7 @@ const FileApiPath = {
   proxyUpload: '/api/system/file/upload'
 } as const;
 
-type S3ObjectKeyTokenPayload = {
+export type S3ObjectKeyTokenPayload = {
   objectKey: string;
 };
 
@@ -77,7 +77,7 @@ const signToken = <T extends object>(payload: T, expiredTime: Date) => {
   });
 };
 
-const verifyToken = <T>(token: string, checker: (value: unknown) => value is T) => {
+export const verifyToken = <T>(token: string, checker: (value: unknown) => value is T) => {
   return new Promise<T>((resolve, reject) => {
     jwt.verify(token, serviceEnv.FILE_TOKEN_KEY, (err, payload) => {
       if (err) {
@@ -93,7 +93,7 @@ const verifyToken = <T>(token: string, checker: (value: unknown) => value is T) 
 };
 
 /* ==================== Payload 校验器 ==================== */
-const isS3ObjectKeyTokenPayload = (value: unknown): value is S3ObjectKeyTokenPayload => {
+export const isS3ObjectKeyTokenPayload = (value: unknown): value is S3ObjectKeyTokenPayload => {
   return isRecord(value) && isNonEmptyString(value.objectKey) && value.type === undefined;
 };
 
@@ -125,27 +125,6 @@ const isS3UploadTokenPayload = (value: unknown): value is S3UploadTokenPayload =
     isUploadConstraints(value.uploadConstraints)
   );
 };
-
-/* ==================== 旧版 objectKey token 兼容 ==================== */
-/**
- * 兼容旧调用方的文件链接签名入口。
- *
- * 历史实现会生成 `/api/system/file/[jwt]` 链接；现在统一签发代理下载 token，
- * 避免新增下载/预览链接继续落到旧接口。旧 objectKey token 的验证能力仍保留，
- * 用于兼容已经发出的历史链接。
- */
-export function jwtSignS3ObjectKey(objectKey: string, expiredTime: Date) {
-  return jwtSignS3DownloadToken({
-    objectKey,
-    bucketName: serviceEnv.STORAGE_PRIVATE_BUCKET,
-    expiredTime,
-    filename: path.basename(objectKey)
-  });
-}
-
-export function jwtVerifyS3ObjectKey(token: string) {
-  return verifyToken<S3ObjectKeyTokenPayload>(token, isS3ObjectKeyTokenPayload);
-}
 
 /* ==================== 代理下载 token ==================== */
 export function jwtSignS3DownloadToken({

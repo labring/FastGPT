@@ -1,9 +1,11 @@
 ---
-title: 'V4.15.0-beta7(进行中)'
+title: 'V4.15.0-beta7'
 description: 'FastGPT V4.15.0-beta7 更新说明'
 ---
 
 ## 📦 升级指南
+
+该版本为 4.15.0 正式版最后一个版本，如果有部署过 4.15.0-beta 版本的，需要先升级到该版本，执行完所有 beta 期间的升级操作后，再将所有镜像更新至正式版，正式版镜像可看 [4.15.0](./41500.mdx)
 
 ### 1. 开源版 config.json 配置移除
 
@@ -50,9 +52,10 @@ SSE_MCP_SERVER_PROXY_ENDPOINT=http://localhost:3003
 
 ### 3. 更新镜像
 
-参考 [4.15.0 正式版镜像](./41500.mdx)，全部镜像升级为正式版。
+- 更新 fastgpt-app(fastgpt 主服务) 镜像 tag: v4.15.0-beta7
+- 更新 fastgpt-pro(fastgpt 商业版) 镜像 tag: v4.15.0-beta7
 
-### 1. 执行工作流 V1 升级 V2 迁移（可选）
+### 4. 执行工作流 V1 升级 V2 迁移（可选）
 
 该步骤仅需部署过 `<4.8` 版本 FastGPT 的用户执行。
 
@@ -93,7 +96,7 @@ curl -X POST 'https://你的域名/api/admin/dataClean/v1WorkflowToV2' \
 5. 缺失 `node.name` 时用 `flowType` 兜底，缺失 `input.label` 时用 `input.key` 兜底。
 6. 写库前使用 `PublishAppBodySchema` 校验 `nodes`、`edges`、`chatConfig`，校验失败的文档不会写入，并会记录到接口返回结果。
 
-### 2. 执行工作流 V2 枚举与结构脏数据清洗
+### 5. 执行工作流 V2 枚举与结构脏数据清洗
 
 部分历史工作流节点可能把 TypeScript 枚举表达式字符串直接写入 MongoDB，例如：
 
@@ -151,8 +154,13 @@ curl -X POST 'https://你的域名/api/admin/dataClean/initWorkflowData' \
 
 返回结果会分别展示 `apps`、`appVersions` 和 `total` 的统计，包括扫描文档数、可修复文档数、Zod 错误数量、写入成功数量、写入失败数量、枚举表达式统计、变更样本和错误样本。
 
+## ⚙️ 优化
+
+1. 虚拟机文件地址使用新 API。
+
 ## 🐛 修复
 
 1. 修复历史 V1 工作流数据在新版保存结构下无法通过校验的问题。
 2. 修复工作流节点配置中 `FlowNodeInputTypeEnum.*`、`FlowNodeOutputTypeEnum.*` 和 `WorkflowIOValueTypeEnum.*` 枚举表达式字符串脏数据导致输入渲染和 IO 类型判断异常的问题。
 3. AgentV2 mcp 拿不到 schema。
+4. 批量执行节点最后未回写变量更新。

@@ -1,0 +1,51 @@
+---
+title: Sealos Devbox Sandbox Configuration
+description: Use Sealos Devbox as the FastGPT sandbox
+---
+
+import { Alert } from '@/components/docs/Alert';
+
+<Alert icon="⚠️" context="warning">
+  This feature is available only to commercial edition users. Contact support to request a key.
+  Billing is usage-based and deducted from your Sealos balance.
+</Alert>
+
+## Prerequisites
+
+1. FastGPT commercial edition is deployed, and the team has Agent Sandbox access.
+2. Request Sealos Devbox connection details from support: Devbox service URL, access token, and runtime image.
+
+## Configure FastGPT Environment Variables
+
+Add the following environment variables to `fastgpt-app` and `fastgpt-pro` .
+
+```dotenv
+# Use Sealos Devbox as the Agent Sandbox provider
+AGENT_SANDBOX_PROVIDER=sealosdevbox
+
+# Sealos Devbox Server API URL provided by support. The FastGPT main service must be able to access it.
+AGENT_SANDBOX_SEALOS_BASEURL=https://devbox-server.example.com
+# Access token provided by support
+AGENT_SANDBOX_SEALOS_TOKEN=replace_with_sealos_devbox_token
+
+# Sandbox image version
+AGENT_SANDBOX_SEALOS_IMAGE=hub.hzh.sealos.run/labring/devbox-sandbox:v0.2.0
+```
+
+## FAQ
+
+### AGENT_SANDBOX_PROXY_URL is required
+
+After `AGENT_SANDBOX_PROVIDER=sealosdevbox` is enabled, `AGENT_SANDBOX_PROXY_URL` is required. This is the browser-accessible WebSocket URL for the proxy service, such as `wss://sandbox-proxy.example.com` . It is not the FastGPT main site URL.
+
+### AGENT_SANDBOX_SEALOS_IMAGE is required
+
+The `sealosdevbox` provider requires `AGENT_SANDBOX_SEALOS_IMAGE` . Use the Agent Sandbox runtime image provided by support or the image that matches your current FastGPT version.
+
+### Browser WebSocket connection fails
+
+Check that the proxy service is reachable from the browser and that your reverse proxy supports WebSocket Upgrade. If FastGPT is accessed over HTTPS, `AGENT_SANDBOX_PROXY_URL` should use `wss://` to avoid mixed-content blocking.
+
+### proxy validation fails or returns 401
+
+Make sure `AGENT_SANDBOX_PROXY_SECRET` is exactly the same in the FastGPT main service and `fastgpt-agent-sandbox-proxy` , and that it is at least 32 characters long.

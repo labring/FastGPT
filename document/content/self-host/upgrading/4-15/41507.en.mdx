@@ -1,11 +1,61 @@
 ---
-title: 'V4.15.0-beta7 (In Progress)'
+title: 'V4.15.0-beta7'
 description: 'FastGPT V4.15.0-beta7 Release Notes'
 ---
 
 ## 📦 Upgrade Guide
 
-### 1. Run the Workflow V1 to V2 Migration (Optional)
+This is the final beta release before the 4.15.0 stable release. If you deployed any 4.15.0-beta version, upgrade to this version first, complete all upgrade steps introduced during the beta period, and then update all images to the stable release. See [4.15.0](./41500.mdx) for the stable release images.
+
+### 1. Remove Open-Source `config.json` Configuration
+
+The `config.json` configuration file has been removed. All settings now use environment variables:
+
+```dotenv
+# MCP Server proxy endpoint, used by the MCP usage page to build the SSE URL (do not include a trailing /)
+SSE_MCP_SERVER_PROXY_ENDPOINT=http://localhost:3003
+# ==================== Enhanced PDF Parsing (Optional) ====================
+# Custom PDF parsing service URL
+# CUSTOM_PDF_PARSE_URL=
+# Custom PDF parsing service key
+# CUSTOM_PDF_PARSE_KEY=
+# Doc2x PDF parsing service key
+# DOC2X_KEY=
+# IntSig TextIn service App ID
+# TEXTIN_APP_ID=
+# IntSig TextIn service Secret Code
+# TEXTIN_SECRET_CODE=
+
+# Vector search hnsw ef_search parameter. Applies only to PG / OB / OpenGauss
+HNSW_EF_SEARCH=100
+# Maximum scanned tuple count for vector search. Applies only to PG
+HNSW_MAX_SCAN_TUPLES=100000
+
+#  ==================== Knowledge Base Processing Concurrency Control  ====================
+# Maximum concurrency for the Knowledge Base file parsing queue
+DATASET_PARSE_MAX_PROCESS=10
+# Maximum concurrency for the vector training queue
+VECTOR_MAX_PROCESS=10
+# Maximum concurrency for the Q&A splitting queue
+QA_MAX_PROCESS=10
+# Maximum concurrency for the image understanding model processing queue
+VLM_MAX_PROCESS=10
+```
+
+### 2. Add the SSE MCP Endpoint for the Commercial Edition
+
+This configuration has been removed from the admin panel. Add the following environment variable to the `fastgpt` service:
+
+```dotenv
+SSE_MCP_SERVER_PROXY_ENDPOINT=http://localhost:3003
+```
+
+### 3. Update Images
+
+- Update the fastgpt-app (FastGPT main service) image tag to v4.15.0-beta7.
+- Update the fastgpt-pro (FastGPT Commercial Edition) image tag to v4.15.0-beta7.
+
+### 4. Run the Workflow V1 to V2 Migration (Optional)
 
 Only users who have deployed a FastGPT version earlier than `<4.8` need to run this step.
 
@@ -46,7 +96,7 @@ Migration behavior:
 5. Missing `node.name` falls back to `flowType`, and missing `input.label` falls back to `input.key`.
 6. Before writing, the script validates `nodes`, `edges`, and `chatConfig` with `PublishAppBodySchema`. Documents that fail validation are not written and are included in the endpoint response.
 
-### 2. Run the Workflow V2 Enum and Structure Cleanup
+### 5. Run the Workflow V2 Enum and Structure Cleanup
 
 Some historical workflow nodes may have stored TypeScript enum expression strings directly in MongoDB, for example:
 
@@ -104,12 +154,13 @@ Cleanup behavior:
 
 The response includes separate statistics for `apps`, `appVersions`, and `total`, including scanned documents, fixable documents, Zod error count, successful writes, failed writes, enum expression statistics, change samples, and error samples.
 
-### 3. Update Images
+## ⚙️ Optimizations
 
-See the [4.15.0 stable image tags](./41500.mdx) and update all images to the stable release.
+1. Virtual machine file URLs now use the new API.
 
 ## 🐛 Fixes
 
 1. Fixed historical V1 workflow data that could fail validation under the new save payload structure.
 2. Fixed dirty `FlowNodeInputTypeEnum.*`, `FlowNodeOutputTypeEnum.*`, and `WorkflowIOValueTypeEnum.*` expression strings in workflow node configuration that could break input rendering and IO type checks.
 3. Fixed AgentV2 MCP not being able to retrieve schemas.
+4. Fixed variable updates not being written back at the end of batch execution nodes.
