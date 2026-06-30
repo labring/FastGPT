@@ -12,8 +12,6 @@ import path from 'node:path';
 import type { ParsedFileContentS3KeyParams } from './sources/dataset/type';
 import type { HelperBotTypeEnumType } from '@fastgpt/global/core/chat/helperBot/type';
 
-export { jwtSignS3ObjectKey, jwtVerifyS3ObjectKey, jwtSignS3DownloadToken } from './security/token';
-
 // S3文件名最大长度配置
 export const S3_FILENAME_MAX_LENGTH = 50;
 

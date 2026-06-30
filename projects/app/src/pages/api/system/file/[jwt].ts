@@ -1,13 +1,24 @@
+/* @deprecated 仅兼容旧 */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import { jwtVerifyS3ObjectKey, isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
+import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { ensureTextContentTypeCharset } from '@fastgpt/service/common/s3/utils/mime';
 import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
 import { getContentDisposition } from '@fastgpt/global/common/file/tools';
 import path from 'path';
+import {
+  verifyToken,
+  type S3ObjectKeyTokenPayload,
+  isS3ObjectKeyTokenPayload
+} from '@fastgpt/service/common/s3/security/token';
 const logger = getLogger(LogCategories.INFRA.FILE);
+
+/* ==================== 旧版 objectKey token 兼容 ==================== */
+export function jwtVerifyS3ObjectKey(token: string) {
+  return verifyToken<S3ObjectKeyTokenPayload>(token, isS3ObjectKeyTokenPayload);
+}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {

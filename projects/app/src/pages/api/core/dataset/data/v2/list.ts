@@ -9,7 +9,8 @@ import { MongoDatasetImageSchema } from '@fastgpt/service/core/dataset/image/sch
 import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { addHours } from 'date-fns';
-import { jwtSignS3DownloadToken, isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
+import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
+import { jwtSignS3DownloadToken } from '@fastgpt/service/common/s3/security/token';
 import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
 import {
   GetDatasetDataListBodySchema,

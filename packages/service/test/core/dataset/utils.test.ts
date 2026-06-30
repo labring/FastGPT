@@ -16,14 +16,17 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 
 vi.mock('@fastgpt/service/common/s3/utils', () => ({
-  jwtSignS3DownloadToken: vi.fn(
-    ({ objectKey }: { objectKey: string }) =>
-      `https://example.com/api/system/file/download/mock-jwt-token-${objectKey}`
-  ),
   isS3ObjectKey: vi.fn((key: string, source: string) => {
     if (!key) return false;
     return key.startsWith(`${source}/`);
   })
+}));
+
+vi.mock('@fastgpt/service/common/s3/security/token', () => ({
+  jwtSignS3DownloadToken: vi.fn(
+    ({ objectKey }: { objectKey: string }) =>
+      `https://example.com/api/system/file/download/mock-jwt-token-${objectKey}`
+  )
 }));
 
 vi.mock('@fastgpt/service/common/s3/contracts/type', () => ({

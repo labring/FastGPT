@@ -4,7 +4,7 @@ import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { addHours } from 'date-fns';
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
-import { jwtSignS3DownloadToken } from '@fastgpt/service/common/s3/utils';
+import { jwtSignS3DownloadToken } from '@fastgpt/service/common/s3/security/token';
 import { isAuthorizedTempFileS3Key } from '@fastgpt/service/common/s3/sources/temp/key';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {

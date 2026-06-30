@@ -39,7 +39,7 @@ export const sandboxGetFileUrlTool = defineTool({
           key,
           expiredHours: 2,
           external: true,
-          mode: 'proxy'
+          mode: 'presigned'
         });
 
         return { fileUrl, filename };

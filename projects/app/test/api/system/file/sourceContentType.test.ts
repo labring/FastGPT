@@ -1,21 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import proxyDownloadHandler from '@/pages/api/system/file/download/[token]';
 import legacyFileHandler from '@/pages/api/system/file/[jwt]';
-import { jwtVerifyS3DownloadToken } from '@fastgpt/service/common/s3/security/token';
+import { jwtVerifyS3DownloadToken, verifyToken } from '@fastgpt/service/common/s3/security/token';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
-import { jwtVerifyS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 
 vi.mock('@fastgpt/service/common/s3/security/token', () => ({
-  jwtVerifyS3DownloadToken: vi.fn()
-}));
-
-vi.mock('@fastgpt/service/common/s3/utils', () => ({
-  jwtVerifyS3ObjectKey: vi.fn(),
-  isS3ObjectKey: vi.fn(
-    (key: string | undefined, source: string) =>
-      typeof key === 'string' && key.startsWith(`${source}/`)
-  )
+  jwtVerifyS3DownloadToken: vi.fn(),
+  verifyToken: vi.fn(),
+  isS3ObjectKeyTokenPayload: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/common/s3/sources/dataset', () => ({
@@ -123,7 +116,7 @@ describe('system file response content type', () => {
     };
     vi.mocked(getS3DatasetSource).mockReturnValue(datasetSource as any);
     vi.mocked(getS3ChatSource).mockReturnValue({} as any);
-    vi.mocked(jwtVerifyS3ObjectKey).mockResolvedValue({
+    vi.mocked(verifyToken).mockResolvedValue({
       objectKey: 'dataset/team/page.html'
     });
 

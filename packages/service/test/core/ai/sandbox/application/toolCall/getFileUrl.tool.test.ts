@@ -57,7 +57,7 @@ describe('sandboxGetFileUrlTool', () => {
       key: 'chat/file.txt',
       expiredHours: 2,
       external: true,
-      mode: 'proxy'
+      mode: 'presigned'
     });
   });
 });
