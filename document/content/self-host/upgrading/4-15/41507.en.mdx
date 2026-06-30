@@ -160,6 +160,44 @@ Cleanup behavior:
 
 The response includes separate statistics for `apps`, `appVersions`, and `total`, including scanned documents, fixable documents, Zod error count, successful writes, failed writes, enum expression statistics, change samples, and error samples.
 
+### 7. Clean Up Duplicate Chat Headers
+
+Some historical data may contain duplicate `chats` records with the same `appId + chatId`, which can prevent the new unique index from being created. After upgrading, run the duplicate chat header cleanup script to keep the record with the latest `updateTime`. If multiple records have the same `updateTime`, the record with the largest `_id` is kept.
+
+Migration script path: `projects/app/src/pages/api/admin/dataClean/cleanupDuplicateChats.ts`. This endpoint is only for this upgrade migration and is not a public OpenAPI endpoint.
+
+The endpoint uses dry-run mode by default. It scans duplicate groups and returns samples without deleting data:
+
+```bash
+curl -X POST 'https://your-domain/api/admin/dataClean/cleanupDuplicateChats' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: YOUR_ROOT_KEY' \
+  -d '{"dryRun":true,"sampleLimit":20}'
+```
+
+After confirming the returned statistics, set `dryRun` to `false` to delete duplicates:
+
+```bash
+curl -X POST 'https://your-domain/api/admin/dataClean/cleanupDuplicateChats' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: YOUR_ROOT_KEY' \
+  -d '{"dryRun":false,"sampleLimit":20}'
+```
+
+Request parameters:
+
+| Parameter     | Type    | Default | Description                                                  |
+| ------------- | ------- | ------- | ------------------------------------------------------------ |
+| `dryRun`      | boolean | `true`  | Whether to scan and report statistics without deleting.      |
+| `sampleLimit` | number  | `20`    | Number of duplicate group samples to return. Range: `0~100`. |
+
+Cleanup behavior:
+
+1. Scans duplicate chat headers in the `chats` collection by `appId + chatId`.
+2. Keeps the record with the latest `updateTime`; if timestamps are equal, `_id` descending order is used as a stable fallback.
+3. In non-dry-run mode, deletes only duplicate `chats` headers. Messages in `chatitems` and `chat_item_responses` are not deleted.
+4. The response includes duplicate group count, estimated delete count, actual delete count, and duplicate group samples.
+
 ## 🐛 Fixes
 
 1. Fixed historical V1 workflow data that could fail validation under the new save payload structure.

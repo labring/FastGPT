@@ -14,7 +14,7 @@ import {
   ChatItemResponseCollectionName
 } from '@fastgpt/service/core/chat/constants';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
-import { type ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatSourceTypeEnum, type ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { AppLogKeysEnum } from '@fastgpt/global/core/app/logs/constants';
 import { sanitizeCsvField } from '@fastgpt/service/common/file/csv';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
@@ -30,6 +30,10 @@ import { AppVersionCollectionName } from '@fastgpt/service/core/app/version/sche
 import { ExportChatLogsBodySchema } from '@fastgpt/global/openapi/core/app/log/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 const logger = getLogger(LogCategories.MODULE.APP.LOGS);
+
+const appChatSourceMatch = {
+  $or: [{ sourceType: ChatSourceTypeEnum.app }, { sourceType: { $exists: false } }]
+};
 
 const formatJsonString = (data: any) => {
   if (data == null) return '';
@@ -99,6 +103,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
 
   const where = {
     appId: new Types.ObjectId(appId),
+    $and: [appChatSourceMatch],
     // Feedback type filtering (BEFORE pagination for performance)
     ...(feedbackType === 'has_feedback' &&
       !unreadOnly && {
@@ -174,7 +179,16 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
             {
               $match: {
                 $expr: {
-                  $and: [{ $eq: ['$appId', '$$appId'] }, { $eq: ['$chatId', '$$chatId'] }]
+                  $and: [
+                    { $eq: ['$appId', '$$appId'] },
+                    { $eq: ['$chatId', '$$chatId'] },
+                    {
+                      $or: [
+                        { $eq: ['$sourceType', ChatSourceTypeEnum.app] },
+                        { $eq: [{ $type: '$sourceType' }, 'missing'] }
+                      ]
+                    }
+                  ]
                 }
               }
             },
@@ -248,7 +262,16 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
             {
               $match: {
                 $expr: {
-                  $and: [{ $eq: ['$appId', '$$appId'] }, { $eq: ['$chatId', '$$chatId'] }]
+                  $and: [
+                    { $eq: ['$appId', '$$appId'] },
+                    { $eq: ['$chatId', '$$chatId'] },
+                    {
+                      $or: [
+                        { $eq: ['$sourceType', ChatSourceTypeEnum.app] },
+                        { $eq: [{ $type: '$sourceType' }, 'missing'] }
+                      ]
+                    }
+                  ]
                 }
               }
             },

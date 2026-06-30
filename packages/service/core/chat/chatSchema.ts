@@ -135,7 +135,7 @@ const ChatSchema = new Schema({
 
 ChatSchema.index({ chatId: 1 });
 // Delete by appid; init chat; update chat; auth chat;
-ChatSchema.index({ appId: 1, chatId: 1, sourceType: 1 }, { unique: true });
+ChatSchema.index({ sourceType: 1, appId: 1, chatId: 1 }, { unique: true });
 
 // timer, clear history
 ChatSchema.index({ updateTime: -1, teamId: 1 });

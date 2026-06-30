@@ -31,6 +31,7 @@ describe('delete chat record api', () => {
       teamId: testUser.teamId,
       tmbId: testUser.tmbId,
       userId: testUser.userId,
+      sourceType: ChatSourceTypeEnum.app,
       appId,
       chatId,
       dataId,
@@ -60,6 +61,7 @@ describe('delete chat record api', () => {
     await MongoChat.create({
       teamId: testUser.teamId,
       tmbId: testUser.tmbId,
+      sourceType: ChatSourceTypeEnum.app,
       appId,
       chatId,
       source: ChatSourceEnum.test
@@ -180,7 +182,7 @@ describe('delete chat record api', () => {
     const skillChatId = getNanoid();
     const contentId = getNanoid();
 
-    await Promise.all([
+    const [, , legacyItem] = await Promise.all([
       MongoChat.create({
         teamId: testUser.teamId,
         tmbId: testUser.tmbId,
@@ -204,6 +206,7 @@ describe('delete chat record api', () => {
         teamId: testUser.teamId,
         tmbId: testUser.tmbId,
         userId: testUser.userId,
+        sourceType: ChatSourceTypeEnum.skillEdit,
         appId: skillId,
         chatId: skillChatId,
         dataId: contentId,
@@ -211,6 +214,17 @@ describe('delete chat record api', () => {
         value: [{ type: 'text', text: { content: 'legacy answer' } }]
       })
     ]);
+    await MongoChatItem.updateOne({ _id: legacyItem._id }, { $unset: { sourceType: '' } });
+    await MongoChatItem.updateOne(
+      {
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        appId: skillId,
+        chatId: skillChatId,
+        dataId: contentId,
+        'value.0.text.content': 'legacy answer'
+      },
+      { $unset: { sourceType: '' } }
+    );
 
     const res = await Call<DeleteChatRecordBodyType, Record<string, never>>(handler, {
       auth: testUser,

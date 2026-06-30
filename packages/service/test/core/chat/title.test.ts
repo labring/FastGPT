@@ -39,6 +39,7 @@ const createChat = (override: Record<string, unknown> = {}) =>
     chatId: base.chatId,
     teamId: base.teamId,
     tmbId: base.tmbId,
+    sourceType: base.sourceType,
     appId: base.appId,
     source: ChatSourceEnum.online,
     ...override

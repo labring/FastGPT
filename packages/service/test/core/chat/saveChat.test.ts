@@ -443,6 +443,7 @@ describe('pushChatRecords', () => {
       }).lean();
       await MongoChatItemResponse.create({
         teamId: testTeamId,
+        sourceType: ChatSourceTypeEnum.app,
         appId: testAppId,
         chatId: props.chatId,
         chatItemDataId: aiItem?.dataId,
@@ -555,6 +556,7 @@ describe('pushChatRecords', () => {
         chatId: props.chatId,
         teamId: testTeamId,
         tmbId: testTmbId,
+        sourceType: ChatSourceTypeEnum.app,
         source: props.source,
         chatGenerateStatus: ChatGenerateStatusEnum.generating,
         hasBeenRead: false
@@ -563,6 +565,7 @@ describe('pushChatRecords', () => {
         {
           teamId: testTeamId,
           tmbId: testTmbId,
+          sourceType: ChatSourceTypeEnum.app,
           appId: testAppId,
           chatId: props.chatId,
           dataId: responseChatItemId,
@@ -572,6 +575,7 @@ describe('pushChatRecords', () => {
         {
           teamId: testTeamId,
           tmbId: testTmbId,
+          sourceType: ChatSourceTypeEnum.app,
           appId: testAppId,
           chatId: props.chatId,
           dataId: responseChatItemId,
@@ -611,6 +615,7 @@ describe('pushChatRecords', () => {
         chatId: props.chatId,
         teamId: testTeamId,
         tmbId: testTmbId,
+        sourceType: ChatSourceTypeEnum.app,
         source: props.source,
         chatGenerateStatus: ChatGenerateStatusEnum.generating,
         hasBeenRead: false
@@ -618,6 +623,7 @@ describe('pushChatRecords', () => {
       await MongoChatItem.create({
         teamId: testTeamId,
         tmbId: testTmbId,
+        sourceType: ChatSourceTypeEnum.app,
         appId: testAppId,
         chatId: props.chatId,
         dataId: responseChatItemId,
@@ -702,6 +708,7 @@ describe('pushChatRecords', () => {
         chatId: 'test-chat-id',
         teamId: testTeamId,
         tmbId: testTmbId,
+        sourceType: ChatSourceTypeEnum.app,
         appId: testAppId,
         obj: ChatRoleEnum.Human,
         value: [
@@ -739,6 +746,7 @@ describe('pushChatRecords', () => {
         chatId: 'test-chat-id',
         teamId: testTeamId,
         tmbId: testTmbId,
+        sourceType: ChatSourceTypeEnum.app,
         appId: testAppId,
         obj: ChatRoleEnum.AI,
         value: [
@@ -776,6 +784,7 @@ describe('pushChatRecords', () => {
         chatId: 'test-chat-id',
         teamId: testTeamId,
         tmbId: testTmbId,
+        sourceType: ChatSourceTypeEnum.app,
         appId: testAppId,
         obj: ChatRoleEnum.AI,
         dataId: 'data-id-1',
@@ -853,6 +862,7 @@ describe('pushChatRecords', () => {
         chatId: 'test-chat-id',
         teamId: testTeamId,
         tmbId: testTmbId,
+        sourceType: ChatSourceTypeEnum.app,
         appId: testAppId,
         obj: ChatRoleEnum.AI,
         dataId: 'data-id-1',
@@ -942,6 +952,7 @@ describe('pushChatRecords', () => {
         chatId: 'test-chat-id',
         teamId: testTeamId,
         tmbId: testTmbId,
+        sourceType: ChatSourceTypeEnum.app,
         appId: testAppId,
         obj: ChatRoleEnum.AI,
         dataId: 'data-id-1',
@@ -1068,6 +1079,7 @@ describe('pushChatRecords', () => {
         chatId: 'test-chat-id',
         teamId: testTeamId,
         tmbId: testTmbId,
+        sourceType: ChatSourceTypeEnum.app,
         appId: testAppId,
         obj: ChatRoleEnum.AI,
         dataId: 'plan-ask-data-id',
@@ -1125,6 +1137,7 @@ describe('pushChatRecords', () => {
         chatId: 'test-chat-id',
         teamId: testTeamId,
         tmbId: testTmbId,
+        sourceType: ChatSourceTypeEnum.app,
         appId: testAppId,
         obj: ChatRoleEnum.AI,
         dataId: 'plan-ask-data-id',
@@ -1171,6 +1184,7 @@ describe('pushChatRecords', () => {
         chatId: props.chatId,
         teamId: testTeamId,
         tmbId: testTmbId,
+        sourceType: ChatSourceTypeEnum.app,
         appId: testAppId,
         source: props.source,
         title: 'Test Chat'
@@ -1180,6 +1194,7 @@ describe('pushChatRecords', () => {
           chatId: props.chatId,
           teamId: testTeamId,
           tmbId: testTmbId,
+          sourceType: ChatSourceTypeEnum.app,
           appId: testAppId,
           obj: ChatRoleEnum.Human,
           dataId: 'prepared-round-data-id',
@@ -1193,6 +1208,7 @@ describe('pushChatRecords', () => {
           chatId: props.chatId,
           teamId: testTeamId,
           tmbId: testTmbId,
+          sourceType: ChatSourceTypeEnum.app,
           appId: testAppId,
           obj: ChatRoleEnum.AI,
           dataId: 'prepared-round-data-id',
@@ -1267,6 +1283,7 @@ describe('pushChatRecords', () => {
         chatId: 'test-chat-id',
         teamId: testTeamId,
         tmbId: testTmbId,
+        sourceType: ChatSourceTypeEnum.app,
         appId: testAppId,
         obj: ChatRoleEnum.AI,
         dataId: 'data-id-1',
@@ -1313,6 +1330,7 @@ describe('pushChatRecords', () => {
         chatId: 'test-chat-id',
         teamId: testTeamId,
         tmbId: testTmbId,
+        sourceType: ChatSourceTypeEnum.app,
         appId: testAppId,
         obj: ChatRoleEnum.AI,
         dataId: 'data-id-1',
@@ -1381,6 +1399,7 @@ describe('pushChatRecords', () => {
         chatId: 'test-chat-id',
         teamId: testTeamId,
         tmbId: testTmbId,
+        sourceType: ChatSourceTypeEnum.app,
         appId: testAppId,
         obj: ChatRoleEnum.AI,
         dataId: 'data-id-1',
@@ -1438,6 +1457,7 @@ describe('pushChatRecords', () => {
         chatId: 'test-chat-id',
         teamId: testTeamId,
         tmbId: testTmbId,
+        sourceType: ChatSourceTypeEnum.app,
         appId: testAppId,
         obj: ChatRoleEnum.AI,
         dataId: 'data-id-1',
@@ -1460,6 +1480,7 @@ describe('pushChatRecords', () => {
       // Create an existing response
       await MongoChatItemResponse.create({
         teamId: testTeamId,
+        sourceType: ChatSourceTypeEnum.app,
         appId: testAppId,
         chatId: 'test-chat-id',
         chatItemDataId: 'data-id-1',
@@ -1474,6 +1495,7 @@ describe('pushChatRecords', () => {
       });
       await MongoChatItemResponse.create({
         teamId: testTeamId,
+        sourceType: ChatSourceTypeEnum.app,
         appId: testAppId,
         chatId: 'test-chat-id',
         chatItemDataId: 'data-id-1',

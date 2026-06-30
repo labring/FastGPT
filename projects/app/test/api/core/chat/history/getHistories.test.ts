@@ -51,6 +51,7 @@ describe('getHistories api test', () => {
       MongoChat.create({
         teamId: testUser.teamId,
         tmbId: testUser.tmbId,
+        sourceType: ChatSourceTypeEnum.app,
         appId,
         chatId: chatIds[0],
         source: ChatSourceEnum.online,
@@ -60,6 +61,7 @@ describe('getHistories api test', () => {
       MongoChat.create({
         teamId: testUser.teamId,
         tmbId: testUser.tmbId,
+        sourceType: ChatSourceTypeEnum.app,
         appId,
         chatId: chatIds[1],
         source: ChatSourceEnum.online,
@@ -69,6 +71,7 @@ describe('getHistories api test', () => {
       MongoChat.create({
         teamId: testUser.teamId,
         tmbId: testUser.tmbId,
+        sourceType: ChatSourceTypeEnum.app,
         appId,
         chatId: chatIds[2],
         source: ChatSourceEnum.online,
@@ -138,6 +141,7 @@ describe('getHistories api test', () => {
     await MongoChat.create({
       teamId: testUser.teamId,
       tmbId: testUser.tmbId,
+      sourceType: ChatSourceTypeEnum.app,
       appId,
       chatId: apiChatId,
       source: ChatSourceEnum.api,
@@ -243,6 +247,7 @@ describe('getHistories api test', () => {
     await MongoChat.create({
       teamId: otherUser.teamId,
       tmbId: otherUser.tmbId,
+      sourceType: ChatSourceTypeEnum.app,
       appId: String(otherApp._id),
       chatId: otherChatId,
       source: ChatSourceEnum.online,
@@ -292,6 +297,7 @@ describe('getHistories api test', () => {
       MongoChat.create({
         teamId: testUser.teamId,
         tmbId: testUser.tmbId,
+        sourceType: ChatSourceTypeEnum.app,
         appId,
         chatId: shareChatId,
         source: ChatSourceEnum.share,
@@ -302,6 +308,7 @@ describe('getHistories api test', () => {
       MongoChat.create({
         teamId: testUser.teamId,
         tmbId: testUser.tmbId,
+        sourceType: ChatSourceTypeEnum.app,
         appId,
         chatId: otherShareChatId,
         source: ChatSourceEnum.share,
@@ -482,12 +489,17 @@ describe('getHistories api test', () => {
       MongoChat.create({
         teamId: testUser.teamId,
         tmbId: testUser.tmbId,
+        sourceType: ChatSourceTypeEnum.skillEdit,
         appId: skillId,
         chatId: legacyChatId,
         source: ChatSourceEnum.test,
         title: 'Legacy Skill Debug Session'
       })
     ]);
+    await MongoChat.updateOne(
+      { appId: skillId, chatId: legacyChatId },
+      { $unset: { sourceType: '' } }
+    );
 
     const res = await Call<GetHistoriesBodyType, any, GetHistoriesResponseType>(handler, {
       auth: testUser,

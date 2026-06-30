@@ -12,6 +12,7 @@ import type {
   GetLogUsersBody,
   GetLogUsersResponse
 } from '@fastgpt/global/openapi/core/app/log/api';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 type EmptyQuery = Record<string, never>;
 
@@ -99,6 +100,7 @@ describe('getUsers API', () => {
         appId: testAppId,
         teamId: testTeamId,
         tmbId: testTmbId,
+        sourceType: ChatSourceTypeEnum.app,
         source: 'online',
         updateTime: now,
         title: 'Chat 1'
@@ -108,6 +110,7 @@ describe('getUsers API', () => {
         appId: testAppId,
         teamId: testTeamId,
         tmbId: testTmbId,
+        sourceType: ChatSourceTypeEnum.app,
         source: 'online',
         updateTime: now,
         title: 'Chat 2'
@@ -118,6 +121,7 @@ describe('getUsers API', () => {
         teamId: testTeamId,
         tmbId: testTmbId,
         outLinkUid: 'external-user-1',
+        sourceType: ChatSourceTypeEnum.app,
         source: 'share',
         updateTime: now,
         title: 'Chat 3'
@@ -175,6 +179,7 @@ describe('getUsers API', () => {
         appId: testAppId,
         teamId: testTeamId,
         tmbId: teamMember2._id,
+        sourceType: ChatSourceTypeEnum.app,
         source: 'online',
         updateTime: now,
         title: 'Chat Search 1'
@@ -185,6 +190,7 @@ describe('getUsers API', () => {
         teamId: testTeamId,
         tmbId: testTmbId,
         outLinkUid: 'alice-user',
+        sourceType: ChatSourceTypeEnum.app,
         source: 'share',
         updateTime: now,
         title: 'Chat Search 2'
@@ -238,6 +244,7 @@ describe('getUsers API', () => {
         teamId: testTeamId,
         tmbId: testTmbId,
         outLinkUid: 'user-a',
+        sourceType: ChatSourceTypeEnum.app,
         source: 'share',
         updateTime: now,
         title: 'Sort 1'
@@ -248,6 +255,7 @@ describe('getUsers API', () => {
         teamId: testTeamId,
         tmbId: testTmbId,
         outLinkUid: 'user-a',
+        sourceType: ChatSourceTypeEnum.app,
         source: 'share',
         updateTime: now,
         title: 'Sort 2'
@@ -258,6 +266,7 @@ describe('getUsers API', () => {
         teamId: testTeamId,
         tmbId: testTmbId,
         outLinkUid: 'user-a',
+        sourceType: ChatSourceTypeEnum.app,
         source: 'share',
         updateTime: now,
         title: 'Sort 3'
@@ -269,6 +278,7 @@ describe('getUsers API', () => {
         teamId: testTeamId,
         tmbId: testTmbId,
         outLinkUid: 'user-b',
+        sourceType: ChatSourceTypeEnum.app,
         source: 'share',
         updateTime: now,
         title: 'Sort 4'
@@ -308,6 +318,7 @@ describe('getUsers API', () => {
         teamId: testTeamId,
         tmbId: testTmbId,
         outLinkUid: 'online-user',
+        sourceType: ChatSourceTypeEnum.app,
         source: 'online',
         updateTime: now,
         title: 'Online Chat'
@@ -318,6 +329,7 @@ describe('getUsers API', () => {
         teamId: testTeamId,
         tmbId: testTmbId,
         outLinkUid: 'share-user',
+        sourceType: ChatSourceTypeEnum.app,
         source: 'share',
         updateTime: now,
         title: 'Share Chat'
@@ -328,6 +340,7 @@ describe('getUsers API', () => {
         teamId: testTeamId,
         tmbId: testTmbId,
         outLinkUid: 'api-user',
+        sourceType: ChatSourceTypeEnum.app,
         source: 'api',
         updateTime: now,
         title: 'API Chat'

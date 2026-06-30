@@ -7,7 +7,8 @@ const base = {
   teamId: '654a4107c32f3bf5f998452f',
   tmbId: '654a4107c32f3bf5f9984530',
   appId: '67e0d5535c02d1d5cdede71f',
-  chatId: 'interactive-chat-id'
+  chatId: 'interactive-chat-id',
+  sourceType: ChatSourceTypeEnum.app
 };
 
 const chatSource = {

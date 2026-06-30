@@ -185,6 +185,7 @@ describe('prepare chat round', () => {
       chatId: params.chatId,
       teamId: testTeamId,
       tmbId: testTmbId,
+      sourceType: ChatSourceTypeEnum.app,
       source: params.source,
       sourceName: 'original-source-name',
       updateTime: originalUpdateTime,
@@ -208,6 +209,7 @@ describe('prepare chat round', () => {
     await MongoChatItem.create({
       teamId: testTeamId,
       tmbId: testTmbId,
+      sourceType: ChatSourceTypeEnum.app,
       appId: testAppId,
       chatId: params.chatId,
       dataId: 'duplicated-ai-data-id',
@@ -245,11 +247,13 @@ describe('prepare chat round', () => {
       chatId: params.chatId,
       teamId: testTeamId,
       tmbId: testTmbId,
+      sourceType: ChatSourceTypeEnum.app,
       source: params.source
     });
     await MongoChatItem.create({
       teamId: testTeamId,
       tmbId: testTmbId,
+      sourceType: ChatSourceTypeEnum.app,
       appId: testAppId,
       chatId: params.chatId,
       dataId: 'previous-ai-data-id',
@@ -386,6 +390,7 @@ describe('prepare chat round', () => {
       appId: testAppId,
       teamId: testTeamId,
       tmbId: testTmbId,
+      sourceType: ChatSourceTypeEnum.app,
       source: params.source,
       title: 'Manual Topic',
       customTitle: 'Manual Topic'

@@ -1,7 +1,7 @@
 import handler from '@/pages/api/core/chat/history/updateHistory';
 import type { UpdateHistoryBodyType } from '@fastgpt/global/openapi/core/chat/history/api';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatSourceEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
@@ -45,6 +45,7 @@ describe('updateHistory api test', () => {
     await MongoChat.create({
       teamId: testUser.teamId,
       tmbId: testUser.tmbId,
+      sourceType: ChatSourceTypeEnum.app,
       appId,
       chatId,
       source: ChatSourceEnum.test,

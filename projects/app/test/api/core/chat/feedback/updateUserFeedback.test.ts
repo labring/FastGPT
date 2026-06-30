@@ -4,7 +4,11 @@ import {
   type UpdateUserFeedbackResponseType
 } from '@fastgpt/global/openapi/core/chat/feedback/api';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatRoleEnum,
+  ChatSourceEnum,
+  ChatSourceTypeEnum
+} from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
@@ -39,6 +43,7 @@ describe('updateUserFeedback api test', () => {
     await MongoChat.create({
       teamId: testUser.teamId,
       tmbId: testUser.tmbId,
+      sourceType: ChatSourceTypeEnum.app,
       appId,
       chatId,
       source: ChatSourceEnum.test
@@ -63,6 +68,7 @@ describe('updateUserFeedback api test', () => {
       teamId: testUser.teamId,
       tmbId: testUser.tmbId,
       userId: testUser.userId,
+      sourceType: ChatSourceTypeEnum.app,
       appId,
       chatId,
       dataId,
@@ -291,6 +297,7 @@ describe('updateUserFeedback api test', () => {
       teamId: testUser.teamId,
       tmbId: testUser.tmbId,
       userId: testUser.userId,
+      sourceType: ChatSourceTypeEnum.app,
       appId,
       chatId,
       dataId,

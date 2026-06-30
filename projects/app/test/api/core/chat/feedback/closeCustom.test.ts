@@ -4,7 +4,11 @@ import {
   type CloseCustomFeedbackResponseType
 } from '@fastgpt/global/openapi/core/chat/feedback/api';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatRoleEnum,
+  ChatSourceEnum,
+  ChatSourceTypeEnum
+} from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
@@ -12,6 +16,8 @@ import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { getUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { describe, expect, it, beforeEach } from 'vitest';
+
+type EmptyQuery = Record<string, never>;
 
 describe.sequential('closeCustom api test', () => {
   let testUser: Awaited<ReturnType<typeof getUser>>;
@@ -38,6 +44,7 @@ describe.sequential('closeCustom api test', () => {
     await MongoChat.create({
       teamId: testUser.teamId,
       tmbId: testUser.tmbId,
+      sourceType: ChatSourceTypeEnum.app,
       appId,
       chatId,
       source: ChatSourceEnum.test
@@ -48,6 +55,7 @@ describe.sequential('closeCustom api test', () => {
       teamId: testUser.teamId,
       tmbId: testUser.tmbId,
       userId: testUser.userId,
+      sourceType: ChatSourceTypeEnum.app,
       appId,
       chatId,
       dataId,
@@ -65,18 +73,19 @@ describe.sequential('closeCustom api test', () => {
   });
 
   it('should close custom feedback successfully', async () => {
-    const res = await Call<CloseCustomFeedbackBodyType, {}, CloseCustomFeedbackResponseType>(
-      handler,
-      {
-        auth: testUser,
-        body: {
-          appId,
-          chatId,
-          dataId,
-          index: 1
-        }
+    const res = await Call<
+      CloseCustomFeedbackBodyType,
+      EmptyQuery,
+      CloseCustomFeedbackResponseType
+    >(handler, {
+      auth: testUser,
+      body: {
+        appId,
+        chatId,
+        dataId,
+        index: 1
       }
-    );
+    });
 
     expect(res.code).toBe(200);
     expect(res.error).toBeUndefined();
@@ -96,36 +105,38 @@ describe.sequential('closeCustom api test', () => {
   it('should fail when user does not have permission', async () => {
     const unauthorizedUser = await getUser(`unauthorized-user-close-${Math.random()}`);
 
-    const res = await Call<CloseCustomFeedbackBodyType, {}, CloseCustomFeedbackResponseType>(
-      handler,
-      {
-        auth: unauthorizedUser,
-        body: {
-          appId,
-          chatId,
-          dataId,
-          index: 0
-        }
+    const res = await Call<
+      CloseCustomFeedbackBodyType,
+      EmptyQuery,
+      CloseCustomFeedbackResponseType
+    >(handler, {
+      auth: unauthorizedUser,
+      body: {
+        appId,
+        chatId,
+        dataId,
+        index: 0
       }
-    );
+    });
 
     expect(res.code).toBe(500);
     expect(res.error).toBeDefined();
   });
 
   it('should handle closing first feedback', async () => {
-    const res = await Call<CloseCustomFeedbackBodyType, {}, CloseCustomFeedbackResponseType>(
-      handler,
-      {
-        auth: testUser,
-        body: {
-          appId,
-          chatId,
-          dataId,
-          index: 0
-        }
+    const res = await Call<
+      CloseCustomFeedbackBodyType,
+      EmptyQuery,
+      CloseCustomFeedbackResponseType
+    >(handler, {
+      auth: testUser,
+      body: {
+        appId,
+        chatId,
+        dataId,
+        index: 0
       }
-    );
+    });
 
     expect(res.code).toBe(200);
 
@@ -140,18 +151,19 @@ describe.sequential('closeCustom api test', () => {
   });
 
   it('should handle closing last feedback', async () => {
-    const res = await Call<CloseCustomFeedbackBodyType, {}, CloseCustomFeedbackResponseType>(
-      handler,
-      {
-        auth: testUser,
-        body: {
-          appId,
-          chatId,
-          dataId,
-          index: 2
-        }
+    const res = await Call<
+      CloseCustomFeedbackBodyType,
+      EmptyQuery,
+      CloseCustomFeedbackResponseType
+    >(handler, {
+      auth: testUser,
+      body: {
+        appId,
+        chatId,
+        dataId,
+        index: 2
       }
-    );
+    });
 
     expect(res.code).toBe(200);
 

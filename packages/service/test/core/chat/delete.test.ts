@@ -40,7 +40,7 @@ const createChatTree = async ({
 }) => {
   const teamId = '65f000000000000000000001';
   const tmbId = '65f000000000000000000002';
-  const chatSource = legacy ? {} : { sourceType };
+  const chatSource = { sourceType };
 
   await MongoChat.create({
     ...chatSource,

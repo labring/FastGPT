@@ -48,6 +48,7 @@ describe('delHistory api test', () => {
     await MongoChat.create({
       teamId: testUser.teamId,
       tmbId: testUser.tmbId,
+      sourceType: ChatSourceTypeEnum.app,
       appId,
       chatId,
       source: ChatSourceEnum.test
@@ -169,11 +170,20 @@ describe('delHistory api test', () => {
       MongoChat.create({
         teamId: testUser.teamId,
         tmbId: testUser.tmbId,
+        sourceType: ChatSourceTypeEnum.skillEdit,
         appId: skillId,
         chatId: legacyChatId,
         source: ChatSourceEnum.test
       })
     ]);
+    await MongoChat.updateOne(
+      {
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        appId: skillId,
+        chatId: legacyChatId
+      },
+      { $unset: { sourceType: '' } }
+    );
 
     const res = await Call<any, { skillId: string; chatId: string }, any>(handler, {
       auth: testUser,

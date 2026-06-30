@@ -76,6 +76,7 @@ describe('system openapi chat auth', () => {
     await MongoChat.create({
       teamId: user.teamId,
       tmbId: user.tmbId,
+      sourceType: ChatSourceTypeEnum.app,
       appId,
       chatId,
       source: ChatSourceEnum.api,
@@ -89,6 +90,7 @@ describe('system openapi chat auth', () => {
         teamId: user.teamId,
         tmbId: user.tmbId,
         userId: user.userId,
+        sourceType: ChatSourceTypeEnum.app,
         appId,
         chatId,
         dataId: firstDataId,
@@ -105,6 +107,7 @@ describe('system openapi chat auth', () => {
         teamId: user.teamId,
         tmbId: user.tmbId,
         userId: user.userId,
+        sourceType: ChatSourceTypeEnum.app,
         appId,
         chatId,
         dataId: secondDataId,

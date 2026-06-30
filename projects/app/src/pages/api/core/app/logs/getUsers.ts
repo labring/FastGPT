@@ -16,6 +16,11 @@ import {
 } from '@fastgpt/global/openapi/core/app/log/api';
 import { DEFAULT_USER_AVATAR } from '@fastgpt/global/common/system/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+
+const appChatSourceMatch = {
+  $or: [{ sourceType: ChatSourceTypeEnum.app }, { sourceType: { $exists: false } }]
+};
 
 async function handler(req: ApiRequestProps): Promise<GetLogUsersResponse> {
   const {
@@ -42,6 +47,7 @@ async function handler(req: ApiRequestProps): Promise<GetLogUsersResponse> {
       {
         $match: {
           appId: new Types.ObjectId(appId),
+          ...appChatSourceMatch,
           updateTime: {
             $gte: new Date(dateStart),
             $lte: new Date(dateEnd)

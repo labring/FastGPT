@@ -163,6 +163,44 @@ curl -X POST 'https://你的域名/api/admin/dataClean/initWorkflowData' \
 
 返回结果会分别展示 `apps`、`appVersions` 和 `total` 的统计，包括扫描文档数、可修复文档数、Zod 错误数量、写入成功数量、写入失败数量、枚举表达式统计、变更样本和错误样本。
 
+### 7. 清理重复 Chat 会话头
+
+部分历史数据可能存在相同 `appId + chatId` 的重复 `chats` 会话头，导致新版本创建唯一索引失败。升级后可执行重复会话头清理脚本，保留 `updateTime` 最新的一条记录；如果 `updateTime` 相同，则保留 `_id` 最大的一条。
+
+迁移脚本位置：`projects/app/src/pages/api/admin/dataClean/cleanupDuplicateChats.ts`。该接口仅用于本次升级迁移，不作为 OpenAPI 对外接口。
+
+接口默认 dry-run，只扫描重复组并返回样本，不删除数据：
+
+```bash
+curl -X POST 'https://你的域名/api/admin/dataClean/cleanupDuplicateChats' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: 你的ROOT_KEY' \
+  -d '{"dryRun":true,"sampleLimit":20}'
+```
+
+确认返回统计无误后，将 `dryRun` 改为 `false` 执行删除：
+
+```bash
+curl -X POST 'https://你的域名/api/admin/dataClean/cleanupDuplicateChats' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: 你的ROOT_KEY' \
+  -d '{"dryRun":false,"sampleLimit":20}'
+```
+
+接口参数：
+
+| 参数          | 类型    | 默认值 | 说明                                     |
+| ------------- | ------- | ------ | ---------------------------------------- |
+| `dryRun`      | boolean | `true` | 是否只扫描统计不删除。                   |
+| `sampleLimit` | number  | `20`   | 返回重复组样本数量，取值范围为 `0~100`。 |
+
+清理逻辑：
+
+1. 按 `appId + chatId` 扫描 `chats` 集合中的重复会话头。
+2. 每组保留 `updateTime` 最新的一条；若时间相同，用 `_id` 倒序作为稳定兜底。
+3. 非 dry-run 时只删除重复的 `chats` 会话头，不删除 `chatitems` 和 `chat_item_responses` 中的消息内容。
+4. 返回结果包含重复组数量、预计删除数量、实际删除数量和重复组样本。
+
 ## ⚙️ 优化
 
 1. 虚拟机文件地址使用新 API。

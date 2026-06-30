@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatSourceEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -311,6 +311,7 @@ describe('authChatCompletionHeaderRequest', () => {
       chatId,
       teamId: owner.teamId,
       tmbId: member.tmbId,
+      sourceType: ChatSourceTypeEnum.app,
       source: ChatSourceEnum.api
     });
 
@@ -346,6 +347,7 @@ describe('authChatCompletionHeaderRequest', () => {
       chatId,
       teamId: owner.teamId,
       tmbId: memberA.tmbId,
+      sourceType: ChatSourceTypeEnum.app,
       source: ChatSourceEnum.api
     });
 
