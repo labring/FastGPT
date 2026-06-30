@@ -294,7 +294,17 @@ curl -X POST 'https://{{host}}/api/admin/dataClean/initSandboxArchive' \
 
 v4.15.0 的 Docker Compose 部署文件默认**不再内置 OpenSandbox 和 `fastgpt-agent-sandbox-proxy`**，基础 FastGPT 服务可以先独立启动。默认 compose 中 `AGENT_SANDBOX_PROVIDER` 为空，不会启用 Agent Sandbox；如需使用 Agent V2 工具调用、Skill 编辑调试等虚拟机能力，需要先单独部署 `fastgpt-agent-sandbox-proxy`，再按下面方案选择一个沙盒 provider。
 
-本节只列出 v4.15.0 升级时的最短接入路径。完整的 proxy 环境变量、WebSocket 地址、密钥要求和常见问题说明见 [沙盒通用配置](../../config/sandbox/common.mdx)。
+本节只列出 v4.15.0 升级时的最短接入路径。完整的 proxy 环境变量、WebSocket 地址、密钥要求和常见问题说明见 [沙盒通用配置](../../config/sandbox/common.mdx)。如果需要固定使用 v4.15.0 对应的独立 compose 文件，可以下载：
+
+```bash
+# 仅部署 fastgpt-agent-sandbox-proxy，适合 Sealos Devbox 或已有 OpenSandbox 的环境
+curl -fsSL https://doc.fastgpt.cn/deploy/docker/v4.15/agent-proxy.yml -o agent-proxy.yml
+
+# 同时部署 opensandbox-server、volume-manager 和 fastgpt-agent-sandbox-proxy
+curl -fsSL https://doc.fastgpt.cn/deploy/docker/v4.15/opensandbox.yml -o opensandbox.yml
+```
+
+`https://doc.fastgpt.cn/deploy/agent-proxy.yml` 和 `https://doc.fastgpt.cn/deploy/opensandbox.yml` 会保留为当前推荐版本的快捷下载地址。升级到 v4.15.0 时，优先使用上面的 `docker/v4.15/` 固定路径。
 
 <Alert context="warning">
   `AGENT_SANDBOX_PROXY_SECRET` 必须同时配置在 `fastgpt-app` 和单独部署的
@@ -306,7 +316,19 @@ v4.15.0 的 Docker Compose 部署文件默认**不再内置 OpenSandbox 和 `fas
 
 适合不想自维护沙盒控制器、希望由 Sealos 托管 Devbox 运行环境的部署。
 
-在 `fastgpt-app` 环境变量中补充：
+先单独部署 `fastgpt-agent-sandbox-proxy`：
+
+```bash
+curl -fsSL https://doc.fastgpt.cn/deploy/docker/v4.15/agent-proxy.yml -o agent-proxy.yml
+docker compose -f agent-proxy.yml up -d
+```
+
+启动前建议先打开 `agent-proxy.yml` 修改两处配置：
+
+1. `x-agent-sandbox-proxy-secret`：改成生产环境自定义密钥，并与 `fastgpt-app` / `fastgpt-pro` 的 `AGENT_SANDBOX_PROXY_SECRET` 保持一致。
+2. `FASTGPT_APP_URL`：改成 proxy 容器能访问到的 FastGPT 主服务地址。默认值 `http://host.docker.internal:3000` 适合同一 Docker 宿主机部署；如果接入已有 compose 网络，也可以改成 `http://fastgpt-app:3000`。
+
+然后在 `fastgpt-app` / `fastgpt-pro` 环境变量中补充：
 
 ```dotenv
 AGENT_SANDBOX_PROVIDER=sealosdevbox
@@ -314,6 +336,7 @@ AGENT_SANDBOX_SEALOS_BASEURL=https://{{sealos-devbox-api-host}}
 AGENT_SANDBOX_SEALOS_TOKEN={{sealos-devbox-token}}
 AGENT_SANDBOX_SEALOS_WORK_DIRECTORY=/home/devbox/workspace
 AGENT_SANDBOX_SEALOS_IMAGE=ghcr.io/labring/fastgpt-agent-sandbox:v0.2.0
+AGENT_SANDBOX_PROXY_SECRET={{agent-sandbox-proxy-secret}}
 AGENT_SANDBOX_PROXY_URL=wss://{{agent-sandbox-proxy-domain}}
 ```
 
@@ -329,7 +352,21 @@ AGENT_SANDBOX_SEALOS_IMAGE=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-age
 
 适合已有 OpenSandbox 集群，或希望自行部署沙盒控制器的环境。v4.15.0 默认 compose 不再内置 `opensandbox-server` 和 `fastgpt-agent-sandbox-proxy`，需要先单独部署 OpenSandbox 和 proxy，再把 FastGPT 指向它们。
 
-在 `fastgpt-app` 环境变量中补充：
+如果还没有单独的 OpenSandbox，可以直接使用 v4.15.0 提供的独立 compose 文件。该文件会同时启动 `opensandbox-server`、`fastgpt-volume-manager` 和 `fastgpt-agent-sandbox-proxy`：
+
+```bash
+curl -fsSL https://doc.fastgpt.cn/deploy/docker/v4.15/opensandbox.yml -o opensandbox.yml
+docker compose -f opensandbox.yml up -d
+```
+
+启动前建议先打开 `opensandbox.yml` 修改下面几处配置：
+
+1. `x-agent-sandbox-proxy-secret`：改成生产环境自定义密钥，并与 FastGPT 侧 `AGENT_SANDBOX_PROXY_SECRET` 保持一致。
+2. `x-volume-manager-auth-token`：改成生产环境自定义 token，并与 FastGPT 侧 `AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN` 保持一致。
+3. `configs.opensandbox-config` 中 `[server].api_key`：改成生产环境自定义 API Key，并与 FastGPT 侧 `AGENT_SANDBOX_OPENSANDBOX_API_KEY` 保持一致。
+4. `fastgpt-agent-sandbox-proxy.environment.FASTGPT_APP_URL`：改成 proxy 容器能访问到的 FastGPT 主服务地址。
+
+在 `fastgpt-app` / `fastgpt-pro` 环境变量中补充：
 
 ```dotenv
 AGENT_SANDBOX_PROVIDER=opensandbox
@@ -339,8 +376,13 @@ AGENT_SANDBOX_OPENSANDBOX_RUNTIME=docker
 AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO=ghcr.io/labring/fastgpt-agent-sandbox
 AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG=v0.2.0
 AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY=true
+AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL=http://{{opensandbox-server}}:3005
+AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN={{volume-manager-token}}
+AGENT_SANDBOX_PROXY_SECRET={{agent-sandbox-proxy-secret}}
 AGENT_SANDBOX_PROXY_URL=wss://{{agent-sandbox-proxy-domain}}
 ```
+
+如果 `opensandbox.yml` 与 FastGPT 主服务部署在同一台宿主机，`AGENT_SANDBOX_OPENSANDBOX_BASEURL` 可使用 `http://{{host}}:8090`，`AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL` 可使用 `http://{{host}}:3005`；`AGENT_SANDBOX_PROXY_URL` 必须填写浏览器可访问的 `ws://` 或 `wss://` 地址。
 
 如果 OpenSandbox 使用 Kubernetes runtime，则把 `AGENT_SANDBOX_OPENSANDBOX_RUNTIME` 改为 `kubernetes`，并确保 OpenSandbox 侧已配置可拉取的 `execd`、`egress` 和 runtime 镜像。
 

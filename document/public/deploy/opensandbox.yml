@@ -1,0 +1,131 @@
+# OpenSandbox standalone deployment for FastGPT Agent/Skill Sandbox.
+# This file also starts fastgpt-agent-sandbox-proxy. After starting it, set FastGPT:
+# AGENT_SANDBOX_PROVIDER=opensandbox
+# AGENT_SANDBOX_OPENSANDBOX_BASEURL=http://<host>:8090
+# AGENT_SANDBOX_OPENSANDBOX_API_KEY=fastgpt-opensandbox-api-key
+# AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL=http://<host>:3005
+# AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN=vmtoken
+# AGENT_SANDBOX_PROXY_SECRET=default_fastgpt_agent_sandbox_proxy_secret
+# AGENT_SANDBOX_PROXY_URL=ws://<host>:1006
+
+x-agent-sandbox-proxy-secret: &x-agent-sandbox-proxy-secret "default_fastgpt_agent_sandbox_proxy_secret"
+x-volume-manager-auth-token: &x-volume-manager-auth-token "vmtoken"
+x-no-proxy-config: &x-no-proxy-config
+  NO_PROXY: localhost,127.0.0.1,::1,host.docker.internal,opensandbox-server,fastgpt-volume-manager,fastgpt-agent-sandbox-proxy,fastgpt-app
+  no_proxy: localhost,127.0.0.1,::1,host.docker.internal,opensandbox-server,fastgpt-volume-manager,fastgpt-agent-sandbox-proxy,fastgpt-app
+
+services:
+  opensandbox-server:
+    image: opensandbox/server:v0.1.9
+    container_name: fastgpt-opensandbox-server
+    restart: always
+    ports:
+      - 8090:8090
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    configs:
+      - source: opensandbox-config
+        target: /etc/opensandbox/config.toml
+    environment:
+      <<: [*x-no-proxy-config]
+      SANDBOX_CONFIG_PATH: /etc/opensandbox/config.toml
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8090/health',timeout=3).status==200 else 1)"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  fastgpt-volume-manager:
+    image: ghcr.io/labring/fastgpt-agent-volume-manager:v0.2.0
+    container_name: fastgpt-volume-manager
+    restart: always
+    ports:
+      - 3005:3000
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      <<: [*x-no-proxy-config]
+      PORT: 3000
+      VM_RUNTIME: docker
+      VM_AUTH_TOKEN: *x-volume-manager-auth-token
+      VM_VOLUME_NAME_PREFIX: fastgpt-session
+      VM_LOG_LEVEL: info
+      VM_DOCKER_API_VERSION: v1.44
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "bun",
+          "-e",
+          "fetch('http://localhost:3000/health').then((res) => { if (!res.ok) throw new Error(String(res.status)); })"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  fastgpt-agent-sandbox-proxy:
+    image: ghcr.io/labring/fastgpt-agent-sandbox-proxy:v0.2.0-beta2
+    container_name: fastgpt-agent-sandbox-proxy
+    restart: always
+    ports:
+      - 1006:1006
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      <<: [*x-no-proxy-config]
+      PORT: 1006
+      AGENT_SANDBOX_PROXY_SECRET: *x-agent-sandbox-proxy-secret
+      FASTGPT_APP_URL: http://host.docker.internal:3000
+      FASTGPT_APP_REQUEST_TIMEOUT_SECS: 60
+      RUST_LOG: info,fastgpt_agent_sandbox_proxy=debug
+
+  # Pre-pull only: not started by `docker compose up` (uses profile `prepull`).
+  opensandbox-agent-sandbox-image:
+    image: ghcr.io/labring/fastgpt-agent-sandbox:v0.2.0
+    profiles:
+      - prepull
+
+  opensandbox-execd-image:
+    image: opensandbox/execd:v1.0.7
+    profiles:
+      - prepull
+
+  opensandbox-egress-image:
+    image: opensandbox/egress:v1.0.3
+    profiles:
+      - prepull
+
+configs:
+  opensandbox-config:
+    content: |
+      [server]
+      host = "0.0.0.0"
+      port = 8090
+      api_key = "fastgpt-opensandbox-api-key"
+      log_level = "INFO"
+
+      [runtime]
+      type = "docker"
+      execd_image = "opensandbox/execd:v1.0.7"
+
+      [egress]
+      image = "opensandbox/egress:v1.0.3"
+
+      [docker]
+      network_mode = "bridge"
+      # When server runs in a container, set host_ip to the host's IP or hostname so bridge-mode endpoints are reachable.
+      host_ip = "host.docker.internal"
+      drop_capabilities = ["AUDIT_WRITE", "MKNOD", "NET_ADMIN", "NET_RAW", "SYS_ADMIN", "SYS_MODULE", "SYS_PTRACE", "SYS_TIME", "SYS_TTY_CONFIG"]
+      no_new_privileges = true
+      pids_limit = 512
+
+      [ingress]
+      mode = "direct"
