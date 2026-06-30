@@ -359,6 +359,7 @@ if [ -n "$MCP_ADDR" ]; then
     fi
 
     if $USES_CONFIG_JSON; then
+        # 旧版本 compose 挂载 config.json，只能继续写旧字段；main 已迁移到环境变量。
         if [[ "$OSTYPE" == "darwin"* ]]; then
             sed -i '' "s|\"mcpServerProxyEndpoint\": \"\"|\"mcpServerProxyEndpoint\": \"$MCP_ENDPOINT\"|g" config.json
         else
@@ -366,19 +367,27 @@ if [ -n "$MCP_ADDR" ]; then
         fi
     else
         if [[ "$OSTYPE" == "darwin"* ]]; then
-            sed -i '' "s|^      MCP_SERVER_PROXY_ENDPOINT:.*|      MCP_SERVER_PROXY_ENDPOINT: $MCP_ENDPOINT|g" docker-compose.yml
+            sed -i '' "s|^      SSE_MCP_SERVER_PROXY_ENDPOINT:.*|      SSE_MCP_SERVER_PROXY_ENDPOINT: $MCP_ENDPOINT|g" docker-compose.yml
         else
-            sed -i "s|^      MCP_SERVER_PROXY_ENDPOINT:.*|      MCP_SERVER_PROXY_ENDPOINT: $MCP_ENDPOINT|g" docker-compose.yml
+            sed -i "s|^      SSE_MCP_SERVER_PROXY_ENDPOINT:.*|      SSE_MCP_SERVER_PROXY_ENDPOINT: $MCP_ENDPOINT|g" docker-compose.yml
         fi
     fi
 
     if [ $? -eq 0 ]; then
         echo "已更新 MCP 访问地址为: $MCP_ENDPOINT"
     else
-        echo "警告: 替换 MCP 地址失败，请手动编辑 docker-compose.yml 中的 MCP_SERVER_PROXY_ENDPOINT 或 config.json 中的 mcpServerProxyEndpoint"
+        if $USES_CONFIG_JSON; then
+            echo "警告: 替换 MCP 地址失败，请手动编辑旧版 config.json 中的 mcpServerProxyEndpoint"
+        else
+            echo "警告: 替换 MCP 地址失败，请手动编辑 docker-compose.yml 中的 SSE_MCP_SERVER_PROXY_ENDPOINT"
+        fi
     fi
 else
-    echo "警告: 未设置 MCP 地址，请手动编辑 docker-compose.yml 中的 MCP_SERVER_PROXY_ENDPOINT 或 config.json 中的 mcpServerProxyEndpoint"
+    if $USES_CONFIG_JSON; then
+        echo "警告: 未设置 MCP 地址，请手动编辑旧版 config.json 中的 mcpServerProxyEndpoint"
+    else
+        echo "警告: 未设置 MCP 地址，请手动编辑 docker-compose.yml 中的 SSE_MCP_SERVER_PROXY_ENDPOINT"
+    fi
 fi
 
 if [ "$DEPLOY_VERSION" != "main" ]; then

@@ -47,7 +47,12 @@ export type FastGPTFeConfigsType = {
   find_password_method?: ['email' | 'phone'];
   bind_notification_method?: ['email' | 'phone'];
   googleClientVerKey?: string;
+  /**
+   * @deprecated MCP SSE 代理地址已迁移到环境变量 SSE_MCP_SERVER_PROXY_ENDPOINT。
+   * 运行时配置以环境变量为准，admin 不再支持写入该字段。
+   */
   mcpServerProxyEndpoint?: string;
+
   chineseRedirectUrl?: string;
   botIframeUrl?: string;
 

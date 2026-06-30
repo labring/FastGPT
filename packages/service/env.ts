@@ -137,9 +137,6 @@ export const serviceEnv = createEnv({
     TEXTIN_SECRET_CODE: z.string().optional().meta({
       description: '合合信息 Textin 服务 Secret Code'
     }),
-    CUSTOM_PDF_PARSE_PRICE: NumSchema.default(0).meta({
-      description: 'PDF 增强解析单价'
-    }),
 
     // ==================== 数据库与缓存 ====================
     // Redisg
@@ -253,9 +250,6 @@ export const serviceEnv = createEnv({
       .string()
       .optional()
       .meta({ description: '自定义跨域；不配置时默认允许所有跨域（逗号分割）' }),
-    FILE_URL_WHITELIST: z.string().optional().meta({
-      description: '文件 URL 白名单，逗号或空白分隔'
-    }),
     MULTIPLE_DATA_TO_BASE64: BoolSchema.default(true).meta({
       description: '是否强制将图片、音频、视频转成 base64 传递给模型'
     }),
@@ -331,9 +325,6 @@ export const serviceEnv = createEnv({
     }),
     VLM_MAX_PROCESS: IntSchema.min(1).default(10).meta({
       description: '图片理解模型最大处理并发数'
-    }),
-    WORKFLOW_HTTP_IGNORE_HTTPS_CERT: BoolSchema.default(false).meta({
-      description: '工作流 HTTP 节点是否忽略 HTTPS 证书校验'
     }),
     // ==================== 资源限制 ====================
     SERVICE_REQUEST_MAX_CONTENT_LENGTH: IntSchema.default(10).meta({

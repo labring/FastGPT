@@ -77,19 +77,16 @@ fastgpt-mcp-server:
 
 ### 修改 FastGPT 容器环境变量
 
-修改 `config.json` 配置文件，增加: `"feconfigs.mcpServerProxyEndpoint": "fastgpt-mcp-server 的访问地址"`，末尾不要携带/，例如:
+在 FastGPT 容器中配置 `SSE_MCP_SERVER_PROXY_ENDPOINT`，值为客户端可访问的 `fastgpt-mcp-server` 地址，末尾不要携带 `/`，例如:
 
-```json
-{
-  "feConfigs": {
-    "mcpServerProxyEndpoint": "https://mcp.fastgpt.cn"
-  }
-}
+```yaml
+environment:
+  SSE_MCP_SERVER_PROXY_ENDPOINT: https://mcp.fastgpt.cn
 ```
 
 ### 重启 FastGPT 容器
 
-因为是修改的挂载文件，可以强制 down 再 up 服务。启动后，既可以在工作台看到 MCP server 服务选项。
+修改环境变量后，需要重启 FastGPT 服务。启动后，可以在工作台看到 MCP server 服务选项。
 
 ```bash
 docker-compose down

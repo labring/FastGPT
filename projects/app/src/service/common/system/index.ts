@@ -146,8 +146,8 @@ export async function initSystemConfig() {
   const config: FastGPTConfigFileType = {
     feConfigs: {
       ...defaultFeConfigs,
-      mcpServerProxyEndpoint: appEnv.MCP_SERVER_PROXY_ENDPOINT,
       ...(fastgptConfig.feConfigs || {}),
+      mcpServerProxyEndpoint: appEnv.SSE_MCP_SERVER_PROXY_ENDPOINT,
       limit: {
         ...defaultFeConfigs.limit,
         ...(fastgptConfig.feConfigs?.limit || {})
@@ -178,19 +178,10 @@ export async function initSystemConfig() {
           key: serviceEnv.CUSTOM_PDF_PARSE_KEY,
           doc2xKey: serviceEnv.DOC2X_KEY,
           textinAppId: serviceEnv.TEXTIN_APP_ID,
-          textinSecretCode: serviceEnv.TEXTIN_SECRET_CODE,
-          price: serviceEnv.CUSTOM_PDF_PARSE_PRICE
-        },
-        fileUrlWhitelist: serviceEnv.FILE_URL_WHITELIST
-          ? serviceEnv.FILE_URL_WHITELIST.split(/[,;\s]+/)
-              .map((item) => item.trim())
-              .filter(Boolean)
-          : undefined,
-        workflowHttpNode: {
-          ignoreHttpsCertificate: serviceEnv.WORKFLOW_HTTP_IGNORE_HTTPS_CERT
+          textinSecretCode: serviceEnv.TEXTIN_SECRET_CODE
         }
       },
-      fastgptConfig.systemEnv || {}
+      fastgptConfig.systemEnv || {} // 商业版数据存在数据库里
     ),
     subPlans: fastgptConfig.subPlans
   };
