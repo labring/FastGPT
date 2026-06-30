@@ -3,108 +3,362 @@ title: 'V4.15.0'
 description: 'FastGPT V4.15.0 Release Notes'
 ---
 
+import { Alert } from '@/components/docs/Alert';
+
 ## 📦 Upgrade Guide
 
-### 1. Image Changes
+### 1. Environment Variable Changes
 
-- Update the fastgpt-app (FastGPT main service) image tag to v4.15.0
-- Update the fastgpt-pro (FastGPT commercial edition) image tag to v4.15.0
-- Update the fastgpt-code-sandbox image tag to v4.15.0
-- Update the fastgpt-plugin image tag to v1.0.0-beta2
-- Update the aiproxy image tag to v0.6.1
+#### 1.1 fastgpt-app and fastgpt-pro
 
-If you use OpenSandbox, update the following images:
+##### Check required variables
 
-- Update the fastgpt-agent-sandbox image tag to v0.2.0
-- Update the fastgpt-agent-volume-manager image tag to v0.2.0
-
-### 2. Environment Variable Changes
-
-#### FastGPT Main Service
-
-For `fastgpt-app` and `fastgpt-pro`, this upgrade only requires attention to the following newly added settings or changed semantics. For the complete environment variable list, see [Environment Variables](../../config/env.en.mdx).
+v4.15.0 introduces stricter environment variable validation. After upgrading, make sure the following variables are configured correctly.
 
 ```dotenv
-# File parsing worker concurrency
+# Encryption key. Must be the same in both services.
+AES256_SECRET_KEY=
+# File token key. Must be the same in both services.
+FILE_TOKEN_KEY=
+# JWT secret for invoke callbacks. Must be at least 32 characters and the same in both services.
+INVOKE_TOKEN_SECRET=
+```
+
+##### New environment variables
+
+**Required**
+
+```dotenv
+# SSE MCP Server address. Leave empty if you do not use SSE.
+SSE_MCP_SERVER_PROXY_ENDPOINT=
+```
+
+**Optional**
+
+The following variables have defaults or can be left unset without affecting normal usage.
+
+```dotenv
+# File parsing worker concurrency (optional)
 PARSE_FILE_WORKERS=10
-# File parsing timeout in seconds
+# File parsing timeout in seconds (optional)
 PARSE_FILE_TIMEOUT_SECONDS=600
-# HTML-to-Markdown worker concurrency
+# HTML-to-Markdown worker concurrency (optional)
 HTML_TO_MARKDOWN_WORKERS=10
-# Text chunking worker concurrency
+# Text chunking worker concurrency (optional)
 TEXT_TO_CHUNKS_WORKERS=10
-# Automatically sync MongoDB indexes. Use a boolean string instead of 0 or 1
+# Automatically sync MongoDB indexes. Use boolean strings instead of 0 or 1. (optional)
 SYNC_INDEX=true
-# Whether to enable trusted reverse proxy client IP verification
+# Whether to enable trusted reverse proxy client IP verification (optional)
 TRUSTED_PROXY_ENABLE=false
-# Trusted reverse proxy IP/CIDR list, separated by commas or whitespace. Only effective when TRUSTED_PROXY_ENABLE=true
+# Trusted reverse proxy IP/CIDR list, separated by commas or whitespace. Only takes effect when TRUSTED_PROXY_ENABLE=true.
+# Only X-Forwarded-For/X-Real-IP from explicitly trusted proxies will be used for client IP resolution. (optional)
 TRUSTED_PROXY_IPS=
-# Maximum number of characters for synchronous system string processing, in M. Range: 1-100
+# Maximum string length for synchronous system variable replacement, in M. Range: 1-100.
 SYSTEM_MAX_STRING_LENGTH_M=100
-# Maximum folder depth. Default: 4. Range: 2-20
+# Maximum folder depth. Default: 4. Range: 2-20.
 MAX_FOLDER_DEPTH=4
 # Maximum input array length for Loop/Parallel nodes
 WORKFLOW_MAX_LOOP_TIMES=100
-# Parallel node concurrency limit. The final value is clamped to [5, 100]
+# Parallel node concurrency limit. The final value is clamped to [5, 100].
 WORKFLOW_PARALLEL_MAX_CONCURRENCY=10
-# Agent Sandbox disk-size baseline, in MB
-AGENT_SANDBOX_DISK_MB=1024
-# Registry used by npm/yarn/bun inside Agent Sandbox
-AGENT_SANDBOX_NPM_REGISTRY=
-# Python package index used by pip/uv inside Agent Sandbox
-AGENT_SANDBOX_PYPI_INDEX_URL=
 ```
 
-This release adds environment variable validation. Check that both `fastgpt-app` and `fastgpt-pro` include `AES256_SECRET_KEY` and `FILE_TOKEN_KEY`, and that the values are the same in both services.
+##### Open-source edition variable changes
 
-#### Plugin Service
-
-The plugin service has been upgraded to v1.0.0-beta2, and system tool execution has changed significantly:
-
-1. Update the `AUTH_TOKEN` environment variable for `fastgpt-plugin`. It must be at least 32 characters long.
-2. Update the `PLUGIN_TOKEN` environment variable for `fastgpt` to match the `AUTH_TOKEN` value used by `fastgpt-plugin`.
-3. Update the database name in the `MONGODB_URI` environment variable for `fastgpt-plugin` so it does not conflict with the MongoDB database name used by `fastgpt`. For example: `mongodb://myusername:mypassword@fastgpt-mongo:27017/fastgpt-plugin?authSource=admin`
-
-#### OpenSandbox
-
-If you use OpenSandbox, `AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH` is no longer effective and can be removed. OpenSandbox now always mounts persistent data to `/workspace`, which affects the old sandbox persistence behavior.
-
-#### Code Sandbox
-
-Code Sandbox adds request body, output size, and `queueId` queue controls:
+The open-source edition no longer uses the `config.json` configuration file. These settings have moved to environment variables. After removing the volume mount, add the following variables as needed:
 
 ```dotenv
-# Maximum JSON request body size for the /sandbox API, including variables, in MB
-SANDBOX_API_MAX_BODY_MB=8
-# Maximum JSON output size for a single code execution, including return values and logs, in MB
-SANDBOX_MAX_OUTPUT_MB=10
-# Number of requests with the same queueId that may enter execution concurrently. Empty disables queueing.
-SANDBOX_QUEUE_ID_CONCURRENCY=
+# Custom PDF parsing service URL
+CUSTOM_PDF_PARSE_URL=
+# Custom PDF parsing service key
+CUSTOM_PDF_PARSE_KEY=
+# Doc2x PDF parsing service key
+DOC2X_KEY=
+# TextIn service App ID
+TEXTIN_APP_ID=
+# TextIn service Secret Code
+TEXTIN_SECRET_CODE=
+# hnsw ef_search parameter for vector search. Only applies to PG / OB / OpenGauss.
+HNSW_EF_SEARCH=100
+# Maximum vector scan tuple count. Only applies to PG.
+HNSW_MAX_SCAN_TUPLES=100000
+# Maximum Knowledge Base file parsing queue concurrency
+DATASET_PARSE_MAX_PROCESS=10
+# Maximum vector training queue concurrency
+VECTOR_MAX_PROCESS=10
+# Maximum Q&A split queue concurrency
+QA_MAX_PROCESS=10
+# Maximum vision-language model processing queue concurrency
+VLM_MAX_PROCESS=10
 ```
 
-`/sandbox/js` and `/sandbox/python` request bodies now support an optional `queueId` field. When `SANDBOX_QUEUE_ID_CONCURRENCY` is configured and the request includes a valid `queueId`, requests with the same `queueId` are queued in FIFO order. Requests with different `queueId` values, or requests without `queueId`, are not restricted by this setting and are only limited by the worker pool concurrency.
+#### 1.2 code-sandbox
 
-### 3. Reinstall System Tools
+Code Sandbox adds security-related environment variables such as `SANDBOX_API_MAX_BODY_MB` and `SANDBOX_MAX_OUTPUT_MB`, and supports grouped run queueing through `queueId`. Full defaults:
+
+| Variable                          | Default | Description                                                                                           |
+| --------------------------------- | ------- | ----------------------------------------------------------------------------------------------------- |
+| `SANDBOX_API_MAX_BODY_MB`         | `8`     | Maximum `/sandbox` API JSON body size, including `variables`, in MB.                                  |
+| `SANDBOX_MAX_OUTPUT_MB`           | `10`    | Maximum output JSON size for one code execution, including return values and logs, in MB.             |
+| `CHECK_INTERNAL_IP`               | `true`  | Enables internal IP checks for sandbox network requests by default to reduce SSRF risk.               |
+| `SANDBOX_MAX_TIMEOUT`             | `60000` | Timeout for one code execution, in milliseconds.                                                      |
+| `SANDBOX_MAX_MEMORY_MB`           | `256`   | Memory limit for one sandbox, in MB. The runtime reserves an extra `50` MB for overhead.              |
+| `SANDBOX_POOL_SIZE`               | `20`    | Number of pre-warmed JS/Python workers.                                                               |
+| `SANDBOX_REQUEST_MAX_COUNT`       | `30`    | Maximum number of network requests allowed during one code execution.                                 |
+| `SANDBOX_REQUEST_TIMEOUT`         | `60000` | Timeout for one network request from inside the sandbox, in milliseconds.                             |
+| `SANDBOX_REQUEST_MAX_RESPONSE_MB` | `10`    | Maximum response body size for one sandbox network request, in MB.                                    |
+| `SANDBOX_REQUEST_MAX_BODY_MB`     | `5`     | Maximum request body size for one sandbox network request, in MB.                                     |
+| `SANDBOX_QUEUE_ID_CONCURRENCY`    | Empty   | Number of requests with the same `queueId` that may enter execution at once. Empty disables queueing. |
+
+#### 1.3 fastgpt-plugin
+
+The plugin service has been reworked. You must add `AUTH_TOKEN` and `FASTGPT_BASE_URL`, and update the `MONGODB_URI` variable:
+
+1. Set `AUTH_TOKEN` for `fastgpt-plugin`. It must be at least 32 characters long.
+2. Set `PLUGIN_TOKEN` in both `fastgpt` and `fastgpt-pro` to the same value as `fastgpt-plugin`'s `AUTH_TOKEN`.
+3. Change the database name in `fastgpt-plugin`'s `MONGODB_URI` so it does not conflict with FastGPT's MongoDB database name. Example: `mongodb://myusername:mypassword@fastgpt-mongo:27017/fastgpt-plugin?authSource=admin`.
+
+**Additional variables you may adjust**
+
+```dotenv
+# ================ System =====================
+# Auth token
+AUTH_TOKEN=
+# Maximum API request body size (MB)
+MAX_API_SIZE=10
+# FastGPT service URL. It can be an internal address and is used for callbacks to FastGPT APIs.
+FASTGPT_BASE_URL=http://fastgpt-app:3000
+
+# ================ Plugin runtime =====================
+# Supported value: localPool
+PLUGIN_RUNTIME_MODE=localPool
+# Temporary file storage directory. Can be empty.
+LOCAL_FILE_BASE_PATH=
+
+# ================ Process pool =====================
+# Health check interval (ms)
+POOL_HEALTH_CHECK_INTERVAL=30000
+# Maximum total process count
+POOL_MAX_TOTAL_PODS=100
+# Minimum process count for one Service
+POOL_SERVICE_MIN_PODS=0
+# Maximum process count for one Service
+POOL_SERVICE_MAX_PODS=5
+# Global idle timeout (ms)
+POOL_SERVICE_IDLE_TIMEOUT=60000
+# Process runtime timeout (ms)
+POOL_SERVICE_POD_TIMEOUT=120000
+# Maximum concurrent requests per process
+POOL_SERVICE_MAX_CONCURRENT_REQUESTS_PER_POD=10
+# Global maximum requests per process before automatic rotation
+POOL_SERVICE_MAX_REQUESTS_PER_POD=100
+# Global maximum process queue length
+POOL_SERVICE_MAX_QUEUE_SIZE=500
+# Global process queue timeout (ms)
+POOL_SERVICE_QUEUE_TIMEOUT=60000
+# Startup retry backoff base delay (ms)
+POOL_SERVICE_STARTUP_RETRY_BASE_DELAY=1000
+# Startup retry backoff maximum delay (ms)
+POOL_SERVICE_STARTUP_RETRY_MAX_DELAY=10000
+
+# ================ Database =====================
+MONGODB_URI=mongodb://username:password@localhost:27017/fastgpt?authSource=admin&directConnection=true
+MONGO_MAX_LINK=20
+SYNC_INDEX=true
+REDIS_URL=redis://default:password@localhost:6379/0
+
+# ================ Object storage =====================
+# S3 file prefix. Do not change it casually after use.
+S3_FILE_BASE_PATH=system/plugin
+STORAGE_VENDOR=minio
+STORAGE_REGION=us-east-1
+STORAGE_ACCESS_KEY_ID=minioadmin
+STORAGE_SECRET_ACCESS_KEY=minioadmin
+STORAGE_PUBLIC_BUCKET=fastgpt-public
+STORAGE_PRIVATE_BUCKET=fastgpt-private
+STORAGE_EXTERNAL_ENDPOINT=http://localhost:9000
+STORAGE_S3_ENDPOINT=http://localhost:9000
+STORAGE_S3_FORCE_PATH_STYLE=true
+STORAGE_S3_MAX_RETRIES=3
+STORAGE_PUBLIC_ACCESS_EXTRA_SUB_PATH=
+
+# ================ Logs =====================
+LOG_ENABLE_CONSOLE=true
+# Console log level: "trace" | "debug" | "info" | "warning" | "error" | "fatal"
+LOG_CONSOLE_LEVEL=info
+LOG_ENABLE_OTEL=false
+# Minimum log level stored in OTEL
+LOG_OTEL_LEVEL=info
+LOG_OTEL_SERVICE_NAME=fastgpt-plugin
+LOG_OTEL_URL=http://localhost:4318/v1/logs
+
+# ================ Metrics =====================
+METRICS_ENABLE_OTEL=false
+METRICS_OTEL_SERVICE_NAME=fastgpt-plugin
+METRICS_OTEL_URL=http://localhost:4318/v1/metrics
+METRICS_EXPORT_INTERVAL_MS=30000
+METRICS_EXPORT_TIMEOUT_MS=10000
+METRICS_INCLUDE_PLUGIN_VERSION=true
+METRICS_INCLUDE_PLUGIN_ETAG=false
+METRICS_INCLUDE_HOSTNAME=true
+# For multi-node deployments, use Pod UID / container id / instance id. Empty generates an opaque id.
+SERVICE_INSTANCE_ID=
+DEPLOYMENT_ENVIRONMENT=
+```
+
+### 2. OpenSandbox Changes (as needed)
+
+OpenSandbox and other sandbox provider settings have moved to [Sandbox Configuration](../../config/sandbox/common) and are no longer built into the deployment yml.
+
+For this upgrade, focus on:
+
+1. Deploying the `agent-sandbox-proxy` service.
+2. Updating OpenSandbox-related image versions.
+3. Updating related environment variables in `fastgpt-app` and `fastgpt-pro`.
+
+### 3. Image Changes
+
+- Update fastgpt-app (FastGPT main service) image tag: v4.15.0
+- Update fastgpt-pro (FastGPT commercial edition) image tag: v4.15.0
+- Update fastgpt-code-sandbox image tag: v4.15.0
+- Update fastgpt-plugin image tag: v1.0.0
+- Update aiproxy image tag: v0.6.5
+
+If `opensandbox` is enabled, also update:
+
+- fastgpt-agent-sandbox-proxy image tag: v0.2.0
+- fastgpt-agent-sandbox image tag: v0.2.0
+
+### 4. Start Services
+
+Run `docker compose up -d` to restart services.
+
+### 5. Reinstall System Tools
 
 After upgrading the plugin service, reinstall all legacy system tools:
 
 1. Download the [zip package](<https://github.com/labring/fastgpt-img/raw/refs/heads/main/fastgpt-official-plugins(1).zip>) that contains all system tools.
-2. Open the `fastgpt` web app, go to `Admin` in the navbar, click Add Plugin, click `Import/Update Plugin`, upload the zip package, and confirm.
+2. Open the `fastgpt` web app, click `Admin` in the navbar, click Add Plugin, click `Import/Update Plugin`, upload the zip package, and confirm.
 
-You can also download tools one by one from the plugin marketplace. Before the stable release, the marketplace URL is: [https://v2.marketplace.fastgpt.cn](https://v2.marketplace.fastgpt.cn)
+You can also install them one by one from the plugin marketplace: [https://v2.marketplace.fastgpt.cn](https://v2.marketplace.fastgpt.cn). The environment variable default now points to this address, so no marketplace-related variables are required.
 
-### 4. Upgrade Script
+### 6. Run Migration Scripts
 
-If you use legacy sandbox workspaces, you can archive old sandbox workspaces to S3 with the following API to release inactive sandbox resources more thoroughly. This script only affects old sandboxes and does not affect newly generated sandboxes. You can also remove old sandboxes directly without running this script.
+Before running scripts:
 
-```shell
-curl --location --request POST 'https://{{host}}/api/admin/initSandboxArchive' \
---header 'rootkey: {{rootkey}}' \
---header 'Content-Type: application/json' \
--d '{"runArchive":true,"inactiveDays":0}'
+1. Back up MongoDB, object storage, and your current deployment configuration.
+2. Upgrade `fastgpt-app` / `fastgpt-pro` to image versions that include these root-admin APIs.
+3. Prepare a reachable FastGPT `{{host}}` and `{{rootkey}}`. All APIs below require `rootkey`.
+
+#### 6.1 Clean Duplicate appId-chatId Records (optional, but recommended)
+
+The stable release syncs two unique indexes: `{ appId, chatId }` and `{ sourceType, appId, chatId }`. Before the indexes sync successfully, check and clean duplicate `appId + chatId` records in the `chats` collection. Otherwise, when `SYNC_INDEX=true`, index sync may fail with `E11000 duplicate key error`, and the unique constraint will not take effect.
+
+This API depends on the upgraded `fastgpt-app` image. If the first stable-release startup already reports a unique index conflict but the service is still reachable, run the dry-run and cleanup commands below, then restart the service so it can sync indexes again.
+
+Run the dry-run first. This does not delete data, and every deployment should run it at least once:
+
+```bash
+curl -X POST 'https://{{host}}/api/admin/dataClean/cleanupDuplicateChats' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: {{rootkey}}' \
+  -d '{"dryRun":true,"sampleLimit":20}'
 ```
 
-## Breaking Changes
+Check these response fields:
+
+- `duplicateDocumentCount`: expected number of duplicate `chats` headers to delete.
+- `samples`: duplicate samples, including the retained `keepId` and candidate `deleteIds`.
+- `deletedDocumentCount`: number actually deleted during apply. It is always `0` in dry-run mode.
+
+If `duplicateDocumentCount=0`, no apply step is needed. If it is greater than 0, confirm the samples and then apply the cleanup:
+
+```bash
+curl -X POST 'https://{{host}}/api/admin/dataClean/cleanupDuplicateChats' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: {{rootkey}}' \
+  -d '{"dryRun":false,"sampleLimit":20}'
+```
+
+Cleanup policy: for each duplicate `appId + chatId` group, the API keeps the record with the latest `updateTime`. If timestamps are equal, it uses `_id` descending as a stable tie-breaker. The API only deletes duplicate `chats` headers. It does not delete message content in `chatitems` or `chat_item_responses`.
+
+After cleanup, keep `SYNC_INDEX=true` and restart `fastgpt-app` / `fastgpt-pro` so the service can sync indexes again. You can enter MongoDB and confirm both indexes are `unique: true`:
+
+```js
+db.chats
+  .getIndexes()
+  .filter((idx) => ['appId_1_chatId_1', 'sourceType_1_appId_1_chatId_1'].includes(idx.name));
+```
+
+#### 6.2 Workflow V1 -> V2 Migration (optional)
+
+Run this only when upgrading directly from a version earlier than `<4.8`, or when your deployment still contains historical V1 Workflow data. The API defaults to dry-run mode. It scans, converts, and validates the saved structure without writing to the database.
+
+```bash
+curl -X POST 'https://{{host}}/api/admin/dataClean/v1WorkflowToV2' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: {{rootkey}}' \
+  -d '{"dryRun":true}'
+```
+
+After confirming the returned statistics, apply the migration:
+
+```bash
+curl -X POST 'https://{{host}}/api/admin/dataClean/v1WorkflowToV2' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: {{rootkey}}' \
+  -d '{"dryRun":false}'
+```
+
+Skip this step if you already completed the V1 -> V2 migration in an earlier version, or if you are upgrading from v4.8 or later.
+
+#### 6.3 Workflow Dirty-Data Cleanup (required)
+
+This script scans and fixes historical enum-expression strings, nullish values, and legacy-structure compatibility issues in `apps.modules` and `app_versions.nodes`. All self-hosted deployments should run the dry-run first. If the returned statistics show fixable data, apply the write step.
+
+If 6.2 applies to your deployment, run this script after 6.2 completes.
+
+```bash
+curl -X POST 'https://{{host}}/api/admin/dataClean/initWorkflowData' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: {{rootkey}}' \
+  -d '{"dryRun":true,"batchSize":1000,"writeBatchSize":10}'
+```
+
+After confirming the dry-run result, apply the cleanup:
+
+```bash
+curl -X POST 'https://{{host}}/api/admin/dataClean/initWorkflowData' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: {{rootkey}}' \
+  -d '{"dryRun":false,"batchSize":1000,"writeBatchSize":10}'
+```
+
+Lower `writeBatchSize` if production write pressure is high. Documents that fail Zod validation are reported in the response and are not written back to the database.
+
+#### 6.4 Archive Legacy Sandboxes (optional)
+
+If you used legacy sandbox workspaces, this API can fix historical sandbox status fields and optionally archive inactive workspaces to S3. This step does not affect newly generated sandboxes. Skipping it does not block the v4.15 stable upgrade; old workspaces simply will not be archived automatically. You can also delete old sandboxes manually.
+
+Check only, without triggering archive:
+
+```bash
+curl -X POST 'https://{{host}}/api/admin/dataClean/initSandboxArchive' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: {{rootkey}}' \
+  -d '{"runArchive":false,"inactiveDays":0}'
+```
+
+If you want to immediately archive inactive workspaces that match the condition:
+
+```bash
+curl -X POST 'https://{{host}}/api/admin/dataClean/initSandboxArchive' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: {{rootkey}}' \
+  -d '{"runArchive":true,"inactiveDays":0}'
+```
+
+## Major Impacts
 
 1. API Key behavior has changed. FastGPT no longer distinguishes between app keys and system keys; only system keys are kept. For OpenAI SDK compatibility, pass the token as `apikey-appId`. Existing API keys remain compatible and continue to work. For details, see the [FastGPT API documentation](../../../openapi/intro).
 2. Some APIs now enforce stricter data format validation. If you see a `zod parse error`, please submit an issue. It may be caused by legacy data or custom data structures that do not match the declared schema.
@@ -112,27 +366,31 @@ curl --location --request POST 'https://{{host}}/api/admin/initSandboxArchive' \
 
 ## 🚀 New Features
 
-1. Added the Loop node and deprecated the legacy batch execution node.
-2. Added the Skill module. Agent V2 can bind and run static Skills.
-3. Reworked the Agent V2 loop logic to improve stability for multi-step tool calls and orchestration.
-4. Knowledge Base search now supports native multimodal embedding models, image-to-image search, and permission filtering in Agent mode.
-5. Multimodal models now support audio and video input.
-6. Added beta support for connecting third-party Knowledge Bases to DingTalk Knowledge Base.
-7. Reworked the plugin system architecture, added plugin-level runtime config, and moved system tool execution to local-pool.
-8. Reworked the chatbox UI with quick scroll-to-bottom, model-generated chat titles, and smoother streaming output.
-9. Added virtual list rendering for apps and Knowledge Bases to improve large-list performance.
-10. Added a separate OpenAPI document, distinct from DevAPI documentation.
-11. Workflow template export now includes the template name and description.
-12. Global variable inputs now support object-type data.
-13. In tool call mode, when the virtual machine feature is enabled, files uploaded in the user chat input are injected directly into the VM.
-14. Added worker pools for file parsing, HTML-to-Markdown conversion, and text chunking to prevent resource exhaustion under high concurrency.
+1. Added the Skill module. Agent V2 can bind and run static Skills.
+2. Reworked the Agent V2 loop logic to improve stability for multi-step tool calls and orchestration.
+3. Sandbox now supports custom npm and pip sources.
+4. Reworked the plugin system architecture, added plugin-level runtime config, and moved system tool execution to local-pool.
+5. The commercial edition now supports local direct-connect debugging for FastGPT plugins.
+6. Reworked the chatbox UI with quick scroll-to-bottom, model-generated chat titles, and smoother streaming output.
+7. Added LLM-generated chat titles.
+8. Added the Loop node and deprecated the legacy batch execution node.
+9. Knowledge Base search now supports native multimodal embedding models, image-to-image search, and permission filtering in Agent mode.
+10. Multimodal models now support audio and video input.
+11. API Key logic is optimized. API Key management is unified, and requests now explicitly pass app context.
+12. Generated separate DevAPI and System OpenAPI documentation.
+13. Added quick-reply output syntax.
+14. Added DingTalk Knowledge Base integration for third-party Knowledge Bases.
 15. Added model reasoning configuration.
-16. S3 now supports CDN configuration.
-17. Rerank now supports `defaultConfig`.
-18. Share links and portal pages now support language switching and no longer force language detection from the browser.
-19. Chat API now validates duplicate `dataId` values to prevent invalid data from entering Workflow execution and stream-resume merge logic.
-20. The HTTP node now supports ignoring TLS certificate verification and returning the complete error object.
-21. Added a directory depth environment variable to avoid infinitely nested directories.
+16. Workflow template export now includes the template name and description.
+17. Global variable inputs now support object-type data.
+18. In tool call mode, when the virtual machine feature is enabled, files uploaded in the user chat input are injected directly into the VM.
+19. Added worker pools for file parsing, HTML-to-Markdown conversion, and text chunking to prevent resource exhaustion under high concurrency.
+20. Added a directory depth environment variable to avoid infinitely nested directories. Configure it with `MAX_FOLDER_DEPTH`.
+21. S3 now supports CDN configuration.
+22. Rerank now supports `defaultConfig`.
+23. Share links and portal pages now support language switching and no longer force language detection from the browser.
+24. Chat API now validates duplicate `dataId` values to prevent invalid data from entering Workflow execution and stream-resume merge logic.
+25. The HTTP node now supports ignoring TLS certificate verification and returning the complete error object.
 
 ## ⚙️ Improvements
 
@@ -143,8 +401,8 @@ curl --location --request POST 'https://{{host}}/api/admin/initSandboxArchive' \
 5. Improved Workflow node name, description input, and long-name adaptation.
 6. When the user is redirected from the Workflow editor because the login session expires, the draft is automatically saved for recovery.
 7. In Workflow run details, file fields from form input nodes are displayed as file lists.
-8. Workflow `nodeResponse` is now stored in a flattened structure to avoid save failures in large nested Workflows.
-9. Strengthened validation for Workflow array reference types to avoid conflicts with two-dimensional data.
+8. Strengthened validation for Workflow array reference types to avoid conflicts with two-dimensional data.
+9. Image processing workers now support configuring whether images are converted to base64 before being sent to the model through `MULTIPLE_DATA_TO_BASE64=true`.
 10. HTML output now automatically switches to preview mode after generation, reducing the need to open the preview manually.
 11. Improved stream-resume pause and abnormal interruption recovery to reduce chats getting stuck in inaccurate generating or stopping states.
 12. The most recent chat is remembered per app when switching apps, and local chat cache is cleared when switching teams.
@@ -157,18 +415,17 @@ curl --location --request POST 'https://{{host}}/api/admin/initSandboxArchive' \
 19. Added validation for input guide configuration to prevent incorrect custom dictionary URL configuration.
 20. Strengthened security protection for third-party Knowledge Base requests, HTTP tool parsing, IP detection, and Code Sandbox AST checks.
 21. File injection in messages moved from system messages to user messages to improve cache hit rates.
-22. Removed `temperature` and `max_tokens` from built-in LLM requests to avoid incompatibility with some models.
-23. Improved the reason hide toggle so reasoning can be hidden in the UI while still being preserved when requesting the LLM.
-24. Optimized `chat2messages` adaptation to avoid standalone reason output.
-25. Empty tool responses are now automatically filled with `none` to avoid errors in some models.
-26. Improved the insufficient-balance prompt for non-admin users and visitors.
-27. Template features are hidden when the user does not have creation permission.
-28. Improved long-name display for apps, Knowledge Bases, files, and folders: names are truncated when they exceed the available width, and the full name is shown on hover.
-29. Improved Skill-related modals, editing interactions, and list API performance.
-30. Improved the login page UI.
-31. Deduplicated site sync rate-limit error prompts.
-32. Image processing workers now support configuring whether images are converted to base64 before being sent to the model.
-33. LLM request traces now use team-isolated queries to prevent request IDs from exposing request bodies, retrieved Knowledge Base chunks, and model responses across teams.
+22. Improved the reason hide toggle so reasoning can be hidden in the UI while still being preserved when requesting the LLM.
+23. Optimized `chat2messages` adaptation to avoid standalone reason output.
+24. Empty tool responses are now automatically filled with `none` to avoid errors in some models.
+25. Improved the insufficient-balance prompt for non-admin users and visitors.
+26. Template features are hidden when the user does not have creation permission.
+27. Improved long-name display for apps, Knowledge Bases, files, and folders: names are truncated when they exceed the available width, and the full name is shown on hover.
+28. Improved Skill-related modals, editing interactions, and list API performance.
+29. Improved the login page UI.
+30. Deduplicated site sync rate-limit error prompts.
+31. Added virtual list rendering for apps and Knowledge Bases to improve large-list performance.
+32. LLM request traces now use team-isolated queries to prevent request IDs from exposing request bodies, retrieved Knowledge Base chunks, and model responses across teams.
 
 ## 🐛 Bug Fixes
 
@@ -186,6 +443,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initSandboxArchive' \
 12. Fixed the v1/completions API where `quoteList` in `nodeResponse` did not return `q` and `a`.
 13. Fixed conversation stream resume issues, including form restoration, file list restoration, node response preservation, duplicate interaction appending, temporary history titles, and cross-app chat leakage.
 14. Stop conversation prompts are now synchronized with the backend generation state, and the warning toast shown during stop has been removed.
+15. The v1/chat/completions API previously filtered out `q`/`a`/`index` when returning `nodeResponse`; this version restores those fields.
 
 ## 🛠️ Code Improvements
 
@@ -203,3 +461,8 @@ curl --location --request POST 'https://{{host}}/api/admin/initSandboxArchive' \
 12. Changed the volume manager runtime from Bun to Node.js.
 13. Images are now processed promptly inside workers instead of retaining base64 data, reducing memory usage.
 14. Added string length protection for system string processing. When strings are too large, synchronized replacement stops to avoid high CPU load.
+15. Workflow `nodeResponse` is now stored in a flattened structure to avoid save failures in large nested Workflows.
+16. Removed `temperature` and `max_tokens` from all built-in LLM requests to avoid incompatibility with some models.
+17. Fixed dirty enum-expression strings such as `FlowNodeInputTypeEnum.*`, `FlowNodeOutputTypeEnum.*`, and `WorkflowIOValueTypeEnum.*` in Workflow node configuration that caused input rendering and IO type checks to behave incorrectly.
+18. In Workflow text boxes, `Ctrl+C` for copying text could be intercepted by node copy behavior, preventing text copy.
+19. The chat API has been abstracted from app-specific handling into a platform-level capability.

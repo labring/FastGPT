@@ -51,50 +51,291 @@ radio_select() {
 
     # 恢复光标
     tput cnorm 2>/dev/null
+    echo ""
     RADIO_RESULT=$selected
 }
 
 # 确保退出时恢复光标
 trap 'tput cnorm 2>/dev/null; exit' INT TERM
 
+# 生成安装期随机密钥。
+# 只使用 hex 字符，避免写入 YAML、URL、命令参数时触发转义问题。
+random_hex() {
+    local bytes="${1:-32}"
+    local value
+
+    if command -v openssl &>/dev/null; then
+        value="$(openssl rand -hex "$bytes" 2>/dev/null)"
+        if [ -n "$value" ]; then
+            printf '%s\n' "$value"
+            return
+        fi
+    fi
+
+    if [ -r /dev/urandom ] && command -v od &>/dev/null; then
+        value="$(dd if=/dev/urandom bs="$bytes" count=1 2>/dev/null | od -An -tx1 | tr -d ' \n')"
+        if [ -n "$value" ]; then
+            printf '%s\n' "$value"
+            return
+        fi
+    fi
+
+    echo "错误: 未找到 openssl，且无法读取 /dev/urandom 生成随机密钥" >&2
+    exit 1
+}
+
+escape_sed_replacement() {
+    printf '%s' "$1" | sed -e 's/[\/&|]/\\&/g'
+}
+
+replace_text() {
+    local old="$1"
+    local new="$2"
+    local file="${3:-docker-compose.yml}"
+    local escaped_new
+
+    escaped_new="$(escape_sed_replacement "$new")"
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        sed -i '' "s|$old|$escaped_new|g" "$file"
+    else
+        sed -i "s|$old|$escaped_new|g" "$file"
+    fi
+}
+
+content_error() {
+    local file="$1"
+    local source="$2"
+    local type="$3"
+    local cleanup="${4:-false}"
+
+    if [ "$cleanup" = true ]; then
+        rm -f "$file"
+    fi
+
+    echo "错误: ${type} 文件内容异常: $source" >&2
+    echo "      请确认该文件已经发布且内容正确，不能是 HTML 页面或空文件。" >&2
+    exit 1
+}
+
+validate_compose_file() {
+    local file="$1"
+    local source="$2"
+    local cleanup="${3:-false}"
+
+    if [ ! -s "$file" ]; then
+        content_error "$file" "$source" "docker-compose YAML" "$cleanup"
+    fi
+
+    if LC_ALL=C grep -qiE '<!doctype html|<html[[:space:]>]' "$file"; then
+        content_error "$file" "$source" "docker-compose YAML" "$cleanup"
+    fi
+
+    if ! LC_ALL=C grep -qE '^[[:space:]]*services:' "$file"; then
+        content_error "$file" "$source" "docker-compose YAML" "$cleanup"
+    fi
+}
+
+validate_config_file() {
+    local file="$1"
+    local source="$2"
+    local cleanup="${3:-false}"
+
+    if [ ! -s "$file" ]; then
+        content_error "$file" "$source" "config.json" "$cleanup"
+    fi
+
+    if LC_ALL=C grep -qiE '<!doctype html|<html[[:space:]>]' "$file"; then
+        content_error "$file" "$source" "config.json" "$cleanup"
+    fi
+
+    if ! LC_ALL=C grep -q '"systemEnv"' "$file"; then
+        content_error "$file" "$source" "config.json" "$cleanup"
+    fi
+}
+
+resolve_input_path() {
+    local input="$1"
+
+    if [ "$input" = "~" ]; then
+        input="$HOME"
+    elif [[ "$input" == ~/* ]]; then
+        input="$HOME/${input#~/}"
+    fi
+
+    if [[ "$input" != /* ]]; then
+        input="$(pwd)/$input"
+    fi
+
+    printf '%s\n' "$input"
+}
+
+prompt_local_compose_path() {
+    local input resolved
+
+    while true; do
+        read -r -p "请输入本地 docker-compose.yml 路径: " input
+        if [ -z "$input" ]; then
+            echo "路径不能为空"
+            continue
+        fi
+
+        resolved="$(resolve_input_path "$input")"
+        if [ -f "$resolved" ]; then
+            LOCAL_COMPOSE_PATH="$resolved"
+            break
+        fi
+
+        echo "未找到文件: $resolved"
+    done
+}
+
+ROOT_LOGIN_PASSWORD="1234"
+
+randomize_compose_credentials() {
+    local system_key token_key file_token_key aes256_secret_key invoke_token_secret
+    local plugin_token code_sandbox_token volume_manager_token agent_proxy_secret aiproxy_token
+    local root_password mongo_password redis_password minio_password
+    local pg_password aiproxy_pg_password oceanbase_sys_password oceanbase_tenant_password seekdb_password opengauss_password
+
+    system_key="$(random_hex 32)"
+    token_key="$(random_hex 32)"
+    file_token_key="$(random_hex 32)"
+    aes256_secret_key="$(random_hex 32)"
+    invoke_token_secret="$(random_hex 32)"
+    plugin_token="$(random_hex 32)"
+    code_sandbox_token="$(random_hex 32)"
+    volume_manager_token="$(random_hex 32)"
+    agent_proxy_secret="$(random_hex 32)"
+    aiproxy_token="$(random_hex 32)"
+    root_password="$(random_hex 8)"
+    mongo_password="$(random_hex 16)"
+    redis_password="$(random_hex 16)"
+    minio_password="$(random_hex 16)"
+    pg_password="$(random_hex 16)"
+    aiproxy_pg_password="$(random_hex 16)"
+    oceanbase_sys_password="$(random_hex 16)"
+    oceanbase_tenant_password="$(random_hex 16)"
+    seekdb_password="$(random_hex 16)"
+    # openGauss 要求密码同时包含大小写、数字和特殊字符。放在 URL 中时 @ 需要编码。
+    opengauss_password="Fg$(random_hex 12)@123"
+
+    if LC_ALL=C grep -Eq "x-default-root-psw: &x-default-root-psw ['\"]1234['\"]" docker-compose.yml; then
+        ROOT_LOGIN_PASSWORD="$root_password"
+        replace_text "x-default-root-psw: &x-default-root-psw '1234'" "x-default-root-psw: &x-default-root-psw '$root_password'"
+        replace_text 'x-default-root-psw: &x-default-root-psw "1234"' "x-default-root-psw: &x-default-root-psw \"$root_password\""
+    else
+        ROOT_LOGIN_PASSWORD="请查看 docker-compose.yml 中 DEFAULT_ROOT_PSW"
+    fi
+
+    # YAML anchors: 多个服务共用的 token 只改锚点，引用方自动同步。
+    replace_text "x-system-key: &x-system-key 'fastgpt-xxx'" "x-system-key: &x-system-key '$system_key'"
+    replace_text 'x-system-key: &x-system-key "fastgpt-xxx"' "x-system-key: &x-system-key \"$system_key\""
+    replace_text "x-token-key: &x-token-key 'fastgpt'" "x-token-key: &x-token-key '$token_key'"
+    replace_text 'x-token-key: &x-token-key "fastgpt"' "x-token-key: &x-token-key \"$token_key\""
+    replace_text "x-file-token-key: &x-file-token-key 'filetokenkey'" "x-file-token-key: &x-file-token-key '$file_token_key'"
+    replace_text 'x-file-token-key: &x-file-token-key "filetokenkey"' "x-file-token-key: &x-file-token-key \"$file_token_key\""
+    replace_text "x-aes256-secret-key: &x-aes256-secret-key 'fastgptsecret'" "x-aes256-secret-key: &x-aes256-secret-key '$aes256_secret_key'"
+    replace_text 'x-aes256-secret-key: &x-aes256-secret-key "fastgptsecret"' "x-aes256-secret-key: &x-aes256-secret-key \"$aes256_secret_key\""
+    replace_text "x-invoke-token-secret: &x-invoke-token-secret 'fastgpt_invoke_token_secret_32_chars_min'" "x-invoke-token-secret: &x-invoke-token-secret '$invoke_token_secret'"
+    replace_text 'x-invoke-token-secret: &x-invoke-token-secret "fastgpt_invoke_token_secret_32_chars_min"' "x-invoke-token-secret: &x-invoke-token-secret \"$invoke_token_secret\""
+    replace_text "x-plugin-auth-token: &x-plugin-auth-token 'token'" "x-plugin-auth-token: &x-plugin-auth-token '$plugin_token'"
+    replace_text 'x-plugin-auth-token: &x-plugin-auth-token "token"' "x-plugin-auth-token: &x-plugin-auth-token \"$plugin_token\""
+    replace_text "x-plugin-auth-token: &x-plugin-auth-token 'fastgpt-plugin-token-please-change'" "x-plugin-auth-token: &x-plugin-auth-token '$plugin_token'"
+    replace_text 'x-plugin-auth-token: &x-plugin-auth-token "fastgpt-plugin-token-please-change"' "x-plugin-auth-token: &x-plugin-auth-token \"$plugin_token\""
+    replace_text "x-code-sandbox-token: &x-code-sandbox-token 'codesandbox'" "x-code-sandbox-token: &x-code-sandbox-token '$code_sandbox_token'"
+    replace_text 'x-code-sandbox-token: &x-code-sandbox-token "codesandbox"' "x-code-sandbox-token: &x-code-sandbox-token \"$code_sandbox_token\""
+    replace_text "x-volume-manager-auth-token: &x-volume-manager-auth-token 'vmtoken'" "x-volume-manager-auth-token: &x-volume-manager-auth-token '$volume_manager_token'"
+    replace_text 'x-volume-manager-auth-token: &x-volume-manager-auth-token "vmtoken"' "x-volume-manager-auth-token: &x-volume-manager-auth-token \"$volume_manager_token\""
+    replace_text "x-agent-sandbox-proxy-secret: &x-agent-sandbox-proxy-secret 'default_fastgpt_agent_sandbox_proxy_secret'" "x-agent-sandbox-proxy-secret: &x-agent-sandbox-proxy-secret '$agent_proxy_secret'"
+    replace_text 'x-agent-sandbox-proxy-secret: &x-agent-sandbox-proxy-secret "default_fastgpt_agent_sandbox_proxy_secret"' "x-agent-sandbox-proxy-secret: &x-agent-sandbox-proxy-secret \"$agent_proxy_secret\""
+    replace_text "x-aiproxy-token: &x-aiproxy-token 'token'" "x-aiproxy-token: &x-aiproxy-token '$aiproxy_token'"
+    replace_text 'x-aiproxy-token: &x-aiproxy-token "token"' "x-aiproxy-token: &x-aiproxy-token \"$aiproxy_token\""
+
+    # 旧版本没有为这些密钥设置 anchor，需要直接替换环境变量默认值。
+    replace_text "TOKEN_KEY: fastgpt" "TOKEN_KEY: $token_key"
+    replace_text "FILE_TOKEN_KEY: filetokenkey" "FILE_TOKEN_KEY: $file_token_key"
+    replace_text "AES256_SECRET_KEY: fastgptsecret" "AES256_SECRET_KEY: $aes256_secret_key"
+    replace_text "INVOKE_TOKEN_SECRET: fastgpt_invoke_token_secret_32_chars_min" "INVOKE_TOKEN_SECRET: $invoke_token_secret"
+
+    # MongoDB 主库与 plugin 独立库使用同一个 Mongo root 密码。
+    replace_text "mongodb://myusername:mypassword@fastgpt-mongo:27017/fastgpt?authSource=admin" "mongodb://myusername:$mongo_password@fastgpt-mongo:27017/fastgpt?authSource=admin"
+    replace_text "mongodb://myusername:mypassword@fastgpt-mongo:27017/fastgpt-plugin?authSource=admin" "mongodb://myusername:$mongo_password@fastgpt-mongo:27017/fastgpt-plugin?authSource=admin"
+    replace_text "- MONGO_INITDB_ROOT_PASSWORD=mypassword" "- MONGO_INITDB_ROOT_PASSWORD=$mongo_password"
+    replace_text "'-p', 'mypassword'" "'-p', '$mongo_password'"
+    replace_text '"mypassword",' "\"$mongo_password\","
+    replace_text " mongo -u myusername -p mypassword " " mongo -u myusername -p $mongo_password "
+
+    # Redis 密码需要同时改连接串、启动命令和健康检查。
+    replace_text "redis://default:mypassword@fastgpt-redis:6379" "redis://default:$redis_password@fastgpt-redis:6379"
+    replace_text "redis-server --requirepass mypassword " "redis-server --requirepass $redis_password "
+    replace_text "'redis-cli', '-a', 'mypassword', 'ping'" "'redis-cli', '-a', '$redis_password', 'ping'"
+    replace_text '"redis-cli", "-a", "mypassword", "ping"' "\"redis-cli\", \"-a\", \"$redis_password\", \"ping\""
+
+    # FastGPT 自带 MinIO。用户名保持 minioadmin 便于识别和登录控制台，只随机化密钥。
+    replace_text "STORAGE_SECRET_ACCESS_KEY: minioadmin" "STORAGE_SECRET_ACCESS_KEY: $minio_password"
+    replace_text "MINIO_SECRET_KEY: minioadmin" "MINIO_SECRET_KEY: $minio_password"
+    replace_text "- MINIO_ROOT_PASSWORD=minioadmin" "- MINIO_ROOT_PASSWORD=$minio_password"
+
+    # 本地 PG 向量库，仅在选择 pg 时存在。
+    replace_text "PG_URL: postgresql://username:password@fastgpt-vector:5432/postgres" "PG_URL: postgresql://username:$pg_password@fastgpt-vector:5432/postgres"
+    replace_text "- POSTGRES_PASSWORD=password" "- POSTGRES_PASSWORD=$pg_password"
+
+    # AIProxy 自带 PG。
+    replace_text "SQL_DSN: postgres://postgres:aiproxy@fastgpt-aiproxy-pg:5432/aiproxy" "SQL_DSN: postgres://postgres:$aiproxy_pg_password@fastgpt-aiproxy-pg:5432/aiproxy"
+    replace_text "POSTGRES_PASSWORD: aiproxy" "POSTGRES_PASSWORD: $aiproxy_pg_password"
+
+    # OceanBase / SeekDB 向量库，仅在对应选择下存在。
+    replace_text "OCEANBASE_URL: mysql://root%40tenantname:tenantpassword@fastgpt-vector:2881/mysql" "OCEANBASE_URL: mysql://root%40tenantname:$oceanbase_tenant_password@fastgpt-vector:2881/mysql"
+    replace_text "- OB_SYS_PASSWORD=obsyspassword" "- OB_SYS_PASSWORD=$oceanbase_sys_password"
+    replace_text "- OB_TENANT_PASSWORD=tenantpassword" "- OB_TENANT_PASSWORD=$oceanbase_tenant_password"
+    replace_text "-ptenantpassword" "-p$oceanbase_tenant_password"
+    replace_text "SEEKDB_URL: mysql://root:seekdbpassword@fastgpt-vector:2881/mysql" "SEEKDB_URL: mysql://root:$seekdb_password@fastgpt-vector:2881/mysql"
+    replace_text "- ROOT_PASSWORD=seekdbpassword" "- ROOT_PASSWORD=$seekdb_password"
+    replace_text "'-pseekdbpassword'" "'-p$seekdb_password'"
+
+    # openGauss 向量库，仅在对应选择下存在。连接串中的 @ 必须编码为 %40。
+    replace_text "OPENGAUSS_URL: postgresql://gaussdb:FastGPT@123@fastgpt-vector:5432/fastgpt" "OPENGAUSS_URL: postgresql://gaussdb:${opengauss_password/@/%40}@fastgpt-vector:5432/fastgpt"
+    replace_text "- GS_PASSWORD=FastGPT@123" "- GS_PASSWORD=$opengauss_password"
+}
+
 # ========== 部署版本列表（由 deploy/init.mjs 自动生成） ==========
 # BEGIN GENERATED DEPLOY VERSIONS
 DEPLOY_VERSIONS=(
+    "v4.15"
     "v4.14"
     "main"
 )
 # END GENERATED DEPLOY VERSIONS
+LOCAL_DEPLOY_VERSION="local"
+LOCAL_DEPLOY_LABEL="本地 docker-compose.yml"
 
 # 获取部署版本展示文案：main 为迭代版，其他版本均视为稳定版
 get_version_label() {
     local version="$1"
-    if [ "$version" == "main" ]; then
+    if [ "$version" == "$LOCAL_DEPLOY_VERSION" ]; then
+        echo "$LOCAL_DEPLOY_LABEL"
+    elif [ "$version" == "main" ]; then
         echo "迭代版 main"
     else
         echo "稳定版 $version"
     fi
 }
 
-# ========== 1. 选择镜像源 ==========
-radio_select "请选择镜像源 (↑↓ 选择, 回车确认):" "阿里云 (中国大陆)" "GitHub (全球)"
-case $RADIO_RESULT in
-    1)
-        REGION="global"
-        BASE_URL="https://doc.fastgpt.io/deploy"
-        ;;
-    *)
-        REGION="cn"
-        BASE_URL="https://doc.fastgpt.cn/deploy"
-        ;;
-esac
-
-# ========== 2. 选择部署版本 ==========
+# ========== 1. 选择部署版本 ==========
 if [ ${#DEPLOY_VERSIONS[@]} -eq 0 ]; then
     echo "错误: 未配置部署版本"
     exit 1
 fi
 
-if [ -n "$FASTGPT_DEPLOY_VERSION" ]; then
+LOCAL_COMPOSE_PATH=""
+if [ -n "$FASTGPT_LOCAL_COMPOSE_PATH" ]; then
+    DEPLOY_VERSION="$LOCAL_DEPLOY_VERSION"
+    LOCAL_COMPOSE_PATH="$(resolve_input_path "$FASTGPT_LOCAL_COMPOSE_PATH")"
+    if [ ! -f "$LOCAL_COMPOSE_PATH" ]; then
+        echo "错误: FASTGPT_LOCAL_COMPOSE_PATH 指向的文件不存在: $LOCAL_COMPOSE_PATH"
+        exit 1
+    fi
+elif [ -n "$FASTGPT_DEPLOY_VERSION" ]; then
     version_matched=false
     for version in "${DEPLOY_VERSIONS[@]}"; do
         if [ "$FASTGPT_DEPLOY_VERSION" == "$version" ]; then
@@ -107,7 +348,7 @@ if [ -n "$FASTGPT_DEPLOY_VERSION" ]; then
         DEPLOY_VERSION="$FASTGPT_DEPLOY_VERSION"
     else
         echo "错误: 不支持的 FASTGPT_DEPLOY_VERSION: $FASTGPT_DEPLOY_VERSION"
-        echo "可选版本: ${DEPLOY_VERSIONS[*]}"
+        echo "可选版本: ${DEPLOY_VERSIONS[*]} $LOCAL_DEPLOY_VERSION"
         exit 1
     fi
 else
@@ -115,22 +356,54 @@ else
     for version in "${DEPLOY_VERSIONS[@]}"; do
         VERSION_OPTIONS+=("$(get_version_label "$version")")
     done
+    VERSION_OPTIONS+=("$LOCAL_DEPLOY_LABEL")
 
     radio_select "请选择部署版本 (↑↓ 选择, 回车确认):" "${VERSION_OPTIONS[@]}"
-    DEPLOY_VERSION="${DEPLOY_VERSIONS[$RADIO_RESULT]}"
+    if [ $RADIO_RESULT -eq ${#DEPLOY_VERSIONS[@]} ]; then
+        DEPLOY_VERSION="$LOCAL_DEPLOY_VERSION"
+        prompt_local_compose_path
+    else
+        DEPLOY_VERSION="${DEPLOY_VERSIONS[$RADIO_RESULT]}"
+    fi
+fi
+
+# ========== 2. 选择镜像源 ==========
+if [ "$DEPLOY_VERSION" != "$LOCAL_DEPLOY_VERSION" ]; then
+    radio_select "请选择镜像源 (↑↓ 选择, 回车确认):" "阿里云 (中国大陆)" "GitHub (全球)"
+    case $RADIO_RESULT in
+        1)
+            REGION="global"
+            BASE_URL="https://doc.fastgpt.io/deploy"
+            ;;
+        *)
+            REGION="cn"
+            BASE_URL="https://doc.fastgpt.cn/deploy"
+            ;;
+    esac
 fi
 
 # ========== 3. 选择向量数据库 ==========
-radio_select "请选择向量数据库 (↑↓ 选择, 回车确认):" "PostgreSQL + pgvector" "Milvus" "Zilliz" "OceanBase" "SeekDB"
+if [ "$DEPLOY_VERSION" == "$LOCAL_DEPLOY_VERSION" ]; then
+    VECTOR="local"
+else
+    radio_select "请选择向量数据库 (↑↓ 选择, 回车确认):" "PostgreSQL + pgvector" "Milvus" "Zilliz" "OceanBase" "SeekDB"
+    case $RADIO_RESULT in
+        1) VECTOR="milvus" ;;
+        2) VECTOR="zilliz" ;;
+        3) VECTOR="oceanbase" ;;
+        4) VECTOR="seekdb" ;;
+        *) VECTOR="pg" ;;
+    esac
+fi
+
+# ========== 4. 选择是否自动生成密钥 ==========
+radio_select "是否自动生成登录密码、服务 Token、应用密钥和组件密码? (↑↓ 选择, 回车确认):" "自动生成 (推荐)" "不自动生成"
 case $RADIO_RESULT in
-    1) VECTOR="milvus" ;;
-    2) VECTOR="zilliz" ;;
-    3) VECTOR="oceanbase" ;;
-    4) VECTOR="seekdb" ;;
-    *) VECTOR="pg" ;;
+    1) AUTO_GENERATE_CREDENTIALS=false ;;
+    *) AUTO_GENERATE_CREDENTIALS=true ;;
 esac
 
-# ========== 4. 检测可用 IP ==========
+# ========== 5. 检测可用 IP ==========
 IP_LIST=()
 PRIMARY_IP=""
 
@@ -208,12 +481,12 @@ select_address() {
     fi
 }
 
-# ========== 5. 选择 S3 访问地址 (端口 9000) ==========
+# ========== 6. 选择 S3 访问地址 (端口 9000) ==========
 select_address "请选择 S3 访问地址 - 客户端和容器均需可访问 (↑↓ 选择, 回车确认, 通常默认第一个即可):" 9000
 S3_ADDR="$SELECTED_ADDR"
 S3_CUSTOM=$SELECTED_CUSTOM
 
-# ========== 6. 选择 SSE MCP 访问地址 (端口 3003) ==========
+# ========== 7. 选择 SSE MCP 访问地址 (端口 3003) ==========
 select_address "请选择 SSE MCP 访问地址 - 客户端和容器均需可访问 (↑↓ 选择, 回车确认, 通常默认第一个即可):" 3003
 MCP_ADDR="$SELECTED_ADDR"
 MCP_CUSTOM=$SELECTED_CUSTOM
@@ -247,13 +520,23 @@ else
     MCP_DISPLAY="未设置"
 fi
 
+CREDENTIALS_LABEL="自动生成"
+if [ "$AUTO_GENERATE_CREDENTIALS" = false ]; then
+    CREDENTIALS_LABEL="不自动生成"
+fi
+
 echo ""
 echo "=============================="
 echo "  部署版本:     $DEPLOY_VERSION_LABEL"
-echo "  镜像源:       $REGION_LABEL"
-echo "  向量数据库:   $VECTOR"
+if [ "$DEPLOY_VERSION" == "$LOCAL_DEPLOY_VERSION" ]; then
+    echo "  Compose 文件: $LOCAL_COMPOSE_PATH"
+else
+    echo "  镜像源:       $REGION_LABEL"
+    echo "  向量数据库:   $VECTOR"
+fi
 echo "  S3 地址:      $S3_DISPLAY"
 echo "  MCP 地址:     $MCP_DISPLAY"
+echo "  密钥处理:     $CREDENTIALS_LABEL"
 echo "=============================="
 echo ""
 read -p "确认以上配置? (y/n) [y]: " confirm
@@ -262,39 +545,101 @@ if [ "$confirm" == "n" ]; then
     exit 1
 fi
 
-# ========== 下载文件 ==========
+# ========== 获取配置文件 ==========
 echo ""
-echo "正在下载配置文件..."
-
-# 构建下载链接（处理 global 下 zilliz 文件名差异）
-VECTOR_FILE="$VECTOR"
-if [ "$REGION" == "global" ] && [ "$VECTOR" == "zilliz" ]; then
-    VECTOR_FILE="zilliz"
+if [ "$DEPLOY_VERSION" == "$LOCAL_DEPLOY_VERSION" ]; then
+    echo "正在复制本地配置文件..."
+else
+    echo "正在下载配置文件..."
 fi
 
-YML_URL="${BASE_URL}/docker/${DEPLOY_VERSION}/${REGION}/docker-compose.${VECTOR_FILE}.yml"
-CONFIG_URL="${BASE_URL}/config/config.json"
+if [ "$DEPLOY_VERSION" == "$LOCAL_DEPLOY_VERSION" ]; then
+    LOCAL_COMPOSE_TMP="docker-compose.yml.tmp"
+    cp "$LOCAL_COMPOSE_PATH" "$LOCAL_COMPOSE_TMP"
+    if [ $? -ne 0 ]; then
+        echo "错误: 复制本地 docker-compose.yml 失败: $LOCAL_COMPOSE_PATH"
+        rm -f "$LOCAL_COMPOSE_TMP"
+        exit 1
+    fi
+    validate_compose_file "$LOCAL_COMPOSE_TMP" "$LOCAL_COMPOSE_PATH" true
+    mv "$LOCAL_COMPOSE_TMP" docker-compose.yml
+    echo "已复制 docker-compose.yml"
+else
+    # 构建下载链接（处理 global 下 zilliz 文件名差异）
+    VECTOR_FILE="$VECTOR"
+    if [ "$REGION" == "global" ] && [ "$VECTOR" == "zilliz" ]; then
+        VECTOR_FILE="zilliz"
+    fi
 
-# 下载 docker-compose YAML
-curl -fsSL -O "$YML_URL"
-if [ $? -ne 0 ]; then
-    echo "错误: 下载 YAML 文件失败: $YML_URL"
-    exit 1
+    YML_URL="${BASE_URL}/docker/${DEPLOY_VERSION}/${REGION}/docker-compose.${VECTOR_FILE}.yml"
+
+    # 下载 docker-compose YAML
+    YML_FILE="docker-compose.${VECTOR_FILE}.yml"
+    curl -fsSL "$YML_URL" -o "$YML_FILE"
+    if [ $? -ne 0 ]; then
+        echo "错误: 下载 YAML 文件失败: $YML_URL"
+        rm -f "$YML_FILE"
+        exit 1
+    fi
+    validate_compose_file "$YML_FILE" "$YML_URL" true
+    mv "$YML_FILE" docker-compose.yml
+    echo "已下载 docker-compose.yml"
 fi
-mv "docker-compose.${VECTOR_FILE}.yml" docker-compose.yml
-echo "已下载 docker-compose.yml"
 
 USES_CONFIG_JSON=false
 if LC_ALL=C grep -q -- "./config.json:/app/data/config.json" docker-compose.yml; then
     USES_CONFIG_JSON=true
 
-    # 下载旧版本 docker-compose 仍挂载的 config.json。
-    curl -fsSL -O "$CONFIG_URL"
-    if [ $? -ne 0 ]; then
-        echo "错误: 下载 config.json 失败: $CONFIG_URL"
-        exit 1
+    CONFIG_FILE="config.json.tmp"
+    if [ "$DEPLOY_VERSION" == "$LOCAL_DEPLOY_VERSION" ]; then
+        LOCAL_CONFIG_PATH="$(dirname "$LOCAL_COMPOSE_PATH")/config.json"
+        if [ -f "$LOCAL_CONFIG_PATH" ]; then
+            cp "$LOCAL_CONFIG_PATH" "$CONFIG_FILE"
+            if [ $? -ne 0 ]; then
+                echo "错误: 复制本地 config.json 失败: $LOCAL_CONFIG_PATH"
+                rm -f "$CONFIG_FILE"
+                exit 1
+            fi
+            validate_config_file "$CONFIG_FILE" "$LOCAL_CONFIG_PATH" true
+            mv "$CONFIG_FILE" config.json
+            echo "已复制 config.json"
+        else
+            CONFIG_URL="https://doc.fastgpt.cn/deploy/config/config.json"
+            curl -fsSL "$CONFIG_URL" -o "$CONFIG_FILE"
+            if [ $? -ne 0 ]; then
+                echo "错误: 下载 config.json 失败: $CONFIG_URL"
+                rm -f "$CONFIG_FILE"
+                exit 1
+            fi
+            validate_config_file "$CONFIG_FILE" "$CONFIG_URL" true
+            mv "$CONFIG_FILE" config.json
+            echo "已下载 config.json"
+        fi
+    else
+        CONFIG_URL="${BASE_URL}/config/config.json"
+        curl -fsSL "$CONFIG_URL" -o "$CONFIG_FILE"
+        if [ $? -ne 0 ]; then
+            echo "错误: 下载 config.json 失败: $CONFIG_URL"
+            rm -f "$CONFIG_FILE"
+            exit 1
+        fi
+        validate_config_file "$CONFIG_FILE" "$CONFIG_URL" true
+        mv "$CONFIG_FILE" config.json
+        echo "已下载 config.json"
     fi
-    echo "已下载 config.json"
+fi
+
+# ========== 随机化默认密钥 ==========
+if [ "$AUTO_GENERATE_CREDENTIALS" = true ]; then
+    randomize_compose_credentials
+    echo "已随机生成 docker-compose.yml 中的登录密码、服务 Token、应用密钥和组件密码"
+else
+    if LC_ALL=C grep -Eq "x-default-root-psw: &x-default-root-psw ['\"]1234['\"]" docker-compose.yml; then
+        ROOT_LOGIN_PASSWORD="1234"
+    else
+        ROOT_LOGIN_PASSWORD="请查看 docker-compose.yml 中 DEFAULT_ROOT_PSW"
+    fi
+    echo "已跳过自动生成密钥，请确认 docker-compose.yml 中的默认凭证已手动修改"
 fi
 
 # ========== 替换 S3 访问地址 ==========
@@ -390,7 +735,7 @@ else
     fi
 fi
 
-if [ "$DEPLOY_VERSION" != "main" ]; then
+if LC_ALL=C grep -q -- "- /var/run/docker.sock:/var/run/docker.sock" docker-compose.yml; then
     # ========== 检测并替换 docker.sock 路径 ==========
     # 某些发行版 / Docker Desktop / rootless 模式下，宿主机 docker.sock 不在 /var/run/docker.sock
     # 若路径错误，Docker 会把挂载目标在容器内创建为空目录，导致 volume-manager / opensandbox 无法调用 Docker API
@@ -436,7 +781,7 @@ if [ "$DEPLOY_VERSION" != "main" ]; then
             else
                 sed -i "s|- /var/run/docker.sock:/var/run/docker.sock|- ${ESCAPED_SOCK}:/var/run/docker.sock|g" docker-compose.yml
             fi
-            echo "已检测到 Docker socket: $HOST_SOCK，已更新 docker-compose.yml 挂载路径"
+            printf '已检测到 Docker socket: %s，已更新 docker-compose.yml 挂载路径\n' "$HOST_SOCK"
         else
             echo "Docker socket 路径正常: /var/run/docker.sock"
         fi
@@ -450,18 +795,25 @@ fi
 # ========== 完成 ==========
 echo ""
 echo "配置下载成功! 后续操作:"
-if [ "$DEPLOY_VERSION" != "main" ]; then
+if [ "$AUTO_GENERATE_CREDENTIALS" = true ]; then
+    echo "  注意: docker-compose.yml 已随机生成登录密码、服务 Token、应用密钥和组件密码。"
+    echo "        请妥善保存该文件，后续升级时不要直接丢失这些凭证。"
+else
+    echo "  注意: docker-compose.yml 未自动生成登录密码、服务 Token、应用密钥和组件密码。"
+    echo "        生产环境启动前请手动修改默认凭证。"
+fi
+if LC_ALL=C grep -q "opensandbox-agent-sandbox-image" docker-compose.yml; then
     echo "  1. 预热沙盒:   docker compose --profile prepull pull opensandbox-agent-sandbox-image opensandbox-execd-image opensandbox-egress-image"
     echo "  2. 启动服务:   docker compose up -d"
     echo "  3. 开放端口:   3000, 9000, 3003"
     echo "  4. 访问服务:   http://localhost:3000"
-    echo "  5. 登录服务:   默认账号为 'root', 密码为: '1234'"
+    echo "  5. 登录服务:   默认账号为 'root', 密码为: '$ROOT_LOGIN_PASSWORD'"
     echo "  6. 配置模型:   在 '账号-模型提供商' 页面，进行模型配置"
 else
     echo "  1. 启动服务:   docker compose up -d"
     echo "  2. 开放端口:   3000, 9000, 3003"
     echo "  3. 访问服务:   http://localhost:3000"
-    echo "  4. 登录服务:   默认账号为 'root', 密码为: '1234'"
+    echo "  4. 登录服务:   默认账号为 'root', 密码为: '$ROOT_LOGIN_PASSWORD'"
     echo "  5. 配置模型:   在 '账号-模型提供商' 页面，进行模型配置"
 fi
 echo ""

@@ -1,12 +1,12 @@
 {
   "tags": {
-    "fastgpt": "v4.15.0-beta1",
-    "fastgpt-code-sandbox": "v4.15.0-beta1",
-    "fastgpt-mcp_server": "v4.15.0-beta1",
-    "fastgpt-plugin": "v0.6.2",
+    "fastgpt": "v4.15.0",
+    "fastgpt-code-sandbox": "v4.15.0",
+    "fastgpt-plugin": "v1.0.0",
     "volume-manager": "v0.2.0",
     "agent-sandbox-image": "v0.2.0",
-    "aiproxy": "v0.5.8",
+    "aiproxy": "v0.6.5",
+    "fastgpt-mcp_server": "v4.14.23",
 
     "opensandbox-server": "v0.1.9",
     "opensandbox-execd": "v1.0.7",

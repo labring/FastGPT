@@ -160,7 +160,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv490' \
 
 ## Compatibility & Deprecations
 
-1. Deprecated — The previous custom file parsing solution for private deployments. Please update to the latest configuration. [See PDF Enhanced Parsing Configuration](../../config/json.en.mdx#使用-doc2x-解析-pdf-文件)
+1. Deprecated — The previous custom file parsing solution for private deployments. Please update to the latest environment-variable configuration. [See Environment Variables](../../config/env.en.mdx)
 2. Deprecated — The legacy local file upload API: `/api/core/dataset/collection/create/file` (previously available only in the Pro edition). This endpoint has been replaced by: `/api/core/dataset/collection/create/localFile`
 3. Maintenance ending, deprecation upcoming — External file library APIs. Use the API File Library as a replacement.
 4. API Update — For endpoints that include a `trainingType` field (file upload to knowledge base, link collection creation, API file library, push chunk data, etc.), `trainingType` will only support `chunk` and `QA` modes going forward. Enhanced indexing mode will use a separate field: `autoIndexes`. Legacy `trainingType=auto` code is still supported for now, but please migrate to the new API format as soon as possible. See: [Knowledge Base OpenAPI Documentation](../../../openapi/dataset.en.mdx)

@@ -1,6 +1,11 @@
 name: Build fastgpt-code-sandbox images
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Image version tag (e.g. v4.15.0)'
+        required: true
+        type: string
   push:
     paths:
       - 'projects/code-sandbox/**'
@@ -15,14 +20,27 @@ jobs:
       - name: Validate release version
         id: version
         env:
-          VERSION: ${{ github.ref_name }}
+          VERSION_INPUT: ${{ github.event.inputs.version }}
           REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
           CURRENT_REF: ${{ github.ref }}
         run: |
-          if [[ "$REF_TYPE" != "tag" || ! "$VERSION" =~ ^v ]]; then
-            echo "::error::Release workflow must run on a tag starting with v. Current ref: ${CURRENT_REF}"
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            VERSION="$VERSION_INPUT"
+          else
+            VERSION="$REF_NAME"
+            if [[ "$REF_TYPE" != "tag" ]]; then
+              echo "::error::Release workflow must run on a tag starting with v. Current ref: ${CURRENT_REF}"
+              exit 1
+            fi
+          fi
+
+          if [[ ! "$VERSION" =~ ^v ]]; then
+            echo "::error::Image version must start with v. Current value: ${VERSION}"
             exit 1
           fi
+
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
   build-fastgpt-code-sandbox-images:
@@ -134,24 +152,25 @@ jobs:
 
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
+        timeout-minutes: 30
         run: |
           retry_imagetools_create() {
             local tag="$1"
             local sources
             sources="$(printf 'ghcr.io/${{ github.repository_owner }}/fastgpt-code-sandbox@sha256:%s ' *)"
 
-            for attempt in 1 2 3 4; do
+            for attempt in 1 2 3 4 5 6; do
               if docker buildx imagetools create -t "$tag" $sources; then
                 return 0
               fi
 
-              if [ "$attempt" -eq 4 ]; then
-                echo "::error::Failed to push manifest ${tag} after 3 retries."
+              if [ "$attempt" -eq 6 ]; then
+                echo "::error::Failed to push manifest ${tag} after 5 retries."
                 return 1
               fi
 
-              echo "::warning::Failed to push manifest ${tag}; retrying in $((attempt * 15)) seconds (${attempt}/3)."
-              sleep $((attempt * 15))
+              echo "::warning::Failed to push manifest ${tag}; retrying in $((attempt * 60)) seconds (${attempt}/5)."
+              sleep $((attempt * 60))
             done
           }
 

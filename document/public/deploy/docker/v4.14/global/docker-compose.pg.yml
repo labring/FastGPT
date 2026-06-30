@@ -49,7 +49,6 @@ x-vec-config: &x-vec-config
   PG_URL: postgresql://username:password@fastgpt-vector:5432/postgres
 
 services:
-  # Vector DB
   fastgpt-vector:
     image: pgvector/pgvector:0.8.0-pg15
     container_name: fastgpt-pg
@@ -285,7 +284,7 @@ services:
       retries: 3
   fastgpt-mcp-server:
     container_name: fastgpt-mcp-server
-    image: ghcr.io/labring/fastgpt-mcp_server:v4.14.22
+    image: ghcr.io/labring/fastgpt-mcp_server:v4.14.23
     networks:
       - app
     ports:

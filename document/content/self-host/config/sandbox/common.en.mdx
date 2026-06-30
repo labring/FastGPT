@@ -3,114 +3,77 @@ title: General Sandbox Configuration
 description: General FastGPT Agent Sandbox configuration
 ---
 
-This page covers the shared Agent Sandbox configuration for both `opensandbox` and `sealosdevbox` . Provider-specific connection settings are documented in each provider page. Regardless of the provider, you need to deploy `fastgpt-agent-sandbox-proxy` and optionally configure package mirrors for the sandbox runtime.
+This page covers shared Agent Sandbox configuration for both `opensandbox` and `sealosdevbox`. Provider-specific settings are documented on each provider page. Regardless of the provider, you need to deploy `fastgpt-agent-sandbox-proxy` and optionally configure package mirrors for the sandbox runtime.
 
-## Base Environment Variables
+## Deploy sandbox-proxy
 
-Add the following environment variables to both `fastgpt-app` and `fastgpt-pro` :
+### 1. Add the yml service
+
+Use [agent-sandbox-proxy.yml](/deploy/docker/v4.15/agent-proxy.yml) as a reference and add the service to your yml file. Expose the external access port and record the `AGENT_SANDBOX_PROXY_SECRET` value, which you will need in the next step.
+
+FastGPT uses this proxy when accessing the sandbox file system.
+
+**Proxy service environment variables**
+
+| Variable                           | Default                                  | Description                                                                                                               |
+| ---------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `PORT`                             | `1006`                                   | Listening port for `fastgpt-agent-sandbox-proxy`.                                                                         |
+| `AGENT_SANDBOX_PROXY_SECRET`       | None                                     | Secret shared with the FastGPT main service. Must be at least 32 characters.                                              |
+| `FASTGPT_APP_URL`                  | `http://fastgpt-app:3000`                | Internal URL of the FastGPT main service. The proxy and FastGPT must be able to reach each other on the network.          |
+| `FASTGPT_APP_REQUEST_TIMEOUT_SECS` | `10`                                     | Timeout, in seconds, for proxy requests back to the FastGPT main service. Increase it if sandbox cold starts take longer. |
+| `RUST_LOG`                         | `info,fastgpt_agent_sandbox_proxy=debug` | Log level for the proxy service.                                                                                          |
+
+### 2. Update FastGPT environment variables
+
+Add the following environment variables to both `fastgpt-app` and `fastgpt-pro`:
 
 ```dotenv
-# Shared with fastgpt-agent-sandbox-proxy. Use a random secret longer than 32 characters in production.
+# Must match AGENT_SANDBOX_PROXY_SECRET in fastgpt-agent-sandbox-proxy. Use a random secret longer than 32 characters in production.
 AGENT_SANDBOX_PROXY_SECRET=replace_with_32_chars_random_secret
-
 # Browser-accessible WebSocket URL for agent-sandbox-proxy. Use wss:// when proxying through an HTTPS domain.
 AGENT_SANDBOX_PROXY_URL=wss://sandbox-proxy.example.com
 ```
 
-| Variable                     | Description                                                                                                                                                      |
-| ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AGENT_SANDBOX_PROXY_SECRET` | Shared HMAC secret for the main service and `fastgpt-agent-sandbox-proxy` . It must be at least 32 characters, and both services must use the exact same value.  |
-| `AGENT_SANDBOX_PROXY_URL`    | Browser-accessible WebSocket base URL for `fastgpt-agent-sandbox-proxy` . It must start with `ws://` or `wss://` . Do not set this to the FastGPT main site URL. |
+### 3. Verify startup
 
-## Deploy fastgpt-agent-sandbox-proxy
+1. Restart `fastgpt-app`, `fastgpt-pro`, and `fastgpt-agent-sandbox-proxy`.
+2. Visit `https://agent-proxy-domain/health`. It should return `OK`.
 
-`fastgpt-agent-sandbox-proxy` is the WebSocket proxy between the browser and the sandbox IDE Agent. The browser does not connect to the provider's internal sandbox directly. Instead, it connects to this proxy, which calls back to the FastGPT main service to verify the ticket and then forwards traffic to the target sandbox.
+### 4. Deploy a sandbox provider
 
-Docker Compose example:
+After deploying the proxy service, connect one of the supported sandbox providers:
 
-```yml
-fastgpt-agent-sandbox-proxy:
-  image: ghcr.io/labring/fastgpt-agent-sandbox-proxy:v0.2.0
-  container_name: fastgpt-agent-sandbox-proxy
-  restart: always
-  ports:
-    - 3006:1006
-  networks:
-    - app
-  environment:
-    PORT: 1006
-    # Must exactly match AGENT_SANDBOX_PROXY_SECRET in fastgpt-app / fastgpt-pro.
-    AGENT_SANDBOX_PROXY_SECRET: replace_with_32_chars_random_secret
-    # Internal FastGPT main service URL. Change the service name if your deployment uses a different one.
-    FASTGPT_APP_URL: http://fastgpt-app:3000
-    # Covers sandbox cold start, agent password reads, and endpoint lookup time.
-    FASTGPT_APP_REQUEST_TIMEOUT_SECS: 60
-    RUST_LOG: info,fastgpt_agent_sandbox_proxy=debug
-    # Configure this only when the upstream sandbox endpoint returns localhost/127.0.0.1 and the proxy container cannot reach it.
-    # AGENT_SANDBOX_PROXY_REWRITE_HOST: host.docker.internal
-```
+- [Sealos Cloud Sandbox](./sealosdevbox)
+- [OpenSandbox Deployment](./opensandbox)
 
-For China Mainland deployments, you can use this image instead:
+## Additional Configuration
 
-```yml
-image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox-proxy:v0.2.0
-```
+### Custom package mirrors
 
-When deploying the proxy on Sealos, create a new app, use the matching `fastgpt-agent-sandbox-proxy` image, expose container port `1006` , and configure the environment variables above. The public access URL must support WebSocket Upgrade. Then set `AGENT_SANDBOX_PROXY_URL` in both `fastgpt-app` and `fastgpt-pro` to that public URL using `ws://` or `wss://` .
-
-## proxy Environment Variables
-
-| Variable                           | Default                                  | Description                                                                                                                     |
-| ---------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `PORT`                             | `1006`                                   | Listening port for `fastgpt-agent-sandbox-proxy` .                                                                              |
-| `AGENT_SANDBOX_PROXY_SECRET`       | None                                     | Secret shared with the FastGPT main service. Must be at least 32 characters.                                                    |
-| `FASTGPT_APP_URL`                  | `http://localhost:3000`                  | Internal URL of the FastGPT main service. The proxy uses it to call `/api/core/ai/sandbox/verifyTicket` .                       |
-| `FASTGPT_APP_REQUEST_TIMEOUT_SECS` | `10`                                     | Timeout, in seconds, for proxy requests back to the FastGPT main service. Increase it if sandbox cold starts take longer.       |
-| `RUST_LOG`                         | `info,fastgpt_agent_sandbox_proxy=debug` | Log level for the proxy service.                                                                                                |
-| `AGENT_SANDBOX_PROXY_REWRITE_HOST` | Empty                                    | Rewrites the upstream host when the provider returns a `localhost` or `127.0.0.1` sandbox endpoint that the proxy cannot reach. |
-
-## Custom Package Mirrors
-
-If the sandbox needs to install npm or Python dependencies, configure package mirrors in both `fastgpt-app` and `fastgpt-pro` . During Agent Sandbox initialization, FastGPT writes these settings for npm, yarn, pnpm, bun, pip, and uv.
+If the sandbox needs to install npm or Python dependencies, configure package mirrors in both `fastgpt-app` and `fastgpt-pro`. During Agent Sandbox initialization, FastGPT writes these settings for npm, yarn, pnpm, bun, pip, and uv.
 
 ```dotenv
 # npm registry used by npm/yarn/pnpm/bun inside Agent Sandbox
 AGENT_SANDBOX_NPM_REGISTRY=https://registry.npmmirror.com
-
 # PyPI index URL used by pip/python -m pip/uv inside Agent Sandbox
 AGENT_SANDBOX_PYPI_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
 ```
 
-| Variable                       | Description                                                              |
-| ------------------------------ | ------------------------------------------------------------------------ |
-| `AGENT_SANDBOX_NPM_REGISTRY`   | npm registry used by npm, yarn, pnpm, and bun inside the sandbox.        |
-| `AGENT_SANDBOX_PYPI_INDEX_URL` | PyPI index URL used by pip, `python -m pip` , and uv inside the sandbox. |
+### Resource limit variables
 
-This configuration is cached by content hash in the sandbox runtime state. For the same sandbox, FastGPT rewrites the mirror settings only when the configuration changes.
+Configure the following variables in `fastgpt-app` and `fastgpt-pro` when you need to adjust resource limits:
 
-## Optional Limit Settings
-
-The following variables usually keep their defaults. Configure them only when you need to change file size limits, WebSocket message limits, or the IDE Agent listening port.
-
-| Variable                             | Default        | Description                                                                                                                     |
-| ------------------------------------ | -------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| `IDE_AGENT_BIND_ADDR`                | `0.0.0.0:1318` | Listening address for the IDE Agent inside the sandbox. Change it only when using a custom sandbox image or port.               |
-| `AGENT_SANDBOX_DISK_MB`              | `1024`         | Baseline Agent Sandbox disk size in MB. It affects cold archive package limits, Skill package limits, and IDE single-file size. |
-| `AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES` | `67108864`     | Maximum IDE Agent WebSocket message size in bytes.                                                                              |
-| `AGENT_SANDBOX_WS_MAX_FRAME_BYTES`   | `16777216`     | Maximum IDE Agent WebSocket frame size in bytes.                                                                                |
-
-## Verification
-
-1. Restart `fastgpt-app` , `fastgpt-pro` , and `fastgpt-agent-sandbox-proxy` .
-2. Visit `https://your-proxy-domain/health` . It should return `OK` .
-3. In FastGPT, open a scenario that supports Agent Sandbox, such as sandbox file editing or terminal access.
-4. If you can read files, write files, or open the terminal, the shared configuration is working.
+| Variable                             | Default    | Description                                                                                                                       |
+| ------------------------------------ | ---------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `AGENT_SANDBOX_DISK_MB`              | `1024`     | Baseline Agent Sandbox disk size in MB. It affects cold archive package limits, Skill package limits, and IDE single-file limits. |
+| `AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES` | `67108864` | Maximum IDE Agent WebSocket message size in bytes.                                                                                |
+| `AGENT_SANDBOX_WS_MAX_FRAME_BYTES`   | `16777216` | Maximum IDE Agent WebSocket frame size in bytes.                                                                                  |
 
 ## FAQ
 
 ### AGENT_SANDBOX_PROXY_URL is required
 
-After Agent Sandbox is enabled, `AGENT_SANDBOX_PROXY_URL` is required. This is the browser-accessible WebSocket URL for `fastgpt-agent-sandbox-proxy` , such as `wss://sandbox-proxy.example.com` . It is not the FastGPT main site URL.
+After Agent Sandbox is enabled, `AGENT_SANDBOX_PROXY_URL` is required. This is the browser-accessible WebSocket URL for `fastgpt-agent-sandbox-proxy`, such as `wss://sandbox-proxy.example.com`. It is not the FastGPT main site URL.
 
 ### Browser WebSocket connection fails
 
@@ -118,4 +81,4 @@ Check that the proxy service is reachable from the browser and that your reverse
 
 ### proxy validation fails or returns 401
 
-Make sure `AGENT_SANDBOX_PROXY_SECRET` is exactly the same in the FastGPT main service and `fastgpt-agent-sandbox-proxy` , and that it is at least 32 characters long.
+Make sure `AGENT_SANDBOX_PROXY_SECRET` is exactly the same in the FastGPT main service and `fastgpt-agent-sandbox-proxy`, and that it is at least 32 characters long.

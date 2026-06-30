@@ -5,106 +5,69 @@ description: FastGPT Agent Sandbox 通用配置
 
 本文说明 Agent Sandbox 的通用配置，适用于 `opensandbox` 和 `sealosdevbox`。Provider 自身的接入参数请参考对应 Provider 文档；无论选择哪种 Provider，都需要部署 `fastgpt-agent-sandbox-proxy`，并按需配置沙盒内依赖源。
 
-## 基础环境变量
+## 部署 sandbox-proxy
+
+### 1. 添加 yml
+
+可以参考 [agent-sandbox-proxy.yml](/deploy/docker/v4.15/agent-proxy.yml)，将 service 加到 yml 文件里。并开放外网访问端口。并记录 `AGENT_SANDBOX_PROXY_SECRET` 环境变量，下一步需要使用。
+
+FastGPT 服务里访问沙盒内部文件系统，会通过 proxy 去代理访问。
+
+**proxy 服务环境变量**
+
+| 变量                               | 默认值                                   | 说明                                                                      |
+| ---------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------- |
+| `PORT`                             | `1006`                                   | `fastgpt-agent-sandbox-proxy` 监听端口。                                  |
+| `AGENT_SANDBOX_PROXY_SECRET`       | 无                                       | 与 FastGPT 主服务共用的密钥，至少 32 位。                                 |
+| `FASTGPT_APP_URL`                  | `http://fastgpt-app:3000`                | 代理回源 FastGPT 主服务的内网地址，要求两个服务在一个互通网络。           |
+| `FASTGPT_APP_REQUEST_TIMEOUT_SECS` | `10`                                     | 代理回源 FastGPT 主服务的请求超时时间，单位秒。沙盒冷启动较慢时建议调大。 |
+| `RUST_LOG`                         | `info,fastgpt_agent_sandbox_proxy=debug` | 代理服务日志级别。                                                        |
+
+### 2. 修改 FastGPT 环境变量
 
 在 `fastgpt-app` 和 `fastgpt-pro` 中增加下面环境变量：
 
 ```dotenv
-# 与 fastgpt-agent-sandbox-proxy 共用，生产环境请改为 32 位以上随机密钥
+# 对应 fastgpt-agent-sandbox-proxy 的变量 AGENT_SANDBOX_PROXY_SECRET。生产环境请改为 32 位以上随机密钥
 AGENT_SANDBOX_PROXY_SECRET=replace_with_32_chars_random_secret
-
 # 浏览器可访问的 agent-sandbox-proxy WebSocket 地址；如已通过 HTTPS 域名代理，请使用 wss://
 AGENT_SANDBOX_PROXY_URL=wss://sandbox-proxy.example.com
 ```
 
-| 变量                         | 说明                                                                                                                           |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `AGENT_SANDBOX_PROXY_SECRET` | 主服务与 `fastgpt-agent-sandbox-proxy` 共用的 HMAC 密钥，至少 32 位。两个服务必须配置完全相同的值。                            |
-| `AGENT_SANDBOX_PROXY_URL`    | 浏览器访问 `fastgpt-agent-sandbox-proxy` 的 WebSocket 基础地址，必须以 `ws://` 或 `wss://` 开头。该地址不是 FastGPT 主站地址。 |
+### 3. 启动验证
 
-## 部署 fastgpt-agent-sandbox-proxy
+1. 重启 `fastgpt-app`、`fastgpt-pro` 和 `fastgpt-agent-sandbox-proxy`。
+2. 访问 `https://agent-proxy域名/health`，正常返回 `OK`。
 
-`fastgpt-agent-sandbox-proxy` 是浏览器到沙盒 IDE Agent 的 WebSocket 代理。浏览器不会直接连接 Provider 内部沙盒，而是先连接这个代理，再由代理回源 FastGPT 主服务校验 ticket，并转发到对应沙盒。
+### 4. 部署沙盒服务
 
-Docker Compose 示例：
+部署完 proxy 服务后，还需接入沙盒控制服务，目前系统支持以下两种方案：
 
-```yml
-fastgpt-agent-sandbox-proxy:
-  image: ghcr.io/labring/fastgpt-agent-sandbox-proxy:v0.2.0
-  container_name: fastgpt-agent-sandbox-proxy
-  restart: always
-  ports:
-    - 3006:1006
-  networks:
-    - app
-  environment:
-    PORT: 1006
-    # 必须与 fastgpt-app / fastgpt-pro 中的 AGENT_SANDBOX_PROXY_SECRET 完全一致
-    AGENT_SANDBOX_PROXY_SECRET: replace_with_32_chars_random_secret
-    # FastGPT 主服务内网地址；如果服务名不是 fastgpt-app，请按实际部署修改
-    FASTGPT_APP_URL: http://fastgpt-app:3000
-    # 覆盖沙盒冷启动、读取 agent password 和 endpoint 查询耗时
-    FASTGPT_APP_REQUEST_TIMEOUT_SECS: 60
-    RUST_LOG: info,fastgpt_agent_sandbox_proxy=debug
-    # 当上游 sandbox endpoint 返回 localhost/127.0.0.1 且 proxy 容器无法访问时再配置
-    # AGENT_SANDBOX_PROXY_REWRITE_HOST: host.docker.internal
-```
+- [Sealos cloud 沙盒接入](./sealosdevbox)
+- [Opensandbox 部署方案](./opensandbox)
 
-国内镜像源可替换为：
+## 更多配置
 
-```yml
-image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox-proxy:v0.2.0
-```
-
-如果使用 Sealos 部署代理服务，需要创建一个新的应用，镜像填写 `fastgpt-agent-sandbox-proxy` 对应镜像，容器端口为 `1006`，并配置上面环境变量。外网访问地址需要支持 WebSocket Upgrade，然后把 `fastgpt-app` 和 `fastgpt-pro` 的 `AGENT_SANDBOX_PROXY_URL` 设置为该外网访问地址的 `ws://` 或 `wss://` 形式。
-
-## proxy 环境变量
-
-| 变量                               | 默认值                                   | 说明                                                                                                         |
-| ---------------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `PORT`                             | `1006`                                   | `fastgpt-agent-sandbox-proxy` 监听端口。                                                                     |
-| `AGENT_SANDBOX_PROXY_SECRET`       | 无                                       | 与 FastGPT 主服务共用的密钥，至少 32 位。                                                                    |
-| `FASTGPT_APP_URL`                  | `http://localhost:3000`                  | 代理回源 FastGPT 主服务的内网地址，用于调用 `/api/core/ai/sandbox/verifyTicket`。                            |
-| `FASTGPT_APP_REQUEST_TIMEOUT_SECS` | `10`                                     | 代理回源 FastGPT 主服务的请求超时时间，单位秒。沙盒冷启动较慢时建议调大。                                    |
-| `RUST_LOG`                         | `info,fastgpt_agent_sandbox_proxy=debug` | 代理服务日志级别。                                                                                           |
-| `AGENT_SANDBOX_PROXY_REWRITE_HOST` | 空                                       | 当 Provider 返回的沙盒 endpoint 是 `localhost` 或 `127.0.0.1`，且代理容器无法访问时，用该变量改写上游 Host。 |
-
-## 自定义依赖源
+### 自定义源
 
 如果沙盒内需要安装 npm 或 Python 依赖，可以在 `fastgpt-app` 和 `fastgpt-pro` 中配置依赖源。配置后，Agent Sandbox 初始化时会写入 npm、yarn、pnpm、bun、pip 和 uv 的源配置。
 
 ```dotenv
 # Agent Sandbox 内 npm/yarn/pnpm/bun 使用的 npm registry
 AGENT_SANDBOX_NPM_REGISTRY=https://registry.npmmirror.com
-
 # Agent Sandbox 内 pip/python -m pip/uv 使用的 PyPI index URL
 AGENT_SANDBOX_PYPI_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
 ```
 
-| 变量                           | 说明                                                    |
-| ------------------------------ | ------------------------------------------------------- |
-| `AGENT_SANDBOX_NPM_REGISTRY`   | 沙盒内 npm、yarn、pnpm、bun 使用的 npm registry。       |
-| `AGENT_SANDBOX_PYPI_INDEX_URL` | 沙盒内 pip、`python -m pip`、uv 使用的 PyPI index URL。 |
+### 资源限制变量
 
-该配置会按内容 hash 缓存在 sandbox runtime state 中，同一个 sandbox 仅在配置变化时重新写入。
+`fastpgt-app` 和 `fastgpt-pro` 中你可以通过以下变量控制资源限制：
 
-## 可选限制配置
-
-下面变量通常保持默认即可，仅在需要调整文件大小、WebSocket 消息大小或 IDE Agent 监听端口时配置：
-
-| 变量                                 | 默认值         | 说明                                                                             |
-| ------------------------------------ | -------------- | -------------------------------------------------------------------------------- |
-| `IDE_AGENT_BIND_ADDR`                | `0.0.0.0:1318` | 沙盒内 IDE Agent 监听地址。只有自定义沙盒镜像或端口时才需要调整。                |
-| `AGENT_SANDBOX_DISK_MB`              | `1024`         | Agent 沙盒磁盘大小基准，单位 MB；会影响冷归档包、Skill 包和 IDE 单文件大小限制。 |
-| `AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES` | `67108864`     | IDE Agent WebSocket 单消息大小上限，单位字节。                                   |
-| `AGENT_SANDBOX_WS_MAX_FRAME_BYTES`   | `16777216`     | IDE Agent WebSocket 单帧大小上限，单位字节。                                     |
-
-## 验证
-
-1. 重启 `fastgpt-app`、`fastgpt-pro` 和 `fastgpt-agent-sandbox-proxy`。
-2. 访问 `https://你的代理域名/health`，正常返回 `OK`。
-3. 在 FastGPT 中进入支持 Agent Sandbox 的调试或对话场景，打开沙盒文件编辑器或终端。
-4. 如果能正常读取文件、写入文件或打开终端，说明通用配置生效。
+| 变量                                 | 默认值     | 说明                                                                             |
+| ------------------------------------ | ---------- | -------------------------------------------------------------------------------- |
+| `AGENT_SANDBOX_DISK_MB`              | `1024`     | Agent 沙盒磁盘大小基准，单位 MB；会影响冷归档包、Skill 包和 IDE 单文件大小限制。 |
+| `AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES` | `67108864` | IDE Agent WebSocket 单消息大小上限，单位字节。                                   |
+| `AGENT_SANDBOX_WS_MAX_FRAME_BYTES`   | `16777216` | IDE Agent WebSocket 单帧大小上限，单位字节。                                     |
 
 ## 常见问题
 

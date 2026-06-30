@@ -29,8 +29,6 @@ Code Sandbox adds security-related environment variables such as `SANDBOX_API_MA
 | `SANDBOX_REQUEST_MAX_BODY_MB`     | `5`     | Maximum request body size for one sandbox network request, in MB.                                     |
 | `SANDBOX_QUEUE_ID_CONCURRENCY`    | Empty   | Number of requests with the same `queueId` that may enter execution at once. Empty disables queueing. |
 
-`/sandbox/js` and `/sandbox/python` request bodies now support an optional `queueId` field. When `SANDBOX_QUEUE_ID_CONCURRENCY` is configured and a valid `queueId` is provided, requests with the same `queueId` are queued in FIFO order. Requests with different `queueId` values, or requests without `queueId`, are not limited by this setting and continue to be limited only by the worker pool concurrency.
-
 ## 🚀 New Features
 
 1. Multimodal models now support audio and video input.

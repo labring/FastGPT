@@ -3,13 +3,13 @@ title: V4.5(需进行较为复杂更新)
 description: FastGPT V4.5 更新
 ---
 
-FastGPT V4.5 引入 PgVector0.5 版本的 HNSW 索引，极大的提高了知识库检索的速度，比起`IVFFlat`索引大致有3~10倍的性能提升，可轻松实现百万数据毫秒级搜索。缺点在于构建索引的速度非常慢，4c16g 500w 组数据使用`并行构建`大约花了 48 小时。具体参数配置可参考 [PgVector官方](https://github.com/pgvector/pgvector)
+FastGPT V4.5 引入 PgVector0.5 版本的 HNSW 索引，极大的提高了知识库检索的速度，比起 `IVFFlat` 索引大致有 3~10 倍的性能提升，可轻松实现百万数据毫秒级搜索。缺点在于构建索引的速度非常慢，4c16g 500w 组数据使用 `并行构建` 大约花了 48 小时。具体参数配置可参考 [PgVector 官方](https://github.com/pgvector/pgvector)
 
 下面需要对数据库进行一些操作升级：
 
-## PgVector升级：Sealos 部署方案
+## PgVector 升级：Sealos 部署方案
 
-1. 点击[Sealos桌面](https://cloud.sealos.io?uid=fnWRt09fZP)的数据库应用。
+1. 点击 [Sealos 桌面](https://cloud.sealos.io?uid=fnWRt09fZP)的数据库应用。
 2. 点击【pg】数据库的详情。
 3. 点击右上角的重启，等待重启完成。
 4. 点击左侧的一键链接，等待打开 Terminal。
@@ -34,16 +34,16 @@ CREATE INDEX CONCURRENTLY vector_index ON modeldata USING hnsw (vector vector_ip
 \d modeldata
 ```
 
-|                      |                      |
-| -------------------- | -------------------- |
+|                                        |                                        |
+| -------------------------------------- | -------------------------------------- |
 | ![](../../../../public/imgs/v45-1.jpg) | ![](../../../../public/imgs/v45-2.jpg) |
 | ![](../../../../public/imgs/v45-3.jpg) | ![](../../../../public/imgs/v45-4.jpg) |
 
-## PgVector升级：Docker-compose.yml 部署方案
+## PgVector 升级：Docker-compose.yml 部署方案
 
 下面的命令是基于给的 docker-compose 模板，如果数据库账号密码更换了，请自行调整。
 
-1. 修改 `docker-compose.yml` 中pg的镜像版本，改成 `ankane/pgvector:v0.5.0` 或 `registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:v0.5.0`
+1. 修改 `docker-compose.yml` 中 pg 的镜像版本，改成 `ankane/pgvector:v0.5.0` 或 `registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:v0.5.0`
 2. 重启 pg 容器(docker-compose pull && docker-compose up -d)，等待重启完成。
 3. 进入容器: `docker exec -it pg bash`
 4. 连接数据库: `psql 'postgresql://username:password@localhost:5432/postgres'`
@@ -76,7 +76,7 @@ CREATE INDEX CONCURRENTLY vector_index ON modeldata USING hnsw (vector vector_ip
 ### Fast GPT V4.5
 
 1. 新增 - 升级 PgVector 插件，引入 HNSW 索引，极大加快的知识库搜索速度。
-2. 新增 - AI对话模块，增加【返回AI内容】选项，可控制 AI 的内容不直接返回浏览器。
+2. 新增 - AI 对话模块，增加【返回 AI 内容】选项，可控制 AI 的内容不直接返回浏览器。
 3. 新增 - 支持问题分类选择模型
 4. 优化 - TextSplitter，采用递归拆解法。
 5. 优化 - 高级编排 UX 性能
@@ -84,4 +84,4 @@ CREATE INDEX CONCURRENTLY vector_index ON modeldata USING hnsw (vector vector_ip
 
 ## 该版本需要修改 `config.json` 文件
 
-最新配置可参考: [V45版本最新 config.json](../../config/json.mdx)
+旧版 `config.json` 配置说明已不再维护，当前版本请参考[模型配置方案](../../config/model/intro.mdx)。

@@ -1,0 +1,503 @@
+# 用于部署的 docker-compose 文件:
+# - FastGPT 端口映射为 3000:3000
+# - FastGPT-mcp-server 端口映射 3003:3000
+# - 如需启用 Agent/Skill 沙盒，请单独部署 fastgpt-agent-sandbox-proxy
+# - 建议修改账密后再运行
+
+# root 默认密码（重启后会强制重置该密码成环境变量值）
+x-default-root-psw: &x-default-root-psw "1234"
+# 系统最高密钥凭证
+x-system-key: &x-system-key "fastgpt-xxx"
+# 用户登录 JWT 密钥
+x-token-key: &x-token-key "fastgpt"
+# 文件阅读 token 密钥
+x-file-token-key: &x-file-token-key "filetokenkey"
+# 密钥加密 key
+x-aes256-secret-key: &x-aes256-secret-key "fastgptsecret"
+# Invoke 反向调用 JWT 密钥，至少 32 位
+x-invoke-token-secret: &x-invoke-token-secret "fastgpt_invoke_token_secret_32_chars_min"
+# plugin auth token，v4.15 plugin 服务要求至少 32 位
+x-plugin-auth-token: &x-plugin-auth-token "fastgpt-plugin-token-please-change"
+# code sandbox token
+x-code-sandbox-token: &x-code-sandbox-token "codesandbox"
+# volume manager auth token
+x-volume-manager-auth-token: &x-volume-manager-auth-token "vmtoken"
+# agent sandbox proxy secret，必须与 FastGPT 主站环境变量保持一致，且至少 32 位
+x-agent-sandbox-proxy-secret: &x-agent-sandbox-proxy-secret "default_fastgpt_agent_sandbox_proxy_secret"
+# aiproxy token
+x-aiproxy-token: &x-aiproxy-token "token"
+# 数据库连接相关配置
+x-share-db-config: &x-share-db-config
+  MONGODB_URI: mongodb://myusername:mypassword@fastgpt-mongo:27017/fastgpt?authSource=admin
+  REDIS_URL: redis://default:mypassword@fastgpt-redis:6379
+  # @see https://doc.fastgpt.cn/self-host/config/object-storage
+  STORAGE_VENDOR: minio # minio | aws-s3 | cos | oss
+  STORAGE_REGION: us-east-1
+  STORAGE_ACCESS_KEY_ID: minioadmin
+  STORAGE_SECRET_ACCESS_KEY: minioadmin
+  STORAGE_PUBLIC_BUCKET: fastgpt-public
+  STORAGE_PRIVATE_BUCKET: fastgpt-private
+  STORAGE_EXTERNAL_ENDPOINT: http://192.168.0.2:9000 # 一个服务器和客户端均可访问到存储桶的地址，可以是固定的宿主机 IP 或者域名，注意不要填写成 127.0.0.1 或者 localhost 等本地回环地址(因为容器里无法使用)
+  STORAGE_S3_CDN_ENDPOINT:
+  STORAGE_S3_ENDPOINT: http://fastgpt-minio:9000 # 协议://域名(IP):端口
+  STORAGE_S3_FORCE_PATH_STYLE: true
+  STORAGE_S3_MAX_RETRIES: 3
+  STORAGE_PUBLIC_ACCESS_EXTRA_SUB_PATH:
+# Log 配置
+x-log-config: &x-log-config
+  LOG_ENABLE_CONSOLE: true
+  LOG_CONSOLE_LEVEL: debug
+  LOG_ENABLE_OTEL: false
+  LOG_OTEL_LEVEL: info
+  LOG_OTEL_URL: http://localhost:4318/v1/logs
+  LOG_OTEL_SERVICE_NAME: fastgpt-client
+  METRICS_ENABLE_OTEL: false
+  METRICS_OTEL_URL: http://localhost:4318/v1/metrics
+  METRICS_OTEL_SERVICE_NAME: fastgpt-client
+  TRACING_ENABLE_OTEL: false
+  TRACING_OTEL_URL: http://localhost:4318/v1/traces
+  TRACING_OTEL_SERVICE_NAME: fastgpt-client
+# 容器运行环境可能会自动注入 HTTP_PROXY/HTTPS_PROXY。
+# 明确绕过 compose 内部服务，避免内部请求被代理劫持。
+x-no-proxy-config: &x-no-proxy-config
+  NO_PROXY: localhost,127.0.0.1,::1,fastgpt-app,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-agent-sandbox-proxy,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-minio,fastgpt-mongo,fastgpt-redis,fastgpt-vector,fastgpt-mcp-server,host.docker.internal,*.orb.internal,*.orb.local
+  no_proxy: localhost,127.0.0.1,::1,fastgpt-app,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-agent-sandbox-proxy,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-minio,fastgpt-mongo,fastgpt-redis,fastgpt-vector,fastgpt-mcp-server,host.docker.internal,*.orb.internal,*.orb.local
+
+# FastGPT 主服务的服务地址配置
+x-fastgpt-service-config: &x-fastgpt-service-config
+  PLUGIN_BASE_URL: http://fastgpt-plugin:3000
+  PLUGIN_TOKEN: *x-plugin-auth-token
+  CODE_SANDBOX_URL: http://fastgpt-code-sandbox:3000
+  CODE_SANDBOX_TOKEN: *x-code-sandbox-token
+  AIPROXY_API_ENDPOINT: http://fastgpt-aiproxy:3000
+  AIPROXY_API_TOKEN: *x-aiproxy-token
+
+# FastGPT 主服务的 Agent Sandbox 配置
+x-agent-sandbox-config: &x-agent-sandbox-config
+  # v4.15.0 默认不绑定具体 Agent Sandbox provider。
+  # 如需启用 Agent/Skill 沙盒，请参考升级文档选择 sealosdevbox 或 opensandbox 后补充对应环境变量。
+  AGENT_SANDBOX_PROVIDER:
+  AGENT_SANDBOX_PROXY_SECRET: *x-agent-sandbox-proxy-secret
+  # 浏览器访问 agent-sandbox-proxy 的地址。启用 Agent/Skill 沙盒时，必须改成单独部署的 proxy 的 ws:// 或 wss:// 地址。
+  AGENT_SANDBOX_PROXY_URL:
+  AGENT_SANDBOX_OPENSANDBOX_BASEURL:
+  AGENT_SANDBOX_OPENSANDBOX_API_KEY:
+  AGENT_SANDBOX_OPENSANDBOX_RUNTIME: docker
+  AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox
+  AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: v0.2.0
+  AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: true
+  AGENT_SANDBOX_SEALOS_BASEURL:
+  AGENT_SANDBOX_SEALOS_TOKEN:
+  AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: /home/devbox/workspace
+  AGENT_SANDBOX_SEALOS_IMAGE: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.2.0
+  AGENT_SANDBOX_ENABLE_VOLUME: false
+  AGENT_SANDBOX_VOLUME_MANAGER_URL:
+  AGENT_SANDBOX_VOLUME_MANAGER_TOKEN:
+  AGENT_SANDBOX_DISK_MB: 1024
+  AGENT_SANDBOX_MAX_EDIT_DEBUG: 100
+  AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES: 67108864
+  AGENT_SANDBOX_WS_MAX_FRAME_BYTES: 16777216
+
+# FastGPT App 专用环境变量（projects/app/src/env.ts · appEnv）
+x-app-env-config: &x-app-env-config
+  DEFAULT_ROOT_PSW: *x-default-root-psw
+  SYSTEM_NAME: FastGPT
+  SYSTEM_DESCRIPTION:
+  SYSTEM_FAVICON:
+  SSE_MCP_SERVER_PROXY_ENDPOINT:
+  MARKETPLACE_URL: https://v2.marketplace.fastgpt.cn
+  PASSWORD_EXPIRED_MONTH:
+  SHOW_COUPON: false
+  SHOW_DISCOUNT_COUPON: false
+  HIDE_CHAT_COPYRIGHT_SETTING:
+  CHINESE_IP_REDIRECT_URL:
+  PAY_FORM_URL:
+  AGENT_SANDBOX_FREE_TIP: false
+  OPENAPI_KEY_MAX_COUNT: 100
+
+# FastGPT 与 Pro 共用环境变量（packages/service/env.ts · serviceEnv）
+x-service-env-config: &x-service-env-config
+  HOSTNAME: 0.0.0.0
+  NEXT_PUBLIC_BASE_URL:
+  ROOT_KEY: *x-system-key
+  DB_MAX_LINK: 5
+  SYNC_INDEX: true
+  TOKEN_KEY: *x-token-key
+  FILE_TOKEN_KEY: *x-file-token-key
+  AES256_SECRET_KEY: *x-aes256-secret-key
+  INVOKE_TOKEN_SECRET: *x-invoke-token-secret
+  MULTIPLE_DATA_TO_BASE64: true
+  USE_IP_LIMIT: false
+  CHECK_INTERNAL_IP: false
+  TRUSTED_PROXY_ENABLE: false
+  TRUSTED_PROXY_IPS:
+  PASSWORD_LOGIN_LOCK_SECONDS:
+  MAX_LOGIN_SESSION:
+  ALLOWED_ORIGINS:
+  AGENT_ENGINE: default
+  HELPER_BOT_MODEL: qwen-max
+  CHAT_TITLE_MODEL:
+  SKIP_FILE_TYPE_CHECK: false
+  WECHAT_CHANNEL_CONCURRENCY: 1000
+  PARSE_FILE_WORKERS: 10
+  PARSE_FILE_TIMEOUT_SECONDS: 600
+  HTML_TO_MARKDOWN_WORKERS: 10
+  TEXT_TO_CHUNKS_WORKERS: 10
+  WORKFLOW_MAX_RUN_TIMES: 500
+  WORKFLOW_MAX_LOOP_TIMES: 100
+  WORKFLOW_PARALLEL_MAX_CONCURRENCY: 10
+  CHAT_MAX_QPM: 5000
+  SYSTEM_MAX_STRING_LENGTH_M: 100
+  SERVICE_REQUEST_MAX_CONTENT_LENGTH: 10
+  MAX_FOLDER_DEPTH: 4
+  APP_FOLDER_MAX_AMOUNT: 1000
+  DATASET_FOLDER_MAX_AMOUNT: 1000
+  UPLOAD_FILE_MAX_SIZE: 1000
+  UPLOAD_FILE_MAX_AMOUNT: 1000
+  LLM_REQUEST_TRACKING_RETENTION_HOURS: 6
+  MAX_HTML_TRANSFORM_CHARS: 1000000
+  DATASET_PARSE_MAX_PROCESS: 10
+  VECTOR_MAX_PROCESS: 10
+  QA_MAX_PROCESS: 10
+  VLM_MAX_PROCESS: 10
+  HNSW_EF_SEARCH: 100
+  HNSW_MAX_SCAN_TUPLES: 100000
+  CUSTOM_PDF_PARSE_URL:
+  CUSTOM_PDF_PARSE_KEY:
+  DOC2X_KEY:
+  TEXTIN_APP_ID:
+  TEXTIN_SECRET_CODE:
+  CUSTOM_PDF_PARSE_PRICE: 0
+  FILE_URL_WHITELIST:
+  WORKFLOW_HTTP_IGNORE_HTTPS_CERT: false
+
+# 向量库相关配置
+x-vec-config: &x-vec-config
+  OPENGAUSS_URL: postgresql://gaussdb:FastGPT@123@fastgpt-vector:5432/fastgpt
+
+services:
+  fastgpt-vector:
+    image: opengauss/opengauss:7.0.0-RC1
+    container_name: fastgpt-opengauss
+    restart: always
+    privileged: true
+    networks:
+      - data
+    environment:
+      # 这里的配置只有首次运行生效。修改后，重启镜像是不会生效的。需要把持久化数据删除再重启，才有效果
+      - GS_USERNAME=gaussdb       # 默认会创建 gaussdb 用户
+      - GS_PASSWORD=FastGPT@123   # 密码必须包含大写、小写、数字和特殊字符，且长度不少于8位
+      - GS_DB=fastgpt             # 默认会创建 postgres 数据库，这里以 fastgpt 为例
+    volumes:
+      - ./opengauss/data:/var/lib/opengauss
+    healthcheck:
+      test: ['CMD-SHELL', 'su - omm -c "gsql -d postgres -p 5432 -c \"SELECT 1\""']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+  fastgpt-mongo:
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.32 # cpu 不支持 AVX 时候使用 4.4.29
+    container_name: fastgpt-mongo
+    restart: always
+    networks:
+      - data
+    command: mongod --keyFile /data/mongodb.key --replSet rs0
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=myusername
+      - MONGO_INITDB_ROOT_PASSWORD=mypassword
+    volumes:
+      - fastgpt-mongo:/data/db
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mongo",
+          "-u",
+          "myusername",
+          "-p",
+          "mypassword",
+          "--authenticationDatabase",
+          "admin",
+          "--eval",
+          "db.adminCommand('ping')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    entrypoint:
+      - bash
+      - -c
+      - |
+        openssl rand -base64 128 > /data/mongodb.key
+        chmod 400 /data/mongodb.key
+        chown 999:999 /data/mongodb.key
+        echo 'const isInited = rs.status().ok === 1
+        if(!isInited){
+          rs.initiate({
+              _id: "rs0",
+              members: [
+                  { _id: 0, host: "fastgpt-mongo:27017" }
+              ]
+          })
+        }' > /data/initReplicaSet.js
+        # 启动MongoDB服务
+        exec docker-entrypoint.sh "$$@" &
+
+        # 等待MongoDB服务启动
+        until mongo -u myusername -p mypassword --authenticationDatabase admin --eval "print('waited for connection')"; do
+          echo "Waiting for MongoDB to start..."
+          sleep 2
+        done
+
+        # 执行初始化副本集的脚本
+        mongo -u myusername -p mypassword --authenticationDatabase admin /data/initReplicaSet.js
+
+        # 等待docker-entrypoint.sh脚本执行的MongoDB服务进程
+        wait $$!
+  fastgpt-redis:
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/redis:7.2-alpine
+    container_name: fastgpt-redis
+    networks:
+      - data
+    restart: always
+    command: |
+      redis-server --requirepass mypassword --loglevel warning --maxclients 10000 --appendonly yes --save 60 10 --maxmemory 4gb --maxmemory-policy noeviction
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "mypassword", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
+    volumes:
+      - fastgpt-redis:/data
+  fastgpt-minio:
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/minio:RELEASE.2025-09-07T16-13-09Z
+    container_name: fastgpt-minio
+    restart: always
+    ports:
+      - 9000:9000
+      - 9001:9001
+    networks:
+      - data
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    volumes:
+      - fastgpt-minio:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  fastgpt-app:
+    container_name: fastgpt-app
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.15.0
+    ports:
+      - 3000:3000
+    networks:
+      - data
+      - app
+      - codesandbox
+      - aiproxy
+    depends_on:
+      fastgpt-mongo:
+        condition: service_healthy
+      fastgpt-redis:
+        condition: service_healthy
+      fastgpt-minio:
+        condition: service_healthy
+      fastgpt-code-sandbox:
+        condition: service_healthy
+      fastgpt-plugin:
+        condition: service_healthy
+    restart: always
+    environment:
+      # 完整变量请参考: https://github.com/labring/FastGPT/blob/main/projects/app/.env.template
+      <<:
+        [
+          *x-share-db-config,
+          *x-vec-config,
+          *x-log-config,
+          *x-no-proxy-config,
+          *x-fastgpt-service-config,
+          *x-agent-sandbox-config,
+          *x-service-env-config,
+          *x-app-env-config,
+        ]
+      # 前端外部可访问的地址，用于自动补全文件资源路径。例如 https:fastgpt.cn，不能填 localhost。这个值可以不填，不填则发给模型的图片会是一个相对路径，而不是全路径，模型可能伪造Host。
+      FE_DOMAIN:
+      # 文件域名（也指向 FastGPT 服务）；如需更高安全性可独立分配域名，避免高危文件读取到主域名内容
+      FILE_DOMAIN:
+  fastgpt-code-sandbox:
+    container_name: fastgpt-code-sandbox
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-code-sandbox:v4.15.0
+    networks:
+      - codesandbox
+    restart: always
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      <<: [*x-log-config, *x-no-proxy-config]
+      LOG_OTEL_SERVICE_NAME: fastgpt-code-sandbox
+      SANDBOX_TOKEN: *x-code-sandbox-token
+      # ===== Resource Limits =====
+      # Maximum API JSON body size (MB), including variables
+      SANDBOX_API_MAX_BODY_MB: 8
+      # Execution timeout per request (ms)
+      SANDBOX_MAX_TIMEOUT: 60000
+      # Maximum allowed memory per user code execution (MB)
+      # Note: System automatically adds 50MB for runtime overhead
+      # Actual process limit = SANDBOX_MAX_MEMORY_MB + 50MB
+      SANDBOX_MAX_MEMORY_MB: 256
+      SANDBOX_MAX_OUTPUT_MB: 10
+      # Number of requests with the same queueId that may enter execution concurrently. Empty disables queueing.
+      SANDBOX_QUEUE_ID_CONCURRENCY:
+
+      # ===== Process Pool =====
+      # Number of pre-warmed worker processes (JS + Python)
+      SANDBOX_POOL_SIZE: 20
+
+      # ===== Network Request Limits =====
+      # Whether to check if the request is to a private network
+      CHECK_INTERNAL_IP: true
+      # Maximum number of HTTP requests per execution
+      SANDBOX_REQUEST_MAX_COUNT: 30
+      # Timeout for each outbound HTTP request (ms)
+      SANDBOX_REQUEST_TIMEOUT: 60000
+      # Maximum response body size for outbound requests
+      SANDBOX_REQUEST_MAX_RESPONSE_MB: 10
+      # Maximum request body size for outbound requests (MB)
+      SANDBOX_REQUEST_MAX_BODY_MB: 5
+
+      # ===== Module Control =====
+      # JS allowed modules whitelist (comma-separated)
+      SANDBOX_JS_ALLOWED_MODULES: lodash,dayjs,moment,uuid,crypto-js,qs,url,querystring
+      # Python allowed modules whitelist (comma-separated)
+      SANDBOX_PYTHON_ALLOWED_MODULES: math,cmath,decimal,fractions,random,statistics,collections,array,heapq,bisect,queue,copy,itertools,functools,operator,string,re,difflib,textwrap,unicodedata,codecs,datetime,time,calendar,_strptime,json,csv,base64,binascii,struct,hashlib,hmac,secrets,uuid,typing,abc,enum,dataclasses,contextlib,pprint,weakref,numpy,pandas,matplotlib
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://localhost:3000/health').then((res) => { if (!res.ok) throw new Error(String(res.status)); })",
+        ]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+  fastgpt-mcp-server:
+    container_name: fastgpt-mcp-server
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server:v4.14.23
+    networks:
+      - app
+    ports:
+      - 3003:3000
+    restart: always
+    environment:
+      <<: [*x-log-config, *x-no-proxy-config]
+      FASTGPT_ENDPOINT: http://fastgpt-app:3000
+  fastgpt-plugin:
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v1.0.0
+    container_name: fastgpt-plugin
+    restart: always
+    networks:
+      - data
+      - app
+    environment:
+      <<: [*x-share-db-config, *x-log-config, *x-no-proxy-config]
+      # v4.15 plugin 服务使用独立数据库，避免和 FastGPT 主库集合冲突。
+      MONGODB_URI: mongodb://myusername:mypassword@fastgpt-mongo:27017/fastgpt-plugin?authSource=admin
+      DB_MAX_LINK: 100
+      AUTH_TOKEN: *x-plugin-auth-token
+      # 工具网络请求，最大请求和响应体
+      SERVICE_REQUEST_MAX_CONTENT_LENGTH: 10
+      # 最大 API 请求体大小
+      MAX_API_SIZE: 10
+      # 传递给 OTLP 收集器的服务名称
+      LOG_OTEL_SERVICE_NAME: fastgpt-plugin
+    depends_on:
+      fastgpt-mongo:
+        condition: service_healthy
+      fastgpt-minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # AI Proxy
+  fastgpt-aiproxy:
+    image: registry.cn-hangzhou.aliyuncs.com/labring/aiproxy:v0.6.5
+    container_name: fastgpt-aiproxy
+    restart: unless-stopped
+    depends_on:
+      fastgpt-aiproxy-pg:
+        condition: service_healthy
+    networks:
+      - aiproxy
+    environment:
+      # 对应 fastgpt 里的AIPROXY_API_TOKEN
+      ADMIN_KEY: *x-aiproxy-token
+      # 错误日志详情保存时间（小时）
+      LOG_DETAIL_STORAGE_HOURS: 1
+      # 数据库连接地址
+      SQL_DSN: postgres://postgres:aiproxy@fastgpt-aiproxy-pg:5432/aiproxy
+      # 最大重试次数
+      RETRY_TIMES: 3
+      # 不需要计费
+      BILLING_ENABLED: false
+      # 不需要严格检测模型
+      DISABLE_MODEL_CONFIG: true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/status"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  fastgpt-aiproxy-pg:
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:0.8.0-pg15 # docker hub
+    restart: unless-stopped
+    container_name: fastgpt-aiproxy-pg
+    volumes:
+      - fastgpt-aiproxy_pg:/var/lib/postgresql/data
+    networks:
+      - aiproxy
+    environment:
+      TZ: Asia/Shanghai
+      POSTGRES_USER: postgres
+      POSTGRES_DB: aiproxy
+      POSTGRES_PASSWORD: aiproxy
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "aiproxy"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+networks:
+  data:
+    name: fastgpt_data
+  vector:
+    name: fastgpt_vector
+  app:
+    name: fastgpt_app
+  codesandbox:
+    name: fastgpt_codesandbox
+  aiproxy:
+    name: fastgpt_aiproxy
+
+volumes:
+  fastgpt-pg:
+  fastgpt-mongo:
+  fastgpt-redis:
+  fastgpt-minio:
+  fastgpt-milvus-minio:
+  fastgpt-milvus-etcd:
+  fastgpt-milvus-data:
+  fastgpt-ob-data:
+  fastgpt-ob-config:
+  fastgpt-seekdb-data:
+  fastgpt-seekdb-config:
+  fastgpt-aiproxy_pg:

@@ -1,5 +1,5 @@
 ---
-title: Docker-compose 部署
+title: Docker Compose 部署
 description: 使用 Docker Compose 快速部署 FastGPT
 ---
 
@@ -124,40 +124,71 @@ brew install orbstack
 bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
 ```
 
+脚本会自动完成以下操作：
+
+- 下载或复制 `docker-compose.yml`，并下载 `config.json`。
+- 引导选择 S3 与 MCP 的外部访问地址，并写入配置文件。
+- 随机生成 `root` 登录密码、服务间 Token、应用密钥和组件密码，并写入 `docker-compose.yml`。
+- 自动检测宿主机 Docker socket 路径，必要时替换 `docker-compose.yml` 中的挂载路径。
+
+执行完成后，终端会输出本次生成的 `root` 登录密码，请妥善保存生成后的 `docker-compose.yml`。后续升级时建议基于该文件调整，不要直接丢失已生成的密码和密钥。
+
 #### 方法二：手动下载部署
 
-如果部署环境为非 \*nix 环境或无法访问外网，需要手动下载 `docker-compose.yml` 进行部署
+如果需要固定使用某个 `docker-compose.yml` 文件，推荐先手动下载 `docker-compose.yml` 和 `install.sh`，再通过 `install.sh` 的本地 compose 模式生成最终配置。这样仍然可以复用脚本里的随机密码、S3/MCP 地址写入、Docker socket 检测等能力。
 
-1. 下载 `docker-compose.yml` 文件：
+1. 下载所需的 `docker-compose.yml` 文件到服务器，例如：
+
+```bash
+curl -fsSL https://doc.fastgpt.cn/deploy/docker/v4.15/cn/docker-compose.pg.yml -o docker-compose.source.yml
+```
 
 <details>
 <summary>点击展开查看不同数据库的 docker-compose 配置文件下载地址</summary>
 
 - **Pgvector**
-  - 中国大陆地区镜像源(阿里云)：[docker-compose.pg.yml](https://doc.fastgpt.cn/deploy/docker/v4.14/cn/docker-compose.pg.yml)
-  - 全球镜像源(dockerhub, ghcr)：[docker-compose.pg.yml](https://doc.fastgpt.cn/deploy/docker/v4.14/global/docker-compose.pg.yml)
+  - 中国大陆地区镜像源(阿里云)：[docker-compose.pg.yml](https://doc.fastgpt.cn/deploy/docker/v4.15/cn/docker-compose.pg.yml)
+  - 全球镜像源(dockerhub, ghcr)：[docker-compose.pg.yml](https://doc.fastgpt.cn/deploy/docker/v4.15/global/docker-compose.pg.yml)
 - **Oceanbase**
-  - 中国大陆地区镜像源(阿里云)：[docker-compose.oceanbase.yml](https://doc.fastgpt.cn/deploy/docker/v4.14/cn/docker-compose.oceanbase.yml)
-  - 全球镜像源(dockerhub, ghcr)：[docker-compose.oceanbase.yml](https://doc.fastgpt.cn/deploy/docker/v4.14/global/docker-compose.oceanbase.yml)
+  - 中国大陆地区镜像源(阿里云)：[docker-compose.oceanbase.yml](https://doc.fastgpt.cn/deploy/docker/v4.15/cn/docker-compose.oceanbase.yml)
+  - 全球镜像源(dockerhub, ghcr)：[docker-compose.oceanbase.yml](https://doc.fastgpt.cn/deploy/docker/v4.15/global/docker-compose.oceanbase.yml)
 - **Milvus**
-  - 中国大陆地区镜像源(阿里云)：[docker-compose.milvus.yml](https://doc.fastgpt.cn/deploy/docker/v4.14/cn/docker-compose.milvus.yml)
-  - 全球镜像源(dockerhub, ghcr)：[docker-compose.milvus.yml](https://doc.fastgpt.cn/deploy/docker/v4.14/global/docker-compose.milvus.yml)
+  - 中国大陆地区镜像源(阿里云)：[docker-compose.milvus.yml](https://doc.fastgpt.cn/deploy/docker/v4.15/cn/docker-compose.milvus.yml)
+  - 全球镜像源(dockerhub, ghcr)：[docker-compose.milvus.yml](https://doc.fastgpt.cn/deploy/docker/v4.15/global/docker-compose.milvus.yml)
 - **Zilliz**
-  - 中国大陆地区镜像源(阿里云)：[docker-compose.zilliz.yml](https://doc.fastgpt.cn/deploy/docker/v4.14/cn/docker-compose.zilliz.yml)
-  - 全球镜像源(dockerhub, ghcr)：[docker-compose.zilliz.yml](https://doc.fastgpt.cn/deploy/docker/v4.14/global/docker-compose.zilliz.yml)
+  - 中国大陆地区镜像源(阿里云)：[docker-compose.zilliz.yml](https://doc.fastgpt.cn/deploy/docker/v4.15/cn/docker-compose.zilliz.yml)
+  - 全球镜像源(dockerhub, ghcr)：[docker-compose.zilliz.yml](https://doc.fastgpt.cn/deploy/docker/v4.15/global/docker-compose.zilliz.yml)
 - **SeekDB**
-  - 中国大陆地区镜像源(阿里云)：[docker-compose.seekdb.yml](https://doc.fastgpt.cn/deploy/docker/v4.14/cn/docker-compose.seekdb.yml)
-  - 全球镜像源(dockerhub, ghcr)：[docker-compose.seekdb.yml](https://doc.fastgpt.cn/deploy/docker/v4.14/global/docker-compose.seekdb.yml)
-
-2. 下载 `config.json` 文件：
-
-- [config.json](https://doc.fastgpt.cn/deploy/config/config.json)
+  - 中国大陆地区镜像源(阿里云)：[docker-compose.seekdb.yml](https://doc.fastgpt.cn/deploy/docker/v4.15/cn/docker-compose.seekdb.yml)
+  - 全球镜像源(dockerhub, ghcr)：[docker-compose.seekdb.yml](https://doc.fastgpt.cn/deploy/docker/v4.15/global/docker-compose.seekdb.yml)
 
 </details>
 
-下载 config.json 文件
+2. 下载 `install.sh` 到服务器：
 
-- [config.json](https://doc.fastgpt.cn/deploy/config/config.json)
+```bash
+curl -fsSL https://doc.fastgpt.cn/deploy/install.sh -o install.sh
+```
+
+3. 使用 `install.sh` 读取本地 compose 文件并生成最终部署配置：
+
+```bash
+FASTGPT_LOCAL_COMPOSE_PATH=./docker-compose.source.yml bash install.sh
+```
+
+脚本会复制该 compose 文件为最终的 `docker-compose.yml`，并继续下载 `config.json`、随机生成登录密码和各类凭证、写入 S3/MCP 地址。生成完成后，按终端输出的 root 密码登录。
+
+完全离线环境下，需要同时准备 `docker-compose.yml`、`config.json` 和 `install.sh`。如果无法让脚本下载 `config.json`，则需要手动修改 `DEFAULT_ROOT_PSW`、服务 Token、数据库密码、S3/MCP 地址等配置。
+
+#### 自定义镜像源部署
+
+如果需要使用企业内网 Harbor、私有 Registry 或自建镜像加速源，可以先下载 `docker-compose.yml`，把所有 `image:` 改成自己的镜像地址，再走本地 compose 模式：
+
+```bash
+FASTGPT_LOCAL_COMPOSE_PATH=./docker-compose.yml bash install.sh
+```
+
+如果启用 Agent/Skill 沙盒，还需要单独部署 `fastgpt-agent-sandbox-proxy`，并同步替换 `AGENT_SANDBOX_SEALOS_IMAGE` 或 `AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO`，确保沙盒 provider 可以拉取 `fastgpt-agent-sandbox` 镜像。v4.15.0 默认部署文件不内置 `fastgpt-agent-sandbox-proxy`，也不会默认启动 OpenSandbox；沙盒 provider 的接入方式见 [V4.15.0 升级说明](../upgrading/4-15/41500.mdx#5-agent-sandbox-部署方案)。
 
 ### 2. 修改环境变量
 
@@ -169,7 +200,7 @@ bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
 
 1. 3000 端口（FastGPT 主服务）
 2. 9000 端口（S3 服务）
-3. 3005 端口（FastGPT SSE MCP server 服务）
+3. 3003 端口（FastGPT SSE MCP server 服务）
 
 ### 4. 启动容器
 
@@ -177,13 +208,14 @@ bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
 
 ```bash
 # 启动容器
-docker compose --profile prepull pull opensandbox-agent-sandbox-image opensandbox-execd-image opensandbox-egress-image && docker compose up -d
-
+docker compose up -d
 ```
 
 ### 5. 访问 FastGPT
 
-可通过第二步开放的端口/域名访问 FastGPT。登录用户名为 `root`，密码为 `docker-compose.yml` 环境变量里设置的 `DEFAULT_ROOT_PSW`。每次重启容器，都会自动初始化 root 用户，密码为 `1234`（与环境变量中的 `DEFAULT_ROOT_PSW` 一致）。
+可通过第三步开放的端口/域名访问 FastGPT。登录用户名为 `root`，密码为 `docker-compose.yml` 环境变量里设置的 `DEFAULT_ROOT_PSW`。
+
+如果使用交互式脚本部署，脚本会随机生成 `DEFAULT_ROOT_PSW`，并在执行完成后输出本次登录密码；如果手动下载部署，请自行修改 `docker-compose.yml` 中的默认密码后再启动服务。每次重启容器，都会按 `DEFAULT_ROOT_PSW` 自动更新 root 用户密码。
 
 ### 6. 配置模型
 
@@ -316,20 +348,9 @@ docker compose up -d
 
 4. 执行初始化脚本（如果有）
 
-### 如何自定义配置文件？
+### 如何自定义环境变量？
 
-修改 `config.json` 文件，并执行 `docker compose down` 再执行 `docker compose up -d` 重起容器。具体配置，参考[配置详解](../config/json.mdx)。
-
-### 如何检查自定义配置文件是否挂载
-
-1. `docker logs fastgpt` 可以查看日志，在启动容器后，第一次请求网页，会进行配置文件读取，可以看看有没有读取成功以及有无错误日志。
-2. `docker exec -it fastgpt sh` 进入 FastGPT 容器，可以通过 `ls data` 查看目录下是否成功挂载 `config.json` 文件。可通过 `cat data/config.json` 查看配置文件。
-
-**可能不生效的原因**
-
-1. 挂载目录不正确
-2. 配置文件不正确，日志中会提示 `invalid json`，配置文件需要是标准的 JSON 文件。
-3. 修改后，没有 `docker compose down` 再 `docker compose up -d`，restart 是不会重新挂载文件的。
+修改 `docker-compose.yml` 中 `fastgpt-app` 的 `environment` 配置，并执行 `docker compose up -d` 重启容器。具体配置参考[环境变量说明](../config/env.mdx)。
 
 ### 如何检查环境变量是否正常加载
 

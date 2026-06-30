@@ -50,8 +50,6 @@ x-vec-config: &x-vec-config
   MILVUS_TOKEN: zilliz_cloud_token
 
 services:
-  # Vector DB
-
   fastgpt-mongo:
     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.32 # cpu 不支持 AVX 时候使用 4.4.29
     container_name: fastgpt-mongo
@@ -269,7 +267,7 @@ services:
       retries: 3
   fastgpt-mcp-server:
     container_name: fastgpt-mcp-server
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server:v4.14.22
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-mcp_server:v4.14.23
     networks:
       - app
     ports:

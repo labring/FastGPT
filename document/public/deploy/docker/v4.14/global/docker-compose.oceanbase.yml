@@ -49,7 +49,6 @@ x-vec-config: &x-vec-config
   OCEANBASE_URL: mysql://root%40tenantname:tenantpassword@fastgpt-vector:2881/mysql
 
 services:
-  # Vector DB
   fastgpt-vector:
     image:  oceanbase/oceanbase-ce:4.3.5-lts
     container_name: fastgpt-ob
@@ -303,7 +302,7 @@ services:
       retries: 3
   fastgpt-mcp-server:
     container_name: fastgpt-mcp-server
-    image: ghcr.io/labring/fastgpt-mcp_server:v4.14.22
+    image: ghcr.io/labring/fastgpt-mcp_server:v4.14.23
     networks:
       - app
     ports:
