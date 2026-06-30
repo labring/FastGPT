@@ -240,7 +240,11 @@ const MobileVoiceInput = ({
         flex="1 0 0"
         bg={isSpeaking ? (isCancel ? 'red.500' : 'primary.500') : 'rgba(255, 255, 255, 0.95)'}
         backdropFilter={!isSpeaking ? 'blur(4px)' : 'none'}
-        borderRadius="xxl"
+        borderRadius={['xl', 'xxl']}
+        sx={{
+          WebkitTapHighlightColor: 'transparent',
+          WebkitTouchCallout: 'none'
+        }}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onTouchStart={handleTouchStart}
@@ -399,7 +403,7 @@ const VoiceInput = forwardRef<VoiceInputComponentRef, VoiceInputProps>(
         bottom={0}
         bg="transparent"
         zIndex={5}
-        borderRadius={isPc ? 'md' : ''}
+        borderRadius={isPc ? 'md' : ['xl', 'xxl']}
         onContextMenu={(e) => e.preventDefault()}
       >
         {isMobileDevice ? (
