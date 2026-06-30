@@ -324,7 +324,7 @@ services:
       <<: [*x-no-proxy-config]
       PORT: 3000
       VM_RUNTIME: docker
-      VM_AUTH_TOKEN: *x-volume-manager-auth-token # 对应 AGENT_SANDBOX_VOLUME_MANAGER_TOKEN
+      VM_AUTH_TOKEN: *x-volume-manager-auth-token # 对应 AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN
       VM_VOLUME_NAME_PREFIX: fastgpt-session # volume 名称前缀
       VM_LOG_LEVEL: info
     healthcheck:

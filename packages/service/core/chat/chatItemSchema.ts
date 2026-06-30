@@ -96,22 +96,19 @@ const ChatItemSchema = new Schema({
   }
 });
 
+/* TODO: 未全面检查操作，所以这里暂时不加 sourceType 的索引。 */
 /*
   delete by app;
   delete by chat id;
   close custom feedback;
 */
 ChatItemSchema.index({ appId: 1, chatId: 1, dataId: 1 });
-ChatItemSchema.index({ sourceType: 1, appId: 1, chatId: 1, dataId: 1 });
 // Get histories
 ChatItemSchema.index({ appId: 1, chatId: 1, deleteTime: 1 });
-ChatItemSchema.index({ sourceType: 1, appId: 1, chatId: 1, deleteTime: 1 });
 // get chatitem list,Anchor filter
 ChatItemSchema.index({ appId: 1, chatId: 1, _id: -1 });
-ChatItemSchema.index({ sourceType: 1, appId: 1, chatId: 1, _id: -1 });
 // Query by role (AI/Human), get latest chat item, permission check
 ChatItemSchema.index({ appId: 1, chatId: 1, obj: 1, _id: -1 });
-ChatItemSchema.index({ sourceType: 1, appId: 1, chatId: 1, obj: 1, _id: -1 });
 
 export const MongoChatItem = getMongoModel<ChatItemDBSchemaType>(
   ChatItemCollectionName,

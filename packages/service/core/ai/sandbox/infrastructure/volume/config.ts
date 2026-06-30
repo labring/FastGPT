@@ -18,8 +18,8 @@ export type VolumeManagerConfig = {
  */
 export function getVolumeManagerEnvConfig(): VolumeManagerConfig {
   return {
-    enable: serviceEnv.AGENT_SANDBOX_ENABLE_VOLUME,
-    url: serviceEnv.AGENT_SANDBOX_VOLUME_MANAGER_URL!,
-    token: serviceEnv.AGENT_SANDBOX_VOLUME_MANAGER_TOKEN
+    enable: true,
+    url: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL!,
+    token: serviceEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN
   };
 }

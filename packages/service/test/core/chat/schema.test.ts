@@ -15,6 +15,11 @@ const hasIndex = (
     );
   });
 
+const findIndex = (
+  indexes: ReturnType<typeof MongoChat.schema.indexes>,
+  keys: Record<string, 1 | -1>
+) => indexes.find(([indexKeys]) => JSON.stringify(indexKeys) === JSON.stringify(keys));
+
 describe('chat schema indexes', () => {
   it('keeps sourceType optional without silently defaulting new writes to app', () => {
     for (const schema of [MongoChat.schema, MongoChatItem.schema, MongoChatItemResponse.schema]) {
@@ -25,10 +30,12 @@ describe('chat schema indexes', () => {
     }
   });
 
-  it('declares source-aware unique chat identity index while keeping legacy app index', () => {
+  it('declares source-aware unique chat identity index while keeping legacy app lookup index', () => {
     const indexes = MongoChat.schema.indexes();
+    const legacyAppIndex = findIndex(indexes, { appId: 1, chatId: 1 });
 
-    expect(hasIndex(indexes, { appId: 1, chatId: 1 }, { unique: true })).toBe(true);
+    expect(legacyAppIndex?.[1]?.name).toBe('appId_1_chatId_1_non_unique');
+    expect(legacyAppIndex?.[1]?.unique).not.toBe(true);
     expect(
       hasIndex(
         indexes,

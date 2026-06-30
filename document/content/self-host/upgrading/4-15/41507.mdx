@@ -50,12 +50,21 @@ VLM_MAX_PROCESS=10
 SSE_MCP_SERVER_PROXY_ENDPOINT=http://localhost:3003
 ```
 
-### 3. 更新镜像
+### 3. OpenSandbox 变量更新
+
+OpenSandbox Volume Manager 配置变为必填，并且环境变量改名为：
+
+```dotenv
+AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL=http://localhost:3005
+AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN=vmtoken
+```
+
+### 4. 更新镜像
 
 - 更新 fastgpt-app(fastgpt 主服务) 镜像 tag: v4.15.0-beta7
 - 更新 fastgpt-pro(fastgpt 商业版) 镜像 tag: v4.15.0-beta7
 
-### 4. 执行工作流 V1 升级 V2 迁移（可选）
+### 5. 执行工作流 V1 升级 V2 迁移（可选）
 
 该步骤仅需部署过 `<4.8` 版本 FastGPT 的用户执行。
 
@@ -96,7 +105,7 @@ curl -X POST 'https://你的域名/api/admin/dataClean/v1WorkflowToV2' \
 5. 缺失 `node.name` 时用 `flowType` 兜底，缺失 `input.label` 时用 `input.key` 兜底。
 6. 写库前使用 `PublishAppBodySchema` 校验 `nodes`、`edges`、`chatConfig`，校验失败的文档不会写入，并会记录到接口返回结果。
 
-### 5. 执行工作流 V2 枚举与结构脏数据清洗
+### 6. 执行工作流 V2 枚举与结构脏数据清洗
 
 部分历史工作流节点可能把 TypeScript 枚举表达式字符串直接写入 MongoDB，例如：
 
@@ -164,3 +173,4 @@ curl -X POST 'https://你的域名/api/admin/dataClean/initWorkflowData' \
 2. 修复工作流节点配置中 `FlowNodeInputTypeEnum.*`、`FlowNodeOutputTypeEnum.*` 和 `WorkflowIOValueTypeEnum.*` 枚举表达式字符串脏数据导致输入渲染和 IO 类型判断异常的问题。
 3. AgentV2 mcp 拿不到 schema。
 4. 批量执行节点最后未回写变量更新。
+5. 工作流文本框，ctrl+c 复制文本内容时，会被节点复制抢占，导致无法复制文本。

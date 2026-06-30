@@ -91,9 +91,7 @@ export const getSessionVolumeConfig = async (
   const vmConfig = getVolumeManagerEnvConfig();
   if (!vmConfig.enable) return undefined;
   if (!vmConfig.url) {
-    throw new Error(
-      'AGENT_SANDBOX_VOLUME_MANAGER_URL is required when AGENT_SANDBOX_ENABLE_VOLUME=true'
-    );
+    throw new Error('AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL is required');
   }
   const claimName = await ensureSessionVolume(sandboxId);
   const volumeResult = buildVolumeConfig(claimName);

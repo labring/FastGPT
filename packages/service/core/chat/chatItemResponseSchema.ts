@@ -39,16 +39,9 @@ const ChatItemResponseSchema = new Schema({
   }
 });
 
+/* TODO: 未全面检查操作，所以这里暂时不加 sourceType 的索引。 */
 // 按 chat item 拉取完整 nodeResponse rows；复合索引包含 _id，避免详情读取时额外排序。
 ChatItemResponseSchema.index({ appId: 1, chatId: 1, chatItemDataId: 1, _id: 1 });
-ChatItemResponseSchema.index({
-  sourceType: 1,
-  appId: 1,
-  chatId: 1,
-  chatItemDataId: 1,
-  _id: 1
-});
-
 // Clear expired response
 ChatItemResponseSchema.index({ teamId: 1, time: -1 });
 
