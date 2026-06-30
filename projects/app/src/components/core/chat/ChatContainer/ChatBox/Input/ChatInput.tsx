@@ -536,7 +536,7 @@ const ChatInput = ({
         position={'relative'}
         borderRadius={['xl', 'xxl']}
         bg={'white'}
-        overflow={'display'}
+        overflow={mobilePreSpeak ? 'hidden' : 'display'}
         {...(focusing
           ? activeStyles
           : {
