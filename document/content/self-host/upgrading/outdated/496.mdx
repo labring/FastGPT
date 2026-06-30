@@ -9,7 +9,7 @@ description: FastGPT V4.9.6 更新说明
 2. 支持以 MCP SSE 协议创建工具。
 3. 批量执行节点支持交互节点，可实现每一轮循环都人工参与。
 4. 增加工作台二级菜单，合并工具箱。
-5. 增加 grok3、GPT4.1、o系列、Gemini2.5 模型系统配置。
+5. 增加 grok3、GPT4.1、o 系列、Gemini2.5 模型系统配置。
 
 ## ⚙️ 优化
 
@@ -17,7 +17,7 @@ description: FastGPT V4.9.6 更新说明
 2. Python sandbox 代码，支持大数据输入。
 3. 路径组件支持配置最后一步是否可点击。
 4. 知识库工具调用结果，自动补充图片域名。
-5. Github action runner 升级成 unbuntu24
+5. GitHub action runner 升级成 unbuntu24
 6. 去除飞书、公众号等三方渠道，回复时，可能前后多一个换行的问题。
 7. 调整分块策略，大表格时，不进行超大块合并，而是独立拆块。
 8. Iframe 嵌套组件，内置允许麦克风声明。
@@ -36,7 +36,7 @@ description: FastGPT V4.9.6 更新说明
 
 #### Docker 部署
 
-在`docker-compose.yml`文件中，加入`fastgpt-mcp-server`服务:
+在 `docker-compose.yml` 文件中，加入 `fastgpt-mcp-server` 服务:
 
 ```yml
 fastgpt-mcp-server:
@@ -53,13 +53,13 @@ fastgpt-mcp-server:
 
 #### Sealos 部署
 
-直接在`应用管理`中，增加一个`fastgpt-mcp-server`应用，镜像为`ghcr.io/labring/fastgpt-mcp_server:v4.9.6`，并设置环境变量`FASTGPT_ENDPOINT=fastgpt 的访问地址`。
+直接在 `应用管理` 中，增加一个 `fastgpt-mcp-server` 应用，镜像为 `ghcr.io/labring/fastgpt-mcp_server:v4.9.6`，并设置环境变量 `FASTGPT_ENDPOINT=fastgpt 的访问地址`。
 
 ### 3. 修改 FastGPT 容器环境变量
 
 #### 社区版
 
-修改`config.json`配置文件，增加: `"feconfigs.mcpServerProxyEndpoint": "fastgpt-mcp-server 的访问地址"`， 末尾不要携带/，例如:
+修改 `config.json` 配置文件，增加: `"feconfigs.mcpServerProxyEndpoint": "fastgpt-mcp-server 的访问地址"`，末尾不要携带/，例如:
 
 ```json
 {
@@ -72,7 +72,7 @@ fastgpt-mcp-server:
 
 #### 商业版
 
-在 Admin 后台，`系统配置-基础配置-系统参数`中的`MCP 转发服务地址`中，设置`fastgpt-mcp-server`的公网访问地址。
+商业版不再支持在 Admin 后台配置 MCP 转发服务地址，请在 FastGPT 容器环境变量中配置 `SSE_MCP_SERVER_PROXY_ENDPOINT=fastgpt-mcp-server 的公网访问地址`。
 
 ### 4. 更新镜像 tag
 

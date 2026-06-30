@@ -5,7 +5,8 @@ import { BoolSchema, IntSchema, UrlSchema } from '@fastgpt/global/common/zod';
 export const appEnv = createEnv({
   server: {
     DEFAULT_ROOT_PSW: z.string().default('123456'),
-    MCP_SERVER_PROXY_ENDPOINT: UrlSchema.optional(),
+    SSE_MCP_SERVER_PROXY_ENDPOINT: UrlSchema.optional(),
+
     SYSTEM_NAME: z.string().default('AI'),
     SYSTEM_DESCRIPTION: z.string().default(''),
     SYSTEM_FAVICON: z.string().default(''),

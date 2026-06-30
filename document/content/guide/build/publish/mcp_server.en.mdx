@@ -75,21 +75,18 @@ fastgpt-mcp-server:
     - FASTGPT_ENDPOINT=http://fastgpt:3000
 ```
 
-### Update FastGPT Configuration
+### Update FastGPT Container Environment Variables
 
-In your `config.json`, add: `"feconfigs.mcpServerProxyEndpoint": "<your fastgpt-mcp-server URL>"` (no trailing slash). For example:
+Configure `SSE_MCP_SERVER_PROXY_ENDPOINT` in the FastGPT container. Set it to the client-accessible `fastgpt-mcp-server` URL without a trailing `/`. For example:
 
-```json
-{
-  "feConfigs": {
-    "mcpServerProxyEndpoint": "https://mcp.fastgpt.cn"
-  }
-}
+```yaml
+environment:
+  SSE_MCP_SERVER_PROXY_ENDPOINT: https://mcp.fastgpt.cn
 ```
 
 ### Restart FastGPT
 
-Since you modified a mounted config file, force a full restart:
+Restart FastGPT after changing the environment variable:
 
 ```bash
 docker-compose down
