@@ -9,6 +9,10 @@ import { type ShortUrlParams } from '@fastgpt/global/support/marketing/type';
 import { getRedisCache, setRedisCache } from '../../redis/cache';
 import { differenceInDays } from 'date-fns';
 import { getLogger, LogCategories } from '../../logger';
+import type {
+  TeamEnterpriseAuthStatusEnum,
+  TeamEnterpriseAuthTaskStatusEnum
+} from '@fastgpt/global/support/user/team/enterpriseAuth/constant';
 
 const logger = getLogger(LogCategories.EVENT.TRACK);
 
@@ -158,6 +162,46 @@ export const pushTrack = {
       data: {
         teamId: data.teamId
       }
+    });
+  },
+  enterpriseAuthStart: (
+    data: PushTrackCommonType & {
+      result: 'success' | 'failed';
+      status?: `${TeamEnterpriseAuthStatusEnum}`;
+      taskStatus?: `${TeamEnterpriseAuthTaskStatusEnum}`;
+      errorCode?: string;
+      usedTimes?: number;
+      hasCurrentTask?: boolean;
+    }
+  ) => {
+    return createTrack({
+      event: TrackEnum.enterpriseAuthStart,
+      data
+    });
+  },
+  enterpriseAuthVerifyAmount: (
+    data: PushTrackCommonType & {
+      result: 'success' | 'amountError' | 'amountFailed' | 'failed';
+      status?: `${TeamEnterpriseAuthStatusEnum}`;
+      errorCode?: string;
+      taskId?: string;
+      isNewlyVerified?: boolean;
+    }
+  ) => {
+    return createTrack({
+      event: TrackEnum.enterpriseAuthVerifyAmount,
+      data
+    });
+  },
+  enterpriseAuthReset: (
+    data: PushTrackCommonType & {
+      result: 'success' | 'failed';
+      errorCode?: string;
+    }
+  ) => {
+    return createTrack({
+      event: TrackEnum.enterpriseAuthReset,
+      data
     });
   },
 

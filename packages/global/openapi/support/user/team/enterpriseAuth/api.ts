@@ -1,5 +1,4 @@
 import z from 'zod';
-import { IntSchema } from '../../../../../common/zod';
 import {
   EnterpriseAuthAmountMaxErrorTimes,
   EnterpriseAuthMaxTimes,
@@ -104,6 +103,7 @@ const UnifiedCreditCodeSchema = EnterpriseAuthRequiredStringSchema.transform((co
     description: '统一社会信用代码，18 位大写数字或字母（不包含 I/O/Z/S/V）',
     example: '91310000MA1K000000'
   });
+const VerifyEnterpriseAuthAmountFenSchema = z.number().int().positive();
 
 export const StartEnterpriseAuthBodySchema = z.object({
   enterpriseName: EnterpriseAuthRequiredStringSchema.max(100).meta({
@@ -162,7 +162,7 @@ export type StartEnterpriseAuthResponseType = z.infer<typeof StartEnterpriseAuth
 
 export const VerifyEnterpriseAuthAmountBodySchema = z.object({
   taskId: z.string().min(1).meta({ description: '认证任务 ID' }),
-  amountFen: IntSchema.meta({
+  amountFen: VerifyEnterpriseAuthAmountFenSchema.meta({
     description: '用户填写的到账金额，单位为分',
     example: 123
   })

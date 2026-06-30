@@ -11,6 +11,11 @@ export enum TrackEnum {
   clickOperationalAd = 'clickOperationalAd',
   closeOperationalAd = 'closeOperationalAd',
   teamChatQPM = 'teamChatQPM',
+  enterpriseAuthOpen = 'enterpriseAuthOpen',
+  enterpriseAuthContactBusiness = 'enterpriseAuthContactBusiness',
+  enterpriseAuthStart = 'enterpriseAuthStart',
+  enterpriseAuthVerifyAmount = 'enterpriseAuthVerifyAmount',
+  enterpriseAuthReset = 'enterpriseAuthReset',
 
   // Admin cron job tracks
   subscriptionDeleted = 'subscriptionDeleted',

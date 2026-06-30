@@ -242,6 +242,11 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
     letterSpacing: '0.15px'
   };
 
+  const actionButtonStyles = {
+    size: 'sm',
+    minW: '52px'
+  } as const;
+
   const isSyncMember = feConfigs.register_method?.includes('sync');
   return (
     <Box>
@@ -262,7 +267,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
           <Flex mt={4} alignItems={'center'}>
             <Box {...labelStyles}>{t('account_info:password')}&nbsp;</Box>
             <Box flex={1}>*****</Box>
-            <Button size={'sm'} variant={'whitePrimary'} onClick={onOpenUpdatePsw}>
+            <Button {...actionButtonStyles} variant={'whitePrimary'} onClick={onOpenUpdatePsw}>
               {t('account_info:change')}
             </Button>
           </Flex>
@@ -274,7 +279,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
               {userInfo?.contact ? userInfo?.contact : t('account_info:please_bind_contact')}
             </Box>
 
-            <Button size={'sm'} variant={'whitePrimary'} onClick={onOpenUpdateContact}>
+            <Button {...actionButtonStyles} variant={'whitePrimary'} onClick={onOpenUpdateContact}>
               {t('account_info:change')}
             </Button>
           </Flex>
@@ -383,7 +388,12 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
               </Box>
 
               {userInfo?.permission.hasManagePer && !!standardPlan && (
-                <Button variant={'primary'} size={'sm'} ml={5} onClick={onOpenConversionModal}>
+                <Button
+                  {...actionButtonStyles}
+                  variant={'primary'}
+                  ml={5}
+                  onClick={onOpenConversionModal}
+                >
                   {t('account_info:exchange')}
                 </Button>
               )}
@@ -393,6 +403,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
 
         <EnterpriseAuthStatusRow
           labelStyles={labelStyles}
+          buttonProps={actionButtonStyles}
           autoOpen={autoOpenEnterpriseAuth}
           onAutoOpenFinish={() => {
             clearCertificationHash();

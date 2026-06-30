@@ -3,6 +3,7 @@ import { Box, Button, Flex, ModalBody, ModalCloseButton, ModalFooter } from '@ch
 import { useTranslation } from 'next-i18next';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { enterpriseAuthContactBusinessUrl } from './utils';
+import { webPushTrack } from '@/web/common/middle/tracks/utils';
 
 type EnterpriseAuthContactBusinessModalProps = {
   onClose: () => void;
@@ -14,6 +15,9 @@ const EnterpriseAuthContactBusinessModal = ({
   const { t } = useTranslation();
 
   const openContactBusiness = useCallback(() => {
+    webPushTrack.enterpriseAuthContactBusiness({
+      source: 'contactBusinessModal'
+    });
     window.open(enterpriseAuthContactBusinessUrl, '_blank', 'noopener,noreferrer');
     onClose();
   }, [onClose]);

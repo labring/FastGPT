@@ -14,6 +14,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useTranslation } from 'next-i18next';
+import { webPushTrack } from '@/web/common/middle/tracks/utils';
 
 const certificationHref = '/account/info#certification';
 
@@ -68,12 +69,14 @@ const EnterpriseAuthNoticeModal = () => {
 
   const onClickRead = useCallback(() => {
     markAsRead();
+    setIsClosed(true);
   }, [markAsRead]);
 
   const onClickCertificationLink = useCallback(
     async (event: React.MouseEvent<HTMLAnchorElement>) => {
       event.preventDefault();
       markAsRead();
+      webPushTrack.enterpriseAuthOpen({ source: 'notice' });
       await router.push(certificationHref);
     },
     [markAsRead, router]

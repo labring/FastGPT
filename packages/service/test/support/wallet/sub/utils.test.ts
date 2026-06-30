@@ -23,6 +23,7 @@ import {
   clearTeamPlanCache
 } from '@fastgpt/service/support/wallet/sub/utils';
 import { MongoTeamSub } from '@fastgpt/service/support/wallet/sub/schema';
+import { ReadPreference } from '@fastgpt/service/common/mongo';
 
 // Valid ObjectId for testing
 const mockTeamId = '507f1f77bcf86cd799439011';
@@ -819,6 +820,76 @@ describe('getTeamStandPlan', () => {
     expect(result[SubTypeEnum.standard]?.name).toBe('Basic Plan');
   });
 
+  it('secondary 未读到有效套餐时使用 primary 复查，避免误初始化 free plan', async () => {
+    const teamId = mockTeamId;
+    const mockPlan = {
+      _id: mockPlanId,
+      teamId,
+      type: SubTypeEnum.standard,
+      currentSubLevel: StandardSubLevelEnum.basic,
+      totalPoints: 2000,
+      surplusPoints: 1500,
+      ...activePlanWindow(),
+      currentMode: SubModeEnum.month,
+      nextMode: SubModeEnum.month,
+      nextSubLevel: StandardSubLevelEnum.basic,
+      currentExtraDatasetSize: 0
+    };
+    const secondaryQuery = {
+      lean: vi.fn().mockResolvedValue([])
+    };
+    const primaryQuery = {
+      lean: vi.fn().mockResolvedValue([mockPlan])
+    };
+
+    vi.spyOn(MongoTeamSub, 'find')
+      .mockReturnValueOnce(secondaryQuery as any)
+      .mockReturnValueOnce(primaryQuery as any);
+    vi.spyOn(MongoTeamSub, 'findOne').mockResolvedValue(null);
+    vi.spyOn(MongoTeamSub, 'create').mockResolvedValue([] as any);
+
+    (global as any).subPlans = {
+      standard: {
+        [StandardSubLevelEnum.basic]: {
+          name: 'Basic Plan',
+          price: 99,
+          totalPoints: 2000,
+          maxTeamMember: 10,
+          maxAppAmount: 50,
+          maxDatasetAmount: 20,
+          maxDatasetSize: 100,
+          chatHistoryStoreDuration: 30
+        }
+      }
+    };
+
+    const result = await getTeamStandPlan({ teamId });
+
+    expect(MongoTeamSub.find).toHaveBeenCalledTimes(2);
+    expect(MongoTeamSub.find).toHaveBeenNthCalledWith(
+      2,
+      {
+        teamId,
+        type: SubTypeEnum.standard
+      },
+      undefined,
+      {
+        readPreference: ReadPreference.PRIMARY,
+        readConcern: {
+          level: 'majority'
+        }
+      }
+    );
+    expect(MongoTeamSub.findOne).not.toHaveBeenCalled();
+    expect(MongoTeamSub.create).not.toHaveBeenCalled();
+    expect(result[SubTypeEnum.standard]).toEqual(
+      expect.objectContaining({
+        currentSubLevel: StandardSubLevelEnum.basic,
+        name: 'Basic Plan'
+      })
+    );
+  });
+
   it('无有效标准套餐时基于初始化结果直接返回，避免递归重查', async () => {
     const teamId = mockTeamId;
     const mockCreatedPlan = {
@@ -835,10 +906,15 @@ describe('getTeamStandPlan', () => {
       currentExtraDatasetSize: 0
     };
 
-    const mockQuery = {
+    const secondaryQuery = {
       lean: vi.fn().mockResolvedValue([])
     };
-    vi.spyOn(MongoTeamSub, 'find').mockReturnValue(mockQuery as any);
+    const primaryQuery = {
+      lean: vi.fn().mockResolvedValue([])
+    };
+    vi.spyOn(MongoTeamSub, 'find')
+      .mockReturnValueOnce(secondaryQuery as any)
+      .mockReturnValueOnce(primaryQuery as any);
     vi.spyOn(MongoTeamSub, 'findOne').mockResolvedValue(null);
     vi.spyOn(MongoTeamSub, 'create').mockResolvedValue([mockCreatedPlan] as any);
 
@@ -859,7 +935,7 @@ describe('getTeamStandPlan', () => {
 
     const result = await getTeamStandPlan({ teamId });
 
-    expect(MongoTeamSub.find).toHaveBeenCalledTimes(1);
+    expect(MongoTeamSub.find).toHaveBeenCalledTimes(2);
     expect(MongoTeamSub.create).toHaveBeenCalledTimes(1);
     expect(result[SubTypeEnum.standard]).toEqual(
       expect.objectContaining({
