@@ -19,6 +19,7 @@ import {
 } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/repository';
 import { connectionMongo } from '@fastgpt/service/common/mongo';
 import { SandboxStatusEnum, SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
+import { hasAgentSandboxConfig } from '@fastgpt/global/core/ai/sandbox/env';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/utils/id';
@@ -26,13 +27,7 @@ import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/utils/id';
 const { Types } = connectionMongo;
 
 const hasSandboxEnv =
-  process.env.SANDBOX_INTEGRATION === 'true' &&
-  !!process.env.AGENT_SANDBOX_PROVIDER &&
-  (process.env.AGENT_SANDBOX_PROVIDER === 'e2b'
-    ? !!process.env.AGENT_SANDBOX_E2B_API_KEY
-    : process.env.AGENT_SANDBOX_PROVIDER === 'sealosdevbox'
-      ? !!process.env.AGENT_SANDBOX_SEALOS_BASEURL
-      : !!process.env.AGENT_SANDBOX_OPENSANDBOX_BASEURL);
+  process.env.SANDBOX_INTEGRATION === 'true' && hasAgentSandboxConfig(process.env);
 const runFullIntegration = process.env.SANDBOX_INTEGRATION_FULL === 'true';
 
 vi.mock('@fastgpt/service/env', () => ({
@@ -46,6 +41,7 @@ vi.mock('@fastgpt/service/env', () => ({
         AGENT_SANDBOX_PROVIDER: process.env.AGENT_SANDBOX_PROVIDER,
         AGENT_SANDBOX_SEALOS_BASEURL: process.env.AGENT_SANDBOX_SEALOS_BASEURL,
         AGENT_SANDBOX_SEALOS_TOKEN: process.env.AGENT_SANDBOX_SEALOS_TOKEN,
+        AGENT_SANDBOX_SEALOS_IMAGE: process.env.AGENT_SANDBOX_SEALOS_IMAGE,
 
         AGENT_SANDBOX_OPENSANDBOX_BASEURL: process.env.AGENT_SANDBOX_OPENSANDBOX_BASEURL,
         AGENT_SANDBOX_OPENSANDBOX_API_KEY: process.env.AGENT_SANDBOX_OPENSANDBOX_API_KEY,

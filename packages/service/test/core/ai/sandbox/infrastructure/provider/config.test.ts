@@ -14,7 +14,7 @@ const originalEnv = {
   AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG,
   AGENT_SANDBOX_DISK_MB: process.env.AGENT_SANDBOX_DISK_MB,
   AGENT_SANDBOX_PROXY_SECRET: process.env.AGENT_SANDBOX_PROXY_SECRET,
-  AGENT_SANDBOX_PROXY_URL: process.env.AGENT_SANDBOX_PROXY_URL
+  AGENT_SANDBOX_PROXY_URL: process.env.AGENT_SANDBOX_PROXY_URL,
   AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES: process.env.AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES,
   AGENT_SANDBOX_WS_MAX_FRAME_BYTES: process.env.AGENT_SANDBOX_WS_MAX_FRAME_BYTES,
 };
@@ -81,6 +81,7 @@ describe('sandbox provider config', () => {
     vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'sealosdevbox');
     vi.stubEnv('AGENT_SANDBOX_SEALOS_BASEURL', 'https://devbox.example.com');
     vi.stubEnv('AGENT_SANDBOX_SEALOS_TOKEN', 'sealos-token');
+    vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', 'default-sealos-image:latest');
 
     const { getSandboxProviderConfig } = await loadSandboxConfigModule();
 
@@ -145,12 +146,12 @@ describe('sandbox provider config', () => {
     vi.stubEnv('AGENT_SANDBOX_SEALOS_BASEURL', 'https://devbox.example.com');
     vi.stubEnv('AGENT_SANDBOX_SEALOS_TOKEN', 'sealos-token');
     vi.stubEnv('AGENT_SANDBOX_SEALOS_WORK_DIRECTORY', '/home/devbox/workspace');
+    vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', 'default-sealos-image:latest');
     vi.stubEnv('AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES', '67108864');
     vi.stubEnv('AGENT_SANDBOX_WS_MAX_FRAME_BYTES', '16777216');
 
     const { getSandboxAdapterConfig } = await loadSandboxConfigModule();
 
-    // 1. 无环境变量 Image 时，传空 repository 让 Sealos 走默认 agent 镜像
     const result = getSandboxAdapterConfig({
       provider: 'sealosdevbox',
       runtime: true,
@@ -165,7 +166,8 @@ describe('sandbox provider config', () => {
 
     expect(result.createConfig).toEqual({
       image: {
-        repository: ''
+        repository: 'default-sealos-image',
+        tag: 'latest'
       },
       workingDir: '/home/devbox/workspace',
       upstreamID: 'session-1',
@@ -180,23 +182,7 @@ describe('sandbox provider config', () => {
       }
     });
 
-    // 2. 有环境变量 Image 时，携带 image 字段
-    vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', 'default-sealos-image:latest');
-    vi.resetModules();
-    const { getSandboxAdapterConfig: getSandboxAdapterConfigWithImage } =
-      await loadSandboxConfigModule();
-    const resultWithEnvImage = getSandboxAdapterConfigWithImage({
-      provider: 'sealosdevbox',
-      runtime: true,
-      sessionId: 'session-1'
-    });
-    expect(resultWithEnvImage.createConfig?.image).toEqual({
-      repository: 'default-sealos-image',
-      tag: 'latest'
-    });
-
-    // 3. 显式传入镜像时，覆盖环境变量中的默认镜像
-    const resultWithExplicitImage = getSandboxAdapterConfigWithImage({
+    const resultWithExplicitImage = getSandboxAdapterConfig({
       provider: 'sealosdevbox',
       runtime: true,
       sessionId: 'session-1',
@@ -208,6 +194,22 @@ describe('sandbox provider config', () => {
       repository: 'explicit-sealos-image',
       tag: 'v1'
     });
+  });
+
+  it('requires sealos runtime image when runtime adapter config is requested', async () => {
+    vi.stubEnv('AGENT_SANDBOX_SEALOS_BASEURL', 'https://devbox.example.com');
+    vi.stubEnv('AGENT_SANDBOX_SEALOS_TOKEN', 'sealos-token');
+    vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', undefined);
+
+    const { getSandboxAdapterConfig } = await loadSandboxConfigModule();
+
+    expect(() =>
+      getSandboxAdapterConfig({
+        provider: 'sealosdevbox',
+        runtime: true,
+        sessionId: 'session-1'
+      })
+    ).toThrow('AGENT_SANDBOX_SEALOS_IMAGE is required for sealosdevbox provider');
   });
 
   it('normalizes missing provider env values before validation', async () => {
