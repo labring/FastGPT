@@ -7,10 +7,10 @@ import {
   createSandbox,
   type ISandbox,
   type ResourceLimits,
-  type SandboxCreateSpec
+  type SandboxCreateSpec,
+  type SandboxProviderType
 } from '@fastgpt-sdk/sandbox-adapter';
 import { getSandboxAdapterConfig, type SandboxProviderConfig } from './config';
-import type { SandboxProviderType } from '../../type';
 import type { VolumeManagerResult } from '../volume/service';
 
 function assertNever(value: never): never {

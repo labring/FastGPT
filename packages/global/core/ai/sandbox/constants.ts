@@ -7,6 +7,14 @@ import {
   SANDBOX_SHELL_TOOL_NAME,
   SANDBOX_WRITE_FILE_TOOL_NAME
 } from './tools';
+import type { SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
+
+// ---- 沙盒提供方 ----
+export const agentSandboxProviderList = [
+  'sealosdevbox',
+  'opensandbox',
+  'e2b'
+] as const satisfies readonly SandboxProviderType[];
 
 // ---- 沙盒状态 ----
 export const SandboxStatusEnum = {

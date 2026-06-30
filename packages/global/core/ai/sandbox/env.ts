@@ -1,4 +1,20 @@
+import { agentSandboxProviderList } from './constants';
+import type { SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
+
+export const agentSandboxProviderRequiredEnvKeys = {
+  sealosdevbox: [
+    'AGENT_SANDBOX_SEALOS_BASEURL',
+    'AGENT_SANDBOX_SEALOS_TOKEN',
+    'AGENT_SANDBOX_SEALOS_IMAGE'
+  ],
+  opensandbox: ['AGENT_SANDBOX_OPENSANDBOX_BASEURL', 'AGENT_SANDBOX_OPENSANDBOX_API_KEY'],
+  e2b: ['AGENT_SANDBOX_E2B_API_KEY']
+} satisfies Record<SandboxProviderType, readonly string[]>;
+
 export type AgentSandboxEnvSource = Record<string, string | undefined>;
+
+const isAgentSandboxProvider = (provider: string | undefined): provider is SandboxProviderType =>
+  agentSandboxProviderList.includes(provider as SandboxProviderType);
 
 /**
  * 判断系统是否显式配置了 Agent 虚拟机能力。
@@ -6,18 +22,9 @@ export type AgentSandboxEnvSource = Record<string, string | undefined>;
  */
 export const hasAgentSandboxConfig = (env: AgentSandboxEnvSource): boolean => {
   const provider = env.AGENT_SANDBOX_PROVIDER;
-
-  if (provider === 'sealosdevbox') {
-    return !!(env.AGENT_SANDBOX_SEALOS_BASEURL && env.AGENT_SANDBOX_SEALOS_TOKEN);
+  if (!isAgentSandboxProvider(provider)) {
+    return false;
   }
 
-  if (provider === 'opensandbox') {
-    return !!(env.AGENT_SANDBOX_OPENSANDBOX_BASEURL && env.AGENT_SANDBOX_OPENSANDBOX_API_KEY);
-  }
-
-  if (provider === 'e2b') {
-    return !!env.AGENT_SANDBOX_E2B_API_KEY;
-  }
-
-  return false;
+  return agentSandboxProviderRequiredEnvKeys[provider].every((key) => !!env[key]);
 };

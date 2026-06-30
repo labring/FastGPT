@@ -4,11 +4,15 @@
  * 只定义 sandbox 实例、provider、archive 和 metadata schema，不访问服务端资源。
  */
 import z from 'zod';
-import { SandboxStatusEnum, SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
+import {
+  agentSandboxProviderList,
+  SandboxStatusEnum,
+  SandboxTypeEnum
+} from '@fastgpt/global/core/ai/sandbox/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 // ---- 沙盒实例 DB 类型 ----
-export const SandboxProviderSchema = z.enum(['sealosdevbox', 'opensandbox', 'e2b']);
+export const SandboxProviderSchema = z.enum(agentSandboxProviderList);
 export type SandboxProviderType = z.infer<typeof SandboxProviderSchema>;
 export const SharedSandboxStatusSchema = z.enum(SandboxStatusEnum);
 export type SharedSandboxStatusType = z.infer<typeof SharedSandboxStatusSchema>;

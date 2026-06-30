@@ -27,6 +27,10 @@ export function buildSealosRuntimeProfile(): SandboxRuntimeProfile {
     buildConfig(input = {}) {
       const createConfig = input.createConfig ?? {};
       const image = input.image ?? createConfig.image ?? defaultImage;
+      if (!image?.repository) {
+        throw new Error('AGENT_SANDBOX_SEALOS_IMAGE is required for sealosdevbox provider');
+      }
+
       const env = mergeStringRecord(createConfig.env, input.env);
       const metadata = mergeUnknownRecord(createConfig.metadata, input.metadata);
       // Sealos adapter 会把 workingDir 写入 CODEX_GATEWAY_CWD，让 exec/code-server 落在同一工作区。
@@ -36,7 +40,7 @@ export function buildSealosRuntimeProfile(): SandboxRuntimeProfile {
 
       return {
         ...createConfig,
-        ...(image ? { image } : {}),
+        image,
         ...(env ? { env } : {}),
         ...(metadata ? { metadata } : {}),
         ...(workingDir ? { workingDir } : {}),

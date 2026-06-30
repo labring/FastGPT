@@ -4,7 +4,8 @@ const originalEnv = {
   AGENT_SANDBOX_PROVIDER: process.env.AGENT_SANDBOX_PROVIDER,
   AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO,
   AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG,
-  AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: process.env.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY
+  AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: process.env.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY,
+  AGENT_SANDBOX_SEALOS_IMAGE: process.env.AGENT_SANDBOX_SEALOS_IMAGE
 };
 
 const loadSandboxRuntimeProfileModule = async () => {
@@ -27,6 +28,7 @@ describe('sandbox runtime profile', () => {
       'AGENT_SANDBOX_SEALOS_WORK_DIRECTORY',
       originalEnv.AGENT_SANDBOX_SEALOS_WORK_DIRECTORY
     );
+    vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', originalEnv.AGENT_SANDBOX_SEALOS_IMAGE);
   });
 
   it('uses fixed /workspace as opensandbox work directory', async () => {
@@ -51,12 +53,17 @@ describe('sandbox runtime profile', () => {
 
   it('uses devbox defaults for sealosdevbox provider', async () => {
     vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'sealosdevbox');
+    vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', 'runtime/fastgpt:stable');
 
     const { getSandboxRuntimeProfile } = await loadSandboxRuntimeProfileModule();
     const runtimeProfile = getSandboxRuntimeProfile();
 
     expect(runtimeProfile).toMatchObject({
       provider: 'sealosdevbox',
+      defaultImage: {
+        repository: 'runtime/fastgpt',
+        tag: 'stable'
+      },
       workDirectory: '/home/devbox/workspace',
       entrypoint: ''
     });
@@ -66,6 +73,7 @@ describe('sandbox runtime profile', () => {
   it('uses sealos work directory from env', async () => {
     vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'sealosdevbox');
     vi.stubEnv('AGENT_SANDBOX_SEALOS_WORK_DIRECTORY', '/custom/devbox/workspace');
+    vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', 'runtime/fastgpt:stable');
 
     const { getSandboxRuntimeProfile } = await loadSandboxRuntimeProfileModule();
 
@@ -76,8 +84,21 @@ describe('sandbox runtime profile', () => {
     });
   });
 
+  it('requires sealos runtime image when building create config', async () => {
+    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'sealosdevbox');
+    vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', undefined);
+
+    const { getSandboxRuntimeProfile } = await loadSandboxRuntimeProfileModule();
+    const runtimeProfile = getSandboxRuntimeProfile();
+
+    expect(() => runtimeProfile.buildConfig()).toThrow(
+      'AGENT_SANDBOX_SEALOS_IMAGE is required for sealosdevbox provider'
+    );
+  });
+
   it('builds provider-specific create config through runtime profile', async () => {
     vi.stubEnv('AGENT_SANDBOX_SEALOS_WORK_DIRECTORY', '/custom/devbox/workspace');
+    vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', 'runtime/fastgpt:stable');
 
     const { buildBaseSandboxRuntimeEnv, getSandboxRuntimeProfile } =
       await loadSandboxRuntimeProfileModule();
@@ -100,6 +121,10 @@ describe('sandbox runtime profile', () => {
         metadata: { teamId: 'team-1' }
       })
     ).toMatchObject({
+      image: {
+        repository: 'runtime/fastgpt',
+        tag: 'stable'
+      },
       env: {
         FASTGPT_SESSION_ID: 'session-1',
         FASTGPT_WORKDIR: '/custom/devbox/workspace',

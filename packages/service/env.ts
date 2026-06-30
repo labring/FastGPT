@@ -3,6 +3,7 @@ import z from 'zod';
 import { isPhaseProductionBuild } from '@fastgpt/global/common/system/constants';
 import { DEFAULT_MAX_FOLDER_DEPTH } from '@fastgpt/global/common/parentFolder/depth';
 import { BoolSchema, IntSchema, NumSchema, UrlSchema } from '@fastgpt/global/common/zod';
+import { agentSandboxProviderList } from '@fastgpt/global/core/ai/sandbox/constants';
 import { hasAgentSandboxConfig as hasAgentSandboxConfigFromEnv } from '@fastgpt/global/core/ai/sandbox/env';
 
 const defaultableIntSchema = (defaultValue: number) =>
@@ -79,7 +80,7 @@ export const serviceEnv = createEnv({
       .optional(),
     AGENT_SANDBOX_PROXY_URL: AgentSandboxProxyUrlSchema.optional(),
     // Agent sandbox
-    AGENT_SANDBOX_PROVIDER: z.enum(['sealosdevbox', 'opensandbox', 'e2b']).optional(),
+    AGENT_SANDBOX_PROVIDER: z.enum(agentSandboxProviderList).optional(),
     IDE_AGENT_BIND_ADDR: z.string().default('0.0.0.0:1318'),
     // E2B配置
     AGENT_SANDBOX_E2B_API_KEY: z.string().optional(),

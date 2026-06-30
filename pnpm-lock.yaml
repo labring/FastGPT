@@ -408,6 +408,9 @@ importers:
       '@fastgpt-plugin/sdk-client':
         specifier: 0.0.1-alpha.11
         version: 0.0.1-alpha.11(zod@4.1.12)
+      '@fastgpt-sdk/sandbox-adapter':
+        specifier: workspace:*
+        version: link:../../sdk/sandbox-adapter
       axios:
         specifier: 'catalog:'
         version: 1.16.0
