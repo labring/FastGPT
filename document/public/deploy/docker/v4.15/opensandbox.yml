@@ -1,28 +1,27 @@
 # OpenSandbox standalone deployment for FastGPT Agent/Skill Sandbox.
-# This file also starts fastgpt-agent-sandbox-proxy. After starting it, set FastGPT:
+# Deploy fastgpt-agent-sandbox-proxy separately, then set FastGPT.
+#
+# If these services are copied into the same docker-compose.yml as FastGPT:
 # AGENT_SANDBOX_PROVIDER=opensandbox
-# AGENT_SANDBOX_OPENSANDBOX_BASEURL=http://<host>:8090
+# AGENT_SANDBOX_OPENSANDBOX_BASEURL=http://fastgpt-opensandbox-server:8090
 # AGENT_SANDBOX_OPENSANDBOX_API_KEY=fastgpt-opensandbox-api-key
-# AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL=http://<host>:3005
+# AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL=http://fastgpt-volume-manager:3000
 # AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN=vmtoken
-# AGENT_SANDBOX_PROXY_SECRET=default_fastgpt_agent_sandbox_proxy_secret
-# AGENT_SANDBOX_PROXY_URL=ws://<host>:1006
 
-x-agent-sandbox-proxy-secret: &x-agent-sandbox-proxy-secret "default_fastgpt_agent_sandbox_proxy_secret"
 x-volume-manager-auth-token: &x-volume-manager-auth-token "vmtoken"
 x-no-proxy-config: &x-no-proxy-config
-  NO_PROXY: localhost,127.0.0.1,::1,host.docker.internal,opensandbox-server,fastgpt-volume-manager,fastgpt-agent-sandbox-proxy,fastgpt-app
-  no_proxy: localhost,127.0.0.1,::1,host.docker.internal,opensandbox-server,fastgpt-volume-manager,fastgpt-agent-sandbox-proxy,fastgpt-app
+  # Avoid inherited proxy settings. Some Docker runtimes inject IPv6 CIDR into NO_PROXY,
+  # and httpx may parse it as an invalid URL port during OpenSandbox startup.
+  NO_PROXY: localhost,127.0.0.1,127.0.0.0/8,host.docker.internal,host.orb.internal,docker.orb.internal,*.orb.internal,*.orb.local,proxyproxy.orb.internal,gateway.orb.internal,fastgpt-opensandbox-server,fastgpt-volume-manager,fastgpt-app
+  no_proxy: localhost,127.0.0.1,127.0.0.0/8,host.docker.internal,host.orb.internal,docker.orb.internal,*.orb.internal,*.orb.local,proxyproxy.orb.internal,gateway.orb.internal,fastgpt-opensandbox-server,fastgpt-volume-manager,fastgpt-app
 
 services:
-  opensandbox-server:
-    image: opensandbox/server:v0.1.9
+  fastgpt-opensandbox-server:
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/opensandbox-server:v0.1.9
     container_name: fastgpt-opensandbox-server
     restart: always
-    ports:
-      - 8090:8090
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    networks:
+      - app
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     configs:
@@ -44,13 +43,13 @@ services:
       retries: 5
 
   fastgpt-volume-manager:
-    image: ghcr.io/labring/fastgpt-agent-volume-manager:v0.2.0
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-volume-manager:v0.2.0
     container_name: fastgpt-volume-manager
     restart: always
-    ports:
-      - 3005:3000
+    networks:
+      - app
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
       <<: [*x-no-proxy-config]
       PORT: 3000
@@ -58,48 +57,31 @@ services:
       VM_AUTH_TOKEN: *x-volume-manager-auth-token
       VM_VOLUME_NAME_PREFIX: fastgpt-session
       VM_LOG_LEVEL: info
-      VM_DOCKER_API_VERSION: v1.44
     healthcheck:
       test:
         [
-          "CMD",
-          "bun",
-          "-e",
-          "fetch('http://localhost:3000/health').then((res) => { if (!res.ok) throw new Error(String(res.status)); })"
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:3000/health').then((res) => { if (!res.ok) process.exit(1); }).catch(() => process.exit(1));"
         ]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  fastgpt-agent-sandbox-proxy:
-    image: ghcr.io/labring/fastgpt-agent-sandbox-proxy:v0.2.0-beta2
-    container_name: fastgpt-agent-sandbox-proxy
-    restart: always
-    ports:
-      - 1006:1006
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    environment:
-      <<: [*x-no-proxy-config]
-      PORT: 1006
-      AGENT_SANDBOX_PROXY_SECRET: *x-agent-sandbox-proxy-secret
-      FASTGPT_APP_URL: http://host.docker.internal:3000
-      FASTGPT_APP_REQUEST_TIMEOUT_SECS: 60
-      RUST_LOG: info,fastgpt_agent_sandbox_proxy=debug
-
   # Pre-pull only: not started by `docker compose up` (uses profile `prepull`).
   opensandbox-agent-sandbox-image:
-    image: ghcr.io/labring/fastgpt-agent-sandbox:v0.2.0
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.2.0
     profiles:
       - prepull
 
   opensandbox-execd-image:
-    image: opensandbox/execd:v1.0.7
+    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/execd:v1.0.6
     profiles:
       - prepull
 
   opensandbox-egress-image:
-    image: opensandbox/egress:v1.0.3
+    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress:v1.0.1
     profiles:
       - prepull
 
@@ -114,18 +96,18 @@ configs:
 
       [runtime]
       type = "docker"
-      execd_image = "opensandbox/execd:v1.0.7"
+      execd_image = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/execd:v1.0.6"
 
       [egress]
-      image = "opensandbox/egress:v1.0.3"
+      image = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress:v1.0.1"
 
       [docker]
       network_mode = "bridge"
       # When server runs in a container, set host_ip to the host's IP or hostname so bridge-mode endpoints are reachable.
       host_ip = "host.docker.internal"
-      drop_capabilities = ["AUDIT_WRITE", "MKNOD", "NET_ADMIN", "NET_RAW", "SYS_ADMIN", "SYS_MODULE", "SYS_PTRACE", "SYS_TIME", "SYS_TTY_CONFIG"]
-      no_new_privileges = true
-      pids_limit = 512
 
       [ingress]
       mode = "direct"
+
+networks:
+  app:

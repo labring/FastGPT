@@ -5,21 +5,19 @@ x-agent-sandbox-proxy-secret: &x-agent-sandbox-proxy-secret "default_fastgpt_age
 
 services:
   fastgpt-agent-sandbox-proxy:
-    image: ghcr.io/labring/fastgpt-agent-sandbox-proxy:v0.2.0-beta2
+    image: ghcr.io/labring/fastgpt-agent-sandbox-proxy:v0.2.0
     container_name: fastgpt-agent-sandbox-proxy
     restart: always
+    networks:
+      - app
     ports:
-      - 1006:1006
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - 3006:1006
     environment:
       PORT: 1006
       # Must exactly match AGENT_SANDBOX_PROXY_SECRET in fastgpt-app / fastgpt-pro.
       AGENT_SANDBOX_PROXY_SECRET: *x-agent-sandbox-proxy-secret
       # FastGPT main service URL reachable from this container.
       # If this compose file joins the FastGPT app network, you can use http://fastgpt-app:3000.
-      FASTGPT_APP_URL: http://host.docker.internal:3000
+      FASTGPT_APP_URL: http://fastgpt-app:3000
       FASTGPT_APP_REQUEST_TIMEOUT_SECS: 60
       RUST_LOG: info,fastgpt_agent_sandbox_proxy=debug
-      NO_PROXY: localhost,127.0.0.1,::1,host.docker.internal,fastgpt-app
-      no_proxy: localhost,127.0.0.1,::1,host.docker.internal,fastgpt-app
