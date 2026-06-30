@@ -270,7 +270,7 @@ export async function validateDeployableSkillWorkspacePackage(
         firstLevelSkillDirs.add(firstLevelDirMatch[1]);
       }
 
-      const skillMdMatch = normalized.match(/^skills\/([^/]+)\/SKILL\.md$/);
+      const skillMdMatch = normalized.match(/^skills\/([^/]+)\/SKILL\.md$/i);
       if (skillMdMatch?.[1]) {
         executableSkillDirs.add(skillMdMatch[1]);
       }
@@ -321,7 +321,7 @@ function normalizeZipEntryPathForSafety(path: string): string {
   return path.replace(/\\/g, '/').replace(/^\.\/+/, '');
 }
 
-function validateZipSafety(
+export function validateZipSafety(
   zip: JSZip,
   options: { maxUncompressedBytes?: number } = {}
 ): ZipSafetyValidationResult {

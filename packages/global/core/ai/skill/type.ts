@@ -27,6 +27,13 @@ export const SandboxStatusSchema = z.enum([
   SandboxStatusEnum.stopped
 ] as const);
 
+export const RuntimeSkillMetadataSchema = z.object({
+  name: z.string(),
+  description: z.string(),
+  path: z.string()
+});
+export type RuntimeSkillMetadataType = z.infer<typeof RuntimeSkillMetadataSchema>;
+
 export const AgentSkillSchema = z.object({
   _id: z.string(),
   parentId: z.string().nullable().optional(),
@@ -43,6 +50,7 @@ export const AgentSkillSchema = z.object({
   updateTime: z.coerce.date(),
   deleteTime: z.coerce.date().nullable().optional(),
   currentVersionId: z.string().optional(),
+  currentRuntimeSkills: z.array(RuntimeSkillMetadataSchema).optional(),
   creationStatus: AgentSkillCreationStatusSchema.optional(),
   creationError: z.string().optional()
 });
@@ -59,6 +67,7 @@ export const AgentSkillListItemSchema = z.object({
   category: z.array(AgentSkillCategorySchema),
   avatar: z.string().optional(),
   currentVersionId: z.string().optional(),
+  currentRuntimeSkills: z.array(RuntimeSkillMetadataSchema).optional(),
   creationStatus: AgentSkillCreationStatusSchema.optional(),
   createTime: z.coerce.date(),
   updateTime: z.coerce.date(),
@@ -90,6 +99,7 @@ export const AgentSkillsVersionSchema = z.object({
   tmbId: z.string(),
   versionName: z.string().optional(),
   storageKey: z.string(),
+  runtimeSkills: z.array(RuntimeSkillMetadataSchema).optional(),
   importSource: AgentSkillsVersionImportSourceSchema.optional(),
   createdAt: z.coerce.date()
 });

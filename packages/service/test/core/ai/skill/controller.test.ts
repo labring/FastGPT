@@ -1,4 +1,5 @@
 import { describe, expect, it, beforeAll, afterAll, beforeEach } from 'vitest';
+import JSZip from 'jszip';
 import { Types } from '@fastgpt/service/common/mongo';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import {
@@ -340,6 +341,12 @@ describe('AgentSkill Controller', () => {
 
   // ==================== Import Skill ====================
   describe('importSkill', () => {
+    const createImportZipBuffer = async (skillName: string) => {
+      const zip = new JSZip();
+      zip.file('skills/imported/SKILL.md', `---\nname: ${skillName}\n---\n`);
+      return zip.generateAsync({ type: 'nodebuffer' });
+    };
+
     it('should import skill from package', async () => {
       const packageData = {
         skill: {
@@ -349,8 +356,7 @@ describe('AgentSkill Controller', () => {
         }
       };
 
-      // Create a mock ZIP buffer
-      const mockZipBuffer = Buffer.from('mock zip content');
+      const mockZipBuffer = await createImportZipBuffer('imported-skill');
 
       const skillId = await importSkill(packageData, testTeamId, testTmbId, mockZipBuffer);
 
@@ -360,6 +366,13 @@ describe('AgentSkill Controller', () => {
       expect(skill?.name).toBe(packageData.skill.name);
       expect(skill?.description).toBe(packageData.skill.description);
       expect(skill?.source).toBe(AgentSkillSourceEnum.personal);
+      expect(skill?.currentRuntimeSkills.map((item) => item.toObject())).toEqual([
+        {
+          name: 'imported-skill',
+          description: '',
+          path: 'skills/imported/SKILL.md'
+        }
+      ]);
     });
 
     it('should allow importing duplicate name without error', async () => {
@@ -371,7 +384,7 @@ describe('AgentSkill Controller', () => {
         }
       };
 
-      const mockZipBuffer = Buffer.from('mock zip content');
+      const mockZipBuffer = await createImportZipBuffer('duplicate-import');
 
       // First import
       const firstSkillId = await importSkill(packageData, testTeamId, testTmbId, mockZipBuffer);

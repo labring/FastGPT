@@ -7,3 +7,4 @@
 export * from './zipBuilder';
 export * from './storage';
 export * from './constants';
+export * from './runtimeMetadata';

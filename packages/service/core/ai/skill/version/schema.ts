@@ -8,6 +8,24 @@ import type { AgentSkillsVersionSchemaType } from '@fastgpt/global/core/ai/skill
 
 const { Schema } = connectionMongo;
 
+const RuntimeSkillMetadataSchema = new Schema(
+  {
+    name: {
+      type: String,
+      required: true
+    },
+    description: {
+      type: String,
+      default: ''
+    },
+    path: {
+      type: String,
+      required: true
+    }
+  },
+  { _id: false }
+);
+
 /**
  * Skill 版本表。
  *
@@ -33,6 +51,11 @@ const AgentSkillsVersionSchema = new Schema({
   storageKey: {
     type: String,
     required: true
+  },
+  // 该版本包内实际包含的子 Skill 元数据。
+  runtimeSkills: {
+    type: [RuntimeSkillMetadataSchema],
+    default: []
   },
   // 导入来源信息，仅导入场景存在。
   importSource: {
