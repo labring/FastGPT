@@ -341,11 +341,6 @@ services:
     networks:
       - codesandbox
     restart: always
-    read_only: true
-    tmpfs:
-      - /tmp:size=128m,noexec,nosuid,nodev
-    cap_drop:
-      - ALL
     security_opt:
       - no-new-privileges:true
     environment:
