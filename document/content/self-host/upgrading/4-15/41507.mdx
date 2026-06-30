@@ -68,8 +68,6 @@ curl -X POST 'https://你的域名/api/admin/dataClean/v1WorkflowToV2' \
 
 该脏数据会影响工作流节点输入渲染和 IO 类型判断。执行 V1 -> V2 迁移后，继续执行 V2 清洗脚本，扫描并修复 `apps.modules` 与 `app_versions.nodes`。
 
-迁移脚本位置：`projects/app/src/pages/api/admin/dataClean/initWorkflowData.ts`。该接口仅用于本次升级迁移，不作为 OpenAPI 对外接口。
-
 接口默认 dry-run，只格式化内存数据并执行 `PublishAppBodySchema` 校验，不写库：
 
 ```bash
@@ -108,8 +106,7 @@ curl -X POST 'https://你的域名/api/admin/dataClean/initWorkflowData' \
 
 ### 3. 更新镜像
 
-- 更新 fastgpt-app(fastgpt 主服务) 镜像 tag: v4.15.0
-- 更新 fastgpt-pro(fastgpt 商业版) 镜像 tag: v4.15.0
+参考 [4.15.0 正式版镜像](./41500.mdx)，全部镜像升级为正式版。
 
 ## 🐛 修复
 
