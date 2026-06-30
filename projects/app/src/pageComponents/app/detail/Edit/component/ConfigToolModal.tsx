@@ -35,16 +35,20 @@ const getDeveloperRenderTypeList = (renderTypeList: FlowNodeInputTypeEnum[]) => 
 
 const buildConfigRenderTypeList = ({
   selectedInputType,
-  developerInputType
+  developerInputType,
+  canAgentGenerated
 }: {
   selectedInputType?: FlowNodeInputTypeEnum;
   developerInputType?: FlowNodeInputTypeEnum;
+  canAgentGenerated: boolean;
 }): FlowNodeInputTypeEnum[] => {
   const fallbackDeveloperType = developerInputType ?? FlowNodeInputTypeEnum.input;
 
+  if (!canAgentGenerated) return [fallbackDeveloperType];
+
   return selectedInputType === FlowNodeInputTypeEnum.agentGenerated
     ? [FlowNodeInputTypeEnum.agentGenerated, fallbackDeveloperType]
-    : [fallbackDeveloperType];
+    : [fallbackDeveloperType, FlowNodeInputTypeEnum.agentGenerated];
 };
 
 const shouldShowConfigInput = (input: FlowNodeTemplateType['inputs'][number]) =>
@@ -307,7 +311,8 @@ const ConfigToolModal = ({
                   ...input,
                   renderTypeList: buildConfigRenderTypeList({
                     selectedInputType: data[inputTypeFormKey(input.key)],
-                    developerInputType: data[developerInputTypeFormKey(input.key)]
+                    developerInputType: data[developerInputTypeFormKey(input.key)],
+                    canAgentGenerated: canInputBeAgentGenerated(input)
                   }),
                   value: data[input.key] ?? input.value
                 };

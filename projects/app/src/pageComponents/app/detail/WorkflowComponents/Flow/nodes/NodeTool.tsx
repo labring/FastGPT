@@ -8,7 +8,7 @@ import { useTranslation } from 'next-i18next';
 import RenderOutput from './render/RenderOutput';
 import RenderInput from './render/RenderInput';
 import { useContextSelector } from 'use-context-selector';
-import RenderToolInput from './render/RenderToolInput';
+import RenderToolInput, { hasDynamicToolInput } from './render/RenderToolInput';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { WorkflowUtilsContext } from '../../context/workflowUtilsContext';
 
@@ -24,7 +24,7 @@ const NodeTool = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
   return (
     <NodeCard minW={'350px'} selected={selected} {...data}>
-      {isTool && (
+      {isTool && hasDynamicToolInput(inputs) && (
         <>
           <Container>
             <RenderToolInput nodeId={nodeId} inputs={inputs} />
@@ -34,7 +34,7 @@ const NodeTool = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       <>
         <Container>
           <IOTitle text={t('common:Input')} />
-          <RenderInput nodeId={nodeId} flowInputList={commonInputs} />
+          <RenderInput nodeId={nodeId} flowInputList={commonInputs} isTool={isTool} />
         </Container>
       </>
       <>

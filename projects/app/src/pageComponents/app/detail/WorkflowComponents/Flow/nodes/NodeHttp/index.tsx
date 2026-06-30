@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { type NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
@@ -38,19 +38,16 @@ import { type EditorVariableLabelPickerType } from '@fastgpt/web/components/comm
 import HttpInput from '@fastgpt/web/components/common/Input/HttpInput';
 import dynamic from 'next/dynamic';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import RenderToolInput from '../render/RenderToolInput';
+import RenderToolInput, { hasDynamicToolInput } from '../render/RenderToolInput';
 import IOTitle from '../../components/IOTitle';
 import { useContextSelector } from 'use-context-selector';
-import { useCreation, useMemoizedFn } from 'ahooks';
+import { useMemoizedFn } from 'ahooks';
 import { AppContext } from '@/pageComponents/app/detail/context';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getEditorVariables } from '../../../utils';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
-import {
-  WorkflowBufferDataContext,
-  WorkflowNodeDataContext
-} from '../../../context/workflowInitContext';
+import { WorkflowBufferDataContext } from '../../../context/workflowInitContext';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import CatchError from '../render/RenderOutput/CatchError';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
@@ -497,78 +494,65 @@ const RenderForm = ({
   const { toast } = useToast();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
-  const [list, setList] = useState<PropsArrType[]>(input.value || []);
+  const list = useMemo(() => (input.value || []) as PropsArrType[], [input.value]);
   const [updateTrigger, setUpdateTrigger] = useState(false);
-  const [shouldUpdateNode, setShouldUpdateNode] = useState(false);
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync local list when external input.value changes
-    setList(input.value || []);
-  }, [input.value]);
-
-  useEffect(() => {
-    if (shouldUpdateNode) {
+  const updateListAndNode = useCallback(
+    (nextList: PropsArrType[]) => {
       onChangeNode({
         nodeId,
         type: 'updateInput',
         key: input.key,
         value: {
           ...input,
-          value: list
+          value: nextList
         }
       });
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset flag after persisting list to node
-      setShouldUpdateNode(false);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [list]);
+    },
+    [input, nodeId, onChangeNode]
+  );
 
   const handleKeyChange = useCallback(
     (index: number, newKey: string) => {
-      setList((prevList) => {
-        if (!newKey) {
-          setUpdateTrigger((prev) => !prev);
-          // toast({
-          //   status: 'warning',
-          //   title: t('common:core.module.http.Key cannot be empty')
-          // });
-        } else if (prevList.find((item, i) => i !== index && item.key == newKey)) {
-          setUpdateTrigger((prev) => !prev);
-          toast({
-            status: 'warning',
-            title: t('common:core.module.http.Key already exists')
-          });
-        }
-        return prevList.map((item, i) => (i === index ? { ...item, key: newKey } : item));
-      });
-      setShouldUpdateNode(true);
+      if (!newKey) {
+        setUpdateTrigger((prev) => !prev);
+        return;
+      }
+      if (list.find((item, i) => i !== index && item.key == newKey)) {
+        setUpdateTrigger((prev) => !prev);
+        toast({
+          status: 'warning',
+          title: t('common:core.module.http.Key already exists')
+        });
+        return;
+      }
+      if (index >= list.length) return;
+
+      updateListAndNode(list.map((item, i) => (i === index ? { ...item, key: newKey } : item)));
     },
-    [t, toast]
+    [list, t, toast, updateListAndNode]
   );
 
   // Add new params/headers key
   const handleAddNewProps = useCallback(
     (value: string) => {
-      setList((prevList) => {
-        if (!value) {
-          return prevList;
-        }
+      if (!value) {
+        return;
+      }
 
-        const checkExist = prevList.find((item) => item.key === value);
-        if (checkExist) {
-          setUpdateTrigger((prev) => !prev);
-          toast({
-            status: 'warning',
-            title: t('common:core.module.http.Key already exists')
-          });
-          return prevList;
-        }
-        return [...prevList, { key: value, type: 'string', value: '' }];
-      });
+      const checkExist = list.find((item) => item.key === value);
+      if (checkExist) {
+        setUpdateTrigger((prev) => !prev);
+        toast({
+          status: 'warning',
+          title: t('common:core.module.http.Key already exists')
+        });
+        return;
+      }
 
-      setShouldUpdateNode(true);
+      updateListAndNode([...list, { key: value, type: 'string', value: '' }]);
     },
-    [t, toast]
+    [list, t, toast, updateListAndNode]
   );
 
   const Render = useMemo(() => {
@@ -621,12 +605,9 @@ const RenderForm = ({
                         variables={externalProviderWorkflowVariables}
                         variableLabels={variables}
                         onBlur={(val) => {
-                          setList((prevList) =>
-                            prevList.map((item, i) =>
-                              i === index ? { ...item, value: val } : item
-                            )
+                          updateListAndNode(
+                            list.map((item, i) => (i === index ? { ...item, value: val } : item))
                           );
-                          setShouldUpdateNode(true);
                         }}
                       />
                       {index !== list.length && (
@@ -636,8 +617,7 @@ const RenderForm = ({
                           _hover={{ color: 'red.600' }}
                           w={'14px'}
                           onClick={() => {
-                            setList((prevlist) => prevlist.filter((val) => val.key !== item.key));
-                            setShouldUpdateNode(true);
+                            updateListAndNode(list.filter((val) => val.key !== item.key));
                           }}
                         />
                       )}
@@ -658,6 +638,7 @@ const RenderForm = ({
     list,
     t,
     updateTrigger,
+    updateListAndNode,
     variables
   ]);
 
@@ -683,7 +664,6 @@ const RenderBody = ({
 }) => {
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
-  const [_, startSts] = useTransition();
 
   useEffect(() => {
     if (typeInput === undefined) {
@@ -857,7 +837,7 @@ const NodeHttp = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   // console.log(inputs);
   return (
     <NodeCard minW={'350px'} selected={selected} {...data}>
-      {isTool && (
+      {isTool && hasDynamicToolInput(inputs) && (
         <>
           <Container>
             <RenderToolInput nodeId={nodeId} inputs={inputs} />
@@ -870,6 +850,7 @@ const NodeHttp = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           nodeId={nodeId}
           flowInputList={commonInputs}
           CustomComponent={CustomComponents}
+          isTool={isTool}
         />
       </Container>
       <Container>
