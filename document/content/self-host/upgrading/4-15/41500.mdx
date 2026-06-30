@@ -1,7 +1,9 @@
 ---
-title: 'V4.15.0(进行中)'
+title: 'V4.15.0'
 description: 'FastGPT V4.15.0 更新说明'
 ---
+
+import { Alert } from '@/components/docs/Alert';
 
 ## 📦 升级指南
 
@@ -9,9 +11,11 @@ description: 'FastGPT V4.15.0 更新说明'
 
 完整环境变量清单见 [环境变量说明](../../config/env.mdx)。
 
-`fastgpt-app` 和 `fastgpt-pro` 本次升级需关注下面新增或变更语义的配置。同时需检查是否都包含 `AES256_SECRET_KEY` 且相等。
+`fastgpt-app` 和 `fastgpt-pro` 本次升级需关注下面新增或变更语义的配置。同时需检查两个服务是否都包含 `FILE_TOKEN_KEY`、`AES256_SECRET_KEY` 和 `INVOKE_TOKEN_SECRET`，且值保持一致。
 
 ```dotenv
+# MCP Server 代理地址，用于 MCP 使用方式页拼接 SSE 地址（末尾不要带 /）
+SSE_MCP_SERVER_PROXY_ENDPOINT=http://localhost:3003
 # 文件解析 worker 并发数
 PARSE_FILE_WORKERS=10
 # 文件解析超时时间，单位秒
@@ -40,7 +44,33 @@ AGENT_SANDBOX_DISK_MB=1024
 AGENT_SANDBOX_NPM_REGISTRY=
 # Agent Sandbox 内 pip/uv 使用的 Python package index
 AGENT_SANDBOX_PYPI_INDEX_URL=
+# 自定义 PDF 解析服务地址
+CUSTOM_PDF_PARSE_URL=
+# 自定义 PDF 解析服务密钥
+CUSTOM_PDF_PARSE_KEY=
+# Doc2x PDF 解析服务密钥
+DOC2X_KEY=
+# 合合信息 Textin 服务 App ID
+TEXTIN_APP_ID=
+# 合合信息 Textin 服务 Secret Code
+TEXTIN_SECRET_CODE=
+# 向量检索 hnsw ef_search 参数，仅对 PG / OB / OpenGauss 生效
+HNSW_EF_SEARCH=100
+# 向量检索最大扫描数据量，仅对 PG 生效
+HNSW_MAX_SCAN_TUPLES=100000
+# 知识库文件解析队列最大并发数
+DATASET_PARSE_MAX_PROCESS=10
+# 向量训练队列最大并发数
+VECTOR_MAX_PROCESS=10
+# 问答拆分队列最大并发数
+QA_MAX_PROCESS=10
+# 图片理解模型处理队列最大并发数
+VLM_MAX_PROCESS=10
 ```
+
+如果此前配置过 `CHAT_TITLE_MODEL`，升级后可以从 `fastgpt-app` 和 `fastgpt-pro` 环境变量中移除，并在「模型配置」-「默认模型配置」中选择「对话标题模型」。该配置可以不设置，不设置时不会调用模型生成标题，仅使用用户问题截断作为标题。
+
+v4.15.0-beta7 已将开源版 `config.json` 中的 MCP Server 代理、PDF 增强解析、向量检索和知识库处理并发配置迁移为环境变量。商业版原管理员配置中的 SSE MCP Endpoint 也需要改为通过 `SSE_MCP_SERVER_PROXY_ENDPOINT` 配置。
 
 #### Plugin 服务
 
@@ -49,6 +79,8 @@ AGENT_SANDBOX_PYPI_INDEX_URL=
 1. 修改 `fastgpt-plugin` 的环境变量 `AUTH_TOKEN`，要求 32 位以上。
 2. 同时修改 `fastgpt` 的环境变量 `PLUGIN_TOKEN`，与 `fastgpt-plugin` 的 `AUTH_TOKEN` 一致。
 3. 修改 `fastgpt-plugin` 的环境变量 `MONGODB_URI` 中的数据库名，不与 `fastgpt` 的 Mongo 数据库名重名即可，例如：`mongodb://myusername:mypassword@fastgpt-mongo:27017/fastgpt-plugin?authSource=admin`
+
+插件镜像不再内置已安装的旧系统工具。完成服务升级后，必须按第 3 节重装系统工具，否则历史系统工具可能无法正常运行。
 
 #### OpenSandbox
 
@@ -59,17 +91,43 @@ AGENT_SANDBOX_PYPI_INDEX_URL=
 Code Sandbox 新增请求体、输出大小和 `queueId` 排队控制：
 
 ```dotenv
-# /sandbox API JSON 请求体总大小上限，包含 variables，单位 MB
-SANDBOX_API_MAX_BODY_MB=8
-# 单次代码执行输出 JSON 大小上限，包含返回值和日志，单位 MB
-SANDBOX_MAX_OUTPUT_MB=10
+# JS/Python 预热 worker 数量
+SANDBOX_POOL_SIZE=20
 # 同一个 queueId 同时可进入执行流程的请求数；为空时不启用排队
 SANDBOX_QUEUE_ID_CONCURRENCY=
+# /sandbox API JSON 请求体总大小上限，包含 variables，单位 MB
+SANDBOX_API_MAX_BODY_MB=8
+# 单次代码执行超时时间，单位毫秒
+SANDBOX_MAX_TIMEOUT=60000
+# 单个沙箱最大内存，单位 MB；运行时会额外预留 50 MB 开销
+SANDBOX_MAX_MEMORY_MB=256
+# 单次代码执行输出 JSON 大小上限，包含返回值和日志，单位 MB
+SANDBOX_MAX_OUTPUT_MB=10
+# 是否在沙箱网络请求中启用内网 IP 检查
+CHECK_INTERNAL_IP=true
+# 单次代码执行允许发起的最大网络请求数
+SANDBOX_REQUEST_MAX_COUNT=30
+# 沙箱内单次网络请求超时时间，单位毫秒
+SANDBOX_REQUEST_TIMEOUT=60000
+# 沙箱内单次网络响应体最大大小，单位 MB
+SANDBOX_REQUEST_MAX_RESPONSE_MB=10
+# 沙箱内单次网络请求体最大大小，单位 MB
+SANDBOX_REQUEST_MAX_BODY_MB=5
 ```
 
 `/sandbox/js` 和 `/sandbox/python` 请求体新增可选字段 `queueId`。当配置 `SANDBOX_QUEUE_ID_CONCURRENCY` 且请求传入有效 `queueId` 时，同一 `queueId` 的请求会按 FIFO 排队；不同 `queueId` 或未传 `queueId` 的请求不受该限制，仍只受 worker 池并发限制影响。
 
 ### 2. 镜像变更
+
+请至少确认以下镜像 tag：
+
+- `fastgpt`：`v4.15.0`（对应 `fastgpt-app` 主服务）
+- `fastgpt-code-sandbox`：`v4.15.0`
+- `fastgpt-mcp_server`：`v4.15.0`
+- `fastgpt-plugin`：`v1.0.0-beta2`
+- `aiproxy`：`v0.6.1`
+
+如果启用 Agent Sandbox provider，还需要单独部署并同步 `fastgpt-agent-sandbox-proxy:v0.2.0-beta2`，同时同步运行时镜像 `fastgpt-agent-sandbox:v0.2.0`。如果仍单独部署 Volume Manager，则同步 `fastgpt-agent-volume-manager:v0.2.0`。商业版 `fastgpt-pro` 镜像请跟随商业版正式版发布 tag 更新；开源版 Docker Compose 不包含 `fastgpt-pro` 镜像。
 
 ### 3. 重装系统工具
 
@@ -80,18 +138,237 @@ SANDBOX_QUEUE_ID_CONCURRENCY=
 
 也可以打开插件市场逐个下载，插件市场地址为: [https://v2.marketplace.fastgpt.cn](https://v2.marketplace.fastgpt.cn)，环境变量默认值已变成该地址，不设置环境变量即可。
 
-### 4. 升级脚本
+### 4. 迁移脚本
 
-如使用旧版沙盒 workspace，可通过下面接口将旧沙盒 workspace 归档到 S3，从而更彻底地释放不活跃沙盒。该脚本仅影响旧的沙盒，不影响新生成的沙盒；不执行该脚本，直接移除旧沙盒也可以。
+本节只整理从历史版本或任意 v4.15.0 beta 升级到 v4.15.0 正式版时，需要在正式版镜像上执行的 Root 管理员迁移接口。升级路径以本节接口为准，不需要再准备本地数据库脚本。已经在 beta 升级过程中成功执行过的接口，不需要重复正式执行；不确定时先执行 dry-run 或只读检查。
 
-```shell
-curl --location --request POST 'https://{{host}}/api/admin/dataClean/initSandboxArchive' \
---header 'rootkey: {{rootkey}}' \
---header 'Content-Type: application/json' \
--d '{"runArchive":true,"inactiveDays":0}'
+执行前先完成三件事：
+
+1. 备份 MongoDB、对象存储和当前部署配置。
+2. 将 `fastgpt-app` / `fastgpt-pro` 升级到包含这些 Root 管理员接口的镜像版本。
+3. 准备可访问 FastGPT 的 `{{host}}` 和 `{{rootkey}}`。下面所有接口都需要 `rootkey`。
+
+按下面最短路径执行：
+
+1. 所有环境都先执行 4.1。若 dry-run 返回 `duplicateDocumentCount > 0`，必须正式清理后再让 `SYNC_INDEX=true` 重新同步索引。
+2. 只有从 `<4.8` 直接升级，或历史上仍保留 V1 Workflow 数据时，执行 4.2；其他环境跳过。
+3. 所有环境都执行 4.3 的 dry-run。若返回统计显示存在可修复或格式变更数据，再正式执行。
+4. 曾部署 v4.15.0-beta6 或更早 beta，并使用过 Skill 编辑、Skill 调试或 Agent Sandbox 时，执行 4.4；不确定时至少执行 dry-run。
+5. 使用过旧版 sandbox workspace 且希望修正历史状态或归档不活跃 workspace 时，执行 4.5；该步骤可选。
+
+如果是从 v4.15.0-beta1 ~ beta4 升级，这些 beta 本身没有单独数据库迁移脚本，按上面的通用路径执行即可。如果是从 beta5、beta6 或 beta7 升级，曾经执行成功的 beta 迁移接口可以跳过，但 4.1 和 4.3 仍建议至少 dry-run 一次，确认正式版索引和工作流数据状态。
+
+#### 4.1 必须检查：清理重复 `chats` 会话头
+
+正式版会同步 `{ appId, chatId }` 和 `{ sourceType, appId, chatId }` 两个唯一索引。正式版索引最终同步成功前，必须检查并清理 `chats` 集合中重复的 `appId + chatId`；否则开启 `SYNC_INDEX=true` 后，索引同步可能报 `E11000 duplicate key error`，唯一约束不会生效。
+
+该接口依赖升级后的 `fastgpt-app` 镜像。如果首次启动正式版时已经出现唯一索引冲突，但服务仍可访问，可直接执行下面的 dry-run 和清理命令，完成后重启服务重新同步索引。
+
+先执行 dry-run。该步骤不会删除数据，所有环境都应至少执行一次：
+
+```bash
+curl -X POST 'https://{{host}}/api/admin/dataClean/cleanupDuplicateChats' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: {{rootkey}}' \
+  -d '{"dryRun":true,"sampleLimit":20}'
 ```
 
-### 清理重复对话，构建唯一索引
+重点查看返回值：
+
+- `duplicateDocumentCount`：预计需要删除的重复 `chats` 会话头数量。
+- `samples`：重复样本，包含保留的 `keepId` 和候选删除的 `deleteIds`。
+- `deletedDocumentCount`：正式执行时实际删除数量，dry-run 时固定为 `0`。
+
+如果 `duplicateDocumentCount=0`，无需执行正式清理。如果大于 0，确认样本无误后执行：
+
+```bash
+curl -X POST 'https://{{host}}/api/admin/dataClean/cleanupDuplicateChats' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: {{rootkey}}' \
+  -d '{"dryRun":false,"sampleLimit":20}'
+```
+
+清理策略：每组重复的 `appId + chatId` 会保留 `updateTime` 最新的一条；如果时间相同，用 `_id` 倒序作为稳定兜底。接口只删除重复的 `chats` 会话头，不删除 `chatitems`、`chat_item_responses` 中的消息内容。
+
+清理完成后，保持 `SYNC_INDEX=true` 并重启 `fastgpt-app` / `fastgpt-pro`，让服务重新同步索引。可进入 MongoDB 后确认两个索引都已经是 `unique: true`：
+
+```js
+db.chats
+  .getIndexes()
+  .filter((idx) => ['appId_1_chatId_1', 'sourceType_1_appId_1_chatId_1'].includes(idx.name));
+```
+
+#### 4.2 条件必须：Workflow V1 -> V2 迁移
+
+只有从 `<4.8` 的旧版本直接升级，或历史上仍保留 V1 Workflow 数据的环境需要执行。该接口默认 dry-run，会扫描、转换并校验保存结构，但不写库。
+
+```bash
+curl -X POST 'https://{{host}}/api/admin/dataClean/v1WorkflowToV2' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: {{rootkey}}' \
+  -d '{"dryRun":true}'
+```
+
+确认返回统计后，执行正式迁移：
+
+```bash
+curl -X POST 'https://{{host}}/api/admin/dataClean/v1WorkflowToV2' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: {{rootkey}}' \
+  -d '{"dryRun":false}'
+```
+
+如果你已经在较早版本完成过 V1 -> V2 迁移，或从 v4.8 及以上版本升级，可跳过本步骤。
+
+#### 4.3 必须检查：Workflow V2 脏数据清理
+
+该脚本会扫描并修复 `apps.modules` 和 `app_versions.nodes` 中历史枚举表达式字符串、空值和旧结构兼容问题。所有自托管环境都应先执行 dry-run；如果返回统计显示存在可修复数据，再执行正式写入。若刚执行过 4.2，等 V1 -> V2 完成后再执行本步骤。
+
+```bash
+curl -X POST 'https://{{host}}/api/admin/dataClean/initWorkflowData' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: {{rootkey}}' \
+  -d '{"dryRun":true,"batchSize":1000,"writeBatchSize":10}'
+```
+
+确认 dry-run 结果后执行：
+
+```bash
+curl -X POST 'https://{{host}}/api/admin/dataClean/initWorkflowData' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: {{rootkey}}' \
+  -d '{"dryRun":false,"batchSize":1000,"writeBatchSize":10}'
+```
+
+生产写入压力较高时，可以降低 `writeBatchSize`。未通过 Zod 校验的文档只会在响应中报告，不会被写回数据库。
+
+#### 4.4 条件必须：beta6 及更早版本的 Skill Debug / Sandbox 迁移
+
+如果曾部署 v4.15.0-beta6 或更早 beta，并使用过 Skill 编辑、Skill 调试或 Agent Sandbox，需要执行该脚本。它会为历史 sandbox 实例补齐 `sourceType/sourceId`，清理旧字段，并删除无法归属的孤儿 sandbox 和旧 Skill Debug 对话数据。
+
+执行前先完成 4.1 的重复 chats 清理，并确认两个 chats 唯一索引已经同步成功。
+
+```bash
+curl -X POST 'https://{{host}}/api/admin/4150/init4150-beta6' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: {{rootkey}}' \
+  -d '{"dryRun":true}'
+```
+
+确认 dry-run 响应后执行正式迁移：
+
+```bash
+curl -X POST 'https://{{host}}/api/admin/4150/init4150-beta6' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: {{rootkey}}' \
+  -d '{"dryRun":false}'
+```
+
+如果从未部署过 v4.15 beta，或未使用 Skill 编辑、Skill 调试、Agent Sandbox，可跳过本步骤。不确定时至少执行 dry-run。
+
+#### 4.5 可选：归档旧 Sandbox workspace
+
+如果使用过旧版 sandbox workspace，可通过该接口修正历史 sandbox 状态字段，并按需把不活跃 workspace 归档到 S3。该步骤不影响新生成的 sandbox；不执行也不影响 v4.15 正式版升级，只是不会自动归档旧 workspace。v4.15.0-beta5 文档里的旧路径已被正式版 `dataClean` 路径替代，正式版统一使用下面的接口。
+
+只修正历史状态字段、不触发归档：
+
+```bash
+curl -X POST 'https://{{host}}/api/admin/dataClean/initSandboxArchive' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: {{rootkey}}' \
+  -d '{"runArchive":false,"inactiveDays":7}'
+```
+
+如果确认需要立即归档满足条件的不活跃 workspace：
+
+```bash
+curl -X POST 'https://{{host}}/api/admin/dataClean/initSandboxArchive' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: {{rootkey}}' \
+  -d '{"runArchive":true,"inactiveDays":7}'
+```
+
+`inactiveDays` 表示多久未活跃的 stopped sandbox 会进入归档候选；也可以用 `inactiveBefore` 传入明确时间边界。
+
+### 5. Agent Sandbox 部署方案
+
+v4.15.0 的 Docker Compose 部署文件默认**不再内置 OpenSandbox 和 `fastgpt-agent-sandbox-proxy`**，基础 FastGPT 服务可以先独立启动。默认 compose 中 `AGENT_SANDBOX_PROVIDER` 为空，不会启用 Agent Sandbox；如需使用 Agent V2 工具调用、Skill 编辑调试等虚拟机能力，需要先单独部署 `fastgpt-agent-sandbox-proxy`，再按下面方案选择一个沙盒 provider。
+
+本节只列出 v4.15.0 升级时的最短接入路径。完整的 proxy 环境变量、WebSocket 地址、密钥要求和常见问题说明见 [沙盒通用配置](../../config/sandbox/common.mdx)。
+
+<Alert context="warning">
+  `AGENT_SANDBOX_PROXY_SECRET` 必须同时配置在 `fastgpt-app` 和单独部署的
+  `fastgpt-agent-sandbox-proxy` 中，且两边完全一致。生产环境需要把 `AGENT_SANDBOX_PROXY_URL`
+  改成浏览器可访问的 `ws://` 或 `wss://` 地址，例如 `wss://sandbox.example.com`。
+</Alert>
+
+#### 5.1 Sealos Devbox 方案
+
+适合不想自维护沙盒控制器、希望由 Sealos 托管 Devbox 运行环境的部署。
+
+在 `fastgpt-app` 环境变量中补充：
+
+```dotenv
+AGENT_SANDBOX_PROVIDER=sealosdevbox
+AGENT_SANDBOX_SEALOS_BASEURL=https://{{sealos-devbox-api-host}}
+AGENT_SANDBOX_SEALOS_TOKEN={{sealos-devbox-token}}
+AGENT_SANDBOX_SEALOS_WORK_DIRECTORY=/home/devbox/workspace
+AGENT_SANDBOX_SEALOS_IMAGE=ghcr.io/labring/fastgpt-agent-sandbox:v0.2.0
+AGENT_SANDBOX_PROXY_URL=wss://{{agent-sandbox-proxy-domain}}
+```
+
+如果使用中国大陆镜像源，可把 `AGENT_SANDBOX_SEALOS_IMAGE` 改为：
+
+```dotenv
+AGENT_SANDBOX_SEALOS_IMAGE=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.2.0
+```
+
+配置完成后重启 `fastgpt-app` 和单独部署的 `fastgpt-agent-sandbox-proxy`。
+
+#### 5.2 OpenSandbox 方案
+
+适合已有 OpenSandbox 集群，或希望自行部署沙盒控制器的环境。v4.15.0 默认 compose 不再内置 `opensandbox-server` 和 `fastgpt-agent-sandbox-proxy`，需要先单独部署 OpenSandbox 和 proxy，再把 FastGPT 指向它们。
+
+在 `fastgpt-app` 环境变量中补充：
+
+```dotenv
+AGENT_SANDBOX_PROVIDER=opensandbox
+AGENT_SANDBOX_OPENSANDBOX_BASEURL=http://{{opensandbox-server}}:8090
+AGENT_SANDBOX_OPENSANDBOX_API_KEY={{opensandbox-api-key}}
+AGENT_SANDBOX_OPENSANDBOX_RUNTIME=docker
+AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO=ghcr.io/labring/fastgpt-agent-sandbox
+AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG=v0.2.0
+AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY=true
+AGENT_SANDBOX_PROXY_URL=wss://{{agent-sandbox-proxy-domain}}
+```
+
+如果 OpenSandbox 使用 Kubernetes runtime，则把 `AGENT_SANDBOX_OPENSANDBOX_RUNTIME` 改为 `kubernetes`，并确保 OpenSandbox 侧已配置可拉取的 `execd`、`egress` 和 runtime 镜像。
+
+中国大陆镜像源示例：
+
+```dotenv
+AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox
+AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG=v0.2.0
+```
+
+#### 5.3 自定义源部署
+
+如果需要使用企业内网 Harbor、私有 Registry 或镜像加速源，建议先下载 v4.15.0 的 `docker-compose.yml`，统一替换 `image:`。如果启用 Agent Sandbox，还需要同步替换自行部署的 `fastgpt-agent-sandbox-proxy` 镜像、`AGENT_SANDBOX_SEALOS_IMAGE` 和 `AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO`，再通过本地 compose 模式部署：
+
+```bash
+FASTGPT_LOCAL_COMPOSE_PATH=./docker-compose.yml bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
+```
+
+自定义源至少需要覆盖下面这些镜像：
+
+- `fastgpt`
+- `fastgpt-code-sandbox`
+- `fastgpt-mcp_server`
+- `fastgpt-plugin`
+- `fastgpt-agent-sandbox-proxy`（启用 Agent/Skill 沙盒时需要，默认 compose 不内置）
+- `fastgpt-agent-sandbox`（启用 Sealos Devbox 或 OpenSandbox 时需要）
+- `opensandbox-server`、`opensandbox-execd`、`opensandbox-egress`（自行部署 OpenSandbox 时需要）
+- 当前向量库和基础组件镜像，例如 `mongo`、`redis`、`minio`、`pgvector`、`milvus` 等
 
 ## 功能重大变化
 

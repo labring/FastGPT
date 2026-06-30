@@ -50,7 +50,6 @@ x-vec-config: &x-vec-config
   MILVUS_TOKEN: none
 
 services:
-  # Vector DB
   fastgpt-milvus-minio:
     container_name: fastgpt-milvus-minio
     image: minio/minio:RELEASE.2023-03-20T20-16-18Z

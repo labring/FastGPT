@@ -47,7 +47,6 @@ x-vec-config: &x-vec-config
   SEEKDB_URL: mysql://root:seekdbpassword@fastgpt-vector:2881/mysql
 
 services:
-  # Vector DB
   fastgpt-vector:
     image:  oceanbase/seekdb:1.0.1.0-100000392025122619
     container_name: fastgpt-seekdb

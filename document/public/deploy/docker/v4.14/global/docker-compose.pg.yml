@@ -49,7 +49,6 @@ x-vec-config: &x-vec-config
   PG_URL: postgresql://username:password@fastgpt-vector:5432/postgres
 
 services:
-  # Vector DB
   fastgpt-vector:
     image: pgvector/pgvector:0.8.0-pg15
     container_name: fastgpt-pg

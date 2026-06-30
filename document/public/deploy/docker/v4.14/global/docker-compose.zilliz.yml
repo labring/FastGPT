@@ -50,8 +50,6 @@ x-vec-config: &x-vec-config
   MILVUS_TOKEN: zilliz_cloud_token
 
 services:
-  # Vector DB
-
   fastgpt-mongo:
     image: mongo:5.0.32 # cpu 不支持 AVX 时候使用 4.4.29
     container_name: fastgpt-mongo

@@ -3,28 +3,31 @@ title: 'V4.15.0'
 description: 'FastGPT V4.15.0 Release Notes'
 ---
 
+import { Alert } from '@/components/docs/Alert';
+
 ## 📦 Upgrade Guide
 
 ### 1. Image Changes
 
-- Update the fastgpt-app (FastGPT main service) image tag to v4.15.0
-- Update the fastgpt-pro (FastGPT commercial edition) image tag to v4.15.0
-- Update the fastgpt-code-sandbox image tag to v4.15.0
-- Update the fastgpt-plugin image tag to v1.0.0-beta2
-- Update the aiproxy image tag to v0.6.1
+Confirm at least the following image tags:
 
-If you use OpenSandbox, update the following images:
+- `fastgpt`: `v4.15.0` (used by the `fastgpt-app` main service)
+- `fastgpt-code-sandbox`: `v4.15.0`
+- `fastgpt-mcp_server`: `v4.15.0`
+- `fastgpt-plugin`: `v1.0.0-beta2`
+- `aiproxy`: `v0.6.1`
 
-- Update the fastgpt-agent-sandbox image tag to v0.2.0
-- Update the fastgpt-agent-volume-manager image tag to v0.2.0
+If you enable an Agent Sandbox provider, deploy and update `fastgpt-agent-sandbox-proxy:v0.2.0-beta2` separately, and also update the runtime image `fastgpt-agent-sandbox:v0.2.0`. If you still deploy Volume Manager separately, update `fastgpt-agent-volume-manager:v0.2.0` as well. For the commercial edition, update the `fastgpt-pro` image according to the commercial stable-release tag. The open-source Docker Compose file does not include a `fastgpt-pro` image.
 
 ### 2. Environment Variable Changes
 
 #### FastGPT Main Service
 
-For `fastgpt-app` and `fastgpt-pro`, this upgrade only requires attention to the following newly added settings or changed semantics. For the complete environment variable list, see [Environment Variables](../../config/env.en.mdx).
+For `fastgpt-app` and `fastgpt-pro`, this upgrade requires attention to the following newly added settings or changed semantics. For the complete environment variable list, see [Environment Variables](../../config/env.en.mdx).
 
 ```dotenv
+# MCP Server proxy address used to build SSE URLs on the MCP usage page. Do not end with /
+SSE_MCP_SERVER_PROXY_ENDPOINT=http://localhost:3003
 # File parsing worker concurrency
 PARSE_FILE_WORKERS=10
 # File parsing timeout in seconds
@@ -53,9 +56,35 @@ AGENT_SANDBOX_DISK_MB=1024
 AGENT_SANDBOX_NPM_REGISTRY=
 # Python package index used by pip/uv inside Agent Sandbox
 AGENT_SANDBOX_PYPI_INDEX_URL=
+# Custom PDF parsing service URL
+CUSTOM_PDF_PARSE_URL=
+# Custom PDF parsing service key
+CUSTOM_PDF_PARSE_KEY=
+# Doc2x PDF parsing service key
+DOC2X_KEY=
+# TextIn App ID
+TEXTIN_APP_ID=
+# TextIn Secret Code
+TEXTIN_SECRET_CODE=
+# hnsw ef_search parameter for vector search. Only applies to PG / OB / OpenGauss.
+HNSW_EF_SEARCH=100
+# Maximum vector scan tuple count. Only applies to PG.
+HNSW_MAX_SCAN_TUPLES=100000
+# Maximum Knowledge Base file parsing queue concurrency
+DATASET_PARSE_MAX_PROCESS=10
+# Maximum vector training queue concurrency
+VECTOR_MAX_PROCESS=10
+# Maximum Q&A split queue concurrency
+QA_MAX_PROCESS=10
+# Maximum vision-language model processing queue concurrency
+VLM_MAX_PROCESS=10
 ```
 
-This release adds environment variable validation. Check that both `fastgpt-app` and `fastgpt-pro` include `AES256_SECRET_KEY` and `FILE_TOKEN_KEY`, and that the values are the same in both services.
+This release adds environment variable validation. Check that both `fastgpt-app` and `fastgpt-pro` include `FILE_TOKEN_KEY`, `AES256_SECRET_KEY`, and `INVOKE_TOKEN_SECRET`, and that the values are the same in both services.
+
+If you previously configured `CHAT_TITLE_MODEL`, remove it from the `fastgpt-app` and `fastgpt-pro` environment variables after upgrading, then select Chat Title Model under Model Configuration > Default Model Configuration. This setting can be left unset. When unset, FastGPT does not call a model to generate the title and uses a truncated user question instead.
+
+v4.15.0-beta7 moved the open-source `config.json` settings for the MCP Server proxy, enhanced PDF parsing, vector search, and Knowledge Base processing concurrency into environment variables. The commercial edition's SSE MCP Endpoint setting that used to be configured in Admin should also be configured through `SSE_MCP_SERVER_PROXY_ENDPOINT`.
 
 #### Plugin Service
 
@@ -64,6 +93,8 @@ The plugin service has been upgraded to v1.0.0-beta2, and system tool execution 
 1. Update the `AUTH_TOKEN` environment variable for `fastgpt-plugin`. It must be at least 32 characters long.
 2. Update the `PLUGIN_TOKEN` environment variable for `fastgpt` to match the `AUTH_TOKEN` value used by `fastgpt-plugin`.
 3. Update the database name in the `MONGODB_URI` environment variable for `fastgpt-plugin` so it does not conflict with the MongoDB database name used by `fastgpt`. For example: `mongodb://myusername:mypassword@fastgpt-mongo:27017/fastgpt-plugin?authSource=admin`
+
+The plugin image no longer bundles previously installed legacy system tools. After upgrading the service, you must reinstall system tools as described in section 3. Otherwise, historical system tools may not run correctly.
 
 #### OpenSandbox
 
@@ -74,12 +105,28 @@ If you use OpenSandbox, `AGENT_SANDBOX_VOLUME_MANAGER_MOUNT_PATH` is no longer e
 Code Sandbox adds request body, output size, and `queueId` queue controls:
 
 ```dotenv
-# Maximum JSON request body size for the /sandbox API, including variables, in MB
-SANDBOX_API_MAX_BODY_MB=8
-# Maximum JSON output size for a single code execution, including return values and logs, in MB
-SANDBOX_MAX_OUTPUT_MB=10
+# Number of pre-warmed JS/Python workers
+SANDBOX_POOL_SIZE=20
 # Number of requests with the same queueId that may enter execution concurrently. Empty disables queueing.
 SANDBOX_QUEUE_ID_CONCURRENCY=
+# Maximum JSON request body size for the /sandbox API, including variables, in MB
+SANDBOX_API_MAX_BODY_MB=8
+# Timeout for one code execution, in milliseconds
+SANDBOX_MAX_TIMEOUT=60000
+# Maximum memory for one sandbox, in MB. The runtime reserves an extra 50 MB for overhead.
+SANDBOX_MAX_MEMORY_MB=256
+# Maximum JSON output size for a single code execution, including return values and logs, in MB
+SANDBOX_MAX_OUTPUT_MB=10
+# Whether internal IP checks are enabled for sandbox network requests
+CHECK_INTERNAL_IP=true
+# Maximum number of network requests allowed during one code execution
+SANDBOX_REQUEST_MAX_COUNT=30
+# Timeout for one network request from inside the sandbox, in milliseconds
+SANDBOX_REQUEST_TIMEOUT=60000
+# Maximum response body size for one sandbox network request, in MB
+SANDBOX_REQUEST_MAX_RESPONSE_MB=10
+# Maximum request body size for one sandbox network request, in MB
+SANDBOX_REQUEST_MAX_BODY_MB=5
 ```
 
 `/sandbox/js` and `/sandbox/python` request bodies now support an optional `queueId` field. When `SANDBOX_QUEUE_ID_CONCURRENCY` is configured and the request includes a valid `queueId`, requests with the same `queueId` are queued in FIFO order. Requests with different `queueId` values, or requests without `queueId`, are not restricted by this setting and are only limited by the worker pool concurrency.
@@ -93,16 +140,238 @@ After upgrading the plugin service, reinstall all legacy system tools:
 
 You can also download tools one by one from the plugin marketplace. Before the stable release, the marketplace URL is: [https://v2.marketplace.fastgpt.cn](https://v2.marketplace.fastgpt.cn)
 
-### 4. Upgrade Script
+### 4. Migration Scripts
 
-If you use legacy sandbox workspaces, you can archive old sandbox workspaces to S3 with the following API to release inactive sandbox resources more thoroughly. This script only affects old sandboxes and does not affect newly generated sandboxes. You can also remove old sandboxes directly without running this script.
+This section covers the root-admin migration APIs to run on the stable-release image when upgrading from an older release or any v4.15.0 beta to v4.15.0 stable. Use the APIs in this section as the source of truth. You do not need to prepare local database scripts. APIs that already completed successfully during a beta upgrade do not need to be applied again. If you are unsure, run the dry-run or read-only check first.
 
-```shell
-curl --location --request POST 'https://{{host}}/api/admin/initSandboxArchive' \
---header 'rootkey: {{rootkey}}' \
---header 'Content-Type: application/json' \
--d '{"runArchive":true,"inactiveDays":0}'
+Before running any script:
+
+1. Back up MongoDB, object storage, and your current deployment configuration.
+2. Upgrade `fastgpt-app` / `fastgpt-pro` to image versions that include these root-admin APIs.
+3. Prepare a reachable FastGPT `{{host}}` and `{{rootkey}}`. All APIs below require `rootkey`.
+
+Run the shortest path below:
+
+1. Run 4.1 in every deployment. If the dry-run returns `duplicateDocumentCount > 0`, apply the cleanup before letting `SYNC_INDEX=true` sync indexes again.
+2. Run 4.2 only when upgrading directly from `<4.8`, or when your deployment still contains historical V1 Workflow data. Skip it otherwise.
+3. Run the 4.3 dry-run in every deployment. Apply it only if the returned statistics show fixable or format-changed data.
+4. Run 4.4 if you deployed v4.15.0-beta6 or an earlier beta and used Skill editing, Skill debugging, or Agent Sandbox. If you are unsure, run at least the dry-run.
+5. Run 4.5 only if you used legacy sandbox workspaces and want to fix historical status fields or archive inactive workspaces. This step is optional.
+
+If you are upgrading from v4.15.0-beta1 through beta4, those beta releases did not include standalone database migrations. Follow the general path above. If you are upgrading from beta5, beta6, or beta7, you can skip beta migration APIs that already completed successfully, but 4.1 and 4.3 should still be dry-run at least once to confirm the stable-release index and workflow-data state.
+
+#### 4.1 Required Check: Clean Duplicate `chats` Headers
+
+The stable release syncs two unique indexes: `{ appId, chatId }` and `{ sourceType, appId, chatId }`. Before the stable-release indexes sync successfully, you must check and clean duplicate `appId + chatId` records in the `chats` collection. Otherwise, when `SYNC_INDEX=true`, index sync may fail with `E11000 duplicate key error`, and the unique constraint will not take effect.
+
+This API depends on the upgraded `fastgpt-app` image. If the first stable-release startup already reports a unique index conflict but the service is still reachable, run the dry-run and cleanup commands below, then restart the service so it can sync indexes again.
+
+Run the dry-run first. This does not delete data, and every deployment should run it at least once:
+
+```bash
+curl -X POST 'https://{{host}}/api/admin/dataClean/cleanupDuplicateChats' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: {{rootkey}}' \
+  -d '{"dryRun":true,"sampleLimit":20}'
 ```
+
+Check these response fields:
+
+- `duplicateDocumentCount`: number of duplicate `chats` headers that would be deleted.
+- `samples`: duplicate samples, including the retained `keepId` and candidate `deleteIds`.
+- `deletedDocumentCount`: number of records deleted during apply. It is always `0` in dry-run mode.
+
+If `duplicateDocumentCount=0`, skip the apply step. If it is greater than 0, confirm the samples and then apply the cleanup:
+
+```bash
+curl -X POST 'https://{{host}}/api/admin/dataClean/cleanupDuplicateChats' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: {{rootkey}}' \
+  -d '{"dryRun":false,"sampleLimit":20}'
+```
+
+Cleanup policy: for each duplicate `appId + chatId` group, the API keeps the record with the latest `updateTime`. If timestamps are equal, it uses `_id` descending as a stable tie-breaker. The API only deletes duplicate `chats` headers. It does not delete message content in `chatitems` or `chat_item_responses`.
+
+After cleanup, keep `SYNC_INDEX=true` and restart `fastgpt-app` / `fastgpt-pro` so the service can sync indexes again. You can enter MongoDB and confirm both indexes are `unique: true`:
+
+```js
+db.chats
+  .getIndexes()
+  .filter((idx) => ['appId_1_chatId_1', 'sourceType_1_appId_1_chatId_1'].includes(idx.name));
+```
+
+#### 4.2 Conditionally Required: Workflow V1 -> V2 Migration
+
+Run this only when upgrading directly from a version earlier than `<4.8`, or when your deployment still contains historical V1 Workflow data. The API defaults to dry-run mode. It scans, converts, and validates the saved structure without writing to the database.
+
+```bash
+curl -X POST 'https://{{host}}/api/admin/dataClean/v1WorkflowToV2' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: {{rootkey}}' \
+  -d '{"dryRun":true}'
+```
+
+After confirming the returned statistics, apply the migration:
+
+```bash
+curl -X POST 'https://{{host}}/api/admin/dataClean/v1WorkflowToV2' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: {{rootkey}}' \
+  -d '{"dryRun":false}'
+```
+
+Skip this step if you already completed the V1 -> V2 migration in an earlier version, or if you are upgrading from v4.8 or later.
+
+#### 4.3 Required Check: Workflow V2 Dirty-Data Cleanup
+
+This script scans and fixes historical enum-expression strings, nullish values, and legacy-structure compatibility issues in `apps.modules` and `app_versions.nodes`. All self-hosted deployments should run the dry-run first. If the returned statistics show fixable data, apply the write step. If you just ran 4.2, run this step after V1 -> V2 completes.
+
+```bash
+curl -X POST 'https://{{host}}/api/admin/dataClean/initWorkflowData' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: {{rootkey}}' \
+  -d '{"dryRun":true,"batchSize":1000,"writeBatchSize":10}'
+```
+
+After confirming the dry-run result, apply the cleanup:
+
+```bash
+curl -X POST 'https://{{host}}/api/admin/dataClean/initWorkflowData' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: {{rootkey}}' \
+  -d '{"dryRun":false,"batchSize":1000,"writeBatchSize":10}'
+```
+
+Lower `writeBatchSize` if production write pressure is high. Documents that fail Zod validation are reported in the response and are not written back to the database.
+
+#### 4.4 Conditionally Required: Skill Debug / Sandbox Migration for beta6 and Earlier
+
+Run this script if you deployed v4.15.0-beta6 or an earlier beta and used Skill editing, Skill debugging, or Agent Sandbox. It backfills `sourceType/sourceId` for historical sandbox instances, removes legacy fields, and deletes orphan sandboxes and legacy Skill Debug chat data that cannot be assigned to a valid owner.
+
+Before running it, complete the duplicate chats cleanup in 4.1 and confirm both chats unique indexes have synced successfully.
+
+```bash
+curl -X POST 'https://{{host}}/api/admin/4150/init4150-beta6' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: {{rootkey}}' \
+  -d '{"dryRun":true}'
+```
+
+After confirming the dry-run response, apply the migration:
+
+```bash
+curl -X POST 'https://{{host}}/api/admin/4150/init4150-beta6' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: {{rootkey}}' \
+  -d '{"dryRun":false}'
+```
+
+Skip this step if you never deployed a v4.15 beta, or if you never used Skill editing, Skill debugging, or Agent Sandbox. If you are unsure, run at least the dry-run.
+
+#### 4.5 Optional: Archive Legacy Sandbox Workspaces
+
+If you used legacy sandbox workspaces, this API can fix historical sandbox status fields and optionally archive inactive workspaces to S3. This step does not affect newly generated sandboxes. Skipping it does not block the v4.15 stable upgrade; old workspaces simply will not be archived automatically. The old path shown in the v4.15.0-beta5 notes has been replaced by the stable-release `dataClean` path, so use the endpoint below for the stable release.
+
+Fix historical status fields without triggering archive:
+
+```bash
+curl -X POST 'https://{{host}}/api/admin/dataClean/initSandboxArchive' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: {{rootkey}}' \
+  -d '{"runArchive":false,"inactiveDays":7}'
+```
+
+If you want to immediately archive inactive workspaces that match the condition:
+
+```bash
+curl -X POST 'https://{{host}}/api/admin/dataClean/initSandboxArchive' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: {{rootkey}}' \
+  -d '{"runArchive":true,"inactiveDays":7}'
+```
+
+`inactiveDays` controls how long a stopped sandbox must be inactive before it becomes an archive candidate. You can also pass `inactiveBefore` with an explicit time boundary.
+
+### 5. Agent Sandbox Deployment Options
+
+The v4.15.0 Docker Compose files no longer include OpenSandbox or `fastgpt-agent-sandbox-proxy` by default, so the base FastGPT services can start independently. In the default compose file, `AGENT_SANDBOX_PROVIDER` is empty and Agent Sandbox is disabled. If you need VM capabilities for Agent V2 tool calls or Skill editing/debugging, deploy `fastgpt-agent-sandbox-proxy` separately first, then choose one sandbox provider below.
+
+This section only lists the shortest setup path for the v4.15.0 upgrade. For the full proxy environment variables, WebSocket URL rules, secret requirements, and troubleshooting, see [General Sandbox Configuration](../../config/sandbox/common.en.mdx).
+
+<Alert context="warning">
+  `AGENT_SANDBOX_PROXY_SECRET` must be configured in both `fastgpt-app` and the separately deployed
+  `fastgpt-agent-sandbox-proxy`, and the values must match exactly. In production, set
+  `AGENT_SANDBOX_PROXY_URL` to a browser-accessible `ws://` or `wss://` address, for example
+  `wss://sandbox.example.com`.
+</Alert>
+
+#### 5.1 Sealos Devbox
+
+Use this option if you do not want to operate a sandbox controller yourself and prefer Sealos-hosted Devbox runtimes.
+
+Add these environment variables to `fastgpt-app`:
+
+```dotenv
+AGENT_SANDBOX_PROVIDER=sealosdevbox
+AGENT_SANDBOX_SEALOS_BASEURL=https://{{sealos-devbox-api-host}}
+AGENT_SANDBOX_SEALOS_TOKEN={{sealos-devbox-token}}
+AGENT_SANDBOX_SEALOS_WORK_DIRECTORY=/home/devbox/workspace
+AGENT_SANDBOX_SEALOS_IMAGE=ghcr.io/labring/fastgpt-agent-sandbox:v0.2.0
+AGENT_SANDBOX_PROXY_URL=wss://{{agent-sandbox-proxy-domain}}
+```
+
+For the China Mainland image mirror, use:
+
+```dotenv
+AGENT_SANDBOX_SEALOS_IMAGE=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.2.0
+```
+
+After updating the config, restart `fastgpt-app` and the separately deployed `fastgpt-agent-sandbox-proxy`.
+
+#### 5.2 OpenSandbox
+
+Use this option if you already have an OpenSandbox cluster or want to operate your own sandbox controller. The v4.15.0 default compose file no longer includes `opensandbox-server` or `fastgpt-agent-sandbox-proxy`; deploy OpenSandbox and the proxy separately first, then point FastGPT to them.
+
+Add these environment variables to `fastgpt-app`:
+
+```dotenv
+AGENT_SANDBOX_PROVIDER=opensandbox
+AGENT_SANDBOX_OPENSANDBOX_BASEURL=http://{{opensandbox-server}}:8090
+AGENT_SANDBOX_OPENSANDBOX_API_KEY={{opensandbox-api-key}}
+AGENT_SANDBOX_OPENSANDBOX_RUNTIME=docker
+AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO=ghcr.io/labring/fastgpt-agent-sandbox
+AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG=v0.2.0
+AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY=true
+AGENT_SANDBOX_PROXY_URL=wss://{{agent-sandbox-proxy-domain}}
+```
+
+If OpenSandbox uses the Kubernetes runtime, set `AGENT_SANDBOX_OPENSANDBOX_RUNTIME` to `kubernetes`, and make sure OpenSandbox itself is configured with pullable `execd`, `egress`, and runtime images.
+
+China Mainland image mirror example:
+
+```dotenv
+AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox
+AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG=v0.2.0
+```
+
+#### 5.3 Custom Image Registry
+
+If you need to use an internal Harbor, private registry, or image mirror, download the v4.15.0 `docker-compose.yml` and replace `image:` with your own registry addresses. If Agent Sandbox is enabled, also replace the separately deployed `fastgpt-agent-sandbox-proxy` image, `AGENT_SANDBOX_SEALOS_IMAGE`, and `AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO`, then deploy with local compose mode:
+
+```bash
+FASTGPT_LOCAL_COMPOSE_PATH=./docker-compose.yml bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
+```
+
+Your custom registry should include at least these images:
+
+- `fastgpt`
+- `fastgpt-code-sandbox`
+- `fastgpt-mcp_server`
+- `fastgpt-plugin`
+- `fastgpt-agent-sandbox-proxy` (required when enabling Agent/Skill Sandbox; not included in the default compose file)
+- `fastgpt-agent-sandbox` (required when enabling Sealos Devbox or OpenSandbox)
+- `opensandbox-server`, `opensandbox-execd`, and `opensandbox-egress` (required when operating OpenSandbox yourself)
+- The selected vector store and base component images, such as `mongo`, `redis`, `minio`, `pgvector`, and `milvus`
 
 ## Breaking Changes
 

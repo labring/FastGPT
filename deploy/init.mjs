@@ -175,18 +175,20 @@ const loadArgs = (version) => {
 };
 
 /**
- * replace all ${{}}
+ * 替换模板中的占位符。
+ *
+ * YAML 块占位符应写成独立注释行（如 `# ${{vec.db}}`），这样模板文件本身
+ * 仍能按 YAML 解析；普通镜像/tag 变量仍可写在行内。
+ *
  * @param {string} source
  * @param {RegionEnum} region
  * @param {string | undefined} vec
  * @param {Record<Services, ArgItemType>} args
- * @param {Record<string, { filename: string, db: string, config: string, extra: string }>} vectors
+ * @param {Record<string, { filename: string, db: string, config: string, extra: string, extraBlock: string }>} vectors
  * @returns {string}
  */
 const replace = (source, region, vec, args, vectors) => {
-  // Match ${{expr}}, capture "expr" inside {{}}
-  return source.replace(/\$\{\{([^}]*)\}\}/g, (_, expr) => {
-    // expr: a.b
+  const resolveExpr = (expr) => {
     /**
      * @type {String}
      */
@@ -208,7 +210,14 @@ const replace = (source, region, vec, args, vectors) => {
     } else if (b === 'image') {
       return args[a].image[region];
     }
-  });
+  };
+
+  return source
+    .replace(/^[^\S\r\n]*#\s*\$\{\{([^}]*)\}\}[^\S\r\n]*(?:\r?\n|$)/gm, (_, expr) => {
+      const value = resolveExpr(expr);
+      return value ? `${value}\n` : '';
+    })
+    .replace(/\$\{\{([^}]*)\}\}/g, (_, expr) => resolveExpr(expr));
 };
 
 const formatYamlOutput = (source) => `${source.trimEnd()}\n`;

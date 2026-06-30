@@ -49,7 +49,6 @@ x-vec-config: &x-vec-config
   OPENGAUSS_URL: postgresql://gaussdb:FastGPT@123@fastgpt-vector:5432/fastgpt
 
 services:
-  # Vector DB
   fastgpt-vector:
     image: opengauss/opengauss:7.0.0-RC1
     container_name: fastgpt-opengauss
