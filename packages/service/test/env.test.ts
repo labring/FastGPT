@@ -152,6 +152,8 @@ describe('serviceEnv', () => {
     vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'opensandbox');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', 'http://mock-opensandbox.local');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', 'mock-opensandbox-api-key');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL', 'http://mock-volume-manager.local');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN', 'mock-volume-manager-token');
     vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', '');
     vi.stubEnv('AGENT_SANDBOX_PROXY_URL', '');
 

@@ -237,7 +237,7 @@ describe('delete chat record api', () => {
 
     expect(res.code).toBe(200);
 
-    const [skillItem, legacyItem] = await Promise.all([
+    const [skillItem, legacyResultItem] = await Promise.all([
       MongoChatItem.findOne({
         sourceType: ChatSourceTypeEnum.skillEdit,
         appId: skillId,
@@ -252,7 +252,7 @@ describe('delete chat record api', () => {
       }).lean()
     ]);
     expect(skillItem?.deleteTime).toBeInstanceOf(Date);
-    expect(legacyItem?.deleteTime).toBeNull();
+    expect(legacyResultItem?.deleteTime).toBeNull();
   });
 
   it('should reject read-only skill collaborator when deleting skill edit chat item', async () => {

@@ -32,7 +32,7 @@ describe('chat schema indexes', () => {
 
   it('declares source-aware unique chat identity index', () => {
     const indexes = MongoChat.schema.indexes();
-    const sourceAwareIndex = findIndex(indexes, { appId: 1, chatId: 1, sourceType: 1 });
+    const sourceAwareIndex = findIndex(indexes, { sourceType: 1, appId: 1, chatId: 1 });
 
     expect(sourceAwareIndex?.[1]?.unique).toBe(true);
   });
