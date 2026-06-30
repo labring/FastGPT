@@ -54,6 +54,33 @@ import { type PermissionValueType } from '@fastgpt/global/support/permission/typ
 import type { Permission } from '@fastgpt/global/support/permission/controller';
 import { ReadRoleVal } from '@fastgpt/global/support/permission/constant';
 
+const PermissionTableHeaderLabel = ({
+  children,
+  tip,
+  isCentered = true
+}: {
+  children: React.ReactNode;
+  tip: React.ReactNode;
+  isCentered?: boolean;
+}) => {
+  return (
+    <Flex
+      align={'center'}
+      gap={1}
+      mx={isCentered ? 'auto' : undefined}
+      w={'fit-content'}
+      maxW={'100%'}
+    >
+      <Box as="span" lineHeight={'1.25'}>
+        {children}
+      </Box>
+      <Box as="span" display={'inline-flex'} alignItems={'center'} lineHeight={0} flexShrink={0}>
+        <QuestionTip label={tip} />
+      </Box>
+    </Flex>
+  );
+};
+
 function PermissionManage({
   Tabs,
   onOpenAddMember
@@ -223,38 +250,37 @@ function PermissionManage({
             <Thead>
               <Tr bg={'white !important'}>
                 <Th bg="myGray.100" borderLeftRadius="md" maxW={'150px'}>
-                  {`${t('user:team.group.members')} / ${t('user:team.org.org')} / ${t('user:team.group.group')}`}
-                  <QuestionTip ml="1" label={t('user:team.group.permission_tip')} />
+                  <PermissionTableHeaderLabel
+                    isCentered={false}
+                    tip={t('user:team.group.permission_tip')}
+                  >
+                    {`${t('user:team.group.members')} / ${t('user:team.org.org')} / ${t('user:team.group.group')}`}
+                  </PermissionTableHeaderLabel>
                 </Th>
                 <Th bg="myGray.100">
-                  <Box mx="auto" w="fit-content">
+                  <PermissionTableHeaderLabel tip={t('account_team:permission_appCreate_tip')}>
                     {t('account_team:permission_appCreate')}
-                    <QuestionTip ml="1" label={t('account_team:permission_appCreate_tip')} />
-                  </Box>
+                  </PermissionTableHeaderLabel>
                 </Th>
                 <Th bg="myGray.100">
-                  <Box mx="auto" w="fit-content">
+                  <PermissionTableHeaderLabel tip={t('account_team:permission_skillCreate_Tip')}>
                     {t('account_team:permission_skillCreate')}
-                    <QuestionTip ml="1" label={t('account_team:permission_skillCreate_Tip')} />
-                  </Box>
+                  </PermissionTableHeaderLabel>
                 </Th>
                 <Th bg="myGray.100">
-                  <Box mx="auto" w="fit-content">
+                  <PermissionTableHeaderLabel tip={t('account_team:permission_datasetCreate_Tip')}>
                     {t('account_team:permission_datasetCreate')}
-                    <QuestionTip ml="1" label={t('account_team:permission_datasetCreate_Tip')} />
-                  </Box>
+                  </PermissionTableHeaderLabel>
                 </Th>
                 <Th bg="myGray.100">
-                  <Box mx="auto" w="fit-content">
+                  <PermissionTableHeaderLabel tip={t('account_team:permission_apikeyCreate_Tip')}>
                     {t('account_team:permission_apikeyCreate')}
-                    <QuestionTip ml="1" label={t('account_team:permission_apikeyCreate_Tip')} />
-                  </Box>
+                  </PermissionTableHeaderLabel>
                 </Th>
                 <Th bg="myGray.100">
-                  <Box mx="auto" w="fit-content">
+                  <PermissionTableHeaderLabel tip={t('account_team:permission_manage_tip')}>
                     {t('account_team:permission_manage')}
-                    <QuestionTip ml="1" label={t('account_team:permission_manage_tip')} />
-                  </Box>
+                  </PermissionTableHeaderLabel>
                 </Th>
                 <Th bg="myGray.100" borderRightRadius="md">
                   <Box mx="auto" w="fit-content">
