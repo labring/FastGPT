@@ -114,7 +114,7 @@ export const AppAutoExecuteConfigTypeSchema = z.object({
   open: BoolSchema.meta({
     description: '是否在进入会话后自动触发应用执行'
   }),
-  defaultPrompt: z.string().meta({
+  defaultPrompt: z.string().default('').meta({
     description: '自动执行时注入的默认用户问题'
   })
 });
@@ -168,7 +168,7 @@ export const AppSchemaTypeSchema = z.object({
   teamId: z.string(),
   tmbId: z.string(),
   type: z.enum(AppTypeEnum),
-  version: z.enum(['v1', 'v2']).optional(),
+  version: z.enum(['v1', 'v2']).optional().meta({ description: '内容版本，folder 类型不会有' }),
 
   name: z.string(),
   avatar: z.string(),

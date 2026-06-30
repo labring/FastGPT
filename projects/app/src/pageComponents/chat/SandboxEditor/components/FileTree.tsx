@@ -76,6 +76,7 @@ export type FileItem = {
   path: string;
   type: 'file' | 'directory';
   size?: number;
+  mtime?: number;
 };
 
 export type TreeNode = FileItem & {
@@ -178,12 +179,14 @@ const DroppableRootBox = ({
   children,
   activeNode,
   realOverDestPath,
-  onContextMenu
+  onContextMenu,
+  onPointerDown
 }: {
   children: React.ReactNode;
   activeNode: TreeNode | null;
   realOverDestPath: string | null;
   onContextMenu: (e: React.MouseEvent) => void;
+  onPointerDown: (e: React.PointerEvent) => void;
 }) => {
   const { setNodeRef, isOver } = useDroppable({
     id: '.'
@@ -210,6 +213,7 @@ const DroppableRootBox = ({
       }
       borderRadius="6px"
       onContextMenu={onContextMenu}
+      onPointerDown={onPointerDown}
     >
       {children}
     </Box>
@@ -259,10 +263,11 @@ const FileTree = ({
   const [activeNode, setActiveNode] = useState<TreeNode | null>(null);
   const [activeOverPath, setActiveOverPath] = useState<string | null>(null);
   const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
-  const effectiveSelectedPaths =
-    enableMultiSelect && selectedPath && !selectedPaths.has(selectedPath)
-      ? new Set([selectedPath])
-      : selectedPaths;
+  const effectiveSelectedPaths = (() => {
+    if (!enableMultiSelect) return selectedPaths;
+    if (!selectedPath) return new Set<string>();
+    return selectedPaths.has(selectedPath) ? selectedPaths : new Set([selectedPath]);
+  })();
 
   const getOperationSelectedPaths = (basePath: string) => {
     if (enableMultiSelect && effectiveSelectedPaths.has(basePath)) {
@@ -337,7 +342,22 @@ const FileTree = ({
   const [isUploading, setIsUploading] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const treeRootRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleOutsidePointerDown = (e: PointerEvent) => {
+      const target = e.target as Node | null;
+      if (!target) return;
+      if (treeRootRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+
+      setSelectedPath('');
+      setSelectedPaths(new Set());
+    };
+
+    window.addEventListener('pointerdown', handleOutsidePointerDown, true);
+    return () => window.removeEventListener('pointerdown', handleOutsidePointerDown, true);
+  }, [setSelectedPath]);
 
   // 点击任意地方关闭右键菜单（支持捕获阶段并过滤菜单内部点击，防止阻止冒泡导致菜单无法关闭）
   useEffect(() => {
@@ -566,6 +586,14 @@ const FileTree = ({
     });
   };
 
+  const handleTreeBlankPointerDown = (e: React.PointerEvent) => {
+    const target = e.target as HTMLElement | null;
+    if (!target || target.closest('[data-file-tree-node="true"]')) return;
+
+    setSelectedPath('');
+    setSelectedPaths(new Set());
+  };
+
   const handleCtxCreateFile = async () => {
     if (!contextMenu) return;
     const node = contextMenu.node;
@@ -789,6 +817,7 @@ const FileTree = ({
 
   return (
     <Box
+      ref={treeRootRef}
       flex="1"
       w="100%"
       h="full"
@@ -957,6 +986,7 @@ const FileTree = ({
           activeNode={activeNode}
           realOverDestPath={realOverDestPath}
           onContextMenu={handleBlankContextMenu}
+          onPointerDown={handleTreeBlankPointerDown}
         >
           {isLoading ? (
             <FileTreeSkeleton />

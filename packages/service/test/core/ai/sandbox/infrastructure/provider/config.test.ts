@@ -15,6 +15,8 @@ const originalEnv = {
   AGENT_SANDBOX_DISK_MB: process.env.AGENT_SANDBOX_DISK_MB,
   AGENT_SANDBOX_PROXY_SECRET: process.env.AGENT_SANDBOX_PROXY_SECRET,
   AGENT_SANDBOX_PROXY_URL: process.env.AGENT_SANDBOX_PROXY_URL
+  AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES: process.env.AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES,
+  AGENT_SANDBOX_WS_MAX_FRAME_BYTES: process.env.AGENT_SANDBOX_WS_MAX_FRAME_BYTES,
 };
 
 const loadSandboxConfigModule = async () => {
@@ -65,6 +67,11 @@ describe('sandbox provider config', () => {
       originalEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG
     );
     vi.stubEnv('AGENT_SANDBOX_DISK_MB', originalEnv.AGENT_SANDBOX_DISK_MB);
+    vi.stubEnv(
+      'AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES',
+      originalEnv.AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES
+    );
+    vi.stubEnv('AGENT_SANDBOX_WS_MAX_FRAME_BYTES', originalEnv.AGENT_SANDBOX_WS_MAX_FRAME_BYTES);
     vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', originalEnv.AGENT_SANDBOX_PROXY_SECRET);
     vi.stubEnv('AGENT_SANDBOX_PROXY_URL', originalEnv.AGENT_SANDBOX_PROXY_URL);
     vi.unstubAllGlobals();
@@ -138,6 +145,8 @@ describe('sandbox provider config', () => {
     vi.stubEnv('AGENT_SANDBOX_SEALOS_BASEURL', 'https://devbox.example.com');
     vi.stubEnv('AGENT_SANDBOX_SEALOS_TOKEN', 'sealos-token');
     vi.stubEnv('AGENT_SANDBOX_SEALOS_WORK_DIRECTORY', '/home/devbox/workspace');
+    vi.stubEnv('AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES', '67108864');
+    vi.stubEnv('AGENT_SANDBOX_WS_MAX_FRAME_BYTES', '16777216');
 
     const { getSandboxAdapterConfig } = await loadSandboxConfigModule();
 
@@ -165,7 +174,9 @@ describe('sandbox provider config', () => {
         FASTGPT_WORKDIR: '/home/devbox/workspace',
         IDE_AGENT_ENABLED: 'true',
         IDE_AGENT_BIND_ADDR: '0.0.0.0:1318',
-        FASTGPT_IDE_MAX_FILE_BYTES: '536870912'
+        FASTGPT_IDE_MAX_FILE_BYTES: '536870912',
+        FASTGPT_IDE_WS_MAX_MESSAGE_BYTES: '67108864',
+        FASTGPT_IDE_WS_MAX_FRAME_BYTES: '16777216'
       }
     });
 

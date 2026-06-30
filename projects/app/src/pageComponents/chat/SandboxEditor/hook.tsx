@@ -3,7 +3,14 @@ import SandboxEditorModal from '@/pageComponents/chat/SandboxEditor/modal';
 import type { IconButtonProps } from '@chakra-ui/react';
 import { IconButton } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { checkSandboxExist, downloadSandbox, getSandboxProxyWsUrl, getSandboxTicket } from './api';
+import {
+  checkSandboxExist,
+  downloadSandbox,
+  getSandboxProxyWsUrl,
+  getSandboxTicket,
+  readSandboxFile,
+  uploadSandboxFile
+} from './api';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
@@ -42,6 +49,8 @@ const INITIAL_TREE_MAX_DEPTH = 20;
 const RPC_TIMEOUT_MS = 30000;
 const DEFAULT_MAX_FILE_SIZE_MB = 10;
 const INVALID_PATH_SEGMENT_CHARS = /[\/\\\u0000]/;
+const RPC_READ_FILE_HTTP_MIN_BYTES = 5 * 1024 * 1024;
+const SANDBOX_RPC_FILE_TOO_LARGE_CODE = -32004;
 
 type RefreshWorkspaceOptions = {
   preserveExpandedDirs?: boolean;
@@ -56,11 +65,22 @@ type SandboxDirEntry = {
 
 type SandboxReadFileResponse = {
   content: string;
-  mtime?: number;
+  etag?: string;
 };
 
 type SandboxWriteFileResponse = {
-  mtime?: number;
+  etag?: string;
+};
+
+type LoadFileResult = {
+  content: string;
+  isUnknown: boolean;
+  etag?: string;
+  readOnly?: boolean;
+};
+
+type SandboxRpcError = Error & {
+  rpcCode?: number;
 };
 
 type SandboxReadDirRecursiveResponse = {
@@ -76,6 +96,22 @@ const encodeBase64 = (content: string) => {
   });
   return window.btoa(binary);
 };
+
+const isReadFileStreamFallbackError = (error: unknown) => {
+  if (!error || typeof error !== 'object') return false;
+
+  const structuredError = error as Partial<SandboxRpcError>;
+
+  return structuredError.rpcCode === SANDBOX_RPC_FILE_TOO_LARGE_CODE;
+};
+
+const shouldReadFileByHttp = (fileSize?: number) =>
+  typeof fileSize === 'number' && fileSize > RPC_READ_FILE_HTTP_MIN_BYTES;
+
+const createSandboxRpcError = (message: string, rpcCode?: number): SandboxRpcError =>
+  Object.assign(new Error(message), {
+    ...(typeof rpcCode === 'number' ? { rpcCode } : {})
+  });
 
 const isValidPathSegment = (name: string) =>
   !!name && name !== '.' && name !== '..' && !INVALID_PATH_SEGMENT_CHARS.test(name);
@@ -358,11 +394,13 @@ export const useSandboxFileStore = ({
   const [searchQuery, setSearchQuery] = useState('');
 
   const openedFilesRef = useLatest(openedFiles);
+  const fileTreeRef = useLatest(fileTree);
   const expandedDirsRef = useLatest(expandedDirs);
   const onErrorRef = useLatest(onError);
   const loadingFilePathsRef = useRef<Set<string>>(new Set());
   const isRefreshingWorkspaceRef = useRef(false);
   const hasPendingWorkspaceRefreshRef = useRef(false);
+  const saveFileQueuesRef = useRef<Map<string, Promise<{ etag?: string } | undefined>>>(new Map());
 
   // ==================== WebSocket 长连接及 JSON-RPC 2.0 ====================
   const wsRef = useRef<WebSocket | null>(null);
@@ -463,28 +501,64 @@ export const useSandboxFileStore = ({
 
   // 读取文件内容 - 根据 language 决定解码策略
   const loadFile = useCallback(
-    async (
-      filePath: string,
-      language: string
-    ): Promise<{ content: string; isUnknown: boolean; mtime?: number }> => {
+    async (filePath: string, language: string): Promise<LoadFileResult> => {
       const isBinary = getIsBinaryByLanguage(language);
-      const res = await rpcCall<SandboxReadFileResponse>('fs/read_file', { path: filePath });
-      const rawBytes = Uint8Array.from(window.atob(res.content), (c) => c.charCodeAt(0));
-
-      if (!isBinary) {
-        try {
-          const content = new TextDecoder('utf-8', { fatal: true }).decode(rawBytes);
-          return { content, isUnknown: false, mtime: res.mtime };
-        } catch {
-          return { content: '', isUnknown: true, mtime: res.mtime };
+      const decodeFileBytes = (rawBytes: Uint8Array, etag?: string): LoadFileResult => {
+        if (!isBinary) {
+          try {
+            const content = new TextDecoder('utf-8', { fatal: true }).decode(rawBytes);
+            return { content, isUnknown: false, etag };
+          } catch {
+            return { content: '', isUnknown: true, etag };
+          }
         }
-      } else {
+
         const mimeType = getMimeTypeByFileName(filePath.split('/').pop() || '');
-        const blob = new Blob([rawBytes], { type: mimeType });
-        return { content: URL.createObjectURL(blob), isUnknown: false, mtime: res.mtime };
+        const blobBytes = rawBytes.buffer.slice(
+          rawBytes.byteOffset,
+          rawBytes.byteOffset + rawBytes.byteLength
+        ) as ArrayBuffer;
+        const blob = new Blob([blobBytes], { type: mimeType });
+        return { content: URL.createObjectURL(blob), isUnknown: false, etag };
+      };
+
+      const getKnownFileSize = () => {
+        const fileNode = findNodeByPath(fileTreeRef.current ?? [], filePath);
+        return fileNode?.type === 'file' ? fileNode.size : undefined;
+      };
+
+      const readFileByHttp = async (): Promise<LoadFileResult> => {
+        const rawBytes = await readSandboxFile({
+          ...sandboxTarget,
+          chatId,
+          outLinkAuthData,
+          path: filePath
+        });
+        const result = decodeFileBytes(rawBytes);
+        return {
+          ...result,
+          readOnly: !isBinary && !result.isUnknown
+        };
+      };
+
+      if (shouldReadFileByHttp(getKnownFileSize())) {
+        return readFileByHttp();
+      }
+
+      try {
+        const res = await rpcCall<SandboxReadFileResponse>('fs/read_file', { path: filePath });
+        const rawBytes = Uint8Array.from(window.atob(res.content), (c) => c.charCodeAt(0));
+        return decodeFileBytes(rawBytes, res.etag);
+      } catch (error) {
+        // 只有 IDE Agent 明确返回文件过大错误时，才从 RPC 降级为 HTTP 读取。
+        if (!isReadFileStreamFallbackError(error)) {
+          throw error;
+        }
+
+        return readFileByHttp();
       }
     },
-    [rpcCall]
+    [chatId, fileTreeRef, outLinkAuthData, rpcCall, sandboxTarget]
   );
 
   const refreshWorkspace = useCallback(
@@ -531,28 +605,33 @@ export const useSandboxFileStore = ({
           if (!hasPendingWorkspaceRefreshRef.current) {
             const filesToReload =
               openedFilesRef.current
-                ?.filter((f) => !f.isDirty && !f.isBinary && !f.isUnknown)
+                ?.filter((f) => !f.isDirty && !f.isLoading && !f.isUnknown)
                 .map((f) => ({
                   path: f.path,
                   language: f.language,
                   content: f.content,
-                  mtime: f.mtime
+                  etag: f.etag
                 })) || [];
 
             if (filesToReload.length > 0) {
               const reloadResults = await Promise.allSettled(
                 filesToReload.map(async (f) => {
-                  const { content, isUnknown, mtime } = await loadFile(f.path, f.language);
-                  return { content, isUnknown, mtime };
+                  const { content, isUnknown, etag, readOnly } = await loadFile(f.path, f.language);
+                  return { content, isUnknown, etag, readOnly };
                 })
               );
 
               const updates = new Map<
                 string,
-                { content: string; isUnknown: boolean; mtime?: number }
+                {
+                  content: string;
+                  isUnknown: boolean;
+                  etag?: string;
+                  readOnly?: boolean;
+                }
               >();
               const snapshots = new Map(
-                filesToReload.map((f) => [f.path, { content: f.content, mtime: f.mtime }])
+                filesToReload.map((f) => [f.path, { content: f.content, etag: f.etag }])
               );
               reloadResults.forEach((result, idx) => {
                 const f = filesToReload[idx];
@@ -573,13 +652,22 @@ export const useSandboxFileStore = ({
                       snapshot &&
                       !item.isDirty &&
                       item.content === snapshot.content &&
-                      item.mtime === snapshot.mtime
+                      item.etag === snapshot.etag
                     ) {
+                      if (
+                        item.isBinary &&
+                        item.content.startsWith('blob:') &&
+                        item.content !== update.content
+                      ) {
+                        URL.revokeObjectURL(item.content);
+                      }
+
                       return {
                         ...item,
                         content: update.content,
                         isUnknown: update.isUnknown,
-                        mtime: update.mtime,
+                        etag: update.etag,
+                        readOnly: update.readOnly,
                         isDirty: false
                       };
                     }
@@ -707,7 +795,12 @@ export const useSandboxFileStore = ({
               if (pending) {
                 pendingRpcRequests.delete(rpcId);
                 if (data.error) {
-                  pending.reject(new Error(data.error.message || 'Sandbox RPC failed'));
+                  pending.reject(
+                    createSandboxRpcError(
+                      data.error.message || 'Sandbox RPC failed',
+                      data.error.code
+                    )
+                  );
                 } else {
                   pending.resolve(data.result);
                 }
@@ -730,12 +823,13 @@ export const useSandboxFileStore = ({
           wsRef.current = null;
           setIsWsConnected(false);
           stoppedConnectErrorRef.current = null;
-          rejectConnectRef.current?.(new Error(closeMessage));
+          const closeError = new Error(closeMessage);
+          rejectConnectRef.current?.(closeError);
           resetConnectPromise();
 
           // 拒绝并清空当前所有积压的 pending RPC 请求，防止网络瞬断或代理重启时前端 Promise 永久 Pending 卡死
           pendingRpcRequests.forEach((req) => {
-            req.reject(new Error(closeMessage));
+            req.reject(closeError);
           });
           pendingRpcRequests.clear();
 
@@ -879,6 +973,86 @@ export const useSandboxFileStore = ({
 
   // refreshWorkspace 已提升至上层长连接前以供事件驱动调用
 
+  /**
+   * 保存打开文件的一次内容快照。
+   * 保存期间若用户继续编辑，只推进 etag，不清理 dirty，避免下一轮保存继续携带旧 old_etag。
+   */
+  const saveOpenedFile = useCallback(
+    async (
+      targetPath: string,
+      previousSavedEtag?: string
+    ): Promise<{ etag?: string } | undefined> => {
+      const targetFile = openedFilesRef.current?.find((f) => f.path === targetPath);
+      if (
+        !targetFile ||
+        targetFile.isLoading ||
+        targetFile.isBinary ||
+        targetFile.isUnknown ||
+        targetFile.readOnly
+      ) {
+        return;
+      }
+
+      const savedContent = targetFile.content;
+      const snapshotEtag = targetFile.etag;
+      const oldEtag = previousSavedEtag ?? snapshotEtag;
+      const b64 = encodeBase64(savedContent);
+      const res = await rpcCall<SandboxWriteFileResponse>('fs/write_file', {
+        path: targetPath,
+        content: b64,
+        old_etag: oldEtag
+      });
+      const newEtag = res.etag;
+
+      setOpenedFiles((prev) =>
+        prev.map((f) => {
+          if (f.path !== targetPath) return f;
+
+          const isSameSavedContent = f.content === savedContent;
+          const shouldRefreshEtag =
+            isSameSavedContent || f.etag === snapshotEtag || f.etag === oldEtag;
+          if (!shouldRefreshEtag) return f;
+
+          // 保存期间继续编辑时，不能清理 dirty，但必须推进 etag，避免后续保存带旧 old_etag。
+          if (!isSameSavedContent) {
+            return { ...f, etag: newEtag };
+          }
+
+          return { ...f, isDirty: false, etag: newEtag };
+        })
+      );
+
+      return { etag: newEtag ?? oldEtag };
+    },
+    [openedFilesRef, rpcCall]
+  );
+
+  /**
+   * 同一路径的写入必须串行化。
+   * 自动保存和快捷键保存可能重叠触发，后续任务需要复用前一次写入返回的新 etag。
+   */
+  const enqueueSaveFile = useCallback(
+    (targetPath: string) => {
+      const previousTask = saveFileQueuesRef.current.get(targetPath);
+      const currentTask = (async () => {
+        const previousResult = await previousTask?.catch(() => undefined);
+        return saveOpenedFile(targetPath, previousResult?.etag);
+      })();
+
+      saveFileQueuesRef.current.set(targetPath, currentTask);
+      void currentTask
+        .finally(() => {
+          if (saveFileQueuesRef.current.get(targetPath) === currentTask) {
+            saveFileQueuesRef.current.delete(targetPath);
+          }
+        })
+        .catch(() => undefined);
+
+      return currentTask;
+    },
+    [saveOpenedFile]
+  );
+
   // 保存指定或当前文件
   const saveFile = useCallback(
     async (filePath?: string) => {
@@ -887,28 +1061,8 @@ export const useSandboxFileStore = ({
       const targetPath = filePath || activeFilePath;
       if (!targetPath) return;
 
-      const targetFile = openedFilesRef.current?.find((f) => f.path === targetPath);
-      if (!targetFile || targetFile.isBinary || targetFile.isUnknown) return;
-
       try {
-        const savedContent = targetFile.content;
-        const savedMtime = targetFile.mtime;
-        const b64 = encodeBase64(savedContent);
-        const res = await rpcCall<SandboxWriteFileResponse>('fs/write_file', {
-          path: targetPath,
-          content: b64,
-          old_mtime: savedMtime
-        });
-        const newMtime = res.mtime;
-
-        // 保存成功后只清理同一份内容，避免保存期间继续编辑被误标为已保存。
-        setOpenedFiles((prev) =>
-          prev.map((f) =>
-            f.path === targetPath && f.content === savedContent && f.mtime === savedMtime
-              ? { ...f, isDirty: false, mtime: newMtime }
-              : f
-          )
-        );
+        await enqueueSaveFile(targetPath);
       } catch (err) {
         console.error('Failed to save file:', err);
         toast({
@@ -918,7 +1072,7 @@ export const useSandboxFileStore = ({
         });
       }
     },
-    [activeFilePath, canWrite, openedFilesRef, rpcCall, toast, t]
+    [activeFilePath, canWrite, enqueueSaveFile, toast, t]
   );
 
   // 批量全部保存方法
@@ -926,33 +1080,12 @@ export const useSandboxFileStore = ({
     if (!canWrite) return;
 
     const dirtyFiles =
-      openedFilesRef.current?.filter((f) => f.isDirty && !f.isBinary && !f.isUnknown) || [];
+      openedFilesRef.current?.filter(
+        (f) => f.isDirty && !f.isLoading && !f.isBinary && !f.isUnknown && !f.readOnly
+      ) || [];
     if (dirtyFiles.length === 0) return;
 
-    const results = await Promise.allSettled(
-      dirtyFiles.map(async (df) => {
-        const currentFile = openedFilesRef.current?.find((f) => f.path === df.path);
-        if (!currentFile || currentFile.isBinary || currentFile.isUnknown) return;
-
-        const savedContent = currentFile.content;
-        const savedMtime = currentFile.mtime;
-        const b64 = encodeBase64(savedContent);
-        const res = await rpcCall<SandboxWriteFileResponse>('fs/write_file', {
-          path: df.path,
-          content: b64,
-          old_mtime: savedMtime
-        });
-        const newMtime = res.mtime;
-
-        setOpenedFiles((prev) =>
-          prev.map((f) =>
-            f.path === df.path && f.content === savedContent && f.mtime === savedMtime
-              ? { ...f, isDirty: false, mtime: newMtime }
-              : f
-          )
-        );
-      })
-    );
+    const results = await Promise.allSettled(dirtyFiles.map((df) => enqueueSaveFile(df.path)));
 
     const failedResult = results.find((result) => result.status === 'rejected');
     if (failedResult?.status === 'rejected') {
@@ -964,11 +1097,13 @@ export const useSandboxFileStore = ({
       });
       throw failedResult.reason;
     }
-  }, [canWrite, openedFilesRef, rpcCall, toast, t]);
+  }, [canWrite, enqueueSaveFile, openedFilesRef, toast, t]);
 
   // 500ms 防抖自动保存脏文件
   useEffect(() => {
-    const dirtyFiles = openedFiles.filter((f) => f.isDirty && !f.isBinary && !f.isUnknown);
+    const dirtyFiles = openedFiles.filter(
+      (f) => f.isDirty && !f.isLoading && !f.isBinary && !f.isUnknown && !f.readOnly
+    );
     if (dirtyFiles.length === 0) return;
 
     const timer = setTimeout(() => {
@@ -994,11 +1129,9 @@ export const useSandboxFileStore = ({
   // 打开文件
   const openFile = async (filePath: string) => {
     if (!filePath) return;
-    // 检查是否已打开或正在加载
-    const existingFile = openedFiles.find((f) => f.path === filePath);
-    const isAlreadyLoading = loadingFilePathsRef.current.has(filePath);
 
-    if (existingFile || isAlreadyLoading) {
+    const existingFile = openedFiles.find((f) => f.path === filePath);
+    if (existingFile) {
       setActiveFilePath(filePath);
       setSelectedPath(filePath);
       return;
@@ -1007,7 +1140,6 @@ export const useSandboxFileStore = ({
     const fileName = filePath.split('/').pop() || '';
     const language = getLanguageByFileName(fileName);
     const isBinary = getIsBinaryByLanguage(language);
-
     // 先乐观推送临时 Tab
     const tempFile: OpenedFile = {
       path: filePath,
@@ -1015,16 +1147,22 @@ export const useSandboxFileStore = ({
       content: '',
       language,
       isBinary,
+      isLoading: true,
       isDirty: false
     };
 
-    setOpenedFiles((prev) => [...prev, tempFile]);
+    const isAlreadyLoading = loadingFilePathsRef.current.has(filePath);
+    setOpenedFiles((prev) =>
+      prev.some((file) => file.path === filePath) ? prev : [...prev, tempFile]
+    );
     setActiveFilePath(filePath);
     setSelectedPath(filePath);
 
+    if (isAlreadyLoading) return;
+
     try {
       loadingFilePathsRef.current.add(filePath);
-      const { content, isUnknown, mtime } = await loadFile(filePath, language);
+      const { content, isUnknown, etag, readOnly } = await loadFile(filePath, language);
 
       // 加载成功后更新 Tab 状态
       setOpenedFiles((prev) =>
@@ -1034,7 +1172,9 @@ export const useSandboxFileStore = ({
                 ...f,
                 content,
                 isUnknown,
-                mtime
+                isLoading: false,
+                readOnly,
+                etag
               }
             : f
         )
@@ -1187,6 +1327,7 @@ export const useSandboxFileStore = ({
           content: '',
           language,
           isBinary,
+          isLoading: true,
           isDirty: false
         };
         setOpenedFiles((prev) => [...prev, tempFile]);
@@ -1197,7 +1338,13 @@ export const useSandboxFileStore = ({
       // 3. 异步发送请求，若失败则回滚状态
       try {
         if (type === 'file') {
-          await rpcCall('fs/write_file', { path: fullPath, content: encodeBase64('') });
+          const res = await rpcCall<SandboxWriteFileResponse>('fs/write_file', {
+            path: fullPath,
+            content: encodeBase64('')
+          });
+          setOpenedFiles((prev) =>
+            prev.map((f) => (f.path === fullPath ? { ...f, isLoading: false, etag: res.etag } : f))
+          );
         } else {
           await rpcCall('fs/mkdir', { path: fullPath });
         }
@@ -1400,17 +1547,7 @@ export const useSandboxFileStore = ({
   // 上传文件
   const onUploadFiles = useCallback(
     async (files: FileList, targetDirPath: string) => {
-      let targetLevel = 0;
-      if (targetDirPath !== '.') {
-        const parentNode = findNodeByPath(fileTree, targetDirPath);
-        if (parentNode) {
-          targetLevel = parentNode.level + 1;
-        } else {
-          targetLevel = targetDirPath.split('/').length;
-        }
-      }
-
-      const uploadTasks: { path: string; content: string; newNode: TreeNode }[] = [];
+      const uploadTasks: { path: string; file: File }[] = [];
       const pendingPaths = new Set<string>();
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
@@ -1437,16 +1574,6 @@ export const useSandboxFileStore = ({
           });
           return;
         }
-        const content = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => {
-            const resultStr = reader.result as string;
-            const base64 = resultStr ? resultStr.split(',')[1] : '';
-            resolve(base64);
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
         const path = targetDirPath === '.' ? file.name : `${targetDirPath}/${file.name}`;
         if (pendingPaths.has(path) || findNodeByPath(fileTree, path)) {
           toast({
@@ -1457,28 +1584,20 @@ export const useSandboxFileStore = ({
           return;
         }
         pendingPaths.add(path);
-        const newNode: TreeNode = {
-          name: file.name,
-          path,
-          type: 'file',
-          level: targetLevel
-        };
-        uploadTasks.push({ path, content, newNode });
+        uploadTasks.push({ path, file });
       }
 
-      // 乐观更新 UI
-      const addedPaths: string[] = [];
-      uploadTasks.forEach((task) => {
-        setFileTree((prevTree) => addTreeNode(prevTree, targetDirPath, task.newNode));
-        addedPaths.push(task.path);
-      });
-
+      let hasUploaded = false;
       try {
         for (const task of uploadTasks) {
-          await rpcCall('fs/write_file', {
+          await uploadSandboxFile({
+            ...sandboxTarget,
+            chatId,
+            outLinkAuthData,
             path: task.path,
-            content: task.content
+            file: task.file
           });
+          hasUploaded = true;
         }
       } catch (error) {
         console.error('Failed to upload files:', error);
@@ -1487,14 +1606,23 @@ export const useSandboxFileStore = ({
           description: getErrText(error),
           status: 'error'
         });
-        // 回滚
-        addedPaths.forEach((path) => {
-          setFileTree((prevTree) => deleteTreeNode(prevTree, path));
-        });
-        await refreshWorkspace({ preserveExpandedDirs: true });
+      } finally {
+        if (hasUploaded) {
+          await refreshWorkspace({ preserveExpandedDirs: true });
+        }
       }
     },
-    [fileTree, maxFileBytes, maxFileSizeMB, rpcCall, refreshWorkspace, toast, t]
+    [
+      chatId,
+      fileTree,
+      maxFileBytes,
+      maxFileSizeMB,
+      outLinkAuthData,
+      refreshWorkspace,
+      sandboxTarget,
+      toast,
+      t
+    ]
   );
 
   // 展开折叠目录

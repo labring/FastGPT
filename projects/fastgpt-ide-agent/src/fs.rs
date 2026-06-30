@@ -14,13 +14,16 @@ use notify_debouncer_full::{
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use sha2::{Digest, Sha256};
 use tokio::io::{AsyncRead, AsyncReadExt};
 use tokio::process::Command;
 use tokio::sync::{broadcast, mpsc};
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::tungstenite::protocol::frame::CloseFrame;
 
-use crate::protocol::{JsonRpcError, JsonRpcNotification, JsonRpcRequest, JsonRpcResponse};
+use crate::protocol::{
+    JsonRpcError, JsonRpcErrorCode, JsonRpcNotification, JsonRpcRequest, JsonRpcResponse,
+};
 use crate::workspace::{
     get_workspace_root, is_workspace_root_path, normalize_workspace_relative_path,
     sanitize_create_path, sanitize_existing_workspace_entry_path, sanitize_path,
@@ -54,6 +57,11 @@ fn mtime_secs(metadata: &std::fs::Metadata) -> u64 {
         .as_secs()
 }
 
+fn file_etag(bytes: &[u8]) -> String {
+    let digest = Sha256::digest(bytes);
+    format!("sha256:{digest:x}")
+}
+
 #[derive(Debug, Deserialize)]
 struct PathParams {
     path: String,
@@ -63,8 +71,8 @@ struct PathParams {
 struct WriteFileParams {
     path: String,
     content: String,
-    #[serde(default, rename = "old_mtime")]
-    old_mtime: Option<u64>,
+    #[serde(default)]
+    old_etag: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -398,39 +406,51 @@ async fn handle_read_dir(params: Option<serde_json::Value>) -> Result<serde_json
     Ok(serde_json::Value::Array(entries))
 }
 
-async fn handle_read_file(params: Option<serde_json::Value>) -> Result<serde_json::Value, String> {
-    let params: PathParams = parse_params(params)?;
-    let clean_path = sanitize_path(&params.path).await?;
+async fn handle_read_file(
+    params: Option<serde_json::Value>,
+) -> Result<serde_json::Value, (JsonRpcErrorCode, String)> {
+    let internal_error = |message: String| (JsonRpcErrorCode::InternalError, message);
+
+    let params: PathParams = parse_params(params).map_err(internal_error)?;
+    let clean_path = sanitize_path(&params.path).await.map_err(internal_error)?;
 
     let mut file = tokio::fs::File::open(&clean_path)
         .await
-        .map_err(|e| e.to_string())?;
-    let metadata = file.metadata().await.map_err(|e| e.to_string())?;
+        .map_err(|e| internal_error(e.to_string()))?;
+    let metadata = file
+        .metadata()
+        .await
+        .map_err(|e| internal_error(e.to_string()))?;
     if metadata.is_dir() {
-        return Err("Cannot read a directory as a file".to_string());
+        return Err(internal_error(
+            "Cannot read a directory as a file".to_string(),
+        ));
     }
 
     let file_size = metadata.len();
     let max_file_bytes = max_file_bytes();
     if file_size > max_file_bytes {
-        return Err(format!(
-            "File is too large to read ({} bytes > {} bytes)",
-            file_size, max_file_bytes
+        return Err((
+            JsonRpcErrorCode::FileTooLarge,
+            format!(
+                "File is too large to read ({} bytes > {} bytes)",
+                file_size, max_file_bytes
+            ),
         ));
     }
 
     let mut content_bytes = Vec::with_capacity(file_size as usize);
     file.read_to_end(&mut content_bytes)
         .await
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| internal_error(e.to_string()))?;
 
     let mut content_b64 = String::with_capacity(content_bytes.len().div_ceil(3) * 4);
     base64::engine::general_purpose::STANDARD.encode_string(&content_bytes, &mut content_b64);
-    let mtime = mtime_secs(&metadata);
+    let etag = file_etag(&content_bytes);
 
     Ok(json!({
         "content": content_b64,
-        "mtime": mtime
+        "etag": etag
     }))
 }
 
@@ -438,21 +458,6 @@ async fn handle_write_file(params: Option<serde_json::Value>) -> Result<serde_js
     let params: WriteFileParams = parse_params(params)?;
 
     let clean_path = sanitize_create_path(&params.path).await?;
-
-    if clean_path.exists() {
-        let metadata = tokio::fs::metadata(&clean_path)
-            .await
-            .map_err(|e| e.to_string())?;
-        let actual_mtime = mtime_secs(&metadata);
-
-        // 校验修改时间防冲突
-        if params
-            .old_mtime
-            .is_some_and(|old_val| old_val != actual_mtime)
-        {
-            return Err("conflict".to_string());
-        }
-    }
 
     let raw_bytes = base64::engine::general_purpose::STANDARD
         .decode(&params.content)
@@ -464,6 +469,18 @@ async fn handle_write_file(params: Option<serde_json::Value>) -> Result<serde_js
             raw_bytes.len(),
             max_file_bytes
         ));
+    }
+
+    if clean_path.exists() {
+        let current_bytes = tokio::fs::read(&clean_path)
+            .await
+            .map_err(|e| e.to_string())?;
+        let actual_etag = file_etag(&current_bytes);
+
+        // 写入基于 read_file 返回的内容版本；不同版本说明文件已被其他来源修改。
+        if params.old_etag.as_ref() != Some(&actual_etag) {
+            return Err("conflict".to_string());
+        }
     }
 
     if let Some(parent) = clean_path.parent() {
@@ -484,11 +501,9 @@ async fn handle_write_file(params: Option<serde_json::Value>) -> Result<serde_js
     file.write_all(&raw_bytes)
         .await
         .map_err(|e| e.to_string())?;
-    let metadata = file.metadata().await.map_err(|e| e.to_string())?;
+    let new_etag = file_etag(&raw_bytes);
 
-    let new_mtime = mtime_secs(&metadata);
-
-    Ok(json!({ "mtime": new_mtime }))
+    Ok(json!({ "etag": new_etag }))
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -609,15 +624,14 @@ async fn handle_read_dir_recursive(
     let exclude_names = Arc::new(exclude_set);
     let files = scan_dir_recursive(&clean_path, String::new(), 0, max_depth, exclude_names).await?;
 
-    let mut expanded_paths = Vec::new();
-    fn collect_expanded_paths(nodes: &[FsTreeNode], paths: &mut Vec<String>) {
-        for node in nodes {
-            if node.item_type == "directory" && node.level == 0 {
-                paths.push(node.path.clone());
-            }
-        }
-    }
-    collect_expanded_paths(&files, &mut expanded_paths);
+    let expanded_paths = if files
+        .iter()
+        .any(|node| node.item_type == "directory" && node.level == 0 && node.path == "skills")
+    {
+        vec!["skills".to_string()]
+    } else {
+        Vec::new()
+    };
 
     Ok(json!({
         "files": files,
@@ -772,33 +786,46 @@ async fn handle_fs_request(req: JsonRpcRequest, permission: FsPermission) -> Jso
             id: req.id,
             result: None,
             error: Some(JsonRpcError {
-                code: -32003,
+                code: JsonRpcErrorCode::PermissionDenied,
                 message: "Forbidden: read-only sandbox ticket".to_string(),
             }),
         };
     }
 
     let result = match req.method.as_str() {
-        "fs/read_dir" => handle_read_dir(req.params).await.map_err(|e| (-32603, e)),
+        "fs/read_dir" => handle_read_dir(req.params)
+            .await
+            .map_err(|e| (JsonRpcErrorCode::InternalError, e)),
         "fs/read_dir_recursive" => handle_read_dir_recursive(req.params)
             .await
-            .map_err(|e| (-32603, e)),
-        "fs/read_file" => handle_read_file(req.params).await.map_err(|e| (-32603, e)),
+            .map_err(|e| (JsonRpcErrorCode::InternalError, e)),
+        "fs/read_file" => handle_read_file(req.params).await,
         "fs/write_file" => handle_write_file(req.params).await.map_err(|e| {
             if e == "conflict" {
                 (
-                    -32001,
+                    JsonRpcErrorCode::FileConflict,
                     "Data Conflict: The file has been modified elsewhere.".to_string(),
                 )
             } else {
-                (-32603, e)
+                (JsonRpcErrorCode::InternalError, e)
             }
         }),
-        "fs/mkdir" => handle_mkdir(req.params).await.map_err(|e| (-32603, e)),
-        "fs/delete" => handle_delete(req.params).await.map_err(|e| (-32603, e)),
-        "fs/move" => handle_move(req.params).await.map_err(|e| (-32603, e)),
-        "fs/exec" => handle_exec(req.params).await.map_err(|e| (-32603, e)),
-        _ => Err((-32601, "Method not found".to_string())),
+        "fs/mkdir" => handle_mkdir(req.params)
+            .await
+            .map_err(|e| (JsonRpcErrorCode::InternalError, e)),
+        "fs/delete" => handle_delete(req.params)
+            .await
+            .map_err(|e| (JsonRpcErrorCode::InternalError, e)),
+        "fs/move" => handle_move(req.params)
+            .await
+            .map_err(|e| (JsonRpcErrorCode::InternalError, e)),
+        "fs/exec" => handle_exec(req.params)
+            .await
+            .map_err(|e| (JsonRpcErrorCode::InternalError, e)),
+        _ => Err((
+            JsonRpcErrorCode::MethodNotFound,
+            "Method not found".to_string(),
+        )),
     };
 
     match result {
@@ -975,7 +1002,10 @@ mod tests {
             }),
         )
         .await;
-        assert!(write_result["mtime"].as_u64().is_some());
+        let initial_etag = write_result["etag"]
+            .as_str()
+            .expect("write_file should return etag");
+        assert!(initial_etag.starts_with("sha256:"));
 
         fs_ok(
             "fs/write_file",
@@ -989,6 +1019,7 @@ mod tests {
 
         let read_result = fs_ok("fs/read_file", json!({ "path": "src_test/hello.txt" })).await;
         assert_eq!(read_result["content"], json!("SGVsbG8gUnVzdCE="));
+        assert_eq!(read_result["etag"], json!(initial_etag));
 
         let tree_result = fs_ok("fs/read_dir_recursive", json!({ "path": "." })).await;
         let files = tree_result["files"].as_array().unwrap();
@@ -998,6 +1029,65 @@ mod tests {
             .find(|node| node["name"] == json!("src_test"))
             .expect("src_test node should be present");
         assert_eq!(src_node["type"], json!("directory"));
+    }
+
+    #[tokio::test]
+    async fn test_write_file_rejects_stale_etag() {
+        let temp_workspace = init_test_workspace();
+        let _ = fs::remove_file(temp_workspace.join("etag_conflict.txt"));
+
+        let write_result = fs_ok(
+            "fs/write_file",
+            json!({
+                "path": "etag_conflict.txt",
+                "content": "b25l"
+            }),
+        )
+        .await;
+        let old_etag = write_result["etag"].as_str().unwrap();
+
+        fs_ok(
+            "fs/write_file",
+            json!({
+                "path": "etag_conflict.txt",
+                "content": "dHdv",
+                "old_etag": old_etag
+            }),
+        )
+        .await;
+
+        let conflict_err = fs_err(
+            "fs/write_file",
+            Some(json!({
+                "path": "etag_conflict.txt",
+                "content": "dGhyZWU=",
+                "old_etag": old_etag
+            })),
+            FsPermission::Write,
+        )
+        .await;
+        assert_eq!(conflict_err.code, JsonRpcErrorCode::FileConflict);
+        assert!(conflict_err.message.contains("Data Conflict"));
+    }
+
+    #[tokio::test]
+    async fn test_write_existing_file_requires_etag() {
+        let temp_workspace = init_test_workspace();
+        let file_path = temp_workspace.join("etag_required.txt");
+        let _ = fs::remove_file(&file_path);
+        fs::write(&file_path, "current").unwrap();
+
+        let conflict_err = fs_err(
+            "fs/write_file",
+            Some(json!({
+                "path": "etag_required.txt",
+                "content": "bmV4dA=="
+            })),
+            FsPermission::Write,
+        )
+        .await;
+        assert_eq!(conflict_err.code, JsonRpcErrorCode::FileConflict);
+        assert!(conflict_err.message.contains("Data Conflict"));
     }
 
     #[tokio::test]
@@ -1068,7 +1158,7 @@ mod tests {
             FsPermission::Read,
         )
         .await;
-        assert_eq!(write_err.code, -32003);
+        assert_eq!(write_err.code, JsonRpcErrorCode::PermissionDenied);
         assert!(write_err.message.contains("read-only"));
 
         let exec_err = fs_err(
@@ -1077,7 +1167,7 @@ mod tests {
             FsPermission::Read,
         )
         .await;
-        assert_eq!(exec_err.code, -32003);
+        assert_eq!(exec_err.code, JsonRpcErrorCode::PermissionDenied);
         assert!(exec_err.message.contains("read-only"));
     }
 
@@ -1107,7 +1197,7 @@ mod tests {
         let _temp_workspace = init_test_workspace();
 
         let err = fs_err("fs/invalid_method", None, FsPermission::Write).await;
-        assert_eq!(err.code, -32601);
+        assert_eq!(err.code, JsonRpcErrorCode::MethodNotFound);
         assert!(err.message.contains("Method not found"));
     }
 

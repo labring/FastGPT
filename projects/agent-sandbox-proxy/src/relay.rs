@@ -7,15 +7,13 @@ use tokio_tungstenite::{
     tungstenite::{
         Error as WsError,
         client::IntoClientRequest,
+        error::CapacityError,
         protocol::{Message as WsMsg, WebSocketConfig},
     },
 };
 use tracing::{debug, error, info};
 
-use crate::auth::{SandboxAddress, get_http_client, get_proxy_secret};
-
-const MAX_WS_MESSAGE_SIZE: usize = 16 * 1024 * 1024;
-const MAX_WS_FRAME_SIZE: usize = 4 * 1024 * 1024;
+use crate::auth::{SandboxAddress, WsLimits, get_http_client, get_proxy_secret};
 
 type UpstreamWsStream =
     tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>;
@@ -29,11 +27,13 @@ enum UpstreamControl {
 const UPSTREAM_CONNECT_MAX_ATTEMPTS: u8 = 10;
 const UPSTREAM_CONNECT_RETRY_DELAY: Duration = Duration::from_millis(300);
 const LOOPBACK_REWRITE_HOST_ENV: &str = "AGENT_SANDBOX_PROXY_REWRITE_HOST";
+const WS_CLOSE_MESSAGE_TOO_BIG_CODE: u16 = 1009;
+const WS_CLOSE_INTERNAL_ERROR_CODE: u16 = 1011;
 
-fn upstream_ws_config() -> WebSocketConfig {
+fn upstream_ws_config(ws_limits: WsLimits) -> WebSocketConfig {
     WebSocketConfig::default()
-        .max_message_size(Some(MAX_WS_MESSAGE_SIZE))
-        .max_frame_size(Some(MAX_WS_FRAME_SIZE))
+        .max_message_size(Some(ws_limits.max_message_bytes))
+        .max_frame_size(Some(ws_limits.max_frame_bytes))
 }
 
 fn is_loopback_host(host: &str) -> bool {
@@ -177,7 +177,10 @@ mod tests {
 }
 
 /// 连接沙盒内的 IDE Agent，允许 agent 冷启动时出现短暂端口不可用。
-async fn connect_upstream_with_retry(target_url: String) -> Result<UpstreamWsStream, String> {
+async fn connect_upstream_with_retry(
+    target_url: String,
+    ws_limits: WsLimits,
+) -> Result<UpstreamWsStream, String> {
     let mut attempts = 0;
     let safe_target_url = redact_sensitive_query(&target_url);
 
@@ -189,7 +192,7 @@ async fn connect_upstream_with_retry(target_url: String) -> Result<UpstreamWsStr
             Err(err) => return Err(format!("Failed to build WebSocket request: {}", err)),
         };
 
-        match connect_async_with_config(request, Some(upstream_ws_config()), false).await {
+        match connect_async_with_config(request, Some(upstream_ws_config(ws_limits)), false).await {
             Ok((ws, _)) => return Ok(ws),
             Err(err) => {
                 let err_str = err.to_string();
@@ -230,6 +233,7 @@ pub async fn handle_relay(
         return;
     };
     let permission_to_forward = claims.permission.as_str();
+    let ws_limits = address.ws_limits;
 
     let target_url = match address.sandbox_url.as_deref().filter(|url| !url.is_empty()) {
         Some(url) => {
@@ -262,7 +266,7 @@ pub async fn handle_relay(
         redact_sensitive_query(&target_url)
     );
 
-    let connect_fut = connect_upstream_with_retry(target_url);
+    let connect_fut = connect_upstream_with_retry(target_url, ws_limits);
     tokio::pin!(connect_fut);
 
     let mut buffer: Vec<AxumMsg> = Vec::new();
@@ -415,7 +419,7 @@ pub async fn handle_relay(
                         } else {
                             error!("[WSProxy] Error sending Ping frame to Upstream Devbox: {}", err);
                         }
-                        send_client_close(&client_to_upstream_close_tx, 1011, "Sandbox agent connection lost");
+                        send_client_close(&client_to_upstream_close_tx, WS_CLOSE_INTERNAL_ERROR_CODE, "Sandbox agent connection lost");
                         break;
                     }
                 }
@@ -443,7 +447,8 @@ pub async fn handle_relay(
                                         } else {
                                             error!("[WSProxy] Error forwarding client message to upstream: {}", err);
                                         }
-                                        send_client_close(&client_to_upstream_close_tx, 1011, "Sandbox agent connection lost");
+                                        let (code, reason) = upstream_error_client_close(&err);
+                                        send_client_close(&client_to_upstream_close_tx, code, reason);
                                         break;
                                     },
                                     Err(_) => debug!("[WSProxy] Dropping unsupported client WebSocket message."),
@@ -495,11 +500,8 @@ pub async fn handle_relay(
                     } else {
                         error!("[WSProxy] Upstream stream read error: {}", err);
                     }
-                    send_client_close(
-                        &upstream_to_client_close_tx,
-                        1011,
-                        "Sandbox agent connection lost",
-                    );
+                    let (code, reason) = upstream_error_client_close(&err);
+                    send_client_close(&upstream_to_client_close_tx, code, reason);
                     break;
                 }
             }
@@ -669,6 +671,21 @@ fn is_upstream_closed_error(err: &WsError) -> bool {
                         | std::io::ErrorKind::NotConnected
                 )
         )
+}
+
+fn is_ws_message_too_big_error(err: &WsError) -> bool {
+    matches!(err, WsError::Capacity(CapacityError::MessageTooLong { .. }))
+}
+
+fn upstream_error_client_close(err: &WsError) -> (u16, &'static str) {
+    if is_ws_message_too_big_error(err) {
+        (WS_CLOSE_MESSAGE_TOO_BIG_CODE, "Sandbox message too large")
+    } else {
+        (
+            WS_CLOSE_INTERNAL_ERROR_CODE,
+            "Sandbox agent connection lost",
+        )
+    }
 }
 
 async fn close_client_ws(client_sink: &mut ClientWsSink, code: u16, reason: &str) {

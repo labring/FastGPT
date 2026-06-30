@@ -4,7 +4,8 @@ import { ImageZoom } from 'fumadocs-ui/components/image-zoom';
 import * as TabsComponents from 'fumadocs-ui/components/tabs';
 import { TypeTable } from 'fumadocs-ui/components/type-table';
 import { LocalizedLink } from '@/components/docs/LocalizedLink';
-import type { ComponentProps } from 'react';
+import { MermaidDiagram } from '@/components/docs/MermaidDiagram';
+import type { ComponentProps, ComponentType } from 'react';
 
 /**
  * 兼容 Fumadocs/MDX 对本地图片的静态资源对象输出。
@@ -35,14 +36,45 @@ function MdxImage(props: ComponentProps<'img'>) {
   );
 }
 
+function getTextContent(node: unknown): string {
+  if (typeof node === 'string' || typeof node === 'number') return String(node);
+  if (Array.isArray(node)) return node.map(getTextContent).join('');
+
+  if (node && typeof node === 'object' && 'props' in node) {
+    const props = (node as { props?: { children?: unknown } }).props;
+    return getTextContent(props?.children);
+  }
+
+  return '';
+}
+
+function MdxPre(props: ComponentProps<'pre'>) {
+  const child = Array.isArray(props.children) ? props.children[0] : props.children;
+  const className =
+    child && typeof child === 'object' && 'props' in child
+      ? (child as { props?: { className?: unknown } }).props?.className
+      : undefined;
+
+  if (typeof className === 'string' && className.split(/\s+/).includes('language-mermaid')) {
+    return <MermaidDiagram chart={getTextContent(child).trim()} />;
+  }
+
+  const DefaultPre = defaultMdxComponents.pre as ComponentType<ComponentProps<'pre'>> | undefined;
+  if (DefaultPre) return <DefaultPre {...props} />;
+
+  return <pre {...props} />;
+}
+
 // use this function to get MDX components, you will need it for rendering MDX
 export function getMDXComponents(components?: MDXComponents): MDXComponents {
   return {
     ...defaultMdxComponents,
     img: (props) => <MdxImage {...props} />,
+    pre: (props) => <MdxPre {...props} />,
     a: (props) => <LocalizedLink {...(props as any)} />,
     ...TabsComponents,
     ...components,
+    MermaidDiagram,
     TypeTable
   };
 }

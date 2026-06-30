@@ -78,14 +78,14 @@ SANDBOX_QUEUE_ID_CONCURRENCY=
 1. 下载所有系统工具的 [zip 包](<https://github.com/labring/fastgpt-img/raw/refs/heads/main/fastgpt-official-plugins(1).zip>)。
 2. 打开 `fastgpt` 网页 - 点击 `管理员` navbar - 点击添加插件 - 点击 `导入/更新插件` - 上传 zip - 确认。
 
-也可以打开插件市场逐个下载，正式版之前，插件市场地址为: [https://v2.marketplace.fastgpt.cn](https://v2.marketplace.fastgpt.cn)
+也可以打开插件市场逐个下载，插件市场地址为: [https://v2.marketplace.fastgpt.cn](https://v2.marketplace.fastgpt.cn)，环境变量默认值已变成该地址，不设置环境变量即可。
 
 ### 4. 升级脚本
 
 如使用旧版沙盒 workspace，可通过下面接口将旧沙盒 workspace 归档到 S3，从而更彻底地释放不活跃沙盒。该脚本仅影响旧的沙盒，不影响新生成的沙盒；不执行该脚本，直接移除旧沙盒也可以。
 
 ```shell
-curl --location --request POST 'https://{{host}}/api/admin/initSandboxArchive' \
+curl --location --request POST 'https://{{host}}/api/admin/dataClean/initSandboxArchive' \
 --header 'rootkey: {{rootkey}}' \
 --header 'Content-Type: application/json' \
 -d '{"runArchive":true,"inactiveDays":0}'

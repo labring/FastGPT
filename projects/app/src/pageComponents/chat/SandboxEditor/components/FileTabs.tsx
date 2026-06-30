@@ -10,9 +10,12 @@ export type OpenedFile = {
   language: string;
   isBinary: boolean;
   isDirty: boolean;
+  isLoading?: boolean;
+  // 通过 HTTP stream read 打开的文件，避免编辑保存时再次走 ide-agent WebSocket。
+  readOnly?: boolean;
   // 非媒体文件 UTF-8 解码失败时为 true，前端走「无法预览」兜底
   isUnknown?: boolean;
-  mtime?: number;
+  etag?: string;
 };
 
 type Props = {
@@ -98,7 +101,7 @@ const FileTabs = ({ openedFiles, activeFilePath, setActiveFilePath, closeFile }:
               userSelect={'none'}
             >
               <MyIcon
-                name={getIconByFilename(file.name)}
+                name={file.isLoading ? 'common/loading' : getIconByFilename(file.name)}
                 fill="none"
                 w="16px"
                 h="16px"

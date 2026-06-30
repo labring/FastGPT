@@ -1,0 +1,118 @@
+---
+title: 'V4.15.0-beta7(进行中)'
+description: 'FastGPT V4.15.0-beta7 更新说明'
+---
+
+## 📦 升级指南
+
+### 1. 执行工作流 V1 升级 V2 迁移（可选）
+
+该步骤仅需部署过 `<4.8` 版本 FastGPT 的用户执行。
+
+V4.15.0-beta7 后工作流保存结构统一使用 V2。历史 `apps.modules` 与 `app_versions.nodes` 中可能仍存在 V1 结构，升级后建议先执行 V1 -> V2 迁移，再执行后续 V2 脏数据清洗。
+
+迁移脚本位置：`projects/app/src/pages/api/admin/dataClean/v1WorkflowToV2.ts`。该接口仅用于本次升级迁移，不作为 OpenAPI 对外接口。
+
+接口默认 dry-run，只扫描、转换和执行 `PublishAppBodySchema` 校验，不写库：
+
+```bash
+curl -X POST 'https://你的域名/api/admin/dataClean/v1WorkflowToV2' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: 你的ROOT_KEY' \
+  -d '{"dryRun":true}'
+```
+
+确认返回统计无误后，将 `dryRun` 改为 `false` 执行写入：
+
+```bash
+curl -X POST 'https://你的域名/api/admin/dataClean/v1WorkflowToV2' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: 你的ROOT_KEY' \
+  -d '{"dryRun":false}'
+```
+
+接口参数：
+
+| 参数     | 类型    | 默认值 | 说明                   |
+| -------- | ------- | ------ | ---------------------- |
+| `dryRun` | boolean | `true` | 是否只扫描验证不写库。 |
+
+迁移逻辑：
+
+1. 按 `apps.version != 'v2'` 且 `type` 非 `folder`、`httpPlugin`、`toolFolder` 扫描应用。
+2. 对每批 `apps`，先转换并写入对应 `app_versions`，再转换并写入 `apps`，避免中断后遗漏历史版本。
+3. 将 V1 节点字段升级为 V2 节点字段，例如 `moduleId` -> `nodeId`、`flowType` -> `flowNodeType`。
+4. 未知节点类型会兜底为 `emptyNode`，非法 `valueType` 会转为 `any`。
+5. 缺失 `node.name` 时用 `flowType` 兜底，缺失 `input.label` 时用 `input.key` 兜底。
+6. 写库前使用 `PublishAppBodySchema` 校验 `nodes`、`edges`、`chatConfig`，校验失败的文档不会写入，并会记录到接口返回结果。
+
+### 2. 执行工作流 V2 枚举与结构脏数据清洗
+
+部分历史工作流节点可能把 TypeScript 枚举表达式字符串直接写入 MongoDB，例如：
+
+```json
+{
+  "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
+  "valueType": "WorkflowIOValueTypeEnum.any"
+}
+```
+
+正确落库值应为：
+
+```json
+{
+  "renderTypeList": ["hidden"],
+  "valueType": "any"
+}
+```
+
+该脏数据会影响工作流节点输入渲染和 IO 类型判断。执行 V1 -> V2 迁移后，继续执行 V2 清洗脚本，扫描并修复 `apps.modules` 与 `app_versions.nodes`。
+
+迁移脚本位置：`projects/app/src/pages/api/admin/dataClean/initWorkflowData.ts`。该接口仅用于本次升级迁移，不作为 OpenAPI 对外接口。
+
+接口默认 dry-run，只格式化内存数据并执行 `PublishAppBodySchema` 校验，不写库：
+
+```bash
+curl -X POST 'https://你的域名/api/admin/dataClean/initWorkflowData' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: 你的ROOT_KEY' \
+  -d '{"dryRun":true,"batchSize":1000,"writeBatchSize":10}'
+```
+
+确认返回统计无误后，将 `dryRun` 改为 `false` 执行写入：
+
+```bash
+curl -X POST 'https://你的域名/api/admin/dataClean/initWorkflowData' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: 你的ROOT_KEY' \
+  -d '{"dryRun":false,"batchSize":1000,"writeBatchSize":10}'
+```
+
+接口参数：
+
+| 参数             | 类型    | 默认值 | 说明                                                  |
+| ---------------- | ------- | ------ | ----------------------------------------------------- |
+| `dryRun`         | boolean | `true` | 是否只扫描验证不写库。                                |
+| `batchSize`      | number  | `1000` | 每批读取文档数量。                                    |
+| `writeBatchSize` | number  | `10`   | 每次 `bulkWrite` 的文档数量。线上写入压力大时可调小。 |
+
+清洗逻辑：
+
+1. 按批扫描 `apps` 和 `app_versions` 中的工作流数据，降低单次读取和写入压力。
+2. 对每条工作流数据执行一次格式化，统一修复历史脏字段、空值、枚举表达式和旧结构兼容问题。
+3. 格式化后使用 `PublishAppBodySchema` 校验保存接口实际关心的 `nodes`、`edges`、`chatConfig`。
+4. Zod 校验失败的文档只记录在返回结果中，不会写入数据库。
+5. 非 dry-run 时，只写入“发生过格式化变更，且 Zod 校验通过”的文档；未变化文档不会重复写库。
+
+返回结果会分别展示 `apps`、`appVersions` 和 `total` 的统计，包括扫描文档数、可修复文档数、Zod 错误数量、写入成功数量、写入失败数量、枚举表达式统计、变更样本和错误样本。
+
+### 3. 更新镜像
+
+- 更新 fastgpt-app(fastgpt 主服务) 镜像 tag: v4.15.0
+- 更新 fastgpt-pro(fastgpt 商业版) 镜像 tag: v4.15.0
+
+## 🐛 修复
+
+1. 修复历史 V1 工作流数据在新版保存结构下无法通过校验的问题。
+2. 修复工作流节点配置中 `FlowNodeInputTypeEnum.*`、`FlowNodeOutputTypeEnum.*` 和 `WorkflowIOValueTypeEnum.*` 枚举表达式字符串脏数据导致输入渲染和 IO 类型判断异常的问题。
+3. AgentV2 mcp 拿不到 schema。

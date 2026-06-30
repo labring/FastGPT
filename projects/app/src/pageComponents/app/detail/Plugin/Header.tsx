@@ -46,7 +46,6 @@ const Header = () => {
   });
 
   const { appDetail, onSaveApp, currentTab } = useContextSelector(AppContext, (v) => v);
-  const isV2Workflow = appDetail?.version === 'v2';
   const {
     isOpen: isOpenBackConfirm,
     onOpen: onOpenBackConfirm,
@@ -163,7 +162,7 @@ const Header = () => {
 
           {/* app info */}
           <Box ml={1}>
-            <AppCard isSaved={isSaved} showSaveStatus={isV2Workflow} />
+            <AppCard isSaved={isSaved} showSaveStatus />
           </Box>
 
           {isPc && (
@@ -222,7 +221,6 @@ const Header = () => {
     isSaved,
     onBack,
     onOpenBackConfirm,
-    isV2Workflow,
     showHistoryModal,
     t,
     loading,
@@ -235,7 +233,7 @@ const Header = () => {
   return (
     <>
       {Render}
-      {showHistoryModal && isV2Workflow && currentTab === TabEnum.appEdit && (
+      {showHistoryModal && currentTab === TabEnum.appEdit && (
         <PublishHistories<WorkflowSnapshotsType>
           onClose={() => {
             setShowHistoryModal(false);

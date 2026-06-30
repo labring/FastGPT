@@ -19,7 +19,7 @@ import { DevboxApi, DevboxApiError } from './api';
 import { DevboxPhaseEnum, type DevboxCreateRequest, type DevboxInfoData } from './type';
 import { formatImageSpec, parseImageSpec } from '@/utils/image';
 import { joinUrlPath, normalizePathPrefix } from '@/utils/url';
-import { fileDataToUint8Array } from '@/utils/files';
+import { fileDataToUint8Array, isReadableStreamData } from '@/utils/files';
 
 const GET_INFO_RETRY_TIMEOUT_MS = 30_000;
 const GET_INFO_RETRY_INTERVAL_MS = 1_000;
@@ -319,8 +319,13 @@ export class SealosDevboxAdapter extends BaseSandboxAdapter {
     for (const entry of entries) {
       const normalizedPath = this.normalizePath(entry.path);
       try {
-        const content = await fileDataToUint8Array(entry.data);
-        const bytesWritten = content.byteLength;
+        const uploadBody = await (async () => {
+          if (isReadableStreamData(entry.data)) {
+            return entry.data;
+          }
+
+          return fileDataToUint8Array(entry.data);
+        })();
 
         let modeStr: string | undefined;
         if (entry.mode !== undefined) {
@@ -333,14 +338,21 @@ export class SealosDevboxAdapter extends BaseSandboxAdapter {
             path: normalizedPath,
             mode: modeStr
           },
-          content
+          uploadBody
         );
 
         if (res.code !== 200) {
           throw new Error(res.message || `Upload failed with code ${res.code}`);
         }
 
-        results.push({ path: normalizedPath, bytesWritten, error: null });
+        const bytesWritten =
+          res.data?.sizeBytes ?? (uploadBody instanceof Uint8Array ? uploadBody.byteLength : 0);
+
+        results.push({
+          path: normalizedPath,
+          bytesWritten,
+          error: null
+        });
       } catch (error) {
         results.push({
           path: normalizedPath,
@@ -380,6 +392,12 @@ export class SealosDevboxAdapter extends BaseSandboxAdapter {
       }
     }
     return results;
+  }
+
+  override readFileStream(path: string): AsyncIterable<Uint8Array> {
+    return this.api.downloadFileStream(this._id, {
+      path: this.normalizePath(path)
+    });
   }
 
   override async writeFileStream(path: string, stream: ReadableStream<Uint8Array>): Promise<void> {

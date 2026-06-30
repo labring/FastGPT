@@ -1,10 +1,45 @@
-import type { ChatCompletionCreateParams } from '@fastgpt/global/core/ai/llm/type';
+import type {
+  ChatCompletionCreateParams,
+  ChatCompletionTool
+} from '@fastgpt/global/core/ai/llm/type';
 import { getLLMSupportParams } from '@fastgpt/global/core/ai/llm/utils';
 import json5 from 'json5';
 import { computedMaxToken, computedTemperature } from '../../utils';
 import { getLLMModel } from '../../model';
 import type { InferCompletionsBody, LLMRequestBodyType } from './types';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+
+const privateToolSchemaKeys = new Set(['toolDescription', 'x-tool-description', 'isSecret']);
+
+/**
+ * 清理 FastGPT 内部工具参数扩展字段，避免 OpenAI-compatible SDK 转成 Gemini 等原生
+ * function declaration 时，把 toolDescription 这类非供应商 schema 字段透传出去。
+ */
+const sanitizeToolParametersSchema = (schema: unknown): unknown => {
+  if (Array.isArray(schema)) {
+    return schema.map(sanitizeToolParametersSchema);
+  }
+  if (!schema || typeof schema !== 'object') {
+    return schema;
+  }
+
+  return Object.fromEntries(
+    Object.entries(schema as Record<string, unknown>)
+      .filter(([key]) => !privateToolSchemaKeys.has(key))
+      .map(([key, value]) => [key, sanitizeToolParametersSchema(value)])
+  );
+};
+
+const sanitizeCompletionTools = (tools?: ChatCompletionTool[]): ChatCompletionTool[] | undefined =>
+  tools?.map((tool) => ({
+    ...tool,
+    function: {
+      ...tool.function,
+      parameters: sanitizeToolParametersSchema(
+        tool.function.parameters
+      ) as ChatCompletionTool['function']['parameters']
+    }
+  }));
 
 /**
  * 把 FastGPT 内部 LLM body 转成 OpenAI SDK 可请求的 completions body。
@@ -22,6 +57,7 @@ export const llmCompletionsBodyFormat = async <T extends ChatCompletionCreatePar
   modelData: LLMModelItemType;
 }> => {
   const { tools, tool_choice, parallel_tool_calls, toolCallMode, ...body } = input;
+  const sanitizedTools = sanitizeCompletionTools(tools);
   // 这些字段只影响 FastGPT 自身逻辑，不能透传给模型供应商。
   delete body.retainDatasetCite;
   delete body.useVision;
@@ -82,8 +118,8 @@ export const llmCompletionsBodyFormat = async <T extends ChatCompletionCreatePar
     stop: formatStop?.length ? formatStop : undefined,
     // prompt tool 模式通过 prompt 描述工具，直接传 tools 会让部分模型同时触发两套协议。
     ...(toolCallMode === 'toolChoice' &&
-      tools?.length && {
-        tools,
+      sanitizedTools?.length && {
+        tools: sanitizedTools,
         tool_choice,
         parallel_tool_calls
       })

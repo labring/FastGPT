@@ -151,6 +151,81 @@ describe('llmCompletionsBodyFormat', () => {
     expect(requestBody).not.toHaveProperty('tools');
   });
 
+  it('should remove FastGPT private tool schema fields before sending tools to model', async () => {
+    mockGetLLMModel.mockReturnValue(createModel());
+
+    const { requestBody } = await llmCompletionsBodyFormat({
+      model: 'gpt-4o',
+      messages,
+      stream: false,
+      tools: [
+        {
+          type: 'function',
+          function: {
+            name: 'search',
+            description: 'search',
+            parameters: {
+              type: 'object',
+              properties: {
+                query: {
+                  type: 'string',
+                  description: 'Search query',
+                  toolDescription: 'Query for model',
+                  'x-tool-description': 'HTTP query',
+                  isSecret: true
+                },
+                filters: {
+                  type: 'array',
+                  items: {
+                    type: 'object',
+                    properties: {
+                      key: {
+                        type: 'string',
+                        toolDescription: 'Filter key'
+                      }
+                    },
+                    toolDescription: 'Filter object'
+                  }
+                }
+              }
+            }
+          }
+        }
+      ],
+      toolCallMode: 'toolChoice'
+    });
+
+    expect(requestBody.tools).toEqual([
+      {
+        type: 'function',
+        function: {
+          name: 'search',
+          description: 'search',
+          parameters: {
+            type: 'object',
+            properties: {
+              query: {
+                type: 'string',
+                description: 'Search query'
+              },
+              filters: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    key: {
+                      type: 'string'
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    ]);
+  });
+
   it('should apply field map after base formatting', async () => {
     mockGetLLMModel.mockReturnValue(
       createModel({

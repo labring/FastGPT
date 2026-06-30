@@ -62,4 +62,30 @@ describe('agent loop plan parser', () => {
     expect(createUpdatePlanTool().function.name).toBe('update_plan');
     expect(createUpdatePlanTool().function.parameters.required).toEqual(['updates']);
   });
+
+  it('separates update_plan schema fields by action', () => {
+    const parameters = createUpdatePlanTool().function.parameters as {
+      properties: {
+        updates: {
+          items: {
+            oneOf: Array<{
+              properties: Record<string, unknown>;
+              required: string[];
+            }>;
+          };
+        };
+      };
+    };
+
+    const operationSchemas = parameters.properties.updates.items.oneOf;
+    const planSchemas = operationSchemas.filter((schema) => 'plan' in schema.properties);
+    const updateStepSchema = operationSchemas.find((schema) => 'stepId' in schema.properties);
+
+    expect(planSchemas).toHaveLength(2);
+    planSchemas.forEach((schema) => {
+      expect(schema.required).toContain('plan');
+    });
+    expect(updateStepSchema?.required).toEqual(['action', 'stepId', 'status']);
+    expect(updateStepSchema?.properties).not.toHaveProperty('plan');
+  });
 });

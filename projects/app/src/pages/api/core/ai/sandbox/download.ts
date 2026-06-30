@@ -1,4 +1,6 @@
 import type { NextApiResponse } from 'next';
+import { Readable } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import {
@@ -14,7 +16,7 @@ import { SandboxDownloadBodySchema } from '@fastgpt/global/openapi/core/ai/sandb
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   isSandboxPathDirectory,
-  getSandboxFileContent,
+  resolveSandboxWorkspacePath,
   addDirectoryToArchive
 } from '@fastgpt/service/core/ai/sandbox/interface/file';
 
@@ -57,6 +59,38 @@ export const writeDirectoryArchiveResponse = async ({
       archive.off('error', onArchiveError);
     }
   }
+};
+
+const writeFileStreamResponse = async ({
+  sandbox,
+  res,
+  path
+}: {
+  sandbox: SandboxClient;
+  res: NextApiResponse;
+  path: string;
+}) => {
+  const providerPath = resolveSandboxWorkspacePath(path);
+  const fileInfoMap = await sandbox.provider.getFileInfo([providerPath]).catch(() => undefined);
+  const fileInfo = fileInfoMap?.get(providerPath);
+
+  if (fileInfo?.isDirectory) {
+    return Promise.reject('Cannot read a directory as a file');
+  }
+
+  const fileName = providerPath.split('/').pop() || 'file';
+  const encodedFileName = encodeURIComponent(fileName);
+
+  res.setHeader('Content-Type', 'application/octet-stream');
+  res.setHeader(
+    'Content-Disposition',
+    `attachment; filename="${encodedFileName}"; filename*=UTF-8''${encodedFileName}`
+  );
+  if (typeof fileInfo?.size === 'number') {
+    res.setHeader('Content-Length', String(fileInfo.size));
+  }
+
+  await pipeline(Readable.from(sandbox.provider.readFileStream(providerPath)), res);
 };
 
 async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void> {
@@ -110,15 +144,7 @@ async function handler(req: ApiRequestProps, res: NextApiResponse): Promise<void
       path
     });
   } else {
-    const { content, fileName } = await getSandboxFileContent(sandbox, path, false);
-    const encodedFileName = encodeURIComponent(fileName);
-
-    res.setHeader('Content-Type', 'application/octet-stream');
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename="${encodedFileName}"; filename*=UTF-8''${encodedFileName}`
-    );
-    res.send(content);
+    await writeFileStreamResponse({ sandbox, res, path });
   }
 }
 

@@ -1,0 +1,118 @@
+---
+title: 'V4.15.0-beta7 (In Progress)'
+description: 'FastGPT V4.15.0-beta7 Release Notes'
+---
+
+## 📦 Upgrade Guide
+
+### 1. Run the Workflow V1 to V2 Migration (Optional)
+
+Only users who have deployed a FastGPT version earlier than `<4.8` need to run this step.
+
+Starting from V4.15.0-beta7, workflow save payloads use the V2 structure consistently. Historical `apps.modules` and `app_versions.nodes` records may still use the V1 structure. Run the V1 -> V2 migration first, then run the V2 dirty-data cleanup in the next step.
+
+Migration script path: `projects/app/src/pages/api/admin/dataClean/v1WorkflowToV2.ts`. This endpoint is only for this upgrade migration and is not a public OpenAPI endpoint.
+
+The endpoint uses dry-run mode by default. It scans, converts in memory, and validates with `PublishAppBodySchema` without writing to MongoDB:
+
+```bash
+curl -X POST 'https://your-domain/api/admin/dataClean/v1WorkflowToV2' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: YOUR_ROOT_KEY' \
+  -d '{"dryRun":true}'
+```
+
+After confirming the returned statistics, set `dryRun` to `false` to write the converted data:
+
+```bash
+curl -X POST 'https://your-domain/api/admin/dataClean/v1WorkflowToV2' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: YOUR_ROOT_KEY' \
+  -d '{"dryRun":false}'
+```
+
+Request parameters:
+
+| Parameter | Type    | Default | Description                                                |
+| --------- | ------- | ------- | ---------------------------------------------------------- |
+| `dryRun`  | boolean | `true`  | Whether to scan and validate only without writing changes. |
+
+Migration behavior:
+
+1. Scans apps where `apps.version != 'v2'` and `type` is not `folder`, `httpPlugin`, or `toolFolder`.
+2. For each batch of `apps`, converts and writes related `app_versions` first, then converts and writes `apps`, so a rerun will not miss historical versions after an interruption.
+3. Converts V1 node fields to V2 fields, for example `moduleId` -> `nodeId` and `flowType` -> `flowNodeType`.
+4. Unknown node types fall back to `emptyNode`, and invalid `valueType` values are converted to `any`.
+5. Missing `node.name` falls back to `flowType`, and missing `input.label` falls back to `input.key`.
+6. Before writing, the script validates `nodes`, `edges`, and `chatConfig` with `PublishAppBodySchema`. Documents that fail validation are not written and are included in the endpoint response.
+
+### 2. Run the Workflow V2 Enum and Structure Cleanup
+
+Some historical workflow nodes may have stored TypeScript enum expression strings directly in MongoDB, for example:
+
+```json
+{
+  "renderTypeList": ["FlowNodeInputTypeEnum.hidden"],
+  "valueType": "WorkflowIOValueTypeEnum.any"
+}
+```
+
+The correct stored values are:
+
+```json
+{
+  "renderTypeList": ["hidden"],
+  "valueType": "any"
+}
+```
+
+This dirty data can affect workflow node input rendering and IO type checks. After running the V1 -> V2 migration, continue with the V2 cleanup script to scan and fix `apps.modules` and `app_versions.nodes`.
+
+Migration script path: `projects/app/src/pages/api/admin/dataClean/initWorkflowData.ts`. This endpoint is only for this upgrade migration and is not a public OpenAPI endpoint.
+
+The endpoint uses dry-run mode by default. It formats data in memory and validates with `PublishAppBodySchema` without writing to MongoDB:
+
+```bash
+curl -X POST 'https://your-domain/api/admin/dataClean/initWorkflowData' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: YOUR_ROOT_KEY' \
+  -d '{"dryRun":true,"batchSize":1000,"writeBatchSize":10}'
+```
+
+After confirming the returned statistics, set `dryRun` to `false` to write the cleanup:
+
+```bash
+curl -X POST 'https://your-domain/api/admin/dataClean/initWorkflowData' \
+  -H 'Content-Type: application/json' \
+  -H 'rootkey: YOUR_ROOT_KEY' \
+  -d '{"dryRun":false,"batchSize":1000,"writeBatchSize":10}'
+```
+
+Request parameters:
+
+| Parameter        | Type    | Default | Description                                                                     |
+| ---------------- | ------- | ------- | ------------------------------------------------------------------------------- |
+| `dryRun`         | boolean | `true`  | Whether to scan and validate only without writing changes.                      |
+| `batchSize`      | number  | `1000`  | Documents fetched per page.                                                     |
+| `writeBatchSize` | number  | `10`    | Documents written per `bulkWrite`. Lower it when online write pressure is high. |
+
+Cleanup behavior:
+
+1. Scans workflow data in `apps` and `app_versions` in batches to reduce read and write pressure.
+2. Formats each workflow document once, covering historical dirty fields, null values, enum expressions, and legacy structure compatibility.
+3. After formatting, validates the save payload fields `nodes`, `edges`, and `chatConfig` with `PublishAppBodySchema`.
+4. Documents that fail Zod validation are only recorded in the response and are not written to MongoDB.
+5. In non-dry-run mode, only documents that changed during formatting and passed Zod validation are written. Unchanged documents are not written again.
+
+The response includes separate statistics for `apps`, `appVersions`, and `total`, including scanned documents, fixable documents, Zod error count, successful writes, failed writes, enum expression statistics, format samples, and error samples.
+
+### 3. Update Images
+
+- Update the fastgpt-app (FastGPT main service) image tag to v4.15.0.
+- Update the fastgpt-pro (FastGPT commercial edition) image tag to v4.15.0.
+
+## 🐛 Fixes
+
+1. Fixed historical V1 workflow data that could fail validation under the new save payload structure.
+2. Fixed dirty `FlowNodeInputTypeEnum.*`, `FlowNodeOutputTypeEnum.*`, and `WorkflowIOValueTypeEnum.*` expression strings in workflow nodes that could break input rendering and IO type checks.
+3. Fixed AgentV2 MCP not being able to retrieve schemas.

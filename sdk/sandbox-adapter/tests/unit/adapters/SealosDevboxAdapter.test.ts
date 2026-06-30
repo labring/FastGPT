@@ -549,6 +549,59 @@ describe('SealosDevboxAdapter', () => {
         body: new TextEncoder().encode('hello world')
       })
     );
+    expect(fetchMock.mock.calls[0]?.[1]).not.toHaveProperty('duplex');
+  });
+
+  it('should upload ReadableStream through SealosDevbox without buffering', async () => {
+    const uploadStream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('streamed '));
+        controller.enqueue(new TextEncoder().encode('content'));
+        controller.close();
+      }
+    });
+    const fetchMock = vi.fn(async () => ({
+      json: async () => ({
+        code: 200,
+        message: 'ok',
+        data: {
+          name: 'devbox-1',
+          podName: 'pod-1',
+          container: 'c1',
+          path: '/home/devbox/workspace/stream.txt',
+          sizeBytes: 16,
+          mode: '0644',
+          uploadedAt: '2026-06-02T10:00:00Z',
+          timeoutSecond: 300
+        }
+      })
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const adapter = new SealosDevboxAdapter(CONFIG, {
+      workingDir: '/home/devbox/workspace'
+    });
+
+    const results = await adapter.writeFiles([
+      {
+        path: 'stream.txt',
+        data: uploadStream
+      }
+    ]);
+
+    expect(results).toHaveLength(1);
+    expect(results[0].error).toBeNull();
+    expect(results[0].bytesWritten).toBe(16);
+    expect(results[0].path).toBe('/home/devbox/workspace/stream.txt');
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://devbox-server.example.com/api/v1/devbox/devbox-1/files/upload?path=%2Fhome%2Fdevbox%2Fworkspace%2Fstream.txt',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.any(Headers),
+        body: uploadStream,
+        duplex: 'half'
+      })
+    );
   });
 
   it('should download file through SealosDevbox api.downloadFile', async () => {
@@ -570,6 +623,44 @@ describe('SealosDevboxAdapter', () => {
     expect(results[0].content).toEqual(new Uint8Array(fileContent.buffer));
     expect(results[0].path).toBe('/home/devbox/workspace/test.txt');
 
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://devbox-server.example.com/api/v1/devbox/devbox-1/files/download?path=%2Fhome%2Fdevbox%2Fworkspace%2Ftest.txt',
+      expect.objectContaining({
+        headers: {
+          Authorization: 'Bearer test-token'
+        }
+      })
+    );
+  });
+
+  it('should stream file through SealosDevbox native download response body', async () => {
+    const chunks = [new TextEncoder().encode('native '), new TextEncoder().encode('stream')];
+    const arrayBuffer = vi.fn();
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      body: new ReadableStream<Uint8Array>({
+        start(controller) {
+          for (const chunk of chunks) {
+            controller.enqueue(chunk);
+          }
+          controller.close();
+        }
+      }),
+      arrayBuffer
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const adapter = new SealosDevboxAdapter(CONFIG, {
+      workingDir: '/home/devbox/workspace'
+    });
+
+    const received: Uint8Array[] = [];
+    for await (const chunk of adapter.readFileStream('test.txt')) {
+      received.push(chunk);
+    }
+
+    expect(new TextDecoder().decode(Buffer.concat(received))).toBe('native stream');
+    expect(arrayBuffer).not.toHaveBeenCalled();
     expect(fetchMock).toHaveBeenCalledWith(
       'https://devbox-server.example.com/api/v1/devbox/devbox-1/files/download?path=%2Fhome%2Fdevbox%2Fworkspace%2Ftest.txt',
       expect.objectContaining({
