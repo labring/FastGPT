@@ -444,7 +444,7 @@ services:
       <<: [*x-log-config, *x-no-proxy-config]
       FASTGPT_ENDPOINT: http://fastgpt-app:3000
   fastgpt-plugin:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v1.0.0-beta2
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v1.0.0
     container_name: fastgpt-plugin
     restart: always
     networks:
@@ -475,7 +475,7 @@ services:
 
   # AI Proxy
   fastgpt-aiproxy:
-    image: registry.cn-hangzhou.aliyuncs.com/labring/aiproxy:v0.6.1
+    image: registry.cn-hangzhou.aliyuncs.com/labring/aiproxy:v0.6.5
     container_name: fastgpt-aiproxy
     restart: unless-stopped
     depends_on:

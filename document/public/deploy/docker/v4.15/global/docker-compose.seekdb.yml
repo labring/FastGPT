@@ -409,7 +409,7 @@ services:
       <<: [*x-log-config, *x-no-proxy-config]
       FASTGPT_ENDPOINT: http://fastgpt-app:3000
   fastgpt-plugin:
-    image: ghcr.io/labring/fastgpt-plugin:v1.0.0-beta2
+    image: ghcr.io/labring/fastgpt-plugin:v1.0.0
     container_name: fastgpt-plugin
     restart: always
     networks:
@@ -440,7 +440,7 @@ services:
 
   # AI Proxy
   fastgpt-aiproxy:
-    image: ghcr.io/labring/aiproxy:v0.6.1
+    image: ghcr.io/labring/aiproxy:v0.6.5
     container_name: fastgpt-aiproxy
     restart: unless-stopped
     depends_on:
