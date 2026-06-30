@@ -43,7 +43,7 @@ RUN apk add --no-cache libc6-compat && npm install -g pnpm@10.33.2
 
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 ENV NEXT_PUBLIC_BASE_URL=$base_url
-RUN pnpm --filter @fastgpt-sdk/otel --filter @fastgpt-sdk/storage build
+RUN pnpm --filter @fastgpt-sdk/otel --filter @fastgpt-sdk/storage --filter @fastgpt-sdk/sandbox-adapter build
 RUN pnpm --filter=marketplace build
 
 # --------- runner -----------
