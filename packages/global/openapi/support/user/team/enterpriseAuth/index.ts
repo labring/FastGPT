@@ -12,7 +12,7 @@ import {
 } from './api';
 
 export const EnterpriseAuthPath: OpenAPIPath = {
-  '/api/support/user/team/enterpriseAuth/status': {
+  '/proApi/support/user/team/enterpriseAuth/status': {
     get: {
       summary: '获取企业认证状态',
       tags: [DevApiTagsMap.teamManage],
@@ -28,7 +28,7 @@ export const EnterpriseAuthPath: OpenAPIPath = {
       }
     }
   },
-  '/api/support/user/team/enterpriseAuth/currentTaskDetail': {
+  '/proApi/support/user/team/enterpriseAuth/currentTaskDetail': {
     get: {
       summary: '获取当前企业认证任务详情',
       tags: [DevApiTagsMap.teamManage],
@@ -44,7 +44,7 @@ export const EnterpriseAuthPath: OpenAPIPath = {
       }
     }
   },
-  '/api/support/user/team/enterpriseAuth/banks': {
+  '/proApi/support/user/team/enterpriseAuth/banks': {
     get: {
       summary: '获取企业认证银行列表',
       tags: [DevApiTagsMap.teamManage],
@@ -60,7 +60,7 @@ export const EnterpriseAuthPath: OpenAPIPath = {
       }
     }
   },
-  '/api/support/user/team/enterpriseAuth/start': {
+  '/proApi/support/user/team/enterpriseAuth/start': {
     post: {
       summary: '发起企业认证',
       tags: [DevApiTagsMap.teamManage],
@@ -83,7 +83,7 @@ export const EnterpriseAuthPath: OpenAPIPath = {
       }
     }
   },
-  '/api/support/user/team/enterpriseAuth/verifyAmount': {
+  '/proApi/support/user/team/enterpriseAuth/verifyAmount': {
     post: {
       summary: '验证企业认证打款金额',
       tags: [DevApiTagsMap.teamManage],
@@ -106,7 +106,7 @@ export const EnterpriseAuthPath: OpenAPIPath = {
       }
     }
   },
-  '/api/support/user/team/enterpriseAuth/reset': {
+  '/proApi/support/user/team/enterpriseAuth/reset': {
     post: {
       summary: '取消当前企业认证任务并重新填写',
       tags: [DevApiTagsMap.teamManage],

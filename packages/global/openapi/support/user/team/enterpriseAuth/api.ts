@@ -9,7 +9,7 @@ import {
 
 /* ============================================================================
  * API: 获取企业认证状态
- * Route: GET /api/support/user/team/enterpriseAuth/status
+ * Route: GET /api/proApi/support/user/team/enterpriseAuth/status
  * Method: GET
  * Description: 获取当前团队企业认证入口开关、认证状态和可恢复任务信息
  * Tags: ['团队管理']
@@ -47,7 +47,7 @@ export type GetEnterpriseAuthStatusResponseType = z.infer<
 
 /* ============================================================================
  * API: 获取当前企业认证任务详情
- * Route: GET /api/support/user/team/enterpriseAuth/currentTaskDetail
+ * Route: GET /api/proApi/support/user/team/enterpriseAuth/currentTaskDetail
  * Method: GET
  * Description: 获取待金额验证任务的完整展示信息，不返回验证金额
  * Tags: ['团队管理']
@@ -74,7 +74,7 @@ export type GetEnterpriseAuthCurrentTaskDetailResponseType = z.infer<
 
 /* ============================================================================
  * API: 获取企业认证银行列表
- * Route: GET /api/support/user/team/enterpriseAuth/banks
+ * Route: GET /api/proApi/support/user/team/enterpriseAuth/banks
  * Method: GET
  * Description: 从小额汇款服务获取银行编码到总行名称映射
  * Tags: ['团队管理']
@@ -141,7 +141,7 @@ export type StartEnterpriseAuthBodyType = z.infer<typeof StartEnterpriseAuthBody
 
 /* ============================================================================
  * API: 发起企业认证
- * Route: POST /api/support/user/team/enterpriseAuth/start
+ * Route: POST /api/proApi/support/user/team/enterpriseAuth/start
  * Method: POST
  * Description: 创建小额汇款认证任务，打款成功后返回待金额验证任务
  * Tags: ['团队管理']
@@ -173,7 +173,7 @@ export type VerifyEnterpriseAuthAmountBodyType = z.infer<
 
 /* ============================================================================
  * API: 验证企业认证打款金额
- * Route: POST /api/support/user/team/enterpriseAuth/verifyAmount
+ * Route: POST /api/proApi/support/user/team/enterpriseAuth/verifyAmount
  * Method: POST
  * Description: 校验到账金额并在成功后发放企业认证赠送权益
  * Tags: ['团队管理']
@@ -195,7 +195,7 @@ export type VerifyEnterpriseAuthAmountResponseType = z.infer<
 
 /* ============================================================================
  * API: 重置企业认证待金额验证任务
- * Route: POST /api/support/user/team/enterpriseAuth/reset
+ * Route: POST /api/proApi/support/user/team/enterpriseAuth/reset
  * Method: POST
  * Description: 用户确认信息有误后取消当前待金额验证任务
  * Tags: ['团队管理']
