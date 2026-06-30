@@ -68,7 +68,7 @@ jobs:
             org.opencontainers.image.revision=${{ github.event.pull_request.head.sha }}
           outputs: type=docker,dest=/tmp/fastgpt-pro-image.tar
           cache-from: type=gha,scope=fastgpt-pro
-          cache-to: type=gha,mode=max,scope=fastgpt-pro
+          cache-to: type=gha,mode=max,scope=fastgpt-pro,ignore-error=true
 
       - name: Save PR metadata
         run: |

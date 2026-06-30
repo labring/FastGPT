@@ -121,7 +121,7 @@ jobs:
             org.opencontainers.image.revision=${{ github.event.pull_request.head.sha }}
           outputs: type=docker,dest=/tmp/${{ matrix.image_name }}-image.tar
           cache-from: type=gha,scope=${{ matrix.image }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }},ignore-error=true
 
       - name: Save PR metadata
         run: |
