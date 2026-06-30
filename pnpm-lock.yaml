@@ -406,8 +406,8 @@ importers:
         specifier: ^1.2.8
         version: 1.2.8
       '@fastgpt-plugin/sdk-client':
-        specifier: 0.0.1-alpha.11
-        version: 0.0.1-alpha.11(zod@4.1.12)
+        specifier: 0.0.1
+        version: 0.0.1(zod@4.1.12)
       '@fastgpt-sdk/sandbox-adapter':
         specifier: workspace:*
         version: link:../../sdk/sandbox-adapter
@@ -3637,8 +3637,8 @@ packages:
     resolution: {integrity: sha512-OEl393iCOoo/z8bMezRlJu+GlRGlsKbUAN7jKB6LhnKoqKve5DXRpalbItIIcwnCjs1k/FOPjFzcA6Qn+H+YbA==}
     engines: {node: '>=18.0.0', npm: '>=9.0.0'}
 
-  '@fastgpt-plugin/sdk-client@0.0.1-alpha.11':
-    resolution: {integrity: sha512-XSKSRhW8NLPgSt393jQIhw73q8EvcMjRSwc6GfLgeklhRACuUiCm9kdlraycnWxyaslNASd4w9lQH7NAqpOoMA==}
+  '@fastgpt-plugin/sdk-client@0.0.1':
+    resolution: {integrity: sha512-ZimpyjpHsaR56SZghrCtTjjXRf0hCosxsbn5hjnyrC9AKIUxtP5EODbGGaBOI7RhwVXNyBJ7XHP2FdMwWz7QOQ==}
     peerDependencies:
       zod: ^4
 
@@ -17637,7 +17637,7 @@ snapshots:
 
   '@faker-js/faker@9.9.0': {}
 
-  '@fastgpt-plugin/sdk-client@0.0.1-alpha.11(zod@4.1.12)':
+  '@fastgpt-plugin/sdk-client@0.0.1(zod@4.1.12)':
     dependencies:
       zod: 4.1.12
 
