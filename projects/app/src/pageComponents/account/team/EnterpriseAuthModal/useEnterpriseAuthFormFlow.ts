@@ -21,7 +21,12 @@ import {
   shouldShowEnterpriseAuthAmountError,
   shouldShowEnterpriseAuthContactBusinessModal
 } from '../utils';
-import { getErrorCode, PositiveIntegerPattern, type AmountFormType } from './shared';
+import {
+  formatEnterpriseAuthBankOptions,
+  getErrorCode,
+  PositiveIntegerPattern,
+  type AmountFormType
+} from './shared';
 
 type UseEnterpriseAuthFormFlowProps = {
   defaultStatus: GetEnterpriseAuthStatusResponseType;
@@ -102,15 +107,7 @@ export const useEnterpriseAuthFormFlow = ({
     errorToast: t('account_team:enterprise_auth_operation_failed')
   });
 
-  const bankOptions = useMemo(
-    () =>
-      Object.entries(banks).map(([code, name]) => ({
-        label: name,
-        value: name,
-        alias: code
-      })),
-    [banks]
-  );
+  const bankOptions = useMemo(() => formatEnterpriseAuthBankOptions(banks), [banks]);
   const hasBankLoadError = !!bankLoadError && !bankOptions.length;
   const isBankLoading = loadingBanks;
   const amountFenValue = useWatch({ control: amountForm.control, name: 'amountFen' });

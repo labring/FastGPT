@@ -14,17 +14,14 @@ import {
   inputStyles,
   normalizeBankAccount,
   normalizeUnifiedCreditCode,
-  textareaStyles
+  textareaStyles,
+  type EnterpriseAuthBankOption
 } from './shared';
 
 type EnterpriseAuthInfoFormProps = {
   t: TFunction;
   startForm: UseFormReturn<StartEnterpriseAuthBodyType>;
-  bankOptions: {
-    label: string;
-    value: string;
-    alias: string;
-  }[];
+  bankOptions: EnterpriseAuthBankOption[];
   hasSubmittedStartForm: boolean;
   hasBankLoadError: boolean;
   isBankLoading: boolean;

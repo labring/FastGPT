@@ -58,7 +58,7 @@ export const GetEnterpriseAuthCurrentTaskDetailResponseSchema = z.object({
   enterpriseName: z.string().meta({ description: '企业名称' }),
   unifiedCreditCode: z.string().meta({ description: '统一社会信用代码' }),
   legalPersonName: z.string().meta({ description: '法人姓名' }),
-  bankName: z.string().meta({ description: '开户银行总行名称' }),
+  bankName: z.string().meta({ description: '开户银行名称' }),
   bankAccount: z.string().meta({ description: '企业银行账号，仅此接口返回完整值' }),
   contactName: z.string().meta({ description: '联系人姓名' }),
   contactTitle: z.string().meta({ description: '联系人职位' }),
@@ -80,7 +80,7 @@ export type GetEnterpriseAuthCurrentTaskDetailResponseType = z.infer<
  * ============================================================================ */
 
 export const GetEnterpriseAuthBanksResponseSchema = z.record(z.string(), z.string()).meta({
-  description: '银行编码到银行名称的映射'
+  description: '银行简称到银行公司全称的映射'
 });
 export type GetEnterpriseAuthBanksResponseType = z.infer<
   typeof GetEnterpriseAuthBanksResponseSchema
@@ -117,7 +117,7 @@ export const StartEnterpriseAuthBodySchema = z.object({
   }),
   bankAccount: BankAccountSchema,
   bankName: EnterpriseAuthRequiredStringSchema.max(80).meta({
-    description: '开户银行总行名称',
+    description: '开户银行名称',
     example: '中国工商银行'
   }),
   contactName: EnterpriseAuthRequiredStringSchema.max(50).meta({
