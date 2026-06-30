@@ -32,7 +32,8 @@ const ChatItemSchema = new Schema({
   },
   sourceType: {
     type: String,
-    enum: Object.values(ChatSourceTypeEnum)
+    enum: Object.values(ChatSourceTypeEnum),
+    required: true
   },
   dataId: {
     type: String,

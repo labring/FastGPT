@@ -13,7 +13,8 @@ const ChatItemResponseSchema = new Schema({
   },
   sourceType: {
     type: String,
-    enum: Object.values(ChatSourceTypeEnum)
+    enum: Object.values(ChatSourceTypeEnum),
+    required: true
   },
   // 历史物理字段名，业务语义为 sourceId；App 场景才是真实 appId。
   appId: {

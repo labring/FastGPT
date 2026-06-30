@@ -15,6 +15,7 @@ import z from 'zod';
  * ============================================================================ */
 
 const DEFAULT_SAMPLE_LIMIT = 20;
+const CLEANUP_DUPLICATE_CHATS_INDEX_NAME = 'idx_cleanup_duplicate_chats_appId_chatId';
 
 const CleanupDuplicateChatsBodySchema = z
   .object({
@@ -69,9 +70,7 @@ const CleanupDuplicateChatsResponseSchema = z.object({
   sampleLimit: z.number().int().nonnegative().meta({ description: '返回样本数量限制' }),
   samples: z.array(DuplicateChatGroupSampleSchema).meta({ description: '重复组样本' })
 });
-export type CleanupDuplicateChatsResponseType = z.infer<
-  typeof CleanupDuplicateChatsResponseSchema
->;
+export type CleanupDuplicateChatsResponseType = z.infer<typeof CleanupDuplicateChatsResponseSchema>;
 
 type DuplicateKeyGroup = {
   _id: {
@@ -91,6 +90,30 @@ const stringifyId = (value: unknown) => {
     return value.toString();
   }
   return String(value);
+};
+
+/**
+ * 为重复会话头清理创建临时查询索引。
+ *
+ * 历史库里唯一索引可能因为重复数据没有建成功，迁移前先补一个非唯一索引，
+ * 避免全表扫描；如果已经存在同 key 索引（无论唯一/非唯一），直接复用。
+ */
+const ensureDuplicateChatCleanupIndex = async () => {
+  const indexes = await MongoChat.collection.indexes();
+  const hasAppIdChatIdIndex = indexes.some((index) => {
+    const keys = Object.keys(index.key);
+    return keys.length === 2 && index.key.appId === 1 && index.key.chatId === 1;
+  });
+
+  if (hasAppIdChatIdIndex) return;
+
+  await MongoChat.collection.createIndex(
+    { appId: 1, chatId: 1 },
+    {
+      name: CLEANUP_DUPLICATE_CHATS_INDEX_NAME,
+      background: true
+    }
+  );
 };
 
 const findDuplicateChatGroups = () =>
@@ -129,6 +152,8 @@ const findDuplicateChatDocs = (group: DuplicateKeyGroup) =>
 export async function runCleanupDuplicateChatsMigration(
   params: CleanupDuplicateChatsBodyType
 ): Promise<CleanupDuplicateChatsResponseType> {
+  await ensureDuplicateChatCleanupIndex();
+
   const duplicateGroups = await findDuplicateChatGroups();
 
   let duplicateDocumentCount = 0;
