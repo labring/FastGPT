@@ -19,7 +19,10 @@ import {
 } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/repository';
 import { connectionMongo } from '@fastgpt/service/common/mongo';
 import { SandboxStatusEnum, SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
-import { hasAgentSandboxConfig } from '@fastgpt/global/core/ai/sandbox/env';
+import {
+  getAgentSandboxMissingRequiredEnvKeys,
+  hasAgentSandboxConfig
+} from '@fastgpt/global/core/ai/sandbox/env';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/utils/id';
@@ -27,7 +30,9 @@ import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/utils/id';
 const { Types } = connectionMongo;
 
 const hasSandboxEnv =
-  process.env.SANDBOX_INTEGRATION === 'true' && hasAgentSandboxConfig(process.env);
+  process.env.SANDBOX_INTEGRATION === 'true' &&
+  hasAgentSandboxConfig(process.env) &&
+  getAgentSandboxMissingRequiredEnvKeys(process.env).length === 0;
 const runFullIntegration = process.env.SANDBOX_INTEGRATION_FULL === 'true';
 
 vi.mock('@fastgpt/service/env', () => ({

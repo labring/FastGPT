@@ -17,6 +17,7 @@ export async function registerNodeInstrumentation() {
       { connectionMongo, connectionLogMongo, MONGO_URL, MONGO_LOG_URL },
       { systemStartCb },
       { initGlobalVariables, getInitConfig, initSystemPluginTags, initAppTemplateTypes },
+      { validateAgentSandboxProxyEnv },
       { initVectorStore },
       { initRootUser },
       { startMongoWatch },
@@ -39,6 +40,7 @@ export async function registerNodeInstrumentation() {
       import('@fastgpt/service/common/mongo/index'),
       import('@fastgpt/service/common/system/tools'),
       import('@/service/common/system'),
+      import('@/service/common/system/agentSandboxProxyEnv'),
       import('@fastgpt/service/common/vectorDB/controller'),
       import('@/service/mongo'),
       import('@/service/common/system/volumnMongoWatch'),
@@ -74,6 +76,11 @@ export async function registerNodeInstrumentation() {
     await runInitializationStep({
       step: 'init-global-variables',
       action: () => initGlobalVariables(),
+      logger
+    });
+    await runInitializationStep({
+      step: 'validate-agent-sandbox-proxy-env',
+      action: () => validateAgentSandboxProxyEnv(),
       logger
     });
 

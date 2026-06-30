@@ -196,22 +196,6 @@ describe('sandbox provider config', () => {
     });
   });
 
-  it('requires sealos runtime image when runtime adapter config is requested', async () => {
-    vi.stubEnv('AGENT_SANDBOX_SEALOS_BASEURL', 'https://devbox.example.com');
-    vi.stubEnv('AGENT_SANDBOX_SEALOS_TOKEN', 'sealos-token');
-    vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', undefined);
-
-    const { getSandboxAdapterConfig } = await loadSandboxConfigModule();
-
-    expect(() =>
-      getSandboxAdapterConfig({
-        provider: 'sealosdevbox',
-        runtime: true,
-        sessionId: 'session-1'
-      })
-    ).toThrow('AGENT_SANDBOX_SEALOS_IMAGE is required for sealosdevbox provider');
-  });
-
   it('normalizes missing provider env values before validation', async () => {
     vi.resetModules();
     vi.doMock('@fastgpt/service/env', () => ({
@@ -241,30 +225,6 @@ describe('sandbox provider config', () => {
       vi.doUnmock('@fastgpt/service/env');
       vi.resetModules();
     }
-  });
-
-  it('allows empty proxy secret before agent sandbox credentials are configured', async () => {
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'opensandbox');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', 'http://opensandbox.local');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', '');
-    vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', '');
-    vi.resetModules();
-
-    const { serviceEnv } = await import('@fastgpt/service/env');
-
-    expect(serviceEnv.AGENT_SANDBOX_PROXY_SECRET).toBeUndefined();
-  });
-
-  it('rejects short proxy secret when agent sandbox is configured', async () => {
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'opensandbox');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', 'http://opensandbox.local');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', 'opensandbox-api-key');
-    vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', 'short');
-    vi.resetModules();
-
-    await expect(import('@fastgpt/service/env')).rejects.toThrow(
-      'Invalid environment variables. Please check: AGENT_SANDBOX_PROXY_SECRET'
-    );
   });
 
   it('parses opensandbox config and runtime create config from env', async () => {

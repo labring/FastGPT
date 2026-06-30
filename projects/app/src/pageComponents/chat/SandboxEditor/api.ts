@@ -56,10 +56,6 @@ export const getSandboxProxyWsUrl = ({
   const { agentSandboxProxyUrl = '' } = useSystemStore.getState().feConfigs;
   const proxyBaseUrl = agentSandboxProxyUrl.replace(/\/+$/, '');
 
-  if (!proxyBaseUrl) {
-    throw new Error('AGENT_SANDBOX_PROXY_URL is required but not configured');
-  }
-
   return `${proxyBaseUrl}/${channel}?ticket=${encodeURIComponent(ticket)}`;
 };
 
