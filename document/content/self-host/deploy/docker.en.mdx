@@ -356,20 +356,9 @@ docker compose up -d
 
 4. Run initialization scripts (if any)
 
-### How to Customize Configuration Files?
+### How to Customize Environment Variables?
 
-Modify `config.json`, then run `docker compose down` followed by `docker compose up -d` to restart. For details, see [Configuration Guide](../config/json.en.mdx).
-
-### How to Check if Custom Config File is Mounted
-
-1. `docker logs fastgpt` shows logs. After starting the container, the first web request reads the config file — check for success or error messages.
-2. `docker exec -it fastgpt sh` enters the container. Use `ls data` to check if `config.json` is mounted. Use `cat data/config.json` to view it.
-
-**Possible reasons it's not working:**
-
-1. Incorrect mount directory
-2. Invalid config file — logs will show `invalid json`. The file must be valid JSON.
-3. Didn't run `docker compose down` then `docker compose up -d` after changes. A simple restart doesn't remount files.
+Edit the `environment` section of `fastgpt-app` in `docker-compose.yml`, then run `docker compose up -d` to restart the container. For details, see [Environment Variables](../config/env.en.mdx).
 
 ### How to Check if Environment Variables Loaded
 

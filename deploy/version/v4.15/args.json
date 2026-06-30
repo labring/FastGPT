@@ -9,9 +9,6 @@
     "agent-sandbox-proxy": "v0.2.0-beta2",
     "aiproxy": "v0.6.1",
 
-    "opensandbox-server": "v0.1.9",
-    "opensandbox-execd": "v1.0.7",
-    "opensandbox-egress": "v1.0.3",
     "aiproxy-pg": "0.8.0-pg15",
     "mongo": "5.0.32",
     "redis": "7.2-alpine",

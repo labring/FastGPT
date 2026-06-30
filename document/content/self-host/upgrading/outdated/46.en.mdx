@@ -9,7 +9,7 @@ description: FastGPT V4.6 Update
 
 Update the image to the latest or V4.6 version. For the commercial edition, update to V0.2.1.
 
-For the latest configuration, refer to: [V4.6 Latest config.json](../../config/json.en.mdx). The commercial edition configuration file has also been updated — refer to the latest Lark documentation.
+The legacy `config.json` guide is no longer maintained. For current versions, see [Model Configuration](../../config/model/intro.en.mdx) and [Environment Variables](../../config/env.en.mdx). The commercial edition configuration file has also been updated — refer to the latest Lark documentation.
 
 ## 2. Run the Initialization APIs
 
@@ -34,6 +34,7 @@ curl --location --request POST 'https://{{host}}/api/admin/initv46-2' \
 ```
 
 What the initialization does:
+
 1. Creates the default team.
 2. Initializes team fields for all resources in Mongo.
 3. Initializes PG fields.

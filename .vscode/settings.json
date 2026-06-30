@@ -46,6 +46,10 @@
     "[typescriptreact]": {
         "editor.defaultFormatter": "esbenp.prettier-vscode"
     },
+    "yaml.format.enable": false,
+    "[yaml]": {
+      "editor.formatOnSave": false,
+    },
     "mdx.server.enable": true,
     "markdown.copyFiles.overwriteBehavior": "nameIncrementally",
     "markdown.copyFiles.destination": {
