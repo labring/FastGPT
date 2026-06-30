@@ -1,0 +1,50 @@
+---
+title: Sealos Devbox 沙盒配置
+description: FastGPT 使用 Sealos Devbox 沙盒
+---
+
+import { Alert } from '@/components/docs/Alert';
+
+<Alert icon="⚠️" context="warning">
+  仅商业版用户支持，可联系客服申请密钥，计费方式为按量计费，扣除 sealos 余额。
+</Alert>
+
+## 前置准备
+
+1. 已部署 FastGPT 商业版，并确认团队拥有 Agent Sandbox 使用权限。
+2. 向客服申请 Sealos Devbox 接入信息：Devbox 服务地址、访问 Token、运行态镜像。
+
+## 配置 FastGPT 环境变量
+
+在 `fastgpt-app` 和 `fastgpt-pro` 中增加下面环境变量。
+
+```dotenv
+# 启用 Sealos Devbox 作为 Agent Sandbox provider
+AGENT_SANDBOX_PROVIDER=sealosdevbox
+
+# 客服提供的 Sealos Devbox Server API 地址，FastGPT 主服务需要能访问
+AGENT_SANDBOX_SEALOS_BASEURL=https://devbox-server.example.com
+# 客服提供的访问密钥
+AGENT_SANDBOX_SEALOS_TOKEN=replace_with_sealos_devbox_token
+
+# 沙盒镜像版本
+AGENT_SANDBOX_SEALOS_IMAGE=hub.hzh.sealos.run/labring/devbox-sandbox:v0.2.0
+```
+
+## 常见问题
+
+### 提示 AGENT_SANDBOX_PROXY_URL is required
+
+启用 `AGENT_SANDBOX_PROVIDER=sealosdevbox` 后，必须配置 `AGENT_SANDBOX_PROXY_URL`。该地址是浏览器访问代理服务的 WebSocket 地址，例如 `wss://sandbox-proxy.example.com`，不是 FastGPT 主站地址。
+
+### 提示 AGENT_SANDBOX_SEALOS_IMAGE is required
+
+`sealosdevbox` provider 启用后必须配置 `AGENT_SANDBOX_SEALOS_IMAGE`。请使用客服提供或与当前 FastGPT 版本匹配的 Agent Sandbox 运行态镜像。
+
+### 浏览器 WebSocket 连接失败
+
+检查代理服务是否能被浏览器访问，并确认反向代理已支持 WebSocket Upgrade。如果 FastGPT 通过 HTTPS 访问，`AGENT_SANDBOX_PROXY_URL` 也应使用 `wss://`，避免浏览器拦截混合内容。
+
+### proxy 校验失败或返回 401
+
+确认 FastGPT 主服务和 `fastgpt-agent-sandbox-proxy` 中的 `AGENT_SANDBOX_PROXY_SECRET` 完全一致，并且长度不少于 32 位。

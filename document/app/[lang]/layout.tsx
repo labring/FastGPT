@@ -1,15 +1,10 @@
 import '@/app/global.css';
 import { RootProvider } from 'fumadocs-ui/provider';
-import { Inter } from 'next/font/google';
 import type { ReactNode } from 'react';
 import type { Translations } from 'fumadocs-ui/i18n';
 import CustomSearchDialog from '@/components/CustomSearchDialog';
 import Script from 'next/script';
 import type { Metadata } from 'next';
-
-const inter = Inter({
-  subsets: ['latin']
-});
 
 const zh_CN: Partial<Translations> = {
   search: '搜索',
@@ -141,7 +136,7 @@ export default async function Layout({
   const siteId = process.env.NEXT_PUBLIC_DOC_TRACK_SITE_ID;
 
   return (
-    <html lang={lang} className={inter.className} suppressHydrationWarning>
+    <html lang={lang} className="font-sans" suppressHydrationWarning>
       <body className="flex flex-col min-h-screen">
         {trackSrc && siteId && (
           <Script src={trackSrc} data-site-id={siteId} defer strategy="afterInteractive" />

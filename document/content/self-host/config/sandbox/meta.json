@@ -1,0 +1,5 @@
+{
+  "title": "沙盒配置",
+  "description": "FastGPT Agent Sandbox 部署配置",
+  "pages": ["common", "sealosdevbox"]
+}
