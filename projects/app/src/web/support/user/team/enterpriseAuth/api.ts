@@ -9,7 +9,7 @@ import type {
   VerifyEnterpriseAuthAmountResponseType
 } from '@fastgpt/global/openapi/support/user/team/enterpriseAuth/api';
 
-const baseUrl = '/support/user/team/enterpriseAuth';
+const baseUrl = '/proApi/support/user/team/enterpriseAuth';
 
 export const getEnterpriseAuthStatus = () =>
   GET<GetEnterpriseAuthStatusResponseType>(`${baseUrl}/status`);
