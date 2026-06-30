@@ -224,8 +224,6 @@ const ModelTable = () => {
         order: provider.order
       };
     });
-    formatList.sort((a, b) => a.order - b.order);
-
     return formatList;
   }, [systemModelList, t, getModelProvider, i18n.language]);
   const filterProviderList = useMemo(() => {

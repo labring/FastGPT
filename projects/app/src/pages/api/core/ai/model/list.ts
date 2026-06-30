@@ -11,6 +11,7 @@ import type {
   ListModelsPaginationResponse
 } from '@fastgpt/global/openapi/core/ai/model/api';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
+import { getModelProvider } from '@fastgpt/service/core/app/provider/controller';
 
 async function handler(
   req: ApiRequestProps<ListModelsBody, any>,
@@ -93,6 +94,16 @@ async function handler(
   } else if (isActive === 'inactive') {
     result = result.filter((m) => !m.isActive);
   }
+
+  // Sort: enabled models first, then by provider order
+  result.sort((a, b) => {
+    if (a.isActive !== b.isActive) {
+      return a.isActive ? -1 : 1;
+    }
+    const providerA = getModelProvider(a.provider);
+    const providerB = getModelProvider(b.provider);
+    return providerA.order - providerB.order;
+  });
 
   // Pagination: only slice when pageSize is explicitly provided
   if (req.body.pageSize !== undefined) {
