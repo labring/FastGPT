@@ -4,10 +4,7 @@ import { isPhaseProductionBuild } from '@fastgpt/global/common/system/constants'
 import { DEFAULT_MAX_FOLDER_DEPTH } from '@fastgpt/global/common/parentFolder/depth';
 import { BoolSchema, IntSchema, NumSchema, UrlSchema } from '@fastgpt/global/common/zod';
 import { agentSandboxProviderList } from '@fastgpt/global/core/ai/sandbox/constants';
-import {
-  getAgentSandboxMissingRequiredEnvKeys,
-  hasAgentSandboxConfig as hasAgentSandboxConfigFromEnv
-} from '@fastgpt/global/core/ai/sandbox/env';
+import type { SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
 
 const defaultableIntSchema = (defaultValue: number) =>
   z.preprocess(
@@ -25,6 +22,31 @@ const AgentSandboxProxyUrlSchema = z.string().refine((url) => /^wss?:\/\//.test(
   message: 'AGENT_SANDBOX_PROXY_URL must start with ws:// or wss://'
 });
 const TEST_INVOKE_TOKEN_SECRET = 'fastgpt_test_invoke_token_secret_32';
+const agentSandboxProviderRequiredEnvKeys = {
+  sealosdevbox: [
+    'AGENT_SANDBOX_SEALOS_BASEURL',
+    'AGENT_SANDBOX_SEALOS_TOKEN',
+    'AGENT_SANDBOX_SEALOS_IMAGE'
+  ],
+  opensandbox: ['AGENT_SANDBOX_OPENSANDBOX_BASEURL', 'AGENT_SANDBOX_OPENSANDBOX_API_KEY'],
+  e2b: ['AGENT_SANDBOX_E2B_API_KEY']
+} satisfies Record<SandboxProviderType, readonly string[]>;
+
+const isAgentSandboxProvider = (provider: string | undefined): provider is SandboxProviderType =>
+  agentSandboxProviderList.includes(provider as SandboxProviderType);
+
+/**
+ * 获取已配置 provider 缺失的运行态必填环境变量。
+ * 未配置合法 provider 时不启用 Agent Sandbox，因此不要求任何 provider 配套变量。
+ */
+const getAgentSandboxMissingRequiredEnvKeys = (env: NodeJS.ProcessEnv): string[] => {
+  const provider = env.AGENT_SANDBOX_PROVIDER;
+  if (!isAgentSandboxProvider(provider)) {
+    return [];
+  }
+
+  return agentSandboxProviderRequiredEnvKeys[provider].filter((key) => !env[key]);
+};
 
 /**
  * 测试套件会在多个 workspace（包含 pro/admin 子模块）里直接导入 serviceEnv。
@@ -399,4 +421,5 @@ export const SYSTEM_MAX_STRING_LENGTH =
  * 判断系统是否显式配置了 Agent 虚拟机 provider。
  * 启动阶段会先校验 provider 配套 env，避免前端拿到半配置的沙盒能力。
  */
-export const hasAgentSandboxConfig = (): boolean => hasAgentSandboxConfigFromEnv(process.env);
+export const hasAgentSandboxConfig = (): boolean =>
+  isAgentSandboxProvider(process.env.AGENT_SANDBOX_PROVIDER);

@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   getAgentSandboxMaxFileBytes: vi.fn(),
   getReadStream: vi.fn(),
   getSandboxClient: vi.fn(),
+  getSandboxRuntimeProfile: vi.fn(),
   resolveFormData: vi.fn(),
   writeFiles: vi.fn()
 }));
@@ -38,6 +39,10 @@ vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', () => ({
   getSandboxClient: mocks.getSandboxClient
 }));
 
+vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/runtimeProfile', () => ({
+  getSandboxRuntimeProfile: mocks.getSandboxRuntimeProfile
+}));
+
 import handler from '@/pages/api/core/ai/sandbox/upload';
 
 const createReq = () =>
@@ -51,6 +56,7 @@ describe('sandbox upload API', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getAgentSandboxMaxFileBytes.mockReturnValue(10 * 1024 * 1024);
+    mocks.getSandboxRuntimeProfile.mockReturnValue({ workDirectory: '/workspace' });
     mocks.getReadStream.mockReturnValue(Readable.from([new Uint8Array([1, 2, 3])]));
     mocks.resolveFormData.mockResolvedValue({
       data: {

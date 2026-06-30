@@ -9,11 +9,13 @@ import { ReadFileTooData } from '@fastgpt/service/core/workflow/dispatch/ai/tool
 
 const {
   getSandboxToolInfoMock,
+  getSandboxRuntimeProfileMock,
   prepareSandboxToolRuntimeMock,
   runAgentSandboxEntrypointMock,
   withAgentSandboxInitLeaseMock
 } = vi.hoisted(() => ({
   getSandboxToolInfoMock: vi.fn(),
+  getSandboxRuntimeProfileMock: vi.fn(),
   prepareSandboxToolRuntimeMock: vi.fn(),
   runAgentSandboxEntrypointMock: vi.fn(),
   withAgentSandboxInitLeaseMock: vi.fn(async ({ fn }: { fn: () => Promise<unknown> }) => fn())
@@ -35,6 +37,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', async (importOrigi
     await importOriginal<typeof import('@fastgpt/service/core/ai/sandbox/interface/runtime')>();
   return {
     ...original,
+    getSandboxRuntimeProfile: getSandboxRuntimeProfileMock,
     runAgentSandboxEntrypoint: runAgentSandboxEntrypointMock,
     withAgentSandboxInitLease: withAgentSandboxInitLeaseMock
   };
@@ -55,6 +58,7 @@ describe('useToolCatalog', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getSandboxToolInfoMock.mockReturnValue(undefined);
+    getSandboxRuntimeProfileMock.mockReturnValue({ workDirectory: '/workspace' });
     prepareSandboxToolRuntimeMock.mockResolvedValue({
       provider: {
         execute: vi.fn()

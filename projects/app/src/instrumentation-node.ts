@@ -5,6 +5,37 @@ import {
   runInitializationStep
 } from '@fastgpt/service/common/system/initError';
 
+const agentSandboxProviderList = ['sealosdevbox', 'opensandbox', 'e2b'] as const;
+const agentSandboxProxyRequiredEnvKeys = [
+  'AGENT_SANDBOX_PROXY_SECRET',
+  'AGENT_SANDBOX_PROXY_URL'
+] as const;
+
+/**
+ * 校验 FastGPT app 浏览器直连 agent-sandbox-proxy 所需环境变量。
+ * 该能力只属于主站 app 的 sandbox editor/proxy 链路，不能放在共享 serviceEnv 中校验，
+ * 否则 pro/admin 等只复用服务端能力的项目会被不必要的 proxy 配置阻塞。
+ */
+const validateAgentSandboxProxyEnv = (): void => {
+  const provider = process.env.AGENT_SANDBOX_PROVIDER;
+  if (!agentSandboxProviderList.includes(provider as (typeof agentSandboxProviderList)[number])) {
+    return;
+  }
+
+  const missingAgentSandboxProxyEnvKeys = agentSandboxProxyRequiredEnvKeys.filter(
+    (key) => !process.env[key]
+  );
+  if (missingAgentSandboxProxyEnvKeys.length === 0) {
+    return;
+  }
+
+  throw new Error(
+    `Invalid Agent Sandbox proxy environment variables: ${missingAgentSandboxProxyEnvKeys.join(
+      ', '
+    )} are required when AGENT_SANDBOX_PROVIDER is ${provider}.`
+  );
+};
+
 export async function registerNodeInstrumentation() {
   try {
     await runInitializationStep({
@@ -17,7 +48,6 @@ export async function registerNodeInstrumentation() {
       { connectionMongo, connectionLogMongo, MONGO_URL, MONGO_LOG_URL },
       { systemStartCb },
       { initGlobalVariables, getInitConfig, initSystemPluginTags, initAppTemplateTypes },
-      { validateAgentSandboxProxyEnv },
       { initVectorStore },
       { initRootUser },
       { startMongoWatch },
@@ -40,7 +70,6 @@ export async function registerNodeInstrumentation() {
       import('@fastgpt/service/common/mongo/index'),
       import('@fastgpt/service/common/system/tools'),
       import('@/service/common/system'),
-      import('@/service/common/system/agentSandboxProxyEnv'),
       import('@fastgpt/service/common/vectorDB/controller'),
       import('@/service/mongo'),
       import('@/service/common/system/volumnMongoWatch'),

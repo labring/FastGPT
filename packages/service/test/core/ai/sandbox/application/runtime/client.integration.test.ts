@@ -18,21 +18,41 @@ import {
   upsertRunningSandboxInstance
 } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/repository';
 import { connectionMongo } from '@fastgpt/service/common/mongo';
-import { SandboxStatusEnum, SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import {
-  getAgentSandboxMissingRequiredEnvKeys,
-  hasAgentSandboxConfig
-} from '@fastgpt/global/core/ai/sandbox/env';
+  agentSandboxProviderList,
+  SandboxStatusEnum,
+  SandboxTypeEnum
+} from '@fastgpt/global/core/ai/sandbox/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { getRunningSandboxId } from '@fastgpt/service/core/ai/sandbox/utils/id';
+import type { SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
 
 const { Types } = connectionMongo;
 
-const hasSandboxEnv =
-  process.env.SANDBOX_INTEGRATION === 'true' &&
-  hasAgentSandboxConfig(process.env) &&
-  getAgentSandboxMissingRequiredEnvKeys(process.env).length === 0;
+const agentSandboxProviderRequiredEnvKeys = {
+  sealosdevbox: [
+    'AGENT_SANDBOX_SEALOS_BASEURL',
+    'AGENT_SANDBOX_SEALOS_TOKEN',
+    'AGENT_SANDBOX_SEALOS_IMAGE'
+  ],
+  opensandbox: ['AGENT_SANDBOX_OPENSANDBOX_BASEURL', 'AGENT_SANDBOX_OPENSANDBOX_API_KEY'],
+  e2b: ['AGENT_SANDBOX_E2B_API_KEY']
+} satisfies Record<SandboxProviderType, readonly string[]>;
+
+const isAgentSandboxProvider = (provider: string | undefined): provider is SandboxProviderType =>
+  agentSandboxProviderList.includes(provider as SandboxProviderType);
+
+const hasFullAgentSandboxEnv = (): boolean => {
+  const provider = process.env.AGENT_SANDBOX_PROVIDER;
+  if (!isAgentSandboxProvider(provider)) {
+    return false;
+  }
+
+  return agentSandboxProviderRequiredEnvKeys[provider].every((key) => !!process.env[key]);
+};
+
+const hasSandboxEnv = process.env.SANDBOX_INTEGRATION === 'true' && hasFullAgentSandboxEnv();
 const runFullIntegration = process.env.SANDBOX_INTEGRATION_FULL === 'true';
 
 vi.mock('@fastgpt/service/env', () => ({

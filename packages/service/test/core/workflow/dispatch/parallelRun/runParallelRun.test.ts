@@ -74,11 +74,18 @@ const makeDispatchFlowResponse = (
   } as DispatchFlowResponse;
 };
 
-const makeVariableState = () =>
+const makeVariableState = (runtimeVariables: Record<string, unknown> = {}) =>
   ({
-    clone: () => makeVariableState(),
-    toRuntimeRecord: () => ({}),
-    toStoreRecord: () => ({})
+    clone: vi.fn(() => makeVariableState(runtimeVariables)),
+    get: vi.fn((key: string) => runtimeVariables[key]),
+    set: vi.fn(async (key: string, value: unknown) => {
+      runtimeVariables[key] = value;
+      return value;
+    }),
+    getStoreValue: vi.fn((key: string) => runtimeVariables[key]),
+    getFileStoreValueByRuntimeUrl: vi.fn(),
+    toRuntimeRecord: () => ({ ...runtimeVariables }),
+    toStoreRecord: () => ({ ...runtimeVariables })
   }) as any;
 
 const makeProps = (override: Record<string, any> = {}) => {
@@ -231,5 +238,77 @@ describe('dispatchParallelRun', () => {
     await dispatchParallelRun(makeProps());
 
     expect(runWorkflowMock.mock.calls[0][0].nodeResponseParentId).toBe('parallelRun1_task_0');
+  });
+
+  it('成功任务结束后把 clone 中的全局变量提交回父状态', async () => {
+    const taskVariableState = makeVariableState({ count: 2 });
+    const parentVariableState = {
+      ...makeVariableState(),
+      clone: vi.fn(() => taskVariableState),
+      set: vi.fn()
+    };
+    runWorkflowMock.mockResolvedValue(
+      makeDispatchFlowResponse({
+        nodeResponses: [
+          makeResponseItem('nestedEnd', {
+            moduleType: FlowNodeTypeEnum.nestedEnd,
+            loopOutputValue: 'done'
+          })
+        ]
+      })
+    );
+
+    await dispatchParallelRun(
+      makeProps({
+        variableState: parentVariableState
+      })
+    );
+
+    expect(parentVariableState.set).toHaveBeenCalledWith('count', 2);
+  });
+
+  it('失败 attempt 不提交全局变量更新，重试成功后只提交成功 attempt 的更新', async () => {
+    const failedClone = makeVariableState({ count: 1 });
+    const successClone = makeVariableState({ count: 2 });
+    const parentVariableState = {
+      ...makeVariableState(),
+      clone: vi.fn().mockReturnValueOnce(failedClone).mockReturnValueOnce(successClone),
+      set: vi.fn()
+    };
+    runWorkflowMock
+      .mockResolvedValueOnce(
+        makeDispatchFlowResponse({
+          nodeResponses: [
+            makeResponseItem('failed-node', {
+              error: 'failed'
+            })
+          ]
+        })
+      )
+      .mockResolvedValueOnce(
+        makeDispatchFlowResponse({
+          nodeResponses: [
+            makeResponseItem('nestedEnd', {
+              moduleType: FlowNodeTypeEnum.nestedEnd,
+              loopOutputValue: 'done'
+            })
+          ]
+        })
+      );
+
+    await dispatchParallelRun(
+      makeProps({
+        params: {
+          loopInputArray: ['a'],
+          [NodeInputKeyEnum.childrenNodeIdList]: [],
+          [NodeInputKeyEnum.parallelRunMaxConcurrency]: 1,
+          [NodeInputKeyEnum.parallelRunMaxRetryTimes]: 1
+        },
+        variableState: parentVariableState
+      })
+    );
+
+    expect(parentVariableState.set).toHaveBeenCalledTimes(1);
+    expect(parentVariableState.set).toHaveBeenCalledWith('count', 2);
   });
 });
