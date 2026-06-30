@@ -25,9 +25,10 @@ const DetailLogsModal = dynamic(() => import('./DetailLogs'));
 interface LogListProps {
   filters: LogFiltersType | null;
   onTotalChange?: (total: number) => void;
+  refreshKey?: number;
 }
 
-const LogList: React.FC<LogListProps> = ({ filters, onTotalChange }) => {
+const LogList: React.FC<LogListProps> = ({ filters, onTotalChange, refreshKey }) => {
   const { t } = useTranslation();
   const [detailLogsId, setDetailLogsId] = useState<string>();
   const appId = useContextSelector(AppContext, (v) => v.appId);
@@ -58,7 +59,7 @@ const LogList: React.FC<LogListProps> = ({ filters, onTotalChange }) => {
     defaultPageSize: 20,
     params: params || undefined,
     disabled: !params,
-    refreshDeps: [params]
+    refreshDeps: [params, refreshKey]
   });
 
   // Report total to parent component

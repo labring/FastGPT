@@ -2,7 +2,7 @@
  * @file 对话日志主组件
  * @description 智能客服应用的对话日志管理页面，包含日志列表和优化记录两个子Tab
  */
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { Flex, Box, Button } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { format } from 'date-fns';
@@ -28,6 +28,7 @@ type SubTabType = 'list' | 'optimize';
 const ConversationLogs = () => {
   const { t } = useTranslation();
   const [subTab, setSubTab] = useState<SubTabType>('list');
+  const [refreshKey, setRefreshKey] = useState(0);
   const [dateRange, setDateRange] = useState<DateRangeType>(() => {
     const now = new Date();
     const fromDate = new Date(now);
@@ -47,6 +48,17 @@ const ConversationLogs = () => {
 
   // 日志筛选条件
   const [logFilters, setLogFilters] = useState<LogFiltersType | null>(null);
+
+  // 浏览器标签页切回时自动刷新当前子 tab
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        setRefreshKey((k) => k + 1);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, []);
 
   // 导出相关状态
   const [exportTotal, setExportTotal] = useState<number>(0);
@@ -177,8 +189,8 @@ const ConversationLogs = () => {
     <Flex flexDirection={'column'} h={'full'} bg={'white'} borderRadius={'8px'}>
       <Box px={4}>{SubTabHeader}</Box>
       <Box flex={'1 0 0'} h={0} my={4} bg={'white'} px={4}>
-        {subTab === 'list' && <LogList filters={logFilters} onTotalChange={setExportTotal} />}
-        {subTab === 'optimize' && <OptimizeRecords dateRange={dateRange} />}
+        {subTab === 'list' && <LogList filters={logFilters} onTotalChange={setExportTotal} refreshKey={refreshKey} />}
+        {subTab === 'optimize' && <OptimizeRecords dateRange={dateRange} refreshKey={refreshKey} />}
       </Box>
     </Flex>
   );
