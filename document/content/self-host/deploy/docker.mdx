@@ -133,12 +133,6 @@ bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
 
 执行完成后，终端会输出本次生成的 `root` 登录密码，请妥善保存生成后的 `docker-compose.yml`。后续升级时建议基于该文件调整，不要直接丢失已生成的密码和密钥。
 
-如果需要使用本地已有的 `docker-compose.yml`（例如测试尚未发布到文档站的版本），可以在脚本的部署版本选择中选择 `本地 docker-compose.yml`，然后输入本地文件路径。也可以使用环境变量直接指定：
-
-```bash
-FASTGPT_LOCAL_COMPOSE_PATH=/path/to/docker-compose.yml bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
-```
-
 #### 方法二：手动下载部署
 
 如果需要固定使用某个 `docker-compose.yml` 文件，推荐先手动下载 `docker-compose.yml` 和 `install.sh`，再通过 `install.sh` 的本地 compose 模式生成最终配置。这样仍然可以复用脚本里的随机密码、S3/MCP 地址写入、Docker socket 检测等能力。

@@ -78,6 +78,10 @@ function stripFragment(url) {
   return url.split('#')[0].split('?')[0];
 }
 
+function isSkippedAttachment(target) {
+  return /^\/deploy\/.+\.ya?ml$/i.test(target);
+}
+
 function normalizeRoutePath(p) {
   return p.replace(/\/+$/, '').replace(/\.(en\.)?(mdx|md)$/i, '');
 }
@@ -116,6 +120,7 @@ function isValidRef(url, mdxPath) {
 
   // 绝对路径
   if (target.startsWith('/')) {
+    if (isSkippedAttachment(target)) return { ok: true };
     if (target.startsWith('/imgs/')) {
       const p = path.join(PUBLIC_DIR, target);
       return fileExists(p) ? { ok: true } : { ok: false, expected: p };

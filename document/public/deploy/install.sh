@@ -321,20 +321,7 @@ get_version_label() {
     fi
 }
 
-# ========== 1. 选择镜像源 ==========
-radio_select "请选择镜像源 (↑↓ 选择, 回车确认):" "阿里云 (中国大陆)" "GitHub (全球)"
-case $RADIO_RESULT in
-    1)
-        REGION="global"
-        BASE_URL="https://doc.fastgpt.io/deploy"
-        ;;
-    *)
-        REGION="cn"
-        BASE_URL="https://doc.fastgpt.cn/deploy"
-        ;;
-esac
-
-# ========== 2. 选择部署版本 ==========
+# ========== 1. 选择部署版本 ==========
 if [ ${#DEPLOY_VERSIONS[@]} -eq 0 ]; then
     echo "错误: 未配置部署版本"
     exit 1
@@ -380,6 +367,21 @@ else
     fi
 fi
 
+# ========== 2. 选择镜像源 ==========
+if [ "$DEPLOY_VERSION" != "$LOCAL_DEPLOY_VERSION" ]; then
+    radio_select "请选择镜像源 (↑↓ 选择, 回车确认):" "阿里云 (中国大陆)" "GitHub (全球)"
+    case $RADIO_RESULT in
+        1)
+            REGION="global"
+            BASE_URL="https://doc.fastgpt.io/deploy"
+            ;;
+        *)
+            REGION="cn"
+            BASE_URL="https://doc.fastgpt.cn/deploy"
+            ;;
+    esac
+fi
+
 # ========== 3. 选择向量数据库 ==========
 if [ "$DEPLOY_VERSION" == "$LOCAL_DEPLOY_VERSION" ]; then
     VECTOR="local"
@@ -394,7 +396,14 @@ else
     esac
 fi
 
-# ========== 4. 检测可用 IP ==========
+# ========== 4. 选择是否自动生成密钥 ==========
+radio_select "是否自动生成登录密码、服务 Token、应用密钥和组件密码? (↑↓ 选择, 回车确认):" "自动生成 (推荐)" "不自动生成"
+case $RADIO_RESULT in
+    1) AUTO_GENERATE_CREDENTIALS=false ;;
+    *) AUTO_GENERATE_CREDENTIALS=true ;;
+esac
+
+# ========== 5. 检测可用 IP ==========
 IP_LIST=()
 PRIMARY_IP=""
 
@@ -472,12 +481,12 @@ select_address() {
     fi
 }
 
-# ========== 5. 选择 S3 访问地址 (端口 9000) ==========
+# ========== 6. 选择 S3 访问地址 (端口 9000) ==========
 select_address "请选择 S3 访问地址 - 客户端和容器均需可访问 (↑↓ 选择, 回车确认, 通常默认第一个即可):" 9000
 S3_ADDR="$SELECTED_ADDR"
 S3_CUSTOM=$SELECTED_CUSTOM
 
-# ========== 6. 选择 SSE MCP 访问地址 (端口 3003) ==========
+# ========== 7. 选择 SSE MCP 访问地址 (端口 3003) ==========
 select_address "请选择 SSE MCP 访问地址 - 客户端和容器均需可访问 (↑↓ 选择, 回车确认, 通常默认第一个即可):" 3003
 MCP_ADDR="$SELECTED_ADDR"
 MCP_CUSTOM=$SELECTED_CUSTOM
@@ -511,6 +520,11 @@ else
     MCP_DISPLAY="未设置"
 fi
 
+CREDENTIALS_LABEL="自动生成"
+if [ "$AUTO_GENERATE_CREDENTIALS" = false ]; then
+    CREDENTIALS_LABEL="不自动生成"
+fi
+
 echo ""
 echo "=============================="
 echo "  部署版本:     $DEPLOY_VERSION_LABEL"
@@ -522,6 +536,7 @@ else
 fi
 echo "  S3 地址:      $S3_DISPLAY"
 echo "  MCP 地址:     $MCP_DISPLAY"
+echo "  密钥处理:     $CREDENTIALS_LABEL"
 echo "=============================="
 echo ""
 read -p "确认以上配置? (y/n) [y]: " confirm
@@ -571,28 +586,61 @@ else
     echo "已下载 docker-compose.yml"
 fi
 
-CONFIG_URL="${BASE_URL}/config/config.json"
-
 USES_CONFIG_JSON=false
 if LC_ALL=C grep -q -- "./config.json:/app/data/config.json" docker-compose.yml; then
     USES_CONFIG_JSON=true
 
-    # 下载旧版本 docker-compose 仍挂载的 config.json。
     CONFIG_FILE="config.json.tmp"
-    curl -fsSL "$CONFIG_URL" -o "$CONFIG_FILE"
-    if [ $? -ne 0 ]; then
-        echo "错误: 下载 config.json 失败: $CONFIG_URL"
-        rm -f "$CONFIG_FILE"
-        exit 1
+    if [ "$DEPLOY_VERSION" == "$LOCAL_DEPLOY_VERSION" ]; then
+        LOCAL_CONFIG_PATH="$(dirname "$LOCAL_COMPOSE_PATH")/config.json"
+        if [ -f "$LOCAL_CONFIG_PATH" ]; then
+            cp "$LOCAL_CONFIG_PATH" "$CONFIG_FILE"
+            if [ $? -ne 0 ]; then
+                echo "错误: 复制本地 config.json 失败: $LOCAL_CONFIG_PATH"
+                rm -f "$CONFIG_FILE"
+                exit 1
+            fi
+            validate_config_file "$CONFIG_FILE" "$LOCAL_CONFIG_PATH" true
+            mv "$CONFIG_FILE" config.json
+            echo "已复制 config.json"
+        else
+            CONFIG_URL="https://doc.fastgpt.cn/deploy/config/config.json"
+            curl -fsSL "$CONFIG_URL" -o "$CONFIG_FILE"
+            if [ $? -ne 0 ]; then
+                echo "错误: 下载 config.json 失败: $CONFIG_URL"
+                rm -f "$CONFIG_FILE"
+                exit 1
+            fi
+            validate_config_file "$CONFIG_FILE" "$CONFIG_URL" true
+            mv "$CONFIG_FILE" config.json
+            echo "已下载 config.json"
+        fi
+    else
+        CONFIG_URL="${BASE_URL}/config/config.json"
+        curl -fsSL "$CONFIG_URL" -o "$CONFIG_FILE"
+        if [ $? -ne 0 ]; then
+            echo "错误: 下载 config.json 失败: $CONFIG_URL"
+            rm -f "$CONFIG_FILE"
+            exit 1
+        fi
+        validate_config_file "$CONFIG_FILE" "$CONFIG_URL" true
+        mv "$CONFIG_FILE" config.json
+        echo "已下载 config.json"
     fi
-    validate_config_file "$CONFIG_FILE" "$CONFIG_URL" true
-    mv "$CONFIG_FILE" config.json
-    echo "已下载 config.json"
 fi
 
 # ========== 随机化默认密钥 ==========
-randomize_compose_credentials
-echo "已随机生成 docker-compose.yml 中的登录密码、服务 Token、应用密钥和组件密码"
+if [ "$AUTO_GENERATE_CREDENTIALS" = true ]; then
+    randomize_compose_credentials
+    echo "已随机生成 docker-compose.yml 中的登录密码、服务 Token、应用密钥和组件密码"
+else
+    if LC_ALL=C grep -Eq "x-default-root-psw: &x-default-root-psw ['\"]1234['\"]" docker-compose.yml; then
+        ROOT_LOGIN_PASSWORD="1234"
+    else
+        ROOT_LOGIN_PASSWORD="请查看 docker-compose.yml 中 DEFAULT_ROOT_PSW"
+    fi
+    echo "已跳过自动生成密钥，请确认 docker-compose.yml 中的默认凭证已手动修改"
+fi
 
 # ========== 替换 S3 访问地址 ==========
 if [ -n "$S3_ADDR" ]; then
@@ -747,8 +795,13 @@ fi
 # ========== 完成 ==========
 echo ""
 echo "配置下载成功! 后续操作:"
-echo "  注意: docker-compose.yml 已随机生成登录密码、服务 Token、应用密钥和组件密码。"
-echo "        请妥善保存该文件，后续升级时不要直接丢失这些凭证。"
+if [ "$AUTO_GENERATE_CREDENTIALS" = true ]; then
+    echo "  注意: docker-compose.yml 已随机生成登录密码、服务 Token、应用密钥和组件密码。"
+    echo "        请妥善保存该文件，后续升级时不要直接丢失这些凭证。"
+else
+    echo "  注意: docker-compose.yml 未自动生成登录密码、服务 Token、应用密钥和组件密码。"
+    echo "        生产环境启动前请手动修改默认凭证。"
+fi
 if LC_ALL=C grep -q "opensandbox-agent-sandbox-image" docker-compose.yml; then
     echo "  1. 预热沙盒:   docker compose --profile prepull pull opensandbox-agent-sandbox-image opensandbox-execd-image opensandbox-egress-image"
     echo "  2. 启动服务:   docker compose up -d"
