@@ -11,9 +11,6 @@ vi.mock(import('@/service/common/system'), async (importOriginal) => {
     getSystemVersion: async () => {
       return '0.0.0';
     },
-    readConfigData: async () => {
-      return readFileSync('projects/app/data/config.json', 'utf-8');
-    },
     initSystemConfig: async () => {
       // read env from projects/app/.env
       const str = readFileSync('projects/app/.env.local', 'utf-8');

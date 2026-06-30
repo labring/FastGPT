@@ -17,6 +17,9 @@ const SYSTEM_STRING_LENGTH_UNIT = 1_000_000;
 const LogLevelSchema = z.enum(['trace', 'debug', 'info', 'warning', 'error', 'fatal']);
 const StorageVendorSchema = z.enum(['minio', 'aws-s3', 'cos', 'oss']);
 const StorageCosProtocolSchema = z.enum(['https:', 'http:']);
+const AgentSandboxProxyUrlSchema = z.string().refine((url) => /^wss?:\/\//.test(url), {
+  message: 'AGENT_SANDBOX_PROXY_URL must start with ws:// or wss://'
+});
 const TEST_INVOKE_TOKEN_SECRET = 'fastgpt_test_invoke_token_secret_32';
 
 /**
@@ -74,6 +77,7 @@ export const serviceEnv = createEnv({
       .string()
       .min(32, 'AGENT_SANDBOX_PROXY_SECRET must be at least 32 characters')
       .optional(),
+    AGENT_SANDBOX_PROXY_URL: AgentSandboxProxyUrlSchema.optional(),
     // Agent sandbox
     AGENT_SANDBOX_PROVIDER: z.enum(['sealosdevbox', 'opensandbox', 'e2b']).optional(),
     IDE_AGENT_BIND_ADDR: z.string().default('0.0.0.0:1318'),
@@ -117,6 +121,26 @@ export const serviceEnv = createEnv({
     AGENT_SANDBOX_NPM_REGISTRY: z.string().optional(),
     AGENT_SANDBOX_PYPI_INDEX_URL: z.string().optional(),
 
+    // PDF 增强解析
+    CUSTOM_PDF_PARSE_URL: UrlSchema.optional().meta({
+      description: '自定义 PDF 解析服务地址'
+    }),
+    CUSTOM_PDF_PARSE_KEY: z.string().optional().meta({
+      description: '自定义 PDF 解析服务密钥'
+    }),
+    DOC2X_KEY: z.string().optional().meta({
+      description: 'Doc2x PDF 解析服务密钥'
+    }),
+    TEXTIN_APP_ID: z.string().optional().meta({
+      description: '合合信息 Textin 服务 App ID'
+    }),
+    TEXTIN_SECRET_CODE: z.string().optional().meta({
+      description: '合合信息 Textin 服务 Secret Code'
+    }),
+    CUSTOM_PDF_PARSE_PRICE: NumSchema.default(0).meta({
+      description: 'PDF 增强解析单价'
+    }),
+
     // ==================== 数据库与缓存 ====================
     // Redisg
     REDIS_URL: z.string().default('redis://default:mypassword@localhost:6379'),
@@ -151,6 +175,12 @@ export const serviceEnv = createEnv({
     MILVUS_ADDRESS: z.string().optional().meta({ description: 'Milvus 向量库连接参数' }),
     MILVUS_TOKEN: z.string().optional().meta({ description: 'Milvus 向量库Token' }),
     OPENGAUSS_URL: z.string().optional().meta({ description: 'openGauss 向量库连接参数' }),
+    HNSW_EF_SEARCH: IntSchema.min(1).default(100).meta({
+      description: '向量检索 hnsw ef_search 参数，仅对 PG / OB / OpenGauss 生效'
+    }),
+    HNSW_MAX_SCAN_TUPLES: IntSchema.min(1).default(100000).meta({
+      description: '向量检索最大扫描数据量，仅对 PG 生效'
+    }),
 
     // 对象存储
     STORAGE_VENDOR: StorageVendorSchema.default('minio'),
@@ -223,6 +253,9 @@ export const serviceEnv = createEnv({
       .string()
       .optional()
       .meta({ description: '自定义跨域；不配置时默认允许所有跨域（逗号分割）' }),
+    FILE_URL_WHITELIST: z.string().optional().meta({
+      description: '文件 URL 白名单，逗号或空白分隔'
+    }),
     MULTIPLE_DATA_TO_BASE64: BoolSchema.default(true).meta({
       description: '是否强制将图片、音频、视频转成 base64 传递给模型'
     }),
@@ -287,6 +320,21 @@ export const serviceEnv = createEnv({
     EVAL_CONCURRENCY: IntSchema.default(3).meta({
       description: '评估任务 worker 并发数'
     }),
+    DATASET_PARSE_MAX_PROCESS: IntSchema.min(1).default(10).meta({
+      description: '知识库文件解析最大并发数'
+    }),
+    VECTOR_MAX_PROCESS: IntSchema.min(1).default(10).meta({
+      description: '向量训练最大并发数'
+    }),
+    QA_MAX_PROCESS: IntSchema.min(1).default(10).meta({
+      description: '问答拆分最大并发数'
+    }),
+    VLM_MAX_PROCESS: IntSchema.min(1).default(10).meta({
+      description: '图片理解模型最大处理并发数'
+    }),
+    WORKFLOW_HTTP_IGNORE_HTTPS_CERT: BoolSchema.default(false).meta({
+      description: '工作流 HTTP 节点是否忽略 HTTPS 证书校验'
+    }),
     // ==================== 资源限制 ====================
     SERVICE_REQUEST_MAX_CONTENT_LENGTH: IntSchema.default(10).meta({
       description: '服务器接收请求的最大大小（MB）'
@@ -334,6 +382,14 @@ if (serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY > serviceEnv.WORKFLOW_MAX_LOOP_
   throw new Error(
     `Invalid environment configuration: WORKFLOW_PARALLEL_MAX_CONCURRENCY (${serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY}) must not exceed WORKFLOW_MAX_LOOP_TIMES (${serviceEnv.WORKFLOW_MAX_LOOP_TIMES})`
   );
+}
+
+if (!isPhaseProductionBuild && hasAgentSandboxConfigFromEnv(process.env)) {
+  if (!serviceEnv.AGENT_SANDBOX_PROXY_URL) {
+    throw new Error(
+      'AGENT_SANDBOX_PROXY_URL is required when Agent Sandbox is enabled. Please configure a browser-accessible ws:// or wss:// agent-sandbox-proxy URL.'
+    );
+  }
 }
 
 export const SYSTEM_MAX_STRING_LENGTH =

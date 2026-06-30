@@ -273,7 +273,6 @@ if [ "$REGION" == "global" ] && [ "$VECTOR" == "zilliz" ]; then
 fi
 
 YML_URL="${BASE_URL}/docker/${DEPLOY_VERSION}/${REGION}/docker-compose.${VECTOR_FILE}.yml"
-
 CONFIG_URL="${BASE_URL}/config/config.json"
 
 # 下载 docker-compose YAML
@@ -285,13 +284,18 @@ fi
 mv "docker-compose.${VECTOR_FILE}.yml" docker-compose.yml
 echo "已下载 docker-compose.yml"
 
-# 下载 config.json
-curl -fsSL -O "$CONFIG_URL"
-if [ $? -ne 0 ]; then
-    echo "错误: 下载 config.json 失败: $CONFIG_URL"
-    exit 1
+USES_CONFIG_JSON=false
+if LC_ALL=C grep -q -- "./config.json:/app/data/config.json" docker-compose.yml; then
+    USES_CONFIG_JSON=true
+
+    # 下载旧版本 docker-compose 仍挂载的 config.json。
+    curl -fsSL -O "$CONFIG_URL"
+    if [ $? -ne 0 ]; then
+        echo "错误: 下载 config.json 失败: $CONFIG_URL"
+        exit 1
+    fi
+    echo "已下载 config.json"
 fi
-echo "已下载 config.json"
 
 # ========== 替换 S3 访问地址 ==========
 if [ -n "$S3_ADDR" ]; then
@@ -354,19 +358,27 @@ if [ -n "$MCP_ADDR" ]; then
         MCP_ENDPOINT="http://$MCP_ADDR:3003"
     fi
 
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        sed -i '' "s|\"mcpServerProxyEndpoint\": \"\"|\"mcpServerProxyEndpoint\": \"$MCP_ENDPOINT\"|g" config.json
+    if $USES_CONFIG_JSON; then
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' "s|\"mcpServerProxyEndpoint\": \"\"|\"mcpServerProxyEndpoint\": \"$MCP_ENDPOINT\"|g" config.json
+        else
+            sed -i "s|\"mcpServerProxyEndpoint\": \"\"|\"mcpServerProxyEndpoint\": \"$MCP_ENDPOINT\"|g" config.json
+        fi
     else
-        sed -i "s|\"mcpServerProxyEndpoint\": \"\"|\"mcpServerProxyEndpoint\": \"$MCP_ENDPOINT\"|g" config.json
+        if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' "s|^      MCP_SERVER_PROXY_ENDPOINT:.*|      MCP_SERVER_PROXY_ENDPOINT: $MCP_ENDPOINT|g" docker-compose.yml
+        else
+            sed -i "s|^      MCP_SERVER_PROXY_ENDPOINT:.*|      MCP_SERVER_PROXY_ENDPOINT: $MCP_ENDPOINT|g" docker-compose.yml
+        fi
     fi
 
     if [ $? -eq 0 ]; then
         echo "已更新 MCP 访问地址为: $MCP_ENDPOINT"
     else
-        echo "警告: 替换 MCP 地址失败，请手动编辑 config.json 中的 mcpServerProxyEndpoint"
+        echo "警告: 替换 MCP 地址失败，请手动编辑 docker-compose.yml 中的 MCP_SERVER_PROXY_ENDPOINT 或 config.json 中的 mcpServerProxyEndpoint"
     fi
 else
-    echo "警告: 未设置 MCP 地址，请手动编辑 config.json 中的 mcpServerProxyEndpoint"
+    echo "警告: 未设置 MCP 地址，请手动编辑 docker-compose.yml 中的 MCP_SERVER_PROXY_ENDPOINT 或 config.json 中的 mcpServerProxyEndpoint"
 fi
 
 if [ "$DEPLOY_VERSION" != "main" ]; then

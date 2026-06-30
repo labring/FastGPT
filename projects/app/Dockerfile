@@ -91,7 +91,6 @@ COPY --from=maindeps /app/node_modules/@zilliz/milvus2-sdk-node ./node_modules/@
 # copy package.json to version file
 COPY --from=builder /app/projects/app/package.json ./package.json
 # copy config and data files (use --chown to avoid extra layer from chown)
-COPY --chown=nextjs:nodejs ./projects/app/data/config.json /app/data/config.json
 COPY --chown=nextjs:nodejs ./projects/app/data/test.mp3 /app/data/test.mp3
 COPY --chown=nextjs:nodejs ./projects/app/data/GeoLite2-City.mmdb /app/data/GeoLite2-City.mmdb
 

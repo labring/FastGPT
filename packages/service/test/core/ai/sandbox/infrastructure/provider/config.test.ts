@@ -13,9 +13,10 @@ const originalEnv = {
   AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO,
   AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG,
   AGENT_SANDBOX_DISK_MB: process.env.AGENT_SANDBOX_DISK_MB,
+  AGENT_SANDBOX_PROXY_SECRET: process.env.AGENT_SANDBOX_PROXY_SECRET,
+  AGENT_SANDBOX_PROXY_URL: process.env.AGENT_SANDBOX_PROXY_URL
   AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES: process.env.AGENT_SANDBOX_WS_MAX_MESSAGE_BYTES,
   AGENT_SANDBOX_WS_MAX_FRAME_BYTES: process.env.AGENT_SANDBOX_WS_MAX_FRAME_BYTES,
-  AGENT_SANDBOX_PROXY_SECRET: process.env.AGENT_SANDBOX_PROXY_SECRET
 };
 
 const loadSandboxConfigModule = async () => {
@@ -41,6 +42,7 @@ describe('sandbox provider config', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', 'test-secret-123456789012345678901234');
+    vi.stubEnv('AGENT_SANDBOX_PROXY_URL', 'ws://localhost:1006');
   });
 
   afterEach(() => {
@@ -71,6 +73,7 @@ describe('sandbox provider config', () => {
     );
     vi.stubEnv('AGENT_SANDBOX_WS_MAX_FRAME_BYTES', originalEnv.AGENT_SANDBOX_WS_MAX_FRAME_BYTES);
     vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', originalEnv.AGENT_SANDBOX_PROXY_SECRET);
+    vi.stubEnv('AGENT_SANDBOX_PROXY_URL', originalEnv.AGENT_SANDBOX_PROXY_URL);
     vi.unstubAllGlobals();
   });
 
