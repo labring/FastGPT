@@ -10,7 +10,10 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
+import {
+  parseParentIdInMongo,
+  getAllDescendantIds
+} from '@fastgpt/global/common/parentFolder/utils';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { authSkill } from '@fastgpt/service/support/permission/agentSkill/auth';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
@@ -90,7 +93,7 @@ async function handler(req: ApiRequestProps<GetSkillListBody>) {
       myOrgSet.has(String(item.orgId))
   );
 
-  const findSkillQuery = (() => {
+  const findSkillQuery = await (async () => {
     // Filter skills by permission, if not owner, only get skills that I have permission to access
     const idList = { _id: { $in: myRoles.map((item) => item.resourceId) } };
     const skillPerQuery = teamPer.isOwner
@@ -121,18 +124,35 @@ async function handler(req: ApiRequestProps<GetSkillListBody>) {
       : {};
 
     if (searchKey) {
-      const data = {
-        ...skillPerQuery,
+      const query: any = {
         ...teamIdQuery,
         deleteTime: null,
-        ...searchMatch,
         ...sourceQuery,
         ...(category ? { category: { $in: [category] } } : {}),
         ...(type ? { type } : {})
       };
-      // @ts-ignore
-      delete data.parentId;
-      return data;
+
+      // 搜索时限定范围到当前文件夹及其所有子孙文件夹
+      if (parentId) {
+        const allIds = await getAllDescendantIds(
+          (parentIds) =>
+            MongoAgentSkills.find(
+              { parentId: { $in: parentIds }, ...teamIdQuery, deleteTime: null },
+              '_id'
+            ).lean(),
+          parentId
+        );
+        query.parentId = { $in: allIds };
+      }
+
+      // 使用 $and 合并权限 $or 和搜索 $or，避免后者覆盖前者
+      if (skillPerQuery.$or) {
+        query.$and = [{ $or: searchMatch.$or! }, { $or: skillPerQuery.$or }];
+      } else {
+        query.$or = searchMatch.$or;
+      }
+
+      return query;
     }
 
     return {
