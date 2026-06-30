@@ -81,8 +81,22 @@ describe('skill/import invalid package', () => {
 
     const skill = await MongoAgentSkills.findOne({ teamId: user.teamId }).lean();
     expect(skill?.name).toBe('single-skill');
+    expect(skill?.currentRuntimeSkills).toEqual([
+      {
+        name: 'single',
+        description: '',
+        path: 'skills/single/SKILL.md'
+      }
+    ]);
     const version = await MongoAgentSkillsVersion.findOne({ skillId: skill?._id }).lean();
     expect(version?.storageKey).toBeTruthy();
+    expect(version?.runtimeSkills).toEqual([
+      {
+        name: 'single',
+        description: '',
+        path: 'skills/single/SKILL.md'
+      }
+    ]);
 
     const storedZip = await downloadSkillPackage({ storageKey: version!.storageKey });
     const stored = await JSZip.loadAsync(storedZip);

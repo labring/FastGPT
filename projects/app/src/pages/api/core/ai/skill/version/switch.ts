@@ -40,6 +40,7 @@ async function handler(
       {
         $set: {
           currentVersionId: targetVersion._id,
+          currentRuntimeSkills: targetVersion.runtimeSkills ?? [],
           updateTime: new Date()
         }
       },

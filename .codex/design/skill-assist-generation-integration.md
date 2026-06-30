@@ -419,33 +419,32 @@ runtimeSkills: [
 
 2. `MongoAgentSkills.currentRuntimeSkills`
    - 建议存。
-   - 缓存当前版本的子 Skill 列表。
+   - 缓存 `currentVersionId` 指向版本的子 Skill 列表。
    - 辅助生成和列表查询可以直接读主表，避免每次 join 当前版本表。
+
+这里的“最新版本信息”应以当前生效版本为准，而不是按 `createdAt` 最大的版本为准。
+
+现有版本模型中：
+
+- `MongoAgentSkills.currentVersionId` 是当前生效版本指针。
+- `getCurrentVersion(skillId)` 先读取主表 `currentVersionId`，再查询对应的 `MongoAgentSkillsVersion`。
+- 保存发布新版本时，`saveDeploySkillFromSandbox()` 会通过 `updateCurrentVersion(skillId, versionId)` 把新版本切为当前版本。
+- 版本列表可以按 `createdAt` 倒序展示历史版本，但用户也可以通过版本切换把历史版本重新设为当前版本。
+
+因此第二阶段实现必须保证：
+
+- 新建版本时，把解析出的子 Skill 元数据写入 `MongoAgentSkillsVersion.runtimeSkills`。
+- 当前版本发生变化时，把目标版本的 `runtimeSkills` 同步写入 `MongoAgentSkills.currentRuntimeSkills`。
+- 辅助生成读取 `MongoAgentSkills.currentRuntimeSkills`，拿到的是当前生效版本的子 Skill 信息。
+- `version/switch.ts` 切换历史版本时，必须同步刷新 `currentRuntimeSkills`，否则会出现 `currentVersionId` 已切换但辅助生成仍展示旧子 Skill 的不一致问题。
 
 ### 平台 Skill name/description
 
 平台 Skill `name` 不被子 Skill 覆盖，仍然是 Skill 应用名。
 
-平台 Skill `description` 可以在发布时确定性更新为子 Skill 描述拼接后的短文本，但必须控制在 500 字符内。
+平台 Skill `description` 不由子 Skill 描述自动填充或覆盖。导入时用户填写什么就写入什么；用户未填写时保持空字符串。
 
-建议规则：
-
-```ts
-const parts = runtimeSkills.map((item) => `${item.name}: ${item.description}`);
-const description = joinAndTruncate(parts, 500);
-```
-
-超长时使用确定性截断，不调用 LLM，例如：
-
-```text
-data-cleaning: 清洗表格数据；chart-reporting: 生成图表报告；...等 6 个子 Skill
-```
-
-如果用户手动维护了平台描述，是否发布时自动覆盖需要产品确认。建议第一版采用：
-
-- 创建/导入时平台描述为空：自动写入拼接描述。
-- 保存发布已有 Skill 时：只更新 `currentRuntimeSkills`，不自动覆盖用户手写 `description`。
-- 如需覆盖，后续在发布弹窗中增加开关。
+原因是平台描述属于 Skill 应用级元信息，子 Skill 描述属于运行时能力元信息。第二阶段只把子 Skill 信息写入 `runtimeSkills` / `currentRuntimeSkills`，供辅助生成展示和匹配使用，不反向改写平台 Skill 主表字段。
 
 ### 解析时机
 
@@ -490,17 +489,13 @@ data-cleaning: 清洗表格数据；chart-reporting: 生成图表报告；...等
 
 ### Prompt 长度控制
 
-如果某个 Skill 应用包含很多子 Skill，资源列表应限制展示长度：
+第二阶段资源列表完整展示当前版本里的所有子 Skill：
 
-- 单个 Skill 最多展示前 10 个子 Skill。
-- 每个子 Skill 描述按固定字符数截断。
-- 超出时追加：
+- 不限制单个 Skill 展示的子 Skill 数量。
+- 不截断子 Skill 描述。
+- 不追加“还有 N 个子 Skill”这类摘要提示。
 
-```md
-  - ...还有 N 个子 Skill
-```
-
-这样避免辅助生成 prompt 被少数大型 Skill 包撑爆。
+如果后续出现 prompt 过长问题，应先基于真实包规模和模型上下文窗口做数据评估，再单独设计压缩策略；第二阶段不提前加入展示限制。
 
 ## 数据迁移与兼容
 
@@ -534,7 +529,7 @@ data-cleaning: 清洗表格数据；chart-reporting: 生成图表报告；...等
 - 重复 `name` 发布失败。
 - 缺少 `name` 发布失败。
 - 无 `SKILL.md` 发布失败。
-- `description` 拼接不超过 500 字符。
+- 导入 Skill 时不使用子 Skill 描述自动填充平台 `description`。
 - 保存发布新版本后：
   - `MongoAgentSkillsVersion.runtimeSkills` 写入。
   - `MongoAgentSkills.currentRuntimeSkills` 更新。
@@ -568,6 +563,6 @@ data-cleaning: 清洗表格数据；chart-reporting: 生成图表报告；...等
 - [ ] 导入包时写入 runtime skill metadata。
 - [ ] 复制 Skill 时复制 runtime skill metadata。
 - [ ] 保存发布 sandbox 包时写入 runtime skill metadata。
-- [ ] 实现平台 description 的确定性拼接与 500 字符限制。
-- [ ] 辅助生成资源列表展示子 Skill 详情，并做数量和长度截断。
+- [ ] 版本切换时同步刷新主表 `currentRuntimeSkills`。
+- [ ] 辅助生成资源列表完整展示当前版本的全部子 Skill 详情。
 - [ ] 补充发布、导入、复制、辅助生成资源列表测试。

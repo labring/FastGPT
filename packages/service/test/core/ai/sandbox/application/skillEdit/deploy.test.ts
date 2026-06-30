@@ -12,7 +12,8 @@ const mocks = vi.hoisted(() => ({
   updateSandboxInstanceRecordBySandboxId: vi.fn(),
   updateCurrentVersion: vi.fn(),
   uploadSkillPackage: vi.fn(),
-  validateZipStructure: vi.fn()
+  validateZipStructure: vi.fn(),
+  extractRuntimeSkillsFromPackage: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/common/mongo/sessionRun', () => ({
@@ -31,6 +32,7 @@ vi.mock('@fastgpt/service/core/ai/skill/package', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@fastgpt/service/core/ai/skill/package')>();
   return {
     ...actual,
+    extractRuntimeSkillsFromPackage: mocks.extractRuntimeSkillsFromPackage,
     removeSkillPackageTTL: mocks.removeSkillPackageTTL,
     uploadSkillPackage: mocks.uploadSkillPackage,
     validateZipStructure: mocks.validateZipStructure
@@ -90,6 +92,13 @@ describe('saveDeploySkillFromSandbox', () => {
     });
     mocks.packageSkillInSandbox.mockResolvedValue(Buffer.from('mock zip'));
     mocks.validateZipStructure.mockResolvedValue({ valid: true });
+    mocks.extractRuntimeSkillsFromPackage.mockResolvedValue([
+      {
+        name: 'runtime-skill',
+        description: 'Runtime skill',
+        path: 'skills/runtime-skill/SKILL.md'
+      }
+    ]);
     mocks.uploadSkillPackage.mockResolvedValue({
       key: 'agent-skills/team-1/skill-1/version-1.zip'
     });
@@ -149,6 +158,30 @@ describe('saveDeploySkillFromSandbox', () => {
           teamId: 'team-1'
         })
       })
+    );
+    expect(mocks.updateCurrentVersion).toHaveBeenCalledWith(
+      'skill-1',
+      expect.any(String),
+      [
+        {
+          name: 'runtime-skill',
+          description: 'Runtime skill',
+          path: 'skills/runtime-skill/SKILL.md'
+        }
+      ],
+      { id: 'mock-session' }
+    );
+    expect(mocks.createVersion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runtimeSkills: [
+          {
+            name: 'runtime-skill',
+            description: 'Runtime skill',
+            path: 'skills/runtime-skill/SKILL.md'
+          }
+        ]
+      }),
+      { id: 'mock-session' }
     );
   });
 
