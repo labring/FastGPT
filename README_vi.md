@@ -68,7 +68,7 @@ Nếu bạn gặp vấn đề, bạn có thể [xem hướng dẫn triển khai 
 | ![Demo](./.github/imgs/intro3.png) | ![Demo](./.github/imgs/intro4.png) |
 
 `1` Khả Năng Điều Phối Ứng Dụng
-   - [x] Chế độ Agent lập kế hoạch.
+   - [x] Điều phối Agent Skill.
    - [x] Workflow hội thoại, workflow plugin, bao gồm các node RPA cơ bản.
    - [x] Tương tác người dùng
    - [x] MCP hai chiều
@@ -89,25 +89,19 @@ Nếu bạn gặp vấn đề, bạn có thể [xem hướng dẫn triển khai 
    - [x] Hỗ trợ txt, md, html, pdf, docx, pptx, csv, xlsx (thêm qua PR), hỗ trợ đọc URL và nhập hàng loạt CSV
    - [x] Tìm kiếm kết hợp & xếp hạng lại
    - [x] Cơ sở kiến thức API
-   - [ ] Hot-swapping module RAG
+   - [ ] 
 
-`4` Giao Diện OpenAPI
-   - [x] Giao diện completions (tương thích với chế độ chat GPT)
-   - [x] CRUD cơ sở kiến thức
-   - [x] CRUD hội thoại
-   - [x] Giao diện OpenAPI tự động
+`4` Khả Năng Plugin
+   - [x] Hot update tool hệ thống
+   - [ ] Hot update module RAG
+   - [ ] Hot update Agent-loop
+   - [ ] Plugin do AI tạo theo thời gian thực
 
 `5` Khả Năng Vận Hành
    - [x] Chia sẻ không cần đăng nhập
    - [x] Nhúng Iframe một cú nhấp chuột
    - [x] Xem lại nhật ký hội thoại tập trung với chú thích dữ liệu
    - [x] Nhật ký vận hành ứng dụng
-
-`6` Khác
-   - [x] Cấu hình mô hình trực quan.
-   - [x] Hỗ trợ nhập liệu và xuất giọng nói (có thể cấu hình)
-   - [x] Gợi ý nhập liệu mờ
-   - [x] Chợ template
 
 <a href="#readme">
     <img src="https://img.shields.io/badge/-Về_Đầu_Trang-7d09f1.svg" alt="#" align="right">
@@ -116,7 +110,7 @@ Nếu bạn gặp vấn đề, bạn có thể [xem hướng dẫn triển khai 
 ## 💪 Dự Án & Liên Kết Của Chúng Tôi
 
 - [Bắt Đầu Phát Triển Địa Phương](https://doc.fastgpt.io/self-host/dev/)
-- [Tài Liệu OpenAPI](https://doc.fastgpt.io/openapi/intro)
+- [Tài Liệu OpenAPI](https://cloud.fastgpt.io/apidoc/systemopenapi)
 - [FastGPT-plugin](https://github.com/labring/fastgpt-plugin)
 - [AI Proxy: Dịch Vụ Cân Bằng Tải Tổng Hợp Mô Hình](https://github.com/labring/aiproxy)
 - [Sealos: Triển Khai Nhanh Ứng Dụng Cụm](https://github.com/labring/sealos)
@@ -129,7 +123,6 @@ Nếu bạn gặp vấn đề, bạn có thể [xem hướng dẫn triển khai 
 
 - [AI Proxy: Dịch Vụ Tổng Hợp Mô Hình Lớn](https://sealos.run/aiproxy/?k=fastgpt-github/)
 - [SiliconCloud - Nền Tảng Trải Nghiệm Mô Hình Nguồn Mở Trực Tuyến](https://cloud.siliconflow.cn/i/TR9Ym0c4)
-- [PPIO: Gọi API Mô Hình Nguồn Mở Tiết Kiệm và GPU Container](https://ppinfra.com/user/register?invited_by=VITYVU&utm_source=github_fastgpt)
 
 <a href="#readme">
     <img src="https://img.shields.io/badge/-Về_Đầu_Trang-7d09f1.svg" alt="#" align="right">

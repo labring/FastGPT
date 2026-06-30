@@ -191,9 +191,9 @@ const DetailLogsModal = ({
         {/* Chat container */}
         <Flex flex={'1 0 0'} h={0} flexDirection={'column'}>
           <Flex flex={'1 0 0'} h={0}>
-            <Box flex={'1 0 0'} h={'100%'} overflow={'auto'}>
+            <Box flex={'1 0 0'} h={'100%'} minH={0} overflow={isPlugin ? 'hidden' : 'auto'}>
               {isPlugin ? (
-                <Box px={5} py={2}>
+                <Box px={5} py={2} h={'100%'} minH={0} display={'flex'} flexDirection={'column'}>
                   <PluginRunBox appId={appId} chatId={chatId} />
                 </Box>
               ) : (
@@ -240,32 +240,33 @@ const DetailLogsModal = ({
             )}
           </Flex>
 
-          {/* Feedback filter bar - commented out, moved to Render component */}
-          <Flex
-            bg="white"
-            mx={6}
-            py={6}
-            h={'85px'}
-            minH={'85px'}
-            flexShrink={0}
-            borderTop="1px solid"
-            borderColor="myGray.200"
-          >
-            <DetailLogsModalFeedbackTypeFilter
-              feedbackType={feedbackType}
-              setFeedbackType={setFeedbackType}
-              unreadOnly={unreadOnly}
-              setUnreadOnly={setUnreadOnly}
-              appId={appId}
-              chatId={chatId}
-              currentRecordId={feedbackRecordId}
-              onRecordChange={handleRecordChange}
-              menuButtonProps={{
-                color: 'myGray.700',
-                _active: {}
-              }}
-            />
-          </Flex>
+          {!isPlugin && (
+            <Flex
+              bg="white"
+              mx={6}
+              py={6}
+              h={'85px'}
+              minH={'85px'}
+              flexShrink={0}
+              borderTop="1px solid"
+              borderColor="myGray.200"
+            >
+              <DetailLogsModalFeedbackTypeFilter
+                feedbackType={feedbackType}
+                setFeedbackType={setFeedbackType}
+                unreadOnly={unreadOnly}
+                setUnreadOnly={setUnreadOnly}
+                appId={appId}
+                chatId={chatId}
+                currentRecordId={feedbackRecordId}
+                onRecordChange={handleRecordChange}
+                menuButtonProps={{
+                  color: 'myGray.700',
+                  _active: {}
+                }}
+              />
+            </Flex>
+          )}
         </Flex>
       </MyBox>
 

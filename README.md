@@ -68,7 +68,7 @@ docker compose up -d
 | ![Demo](./.github/imgs/intro3.png) | ![Demo](./.github/imgs/intro4.png) |
 
 `1` 应用编排能力
-   - [x] 规划 Agent 模式。
+   - [x] Agent Skill 编排。
    - [x] 对话工作流、插件工作流，包含基础的 RPA 节点。
    - [x] 用户交互
    - [x] 双向 MCP
@@ -89,25 +89,19 @@ docker compose up -d
    - [x] 支持 txt，md，html，pdf，docx，pptx，csv，xlsx (有需要更多可 PR file loader)，支持 url 读取、CSV 批量导入
    - [x] 混合检索 & 重排
    - [x] API 知识库
-   - [ ] RAG 模块热插拔
+   - [ ] 
 
-`4` OpenAPI 接口
-   - [x] completions 接口 (chat 模式对齐 GPT 接口)
-   - [x] 知识库 CRUD
-   - [x] 对话 CRUD
-   - [x] 自动化 OpenAPI 接口
+`4` 插件能力
+   - [x] 系统工具热更新
+   - [ ] RAG 模块热热更新
+   - [ ] Agent-loop 热更新
+   - [ ] AI 实时生成插件
 
 `5` 运营能力
    - [x] 免登录分享窗口
    - [x] Iframe 一键嵌入
    - [x] 统一查阅对话记录，并对数据进行标注
    - [x] 应用运营日志
-
-`6` 其他
-   - [x] 可视化模型配置。
-   - [x] 支持语音输入和输出 (可配置语音输入语音回答)
-   - [x] 模糊输入提示
-   - [x] 模板市场
 
 <a href="#readme">
     <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
@@ -116,7 +110,7 @@ docker compose up -d
 ## 💪 我们的项目 & 链接
 
 - [快速开始本地开发](https://doc.fastgpt.io/self-host/dev/)
-- [OpenAPI 文档](https://doc.fastgpt.io/openapi/intro)
+- [OpenAPI 文档](https://cloud.fastgpt.io/apidoc/systemopenapi)
 - [FastGPT-plugin](https://github.com/labring/fastgpt-plugin)
 - [AI Proxy: 模型聚合负载均衡服务](https://github.com/labring/aiproxy)
 - [Sealos：快速部署集群应用](https://github.com/labring/sealos)
@@ -129,7 +123,6 @@ docker compose up -d
 
 - [AI Proxy：大模型聚合服务](https://sealos.run/aiproxy/?k=fastgpt-github/)
 - [SiliconCloud (硅基流动) —— 开源模型在线体验平台](https://cloud.siliconflow.cn/i/TR9Ym0c4)
-- [PPIO 派欧云：一键调用高性价比的开源模型 API 和 GPU 容器](https://ppinfra.com/user/register?invited_by=VITYVU&utm_source=github_fastgpt)
 
 <a href="#readme">
     <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
