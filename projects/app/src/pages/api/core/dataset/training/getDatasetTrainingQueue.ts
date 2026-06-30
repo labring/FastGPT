@@ -36,10 +36,8 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetTrainingQueueRes
       }
     ),
     MongoDatasetTraining.countDocuments(
-      { teamId, datasetId, errorMsg: { $exists: true, $ne: null } },
-      {
-        ...readFromSecondary
-      }
+      { teamId, datasetId, errorMsg: { $exists: true }, retryCount: { $lte: 0 } },
+      readFromSecondary
     )
   ]);
 
