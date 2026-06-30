@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   ChatRoleEnum,
   ChatSourceEnum,
@@ -14,10 +14,17 @@ const tmbId = '65f000000000000000000062';
 const appId = '65f000000000000000000063';
 const otherAppId = '65f000000000000000000064';
 
-const legacyUniqueIndexNames = ['appId_1_chatId_1', 'sourceType_1_appId_1_chatId_1'] as const;
+const duplicateBlockingUniqueIndexNames = [
+  'appId_1_chatId_1',
+  'sourceType_1_appId_1_chatId_1'
+] as const;
 
 const ensureLegacyDuplicateWritableCollection = async () => {
-  for (const indexName of legacyUniqueIndexNames) {
+  // Mongoose may still be building schema indexes in the background when this file starts.
+  // Wait first, then drop the unique indexes that intentionally prevent legacy duplicates.
+  await MongoChat.init();
+
+  for (const indexName of duplicateBlockingUniqueIndexNames) {
     try {
       await MongoChat.collection.dropIndex(indexName);
     } catch (error) {
@@ -27,6 +34,10 @@ const ensureLegacyDuplicateWritableCollection = async () => {
       }
     }
   }
+};
+
+const restoreChatSchemaIndexes = async () => {
+  await MongoChat.syncIndexes();
 };
 
 const createChatHeader = ({
@@ -63,6 +74,10 @@ const createChatUniqueIndexes = async () => {
 describe('cleanupDuplicateChats data clean API', () => {
   beforeEach(async () => {
     await ensureLegacyDuplicateWritableCollection();
+  });
+
+  afterAll(async () => {
+    await restoreChatSchemaIndexes();
   });
 
   it('dry-runs duplicate chat headers without deleting data', async () => {
