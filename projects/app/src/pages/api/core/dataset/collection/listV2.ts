@@ -3,6 +3,7 @@ import { Types } from '@fastgpt/service/common/mongo';
 import type { DatasetCollectionsListItemType } from '@fastgpt/global/core/dataset/type';
 import type { GetDatasetCollectionsProps } from '@/global/core/api/datasetReq';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import {
   DatasetCollectionTypeEnum,
   DatasetTypeEnum,
@@ -81,6 +82,42 @@ function getFileStatus(item: {
   }
   // 有数据：正常完成 | 无数据：空文档（训练完成但无内容可提取）
   return CollectionStatusEnum.ready;
+}
+
+// 从 training 表实时统计每个 collection 的 errorCount（与 detail 接口逻辑一致）
+async function getErrorCountMap(
+  teamId: string,
+  datasetId: string,
+  collectionIds: (Types.ObjectId | string)[]
+): Promise<Map<string, number>> {
+  if (collectionIds.length === 0) return new Map();
+
+  const result = await MongoDatasetTraining.aggregate(
+    [
+      {
+        $match: {
+          teamId: new Types.ObjectId(teamId),
+          datasetId: new Types.ObjectId(datasetId),
+          collectionId: {
+            $in: collectionIds.map((id) => new Types.ObjectId(id))
+          },
+          errorMsg: { $exists: true },
+          retryCount: { $lte: 0 }
+        }
+      },
+      {
+        $group: {
+          _id: '$collectionId',
+          count: { $sum: 1 }
+        }
+      }
+    ],
+    { ...readFromSecondary }
+  );
+
+  const map = new Map<string, number>();
+  (result as any[]).forEach((item) => map.set(String(item._id), item.count));
+  return map;
 }
 
 /**
@@ -479,14 +516,20 @@ async function handleFieldSort({
 
     const paginatedCollections = await query.lean();
 
-    // 从预计算字段构建 training/data Map（无需聚合查询）
+    const errorCountMap = await getErrorCountMap(
+      teamId,
+      datasetId,
+      paginatedCollections.map((item) => item._id)
+    );
+
+    // 从预计算字段构建 training/data Map
     const trainingMap = new Map(
       paginatedCollections.map((item) => [
         String(item._id),
         {
           count: item.trainingAmount || 0,
           hasError: item.hasError || false,
-          errorCount: item.errorCount || 0,
+          errorCount: errorCountMap.get(String(item._id)) || 0,
           allParse: item.allParse ?? false
         }
       ])
@@ -602,14 +645,20 @@ async function handleFieldSort({
   const total = filteredCollections.length;
   const paginatedCollections = filteredCollections.slice(offset, offset + pageSize);
 
-  // 从预计算字段构建 training/data Map（无需聚合查询）
+  const errorCountMap = await getErrorCountMap(
+    teamId,
+    datasetId,
+    paginatedCollections.map((item) => item._id)
+  );
+
+  // 从预计算字段构建 training/data Map
   const trainingMap = new Map(
     paginatedCollections.map((item) => [
       String(item._id),
       {
         count: item.trainingAmount || 0,
         hasError: item.hasError || false,
-        errorCount: item.errorCount || 0,
+        errorCount: errorCountMap.get(String(item._id)) || 0,
         allParse: item.allParse ?? false
       }
     ])
@@ -806,11 +855,18 @@ async function handleDataAmountSortOrStatusFilter({
   const total = filteredCollections.length;
   const paginatedCollections = filteredCollections.slice(offset, offset + pageSize);
 
+  const errorCountMap = await getErrorCountMap(
+    teamId,
+    datasetId,
+    paginatedCollections.map((item: any) => item._id)
+  );
+
   // 组装结果
   const list = await Promise.all(
     paginatedCollections.map(async (item: any) => {
       const isFolder = item.type === DatasetCollectionTypeEnum.folder;
       const itemPermission = permissionsMap.get(String(item._id)) ?? parentFolderPermission;
+      const errorCount = errorCountMap.get(String(item._id)) || 0;
 
       if (isFolder) {
         return {
@@ -829,7 +885,7 @@ async function handleDataAmountSortOrStatusFilter({
           dataAmount: item.dataAmount || 0,
           trainingAmount: item.trainingAmount || 0,
           hasError: item.hasError || false,
-          errorCount: item.errorCount || 0,
+          errorCount,
           allParse: item.allParse ?? false,
           parseStartTime: item.parseStartTime,
           tableSchemaExist: item.tableSchema?.exist,
@@ -838,6 +894,7 @@ async function handleDataAmountSortOrStatusFilter({
         });
         return {
           ...item,
+          errorCount,
           tags: await collectionTagsToTagLabel({ datasetId, tags: item.tags }),
           status: fileStatus,
           permission: isTeamOwner ? permission : itemPermission,
@@ -897,14 +954,20 @@ async function handleStatusFilterWithMemoryPagination({
     ...readFromSecondary
   }).lean();
 
-  // 从预计算字段构建 training/data Map（无需聚合查询）
+  const errorCountMap = await getErrorCountMap(
+    teamId,
+    datasetId,
+    allCollections.map((item) => item._id)
+  );
+
+  // 从预计算字段构建 training/data Map
   const trainingMap = new Map(
     allCollections.map((item) => [
       String(item._id),
       {
         count: item.trainingAmount || 0,
         hasError: item.hasError || false,
-        errorCount: item.errorCount || 0,
+        errorCount: errorCountMap.get(String(item._id)) || 0,
         allParse: item.allParse ?? false
       }
     ])
