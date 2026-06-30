@@ -4,17 +4,14 @@ import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 const s3Mock = vi.hoisted(() => ({
   uploadChatFile: vi.fn(),
-  jwtSignS3ObjectKey: vi.fn()
+  createGetChatFileURL: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/common/s3/sources/chat', () => ({
   getS3ChatSource: () => ({
-    uploadChatFile: s3Mock.uploadChatFile
+    uploadChatFile: s3Mock.uploadChatFile,
+    createGetChatFileURL: s3Mock.createGetChatFileURL
   })
-}));
-
-vi.mock('@fastgpt/service/common/s3/utils', () => ({
-  jwtSignS3ObjectKey: s3Mock.jwtSignS3ObjectKey
 }));
 
 import { sandboxGetFileUrlTool } from '@fastgpt/service/core/ai/sandbox/application/toolCall/getFileUrl.tool';
@@ -30,7 +27,7 @@ describe('sandboxGetFileUrlTool', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     s3Mock.uploadChatFile.mockResolvedValue({ key: 'chat/file.txt' });
-    s3Mock.jwtSignS3ObjectKey.mockReturnValue('signed-url');
+    s3Mock.createGetChatFileURL.mockResolvedValue({ url: 'signed-url' });
   });
 
   it('uploads sandbox files and returns signed urls', async () => {
@@ -56,6 +53,11 @@ describe('sandboxGetFileUrlTool', () => {
         filename: 'file.txt'
       })
     );
-    expect(s3Mock.jwtSignS3ObjectKey).toHaveBeenCalledWith('chat/file.txt', expect.any(Date));
+    expect(s3Mock.createGetChatFileURL).toHaveBeenCalledWith({
+      key: 'chat/file.txt',
+      expiredHours: 2,
+      external: true,
+      mode: 'proxy'
+    });
   });
 });

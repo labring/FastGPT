@@ -12,7 +12,7 @@
 **工具返回格式**：
 ```json
 {
-  "url": "https://xxx.s3.amazonaws.com/...",
+  "url": "https://app.xxx.com/api/system/file/download/<token>?filename=output.csv",
   "expired": "2 hours",
   "filename": "output.csv"
 }
@@ -33,11 +33,12 @@
 | `packages/service/common/s3/sources/chat/index.ts` | 修改 | `uploadChatFile` 透传 `filename`、`expiredTime` |
 | `packages/service/common/s3/type.ts` | 修改 | `UploadFileByBodySchema` 新增 `filename`、`expiredTime` 字段 |
 | `packages/service/common/s3/sources/chat/type.ts` | 修改 | `UploadChatFileSchema` 新增 `expiredTime` 字段 |
-| `projects/app/src/pages/api/system/file/[jwt].ts` | 修改 | 下载接口支持 `Content-Disposition` 响应头 |
+| `packages/service/common/s3/security/token.ts` | 修改 | 旧 `jwtSignS3ObjectKey` 签名入口兼容保留，但新生成链接统一走 download token |
+| `projects/app/src/pages/api/system/file/download/[token].ts` | 使用 | 代理下载接口支持 `Content-Disposition` 响应头和 inline 预览 |
 
 > **架构说明**：新增 `callSandboxTool` 作为纯执行层，不绑定业务响应格式。两条调用链路（普通工作流 / Agent 模式）均复用该层，消除重复逻辑。
 
-> **URL 生成**：文件上传到 S3 后，通过 `jwtSignS3ObjectKey(key, expiredAt)` 生成 JWT 签名的内网访问 URL（有效期 2 小时），不依赖 S3 签名 URL。
+> **URL 生成**：文件上传到 S3 后，通过 `chatBucket.createGetChatFileURL({ key, expiredHours: 2, external: true, mode: 'proxy' })` 生成代理下载 URL（有效期 2 小时），不依赖 S3 签名 URL。新生成的下载/预览链接统一使用 `/api/system/file/download/[token]`，旧 `/api/system/file/[jwt]` 仅保留历史链接兼容。
 
 ---
 
@@ -121,18 +122,18 @@ export const callSandboxTool = async (params: SandboxToolCallParams): Promise<Sa
    - 通过 `instance.provider.readFileStream(filePath)` 流式读取文件内容
    - 聚合 chunks 为 `Buffer`
    - 调用 `chatBucket.uploadChatFile({ ..., expiredTime: addHours(now, 2) })` 上传，TTL 设为 2 小时
-   - 用 `jwtSignS3ObjectKey(key, addHours(now, 2))` 生成 JWT 签名访问 URL
+   - 用 `chatBucket.createGetChatFileURL({ key, expiredHours: 2, external: true, mode: 'proxy' })` 生成代理下载 URL
 3. 返回 `Array<{ fileUrl: string, filename: string }>`
 
 **工具返回格式**（JSON 序列化后作为 response）：
 ```json
 [
-  { "fileUrl": "https://app.xxx.com/api/system/file/eyJ...", "filename": "output.csv" },
-  { "fileUrl": "https://app.xxx.com/api/system/file/eyJ...", "filename": "report.txt" }
+  { "fileUrl": "https://app.xxx.com/api/system/file/download/eyJ...?filename=output.csv", "filename": "output.csv" },
+  { "fileUrl": "https://app.xxx.com/api/system/file/download/eyJ...?filename=report.txt", "filename": "report.txt" }
 ]
 ```
 
-> **注意**：URL 不再使用 S3 签名 URL（`accessUrl`），而是通过 `jwtSignS3ObjectKey` 生成 JWT 签名的内部访问 URL，由 `/api/system/file/[jwt]` 接口代理下载。
+> **注意**：URL 不再使用 S3 签名 URL（`accessUrl`），而是生成内部代理下载 URL，由 `/api/system/file/download/[token]` 接口代理下载/预览。`/api/system/file/[jwt]` 仅用于历史 objectKey token 链接兼容，新增链路不得再生成该地址。
 
 ---
 
@@ -276,7 +277,8 @@ sequenceDiagram
       CallLayer->>S3: uploadChatFile({ filename, buffer, expiredTime: +2h })
       S3->>DB: MongoS3TTL.create(expiredTime = now + 2h)
       S3-->>CallLayer: { key }
-      CallLayer->>CallLayer: jwtSignS3ObjectKey(key, +2h) → fileUrl
+      CallLayer->>S3: createGetChatFileURL({ key, expiredHours: 2, mode: 'proxy' })
+      S3-->>CallLayer: { url: fileUrl }
     end
     CallLayer-->>Handler: { input, response: JSON([{fileUrl, filename}...]), durationSeconds }
     Handler-->>Tool: response + flowResponse
@@ -300,7 +302,8 @@ sequenceDiagram
     SandboxProvider-->>CallLayer: stream chunks
     CallLayer->>S3: uploadChatFile({ expiredTime: +2h })
     S3-->>CallLayer: { key }
-    CallLayer->>CallLayer: jwtSignS3ObjectKey(key, +2h)
+    CallLayer->>S3: createGetChatFileURL({ key, expiredHours: 2, mode: 'proxy' })
+    S3-->>CallLayer: { url: fileUrl }
     CallLayer-->>Dispatch: { input, response, durationSeconds }
     Dispatch-->>Handler: { response, nodeResponse }
     Handler-->>Agent: { response, usages }
@@ -374,5 +377,5 @@ await this.client.uploadObject({ key, body: stream, contentType: '...' });
 - [x] `packages/service/core/workflow/dispatch/ai/tool/toolCall.ts`：合并拦截逻辑，复用 `callSandboxTool`
 - [x] `packages/service/core/workflow/dispatch/ai/agent/master/call.ts`：新增 `SANDBOX_GET_FILE_URL_TOOL_NAME` 拦截逻辑
 - [x] `packages/service/common/s3/type.ts`、`buckets/base.ts`、`sources/chat/index.ts`、`sources/chat/type.ts`：扩展 `filename`、`expiredTime` 参数
-- [x] `projects/app/src/pages/api/system/file/[jwt].ts`：支持 `Content-Disposition` 下载头
+- [x] `projects/app/src/pages/api/system/file/download/[token].ts`：支持 `Content-Disposition` 下载/预览响应头；旧 `/api/system/file/[jwt]` 仅保留历史链接兼容
 - [ ] 大文件限制或流式上传优化（见六、待优化）

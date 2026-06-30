@@ -7,7 +7,6 @@ import { serviceEnv } from '../../../env';
 
 /* ==================== 路由与类型 ==================== */
 const FileApiPath = {
-  legacyFile: '/api/system/file',
   proxyDownload: '/api/system/file/download',
   proxyUpload: '/api/system/file/upload'
 } as const;
@@ -127,11 +126,21 @@ const isS3UploadTokenPayload = (value: unknown): value is S3UploadTokenPayload =
   );
 };
 
-/* ==================== 旧版文件链接 token ==================== */
+/* ==================== 旧版 objectKey token 兼容 ==================== */
+/**
+ * 兼容旧调用方的文件链接签名入口。
+ *
+ * 历史实现会生成 `/api/system/file/[jwt]` 链接；现在统一签发代理下载 token，
+ * 避免新增下载/预览链接继续落到旧接口。旧 objectKey token 的验证能力仍保留，
+ * 用于兼容已经发出的历史链接。
+ */
 export function jwtSignS3ObjectKey(objectKey: string, expiredTime: Date) {
-  const token = signToken({ objectKey } satisfies S3ObjectKeyTokenPayload, expiredTime);
-
-  return buildFileApiUrl(FileApiPath.legacyFile, token);
+  return jwtSignS3DownloadToken({
+    objectKey,
+    bucketName: serviceEnv.STORAGE_PRIVATE_BUCKET,
+    expiredTime,
+    filename: path.basename(objectKey)
+  });
 }
 
 export function jwtVerifyS3ObjectKey(token: string) {

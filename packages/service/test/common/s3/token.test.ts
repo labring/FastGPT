@@ -34,12 +34,16 @@ describe('s3 token validation', () => {
     vi.restoreAllMocks();
   });
 
-  it('accepts legacy object key tokens that do not include a type', async () => {
-    const { jwtSignS3ObjectKey, jwtVerifyS3ObjectKey } = await loadTokenModule();
+  it('signs object key urls with proxy download tokens', async () => {
+    const { jwtSignS3ObjectKey, jwtVerifyS3DownloadToken } = await loadTokenModule();
     const objectKey = 'chat/appId/userId/chatId/file.txt';
     const token = extractTokenFromUrl(jwtSignS3ObjectKey(objectKey, getExpiredTime()));
 
-    await expect(jwtVerifyS3ObjectKey(token)).resolves.toMatchObject({ objectKey });
+    await expect(jwtVerifyS3DownloadToken(token)).resolves.toMatchObject({
+      objectKey,
+      bucketName: 'fastgpt-private',
+      type: 'download'
+    });
   });
 
   it('rejects upload tokens when verifying legacy object key tokens', async () => {
@@ -81,6 +85,8 @@ describe('s3 token validation', () => {
     const { jwtSignS3ObjectKey } = await loadTokenModule();
     const url = jwtSignS3ObjectKey('chat/appId/userId/chatId/file.txt', getExpiredTime());
 
-    expect(url).toMatch(/^https:\/\/files\.example\.com\/fastgpt\/api\/system\/file\/[^/?#]+$/);
+    expect(url).toMatch(
+      /^https:\/\/files\.example\.com\/fastgpt\/api\/system\/file\/download\/[^/?#]+\?filename=file\.txt$/
+    );
   });
 });
