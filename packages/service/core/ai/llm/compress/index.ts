@@ -334,7 +334,7 @@ export const compressLargeContent = async ({
 
       // 截断为一半
       const halfLength = Math.floor(merged.length / 2);
-      merged = merged.substring(0, halfLength) + '\n\n... [content truncated] ...\n\n';
+      merged = merged.substring(0, halfLength);
     }
 
     return {

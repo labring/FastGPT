@@ -1,4 +1,4 @@
-import { Box, type BoxProps, Card, Flex, Button, Badge } from '@chakra-ui/react';
+import { Box, type BoxProps, Card, Flex, Button } from '@chakra-ui/react';
 import React, { useMemo, useState, useRef } from 'react';
 import ChatController, { type ChatControllerProps } from './ChatController';
 import ChatAvatar from './ChatAvatar';
@@ -16,6 +16,7 @@ import AIResponseBox from '../../../components/AIResponseBox';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { useTranslation } from 'next-i18next';
 import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { type AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
@@ -75,7 +76,13 @@ ${JSON.stringify(questionGuides)}`}
 };
 
 const HumanContentCard = React.memo(
-  function HumanContentCard({ chatValue }: { chatValue: UserChatItemValueItemType[] }) {
+  function HumanContentCard({
+    chatValue,
+    isChatLog
+  }: {
+    chatValue: UserChatItemValueItemType[];
+    isChatLog: boolean;
+  }) {
     const { text, files = [] } = formatChatValue2InputType(chatValue);
     const { t } = useTranslation();
 
@@ -96,14 +103,15 @@ const HumanContentCard = React.memo(
     return (
       <Flex flexDirection={'column'} gap={4}>
         {files.length > 0 && <FilesBlock files={files} />}
-        {hasCompression && (
+        {isChatLog && hasCompression && (
           <Flex alignItems={'center'} gap={2}>
-            <Badge colorScheme="orange" fontSize={'xs'}>
+            <MyTag colorSchema="orange">
               {t('chat:input_compressed')}
-            </Badge>
+            </MyTag>
             <Button
               size={'xs'}
-              variant={'ghost'}
+              variant={'link'}
+              color={'primary.700'}
               fontSize={'xs'}
               onClick={() => setShowOriginal(!showOriginal)}
             >
@@ -111,20 +119,34 @@ const HumanContentCard = React.memo(
             </Button>
           </Flex>
         )}
-        {displayText && (
-          <Box
-            fontSize={'inherit'}
-            color={'inherit'}
-            whiteSpace={'pre-wrap'}
-            wordBreak={'break-word'}
-          >
-            {displayText}
-          </Box>
+        {isChatLog ? (
+          displayText && (
+            <Box
+              fontSize={'inherit'}
+              color={'inherit'}
+              whiteSpace={'pre-wrap'}
+              wordBreak={'break-word'}
+            >
+              {displayText}
+            </Box>
+          )
+        ) : (
+          (originalContent || text) && (
+            <Box
+              fontSize={'inherit'}
+              color={'inherit'}
+              whiteSpace={'pre-wrap'}
+              wordBreak={'break-word'}
+            >
+              {originalContent || text}
+            </Box>
+          )
         )}
       </Flex>
     );
   },
-  (prevProps, nextProps) => isEqual(prevProps.chatValue, nextProps.chatValue)
+  (prevProps, nextProps) =>
+    isEqual(prevProps.chatValue, nextProps.chatValue) && prevProps.isChatLog === nextProps.isChatLog
 );
 const AIContentCard = React.memo(function AIContentCard({
   chatValue,
@@ -497,7 +519,7 @@ const ChatItem = ({ hasPlanCheck, ...props }: Props) => {
               textAlign={'left'}
             >
               {chat.obj === ChatRoleEnum.Human && (
-                <HumanContentCard chatValue={value as UserChatItemValueItemType[]} />
+                <HumanContentCard chatValue={value as UserChatItemValueItemType[]} isChatLog={isChatLog} />
               )}
               {chat.obj === ChatRoleEnum.AI && (
                 <>
