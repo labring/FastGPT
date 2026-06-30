@@ -30,9 +30,10 @@ import CorrectionModal from './CorrectionModal';
 
 interface OptimizeRecordsProps {
   dateRange: DateRangeType;
+  refreshKey?: number;
 }
 
-const OptimizeRecords: React.FC<OptimizeRecordsProps> = ({ dateRange }) => {
+const OptimizeRecords: React.FC<OptimizeRecordsProps> = ({ dateRange, refreshKey }) => {
   // 从 AppContext 获取 appId
   const appId = useContextSelector(AppContext, (v) => v.appId);
   const { t } = useTranslation();
@@ -67,7 +68,7 @@ const OptimizeRecords: React.FC<OptimizeRecordsProps> = ({ dateRange }) => {
     pageSize: 20,
     params: requestParams as Omit<ListChatCorrectionParams, 'offset' | 'pageSize'>,
     EmptyTip: EmptyTipDom,
-    refreshDeps: [appId, dateRange]
+    refreshDeps: [appId, dateRange, refreshKey]
   });
 
   // 处理编辑
