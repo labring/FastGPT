@@ -10,7 +10,10 @@ import {
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
+import {
+  parseParentIdInMongo,
+  getAllDescendantIds
+} from '@fastgpt/global/common/parentFolder/utils';
 import { AppFolderTypeList, AppTypeEnum, ToolTypeList } from '@fastgpt/global/core/app/constants';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
@@ -125,7 +128,7 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<ListAppRespon
       ).map((m) => String(m._id))
     : [];
 
-  const findAppsQuery = (() => {
+  const findAppsQuery = await (async () => {
     // Filter apps by permission, if not owner, only get apps that I have permission to access
     const idList = { _id: { $in: myPerList.map((item) => item.resourceId) } };
     const appPerQuery = teamPer.isOwner
@@ -158,16 +161,29 @@ async function handler(req: ApiRequestProps<ListAppBody>): Promise<ListAppRespon
     })();
 
     if (searchKey) {
-      const data = {
-        ...appPerQuery,
+      const query: any = {
         teamId,
-        ...searchMatch,
         type: _type
       };
 
-      // @ts-ignore
-      delete data.parentId;
-      return data;
+      // 搜索时限定范围到当前文件夹及其所有子孙文件夹
+      if (parentId) {
+        const allIds = await getAllDescendantIds(
+          (parentIds) =>
+            MongoApp.find({ parentId: { $in: parentIds }, teamId, deleteTime: null }, '_id').lean(),
+          parentId
+        );
+        query.parentId = { $in: allIds };
+      }
+
+      // 使用 $and 合并权限 $or 和搜索 $or，避免后者覆盖前者
+      if (appPerQuery.$or) {
+        query.$and = [{ $or: searchMatch.$or! }, { $or: appPerQuery.$or }];
+      } else {
+        query.$or = searchMatch.$or;
+      }
+
+      return query;
     }
 
     return {

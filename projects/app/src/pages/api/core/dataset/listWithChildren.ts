@@ -19,7 +19,10 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { type ParentIdType } from '@fastgpt/global/common/parentFolder/type';
-import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
+import {
+  parseParentIdInMongo,
+  getAllDescendantIds
+} from '@fastgpt/global/common/parentFolder/utils';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
@@ -126,7 +129,7 @@ async function handler(
     clbCountByResourceId.set(key, (clbCountByResourceId.get(key) ?? 0) + 1);
   }
 
-  const findDatasetQuery = (() => {
+  const findDatasetQuery = await (async () => {
     const idList = { _id: { $in: myRoles.map((item) => item.resourceId) } };
     const datasetPerQuery = teamPer.isOwner
       ? {}
@@ -146,15 +149,29 @@ async function handler(
       : {};
 
     if (searchKey) {
-      const data = {
-        ...datasetPerQuery,
+      const query: any = {
         teamId,
-        deleteTime: null,
-        ...searchMatch
+        deleteTime: null
       };
-      // @ts-ignore
-      delete data.parentId;
-      return data;
+
+      // 搜索时限定范围到当前文件夹及其所有子孙文件夹
+      if (parentId) {
+        const allIds = await getAllDescendantIds(
+          (parentIds) =>
+            MongoDataset.find({ parentId: { $in: parentIds }, teamId, deleteTime: null }, '_id').lean(),
+          parentId
+        );
+        query.parentId = { $in: allIds };
+      }
+
+      // 使用 $and 合并权限 $or 和搜索 $or，避免后者覆盖前者
+      if (datasetPerQuery.$or) {
+        query.$and = [{ $or: searchMatch.$or! }, { $or: datasetPerQuery.$or }];
+      } else {
+        query.$or = searchMatch.$or;
+      }
+
+      return query;
     }
 
     return {
