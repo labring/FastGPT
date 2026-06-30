@@ -68,7 +68,7 @@ docker compose up -d
 | ![Demo](./.github/imgs/intro3.png) | ![Demo](./.github/imgs/intro4.png) |
 
 `1` ความสามารถในการจัดระเบียบแอปพลิเคชัน
-   - [x] โหมด Agent วางแผน
+   - [x] การจัดระเบียบ Agent Skill
    - [x] Workflow สนทนา, workflow ปลั๊กอิน, รวมถึงโหนด RPA พื้นฐาน
    - [x] การโต้ตอบกับผู้ใช้
    - [x] MCP สองทิศทาง
@@ -89,25 +89,19 @@ docker compose up -d
    - [x] รองรับ txt, md, html, pdf, docx, pptx, csv, xlsx (เพิ่มเติมได้โดย PR), รองรับการอ่าน URL และการนำเข้า CSV จำนวนมาก
    - [x] การค้นหาแบบผสมและการจัดอันดับใหม่
    - [x] ฐานความรู้ API
-   - [ ] การสลับโมดูล RAG แบบร้อน
+   - [ ] 
 
-`4` อินเทอร์เฟซ OpenAPI
-   - [x] อินเทอร์เฟซ completions (สอดคล้องกับโหมดแชท GPT)
-   - [x] CRUD ฐานความรู้
-   - [x] CRUD การสนทนา
-   - [x] อินเทอร์เฟซ OpenAPI อัตโนมัติ
+`4` ความสามารถของปลั๊กอิน
+   - [x] การอัปเดต tool ระบบแบบ hot update
+   - [ ] การอัปเดตโมดูล RAG แบบ hot update
+   - [ ] การอัปเดต Agent-loop แบบ hot update
+   - [ ] ปลั๊กอินที่ AI สร้างแบบเรียลไทม์
 
 `5` ความสามารถในการดำเนินงาน
    - [x] หน้าต่างแชร์โดยไม่ต้องเข้าสู่ระบบ
    - [x] การฝัง Iframe คลิกเดียว
    - [x] การตรวจสอบบันทึกการสนทนาแบบรวมพร้อมการใส่คำอธิบายข้อมูล
    - [x] บันทึกการดำเนินงานแอปพลิเคชัน
-
-`6` อื่นๆ
-   - [x] การกำหนดค่าโมเดลแบบภาพ
-   - [x] รองรับการป้อนเสียงและเอาต์พุต (กำหนดค่าได้)
-   - [x] คำแนะนำการป้อนข้อมูลแบบคลุมเครือ
-   - [x] ตลาดเทมเพลต
 
 <a href="#readme">
     <img src="https://img.shields.io/badge/-กลับด้านบน-7d09f1.svg" alt="#" align="right">
@@ -116,7 +110,7 @@ docker compose up -d
 ## 💪 โปรเจกต์และลิงก์ของเรา
 
 - [เริ่มต้นพัฒนาในเครื่อง](https://doc.fastgpt.io/self-host/dev/)
-- [เอกสาร OpenAPI](https://doc.fastgpt.io/openapi/intro)
+- [เอกสาร OpenAPI](https://cloud.fastgpt.io/apidoc/systemopenapi)
 - [FastGPT-plugin](https://github.com/labring/fastgpt-plugin)
 - [AI Proxy: บริการ Load Balancing การรวมโมเดล](https://github.com/labring/aiproxy)
 - [Sealos: การติดตั้งแอปพลิเคชันคลัสเตอร์อย่างรวดเร็ว](https://github.com/labring/sealos)
@@ -129,7 +123,6 @@ docker compose up -d
 
 - [AI Proxy: บริการรวมโมเดลขนาดใหญ่](https://sealos.run/aiproxy/?k=fastgpt-github/)
 - [SiliconCloud - แพลตฟอร์มประสบการณ์โมเดล Open Source ออนไลน์](https://cloud.siliconflow.cn/i/TR9Ym0c4)
-- [PPIO: เรียกใช้ API โมเดล Open Source ราคาประหยัดและ GPU Container](https://ppinfra.com/user/register?invited_by=VITYVU&utm_source=github_fastgpt)
 
 <a href="#readme">
     <img src="https://img.shields.io/badge/-กลับด้านบน-7d09f1.svg" alt="#" align="right">

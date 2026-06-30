@@ -68,7 +68,7 @@ If you encounter any issues, you can [view the complete Docker deployment tutori
 | ![Demo](./.github/imgs/intro3.png) | ![Demo](./.github/imgs/intro4.png) |
 
 `1` Application Orchestration
-   - [x] Planning Agent mode.
+   - [x] Agent Skill orchestration.
    - [x] Dialogue workflow, plugin workflow, including basic RPA nodes.
    - [x] User interaction
    - [x] Bidirectional MCP
@@ -89,25 +89,19 @@ If you encounter any issues, you can [view the complete Docker deployment tutori
    - [x] Support for txt, md, html, pdf, docx, pptx, csv, xlsx (more can be PR'd), support for URL reading & CSV batch import
    - [x] Hybrid retrieval & reranking
    - [x] API knowledge base
-   - [ ] RAG module hot-swapping
+   - [ ] 
 
-`4` OpenAPI Interface
-   - [x] Completions interface (aligned with GPT chat mode)
-   - [x] Knowledge base CRUD
-   - [x] Dialogue CRUD
-   - [x] Automated OpenAPI interface
+`4` Plugin Capabilities
+   - [x] System tool hot updates
+   - [ ] RAG module hot updates
+   - [ ] Agent-loop hot updates
+   - [ ] Real-time AI-generated plugins
 
 `5` Operations Features
    - [x] Login-free sharing window
    - [x] One-click Iframe embedding
    - [x] Unified dialogue record review with data annotation
    - [x] Application operation logs
-
-`6` Others
-   - [x] Visual model configuration.
-   - [x] Voice input and output support (configurable)
-   - [x] Fuzzy input hints
-   - [x] Template marketplace
 
 <a href="#readme">
     <img src="https://img.shields.io/badge/-Back_to_Top-7d09f1.svg" alt="#" align="right">
@@ -116,7 +110,7 @@ If you encounter any issues, you can [view the complete Docker deployment tutori
 ## 💪 Our Projects & Links
 
 - [Quick Start Local Development](https://doc.fastgpt.io/self-host/dev/)
-- [OpenAPI Documentation](https://doc.fastgpt.io/openapi/intro)
+- [OpenAPI Documentation](https://cloud.fastgpt.io/apidoc/systemopenapi)
 - [FastGPT-plugin](https://github.com/labring/fastgpt-plugin)
 - [AI Proxy: Model Aggregation Load Balancing Service](https://github.com/labring/aiproxy)
 - [Sealos: Quick Cluster Application Deployment](https://github.com/labring/sealos)
@@ -129,7 +123,6 @@ If you encounter any issues, you can [view the complete Docker deployment tutori
 
 - [AI Proxy: Large Model Aggregation Service](https://sealos.run/aiproxy/?k=fastgpt-github/)
 - [SiliconCloud - Open Source Model Online Experience Platform](https://cloud.siliconflow.cn/i/TR9Ym0c4)
-- [PPIO: One-click Call to Cost-effective Open Source Model API and GPU Containers](https://ppinfra.com/user/register?invited_by=VITYVU&utm_source=github_fastgpt)
 
 <a href="#readme">
     <img src="https://img.shields.io/badge/-Back_to_Top-7d09f1.svg" alt="#" align="right">

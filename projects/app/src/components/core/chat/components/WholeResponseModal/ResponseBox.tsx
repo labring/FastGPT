@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Flex, useDisclosure } from '@chakra-ui/react';
 import { useSize } from 'ahooks';
 import dynamic from 'next/dynamic';
@@ -8,10 +8,7 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
-import {
-  WHOLE_RESPONSE_SIDE_TAB_PANEL_PADDING,
-  WholeResponseSideTab
-} from './SideTab';
+import { WHOLE_RESPONSE_SIDE_TAB_PANEL_PADDING, WholeResponseSideTab } from './SideTab';
 import { WholeResponseContent } from './WholeResponseContent';
 import { flattenResponse, getSideTabItems, getSideTabMaxDepth } from './responseData';
 
@@ -48,8 +45,20 @@ export const ResponseBox = React.memo(function ResponseBox({
     flattedResponse[0]?.id ?? flattedResponse[0]?.nodeId ?? ''
   );
 
+  useEffect(() => {
+    if (flattedResponse.length === 0) {
+      setCurrentNodeId('');
+      return;
+    }
+    if (flattedResponse.some((item) => item.id === currentNodeId)) return;
+
+    setCurrentNodeId(flattedResponse[0].id ?? flattedResponse[0].nodeId ?? '');
+  }, [currentNodeId, flattedResponse]);
+
   const activeModule = useMemo(
-    () => flattedResponse.find((item) => item.id === currentNodeId) as ChatHistoryItemResType,
+    () =>
+      (flattedResponse.find((item) => item.id === currentNodeId) ||
+        flattedResponse[0]) as ChatHistoryItemResType,
     [currentNodeId, flattedResponse]
   );
 
@@ -106,7 +115,7 @@ export const ResponseBox = React.memo(function ResponseBox({
           </Box>
         </Flex>
       ) : (
-        <Box h={'100%'} overflow={'auto'}>
+        <Box h={'100%'} minH={0} overflow={'hidden'}>
           {!isOpenMobileModal && (
             <WholeResponseSideTab
               response={sliderResponseList}
@@ -119,7 +128,7 @@ export const ResponseBox = React.memo(function ResponseBox({
             />
           )}
           {isOpenMobileModal && (
-            <Flex flexDirection={'column'} h={'100%'}>
+            <Flex flexDirection={'column'} h={'100%'} minH={0}>
               <Flex
                 align={'center'}
                 justifyContent={'center'}
@@ -161,11 +170,11 @@ export const ResponseBox = React.memo(function ResponseBox({
                   {t(activeModule.moduleName as any, activeModule.moduleNameArgs)}
                 </Box>
               </Flex>
-              <Box ref={contentPanelRef} flex={'1 0 0'} minH={0} overflow={'hidden'}>
+              <Box ref={contentPanelRef} flex={'1 1 0'} minH={0} overflowY={'auto'}>
                 <WholeResponseContent
                   dataId={dataId}
                   activeModule={activeModule}
-                  hideTabs={hideTabs}
+                  hideTabs={true}
                   contentHeight={contentPanelSize?.height}
                   onOpenRequestIdDetail={handleOpenRequestIdDetail}
                 />

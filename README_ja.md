@@ -68,7 +68,7 @@ docker compose up -d
 | ![Demo](./.github/imgs/intro3.png) | ![Demo](./.github/imgs/intro4.png) |
 
 `1` アプリケーションオーケストレーション
-   - [x] プランニング Agent モード
+   - [x] Agent Skill オーケストレーション
    - [x] 対話ワークフロー、プラグインワークフロー、基本的な RPA ノードを含む
    - [x] ユーザーインタラクション
    - [x] 双方向 MCP
@@ -89,25 +89,19 @@ docker compose up -d
    - [x] txt, md, html, pdf, docx, pptx, csv, xlsx に対応（PR で追加可能）、URL 読み取りと CSV 一括インポートに対応
    - [x] ハイブリッド検索 & リランキング
    - [x] API ナレッジベース
-   - [ ] RAG モジュールのホットスワップ
+   - [ ] 
 
-`4` OpenAPI インターフェース
-   - [x] completions インターフェース（GPT チャットモードに準拠）
-   - [x] ナレッジベース CRUD
-   - [x] 対話 CRUD
-   - [x] 自動化 OpenAPI インターフェース
+`4` プラグイン機能
+   - [x] システムツールのホットアップデート
+   - [ ] RAG モジュールのホットアップデート
+   - [ ] Agent-loop のホットアップデート
+   - [ ] AI によるプラグインのリアルタイム生成
 
 `5` 運用機能
    - [x] ログイン不要の共有ウィンドウ
    - [x] Iframe ワンクリック埋め込み
    - [x] 統一された対話記録の閲覧とデータアノテーション
    - [x] アプリケーション運用ログ
-
-`6` その他
-   - [x] ビジュアルモデル設定
-   - [x] 音声入出力対応（設定可能）
-   - [x] あいまい入力ヒント
-   - [x] テンプレートマーケット
 
 <a href="#readme">
     <img src="https://img.shields.io/badge/-トップに戻る-7d09f1.svg" alt="#" align="right">
@@ -116,7 +110,7 @@ docker compose up -d
 ## 💪 プロジェクトとリンク
 
 - [クイックスタート ローカル開発](https://doc.fastgpt.io/self-host/dev/)
-- [OpenAPI ドキュメント](https://doc.fastgpt.io/openapi/intro)
+- [OpenAPI ドキュメント](https://cloud.fastgpt.io/apidoc/systemopenapi)
 - [FastGPT-plugin](https://github.com/labring/fastgpt-plugin)
 - [AI Proxy: モデル集約ロードバランシングサービス](https://github.com/labring/aiproxy)
 - [Sealos: クラスタアプリケーションの迅速なデプロイ](https://github.com/labring/sealos)
@@ -129,7 +123,6 @@ docker compose up -d
 
 - [AI Proxy: 大規模モデル集約サービス](https://sealos.run/aiproxy/?k=fastgpt-github/)
 - [SiliconCloud - オープンソースモデルオンライン体験プラットフォーム](https://cloud.siliconflow.cn/i/TR9Ym0c4)
-- [PPIO: コスパの高いオープンソースモデル API と GPU コンテナをワンクリックで利用](https://ppinfra.com/user/register?invited_by=VITYVU&utm_source=github_fastgpt)
 
 <a href="#readme">
     <img src="https://img.shields.io/badge/-トップに戻る-7d09f1.svg" alt="#" align="right">

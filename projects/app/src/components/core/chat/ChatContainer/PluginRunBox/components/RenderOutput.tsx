@@ -9,20 +9,25 @@ import { useTranslation } from 'next-i18next';
 import ComplianceTip from '@/components/common/ComplianceTip/index';
 import { ChatRecordContext } from '@/web/core/chat/context/chatRecordContext';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 
 const RenderOutput = () => {
   const { t } = useTranslation();
 
   const histories = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const isChatting = useContextSelector(PluginRunContext, (v) => v.isChatting);
+  const aiRecord = useMemo(
+    () => [...histories].reverse().find((item) => item.obj === ChatRoleEnum.AI),
+    [histories]
+  );
 
   const pluginOutputs = useMemo(() => {
-    const pluginOutputs = histories?.[1]?.responseData?.find(
+    const pluginOutputs = aiRecord?.responseData?.find(
       (item) => item.moduleType === FlowNodeTypeEnum.pluginOutput
     )?.pluginOutput;
 
     return JSON.stringify(pluginOutputs, null, 2);
-  }, [histories]);
+  }, [aiRecord]);
 
   return (
     <>
@@ -31,13 +36,13 @@ const RenderOutput = () => {
           <Box color={'myGray.900'} fontWeight={'bold'}>
             {t('chat:stream_output')}
           </Box>
-          {histories.length > 0 && histories[1]?.value.length > 0 ? (
+          {aiRecord && aiRecord.value.length > 0 ? (
             <Box mt={2}>
-              {histories[1].value.map((value, i) => {
-                const key = `${histories[1].dataId}-ai-${i}`;
+              {aiRecord.value.map((value, i) => {
+                const key = `${aiRecord.dataId}-ai-${i}`;
                 return (
                   <AIResponseBox
-                    chatItemDataId={histories[1].dataId}
+                    chatItemDataId={aiRecord.dataId}
                     key={key}
                     value={value as AIChatItemValueItemType}
                     isLastResponseValue={true}
@@ -53,9 +58,7 @@ const RenderOutput = () => {
       <Box border={'base'} mt={4} rounded={'md'} bg={'myGray.25'}>
         <Box p={4} color={'myGray.900'} fontWeight={'bold'}>
           <Box>{t('chat:plugins_output')}</Box>
-          {histories.length > 0 && histories[1].responseData ? (
-            <Markdown source={`~~~json\n${pluginOutputs}`} />
-          ) : null}
+          {aiRecord?.responseData ? <Markdown source={`~~~json\n${pluginOutputs}`} /> : null}
         </Box>
       </Box>
       <ComplianceTip type={'chat'} />

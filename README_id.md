@@ -68,7 +68,7 @@ Jika Anda menghadapi masalah, Anda dapat [melihat tutorial penyebaran Docker len
 | ![Demo](./.github/imgs/intro3.png) | ![Demo](./.github/imgs/intro4.png) |
 
 `1` Kemampuan Orkestrasi Aplikasi
-   - [x] Mode Agent Perencanaan.
+   - [x] Orkestrasi Agent Skill.
    - [x] Workflow percakapan, workflow plugin, termasuk node RPA dasar.
    - [x] Interaksi pengguna
    - [x] MCP dua arah
@@ -89,25 +89,19 @@ Jika Anda menghadapi masalah, Anda dapat [melihat tutorial penyebaran Docker len
    - [x] Dukungan txt, md, html, pdf, docx, pptx, csv, xlsx (lebih banyak dapat di-PR), dukungan pembacaan URL dan impor batch CSV
    - [x] Pencarian hibrida & reranking
    - [x] Basis pengetahuan API
-   - [ ] Hot-swapping modul RAG
+   - [ ] 
 
-`4` Antarmuka OpenAPI
-   - [x] Antarmuka completions (sesuai dengan mode chat GPT)
-   - [x] CRUD basis pengetahuan
-   - [x] CRUD percakapan
-   - [x] Antarmuka OpenAPI otomatis
+`4` Kemampuan Plugin
+   - [x] Hot update tool sistem
+   - [ ] Hot update modul RAG
+   - [ ] Hot update Agent-loop
+   - [ ] Plugin yang dibuat AI secara real time
 
 `5` Kemampuan Operasi
    - [x] Jendela berbagi tanpa login
    - [x] Embedding Iframe satu klik
    - [x] Tinjauan catatan percakapan terpadu dengan anotasi data
    - [x] Log operasi aplikasi
-
-`6` Lainnya
-   - [x] Konfigurasi model visual.
-   - [x] Dukungan input dan output suara (dapat dikonfigurasi)
-   - [x] Petunjuk input fuzzy
-   - [x] Pasar template
 
 <a href="#readme">
     <img src="https://img.shields.io/badge/-Kembali_ke_Atas-7d09f1.svg" alt="#" align="right">
@@ -116,7 +110,7 @@ Jika Anda menghadapi masalah, Anda dapat [melihat tutorial penyebaran Docker len
 ## 💪 Proyek & Tautan Kami
 
 - [Mulai Cepat Pengembangan Lokal](https://doc.fastgpt.io/self-host/dev/)
-- [Dokumentasi OpenAPI](https://doc.fastgpt.io/openapi/intro)
+- [Dokumentasi OpenAPI](https://cloud.fastgpt.io/apidoc/systemopenapi)
 - [FastGPT-plugin](https://github.com/labring/fastgpt-plugin)
 - [AI Proxy: Layanan Load Balancing Agregasi Model](https://github.com/labring/aiproxy)
 - [Sealos: Penerapan Cepat Aplikasi Klaster](https://github.com/labring/sealos)
@@ -129,7 +123,6 @@ Jika Anda menghadapi masalah, Anda dapat [melihat tutorial penyebaran Docker len
 
 - [AI Proxy: Layanan Agregasi Model Besar](https://sealos.run/aiproxy/?k=fastgpt-github/)
 - [SiliconCloud - Platform Pengalaman Online Model Open Source](https://cloud.siliconflow.cn/i/TR9Ym0c4)
-- [PPIO: Panggilan Satu Klik ke API Model Open Source Hemat Biaya dan GPU Container](https://ppinfra.com/user/register?invited_by=VITYVU&utm_source=github_fastgpt)
 
 <a href="#readme">
     <img src="https://img.shields.io/badge/-Kembali_ke_Atas-7d09f1.svg" alt="#" align="right">
