@@ -1,4 +1,4 @@
-import { Box, type BoxProps, Card, Flex, Button, Text, Badge } from '@chakra-ui/react';
+import { Box, type BoxProps, Card, Flex, Button, Text } from '@chakra-ui/react';
 import React, { useMemo, useState } from 'react';
 import ChatController, { type ChatControllerProps } from './SfChatController';
 import ChatAvatar from './ChatAvatar';
@@ -85,7 +85,13 @@ const RenderQuestionGuide = ({ questionGuides }: { questionGuides: string[] }) =
 };
 
 const HumanContentCard = React.memo(
-  function HumanContentCard({ chatValue }: { chatValue: ChatItemValueItemType[] }) {
+  function HumanContentCard({
+    chatValue,
+    isChatLog
+  }: {
+    chatValue: ChatItemValueItemType[];
+    isChatLog: boolean;
+  }) {
     const { text, files = [] } = formatChatValue2InputType(chatValue);
     const { t } = useTranslation();
 
@@ -105,14 +111,15 @@ const HumanContentCard = React.memo(
     return (
       <Flex flexDirection={'column'} gap={4}>
         {files.length > 0 && <FilesBlock files={files} />}
-        {hasCompression && (
+        {isChatLog && hasCompression && (
           <Flex alignItems={'center'} gap={2}>
-            <Badge colorScheme="orange" fontSize={'xs'}>
+            <MyTag colorSchema="orange">
               {t('chat:input_compressed')}
-            </Badge>
+            </MyTag>
             <Button
               size={'xs'}
-              variant={'ghost'}
+              variant={'link'}
+              color={'primary.700'}
               fontSize={'xs'}
               onClick={() => setShowOriginal(!showOriginal)}
             >
@@ -120,11 +127,16 @@ const HumanContentCard = React.memo(
             </Button>
           </Flex>
         )}
-        {displayText && <Markdown source={displayText} />}
+        {isChatLog ? (
+          displayText && <Markdown source={displayText} />
+        ) : (
+          (originalContent || text) && <Markdown source={originalContent || text} />
+        )}
       </Flex>
     );
   },
-  (prevProps, nextProps) => isEqual(prevProps.chatValue, nextProps.chatValue)
+  (prevProps, nextProps) =>
+    isEqual(prevProps.chatValue, nextProps.chatValue) && prevProps.isChatLog === nextProps.isChatLog
 );
 const AIContentCard = React.memo(function AIContentCard({
   chatValue,
@@ -452,7 +464,7 @@ const ChatItem = (props: Props) => {
             pb={0}
             {...(type === ChatRoleEnum.AI && { display: 'block', w: '100%', maxW: '100%', pr: 0 })}
           >
-            {type === ChatRoleEnum.Human && <HumanContentCard chatValue={value} />}
+            {type === ChatRoleEnum.Human && <HumanContentCard chatValue={value} isChatLog={isChatLog} />}
             {type === ChatRoleEnum.AI && (
               <>
                 <AIContentCard
