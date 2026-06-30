@@ -412,7 +412,7 @@ services:
       retries: 3
   fastgpt-mcp-server:
     container_name: fastgpt-mcp-server
-    image: ghcr.io/labring/fastgpt-mcp_server:v4.15.0
+    image: ghcr.io/labring/fastgpt-mcp_server:v4.14.23
     networks:
       - app
     ports:

@@ -62,16 +62,22 @@ trap 'tput cnorm 2>/dev/null; exit' INT TERM
 # 只使用 hex 字符，避免写入 YAML、URL、命令参数时触发转义问题。
 random_hex() {
     local bytes="${1:-32}"
+    local value
 
     if command -v openssl &>/dev/null; then
-        openssl rand -hex "$bytes"
-        return
+        value="$(openssl rand -hex "$bytes" 2>/dev/null)"
+        if [ -n "$value" ]; then
+            printf '%s\n' "$value"
+            return
+        fi
     fi
 
     if [ -r /dev/urandom ] && command -v od &>/dev/null; then
-        dd if=/dev/urandom bs="$bytes" count=1 2>/dev/null | od -An -tx1 | tr -d ' \n'
-        echo
-        return
+        value="$(dd if=/dev/urandom bs="$bytes" count=1 2>/dev/null | od -An -tx1 | tr -d ' \n')"
+        if [ -n "$value" ]; then
+            printf '%s\n' "$value"
+            return
+        fi
     fi
 
     echo "错误: 未找到 openssl，且无法读取 /dev/urandom 生成随机密钥" >&2
@@ -256,15 +262,18 @@ randomize_compose_credentials() {
     replace_text "mongodb://myusername:mypassword@fastgpt-mongo:27017/fastgpt-plugin?authSource=admin" "mongodb://myusername:$mongo_password@fastgpt-mongo:27017/fastgpt-plugin?authSource=admin"
     replace_text "- MONGO_INITDB_ROOT_PASSWORD=mypassword" "- MONGO_INITDB_ROOT_PASSWORD=$mongo_password"
     replace_text "'-p', 'mypassword'" "'-p', '$mongo_password'"
+    replace_text '"mypassword",' "\"$mongo_password\","
     replace_text " mongo -u myusername -p mypassword " " mongo -u myusername -p $mongo_password "
 
     # Redis 密码需要同时改连接串、启动命令和健康检查。
     replace_text "redis://default:mypassword@fastgpt-redis:6379" "redis://default:$redis_password@fastgpt-redis:6379"
     replace_text "redis-server --requirepass mypassword " "redis-server --requirepass $redis_password "
     replace_text "'redis-cli', '-a', 'mypassword', 'ping'" "'redis-cli', '-a', '$redis_password', 'ping'"
+    replace_text '"redis-cli", "-a", "mypassword", "ping"' "\"redis-cli\", \"-a\", \"$redis_password\", \"ping\""
 
     # FastGPT 自带 MinIO。用户名保持 minioadmin 便于识别和登录控制台，只随机化密钥。
     replace_text "STORAGE_SECRET_ACCESS_KEY: minioadmin" "STORAGE_SECRET_ACCESS_KEY: $minio_password"
+    replace_text "MINIO_SECRET_KEY: minioadmin" "MINIO_SECRET_KEY: $minio_password"
     replace_text "- MINIO_ROOT_PASSWORD=minioadmin" "- MINIO_ROOT_PASSWORD=$minio_password"
 
     # 本地 PG 向量库，仅在选择 pg 时存在。

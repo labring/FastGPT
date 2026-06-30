@@ -2,12 +2,12 @@
   "tags": {
     "fastgpt": "v4.15.0",
     "fastgpt-code-sandbox": "v4.15.0",
-    "fastgpt-mcp_server": "v4.15.0",
     "fastgpt-plugin": "v1.0.0",
     "volume-manager": "v0.2.0",
     "agent-sandbox-image": "v0.2.0",
     "agent-sandbox-proxy": "v0.2.0",
     "aiproxy": "v0.6.5",
+    "fastgpt-mcp_server": "v4.14.23",
 
     "aiproxy-pg": "0.8.0-pg15",
     "mongo": "5.0.32",
