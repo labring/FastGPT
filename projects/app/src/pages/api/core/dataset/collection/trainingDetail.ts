@@ -58,6 +58,7 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetai
             $match: {
               _id: { $lt: new Types.ObjectId(minId) },
               retryCount: { $gt: 0 },
+              errorMsg: { $exists: false },
               lockTime: { $lt: new Date('2050/1/1') }
             }
           },
@@ -74,6 +75,7 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetai
         $match: {
           ...match,
           retryCount: { $gt: 0 },
+          errorMsg: { $exists: false },
           lockTime: { $lt: new Date('2050/1/1') }
         }
       },

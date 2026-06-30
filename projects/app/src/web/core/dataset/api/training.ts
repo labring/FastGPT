@@ -2,7 +2,6 @@ import { GET, POST, PUT } from '@/web/common/api/request';
 import type {
   RebuildEmbeddingBody,
   GetDatasetTrainingQueueResponse,
-  DeleteTrainingDataBody,
   UpdateTrainingDataBody,
   GetTrainingDataDetailBody,
   GetTrainingDataDetailResponse,
@@ -17,9 +16,6 @@ export const getDatasetTrainingQueue = (datasetId: string) =>
   GET<GetDatasetTrainingQueueResponse>(`/core/dataset/training/getDatasetTrainingQueue`, {
     datasetId
   });
-
-export const deleteTrainingData = (data: DeleteTrainingDataBody) =>
-  POST(`/core/dataset/training/deleteTrainingData`, data);
 
 export const updateTrainingData = (data: UpdateTrainingDataBody) =>
   PUT(`/core/dataset/training/updateTrainingData`, data);

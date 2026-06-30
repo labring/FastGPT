@@ -1363,6 +1363,7 @@
   "core.dataset.error.collectionNameMissingExtension": "不能去除文件后缀，请保留原文件后缀",
   "core.dataset.error.datasetIdMismatch": "数据集ID不匹配",
   "core.dataset.error.datasetTrainingInProgress": "知识库正在处理中，请等待处理完成后操作",
+  "core.dataset.error.insufficientQuota": "团队积分不足，请充值后重试",
   "core.dataset.error.invalidVectorModelOrQAModel": "VectorModel 或 QA 模型错误",
   "core.dataset.error.noDataTables": "数据库知识库中没有数据表，请先添加数据表",
   "core.dataset.error.noFiles": "文档知识库中没有文件，请先上传文件",

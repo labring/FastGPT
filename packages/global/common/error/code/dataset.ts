@@ -27,6 +27,8 @@ export enum DatasetErrEnum {
   synonymFileParseFailed = 'synonymFileParseFailed',
   synonymTermDuplicate = 'synonymTermDuplicate',
   datasetTrainingInProgress = 'datasetTrainingInProgress',
+  // Quota errors
+  insufficientQuota = 'insufficientQuota',
   // Collection name validation errors
   collectionNameDuplicate = 'collectionNameDuplicate',
   collectionNameMissingExtension = 'collectionNameMissingExtension',
@@ -127,6 +129,10 @@ const datasetErr = [
   {
     statusText: DatasetErrEnum.datasetTrainingInProgress,
     message: i18nT('common:core.dataset.error.datasetTrainingInProgress')
+  },
+  {
+    statusText: DatasetErrEnum.insufficientQuota,
+    message: i18nT('common:core.dataset.error.insufficientQuota')
   },
   {
     statusText: DatasetErrEnum.collectionNameDuplicate,

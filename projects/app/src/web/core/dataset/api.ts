@@ -93,7 +93,6 @@ import type {
   RetryErrorCollectionsBody,
   GetTrainingDataDetailBody,
   GetTrainingDataDetailResponse,
-  DeleteTrainingDataBody,
   GetTrainingErrorBody,
   GetTrainingErrorResponse
 } from '@fastgpt/global/openapi/core/dataset/training/api';
@@ -460,8 +459,6 @@ export const getPreviewChunks = (data: GetPreviewChunksBody) =>
     timeout: 600000
   });
 
-export const deleteTrainingData = (data: DeleteTrainingDataBody) =>
-  POST(`/core/dataset/training/deleteTrainingData`, data);
 export const updateTrainingData = (data: UpdateTrainingDataBody) =>
   PUT(`/core/dataset/training/updateTrainingData`, data);
 export const retryErrorCollections = (data: RetryErrorCollectionsBody) =>
