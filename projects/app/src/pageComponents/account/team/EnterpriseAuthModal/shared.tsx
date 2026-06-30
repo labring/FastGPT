@@ -5,6 +5,12 @@ export type AmountFormType = {
   amountFen: string;
 };
 
+export type EnterpriseAuthBankOption = {
+  label: string;
+  value: string;
+  alias: string;
+};
+
 export const UnifiedCreditCodePattern = /^[0-9A-HJ-NPQRTUWXY]{18}$/;
 export const PositiveIntegerPattern = /^[1-9]\d*$/;
 export const BankAccountPattern = /^\d{1,64}$/;
@@ -17,6 +23,19 @@ export const formatBankAccountForDisplay = (account?: string) => {
 
   return normalizeBankAccount(account).replace(/(.{4})(?=.)/g, '$1 ');
 };
+
+/**
+ * 将后端返回的“银行简称 -> 银行公司全称”映射转成下拉选项。
+ * 下拉展示并提交银行简称，银行公司全称仅作为搜索别名；真正发起认证服务请求时再由后端转换。
+ */
+export const formatEnterpriseAuthBankOptions = (
+  banks: Record<string, string>
+): EnterpriseAuthBankOption[] =>
+  Object.entries(banks).map(([bankName, companyName]) => ({
+    label: bankName,
+    value: bankName,
+    alias: companyName
+  }));
 
 export const fieldRules = {
   enterpriseName: {
