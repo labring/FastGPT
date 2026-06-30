@@ -4,38 +4,24 @@ import { isPhaseProductionBuild } from '@fastgpt/global/common/system/constants'
 import { DEFAULT_MAX_FOLDER_DEPTH } from '@fastgpt/global/common/parentFolder/depth';
 import { BoolSchema, IntSchema, NumSchema, UrlSchema } from '@fastgpt/global/common/zod';
 import { agentSandboxProviderList } from '@fastgpt/global/core/ai/sandbox/constants';
-import { hasAgentSandboxConfig as hasAgentSandboxConfigFromEnv } from '@fastgpt/global/core/ai/sandbox/env';
+import {
+  AgentSandboxProxyUrlSchema,
+  getAgentSandboxMissingRequiredEnvKeys,
+  getRuntimeEnv,
+  isAgentSandboxProvider
+} from './env.util';
+import {
+  LogLevelSchema,
+  StorageVendorSchema,
+  StorageCosProtocolSchema,
+  SYSTEM_STRING_LENGTH_UNIT
+} from './env.const';
 
 const defaultableIntSchema = (defaultValue: number) =>
   z.preprocess(
     (value) => (value === '' || value === undefined ? defaultValue : value),
     z.coerce.number<number>().int().nonnegative()
   );
-// 系统最大字符串处理长度
-const SYSTEM_STRING_LENGTH_UNIT = 1_000_000;
-
-// 枚举
-const LogLevelSchema = z.enum(['trace', 'debug', 'info', 'warning', 'error', 'fatal']);
-const StorageVendorSchema = z.enum(['minio', 'aws-s3', 'cos', 'oss']);
-const StorageCosProtocolSchema = z.enum(['https:', 'http:']);
-const AgentSandboxProxyUrlSchema = z.string().refine((url) => /^wss?:\/\//.test(url), {
-  message: 'AGENT_SANDBOX_PROXY_URL must start with ws:// or wss://'
-});
-const TEST_INVOKE_TOKEN_SECRET = 'fastgpt_test_invoke_token_secret_32';
-
-/**
- * 测试套件会在多个 workspace（包含 pro/admin 子模块）里直接导入 serviceEnv。
- * 生产启动仍要求显式配置 INVOKE_TOKEN_SECRET；仅 Vitest/测试环境允许注入稳定测试密钥，
- * 避免每个测试项目都重复维护同一个必填运行时密钥。
- */
-const getRuntimeEnv = (): NodeJS.ProcessEnv => ({
-  ...process.env,
-  INVOKE_TOKEN_SECRET:
-    process.env.INVOKE_TOKEN_SECRET ??
-    (process.env.VITEST === 'true' || process.env.NODE_ENV === 'test'
-      ? TEST_INVOKE_TOKEN_SECRET
-      : undefined)
-});
 
 export const serviceEnv = createEnv({
   skipValidation: isPhaseProductionBuild,
@@ -45,16 +31,19 @@ export const serviceEnv = createEnv({
     SYNC_INDEX: BoolSchema.default(true),
 
     // ==================== 密钥 ====================
+    ROOT_KEY: z
+      .string()
+      .min(6, 'ROOT_KEY must be at least 6 characters')
+      .default('fastgpt_root_key'),
     TOKEN_KEY: z
       .string()
       .min(6, 'TOKEN_KEY must be at least 6 characters')
       .default('fastgpt_token_key'),
     FILE_TOKEN_KEY: z.string().min(6, 'FILE_TOKEN_KEY must be at least 6 characters'),
     AES256_SECRET_KEY: z.string().min(6, 'AES256_SECRET_KEY must be at least 6 characters'),
-    ROOT_KEY: z
-      .string()
-      .min(6, 'ROOT_KEY must be at least 6 characters')
-      .default('fastgpt_root_key'),
+
+    // Invoke 反向调用相关。该密钥用于签发/校验插件反向调用 JWT，必须显式配置，避免未配置时落到公开默认值。
+    INVOKE_TOKEN_SECRET: z.string().min(32, 'INVOKE_TOKEN_SECRET must be at least 32 characters'),
 
     // ==================== 服务地址与集成 ====================
     // 插件
@@ -96,9 +85,8 @@ export const serviceEnv = createEnv({
     AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: z.string().default('fastgpt-agent-sandbox'),
     AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: z.string().default('latest'),
     AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: BoolSchema.default(true),
-    AGENT_SANDBOX_ENABLE_VOLUME: BoolSchema.default(false),
-    AGENT_SANDBOX_VOLUME_MANAGER_URL: UrlSchema.default('http://localhost:3005'),
-    AGENT_SANDBOX_VOLUME_MANAGER_TOKEN: z.string().optional(),
+    AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL: UrlSchema.optional(),
+    AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN: z.string().optional(),
     AGENT_SANDBOX_DISK_MB: NumSchema.min(1).default(1024).meta({
       description:
         'Agent sandbox 磁盘大小基准（MB）。冷归档包上限等于该值，Skill 包和 IDE 单文件上限按该值的一半四舍五入计算。'
@@ -357,10 +345,7 @@ export const serviceEnv = createEnv({
     FEISHU_BASE_URL: UrlSchema.default('https://open.feishu.cn'),
     DINGTALK_BASE_URL: UrlSchema.default('https://api.dingtalk.com'),
     DINGTALK_OAPI_BASE_URL: UrlSchema.default('https://oapi.dingtalk.com'),
-    YUQUE_DATASET_BASE_URL: UrlSchema.default('https://www.yuque.com'),
-
-    // Invoke 反向调用相关。该密钥用于签发/校验插件反向调用 JWT，必须显式配置，避免未配置时落到公开默认值。
-    INVOKE_TOKEN_SECRET: z.string().min(32, 'INVOKE_TOKEN_SECRET must be at least 32 characters')
+    YUQUE_DATASET_BASE_URL: UrlSchema.default('https://www.yuque.com')
   },
   emptyStringAsUndefined: true,
   runtimeEnv: getRuntimeEnv(),
@@ -370,16 +355,22 @@ export const serviceEnv = createEnv({
   }
 });
 
+/* ===== Check ===== */
 if (serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY > serviceEnv.WORKFLOW_MAX_LOOP_TIMES) {
   throw new Error(
     `Invalid environment configuration: WORKFLOW_PARALLEL_MAX_CONCURRENCY (${serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY}) must not exceed WORKFLOW_MAX_LOOP_TIMES (${serviceEnv.WORKFLOW_MAX_LOOP_TIMES})`
   );
 }
 
-if (!isPhaseProductionBuild && hasAgentSandboxConfigFromEnv(process.env)) {
-  if (!serviceEnv.AGENT_SANDBOX_PROXY_URL) {
+if (!isPhaseProductionBuild) {
+  // 共享 serviceEnv 会被 pro/admin 等项目导入，这里只校验 provider 运行态必填环境变量。
+  // 主站浏览器直连 agent-sandbox-proxy 的配置由 projects/app 启动流程单独校验。
+  const missingAgentSandboxEnvKeys = getAgentSandboxMissingRequiredEnvKeys(process.env);
+  if (missingAgentSandboxEnvKeys.length > 0) {
     throw new Error(
-      'AGENT_SANDBOX_PROXY_URL is required when Agent Sandbox is enabled. Please configure a browser-accessible ws:// or wss:// agent-sandbox-proxy URL.'
+      `Invalid Agent Sandbox environment variables: ${missingAgentSandboxEnvKeys.join(
+        ', '
+      )} are required when AGENT_SANDBOX_PROVIDER is ${serviceEnv.AGENT_SANDBOX_PROVIDER}.`
     );
   }
 }
@@ -388,7 +379,8 @@ export const SYSTEM_MAX_STRING_LENGTH =
   serviceEnv.SYSTEM_MAX_STRING_LENGTH_M * SYSTEM_STRING_LENGTH_UNIT;
 
 /**
- * 判断系统是否显式配置了 Agent 虚拟机能力。
- * 必须直读 process.env，避免空环境被 schema 默认值误判为已启用。
+ * 判断系统是否显式配置了 Agent 虚拟机 provider。
+ * 启动阶段会先校验 provider 配套 env，避免前端拿到半配置的沙盒能力。
  */
-export const hasAgentSandboxConfig = (): boolean => hasAgentSandboxConfigFromEnv(process.env);
+export const hasAgentSandboxConfig = (): boolean =>
+  isAgentSandboxProvider(process.env.AGENT_SANDBOX_PROVIDER);

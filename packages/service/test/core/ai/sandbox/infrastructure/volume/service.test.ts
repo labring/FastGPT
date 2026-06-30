@@ -145,7 +145,7 @@ describe('sandbox volume service', () => {
     volumeConfigMock.config.url = '';
 
     await expect(getSessionVolumeConfig('session-1')).rejects.toThrow(
-      'AGENT_SANDBOX_VOLUME_MANAGER_URL is required'
+      'AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL is required'
     );
   });
 

@@ -41,9 +41,9 @@ const NodeLoopEnd = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const parallelRunIntro = useMemoEnhance(() => {
     const parentNode = getNodeById(parentNodeId);
     return parentNode?.flowNodeType === FlowNodeTypeEnum.parallelRun
-      ? 'workflow:parallel_run_end_intro'
+      ? t('workflow:parallel_run_end_intro')
       : undefined;
-  }, [getNodeById, parentNodeId]);
+  }, [getNodeById, parentNodeId, t]);
 
   // Get loopEnd input value type
   const valueType = useMemo(() => {

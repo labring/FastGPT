@@ -21,7 +21,7 @@ import { MongoResourcePermission } from '@fastgpt/service/support/permission/sch
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoAppLogKeys } from '@fastgpt/service/core/app/logs/logkeysSchema';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatSourceEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoSystemTool } from '@fastgpt/service/core/plugin/tool/systemToolSchema';
 
 // Mock dependencies for queue functionality
@@ -45,10 +45,9 @@ vi.mock('@fastgpt/service/common/file/image/controller', () => ({
 }));
 
 // Import mocked modules for type access
-import { getQueue, getWorker, QueueNames } from '@fastgpt/service/common/bullmq';
+import { getQueue, QueueNames } from '@fastgpt/service/common/bullmq';
 
 const mockGetQueue = vi.mocked(getQueue);
-const mockGetWorker = vi.mocked(getWorker);
 
 describe('App Delete Queue', () => {
   beforeEach(() => {
@@ -464,6 +463,7 @@ describe('App Delete Data Cleanup Verification', () => {
       appId: appId,
       teamId: teamId,
       tmbId: rootUser.tmbId,
+      sourceType: ChatSourceTypeEnum.app,
       chatId: `test-chat-${timestamp}`,
       title: 'Test Chat',
       source: ChatSourceEnum.test,
@@ -477,6 +477,7 @@ describe('App Delete Data Cleanup Verification', () => {
       appId: appId,
       teamId: teamId,
       tmbId: rootUser.tmbId,
+      sourceType: ChatSourceTypeEnum.app,
       chatId: `test-chat-${timestamp}`,
       time: timestamp,
       obj: 'Human',
@@ -490,6 +491,7 @@ describe('App Delete Data Cleanup Verification', () => {
       appId: appId,
       teamId: teamId,
       tmbId: rootUser.tmbId,
+      sourceType: ChatSourceTypeEnum.app,
       chatItemId: `test-chat-item-${timestamp}`,
       time: timestamp,
       text: 'This is a test response',

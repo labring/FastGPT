@@ -92,6 +92,7 @@ describe('getRecords_v2 skill edit target', () => {
         teamId: testUser.teamId,
         tmbId: testUser.tmbId,
         userId: testUser.userId,
+        sourceType: ChatSourceTypeEnum.skillEdit,
         appId: skillId,
         chatId,
         dataId: getNanoid(),
@@ -99,6 +100,15 @@ describe('getRecords_v2 skill edit target', () => {
         value: [{ type: 'text', text: { content: 'legacy item' } }]
       })
     ]);
+    await MongoChatItem.updateOne(
+      {
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        appId: skillId,
+        chatId,
+        'value.0.text.content': 'legacy item'
+      },
+      { $unset: { sourceType: '' } }
+    );
 
     const res = await Call<GetRecordsV2BodyType, any, GetRecordsV2ResponseType>(handler, {
       auth: testUser,

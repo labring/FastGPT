@@ -36,6 +36,10 @@ vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/mirrors', () => ({
   prepareSandboxRuntimeMirrors: mirrorMock.prepareSandboxRuntimeMirrors
 }));
 
+vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/runtimeProfile', () => ({
+  getSandboxRuntimeProfile: () => ({ workDirectory: '/workspace' })
+}));
+
 vi.mock('@fastgpt/service/common/s3/sources/chat', () => ({
   getS3ChatSource: () => ({
     uploadChatFile: s3Mock.uploadChatFile,

@@ -1,6 +1,6 @@
 import handler from '@/pages/api/core/chat/history/clearHistories';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatSourceEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
@@ -45,6 +45,7 @@ describe('clearHistories api test', () => {
         MongoChat.create({
           teamId: testUser.teamId,
           tmbId: testUser.tmbId,
+          sourceType: ChatSourceTypeEnum.app,
           appId,
           chatId,
           source: ChatSourceEnum.online
@@ -87,6 +88,7 @@ describe('clearHistories api test', () => {
     await MongoChat.create({
       teamId: otherUser.teamId,
       tmbId: otherUser.tmbId,
+      sourceType: ChatSourceTypeEnum.app,
       appId,
       chatId: otherChatId,
       source: ChatSourceEnum.online
@@ -133,6 +135,7 @@ describe('clearHistories api test', () => {
     await MongoChat.create({
       teamId: testUser.teamId,
       tmbId: testUser.tmbId,
+      sourceType: ChatSourceTypeEnum.app,
       appId,
       chatId: apiChatId,
       source: ChatSourceEnum.api

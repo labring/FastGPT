@@ -8,6 +8,10 @@ import {
 import type { SandboxClient } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
 import type { DirectoryEntry, FileInfo, FileReadResult } from '@fastgpt-sdk/sandbox-adapter';
 
+vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/runtimeProfile', () => ({
+  getSandboxRuntimeProfile: () => ({ workDirectory: '/workspace' })
+}));
+
 // ─── helpers ───────────────────────────────────────────────────────────────
 
 function makeProvider(

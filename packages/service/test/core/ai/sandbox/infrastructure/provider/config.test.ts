@@ -12,6 +12,10 @@ const originalEnv = {
   AGENT_SANDBOX_OPENSANDBOX_RUNTIME: process.env.AGENT_SANDBOX_OPENSANDBOX_RUNTIME,
   AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO,
   AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: process.env.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG,
+  AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL:
+    process.env.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL,
+  AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN:
+    process.env.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN,
   AGENT_SANDBOX_DISK_MB: process.env.AGENT_SANDBOX_DISK_MB,
   AGENT_SANDBOX_PROXY_SECRET: process.env.AGENT_SANDBOX_PROXY_SECRET,
   AGENT_SANDBOX_PROXY_URL: process.env.AGENT_SANDBOX_PROXY_URL,
@@ -65,6 +69,14 @@ describe('sandbox provider config', () => {
     vi.stubEnv(
       'AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG',
       originalEnv.AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG
+    );
+    vi.stubEnv(
+      'AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL',
+      originalEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL
+    );
+    vi.stubEnv(
+      'AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN',
+      originalEnv.AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN
     );
     vi.stubEnv('AGENT_SANDBOX_DISK_MB', originalEnv.AGENT_SANDBOX_DISK_MB);
     vi.stubEnv(
@@ -196,22 +208,6 @@ describe('sandbox provider config', () => {
     });
   });
 
-  it('requires sealos runtime image when runtime adapter config is requested', async () => {
-    vi.stubEnv('AGENT_SANDBOX_SEALOS_BASEURL', 'https://devbox.example.com');
-    vi.stubEnv('AGENT_SANDBOX_SEALOS_TOKEN', 'sealos-token');
-    vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', undefined);
-
-    const { getSandboxAdapterConfig } = await loadSandboxConfigModule();
-
-    expect(() =>
-      getSandboxAdapterConfig({
-        provider: 'sealosdevbox',
-        runtime: true,
-        sessionId: 'session-1'
-      })
-    ).toThrow('AGENT_SANDBOX_SEALOS_IMAGE is required for sealosdevbox provider');
-  });
-
   it('normalizes missing provider env values before validation', async () => {
     vi.resetModules();
     vi.doMock('@fastgpt/service/env', () => ({
@@ -243,30 +239,6 @@ describe('sandbox provider config', () => {
     }
   });
 
-  it('allows empty proxy secret before agent sandbox credentials are configured', async () => {
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'opensandbox');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', 'http://opensandbox.local');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', '');
-    vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', '');
-    vi.resetModules();
-
-    const { serviceEnv } = await import('@fastgpt/service/env');
-
-    expect(serviceEnv.AGENT_SANDBOX_PROXY_SECRET).toBeUndefined();
-  });
-
-  it('rejects short proxy secret when agent sandbox is configured', async () => {
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'opensandbox');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', 'http://opensandbox.local');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', 'opensandbox-api-key');
-    vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', 'short');
-    vi.resetModules();
-
-    await expect(import('@fastgpt/service/env')).rejects.toThrow(
-      'Invalid environment variables. Please check: AGENT_SANDBOX_PROXY_SECRET'
-    );
-  });
-
   it('parses opensandbox config and runtime create config from env', async () => {
     vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'opensandbox');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', 'http://opensandbox.local');
@@ -274,6 +246,8 @@ describe('sandbox provider config', () => {
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_RUNTIME', 'docker');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO', 'fastgpt-agent-sandbox');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG', 'test');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL', 'http://volume-manager.local');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN', 'volume-token');
 
     const { getSandboxAdapterConfig } = await loadSandboxConfigModule();
 

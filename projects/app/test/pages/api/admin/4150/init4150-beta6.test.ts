@@ -77,6 +77,7 @@ const createLegacySkillDebugChat = async ({
   await MongoChat.create({
     teamId,
     tmbId,
+    sourceType: ChatSourceTypeEnum.skillEdit,
     appId: skillId,
     chatId,
     source: ChatSourceEnum.test,
@@ -85,6 +86,7 @@ const createLegacySkillDebugChat = async ({
   await MongoChatItem.create({
     teamId,
     tmbId,
+    sourceType: ChatSourceTypeEnum.skillEdit,
     appId: skillId,
     chatId,
     dataId: `${chatId}-item`,
@@ -93,6 +95,7 @@ const createLegacySkillDebugChat = async ({
   });
   await MongoChatItemResponse.create({
     teamId,
+    sourceType: ChatSourceTypeEnum.skillEdit,
     appId: skillId,
     chatId,
     chatItemDataId: `${chatId}-item`,

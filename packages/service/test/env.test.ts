@@ -11,9 +11,12 @@ const originalEnv = {
   VITEST: process.env.VITEST,
   NODE_ENV: process.env.NODE_ENV,
   AGENT_SANDBOX_PROVIDER: process.env.AGENT_SANDBOX_PROVIDER,
+  AGENT_SANDBOX_SEALOS_BASEURL: process.env.AGENT_SANDBOX_SEALOS_BASEURL,
+  AGENT_SANDBOX_SEALOS_TOKEN: process.env.AGENT_SANDBOX_SEALOS_TOKEN,
+  AGENT_SANDBOX_SEALOS_IMAGE: process.env.AGENT_SANDBOX_SEALOS_IMAGE,
+  AGENT_SANDBOX_E2B_API_KEY: process.env.AGENT_SANDBOX_E2B_API_KEY,
   AGENT_SANDBOX_OPENSANDBOX_BASEURL: process.env.AGENT_SANDBOX_OPENSANDBOX_BASEURL,
-  AGENT_SANDBOX_OPENSANDBOX_API_KEY: process.env.AGENT_SANDBOX_OPENSANDBOX_API_KEY,
-  AGENT_SANDBOX_PROXY_URL: process.env.AGENT_SANDBOX_PROXY_URL
+  AGENT_SANDBOX_OPENSANDBOX_API_KEY: process.env.AGENT_SANDBOX_OPENSANDBOX_API_KEY
 };
 
 const importServiceEnv = async () => {
@@ -32,15 +35,12 @@ describe('serviceEnv', () => {
     vi.stubEnv('VITEST', originalEnv.VITEST);
     vi.stubEnv('NODE_ENV', originalEnv.NODE_ENV);
     vi.stubEnv('AGENT_SANDBOX_PROVIDER', originalEnv.AGENT_SANDBOX_PROVIDER);
-    vi.stubEnv(
-      'AGENT_SANDBOX_OPENSANDBOX_BASEURL',
-      originalEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL
-    );
-    vi.stubEnv(
-      'AGENT_SANDBOX_OPENSANDBOX_API_KEY',
-      originalEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY
-    );
-    vi.stubEnv('AGENT_SANDBOX_PROXY_URL', originalEnv.AGENT_SANDBOX_PROXY_URL);
+    vi.stubEnv('AGENT_SANDBOX_SEALOS_BASEURL', originalEnv.AGENT_SANDBOX_SEALOS_BASEURL);
+    vi.stubEnv('AGENT_SANDBOX_SEALOS_TOKEN', originalEnv.AGENT_SANDBOX_SEALOS_TOKEN);
+    vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', originalEnv.AGENT_SANDBOX_SEALOS_IMAGE);
+    vi.stubEnv('AGENT_SANDBOX_E2B_API_KEY', originalEnv.AGENT_SANDBOX_E2B_API_KEY);
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', originalEnv.AGENT_SANDBOX_OPENSANDBOX_BASEURL);
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', originalEnv.AGENT_SANDBOX_OPENSANDBOX_API_KEY);
   });
 
   it('validates SYSTEM_MAX_STRING_LENGTH_M during service env init', async () => {
@@ -127,42 +127,36 @@ describe('serviceEnv', () => {
     expect(customEnv.serviceEnv.AGENT_SANDBOX_DISK_MB).toBe(333);
   });
 
-  it('未启用 Agent Sandbox 时允许 AGENT_SANDBOX_PROXY_URL 为空', async () => {
+  it('配置 sealosdevbox 后缺少运行镜像会阻止启动', async () => {
     vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
     vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
     vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
     vi.stubEnv('VITEST', 'true');
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', '');
+    vi.stubEnv('NODE_ENV', 'development');
+    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'sealosdevbox');
+    vi.stubEnv('AGENT_SANDBOX_SEALOS_BASEURL', 'http://mock-sealos.local');
+    vi.stubEnv('AGENT_SANDBOX_SEALOS_TOKEN', 'mock-sealos-token');
+    vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', '');
+
+    await expect(importServiceEnv()).rejects.toThrow(
+      'AGENT_SANDBOX_SEALOS_IMAGE are required when AGENT_SANDBOX_PROVIDER is sealosdevbox'
+    );
+  });
+
+  it('启用 Agent Sandbox 时不要求共享服务配置 app proxy 环境变量', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+    vi.stubEnv('VITEST', 'true');
+    vi.stubEnv('NODE_ENV', 'development');
+    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'opensandbox');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', 'http://mock-opensandbox.local');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', 'mock-opensandbox-api-key');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL', 'http://mock-volume-manager.local');
+    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN', 'mock-volume-manager-token');
+    vi.stubEnv('AGENT_SANDBOX_PROXY_SECRET', '');
     vi.stubEnv('AGENT_SANDBOX_PROXY_URL', '');
 
     await expect(importServiceEnv()).resolves.toBeDefined();
-  });
-
-  it('启用 opensandbox 时要求配置 AGENT_SANDBOX_PROXY_URL', async () => {
-    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
-    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
-    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
-    vi.stubEnv('VITEST', 'true');
-    vi.stubEnv('NODE_ENV', 'development');
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'opensandbox');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', 'http://mock-opensandbox.local');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', 'mock-opensandbox-api-key');
-    vi.stubEnv('AGENT_SANDBOX_PROXY_URL', '');
-
-    await expect(importServiceEnv()).rejects.toThrow('AGENT_SANDBOX_PROXY_URL is required');
-  });
-
-  it('启用 opensandbox 时要求 AGENT_SANDBOX_PROXY_URL 是 WebSocket 地址', async () => {
-    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
-    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
-    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
-    vi.stubEnv('VITEST', 'true');
-    vi.stubEnv('NODE_ENV', 'development');
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'opensandbox');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_BASEURL', 'http://mock-opensandbox.local');
-    vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_API_KEY', 'mock-opensandbox-api-key');
-    vi.stubEnv('AGENT_SANDBOX_PROXY_URL', 'http://localhost:1006');
-
-    await expect(importServiceEnv()).rejects.toThrow('AGENT_SANDBOX_PROXY_URL');
   });
 });

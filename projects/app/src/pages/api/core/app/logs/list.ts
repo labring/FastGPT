@@ -22,6 +22,11 @@ import {
   type getAppChatLogsResponseType
 } from '@fastgpt/global/openapi/core/app/log/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+
+const appChatSourceMatch = {
+  $or: [{ sourceType: ChatSourceTypeEnum.app }, { sourceType: { $exists: false } }]
+};
 
 async function handler(req: ApiRequestProps): Promise<getAppChatLogsResponseType> {
   const {
@@ -56,6 +61,7 @@ async function handler(req: ApiRequestProps): Promise<getAppChatLogsResponseType
 
   const where = {
     appId: new Types.ObjectId(appId),
+    $and: [appChatSourceMatch],
     // Feedback type filtering (BEFORE pagination for performance)
     ...(feedbackType === 'has_feedback' &&
       !unreadOnly && {
@@ -132,7 +138,16 @@ async function handler(req: ApiRequestProps): Promise<getAppChatLogsResponseType
               {
                 $match: {
                   $expr: {
-                    $and: [{ $eq: ['$appId', '$$appId'] }, { $eq: ['$chatId', '$$chatId'] }]
+                    $and: [
+                      { $eq: ['$appId', '$$appId'] },
+                      { $eq: ['$chatId', '$$chatId'] },
+                      {
+                        $or: [
+                          { $eq: ['$sourceType', ChatSourceTypeEnum.app] },
+                          { $eq: [{ $type: '$sourceType' }, 'missing'] }
+                        ]
+                      }
+                    ]
                   }
                 }
               },
@@ -192,7 +207,16 @@ async function handler(req: ApiRequestProps): Promise<getAppChatLogsResponseType
               {
                 $match: {
                   $expr: {
-                    $and: [{ $eq: ['$appId', '$$appId'] }, { $eq: ['$chatId', '$$chatId'] }]
+                    $and: [
+                      { $eq: ['$appId', '$$appId'] },
+                      { $eq: ['$chatId', '$$chatId'] },
+                      {
+                        $or: [
+                          { $eq: ['$sourceType', ChatSourceTypeEnum.app] },
+                          { $eq: [{ $type: '$sourceType' }, 'missing'] }
+                        ]
+                      }
+                    ]
                   }
                 }
               },

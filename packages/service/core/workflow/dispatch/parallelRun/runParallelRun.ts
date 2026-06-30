@@ -93,9 +93,10 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
             : `${taskResponseIdPrefix}_task_${index}`;
 
         try {
+          const taskVariableState = props.variableState.clone();
           const response = await runWorkflow({
             ...props,
-            variableState: props.variableState.clone(),
+            variableState: taskVariableState,
             nodeResponseParentId: taskResponseId,
             runtimeNodes: taskRuntimeNodes,
             runtimeEdges: taskRuntimeEdges
@@ -111,6 +112,12 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
           accumulatedPoints += attemptPoints;
 
           const result = parseTaskResponse({ index, response });
+          if (result.success) {
+            const taskVariables = taskVariableState.toRuntimeRecord();
+            for (const [key, value] of Object.entries(taskVariables)) {
+              await props.variableState.set(key, value);
+            }
+          }
           const attemptResult = {
             ...result,
             taskResponseId,

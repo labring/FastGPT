@@ -135,6 +135,7 @@ describe('cleanupDuplicateChats data clean API', () => {
     await MongoChatItem.create({
       teamId,
       tmbId,
+      sourceType: ChatSourceTypeEnum.app,
       appId,
       chatId: 'duplicate-chat',
       dataId: 'item-1',

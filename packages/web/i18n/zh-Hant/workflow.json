@@ -169,6 +169,7 @@
   "parallel_full_results": "完整結果",
   "parallel_full_results_desc": "與輸入陣列等長的結果陣列，每項形如 {success, message, data}：成功時 success=true、message 為空、data 為輸出值；失敗時 success=false、message 為錯誤訊息、data 為 null。",
   "parallel_run": "並行執行",
+  "parallel_run_end_intro": "選擇變數，作為批量執行的結果輸出。",
   "parallel_run_execution_logic": "執行邏輯",
   "parallel_run_max_concurrency": "最大並發數",
   "parallel_run_max_concurrency_tip": "同時並行執行的最大任務數，範圍 1～上限值（預設 5）。",

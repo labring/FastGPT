@@ -33,7 +33,8 @@ export async function registerNodeInstrumentation() {
       { configureLogger, getLogger, LogCategories },
       { configureMetrics },
       { configureTracing },
-      { InitialErrorEnum }
+      { InitialErrorEnum },
+      { validateAgentSandboxProxyEnv }
     ] = await Promise.all([
       import('@fastgpt/service/common/mongo/init'),
       import('@fastgpt/service/common/mongo/index'),
@@ -55,7 +56,8 @@ export async function registerNodeInstrumentation() {
       import('@fastgpt/service/common/logger'),
       import('@fastgpt/service/common/metrics'),
       import('@fastgpt/service/common/tracing'),
-      import('@fastgpt/service/common/system/constants')
+      import('@fastgpt/service/common/system/constants'),
+      import('@fastgpt/service/env.util')
     ]);
 
     await Promise.all([
@@ -74,6 +76,11 @@ export async function registerNodeInstrumentation() {
     await runInitializationStep({
       step: 'init-global-variables',
       action: () => initGlobalVariables(),
+      logger
+    });
+    await runInitializationStep({
+      step: 'validate-agent-sandbox-proxy-env',
+      action: () => validateAgentSandboxProxyEnv(),
       logger
     });
 

@@ -87,6 +87,7 @@ describe('chat dataId validation', () => {
     await MongoChatItem.create({
       teamId: testUser.teamId,
       tmbId: testUser.tmbId,
+      sourceType: ChatSourceTypeEnum.app,
       appId,
       chatId,
       dataId: 'same-round-id',
@@ -112,6 +113,7 @@ describe('chat dataId validation', () => {
     await MongoChatItem.create({
       teamId: testUser.teamId,
       tmbId: testUser.tmbId,
+      sourceType: ChatSourceTypeEnum.app,
       appId,
       chatId,
       dataId: 'existing-ai',
@@ -166,6 +168,7 @@ describe('chat dataId validation', () => {
     await MongoChatItem.create({
       teamId: testUser.teamId,
       tmbId: testUser.tmbId,
+      sourceType: ChatSourceTypeEnum.app,
       appId,
       chatId,
       dataId: 'existing-human',
@@ -196,6 +199,7 @@ describe('chat dataId validation', () => {
     await MongoChatItem.create({
       teamId: testUser.teamId,
       tmbId: testUser.tmbId,
+      sourceType: ChatSourceTypeEnum.app,
       appId,
       chatId,
       dataId: 'existing-ai',

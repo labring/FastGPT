@@ -169,6 +169,7 @@
   "parallel_full_results": "Full Results",
   "parallel_full_results_desc": "Array of the same length as the input, each item is {success, message, data}: on success success=true, message is empty, data is the output; on failure success=false, message contains the error, data is null.",
   "parallel_run": "Parallel Run",
+  "parallel_run_end_intro": "Select a variable to use as the batch execution result output.",
   "parallel_run_execution_logic": "Execution Logic",
   "parallel_run_max_concurrency": "Max Concurrency",
   "parallel_run_max_concurrency_tip": "Maximum number of tasks running in parallel (range: 1 to the upper limit, default 5).",

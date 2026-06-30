@@ -32,12 +32,12 @@ describe('sandbox runtime profile', () => {
   });
 
   it('uses fixed /workspace as opensandbox work directory', async () => {
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'opensandbox');
+    vi.stubEnv('AGENT_SANDBOX_PROVIDER', '');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO', 'runtime-image');
     vi.stubEnv('AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG', 'stable');
 
     const { getSandboxRuntimeProfile } = await loadSandboxRuntimeProfileModule();
-    const runtimeProfile = getSandboxRuntimeProfile();
+    const runtimeProfile = getSandboxRuntimeProfile('opensandbox');
 
     expect(runtimeProfile).toMatchObject({
       provider: 'opensandbox',
@@ -52,11 +52,11 @@ describe('sandbox runtime profile', () => {
   });
 
   it('uses devbox defaults for sealosdevbox provider', async () => {
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'sealosdevbox');
+    vi.stubEnv('AGENT_SANDBOX_PROVIDER', '');
     vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', 'runtime/fastgpt:stable');
 
     const { getSandboxRuntimeProfile } = await loadSandboxRuntimeProfileModule();
-    const runtimeProfile = getSandboxRuntimeProfile();
+    const runtimeProfile = getSandboxRuntimeProfile('sealosdevbox');
 
     expect(runtimeProfile).toMatchObject({
       provider: 'sealosdevbox',
@@ -71,32 +71,21 @@ describe('sandbox runtime profile', () => {
   });
 
   it('uses sealos work directory from env', async () => {
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'sealosdevbox');
+    vi.stubEnv('AGENT_SANDBOX_PROVIDER', '');
     vi.stubEnv('AGENT_SANDBOX_SEALOS_WORK_DIRECTORY', '/custom/devbox/workspace');
     vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', 'runtime/fastgpt:stable');
 
     const { getSandboxRuntimeProfile } = await loadSandboxRuntimeProfileModule();
 
-    expect(getSandboxRuntimeProfile()).toMatchObject({
+    expect(getSandboxRuntimeProfile('sealosdevbox')).toMatchObject({
       provider: 'sealosdevbox',
       workDirectory: '/custom/devbox/workspace',
       entrypoint: ''
     });
   });
 
-  it('requires sealos runtime image when building create config', async () => {
-    vi.stubEnv('AGENT_SANDBOX_PROVIDER', 'sealosdevbox');
-    vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', undefined);
-
-    const { getSandboxRuntimeProfile } = await loadSandboxRuntimeProfileModule();
-    const runtimeProfile = getSandboxRuntimeProfile();
-
-    expect(() => runtimeProfile.buildConfig()).toThrow(
-      'AGENT_SANDBOX_SEALOS_IMAGE is required for sealosdevbox provider'
-    );
-  });
-
   it('builds provider-specific create config through runtime profile', async () => {
+    vi.stubEnv('AGENT_SANDBOX_PROVIDER', '');
     vi.stubEnv('AGENT_SANDBOX_SEALOS_WORK_DIRECTORY', '/custom/devbox/workspace');
     vi.stubEnv('AGENT_SANDBOX_SEALOS_IMAGE', 'runtime/fastgpt:stable');
 

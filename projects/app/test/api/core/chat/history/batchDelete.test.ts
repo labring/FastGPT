@@ -63,6 +63,7 @@ describe('batchDelete api test', () => {
         MongoChat.create({
           teamId: testUser.teamId,
           tmbId: testUser.tmbId,
+          sourceType: ChatSourceTypeEnum.app,
           appId,
           chatId,
           source: ChatSourceEnum.test,
@@ -78,6 +79,7 @@ describe('batchDelete api test', () => {
           teamId: testUser.teamId,
           tmbId: testUser.tmbId,
           userId: testUser.userId,
+          sourceType: ChatSourceTypeEnum.app,
           appId,
           chatId,
           dataId: getNanoid(),
@@ -100,6 +102,7 @@ describe('batchDelete api test', () => {
         MongoChatItemResponse.create({
           teamId: testUser.teamId,
           tmbId: testUser.tmbId,
+          sourceType: ChatSourceTypeEnum.app,
           appId,
           chatId,
           dataId: getNanoid(),
@@ -411,6 +414,7 @@ describe('batchDelete api test', () => {
     await MongoChat.create({
       teamId: testUser.teamId,
       tmbId: testUser.tmbId,
+      sourceType: ChatSourceTypeEnum.app,
       appId: otherAppId,
       chatId: otherChatId,
       source: ChatSourceEnum.test,
@@ -452,6 +456,7 @@ describe('batchDelete api test', () => {
         MongoChat.create({
           teamId: testUser.teamId,
           tmbId: testUser.tmbId,
+          sourceType: ChatSourceTypeEnum.app,
           appId,
           chatId,
           source: ChatSourceEnum.test,

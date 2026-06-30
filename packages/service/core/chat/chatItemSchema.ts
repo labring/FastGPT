@@ -32,7 +32,8 @@ const ChatItemSchema = new Schema({
   },
   sourceType: {
     type: String,
-    enum: Object.values(ChatSourceTypeEnum)
+    enum: Object.values(ChatSourceTypeEnum),
+    required: true
   },
   dataId: {
     type: String,
@@ -96,6 +97,7 @@ const ChatItemSchema = new Schema({
   }
 });
 
+/* TODO: 未全面检查操作，所以这里暂时不加 sourceType 的索引。 */
 /*
   delete by app;
   delete by chat id;

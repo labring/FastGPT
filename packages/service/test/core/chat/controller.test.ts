@@ -48,6 +48,7 @@ describe('getChatItems', () => {
         teamId: testUser.teamId,
         tmbId: testUser.tmbId,
         userId: testUser.userId,
+        sourceType: ChatSourceTypeEnum.app,
         appId,
         chatId,
         dataId: getNanoid(),
@@ -189,6 +190,7 @@ describe('getChatItems', () => {
         teamId: testUser.teamId,
         tmbId: testUser.tmbId,
         userId: testUser.userId,
+        sourceType: ChatSourceTypeEnum.app,
         appId,
         chatId,
         dataId: getNanoid(),
@@ -271,6 +273,7 @@ describe('getChatItems', () => {
       await MongoChatItem.create({
         teamId: testUser.teamId,
         tmbId: testUser.tmbId,
+        sourceType: ChatSourceTypeEnum.app,
         appId,
         chatId: otherChatId,
         dataId: getNanoid(),
@@ -734,6 +737,7 @@ describe('getChatItems', () => {
         teamId: testUser.teamId,
         tmbId: testUser.tmbId,
         userId: testUser.userId,
+        sourceType: ChatSourceTypeEnum.app,
         appId,
         chatId,
         dataId: 'ai-data-id',
@@ -744,6 +748,7 @@ describe('getChatItems', () => {
       await MongoChatItemResponse.create([
         {
           teamId: testUser.teamId,
+          sourceType: ChatSourceTypeEnum.app,
           appId,
           chatId,
           chatItemDataId: aiItem.dataId,
@@ -758,6 +763,7 @@ describe('getChatItems', () => {
         },
         {
           teamId: testUser.teamId,
+          sourceType: ChatSourceTypeEnum.app,
           appId,
           chatId,
           chatItemDataId: aiItem.dataId,
@@ -799,6 +805,7 @@ describe('getChatItems', () => {
         teamId: testUser.teamId,
         tmbId: testUser.tmbId,
         userId: testUser.userId,
+        sourceType: ChatSourceTypeEnum.app,
         appId,
         chatId,
         dataId: 'fallback-ai-data-id',
@@ -816,6 +823,7 @@ describe('getChatItems', () => {
 
       await MongoChatItemResponse.create({
         teamId: testUser.teamId,
+        sourceType: ChatSourceTypeEnum.app,
         appId,
         chatId,
         chatItemDataId: 'fallback-ai-data-id',
@@ -844,6 +852,7 @@ describe('getChatItems', () => {
         teamId: testUser.teamId,
         tmbId: testUser.tmbId,
         userId: testUser.userId,
+        sourceType: ChatSourceTypeEnum.app,
         appId,
         chatId,
         dataId: 'empty-inline-ai-data-id',
@@ -854,6 +863,7 @@ describe('getChatItems', () => {
 
       await MongoChatItemResponse.create({
         teamId: testUser.teamId,
+        sourceType: ChatSourceTypeEnum.app,
         appId,
         chatId,
         chatItemDataId: 'empty-inline-ai-data-id',
@@ -886,6 +896,7 @@ describe('getChatItems', () => {
         teamId: testUser.teamId,
         tmbId: testUser.tmbId,
         userId: testUser.userId,
+        sourceType: ChatSourceTypeEnum.app,
         appId,
         chatId,
         dataId: aiDataId,
@@ -911,6 +922,7 @@ describe('getChatItems', () => {
       await MongoChatItemResponse.create([
         {
           teamId: testUser.teamId,
+          sourceType: ChatSourceTypeEnum.app,
           appId,
           chatId,
           chatItemDataId: aiDataId,
@@ -942,6 +954,7 @@ describe('getChatItems', () => {
         },
         {
           teamId: testUser.teamId,
+          sourceType: ChatSourceTypeEnum.app,
           appId,
           chatId,
           chatItemDataId: aiDataId,
@@ -966,6 +979,7 @@ describe('getChatItems', () => {
         },
         {
           teamId: testUser.teamId,
+          sourceType: ChatSourceTypeEnum.app,
           appId,
           chatId,
           chatItemDataId: aiDataId,
@@ -1048,6 +1062,7 @@ describe('updateChatFeedbackCount', () => {
       chatId,
       teamId: testUser.teamId,
       tmbId: testUser.tmbId,
+      sourceType: ChatSourceTypeEnum.app,
       appId,
       source: ChatSourceEnum.online
     });
@@ -1066,6 +1081,7 @@ describe('updateChatFeedbackCount', () => {
       teamId: testUser.teamId,
       tmbId: testUser.tmbId,
       userId: testUser.userId,
+      sourceType: ChatSourceTypeEnum.app,
       appId,
       chatId,
       dataId: getNanoid(),

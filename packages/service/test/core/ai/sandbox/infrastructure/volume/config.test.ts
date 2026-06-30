@@ -14,9 +14,8 @@ describe('sandbox volume config', () => {
   it('reads volume-manager configuration from service env', async () => {
     vi.doMock('@fastgpt/service/env', () => ({
       serviceEnv: {
-        AGENT_SANDBOX_ENABLE_VOLUME: true,
-        AGENT_SANDBOX_VOLUME_MANAGER_URL: 'http://volume-manager.local',
-        AGENT_SANDBOX_VOLUME_MANAGER_TOKEN: 'volume-token'
+        AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL: 'http://volume-manager.local',
+        AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN: 'volume-token'
       }
     }));
 
