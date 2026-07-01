@@ -14,6 +14,7 @@ import { useMount } from 'ahooks';
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 import PolicyTip from './PolicyTip';
+import { getRegisterMethods } from '@/web/common/system/utils';
 
 type LoginSuccessHandler = (res: LoginSuccessResponseType) => void | Promise<void>;
 
@@ -32,6 +33,9 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
   const { feConfigs } = useSystemStore();
   const query = useSearchParams();
   const router = useRouter();
+  const registerMethods = getRegisterMethods(feConfigs);
+  const hasRegisterMethod = registerMethods.length > 0;
+  const hasFindPasswordMethod = !!feConfigs?.find_password_method?.length;
 
   const {
     register,
@@ -74,7 +78,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
     }
   );
 
-  const isCommunityVersion = !!(feConfigs?.register_method && !feConfigs?.isPlus);
+  const isCommunityVersion = hasRegisterMethod && !feConfigs?.isPlus;
 
   const placeholder = (() => {
     if (isCommunityVersion) {
@@ -158,29 +162,31 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
           {t('login:Login')}
         </Button>
 
-        <Flex
-          mt={6}
-          align={'center'}
-          justifyContent={'center'}
-          gap={0}
-          color={'primary.700'}
-          fontWeight={'medium'}
-          h={'16px'}
-          lineHeight={'16px'}
-        >
-          {feConfigs?.find_password_method && feConfigs.find_password_method.length > 0 && (
-            <Box
-              cursor={'pointer'}
-              _hover={{ textDecoration: 'underline' }}
-              onClick={() => setPageType('forgetPassword')}
-              fontSize="mini"
-            >
-              {t('login:forget_password')}
-            </Box>
-          )}
-          {feConfigs?.register_method && feConfigs.register_method.length > 0 && (
-            <>
+        {(hasFindPasswordMethod || hasRegisterMethod) && (
+          <Flex
+            mt={6}
+            align={'center'}
+            justifyContent={'center'}
+            gap={0}
+            color={'primary.700'}
+            fontWeight={'medium'}
+            h={'16px'}
+            lineHeight={'16px'}
+          >
+            {hasFindPasswordMethod && (
+              <Box
+                cursor={'pointer'}
+                _hover={{ textDecoration: 'underline' }}
+                onClick={() => setPageType('forgetPassword')}
+                fontSize="mini"
+              >
+                {t('login:forget_password')}
+              </Box>
+            )}
+            {hasFindPasswordMethod && hasRegisterMethod && (
               <Box display={['block', 'block']} mx={3} h={'12px'} w={'1px'} bg={'myGray.250'}></Box>
+            )}
+            {hasRegisterMethod && (
               <Box
                 cursor={'pointer'}
                 _hover={{ textDecoration: 'underline' }}
@@ -190,9 +196,9 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
               >
                 {t('login:register')}
               </Box>
-            </>
-          )}
-        </Flex>
+            )}
+          </Flex>
+        )}
       </Box>
     </FormLayout>
   );
