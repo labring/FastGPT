@@ -115,7 +115,7 @@ const EnterpriseAuthNoticeModal = () => {
             letterSpacing={'0.15px'}
             fontWeight={500}
           >
-            {t('account_team:enterprise_auth_notice_title')}
+            {t('common:enterprise_auth_notice_title')}
           </Text>
 
           <Box
@@ -126,34 +126,30 @@ const EnterpriseAuthNoticeModal = () => {
             letterSpacing={'0.25px'}
           >
             <Text fontSize="16px" fontWeight={600} lineHeight="24px" mb={4}>
-              {t('account_team:enterprise_auth_notice_headline')}
+              {t('common:enterprise_auth_notice_headline')}
             </Text>
 
-            <Text mb={2}>{t('account_team:enterprise_auth_notice_greeting')}</Text>
-            <Text mb={4}>{t('account_team:enterprise_auth_notice_intro')}</Text>
+            <Text mb={2}>{t('common:enterprise_auth_notice_greeting')}</Text>
+            <Text mb={4}>{t('common:enterprise_auth_notice_intro')}</Text>
 
             <Box as="section" mb={4}>
               <Flex alignItems="flex-start" gap={2}>
                 <NoteIcon />
-                <Text>{t('account_team:enterprise_auth_notice_benefit_intro')}</Text>
+                <Text>{t('common:enterprise_auth_notice_benefit_intro')}</Text>
               </Flex>
 
               <Flex as="ul" direction="column" gap={1} mt={1} pl={0} listStyleType="none">
-                <BenefitItem>
-                  {t('account_team:enterprise_auth_notice_benefit_advanced')}
-                </BenefitItem>
-                <BenefitItem>{t('account_team:enterprise_auth_notice_benefit_points')}</BenefitItem>
-                <BenefitItem>
-                  {t('account_team:enterprise_auth_notice_benefit_support')}
-                </BenefitItem>
+                <BenefitItem>{t('common:enterprise_auth_notice_benefit_advanced')}</BenefitItem>
+                <BenefitItem>{t('common:enterprise_auth_notice_benefit_points')}</BenefitItem>
+                <BenefitItem>{t('common:enterprise_auth_notice_benefit_support')}</BenefitItem>
               </Flex>
             </Box>
 
             <Text mb={4}>
               <Box as="span" fontWeight={600}>
-                {t('account_team:enterprise_auth_notice_entry')}
+                {t('common:enterprise_auth_notice_entry')}
               </Box>
-              {t('account_team:enterprise_auth_notice_or_click')}
+              {t('common:enterprise_auth_notice_or_click')}
               <Link
                 href={certificationHref}
                 color="primary.600"
@@ -161,21 +157,16 @@ const EnterpriseAuthNoticeModal = () => {
                 textDecoration="underline"
                 onClick={onClickCertificationLink}
               >
-                {t('account_team:enterprise_auth_notice_link')}
+                {t('common:enterprise_auth_notice_link')}
               </Link>
-              {t('account_team:enterprise_auth_notice_link_suffix')}
+              {t('common:enterprise_auth_notice_link_suffix')}
             </Text>
 
-            <Flex alignItems="flex-start" gap={2} mb={4}>
-              <Text>{t('account_team:enterprise_auth_notice_activity_icon')}</Text>
-              <Text>{t('account_team:enterprise_auth_notice_activity')}</Text>
-            </Flex>
-
-            <Text mb={6}>{t('account_team:enterprise_auth_notice_help')}</Text>
+            <Text mb={6}>{t('common:enterprise_auth_notice_help')}</Text>
 
             <Box my={6} h="1px" bg="myGray.200" />
 
-            <Text>{t('account_team:enterprise_auth_notice_footer')}</Text>
+            <Text>{t('common:enterprise_auth_notice_footer')}</Text>
           </Box>
         </Flex>
       </ModalBody>
@@ -199,7 +190,7 @@ const EnterpriseAuthNoticeModal = () => {
           _hover={{ bg: '#2152D9' }}
           _active={{ bg: '#1F4CCF' }}
         >
-          {t('account_team:enterprise_auth_notice_read')}
+          {t('common:enterprise_auth_notice_read')}
         </Button>
       </ModalFooter>
     </MyModal>
