@@ -1,50 +1,644 @@
 ---
-title: Quick Start
-description: Get started with FastGPT basics
+title: 'Quick Start'
+description: 'Quickly experience FastGPT through four use cases: Conversational Agent, Knowledge Base, Workflow, and Agent V2'
 ---
 
-For more tips, [watch the video tutorial](https://www.bilibili.com/video/BV1sH4y1T7s9)
+This article uses four complete use cases to help you quickly understand FastGPT's core application types and complete the basic setup from simple conversations to complex task orchestration.
 
-## Knowledge Base
+This page is suitable for first-time FastGPT users, as well as pre-sales, delivery, operations, legal, and administrative roles who want to quickly experience the platform's capabilities. After completing this page, you will build the following in order:
 
-Before you begin, prepare a test document — Word, PDF, TXT, Excel, or Markdown all work. For example, a company leave policy, non-confidential sales scripts, or product documentation.
+1. Conversational Agent: Corporate email writing assistant.
+2. Knowledge Base + Conversational Agent: Civil Code Q&A assistant.
+3. Workflow: Content review and automatic rewriting.
+4. Agent V2: Intelligent data analysis Agent.
 
-We'll use the FastGPT Chinese README file as an example.
+We recommend preparing the following in advance:
 
-First, create a Knowledge Base.
+- An available AI model, such as GLM-5.1 or other configured models.
+- A knowledge base test file, such as the Civil Code, company policies, product manuals, etc.
+- If you want to test the Email tool, prepare an email SMTP authorization code.
+- If you want to test Agent V2 data analysis, prepare a sample Excel or CSV file.
 
-![](/imgs/create-rep.png)
+When reading, focus on three things: what kind of problems each application type is suitable for, why the key configurations are written this way, and what to observe during validation. The parameters and prompts in this article are reusable starting points; for production deployment, you can replace them with your own business materials, review rules, notification channels, and data files.
 
-After creating the Knowledge Base, upload some content.
+## Case 1: Conversational Agent — Corporate Email Writing Assistant
 
-There are four upload modes:
-- Manual Input: Enter QA pairs manually — the most precise method
-- QA Split: Upload a text file and let AI generate QA pairs automatically
-- Direct Chunking: Upload a text file and split it into segments directly
-- CSV Import: Batch import QA pairs
+### 1.1 Use Cases
 
-Here we'll use QA Split to let AI generate QA pairs automatically. You can edit them manually later if the quality isn't satisfactory.
+Conversational Agents are suitable for lightweight Q&A, content generation, copy refinement, and standardized output. This case does not link a knowledge base or rely on complex workflows; it simply uses model configuration, prompts, and an Email tool to build a corporate email writing assistant.
 
-![](/imgs/upload-data.png)
+Employees often need to handle emails for project updates, cross-departmental collaboration, customer replies, meeting minutes, and more. Using AI to standardize email formats and expression styles can improve writing efficiency and maintain the professionalism of external corporate communications.
 
-After uploading, wait for processing to complete until the file status shows as available.
+The focus of this case is not to have the AI randomly generate an email, but to consolidate the stable requirements of corporate email writing into the prompt, such as subject lines, salutations, body structure, action items, and risk reminders. For beginners, it also serves as a minimal closed loop for understanding FastGPT application configuration: first define the role, then constrain the output, and finally extend execution actions through tools.
 
-![](/imgs/upload-data2.png)
+### 1.2 Configuration Steps
 
-## Application
+1. **Create a Conversational Agent**
 
-Click the "Application" button to create a new app. There are four templates — select "Knowledge Base + Chat Guide."
+   Click "New" in the workspace, select "Conversational Agent", and fill in the application name as `Corporate Email Writing Assistant`.
 
-![](/imgs/create-app.png)
+   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-01.png)
 
-After creating the app, go to the detail page, find the "Knowledge Base" section, and add the Knowledge Base you just created.
+2. **Enter the Application Configuration Page**
 
-![](/imgs/create-app2.png)
+   After creation, enter the application configuration page. The page is usually divided into left and right columns: the left is AI configuration, and the right is debug preview.
 
-After adding the Knowledge Base, click "Save and Preview" to link your app with the Knowledge Base.
+   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-02.png)
 
-![](/imgs/create-app3.png)
+3. **Select a Model**
 
-Now you're ready to start chatting.
+   In the AI configuration, select the base model for the Conversational Agent. This case uses GLM-5.1, but you can replace it with other available models configured in your current environment.
 
-![](/imgs/create-app4.png)
+   When selecting a model, prioritize two aspects: first, whether the model is good at business writing, and second, whether it consistently follows the required format. Email writing is a low-risk, low-structure task, so you usually do not need the strongest model available, but you should still choose one with a natural tone and reliable instruction following.
+
+   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-03.png)
+
+4. **Write the Prompt**
+
+   The prompt needs to clearly describe the assistant's role, output format, and constraints. You can use the following example:
+
+   ```md
+   You are a corporate email writing expert, helping employees write professional, clear, and appropriate work emails.
+
+   Output format:
+
+   - **Subject line**: Concise and clear
+   - **Salutation**: Choose "Dear Mr./Ms. XX" or "Hi XX" based on the relationship with the recipient
+   - **Body**: Three-part structure (Background → Core content → Action items)
+   - **Sign-off**: Name, Title, Department
+
+   Rules:
+
+   - Keep the body between 200-500 words
+   - List action items and to-dos with bullet points
+   - When involving sensitive content like salary, HR, or legal matters, remind the user to send with caution
+   - Use a neutral and polite tone when unsure of the relationship with the recipient
+   ```
+
+   Write the prompt into the prompt module.
+
+   This prompt consists of three parts: the role definition stabilizes the assistant's identity, the output format constrains the email structure, and the rules control risk boundaries. In actual business, you can continue to add corporate tone requirements, brand terminology, banned words, signature formats, and more to make the output more aligned with internal standards.
+
+   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-04.png)
+
+5. **Add the Email Tool**
+
+   Tools encapsulate complex operations. This case uses the Email sending tool to give the AI assistant the ability to send emails after generating them. Click the plus sign on the right side of the tools and select "Send Email".
+
+   You can think of tools as the AI's external capabilities. Without tools, the assistant can only generate the email body; after adding the Email tool, the assistant can execute the sending action after user confirmation. In a production environment, it is recommended to have the assistant generate an email draft first, and then have the user confirm the sending, to avoid accidental sending or sending to the wrong recipient.
+
+   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-05.png)
+
+6. **Configure the Email Tool**
+
+   Enter the tool configuration page and fill in the parameters related to the email service.
+
+   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-06.png)
+
+7. **Activate the Tool**
+
+   Click "Settings" to enter the tool activation page, then click "Activate Tool".
+
+   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-07.png)
+
+8. **Fill in the Email SMTP Information**
+
+   This case uses QQ Mail as an example. When testing, you can fill it out as follows:
+
+   ```text
+   SMTP Server Address: smtp.qq.com
+   SMTP Port: 465
+   Enable SSL
+   SMTP Username: Email address
+   SMTP Password: Authorization code
+   ```
+
+   For the authorization code, please refer to the [Authorization Code Acquisition Tutorial](https://cloud.tencent.com/developer/article/2177098).
+
+   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-08.png)
+
+9. **Set the Conversation Opening**
+
+   The conversation opening is used to tell users what this AI assistant can do. You can fill in:
+
+   ```text
+   Hello! I am the Email Writing Assistant 📧
+
+   Please tell me: Who is the recipient? What is the purpose of the email? What key information needs to be included?
+
+   I will help you generate a professional and appropriate email.
+   ```
+
+   After filling it out, you can see the effect in the preview area on the right.
+
+   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-09.png)
+
+10. **Validate the Result**
+
+    After configuration, enter your email requirements in the debug preview to check whether the assistant can generate an email with a clear structure and appropriate tone.
+
+    ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-10.png)
+
+    If the user's information is insufficient, the assistant should proactively prompt to supplement the recipient, email purpose, key information, etc.
+
+    ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-11.png)
+
+    When verifying, it is recommended to test at least three types of inputs: an email requirement with complete information, a vague requirement missing the recipient or purpose, and an email requirement containing sensitive information. An email assistant ready for production not only needs to be able to "write", but also needs to be able to ask follow-up questions when information is insufficient, and remind users to send with caution in sensitive scenarios.
+
+### 1.3 Business Value
+
+- **Improve Writing Efficiency**: Transform high-frequency emails like project updates, customer follow-ups, and meeting minutes from "writing from scratch" to "generating after filling in key information", reducing repetitive labor.
+- **Unify Communication Standards**: Consolidate standards for salutations, body structure, action items, and sign-offs into the Prompt, reducing the communication costs caused by differences in writing styles among employees.
+- **Reduce Sending Risks**: Add sensitive information reminders, missing information follow-ups, and neutral tone constraints through the Prompt to reduce incomplete, inappropriate, or over-promising emails.
+- **Expand Office Automation**: Combined with the Email tool, you can continue to integrate office workflows such as notifications, approvals, Lark, DingTalk, and WeCom, extending email writing from content generation to business action execution.
+
+## Case 2: Knowledge Base + Conversational Agent — Civil Code Q&A Assistant
+
+### 2.1 Use Cases
+
+A knowledge base is ideal for scenarios where answers must be based on provided materials, such as policy Q&A, product manual Q&A, legal article retrieval, and customer service knowledge support. Without a knowledge base, the AI primarily relies on its own model capabilities to answer questions. Once a knowledge base is connected, the AI first searches your materials and then organizes answers based on the search results.
+
+In this case, we import the _Civil Code of the People's Republic of China_ into the knowledge base and create a Civil Code Q&A assistant. When users ask questions in natural language, the assistant should prioritize citing the original Civil Code text to reduce fabricated responses.
+
+Think of the knowledge base as a "reference room" configured for the AI. The model itself has general knowledge but doesn't know your company policies, product details, internal processes, or specific regulatory versions. The knowledge base turns these materials into searchable content, allowing the AI to look up information before organizing an answer. For legal, policy, customer service, and after-sales scenarios, this is more controllable than relying solely on the model's memory.
+
+### 2.2 Preparation
+
+- Example file: Prepare a copy of the _Civil Code of the People's Republic of China_ or another regulatory/documentation file.
+- A usable conversation model and vector model.
+- A legal question for testing, e.g., "My lease isn't up yet, but the landlord wants to sell the house. What should I do?"
+
+### 2.3 Configuration Steps
+
+1. **Create a Knowledge Base**
+
+   Click **Knowledge Base** on the left side of the homepage, then click **New** in the top right corner. Name the knowledge base `Civil Code Q&A Assistant`. Keep the other default settings for this case.
+
+   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-12.png)
+
+2. **Create a Text Dataset**
+
+   Click **New**, then select **Text Dataset** to import local documents.
+
+   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-13.png)
+
+3. **Upload a Local File**
+
+   Click **Upload Local File** and select the example file. In real use, you can upload multiple files at once; for this case, we upload only one file as a demonstration.
+
+   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-14.png)
+
+4. **Set Parsing Parameters**
+
+   After entering the parameter settings page, choose the parsing method based on the file type.
+
+   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-15.png)
+
+   Recommended common settings:
+   - **File Parsing Settings**: Enable when uploading PDFs; for regular Word, Markdown, TXT files, start with the default configuration.
+   - **Processing Method**: For most scenarios, choose chunked storage — it's lower cost and faster for retrieval.
+   - **Chunking Conditions**: Controls how many tokens each chunk contains. Use the default values for quick testing.
+   - **Index Enhancement**: For plain text, usually check the first two options; if the document contains images, enable image-related enhancements.
+
+   These parameters directly affect the quality of subsequent Q&A. If chunks are too large, search results may include too much irrelevant content, making answers verbose. If chunks are too small, key context may be split, causing answers to lack supporting evidence. For the quick-start phase, use the default configuration. When officially integrating enterprise policies, contracts, or product manuals, adjust these parameters gradually based on Q&A performance.
+
+5. **Preview Chunking Results**
+
+   After reaching the data preview step, check whether the chunks are complete and readable. If chunks are too long or too short, go back and adjust the parameters.
+
+   When previewing chunks, focus on three things: whether paragraphs are abnormally cut off, whether titles and body text remain within the same semantic range, and whether tables, clauses, or numbering are still readable. If the quality of these knowledge fragments is unstable, even a well-written Prompt in the application will struggle to consistently produce accurate answers.
+
+   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-16.png)
+
+6. **Wait for the Knowledge Base to Be Ready**
+
+   Once the data status changes to "Ready," the knowledge base can be referenced by applications.
+
+   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-17.png)
+
+7. **Create and Link a Conversational Agent**
+
+   Create a new Conversational Agent, also named `Civil Code Q&A Assistant`. After creation, link the knowledge base you just created in the application configuration.
+
+   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-18.png)
+
+   After linking the knowledge base, the application's response flow changes from simple conversation to "user question → knowledge base search → model summarizes answer." This is the key difference between Case 1 and Case 2: Case 1 emphasizes content generation, while Case 2 emphasizes answering based on provided materials.
+
+8. **Configure the Q&A Prompt**
+
+   The Civil Code Q&A assistant needs to emphasize "answer based on the knowledge base" and "cite the original text." You can use the following Prompt:
+
+   ```md
+   You are a professional Civil Code Q&A assistant, answering legal questions based on the original text of the _Civil Code of the People's Republic of China_.
+
+   Rules:
+
+   - Strictly answer based on the Civil Code articles retrieved from the knowledge base; do not fabricate legal provisions.
+   - Every answer must cite the original Civil Code text (book, chapter, article).
+   - If there is no directly corresponding provision in the Civil Code, state this honestly and do not give legal advice.
+   - When applying the law to specific cases, remind the user: "This answer is for reference only; please consult a professional lawyer."
+   - Provide plain-language explanations of legal terms so that users without a legal background can understand.
+
+   Output format:
+
+   1. **Legal Conclusion** (1–3 sentence summary)
+   2. **Relevant Article Citation** (original excerpt + book/chapter/article number)
+   3. **Plain-Language Explanation** (explain the meaning of the article in everyday language)
+   4. **Practical Advice** (2–3 actionable suggestions)
+   5. **Disclaimer** ("This answer is based on the original Civil Code text and does not constitute legal advice. For specific cases, please consult a professional lawyer.")
+   ```
+
+   For legal Q&A scenarios, it's especially important to define boundaries: what can be answered is a general explanation based on the materials; the model's output should never be packaged as formal legal advice. Requiring article citations, stating uncertainty, and adding disclaimers in the Prompt all aim to make the output more traceable and compliant with high-risk knowledge Q&A usage norms.
+
+9. **Configure the Opening Message**
+
+   The opening greeting can include a few example questions to help users quickly understand how to use this assistant:
+
+   ```text
+   Hello! I'm the Civil Code Q&A Assistant ⚖️
+
+   I answer legal questions based on the original text of the *Civil Code of the People's Republic of China*.
+
+   You can ask me:
+   ["My lease isn't up yet, but the landlord wants to sell the house. What should I do?"]
+   ["I received a product I bought online and it was broken, but the seller won't accept a return. What does the law say?"]
+   ["The upstairs neighbor's leak soaked my ceiling. Can I claim compensation?"]
+
+   ⚠️ Note: My answers are for reference only. For specific legal issues, please consult a professional lawyer.
+   ```
+
+   If you add `[question content]` in the opening greeting, users can click the question to ask it directly — useful for demonstrations and guidance.
+
+   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-19.png)
+
+10. **Verify Q&A Performance**
+
+    Ask a question related to the Civil Code and check whether the answer includes a legal conclusion, article citation, plain-language explanation, and disclaimer.
+
+    ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-20.png)
+
+    When verifying, don't just check whether the answer "looks like a legal answer" — also check whether it actually references the knowledge base content. It's recommended to test with questions inside the materials, outside the materials, and ambiguous questions: questions inside the materials should cite the original text; questions outside the materials should state that a direct confirmation is not possible; ambiguous questions should proactively prompt the user to provide more facts.
+
+### 2.4 Business Value
+
+- **Lower the barrier to material retrieval**: Turn lengthy regulations, policies, and manuals into a natural language Q&A entry point, allowing business users to quickly find relevant content without needing to know keywords or directory locations first.
+- **Improve answer credibility**: Through knowledge base retrieval and original text citations, answers have a source basis, reducing the risk of the model fabricating or giving vague responses based on experience.
+- **Accumulate organizational knowledge**: Internal company policies, product FAQs, after-sales SOPs, contract templates, and other materials can be continuously added to the knowledge base, forming maintainable and reusable knowledge assets.
+- **Adapt to high-frequency support scenarios**: Legal, HR, administrative, customer service, and delivery teams can all use a similar model to turn repetitive inquiries into self-service Q&A, improving response efficiency.
+
+## Case 3: Workflow — Content Review and Automatic Rewriting
+
+### 3.1 Use Cases
+
+Workflows are ideal for tasks with fixed steps, clear logic, and the need for branching decisions or human confirmation. This case breaks down content compliance review into several stages: knowledge base retrieval, AI classification, conditional branching, automatic rewriting, rejection explanation, and human confirmation, simulating the review process before enterprise content is published.
+
+Its core value lies in two aspects:
+
+1. **Automation**: Once triggered, the system automatically executes multiple steps according to the preset workflow.
+2. **Standardization**: The same input goes through the same judgment and processing, reducing human variability.
+
+To determine whether a task is suitable for a workflow, check if it has three characteristics: "stable steps, clear rules, and repeatable execution." Content review is a typical scenario: the input is content to be published, the rules come from a compliance knowledge base, and the output is usually pass, rewrite, or reject, with the option to add human confirmation in between. This improves processing efficiency while retaining risk control.
+
+### 3.2 Preparation
+
+First, create a "Content Compliance Rules" knowledge base and upload a simple text file. You can directly use the following rule template:
+
+```text
+Content Compliance Rules
+
+Safe Content (can be published directly)
+- Objective factual statements
+- Normal event notifications, meeting arrangements
+- Product feature descriptions (based on real data)
+- Industry knowledge sharing
+
+Sensitive Wording (needs rewriting)
+- Absolute language: "best," "first," "100%," "absolute," "only"
+- Exaggerated claims: "disrupting the industry," "unprecedented," "unmatched"
+- Unverified data: conversion rates, satisfaction rates, growth rates without sources
+- Comparative disparagement: directly naming competitors and belittling them
+
+Prohibited Content (must not be published)
+- Illegal information: involving pornography, gambling, drugs, fraud, pyramid schemes
+- Personal attacks: insults, defamation against individuals or groups
+- False information: fabricated data, forged qualifications, impersonating official sources
+- Sensitive topics: political sensitivity, religious discrimination, regional attacks
+```
+
+The rule base does not need to be complex at the start. For quick validation, split the rules into three categories: "safe, needs rewriting, prohibited." For formal use, you can continue adding rules by industry, brand, channel, or region, such as advertising-sensitive terms, medical compliance requirements, prohibited financial marketing claims, brand tone guidelines, and so on.
+
+### 3.3 Workflow Design
+
+Before configuring nodes, it's recommended to confirm the complete workflow. This case can be designed as follows:
+
+1. **User Input**: As the workflow starting point, receives the content to be reviewed.
+2. **Knowledge Base Retrieval**: Recalls relevant rules from the content compliance rules base. It is recommended to set the citation limit to 1-2 entries.
+3. **AI Content Compliance Classification**: Combines user input and retrieval results to classify the content as "Safe / Sensitive but Rewritable / Prohibited."
+4. **Conditional Branching**: Enters different branches based on the classification result.
+5. **Safe Branch**: Directly outputs the original text, indicating it can be published.
+6. **Sensitive but Rewritable Branch**: Calls AI to rewrite the content, then submits it for user confirmation.
+7. **Prohibited Branch**: Outputs a rejection explanation and provides revision suggestions.
+8. **Final Output**: Returns the original text, rewritten version, or rejection explanation.
+
+When designing a workflow, first determine the responsibility of each node to avoid having a single AI node simultaneously handle "retrieving rules, judging classification, rewriting content, explaining reasons," etc. Once responsibilities are clearly separated, each node's prompt will be shorter and more stable, making it easier to locate issues later: whether the knowledge base failed to recall rules, the review node misclassified, or the condition in the decision node didn't match.
+
+### 3.4 Configuration Steps
+
+1. **Create a Workflow**
+
+   Go to the workflow homepage, click "New Workflow," and name it `Content Review and Automatic Rewriting`.
+
+   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-21.png)
+
+   After creation, enter the workflow editing page.
+
+   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-22.png)
+
+   The complete workflow diagram for this case is as follows:
+
+   ![Content Compliance Review Workflow](/imgs/guide/getting-started/quick-start/image-23.png)
+
+2. **Configure the Opening Message**
+
+   In the system configuration, fill in the opening statement to explain the assistant's review rules and usage.
+
+   ```md
+   Hello! I am the Content Compliance Review Assistant 🛡️
+
+   Please send me the content you need reviewed, and I will automatically judge it according to the rules:
+
+   - **✅ Safe** — Content has no sensitive information and can be published directly
+   - **⚠️ Sensitive but Rewritable** — Contains correctable wording; I will rewrite it and send it back for your confirmation
+   - **🚫 Prohibited** — Contains red-line content and is rejected with an explanation
+
+   Supports single text review or batch submission (multiple items separated by line breaks).
+
+   **Let's get started.**
+   ```
+
+3. **Call the Knowledge Base**
+
+   Add a knowledge base retrieval node in the workflow, select the previously created content compliance rules base. The input for this node uses the user input, and the output is referenced by subsequent AI nodes.
+
+   The purpose of this node is not to have the model read the entire rule base, but to retrieve the rule fragments most relevant to the current content for the subsequent review node. You can initially set the citation limit to 1-2 entries to keep the prompt context focused; if the rule base is larger or the categories are more detailed, gradually increase the citation count.
+
+   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-24.png)
+
+   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-25.png)
+
+4. **Configure the Content Review Node**
+
+   Add an AI dialogue node and rename it to "Content Review Node." This node is responsible for outputting the classification result based on the user input and knowledge base rules.
+
+   ```md
+   You are a content compliance review expert. Based on the compliance rules retrieved from the knowledge base, determine the compliance level of the user's input content.
+
+   Classification criteria:
+
+   - Safe: Content has no sensitive information and can be published directly
+   - Sensitive but Rewritable: Contains correctable sensitive wording; can be published after rewriting
+   - Prohibited: Contains red-line content and cannot be published
+
+   Output format:
+   Output only one of three labels: Safe / Sensitive but Rewritable / Prohibited
+   ```
+
+   Note: The knowledge base reference must select the previously created knowledge base, otherwise the AI cannot read the rule content.
+
+   The output of the review node should be as stable as possible, because it directly affects the decision node's branching. For a quick demo, you can output only the three labels "Safe / Sensitive but Rewritable / Prohibited"; if you need stricter automation integration later, you can switch to structured output, such as returning the classification, reason, and matched rules together, making it easier for downstream nodes to perform precise matching and logging.
+
+   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-26.png)
+
+5. **Test the Review Node**
+
+   Click "Run" in the top right corner, input a piece of content to be reviewed, and confirm that the review node returns a stable classification result.
+
+   Test this node individually instead of waiting until the entire workflow is built. Input a normal event announcement, marketing copy containing absolute language, and clearly prohibited text, and observe whether the classification meets expectations. If the classification is unstable, first adjust the rule base wording and the review prompt before continuing to configure subsequent branches.
+
+   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-27.png)
+
+6. **Hide Intermediate Output**
+
+   Click the settings button on the right side of the model to adjust the node's basic settings. Since the user only needs the final result, it is recommended to hide the intermediate output of the content review node.
+
+   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-28.png)
+
+7. **Configure the Decision Node**
+
+   Add a decision node to branch based on the "Safe / Sensitive but Rewritable / Prohibited" output from the content review node.
+
+   The decision node acts as a switch in the workflow. The more stable the output from the previous step, the easier it is to configure the decision node; if the review node's output contains explanatory text, the condition may fail to match. Therefore, in branching workflows, it is common to first constrain the output format of the upstream node before configuring the decision node conditions.
+
+   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-29.png)
+
+8. **Configure the Safe Branch**
+
+   When the review result is "Safe," directly output the original text. In a production scenario, you could also add spot-checking or human confirmation.
+
+   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-30.png)
+
+   The output effect is as follows:
+
+   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-31.png)
+
+9. **Configure the Sensitive but Rewritable Branch**
+
+   When the review result is "Sensitive but Rewritable," add an AI dialogue node to automatically rewrite the content. You can use the following prompt:
+
+   ```md
+   You are a content rewriting expert. Rewrite the user's input content into a compliant version.
+
+   Rewriting principles:
+
+   - Preserve the original meaning and information, do not change the core expression
+   - Replace absolute language with objective statements, e.g., "best" → "industry-leading"
+   - Replace unverified data statements with reasonable speculation, e.g., "100% effective" → "most users report it effective"
+   - Replace sensitive wording with neutral expressions
+   - Maintain the original style and tone
+   ```
+
+   After rewriting, you can add a user choice node to let the user accept the rewrite, continue rewriting, or abandon it.
+
+   The human confirmation node is suitable for paths that are risky but correctable. AI can propose rewrite suggestions, but whether to publish is still left to the business personnel to confirm. This reduces the time spent on initial screening and repeated revisions while not handing over the final publishing decision entirely to the automated workflow.
+
+   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-32.png)
+
+   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-33.png)
+
+   If the user accepts the rewrite, output the rewritten result; if the user chooses to continue rewriting, it can be connected back to the content rewriting node; if the user abandons it, output the original text.
+
+   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-34.png)
+
+10. **Configure the Prohibited Branch**
+
+    When the review result is "Prohibited," add an AI dialogue node to output a rejection explanation. You can use the following prompt:
+
+    ```md
+    The content submitted by the user cannot be published because it contains prohibited information. Please explain the reason in a polite and professional tone.
+
+    Output format:
+
+    1. One sentence stating that the content cannot be published
+    2. List specific violation points (1-3 items)
+    3. Provide alternative suggestions (e.g., suggest which aspects to modify before resubmitting)
+    ```
+
+11. **Verify the Complete Workflow**
+
+    Input safe content, sensitive content, and prohibited content separately, and confirm that all three branches return the expected results.
+
+    ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-35.png)
+
+    When verifying the complete workflow, it is recommended to record the input, review classification, branch entered, and final output for each test case. If the output does not meet expectations, troubleshoot node by node: first check whether the knowledge base recalled the correct rules, then whether the review node classified accurately, and finally whether the decision node conditions and branch output are configured correctly.
+
+### 3.5 Business Value
+
+- **Standardize review rules into a workflow**: Embed the judgment criteria for pre-publication content review into a knowledge base and node configuration, reducing reliance on personal experience passed down verbally.
+- **Improve processing efficiency**: Safe content can pass quickly, sensitive content is automatically rewritten, and prohibited content receives a direct explanation, allowing reviewers to focus on content that requires judgment.
+- **Retain human control points**: Add user confirmation for gray-area scenarios like "sensitive but rewritable," preventing the automated workflow from making publishing decisions directly for business personnel.
+- **Easy to reuse and extend**: The same workflow can be applied to marketing copy, customer service scripts, announcements, event pages, short video scripts, and other content review scenarios by replacing the rule base and a few prompts.
+- **Reduce compliance risk**: Through fixed branches and rejection explanations, high-risk content has a clear interception path, reducing the risk of accidental publication, exaggerated claims, or non-compliant expressions.
+
+## Case 4: Agent V2 — Intelligent Data Analysis Agent
+
+### 4.1 Use Cases
+
+Agent V2 is ideal for open-ended, multi-step tasks that require dynamic planning. Unlike workflows, where every step must be predefined, Agent V2 is better suited for tasks with “unfixed steps,” such as data analysis, file processing, multi-tool collaboration, and complex problems that require follow-up clarification.
+
+This case simulates the daily data analysis needs of operations, product, or sales teams: upload an Excel file, ask questions in natural language, and let the Agent autonomously read the file, formulate an analysis plan, and execute the analysis in a virtual machine.
+
+In Case 3, the workflow required you to design a fixed path of “retrieval rules → classification → branching → rewriting or rejection.” Agent V2, on the other hand, acts more like an autonomous executor. You don’t need to define every step in advance; just provide the goal and the file. The Agent decides whether to read the file first, perform statistics, ask follow-up questions, or run code based on the data structure and problem complexity.
+
+Data analysis is a great way to experience Agent V2 because it naturally has three characteristics: the analysis path is not fixed, it often requires multi-step reasoning, and the requirements may need clarification. With the same Excel file, different users might care about product sales, channel ROI, regional trends, or anomalous orders. A fixed workflow can hardly cover all paths in advance, but Agent V2 can dynamically plan based on the question.
+
+### 4.2 Preparation
+
+- Sample file: Prepare a sales data Excel or CSV table.
+- A conversation model that supports Agent V2.
+- Virtual machine capability is available in the current environment.
+
+### 4.3 Configuration Steps
+
+1. **Create an Agent V2 Application**
+
+   In the workspace, click “Create Application,” select `Conversational Agent V2 (Beta)`, and name it `Intelligent Data Analysis Agent`.
+
+   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-36.png)
+
+2. **Configure Model and Prompt**
+
+   Continue using the GLM-5.1 model for AI configuration. The system prompt can refer to:
+
+   ```md
+   You are a senior data analyst Agent. You can read data files uploaded by users, run Python analysis code in the sandbox, and proactively ask users for clarification.
+
+   Tools:
+
+   - 📄 **Read File** — Read Excel/CSV data uploaded by the user
+   - 💻 **Sandbox Execution** — Run Python scripts (pandas/matplotlib/numpy)
+   - ❓ **Proactive Follow-up** — Confirm with the user when analysis requirements are unclear
+
+   Workflow:
+
+   1. After receiving data and a question, first read the file to understand the data structure and content
+   2. Formulate an analysis plan and present it to the user as a list of steps
+   3. Execute step by step according to the plan, showing key findings at each step
+   4. Proactively ask follow-up questions when encountering ambiguous requirements, such as unclear metric definitions or missing comparison baselines
+   5. Dynamically update the plan based on follow-up results
+   6. Output an analysis report containing data overview, core findings, visual charts, and business recommendations
+
+   Security Rules:
+
+   - Only data analysis is allowed in the sandbox; no network access, no writing files to the host machine
+   - Data is used only for this analysis; do not expose raw sensitive data in the report
+   - Mark confidence levels for uncertain conclusions
+
+   Output Format:
+
+   1. 📋 Analysis Plan (automatically generated based on data)
+   2. 📊 Data Overview (row count, column names, missing values, basic statistics)
+   3. 🔍 Core Findings (3-5 key insights, supported by charts)
+   4. 💡 Business Recommendations (actionable suggestions based on data)
+   ```
+
+   The key point of this prompt is to have the Agent plan before executing, rather than jumping straight to conclusions. For data analysis tasks, first reading the data structure, confirming field meanings, and formulating an analysis plan can significantly reduce the risk of misunderstanding requirements or misusing metrics. In production use, you can continue to supplement internal metric definitions, such as GMV, ROI, conversion rate, active customers, repurchase rate, etc.
+
+3. **Configure the Opening Message**
+
+   The opening remarks guide the user to upload a data file and ask analysis questions:
+
+   ```text
+   Hello! I am the Intelligent Data Analysis Agent 📊
+
+   Just drag and drop your Excel or CSV file here and tell me what you want to analyze.
+
+   For example:
+   - "Analyze this sales data and find the best-selling products and trends"
+   - "Help me look at changes in user activity and find the reasons for the decline"
+   - "Compare the conversion rates of three channels, which one has the highest ROI?"
+
+   I will first understand your data, formulate an analysis plan, and then run the analysis code in the sandbox.
+   I will proactively ask you for clarification when needed.
+   ```
+
+4. **Enable Virtual Machine Capability**
+
+   Data analysis usually requires reading files and executing code, so the virtual machine configuration needs to be enabled.
+
+   The virtual machine capability is used to isolate the code execution environment. The Agent can run data analysis scripts, read uploaded files, and generate statistical results within it, without directly affecting the local host environment. For scenarios that require running Python, processing Excel, drawing charts, or performing batch calculations, this is an important capability that distinguishes Agent V2 from ordinary conversation applications.
+
+   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-37.png)
+
+5. **Upload File and Test**
+
+   Upload the sample sales data file and enter the question:
+
+   ```text
+   Help me analyze this sales data to see which products sell well and which channel has the highest ROI
+   ```
+
+   The Agent will first break down the task and then execute the analysis step by step.
+
+   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-38.png)
+
+   During execution, you can see the task running in the virtual machine without affecting the local environment.
+
+   ![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-39.png)
+
+   When testing, focus on whether the Agent has a complete analysis process: does it first identify the table fields, explain the analysis plan, run code when needed, and give business recommendations based on the results? If the problem description is unclear, the ideal behavior is not to force an analysis but to first ask the user for key definitions.
+
+### 4.4 Verification of Results
+
+The final result should include the analysis plan, data overview, core findings, and business recommendations.
+
+![FastGPT screenshot](/imgs/guide/getting-started/quick-start/image-40.png)
+
+When verifying results, it is recommended to focus on four dimensions: whether the conclusions come from actual data, whether the metric definitions are clear, whether the charts or statistics support the conclusions, and whether the business recommendations are actionable. The value of a data analysis Agent is not just to output a summary, but to connect the process of “reading data, calculating metrics, explaining results, and proposing recommendations.”
+
+### 4.5 Business Value
+
+- **Lower the barrier to data analysis**: Business users can directly upload Excel or CSV files and ask questions in natural language, without needing to write SQL, Python, or complex formulas first.
+- **Support open-ended exploration**: The same data can be repeatedly queried around sales, channels, regions, customers, trends, outliers, etc., suitable for scenarios without a fixed analysis path.
+- **Increase analysis transparency**: The Agent shows the analysis plan and key steps, so users can see how it understands the data, calculates metrics, and draws conclusions.
+- **Isolate code execution risk**: By executing analysis scripts in a virtual machine, risks of local environment contamination, dependency conflicts, and permission misuse are reduced.
+- **Consolidate business analysis capabilities**: Scenarios such as sales reviews, weekly operations reports, campaign attribution, and product metric diagnostics can all reuse this type of Agent, turning data analysis from an expert task into a daily workflow.
+
+## Choosing Between the Four Types
+
+After completing the four cases, you can understand the common application types of FastGPT as a progression from simple to complex capabilities: Conversational Agent solves "how to answer and generate content," Knowledge Base solves "what materials to base answers on," Workflow solves "what fixed process to follow," and Agent V2 solves "how to autonomously plan and execute open-ended tasks."
+
+| Application Type                      | Suitable Scenarios                                                    | Core Capabilities                                            |
+| ------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Conversational Agent                  | Lightweight Q&A, copywriting, standardized output                     | Prompt, model configuration, tool calling                    |
+| Knowledge Base + Conversational Agent | Q&A based on documents, policies, regulations, product manuals        | File import, knowledge base retrieval, citing sources        |
+| Workflow                              | Fixed steps, conditional branches, review flows, automated processing | Node orchestration, decision nodes, human confirmation       |
+| Agent V2                              | Data analysis, complex tasks, multi-step reasoning, dynamic planning  | Autonomous planning, tool calling, virtual machine execution |
+
+When selecting, you can judge based on task complexity:
+
+1. If it's just lightweight conversation or standardized copy generation, prioritize the Conversational Agent.
+2. If answers must be based on existing materials, choose Knowledge Base + Conversational Agent.
+3. If the process is fixed and requires conditional branches, human confirmation, or automated processing, choose Workflow.
+4. If the task is open-ended with unfixed steps and requires autonomous analysis, tool calling, or code execution, choose Agent V2.
+
+In real projects, you can also combine these capabilities. For example, a customer service assistant can use a Knowledge Base to answer product questions and then query orders via tools; content review can use a Workflow to fix the review path while maintaining rules with a Knowledge Base; data analysis scenarios can first use Agent V2 for exploration, then solidify stable analysis steps into a Workflow.
