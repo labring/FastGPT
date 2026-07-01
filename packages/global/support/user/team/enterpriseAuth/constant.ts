@@ -1,6 +1,5 @@
 export const EnterpriseAuthMaxTimes = 3;
 export const EnterpriseAuthTrialDays = 15;
-export const EnterpriseAuthGrantPoints = 25000;
 export const EnterpriseAuthAmountMaxErrorTimes = 3;
 
 export enum TeamEnterpriseAuthStatusEnum {
