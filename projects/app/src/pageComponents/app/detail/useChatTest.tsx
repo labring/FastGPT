@@ -172,7 +172,7 @@ export const useChatTest = ({
 
   const CustomChatContainer = useMemoizedFn(() =>
     appDetail.type === AppTypeEnum.workflowTool ? (
-      <Box p={5} pb={16}>
+      <Box p={5} pb={16} h={'100%'} minH={0} display={'flex'} flexDirection={'column'}>
         <PluginRunBox
           appId={appId}
           chatId={chatId}

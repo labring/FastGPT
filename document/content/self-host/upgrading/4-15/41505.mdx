@@ -104,6 +104,6 @@ curl --location --request POST 'https://{{host}}/api/admin/initSandboxArchive' \
 2. 工作流工具，array 和 object 类型，工具调用参数 schema 异常。
 3. 发布渠道 - 门户，UI 偏移。
 
-## 代码优化
+## 🛠️ 代码优化
 
 1. 增加系统处理字符串时的长度保护，如果长度过大会停止继续同步替换，避免高 CPU 负载，可通过环境变量 `SYSTEM_MAX_STRING_LENGTH_M` 调整上限。
