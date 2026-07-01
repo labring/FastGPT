@@ -1,0 +1,19 @@
+---
+title: 'V4.14.27'
+description: 'FastGPT V4.14.27 更新说明'
+---
+
+## 升级指南
+
+### 1. 更新镜像 tag
+
+- 更新 fastgpt-app(fastgpt 主服务) 镜像 tag: v4.14.27
+- 更新 fastgpt-pro(fastgpt 商业版) 镜像 tag: v4.14.27
+
+## 变更说明
+
+该版本修复一些历史升级脚本问题，由于近期变更导致旧的升级脚本无法正常使用。
+
+1. 修复 V4.13.2 升级脚本中 S3 lifecycle 清理可能被跳过的问题。该脚本不再依赖 `instanceof MinioStorageAdapter` 判断 MinIO 客户端，避免 Next.js dev 或 bundle 场景下 workspace package 被加载为不同模块实例导致误判。
+2. 修复 V4.14.3 升级脚本中图片迁移日志的资源类型，将 `data_image` 修正为 `dataset_image`，避免已完成的图片迁移记录无法被正确识别。
+3. 修复 V4.14.4 升级脚本中图片迁移已完成记录的过滤条件，同样使用 `dataset_image`，避免重复执行脚本时再次迁移已完成的图片。

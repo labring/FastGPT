@@ -498,7 +498,7 @@ async function processImageBatch({
   // 3. 过滤已完成的
   const completedMigrations = await MongoDatasetMigrationLog.find(
     {
-      resourceType: 'data_image',
+      resourceType: 'dataset_image',
       resourceId: { $in: dataList.map((d) => d._id) },
       status: 'completed'
     },
@@ -881,7 +881,7 @@ async function handler(req: NextApiRequest, _res: NextApiResponse) {
   });
   logger.info(`[Migration ${batchId}] Total collection files in GridFS: ${totalCollectionFiles}`);
 
-  let collectionStats = {
+  const collectionStats = {
     processed: 0,
     succeeded: 0,
     failed: 0,
@@ -929,7 +929,7 @@ async function handler(req: NextApiRequest, _res: NextApiResponse) {
   const totalImageFiles = await getDatasetImageGFSCollection().countDocuments({});
   logger.info(`[Migration ${batchId}] Total image files in GridFS: ${totalImageFiles}`);
 
-  let imageStats = {
+  const imageStats = {
     processed: 0,
     succeeded: 0,
     failed: 0,
