@@ -25,11 +25,10 @@ import {
   shouldShowEnterpriseAuthContactBusinessModal
 } from './utils';
 
-const EnterpriseAuthModal = dynamic(() => import('./EnterpriseAuthModal'), { ssr: false });
-const EnterpriseAuthContactBusinessModal = dynamic(
-  () => import('./EnterpriseAuthContactBusinessModal'),
-  { ssr: false }
-);
+const EnterpriseAuthModal = dynamic(() => import('./Modal'), { ssr: false });
+const EnterpriseAuthContactBusinessModal = dynamic(() => import('./ContactBusinessModal'), {
+  ssr: false
+});
 
 type EnterpriseAuthStatusRowProps = BoxProps & {
   labelStyles?: BoxProps;

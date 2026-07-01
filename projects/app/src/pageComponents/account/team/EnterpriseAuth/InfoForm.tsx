@@ -5,10 +5,12 @@ import type { TFunction } from 'next-i18next';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import type { StartEnterpriseAuthBodyType } from '@fastgpt/global/openapi/support/user/team/enterpriseAuth/api';
 import {
+  isBankAccount,
+  isUnifiedCreditCode
+} from '@fastgpt/global/support/user/team/enterpriseAuth/utils';
+import {
   Field,
   Section,
-  BankAccountPattern,
-  UnifiedCreditCodePattern,
   fieldRules,
   invalidInputStyles,
   inputStyles,
@@ -69,11 +71,11 @@ const EnterpriseAuthInfoForm = ({
   const shouldShowUnifiedCreditCodeError =
     !!unifiedCreditCode?.trim() &&
     (hasBlurredUnifiedCreditCode || startForm.formState.isSubmitted) &&
-    !UnifiedCreditCodePattern.test(normalizeUnifiedCreditCode(unifiedCreditCode));
+    !isUnifiedCreditCode(unifiedCreditCode);
   const shouldShowBankAccountError =
     !!bankAccount?.trim() &&
     (hasBlurredBankAccount || startForm.formState.isSubmitted) &&
-    !BankAccountPattern.test(normalizeBankAccount(bankAccount));
+    !isBankAccount(bankAccount);
   const fieldErrors = startForm.formState.errors;
   const isEmptyAfterSubmit = (value?: string) => hasSubmittedStartForm && !value?.trim();
   const shouldShowUnifiedCreditCodeEmptyError =

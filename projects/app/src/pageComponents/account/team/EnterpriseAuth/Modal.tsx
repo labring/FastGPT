@@ -3,9 +3,9 @@ import { Button, ModalBody, ModalCloseButton, ModalFooter } from '@chakra-ui/rea
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import type { GetEnterpriseAuthStatusResponseType } from '@fastgpt/global/openapi/support/user/team/enterpriseAuth/api';
 import { EnterpriseAuthAmountMaxErrorTimes } from '@fastgpt/global/support/user/team/enterpriseAuth/constant';
-import EnterpriseAuthInfoForm from './EnterpriseAuthModal/EnterpriseAuthInfoForm';
-import EnterpriseAuthAmountForm from './EnterpriseAuthModal/EnterpriseAuthAmountForm';
-import { useEnterpriseAuthFormFlow } from './EnterpriseAuthModal/useEnterpriseAuthFormFlow';
+import EnterpriseAuthInfoForm from './InfoForm';
+import EnterpriseAuthAmountForm from './AmountForm';
+import { useEnterpriseAuthFormFlow } from './useEnterpriseAuthFormFlow';
 
 type EnterpriseAuthModalProps = {
   defaultStatus: GetEnterpriseAuthStatusResponseType;

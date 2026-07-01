@@ -19,7 +19,7 @@ export const EnterpriseAuthTaskSchema = z.object({
   contactPhone: z.string(),
   demand: z.string(),
   orderId: z.string().optional(),
-  transferAmountFen: z.number().int().optional(),
+  transferAmountCent: z.number().int().optional(),
   transferRespCode: z.string().optional(),
   transferRespMsg: z.string().optional(),
   grantExpiredAt: z.date().optional(),

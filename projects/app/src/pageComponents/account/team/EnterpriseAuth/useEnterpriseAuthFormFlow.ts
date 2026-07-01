@@ -20,7 +20,7 @@ import {
   canOpenEnterpriseAuthAmountStep,
   shouldShowEnterpriseAuthAmountError,
   shouldShowEnterpriseAuthContactBusinessModal
-} from '../utils';
+} from './utils';
 import {
   formatEnterpriseAuthBankOptions,
   getErrorCode,
@@ -71,7 +71,7 @@ export const useEnterpriseAuthFormFlow = ({
   const amountForm = useForm<AmountFormType>({
     mode: 'onChange',
     defaultValues: {
-      amountFen: ''
+      amountCent: ''
     }
   });
 
@@ -110,10 +110,10 @@ export const useEnterpriseAuthFormFlow = ({
   const bankOptions = useMemo(() => formatEnterpriseAuthBankOptions(banks), [banks]);
   const hasBankLoadError = !!bankLoadError && !bankOptions.length;
   const isBankLoading = loadingBanks;
-  const amountFenValue = useWatch({ control: amountForm.control, name: 'amountFen' });
+  const amountCentValue = useWatch({ control: amountForm.control, name: 'amountCent' });
   const hasLoadedTaskDetail = !!taskDetail?.taskId;
   const canSubmitAmount =
-    hasLoadedTaskDetail && PositiveIntegerPattern.test(String(amountFenValue).trim());
+    hasLoadedTaskDetail && PositiveIntegerPattern.test(String(amountCentValue).trim());
   const shouldShowAmountError = shouldShowEnterpriseAuthAmountError({
     taskStatus: taskDetail?.status,
     showCurrentSubmitError: showAmountError
@@ -171,7 +171,7 @@ export const useEnterpriseAuthFormFlow = ({
   }, [handleStart, startForm]);
 
   const handleVerify = useCallback(
-    async ({ amountFen }: AmountFormType) => {
+    async ({ amountCent }: AmountFormType) => {
       if (!taskDetail?.taskId) {
         toast({
           title: t('account_team:enterprise_auth_task_load_failed'),
@@ -180,8 +180,8 @@ export const useEnterpriseAuthFormFlow = ({
         return;
       }
 
-      const normalizedAmountFen = amountFen.trim();
-      if (!PositiveIntegerPattern.test(normalizedAmountFen)) {
+      const normalizedAmountCent = amountCent.trim();
+      if (!PositiveIntegerPattern.test(normalizedAmountCent)) {
         toast({
           title: t('account_team:enterprise_auth_invalid_amount_tip'),
           status: 'warning'
@@ -192,7 +192,7 @@ export const useEnterpriseAuthFormFlow = ({
       try {
         await onVerify({
           taskId: taskDetail.taskId,
-          amountFen: Number(normalizedAmountFen)
+          amountCent: Number(normalizedAmountCent)
         });
         toast({
           title: t('account_team:enterprise_auth_success_grant_tip'),
@@ -204,7 +204,7 @@ export const useEnterpriseAuthFormFlow = ({
         const errorCode = getErrorCode(error);
 
         if (errorCode === EnterpriseAuthErrEnum.amountError) {
-          amountForm.reset({ amountFen: '' });
+          amountForm.reset({ amountCent: '' });
           setShowAmountError(true);
           try {
             await loadTaskDetail();
@@ -241,7 +241,7 @@ export const useEnterpriseAuthFormFlow = ({
         demand: taskDetail.demand
       });
     }
-    amountForm.reset({ amountFen: '' });
+    amountForm.reset({ amountCent: '' });
     setShowAmountError(false);
     setHasSubmittedStartForm(false);
     onSuccess();
