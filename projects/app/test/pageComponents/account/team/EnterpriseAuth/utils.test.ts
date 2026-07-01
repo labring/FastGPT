@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   shouldShowEnterpriseAuthAmountError,
   shouldShowEnterpriseAuthContactBusinessModal
-} from '../../../../src/pageComponents/account/team/utils';
+} from '../../../../../src/pageComponents/account/team/EnterpriseAuth/utils';
 import {
   EnterpriseAuthMaxTimes,
   TeamEnterpriseAuthTaskStatusEnum

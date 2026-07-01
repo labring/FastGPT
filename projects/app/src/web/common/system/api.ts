@@ -1,7 +1,6 @@
 import type { InitDateResponse } from '@/pages/api/common/system/getInitData';
 import type { GetMyModelsQuery, GetMyModelsResponse } from '@/pages/api/core/ai/model/getMyModels';
 import { GET, POST } from '@/web/common/api/request';
-import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
 import type {
   CollaboratorListType,
   UpdateClbPermissionProps
@@ -11,11 +10,6 @@ export const getSystemInitData = (bufferId?: string) =>
   GET<InitDateResponse>('/common/system/getInitData', {
     bufferId
   });
-
-export const getProRuntimeFeConfigs = () =>
-  GET<{ feConfigs?: Pick<FastGPTFeConfigsType, 'show_enterprise_auth'> }>(
-    '/proApi/common/system/getFeConfigs'
-  );
 
 // model permissions
 

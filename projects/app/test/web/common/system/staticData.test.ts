@@ -2,13 +2,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   getSystemInitData: vi.fn(),
-  getProRuntimeFeConfigs: vi.fn(),
   initStaticData: vi.fn()
 }));
 
 vi.mock('@/web/common/system/api', () => ({
-  getSystemInitData: mocks.getSystemInitData,
-  getProRuntimeFeConfigs: mocks.getProRuntimeFeConfigs
+  getSystemInitData: mocks.getSystemInitData
 }));
 
 vi.mock('@/web/common/system/useSystemStore', () => ({
@@ -31,16 +29,11 @@ describe('clientInitData runtime feConfigs', () => {
     vi.clearAllMocks();
   });
 
-  it('用 pro 运行时配置覆盖主应用存储中的企业认证开关', async () => {
+  it('使用 FastGPT 主配置返回的企业认证开关', async () => {
     mocks.getSystemInitData.mockResolvedValueOnce({
       feConfigs: {
-        show_enterprise_auth: false,
+        show_enterprise_auth: true,
         systemTitle: 'FastGPT'
-      }
-    });
-    mocks.getProRuntimeFeConfigs.mockResolvedValueOnce({
-      feConfigs: {
-        show_enterprise_auth: true
       }
     });
 
@@ -57,17 +50,14 @@ describe('clientInitData runtime feConfigs', () => {
     );
   });
 
-  it('pro 运行时配置不可用时关闭企业认证入口', async () => {
+  it('主配置没有返回 feConfigs 时沿用缓存配置', async () => {
     mocks.getSystemInitData.mockResolvedValueOnce({
-      feConfigs: {
-        show_enterprise_auth: true,
-        systemTitle: 'FastGPT'
-      }
+      bufferId: 'buffer_1'
     });
-    mocks.getProRuntimeFeConfigs.mockRejectedValueOnce(new Error('pro unavailable'));
 
     const result = await clientInitData();
 
-    expect(result.feConfigs.show_enterprise_auth).toBe(false);
+    expect(result.feConfigs.show_enterprise_auth).toBe(true);
+    expect(result.feConfigs.systemTitle).toBe('cached');
   });
 });

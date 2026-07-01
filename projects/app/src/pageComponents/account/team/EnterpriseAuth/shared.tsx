@@ -1,8 +1,16 @@
 import React from 'react';
 import { Box, Flex } from '@chakra-ui/react';
+import {
+  isBankAccount,
+  isUnifiedCreditCode,
+  normalizeBankAccount,
+  normalizeUnifiedCreditCode
+} from '@fastgpt/global/support/user/team/enterpriseAuth/utils';
+
+export { normalizeBankAccount, normalizeUnifiedCreditCode };
 
 export type AmountFormType = {
-  amountFen: string;
+  amountCent: string;
 };
 
 export type EnterpriseAuthBankOption = {
@@ -11,12 +19,7 @@ export type EnterpriseAuthBankOption = {
   alias: string;
 };
 
-export const UnifiedCreditCodePattern = /^[0-9A-HJ-NPQRTUWXY]{18}$/;
 export const PositiveIntegerPattern = /^[1-9]\d*$/;
-export const BankAccountPattern = /^\d{1,64}$/;
-
-export const normalizeUnifiedCreditCode = (code: string) => code.trim().toUpperCase();
-export const normalizeBankAccount = (account: string) => account.replace(/\s+/g, '');
 
 export const formatBankAccountForDisplay = (account?: string) => {
   if (!account) return account;
@@ -44,7 +47,7 @@ export const fieldRules = {
   },
   unifiedCreditCode: {
     required: true,
-    validate: (value: string) => UnifiedCreditCodePattern.test(normalizeUnifiedCreditCode(value))
+    validate: isUnifiedCreditCode
   },
   legalPersonName: {
     required: true,
@@ -52,7 +55,7 @@ export const fieldRules = {
   },
   bankAccount: {
     required: true,
-    validate: (value: string) => BankAccountPattern.test(normalizeBankAccount(value))
+    validate: isBankAccount
   },
   bankName: {
     required: true,

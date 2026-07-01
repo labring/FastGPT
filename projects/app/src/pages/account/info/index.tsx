@@ -64,7 +64,7 @@ const UpdatePswModal = dynamic(() => import('@/pageComponents/account/info/Updat
 const UpdateContact = dynamic(() => import('@/components/support/user/inform/UpdateContactModal'));
 const CommunityModal = dynamic(() => import('@/components/CommunityModal'));
 const EnterpriseAuthStatusRow = dynamic(
-  () => import('@/pageComponents/account/team/EnterpriseAuthStatusRow'),
+  () => import('@/pageComponents/account/team/EnterpriseAuth'),
   { ssr: false }
 );
 

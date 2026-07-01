@@ -5,6 +5,12 @@ import {
   TeamEnterpriseAuthStatusEnum,
   TeamEnterpriseAuthTaskStatusEnum
 } from '../../../../../support/user/team/enterpriseAuth/constant';
+import {
+  isBankAccount,
+  isUnifiedCreditCode,
+  normalizeBankAccount,
+  normalizeUnifiedCreditCode
+} from '../../../../../support/user/team/enterpriseAuth/utils';
 
 /* ============================================================================
  * API: 获取企业认证状态
@@ -88,22 +94,23 @@ export type GetEnterpriseAuthBanksResponseType = z.infer<
 
 const EnterpriseAuthRequiredStringSchema = z.string().trim().min(1);
 const BankAccountSchema = EnterpriseAuthRequiredStringSchema.transform((account) =>
-  account.replace(/\s+/g, '')
+  normalizeBankAccount(account)
 )
-  .pipe(z.string().regex(/^\d{1,64}$/))
+  .pipe(z.string().refine(isBankAccount))
   .meta({
-    description: '企业银行账号，仅支持 1-64 位数字，可输入空格分隔',
-    example: '6222000000000000000'
+    description: '企业银行账号，15-19 位数字，可输入空格分隔',
+    example: '4111111111111111'
   });
 const UnifiedCreditCodeSchema = EnterpriseAuthRequiredStringSchema.transform((code) =>
-  code.toUpperCase()
+  normalizeUnifiedCreditCode(code)
 )
-  .pipe(z.string().regex(/^[0-9A-HJ-NPQRTUWXY]{18}$/))
+  .pipe(z.string().refine(isUnifiedCreditCode))
   .meta({
-    description: '统一社会信用代码，18 位大写数字或字母（不包含 I/O/Z/S/V）',
-    example: '91310000MA1K000000'
+    description:
+      '统一社会信用代码，18 位大写数字或字母（不包含 I/O/S/V/Z），需通过 GB 32100-2015 校验码校验',
+    example: '91310000MA1K000006'
   });
-const VerifyEnterpriseAuthAmountFenSchema = z.number().int().positive();
+const VerifyEnterpriseAuthAmountCentSchema = z.number().int().positive();
 
 export const StartEnterpriseAuthBodySchema = z.object({
   enterpriseName: EnterpriseAuthRequiredStringSchema.max(100).meta({
@@ -162,7 +169,7 @@ export type StartEnterpriseAuthResponseType = z.infer<typeof StartEnterpriseAuth
 
 export const VerifyEnterpriseAuthAmountBodySchema = z.object({
   taskId: z.string().min(1).meta({ description: '认证任务 ID' }),
-  amountFen: VerifyEnterpriseAuthAmountFenSchema.meta({
+  amountCent: VerifyEnterpriseAuthAmountCentSchema.meta({
     description: '用户填写的到账金额，单位为分',
     example: 123
   })

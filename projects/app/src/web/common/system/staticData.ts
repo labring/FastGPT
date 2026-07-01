@@ -1,24 +1,8 @@
-import { getProRuntimeFeConfigs, getSystemInitData } from '@/web/common/system/api';
+import { getSystemInitData } from '@/web/common/system/api';
 import { delay } from '@fastgpt/global/common/system/utils';
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/index';
 
 import { useSystemStore } from './useSystemStore';
-
-const getRuntimeFeConfigs = async (): Promise<
-  Pick<FastGPTFeConfigsType, 'show_enterprise_auth'>
-> => {
-  try {
-    const runtimeConfig = await getProRuntimeFeConfigs();
-
-    return {
-      show_enterprise_auth: !!runtimeConfig.feConfigs?.show_enterprise_auth
-    };
-  } catch {
-    return {
-      show_enterprise_auth: false
-    };
-  }
-};
 
 export const clientInitData = async (
   retry = 3
@@ -27,10 +11,7 @@ export const clientInitData = async (
 }> => {
   try {
     const res = await getSystemInitData(useSystemStore.getState().initDataBufferId);
-    const feConfigs = {
-      ...(res.feConfigs || useSystemStore.getState().feConfigs || {}),
-      ...(await getRuntimeFeConfigs())
-    };
+    const feConfigs = res.feConfigs ?? useSystemStore.getState().feConfigs;
 
     useSystemStore.getState().initStaticData({
       ...res,

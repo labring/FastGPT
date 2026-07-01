@@ -3,7 +3,7 @@ import { Box, Flex, Input } from '@chakra-ui/react';
 import type { UseFormReturn } from 'react-hook-form';
 import type { TFunction } from 'next-i18next';
 import type { GetEnterpriseAuthCurrentTaskDetailResponseType } from '@fastgpt/global/openapi/support/user/team/enterpriseAuth/api';
-import { enterpriseAuthContactBusinessUrl } from '../utils';
+import { enterpriseAuthContactBusinessUrl } from './utils';
 import { webPushTrack } from '@/web/common/middle/tracks/utils';
 import {
   AmountInfoRow,
@@ -27,7 +27,7 @@ const EnterpriseAuthAmountForm = ({
   shouldShowAmountError,
   setShowAmountError
 }: EnterpriseAuthAmountFormProps) => {
-  const amountField = amountForm.register('amountFen', {
+  const amountField = amountForm.register('amountCent', {
     required: true,
     pattern: /^[1-9]\d*$/
   });
