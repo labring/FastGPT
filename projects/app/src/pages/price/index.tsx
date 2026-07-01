@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { serviceSideProps } from '@/web/common/i18n/utils';
-import { Box, Button, Flex, HStack, IconButton, VStack } from '@chakra-ui/react';
+import { Box, Button, Flex, HStack, IconButton } from '@chakra-ui/react';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { getTeamPlanStatus } from '@/web/support/user/team/api';
 
-import StandardPlan from '@/pageComponents/price/Standard';
+import StandardPlan, { BillingModeSwitch } from '@/pageComponents/price/Standard';
 import ExtraPlan from '@/pageComponents/price/ExtraPlan';
 import PointsCard from '@/pageComponents/price/Points';
 import FAQ from '@/pageComponents/price/FAQ';
@@ -14,15 +14,34 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MyLoading from '@fastgpt/web/components/common/MyLoading';
+import PricePlanTabs from '@/pageComponents/price/PricePlanTabs';
+import { SubModeEnum } from '@fastgpt/global/support/wallet/sub/constants';
+
+type PriceTabType = 'standard' | 'extraPoints' | 'extraDataset';
+
+const EXTRA_PLAN_HASH = 'extra-plan';
+
+/** 根据 URL hash 解析默认 Tab（如账户页「购买额外套餐」跳转 /price#extra-plan） */
+const getTabFromHash = (hash: string): PriceTabType | undefined => {
+  if (hash === EXTRA_PLAN_HASH) {
+    return 'extraPoints';
+  }
+  return undefined;
+};
 
 const PriceBox = () => {
   const { initUserInfo } = useUserStore();
   const { t } = useTranslation();
-  const { feConfigs } = useSystemStore();
+  const { subPlans } = useSystemStore();
   const router = useRouter();
 
   const backButtonRef = useRef<HTMLButtonElement>(null);
   const [isButtonInView, setIsButtonInView] = useState(true);
+  const [userActiveTab, setUserActiveTab] = useState<PriceTabType>(() => {
+    if (typeof window === 'undefined') return 'standard';
+    return getTabFromHash(window.location.hash.slice(1)) ?? 'standard';
+  });
+  const [userSubMode, setUserSubMode] = useState<`${SubModeEnum}`>(SubModeEnum.month);
 
   const { data: userInfo, loading: userInfoLoading } = useRequest(initUserInfo, {
     manual: false
@@ -33,11 +52,28 @@ const PriceBox = () => {
     refreshDeps: [userInfo]
   });
 
+  const hashTab = useMemo(() => {
+    if (!router.isReady) return undefined;
+    return getTabFromHash(router.asPath.split('#')[1] ?? '');
+  }, [router.isReady, router.asPath]);
+
+  const activeTab = hashTab ?? userActiveTab;
+  const selectSubMode = subPlans?.activityExpirationTime ? SubModeEnum.year : userSubMode;
+
+  const handleTabChange = useCallback(
+    (value: PriceTabType) => {
+      setUserActiveTab(value);
+      if (router.asPath.includes('#')) {
+        void router.replace('/price', undefined, { shallow: true });
+      }
+    },
+    [router]
+  );
+
   // TODO: 封装成一个 hook 来判断滚动态
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
-        // 当按钮在视图内时,隐藏浮动按钮;当按钮不在视图内时,显示浮动按钮
         setIsButtonInView(entry.isIntersecting);
       },
       {
@@ -60,11 +96,9 @@ const PriceBox = () => {
   });
 
   const handleBack = useCallback(() => {
-    // Check if there is history to go back to
     if (window.history.length > 1) {
       router.back();
     } else {
-      // No history, navigate to home page
       router.push('/dashboard/agent');
     }
   }, [router]);
@@ -76,9 +110,25 @@ const PriceBox = () => {
   }, [router]);
 
   const isWecomTeam = useMemo(() => !!userInfo?.team?.isWecomTeam, [userInfo?.team?.isWecomTeam]);
-
-  // Show loading state while fetching user info to prevent flash of incorrect content
   const isLoading = userInfoLoading || teamSubPlanLoading;
+
+  const tabList = useMemo(
+    () => [
+      {
+        label: t('common:support.wallet.subscription.Basic plan tab'),
+        value: 'standard' as const
+      },
+      {
+        label: t('common:support.wallet.subscription.Extra points tab'),
+        value: 'extraPoints' as const
+      },
+      {
+        label: t('common:support.wallet.subscription.Extra dataset tab'),
+        value: 'extraDataset' as const
+      }
+    ],
+    [t]
+  );
 
   return (
     <>
@@ -90,81 +140,114 @@ const PriceBox = () => {
           flexDir={'column'}
           overflow={'overlay'}
           w={'100%'}
-          px={['20px', '5vw']}
-          py={['30px', '80px']}
           bg={`linear-gradient(to right, #F8F8FD00, #F7F7FF),url(/imgs/priceBg.svg)`}
           backgroundSize={'cover'}
           backgroundRepeat={'no-repeat'}
         >
-          {teamSubPlan?.standard?.teamId && (
-            <Button
-              ref={backButtonRef}
-              variant={'transparentBase'}
-              color={'primary.700'}
-              leftIcon={<MyIcon name={'core/workflow/undo'} w={4} />}
-              onClick={handleBack}
-              alignSelf={'flex-start'}
-              mt={-8}
-            >
-              {t('common:back')}
-            </Button>
-          )}
-          {(!isButtonInView || !teamSubPlan?.standard?.teamId) && (
-            <IconButton
-              aria-label={t('common:back')}
-              position={'fixed'}
-              variant={'whiteBase'}
-              top={10}
-              left={'1.5vw'}
-              w={9}
-              h={9}
-              icon={<MyIcon name={'core/workflow/undo'} w={4} />}
-              onClick={handleBack}
-            />
-          )}
+          <Flex
+            flexDir={'column'}
+            alignItems={'flex-start'}
+            flexShrink={0}
+            w={'100%'}
+            maxW={'1456px'}
+            mx={'auto'}
+            px={['20px', '72.8px']}
+            py={['30px', '80px']}
+          >
+            {teamSubPlan?.standard?.teamId && (
+              <Button
+                ref={backButtonRef}
+                variant={'transparentBase'}
+                color={'primary.700'}
+                leftIcon={<MyIcon name={'core/workflow/undo'} w={4} />}
+                onClick={handleBack}
+                alignSelf={'flex-start'}
+                mb={6}
+              >
+                {t('common:back')}
+              </Button>
+            )}
+            {(!isButtonInView || !teamSubPlan?.standard?.teamId) && (
+              <IconButton
+                aria-label={t('common:back')}
+                position={'fixed'}
+                variant={'whiteBase'}
+                top={10}
+                left={'1.5vw'}
+                w={9}
+                h={9}
+                icon={<MyIcon name={'core/workflow/undo'} w={4} />}
+                onClick={handleBack}
+              />
+            )}
 
-          {/* standard sub */}
-          <VStack>
-            <Box fontWeight={'600'} color={'myGray.900'} fontSize={['24px', '36px']}>
-              {t('common:support.wallet.subscription.Sub plan')}
-            </Box>
-            <Box fontWeight={'500'} color={'myGray.600'} fontSize={'md'}>
-              {isWecomTeam
-                ? t('common:support.wallet.subscription.Sub plan tip wecom')
-                : t('common:support.wallet.subscription.Sub plan tip', {
-                    title: feConfigs?.systemTitle
-                  })}
-            </Box>
-            <StandardPlan standardPlan={teamSubPlan?.standard} onPaySuccess={onPaySuccess} />
-            <HStack mt={8} color={'blue.700'} ml={8}>
-              <MyIcon name={'infoRounded'} w={'1rem'} />
-              <Box fontSize={'sm'} fontWeight={'500'}>
-                {t('user:bill.standard_valid_tip')}
+            <Flex flexDir={'column'} alignItems={'center'} w={'100%'}>
+              <Box fontWeight={'600'} color={'myGray.900'} fontSize={['24px', '36px']}>
+                {t('common:support.wallet.subscription.Purchase plan')}
               </Box>
-            </HStack>
-          </VStack>
 
-          {/* extra plan */}
-          <VStack mt={['40px', '100px']} mb={8}>
-            <Box
-              id={'extra-plan'}
-              fontWeight={'bold'}
-              fontSize={['24px', '36px']}
-              color={'myGray.900'}
-            >
-              {t('common:support.wallet.subscription.Extra plan')}
-            </Box>
-            <Box mt={2} mb={8} color={'myGray.600'} fontSize={'md'}>
-              {t('common:support.wallet.subscription.Extra plan tip')}
-            </Box>
-            <ExtraPlan onPaySuccess={onPaySuccess} />
-          </VStack>
+              <Box mt={'32px'}>
+                <PricePlanTabs
+                  list={tabList}
+                  value={activeTab}
+                  onChange={(value) => handleTabChange(value as PriceTabType)}
+                />
+              </Box>
 
-          {/* points */}
-          <PointsCard />
+              {activeTab === 'standard' && !isWecomTeam && (
+                <Box mt={'16px'}>
+                  <BillingModeSwitch value={selectSubMode} onChange={setUserSubMode} />
+                </Box>
+              )}
 
-          {/* question */}
-          <FAQ />
+              {activeTab !== 'standard' && (
+                <Box
+                  id={'extra-plan'}
+                  mt={'16px'}
+                  color={'#485264'}
+                  fontFamily={'Inter, sans-serif'}
+                  fontSize={'16px'}
+                  fontStyle={'normal'}
+                  fontWeight={400}
+                  lineHeight={'24px'}
+                  letterSpacing={'-0.312px'}
+                  textAlign={'center'}
+                >
+                  {t('common:support.wallet.subscription.Extra plan tip')}
+                </Box>
+              )}
+            </Flex>
+
+            {activeTab === 'standard' && (
+              <Box w={'100%'} mt={'48px'}>
+                <StandardPlan
+                  standardPlan={teamSubPlan?.standard}
+                  onPaySuccess={onPaySuccess}
+                  selectSubMode={selectSubMode}
+                  onSelectSubModeChange={setUserSubMode}
+                  hideBillingToggle
+                />
+                <HStack mt={8} color={'blue.700'} justifyContent={'center'} w={'100%'}>
+                  <MyIcon name={'infoRounded'} w={'1rem'} />
+                  <Box fontSize={'sm'} fontWeight={'500'}>
+                    {t('user:bill.standard_valid_tip')}
+                  </Box>
+                </HStack>
+              </Box>
+            )}
+
+            {activeTab !== 'standard' && (
+              <Box w={'100%'} mt={'48px'}>
+                <ExtraPlan mode="all" onPaySuccess={onPaySuccess} />
+              </Box>
+            )}
+          </Flex>
+
+          {/* AI 积分计算标准、FAQ：保持原页面布局，不受 tab 区域 maxW / padding 影响 */}
+          <Box w={'100%'} px={['20px', '5vw']} pb={['30px', '80px']}>
+            <PointsCard />
+            <FAQ />
+          </Box>
         </Flex>
       )}
     </>
