@@ -145,8 +145,8 @@ const ChatTest = ({ isOpen, nodes = [], edges = [], onClose, chatId }: Props) =>
           />
         )}
 
-        <Flex flex={'1 0 0'} alignItems={'end'} h={'100%'}>
-          <Box flex={'1 0 0'} h={'100%'} overflow={'auto'}>
+        <Flex flex={'1 0 0'} minH={0} h={0} alignItems={'stretch'}>
+          <Box flex={'1 0 0'} h={'100%'} minH={0} overflow={isPlugin ? 'hidden' : 'auto'}>
             <ChatContainer />
           </Box>
 

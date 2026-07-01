@@ -5,7 +5,7 @@ description: 'FastGPT V4.14.9 更新说明'
 
 ## 升级指南
 
-###  1. 环境变量更新
+### 1. 环境变量更新
 
 1. 修改 FastGPT 环境变量：SANDBOX_URL 和 SANDBOX_TOKEN，改名成 CODE_SANDBOX_URL 和 CODE_SANDBOX_TOKEN：
 
@@ -18,7 +18,7 @@ CODE_SANDBOX_URL=代码运行沙盒的地址
 CODE_SANDBOX_TOKEN=代码运行沙盒的凭证
 ```
 
-2. 默认关闭内网安全检查，如需开启，需设置环境变量`CHECK_INTERNAL_IP=true`（fastgpt,fastgpt-pro,fastgpt-sandbox 通用变量）
+2. 默认关闭内网安全检查，如需开启，需设置环境变量 `CHECK_INTERNAL_IP=true`（fastgpt,fastgpt-pro,fastgpt-sandbox 通用变量）
 
 ### 2. 更新镜像
 
@@ -31,7 +31,7 @@ CODE_SANDBOX_TOKEN=代码运行沙盒的凭证
 
 ## 接口变更
 
-`/api/core/chat/getPaginationRecords` 接口，增加返回`useAgentSandbox:boolean`字段，代表本轮对话，是否使用了虚拟机工具。即将移除`llmModuleAccount`和`historyPreviewLength`字段，如使用该字段，请尽快适配。
+`/api/core/chat/getPaginationRecords` 接口，增加返回 `useAgentSandbox:boolean` 字段，代表本轮对话，是否使用了虚拟机工具。即将移除 `llmModuleAccount` 和 `historyPreviewLength` 字段，如使用该字段，请尽快适配。
 
 ## 🚀 新增内容
 
@@ -44,7 +44,7 @@ CODE_SANDBOX_TOKEN=代码运行沙盒的凭证
 
 ## ⚙️ 优化
 
-1. api 知识库同步时，增加更多 fallback 获取文件名方式。
+1. API 知识库同步时，增加更多 fallback 获取文件名方式。
 2. HTTP 工具，增加 SSRF 防御。
 3. 兼容更多 MCP JsonSchema 字段，旧版无法适配混合类型字段。
 4. 优化部分工作流运行池逻辑，减少计算复杂度
@@ -62,14 +62,14 @@ CODE_SANDBOX_TOKEN=代码运行沙盒的凭证
 7. 分享链接关闭状态显示后，会导致历史记录里的 AI 回复内容无法正常展示。
 8. 修复工作流预览模式下，重新打开预览弹窗，会丢失表单输入内容。
 9. 修复订阅套餐自定义字段未生效
-10. login接口，存在异步 session 问题，会出现报错日志。
-12. 修复判断器 arrayAny 类型无判断条件可选
-13. 修复视频音频自定义文件类型流程开始无文件链接变量
-14. 用户输入框消息不转义成 markdown 格式
-15. 修复 AgentV2 部分上下文拼接错误。
-16. login 接口安全风险。
-17. 工作流工具未按预期连接到结束节点时，嵌套调用工作流工具会导致父工作流无法停止。
+10. login 接口，存在异步 session 问题，会出现报错日志。
+11. 修复判断器 arrayAny 类型无判断条件可选
+12. 修复视频音频自定义文件类型流程开始无文件链接变量
+13. 用户输入框消息不转义成 Markdown 格式
+14. 修复 AgentV2 部分上下文拼接错误。
+15. login 接口安全风险。
+16. 工作流工具未按预期连接到结束节点时，嵌套调用工作流工具会导致父工作流无法停止。
 
-## 代码优化
+## 🛠️ 代码优化
 
 1. 商业版开发时，monorepo 指向不同 react 导致需重装包。

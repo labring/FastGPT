@@ -3,6 +3,12 @@ title: OpenSandbox 部署
 description: FastGPT 使用 OpenSandbox 自托管 Agent Sandbox
 ---
 
+import { Alert } from '@/components/docs/Alert';
+
+<Alert icon="⚠️" context="warning">
+  注意：OpenSandbox 方案默认未做网络隔离。如需网络隔离，请自行补充对应的网络隔离策略。
+</Alert>
+
 OpenSandbox 适合需要自托管 Agent/Skill 沙盒运行环境的场景。开始前，请先完成[沙盒通用配置](./common)，确保 `fastgpt-agent-sandbox-proxy` 已部署，并且 `fastgpt-app`、`fastgpt-pro` 已配置相同的 `AGENT_SANDBOX_PROXY_SECRET` 和可被浏览器访问的 `AGENT_SANDBOX_PROXY_URL`。
 
 下面是 OpenSandbox 部署和配置流程。
