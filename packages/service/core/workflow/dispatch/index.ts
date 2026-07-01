@@ -1087,6 +1087,7 @@ export class WorkflowQueue {
 
       // Inject Langfuse node span attributes for root chat observations
       if (stepSpan && this.isRootRuntime && mode === 'chat' && isLangfuseEnabled()) {
+        stepSpan.setAttribute('langfuse.trace.name', 'message');
         stepSpan.setAttribute(
           'langfuse.observation.input',
           JSON.stringify(filterLangfuseNodeInput(params))
