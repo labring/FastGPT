@@ -2,8 +2,32 @@ import {
   type EmbeddingModelItemType,
   type LLMModelItemType
 } from '@fastgpt/global/core/ai/model.schema';
+import type {
+  FastGPTFeConfigsType,
+  FastGPTRegisterMethodType
+} from '@fastgpt/global/common/system/types';
 import { useSystemStore } from './useSystemStore';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
+
+/**
+ * 获取真实支持的自助注册方式，兼容过滤旧配置中被混入的 sync 团队模式。
+ */
+export const getRegisterMethods = (feConfigs?: FastGPTFeConfigsType): FastGPTRegisterMethodType[] =>
+  feConfigs?.register_method?.filter(
+    (method): method is FastGPTRegisterMethodType => method === 'email' || method === 'phone'
+  ) ?? [];
+
+/**
+ * 判断是否为成员同步模式。teamMode 是当前权威字段；旧 register_method: ['sync']
+ * 仅用于兼容缺少 teamMode 的历史配置，避免新旧字段冲突时前后端模式不一致。
+ */
+export const getIsMemberSyncMode = (feConfigs?: FastGPTFeConfigsType) => {
+  if (feConfigs?.teamMode) {
+    return feConfigs.teamMode === 'sync';
+  }
+
+  return !!feConfigs?.register_method?.includes('sync');
+};
 
 export const downloadFetch = async ({
   url,

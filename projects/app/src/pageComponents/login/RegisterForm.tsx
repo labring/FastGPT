@@ -18,6 +18,7 @@ import {
 import { checkPasswordRule } from '@fastgpt/global/common/string/password';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
+import { getRegisterMethods } from '@/web/common/system/utils';
 
 type LoginSuccessHandler = (res: LoginSuccessResponseType) => void | Promise<void>;
 
@@ -88,8 +89,8 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
     }
   };
 
-  const placeholder = feConfigs?.register_method
-    ?.map((item) => {
+  const placeholder = getRegisterMethods(feConfigs)
+    .map((item) => {
       switch (item) {
         case 'email':
           return t('common:support.user.login.Email');

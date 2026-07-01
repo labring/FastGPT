@@ -47,6 +47,7 @@ import { useUploadAvatar } from '@fastgpt/web/common/file/hooks/useUploadAvatar'
 import { getUploadAvatarPresignedUrl } from '@/web/common/file/api';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
+import { getIsMemberSyncMode } from '@/web/common/system/utils';
 
 const RedeemCouponModal = dynamic(() => import('@/pageComponents/account/info/RedeemCouponModal'), {
   ssr: false
@@ -251,7 +252,7 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
     minW: '52px'
   } as const;
 
-  const isSyncMember = feConfigs.register_method?.includes('sync');
+  const isSyncMember = getIsMemberSyncMode(feConfigs);
   return (
     <Box>
       {/* user info */}
