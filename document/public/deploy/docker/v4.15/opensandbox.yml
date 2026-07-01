@@ -1,0 +1,113 @@
+# OpenSandbox standalone deployment for FastGPT Agent/Skill Sandbox.
+# Deploy fastgpt-agent-sandbox-proxy separately, then set FastGPT.
+#
+# If these services are copied into the same docker-compose.yml as FastGPT:
+# AGENT_SANDBOX_PROVIDER=opensandbox
+# AGENT_SANDBOX_OPENSANDBOX_BASEURL=http://fastgpt-opensandbox-server:8090
+# AGENT_SANDBOX_OPENSANDBOX_API_KEY=fastgpt-opensandbox-api-key
+# AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL=http://fastgpt-volume-manager:3000
+# AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN=vmtoken
+
+x-volume-manager-auth-token: &x-volume-manager-auth-token "vmtoken"
+x-no-proxy-config: &x-no-proxy-config
+  # Avoid inherited proxy settings. Some Docker runtimes inject IPv6 CIDR into NO_PROXY,
+  # and httpx may parse it as an invalid URL port during OpenSandbox startup.
+  NO_PROXY: localhost,127.0.0.1,127.0.0.0/8,host.docker.internal,host.orb.internal,docker.orb.internal,*.orb.internal,*.orb.local,proxyproxy.orb.internal,gateway.orb.internal,fastgpt-opensandbox-server,fastgpt-volume-manager,fastgpt-app
+  no_proxy: localhost,127.0.0.1,127.0.0.0/8,host.docker.internal,host.orb.internal,docker.orb.internal,*.orb.internal,*.orb.local,proxyproxy.orb.internal,gateway.orb.internal,fastgpt-opensandbox-server,fastgpt-volume-manager,fastgpt-app
+
+services:
+  fastgpt-opensandbox-server:
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/opensandbox-server:v0.1.9
+    container_name: fastgpt-opensandbox-server
+    restart: always
+    networks:
+      - app
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    configs:
+      - source: opensandbox-config
+        target: /etc/opensandbox/config.toml
+    environment:
+      <<: [*x-no-proxy-config]
+      SANDBOX_CONFIG_PATH: /etc/opensandbox/config.toml
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8090/health',timeout=3).status==200 else 1)"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  fastgpt-volume-manager:
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-volume-manager:v0.2.0
+    container_name: fastgpt-volume-manager
+    restart: always
+    networks:
+      - app
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      <<: [*x-no-proxy-config]
+      PORT: 3000
+      VM_RUNTIME: docker
+      VM_AUTH_TOKEN: *x-volume-manager-auth-token
+      VM_VOLUME_NAME_PREFIX: fastgpt-session
+      VM_LOG_LEVEL: info
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:3000/health').then((res) => { if (!res.ok) process.exit(1); }).catch(() => process.exit(1));"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Pre-pull only: not started by `docker compose up` (uses profile `prepull`).
+  opensandbox-agent-sandbox-image:
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-agent-sandbox:v0.2.0
+    profiles:
+      - prepull
+
+  opensandbox-execd-image:
+    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/execd:v1.0.6
+    profiles:
+      - prepull
+
+  opensandbox-egress-image:
+    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress:v1.0.1
+    profiles:
+      - prepull
+
+configs:
+  opensandbox-config:
+    content: |
+      [server]
+      host = "0.0.0.0"
+      port = 8090
+      api_key = "fastgpt-opensandbox-api-key"
+      log_level = "INFO"
+
+      [runtime]
+      type = "docker"
+      execd_image = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/execd:v1.0.6"
+
+      [egress]
+      image = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress:v1.0.1"
+
+      [docker]
+      network_mode = "bridge"
+      # When server runs in a container, set host_ip to the host's IP or hostname so bridge-mode endpoints are reachable.
+      host_ip = "host.docker.internal"
+
+      [ingress]
+      mode = "direct"
+
+networks:
+  app:
