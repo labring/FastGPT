@@ -125,8 +125,8 @@
   "content/guide/dataset/websync.mdx": "2026-05-07T15:06:40+08:00",
   "content/guide/getting-started/index.en.mdx": "2026-06-24T18:16:41+08:00",
   "content/guide/getting-started/index.mdx": "2026-06-24T18:16:41+08:00",
-  "content/guide/getting-started/quick-start.en.mdx": "2026-05-07T15:06:40+08:00",
-  "content/guide/getting-started/quick-start.mdx": "2026-05-07T15:06:40+08:00",
+  "content/guide/getting-started/quick-start.en.mdx": "2026-07-01T17:20:32+08:00",
+  "content/guide/getting-started/quick-start.mdx": "2026-07-01T17:20:32+08:00",
   "content/guide/index.en.mdx": "2026-05-07T15:06:40+08:00",
   "content/guide/index.mdx": "2026-05-07T15:06:40+08:00",
   "content/guide/version/cloud/faq.en.mdx": "2026-05-25T18:16:39+08:00",
@@ -279,6 +279,8 @@
   "content/self-host/upgrading/4-14/41425.mdx": "2026-06-22T12:20:51+08:00",
   "content/self-host/upgrading/4-14/41426.en.mdx": "2026-06-24T23:05:29+08:00",
   "content/self-host/upgrading/4-14/41426.mdx": "2026-06-24T23:05:29+08:00",
+  "content/self-host/upgrading/4-14/41427.en.mdx": "2026-07-01T17:22:47+08:00",
+  "content/self-host/upgrading/4-14/41427.mdx": "2026-07-01T17:22:47+08:00",
   "content/self-host/upgrading/4-14/4143.en.mdx": "2026-04-26T21:08:47+08:00",
   "content/self-host/upgrading/4-14/4143.mdx": "2026-04-26T21:08:47+08:00",
   "content/self-host/upgrading/4-14/4144.en.mdx": "2026-04-26T21:08:47+08:00",
@@ -454,6 +456,6 @@
   "content/self-host/upgrading/outdated/499.mdx": "2026-05-07T15:06:40+08:00",
   "content/self-host/upgrading/upgrade-intruction.en.mdx": "2026-04-26T21:08:47+08:00",
   "content/self-host/upgrading/upgrade-intruction.mdx": "2026-04-26T21:08:47+08:00",
-  "content/toc.en.mdx": "2026-07-01T12:13:58+08:00",
-  "content/toc.mdx": "2026-07-01T12:13:58+08:00"
+  "content/toc.en.mdx": "2026-07-01T17:22:47+08:00",
+  "content/toc.mdx": "2026-07-01T17:22:47+08:00"
 }
