@@ -57,7 +57,7 @@
     "axios": "catalog:",
     "date-fns": "catalog:",
     "dayjs": "catalog:",
-    "echarts": "5.4.1",
+    "echarts": "6.1.0",
     "echarts-gl": "2.0.9",
     "esbuild": "^0.25.11",
     "framer-motion": "9.1.7",
