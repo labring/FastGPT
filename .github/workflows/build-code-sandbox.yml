@@ -152,30 +152,13 @@ jobs:
 
       - name: Create manifest list and push
         working-directory: ${{ runner.temp }}/digests
-        timeout-minutes: 30
+        timeout-minutes: 120
+        env:
+          GODEBUG: http2client=0
         run: |
-          retry_imagetools_create() {
-            local tag="$1"
-            local sources
-            sources="$(printf 'ghcr.io/${{ github.repository_owner }}/fastgpt-code-sandbox@sha256:%s ' *)"
-
-            for attempt in 1 2 3 4 5 6; do
-              if docker buildx imagetools create -t "$tag" $sources; then
-                return 0
-              fi
-
-              if [ "$attempt" -eq 6 ]; then
-                echo "::error::Failed to push manifest ${tag} after 5 retries."
-                return 1
-              fi
-
-              echo "::warning::Failed to push manifest ${tag}; retrying in $((attempt * 60)) seconds (${attempt}/5)."
-              sleep $((attempt * 60))
-            done
-          }
-
+          SOURCES="$(printf 'ghcr.io/${{ github.repository_owner }}/fastgpt-code-sandbox@sha256:%s ' *)"
           TAGS="$(echo -e "${Git_Tag}\n${Git_Latest}\n${Ali_Tag}\n${Ali_Latest}")"
           for TAG in $TAGS; do
-            retry_imagetools_create "$TAG"
+            docker buildx imagetools create -t "$TAG" $SOURCES
             sleep 5
           done
