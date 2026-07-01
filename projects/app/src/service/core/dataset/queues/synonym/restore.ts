@@ -139,14 +139,11 @@ export const processSynonymRestore = async ({
     );
 
     // 更新 collection stats，确保前端状态反映当前处理进度
-    pushCollectionUpdateJob(
-      {
-        collectionId: String(trainingData.collectionId),
-        datasetId: String(trainingData.datasetId),
-        teamId: String(trainingData.teamId)
-      },
-      0
-    );
+    pushCollectionUpdateJob({
+      collectionId: String(trainingData.collectionId),
+      datasetId: String(trainingData.datasetId),
+      teamId: String(trainingData.teamId)
+    });
 
     // 7. 链式处理下一条
     // 链式失败不影响当前任务，下一条数据会被后续 Worker 自然拉取到

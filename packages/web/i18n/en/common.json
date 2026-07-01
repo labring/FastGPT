@@ -1369,6 +1369,7 @@
   "core.dataset.error.synonymFileParseFailed": "File parsing failed. Please check the file format and encoding.",
   "core.dataset.error.synonymTermDuplicate": "The standard term cannot be the same as the synonym. Please check the file content.",
   "core.dataset.error.datasetTrainingInProgress": "The knowledge base is being processed. Please wait until the processing is complete before performing the operation.",
+  "core.dataset.error.insufficientQuota": "Insufficient team credits. Please top up and try again.",
   "core.dataset.error.collectionNameDuplicate": "A file with the same name already exists in the dataset.",
   "core.dataset.error.fileContentDuplicate": "A file with the same content already exists in the dataset.",
   "core.dataset.error.Rerank timeout": "The rerank model \"{{modelName}}\" timed out and knowledge reranking was not executed.",

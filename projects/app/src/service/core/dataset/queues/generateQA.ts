@@ -1,7 +1,7 @@
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { pushCollectionUpdateJob } from '@fastgpt/service/core/dataset/collection/mq';
 import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
@@ -29,6 +29,7 @@ import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetDataText } from '@fastgpt/service/core/dataset/data/dataTextSchema';
 import { createLLMResponse } from '@fastgpt/service/core/ai/llm/request';
 import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import { pushCollectionUpdateJob } from '@fastgpt/service/core/dataset/collection/mq';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.QA);
 
@@ -122,9 +123,17 @@ export async function generateQA(): Promise<any> {
       }
       // auth balance
       // NOTE: findOneAndUpdate has already locked this record. If balance check
-      // fails we MUST delete it immediately, otherwise it stays locked for 3 min.
+      // fails, set retryCount to 0 and record the error so the user sees it.
       if (!(await checkTeamAiPointsAndLock(data.teamId))) {
-        await MongoDatasetTraining.deleteOne({ _id: data._id });
+        await MongoDatasetTraining.updateOne(
+          { _id: data._id },
+          { $set: { retryCount: 0, errorMsg: getErrText(DatasetErrEnum.insufficientQuota) } }
+        );
+        pushCollectionUpdateJob({
+          collectionId: String(data.collectionId),
+          datasetId: String(data.datasetId),
+          teamId: String(data.teamId)
+        });
         continue;
       }
 
@@ -268,11 +277,13 @@ export async function generateQA(): Promise<any> {
             errorMsg: getErrText(err, 'unknown error')
           }
         );
-        pushCollectionUpdateJob({
-          collectionId: String(data.collectionId),
-          datasetId: String(data.datasetId),
-          teamId: String(data.teamId)
-        });
+        if (data.retryCount <= 1) {
+          pushCollectionUpdateJob({
+            collectionId: String(data.collectionId),
+            datasetId: String(data.datasetId),
+            teamId: String(data.teamId)
+          });
+        }
 
         await delay(100);
       }

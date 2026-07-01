@@ -44,12 +44,6 @@ const TrainingDataSchema = new Schema({
     enum: Object.values(TrainingModeEnum),
     required: true
   },
-
-  expireAt: {
-    // It will be deleted after 7 days
-    type: Date,
-    default: () => new Date()
-  },
   lockTime: {
     type: Date,
     default: () => new Date('2000/1/1')
@@ -135,7 +129,6 @@ TrainingDataSchema.index({ mode: 1, retryCount: 1, lockTime: 1, weight: -1 });
 // (retryCount <= 0) so they don't block the completion check.
 // Used by markParseEnd (mode: parse) and markIndexingEnd (mode: { $ne: parse }).
 TrainingDataSchema.index({ collectionId: 1, mode: 1, retryCount: 1 });
-TrainingDataSchema.index({ expireAt: 1 }, { expireAfterSeconds: 7 * 24 * 60 * 60 }); // 7 days
 
 export const MongoDatasetTraining = getMongoModel<DatasetTrainingSchemaType>(
   DatasetTrainingCollectionName,

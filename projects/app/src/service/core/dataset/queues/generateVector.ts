@@ -1,6 +1,7 @@
 import { insertDataVector } from '@/service/core/dataset/data/controller';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import { checkTeamAiPointsAndLock } from './utils';
 import {
@@ -8,7 +9,6 @@ import {
   markIndexingEnd,
   markDataTrainingPhaseTrace
 } from '@fastgpt/service/core/dataset/training/utils';
-import { pushCollectionUpdateJob } from '@fastgpt/service/core/dataset/collection/mq';
 import { addMinutes } from 'date-fns';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
@@ -26,6 +26,7 @@ import type {
 } from '@fastgpt/global/core/dataset/type';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { delay } from '@fastgpt/service/common/bullmq';
+import { pushCollectionUpdateJob } from '@fastgpt/service/core/dataset/collection/mq';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.EMBEDDING);
 
@@ -140,17 +141,32 @@ export async function generateVector(): Promise<any> {
           collectionId: data.collectionId,
           trainingId: data._id
         });
-        // Delete data
+        // Collection/dataset is being deleted — the cascade deletion flow
+        // (deleteCollectionsImmediate → delCollection) will clean up the
+        // corresponding data and vectors.
         await MongoDatasetTraining.deleteOne({ _id: data._id });
+        pushCollectionUpdateJob({
+          collectionId: String(data.collectionId),
+          datasetId: String(data.datasetId),
+          teamId: String(data.teamId)
+        });
         continue;
       }
 
       // auth balance
       // NOTE: findOneAndUpdate has already locked this record (lockTime + retryCount
-      // decrement). If the balance check fails we MUST delete the record immediately,
-      // otherwise it stays locked for 3 minutes and wastes a retry.
+      // decrement). If balance check fails, set retryCount to 0 and record the error
+      // so the user sees it and can manually retry after recharging.
       if (!(await checkTeamAiPointsAndLock(data.teamId))) {
-        await MongoDatasetTraining.deleteOne({ _id: data._id });
+        await MongoDatasetTraining.updateOne(
+          { _id: data._id },
+          { $set: { retryCount: 0, errorMsg: getErrText(DatasetErrEnum.insufficientQuota) } }
+        );
+        pushCollectionUpdateJob({
+          collectionId: String(data.collectionId),
+          datasetId: String(data.datasetId),
+          teamId: String(data.teamId)
+        });
         continue;
       }
 
@@ -211,9 +227,12 @@ export async function generateVector(): Promise<any> {
         // Throttled indexing completion check (all modes)
         await markIndexingEnd({
           collectionId: String(data.collectionId),
-          teamId: String(data.teamId),
-          datasetId: String(data.datasetId),
           source: data.mode
+        });
+        pushCollectionUpdateJob({
+          collectionId: String(data.collectionId),
+          datasetId: String(data.datasetId),
+          teamId: String(data.teamId)
         });
 
         // push usage
@@ -248,11 +267,13 @@ export async function generateVector(): Promise<any> {
             errorMsg: getErrText(err, 'unknown error')
           }
         );
-        pushCollectionUpdateJob({
-          collectionId: String(data.collectionId),
-          datasetId: String(data.datasetId),
-          teamId: String(data.teamId)
-        });
+        if (data.retryCount <= 1) {
+          pushCollectionUpdateJob({
+            collectionId: String(data.collectionId),
+            datasetId: String(data.datasetId),
+            teamId: String(data.teamId)
+          });
+        }
         await delay(100);
       }
     }
@@ -269,6 +290,11 @@ export async function generateVector(): Promise<any> {
 const rebuildData = async ({ trainingData }: { trainingData: TrainingDataType }) => {
   if (!trainingData.data) {
     await MongoDatasetTraining.deleteOne({ _id: trainingData._id });
+    pushCollectionUpdateJob({
+      collectionId: String(trainingData.collectionId),
+      datasetId: String(trainingData.datasetId),
+      teamId: String(trainingData.teamId)
+    });
     return Promise.reject(`Not data, dataId: ${trainingData.dataId}`);
   }
 
@@ -382,6 +408,11 @@ const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) 
       datasetId: trainingData.datasetId
     });
     await MongoDatasetTraining.deleteOne({ _id: trainingData._id });
+    pushCollectionUpdateJob({
+      collectionId: String(trainingData.collectionId),
+      datasetId: String(trainingData.datasetId),
+      teamId: String(trainingData.teamId)
+    });
     return { tokens: 0 };
   }
 
@@ -403,6 +434,11 @@ const insertData = async ({ trainingData }: { trainingData: TrainingDataType }) 
       collectionId: trainingData.collectionId
     });
     await MongoDatasetTraining.deleteOne({ _id: trainingData._id });
+    pushCollectionUpdateJob({
+      collectionId: String(trainingData.collectionId),
+      datasetId: String(trainingData.datasetId),
+      teamId: String(trainingData.teamId)
+    });
     return { tokens: 0 };
   }
 

@@ -1,5 +1,6 @@
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import { checkTeamAiPointsAndLock } from './utils';
@@ -8,8 +9,6 @@ import {
   markDataTrainingPhaseTrace
 } from '@fastgpt/service/core/dataset/training/utils';
 import { addMinutes } from 'date-fns';
-import { pushCollectionUpdateJob } from '@fastgpt/service/core/dataset/collection/mq';
-import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import {
@@ -26,13 +25,15 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type {
   ColumnSchemaType,
-  DatasetTrainingSchemaType
+  DatasetTrainingSchemaType,
+  DatasetDataSchemaType
 } from '@fastgpt/global/core/dataset/type';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { delay } from '@fastgpt/service/common/bullmq';
 
 import { truncateText } from '@fastgpt/service/core/dataset/database/model/utils';
-// Database schema specific constants
+import { pushCollectionUpdateJob } from '@fastgpt/service/core/dataset/collection/mq';
+
 const MAX_EMBEDDING_STRING_LENGTH = 1024;
 
 const logger = getLogger(LogCategories.MODULE.DATASET.DATABASE_SCHEMA);
@@ -124,16 +125,25 @@ export async function generateDatabaseSchemaEmbedding(): Promise<any> {
           collectionId: data.collectionId,
           trainingId: data._id
         });
-        // Delete data
         await MongoDatasetTraining.deleteOne({ _id: data._id });
+        pushCollectionUpdateJob({
+          collectionId: String(data.collectionId),
+          datasetId: String(data.datasetId),
+          teamId: String(data.teamId)
+        });
         continue;
       }
 
-      // auth balance
-      // NOTE: findOneAndUpdate has already locked this record. If balance check
-      // fails we MUST delete it immediately, otherwise it stays locked for 3 min.
       if (!(await checkTeamAiPointsAndLock(data.teamId))) {
-        await MongoDatasetTraining.deleteOne({ _id: data._id });
+        await MongoDatasetTraining.updateOne(
+          { _id: data._id },
+          { $set: { retryCount: 0, errorMsg: getErrText(DatasetErrEnum.insufficientQuota) } }
+        );
+        pushCollectionUpdateJob({
+          collectionId: String(data.collectionId),
+          datasetId: String(data.datasetId),
+          teamId: String(data.teamId)
+        });
         continue;
       }
 
@@ -160,15 +170,6 @@ export async function generateDatabaseSchemaEmbedding(): Promise<any> {
           }
         })();
 
-        // Directly set statsUpdatedAt so frontend immediately shows "ready" instead of "queued".
-        // Must be synchronous (not via BullMQ) because the queue may not be available
-        // in all deployments. The async pushCollectionUpdateJob below handles comprehensive stats.
-        await MongoDatasetCollection.updateOne(
-          { _id: data.collectionId },
-          { $set: { statsUpdatedAt: new Date() } }
-        );
-
-        // Also trigger full stats recalculation via BullMQ
         pushCollectionUpdateJob({
           collectionId: String(data.collectionId),
           datasetId: String(data.datasetId),
@@ -202,6 +203,13 @@ export async function generateDatabaseSchemaEmbedding(): Promise<any> {
             errorMsg: getErrText(err, 'unknown error')
           }
         );
+        if (data.retryCount <= 1) {
+          pushCollectionUpdateJob({
+            collectionId: String(data.collectionId),
+            datasetId: String(data.datasetId),
+            teamId: String(data.teamId)
+          });
+        }
         await delay(100);
       }
     }
@@ -221,18 +229,39 @@ const rebuildData = async ({
   trainingData: TrainingDataType;
   phaseStartTime: Date;
 }) => {
-  // Note: For database schema mode, we don't need to check trainingData.data
-  // as the data comes from collection.tableSchema
   if (!trainingData.collection?.tableSchema) {
     await MongoDatasetTraining.deleteOne({ _id: trainingData._id });
     return Promise.reject('No table schema data');
   }
 
-  // Find next rebuilding data to insert training queue
+  await enqueueNextRebuildTraining(trainingData);
+
+  const result = await mongoSessionRun(async (session) => {
+    const { tokens } = await processDatabaseSchema({
+      trainingData,
+      session,
+      isRebuild: true
+    });
+
+    await MongoDatasetTraining.deleteOne({ _id: trainingData._id }, { session });
+    return { tokens };
+  });
+
+  if (trainingData.dataId) {
+    await markDataTrainingPhaseTrace({
+      dataId: String(trainingData.dataId),
+      mode: TrainingModeEnum.databaseSchema,
+      startTime: phaseStartTime
+    });
+  }
+
+  return result;
+};
+
+const enqueueNextRebuildTraining = async (trainingData: TrainingDataType) => {
   try {
     await retryFn(() =>
       mongoSessionRun(async (session) => {
-        // get new mongoData insert to training
         const newRebuildingData = await MongoDatasetData.findOneAndUpdate(
           {
             rebuilding: true,
@@ -270,23 +299,12 @@ const rebuildData = async ({
         }
       })
     );
-  } catch (error) {}
-
-  // Process database schema embedding
-  const { tokens } = await processDatabaseSchema({
-    trainingData,
-    isRebuild: true
-  });
-
-  if (trainingData.dataId) {
-    await markDataTrainingPhaseTrace({
-      dataId: String(trainingData.dataId),
-      mode: TrainingModeEnum.databaseSchema,
-      startTime: phaseStartTime
+  } catch (error) {
+    logger.warn('DB Schema failed to enqueue next rebuild data', {
+      datasetId: trainingData.datasetId,
+      error
     });
   }
-
-  return { tokens };
 };
 
 const insertData = async ({
@@ -342,111 +360,90 @@ const processDatabaseSchema = async ({
   const model = getEmbeddingModelById(dataset.vectorModelId);
   let totalTokens = 0;
 
-  // If rebuilding, delete existing indexes first
   if (isRebuild) {
     try {
-      // Delete table description indexes
-      await deleteDatasetDataVector({
-        teamId,
-        datasetIds: [datasetId],
-        collectionIds: [collectionId],
-        tableName: DBDatasetVectorTableName
-      });
-
-      // Delete table value indexes
-      await deleteDatasetDataVector({
-        teamId,
-        datasetIds: [datasetId],
-        collectionIds: [collectionId],
-        tableName: DBDatasetValueVectorTableName
-      });
+      await Promise.all([
+        deleteDatasetDataVector({
+          teamId,
+          datasetIds: [datasetId],
+          collectionIds: [collectionId],
+          tableName: DBDatasetVectorTableName
+        }),
+        deleteDatasetDataVector({
+          teamId,
+          datasetIds: [datasetId],
+          collectionIds: [collectionId],
+          tableName: DBDatasetValueVectorTableName
+        })
+      ]);
     } catch (error: any) {
       logger.warn('DB Schema failed to delete existing indexes', {
         collectionId,
         error
       });
     }
+
+    await MongoDatasetData.deleteMany({ teamId, datasetId, collectionId }, { session });
   }
 
-  // Note: Table description embedding is not implemented yet per design requirements
-  // Track column description results
-  const columnDesResults: any[] = [];
-  const valueIndexResults: any[] = [];
+  const tableIndexes: DatasetDataSchemaType['indexes'] = [];
+  let valueExampleCount = 0;
+  const now = new Date();
 
-  // Process column descriptions and values (only for columns with valueIndex: true)
   for (const [columnName, columnInfo] of Object.entries(
     columns as Record<string, ColumnSchemaType>
   )) {
-    // Validate column data
-    if (!columnName || typeof columnName !== 'string') {
-      logger.warn('DB Schema invalid column name, skipping', { columnName });
-      continue;
-    }
-
     if (!columnInfo || typeof columnInfo !== 'object') {
       logger.warn('DB Schema invalid column info, skipping', { columnName });
       continue;
     }
 
     const columnDescription = `${columnName}:${columnInfo.description || ''}`;
-    const columnDesIndex = `${tableName}<sep>${columnName}`;
 
     try {
-      // Insert column description
-      const truncatedColumnDescription = truncateText(
-        columnDescription,
-        MAX_EMBEDDING_STRING_LENGTH
-      );
       const columnDesResult = await insertCoulmnDescriptionVector({
-        query: truncatedColumnDescription,
+        query: truncateText(columnDescription, MAX_EMBEDDING_STRING_LENGTH),
         model,
         teamId,
         datasetId,
         collectionId,
-        column_des_index: columnDesIndex
-      });
-      columnDesResults.push({
-        columnName,
-        result: columnDesResult,
-        desIndex: columnDesIndex,
-        description: columnDescription
+        column_des_index: `${tableName}<sep>${columnName}`
       });
       totalTokens += columnDesResult.tokens;
 
-      // Insert column value examples (up to 3 examples)
-      if (columnInfo.examples && Array.isArray(columnInfo.examples)) {
-        if (!columnInfo.valueIndex || columnInfo.forbid) continue; // Skip if valueIndex is not true
+      const columnDesIndex = {
+        type: DatasetDataIndexTypeEnum.column_des_index,
+        dataId: columnDesResult.insertIds[0],
+        text: truncateText(columnDescription, MAX_EMBEDDING_STRING_LENGTH)
+      };
+      tableIndexes.push(columnDesIndex);
 
-        const valuePromises = columnInfo.examples.map(async (example: string, index: number) => {
-          const valueIndex = `${tableName}<sep>${columnName}<sep>example${index}`;
-          const valueText = truncateText(`${columnName}:${example}`, MAX_EMBEDDING_STRING_LENGTH);
-
-          const valueResult = await insertColumnValueVector({
-            query: valueText,
-            model,
-            teamId,
-            datasetId,
-            collectionId,
-            column_val_index: valueIndex
-          });
-
-          return {
-            columnName,
-            index,
-            result: valueResult,
-            valIndex: valueIndex,
-            text: valueText
-          };
-        });
-
-        const valueResults = await Promise.all(valuePromises);
-        valueIndexResults.push(...valueResults);
-        const valueTokens = valueResults.reduce(
-          (sum: number, result: any) => sum + (result.result.tokens || 0),
-          0
-        );
-        totalTokens += valueTokens;
-      }
+      const valueIndexes =
+        columnInfo.valueIndex && !columnInfo.forbid && Array.isArray(columnInfo.examples)
+          ? await Promise.all(
+              columnInfo.examples.map(async (example: string, index: number) => {
+                const valueText = truncateText(
+                  `${columnName}:${example}`,
+                  MAX_EMBEDDING_STRING_LENGTH
+                );
+                const valueResult = await insertColumnValueVector({
+                  query: valueText,
+                  model,
+                  teamId,
+                  datasetId,
+                  collectionId,
+                  column_val_index: `${tableName}<sep>${columnName}<sep>example${index}`
+                });
+                totalTokens += valueResult.tokens;
+                valueExampleCount++;
+                return {
+                  type: DatasetDataIndexTypeEnum.column_val_index,
+                  dataId: valueResult.insertIds[0],
+                  text: valueText
+                };
+              })
+            )
+          : [];
 
       await MongoDatasetData.create(
         [
@@ -457,24 +454,11 @@ const processDatabaseSchema = async ({
             collectionId,
             q: `${tableName}<sep>${columnName}`,
             a: `${columnName}<sep>${columnInfo.description || ''}`,
-            indexes: [
-              {
-                type: DatasetDataIndexTypeEnum.column_des_index,
-                dataId: columnDesResult.insertIds[0],
-                text: truncateText(
-                  `${columnName}<sep>${columnInfo.description || ''}`,
-                  MAX_EMBEDDING_STRING_LENGTH
-                )
-              },
-              ...valueIndexResults.map(({ result, text }) => ({
-                type: DatasetDataIndexTypeEnum.column_val_index,
-                dataId: result.insertIds[0],
-                text: text
-              }))
-            ],
+            indexes: [columnDesIndex, ...valueIndexes],
             chunkIndex: 0,
             history: [],
-            updateTime: new Date()
+            updateTime: now,
+            indexingCompleteTime: now
           }
         ],
         { session }
@@ -490,60 +474,31 @@ const processDatabaseSchema = async ({
     }
   }
 
-  // Update MongoDB data
-  if (session && !isRebuild) {
-    try {
-      const indexes: any[] = [];
-
-      // Note: Table description index is not implemented yet
-      // indexes.push({
-      //   type: DatasetDataIndexTypeEnum.column_des_index,
-      //   dataId: tableDesResult.insertId,
-      //   text: tableDescription
-      // });
-
-      // Column description indexes
-      columnDesResults.forEach(({ result, desIndex, description }) => {
-        indexes.push({
-          type: DatasetDataIndexTypeEnum.column_des_index,
-          dataId: result.insertIds[0],
-          text: truncateText(description, MAX_EMBEDDING_STRING_LENGTH)
-        });
-      });
-
-      // Create dataset_data record
-      const q = `${tableName}`;
-      const a = collection.tableSchema.description
-        ? `${tableName}<sep>${collection.tableSchema.description}`
-        : tableName;
-
-      await MongoDatasetData.create(
-        [
-          {
-            teamId,
-            tmbId,
-            datasetId,
-            collectionId,
-            q,
-            a,
-            indexes,
-            chunkIndex: 0,
-            history: [],
-            updateTime: new Date()
-          }
-        ],
-        { session }
-      );
-    } catch (error) {
-      logger.error('DB Schema failed to create MongoDB dataset data', { error });
-      throw error;
-    }
-  }
+  await MongoDatasetData.create(
+    [
+      {
+        teamId,
+        tmbId,
+        datasetId,
+        collectionId,
+        q: tableName,
+        a: collection.tableSchema.description
+          ? `${tableName}<sep>${collection.tableSchema.description}`
+          : tableName,
+        indexes: tableIndexes,
+        chunkIndex: 0,
+        history: [],
+        updateTime: now,
+        indexingCompleteTime: now
+      }
+    ],
+    { session }
+  );
 
   logger.info('DB Schema table processed', {
     tableName,
-    columnCount: columnDesResults.length,
-    valueExampleCount: valueIndexResults.length
+    columnCount: tableIndexes.length,
+    valueExampleCount
   });
 
   return { tokens: totalTokens };

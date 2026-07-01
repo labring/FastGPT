@@ -3,7 +3,6 @@ import { TagsMap } from '../../../tag';
 import {
   UpdateTrainingDataBodySchema,
   RebuildEmbeddingBodySchema,
-  DeleteTrainingDataBodySchema,
   GetTrainingDataDetailBodySchema,
   GetTrainingDataDetailResponseSchema,
   GetTrainingErrorBodySchema,
@@ -48,26 +47,6 @@ export const DatasetTrainingPath: OpenAPIPath = {
       responses: {
         200: {
           description: '重建任务已启动'
-        }
-      }
-    }
-  },
-
-  '/core/dataset/training/deleteTrainingData': {
-    post: {
-      summary: '删除训练数据',
-      description: '删除指定的训练数据条目，需要管理权限',
-      tags: [TagsMap.datasetTraining],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: DeleteTrainingDataBodySchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          description: '删除成功'
         }
       }
     }

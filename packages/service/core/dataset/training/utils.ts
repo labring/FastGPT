@@ -2,7 +2,6 @@ import { MongoDatasetCollection } from '../collection/schema';
 import { MongoDatasetData } from '../data/schema';
 import { MongoDatasetTraining } from './schema';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { pushCollectionUpdateJob } from '../collection/mq';
 import { getLogger, LogCategories } from '../../../common/logger';
 
 const logger = getLogger(LogCategories.MODULE.DATASET);
@@ -57,13 +56,9 @@ export const markParseStart = async ({
  */
 export const markParseEnd = async ({
   collectionId,
-  teamId,
-  datasetId,
   source
 }: {
   collectionId: string;
-  teamId?: string;
-  datasetId?: string;
   source?: string;
 }) => {
   const existing = parseEndTimers.get(collectionId);
@@ -84,15 +79,6 @@ export const markParseEnd = async ({
             { $set: { parsingCompleteTime: new Date() } }
           );
           logger.info('Collection parsing complete', { collectionId, source });
-
-          // Trigger async collection stats update
-          if (teamId && datasetId) {
-            pushCollectionUpdateJob({
-              collectionId: String(collectionId),
-              datasetId: String(datasetId),
-              teamId: String(teamId)
-            });
-          }
         }
       } catch (err) {
         logger.warn('Failed to check collection parse completion', {
@@ -140,13 +126,9 @@ export const markIndexingStart = async ({
  */
 export const markIndexingEnd = async ({
   collectionId,
-  teamId,
-  datasetId,
   source
 }: {
   collectionId: string;
-  teamId?: string;
-  datasetId?: string;
   source?: string;
 }) => {
   const existing = indexingEndTimers.get(collectionId);
@@ -167,15 +149,6 @@ export const markIndexingEnd = async ({
             { $set: { indexingCompleteTime: new Date() } }
           );
           logger.info('Collection indexing complete', { collectionId, source });
-
-          // Trigger async collection stats update
-          if (teamId && datasetId) {
-            pushCollectionUpdateJob({
-              collectionId: String(collectionId),
-              datasetId: String(datasetId),
-              teamId: String(teamId)
-            });
-          }
         }
       } catch (err) {
         logger.warn('Failed to check collection indexing completion', {

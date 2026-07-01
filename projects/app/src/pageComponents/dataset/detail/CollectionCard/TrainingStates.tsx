@@ -19,7 +19,6 @@ import { useMemo, useState } from 'react';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getDatasetCollectionTrainingDetail } from '@/web/core/dataset/api/collection';
 import {
-  deleteTrainingData,
   getTrainingDataDetail,
   getTrainingError,
   updateTrainingData
@@ -386,17 +385,6 @@ const ErrorView = ({
       }
     }
   );
-  const { runAsync: deleteData, loading: deleteLoading } = useRequest(
-    (data: { datasetId: string; collectionId: string; dataId: string }) => {
-      return deleteTrainingData(data);
-    },
-    {
-      manual: true,
-      onSuccess: () => {
-        refreshList();
-      }
-    }
-  );
   const { runAsync: updateData, loading: updateLoading } = useRequest(
     (data: { datasetId: string; collectionId: string; dataId: string; q?: string; a?: string }) => {
       return updateTrainingData(data);
@@ -430,10 +418,7 @@ const ErrorView = ({
   }
 
   return (
-    <ScrollData
-      h={'400px'}
-      isLoading={isLoading || updateLoading || getDataLoading || deleteLoading}
-    >
+    <ScrollData h={'400px'} isLoading={isLoading || updateLoading || getDataLoading}>
       <TableContainer overflowY={'auto'} fontSize={'12px'}>
         <Table variant={'simple'}>
           <Thead>
@@ -476,19 +461,6 @@ const ErrorView = ({
                       onClick={() => getData({ datasetId, collectionId, dataId: item._id })}
                     >
                       {t('dataset:dataset.Edit_Chunk')}
-                    </Button>
-                    <Box w={'1px'} height={'16px'} bg={'myGray.200'} />
-                    <Button
-                      variant={'ghost'}
-                      size={'sm'}
-                      color={'myGray.600'}
-                      leftIcon={<MyIcon name={'delete'} w={4} />}
-                      fontSize={'mini'}
-                      onClick={() => {
-                        deleteData({ datasetId, collectionId, dataId: item._id });
-                      }}
-                    >
-                      {t('dataset:dataset.Delete_Chunk')}
                     </Button>
                   </Flex>
                 </Td>

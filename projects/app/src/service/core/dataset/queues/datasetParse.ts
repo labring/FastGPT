@@ -41,6 +41,7 @@ import { POST } from '@fastgpt/service/common/api/plusRequest';
 import { pushLLMTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageItemTypeEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { i18nT } from '@fastgpt/web/i18n/utils';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { detectAndDecodeBuffer } from '@fastgpt/service/common/file/encoding';
@@ -201,9 +202,17 @@ const runParseQueue = async ({
       }
       // Check team points and lock(No mistakes will be thrown here)
       // NOTE: findOneAndUpdate has already locked this record. If balance check
-      // fails we MUST delete it immediately, otherwise it stays locked for 3 min.
+      // fails, set retryCount to 0 and record the error so the user sees it.
       if (!(await checkTeamAiPointsAndLock(data.teamId))) {
-        await MongoDatasetTraining.deleteOne({ _id: data._id });
+        await MongoDatasetTraining.updateOne(
+          { _id: data._id },
+          { $set: { retryCount: 0, errorMsg: getErrText(DatasetErrEnum.insufficientQuota) } }
+        );
+        pushCollectionUpdateJob({
+          collectionId: String(data.collectionId),
+          datasetId: String(data.datasetId),
+          teamId: String(data.teamId)
+        });
         continue;
       }
 
@@ -556,9 +565,12 @@ const runParseQueue = async ({
         // Throttled parse completion check: once all parse tasks for this collection
         // are done, markParseEnd sets parsingCompleteTime on the collection.
         await markParseEnd({
+          collectionId: String(collection._id)
+        });
+        pushCollectionUpdateJob({
           collectionId: String(collection._id),
-          teamId: String(data.teamId),
-          datasetId: String(data.datasetId)
+          datasetId: String(data.datasetId),
+          teamId: String(data.teamId)
         });
 
         logger.debug(`[${queueName}] task finished`, {
@@ -608,11 +620,13 @@ const runParseQueue = async ({
             lockTime: addMinutes(new Date(), -10)
           }
         );
-        pushCollectionUpdateJob({
-          collectionId: String(data.collectionId),
-          datasetId: String(data.datasetId),
-          teamId: String(data.teamId)
-        });
+        if (data.retryCount <= 1) {
+          pushCollectionUpdateJob({
+            collectionId: String(data.collectionId),
+            datasetId: String(data.datasetId),
+            teamId: String(data.teamId)
+          });
+        }
 
         await delay(100);
       }

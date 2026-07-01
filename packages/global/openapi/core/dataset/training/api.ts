@@ -59,29 +59,6 @@ export const RebuildEmbeddingResponseSchema = z.object({});
 export type RebuildEmbeddingResponse = z.infer<typeof RebuildEmbeddingResponseSchema>;
 
 /* ============================================================================
- * API: 删除训练数据
- * Route: POST /api/core/dataset/training/deleteTrainingData
- * ============================================================================ */
-export const DeleteTrainingDataBodySchema = z.object({
-  datasetId: ObjectIdSchema.meta({
-    example: '68ad85a7463006c963799a05',
-    description: '知识库 ID'
-  }),
-  collectionId: ObjectIdSchema.meta({
-    example: '68ad85a7463006c963799a06',
-    description: '集合 ID'
-  }),
-  dataId: ObjectIdSchema.meta({
-    example: '68ad85a7463006c963799a07',
-    description: '训练数据 ID'
-  })
-});
-export type DeleteTrainingDataBody = z.infer<typeof DeleteTrainingDataBodySchema>;
-
-export const DeleteTrainingDataResponseSchema = z.object({});
-export type DeleteTrainingDataResponse = z.infer<typeof DeleteTrainingDataResponseSchema>;
-
-/* ============================================================================
  * API: 获取训练数据详情
  * Route: POST /api/core/dataset/training/getTrainingDataDetail
  * ============================================================================ */

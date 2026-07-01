@@ -1,6 +1,6 @@
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { pushCollectionUpdateJob } from '@fastgpt/service/core/dataset/collection/mq';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/data/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { addMinutes } from 'date-fns';
@@ -15,8 +15,10 @@ import { text2Chunks } from '@fastgpt/service/worker/function';
 import { getTrainingModeByCollection } from '@fastgpt/service/core/dataset/collection/utils';
 import { checkTeamAiPointsAndLock } from './utils';
 import { DatasetCollectionDataProcessModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { pushCollectionUpdateJob } from '@fastgpt/service/core/dataset/collection/mq';
 import {
   markIndexingStart,
+  markIndexingEnd,
   markDataTrainingPhaseTrace
 } from '@fastgpt/service/core/dataset/training/utils';
 
@@ -171,11 +173,13 @@ const processSmall2BigTask = async (data: TrainingDataType, phaseStartTime: Date
         lockTime: addMinutes(new Date(), -9)
       }
     );
-    pushCollectionUpdateJob({
-      collectionId: String(data.collectionId),
-      datasetId: String(data.datasetId),
-      teamId: String(data.teamId)
-    });
+    if (data.retryCount <= 1) {
+      pushCollectionUpdateJob({
+        collectionId: String(data.collectionId),
+        datasetId: String(data.datasetId),
+        teamId: String(data.teamId)
+      });
+    }
   }
 };
 
@@ -248,9 +252,17 @@ export async function generateSmall2Big(): Promise<any> {
 
       // auth balance
       // NOTE: findOneAndUpdate has already locked this record. If balance check
-      // fails we MUST delete it immediately, otherwise it stays locked for 3 min.
+      // fails, set retryCount to 0 and record the error so the user sees it.
       if (!(await checkTeamAiPointsAndLock(data.teamId))) {
-        await MongoDatasetTraining.deleteOne({ _id: data._id });
+        await MongoDatasetTraining.updateOne(
+          { _id: data._id },
+          { $set: { retryCount: 0, errorMsg: getErrText(DatasetErrEnum.insufficientQuota) } }
+        );
+        pushCollectionUpdateJob({
+          collectionId: String(data.collectionId),
+          datasetId: String(data.datasetId),
+          teamId: String(data.teamId)
+        });
         continue;
       }
 
@@ -261,6 +273,10 @@ export async function generateSmall2Big(): Promise<any> {
         startTime: phaseStartTime
       });
       await processSmall2BigTask(data, phaseStartTime);
+      await markIndexingEnd({
+        collectionId: String(data.collectionId),
+        source: TrainingModeEnum.small2Big
+      });
       await delay(100);
     }
   } catch (error) {

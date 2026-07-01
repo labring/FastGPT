@@ -56,7 +56,7 @@ function getFileStatus(item: {
   if (
     item.errorCount != null &&
     item.errorCount > 0 &&
-    item.errorCount === item.dataAmount
+    (item.errorCount === item.dataAmount || item.dataAmount === 0)
   ) {
     return CollectionStatusEnum.error;
   }
