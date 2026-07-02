@@ -189,7 +189,9 @@ const ConversationLogs = () => {
     <Flex flexDirection={'column'} h={'full'} bg={'white'} borderRadius={'8px'}>
       <Box px={4}>{SubTabHeader}</Box>
       <Box flex={'1 0 0'} h={0} my={4} bg={'white'} px={4}>
-        {subTab === 'list' && <LogList filters={logFilters} onTotalChange={setExportTotal} refreshKey={refreshKey} />}
+        {subTab === 'list' && (
+          <LogList filters={logFilters} onTotalChange={setExportTotal} refreshKey={refreshKey} />
+        )}
         {subTab === 'optimize' && <OptimizeRecords dateRange={dateRange} refreshKey={refreshKey} />}
       </Box>
     </Flex>

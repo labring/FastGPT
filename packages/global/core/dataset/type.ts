@@ -329,7 +329,6 @@ export const DatasetTrainingSchema = z.object({
   datasetId: ObjectIdSchema.meta({ description: '数据集 ID' }),
   collectionId: ObjectIdSchema.meta({ description: '集合 ID' }),
   billId: z.string().meta({ description: '账单 ID' }),
-  expireAt: z.coerce.date().meta({ description: '过期时间' }),
   lockTime: z.coerce.date().meta({ description: '锁定时间' }),
   mode: z.enum(TrainingModeEnum).meta({ description: '训练模式' }),
   dataId: z.string().optional().meta({ description: '数据 ID' }),

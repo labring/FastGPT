@@ -158,7 +158,10 @@ async function handler(
       if (parentId) {
         const allIds = await getAllDescendantIds(
           (parentIds) =>
-            MongoDataset.find({ parentId: { $in: parentIds }, teamId, deleteTime: null }, '_id').lean(),
+            MongoDataset.find(
+              { parentId: { $in: parentIds }, teamId, deleteTime: null },
+              '_id'
+            ).lean(),
           parentId
         );
         query.parentId = { $in: allIds };

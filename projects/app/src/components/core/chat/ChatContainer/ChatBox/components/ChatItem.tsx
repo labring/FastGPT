@@ -105,9 +105,7 @@ const HumanContentCard = React.memo(
         {files.length > 0 && <FilesBlock files={files} />}
         {isChatLog && hasCompression && (
           <Flex alignItems={'center'} gap={2}>
-            <MyTag colorSchema="orange">
-              {t('chat:input_compressed')}
-            </MyTag>
+            <MyTag colorSchema="orange">{t('chat:input_compressed')}</MyTag>
             <Button
               size={'xs'}
               variant={'link'}
@@ -119,29 +117,27 @@ const HumanContentCard = React.memo(
             </Button>
           </Flex>
         )}
-        {isChatLog ? (
-          displayText && (
-            <Box
-              fontSize={'inherit'}
-              color={'inherit'}
-              whiteSpace={'pre-wrap'}
-              wordBreak={'break-word'}
-            >
-              {displayText}
-            </Box>
-          )
-        ) : (
-          (originalContent || text) && (
-            <Box
-              fontSize={'inherit'}
-              color={'inherit'}
-              whiteSpace={'pre-wrap'}
-              wordBreak={'break-word'}
-            >
-              {originalContent || text}
-            </Box>
-          )
-        )}
+        {isChatLog
+          ? displayText && (
+              <Box
+                fontSize={'inherit'}
+                color={'inherit'}
+                whiteSpace={'pre-wrap'}
+                wordBreak={'break-word'}
+              >
+                {displayText}
+              </Box>
+            )
+          : (originalContent || text) && (
+              <Box
+                fontSize={'inherit'}
+                color={'inherit'}
+                whiteSpace={'pre-wrap'}
+                wordBreak={'break-word'}
+              >
+                {originalContent || text}
+              </Box>
+            )}
       </Flex>
     );
   },
@@ -519,7 +515,10 @@ const ChatItem = ({ hasPlanCheck, ...props }: Props) => {
               textAlign={'left'}
             >
               {chat.obj === ChatRoleEnum.Human && (
-                <HumanContentCard chatValue={value as UserChatItemValueItemType[]} isChatLog={isChatLog} />
+                <HumanContentCard
+                  chatValue={value as UserChatItemValueItemType[]}
+                  isChatLog={isChatLog}
+                />
               )}
               {chat.obj === ChatRoleEnum.AI && (
                 <>

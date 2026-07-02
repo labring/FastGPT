@@ -46,9 +46,23 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetai
     collectionId: new Types.ObjectId(collection._id)
   };
 
+  // retryCount > 0 即代表可重试（含重试中的瞬态错误），errorMsg 状态不影响 active 判定；
+  // 真正的终态错误由 terminalErrorMatch 单独统计。
+  const activeTrainingMatch = {
+    retryCount: { $gt: 0 },
+    lockTime: { $lt: new Date('2050/1/1') }
+  };
+  const terminalErrorMatch = {
+    retryCount: { $lte: 0 },
+    errorMsg: { $exists: true }
+  };
+
   // Computed global queue
   const minId = (
-    await MongoDatasetTraining.findOne(match, { sort: { _id: 1 }, select: '_id' }).lean()
+    await MongoDatasetTraining.findOne(
+      { ...match, ...activeTrainingMatch },
+      { sort: { _id: 1 }, select: '_id' }
+    ).lean()
   )?._id;
 
   const [ququedCountData, trainingCountData, errorCountData, trainedCount] = (await Promise.all([
@@ -57,9 +71,7 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetai
           {
             $match: {
               _id: { $lt: new Types.ObjectId(minId) },
-              retryCount: { $gt: 0 },
-              errorMsg: { $exists: false },
-              lockTime: { $lt: new Date('2050/1/1') }
+              ...activeTrainingMatch
             }
           },
           {
@@ -74,9 +86,7 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetai
       {
         $match: {
           ...match,
-          retryCount: { $gt: 0 },
-          errorMsg: { $exists: false },
-          lockTime: { $lt: new Date('2050/1/1') }
+          ...activeTrainingMatch
         }
       },
       {
@@ -90,8 +100,7 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetai
       {
         $match: {
           ...match,
-          // retryCount: { $lte: 0 },
-          errorMsg: { $exists: true }
+          ...terminalErrorMatch
         }
       },
       {
@@ -101,7 +110,7 @@ async function handler(req: ApiRequestProps): Promise<GetCollectionTrainingDetai
         }
       }
     ]),
-    MongoDatasetData.countDocuments(match)
+    MongoDatasetData.countDocuments({ ...match, indexingCompleteTime: { $exists: true } })
   ])) as [
     { _id: TrainingModeEnum; count: number }[],
     { _id: TrainingModeEnum; count: number }[],

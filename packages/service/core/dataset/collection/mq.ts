@@ -8,6 +8,77 @@ import { getLogger, LogCategories } from '../../../common/logger';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.COLLECTION);
 
+export type TrainingAggregationResult = {
+  count: number;
+  hasError: boolean;
+  allParse: boolean;
+  errorCount: number;
+};
+
+export type DataAggregationResult = {
+  count: number;
+  processedCount: number;
+};
+
+/**
+ * Build the aggregation pipeline for computing training stats from dataset_trainings.
+ * Returns { count, hasError, allParse, errorCount } for the given collection scope.
+ *
+ * hasError / errorCount: only terminal errors (retryCount <= 0 + errorMsg) count
+ * allParse: true only if ALL training records (regardless of error state) are parse mode
+ */
+export const buildTrainingAggregationPipeline = (
+  teamId: Types.ObjectId,
+  datasetId: Types.ObjectId,
+  collectionId: Types.ObjectId
+) => [
+  { $match: { teamId, datasetId, collectionId } },
+  {
+    $group: {
+      _id: null,
+      count: { $sum: 1 },
+      hasError: {
+        $max: {
+          $cond: [
+            { $and: [{ $ifNull: ['$errorMsg', false] }, { $lte: ['$retryCount', 0] }] },
+            true,
+            false
+          ]
+        }
+      },
+      allParse: {
+        $min: { $eq: ['$mode', TrainingModeEnum.parse] }
+      },
+      errorCount: {
+        $sum: {
+          $cond: [{ $and: [{ $ifNull: ['$errorMsg', false] }, { $lte: ['$retryCount', 0] }] }, 1, 0]
+        }
+      }
+    }
+  }
+];
+
+/**
+ * Build the aggregation pipeline for computing data stats from dataset_datas.
+ * Returns { count, processedCount } for the given collection scope.
+ */
+export const buildDataAggregationPipeline = (
+  teamId: Types.ObjectId,
+  datasetId: Types.ObjectId,
+  collectionId: Types.ObjectId
+) => [
+  { $match: { teamId, datasetId, collectionId } },
+  {
+    $group: {
+      _id: null,
+      count: { $sum: 1 },
+      processedCount: {
+        $sum: { $cond: [{ $ifNull: ['$indexingCompleteTime', false] }, 1, 0] }
+      }
+    }
+  }
+];
+
 export type CollectionUpdateJobData = {
   teamId: string;
   datasetId: string;
@@ -33,50 +104,12 @@ export const initCollectionUpdateWorker = () => {
         // 2. Aggregate dataset_trainings: count + hasError + allParse
         // Run both in parallel since they query different collections
         const [[dataResult], [trainingResult]] = await Promise.all([
-          MongoDatasetData.aggregate<{ count: number; processedCount: number } | undefined>([
-            {
-              $match: {
-                teamId: teamIdObj,
-                datasetId: datasetIdObj,
-                collectionId: collectionIdObj
-              }
-            },
-            {
-              $group: {
-                _id: null,
-                count: { $sum: 1 },
-                processedCount: {
-                  $sum: { $cond: [{ $ifNull: ['$indexingCompleteTime', false] }, 1, 0] }
-                }
-              }
-            }
-          ]),
-          MongoDatasetTraining.aggregate<
-            { count: number; hasError: boolean; allParse: boolean; errorCount: number } | undefined
-          >([
-            {
-              $match: {
-                teamId: teamIdObj,
-                datasetId: datasetIdObj,
-                collectionId: collectionIdObj
-              }
-            },
-            {
-              $group: {
-                _id: null,
-                count: { $sum: 1 },
-                hasError: {
-                  $max: { $cond: [{ $ifNull: ['$errorMsg', false] }, true, false] }
-                },
-                allParse: {
-                  $min: { $eq: ['$mode', TrainingModeEnum.parse] }
-                },
-                errorCount: {
-                  $sum: { $cond: [{ $ifNull: ['$errorMsg', false] }, 1, 0] }
-                }
-              }
-            }
-          ])
+          MongoDatasetData.aggregate<DataAggregationResult | undefined>(
+            buildDataAggregationPipeline(teamIdObj, datasetIdObj, collectionIdObj)
+          ),
+          MongoDatasetTraining.aggregate<TrainingAggregationResult | undefined>(
+            buildTrainingAggregationPipeline(teamIdObj, datasetIdObj, collectionIdObj)
+          )
         ]);
 
         const dataCount = dataResult?.count || 0;

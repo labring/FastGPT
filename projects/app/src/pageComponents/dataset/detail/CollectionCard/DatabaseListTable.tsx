@@ -87,8 +87,19 @@ const DatabaseListTable: React.FC<DatabaseListTableProps> = ({
   );
 
   return (
-    <TableContainer mt={3} overflowY={'auto'} overflowX={'auto'} fontSize={'sm'} flex={'1 0 0'} h={0}>
-      <Table variant={'simple'} draggable={false} sx={{ tableLayout: 'fixed', width: '100%', minW: '900px' }}>
+    <TableContainer
+      mt={3}
+      overflowY={'auto'}
+      overflowX={'auto'}
+      fontSize={'sm'}
+      flex={'1 0 0'}
+      h={0}
+    >
+      <Table
+        variant={'simple'}
+        draggable={false}
+        sx={{ tableLayout: 'fixed', width: '100%', minW: '900px' }}
+      >
         <Thead draggable={false}>
           <Tr>
             <Th py={4} w="22%" maxW="250px">
@@ -97,7 +108,9 @@ const DatabaseListTable: React.FC<DatabaseListTableProps> = ({
                 {renderSortIcon('name')}
               </HStack>
             </Th>
-            <Th py={4} w="24%" maxW="400px">{t('dataset:description')}</Th>
+            <Th py={4} w="24%" maxW="400px">
+              {t('dataset:description')}
+            </Th>
             <Th py={4} w="100px">
               <HStack spacing={1}>
                 <Box>{t('common:Status')}</Box>

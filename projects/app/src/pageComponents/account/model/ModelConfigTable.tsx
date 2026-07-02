@@ -35,7 +35,10 @@ import {
   putSystemModel
 } from '@/web/core/ai/config';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import type { GetModelDetailResponse, ListModelsBody } from '@fastgpt/global/openapi/core/ai/model/api';
+import type {
+  GetModelDetailResponse,
+  ListModelsBody
+} from '@fastgpt/global/openapi/core/ai/model/api';
 import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { clientInitData } from '@/web/common/system/staticData';
@@ -93,12 +96,15 @@ const ModelTable = () => {
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
   const [activeTotal, setActiveTotal] = useState(0);
 
-  const filterParams = useMemo<ListModelsBody>(() => ({
-    provider: provider || undefined,
-    type: modelType || undefined,
-    search: search || undefined,
-    isActive: statusFilter || undefined
-  }), [provider, modelType, search, statusFilter]);
+  const filterParams = useMemo<ListModelsBody>(
+    () => ({
+      provider: provider || undefined,
+      type: modelType || undefined,
+      search: search || undefined,
+      isActive: statusFilter || undefined
+    }),
+    [provider, modelType, search, statusFilter]
+  );
 
   const fetchModels = useCallback(
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
