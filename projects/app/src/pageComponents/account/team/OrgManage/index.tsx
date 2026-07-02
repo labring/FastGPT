@@ -36,6 +36,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { delRemoveMember } from '@/web/support/user/team/api';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import useOrg from '@/web/support/user/team/org/hooks/useOrg';
+import { getIsMemberSyncMode } from '@/web/common/system/utils';
 
 const OrgInfoModal = dynamic(() => import('./OrgInfoModal'));
 const OrgMemberManageModal = dynamic(() => import('./OrgMemberManageModal'));
@@ -74,7 +75,7 @@ function OrgTable({ Tabs }: { Tabs: React.ReactNode }) {
   const { t } = useTranslation();
   const { userInfo, isTeamAdmin } = useUserStore();
   const { feConfigs } = useSystemStore();
-  const isSyncMember = feConfigs.register_method?.includes('sync');
+  const isSyncMember = getIsMemberSyncMode(feConfigs);
   const [editOrg, setEditOrg] = useState<OrgFormType>();
   const [manageMemberOrg, setManageMemberOrg] = useState<OrgListItemType>();
   const [movingOrg, setMovingOrg] = useState<OrgListItemType>();
