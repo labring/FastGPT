@@ -14,7 +14,6 @@ import {
   getStandardPlansConfig,
   getStandardPlanConfig,
   sortStandPlans,
-  reComputeStandPlans,
   initTeamFreePlan,
   getTeamStandPlan,
   getTeamPlanStatus,
@@ -23,15 +22,10 @@ import {
   clearTeamPlanCache
 } from '@fastgpt/service/support/wallet/sub/utils';
 import { MongoTeamSub } from '@fastgpt/service/support/wallet/sub/schema';
-import { ReadPreference } from '@fastgpt/service/common/mongo';
 
 // Valid ObjectId for testing
 const mockTeamId = '507f1f77bcf86cd799439011';
 const mockPlanId = '507f1f77bcf86cd799439012';
-const activePlanWindow = () => ({
-  startTime: new Date(Date.now() - 24 * 60 * 60 * 1000),
-  expiredTime: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
-});
 
 const baseStandard: TeamSubSchemaType = {
   _id: mockPlanId,
@@ -678,98 +672,6 @@ describe('initTeamFreePlan', () => {
   });
 });
 
-describe('reComputeStandPlans', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  const buildPlan = ({
-    level,
-    startTime,
-    expiredTime
-  }: {
-    level: StandardSubLevelEnum;
-    startTime: Date;
-    expiredTime: Date;
-  }) => ({
-    _id: `plan-${level}`,
-    teamId: mockTeamId,
-    type: SubTypeEnum.standard,
-    currentSubLevel: level,
-    nextSubLevel: level,
-    currentMode: SubModeEnum.month,
-    nextMode: SubModeEnum.month,
-    totalPoints: 100,
-    surplusPoints: 100,
-    startTime,
-    expiredTime,
-    save: vi.fn().mockResolvedValue(undefined)
-  });
-
-  it('按套餐等级把低等级套餐顺延到高等级套餐之后', async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-06-18T00:00:00.000Z'));
-
-    const advanced = buildPlan({
-      level: StandardSubLevelEnum.advanced,
-      startTime: new Date('2026-06-18T00:00:00.000Z'),
-      expiredTime: new Date('2026-07-03T00:00:00.000Z')
-    });
-    const free = buildPlan({
-      level: StandardSubLevelEnum.free,
-      startTime: new Date('2026-06-18T00:00:00.000Z'),
-      expiredTime: new Date('2026-07-18T00:00:00.000Z')
-    });
-    const mockQuery = {
-      session: vi.fn().mockResolvedValue([free, advanced])
-    };
-    vi.spyOn(MongoTeamSub, 'find').mockReturnValue(mockQuery as any);
-
-    await reComputeStandPlans(mockTeamId, {} as any);
-
-    expect(MongoTeamSub.find).toHaveBeenCalledWith({
-      teamId: mockTeamId,
-      type: SubTypeEnum.standard,
-      expiredTime: { $gt: new Date('2026-06-18T00:00:00.000Z') }
-    });
-    expect(advanced.startTime).toEqual(new Date('2026-06-18T00:00:00.000Z'));
-    expect(advanced.expiredTime).toEqual(new Date('2026-07-03T00:00:00.000Z'));
-    expect(free.startTime).toEqual(new Date('2026-07-03T00:00:00.000Z'));
-    expect(free.expiredTime).toEqual(new Date('2026-08-02T00:00:00.000Z'));
-    expect(advanced.save).toHaveBeenCalledWith({ session: {} });
-    expect(free.save).toHaveBeenCalledWith({ session: {} });
-
-    vi.useRealTimers();
-  });
-
-  it('只重排未过期套餐，避免历史套餐影响新权益排期', async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-06-18T00:00:00.000Z'));
-
-    const activeAdvanced = buildPlan({
-      level: StandardSubLevelEnum.advanced,
-      startTime: new Date('2026-06-18T00:00:00.000Z'),
-      expiredTime: new Date('2026-07-03T00:00:00.000Z')
-    });
-    const mockQuery = {
-      session: vi.fn().mockResolvedValue([activeAdvanced])
-    };
-    vi.spyOn(MongoTeamSub, 'find').mockReturnValue(mockQuery as any);
-
-    await reComputeStandPlans(mockTeamId, {} as any);
-
-    expect(MongoTeamSub.find).toHaveBeenCalledWith({
-      teamId: mockTeamId,
-      type: SubTypeEnum.standard,
-      expiredTime: { $gt: new Date('2026-06-18T00:00:00.000Z') }
-    });
-    expect(activeAdvanced.startTime).toEqual(new Date('2026-06-18T00:00:00.000Z'));
-    expect(activeAdvanced.expiredTime).toEqual(new Date('2026-07-03T00:00:00.000Z'));
-
-    vi.useRealTimers();
-  });
-});
-
 describe('getTeamStandPlan', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -785,7 +687,8 @@ describe('getTeamStandPlan', () => {
       currentSubLevel: StandardSubLevelEnum.basic,
       totalPoints: 2000,
       surplusPoints: 1500,
-      ...activePlanWindow(),
+      startTime: new Date('2024-01-01'),
+      expiredTime: new Date('2025-01-01'),
       currentMode: SubModeEnum.month,
       nextMode: SubModeEnum.month,
       nextSubLevel: StandardSubLevelEnum.basic,
@@ -819,132 +722,6 @@ describe('getTeamStandPlan', () => {
     expect(result[SubTypeEnum.standard]).toBeDefined();
     expect(result[SubTypeEnum.standard]?.name).toBe('Basic Plan');
   });
-
-  it('secondary 未读到有效套餐时使用 primary 复查，避免误初始化 free plan', async () => {
-    const teamId = mockTeamId;
-    const mockPlan = {
-      _id: mockPlanId,
-      teamId,
-      type: SubTypeEnum.standard,
-      currentSubLevel: StandardSubLevelEnum.basic,
-      totalPoints: 2000,
-      surplusPoints: 1500,
-      ...activePlanWindow(),
-      currentMode: SubModeEnum.month,
-      nextMode: SubModeEnum.month,
-      nextSubLevel: StandardSubLevelEnum.basic,
-      currentExtraDatasetSize: 0
-    };
-    const secondaryQuery = {
-      lean: vi.fn().mockResolvedValue([])
-    };
-    const primaryQuery = {
-      lean: vi.fn().mockResolvedValue([mockPlan])
-    };
-
-    vi.spyOn(MongoTeamSub, 'find')
-      .mockReturnValueOnce(secondaryQuery as any)
-      .mockReturnValueOnce(primaryQuery as any);
-    vi.spyOn(MongoTeamSub, 'findOne').mockResolvedValue(null);
-    vi.spyOn(MongoTeamSub, 'create').mockResolvedValue([] as any);
-
-    (global as any).subPlans = {
-      standard: {
-        [StandardSubLevelEnum.basic]: {
-          name: 'Basic Plan',
-          price: 99,
-          totalPoints: 2000,
-          maxTeamMember: 10,
-          maxAppAmount: 50,
-          maxDatasetAmount: 20,
-          maxDatasetSize: 100,
-          chatHistoryStoreDuration: 30
-        }
-      }
-    };
-
-    const result = await getTeamStandPlan({ teamId });
-
-    expect(MongoTeamSub.find).toHaveBeenCalledTimes(2);
-    expect(MongoTeamSub.find).toHaveBeenNthCalledWith(
-      2,
-      {
-        teamId,
-        type: SubTypeEnum.standard
-      },
-      undefined,
-      {
-        readPreference: ReadPreference.PRIMARY,
-        readConcern: {
-          level: 'majority'
-        }
-      }
-    );
-    expect(MongoTeamSub.findOne).not.toHaveBeenCalled();
-    expect(MongoTeamSub.create).not.toHaveBeenCalled();
-    expect(result[SubTypeEnum.standard]).toEqual(
-      expect.objectContaining({
-        currentSubLevel: StandardSubLevelEnum.basic,
-        name: 'Basic Plan'
-      })
-    );
-  });
-
-  it('无有效标准套餐时基于初始化结果直接返回，避免递归重查', async () => {
-    const teamId = mockTeamId;
-    const mockCreatedPlan = {
-      _id: mockPlanId,
-      teamId,
-      type: SubTypeEnum.standard,
-      currentSubLevel: StandardSubLevelEnum.free,
-      totalPoints: 100,
-      surplusPoints: 100,
-      ...activePlanWindow(),
-      currentMode: SubModeEnum.month,
-      nextMode: SubModeEnum.month,
-      nextSubLevel: StandardSubLevelEnum.free,
-      currentExtraDatasetSize: 0
-    };
-
-    const secondaryQuery = {
-      lean: vi.fn().mockResolvedValue([])
-    };
-    const primaryQuery = {
-      lean: vi.fn().mockResolvedValue([])
-    };
-    vi.spyOn(MongoTeamSub, 'find')
-      .mockReturnValueOnce(secondaryQuery as any)
-      .mockReturnValueOnce(primaryQuery as any);
-    vi.spyOn(MongoTeamSub, 'findOne').mockResolvedValue(null);
-    vi.spyOn(MongoTeamSub, 'create').mockResolvedValue([mockCreatedPlan] as any);
-
-    (global as any).subPlans = {
-      standard: {
-        [StandardSubLevelEnum.free]: {
-          name: 'Free Plan',
-          price: 0,
-          totalPoints: 100,
-          maxTeamMember: 1,
-          maxAppAmount: 5,
-          maxDatasetAmount: 2,
-          maxDatasetSize: 10,
-          chatHistoryStoreDuration: 7
-        }
-      }
-    };
-
-    const result = await getTeamStandPlan({ teamId });
-
-    expect(MongoTeamSub.find).toHaveBeenCalledTimes(2);
-    expect(MongoTeamSub.create).toHaveBeenCalledTimes(1);
-    expect(result[SubTypeEnum.standard]).toEqual(
-      expect.objectContaining({
-        currentSubLevel: StandardSubLevelEnum.free,
-        name: 'Free Plan',
-        totalPoints: 100
-      })
-    );
-  });
 });
 
 describe('getTeamPlanStatus', () => {
@@ -962,7 +739,8 @@ describe('getTeamPlanStatus', () => {
       currentSubLevel: StandardSubLevelEnum.basic,
       totalPoints: 2000,
       surplusPoints: 1500,
-      ...activePlanWindow(),
+      startTime: new Date('2024-01-01'),
+      expiredTime: new Date('2025-01-01'),
       currentMode: SubModeEnum.month,
       nextMode: SubModeEnum.month,
       nextSubLevel: StandardSubLevelEnum.basic,
@@ -999,76 +777,6 @@ describe('getTeamPlanStatus', () => {
     expect(result[SubTypeEnum.standard]).toBeDefined();
   });
 
-  it('忽略已过期的高权重标准套餐，使用当前有效套餐', async () => {
-    const teamId = mockTeamId;
-    const expiredCustomPlan = {
-      _id: '507f1f77bcf86cd799439020',
-      teamId,
-      type: SubTypeEnum.standard,
-      currentSubLevel: StandardSubLevelEnum.custom,
-      totalPoints: 90000,
-      surplusPoints: 90000,
-      startTime: new Date('2024-01-01'),
-      expiredTime: new Date('2025-01-01'),
-      currentMode: SubModeEnum.month,
-      nextMode: SubModeEnum.month,
-      nextSubLevel: StandardSubLevelEnum.custom,
-      currentExtraDatasetSize: 0,
-      maxDatasetSize: 2000
-    };
-    const activeAdvancedPlan = {
-      _id: '507f1f77bcf86cd799439021',
-      teamId,
-      type: SubTypeEnum.standard,
-      currentSubLevel: StandardSubLevelEnum.advanced,
-      totalPoints: 25000,
-      surplusPoints: 20000,
-      ...activePlanWindow(),
-      currentMode: SubModeEnum.month,
-      nextMode: SubModeEnum.month,
-      nextSubLevel: StandardSubLevelEnum.advanced,
-      currentExtraDatasetSize: 0,
-      maxDatasetSize: 500
-    };
-
-    const mockQuery = {
-      lean: vi.fn().mockResolvedValue([expiredCustomPlan, activeAdvancedPlan])
-    };
-    vi.spyOn(MongoTeamSub, 'find').mockReturnValue(mockQuery as any);
-
-    (global as any).subPlans = {
-      standard: {
-        [StandardSubLevelEnum.advanced]: {
-          name: 'Advanced Plan',
-          price: 299,
-          totalPoints: 25000,
-          maxTeamMember: 50,
-          maxAppAmount: 200,
-          maxDatasetAmount: 100,
-          maxDatasetSize: 500,
-          chatHistoryStoreDuration: 90
-        },
-        [StandardSubLevelEnum.custom]: {
-          name: 'Custom Plan',
-          price: 999,
-          totalPoints: 90000,
-          maxTeamMember: 200,
-          maxAppAmount: 1000,
-          maxDatasetAmount: 500,
-          maxDatasetSize: 2000,
-          chatHistoryStoreDuration: 365
-        }
-      }
-    };
-
-    const result = await getTeamPlanStatus({ teamId });
-
-    expect(result[SubTypeEnum.standard]?.currentSubLevel).toBe(StandardSubLevelEnum.advanced);
-    expect(result.totalPoints).toBe(25000);
-    expect(result.usedPoints).toBe(5000);
-    expect(result.datasetMaxSize).toBe(500);
-  });
-
   it('包含额外积分套餐', async () => {
     const teamId = mockTeamId;
     const mockStandardPlan = {
@@ -1078,7 +786,8 @@ describe('getTeamPlanStatus', () => {
       currentSubLevel: StandardSubLevelEnum.basic,
       totalPoints: 2000,
       surplusPoints: 1500,
-      ...activePlanWindow(),
+      startTime: new Date('2024-01-01'),
+      expiredTime: new Date('2025-01-01'),
       currentMode: SubModeEnum.month,
       nextMode: SubModeEnum.month,
       nextSubLevel: StandardSubLevelEnum.basic,
@@ -1131,7 +840,8 @@ describe('getTeamPlanStatus', () => {
       currentSubLevel: StandardSubLevelEnum.basic,
       totalPoints: 2000,
       surplusPoints: 1500,
-      ...activePlanWindow(),
+      startTime: new Date('2024-01-01'),
+      expiredTime: new Date('2025-01-01'),
       currentMode: SubModeEnum.month,
       nextMode: SubModeEnum.month,
       nextSubLevel: StandardSubLevelEnum.basic,

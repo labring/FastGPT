@@ -16,8 +16,6 @@ import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useCheckCoupon } from './hooks/checkCoupon';
 import HelperBot from './HelperBot';
-import { getEnterpriseAuthStatus } from '@/web/support/user/team/enterpriseAuth/api';
-import { TeamEnterpriseAuthStatusEnum } from '@fastgpt/global/support/user/team/enterpriseAuth/constant';
 
 const Navbar = dynamic(() => import('./navbar'));
 const NavbarPhone = dynamic(() => import('./navbarPhone'));
@@ -96,12 +94,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
     setShowProModal
   } = useSystemStore();
   const { isPc } = useSystem();
-  const {
-    userInfo,
-    isUpdateNotification,
-    setIsUpdateNotification,
-    enterpriseAuthNoticeReadTeamIds
-  } = useUserStore();
+  const { userInfo, isUpdateNotification, setIsUpdateNotification } = useUserStore();
   const { setUserDefaultLng, setShareDefaultLng } = useI18nLng();
 
   // Auto redeem coupon
@@ -127,25 +120,6 @@ const Layout = ({ children }: { children: JSX.Element }) => {
     feConfigs?.bind_notification_method.length > 0 &&
     !userInfo?.contact &&
     !!userInfo?.team.permission.isOwner;
-  const shouldCheckEnterpriseAuthNotice =
-    router.pathname === '/dashboard/agent' &&
-    !!feConfigs?.show_enterprise_auth &&
-    !!userInfo?.team?.teamId &&
-    (userInfo.team.permission.isOwner || userInfo.team.permission.hasManagePer) &&
-    !enterpriseAuthNoticeReadTeamIds?.includes(userInfo.team.teamId);
-  const { data: enterpriseAuthStatus } = useQuery(
-    ['getEnterpriseAuthNoticeStatus', userInfo?.team?.teamId],
-    getEnterpriseAuthStatus,
-    {
-      enabled: shouldCheckEnterpriseAuthNotice,
-      staleTime: 30000
-    }
-  );
-  const showEnterpriseAuthNotice =
-    shouldCheckEnterpriseAuthNotice &&
-    enterpriseAuthStatus?.enabled !== false &&
-    !!enterpriseAuthStatus?.status &&
-    enterpriseAuthStatus.status !== TeamEnterpriseAuthStatusEnum.verified;
 
   useMount(() => {
     if (router.pathname === '/chat/share') {
@@ -242,7 +216,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
           <HelperBot />
         </>
       )}
-      {showEnterpriseAuthNotice && <EnterpriseAuthNoticeModal />}
+      <EnterpriseAuthNoticeModal key={`${router.pathname}-${userInfo?.team?.teamId ?? ''}`} />
 
       <ManualCopyModal />
       <ActivityAdModal />

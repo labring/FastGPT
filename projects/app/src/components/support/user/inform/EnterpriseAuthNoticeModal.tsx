@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   Box,
   Button,
@@ -15,6 +15,10 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useTranslation } from 'next-i18next';
 import { webPushTrack } from '@/web/common/middle/tracks/utils';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useQuery } from '@tanstack/react-query';
+import { getEnterpriseAuthStatus } from '@/web/support/user/team/enterpriseAuth/api';
+import { TeamEnterpriseAuthStatusEnum } from '@fastgpt/global/support/user/team/enterpriseAuth/constant';
 
 const certificationHref = '/account/info#certification';
 
@@ -56,10 +60,33 @@ const BenefitItem = ({ children }: { children: React.ReactNode }) => (
 const EnterpriseAuthNoticeModal = () => {
   const router = useRouter();
   const { t } = useTranslation();
-  const { userInfo, setEnterpriseAuthNoticeRead } = useUserStore();
+  const { feConfigs } = useSystemStore();
+  const { userInfo, enterpriseAuthNoticeReadTeamIds, setEnterpriseAuthNoticeRead } = useUserStore();
   const [isClosed, setIsClosed] = useState(false);
 
   const teamId = userInfo?.team?.teamId;
+  const shouldCheckEnterpriseAuthNotice =
+    router.pathname === '/dashboard/agent' &&
+    !!feConfigs?.show_enterprise_auth &&
+    !!teamId &&
+    (!!userInfo?.team.permission.isOwner || !!userInfo?.team.permission.hasManagePer) &&
+    !enterpriseAuthNoticeReadTeamIds?.includes(teamId);
+  const { data: enterpriseAuthStatus } = useQuery(
+    ['getEnterpriseAuthNoticeStatus', teamId],
+    getEnterpriseAuthStatus,
+    {
+      enabled: shouldCheckEnterpriseAuthNotice,
+      staleTime: 30000
+    }
+  );
+  const showEnterpriseAuthNotice = useMemo(
+    () =>
+      shouldCheckEnterpriseAuthNotice &&
+      enterpriseAuthStatus?.enabled !== false &&
+      !!enterpriseAuthStatus?.status &&
+      enterpriseAuthStatus.status !== TeamEnterpriseAuthStatusEnum.verified,
+    [enterpriseAuthStatus?.enabled, enterpriseAuthStatus?.status, shouldCheckEnterpriseAuthNotice]
+  );
 
   const markAsRead = useCallback(() => {
     if (teamId) {
@@ -82,7 +109,7 @@ const EnterpriseAuthNoticeModal = () => {
     [markAsRead, router]
   );
 
-  if (isClosed) return null;
+  if (!showEnterpriseAuthNotice || isClosed) return null;
 
   return (
     <MyModal

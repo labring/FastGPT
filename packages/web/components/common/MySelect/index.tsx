@@ -4,7 +4,8 @@ import React, {
   useMemo,
   useEffect,
   useImperativeHandle,
-  type ForwardedRef
+  type ForwardedRef,
+  useState
 } from 'react';
 import {
   Menu,
@@ -24,8 +25,6 @@ import MyDivider from '../MyDivider';
 import type { useScrollPagination } from '../../../hooks/useScrollPagination';
 import Avatar from '../Avatar';
 import EmptyTip from '../EmptyTip';
-import { useSearchMenu } from './useSearchMenu';
-import type { SelectOption } from './type';
 
 /** 选择组件 Props 类型
  * value: 选中的值
@@ -41,8 +40,15 @@ export type SelectProps<T = any> = Omit<ButtonProps, 'onChange' | 'value'> & {
   valueLabel?: string | React.ReactNode;
   placeholder?: string;
   isSearch?: boolean;
-  showAliasInValue?: boolean;
-  list: SelectOption<T>[];
+  list: {
+    alias?: string | React.ReactNode;
+    icon?: string;
+    iconSize?: string;
+    label: string | React.ReactNode;
+    description?: string;
+    value: T;
+    showBorder?: boolean;
+  }[];
   isLoading?: boolean;
   onChange?: (val: T) => any | Promise<any>;
   ScrollData?: ReturnType<typeof useScrollPagination>['ScrollData'];
@@ -74,7 +80,6 @@ const MySelect = <T = any,>(
     value,
     valueLabel,
     isSearch = false,
-    showAliasInValue = true,
     width = '100%',
     list = [],
     onChange,
@@ -95,40 +100,73 @@ const MySelect = <T = any,>(
   const MenuListRef = useRef<HTMLDivElement>(null);
   const SelectedItemRef = useRef<HTMLDivElement>(null);
   const SearchInputRef = useRef<HTMLInputElement>(null);
+  const ignoreNextSearchSpaceClickRef = useRef(false);
 
   const { isOpen, onOpen: defaultOnOpen, onClose: defaultOnClose } = useDisclosure();
   const selectItem = useMemo(() => list.find((item) => item.value === value), [list, value]);
+
+  const onOpen = () => {
+    defaultOnOpen();
+    customOnOpen?.();
+  };
 
   const onClose = () => {
     defaultOnClose();
     customOnClose?.();
   };
 
-  const {
-    search,
-    setSearch,
-    resetSearch,
-    menuMinW,
-    fallbackMenuMinW,
-    handleSearchInputKeyDown,
-    handleSearchInputKeyUp,
-    filterList
-  } = useSearchMenu({
-    isSearch,
-    isOpen,
-    width,
-    list,
-    buttonRef: ButtonRef,
-    searchInputRef: SearchInputRef,
-    onClose,
-    focusButton: () => ButtonRef.current?.focus()
-  });
+  const [search, setSearch] = useState('');
+  const isComposingSearch = (e: React.KeyboardEvent<HTMLInputElement>) =>
+    e.nativeEvent.isComposing || e.keyCode === 229;
 
-  const onOpen = () => {
-    resetSearch();
-    defaultOnOpen();
-    customOnOpen?.();
+  const handleSearchSpaceKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!isSearch || !isOpen || (e.key !== ' ' && e.code !== 'Space')) return;
+
+    e.stopPropagation();
+    ignoreNextSearchSpaceClickRef.current = true;
+
+    if (isComposingSearch(e)) {
+      return;
+    }
+
+    e.preventDefault();
+    const input = e.currentTarget;
+    const selectionStart = input.selectionStart ?? search.length;
+    const selectionEnd = input.selectionEnd ?? selectionStart;
+    const nextSearch = `${search.slice(0, selectionStart)} ${search.slice(selectionEnd)}`;
+
+    setSearch(nextSearch);
+    window.requestAnimationFrame(() => {
+      const nextPosition = selectionStart + 1;
+      input.setSelectionRange(nextPosition, nextPosition);
+      ignoreNextSearchSpaceClickRef.current = false;
+    });
   };
+
+  const handleSearchSpaceKeyUp = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!isSearch || !isOpen || (e.key !== ' ' && e.code !== 'Space')) return;
+
+    e.stopPropagation();
+    ignoreNextSearchSpaceClickRef.current = true;
+
+    if (!isComposingSearch(e)) {
+      e.preventDefault();
+    }
+
+    window.setTimeout(() => {
+      ignoreNextSearchSpaceClickRef.current = false;
+    }, 0);
+  };
+  const filterList = useMemo(() => {
+    if (!isSearch || !search) {
+      return list;
+    }
+    return list.filter((item) => {
+      const text = `${item.label?.toString()}${item.alias}${item.value}`;
+      const regx = new RegExp(search, 'gi');
+      return regx.test(text);
+    });
+  }, [list, search, isSearch]);
 
   useImperativeHandle(ref, () => ({
     focus() {
@@ -142,8 +180,13 @@ const MySelect = <T = any,>(
       const menu = MenuListRef.current;
       const selectedItem = SelectedItemRef.current;
       menu.scrollTop = selectedItem.offsetTop - menu.offsetTop - 100;
+
+      if (isSearch) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setSearch('');
+      }
     }
-  }, [isOpen]);
+  }, [isSearch, isOpen]);
 
   const { runAsync: onClickChange, loading } = useRequest((val: T) => onChange?.(val));
 
@@ -242,6 +285,14 @@ const MySelect = <T = any,>(
           opacity={isDisabled ? 0.4 : 1}
           _hover={isInvalid ? { borderColor: 'red.400' } : { borderColor: 'primary.300' }}
           {...props}
+          onClickCapture={(e) => {
+            props.onClickCapture?.(e);
+            if (e.isPropagationStopped() || !ignoreNextSearchSpaceClickRef.current) return;
+
+            ignoreNextSearchSpaceClickRef.current = false;
+            e.preventDefault();
+            e.stopPropagation();
+          }}
         >
           <Flex alignItems={'center'} justifyContent="space-between" w="100%" minW={0}>
             <Flex alignItems={'center'} flex={'1 1 0'} minW={0} overflow={'hidden'}>
@@ -250,23 +301,54 @@ const MySelect = <T = any,>(
                 <>{valueLabel}</>
               ) : (
                 <>
-                  {selectItem?.icon && (
-                    <Avatar mr={2} src={selectItem.icon as any} w={selectItem.iconSize ?? '1rem'} />
+                  {isSearch && isOpen ? (
+                    <Input
+                      ref={SearchInputRef}
+                      autoFocus
+                      variant={'unstyled'}
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder={
+                        (typeof selectItem?.alias === 'string' ? selectItem?.alias : '') ||
+                        (typeof selectItem?.label === 'string' ? selectItem?.label : placeholder)
+                      }
+                      _placeholder={{
+                        color: 'myGray.500'
+                      }}
+                      size={'sm'}
+                      w={'100%'}
+                      color={'myGray.700'}
+                      onKeyDown={handleSearchSpaceKeyDown}
+                      onKeyUp={handleSearchSpaceKeyUp}
+                      onBlur={() => {
+                        setTimeout(() => {
+                          SearchInputRef?.current?.focus();
+                        }, 0);
+                      }}
+                    />
+                  ) : (
+                    <>
+                      {selectItem?.icon && (
+                        <Avatar
+                          mr={2}
+                          src={selectItem.icon as any}
+                          w={selectItem.iconSize ?? '1rem'}
+                        />
+                      )}
+                      {
+                        <Box
+                          noOfLines={1}
+                          {...(!selectItem
+                            ? {
+                                color: 'myGray.500'
+                              }
+                            : {})}
+                        >
+                          {selectItem?.alias || selectItem?.label || placeholder}
+                        </Box>
+                      }
+                    </>
                   )}
-                  {
-                    <Box
-                      noOfLines={1}
-                      {...(!selectItem
-                        ? {
-                            color: 'myGray.500'
-                          }
-                        : {})}
-                    >
-                      {(showAliasInValue ? selectItem?.alias : undefined) ||
-                        selectItem?.label ||
-                        placeholder}
-                    </Box>
-                  }
                 </>
               )}
             </Flex>
@@ -276,7 +358,17 @@ const MySelect = <T = any,>(
         <MenuList
           ref={MenuListRef}
           className={props.className}
-          minW={menuMinW ?? fallbackMenuMinW}
+          minW={(() => {
+            /* eslint-disable react-hooks/refs */
+            const w = ButtonRef.current?.clientWidth;
+            if (w) {
+              return `${w}px !important`;
+            }
+            /* eslint-enable react-hooks/refs */
+            return Array.isArray(width)
+              ? width.map((item) => `${item} !important`)
+              : `${width} !important`;
+          })()}
           w={'max-content'}
           px={'6px'}
           py={'6px'}
@@ -291,30 +383,6 @@ const MySelect = <T = any,>(
             e.stopPropagation();
           }}
         >
-          {isSearch && (
-            <Box position={'sticky'} top={0} bg={'white'} zIndex={1} pb={2}>
-              <Input
-                ref={SearchInputRef}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={
-                  (showAliasInValue && typeof selectItem?.alias === 'string'
-                    ? selectItem?.alias
-                    : '') ||
-                  (typeof selectItem?.label === 'string' ? selectItem?.label : placeholder)
-                }
-                size={'sm'}
-                w={'100%'}
-                color={'myGray.700'}
-                borderColor={'myGray.200'}
-                _placeholder={{
-                  color: 'myGray.500'
-                }}
-                onKeyDown={handleSearchInputKeyDown}
-                onKeyUp={handleSearchInputKeyUp}
-              />
-            </Box>
-          )}
           {ScrollData ? <ScrollData>{ListRender}</ScrollData> : ListRender}
         </MenuList>
       </Menu>

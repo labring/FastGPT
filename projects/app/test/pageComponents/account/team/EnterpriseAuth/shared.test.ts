@@ -31,7 +31,7 @@ describe('enterprise auth bank account validation', () => {
 });
 
 describe('formatEnterpriseAuthBankOptions', () => {
-  it('下拉展示和提交银行简称，银行公司全称作为搜索别名', () => {
+  it('下拉只展示和提交银行简称', () => {
     expect(
       formatEnterpriseAuthBankOptions({
         中国工商银行: '中国工商银行股份有限公司',
@@ -40,13 +40,11 @@ describe('formatEnterpriseAuthBankOptions', () => {
     ).toEqual([
       {
         label: '中国工商银行',
-        value: '中国工商银行',
-        alias: '中国工商银行股份有限公司'
+        value: '中国工商银行'
       },
       {
         label: '北京银行',
-        value: '北京银行',
-        alias: '北京银行股份有限公司'
+        value: '北京银行'
       }
     ]);
   });
