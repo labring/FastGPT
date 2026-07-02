@@ -11,6 +11,16 @@ import type {
   UpdateApiKeyBodyType,
   UpdateApiKeyResponseType
 } from '@fastgpt/global/openapi/support/openapi/api';
+import type {
+  CreateOpenApiTagBodyType,
+  CreateOpenApiTagResponseType,
+  DeleteOpenApiTagQueryType,
+  DeleteOpenApiTagResponseType,
+  GetOpenApiTagListQueryType,
+  GetOpenApiTagListResponseType,
+  UpdateOpenApiTagBodyType,
+  UpdateOpenApiTagResponseType
+} from '@fastgpt/global/openapi/support/openapi/tag';
 
 /**
  * crete a api key
@@ -27,8 +37,14 @@ export const putOpenApiKey = (data: UpdateApiKeyBodyType) =>
 /**
  * get api keys
  */
-export const getOpenApiKeys = (params?: GetApiKeyListQueryType) =>
-  GET<GetApiKeyListResponseType>('/support/openapi/list', params);
+export const getOpenApiKeys = (params?: GetApiKeyListQueryType) => {
+  const { tags, ...rest } = params || {};
+
+  return GET<GetApiKeyListResponseType>('/support/openapi/list', {
+    ...rest,
+    tags: tags && tags.length > 0 ? tags.join(',') : undefined
+  });
+};
 
 /**
  * copy api key and record audit
@@ -41,3 +57,15 @@ export const copyOpenApiKey = (data: CopyApiKeyBodyType) =>
  */
 export const delOpenApiById = (id: DeleteApiKeyQueryType['id']) =>
   DELETE<DeleteApiKeyResponseType>(`/support/openapi/delete`, { id });
+
+export const getOpenApiTags = (params?: GetOpenApiTagListQueryType) =>
+  GET<GetOpenApiTagListResponseType>('/support/openapi/tag/list', params);
+
+export const createOpenApiTag = (data: CreateOpenApiTagBodyType) =>
+  POST<CreateOpenApiTagResponseType>('/support/openapi/tag/create', data);
+
+export const updateOpenApiTag = (data: UpdateOpenApiTagBodyType) =>
+  PUT<UpdateOpenApiTagResponseType>('/support/openapi/tag/update', data);
+
+export const deleteOpenApiTag = (tagId: DeleteOpenApiTagQueryType['tagId']) =>
+  DELETE<DeleteOpenApiTagResponseType>('/support/openapi/tag/delete', { tagId });

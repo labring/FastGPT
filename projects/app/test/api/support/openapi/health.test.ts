@@ -19,7 +19,11 @@ describe('support/openapi/health', () => {
       tmbId: user.tmbId,
       appId: String(app._id),
       apiKey: 'fastgpt-legacy-app-key',
-      name: 'legacy app key'
+      name: 'legacy app key',
+      usagePoints: 25,
+      limit: {
+        maxUsagePoints: 1000
+      }
     });
 
     const result = await handler({
@@ -30,6 +34,8 @@ describe('support/openapi/health', () => {
 
     expect(result).toEqual({
       valid: true,
+      usagePoints: 25,
+      maxUsagePoints: 1000,
       appId: String(app._id)
     });
   });
@@ -50,7 +56,9 @@ describe('support/openapi/health', () => {
     } as any);
 
     expect(result).toEqual({
-      valid: true
+      valid: true,
+      usagePoints: 0,
+      maxUsagePoints: -1
     });
   });
 });

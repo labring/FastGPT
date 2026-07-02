@@ -24,6 +24,8 @@ export async function handler(req: ApiRequestProps): Promise<ApiKeyHealthRespons
 
   return ApiKeyHealthResponseSchema.parse({
     valid: true,
+    usagePoints: apiKeyDoc.usagePoints ?? 0,
+    maxUsagePoints: apiKeyDoc.limit?.maxUsagePoints ?? -1,
     appId: apiKeyDoc.appId
   });
 }

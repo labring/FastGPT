@@ -7,6 +7,7 @@ import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { OpenApiErrEnum } from '@fastgpt/global/common/error/code/openapi';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+import { validateOpenApiTags } from '@fastgpt/service/support/openapi/tag/service';
 import {
   UpdateApiKeyBodySchema,
   UpdateApiKeyResponseSchema,
@@ -17,7 +18,7 @@ import {
 async function handler(
   req: ApiRequestProps<UpdateApiKeyBodyType>
 ): Promise<UpdateApiKeyResponseType> {
-  const { _id, name, limit, authProxy } = parseApiInput({
+  const { _id, name, limit, authProxy, tags } = parseApiInput({
     req,
     bodySchema: UpdateApiKeyBodySchema
   }).body;
@@ -39,6 +40,15 @@ async function handler(
     }
   }
 
+  const tagIds =
+    tags !== undefined
+      ? await validateOpenApiTags({
+          teamId,
+          tmbId,
+          tags
+        })
+      : undefined;
+
   (async () => {
     addAuditLog({
       tmbId,
@@ -53,7 +63,8 @@ async function handler(
   await MongoOpenApi.findByIdAndUpdate(_id, {
     ...(name && { name }),
     ...(limit && { limit }),
-    ...(authProxy !== undefined && { authProxy })
+    ...(authProxy !== undefined && { authProxy }),
+    ...(tagIds !== undefined && { tagIds })
   });
 
   return UpdateApiKeyResponseSchema.parse(undefined);

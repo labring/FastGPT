@@ -6,6 +6,8 @@ export type OpenApiSchema = {
   lastUsedTime?: Date;
   apiKey: string;
   appId?: string;
+  appName?: string;
+  tagIds?: string[];
   authProxy?: boolean;
   name: string;
   usagePoints: number;

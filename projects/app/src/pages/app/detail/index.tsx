@@ -84,6 +84,7 @@ export async function getServerSideProps(context: any) {
         'user',
         'file',
         'publish',
+        'account_apikey',
         'workflow',
         'skill'
       ]))

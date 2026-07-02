@@ -3,6 +3,7 @@ import * as createapi from '@/pages/api/support/openapi/create';
 import { TeamApikeyCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
+import { MongoOpenApiTag } from '@fastgpt/service/support/openapi/tag/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { getFakeUsers } from '@test/datas/users';
 import { Call } from '@test/utils/request';
@@ -195,5 +196,122 @@ describe('support/openapi/create', () => {
 
     expect(secondRes.code).toBe(500);
     expect(await MongoOpenApi.findOne({ name: 'second env limited key' })).toBeNull();
+  });
+
+  it('limits APIKey name to 50 chars', async () => {
+    const users = await getFakeUsers(1);
+    const allowedName = 'a'.repeat(50);
+    const rejectedName = 'b'.repeat(51);
+
+    const allowed = await Call<EditApiKeyProps>(createapi.default, {
+      auth: users.owner,
+      body: {
+        name: allowedName,
+        limit: {
+          maxUsagePoints: 1000
+        }
+      }
+    });
+    const rejected = await Call<EditApiKeyProps>(createapi.default, {
+      auth: users.owner,
+      body: {
+        name: rejectedName,
+        limit: {
+          maxUsagePoints: 1000
+        }
+      }
+    });
+
+    expect(allowed.code).toBe(200);
+    expect(rejected.code).toBe(500);
+    expect(await MongoOpenApi.findOne({ name: allowedName })).not.toBeNull();
+    expect(await MongoOpenApi.findOne({ name: rejectedName })).toBeNull();
+  });
+
+  it('rejects empty APIKey name after trimming', async () => {
+    const users = await getFakeUsers(1);
+
+    const res = await Call<EditApiKeyProps>(createapi.default, {
+      auth: users.owner,
+      body: {
+        name: '   ',
+        limit: {
+          maxUsagePoints: 1000
+        }
+      }
+    });
+
+    expect(res.code).toBe(500);
+    expect(await MongoOpenApi.findOne({ name: '   ' })).toBeNull();
+  });
+
+  it('creates APIKey with tags that belong to current member', async () => {
+    const users = await getFakeUsers(1);
+    const [member] = users.members;
+    await MongoResourcePermission.create({
+      resourceType: 'team',
+      teamId: member.teamId,
+      resourceId: null,
+      tmbId: member.tmbId,
+      permission: TeamApikeyCreatePermissionVal
+    });
+    const tag = await MongoOpenApiTag.create({
+      teamId: member.teamId,
+      tmbId: member.tmbId,
+      name: '生产',
+      normalizedName: '生产',
+      type: 'custom',
+      order: 100
+    });
+
+    const res = await Call<EditApiKeyProps>(createapi.default, {
+      auth: member,
+      body: {
+        name: 'tagged key',
+        tags: [String(tag._id)],
+        limit: {
+          maxUsagePoints: 1000
+        }
+      } as EditApiKeyProps
+    });
+
+    expect(res.code).toBe(200);
+
+    const openapi = await MongoOpenApi.findOne({ name: 'tagged key' }).lean();
+    expect((openapi?.tagIds || []).map(String)).toEqual([String(tag._id)]);
+  });
+
+  it('rejects creating APIKey with tags from another member', async () => {
+    const users = await getFakeUsers(1);
+    const [member] = users.members;
+    await MongoResourcePermission.create({
+      resourceType: 'team',
+      teamId: member.teamId,
+      resourceId: null,
+      tmbId: member.tmbId,
+      permission: TeamApikeyCreatePermissionVal
+    });
+    const ownerTag = await MongoOpenApiTag.create({
+      teamId: users.owner.teamId,
+      tmbId: users.owner.tmbId,
+      name: 'owner tag',
+      normalizedName: 'owner tag',
+      type: 'custom',
+      order: 100
+    });
+
+    const res = await Call<EditApiKeyProps>(createapi.default, {
+      auth: member,
+      body: {
+        name: 'invalid tagged key',
+        tags: [String(ownerTag._id)],
+        limit: {
+          maxUsagePoints: 1000
+        }
+      } as EditApiKeyProps
+    });
+
+    expect(res.code).toBe(500);
+    expect(await MongoOpenApi.findOne({ name: 'invalid tagged key' })).toBeNull();
   });
 });

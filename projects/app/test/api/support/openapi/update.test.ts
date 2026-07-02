@@ -2,6 +2,7 @@ import type { UpdateApiKeyBodyType } from '@fastgpt/global/openapi/support/opena
 import handler from '@/pages/api/support/openapi/update';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
+import { MongoOpenApiTag } from '@fastgpt/service/support/openapi/tag/schema';
 import { getFakeUsers } from '@test/datas/users';
 import { Call } from '@test/utils/request';
 import { describe, expect, it } from 'vitest';
@@ -142,5 +143,89 @@ describe('support/openapi/update', () => {
 
     const updated = await MongoOpenApi.findById(openapi._id).lean();
     expect(updated?.authProxy).toBe(false);
+  });
+
+  it('replaces and clears APIKey tags', async () => {
+    const { owner } = await getFakeUsers(1);
+    const [tagA, tagB] = await MongoOpenApiTag.create([
+      {
+        teamId: owner.teamId,
+        tmbId: owner.tmbId,
+        name: 'A',
+        normalizedName: 'a',
+        type: 'custom',
+        order: 100
+      },
+      {
+        teamId: owner.teamId,
+        tmbId: owner.tmbId,
+        name: 'B',
+        normalizedName: 'b',
+        type: 'custom',
+        order: 101
+      }
+    ]);
+    const openapi = await MongoOpenApi.create({
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      apiKey: 'fastgpt-tag-update',
+      name: 'tag update',
+      tagIds: [tagA._id]
+    });
+
+    const replaced = await Call<UpdateApiKeyBodyType>(handler, {
+      auth: owner,
+      body: {
+        _id: String(openapi._id),
+        tags: [String(tagB._id)]
+      }
+    });
+
+    expect(replaced.code).toBe(200);
+    const replacedKey = await MongoOpenApi.findById(openapi._id).lean();
+    expect((replacedKey?.tagIds || []).map(String)).toEqual([String(tagB._id)]);
+
+    const cleared = await Call<UpdateApiKeyBodyType>(handler, {
+      auth: owner,
+      body: {
+        _id: String(openapi._id),
+        tags: []
+      }
+    });
+
+    expect(cleared.code).toBe(200);
+    const clearedKey = await MongoOpenApi.findById(openapi._id).lean();
+    expect(clearedKey?.tagIds || []).toHaveLength(0);
+  });
+
+  it('rejects updating APIKey with tags from another member', async () => {
+    const { owner, members } = await getFakeUsers(1);
+    const [member] = members;
+    const memberTag = await MongoOpenApiTag.create({
+      teamId: member.teamId,
+      tmbId: member.tmbId,
+      name: 'member tag',
+      normalizedName: 'member tag',
+      type: 'custom',
+      order: 100
+    });
+    const openapi = await MongoOpenApi.create({
+      teamId: owner.teamId,
+      tmbId: owner.tmbId,
+      apiKey: 'fastgpt-invalid-tag-update',
+      name: 'invalid tag update'
+    });
+
+    const res = await Call<UpdateApiKeyBodyType>(handler, {
+      auth: owner,
+      body: {
+        _id: String(openapi._id),
+        tags: [String(memberTag._id)]
+      }
+    });
+
+    expect(res.code).toBe(500);
+    const updated = await MongoOpenApi.findById(openapi._id).lean();
+    expect(updated?.tagIds || []).toHaveLength(0);
   });
 });

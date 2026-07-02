@@ -973,7 +973,7 @@
   "support": "支持",
   "support.inform.Read": "已读",
   "support.openapi.Api baseurl": "API 根地址",
-  "support.openapi.Api manager": "密钥列表",
+  "support.openapi.Api manager": "我的密钥",
   "support.openapi.Auth proxy": "身份代理",
   "support.openapi.Auth proxy tip": "允许团队级 API 密钥在 chat/completions 请求中通过 authProxy 代理团队成员身份。仅团队所有者可开启。",
   "support.openapi.Copy api key": "复制 API 密钥",

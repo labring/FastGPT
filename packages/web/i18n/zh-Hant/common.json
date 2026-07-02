@@ -962,7 +962,7 @@
   "support": "支援",
   "support.inform.Read": "已讀",
   "support.openapi.Api baseurl": "API 根網址",
-  "support.openapi.Api manager": "密鑰列表",
+  "support.openapi.Api manager": "我的密鑰",
   "support.openapi.Auth proxy": "身份代理",
   "support.openapi.Auth proxy tip": "允許團隊級 API 金鑰在 chat/completions 請求中透過 authProxy 代理團隊成員身份。僅團隊擁有者可開啟。",
   "support.openapi.Copy api key": "複製 API 金鑰",
