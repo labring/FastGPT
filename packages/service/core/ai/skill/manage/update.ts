@@ -1,4 +1,5 @@
 import { AgentSkillCreationStatusEnum } from '@fastgpt/global/core/ai/skill/constants';
+import type { RuntimeSkillMetadataType } from '@fastgpt/global/core/ai/skill/type';
 import type { ClientSession } from '../../../../common/mongo';
 import { MongoAgentSkills } from '../model/schema';
 import type { UpdateSkillData } from './types';
@@ -35,6 +36,7 @@ export async function updateSkill(
 export async function updateCurrentVersion(
   skillId: string,
   currentVersionId: string,
+  runtimeSkills?: RuntimeSkillMetadataType[],
   session?: ClientSession
 ): Promise<boolean> {
   const result = await MongoAgentSkills.updateOne(
@@ -42,6 +44,7 @@ export async function updateCurrentVersion(
     {
       $set: {
         currentVersionId,
+        ...(runtimeSkills ? { currentRuntimeSkills: runtimeSkills } : {}),
         creationStatus: AgentSkillCreationStatusEnum.ready,
         updateTime: new Date()
       },

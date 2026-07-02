@@ -239,6 +239,7 @@ export const listReadableAgentSkills = async ({
         avatar: skill.avatar,
         name: skill.name,
         description: skill.description,
+        currentRuntimeSkills: skill.currentRuntimeSkills ?? [],
         type: skill.type,
         source: skill.source,
         category: skill.category,
