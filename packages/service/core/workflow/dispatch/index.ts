@@ -1089,6 +1089,10 @@ export class WorkflowQueue {
       if (stepSpan && this.isRootRuntime && mode === 'chat' && isLangfuseEnabled()) {
         stepSpan.setAttribute('langfuse.trace.name', 'message');
         stepSpan.setAttribute(
+          'langfuse.observation.metadata.app_id',
+          String(this.data.runningAppInfo.id)
+        );
+        stepSpan.setAttribute(
           'langfuse.observation.input',
           JSON.stringify(filterLangfuseNodeInput(params))
         );
@@ -1645,6 +1649,10 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
             workflowSpan.setAttribute('langfuse.user.id', String(data.runningUserInfo.tmbId));
             workflowSpan.setAttribute(
               'langfuse.trace.metadata.app_id',
+              String(data.runningAppInfo.id)
+            );
+            workflowSpan.setAttribute(
+              'langfuse.observation.metadata.app_id',
               String(data.runningAppInfo.id)
             );
             workflowSpan.setAttribute('langfuse.trace.metadata.appName', data.runningAppInfo.name);
