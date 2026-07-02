@@ -415,7 +415,7 @@ function buildPluginDebugConnectionLink(connectionKey?: string) {
   if (!connectionKey || typeof window === 'undefined') return '';
 
   const url = new URL(
-    getWebReqUrl('/api/plugin/debug-channel/connection-key:exchange'),
+    getWebReqUrl('/api/plugin/debug-channel/connection-key/exchange'),
     window.location.origin
   );
   url.searchParams.set('connectionKey', connectionKey);

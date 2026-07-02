@@ -380,13 +380,13 @@ fastgpt-plugin dev
 
 ```bash
 fastgpt-plugin dev --no-interactive \
-  --connect "https://fastgpt.example.com/api/plugin/debug-channel/connection-key:exchange?connectionKey=fpg_dbg_..."
+  --connect "https://fastgpt.example.com/api/plugin/debug-channel/connection-key/exchange?connectionKey=fpg_dbg_..."
 ```
 
 如果只传入裸 connection key，需要让 CLI 知道 exchange 接口地址：
 
 ```bash
-FASTGPT_PLUGIN_DEBUG_CONNECT_URL=https://fastgpt.example.com/api/plugin/debug-channel/connection-key:exchange \
+FASTGPT_PLUGIN_DEBUG_CONNECT_URL=https://fastgpt.example.com/api/plugin/debug-channel/connection-key/exchange \
   fastgpt-plugin dev --no-interactive --connect "fpg_dbg_..."
 ```
 

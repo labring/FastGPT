@@ -13,7 +13,7 @@ export const enablePluginDebugChannel = (data: EnablePluginDebugChannelBodyType 
 
 export const refreshPluginDebugConnectionKey = (
   data: RefreshPluginDebugConnectionKeyBodyType = {}
-) => POST<RefreshPluginDebugConnectionKeyResponseType>('/plugin/debug-channel/key:refresh', data);
+) => POST<RefreshPluginDebugConnectionKeyResponseType>('/plugin/debug-channel/key/refresh', data);
 
 export const getPluginDebugChannel = () =>
   GET<GetPluginDebugChannelResponseType>('/plugin/debug-channel', {});

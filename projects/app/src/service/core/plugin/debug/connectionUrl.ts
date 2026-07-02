@@ -37,7 +37,7 @@ export const buildPluginDebugConnectionUrl = ({
   if (!origin) return;
 
   const url = new URL(
-    `${serviceEnv.NEXT_PUBLIC_BASE_URL || ''}/api/plugin/debug-channel/connection-key:exchange`,
+    `${serviceEnv.NEXT_PUBLIC_BASE_URL || ''}/api/plugin/debug-channel/connection-key/exchange`,
     origin
   );
   url.searchParams.set('connectionKey', connectionKey);
