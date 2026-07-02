@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { AdminSystemToolDetailSchema } from '@fastgpt/global/core/app/tool/systemTool/type';
+import {
+  AdminSystemToolDetailSchema,
+  SystemToolDetailSchema
+} from '@fastgpt/global/core/app/tool/systemTool/type';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { SystemToolSystemSecretStatusEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
+import { TeamToolDetailSchema } from '@fastgpt/global/openapi/core/plugin/team/tool/api';
 
 const createAdminToolDetail = () => ({
   id: 'systemTool-null-schema',
@@ -65,5 +69,46 @@ describe('AdminSystemToolDetailSchema', () => {
 
     expect(result.children?.[0]).not.toHaveProperty('inputSchema');
     expect(result.children?.[0]).not.toHaveProperty('outputSchema');
+  });
+});
+
+describe('SystemToolDetailSchema', () => {
+  it('treats null input and output schemas as missing schema fields', () => {
+    const result = SystemToolDetailSchema.parse({
+      ...createAdminToolDetail(),
+      inputSchema: null,
+      outputSchema: null,
+      secretSchema: null
+    });
+
+    expect(result.inputSchema).toBeUndefined();
+    expect(result.outputSchema).toBeUndefined();
+    expect(result.secretSchema).toBeUndefined();
+  });
+});
+
+describe('TeamToolDetailSchema', () => {
+  it('accepts null tool schemas from legacy plugin definitions', () => {
+    const result = TeamToolDetailSchema.parse({
+      ...createAdminToolDetail(),
+      inputSchema: null,
+      outputSchema: null,
+      children: [
+        {
+          id: 'child',
+          name: 'Child tool',
+          status: PluginStatusEnum.Normal,
+          currentCost: 0,
+          systemKeyCost: 0,
+          inputSchema: null,
+          outputSchema: null
+        }
+      ]
+    });
+
+    expect(result.inputSchema).toBeUndefined();
+    expect(result.outputSchema).toBeUndefined();
+    expect(result.children?.[0].inputSchema).toBeUndefined();
+    expect(result.children?.[0].outputSchema).toBeUndefined();
   });
 });

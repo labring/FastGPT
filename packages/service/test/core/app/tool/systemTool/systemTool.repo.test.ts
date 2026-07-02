@@ -408,6 +408,52 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
     expect(tool).not.toHaveProperty('outputs');
     expect(tool).not.toHaveProperty('secrets');
   });
+
+  it('omits null schemas returned by plugin client', async () => {
+    mocks.findSystemTool.mockResolvedValue({
+      pluginId: 'systemTool-perplexity',
+      status: 'Normal',
+      currentCost: 0,
+      hasTokenFee: false,
+      systemKeyCost: 0,
+      customConfig: {}
+    });
+    mocks.findSystemTools.mockResolvedValue([]);
+    mocks.getTool.mockResolvedValue({
+      source: 'system',
+      isToolset: true,
+      name: { en: 'Perplexity' },
+      description: { en: 'Perplexity intro' },
+      pluginId: 'perplexity',
+      version: '0.0.1',
+      icon: 'perplexity.svg',
+      tags: [],
+      toolDescription: 'Perplexity tool',
+      inputSchema: null,
+      outputSchema: null,
+      secretSchema: null,
+      children: [
+        {
+          id: 'search',
+          name: { en: 'Search' },
+          description: { en: 'Search intro' },
+          toolDescription: 'Search tool',
+          inputSchema: null,
+          outputSchema: null
+        }
+      ]
+    });
+
+    const tool = await SystemToolRepo.getInstance().getSystemToolDetail({
+      pluginId: 'systemTool-perplexity'
+    });
+
+    expect(tool).not.toHaveProperty('inputSchema');
+    expect(tool).not.toHaveProperty('outputSchema');
+    expect(tool).not.toHaveProperty('secretSchema');
+    expect(tool.children?.[0]).not.toHaveProperty('inputSchema');
+    expect(tool.children?.[0]).not.toHaveProperty('outputSchema');
+  });
 });
 
 describe('SystemToolRepo.getSystemToolDisplayInfo', () => {

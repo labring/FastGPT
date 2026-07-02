@@ -5,6 +5,16 @@ import { PluginPermissionEnumSchema } from '../../../../../sdk/fastgpt-plugin';
 import { SystemToolSystemSecretStatusEnum } from '../constants';
 import { JSONSchemaInputTypeSchema, JSONSchemaOutputTypeSchema } from '../../../jsonschema';
 
+const OptionalJSONSchemaInputTypeSchema = z.preprocess(
+  (value) => (value === null ? undefined : value),
+  JSONSchemaInputTypeSchema.optional()
+);
+
+const OptionalJSONSchemaOutputTypeSchema = z.preprocess(
+  (value) => (value === null ? undefined : value),
+  JSONSchemaOutputTypeSchema.optional()
+);
+
 // 系统工具最基础最通用的类型
 export const SystemToolBaseSchema = z.object({
   id: z.string(),
@@ -74,8 +84,8 @@ export const SystemToolChildDetailSchema = z.object({
   icon: z.string().optional(),
   currentCost: z.number().meta({ description: '当前使用的费用' }),
   systemKeyCost: z.number().meta({ description: '系统密钥的费用' }),
-  inputSchema: JSONSchemaInputTypeSchema.optional(),
-  outputSchema: JSONSchemaOutputTypeSchema.optional()
+  inputSchema: OptionalJSONSchemaInputTypeSchema,
+  outputSchema: OptionalJSONSchemaOutputTypeSchema
 });
 
 export type SystemToolChildDetailType = z.infer<typeof SystemToolChildDetailSchema>;
@@ -85,9 +95,9 @@ export const SystemToolDetailSchema = z.object({
   ...SystemToolListItemSchema.shape,
   children: z.array(SystemToolChildDetailSchema).optional(),
 
-  inputSchema: JSONSchemaInputTypeSchema.optional(),
-  outputSchema: JSONSchemaOutputTypeSchema.optional(),
-  secretSchema: JSONSchemaInputTypeSchema.optional(),
+  inputSchema: OptionalJSONSchemaInputTypeSchema,
+  outputSchema: OptionalJSONSchemaOutputTypeSchema,
+  secretSchema: OptionalJSONSchemaInputTypeSchema,
   secretsVal: z.record(z.string(), z.any()).nullish(),
   isLatestVersion: z.boolean().optional(),
   associatedPluginId: z.string().optional(),
