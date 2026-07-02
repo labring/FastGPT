@@ -288,8 +288,8 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
       px={0}
       minH={isPublishMode ? '50vh' : undefined}
     >
-      <Flex alignItems={'center'} gap={3} flexWrap={'wrap'}>
-        <Flex flex={'1 0 180px'} minW={0} alignItems={'center'}>
+      <Flex flexDirection={'column'} alignItems={'stretch'} gap={3}>
+        <Flex minW={0} alignItems={'center'}>
           <Box
             color={'myGray.900'}
             fontSize={isPublishMode ? ['md', 'lg'] : 'lg'}
@@ -314,9 +314,8 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
         </Flex>
         <Flex
           alignItems={['stretch', 'center']}
-          justifyContent={'flex-end'}
+          justifyContent={'flex-start'}
           gap={2}
-          flex={['1 0 100%', '999 1 720px']}
           minW={0}
           flexDirection={['column', 'row']}
           flexWrap={'wrap'}
