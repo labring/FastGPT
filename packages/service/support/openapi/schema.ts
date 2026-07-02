@@ -48,7 +48,7 @@ const OpenApiSchema = new Schema(
     },
     name: {
       type: String,
-      required: true,
+      default: 'Api Key',
       maxlength: 50
     },
     usagePoints: {
