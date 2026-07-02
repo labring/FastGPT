@@ -419,14 +419,8 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
             </MyTooltip>
             <Button
               size={['sm', 'md']}
-              leftIcon={
-                <MyIcon
-                  name={'common/addLight'}
-                  w={'1.25rem'}
-                  color={isPublishMode ? 'white' : 'primary.600'}
-                />
-              }
-              variant={isPublishMode ? 'primary' : 'whitePrimary'}
+              leftIcon={<MyIcon name={'common/addLight'} w={'1.25rem'} color={'primary.600'} />}
+              variant={'whitePrimary'}
               onClick={() => setEditData(getDefaultEditData())}
             >
               {t('common:new_create')}
