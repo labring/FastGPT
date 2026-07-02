@@ -216,6 +216,7 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
   });
 
   const { runAsync: onclickRemove } = useRequest(delOpenApiById, {
+    successToast: t('common:delete_success'),
     onSuccess() {
       refetch();
     }
