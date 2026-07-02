@@ -28,7 +28,6 @@ import type { EditApiKeyProps } from '@/global/support/openapi/api';
 import type { ApiKeyListSortByType } from '@fastgpt/global/openapi/support/openapi/api';
 import type { OpenApiTagType } from '@fastgpt/global/openapi/support/openapi/tag';
 import dayjs from 'dayjs';
-import { AddIcon } from '@chakra-ui/icons';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
@@ -401,7 +400,14 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
             </Flex>
           </MyTooltip>
           <Button
-            leftIcon={<AddIcon fontSize={'md'} />}
+            size={['sm', 'md']}
+            leftIcon={
+              <MyIcon
+                name={'common/addLight'}
+                w={'1.25rem'}
+                color={isPublishMode ? 'white' : 'primary.600'}
+              />
+            }
             variant={isPublishMode ? 'primary' : 'whitePrimary'}
             onClick={() => setEditData(getDefaultEditData())}
           >
