@@ -974,7 +974,7 @@ export const ModelEditModal = ({
             </FormLabel>
             <QuestionTip label={t('account:model.request_auth_tip')} />
           </Flex>
-          <Input {...register('requestAuth', { required: isNormalUser })} {...InputStyles} />
+          <Input {...register('requestAuth', { required: isNormalUser })} {...InputStyles} type={'password'} />
         </GridItem>
       </>
     ),
