@@ -6,7 +6,7 @@ compatibility: Requires openspec CLI.
 metadata:
   author: openspec
   version: "1.0"
-  generatedBy: "1.3.1"
+  generatedBy: "1.4.1"
 ---
 
 Sync delta specs from a change to main specs.
@@ -25,9 +25,18 @@ This is an **agent-driven** operation - you will read delta specs and directly e
 
    **IMPORTANT**: Do NOT guess or auto-select a change. Always let the user choose.
 
-2. **Find delta specs**
+2. **Resolve change context**
 
-   Look for delta spec files in `openspec/changes/<name>/specs/*/spec.md`.
+   Run:
+   ```bash
+   openspec status --change "<name>" --json
+   ```
+
+   If status reports `actionContext.mode: "workspace-planning"`, explain that workspace spec sync is not supported in this slice and STOP. Do not fall back to repo-local paths or edit linked repos.
+
+3. **Find delta specs**
+
+   Use `artifactPaths.specs.existingOutputPaths` from the status JSON as the list of delta spec files.
 
    Each delta spec file contains sections like:
    - `## ADDED Requirements` - New requirements to add
@@ -37,9 +46,9 @@ This is an **agent-driven** operation - you will read delta specs and directly e
 
    If no delta specs found, inform user and stop.
 
-3. **For each delta spec, apply changes to main specs**
+4. **For each delta spec, apply changes to main specs**
 
-   For each capability with a delta spec at `openspec/changes/<name>/specs/<capability>/spec.md`:
+   For each repo-local capability delta spec path returned by the CLI:
 
    a. **Read the delta spec** to understand the intended changes
 
@@ -70,7 +79,7 @@ This is an **agent-driven** operation - you will read delta specs and directly e
       - Add Purpose section (can be brief, mark as TBD)
       - Add Requirements section with the ADDED requirements
 
-4. **Show summary**
+5. **Show summary**
 
    After applying all changes, summarize:
    - Which capabilities were updated
