@@ -496,6 +496,21 @@ export const auditLogMap = {
     typeLabel: i18nT('account_team:set_invoice_header'),
     params: {} as { name?: string }
   },
+  [AuditEventEnum.START_ENTERPRISE_AUTH]: {
+    content: i18nT('account_team:log_start_enterprise_auth'),
+    typeLabel: i18nT('account_team:start_enterprise_auth'),
+    params: {} as { name?: string; enterpriseName: string }
+  },
+  [AuditEventEnum.VERIFY_ENTERPRISE_AUTH_AMOUNT]: {
+    content: i18nT('account_team:log_verify_enterprise_auth_amount'),
+    typeLabel: i18nT('account_team:verify_enterprise_auth_amount'),
+    params: {} as { name?: string; enterpriseName: string }
+  },
+  [AuditEventEnum.RESET_ENTERPRISE_AUTH_TASK]: {
+    content: i18nT('account_team:log_reset_enterprise_auth_task'),
+    typeLabel: i18nT('account_team:reset_enterprise_auth_task'),
+    params: {} as { name?: string; enterpriseName: string }
+  },
   [AuditEventEnum.CREATE_API_KEY]: {
     content: i18nT('account_team:log_create_api_key'),
     typeLabel: i18nT('account_team:create_api_key'),

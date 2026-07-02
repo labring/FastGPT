@@ -10,7 +10,7 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { webPushTrack } from '@/web/common/middle/tracks/utils';
 const Markdown = dynamic(() => import('@/components/Markdown'), { ssr: false });
 
-const SystemMsgModal = ({}: {}) => {
+const SystemMsgModal = () => {
   const { t } = useTranslation();
   const { userInfo, systemMsgReadId, setSysMsgReadId } = useUserStore();
 
