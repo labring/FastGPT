@@ -39,9 +39,9 @@ export const instrumentationCheck = async () => {
   // pro
   if (global.feConfigs?.isPlus) {
     try {
-      const data = await POST<{ auth: boolean; data: string }>('/admin/common/health');
+      const data = await POST<{ auth: boolean; data: string }>('/health');
       if (!data.auth) {
-        throw new Error('Root key is invalid');
+        throw new Error('PRO_TOKEN is invalid');
       }
     } catch (error) {
       const message = `[${InitialErrorEnum.PRO_ERROR}]: ${getErrText(error)}`;

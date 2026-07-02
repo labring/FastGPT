@@ -40,6 +40,7 @@ export const proxyError: Record<string, boolean> = {
 
 export enum ERROR_ENUM {
   unAuthorization = 'unAuthorization',
+  unAuthProToken = 'unAuthProToken',
   insufficientQuota = 'insufficientQuota',
   unAuthModel = 'unAuthModel',
   unAuthApiKey = 'unAuthApiKey',
@@ -74,6 +75,12 @@ export const ERROR_RESPONSE: Record<
     code: 403,
     statusText: ERROR_ENUM.unAuthorization,
     message: i18nT('common:code_error.error_message.403'),
+    data: null
+  },
+  [ERROR_ENUM.unAuthProToken]: {
+    code: 403,
+    statusText: ERROR_ENUM.unAuthProToken,
+    message: 'PRO_TOKEN check error',
     data: null
   },
   [ERROR_ENUM.tooManyRequest]: {

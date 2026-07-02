@@ -10,19 +10,20 @@ import { createProxyAxios } from './axios';
 import { getLogger, LogCategories } from '../logger';
 import { assertRelativePath } from '../security/network';
 import { serviceEnv } from '../../env';
+import { FASTGPT_PRO_TOKEN_HEADER } from '@fastgpt/global/common/system/constants';
 
 const logger = getLogger(LogCategories.HTTP.ERROR);
 
-interface ConfigType {
+type ConfigType = {
   headers?: { [key: string]: string };
   hold?: boolean;
   timeout?: number;
-}
-interface ResponseDataType {
+};
+type ResponseDataType = {
   code: number;
   message: string;
   data: any;
-}
+};
 
 /**
  * 请求开始
@@ -70,6 +71,27 @@ function responseError(err: any) {
   return Promise.reject(err);
 }
 
+/**
+ * 校验 FastGPT app 服务端访问 pro/admin 的内部请求配置。
+ *
+ * 本文件同时保留 GET/POST 等快捷封装和原始 axios config 两种入口；集中处理
+ * PRO_URL、PRO_TOKEN 和相对路径校验，避免两条入口出现鉴权语义分叉。
+ */
+const assertInternalProRequestConfig = ({ url }: { url?: string }) => {
+  if (!FastGPTProUrl) {
+    logger.warn('FastGPT Pro API is not configured', { url });
+    throw new UserError('The request was denied...');
+  }
+  if (!serviceEnv.PRO_TOKEN) {
+    logger.error('FastGPT Pro token is not configured', { url });
+    throw new UserError('FastGPT Pro token is not configured');
+  }
+
+  // plusRequest 仅用于访问商业版 Pro 服务,会自动携带内部 Pro token,SSRF 拦截已被显式关闭。
+  // 强制要求相对路径,防止调用方传入绝对 URL 覆盖 baseURL 形成带高权限头的 SSRF。
+  assertRelativePath(url, 'plusRequest');
+};
+
 /* 创建请求实例 */
 const instance = createProxyAxios(
   {
@@ -77,7 +99,7 @@ const instance = createProxyAxios(
     headers: {
       'content-type': 'application/json',
       'Cache-Control': 'no-cache',
-      rootkey: serviceEnv.ROOT_KEY
+      [FASTGPT_PRO_TOKEN_HEADER]: serviceEnv.PRO_TOKEN
     }
   },
   false
@@ -89,15 +111,8 @@ instance.interceptors.request.use(requestStart, (err) => Promise.reject(err));
 instance.interceptors.response.use(responseSuccess, (err) => Promise.reject(err));
 
 export function request(url: string, data: any, config: ConfigType, method: Method): any {
-  if (!FastGPTProUrl) {
-    logger.warn('FastGPT Pro API is not configured', { url });
-    return Promise.reject(new UserError('The request was denied...'));
-  }
-
-  // plusRequest 仅用于访问商业版 Pro 服务,会自动携带 rootkey,SSRF 拦截已被显式关闭。
-  // 强制要求相对路径,防止调用方传入绝对 URL 覆盖 baseURL 形成带高权限头的 SSRF。
   try {
-    assertRelativePath(url, 'plusRequest');
+    assertInternalProRequestConfig({ url });
   } catch (err) {
     return Promise.reject(err);
   }
@@ -147,7 +162,7 @@ export function DELETE<T = undefined>(url: string, data = {}, config: ConfigType
 
 export const plusRequest = (config: AxiosRequestConfig) => {
   try {
-    assertRelativePath(config.url, 'plusRequest');
+    assertInternalProRequestConfig({ url: config.url });
   } catch (err) {
     return Promise.reject(err);
   }

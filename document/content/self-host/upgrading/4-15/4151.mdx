@@ -5,6 +5,23 @@ description: 'FastGPT V4.15.1 更新说明'
 
 ## 📦 升级指南
 
+### fastgpt-pro 环境变量更新
+
+v4.15.1 起，FastGPT 主应用访问 Pro/Admin 内部接口不再使用 `rootkey`，改为使用独立的服务间凭证 `PRO_TOKEN`。同时要求 `FE_DOMAIN` 变量必填，如果你部署了 Pro 版本，需要同时在 FastGPT 主应用和 Pro/Admin 服务中配置相同的 `PRO_TOKEN`：
+
+```bash
+PRO_TOKEN=your_pro_token_at_least_32_chars
+FE_DOMAIN=fastgpt_domain
+```
+
+注意事项：
+
+1. `PRO_TOKEN` 长度必须不少于 32 位，并且主应用与 Pro/Admin 必须保持一致。
+2. 如果 FastGPT 主应用配置了 `PRO_URL`，则必须同时配置 `PRO_TOKEN`，否则服务会启动失败。
+3. Pro/Admin 服务必须配置 `PRO_TOKEN`，否则内部接口鉴权会失败。
+4. `rootkey` 不再作为 FastGPT 主应用访问 Pro/Admin 内部接口的凭证，仅作为当前系统的管理员密钥，用于调用 `/api/admin/**` 接口，例如下方初始化脚本。
+5. 开源版部署配置文件不会内置 `PRO_TOKEN`。Pro 部署请在私有部署环境变量中手动增加该配置。
+
 ### API Key 应用名初始化
 
 为了兼容旧版 API 密钥，便于找到以前应用关联的密钥，v4.15.1 增加了全局 API Key 标签管理，并为历史应用级 API Key 增加 `appName` 展示快照。升级后建议执行一次初始化脚本，为已有 `appId` 的历史 API Key 自动回填应用名。

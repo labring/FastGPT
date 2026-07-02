@@ -3,10 +3,11 @@ import { agentSandboxProviderList } from '@fastgpt/global/core/ai/sandbox/consta
 import z from 'zod';
 
 const TEST_INVOKE_TOKEN_SECRET = 'fastgpt_test_invoke_token_secret_32';
+const TEST_PRO_TOKEN = 'fastgpt_test_pro_token_32_chars_min';
 /**
  * 测试套件会在多个 workspace（包含 pro/admin 子模块）里直接导入 serviceEnv。
- * 生产启动仍要求显式配置 INVOKE_TOKEN_SECRET；仅 Vitest/测试环境允许注入稳定测试密钥，
- * 避免每个测试项目都重复维护同一个必填运行时密钥。
+ * INVOKE_TOKEN_SECRET 生产启动仍要求显式配置；PRO_TOKEN 仅在启用 Pro 内部调用时配置。
+ * 仅 Vitest/测试环境允许注入稳定测试密钥，避免每个测试项目都重复维护同一组运行时密钥。
  */
 export const getRuntimeEnv = (): NodeJS.ProcessEnv => ({
   ...process.env,
@@ -14,7 +15,10 @@ export const getRuntimeEnv = (): NodeJS.ProcessEnv => ({
     process.env.INVOKE_TOKEN_SECRET ??
     (process.env.VITEST === 'true' || process.env.NODE_ENV === 'test'
       ? TEST_INVOKE_TOKEN_SECRET
-      : undefined)
+      : undefined),
+  PRO_TOKEN:
+    process.env.PRO_TOKEN ??
+    (process.env.VITEST === 'true' || process.env.NODE_ENV === 'test' ? TEST_PRO_TOKEN : undefined)
 });
 
 /* ===== sandbox ===== */

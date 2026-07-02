@@ -16,7 +16,7 @@ The OpenSandbox setup flow is below.
 
 ## 1. Add yml services
 
-Use [opensandbox.yml](/deploy/docker/v4.15/opensandbox.yml) as a reference. Add `fastgpt-opensandbox-server`, `fastgpt-volume-manager`, the image pre-pull services, and `opensandbox-config` to your current FastGPT `docker-compose.yml`. Place them on the same `app` network as the FastGPT App service. You do not need to expose OpenSandbox or Volume Manager ports publicly. Deploy Agent Sandbox Proxy separately as described in [General Sandbox Configuration](./common).
+Use [opensandbox.yml](/deploy/sandbox_deploy/opensandbox.yml) as a reference. Add `fastgpt-opensandbox-server`, `fastgpt-volume-manager`, the image pre-pull services, and `opensandbox-config` to your current FastGPT `docker-compose.yml`. Place them on the same `app` network as the FastGPT App service. You do not need to expose OpenSandbox or Volume Manager ports publicly. Deploy Agent Sandbox Proxy separately as described in [General Sandbox Configuration](./common).
 
 The sample uses China Mainland image registries. For deployments outside China Mainland, replace them with:
 

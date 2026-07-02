@@ -8,6 +8,8 @@ const originalEnv = {
   FILE_TOKEN_KEY: process.env.FILE_TOKEN_KEY,
   AES256_SECRET_KEY: process.env.AES256_SECRET_KEY,
   INVOKE_TOKEN_SECRET: process.env.INVOKE_TOKEN_SECRET,
+  PRO_URL: process.env.PRO_URL,
+  PRO_TOKEN: process.env.PRO_TOKEN,
   VITEST: process.env.VITEST,
   NODE_ENV: process.env.NODE_ENV,
   AGENT_SANDBOX_PROVIDER: process.env.AGENT_SANDBOX_PROVIDER,
@@ -32,6 +34,8 @@ describe('serviceEnv', () => {
     vi.stubEnv('FILE_TOKEN_KEY', originalEnv.FILE_TOKEN_KEY);
     vi.stubEnv('AES256_SECRET_KEY', originalEnv.AES256_SECRET_KEY);
     vi.stubEnv('INVOKE_TOKEN_SECRET', originalEnv.INVOKE_TOKEN_SECRET);
+    vi.stubEnv('PRO_URL', originalEnv.PRO_URL);
+    vi.stubEnv('PRO_TOKEN', originalEnv.PRO_TOKEN);
     vi.stubEnv('VITEST', originalEnv.VITEST);
     vi.stubEnv('NODE_ENV', originalEnv.NODE_ENV);
     vi.stubEnv('AGENT_SANDBOX_PROVIDER', originalEnv.AGENT_SANDBOX_PROVIDER);
@@ -109,6 +113,61 @@ describe('serviceEnv', () => {
     await expect(importServiceEnv()).resolves.toMatchObject({
       serviceEnv: {
         INVOKE_TOKEN_SECRET: validInvokeTokenSecret
+      }
+    });
+  });
+
+  it('uses PRO_TOKEN only when configured or running tests', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+    vi.stubEnv('PRO_URL', undefined);
+
+    vi.stubEnv('PRO_TOKEN', undefined);
+    vi.stubEnv('VITEST', undefined);
+    vi.stubEnv('NODE_ENV', 'production');
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: {
+        PRO_TOKEN: undefined
+      }
+    });
+
+    vi.stubEnv('VITEST', 'true');
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: {
+        PRO_TOKEN: 'fastgpt_test_pro_token_32_chars_min'
+      }
+    });
+
+    vi.stubEnv('PRO_TOKEN', 'custom_pro_token_32_chars_minimum');
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: {
+        PRO_TOKEN: 'custom_pro_token_32_chars_minimum'
+      }
+    });
+  });
+
+  it('配置 PRO_URL 后必须同时配置合法 PRO_TOKEN', async () => {
+    vi.stubEnv('FILE_TOKEN_KEY', 'filetokenkey');
+    vi.stubEnv('AES256_SECRET_KEY', 'fastgptsecret');
+    vi.stubEnv('INVOKE_TOKEN_SECRET', validInvokeTokenSecret);
+    vi.stubEnv('VITEST', undefined);
+    vi.stubEnv('NODE_ENV', 'production');
+
+    vi.stubEnv('PRO_URL', 'https://pro.example.com');
+    vi.stubEnv('PRO_TOKEN', undefined);
+    await expect(importServiceEnv()).rejects.toThrow(
+      'PRO_TOKEN is required when PRO_URL is configured'
+    );
+
+    vi.stubEnv('PRO_TOKEN', 'short-token');
+    await expect(importServiceEnv()).rejects.toThrow('Invalid environment variables');
+
+    vi.stubEnv('PRO_TOKEN', 'custom_pro_token_32_chars_minimum');
+    await expect(importServiceEnv()).resolves.toMatchObject({
+      serviceEnv: {
+        PRO_URL: 'https://pro.example.com',
+        PRO_TOKEN: 'custom_pro_token_32_chars_minimum'
       }
     });
   });
