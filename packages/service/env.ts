@@ -35,10 +35,6 @@ export const serviceEnv = createEnv({
       .string()
       .min(6, 'ROOT_KEY must be at least 6 characters')
       .default('fastgpt_root_key'),
-    TOKEN_KEY: z
-      .string()
-      .min(6, 'TOKEN_KEY must be at least 6 characters')
-      .default('fastgpt_token_key'),
     FILE_TOKEN_KEY: z.string().min(6, 'FILE_TOKEN_KEY must be at least 6 characters'),
     AES256_SECRET_KEY: z.string().min(6, 'AES256_SECRET_KEY must be at least 6 characters'),
 
@@ -61,6 +57,7 @@ export const serviceEnv = createEnv({
     CHAT_API_KEY: z.string().optional(),
 
     PRO_URL: UrlSchema.optional(),
+    PRO_TOKEN: z.string().min(32, 'PRO_TOKEN must be at least 32 characters').optional(),
 
     // Agent sandbox proxy
     AGENT_SANDBOX_PROXY_SECRET: z
@@ -363,6 +360,12 @@ if (serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY > serviceEnv.WORKFLOW_MAX_LOOP_
 }
 
 if (!isPhaseProductionBuild) {
+  if (serviceEnv.PRO_URL && !serviceEnv.PRO_TOKEN) {
+    throw new Error(
+      'Invalid environment configuration: PRO_TOKEN is required when PRO_URL is configured.'
+    );
+  }
+
   // 共享 serviceEnv 会被 pro/admin 等项目导入，这里只校验 provider 运行态必填环境变量。
   // 主站浏览器直连 agent-sandbox-proxy 的配置由 projects/app 启动流程单独校验。
   const missingAgentSandboxEnvKeys = getAgentSandboxMissingRequiredEnvKeys(process.env);

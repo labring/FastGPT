@@ -252,7 +252,6 @@ randomize_compose_credentials() {
     replace_text 'x-aiproxy-token: &x-aiproxy-token "token"' "x-aiproxy-token: &x-aiproxy-token \"$aiproxy_token\""
 
     # 旧版本没有为这些密钥设置 anchor，需要直接替换环境变量默认值。
-    replace_text "TOKEN_KEY: fastgpt" "TOKEN_KEY: $token_key"
     replace_text "FILE_TOKEN_KEY: filetokenkey" "FILE_TOKEN_KEY: $file_token_key"
     replace_text "AES256_SECRET_KEY: fastgptsecret" "AES256_SECRET_KEY: $aes256_secret_key"
     replace_text "INVOKE_TOKEN_SECRET: fastgpt_invoke_token_secret_32_chars_min" "INVOKE_TOKEN_SECRET: $invoke_token_secret"

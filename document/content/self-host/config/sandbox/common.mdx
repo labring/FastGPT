@@ -9,7 +9,7 @@ description: FastGPT Agent Sandbox 通用配置
 
 ### 1. 添加 yml
 
-可以参考 [agent-sandbox-proxy.yml](/deploy/docker/v4.15/agent-proxy.yml)，将 service 加到 yml 文件里。并开放外网访问端口。并记录 `AGENT_SANDBOX_PROXY_SECRET` 环境变量，下一步需要使用。
+可以参考 [agent-sandbox-proxy.yml](/deploy/sandbox_deploy/agent-proxy.yml)，将 service 加到 yml 文件里。并开放外网访问端口。并记录 `AGENT_SANDBOX_PROXY_SECRET` 环境变量，下一步需要使用。
 
 FastGPT 服务里访问沙盒内部文件系统，会通过 proxy 去代理访问。
 

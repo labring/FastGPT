@@ -5,6 +5,22 @@ description: 'FastGPT V4.15.1 Release Notes'
 
 ## 📦 Upgrade Guide
 
+### Pro Internal API Authentication
+
+Starting from v4.15.1, the FastGPT app no longer uses `rootkey` when calling Pro/Admin internal APIs. These internal service-to-service calls now use a dedicated `PRO_TOKEN`. If you deploy the Pro edition, configure the same `PRO_TOKEN` in both the FastGPT app and the Pro/Admin service:
+
+```bash
+PRO_TOKEN=your_pro_token_at_least_32_chars
+```
+
+Notes:
+
+1. `PRO_TOKEN` must be at least 32 characters long, and the value must be identical in the FastGPT app and Pro/Admin.
+2. If the FastGPT app is configured with `PRO_URL`, `PRO_TOKEN` is also required. Otherwise, the service fails to start.
+3. The Pro/Admin service must configure `PRO_TOKEN`; otherwise, internal API authentication fails.
+4. `rootkey` is no longer used as the credential for FastGPT app calls to Pro/Admin internal APIs. It is only the admin secret for the current system and is used to call `/api/admin/**` APIs, such as the initialization script below.
+5. Open-source deployment files do not include `PRO_TOKEN`. For Pro deployments, add it manually in your private deployment environment variables.
+
 ### API Key App Name Initialization
 
 To keep older API keys compatible and make it easier to find keys previously associated with apps, v4.15.1 adds global API Key tag management and an `appName` display snapshot for historical app-level API Keys. After upgrading, run the initialization script once to backfill app names for existing API Keys whose `appId` field is still present.

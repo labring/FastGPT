@@ -3,6 +3,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { FastGPTProUrl } from '@fastgpt/service/common/system/constants';
 import { buildSameOriginUrl } from '@fastgpt/service/common/security/network';
 import { Readable } from 'stream';
+import { FASTGPT_PRO_TOKEN_HEADER } from '@fastgpt/global/common/system/constants';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -21,7 +22,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const headers: Record<string, string> = {};
     for (const [key, value] of Object.entries(req.headers)) {
-      if (key === 'rootkey' || key === 'host' || key === 'connection') continue;
+      if (
+        key === 'rootkey' ||
+        key === FASTGPT_PRO_TOKEN_HEADER ||
+        key === 'host' ||
+        key === 'connection'
+      ) {
+        continue;
+      }
       if (value) {
         headers[key] = Array.isArray(value) ? value.join(', ') : value;
       }
