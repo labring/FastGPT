@@ -128,6 +128,8 @@ const getPluginClientSource = ({
   return runtimeSource || 'system';
 };
 
+const normalizeOptionalJsonSchema = <T>(schema: T | null | undefined) => schema ?? undefined;
+
 const getSystemToolConfigIds = (pluginId: string) => {
   const systemToolPrefix = `${AppToolSourceEnum.systemTool}-`;
   const commercialPrefix = `${AppToolSourceEnum.commercial}-`;
@@ -421,6 +423,9 @@ export class SystemToolRepo {
     const children = tool.isToolset
       ? tool.children?.map((item) => {
           const dbChild = getFirstSystemToolConfig(dbChildrenMap, `${pluginId}/${item.id}`);
+          const inputSchema = normalizeOptionalJsonSchema(item.inputSchema);
+          const outputSchema = normalizeOptionalJsonSchema(item.outputSchema);
+
           return {
             id: item.id,
             name: parseI18nString(item.name, lang),
@@ -432,13 +437,20 @@ export class SystemToolRepo {
             systemKeyCost: dbChild?.systemKeyCost ?? 0,
             currentCost: dbChild?.currentCost ?? 0,
             icon: item.icon,
-            inputSchema: item.inputSchema,
-            outputSchema: item.outputSchema
+            ...(inputSchema !== undefined ? { inputSchema } : {}),
+            ...(outputSchema !== undefined ? { outputSchema } : {})
           } satisfies SystemToolChildDetailType;
         })
       : undefined;
 
-    const secrets = jsonSchema2SecretInput({ jsonSchema: tool.secretSchema });
+    const secretSchema = normalizeOptionalJsonSchema(tool.secretSchema);
+    const inputSchema = normalizeOptionalJsonSchema(
+      childPluginId ? child!.inputSchema : tool.inputSchema
+    );
+    const outputSchema = normalizeOptionalJsonSchema(
+      childPluginId ? child!.outputSchema : tool.outputSchema
+    );
+    const secrets = jsonSchema2SecretInput({ jsonSchema: secretSchema });
     const configuredSecretsVal = SystemToolCodec.getConfiguredSecretsVal(dbTool);
     const hasSystemSecret = !!configuredSecretsVal;
 
@@ -483,17 +495,10 @@ export class SystemToolRepo {
       hideTags: dbTool?.hideTags ?? [],
       promoteTags: dbTool?.promoteTags ?? [],
       pluginOrder: dbTool?.pluginOrder,
-      secretSchema: tool.secretSchema,
+      ...(secretSchema !== undefined ? { secretSchema } : {}),
       isLatestVersion: tool.isLatestVersion,
-      ...(childPluginId
-        ? {
-            inputSchema: child!.inputSchema,
-            outputSchema: child!.outputSchema
-          }
-        : {
-            inputSchema: tool.inputSchema,
-            outputSchema: tool.outputSchema
-          }),
+      ...(inputSchema !== undefined ? { inputSchema } : {}),
+      ...(outputSchema !== undefined ? { outputSchema } : {}),
       permissions: tool.permission
     };
 
