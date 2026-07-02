@@ -140,7 +140,7 @@ const ApiKeyTagEditor = ({
       isLoading={isLoading}
       placement="bottom-start"
       popoverW="180px"
-      Trigger={
+      renderTrigger={({ openSelector }) => (
         <Box
           mt={1}
           py={0.5}
@@ -152,11 +152,17 @@ const ApiKeyTagEditor = ({
             bg: 'myGray.50',
             borderRadius: '3px'
           }}
-          onClick={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            e.stopPropagation();
+            if ((e.target as HTMLElement).closest('[data-api-key-overflow-tags]')) {
+              return;
+            }
+            openSelector();
+          }}
         >
           <TagDisplayList tags={displayTags} />
         </Box>
-      }
+      )}
       onClose={(nextTagIds) => {
         if (!isSameTagIds(nextTagIds, tagIds)) {
           return onSave(apiKeyId, nextTagIds);
@@ -290,11 +296,7 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
     >
       <Flex flexDirection={'column'} alignItems={'stretch'} gap={3}>
         <Flex minW={0} alignItems={'center'}>
-          <Box
-            color={'myGray.900'}
-            fontSize={isPublishMode ? ['md', 'lg'] : 'lg'}
-            fontWeight={isPublishMode ? 'bold' : 'normal'}
-          >
+          <Box fontWeight={'bold'} fontSize={['md', 'lg']}>
             {t('common:support.openapi.Api manager')}({apiKeys.length})
           </Box>
           {feConfigs?.docUrl && (
@@ -345,7 +347,7 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
               onManage={() => setShowTagManage(true)}
               onCreateTag={onCreateTagFromSelect}
               isLoading={isGettingTags}
-              w={['100%', '180px']}
+              w={['100%', '220px']}
             />
             <MySelect<ApiKeyListSortByType>
               width={['100%', '200px']}
@@ -382,7 +384,7 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
             w={['100%', 'auto']}
             flexDirection={['column', 'row']}
           >
-            <MyTooltip label={baseUrl}>
+            <MyTooltip label={t('common:click_to_copy')}>
               <Flex
                 alignItems={'center'}
                 w={['100%', '320px']}
@@ -404,7 +406,7 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
                 <Box flexShrink={0} color={'myGray.600'}>
                   {t('common:support.openapi.Api baseurl')}
                 </Box>
-                <Box mx={3} w={'1px'} h={'16px'} bg={'myGray.200'} />
+                <Box mx={2} w={'1px'} h={'16px'} bg={'myGray.200'} />
                 <Box
                   flex={1}
                   minW={0}
@@ -419,8 +421,8 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
             </MyTooltip>
             <Button
               size={['sm', 'md']}
-              leftIcon={<MyIcon name={'common/addLight'} w={'1.25rem'} color={'primary.600'} />}
-              variant={'whitePrimary'}
+              leftIcon={<MyIcon name={'common/addLight'} w={'1.25rem'} color={'white'} />}
+              variant={'primary'}
               onClick={() => setEditData(getDefaultEditData())}
             >
               {t('common:new_create')}

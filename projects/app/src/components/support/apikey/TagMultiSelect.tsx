@@ -4,6 +4,7 @@ import type { OpenApiTagType } from '@fastgpt/global/openapi/support/openapi/tag
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyPopover from '@fastgpt/web/components/common/MyPopover';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 
 const TagMultiSelect = ({
@@ -18,6 +19,7 @@ const TagMultiSelect = ({
   showFooter = true,
   w = '180px',
   Trigger,
+  renderTrigger,
   placement = 'bottom',
   popoverW = '180px',
   onClose
@@ -33,6 +35,7 @@ const TagMultiSelect = ({
   showFooter?: boolean;
   w?: string | string[];
   Trigger?: React.ReactNode;
+  renderTrigger?: (props: { openSelector: () => void }) => React.ReactNode;
   placement?: PlacementWithLogical;
   popoverW?: string;
   onClose?: (value: string[]) => void | Promise<void>;
@@ -41,6 +44,8 @@ const TagMultiSelect = ({
   const [search, setSearch] = useState('');
   const latestValueRef = useRef(value);
   const tagsContainerRef = useRef<HTMLDivElement>(null);
+  const triggerButtonRef = useRef<HTMLButtonElement>(null);
+  const [openSelectorSignal, setOpenSelectorSignal] = useState(0);
   const [visibleSelectedTags, setVisibleSelectedTags] = useState<OpenApiTagType[]>([]);
   const [overflowSelectedTags, setOverflowSelectedTags] = useState<OpenApiTagType[]>([]);
 
@@ -146,7 +151,115 @@ const TagMultiSelect = ({
     setSearch('');
   };
 
-  return (
+  const openSelector = useCallback(() => {
+    setOpenSelectorSignal((signal) => signal + 1);
+  }, []);
+
+  useEffect(() => {
+    if (openSelectorSignal === 0) return;
+
+    triggerButtonRef.current?.click();
+  }, [openSelectorSignal]);
+
+  const defaultTrigger = (
+    <Flex
+      alignItems={'center'}
+      px={3}
+      py={2}
+      w={w}
+      borderRadius={'md'}
+      border={'1px solid'}
+      borderColor={'myGray.250'}
+      bg={'white'}
+      cursor={'pointer'}
+      overflow={'hidden'}
+      h={['28px', '36px']}
+      fontSize={'sm'}
+      _hover={{
+        boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)',
+        borderColor: 'primary.300'
+      }}
+    >
+      {label && (
+        <>
+          <Box flexShrink={0} color={'myGray.600'}>
+            {label}
+          </Box>
+          <Box mx={2} w={'1px'} h={'16px'} bg={'myGray.200'} flexShrink={0} />
+        </>
+      )}
+      <Flex
+        ref={tagsContainerRef}
+        flex={'1 1 0'}
+        minW={0}
+        alignItems={'center'}
+        gap={1}
+        overflow={'hidden'}
+      >
+        {selectedTags.length === 0 ? (
+          <Box overflow={'hidden'} textOverflow={'ellipsis'} whiteSpace={'nowrap'}>
+            {placeholder || t('account_apikey:tags')}
+          </Box>
+        ) : (
+          <>
+            {visibleSelectedTags.map((tag) => (
+              <Flex
+                key={tag._id}
+                alignItems={'center'}
+                h={5}
+                px={2}
+                bg={'white'}
+                border={'base'}
+                color={'myGray.900'}
+                borderRadius={'sm'}
+                fontSize={'xs'}
+                flexShrink={0}
+                maxW={'96px'}
+                overflow={'hidden'}
+              >
+                <Box overflow={'hidden'} textOverflow={'ellipsis'} whiteSpace={'nowrap'} minW={0}>
+                  {tag.name}
+                </Box>
+              </Flex>
+            ))}
+            {overflowSelectedTags.length > 0 && (
+              <Flex
+                alignItems={'center'}
+                h={5}
+                px={2}
+                bg={'#1118240D'}
+                borderRadius={'33px'}
+                fontSize={'xs'}
+                color={'myGray.600'}
+                flexShrink={0}
+              >
+                {`+${overflowSelectedTags.length}`}
+              </Flex>
+            )}
+          </>
+        )}
+      </Flex>
+      <MyIcon name={'core/chat/chevronDown'} w={'14px'} flexShrink={0} />
+    </Flex>
+  );
+
+  const triggerNode = renderTrigger ? (
+    <Box
+      as="button"
+      ref={triggerButtonRef}
+      type="button"
+      w={'100%'}
+      h={'100%'}
+      p={0}
+      border={0}
+      opacity={0}
+      pointerEvents={'none'}
+    />
+  ) : (
+    Trigger || defaultTrigger
+  );
+
+  const selectorPopover = (
     <MyPopover
       placement={placement}
       hasArrow={false}
@@ -158,94 +271,7 @@ const TagMultiSelect = ({
         setSearch('');
         onClose?.(latestValueRef.current);
       }}
-      Trigger={
-        Trigger || (
-          <Flex
-            alignItems={'center'}
-            px={3}
-            py={2}
-            w={w}
-            borderRadius={'md'}
-            border={'1px solid'}
-            borderColor={'myGray.250'}
-            bg={'white'}
-            cursor={'pointer'}
-            overflow={'hidden'}
-            h={['28px', '36px']}
-            fontSize={'sm'}
-            _hover={{
-              boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)',
-              borderColor: 'primary.300'
-            }}
-          >
-            {label && (
-              <>
-                <Box flexShrink={0} color={'myGray.600'}>
-                  {label}
-                </Box>
-                <Box mx={3} w={'1px'} h={'16px'} bg={'myGray.200'} flexShrink={0} />
-              </>
-            )}
-            <Flex
-              ref={tagsContainerRef}
-              flex={'1 1 0'}
-              minW={0}
-              alignItems={'center'}
-              gap={1}
-              overflow={'hidden'}
-            >
-              {selectedTags.length === 0 ? (
-                <Box overflow={'hidden'} textOverflow={'ellipsis'} whiteSpace={'nowrap'}>
-                  {placeholder || t('account_apikey:tags')}
-                </Box>
-              ) : (
-                <>
-                  {visibleSelectedTags.map((tag) => (
-                    <Flex
-                      key={tag._id}
-                      alignItems={'center'}
-                      h={5}
-                      px={2}
-                      bg={'white'}
-                      border={'base'}
-                      color={'myGray.900'}
-                      borderRadius={'sm'}
-                      fontSize={'xs'}
-                      flexShrink={0}
-                      maxW={'96px'}
-                      overflow={'hidden'}
-                    >
-                      <Box
-                        overflow={'hidden'}
-                        textOverflow={'ellipsis'}
-                        whiteSpace={'nowrap'}
-                        minW={0}
-                      >
-                        {tag.name}
-                      </Box>
-                    </Flex>
-                  ))}
-                  {overflowSelectedTags.length > 0 && (
-                    <Flex
-                      alignItems={'center'}
-                      h={5}
-                      px={2}
-                      bg={'#1118240D'}
-                      borderRadius={'33px'}
-                      fontSize={'xs'}
-                      color={'myGray.600'}
-                      flexShrink={0}
-                    >
-                      {`+${overflowSelectedTags.length}`}
-                    </Flex>
-                  )}
-                </>
-              )}
-            </Flex>
-            <MyIcon name={'core/chat/chevronDown'} w={'14px'} flexShrink={0} />
-          </Flex>
-        )
-      }
+      Trigger={triggerNode}
     >
       {({ onClose }) => (
         <MyBox isLoading={isLoading} onClick={(e) => e.stopPropagation()}>
@@ -322,9 +348,16 @@ const TagMultiSelect = ({
                       size={'md'}
                       icon={<MyIcon name={'common/check'} w={'12px'} />}
                     />
-                    <Box ml={2} overflow={'hidden'} textOverflow={'ellipsis'} whiteSpace={'nowrap'}>
-                      {tag.name}
-                    </Box>
+                    <MyTooltip label={tag.name} showOnlyWhenOverflow>
+                      <Box
+                        ml={2}
+                        overflow={'hidden'}
+                        textOverflow={'ellipsis'}
+                        whiteSpace={'nowrap'}
+                      >
+                        {tag.name}
+                      </Box>
+                    </MyTooltip>
                   </Flex>
                 );
               })
@@ -369,6 +402,19 @@ const TagMultiSelect = ({
       )}
     </MyPopover>
   );
+
+  if (renderTrigger) {
+    return (
+      <Box position={'relative'} w={'100%'}>
+        {renderTrigger({ openSelector })}
+        <Box position={'absolute'} inset={0} pointerEvents={'none'}>
+          {selectorPopover}
+        </Box>
+      </Box>
+    );
+  }
+
+  return selectorPopover;
 };
 
 export default React.memo(TagMultiSelect);

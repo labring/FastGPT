@@ -15,24 +15,10 @@ const TagPill = React.forwardRef<
   {
     tag: ApiKeyDisplayTag;
     showFullName?: boolean;
+    showTooltip?: boolean;
   }
->(({ tag, showFullName = false }, ref) => (
-  <Flex
-    ref={ref}
-    alignItems={'center'}
-    h={5}
-    px={2}
-    fontSize={'11px'}
-    fontWeight={'500'}
-    lineHeight={'20px'}
-    bg={tag.isAppName ? 'orange.50' : '#F0FBFF'}
-    color={tag.isAppName ? 'orange.600' : '#0884DD'}
-    borderRadius={'xs'}
-    maxW={showFullName ? '260px' : '120px'}
-    flexShrink={0}
-    overflow={showFullName ? 'visible' : 'hidden'}
-    userSelect={'none'}
-  >
+>(({ tag, showFullName = false, showTooltip = false }, ref) => {
+  const nameNode = (
     <Box
       minW={0}
       overflow={showFullName ? 'visible' : 'hidden'}
@@ -41,8 +27,35 @@ const TagPill = React.forwardRef<
     >
       {tag.name}
     </Box>
-  </Flex>
-));
+  );
+
+  return (
+    <Flex
+      ref={ref}
+      alignItems={'center'}
+      h={5}
+      px={2}
+      fontSize={'11px'}
+      fontWeight={'500'}
+      lineHeight={'20px'}
+      bg={tag.isAppName ? 'orange.50' : '#F0FBFF'}
+      color={tag.isAppName ? 'orange.600' : '#0884DD'}
+      borderRadius={'xs'}
+      maxW={showFullName ? '260px' : '120px'}
+      flexShrink={0}
+      overflow={showFullName ? 'visible' : 'hidden'}
+      userSelect={'none'}
+    >
+      {showTooltip && !showFullName ? (
+        <MyTooltip label={tag.name} showOnlyWhenOverflow>
+          {nameNode}
+        </MyTooltip>
+      ) : (
+        nameNode
+      )}
+    </Flex>
+  );
+});
 
 TagPill.displayName = 'TagPill';
 
@@ -70,11 +83,7 @@ const ApiKeyTag = ({
 }: {
   tag: ApiKeyDisplayTag;
   showFullName?: boolean;
-}) => (
-  <MyTooltip label={tag.name} showOnlyWhenOverflow>
-    <TagPill tag={tag} showFullName={showFullName} />
-  </MyTooltip>
-);
+}) => <TagPill tag={tag} showFullName={showFullName} showTooltip />;
 
 const TagDisplayList = ({ tags }: { tags: ApiKeyDisplayTag[] }) => {
   const containerRef = React.useRef<HTMLDivElement>(null);
@@ -138,7 +147,7 @@ const TagDisplayList = ({ tags }: { tags: ApiKeyDisplayTag[] }) => {
 
   return (
     <Box ref={containerRef} position={'relative'} w={'100%'} minW={0} userSelect={'none'}>
-      <Flex alignItems={'center'} gap={2} maxW={'100%'} minW={0} overflow={'hidden'}>
+      <Flex alignItems={'center'} gap={2} maxW={'100%'} minW={0} overflow={'visible'}>
         {visibleTags.map((tag) => (
           <ApiKeyTag key={tag._id} tag={tag} />
         ))}
@@ -150,7 +159,16 @@ const TagDisplayList = ({ tags }: { tags: ApiKeyDisplayTag[] }) => {
             w={'360px'}
             maxW={'calc(100vw - 32px)'}
             trigger={'hover'}
-            Trigger={<OverflowBadge count={overflowTags.length} />}
+            Trigger={
+              <Box
+                data-api-key-overflow-tags
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}
+              >
+                <OverflowBadge count={overflowTags.length} />
+              </Box>
+            }
           >
             {() => (
               <Flex gap={2} p={3} flexWrap={'wrap'}>
