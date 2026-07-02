@@ -80,7 +80,7 @@ describe('plugin debug channel enable handler', () => {
       keyId: 'key_test',
       connectionKey: 'connection_key',
       connectionUrl:
-        'https://fastgpt.example.com/api/plugin/debug-channel/connection-key:exchange?connectionKey=connection_key',
+        'https://fastgpt.example.com/api/plugin/debug-channel/connection-key/exchange?connectionKey=connection_key',
       createdAt: 1_781_500_000_000,
       updatedAt: 1_781_500_000_000
     });

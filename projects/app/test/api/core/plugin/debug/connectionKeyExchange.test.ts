@@ -16,7 +16,7 @@ vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin', () => ({
   pluginClient: mocks.pluginClient
 }));
 
-import handler from '@/pages/api/plugin/debug-channel/connection-key:exchange';
+import handler from '@/pages/api/plugin/debug-channel/connection-key/exchange';
 
 describe('plugin debug channel connection key exchange handler', () => {
   let originalIsPlus: unknown;

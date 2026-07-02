@@ -69,7 +69,7 @@ export const EnablePluginDebugChannelResponseSchema = PluginDebugChannelBaseSche
   }),
   connectionUrl: z.string().url().optional().meta({
     example:
-      'https://fastgpt.example.com/api/plugin/debug-channel/connection-key:exchange?connectionKey=fgdbg_xxx',
+      'https://fastgpt.example.com/api/plugin/debug-channel/connection-key/exchange?connectionKey=fgdbg_xxx',
     description: '本地 CLI 可直接访问的 FastGPT HTTP 调试连接链接'
   })
 }).required({
@@ -82,7 +82,7 @@ export type EnablePluginDebugChannelResponseType = z.infer<
 
 /* ============================================================================
  * API: 刷新插件调试连接密钥
- * Route: POST /api/plugin/debug-channel/key:refresh
+ * Route: POST /api/plugin/debug-channel/key/refresh
  * Method: POST
  * Description: 刷新当前登录团队成员的插件调试 connectionKey，旧连接密钥会失效
  * Tags: ['插件调试', 'Write']
@@ -212,7 +212,7 @@ export type RevokePluginDebugChannelResponseType = z.infer<
 
 /* ============================================================================
  * API: 兑换插件调试连接信息
- * Route: GET/POST /api/plugin/debug-channel/connection-key:exchange
+ * Route: GET/POST /api/plugin/debug-channel/connection-key/exchange
  * Method: GET/POST
  * Description: CLI 使用 HTTP 连接链接或 connectionKey 兑换短期 WSS connectToken 和 gateway 连接信息
  * Tags: ['插件调试', 'Public', 'Write']

@@ -16,7 +16,7 @@ vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin', () => ({
   pluginClient: mocks.pluginClient
 }));
 
-import handler from '@/pages/api/plugin/debug-channel/key:refresh';
+import handler from '@/pages/api/plugin/debug-channel/key/refresh';
 
 describe('plugin debug channel key refresh handler', () => {
   let originalIsPlus: unknown;
@@ -74,7 +74,7 @@ describe('plugin debug channel key refresh handler', () => {
       keyId: 'key_refreshed',
       connectionKey: 'connection_key_refreshed',
       connectionUrl:
-        'https://fastgpt.example.com/api/plugin/debug-channel/connection-key:exchange?connectionKey=connection_key_refreshed',
+        'https://fastgpt.example.com/api/plugin/debug-channel/connection-key/exchange?connectionKey=connection_key_refreshed',
       createdAt: 1_781_500_000_000,
       updatedAt: 1_781_500_100_000,
       refreshedAt: 1_781_500_100_000

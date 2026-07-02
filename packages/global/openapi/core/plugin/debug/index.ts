@@ -39,7 +39,7 @@ export const PluginDebugPath: OpenAPIPath = {
       }
     }
   },
-  '/plugin/debug-channel/key:refresh': {
+  '/plugin/debug-channel/key/refresh': {
     post: {
       summary: '刷新插件调试连接密钥',
       description: '刷新当前登录团队成员的插件调试 connectionKey，旧连接密钥会失效',
@@ -104,7 +104,7 @@ export const PluginDebugPath: OpenAPIPath = {
       }
     }
   },
-  '/plugin/debug-channel/connection-key:exchange': {
+  '/plugin/debug-channel/connection-key/exchange': {
     get: {
       summary: '通过连接链接兑换插件调试连接信息',
       description:

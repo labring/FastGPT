@@ -380,13 +380,13 @@ Scripts and Agents can use non-interactive mode:
 
 ```bash
 fastgpt-plugin dev --no-interactive \
-  --connect "https://fastgpt.example.com/api/plugin/debug-channel/connection-key:exchange?connectionKey=fpg_dbg_..."
+  --connect "https://fastgpt.example.com/api/plugin/debug-channel/connection-key/exchange?connectionKey=fpg_dbg_..."
 ```
 
 When passing only a raw connection key, tell the CLI where the exchange endpoint is:
 
 ```bash
-FASTGPT_PLUGIN_DEBUG_CONNECT_URL=https://fastgpt.example.com/api/plugin/debug-channel/connection-key:exchange \
+FASTGPT_PLUGIN_DEBUG_CONNECT_URL=https://fastgpt.example.com/api/plugin/debug-channel/connection-key/exchange \
   fastgpt-plugin dev --no-interactive --connect "fpg_dbg_..."
 ```
 
