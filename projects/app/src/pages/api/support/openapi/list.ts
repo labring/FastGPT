@@ -59,12 +59,21 @@ const compareSortValue = (a: OpenApiSchema, b: OpenApiSchema, sortBy: ApiKeyList
 
 const sortOpenApiList = ({
   list,
+  appId,
   sortBy
 }: {
   list: OpenApiListItem[];
+  appId?: string;
   sortBy: ApiKeyListSortByType;
 }) =>
   list.sort((a, b) => {
+    const aAppMatched = appId && String(a.appId || '') === appId ? 1 : 0;
+    const bAppMatched = appId && String(b.appId || '') === appId ? 1 : 0;
+
+    if (aAppMatched !== bAppMatched) {
+      return bAppMatched - aAppMatched;
+    }
+
     const sortValueDiff = compareSortValue(a, b, sortBy);
     if (sortValueDiff !== 0) {
       return sortValueDiff;
@@ -93,7 +102,7 @@ const filterOpenApiListByKeyword = (list: OpenApiSchema[], keyword?: string) => 
 async function handler(
   req: ApiRequestProps<any, GetApiKeyListQueryType>
 ): Promise<GetApiKeyListResponseType> {
-  const { keyword, tags, sortBy } = parseApiInput({
+  const { keyword, tags, appId, sortBy } = parseApiInput({
     req,
     querySchema: GetApiKeyListQuerySchema
   }).query;
@@ -133,6 +142,7 @@ async function handler(
       }),
       canCopy: true
     })),
+    appId,
     sortBy
   });
 

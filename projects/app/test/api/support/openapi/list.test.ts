@@ -58,7 +58,7 @@ describe('support/openapi/list', () => {
     expect(result.data[0].canCopy).toBe(true);
   });
 
-  it('旧 appId 查询参数不影响排序，也不扩大可见范围', async () => {
+  it('旧 appId 查询参数只用于置顶排序，不扩大可见范围', async () => {
     const { owner, members } = await getFakeUsers(1);
     const [member] = members;
     const app = await MongoApp.create({
@@ -102,11 +102,11 @@ describe('support/openapi/list', () => {
 
     expect(result.code).toBe(200);
     expect(result.data).toHaveLength(2);
-    expect(result.data[0].name).toBe('new global key');
+    expect(result.data[0].name).toBe('legacy app key');
     expect(result.data[0].apiKey).toBe('******cret');
     expect(result.data[0].canCopy).toBe(true);
     expect(result.data[0].authProxy).toBe(false);
-    expect(result.data[1].name).toBe('legacy app key');
+    expect(result.data[1].name).toBe('new global key');
   });
 
   it('团队级 APIKey 列表返回 authProxy 状态', async () => {
@@ -278,7 +278,7 @@ describe('support/openapi/list', () => {
     expect(updated?.appName).toBeUndefined();
   });
 
-  it('sorts by last used time descending, newest first', async () => {
+  it('sorts by last used time with appId priority first', async () => {
     const user = await getRootUser();
     const app = await MongoApp.create({
       teamId: user.teamId,
@@ -315,21 +315,51 @@ describe('support/openapi/list', () => {
     const result = await Call(handler, {
       auth: user,
       query: {
+        appId: String(app._id),
         sortBy: 'lastUsedTime'
       }
     });
 
     expect(result.code).toBe(200);
     expect(result.data.map((item) => item.name)).toEqual([
+      'app old used',
       'global new used',
-      'global middle used',
-      'app old used'
+      'global middle used'
     ]);
   });
 
   it('sorts by remaining points ascending with unlimited keys last', async () => {
     const user = await getRootUser();
+    const app = await MongoApp.create({
+      teamId: user.teamId,
+      tmbId: user.tmbId,
+      name: '积分排序应用',
+      type: AppTypeEnum.simple
+    });
+
     await MongoOpenApi.create([
+      {
+        teamId: user.teamId,
+        tmbId: user.tmbId,
+        appId: String(app._id),
+        apiKey: 'fastgpt-app-limited',
+        name: 'app limited remaining',
+        usagePoints: 95,
+        limit: {
+          maxUsagePoints: 100
+        }
+      },
+      {
+        teamId: user.teamId,
+        tmbId: user.tmbId,
+        appId: String(app._id),
+        apiKey: 'fastgpt-app-unlimited',
+        name: 'app unlimited remaining',
+        usagePoints: 999,
+        limit: {
+          maxUsagePoints: -1
+        }
+      },
       {
         teamId: user.teamId,
         tmbId: user.tmbId,
@@ -365,12 +395,15 @@ describe('support/openapi/list', () => {
     const result = await Call(handler, {
       auth: user,
       query: {
+        appId: String(app._id),
         sortBy: 'remainingPoints'
       }
     });
 
     expect(result.code).toBe(200);
     expect(result.data.map((item) => item.name)).toEqual([
+      'app limited remaining',
+      'app unlimited remaining',
       'low remaining',
       'high remaining',
       'unlimited remaining'
