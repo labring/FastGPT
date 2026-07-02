@@ -33,7 +33,7 @@ import { sumPer } from '@fastgpt/global/support/permission/utils';
 import { getTmbInfoByTmbId } from '@fastgpt/service/support/user/team/controller';
 
 // 计算单个文件（非 folder）的状态
-function getFileStatus(item: {
+export function getFileStatus(item: {
   dataAmount: number;
   trainingAmount: number;
   hasError?: boolean;
@@ -84,8 +84,8 @@ function getFileStatus(item: {
   return CollectionStatusEnum.ready;
 }
 
-// 从 training 表实时统计每个 collection 的 errorCount（与 detail 接口逻辑一致）
-async function getErrorCountMap(
+// 从 training 表实时统计每个 collection 的终态错误数（retryCount<=0 + errorMsg，与 detail 接口口径一致）
+export async function getErrorCountMap(
   teamId: string,
   datasetId: string,
   collectionIds: (Types.ObjectId | string)[]

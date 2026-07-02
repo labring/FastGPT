@@ -131,7 +131,12 @@ const StandardPlanContentList = ({
           )}
           <ModelPriceModal>
             {({ onOpen }) => (
-              <QuestionTip ml={1} label={t('common:aipoint_desc')} pointerEvents={'auto'} onClick={onOpen} />
+              <QuestionTip
+                ml={1}
+                label={t('common:aipoint_desc')}
+                pointerEvents={'auto'}
+                onClick={onOpen}
+              />
             )}
           </ModelPriceModal>
         </Flex>

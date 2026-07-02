@@ -27,7 +27,8 @@ async function handler(req: ApiRequestProps): Promise<GetTrainingErrorResponse> 
     teamId: collection.teamId,
     datasetId: collection.datasetId,
     collectionId: collection._id,
-    errorMsg: { $exists: true }
+    errorMsg: { $exists: true },
+    retryCount: { $lte: 0 }
   };
 
   const [errorList, total] = await Promise.all([

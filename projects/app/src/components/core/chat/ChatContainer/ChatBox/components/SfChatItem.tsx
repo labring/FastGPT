@@ -113,9 +113,7 @@ const HumanContentCard = React.memo(
         {files.length > 0 && <FilesBlock files={files} />}
         {isChatLog && hasCompression && (
           <Flex alignItems={'center'} gap={2}>
-            <MyTag colorSchema="orange">
-              {t('chat:input_compressed')}
-            </MyTag>
+            <MyTag colorSchema="orange">{t('chat:input_compressed')}</MyTag>
             <Button
               size={'xs'}
               variant={'link'}
@@ -127,11 +125,9 @@ const HumanContentCard = React.memo(
             </Button>
           </Flex>
         )}
-        {isChatLog ? (
-          displayText && <Markdown source={displayText} />
-        ) : (
-          (originalContent || text) && <Markdown source={originalContent || text} />
-        )}
+        {isChatLog
+          ? displayText && <Markdown source={displayText} />
+          : (originalContent || text) && <Markdown source={originalContent || text} />}
       </Flex>
     );
   },
@@ -464,7 +460,9 @@ const ChatItem = (props: Props) => {
             pb={0}
             {...(type === ChatRoleEnum.AI && { display: 'block', w: '100%', maxW: '100%', pr: 0 })}
           >
-            {type === ChatRoleEnum.Human && <HumanContentCard chatValue={value} isChatLog={isChatLog} />}
+            {type === ChatRoleEnum.Human && (
+              <HumanContentCard chatValue={value} isChatLog={isChatLog} />
+            )}
             {type === ChatRoleEnum.AI && (
               <>
                 <AIContentCard
