@@ -11,15 +11,10 @@ export const clientInitData = async (
 }> => {
   try {
     const res = await getSystemInitData(useSystemStore.getState().initDataBufferId);
-    const feConfigs = res.feConfigs ?? useSystemStore.getState().feConfigs;
-
-    useSystemStore.getState().initStaticData({
-      ...res,
-      feConfigs
-    });
+    useSystemStore.getState().initStaticData(res);
 
     return {
-      feConfigs
+      feConfigs: res.feConfigs || useSystemStore.getState().feConfigs || {}
     };
   } catch (error) {
     if (retry > 0) {

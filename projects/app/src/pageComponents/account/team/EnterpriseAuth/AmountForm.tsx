@@ -34,25 +34,8 @@ const EnterpriseAuthAmountForm = ({
 
   return (
     <Flex flexDirection={'column'} gap={'24px'}>
-      <Box>
-        <Box
-          color={'#000'}
-          fontSize={'20px'}
-          lineHeight={'26px'}
-          letterSpacing={'0.15px'}
-          fontWeight={500}
-        >
-          {t('account_team:enterprise_auth_title')}
-        </Box>
-        <Box
-          mt={'10px'}
-          color={'#667085'}
-          fontSize={'14px'}
-          lineHeight={'20px'}
-          letterSpacing={'0.25px'}
-        >
-          {t('account_team:enterprise_auth_modal_desc')}
-        </Box>
+      <Box color={'#667085'} fontSize={'14px'} lineHeight={'20px'} letterSpacing={'0.25px'}>
+        {t('account_team:enterprise_auth_modal_desc')}
       </Box>
 
       <Flex flexDirection={'column'} gap={'24px'}>

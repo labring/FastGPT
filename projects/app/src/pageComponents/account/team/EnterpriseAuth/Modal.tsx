@@ -1,6 +1,6 @@
 import React from 'react';
-import { Button, ModalBody, ModalCloseButton, ModalFooter } from '@chakra-ui/react';
-import MyModal from '@fastgpt/web/components/common/MyModal';
+import { Button } from '@chakra-ui/react';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import type { GetEnterpriseAuthStatusResponseType } from '@fastgpt/global/openapi/support/user/team/enterpriseAuth/api';
 import { EnterpriseAuthAmountMaxErrorTimes } from '@fastgpt/global/support/user/team/enterpriseAuth/constant';
 import EnterpriseAuthInfoForm from './InfoForm';
@@ -33,45 +33,28 @@ const EnterpriseAuthModal = ({ defaultStatus, onClose, onSuccess }: EnterpriseAu
       maxH={'80vh'}
       overflow={'hidden'}
       boxShadow={'0px 0px 1px rgba(19, 51, 107, 0.1), 0px 4px 10px rgba(19, 51, 107, 0.1)'}
-      showCloseButton={false}
-    >
-      <ModalCloseButton top={'8px'} right={'8px'} w={'36px'} h={'36px'} />
-      <ModalBody
-        px={['20px', '32px']}
-        pt={['24px', '32px']}
-        pb={0}
-        flex={'1 1 auto'}
-        minH={0}
-        overflowY={'auto'}
-      >
-        {flow.step === 'form' ? (
-          <EnterpriseAuthInfoForm
-            t={flow.t}
-            startForm={flow.startForm}
-            bankOptions={flow.bankOptions}
-            hasSubmittedStartForm={flow.hasSubmittedStartForm}
-            hasBankLoadError={flow.hasBankLoadError}
-            isBankLoading={flow.isBankLoading}
-            reloadBanks={flow.reloadBanks}
-          />
-        ) : (
-          <EnterpriseAuthAmountForm
-            t={flow.t}
-            amountForm={flow.amountForm}
-            taskDetail={flow.taskDetail}
-            shouldShowAmountError={flow.shouldShowAmountError}
-            setShowAmountError={flow.setShowAmountError}
-          />
-        )}
-      </ModalBody>
-      <ModalFooter
-        px={['20px', '32px']}
-        pt={'24px'}
-        pb={['24px', '32px']}
-        justifyContent={flow.step === 'amount' ? 'space-between' : 'flex-end'}
-        gap={'12px'}
-      >
-        {flow.step === 'form' ? (
+      title={flow.t('account_team:enterprise_auth_title')}
+      headerStyles={{
+        px: ['20px', '32px'],
+        pt: ['24px', '32px']
+      }}
+      bodyStyles={{
+        px: ['20px', '32px'],
+        pt: '10px',
+        pb: 0,
+        flex: '1 1 auto',
+        minH: 0,
+        overflowY: 'auto'
+      }}
+      footerStyles={{
+        px: ['20px', '32px'],
+        pt: '24px',
+        pb: ['24px', '32px'],
+        justifyContent: flow.step === 'amount' ? 'space-between' : 'flex-end',
+        gap: '12px'
+      }}
+      footer={
+        flow.step === 'form' ? (
           <>
             <Button
               h={'32px'}
@@ -131,8 +114,28 @@ const EnterpriseAuthModal = ({ defaultStatus, onClose, onSuccess }: EnterpriseAu
               {flow.t('account_team:enterprise_auth_submit')}
             </Button>
           </>
-        )}
-      </ModalFooter>
+        )
+      }
+    >
+      {flow.step === 'form' ? (
+        <EnterpriseAuthInfoForm
+          t={flow.t}
+          startForm={flow.startForm}
+          bankOptions={flow.bankOptions}
+          hasSubmittedStartForm={flow.hasSubmittedStartForm}
+          hasBankLoadError={flow.hasBankLoadError}
+          isBankLoading={flow.isBankLoading}
+          reloadBanks={flow.reloadBanks}
+        />
+      ) : (
+        <EnterpriseAuthAmountForm
+          t={flow.t}
+          amountForm={flow.amountForm}
+          taskDetail={flow.taskDetail}
+          shouldShowAmountError={flow.shouldShowAmountError}
+          setShowAmountError={flow.setShowAmountError}
+        />
+      )}
     </MyModal>
   );
 };

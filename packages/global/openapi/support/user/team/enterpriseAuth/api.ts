@@ -2,8 +2,8 @@ import z from 'zod';
 import {
   EnterpriseAuthAmountMaxErrorTimes,
   EnterpriseAuthMaxTimes,
-  TeamEnterpriseAuthStatusEnum,
-  TeamEnterpriseAuthTaskStatusEnum
+  TeamEnterpriseAuthStatusSchema,
+  TeamEnterpriseAuthTaskStatusSchema
 } from '../../../../../support/user/team/enterpriseAuth/constant';
 import {
   isBankAccount,
@@ -22,7 +22,7 @@ import {
 
 export const EnterpriseAuthLightTaskSchema = z.object({
   taskId: z.string().meta({ description: '认证任务 ID' }),
-  status: z.enum(TeamEnterpriseAuthTaskStatusEnum).meta({ description: '当前任务状态' }),
+  status: TeamEnterpriseAuthTaskStatusSchema.meta({ description: '当前任务状态' }),
   amountErrorTimes: z.number().int().meta({
     description: '当前任务金额填写错误次数',
     example: 0
@@ -32,7 +32,7 @@ export const EnterpriseAuthLightTaskSchema = z.object({
 
 export const GetEnterpriseAuthStatusResponseSchema = z.object({
   enabled: z.boolean().meta({ description: '企业认证入口是否开启' }),
-  status: z.enum(TeamEnterpriseAuthStatusEnum).optional().meta({ description: '团队认证状态' }),
+  status: TeamEnterpriseAuthStatusSchema.optional().meta({ description: '团队认证状态' }),
   usedTimes: z
     .number()
     .int()
@@ -60,7 +60,7 @@ export type GetEnterpriseAuthStatusResponseType = z.infer<
 
 export const GetEnterpriseAuthCurrentTaskDetailResponseSchema = z.object({
   taskId: z.string().meta({ description: '认证任务 ID' }),
-  status: z.enum(TeamEnterpriseAuthTaskStatusEnum).meta({ description: '当前任务状态' }),
+  status: TeamEnterpriseAuthTaskStatusSchema.meta({ description: '当前任务状态' }),
   enterpriseName: z.string().meta({ description: '企业名称' }),
   unifiedCreditCode: z.string().meta({ description: '统一社会信用代码' }),
   legalPersonName: z.string().meta({ description: '法人姓名' }),
@@ -155,7 +155,7 @@ export type StartEnterpriseAuthBodyType = z.infer<typeof StartEnterpriseAuthBody
  * ============================================================================ */
 
 export const StartEnterpriseAuthResponseSchema = z.object({
-  status: z.enum(TeamEnterpriseAuthStatusEnum).meta({ description: '团队认证状态' }),
+  status: TeamEnterpriseAuthStatusSchema.meta({ description: '团队认证状态' }),
   currentTask: EnterpriseAuthLightTaskSchema.optional().meta({
     description: '未完成认证任务；仅 pending_amount/amount_failed 可进入金额验证页'
   }),
@@ -187,7 +187,7 @@ export type VerifyEnterpriseAuthAmountBodyType = z.infer<
  * ============================================================================ */
 
 export const VerifyEnterpriseAuthAmountResponseSchema = z.object({
-  status: z.enum(TeamEnterpriseAuthStatusEnum).meta({ description: '团队认证状态' }),
+  status: TeamEnterpriseAuthStatusSchema.meta({ description: '团队认证状态' }),
   verifiedEnterpriseName: z.string().optional().meta({ description: '认证通过企业名称' }),
   grantExpiredAt: z.date().optional().meta({
     description: '认证赠送高级版权益到期时间；真实权益以套餐记录 advancedSub.expiredTime 为准'

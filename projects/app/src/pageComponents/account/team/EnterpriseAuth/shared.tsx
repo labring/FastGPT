@@ -16,7 +16,6 @@ export type AmountFormType = {
 export type EnterpriseAuthBankOption = {
   label: string;
   value: string;
-  alias: string;
 };
 
 export const PositiveIntegerPattern = /^[1-9]\d*$/;
@@ -29,15 +28,14 @@ export const formatBankAccountForDisplay = (account?: string) => {
 
 /**
  * 将后端返回的“银行简称 -> 银行公司全称”映射转成下拉选项。
- * 下拉展示并提交银行简称，银行公司全称仅作为搜索别名；真正发起认证服务请求时再由后端转换。
+ * 下拉只展示并提交银行简称；公司全称由后端在发起认证服务请求时转换。
  */
 export const formatEnterpriseAuthBankOptions = (
   banks: Record<string, string>
 ): EnterpriseAuthBankOption[] =>
-  Object.entries(banks).map(([bankName, companyName]) => ({
+  Object.keys(banks).map((bankName) => ({
     label: bankName,
-    value: bankName,
-    alias: companyName
+    value: bankName
   }));
 
 export const fieldRules = {

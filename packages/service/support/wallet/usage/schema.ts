@@ -78,7 +78,6 @@ UsageSchema.virtual('usageItems', {
 
 try {
   UsageSchema.index({ teamId: 1, tmbId: 1, source: 1, time: 1, appName: 1, _id: -1 });
-  UsageSchema.index({ teamId: 1, time: 1 });
 
   UsageSchema.index({ time: 1 }, { expireAfterSeconds: 360 * 24 * 60 * 60 });
 } catch (error) {
