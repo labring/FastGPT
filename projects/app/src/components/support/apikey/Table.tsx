@@ -314,104 +314,124 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
         </Flex>
         <Flex
           alignItems={['stretch', 'center']}
-          justifyContent={'flex-start'}
-          gap={2}
+          justifyContent={'space-between'}
+          gap={3}
           minW={0}
           flexDirection={['column', 'row']}
           flexWrap={'wrap'}
         >
-          <SearchInput
-            value={keyword}
-            placeholder={t('account_apikey:search_key_name_or_value')}
-            bg={'white'}
-            maxW={['100%', '240px']}
-            onChange={(e) => setKeyword(e.target.value)}
-          />
-          <TagMultiSelect
-            tags={openApiTags}
-            value={selectedTagIds}
-            onChange={setSelectedTagIds}
-            label={t('account_apikey:tags')}
-            placeholder={t('common:All')}
-            onManage={() => setShowTagManage(true)}
-            onCreateTag={onCreateTagFromSelect}
-            isLoading={isGettingTags}
-            w={['100%', '180px']}
-          />
-          <MySelect<ApiKeyListSortByType>
-            width={['100%', '200px']}
-            h={'36px'}
-            value={effectiveSortBy}
-            list={sortOptions}
-            menuPlacement={'bottom-end'}
-            onChange={setSortBy}
-            valueLabel={
-              <Flex alignItems={'center'} w={'100%'} minW={0}>
+          <Flex
+            alignItems={['stretch', 'center']}
+            gap={2}
+            flex={['unset', '1 1 0']}
+            minW={0}
+            w={['100%', 'auto']}
+            flexDirection={['column', 'row']}
+            flexWrap={'wrap'}
+          >
+            <SearchInput
+              value={keyword}
+              placeholder={t('account_apikey:search_key_name_or_value')}
+              bg={'white'}
+              maxW={['100%', '240px']}
+              onChange={(e) => setKeyword(e.target.value)}
+            />
+            <TagMultiSelect
+              tags={openApiTags}
+              value={selectedTagIds}
+              onChange={setSelectedTagIds}
+              label={t('account_apikey:tags')}
+              placeholder={t('common:All')}
+              onManage={() => setShowTagManage(true)}
+              onCreateTag={onCreateTagFromSelect}
+              isLoading={isGettingTags}
+              w={['100%', '180px']}
+            />
+            <MySelect<ApiKeyListSortByType>
+              width={['100%', '200px']}
+              h={'36px'}
+              value={effectiveSortBy}
+              list={sortOptions}
+              menuPlacement={'bottom-end'}
+              onChange={setSortBy}
+              valueLabel={
+                <Flex alignItems={'center'} w={'100%'} minW={0}>
+                  <Box flexShrink={0} color={'myGray.600'}>
+                    {t('account_apikey:sort_label')}
+                  </Box>
+                  <Box mx={3} w={'1px'} h={'16px'} bg={'myGray.200'} />
+                  <Box
+                    flex={1}
+                    color={'myGray.900'}
+                    overflow={'hidden'}
+                    textOverflow={'ellipsis'}
+                    whiteSpace={'nowrap'}
+                  >
+                    {sortOptions.find((item) => item.value === effectiveSortBy)?.label}
+                  </Box>
+                </Flex>
+              }
+            />
+          </Flex>
+          <Flex
+            alignItems={['stretch', 'center']}
+            justifyContent={['flex-start', 'flex-end']}
+            gap={2}
+            flexShrink={0}
+            minW={0}
+            w={['100%', 'auto']}
+            flexDirection={['column', 'row']}
+          >
+            <MyTooltip label={baseUrl}>
+              <Flex
+                alignItems={'center'}
+                w={['100%', '320px']}
+                h={'36px'}
+                px={3}
+                border={'1px solid'}
+                borderColor={'myGray.200'}
+                borderRadius={'md'}
+                cursor={'pointer'}
+                userSelect={'none'}
+                bg={'white'}
+                fontSize={'sm'}
+                _hover={{
+                  borderColor: 'primary.300',
+                  boxShadow: '0 0 0 2px rgba(51, 112, 255, 0.12)'
+                }}
+                onClick={() => copyData(baseUrl, t('common:support.openapi.Copy success'))}
+              >
                 <Box flexShrink={0} color={'myGray.600'}>
-                  {t('account_apikey:sort_label')}
+                  {t('common:support.openapi.Api baseurl')}
                 </Box>
                 <Box mx={3} w={'1px'} h={'16px'} bg={'myGray.200'} />
                 <Box
                   flex={1}
+                  minW={0}
                   color={'myGray.900'}
                   overflow={'hidden'}
                   textOverflow={'ellipsis'}
                   whiteSpace={'nowrap'}
                 >
-                  {sortOptions.find((item) => item.value === effectiveSortBy)?.label}
+                  {baseUrl}
                 </Box>
               </Flex>
-            }
-          />
-          <MyTooltip label={baseUrl}>
-            <Flex
-              alignItems={'center'}
-              w={['100%', '320px']}
-              h={'36px'}
-              px={3}
-              border={'1px solid'}
-              borderColor={'myGray.200'}
-              borderRadius={'md'}
-              cursor={'pointer'}
-              userSelect={'none'}
-              bg={'white'}
-              fontSize={'sm'}
-              _hover={{
-                borderColor: 'primary.300',
-                boxShadow: '0 0 0 2px rgba(51, 112, 255, 0.12)'
-              }}
-              onClick={() => copyData(baseUrl, t('common:support.openapi.Copy success'))}
+            </MyTooltip>
+            <Button
+              size={['sm', 'md']}
+              leftIcon={
+                <MyIcon
+                  name={'common/addLight'}
+                  w={'1.25rem'}
+                  color={isPublishMode ? 'white' : 'primary.600'}
+                />
+              }
+              variant={isPublishMode ? 'primary' : 'whitePrimary'}
+              onClick={() => setEditData(getDefaultEditData())}
             >
-              <Box flexShrink={0} color={'myGray.600'}>
-                {t('common:support.openapi.Api baseurl')}
-              </Box>
-              <Box mx={3} w={'1px'} h={'16px'} bg={'myGray.200'} />
-              <Box
-                flex={1}
-                minW={0}
-                color={'myGray.900'}
-                overflow={'hidden'}
-                textOverflow={'ellipsis'}
-                whiteSpace={'nowrap'}
-              >
-                {baseUrl}
-              </Box>
-            </Flex>
-          </MyTooltip>
-          <Button
-            size={['sm', 'md']}
-            leftIcon={
-              <MyIcon
-                name={'common/addLight'}
-                w={'1.25rem'}
-                color={isPublishMode ? 'white' : 'primary.600'}
-              />
-            }
-            variant={isPublishMode ? 'primary' : 'whitePrimary'}
-            onClick={() => setEditData(getDefaultEditData())}
-          >
-            {t('common:new_create')}
-          </Button>
+              {t('common:new_create')}
+            </Button>
+          </Flex>
         </Flex>
       </Flex>
       <TableContainer mt={3} position={'relative'} minH={'300px'}>
