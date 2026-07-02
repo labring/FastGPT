@@ -76,7 +76,6 @@ const maskApiKey = (apiKey: string) => {
 type ApiKeyTableProps = {
   tips?: string;
   mode?: 'account' | 'publish';
-  appId?: string;
 };
 
 const isSameTagIds = (left: string[], right: string[]) => {
@@ -167,7 +166,7 @@ const ApiKeyTagEditor = ({
   );
 };
 
-const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
+const ApiKeyTable = ({ mode = 'account' }: ApiKeyTableProps) => {
   const { t } = useTranslation();
   const { copyData } = useCopyData();
   const { feConfigs } = useSystemStore();
@@ -252,12 +251,11 @@ const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
       getOpenApiKeys({
         keyword: requestKeyword || undefined,
         tags: selectedTagIds.length > 0 ? selectedTagIds : undefined,
-        sortBy: effectiveSortBy,
-        appId
+        sortBy: effectiveSortBy
       }),
     {
       manual: false,
-      refreshDeps: [requestKeyword, selectedTagIds, effectiveSortBy, appId]
+      refreshDeps: [requestKeyword, selectedTagIds, effectiveSortBy]
     }
   );
   const {

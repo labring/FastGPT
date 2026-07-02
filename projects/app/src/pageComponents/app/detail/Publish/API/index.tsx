@@ -1,7 +1,7 @@
 import ApiKeyTable from '@/components/support/apikey/Table';
 
-const API = ({ appId }: { appId: string }) => {
-  return <ApiKeyTable mode="publish" appId={appId} />;
+const API = () => {
+  return <ApiKeyTable mode="publish" />;
 };
 
 export default API;

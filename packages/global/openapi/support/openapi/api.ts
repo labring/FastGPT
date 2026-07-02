@@ -123,12 +123,12 @@ export const GetApiKeyListQuerySchema = z.object({
   }),
   appId: ObjectIdSchema.optional().meta({
     example: '68ad85a7463006c963799a05',
-    description: '应用 ID，仅用于把相同 appId 的历史 Key 排在前面'
+    description: '兼容旧版应用 API Key 的应用 ID 参数；不影响列表排序和可见范围'
   }),
   sortBy: ApiKeyListSortBySchema.default('createTime').meta({
     example: 'createTime',
     description:
-      '排序字段。appId 置顶优先级最高，同一置顶组内 createTime、lastUsedTime 按倒序排序；remainingPoints 表示剩余积分，按升序排序，剩余少的排在前面，不限额 Key 排在最后'
+      '排序字段。createTime、lastUsedTime 按倒序排序，时间越近越靠前；remainingPoints 表示剩余积分，按升序排序，剩余少的排在前面，不限额 Key 排在最后'
   })
 });
 export type GetApiKeyListQueryType = z.infer<typeof GetApiKeyListQuerySchema>;
