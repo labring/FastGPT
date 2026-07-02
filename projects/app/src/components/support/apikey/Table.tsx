@@ -10,7 +10,6 @@ import {
   Th,
   Td,
   TableContainer,
-  useTheme,
   Link,
   Input,
   IconButton,
@@ -21,11 +20,14 @@ import {
   createAOpenApiKey,
   delOpenApiById,
   putOpenApiKey,
-  copyOpenApiKey
+  copyOpenApiKey,
+  getOpenApiTags,
+  createOpenApiTag
 } from '@/web/support/openapi/api';
 import type { EditApiKeyProps } from '@/global/support/openapi/api';
+import type { ApiKeyListSortByType } from '@fastgpt/global/openapi/support/openapi/api';
+import type { OpenApiTagType } from '@fastgpt/global/openapi/support/openapi/tag';
 import dayjs from 'dayjs';
-import { AddIcon } from '@chakra-ui/icons';
 import { useCopyData } from '@fastgpt/web/hooks/useCopyData';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
@@ -34,11 +36,17 @@ import MyModalV2 from '@fastgpt/web/components/v2/common/MyModal';
 import { Controller, useForm } from 'react-hook-form';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getDocPath } from '@/web/common/system/doc';
-import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
+import MySelect from '@fastgpt/web/components/common/MySelect';
+import TagDisplayList, { type ApiKeyDisplayTag } from './TagDisplayList';
+import TagMultiSelect from './TagMultiSelect';
+import TagManageModal from './TagManageModal';
+import { useDebounce } from 'ahooks';
 
 type EditProps = EditApiKeyProps & { _id?: string };
 const defaultEditData: EditProps = {
@@ -52,6 +60,7 @@ const defaultEditData: EditProps = {
 const getDefaultEditData = (): EditProps => ({
   name: defaultEditData.name,
   authProxy: defaultEditData.authProxy,
+  tags: [],
   limit: {
     maxUsagePoints: defaultEditData.limit?.maxUsagePoints ?? -1,
     expiredTime: defaultEditData.limit?.expiredTime
@@ -66,19 +75,140 @@ const maskApiKey = (apiKey: string) => {
 type ApiKeyTableProps = {
   tips?: string;
   mode?: 'account' | 'publish';
+  appId?: string;
 };
 
-const ApiKeyTable = ({ mode = 'account' }: ApiKeyTableProps) => {
+const isSameTagIds = (left: string[], right: string[]) => {
+  if (left.length !== right.length) return false;
+
+  const rightSet = new Set(right);
+  return left.every((item) => rightSet.has(item));
+};
+
+const ApiKeyTagEditor = ({
+  apiKeyId,
+  appName,
+  tagIds,
+  allTags,
+  onSave,
+  onManage,
+  onCreateTag,
+  isLoading
+}: {
+  apiKeyId: string;
+  appName?: string;
+  tagIds: string[];
+  allTags: OpenApiTagType[];
+  onSave: (apiKeyId: string, tagIds: string[]) => Promise<void>;
+  onManage: () => void;
+  onCreateTag: (name: string) => Promise<OpenApiTagType | void>;
+  isLoading: boolean;
+}) => {
+  const [localTagIds, setLocalTagIds] = useState(tagIds);
+
+  const selectedTags = useMemo(
+    () => localTagIds.flatMap((id) => allTags.find((tag) => tag._id === id) || []),
+    [allTags, localTagIds]
+  );
+  const displayTags = useMemo<ApiKeyDisplayTag[]>(
+    () => [
+      ...(appName
+        ? [
+            {
+              _id: `appName-${apiKeyId}`,
+              name: appName,
+              isAppName: true
+            }
+          ]
+        : []),
+      ...selectedTags
+    ],
+    [apiKeyId, appName, selectedTags]
+  );
+
+  if (displayTags.length === 0) {
+    return null;
+  }
+
+  return (
+    <TagMultiSelect
+      tags={allTags}
+      value={localTagIds}
+      onChange={setLocalTagIds}
+      onManage={onManage}
+      onCreateTag={onCreateTag}
+      isLoading={isLoading}
+      placement="bottom-start"
+      popoverW="180px"
+      renderTrigger={({ openSelector }) => (
+        <Box
+          mt={1}
+          py={0.5}
+          px={0.25}
+          w={'100%'}
+          maxW={'100%'}
+          cursor={'pointer'}
+          _hover={{
+            bg: 'myGray.50',
+            borderRadius: '3px'
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            if ((e.target as HTMLElement).closest('[data-api-key-overflow-tags]')) {
+              return;
+            }
+            openSelector();
+          }}
+        >
+          <TagDisplayList tags={displayTags} />
+        </Box>
+      )}
+      onClose={(nextTagIds) => {
+        if (!isSameTagIds(nextTagIds, tagIds)) {
+          return onSave(apiKeyId, nextTagIds);
+        }
+      }}
+    />
+  );
+};
+
+const ApiKeyTable = ({ mode = 'account', appId }: ApiKeyTableProps) => {
   const { t } = useTranslation();
-  const theme = useTheme();
   const { copyData } = useCopyData();
   const { feConfigs } = useSystemStore();
   const isPublishMode = mode === 'publish';
+  const hasUsagePlan = !!feConfigs?.isPlus;
   const baseUrl =
     feConfigs?.customApiDomain || (typeof location !== 'undefined' ? `${location.origin}/api` : '');
   const [editData, setEditData] = useState<EditProps>();
   const [apiKey, setApiKey] = useState('');
   const [copyingApiKeyId, setCopyingApiKeyId] = useState<string>();
+  const [keyword, setKeyword] = useState('');
+  const requestKeyword = useDebounce(keyword.trim(), { wait: 300 });
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [sortBy, setSortBy] = useState<ApiKeyListSortByType>('createTime');
+  const effectiveSortBy = hasUsagePlan || sortBy !== 'remainingPoints' ? sortBy : 'createTime';
+  const [showTagManage, setShowTagManage] = useState(false);
+  const sortOptions = useMemo<
+    {
+      label: string;
+      value: ApiKeyListSortByType;
+    }[]
+  >(
+    () => [
+      { label: t('account_apikey:sort_by_create_time'), value: 'createTime' },
+      { label: t('account_apikey:sort_by_last_used_time'), value: 'lastUsedTime' },
+      ...(hasUsagePlan
+        ? [
+            {
+              label: t('account_apikey:sort_by_remaining_points'),
+              value: 'remainingPoints' as const
+            }
+          ]
+        : [])
+    ],
+    [hasUsagePlan, t]
+  );
 
   const { ConfirmModal, openConfirm } = useConfirm({
     type: 'delete',
@@ -86,6 +216,7 @@ const ApiKeyTable = ({ mode = 'account' }: ApiKeyTableProps) => {
   });
 
   const { runAsync: onclickRemove } = useRequest(delOpenApiById, {
+    successToast: t('common:delete_success'),
     onSuccess() {
       refetch();
     }
@@ -93,6 +224,20 @@ const ApiKeyTable = ({ mode = 'account' }: ApiKeyTableProps) => {
   const { runAsync: copyApiKey } = useRequest(copyOpenApiKey, {
     errorToast: 'Error'
   });
+  const { runAsync: onUpdateApiKeyTags, loading: isUpdatingApiKeyTags } = useRequest(
+    ({ apiKeyId, tagIds }: { apiKeyId: string; tagIds: string[] }) =>
+      putOpenApiKey({
+        _id: apiKeyId,
+        tags: tagIds
+      }),
+    {
+      errorToast: t('common:update_failed'),
+      onSuccess() {
+        refetch();
+        refetchTags();
+      }
+    }
+  );
 
   const onCopyApiKey = async (id: string) => {
     setCopyingApiKeyId(id);
@@ -108,9 +253,36 @@ const ApiKeyTable = ({ mode = 'account' }: ApiKeyTableProps) => {
     data: apiKeys = [],
     loading: isGetting,
     run: refetch
-  } = useRequest(() => getOpenApiKeys(), {
+  } = useRequest(
+    () =>
+      getOpenApiKeys({
+        keyword: requestKeyword || undefined,
+        tags: selectedTagIds.length > 0 ? selectedTagIds : undefined,
+        sortBy: effectiveSortBy,
+        appId
+      }),
+    {
+      manual: false,
+      refreshDeps: [requestKeyword, selectedTagIds, effectiveSortBy, appId]
+    }
+  );
+  const {
+    data: openApiTags = [],
+    loading: isGettingTags,
+    run: refetchTags
+  } = useRequest(() => getOpenApiTags({ withKeyCount: true }), {
     manual: false
   });
+  const { runAsync: onCreateTagFromSelect } = useRequest(
+    async (name: string) => createOpenApiTag({ name }),
+    {
+      successToast: t('common:create_success'),
+      errorToast: t('common:create_failed'),
+      onSuccess() {
+        refetchTags();
+      }
+    }
+  );
 
   return (
     <MyBox
@@ -123,76 +295,158 @@ const ApiKeyTable = ({ mode = 'account' }: ApiKeyTableProps) => {
       px={0}
       minH={isPublishMode ? '50vh' : undefined}
     >
-      <Box display={['block', 'flex']} alignItems={'center'}>
-        <Box flex={1}>
-          <Flex alignItems={'center'}>
-            <Box
-              color={'myGray.900'}
-              fontSize={isPublishMode ? ['md', 'lg'] : 'lg'}
-              fontWeight={isPublishMode ? 'bold' : 'normal'}
+      <Flex flexDirection={'column'} alignItems={'stretch'} gap={3}>
+        <Flex minW={0} alignItems={'center'}>
+          <Box fontWeight={'bold'} fontSize={['md', 'lg']}>
+            {t('common:support.openapi.Api manager')}({apiKeys.length})
+          </Box>
+          {feConfigs?.docUrl && (
+            <Link
+              href={feConfigs.openAPIDocUrl || getDocPath('/openapi/intro')}
+              target={'_blank'}
+              ml={isPublishMode ? 2 : 1}
+              color={'primary.500'}
+              fontSize={'sm'}
             >
-              {t('common:support.openapi.Api manager')}({apiKeys.length})
-            </Box>
-            {feConfigs?.docUrl && (
-              <Link
-                href={feConfigs.openAPIDocUrl || getDocPath('/openapi/intro')}
-                target={'_blank'}
-                ml={isPublishMode ? 2 : 1}
-                color={'primary.500'}
-                fontSize={'sm'}
-              >
-                <Flex alignItems={'center'}>
-                  <MyIcon name="book" w={'17px'} h={'17px'} mr="1" />
-                  {t('common:read_doc')}
-                </Flex>
-              </Link>
-            )}
-          </Flex>
-        </Box>
-        <Flex
-          mt={[2, 0]}
-          bg={'myGray.100'}
-          py={2}
-          px={4}
-          borderRadius={'md'}
-          cursor={'pointer'}
-          userSelect={'none'}
-          onClick={() => copyData(baseUrl, t('common:support.openapi.Copy success'))}
-        >
-          <Box border={theme.borders.md} px={2} borderRadius={'md'} fontSize={'xs'}>
-            {t('common:support.openapi.Api baseurl')}
-          </Box>
-          <Box ml={2} fontSize={'sm'}>
-            {baseUrl}
-          </Box>
+              <Flex alignItems={'center'}>
+                <MyIcon name="book" w={'17px'} h={'17px'} mr="1" />
+                {t('account_apikey:tutorial')}
+              </Flex>
+            </Link>
+          )}
         </Flex>
-        <Box mt={[2, 0]} textAlign={'right'}>
-          <Button
-            ml={3}
-            leftIcon={<AddIcon fontSize={'md'} />}
-            variant={isPublishMode ? 'primary' : 'whitePrimary'}
-            onClick={() => setEditData(getDefaultEditData())}
+        <Flex
+          alignItems={['stretch', 'center']}
+          justifyContent={'space-between'}
+          gap={3}
+          minW={0}
+          flexDirection={['column', 'row']}
+          flexWrap={'wrap'}
+        >
+          <Flex
+            alignItems={['stretch', 'center']}
+            gap={2}
+            flex={['unset', '1 1 0']}
+            minW={0}
+            w={['100%', 'auto']}
+            flexDirection={['column', 'row']}
+            flexWrap={'wrap'}
           >
-            {t('common:new_create')}
-          </Button>
-        </Box>
-      </Box>
+            <SearchInput
+              value={keyword}
+              placeholder={t('account_apikey:search_key_name_or_value')}
+              bg={'white'}
+              maxW={['100%', '240px']}
+              onChange={(e) => setKeyword(e.target.value)}
+            />
+            <TagMultiSelect
+              tags={openApiTags}
+              value={selectedTagIds}
+              onChange={setSelectedTagIds}
+              label={t('account_apikey:tags')}
+              placeholder={t('common:All')}
+              onManage={() => setShowTagManage(true)}
+              onCreateTag={onCreateTagFromSelect}
+              isLoading={isGettingTags}
+              w={['100%', '220px']}
+            />
+            <MySelect<ApiKeyListSortByType>
+              width={['100%', '200px']}
+              h={'36px'}
+              value={effectiveSortBy}
+              list={sortOptions}
+              menuPlacement={'bottom-end'}
+              onChange={setSortBy}
+              valueLabel={
+                <Flex alignItems={'center'} w={'100%'} minW={0}>
+                  <Box flexShrink={0} color={'myGray.600'}>
+                    {t('account_apikey:sort_label')}
+                  </Box>
+                  <Box mx={3} w={'1px'} h={'16px'} bg={'myGray.200'} />
+                  <Box
+                    flex={1}
+                    color={'myGray.900'}
+                    overflow={'hidden'}
+                    textOverflow={'ellipsis'}
+                    whiteSpace={'nowrap'}
+                  >
+                    {sortOptions.find((item) => item.value === effectiveSortBy)?.label}
+                  </Box>
+                </Flex>
+              }
+            />
+          </Flex>
+          <Flex
+            alignItems={['stretch', 'center']}
+            justifyContent={['flex-start', 'flex-end']}
+            gap={2}
+            flexShrink={0}
+            minW={0}
+            w={['100%', 'auto']}
+            flexDirection={['column', 'row']}
+          >
+            <MyTooltip label={t('common:click_to_copy')}>
+              <Flex
+                alignItems={'center'}
+                w={['100%', '320px']}
+                h={'36px'}
+                px={3}
+                border={'1px solid'}
+                borderColor={'myGray.200'}
+                borderRadius={'md'}
+                cursor={'pointer'}
+                userSelect={'none'}
+                bg={'white'}
+                fontSize={'sm'}
+                _hover={{
+                  borderColor: 'primary.300',
+                  boxShadow: '0 0 0 2px rgba(51, 112, 255, 0.12)'
+                }}
+                onClick={() => copyData(baseUrl, t('common:support.openapi.Copy success'))}
+              >
+                <Box flexShrink={0} color={'myGray.600'}>
+                  {t('common:support.openapi.Api baseurl')}
+                </Box>
+                <Box mx={2} w={'1px'} h={'16px'} bg={'myGray.200'} />
+                <Box
+                  flex={1}
+                  minW={0}
+                  color={'myGray.900'}
+                  overflow={'hidden'}
+                  textOverflow={'ellipsis'}
+                  whiteSpace={'nowrap'}
+                >
+                  {baseUrl}
+                </Box>
+              </Flex>
+            </MyTooltip>
+            <Button
+              size={['sm', 'md']}
+              leftIcon={<MyIcon name={'common/addLight'} w={'1.25rem'} color={'white'} />}
+              variant={'primary'}
+              onClick={() => setEditData(getDefaultEditData())}
+            >
+              {t('common:new_create')}
+            </Button>
+          </Flex>
+        </Flex>
+      </Flex>
       <TableContainer mt={3} position={'relative'} minH={'300px'}>
-        <Table>
+        <Table sx={{ tableLayout: 'fixed' }}>
           <Thead>
             <Tr>
-              <Th>{t('common:Name')}</Th>
-              <Th>API KEY</Th>
-              <Th>{t('common:support.outlink.Usage points')}</Th>
-              {feConfigs?.isPlus && (
+              <Th w={'240px'}>{t('common:Name')}</Th>
+              <Th w={'130px'}>API KEY</Th>
+              {hasUsagePlan && <Th w={'150px'}>{t('common:support.outlink.Usage points')}</Th>}
+              {hasUsagePlan && (
                 <>
-                  <Th>{t('common:expired_time')}</Th>
+                  <Th w={'120px'}>{t('common:expired_time')}</Th>
                 </>
               )}
 
-              <Th>{t('common:create_time')}</Th>
-              <Th>{t('common:last_use_time')}</Th>
-              <Th />
+              <Th w={'160px'}>{t('account_apikey:last_used_time')}</Th>
+              <Th w={'160px'}>{t('account_apikey:create_time')}</Th>
+              <Th w={'92px'} />
             </Tr>
           </Thead>
           <Tbody fontSize={'sm'}>
@@ -200,23 +454,62 @@ const ApiKeyTable = ({ mode = 'account' }: ApiKeyTableProps) => {
               ({
                 _id,
                 name,
-                usagePoints,
                 limit,
+                usagePoints,
                 apiKey,
                 canCopy,
                 createTime,
                 lastUsedTime,
-                authProxy
+                authProxy,
+                appName,
+                tagIds
               }) => (
                 <Tr key={_id}>
-                  <Td>{name}</Td>
-                  <Td>
-                    <Flex alignItems={'center'} gap={1} role={'group'}>
-                      <Box>{maskApiKey(apiKey)}</Box>
+                  <Td maxW={'240px'}>
+                    <Flex flexDirection={'column'} minW={0}>
+                      <MyTooltip label={name} showOnlyWhenOverflow>
+                        <Box
+                          maxW={'220px'}
+                          overflow={'hidden'}
+                          textOverflow={'ellipsis'}
+                          whiteSpace={'nowrap'}
+                        >
+                          {name}
+                        </Box>
+                      </MyTooltip>
+                      <ApiKeyTagEditor
+                        key={`${_id}-${(tagIds || []).join(',')}`}
+                        apiKeyId={_id}
+                        appName={appName}
+                        tagIds={tagIds || []}
+                        allTags={openApiTags}
+                        onSave={async (apiKeyId, tagIds) => {
+                          await onUpdateApiKeyTags({
+                            apiKeyId,
+                            tagIds
+                          });
+                        }}
+                        onManage={() => setShowTagManage(true)}
+                        onCreateTag={onCreateTagFromSelect}
+                        isLoading={isGettingTags || isUpdatingApiKeyTags}
+                      />
+                    </Flex>
+                  </Td>
+                  <Td maxW={'130px'}>
+                    <Flex alignItems={'center'} gap={1} role={'group'} minW={0}>
+                      <Box
+                        minW={0}
+                        overflow={'hidden'}
+                        textOverflow={'ellipsis'}
+                        whiteSpace={'nowrap'}
+                      >
+                        {maskApiKey(apiKey)}
+                      </Box>
                       {canCopy && (
                         <MyIcon
                           name={copyingApiKeyId === _id ? 'common/loading' : 'copy'}
                           w={'15px'}
+                          flexShrink={0}
                           aria-label={t('common:Copy')}
                           role={'button'}
                           tabIndex={0}
@@ -238,13 +531,15 @@ const ApiKeyTable = ({ mode = 'account' }: ApiKeyTableProps) => {
                       )}
                     </Flex>
                   </Td>
-                  <Td>
-                    {Math.round(usagePoints)}/
-                    {feConfigs?.isPlus && limit?.maxUsagePoints && limit?.maxUsagePoints > -1
-                      ? `${limit?.maxUsagePoints}`
-                      : t('common:Unlimited')}
-                  </Td>
-                  {feConfigs?.isPlus && (
+                  {hasUsagePlan && (
+                    <Td whiteSpace={'nowrap'}>
+                      {Math.round(usagePoints)}/
+                      {limit?.maxUsagePoints && limit?.maxUsagePoints > -1
+                        ? `${limit?.maxUsagePoints}`
+                        : t('common:Unlimited')}
+                    </Td>
+                  )}
+                  {hasUsagePlan && (
                     <>
                       <Td whiteSpace={'pre-wrap'}>
                         {limit?.expiredTime
@@ -253,50 +548,41 @@ const ApiKeyTable = ({ mode = 'account' }: ApiKeyTableProps) => {
                       </Td>
                     </>
                   )}
-                  <Td whiteSpace={'pre-wrap'}>
-                    {dayjs(createTime).format('YYYY/MM/DD\nHH:mm:ss')}
-                  </Td>
-                  <Td whiteSpace={'pre-wrap'}>
+                  <Td whiteSpace={'normal'}>
                     {lastUsedTime
-                      ? dayjs(lastUsedTime).format('YYYY/MM/DD\nHH:mm:ss')
+                      ? dayjs(lastUsedTime).format('YYYY/MM/DD HH:mm:ss')
                       : t('common:un_used')}
                   </Td>
-                  <Td>
-                    <MyMenu
-                      offset={[-50, 5]}
-                      Button={
+                  <Td whiteSpace={'normal'}>{dayjs(createTime).format('YYYY/MM/DD HH:mm:ss')}</Td>
+                  <Td w={'92px'}>
+                    <Flex alignItems={'center'} gap={2}>
+                      <MyTooltip label={t('common:Edit')}>
                         <IconButton
-                          icon={<MyIcon name={'more'} w={'14px'} />}
-                          name={'more'}
+                          icon={<MyIcon name={'edit'} w={4} />}
                           variant={'whitePrimary'}
                           size={'sm'}
-                          aria-label={''}
+                          aria-label={t('common:Edit')}
+                          onClick={() =>
+                            setEditData({
+                              _id,
+                              name,
+                              limit,
+                              authProxy,
+                              tags: tagIds || []
+                            })
+                          }
                         />
-                      }
-                      menuList={[
-                        {
-                          children: [
-                            {
-                              label: t('common:Edit'),
-                              icon: 'edit',
-                              onClick: () =>
-                                setEditData({
-                                  _id,
-                                  name,
-                                  limit,
-                                  authProxy
-                                })
-                            },
-                            {
-                              label: t('common:Delete'),
-                              icon: 'delete',
-                              type: 'danger',
-                              onClick: () => openConfirm({ onConfirm: () => onclickRemove(_id) })()
-                            }
-                          ]
-                        }
-                      ]}
-                    />
+                      </MyTooltip>
+                      <MyTooltip label={t('common:Delete')}>
+                        <IconButton
+                          icon={<MyIcon name={'delete'} w={4} />}
+                          variant={'whiteDanger'}
+                          size={'sm'}
+                          aria-label={t('common:Delete')}
+                          onClick={() => openConfirm({ onConfirm: () => onclickRemove(_id) })()}
+                        />
+                      </MyTooltip>
+                    </Flex>
                   </Td>
                 </Tr>
               )
@@ -308,14 +594,17 @@ const ApiKeyTable = ({ mode = 'account' }: ApiKeyTableProps) => {
       {!!editData && (
         <EditKeyModal
           defaultData={editData}
+          tags={openApiTags}
           onClose={() => setEditData(undefined)}
           onCreate={(id) => {
             setApiKey(id);
             refetch();
+            refetchTags();
             setEditData(undefined);
           }}
           onEdit={() => {
             refetch();
+            refetchTags();
             setEditData(undefined);
           }}
         />
@@ -354,6 +643,14 @@ const ApiKeyTable = ({ mode = 'account' }: ApiKeyTableProps) => {
           <MyIcon ml={1} name={'copy'} w={'16px'}></MyIcon>
         </Flex>
       </MyModalV2>
+      {showTagManage && (
+        <TagManageModal
+          tags={openApiTags}
+          onClose={() => setShowTagManage(false)}
+          onRefreshTags={refetchTags}
+          onRefreshKeys={refetch}
+        />
+      )}
     </MyBox>
   );
 };
@@ -363,11 +660,13 @@ export default React.memo(ApiKeyTable);
 // edit link modal
 function EditKeyModal({
   defaultData,
+  tags,
   onClose,
   onCreate,
   onEdit
 }: {
   defaultData: EditProps;
+  tags: OpenApiTagType[];
   onClose: () => void;
   onCreate: (id: string) => void;
   onEdit: () => void;
@@ -408,7 +707,7 @@ function EditKeyModal({
     <MyModalV2
       isOpen={true}
       title={isEdit ? t('publish:edit_api_key') : t('publish:create_api_key')}
-      size="md"
+      size="sm"
       onClose={onClose}
       footer={
         <>
@@ -418,9 +717,14 @@ function EditKeyModal({
 
           <Button
             isLoading={creating || updating}
-            onClick={submitShareChat((data) =>
-              isEdit ? onclickUpdate(data) : onclickCreate(data)
-            )}
+            onClick={submitShareChat((data) => {
+              const trimData = {
+                ...data,
+                name: data.name.trim()
+              };
+
+              return isEdit ? onclickUpdate(trimData) : onclickCreate(trimData);
+            })}
           >
             {t('common:Confirm')}
           </Button>
@@ -432,10 +736,28 @@ function EditKeyModal({
           <FormLabel flex={'0 0 90px'}>{t('common:Name')}</FormLabel>
           <Input
             placeholder={t('publish:key_alias') || 'key_alias'}
-            maxLength={100}
+            maxLength={50}
             {...register('name', {
-              required: t('common:name_is_empty') || 'name_is_empty'
+              required: t('common:name_is_empty') || 'name_is_empty',
+              validate: (value) => !!value.trim() || t('common:name_is_empty') || 'name_is_empty'
             })}
+          />
+        </Flex>
+        <Flex alignItems={'center'} gap={4}>
+          <FormLabel flex={'0 0 90px'}>{t('account_apikey:tags')}</FormLabel>
+          <Controller
+            control={control}
+            name="tags"
+            render={({ field }) => (
+              <TagMultiSelect
+                tags={tags}
+                value={field.value || []}
+                onChange={field.onChange}
+                placeholder={t('account_apikey:select_tag')}
+                showFooter={false}
+                w={'100%'}
+              />
+            )}
           />
         </Flex>
         {feConfigs?.isPlus && (
@@ -473,7 +795,7 @@ function EditKeyModal({
             </Flex>
           </>
         )}
-        <Flex alignItems={'center'} mt={4}>
+        <Flex alignItems={'center'} gap={4} mt={4}>
           <FormLabel display={'flex'} flex={'0 0 90px'} alignItems={'center'}>
             {t('common:support.openapi.Auth proxy')}
             <QuestionTip ml={1} label={t('common:support.openapi.Auth proxy tip')}></QuestionTip>

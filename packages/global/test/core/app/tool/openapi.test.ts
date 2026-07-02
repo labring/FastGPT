@@ -66,6 +66,16 @@ describe('GetPreviewNodeQuerySchema', () => {
     expect(tags.some((tag) => tag.startsWith('systemOpenAPI:'))).toBe(false);
   });
 
+  it('groups API key management APIs under common basic features in dev API document', () => {
+    expect(openAPIDocument.paths['/support/openapi/create']?.post).toBeDefined();
+    expect(openAPIDocument.paths['/support/openapi/list']?.get).toBeDefined();
+
+    const tagGroups = openAPIDocument['x-tagGroups'] ?? [];
+    const commonBasicGroup = tagGroups.find((group) => group.name === '通用-基础功能');
+
+    expect(commonBasicGroup?.tags).toContain('API Key 管理');
+  });
+
   it('includes chat quote APIs in System OpenAPI document', () => {
     expect(apiDocOpenAPIDocument.paths['/core/chat/record/getQuote']?.post).toBeDefined();
     expect(apiDocOpenAPIDocument.paths['/core/chat/record/getCollectionQuote']?.post).toBeDefined();

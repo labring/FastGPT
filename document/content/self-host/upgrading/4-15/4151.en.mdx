@@ -3,11 +3,28 @@ title: 'V4.15.1 (In Progress)'
 description: 'FastGPT V4.15.1 Release Notes'
 ---
 
+## 📦 Upgrade Guide
+
+### API Key App Name Initialization
+
+To keep older API keys compatible and make it easier to find keys previously associated with apps, v4.15.1 adds global API Key tag management and an `appName` display snapshot for historical app-level API Keys. After upgrading, run the initialization script once to backfill app names for existing API Keys whose `appId` field is still present.
+
+From any terminal, send an HTTP request. Replace `{{rootkey}}` with the `rootkey` from your environment variables, and `{{host}}` with your FastGPT domain.
+
+```bash
+curl -X POST "{{host}}/api/admin/initv4151" \
+  -H "rootkey: {{rootkey}}"
+```
+
+The script only fills missing `appName` values. It does not overwrite existing values, does not change the `appId` field, and does not create or bind tags. It is safe to run multiple times.
+
 ## 🚀 New Features
+
+1. Added global API Key tag management and an `appName` display snapshot for historical app-level API Keys, making older API keys compatible and easier to find when they were previously associated with apps.
 
 ## ⚙️ Improvements
 
-## 🐛 Bug Fixes
+## 🐛 Fixes
 
 1. Workflow tool debugging did not show run details.
 

@@ -3,7 +3,24 @@ title: 'V4.15.1(进行中)'
 description: 'FastGPT V4.15.1 更新说明'
 ---
 
+## 📦 升级指南
+
+### API Key 应用名初始化
+
+为了兼容旧版 API 密钥，便于找到以前应用关联的密钥，v4.15.1 增加了全局 API Key 标签管理，并为历史应用级 API Key 增加 `appName` 展示快照。升级后建议执行一次初始化脚本，为已有 `appId` 的历史 API Key 自动回填应用名。
+
+从任意终端，发起 1 个 HTTP 请求。其中 `{{rootkey}}` 替换成环境变量里的 `rootkey`；`{{host}}` 替换成 FastGPT 域名。
+
+```bash
+curl -X POST "{{host}}/api/admin/initv4151" \
+  -H "rootkey: {{rootkey}}"
+```
+
+脚本只会回填缺失的 `appName`，不会覆盖已有值，不会修改 `appId`，也不会创建或绑定标签。脚本可重复执行。
+
 ## 🚀 新增内容
+
+1. 增加全局 API Key 标签管理，并为历史应用级 API Key 增加 `appName` 展示快照，便于兼容旧版 API 密钥并查找以前应用关联的密钥。
 
 ## ⚙️ 优化
 
@@ -12,3 +29,5 @@ description: 'FastGPT V4.15.1 更新说明'
 1. 工作流工具调试时，运行详情看不到。
 
 ## 🛠️ 代码优化
+
+1. 修复冒号的文件路径，避免 window 系统不兼容。

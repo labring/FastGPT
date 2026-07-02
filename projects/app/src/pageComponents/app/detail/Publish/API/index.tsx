@@ -1,9 +1,7 @@
 import ApiKeyTable from '@/components/support/apikey/Table';
-import { useTranslation } from 'next-i18next';
 
-const API = () => {
-  const { t } = useTranslation();
-  return <ApiKeyTable mode="publish" />;
+const API = ({ appId }: { appId: string }) => {
+  return <ApiKeyTable mode="publish" appId={appId} />;
 };
 
 export default API;

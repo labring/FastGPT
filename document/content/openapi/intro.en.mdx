@@ -1,58 +1,58 @@
 ---
-title: OpenAPI Introduction
-description: FastGPT OpenAPI Introduction
+title: API Documentation Introduction
+description: Introduction to FastGPT API Documentation
 ---
 
-## Automated API Documentation
+Starting with `4.15.0`, FastGPT API documentation is generated automatically with `zod-openapi` (some legacy endpoints have not been migrated, so they are not shown). You can view the latest endpoint status by opening the API documentation URL. The manually edited endpoint descriptions in the left sidebar of this documentation are no longer updated.
 
-Starting with `4.15.0`, FastGPT API docs are generated with `zod-openapi`. Some legacy endpoints have not been migrated yet, so they may not appear in the generated docs. Visit the generated API documentation URL to view the latest endpoint details. The manually maintained endpoint descriptions in the left-hand documentation are no longer updated.
-
-FastGPT provides two generated API documents:
+FastGPT API documentation is split into two sets:
 
 - Dev API: all development APIs. Not every endpoint can be called with an API Key.
-- System OpenAPI: public endpoints that support API Key authentication.
+- System OpenAPI: all system public endpoints, callable with a system API Key.
 
-## API Documentation URLs
+## API Documentation URL
 
-Use your FastGPT endpoint as the base URL and append the path below:
+`endpoint` is your FastGPT access URL. Append the corresponding path to open the documentation.
 
 - Dev API: `{{endpoint}}/apidoc/devapi`
 - System OpenAPI: `{{endpoint}}/apidoc/systemopenapi`
 
-## Cloud API Documentation URLs
+## Cloud API Documentation URL
 
 **Dev API:**
 
-- [China Mainland Documentation](https://cloud.fastgpt.cn/apidoc/devapi)
-- [International Documentation](https://cloud.fastgpt.io/apidoc/devapi)
+- [China Mainland documentation](https://cloud.fastgpt.cn/apidoc/devapi)
+- [International documentation](https://cloud.fastgpt.io/apidoc/devapi)
 
-**System OpenAPI:**
+**System OpenAPI**
 
-- [China Mainland Documentation](https://cloud.fastgpt.cn/apidoc/systemopenapi)
-- [International Documentation](https://cloud.fastgpt.io/apidoc/systemopenapi)
+- [China Mainland documentation](https://cloud.fastgpt.cn/apidoc/systemopenapi)
+- [International documentation](https://cloud.fastgpt.io/apidoc/systemopenapi)
 
-## Usage Guide
+## Usage Notes
 
-FastGPT OpenAPI lets you authenticate with an API Key to access FastGPT services and resources -- such as calling app chat endpoints, uploading knowledge base data, search testing, and more. For compatibility and security reasons, not all endpoints support API Key access.
+FastGPT OpenAPI endpoints let you authenticate with an API Key to operate related FastGPT services and resources, such as calling app chat endpoints, uploading Knowledge Base data, and running search tests. For compatibility and security reasons, not all endpoints can be accessed with an API Key.
 
-## How to Find Your BaseURL
+### How to Get an API Key
 
-**Note: BaseURL is not an endpoint address -- it's the root URL for all endpoints. Requesting the BaseURL directly won't work.**
+You can find API Keys in two places:
+
+1. `Account` - `API Keys`
+2. `App` - `Publish Channels` - `API Access`
+
+### API Key Scope
+
+An API Key acts as the current account's access credential within the current team. In other words, any resource the account can access in that team can also be operated through the API Key.
+
+### How to Find the BaseURL
+
+**Note: BaseURL is not an endpoint URL. It is the root URL for all endpoints, and requesting the BaseURL directly does nothing.**
 
 ![](../../public/imgs/fastgpt-api-baseurl.png)
 
-## API Key
+### Basic Configuration
 
-FastGPT uses a unified API Key model. API Keys are member credentials and are not bound to a single app.
-
-- For app-related endpoints other than `chat/completions`, pass `appId` explicitly in the request body or query.
-- For `chat/completions`, passing `body.appId` is recommended.
-- For OpenAI SDK compatibility, `Authorization: Bearer <apiKey>-<appId>` is also supported for `chat/completions`. The `-<appId>` suffix is only a transport compatibility format and is not stored.
-- Team owners can enable `authProxy` on an API Key to let `chat/completions` run as another team member. This does not skip app or chat permission checks.
-
-## Basic Configuration
-
-In OpenAPI, all endpoints authenticate via Header.Authorization.
+In OpenAPI, all endpoints authenticate through `Header.Authorization`.
 
 ```
 baseUrl: "http://localhost:3000/api"
@@ -60,48 +60,3 @@ headers: {
     Authorization: "Bearer {{apikey}}"
 }
 ```
-
-**Example: Start an App Chat**
-
-```sh
-curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
---header 'Authorization: Bearer fastgpt-xxxxxx' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "appId": "your_app_id",
-    "chatId": "111",
-    "stream": false,
-    "detail": false,
-    "messages": [
-        {
-            "content": "Who is the director",
-            "role": "user"
-        }
-    ]
-}'
-```
-
-## Custom User ID
-
-Since `v4.8.13`, you can pass a custom user ID that will be saved in the chat history.
-
-```sh
-curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
---header 'Authorization: Bearer fastgpt-xxxxxx' \
---header 'Content-Type: application/json' \
---data-raw '{
-    "appId": "your_app_id",
-    "chatId": "111",
-    "stream": false,
-    "detail": false,
-    "messages": [
-        {
-            "content": "Who is the director",
-            "role": "user"
-        }
-    ],
-    "customUid": "xxxxxx"
-}'
-```
-
-In the chat history, this record's user will be displayed as `xxxxxx`.

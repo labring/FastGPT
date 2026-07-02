@@ -14,6 +14,16 @@ import {
   UpdateApiKeyBodySchema,
   UpdateApiKeyResponseSchema
 } from './api';
+import {
+  CreateOpenApiTagBodySchema,
+  CreateOpenApiTagResponseSchema,
+  DeleteOpenApiTagQuerySchema,
+  DeleteOpenApiTagResponseSchema,
+  GetOpenApiTagListQuerySchema,
+  GetOpenApiTagListResponseSchema,
+  UpdateOpenApiTagBodySchema,
+  UpdateOpenApiTagResponseSchema
+} from './tag';
 import { DevApiTagsMap } from '../../tag';
 
 export const ApiKeyPath: OpenAPIPath = {
@@ -150,6 +160,94 @@ export const ApiKeyPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: ApiKeyHealthErrorResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/support/openapi/tag/list': {
+    get: {
+      summary: '获取 API Key 标签列表',
+      description: '获取当前登录成员的 API Key 标签列表',
+      tags: [DevApiTagsMap.apiKey],
+      requestParams: {
+        query: GetOpenApiTagListQuerySchema
+      },
+      responses: {
+        200: {
+          description: '成功获取 API Key 标签列表',
+          content: {
+            'application/json': {
+              schema: GetOpenApiTagListResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/support/openapi/tag/create': {
+    post: {
+      summary: '创建 API Key 标签',
+      description: '创建当前登录成员的 API Key 自定义标签',
+      tags: [DevApiTagsMap.apiKey],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: CreateOpenApiTagBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功创建 API Key 标签',
+          content: {
+            'application/json': {
+              schema: CreateOpenApiTagResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/support/openapi/tag/update': {
+    put: {
+      summary: '更新 API Key 标签',
+      description: '更新当前登录成员的 API Key 标签',
+      tags: [DevApiTagsMap.apiKey],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: UpdateOpenApiTagBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功更新 API Key 标签',
+          content: {
+            'application/json': {
+              schema: UpdateOpenApiTagResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/support/openapi/tag/delete': {
+    delete: {
+      summary: '删除 API Key 标签',
+      description: '删除当前登录成员的 API Key 自定义标签，并从 API Key 绑定中解绑',
+      tags: [DevApiTagsMap.apiKey],
+      requestParams: {
+        query: DeleteOpenApiTagQuerySchema
+      },
+      responses: {
+        200: {
+          description: '成功删除 API Key 标签',
+          content: {
+            'application/json': {
+              schema: DeleteOpenApiTagResponseSchema
             }
           }
         }

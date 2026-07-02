@@ -973,7 +973,7 @@
   "support": "Support",
   "support.inform.Read": "Read",
   "support.openapi.Api baseurl": "API Base URL",
-  "support.openapi.Api manager": "API Key list",
+  "support.openapi.Api manager": "My API keys",
   "support.openapi.Auth proxy": "Auth proxy",
   "support.openapi.Auth proxy tip": "Allow a team-level API key to proxy a team member identity through authProxy in chat/completions requests. Only team owners can enable it.",
   "support.openapi.Copy api key": "Copy API Key",

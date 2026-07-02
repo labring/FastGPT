@@ -10,6 +10,7 @@ import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { appEnv } from '@/env';
+import { validateOpenApiTags } from '@fastgpt/service/support/openapi/tag/service';
 import {
   CreateApiKeyBodySchema,
   CreateApiKeyResponseSchema,
@@ -23,7 +24,8 @@ async function handler(
   const {
     name,
     limit,
-    authProxy = false
+    authProxy = false,
+    tags
   } = parseApiInput({
     req,
     bodySchema: CreateApiKeyBodySchema
@@ -46,6 +48,13 @@ async function handler(
 
   const nanoid = getNanoid(Math.floor(Math.random() * 14) + 52);
   const apiKey = `${global.systemEnv?.openapiPrefix || 'fastgpt'}-${nanoid}`;
+  const tagIds = tags
+    ? await validateOpenApiTags({
+        teamId,
+        tmbId,
+        tags
+      })
+    : [];
 
   await MongoOpenApi.create({
     teamId,
@@ -53,6 +62,7 @@ async function handler(
     apiKey,
     authProxy,
     name,
+    tagIds,
     limit
   });
 
