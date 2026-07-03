@@ -170,7 +170,7 @@ services:
 
   fastgpt-app:
     container_name: fastgpt-app
-    image: ghcr.io/labring/fastgpt:v4.15.0
+    image: ghcr.io/labring/fastgpt:v4.15.1
     ports:
       - 3000:3000
     networks:
@@ -209,7 +209,6 @@ services:
       SYNC_INDEX: true
       # 系统变量替换等同步字符串处理的最大字符数，单位 M，范围 1~100
       SYSTEM_MAX_STRING_LENGTH_M: 100
-      TOKEN_KEY: fastgpt
       # 文件阅读时的密钥
       FILE_TOKEN_KEY: filetokenkey
       # 密钥加密 key
@@ -326,7 +325,7 @@ services:
       <<: [*x-log-config, *x-no-proxy-config]
       FASTGPT_ENDPOINT: http://fastgpt-app:3000
   fastgpt-plugin:
-    image: ghcr.io/labring/fastgpt-plugin:v1.0.0
+    image: ghcr.io/labring/fastgpt-plugin:v1.0.1
     container_name: fastgpt-plugin
     restart: always
     networks:
@@ -401,6 +400,8 @@ services:
 networks:
   data:
     name: fastgpt_data
+  vector:
+    name: fastgpt_vector
   app:
     name: fastgpt_app
   codesandbox:

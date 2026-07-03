@@ -192,13 +192,12 @@ prompt_local_compose_path() {
 ROOT_LOGIN_PASSWORD="1234"
 
 randomize_compose_credentials() {
-    local system_key token_key file_token_key aes256_secret_key invoke_token_secret
+    local system_key file_token_key aes256_secret_key invoke_token_secret
     local plugin_token code_sandbox_token volume_manager_token agent_proxy_secret aiproxy_token
     local root_password mongo_password redis_password minio_password
     local pg_password aiproxy_pg_password oceanbase_sys_password oceanbase_tenant_password seekdb_password opengauss_password
 
     system_key="$(random_hex 32)"
-    token_key="$(random_hex 32)"
     file_token_key="$(random_hex 32)"
     aes256_secret_key="$(random_hex 32)"
     invoke_token_secret="$(random_hex 32)"
@@ -230,8 +229,6 @@ randomize_compose_credentials() {
     # YAML anchors: 多个服务共用的 token 只改锚点，引用方自动同步。
     replace_text "x-system-key: &x-system-key 'fastgpt-xxx'" "x-system-key: &x-system-key '$system_key'"
     replace_text 'x-system-key: &x-system-key "fastgpt-xxx"' "x-system-key: &x-system-key \"$system_key\""
-    replace_text "x-token-key: &x-token-key 'fastgpt'" "x-token-key: &x-token-key '$token_key'"
-    replace_text 'x-token-key: &x-token-key "fastgpt"' "x-token-key: &x-token-key \"$token_key\""
     replace_text "x-file-token-key: &x-file-token-key 'filetokenkey'" "x-file-token-key: &x-file-token-key '$file_token_key'"
     replace_text 'x-file-token-key: &x-file-token-key "filetokenkey"' "x-file-token-key: &x-file-token-key \"$file_token_key\""
     replace_text "x-aes256-secret-key: &x-aes256-secret-key 'fastgptsecret'" "x-aes256-secret-key: &x-aes256-secret-key '$aes256_secret_key'"

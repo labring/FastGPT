@@ -245,7 +245,7 @@ services:
       <<: [*x-no-proxy-config]
       FASTGPT_ENDPOINT: http://fastgpt:3000
   fastgpt-plugin:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v1.0.0
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v1.0.1
     container_name: fastgpt-plugin
     restart: always
     ports:
