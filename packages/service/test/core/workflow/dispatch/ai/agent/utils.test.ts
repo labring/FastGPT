@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   getAgentDatasetParams,
   getSubapps,
@@ -13,12 +14,14 @@ const {
   dispatchAgentDatasetSearchMock,
   dispatchAppMock,
   dispatchFileReadMock,
+  dispatchPluginMock,
   dispatchToolMock,
   getAgentRuntimeToolsMock
 } = vi.hoisted(() => ({
   dispatchAgentDatasetSearchMock: vi.fn(),
   dispatchAppMock: vi.fn(),
   dispatchFileReadMock: vi.fn(),
+  dispatchPluginMock: vi.fn(),
   dispatchToolMock: vi.fn(),
   getAgentRuntimeToolsMock: vi.fn(async () => [])
 }));
@@ -41,7 +44,7 @@ vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/dataset', () => ({
 
 vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/app', () => ({
   dispatchApp: dispatchAppMock,
-  dispatchPlugin: vi.fn()
+  dispatchPlugin: dispatchPluginMock
 }));
 
 describe('Agent read_files tool protocol', () => {
@@ -581,6 +584,105 @@ describe('Agent read_files tool protocol', () => {
       expect.objectContaining({
         nodeResponseWriter,
         nodeResponseParentId: 'call_workflow'
+      })
+    );
+  });
+
+  it('filters forbid stream params before dispatching agent workflow tools', async () => {
+    dispatchAppMock.mockResolvedValue({
+      response: 'workflow result',
+      usages: [],
+      nodeResponse: {
+        moduleName: 'Sub Workflow'
+      }
+    });
+    dispatchPluginMock.mockResolvedValue({
+      response: 'workflow tool result',
+      usages: [],
+      nodeResponse: {
+        moduleName: 'Workflow Tool'
+      }
+    });
+
+    const createExecuteTool = (type: 'workflow' | 'toolWorkflow') =>
+      getExecuteTool({
+        checkIsStopping: vi.fn(),
+        chatConfig: {},
+        runningUserInfo: {
+          teamId: 'team_1',
+          tmbId: 'tmb_1'
+        },
+        runningAppInfo: {
+          id: 'app_1'
+        },
+        chatId: 'chat_1',
+        uid: 'user_1',
+        variableState: {} as any,
+        externalProvider: {
+          openaiAccount: undefined
+        } as any,
+        lang: 'zh-CN',
+        requestOrigin: '',
+        mode: 'chat',
+        timezone: 'Asia/Shanghai',
+        retainDatasetCite: false,
+        maxRunTimes: 10,
+        workflowDispatchDeep: 1,
+        params: {
+          model: 'gpt-4'
+        },
+        stream: false,
+        getSubAppInfo: () => ({
+          name: 'Workflow Tool',
+          avatar: '',
+          toolDescription: ''
+        }),
+        getSubApp: () => ({
+          type,
+          id: 'workflow-tool',
+          name: 'Workflow Tool',
+          avatar: '',
+          params: {
+            [NodeInputKeyEnum.forbidStream]: false,
+            fixed: 'from-config'
+          }
+        }),
+        completionTools: [],
+        filesMap: {}
+      } as any);
+
+    await createExecuteTool('workflow')({
+      callId: 'call_workflow',
+      toolId: 'workflow-tool',
+      args: JSON.stringify({
+        userChatInput: 'hello',
+        [NodeInputKeyEnum.forbidStream]: true,
+        dynamic: 'from-call'
+      })
+    });
+    await createExecuteTool('toolWorkflow')({
+      callId: 'call_plugin',
+      toolId: 'workflow-tool',
+      args: JSON.stringify({
+        [NodeInputKeyEnum.forbidStream]: true,
+        dynamic: 'from-call'
+      })
+    });
+
+    expect(dispatchAppMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        customAppVariables: {
+          fixed: 'from-config',
+          dynamic: 'from-call'
+        }
+      })
+    );
+    expect(dispatchPluginMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        customAppVariables: {
+          fixed: 'from-config',
+          dynamic: 'from-call'
+        }
       })
     );
   });

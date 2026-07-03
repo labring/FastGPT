@@ -294,7 +294,17 @@ const TrainingErrorList = ({
       }
     }
   );
-  const clearLocalErrorData = useMemoizedFn(() => {
+  const resetErrorListState = useMemoizedFn(() => {
+    collectionAutoFillOffsetRef.current = undefined;
+    datasetAutoFillOffsetRef.current = undefined;
+    pendingDatasetScrollTopRef.current = undefined;
+
+    const scrollContainer =
+      scope.type === 'collection' ? collectionScrollRef.current : datasetScrollRef.current;
+    if (scrollContainer) {
+      scrollContainer.scrollTop = 0;
+    }
+
     trainingErrorDataRef.current = [];
     setData([]);
     setTotal(0);
@@ -335,10 +345,8 @@ const TrainingErrorList = ({
             collectionId: updatedData.collectionId,
             dataId: updatedData.dataId
           });
-        } else {
-          clearLocalErrorData();
+          onRefresh?.();
         }
-        onRefresh?.();
         setEditChunk(undefined);
       }
     }
@@ -440,12 +448,16 @@ const TrainingErrorList = ({
       await updateData({
         collectionId: scope.collectionId
       });
+      // 批量重试已把当前最终异常重新放回训练队列；本地先清空，避免立刻读 secondary 时回填旧异常。
+      resetErrorListState();
+      onRefresh?.();
       return;
     }
 
     await updateData({
       datasetId: scope.datasetId
     });
+    onRefresh?.();
     onClose?.();
   };
   const captureDatasetScrollTop = () => {

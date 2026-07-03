@@ -450,4 +450,42 @@ describe('appWorkflow2AgentForm', () => {
 
     expect(restored.dataset.authTmbId).toBe(true);
   });
+
+  it('should omit forbid stream from agent selected tool config', () => {
+    const form = getDefaultAppForm();
+    form.aiSettings = {
+      [NodeInputKeyEnum.aiModel]: 'qwen-3.6-flash',
+      [NodeInputKeyEnum.aiSystemPrompt]: 'You are a helpful agent.',
+      maxHistories: 6,
+      [NodeInputKeyEnum.aiChatIsResponseText]: true
+    };
+    form.selectedTools = [
+      {
+        id: 'workflow-tool',
+        pluginId: 'workflow-tool',
+        flowNodeType: FlowNodeTypeEnum.pluginModule,
+        inputs: [
+          {
+            key: NodeInputKeyEnum.forbidStream,
+            value: false
+          },
+          {
+            key: 'query',
+            value: 'hello'
+          }
+        ],
+        outputs: []
+      } as any
+    ];
+
+    const workflow = agentForm2AppWorkflow(form, mockT);
+    const agentNode = workflow.nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.agent);
+    const selectedTools = agentNode?.inputs.find(
+      (input) => input.key === NodeInputKeyEnum.selectedTools
+    )?.value as Array<{ config: Record<string, any> }>;
+
+    expect(selectedTools[0].config).toEqual({
+      query: 'hello'
+    });
+  });
 });

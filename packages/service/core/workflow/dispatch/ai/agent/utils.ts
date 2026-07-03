@@ -165,6 +165,12 @@ export const replaceAgentFileIdsWithUrls = <T>(value: T, fileUrlMap: Record<stri
   return replaceValue(value) as T;
 };
 
+const filterAgentWorkflowRuntimeParams = (params: Record<string, any>) => {
+  const runtimeParams = { ...params };
+  delete runtimeParams[NodeInputKeyEnum.forbidStream];
+  return runtimeParams;
+};
+
 /**
  * 统一 Agent 的知识库配置来源。
  *
@@ -360,7 +366,7 @@ export const getExecuteTool = ({
             nodeResponse
           };
         } else if (tool.type === 'workflow') {
-          const { userChatInput, ...params } = requestParams;
+          const { userChatInput, ...params } = filterAgentWorkflowRuntimeParams(requestParams);
 
           const { response, usages, nodeResponse } = await dispatchApp({
             app: {
@@ -411,6 +417,7 @@ export const getExecuteTool = ({
               return trueId;
             }
           })();
+          const customAppVariables = filterAgentWorkflowRuntimeParams(requestParams);
           const { response, usages, nodeResponse } = await dispatchPlugin({
             app: {
               name: tool.name,
@@ -418,7 +425,7 @@ export const getExecuteTool = ({
               id
             },
             userChatInput: '',
-            customAppVariables: requestParams,
+            customAppVariables,
             checkIsStopping,
             lang,
             requestOrigin,
