@@ -26,6 +26,8 @@ import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 import type { GetPaginationRecordsBodyType } from '@fastgpt/global/openapi/core/chat/record/api';
+import { AUTH_ERROR_EVENT_NAME } from '@/web/common/api/request';
+import { clearToken } from '@/web/support/user/auth';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.ITEM);
 
@@ -234,6 +236,19 @@ const Render = (props: ChatPageProps) => {
     },
     [setUserInfo]
   );
+
+  useEffect(() => {
+    const handleAuthError = () => {
+      // 全局拦截器已豁免 /chat 跳转；这里同步页面态，触发本页 LoginModal。
+      setUserInfo(null);
+      void clearToken();
+    };
+
+    window.addEventListener(AUTH_ERROR_EVENT_NAME, handleAuthError);
+    return () => {
+      window.removeEventListener(AUTH_ERROR_EVENT_NAME, handleAuthError);
+    };
+  }, [setUserInfo]);
 
   useEffect(() => {
     if (!props.shouldInitUserInfo) return;
