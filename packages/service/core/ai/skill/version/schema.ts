@@ -5,6 +5,7 @@ import {
 } from '@fastgpt/global/core/ai/skill/constants';
 import { TeamMemberCollectionName } from '@fastgpt/global/support/user/team/constant';
 import type { AgentSkillsVersionSchemaType } from '@fastgpt/global/core/ai/skill/type';
+import { RuntimeSkillMetadataSchema } from '../model/schema';
 
 const { Schema } = connectionMongo;
 
@@ -33,6 +34,11 @@ const AgentSkillsVersionSchema = new Schema({
   storageKey: {
     type: String,
     required: true
+  },
+  // 该版本包内实际包含的子 Skill 元数据。
+  runtimeSkills: {
+    type: [RuntimeSkillMetadataSchema],
+    default: []
   },
   // 导入来源信息，仅导入场景存在。
   importSource: {

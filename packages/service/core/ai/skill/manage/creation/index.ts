@@ -12,6 +12,7 @@ import { updateCurrentVersion, updateSkillCreationFailed } from '../update';
 import {
   createBlankSkillWorkspacePackage,
   deleteSkillPackage,
+  extractRuntimeSkillsFromPackage,
   removeSkillPackageTTL,
   type SkillStorageInfo,
   uploadSkillPackage
@@ -142,6 +143,7 @@ export async function completePendingSkillCreation(data: AgentSkillCreateJobData
 
   try {
     const zipBuffer = await createBlankSkillWorkspacePackage();
+    const runtimeSkills = await extractRuntimeSkillsFromPackage(zipBuffer, { allowEmpty: true });
     const versionId = new Types.ObjectId().toString();
 
     const storageInfo = await uploadSkillPackage({
@@ -154,7 +156,12 @@ export async function completePendingSkillCreation(data: AgentSkillCreateJobData
 
     // versionId 必须在同一个事务里绑定；否则可能出现版本列表有记录但当前指针缺失。
     const isStorageLinked = await mongoSessionRun(async (session) => {
-      const isUpdated = await updateCurrentVersion(skillId, versionId, session);
+      const isUpdated = await updateCurrentVersion({
+        skillId,
+        currentVersionId: versionId,
+        runtimeSkills,
+        session
+      });
       if (!isUpdated) {
         return false;
       }
@@ -164,7 +171,8 @@ export async function completePendingSkillCreation(data: AgentSkillCreateJobData
           skillId,
           tmbId,
           versionName: 'Initial blank workspace',
-          storageKey: storageInfo.key
+          storageKey: storageInfo.key,
+          runtimeSkills
         },
         session
       );

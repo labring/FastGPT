@@ -1,7 +1,15 @@
 import { AgentSkillCreationStatusEnum } from '@fastgpt/global/core/ai/skill/constants';
+import type { RuntimeSkillMetadataType } from '@fastgpt/global/core/ai/skill/type';
 import type { ClientSession } from '../../../../common/mongo';
 import { MongoAgentSkills } from '../model/schema';
 import type { UpdateSkillData } from './types';
+
+type UpdateCurrentVersionParams = {
+  skillId: string;
+  currentVersionId: string;
+  runtimeSkills: RuntimeSkillMetadataType[];
+  session?: ClientSession;
+};
 
 /**
  * Update skill metadata.
@@ -32,16 +40,18 @@ export async function updateSkill(
  * 这里返回 matchedCount，而不是在 skill 行消失时抛错。异步创建可能在用户删除
  * pending skill 后才完成，调用方会依赖这个 boolean 判断刚上传的包是否需要清理。
  */
-export async function updateCurrentVersion(
-  skillId: string,
-  currentVersionId: string,
-  session?: ClientSession
-): Promise<boolean> {
+export async function updateCurrentVersion({
+  skillId,
+  currentVersionId,
+  runtimeSkills,
+  session
+}: UpdateCurrentVersionParams): Promise<boolean> {
   const result = await MongoAgentSkills.updateOne(
     { _id: skillId, deleteTime: null },
     {
       $set: {
         currentVersionId,
+        currentRuntimeSkills: runtimeSkills,
         creationStatus: AgentSkillCreationStatusEnum.ready,
         updateTime: new Date()
       },

@@ -52,7 +52,8 @@ describe('versionController', () => {
         skillId: testSkillId,
         tmbId: testTmbId,
         versionName: 'Initial creation',
-        storageKey: `agent-skills/${testTeamId}/${testSkillId}/version-v0.zip`
+        storageKey: `agent-skills/${testTeamId}/${testSkillId}/version-v0.zip`,
+        runtimeSkills: []
       };
 
       const versionId = await createVersion(versionData);
@@ -70,12 +71,14 @@ describe('versionController', () => {
       const v0Id = await createVersion({
         skillId: testSkillId,
         tmbId: testTmbId,
-        storageKey: 'v0'
+        storageKey: 'v0',
+        runtimeSkills: []
       });
       const v1Id = await createVersion({
         skillId: testSkillId,
         tmbId: testTmbId,
-        storageKey: 'v1'
+        storageKey: 'v1',
+        runtimeSkills: []
       });
 
       const [v0, v1] = await Promise.all([

@@ -25,6 +25,7 @@ type ListReadableAgentSkillsParams = ListSkillsQuery & {
   teamPer: TeamPermission;
   creationStatus?: AgentSkillCreationStatusEnum;
   withSourceMember?: boolean;
+  withCurrentRuntimeSkills?: boolean;
 };
 
 const mergeMongoAndQuery = (...queries: Record<string, unknown>[]) => {
@@ -59,7 +60,8 @@ export const listReadableAgentSkills = async ({
   pageSize,
   withAppCount,
   creationStatus,
-  withSourceMember = true
+  withSourceMember = true,
+  withCurrentRuntimeSkills = false
 }: ListReadableAgentSkillsParams) => {
   const selectedSkillIds = skillIds?.filter(Boolean) ?? [];
   const isSkillIdsQuery = selectedSkillIds.length > 0;
@@ -244,6 +246,9 @@ export const listReadableAgentSkills = async ({
         category: skill.category,
         inheritPermission: skill.inheritPermission,
         currentVersionId: skill.currentVersionId ? String(skill.currentVersionId) : undefined,
+        ...(withCurrentRuntimeSkills
+          ? { currentRuntimeSkills: skill.currentRuntimeSkills ?? [] }
+          : {}),
         creationStatus: skill.creationStatus,
         tmbId: skill.tmbId,
         parentId: skill.parentId,

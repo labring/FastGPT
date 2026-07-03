@@ -17,6 +17,24 @@ export type MongoAgentSkillSchemaType = AgentSkillSchemaType;
 
 const { Schema } = connectionMongo;
 
+export const RuntimeSkillMetadataSchema = new Schema(
+  {
+    name: {
+      type: String,
+      required: true
+    },
+    description: {
+      type: String,
+      default: ''
+    },
+    path: {
+      type: String,
+      required: true
+    }
+  },
+  { _id: false }
+);
+
 /**
  * Agent Skill 主表结构。
  *
@@ -86,6 +104,11 @@ const AgentSkillsSchema = new Schema({
   currentVersionId: {
     type: Schema.Types.ObjectId,
     ref: agentSkillsVersionCollectionName
+  },
+  // 当前生效版本中的子 Skill 元数据缓存，供列表和辅助生成直接读取。
+  currentRuntimeSkills: {
+    type: [RuntimeSkillMetadataSchema],
+    default: []
   },
   creationStatus: {
     type: String,

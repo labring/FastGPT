@@ -3,7 +3,11 @@ import type { SkillPackageType } from '@fastgpt/global/core/ai/skill/type';
 import { Types } from '../../../../common/mongo';
 import { mongoSessionRun } from '../../../../common/mongo/sessionRun';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
-import { removeSkillPackageTTL, uploadSkillPackage } from '../package';
+import {
+  extractRuntimeSkillsFromPackage,
+  removeSkillPackageTTL,
+  uploadSkillPackage
+} from '../package';
 import { MongoAgentSkills } from '../model/schema';
 import { createVersion } from '../version';
 import { updateCurrentVersion } from './update';
@@ -25,6 +29,7 @@ export async function importSkill(
   parentId?: string | null
 ): Promise<string> {
   const { skill } = packageData;
+  const runtimeSkills = await extractRuntimeSkillsFromPackage(zipBuffer);
 
   const newSkill = new MongoAgentSkills({
     parentId: parentId || null,
@@ -53,7 +58,12 @@ export async function importSkill(
   return mongoSessionRun(async (session) => {
     await newSkill.save({ session });
 
-    await updateCurrentVersion(newSkillId, versionId, session);
+    await updateCurrentVersion({
+      skillId: newSkillId,
+      currentVersionId: versionId,
+      runtimeSkills,
+      session
+    });
 
     await createVersion(
       {
@@ -61,7 +71,8 @@ export async function importSkill(
         skillId: newSkillId,
         tmbId,
         versionName: 'Initial import',
-        storageKey: storageInfo.key
+        storageKey: storageInfo.key,
+        runtimeSkills
       },
       session
     );

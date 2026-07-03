@@ -8,7 +8,11 @@ import { mongoSessionRun } from '../../../../../common/mongo/sessionRun';
 import { Types } from '../../../../../common/mongo';
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import { updateCurrentVersion } from '../../../skill/manage';
-import { removeSkillPackageTTL, uploadSkillPackage } from '../../../skill/package';
+import {
+  extractRuntimeSkillsFromPackage,
+  removeSkillPackageTTL,
+  uploadSkillPackage
+} from '../../../skill/package';
 import { packageSkillInSandbox } from './runtime';
 import { getEditDebugSandboxId } from '../../../skill/edit/config';
 import { createVersion } from '../../../skill/version';
@@ -80,6 +84,7 @@ export async function saveDeploySkillFromSandbox({
   const versionId = new Types.ObjectId().toString();
   const createdAt = new Date();
   const resolvedVersionName = versionName || formatTime2YMDHMS(createdAt);
+  const runtimeSkills = await extractRuntimeSkillsFromPackage(packageBuffer);
 
   let storageInfo;
   try {
@@ -97,7 +102,12 @@ export async function saveDeploySkillFromSandbox({
   }
 
   const deployResult = await mongoSessionRun(async (session) => {
-    const isVersionLinked = await updateCurrentVersion(skillId, versionId, session);
+    const isVersionLinked = await updateCurrentVersion({
+      skillId,
+      currentVersionId: versionId,
+      runtimeSkills,
+      session
+    });
     if (!isVersionLinked) {
       // skill 可能在打包上传期间被删除。此时不能移除 S3 TTL，让孤儿包继续走 TTL 清理。
       throw new UserError('Skill not found');
@@ -109,7 +119,8 @@ export async function saveDeploySkillFromSandbox({
         skillId,
         tmbId,
         versionName: resolvedVersionName,
-        storageKey: storageInfo.key
+        storageKey: storageInfo.key,
+        runtimeSkills
       },
       session
     );

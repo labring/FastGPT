@@ -6,7 +6,8 @@ import {
   validateDeployableSkillWorkspacePackage,
   validateZipStructure,
   extractSkillPackage,
-  standardizeSkillPackageBySkillMdName
+  standardizeSkillPackageBySkillMdName,
+  extractRuntimeSkillsFromPackage
 } from '@fastgpt/service/core/ai/skill/package';
 
 describe('zipBuilder', () => {
@@ -132,6 +133,95 @@ ${largeMarkdown}`;
     });
   });
 
+  // ==================== extractRuntimeSkillsFromPackage ====================
+  describe('extractRuntimeSkillsFromPackage', () => {
+    it('should extract runtime skills from workspace package', async () => {
+      const zip = new JSZip();
+      zip.file(
+        'skills/data-cleaning/SKILL.md',
+        '---\nname: data-cleaning\ndescription: Clean table data\n---\n'
+      );
+      zip.file(
+        'skills/chart-reporting/SKILL.md',
+        '---\nname: chart-reporting\ndescription: Build chart reports\n---\n'
+      );
+
+      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+      const result = await extractRuntimeSkillsFromPackage(buffer);
+
+      expect(result).toEqual([
+        {
+          name: 'chart-reporting',
+          description: 'Build chart reports',
+          path: 'skills/chart-reporting/SKILL.md'
+        },
+        {
+          name: 'data-cleaning',
+          description: 'Clean table data',
+          path: 'skills/data-cleaning/SKILL.md'
+        }
+      ]);
+    });
+
+    it('should normalize legacy single skill package path', async () => {
+      const zip = new JSZip();
+      zip.file('legacy-skill/SKILL.MD', '---\nname: legacy-skill\n---\n');
+
+      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+      const result = await extractRuntimeSkillsFromPackage(buffer);
+
+      expect(result).toEqual([
+        {
+          name: 'legacy-skill',
+          description: '',
+          path: 'skills/legacy-skill/SKILL.md'
+        }
+      ]);
+    });
+
+    it('should reject duplicate runtime skill names', async () => {
+      const zip = new JSZip();
+      zip.file('skills/a/SKILL.md', '---\nname: same\n---\n');
+      zip.file('skills/b/SKILL.md', '---\nname: same\n---\n');
+
+      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+
+      await expect(extractRuntimeSkillsFromPackage(buffer)).rejects.toThrow(
+        'Duplicate runtime skill name: same'
+      );
+    });
+
+    it('should reject SKILL.md without frontmatter name', async () => {
+      const zip = new JSZip();
+      zip.file('skills/a/SKILL.md', '---\ndescription: Missing name\n---\n');
+
+      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+
+      await expect(extractRuntimeSkillsFromPackage(buffer)).rejects.toThrow(
+        'frontmatter name is required'
+      );
+    });
+
+    it('should reuse ZIP safety validation for unsafe entry paths', async () => {
+      const zip = new JSZip();
+      zip.file('skills/../SKILL.md', '---\nname: unsafe\n---\n');
+
+      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+
+      await expect(extractRuntimeSkillsFromPackage(buffer)).rejects.toThrow(
+        'Unsafe ZIP entry path'
+      );
+    });
+
+    it('should allow empty initial workspace when requested', async () => {
+      const buffer = await createBlankSkillWorkspacePackage();
+
+      await expect(extractRuntimeSkillsFromPackage(buffer, { allowEmpty: true })).resolves.toEqual(
+        []
+      );
+    });
+  });
+
   // ==================== validateZipStructure ====================
   describe('validateZipStructure', () => {
     it('should validate zip with SKILL.md at root', async () => {
@@ -247,15 +337,31 @@ ${largeMarkdown}`;
       expect(result.error).toContain('missing-entry');
     });
 
-    it('should require uppercase SKILL.md for deployable skill folders', async () => {
+    it('should accept case-insensitive SKILL.md for deployable skill folders', async () => {
       const zip = new JSZip();
       zip.file('skills/lowercase-entry/skill.md', '---\nname: lowercase-entry\n---\n');
 
       const buffer = await zip.generateAsync({ type: 'nodebuffer' });
       const result = await validateDeployableSkillWorkspacePackage(buffer);
 
-      expect(result.valid).toBe(false);
-      expect(result.error).toContain('lowercase-entry');
+      expect(result.valid).toBe(true);
+    });
+
+    it('should extract runtime skills from case-insensitive SKILL.md entries', async () => {
+      const zip = new JSZip();
+      zip.file('skills/lowercase-entry/skill.md', '---\nname: lowercase-entry\n---\n');
+      zip.file('UPPERCASE/SKILL.MD', '---\nname: uppercase-entry\n---\n');
+
+      const buffer = await zip.generateAsync({ type: 'nodebuffer' });
+      const result = await extractRuntimeSkillsFromPackage(buffer);
+
+      expect(result).toEqual([
+        {
+          name: 'lowercase-entry',
+          description: '',
+          path: 'skills/lowercase-entry/skill.md'
+        }
+      ]);
     });
 
     it('should reject unsafe zip entry paths before workspace structure validation', async () => {

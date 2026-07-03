@@ -12,7 +12,8 @@ const mocks = vi.hoisted(() => ({
   updateSandboxInstanceRecordBySandboxId: vi.fn(),
   updateCurrentVersion: vi.fn(),
   uploadSkillPackage: vi.fn(),
-  validateZipStructure: vi.fn()
+  validateZipStructure: vi.fn(),
+  extractRuntimeSkillsFromPackage: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/common/mongo/sessionRun', () => ({
@@ -31,6 +32,7 @@ vi.mock('@fastgpt/service/core/ai/skill/package', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@fastgpt/service/core/ai/skill/package')>();
   return {
     ...actual,
+    extractRuntimeSkillsFromPackage: mocks.extractRuntimeSkillsFromPackage,
     removeSkillPackageTTL: mocks.removeSkillPackageTTL,
     uploadSkillPackage: mocks.uploadSkillPackage,
     validateZipStructure: mocks.validateZipStructure
@@ -67,11 +69,16 @@ vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/instance/repository', (
   updateSandboxInstanceRecordBySandboxId: mocks.updateSandboxInstanceRecordBySandboxId
 }));
 
-vi.mock('@fastgpt/service/core/ai/skill/model/schema', () => ({
-  MongoAgentSkills: {
-    updateOne: mocks.mongoAgentSkillsUpdateOne
-  }
-}));
+vi.mock('@fastgpt/service/core/ai/skill/model/schema', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@fastgpt/service/core/ai/skill/model/schema')>();
+  return {
+    ...actual,
+    MongoAgentSkills: {
+      updateOne: mocks.mongoAgentSkillsUpdateOne
+    }
+  };
+});
 
 import { SandboxStatusEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { saveDeploySkillFromSandbox } from '@fastgpt/service/core/ai/sandbox/application/skillEdit/deploy';
@@ -90,6 +97,13 @@ describe('saveDeploySkillFromSandbox', () => {
     });
     mocks.packageSkillInSandbox.mockResolvedValue(Buffer.from('mock zip'));
     mocks.validateZipStructure.mockResolvedValue({ valid: true });
+    mocks.extractRuntimeSkillsFromPackage.mockResolvedValue([
+      {
+        name: 'runtime-skill',
+        description: 'Runtime skill',
+        path: 'skills/runtime-skill/SKILL.md'
+      }
+    ]);
     mocks.uploadSkillPackage.mockResolvedValue({
       key: 'agent-skills/team-1/skill-1/version-1.zip'
     });
@@ -149,6 +163,30 @@ describe('saveDeploySkillFromSandbox', () => {
           teamId: 'team-1'
         })
       })
+    );
+    expect(mocks.updateCurrentVersion).toHaveBeenCalledWith({
+      skillId: 'skill-1',
+      currentVersionId: expect.any(String),
+      runtimeSkills: [
+        {
+          name: 'runtime-skill',
+          description: 'Runtime skill',
+          path: 'skills/runtime-skill/SKILL.md'
+        }
+      ],
+      session: { id: 'mock-session' }
+    });
+    expect(mocks.createVersion).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runtimeSkills: [
+          {
+            name: 'runtime-skill',
+            description: 'Runtime skill',
+            path: 'skills/runtime-skill/SKILL.md'
+          }
+        ]
+      }),
+      { id: 'mock-session' }
     );
   });
 
