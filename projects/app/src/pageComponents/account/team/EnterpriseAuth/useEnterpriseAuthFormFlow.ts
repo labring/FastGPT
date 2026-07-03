@@ -24,7 +24,7 @@ import {
 import {
   formatEnterpriseAuthBankOptions,
   getErrorCode,
-  PositiveIntegerPattern,
+  parseEnterpriseAuthAmountCent,
   type AmountFormType
 } from './shared';
 
@@ -71,7 +71,7 @@ export const useEnterpriseAuthFormFlow = ({
   const amountForm = useForm<AmountFormType>({
     mode: 'onChange',
     defaultValues: {
-      amountCent: ''
+      amountYuan: ''
     }
   });
 
@@ -110,10 +110,11 @@ export const useEnterpriseAuthFormFlow = ({
   const bankOptions = useMemo(() => formatEnterpriseAuthBankOptions(banks), [banks]);
   const hasBankLoadError = !!bankLoadError && !bankOptions.length;
   const isBankLoading = loadingBanks;
-  const amountCentValue = useWatch({ control: amountForm.control, name: 'amountCent' });
+  const amountYuanValue = useWatch({ control: amountForm.control, name: 'amountYuan' });
   const hasLoadedTaskDetail = !!taskDetail?.taskId;
   const canSubmitAmount =
-    hasLoadedTaskDetail && PositiveIntegerPattern.test(String(amountCentValue).trim());
+    hasLoadedTaskDetail &&
+    parseEnterpriseAuthAmountCent(String(amountYuanValue ?? '')) !== undefined;
   const shouldShowAmountError = shouldShowEnterpriseAuthAmountError({
     taskStatus: taskDetail?.status,
     showCurrentSubmitError: showAmountError
@@ -141,10 +142,6 @@ export const useEnterpriseAuthFormFlow = ({
         await loadTaskDetail();
         setStep('amount');
         setShowAmountError(false);
-        toast({
-          title: t('account_team:enterprise_auth_transfer_sent_tip'),
-          status: 'success'
-        });
         return;
       }
 
@@ -171,7 +168,7 @@ export const useEnterpriseAuthFormFlow = ({
   }, [handleStart, startForm]);
 
   const handleVerify = useCallback(
-    async ({ amountCent }: AmountFormType) => {
+    async ({ amountYuan }: AmountFormType) => {
       if (!taskDetail?.taskId) {
         toast({
           title: t('account_team:enterprise_auth_task_load_failed'),
@@ -180,8 +177,8 @@ export const useEnterpriseAuthFormFlow = ({
         return;
       }
 
-      const normalizedAmountCent = amountCent.trim();
-      if (!PositiveIntegerPattern.test(normalizedAmountCent)) {
+      const amountCent = parseEnterpriseAuthAmountCent(amountYuan);
+      if (amountCent === undefined) {
         toast({
           title: t('account_team:enterprise_auth_invalid_amount_tip'),
           status: 'warning'
@@ -192,7 +189,7 @@ export const useEnterpriseAuthFormFlow = ({
       try {
         await onVerify({
           taskId: taskDetail.taskId,
-          amountCent: Number(normalizedAmountCent)
+          amountCent
         });
         toast({
           title: t('account_team:enterprise_auth_success_grant_tip'),
@@ -204,7 +201,7 @@ export const useEnterpriseAuthFormFlow = ({
         const errorCode = getErrorCode(error);
 
         if (errorCode === EnterpriseAuthErrEnum.amountError) {
-          amountForm.reset({ amountCent: '' });
+          amountForm.reset({ amountYuan: '' });
           setShowAmountError(true);
           try {
             await loadTaskDetail();
@@ -241,7 +238,7 @@ export const useEnterpriseAuthFormFlow = ({
         demand: taskDetail.demand
       });
     }
-    amountForm.reset({ amountCent: '' });
+    amountForm.reset({ amountYuan: '' });
     setShowAmountError(false);
     setHasSubmittedStartForm(false);
     onSuccess();

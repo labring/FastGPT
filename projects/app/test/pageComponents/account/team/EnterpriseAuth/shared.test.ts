@@ -3,7 +3,8 @@ import {
   fieldRules,
   formatEnterpriseAuthBankOptions,
   formatBankAccountForDisplay,
-  normalizeBankAccount
+  normalizeBankAccount,
+  parseEnterpriseAuthAmountCent
 } from '../../../../../src/pageComponents/account/team/EnterpriseAuth/shared';
 
 describe('enterprise auth bank account validation', () => {
@@ -47,5 +48,28 @@ describe('formatEnterpriseAuthBankOptions', () => {
         value: '北京银行'
       }
     ]);
+  });
+});
+
+describe('parseEnterpriseAuthAmountCent', () => {
+  it('将元金额转换为服务端需要的分', () => {
+    expect(parseEnterpriseAuthAmountCent('0.28')).toBe(28);
+    expect(parseEnterpriseAuthAmountCent('1')).toBe(100);
+    expect(parseEnterpriseAuthAmountCent('1.2')).toBe(120);
+    expect(parseEnterpriseAuthAmountCent('12.34')).toBe(1234);
+    expect(parseEnterpriseAuthAmountCent('10000')).toBe(1000000);
+  });
+
+  it('拒绝非正数或超过两位小数的金额', () => {
+    expect(parseEnterpriseAuthAmountCent('0')).toBeUndefined();
+    expect(parseEnterpriseAuthAmountCent('0.00')).toBeUndefined();
+    expect(parseEnterpriseAuthAmountCent('-0.28')).toBeUndefined();
+    expect(parseEnterpriseAuthAmountCent('0.281')).toBeUndefined();
+    expect(parseEnterpriseAuthAmountCent('abc')).toBeUndefined();
+  });
+
+  it('拒绝超过上限或无法安全转换为分的金额', () => {
+    expect(parseEnterpriseAuthAmountCent('10000.01')).toBeUndefined();
+    expect(parseEnterpriseAuthAmountCent('9'.repeat(30))).toBeUndefined();
   });
 });

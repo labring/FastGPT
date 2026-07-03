@@ -26,8 +26,7 @@ export const EnterpriseAuthLightTaskSchema = z.object({
   amountErrorTimes: z.number().int().meta({
     description: '当前任务金额填写错误次数',
     example: 0
-  }),
-  expireAt: z.date().optional().meta({ description: '金额验证过期时间' })
+  })
 });
 
 export const GetEnterpriseAuthStatusResponseSchema = z.object({
@@ -41,7 +40,7 @@ export const GetEnterpriseAuthStatusResponseSchema = z.object({
   canManage: z.boolean().optional().meta({ description: '当前成员是否可管理企业认证' }),
   verifiedEnterpriseName: z.string().optional().meta({ description: '认证通过企业名称' }),
   currentTask: EnterpriseAuthLightTaskSchema.optional().meta({
-    description: '未完成认证任务；expireAt 仅金额验证阶段存在'
+    description: '未完成认证任务'
   }),
   lastErrorCode: z.string().optional().meta({ description: '最近一次失败错误码' }),
   lastErrorMessage: z.string().optional().meta({ description: '最近一次失败提示' })
@@ -70,8 +69,7 @@ export const GetEnterpriseAuthCurrentTaskDetailResponseSchema = z.object({
   contactTitle: z.string().meta({ description: '联系人职位' }),
   contactPhone: z.string().meta({ description: '联系人手机号' }),
   demand: z.string().meta({ description: '需求描述' }),
-  amountErrorTimes: z.number().int().meta({ description: '金额错误次数' }),
-  expireAt: z.date().meta({ description: '金额验证过期时间' })
+  amountErrorTimes: z.number().int().meta({ description: '金额错误次数' })
 });
 export type GetEnterpriseAuthCurrentTaskDetailResponseType = z.infer<
   typeof GetEnterpriseAuthCurrentTaskDetailResponseSchema
@@ -189,9 +187,6 @@ export type VerifyEnterpriseAuthAmountBodyType = z.infer<
 export const VerifyEnterpriseAuthAmountResponseSchema = z.object({
   status: TeamEnterpriseAuthStatusSchema.meta({ description: '团队认证状态' }),
   verifiedEnterpriseName: z.string().optional().meta({ description: '认证通过企业名称' }),
-  grantExpiredAt: z.date().optional().meta({
-    description: '认证赠送高级版权益到期时间；真实权益以套餐记录 advancedSub.expiredTime 为准'
-  }),
   amountMaxErrorTimes: z.literal(EnterpriseAuthAmountMaxErrorTimes).meta({
     description: '金额最大错误次数'
   })

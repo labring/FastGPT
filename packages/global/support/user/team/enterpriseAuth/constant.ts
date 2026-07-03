@@ -2,6 +2,7 @@ import z from 'zod';
 
 export const EnterpriseAuthMaxTimes = 3;
 export const EnterpriseAuthTrialDays = 15;
+export const EnterpriseAuthTaskExpireHours = 24;
 export const EnterpriseAuthAmountMaxErrorTimes = 3;
 
 export const TeamEnterpriseAuthStatusSchema = z.enum([

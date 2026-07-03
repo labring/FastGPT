@@ -10,7 +10,7 @@ import {
 export { normalizeBankAccount, normalizeUnifiedCreditCode };
 
 export type AmountFormType = {
-  amountCent: string;
+  amountYuan: string;
 };
 
 export type EnterpriseAuthBankOption = {
@@ -18,7 +18,26 @@ export type EnterpriseAuthBankOption = {
   value: string;
 };
 
-export const PositiveIntegerPattern = /^[1-9]\d*$/;
+export const EnterpriseAuthAmountMaxCent = 10000 * 100;
+export const AmountYuanPattern = /^(?:0\.(?:0[1-9]|[1-9]\d?)|[1-9]\d*(?:\.\d{1,2})?)$/;
+
+/**
+ * 将用户输入的元转换为服务端需要的分，避免 `0.28 * 100` 这类浮点计算误差。
+ */
+export const parseEnterpriseAuthAmountCent = (amountYuan: string) => {
+  const normalized = amountYuan.trim();
+  if (!AmountYuanPattern.test(normalized)) return;
+
+  const [yuan, cent = ''] = normalized.split('.');
+  const yuanNumber = Number(yuan);
+  const centNumber = Number(cent.padEnd(2, '0'));
+  if (!Number.isSafeInteger(yuanNumber) || !Number.isSafeInteger(centNumber)) return;
+
+  const amountCent = yuanNumber * 100 + centNumber;
+  if (!Number.isSafeInteger(amountCent) || amountCent > EnterpriseAuthAmountMaxCent) return;
+
+  return amountCent;
+};
 
 export const formatBankAccountForDisplay = (account?: string) => {
   if (!account) return account;

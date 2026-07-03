@@ -7,6 +7,7 @@ import { enterpriseAuthContactBusinessUrl } from './utils';
 import { webPushTrack } from '@/web/common/middle/tracks/utils';
 import {
   AmountInfoRow,
+  AmountYuanPattern,
   formatBankAccountForDisplay,
   formErrorTextStyles,
   inputStyles,
@@ -28,9 +29,9 @@ const EnterpriseAuthAmountForm = ({
   shouldShowAmountError,
   setShowAmountError
 }: EnterpriseAuthAmountFormProps) => {
-  const amountField = amountForm.register('amountCent', {
+  const amountField = amountForm.register('amountYuan', {
     required: true,
-    pattern: /^[1-9]\d*$/
+    pattern: AmountYuanPattern
   });
 
   return (
@@ -86,19 +87,23 @@ const EnterpriseAuthAmountForm = ({
             lineHeight={'20px'}
             letterSpacing={'0.1px'}
             flexShrink={0}
-            w={'57px'}
+            w={'72px'}
           >
             {t('account_team:enterprise_auth_amount_label')}
           </Flex>
           <Flex flexDirection={'column'} gap={'10px'} flex={['1 1 0', '0 0 647px']} minW={0}>
             <Input
-              inputMode={'numeric'}
-              pattern={'[0-9]*'}
-              placeholder={t('account_team:enterprise_auth_amount_placeholder')}
+              inputMode={'decimal'}
+              pattern={'[0-9]+(\\.[0-9]{0,2})?'}
               {...inputStyles}
               {...amountField}
               onChange={(event) => {
-                event.target.value = event.target.value.replace(/\D/g, '');
+                const [yuan = '', ...centParts] = event.target.value
+                  .replace(/[^\d.]/g, '')
+                  .split('.');
+                event.target.value = centParts.length
+                  ? `${yuan}.${centParts.join('').slice(0, 2)}`
+                  : yuan;
                 void amountField.onChange(event);
                 setShowAmountError(false);
               }}
