@@ -2,7 +2,7 @@ import { type ReactNode } from 'react';
 import { Box, Flex, useDisclosure } from '@chakra-ui/react';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import type { SideTabItemType } from './types';
 
@@ -93,12 +93,12 @@ const NormalSideTabItem = ({
       </Box>
       {children && (
         <Flex
-          h={'24px'}
-          w={'20px'}
+          h={'36px'}
+          w={'36px'}
           flexShrink={0}
           alignItems={'center'}
           justifyContent={'center'}
-          ml={1}
+          ml={2}
         >
           {children}
         </Flex>
@@ -131,15 +131,18 @@ const AccordionSideTabItem = ({
           onChange={onChange}
           sideBarItem={sideBarItem}
         >
-          <MyIcon
-            h={'20px'}
-            w={'20px'}
-            name={isShowAccordion ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}
+          <MyIconButton
+            icon={isShowAccordion ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}
+            size={'20px'}
+            w={'32px'}
+            h={'32px'}
+            p={0}
+            justifyContent={'center'}
+            hoverBg={'myGray.200'}
             onClick={(e) => {
               e.stopPropagation();
               onToggleShowAccordion();
             }}
-            _hover={{ color: 'primary.600', cursor: 'pointer' }}
           />
         </NormalSideTabItem>
       </Flex>

@@ -115,8 +115,8 @@ export const ResponseBox = React.memo(function ResponseBox({
           </Box>
         </Flex>
       ) : (
-        <Box h={'100%'} minH={0} overflow={'hidden'}>
-          {!isOpenMobileModal && (
+        <Box h={'100%'} minH={0} overflow={'hidden'} position={'relative'}>
+          <Box h={'100%'} minH={0} overflow={'auto'}>
             <WholeResponseSideTab
               response={sliderResponseList}
               value={currentNodeId}
@@ -126,9 +126,17 @@ export const ResponseBox = React.memo(function ResponseBox({
               }}
               isMobile={true}
             />
-          )}
+          </Box>
           {isOpenMobileModal && (
-            <Flex flexDirection={'column'} h={'100%'} minH={0}>
+            <Flex
+              position={'absolute'}
+              inset={0}
+              zIndex={1}
+              bg={'white'}
+              flexDirection={'column'}
+              h={'100%'}
+              minH={0}
+            >
               <Flex
                 align={'center'}
                 justifyContent={'center'}

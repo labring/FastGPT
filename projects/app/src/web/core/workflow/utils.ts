@@ -475,6 +475,11 @@ export const workflowReferenceValueIsSelectable = ({
   });
 };
 
+/**
+ * 获取当前节点可引用的所有上游节点。
+ * 结果按工作流入边距离由近到远排列；嵌套节点先取自身入边，再取父容器入边，
+ * 最后追加全局变量，保证引用选择器优先展示最近的可用输出。
+ */
 export const getNodeAllSource = ({
   nodeId,
   systemConfigNode,
@@ -502,22 +507,36 @@ export const getNodeAllSource = ({
 
   const parentId = node.parentNodeId;
   const sourceNodes = new Map<string, FlowNodeItemType>();
-  // 根据 edge 获取所有的 source 节点（source节点会继续向前递归获取）
-  const findSourceNode = (nodeId: string) => {
-    const targetEdges = edges.filter((item) => item.target === nodeId || item.target === parentId);
-    targetEdges.forEach((edge) => {
-      const sourceNode = getNodeById(edge.source);
-      if (!sourceNode) return;
+  const searchedTargetNodeIds = new Set<string>();
 
-      // 去重
-      if (sourceNodes.has(sourceNode.nodeId)) {
-        return;
-      }
-      sourceNodes.set(sourceNode.nodeId, sourceNode);
-      findSourceNode(sourceNode.nodeId);
-    });
+  // 按入边层级遍历，避免深度优先递归把更远的上游节点排到直接来源前面。
+  const collectSourceNodesByEdgeDistance = (targetNodeIds: string[]) => {
+    const queue = targetNodeIds.filter(Boolean);
+
+    while (queue.length > 0) {
+      const targetNodeId = queue.shift();
+      if (!targetNodeId || searchedTargetNodeIds.has(targetNodeId)) continue;
+      searchedTargetNodeIds.add(targetNodeId);
+
+      const targetEdges = edges.filter((item) => item.target === targetNodeId);
+      targetEdges.forEach((edge) => {
+        const sourceNode = getNodeById(edge.source);
+        if (!sourceNode) return;
+
+        if (!sourceNodes.has(sourceNode.nodeId)) {
+          sourceNodes.set(sourceNode.nodeId, sourceNode);
+        }
+
+        queue.push(sourceNode.nodeId);
+      });
+    }
   };
-  findSourceNode(nodeId);
+
+  collectSourceNodesByEdgeDistance([nodeId]);
+
+  if (parentId) {
+    collectSourceNodesByEdgeDistance([parentId]);
+  }
 
   // 对于嵌套在容器（Loop/ParallelRun）内的节点，容器的 reference 类型输入
   // 是通过引用选择器设置的（存在 input.value = [nodeId, outputId]），不产生 ReactFlow edge。
@@ -534,7 +553,7 @@ export const getNodeAllSource = ({
         const refNode = getNodeById(refNodeId);
         if (!refNode || sourceNodes.has(refNode.nodeId)) return;
         sourceNodes.set(refNode.nodeId, refNode);
-        findSourceNode(refNode.nodeId);
+        collectSourceNodesByEdgeDistance([refNode.nodeId]);
       });
     }
   }
