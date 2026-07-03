@@ -1,5 +1,5 @@
 # --------- install dependence -----------
-FROM node:24-alpine AS maindeps
+FROM node:24.16.0-alpine AS maindeps
 WORKDIR /app
 
 ARG proxy
@@ -23,7 +23,7 @@ RUN if [ -z "$proxy" ]; then \
     fi
 
 # --------- builder -----------
-FROM node:24-alpine AS builder
+FROM node:24.16.0-alpine AS builder
 WORKDIR /app
 
 ARG proxy
@@ -58,7 +58,7 @@ RUN rm -rf projects/app/.next/standalone/node_modules/.pnpm/@next+rspack-binding
     projects/app/.next/standalone/node_modules/.pnpm/@img+sharp-libvips-linux-x64@*/
 
 # --------- runner -----------
-FROM node:24-alpine AS runner
+FROM node:24.16.0-alpine AS runner
 WORKDIR /app
 
 ARG proxy

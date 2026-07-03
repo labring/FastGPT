@@ -1,5 +1,5 @@
 # --------- Install -----------
-FROM node:24-alpine AS install
+FROM node:24.16.0-alpine AS install
 WORKDIR /app
 
 ARG proxy
@@ -29,7 +29,7 @@ RUN if [ -z "$proxy" ]; then \
     fi
 
 # --------- builder -----------
-FROM node:24-alpine AS builder
+FROM node:24.16.0-alpine AS builder
 WORKDIR /app
 
 ARG proxy
@@ -52,7 +52,7 @@ RUN pnpm --filter @fastgpt-sdk/otel build
 RUN pnpm --filter=@fastgpt/mcp_server build
 
 # runner
-FROM node:24-alpine AS runner
+FROM node:24.16.0-alpine AS runner
 WORKDIR /app
 
 ARG proxy

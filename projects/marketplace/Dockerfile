@@ -1,5 +1,5 @@
 # --------- install dependence -----------
-FROM node:24-alpine AS maindeps
+FROM node:24.16.0-alpine AS maindeps
 WORKDIR /app
 
 ARG proxy
@@ -23,7 +23,7 @@ RUN if [ -z "$proxy" ]; then \
     fi
 
 # --------- builder -----------
-FROM node:24-alpine AS builder
+FROM node:24.16.0-alpine AS builder
 WORKDIR /app
 
 ARG proxy
@@ -47,7 +47,7 @@ RUN pnpm --filter @fastgpt-sdk/otel --filter @fastgpt-sdk/storage --filter @fast
 RUN pnpm --filter=marketplace build
 
 # --------- runner -----------
-FROM node:24-alpine AS runner
+FROM node:24.16.0-alpine AS runner
 WORKDIR /app
 
 ARG proxy
