@@ -14,6 +14,8 @@ const SIDE_TAB_ROOT_PADDING = 8;
 const SIDE_TAB_MAX_CHILD_DEPTH = 3;
 const SIDE_TAB_AVATAR_SIZE = 24;
 const SIDE_TAB_CHILD_INDENT = 28;
+const SIDE_TAB_ACCORDION_BUTTON_SIZE = 28;
+const SIDE_TAB_ACCORDION_ICON_SIZE = 16;
 
 const getSideTabLeftPadding = (index: number) => {
   const safeIndex = Math.min(index, SIDE_TAB_MAX_CHILD_DEPTH);
@@ -93,8 +95,8 @@ const NormalSideTabItem = ({
       </Box>
       {children && (
         <Flex
-          h={'36px'}
-          w={'36px'}
+          h={`${SIDE_TAB_ACCORDION_BUTTON_SIZE}px`}
+          w={`${SIDE_TAB_ACCORDION_BUTTON_SIZE}px`}
           flexShrink={0}
           alignItems={'center'}
           justifyContent={'center'}
@@ -133,9 +135,9 @@ const AccordionSideTabItem = ({
         >
           <MyIconButton
             icon={isShowAccordion ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}
-            size={'20px'}
-            w={'32px'}
-            h={'32px'}
+            size={`${SIDE_TAB_ACCORDION_ICON_SIZE}px`}
+            w={`${SIDE_TAB_ACCORDION_BUTTON_SIZE}px`}
+            h={`${SIDE_TAB_ACCORDION_BUTTON_SIZE}px`}
             p={0}
             justifyContent={'center'}
             hoverBg={'myGray.200'}
