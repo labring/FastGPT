@@ -103,7 +103,7 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
     storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes))
   );
   const runtimeEdges = storeEdges2RuntimeEdges(edges);
-
+  console.log(childrenVariableState.toRuntimeRecord(), 2342323);
   const { assistantResponses, flowUsages, runtimeNodeResponseSummary } = await runWorkflow({
     ...data,
     runningAppInfo: {

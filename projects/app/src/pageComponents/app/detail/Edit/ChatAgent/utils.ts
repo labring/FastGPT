@@ -308,6 +308,9 @@ export function agentForm2AppWorkflow(
 
                   config: tool.inputs.reduce(
                     (acc, input) => {
+                      if (input.key === NodeInputKeyEnum.forbidStream) {
+                        return acc;
+                      }
                       // Special tool
                       if (
                         tool.flowNodeType === FlowNodeTypeEnum.appModule &&
