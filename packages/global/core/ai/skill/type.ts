@@ -67,7 +67,6 @@ export const AgentSkillListItemSchema = z.object({
   category: z.array(AgentSkillCategorySchema),
   avatar: z.string().optional(),
   currentVersionId: z.string().optional(),
-  currentRuntimeSkills: z.array(RuntimeSkillMetadataSchema).optional(),
   creationStatus: AgentSkillCreationStatusSchema.optional(),
   createTime: z.coerce.date(),
   updateTime: z.coerce.date(),
@@ -99,7 +98,7 @@ export const AgentSkillsVersionSchema = z.object({
   tmbId: z.string(),
   versionName: z.string().optional(),
   storageKey: z.string(),
-  runtimeSkills: z.array(RuntimeSkillMetadataSchema).optional(),
+  runtimeSkills: z.array(RuntimeSkillMetadataSchema),
   importSource: AgentSkillsVersionImportSourceSchema.optional(),
   createdAt: z.coerce.date()
 });

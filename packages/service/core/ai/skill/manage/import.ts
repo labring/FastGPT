@@ -58,7 +58,12 @@ export async function importSkill(
   return mongoSessionRun(async (session) => {
     await newSkill.save({ session });
 
-    await updateCurrentVersion(newSkillId, versionId, runtimeSkills, session);
+    await updateCurrentVersion({
+      skillId: newSkillId,
+      currentVersionId: versionId,
+      runtimeSkills,
+      session
+    });
 
     await createVersion(
       {

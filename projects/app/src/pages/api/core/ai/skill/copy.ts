@@ -109,7 +109,12 @@ async function handler(req: ApiRequestProps<CopySkillBody>): Promise<CopySkillRe
     const runtimeSkills = sourceVersion.runtimeSkills ?? skill.currentRuntimeSkills ?? [];
 
     // Point the copied skill to the copied package version.
-    await updateCurrentVersion(newId, versionId, runtimeSkills, session);
+    await updateCurrentVersion({
+      skillId: newId,
+      currentVersionId: versionId,
+      runtimeSkills,
+      session
+    });
 
     // Create the initial v0 version record
     await createVersion(

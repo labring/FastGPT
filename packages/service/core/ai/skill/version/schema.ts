@@ -5,26 +5,9 @@ import {
 } from '@fastgpt/global/core/ai/skill/constants';
 import { TeamMemberCollectionName } from '@fastgpt/global/support/user/team/constant';
 import type { AgentSkillsVersionSchemaType } from '@fastgpt/global/core/ai/skill/type';
+import { RuntimeSkillMetadataSchema } from '../model/schema';
 
 const { Schema } = connectionMongo;
-
-const RuntimeSkillMetadataSchema = new Schema(
-  {
-    name: {
-      type: String,
-      required: true
-    },
-    description: {
-      type: String,
-      default: ''
-    },
-    path: {
-      type: String,
-      required: true
-    }
-  },
-  { _id: false }
-);
 
 /**
  * Skill 版本表。

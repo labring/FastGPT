@@ -156,7 +156,12 @@ export async function completePendingSkillCreation(data: AgentSkillCreateJobData
 
     // versionId 必须在同一个事务里绑定；否则可能出现版本列表有记录但当前指针缺失。
     const isStorageLinked = await mongoSessionRun(async (session) => {
-      const isUpdated = await updateCurrentVersion(skillId, versionId, runtimeSkills, session);
+      const isUpdated = await updateCurrentVersion({
+        skillId,
+        currentVersionId: versionId,
+        runtimeSkills,
+        session
+      });
       if (!isUpdated) {
         return false;
       }

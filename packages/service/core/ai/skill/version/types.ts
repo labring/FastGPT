@@ -6,7 +6,7 @@ export type CreateVersionData = {
   tmbId: string;
   versionName?: string;
   storageKey: string;
-  runtimeSkills?: RuntimeSkillMetadataType[];
+  runtimeSkills: RuntimeSkillMetadataType[];
   importSource?: {
     originalFilename: string;
     importedAt: Date;

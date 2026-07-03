@@ -17,7 +17,7 @@ export type MongoAgentSkillSchemaType = AgentSkillSchemaType;
 
 const { Schema } = connectionMongo;
 
-const RuntimeSkillMetadataSchema = new Schema(
+export const RuntimeSkillMetadataSchema = new Schema(
   {
     name: {
       type: String,
