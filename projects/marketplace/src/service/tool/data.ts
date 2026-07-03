@@ -10,6 +10,7 @@ export type MarketplaceToolListDataItem = ToolDetailType & {
   downloadUrl?: string;
   readme?: string;
   parentId?: string;
+  source?: string;
 };
 
 declare global {

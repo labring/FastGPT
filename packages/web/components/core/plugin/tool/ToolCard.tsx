@@ -8,6 +8,8 @@ import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
 import DebugToolTag from './DebugToolTag';
 
+const marketplaceOfficialSource = 'official';
+
 export type ToolCardItemType = {
   id: string;
   name: string;
@@ -43,7 +45,8 @@ const ToolCard = ({
   onDelete,
   onUpdate,
   onClickCard,
-  showActionButton = true
+  showActionButton = true,
+  variant = 'default'
 }: {
   item: ToolCardItemType;
   systemTitle?: string;
@@ -55,10 +58,16 @@ const ToolCard = ({
   onUpdate?: () => Promise<void>;
   onClickCard?: () => void;
   showActionButton?: boolean;
+  variant?: 'default' | 'marketplace';
 }) => {
   const { t, i18n } = useTranslation();
   const tagsContainerRef = useRef<HTMLDivElement>(null);
   const [visibleTagsCount, setVisibleTagsCount] = useState(item.tags?.length || 0);
+  const isMarketplaceVariant = variant === 'marketplace';
+  const showOfficialBadge =
+    isMarketplaceVariant && (!item.source || item.source === marketplaceOfficialSource);
+  const showMarketplaceUninstallButton =
+    isMarketplaceVariant && mode === 'admin' && item.installed && !showActionButton;
 
   useEffect(() => {
     const calculate = () => {
@@ -109,6 +118,8 @@ const ToolCard = ({
     };
 
     if (mode === 'admin') {
+      if (isMarketplaceVariant) return null;
+
       return item.installed
         ? {
             label: t('app:toolkit_installed'),
@@ -130,14 +141,25 @@ const ToolCard = ({
           }
         : null;
     }
-  }, [item.installed, item.status]);
+  }, [isMarketplaceVariant, item.installed, item.status, mode, t]);
 
   return (
     <MyBox
       key={item.id}
-      p={4}
-      pb={3}
-      border={'base'}
+      {...(isMarketplaceVariant
+        ? {
+            px: '17px',
+            pt: '17px',
+            pb: '13px',
+            minH: '178px',
+            border: '1px solid',
+            borderColor: '#DFE2EA'
+          }
+        : {
+            p: 4,
+            pb: 3,
+            border: 'base'
+          })}
       bg={'white'}
       borderRadius={'10px'}
       display={'flex'}
@@ -150,7 +172,7 @@ const ToolCard = ({
       }}
       _hover={{
         boxShadow: '0 4px 4px 0 rgba(19, 51, 107, 0.05), 0 0 1px 0 rgba(19, 51, 107, 0.08);',
-        ...(showActionButton
+        ...(showActionButton || showMarketplaceUninstallButton
           ? {
               '& .install-button': {
                 display: 'flex'
@@ -178,8 +200,8 @@ const ToolCard = ({
         <Flex
           alignItems="center"
           position={'absolute'}
-          top={4}
-          right={4}
+          top={isMarketplaceVariant ? '17px' : 4}
+          right={isMarketplaceVariant ? '17px' : 4}
           px={2}
           py={0.5}
           bg={'rgb(255, 247, 237)'}
@@ -209,11 +231,44 @@ const ToolCard = ({
         </Flex>
       )}
 
-      <HStack minW={0}>
-        <Avatar src={item.icon} borderRadius={'sm'} w={'1.5rem'} />
-        <Box color={'myGray.900'} fontWeight={'medium'} minW={0} className={'textEllipsis'}>
+      <HStack
+        minW={0}
+        spacing={isMarketplaceVariant ? 2 : undefined}
+        h={isMarketplaceVariant ? '24px' : undefined}
+      >
+        <Avatar
+          src={item.icon}
+          borderRadius={'sm'}
+          w={isMarketplaceVariant ? '24px' : '1.5rem'}
+          h={isMarketplaceVariant ? '24px' : undefined}
+        />
+        <Box
+          color={isMarketplaceVariant ? '#111824' : 'myGray.900'}
+          fontSize={isMarketplaceVariant ? '16px' : undefined}
+          lineHeight={isMarketplaceVariant ? '24px' : undefined}
+          fontWeight={'medium'}
+          minW={0}
+          flexShrink={1}
+          className={'textEllipsis'}
+        >
           {parseI18nString(item.name, i18n.language)}
         </Box>
+        {showOfficialBadge && (
+          <Box
+            px={'8px'}
+            py={'4px'}
+            borderRadius={'6px'}
+            bg={'#F0F4FF'}
+            color={'#3370FF'}
+            fontSize={'10px'}
+            lineHeight={'14px'}
+            fontWeight={'medium'}
+            letterSpacing={'0.2px'}
+            flexShrink={0}
+          >
+            {t('app:toolkit_official')}
+          </Box>
+        )}
         {item.isDebug && <DebugToolTag />}
         {statusLabel && (
           <Flex
@@ -229,32 +284,40 @@ const ToolCard = ({
         )}
       </HStack>
       <Box
-        flex={['1 0 48px', '1 0 56px']}
-        mt={3}
+        flex={isMarketplaceVariant ? '1 0 68px' : ['1 0 48px', '1 0 56px']}
+        mt={isMarketplaceVariant ? undefined : 3}
+        pt={isMarketplaceVariant ? '12px' : undefined}
         pr={1}
         textAlign={'justify'}
         wordBreak={'break-all'}
-        fontSize={'xs'}
-        color={'myGray.500'}
+        fontSize={isMarketplaceVariant ? '12.8px' : 'xs'}
+        lineHeight={isMarketplaceVariant ? '19.2px' : undefined}
+        color={isMarketplaceVariant ? '#667085' : 'myGray.500'}
       >
         <Box className={'textEllipsis2'}>
           {parseI18nString(item.description || '', i18n.language) ||
             t('app:templateMarket.no_intro')}
         </Box>
       </Box>
-      <Flex gap={1} overflow={'hidden'} ref={tagsContainerRef}>
+      <Flex
+        h={isMarketplaceVariant ? '26.5px' : undefined}
+        gap={1}
+        overflow={'hidden'}
+        ref={tagsContainerRef}
+      >
         {item.tags?.slice(0, visibleTagsCount).map((tag) => {
           return (
             <Box
               key={tag}
-              px={2}
-              py={1}
+              px={isMarketplaceVariant ? '9px' : 2}
+              py={isMarketplaceVariant ? '5px' : 1}
               border={'1px solid'}
               borderRadius={'6px'}
-              borderColor={'myGray.200'}
+              borderColor={isMarketplaceVariant ? '#E8EBF0' : 'myGray.200'}
               fontSize={'11px'}
+              lineHeight={isMarketplaceVariant ? '16.5px' : undefined}
               fontWeight={'medium'}
-              color={'myGray.700'}
+              color={isMarketplaceVariant ? '#383F50' : 'myGray.700'}
               flexShrink={0}
               data-tag-item
             >
@@ -264,14 +327,15 @@ const ToolCard = ({
         })}
         {item.tags && item.tags.length > visibleTagsCount && (
           <Box
-            px={2}
-            py={1}
+            px={isMarketplaceVariant ? '9px' : 2}
+            py={isMarketplaceVariant ? '5px' : 1}
             border={'1px solid'}
             borderRadius={'6px'}
-            borderColor={'myGray.200'}
+            borderColor={isMarketplaceVariant ? '#E8EBF0' : 'myGray.200'}
             fontSize={'11px'}
+            lineHeight={isMarketplaceVariant ? '16.5px' : undefined}
             fontWeight={'medium'}
-            color={'myGray.700'}
+            color={isMarketplaceVariant ? '#383F50' : 'myGray.700'}
             flexShrink={0}
           >
             +{item.tags.length - visibleTagsCount}
@@ -279,11 +343,18 @@ const ToolCard = ({
         )}
       </Flex>
 
-      <Flex w={'full'} fontSize={'mini'} alignItems={'end'} justifyContent={'space-between'}>
+      <Flex
+        w={'full'}
+        h={isMarketplaceVariant ? '30px' : undefined}
+        fontSize={isMarketplaceVariant ? '12px' : 'mini'}
+        lineHeight={isMarketplaceVariant ? '18px' : undefined}
+        alignItems={'end'}
+        justifyContent={'space-between'}
+      >
         <Box
           className="author-info"
-          color={'myGray.500'}
-          mt={3}
+          color={isMarketplaceVariant ? '#667085' : 'myGray.500'}
+          mt={isMarketplaceVariant ? undefined : 3}
         >{`by ${item.author || systemTitle || 'FastGPT'}`}</Box>
         {/*TODO: when statistics is ready*/}
         {/*<Flex flexDirection={'row'} gap={1} className="download-count" color={'myGray.500'} mt={3}>
@@ -296,7 +367,21 @@ const ToolCard = ({
         </Flex>*/}
 
         <Flex gap={2} alignItems={'center'} ml={'auto'}>
-          {showActionButton && mode === 'marketplace' ? (
+          {showMarketplaceUninstallButton ? (
+            <Button
+              className="install-button"
+              size={'sm'}
+              variant={'dangerOutline'}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete?.();
+              }}
+              isLoading={isInstallingOrDeleting}
+              display={'none'}
+            >
+              {t('app:toolkit_uninstall')}
+            </Button>
+          ) : showActionButton && mode === 'marketplace' ? (
             <Button
               className="install-button"
               size={'sm'}

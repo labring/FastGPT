@@ -247,6 +247,29 @@ const Button = defineStyleConfig({
         color: 'red.600'
       }
     },
+    dangerOutline: {
+      color: 'red.600',
+      border: '1px solid',
+      borderColor: 'red.500',
+      bg: 'white',
+      transition: 'background 0.1s',
+      boxShadow: '0px 0px 1px 0px rgba(19, 51, 107, 0.08), 0px 1px 2px 0px rgba(19, 51, 107, 0.05)',
+      _hover: {
+        color: 'red.600',
+        borderColor: 'red.600',
+        bg: 'red.50'
+      },
+      _active: {
+        color: 'red.600',
+        borderColor: 'red.600',
+        bg: 'red.50'
+      },
+      _disabled: {
+        color: 'red.300 !important',
+        borderColor: 'red.200 !important',
+        bg: 'white !important'
+      }
+    },
     grayBase: {
       bg: 'myGray.150',
       color: 'myGray.900',

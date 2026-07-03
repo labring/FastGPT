@@ -53,6 +53,7 @@ import type { UpdateSystemToolBodyType } from '@fastgpt/global/openapi/core/plug
 import CopyBox from '@fastgpt/web/components/common/String/CopyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { jsonSchema2SecretInput } from '@fastgpt/global/core/app/jsonschema';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 
 const COST_LIMITS = { max: 1000, min: 0, step: 0.1 };
 const FORM_LABEL_WIDTH = '160px';
@@ -181,6 +182,9 @@ const SystemToolConfigModal = ({
   const [runtimeConfig, setRuntimeConfig] = useState<RuntimeConfigValue>({});
   const [selectedVersion, setSelectedVersion] = useState<string>();
   const [tabIndex, setTabIndex] = useState(0);
+  const { openConfirm: openUninstallConfirm, ConfirmModal: UninstallConfirmModal } = useConfirm({
+    type: 'delete'
+  });
 
   useEffect(() => {
     setSelectedVersion(undefined);
@@ -245,6 +249,7 @@ const SystemToolConfigModal = ({
     'promoteTags',
     'hideTags'
   ]);
+  const isToolOffline = status === PluginStatusEnum.Offline;
 
   // 从 tool 读取只读数据
   const inputList = useMemo(
@@ -345,8 +350,7 @@ const SystemToolConfigModal = ({
       {
         label: t('app:toolkit_status_soon_offline'),
         value: PluginStatusEnum.SoonOffline
-      },
-      { label: t('app:toolkit_status_offline'), value: PluginStatusEnum.Offline }
+      }
     ],
     [t]
   );
@@ -383,6 +387,57 @@ const SystemToolConfigModal = ({
     }
   );
 
+  const { runAsync: onUninstall, loading: uninstalling } = useRequest(
+    () =>
+      putAdminUpdateSystemTool({
+        id: toolId,
+        status: PluginStatusEnum.Offline,
+        children: tool?.children?.map((child) => ({
+          id: child.id,
+          systemKeyCost: child.systemKeyCost
+        }))
+      }),
+    {
+      successToast: t('app:custom_plugin_uninstall_success'),
+      onSuccess() {
+        onSuccess();
+        onClose();
+      }
+    }
+  );
+
+  const { runAsync: onReinstall, loading: reinstalling } = useRequest(
+    () =>
+      putAdminUpdateSystemTool({
+        id: toolId,
+        status: PluginStatusEnum.Normal,
+        children: tool?.children?.map((child) => ({
+          id: child.id,
+          systemKeyCost: child.systemKeyCost
+        }))
+      }),
+    {
+      successToast: t('app:custom_plugin_install_success'),
+      onSuccess() {
+        onSuccess();
+        onClose();
+      }
+    }
+  );
+
+  const openToolUninstallConfirm = () => {
+    const toolName = parseI18nString(tool?.name || '', i18n.language) || toolId;
+
+    openUninstallConfirm({
+      title: t('app:toolkit_uninstall'),
+      customContent: t('app:confirm_uninstall_tool'),
+      confirmText: t('app:toolkit_uninstall'),
+      confirmButtonVariant: 'dangerOutline',
+      inputConfirmText: toolName,
+      onConfirm: onUninstall
+    })();
+  };
+
   // Secret input render
   const renderInputField = (item: InputConfigType) => {
     const fieldValue = secretsVal?.[item.key];
@@ -403,7 +458,7 @@ const SystemToolConfigModal = ({
     if (item.inputType === 'switch') {
       return (
         <ConfigRow key={item.key} label={labelSection}>
-          <Switch {...register(`secretsVal.${item.key}`)} />
+          <Switch isDisabled={isToolOffline} {...register(`secretsVal.${item.key}`)} />
         </ConfigRow>
       );
     }
@@ -417,6 +472,7 @@ const SystemToolConfigModal = ({
             list={item.list ?? []}
             value={typeof fieldValue === 'string' ? fieldValue : undefined}
             placeholder={item.label}
+            isDisabled={isToolOffline}
             onChange={(value) => {
               setValue(`secretsVal.${item.key}`, value, {
                 shouldDirty: true,
@@ -434,6 +490,7 @@ const SystemToolConfigModal = ({
           bg={'white'}
           h={9}
           borderColor={'myGray.200'}
+          isDisabled={isToolOffline}
           {...register(`secretsVal.${item.key}`, {
             required: item.required
           })}
@@ -451,6 +508,7 @@ const SystemToolConfigModal = ({
             register={register}
             name="systemKeyCost"
             defaultValue={0}
+            isDisabled={isToolOffline}
             {...COST_LIMITS}
           />
         </ConfigRow>
@@ -477,6 +535,7 @@ const SystemToolConfigModal = ({
             fontSize={'xs'}
             min={field.min}
             step={1}
+            isDisabled={isToolOffline}
             value={
               runtimeConfig[field.key] === undefined || runtimeConfig[field.key] === null
                 ? ''
@@ -517,7 +576,11 @@ const SystemToolConfigModal = ({
           width={'100%'}
           h={9}
           value={status}
+          valueLabel={
+            status === PluginStatusEnum.Offline ? t('app:toolkit_status_offline') : undefined
+          }
           list={pluginStatusSelectList}
+          isDisabled={isToolOffline}
           onChange={(e) => setValue('status', e)}
         />
       </ConfigRow>
@@ -541,6 +604,7 @@ const SystemToolConfigModal = ({
           h={9}
           borderRadius={'sm'}
           bg={'white'}
+          isDisabled={isToolOffline}
         />
       </ConfigRow>
 
@@ -549,6 +613,7 @@ const SystemToolConfigModal = ({
           <ConfigRow label={t('app:toolkit_config_system_key')}>
             <Switch
               isChecked={!!secretsVal}
+              isDisabled={isToolOffline}
               onChange={(e) => {
                 const val = e.target.checked;
                 if (val) {
@@ -578,6 +643,7 @@ const SystemToolConfigModal = ({
               h={9}
               borderRadius={'sm'}
               bg={'white'}
+              isDisabled={isToolOffline}
             />
           </VerticalField>
 
@@ -591,6 +657,7 @@ const SystemToolConfigModal = ({
               h={9}
               borderRadius={'sm'}
               bg={'white'}
+              isDisabled={isToolOffline}
             />
           </VerticalField>
         </>
@@ -633,6 +700,7 @@ const SystemToolConfigModal = ({
                       register={register}
                       defaultValue={0}
                       name={`children.${index}.systemKeyCost`}
+                      isDisabled={isToolOffline}
                       {...COST_LIMITS}
                     />
                     <Input
@@ -659,6 +727,7 @@ const SystemToolConfigModal = ({
           value={selectedVersion || tool?.version}
           list={versionSelectList}
           isLoading={loadingVersions}
+          isDisabled={isToolOffline}
           onChange={(version) => setSelectedVersion(version)}
         />
       </ConfigRow>
@@ -678,13 +747,66 @@ const SystemToolConfigModal = ({
     </ConfigCard>
   );
 
+  const offlineVersionInfoSection = (
+    <ConfigCard
+      title={t('app:toolkit_version_info')}
+      rightContent={
+        <Flex alignItems={'center'} gap={2} minW={0}>
+          <Box color={'myGray.400'} fontSize={'10px'} lineHeight={'14px'} flexShrink={0}>
+            {t('app:toolkit_id')}:
+          </Box>
+          <Box
+            color={'myGray.500'}
+            fontSize={'10px'}
+            lineHeight={'14px'}
+            overflow={'hidden'}
+            textOverflow={'ellipsis'}
+            whiteSpace={'nowrap'}
+          >
+            {tool?.id || toolId}
+          </Box>
+          <CopyBox value={tool?.id || toolId} lineHeight={0}>
+            <MyIcon name={'copy'} w={'12px'} color={'myGray.400'} />
+          </CopyBox>
+        </Flex>
+      }
+    >
+      <ConfigRow label={t('app:toolkit_plugin_version')}>
+        <MySelect<string>
+          width={'100%'}
+          h={9}
+          value={selectedVersion || tool?.version}
+          list={versionSelectList}
+          isLoading={loadingVersions}
+          isDisabled
+          onChange={(version) => setSelectedVersion(version)}
+        />
+      </ConfigRow>
+
+      <ConfigRow label={t('app:toolkit_plugin_name')}>
+        <Box color={'#24282C'} fontSize={'14px'} lineHeight={'20px'}>
+          {tool?.name || '-'}
+        </Box>
+      </ConfigRow>
+
+      <ConfigRow label={t('app:toolkit_plugin_intro')} align={'flex-start'}>
+        <Text color={'#24282C'} fontSize={'14px'} lineHeight={'20px'} whiteSpace={'pre-wrap'}>
+          {tool?.intro || '-'}
+        </Text>
+      </ConfigRow>
+    </ConfigCard>
+  );
+
   return (
     <MyModal
+      isCentered
       isOpen
-      isLoading={loading || loadingTags || loadingVersions || loadingRuntimeConfig}
+      isLoading={
+        loading || (!isToolOffline && (loadingTags || loadingVersions || loadingRuntimeConfig))
+      }
       onClose={onClose}
-      width={modalWidth}
-      maxW={['92vw', modalWidth]}
+      width={isToolOffline ? SINGLE_TOOL_MODAL_WIDTH : modalWidth}
+      maxW={['92vw', isToolOffline ? SINGLE_TOOL_MODAL_WIDTH : modalWidth]}
       bg={'white'}
       borderRadius={'10px'}
       overflow={'hidden'}
@@ -703,84 +825,117 @@ const SystemToolConfigModal = ({
         {t('app:toolkit_tool_config', { name: tool?.name })}
       </Box>
       <ModalBody flex={1} minH={0} overflowY={'auto'} px={8} pt={0} pb={0}>
-        <Tabs variant={'unstyled'} index={tabIndex} onChange={setTabIndex}>
-          <TabList
-            position={'sticky'}
-            top={0}
-            zIndex={1}
-            bg={'white'}
-            borderBottom={'1px solid'}
-            borderColor={'myGray.200'}
-          >
-            <Tab
-              px={0}
-              mr={8}
-              pb={2}
-              color={'myGray.600'}
-              borderBottom={'2px solid transparent'}
-              _selected={{ color: 'primary.600', borderBottomColor: 'primary.600' }}
-              fontWeight={'600'}
+        {isToolOffline ? (
+          offlineVersionInfoSection
+        ) : (
+          <Tabs variant={'unstyled'} index={tabIndex} onChange={setTabIndex}>
+            <TabList
+              position={'sticky'}
+              top={0}
+              zIndex={1}
+              bg={'white'}
+              borderBottom={'1px solid'}
+              borderColor={'myGray.200'}
             >
-              {t('app:toolkit_plugin_config')}
-            </Tab>
-            <Tab
-              px={0}
-              pb={2}
-              color={'myGray.600'}
-              borderBottom={'2px solid transparent'}
-              _selected={{ color: 'primary.600', borderBottomColor: 'primary.600' }}
-              fontWeight={'600'}
-            >
-              {t('admin_plugin:toolkit_runtime_config')}
-            </Tab>
-          </TabList>
+              <Tab
+                px={0}
+                mr={8}
+                pb={2}
+                color={'myGray.600'}
+                borderBottom={'2px solid transparent'}
+                _selected={{ color: 'primary.600', borderBottomColor: 'primary.600' }}
+                fontWeight={'600'}
+              >
+                {t('app:toolkit_plugin_config')}
+              </Tab>
+              <Tab
+                px={0}
+                pb={2}
+                color={'myGray.600'}
+                borderBottom={'2px solid transparent'}
+                _selected={{ color: 'primary.600', borderBottomColor: 'primary.600' }}
+                fontWeight={'600'}
+              >
+                {t('admin_plugin:toolkit_runtime_config')}
+              </Tab>
+            </TabList>
 
-          <TabPanels>
-            <TabPanel px={0} pt={6} pb={0}>
-              <Flex flexDirection={'column'} gap={6}>
-                {basicConfigSection}
-                {versionInfoSection}
-              </Flex>
-            </TabPanel>
-            <TabPanel px={0} pt={6} pb={0}>
-              {runtimeConfigSection || (
-                <Box color={'myGray.500'} fontSize={'sm'}>
-                  {t('admin_plugin:toolkit_no_runtime_config')}
-                </Box>
-              )}
-            </TabPanel>
-          </TabPanels>
-        </Tabs>
+            <TabPanels>
+              <TabPanel px={0} pt={6} pb={0}>
+                <Flex flexDirection={'column'} gap={6}>
+                  {basicConfigSection}
+                  {versionInfoSection}
+                </Flex>
+              </TabPanel>
+              <TabPanel px={0} pt={6} pb={0}>
+                {runtimeConfigSection || (
+                  <Box color={'myGray.500'} fontSize={'sm'}>
+                    {t('admin_plugin:toolkit_no_runtime_config')}
+                  </Box>
+                )}
+              </TabPanel>
+            </TabPanels>
+          </Tabs>
+        )}
       </ModalBody>
       <ModalFooter flexShrink={0} justifyContent={'space-between'} px={8} py={6}>
-        <Box>
-          {showRuntimeConfig && tabIndex === 1 && (
-            <PopoverConfirm
-              type="info"
-              content={t('admin_plugin:toolkit_reset_runtime_config_confirm')}
-              onConfirm={onResetRuntimeConfig}
-              Trigger={
-                <Button
-                  variant={'whiteBase'}
-                  h={'32px'}
-                  px={'14px'}
-                  isLoading={resettingRuntimeConfig}
-                >
-                  {t('common:Reset')}
-                </Button>
-              }
-            />
-          )}
-        </Box>
-        <Flex gap={3}>
-          <Button variant={'whiteBase'} w={'64px'} h={'32px'} onClick={onClose}>
-            {t('common:Cancel')}
-          </Button>
-          <Button w={'64px'} h={'32px'} isLoading={submitting} onClick={handleSubmit(onSubmit)}>
-            {t('common:Confirm')}
-          </Button>
-        </Flex>
+        {isToolOffline ? (
+          <>
+            <Box color={'myGray.500'} fontSize={'14px'} lineHeight={'20px'}>
+              {t('app:toolkit_uninstalled_reinstall_tip')}
+            </Box>
+            <Flex gap={3}>
+              <Button variant={'whiteBase'} w={'64px'} h={'32px'} onClick={onClose}>
+                {t('common:Cancel')}
+              </Button>
+              <Button w={'64px'} h={'32px'} isLoading={reinstalling} onClick={onReinstall}>
+                {t('app:toolkit_install')}
+              </Button>
+            </Flex>
+          </>
+        ) : (
+          <>
+            <Flex gap={3}>
+              <Button
+                variant={'dangerOutline'}
+                h={'32px'}
+                px={'14px'}
+                isLoading={uninstalling}
+                onClick={openToolUninstallConfirm}
+              >
+                {t('app:toolkit_uninstall')}
+              </Button>
+              {showRuntimeConfig && tabIndex === 1 && (
+                <PopoverConfirm
+                  type="info"
+                  content={t('admin_plugin:toolkit_reset_runtime_config_confirm')}
+                  onConfirm={onResetRuntimeConfig}
+                  Trigger={
+                    <Button
+                      variant={'whiteBase'}
+                      h={'32px'}
+                      px={'14px'}
+                      isLoading={resettingRuntimeConfig}
+                      isDisabled={isToolOffline}
+                    >
+                      {t('common:Reset')}
+                    </Button>
+                  }
+                />
+              )}
+            </Flex>
+            <Flex gap={3}>
+              <Button variant={'whiteBase'} w={'64px'} h={'32px'} onClick={onClose}>
+                {t('common:Cancel')}
+              </Button>
+              <Button w={'64px'} h={'32px'} isLoading={submitting} onClick={handleSubmit(onSubmit)}>
+                {t('common:Confirm')}
+              </Button>
+            </Flex>
+          </>
+        )}
       </ModalFooter>
+      <UninstallConfirmModal isLoading={uninstalling} />
     </MyModal>
   );
 };

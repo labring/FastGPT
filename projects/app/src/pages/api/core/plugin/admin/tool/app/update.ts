@@ -7,6 +7,7 @@ import {
   UpdateWorkflowToolBodySchema,
   type UpdateWorkflowToolBodyType
 } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 export type updateWorkflowToolQuery = {};
 
@@ -14,13 +15,23 @@ export type updateWorkflowToolBody = UpdateWorkflowToolBodyType;
 
 export type updateWorkflowToolResponse = {};
 
+const omitUndefinedFields = <T extends Record<string, unknown>>(fields: T) =>
+  Object.fromEntries(
+    Object.entries(fields).filter(([, value]) => value !== undefined)
+  ) as Partial<T>;
+
 async function handler(
   req: ApiRequestProps<updateWorkflowToolBody, updateWorkflowToolQuery>,
   res: ApiResponseType<any>
 ): Promise<updateWorkflowToolResponse> {
   await authSystemAdmin({ req });
 
-  const { id: pluginId, ...updateFields } = UpdateWorkflowToolBodySchema.parse(req.body);
+  const {
+    body: { id: pluginId, ...updateFields }
+  } = parseApiInput({
+    req,
+    bodySchema: UpdateWorkflowToolBodySchema
+  });
 
   const plugin = await MongoSystemTool.findOne({ pluginId });
   if (!plugin?.customConfig?.associatedPluginId) {
@@ -40,16 +51,16 @@ async function handler(
     plugin.customConfig.name !== nextCustomConfig.name ||
     plugin.customConfig.avatar !== nextCustomConfig.avatar ||
     plugin.customConfig.intro !== nextCustomConfig.intro;
-  const baseUpdateFields = {
+  const baseUpdateFields = omitUndefinedFields({
     pluginId,
     status: updateFields.status,
     originCost: updateFields.originCost,
     currentCost: updateFields.currentCost,
     hasTokenFee: updateFields.hasTokenFee,
     systemKeyCost: updateFields.systemKeyCost,
-    promoteTags: updateFields.promoteTags ?? null,
-    hideTags: updateFields.hideTags ?? null
-  };
+    promoteTags: 'promoteTags' in updateFields ? (updateFields.promoteTags ?? null) : undefined,
+    hideTags: 'hideTags' in updateFields ? (updateFields.hideTags ?? null) : undefined
+  });
   if ('secretsVal' in updateFields) {
     Object.assign(baseUpdateFields, {
       secretsVal: updateFields.secretsVal ?? null

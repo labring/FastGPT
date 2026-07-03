@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { AUTH_TOKEN } from '@/service/auth';
+import { isOfficialToken } from '@/service/auth';
 import { deleteMarketplacePkg } from '@/service/tool/delete';
 import {
   DeleteMarketplacePkgBodySchema,
@@ -46,7 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return sendJson(res, 405, null, 'Method not allowed');
     }
 
-    if (!!AUTH_TOKEN && req.headers['authorization'] !== `Bearer ${AUTH_TOKEN}`) {
+    if (!isOfficialToken(req.headers['authorization'])) {
       return sendJson(res, 401, null, 'Unauthorized');
     }
 

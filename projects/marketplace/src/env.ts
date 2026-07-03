@@ -12,6 +12,7 @@ export const marketplaceEnv = createEnv({
     NEXT_RUNTIME: z.string().optional(),
 
     AUTH_TOKEN: z.string().optional().default('marketplace-token'),
+    COMMUNITY_AUTH_TOKEN: z.string().optional(),
     MONGODB_URI: z.string().optional().default(''),
     DB_MAX_LINK: IntSchema.default(20),
     SYNC_INDEX: BoolSchema.default(true),

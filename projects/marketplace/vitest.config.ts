@@ -30,6 +30,7 @@ export default defineConfig({
       include: [
         'src/env.ts',
         'src/web/api.ts',
+        'src/pages/api/admin/pkg/upload.ts',
         'src/pages/api/admin/pkg/delete.ts',
         'src/pages/api/tool/getDownloadUrl.ts',
         'src/service/plugin/repo.ts',

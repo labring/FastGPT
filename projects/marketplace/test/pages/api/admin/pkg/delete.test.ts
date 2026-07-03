@@ -6,7 +6,10 @@ const deleteMocks = vi.hoisted(() => ({
 
 vi.mock('../../../../../src/service/tool/delete', () => deleteMocks);
 vi.mock('../../../../../src/service/auth', () => ({
-  AUTH_TOKEN: 'marketplace-token'
+  AUTH_TOKEN: 'marketplace-token',
+  isOfficialToken: vi.fn((authorization: string | undefined) => {
+    return authorization === 'Bearer marketplace-token';
+  })
 }));
 
 const createResponse = () => {

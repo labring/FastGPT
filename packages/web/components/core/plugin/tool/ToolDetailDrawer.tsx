@@ -35,6 +35,7 @@ const ToolDetailDrawer = ({
   onClose,
   selectedTool,
   onToggleInstall,
+  onDelete,
   onUpdate,
   isUpdating,
   systemTitle,
@@ -49,6 +50,7 @@ const ToolDetailDrawer = ({
   onClose: () => void;
   selectedTool: ToolCardItemType;
   onToggleInstall?: (installed: boolean, version?: string) => void | Promise<void>;
+  onDelete?: () => void | Promise<void>;
   onUpdate?: (version?: string) => void;
   isUpdating?: boolean;
   systemTitle?: string;
@@ -65,9 +67,16 @@ const ToolDetailDrawer = ({
   const [isInstalled, setIsInstalled] = useState(selectedTool.installed);
   const [selectedVersion, setSelectedVersion] = useState<string | undefined>(selectedTool.version);
 
+  useEffect(() => {
+    setIsInstalled(selectedTool.installed);
+  }, [selectedTool.id, selectedTool.installed]);
+
   const isDownload = useMemo(() => {
     return mode === 'marketplace';
   }, [mode]);
+  const showUninstallButton = mode === 'admin' && isInstalled && !!onDelete;
+  const showInstallButton = showActionButton && !showUninstallButton;
+  const hasUpdateButton = !!selectedTool.update && !!onUpdate && mode !== 'marketplace';
 
   const {
     data: toolVersions = [],
@@ -182,46 +191,50 @@ const ToolDetailDrawer = ({
             <Box fontSize={'12px'} color="myGray.500" mt={3}>
               {`by ${parentTool?.author || systemTitle || 'FastGPT'}`}
             </Box>
-            {(showActionButton || (selectedTool.update && onUpdate && mode !== 'marketplace')) && (
+            {(showInstallButton || showUninstallButton || hasUpdateButton) && (
               <Flex mt={3} gap={2}>
-                {/* Determine if we have two buttons */}
-                {(() => {
-                  const hasUpdateButton = selectedTool.update && onUpdate && mode !== 'marketplace';
-
-                  return (
-                    <>
-                      {showActionButton && (
-                        <Button
-                          flex={1}
-                          variant={isInstalled ? 'primaryOutline' : 'primary'}
-                          isLoading={isLoading || loadingDetail}
-                          isDisabled={isUpdating}
-                          onClick={async () => {
-                            await onToggleInstall?.(!isInstalled, currentVersion);
-                            if (mode === 'marketplace') return;
-                            setIsInstalled(!isInstalled);
-                          }}
-                        >
-                          {isDownload
-                            ? t('common:Download')
-                            : isInstalled
-                              ? t('app:toolkit_uninstall')
-                              : t('app:toolkit_install')}
-                        </Button>
-                      )}
-                      {hasUpdateButton && (
-                        <Button
-                          variant="primary"
-                          flex={1}
-                          isLoading={isUpdating || loadingDetail}
-                          onClick={() => onUpdate?.(currentVersion)}
-                        >
-                          {t('app:custom_plugin_update')}
-                        </Button>
-                      )}
-                    </>
-                  );
-                })()}
+                {showInstallButton && (
+                  <Button
+                    flex={'1 1 0'}
+                    minW={0}
+                    variant={isInstalled ? 'primaryOutline' : 'primary'}
+                    isLoading={isLoading || loadingDetail}
+                    isDisabled={isUpdating}
+                    onClick={async () => {
+                      await onToggleInstall?.(!isInstalled, currentVersion);
+                      if (mode === 'marketplace') return;
+                      setIsInstalled(!isInstalled);
+                    }}
+                  >
+                    {isDownload
+                      ? t('common:Download')
+                      : isInstalled
+                        ? t('app:toolkit_uninstall')
+                        : t('app:toolkit_install')}
+                  </Button>
+                )}
+                {showUninstallButton && (
+                  <Button
+                    flex={hasUpdateButton ? '0 0 62px' : '1 1 0'}
+                    minW={0}
+                    variant="dangerOutline"
+                    isLoading={isLoading || loadingDetail}
+                    onClick={() => onDelete?.()}
+                  >
+                    {t('app:toolkit_uninstall')}
+                  </Button>
+                )}
+                {hasUpdateButton && (
+                  <Button
+                    variant="primary"
+                    flex={'1 1 0'}
+                    minW={0}
+                    isLoading={isUpdating || loadingDetail}
+                    onClick={() => onUpdate?.(currentVersion)}
+                  >
+                    {t('app:custom_plugin_update')}
+                  </Button>
+                )}
               </Flex>
             )}
 
