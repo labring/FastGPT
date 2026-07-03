@@ -25,11 +25,7 @@ import {
   type ParallelFullResultItem
 } from './service';
 import { pushSubWorkflowUsage } from '../utils';
-import {
-  createExternalOutputSnapshot,
-  createVariableSnapshot,
-  syncContainerRunState
-} from '../utils/containerRunState';
+import { createContainerRunStateSnapshot, syncContainerRunState } from '../utils/containerRunState';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.nestedInputArray]: Array<any>;
@@ -95,10 +91,6 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
           item,
           index
         });
-        const initialExternalOutputSnapshot = createExternalOutputSnapshot({
-          nodes: taskRuntimeNodes,
-          childrenNodeIdList
-        });
         const taskResponseId =
           maxRetryAttempts > 0
             ? `${taskResponseIdPrefix}_task_${index}_attempt_${attempt}`
@@ -106,7 +98,9 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
 
         try {
           const taskVariableState = props.variableState.clone();
-          const initialVariableSnapshot = createVariableSnapshot({
+          const taskStateSnapshot = createContainerRunStateSnapshot({
+            nodes: taskRuntimeNodes,
+            childrenNodeIdList,
             variableState: taskVariableState
           });
           const response = await runWorkflow({
@@ -132,8 +126,7 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
               sourceNodes: taskRuntimeNodes,
               targetNodes: runtimeNodes,
               childrenNodeIdList,
-              initialOutputSnapshot: initialExternalOutputSnapshot,
-              initialVariableSnapshot,
+              stateSnapshot: taskStateSnapshot,
               childVariableState: taskVariableState,
               parentVariableState: props.variableState
             });

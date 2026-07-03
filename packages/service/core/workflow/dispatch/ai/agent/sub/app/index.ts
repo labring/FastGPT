@@ -93,7 +93,7 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
     responseChatItemId: data.responseChatItemId,
     histories: [],
     uid: data.uid,
-    variablesConfig: chatConfig.variables,
+    variablesConfig: chatConfig.variables ?? [],
     inputVariables: customAppVariables,
     externalVariables: externalProvider?.externalWorkflowVariables,
     sourceVariableState: variableState
@@ -194,7 +194,7 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
     responseChatItemId: data.responseChatItemId,
     histories: [],
     uid: data.uid,
-    variablesConfig: chatConfig.variables,
+    variablesConfig: chatConfig.variables ?? [],
     inputVariables: {},
     externalVariables: externalProvider?.externalWorkflowVariables,
     sourceVariableState: variableState

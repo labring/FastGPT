@@ -36,11 +36,7 @@ import {
   pickCustomOutputInputs,
   readCustomOutputSnapshot
 } from './service';
-import {
-  createExternalOutputSnapshot,
-  createVariableSnapshot,
-  syncContainerRunState
-} from '../utils/containerRunState';
+import { createContainerRunStateSnapshot, syncContainerRunState } from '../utils/containerRunState';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum;
@@ -191,12 +187,10 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     }
 
     const iterationVariableState = props.variableState.clone();
-    const initialVariableSnapshot = createVariableSnapshot({
-      variableState: iterationVariableState
-    });
-    const iterationExternalOutputSnapshot = createExternalOutputSnapshot({
+    const iterationStateSnapshot = createContainerRunStateSnapshot({
       nodes: isolatedNodes,
-      childrenNodeIdList
+      childrenNodeIdList,
+      variableState: iterationVariableState
     });
     const response = await runWorkflow({
       ...props,
@@ -285,8 +279,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
         sourceNodes: isolatedNodes,
         targetNodes: runtimeNodes,
         childrenNodeIdList,
-        initialOutputSnapshot: iterationExternalOutputSnapshot,
-        initialVariableSnapshot,
+        stateSnapshot: iterationStateSnapshot,
         childVariableState: iterationVariableState,
         parentVariableState: props.variableState
       });
@@ -312,8 +305,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       sourceNodes: isolatedNodes,
       targetNodes: runtimeNodes,
       childrenNodeIdList,
-      initialOutputSnapshot: iterationExternalOutputSnapshot,
-      initialVariableSnapshot,
+      stateSnapshot: iterationStateSnapshot,
       childVariableState: iterationVariableState,
       parentVariableState: props.variableState
     });

@@ -4,14 +4,18 @@ import type {
   WorkflowVariableStateLike
 } from '@fastgpt/global/core/workflow/runtime/type';
 
-export type ExternalOutputSnapshot = Map<string, unknown>;
-export type VariableSnapshot = Map<string, unknown>;
+type ExternalOutputSnapshot = Map<string, unknown>;
+type VariableSnapshot = Map<string, unknown>;
+
+export type ContainerRunStateSnapshot = {
+  externalOutputSnapshot: ExternalOutputSnapshot;
+  variableSnapshot?: VariableSnapshot;
+};
 
 const getOutputSnapshotKey = ({ nodeId, outputId }: { nodeId: string; outputId: string }) =>
   `${nodeId}:${outputId}`;
 
-/** 创建容器子运行开始前的外部节点 output 快照，用于后续只同步本轮真实改动。 */
-export const createExternalOutputSnapshot = ({
+const createExternalOutputSnapshot = ({
   nodes,
   childrenNodeIdList
 }: {
@@ -35,8 +39,7 @@ export const createExternalOutputSnapshot = ({
   return snapshot;
 };
 
-/** 创建容器子运行开始前的变量快照，用于只提交本轮实际修改过的变量。 */
-export const createVariableSnapshot = ({
+const createVariableSnapshot = ({
   variableState
 }: {
   variableState: WorkflowVariableStateLike;
@@ -44,6 +47,23 @@ export const createVariableSnapshot = ({
   const variables = variableState.toRuntimeRecord();
   return new Map(Object.entries(variables).map(([key, value]) => [key, cloneDeep(value)]));
 };
+
+/** 创建容器子运行开始前的状态快照，用于后续只提交本轮真实发生的副作用。 */
+export const createContainerRunStateSnapshot = ({
+  nodes,
+  childrenNodeIdList,
+  variableState
+}: {
+  nodes: RuntimeNodeItemType[];
+  childrenNodeIdList: string[];
+  variableState?: WorkflowVariableStateLike;
+}): ContainerRunStateSnapshot => ({
+  externalOutputSnapshot: createExternalOutputSnapshot({
+    nodes,
+    childrenNodeIdList
+  }),
+  variableSnapshot: variableState ? createVariableSnapshot({ variableState }) : undefined
+});
 
 const syncExternalNodeOutputs = ({
   sourceNodes,
@@ -95,16 +115,14 @@ export const syncContainerRunState = async ({
   sourceNodes,
   targetNodes,
   childrenNodeIdList,
-  initialOutputSnapshot,
-  initialVariableSnapshot,
+  stateSnapshot,
   childVariableState,
   parentVariableState
 }: {
   sourceNodes: RuntimeNodeItemType[];
   targetNodes: RuntimeNodeItemType[];
   childrenNodeIdList: string[];
-  initialOutputSnapshot: ExternalOutputSnapshot;
-  initialVariableSnapshot?: VariableSnapshot;
+  stateSnapshot: ContainerRunStateSnapshot;
   childVariableState?: WorkflowVariableStateLike;
   parentVariableState?: WorkflowVariableStateLike;
 }) => {
@@ -112,7 +130,7 @@ export const syncContainerRunState = async ({
     sourceNodes,
     targetNodes,
     childrenNodeIdList,
-    initialOutputSnapshot
+    initialOutputSnapshot: stateSnapshot.externalOutputSnapshot
   });
 
   if (!childVariableState || !parentVariableState || childVariableState === parentVariableState) {
@@ -122,9 +140,8 @@ export const syncContainerRunState = async ({
   const childVariables = childVariableState.toRuntimeRecord();
   for (const [key, value] of Object.entries(childVariables)) {
     if (
-      initialVariableSnapshot &&
-      initialVariableSnapshot.has(key) &&
-      isEqual(value, initialVariableSnapshot.get(key))
+      stateSnapshot.variableSnapshot?.has(key) &&
+      isEqual(value, stateSnapshot.variableSnapshot.get(key))
     ) {
       continue;
     }

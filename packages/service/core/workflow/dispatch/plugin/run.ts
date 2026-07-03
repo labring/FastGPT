@@ -210,7 +210,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       chatId: props.chatId,
       responseChatItemId: props.responseChatItemId,
       histories: props.histories,
-      variablesConfig: workflowTool.chatConfig?.variables,
+      variablesConfig: workflowTool.chatConfig?.variables ?? [],
       inputVariables: {},
       externalVariables: externalProvider?.externalWorkflowVariables,
       sourceVariableState: props.variableState
