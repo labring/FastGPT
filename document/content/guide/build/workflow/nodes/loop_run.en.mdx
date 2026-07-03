@@ -66,7 +66,10 @@ The Loop Node provides two running modes.
    - The custom outputs on the Loop Node only hold the values from the **last iteration** when the loop exits (it no longer aggregates all outputs into a single array).
    - **How to aggregate results from all iterations?**  
      If you need to collect and aggregate data from all runs into a list, declare an array variable **outside** the Loop Node as a global variable, and use a **Variable Update** node **inside** the loop body to append the result of each iteration into that global array.
-3. **Prevent Infinite Loops**
+3. **Variable and External Output Writeback**
+   - After each successful iteration, global variable changes made inside the loop body are written back to the main flow. If a Variable Update node changes an output on a node outside the loop container, that output is also written back after that iteration succeeds.
+   - Failed iterations do not commit variable or external output changes from that iteration. When an interactive node pauses execution, the completed changes before the pause are kept as a resumable checkpoint so the loop can continue after the user submits input.
+4. **Prevent Infinite Loops**
    - For Conditional Loops, ensure that a **Loop Break** node is reachable under certain conditions.
    - The system enforces a maximum iteration limit (default 100). The loop will automatically terminate and throw an error if this limit is reached.
 

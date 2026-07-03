@@ -194,11 +194,12 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
     responseChatItemId: data.responseChatItemId,
     histories: [],
     uid: data.uid,
-    variablesConfig: [],
+    variablesConfig: chatConfig.variables,
     inputVariables: {},
     externalVariables: externalProvider?.externalWorkflowVariables,
     sourceVariableState: variableState
   });
+  const runtimeVariables = childrenVariableState.toRuntimeRecord();
   const runtimeNodes = storeNodes2RuntimeNodes(nodes, getWorkflowEntryNodeIds(nodes)).map(
     (node) => {
       // Update plugin input value
@@ -262,7 +263,10 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
     variableState: childrenVariableState,
     query: serverGetWorkflowToolRunUserQuery({
       pluginInputs: getWorkflowToolInputsFromStoreNodes(nodes),
-      variables: customAppVariables
+      variables: {
+        ...runtimeVariables,
+        ...customAppVariables
+      }
     }).value,
     stream: false,
     workflowStreamResponse: undefined
@@ -281,7 +285,7 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
             return acc;
           }, {})
       )
-    : 'Run plugin failed';
+    : 'Run workflow tool failed';
 
   return {
     response,

@@ -456,6 +456,59 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
   });
 });
 
+describe('SystemToolRepo.getSystemToolWorkflowRuntime', () => {
+  it('returns workflow app chatConfig for runtime variable initialization', async () => {
+    mocks.findSystemTool.mockResolvedValue({
+      pluginId: 'commercial-workflow-tool',
+      currentCost: 2,
+      customConfig: {
+        name: 'Workflow Tool',
+        avatar: 'workflow.svg',
+        associatedPluginId: 'app-id'
+      }
+    });
+    mocks.getAppVersionById.mockResolvedValue({
+      nodes: [],
+      edges: [],
+      chatConfig: {
+        variables: [
+          {
+            key: 'counter',
+            type: 'numberInput',
+            valueType: WorkflowIOValueTypeEnum.number,
+            defaultValue: 0
+          }
+        ]
+      }
+    });
+
+    const runtime = await SystemToolRepo.getInstance().getSystemToolWorkflowRuntime({
+      pluginId: 'commercial-workflow-tool',
+      version: 'version-id'
+    });
+
+    expect(runtime).toMatchObject({
+      id: 'commercial-workflow-tool',
+      name: 'Workflow Tool',
+      avatar: 'workflow.svg',
+      currentCost: 2,
+      associatedPluginId: 'app-id',
+      chatConfig: {
+        variables: [
+          {
+            key: 'counter',
+            defaultValue: 0
+          }
+        ]
+      }
+    });
+    expect(mocks.getAppVersionById).toHaveBeenCalledWith({
+      appId: 'app-id',
+      versionId: 'version-id'
+    });
+  });
+});
+
 describe('SystemToolRepo.getSystemToolDisplayInfo', () => {
   it('returns workflow tool display metadata without loading app version schemas', async () => {
     mocks.findSystemTool.mockResolvedValue({

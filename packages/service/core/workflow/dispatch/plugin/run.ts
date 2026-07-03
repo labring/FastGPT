@@ -125,6 +125,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         systemKeyCost: 0,
         nodes: toolVersion.nodes,
         edges: toolVersion.edges,
+        chatConfig: toolVersion.chatConfig,
         hasTokenFee: false
       };
     } else {
@@ -146,6 +147,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         systemKeyCost: systemTool.systemKeyCost ?? 0,
         nodes: systemTool.nodes,
         edges: systemTool.edges,
+        chatConfig: systemTool.chatConfig,
         hasTokenFee: !!systemTool.hasTokenFee,
         associatedPluginId: systemTool.associatedPluginId
       };
@@ -208,7 +210,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       chatId: props.chatId,
       responseChatItemId: props.responseChatItemId,
       histories: props.histories,
-      variablesConfig: [],
+      variablesConfig: workflowTool.chatConfig?.variables,
       inputVariables: {},
       externalVariables: externalProvider?.externalWorkflowVariables,
       sourceVariableState: props.variableState
@@ -248,7 +250,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         variables: runtimeVariables,
         files
       }).value,
-      chatConfig: {},
+      chatConfig: workflowTool.chatConfig ?? {},
       runtimeNodes,
       runtimeEdges: storeEdges2RuntimeEdges(workflowTool.edges)
     });

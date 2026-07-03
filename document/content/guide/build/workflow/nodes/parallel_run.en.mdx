@@ -53,7 +53,7 @@ It fits batch tasks where each item is **independent and does not depend on the 
 
 - **No nesting**: a Parallel Run node cannot contain another Parallel Run or a Batch Processing node
 - **No interactive nodes**: form input, user selection, and other interactive nodes cannot run inside the Execution Logic — the editor blocks dropping them in
-- **Variable isolation**: changes made to global variables inside the Execution Logic are not carried back to the main flow. Use the End node's output to persist anything you need
+- **Variable and output races**: global variable changes from successful tasks are written back to the main flow. If a Variable Update node changes an output on a node outside the parallel container, that output is also written back after the task succeeds. When multiple tasks write the same variable or external node output, the final value depends on task completion order and is not guaranteed to be stable. For deterministic results, return values through the End node and use the Parallel Run aggregate outputs
 - **Array length cap**: the input array is capped at 100 items by default (adjustable by the deployment — see below)
 - **Turn off streaming for AI nodes inside the Execution Logic**: it is strongly recommended to disable **"Return AI content"** on AI Chat nodes placed inside the parallel body. Otherwise multiple tasks will stream to the same chat window at once and the text will interleave into a garbled mess. Usually you only want a final **Specified Reply** node *after* the parallel node to emit the aggregated result.
 

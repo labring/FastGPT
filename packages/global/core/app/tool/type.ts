@@ -1,21 +1,6 @@
 import type { StoreEdgeItemType } from '../../workflow/type/edge';
 import type { StoreNodeItemType } from '../../workflow/type/node';
-import type { WorkflowTemplateType } from '../../workflow/type';
-import {
-  FlowNodeInputItemTypeSchema,
-  FlowNodeOutputItemTypeSchema,
-  InputConfigTypeSchema,
-  type FlowNodeInputItemType,
-  type FlowNodeOutputItemType
-} from '../../workflow/type/io';
-import {
-  PluginStatusSchema,
-  type PluginStatusType,
-  type SystemPluginToolTagType
-} from '../../plugin/type';
-import type { UserTagsType } from '../../../support/user/type';
-import { UserTagsSchema } from '../../../support/user/type';
-import z from 'zod';
+import type { AppChatConfigType } from '../type';
 
 export type AppToolRuntimeType = {
   id: string;
@@ -28,6 +13,7 @@ export type AppToolRuntimeType = {
   isTool?: boolean;
   nodes: StoreNodeItemType[];
   edges: StoreEdgeItemType[];
+  chatConfig?: AppChatConfigType;
   currentCost?: number;
   systemKeyCost?: number;
   hasTokenFee?: boolean;
