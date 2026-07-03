@@ -40,7 +40,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
 ```bash
 # 输入命令拉取配置文件
-bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
+bash <(curl -fsSL https://doc.fastgpt.io/deploy/install.sh)
 # 启动
 docker compose up -d
 ```

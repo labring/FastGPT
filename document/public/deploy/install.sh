@@ -189,6 +189,34 @@ prompt_local_compose_path() {
     done
 }
 
+is_true() {
+    case "$1" in
+        true | TRUE | True | 1 | yes | YES | Yes | y | Y | on | ON | On) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+is_false() {
+    case "$1" in
+        false | FALSE | False | 0 | no | NO | No | n | N | off | OFF | Off) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+normalize_bool_env() {
+    local name="$1"
+    local value="$2"
+
+    if is_true "$value"; then
+        echo "true"
+    elif is_false "$value"; then
+        echo "false"
+    else
+        echo "错误: $name 只支持 true/false、1/0、yes/no、on/off" >&2
+        exit 1
+    fi
+}
+
 ROOT_LOGIN_PASSWORD="1234"
 
 randomize_compose_credentials() {
@@ -304,6 +332,10 @@ DEPLOY_VERSIONS=(
 # END GENERATED DEPLOY VERSIONS
 LOCAL_DEPLOY_VERSION="local"
 LOCAL_DEPLOY_LABEL="本地 docker-compose.yml"
+NON_INTERACTIVE=false
+if [ -n "$FASTGPT_NON_INTERACTIVE" ]; then
+    NON_INTERACTIVE="$(normalize_bool_env FASTGPT_NON_INTERACTIVE "$FASTGPT_NON_INTERACTIVE")"
+fi
 
 # 获取部署版本展示文案：main 为迭代版，其他版本均视为稳定版
 get_version_label() {
@@ -347,6 +379,8 @@ elif [ -n "$FASTGPT_DEPLOY_VERSION" ]; then
         echo "可选版本: ${DEPLOY_VERSIONS[*]} $LOCAL_DEPLOY_VERSION"
         exit 1
     fi
+elif [ "$NON_INTERACTIVE" = true ]; then
+    DEPLOY_VERSION="${DEPLOY_VERSIONS[0]}"
 else
     VERSION_OPTIONS=()
     for version in "${DEPLOY_VERSIONS[@]}"; do
@@ -365,22 +399,68 @@ fi
 
 # ========== 2. 选择镜像源 ==========
 if [ "$DEPLOY_VERSION" != "$LOCAL_DEPLOY_VERSION" ]; then
-    radio_select "请选择镜像源 (↑↓ 选择, 回车确认):" "阿里云 (中国大陆)" "GitHub (全球)"
-    case $RADIO_RESULT in
-        1)
-            REGION="global"
-            BASE_URL="https://doc.fastgpt.io/deploy"
-            ;;
-        *)
-            REGION="cn"
-            BASE_URL="https://doc.fastgpt.cn/deploy"
-            ;;
-    esac
+    if [ -n "$FASTGPT_REGION" ]; then
+        case "$FASTGPT_REGION" in
+            cn | CN | china | China)
+                REGION="cn"
+                BASE_URL="https://doc.fastgpt.cn/deploy"
+                ;;
+            global | GLOBAL | Global | github | GitHub)
+                REGION="global"
+                BASE_URL="https://doc.fastgpt.io/deploy"
+                ;;
+            *)
+                echo "错误: 不支持的 FASTGPT_REGION: $FASTGPT_REGION"
+                echo "可选值: cn, global"
+                exit 1
+                ;;
+        esac
+    elif [ "$NON_INTERACTIVE" = true ]; then
+        REGION="cn"
+        BASE_URL="https://doc.fastgpt.cn/deploy"
+    else
+        radio_select "请选择镜像源 (↑↓ 选择, 回车确认):" "阿里云 (中国大陆)" "GitHub (全球)"
+        case $RADIO_RESULT in
+            1)
+                REGION="global"
+                BASE_URL="https://doc.fastgpt.io/deploy"
+                ;;
+            *)
+                REGION="cn"
+                BASE_URL="https://doc.fastgpt.cn/deploy"
+                ;;
+        esac
+    fi
 fi
 
 # ========== 3. 选择向量数据库 ==========
 if [ "$DEPLOY_VERSION" == "$LOCAL_DEPLOY_VERSION" ]; then
     VECTOR="local"
+elif [ -n "$FASTGPT_VECTOR" ]; then
+    case "$FASTGPT_VECTOR" in
+        pg | PG | pgvector | PgVector | postgresql | PostgreSQL)
+            VECTOR="pg"
+            ;;
+        milvus | Milvus)
+            VECTOR="milvus"
+            ;;
+        zilliz | Zilliz)
+            VECTOR="zilliz"
+            ;;
+        oceanbase | OceanBase)
+            VECTOR="oceanbase"
+            ;;
+        seekdb | SeekDB)
+            VECTOR="seekdb"
+            ;;
+        *)
+            echo "错误: 不支持的 FASTGPT_VECTOR: $FASTGPT_VECTOR"
+            echo "可选值: pg, milvus, zilliz, oceanbase, seekdb"
+            exit 1
+            ;;
+    esac
+elif [ "$NON_INTERACTIVE" = true ]; then
+    VECTOR="pg"
 else
     radio_select "请选择向量数据库 (↑↓ 选择, 回车确认):" "PostgreSQL + pgvector" "Milvus" "Zilliz" "OceanBase" "SeekDB"
     case $RADIO_RESULT in
@@ -393,11 +473,17 @@ else
 fi
 
 # ========== 4. 选择是否自动生成密钥 ==========
-radio_select "是否自动生成登录密码、服务 Token、应用密钥和组件密码? (↑↓ 选择, 回车确认):" "自动生成 (推荐)" "不自动生成"
-case $RADIO_RESULT in
-    1) AUTO_GENERATE_CREDENTIALS=false ;;
-    *) AUTO_GENERATE_CREDENTIALS=true ;;
-esac
+if [ -n "$FASTGPT_AUTO_GENERATE_CREDENTIALS" ]; then
+    AUTO_GENERATE_CREDENTIALS="$(normalize_bool_env FASTGPT_AUTO_GENERATE_CREDENTIALS "$FASTGPT_AUTO_GENERATE_CREDENTIALS")"
+elif [ "$NON_INTERACTIVE" = true ]; then
+    AUTO_GENERATE_CREDENTIALS=true
+else
+    radio_select "是否自动生成登录密码、服务 Token、应用密钥和组件密码? (↑↓ 选择, 回车确认):" "自动生成 (推荐)" "不自动生成"
+    case $RADIO_RESULT in
+        1) AUTO_GENERATE_CREDENTIALS=false ;;
+        *) AUTO_GENERATE_CREDENTIALS=true ;;
+    esac
+fi
 
 # ========== 5. 检测可用 IP ==========
 IP_LIST=()
@@ -448,7 +534,26 @@ IP_LIST=("${UNIQUE_IPS[@]}")
 select_address() {
     local title="$1"
     local port="$2"
+    local preset_endpoint="$3"
     SELECTED_CUSTOM=false
+
+    if [ -n "$preset_endpoint" ]; then
+        SELECTED_ADDR="$preset_endpoint"
+        SELECTED_CUSTOM=true
+        return
+    fi
+
+    if [ "$NON_INTERACTIVE" = true ]; then
+        if [ ${#IP_LIST[@]} -gt 0 ]; then
+            SELECTED_ADDR="${IP_LIST[0]}"
+            SELECTED_CUSTOM=false
+            return
+        fi
+
+        echo "错误: 未检测到可用 IP 地址。请设置 FASTGPT_S3_ENDPOINT 和 FASTGPT_MCP_ENDPOINT 后重试。" >&2
+        exit 1
+    fi
+
     if [ ${#IP_LIST[@]} -gt 0 ]; then
         # 构建带完整地址的选项列表
         local opts=()
@@ -478,12 +583,12 @@ select_address() {
 }
 
 # ========== 6. 选择 S3 访问地址 (端口 9000) ==========
-select_address "请选择 S3 访问地址 - 客户端和容器均需可访问 (↑↓ 选择, 回车确认, 通常默认第一个即可):" 9000
+select_address "请选择 S3 访问地址 - 客户端和容器均需可访问 (↑↓ 选择, 回车确认, 通常默认第一个即可):" 9000 "$FASTGPT_S3_ENDPOINT"
 S3_ADDR="$SELECTED_ADDR"
 S3_CUSTOM=$SELECTED_CUSTOM
 
 # ========== 7. 选择 SSE MCP 访问地址 (端口 3003) ==========
-select_address "请选择 SSE MCP 访问地址 - 客户端和容器均需可访问 (↑↓ 选择, 回车确认, 通常默认第一个即可):" 3003
+select_address "请选择 SSE MCP 访问地址 - 客户端和容器均需可访问 (↑↓ 选择, 回车确认, 通常默认第一个即可):" 3003 "$FASTGPT_MCP_ENDPOINT"
 MCP_ADDR="$SELECTED_ADDR"
 MCP_CUSTOM=$SELECTED_CUSTOM
 
@@ -535,10 +640,14 @@ echo "  MCP 地址:     $MCP_DISPLAY"
 echo "  密钥处理:     $CREDENTIALS_LABEL"
 echo "=============================="
 echo ""
-read -p "确认以上配置? (y/n) [y]: " confirm
-if [ "$confirm" == "n" ]; then
-    echo "已取消"
-    exit 1
+if [ "$NON_INTERACTIVE" = true ]; then
+    echo "非交互模式已自动确认配置"
+else
+    read -p "确认以上配置? (y/n) [y]: " confirm
+    if [ "$confirm" == "n" ]; then
+        echo "已取消"
+        exit 1
+    fi
 fi
 
 # ========== 获取配置文件 ==========
@@ -707,10 +816,11 @@ if [ -n "$MCP_ADDR" ]; then
             sed -i "s|\"mcpServerProxyEndpoint\": \"\"|\"mcpServerProxyEndpoint\": \"$MCP_ENDPOINT\"|g" config.json
         fi
     else
+        ESCAPED_MCP_ENDPOINT=$(escape_sed_replacement "$MCP_ENDPOINT")
         if [[ "$OSTYPE" == "darwin"* ]]; then
-            sed -i '' "s|^      SSE_MCP_SERVER_PROXY_ENDPOINT:.*|      SSE_MCP_SERVER_PROXY_ENDPOINT: $MCP_ENDPOINT|g" docker-compose.yml
+            sed -i '' "s|^\([[:space:]]*SSE_MCP_SERVER_PROXY_ENDPOINT:\).*|\1 $ESCAPED_MCP_ENDPOINT|g" docker-compose.yml
         else
-            sed -i "s|^      SSE_MCP_SERVER_PROXY_ENDPOINT:.*|      SSE_MCP_SERVER_PROXY_ENDPOINT: $MCP_ENDPOINT|g" docker-compose.yml
+            sed -i "s|^\([[:space:]]*SSE_MCP_SERVER_PROXY_ENDPOINT:\).*|\1 $ESCAPED_MCP_ENDPOINT|g" docker-compose.yml
         fi
     fi
 

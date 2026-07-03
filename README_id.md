@@ -40,7 +40,7 @@ Anda dapat memulai FastGPT dengan cepat menggunakan Docker. Jalankan perintah be
 
 ```bash
 # Jalankan perintah untuk menarik file konfigurasi
-bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
+bash <(curl -fsSL https://doc.fastgpt.io/deploy/install.sh)
 # Jalankan layanan
 docker compose up -d
 ```

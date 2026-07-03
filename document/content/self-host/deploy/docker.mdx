@@ -4,6 +4,7 @@ description: 使用 Docker Compose 快速部署 FastGPT
 ---
 
 import { Alert } from '@/components/docs/Alert';
+import { CurrentOriginCodeBlockUpdater } from '@/components/docs/CurrentOriginCodeBlockUpdater';
 
 ## 前置知识
 
@@ -116,7 +117,17 @@ brew install orbstack
 
 ### 1. 获取配置文件
 
-#### 方法一：使用交互式脚本部署
+#### 方法一：使用 AI Agent 代部署
+
+将以下内容复制给你的 Coding Agent：
+
+```text
+参考 https://doc.fastgpt.cn/deploy/SKILL.md 帮我部署 FastGPT Docker 版本。
+```
+
+<CurrentOriginCodeBlockUpdater />
+
+#### 方法二：使用交互式脚本部署
 
 需要在 Linux/MacOS/Windows WSL 环境下执行，引导用户选择部署环境、向量库版本，IP 地址等。
 
@@ -124,16 +135,18 @@ brew install orbstack
 bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
 ```
 
+<CurrentOriginCodeBlockUpdater />
+
 脚本会自动完成以下操作：
 
-- 下载或复制 `docker-compose.yml`，并下载 `config.json`。
+- 下载或复制 `docker-compose.yml`。
 - 引导选择 S3 与 MCP 的外部访问地址，并写入配置文件。
 - 随机生成 `root` 登录密码、服务间 Token、应用密钥和组件密码，并写入 `docker-compose.yml`。
 - 自动检测宿主机 Docker socket 路径，必要时替换 `docker-compose.yml` 中的挂载路径。
 
 执行完成后，终端会输出本次生成的 `root` 登录密码，请妥善保存生成后的 `docker-compose.yml`。后续升级时建议基于该文件调整，不要直接丢失已生成的密码和密钥。
 
-#### 方法二：手动下载部署
+#### 方法三：手动下载部署
 
 如果需要固定使用某个 `docker-compose.yml` 文件，推荐先手动下载 `docker-compose.yml` 和 `install.sh`，再通过 `install.sh` 的本地 compose 模式生成最终配置。这样仍然可以复用脚本里的随机密码、S3/MCP 地址写入、Docker socket 检测等能力。
 
@@ -170,15 +183,17 @@ curl -fsSL https://doc.fastgpt.cn/deploy/docker/v4.15/cn/docker-compose.pg.yml -
 curl -fsSL https://doc.fastgpt.cn/deploy/install.sh -o install.sh
 ```
 
+<CurrentOriginCodeBlockUpdater />
+
 3. 使用 `install.sh` 读取本地 compose 文件并生成最终部署配置：
 
 ```bash
 FASTGPT_LOCAL_COMPOSE_PATH=./docker-compose.source.yml bash install.sh
 ```
 
-脚本会复制该 compose 文件为最终的 `docker-compose.yml`，并继续下载 `config.json`、随机生成登录密码和各类凭证、写入 S3/MCP 地址。生成完成后，按终端输出的 root 密码登录。
+脚本会复制该 compose 文件为最终的 `docker-compose.yml`，并继续随机生成登录密码和各类凭证、写入 S3/MCP 地址。生成完成后，按终端输出的 root 密码登录。
 
-完全离线环境下，需要同时准备 `docker-compose.yml`、`config.json` 和 `install.sh`。如果无法让脚本下载 `config.json`，则需要手动修改 `DEFAULT_ROOT_PSW`、服务 Token、数据库密码、S3/MCP 地址等配置。
+完全离线环境下，需要同时准备 `docker-compose.yml` 和 `install.sh`。如果无法运行脚本，则需要手动修改 `DEFAULT_ROOT_PSW`、服务 Token、数据库密码、S3/MCP 地址等配置。
 
 #### 自定义镜像源部署
 

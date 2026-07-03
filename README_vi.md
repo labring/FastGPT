@@ -40,7 +40,7 @@ Bạn có thể khởi động FastGPT nhanh chóng bằng Docker. Chạy lệnh
 
 ```bash
 # Chạy lệnh để tải file cấu hình
-bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
+bash <(curl -fsSL https://doc.fastgpt.io/deploy/install.sh)
 # Khởi động dịch vụ
 docker compose up -d
 ```

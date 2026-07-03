@@ -40,7 +40,7 @@ You can quickly start FastGPT using Docker. Run the following command in your te
 
 ```bash
 # Run the command to pull the configuration file
-bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
+bash <(curl -fsSL https://doc.fastgpt.io/deploy/install.sh)
 # Start the service
 docker compose up -d
 ```
