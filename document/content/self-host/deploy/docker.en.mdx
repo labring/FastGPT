@@ -4,6 +4,7 @@ description: Quickly deploy FastGPT using Docker Compose
 ---
 
 import { Alert } from '@/components/docs/Alert';
+import { CurrentOriginCodeBlockUpdater } from '@/components/docs/CurrentOriginCodeBlockUpdater';
 
 ## Prerequisites
 
@@ -116,7 +117,17 @@ Or [install the command-line version of Docker directly in WSL 2](https://nickja
 
 ### 1. Get Configuration Files
 
-#### Method 1: Interactive Script Deployment
+#### Method 1: Deploy with an AI Agent
+
+Copy the following content to your Coding Agent:
+
+```text
+Refer to https://doc.fastgpt.cn/deploy/SKILL.md and deploy FastGPT with Docker for me.
+```
+
+<CurrentOriginCodeBlockUpdater />
+
+#### Method 2: Interactive Script Deployment
 
 Run in Linux/MacOS/Windows WSL. The script guides you through selecting deployment environment, vector database version, IP address, etc.
 
@@ -124,9 +135,11 @@ Run in Linux/MacOS/Windows WSL. The script guides you through selecting deployme
 bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
 ```
 
+<CurrentOriginCodeBlockUpdater />
+
 The script automatically:
 
-- Downloads or copies `docker-compose.yml`, and downloads `config.json`.
+- Downloads or copies `docker-compose.yml`.
 - Guides you through selecting externally accessible S3 and MCP addresses, then writes them into the config files.
 - Generates a random `root` login password, service tokens, app keys, and component passwords, then writes them into `docker-compose.yml`.
 - Detects the host Docker socket path and updates the mount path in `docker-compose.yml` when needed.
@@ -139,7 +152,9 @@ To use an existing local `docker-compose.yml` file, for example when testing a v
 FASTGPT_LOCAL_COMPOSE_PATH=/path/to/docker-compose.yml bash <(curl -fsSL https://doc.fastgpt.cn/deploy/install.sh)
 ```
 
-#### Method 2: Manual Download
+<CurrentOriginCodeBlockUpdater />
+
+#### Method 3: Manual Download
 
 If you need to pin deployment to a specific `docker-compose.yml` file, we recommend downloading both `docker-compose.yml` and `install.sh`, then using the script's local compose mode to generate the final config. This keeps the script's random credential generation, S3/MCP address updates, and Docker socket detection.
 
@@ -176,15 +191,17 @@ curl -fsSL https://doc.fastgpt.cn/deploy/docker/v4.15/cn/docker-compose.pg.yml -
 curl -fsSL https://doc.fastgpt.cn/deploy/install.sh -o install.sh
 ```
 
+<CurrentOriginCodeBlockUpdater />
+
 3. Run `install.sh` with the local compose file to generate the final deployment config:
 
 ```bash
 FASTGPT_LOCAL_COMPOSE_PATH=./docker-compose.source.yml bash install.sh
 ```
 
-The script copies this compose file to the final `docker-compose.yml`, then downloads `config.json`, generates login passwords and credentials, and writes the S3/MCP addresses. After generation, log in with the root password printed in the terminal.
+The script copies this compose file to the final `docker-compose.yml`, then generates login passwords and credentials, and writes the S3/MCP addresses. After generation, log in with the root password printed in the terminal.
 
-For a fully offline environment, prepare `docker-compose.yml`, `config.json`, and `install.sh` in advance. If the script cannot download `config.json`, manually update `DEFAULT_ROOT_PSW`, service tokens, database passwords, and S3/MCP addresses.
+For a fully offline environment, prepare `docker-compose.yml` and `install.sh` in advance. If the script cannot run, manually update `DEFAULT_ROOT_PSW`, service tokens, database passwords, and S3/MCP addresses.
 
 #### Deploy with a Custom Image Registry
 

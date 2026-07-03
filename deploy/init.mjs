@@ -112,7 +112,7 @@ const syncInstallScriptVersions = async (deployVersions) => {
  * `deploy/templates/vector/config.json` 维护向量库输出文件名、服务片段、连接配置
  * 和额外 configs。版本模板只通过 `${{vec.*}}` 引用这些共享片段。
  *
- * @returns {Promise<Record<string, { filename: string, db: string, config: string, extra: string }>>}
+ * @returns {Promise<Record<string, { filename: string, db: string, config: string, extra: string, depends: string }>>}
  */
 const loadVectorConfigs = async () => {
   const vectorRoot = path.join(process.cwd(), 'templates', 'vector');
@@ -134,7 +134,8 @@ const loadVectorConfigs = async () => {
       filename: config.filename,
       db: await readOptionalFile(config.dbFile),
       config: await readOptionalFile(config.configFile),
-      extra: await readOptionalFile(config.extraFile)
+      extra: await readOptionalFile(config.extraFile),
+      depends: config.dbFile ? '      fastgpt-vector:\n        condition: service_healthy' : ''
     };
     vectors[name].extraBlock = vectors[name].extra ? `configs:\n  ${vectors[name].extra}` : '';
   }
@@ -184,32 +185,56 @@ const loadArgs = (version) => {
  * @param {RegionEnum} region
  * @param {string | undefined} vec
  * @param {Record<Services, ArgItemType>} args
- * @param {Record<string, { filename: string, db: string, config: string, extra: string, extraBlock: string }>} vectors
+ * @param {Record<string, { filename: string, db: string, config: string, extra: string, extraBlock: string, depends: string }>} vectors
+ * @param {string} context
  * @returns {string}
  */
-const replace = (source, region, vec, args, vectors) => {
+const replace = (source, region, vec, args, vectors, context) => {
+  const formatExpr = (expr) => '${{' + expr + '}}';
+
   const resolveExpr = (expr) => {
     /**
      * @type {String}
      */
-    const [a, b] = expr.split('.');
+    const [a, b] = expr.trim().split('.');
     if (a === 'vec') {
       if (!vectors[vec]) {
-        throw new Error(`Unknown vector config: ${vec}`);
+        throw new Error(`Unknown vector config: ${vec} in ${context}`);
       }
 
       if (b === 'db') {
-        return replace(vectors[vec].db, region, vec, args, vectors);
+        return replace(vectors[vec].db, region, vec, args, vectors, `${context} -> vec.db`);
       } else {
-        return vectors[vec][b];
+        const value = vectors[vec][b];
+        if (value === undefined) {
+          throw new Error(`Unknown vector expression: ${formatExpr(expr)} in ${context}`);
+        }
+        return value;
       }
     }
 
-    if (b === 'tag') {
-      return args[a].tag;
-    } else if (b === 'image') {
-      return args[a].image[region];
+    const arg = args[a];
+    if (!arg) {
+      throw new Error(
+        `Missing deploy arg "${a}" for ${formatExpr(expr)} in ${context}. ` +
+          `Please add it to args.json or remove the placeholder from the template.`
+      );
     }
+
+    if (b === 'tag') {
+      if (!arg.tag) {
+        throw new Error(`Missing deploy tag "${a}" for ${formatExpr(expr)} in ${context}`);
+      }
+      return arg.tag;
+    } else if (b === 'image') {
+      const image = arg.image?.[region];
+      if (!image) {
+        throw new Error(`Missing deploy image "${a}.${region}" for ${formatExpr(expr)} in ${context}`);
+      }
+      return image;
+    }
+
+    throw new Error(`Unknown template expression: ${formatExpr(expr)} in ${context}`);
   };
 
   return source
@@ -235,11 +260,11 @@ const generateDevFile = async (deployVersions, vectors) => {
   await Promise.all([
     fs.promises.writeFile(
       path.join(process.cwd(), 'dev', 'docker-compose.cn.yml'),
-      formatYamlOutput(replace(template, 'cn', undefined, args, vectors))
+      formatYamlOutput(replace(template, 'cn', undefined, args, vectors, 'dev/docker-compose.cn.yml'))
     ),
     fs.promises.writeFile(
       path.join(process.cwd(), 'dev', 'docker-compose.yml'),
-      formatYamlOutput(replace(template, 'global', undefined, args, vectors))
+      formatYamlOutput(replace(template, 'global', undefined, args, vectors, 'dev/docker-compose.yml'))
     )
   ]);
 
@@ -286,7 +311,14 @@ const generateProdFile = async (deployVersions, vectors) => {
           fs.promises.writeFile(
             path.join(outputRoot, version, region, `docker-compose.${filename}.yml`),
             formatYamlOutput(
-              replace(versionTemplates[version], region, vector, versionArgs[version], vectors)
+              replace(
+                versionTemplates[version],
+                region,
+                vector,
+                versionArgs[version],
+                vectors,
+                `${version}/${region}/docker-compose.${filename}.yml`
+              )
             )
           )
         )

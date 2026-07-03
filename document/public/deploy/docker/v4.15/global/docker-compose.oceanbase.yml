@@ -8,8 +8,6 @@
 x-default-root-psw: &x-default-root-psw "1234"
 # 系统最高密钥凭证
 x-system-key: &x-system-key "fastgpt-xxx"
-# 用户登录 JWT 密钥
-x-token-key: &x-token-key "fastgpt"
 # 文件阅读 token 密钥
 x-file-token-key: &x-file-token-key "filetokenkey"
 # 密钥加密 key
@@ -20,8 +18,6 @@ x-invoke-token-secret: &x-invoke-token-secret "fastgpt_invoke_token_secret_32_ch
 x-plugin-auth-token: &x-plugin-auth-token "fastgpt-plugin-token-please-change"
 # code sandbox token
 x-code-sandbox-token: &x-code-sandbox-token "codesandbox"
-# volume manager auth token
-x-volume-manager-auth-token: &x-volume-manager-auth-token "vmtoken"
 # agent sandbox proxy secret，必须与 FastGPT 主站环境变量保持一致，且至少 32 位
 x-agent-sandbox-proxy-secret: &x-agent-sandbox-proxy-secret "default_fastgpt_agent_sandbox_proxy_secret"
 # aiproxy token
@@ -83,13 +79,13 @@ x-agent-sandbox-config: &x-agent-sandbox-config
   AGENT_SANDBOX_OPENSANDBOX_BASEURL:
   AGENT_SANDBOX_OPENSANDBOX_API_KEY:
   AGENT_SANDBOX_OPENSANDBOX_RUNTIME: docker
-  AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO: ghcr.io/labring/fastgpt-agent-sandbox
-  AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG: v0.2.0
+  AGENT_SANDBOX_OPENSANDBOX_IMAGE_REPO:
+  AGENT_SANDBOX_OPENSANDBOX_IMAGE_TAG:
   AGENT_SANDBOX_OPENSANDBOX_USE_SERVER_PROXY: true
   AGENT_SANDBOX_SEALOS_BASEURL:
   AGENT_SANDBOX_SEALOS_TOKEN:
   AGENT_SANDBOX_SEALOS_WORK_DIRECTORY: /home/devbox/workspace
-  AGENT_SANDBOX_SEALOS_IMAGE: ghcr.io/labring/fastgpt-agent-sandbox:v0.2.0
+  AGENT_SANDBOX_SEALOS_IMAGE:
   AGENT_SANDBOX_ENABLE_VOLUME: false
   AGENT_SANDBOX_VOLUME_MANAGER_URL:
   AGENT_SANDBOX_VOLUME_MANAGER_TOKEN:
@@ -122,7 +118,6 @@ x-service-env-config: &x-service-env-config
   ROOT_KEY: *x-system-key
   DB_MAX_LINK: 5
   SYNC_INDEX: true
-  TOKEN_KEY: *x-token-key
   FILE_TOKEN_KEY: *x-file-token-key
   AES256_SECRET_KEY: *x-aes256-secret-key
   INVOKE_TOKEN_SECRET: *x-invoke-token-secret
@@ -311,7 +306,7 @@ services:
 
   fastgpt-app:
     container_name: fastgpt-app
-    image: ghcr.io/labring/fastgpt:v4.15.0
+    image: ghcr.io/labring/fastgpt:v4.15.1
     ports:
       - 3000:3000
     networks:
@@ -321,6 +316,8 @@ services:
       - aiproxy
     depends_on:
       fastgpt-mongo:
+        condition: service_healthy
+      fastgpt-vector:
         condition: service_healthy
       fastgpt-redis:
         condition: service_healthy
@@ -417,7 +414,7 @@ services:
       <<: [*x-log-config, *x-no-proxy-config]
       FASTGPT_ENDPOINT: http://fastgpt-app:3000
   fastgpt-plugin:
-    image: ghcr.io/labring/fastgpt-plugin:v1.0.0
+    image: ghcr.io/labring/fastgpt-plugin:v1.0.1
     container_name: fastgpt-plugin
     restart: always
     networks:
