@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  canManageEnterpriseAuth,
   shouldShowEnterpriseAuthAmountError,
   shouldShowEnterpriseAuthContactBusinessModal
 } from '../../../../../src/pageComponents/account/team/EnterpriseAuth/utils';
@@ -32,6 +33,45 @@ describe('shouldShowEnterpriseAuthAmountError', () => {
       shouldShowEnterpriseAuthAmountError({
         taskStatus: TeamEnterpriseAuthTaskStatusEnum.pending_amount,
         showCurrentSubmitError: true
+      })
+    ).toBe(false);
+  });
+});
+
+describe('canManageEnterpriseAuth', () => {
+  it('团队 owner 可以操作企业认证', () => {
+    expect(
+      canManageEnterpriseAuth({
+        isTeamOwner: true,
+        hasTeamManagePer: false
+      })
+    ).toBe(true);
+  });
+
+  it('团队管理员可以操作企业认证', () => {
+    expect(
+      canManageEnterpriseAuth({
+        isTeamOwner: false,
+        hasTeamManagePer: true
+      })
+    ).toBe(true);
+  });
+
+  it('普通成员不能操作企业认证', () => {
+    expect(
+      canManageEnterpriseAuth({
+        isTeamOwner: false,
+        hasTeamManagePer: false
+      })
+    ).toBe(false);
+  });
+
+  it('服务端明确返回不可管理时阻断操作', () => {
+    expect(
+      canManageEnterpriseAuth({
+        statusCanManage: false,
+        isTeamOwner: true,
+        hasTeamManagePer: true
       })
     ).toBe(false);
   });

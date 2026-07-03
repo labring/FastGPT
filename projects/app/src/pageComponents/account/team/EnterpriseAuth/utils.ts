@@ -31,6 +31,22 @@ export const canOpenEnterpriseAuthAmountStep = (
   taskStatus === TeamEnterpriseAuthTaskStatusEnum.amount_failed;
 
 /**
+ * 判断当前成员是否可以发起或继续企业认证。
+ *
+ * 团队 owner 和团队管理员才有企业认证操作入口；statusCanManage 来自服务端状态接口，
+ * 用于在服务端明确拒绝时兜底收紧权限，同时兼容旧接口未返回该字段的场景。
+ */
+export const canManageEnterpriseAuth = ({
+  statusCanManage,
+  isTeamOwner,
+  hasTeamManagePer
+}: {
+  statusCanManage?: boolean;
+  isTeamOwner?: boolean;
+  hasTeamManagePer?: boolean;
+}) => (!!isTeamOwner || !!hasTeamManagePer) && statusCanManage !== false;
+
+/**
  * 判断企业认证入口是否应该转为商务咨询弹窗。
  *
  * 第 3 次认证发起成功后 usedTimes 会达到上限，但此时会返回 currentTask，

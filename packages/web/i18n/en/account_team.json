@@ -351,6 +351,6 @@
   "enterprise_auth_reset_info": "Refill enterprise info",
   "enterprise_auth_cancel": "Cancel",
   "enterprise_auth_start": "Start verification",
-  "enterprise_auth_submit": "Submit verification",
+  "enterprise_auth_verify_with_remaining": "Verify ({{count}} attempts left)",
   "move_skill": "Move skill"
 }

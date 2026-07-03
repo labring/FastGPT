@@ -347,6 +347,6 @@
   "enterprise_auth_reset_info": "重新填寫企業資訊",
   "enterprise_auth_cancel": "取消",
   "enterprise_auth_start": "開始認證",
-  "enterprise_auth_submit": "提交認證",
+  "enterprise_auth_verify_with_remaining": "驗證（剩餘{{count}}次）",
   "move_skill": "移動技能"
 }

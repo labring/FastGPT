@@ -351,6 +351,6 @@
   "enterprise_auth_reset_info": "重新填写企业信息",
   "enterprise_auth_cancel": "取消",
   "enterprise_auth_start": "开始认证",
-  "enterprise_auth_submit": "提交认证",
+  "enterprise_auth_verify_with_remaining": "验证（剩余{{count}}次）",
   "move_skill": "移动技能"
 }

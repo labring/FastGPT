@@ -1,11 +1,12 @@
 import React from 'react';
-import { Button } from '@chakra-ui/react';
+import { Box, Button, Flex } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import type { GetEnterpriseAuthStatusResponseType } from '@fastgpt/global/openapi/support/user/team/enterpriseAuth/api';
 import { EnterpriseAuthAmountMaxErrorTimes } from '@fastgpt/global/support/user/team/enterpriseAuth/constant';
 import EnterpriseAuthInfoForm from './InfoForm';
 import EnterpriseAuthAmountForm from './AmountForm';
 import { useEnterpriseAuthFormFlow } from './useEnterpriseAuthFormFlow';
+import { enterpriseAuthFooterButtonStyles } from './shared';
 
 type EnterpriseAuthModalProps = {
   defaultStatus: GetEnterpriseAuthStatusResponseType;
@@ -22,58 +23,49 @@ const EnterpriseAuthModal = ({ defaultStatus, onClose, onSuccess }: EnterpriseAu
 
   if (flow.shouldBlockEnterpriseAuthForm) return null;
 
+  const remainingAmountVerifyTimes = Math.max(
+    EnterpriseAuthAmountMaxErrorTimes -
+      (flow.taskDetail?.amountErrorTimes ?? defaultStatus.currentTask?.amountErrorTimes ?? 0),
+    0
+  );
+  const title = flow.t('account_team:enterprise_auth_title');
+  const modalTitle = (
+    <Flex flexDirection={'column'} gap={'10px'} w={'full'}>
+      <Box>{title}</Box>
+      <Box
+        color={'myGray.500'}
+        fontSize={'14px'}
+        fontWeight={400}
+        lineHeight={'20px'}
+        letterSpacing={'0.25px'}
+      >
+        {flow.t('account_team:enterprise_auth_modal_desc')}
+      </Box>
+    </Flex>
+  );
+
   return (
     <MyModal
       isOpen
       onClose={onClose}
       isCentered
-      w={['90vw', '800px']}
-      maxW={'90vw'}
-      borderRadius={'10px'}
-      maxH={'80vh'}
-      overflow={'hidden'}
-      boxShadow={'0px 0px 1px rgba(19, 51, 107, 0.1), 0px 4px 10px rgba(19, 51, 107, 0.1)'}
-      title={flow.t('account_team:enterprise_auth_title')}
-      headerStyles={{
-        px: ['20px', '32px'],
-        pt: ['24px', '32px']
-      }}
-      bodyStyles={{
-        px: ['20px', '32px'],
-        pt: '10px',
-        pb: 0,
-        flex: '1 1 auto',
-        minH: 0,
-        overflowY: 'auto'
-      }}
-      footerStyles={{
-        px: ['20px', '32px'],
-        pt: '24px',
-        pb: ['24px', '32px'],
-        justifyContent: flow.step === 'amount' ? 'space-between' : 'flex-end',
-        gap: '12px'
-      }}
+      size={'lg'}
+      title={modalTitle}
       footer={
         flow.step === 'form' ? (
           <>
             <Button
-              h={'32px'}
-              px={'14px'}
-              fontSize={'12px'}
               variant={'whiteBase'}
+              w={'64px'}
               onClick={onClose}
+              {...enterpriseAuthFooterButtonStyles}
             >
               {flow.t('account_team:enterprise_auth_cancel')}
             </Button>
             <Button
-              h={'32px'}
-              px={'14px'}
-              fontSize={'12px'}
-              bg={'#3370FF'}
-              color={'white'}
               isLoading={flow.starting}
               onClick={flow.handleStartClick}
-              _hover={{ bg: '#2152D9' }}
+              {...enterpriseAuthFooterButtonStyles}
             >
               {flow.t('account_team:enterprise_auth_start')}
             </Button>
@@ -81,21 +73,15 @@ const EnterpriseAuthModal = ({ defaultStatus, onClose, onSuccess }: EnterpriseAu
         ) : (
           <>
             <Button
-              h={'32px'}
-              px={'14px'}
-              fontSize={'12px'}
               variant={'whiteBase'}
+              mr={'auto'}
               isLoading={flow.resetting}
               onClick={flow.handleReset}
+              {...enterpriseAuthFooterButtonStyles}
             >
               {flow.t('account_team:enterprise_auth_reset_info')}
             </Button>
             <Button
-              h={'32px'}
-              px={'14px'}
-              fontSize={'12px'}
-              bg={'#3370FF'}
-              color={'white'}
               isDisabled={
                 !flow.canSubmitAmount ||
                 !flow.hasLoadedTaskDetail ||
@@ -103,15 +89,11 @@ const EnterpriseAuthModal = ({ defaultStatus, onClose, onSuccess }: EnterpriseAu
               }
               isLoading={flow.verifying || flow.loadingTaskDetail}
               onClick={flow.amountForm.handleSubmit(flow.handleVerify)}
-              _hover={{ bg: '#2152D9' }}
-              _disabled={{
-                bg: 'rgba(51, 112, 255, 0.3)',
-                color: 'white',
-                opacity: 1,
-                cursor: 'not-allowed'
-              }}
+              {...enterpriseAuthFooterButtonStyles}
             >
-              {flow.t('account_team:enterprise_auth_submit')}
+              {flow.t('account_team:enterprise_auth_verify_with_remaining', {
+                count: remainingAmountVerifyTimes
+              })}
             </Button>
           </>
         )

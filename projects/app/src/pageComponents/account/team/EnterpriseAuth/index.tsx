@@ -21,6 +21,7 @@ import {
   TeamEnterpriseAuthTaskStatusEnum
 } from '@fastgpt/global/support/user/team/enterpriseAuth/constant';
 import {
+  canManageEnterpriseAuth,
   canOpenEnterpriseAuthAmountStep,
   shouldShowEnterpriseAuthContactBusinessModal
 } from './utils';
@@ -127,6 +128,11 @@ const EnterpriseAuthStatusRow = ({
   const canOpenCurrentTask = canOpenEnterpriseAuthAmountStep(data?.currentTask?.status);
   const hasOtherMemberProcessingTask =
     data?.status === TeamEnterpriseAuthStatusEnum.verifying && !data?.currentTask;
+  const canManageCurrentEnterpriseAuth = canManageEnterpriseAuth({
+    statusCanManage: data?.canManage,
+    isTeamOwner: userInfo?.team?.permission?.isOwner,
+    hasTeamManagePer: userInfo?.team?.permission?.hasManagePer
+  });
 
   const trackOpen = useCallback(
     (source: 'statusRow' | 'notice') => {
@@ -135,18 +141,18 @@ const EnterpriseAuthStatusRow = ({
         status: data?.status,
         taskStatus: data?.currentTask?.status,
         hasCurrentTask: !!data?.currentTask,
-        canManage: data?.canManage,
+        canManage: canManageCurrentEnterpriseAuth,
         needContactBusiness
       });
     },
-    [data?.canManage, data?.currentTask, data?.status, needContactBusiness]
+    [canManageCurrentEnterpriseAuth, data?.currentTask, data?.status, needContactBusiness]
   );
 
   const handleOpen = useCallback(() => {
     if (data?.status === TeamEnterpriseAuthStatusEnum.verified) return;
 
     trackOpen('statusRow');
-    if (!data?.canManage) {
+    if (!canManageCurrentEnterpriseAuth) {
       toast({
         title: t('account_team:enterprise_auth_contact_admin_tip'),
         status: 'warning'
@@ -176,7 +182,7 @@ const EnterpriseAuthStatusRow = ({
     onOpen();
   }, [
     canOpenCurrentTask,
-    data?.canManage,
+    canManageCurrentEnterpriseAuth,
     data?.currentTask,
     data?.status,
     data?.usedTimes,
@@ -209,7 +215,7 @@ const EnterpriseAuthStatusRow = ({
       onAutoOpenFinish?.();
       return;
     }
-    if (!data.canManage) {
+    if (!canManageCurrentEnterpriseAuth) {
       toast({
         title: t('account_team:enterprise_auth_contact_admin_tip'),
         status: 'warning'
@@ -247,7 +253,7 @@ const EnterpriseAuthStatusRow = ({
     }, 0);
   }, [
     autoOpen,
-    data?.canManage,
+    canManageCurrentEnterpriseAuth,
     data?.currentTask,
     data?.enabled,
     data?.status,

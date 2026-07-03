@@ -78,49 +78,48 @@ export const fieldRules = {
 };
 
 export const formLabelStyles = {
-  color: '#24282C',
-  fontSize: '12px',
+  color: 'myGray.800',
+  fontSize: '10px',
+  fontWeight: 500,
   lineHeight: '16px',
-  letterSpacing: '0.5px',
-  fontWeight: 500
+  letterSpacing: '0.5px'
 };
 
 export const formErrorTextStyles = {
-  color: '#D92D20',
+  ...formLabelStyles,
+  color: 'red.600'
+};
+
+export const fieldErrorTextStyles = {
+  ...formErrorTextStyles,
   fontSize: '10px',
-  lineHeight: '14px',
-  letterSpacing: '0.2px',
-  fontWeight: 500
+  lineHeight: '16px'
 };
 
 export const invalidInputStyles = {
-  borderColor: '#D92D20',
-  boxShadow: '0 0 0 1px #D92D20'
+  borderColor: 'red.600'
 };
 
 export const inputStyles = {
-  h: '32px',
-  borderColor: '#E8EBF0',
-  borderRadius: '6px',
+  size: 'sm' as const,
   fontSize: '12px',
   lineHeight: '16px',
-  letterSpacing: '0.048px',
-  px: 3,
-  _placeholder: {
-    color: '#667085'
-  },
-  _focusVisible: {
-    borderColor: '#3370ff',
-    boxShadow: '0 0 0 1px #3370ff'
-  }
+  letterSpacing: '0.048px'
 };
 
 export const textareaStyles = {
   ...inputStyles,
-  h: '106px',
   minH: '106px',
-  py: 2,
   resize: 'vertical' as const
+};
+
+export const enterpriseAuthFooterButtonStyles = {
+  h: '32px',
+  minH: '32px',
+  px: '14px',
+  fontSize: '12px',
+  lineHeight: '16px',
+  letterSpacing: '0.5px'
 };
 
 export const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
@@ -131,11 +130,11 @@ export const Section = ({ title, children }: { title: string; children: React.Re
     w={'full'}
   >
     <Box
-      color={'#24282C'}
-      fontSize={'14px'}
+      color={'myGray.800'}
+      fontSize={'sm'}
+      fontWeight={500}
       lineHeight={'20px'}
       letterSpacing={'0.1px'}
-      fontWeight={500}
       w={['full', '160px']}
       flexShrink={0}
     >
@@ -162,7 +161,7 @@ export const Field = ({
     <Flex mb={'8px'} alignItems={'center'} justifyContent={'space-between'} gap={'8px'}>
       <Box {...formLabelStyles}>{label}</Box>
       {errorText && (
-        <Box {...formErrorTextStyles} flexShrink={0}>
+        <Box {...fieldErrorTextStyles} flexShrink={0}>
           {errorText}
         </Box>
       )}
@@ -174,11 +173,11 @@ export const Field = ({
 export const AmountInfoRow = ({ label, value }: { label: string; value?: string }) => (
   <Flex alignItems={'center'} gap={'32px'} w={'full'} minW={0}>
     <Box
-      color={'#24282C'}
-      fontSize={'14px'}
+      color={'myGray.800'}
+      fontSize={'sm'}
+      fontWeight={500}
       lineHeight={'20px'}
       letterSpacing={'0.1px'}
-      fontWeight={500}
       flexShrink={0}
       maxW={'160px'}
       minW={'57px'}
@@ -186,11 +185,11 @@ export const AmountInfoRow = ({ label, value }: { label: string; value?: string 
       {label}
     </Box>
     <Box
-      color={'#485264'}
-      fontSize={'14px'}
+      color={'myGray.600'}
+      fontSize={'sm'}
+      fontWeight={500}
       lineHeight={'20px'}
       letterSpacing={'0.1px'}
-      fontWeight={500}
       minW={0}
       noOfLines={1}
     >

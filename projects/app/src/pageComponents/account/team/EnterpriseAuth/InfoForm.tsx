@@ -12,6 +12,7 @@ import {
   Field,
   Section,
   fieldRules,
+  formErrorTextStyles,
   invalidInputStyles,
   inputStyles,
   normalizeBankAccount,
@@ -88,13 +89,9 @@ const EnterpriseAuthInfoForm = ({
     (!!fieldErrors.bankName && !watchedFields.bankName?.trim());
 
   return (
-    <Flex flexDirection={'column'} gap={'24px'}>
-      <Box color={'#667085'} fontSize={'14px'} lineHeight={'20px'} letterSpacing={'0.25px'}>
-        {t('account_team:enterprise_auth_modal_desc')}
-      </Box>
-
+    <Flex flexDirection={'column'} gap={6}>
       <Section title={t('account_team:enterprise_auth_enterprise_info')}>
-        <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={'16px'}>
+        <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
           <Field label={t('account_team:enterprise_auth_enterprise_name')}>
             <Input
               placeholder={t('account_team:enterprise_auth_enterprise_name_placeholder')}
@@ -183,22 +180,18 @@ const EnterpriseAuthInfoForm = ({
                   _disabled={{
                     opacity: 1,
                     cursor: 'not-allowed',
-                    bg: '#FBFBFC',
-                    borderColor: '#F4F4F7',
-                    color: '#8A95A7'
+                    bg: 'myWhite.300',
+                    borderColor: 'myGray.100',
+                    color: 'myGray.400'
                   }}
                   _hover={
                     shouldShowBankNameEmptyError
-                      ? { borderColor: '#D92D20' }
+                      ? { borderColor: 'red.500' }
                       : { borderColor: 'primary.300' }
                   }
+                  size={'sm'}
                   h={'32px'}
-                  borderRadius={'6px'}
-                  fontSize={'12px'}
-                  lineHeight={'16px'}
-                  letterSpacing={'0.048px'}
-                  borderColor={shouldShowBankNameEmptyError ? '#D92D20' : '#E8EBF0'}
-                  boxShadow={shouldShowBankNameEmptyError ? '0 0 0 1px #D92D20' : undefined}
+                  borderColor={shouldShowBankNameEmptyError ? 'red.500' : 'borderColor.low'}
                   onChange={(value) => {
                     field.onChange(value);
                     startForm.clearErrors('bankName');
@@ -208,23 +201,14 @@ const EnterpriseAuthInfoForm = ({
             />
             {hasBankLoadError && (
               <Flex mt={2} alignItems={'center'} gap={2}>
-                <Text
-                  color={'#D92D20'}
-                  fontSize={'10px'}
-                  lineHeight={'14px'}
-                  letterSpacing={'0.2px'}
-                  fontWeight={500}
-                >
+                <Text {...formErrorTextStyles}>
                   {t('account_team:enterprise_auth_bank_load_failed')}
                 </Text>
                 <Button
                   size={'xs'}
                   variant={'link'}
-                  color={'#3370FF'}
-                  fontSize={'10px'}
-                  lineHeight={'14px'}
+                  color={'primary.600'}
                   minW={0}
-                  h={'14px'}
                   isLoading={isBankLoading}
                   onClick={() => reloadBanks()}
                 >
@@ -237,11 +221,11 @@ const EnterpriseAuthInfoForm = ({
       </Section>
 
       <Flex h={'4px'} alignItems={'center'}>
-        <Box h={'1px'} w={'full'} bg={'#E8EBF0'} />
+        <Box h={'1px'} w={'full'} bg={'myGray.200'} />
       </Flex>
 
       <Section title={t('account_team:enterprise_auth_contact_info')}>
-        <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={'16px'}>
+        <Grid templateColumns={['1fr', 'repeat(2, minmax(0, 1fr))']} gap={4}>
           <Field label={t('account_team:enterprise_auth_contact_name')}>
             <Input
               placeholder={t('account_team:enterprise_auth_contact_name_placeholder')}

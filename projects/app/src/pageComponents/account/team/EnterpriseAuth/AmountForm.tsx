@@ -8,6 +8,7 @@ import { webPushTrack } from '@/web/common/middle/tracks/utils';
 import {
   AmountInfoRow,
   formatBankAccountForDisplay,
+  formErrorTextStyles,
   inputStyles,
   type AmountFormType
 } from './shared';
@@ -33,13 +34,9 @@ const EnterpriseAuthAmountForm = ({
   });
 
   return (
-    <Flex flexDirection={'column'} gap={'24px'}>
-      <Box color={'#667085'} fontSize={'14px'} lineHeight={'20px'} letterSpacing={'0.25px'}>
-        {t('account_team:enterprise_auth_modal_desc')}
-      </Box>
-
-      <Flex flexDirection={'column'} gap={'24px'}>
-        <Flex flexDirection={'column'} gap={'16px'} w={'full'}>
+    <Flex flexDirection={'column'} gap={6}>
+      <Flex flexDirection={'column'} gap={6}>
+        <Flex flexDirection={'column'} gap={4} w={'full'}>
           <AmountInfoRow
             label={t('account_team:enterprise_auth_enterprise_name')}
             value={taskDetail?.enterpriseName}
@@ -55,17 +52,17 @@ const EnterpriseAuthAmountForm = ({
         </Flex>
 
         <Flex h={'4px'} alignItems={'center'}>
-          <Box h={'1px'} w={'full'} bg={'#E8EBF0'} />
+          <Box h={'1px'} w={'full'} bg={'myGray.200'} />
         </Flex>
 
-        <Box color={'#667085'} fontSize={'14px'} lineHeight={'20px'} letterSpacing={'0.25px'}>
+        <Box color={'myGray.500'}>
           {t('account_team:enterprise_auth_amount_sent_prefix')}
           <Box
             as={'a'}
             href={enterpriseAuthContactBusinessUrl}
             target={'_blank'}
             rel={'noreferrer'}
-            color={'#3370FF'}
+            color={'primary.600'}
             cursor={'pointer'}
             _hover={{ textDecoration: 'none' }}
             onClick={() => {
@@ -83,17 +80,17 @@ const EnterpriseAuthAmountForm = ({
           <Flex
             h={'32px'}
             alignItems={'center'}
-            color={'#24282C'}
-            fontSize={'14px'}
+            color={'myGray.800'}
+            fontSize={'sm'}
+            fontWeight={500}
             lineHeight={'20px'}
             letterSpacing={'0.1px'}
-            fontWeight={500}
             flexShrink={0}
             w={'57px'}
           >
             {t('account_team:enterprise_auth_amount_label')}
           </Flex>
-          <Flex flexDirection={'column'} gap={'10px'} flex={'1 1 0'} minW={0}>
+          <Flex flexDirection={'column'} gap={'10px'} flex={['1 1 0', '0 0 647px']} minW={0}>
             <Input
               inputMode={'numeric'}
               pattern={'[0-9]*'}
@@ -107,11 +104,7 @@ const EnterpriseAuthAmountForm = ({
               }}
             />
             <Box
-              color={'#D92D20'}
-              fontSize={'10px'}
-              lineHeight={'14px'}
-              letterSpacing={'0.2px'}
-              fontWeight={500}
+              {...formErrorTextStyles}
               minH={'14px'}
               visibility={shouldShowAmountError ? 'visible' : 'hidden'}
             >

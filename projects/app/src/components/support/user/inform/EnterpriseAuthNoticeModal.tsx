@@ -1,16 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import {
-  Box,
-  Button,
-  Flex,
-  Link,
-  ModalBody,
-  ModalCloseButton,
-  ModalFooter,
-  Text
-} from '@chakra-ui/react';
+import { Box, Button, Flex, Link, Text } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
-import MyModal from '@fastgpt/web/components/common/MyModal';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useTranslation } from 'next-i18next';
@@ -19,6 +10,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useQuery } from '@tanstack/react-query';
 import { getEnterpriseAuthStatus } from '@/web/support/user/team/enterpriseAuth/api';
 import { TeamEnterpriseAuthStatusEnum } from '@fastgpt/global/support/user/team/enterpriseAuth/constant';
+import { canManageEnterpriseAuth } from '@/pageComponents/account/team/EnterpriseAuth/utils';
 
 const certificationHref = '/account/info#certification';
 
@@ -65,11 +57,15 @@ const EnterpriseAuthNoticeModal = () => {
   const [isClosed, setIsClosed] = useState(false);
 
   const teamId = userInfo?.team?.teamId;
+  const canCheckEnterpriseAuthNotice = canManageEnterpriseAuth({
+    isTeamOwner: userInfo?.team?.permission?.isOwner,
+    hasTeamManagePer: userInfo?.team?.permission?.hasManagePer
+  });
   const shouldCheckEnterpriseAuthNotice =
     router.pathname === '/dashboard/agent' &&
     !!feConfigs?.show_enterprise_auth &&
     !!teamId &&
-    (!!userInfo?.team.permission.isOwner || !!userInfo?.team.permission.hasManagePer) &&
+    canCheckEnterpriseAuthNotice &&
     !enterpriseAuthNoticeReadTeamIds?.includes(teamId);
   const { data: enterpriseAuthStatus } = useQuery(
     ['getEnterpriseAuthNoticeStatus', teamId],
@@ -79,13 +75,24 @@ const EnterpriseAuthNoticeModal = () => {
       staleTime: 30000
     }
   );
+  const canShowEnterpriseAuthNotice = canManageEnterpriseAuth({
+    statusCanManage: enterpriseAuthStatus?.canManage,
+    isTeamOwner: userInfo?.team?.permission?.isOwner,
+    hasTeamManagePer: userInfo?.team?.permission?.hasManagePer
+  });
   const showEnterpriseAuthNotice = useMemo(
     () =>
       shouldCheckEnterpriseAuthNotice &&
+      canShowEnterpriseAuthNotice &&
       enterpriseAuthStatus?.enabled !== false &&
       !!enterpriseAuthStatus?.status &&
       enterpriseAuthStatus.status !== TeamEnterpriseAuthStatusEnum.verified,
-    [enterpriseAuthStatus?.enabled, enterpriseAuthStatus?.status, shouldCheckEnterpriseAuthNotice]
+    [
+      canShowEnterpriseAuthNotice,
+      enterpriseAuthStatus?.enabled,
+      enterpriseAuthStatus?.status,
+      shouldCheckEnterpriseAuthNotice
+    ]
   );
 
   const markAsRead = useCallback(() => {
@@ -116,110 +123,56 @@ const EnterpriseAuthNoticeModal = () => {
       isOpen
       onClose={() => setIsClosed(true)}
       isCentered
-      w={['90vw', '580px']}
-      maxW={'90vw'}
-      maxH="85vh"
-      borderRadius={'10px'}
-      overflow={'hidden'}
-      boxShadow={'0px 0px 1px rgba(19, 51, 107, 0.1), 0px 4px 10px rgba(19, 51, 107, 0.1)'}
-      showCloseButton={false}
+      size={'md'}
+      title={t('common:enterprise_auth_notice_title')}
+      footer={<Button onClick={onClickRead}>{t('common:enterprise_auth_notice_read')}</Button>}
     >
-      <ModalCloseButton top={'8px'} right={'8px'} w={'36px'} h={'36px'} color={'myGray.700'} />
-
-      <ModalBody
-        px={['20px', '32px']}
-        pt={['24px', '32px']}
-        pb={0}
-        flex={'1 1 auto'}
-        minH={0}
-        overflowY={'auto'}
-      >
-        <Flex flexDirection={'column'} gap={'24px'} overflow={'hidden'}>
-          <Text
-            color={'#000'}
-            fontSize={'20px'}
-            lineHeight={'26px'}
-            letterSpacing={'0.15px'}
-            fontWeight={500}
-          >
-            {t('common:enterprise_auth_notice_title')}
+      <Flex flexDirection={'column'} gap={6} overflow={'hidden'}>
+        <Box>
+          <Text fontSize="16px" fontWeight={600} lineHeight="24px" mb={4}>
+            {t('common:enterprise_auth_notice_headline')}
           </Text>
 
-          <Box
-            fontFamily="'PingFang SC', sans-serif"
-            color="#111824"
-            fontSize="14px"
-            lineHeight="20px"
-            letterSpacing={'0.25px'}
-          >
-            <Text fontSize="16px" fontWeight={600} lineHeight="24px" mb={4}>
-              {t('common:enterprise_auth_notice_headline')}
-            </Text>
+          <Text mb={2}>{t('common:enterprise_auth_notice_greeting')}</Text>
+          <Text mb={4}>{t('common:enterprise_auth_notice_intro')}</Text>
 
-            <Text mb={2}>{t('common:enterprise_auth_notice_greeting')}</Text>
-            <Text mb={4}>{t('common:enterprise_auth_notice_intro')}</Text>
+          <Box as="section" mb={4}>
+            <Flex alignItems="flex-start" gap={2}>
+              <NoteIcon />
+              <Text>{t('common:enterprise_auth_notice_benefit_intro')}</Text>
+            </Flex>
 
-            <Box as="section" mb={4}>
-              <Flex alignItems="flex-start" gap={2}>
-                <NoteIcon />
-                <Text>{t('common:enterprise_auth_notice_benefit_intro')}</Text>
-              </Flex>
-
-              <Flex as="ul" direction="column" gap={1} mt={1} pl={0} listStyleType="none">
-                <BenefitItem>{t('common:enterprise_auth_notice_benefit_advanced')}</BenefitItem>
-                <BenefitItem>{t('common:enterprise_auth_notice_benefit_points')}</BenefitItem>
-                <BenefitItem>{t('common:enterprise_auth_notice_benefit_support')}</BenefitItem>
-              </Flex>
-            </Box>
-
-            <Text mb={4}>
-              <Box as="span" fontWeight={600}>
-                {t('common:enterprise_auth_notice_entry')}
-              </Box>
-              {t('common:enterprise_auth_notice_or_click')}
-              <Link
-                href={certificationHref}
-                color="primary.600"
-                fontWeight={500}
-                textDecoration="underline"
-                onClick={onClickCertificationLink}
-              >
-                {t('common:enterprise_auth_notice_link')}
-              </Link>
-              {t('common:enterprise_auth_notice_link_suffix')}
-            </Text>
-
-            <Text mb={6}>{t('common:enterprise_auth_notice_help')}</Text>
-
-            <Box my={6} h="1px" bg="myGray.200" />
-
-            <Text>{t('common:enterprise_auth_notice_footer')}</Text>
+            <Flex as="ul" direction="column" gap={1} mt={1} pl={0} listStyleType="none">
+              <BenefitItem>{t('common:enterprise_auth_notice_benefit_advanced')}</BenefitItem>
+              <BenefitItem>{t('common:enterprise_auth_notice_benefit_points')}</BenefitItem>
+              <BenefitItem>{t('common:enterprise_auth_notice_benefit_support')}</BenefitItem>
+            </Flex>
           </Box>
-        </Flex>
-      </ModalBody>
 
-      <ModalFooter
-        px={['20px', '32px']}
-        pt={'24px'}
-        pb={['24px', '32px']}
-        justifyContent={'flex-end'}
-      >
-        <Button
-          h={'32px'}
-          w={'64px'}
-          px={'14px'}
-          fontSize={'12px'}
-          fontWeight={500}
-          letterSpacing={'0.5px'}
-          bg={'#3370FF'}
-          color={'white'}
-          onClick={onClickRead}
-          _hover={{ bg: '#2152D9' }}
-          _active={{ bg: '#1F4CCF' }}
-        >
-          {t('common:enterprise_auth_notice_read')}
-        </Button>
-      </ModalFooter>
+          <Text mb={4}>
+            <Box as="span" fontWeight={600}>
+              {t('common:enterprise_auth_notice_entry')}
+            </Box>
+            {t('common:enterprise_auth_notice_or_click')}
+            <Link
+              href={certificationHref}
+              color="primary.600"
+              fontWeight={500}
+              textDecoration="underline"
+              onClick={onClickCertificationLink}
+            >
+              {t('common:enterprise_auth_notice_link')}
+            </Link>
+            {t('common:enterprise_auth_notice_link_suffix')}
+          </Text>
+
+          <Text mb={6}>{t('common:enterprise_auth_notice_help')}</Text>
+
+          <Box my={6} h="1px" bg="myGray.200" />
+
+          <Text>{t('common:enterprise_auth_notice_footer')}</Text>
+        </Box>
+      </Flex>
     </MyModal>
   );
 };
