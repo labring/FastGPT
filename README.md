@@ -132,7 +132,7 @@ docker compose up -d
 
 扫码加入飞书话题群：
 
-![](https://oss.laf.run/otnvvf-imgs/fastgpt-feishu2.png)
+![](https://oss.laf.run/otnvvf-imgs/fastgpt-feishu1.png)
 
 <a href="#readme">
     <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
