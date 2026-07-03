@@ -5,20 +5,21 @@ description: 'FastGPT V4.15.1 Release Notes'
 
 ## 📦 Upgrade Guide
 
-### Pro Internal API Authentication
+### fastgpt-pro Environment Variable Updates
 
-Starting from v4.15.1, the FastGPT app no longer uses `rootkey` when calling Pro/Admin internal APIs. These internal service-to-service calls now use a dedicated `PRO_TOKEN`. If you deploy the Pro edition, configure the same `PRO_TOKEN` in both the FastGPT app and the Pro/Admin service:
+Starting from v4.15.1, the FastGPT main app no longer uses `rootkey` when calling Pro/Admin internal APIs. These internal service-to-service calls now use a dedicated `PRO_TOKEN`. `FE_DOMAIN` is also required. If you deploy the Pro edition, configure the same `PRO_TOKEN` in both the FastGPT main app and the Pro/Admin service:
 
 ```bash
 PRO_TOKEN=your_pro_token_at_least_32_chars
+FE_DOMAIN=fastgpt_domain
 ```
 
 Notes:
 
-1. `PRO_TOKEN` must be at least 32 characters long, and the value must be identical in the FastGPT app and Pro/Admin.
-2. If the FastGPT app is configured with `PRO_URL`, `PRO_TOKEN` is also required. Otherwise, the service fails to start.
+1. `PRO_TOKEN` must be at least 32 characters long, and the value must be identical in the FastGPT main app and Pro/Admin.
+2. If the FastGPT main app is configured with `PRO_URL`, `PRO_TOKEN` is also required. Otherwise, the service fails to start.
 3. The Pro/Admin service must configure `PRO_TOKEN`; otherwise, internal API authentication fails.
-4. `rootkey` is no longer used as the credential for FastGPT app calls to Pro/Admin internal APIs. It is only the admin secret for the current system and is used to call `/api/admin/**` APIs, such as the initialization script below.
+4. `rootkey` is no longer used as the credential for FastGPT main app calls to Pro/Admin internal APIs. It is only the admin secret for the current system and is used to call `/api/admin/**` APIs, such as the initialization script below.
 5. Open-source deployment files do not include `PRO_TOKEN`. For Pro deployments, add it manually in your private deployment environment variables.
 
 ### API Key App Name Initialization
@@ -37,11 +38,18 @@ The script only fills missing `appName` values. It does not overwrite existing v
 ## 🚀 New Features
 
 1. Added global API Key tag management and an `appName` display snapshot for historical app-level API Keys, making older API keys compatible and easier to find when they were previously associated with apps.
+2. Pre-extract the skill name and description when publishing a skill to help with generation.
 
 ## ⚙️ Improvements
 
 ## 🐛 Fixes
 
 1. Workflow tool debugging did not show run details.
+2. The chat page did not automatically show the login component after credentials expired.
+3. Fixed an issue where workflow tools did not initialize variables from the tool app's global variable configuration when running a sub-workflow, causing runtime variables such as default variables and system variables to be read incorrectly.
+4. Fixed an issue where updates to global variables or outputs from nodes outside the container through **Variable Update** inside loop nodes and parallel execution nodes were not synchronized back to the main workflow by round or task completion. Successful rounds or tasks now write back their changes, while failed rounds or tasks do not commit their changes.
+5. The component did not refresh immediately when retrying all Knowledge Base collections.
 
 ## 🛠️ Code Improvements
+
+1. Fixed file paths that contain colons to avoid Windows compatibility issues.
