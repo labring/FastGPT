@@ -294,8 +294,7 @@ const TrainingErrorList = ({
       }
     }
   );
-  // 批量重试后以后端错误列表为准，避免 footer 已刷新但列表仍显示旧异常。
-  const refreshErrorList = useMemoizedFn(async () => {
+  const resetErrorListState = useMemoizedFn(() => {
     collectionAutoFillOffsetRef.current = undefined;
     datasetAutoFillOffsetRef.current = undefined;
     pendingDatasetScrollTopRef.current = undefined;
@@ -306,10 +305,9 @@ const TrainingErrorList = ({
       scrollContainer.scrollTop = 0;
     }
 
-    await fetchData({
-      init: true,
-      ScrollContainerRef: scope.type === 'collection' ? collectionScrollRef : datasetScrollRef
-    });
+    trainingErrorDataRef.current = [];
+    setData([]);
+    setTotal(0);
   });
 
   const { runAsync: getData, loading: getDataLoading } = useRequest(
@@ -450,7 +448,8 @@ const TrainingErrorList = ({
       await updateData({
         collectionId: scope.collectionId
       });
-      await refreshErrorList();
+      // 批量重试已把当前最终异常重新放回训练队列；本地先清空，避免立刻读 secondary 时回填旧异常。
+      resetErrorListState();
       onRefresh?.();
       return;
     }
