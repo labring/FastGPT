@@ -176,6 +176,24 @@ describe('request utils', () => {
       expect(mockLocation.replace).not.toHaveBeenCalled();
     });
 
+    it('should dispatch auth error without redirecting on chat page', async () => {
+      mockLocation.pathname = '/test-route/chat';
+      const err = {
+        response: {
+          data: {
+            code: tokenErrorCode
+          }
+        }
+      };
+
+      await expect(responseError(err)).rejects.toEqual({ message: 'common:unauth_token' });
+
+      expect(dispatchEventMock).toHaveBeenCalledWith(expect.any(CustomEvent));
+      expect(dispatchEventMock.mock.calls[0]?.[0].type).toBe(AUTH_ERROR_EVENT_NAME);
+      expect(clearToken).not.toHaveBeenCalled();
+      expect(mockLocation.replace).not.toHaveBeenCalled();
+    });
+
     it('should handle team error', async () => {
       const err = { response: { data: { statusText: TeamErrEnum.aiPointsNotEnough } } };
       await expect(responseError(err)).rejects.toEqual({
