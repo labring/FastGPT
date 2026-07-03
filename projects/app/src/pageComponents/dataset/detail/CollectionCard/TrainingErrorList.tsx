@@ -294,10 +294,22 @@ const TrainingErrorList = ({
       }
     }
   );
-  const clearLocalErrorData = useMemoizedFn(() => {
-    trainingErrorDataRef.current = [];
-    setData([]);
-    setTotal(0);
+  // 批量重试后以后端错误列表为准，避免 footer 已刷新但列表仍显示旧异常。
+  const refreshErrorList = useMemoizedFn(async () => {
+    collectionAutoFillOffsetRef.current = undefined;
+    datasetAutoFillOffsetRef.current = undefined;
+    pendingDatasetScrollTopRef.current = undefined;
+
+    const scrollContainer =
+      scope.type === 'collection' ? collectionScrollRef.current : datasetScrollRef.current;
+    if (scrollContainer) {
+      scrollContainer.scrollTop = 0;
+    }
+
+    await fetchData({
+      init: true,
+      ScrollContainerRef: scope.type === 'collection' ? collectionScrollRef : datasetScrollRef
+    });
   });
 
   const { runAsync: getData, loading: getDataLoading } = useRequest(
@@ -335,10 +347,8 @@ const TrainingErrorList = ({
             collectionId: updatedData.collectionId,
             dataId: updatedData.dataId
           });
-        } else {
-          clearLocalErrorData();
+          onRefresh?.();
         }
-        onRefresh?.();
         setEditChunk(undefined);
       }
     }
@@ -440,12 +450,15 @@ const TrainingErrorList = ({
       await updateData({
         collectionId: scope.collectionId
       });
+      await refreshErrorList();
+      onRefresh?.();
       return;
     }
 
     await updateData({
       datasetId: scope.datasetId
     });
+    onRefresh?.();
     onClose?.();
   };
   const captureDatasetScrollTop = () => {
