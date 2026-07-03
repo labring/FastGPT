@@ -22,6 +22,7 @@ import { anyValueDecrypt } from '../../../../../../../common/secret/utils';
 import { WorkflowVariableState } from '../../../../utils/variables';
 import { getRuntimeNodeResponseSummary } from '../../../../utils';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { getToolRuntimeInputParams } from '../../../../child/runTool';
 
 type Props = Pick<
   RunWorkflowProps,
@@ -64,6 +65,7 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
     userChatInput,
     ...data
   } = props;
+  const runtimeCustomAppVariables = getToolRuntimeInputParams(customAppVariables);
 
   // Auth the app by tmbId(Not the user, but the workflow user)
   const { app: appData } = await authAppByTmbId({
@@ -94,7 +96,7 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
     histories: [],
     uid: data.uid,
     variablesConfig: chatConfig.variables,
-    inputVariables: customAppVariables,
+    inputVariables: runtimeCustomAppVariables,
     externalVariables: externalProvider?.externalWorkflowVariables,
     sourceVariableState: variableState
   });
@@ -145,7 +147,7 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
       moduleLogo: app.avatar,
       toolInput: {
         userChatInput,
-        ...customAppVariables
+        ...runtimeCustomAppVariables
       },
       toolRes: text,
       childResponseCount: runtimeSummary.childResponseCount
@@ -163,6 +165,7 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
     userChatInput,
     ...data
   } = props;
+  const runtimeCustomAppVariables = getToolRuntimeInputParams(customAppVariables);
   // plugin 子应用不接收普通 userChatInput；这里解构只为了避免透传给 runWorkflow。
   void userChatInput;
 
@@ -207,15 +210,15 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
           ...node,
           showStatus: false,
           inputs: node.inputs.map((input) => {
-            let val = customAppVariables[input.key] ?? input.value;
+            let val = runtimeCustomAppVariables[input.key] ?? input.value;
             if (input.renderTypeList.includes(FlowNodeInputTypeEnum.password)) {
               val = anyValueDecrypt(val);
             } else if (
               input.renderTypeList.includes(FlowNodeInputTypeEnum.fileSelect) &&
               Array.isArray(val) &&
-              customAppVariables[input.key]
+              runtimeCustomAppVariables[input.key]
             ) {
-              customAppVariables[input.key] = val.map((item) =>
+              runtimeCustomAppVariables[input.key] = val.map((item) =>
                 typeof item === 'string' ? item : item.url
               );
             }
@@ -262,7 +265,7 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
     variableState: childrenVariableState,
     query: serverGetWorkflowToolRunUserQuery({
       pluginInputs: getWorkflowToolInputsFromStoreNodes(nodes),
-      variables: customAppVariables
+      variables: runtimeCustomAppVariables
     }).value,
     stream: false,
     workflowStreamResponse: undefined
@@ -290,7 +293,7 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
       moduleType: FlowNodeTypeEnum.pluginModule,
       moduleName: app.name,
       moduleLogo: app.avatar,
-      toolInput: customAppVariables,
+      toolInput: runtimeCustomAppVariables,
       toolRes: pluginOutput || {},
       childResponseCount: runtimeSummary.childResponseCount
     }

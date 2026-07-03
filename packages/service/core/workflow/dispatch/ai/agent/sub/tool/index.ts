@@ -20,7 +20,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getAppVersionById } from '../../../../../../app/version/controller';
 import { assertMCPUrlNotInternal, MCPClient } from '../../../../../../app/mcp';
 import { runHTTPTool } from '../../../../../../app/http';
-import { parseToolId } from '../../../../child/runTool';
+import { getToolRuntimeInputParams, parseToolId } from '../../../../child/runTool';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { pluginClient } from '../../../../../../../thirdProvider/fastgptPlugin';
@@ -64,6 +64,8 @@ export const dispatchTool = async ({
   variableState,
   workflowStreamResponse
 }: Props): Promise<DispatchSubAppResponse> => {
+  const runtimeInputParams = getToolRuntimeInputParams(params);
+
   const getNodeResponse = ({
     result,
     response
@@ -75,7 +77,7 @@ export const dispatchTool = async ({
       moduleType: FlowNodeTypeEnum.tool,
       moduleName: name,
       moduleLogo: avatar,
-      toolInput: params,
+      toolInput: runtimeInputParams,
       toolRes: result || response
     };
   };
@@ -155,7 +157,7 @@ export const dispatchTool = async ({
         ...(childId ? { childId } : {}),
         version: tool.version ?? version ?? '',
         source: toolSource,
-        input: Object.fromEntries(Object.entries(params)),
+        input: runtimeInputParams,
         secrets: inputConfigParams,
         systemVar: {
           app: {
@@ -246,7 +248,7 @@ export const dispatchTool = async ({
 
       const result = await mcpClient.toolCall({
         toolName,
-        params
+        params: runtimeInputParams
       });
       return {
         response: JSON.stringify(result),
@@ -283,7 +285,7 @@ export const dispatchTool = async ({
         baseUrl: baseUrl || '',
         toolPath: httpTool.path,
         method: httpTool.method,
-        params,
+        params: runtimeInputParams,
         headerSecret: httpTool.headerSecret || headerSecret,
         customHeaders: customHeaders
           ? typeof customHeaders === 'string'

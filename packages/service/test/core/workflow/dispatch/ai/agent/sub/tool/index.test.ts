@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { dispatchTool } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 const { authAppByTmbIdMock, getAppVersionByIdMock, runHTTPToolMock, mcpToolCallMock } = vi.hoisted(
   () => ({
@@ -66,16 +67,19 @@ vi.mock('@fastgpt/service/core/app/tool/systemTool/systemTool.repo', () => ({
   }
 }));
 
-const createDispatchToolProps = (toolConfig: Record<string, any>) =>
+const createDispatchToolProps = (
+  toolConfig: Record<string, any>,
+  params: Record<string, any> = {
+    keyword: 'fastgpt'
+  }
+) =>
   ({
     tool: {
       name: 'Agent tool',
       avatar: '',
       toolConfig
     },
-    params: {
-      keyword: 'fastgpt'
-    },
+    params,
     runningAppInfo: {
       id: 'attacker-app',
       teamId: 'attacker-team',
@@ -178,6 +182,61 @@ describe('dispatchTool runtime toolset auth', () => {
       })
     );
     expect(result.response).toBe(JSON.stringify({ ok: true }));
+  });
+
+  it('should not pass FastGPT runtime system params to HTTP agent tool', async () => {
+    getAppVersionByIdMock.mockResolvedValueOnce({
+      nodes: [
+        {
+          toolConfig: {
+            httpToolSet: {
+              baseUrl: 'https://example.com',
+              toolList: [
+                {
+                  name: 'sandbox_echo',
+                  path: '/echo',
+                  method: 'post'
+                }
+              ]
+            }
+          }
+        }
+      ]
+    });
+    runHTTPToolMock.mockResolvedValueOnce({
+      data: {
+        ok: true
+      }
+    });
+
+    const result = await dispatchTool(
+      createDispatchToolProps(
+        {
+          httpTool: {
+            toolId: 'http-victim-toolset/sandbox_echo'
+          }
+        },
+        {
+          keyword: 'fastgpt',
+          [NodeInputKeyEnum.forbidStream]: false,
+          [NodeInputKeyEnum.systemInputConfig]: {
+            type: 'system',
+            value: {}
+          }
+        }
+      )
+    );
+
+    expect(runHTTPToolMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: {
+          keyword: 'fastgpt'
+        }
+      })
+    );
+    expect(result.nodeResponse?.toolInput).toEqual({
+      keyword: 'fastgpt'
+    });
   });
 
   it('should reject MCP agent tool execution when running app tmb has no parent toolset permission', async () => {

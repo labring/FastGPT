@@ -51,6 +51,25 @@ type RunToolResponse = DispatchNodeResultType<
   Record<string, any>
 >;
 
+const toolRuntimeSystemInputKeys = new Set<string>([
+  NodeInputKeyEnum.systemInputConfig,
+  NodeInputKeyEnum.forbidStream,
+  NodeInputKeyEnum.toolData,
+  NodeInputKeyEnum.toolSetData,
+  'toolData'
+]);
+
+/**
+ * 过滤工具执行时只供 FastGPT runtime 使用的系统输入。
+ *
+ * 这些字段用于密钥、流式控制或旧版 MCP 工具配置，不能作为业务参数传给真实工具；
+ * 否则外部 HTTP/MCP/SystemTool 会收到诸如 system_forbid_stream 的内部控制字段。
+ */
+export const getToolRuntimeInputParams = (params: Record<string, any>) =>
+  Object.fromEntries(
+    Object.entries(params).filter(([key]) => !toolRuntimeSystemInputKeys.has(key))
+  );
+
 export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolResponse> => {
   const {
     params,
@@ -68,6 +87,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
 
   const systemToolId = toolConfig?.systemTool?.toolId;
   let toolInput: Record<string, any> = {};
+  const runtimeInputParams = getToolRuntimeInputParams(params);
 
   const getSystemToolSource = () => {
     const toolConfigSource = toolConfig?.systemTool?.source;
@@ -114,9 +134,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
             return tool.secretsVal ?? {};
         }
       })();
-      toolInput = Object.fromEntries(
-        Object.entries(params).filter(([key]) => key !== NodeInputKeyEnum.systemInputConfig)
-      );
+      toolInput = runtimeInputParams;
 
       const invokeToken = appId
         ? new InvokeProcessor({
@@ -265,8 +283,12 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         });
       context.mcpClientMemory[url] = mcpClient;
 
-      toolInput = params;
-      const result = await mcpClient.toolCall({ toolName, params, closeConnection: false });
+      toolInput = runtimeInputParams;
+      const result = await mcpClient.toolCall({
+        toolName,
+        params: runtimeInputParams,
+        closeConnection: false
+      });
       return {
         data: { [NodeOutputKeyEnum.rawResponse]: result },
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
@@ -301,12 +323,12 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
         throw new Error(`HTTP tool ${toolName} not found`);
       }
 
-      toolInput = params;
+      toolInput = runtimeInputParams;
       const { data, errorMsg } = await runHTTPTool({
         baseUrl: baseUrl || '',
         toolPath: httpTool.path,
         method: httpTool.method,
-        params,
+        params: runtimeInputParams,
         headerSecret: httpTool.headerSecret || headerSecret,
         customHeaders: customHeaders
           ? typeof customHeaders === 'string'
@@ -340,7 +362,7 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
       };
     } else {
       // mcp tool (old version compatible)
-      const { toolData, system_toolData, ...restParams } = params;
+      const { toolData, system_toolData } = params;
       const { name: toolName, url, headerSecret } = toolData || system_toolData;
 
       await assertMCPUrlNotInternal(url);
@@ -351,8 +373,8 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
           storeSecret: headerSecret
         })
       });
-      toolInput = restParams;
-      const result = await mcpClient.toolCall({ toolName, params: restParams });
+      toolInput = runtimeInputParams;
+      const result = await mcpClient.toolCall({ toolName, params: runtimeInputParams });
 
       return {
         data: {
