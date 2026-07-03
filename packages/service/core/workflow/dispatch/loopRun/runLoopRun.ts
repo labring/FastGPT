@@ -1,7 +1,10 @@
 import { cloneDeep } from 'lodash';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import {
+  DispatchNodeResponseKeyEnum,
+  SseResponseEventEnum
+} from '@fastgpt/global/core/workflow/runtime/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type {
   DispatchNodeResultType,
@@ -33,6 +36,7 @@ import {
   pickCustomOutputInputs,
   readCustomOutputSnapshot
 } from './service';
+import { createContainerRunStateSnapshot, syncContainerRunState } from '../utils/containerRunState';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum;
@@ -182,8 +186,15 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       });
     }
 
+    const iterationVariableState = props.variableState.clone();
+    const iterationStateSnapshot = createContainerRunStateSnapshot({
+      nodes: isolatedNodes,
+      childrenNodeIdList,
+      variableState: iterationVariableState
+    });
     const response = await runWorkflow({
       ...props,
+      variableState: iterationVariableState,
       lastInteractive: interactiveData?.childrenResponse,
       nodeResponseParentId: iterationResponseId,
       runtimeNodes: isolatedNodes,
@@ -217,7 +228,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     const customOutputs = readCustomOutputSnapshot({
       customOutputInputs,
       runtimeNodes: isolatedNodes,
-      variableState: props.variableState,
+      variableState: iterationVariableState,
       finishedNodeIds,
       childrenNodeIdList
     });
@@ -241,7 +252,18 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       };
       childResponseCount += 1 + (wrapper.childResponseCount || 0);
       if (props.nodeResponseWriter) {
-        await props.nodeResponseWriter.recordWithParent([wrapper], props.nodeResponseParentId);
+        const recordedWrappers = await props.nodeResponseWriter.recordWithParent(
+          [wrapper],
+          props.nodeResponseParentId
+        );
+        if (props.apiVersion === 'v2') {
+          recordedWrappers.forEach((item) => {
+            props.workflowStreamResponse?.({
+              event: SseResponseEventEnum.flowNodeResponse,
+              data: item
+            });
+          });
+        }
       }
     };
 
@@ -252,6 +274,15 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     if (response.workflowInteractiveResponse) {
       interactiveResponse = response.workflowInteractiveResponse;
       pendingIterationSummary = iterationSummary;
+      // 交互暂停是可恢复 checkpoint，需要保留暂停前已完成节点的变量和外部 output 变更。
+      await syncContainerRunState({
+        sourceNodes: isolatedNodes,
+        targetNodes: runtimeNodes,
+        childrenNodeIdList,
+        stateSnapshot: iterationStateSnapshot,
+        childVariableState: iterationVariableState,
+        parentVariableState: props.variableState
+      });
       await pushIterationDetail({});
       break;
     }
@@ -270,6 +301,14 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
 
     await pushIterationDetail({});
     loopHistory.push({ iteration, customOutputs, success: true });
+    await syncContainerRunState({
+      sourceNodes: isolatedNodes,
+      targetNodes: runtimeNodes,
+      childrenNodeIdList,
+      stateSnapshot: iterationStateSnapshot,
+      childVariableState: iterationVariableState,
+      parentVariableState: props.variableState
+    });
 
     if (iterationSummary.hasLoopRunBreak) break;
 

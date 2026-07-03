@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import {
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
@@ -241,22 +244,22 @@ describe('dispatchParallelRun', () => {
   });
 
   it('成功任务结束后把 clone 中的全局变量提交回父状态', async () => {
-    const taskVariableState = makeVariableState({ count: 2 });
-    const parentVariableState = {
-      ...makeVariableState(),
-      clone: vi.fn(() => taskVariableState),
-      set: vi.fn()
-    };
-    runWorkflowMock.mockResolvedValue(
-      makeDispatchFlowResponse({
+    const taskVariableState = makeVariableState({ count: 0 });
+    const parentVariableState = makeVariableState({ count: 0 });
+    const originalSet = parentVariableState.set;
+    parentVariableState.clone = vi.fn(() => taskVariableState);
+    parentVariableState.set = vi.fn((key: string, value: unknown) => originalSet(key, value));
+    runWorkflowMock.mockImplementation(async (args: any) => {
+      await args.variableState.set('count', 2);
+      return makeDispatchFlowResponse({
         nodeResponses: [
           makeResponseItem('nestedEnd', {
             moduleType: FlowNodeTypeEnum.nestedEnd,
             loopOutputValue: 'done'
           })
         ]
-      })
-    );
+      });
+    });
 
     await dispatchParallelRun(
       makeProps({
@@ -265,27 +268,60 @@ describe('dispatchParallelRun', () => {
     );
 
     expect(parentVariableState.set).toHaveBeenCalledWith('count', 2);
+    expect(parentVariableState.get('count')).toBe(2);
   });
 
-  it('失败 attempt 不提交全局变量更新，重试成功后只提交成功 attempt 的更新', async () => {
-    const failedClone = makeVariableState({ count: 1 });
-    const successClone = makeVariableState({ count: 2 });
-    const parentVariableState = {
-      ...makeVariableState(),
-      clone: vi.fn().mockReturnValueOnce(failedClone).mockReturnValueOnce(successClone),
-      set: vi.fn()
-    };
-    runWorkflowMock
-      .mockResolvedValueOnce(
-        makeDispatchFlowResponse({
-          nodeResponses: [
-            makeResponseItem('failed-node', {
-              error: 'failed'
-            })
-          ]
-        })
-      )
-      .mockResolvedValueOnce(
+  it('成功任务只提交实际变化变量，避免覆盖其他任务已写回的变量', async () => {
+    const task0VariableState = makeVariableState({ first: 0, second: 0 });
+    const task1VariableState = makeVariableState({ first: 0, second: 0 });
+    const parentVariableState = makeVariableState({ first: 0, second: 0 });
+    parentVariableState.clone = vi
+      .fn()
+      .mockReturnValueOnce(task0VariableState)
+      .mockReturnValueOnce(task1VariableState);
+    runWorkflowMock.mockImplementation(async (args: any) => {
+      if (args.nodeResponseParentId.endsWith('_task_0')) {
+        await args.variableState.set('first', 1);
+      } else {
+        await args.variableState.set('second', 2);
+      }
+
+      return makeDispatchFlowResponse({
+        nodeResponses: [
+          makeResponseItem('nestedEnd', {
+            moduleType: FlowNodeTypeEnum.nestedEnd,
+            loopOutputValue: 'done'
+          })
+        ]
+      });
+    });
+
+    await dispatchParallelRun(
+      makeProps({
+        params: {
+          loopInputArray: ['a', 'b'],
+          [NodeInputKeyEnum.childrenNodeIdList]: [],
+          [NodeInputKeyEnum.parallelRunMaxConcurrency]: 2,
+          [NodeInputKeyEnum.parallelRunMaxRetryTimes]: 0
+        },
+        variableState: parentVariableState
+      })
+    );
+
+    expect(parentVariableState.get('first')).toBe(1);
+    expect(parentVariableState.get('second')).toBe(2);
+  });
+
+  it('成功任务会把变量更新写到外部节点的 output 同步回父运行态', async () => {
+    let unchangedExternalNode: RuntimeNodeItemType | undefined;
+    runWorkflowMock.mockImplementation((args: any) => {
+      const externalNode = args.runtimeNodes.find((node: any) => node.nodeId === 'externalText');
+      externalNode.outputs[0].value = `updated-${args.nodeResponseParentId}`;
+      if (unchangedExternalNode) {
+        unchangedExternalNode.outputs[0].value = 'changed-by-sibling';
+      }
+
+      return Promise.resolve(
         makeDispatchFlowResponse({
           nodeResponses: [
             makeResponseItem('nestedEnd', {
@@ -295,6 +331,140 @@ describe('dispatchParallelRun', () => {
           ]
         })
       );
+    });
+    const props = makeProps();
+    props.runtimeNodes.push({
+      nodeId: 'externalText',
+      name: 'External Text',
+      avatar: '',
+      flowNodeType: FlowNodeTypeEnum.textEditor,
+      showStatus: false,
+      isEntry: false,
+      catchError: false,
+      inputs: [],
+      outputs: [
+        {
+          id: 'text',
+          key: 'text',
+          label: 'text',
+          type: FlowNodeOutputTypeEnum.static,
+          valueType: 'string' as any,
+          value: 'before'
+        }
+      ]
+    });
+    props.runtimeNodes.push({
+      nodeId: 'unchangedExternal',
+      name: 'Unchanged External',
+      avatar: '',
+      flowNodeType: FlowNodeTypeEnum.textEditor,
+      showStatus: false,
+      isEntry: false,
+      catchError: false,
+      inputs: [],
+      outputs: [
+        {
+          id: 'text',
+          key: 'text',
+          label: 'text',
+          type: FlowNodeOutputTypeEnum.static,
+          valueType: 'string' as any,
+          value: 'before'
+        }
+      ]
+    });
+    unchangedExternalNode = props.runtimeNodes.find(
+      (node: RuntimeNodeItemType) => node.nodeId === 'unchangedExternal'
+    );
+
+    await dispatchParallelRun(props);
+
+    const externalNode = props.runtimeNodes.find(
+      (node: RuntimeNodeItemType) => node.nodeId === 'externalText'
+    );
+
+    expect(externalNode?.outputs[0].value).toBe('updated-parallelRun1_task_0');
+    expect(unchangedExternalNode?.outputs[0].value).toBe('changed-by-sibling');
+  });
+
+  it('失败任务不会把外部节点 output 更新同步回父运行态', async () => {
+    runWorkflowMock.mockImplementation((args: any) => {
+      const externalNode = args.runtimeNodes.find((node: any) => node.nodeId === 'externalText');
+      externalNode.outputs[0].value = 'failed-update';
+
+      return Promise.resolve(
+        makeDispatchFlowResponse({
+          nodeResponses: [
+            makeResponseItem('failed-node', {
+              error: 'failed'
+            })
+          ]
+        })
+      );
+    });
+    const props = makeProps();
+    props.runtimeNodes.push({
+      nodeId: 'externalText',
+      name: 'External Text',
+      avatar: '',
+      flowNodeType: FlowNodeTypeEnum.textEditor,
+      showStatus: false,
+      isEntry: false,
+      catchError: false,
+      inputs: [],
+      outputs: [
+        {
+          id: 'text',
+          key: 'text',
+          label: 'text',
+          type: FlowNodeOutputTypeEnum.static,
+          valueType: 'string' as any,
+          value: 'before'
+        }
+      ]
+    });
+
+    await dispatchParallelRun(props);
+
+    const externalNode = props.runtimeNodes.find(
+      (node: RuntimeNodeItemType) => node.nodeId === 'externalText'
+    );
+
+    expect(externalNode?.outputs[0].value).toBe('before');
+  });
+
+  it('失败 attempt 不提交全局变量更新，重试成功后只提交成功 attempt 的更新', async () => {
+    const failedClone = makeVariableState({ count: 0 });
+    const successClone = makeVariableState({ count: 0 });
+    const parentVariableState = makeVariableState({ count: 0 });
+    const originalSet = parentVariableState.set;
+    parentVariableState.clone = vi
+      .fn()
+      .mockReturnValueOnce(failedClone)
+      .mockReturnValueOnce(successClone);
+    parentVariableState.set = vi.fn((key: string, value: unknown) => originalSet(key, value));
+    runWorkflowMock
+      .mockImplementationOnce(async (args: any) => {
+        await args.variableState.set('count', 1);
+        return makeDispatchFlowResponse({
+          nodeResponses: [
+            makeResponseItem('failed-node', {
+              error: 'failed'
+            })
+          ]
+        });
+      })
+      .mockImplementationOnce(async (args: any) => {
+        await args.variableState.set('count', 2);
+        return makeDispatchFlowResponse({
+          nodeResponses: [
+            makeResponseItem('nestedEnd', {
+              moduleType: FlowNodeTypeEnum.nestedEnd,
+              loopOutputValue: 'done'
+            })
+          ]
+        });
+      });
 
     await dispatchParallelRun(
       makeProps({
@@ -310,5 +480,6 @@ describe('dispatchParallelRun', () => {
 
     expect(parentVariableState.set).toHaveBeenCalledTimes(1);
     expect(parentVariableState.set).toHaveBeenCalledWith('count', 2);
+    expect(parentVariableState.get('count')).toBe(2);
   });
 });

@@ -796,6 +796,7 @@ export class SystemToolRepo {
 
     return {
       avatar: tool.customConfig.avatar ?? '',
+      chatConfig: appVersion.chatConfig,
       edges: appVersion.edges,
       id: pluginId,
       name: tool.customConfig.name,

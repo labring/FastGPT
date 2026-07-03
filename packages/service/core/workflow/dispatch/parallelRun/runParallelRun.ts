@@ -1,7 +1,10 @@
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import {
+  DispatchNodeResponseKeyEnum,
+  SseResponseEventEnum
+} from '@fastgpt/global/core/workflow/runtime/constants';
 import {
   type DispatchNodeResultType,
   type ModuleDispatchProps
@@ -22,6 +25,7 @@ import {
   type ParallelFullResultItem
 } from './service';
 import { pushSubWorkflowUsage } from '../utils';
+import { createContainerRunStateSnapshot, syncContainerRunState } from '../utils/containerRunState';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.nestedInputArray]: Array<any>;
@@ -94,6 +98,11 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
 
         try {
           const taskVariableState = props.variableState.clone();
+          const taskStateSnapshot = createContainerRunStateSnapshot({
+            nodes: taskRuntimeNodes,
+            childrenNodeIdList,
+            variableState: taskVariableState
+          });
           const response = await runWorkflow({
             ...props,
             variableState: taskVariableState,
@@ -113,10 +122,14 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
 
           const result = parseTaskResponse({ index, response });
           if (result.success) {
-            const taskVariables = taskVariableState.toRuntimeRecord();
-            for (const [key, value] of Object.entries(taskVariables)) {
-              await props.variableState.set(key, value);
-            }
+            await syncContainerRunState({
+              sourceNodes: taskRuntimeNodes,
+              targetNodes: runtimeNodes,
+              childrenNodeIdList,
+              stateSnapshot: taskStateSnapshot,
+              childVariableState: taskVariableState,
+              parentVariableState: props.variableState
+            });
           }
           const attemptResult = {
             ...result,
@@ -175,7 +188,7 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
   const rootChildResponseCount = getNodeResponseChildResponseCount(attemptResponseDetails);
   if (props.nodeResponseWriter) {
     for (const detail of attemptResponseDetails) {
-      await props.nodeResponseWriter.recordWithParent(
+      const recordedWrappers = await props.nodeResponseWriter.recordWithParent(
         [
           {
             ...detail,
@@ -184,6 +197,14 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
         ],
         props.nodeResponseParentId
       );
+      if (props.apiVersion === 'v2') {
+        recordedWrappers.forEach((item) => {
+          props.workflowStreamResponse?.({
+            event: SseResponseEventEnum.flowNodeResponse,
+            data: item
+          });
+        });
+      }
     }
   }
 

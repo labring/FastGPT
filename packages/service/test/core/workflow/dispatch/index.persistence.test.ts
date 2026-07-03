@@ -992,9 +992,16 @@ describe('runWorkflow node response persistence', () => {
 
     const streamedNodeResponses = responseEvents.filter(
       (item: any) => item?.id && item?.moduleType
-    ) as Array<{ id: string; parentId?: string; moduleType: FlowNodeTypeEnum }>;
+    ) as Array<{ id: string; parentId?: string; nodeId: string; moduleType: FlowNodeTypeEnum }>;
     expect(streamedNodeResponses.some((item) => item.moduleType === FlowNodeTypeEnum.loopRun)).toBe(
       true
+    );
+    const streamedIterationWrappers = streamedNodeResponses.filter(
+      (item) => item.moduleType === FlowNodeTypeEnum.loopRun && item.nodeId === item.id
+    );
+    expect(streamedIterationWrappers).toHaveLength(loopItems.length);
+    expect(streamedIterationWrappers.map((item) => item.parentId)).toEqual(
+      Array(loopItems.length).fill(rootRow.data.id)
     );
     expect(streamedNodeResponses.every((item) => item.id)).toBe(true);
   });

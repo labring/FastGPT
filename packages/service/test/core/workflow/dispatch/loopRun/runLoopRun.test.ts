@@ -273,6 +273,223 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     expect(result[DispatchNodeResponseKeyEnum.newVariables]).toBeUndefined();
   });
 
+  it('每轮成功结束后把 clone 中的全局变量提交回父状态，下一轮可读取上一轮更新', async () => {
+    const parentVariableState = makeVariableState({ count: 0 });
+    const originalSet = parentVariableState.set;
+    parentVariableState.set = vi.fn((key: string, value: unknown) => originalSet(key, value));
+    let iteration = 0;
+
+    runWorkflowMock.mockImplementation(async (args: any) => {
+      iteration++;
+      expect(args.variableState).not.toBe(parentVariableState);
+      if (iteration === 1) {
+        expect(args.variableState.get('count')).toBe(0);
+        await args.variableState.set('count', 1);
+      } else {
+        expect(args.variableState.get('count')).toBe(1);
+        await args.variableState.set('count', 2);
+      }
+
+      return makeDispatchFlowResponse({
+        nodeResponses: [makeResponseItem('startNode'), makeResponseItem('chatNode')]
+      });
+    });
+
+    const props = makeProps({
+      [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.array,
+      [NodeInputKeyEnum.loopRunInputArray]: ['first', 'second']
+    });
+    props.variableState = parentVariableState;
+
+    await dispatchLoopRun(props);
+
+    expect(parentVariableState.get('count')).toBe(2);
+    expect(parentVariableState.set).toHaveBeenCalledWith('count', 1);
+    expect(parentVariableState.set).toHaveBeenCalledWith('count', 2);
+  });
+
+  it('循环体内变量更新外部节点输出后，每轮成功结束会同步到父运行态', async () => {
+    let unchangedExternalNode: RuntimeNodeItemType | undefined;
+    let props: any;
+    let iteration = 0;
+
+    runWorkflowMock.mockImplementation((args: any) => {
+      iteration++;
+      if (iteration === 2) {
+        const parentExternalNode = props.runtimeNodes.find(
+          (node: RuntimeNodeItemType) => node.nodeId === 'externalText'
+        );
+        expect(parentExternalNode?.outputs[0].value).toBe('first');
+      }
+
+      const currentItem = args.runtimeNodes
+        .find((node: any) => node.nodeId === 'startNode')
+        ?.inputs.find((input: any) => input.key === NodeInputKeyEnum.nestedStartInput)?.value;
+      const externalNode = args.runtimeNodes.find((node: any) => node.nodeId === 'externalText');
+      const chatNode = args.runtimeNodes.find((node: any) => node.nodeId === 'chatNode');
+
+      externalNode.outputs[0].value = currentItem;
+      chatNode.outputs[0].value = `child-${currentItem}`;
+      if (unchangedExternalNode) {
+        unchangedExternalNode.outputs[0].value = 'changed-by-sibling';
+      }
+
+      return Promise.resolve(
+        makeDispatchFlowResponse({
+          nodeResponses: [
+            makeResponseItem('startNode'),
+            makeResponseItem('chatNode'),
+            makeResponseItem('variableUpdateNode')
+          ]
+        })
+      );
+    });
+
+    props = makeProps({
+      [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.array,
+      [NodeInputKeyEnum.loopRunInputArray]: ['first', 'second']
+    });
+    props.params[NodeInputKeyEnum.childrenNodeIdList] = [
+      'startNode',
+      'chatNode',
+      'variableUpdateNode'
+    ];
+    props.runtimeNodes.push({
+      nodeId: 'externalText',
+      name: 'External Text',
+      avatar: '',
+      flowNodeType: FlowNodeTypeEnum.textEditor,
+      showStatus: false,
+      isEntry: false,
+      catchError: false,
+      inputs: [],
+      outputs: [
+        {
+          id: 'text',
+          key: 'text',
+          label: 'text',
+          type: FlowNodeOutputTypeEnum.static,
+          valueType: 'string' as any,
+          value: 'before-loop'
+        }
+      ]
+    });
+    props.runtimeNodes.push({
+      nodeId: 'unchangedExternal',
+      name: 'Unchanged External',
+      avatar: '',
+      flowNodeType: FlowNodeTypeEnum.textEditor,
+      showStatus: false,
+      isEntry: false,
+      catchError: false,
+      inputs: [],
+      outputs: [
+        {
+          id: 'text',
+          key: 'text',
+          label: 'text',
+          type: FlowNodeOutputTypeEnum.static,
+          valueType: 'string' as any,
+          value: 'before-loop'
+        }
+      ]
+    });
+    unchangedExternalNode = props.runtimeNodes.find(
+      (node: RuntimeNodeItemType) => node.nodeId === 'unchangedExternal'
+    );
+    props.runtimeNodes.push({
+      nodeId: 'variableUpdateNode',
+      name: 'Variable Update',
+      avatar: '',
+      flowNodeType: FlowNodeTypeEnum.variableUpdate,
+      showStatus: false,
+      isEntry: false,
+      catchError: false,
+      inputs: [],
+      outputs: []
+    });
+    props.runtimeNodesMap = new Map(
+      props.runtimeNodes.map((node: RuntimeNodeItemType) => [node.nodeId, node])
+    );
+
+    await dispatchLoopRun(props);
+
+    const externalNode = props.runtimeNodes.find(
+      (node: RuntimeNodeItemType) => node.nodeId === 'externalText'
+    );
+    const childNode = props.runtimeNodes.find(
+      (node: RuntimeNodeItemType) => node.nodeId === 'chatNode'
+    );
+
+    expect(externalNode?.outputs[0].value).toBe('second');
+    expect(unchangedExternalNode?.outputs[0].value).toBe('changed-by-sibling');
+    expect(childNode?.outputs[0].value).toBe('from-chat');
+  });
+
+  it('失败轮不会把 clone 中的全局变量和外部节点 output 提交回父状态', async () => {
+    const parentVariableState = makeVariableState({ count: 0 });
+
+    runWorkflowMock.mockImplementation(async (args: any) => {
+      const externalNode = args.runtimeNodes.find((node: any) => node.nodeId === 'externalText');
+      externalNode.outputs[0].value = 'failed-update';
+      await args.variableState.set('count', 1);
+
+      return makeDispatchFlowResponse({
+        nodeResponses: [makeResponseItem('startNode', { error: 'boom' })]
+      });
+    });
+
+    const props = makeProps({
+      [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.array,
+      [NodeInputKeyEnum.loopRunInputArray]: ['first']
+    });
+    props.variableState = parentVariableState;
+    props.params[NodeInputKeyEnum.childrenNodeIdList] = [
+      'startNode',
+      'chatNode',
+      'variableUpdateNode'
+    ];
+    props.runtimeNodes.push({
+      nodeId: 'externalText',
+      name: 'External Text',
+      avatar: '',
+      flowNodeType: FlowNodeTypeEnum.textEditor,
+      showStatus: false,
+      isEntry: false,
+      catchError: false,
+      inputs: [],
+      outputs: [
+        {
+          id: 'text',
+          key: 'text',
+          label: 'text',
+          type: FlowNodeOutputTypeEnum.static,
+          valueType: 'string' as any,
+          value: 'before-loop'
+        }
+      ]
+    });
+    props.runtimeNodes.push({
+      nodeId: 'variableUpdateNode',
+      name: 'Variable Update',
+      avatar: '',
+      flowNodeType: FlowNodeTypeEnum.variableUpdate,
+      showStatus: false,
+      isEntry: false,
+      catchError: false,
+      inputs: [],
+      outputs: []
+    });
+
+    await dispatchLoopRun(props);
+
+    const externalNode = props.runtimeNodes.find(
+      (node: RuntimeNodeItemType) => node.nodeId === 'externalText'
+    );
+    expect(externalNode?.outputs[0].value).toBe('before-loop');
+    expect(parentVariableState.get('count')).toBe(0);
+  });
+
   it('array mode 第 2 轮节点出错 → 本轮 success:false, 失败轮快照对未跑节点返回 undefined', async () => {
     let iter = 0;
     runWorkflowMock.mockImplementation((args: any) => {

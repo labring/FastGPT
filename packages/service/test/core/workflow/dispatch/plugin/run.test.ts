@@ -1,7 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeOutputKeyEnum,
+  VariableInputEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import { WorkflowVariableState } from '@fastgpt/service/core/workflow/dispatch/utils/variables';
 import { summarizeRuntimeNodeResponses } from '@fastgpt/service/core/workflow/dispatch/utils';
 
@@ -84,6 +88,18 @@ describe('dispatchRunPlugin', () => {
         }
       ],
       edges: [],
+      chatConfig: {
+        variables: [
+          {
+            key: 'counter',
+            label: 'counter',
+            type: VariableInputEnum.numberInput,
+            valueType: WorkflowIOValueTypeEnum.number,
+            defaultValue: 0,
+            description: ''
+          }
+        ]
+      },
       currentCost: 0,
       associatedPluginId: 'associated-app'
     });
@@ -139,7 +155,10 @@ describe('dispatchRunPlugin', () => {
     } as any);
 
     expect(runWorkflowMock).toHaveBeenCalledTimes(1);
-    expect(runWorkflowMock.mock.calls[0][0].nodeResponseWriter).toBeUndefined();
+    const childWorkflowProps = runWorkflowMock.mock.calls[0][0];
+    expect(childWorkflowProps.nodeResponseWriter).toBeUndefined();
+    expect(childWorkflowProps.chatConfig.variables).toHaveLength(1);
+    expect(childWorkflowProps.variableState.get('counter')).toBe(0);
     expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({
       moduleLogo: 'system-avatar',
       childResponseCount: 1

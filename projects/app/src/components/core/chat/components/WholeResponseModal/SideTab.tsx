@@ -2,7 +2,7 @@ import { type ReactNode } from 'react';
 import { Box, Flex, useDisclosure } from '@chakra-ui/react';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import Avatar from '@fastgpt/web/components/common/Avatar';
-import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyIconButton from '@fastgpt/web/components/common/Icon/button';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import type { SideTabItemType } from './types';
 
@@ -14,6 +14,8 @@ const SIDE_TAB_ROOT_PADDING = 8;
 const SIDE_TAB_MAX_CHILD_DEPTH = 3;
 const SIDE_TAB_AVATAR_SIZE = 24;
 const SIDE_TAB_CHILD_INDENT = 28;
+const SIDE_TAB_ACCORDION_BUTTON_SIZE = 24;
+const SIDE_TAB_ACCORDION_ICON_SIZE = 16;
 
 const getSideTabLeftPadding = (index: number) => {
   const safeIndex = Math.min(index, SIDE_TAB_MAX_CHILD_DEPTH);
@@ -93,12 +95,12 @@ const NormalSideTabItem = ({
       </Box>
       {children && (
         <Flex
-          h={'24px'}
-          w={'20px'}
+          h={`${SIDE_TAB_ACCORDION_BUTTON_SIZE}px`}
+          w={`${SIDE_TAB_ACCORDION_BUTTON_SIZE}px`}
           flexShrink={0}
           alignItems={'center'}
           justifyContent={'center'}
-          ml={1}
+          ml={2}
         >
           {children}
         </Flex>
@@ -131,15 +133,18 @@ const AccordionSideTabItem = ({
           onChange={onChange}
           sideBarItem={sideBarItem}
         >
-          <MyIcon
-            h={'20px'}
-            w={'20px'}
-            name={isShowAccordion ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}
+          <MyIconButton
+            icon={isShowAccordion ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}
+            size={`${SIDE_TAB_ACCORDION_ICON_SIZE}px`}
+            w={`${SIDE_TAB_ACCORDION_BUTTON_SIZE}px`}
+            h={`${SIDE_TAB_ACCORDION_BUTTON_SIZE}px`}
+            p={0}
+            justifyContent={'center'}
+            hoverBg={'myGray.200'}
             onClick={(e) => {
               e.stopPropagation();
               onToggleShowAccordion();
             }}
-            _hover={{ color: 'primary.600', cursor: 'pointer' }}
           />
         </NormalSideTabItem>
       </Flex>
