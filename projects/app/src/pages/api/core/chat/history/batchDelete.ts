@@ -17,6 +17,10 @@ const getBatchDeletePermission = (sourceType: ChatSourceTypeEnum) => {
     return WritePermissionVal;
   }
 
+  if (sourceType === ChatSourceTypeEnum.helperBot) {
+    return AppReadChatLogPerVal;
+  }
+
   const exhaustiveCheck: never = sourceType;
   throw new Error(`Unsupported chat source type: ${exhaustiveCheck}`);
 };

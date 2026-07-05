@@ -465,12 +465,12 @@ export const loadGeneratedTools = async ({
           return;
         }
 
-        const topTool = topAgentSelectedTools.find((item) => item.pluginId === toolId);
-        if (topTool) {
+        const topAgentTool = topAgentSelectedTools.find((item) => item.pluginId === toolId);
+        if (topAgentTool) {
           tool.inputs.forEach((input) => {
-            const topInput = topTool.inputs.find((topIn) => topIn.key === input.key);
-            if (topInput) {
-              input.value = topInput.value;
+            const topAgentInput = topAgentTool.inputs.find((topIn) => topIn.key === input.key);
+            if (topAgentInput) {
+              input.value = topAgentInput.value;
             }
           });
         }

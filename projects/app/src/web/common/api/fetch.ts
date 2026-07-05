@@ -7,6 +7,7 @@ import {
   StreamResumeUnavailableReasonEnum
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
+  ChatSourceTypeEnum,
   STREAM_RESUME_REQUEST_HEADER,
   STREAM_RESUME_REQUEST_HEADER_ENABLED
 } from '@fastgpt/global/core/chat/constants';
@@ -27,7 +28,6 @@ import type {
   SkillModuleResponseItemType
 } from '@fastgpt/global/core/chat/type';
 import type { TopAgentFormDataType } from '@fastgpt/global/core/chat/helperBot/topAgent/type';
-import type { UserInputInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { AgentPlanStatusType, AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import type { StreamNoNeedToBeResumeType } from '@fastgpt/global/openapi/core/ai/api';
 
@@ -60,6 +60,7 @@ const shouldSendStreamResumeHeader = (url: string) =>
     '/api/v2/chat/completions',
     '/api/proApi/core/chat/chatHome',
     '/api/core/chat/chatTest',
+    '/api/proApi/core/chat/helperBot/completions',
     '/api/core/ai/skill/debugChat',
     '/api/proApi/core/ai/skill/debugChat'
   ]).has(url);
@@ -84,10 +85,6 @@ type ResponseQueueItemType = CommonResponseType &
           | SseResponseEventEnum.toolParams
           | SseResponseEventEnum.toolResponse;
         tool: ToolModuleResponseItemType;
-      }
-    | {
-        event: SseResponseEventEnum.collectionForm;
-        collectionForm: UserInputInteractive;
       }
     | {
         event: SseResponseEventEnum.topAgentConfig;
@@ -202,11 +199,6 @@ function handleEventSourceData(params: HandleEventSourceDataParams) {
 
       case SseResponseEventEnum.updateVariables: {
         onmessage({ event, variables: obj });
-        break;
-      }
-
-      case SseResponseEventEnum.collectionForm: {
-        enqueue({ responseValueId, event, collectionForm: obj });
         break;
       }
 
@@ -671,6 +663,9 @@ export async function streamResumeFetch(params: StreamResumeFetchParams) {
     query.set('skillId', params.skillId);
   } else {
     query.set('appId', params.appId!);
+    if (params.sourceType === ChatSourceTypeEnum.helperBot) {
+      query.set('sourceType', ChatSourceTypeEnum.helperBot);
+    }
   }
 
   const url = `/api/core/chat/resume?${query}`;

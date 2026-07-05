@@ -1,65 +1,40 @@
 import { z } from 'zod';
-import { PaginationResponseSchema, PaginationSchema } from '../../../api';
+import { ObjectIdSchema } from '../../../../common/type/mongo';
 import { ChatFileTypeEnum } from '../../../../core/chat/constants';
-import {
-  HelperBotChatItemSiteSchema,
-  HelperBotTypeEnum,
-  HelperBotTypeEnumSchema
-} from '../../../../core/chat/helperBot/type';
+import { HelperBotTypeEnum } from '../../../../core/chat/helperBot/type';
 import { topAgentParamsSchema } from '../../../../core/chat/helperBot/topAgent/type';
+import { ChatCompletionMessageParamSchema } from '../../../../core/ai/llm/type';
+import { WorkflowInteractiveResponseTypeSchema } from '../../../../core/workflow/template/system/interactive/type';
 
-export const HelperBotCompletionsParamsSchema = z.object({
-  chatId: z.string(),
-  chatItemId: z.string(),
-  query: z.string(),
-  files: z.array(
-    z.object({
-      type: z.enum(ChatFileTypeEnum),
-      key: z.string(),
-      url: z.string().optional(),
-      name: z.string()
+export const HelperBotChatFileSchema = z.object({
+  type: z.enum(ChatFileTypeEnum),
+  key: z.string(),
+  url: z.string().optional(),
+  name: z.string()
+});
+export type HelperBotChatFileType = z.infer<typeof HelperBotChatFileSchema>;
+
+export const HelperBotCompletionsParamsSchema = z
+  .object({
+    chatId: z.string(),
+    responseChatItemId: z.string(),
+    appId: ObjectIdSchema,
+    messages: z.array(ChatCompletionMessageParamSchema),
+    interactive: WorkflowInteractiveResponseTypeSchema.optional(),
+    metadata: z.object({
+      type: z.literal(HelperBotTypeEnum.topAgent),
+      data: topAgentParamsSchema
     })
-  ),
-  metadata: z.object({
-    type: z.literal(HelperBotTypeEnum.topAgent),
-    data: topAgentParamsSchema
   })
-});
+  .superRefine(({ messages }, ctx) => {
+    const lastUserMessage = messages.findLast((message) => message.role === 'user');
+
+    if (!lastUserMessage?.dataId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['messages'],
+        message: 'HelperBot messages requires a user message with dataId'
+      });
+    }
+  });
 export type HelperBotCompletionsParamsType = z.infer<typeof HelperBotCompletionsParamsSchema>;
-
-// 分页获取记录
-export const GetHelperBotChatRecordsParamsSchema = PaginationSchema.extend({
-  type: HelperBotTypeEnumSchema,
-  chatId: z.string()
-});
-export type GetHelperBotChatRecordsParamsType = z.infer<typeof GetHelperBotChatRecordsParamsSchema>;
-export const GetHelperBotChatRecordsResponseSchema = PaginationResponseSchema(
-  HelperBotChatItemSiteSchema
-);
-export type GetHelperBotChatRecordsResponseType = z.infer<
-  typeof GetHelperBotChatRecordsResponseSchema
->;
-
-// 删除单组对话
-export const DeleteHelperBotChatParamsSchema = z.object({
-  type: HelperBotTypeEnumSchema,
-  chatId: z.string(),
-  chatItemId: z.string()
-});
-export type DeleteHelperBotChatParamsType = z.infer<typeof DeleteHelperBotChatParamsSchema>;
-
-// 获取文件上传签名
-export const GetHelperBotFilePresignParamsSchema = z.object({
-  type: HelperBotTypeEnumSchema,
-  chatId: z.string(),
-  filename: z.string()
-});
-export type GetHelperBotFilePresignParamsType = z.infer<typeof GetHelperBotFilePresignParamsSchema>;
-
-// 获取文件预览链接
-export const GetHelperBotFilePreviewParamsSchema = z.object({
-  key: z.string().min(1),
-  mode: z.enum(['proxy', 'presigned']).optional()
-});
-export type GetHelperBotFilePreviewParamsType = z.infer<typeof GetHelperBotFilePreviewParamsSchema>;
-export const GetHelperBotFilePreviewResponseSchema = z.string();

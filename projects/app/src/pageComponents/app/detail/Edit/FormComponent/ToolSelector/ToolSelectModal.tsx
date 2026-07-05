@@ -331,12 +331,14 @@ const RenderList = React.memo(function RenderList({
       }
 
       // 添加与 top 相同工具的配置
-      const topTool = topAgentSelectedTools.find((tool) => tool.pluginId === res.pluginId);
-      if (topTool) {
+      const topAgentTool = topAgentSelectedTools.find((tool) => tool.pluginId === res.pluginId);
+      if (topAgentTool) {
         res.inputs.forEach((input) => {
-          const topInput = topTool.inputs.find((topInput) => topInput.key === input.key);
-          if (topInput) {
-            input.value = topInput.value;
+          const topAgentInput = topAgentTool.inputs.find(
+            (topAgentInput) => topAgentInput.key === input.key
+          );
+          if (topAgentInput) {
+            input.value = topAgentInput.value;
           }
         });
       }

@@ -211,6 +211,28 @@ describe('parseAgentInputFiles', () => {
     ]);
     expect(files.every((file) => !file.name.includes('/'))).toBe(true);
   });
+
+  it('keeps explicit image type when preview url has no file extension', () => {
+    const files = parseAgentInputFiles({
+      files: [
+        {
+          name: '20260629-233136_wT851P.jpg',
+          type: ChatFileTypeEnum.image,
+          url: 'https://fastgpt.example.com/api/core/chat/file/preview?token=abc'
+        }
+      ],
+      prefixId: 'current',
+      maxFiles: 10
+    });
+
+    expect(files).toEqual([
+      expect.objectContaining({
+        name: '20260629-233136_wT851P.jpg',
+        type: ChatFileTypeEnum.image,
+        url: 'https://fastgpt.example.com/api/core/chat/file/preview?token=abc'
+      })
+    ]);
+  });
 });
 
 describe('buildAgentUserReminderInput', () => {
@@ -412,6 +434,7 @@ describe('useUserContext', () => {
       {
         queryUrlTypeMap: {
           '/old.pdf': ChatFileTypeEnum.file,
+          '/old.png': ChatFileTypeEnum.image,
           '/current.pdf': ChatFileTypeEnum.file,
           '/current.png': ChatFileTypeEnum.image
         },
@@ -421,7 +444,10 @@ describe('useUserContext', () => {
         const history = createHumanMessage({
           dataId: 'history_1',
           text: '历史问题',
-          files: [{ name: 'old.pdf', url: '/old.pdf' }]
+          files: [
+            { name: 'old.pdf', url: '/old.pdf' },
+            { name: 'old.png', url: '/old.png', type: ChatFileTypeEnum.image }
+          ]
         });
         const result = await getUserContextMessagesForTest({
           history: 6,
@@ -452,19 +478,36 @@ describe('useUserContext', () => {
         });
         expect(result.fileUrlMap).toEqual({
           'history_1-0': '/old.pdf',
+          'history_1-1': '/old.png',
           'current_chat_item-0': '/current.pdf',
           'current_chat_item-1': '/current.png'
         });
 
-        const { text: historyText } = chatValue2RuntimePrompt(result.rewrittenHistories[0].value);
+        const { text: historyText, files: historyFiles } = chatValue2RuntimePrompt(
+          result.rewrittenHistories[0].value
+        );
         const { text: currentText, files: currentFiles } = chatValue2RuntimePrompt(
           result.currentUserMessage.value
         );
 
+        expect(historyFiles).toEqual([
+          {
+            name: 'old.png',
+            type: ChatFileTypeEnum.image,
+            url: '/old.png'
+          }
+        ]);
         expect(historyText).toContain('<id>history_1-0</id>');
+        expect(historyText).toContain('<id>history_1-1</id>');
         expect(historyText).not.toContain('当前 sandbox 工作目录');
         expect(historyText).not.toContain('当前时间');
-        expect(currentFiles).toEqual([]);
+        expect(currentFiles).toEqual([
+          {
+            name: 'current.png',
+            type: ChatFileTypeEnum.image,
+            url: '/current.png'
+          }
+        ]);
         expect(currentText).toContain('## 背景信息');
         expect(currentText).toContain('当前 sandbox 工作目录: /workspace');
         expect(currentText).toContain('<id>current_chat_item-0</id>');
@@ -720,6 +763,47 @@ describe('useUserContext', () => {
         const { text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
         expect(text.match(/<file>/g)).toHaveLength(1);
         expect(text).toContain('<name>current.pdf</name>');
+      }
+    );
+  });
+
+  it('keeps uploaded image as multimodal content when preview url has no extension', async () => {
+    await runWithContextAsync(
+      {
+        queryUrlTypeMap: {},
+        mcpClientMemory: {}
+      },
+      async () => {
+        const previewUrl = 'https://fastgpt.example.com/api/core/chat/file/preview?token=abc';
+        const result = await getUserContextMessagesForTest({
+          history: 0,
+          histories: [],
+          currentUserInput: '看一下这张图',
+          currentDataId: 'current_chat_item',
+          currentQuery: runtimePrompt2ChatsValue({
+            text: '前端原始问题',
+            files: [
+              {
+                name: '20260629-233136_wT851P.jpg',
+                url: previewUrl,
+                type: ChatFileTypeEnum.image
+              }
+            ]
+          }),
+          tmbId: 'tmb_1',
+          timezone: 'Asia/Shanghai',
+          maxFiles: 20
+        });
+
+        const { files, text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
+        expect(files).toEqual([
+          expect.objectContaining({
+            type: ChatFileTypeEnum.image,
+            name: '20260629-233136_wT851P.jpg',
+            url: previewUrl
+          })
+        ]);
+        expect(text).toContain('<type>image</type>');
       }
     );
   });

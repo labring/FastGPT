@@ -1,16 +1,7 @@
 import z from 'zod';
 import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap } from '../../../tag';
-import {
-  HelperBotCompletionsParamsSchema,
-  DeleteHelperBotChatParamsSchema,
-  GetHelperBotFilePresignParamsSchema,
-  GetHelperBotFilePreviewParamsSchema,
-  GetHelperBotFilePreviewResponseSchema,
-  GetHelperBotChatRecordsParamsSchema,
-  GetHelperBotChatRecordsResponseSchema
-} from './api';
-import { CreatePostPresignedUrlResponseSchema } from '../../../../common/file/s3/type';
+import { HelperBotCompletionsParamsSchema } from './api';
 
 export const HelperBotPath: OpenAPIPath = {
   '/proApi/core/chat/helperBot/completions': {
@@ -31,98 +22,6 @@ export const HelperBotPath: OpenAPIPath = {
           content: {
             'application/stream+json': {
               schema: z.any()
-            }
-          }
-        }
-      }
-    }
-  },
-  '/core/chat/helperBot/getRecords': {
-    get: {
-      summary: '分页获取记录',
-      description: '分页获取记录',
-      tags: [DevApiTagsMap.helperBot],
-      requestParams: {
-        query: GetHelperBotChatRecordsParamsSchema
-      },
-      responses: {
-        200: {
-          description: '成功返回记录列表',
-          content: {
-            'application/json': {
-              schema: GetHelperBotChatRecordsResponseSchema
-            }
-          }
-        }
-      }
-    }
-  },
-  '/core/chat/helperBot/deleteRecord': {
-    delete: {
-      summary: '删除单组对话',
-      description: '删除单组对话',
-      tags: [DevApiTagsMap.helperBot],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: DeleteHelperBotChatParamsSchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          description: '成功删除记录',
-          content: {
-            'application/json': {
-              schema: z.any()
-            }
-          }
-        }
-      }
-    }
-  },
-  '/core/chat/helperBot/getFilePresign': {
-    post: {
-      summary: '获取辅助助手文件上传签名',
-      description: '获取辅助助手文件上传签名',
-      tags: [DevApiTagsMap.helperBot],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: GetHelperBotFilePresignParamsSchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          description: '成功返回文件上传签名',
-          content: {
-            'application/json': {
-              schema: CreatePostPresignedUrlResponseSchema
-            }
-          }
-        }
-      }
-    }
-  },
-  '/core/chat/helperBot/getFilePreviewUrl': {
-    post: {
-      summary: '获取辅助助手文件预览链接',
-      description: '获取辅助助手文件预览链接',
-      tags: [DevApiTagsMap.helperBot],
-      requestBody: {
-        content: {
-          'application/json': {
-            schema: GetHelperBotFilePreviewParamsSchema
-          }
-        }
-      },
-      responses: {
-        200: {
-          description: '成功返回文件预览链接',
-          content: {
-            'application/json': {
-              schema: GetHelperBotFilePreviewResponseSchema
             }
           }
         }

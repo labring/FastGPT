@@ -21,7 +21,7 @@ import { ChatGenerateStatusEnum, ChatSourceTypeEnum } from '@fastgpt/global/core
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum, defaultAppSelectFileConfig } from '@fastgpt/global/core/app/constants';
 import { buildChatTargetResponse } from '@fastgpt/global/openapi/core/chat/api';
 
 async function handler(req: NextApiRequest): Promise<InitChatResponseType> {
@@ -82,6 +82,71 @@ async function handler(req: NextApiRequest): Promise<InitChatResponseType> {
         name: skill.name,
         avatar: skill.avatar || '',
         intro: skill.description || '',
+        type: AppTypeEnum.simple,
+        pluginInputs: []
+      }
+    });
+  }
+
+  if (sourceType === ChatSourceTypeEnum.helperBot) {
+    const [{ teamId, tmbId, permission }, chat] = await Promise.all([
+      authApp({
+        req,
+        authToken: true,
+        authApiKey: true,
+        appId: sourceId,
+        per: ReadPermissionVal
+      }),
+      chatId
+        ? MongoChat.findOne({ ...buildChatSourceQuery({ sourceType, sourceId }), chatId })
+        : undefined
+    ]);
+
+    if (chat) {
+      if (String(chat.teamId) !== String(teamId)) {
+        return Promise.reject(ChatErrEnum.unAuthChat);
+      }
+
+      if (!permission.hasReadChatLogPer && String(chat.tmbId) !== String(tmbId)) {
+        return Promise.reject(ChatErrEnum.unAuthChat);
+      }
+    }
+
+    const chatGenerateStatus = chat?.chatGenerateStatus ?? ChatGenerateStatusEnum.done;
+    if (chat?.hasBeenRead === false && chatGenerateStatus !== ChatGenerateStatusEnum.generating) {
+      await MongoChat.updateOne(
+        { ...buildChatSourceQuery({ sourceType, sourceId }), chatId },
+        { $set: { hasBeenRead: true } }
+      );
+      chat.hasBeenRead = true;
+    }
+
+    return InitChatResponseSchema.parse({
+      chatId,
+      ...buildChatTargetResponse({ sourceType, sourceId }),
+      title: chat?.title || '',
+      userAvatar: undefined,
+      variables: {},
+      chatGenerateStatus,
+      hasBeenRead: chat?.hasBeenRead ?? true,
+      app: {
+        chatConfig: {
+          fileSelectConfig: {
+            ...defaultAppSelectFileConfig,
+            maxFiles: 10,
+            canSelectFile: true,
+            canSelectImg: true,
+            customPdfParse: false,
+            canSelectVideo: true,
+            canSelectAudio: true,
+            canSelectCustomFileExtension: true,
+            customFileExtensionList: []
+          }
+        },
+        chatModels: [],
+        name: 'Top Agent',
+        avatar: '/imgs/bot.svg',
+        intro: '',
         type: AppTypeEnum.simple,
         pluginInputs: []
       }

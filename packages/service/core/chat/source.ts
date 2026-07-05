@@ -22,8 +22,8 @@ export function buildChatSourceWriteFields({ sourceType, sourceId }: ChatSourceP
 /**
  * 构造 chat 三表 source-aware 查询条件。
  *
- * App 查询默认兼容缺失 `sourceType` 的历史数据；Skill Edit 必须精确匹配
- * `sourceType=skillEdit`。
+ * App 查询默认兼容缺失 `sourceType` 的历史数据；非 App 来源必须精确匹配
+ * `sourceType`，避免不同资源类型复用同一物理 `appId` 字段时串记录。
  */
 export function buildChatSourceQuery({ sourceType, sourceId }: ChatSourceParams) {
   if (sourceType === ChatSourceTypeEnum.app) {
@@ -33,10 +33,10 @@ export function buildChatSourceQuery({ sourceType, sourceId }: ChatSourceParams)
     };
   }
 
-  if (sourceType === ChatSourceTypeEnum.skillEdit) {
+  if (sourceType === ChatSourceTypeEnum.skillEdit || sourceType === ChatSourceTypeEnum.helperBot) {
     return {
       appId: sourceId,
-      sourceType: ChatSourceTypeEnum.skillEdit
+      sourceType
     };
   }
 

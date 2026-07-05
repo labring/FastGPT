@@ -26,14 +26,7 @@ export const UploadConstraintsInputSchema = z.object({
 });
 export type UploadConstraintsInput = z.infer<typeof UploadConstraintsInputSchema>;
 
-export const S3SourcesSchema = z.enum([
-  'avatar',
-  'chat',
-  'dataset',
-  'temp',
-  'rawText',
-  'helperBot'
-]);
+export const S3SourcesSchema = z.enum(['avatar', 'chat', 'dataset', 'temp', 'rawText']);
 export const S3Sources = S3SourcesSchema.enum;
 export type S3SourceType = z.infer<typeof S3SourcesSchema>;
 

@@ -9,6 +9,7 @@ import type {
   ChatHistoryItemResType,
   ChatItemMiniType
 } from '@fastgpt/global/core/chat/type';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { getSystemToolInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
 import { SANDBOX_SYSTEM_PROMPT } from '@fastgpt/global/core/ai/sandbox/constants';
@@ -177,6 +178,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     effectiveUseAgentSandbox && useAgentSandbox && global.feConfigs?.show_agent_sandbox
       ? sandboxEntrypoint
       : undefined;
+  const skipSandboxInputFiles = runningAppInfo.sourceType === ChatSourceTypeEnum.skillEdit;
 
   // 初始化对话框输入的文件
   const fileUrlInput = inputs.find((item) => item.key === NodeInputKeyEnum.fileUrlList);
@@ -229,7 +231,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       selectedSkills,
       editSkillId,
       prepareActions: agentSandboxPrepareActions,
-      currentFiles: userContext.currentFiles
+      currentFiles: skipSandboxInputFiles ? [] : userContext.currentFiles
     });
     // 获取请求上下文
     const { chatHistories, queryInput, filesMap, fileUrlMap } = userContext;

@@ -721,6 +721,7 @@ export const useChatGenerate = ({
             const { responseText } = await onStartChat({
               messages,
               responseChatItemId: responseChatId,
+              interactive,
               controller: abortSignal,
               generatingMessage: (e) => generatingMessage({ ...e, autoTTSResponse }),
               variables: requestVariables

@@ -244,10 +244,6 @@ export const serviceEnv = createEnv({
     AGENT_ENGINE: z.enum(['default', 'pi']).default('default').meta({
       description: 'Agent 引擎选择：default（unified agent loop）| pi（pi-agent-core 引擎）'
     }),
-    HELPER_BOT_MODEL: z
-      .string()
-      .optional()
-      .meta({ description: '辅助生成模型（暂时只能指定一个，需保证系统中已激活该模型）' }),
     SKIP_FILE_TYPE_CHECK: BoolSchema.default(false).meta({
       description: '是否跳过文件类型检查'
     }),

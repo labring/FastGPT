@@ -243,6 +243,73 @@ describe('batchDelete api test', () => {
     ).toBe(0);
   });
 
+  it('should batch delete helperBot records from generic chat tables', async () => {
+    const helperChatId = getNanoid();
+    await Promise.all([
+      MongoChat.create({
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        userId: testUser.userId,
+        sourceType: ChatSourceTypeEnum.helperBot,
+        appId,
+        chatId: helperChatId,
+        source: ChatSourceEnum.test
+      }),
+      MongoChatItem.create({
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        userId: testUser.userId,
+        sourceType: ChatSourceTypeEnum.helperBot,
+        appId,
+        chatId: helperChatId,
+        dataId: getNanoid(),
+        obj: ChatRoleEnum.AI,
+        value: [{ text: { content: 'helper response' } }]
+      }),
+      MongoChatItemResponse.create({
+        teamId: testUser.teamId,
+        sourceType: ChatSourceTypeEnum.helperBot,
+        appId,
+        chatId: helperChatId,
+        chatItemDataId: getNanoid(),
+        data: { nodeId: 'helper-node' }
+      })
+    ]);
+
+    const res = await Call<ChatBatchDeleteBodyType, EmptyQuery>(handler, {
+      auth: testUser,
+      body: {
+        appId,
+        sourceType: ChatSourceTypeEnum.helperBot,
+        chatIds: [helperChatId]
+      }
+    });
+
+    expect(res.code).toBe(200);
+    expect(mocks.deleteAppChatRuntimeSandboxes).not.toHaveBeenCalled();
+    expect(
+      await MongoChat.countDocuments({
+        sourceType: ChatSourceTypeEnum.helperBot,
+        appId,
+        chatId: helperChatId
+      })
+    ).toBe(0);
+    expect(
+      await MongoChatItem.countDocuments({
+        sourceType: ChatSourceTypeEnum.helperBot,
+        appId,
+        chatId: helperChatId
+      })
+    ).toBe(0);
+    expect(
+      await MongoChatItemResponse.countDocuments({
+        sourceType: ChatSourceTypeEnum.helperBot,
+        appId,
+        chatId: helperChatId
+      })
+    ).toBe(0);
+  });
+
   it('should delete single chat', async () => {
     const deleteIds = [chatIds[0]];
 

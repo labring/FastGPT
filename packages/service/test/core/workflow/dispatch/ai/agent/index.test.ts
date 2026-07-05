@@ -509,6 +509,48 @@ describe('dispatchRunAgent user context', () => {
     expect(loopInput.messages.at(-1)?.content).toContain('<path>./SKILL.md</path>');
   });
 
+  it('does not inject current files into sandbox for skill edit preview', async () => {
+    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    const props = createProps();
+    props.runningAppInfo.sourceType = ChatSourceTypeEnum.skillEdit;
+    props.runningAppInfo.sourceId = 'edit_skill_1';
+    props.params.editSkillId = 'edit_skill_1';
+    ensureAgentSandboxRuntimeMock.mockResolvedValueOnce({
+      sandboxClient: {
+        provider: {
+          writeFiles: vi.fn()
+        },
+        exec: sandboxClientExecMock,
+        getSandboxId: () => 'sandbox_prepared'
+      },
+      currentWorkingDirectory: '/workspace',
+      skillInfos: []
+    });
+
+    let result: any;
+    runWithContext(
+      {
+        queryUrlTypeMap: {
+          '/current.pdf': ChatFileTypeEnum.file
+        },
+        mcpClientMemory: {}
+      },
+      () => {
+        result = dispatchRunAgent(props);
+      }
+    );
+    await result;
+
+    expect(ensureAgentSandboxRuntimeMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        sourceId: 'edit_skill_1',
+        editSkillId: 'edit_skill_1',
+        currentFiles: []
+      })
+    );
+  });
+
   it('returns the final answer as assistant response', async () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
 

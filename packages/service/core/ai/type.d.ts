@@ -30,7 +30,6 @@ export type SystemDefaultModelType = {
   datasetTextLLM?: LLMModelItemType;
   datasetImageLLM?: LLMModelItemType;
   chatTitleLLM?: LLMModelItemType;
-  helperBotLLM?: LLMModelItemType;
 
   [ModelTypeEnum.embedding]?: EmbeddingModelItemType;
   [ModelTypeEnum.tts]?: TTSModelType;

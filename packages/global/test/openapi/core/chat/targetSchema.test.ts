@@ -59,6 +59,21 @@ describe('openapi/core/chat target schema', () => {
     expect('skillId' in result).toBe(false);
   });
 
+  it('transforms raw appId with helperBot sourceType to internal helperBot source', () => {
+    const result = StopV2ChatSchema.parse({
+      appId,
+      sourceType: ChatSourceTypeEnum.helperBot,
+      chatId: 'chat-1'
+    });
+
+    expect(result).toMatchObject({
+      sourceType: ChatSourceTypeEnum.helperBot,
+      sourceId: appId,
+      chatId: 'chat-1'
+    });
+    expect('appId' in result).toBe(false);
+  });
+
   it('transforms question guide skillId to internal skillEdit source with debug model config', () => {
     const result = CreateQuestionGuideV2BodySchema.parse({
       skillId,
@@ -81,7 +96,7 @@ describe('openapi/core/chat target schema', () => {
     expect('skillId' in result).toBe(false);
   });
 
-  it('rejects required target when appId and skillId are both provided', () => {
+  it('rejects required target when multiple explicit targets are provided', () => {
     const payload = {
       appId,
       skillId,
@@ -89,6 +104,13 @@ describe('openapi/core/chat target schema', () => {
     };
 
     expect(() => MarkChatReadBodySchema.parse(payload)).toThrow();
+    expect(() =>
+      StopV2ChatSchema.parse({
+        skillId,
+        sourceType: ChatSourceTypeEnum.helperBot,
+        chatId: 'chat-1'
+      })
+    ).toThrow();
     expect(() =>
       GetPaginationRecordsBodySchema.parse({
         ...payload,

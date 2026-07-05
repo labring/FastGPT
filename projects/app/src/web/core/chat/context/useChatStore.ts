@@ -18,6 +18,10 @@ type State = {
   setChatId: (e?: string) => any;
   /** 每个应用最近一次打开的 chatId，用于切换应用时恢复会话 */
   appChatIdMap: Record<string, string>;
+  /** 非主会话按标准 sourceKey 隔离的 chatId，用于同一页面承载多个 ChatBox。 */
+  sourceChatIdMap: Record<string, string>;
+  ensureSourceChatId: (sourceKey: string) => string;
+  setSourceChatId: (sourceKey: string, chatId?: string) => string;
 
   lastPane: ChatSidebarPaneEnum;
   setLastPane: (e: ChatSidebarPaneEnum) => any;
@@ -126,9 +130,7 @@ export const useChatStore = create<State>()(
               appId: state.appId,
               outLinkAuthData: state.outLinkAuthData
             });
-            const restoredAppChatId = nextCacheKey
-              ? state.appChatIdMap[nextCacheKey]
-              : undefined;
+            const restoredAppChatId = nextCacheKey ? state.appChatIdMap[nextCacheKey] : undefined;
             // 分享会话的恢复必须依赖 shareId + outLinkUid，不能只靠 lastChatId 的 source 前缀。
             const lastChatPrefix = `${e}-`;
             const restoredLastChatId =
@@ -174,6 +176,26 @@ export const useChatStore = create<State>()(
         lastChatId: '',
         chatId: '',
         appChatIdMap: {},
+        sourceChatIdMap: {},
+        ensureSourceChatId(sourceKey) {
+          let resolvedChatId = '';
+          set((state) => {
+            if (!sourceKey) return;
+
+            resolvedChatId = state.sourceChatIdMap[sourceKey] || getNanoid(24);
+            state.sourceChatIdMap[sourceKey] = resolvedChatId;
+          });
+          return resolvedChatId;
+        },
+        setSourceChatId(sourceKey, chatId) {
+          const resolvedChatId = chatId || getNanoid(24);
+          set((state) => {
+            if (!sourceKey) return;
+
+            state.sourceChatIdMap[sourceKey] = resolvedChatId;
+          });
+          return resolvedChatId;
+        },
         setChatId(e) {
           const id = e || getNanoid(24);
           set((state) => {
@@ -236,6 +258,7 @@ export const useChatStore = create<State>()(
             state.chatId = '';
             state.lastChatId = '';
             state.appChatIdMap = {};
+            state.sourceChatIdMap = {};
             state.lastPane = ChatSidebarPaneEnum.HOME;
             state.outLinkAuthData = {};
           });
@@ -251,7 +274,8 @@ export const useChatStore = create<State>()(
           lastChatId: state.lastChatId,
           lastChatAppId: state.lastChatAppId,
           lastPane: state.lastPane,
-          appChatIdMap: state.appChatIdMap
+          appChatIdMap: state.appChatIdMap,
+          sourceChatIdMap: state.sourceChatIdMap
         })
       }
     )

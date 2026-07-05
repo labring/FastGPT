@@ -81,7 +81,6 @@ export const LLMModelItemSchema = PriceTypeSchema.extend(BaseModelItemSchema.sha
   isDefaultDatasetTextModel: z.boolean().optional(),
   isDefaultDatasetImageModel: z.boolean().optional(),
   isDefaultChatTitleModel: z.boolean().optional(),
-  isDefaultHelperBotModel: z.boolean().optional(),
 
   /** @deprecated */
   datasetProcess: z.boolean().optional(), // dataset

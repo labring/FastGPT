@@ -27,7 +27,6 @@ export enum SseResponseEventEnum {
   skillCall = 'skillCall', // skill invocation announce (when SKILL.md is loaded)
 
   // Helperbot
-  collectionForm = 'collectionForm', // collection form for HelperBot
   topAgentConfig = 'topAgentConfig' // form data for TopAgent
 }
 

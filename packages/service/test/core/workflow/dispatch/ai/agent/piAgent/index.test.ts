@@ -23,7 +23,6 @@ const {
   ensureAgentSandboxRuntimeMock,
   streamAgentSandboxInitStatusMock,
   sandboxClientExecMock,
-  axiosGetMock,
   getAgentRuntimeToolsMock
 } = vi.hoisted(() => ({
   agentPromptMock: vi.fn(),
@@ -37,7 +36,6 @@ const {
   ensureAgentSandboxRuntimeMock: vi.fn(),
   streamAgentSandboxInitStatusMock: vi.fn(),
   sandboxClientExecMock: vi.fn(),
-  axiosGetMock: vi.fn(),
   getAgentRuntimeToolsMock: vi.fn(async () => [])
 }));
 
@@ -84,18 +82,6 @@ vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/sandbox', async (i
     ...original,
     ensureAgentSandboxRuntime: ensureAgentSandboxRuntimeMock,
     streamAgentSandboxInitStatus: streamAgentSandboxInitStatusMock
-  };
-});
-
-vi.mock('@fastgpt/service/common/api/axios', async (importOriginal) => {
-  const original = await importOriginal<typeof import('@fastgpt/service/common/api/axios')>();
-  const mockClient = {
-    get: axiosGetMock
-  };
-
-  return {
-    ...original,
-    pickOutboundAxios: () => mockClient
   };
 });
 
@@ -255,9 +241,6 @@ describe('dispatchPiAgent user context', () => {
       exitCode: 0,
       stdout: '/workspace\n',
       stderr: ''
-    });
-    axiosGetMock.mockResolvedValue({
-      data: new ArrayBuffer(1)
     });
     ensureAgentSandboxRuntimeMock.mockResolvedValue({
       sandboxClient: {

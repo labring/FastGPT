@@ -19,12 +19,17 @@ const ChatTargetInputShape = {
   skillId: ObjectIdSchema.optional().meta({
     example: '68ad85a7463006c963799a06',
     description: 'Skill Edit 调试 ID。appId、skillId 和 outLinkAuthData 必须且只能传一个。'
+  }),
+  sourceType: z.enum([ChatSourceTypeEnum.app, ChatSourceTypeEnum.helperBot]).optional().meta({
+    example: ChatSourceTypeEnum.helperBot,
+    description: 'appId 对应的会话资源类型。缺省为 App 会话；HelperBot 会话传 helperBot。'
   })
 };
 
 type ChatTargetInput = {
   appId?: unknown;
   skillId?: unknown;
+  sourceType?: unknown;
   outLinkAuthData?: unknown;
   [key: string]: unknown;
 };
@@ -43,10 +48,17 @@ export type ChatTargetInputType =
   | {
       appId: string;
       skillId?: never;
+      sourceType?: ChatSourceTypeEnum.app;
     }
   | {
       appId?: never;
       skillId: string;
+      sourceType?: never;
+    }
+  | {
+      appId: string;
+      skillId?: never;
+      sourceType: ChatSourceTypeEnum.helperBot;
     };
 export type ChatTargetResponseType = ChatTargetInputType;
 
@@ -74,6 +86,11 @@ const getNormalizedOutLinkAuthData = (data: ChatTargetInput): OutLinkChatAuthPro
 };
 
 export const ChatTargetResponseSchema = z.union([
+  z.object({
+    appId: ObjectIdSchema.describe('应用 ID，仅 HelperBot 会话返回'),
+    skillId: z.undefined().optional(),
+    sourceType: z.literal(ChatSourceTypeEnum.helperBot).describe('HelperBot 会话资源类型')
+  }),
   z.object({
     appId: ObjectIdSchema.describe('应用 ID，仅 App 会话返回'),
     skillId: z.undefined().optional()
@@ -107,6 +124,10 @@ export const buildChatTargetResponse = ({
     return { skillId: id };
   }
 
+  if (sourceType === ChatSourceTypeEnum.helperBot) {
+    return { appId: id, sourceType: ChatSourceTypeEnum.helperBot };
+  }
+
   const exhaustiveCheck: never = sourceType;
   throw new Error(`Unsupported chat source type: ${exhaustiveCheck}`);
 };
@@ -119,6 +140,7 @@ export const refineRequiredChatTargetInput = (
   data: {
     appId?: unknown;
     skillId?: unknown;
+    sourceType?: unknown;
     outLinkAuthData?: unknown;
   },
   ctx: z.RefinementCtx
@@ -130,6 +152,7 @@ export const refineOptionalChatTargetInput = (
   data: {
     appId?: unknown;
     skillId?: unknown;
+    sourceType?: unknown;
     outLinkAuthData?: unknown;
   },
   ctx: z.RefinementCtx
@@ -150,6 +173,7 @@ const refineChatAuthTargetInput = (
 ) => {
   const hasAppTarget = !!data.appId;
   const hasSkillTarget = !!data.skillId;
+  const isHelperBotTarget = data.sourceType === ChatSourceTypeEnum.helperBot;
   const nestedAuthData = getNestedOutLinkAuthData(data);
   const shareId = nestedAuthData.shareId;
   const outLinkUid = nestedAuthData.outLinkUid;
@@ -162,6 +186,27 @@ const refineChatAuthTargetInput = (
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: 'appId and skillId cannot be provided at the same time'
+    });
+  }
+
+  if ([hasAppTarget, hasSkillTarget, hasCompleteShareAuth].filter(Boolean).length > 1) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'appId, skillId and share auth cannot be provided at the same time'
+    });
+  }
+
+  if (isHelperBotTarget && !hasAppTarget) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'sourceType=helperBot requires appId'
+    });
+  }
+
+  if (isHelperBotTarget && hasSkillTarget) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'sourceType=helperBot cannot be used with skillId'
     });
   }
 
@@ -201,12 +246,16 @@ const refineChatAuthTargetInput = (
  * raw schema，避免文档暴露内部 `sourceType/sourceId`。
  */
 export const transformChatTargetInput = <T extends ChatTargetInput>(data: T) => {
-  const { appId, skillId, ...rest } = data;
+  const { appId, skillId, sourceType: rawSourceType, ...rest } = data;
   const sourceId = (appId || skillId) as string;
 
   return {
     ...rest,
-    sourceType: appId ? ChatSourceTypeEnum.app : ChatSourceTypeEnum.skillEdit,
+    sourceType: (() => {
+      if (skillId) return ChatSourceTypeEnum.skillEdit;
+      if (rawSourceType === ChatSourceTypeEnum.helperBot) return ChatSourceTypeEnum.helperBot;
+      return ChatSourceTypeEnum.app;
+    })(),
     sourceId
   };
 };
@@ -218,7 +267,7 @@ export const transformChatTargetInput = <T extends ChatTargetInput>(data: T) => 
  * 外链上下文统一收敛到 `outLinkAuthData`，再由 `authChatTargetCrud` 解析真实 sourceId。
  */
 export const transformChatAuthTargetInput = <T extends ChatTargetInput>(data: T) => {
-  const { appId, skillId, ...rest } = data;
+  const { appId, skillId, sourceType: rawSourceType, ...rest } = data;
   delete rest.outLinkAuthData;
   const sourceId = (appId || skillId) as string | undefined;
   const normalizedOutLinkAuthData = getNormalizedOutLinkAuthData(data);
@@ -238,7 +287,11 @@ export const transformChatAuthTargetInput = <T extends ChatTargetInput>(data: T)
   return {
     ...rest,
     ...(normalizedOutLinkAuthData ? { outLinkAuthData: normalizedOutLinkAuthData } : {}),
-    sourceType: appId ? ChatSourceTypeEnum.app : ChatSourceTypeEnum.skillEdit,
+    sourceType: (() => {
+      if (skillId) return ChatSourceTypeEnum.skillEdit;
+      if (rawSourceType === ChatSourceTypeEnum.helperBot) return ChatSourceTypeEnum.helperBot;
+      return ChatSourceTypeEnum.app;
+    })(),
     sourceId: sourceId!
   };
 };
@@ -250,7 +303,7 @@ export const transformChatAuthTargetInput = <T extends ChatTargetInput>(data: T)
  * `sourceType/sourceId`。
  */
 export const transformOptionalChatTargetInput = <T extends ChatTargetInput>(data: T) => {
-  const { appId, skillId, ...rest } = data;
+  const { appId, skillId, sourceType: rawSourceType, ...rest } = data;
   delete rest.outLinkAuthData;
   const sourceId = (appId || skillId) as string | undefined;
   const normalizedOutLinkAuthData = getNormalizedOutLinkAuthData(data);
@@ -272,7 +325,11 @@ export const transformOptionalChatTargetInput = <T extends ChatTargetInput>(data
     ...(normalizedOutLinkAuthData ? { outLinkAuthData: normalizedOutLinkAuthData } : {}),
     ...(appId || skillId
       ? {
-          sourceType: appId ? ChatSourceTypeEnum.app : ChatSourceTypeEnum.skillEdit,
+          sourceType: (() => {
+            if (skillId) return ChatSourceTypeEnum.skillEdit;
+            if (rawSourceType === ChatSourceTypeEnum.helperBot) return ChatSourceTypeEnum.helperBot;
+            return ChatSourceTypeEnum.app;
+          })(),
           sourceId: sourceId!
         }
       : {

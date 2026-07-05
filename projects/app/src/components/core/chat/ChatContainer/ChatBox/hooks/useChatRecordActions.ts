@@ -25,7 +25,7 @@ const uniqueDataIds = (dataIds: Array<string | undefined>) =>
  * - `retryInput` 会删除目标 human 消息及其后续记录，再用旧输入重新发送。
  * - `editInput` 会删除目标 human 消息及其后续记录，再用编辑后的文本重新发送。
  * - `delOneMessage` 会删除一条 human 消息，并顺带删除紧随其后的 AI 回复。
- * - `onDelMessage` 是 hook 内部的删除通道，统一使用标准 `delChatRecordById` API，
+ * - `onDelMessages` 是 hook 内部的删除通道，统一使用标准 `delChatRecordById` API，
  *   并自动带上当前 chat target、chatId 和外链鉴权信息。
  *
  * 设计边界：

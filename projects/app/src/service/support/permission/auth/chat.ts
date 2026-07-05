@@ -9,9 +9,6 @@ import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import type { HelperBotTypeEnum } from '@fastgpt/global/core/chat/helperBot/type';
-import { MongoHelperBotChat } from '@fastgpt/service/core/chat/HelperBot/chatSchema';
-import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import {
   buildChatSourceAggregateMatch,
   buildChatSourceQuery
@@ -200,6 +197,7 @@ export type ChatTargetAuthParams = AuthModeType & {
 
 type AuthChatTargetCrudResult = {
   appId?: string;
+  userId?: string;
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
   teamId: string;
@@ -283,6 +281,50 @@ export async function authChatTargetCrud({
     };
   }
 
+  if (sourceType === ChatSourceTypeEnum.helperBot) {
+    if (!sourceId) return Promise.reject(ChatErrEnum.unAuthChat);
+
+    const authRes = await authApp({
+      ...props,
+      appId: sourceId,
+      per
+    });
+    if (!authRes.userId) return Promise.reject(ChatErrEnum.unAuthChat);
+    const chat =
+      (chatId
+        ? await MongoChat.findOne({
+            ...buildChatSourceQuery({ sourceType, sourceId }),
+            chatId
+          }).lean()
+        : undefined) ?? undefined;
+
+    if (chat) {
+      if (String(chat.teamId) !== String(authRes.teamId)) {
+        return Promise.reject(ChatErrEnum.unAuthChat);
+      }
+
+      if (!authRes.permission.hasReadChatLogPer && String(chat.tmbId) !== String(authRes.tmbId)) {
+        return Promise.reject(ChatErrEnum.unAuthChat);
+      }
+    }
+
+    return {
+      userId: authRes.userId,
+      teamId: authRes.teamId,
+      tmbId: authRes.tmbId,
+      uid: chat?.tmbId ? String(chat.tmbId) : authRes.tmbId,
+      chat,
+      showCite: false,
+      showRunningStatus: false,
+      showSkillReferences: false,
+      showFullText: false,
+      canDownloadSource: false,
+      sourceType,
+      sourceId,
+      authType: authRes.authType
+    };
+  }
+
   const exhaustiveCheck: never = sourceType;
   throw new Error(`Unsupported chat source type: ${exhaustiveCheck}`);
 }
@@ -335,19 +377,4 @@ export const authCollectionInChat = async ({
     return;
   }
   return Promise.reject(DatasetErrEnum.unAuthDatasetFile);
-};
-
-export const authHelperBotChatCrud = async ({
-  type,
-  chatId,
-  ...props
-}: AuthModeType & {
-  type: `${HelperBotTypeEnum}`;
-  chatId: string;
-}) => {
-  const { userId, teamId, tmbId } = await authCert(props);
-
-  const chat = await MongoHelperBotChat.findOne({ type, userId, chatId }).lean();
-
-  return { chat, userId, teamId, tmbId };
 };

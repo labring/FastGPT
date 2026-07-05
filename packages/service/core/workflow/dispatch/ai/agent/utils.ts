@@ -284,11 +284,10 @@ export const getExecuteTool = ({
             };
           }
           const ids = toolParams.data.ids;
-
-          const files = ids.map((id) => ({
-            id,
-            url: filesMap[id]
-          }));
+          const files = ids.flatMap((id) => {
+            const url = filesMap[id];
+            return url ? [{ id, url }] : [];
+          });
           const result = await dispatchFileRead({
             files,
             teamId: runningUserInfo.teamId,

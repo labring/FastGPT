@@ -34,6 +34,7 @@ describe('useChatStore', () => {
       lastChatId: '',
       chatId: '',
       appChatIdMap: {},
+      sourceChatIdMap: {},
       lastPane: undefined,
       outLinkAuthData: {}
     });
@@ -82,6 +83,23 @@ describe('useChatStore', () => {
 
     store.setAppId('app-b');
     expect(useChatStore.getState().chatId).toBe('chat-b');
+  });
+
+  it('should manage sourceKey chatId independently from the main chatId', () => {
+    const store = useChatStore.getState();
+
+    store.setSource(ChatSourceEnum.online);
+    store.setAppId('app-a');
+    store.setChatId('debug-chat-id');
+
+    store.setSourceChatId('helperBot:app-a', 'helper-chat-id');
+
+    const newState = useChatStore.getState();
+    expect(newState.chatId).toBe('debug-chat-id');
+    expect(newState.sourceChatIdMap['helperBot:app-a']).toBe('helper-chat-id');
+    expect(useChatStore.getState().ensureSourceChatId('helperBot:app-a')).toBe('helper-chat-id');
+    expect(store.ensureSourceChatId('helperBot:app-b')).toBe('test-generated-id');
+    expect(useChatStore.getState().ensureSourceChatId('helperBot:app-b')).toBe('test-generated-id');
   });
 
   it('should namespace app chat cache by source', () => {
@@ -308,6 +326,9 @@ describe('useChatStore', () => {
       lastChatAppId: 'last-app-id',
       chatId: 'chat-id',
       lastChatId: `${ChatSourceEnum.share}-chat-id`,
+      sourceChatIdMap: {
+        'helperBot:app-a': 'helper-chat-id'
+      },
       lastPane: ChatSidebarPaneEnum.RECENTLY_USED_APPS,
       outLinkAuthData: {
         shareId: 'share-id',
@@ -324,6 +345,7 @@ describe('useChatStore', () => {
       chatId: '',
       lastChatId: '',
       appChatIdMap: {},
+      sourceChatIdMap: {},
       lastPane: ChatSidebarPaneEnum.HOME,
       outLinkAuthData: {}
     });

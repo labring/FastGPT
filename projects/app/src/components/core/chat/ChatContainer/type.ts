@@ -7,10 +7,7 @@ import type {
   SkillModuleResponseItemType
 } from '@fastgpt/global/core/chat/type';
 import type { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import type {
-  UserInputInteractive,
-  WorkflowInteractiveResponseType
-} from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { TopAgentFormDataType } from '@fastgpt/global/core/chat/helperBot/topAgent/type';
 import type { AgentPlanStatusType, AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 
@@ -37,14 +34,13 @@ export type generatingMessageProps = {
   sandboxStatus?: SandboxStatusItemType;
   skill?: SkillModuleResponseItemType;
 
-  // HelperBot
-  collectionForm?: UserInputInteractive;
   formData?: TopAgentFormDataType;
 };
 
 export type StartChatFnProps = {
   messages: ChatCompletionMessageParam[];
   responseChatItemId?: string;
+  interactive?: WorkflowInteractiveResponseType;
   controller: AbortController;
   variables: Record<string, any>;
   generatingMessage: (e: generatingMessageProps) => void;

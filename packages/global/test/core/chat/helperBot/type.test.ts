@@ -1,11 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   HelperBotTypeEnum,
-  HelperBotTypeEnumSchema,
-  HelperBotChatSchema,
-  HelperBotChatItemSchema,
-  HelperBotChatItemSiteSchema,
-  AIChatItemValueItemSchema
+  HelperBotTypeEnumSchema
 } from '@fastgpt/global/core/chat/helperBot/type';
 
 describe('HelperBotTypeEnum', () => {
@@ -28,52 +24,6 @@ describe('HelperBotTypeEnumSchema', () => {
 
   it('should reject invalid enum values', () => {
     const result = HelperBotTypeEnumSchema.safeParse('invalid');
-    expect(result.success).toBe(false);
-  });
-});
-
-describe('AIChatItemValueItemSchema', () => {
-  it('should validate text content', () => {
-    const result = AIChatItemValueItemSchema.safeParse({
-      text: { content: 'Hello' }
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it('should validate reasoning content', () => {
-    const result = AIChatItemValueItemSchema.safeParse({
-      reasoning: { content: 'Let me think...' }
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it('should validate merged text and hidden reasoning content', () => {
-    const result = AIChatItemValueItemSchema.safeParse({
-      reasoning: { content: 'Hidden thinking' },
-      hideReason: true,
-      text: { content: 'Visible answer' }
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it('should reject content value without text or reasoning', () => {
-    const result = AIChatItemValueItemSchema.safeParse({
-      hideReason: true
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it('should validate planHint', () => {
-    const result = AIChatItemValueItemSchema.safeParse({
-      planHint: { type: 'generation' }
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it('should reject invalid planHint type', () => {
-    const result = AIChatItemValueItemSchema.safeParse({
-      planHint: { type: 'invalid' }
-    });
     expect(result.success).toBe(false);
   });
 });

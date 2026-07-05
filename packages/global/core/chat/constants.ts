@@ -45,7 +45,8 @@ export enum ChatSourceEnum {
  */
 export enum ChatSourceTypeEnum {
   app = 'app',
-  skillEdit = 'skillEdit'
+  skillEdit = 'skillEdit',
+  helperBot = 'helperBot'
 }
 
 export const ChatSourceMap = {

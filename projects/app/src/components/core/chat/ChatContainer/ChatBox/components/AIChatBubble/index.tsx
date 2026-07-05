@@ -11,13 +11,9 @@ import { useContextSelector } from 'use-context-selector';
 import { ChatBoxContext } from '../../Provider';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import AIChatLoading from '../AIChatLoading';
-import { hasAiProcessingContent } from './utils';
+import { hasAiProcessingContent, shouldShowNoOutputTip } from './utils';
 import { useTranslation } from 'next-i18next';
-import {
-  ChatGenerateStatusEnum,
-  ChatRoleEnum,
-  ChatStatusEnum
-} from '@fastgpt/global/core/chat/constants';
+import { ChatGenerateStatusEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 
 const ResponseTags = dynamic(() => import('../ResponseTags'));
 const WholeResponseModal = dynamic(() => import('../../../../components/WholeResponseModal'));
@@ -85,15 +81,16 @@ const AIChatBubble = ({
     !chat.errorMsg &&
     !chat.errorText &&
     !hasValidContent;
-  const showNoOutputTip =
-    chat.obj === ChatRoleEnum.AI &&
-    chat.status === ChatStatusEnum.finish &&
-    isLastValueGroup &&
-    !isChatting &&
-    !shouldWaitCurrentChatStatus &&
-    !chat.errorMsg &&
-    !chat.errorText &&
-    !hasValidContent;
+  const showNoOutputTip = shouldShowNoOutputTip({
+    obj: chat.obj,
+    status: chat.status,
+    isLastValueGroup,
+    isLastChild,
+    isChatting,
+    shouldWaitCurrentChatStatus,
+    hasError: !!chat.errorMsg || !!chat.errorText,
+    hasValidContent
+  });
   const placeholderText = showLoadingPlaceholder
     ? t('chat:chat_loading_content')
     : showNoOutputTip

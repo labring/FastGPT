@@ -151,10 +151,23 @@ export const FormInputComponent = React.memo(function FormInputComponent({
               render={({ field: { onChange, value }, fieldState: { error } }) => {
                 return (
                   <FormControl isInvalid={!!error}>
-                    <Flex alignItems={'center'} mb={1}>
-                      {input.required && <Box color={'red.500'}>*</Box>}
-                      <FormLabel>{input.label}</FormLabel>
-                      {input.description && <QuestionTip ml={1} label={input.description} />}
+                    <Flex alignItems={'flex-start'} mb={1} minW={0}>
+                      {input.required && (
+                        <Box color={'red.500'} flexShrink={0}>
+                          *
+                        </Box>
+                      )}
+                      <FormLabel
+                        minW={0}
+                        flexShrink={1}
+                        whiteSpace={'pre-wrap'}
+                        wordBreak={'break-word'}
+                      >
+                        {input.label}
+                      </FormLabel>
+                      {input.description && (
+                        <QuestionTip flexShrink={0} ml={1} mt={'2px'} label={input.description} />
+                      )}
                     </Flex>
                     <InputRender
                       {...input}
