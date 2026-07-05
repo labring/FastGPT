@@ -175,6 +175,8 @@ export const checkTeamDatasetSyncPermission = async (teamId: string) => {
 };
 
 export const checkTeamSandboxPermission = async (teamId: string) => {
+  if (!global.subPlans?.standard) return;
+
   const { standard } = await getTeamStandPlan({
     teamId
   });
