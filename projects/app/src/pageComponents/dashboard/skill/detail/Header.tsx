@@ -224,13 +224,14 @@ export const LeftHeader = () => {
             onClick: () => {
               if (!skillDetail) return;
               openConfirmDelete({
-                customContent: (
-                  <Trans
-                    i18nKey={i18nT('skill:confirm_delete_with_refs')}
-                    values={{ count: skillDetail?.appCount ?? 0 }}
-                    components={{ bold: <Box as={'span'} fontWeight={'600'} /> }}
-                  />
-                ),
+                customContent:
+                  (skillDetail.appCount ?? 0) > 0 ? (
+                    <Trans
+                      i18nKey={i18nT('skill:confirm_delete_with_refs')}
+                      values={{ count: skillDetail.appCount }}
+                      components={{ bold: <Box as={'span'} fontWeight={'600'} /> }}
+                    />
+                  ) : null,
                 onConfirm: () => onClickDeleteSkill(skillDetail._id),
                 confirmText: t('skill:confirm_delete_action'),
                 confirmButtonVariant: 'dangerFill',
