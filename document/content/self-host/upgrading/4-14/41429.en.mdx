@@ -1,0 +1,16 @@
+---
+title: 'V4.14.29'
+description: 'FastGPT V4.14.29 release notes'
+---
+
+## Upgrade Guide
+
+### 1. Update image tags
+
+- Update the fastgpt-app image tag (FastGPT main service): v4.14.29
+- Update the fastgpt-pro image tag (FastGPT commercial edition): v4.14.29
+
+## Changes
+
+1. Fixed permission checks for the WeChat publish channel login, logout, and QR code status APIs. These APIs now authorize by publish channel ID and verify the channel type to avoid accidentally operating on non-WeChat publish channels.
+2. Adapted to the latest WeChat publish channel SDK.
