@@ -167,7 +167,9 @@ const QRLoginModal = ({
       case 'scanned':
         return (
           <Flex direction="column" align="center" justify="center" minH="350px">
-            <Text fontSize="60px">👀</Text>
+            <Text fontSize="60px" h={'60px'}>
+              👀
+            </Text>
             <Text mt={4} fontSize="lg" fontWeight="medium" color="blue.600">
               {t('publish:wechat.scanned_tip')}
             </Text>
@@ -179,16 +181,20 @@ const QRLoginModal = ({
       case 'confirmed':
         return (
           <Flex direction="column" align="center" justify="center" minH="350px">
-            <Text fontSize="60px">✅</Text>
-            <Text mt={4} fontSize="lg" fontWeight="medium" color="green.600">
+            <Box fontSize="60px" h={'60px'}>
+              ✅
+            </Box>
+            <Box mt={4} fontSize="lg" fontWeight="medium" color="green.600">
               {t('publish:wechat.confirmed_tip')}
-            </Text>
+            </Box>
           </Flex>
         );
       case 'expired':
         return (
           <Flex direction="column" align="center" justify="center" minH="350px">
-            <Text fontSize="60px">⏰</Text>
+            <Text fontSize="60px" h={'60px'}>
+              ⏰
+            </Text>
             <Text mt={4} fontSize="lg" fontWeight="medium" color="orange.600">
               {t('publish:wechat.expired_tip')}
             </Text>
@@ -200,7 +206,9 @@ const QRLoginModal = ({
       case 'error':
         return (
           <Flex direction="column" align="center" justify="center" minH="350px">
-            <Text fontSize="60px">❌</Text>
+            <Text fontSize="60px" h={'60px'}>
+              ❌
+            </Text>
             <Text mt={4} color="red.500">
               {errMsg}
             </Text>
@@ -214,12 +222,7 @@ const QRLoginModal = ({
 
   return (
     <MyModal isOpen onClose={onClose} title={t('publish:wechat.login_title')} size="md">
-      <ModalBody py={6}>{renderContent()}</ModalBody>
-      <ModalFooter>
-        <Button variant="whiteBase" onClick={onClose}>
-          {t('common:Close')}
-        </Button>
-      </ModalFooter>
+      {renderContent()}
     </MyModal>
   );
 };

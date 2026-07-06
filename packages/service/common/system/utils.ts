@@ -4,11 +4,11 @@ import {
 } from '@fastgpt/global/common/system/network';
 import { serviceEnv } from '../../env';
 
-const { isInternalAddress } = createInternalAddressChecker({
+const { isInternalAddress, isInternalResolvedIP } = createInternalAddressChecker({
   checkInternalIp: () => serviceEnv.CHECK_INTERNAL_IP
 });
 
-export { isInternalAddress, PRIVATE_URL_TEXT };
+export { isInternalAddress, isInternalResolvedIP, PRIVATE_URL_TEXT };
 
 /**
  * 用于"保存配置 URL"或"调用前校验"的统一安全检查:

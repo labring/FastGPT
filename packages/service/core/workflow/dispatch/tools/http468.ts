@@ -27,7 +27,7 @@ import { getLogger, LogCategories } from '../../../../common/logger';
 import { formatHttpError, getNodeErrResponse } from '../utils';
 import { isInternalAddress, PRIVATE_URL_TEXT } from '../../../../common/system/utils';
 import { serviceRequestMaxContentLength } from '../../../../common/system/constants';
-import { axios, httpsCertificateIgnoreAgent } from '../../../../common/api/axios';
+import { axios, type SafeAxiosRequestConfig } from '../../../../common/api/axios';
 import { replaceEditorVariable } from '../utils/replaceEditorVariable';
 import { checkStrOversize, logOversizeString } from '../../../../common/string/replaceVariable';
 import { getWorkflowAppId } from '../utils/source';
@@ -40,7 +40,7 @@ const logger = getLogger(LogCategories.MODULE.WORKFLOW.TOOLS);
  */
 export const getWorkflowHttpNodeHttpsAgentConfig = (
   url: string
-): Pick<AxiosRequestConfig, 'httpsAgent'> => {
+): Pick<SafeAxiosRequestConfig, '__safeAxios'> => {
   const ignoreHttpsCertificate =
     global.systemEnv?.workflowHttpNode?.ignoreHttpsCertificate === true;
 
@@ -57,7 +57,9 @@ export const getWorkflowHttpNodeHttpsAgentConfig = (
   }
 
   return {
-    httpsAgent: httpsCertificateIgnoreAgent
+    __safeAxios: {
+      rejectUnauthorized: false
+    }
   };
 };
 

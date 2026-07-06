@@ -3,7 +3,6 @@ import {
   getWorkflowHttpNodeHttpsAgentConfig,
   replaceJsonBodyString
 } from '@fastgpt/service/core/workflow/dispatch/tools/http468';
-import { httpsCertificateIgnoreAgent } from '@fastgpt/service/common/api/axios';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 
 describe('replaceJsonBodyString', () => {
@@ -652,7 +651,7 @@ describe('getWorkflowHttpNodeHttpsAgentConfig', () => {
     global.systemEnv = originalSystemEnv;
   });
 
-  it('should not inject httpsAgent when ignoreHttpsCertificate is disabled', () => {
+  it('should not inject safe axios TLS option when ignoreHttpsCertificate is disabled', () => {
     global.systemEnv = {
       ...originalSystemEnv,
       workflowHttpNode: {
@@ -663,7 +662,7 @@ describe('getWorkflowHttpNodeHttpsAgentConfig', () => {
     expect(getWorkflowHttpNodeHttpsAgentConfig('https://example.com')).toEqual({});
   });
 
-  it('should inject httpsAgent only for HTTPS requests when enabled', () => {
+  it('should inject safe axios TLS option only for HTTPS requests when enabled', () => {
     global.systemEnv = {
       ...originalSystemEnv,
       workflowHttpNode: {
@@ -672,7 +671,8 @@ describe('getWorkflowHttpNodeHttpsAgentConfig', () => {
     };
 
     const httpsConfig = getWorkflowHttpNodeHttpsAgentConfig('https://example.com');
-    expect(httpsConfig.httpsAgent).toBe(httpsCertificateIgnoreAgent);
+    expect(httpsConfig.__safeAxios).toEqual({ rejectUnauthorized: false });
+    expect(httpsConfig).not.toHaveProperty('httpsAgent');
     expect(httpsConfig).not.toHaveProperty('proxy');
     expect(getWorkflowHttpNodeHttpsAgentConfig('http://example.com')).toEqual({});
   });
