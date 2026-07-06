@@ -67,6 +67,7 @@ export type FastGPTFeConfigsType = {
   show_discount_coupon?: boolean;
   show_enterprise_auth?: boolean;
   showWecomConfig?: boolean;
+  wecomLoginAutoRedirect?: boolean;
 
   show_dataset_feishu?: boolean;
   show_dataset_yuque?: boolean;

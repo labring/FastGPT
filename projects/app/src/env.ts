@@ -16,6 +16,7 @@ export const appEnv = createEnv({
     SHOW_COUPON: BoolSchema.default(false),
     SHOW_DISCOUNT_COUPON: BoolSchema.default(false),
     HIDE_CHAT_COPYRIGHT_SETTING: BoolSchema.default(false),
+    WECOM_LOGIN_AUTO_REDIRECT: BoolSchema.default(false),
     AGENT_SANDBOX_FREE_TIP: BoolSchema.default(false),
     OPENAPI_KEY_MAX_COUNT: IntSchema.min(1).default(100),
 
