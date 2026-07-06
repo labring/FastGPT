@@ -4,9 +4,14 @@ import _, {
   type AxiosResponse,
   type InternalAxiosRequestConfig
 } from 'axios';
+import dns from 'dns/promises';
+import http from 'http';
+import https from 'https';
+import { isIP } from 'net';
 import { ProxyAgent, type ProxyAgentOptions } from 'proxy-agent';
+import { getProxyForUrl } from 'proxy-from-env';
 import { isDevEnv } from '@fastgpt/global/common/system/constants';
-import { isInternalAddress, PRIVATE_URL_TEXT } from '../system/utils';
+import { isInternalAddress, isInternalResolvedIP, PRIVATE_URL_TEXT } from '../system/utils';
 import { isAbsoluteUrl } from '../security/network';
 import { SERVICE_LOCAL_HOST } from '../system/tools';
 
@@ -21,32 +26,27 @@ import { SERVICE_LOCAL_HOST } from '../system/tools';
 const addSSRFInterceptor = (instance: AxiosInstance) => {
   instance.interceptors.request.use(async (config): Promise<InternalAxiosRequestConfig> => {
     const safeConfig = config as SafeRedirectInternalConfig;
-    const requestUrl = buildRequestUrl(safeConfig);
-    if (!requestUrl) return config;
-
-    if (await isInternalAddress(requestUrl)) {
-      return Promise.reject(new Error(PRIVATE_URL_TEXT));
-    }
+    const preparedConfig = await prepareSafeRequestConfig(safeConfig);
 
     const maxRedirects =
-      safeConfig.__safeRedirect?.maxRedirects ??
-      (typeof safeConfig.maxRedirects === 'number'
-        ? safeConfig.maxRedirects
+      preparedConfig.__safeRedirect?.maxRedirects ??
+      (typeof preparedConfig.maxRedirects === 'number'
+        ? preparedConfig.maxRedirects
         : SAFE_AXIOS_MAX_REDIRECTS);
 
-    const nextConfig: SafeRedirectInternalConfig = {
-      ...safeConfig,
+    const nextConfigWithRedirect: SafeRedirectInternalConfig = {
+      ...preparedConfig,
       // 禁用底层自动跳转,保留调用方 maxRedirects 语义给手动跳转状态使用。
       maxRedirects: 0,
-      validateStatus: getRedirectValidateStatus(safeConfig.validateStatus, maxRedirects),
-      __safeRedirect: safeConfig.__safeRedirect ?? {
+      validateStatus: getRedirectValidateStatus(preparedConfig.validateStatus, maxRedirects),
+      __safeRedirect: preparedConfig.__safeRedirect ?? {
         count: 0,
         maxRedirects,
-        validateStatus: safeConfig.validateStatus
+        validateStatus: preparedConfig.validateStatus
       }
     };
 
-    return nextConfig;
+    return nextConfigWithRedirect;
   });
 
   instance.interceptors.response.use(async (response) => {
@@ -89,6 +89,14 @@ const createProxyAgent = (options?: ProxyAgentOptions) => new ProxyAgent(options
 const SAFE_AXIOS_MAX_REDIRECTS = 5;
 const REDIRECT_STATUS_CODES = new Set([301, 302, 303, 307, 308]);
 
+export type SafeAxiosRequestOptions = {
+  rejectUnauthorized?: boolean;
+};
+
+export type SafeAxiosRequestConfig = AxiosRequestConfig & {
+  __safeAxios?: SafeAxiosRequestOptions;
+};
+
 /**
  * 手动重定向状态。
  *
@@ -104,6 +112,7 @@ type SafeRedirectState = {
 
 type SafeRedirectConfig = AxiosRequestConfig & {
   __safeRedirect?: SafeRedirectState;
+  __safeAxios?: SafeAxiosRequestOptions;
 };
 
 type SafeRedirectInternalConfig = InternalAxiosRequestConfig & {
@@ -112,7 +121,136 @@ type SafeRedirectInternalConfig = InternalAxiosRequestConfig & {
     maxRedirects: number;
     validateStatus?: AxiosRequestConfig['validateStatus'];
   };
+  __safeAxios?: SafeAxiosRequestOptions;
 };
+
+type ResolvedAddress = {
+  address: string;
+  family: 4 | 6;
+};
+
+type LookupCallback = (
+  err: NodeJS.ErrnoException | null,
+  address: string | ResolvedAddress[],
+  family?: number
+) => void;
+
+/**
+ * 对 safe axios 的请求做统一 SSRF 预检，并在直连路径固定 DNS 解析结果。
+ *
+ * 代理路径只做本机 isInternalAddress() best-effort 检查；最终 DNS 解析由代理侧负责。
+ * 直连路径必须覆盖调用方 agent，避免自定义 lookup 在建连阶段重新指向内部地址。
+ */
+const prepareSafeRequestConfig = async (
+  config: SafeRedirectInternalConfig
+): Promise<SafeRedirectInternalConfig> => {
+  const requestUrl = buildRequestUrl(config);
+  if (!requestUrl) return config;
+
+  if (await isInternalAddress(requestUrl)) {
+    return Promise.reject(new Error(PRIVATE_URL_TEXT));
+  }
+
+  if (isRequestUsingProxy(requestUrl, config)) {
+    return config;
+  }
+
+  return attachPinnedAgent(config, requestUrl);
+};
+
+/**
+ * 判断当前请求是否应保留代理链路。
+ *
+ * 显式 axios proxy 和 proxy-from-env 命中的环境代理都视为代理路径；其它自定义
+ * httpAgent/httpsAgent 不再被 safe axios 信任，直连路径会统一覆盖。
+ */
+const isRequestUsingProxy = (requestUrl: string, config: AxiosRequestConfig): boolean => {
+  if (config.proxy) {
+    return true;
+  }
+
+  try {
+    return getProxyForUrl(requestUrl).length > 0;
+  } catch {
+    // 代理判断失败时按可能走代理处理，避免误覆盖代理配置。
+    return true;
+  }
+};
+
+const attachPinnedAgent = async (
+  config: SafeRedirectInternalConfig,
+  requestUrl: string
+): Promise<SafeRedirectInternalConfig> => {
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(requestUrl);
+  } catch {
+    return config;
+  }
+
+  if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+    return config;
+  }
+
+  const resolved = await resolveSafeConnectAddress(parsedUrl.hostname);
+  const lookup = createPinnedLookup(resolved);
+  const isHttps = parsedUrl.protocol === 'https:';
+  const agent = isHttps
+    ? new https.Agent({
+        lookup,
+        rejectUnauthorized: config.__safeAxios?.rejectUnauthorized ?? true
+      })
+    : new http.Agent({
+        lookup
+      });
+
+  return {
+    ...config,
+    proxy: false,
+    httpAgent: isHttps ? undefined : agent,
+    httpsAgent: isHttps ? agent : undefined
+  };
+};
+
+const resolveSafeConnectAddress = async (hostname: string): Promise<ResolvedAddress> => {
+  const ipFamily = isIP(hostname);
+  if (ipFamily) {
+    return {
+      address: hostname,
+      family: ipFamily as 4 | 6
+    };
+  }
+
+  const resolved = await dns.lookup(hostname, { all: true, verbatim: true });
+  if (resolved.length === 0) {
+    return Promise.reject(new Error('DNS lookup returned no address'));
+  }
+
+  if (resolved.some(({ address }) => isInternalResolvedIP(address))) {
+    return Promise.reject(new Error(PRIVATE_URL_TEXT));
+  }
+
+  return resolved[0] as ResolvedAddress;
+};
+
+const createPinnedLookup =
+  (resolved: ResolvedAddress) =>
+  (_hostname: string, optionsOrCallback: unknown, maybeCallback?: LookupCallback): void => {
+    const options = typeof optionsOrCallback === 'function' ? {} : optionsOrCallback || {};
+    const callback =
+      typeof optionsOrCallback === 'function'
+        ? (optionsOrCallback as LookupCallback)
+        : maybeCallback;
+
+    if (!callback) return;
+
+    if ((options as { all?: boolean }).all) {
+      callback(null, [resolved]);
+      return;
+    }
+
+    callback(null, resolved.address, resolved.family);
+  };
 
 const shouldRedirect = (response: AxiosResponse): boolean =>
   REDIRECT_STATUS_CODES.has(response.status) && typeof response.headers.location === 'string';
@@ -247,8 +385,10 @@ const getRedirectValidateStatus = (
 };
 
 /**
- * 工作流 HTTP 节点跳过 HTTPS 证书校验专用 agent。
- * 仍复用 ProxyAgent,只调整目标站 TLS 校验策略,避免改变部署环境的代理语义。
+ * 兼容旧调用方的跳过 HTTPS 证书校验专用 agent。
+ *
+ * safe axios 的直连路径会覆盖调用方 agent；新代码需要通过 `__safeAxios`
+ * 传递受控 TLS 选项，避免自定义 agent 绕过 DNS pinning。
  */
 export const httpsCertificateIgnoreAgent = createProxyAgent({
   rejectUnauthorized: false

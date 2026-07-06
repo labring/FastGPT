@@ -1,6 +1,7 @@
 import { afterEach, describe, it, expect, vi, beforeEach } from 'vitest';
 import http from 'http';
 import os from 'os';
+import dns from 'dns/promises';
 import { createProxyAxios } from '../../../common/api/axios';
 import { PRIVATE_URL_TEXT } from '../../../common/system/utils';
 import { serviceEnv } from '../../../env';
@@ -17,10 +18,46 @@ type AxiosRequestConfig = {
 describe('axios.ts', () => {
   const mutableServiceEnv = serviceEnv as { CHECK_INTERNAL_IP: boolean };
   const originalCheckInternalIp = serviceEnv.CHECK_INTERNAL_IP;
+  const proxyEnvKeys = [
+    'HTTP_PROXY',
+    'HTTPS_PROXY',
+    'ALL_PROXY',
+    'NO_PROXY',
+    'http_proxy',
+    'https_proxy',
+    'all_proxy',
+    'no_proxy',
+    'npm_config_http_proxy',
+    'npm_config_https_proxy',
+    'npm_config_proxy',
+    'npm_config_no_proxy'
+  ] as const;
+  const originalProxyEnv = proxyEnvKeys.reduce(
+    (acc, key) => {
+      acc[key] = process.env[key];
+      return acc;
+    },
+    {} as Record<(typeof proxyEnvKeys)[number], string | undefined>
+  );
 
   afterEach(() => {
     mutableServiceEnv.CHECK_INTERNAL_IP = originalCheckInternalIp;
+    vi.restoreAllMocks();
+    for (const key of proxyEnvKeys) {
+      const value = originalProxyEnv[key];
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
   });
+
+  const clearProxyEnv = () => {
+    for (const key of proxyEnvKeys) {
+      delete process.env[key];
+    }
+  };
 
   describe('createProxyAxios', () => {
     beforeEach(() => {
@@ -130,6 +167,11 @@ describe('axios.ts', () => {
     });
 
     it('应该允许公网地址继续进入 adapter', async () => {
+      vi.spyOn(dns, 'resolve4').mockResolvedValue(['8.8.8.8']);
+      vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('No AAAA records'));
+      vi.spyOn(dns, 'lookup').mockImplementation(
+        async () => [{ address: '8.8.8.8', family: 4 }] as any
+      );
       const adapter = vi.fn().mockResolvedValue({
         data: { ok: true },
         status: 200,
@@ -303,6 +345,204 @@ describe('axios.ts', () => {
       } finally {
         await closeServer(redirectServer);
       }
+    });
+  });
+
+  describe('safe axios DNS pinning', () => {
+    const listen = (handler: http.RequestListener, host = '127.0.0.1') =>
+      new Promise<http.Server>((resolve) => {
+        const server = http.createServer(handler);
+        server.listen(0, host, () => resolve(server));
+      });
+
+    const closeServer = (server: http.Server) =>
+      new Promise<void>((resolve, reject) => {
+        server.close((err) => (err ? reject(err) : resolve()));
+      });
+
+    const getServerPort = (server: http.Server): number => {
+      const address = server.address();
+      if (!address || typeof address === 'string') {
+        throw new Error('Invalid test server address');
+      }
+      return address.port;
+    };
+
+    const getReachablePrivateHost = () => {
+      const interfaces = os.networkInterfaces();
+      for (const items of Object.values(interfaces)) {
+        for (const item of items || []) {
+          if (item.family === 'IPv4' && !item.internal) {
+            return item.address;
+          }
+        }
+      }
+      return undefined;
+    };
+
+    it('应该拒绝直连路径中预检后重绑定到 loopback 的地址', async () => {
+      clearProxyEnv();
+      mutableServiceEnv.CHECK_INTERNAL_IP = false;
+
+      vi.spyOn(dns, 'resolve4').mockResolvedValue(['8.8.8.8']);
+      vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('No AAAA records'));
+      vi.spyOn(dns, 'lookup').mockImplementation(
+        async () => [{ address: '127.0.0.1', family: 4 }] as any
+      );
+
+      const protectedServer = await listen((req, res) => {
+        res.end('FASTGPT-INTERNAL-CANARY');
+      });
+      const protectedPort = getServerPort(protectedServer);
+
+      try {
+        const instance = createProxyAxios();
+        await expect(
+          instance.get(`http://rebind-fastgpt.test:${protectedPort}/secret`)
+        ).rejects.toThrow(PRIVATE_URL_TEXT);
+      } finally {
+        await closeServer(protectedServer);
+      }
+    });
+
+    it('应该覆盖直连路径调用方传入的自定义 lookup agent', async () => {
+      clearProxyEnv();
+      mutableServiceEnv.CHECK_INTERNAL_IP = false;
+      const carrierHost = getReachablePrivateHost();
+      if (!carrierHost) {
+        return;
+      }
+
+      vi.spyOn(dns, 'resolve4').mockResolvedValue([carrierHost]);
+      vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('No AAAA records'));
+      vi.spyOn(dns, 'lookup').mockImplementation(
+        async () => [{ address: carrierHost, family: 4 }] as any
+      );
+
+      const targetServer = await listen((req, res) => {
+        res.end(JSON.stringify({ host: req.headers.host, url: req.url }));
+      }, '0.0.0.0');
+      const targetPort = getServerPort(targetServer);
+
+      const maliciousAgent = new http.Agent({
+        lookup: (_hostname, optionsOrCallback, maybeCallback) => {
+          const callback =
+            typeof optionsOrCallback === 'function' ? optionsOrCallback : maybeCallback;
+          callback?.(null, '127.0.0.1', 4);
+        }
+      });
+
+      try {
+        const instance = createProxyAxios();
+        const response = await instance.get<{ host: string; url: string }>(
+          `http://pinned-fastgpt.test:${targetPort}/ok`,
+          {
+            httpAgent: maliciousAgent
+          }
+        );
+
+        expect(response.data).toEqual({
+          host: `pinned-fastgpt.test:${targetPort}`,
+          url: '/ok'
+        });
+      } finally {
+        await closeServer(targetServer);
+      }
+    });
+
+    it('应该拒绝重定向下一跳中的 DNS rebinding', async () => {
+      clearProxyEnv();
+      mutableServiceEnv.CHECK_INTERNAL_IP = false;
+      const carrierHost = getReachablePrivateHost();
+      if (!carrierHost) {
+        return;
+      }
+
+      vi.spyOn(dns, 'resolve4').mockResolvedValue(['8.8.8.8']);
+      vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('No AAAA records'));
+      vi.spyOn(dns, 'lookup').mockImplementation(
+        async () => [{ address: '127.0.0.1', family: 4 }] as any
+      );
+
+      const redirectServer = await listen((req, res) => {
+        res.statusCode = 302;
+        res.setHeader('Location', 'http://redirect-rebind-fastgpt.test/secret');
+        res.end('redirect');
+      }, '0.0.0.0');
+      const redirectPort = getServerPort(redirectServer);
+
+      try {
+        const instance = createProxyAxios();
+        await expect(instance.get(`http://${carrierHost}:${redirectPort}/fetch`)).rejects.toThrow(
+          PRIVATE_URL_TEXT
+        );
+      } finally {
+        await closeServer(redirectServer);
+      }
+    });
+
+    it('走代理时命中 isInternalAddress 应该直接拒绝', async () => {
+      process.env.HTTP_PROXY = 'http://proxy.example:8080';
+      mutableServiceEnv.CHECK_INTERNAL_IP = false;
+
+      const adapter = vi.fn().mockResolvedValue({
+        data: {},
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: {}
+      });
+      const instance = createProxyAxios({ adapter });
+
+      await expect(instance.get('http://127.0.0.1/admin')).rejects.toThrow(PRIVATE_URL_TEXT);
+      expect(adapter).not.toHaveBeenCalled();
+    });
+
+    it('走代理且 isInternalAddress 返回 false 时应保留代理路径并跳过 pinning lookup', async () => {
+      process.env.HTTP_PROXY = 'http://proxy.example:8080';
+      mutableServiceEnv.CHECK_INTERNAL_IP = false;
+
+      vi.spyOn(dns, 'resolve4').mockRejectedValue(new Error('DNS unavailable'));
+      vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('DNS unavailable'));
+      const lookupSpy = vi.spyOn(dns, 'lookup');
+      const adapter = vi.fn().mockResolvedValue({
+        data: { ok: true },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: {}
+      });
+      const instance = createProxyAxios({ adapter });
+
+      const response = await instance.get('http://proxy-only-fastgpt.test/resource');
+
+      expect(response.data).toEqual({ ok: true });
+      expect(adapter).toHaveBeenCalled();
+      expect(lookupSpy).not.toHaveBeenCalled();
+    });
+
+    it('直连路径 DNS lookup 失败时应该失败', async () => {
+      clearProxyEnv();
+      mutableServiceEnv.CHECK_INTERNAL_IP = false;
+
+      vi.spyOn(dns, 'resolve4').mockResolvedValue(['8.8.8.8']);
+      vi.spyOn(dns, 'resolve6').mockRejectedValue(new Error('No AAAA records'));
+      vi.spyOn(dns, 'lookup').mockImplementation(async () => {
+        throw new Error('DNS lookup failed');
+      });
+      const adapter = vi.fn().mockResolvedValue({
+        data: { ok: true },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: {}
+      });
+      const instance = createProxyAxios({ adapter });
+
+      await expect(instance.get('http://lookup-fail-fastgpt.test/resource')).rejects.toThrow(
+        'DNS lookup failed'
+      );
+      expect(adapter).not.toHaveBeenCalled();
     });
   });
 
