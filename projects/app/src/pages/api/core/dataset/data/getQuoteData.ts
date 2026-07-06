@@ -57,11 +57,11 @@ async function handler(req: ApiRequestProps): Promise<GetQuoteDataResponse> {
 
       return {
         collection,
-        ...formatDatasetDataValue({
+        ...(await formatDatasetDataValue({
           q: datasetData.q,
           a: datasetData.a,
           imageId: datasetData.imageId
-        })
+        }))
       };
     } else {
       const { datasetData, collection } = await authDatasetData({
@@ -73,11 +73,11 @@ async function handler(req: ApiRequestProps): Promise<GetQuoteDataResponse> {
       });
       return {
         collection,
-        ...formatDatasetDataValue({
+        ...(await formatDatasetDataValue({
           q: datasetData.q,
           a: datasetData.a,
           imageId: datasetData.imageId
-        })
+        }))
       };
     }
   })();

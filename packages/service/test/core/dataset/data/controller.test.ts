@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { formatDatasetDataValue } from '@fastgpt/service/core/dataset/data/controller';
 
 describe('formatDatasetDataValue', () => {
-  it('should append image descriptions to markdown image alt text in question and answer', () => {
-    const result = formatDatasetDataValue({
+  it('should append image descriptions to markdown image alt text in question and answer', async () => {
+    const result = await formatDatasetDataValue({
       q: 'Question ![cat]( https://example.com/cat.png ) and ![bird](https://example.com/bird.png)',
       a: 'Answer ![](https://example.com/dog.png)',
       imageDescMap: {

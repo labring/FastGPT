@@ -59,7 +59,7 @@ export const UpdateDatasetDataBodySchema = UpdateDatasetDataPropsSchema;
 export type UpdateDatasetDataBody = z.infer<typeof UpdateDatasetDataBodySchema>;
 export const UpdateDatasetDataResponseSchema = z.object({
   q: z.string().optional().meta({
-    example: '![image.png](/api/system/file/download/xxx?filename=image.png)',
+    example: '![image.png](/api/system/file/d/alias.exp.sig)',
     description: '展示态问题/主文本，内部 S3 图片会替换为签名访问地址'
   }),
   a: z.string().optional().meta({

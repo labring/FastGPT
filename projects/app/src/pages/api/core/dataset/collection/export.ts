@@ -111,17 +111,23 @@ async function handler(req: ApiRequestProps, res: NextApiResponse) {
 
   write(`\uFEFFq,a`);
 
-  cursor.on('data', (doc) => {
-    const sanitizedQ = replaceS3KeyToPreviewUrl(
-      sanitizeCsvField(doc.q || ''),
-      addDays(new Date(), 90)
-    );
-    const sanitizedA = replaceS3KeyToPreviewUrl(
-      sanitizeCsvField(doc.a || ''),
-      addDays(new Date(), 90)
-    );
+  cursor.on('data', async (doc) => {
+    cursor.pause();
 
-    write(`\n${sanitizedQ},${sanitizedA}`);
+    try {
+      const [sanitizedQ, sanitizedA] = await Promise.all([
+        replaceS3KeyToPreviewUrl(sanitizeCsvField(doc.q || ''), addDays(new Date(), 90)),
+        replaceS3KeyToPreviewUrl(sanitizeCsvField(doc.a || ''), addDays(new Date(), 90))
+      ]);
+
+      write(`\n${sanitizedQ},${sanitizedA}`);
+    } catch (error) {
+      logger.error(`export usage error`, { error });
+      cursor.destroy();
+      return;
+    }
+
+    cursor.resume();
   });
 
   cursor.on('end', () => {

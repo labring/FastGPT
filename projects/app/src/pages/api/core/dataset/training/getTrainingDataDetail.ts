@@ -4,7 +4,6 @@ import { authDatasetCollection } from '@fastgpt/service/support/permission/datas
 import { NextAPI } from '@/service/middleware/entry';
 import { type ApiRequestProps } from '@fastgpt/service/type/next';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
-import { jwtSignS3DownloadToken } from '@fastgpt/service/common/s3/security/token';
 import { addMinutes } from 'date-fns';
 import {
   GetTrainingDataDetailBodySchema,
@@ -13,6 +12,7 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/training/api';
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { createS3DownloadAccessUrl } from '@fastgpt/service/common/s3/accessLink';
 
 async function handler(req: ApiRequestProps): Promise<GetTrainingDataDetailResponse> {
   const { collectionId, dataId } = parseApiInput({
@@ -39,19 +39,21 @@ async function handler(req: ApiRequestProps): Promise<GetTrainingDataDetailRespo
     return GetTrainingDataDetailResponseSchema.parse(null);
   }
 
+  const imagePreviewUrl =
+    data.imageId && isS3ObjectKey(data.imageId, 'dataset')
+      ? await createS3DownloadAccessUrl({
+          objectKey: data.imageId,
+          bucketName: S3Buckets.private,
+          expiredTime: addMinutes(new Date(), 30)
+        })
+      : undefined;
+
   return GetTrainingDataDetailResponseSchema.parse({
     _id: data._id,
     datasetId: data.datasetId,
     collectionId: data.collectionId,
     mode: data.mode,
-    imagePreviewUrl:
-      data.imageId && isS3ObjectKey(data.imageId, 'dataset')
-        ? jwtSignS3DownloadToken({
-            objectKey: data.imageId,
-            bucketName: S3Buckets.private,
-            expiredTime: addMinutes(new Date(), 30)
-          })
-        : undefined,
+    imagePreviewUrl,
     q: data.q,
     a: data.a
   });

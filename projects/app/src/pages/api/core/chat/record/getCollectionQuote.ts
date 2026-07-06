@@ -135,9 +135,10 @@ async function handleInitialLoad({
       .lean();
 
     const hasMoreNext = list.length === pageSize;
+    const citeList = await getFormatDatasetCiteList(list);
 
     return {
-      list: processChatTimeFilter(getFormatDatasetCiteList(list), chatTime).map((item) => ({
+      list: processChatTimeFilter(citeList, chatTime).map((item) => ({
         ...item,
         id: item._id,
         anchor: item.index
@@ -161,9 +162,10 @@ async function handleInitialLoad({
   );
 
   const resultList = [...prevList, centerNode, ...nextList];
+  const citeList = await getFormatDatasetCiteList(resultList);
 
   return {
-    list: processChatTimeFilter(getFormatDatasetCiteList(resultList), chatTime).map((item) => ({
+    list: processChatTimeFilter(citeList, chatTime).map((item) => ({
       ...item,
       id: item._id,
       anchor: item.index
@@ -192,7 +194,8 @@ async function handlePaginatedLoad({
     ? await getPrevNodes(prevId, nextAnchor, pageSize, baseMatch)
     : await getNextNodes(nextId!, nextAnchor, pageSize, baseMatch);
 
-  const processedList = processChatTimeFilter(getFormatDatasetCiteList(list), chatTime);
+  const citeList = await getFormatDatasetCiteList(list);
+  const processedList = processChatTimeFilter(citeList, chatTime);
 
   return {
     list: processedList.map((item) => ({ ...item, id: item._id, anchor: item.index })),

@@ -23,7 +23,11 @@ import { type UploadFileByBufferParams, UploadFileByBodySchema } from '../contra
 import type { createStorage } from '@fastgpt-sdk/storage';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import { getContentDisposition } from '@fastgpt/global/common/file/tools';
-import { jwtSignS3DownloadToken, jwtSignS3UploadToken } from '../security/token';
+import {
+  createS3DownloadAccessUrl,
+  createS3UploadAccessUrl,
+  deleteS3DownloadAliasByObject
+} from '../accessLink';
 
 const logger = getLogger(LogCategories.INFRA.S3);
 
@@ -143,6 +147,17 @@ export class S3BaseBucket {
       });
       throw err;
     });
+
+    deleteS3DownloadAliasByObject({
+      bucketName: this.bucketName,
+      objectKey
+    }).catch((err) => {
+      logger.warn('S3 download alias cleanup failed after object delete', {
+        key: objectKey,
+        bucketName: this.bucketName,
+        error: err
+      });
+    });
   }
 
   addDeleteJob(params: Omit<Parameters<typeof addS3DelJob>[0], 'bucketName'>) {
@@ -193,7 +208,7 @@ export class S3BaseBucket {
       });
 
       return {
-        url: jwtSignS3UploadToken({
+        url: await createS3UploadAccessUrl({
           objectKey: params.rawKey,
           bucketName: this.bucketName,
           expiredTime: addMinutes(new Date(), Math.ceil(expiredSeconds / 60)),
@@ -250,11 +265,12 @@ export class S3BaseBucket {
       return {
         bucket: this.bucketName,
         key,
-        url: jwtSignS3DownloadToken({
+        url: await createS3DownloadAccessUrl({
           objectKey: key,
           bucketName: this.bucketName,
           expiredTime: addMinutes(new Date(), Math.ceil(expires / 60)),
-          filename: path.basename(key)
+          filename: path.basename(key),
+          responseContentType
         })
       };
     }

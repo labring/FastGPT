@@ -3,11 +3,11 @@ import { addEndpointToImageUrl } from '../../../common/file/image/utils';
 import type { DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
 import { addDays } from 'date-fns';
 import { isS3ObjectKey } from '../../../common/s3/utils';
-import { jwtSignS3DownloadToken } from '../../../common/s3/security/token';
 import { S3Buckets } from '../../../common/s3/config/constants';
 import { matchDatasetDataMarkdownImages } from './utils';
+import { createS3DownloadAccessUrl } from '../../../common/s3/accessLink';
 
-export const formatDatasetDataValue = ({
+export const formatDatasetDataValue = async ({
   q,
   a,
   imageId,
@@ -17,11 +17,11 @@ export const formatDatasetDataValue = ({
   a?: string;
   imageId?: string;
   imageDescMap?: Record<string, string>;
-}): {
+}): Promise<{
   q: string;
   a?: string;
   imagePreivewUrl?: string;
-} => {
+}> => {
   // Add image description to image markdown
   if (imageDescMap) {
     // Helper function to replace image markdown with description
@@ -59,14 +59,19 @@ export const formatDatasetDataValue = ({
   }
 
   if (!imageId) {
+    const [replacedQ, replacedA] = await Promise.all([
+      replaceS3KeyToPreviewUrl(q, addDays(new Date(), 90)),
+      a ? replaceS3KeyToPreviewUrl(a, addDays(new Date(), 90)) : undefined
+    ]);
+
     return {
-      q: replaceS3KeyToPreviewUrl(q, addDays(new Date(), 90)),
-      a: a ? replaceS3KeyToPreviewUrl(a, addDays(new Date(), 90)) : undefined
+      q: replacedQ,
+      a: replacedA
     };
   }
 
   const imagePreivewUrl = isS3ObjectKey(imageId, 'dataset')
-    ? jwtSignS3DownloadToken({
+    ? await createS3DownloadAccessUrl({
         objectKey: imageId,
         bucketName: S3Buckets.private,
         expiredTime: addDays(new Date(), 90)
@@ -81,15 +86,17 @@ export const formatDatasetDataValue = ({
 };
 
 export const getFormatDatasetCiteList = (list: DatasetDataSchemaType[]) => {
-  return list.map((item) => ({
-    _id: item._id,
-    ...formatDatasetDataValue({
-      q: item.q,
-      a: item.a,
-      imageId: item.imageId
-    }),
-    history: item.history,
-    updateTime: item.updateTime,
-    index: item.chunkIndex
-  }));
+  return Promise.all(
+    list.map(async (item) => ({
+      _id: item._id,
+      ...(await formatDatasetDataValue({
+        q: item.q,
+        a: item.a,
+        imageId: item.imageId
+      })),
+      history: item.history,
+      updateTime: item.updateTime,
+      index: item.chunkIndex
+    }))
+  );
 };
