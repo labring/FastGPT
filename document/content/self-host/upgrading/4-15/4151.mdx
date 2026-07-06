@@ -47,6 +47,7 @@ curl -X POST "{{host}}/api/admin/initv4151" \
 
 1. 增加全局 API Key 标签管理，并为历史应用级 API Key 增加 `appName` 展示快照，便于兼容旧版 API 密钥并查找以前应用关联的密钥。
 2. 发布技能时，预提取技能名称和描述，便于辅助生成。
+3. 新增 `WECOM_LOGIN_AUTO_REDIRECT` 环境变量，可控制企微终端是否自动跳转登录，默认关闭。
 
 ## ⚙️ 优化
 
