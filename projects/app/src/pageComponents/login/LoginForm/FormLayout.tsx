@@ -47,6 +47,8 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
   const redirectUri = `${location.origin}/login/provider`;
 
   const isWecomWorkTerminal = checkIsWecomTerminal();
+  const canWecomTerminalAutoRedirect =
+    !isWecomWorkTerminal || feConfigs?.wecomLoginAutoRedirect === true;
 
   const oAuthList: OAuthItem[] = useMemo(
     () => [
@@ -181,14 +183,17 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
     if (rootLogin) return;
     const sso = oAuthList.find((item) => item.provider === OAuthEnum.sso);
     // sso auto login
-    if (sso && (feConfigs?.sso?.autoLogin || isWecomWorkTerminal)) onClickOauth(sso);
-    if (feConfigs.oauth?.wecom && isWecomWorkTerminal) {
+    if (sso && canWecomTerminalAutoRedirect && (feConfigs?.sso?.autoLogin || isWecomWorkTerminal)) {
+      onClickOauth(sso);
+    }
+    if (feConfigs.oauth?.wecom && isWecomWorkTerminal && canWecomTerminalAutoRedirect) {
       onClickOauth({
         provider: OAuthEnum.wecom
       } as any);
     }
   }, [
     rootLogin,
+    canWecomTerminalAutoRedirect,
     feConfigs?.sso?.autoLogin,
     isWecomWorkTerminal,
     onClickOauth,

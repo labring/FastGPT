@@ -29,6 +29,24 @@ describe('app env validation', () => {
     });
   });
 
+  it('WECOM_LOGIN_AUTO_REDIRECT 默认关闭，且支持显式开启', async () => {
+    vi.stubEnv('WECOM_LOGIN_AUTO_REDIRECT', '');
+
+    await expect(importAppEnv()).resolves.toMatchObject({
+      appEnv: expect.objectContaining({
+        WECOM_LOGIN_AUTO_REDIRECT: false
+      })
+    });
+
+    vi.stubEnv('WECOM_LOGIN_AUTO_REDIRECT', 'true');
+
+    await expect(importAppEnv()).resolves.toMatchObject({
+      appEnv: expect.objectContaining({
+        WECOM_LOGIN_AUTO_REDIRECT: true
+      })
+    });
+  });
+
   it('OPENAPI_KEY_MAX_COUNT 必须是大于等于 1 的整数', async () => {
     vi.stubEnv('OPENAPI_KEY_MAX_COUNT', '0');
 
