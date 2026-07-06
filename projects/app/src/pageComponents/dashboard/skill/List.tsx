@@ -366,13 +366,14 @@ const List = ({
             label: t('common:Delete'),
             onClick: () =>
               openConfirmDelete({
-                customContent: (
-                  <Trans
-                    i18nKey={i18nT('skill:confirm_delete_with_refs')}
-                    values={{ count: isFolder ? 0 : relatedAppsCount }}
-                    components={{ bold: <Box as={'span'} fontWeight={'600'} /> }}
-                  />
-                ),
+                customContent:
+                  !isFolder && relatedAppsCount > 0 ? (
+                    <Trans
+                      i18nKey={i18nT('skill:confirm_delete_with_refs')}
+                      values={{ count: relatedAppsCount }}
+                      components={{ bold: <Box as={'span'} fontWeight={'600'} /> }}
+                    />
+                  ) : null,
                 onConfirm: () => onClickDeleteSkill(skill._id),
                 confirmText: t('skill:confirm_delete_action'),
                 confirmButtonVariant: 'dangerFill',
