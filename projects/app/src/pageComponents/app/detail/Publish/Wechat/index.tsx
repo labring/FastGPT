@@ -39,7 +39,7 @@ const Wechat = ({ appId }: { appId: string }) => {
   const { feConfigs } = useSystemStore();
   const [editData, setEditData] = useState<OutLinkEditType<WechatAppType>>();
   const [isEdit, setIsEdit] = useState(false);
-  const [loginShareId, setLoginShareId] = useState<string>();
+  const [loginOutLinkId, setLoginOutLinkId] = useState<string>();
 
   const {
     data: shareChatList = [],
@@ -130,7 +130,7 @@ const Wechat = ({ appId }: { appId: string }) => {
                       mr={3}
                       colorScheme="green"
                       onClick={() => {
-                        setLoginShareId(item.shareId);
+                        setLoginOutLinkId(item._id);
                       }}
                     >
                       {t('publish:wechat.login')}
@@ -144,7 +144,7 @@ const Wechat = ({ appId }: { appId: string }) => {
                         setIsLoading(true);
                         try {
                           await POST('/support/outLink/wechat/logout', {
-                            shareId: item.shareId
+                            outLinkId: item._id
                           });
                           refetch();
                         } finally {
@@ -160,7 +160,7 @@ const Wechat = ({ appId }: { appId: string }) => {
                       mr={3}
                       variant={'whitePrimary'}
                       onClick={() => {
-                        setLoginShareId(item.shareId);
+                        setLoginOutLinkId(item._id);
                       }}
                     >
                       {t('publish:wechat.relogin')}
@@ -232,14 +232,14 @@ const Wechat = ({ appId }: { appId: string }) => {
         />
       )}
 
-      {loginShareId && (
+      {loginOutLinkId && (
         <QRLoginModal
-          shareId={loginShareId}
+          outLinkId={loginOutLinkId}
           onSuccess={() => {
             refetch();
-            setLoginShareId(undefined);
+            setLoginOutLinkId(undefined);
           }}
-          onClose={() => setLoginShareId(undefined)}
+          onClose={() => setLoginOutLinkId(undefined)}
         />
       )}
 
