@@ -1,12 +1,7 @@
 import React, { type ReactNode, useEffect, useImperativeHandle, useMemo } from 'react';
 import { useContextSelector } from 'use-context-selector';
-import {
-  AppTypeEnum,
-  defaultAppSelectFileConfig,
-  defaultQGConfig,
-  defaultWhisperConfig
-} from '@fastgpt/global/core/app/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { createHelperBotAppConfig } from '@fastgpt/global/core/chat/helperBot/constants';
 import { HelperBotTypeEnum } from '@fastgpt/global/core/chat/helperBot/type';
 import { ChatTypeEnum } from '../ChatContainer/ChatBox/constants';
 import ChatBox from '../ChatContainer/ChatBox';
@@ -29,7 +24,6 @@ export type HelperBotRefType = {
 };
 
 export type HelperBotProps = {
-  emptyDom?: ReactNode;
   InputLeftComponent?: ReactNode;
   ChatBoxRef: React.ForwardedRef<HelperBotRefType>;
   appId: string;
@@ -69,32 +63,7 @@ const HelperBotChatBox = ({
         chatId,
         chatGenerateStatus: isSameChat ? prev.chatGenerateStatus : undefined,
         hasBeenRead: isSameChat ? prev.hasBeenRead : undefined,
-        app: {
-          chatConfig: {
-            fileSelectConfig: {
-              ...defaultAppSelectFileConfig,
-              canSelectFile: true,
-              canSelectImg: true,
-              canSelectAudio: true,
-              canSelectVideo: true,
-              customPdfParse: false,
-              canSelectCustomFileExtension: true,
-              customFileExtensionList: []
-            },
-            questionGuide: {
-              ...defaultQGConfig,
-              open: false
-            },
-            whisperConfig: {
-              ...defaultWhisperConfig,
-              open: false
-            }
-          },
-          name: 'Top Agent',
-          avatar: '/imgs/bot.svg',
-          type: AppTypeEnum.simple,
-          pluginInputs: []
-        }
+        app: createHelperBotAppConfig()
       };
     });
   }, [appId, chatId, setChatBoxData, sourceKey]);

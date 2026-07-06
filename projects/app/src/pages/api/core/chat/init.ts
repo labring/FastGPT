@@ -21,8 +21,9 @@ import { ChatGenerateStatusEnum, ChatSourceTypeEnum } from '@fastgpt/global/core
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
-import { AppTypeEnum, defaultAppSelectFileConfig } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { buildChatTargetResponse } from '@fastgpt/global/openapi/core/chat/api';
+import { createHelperBotAppConfig } from '@fastgpt/global/core/chat/helperBot/constants';
 
 async function handler(req: NextApiRequest): Promise<InitChatResponseType> {
   const { sourceType, sourceId, chatId } = parseApiInput({
@@ -129,27 +130,7 @@ async function handler(req: NextApiRequest): Promise<InitChatResponseType> {
       variables: {},
       chatGenerateStatus,
       hasBeenRead: chat?.hasBeenRead ?? true,
-      app: {
-        chatConfig: {
-          fileSelectConfig: {
-            ...defaultAppSelectFileConfig,
-            maxFiles: 10,
-            canSelectFile: true,
-            canSelectImg: true,
-            customPdfParse: false,
-            canSelectVideo: true,
-            canSelectAudio: true,
-            canSelectCustomFileExtension: true,
-            customFileExtensionList: []
-          }
-        },
-        chatModels: [],
-        name: 'Top Agent',
-        avatar: '/imgs/bot.svg',
-        intro: '',
-        type: AppTypeEnum.simple,
-        pluginInputs: []
-      }
+      app: createHelperBotAppConfig()
     });
   }
 
