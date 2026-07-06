@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/labring-fastgpt-badge.png)](https://mseep.ai/app/labring-fastgpt)
+
 <div align="center">
 
 <a href="https://fastgpt.io/"><img src="/.github/imgs/logo.svg" width="120" height="120" alt="fastgpt logo"></a>
