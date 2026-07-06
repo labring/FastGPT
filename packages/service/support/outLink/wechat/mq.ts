@@ -54,6 +54,7 @@ async function processWechatPollJob(job: Job<WechatPollJobData>): Promise<void> 
 
 async function pollImpl(job: Job<WechatPollJobData>): Promise<void> {
   const { shareId } = job.data;
+  logger.debug('Wechat poll job started', { shareId, jobId: job.id });
 
   const outLink = (await MongoOutLink.findOne({
     shareId
@@ -75,7 +76,21 @@ async function pollImpl(job: Job<WechatPollJobData>): Promise<void> {
   }
 
   const client = new ILinkClient(app.baseUrl, app.token);
-  const resp = await client.getUpdates(app.syncBuf || '');
+  const resp = await client.getUpdates(app.syncBuf || '').catch((error) => {
+    logger.error('Wechat getUpdates request failed', {
+      shareId,
+      baseUrl: app.baseUrl,
+      error: String(error)
+    });
+    throw error;
+  });
+  logger.debug('Wechat getUpdates returned', {
+    shareId,
+    msgCount: resp.msgs?.length ?? 0,
+    hasNextBuf: Boolean(resp.get_updates_buf),
+    ret: resp.ret,
+    errcode: resp.errcode
+  });
 
   const isError =
     (resp.ret !== undefined && resp.ret !== 0) ||
@@ -194,7 +209,7 @@ async function processWechatReplyJob(job: Job<WechatReplyJobData>): Promise<void
 //   - 如果链已死（无 job），add 正常入队
 async function scheduleNextPoll(shareId: string, delayMs?: number): Promise<void> {
   const queue = getQueue<WechatPollJobData>(QueueNames.wechatPoll);
-  await queue.add(
+  const job = await queue.add(
     POLL_JOB_NAME,
     { shareId },
     {
@@ -204,6 +219,12 @@ async function scheduleNextPoll(shareId: string, delayMs?: number): Promise<void
       removeOnFail: true
     }
   );
+  logger.debug('Wechat poll job scheduled', {
+    shareId,
+    jobId: job.id,
+    delayMs,
+    jobState: await job.getState().catch(() => undefined)
+  });
 }
 
 /**
@@ -253,6 +274,11 @@ export const initWechatPollWorker = async () => {
   pollWorker.on('failed', async (job) => {
     if (!job || job.name !== POLL_JOB_NAME) return;
     const { shareId } = job.data as WechatPollJobData;
+    logger.warn('Wechat poll job failed', {
+      shareId,
+      jobId: job.id,
+      failedReason: job.failedReason
+    });
     try {
       await retryFn(async () => {
         if (!(await shouldContinuePolling(shareId))) return;
@@ -303,6 +329,15 @@ async function resumeAllWechatPolling(): Promise<void> {
  * 启动某个渠道的轮询
  */
 export const startWechatPolling = async (shareId: string): Promise<void> => {
+  const queue = getQueue<WechatPollJobData>(QueueNames.wechatPoll);
+  // 重新登录后优先丢弃旧的 offline/delayed poll job，避免确定 jobId 被旧任务占用。
+  await queue.remove(pollJobId(shareId)).catch((error) => {
+    logger.warn('Remove old wechat poll job before start failed (job may be active)', {
+      shareId,
+      error: String(error)
+    });
+  });
+
   await scheduleNextPoll(shareId);
   logger.info('Wechat polling started', { shareId });
 };

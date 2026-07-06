@@ -6,6 +6,27 @@ const BOT_TYPE = '3';
 const LONG_POLL_TIMEOUT_MS = 35_000;
 const SEND_TIMEOUT_MS = 15_000;
 
+const formatFetchError = (err: unknown) => {
+  if (!(err instanceof Error)) return String(err);
+
+  const cause = err.cause as
+    | {
+        code?: string;
+        message?: string;
+        name?: string;
+      }
+    | undefined;
+
+  return [
+    `${err.name}: ${err.message}`,
+    cause?.code ? `causeCode=${cause.code}` : '',
+    cause?.name ? `causeName=${cause.name}` : '',
+    cause?.message ? `causeMessage=${cause.message}` : ''
+  ]
+    .filter(Boolean)
+    .join('; ');
+};
+
 export type WeixinMessage = {
   msgid: string;
   from_user_id: string;
@@ -59,15 +80,12 @@ export class ILinkClient {
     return Buffer.from(String(uint32), 'utf-8').toString('base64');
   }
 
-  private buildHeaders(body?: string): Record<string, string> {
+  private buildHeaders(): Record<string, string> {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       AuthorizationType: 'ilink_bot_token',
       'X-WECHAT-UIN': this.randomUin()
     };
-    if (body) {
-      headers['Content-Length'] = String(Buffer.byteLength(body, 'utf-8'));
-    }
     if (this.token) {
       headers['Authorization'] = `Bearer ${this.token}`;
     }
@@ -82,7 +100,7 @@ export class ILinkClient {
     try {
       const res = await fetch(url, {
         method: 'POST',
-        headers: this.buildHeaders(body),
+        headers: this.buildHeaders(),
         body,
         signal: controller.signal
       });
@@ -92,7 +110,7 @@ export class ILinkClient {
       return text;
     } catch (err) {
       clearTimeout(timer);
-      throw err;
+      throw new Error(`iLink POST ${endpoint} failed: ${formatFetchError(err)}`);
     }
   }
 

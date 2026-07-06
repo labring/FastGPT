@@ -1,21 +1,20 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { Box, Button, Flex, ModalBody, ModalFooter, Spinner, Text } from '@chakra-ui/react';
+import { Box, Button, Flex, ModalBody, ModalFooter, Text } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { POST, GET } from '@/web/common/api/request';
 import QRCode from 'qrcode';
 import MyLoading from '@fastgpt/web/components/common/MyLoading';
-import { formatFileSize } from '@fastgpt/global/common/file/tools';
 
 type QRStatus = 'loading' | 'wait' | 'scanned' | 'confirmed' | 'expired' | 'error';
 
 const QRLoginModal = ({
-  shareId,
+  outLinkId,
   onSuccess,
   onClose
 }: {
-  shareId: string;
+  outLinkId: string;
   onSuccess: () => void;
   onClose: () => void;
 }) => {
@@ -40,7 +39,7 @@ const QRLoginModal = ({
       while (pollingRef.current && mountedRef.current) {
         try {
           const data = await GET<{ status: string }>('/support/outLink/wechat/qrcode/status', {
-            shareId
+            outLinkId
           });
           if (!mountedRef.current || !pollingRef.current) return;
 
@@ -76,7 +75,7 @@ const QRLoginModal = ({
     };
 
     poll();
-  }, [shareId, toast, t, onSuccess]);
+  }, [outLinkId, toast, t, onSuccess]);
 
   // 用 qrcode 库渲染二维码到 canvas
   const drawQRCode = useCallback((text: string) => {
@@ -105,7 +104,7 @@ const QRLoginModal = ({
       const data = await POST<{
         qrcode: string;
         qrcode_img_content: string;
-      }>('/support/outLink/wechat/qrcode/generate', { shareId });
+      }>('/support/outLink/wechat/qrcode/generate', { outLinkId });
 
       if (!mountedRef.current) return;
 
@@ -118,7 +117,7 @@ const QRLoginModal = ({
       setStatus('error');
       setErrMsg(t('publish:wechat.qr_generate_failed'));
     }
-  }, [shareId, startPolling, stopPolling, t]);
+  }, [outLinkId, startPolling, stopPolling, t]);
 
   // qrText 变化时重新渲染二维码
   useEffect(() => {
@@ -127,12 +126,14 @@ const QRLoginModal = ({
 
   useEffect(() => {
     mountedRef.current = true;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     generateQR();
+
     return () => {
       mountedRef.current = false;
       stopPolling();
     };
-  }, []);
+  }, [generateQR, stopPolling]);
 
   const renderContent = () => {
     switch (status) {
