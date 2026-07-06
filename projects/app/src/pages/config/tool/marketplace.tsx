@@ -44,6 +44,20 @@ import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 
+type QueryValue = string | string[] | undefined;
+type QueryRecord = Record<string, QueryValue>;
+
+const getComparableQueryValue = (value: QueryValue) =>
+  Array.isArray(value) ? value.join('\0') : (value ?? '');
+
+const isSameQuery = (currentQuery: QueryRecord, nextQuery: QueryRecord) => {
+  const queryKeys = new Set([...Object.keys(currentQuery), ...Object.keys(nextQuery)]);
+
+  return Array.from(queryKeys).every(
+    (key) => getComparableQueryValue(currentQuery[key]) === getComparableQueryValue(nextQuery[key])
+  );
+};
+
 // Custom hook for managing URL search params
 const useSearchParams = () => {
   const router = useRouter();
@@ -87,6 +101,9 @@ const useSearchParams = () => {
       } else if ('newSource' in params) {
         delete nextQuery.source;
       }
+
+      // router.replace 会触发全局 NProgress。query 没变时直接跳过，避免浅路由空转循环。
+      if (isSameQuery(router.query, nextQuery)) return;
 
       router.replace(
         {
@@ -178,14 +195,14 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
 
   // Control search box expansion based on focus and input value
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
-  const [isFocused, setIsFocused] = useState(false);
-  useEffect(() => {
-    if (isFocused) {
-      setIsSearchExpanded(true);
-    } else if (!inputValue) {
+  const handleSearchFocus = useCallback(() => {
+    setIsSearchExpanded(true);
+  }, []);
+  const handleSearchBlur = useCallback(() => {
+    if (!inputValue) {
       setIsSearchExpanded(false);
     }
-  }, [isFocused, inputValue]);
+  }, [inputValue]);
 
   const {
     data: tools,
@@ -681,8 +698,8 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
                         placeholder={t('app:toolkit_marketplace_search_placeholder')}
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
-                        onFocus={() => setIsFocused(true)}
-                        onBlur={() => setIsFocused(false)}
+                        onFocus={handleSearchFocus}
+                        onBlur={handleSearchBlur}
                       />
                       {inputValue && (
                         <MyIcon
@@ -793,8 +810,8 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
                   placeholder={t('app:toolkit_marketplace_search_placeholder')}
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
-                  onFocus={() => setIsFocused(true)}
-                  onBlur={() => setIsFocused(false)}
+                  onFocus={handleSearchFocus}
+                  onBlur={handleSearchBlur}
                 />
               </InputGroup>
             </Box>

@@ -57,6 +57,15 @@ const getSourceFilterValue = (value: string | string[] | undefined) => {
     : undefined;
 };
 
+const isSameBrowserUrl = (nextUrl: string) => {
+  if (typeof window === 'undefined') return false;
+
+  const targetUrl = new URL(nextUrl, window.location.origin);
+  return (
+    targetUrl.pathname === window.location.pathname && targetUrl.search === window.location.search
+  );
+};
+
 const ToolkitMarketplace = () => {
   const { t, i18n } = useTranslation();
   const router = useRouter();
@@ -150,6 +159,7 @@ const ToolkitMarketplace = () => {
             window.isSecureContext ||
             (window.location.protocol === 'http:' && window.location.hostname === 'localhost')
           ) {
+            if (isSameBrowserUrl(newUrl)) return;
             try {
               window.history.replaceState({}, '', newUrl);
             } catch (historyError) {
