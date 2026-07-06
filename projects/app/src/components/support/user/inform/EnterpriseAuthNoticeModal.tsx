@@ -5,7 +5,6 @@ import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useTranslation } from 'next-i18next';
-import { webPushTrack } from '@/web/common/middle/tracks/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useQuery } from '@tanstack/react-query';
 import { getEnterpriseAuthStatus } from '@/web/support/user/team/enterpriseAuth/api';
@@ -110,7 +109,6 @@ const EnterpriseAuthNoticeModal = () => {
     async (event: React.MouseEvent<HTMLAnchorElement>) => {
       event.preventDefault();
       markAsRead();
-      webPushTrack.enterpriseAuthOpen({ source: 'notice' });
       await router.push(certificationHref);
     },
     [markAsRead, router]

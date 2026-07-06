@@ -13,6 +13,7 @@ import type {
   TeamEnterpriseAuthStatusEnum,
   TeamEnterpriseAuthTaskStatusEnum
 } from '@fastgpt/global/support/user/team/enterpriseAuth/constant';
+import type { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/constants';
 
 const logger = getLogger(LogCategories.EVENT.TRACK);
 
@@ -179,28 +180,19 @@ export const pushTrack = {
       data
     });
   },
-  enterpriseAuthVerifyAmount: (
+  enterpriseAuthBenefitGrant: (
     data: PushTrackCommonType & {
-      result: 'success' | 'amountError' | 'amountFailed' | 'failed';
       status?: `${TeamEnterpriseAuthStatusEnum}`;
-      errorCode?: string;
       taskId?: string;
-      isNewlyVerified?: boolean;
+      billId?: string;
+      standSubLevel: `${StandardSubLevelEnum}`;
+      durationDay: number;
+      totalPoints: number;
+      grantedPlanCount: number;
     }
   ) => {
     return createTrack({
-      event: TrackEnum.enterpriseAuthVerifyAmount,
-      data
-    });
-  },
-  enterpriseAuthReset: (
-    data: PushTrackCommonType & {
-      result: 'success' | 'failed';
-      errorCode?: string;
-    }
-  ) => {
-    return createTrack({
-      event: TrackEnum.enterpriseAuthReset,
+      event: TrackEnum.enterpriseAuthBenefitGrant,
       data
     });
   },

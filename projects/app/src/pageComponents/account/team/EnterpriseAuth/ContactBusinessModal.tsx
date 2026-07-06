@@ -3,7 +3,6 @@ import { Box, Button } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
 import { enterpriseAuthContactBusinessUrl } from './utils';
-import { webPushTrack } from '@/web/common/middle/tracks/utils';
 import { enterpriseAuthFooterButtonStyles } from './shared';
 
 type EnterpriseAuthContactBusinessModalProps = {
@@ -16,9 +15,6 @@ const EnterpriseAuthContactBusinessModal = ({
   const { t } = useTranslation();
 
   const openContactBusiness = useCallback(() => {
-    webPushTrack.enterpriseAuthContactBusiness({
-      source: 'contactBusinessModal'
-    });
     window.open(enterpriseAuthContactBusinessUrl, '_blank', 'noopener,noreferrer');
     onClose();
   }, [onClose]);

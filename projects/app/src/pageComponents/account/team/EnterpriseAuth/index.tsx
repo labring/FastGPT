@@ -13,7 +13,6 @@ import { useTranslation } from 'next-i18next';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { webPushTrack } from '@/web/common/middle/tracks/utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { getEnterpriseAuthStatus } from '@/web/support/user/team/enterpriseAuth/api';
 import {
@@ -134,24 +133,9 @@ const EnterpriseAuthStatusRow = ({
     hasTeamManagePer: userInfo?.team?.permission?.hasManagePer
   });
 
-  const trackOpen = useCallback(
-    (source: 'statusRow' | 'notice') => {
-      webPushTrack.enterpriseAuthOpen({
-        source,
-        status: data?.status,
-        taskStatus: data?.currentTask?.status,
-        hasCurrentTask: !!data?.currentTask,
-        canManage: canManageCurrentEnterpriseAuth,
-        needContactBusiness
-      });
-    },
-    [canManageCurrentEnterpriseAuth, data?.currentTask, data?.status, needContactBusiness]
-  );
-
   const handleOpen = useCallback(() => {
     if (data?.status === TeamEnterpriseAuthStatusEnum.verified) return;
 
-    trackOpen('statusRow');
     if (!canManageCurrentEnterpriseAuth) {
       toast({
         title: t('account_team:enterprise_auth_contact_admin_tip'),
@@ -167,12 +151,6 @@ const EnterpriseAuthStatusRow = ({
       return;
     }
     if (needContactBusiness) {
-      webPushTrack.enterpriseAuthContactBusiness({
-        source: 'statusRow',
-        status: data?.status,
-        taskStatus: data?.currentTask?.status,
-        usedTimes: data?.usedTimes
-      });
       onOpenContactBusiness();
       return;
     }
@@ -185,13 +163,11 @@ const EnterpriseAuthStatusRow = ({
     canManageCurrentEnterpriseAuth,
     data?.currentTask,
     data?.status,
-    data?.usedTimes,
     hasOtherMemberProcessingTask,
     needContactBusiness,
     onOpen,
     onOpenContactBusiness,
     t,
-    trackOpen,
     toast
   ]);
 
@@ -210,7 +186,6 @@ const EnterpriseAuthStatusRow = ({
     if (loading || !data?.enabled) return;
 
     autoOpenHandledRef.current = true;
-    trackOpen('notice');
     if (data.status === TeamEnterpriseAuthStatusEnum.verified) {
       onAutoOpenFinish?.();
       return;
@@ -232,12 +207,6 @@ const EnterpriseAuthStatusRow = ({
       return;
     }
     if (needContactBusiness) {
-      webPushTrack.enterpriseAuthContactBusiness({
-        source: 'statusRow',
-        status: data?.status,
-        taskStatus: data?.currentTask?.status,
-        usedTimes: data?.usedTimes
-      });
       onOpenContactBusiness();
       onAutoOpenFinish?.();
       return;
@@ -257,7 +226,6 @@ const EnterpriseAuthStatusRow = ({
     data?.currentTask,
     data?.enabled,
     data?.status,
-    data?.usedTimes,
     error,
     feConfigs?.show_enterprise_auth,
     hasOtherMemberProcessingTask,
@@ -267,7 +235,6 @@ const EnterpriseAuthStatusRow = ({
     onOpen,
     onOpenContactBusiness,
     t,
-    trackOpen,
     toast
   ]);
 
