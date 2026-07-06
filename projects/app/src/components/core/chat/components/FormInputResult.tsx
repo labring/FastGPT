@@ -18,7 +18,7 @@ export type FormInputResultFileItem = {
  * 从文件下载 URL 中解析展示用文件名。
  *
  * FastGPT 签名下载链接通常把真实文件名放在 `filename` query 中（见
- * `/api/system/file/download/token?filename=...`），path 段往往只是 token，不可读。
+ * `/api/system/file/d/alias.exp.sig`），path 段往往只是 token，不可读。
  * 解析优先级：query `filename` > URL path 最后一段 > 原 URL 字符串。
  *
  * @param url - 文件下载地址；非法 URL 时直接返回入参，避免展示层抛错。

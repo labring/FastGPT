@@ -2,11 +2,11 @@ import { authDatasetByTmbId } from '../../support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { S3Sources } from '../../common/s3/contracts/type';
 import { isS3ObjectKey } from '../../common/s3/utils';
-import { jwtSignS3DownloadToken } from '../../common/s3/security/token';
 import { getLogger, LogCategories } from '../../common/logger';
 import { S3Buckets } from '../../common/s3/config/constants';
 import { getVlmModelList, isImageEmbeddingModel } from '../ai/model';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { createS3DownloadAccessUrl } from '../../common/s3/accessLink';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
 
@@ -39,7 +39,7 @@ export const filterDatasetsByTmbId = async ({
 };
 
 /**
- * 替换数据集引用 markdown 文本中的图片链接格式的 S3 对象键为 JWT 签名后的 URL
+ * 替换数据集引用 markdown 文本中的图片链接格式的 S3 对象键为短访问 URL。
  *
  * @param documentQuoteText 数据集引用文本
  * @param expiredTime 过期时间
@@ -51,10 +51,10 @@ export const filterDatasetsByTmbId = async ({
  * const datasetQuoteText = '![image.png](dataset/68fee42e1d416bb5ddc85b19/6901c3071ba2bea567e8d8db/aZos7D-214afce5-4d42-4356-9e05-8164d51c59ae.png)';
  * const replacedText = await replaceS3KeyToPreviewUrl(datasetQuoteText, addDays(new Date(), 90))
  * console.log(replacedText)
- * // '![image.png](http://localhost:3000/api/system/file/download/xxx?filename=image.png)'
+ * // '![image.png](http://localhost:3000/api/system/file/d/alias.exp.sig)'
  * ```
  */
-export function replaceS3KeyToPreviewUrl(documentQuoteText: string, expiredTime: Date) {
+export async function replaceS3KeyToPreviewUrl(documentQuoteText: string, expiredTime: Date) {
   if (!documentQuoteText || typeof documentQuoteText !== 'string')
     return documentQuoteText as string;
 
@@ -72,7 +72,7 @@ export function replaceS3KeyToPreviewUrl(documentQuoteText: string, expiredTime:
     const allowedKeysGuard = allowedKeys.some((key) => isS3ObjectKey(objectKey, key));
 
     if (allowedKeysGuard) {
-      const url = jwtSignS3DownloadToken({
+      const url = await createS3DownloadAccessUrl({
         objectKey,
         bucketName: S3Buckets.private,
         expiredTime

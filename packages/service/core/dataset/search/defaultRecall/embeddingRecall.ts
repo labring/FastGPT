@@ -245,36 +245,39 @@ export const embeddingRecall = async ({
     image: []
   };
 
-  recallResults.forEach((recallResult, taskIndex) => {
+  for (const [taskIndex, recallResult] of recallResults.entries()) {
     const task = tasks[taskIndex];
     const set = new Set<string>();
 
-    const list = recallResult.results
-      .map((item, index) => {
-        const collection = collectionMaps.get(String(item.collectionId));
-        if (!collection) {
-          logger.warn('Dataset collection not found during recall', {
-            collectionId: item.collectionId,
-            dataId: item.id
-          });
-          return;
-        }
+    const list = (
+      await Promise.all(
+        recallResult.results.map((item, index) => {
+          const collection = collectionMaps.get(String(item.collectionId));
+          if (!collection) {
+            logger.warn('Dataset collection not found during recall', {
+              collectionId: item.collectionId,
+              dataId: item.id
+            });
+            return;
+          }
 
-        const data = dataMaps.get(String(item.id?.trim()));
-        if (!data) {
-          logger.warn('Dataset data not found during recall', {
-            dataId: item.id,
-            collectionId: item.collectionId
-          });
-          return;
-        }
+          const data = dataMaps.get(String(item.id?.trim()));
+          if (!data) {
+            logger.warn('Dataset data not found during recall', {
+              dataId: item.id,
+              collectionId: item.collectionId
+            });
+            return;
+          }
 
-        return buildSearchResultItem({
-          data,
-          collection,
-          score: [{ type: SearchScoreTypeEnum.embedding, value: item?.score || 0, index }]
-        });
-      })
+          return buildSearchResultItem({
+            data,
+            collection,
+            score: [{ type: SearchScoreTypeEnum.embedding, value: item?.score || 0, index }]
+          });
+        })
+      )
+    )
       .filter((item) => {
         if (!item) return false;
         if (set.has(item.id)) return false;
@@ -289,7 +292,7 @@ export const embeddingRecall = async ({
       }) as SearchDataResponseItemType[];
 
     groupedRecallLists[task.source].push(list);
-  });
+  }
 
   return {
     textEmbeddingRecallResults: concatRecallLists(groupedRecallLists.text, limit),

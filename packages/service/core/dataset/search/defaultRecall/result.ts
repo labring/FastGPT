@@ -23,22 +23,23 @@ export const buildSearchResultItem = ({
   collection: DatasetCollectionSchemaType;
   score: SearchDataResponseItemType['score'];
   includeIndexes?: boolean;
-}): SearchDataResponseItemType => ({
-  id: String(data._id),
-  updateTime: data.updateTime,
-  ...formatDatasetDataValue({
+}): Promise<SearchDataResponseItemType> =>
+  formatDatasetDataValue({
     q: data.q,
     a: data.a,
     imageId: data.imageId,
     imageDescMap: data.imageDescMap
-  }),
-  chunkIndex: data.chunkIndex,
-  ...(includeIndexes ? { indexes: data.indexes } : {}),
-  datasetId: String(data.datasetId),
-  collectionId: String(data.collectionId),
-  ...getCollectionSourceData(collection),
-  score
-});
+  }).then((formattedValue) => ({
+    id: String(data._id),
+    updateTime: data.updateTime,
+    ...formattedValue,
+    chunkIndex: data.chunkIndex,
+    ...(includeIndexes ? { indexes: data.indexes } : {}),
+    datasetId: String(data.datasetId),
+    collectionId: String(data.collectionId),
+    ...getCollectionSourceData(collection),
+    score
+  }));
 
 export const concatRecallLists = (lists: SearchDataResponseItemType[][], limit: number) => {
   return datasetSearchResultConcat(lists.map((list) => ({ weight: 1, list }))).slice(0, limit);

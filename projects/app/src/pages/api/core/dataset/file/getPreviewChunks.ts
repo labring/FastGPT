@@ -102,10 +102,12 @@ async function handler(
     maxChunks: maxPreviewChunkCount
   });
 
-  const chunksWithJWT = chunks.slice(0, 10).map((chunk) => ({
-    q: replaceS3KeyToPreviewUrl(chunk.q, addDays(new Date(), 1)),
-    a: replaceS3KeyToPreviewUrl(chunk.a, addDays(new Date(), 1))
-  }));
+  const chunksWithJWT = await Promise.all(
+    chunks.slice(0, 10).map(async (chunk) => ({
+      q: await replaceS3KeyToPreviewUrl(chunk.q, addDays(new Date(), 1)),
+      a: await replaceS3KeyToPreviewUrl(chunk.a, addDays(new Date(), 1))
+    }))
+  );
 
   return GetPreviewChunksResponseSchema.parse({
     chunks: chunksWithJWT,

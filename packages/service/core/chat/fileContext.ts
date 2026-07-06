@@ -354,7 +354,7 @@ export const getFileContentByUrl = async ({
     usageId
   });
 
-  const replacedText = replaceS3KeyToPreviewUrl(rawText, addDays(new Date(), 90));
+  const replacedText = await replaceS3KeyToPreviewUrl(rawText, addDays(new Date(), 90));
 
   // Add to buffer
   getS3RawTextSource().addRawTextBuffer({

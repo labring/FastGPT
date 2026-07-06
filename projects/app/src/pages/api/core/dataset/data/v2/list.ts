@@ -10,7 +10,6 @@ import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { addHours } from 'date-fns';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
-import { jwtSignS3DownloadToken } from '@fastgpt/service/common/s3/security/token';
 import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
 import {
   GetDatasetDataListBodySchema,
@@ -19,6 +18,7 @@ import {
 } from '@fastgpt/global/openapi/core/dataset/data/api';
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { createS3DownloadAccessUrl } from '@fastgpt/service/common/s3/accessLink';
 
 async function handler(req: ApiRequestProps): Promise<GetDatasetDataListResponse> {
   const { searchText = '', collectionId } = parseApiInput({
@@ -58,12 +58,14 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDataListResponse
     MongoDatasetData.countDocuments(match)
   ]);
 
-  list.forEach((item) => {
-    item.q = replaceS3KeyToPreviewUrl(item.q, addHours(new Date(), 1));
-    if (item.a) {
-      item.a = replaceS3KeyToPreviewUrl(item.a, addHours(new Date(), 1));
-    }
-  });
+  await Promise.all(
+    list.map(async (item) => {
+      item.q = await replaceS3KeyToPreviewUrl(item.q, addHours(new Date(), 1));
+      if (item.a) {
+        item.a = await replaceS3KeyToPreviewUrl(item.a, addHours(new Date(), 1));
+      }
+    })
+  );
 
   const imageIds = list.map((item) => item.imageId!).filter(Boolean);
   const imageSizeMap = new Map<string, number>();
@@ -95,7 +97,7 @@ async function handler(req: ApiRequestProps): Promise<GetDatasetDataListResponse
       const imageSize = item.imageId ? imageSizeMap.get(String(item.imageId)) : undefined;
       const imagePreviewUrl =
         item.imageId && isS3ObjectKey(item.imageId, 'dataset')
-          ? jwtSignS3DownloadToken({
+          ? await createS3DownloadAccessUrl({
               objectKey: item.imageId,
               bucketName: S3Buckets.private,
               expiredTime: addHours(new Date(), 1)

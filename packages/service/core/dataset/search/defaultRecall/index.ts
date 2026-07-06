@@ -171,10 +171,12 @@ export async function searchDatasetData(
   const filterMaxTokensResult = await filterDatasetDataByMaxTokens(scoreFilter, maxTokens);
   // Step 8: 返回前把 q 中的内部图片 key 转为可预览 URL。
   // 只在最终结果处理，避免中间召回和去重阶段混入带过期时间的动态 URL。
-  const finalResult = filterMaxTokensResult.map((item) => {
-    item.q = replaceS3KeyToPreviewUrl(item.q, addDays(new Date(), 90));
-    return item;
-  });
+  const finalResult = await Promise.all(
+    filterMaxTokensResult.map(async (item) => {
+      item.q = await replaceS3KeyToPreviewUrl(item.q, addDays(new Date(), 90));
+      return item;
+    })
+  );
 
   pushTrack.datasetSearch({ datasetIds, teamId });
 
