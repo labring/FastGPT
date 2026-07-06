@@ -26,7 +26,12 @@ export const BillSchema = z.object({
       standSubLevel: z.enum(StandardSubLevelEnum).optional().meta({ description: '订阅等级' }),
       month: z.number().optional().meta({ description: '月数' }),
       datasetSize: z.number().optional().meta({ description: '数据集大小' }),
-      extraPoints: z.number().optional().meta({ description: '额外积分' })
+      extraPoints: z.number().optional().meta({ description: '额外积分' }),
+      activitySource: z.literal('enterpriseAuth').optional().meta({ description: '活动赠送来源' }),
+      taskId: z.string().optional().meta({ description: '企业认证任务 ID' }),
+      durationDay: z.number().optional().meta({ description: '权益发放天数' }),
+      totalPoints: z.number().optional().meta({ description: '权益发放积分数' }),
+      grantedPlanCount: z.number().optional().meta({ description: '权益发放套餐数' })
     })
     .meta({ description: '元数据' }),
   refundData: z

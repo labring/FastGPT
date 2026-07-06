@@ -11,6 +11,8 @@ import { setCurrentAuthTmbId } from './currentAuthTmbId';
 type State = {
   systemMsgReadId: string;
   setSysMsgReadId: (id: string) => void;
+  enterpriseAuthNoticeReadTeamIds: string[];
+  setEnterpriseAuthNoticeRead: (teamId: string) => void;
 
   isUpdateNotification: boolean;
   setIsUpdateNotification: (val: boolean) => void;
@@ -35,6 +37,15 @@ export const useUserStore = create<State>()(
         setSysMsgReadId(id: string) {
           set((state) => {
             state.systemMsgReadId = id;
+          });
+        },
+        enterpriseAuthNoticeReadTeamIds: [],
+        setEnterpriseAuthNoticeRead(teamId: string) {
+          if (!teamId) return;
+
+          set((state) => {
+            if (state.enterpriseAuthNoticeReadTeamIds.includes(teamId)) return;
+            state.enterpriseAuthNoticeReadTeamIds.push(teamId);
           });
         },
 
@@ -107,6 +118,7 @@ export const useUserStore = create<State>()(
         name: 'userStore',
         partialize: (state) => ({
           systemMsgReadId: state.systemMsgReadId,
+          enterpriseAuthNoticeReadTeamIds: state.enterpriseAuthNoticeReadTeamIds,
           isUpdateNotification: state.isUpdateNotification
         })
       }

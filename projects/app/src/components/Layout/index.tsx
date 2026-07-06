@@ -30,6 +30,12 @@ const NotSufficientModal = dynamic(() => import('@/components/support/wallet/Not
 const SystemMsgModal = dynamic(() => import('@/components/support/user/inform/SystemMsgModal'), {
   ssr: false
 });
+const EnterpriseAuthNoticeModal = dynamic(
+  () => import('@/components/support/user/inform/EnterpriseAuthNoticeModal'),
+  {
+    ssr: false
+  }
+);
 const ImportantInform = dynamic(() => import('@/components/support/user/inform/ImportantInform'), {
   ssr: false
 });
@@ -133,13 +139,17 @@ const Layout = ({ children }: { children: JSX.Element }) => {
             status: 'warning',
             title: t('common:llm_model_not_config')
           });
-          router.pathname !== '/account/model' && router.push('/account/model');
+          if (router.pathname !== '/account/model') {
+            router.push('/account/model');
+          }
         } else if (embeddingModelList.length === 0) {
           toast({
             status: 'warning',
             title: t('common:embedding_model_not_config')
           });
-          router.pathname !== '/account/model' && router.push('/account/model');
+          if (router.pathname !== '/account/model') {
+            router.push('/account/model');
+          }
         }
       }
     },
@@ -152,7 +162,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   // Route watch
   useEffect(() => {
     setLastRoute(router.pathname);
-  }, [router.pathname]);
+  }, [router.pathname, setLastRoute]);
 
   return (
     <>
@@ -206,6 +216,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
           <HelperBot />
         </>
       )}
+      <EnterpriseAuthNoticeModal key={`${router.pathname}-${userInfo?.team?.teamId ?? ''}`} />
 
       <ManualCopyModal />
       <ActivityAdModal />

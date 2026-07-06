@@ -100,6 +100,7 @@ const MySelect = <T = any,>(
   const MenuListRef = useRef<HTMLDivElement>(null);
   const SelectedItemRef = useRef<HTMLDivElement>(null);
   const SearchInputRef = useRef<HTMLInputElement>(null);
+  const ignoreNextSearchSpaceClickRef = useRef(false);
 
   const { isOpen, onOpen: defaultOnOpen, onClose: defaultOnClose } = useDisclosure();
   const selectItem = useMemo(() => list.find((item) => item.value === value), [list, value]);
@@ -115,6 +116,47 @@ const MySelect = <T = any,>(
   };
 
   const [search, setSearch] = useState('');
+  const isComposingSearch = (e: React.KeyboardEvent<HTMLInputElement>) =>
+    e.nativeEvent.isComposing || e.keyCode === 229;
+
+  const handleSearchSpaceKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!isSearch || !isOpen || (e.key !== ' ' && e.code !== 'Space')) return;
+
+    e.stopPropagation();
+    ignoreNextSearchSpaceClickRef.current = true;
+
+    if (isComposingSearch(e)) {
+      return;
+    }
+
+    e.preventDefault();
+    const input = e.currentTarget;
+    const selectionStart = input.selectionStart ?? search.length;
+    const selectionEnd = input.selectionEnd ?? selectionStart;
+    const nextSearch = `${search.slice(0, selectionStart)} ${search.slice(selectionEnd)}`;
+
+    setSearch(nextSearch);
+    window.requestAnimationFrame(() => {
+      const nextPosition = selectionStart + 1;
+      input.setSelectionRange(nextPosition, nextPosition);
+      ignoreNextSearchSpaceClickRef.current = false;
+    });
+  };
+
+  const handleSearchSpaceKeyUp = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!isSearch || !isOpen || (e.key !== ' ' && e.code !== 'Space')) return;
+
+    e.stopPropagation();
+    ignoreNextSearchSpaceClickRef.current = true;
+
+    if (!isComposingSearch(e)) {
+      e.preventDefault();
+    }
+
+    window.setTimeout(() => {
+      ignoreNextSearchSpaceClickRef.current = false;
+    }, 0);
+  };
   const filterList = useMemo(() => {
     if (!isSearch || !search) {
       return list;
@@ -140,6 +182,7 @@ const MySelect = <T = any,>(
       menu.scrollTop = selectedItem.offsetTop - menu.offsetTop - 100;
 
       if (isSearch) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setSearch('');
       }
     }
@@ -242,6 +285,14 @@ const MySelect = <T = any,>(
           opacity={isDisabled ? 0.4 : 1}
           _hover={isInvalid ? { borderColor: 'red.400' } : { borderColor: 'primary.300' }}
           {...props}
+          onClickCapture={(e) => {
+            props.onClickCapture?.(e);
+            if (e.isPropagationStopped() || !ignoreNextSearchSpaceClickRef.current) return;
+
+            ignoreNextSearchSpaceClickRef.current = false;
+            e.preventDefault();
+            e.stopPropagation();
+          }}
         >
           <Flex alignItems={'center'} justifyContent="space-between" w="100%" minW={0}>
             <Flex alignItems={'center'} flex={'1 1 0'} minW={0} overflow={'hidden'}>
@@ -267,6 +318,8 @@ const MySelect = <T = any,>(
                       size={'sm'}
                       w={'100%'}
                       color={'myGray.700'}
+                      onKeyDown={handleSearchSpaceKeyDown}
+                      onKeyUp={handleSearchSpaceKeyUp}
                       onBlur={() => {
                         setTimeout(() => {
                           SearchInputRef?.current?.focus();
@@ -306,10 +359,12 @@ const MySelect = <T = any,>(
           ref={MenuListRef}
           className={props.className}
           minW={(() => {
+            /* eslint-disable react-hooks/refs */
             const w = ButtonRef.current?.clientWidth;
             if (w) {
               return `${w}px !important`;
             }
+            /* eslint-enable react-hooks/refs */
             return Array.isArray(width)
               ? width.map((item) => `${item} !important`)
               : `${width} !important`;

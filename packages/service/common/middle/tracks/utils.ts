@@ -9,6 +9,11 @@ import { type ShortUrlParams } from '@fastgpt/global/support/marketing/type';
 import { getRedisCache, setRedisCache } from '../../redis/cache';
 import { differenceInDays } from 'date-fns';
 import { getLogger, LogCategories } from '../../logger';
+import type {
+  TeamEnterpriseAuthStatusEnum,
+  TeamEnterpriseAuthTaskStatusEnum
+} from '@fastgpt/global/support/user/team/enterpriseAuth/constant';
+import type { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/constants';
 
 const logger = getLogger(LogCategories.EVENT.TRACK);
 
@@ -158,6 +163,37 @@ export const pushTrack = {
       data: {
         teamId: data.teamId
       }
+    });
+  },
+  enterpriseAuthStart: (
+    data: PushTrackCommonType & {
+      result: 'success' | 'failed';
+      status?: `${TeamEnterpriseAuthStatusEnum}`;
+      taskStatus?: `${TeamEnterpriseAuthTaskStatusEnum}`;
+      errorCode?: string;
+      usedTimes?: number;
+      hasCurrentTask?: boolean;
+    }
+  ) => {
+    return createTrack({
+      event: TrackEnum.enterpriseAuthStart,
+      data
+    });
+  },
+  enterpriseAuthBenefitGrant: (
+    data: PushTrackCommonType & {
+      status?: `${TeamEnterpriseAuthStatusEnum}`;
+      taskId?: string;
+      billId?: string;
+      standSubLevel: `${StandardSubLevelEnum}`;
+      durationDay: number;
+      totalPoints: number;
+      grantedPlanCount: number;
+    }
+  ) => {
+    return createTrack({
+      event: TrackEnum.enterpriseAuthBenefitGrant,
+      data
     });
   },
 
