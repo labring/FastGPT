@@ -7,6 +7,7 @@ import { clearCookie } from '../../support/permission/auth/common';
 import { ZodError } from 'zod';
 import type Stream from 'node:stream';
 import { getLogger, LogCategories } from '../logger';
+import { ApiRequestInputParseError, getZodError } from '../zod/requestParseError';
 
 const logger = getLogger(LogCategories.HTTP.ERROR);
 
@@ -56,6 +57,16 @@ function resolveHttpStatusForApiError(
   }
 
   return 500;
+}
+
+function parseZodErrorMessage(error: ZodError | ApiRequestInputParseError) {
+  const zodSourceError = getZodError(error);
+
+  try {
+    return JSON.parse(zodSourceError?.message || error.message);
+  } catch {
+    return undefined;
+  }
 }
 
 /**
@@ -111,13 +122,13 @@ export function processError(params: {
   // 3. 根据错误类型记录不同级别的日志
   if (error instanceof UserError) {
     logger.info('Request error', { url, message: msg });
-  } else if (error instanceof ZodError) {
-    zodError = (() => {
-      try {
-        return JSON.parse(error.message);
-      } catch (error) {}
-    })();
-    logger.error('Zod validation error', { url, data: zodError, error });
+  } else if (error instanceof ZodError || error instanceof ApiRequestInputParseError) {
+    zodError = parseZodErrorMessage(error);
+
+    if (!(error instanceof ApiRequestInputParseError)) {
+      logger.error('Zod validation error', { url, data: zodError, error });
+    }
+
     msg = error.message;
   } else {
     logger.error('System unexpected error', { url, message: msg, error });

@@ -7,6 +7,7 @@ import { getLogger, LogCategories, withContext } from '../logger';
 import { setSpanError, withActiveSpan } from '../tracing';
 import { ZodError } from 'zod';
 import { randomUUID } from 'crypto';
+import { ApiRequestInputParseError } from '../zod/requestParseError';
 
 export type NextApiHandler<T = any> = (
   req: ApiRequestProps,
@@ -134,14 +135,13 @@ export const NextEntry = ({
 
               span.setAttribute('http.response.status_code', res.statusCode);
             } catch (error) {
-              // Handle Zod validation errors
-              if (error instanceof ZodError) {
+              // Handle request validation errors.
+              if (error instanceof ZodError || error instanceof ApiRequestInputParseError) {
                 span.setAttribute('http.response.status_code', 400);
                 span.setStatus({
                   code: SpanStatusCode.ERROR,
                   message: 'Data validation error'
                 });
-
                 return jsonRes(res, {
                   code: 400,
                   message: 'Data validation error',
