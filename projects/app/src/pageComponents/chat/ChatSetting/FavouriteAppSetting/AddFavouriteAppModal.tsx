@@ -42,6 +42,7 @@ const AddFavouriteAppModal = ({ onClose, onRefresh }: Props) => {
           type: [
             AppTypeEnum.folder,
             AppTypeEnum.simple,
+            AppTypeEnum.chatAgent,
             AppTypeEnum.workflow,
             AppTypeEnum.workflowTool
           ]

@@ -49,7 +49,12 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
         getMyApps({
           parentId,
           searchKey: searchAppName,
-          type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow]
+          type: [
+            AppTypeEnum.folder,
+            AppTypeEnum.simple,
+            AppTypeEnum.chatAgent,
+            AppTypeEnum.workflow
+          ]
         }),
         searchAppName.trim()
           ? Promise.resolve([])
@@ -275,13 +280,7 @@ const AddQuickAppModal = ({ selectedIds, onClose, onConfirm }: Props) => {
                           )}
                         </Box>
 
-                        <Avatar
-                          src={item.avatar}
-                          w={7}
-                          h={7}
-                          borderRadius="sm"
-                          flexShrink={0}
-                        />
+                        <Avatar src={item.avatar} w={7} h={7} borderRadius="sm" flexShrink={0} />
 
                         <Box flex={1} minW={0}>
                           <Box
