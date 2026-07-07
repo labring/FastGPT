@@ -18,9 +18,9 @@ import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import type { Form2WorkflowFnType } from '../FormComponent/type';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
-import HelperBot from '@/components/core/chat/HelperBot';
-import type { HelperBotRefType } from '@/components/core/chat/HelperBot';
-import { HelperBotTypeEnum } from '@fastgpt/global/core/chat/helperBot/type';
+import ChatAgentHelper from '@/components/core/chat/ChatAgentHelper';
+import type { ChatAgentHelperRefType } from '@/components/core/chat/ChatAgentHelper';
+import { ChatAgentHelperTypeEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 import { loadGeneratedTools } from './utils';
 import { checkAgentSkillSandboxUnavailable } from './utils';
 import { systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
@@ -61,7 +61,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
       defaultValue: defaultModels.llm?.model
     }
   );
-  const HelperBotRef = useRef<HelperBotRefType>(null);
+  const ChatAgentHelperRef = useRef<ChatAgentHelperRefType>(null);
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
@@ -167,14 +167,14 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
       return;
     }
     if (activeTab === 'helper') {
-      HelperBotRef.current?.restartChat();
+      ChatAgentHelperRef.current?.restartChat();
     } else {
       restartChat();
     }
   }, [activeTab, isAgentSkillSandboxUnavailable, restartChat, t, toast]);
 
-  // 构建 TopAgent metadata,从 appForm 中提取配置
-  const topAgentMetadata = useMemo(
+  // 构建 ChatAgentHelper metadata，从 appForm 中提取配置。
+  const chatAgentHelperMetadata = useMemo(
     () => ({
       systemPrompt: appForm.aiSettings.systemPrompt,
       selectedTools: appForm.selectedTools.map((tool) => tool.id),
@@ -249,11 +249,11 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
         <Box flex={1} minH={0}>
           {hasRenderedHelper && (
             <Box h={'100%'} display={activeTab === 'helper' ? 'block' : 'none'}>
-              <HelperBot
-                ChatBoxRef={HelperBotRef}
+              <ChatAgentHelper
+                ChatBoxRef={ChatAgentHelperRef}
                 appId={appDetail._id}
-                type={HelperBotTypeEnum.topAgent}
-                metadata={topAgentMetadata}
+                type={ChatAgentHelperTypeEnum.chatAgent}
+                metadata={chatAgentHelperMetadata}
                 InputLeftComponent={HelperModelSelectorInput}
                 onApply={async (formData) => {
                   const fileUploadEnabled = !!formData.fileUploadEnabled;

@@ -1,18 +1,18 @@
 import z from 'zod';
 import type { OpenAPIPath } from '../../../type';
 import { DevApiTagsMap } from '../../../tag';
-import { HelperBotCompletionsParamsSchema } from './api';
+import { ChatAgentHelperCompletionsParamsSchema } from './api';
 
-export const HelperBotPath: OpenAPIPath = {
-  '/proApi/core/chat/helperBot/completions': {
+export const ChatAgentHelperPath: OpenAPIPath = {
+  '/proApi/core/chat/chatAgentHelper/completions': {
     post: {
-      summary: '辅助生成统一对话接口',
-      description: '辅助生成统一对话接口',
-      tags: [DevApiTagsMap.helperBot],
+      summary: 'Chat Agent 辅助生成对话接口',
+      description: 'Chat Agent 辅助生成对话接口',
+      tags: [DevApiTagsMap.chatAgentHelper],
       requestBody: {
         content: {
           'application/json': {
-            schema: HelperBotCompletionsParamsSchema
+            schema: ChatAgentHelperCompletionsParamsSchema
           }
         }
       },

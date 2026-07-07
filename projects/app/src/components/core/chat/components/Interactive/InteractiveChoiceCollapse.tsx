@@ -74,35 +74,21 @@ export const ChoiceCollapseToggleButton = React.memo(function ChoiceCollapseTogg
       display={'inline-flex'}
       alignItems={'center'}
       alignSelf={'flex-start'}
-      position={'relative'}
       mt={mt}
-      mx={'8px'}
-      px={0}
-      h={'16px'}
+      p={0}
       minW={0}
       border={0}
       bg={'transparent'}
       color={'primary.600'}
-      cursor={'pointer'}
       fontSize={'11px'}
       fontWeight={500}
       lineHeight={'16px'}
-      _before={{
-        content: '""',
-        position: 'absolute',
-        inset: '-6px -8px',
-        borderRadius: '6px',
-        bg: 'transparent',
-        transition: 'background-color 150ms ease'
-      }}
       _hover={{
-        _before: {
-          bg: 'myGray.100'
-        }
+        cursor: 'pointer'
       }}
       onClick={onToggle}
     >
-      <Box as="span" position={'relative'} zIndex={1}>
+      <Box as="span">
         {isOptionsExpanded
           ? t('chat:interactive.user_select.collapse_options')
           : t('chat:interactive.user_select.expand_options')}

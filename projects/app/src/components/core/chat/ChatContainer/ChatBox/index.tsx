@@ -513,8 +513,7 @@ const ChatBox = ({
 
     sendPromptWithDisabledGuard({
       text: trimmedText,
-      interactive: lastInteractive,
-      clearInput: false
+      interactive: lastInteractive
     });
   });
 

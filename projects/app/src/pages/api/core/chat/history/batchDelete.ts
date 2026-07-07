@@ -17,7 +17,7 @@ const getBatchDeletePermission = (sourceType: ChatSourceTypeEnum) => {
     return WritePermissionVal;
   }
 
-  if (sourceType === ChatSourceTypeEnum.helperBot) {
+  if (sourceType === ChatSourceTypeEnum.chatAgentHelper) {
     return AppReadChatLogPerVal;
   }
 

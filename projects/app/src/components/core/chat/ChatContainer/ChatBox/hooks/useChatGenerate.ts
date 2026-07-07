@@ -577,7 +577,7 @@ export const useChatGenerate = ({
       interactive,
       autoTTSResponse = false,
       hideInUI = false,
-      clearInput = true
+      clearInput = false
     }) => {
       variablesForm.handleSubmit(
         async ({ variables = {} }) => {

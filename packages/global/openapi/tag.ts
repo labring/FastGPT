@@ -58,7 +58,7 @@ export const DevApiTagsMap = {
   /* 通用-基础功能 */
   apiKey: 'API Key 管理',
   customDomain: '自定义域名',
-  helperBot: '辅助助手',
+  chatAgentHelper: 'Chat Agent 辅助生成',
 
   /* 辅助-团队管理 */
   teamManage: '团队管理',

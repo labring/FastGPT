@@ -152,9 +152,9 @@ describe('getRecords_v2 skill edit target', () => {
     expect(res.data.hasMorePrev).toBe(true);
   });
 
-  it('should read helperBot records through generic records api', async () => {
+  it('should read chatAgentHelper records through generic records api', async () => {
     const app = await MongoApp.create({
-      name: 'HelperBot Records App',
+      name: 'ChatAgentHelper Records App',
       type: AppTypeEnum.simple,
       teamId: testUser.teamId,
       tmbId: testUser.tmbId,
@@ -166,7 +166,7 @@ describe('getRecords_v2 skill edit target', () => {
         teamId: testUser.teamId,
         tmbId: testUser.tmbId,
         userId: testUser.userId,
-        sourceType: ChatSourceTypeEnum.helperBot,
+        sourceType: ChatSourceTypeEnum.chatAgentHelper,
         appId: String(app._id),
         chatId: helperChatId,
         source: ChatSourceEnum.test
@@ -175,7 +175,7 @@ describe('getRecords_v2 skill edit target', () => {
         teamId: testUser.teamId,
         tmbId: testUser.tmbId,
         userId: testUser.userId,
-        sourceType: ChatSourceTypeEnum.helperBot,
+        sourceType: ChatSourceTypeEnum.chatAgentHelper,
         appId: String(app._id),
         chatId: helperChatId,
         dataId: 'helper-round-1',
@@ -186,7 +186,7 @@ describe('getRecords_v2 skill edit target', () => {
         teamId: testUser.teamId,
         tmbId: testUser.tmbId,
         userId: testUser.userId,
-        sourceType: ChatSourceTypeEnum.helperBot,
+        sourceType: ChatSourceTypeEnum.chatAgentHelper,
         appId: String(app._id),
         chatId: helperChatId,
         dataId: 'helper-round-1',
@@ -199,7 +199,7 @@ describe('getRecords_v2 skill edit target', () => {
       auth: testUser,
       body: {
         appId: String(app._id),
-        sourceType: ChatSourceTypeEnum.helperBot,
+        sourceType: ChatSourceTypeEnum.chatAgentHelper,
         chatId: helperChatId,
         pageSize: 10
       }

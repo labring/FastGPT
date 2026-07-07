@@ -43,7 +43,7 @@ const mergeMongoAndQuery = (...queries: Record<string, unknown>[]) => {
 /**
  * 查询当前成员可读的 Agent Skill 列表。
  *
- * 这里集中维护 Skill 列表 API 和 HelperBot TopAgent 共用的权限过滤规则：
+ * 这里集中维护 Skill 列表 API 和 ChatAgentHelper 共用的权限过滤规则：
  * owner 可读团队内资源；普通成员按成员、用户组、组织授权计算，并支持目录继承权限。
  */
 export const listReadableAgentSkills = async ({

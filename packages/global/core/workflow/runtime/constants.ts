@@ -24,10 +24,7 @@ export enum SseResponseEventEnum {
 
   // Sandbox lifecycle
   sandboxStatus = 'sandboxStatus', // sandbox lifecycle phase notification
-  skillCall = 'skillCall', // skill invocation announce (when SKILL.md is loaded)
-
-  // Helperbot
-  topAgentConfig = 'topAgentConfig' // form data for TopAgent
+  skillCall = 'skillCall' // skill invocation announce (when SKILL.md is loaded)
 }
 
 export const StreamResumePhaseEvent = 'resumePhase';

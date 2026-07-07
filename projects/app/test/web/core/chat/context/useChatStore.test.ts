@@ -92,14 +92,18 @@ describe('useChatStore', () => {
     store.setAppId('app-a');
     store.setChatId('debug-chat-id');
 
-    store.setSourceChatId('helperBot:app-a', 'helper-chat-id');
+    store.setSourceChatId('chatAgentHelper:app-a', 'helper-chat-id');
 
     const newState = useChatStore.getState();
     expect(newState.chatId).toBe('debug-chat-id');
-    expect(newState.sourceChatIdMap['helperBot:app-a']).toBe('helper-chat-id');
-    expect(useChatStore.getState().ensureSourceChatId('helperBot:app-a')).toBe('helper-chat-id');
-    expect(store.ensureSourceChatId('helperBot:app-b')).toBe('test-generated-id');
-    expect(useChatStore.getState().ensureSourceChatId('helperBot:app-b')).toBe('test-generated-id');
+    expect(newState.sourceChatIdMap['chatAgentHelper:app-a']).toBe('helper-chat-id');
+    expect(useChatStore.getState().ensureSourceChatId('chatAgentHelper:app-a')).toBe(
+      'helper-chat-id'
+    );
+    expect(store.ensureSourceChatId('chatAgentHelper:app-b')).toBe('test-generated-id');
+    expect(useChatStore.getState().ensureSourceChatId('chatAgentHelper:app-b')).toBe(
+      'test-generated-id'
+    );
   });
 
   it('should namespace app chat cache by source', () => {
@@ -327,7 +331,7 @@ describe('useChatStore', () => {
       chatId: 'chat-id',
       lastChatId: `${ChatSourceEnum.share}-chat-id`,
       sourceChatIdMap: {
-        'helperBot:app-a': 'helper-chat-id'
+        'chatAgentHelper:app-a': 'helper-chat-id'
       },
       lastPane: ChatSidebarPaneEnum.RECENTLY_USED_APPS,
       outLinkAuthData: {

@@ -281,7 +281,7 @@ export async function authChatTargetCrud({
     };
   }
 
-  if (sourceType === ChatSourceTypeEnum.helperBot) {
+  if (sourceType === ChatSourceTypeEnum.chatAgentHelper) {
     if (!sourceId) return Promise.reject(ChatErrEnum.unAuthChat);
 
     const authRes = await authApp({

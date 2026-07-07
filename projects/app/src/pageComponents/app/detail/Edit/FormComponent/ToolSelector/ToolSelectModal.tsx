@@ -48,7 +48,7 @@ import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
 
 type Props = {
-  topAgentSelectedTools?: SelectedToolItemType[];
+  generatedSelectedTools?: SelectedToolItemType[];
   selectedTools: FlowNodeTemplateType[];
   fileSelectConfig: AppFormEditFormType['chatConfig']['fileSelectConfig'];
   selectedModel: LLMModelItemType;
@@ -271,7 +271,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
 export default React.memo(ToolSelectModal);
 
 const RenderList = React.memo(function RenderList({
-  topAgentSelectedTools = [],
+  generatedSelectedTools = [],
   templates,
   type,
   parentId,
@@ -331,14 +331,14 @@ const RenderList = React.memo(function RenderList({
       }
 
       // 添加与 top 相同工具的配置
-      const topAgentTool = topAgentSelectedTools.find((tool) => tool.pluginId === res.pluginId);
-      if (topAgentTool) {
+      const generatedTool = generatedSelectedTools.find((tool) => tool.pluginId === res.pluginId);
+      if (generatedTool) {
         res.inputs.forEach((input) => {
-          const topAgentInput = topAgentTool.inputs.find(
-            (topAgentInput) => topAgentInput.key === input.key
+          const generatedInput = generatedTool.inputs.find(
+            (generatedInput) => generatedInput.key === input.key
           );
-          if (topAgentInput) {
-            input.value = topAgentInput.value;
+          if (generatedInput) {
+            input.value = generatedInput.value;
           }
         });
       }

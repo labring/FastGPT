@@ -1,39 +1,39 @@
 import React, { type ReactNode, useEffect, useImperativeHandle, useMemo } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { createHelperBotAppConfig } from '@fastgpt/global/core/chat/helperBot/constants';
-import { HelperBotTypeEnum } from '@fastgpt/global/core/chat/helperBot/type';
+import { createChatAgentHelperAppConfig } from '@fastgpt/global/core/ai/auxiliaryGeneration/chatAgentHelper';
+import { ChatAgentHelperTypeEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 import { ChatTypeEnum } from '../ChatContainer/ChatBox/constants';
 import ChatBox from '../ChatContainer/ChatBox';
 import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext';
 import { streamFetch } from '@/web/common/api/fetch';
 import type { StartChatFnProps } from '../ChatContainer/type';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 import { getChatSourceKey, type ChatSourceTarget } from '@/web/core/chat/utils';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getInitChatInfo } from '@/web/core/chat/api';
 import type {
-  TopAgentFormDataType,
-  TopAgentParamsType
-} from '@fastgpt/global/core/chat/helperBot/topAgent/type';
+  ChatAgentConfigFormDataType,
+  ChatAgentHelperMetadataType
+} from '@fastgpt/global/core/ai/auxiliaryGeneration/type';
 
-export type HelperBotRefType = {
+export type ChatAgentHelperRefType = {
   restartChat: () => void;
 };
 
-export type HelperBotProps = {
+export type ChatAgentHelperProps = {
   InputLeftComponent?: ReactNode;
-  ChatBoxRef: React.ForwardedRef<HelperBotRefType>;
+  ChatBoxRef: React.ForwardedRef<ChatAgentHelperRefType>;
   appId: string;
 } & {
-  type: typeof HelperBotTypeEnum.topAgent;
-  metadata: TopAgentParamsType;
-  onApply: (e: TopAgentFormDataType) => void;
+  type: typeof ChatAgentHelperTypeEnum.chatAgent;
+  metadata: ChatAgentHelperMetadataType;
+  onApply: (e: ChatAgentConfigFormDataType) => void;
 };
 
-const HelperBotChatBox = ({
+const ChatAgentHelperChatBox = ({
   type,
   appId,
   metadata,
@@ -43,7 +43,7 @@ const HelperBotChatBox = ({
   chatId,
   onRestart,
   sourceTarget
-}: HelperBotProps & {
+}: ChatAgentHelperProps & {
   chatId: string;
   onRestart: () => void;
   sourceTarget: ChatSourceTarget;
@@ -63,7 +63,7 @@ const HelperBotChatBox = ({
         chatId,
         chatGenerateStatus: isSameChat ? prev.chatGenerateStatus : undefined,
         hasBeenRead: isSameChat ? prev.hasBeenRead : undefined,
-        app: createHelperBotAppConfig()
+        app: createChatAgentHelperAppConfig()
       };
     });
   }, [appId, chatId, setChatBoxData, sourceKey]);
@@ -75,7 +75,7 @@ const HelperBotChatBox = ({
       const res = await getInitChatInfo({
         appId,
         chatId,
-        sourceType: ChatSourceTypeEnum.helperBot
+        sourceType: ChatSourceTypeEnum.chatAgentHelper
       });
 
       setChatBoxData((prev) => ({
@@ -102,11 +102,11 @@ const HelperBotChatBox = ({
     generatingMessage
   }: StartChatFnProps) => {
     if (!responseChatItemId) {
-      throw new Error('HelperBot response chat item id is empty');
+      throw new Error('ChatAgentHelper response chat item id is empty');
     }
 
     const { responseText } = await streamFetch({
-      url: '/api/proApi/core/chat/helperBot/completions',
+      url: '/api/proApi/core/chat/chatAgentHelper/completions',
       data: {
         chatId,
         responseChatItemId,
@@ -120,9 +120,9 @@ const HelperBotChatBox = ({
       },
       onMessage: (event) => {
         if (
-          event.event === SseResponseEventEnum.topAgentConfig &&
+          event.event === AuxiliaryGenerationEventEnum.chatAgentConfig &&
           event.formData &&
-          type === HelperBotTypeEnum.topAgent
+          type === ChatAgentHelperTypeEnum.chatAgent
         ) {
           onApply(event.formData);
         }
@@ -164,10 +164,10 @@ const HelperBotChatBox = ({
   );
 };
 
-const HelperBot = (props: HelperBotProps) => {
+const ChatAgentHelper = (props: ChatAgentHelperProps) => {
   const sourceTarget = useMemo<ChatSourceTarget>(
     () => ({
-      sourceType: ChatSourceTypeEnum.helperBot,
+      sourceType: ChatSourceTypeEnum.chatAgentHelper,
       sourceId: props.appId
     }),
     [props.appId]
@@ -180,7 +180,7 @@ const HelperBot = (props: HelperBotProps) => {
     () => ({
       chatId,
       appId: props.appId,
-      sourceType: ChatSourceTypeEnum.helperBot as const
+      sourceType: ChatSourceTypeEnum.chatAgentHelper as const
     }),
     [chatId, props.appId]
   );
@@ -210,7 +210,7 @@ const HelperBot = (props: HelperBotProps) => {
     >
       {chatId && (
         <ChatRecordContextProvider params={chatRecordProviderParams}>
-          <HelperBotChatBox
+          <ChatAgentHelperChatBox
             {...props}
             chatId={chatId}
             onRestart={onRestart}
@@ -222,4 +222,4 @@ const HelperBot = (props: HelperBotProps) => {
   );
 };
 
-export default React.memo(HelperBot);
+export default React.memo(ChatAgentHelper);

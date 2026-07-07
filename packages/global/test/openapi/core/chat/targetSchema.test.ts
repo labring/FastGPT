@@ -59,15 +59,15 @@ describe('openapi/core/chat target schema', () => {
     expect('skillId' in result).toBe(false);
   });
 
-  it('transforms raw appId with helperBot sourceType to internal helperBot source', () => {
+  it('transforms raw appId with chatAgentHelper sourceType to internal chatAgentHelper source', () => {
     const result = StopV2ChatSchema.parse({
       appId,
-      sourceType: ChatSourceTypeEnum.helperBot,
+      sourceType: ChatSourceTypeEnum.chatAgentHelper,
       chatId: 'chat-1'
     });
 
     expect(result).toMatchObject({
-      sourceType: ChatSourceTypeEnum.helperBot,
+      sourceType: ChatSourceTypeEnum.chatAgentHelper,
       sourceId: appId,
       chatId: 'chat-1'
     });
@@ -107,7 +107,7 @@ describe('openapi/core/chat target schema', () => {
     expect(() =>
       StopV2ChatSchema.parse({
         skillId,
-        sourceType: ChatSourceTypeEnum.helperBot,
+        sourceType: ChatSourceTypeEnum.chatAgentHelper,
         chatId: 'chat-1'
       })
     ).toThrow();

@@ -23,7 +23,7 @@ import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { buildChatTargetResponse } from '@fastgpt/global/openapi/core/chat/api';
-import { createHelperBotAppConfig } from '@fastgpt/global/core/chat/helperBot/constants';
+import { createChatAgentHelperAppConfig } from '@fastgpt/global/core/ai/auxiliaryGeneration/chatAgentHelper';
 
 async function handler(req: NextApiRequest): Promise<InitChatResponseType> {
   const { sourceType, sourceId, chatId } = parseApiInput({
@@ -89,7 +89,7 @@ async function handler(req: NextApiRequest): Promise<InitChatResponseType> {
     });
   }
 
-  if (sourceType === ChatSourceTypeEnum.helperBot) {
+  if (sourceType === ChatSourceTypeEnum.chatAgentHelper) {
     const [{ teamId, tmbId, permission }, chat] = await Promise.all([
       authApp({
         req,
@@ -130,7 +130,7 @@ async function handler(req: NextApiRequest): Promise<InitChatResponseType> {
       variables: {},
       chatGenerateStatus,
       hasBeenRead: chat?.hasBeenRead ?? true,
-      app: createHelperBotAppConfig()
+      app: createChatAgentHelperAppConfig()
     });
   }
 

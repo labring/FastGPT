@@ -21,7 +21,7 @@ const BotShowRouter: { [key: string]: boolean } = {
   '/account/info': true
 };
 
-const HelperBot = () => {
+const SupportBot = () => {
   const router = useRouter();
   const { i18n } = useTranslation();
   const [open, setOpen] = useToggle(true);
@@ -45,12 +45,6 @@ const HelperBot = () => {
   ]);
 
   const botIframeUrl = feConfigs?.botIframeUrl;
-
-  useEffect(() => {
-    if (showChat) {
-      setIsLoading(true);
-    }
-  }, [showChat]);
 
   useEffect(() => {
     const handleMessage = async (event: MessageEvent) => {
@@ -197,6 +191,9 @@ const HelperBot = () => {
           }}
           onClick={() => {
             if (open) {
+              if (!showChat) {
+                setIsLoading(true);
+              }
               setShowChat.toggle();
             } else {
               setOpen.set(true);
@@ -208,4 +205,4 @@ const HelperBot = () => {
   );
 };
 
-export default HelperBot;
+export default SupportBot;

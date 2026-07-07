@@ -243,14 +243,14 @@ describe('batchDelete api test', () => {
     ).toBe(0);
   });
 
-  it('should batch delete helperBot records from generic chat tables', async () => {
+  it('should batch delete chatAgentHelper records from generic chat tables', async () => {
     const helperChatId = getNanoid();
     await Promise.all([
       MongoChat.create({
         teamId: testUser.teamId,
         tmbId: testUser.tmbId,
         userId: testUser.userId,
-        sourceType: ChatSourceTypeEnum.helperBot,
+        sourceType: ChatSourceTypeEnum.chatAgentHelper,
         appId,
         chatId: helperChatId,
         source: ChatSourceEnum.test
@@ -259,7 +259,7 @@ describe('batchDelete api test', () => {
         teamId: testUser.teamId,
         tmbId: testUser.tmbId,
         userId: testUser.userId,
-        sourceType: ChatSourceTypeEnum.helperBot,
+        sourceType: ChatSourceTypeEnum.chatAgentHelper,
         appId,
         chatId: helperChatId,
         dataId: getNanoid(),
@@ -268,7 +268,7 @@ describe('batchDelete api test', () => {
       }),
       MongoChatItemResponse.create({
         teamId: testUser.teamId,
-        sourceType: ChatSourceTypeEnum.helperBot,
+        sourceType: ChatSourceTypeEnum.chatAgentHelper,
         appId,
         chatId: helperChatId,
         chatItemDataId: getNanoid(),
@@ -280,7 +280,7 @@ describe('batchDelete api test', () => {
       auth: testUser,
       body: {
         appId,
-        sourceType: ChatSourceTypeEnum.helperBot,
+        sourceType: ChatSourceTypeEnum.chatAgentHelper,
         chatIds: [helperChatId]
       }
     });
@@ -289,21 +289,21 @@ describe('batchDelete api test', () => {
     expect(mocks.deleteAppChatRuntimeSandboxes).not.toHaveBeenCalled();
     expect(
       await MongoChat.countDocuments({
-        sourceType: ChatSourceTypeEnum.helperBot,
+        sourceType: ChatSourceTypeEnum.chatAgentHelper,
         appId,
         chatId: helperChatId
       })
     ).toBe(0);
     expect(
       await MongoChatItem.countDocuments({
-        sourceType: ChatSourceTypeEnum.helperBot,
+        sourceType: ChatSourceTypeEnum.chatAgentHelper,
         appId,
         chatId: helperChatId
       })
     ).toBe(0);
     expect(
       await MongoChatItemResponse.countDocuments({
-        sourceType: ChatSourceTypeEnum.helperBot,
+        sourceType: ChatSourceTypeEnum.chatAgentHelper,
         appId,
         chatId: helperChatId
       })

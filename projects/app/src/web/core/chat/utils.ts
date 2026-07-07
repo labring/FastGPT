@@ -8,7 +8,7 @@ import { useMemo } from 'react';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 type OptionalChatTargetInput = Partial<Record<'appId' | 'skillId', string>> & {
-  sourceType?: ChatSourceTypeEnum.app | ChatSourceTypeEnum.helperBot;
+  sourceType?: ChatSourceTypeEnum.app | ChatSourceTypeEnum.chatAgentHelper;
 };
 type OptionalChatSourceInput = {
   sourceType?: ChatSourceTypeEnum;
@@ -26,7 +26,10 @@ export type ChatAuthQueryTargetInput = OptionalChatTargetInput & {
 };
 
 export type ChatSourceTarget = {
-  sourceType: ChatSourceTypeEnum.app | ChatSourceTypeEnum.skillEdit | ChatSourceTypeEnum.helperBot;
+  sourceType:
+    | ChatSourceTypeEnum.app
+    | ChatSourceTypeEnum.skillEdit
+    | ChatSourceTypeEnum.chatAgentHelper;
   sourceId: string;
 };
 
@@ -46,8 +49,8 @@ export const toChatSourceTarget = (target: ChatTargetInputType): ChatSourceTarge
 
   return {
     sourceType:
-      target.sourceType === ChatSourceTypeEnum.helperBot
-        ? ChatSourceTypeEnum.helperBot
+      target.sourceType === ChatSourceTypeEnum.chatAgentHelper
+        ? ChatSourceTypeEnum.chatAgentHelper
         : ChatSourceTypeEnum.app,
     sourceId: target.appId!
   };
@@ -63,8 +66,8 @@ export const toChatApiTarget = (target: ChatSourceTarget): ChatTargetInputType =
   if (target.sourceType === ChatSourceTypeEnum.skillEdit) {
     return { skillId: target.sourceId };
   }
-  if (target.sourceType === ChatSourceTypeEnum.helperBot) {
-    return { appId: target.sourceId, sourceType: ChatSourceTypeEnum.helperBot };
+  if (target.sourceType === ChatSourceTypeEnum.chatAgentHelper) {
+    return { appId: target.sourceId, sourceType: ChatSourceTypeEnum.chatAgentHelper };
   }
 
   return { appId: target.sourceId };
@@ -89,7 +92,7 @@ export const toChatAuthApiTarget = ({
     return { outLinkAuthData };
   }
 
-  if (sourceTarget.sourceType === ChatSourceTypeEnum.helperBot) {
+  if (sourceTarget.sourceType === ChatSourceTypeEnum.chatAgentHelper) {
     return toChatApiTarget(sourceTarget);
   }
 
@@ -114,8 +117,8 @@ export const getChatAuthTargetInput = (target: ChatAuthTargetInput): ChatAuthTar
   }
 
   if (target.appId) {
-    return target.sourceType === ChatSourceTypeEnum.helperBot
-      ? { appId: target.appId, sourceType: ChatSourceTypeEnum.helperBot }
+    return target.sourceType === ChatSourceTypeEnum.chatAgentHelper
+      ? { appId: target.appId, sourceType: ChatSourceTypeEnum.chatAgentHelper }
       : { appId: target.appId };
   }
 
@@ -143,8 +146,8 @@ export const toChatAuthQueryTarget = (target: ChatAuthTargetInput): ChatAuthQuer
   }
 
   if (chatAuthTarget.appId) {
-    return chatAuthTarget.sourceType === ChatSourceTypeEnum.helperBot
-      ? { appId: chatAuthTarget.appId, sourceType: ChatSourceTypeEnum.helperBot }
+    return chatAuthTarget.sourceType === ChatSourceTypeEnum.chatAgentHelper
+      ? { appId: chatAuthTarget.appId, sourceType: ChatSourceTypeEnum.chatAgentHelper }
       : { appId: chatAuthTarget.appId };
   }
 
@@ -164,7 +167,9 @@ export const toChatAuthQueryInput = <T extends ChatAuthQueryInputSource>(
       appId,
       skillId,
       sourceType:
-        sourceType === ChatSourceTypeEnum.helperBot ? ChatSourceTypeEnum.helperBot : undefined,
+        sourceType === ChatSourceTypeEnum.chatAgentHelper
+          ? ChatSourceTypeEnum.chatAgentHelper
+          : undefined,
       outLinkAuthData
     })
   };
@@ -210,8 +215,8 @@ export const getChatTargetInput = (target: ChatTargetInputType): ChatTargetInput
     return { skillId: target.skillId };
   }
 
-  return target.sourceType === ChatSourceTypeEnum.helperBot
-    ? { appId: target.appId!, sourceType: ChatSourceTypeEnum.helperBot }
+  return target.sourceType === ChatSourceTypeEnum.chatAgentHelper
+    ? { appId: target.appId!, sourceType: ChatSourceTypeEnum.chatAgentHelper }
     : { appId: target.appId! };
 };
 
