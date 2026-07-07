@@ -35,4 +35,20 @@ describe('resolveDashboardAppListTypes', () => {
       })
     ).toEqual([AppTypeEnum.folder, AppTypeEnum.workflow]);
   });
+
+  it('should include chat agent v2 apps in the chat app list', () => {
+    expect(
+      resolveDashboardAppListTypes({
+        pathname: '/chat',
+        type: 'all'
+      })
+    ).toEqual([
+      AppTypeEnum.folder,
+      AppTypeEnum.toolFolder,
+      AppTypeEnum.chatAgent,
+      AppTypeEnum.simple,
+      AppTypeEnum.workflow,
+      AppTypeEnum.workflowTool
+    ]);
+  });
 });

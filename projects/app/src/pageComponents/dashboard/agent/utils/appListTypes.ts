@@ -35,6 +35,7 @@ export const resolveDashboardAppListTypes = ({
     return [
       AppTypeEnum.folder,
       AppTypeEnum.toolFolder,
+      AppTypeEnum.chatAgent,
       AppTypeEnum.simple,
       AppTypeEnum.workflow,
       AppTypeEnum.workflowTool
