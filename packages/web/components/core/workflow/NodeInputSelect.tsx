@@ -76,6 +76,11 @@ const NodeInputSelect = ({
         title: t('common:core.workflow.inputType.Manual select')
       },
       {
+        type: FlowNodeInputTypeEnum.multipleSelect,
+        icon: FlowNodeInputMap[FlowNodeInputTypeEnum.multipleSelect].icon,
+        title: t('common:core.workflow.inputType.Manual select')
+      },
+      {
         type: FlowNodeInputTypeEnum.textarea,
         icon: FlowNodeInputMap[FlowNodeInputTypeEnum.textarea].icon,
         title: t('common:core.workflow.inputType.Manual input')
@@ -138,6 +143,21 @@ const NodeInputSelect = ({
       {
         type: FlowNodeInputTypeEnum.fileSelect,
         icon: FlowNodeInputMap[FlowNodeInputTypeEnum.fileSelect].icon,
+        title: t('common:core.workflow.inputType.Manual input')
+      },
+      {
+        type: FlowNodeInputTypeEnum.timePointSelect,
+        icon: FlowNodeInputMap[FlowNodeInputTypeEnum.timePointSelect].icon,
+        title: t('common:core.workflow.inputType.Manual select')
+      },
+      {
+        type: FlowNodeInputTypeEnum.timeRangeSelect,
+        icon: FlowNodeInputMap[FlowNodeInputTypeEnum.timeRangeSelect].icon,
+        title: t('common:core.workflow.inputType.Manual select')
+      },
+      {
+        type: FlowNodeInputTypeEnum.password,
+        icon: FlowNodeInputMap[FlowNodeInputTypeEnum.password].icon,
         title: t('common:core.workflow.inputType.Manual input')
       }
     ],

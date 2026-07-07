@@ -118,7 +118,7 @@ export const FlowNodeInputMap: Record<
     icon: 'core/workflow/inputType/password'
   },
   [FlowNodeInputTypeEnum.agentGenerated]: {
-    icon: 'core/app/toolCall'
+    icon: 'core/workflow/inputType/agentGenerated'
   }
 };
 

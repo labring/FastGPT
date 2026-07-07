@@ -495,6 +495,35 @@ describe('WorkflowComponents utils', () => {
       expect(result.nodes[0].inputs[0].value).toEqual(['childNode', 'result']);
     });
 
+    it('should remove negative selectedTypeIndex before saving workflow', () => {
+      const nodes = [
+        {
+          data: {
+            nodeId: 'toolNode',
+            name: 'Tool',
+            intro: '',
+            avatar: '',
+            flowNodeType: FlowNodeTypeEnum.toolCall,
+            showStatus: true,
+            inputs: [
+              {
+                key: 'query',
+                renderTypeList: [FlowNodeInputTypeEnum.input],
+                selectedTypeIndex: -1,
+                value: 'test'
+              }
+            ],
+            outputs: []
+          },
+          position: { x: 0, y: 0 }
+        }
+      ];
+
+      const result = uiWorkflow2StoreWorkflow({ nodes, edges: [] });
+
+      expect(result.nodes[0].inputs[0].selectedTypeIndex).toBeUndefined();
+    });
+
     it('should keep selected dataset snapshot for later server-side save formatting', () => {
       const nodes = [
         {

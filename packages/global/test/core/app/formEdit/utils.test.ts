@@ -327,6 +327,18 @@ describe('checkNeedsUserConfiguration', () => {
       expect(result).toBe(true);
     });
 
+    it('should return true for multipleSelect render type without toolDescription', () => {
+      const tool = {
+        inputs: [
+          createMockInput({
+            renderTypeList: [FlowNodeInputTypeEnum.multipleSelect]
+          })
+        ]
+      };
+      const result = checkNeedsUserConfiguration(tool);
+      expect(result).toBe(true);
+    });
+
     it('should return true for JSONEditor render type without toolDescription', () => {
       const tool = {
         inputs: [
@@ -523,7 +535,7 @@ describe('getToolConfigStatus', () => {
       const tool = {
         inputs: [
           createMockInput({
-            renderTypeList: [FlowNodeInputTypeEnum.select],
+            renderTypeList: [FlowNodeInputTypeEnum.multipleSelect],
             required: true,
             value: ['option1', 'option2']
           })
@@ -634,9 +646,26 @@ describe('getToolConfigStatus', () => {
       const tool = {
         inputs: [
           createMockInput({
-            renderTypeList: [FlowNodeInputTypeEnum.select],
+            renderTypeList: [FlowNodeInputTypeEnum.multipleSelect],
             required: true,
             value: []
+          })
+        ]
+      };
+      const result = getToolConfigStatus({ tool });
+      expect(result).toEqual({
+        needConfig: true,
+        status: 'waitingForConfig'
+      });
+    });
+
+    it('should return waitingForConfig when required time range is incomplete', () => {
+      const tool = {
+        inputs: [
+          createMockInput({
+            renderTypeList: [FlowNodeInputTypeEnum.timeRangeSelect],
+            required: true,
+            value: ['2026-07-07T00:00:00+08:00', undefined]
           })
         ]
       };

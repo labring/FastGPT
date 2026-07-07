@@ -11,6 +11,7 @@ const formRenderTypesMap: Record<string, boolean> = {
   [FlowNodeInputTypeEnum.password]: true,
   [FlowNodeInputTypeEnum.switch]: true,
   [FlowNodeInputTypeEnum.select]: true,
+  [FlowNodeInputTypeEnum.multipleSelect]: true,
   [FlowNodeInputTypeEnum.JSONEditor]: true,
   [FlowNodeInputTypeEnum.timePointSelect]: true,
   [FlowNodeInputTypeEnum.timeRangeSelect]: true
@@ -75,6 +76,28 @@ export const initToolInputTypeByDefaultMode = <T extends FlowNodeInputItemType>(
 export const initToolInputsTypeByDefaultMode = <T extends FlowNodeInputItemType>(
   inputs: T[]
 ): T[] => inputs.map((input) => initToolInputTypeByDefaultMode(input));
+
+/**
+ * 判断开发者手动配置的工具入参是否已有有效值。
+ * 这里和 Agent 工具配置弹窗共用同一套判定，避免 required 字段被弹窗放行后又显示为未配置。
+ */
+export const isToolInputValueConfigured = ({
+  input,
+  value = input.value
+}: {
+  input: Pick<FlowNodeInputItemType, 'renderTypeList' | 'value'>;
+  value?: FlowNodeInputItemType['value'];
+}) => {
+  if (value === undefined || value === null || value === '') return false;
+
+  if (input.renderTypeList.includes(FlowNodeInputTypeEnum.timeRangeSelect)) {
+    return Array.isArray(value) && !!value[0] && !!value[1];
+  }
+
+  if (Array.isArray(value) && value.length === 0) return false;
+  if (typeof value === 'object' && Object.keys(value).length === 0) return false;
+  return true;
+};
 
 /* Invalid tool check
   1. Reference type. but not tool description;
@@ -199,11 +222,7 @@ export const getToolConfigStatus = ({
 
   // Check if all required fields are filled
   const allConfigured = configInputs.every((input) => {
-    const value = input.value;
-    if (value === undefined || value === null || value === '') return false;
-    if (Array.isArray(value) && value.length === 0) return false;
-    if (typeof value === 'object' && Object.keys(value).length === 0) return false;
-    return true;
+    return isToolInputValueConfigured({ input });
   });
 
   return {
