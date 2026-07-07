@@ -1,13 +1,13 @@
 # 用于开发的 docker-compose 文件:
 # - 只包含 FastGPT 的最小化运行条件
 # - 没有 FastGPT 本体
-# - 所有端口都映射到外层
+# - 依赖服务端口映射到外层，fastgpt-plugin 使用 host network
 #   - fastgpt-pg: 5432
 #   - fastgpt-mongo: 27017
 #   - fastgpt-redis: 6379
 #   - fastgpt-code-sandbox: 3002
 #   - fastgpt-mcp-server: 3003
-#   - fastgpt-plugin: 3004
+#   - fastgpt-plugin: 3004（host network，由 PORT 指定）
 #   - fastgpt-volume-manager: 3005
 #   - opensandbox-server: 8090
 #   - fastgpt-aiproxy: 3010
@@ -248,13 +248,15 @@ services:
     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-plugin:v1.0.0
     container_name: fastgpt-plugin
     restart: always
-    ports:
-      - 3004:3000
-    networks:
-      - fastgpt
+    network_mode: host
     environment:
       <<: [*x-share-db-config, *x-log-config, *x-no-proxy-config]
       AUTH_TOKEN: *x-plugin-auth-token
+      PORT: 3004
+      FASTGPT_BASE_URL: http://127.0.0.1:3000
+      MONGODB_URI: mongodb://myusername:mypassword@127.0.0.1:27017/fastgpt?authSource=admin
+      REDIS_URL: redis://default:mypassword@127.0.0.1:6379
+      STORAGE_S3_ENDPOINT: http://127.0.0.1:9000
       # 工具网络请求，最大请求和响应体
       SERVICE_REQUEST_MAX_CONTENT_LENGTH: 10
       # 最大 API 请求体大小
@@ -265,7 +267,7 @@ services:
       fastgpt-minio:
         condition: service_healthy
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:3000/health']
+      test: ['CMD', 'curl', '-f', 'http://localhost:3004/health']
       interval: 30s
       timeout: 20s
       retries: 3
