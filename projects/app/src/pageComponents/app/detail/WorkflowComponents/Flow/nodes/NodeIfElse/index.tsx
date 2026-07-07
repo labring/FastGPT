@@ -6,6 +6,10 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { type NodeProps, Position } from 'reactflow';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { type IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
+import {
+  createIfElseBranchId,
+  getIfElseBranchHandleKey
+} from '@fastgpt/global/core/workflow/template/system/ifElse/utils';
 import { useContextSelector } from 'use-context-selector';
 import Container from '../../components/Container';
 import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag/index';
@@ -69,8 +73,8 @@ const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             <Box {...provided.droppableProps} ref={provided.innerRef}>
               {ifElseList.map((conditionItem, conditionIndex) => (
                 <Draggable
-                  key={conditionIndex}
-                  draggableId={conditionIndex.toString()}
+                  key={getIfElseBranchHandleKey(conditionItem, conditionIndex)}
+                  draggableId={getIfElseBranchHandleKey(conditionItem, conditionIndex)}
                   index={conditionIndex}
                 >
                   {(provided, snapshot) => (
@@ -118,12 +122,14 @@ const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             onUpdateIfElseList([
               ...ifElseList,
               {
+                branchId: createIfElseBranchId(),
                 condition: 'AND',
                 list: [
                   {
                     variable: undefined,
                     condition: undefined,
-                    value: undefined
+                    value: undefined,
+                    valueType: 'input'
                   }
                 ]
               }

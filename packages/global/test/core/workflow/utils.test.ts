@@ -39,6 +39,11 @@ import {
   defaultQGConfig
 } from '@fastgpt/global/core/app/constants';
 import { IfElseResultEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
+import {
+  getIfElseBranchHandleKey,
+  initNewIfElseList,
+  normalizeIfElseList
+} from '@fastgpt/global/core/workflow/template/system/ifElse/utils';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -1125,6 +1130,45 @@ describe('getElseIFLabel', () => {
     expect(getElseIFLabel(1)).toBe(`${IfElseResultEnum.ELSE_IF} 1`);
     expect(getElseIFLabel(2)).toBe(`${IfElseResultEnum.ELSE_IF} 2`);
     expect(getElseIFLabel(10)).toBe(`${IfElseResultEnum.ELSE_IF} 10`);
+  });
+});
+
+describe('ifElse branch helpers', () => {
+  it('should normalize legacy branches with old handle labels', () => {
+    const result = normalizeIfElseList([
+      { condition: 'AND', list: [] },
+      { condition: 'OR', list: [] }
+    ]);
+
+    expect(result[0].branchId).toBe(IfElseResultEnum.IF);
+    expect(result[1].branchId).toBe(`${IfElseResultEnum.ELSE_IF} 1`);
+  });
+
+  it('should initialize new branches with random branch ids', () => {
+    const result = initNewIfElseList([{ condition: 'AND', list: [] }]);
+
+    expect(result[0].branchId).toMatch(/^[a-z][a-zA-Z0-9]{15}$/);
+    expect(result[0].branchId).not.toBe(IfElseResultEnum.IF);
+  });
+
+  it('should keep the first duplicate branch id and regenerate the rest', () => {
+    const result = normalizeIfElseList([
+      { branchId: 'same', condition: 'AND', list: [] },
+      { branchId: 'same', condition: 'AND', list: [] }
+    ]);
+
+    expect(result[0].branchId).toBe('same');
+    expect(result[1].branchId).toMatch(/^[a-z][a-zA-Z0-9]{15}$/);
+    expect(result[1].branchId).not.toBe('same');
+  });
+
+  it('should return branch id before falling back to label', () => {
+    expect(getIfElseBranchHandleKey({ branchId: 'stableId1', condition: 'AND', list: [] }, 1)).toBe(
+      'stableId1'
+    );
+    expect(getIfElseBranchHandleKey({ condition: 'AND', list: [] }, 1)).toBe(
+      `${IfElseResultEnum.ELSE_IF} 1`
+    );
   });
 });
 

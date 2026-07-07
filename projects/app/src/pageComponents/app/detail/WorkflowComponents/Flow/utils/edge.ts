@@ -9,6 +9,9 @@ import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { IfElseResultEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
+import { getIfElseBranchHandleKey } from '@fastgpt/global/core/workflow/template/system/ifElse/utils';
+import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
+import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 
 // Get sort index from source node's output handle order
 export const getHandleIndex = (
@@ -29,14 +32,26 @@ export const getHandleIndex = (
     }
   }
 
-  // ifElseNode: IF=0, ELSE IF=1/2/3..., ELSE=999
+  // ifElseNode: sort by stable branch handle, ELSE always last.
   if (flowNodeType === FlowNodeTypeEnum.ifElseNode) {
-    if (handleId.includes(IfElseResultEnum.ELSE_IF)) {
-      const match = handleId.match(/ELSE IF (\d+)/);
-      return match ? parseInt(match[1]) : 1;
+    const ifElseList = inputs?.find((i) => i.key === NodeInputKeyEnum.ifElseList)?.value as
+      | IfElseListItemType[]
+      | undefined;
+    if (Array.isArray(ifElseList)) {
+      const idx = ifElseList.findIndex((item, index) => {
+        const itemHandleId = getHandleId(
+          sourceNode.data.nodeId,
+          'source',
+          getIfElseBranchHandleKey(item, index)
+        );
+        return itemHandleId === handleId;
+      });
+      if (idx >= 0) return idx;
     }
-    if (handleId.endsWith(`-${IfElseResultEnum.IF}`)) return 0;
-    if (handleId.endsWith(`-${IfElseResultEnum.ELSE}`)) return 999;
+    if (handleId === getHandleId(sourceNode.data.nodeId, 'source', IfElseResultEnum.ELSE)) {
+      return 999;
+    }
+    return 998;
   }
 
   // classifyQuestion: sort by agent index

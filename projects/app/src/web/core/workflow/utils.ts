@@ -32,6 +32,10 @@ import {
   type ReferenceValueType
 } from '@fastgpt/global/core/workflow/type/io';
 import { type IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
+import {
+  initNewIfElseList,
+  normalizeIfElseList
+} from '@fastgpt/global/core/workflow/template/system/ifElse/utils';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
 import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import { type TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
@@ -49,6 +53,17 @@ import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
  * 这里仅处理旧字段到新字段的 key 和 valueType 迁移。
  */
 export const adaptStoreNodeInputs = (storeNode: StoreNodeItemType): FlowNodeInputItemType[] => {
+  if (storeNode.flowNodeType === FlowNodeTypeEnum.ifElseNode) {
+    return storeNode.inputs.map((input) => {
+      if (input.key !== NodeInputKeyEnum.ifElseList) return input;
+
+      return {
+        ...input,
+        value: normalizeIfElseList(input.value as IfElseListItemType[])
+      };
+    });
+  }
+
   if (storeNode.flowNodeType !== FlowNodeTypeEnum.datasetSearchNode) {
     return storeNode.inputs;
   }
@@ -91,6 +106,16 @@ export const nodeTemplate2FlowNode = ({
     nodeId: getNanoid(),
     parentNodeId
   };
+  if (moduleItem.flowNodeType === FlowNodeTypeEnum.ifElseNode) {
+    moduleItem.inputs = moduleItem.inputs.map((input) => {
+      if (input.key !== NodeInputKeyEnum.ifElseList) return input;
+
+      return {
+        ...input,
+        value: initNewIfElseList(input.value as IfElseListItemType[])
+      };
+    });
+  }
 
   return {
     id: moduleItem.nodeId,

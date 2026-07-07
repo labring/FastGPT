@@ -9,6 +9,7 @@ export type ConditionListItemType = {
   valueType?: 'input' | 'reference';
 };
 export type IfElseListItemType = {
+  branchId?: string;
   condition: IfElseConditionType;
   list: ConditionListItemType[];
 };

@@ -1,12 +1,14 @@
 import React, { useMemo } from 'react';
 import { Position } from 'reactflow';
 import { MySourceHandle, MyTargetHandle } from '.';
-import { getHandleId, getElseIFLabel } from '@fastgpt/global/core/workflow/utils';
+import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowBufferDataContext } from '../../../../context/workflowInitContext';
 import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import type { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
+import { getIfElseBranchHandleKey } from '@fastgpt/global/core/workflow/template/system/ifElse/utils';
 
 export const ConnectionSourceHandle = ({
   nodeId,
@@ -40,7 +42,13 @@ export const ConnectionSourceHandle = ({
               return getHandleId(nodeId, 'source', options[0].key);
             }
           } else if (node.flowNodeType === FlowNodeTypeEnum.ifElseNode) {
-            return getHandleId(nodeId, 'source', getElseIFLabel(0));
+            const ifElseList = node.inputs.find(
+              (input) => input.key === NodeInputKeyEnum.ifElseList
+            )?.value as IfElseListItemType[] | undefined;
+            const firstIfElse = ifElseList?.[0];
+            if (firstIfElse) {
+              return getHandleId(nodeId, 'source', getIfElseBranchHandleKey(firstIfElse, 0));
+            }
           } else if (node.flowNodeType === FlowNodeTypeEnum.classifyQuestion) {
             const options = node?.inputs?.find(
               (input) => input.key === NodeInputKeyEnum.agents
