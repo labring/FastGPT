@@ -7,7 +7,8 @@ import { SkillDetailContext } from './context';
 import SandboxEditor from '@/pageComponents/chat/SandboxEditor/Editor';
 import SandboxError from './config/SandboxError';
 import { RightHeader } from '@/pageComponents/dashboard/skill/detail/Header';
-import HighlightModal from '@fastgpt/web/components/v2/common/MyModal/HighlightModal';
+import MyModal from '@fastgpt/web/components/v2/common/MyModal';
+import runtimeUpgradeModalBg from '@/assets/skill/runtimeUpgradeModalBg.jpg';
 
 const EDIT_DEBUG_CHAT_ID = 'edit-debug';
 
@@ -70,52 +71,78 @@ const Content = () => {
           headerRight={canOperateSandbox ? <RightHeader /> : undefined}
         />
       )}
-      <HighlightModal
+      <MyModal
         isOpen={isUpgradeModalOpen}
-        title={upgradeModalTitle}
-        footer={
-          <VStack w={'full'} gap={3}>
+        onClose={() => router.back()}
+        showCloseButton
+        isCentered
+        size={'sm'}
+        borderRadius={'md'}
+        overflow={'hidden'}
+        bodyStyles={{
+          p: 0,
+          overflowX: 'hidden',
+          overflowY: 'auto'
+        }}
+      >
+        <Box p={2} pb={0}>
+          <Box
+            aspectRatio={384 / 223}
+            borderRadius={'xs'}
+            bgImage={`url(${runtimeUpgradeModalBg.src})`}
+            bgSize={'cover'}
+            bgPosition={'center'}
+            bgRepeat={'no-repeat'}
+          />
+        </Box>
+
+        <VStack px={8} pt={6} pb={8} gap={0} textAlign={'center'} alignItems={'center'}>
+          <Box color={'myGray.900'} fontSize={'lg'} fontWeight={'semibold'} lineHeight={'26px'}>
+            {upgradeModalTitle}
+          </Box>
+          <Box
+            color={'myGray.900'}
+            fontSize={'sm'}
+            lineHeight={'20px'}
+            mt={6}
+            whiteSpace="pre-wrap"
+          >
+            {t('skill:sandbox_runtime_upgrade_desc')}
+          </Box>
+          {sandboxError && (
+            <Box
+              color={'red.600'}
+              fontSize={'sm'}
+              lineHeight={'20px'}
+              mt={3}
+              whiteSpace="pre-wrap"
+            >
+              {sandboxError}
+            </Box>
+          )}
+          <VStack w={'full'} gap={3} mt={6}>
             <Button
               w={'full'}
-              h={'48px'}
-              borderRadius={'10px'}
+              size={'lg'}
               onClick={upgradeSandboxRuntime}
               isLoading={isUpgrading}
               isDisabled={isUpgrading || !canUpgradeSandboxRuntime}
-              fontSize={'16px'}
-              fontWeight={'medium'}
+              fontSize={'sm'}
             >
               {t('skill:sandbox_runtime_upgrade_confirm')}
             </Button>
             <Button
               w={'full'}
-              h={'48px'}
-              borderRadius={'10px'}
+              size={'lg'}
               variant={'whitePrimary'}
               onClick={() => router.back()}
-              fontSize={'16px'}
-              fontWeight={'medium'}
+              fontSize={'sm'}
             >
               {t('common:Exit')}
             </Button>
           </VStack>
-        }
-      >
-        <Box
-          color={'myGray.900'}
-          fontSize={'18px'}
-          lineHeight={'26px'}
-          mt={7}
-          whiteSpace="pre-wrap"
-        >
-          {t('skill:sandbox_runtime_upgrade_desc')}
-        </Box>
-        {sandboxError && (
-          <Box color={'red.600'} fontSize={'14px'} lineHeight={'20px'} mt={4} whiteSpace="pre-wrap">
-            {sandboxError}
-          </Box>
-        )}
-      </HighlightModal>
+        </VStack>
+      </MyModal>
     </Box>
   );
 };
