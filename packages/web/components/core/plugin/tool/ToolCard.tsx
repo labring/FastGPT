@@ -1,4 +1,4 @@
-import { Box, Button, Flex, HStack } from '@chakra-ui/react';
+import { Box, Button, Checkbox, Flex, HStack } from '@chakra-ui/react';
 import Avatar from '../../../common/Avatar';
 import MyBox from '../../../common/MyBox';
 import React, { useMemo, useRef, useState, useEffect } from 'react';
@@ -46,7 +46,10 @@ const ToolCard = ({
   onUpdate,
   onClickCard,
   showActionButton = true,
-  variant = 'default'
+  variant = 'default',
+  showSelectCheckbox = false,
+  isSelected = false,
+  onToggleSelect
 }: {
   item: ToolCardItemType;
   systemTitle?: string;
@@ -59,6 +62,9 @@ const ToolCard = ({
   onClickCard?: () => void;
   showActionButton?: boolean;
   variant?: 'default' | 'marketplace';
+  showSelectCheckbox?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: () => void;
 }) => {
   const { t, i18n } = useTranslation();
   const tagsContainerRef = useRef<HTMLDivElement>(null);
@@ -143,6 +149,8 @@ const ToolCard = ({
     }
   }, [isMarketplaceVariant, item.installed, item.status, mode, t]);
 
+  const hasSelectCheckbox = !!onToggleSelect;
+
   return (
     <MyBox
       key={item.id}
@@ -192,16 +200,57 @@ const ToolCard = ({
           : {}),
         '& .download-count': {
           display: 'none'
-        }
+        },
+        ...(hasSelectCheckbox
+          ? {
+              '& .tool-card-select-checkbox': {
+                display: 'flex'
+              }
+            }
+          : {})
       }}
     >
+      {hasSelectCheckbox && (
+        <Flex
+          className="tool-card-select-checkbox"
+          position={'absolute'}
+          top={isMarketplaceVariant ? '17px' : 4}
+          right={isMarketplaceVariant ? '17px' : 4}
+          zIndex={2}
+          display={showSelectCheckbox || isSelected ? 'flex' : 'none'}
+          alignItems={'center'}
+          justifyContent={'center'}
+          bg={'white'}
+          borderRadius={'4px'}
+          onClick={(e) => {
+            e.stopPropagation();
+          }}
+        >
+          <Checkbox
+            isChecked={isSelected}
+            onChange={(e) => {
+              e.stopPropagation();
+              onToggleSelect?.();
+            }}
+          />
+        </Flex>
+      )}
+
       {/* Update badge in top-right corner */}
       {item.update && mode === 'admin' && !item.isDebug && (
         <Flex
           alignItems="center"
           position={'absolute'}
           top={isMarketplaceVariant ? '17px' : 4}
-          right={isMarketplaceVariant ? '17px' : 4}
+          right={
+            hasSelectCheckbox
+              ? isMarketplaceVariant
+                ? '45px'
+                : 12
+              : isMarketplaceVariant
+                ? '17px'
+                : 4
+          }
           px={2}
           py={0.5}
           bg={'rgb(255, 247, 237)'}

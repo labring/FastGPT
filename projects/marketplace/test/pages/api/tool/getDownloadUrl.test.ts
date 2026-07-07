@@ -155,13 +155,7 @@ describe('/api/tool/getDownloadUrl', () => {
     });
   });
 
-  it('returns a URL list and counts downloads for batch requests', async () => {
-    dataMocks.getToolList.mockResolvedValue([
-      { toolId: 'tool-a', downloadUrl: 'https://cdn.example.com/tool-a.pkg' },
-      { toolId: 'tool-b' },
-      { toolId: 'tool-c', downloadUrl: 'https://cdn.example.com/tool-c.pkg' }
-    ]);
-
+  it('rejects batch download requests without a toolId', async () => {
     const { default: handler } = await import('../../../../src/pages/api/tool/getDownloadUrl');
     const res = createResponse();
     await handler(
@@ -173,10 +167,10 @@ describe('/api/tool/getDownloadUrl', () => {
       res as any
     );
 
-    expect(downloadMocks.increaseDownloadCount).toHaveBeenCalledTimes(2);
+    expect(dataMocks.getToolList).not.toHaveBeenCalled();
     expect(res.body).toEqual({
-      code: 200,
-      data: ['https://cdn.example.com/tool-a.pkg', 'https://fallback.example.com/tool-b.pkg']
+      code: 500,
+      message: 'toolId is required'
     });
   });
 });
