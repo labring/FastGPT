@@ -6,6 +6,7 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
+import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 
 const mocks = vi.hoisted(() => ({
   listTools: vi.fn(),
@@ -457,6 +458,28 @@ describe('SystemToolRepo.getSystemToolDetail', () => {
 });
 
 describe('SystemToolRepo.getSystemToolWorkflowRuntime', () => {
+  it('rejects uninstalled workflow tools before loading app version', async () => {
+    mocks.findSystemTool.mockResolvedValue({
+      pluginId: 'commercial-workflow-tool',
+      status: PluginStatusEnum.Offline,
+      currentCost: 2,
+      customConfig: {
+        name: 'Workflow Tool',
+        avatar: 'workflow.svg',
+        associatedPluginId: 'app-id'
+      }
+    });
+
+    await expect(
+      SystemToolRepo.getInstance().getSystemToolWorkflowRuntime({
+        pluginId: 'commercial-workflow-tool',
+        version: 'version-id'
+      })
+    ).rejects.toBe(PluginErrEnum.unExist);
+
+    expect(mocks.getAppVersionById).not.toHaveBeenCalled();
+  });
+
   it('returns workflow app chatConfig for runtime variable initialization', async () => {
     mocks.findSystemTool.mockResolvedValue({
       pluginId: 'commercial-workflow-tool',
@@ -909,6 +932,45 @@ describe('SystemToolRepo.getSystemToolDisplayInfo', () => {
 });
 
 describe('SystemToolRepo.getSystemToolRuntime', () => {
+  it('rejects uninstalled system tools before calling plugin runtime', async () => {
+    mocks.findSystemTool.mockResolvedValue({
+      pluginId: 'systemTool-weather',
+      status: PluginStatusEnum.Offline,
+      currentCost: 1,
+      systemKeyCost: 2,
+      customConfig: {}
+    });
+
+    await expect(
+      SystemToolRepo.getInstance().getSystemToolRuntime({
+        pluginId: 'systemTool-weather',
+        source: 'system'
+      })
+    ).rejects.toBe(PluginErrEnum.unExist);
+
+    expect(mocks.getTool).not.toHaveBeenCalled();
+  });
+
+  it('rejects toolset children when parent system tool is uninstalled', async () => {
+    mocks.findSystemTool.mockResolvedValueOnce(null).mockResolvedValueOnce({
+      pluginId: 'systemTool-toolset',
+      status: PluginStatusEnum.Offline,
+      currentCost: 1,
+      systemKeyCost: 2,
+      customConfig: {}
+    });
+    mocks.findSystemTools.mockResolvedValueOnce([]);
+
+    await expect(
+      SystemToolRepo.getInstance().getSystemToolRuntime({
+        pluginId: 'systemTool-toolset/child',
+        source: 'system'
+      })
+    ).rejects.toBe(PluginErrEnum.unExist);
+
+    expect(mocks.getTool).not.toHaveBeenCalled();
+  });
+
   it('does not return configured system secrets for debug source', async () => {
     mocks.findSystemTool.mockResolvedValue({
       pluginId: 'systemTool-weather',

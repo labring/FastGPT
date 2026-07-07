@@ -227,28 +227,6 @@ const NodeCard = (props: Props) => {
 
   const isAppNode = node && AppNodeFlowNodeTypeMap[node?.flowNodeType];
   const isLoopNode = isNestedParentNodeType(node?.flowNodeType ?? '');
-  const showVersion = useMemo(() => {
-    const source = node?.pluginId ? splitCombineToolId(node.pluginId).source : undefined;
-    if (isDebugToolSource(node?.source)) return false;
-    // 1. MCP/HTTP single tools use the latest toolset content and do not expose version selection.
-    if (source === AppToolSourceEnum.mcp || source === AppToolSourceEnum.http) return false;
-
-    // 2. MCP/HTTP tool sets do not have version
-    if (
-      isAppNode &&
-      (node.toolConfig?.mcpToolSet ||
-        node.toolConfig?.mcpTool ||
-        node?.toolConfig?.httpToolSet ||
-        node?.toolConfig?.httpTool)
-    )
-      return false;
-    // 3. Team app/System commercial plugin
-    if (isAppNode && node?.pluginId && !node?.pluginData?.error) return true;
-    // 4. System tool
-    if (isAppNode && node?.toolConfig?.systemTool) return true;
-
-    return false;
-  }, [isAppNode, node]);
 
   const { data: nodeTemplate } = useRequest(
     async () => {
@@ -293,6 +271,32 @@ const NodeCard = (props: Props) => {
       manual: false
     }
   );
+
+  const toolStatus = nodeTemplate?.status ?? node?.pluginData?.status;
+  const showVersion = useMemo(() => {
+    if (toolStatus === PluginStatusEnum.Offline) return false;
+
+    const source = node?.pluginId ? splitCombineToolId(node.pluginId).source : undefined;
+    if (isDebugToolSource(node?.source)) return false;
+    // 1. MCP/HTTP single tools use the latest toolset content and do not expose version selection.
+    if (source === AppToolSourceEnum.mcp || source === AppToolSourceEnum.http) return false;
+
+    // 2. MCP/HTTP tool sets do not have version
+    if (
+      isAppNode &&
+      (node.toolConfig?.mcpToolSet ||
+        node.toolConfig?.mcpTool ||
+        node?.toolConfig?.httpToolSet ||
+        node?.toolConfig?.httpTool)
+    )
+      return false;
+    // 3. Team app/System commercial plugin
+    if (isAppNode && node?.pluginId && !node?.pluginData?.error) return true;
+    // 4. System tool
+    if (isAppNode && node?.toolConfig?.systemTool) return true;
+
+    return false;
+  }, [isAppNode, node, toolStatus]);
 
   /* Node header - 重构后的版本,依赖项大幅减少 */
   const error = useMemo(() => formatToolError(node?.pluginData?.error), [node?.pluginData?.error]);

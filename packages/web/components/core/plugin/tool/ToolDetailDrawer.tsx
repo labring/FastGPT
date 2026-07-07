@@ -51,7 +51,7 @@ const ToolDetailDrawer = ({
   selectedTool: ToolCardItemType;
   onToggleInstall?: (installed: boolean, version?: string) => void | Promise<void>;
   onDelete?: () => void | Promise<void>;
-  onUpdate?: (version?: string) => void;
+  onUpdate?: (version?: string) => void | Promise<void>;
   isUpdating?: boolean;
   systemTitle?: string;
   onFetchDetail?: (toolId: string, version?: string) => Promise<ToolDetailFetchResponse>;
@@ -64,12 +64,8 @@ const ToolDetailDrawer = ({
 }) => {
   const { t, i18n } = useTranslation();
   const [activeTab, setActiveTab] = useState<'guide' | 'params'>('params');
-  const [isInstalled, setIsInstalled] = useState(selectedTool.installed);
+  const isInstalled = selectedTool.installed;
   const [selectedVersion, setSelectedVersion] = useState<string | undefined>(selectedTool.version);
-
-  useEffect(() => {
-    setIsInstalled(selectedTool.installed);
-  }, [selectedTool.id, selectedTool.installed]);
 
   const isDownload = useMemo(() => {
     return mode === 'marketplace';
@@ -97,7 +93,7 @@ const ToolDetailDrawer = ({
     if (selectedTool.id && onFetchVersions) {
       fetchToolVersions(selectedTool.id);
     }
-  }, [selectedTool.id]);
+  }, [fetchToolVersions, onFetchVersions, selectedTool.id]);
 
   const activeVersion = selectedVersion || toolVersions[0]?.version;
 
@@ -202,8 +198,6 @@ const ToolDetailDrawer = ({
                     isDisabled={isUpdating}
                     onClick={async () => {
                       await onToggleInstall?.(!isInstalled, currentVersion);
-                      if (mode === 'marketplace') return;
-                      setIsInstalled(!isInstalled);
                     }}
                   >
                     {isDownload
@@ -211,6 +205,19 @@ const ToolDetailDrawer = ({
                       : isInstalled
                         ? t('app:toolkit_uninstall')
                         : t('app:toolkit_install')}
+                  </Button>
+                )}
+                {hasUpdateButton && (
+                  <Button
+                    variant="primary"
+                    flex={'1 1 0'}
+                    minW={0}
+                    isLoading={isUpdating || loadingDetail}
+                    onClick={async () => {
+                      await onUpdate?.(currentVersion);
+                    }}
+                  >
+                    {t('app:custom_plugin_update')}
                   </Button>
                 )}
                 {showUninstallButton && (
@@ -222,17 +229,6 @@ const ToolDetailDrawer = ({
                     onClick={() => onDelete?.()}
                   >
                     {t('app:toolkit_uninstall')}
-                  </Button>
-                )}
-                {hasUpdateButton && (
-                  <Button
-                    variant="primary"
-                    flex={'1 1 0'}
-                    minW={0}
-                    isLoading={isUpdating || loadingDetail}
-                    onClick={() => onUpdate?.(currentVersion)}
-                  >
-                    {t('app:custom_plugin_update')}
                   </Button>
                 )}
               </Flex>

@@ -83,7 +83,7 @@
   "confirm_delete_chats": "Are you sure you want to delete {{n}} chat records?\nThis cannot be undone.",
   "confirm_delete_folder_tip": "When you delete this folder, all applications and corresponding chat records under it will be deleted.",
   "confirm_delete_tool": "Confirm to delete this tool?",
-  "confirm_uninstall_tool": "Confirm uninstall this plugin? Its status will become \"Uninstalled\", and apps using it will no longer be able to call it. Enter the plugin name to confirm.",
+  "confirm_uninstall_tool": "After uninstalling this plugin, apps that depend on it may not run properly. Please proceed carefully.",
   "copilot_config_message": "Current Node Configuration Information: \n Code Type: {{codeType}} \n Current Code: \\\\`\\\\`\\\\`{{codeType}} \n{{code}} \\\\`\\\\`\\\\` \n Input Parameters: {{inputs}} \n Output Parameters: {{outputs}}",
   "copilot_confirm_message": "The original configuration has been received to understand the current code structure and input and output parameters. \nPlease explain your optimization requirements.",
   "copy_one_app": "Create Duplicate",
