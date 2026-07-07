@@ -27,6 +27,10 @@ export const adminOpenAPIDocument = createDocument({
     {
       name: '系统配置',
       tags: [DevApiTagsMap.adminInform]
+    },
+    {
+      name: '钱包管理',
+      tags: [DevApiTagsMap.adminWalletCoupon]
     }
   ]
 });
