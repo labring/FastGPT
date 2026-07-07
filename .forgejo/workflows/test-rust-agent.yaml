@@ -1,0 +1,67 @@
+name: 'Rust-Agent-Test'
+on:
+  pull_request:
+    paths:
+      - 'projects/agent-sandbox-proxy/**'
+      - 'projects/fastgpt-ide-agent/**'
+      - '.github/workflows/test-rust-agent.yaml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'projects/agent-sandbox-proxy/**'
+      - 'projects/fastgpt-ide-agent/**'
+      - '.github/workflows/test-rust-agent.yaml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  test-rust-projects:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "fastgpt-rust-agent-cache"
+          workspaces: |
+            projects/agent-sandbox-proxy
+            projects/fastgpt-ide-agent
+
+      # --- agent-sandbox-proxy Checks & Tests ---
+      - name: Run agent-sandbox-proxy fmt check
+        run: cargo fmt --check
+        working-directory: projects/agent-sandbox-proxy
+
+      - name: Run agent-sandbox-proxy clippy check
+        run: cargo clippy --locked -- -D warnings
+        working-directory: projects/agent-sandbox-proxy
+
+      - name: Run agent-sandbox-proxy tests
+        run: cargo test --locked
+        working-directory: projects/agent-sandbox-proxy
+
+      # --- fastgpt-ide-agent Checks & Tests ---
+      - name: Run fastgpt-ide-agent fmt check
+        run: cargo fmt --check
+        working-directory: projects/fastgpt-ide-agent
+
+      - name: Run fastgpt-ide-agent clippy check
+        run: cargo clippy --locked -- -D warnings
+        working-directory: projects/fastgpt-ide-agent
+
+      - name: Run fastgpt-ide-agent tests
+        run: cargo test --locked
+        working-directory: projects/fastgpt-ide-agent
