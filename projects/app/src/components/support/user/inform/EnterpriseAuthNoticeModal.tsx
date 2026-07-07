@@ -100,7 +100,7 @@ const EnterpriseAuthNoticeModal = () => {
     }
   }, [setEnterpriseAuthNoticeRead, teamId]);
 
-  const onClickRead = useCallback(() => {
+  const onClose = useCallback(() => {
     markAsRead();
     setIsClosed(true);
   }, [markAsRead]);
@@ -119,11 +119,11 @@ const EnterpriseAuthNoticeModal = () => {
   return (
     <MyModal
       isOpen
-      onClose={() => setIsClosed(true)}
+      onClose={onClose}
       isCentered
       size={'md'}
       title={t('common:enterprise_auth_notice_title')}
-      footer={<Button onClick={onClickRead}>{t('common:enterprise_auth_notice_read')}</Button>}
+      footer={<Button onClick={onClose}>{t('common:enterprise_auth_notice_read')}</Button>}
     >
       <Flex flexDirection={'column'} gap={6} overflow={'hidden'}>
         <Box>

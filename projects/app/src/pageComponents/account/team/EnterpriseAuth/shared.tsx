@@ -98,21 +98,22 @@ export const fieldRules = {
 
 export const formLabelStyles = {
   color: 'myGray.800',
-  fontSize: '10px',
+  fontSize: '12px',
   fontWeight: 500,
   lineHeight: '16px',
   letterSpacing: '0.5px'
 };
 
 export const formErrorTextStyles = {
-  ...formLabelStyles,
-  color: 'red.600'
+  color: 'red.600',
+  fontSize: '12px',
+  fontWeight: 500,
+  lineHeight: '16px',
+  letterSpacing: '0.5px'
 };
 
 export const fieldErrorTextStyles = {
-  ...formErrorTextStyles,
-  fontSize: '10px',
-  lineHeight: '16px'
+  ...formErrorTextStyles
 };
 
 export const invalidInputStyles = {
