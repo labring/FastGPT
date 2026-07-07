@@ -1,5 +1,6 @@
 import handler from '@/pages/api/core/chat/record/getRecords_v2';
 import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
   ChatRoleEnum,
   ChatSourceEnum,
@@ -11,6 +12,7 @@ import type {
   GetRecordsV2ResponseType
 } from '@fastgpt/global/openapi/core/chat/record/api';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { getUser } from '@test/datas/users';
@@ -148,5 +150,64 @@ describe('getRecords_v2 skill edit target', () => {
     expect(res.data.total).toBe(5);
     expect(res.data.list.length).toBeLessThanOrEqual(3);
     expect(res.data.hasMorePrev).toBe(true);
+  });
+
+  it('should read chatAgentHelper records through generic records api', async () => {
+    const app = await MongoApp.create({
+      name: 'ChatAgentHelper Records App',
+      type: AppTypeEnum.simple,
+      teamId: testUser.teamId,
+      tmbId: testUser.tmbId,
+      modules: []
+    });
+    const helperChatId = getNanoid();
+    const [, humanItem, aiItem] = await Promise.all([
+      MongoChat.create({
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        userId: testUser.userId,
+        sourceType: ChatSourceTypeEnum.chatAgentHelper,
+        appId: String(app._id),
+        chatId: helperChatId,
+        source: ChatSourceEnum.test
+      }),
+      MongoChatItem.create({
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        userId: testUser.userId,
+        sourceType: ChatSourceTypeEnum.chatAgentHelper,
+        appId: String(app._id),
+        chatId: helperChatId,
+        dataId: 'helper-round-1',
+        obj: ChatRoleEnum.Human,
+        value: [{ text: { content: 'build an app' } }]
+      }),
+      MongoChatItem.create({
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        userId: testUser.userId,
+        sourceType: ChatSourceTypeEnum.chatAgentHelper,
+        appId: String(app._id),
+        chatId: helperChatId,
+        dataId: 'helper-round-1',
+        obj: ChatRoleEnum.AI,
+        value: [{ text: { content: 'agent draft' } }]
+      })
+    ]);
+
+    const res = await Call<GetRecordsV2BodyType, any, GetRecordsV2ResponseType>(handler, {
+      auth: testUser,
+      body: {
+        appId: String(app._id),
+        sourceType: ChatSourceTypeEnum.chatAgentHelper,
+        chatId: helperChatId,
+        pageSize: 10
+      }
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data.total).toBe(2);
+    expect(res.data.list.map((item) => item.id)).toEqual([humanItem.dataId, aiItem.dataId]);
+    expect(res.data.list.map((item) => item.dataId)).toEqual(['helper-round-1', 'helper-round-1']);
   });
 });

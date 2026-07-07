@@ -274,12 +274,48 @@ export const useChatResume = ({
         }
 
         if (resumeUnavailable) {
-          resumeFinalStatus = ChatGenerateStatusEnum.generating;
-          upsertResumeAiPlaceholder(
-            responseChatId,
-            getResumeUnavailablePlaceholderText(),
-            ChatStatusEnum.loading
-          );
+          resumeFinalStatus = ChatGenerateStatusEnum.done;
+          const resumeUnavailablePlaceholderText = getResumeUnavailablePlaceholderText();
+
+          setChatRecords((state) => {
+            const currentLastItem = state[state.length - 1];
+            if (
+              currentLastItem?.dataId !== responseChatId ||
+              currentLastItem.obj !== ChatRoleEnum.AI
+            ) {
+              return state;
+            }
+
+            const next = state.map((item, index) => {
+              if (index !== state.length - 1) return item;
+              return {
+                ...item,
+                status: ChatStatusEnum.finish,
+                time: new Date(),
+                responseData: mergeNodeResponseDataByIdAndParent(item.responseData || [])
+              };
+            });
+
+            const updatedLastItem = next[next.length - 1];
+            const hasOnlyResumeUnavailablePlaceholder =
+              !hasReceivedResumeOutput &&
+              updatedLastItem?.dataId === responseChatId &&
+              updatedLastItem.value.length === 1 &&
+              updatedLastItem.value[0]?.text?.content === resumeUnavailablePlaceholderText &&
+              !updatedLastItem.responseData?.length;
+
+            if (
+              updatedLastItem?.dataId === responseChatId &&
+              (!hasMeaningfulAiOutput(updatedLastItem as ChatSiteItemType) ||
+                hasOnlyResumeUnavailablePlaceholder) &&
+              !responseText
+            ) {
+              return next.slice(0, -1);
+            }
+
+            return next;
+          });
+          scrollToBottom('auto');
           return;
         }
 

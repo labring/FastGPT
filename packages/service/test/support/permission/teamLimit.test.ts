@@ -836,9 +836,22 @@ describe('checkTeamDatasetSyncPermission', () => {
 describe('checkTeamSandboxPermission', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    delete (global as any).subPlans;
+  });
+
+  it('当 global.subPlans.standard 不存在时直接返回', async () => {
+    const getTeamStandPlanSpy = vi.spyOn(walletUtils, 'getTeamStandPlan');
+
+    await expect(checkTeamSandboxPermission(mockTeamId)).resolves.toBeUndefined();
+    expect(getTeamStandPlanSpy).not.toHaveBeenCalled();
   });
 
   it('当 enableSandbox 为 false 时抛出错误', async () => {
+    (global as any).subPlans = {
+      standard: {
+        [StandardSubLevelEnum.basic]: {}
+      }
+    };
     const mockStandard = {
       standard: {
         enableSandbox: false
@@ -852,6 +865,11 @@ describe('checkTeamSandboxPermission', () => {
   });
 
   it('当 standard 不存在时不抛出错误', async () => {
+    (global as any).subPlans = {
+      standard: {
+        [StandardSubLevelEnum.basic]: {}
+      }
+    };
     const mockStandard = {
       standard: undefined
     };
@@ -861,6 +879,11 @@ describe('checkTeamSandboxPermission', () => {
   });
 
   it('当 enableSandbox 为 true 时正常通过', async () => {
+    (global as any).subPlans = {
+      standard: {
+        [StandardSubLevelEnum.basic]: {}
+      }
+    };
     const mockStandard = {
       standard: {
         enableSandbox: true

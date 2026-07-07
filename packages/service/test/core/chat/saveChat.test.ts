@@ -13,6 +13,8 @@ import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoAppChatLog } from '@fastgpt/service/core/app/logs/chatLogsSchema';
 import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
+import { MongoS3TTL } from '@fastgpt/service/common/s3/models/ttl';
+import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 import {
   ChatFileTypeEnum,
   ChatGenerateStatusEnum,
@@ -604,6 +606,103 @@ describe('pushChatRecords', () => {
       });
       expect(responses).toHaveLength(0);
       expect(aiItem?.responseData).toBeUndefined();
+    });
+
+    it('should persist skill edit uploaded files by removing S3 TTL after finalization', async () => {
+      const responseChatItemId = 'skill-edit-file-finalize';
+      const fileKey = `chat/${ChatSourceTypeEnum.skillEdit}/${testAppId}/${testTmbId}/skill-chat-id/spec.md`;
+      const props = createMockProps(
+        {
+          chatId: 'skill-chat-id',
+          sourceType: ChatSourceTypeEnum.skillEdit,
+          sourceId: testAppId,
+          userContent: {
+            dataId: responseChatItemId,
+            obj: ChatRoleEnum.Human,
+            value: [
+              {
+                file: {
+                  type: ChatFileTypeEnum.file,
+                  name: 'spec.md',
+                  url: 'https://example.com/temp-preview',
+                  key: fileKey
+                }
+              }
+            ]
+          },
+          aiContent: {
+            dataId: responseChatItemId,
+            obj: ChatRoleEnum.AI,
+            value: [
+              {
+                text: {
+                  content: 'Skill debug answer'
+                }
+              }
+            ]
+          }
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+
+      await MongoS3TTL.create({
+        bucketName: S3Buckets.private,
+        minioKey: fileKey,
+        expiredTime: new Date(Date.now() + 60 * 60 * 1000)
+      });
+      await MongoChat.create({
+        appId: testAppId,
+        chatId: props.chatId,
+        teamId: testTeamId,
+        tmbId: testTmbId,
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        source: props.source,
+        chatGenerateStatus: ChatGenerateStatusEnum.generating,
+        hasBeenRead: false
+      });
+      await MongoChatItem.create([
+        {
+          teamId: testTeamId,
+          tmbId: testTmbId,
+          sourceType: ChatSourceTypeEnum.skillEdit,
+          appId: testAppId,
+          chatId: props.chatId,
+          dataId: responseChatItemId,
+          obj: ChatRoleEnum.Human,
+          value: []
+        },
+        {
+          teamId: testTeamId,
+          tmbId: testTmbId,
+          sourceType: ChatSourceTypeEnum.skillEdit,
+          appId: testAppId,
+          chatId: props.chatId,
+          dataId: responseChatItemId,
+          obj: ChatRoleEnum.AI,
+          value: []
+        }
+      ]);
+
+      await finalizeChatRound(props);
+
+      const ttl = await MongoS3TTL.findOne({
+        bucketName: S3Buckets.private,
+        minioKey: fileKey
+      }).lean();
+      expect(ttl).toBeNull();
+
+      const humanItem = await MongoChatItem.findOne({
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        appId: testAppId,
+        chatId: props.chatId,
+        obj: ChatRoleEnum.Human
+      }).lean();
+      expect(humanItem?.value[0].file).toEqual({
+        type: ChatFileTypeEnum.file,
+        name: 'spec.md',
+        url: '',
+        key: fileKey
+      });
     });
 
     it('should mark prepared round as error and keep ai placeholder', async () => {

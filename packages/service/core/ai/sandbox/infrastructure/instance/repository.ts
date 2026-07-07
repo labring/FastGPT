@@ -93,6 +93,9 @@ const buildSandboxResourcesToArchiveQuery = (params: {
 const buildSandboxResourceSourceQuery = ({ sourceType, sourceId }: SandboxSourceParams) => {
   if (sourceType === ChatSourceTypeEnum.app) return { sourceType, sourceId };
   if (sourceType === ChatSourceTypeEnum.skillEdit) return { sourceType, sourceId };
+  if (sourceType === ChatSourceTypeEnum.chatAgentHelper) {
+    throw new Error('ChatAgentHelper source does not support sandbox resources');
+  }
 
   const exhaustiveCheck: never = sourceType;
   throw new Error(`Unsupported sandbox source type: ${exhaustiveCheck}`);

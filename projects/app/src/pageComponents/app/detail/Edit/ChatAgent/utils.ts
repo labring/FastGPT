@@ -431,12 +431,12 @@ export const getEmptyAgentConfig = (t: any) => {
 export const loadGeneratedTools = async ({
   newToolIds,
   existsTools = [],
-  topAgentSelectedTools = [],
+  generatedSelectedTools = [],
   fileSelectConfig
 }: {
   newToolIds: string[]; // 新的，完整的 toolId
   existsTools?: SelectedToolItemType[];
-  topAgentSelectedTools?: SelectedToolItemType[];
+  generatedSelectedTools?: SelectedToolItemType[];
   fileSelectConfig?: AppFileSelectConfigType;
 }): Promise<SelectedToolItemType[]> => {
   const results = (
@@ -465,12 +465,12 @@ export const loadGeneratedTools = async ({
           return;
         }
 
-        const topTool = topAgentSelectedTools.find((item) => item.pluginId === toolId);
-        if (topTool) {
+        const generatedTool = generatedSelectedTools.find((item) => item.pluginId === toolId);
+        if (generatedTool) {
           tool.inputs.forEach((input) => {
-            const topInput = topTool.inputs.find((topIn) => topIn.key === input.key);
-            if (topInput) {
-              input.value = topInput.value;
+            const generatedInput = generatedTool.inputs.find((topIn) => topIn.key === input.key);
+            if (generatedInput) {
+              input.value = generatedInput.value;
             }
           });
         }

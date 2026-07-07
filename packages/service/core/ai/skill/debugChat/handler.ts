@@ -34,6 +34,7 @@ import { getDefaultLLMModel } from '../../model';
 import { getRunningSkillEditSandbox } from '../../sandbox/interface/skillEdit';
 import { dispatchWorkFlow } from '../../../workflow/dispatch';
 import { WORKFLOW_MAX_RUN_TIMES } from '../../../workflow/constants';
+import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import { getChatItems } from '../../../chat/controller';
 import {
   failChatRound,
@@ -51,6 +52,16 @@ import { buildDebugRuntimeNodes } from './runtime';
 import type { AgentSandboxPrepareAction } from '../../../workflow/dispatch/ai/agent/sub/sandbox';
 
 const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS);
+const skillDebugFileSelectConfig: AppFileSelectConfigType = {
+  maxFiles: 10,
+  canSelectFile: true,
+  canSelectImg: true,
+  customPdfParse: false,
+  canSelectVideo: true,
+  canSelectAudio: true,
+  canSelectCustomFileExtension: false,
+  customFileExtensionList: []
+};
 
 /**
  * 处理 Skill 调试对话的共享主流程。
@@ -206,7 +217,9 @@ export async function handleSkillDebugChat(
       variables: {},
       query: removeEmptyUserInput(userQuestion.value),
       lastInteractive: interactive,
-      chatConfig: {},
+      chatConfig: {
+        fileSelectConfig: skillDebugFileSelectConfig
+      },
       histories: newHistories,
       stream: true,
       maxRunTimes: WORKFLOW_MAX_RUN_TIMES,

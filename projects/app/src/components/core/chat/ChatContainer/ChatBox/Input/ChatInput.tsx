@@ -176,7 +176,8 @@ const ChatInput = ({
       onSendMessage({
         text: val.trim(),
         files: fileList,
-        interactive: lastInteractive
+        interactive: lastInteractive,
+        clearInput: true
       });
       replaceFiles([]);
     },
@@ -579,7 +580,8 @@ const ChatInput = ({
                 onSendMessage({
                   text: text.trim(),
                   files: fileList,
-                  autoTTSResponse
+                  autoTTSResponse,
+                  clearInput: true
                 });
                 replaceFiles([]);
               }}

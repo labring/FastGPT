@@ -678,6 +678,16 @@ describe('getTeamStandPlan', () => {
     delete (global as any).subPlans;
   });
 
+  it('未开启标准套餐配置且没有套餐记录时返回 undefined', async () => {
+    vi.spyOn(MongoTeamSub, 'find').mockReturnValue({
+      lean: vi.fn().mockResolvedValue([])
+    } as any);
+
+    const result = await getTeamStandPlan({ teamId: mockTeamId });
+
+    expect(result[SubTypeEnum.standard]).toBeUndefined();
+  });
+
   it('返回团队标准套餐', async () => {
     const teamId = mockTeamId;
     const mockPlan = {
@@ -721,6 +731,32 @@ describe('getTeamStandPlan', () => {
     expect(MongoTeamSub.find).toHaveBeenCalled();
     expect(result[SubTypeEnum.standard]).toBeDefined();
     expect(result[SubTypeEnum.standard]?.name).toBe('Basic Plan');
+  });
+
+  it('开启标准套餐配置但没有套餐记录时返回 undefined', async () => {
+    vi.spyOn(MongoTeamSub, 'find').mockReturnValue({
+      lean: vi.fn().mockResolvedValue([])
+    } as any);
+
+    (global as any).subPlans = {
+      standard: {
+        [StandardSubLevelEnum.free]: {
+          name: 'Free Plan',
+          price: 0,
+          totalPoints: 100,
+          maxTeamMember: 1,
+          maxAppAmount: 3,
+          maxDatasetAmount: 1,
+          maxDatasetSize: 10,
+          chatHistoryStoreDuration: 7,
+          enableSandbox: true
+        }
+      }
+    };
+
+    const result = await getTeamStandPlan({ teamId: mockTeamId });
+
+    expect(result[SubTypeEnum.standard]).toBeUndefined();
   });
 });
 

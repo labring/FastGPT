@@ -160,6 +160,7 @@ export const initTeamFreePlan = async ({
 
 // 获取团队标准套餐
 export const getTeamStandPlan = async ({ teamId }: { teamId: string }) => {
+  const standardPlans = global.subPlans?.standard;
   const plans = await MongoTeamSub.find(
     {
       teamId,
@@ -172,11 +173,10 @@ export const getTeamStandPlan = async ({ teamId }: { teamId: string }) => {
   ).lean();
   sortStandPlans(plans);
 
-  const standardPlans = global.subPlans?.standard;
   const standard = plans[0];
 
   const standardConstants =
-    standard.currentSubLevel && standardPlans
+    standard?.currentSubLevel && standardPlans
       ? standardPlans[
           standard.currentSubLevel === StandardSubLevelEnum.custom
             ? StandardSubLevelEnum.advanced
@@ -185,9 +185,8 @@ export const getTeamStandPlan = async ({ teamId }: { teamId: string }) => {
       : undefined;
 
   return {
-    [SubTypeEnum.standard]: standardConstants
-      ? buildStandardPlan(standard, standardConstants)
-      : undefined
+    [SubTypeEnum.standard]:
+      standard && standardConstants ? buildStandardPlan(standard, standardConstants) : undefined
   };
 };
 

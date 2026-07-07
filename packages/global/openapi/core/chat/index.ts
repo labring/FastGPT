@@ -6,7 +6,7 @@ import { ChatHistoryPath } from './history/index';
 import { GetRecentlyUsedAppsResponseSchema } from './api';
 import { DevApiTagsMap } from '../../tag';
 import { ChatControllerPath } from './controler';
-import { HelperBotPath } from './helperBot';
+import { ChatAgentHelperPath } from './chatAgentHelper';
 import { ChatInputGuidePath } from './inputGuide/index';
 import { OutLinkChatPath } from './outLink/index';
 import { ChatRecordPath } from './record/index';
@@ -20,7 +20,7 @@ export const ChatPath: OpenAPIPath = {
   ...ChatFavouriteAppPath,
   ...ChatHistoryPath,
   ...ChatControllerPath,
-  ...HelperBotPath,
+  ...ChatAgentHelperPath,
   ...ChatInputGuidePath,
   ...OutLinkChatPath,
   ...ChatRecordPath,

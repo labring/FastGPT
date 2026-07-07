@@ -1,6 +1,6 @@
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
-import { getFileContentByUrl } from '../../../../utils/file';
+import { getFileContentByUrl } from '../../../../../chat/fileContext';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getLogger } from '@fastgpt-sdk/otel/logger';
 import { LogCategories } from '../../../../../../common/logger';

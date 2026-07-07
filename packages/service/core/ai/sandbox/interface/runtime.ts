@@ -96,6 +96,10 @@ export function buildSandboxClientQueryFromChatSource({
     };
   }
 
+  if (sourceType === ChatSourceTypeEnum.chatAgentHelper) {
+    throw new Error('ChatAgentHelper source does not support sandbox runtime');
+  }
+
   const exhaustiveCheck: never = sourceType;
   throw new Error(`Unsupported chat source type: ${exhaustiveCheck}`);
 }

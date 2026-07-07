@@ -191,7 +191,7 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
 
           // Get Upload Post Presigned URL
           const { url, key, headers, maxSize, previewUrl } = await getUploadChatFilePresignedUrl({
-            filename: copyFile.rawFile.name,
+            filename: copyFile.rawFile!.name,
             ...chatAuthTarget,
             chatId,
             fileSelectConfig
@@ -236,6 +236,8 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
     fileSelectConfig,
     removeFiles,
     replaceFiles,
+    sourceTarget.sourceId,
+    sourceTarget.sourceType,
     t,
     toast,
     updateFiles

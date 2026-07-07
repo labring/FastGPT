@@ -84,7 +84,7 @@ import {
   parseFileInfoFromUrls,
   normalizeReadableFileUrl,
   formatUserQueryWithFiles
-} from '@fastgpt/service/core/workflow/utils/file';
+} from '@fastgpt/service/core/chat/fileContext';
 
 const createHumanMessage = (value: UserChatItemValueItemType[]): ChatItemMiniType => ({
   obj: ChatRoleEnum.Human,

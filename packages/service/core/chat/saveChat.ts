@@ -69,7 +69,14 @@ const beforeProcess = (props: Props) => {
 const isFileValueWithKey = (file: unknown): file is { key: string } =>
   !!file && typeof file === 'object' && 'key' in file && typeof file.key === 'string' && !!file.key;
 
-const afterProcess = async ({
+/**
+ * 对话内容落库成功后，移除已持久化文件的 S3 TTL 记录。
+ *
+ * ChatBox 上传文件时会先写入临时 TTL，避免用户只上传不发送时文件长期残留。
+ * 当包含这些 file key 的消息、工作流表单值或文件变量已经进入对话记录后，
+ * 这里统一删除 TTL，表示这些文件跟随对话生命周期持久化。
+ */
+export const persistChatFiles = async ({
   contents,
   variables,
   variableList,
@@ -363,7 +370,7 @@ export const finalizeChatRound = async (props: Props) => {
       }
     );
 
-    await afterProcess({
+    await persistChatFiles({
       contents: processedContent,
       variables,
       variableList,
@@ -584,7 +591,8 @@ export const pushChatRecords = async (props: Props) => {
             shareId,
             outLinkUid,
             metadata: metadataUpdate,
-            updateTime: new Date()
+            updateTime: new Date(),
+            chatGenerateStatus: ChatGenerateStatusEnum.done
           },
           $setOnInsert: {
             createTime: new Date()
@@ -598,7 +606,7 @@ export const pushChatRecords = async (props: Props) => {
         }
       );
 
-      await afterProcess({
+      await persistChatFiles({
         contents: processedContent,
         variables,
         variableList,
@@ -890,7 +898,7 @@ export const updateInteractiveChat = async ({
       }
     );
 
-    await afterProcess({
+    await persistChatFiles({
       contents: [userContent, aiContent],
       variables,
       variableList,

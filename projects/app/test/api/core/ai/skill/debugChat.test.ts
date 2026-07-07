@@ -202,6 +202,19 @@ describe('buildDebugRuntimeNodes', () => {
       expect(promptInput!.valueType).toBe(WorkflowIOValueTypeEnum.string);
     });
 
+    it('should enable vision preview for uploaded images', () => {
+      const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL, SYSTEM_PROMPT);
+      const agentNode = runtimeNodes[1];
+
+      const visionInput = agentNode.inputs.find((i) => i.key === NodeInputKeyEnum.aiChatVision);
+
+      expect(visionInput).toMatchObject({
+        renderTypeList: [FlowNodeInputTypeEnum.hidden],
+        valueType: WorkflowIOValueTypeEnum.boolean,
+        value: true
+      });
+    });
+
     it('editSkillId input should contain exactly the given skillId', () => {
       const { runtimeNodes } = buildDebugRuntimeNodes(SKILL_ID, MODEL, SYSTEM_PROMPT);
       const agentNode = runtimeNodes[1];
@@ -548,6 +561,13 @@ describe('debugChat handler — parameter validation', () => {
       expect.objectContaining({
         chatId: 'prepared-debug-chat-id',
         responseChatItemId: 'prepared-debug-response-id',
+        chatConfig: {
+          fileSelectConfig: expect.objectContaining({
+            canSelectFile: true,
+            canSelectImg: true,
+            maxFiles: 10
+          })
+        },
         agentSandboxPrepareActions: undefined
       })
     );

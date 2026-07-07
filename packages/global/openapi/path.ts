@@ -101,6 +101,6 @@ export const openAPITagGroups = [
   },
   {
     name: '系统接口',
-    tags: [DevApiTagsMap.helperBot]
+    tags: [DevApiTagsMap.chatAgentHelper]
   }
 ];

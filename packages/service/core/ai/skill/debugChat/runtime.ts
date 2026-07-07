@@ -102,6 +102,13 @@ export function buildDebugRuntimeNodes(
           value: systemPrompt
         },
         {
+          key: NodeInputKeyEnum.aiChatVision,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          valueType: WorkflowIOValueTypeEnum.boolean,
+          label: '',
+          value: true
+        },
+        {
           key: NodeInputKeyEnum.editSkillId,
           renderTypeList: [FlowNodeInputTypeEnum.hidden],
           valueType: WorkflowIOValueTypeEnum.string,

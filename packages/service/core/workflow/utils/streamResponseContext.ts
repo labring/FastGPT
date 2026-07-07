@@ -5,6 +5,7 @@ import { STREAM_RESUME_REQUEST_HEADER } from '@fastgpt/global/core/chat/constant
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
+import { createSseStreamContext } from '../../../common/response/sse';
 import { getStreamResumeMirror } from '../../chat/resume';
 import { getWorkflowResponseWrite } from '../dispatch/utils';
 
@@ -99,42 +100,30 @@ export const initWorkflowSseResponse = ({
     return;
   }
 
-  if (!res.headersSent) {
-    res.setHeader('Connection', 'keep-alive');
-    res.setHeader('Content-Type', 'text/event-stream;charset=utf-8');
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('X-Accel-Buffering', 'no');
-    res.setHeader('Cache-Control', 'no-cache, no-transform');
-  }
-
-  let cleaned = false;
-  const cleanup = () => {
-    if (cleaned) return;
-    cleaned = true;
-    clearInterval(streamCheckTimer);
-    delete workflowRes[workflowSseResponseControllerKey];
-  };
-
-  res.once('finish', cleanup);
-  res.once('close', cleanup);
-  res.on('error', () => {
-    cleanup();
-    onError?.();
-    res.end();
+  const sseContext = createSseStreamContext({
+    res,
+    stream,
+    onError,
+    onCleanup: () => {
+      delete workflowRes[workflowSseResponseControllerKey];
+    },
+    // 10s 发送一次空 answer，沿用统一 SSE writer，避免浏览器或代理认为长连接已断开。
+    heartbeat: {
+      write: () => {
+        responseWrite?.({
+          event: SseResponseEventEnum.answer,
+          data: textAdaptGptResponse({
+            text: ''
+          })
+        });
+      }
+    }
   });
 
-  // 10s 发送一次空 answer，沿用统一 SSE writer，避免浏览器或代理认为长连接已断开。
-  const streamCheckTimer = setInterval(() => {
-    responseWrite?.({
-      event: SseResponseEventEnum.answer,
-      data: textAdaptGptResponse({
-        text: ''
-      })
-    });
-  }, 10000);
-
   const controller: WorkflowSseResponseController = {
-    cleanup
+    cleanup: () => {
+      sseContext.cleanup();
+    }
   };
   workflowRes[workflowSseResponseControllerKey] = controller;
 };

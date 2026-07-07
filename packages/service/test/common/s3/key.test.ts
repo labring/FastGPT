@@ -7,10 +7,6 @@ import {
   isAuthorizedDatasetFileS3Key,
   parseDatasetFileS3Key
 } from '@fastgpt/service/common/s3/sources/dataset/key';
-import {
-  isAuthorizedHelperBotFileS3Key,
-  parseHelperBotFileS3Key
-} from '@fastgpt/service/common/s3/sources/helperbot/key';
 import { isAuthorizedTempFileS3Key } from '@fastgpt/service/common/s3/sources/temp/key';
 
 describe('authorized S3 object key helpers', () => {
@@ -123,20 +119,6 @@ describe('authorized S3 object key helpers', () => {
     expect(isAuthorizedDatasetFileS3Key({ key, datasetId: 'dataset-1' })).toBe(true);
     expect(isAuthorizedDatasetFileS3Key({ key, datasetId: 'dataset-2' })).toBe(false);
     expect(parseDatasetFileS3Key('dataset/dataset-1')).toBeNull();
-  });
-
-  it('parses and authorizes helper bot file keys by userId', () => {
-    const key = 'helperBot/topAgent/user-1/chat-1/demo.pdf';
-
-    expect(parseHelperBotFileS3Key(key)).toEqual({
-      type: 'topAgent',
-      userId: 'user-1',
-      chatId: 'chat-1',
-      filename: 'demo.pdf'
-    });
-    expect(isAuthorizedHelperBotFileS3Key({ key, userId: 'user-1' })).toBe(true);
-    expect(isAuthorizedHelperBotFileS3Key({ key, userId: 'user-2' })).toBe(false);
-    expect(parseHelperBotFileS3Key('helperBot/unknown/user-1/chat-1/demo.pdf')).toBeNull();
   });
 
   it('authorizes temp file keys by exact team path segment', () => {

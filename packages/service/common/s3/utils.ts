@@ -10,7 +10,6 @@ import { S3PublicBucket } from './buckets/public';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import path from 'node:path';
 import type { ParsedFileContentS3KeyParams } from './sources/dataset/type';
-import type { HelperBotTypeEnumType } from '@fastgpt/global/core/chat/helperBot/type';
 
 // S3文件名最大长度配置
 export const S3_FILENAME_MAX_LENGTH = 50;
@@ -228,25 +227,6 @@ export const getFileS3Key = {
     const { formatedFilename, extension } = getFormatedFilename(filename);
     const basePrefix = [S3Sources.chat, appId, uId, chatId].filter(Boolean).join('/');
 
-    return {
-      fileKey: [basePrefix, `${formatedFilename}${extension ? `.${extension}` : ''}`].join('/'),
-      fileParsedPrefix: [basePrefix, `${formatedFilename}-parsed`].join('/')
-    };
-  },
-
-  helperBot: ({
-    type,
-    chatId,
-    userId,
-    filename
-  }: {
-    type: HelperBotTypeEnumType;
-    chatId: string;
-    userId: string;
-    filename: string;
-  }) => {
-    const { formatedFilename, extension } = getFormatedFilename(filename);
-    const basePrefix = [S3Sources.helperBot, type, userId, chatId].filter(Boolean).join('/');
     return {
       fileKey: [basePrefix, `${formatedFilename}${extension ? `.${extension}` : ''}`].join('/'),
       fileParsedPrefix: [basePrefix, `${formatedFilename}-parsed`].join('/')

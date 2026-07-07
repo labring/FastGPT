@@ -1,0 +1,494 @@
+import { audioFileType, imageFileType, videoFileType } from '@fastgpt/global/common/file/constants';
+import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import type {
+  ChatItemMiniType,
+  UserChatItemFileItemType,
+  UserChatItemValueItemType
+} from '@fastgpt/global/core/chat/type';
+import { getS3RawTextSource } from '../../common/s3/sources/rawText';
+import { isInternalAddress, PRIVATE_URL_TEXT } from '../../common/system/utils';
+import { pickOutboundAxios } from '../../common/api/axios';
+import { S3Buckets } from '../../common/s3/config/constants';
+import { S3Sources } from '../../common/s3/contracts/type';
+import {
+  detectFileEncoding,
+  parseContentDispositionFilename
+} from '@fastgpt/global/common/file/tools';
+import path from 'path';
+import { getFileS3Key } from '../../common/s3/utils';
+import { S3ChatSource } from '../../common/s3/sources/chat';
+import { readFileContentByBuffer } from '../../common/file/read/utils';
+import { addDays } from 'date-fns';
+import { replaceS3KeyToPreviewUrl } from '../dataset/utils';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getUserFilesPrompt, injectUserQueryPrompt } from '../ai/llm/prompt';
+import { getAxiosHeaderValue } from '@fastgpt/global/common/axios/utils';
+
+type GetFileProps = {
+  requestOrigin?: string;
+  maxFiles: number;
+  customPdfParse?: boolean;
+  teamId: string;
+  tmbId: string;
+  usageId?: string;
+};
+
+/**
+ * 将 URL 解析成 ChatBox 文件结构。
+ *
+ * `urlTypeMap` 用于 workflow 运行态传入显式文件类型；普通聊天/辅助生成场景则按文件名后缀推断。
+ */
+export const parseUrlToChatFileType = ({
+  url,
+  urlTypeMap = {}
+}: {
+  url: string;
+  urlTypeMap?: Record<string, ChatFileTypeEnum>;
+}): UserChatItemFileItemType | undefined => {
+  if (typeof url !== 'string') return;
+
+  if (url.startsWith('data:')) {
+    const matches = url.match(/^data:([^;]+);base64,/);
+    if (!matches) return;
+
+    const mimeType = matches[1].toLowerCase();
+    if (!mimeType.startsWith('image/')) return;
+
+    const extension = mimeType.split('/')[1];
+    return {
+      type: ChatFileTypeEnum.image,
+      name: `image.${extension}`,
+      url
+    };
+  }
+
+  try {
+    const parseUrl = new URL(url, 'http://localhost:3000');
+
+    const filename = (() => {
+      if (url.startsWith('chat/')) {
+        const basename = path.basename(url);
+        return basename.includes('.') ? basename : '';
+      }
+
+      const fromParam = parseUrl.searchParams.get('filename');
+      if (fromParam) return fromParam;
+
+      const basename = path.basename(parseUrl.pathname);
+      return basename.includes('.') ? basename : '';
+    })();
+
+    const type = urlTypeMap[url];
+    if (type) {
+      return {
+        type,
+        name: filename ? decodeURIComponent(filename) : url,
+        url
+      };
+    }
+
+    const extension = filename?.split('.').pop()?.toLowerCase() || '';
+
+    if (extension && imageFileType.includes(extension)) {
+      return {
+        type: ChatFileTypeEnum.image,
+        name: filename ? decodeURIComponent(filename) : url,
+        url
+      };
+    }
+    if (extension && audioFileType.includes(extension)) {
+      return {
+        type: ChatFileTypeEnum.audio,
+        name: filename ? decodeURIComponent(filename) : url,
+        url
+      };
+    }
+    if (extension && videoFileType.includes(extension)) {
+      return {
+        type: ChatFileTypeEnum.video,
+        name: filename ? decodeURIComponent(filename) : url,
+        url
+      };
+    }
+
+    return {
+      type: ChatFileTypeEnum.file,
+      name: filename ? decodeURIComponent(filename) : url,
+      url
+    };
+  } catch {
+    return {
+      type: ChatFileTypeEnum.file,
+      name: url,
+      url
+    };
+  }
+};
+
+export const formatUserQueryWithFiles = async ({
+  userQuery,
+  parseFileFn
+}: {
+  userQuery: UserChatItemValueItemType[];
+  parseFileFn: (urls: string[]) => Promise<
+    {
+      id?: string;
+      name: string;
+      url: string;
+      sandboxPath?: string;
+      content?: string;
+    }[]
+  >;
+}): Promise<UserChatItemValueItemType[]> => {
+  const urls = userQuery
+    .map((item) => (item.file?.type === ChatFileTypeEnum.file ? item.file.url : ''))
+    .filter(Boolean);
+
+  if (urls.length === 0) {
+    return userQuery;
+  }
+
+  const readFilesResult = await parseFileFn(urls);
+
+  if (readFilesResult.length === 0) {
+    return userQuery;
+  }
+
+  // 把 file 和 text 合并成一个 text(实际上应该只会有一个 text+多个 files)
+  const text = userQuery.find((item) => item.text?.content)?.text?.content;
+  const fileQuery = getUserFilesPrompt(readFilesResult);
+
+  const finalQuery = injectUserQueryPrompt({
+    query: text,
+    filePrompt: fileQuery
+  });
+
+  return [
+    {
+      text: {
+        content: finalQuery
+      }
+    }
+  ];
+};
+
+/**
+ * 在发送给 LLM 前把 Human 消息里的普通文件解析为文本上下文。
+ *
+ * 历史 Human 消息是否解析由调用方控制；未解析时会移除历史文件项，避免旧文件继续作为模型文件输入。
+ */
+export const rewriteChatMessagesWithFileContext = async ({
+  messages,
+  parseHistoryFiles,
+  parseFileFn
+}: {
+  messages: ChatItemMiniType[];
+  parseHistoryFiles: boolean;
+  parseFileFn: (urls: string[]) => Promise<
+    {
+      id?: string;
+      name: string;
+      url: string;
+      sandboxPath?: string;
+      content?: string;
+    }[]
+  >;
+}) => {
+  return Promise.all(
+    messages.map(async (message, index): Promise<ChatItemMiniType> => {
+      if (message.obj !== ChatRoleEnum.Human) {
+        return message;
+      }
+
+      const isCurrentUserMessage = index === messages.length - 1;
+      if (!isCurrentUserMessage && !parseHistoryFiles) {
+        return {
+          ...message,
+          value: message.value.filter((item) => !item.file)
+        };
+      }
+
+      const query = await formatUserQueryWithFiles({
+        userQuery: message.value,
+        parseFileFn
+      });
+
+      return {
+        ...message,
+        value: query
+      };
+    })
+  );
+};
+
+/**
+ * 格式化文件 URL，移除请求头部分，只保留文件 URL
+ */
+export const normalizeReadableFileUrl = ({
+  url,
+  requestOrigin
+}: {
+  url?: string;
+  requestOrigin?: string;
+}) => {
+  if (typeof url !== 'string') return '';
+
+  let normalizedUrl = url.trim();
+  if (!normalizedUrl) return '';
+
+  const validPrefixList = ['/', 'http', 'ws'];
+  if (!validPrefixList.some((prefix) => normalizedUrl.startsWith(prefix))) {
+    return '';
+  }
+
+  if (parseUrlToChatFileType({ url: normalizedUrl })?.type !== ChatFileTypeEnum.file) {
+    return '';
+  }
+
+  try {
+    const parsedURL = new URL(normalizedUrl, 'http://localhost:3000');
+    if (requestOrigin && parsedURL.origin === requestOrigin) {
+      normalizedUrl = normalizedUrl.replace(requestOrigin, '');
+    }
+
+    return normalizedUrl;
+  } catch {
+    return '';
+  }
+};
+
+export const getFileInfoFromUrl = async ({ teamId, url }: { teamId: string; url: string }) => {
+  const response = await pickOutboundAxios(url).get(url, {
+    responseType: 'arraybuffer'
+  });
+
+  const urlObj = new URL(url, 'http://localhost:3000');
+  const isChatExternalUrl = !urlObj.pathname.startsWith(`/${S3Buckets.private}/${S3Sources.chat}/`);
+
+  // Get file name
+  const { filename, extension, imageParsePrefix } = (() => {
+    if (isChatExternalUrl) {
+      const contentDisposition = getAxiosHeaderValue(response.headers['content-disposition']) || '';
+      const matchFilename = parseContentDispositionFilename(contentDisposition);
+      const filename = matchFilename || urlObj.pathname.split('/').pop() || 'file';
+      const extension = path.extname(filename).replace('.', '');
+
+      return {
+        filename,
+        extension,
+        imageParsePrefix: getFileS3Key.temp({ teamId, filename }).fileParsedPrefix
+      };
+    }
+
+    return S3ChatSource.parseChatUrl(url);
+  })();
+
+  return {
+    isChatExternalUrl,
+    filename,
+    extension,
+    imageParsePrefix,
+    contentType: getAxiosHeaderValue(response.headers['content-type']),
+    stream: response.data
+  };
+};
+
+export const getFileContentByUrl = async ({
+  url,
+  teamId,
+  tmbId,
+  customPdfParse,
+  usageId
+}: {
+  url: string;
+  teamId: string;
+  tmbId: string;
+  customPdfParse?: boolean;
+  usageId?: string;
+}) => {
+  // Get from buffer
+  const rawTextBuffer = await getS3RawTextSource().getRawTextBuffer({
+    sourceId: url,
+    customPdfParse
+  });
+  if (rawTextBuffer) {
+    return {
+      name: rawTextBuffer.filename,
+      url,
+      content: rawTextBuffer.text
+    };
+  }
+
+  const { isChatExternalUrl, filename, extension, imageParsePrefix, contentType, stream } =
+    await getFileInfoFromUrl({ teamId, url });
+
+  const buffer = Buffer.from(stream, 'binary');
+  // Get encoding
+  const encoding = (() => {
+    if (contentType) {
+      const charsetRegex = /charset=([^;]*)/;
+      const matches = charsetRegex.exec(contentType);
+      if (matches != null && matches[1]) {
+        return matches[1];
+      }
+    }
+
+    return detectFileEncoding(buffer);
+  })();
+
+  const { rawText } = await readFileContentByBuffer({
+    extension,
+    teamId,
+    tmbId,
+    buffer,
+    encoding,
+    customPdfParse,
+    getFormatText: true,
+    imageKeyOptions: imageParsePrefix
+      ? {
+          prefix: imageParsePrefix,
+          // 聊天对话里面上传的外部链接，解析出来的图片过期时间设置为1天，而且是存储在临时文件夹的
+          expiredTime: isChatExternalUrl ? addDays(new Date(), 1) : undefined
+        }
+      : undefined,
+    usageId
+  });
+
+  const replacedText = replaceS3KeyToPreviewUrl(rawText, addDays(new Date(), 90));
+
+  // Add to buffer
+  getS3RawTextSource().addRawTextBuffer({
+    sourceId: url,
+    sourceName: filename,
+    text: replacedText,
+    customPdfParse
+  });
+
+  return {
+    name: filename,
+    url,
+    content: replacedText
+  };
+};
+export const parseFileContentFromUrls = async ({
+  urls,
+  requestOrigin,
+  maxFiles,
+  teamId,
+  tmbId,
+  customPdfParse,
+  usageId
+}: GetFileProps & {
+  urls: string[];
+}): Promise<
+  {
+    success: boolean;
+    name: string;
+    url: string;
+    content: string;
+  }[]
+> => {
+  const parseUrlList = urls
+    .map((url) => normalizeReadableFileUrl({ url, requestOrigin }))
+    .filter(Boolean)
+    .slice(0, maxFiles);
+
+  const readFilesResult = await Promise.all(
+    parseUrlList
+      .map(async (url) => {
+        try {
+          if (await isInternalAddress(url)) {
+            return {
+              success: false,
+              name: '',
+              url,
+              content: PRIVATE_URL_TEXT
+            };
+          }
+
+          const { name, content } = await getFileContentByUrl({
+            url,
+            teamId,
+            tmbId,
+            customPdfParse,
+            usageId
+          });
+
+          return { success: true, name, url, content: content };
+        } catch (error) {
+          return {
+            success: false,
+            name: '',
+            url,
+            content: getErrText(error, 'Load file error')
+          };
+        }
+      })
+      .filter(Boolean)
+  );
+
+  return readFilesResult;
+};
+export const parseFileInfoFromUrls = async ({
+  urls,
+  requestOrigin,
+  maxFiles,
+  teamId
+}: {
+  requestOrigin?: string;
+  maxFiles: number;
+  teamId: string;
+  urls: string[];
+}): Promise<
+  {
+    success: boolean;
+    name: string;
+    url: string;
+  }[]
+> => {
+  const parseUrlList = urls
+    .map((url) => normalizeReadableFileUrl({ url, requestOrigin }))
+    .filter(Boolean)
+    .slice(0, maxFiles);
+
+  const readFilesResult = await Promise.all(
+    parseUrlList
+      .map(async (url) => {
+        // Get from buffer
+        const rawTextBuffer = await getS3RawTextSource().getRawTextBuffer({
+          sourceId: url,
+          customPdfParse: false
+        });
+        if (rawTextBuffer) {
+          return {
+            success: true,
+            name: rawTextBuffer.filename,
+            url
+          };
+        }
+
+        try {
+          if (await isInternalAddress(url)) {
+            return {
+              success: false,
+              name: '',
+              url
+            };
+          }
+
+          const { filename } = await getFileInfoFromUrl({ teamId, url });
+
+          return { success: true, name: filename, url };
+        } catch (error) {
+          return {
+            success: false,
+            name: '',
+            url
+          };
+        }
+      })
+      .filter(Boolean)
+  );
+
+  return readFilesResult;
+};

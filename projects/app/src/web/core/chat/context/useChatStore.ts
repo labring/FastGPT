@@ -4,6 +4,11 @@ import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/ch
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatSidebarPaneEnum } from '@/pageComponents/chat/constants';
 
+export enum AgentChatTestTabEnum {
+  helper = 'helper',
+  chatDebug = 'chat_debug'
+}
+
 type State = {
   source?: `${ChatSourceEnum}`;
   setSource: (e: `${ChatSourceEnum}`) => any;
@@ -18,9 +23,17 @@ type State = {
   setChatId: (e?: string) => any;
   /** 每个应用最近一次打开的 chatId，用于切换应用时恢复会话 */
   appChatIdMap: Record<string, string>;
+  /** 非主会话按标准 sourceKey 隔离的 chatId，用于同一页面承载多个 ChatBox。 */
+  sourceChatIdMap: Record<string, string>;
+  ensureSourceChatId: (sourceKey: string) => string;
+  setSourceChatId: (sourceKey: string, chatId?: string) => string;
 
   lastPane: ChatSidebarPaneEnum;
   setLastPane: (e: ChatSidebarPaneEnum) => any;
+
+  /** Agent V2 详情页右侧测试面板当前 tab，仅在当前浏览器 tab 内保持。 */
+  agentChatTestTab: AgentChatTestTabEnum;
+  setAgentChatTestTab: (e: AgentChatTestTabEnum) => any;
 
   outLinkAuthData: OutLinkChatAuthProps;
   setOutLinkAuthData: (e: OutLinkChatAuthProps) => any;
@@ -54,7 +67,7 @@ const getAppChatIdCacheKey = ({
 
 const createCustomStorage = () => {
   // source/chatId/appId 跟当前 tab 绑定，放 sessionStorage；其余跨 tab 共享字段放 localStorage
-  const sessionKeys = ['source', 'chatId', 'appId'];
+  const sessionKeys = ['source', 'chatId', 'appId', 'agentChatTestTab'];
 
   return {
     getItem: (name: string) => {
@@ -126,9 +139,7 @@ export const useChatStore = create<State>()(
               appId: state.appId,
               outLinkAuthData: state.outLinkAuthData
             });
-            const restoredAppChatId = nextCacheKey
-              ? state.appChatIdMap[nextCacheKey]
-              : undefined;
+            const restoredAppChatId = nextCacheKey ? state.appChatIdMap[nextCacheKey] : undefined;
             // 分享会话的恢复必须依赖 shareId + outLinkUid，不能只靠 lastChatId 的 source 前缀。
             const lastChatPrefix = `${e}-`;
             const restoredLastChatId =
@@ -174,6 +185,26 @@ export const useChatStore = create<State>()(
         lastChatId: '',
         chatId: '',
         appChatIdMap: {},
+        sourceChatIdMap: {},
+        ensureSourceChatId(sourceKey) {
+          let resolvedChatId = '';
+          set((state) => {
+            if (!sourceKey) return;
+
+            resolvedChatId = state.sourceChatIdMap[sourceKey] || getNanoid(24);
+            state.sourceChatIdMap[sourceKey] = resolvedChatId;
+          });
+          return resolvedChatId;
+        },
+        setSourceChatId(sourceKey, chatId) {
+          const resolvedChatId = chatId || getNanoid(24);
+          set((state) => {
+            if (!sourceKey) return;
+
+            state.sourceChatIdMap[sourceKey] = resolvedChatId;
+          });
+          return resolvedChatId;
+        },
         setChatId(e) {
           const id = e || getNanoid(24);
           set((state) => {
@@ -199,6 +230,12 @@ export const useChatStore = create<State>()(
         setLastPane(e) {
           set((state) => {
             state.lastPane = e;
+          });
+        },
+        agentChatTestTab: AgentChatTestTabEnum.chatDebug,
+        setAgentChatTestTab(e) {
+          set((state) => {
+            state.agentChatTestTab = e;
           });
         },
         outLinkAuthData: {},
@@ -236,7 +273,9 @@ export const useChatStore = create<State>()(
             state.chatId = '';
             state.lastChatId = '';
             state.appChatIdMap = {};
+            state.sourceChatIdMap = {};
             state.lastPane = ChatSidebarPaneEnum.HOME;
+            state.agentChatTestTab = AgentChatTestTabEnum.chatDebug;
             state.outLinkAuthData = {};
           });
         }
@@ -251,7 +290,9 @@ export const useChatStore = create<State>()(
           lastChatId: state.lastChatId,
           lastChatAppId: state.lastChatAppId,
           lastPane: state.lastPane,
-          appChatIdMap: state.appChatIdMap
+          agentChatTestTab: state.agentChatTestTab,
+          appChatIdMap: state.appChatIdMap,
+          sourceChatIdMap: state.sourceChatIdMap
         })
       }
     )
@@ -270,7 +311,7 @@ const createStorageListener = (store: any) => {
         const currentState = store.getState();
 
         // 只同步 localStorage 中的数据（非 session 数据）
-        const sessionKeys = ['source', 'chatId', 'appId'];
+        const sessionKeys = ['source', 'chatId', 'appId', 'agentChatTestTab'];
         const updatedState: Partial<State> = {};
         let hasChanges = false;
 

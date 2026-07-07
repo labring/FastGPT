@@ -119,11 +119,12 @@ export function parseAgentInputFiles({
     .map(({ file, url }, index) => {
       const parsedFile = parseUrlToFileType(url);
       if (!parsedFile) return;
+      const type = file.type && file.type !== ChatFileTypeEnum.file ? file.type : parsedFile.type;
 
       return {
         id: `${prefixId}-${index}`,
         name: getSafeSandboxInputFilename(file.name || parsedFile.name || url, index, usedNames),
-        type: parsedFile.type,
+        type,
         url: parsedFile.url
       };
     })
@@ -293,6 +294,15 @@ ${currentTime ? `当前时间: ${currentTime}` : ''}
 ${currentWorkingDirectory ? `当前 sandbox 工作目录: ${currentWorkingDirectory}` : ''}`;
 };
 
+const getAgentMultimodalChatFiles = (files: AgentInputFile[]) =>
+  files
+    .filter((file) => file.type !== ChatFileTypeEnum.file)
+    .map(({ name, type, url }) => ({
+      name,
+      type: type as ChatFileTypeEnum,
+      url
+    }));
+
 const buildSandboxFileWriteBoundaryPrompt = ({
   currentWorkingDirectory
 }: {
@@ -437,6 +447,7 @@ export const useUserContext = async ({
     return {
       ...message,
       value: runtimePrompt2ChatsValue({
+        files: getAgentMultimodalChatFiles(formatFiles),
         text: buildAgentUserReminderInput({
           query: text,
           filesInfo: formatFiles
@@ -479,6 +490,7 @@ export const useUserContext = async ({
       const currentUserMessage: ChatItemMiniType = {
         ...currentMessage,
         value: runtimePrompt2ChatsValue({
+          files: getAgentMultimodalChatFiles(currentInputFiles),
           // 当前 Human 才注入完整 reminder：sandbox、skill、文件、知识库、当前时间和原始问题。
           text: buildAgentUserReminderInput({
             query: currentUserInput,

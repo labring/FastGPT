@@ -25,11 +25,11 @@ import { getInitChatInfo } from '@/web/core/chat/api';
 
 const fileSelectConfig: AppFileSelectConfigType = {
   maxFiles: 10,
-  canSelectFile: false,
-  canSelectImg: false,
+  canSelectFile: true,
+  canSelectImg: true,
   customPdfParse: false,
-  canSelectVideo: false,
-  canSelectAudio: false,
+  canSelectVideo: true,
+  canSelectAudio: true,
   canSelectCustomFileExtension: false,
   customFileExtensionList: []
 };

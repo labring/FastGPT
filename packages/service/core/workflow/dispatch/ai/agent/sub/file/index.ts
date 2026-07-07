@@ -2,7 +2,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { DispatchSubAppResponse } from '../../type';
-import { getFileContentByUrl } from '../../../../../utils/file';
+import { getFileContentByUrl } from '../../../../../../chat/fileContext';
 
 type FileReadParams = {
   files: { id: string; url: string }[];

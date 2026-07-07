@@ -23,7 +23,6 @@ import { refreshVersionKey } from '../../../common/cache';
 import { SystemCacheKeyEnum } from '../../../common/cache/type';
 import { getLogger, LogCategories } from '../../../common/logger';
 import { getRuntimeResolvedPriceTiers } from '@fastgpt/global/core/ai/pricing';
-import { serviceEnv } from '../../../env';
 
 export const loadSystemModels = async (init = false, language = 'en') => {
   if (!init && global.systemModelList) return;
@@ -79,9 +78,6 @@ export const loadSystemModels = async (init = false, language = 'en') => {
         }
         if (model.isDefaultChatTitleModel) {
           _systemDefaultModel.chatTitleLLM = model;
-        }
-        if (model.model === serviceEnv.HELPER_BOT_MODEL) {
-          _systemDefaultModel.helperBotLLM = model;
         }
       } else if (model.type === ModelTypeEnum.embedding) {
         _embeddingModelMap.set(model.model, model);
@@ -190,10 +186,6 @@ export const loadSystemModels = async (init = false, language = 'en') => {
         _systemDefaultModel.datasetImageLLM = Array.from(_llmModelMap.values()).find(
           (item) => item.vision
         );
-      }
-      if (!_systemDefaultModel.helperBotLLM) {
-        // HELPER_BOT_MODEL 未配置或未命中已启用模型时，回退到系统默认 LLM。
-        _systemDefaultModel.helperBotLLM = _systemDefaultModel.llm;
       }
       if (!_systemDefaultModel.embedding) {
         _systemDefaultModel.embedding = Array.from(_embeddingModelMap.values())[0];

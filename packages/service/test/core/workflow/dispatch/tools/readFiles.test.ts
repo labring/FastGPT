@@ -6,7 +6,7 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 
 const mockparseFileContentFromUrls = vi.hoisted(() => vi.fn());
 
-vi.mock('@fastgpt/service/core/workflow/utils/file', () => ({
+vi.mock('@fastgpt/service/core/chat/fileContext', () => ({
   parseFileContentFromUrls: mockparseFileContentFromUrls
 }));
 

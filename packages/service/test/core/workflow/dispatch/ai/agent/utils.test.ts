@@ -163,6 +163,59 @@ describe('Agent read_files tool protocol', () => {
     );
   });
 
+  it('ignores read_files ids that are not registered document files', async () => {
+    const executeTool = getExecuteTool({
+      checkIsStopping: vi.fn(),
+      chatConfig: {},
+      runningUserInfo: {
+        teamId: 'team_1',
+        tmbId: 'tmb_1'
+      },
+      runningAppInfo: {
+        id: 'app_1'
+      },
+      chatId: 'chat_1',
+      uid: 'user_1',
+      variableState: {} as any,
+      externalProvider: {
+        openaiAccount: undefined
+      } as any,
+      lang: 'zh-CN',
+      requestOrigin: '',
+      mode: 'chat',
+      timezone: 'Asia/Shanghai',
+      retainDatasetCite: false,
+      maxRunTimes: 10,
+      workflowDispatchDeep: 0,
+      params: {
+        model: 'gpt-4'
+      },
+      stream: false,
+      getSubAppInfo: () => ({
+        name: '文件解析',
+        avatar: '',
+        toolDescription: ''
+      }),
+      getSubApp: () => undefined,
+      completionTools: [readFileTool],
+      filesMap: {}
+    } as any);
+
+    const result = await executeTool({
+      callId: 'call_read_files',
+      toolId: SubAppIds.readFiles,
+      args: '{"ids":["current-0"]}'
+    });
+
+    expect(dispatchFileReadMock).toHaveBeenCalledTimes(1);
+    expect(dispatchFileReadMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        files: []
+      })
+    );
+    expect(result.response).toBe('file content');
+  });
+
   it('replaces agent file ids before dispatching user tools', async () => {
     dispatchToolMock.mockResolvedValue({
       response: 'tool response',

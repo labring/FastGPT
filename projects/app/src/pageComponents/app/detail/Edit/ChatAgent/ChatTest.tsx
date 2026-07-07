@@ -4,25 +4,24 @@ import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
-import { useSafeState } from 'ahooks';
+import { useLocalStorageState, useSafeState } from 'ahooks';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../../context';
 import { useChatTest } from '../../useChatTest';
 import ChatItemContextProvider, { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import ChatRecordContextProvider from '@/web/core/chat/context/chatRecordContext';
-import { useChatStore } from '@/web/core/chat/context/useChatStore';
+import { AgentChatTestTabEnum, useChatStore } from '@/web/core/chat/context/useChatStore';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { cardStyles } from '../../constants';
 import ChatQuoteList from '@/pageComponents/chat/ChatQuoteList';
 import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
 import type { Form2WorkflowFnType } from '../FormComponent/type';
 import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
-import HelperBot from '@/components/core/chat/HelperBot';
-import type { HelperBotRefType } from '@/components/core/chat/HelperBot/context';
-import { HelperBotTypeEnum } from '@fastgpt/global/core/chat/helperBot/type';
-import { loadGeneratedTools } from './utils';
-import { checkAgentSkillSandboxUnavailable } from './utils';
+import ChatAgentHelper from '@/components/core/chat/ChatAgentHelper';
+import type { ChatAgentHelperRefType } from '@/components/core/chat/ChatAgentHelper';
+import { ChatAgentHelperTypeEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
+import { checkAgentSkillSandboxUnavailable, loadGeneratedTools } from './utils';
 import { systemSubInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
 import { useSandboxEditor, useSandboxStatus } from '@/pageComponents/chat/SandboxEditor/hook';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -30,6 +29,8 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import ChatVariableButton from '@/pageComponents/chat/ChatWindow/ChatVariableButton';
 import ProModal from '@/components/ProTip/ProModal';
+import ChatAIModelSelector from '@/pageComponents/chat/ChatWindow/ChatAIModelSelector';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 type Props = {
   appForm: AppFormEditFormType;
@@ -40,8 +41,8 @@ type Props = {
 const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { chatId } = useChatStore();
-  const { feConfigs } = useSystemStore();
+  const { chatId, agentChatTestTab, setAgentChatTestTab } = useChatStore();
+  const { feConfigs, llmModelList, defaultModels } = useSystemStore();
   const { teamPlanStatus } = useUserStore();
   const enableSandbox = !teamPlanStatus?.standard || !!teamPlanStatus?.standard?.enableSandbox;
   const showSandbox = feConfigs.show_agent_sandbox;
@@ -51,9 +52,17 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
     enableSandbox
   });
 
-  const [activeTab, setActiveTab] = useSafeState<'helper' | 'chat_debug'>('chat_debug');
+  const canUseHelper = !!feConfigs?.isPlus;
+  const activeTab = canUseHelper ? agentChatTestTab : AgentChatTestTabEnum.chatDebug;
+  const [hasRenderedHelper, setHasRenderedHelper] = useSafeState(false);
   const [proModalOpen, setProModalOpen] = useSafeState(false);
-  const HelperBotRef = useRef<HelperBotRefType>(null);
+  const [helperSelectedModel, setHelperSelectedModel] = useLocalStorageState<string>(
+    'chat_agent_helper_model',
+    {
+      defaultValue: defaultModels.llm?.model
+    }
+  );
+  const ChatAgentHelperRef = useRef<ChatAgentHelperRefType>(null);
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
   const datasetCiteData = useContextSelector(ChatItemContext, (v) => v.datasetCiteData);
@@ -63,6 +72,48 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
     nodes: appDetail.modules || [],
     edges: appDetail.edges || []
   });
+
+  const modelSelectList = useMemo(
+    () => llmModelList.map((item) => ({ label: item.name, value: item.model })),
+    [llmModelList]
+  );
+  const helperModel = useMemo(() => {
+    const modelSet = new Set(llmModelList.map((item) => item.model));
+    const defaultModel = defaultModels.llm?.model || llmModelList[0]?.model || '';
+
+    if (helperSelectedModel && modelSet.has(helperSelectedModel)) {
+      return helperSelectedModel;
+    }
+    if (defaultModel && modelSet.has(defaultModel)) {
+      return defaultModel;
+    }
+    return llmModelList[0]?.model || '';
+  }, [defaultModels.llm?.model, helperSelectedModel, llmModelList]);
+  const onChangeHelperModel = useCallback(
+    (model: string) => {
+      setHelperSelectedModel(model);
+    },
+    [setHelperSelectedModel]
+  );
+  const HelperModelSelectorInput = useMemo(
+    () => (
+      <Box w={'fit-content'} maxW={'300px'} flex={'0 1 auto'} minW={0}>
+        <ChatAIModelSelector
+          h={'36px'}
+          w={'fit-content'}
+          maxW={'300px'}
+          boxShadow={'none'}
+          size={'sm'}
+          bg={'myGray.50'}
+          rounded={'10px'}
+          value={helperModel}
+          list={modelSelectList}
+          onChange={onChangeHelperModel}
+        />
+      </Box>
+    ),
+    [helperModel, modelSelectList, onChangeHelperModel]
+  );
 
   // Sandbox: Status Hook 负责网络同步，UI Hook 负责弹窗渲染
   const { SandboxEntryIcon } = useSandboxStatus({
@@ -84,17 +135,32 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
   }, [datasetCiteData, setRenderEdit]);
 
   useEffect(() => {
-    setActiveTab('chat_debug');
     setCiteModalData(undefined);
     setRenderEdit(true);
-  }, [appDetail._id, chatId, setActiveTab, setCiteModalData, setRenderEdit]);
+  }, [appDetail._id, chatId, setCiteModalData, setRenderEdit]);
+
+  const updateActiveTab = useCallback(
+    (value: AgentChatTestTabEnum) => {
+      if (value === AgentChatTestTabEnum.helper) {
+        setHasRenderedHelper(true);
+      }
+      setAgentChatTestTab(value);
+    },
+    [setAgentChatTestTab, setHasRenderedHelper]
+  );
+
+  useEffect(() => {
+    if (activeTab === AgentChatTestTabEnum.helper) {
+      setHasRenderedHelper(true);
+    }
+  }, [activeTab, setHasRenderedHelper]);
 
   const { ChatContainer, restartChat } = useChatTest({
     ...workflowData,
     chatConfig: appForm.chatConfig,
     isReady: !isAgentSkillSandboxUnavailable
   });
-  const onRestartChat = useCallback(() => {
+  const onRestartChat = useCallback(async () => {
     if (isAgentSkillSandboxUnavailable) {
       toast({
         status: 'warning',
@@ -102,15 +168,22 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
       });
       return;
     }
-    if (activeTab === 'helper') {
-      HelperBotRef.current?.restartChat();
+    if (activeTab === AgentChatTestTabEnum.helper) {
+      try {
+        await ChatAgentHelperRef.current?.restartChat();
+      } catch (error) {
+        toast({
+          status: 'warning',
+          title: getErrText(error, t('common:core.chat.error.Chat error'))
+        });
+      }
     } else {
       restartChat();
     }
   }, [activeTab, isAgentSkillSandboxUnavailable, restartChat, t, toast]);
 
-  // 构建 TopAgent metadata,从 appForm 中提取配置
-  const topAgentMetadata = useMemo(
+  // 构建 ChatAgentHelper metadata，从 appForm 中提取配置。
+  const chatAgentHelperMetadata = useMemo(
     () => ({
       systemPrompt: appForm.aiSettings.systemPrompt,
       selectedTools: appForm.selectedTools.map((tool) => tool.id),
@@ -119,13 +192,10 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
       fileUpload: appForm.chatConfig.fileSelectConfig?.canSelectFile || false,
       enableSandbox: appForm.aiSettings.useAgentSandbox || false,
       modelConfig: {
-        model: appForm.aiSettings.model,
-        temperature: appForm.aiSettings.temperature,
-        maxToken: appForm.aiSettings.maxToken,
-        stream: true
+        model: helperModel
       }
     }),
-    [appForm]
+    [appForm, helperModel]
   );
 
   return (
@@ -143,32 +213,34 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
         boxShadow={'3'}
       >
         <Flex px={[2, 5]} pb={2} alignItems={'center'}>
-          <FillRowTabs<'helper' | 'chat_debug'>
+          <FillRowTabs<AgentChatTestTabEnum>
             py={1}
             list={[
               {
                 label: t('app:helper_bot'),
-                value: 'helper'
+                value: AgentChatTestTabEnum.helper
               },
               {
                 label: t('app:chat_debug'),
-                value: 'chat_debug'
+                value: AgentChatTestTabEnum.chatDebug
               }
             ]}
             value={activeTab}
             onChange={(value) => {
-              if (value === 'helper' && !feConfigs?.isPlus) {
+              if (value === AgentChatTestTabEnum.helper && !canUseHelper) {
                 setProModalOpen(true);
                 return;
               }
-              setActiveTab(value);
+              updateActiveTab(value);
             }}
           />
 
           <Box flex={1} />
           <Flex alignItems={'center'} gap={2}>
             <SandboxEntryIcon size={'smSquare'} onOpen={onOpenSandboxModal} />
-            {activeTab === 'chat_debug' && <ChatVariableButton chatType={ChatTypeEnum.test} />}
+            {activeTab === AgentChatTestTabEnum.chatDebug && (
+              <ChatVariableButton chatType={ChatTypeEnum.test} />
+            )}
             <MyTooltip label={t('common:core.chat.Restart')}>
               <IconButton
                 className="chat"
@@ -185,70 +257,71 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
             </MyTooltip>
           </Flex>
         </Flex>
-        <Box flex={1}>
-          {activeTab === 'helper' && (
-            <HelperBot
-              ChatBoxRef={HelperBotRef}
-              type={HelperBotTypeEnum.topAgent}
-              metadata={topAgentMetadata}
-              onApply={async (formData) => {
-                const fileUploadEnabled = !!formData.fileUploadEnabled;
-                const enableSandboxEnabled = !!formData.enableSandboxEnabled;
+        <Box flex={1} minH={0}>
+          {hasRenderedHelper && (
+            <Box h={'100%'} display={activeTab === AgentChatTestTabEnum.helper ? 'block' : 'none'}>
+              <ChatAgentHelper
+                ChatBoxRef={ChatAgentHelperRef}
+                appId={appDetail._id}
+                type={ChatAgentHelperTypeEnum.chatAgent}
+                metadata={chatAgentHelperMetadata}
+                InputLeftComponent={HelperModelSelectorInput}
+                onApply={async (formData) => {
+                  // Filter internal tools
+                  const filteredToolIds = (formData.tools || []).filter(
+                    (toolId) => !(toolId in systemSubInfo)
+                  );
 
-                // Filter internal tools
-                const filteredToolIds = (formData.tools || []).filter(
-                  (toolId) => !(toolId in systemSubInfo)
-                );
+                  const newTools = await loadGeneratedTools({
+                    newToolIds: filteredToolIds,
+                    existsTools: appForm.selectedTools,
+                    fileSelectConfig: appForm.chatConfig.fileSelectConfig
+                  });
 
-                const newTools = await loadGeneratedTools({
-                  newToolIds: filteredToolIds,
-                  existsTools: appForm.selectedTools,
-                  fileSelectConfig: appForm.chatConfig.fileSelectConfig
-                });
+                  setAppForm((prev) => {
+                    const fileUploadEnabled = !!formData.fileUploadEnabled;
+                    const enableSandboxEnabled = !!formData.enableSandboxEnabled;
 
-                setAppForm((prev) => {
-                  const newForm: AppFormEditFormType = {
-                    ...prev,
-                    selectedTools: [...newTools],
-                    selectedAgentSkills: formData.selectedAgentSkills || [],
-                    dataset:
-                      formData.datasets && formData.datasets.length > 0
-                        ? {
-                            ...prev.dataset,
-                            datasets: formData.datasets
-                          }
-                        : prev.dataset,
-                    aiSettings: {
-                      ...prev.aiSettings,
-                      systemPrompt: formData.systemPrompt || prev.aiSettings.systemPrompt,
-                      useAgentSandbox:
-                        enableSandboxEnabled || (formData.selectedAgentSkills?.length || 0) > 0
-                    },
-                    chatConfig: {
-                      ...prev.chatConfig,
-                      fileSelectConfig: fileUploadEnabled
-                        ? {
-                            ...prev.chatConfig.fileSelectConfig,
-                            canSelectFile: true
-                          }
-                        : {
-                            maxFiles: undefined,
-                            canSelectFile: false,
-                            customPdfParse: false,
-                            canSelectImg: false,
-                            canSelectVideo: false,
-                            canSelectAudio: false,
-                            canSelectCustomFileExtension: false,
-                            customFileExtensionList: []
-                          }
-                    }
-                  };
-                  return newForm;
-                });
-              }}
-            />
+                    const newForm: AppFormEditFormType = {
+                      ...prev,
+                      selectedTools: [...newTools],
+                      selectedAgentSkills: formData.selectedAgentSkills || [],
+                      dataset: {
+                        ...prev.dataset,
+                        datasets: formData.datasets ?? []
+                      },
+                      aiSettings: {
+                        ...prev.aiSettings,
+                        systemPrompt: formData.systemPrompt || prev.aiSettings.systemPrompt,
+                        useAgentSandbox:
+                          enableSandboxEnabled || (formData.selectedAgentSkills?.length || 0) > 0
+                      },
+                      chatConfig: {
+                        ...prev.chatConfig,
+                        fileSelectConfig: fileUploadEnabled
+                          ? {
+                              ...prev.chatConfig.fileSelectConfig,
+                              canSelectFile: true
+                            }
+                          : {
+                              maxFiles: undefined,
+                              canSelectFile: false,
+                              customPdfParse: false,
+                              canSelectImg: false,
+                              canSelectVideo: false,
+                              canSelectAudio: false,
+                              canSelectCustomFileExtension: false,
+                              customFileExtensionList: []
+                            }
+                      }
+                    };
+                    return newForm;
+                  });
+                }}
+              />
+            </Box>
           )}
-          {activeTab === 'chat_debug' && <ChatContainer />}
+          {activeTab === AgentChatTestTabEnum.chatDebug && <ChatContainer />}
         </Box>
       </MyBox>
       {datasetCiteData && (

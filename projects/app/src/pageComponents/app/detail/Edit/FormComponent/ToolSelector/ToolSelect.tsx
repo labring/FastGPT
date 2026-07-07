@@ -22,7 +22,7 @@ import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
 
 const ToolSelect = ({
-  topAgentSelectedTools,
+  generatedSelectedTools,
   selectedModel,
   selectedTools = [],
   fileSelectConfig = {},
@@ -30,7 +30,7 @@ const ToolSelect = ({
   onUpdateTool,
   onRemoveTool
 }: {
-  topAgentSelectedTools?: SelectedToolItemType[];
+  generatedSelectedTools?: SelectedToolItemType[];
   selectedModel: LLMModelItemType;
   selectedTools?: SelectedToolItemType[];
   fileSelectConfig?: AppFileSelectConfigType;
@@ -176,7 +176,7 @@ const ToolSelect = ({
 
       {isOpenToolsSelect && (
         <ToolSelectModal
-          topAgentSelectedTools={topAgentSelectedTools}
+          generatedSelectedTools={generatedSelectedTools}
           selectedTools={selectedTools}
           fileSelectConfig={fileSelectConfig}
           selectedModel={selectedModel}

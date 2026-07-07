@@ -1,5 +1,6 @@
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType
@@ -26,10 +27,11 @@ import type { ChatSiteItemType } from '../type';
  *
  * 该函数必须和 `generatingMessage` 支持的可见 SSE 事件保持同步。
  */
-export const shouldCreateResumeAiPlaceholder = (event: SseResponseEventEnum) => {
-  return [
+export const shouldCreateResumeAiPlaceholder = (event: string) => {
+  return new Set<string>([
     SseResponseEventEnum.flowNodeResponse,
     SseResponseEventEnum.flowNodeStatus,
+    AuxiliaryGenerationEventEnum.status,
     SseResponseEventEnum.answer,
     SseResponseEventEnum.fastAnswer,
     SseResponseEventEnum.toolCall,
@@ -39,7 +41,7 @@ export const shouldCreateResumeAiPlaceholder = (event: SseResponseEventEnum) => 
     SseResponseEventEnum.plan,
     SseResponseEventEnum.planStatus,
     SseResponseEventEnum.workflowDuration
-  ].includes(event);
+  ]).has(event);
 };
 
 /**

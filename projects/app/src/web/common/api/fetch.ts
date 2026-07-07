@@ -7,6 +7,7 @@ import {
   StreamResumeUnavailableReasonEnum
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
+  ChatSourceTypeEnum,
   STREAM_RESUME_REQUEST_HEADER,
   STREAM_RESUME_REQUEST_HEADER_ENABLED
 } from '@fastgpt/global/core/chat/constants';
@@ -26,8 +27,8 @@ import type {
   ToolModuleResponseItemType,
   SkillModuleResponseItemType
 } from '@fastgpt/global/core/chat/type';
-import type { TopAgentFormDataType } from '@fastgpt/global/core/chat/helperBot/topAgent/type';
-import type { UserInputInteractive } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import type { ChatAgentConfigFormDataType } from '@fastgpt/global/core/ai/auxiliaryGeneration/type';
+import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 import type { AgentPlanStatusType, AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import type { StreamNoNeedToBeResumeType } from '@fastgpt/global/openapi/core/ai/api';
 
@@ -60,6 +61,7 @@ const shouldSendStreamResumeHeader = (url: string) =>
     '/api/v2/chat/completions',
     '/api/proApi/core/chat/chatHome',
     '/api/core/chat/chatTest',
+    '/api/proApi/core/chat/chatAgentHelper/completions',
     '/api/core/ai/skill/debugChat',
     '/api/proApi/core/ai/skill/debugChat'
   ]).has(url);
@@ -86,12 +88,8 @@ type ResponseQueueItemType = CommonResponseType &
         tool: ToolModuleResponseItemType;
       }
     | {
-        event: SseResponseEventEnum.collectionForm;
-        collectionForm: UserInputInteractive;
-      }
-    | {
-        event: SseResponseEventEnum.topAgentConfig;
-        data: TopAgentFormDataType;
+        event: AuxiliaryGenerationEventEnum.chatAgentConfig;
+        data: ChatAgentConfigFormDataType;
       }
     | {
         event: SseResponseEventEnum.plan;
@@ -205,13 +203,13 @@ function handleEventSourceData(params: HandleEventSourceDataParams) {
         break;
       }
 
-      case SseResponseEventEnum.collectionForm: {
-        enqueue({ responseValueId, event, collectionForm: obj });
+      case AuxiliaryGenerationEventEnum.chatAgentConfig: {
+        onmessage({ event, formData: obj });
         break;
       }
 
-      case SseResponseEventEnum.topAgentConfig: {
-        onmessage({ event, formData: obj });
+      case AuxiliaryGenerationEventEnum.status: {
+        onmessage({ event, ...obj });
         break;
       }
 
@@ -301,7 +299,7 @@ function $ssefetch(params: SSEFetchParams) {
       return resolve({ responseText, title });
     };
 
-    const isAnswerEvent = (event: SseResponseEventEnum) => {
+    const isAnswerEvent = (event: string) => {
       return event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer;
     };
 
@@ -460,7 +458,7 @@ function $resumefetch({ url, onmessage, onResumeUnavailable, controller }: Resum
       } satisfies ResumeStreamErrorType);
     };
 
-    const isAnswerEvent = (event: SseResponseEventEnum) => {
+    const isAnswerEvent = (event: string) => {
       return event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer;
     };
 
@@ -671,6 +669,9 @@ export async function streamResumeFetch(params: StreamResumeFetchParams) {
     query.set('skillId', params.skillId);
   } else {
     query.set('appId', params.appId!);
+    if (params.sourceType === ChatSourceTypeEnum.chatAgentHelper) {
+      query.set('sourceType', ChatSourceTypeEnum.chatAgentHelper);
+    }
   }
 
   const url = `/api/core/chat/resume?${query}`;

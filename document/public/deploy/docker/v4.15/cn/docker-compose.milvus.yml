@@ -130,7 +130,6 @@ x-service-env-config: &x-service-env-config
   MAX_LOGIN_SESSION:
   ALLOWED_ORIGINS:
   AGENT_ENGINE: default
-  HELPER_BOT_MODEL: qwen-max
   CHAT_TITLE_MODEL:
   SKIP_FILE_TYPE_CHECK: false
   WECHAT_CHANNEL_CONCURRENCY: 1000

@@ -1,9 +1,8 @@
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemMiniType, UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { parseUrlToFileType } from '../../../utils/context';
-import { formatUserQueryWithFiles } from '../../../utils/file';
+import { rewriteChatMessagesWithFileContext } from '../../../../chat/fileContext';
 import type { ChatMessageFileParser } from './type';
 
 /**
@@ -44,31 +43,11 @@ export const rewriteChatMessagesWithFiles = async ({
   parseHistoryFiles: boolean;
   parseFileFn: ChatMessageFileParser;
 }) => {
-  return Promise.all(
-    messages.map(async (message, index): Promise<ChatItemMiniType> => {
-      if (message.obj !== ChatRoleEnum.Human) {
-        return message;
-      }
-
-      const isCurrentUserMessage = index === messages.length - 1;
-      if (!isCurrentUserMessage && !parseHistoryFiles) {
-        return {
-          ...message,
-          value: message.value.filter((item) => !item.file)
-        };
-      }
-
-      const query = await formatUserQueryWithFiles({
-        userQuery: message.value,
-        parseFileFn
-      });
-
-      return {
-        ...message,
-        value: query
-      };
-    })
-  );
+  return rewriteChatMessagesWithFileContext({
+    messages,
+    parseHistoryFiles,
+    parseFileFn
+  });
 };
 
 /**

@@ -27,6 +27,10 @@ export const getRunningSandboxId = ({
     return getEditDebugSandboxId(sourceId);
   }
 
+  if (sourceType === ChatSourceTypeEnum.chatAgentHelper) {
+    throw new Error('ChatAgentHelper source does not support sandbox id generation');
+  }
+
   const exhaustiveCheck: never = sourceType;
   throw new Error(`Unsupported chat source type: ${exhaustiveCheck}`);
 };

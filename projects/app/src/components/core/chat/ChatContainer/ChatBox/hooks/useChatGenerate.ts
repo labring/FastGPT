@@ -22,6 +22,7 @@ import {
   mergeNodeResponseDataByIdAndParent
 } from '@fastgpt/global/core/chat/utils/mergeNode';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
@@ -206,6 +207,21 @@ export const useChatGenerate = ({
           return {
             ...item,
             responseData: appendNodeResponseByParent(item.responseData, nodeResponse)
+          };
+        }
+        if (event === AuxiliaryGenerationEventEnum.status && status) {
+          if (status === 'finish') {
+            return {
+              ...item,
+              status: ChatStatusEnum.loading,
+              moduleName: name || item.moduleName
+            };
+          }
+
+          return {
+            ...item,
+            status,
+            moduleName: name || item.moduleName
           };
         }
         if (event === SseResponseEventEnum.flowNodeStatus && status) {
@@ -577,7 +593,7 @@ export const useChatGenerate = ({
       interactive,
       autoTTSResponse = false,
       hideInUI = false,
-      clearInput = true
+      clearInput = false
     }) => {
       variablesForm.handleSubmit(
         async ({ variables = {} }) => {
@@ -721,6 +737,7 @@ export const useChatGenerate = ({
             const { responseText } = await onStartChat({
               messages,
               responseChatItemId: responseChatId,
+              interactive,
               controller: abortSignal,
               generatingMessage: (e) => generatingMessage({ ...e, autoTTSResponse }),
               variables: requestVariables
