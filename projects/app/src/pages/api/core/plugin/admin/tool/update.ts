@@ -7,6 +7,7 @@ import {
   UpdateSystemToolBodySchema,
   type UpdateSystemToolBodyType
 } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
+import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 export type updateToolQuery = {};
 
@@ -14,12 +15,22 @@ export type updateToolBody = UpdateSystemToolBodyType;
 
 export type updateToolResponse = {};
 
+const omitUndefinedFields = <T extends Record<string, unknown>>(fields: T) =>
+  Object.fromEntries(
+    Object.entries(fields).filter(([, value]) => value !== undefined)
+  ) as Partial<T>;
+
 async function handler(
   req: ApiRequestProps<updateToolBody, updateToolQuery>,
   res: ApiResponseType<any>
 ): Promise<updateToolResponse> {
   await authSystemAdmin({ req });
-  const { id: pluginId, ...updateFields } = UpdateSystemToolBodySchema.parse(req.body);
+  const {
+    body: { id: pluginId, ...updateFields }
+  } = parseApiInput({
+    req,
+    bodySchema: UpdateSystemToolBodySchema
+  });
 
   const plugin = await MongoSystemTool.findOne({ pluginId });
 
@@ -28,16 +39,16 @@ async function handler(
   }
 
   // 基础更新字段
-  const baseUpdateFields = {
+  const baseUpdateFields = omitUndefinedFields({
     pluginId,
     status: updateFields.status,
     originCost: updateFields.originCost,
     currentCost: updateFields.currentCost,
     hasTokenFee: updateFields.hasTokenFee,
     systemKeyCost: updateFields.systemKeyCost,
-    promoteTags: updateFields.promoteTags ?? null,
-    hideTags: updateFields.hideTags ?? null
-  };
+    promoteTags: 'promoteTags' in updateFields ? (updateFields.promoteTags ?? null) : undefined,
+    hideTags: 'hideTags' in updateFields ? (updateFields.hideTags ?? null) : undefined
+  });
   if ('secretsVal' in updateFields) {
     Object.assign(baseUpdateFields, {
       secretsVal: updateFields.secretsVal ?? null
@@ -63,7 +74,7 @@ async function handler(
     // 如果有子工具，更新子工具
     for await (const tool of updateFields.children || []) {
       const childPluginId = tool.id.includes('/') ? tool.id : `${pluginId}/${tool.id}`;
-      const childUpdateFields = {
+      const childUpdateFields = omitUndefinedFields({
         pluginId: childPluginId,
         systemKeyCost: tool.systemKeyCost,
         currentCost: updateFields.currentCost,
@@ -72,7 +83,7 @@ async function handler(
         originCost: updateFields.originCost,
         promoteTags: updateFields.promoteTags,
         hideTags: updateFields.hideTags
-      };
+      });
       if ('secretsVal' in updateFields) {
         Object.assign(childUpdateFields, {
           secretsVal: updateFields.secretsVal

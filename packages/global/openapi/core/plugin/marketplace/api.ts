@@ -4,7 +4,13 @@ import { PluginToolTagSchema } from '../../../../core/plugin/type';
 import type { ToolListItemType } from '../../../../sdk/fastgpt-plugin';
 
 export const MarketplaceOfficialSource = 'official';
+export const MarketplaceCommunitySource = 'community';
 export const MarketplacePkgSourceSchema = z.string().trim().min(1);
+export const MarketplaceSourceFilterSchema = z.enum([
+  MarketplaceOfficialSource,
+  MarketplaceCommunitySource
+]);
+export type MarketplaceSourceFilterType = z.infer<typeof MarketplaceSourceFilterSchema>;
 
 const formatToolDetailSchema = z.object({});
 const formatToolSimpleSchema = z.object({});
@@ -15,6 +21,7 @@ export type MarketplaceToolListItemType = ToolListItemType & {
   toolId: string;
   downloadCount: number;
   downloadUrl?: string;
+  source?: string;
 };
 
 export const MarketplaceToolDetailItemSchema = formatToolDetailSchema.extend({
@@ -27,7 +34,8 @@ export const MarketplaceToolDetailSchema = z.object({
 // List
 export const GetMarketplaceToolsBodySchema = PaginationSchema.extend({
   searchKey: z.string().optional(),
-  tags: z.array(z.string()).nullish()
+  tags: z.array(z.string()).nullish(),
+  source: MarketplaceSourceFilterSchema.optional()
 });
 export type GetMarketplaceToolsBodyType = z.infer<typeof GetMarketplaceToolsBodySchema>;
 
@@ -98,9 +106,7 @@ export const DeleteMarketplacePkgResponseSchema = z.object({
     description: '插件来源'
   })
 });
-export type DeleteMarketplacePkgResponseType = z.infer<
-  typeof DeleteMarketplacePkgResponseSchema
->;
+export type DeleteMarketplacePkgResponseType = z.infer<typeof DeleteMarketplacePkgResponseSchema>;
 
 // Tags
 export const GetMarketplaceToolTagsResponseSchema = z.array(PluginToolTagSchema);

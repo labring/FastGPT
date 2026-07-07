@@ -202,6 +202,34 @@ const getVisiblePluginStatus = ({
   return status ?? PluginStatusEnum.Normal;
 };
 
+const assertSystemToolRunnable = ({
+  tool,
+  source
+}: {
+  tool?: SystemPluginToolCollectionType | null;
+  source?: string;
+}) => {
+  if (isDebugToolSource(source)) return;
+  if (tool?.status === PluginStatusEnum.Offline) {
+    return Promise.reject(PluginErrEnum.unExist);
+  }
+};
+
+const getParentSystemToolConfig = async ({
+  pluginId,
+  idSource,
+  parentPluginId
+}: {
+  pluginId: string;
+  idSource?: string;
+  parentPluginId: string;
+}) => {
+  if (!pluginId.includes('/')) return;
+  if (idSource === AppToolSourceEnum.systemTool || idSource === AppToolSourceEnum.commercial) {
+    return getSystemToolConfig(`${idSource}-${parentPluginId}`);
+  }
+};
+
 /**
  * SystemTool Repo
  * 系统工具仓储层
@@ -737,6 +765,13 @@ export class SystemToolRepo {
     const [parentPluginId] = rawPluginId.split('/');
 
     const dbTool = await getSystemToolConfig(pluginId);
+    await assertSystemToolRunnable({ tool: dbTool, source: pluginSource });
+    const parentDbTool = await getParentSystemToolConfig({
+      pluginId,
+      idSource,
+      parentPluginId
+    });
+    await assertSystemToolRunnable({ tool: parentDbTool, source: pluginSource });
 
     if (!dbTool?.customConfig?.associatedPluginId) {
       const tool = await pluginClient.getTool({
@@ -778,6 +813,7 @@ export class SystemToolRepo {
     }
 
     const tool = await this.getSystemToolRecord(pluginId);
+    await assertSystemToolRunnable({ tool });
 
     if (!tool || !tool.customConfig?.associatedPluginId) {
       return Promise.reject('Plugin is not associated with a app');

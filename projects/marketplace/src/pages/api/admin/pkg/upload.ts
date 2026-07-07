@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { multer } from '@fastgpt/service/common/file/multer';
-import { AUTH_TOKEN } from '@/service/auth';
+import { authenticateSubmitToken } from '@/service/auth';
 import { uploadMarketplacePkg } from '@/service/tool/upload';
 import {
   UploadMarketplacePkgDataSchema,
@@ -55,7 +55,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return sendJson(res, 405, null, 'Method not allowed');
     }
 
-    if (!!AUTH_TOKEN && req.headers['authorization'] !== `Bearer ${AUTH_TOKEN}`) {
+    const tokenIdentity = authenticateSubmitToken(req.headers['authorization']);
+    if (!tokenIdentity) {
       return sendJson(res, 401, null, 'Unauthorized');
     }
 
@@ -65,10 +66,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
     filepaths.push(result.fileMetadata.path);
 
-    const data = UploadMarketplacePkgDataSchema.parse(result.data);
+    UploadMarketplacePkgDataSchema.parse(result.data);
     const response = await uploadMarketplacePkg({
       buffer: result.getBuffer(),
-      source: data.source
+      source: tokenIdentity.source
     });
 
     return sendJson(res, 200, UploadMarketplacePkgResponseSchema.parse(response));

@@ -136,4 +136,60 @@ describe('/api/tool/list', () => {
       }
     });
   });
+
+  it('filters by source before pagination and keeps legacy tools as official', async () => {
+    toolDataMocks.getToolList.mockResolvedValue([
+      createTool({ toolId: 'legacy', id: 'legacy', pluginId: 'legacy', source: undefined }),
+      createTool({ toolId: 'official', id: 'official', pluginId: 'official', source: 'official' }),
+      createTool({ toolId: 'community', id: 'community', pluginId: 'community', source: 'community' })
+    ]);
+
+    const { default: handler } = await import('../../../../../src/pages/api/tool/list');
+    const officialRes = createResponse();
+    await handler(
+      {
+        method: 'POST',
+        query: {},
+        body: {
+          pageNum: 1,
+          pageSize: 10,
+          source: 'official'
+        }
+      } as any,
+      officialRes as any
+    );
+
+    expect(officialRes.body).toMatchObject({
+      code: 200,
+      data: {
+        total: 2,
+        list: [
+          { toolId: 'legacy', downloadUrl: 'https://cdn.example.com/legacy.pkg' },
+          { toolId: 'official', downloadUrl: 'https://cdn.example.com/official.pkg' }
+        ]
+      }
+    });
+
+    const communityRes = createResponse();
+    await handler(
+      {
+        method: 'POST',
+        query: {},
+        body: {
+          pageNum: 1,
+          pageSize: 10,
+          source: 'community'
+        }
+      } as any,
+      communityRes as any
+    );
+
+    expect(communityRes.body).toMatchObject({
+      code: 200,
+      data: {
+        total: 1,
+        list: [{ toolId: 'community', downloadUrl: 'https://cdn.example.com/community.pkg' }]
+      }
+    });
+  });
 });

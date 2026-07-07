@@ -6,7 +6,9 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import ToolCard, { type ToolCardItemType } from '@fastgpt/web/components/core/plugin/tool/ToolCard';
-import ToolTagFilterBox from '@fastgpt/web/components/core/plugin/tool/TagFilterBox';
+import ToolTagFilterBox, {
+  type MarketplaceSourceFilterValue
+} from '@fastgpt/web/components/core/plugin/tool/TagFilterBox';
 import ToolDetailDrawer from '@fastgpt/web/components/core/plugin/tool/ToolDetailDrawer';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
@@ -42,21 +44,41 @@ const createQuerySelectedTool = ({
   version
 }: Required<Pick<MarketplaceDetailQuery, 'pluginId'>> &
   Pick<MarketplaceDetailQuery, 'version'>): ToolCardItemType => ({
-    id: pluginId,
-    name: pluginId,
-    description: '',
-    version
-  });
+  id: pluginId,
+  name: pluginId,
+  description: '',
+  version
+});
+
+const getSourceFilterValue = (value: string | string[] | undefined) => {
+  const source = getSingleQueryValue(value);
+  return source === 'official' || source === 'community'
+    ? (source as MarketplaceSourceFilterValue)
+    : undefined;
+};
+
+const isSameBrowserUrl = (nextUrl: string) => {
+  if (typeof window === 'undefined') return false;
+
+  const targetUrl = new URL(nextUrl, window.location.origin);
+  return (
+    targetUrl.pathname === window.location.pathname && targetUrl.search === window.location.search
+  );
+};
 
 const ToolkitMarketplace = () => {
   const { t, i18n } = useTranslation();
   const router = useRouter();
-  const { search, tags, pluginId, version } = router.query;
+  const { search, tags, pluginId, version, source } = router.query;
   const queryPluginId = getSingleQueryValue(pluginId);
   const queryVersion = getSingleQueryValue(version);
+  const querySource = getSourceFilterValue(source);
   const [inputValue, setInputValue] = useState('');
   const [searchText, setSearchText] = useState('');
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [selectedSource, setSelectedSource] = useState<MarketplaceSourceFilterValue | undefined>(
+    querySource
+  );
   const [selectedTool, setSelectedTool] = useState<ToolCardItemType | null>(null);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [showCompactSearch, setShowCompactSearch] = useState(false);
@@ -88,10 +110,11 @@ const ToolkitMarketplace = () => {
             : [];
         setSelectedTagIds(tagArray);
       }
+      setSelectedSource(querySource);
     } catch (error) {
       console.warn('Failed to initialize URL params:', error);
     }
-  }, [search, tags]);
+  }, [querySource, search, tags]);
 
   // 使用自定义 debounce 进行实时搜索
   const [debouncedSearchText, setDebouncedSearchText] = useState(inputValue);
@@ -113,12 +136,18 @@ const ToolkitMarketplace = () => {
 
   // 更新 URL 的函数
   const updateUrlParams = useCallback(
-    (newSearch: string, newTags: string[], detailQuery = detailQueryRef.current) => {
+    (
+      newSearch: string,
+      newTags: string[],
+      detailQuery = detailQueryRef.current,
+      newSource = selectedSource
+    ) => {
       try {
         const newUrl = buildMarketplacePageUrl({
           pathname: router.pathname,
           search: newSearch,
           tags: newTags,
+          source: newSource,
           pluginId: detailQuery?.pluginId,
           version: detailQuery?.version
         });
@@ -130,6 +159,7 @@ const ToolkitMarketplace = () => {
             window.isSecureContext ||
             (window.location.protocol === 'http:' && window.location.hostname === 'localhost')
           ) {
+            if (isSameBrowserUrl(newUrl)) return;
             try {
               window.history.replaceState({}, '', newUrl);
             } catch (historyError) {
@@ -144,7 +174,7 @@ const ToolkitMarketplace = () => {
         // 如果 URL 操作失败，跳过更新
       }
     },
-    [router.pathname]
+    [router.pathname, selectedSource]
   );
 
   const getCurrentDetailQuery = useCallback(() => {
@@ -167,6 +197,14 @@ const ToolkitMarketplace = () => {
     }
   }, [router.isReady, searchText, selectedTagIds, updateUrlParams]);
 
+  const handleSourceSelect = useCallback(
+    (nextSource?: MarketplaceSourceFilterValue) => {
+      setSelectedSource(nextSource);
+      updateUrlParams(searchText, selectedTagIds, detailQueryRef.current, nextSource);
+    },
+    [searchText, selectedTagIds, updateUrlParams]
+  );
+
   const {
     data: tools,
     isLoading: loadingTools,
@@ -177,12 +215,13 @@ const ToolkitMarketplace = () => {
         pageNum,
         pageSize,
         searchKey: searchText || undefined,
-        tags: selectedTagIds.length > 0 ? selectedTagIds : undefined
+        tags: selectedTagIds.length > 0 ? selectedTagIds : undefined,
+        source: selectedSource
       }),
     {
       type: 'scroll',
       throttleWait: 500,
-      refreshDeps: [searchText, selectedTagIds]
+      refreshDeps: [searchText, selectedTagIds, selectedSource]
     }
   );
 
@@ -205,16 +244,18 @@ const ToolkitMarketplace = () => {
           return parseI18nString(currentTag?.tagName || '', i18n.language) || '';
         }),
         version: tool.version,
+        source: tool.source,
         downloadCount: tool.downloadCount
       };
     });
   }, [tools, i18n.language, toolTags]);
 
   const selectedTagKey = selectedTagIds.join(',');
+  const selectedSourceKey = selectedSource ?? 'all';
   const { gridRef, renderVirtualGridItems } = useVirtualGridList({
     list: displayTools,
-    listKey: `${searchText}-${selectedTagKey}-${i18n.language}`,
-    estimatedRowHeight: 160,
+    listKey: `${searchText}-${selectedTagKey}-${selectedSourceKey}-${i18n.language}`,
+    estimatedRowHeight: 178,
     estimatedRowGap: 20
   });
 
@@ -258,7 +299,7 @@ const ToolkitMarketplace = () => {
     if (router.isReady) {
       updateUrlParams(searchText, selectedTagIds);
     }
-  }, [router.isReady, searchText, selectedTagIds, updateUrlParams]);
+  }, [router.isReady, searchText, selectedTagIds, selectedSource, updateUrlParams]);
 
   const onDownload = useCallback(async (toolId: string, version?: string) => {
     try {
@@ -318,6 +359,7 @@ const ToolkitMarketplace = () => {
         <ToolCard
           item={tool}
           mode="marketplace"
+          variant="marketplace"
           onInstall={() => onDownload(tool.id)}
           onClickCard={() => handleSelectTool(tool)}
         />
@@ -372,10 +414,7 @@ const ToolkitMarketplace = () => {
             <I18nLngSelector />
             <Button
               onClick={() => {
-                window.open(
-                  'https://doc.fastgpt.cn/plugin/system-tool-development',
-                  '_blank'
-                );
+                window.open('https://doc.fastgpt.cn/plugin/system-tool-development', '_blank');
               }}
             >
               {t('app:toolkit_contribute_resource')}
@@ -490,6 +529,9 @@ const ToolkitMarketplace = () => {
                     tags={toolTags}
                     selectedTagIds={selectedTagIds}
                     onTagSelect={setSelectedTagIds}
+                    selectedSource={selectedSource}
+                    onSourceSelect={handleSourceSelect}
+                    variant="marketplace"
                   />
                 </Box>
               </Flex>
@@ -547,7 +589,8 @@ const ToolkitMarketplace = () => {
                   fontSize="sm"
                   bg={'white'}
                   pl={8}
-                  w={'560px'}
+                  w={['calc(100vw - 64px)', '560px']}
+                  maxW={'560px'}
                   h={12}
                   borderRadius={'10px'}
                   placeholder={t('app:toolkit_marketplace_search_placeholder')}
@@ -574,13 +617,16 @@ const ToolkitMarketplace = () => {
                   tags={toolTags}
                   selectedTagIds={selectedTagIds}
                   onTagSelect={setSelectedTagIds}
+                  selectedSource={selectedSource}
+                  onSourceSelect={handleSourceSelect}
+                  variant="marketplace"
                 />
               </Box>
             </Flex>
             {displayTools.length > 0 ? (
               <Grid
                 ref={gridRef}
-                gridTemplateColumns={['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']}
+                gridTemplateColumns={'repeat(auto-fill, minmax(min(260px, 100%), 1fr))'}
                 gridGap={5}
                 alignItems={'stretch'}
               >

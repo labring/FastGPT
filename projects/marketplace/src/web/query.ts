@@ -6,6 +6,7 @@ export type MarketplaceDetailQuery = {
 export type MarketplacePageQuery = MarketplaceDetailQuery & {
   search?: string;
   tags?: string[];
+  source?: string;
 };
 
 export type NextQueryValue = string | string[] | undefined;
@@ -20,6 +21,7 @@ export const getSingleQueryValue = (value: NextQueryValue) => {
 export const buildMarketplaceQueryString = ({
   search,
   tags,
+  source,
   pluginId,
   version
 }: MarketplacePageQuery) => {
@@ -30,6 +32,9 @@ export const buildMarketplaceQueryString = ({
   }
   if (tags && tags.length > 0) {
     params.push(['tags', tags.join(',')]);
+  }
+  if (source) {
+    params.push(['source', source]);
   }
   if (pluginId) {
     params.push(['pluginId', pluginId]);
