@@ -867,7 +867,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
             </Flex>
             {displayTools.length > 0 ? (
               <Grid
-                gridTemplateColumns={['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']}
+                gridTemplateColumns={'repeat(auto-fill, minmax(min(260px, 100%), 1fr))'}
                 gridGap={5}
                 alignItems={'stretch'}
               >

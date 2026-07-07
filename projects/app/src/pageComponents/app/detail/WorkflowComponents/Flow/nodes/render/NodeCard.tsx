@@ -85,6 +85,23 @@ type Props = FlowNodeItemType & {
   colorSchema?: keyof typeof NodeGradients;
 };
 
+const getCurrentSystemToolTemplate = async (node?: FlowNodeItemType) => {
+  if (!node?.pluginId || node.pluginData?.error || isDebugToolSource(node.source)) return;
+
+  try {
+    const { source } = splitCombineToolId(node.pluginId);
+    if (source !== AppToolSourceEnum.systemTool && source !== AppToolSourceEnum.commercial) return;
+
+    return getClientToolPreviewNode({
+      appId: node.pluginId,
+      versionId: node.version ?? '',
+      source: node.source
+    });
+  } catch {
+    return;
+  }
+};
+
 const NodeCard = (props: Props) => {
   const { t } = useTranslation();
   const {
@@ -235,7 +252,21 @@ const NodeCard = (props: Props) => {
       }
 
       if (isAppNode) {
-        return { ...node, ...node.pluginData };
+        const currentSystemToolTemplate = await getCurrentSystemToolTemplate(node);
+
+        return {
+          ...node,
+          ...node.pluginData,
+          ...(currentSystemToolTemplate
+            ? {
+                status: currentSystemToolTemplate.status,
+                courseUrl: currentSystemToolTemplate.courseUrl,
+                readmeUrl: currentSystemToolTemplate.readmeUrl,
+                userGuide: currentSystemToolTemplate.userGuide,
+                diagram: currentSystemToolTemplate.diagram
+              }
+            : {})
+        };
       } else {
         const template = moduleTemplatesFlat.find(
           (item) => item.flowNodeType === node?.flowNodeType
@@ -268,7 +299,16 @@ const NodeCard = (props: Props) => {
           }
         ]);
       },
-      manual: false
+      manual: false,
+      errorToast: '',
+      refreshDeps: [
+        isAppNode,
+        node?.pluginData?.error,
+        node?.pluginData?.status,
+        node?.pluginId,
+        node?.source,
+        node?.version
+      ]
     }
   );
 

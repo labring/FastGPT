@@ -6,6 +6,10 @@ import {
   DeleteMarketplacePkgResponseSchema,
   type DeleteMarketplacePkgResponseType
 } from '@fastgpt/global/openapi/core/plugin/marketplace/api';
+import {
+  getZodParseErrorInputSource,
+  parseApiInput
+} from '@fastgpt/service/common/zod/requestParseError';
 
 /* ============================================================================
  * API: 删除 marketplace 插件 pkg
@@ -50,11 +54,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return sendJson(res, 401, null, 'Unauthorized');
     }
 
-    const data = DeleteMarketplacePkgBodySchema.parse(req.body);
+    const { body: data } = parseApiInput({
+      req,
+      bodySchema: DeleteMarketplacePkgBodySchema
+    });
     const response = await deleteMarketplacePkg(data);
 
     return sendJson(res, 200, DeleteMarketplacePkgResponseSchema.parse(response));
   } catch (error) {
+    if (getZodParseErrorInputSource(error)) {
+      return sendJson(res, 400, null, 'Invalid request body');
+    }
+
     return sendJson(
       res,
       500,

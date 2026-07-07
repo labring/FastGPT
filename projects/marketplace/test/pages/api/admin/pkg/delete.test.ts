@@ -130,6 +130,28 @@ describe('/api/admin/pkg/delete', () => {
     });
   });
 
+  it('returns 400 for invalid delete body', async () => {
+    const { default: handler } = await import('../../../../../src/pages/api/admin/pkg/delete');
+    const res = createResponse();
+    await handler(
+      {
+        method: 'POST',
+        headers: { authorization: 'Bearer marketplace-token' },
+        body: {
+          pluginId: 'tool-a'
+        }
+      } as any,
+      res as any
+    );
+
+    expect(deleteMocks.deleteMarketplacePkg).not.toHaveBeenCalled();
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toEqual({
+      code: 400,
+      message: 'Invalid request body'
+    });
+  });
+
   it('rejects unsupported methods', async () => {
     const { default: handler } = await import('../../../../../src/pages/api/admin/pkg/delete');
     const res = createResponse();
