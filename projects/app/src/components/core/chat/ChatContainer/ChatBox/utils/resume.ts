@@ -1,5 +1,6 @@
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType
@@ -30,6 +31,7 @@ export const shouldCreateResumeAiPlaceholder = (event: string) => {
   return new Set<string>([
     SseResponseEventEnum.flowNodeResponse,
     SseResponseEventEnum.flowNodeStatus,
+    AuxiliaryGenerationEventEnum.status,
     SseResponseEventEnum.answer,
     SseResponseEventEnum.fastAnswer,
     SseResponseEventEnum.toolCall,

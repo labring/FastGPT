@@ -5,7 +5,7 @@ import {
 } from '@fastgpt/global/core/chat/adapt';
 import type { ChatItemMiniType, UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
 import { SANDBOX_USER_FILES_PATH } from '@fastgpt/global/core/ai/sandbox/constants';
-import { formatUserQueryWithFiles, parseFileInfoFromUrls } from '../../../../utils/file';
+import { formatUserQueryWithFiles, parseFileInfoFromUrls } from '../../../../../chat/fileContext';
 import { parseUrlToFileType } from '../../../../utils/context';
 import type { DispatchToolModuleProps, FileInputType } from '../type';
 

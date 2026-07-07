@@ -10,7 +10,7 @@ const { formatUserQueryWithFilesMock, parseFileInfoFromUrlsMock, parseUrlToFileT
     parseUrlToFileTypeMock: vi.fn()
   }));
 
-vi.mock('@fastgpt/service/core/workflow/utils/file', () => ({
+vi.mock('@fastgpt/service/core/chat/fileContext', () => ({
   formatUserQueryWithFiles: formatUserQueryWithFilesMock,
   parseFileInfoFromUrls: parseFileInfoFromUrlsMock
 }));

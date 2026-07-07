@@ -28,10 +28,19 @@ export const createAuxiliaryGenerationUsage = async ({
 }: CreateAuxiliaryGenerationUsageParams) => {
   await checkTeamAIPoints(teamId);
 
+  const usageAppId = (() => {
+    if ([ChatSourceTypeEnum.app, ChatSourceTypeEnum.chatAgentHelper].includes(sourceType)) {
+      return sourceId;
+    }
+  })();
+  const usageSkillId = (() => {
+    if (sourceType === ChatSourceTypeEnum.skillEdit) return sourceId;
+  })();
+
   const usageId = await createChatUsageRecord({
     appName,
-    appId: sourceType === ChatSourceTypeEnum.app ? sourceId : undefined,
-    skillId: sourceType === ChatSourceTypeEnum.skillEdit ? sourceId : undefined,
+    appId: usageAppId,
+    skillId: usageSkillId,
     teamId,
     tmbId,
     source: usageSource

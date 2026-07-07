@@ -8,7 +8,7 @@ import {
 import type { ChatItemMiniType, UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import type { ChatDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
-import { parseFileContentFromUrls } from '../../../utils/file';
+import { parseFileContentFromUrls } from '../../../../chat/fileContext';
 import { rewriteChatMessagesWithFiles } from './fileContext';
 
 /**

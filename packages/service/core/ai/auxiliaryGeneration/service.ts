@@ -28,7 +28,8 @@ export const runAuxiliaryGeneration = async <T>({
   usageSource,
   processor,
   maxFiles,
-  customPdfParse
+  customPdfParse,
+  onStreamContextReady
 }: AuxiliaryGenerationRunParams<T>): Promise<
   AuxiliaryGenerationRunResult & {
     streamContext: Awaited<ReturnType<typeof createAuxiliaryGenerationStream>>;
@@ -44,6 +45,8 @@ export const runAuxiliaryGeneration = async <T>({
     sourceId,
     chatId
   });
+  onStreamContextReady?.(streamContext);
+
   const usageContext = await createAuxiliaryGenerationUsage({
     teamId,
     tmbId,

@@ -1,9 +1,7 @@
-import { audioFileType, imageFileType, videoFileType } from '@fastgpt/global/common/file/constants';
-import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
-import type { UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
+import type { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { parseUrlToChatFileType } from '../../chat/fileContext';
 
 import { AsyncLocalStorage } from 'async_hooks';
-import path from 'path';
 import type { MCPClient } from '../../app/mcp';
 
 type ContextType = {
@@ -34,92 +32,9 @@ export const updateWorkflowContextVal = (val: Partial<ContextType>) => {
   }
 };
 
-// Url => user upload file type
-export const parseUrlToFileType = (url: string): UserChatItemFileItemType | undefined => {
-  if (typeof url !== 'string') return;
-
-  // Handle base64 image
-  if (url.startsWith('data:')) {
-    const matches = url.match(/^data:([^;]+);base64,/);
-    if (!matches) return;
-
-    const mimeType = matches[1].toLowerCase();
-    if (!mimeType.startsWith('image/')) return;
-
-    const extension = mimeType.split('/')[1];
-    return {
-      type: ChatFileTypeEnum.image,
-      name: `image.${extension}`,
-      url
-    };
-  }
-
-  try {
-    const parseUrl = new URL(url, 'http://localhost:3000');
-
-    // Get filename from URL
-    const filename = (() => {
-      // Here is a S3 Object Key
-      if (url.startsWith('chat/')) {
-        const basename = path.basename(url);
-        // Return empty if no extension
-        return basename.includes('.') ? basename : '';
-      }
-
-      const fromParam = parseUrl.searchParams.get('filename');
-      if (fromParam) {
-        return fromParam;
-      }
-
-      const basename = path.basename(parseUrl.pathname);
-      // Return empty if no extension
-      return basename.includes('.') ? basename : '';
-    })();
-
-    const context = getWorkflowContext();
-    const type = context?.queryUrlTypeMap[url];
-    if (type) {
-      return {
-        type,
-        name: filename ? decodeURIComponent(filename) : url,
-        url
-      };
-    }
-
-    const extension = filename?.split('.').pop()?.toLowerCase() || '';
-
-    if (extension && imageFileType.includes(extension)) {
-      return {
-        type: ChatFileTypeEnum.image,
-        name: filename ? decodeURIComponent(filename) : url,
-        url
-      };
-    }
-    if (extension && audioFileType.includes(extension)) {
-      return {
-        type: ChatFileTypeEnum.audio,
-        name: filename ? decodeURIComponent(filename) : url,
-        url
-      };
-    }
-    if (extension && videoFileType.includes(extension)) {
-      return {
-        type: ChatFileTypeEnum.video,
-        name: filename ? decodeURIComponent(filename) : url,
-        url
-      };
-    }
-    // If it's a document type, return as file, otherwise treat as image
-    return {
-      type: ChatFileTypeEnum.file,
-      name: filename ? decodeURIComponent(filename) : url,
-      url
-    };
-  } catch {
-    return {
-      type: ChatFileTypeEnum.file,
-      name: url,
-      url
-    };
-  }
-};
+/** 结合 workflow 运行态 URL 类型映射，将 URL 解析成 ChatBox 文件结构。 */
+export const parseUrlToFileType = (url: string) =>
+  parseUrlToChatFileType({
+    url,
+    urlTypeMap: getWorkflowContext()?.queryUrlTypeMap
+  });

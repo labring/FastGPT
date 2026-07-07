@@ -3,7 +3,7 @@ import { runUnifiedAgentLoop, createUpdatePlanTool } from '../llm/agentLoop';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { AuxiliaryGenerationStreamWriter } from './stream';
 import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
-import { createAnswerDelta } from './utils';
+import { createChatCompletionDeltaResponse } from '@fastgpt/global/core/ai/llm/utils';
 
 type RunAuxiliaryGenerationAgentLoopParams = {
   teamId: string;
@@ -56,7 +56,7 @@ export async function runAuxiliaryGenerationAgentLoop({
         if (event.type === 'reasoning_delta') {
           streamWriter?.({
             event: AuxiliaryGenerationEventEnum.answer,
-            data: createAnswerDelta({ reasoningContent: event.text })
+            data: createChatCompletionDeltaResponse({ reasoningContent: event.text })
           });
         }
       },

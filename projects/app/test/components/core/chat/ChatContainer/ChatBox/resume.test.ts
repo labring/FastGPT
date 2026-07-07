@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 import {
   hasMeaningfulAiOutput,
   mergeResumeCompletedChatRecords,
@@ -41,6 +42,7 @@ describe('shouldCreateResumeAiPlaceholder', () => {
     expect(shouldCreateResumeAiPlaceholder(SseResponseEventEnum.plan)).toBe(true);
     expect(shouldCreateResumeAiPlaceholder(SseResponseEventEnum.planStatus)).toBe(true);
     expect(shouldCreateResumeAiPlaceholder(SseResponseEventEnum.workflowDuration)).toBe(true);
+    expect(shouldCreateResumeAiPlaceholder(AuxiliaryGenerationEventEnum.status)).toBe(true);
   });
 
   it('returns false for stream control events that do not create chat content', () => {

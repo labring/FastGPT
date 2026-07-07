@@ -201,7 +201,7 @@ const ChatAgentHelper = (props: ChatAgentHelperProps) => {
       canDownloadSource={false}
       isShowCite={false}
       isShowFullText={false}
-      showRunningStatus={false}
+      showRunningStatus={true}
       showSkillReferences={false}
       showWholeResponse={false}
       showPoints={false}

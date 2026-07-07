@@ -6,7 +6,7 @@ import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runti
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { type ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { getNodeErrResponse } from '../utils';
-import { parseFileContentFromUrls } from '../../utils/file';
+import { parseFileContentFromUrls } from '../../../chat/fileContext';
 import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 
 type Props = ModuleDispatchProps<{

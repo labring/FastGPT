@@ -2,10 +2,11 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { STREAM_RESUME_REQUEST_HEADER } from '@fastgpt/global/core/chat/constants';
-import { getSseErrorResponse, responseWrite } from '../../../common/response';
+import { getSseErrorResponse } from '../../../common/response';
+import { createSseStreamContext } from '../../../common/response/sse';
 import { clearCookie } from '../../../support/permission/auth/common';
 import { getStreamResumeMirror } from '../../chat/resume';
-import { createAnswerDelta } from './utils';
+import { createChatCompletionDeltaResponse } from '@fastgpt/global/core/ai/llm/utils';
 
 export type AuxiliaryGenerationStreamWriter = (params: {
   event?: `${AuxiliaryGenerationEventEnum}` | string;
@@ -21,7 +22,7 @@ type CreateAuxiliaryGenerationStreamParams = {
   chatId: string;
 };
 
-type AuxiliaryGenerationStreamContext = {
+export type AuxiliaryGenerationStreamContext = {
   write: AuxiliaryGenerationStreamWriter;
   writeError: (error: unknown) => void;
   writeDone: () => void;
@@ -50,42 +51,23 @@ export const createAuxiliaryGenerationStream = async ({
     chatId
   });
 
-  if (!res.headersSent) {
-    res.setHeader('Connection', 'keep-alive');
-    res.setHeader('Content-Type', 'text/event-stream;charset=utf-8');
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('X-Accel-Buffering', 'no');
-    res.setHeader('Cache-Control', 'no-cache, no-transform');
-  }
+  const sseContext = createSseStreamContext({
+    res,
+    streamResumeMirror: mirror,
+    heartbeat: {
+      write: (writer) => {
+        writer({
+          event: AuxiliaryGenerationEventEnum.answer,
+          data: JSON.stringify(createChatCompletionDeltaResponse({ text: '' }))
+        });
+      }
+    }
+  });
 
   const write: AuxiliaryGenerationStreamWriter = ({ event, data }) => {
     const payload = typeof data === 'string' ? data : JSON.stringify(data);
-    const raw = `${event ? `event: ${event}\n` : ''}data: ${payload}\n\n`;
-    void mirror?.enqueueRaw?.(raw);
-
-    if (res.closed || res.writableEnded || res.destroyed) return;
-    responseWrite({ res, event, data: payload });
+    sseContext.write({ event, data: payload });
   };
-
-  let cleaned = false;
-  const streamCheckTimer = setInterval(() => {
-    write({
-      event: AuxiliaryGenerationEventEnum.answer,
-      data: createAnswerDelta({ text: '' })
-    });
-  }, 10000);
-
-  const cleanup = () => {
-    if (cleaned) return;
-    cleaned = true;
-    clearInterval(streamCheckTimer);
-  };
-  res.once('finish', cleanup);
-  res.once('close', cleanup);
-  res.on('error', () => {
-    cleanup();
-    res.end();
-  });
 
   return {
     write,
@@ -102,7 +84,7 @@ export const createAuxiliaryGenerationStream = async ({
     writeDone() {
       write({
         event: AuxiliaryGenerationEventEnum.answer,
-        data: createAnswerDelta({
+        data: createChatCompletionDeltaResponse({
           text: null,
           finishReason: 'stop'
         })
@@ -113,8 +95,7 @@ export const createAuxiliaryGenerationStream = async ({
       });
     },
     async flushResume() {
-      await mirror?.flush();
-      await mirror?.shrinkTTLAfterComplete();
+      await sseContext.flushResume();
     }
   };
 };

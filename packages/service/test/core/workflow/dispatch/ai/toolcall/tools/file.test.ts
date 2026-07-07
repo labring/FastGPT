@@ -5,7 +5,7 @@ const { getFileContentByUrlMock } = vi.hoisted(() => ({
   getFileContentByUrlMock: vi.fn()
 }));
 
-vi.mock('@fastgpt/service/core/workflow/utils/file', () => ({
+vi.mock('@fastgpt/service/core/chat/fileContext', () => ({
   getFileContentByUrl: getFileContentByUrlMock
 }));
 

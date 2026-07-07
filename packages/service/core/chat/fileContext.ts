@@ -1,23 +1,27 @@
-import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
-import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { parseUrlToFileType } from './context';
-import { getS3RawTextSource } from '../../../common/s3/sources/rawText';
-import { isInternalAddress, PRIVATE_URL_TEXT } from '../../../common/system/utils';
-import { pickOutboundAxios } from '../../../common/api/axios';
-import { S3Buckets } from '../../../common/s3/config/constants';
-import { S3Sources } from '../../../common/s3/contracts/type';
+import { audioFileType, imageFileType, videoFileType } from '@fastgpt/global/common/file/constants';
+import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import type {
+  ChatItemMiniType,
+  UserChatItemFileItemType,
+  UserChatItemValueItemType
+} from '@fastgpt/global/core/chat/type';
+import { getS3RawTextSource } from '../../common/s3/sources/rawText';
+import { isInternalAddress, PRIVATE_URL_TEXT } from '../../common/system/utils';
+import { pickOutboundAxios } from '../../common/api/axios';
+import { S3Buckets } from '../../common/s3/config/constants';
+import { S3Sources } from '../../common/s3/contracts/type';
 import {
   detectFileEncoding,
   parseContentDispositionFilename
 } from '@fastgpt/global/common/file/tools';
 import path from 'path';
-import { getFileS3Key } from '../../../common/s3/utils';
-import { S3ChatSource } from '../../../common/s3/sources/chat';
-import { readFileContentByBuffer } from '../../../common/file/read/utils';
+import { getFileS3Key } from '../../common/s3/utils';
+import { S3ChatSource } from '../../common/s3/sources/chat';
+import { readFileContentByBuffer } from '../../common/file/read/utils';
 import { addDays } from 'date-fns';
-import { replaceS3KeyToPreviewUrl } from '../../dataset/utils';
+import { replaceS3KeyToPreviewUrl } from '../dataset/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { getUserFilesPrompt, injectUserQueryPrompt } from '../../ai/llm/prompt';
+import { getUserFilesPrompt, injectUserQueryPrompt } from '../ai/llm/prompt';
 import { getAxiosHeaderValue } from '@fastgpt/global/common/axios/utils';
 
 type GetFileProps = {
@@ -27,6 +31,98 @@ type GetFileProps = {
   teamId: string;
   tmbId: string;
   usageId?: string;
+};
+
+/**
+ * 将 URL 解析成 ChatBox 文件结构。
+ *
+ * `urlTypeMap` 用于 workflow 运行态传入显式文件类型；普通聊天/辅助生成场景则按文件名后缀推断。
+ */
+export const parseUrlToChatFileType = ({
+  url,
+  urlTypeMap = {}
+}: {
+  url: string;
+  urlTypeMap?: Record<string, ChatFileTypeEnum>;
+}): UserChatItemFileItemType | undefined => {
+  if (typeof url !== 'string') return;
+
+  if (url.startsWith('data:')) {
+    const matches = url.match(/^data:([^;]+);base64,/);
+    if (!matches) return;
+
+    const mimeType = matches[1].toLowerCase();
+    if (!mimeType.startsWith('image/')) return;
+
+    const extension = mimeType.split('/')[1];
+    return {
+      type: ChatFileTypeEnum.image,
+      name: `image.${extension}`,
+      url
+    };
+  }
+
+  try {
+    const parseUrl = new URL(url, 'http://localhost:3000');
+
+    const filename = (() => {
+      if (url.startsWith('chat/')) {
+        const basename = path.basename(url);
+        return basename.includes('.') ? basename : '';
+      }
+
+      const fromParam = parseUrl.searchParams.get('filename');
+      if (fromParam) return fromParam;
+
+      const basename = path.basename(parseUrl.pathname);
+      return basename.includes('.') ? basename : '';
+    })();
+
+    const type = urlTypeMap[url];
+    if (type) {
+      return {
+        type,
+        name: filename ? decodeURIComponent(filename) : url,
+        url
+      };
+    }
+
+    const extension = filename?.split('.').pop()?.toLowerCase() || '';
+
+    if (extension && imageFileType.includes(extension)) {
+      return {
+        type: ChatFileTypeEnum.image,
+        name: filename ? decodeURIComponent(filename) : url,
+        url
+      };
+    }
+    if (extension && audioFileType.includes(extension)) {
+      return {
+        type: ChatFileTypeEnum.audio,
+        name: filename ? decodeURIComponent(filename) : url,
+        url
+      };
+    }
+    if (extension && videoFileType.includes(extension)) {
+      return {
+        type: ChatFileTypeEnum.video,
+        name: filename ? decodeURIComponent(filename) : url,
+        url
+      };
+    }
+
+    return {
+      type: ChatFileTypeEnum.file,
+      name: filename ? decodeURIComponent(filename) : url,
+      url
+    };
+  } catch {
+    return {
+      type: ChatFileTypeEnum.file,
+      name: url,
+      url
+    };
+  }
 };
 
 export const formatUserQueryWithFiles = async ({
@@ -77,6 +173,55 @@ export const formatUserQueryWithFiles = async ({
 };
 
 /**
+ * 在发送给 LLM 前把 Human 消息里的普通文件解析为文本上下文。
+ *
+ * 历史 Human 消息是否解析由调用方控制；未解析时会移除历史文件项，避免旧文件继续作为模型文件输入。
+ */
+export const rewriteChatMessagesWithFileContext = async ({
+  messages,
+  parseHistoryFiles,
+  parseFileFn
+}: {
+  messages: ChatItemMiniType[];
+  parseHistoryFiles: boolean;
+  parseFileFn: (urls: string[]) => Promise<
+    {
+      id?: string;
+      name: string;
+      url: string;
+      sandboxPath?: string;
+      content?: string;
+    }[]
+  >;
+}) => {
+  return Promise.all(
+    messages.map(async (message, index): Promise<ChatItemMiniType> => {
+      if (message.obj !== ChatRoleEnum.Human) {
+        return message;
+      }
+
+      const isCurrentUserMessage = index === messages.length - 1;
+      if (!isCurrentUserMessage && !parseHistoryFiles) {
+        return {
+          ...message,
+          value: message.value.filter((item) => !item.file)
+        };
+      }
+
+      const query = await formatUserQueryWithFiles({
+        userQuery: message.value,
+        parseFileFn
+      });
+
+      return {
+        ...message,
+        value: query
+      };
+    })
+  );
+};
+
+/**
  * 格式化文件 URL，移除请求头部分，只保留文件 URL
  */
 export const normalizeReadableFileUrl = ({
@@ -96,7 +241,7 @@ export const normalizeReadableFileUrl = ({
     return '';
   }
 
-  if (parseUrlToFileType(normalizedUrl)?.type !== ChatFileTypeEnum.file) {
+  if (parseUrlToChatFileType({ url: normalizedUrl })?.type !== ChatFileTypeEnum.file) {
     return '';
   }
 

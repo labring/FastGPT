@@ -208,6 +208,11 @@ function handleEventSourceData(params: HandleEventSourceDataParams) {
         break;
       }
 
+      case AuxiliaryGenerationEventEnum.status: {
+        onmessage({ event, ...obj });
+        break;
+      }
+
       case SseResponseEventEnum.sandboxStatus: {
         onmessage({ event, sandboxStatus: obj });
         break;

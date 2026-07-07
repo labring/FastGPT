@@ -2,7 +2,7 @@ import json5 from 'json5';
 import { ChatRoleEnum } from '../../../core/chat/constants';
 import type { ChatItemMiniType } from '../../../core/chat/type';
 import type { NodeOutputItemType } from './type';
-import { ChatCompletionRequestMessageRoleEnum } from '../../ai/constants';
+import { createChatCompletionDeltaResponse } from '../../ai/llm/utils';
 import {
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
@@ -373,24 +373,13 @@ export const textAdaptGptResponse = ({
   finish_reason?: null | 'stop';
   extraData?: object;
 }) => {
-  return {
-    ...extraData,
-    id: '',
-    object: '',
-    created: 0,
+  return createChatCompletionDeltaResponse({
+    text,
+    reasoningContent: reasoning_content,
     model,
-    choices: [
-      {
-        delta: {
-          role: ChatCompletionRequestMessageRoleEnum.Assistant,
-          content: text,
-          ...(reasoning_content && { reasoning_content })
-        },
-        index: 0,
-        finish_reason
-      }
-    ]
-  };
+    finishReason: finish_reason,
+    extraData
+  });
 };
 
 /* Update runtimeNode's outputs with interactive data from history */

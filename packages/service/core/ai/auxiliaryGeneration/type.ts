@@ -5,7 +5,7 @@ import type { AIChatItemValueItemType, ChatItemDBSchemaType } from '@fastgpt/glo
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import type { AuxiliaryGenerationChatFileType } from '@fastgpt/global/core/ai/auxiliaryGeneration/type';
-import type { AuxiliaryGenerationStreamWriter } from './stream';
+import type { AuxiliaryGenerationStreamContext, AuxiliaryGenerationStreamWriter } from './stream';
 
 export type AuxiliaryGenerationUser = {
   teamId: string;
@@ -60,6 +60,8 @@ export type AuxiliaryGenerationRunParams<T = unknown> = {
   ) => Promise<AuxiliaryGenerationProcessorResponse>;
   maxFiles?: number;
   customPdfParse?: boolean;
+  /** SSE 创建后立即暴露给路由层，用于失败时写 error 和 flush resume。 */
+  onStreamContextReady?: (streamContext: AuxiliaryGenerationStreamContext) => void;
 };
 
 export type AuxiliaryGenerationRunResult = AuxiliaryGenerationProcessorResponse & {
