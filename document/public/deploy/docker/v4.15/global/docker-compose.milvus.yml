@@ -447,6 +447,7 @@ services:
       MONGODB_URI: mongodb://myusername:mypassword@fastgpt-mongo:27017/fastgpt-plugin?authSource=admin
       DB_MAX_LINK: 100
       AUTH_TOKEN: *x-plugin-auth-token
+      FASTGPT_BASE_URL: http://fastgpt-app:3000
       # 工具网络请求，最大请求和响应体
       SERVICE_REQUEST_MAX_CONTENT_LENGTH: 10
       # 最大 API 请求体大小
