@@ -46,7 +46,7 @@ const MyApps = ({ hideMobileHeader = false, mobileSearchKey }: MyAppsProps) => {
   const map = useMemo(
     () => ({
       all: t('common:core.module.template.all_team_app'),
-      [AppTypeEnum.chatAgent]: 'Agent',
+      [AppTypeEnum.chatAgent]: t('app:type.Chat_Agent_v2'),
       [AppTypeEnum.simple]: t('app:type.Chat_Agent'),
       [AppTypeEnum.workflow]: t('app:type.Workflow bot'),
       [AppTypeEnum.workflowTool]: t('app:toolType_workflow'),
@@ -61,7 +61,13 @@ const MyApps = ({ hideMobileHeader = false, mobileSearchKey }: MyAppsProps) => {
   );
 
   const [appType, setAppType] = useState<AppTypeEnum | 'all'>('all');
-  const tabs = ['all' as const, AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.workflowTool];
+  const tabs = [
+    'all' as const,
+    AppTypeEnum.chatAgent,
+    AppTypeEnum.simple,
+    AppTypeEnum.workflow,
+    AppTypeEnum.workflowTool
+  ];
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
