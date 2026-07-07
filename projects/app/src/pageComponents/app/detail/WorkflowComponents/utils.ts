@@ -19,6 +19,15 @@ import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
 import { type TFunction } from 'i18next';
 import { type Edge, type Node } from 'reactflow';
 
+const normalizeStoreNodeInput = (input: StoreNodeItemType['inputs'][number]) => {
+  if (input.selectedTypeIndex === undefined || input.selectedTypeIndex >= 0) return input;
+
+  return {
+    ...input,
+    selectedTypeIndex: undefined
+  };
+};
+
 export const uiWorkflow2StoreWorkflow = ({
   nodes,
   edges,
@@ -54,7 +63,7 @@ export const uiWorkflow2StoreWorkflow = ({
     version: item.data.version,
     inputs: filterUnselectableReferenceInputs({
       node: item.data,
-      inputs: item.data.inputs,
+      inputs: item.data.inputs.map(normalizeStoreNodeInput),
       edges,
       chatConfig,
       systemConfigNode,

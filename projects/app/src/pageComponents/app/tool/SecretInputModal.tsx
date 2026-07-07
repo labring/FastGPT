@@ -3,11 +3,11 @@ import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/sys
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
 import { useTranslation } from 'next-i18next';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import type { FlowNodeInputItemType, InputConfigType } from '@fastgpt/global/core/workflow/type/io';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm, Controller, useWatch } from 'react-hook-form';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
 import IconButton from '@/pageComponents/account/team/OrgManage/IconButton';
 import MyModal from '@fastgpt/web/components/v2/common/MyModal';
@@ -24,18 +24,7 @@ export type ToolParamsFormType = {
   value?: StoreSecretValueType;
 };
 
-const SecretInputModal = ({
-  parentId,
-  source,
-  hasSystemSecret,
-  secretCost = 0,
-  isFolder,
-  inputConfig,
-  courseUrl,
-  readmeUrl,
-  onClose,
-  onSubmit
-}: {
+type SecretInputFormProps = {
   parentId?: string;
   source?: string;
   isFolder?: boolean;
@@ -44,9 +33,26 @@ const SecretInputModal = ({
   secretCost?: number;
   courseUrl?: string;
   readmeUrl?: string;
-  onClose: () => void;
-  onSubmit: (data: ToolParamsFormType) => void;
-}) => {
+  formId?: string;
+  showTitle?: boolean;
+  onChange?: (data: ToolParamsFormType) => void;
+  onSubmit?: (data: ToolParamsFormType) => void;
+};
+
+export const SecretInputForm = ({
+  parentId,
+  source,
+  hasSystemSecret,
+  secretCost = 0,
+  isFolder,
+  inputConfig,
+  courseUrl,
+  readmeUrl,
+  formId,
+  showTitle = true,
+  onChange,
+  onSubmit
+}: SecretInputFormProps) => {
   const { t } = useTranslation();
   const [editIndex, setEditIndex] = useState<number>();
   const { isOpen: isSystemCostOpen, onToggle: onToggleSystemCost } = useDisclosure({
@@ -54,28 +60,28 @@ const SecretInputModal = ({
   });
   const inputList = inputConfig?.inputList || [];
 
-  const { register, watch, setValue, getValues, handleSubmit, control } =
-    useForm<ToolParamsFormType>({
-      defaultValues: (() => {
-        const defaultValue = inputConfig.value;
-        return (
-          defaultValue || {
-            type: hasSystemSecret
-              ? SystemToolSecretInputTypeEnum.system
-              : SystemToolSecretInputTypeEnum.manual,
-            value:
-              inputList?.reduce(
-                (acc, item) => {
-                  acc[item.key] = { secret: '', value: '' };
-                  return acc;
-                },
-                {} as Record<string, InputConfigType['value']>
-              ) || {}
-          }
-        );
-      })()
-    });
-  const configType = watch('type');
+  const { register, setValue, getValues, handleSubmit, control } = useForm<ToolParamsFormType>({
+    defaultValues: (() => {
+      const defaultValue = inputConfig.value;
+      return (
+        defaultValue || {
+          type: hasSystemSecret
+            ? SystemToolSecretInputTypeEnum.system
+            : SystemToolSecretInputTypeEnum.manual,
+          value:
+            inputList?.reduce(
+              (acc, item) => {
+                acc[item.key] = { secret: '', value: '' };
+                return acc;
+              },
+              {} as Record<string, InputConfigType['value']>
+            ) || {}
+        }
+      );
+    })()
+  });
+  const configType = useWatch({ control, name: 'type' });
+  const formValues = useWatch({ control });
 
   const { data: childTools = [] } = useRequest<NodeTemplateListItemType[], []>(
     async () => {
@@ -95,28 +101,24 @@ const SecretInputModal = ({
     return secretCost > 0;
   }, [isFolder, childTools, secretCost]);
 
+  useEffect(() => {
+    if (!onChange) return;
+
+    onChange(formValues as ToolParamsFormType);
+  }, [formValues, onChange]);
+
   return (
-    <MyModal
-      isOpen
-      title={t('workflow:tool_active_config')}
-      onClose={onClose}
-      size={'md'}
-      isCentered
-      footer={
-        <>
-          <Button variant={'whiteBase'} onClick={onClose}>
-            {t('common:Cancel')}
-          </Button>
-          <Button variant={'primary'} onClick={handleSubmit(onSubmit)}>
-            {t('common:Confirm')}
-          </Button>
-        </>
-      }
+    <Box
+      as={onSubmit ? 'form' : 'div'}
+      id={formId}
+      onSubmit={onSubmit ? handleSubmit(onSubmit) : undefined}
     >
       <>
-        <FormLabel mb={1} fontSize={'md'}>
-          {t('common:secret_key')}
-        </FormLabel>
+        {showTitle && (
+          <FormLabel mb={1} fontSize={'md'}>
+            {t('common:secret_key')}
+          </FormLabel>
+        )}
         <Box>
           <LeftRadio
             gap={2}
@@ -350,6 +352,40 @@ const SecretInputModal = ({
           />
         </Box>
       </>
+    </Box>
+  );
+};
+
+const SecretInputModal = ({
+  onClose,
+  onSubmit,
+  ...props
+}: SecretInputFormProps & {
+  onClose: () => void;
+  onSubmit: (data: ToolParamsFormType) => void;
+}) => {
+  const { t } = useTranslation();
+  const formId = React.useId();
+
+  return (
+    <MyModal
+      isOpen
+      title={t('workflow:tool_active_config')}
+      onClose={onClose}
+      size={'md'}
+      isCentered
+      footer={
+        <>
+          <Button variant={'whiteBase'} onClick={onClose}>
+            {t('common:Cancel')}
+          </Button>
+          <Button type={'submit'} form={formId} variant={'primary'}>
+            {t('common:Confirm')}
+          </Button>
+        </>
+      }
+    >
+      <SecretInputForm {...props} formId={formId} onSubmit={onSubmit} />
     </MyModal>
   );
 };

@@ -379,6 +379,7 @@
   "tool_not_desc": "工具缺少描述～",
   "tool_offset_tips": "該工具已卸載，將中斷應用運行，請立即替換",
   "tool_param_config": "參數配置",
+  "tool_param_full_config": "工具參數配置",
   "tool_params_description_tips": "參數功能的描述，若作為工具調用參數，影響模型工具調用效果",
   "tool_run_free": "該工具運行無積分消耗",
   "tool_select": "選擇工具",
