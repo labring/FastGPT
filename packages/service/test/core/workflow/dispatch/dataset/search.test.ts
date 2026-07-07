@@ -23,6 +23,7 @@ vi.mock('@fastgpt/service/core/dataset/search', () => ({
 }));
 
 vi.mock('@fastgpt/service/core/dataset/schema', () => ({
+  DatasetCollectionName: 'datasets',
   MongoDataset: {
     findById: findDatasetByIdMock
   }

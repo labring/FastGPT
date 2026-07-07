@@ -30,21 +30,22 @@ vi.mock('@fastgpt/service/core/app/mcp', () => ({
   }))
 }));
 
-vi.mock('@fastgpt/service/common/logger', () => ({
-  LogCategories: {
-    MODULE: {
-      APP: {
-        TOOL: 'tool'
-      },
-      AI: {
-        LLM: 'llm'
-      }
-    }
-  },
-  getLogger: vi.fn(() => ({
-    error: vi.fn()
-  }))
-}));
+vi.mock('@fastgpt/service/common/logger', async () => {
+  const actual = await vi.importActual<typeof import('@fastgpt/service/common/logger')>(
+    '@fastgpt/service/common/logger'
+  );
+
+  return {
+    ...actual,
+    getLogger: vi.fn(() => ({
+      log: vi.fn(),
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn()
+    }))
+  };
+});
 
 vi.mock('@fastgpt/service/common/middle/tracks/utils', () => ({
   pushTrack: {

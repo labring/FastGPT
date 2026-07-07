@@ -14,13 +14,15 @@ import { getChatSourceKey, type ChatSourceTarget } from '@/web/core/chat/utils';
 import { useChatStore } from '@/web/core/chat/context/useChatStore';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getInitChatInfo } from '@/web/core/chat/api';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { batchDeleteChatHistories } from '@/web/core/chat/history/api';
 import type {
   ChatAgentConfigFormDataType,
   ChatAgentHelperMetadataType
 } from '@fastgpt/global/core/ai/auxiliaryGeneration/type';
 
 export type ChatAgentHelperRefType = {
-  restartChat: () => void;
+  restartChat: () => Promise<void>;
 };
 
 export type ChatAgentHelperProps = {
@@ -135,7 +137,12 @@ const ChatAgentHelperChatBox = ({
   };
 
   useImperativeHandle(ChatBoxRef, () => ({
-    restartChat() {
+    async restartChat() {
+      await batchDeleteChatHistories({
+        appId,
+        sourceType: ChatSourceTypeEnum.chatAgentHelper,
+        chatIds: [chatId]
+      });
       clearChatRecords();
       onRestart();
     }
@@ -165,6 +172,7 @@ const ChatAgentHelperChatBox = ({
 };
 
 const ChatAgentHelper = (props: ChatAgentHelperProps) => {
+  const tmbId = useUserStore((state) => state.userInfo?.team?.tmbId ?? '');
   const sourceTarget = useMemo<ChatSourceTarget>(
     () => ({
       sourceType: ChatSourceTypeEnum.chatAgentHelper,
@@ -172,8 +180,12 @@ const ChatAgentHelper = (props: ChatAgentHelperProps) => {
     }),
     [props.appId]
   );
-  const sourceKey = useMemo(() => getChatSourceKey(sourceTarget), [sourceTarget]);
-  const chatId = useChatStore((state) => state.sourceChatIdMap[sourceKey] || '');
+  const chatIdCacheKey = useMemo(() => {
+    if (!tmbId) return '';
+
+    return `${getChatSourceKey(sourceTarget)}:${tmbId}`;
+  }, [sourceTarget, tmbId]);
+  const chatId = useChatStore((state) => state.sourceChatIdMap[chatIdCacheKey] || '');
   const ensureSourceChatId = useChatStore((state) => state.ensureSourceChatId);
   const setSourceChatId = useChatStore((state) => state.setSourceChatId);
   const chatRecordProviderParams = useMemo(
@@ -186,13 +198,13 @@ const ChatAgentHelper = (props: ChatAgentHelperProps) => {
   );
 
   useEffect(() => {
-    if (!chatId) {
-      ensureSourceChatId(sourceKey);
+    if (chatIdCacheKey && !chatId) {
+      ensureSourceChatId(chatIdCacheKey);
     }
-  }, [chatId, ensureSourceChatId, sourceKey]);
+  }, [chatId, chatIdCacheKey, ensureSourceChatId]);
 
   const onRestart = () => {
-    setSourceChatId(sourceKey);
+    setSourceChatId(chatIdCacheKey);
   };
 
   return (

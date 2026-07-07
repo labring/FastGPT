@@ -30,6 +30,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import ChatVariableButton from '@/pageComponents/chat/ChatWindow/ChatVariableButton';
 import ProModal from '@/components/ProTip/ProModal';
 import ChatAIModelSelector from '@/pageComponents/chat/ChatWindow/ChatAIModelSelector';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 type Props = {
   appForm: AppFormEditFormType;
@@ -159,7 +160,7 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
     chatConfig: appForm.chatConfig,
     isReady: !isAgentSkillSandboxUnavailable
   });
-  const onRestartChat = useCallback(() => {
+  const onRestartChat = useCallback(async () => {
     if (isAgentSkillSandboxUnavailable) {
       toast({
         status: 'warning',
@@ -168,7 +169,14 @@ const ChatTest = ({ appForm, setAppForm, setRenderEdit, form2WorkflowFn }: Props
       return;
     }
     if (activeTab === AgentChatTestTabEnum.helper) {
-      ChatAgentHelperRef.current?.restartChat();
+      try {
+        await ChatAgentHelperRef.current?.restartChat();
+      } catch (error) {
+        toast({
+          status: 'warning',
+          title: getErrText(error, t('common:core.chat.error.Chat error'))
+        });
+      }
     } else {
       restartChat();
     }

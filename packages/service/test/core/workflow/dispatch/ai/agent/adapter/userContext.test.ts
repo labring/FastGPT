@@ -20,6 +20,7 @@ vi.mock('@fastgpt/global/common/time/timezone', () => ({
   getSystemTime: vi.fn(() => '2026-05-14 10:00:00 Thursday')
 }));
 vi.mock('@fastgpt/service/core/dataset/schema', () => ({
+  DatasetCollectionName: 'datasets',
   MongoDataset: {
     find: vi.fn(() => ({
       lean: vi.fn(async () => [])
