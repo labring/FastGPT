@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PluginPermissionEnum } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
@@ -29,6 +29,8 @@ const createProcessor = () =>
 describe('InvokeProcessor.handleFileUpload', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
     mockGetToolFilePrefix.mockReturnValue('chat/app-1/user-1/chat-1');
     mockUploadChatFile.mockResolvedValue({
       key: 'chat/app-1/user-1/chat-1/image.png',
@@ -38,6 +40,10 @@ describe('InvokeProcessor.handleFileUpload', () => {
         url: 'https://example.com/api/system/file/download/token?filename=image.png'
       }
     });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('上传文件内容并返回最终访问 URL', async () => {
@@ -56,7 +62,7 @@ describe('InvokeProcessor.handleFileUpload', () => {
       filename: 'image.png',
       body,
       contentType: 'image/png',
-      expiredTime: undefined
+      expiredTime: new Date('2026-01-16T05:00:00.000Z')
     });
     expect(mockCreateUploadChatFileURL).not.toHaveBeenCalled();
     expect(result).toEqual({
