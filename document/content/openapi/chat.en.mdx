@@ -11,19 +11,19 @@ You can find the AppId in your application details URL.
 
 # Start a Conversation
 
-- Authenticate with an API Key. When calling `chat/completions`, passing `appId` in the request body is recommended.
+- Authenticate with an API Key. When calling `chat/completions` , passing `appId` in the request body is recommended.
 - For OpenAI SDK compatibility, `Authorization: Bearer <apiKey>-<appId>` is also supported. The suffix is only a transport compatibility format and is not stored.
-- To proxy a team member identity through `authProxy`, the team owner must enable `authProxy` when creating or editing the key. The proxied member must still have permission to access the target app and chat.
-- Some packages require adding `v1` to the `BaseUrl`. If you get a 404 error, try adding `v1` and retry.
+- To proxy a team member identity through `authProxy` , the team owner must enable `authProxy` when creating or editing the key. The proxied member must still have permission to access the target app and chat.
+- Some packages require adding `v1` to the `BaseUrl` . If you get a 404 error, try adding `v1` and retry.
 
 {/* * 对话现在有`v1`和`v2`两个接口，可以按需使用，v2 自 4.9.4 版本新增，v1 接口同时不再维护 */}
 
 ## Start Chat
 
-The `v1` chat API is compatible with the `GPT` interface! If you're using the standard `GPT` official API, you can access FastGPT by simply changing the `BaseUrl` and `Authorization`. However, note these rules:
+The `v1` chat API is compatible with the `GPT` interface! If you're using the standard `GPT` official API, you can access FastGPT by simply changing the `BaseUrl` and `Authorization` . However, note these rules:
 
 - Parameters like `model` and `temperature` are ignored. These values are determined by your workflow configuration.
-- Won't return actual `Token` consumed. If needed, set `detail=true` and manually calculate `tokens` from `responseData`.
+- Won't return actual `Token` consumed. If needed, set `detail=true` and manually calculate `tokens` from `responseData` .
 
 ### Request
 
@@ -100,11 +100,11 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
 
 - headers.Authorization: Bearer [apikey]
 - chatId: string | undefined.
-  - Empty or omitted: FastGPT context is not used, and context is built entirely from `messages`.
+  - Empty or omitted: FastGPT context is not used, and context is built entirely from `messages` .
   - Non-empty string: uses `chatId` for the chat, automatically reads messages from the FastGPT session, and uses only the last item in `messages` as the user question. Other messages are ignored. Make sure `chatId` is unique and shorter than 250 characters.
-- messages: Same structure as [GPT chat messages](https://platform.openai.com/docs/api-reference/chat/object).
-- responseChatItemId: string | undefined. If provided, FastGPT uses it as the response message ID and stores it in the database. Make sure it is unique under the current `chatId`.
-- detail: Whether to return intermediate values. In `stream` mode, they are separated by `event`; in non-stream mode, they are stored in `responseData`.
+- messages: Same structure as [GPT chat messages](https://platform.openai.com/docs/api-reference/chat/object) .
+- responseChatItemId: string | undefined. If provided, FastGPT uses it as the response message ID and stores it in the database. Make sure it is unique under the current `chatId` .
+- detail: Whether to return intermediate values. In `stream` mode, they are separated by `event` ; in non-stream mode, they are stored in `responseData` .
 - variables: Module variables. This object replaces `[key]` placeholders in input fields.
 
 </Tab>
@@ -278,26 +278,33 @@ data: [{"moduleName":"知识库搜索","moduleType":"datasetSearchNode","running
 </Tab>
 <Tab value="Event Values">
 
-event取值：
+Event values:
 
-    - answer: 返回给客户端的文本（最终会算作回答）
-    - fastAnswer: 指定回复返回给客户端的文本（最终会算作回答）
-    - toolCall: 执行工具
-    - toolParams: 工具参数
-    - toolResponse: 工具返回
-    - flowNodeStatus: 运行到的节点状态
-    - flowResponses: 节点完整响应
-    - updateVariables: 更新变量
-    - error: 报错
+    - answer: Text returned to the client (counts as the final answer)
+    - chatTitle: Chat title generated from the current user question
+    - fastAnswer: Preset reply text returned to the client (counts as the final answer)
+    - toolCall: Tool execution
+    - toolParams: Tool parameters
+    - toolResponse: Tool response
+    - flowNodeStatus: Current workflow step status
+    - flowResponses: Complete workflow step responses
+    - updateVariables: Updated variables
+    - interactive: Interactive config
+    - error: Error
 
 </Tab>
 </Tabs>
 
 ### Response
 
-If your workflow contains interactive nodes, still call this API with `detail=true`. Get interactive node config from `event=interactive` data. For `stream=false`, find `type=interactive` elements in choices.
+If your workflow contains interactive nodes, still call this API with `detail=true` :
 
-When calling a workflow with interactive nodes, if an interactive node is encountered, it returns immediately with this info:
+- `stream=true` : read the interactive config from `event=interactive` in `data.interactive` .
+- `stream=false` : read the element that contains the `interactive` field from `choices[].message.content` .
+
+The `interactive` payload returned to external callers is display config only. It contains only `type` and `params` ; internal runtime fields such as `entryNodeIds` , `memoryEdges` , `nodeOutputs` , and `nodeResponseId` are not returned. If the workflow internally hits a children / loop / tool wrapper interaction, the API returns the deepest user-facing interaction.
+
+When calling a workflow with interactive steps, if an interaction is encountered, it returns immediately. The examples below show the element inside `choices[].message.content[]` when `stream=false` ; when `stream=true` , `event=interactive` returns `{ "interactive": ... }` as its `data` :
 
 <Tabs items={['User Selection','Form Input']}>
 <Tab value="User Selection">
@@ -374,9 +381,9 @@ When calling a workflow with interactive nodes, if an interactive node is encoun
 </Tab>
 </Tabs>
 
-### Continue Interactive Node
+### Continue Interaction
 
-After receiving interactive node info, render your UI to guide user input or selection. Then call this API again to continue the workflow. Use this format:
+After receiving interactive info, render your UI to guide user input or selection. Then call this API again to continue the workflow. Use this format:
 
 <Tabs items={['User Selection','Form Input']}>
 <Tab value="User Selection">
@@ -404,7 +411,7 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
 </Tab>
 <Tab value="Form Input">
 
-Form input is slightly more complex. Serialize the input as a JSON string for `messages`. Object keys match form keys, values are user inputs. Ensure `chatId` is consistent.
+Form input is slightly more complex. Serialize the input as a JSON string for `messages` . Object keys match form keys, values are user inputs. Ensure `chatId` is consistent.
 
 ```bash
 curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
@@ -431,11 +438,11 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
 
 Plugin API is identical to chat API, with slight parameter differences:
 
-- 调用插件Type的应用时，接口默认为`detail`模式。
+- 调用插件 Type 的应用时，接口默认为 `detail` 模式。
 - No need to pass `chatId` since plugins run only once.
-- No need to pass `messages`.
+- No need to pass `messages` .
 - Pass `variables` to represent plugin inputs.
-- Get plugin outputs from `pluginData`.
+- Get plugin outputs from `pluginData` .
 
 ### Request
 
@@ -458,8 +465,8 @@ curl --location --request POST 'http://localhost:3000/api/v1/chat/completions' \
 <Tabs items={['detail=true,stream=false 响应','detail=true,stream=true 响应','Output Retrieval']}>
 <Tab value="detail=true, stream=false Response">
 
-- Find plugin output by locating `moduleType=pluginOutput` in `responseData`. Its `pluginOutput` contains the output.
-- Stream output is still available via `choices`.
+- Find plugin output by locating `moduleType=pluginOutput` in `responseData` . Its `pluginOutput` contains the output.
+- Stream output is still available via `choices` .
 
 ```json
 {
@@ -588,7 +595,7 @@ data: [{"nodeId":"fdDgXQ6SYn8v","moduleName":"AI 对话","moduleType":"chatNode"
 </Tab>
 <Tab value="Output Retrieval">
 
-event取值：
+event 取值：
 
     - answer: 返回给客户端的文本（最终会算作回答）
     - fastAnswer: 指定回复返回给客户端的文本（最终会算作回答）
@@ -605,7 +612,7 @@ event取值：
 
 # Chat CRUD
 
-- The following APIs can be called with any `API Key`.
+- The following APIs can be called with any `API Key` .
 - 4.8.12 and above
 
 \***\*Important Fields\*\***
@@ -1170,7 +1177,7 @@ curl --location --request POST 'http://localhost:3000/api/core/ai/agent/v2/creat
 
 | 参数名        | 类型   | 必填 | 说明                                                       |
 | ------------- | ------ | ---- | ---------------------------------------------------------- |
-| appId         | string | ✅   | 应用 Id                                                    |
+| appId         | string | ✅   | 应用 ID                                                    |
 | chatId        | string | ✅   | Session ID                                                 |
 | questionGuide | object |      | 自定义配置，不传的话，则会根据 appId，取最新发布版本的配置 |
 

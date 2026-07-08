@@ -153,7 +153,7 @@ const detailTrueStreamFalseExample = {
   ]
 };
 
-// 交互节点-用户选择 (非流式响应,从 choices 中获取 type=interactive)
+// 交互节点-用户选择 (非流式响应,从 choices 中获取 interactive 字段)
 const interactiveUserSelectResponseExample = {
   id: 'chatId',
   model: '',
@@ -164,7 +164,6 @@ const interactiveUserSelectResponseExample = {
         role: 'assistant',
         content: [
           {
-            type: 'interactive',
             interactive: {
               type: 'userSelect',
               params: {
@@ -195,7 +194,6 @@ const interactiveUserInputResponseExample = {
         role: 'assistant',
         content: [
           {
-            type: 'interactive',
             interactive: {
               type: 'userInput',
               params: {
@@ -356,7 +354,7 @@ export const ChatCompletionPath: OpenAPIPath = {
 如果工作流中包含交互节点，需要设置 \`detail=true\`：
 
 - \`stream=true\`：可从 \`event=interactive\` 数据中获取交互节点的配置。
-- \`stream=false\`：可从 \`choices\` 中获取 \`type=interactive\` 的元素。
+- \`stream=false\`：可从 \`choices[].message.content\` 中获取包含 \`interactive\` 字段的元素。
 
 返回给外部调用方的 \`interactive\` 是展示配置，只包含 \`type\` 和 \`params\`；\`entryNodeIds\` / \`memoryEdges\` / \`nodeOutputs\` / \`nodeResponseId\` 等内部运行态字段不会返回。若内部命中 children / loop / tool 包装交互，接口会返回最深层面向用户的交互节点。
 
@@ -447,13 +445,13 @@ ${interactiveStreamExample}
                 interactiveUserSelect: {
                   summary: '交互节点-用户选择 响应',
                   description:
-                    '工作流命中用户选择交互节点。从 choices[].message.content 中获取 type=interactive 的元素',
+                    '工作流命中用户选择交互节点。从 choices[].message.content 中获取包含 interactive 字段的元素',
                   value: interactiveUserSelectResponseExample
                 },
                 interactiveUserInput: {
                   summary: '交互节点-表单输入 响应',
                   description:
-                    '工作流命中表单输入交互节点。从 choices[].message.content 中获取 type=interactive 的元素',
+                    '工作流命中表单输入交互节点。从 choices[].message.content 中获取包含 interactive 字段的元素',
                   value: interactiveUserInputResponseExample
                 }
               }
@@ -517,7 +515,7 @@ ${interactiveStreamExample}
 如果工作流中包含交互节点，需要设置 \`detail=true\`：
 
 - \`stream=true\`：可从 \`event=interactive\` 数据中获取交互节点的配置。
-- \`stream=false\`：可从 \`choices\` 中获取 \`type=interactive\` 的元素。
+- \`stream=false\`：可从 \`choices[].message.content\` 中获取包含 \`interactive\` 字段的元素。
 
 返回给外部调用方的 \`interactive\` 是展示配置，只包含 \`type\` 和 \`params\`；\`entryNodeIds\` / \`memoryEdges\` / \`nodeOutputs\` / \`nodeResponseId\` 等内部运行态字段不会返回。若内部命中 children / loop / tool 包装交互，接口会返回最深层面向用户的交互节点。
 
@@ -608,13 +606,13 @@ ${interactiveStreamExample}
                 interactiveUserSelect: {
                   summary: '交互节点-用户选择 响应',
                   description:
-                    '工作流命中用户选择交互节点。从 choices[].message.content 中获取 type=interactive 的元素',
+                    '工作流命中用户选择交互节点。从 choices[].message.content 中获取包含 interactive 字段的元素',
                   value: interactiveUserSelectResponseExample
                 },
                 interactiveUserInput: {
                   summary: '交互节点-表单输入 响应',
                   description:
-                    '工作流命中表单输入交互节点。从 choices[].message.content 中获取 type=interactive 的元素',
+                    '工作流命中表单输入交互节点。从 choices[].message.content 中获取包含 interactive 字段的元素',
                   value: interactiveUserInputResponseExample
                 }
               }

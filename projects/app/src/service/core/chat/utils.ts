@@ -2,18 +2,9 @@ import type { DatasetCiteItemType } from '@fastgpt/global/core/dataset/type';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
-export enum ChatItemValueTypeEnum {
-  text = 'text',
-  file = 'file',
-  tool = 'tool',
-  interactive = 'interactive',
-  reasoning = 'reasoning'
-}
-
 export type PublicCompletionInteractive = Pick<WorkflowInteractiveResponseType, 'type' | 'params'>;
 
 export type CompletionDetailValueItem = Omit<AIChatItemValueItemType, 'interactive'> & {
-  type: ChatItemValueTypeEnum;
   interactive?: PublicCompletionInteractive;
 };
 
@@ -28,7 +19,7 @@ export type CompletionResponseContent =
  * 格式化 completions 非流式响应的 choices[].message.content。
  *
  * 普通单条文本保持 OpenAI 兼容字符串；detail=true 且包含交互、工具、文件或多段 value 时，
- * 返回带 type 的数组，确保交互节点可从 choices 中被客户端识别。
+ * 返回按字段名区分的 value 数组，确保交互节点可从 choices 中被客户端识别。
  */
 export const formatCompletionResponseContent = ({
   responseContent,
@@ -38,15 +29,6 @@ export const formatCompletionResponseContent = ({
   detail: boolean;
 }): CompletionResponseContent => {
   const MAX_COMPLETION_INTERACTIVE_EXTRACT_DEPTH = 20;
-
-  const getChatItemValueType = (item: AIChatItemValueItemType): ChatItemValueTypeEnum => {
-    if (item.text) return ChatItemValueTypeEnum.text;
-    if ('file' in item) return ChatItemValueTypeEnum.file;
-    if (item.tool || item.tools) return ChatItemValueTypeEnum.tool;
-    if (item.interactive) return ChatItemValueTypeEnum.interactive;
-    if (item.reasoning) return ChatItemValueTypeEnum.reasoning;
-    return ChatItemValueTypeEnum.text;
-  };
 
   const getChildInteractiveResponse = (
     interactive: WorkflowInteractiveResponseType
@@ -102,8 +84,7 @@ export const formatCompletionResponseContent = ({
       ...item,
       ...(item.interactive && {
         interactive: formatPublicCompletionInteractive(item.interactive)
-      }),
-      type: getChatItemValueType(item)
+      })
     }));
 
   const shouldReturnDetailValueList = ({

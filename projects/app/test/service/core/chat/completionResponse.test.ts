@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ChatItemValueTypeEnum, formatCompletionResponseContent } from '@/service/core/chat/utils';
+import { formatCompletionResponseContent } from '@/service/core/chat/utils';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 
 describe('formatCompletionResponseContent', () => {
@@ -21,7 +21,7 @@ describe('formatCompletionResponseContent', () => {
     });
   });
 
-  it('returns single interactive response as typed content array when detail is enabled', () => {
+  it('returns single interactive response as field-keyed content array when detail is enabled', () => {
     const interactive = {
       type: 'userSelect',
       params: {
@@ -41,7 +41,6 @@ describe('formatCompletionResponseContent', () => {
 
     expect(result).toEqual([
       {
-        type: ChatItemValueTypeEnum.interactive,
         interactive
       }
     ]);
@@ -81,7 +80,6 @@ describe('formatCompletionResponseContent', () => {
 
     expect(result).toEqual([
       {
-        type: ChatItemValueTypeEnum.interactive,
         interactive: {
           type: 'userInput',
           params: {
@@ -111,7 +109,6 @@ describe('formatCompletionResponseContent', () => {
 
     expect(result).toEqual([
       {
-        type: ChatItemValueTypeEnum.interactive,
         interactive: {
           type: 'childrenInteractive',
           params: {}
