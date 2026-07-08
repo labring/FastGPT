@@ -880,6 +880,7 @@ describe('agent generated tool input helpers', () => {
     const input = initToolInputTypeByDefaultMode(
       createMockInput({
         renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
+        selectedTypeIndex: 0,
         toolDescription: 'Prompt to model',
         isToolParam: true
       })
@@ -890,6 +891,24 @@ describe('agent generated tool input helpers', () => {
       FlowNodeInputTypeEnum.agentGenerated
     ]);
     expect(isAgentGeneratedToolInput(input)).toBe(false);
+  });
+
+  it('should detect agent generated mode from selectedTypeIndex', () => {
+    const input = initToolInputTypeByDefaultMode(
+      createMockInput({
+        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
+        selectedTypeIndex: 1,
+        toolDescription: 'Prompt to model',
+        isToolParam: true
+      })
+    );
+
+    expect(input.renderTypeList).toEqual([
+      FlowNodeInputTypeEnum.input,
+      FlowNodeInputTypeEnum.agentGenerated
+    ]);
+    expect(input.selectedTypeIndex).toBe(1);
+    expect(isAgentGeneratedToolInput(input)).toBe(true);
   });
 
   it('should not initialize file fields as agent generated', () => {

@@ -69,11 +69,9 @@ const getDeveloperRenderTypeList = (renderTypeList: FlowNodeInputTypeEnum[]) => 
 };
 
 const buildConfigRenderTypeList = ({
-  selectedInputType,
   developerInputType,
   canAgentGenerated
 }: {
-  selectedInputType?: FlowNodeInputTypeEnum;
   developerInputType?: FlowNodeInputTypeEnum;
   canAgentGenerated: boolean;
 }): FlowNodeInputTypeEnum[] => {
@@ -81,9 +79,7 @@ const buildConfigRenderTypeList = ({
 
   if (!canAgentGenerated) return [fallbackDeveloperType];
 
-  return selectedInputType === FlowNodeInputTypeEnum.agentGenerated
-    ? [FlowNodeInputTypeEnum.agentGenerated, fallbackDeveloperType]
-    : [fallbackDeveloperType, FlowNodeInputTypeEnum.agentGenerated];
+  return Array.from(new Set([FlowNodeInputTypeEnum.agentGenerated, fallbackDeveloperType]));
 };
 
 const buildConfigInputTypeState = ({
@@ -94,14 +90,22 @@ const buildConfigInputTypeState = ({
   selectedInputType?: FlowNodeInputTypeEnum;
   developerInputType?: FlowNodeInputTypeEnum;
   canAgentGenerated: boolean;
-}) => ({
-  renderTypeList: buildConfigRenderTypeList({
-    selectedInputType,
+}) => {
+  const renderTypeList = buildConfigRenderTypeList({
     developerInputType,
     canAgentGenerated
-  }),
-  selectedTypeIndex: 0
-});
+  });
+  const selectedRenderType =
+    canAgentGenerated && selectedInputType === FlowNodeInputTypeEnum.agentGenerated
+      ? FlowNodeInputTypeEnum.agentGenerated
+      : (developerInputType ?? FlowNodeInputTypeEnum.input);
+  const selectedTypeIndex = renderTypeList.findIndex((type) => type === selectedRenderType);
+
+  return {
+    renderTypeList,
+    selectedTypeIndex: selectedTypeIndex >= 0 ? selectedTypeIndex : 0
+  };
+};
 
 const normalizeInputSelectedTypeIndex = <T extends FlowNodeTemplateType['inputs'][number]>(
   input: T
