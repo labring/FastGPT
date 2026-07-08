@@ -2,7 +2,7 @@ import {
   S3AccessLinkErrCode,
   S3AccessLinkError,
   type S3DownloadAliasStore
-} from '@fastgpt-sdk/storage/access-link';
+} from '@fastgpt-sdk/storage';
 import { MongoS3DownloadAlias } from './schema';
 import type { S3DownloadAliasType } from '../type';
 

@@ -5,7 +5,7 @@ import {
   encodeExpiresAtMinute,
   parseSignedS3DownloadAlias as parseSdkSignedS3DownloadAlias,
   resolveDownloadExpiresAt
-} from '@fastgpt-sdk/storage/access-link';
+} from '@fastgpt-sdk/storage';
 import { serviceEnv } from '../../../env';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {

@@ -1,4 +1,4 @@
-import { createS3AccessLinkService } from '@fastgpt-sdk/storage/access-link';
+import { createS3AccessLinkService } from '@fastgpt-sdk/storage';
 import { serviceEnv } from '../../../env';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {

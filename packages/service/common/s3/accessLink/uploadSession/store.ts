@@ -1,4 +1,4 @@
-import type { S3UploadSessionStore } from '@fastgpt-sdk/storage/access-link';
+import type { S3UploadSessionStore } from '@fastgpt-sdk/storage';
 import type { S3UploadSessionType } from '../type';
 import { MongoS3UploadSession } from './schema';
 

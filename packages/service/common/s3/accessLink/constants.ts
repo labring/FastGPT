@@ -6,7 +6,7 @@ export {
   S3_DOWNLOAD_EXPIRE_BUCKET_THRESHOLD_MS,
   S3_DOWNLOAD_SIGNATURE_LENGTH,
   S3_UPLOAD_TOKEN_LENGTH
-} from '@fastgpt-sdk/storage/access-link';
+} from '@fastgpt-sdk/storage';
 
 export const S3_ACCESS_LINK_ROUTES = {
   download: '/api/system/file/d',
