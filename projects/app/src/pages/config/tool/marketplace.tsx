@@ -46,6 +46,8 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 
 type QueryValue = string | string[] | undefined;
 type QueryRecord = Record<string, QueryValue>;
+const TOOL_GRID_TEMPLATE_COLUMNS =
+  'repeat(auto-fill, minmax(min(max(260px, calc((100% - 6.25rem) / 6)), 100%), 1fr))';
 
 const getComparableQueryValue = (value: QueryValue) =>
   Array.isArray(value) ? value.join('\0') : (value ?? '');
@@ -867,7 +869,7 @@ const ToolkitMarketplace = ({ marketplaceUrl }: { marketplaceUrl: string }) => {
             </Flex>
             {displayTools.length > 0 ? (
               <Grid
-                gridTemplateColumns={'repeat(auto-fill, minmax(min(260px, 100%), 1fr))'}
+                gridTemplateColumns={TOOL_GRID_TEMPLATE_COLUMNS}
                 gridGap={5}
                 alignItems={'stretch'}
               >
