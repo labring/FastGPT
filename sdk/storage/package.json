@@ -1,7 +1,7 @@
 {
   "name": "@fastgpt-sdk/storage",
   "private": false,
-  "version": "0.6.17",
+  "version": "0.8.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -27,6 +27,10 @@
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./access-link": {
+      "import": "./dist/access-link/index.js",
+      "types": "./dist/access-link/index.d.ts"
     }
   },
   "files": [
