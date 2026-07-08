@@ -65,6 +65,7 @@ export const JsonSchemaPropertiesItemSchema = z
     // 自定义扩展（FastGPT 专用）
     'x-tool-description': z.string().optional(), // 工具描述
     toolDescription: z.string().optional(), // 工具描述 for System Tool
+    isToolParam: z.boolean().optional(), // 是否作为工具调用参数由 Agent 生成
     isSecret: z.boolean().optional() // System Tool
   })
   .catchall(z.any());
@@ -253,6 +254,7 @@ export const jsonSchema2NodeInput = ({
     label: value.title || key,
     valueType: getNodeInputTypeFromSchemaInputType({ type: value.type, arrayItems: value.items }),
     description: value.description,
+    isToolParam: value.isToolParam,
     toolDescription:
       schemaType === 'http'
         ? value['x-tool-description']
@@ -349,7 +351,7 @@ export const str2OpenApiSchema = async (yamlStr = ''): Promise<OpenApiJsonSchema
       .flat()
       .filter(Boolean) as OpenApiJsonSchema['pathData'];
     return { pathData, serverPath };
-  } catch (err) {
+  } catch {
     return Promise.reject(i18nT('common:plugin.Invalid Schema'));
   }
 };
@@ -530,7 +532,8 @@ export const nodeInput2JsonSchemaProperty = (
     ...(input.defaultValue !== undefined ? { default: input.defaultValue } : {}),
     ...(typeof input.min === 'number' ? { minimum: input.min } : {}),
     ...(typeof input.max === 'number' ? { maximum: input.max } : {}),
-    ...(input.toolDescription ? { toolDescription: input.toolDescription } : {})
+    ...(input.toolDescription ? { toolDescription: input.toolDescription } : {}),
+    ...(input.isToolParam !== undefined ? { isToolParam: input.isToolParam } : {})
   };
 };
 

@@ -50,13 +50,13 @@ export const canInputBeAgentGenerated = (
 
 /**
  * 工具首次加入工作流/Agent 时，将默认输入方式固化为最终 renderTypeList。
- * 未来插件侧 isToolParam 落地后，应在这里优先读取该字段；当前用 toolDescription 兼容旧插件。
+ * isToolParam 是插件/schema 声明的默认输入方式；toolDescription 只作为模型参数描述。
  */
 export const initToolInputTypeByDefaultMode = <T extends FlowNodeInputItemType>(input: T): T => {
   if (isAgentGeneratedToolInput(input)) return input;
 
   if (
-    !input.toolDescription ||
+    input.isToolParam !== true ||
     !canInputBeAgentGenerated(input) ||
     input.renderTypeList.includes(FlowNodeInputTypeEnum.agentGenerated)
   ) {
