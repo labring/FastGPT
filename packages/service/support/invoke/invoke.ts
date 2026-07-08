@@ -16,6 +16,7 @@ import { getUserDetail } from '../user/controller';
 import { MongoTeam } from '../user/team/teamSchema';
 import { InvokeFileUploadSchema, InvokeSessionSchema, type InvokeFileUploadType } from './type';
 import type { InvokeSessionType } from './type';
+import { addHours } from 'date-fns';
 
 const INVOKE_TOKEN_EXPIRES_IN = 60 * 60;
 
@@ -72,7 +73,7 @@ export class InvokeProcessor {
 
     const { appId, chatId, uId } = InvokeSessionSchema.parse(this._session);
 
-    const { filename, body, contentType, expiredTime } = InvokeFileUploadSchema.parse(params);
+    const { filename, body, contentType } = InvokeFileUploadSchema.parse(params);
     const result = await getS3ChatSource().uploadChatFile({
       sourceType: ChatSourceTypeEnum.app,
       sourceId: appId,
@@ -81,7 +82,7 @@ export class InvokeProcessor {
       filename,
       body,
       contentType,
-      expiredTime
+      expiredTime: addHours(new Date(), 365)
     });
 
     return {

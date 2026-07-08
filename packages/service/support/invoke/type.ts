@@ -16,8 +16,7 @@ export type InvokeSessionType = z.infer<typeof InvokeSessionSchema>;
 export const InvokeFileUploadSchema = z.object({
   filename: UploadFileByBodySchema.shape.filename,
   body: UploadFileByBodySchema.shape.body,
-  contentType: UploadFileByBodySchema.shape.contentType,
-  expiredTime: UploadFileByBodySchema.shape.expiredTime
+  contentType: UploadFileByBodySchema.shape.contentType
 });
 
 export type InvokeFileUploadType = z.infer<typeof InvokeFileUploadSchema>;
