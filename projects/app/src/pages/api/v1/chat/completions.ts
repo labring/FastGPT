@@ -13,9 +13,9 @@ import {
   getMaxHistoryLimitFromNodes,
   storeEdges2RuntimeEdges,
   storeNodes2RuntimeNodes,
-  textAdaptGptResponse,
   getLastInteractiveValue
 } from '@fastgpt/global/core/workflow/runtime/utils';
+import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { GPTMessages2Chats, chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import {
@@ -439,25 +439,20 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       await titleSender.send();
       titleSender.close();
 
-      workflowResponseWrite({
-        event: SseResponseEventEnum.answer,
-        data: textAdaptGptResponse({
-          text: null,
-          finish_reason: 'stop'
-        })
-      });
+      workflowResponseWrite(workflowSseEvent.answerStop());
       // 特殊输配(data 不是{})
       if (detail) {
-        workflowResponseWrite({
-          event: SseResponseEventEnum.flowResponses,
-          data: JSON.stringify(feResponseData)
-        });
+        workflowResponseWrite(
+          workflowSseEvent.raw({
+            event: SseResponseEventEnum.flowResponses,
+            data: JSON.stringify(feResponseData)
+          })
+        );
       }
 
-      workflowResponseWrite({
-        event: detail ? SseResponseEventEnum.answer : undefined,
-        data: '[DONE]'
-      });
+      workflowResponseWrite(
+        workflowSseEvent.done(detail ? SseResponseEventEnum.answer : undefined)
+      );
     } else {
       const generatedTitle = await titleSender.send();
       const formatResponseContent = removeAIResponseCite(assistantResponses, retainDatasetCite);

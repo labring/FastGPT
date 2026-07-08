@@ -12,10 +12,8 @@ import type {
 } from '@fastgpt/global/core/workflow/runtime/type';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import {
-  DispatchNodeResponseKeyEnum,
-  SseResponseEventEnum
-} from '@fastgpt/global/core/workflow/runtime/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { normalizeAIChatValue } from '@fastgpt/global/core/chat/adapt';
 import type {
   ChatDispatchProps,
@@ -804,13 +802,7 @@ export class WorkflowQueue {
           : getNanoid();
       // push run status messages
       if (node.showStatus && !this.data.isToolCall) {
-        this.data.workflowStreamResponse?.({
-          event: SseResponseEventEnum.flowNodeStatus,
-          data: {
-            status: 'running',
-            name: node.name
-          }
-        });
+        this.data.workflowStreamResponse?.(workflowSseEvent.flowNodeStatus(node.name));
       }
       const startTime = Date.now();
       // get node running params
@@ -993,10 +985,7 @@ export class WorkflowQueue {
             });
 
         filteredResponses.forEach((item) => {
-          this.data.workflowStreamResponse?.({
-            event: SseResponseEventEnum.flowNodeResponse,
-            data: item
-          });
+          this.data.workflowStreamResponse?.(workflowSseEvent.flowNodeResponse(item));
         });
       }
 
@@ -1466,10 +1455,7 @@ export class WorkflowQueue {
 
     // Tool call, not need interactive response
     if (!this.data.isToolCall && this.isRootRuntime) {
-      this.data.workflowStreamResponse?.({
-        event: SseResponseEventEnum.interactive,
-        data: { interactive: interactiveResult }
-      });
+      this.data.workflowStreamResponse?.(workflowSseEvent.interactive(interactiveResult));
     }
 
     return {
@@ -1621,10 +1607,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
             workflowSpan.setStatus({ code: SpanStatusCode.OK });
 
             if (isRootRuntime) {
-              data.workflowStreamResponse?.({
-                event: SseResponseEventEnum.workflowDuration,
-                data: { durationSeconds }
-              });
+              data.workflowStreamResponse?.(workflowSseEvent.workflowDuration(durationSeconds));
             }
 
             return {

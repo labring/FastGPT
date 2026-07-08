@@ -11,8 +11,7 @@ import type {
   ChatDispatchProps,
   RuntimeNodeItemType
 } from '@fastgpt/global/core/workflow/runtime/type';
-import type { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
+import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { pushTrack } from '../../../../../../../common/middle/tracks/utils';
@@ -20,7 +19,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getAppVersionById } from '../../../../../../app/version/controller';
 import { assertMCPUrlNotInternal, MCPClient } from '../../../../../../app/mcp';
 import { runHTTPTool } from '../../../../../../app/http';
-import { parseToolId } from '../../../../child/runTool';
+import { isPluginAnswerType, parseToolId } from '../../../../child/runTool';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { RequireOnlyOne } from '@fastgpt/global/common/type/utils';
 import { pluginClient } from '../../../../../../../thirdProvider/fastgptPlugin';
@@ -170,15 +169,14 @@ export const dispatchTool = async ({
           invokeToken: invokeToken || ''
         },
         onMessage: ({ type, content }) => {
-          if (workflowStreamResponse && content) {
-            answerText += content;
-            workflowStreamResponse({
-              event: type as unknown as SseResponseEventEnum,
-              data: textAdaptGptResponse({
-                text: content
-              })
-            });
-          }
+          if (!workflowStreamResponse || !content || !isPluginAnswerType(type)) return;
+
+          answerText += content;
+          workflowStreamResponse(
+            type === 'fastAnswer'
+              ? workflowSseEvent.fastAnswerDelta(content)
+              : workflowSseEvent.answerDelta(content)
+          );
         }
       });
 

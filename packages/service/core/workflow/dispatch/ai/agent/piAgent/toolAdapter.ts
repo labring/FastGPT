@@ -3,7 +3,7 @@ import type {
   ChatHistoryItemResType,
   ToolModuleResponseItemType
 } from '@fastgpt/global/core/chat/type';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { DispatchAgentModuleProps } from '..';
 import { getExecuteTool, type ToolDispatchContext } from '../utils';
@@ -171,28 +171,13 @@ export const createPiAgentToolEventHandler = ({
       };
       upsertAssistantTool(assistantResponses, assistantTool);
 
-      ctx.streamResponseFn?.({
-        id: callId,
-        event: SseResponseEventEnum.toolCall,
-        data: {
-          tool: assistantTool
-        }
-      });
+      ctx.streamResponseFn?.(workflowSseEvent.toolCall(assistantTool));
     }
 
     const latestTool = findAssistantTool(assistantResponses, callId);
     if (argStr && !latestTool?.params) {
       appendAssistantToolParams(assistantResponses, callId, argStr);
-      ctx.streamResponseFn?.({
-        id: callId,
-        event: SseResponseEventEnum.toolParams,
-        data: {
-          tool: {
-            id: callId,
-            params: argStr
-          }
-        }
-      });
+      ctx.streamResponseFn?.(workflowSseEvent.toolParams({ id: callId, params: argStr }));
     }
   };
 
@@ -257,16 +242,12 @@ export const createPiAgentToolEventHandler = ({
       const currentTool = findAssistantTool(assistantResponses, event.toolCallId);
       if (response && !currentTool?.response) {
         appendAssistantToolResponse(assistantResponses, event.toolCallId, response);
-        ctx.streamResponseFn?.({
-          id: event.toolCallId,
-          event: SseResponseEventEnum.toolResponse,
-          data: {
-            tool: {
-              id: event.toolCallId,
-              response
-            }
-          }
-        });
+        ctx.streamResponseFn?.(
+          workflowSseEvent.toolResponse({
+            id: event.toolCallId,
+            response
+          })
+        );
       }
 
       if (event.isError) {
@@ -336,16 +317,7 @@ export async function buildAgentTools({
       if (usages.length > 0) usagePush(usages);
       appendAssistantToolResponse(assistantResponses, callId, response);
 
-      ctx.streamResponseFn?.({
-        id: callId,
-        event: SseResponseEventEnum.toolResponse,
-        data: {
-          tool: {
-            id: callId,
-            response
-          }
-        }
-      });
+      ctx.streamResponseFn?.(workflowSseEvent.toolResponse({ id: callId, response }));
 
       return { content: [{ type: 'text' as const, text: response }], details: {} };
     };
@@ -364,27 +336,12 @@ export async function buildAgentTools({
         };
         upsertAssistantTool(assistantResponses, assistantTool);
 
-        ctx.streamResponseFn?.({
-          id: callId,
-          event: SseResponseEventEnum.toolCall,
-          data: {
-            tool: assistantTool
-          }
-        });
+        ctx.streamResponseFn?.(workflowSseEvent.toolCall(assistantTool));
       }
 
       if (argStr && !findAssistantTool(assistantResponses, callId)?.params) {
         appendAssistantToolParams(assistantResponses, callId, argStr);
-        ctx.streamResponseFn?.({
-          id: callId,
-          event: SseResponseEventEnum.toolParams,
-          data: {
-            tool: {
-              id: callId,
-              params: argStr
-            }
-          }
-        });
+        ctx.streamResponseFn?.(workflowSseEvent.toolParams({ id: callId, params: argStr }));
       }
 
       return execute(callId, args, argStr);

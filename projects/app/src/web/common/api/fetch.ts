@@ -23,13 +23,9 @@ import { formatTime2YMDHMW } from '@fastgpt/global/common/string/time';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import type { OnOptimizePromptProps } from '@/components/common/PromptEditor/OptimizerPopover';
 import type { OnOptimizeCodeProps } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeCode/Copilot';
-import type {
-  ToolModuleResponseItemType,
-  SkillModuleResponseItemType
-} from '@fastgpt/global/core/chat/type';
+import type { WorkflowSsePayloadMap } from '@fastgpt/global/core/workflow/runtime/sse';
 import type { ChatAgentConfigFormDataType } from '@fastgpt/global/core/ai/auxiliaryGeneration/type';
 import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
-import type { AgentPlanStatusType, AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import type { StreamNoNeedToBeResumeType } from '@fastgpt/global/openapi/core/ai/api';
 
 type StreamFetchProps = {
@@ -69,45 +65,31 @@ const shouldSendStreamResumeHeader = (url: string) =>
 type CommonResponseType = {
   responseValueId?: string;
 };
-type ResponseQueueItemType = CommonResponseType &
-  (
-    | {
-        event: SseResponseEventEnum.fastAnswer | SseResponseEventEnum.answer;
-        text?: string;
-        reasoningText?: string;
-      }
-    | {
-        event: SseResponseEventEnum.interactive;
-        [key: string]: any;
-      }
-    | {
-        event:
-          | SseResponseEventEnum.toolCall
-          | SseResponseEventEnum.toolParams
-          | SseResponseEventEnum.toolResponse;
-        tool: ToolModuleResponseItemType;
-      }
-    | {
-        event: AuxiliaryGenerationEventEnum.chatAgentConfig;
-        data: ChatAgentConfigFormDataType;
-      }
-    | {
-        event: SseResponseEventEnum.plan;
-        plan: AgentPlanType;
-      }
-    | {
-        event: SseResponseEventEnum.planStatus;
-        planStatus: AgentPlanStatusType;
-      }
-    | {
-        event: SseResponseEventEnum.skillCall;
-        skill: SkillModuleResponseItemType;
-      }
-    | {
-        event: SseResponseEventEnum.chatTitle;
-        title: string;
-      }
-  );
+type WorkflowQueueEvent =
+  | SseResponseEventEnum.interactive
+  | SseResponseEventEnum.toolCall
+  | SseResponseEventEnum.toolParams
+  | SseResponseEventEnum.toolResponse
+  | SseResponseEventEnum.plan
+  | SseResponseEventEnum.planStatus
+  | SseResponseEventEnum.skillCall
+  | SseResponseEventEnum.chatTitle;
+type WorkflowQueueItem<Event extends WorkflowQueueEvent> = Event extends WorkflowQueueEvent
+  ? CommonResponseType & { event: Event } & WorkflowSsePayloadMap[Event]
+  : never;
+type AnswerQueueItem = CommonResponseType & {
+  event: SseResponseEventEnum.fastAnswer | SseResponseEventEnum.answer;
+  text?: string;
+  reasoningText?: string;
+};
+type ChatAgentConfigQueueItem = CommonResponseType & {
+  event: AuxiliaryGenerationEventEnum.chatAgentConfig;
+  data: ChatAgentConfigFormDataType;
+};
+type ResponseQueueItemType =
+  | AnswerQueueItem
+  | WorkflowQueueItem<WorkflowQueueEvent>
+  | ChatAgentConfigQueueItem;
 
 const STREAM_TYPING_QUEUE_COUNT_WHILE_STREAMING = 1;
 const STREAM_TYPING_QUEUE_COUNT_AFTER_FINISH = 20;

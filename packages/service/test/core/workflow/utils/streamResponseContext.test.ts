@@ -13,6 +13,7 @@ import {
   initWorkflowSseResponse
 } from '@fastgpt/service/core/workflow/utils/streamResponseContext';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import {
   ChatSourceTypeEnum,
   STREAM_RESUME_REQUEST_HEADER
@@ -137,10 +138,7 @@ describe('createWorkflowStreamResponseContext', () => {
       responseId: chatId
     });
 
-    noMirrorContext.responseWrite({
-      event: SseResponseEventEnum.answer,
-      data: '[DONE]'
-    });
+    noMirrorContext.responseWrite(workflowSseEvent.done(SseResponseEventEnum.answer));
     await noMirrorContext.flushResume();
 
     expect(redis.info).not.toHaveBeenCalled();
@@ -158,10 +156,7 @@ describe('createWorkflowStreamResponseContext', () => {
       responseId: chatId
     });
 
-    mirrorContext.responseWrite({
-      event: SseResponseEventEnum.answer,
-      data: '[DONE]'
-    });
+    mirrorContext.responseWrite(workflowSseEvent.done(SseResponseEventEnum.answer));
     await mirrorContext.flushResume();
 
     expect(redis.info).toHaveBeenCalledTimes(1);
@@ -194,10 +189,7 @@ describe('createWorkflowStreamResponseContext', () => {
       enableStreamResume: false
     });
 
-    context.responseWrite({
-      event: SseResponseEventEnum.answer,
-      data: '[DONE]'
-    });
+    context.responseWrite(workflowSseEvent.done(SseResponseEventEnum.answer));
 
     expect(context).not.toHaveProperty('flushResume');
     expect(redis.info).not.toHaveBeenCalled();

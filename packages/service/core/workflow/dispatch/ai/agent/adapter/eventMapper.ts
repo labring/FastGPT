@@ -2,8 +2,7 @@ import type {
   AIChatItemValueItemType,
   ToolModuleResponseItemType
 } from '@fastgpt/global/core/chat/type';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
+import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import type { AgentLoopEvent } from '../../../../../ai/llm/agentLoop';
 import type { WorkflowResponseType } from '../../../type';
 import type { GetSubAppInfoFnType } from '../type';
@@ -270,16 +269,7 @@ export const createWorkflowAgentLoopEventMapper = ({
       params: `${tool.params || ''}${argsDelta}`
     }));
 
-    workflowStreamResponse?.({
-      id: callId,
-      event: SseResponseEventEnum.toolParams,
-      data: {
-        tool: {
-          id: callId,
-          params: argsDelta
-        }
-      }
-    });
+    workflowStreamResponse?.(workflowSseEvent.toolParams({ id: callId, params: argsDelta }));
   };
 
   const applyToolResponse = ({ callId, response }: { callId: string; response: string }) => {
@@ -298,16 +288,7 @@ export const createWorkflowAgentLoopEventMapper = ({
       response: `${tool.response || ''}${response}`
     }));
 
-    workflowStreamResponse?.({
-      id: callId,
-      event: SseResponseEventEnum.toolResponse,
-      data: {
-        tool: {
-          id: callId,
-          response
-        }
-      }
-    });
+    workflowStreamResponse?.(workflowSseEvent.toolResponse({ id: callId, response }));
   };
 
   /**
@@ -316,33 +297,17 @@ export const createWorkflowAgentLoopEventMapper = ({
   const emitEvent = (event: AgentLoopEvent) => {
     switch (event.type) {
       case 'answer_delta': {
-        workflowStreamResponse?.({
-          event: SseResponseEventEnum.answer,
-          data: textAdaptGptResponse({
-            text: event.text
-          })
-        });
+        workflowStreamResponse?.(workflowSseEvent.answerDelta(event.text));
         return;
       }
       case 'reasoning_delta': {
         if (!showReasoning) return;
 
-        workflowStreamResponse?.({
-          event: SseResponseEventEnum.answer,
-          data: textAdaptGptResponse({
-            reasoning_content: event.text
-          })
-        });
+        workflowStreamResponse?.(workflowSseEvent.reasoningDelta(event.text));
         return;
       }
       case 'llm_request_start': {
-        workflowStreamResponse?.({
-          event: SseResponseEventEnum.flowNodeStatus,
-          data: {
-            status: 'running',
-            name: event.modelName
-          }
-        });
+        workflowStreamResponse?.(workflowSseEvent.flowNodeStatus(event.modelName));
         return;
       }
       case 'llm_request_end': {
@@ -412,13 +377,7 @@ export const createWorkflowAgentLoopEventMapper = ({
         };
         upsertToolResponse(tool);
 
-        workflowStreamResponse?.({
-          id: event.call.id,
-          event: SseResponseEventEnum.toolCall,
-          data: {
-            tool
-          }
-        });
+        workflowStreamResponse?.(workflowSseEvent.toolCall(tool));
         return;
       }
       case 'tool_params': {
@@ -449,15 +408,9 @@ export const createWorkflowAgentLoopEventMapper = ({
         return;
       }
       case 'plan_status': {
-        workflowStreamResponse?.({
-          id: AGENT_PLAN_STREAM_RESPONSE_ID,
-          event: SseResponseEventEnum.planStatus,
-          data: {
-            planStatus: {
-              status: event.status
-            }
-          }
-        });
+        workflowStreamResponse?.(
+          workflowSseEvent.planStatus({ status: event.status }, AGENT_PLAN_STREAM_RESPONSE_ID)
+        );
         return;
       }
       case 'plan_update': {
@@ -476,13 +429,7 @@ export const createWorkflowAgentLoopEventMapper = ({
           assistantResponses.push(nextPlanValue);
         }
 
-        workflowStreamResponse?.({
-          id: AGENT_PLAN_STREAM_RESPONSE_ID,
-          event: SseResponseEventEnum.plan,
-          data: {
-            plan: event.plan
-          }
-        });
+        workflowStreamResponse?.(workflowSseEvent.plan(event.plan, AGENT_PLAN_STREAM_RESPONSE_ID));
         return;
       }
     }

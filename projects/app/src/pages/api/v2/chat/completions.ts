@@ -13,9 +13,9 @@ import {
   getMaxHistoryLimitFromNodes,
   storeEdges2RuntimeEdges,
   storeNodes2RuntimeNodes,
-  textAdaptGptResponse,
   getLastInteractiveValue
 } from '@fastgpt/global/core/workflow/runtime/utils';
+import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { GPTMessages2Chats, chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import {
@@ -449,18 +449,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       await titleSender.send();
       titleSender.close();
 
-      streamResponseContext.responseWrite({
-        event: SseResponseEventEnum.answer,
-        data: textAdaptGptResponse({
-          text: null,
-          finish_reason: 'stop'
-        })
-      });
+      streamResponseContext.responseWrite(workflowSseEvent.answerStop());
 
-      streamResponseContext.responseWrite({
-        event: detail ? SseResponseEventEnum.answer : undefined,
-        data: '[DONE]'
-      });
+      streamResponseContext.responseWrite(
+        workflowSseEvent.done(detail ? SseResponseEventEnum.answer : undefined)
+      );
 
       await streamResponseContext.flushResume();
     } else {

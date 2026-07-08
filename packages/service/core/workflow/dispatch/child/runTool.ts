@@ -1,7 +1,7 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import type { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import {
   type DispatchNodeResultType,
   type ModuleDispatchProps
@@ -13,7 +13,6 @@ import type { McpToolDataType } from '@fastgpt/global/core/app/tool/mcpTool/type
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
 import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import type { StoreSecretValueType } from '@fastgpt/global/common/secret/type';
-import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import { pushTrack } from '../../../../common/middle/tracks/utils';
 import { getNodeErrResponse } from '../utils';
 import { getAppVersionById } from '../../../../core/app/version/controller';
@@ -36,6 +35,9 @@ type SystemInputConfigType = {
   type: SystemToolSecretInputTypeEnum;
   value: StoreSecretValueType;
 };
+
+export const isPluginAnswerType = (type: string): type is 'answer' | 'fastAnswer' =>
+  type === 'answer' || type === 'fastAnswer';
 
 type RunToolProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.toolData]?: McpToolDataType;
@@ -153,15 +155,14 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
           time: cTime
         },
         onMessage: ({ type, content }) => {
-          if (workflowStreamResponse && content) {
-            answerText += content;
-            workflowStreamResponse({
-              event: type as unknown as SseResponseEventEnum,
-              data: textAdaptGptResponse({
-                text: content
-              })
-            });
-          }
+          if (!workflowStreamResponse || !content || !isPluginAnswerType(type)) return;
+
+          answerText += content;
+          workflowStreamResponse(
+            type === 'fastAnswer'
+              ? workflowSseEvent.fastAnswerDelta(content)
+              : workflowSseEvent.answerDelta(content)
+          );
         }
       });
 

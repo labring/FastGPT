@@ -3,8 +3,7 @@ import { getSseErrorResponse } from '../../../common/response';
 import { clearCookie } from '../../../support/permission/auth/common';
 import { STREAM_RESUME_REQUEST_HEADER } from '@fastgpt/global/core/chat/constants';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
+import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { createSseStreamContext } from '../../../common/response/sse';
 import { getStreamResumeMirror } from '../../chat/resume';
 import { getWorkflowResponseWrite } from '../dispatch/utils';
@@ -110,12 +109,7 @@ export const initWorkflowSseResponse = ({
     // 10s 发送一次空 answer，沿用统一 SSE writer，避免浏览器或代理认为长连接已断开。
     heartbeat: {
       write: () => {
-        responseWrite?.({
-          event: SseResponseEventEnum.answer,
-          data: textAdaptGptResponse({
-            text: ''
-          })
-        });
+        responseWrite?.(workflowSseEvent.answerDelta(''));
       }
     }
   });

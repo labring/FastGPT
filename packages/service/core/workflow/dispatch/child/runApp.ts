@@ -2,13 +2,12 @@ import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { runWorkflow } from '../index';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import {
   getWorkflowEntryNodeIds,
   storeEdges2RuntimeEdges,
   rewriteNodeOutputByHistories,
-  storeNodes2RuntimeNodes,
-  textAdaptGptResponse
+  storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -94,12 +93,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     const childStreamResponse = system_forbid_stream ? false : props.stream;
     // Auto line
     if (childStreamResponse) {
-      workflowStreamResponse?.({
-        event: SseResponseEventEnum.answer,
-        data: textAdaptGptResponse({
-          text: '\n'
-        })
-      });
+      workflowStreamResponse?.(workflowSseEvent.answerDelta('\n'));
     }
 
     const chatHistories = getHistories(history, histories);
