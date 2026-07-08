@@ -105,7 +105,7 @@ const ChatCompletionResponseMessageSchema = z.object({
   role: z.literal('assistant').meta({ description: '消息角色' }),
   content: z.any().meta({
     description:
-      '消息内容。普通对话为字符串；detail=true 或工作流命中交互节点时，可能为带 type 字段的对象数组（type 取值: text / interactive / tool / file / reasoning）'
+      '消息内容。普通对话为字符串；detail=true 或工作流命中交互节点时，可能为带 type 字段的对象数组（type 取值: text / interactive / tool / file / reasoning）。当 type=interactive 时，元素形如 { type: "interactive", interactive: { type, params } }，只返回交互展示配置，不返回 entryNodeIds / memoryEdges / nodeOutputs 等内部运行态字段'
   }),
   reasoning_content: z.string().optional().meta({ description: '思考过程内容（仅推理模型有）' })
 });

@@ -358,6 +358,8 @@ export const ChatCompletionPath: OpenAPIPath = {
 - \`stream=true\`：可从 \`event=interactive\` 数据中获取交互节点的配置。
 - \`stream=false\`：可从 \`choices\` 中获取 \`type=interactive\` 的元素。
 
+返回给外部调用方的 \`interactive\` 是展示配置，只包含 \`type\` 和 \`params\`；\`entryNodeIds\` / \`memoryEdges\` / \`nodeOutputs\` / \`nodeResponseId\` 等内部运行态字段不会返回。若内部命中 children / loop / tool 包装交互，接口会返回最深层面向用户的交互节点。
+
 接收到交互节点信息后，可以根据数据进行 UI 渲染并引导用户输入/选择，然后再次调用本接口继续工作流：
 
 - 用户选择：直接将选择结果作为 user message 的 content 传入。
@@ -516,6 +518,8 @@ ${interactiveStreamExample}
 
 - \`stream=true\`：可从 \`event=interactive\` 数据中获取交互节点的配置。
 - \`stream=false\`：可从 \`choices\` 中获取 \`type=interactive\` 的元素。
+
+返回给外部调用方的 \`interactive\` 是展示配置，只包含 \`type\` 和 \`params\`；\`entryNodeIds\` / \`memoryEdges\` / \`nodeOutputs\` / \`nodeResponseId\` 等内部运行态字段不会返回。若内部命中 children / loop / tool 包装交互，接口会返回最深层面向用户的交互节点。
 
 接收到交互节点信息后，可以根据数据进行 UI 渲染并引导用户输入/选择，然后再次调用本接口继续工作流：
 
