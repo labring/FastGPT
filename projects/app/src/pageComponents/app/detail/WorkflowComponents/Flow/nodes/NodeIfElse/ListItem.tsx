@@ -4,13 +4,13 @@ import {
   type DraggableStateSnapshot
 } from '@fastgpt/web/components/common/DndDrag/index';
 import Container from '../../components/Container';
-import { MinusIcon } from '@chakra-ui/icons';
 import { type IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { type ReferenceItemValueType } from '@fastgpt/global/core/workflow/type/io';
 import { useTranslation } from 'next-i18next';
 import { ReferSelector, useReference } from '../render/RenderInput/templates/Reference';
 import { VARIABLE_NODE_ID, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { getIfElseBranchHandleKey } from '@fastgpt/global/core/workflow/template/system/ifElse/utils';
 import {
   VariableConditionEnum,
   allConditionList,
@@ -58,7 +58,11 @@ const ListItem = ({
   const { t } = useTranslation();
   const { getZoom } = useReactFlow();
   const onDelEdge = useContextSelector(WorkflowActionsContext, (v) => v.onDelEdge);
-  const handleId = getHandleId(nodeId, 'source', getElseIFLabel(conditionIndex));
+  const handleId = getHandleId(
+    nodeId,
+    'source',
+    getIfElseBranchHandleKey(conditionItem, conditionIndex)
+  );
 
   const Render = useMemo(() => {
     return (
@@ -291,16 +295,20 @@ const ListItem = ({
   ]);
 
   return (
-    <Box
-      ref={provided.innerRef}
-      {...provided.draggableProps}
-      style={{
-        ...provided.draggableProps.style,
-        opacity: snapshot.isDragging ? 0.8 : 1
-      }}
-    >
-      {Render}
-    </Box>
+    <>
+      {/* eslint-disable react-hooks/refs -- react-beautiful-dnd requires passing provided refs and props during render. */}
+      <Box
+        ref={provided.innerRef}
+        {...provided.draggableProps}
+        style={{
+          ...provided.draggableProps.style,
+          opacity: snapshot.isDragging ? 0.8 : 1
+        }}
+      >
+        {Render}
+      </Box>
+      {/* eslint-enable react-hooks/refs */}
+    </>
   );
 };
 
