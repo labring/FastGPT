@@ -9,21 +9,21 @@ import MyIcon from '../../common/Icon';
 import { useTranslation } from 'next-i18next';
 import type { IconNameType } from '../../common/Icon/type';
 
-export const getAgentGeneratedRenderTypeList = ({
+export const getSelectedRenderTypeState = ({
   renderTypeList,
   selectedType
 }: {
   renderTypeList: FlowNodeInputTypeEnum[];
   selectedType: FlowNodeInputTypeEnum;
 }) => {
-  const nextRenderTypeList = [
-    selectedType,
-    ...renderTypeList.filter((item) => item !== selectedType)
-  ];
+  const nextRenderTypeList = renderTypeList.includes(selectedType)
+    ? renderTypeList
+    : [selectedType, ...renderTypeList];
+  const selectedTypeIndex = nextRenderTypeList.findIndex((item) => item === selectedType);
 
   return {
     renderTypeList: nextRenderTypeList,
-    selectedTypeIndex: 0
+    selectedTypeIndex: selectedTypeIndex >= 0 ? selectedTypeIndex : 0
   };
 };
 

@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo } from 'react';
-import { Box, Flex, Stack } from '@chakra-ui/react';
-import { useForm } from 'react-hook-form';
+import { Flex, Stack } from '@chakra-ui/react';
+import { useForm, useWatch } from 'react-hook-form';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -19,6 +19,7 @@ import {
   useValidateFieldName,
   useSubmitErrorHandler
 } from '@/components/core/app/utils/formValidation';
+import { getSelectedInputRenderType } from '@fastgpt/global/core/app/formEdit/utils';
 
 export const defaultInput: FlowNodeInputItemType = {
   renderTypeList: [FlowNodeInputTypeEnum.reference], // Can only choose one here
@@ -72,10 +73,12 @@ const FieldEditModal = ({
   const form = useForm({
     defaultValues: defaultValue
   });
-  const { setValue, watch, reset } = form;
+  const { control, setValue, reset } = form;
 
-  const renderTypeList = watch('renderTypeList');
-  const inputType = renderTypeList[0] || FlowNodeInputTypeEnum.reference;
+  const renderTypeList = useWatch({ control, name: 'renderTypeList' });
+  const selectedTypeIndex = useWatch({ control, name: 'selectedTypeIndex' });
+  const inputType =
+    renderTypeList?.[selectedTypeIndex ?? 0] || renderTypeList?.[0] || FlowNodeInputTypeEnum.reference;
 
   const defaultValueType = useMemo(
     () =>
@@ -98,28 +101,30 @@ const FieldEditModal = ({
         return;
       }
 
+      const selectedRenderType = getSelectedInputRenderType(data);
+
       // Auto set valueType
       if (
-        data.renderTypeList[0] !== FlowNodeInputTypeEnum.reference &&
-        data.renderTypeList[0] !== FlowNodeInputTypeEnum.customVariable &&
-        data.renderTypeList[0] !== FlowNodeInputTypeEnum.hidden &&
-        data.renderTypeList[0] !== FlowNodeInputTypeEnum.agentGenerated
+        selectedRenderType !== FlowNodeInputTypeEnum.reference &&
+        selectedRenderType !== FlowNodeInputTypeEnum.customVariable &&
+        selectedRenderType !== FlowNodeInputTypeEnum.hidden &&
+        selectedRenderType !== FlowNodeInputTypeEnum.agentGenerated
       ) {
         data.valueType = defaultValueType;
       }
 
       // Remove required
       if (
-        data.renderTypeList[0] === FlowNodeInputTypeEnum.addInputParam ||
-        data.renderTypeList[0] === FlowNodeInputTypeEnum.customVariable ||
-        data.renderTypeList[0] === FlowNodeInputTypeEnum.hidden ||
-        data.renderTypeList[0] === FlowNodeInputTypeEnum.switch ||
-        data.renderTypeList[0] === FlowNodeInputTypeEnum.agentGenerated
+        selectedRenderType === FlowNodeInputTypeEnum.addInputParam ||
+        selectedRenderType === FlowNodeInputTypeEnum.customVariable ||
+        selectedRenderType === FlowNodeInputTypeEnum.hidden ||
+        selectedRenderType === FlowNodeInputTypeEnum.switch ||
+        selectedRenderType === FlowNodeInputTypeEnum.agentGenerated
       ) {
         data.required = false;
       }
 
-      if (data.renderTypeList[0] === FlowNodeInputTypeEnum.addInputParam) {
+      if (selectedRenderType === FlowNodeInputTypeEnum.addInputParam) {
         if (
           !data.customInputConfig?.selectValueTypeList ||
           !data.customInputConfig?.selectValueTypeList.length
@@ -133,7 +138,7 @@ const FieldEditModal = ({
       }
 
       // Get toolDescription and removes the types of some unusable tools
-      if (data.renderTypeList[0] === FlowNodeInputTypeEnum.agentGenerated) {
+      if (selectedRenderType === FlowNodeInputTypeEnum.agentGenerated) {
         data.toolDescription = data.toolDescription || data.description || data.label;
       } else {
         data.toolDescription = undefined;
@@ -195,6 +200,7 @@ const FieldEditModal = ({
               const targetItem = rawInputTypeList.flat().find((item) => item.value[0] === type);
               if (targetItem) {
                 setValue('renderTypeList', targetItem.value);
+                setValue('selectedTypeIndex', 0);
                 setValue('defaultValue', '');
                 if (
                   (type === FlowNodeInputTypeEnum.select ||

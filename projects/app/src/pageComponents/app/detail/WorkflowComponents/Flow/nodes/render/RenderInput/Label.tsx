@@ -4,7 +4,7 @@ import { useTranslation } from 'next-i18next';
 import { Box, Flex } from '@chakra-ui/react';
 
 import NodeInputSelect, {
-  getAgentGeneratedRenderTypeList
+  getSelectedRenderTypeState
 } from '@fastgpt/web/components/core/workflow/NodeInputSelect';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import ValueTypeLabel from '../ValueTypeLabel';
@@ -33,25 +33,14 @@ const InputLabel = ({ nodeId, input, RightComponent, isTool }: Props) => {
 
   const onChangeRenderType = useCallback(
     (e: string) => {
-      const nextInput = (() => {
-        if (renderTypeList.includes(FlowNodeInputTypeEnum.agentGenerated)) {
-          return {
-            ...input,
-            ...getAgentGeneratedRenderTypeList({
-              renderTypeList,
-              selectedType: e as FlowNodeInputTypeEnum
-            }),
-            value: undefined
-          };
-        }
-
-        const index = renderTypeList.findIndex((item) => item === e) || 0;
-        return {
-          ...input,
-          selectedTypeIndex: index,
-          value: undefined
-        };
-      })();
+      const nextInput = {
+        ...input,
+        ...getSelectedRenderTypeState({
+          renderTypeList,
+          selectedType: e as FlowNodeInputTypeEnum
+        }),
+        value: undefined
+      };
 
       onChangeNode({
         nodeId,

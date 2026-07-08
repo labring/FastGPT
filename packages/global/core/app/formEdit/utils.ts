@@ -32,11 +32,19 @@ const agentGeneratedDenyRenderTypes = new Set<FlowNodeInputTypeEnum>([
 ]);
 
 /**
- * 判断工具入参当前最终类型是否为 Agent 生成。
- * 默认输入方式会在 preview/detail 构建阶段写入 renderTypeList，这里只消费最终状态。
+ * 获取输入当前选中的渲染类型。
+ * renderTypeList 表示可选类型，selectedTypeIndex 表示当前选择；历史数据缺少 index 时回退到第 0 项。
  */
-export const isAgentGeneratedToolInput = (input: Pick<FlowNodeInputItemType, 'renderTypeList'>) =>
-  input.renderTypeList[0] === FlowNodeInputTypeEnum.agentGenerated;
+export const getSelectedInputRenderType = (
+  input: Pick<FlowNodeInputItemType, 'renderTypeList' | 'selectedTypeIndex'>
+) => input.renderTypeList[input.selectedTypeIndex ?? 0];
+
+/**
+ * 判断工具入参当前最终类型是否为 Agent 生成。
+ */
+export const isAgentGeneratedToolInput = (
+  input: Pick<FlowNodeInputItemType, 'renderTypeList' | 'selectedTypeIndex'>
+) => getSelectedInputRenderType(input) === FlowNodeInputTypeEnum.agentGenerated;
 
 /**
  * 服务端 runtime schema 的安全边界：即使持久化数据被篡改，也只允许普通可生成字段进入模型 schema。
@@ -49,7 +57,7 @@ export const canInputBeAgentGenerated = (
 };
 
 /**
- * 工具首次加入工作流/Agent 时，将默认输入方式固化为最终 renderTypeList。
+ * 工具首次加入工作流/Agent 时，将默认输入方式固化为 selectedTypeIndex。
  * isToolParam 是插件/schema 声明的默认输入方式；toolDescription 只作为模型参数描述。
  */
 export const initToolInputTypeByDefaultMode = <T extends FlowNodeInputItemType>(input: T): T => {
