@@ -72,19 +72,42 @@ describe('sanitizeLLMRequestRecordPayload', () => {
       text: 'plain text should stay'
     });
   });
-
-  it('redacts base64 embedded in a longer string', () => {
-    const payload = {
-      markdown: `![image](data:image/jpeg;base64,${createBase64()})`
-    };
-
-    expect(sanitizeLLMRequestRecordPayload(payload)).toEqual({
-      markdown: '![image](data:image/jpeg;base64,[base64 omitted])'
-    });
-  });
 });
 
 describe('LLM request record team isolation', () => {
+  it('saves records with very large video data urls after redacting base64 payloads', async () => {
+    const largeVideoBase64 = createBase64(10_000_000);
+
+    await saveLLMRequestRecord({
+      teamId: '507f1f77bcf86cd799439011',
+      requestId: 'large_video_request',
+      body: {
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: 'analyze this video' },
+              {
+                type: 'video_url',
+                video_url: {
+                  url: `data:video/mp4;base64,${largeVideoBase64}`
+                }
+              }
+            ]
+          }
+        ]
+      },
+      response: { answerText: 'done' }
+    });
+
+    const record = await getLLMRequestRecord('large_video_request', '507f1f77bcf86cd799439011');
+
+    expect(record?.body.messages[0].content[1].video_url.url).toBe(
+      'data:video/mp4;base64,[base64 omitted]'
+    );
+    expect(record?.response).toEqual({ answerText: 'done' });
+  });
+
   it('saves records with teamId and only reads them from the same team', async () => {
     await saveLLMRequestRecord({
       teamId: '507f1f77bcf86cd799439011',

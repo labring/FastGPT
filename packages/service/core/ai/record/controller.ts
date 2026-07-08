@@ -8,21 +8,33 @@ export const createLLMRequestId = () => {
 };
 
 const base64OmittedPlaceholder = '[base64 omitted]';
-const dataUrlBase64Regex = /data:([^,]*;base64,)([A-Za-z0-9+/=_-]{32,})/g;
-const fullBase64Regex = /^[A-Za-z0-9+/=_-]+$/;
 const base64LikeKeySet = new Set(['base64', 'data']);
+const fullBase64Regex = /^[A-Za-z0-9+/=_-]+$/;
+const dataUrlPrefix = 'data:';
+const base64UrlMarker = ';base64,';
+const rawBase64OmitLength = 256;
 
 const isBase64LikeString = (value: string) => {
   const text = value.trim();
 
-  return text.length >= 256 && fullBase64Regex.test(text);
+  return text.length >= rawBase64OmitLength && fullBase64Regex.test(text);
+};
+
+/**
+ * 清洗整个字段值形式的 data URL。
+ * 大视频会生成超长 data URL，使用正则 replace 容易触发 V8 栈溢出。
+ */
+const sanitizeDataUrlBase64 = (value: string) => {
+  if (!value.startsWith(dataUrlPrefix)) return value;
+
+  const markerIndex = value.indexOf(base64UrlMarker);
+  if (markerIndex === -1) return value;
+
+  return `${value.slice(0, markerIndex + base64UrlMarker.length)}${base64OmittedPlaceholder}`;
 };
 
 const sanitizeString = (value: string, key?: string) => {
-  const sanitizedDataUrl = value.replace(
-    dataUrlBase64Regex,
-    (_match, prefix: string) => `data:${prefix}${base64OmittedPlaceholder}`
-  );
+  const sanitizedDataUrl = sanitizeDataUrlBase64(value);
 
   if (base64LikeKeySet.has(key?.toLowerCase() ?? '') && isBase64LikeString(sanitizedDataUrl)) {
     return base64OmittedPlaceholder;
