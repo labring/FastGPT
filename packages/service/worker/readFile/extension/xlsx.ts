@@ -1,4 +1,4 @@
-import { CUSTOM_SPLIT_SIGN } from '@fastgpt/global/common/string/textSplitter';
+import { CUSTOM_SPLIT_SIGN } from '../../../common/string/textSplitter';
 import { type ReadRawTextByBuffer, type ReadFileResponse } from '../type';
 import XLSX from 'xlsx';
 import { filterEmptyTableData, formatMarkdownTableRow } from './utils';

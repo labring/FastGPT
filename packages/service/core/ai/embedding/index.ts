@@ -5,6 +5,7 @@ import { EmbeddingTypeEnm } from '@fastgpt/global/core/ai/constants';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../../../common/logger';
 import z from 'zod';
+import { truncateTextByFormattedTokenLimit } from './tokenLimit';
 
 const logger = getLogger(LogCategories.MODULE.AI.EMBEDDING);
 
@@ -43,13 +44,27 @@ const countInputTokens = async (input: GetVectorInputItem) => {
 };
 
 export async function getVectors({ model, inputs: rawInputs, type, headers }: GetVectorsProps) {
-  const inputs = z
-    .array(InputItemSchema)
-    .parse(rawInputs)
-    .map((item) => ({
-      ...item,
-      input: item.input.trim()
-    }));
+  const inputs = await Promise.all(
+    z
+      .array(InputItemSchema)
+      .parse(rawInputs)
+      .map(async (item) => {
+        const input = item.input.trim();
+
+        // getVectors 是所有 embedding 请求的最后入口。这里仅对 text 做单条截断兜底，
+        // 不做拆分；知识库入库这类需要保留完整内容的场景，应在上游先拆成多条 index。
+        return {
+          ...item,
+          input:
+            item.type === 'text'
+              ? await truncateTextByFormattedTokenLimit({
+                  text: input,
+                  maxToken: model.maxToken
+                })
+              : input
+        };
+      })
+  );
   if (inputs.length === 0 || inputs.some((item) => !item.input)) {
     return Promise.reject({
       code: 500,

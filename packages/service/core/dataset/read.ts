@@ -3,7 +3,7 @@ import {
   DatasetSourceReadTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { urlsFetch } from '../../common/string/cheerio';
-import { type TextSplitProps } from '@fastgpt/global/common/string/textSplitter';
+import { type TextSplitProps } from '../../common/string/textSplitter';
 import { axios } from '../../common/api/axios';
 import { readFileContentByBuffer } from '../../common/file/read/utils';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';

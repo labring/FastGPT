@@ -1,5 +1,5 @@
 import { it, expect } from 'vitest'; // 必须显式导入
-import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
+import { splitText2Chunks } from '@fastgpt/service/common/string/textSplitter';
 import fs from 'fs';
 
 const simpleChunks = (chunks: string[]) => {
@@ -1041,4 +1041,37 @@ it(`Test splitText2Chunks 14 - lastText not lost when strategies exhausted`, () 
   chunks.forEach((chunk) => {
     expect(chunk.length).toBeGreaterThan(0);
   });
+});
+
+it(`Test splitText2Chunks 15 - token mode should not append table header only chunk`, () => {
+  const text = `| id | payload |
+| --- | --- |
+| 1 | ${'a'.repeat(40)} |
+`;
+
+  const { chunks } = splitText2Chunks(
+    {
+      text,
+      chunkSize: 20,
+      maxSize: 20,
+      overlapRatio: 0,
+      lengthUnit: 'token'
+    },
+    {
+      countLength: (text) => text.length,
+      splitTextByLengthLimit: ({ text, maxLength }) => {
+        const chunks: string[] = [];
+
+        for (let i = 0; i < text.length; i += maxLength) {
+          chunks.push(text.slice(i, i + maxLength));
+        }
+
+        return chunks;
+      }
+    }
+  );
+
+  expect(chunks.length).toBeGreaterThan(0);
+  expect(chunks).not.toContain('| id | payload |\n| --- | --- |');
+  expect(chunks.join('\n')).toContain('aaaa');
 });

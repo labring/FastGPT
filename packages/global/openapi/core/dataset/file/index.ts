@@ -5,6 +5,8 @@ import {
   GetSearchTestImagePreviewUrlsResponseSchema,
   GetPreviewChunksBodySchema,
   GetPreviewChunksResponseSchema,
+  GetRawTextPreviewChunksBodySchema,
+  GetRawTextPreviewChunksResponseSchema,
   PresignDatasetFilePostUrlBodySchema,
   PresignDatasetFilePostUrlResponseSchema,
   PresignSearchTestImageBodySchema,
@@ -30,6 +32,30 @@ export const DatasetFilePath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: GetPreviewChunksResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/core/dataset/file/getRawTextPreviewChunks': {
+    post: {
+      summary: '预览原始文本分块',
+      description: '对前端已读取到的原始文本执行后端分块预览，用于自定义文件导入预览',
+      tags: [DevApiTagsMap.datasetFile],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: GetRawTextPreviewChunksBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: '成功返回预览分块列表及总数',
+          content: {
+            'application/json': {
+              schema: GetRawTextPreviewChunksResponseSchema
             }
           }
         }

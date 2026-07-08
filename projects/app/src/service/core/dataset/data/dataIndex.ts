@@ -64,6 +64,53 @@ const formatIndexTextWithPrefix = (text: string, indexPrefix?: string) => {
   return text;
 };
 
+/**
+ * 构建最终可写入 embedding 的索引文本。
+ * 这里直接让 text2Chunks 按 token 计量切分；传入 indexPrefix 时，先扣掉前缀预算。
+ * 空文本不会生成文本索引，也不应被文本前缀预算校验拦截。
+ */
+const buildEmbeddingSafeIndexTexts = async ({
+  text,
+  indexSize,
+  maxToken,
+  indexPrefix
+}: {
+  text: string;
+  indexSize: number;
+  maxToken: number;
+  indexPrefix?: string;
+}) => {
+  const trimmedText = text.trim();
+  if (!trimmedText) return [];
+
+  const formattedText = formatIndexTextWithPrefix(text, indexPrefix);
+  if ((await countPromptTokens(formattedText)) <= maxToken) {
+    return [formattedText];
+  }
+
+  const prefixTokens = indexPrefix ? await countPromptTokens(`${indexPrefix}\n`) : 0;
+  const maxContentTokens = maxToken - prefixTokens;
+
+  if (maxContentTokens <= 0) {
+    throw new Error('Dataset index prefix is too long for embedding token limit');
+  }
+
+  // 入库索引和 query 不一样：这里允许一条 index 拆成多条，以尽量保留原始内容。
+  // 因为最终写入向量库的文本会带上 indexPrefix，所以正文预算要先扣掉前缀 token。
+  const chunks = (
+    await text2Chunks({
+      text: trimmedText,
+      chunkSize: Math.min(indexSize, maxContentTokens),
+      maxSize: maxContentTokens,
+      lengthUnit: 'token'
+    })
+  ).chunks;
+
+  return chunks
+    .map((chunk) => formatIndexTextWithPrefix(chunk, indexPrefix))
+    .filter((item) => item.trim());
+};
+
 const isImageEmbeddingIndex = (index: DatasetDataIndexDraft) =>
   index.type === DatasetDataIndexTypeEnum.imageEmbedding;
 
@@ -160,30 +207,28 @@ export class DatasetDataIndexOperation {
     maxIndexSize?: number;
     indexPrefix?: string;
   }) {
-    const qChunks = (
-      await text2Chunks({
-        text: q,
-        chunkSize: indexSize,
-        maxSize: maxIndexSize ?? this.maxToken
-      })
-    ).chunks;
-    const aChunks = a
-      ? (
-          await text2Chunks({
-            text: a,
-            chunkSize: indexSize,
-            maxSize: maxIndexSize ?? this.maxToken
-          })
-        ).chunks
+    const qIndexTexts = await buildEmbeddingSafeIndexTexts({
+      text: q,
+      indexSize,
+      maxToken: maxIndexSize ?? this.maxToken,
+      indexPrefix
+    });
+    const aIndexTexts = a
+      ? await buildEmbeddingSafeIndexTexts({
+          text: a,
+          indexSize,
+          maxToken: maxIndexSize ?? this.maxToken,
+          indexPrefix
+        })
       : [];
 
     return [
-      ...qChunks.map((text) => ({
-        text: formatIndexTextWithPrefix(text, indexPrefix),
+      ...qIndexTexts.map((text) => ({
+        text,
         type: DatasetDataIndexTypeEnum.default
       })),
-      ...aChunks.map((text) => ({
-        text: formatIndexTextWithPrefix(text, indexPrefix),
+      ...aIndexTexts.map((text) => ({
+        text,
         type: DatasetDataIndexTypeEnum.default
       })),
       ...this.getImageEmbeddingSources({
@@ -285,16 +330,15 @@ export class DatasetDataIndexOperation {
             return item;
           }
 
-          const tokens = await countPromptTokens(item.text);
-          if (tokens > (maxIndexSize ?? this.maxToken)) {
-            const splitText = (
-              await text2Chunks({
-                text: item.text,
-                chunkSize: indexSize,
-                maxSize: maxIndexSize ?? this.maxToken
-              })
-            ).chunks;
-            return splitText.map((text) => ({
+          const indexTexts = await buildEmbeddingSafeIndexTexts({
+            text: item.text,
+            indexSize,
+            maxToken: maxIndexSize ?? this.maxToken,
+            indexPrefix: item.type === DatasetDataIndexTypeEnum.default ? indexPrefix : undefined
+          });
+
+          if (indexTexts.length > 1 || indexTexts[0] !== item.text) {
+            return indexTexts.map((text) => ({
               text,
               type: item.type
             }));
@@ -307,21 +351,7 @@ export class DatasetDataIndexOperation {
       .flat()
       .filter((item) => !!item.text.trim());
 
-    return indexPrefix
-      ? checkedIndexes.map((index) => {
-          // 自定义索引与图片向量索引不需要添加前缀
-          if (
-            index.type === DatasetDataIndexTypeEnum.custom ||
-            index.type === DatasetDataIndexTypeEnum.imageEmbedding
-          ) {
-            return index;
-          }
-          return {
-            ...index,
-            text: formatIndexTextWithPrefix(index.text, indexPrefix)
-          };
-        })
-      : checkedIndexes;
+    return checkedIndexes;
   }
 
   /**

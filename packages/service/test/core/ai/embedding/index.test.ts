@@ -386,6 +386,7 @@ describe('getVectors function test', () => {
       model: 'text-embedding-3-small',
       name: 'text-embedding-3-small',
       batchSize: 10,
+      maxToken: 8192,
       normalization: false,
       ...overrides
     }) as EmbeddingModelItemType;
@@ -419,6 +420,34 @@ describe('getVectors function test', () => {
         message: 'input is empty'
       });
       expect(mockCreate).not.toHaveBeenCalled();
+    });
+
+    it('should embed image inputs normally', async () => {
+      mockCreate.mockResolvedValue(
+        makeResponse([[0.1, 0.2, 0.3, 0.4]], { usage: { total_tokens: 1 } })
+      );
+
+      const result = await getVectors({
+        model: buildModel({ maxToken: 1 }),
+        inputs: [imageInput('data:image/png;base64,aaa')]
+      });
+
+      expect(mockCreate).toHaveBeenCalledTimes(1);
+      expect(result.vectors).toHaveLength(1);
+    });
+
+    it('should truncate text inputs by model maxToken before requesting embeddings', async () => {
+      mockCreate.mockResolvedValue(
+        makeResponse([[0.1, 0.2, 0.3, 0.4]], { usage: { total_tokens: 1 } })
+      );
+
+      await getVectors({
+        model: buildModel({ maxToken: 12 }),
+        inputs: [textInput('abcdefghijklmnopqrstuvwxy')]
+      });
+
+      expect(mockCreate).toHaveBeenCalledTimes(1);
+      expect(mockCreate.mock.calls[0][0].input).toEqual(['abcdefghijkl']);
     });
   });
 

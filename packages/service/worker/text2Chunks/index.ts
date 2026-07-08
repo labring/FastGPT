@@ -1,6 +1,6 @@
 import { parentPort } from 'worker_threads';
-import type { SplitProps } from '@fastgpt/global/common/string/textSplitter';
-import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
+import type { SplitProps } from '../../common/string/textSplitter';
+import { splitText2ChunksByLengthUnit } from './split';
 
 type IncomingMessage = {
   id: string;
@@ -10,7 +10,7 @@ parentPort?.on('message', async (props: IncomingMessage) => {
   const { id, ...splitProps } = props;
 
   try {
-    const result = splitText2Chunks(splitProps);
+    const result = splitText2ChunksByLengthUnit(splitProps);
 
     parentPort?.postMessage({ id, type: 'success', data: result });
   } catch (error) {

@@ -13,6 +13,7 @@ const mockMongoDatasetCollectionFind = vi.hoisted(() => vi.fn());
 const mockMongoDatasetDataFind = vi.hoisted(() => vi.fn());
 const mockMongoDatasetDataTextAggregate = vi.hoisted(() => vi.fn());
 const mockGetImageBase64 = vi.hoisted(() => vi.fn());
+const mockCountPromptTokens = vi.hoisted(() => vi.fn(async (prompt: string) => prompt.length));
 const mockCountPromptTokensBatch = vi.hoisted(() =>
   vi.fn(async (prompts: string[]) => prompts.map((prompt) => prompt.length))
 );
@@ -45,6 +46,7 @@ vi.mock('@fastgpt/service/common/file/image/utils', () => ({
 // defaultRecall 的结果过滤只关心 token 数的相对大小，测试里用稳定 mock
 // 隔离真实 worker 路径，避免单元测试依赖 app/pro 的 worker 构建产物。
 vi.mock('@fastgpt/service/common/string/tiktoken/index', () => ({
+  countPromptTokens: mockCountPromptTokens,
   countPromptTokensBatch: mockCountPromptTokensBatch
 }));
 
@@ -81,10 +83,12 @@ describe('default recall dataset search', () => {
     mockCountPromptTokensBatch.mockImplementation(async (prompts: string[]) =>
       prompts.map((prompt) => prompt.length)
     );
+    mockCountPromptTokens.mockImplementation(async (prompt: string) => prompt.length);
 
     mockGetEmbeddingModel.mockReturnValue({
       model: 'mock-embedding-model',
-      name: 'Mock Embedding Model'
+      name: 'Mock Embedding Model',
+      maxToken: 100
     });
     mockGetDefaultRerankModel.mockReturnValue(undefined);
     mockGetLLMModel.mockReturnValue({
@@ -251,6 +255,45 @@ describe('default recall dataset search', () => {
           {
             type: 'image',
             input: 'data:image/png;base64,current-image'
+          }
+        ]
+      })
+    );
+  });
+
+  it('should pass overlong text queries to centralized embedding fallback without creating extra queries', async () => {
+    mockGetLLMModel.mockReturnValue(undefined);
+    mockIsImageEmbeddingModel.mockReturnValue(false);
+    mockGetEmbeddingModel.mockReturnValueOnce({
+      model: 'mock-embedding-model',
+      name: 'Mock Embedding Model',
+      maxToken: 12
+    });
+    mockGetVectors.mockImplementationOnce(async ({ inputs }) => ({
+      tokens: 10,
+      vectors: inputs.map((_: unknown, index: number) => [index + 1])
+    }));
+
+    await searchDatasetData({
+      histories: [],
+      teamId: 'team-1',
+      model: 'mock-embedding-model',
+      datasetIds: ['dataset-1'],
+      reRankQuery: 'abcdefghijklmnopqrstuvwxy',
+      textQueries: ['abcdefghijklmnopqrstuvwxy'],
+      imageQueries: [],
+      limit: 5000,
+      searchMode: DatasetSearchModeEnum.embedding,
+      embeddingWeight: 0.5,
+      usingReRank: false
+    });
+
+    expect(mockGetVectors).toHaveBeenCalledWith(
+      expect.objectContaining({
+        inputs: [
+          {
+            type: 'text',
+            input: 'abcdefghijklmnopqrstuvwxy'
           }
         ]
       })

@@ -14,6 +14,7 @@ import { getRootUser } from '@test/datas/users';
 import { mockGetVectors, createMockVectorsResponse } from '@test/mocks/core/ai/embedding';
 import { mockVectorDelete, mockVectorInsert, resetVectorMocks } from '@test/mocks/common/vector';
 import { serviceEnv } from '@fastgpt/service/env';
+import { countPromptTokensInWorker } from '@fastgpt/service/worker/countGptMessagesTokens/count';
 import {
   createDatasetDataIndex,
   DatasetDataIndexOperation,
@@ -22,7 +23,7 @@ import {
 } from '@/service/core/dataset/data/dataIndex';
 
 const { mockCountPromptTokens } = vi.hoisted(() => ({
-  mockCountPromptTokens: vi.fn(async (text: string) => text.length)
+  mockCountPromptTokens: vi.fn()
 }));
 
 const { mockGetDatasetBase64Image } = vi.hoisted(() => ({
@@ -39,12 +40,24 @@ vi.mock('@fastgpt/service/common/string/tiktoken', () => ({
   countPromptTokens: mockCountPromptTokens
 }));
 
+vi.mock('@fastgpt/service/common/string/tiktoken/index', () => ({
+  countPromptTokens: mockCountPromptTokens
+}));
+
 const embeddingModel = {
   model: 'text-embedding-3-small',
   name: 'text-embedding-3-small',
   maxToken: 12
 } as any;
 const originalMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
+const tokenHeavyText = '𠮷'.repeat(8);
+
+const expectIndexesWithinTokenLimit = (
+  indexes: Pick<DatasetDataIndexItemType, 'text'>[],
+  maxToken: number
+) => {
+  expect(indexes.every((index) => countPromptTokensInWorker(index.text) <= maxToken)).toBe(true);
+};
 
 const createDatasetContext = async () => {
   const root = await getRootUser();
@@ -117,7 +130,10 @@ describe('DatasetDataIndexOperation', () => {
     resetVectorMocks();
     mockGetVectors.mockClear();
     mockGetDatasetBase64Image.mockClear();
-    mockCountPromptTokens.mockClear();
+    mockCountPromptTokens.mockReset();
+    mockCountPromptTokens.mockImplementation(async (text: string) =>
+      countPromptTokensInWorker(text)
+    );
     vi.mocked(getEmbeddingModel).mockReturnValue(embeddingModel);
     mockGetVectors.mockImplementation(async ({ inputs }) =>
       createMockVectorsResponse(inputs.map((input) => input.input))
@@ -173,6 +189,7 @@ describe('DatasetDataIndexOperation', () => {
         q: 'question text',
         a: 'answer text',
         indexSize: 50,
+        maxIndexSize: 200,
         indexPrefix: 'collection title'
       });
 
@@ -184,6 +201,76 @@ describe('DatasetDataIndexOperation', () => {
         {
           type: DatasetDataIndexTypeEnum.default,
           text: 'collection title\nanswer text'
+        }
+      ]);
+    });
+
+    it('should split default text indexes when text2Chunks result still exceeds embedding limit', async () => {
+      const operation = new DatasetDataIndexOperation(embeddingModel);
+
+      const result = await operation.getSystemIndexes({
+        q: tokenHeavyText,
+        indexSize: 50,
+        maxIndexSize: 12
+      });
+
+      expect(result.length).toBeGreaterThan(1);
+      expect(result.every((index) => index.type === DatasetDataIndexTypeEnum.default)).toBe(true);
+      expectIndexesWithinTokenLimit(result, 12);
+      expect(result.map((index) => index.text).join('')).toBe(tokenHeavyText);
+    });
+
+    it('should split prefixed default indexes by final embedding token size', async () => {
+      const operation = new DatasetDataIndexOperation(embeddingModel);
+      const indexPrefix = '# LongTitle';
+
+      const result = await operation.getSystemIndexes({
+        q: '𠮷'.repeat(6),
+        indexSize: 50,
+        maxIndexSize: 20,
+        indexPrefix
+      });
+
+      expect(result.length).toBeGreaterThan(1);
+      expect(result.every((index) => index.text.startsWith(`${indexPrefix}\n`))).toBe(true);
+      expectIndexesWithinTokenLimit(result, 20);
+      expect(result.map((index) => index.text.replace(`${indexPrefix}\n`, '')).join('')).toBe(
+        '𠮷'.repeat(6)
+      );
+    });
+
+    it('should fail fast when prefix leaves no room for index content', async () => {
+      const operation = new DatasetDataIndexOperation(embeddingModel);
+
+      await expect(
+        operation.getSystemIndexes({
+          q: 'abc',
+          indexSize: 50,
+          maxIndexSize: 12,
+          indexPrefix: '𠮷'.repeat(4)
+        })
+      ).rejects.toThrow('Dataset index prefix is too long for embedding token limit');
+    });
+
+    it('should not check prefix token budget when text is empty and only image index is generated', async () => {
+      const operation = new DatasetDataIndexOperation({
+        ...embeddingModel,
+        vision: true
+      });
+
+      const result = await operation.getSystemIndexes({
+        q: '',
+        imageId: 'dataset/team/main.png',
+        indexSize: 50,
+        maxIndexSize: 12,
+        indexPrefix: '𠮷'.repeat(4)
+      });
+
+      expect(mockCountPromptTokens).not.toHaveBeenCalled();
+      expect(result).toEqual([
+        {
+          type: DatasetDataIndexTypeEnum.imageEmbedding,
+          text: 'dataset/team/main.png'
         }
       ]);
     });
@@ -350,7 +437,6 @@ describe('DatasetDataIndexOperation', () => {
 
     it('should split a custom index when token count exceeds max token', async () => {
       const operation = new DatasetDataIndexOperation(embeddingModel);
-      mockCountPromptTokens.mockResolvedValueOnce(30);
 
       const result = await operation.formatIndexes({
         q: '',
@@ -360,24 +446,69 @@ describe('DatasetDataIndexOperation', () => {
         indexes: [
           {
             type: DatasetDataIndexTypeEnum.custom,
-            text: 'first sentence. second sentence. third sentence.'
+            text: tokenHeavyText
           }
         ]
       });
 
       expect(result.length).toBeGreaterThan(1);
       expect(result.every((index) => index.type === DatasetDataIndexTypeEnum.custom)).toBe(true);
-      const mergedText = result.map((index) => index.text).join(' ');
-      expect(mergedText).toContain('first');
-      expect(mergedText).toContain('third');
+      expectIndexesWithinTokenLimit(result, 12);
+      expect(result.map((index) => index.text).join('')).toBe(tokenHeavyText);
+    });
+
+    it('should keep short custom indexes unchanged before token split', async () => {
+      const operation = new DatasetDataIndexOperation(embeddingModel);
+      const customText = '  first   second\n\n\nthird  ';
+
+      const result = await operation.formatIndexes({
+        q: '',
+        a: '',
+        indexSize: 50,
+        maxIndexSize: 100,
+        indexes: [
+          {
+            type: DatasetDataIndexTypeEnum.custom,
+            text: customText
+          }
+        ]
+      });
+
+      expect(result).toEqual([
+        {
+          type: DatasetDataIndexTypeEnum.custom,
+          text: customText
+        }
+      ]);
+    });
+
+    it('should force split custom indexes to embedding-safe token size after text2Chunks', async () => {
+      const operation = new DatasetDataIndexOperation(embeddingModel);
+
+      const result = await operation.formatIndexes({
+        q: '',
+        a: '',
+        indexSize: 50,
+        maxIndexSize: 12,
+        indexes: [
+          {
+            type: DatasetDataIndexTypeEnum.custom,
+            text: tokenHeavyText
+          }
+        ]
+      });
+
+      expect(result.length).toBeGreaterThan(1);
+      expect(result.every((index) => index.type === DatasetDataIndexTypeEnum.custom)).toBe(true);
+      expectIndexesWithinTokenLimit(result, 12);
+      expect(result.map((index) => index.text).join('')).toBe(tokenHeavyText);
     });
 
     it('should check default index token size after prefix is applied', async () => {
       const operation = new DatasetDataIndexOperation(embeddingModel);
-      mockCountPromptTokens.mockResolvedValueOnce(21);
 
       const result = await operation.formatIndexes({
-        q: 'short content',
+        q: '𠮷'.repeat(6),
         a: '',
         indexSize: 10,
         maxIndexSize: 20,
@@ -385,13 +516,13 @@ describe('DatasetDataIndexOperation', () => {
         indexes: []
       });
 
-      expect(mockCountPromptTokens).toHaveBeenCalledWith('# LongTitle\nshort content');
-      expect(result).toEqual([
-        {
-          type: DatasetDataIndexTypeEnum.default,
-          text: '# LongTitle\nshort content'
-        }
-      ]);
+      expect(mockCountPromptTokens).toHaveBeenCalledWith('# LongTitle\n');
+      expect(result.length).toBeGreaterThan(1);
+      expect(result.every((index) => index.text.startsWith('# LongTitle\n'))).toBe(true);
+      expectIndexesWithinTokenLimit(result, 20);
+      expect(result.map((index) => index.text.replace('# LongTitle\n', '')).join('')).toBe(
+        '𠮷'.repeat(6)
+      );
     });
 
     it('should keep image embedding indexes unsplit even when text looks too long', async () => {

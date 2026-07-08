@@ -55,6 +55,32 @@ export const GetPreviewChunksResponseSchema = z.object({
 export type GetPreviewChunksResponse = z.infer<typeof GetPreviewChunksResponseSchema>;
 
 /* ============================================================================
+ * API: 预览原始文本分块
+ * Route: POST /api/core/dataset/file/getRawTextPreviewChunks
+ * Method: POST
+ * Description: 对前端已读取到的原始文本执行后端分块预览，用于 fileCustom 导入预览
+ * Tags: ['Dataset', 'File', 'Read']
+ * ============================================================================ */
+export const GetRawTextPreviewChunksBodySchema = ChunkSettingsSchema.extend({
+  datasetId: ObjectIdSchema.meta({
+    example: '68ad85a7463006c963799a05',
+    description: '知识库 ID'
+  }),
+  rawText: z.string().meta({
+    example: '# 产品文档\n\n这是待预览分块的原始文本',
+    description: '前端已读取到的原始文本'
+  }),
+  overlapRatio: z.number().meta({
+    example: 0.2,
+    description: '分块重叠比例'
+  })
+});
+export type GetRawTextPreviewChunksBody = z.infer<typeof GetRawTextPreviewChunksBodySchema>;
+
+export const GetRawTextPreviewChunksResponseSchema = GetPreviewChunksResponseSchema;
+export type GetRawTextPreviewChunksResponse = z.infer<typeof GetRawTextPreviewChunksResponseSchema>;
+
+/* ============================================================================
  * API: 获取知识库文件上传预签名 URL
  * Route: POST /api/core/dataset/file/presignDatasetFilePostUrl
  * ============================================================================ */

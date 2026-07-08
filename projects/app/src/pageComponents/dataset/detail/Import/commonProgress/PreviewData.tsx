@@ -8,15 +8,13 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
-import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
-import { getPreviewChunks } from '@/web/core/dataset/api/file';
+import { getPreviewChunks, getRawTextPreviewChunks } from '@/web/core/dataset/api/file';
 import { type ImportSourceItemType } from '@/web/core/dataset/type';
 import { getPreviewSourceReadType } from '../utils';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import Markdown from '@/components/Markdown';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { getLLMMaxChunkSize } from '@fastgpt/global/core/dataset/training/utils';
 
 const PreviewData = () => {
   const { t } = useTranslation();
@@ -24,7 +22,6 @@ const PreviewData = () => {
   const goToNext = useContextSelector(DatasetImportContext, (v) => v.goToNext);
 
   const datasetId = useContextSelector(DatasetPageContext, (v) => v.datasetId);
-  const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
 
   const sources = useContextSelector(DatasetImportContext, (v) => v.sources);
   const importSource = useContextSelector(DatasetImportContext, (v) => v.importSource);
@@ -39,21 +36,12 @@ const PreviewData = () => {
       const chunkData = processParamsForm.getValues();
 
       if (importSource === ImportDataSourceEnum.fileCustom) {
-        const chunkSplitter = processParamsForm.getValues('chunkSplitter');
-        const { chunks } = splitText2Chunks({
-          text: previewFile.rawText || '',
-          chunkSize: chunkData.chunkSize,
-          maxSize: getLLMMaxChunkSize(datasetDetail.agentModel),
-          overlapRatio: 0.2,
-          customReg: chunkSplitter ? [chunkSplitter] : []
+        return getRawTextPreviewChunks({
+          datasetId,
+          rawText: previewFile.rawText || '',
+          ...chunkData,
+          overlapRatio: 0.2
         });
-        return {
-          chunks: chunks.map((chunk) => ({
-            q: chunk,
-            a: ''
-          })),
-          total: chunks.length
-        };
       }
 
       return getPreviewChunks({

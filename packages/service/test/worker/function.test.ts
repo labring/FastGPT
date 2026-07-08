@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { WorkerNameEnum } from '@fastgpt/service/worker/utils';
+import { countPromptTokensInWorker } from '@fastgpt/service/worker/countGptMessagesTokens/count';
 
 // hoisted: 这些 mock 必须在 vi.mock 工厂里可见
 const { mockRun, mockGetWorkerController, mockRunWorker, mockUploadImage2S3Bucket, mockEnv } =
@@ -81,6 +82,23 @@ describe('worker/function', () => {
     it('空文本返回空 chunks 列表', async () => {
       const result = await text2Chunks({ text: '', chunkSize: 100, maxSize: 200 });
       expect(result.chunks).toEqual([]);
+    });
+
+    it('test 环境下 token 模式按 token 上限切分文本', async () => {
+      const text = '𠮷'.repeat(8);
+
+      const result = await text2Chunks({
+        text,
+        chunkSize: 12,
+        maxSize: 12,
+        lengthUnit: 'token'
+      });
+
+      expect(result.chunks.length).toBeGreaterThan(1);
+      expect(result.chunks.every((chunk) => countPromptTokensInWorker(chunk) <= 12)).toBe(true);
+      expect(result.chunks.join('')).toBe(text);
+      expect(mockRunWorker).not.toHaveBeenCalled();
+      expect(mockGetWorkerController).not.toHaveBeenCalled();
     });
   });
 

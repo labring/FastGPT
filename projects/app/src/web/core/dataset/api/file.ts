@@ -4,6 +4,8 @@ import type {
   GetSearchTestImagePreviewUrlsResponse,
   GetPreviewChunksBody,
   GetPreviewChunksResponse,
+  GetRawTextPreviewChunksBody,
+  GetRawTextPreviewChunksResponse,
   PresignDatasetFilePostUrlBody,
   PresignSearchTestImageBody,
   PresignSearchTestImageResponse
@@ -15,6 +17,12 @@ export const getUploadDatasetFilePresignedUrl = (params: PresignDatasetFilePostU
 
 export const getPreviewChunks = (data: GetPreviewChunksBody) =>
   POST<GetPreviewChunksResponse>('/core/dataset/file/getPreviewChunks', data, {
+    maxQuantity: 1,
+    timeout: 600000
+  });
+
+export const getRawTextPreviewChunks = (data: GetRawTextPreviewChunksBody) =>
+  POST<GetRawTextPreviewChunksResponse>('/core/dataset/file/getRawTextPreviewChunks', data, {
     maxQuantity: 1,
     timeout: 600000
   });
