@@ -1,4 +1,5 @@
 import z from 'zod';
+import { ChatFileTypeEnum } from '../../core/chat/constants';
 
 /* ============================================================================
  * API: 获取反向调用用户信息
@@ -46,9 +47,7 @@ export const InvokeWecomCorpTokenResponseSchema = z.object({
 
 export type InvokeWecomCorpTokenBodyType = z.infer<typeof InvokeWecomCorpTokenBodySchema>;
 export type InvokeWecomCorpTokenQueryType = z.infer<typeof InvokeWecomCorpTokenQuerySchema>;
-export type InvokeWecomCorpTokenResponseType = z.infer<
-  typeof InvokeWecomCorpTokenResponseSchema
->;
+export type InvokeWecomCorpTokenResponseType = z.infer<typeof InvokeWecomCorpTokenResponseSchema>;
 
 /* ============================================================================
  * API: 反向调用文件上传
@@ -62,7 +61,26 @@ export const InvokeFileUploadBodySchema = z.object({});
 export const InvokeFileUploadQuerySchema = z.object({});
 
 export const InvokeFileUploadResponseSchema = z.object({
-  url: z.string().describe('上传后的文件访问 URL')
+  url: z.string().meta({
+    description: '上传后的文件访问 URL',
+    example: 'https://fastgpt.example.com/api/system/file/d/alias-abc'
+  }),
+  key: z.string().meta({
+    description: '上传后的私有 S3 对象 key。用于对话持久化后移除临时 TTL 或返回标准文件对象。',
+    example: 'chat/app/68ad85a7463006c963799a05/user-1/chat-1/result.txt'
+  }),
+  filename: z.string().meta({
+    description: '文件名',
+    example: 'result.txt'
+  }),
+  contentType: z.string().optional().meta({
+    description: '文件 MIME 类型',
+    example: 'text/plain'
+  }),
+  type: z.enum(ChatFileTypeEnum).meta({
+    description: '聊天文件类型',
+    example: ChatFileTypeEnum.file
+  })
 });
 
 export type InvokeFileUploadBodyType = z.infer<typeof InvokeFileUploadBodySchema>;

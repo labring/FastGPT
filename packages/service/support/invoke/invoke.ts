@@ -1,14 +1,20 @@
 import jwt from 'jsonwebtoken';
+import path from 'node:path';
+import { audioFileType, imageFileType, videoFileType } from '@fastgpt/global/common/file/constants';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import {
   PluginPermissionEnum,
   type PluginPermissionEnumType
 } from '@fastgpt/global/sdk/fastgpt-plugin';
+import { ChatFileTypeEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { DefaultGroupName } from '@fastgpt/global/support/user/team/group/constant';
-import type { InvokeUserInfoResponseType } from '@fastgpt/global/openapi/plugin/invoke';
+import type {
+  InvokeFileUploadResponseType,
+  InvokeUserInfoResponseType
+} from '@fastgpt/global/openapi/plugin/invoke';
 import { getS3ChatSource } from '../../common/s3/sources/chat';
+import { removeS3TTL } from '../../common/s3/utils';
 import { serviceEnv } from '../../env';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getGroupsByTmbId } from '../permission/memberGroup/controllers';
 import { getOrgsByTmbId } from '../permission/org/controllers';
 import { MongoOrgModel } from '../permission/org/orgSchema';
@@ -68,7 +74,7 @@ export class InvokeProcessor {
     return InvokeSessionSchema.parse(this._session);
   }
 
-  async handleFileUpload(params: InvokeFileUploadType): Promise<{ url: string }> {
+  async handleFileUpload(params: InvokeFileUploadType): Promise<InvokeFileUploadResponseType> {
     this.assertPermission(PluginPermissionEnum['file-upload:allow']);
 
     const { appId, chatId, uId } = InvokeSessionSchema.parse(this._session);
@@ -85,8 +91,27 @@ export class InvokeProcessor {
       expiredTime: addHours(new Date(), 365)
     });
 
+    await removeS3TTL({ key: result.key, bucketName: 'private' });
+
+    const type = (() => {
+      if (contentType?.startsWith('image/')) return ChatFileTypeEnum.image;
+      if (contentType?.startsWith('audio/')) return ChatFileTypeEnum.audio;
+      if (contentType?.startsWith('video/')) return ChatFileTypeEnum.video;
+
+      const extname = path.extname(filename).toLowerCase();
+      if (extname && imageFileType.includes(extname)) return ChatFileTypeEnum.image;
+      if (extname && audioFileType.includes(extname)) return ChatFileTypeEnum.audio;
+      if (extname && videoFileType.includes(extname)) return ChatFileTypeEnum.video;
+
+      return ChatFileTypeEnum.file;
+    })();
+
     return {
-      url: result.accessUrl.url
+      url: result.accessUrl.url,
+      key: result.key,
+      filename,
+      contentType,
+      type
     };
   }
 

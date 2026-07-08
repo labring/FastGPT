@@ -1,10 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PluginPermissionEnum } from '@fastgpt/global/sdk/fastgpt-plugin';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatFileTypeEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 const mockGetToolFilePrefix = vi.hoisted(() => vi.fn());
 const mockUploadChatFile = vi.hoisted(() => vi.fn());
 const mockCreateUploadChatFileURL = vi.hoisted(() => vi.fn());
+const mockRemoveS3TTL = vi.hoisted(() => vi.fn());
 
 vi.mock('@fastgpt/service/common/s3/sources/chat', () => ({
   getS3ChatSource: () => ({
@@ -12,6 +13,10 @@ vi.mock('@fastgpt/service/common/s3/sources/chat', () => ({
     uploadChatFile: mockUploadChatFile,
     createUploadChatFileURL: mockCreateUploadChatFileURL
   })
+}));
+
+vi.mock('@fastgpt/service/common/s3/utils', () => ({
+  removeS3TTL: mockRemoveS3TTL
 }));
 
 import { InvokeProcessor } from '@fastgpt/service/support/invoke/invoke';
@@ -31,6 +36,7 @@ describe('InvokeProcessor.handleFileUpload', () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
+    mockRemoveS3TTL.mockResolvedValue(undefined);
     mockGetToolFilePrefix.mockReturnValue('chat/app-1/user-1/chat-1');
     mockUploadChatFile.mockResolvedValue({
       key: 'chat/app-1/user-1/chat-1/image.png',
@@ -65,8 +71,16 @@ describe('InvokeProcessor.handleFileUpload', () => {
       expiredTime: new Date('2026-01-16T05:00:00.000Z')
     });
     expect(mockCreateUploadChatFileURL).not.toHaveBeenCalled();
+    expect(mockRemoveS3TTL).toHaveBeenCalledWith({
+      key: 'chat/app-1/user-1/chat-1/image.png',
+      bucketName: 'private'
+    });
     expect(result).toEqual({
-      url: 'https://example.com/api/system/file/download/token?filename=image.png'
+      url: 'https://example.com/api/system/file/download/token?filename=image.png',
+      key: 'chat/app-1/user-1/chat-1/image.png',
+      filename: 'image.png',
+      contentType: 'image/png',
+      type: ChatFileTypeEnum.image
     });
   });
 
@@ -80,5 +94,6 @@ describe('InvokeProcessor.handleFileUpload', () => {
 
     expect(mockUploadChatFile).not.toHaveBeenCalled();
     expect(mockCreateUploadChatFileURL).not.toHaveBeenCalled();
+    expect(mockRemoveS3TTL).not.toHaveBeenCalled();
   });
 });
