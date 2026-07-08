@@ -16,11 +16,7 @@ import {
   startEnterpriseAuth,
   verifyEnterpriseAuthAmount
 } from '@/web/support/user/team/enterpriseAuth/api';
-import {
-  canOpenEnterpriseAuthAmountStep,
-  shouldShowEnterpriseAuthAmountError,
-  shouldShowEnterpriseAuthContactBusinessModal
-} from './utils';
+import { canOpenEnterpriseAuthAmountStep, shouldShowEnterpriseAuthAmountError } from './utils';
 import {
   formatEnterpriseAuthBankOptions,
   getErrorCode,
@@ -31,20 +27,18 @@ import {
 type UseEnterpriseAuthFormFlowProps = {
   defaultStatus: GetEnterpriseAuthStatusResponseType;
   onClose: () => void;
+  onNoRemainingTimes: () => void;
   onSuccess: () => void;
 };
 
 export const useEnterpriseAuthFormFlow = ({
   defaultStatus,
   onClose,
+  onNoRemainingTimes,
   onSuccess
 }: UseEnterpriseAuthFormFlowProps) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const shouldBlockEnterpriseAuthForm = shouldShowEnterpriseAuthContactBusinessModal({
-    usedTimes: defaultStatus.usedTimes,
-    hasCurrentTask: !!defaultStatus.currentTask
-  });
   const canOpenInitialAmountStep = canOpenEnterpriseAuthAmountStep(
     defaultStatus.currentTask?.status
   );
@@ -82,7 +76,7 @@ export const useEnterpriseAuthFormFlow = ({
     run: reloadBanks
   } = useRequest(getEnterpriseAuthBanks, {
     manual: false,
-    ready: step === 'form' && !shouldBlockEnterpriseAuthForm,
+    ready: step === 'form',
     errorToast: t('account_team:enterprise_auth_bank_load_failed')
   });
 
@@ -98,7 +92,7 @@ export const useEnterpriseAuthFormFlow = ({
   });
 
   const { runAsync: onStart, loading: starting } = useRequest(startEnterpriseAuth, {
-    errorToast: t('account_team:enterprise_auth_submit_failed')
+    errorToast: ''
   });
   const { runAsync: onVerify, loading: verifying } = useRequest(verifyEnterpriseAuthAmount, {
     errorToast: ''
@@ -111,7 +105,7 @@ export const useEnterpriseAuthFormFlow = ({
   const hasBankLoadError = !!bankLoadError && !bankOptions.length;
   const isBankLoading = loadingBanks;
   const amountYuanValue = useWatch({ control: amountForm.control, name: 'amountYuan' });
-  const hasLoadedTaskDetail = !!taskDetail?.taskId;
+  const hasLoadedTaskDetail = !!taskDetail;
   const canSubmitAmount =
     hasLoadedTaskDetail &&
     parseEnterpriseAuthAmountCent(String(amountYuanValue ?? '')) !== undefined;
@@ -120,15 +114,6 @@ export const useEnterpriseAuthFormFlow = ({
     showCurrentSubmitError: showAmountError
   });
 
-  /**
-   * 认证次数耗尽且没有待验证任务时，认证表单本身也不应展示。
-   * 外层入口已做拦截，这里作为弹窗边界的兜底保护，避免旧状态或自动打开误触发。
-   */
-  useEffect(() => {
-    if (!shouldBlockEnterpriseAuthForm) return;
-    onClose();
-  }, [onClose, shouldBlockEnterpriseAuthForm]);
-
   useEffect(() => {
     if (!defaultStatus.currentTask || canOpenInitialAmountStep) return;
     onClose();
@@ -136,7 +121,19 @@ export const useEnterpriseAuthFormFlow = ({
 
   const handleStart = useCallback(
     async (data: StartEnterpriseAuthBodyType) => {
-      const result = await onStart(data);
+      const result = await onStart(data).catch((error) => {
+        if (getErrorCode(error) === EnterpriseAuthErrEnum.noRemainingTimes) {
+          onNoRemainingTimes();
+          return;
+        }
+
+        toast({
+          title: t(getErrText(error, t('account_team:enterprise_auth_submit_failed')) as any),
+          status: 'error'
+        });
+      });
+      if (!result) return;
+
       onSuccess();
       if (canOpenEnterpriseAuthAmountStep(result.currentTask?.status)) {
         await loadTaskDetail();
@@ -151,7 +148,7 @@ export const useEnterpriseAuthFormFlow = ({
       });
       onClose();
     },
-    [loadTaskDetail, onClose, onStart, onSuccess, t, toast]
+    [loadTaskDetail, onClose, onNoRemainingTimes, onStart, onSuccess, t, toast]
   );
 
   /**
@@ -169,7 +166,7 @@ export const useEnterpriseAuthFormFlow = ({
 
   const handleVerify = useCallback(
     async ({ amountYuan }: AmountFormType) => {
-      if (!taskDetail?.taskId) {
+      if (!taskDetail) {
         toast({
           title: t('account_team:enterprise_auth_task_load_failed'),
           status: 'warning'
@@ -188,7 +185,6 @@ export const useEnterpriseAuthFormFlow = ({
 
       try {
         await onVerify({
-          taskId: taskDetail.taskId,
           amountCent
         });
         toast({
@@ -263,7 +259,6 @@ export const useEnterpriseAuthFormFlow = ({
     hasLoadedTaskDetail,
     canSubmitAmount,
     shouldShowAmountError,
-    shouldBlockEnterpriseAuthForm,
     setShowAmountError,
     handleStart,
     handleStartClick,

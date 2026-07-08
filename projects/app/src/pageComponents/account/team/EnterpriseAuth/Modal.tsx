@@ -11,17 +11,22 @@ import { enterpriseAuthFooterButtonStyles } from './shared';
 type EnterpriseAuthModalProps = {
   defaultStatus: GetEnterpriseAuthStatusResponseType;
   onClose: () => void;
+  onNoRemainingTimes: () => void;
   onSuccess: () => void;
 };
 
-const EnterpriseAuthModal = ({ defaultStatus, onClose, onSuccess }: EnterpriseAuthModalProps) => {
+const EnterpriseAuthModal = ({
+  defaultStatus,
+  onClose,
+  onNoRemainingTimes,
+  onSuccess
+}: EnterpriseAuthModalProps) => {
   const flow = useEnterpriseAuthFormFlow({
     defaultStatus,
     onClose,
+    onNoRemainingTimes,
     onSuccess
   });
-
-  if (flow.shouldBlockEnterpriseAuthForm) return null;
 
   const remainingAmountVerifyTimes = Math.max(
     EnterpriseAuthAmountMaxErrorTimes -

@@ -120,11 +120,11 @@ const EnterpriseAuthStatusRow = ({
       }),
     [data?.currentTask, data?.status, data?.verifiedEnterpriseName, t]
   );
+  const canOpenCurrentTask = canOpenEnterpriseAuthAmountStep(data?.currentTask?.status);
   const needContactBusiness = shouldShowEnterpriseAuthContactBusinessModal({
-    usedTimes: data?.usedTimes,
+    hasRemainingAuthTimes: data?.hasRemainingAuthTimes,
     hasCurrentTask: !!data?.currentTask
   });
-  const canOpenCurrentTask = canOpenEnterpriseAuthAmountStep(data?.currentTask?.status);
   const hasOtherMemberProcessingTask =
     data?.status === TeamEnterpriseAuthStatusEnum.verifying && !data?.currentTask;
   const canManageCurrentEnterpriseAuth = canManageEnterpriseAuth({
@@ -287,6 +287,11 @@ const EnterpriseAuthStatusRow = ({
         <EnterpriseAuthModal
           defaultStatus={data}
           onClose={onClose}
+          onNoRemainingTimes={() => {
+            onClose();
+            refreshStatus();
+            onOpenContactBusiness();
+          }}
           onSuccess={() => {
             refreshStatus();
             initUserInfo();

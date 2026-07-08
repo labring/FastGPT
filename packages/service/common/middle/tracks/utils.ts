@@ -171,7 +171,6 @@ export const pushTrack = {
       status?: `${TeamEnterpriseAuthStatusEnum}`;
       taskStatus?: `${TeamEnterpriseAuthTaskStatusEnum}`;
       errorCode?: string;
-      usedTimes?: number;
       hasCurrentTask?: boolean;
     }
   ) => {

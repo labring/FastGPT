@@ -1,13 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   canManageEnterpriseAuth,
-  shouldShowEnterpriseAuthAmountError,
-  shouldShowEnterpriseAuthContactBusinessModal
+  shouldShowEnterpriseAuthContactBusinessModal,
+  shouldShowEnterpriseAuthAmountError
 } from '../../../../../src/pageComponents/account/team/EnterpriseAuth/utils';
-import {
-  EnterpriseAuthMaxTimes,
-  TeamEnterpriseAuthTaskStatusEnum
-} from '@fastgpt/global/support/user/team/enterpriseAuth/constant';
+import { TeamEnterpriseAuthTaskStatusEnum } from '@fastgpt/global/support/user/team/enterpriseAuth/constant';
 
 describe('shouldShowEnterpriseAuthAmountError', () => {
   it('历史 amount_failed 任务重新进入时不展示金额错误', () => {
@@ -78,29 +75,20 @@ describe('canManageEnterpriseAuth', () => {
 });
 
 describe('shouldShowEnterpriseAuthContactBusinessModal', () => {
-  it('认证次数耗尽且没有当前任务时展示商务咨询弹窗', () => {
+  it('认证次数耗尽且没有当前任务时提示联系商务', () => {
     expect(
       shouldShowEnterpriseAuthContactBusinessModal({
-        usedTimes: EnterpriseAuthMaxTimes,
+        hasRemainingAuthTimes: false,
         hasCurrentTask: false
       })
     ).toBe(true);
   });
 
-  it('认证次数耗尽但存在待确认打款任务时继续允许恢复认证', () => {
+  it('认证次数耗尽但仍有当前金额验证任务时允许继续任务', () => {
     expect(
       shouldShowEnterpriseAuthContactBusinessModal({
-        usedTimes: EnterpriseAuthMaxTimes,
+        hasRemainingAuthTimes: false,
         hasCurrentTask: true
-      })
-    ).toBe(false);
-  });
-
-  it('认证状态未加载完成时不提前展示商务咨询弹窗', () => {
-    expect(
-      shouldShowEnterpriseAuthContactBusinessModal({
-        usedTimes: undefined,
-        hasCurrentTask: false
       })
     ).toBe(false);
   });

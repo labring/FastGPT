@@ -1,7 +1,6 @@
 import z from 'zod';
 import {
   EnterpriseAuthAmountMaxErrorTimes,
-  EnterpriseAuthMaxTimes,
   TeamEnterpriseAuthStatusSchema,
   TeamEnterpriseAuthTaskStatusSchema
 } from '../../../../../support/user/team/enterpriseAuth/constant';
@@ -21,7 +20,6 @@ import {
  * ============================================================================ */
 
 export const EnterpriseAuthLightTaskSchema = z.object({
-  taskId: z.string().meta({ description: '认证任务 ID' }),
   status: TeamEnterpriseAuthTaskStatusSchema.meta({ description: '当前任务状态' }),
   amountErrorTimes: z.number().int().meta({
     description: '当前任务金额填写错误次数',
@@ -32,11 +30,9 @@ export const EnterpriseAuthLightTaskSchema = z.object({
 export const GetEnterpriseAuthStatusResponseSchema = z.object({
   enabled: z.boolean().meta({ description: '企业认证入口是否开启' }),
   status: TeamEnterpriseAuthStatusSchema.optional().meta({ description: '团队认证状态' }),
-  usedTimes: z
-    .number()
-    .int()
-    .optional()
-    .meta({ description: `已使用认证次数，最多 ${EnterpriseAuthMaxTimes} 次`, example: 0 }),
+  hasRemainingAuthTimes: z.boolean().optional().meta({
+    description: '是否还有可发起新企业认证的次数；已有金额验证任务仍可继续完成'
+  }),
   canManage: z.boolean().optional().meta({ description: '当前成员是否可管理企业认证' }),
   verifiedEnterpriseName: z.string().optional().meta({ description: '认证通过企业名称' }),
   currentTask: EnterpriseAuthLightTaskSchema.optional().meta({
@@ -58,7 +54,6 @@ export type GetEnterpriseAuthStatusResponseType = z.infer<
  * ============================================================================ */
 
 export const GetEnterpriseAuthCurrentTaskDetailResponseSchema = z.object({
-  taskId: z.string().meta({ description: '认证任务 ID' }),
   status: TeamEnterpriseAuthTaskStatusSchema.meta({ description: '当前任务状态' }),
   enterpriseName: z.string().meta({ description: '企业名称' }),
   unifiedCreditCode: z.string().meta({ description: '统一社会信用代码' }),
@@ -157,16 +152,11 @@ export const StartEnterpriseAuthResponseSchema = z.object({
   currentTask: EnterpriseAuthLightTaskSchema.optional().meta({
     description: '未完成认证任务；仅 pending_amount/amount_failed 可进入金额验证页'
   }),
-  usedTimes: z
-    .number()
-    .int()
-    .meta({ description: `已使用认证次数，最多 ${EnterpriseAuthMaxTimes} 次` }),
   message: z.string().optional().meta({ description: '流程提示' })
 });
 export type StartEnterpriseAuthResponseType = z.infer<typeof StartEnterpriseAuthResponseSchema>;
 
 export const VerifyEnterpriseAuthAmountBodySchema = z.object({
-  taskId: z.string().min(1).meta({ description: '认证任务 ID' }),
   amountCent: VerifyEnterpriseAuthAmountCentSchema.meta({
     description: '用户填写的到账金额，单位为分',
     example: 123

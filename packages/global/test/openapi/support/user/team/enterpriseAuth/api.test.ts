@@ -1,25 +1,28 @@
 import { describe, expect, it } from 'vitest';
 import {
+  GetEnterpriseAuthStatusResponseSchema,
   StartEnterpriseAuthBodySchema,
+  StartEnterpriseAuthResponseSchema,
   VerifyEnterpriseAuthAmountBodySchema
 } from '../../../../../../openapi/support/user/team/enterpriseAuth/api';
+import {
+  TeamEnterpriseAuthStatusEnum,
+  TeamEnterpriseAuthTaskStatusEnum
+} from '../../../../../../support/user/team/enterpriseAuth/constant';
 
 describe('VerifyEnterpriseAuthAmountBodySchema', () => {
   it('只接受严格正整数金额，避免无效金额消耗验证次数', () => {
     expect(
       VerifyEnterpriseAuthAmountBodySchema.parse({
-        taskId: 'task-1',
         amountCent: 123
       })
     ).toEqual({
-      taskId: 'task-1',
       amountCent: 123
     });
 
     [0, -1, 1.5, '', '123', null, undefined, false].forEach((amountCent) => {
       expect(
         VerifyEnterpriseAuthAmountBodySchema.safeParse({
-          taskId: 'task-1',
           amountCent
         }).success
       ).toBe(false);
@@ -72,6 +75,46 @@ describe('StartEnterpriseAuthBodySchema', () => {
           bankAccount
         }).success
       ).toBe(false);
+    });
+  });
+});
+
+describe('EnterpriseAuth response schemas', () => {
+  it('状态接口响应不再暴露 usedTimes', () => {
+    const result = GetEnterpriseAuthStatusResponseSchema.parse({
+      enabled: true,
+      status: TeamEnterpriseAuthStatusEnum.unverified,
+      usedTimes: 3,
+      hasRemainingAuthTimes: false,
+      canManage: true
+    });
+
+    expect(result).toEqual({
+      enabled: true,
+      status: TeamEnterpriseAuthStatusEnum.unverified,
+      hasRemainingAuthTimes: false,
+      canManage: true
+    });
+  });
+
+  it('发起认证响应不再暴露 usedTimes', () => {
+    const result = StartEnterpriseAuthResponseSchema.parse({
+      status: TeamEnterpriseAuthStatusEnum.verifying,
+      currentTask: {
+        status: TeamEnterpriseAuthTaskStatusEnum.pending_amount,
+        amountErrorTimes: 0
+      },
+      usedTimes: 1,
+      message: '已成功打款，请确认打款金额'
+    });
+
+    expect(result).toEqual({
+      status: TeamEnterpriseAuthStatusEnum.verifying,
+      currentTask: {
+        status: TeamEnterpriseAuthTaskStatusEnum.pending_amount,
+        amountErrorTimes: 0
+      },
+      message: '已成功打款，请确认打款金额'
     });
   });
 });
