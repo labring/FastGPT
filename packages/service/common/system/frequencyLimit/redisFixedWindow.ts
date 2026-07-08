@@ -1,4 +1,4 @@
-import { getGlobalRedisConnection } from '../redis';
+import { getGlobalRedisConnection } from '../../redis';
 
 /**
  * 基于 Redis 固定窗口的轻量 QPM 限流。

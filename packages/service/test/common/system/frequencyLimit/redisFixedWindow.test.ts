@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { checkFixedWindowQpmLimit } from '@fastgpt/service/common/api/fixedWindowLimit';
+import { checkFixedWindowQpmLimit } from '@fastgpt/service/common/system/frequencyLimit/redisFixedWindow';
 import { getGlobalRedisConnection } from '@fastgpt/service/common/redis';
 
 describe('checkFixedWindowQpmLimit', () => {
