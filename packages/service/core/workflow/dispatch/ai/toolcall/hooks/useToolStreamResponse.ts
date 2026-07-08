@@ -1,6 +1,5 @@
 import type { ChatCompletionMessageToolCall } from '@fastgpt/global/core/ai/llm/type';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
+import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
 import type { WorkflowResponseType } from '../../../type';
 import type { ToolInfo } from './useToolCatalog';
@@ -18,22 +17,12 @@ export const useToolStreamResponse = ({
 }) => {
   const streamReasoning = (text: string) => {
     if (!aiChatReasoning) return;
-    workflowStreamResponse?.({
-      event: SseResponseEventEnum.answer,
-      data: textAdaptGptResponse({
-        reasoning_content: text
-      })
-    });
+    workflowStreamResponse?.(workflowSseEvent.reasoningDelta(text));
   };
 
   const streamAnswer = (text: string) => {
     if (!isResponseAnswerText) return;
-    workflowStreamResponse?.({
-      event: SseResponseEventEnum.answer,
-      data: textAdaptGptResponse({
-        text
-      })
-    });
+    workflowStreamResponse?.(workflowSseEvent.answerDelta(text));
   };
 
   const streamToolCall = (call: ChatCompletionMessageToolCall) => {
@@ -41,19 +30,15 @@ export const useToolStreamResponse = ({
     const toolNode = getToolInfo(call.function.name);
     if (!toolNode) return;
 
-    workflowStreamResponse?.({
-      id: call.id,
-      event: SseResponseEventEnum.toolCall,
-      data: {
-        tool: {
-          id: call.id,
-          toolName: toolNode.name,
-          toolAvatar: toolNode.avatar,
-          functionName: call.function.name,
-          params: call.function.arguments ?? ''
-        }
-      }
-    });
+    workflowStreamResponse?.(
+      workflowSseEvent.toolCall({
+        id: call.id,
+        toolName: toolNode.name,
+        toolAvatar: toolNode.avatar ?? '',
+        functionName: call.function.name,
+        params: call.function.arguments ?? ''
+      })
+    );
   };
 
   const streamToolParams = ({
@@ -64,18 +49,14 @@ export const useToolStreamResponse = ({
     argsDelta: string;
   }) => {
     if (!isResponseAnswerText) return;
-    workflowStreamResponse?.({
-      id: call.id,
-      event: SseResponseEventEnum.toolParams,
-      data: {
-        tool: {
-          id: call.id,
-          toolName: '',
-          toolAvatar: '',
-          params: argsDelta
-        }
-      }
-    });
+    workflowStreamResponse?.(
+      workflowSseEvent.toolParams({
+        id: call.id,
+        toolName: '',
+        toolAvatar: '',
+        params: argsDelta
+      })
+    );
   };
 
   const streamToolResponse = ({
@@ -90,19 +71,15 @@ export const useToolStreamResponse = ({
     /**
      * SSE 只给聊天气泡做轻量预览；完整工具响应与压缩 child 保存在 nodeResponse。
      */
-    workflowStreamResponse?.({
-      id: toolCallId,
-      event: SseResponseEventEnum.toolResponse,
-      data: {
-        tool: {
-          id: toolCallId,
-          toolName: '',
-          toolAvatar: '',
-          params: '',
-          response: sliceStrStartEnd(response || '', 5000, 5000)
-        }
-      }
-    });
+    workflowStreamResponse?.(
+      workflowSseEvent.toolResponse({
+        id: toolCallId,
+        toolName: '',
+        toolAvatar: '',
+        params: '',
+        response: sliceStrStartEnd(response || '', 5000, 5000)
+      })
+    );
   };
 
   return {

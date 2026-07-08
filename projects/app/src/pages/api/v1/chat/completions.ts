@@ -13,9 +13,9 @@ import {
   getMaxHistoryLimitFromNodes,
   storeEdges2RuntimeEdges,
   storeNodes2RuntimeNodes,
-  textAdaptGptResponse,
   getLastInteractiveValue
 } from '@fastgpt/global/core/workflow/runtime/utils';
+import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { GPTMessages2Chats, chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import {
@@ -38,7 +38,6 @@ import {
 } from '@fastgpt/global/core/chat/utils';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
-import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { type AuthOutLinkChatProps } from '@fastgpt/global/support/outLink/api';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
@@ -70,6 +69,7 @@ import {
   filterWorkflowFinalResponseData,
   getWorkflowFinalResponseData
 } from '@/service/core/workflow/nodeResponse';
+import { formatCompletionResponseContent } from '@/service/core/chat/utils';
 import {
   createWorkflowStreamResponseContext,
   type WorkflowStreamResponseContext
@@ -439,56 +439,27 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       await titleSender.send();
       titleSender.close();
 
-      workflowResponseWrite({
-        event: SseResponseEventEnum.answer,
-        data: textAdaptGptResponse({
-          text: null,
-          finish_reason: 'stop'
-        })
-      });
+      workflowResponseWrite(workflowSseEvent.answerStop());
       // 特殊输配(data 不是{})
       if (detail) {
-        workflowResponseWrite({
-          event: SseResponseEventEnum.flowResponses,
-          data: JSON.stringify(feResponseData)
-        });
+        workflowResponseWrite(
+          workflowSseEvent.raw({
+            event: SseResponseEventEnum.flowResponses,
+            data: JSON.stringify(feResponseData)
+          })
+        );
       }
 
-      workflowResponseWrite({
-        event: detail ? SseResponseEventEnum.answer : undefined,
-        data: '[DONE]'
-      });
+      workflowResponseWrite(
+        workflowSseEvent.done(detail ? SseResponseEventEnum.answer : undefined)
+      );
     } else {
       const generatedTitle = await titleSender.send();
       const formatResponseContent = removeAIResponseCite(assistantResponses, retainDatasetCite);
-      const formattdResponse = (() => {
-        if (formatResponseContent.length === 0)
-          return {
-            reasoning: '',
-            content: ''
-          };
-        if (formatResponseContent.length === 1) {
-          return {
-            reasoning: formatResponseContent[0].reasoning?.content,
-            content: formatResponseContent[0].text?.content
-          };
-        }
-
-        if (!detail) {
-          return {
-            reasoning: formatResponseContent
-              .map((item) => item?.reasoning?.content)
-              .filter(Boolean)
-              .join('\n'),
-            content: formatResponseContent
-              .map((item) => item?.text?.content)
-              .filter(Boolean)
-              .join('\n')
-          };
-        }
-
-        return formatResponseContent;
-      })();
+      const formattdResponse = formatCompletionResponseContent({
+        responseContent: formatResponseContent,
+        detail
+      });
 
       const error =
         nodeResponseSummary?.lastError ||
@@ -507,30 +478,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
             message: {
               role: 'assistant',
               ...(Array.isArray(formattdResponse)
-                ? {
-                    content: formattdResponse.map((item) => {
-                      // Add value type(适配旧版)
-                      enum ChatItemValueTypeEnum {
-                        text = 'text',
-                        file = 'file',
-                        tool = 'tool',
-                        interactive = 'interactive',
-                        reasoning = 'reasoning'
-                      }
-                      const type = (() => {
-                        if (item.text) return ChatItemValueTypeEnum.text;
-                        if ('file' in item) return ChatItemValueTypeEnum.file;
-                        if ('tool' in item || 'tools' in item) return ChatItemValueTypeEnum.tool;
-                        if ('interactive' in item) return ChatItemValueTypeEnum.interactive;
-                        if ('reasoning' in item) return ChatItemValueTypeEnum.reasoning;
-                        return ChatItemValueTypeEnum.text;
-                      })();
-                      return {
-                        ...item,
-                        type
-                      };
-                    })
-                  }
+                ? { content: formattdResponse }
                 : {
                     content: formattdResponse.content,
                     ...(formattdResponse.reasoning && {

@@ -281,6 +281,7 @@ data: [{"moduleName":"知识库搜索","moduleType":"datasetSearchNode","running
 event 取值：
 
     - answer: 返回给客户端的文本（最终会算作回答）
+    - chatTitle: 根据本轮用户问题生成的对话标题
     - fastAnswer: 指定回复返回给客户端的文本（最终会算作回答）
     - toolCall: 执行工具
     - toolParams: 工具参数
@@ -288,6 +289,7 @@ event 取值：
     - flowNodeStatus: 运行到的节点状态
     - flowResponses: 节点完整响应
     - updateVariables: 更新变量
+    - interactive: 交互节点配置
     - error: 报错
 
 </Tab>
@@ -295,9 +297,14 @@ event 取值：
 
 ### 交互节点响应
 
-如果工作流中包含交互节点，依然是调用该 API 接口，需要设置 `detail=true`，并可以从 `event=interactive` 的数据中获取交互节点的配置信息。如果是 `stream=false`，则可以从 choice 中获取 `type=interactive` 的元素，获取交互节点的选择信息。
+如果工作流中包含交互节点，依然是调用该 API 接口，需要设置 `detail=true`：
 
-当你调用一个带交互节点的工作流时，如果工作流遇到了交互节点，那么会直接返回，你可以得到下面的信息：
+- `stream=true`：可从 `event=interactive` 的 `data.interactive` 中获取交互节点配置。
+- `stream=false`：可从 `choices[].message.content` 中获取包含 `interactive` 字段的元素。
+
+返回给外部调用方的 `interactive` 是展示配置，只包含 `type` 和 `params`；`entryNodeIds` / `memoryEdges` / `nodeOutputs` / `nodeResponseId` 等内部运行态字段不会返回。若内部命中 children / loop / tool 包装交互，接口会返回最深层面向用户的交互节点。
+
+当你调用一个带交互节点的工作流时，如果工作流遇到了交互节点，那么会直接返回。下面示例展示 `stream=false` 时 `choices[].message.content[]` 中的元素；`stream=true` 时 `event=interactive` 的 `data` 为 `{ "interactive": ... }`：
 
 <Tabs items={['用户选择','表单输入']}>
 <Tab value="用户选择">

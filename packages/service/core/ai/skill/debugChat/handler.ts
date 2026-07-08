@@ -3,15 +3,13 @@ import {
   DispatchNodeResponseKeyEnum,
   SseResponseEventEnum
 } from '@fastgpt/global/core/workflow/runtime/constants';
+import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { concatHistories, removeEmptyUserInput } from '@fastgpt/global/core/chat/utils';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import {
-  getLastInteractiveValue,
-  textAdaptGptResponse
-} from '@fastgpt/global/core/workflow/runtime/utils';
+import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
 import {
   ChatGenerateStatusEnum,
   ChatRoleEnum,
@@ -258,22 +256,11 @@ export async function handleSkillDebugChat(
     logger.debug('Skill debug workflow completed', { skillId, chatId, durationSeconds });
 
     computedFlowResponses.forEach((nodeResponse) => {
-      streamResponseContext?.responseWrite({
-        event: SseResponseEventEnum.flowNodeResponse,
-        data: nodeResponse
-      });
+      streamResponseContext?.responseWrite(workflowSseEvent.flowNodeResponse(nodeResponse));
     });
-    streamResponseContext.responseWrite({
-      event: SseResponseEventEnum.workflowDuration,
-      data: {
-        durationSeconds
-      }
-    });
+    streamResponseContext.responseWrite(workflowSseEvent.workflowDuration(durationSeconds));
 
-    streamResponseContext.responseWrite({
-      event: SseResponseEventEnum.answer,
-      data: textAdaptGptResponse({ text: null, finish_reason: 'stop' })
-    });
+    streamResponseContext.responseWrite(workflowSseEvent.answerStop());
 
     const aiResponse: AIChatItemType & { dataId?: string } = {
       dataId: finalResponseChatItemId,
@@ -319,10 +306,7 @@ export async function handleSkillDebugChat(
       });
     }
 
-    streamResponseContext.responseWrite({
-      event: SseResponseEventEnum.answer,
-      data: '[DONE]'
-    });
+    streamResponseContext.responseWrite(workflowSseEvent.done(SseResponseEventEnum.answer));
 
     await streamResponseContext.flushResume();
   } catch (err: any) {

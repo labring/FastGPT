@@ -13,9 +13,9 @@ import {
   getMaxHistoryLimitFromNodes,
   storeEdges2RuntimeEdges,
   storeNodes2RuntimeNodes,
-  textAdaptGptResponse,
   getLastInteractiveValue
 } from '@fastgpt/global/core/workflow/runtime/utils';
+import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { GPTMessages2Chats, chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import {
@@ -37,7 +37,6 @@ import {
 } from '@fastgpt/global/core/chat/utils';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { getRunningUserInfoByTmbId } from '@fastgpt/service/support/user/team/utils';
-import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { type AuthOutLinkChatProps } from '@fastgpt/global/support/outLink/api';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
@@ -69,6 +68,7 @@ import {
   filterWorkflowFinalResponseData,
   getWorkflowFinalResponseData
 } from '@/service/core/workflow/nodeResponse';
+import { formatCompletionResponseContent } from '@/service/core/chat/utils';
 import {
   createWorkflowStreamResponseContext,
   type WorkflowStreamResponseContext
@@ -449,51 +449,20 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       await titleSender.send();
       titleSender.close();
 
-      streamResponseContext.responseWrite({
-        event: SseResponseEventEnum.answer,
-        data: textAdaptGptResponse({
-          text: null,
-          finish_reason: 'stop'
-        })
-      });
+      streamResponseContext.responseWrite(workflowSseEvent.answerStop());
 
-      streamResponseContext.responseWrite({
-        event: detail ? SseResponseEventEnum.answer : undefined,
-        data: '[DONE]'
-      });
+      streamResponseContext.responseWrite(
+        workflowSseEvent.done(detail ? SseResponseEventEnum.answer : undefined)
+      );
 
       await streamResponseContext.flushResume();
     } else {
       const generatedTitle = await titleSender.send();
       const formatResponseContent = removeAIResponseCite(assistantResponses, retainDatasetCite);
-      const formattdResponse = (() => {
-        if (formatResponseContent.length === 0)
-          return {
-            reasoning: '',
-            content: ''
-          };
-        if (formatResponseContent.length === 1) {
-          return {
-            reasoning: formatResponseContent[0].reasoning?.content,
-            content: formatResponseContent[0].text?.content
-          };
-        }
-
-        if (!detail) {
-          return {
-            reasoning: formatResponseContent
-              .map((item) => item?.reasoning?.content)
-              .filter(Boolean)
-              .join('\n'),
-            content: formatResponseContent
-              .map((item) => item?.text?.content)
-              .filter(Boolean)
-              .join('\n')
-          };
-        }
-
-        return formatResponseContent;
-      })();
+      const formattdResponse = formatCompletionResponseContent({
+        responseContent: formatResponseContent,
+        detail
+      });
 
       res.json({
         ...(detail ? { responseData: feResponseData, newVariables } : {}),

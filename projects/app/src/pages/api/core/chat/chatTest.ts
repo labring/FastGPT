@@ -21,9 +21,9 @@ import {
   getWorkflowEntryNodeIds,
   storeEdges2RuntimeEdges,
   rewriteNodeOutputByHistories,
-  storeNodes2RuntimeNodes,
-  textAdaptGptResponse
+  storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
+import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
@@ -262,17 +262,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       }
     });
 
-    streamResponseContext.responseWrite({
-      event: SseResponseEventEnum.answer,
-      data: textAdaptGptResponse({
-        text: null,
-        finish_reason: 'stop'
-      })
-    });
-    streamResponseContext.responseWrite({
-      event: SseResponseEventEnum.answer,
-      data: '[DONE]'
-    });
+    streamResponseContext.responseWrite(workflowSseEvent.answerStop());
+    streamResponseContext.responseWrite(workflowSseEvent.done(SseResponseEventEnum.answer));
 
     const aiResponse: AIChatItemType & { dataId?: string } = {
       dataId: responseChatItemId,

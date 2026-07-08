@@ -1,10 +1,8 @@
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import {
-  DispatchNodeResponseKeyEnum,
-  SseResponseEventEnum
-} from '@fastgpt/global/core/workflow/runtime/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import {
   type DispatchNodeResultType,
   type ModuleDispatchProps
@@ -199,10 +197,7 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
       );
       if (props.apiVersion === 'v2') {
         recordedWrappers.forEach((item) => {
-          props.workflowStreamResponse?.({
-            event: SseResponseEventEnum.flowNodeResponse,
-            data: item
-          });
+          props.workflowStreamResponse?.(workflowSseEvent.flowNodeResponse(item));
         });
       }
     }

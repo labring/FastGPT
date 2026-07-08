@@ -7,20 +7,19 @@ import type {
   SkillModuleResponseItemType
 } from '@fastgpt/global/core/chat/type';
 import type { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import type { WorkflowToolDeltaType } from '@fastgpt/global/core/workflow/runtime/sse';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { ChatAgentConfigFormDataType } from '@fastgpt/global/core/ai/auxiliaryGeneration/type';
 import type { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 import type { AgentPlanStatusType, AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 
-export type generatingMessageProps = {
-  event: SseResponseEventEnum | AuxiliaryGenerationEventEnum;
+type BaseGeneratingMessageProps = {
   responseValueId?: string;
 
   text?: string;
   reasoningText?: string;
   name?: string;
   status?: 'running' | 'finish';
-  tool?: ToolModuleResponseItemType;
   interactive?: WorkflowInteractiveResponseType;
   variables?: Record<string, any>;
   nodeResponse?: ChatHistoryItemResType;
@@ -37,6 +36,25 @@ export type generatingMessageProps = {
 
   formData?: ChatAgentConfigFormDataType;
 };
+
+type ToolStreamEvent =
+  | SseResponseEventEnum.toolCall
+  | SseResponseEventEnum.toolParams
+  | SseResponseEventEnum.toolResponse;
+
+export type generatingMessageProps =
+  | (BaseGeneratingMessageProps & {
+      event: SseResponseEventEnum.toolCall;
+      tool?: ToolModuleResponseItemType;
+    })
+  | (BaseGeneratingMessageProps & {
+      event: SseResponseEventEnum.toolParams | SseResponseEventEnum.toolResponse;
+      tool?: WorkflowToolDeltaType;
+    })
+  | (BaseGeneratingMessageProps & {
+      event: Exclude<SseResponseEventEnum | AuxiliaryGenerationEventEnum, ToolStreamEvent>;
+      tool?: never;
+    });
 
 export type StartChatFnProps = {
   messages: ChatCompletionMessageParam[];

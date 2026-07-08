@@ -3,11 +3,12 @@ import type {
   ChatHistoryItemResType,
   ToolRunResponseItemType
 } from '@fastgpt/global/core/chat/type';
-import type {
-  DispatchNodeResponseKeyEnum,
-  SseResponseEventEnum
-} from '@fastgpt/global/core/workflow/runtime/constants';
+import type { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import type {
+  WorkflowResponseItemType,
+  WorkflowResponseType
+} from '@fastgpt/global/core/workflow/runtime/sse';
 import type {
   InteractiveNodeResponseType,
   WorkflowInteractiveResponseType
@@ -15,7 +16,8 @@ import type {
 import { type RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { NodeResponseWriteSummary } from '../../chat/nodeResponseStorage';
-import z from 'zod';
+
+export type { WorkflowResponseItemType, WorkflowResponseType };
 
 /**
  * workflow 内部运行期使用的 nodeResponse 摘要。
@@ -90,16 +92,3 @@ export type DispatchFlowResponse = {
   runtimeNodeResponseSummary: RuntimeNodeResponseSummary;
   durationSeconds: number;
 };
-
-const WorkflowResponseItemSchema = z.object({
-  id: z.string().optional(),
-  event: z.custom<SseResponseEventEnum>().optional(),
-  data: z.union([z.string(), z.looseObject({})])
-});
-export type WorkflowResponseItemType = z.infer<typeof WorkflowResponseItemSchema>;
-export const WorkflowResponseFnSchema = z.function({
-  input: z.tuple([WorkflowResponseItemSchema]),
-  output: z.void()
-});
-
-export type WorkflowResponseType = z.infer<typeof WorkflowResponseFnSchema>;

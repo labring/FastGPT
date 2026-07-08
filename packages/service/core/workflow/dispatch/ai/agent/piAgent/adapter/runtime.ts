@@ -6,8 +6,7 @@ import type {
   ChatCompletionMessageToolCall,
   CompletionFinishReason
 } from '@fastgpt/global/core/ai/llm/type';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
+import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { AgentEvent, AgentMessage } from '@mariozechner/pi-agent-core';
 import type { AssistantMessage, Model, StopReason, ToolCall } from '@mariozechner/pi-ai';
@@ -419,13 +418,7 @@ export const createPiAgentWorkflowRuntime = ({
       };
       pendingRequests.push(request);
 
-      workflowStreamResponse?.({
-        event: SseResponseEventEnum.flowNodeStatus,
-        data: {
-          status: 'running',
-          name: request.modelName
-        }
-      });
+      workflowStreamResponse?.(workflowSseEvent.flowNodeStatus(request.modelName));
 
       return undefined;
     },
@@ -434,19 +427,13 @@ export const createPiAgentWorkflowRuntime = ({
         const assistantEvent = event.assistantMessageEvent;
         if (assistantEvent.type === 'text_delta') {
           answerText += assistantEvent.delta;
-          workflowStreamResponse?.({
-            event: SseResponseEventEnum.answer,
-            data: textAdaptGptResponse({ text: assistantEvent.delta })
-          });
+          workflowStreamResponse?.(workflowSseEvent.answerDelta(assistantEvent.delta));
           return;
         }
         if (assistantEvent.type === 'thinking_delta') {
           reasoningText += assistantEvent.delta;
           if (showReasoning) {
-            workflowStreamResponse?.({
-              event: SseResponseEventEnum.answer,
-              data: textAdaptGptResponse({ reasoning_content: assistantEvent.delta })
-            });
+            workflowStreamResponse?.(workflowSseEvent.reasoningDelta(assistantEvent.delta));
           }
           return;
         }
