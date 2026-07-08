@@ -47,6 +47,79 @@ describe('formatCompletionResponseContent', () => {
     ]);
   });
 
+  it('returns only public interactive fields and extracts deepest child interactive', () => {
+    const interactive = {
+      type: 'childrenInteractive',
+      entryNodeIds: ['parent'],
+      interactiveId: 'internal-interactive-id',
+      nodeResponseId: 'internal-node-response-id',
+      memoryEdges: [{ id: 'edge' }],
+      nodeOutputs: [{ id: 'output' }],
+      params: {
+        childrenResponse: {
+          type: 'userInput',
+          entryNodeIds: ['child'],
+          interactiveId: 'child-interactive-id',
+          memoryEdges: [{ id: 'child-edge' }],
+          nodeOutputs: [{ id: 'child-output' }],
+          params: {
+            description: '填写信息',
+            inputForm: []
+          }
+        }
+      }
+    } as unknown as AIChatItemValueItemType['interactive'];
+
+    const result = formatCompletionResponseContent({
+      detail: true,
+      responseContent: [
+        {
+          interactive
+        }
+      ]
+    });
+
+    expect(result).toEqual([
+      {
+        type: ChatItemValueTypeEnum.interactive,
+        interactive: {
+          type: 'userInput',
+          params: {
+            description: '填写信息',
+            inputForm: []
+          }
+        }
+      }
+    ]);
+  });
+
+  it('stops extracting cyclic child interactive and strips childrenResponse', () => {
+    const interactive = {
+      type: 'childrenInteractive',
+      params: {}
+    } as Record<string, any>;
+    interactive.params.childrenResponse = interactive;
+
+    const result = formatCompletionResponseContent({
+      detail: true,
+      responseContent: [
+        {
+          interactive: interactive as AIChatItemValueItemType['interactive']
+        }
+      ]
+    });
+
+    expect(result).toEqual([
+      {
+        type: ChatItemValueTypeEnum.interactive,
+        interactive: {
+          type: 'childrenInteractive',
+          params: {}
+        }
+      }
+    ]);
+  });
+
   it('joins multiple text and reasoning values when detail is disabled', () => {
     const result = formatCompletionResponseContent({
       detail: false,
