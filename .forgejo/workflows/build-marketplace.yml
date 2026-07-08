@@ -1,0 +1,238 @@
+name: Build fastgpt-marketplace images
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Image version tag (e.g. v1.0.0)'
+        required: true
+        type: string
+jobs:
+  build-fastgpt-marketplace-images:
+    permissions:
+      packages: write
+      contents: read
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            runs-on: ubuntu-24.04
+          - arch: arm64
+            runs-on: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runs-on }}
+    steps:
+      # install env
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Capture proxy envs from variables
+        run: |
+          echo "HTTP_PROXY=${{ vars.AB_HTTP_PROXY }}" >> "$GITHUB_ENV"
+          echo "HTTPS_PROXY=${{ vars.AB_HTTPS_PROXY }}" >> "$GITHUB_ENV"
+          echo "NO_PROXY=${{ vars.AB_NO_PROXY }}" >> "$GITHUB_ENV"
+          echo "APT_MIRROR_UBUNTU=${{ vars.AB_APT_MIRROR_UBUNTU }}" >> "$GITHUB_ENV"
+          echo "APT_MIRROR_DEBIAN=${{ vars.AB_APT_MIRROR_DEBIAN }}" >> "$GITHUB_ENV"
+          echo "APT_MIRROR_DEBIAN_SECURITY=${{ vars.AB_APT_MIRROR_DEBIAN_SECURITY }}" >> "$GITHUB_ENV"
+          echo "NPM_REGISTRY=${{ vars.AB_NPM_REGISTRY }}" >> "$GITHUB_ENV"
+
+      - name: Write buildkitd config
+        run: |
+          REGISTRY_HOST="${{ github.server_url }}"
+          REGISTRY_HOST="${REGISTRY_HOST#https://}"
+          REGISTRY_HOST="${REGISTRY_HOST#http://}"
+          echo "REGISTRY_HOST=${REGISTRY_HOST}" >> "$GITHUB_ENV"
+          mkdir -p /tmp/buildkit
+          cat > /tmp/buildkit/buildkitd.toml << EOF
+          [registry."docker.io"]
+            mirrors = ["mirrors.sangfor.com"]
+          [registry."${REGISTRY_HOST}"]
+            http = true
+            insecure = true
+          EOF
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            network=host
+            env.GODEBUG=madvdontneed=0
+            env.HTTP_PROXY=${{ env.HTTP_PROXY }}
+            env.HTTPS_PROXY=${{ env.HTTPS_PROXY }}
+            env.NO_PROXY=${{ env.REGISTRY_HOST }}
+          config: /tmp/buildkit/buildkitd.toml
+
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-marketplace-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-marketplace-buildx-
+
+      - name: Set platform variables
+        run: |
+          REGISTRY="${{ github.server_url }}"
+          REGISTRY="${REGISTRY#https://}"
+          REGISTRY="${REGISTRY#http://}"
+          echo "REGISTRY=${REGISTRY}" >> "$GITHUB_ENV"
+          echo "SOURCE_URL=${{ github.server_url }}/${{ github.repository }}" >> "$GITHUB_ENV"
+
+      # login docker
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.REGISTRY_TOKEN }}
+
+      - name: Build for ${{ matrix.arch }}
+        id: build
+        uses: docker/build-push-action@v6
+        env:
+          GODEBUG: madvdontneed=0
+        with:
+          context: .
+          file: projects/marketplace/Dockerfile
+          platforms: linux/${{ matrix.arch }}
+          build-args: |
+            HTTP_PROXY=${{ env.HTTP_PROXY }}
+            HTTPS_PROXY=${{ env.HTTPS_PROXY }}
+            NO_PROXY=${{ env.NO_PROXY }}
+            APT_MIRROR_UBUNTU=${{ env.APT_MIRROR_UBUNTU }}
+            APT_MIRROR_DEBIAN=${{ env.APT_MIRROR_DEBIAN }}
+            APT_MIRROR_DEBIAN_SECURITY=${{ env.APT_MIRROR_DEBIAN_SECURITY }}
+            NPM_REGISTRY=${{ env.NPM_REGISTRY }}
+          labels: |
+            org.opencontainers.image.source=${{ env.SOURCE_URL }}
+            org.opencontainers.image.description=fastgpt-marketplace image
+          outputs: type=image,"name=${{ env.REGISTRY }}/${{ github.repository_owner }}/fastgpt-marketplace",push-by-digest=true,push=true
+          cache-from: type=local,src=/tmp/.buildx-cache
+          cache-to: type=local,dest=/tmp/.buildx-cache
+
+      - name: Export digest
+        run: |
+          mkdir -p ${{ runner.temp }}/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${{ runner.temp }}/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: forgejo/upload-artifact@v4
+        with:
+          name: digests-fastgpt-marketplace-${{ github.sha }}-${{ matrix.arch }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  release-fastgpt-marketplace-images:
+    permissions:
+      packages: write
+      contents: read
+    needs: build-fastgpt-marketplace-images
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Set platform variables
+        run: |
+          REGISTRY="${{ github.server_url }}"
+          REGISTRY="${REGISTRY#https://}"
+          REGISTRY="${REGISTRY#http://}"
+          echo "REGISTRY=${REGISTRY}" >> "$GITHUB_ENV"
+          echo "SOURCE_URL=${{ github.server_url }}/${{ github.repository }}" >> "$GITHUB_ENV"
+
+      - name: Capture proxy envs from variables
+        run: |
+          echo "HTTP_PROXY=${{ vars.AB_HTTP_PROXY }}" >> "$GITHUB_ENV"
+          echo "HTTPS_PROXY=${{ vars.AB_HTTPS_PROXY }}" >> "$GITHUB_ENV"
+          echo "NO_PROXY=${{ vars.AB_NO_PROXY }}" >> "$GITHUB_ENV"
+          echo "APT_MIRROR_UBUNTU=${{ vars.AB_APT_MIRROR_UBUNTU }}" >> "$GITHUB_ENV"
+          echo "APT_MIRROR_DEBIAN=${{ vars.AB_APT_MIRROR_DEBIAN }}" >> "$GITHUB_ENV"
+          echo "APT_MIRROR_DEBIAN_SECURITY=${{ vars.AB_APT_MIRROR_DEBIAN_SECURITY }}" >> "$GITHUB_ENV"
+          echo "NPM_REGISTRY=${{ vars.AB_NPM_REGISTRY }}" >> "$GITHUB_ENV"
+
+      - name: Write buildkitd config
+        run: |
+          REGISTRY_HOST="${{ github.server_url }}"
+          REGISTRY_HOST="${REGISTRY_HOST#https://}"
+          REGISTRY_HOST="${REGISTRY_HOST#http://}"
+          echo "REGISTRY_HOST=${REGISTRY_HOST}" >> "$GITHUB_ENV"
+          mkdir -p /tmp/buildkit
+          cat > /tmp/buildkit/buildkitd.toml << EOF
+          [registry."docker.io"]
+            mirrors = ["mirrors.sangfor.com"]
+          [registry."${REGISTRY_HOST}"]
+            http = true
+            insecure = true
+          EOF
+
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.REGISTRY_TOKEN }}
+
+      - name: Download digests
+        uses: forgejo/download-artifact@v4
+        with:
+          name: digests-fastgpt-marketplace-${{ github.sha }}-amd64
+          path: ${{ runner.temp }}/digests
+
+      - name: Download digests
+        uses: forgejo/download-artifact@v4
+        with:
+          name: digests-fastgpt-marketplace-${{ github.sha }}-arm64
+          path: ${{ runner.temp }}/digests
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            network=host
+            env.GODEBUG=madvdontneed=0
+            env.HTTP_PROXY=${{ env.HTTP_PROXY }}
+            env.HTTPS_PROXY=${{ env.HTTPS_PROXY }}
+            env.NO_PROXY=${{ env.REGISTRY_HOST }}
+          config: /tmp/buildkit/buildkitd.toml
+
+      - name: Validate version
+        id: version
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          if [[ -z "$INPUT_VERSION" || ! "$INPUT_VERSION" =~ ^v ]]; then
+            echo "::error::Version must start with v. Current value: ${INPUT_VERSION:-<empty>}"
+            exit 1
+          fi
+          echo "version=${INPUT_VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Set image name and tag
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          echo "Git_Tag=${REGISTRY}/${{ github.repository_owner }}/fastgpt-marketplace:${VERSION}" >> $GITHUB_ENV
+
+      - name: Create manifest list and push
+        working-directory: ${{ runner.temp }}/digests
+        run: |
+          SOURCE_REF="${REGISTRY}/${{ github.repository_owner }}/fastgpt-marketplace@sha256:%s"
+
+          retry_imagetools_create() {
+            local tag="$1"
+            local sources
+            sources="$(printf "$SOURCE_REF " *)"
+
+            for attempt in 1 2 3 4; do
+              if docker buildx imagetools create -t "$tag" $sources; then
+                return 0
+              fi
+
+              if [ "$attempt" -eq 4 ]; then
+                echo "::error::Failed to push manifest ${tag} after 3 retries."
+                return 1
+              fi
+
+              echo "::warning::Failed to push manifest ${tag}; retrying in $((attempt * 15)) seconds (${attempt}/3)."
+              sleep $((attempt * 15))
+            done
+          }
+
+          retry_imagetools_create "${Git_Tag}"
