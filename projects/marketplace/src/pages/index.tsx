@@ -65,6 +65,8 @@ const isSameBrowserUrl = (nextUrl: string) => {
     targetUrl.pathname === window.location.pathname && targetUrl.search === window.location.search
   );
 };
+const TOOL_GRID_TEMPLATE_COLUMNS =
+  'repeat(auto-fill, minmax(min(max(260px, calc((100% - 6.25rem) / 6)), 100%), 1fr))';
 
 const ToolkitMarketplace = () => {
   const { t, i18n } = useTranslation();
@@ -626,7 +628,7 @@ const ToolkitMarketplace = () => {
             {displayTools.length > 0 ? (
               <Grid
                 ref={gridRef}
-                gridTemplateColumns={'repeat(auto-fill, minmax(min(260px, 100%), 1fr))'}
+                gridTemplateColumns={TOOL_GRID_TEMPLATE_COLUMNS}
                 gridGap={5}
                 alignItems={'stretch'}
               >
