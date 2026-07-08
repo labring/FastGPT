@@ -43,10 +43,11 @@ export const useToolNodeList = ({
     .map((nodeId) => runtimeNodes.find((item) => item.nodeId === nodeId))
     .filter(isRunnableToolNode)
     .map<ToolNodeItemType>((tool) => {
+      const inputs = tool.inputs.map(initToolInputTypeByDefaultMode);
       const toolParams: FlowNodeInputItemType[] = [];
       let jsonSchema = tool.jsonSchema;
 
-      tool.inputs.map(initToolInputTypeByDefaultMode).forEach((input) => {
+      inputs.forEach((input) => {
         if (isAgentGeneratedToolInput(input) && canInputBeAgentGenerated(input)) {
           toolParams.push(input);
         }
@@ -68,6 +69,7 @@ export const useToolNodeList = ({
         intro: tool.intro,
         toolDescription: tool.toolDescription,
         jsonSchema,
+        inputs,
         toolParams
       };
     });

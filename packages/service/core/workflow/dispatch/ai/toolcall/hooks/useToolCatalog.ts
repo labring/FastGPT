@@ -20,25 +20,33 @@ import {
 export type ToolInfo = AgentLoopCoreToolInfo<ToolNodeItemType>;
 
 const buildModelVisibleJsonSchema = ({
+  inputs,
   toolParams,
   jsonSchema
 }: {
+  inputs?: FlowNodeInputItemType[];
   toolParams: FlowNodeInputItemType[];
   jsonSchema?: Record<string, any>;
 }) => {
+  const inputKeys = new Set(inputs?.map((input) => input.key) ?? []);
   const modelVisibleKeys = new Set(toolParams.map((input) => input.key));
 
   if (jsonSchema) {
     const properties = jsonSchema.properties || {};
+    const isModelVisibleKey = (key: string) => {
+      if (modelVisibleKeys.has(key)) return true;
+      if (inputKeys.has(key)) return false;
+      return (properties[key] as { isToolParam?: boolean } | undefined)?.isToolParam === true;
+    };
     const nextSchema: Record<string, any> = {
       ...jsonSchema,
       properties: Object.fromEntries(
-        Object.entries(properties).filter(([key]) => modelVisibleKeys.has(key))
+        Object.entries(properties).filter(([key]) => isModelVisibleKey(key))
       )
     };
 
     if (Array.isArray(jsonSchema.required)) {
-      nextSchema.required = jsonSchema.required.filter((key: string) => modelVisibleKeys.has(key));
+      nextSchema.required = jsonSchema.required.filter((key: string) => isModelVisibleKey(key));
     } else if ('required' in jsonSchema) {
       nextSchema.required = jsonSchema.required;
     }
@@ -61,6 +69,7 @@ export const createToolSchema = (item: ToolNodeItemType): ChatCompletionTool => 
         name: item.nodeId,
         description: `${item.name}: ${item.toolDescription || item.intro}`,
         parameters: buildModelVisibleJsonSchema({
+          inputs: item.inputs ?? item.toolParams,
           toolParams,
           jsonSchema: item.jsonSchema
         })

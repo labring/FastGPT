@@ -50,7 +50,8 @@ const mcpInputSchema = {
   properties: {
     query: {
       type: 'string',
-      description: 'Search query'
+      description: 'Search query',
+      isToolParam: true
     }
   },
   required: ['query']
@@ -66,7 +67,8 @@ const httpInputSchema = {
     keyword: {
       type: 'string',
       description: 'Keyword',
-      'x-tool-description': 'Keyword'
+      'x-tool-description': 'Keyword',
+      isToolParam: true
     }
   },
   required: ['keyword']
@@ -77,7 +79,8 @@ const httpRequestSchema = {
   properties: {
     body: {
       type: 'object',
-      description: 'Raw request body'
+      description: 'Raw request body',
+      isToolParam: true
     }
   },
   required: ['body']
@@ -90,6 +93,7 @@ const systemToolInputSchema = {
     payload: {
       type: 'object',
       description: 'Structured payload',
+      isToolParam: true,
       properties: {
         keyword: {
           type: 'string',
@@ -538,7 +542,7 @@ describe('getAgentRuntimeTools schema loading', () => {
 
     expect(tools).toHaveLength(1);
     expect(tools[0].requestSchema.function.name).toBe('gpjj5s');
-    expect(tools[0].requestSchema.function.parameters).toBe(systemToolInputSchema);
+    expect(tools[0].requestSchema.function.parameters).toEqual(systemToolInputSchema);
   });
 
   it('keeps debug source in selected system tool config', async () => {

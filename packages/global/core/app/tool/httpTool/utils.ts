@@ -127,7 +127,8 @@ export const pathData2ToolList = async (
             inputProperties[param.name] = {
               type: param.schema.type || 'any',
               description: param.description || '',
-              'x-tool-description': param.description || param.name
+              'x-tool-description': param.description || param.name,
+              isToolParam: true
             };
 
             if (param.required) {
@@ -144,7 +145,8 @@ export const pathData2ToolList = async (
             inputProperties[key] = {
               type: value.type || 'any',
               description: value.description || '',
-              'x-tool-description': value.description || key
+              'x-tool-description': value.description || key,
+              isToolParam: true
             };
           });
         }

@@ -65,25 +65,33 @@ type AgentRuntimeNode = RuntimeNodeItemType & {
 };
 
 const buildModelVisibleJsonSchema = ({
+  inputs,
   toolParams,
   jsonSchema
 }: {
+  inputs?: FlowNodeInputItemType[];
   toolParams: FlowNodeInputItemType[];
   jsonSchema?: Record<string, any>;
 }) => {
+  const inputKeys = new Set(inputs?.map((input) => input.key) ?? []);
   const modelVisibleKeys = new Set(toolParams.map((input) => input.key));
 
   if (jsonSchema) {
     const properties = jsonSchema.properties || {};
+    const isModelVisibleKey = (key: string) => {
+      if (modelVisibleKeys.has(key)) return true;
+      if (inputKeys.has(key)) return false;
+      return (properties[key] as { isToolParam?: boolean } | undefined)?.isToolParam === true;
+    };
     const nextSchema: Record<string, any> = {
       ...jsonSchema,
       properties: Object.fromEntries(
-        Object.entries(properties).filter(([key]) => modelVisibleKeys.has(key))
+        Object.entries(properties).filter(([key]) => isModelVisibleKey(key))
       )
     };
 
     if (Array.isArray(jsonSchema.required)) {
-      nextSchema.required = jsonSchema.required.filter((key: string) => modelVisibleKeys.has(key));
+      nextSchema.required = jsonSchema.required.filter((key: string) => isModelVisibleKey(key));
     } else if ('required' in jsonSchema) {
       nextSchema.required = jsonSchema.required;
     }
@@ -474,7 +482,7 @@ export const getAgentRuntimeTools = async ({
 
   /**
    * 生成 OpenAI-compatible function schema。
-   * schema 优先级：显式 jsonSchema > toolData.inputSchema > 带 toolDescription 的普通 inputs。
+   * schema 优先级：显式 jsonSchema > toolData.inputSchema > Agent 生成 inputs。
    */
   const formatSchema = ({
     toolId,
@@ -514,7 +522,7 @@ export const getAgentRuntimeTools = async ({
         function: {
           name: formatToolId,
           description,
-          parameters: buildModelVisibleJsonSchema({ toolParams, jsonSchema: schema })
+          parameters: buildModelVisibleJsonSchema({ inputs, toolParams, jsonSchema: schema })
         }
       };
     }
@@ -602,24 +610,28 @@ export const getAgentRuntimeTools = async ({
           id: tool.id,
           name: toolNode.name
         };
-        const buildSubApp = (child: RuntimeNodeItemType, id = child.nodeId): SubAppInitType => ({
-          type: 'tool',
-          id,
-          name: child.name,
-          avatar: child.avatar,
-          version: child.version,
-          toolConfig: child.toolConfig,
-          promptReference,
-          params: tool.config,
-          requestSchema: formatSchema({
-            toolId: id,
-            inputs: child.inputs,
+        const buildSubApp = (child: RuntimeNodeItemType, id = child.nodeId): SubAppInitType => {
+          const inputs = initToolInputsTypeByDefaultMode(child.inputs);
+
+          return {
+            type: 'tool',
+            id,
             name: child.name,
-            toolDescription: child.toolDescription,
-            intro: child.intro,
-            jsonSchema: child.jsonSchema
-          })
-        });
+            avatar: child.avatar,
+            version: child.version,
+            toolConfig: child.toolConfig,
+            promptReference,
+            params: tool.config,
+            requestSchema: formatSchema({
+              toolId: id,
+              inputs,
+              name: child.name,
+              toolDescription: child.toolDescription,
+              intro: child.intro,
+              jsonSchema: child.jsonSchema
+            })
+          };
+        };
 
         if (toolNode.flowNodeType === FlowNodeTypeEnum.toolSet) {
           const systemToolId = toolNode.toolConfig?.systemToolSet?.toolId;
