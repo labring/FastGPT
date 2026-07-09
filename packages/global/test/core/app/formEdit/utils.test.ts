@@ -896,6 +896,43 @@ describe('agent generated tool input helpers', () => {
     expect(isAgentGeneratedToolInput(input)).toBe(false);
   });
 
+  it('should initialize isToolParam as agent generated when option exists but no final type is saved', () => {
+    const input = initToolInputTypeByDefaultMode(
+      createMockInput({
+        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
+        toolDescription: 'Prompt to model',
+        isToolParam: true
+      })
+    );
+
+    expect(input.renderTypeList).toEqual([
+      FlowNodeInputTypeEnum.input,
+      FlowNodeInputTypeEnum.agentGenerated
+    ]);
+    expect(input.selectedType).toBe(FlowNodeInputTypeEnum.agentGenerated);
+    expect(input.selectedTypeIndex).toBe(1);
+    expect(isAgentGeneratedToolInput(input)).toBe(true);
+  });
+
+  it('should preserve legacy selectedTypeIndex developer mode before applying isToolParam default', () => {
+    const input = initToolInputTypeByDefaultMode(
+      createMockInput({
+        renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input],
+        selectedTypeIndex: 1,
+        toolDescription: 'Prompt to model',
+        isToolParam: true
+      })
+    );
+
+    expect(input.renderTypeList).toEqual([
+      FlowNodeInputTypeEnum.reference,
+      FlowNodeInputTypeEnum.input
+    ]);
+    expect(input.selectedType).toBe(FlowNodeInputTypeEnum.input);
+    expect(input.selectedTypeIndex).toBe(1);
+    expect(isAgentGeneratedToolInput(input)).toBe(false);
+  });
+
   it('should detect agent generated mode from selectedTypeIndex', () => {
     const input = initToolInputTypeByDefaultMode(
       createMockInput({
