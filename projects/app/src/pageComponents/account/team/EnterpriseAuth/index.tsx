@@ -3,7 +3,6 @@ import {
   Box,
   Button,
   Flex,
-  Skeleton,
   useDisclosure,
   type BoxProps,
   type ButtonProps
@@ -29,6 +28,7 @@ const EnterpriseAuthModal = dynamic(() => import('./Modal'), { ssr: false });
 const EnterpriseAuthContactBusinessModal = dynamic(() => import('./ContactBusinessModal'), {
   ssr: false
 });
+const EnterpriseAuthStatusRowHeight = '32px';
 
 type EnterpriseAuthStatusRowProps = BoxProps & {
   labelStyles?: BoxProps;
@@ -246,14 +246,14 @@ const EnterpriseAuthStatusRow = ({
   if (!feConfigs?.show_enterprise_auth || data?.enabled === false) return null;
 
   if (loading && !data) {
-    return <Skeleton mt={4} h={'32px'} borderRadius={'8px'} {...props} />;
+    return <Box mt={4} h={EnterpriseAuthStatusRowHeight} {...props} />;
   }
 
   if (!data?.enabled) return null;
 
   return (
     <>
-      <Flex mt={4} alignItems={'center'} minW={0} {...props}>
+      <Flex mt={4} h={EnterpriseAuthStatusRowHeight} alignItems={'center'} minW={0} {...props}>
         <Box {...labelStyles}>{t('account_team:enterprise_auth_title')}&nbsp;</Box>
         <Flex flex={'1 1 auto'} minW={0} align={'center'}>
           <Box

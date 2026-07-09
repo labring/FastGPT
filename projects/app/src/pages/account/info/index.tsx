@@ -63,9 +63,13 @@ const ConversionModal = dynamic(() => import('@/pageComponents/account/info/Conv
 const UpdatePswModal = dynamic(() => import('@/pageComponents/account/info/UpdatePswModal'));
 const UpdateContact = dynamic(() => import('@/components/support/user/inform/UpdateContactModal'));
 const CommunityModal = dynamic(() => import('@/components/CommunityModal'));
+const EnterpriseAuthStatusRowHeight = '32px';
 const EnterpriseAuthStatusRow = dynamic(
   () => import('@/pageComponents/account/team/EnterpriseAuth'),
-  { ssr: false }
+  {
+    ssr: false,
+    loading: () => <Box mt={4} h={EnterpriseAuthStatusRowHeight} />
+  }
 );
 
 const ModelPriceModal = dynamic(() =>
@@ -401,15 +405,17 @@ const MyInfo = ({ onOpenContact }: { onOpenContact: () => void }) => {
           </Box>
         )}
 
-        <EnterpriseAuthStatusRow
-          labelStyles={labelStyles}
-          buttonProps={actionButtonStyles}
-          autoOpen={autoOpenEnterpriseAuth}
-          onAutoOpenFinish={() => {
-            clearCertificationHash();
-            setAutoOpenEnterpriseAuth(false);
-          }}
-        />
+        {showEnterpriseAuth && (
+          <EnterpriseAuthStatusRow
+            labelStyles={labelStyles}
+            buttonProps={actionButtonStyles}
+            autoOpen={autoOpenEnterpriseAuth}
+            onAutoOpenFinish={() => {
+              clearCertificationHash();
+              setAutoOpenEnterpriseAuth(false);
+            }}
+          />
+        )}
 
         <MyDivider my={6} />
       </Box>
