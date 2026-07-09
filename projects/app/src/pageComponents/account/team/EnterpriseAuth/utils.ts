@@ -1,7 +1,4 @@
-import {
-  EnterpriseAuthMaxTimes,
-  TeamEnterpriseAuthTaskStatusEnum
-} from '@fastgpt/global/support/user/team/enterpriseAuth/constant';
+import { TeamEnterpriseAuthTaskStatusEnum } from '@fastgpt/global/support/user/team/enterpriseAuth/constant';
 
 export const enterpriseAuthContactBusinessUrl =
   'https://fael3z0zfze.feishu.cn/share/base/form/shrcnjJWtKqjOI9NbQTzhNyzljc?prefill_S=C2&hide_S=1&from=navigation';
@@ -31,6 +28,20 @@ export const canOpenEnterpriseAuthAmountStep = (
   taskStatus === TeamEnterpriseAuthTaskStatusEnum.amount_failed;
 
 /**
+ * 判断企业认证入口是否应该转为商务咨询弹窗。
+ *
+ * 次数耗尽但仍有金额验证任务时，用户需要继续完成当前任务；只有没有可继续任务时，
+ * 才在入口按钮处直接提示联系商务。
+ */
+export const shouldShowEnterpriseAuthContactBusinessModal = ({
+  hasRemainingAuthTimes,
+  hasCurrentTask
+}: {
+  hasRemainingAuthTimes?: boolean;
+  hasCurrentTask: boolean;
+}) => hasRemainingAuthTimes === false && !hasCurrentTask;
+
+/**
  * 判断当前成员是否可以发起或继续企业认证。
  *
  * 团队 owner 和团队管理员才有企业认证操作入口；statusCanManage 来自服务端状态接口，
@@ -45,17 +56,3 @@ export const canManageEnterpriseAuth = ({
   isTeamOwner?: boolean;
   hasTeamManagePer?: boolean;
 }) => (!!isTeamOwner || !!hasTeamManagePer) && statusCanManage !== false;
-
-/**
- * 判断企业认证入口是否应该转为商务咨询弹窗。
- *
- * 第 3 次认证发起成功后 usedTimes 会达到上限，但此时会返回 currentTask，
- * 用户仍需要继续填写打款金额；只有次数耗尽且没有可恢复任务时，才阻断认证表单。
- */
-export const shouldShowEnterpriseAuthContactBusinessModal = ({
-  usedTimes,
-  hasCurrentTask
-}: {
-  usedTimes?: number;
-  hasCurrentTask: boolean;
-}) => usedTimes !== undefined && usedTimes >= EnterpriseAuthMaxTimes && !hasCurrentTask;

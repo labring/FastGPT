@@ -70,6 +70,25 @@ const createRedisStorage = () => {
       });
       return count;
     },
+    expire: (key: string, seconds: number, mode?: string) => {
+      if (isExpired(key) || !storage.has(key)) return 0;
+      if (String(mode ?? '').toUpperCase() === 'NX' && expiryMap.has(key)) return 0;
+      expiryMap.set(key, Date.now() + seconds * 1000);
+      return 1;
+    },
+    ttl: (key: string) => {
+      if (isExpired(key) || !storage.has(key)) return -2;
+      const expiry = expiryMap.get(key);
+      if (!expiry) return -1;
+      return Math.max(0, Math.ceil((expiry - Date.now()) / 1000));
+    },
+    incr: (key: string) => {
+      if (isExpired(key)) storage.delete(key);
+      const current = Number(storage.get(key) ?? 0);
+      const next = current + 1;
+      storage.set(key, next);
+      return next;
+    },
     pexpire: (key: string, milliseconds: number) => {
       if (isExpired(key) || !storage.has(key)) return 0;
       expiryMap.set(key, Date.now() + milliseconds);
@@ -153,12 +172,18 @@ const createSharedMockRedisClient = () => {
     hmset: vi.fn().mockResolvedValue('OK'),
 
     // Expiry operations
-    expire: vi.fn().mockResolvedValue(1),
-    ttl: vi.fn().mockResolvedValue(-1),
+    expire: vi
+      .fn()
+      .mockImplementation((key: string, seconds: number, mode?: string) =>
+        Promise.resolve(globalRedisStorage.expire(key, seconds, mode))
+      ),
+    ttl: vi.fn().mockImplementation((key: string) => Promise.resolve(globalRedisStorage.ttl(key))),
     expireat: vi.fn().mockResolvedValue(1),
 
     // Increment operations
-    incr: vi.fn().mockResolvedValue(1),
+    incr: vi
+      .fn()
+      .mockImplementation((key: string) => Promise.resolve(globalRedisStorage.incr(key))),
     decr: vi.fn().mockResolvedValue(1),
     incrby: vi.fn().mockResolvedValue(1),
     decrby: vi.fn().mockResolvedValue(1),
@@ -196,11 +221,23 @@ const createSharedMockRedisClient = () => {
       unlink: vi.fn().mockReturnThis(),
       exec: vi.fn().mockResolvedValue([])
     })),
-    multi: vi.fn(() => ({
-      incr: vi.fn().mockReturnThis(),
-      expire: vi.fn().mockReturnThis(),
-      exec: vi.fn().mockResolvedValue([[null, 1]])
-    })),
+    multi: vi.fn(() => {
+      const commands: Array<() => [null, unknown]> = [];
+      const pipeline = {
+        incr: vi.fn((key: string) => {
+          commands.push(() => [null, globalRedisStorage.incr(key)]);
+          return pipeline;
+        }),
+        expire: vi.fn((key: string, seconds: number, mode?: string) => {
+          commands.push(() => [null, globalRedisStorage.expire(key, seconds, mode)]);
+          return pipeline;
+        }),
+        exec: vi
+          .fn()
+          .mockImplementation(() => Promise.resolve(commands.map((command) => command())))
+      };
+      return pipeline;
+    }),
 
     // Internal storage for testing purposes
     _storage: globalRedisStorage
