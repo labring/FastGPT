@@ -1,5 +1,10 @@
 import { it, expect } from 'vitest'; // 必须显式导入
-import { splitText2Chunks } from '@fastgpt/service/common/string/textSplitter';
+import {
+  getMaxPrefixByLength,
+  getMaxSuffixByLength,
+  splitText2Chunks
+} from '@fastgpt/service/common/string/textSplitter';
+import { countPromptTokensInWorker } from '@fastgpt/service/worker/countGptMessagesTokens/count';
 import fs from 'fs';
 
 const simpleChunks = (chunks: string[]) => {
@@ -1044,34 +1049,124 @@ it(`Test splitText2Chunks 14 - lastText not lost when strategies exhausted`, () 
 });
 
 it(`Test splitText2Chunks 15 - token mode should not append table header only chunk`, () => {
-  const text = `| id | payload |
+  const header = `| id | payload |
 | --- | --- |
-| 1 | ${'a'.repeat(40)} |
 `;
+  const text = `${header}| 1 | ${'𠮷'.repeat(20)} |
+`;
+  const chunkSize = countPromptTokensInWorker(header) + 8;
 
-  const { chunks } = splitText2Chunks(
-    {
-      text,
-      chunkSize: 20,
-      maxSize: 20,
-      overlapRatio: 0,
-      lengthUnit: 'token'
-    },
-    {
-      countLength: (text) => text.length,
-      splitTextByLengthLimit: ({ text, maxLength }) => {
-        const chunks: string[] = [];
-
-        for (let i = 0; i < text.length; i += maxLength) {
-          chunks.push(text.slice(i, i + maxLength));
-        }
-
-        return chunks;
-      }
-    }
-  );
+  const { chunks } = splitText2Chunks({
+    text,
+    chunkSize,
+    maxSize: chunkSize,
+    overlapRatio: 0,
+    lengthUnit: 'token'
+  });
 
   expect(chunks.length).toBeGreaterThan(0);
   expect(chunks).not.toContain('| id | payload |\n| --- | --- |');
-  expect(chunks.join('\n')).toContain('aaaa');
+  expect(chunks.join('\n')).toContain('𠮷');
+});
+
+it(`Test splitText2Chunks 16 - token mode table chunks should include header within limit`, () => {
+  const header = `| id | payload |
+| --- | --- |
+`;
+  const text = `${header}| 1 | ${'a'.repeat(40)} |
+`;
+  const chunkSize = countPromptTokensInWorker(header) + 4;
+
+  const { chunks } = splitText2Chunks({
+    text,
+    chunkSize,
+    maxSize: chunkSize,
+    overlapRatio: 0,
+    lengthUnit: 'token'
+  });
+
+  expect(chunks.length).toBeGreaterThan(1);
+  expect(chunks.every((chunk) => chunk.includes('| id | payload |'))).toBe(true);
+  expect(chunks.every((chunk) => countPromptTokensInWorker(chunk) <= chunkSize)).toBe(true);
+});
+
+it(`Test splitText2Chunks 17 - token mode table should fail when header has no content budget`, () => {
+  const text = `| id | payload |
+| --- | --- |
+| 1 | a |
+`;
+
+  expect(() =>
+    splitText2Chunks({
+      text,
+      chunkSize: 5,
+      maxSize: 5,
+      overlapRatio: 0,
+      lengthUnit: 'token'
+    })
+  ).toThrow('Markdown table header exceeds token chunk size');
+});
+
+it(`Test getMaxPrefixByLength - returns the longest prefix within custom length limit`, () => {
+  const countLength = (text: string) => Array.from(text).length;
+
+  expect(
+    getMaxPrefixByLength({
+      text: 'A𠮷BC',
+      maxLength: 2,
+      countLength
+    })
+  ).toBe('A𠮷');
+
+  expect(
+    getMaxPrefixByLength({
+      text: 'A𠮷BC',
+      maxLength: 10,
+      countLength
+    })
+  ).toBe('A𠮷BC');
+});
+
+it(`Test getMaxPrefixByLength - returns empty when no code point fits`, () => {
+  const countLength = (text: string) => Array.from(text).length * 2;
+
+  expect(
+    getMaxPrefixByLength({
+      text: '𠮷',
+      maxLength: 1,
+      countLength
+    })
+  ).toBe('');
+});
+
+it(`Test getMaxSuffixByLength - returns the longest suffix within custom length limit`, () => {
+  const countLength = (text: string) => Array.from(text).length;
+
+  expect(
+    getMaxSuffixByLength({
+      text: 'AB𠮷C',
+      maxLength: 2,
+      countLength
+    })
+  ).toBe('𠮷C');
+
+  expect(
+    getMaxSuffixByLength({
+      text: 'AB𠮷C',
+      maxLength: 10,
+      countLength
+    })
+  ).toBe('AB𠮷C');
+});
+
+it(`Test getMaxSuffixByLength - returns empty when overlap budget is unavailable`, () => {
+  const countLength = (text: string) => Array.from(text).length;
+
+  expect(
+    getMaxSuffixByLength({
+      text: 'AB𠮷C',
+      maxLength: 0,
+      countLength
+    })
+  ).toBe('');
 });

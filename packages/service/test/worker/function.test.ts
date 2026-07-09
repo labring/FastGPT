@@ -100,6 +100,40 @@ describe('worker/function', () => {
       expect(mockRunWorker).not.toHaveBeenCalled();
       expect(mockGetWorkerController).not.toHaveBeenCalled();
     });
+
+    it('token 模式无法放入单个字符时直接报错', async () => {
+      await expect(
+        text2Chunks({
+          text: '𠮷',
+          chunkSize: 1,
+          maxSize: 1,
+          lengthUnit: 'token'
+        })
+      ).rejects.toThrow('Text contains a character that exceeds the token length limit');
+      expect(mockRunWorker).not.toHaveBeenCalled();
+      expect(mockGetWorkerController).not.toHaveBeenCalled();
+    });
+
+    it('token 模式拆分 markdown 表格时每个最终分块都包含表头且不超过上限', async () => {
+      const header = `| id | payload |
+| --- | --- |
+`;
+      const text = `${header}| 1 | ${'𠮷'.repeat(20)} |
+`;
+      const result = await text2Chunks({
+        text,
+        chunkSize: 28,
+        maxSize: 28,
+        lengthUnit: 'token'
+      });
+
+      expect(result.chunks.length).toBeGreaterThan(1);
+      expect(result.chunks.every((chunk) => chunk.startsWith(header))).toBe(true);
+      expect(result.chunks.every((chunk) => countPromptTokensInWorker(chunk) <= 28)).toBe(true);
+      expect(result.chunks.join('\n')).toContain('𠮷');
+      expect(mockRunWorker).not.toHaveBeenCalled();
+      expect(mockGetWorkerController).not.toHaveBeenCalled();
+    });
   });
 
   describe('readRawContentFromBuffer', () => {

@@ -15,6 +15,7 @@ import { mockGetVectors, createMockVectorsResponse } from '@test/mocks/core/ai/e
 import { mockVectorDelete, mockVectorInsert, resetVectorMocks } from '@test/mocks/common/vector';
 import { serviceEnv } from '@fastgpt/service/env';
 import { countPromptTokensInWorker } from '@fastgpt/service/worker/countGptMessagesTokens/count';
+import { minChunkSize } from '@fastgpt/global/core/dataset/training/utils';
 import {
   createDatasetDataIndex,
   DatasetDataIndexOperation,
@@ -47,10 +48,10 @@ vi.mock('@fastgpt/service/common/string/tiktoken/index', () => ({
 const embeddingModel = {
   model: 'text-embedding-3-small',
   name: 'text-embedding-3-small',
-  maxToken: 12
+  maxToken: 128
 } as any;
 const originalMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
-const tokenHeavyText = '𠮷'.repeat(8);
+const tokenHeavyText = Array.from({ length: 30 }, (_, index) => `𠮷${index}`).join('');
 
 const expectIndexesWithinTokenLimit = (
   indexes: Pick<DatasetDataIndexItemType, 'text'>[],
@@ -58,6 +59,17 @@ const expectIndexesWithinTokenLimit = (
 ) => {
   expect(indexes.every((index) => countPromptTokensInWorker(index.text) <= maxToken)).toBe(true);
 };
+const mergeChunksByOverlap = (chunks: string[]) =>
+  chunks.reduce((mergedText, chunk) => {
+    const maxOverlapLength = Math.min(mergedText.length, chunk.length);
+    let overlapLength = maxOverlapLength;
+
+    while (overlapLength > 0 && !mergedText.endsWith(chunk.slice(0, overlapLength))) {
+      overlapLength--;
+    }
+
+    return `${mergedText}${chunk.slice(overlapLength)}`;
+  }, '');
 
 const createDatasetContext = async () => {
   const root = await getRootUser();
@@ -205,19 +217,60 @@ describe('DatasetDataIndexOperation', () => {
       ]);
     });
 
+    it('should clamp default index size to minimum chunk size when text is below embedding limit', async () => {
+      const operation = new DatasetDataIndexOperation(embeddingModel);
+
+      const result = await operation.getSystemIndexes({
+        q: tokenHeavyText,
+        indexSize: 12,
+        maxIndexSize: 200
+      });
+
+      expect(result.length).toBeGreaterThan(1);
+      expect(result.every((index) => index.type === DatasetDataIndexTypeEnum.default)).toBe(true);
+      expect(result.some((index) => countPromptTokensInWorker(index.text) > 12)).toBe(true);
+      expect(result.every((index) => countPromptTokensInWorker(index.text) <= minChunkSize)).toBe(
+        true
+      );
+      expectIndexesWithinTokenLimit(result, 200);
+      expect(mergeChunksByOverlap(result.map((index) => index.text))).toBe(tokenHeavyText);
+    });
+
+    it('should clamp prefixed default index content to minimum chunk size when embedding limit is larger', async () => {
+      const operation = new DatasetDataIndexOperation(embeddingModel);
+      const indexPrefix = '# LongTitle';
+
+      const result = await operation.getSystemIndexes({
+        q: tokenHeavyText,
+        indexSize: 12,
+        maxIndexSize: 200,
+        indexPrefix
+      });
+      const contentChunks = result.map((index) => index.text.replace(`${indexPrefix}\n`, ''));
+
+      expect(result.length).toBeGreaterThan(1);
+      expect(result.every((index) => index.text.startsWith(`${indexPrefix}\n`))).toBe(true);
+      expect(contentChunks.some((chunk) => countPromptTokensInWorker(chunk) > 12)).toBe(true);
+      expect(contentChunks.every((chunk) => countPromptTokensInWorker(chunk) <= minChunkSize)).toBe(
+        true
+      );
+      expectIndexesWithinTokenLimit(result, 200);
+      expect(mergeChunksByOverlap(contentChunks)).toBe(tokenHeavyText);
+    });
+
     it('should split default text indexes when text2Chunks result still exceeds embedding limit', async () => {
       const operation = new DatasetDataIndexOperation(embeddingModel);
 
       const result = await operation.getSystemIndexes({
         q: tokenHeavyText,
-        indexSize: 50,
-        maxIndexSize: 12
+        indexSize: 100,
+        maxIndexSize: 70
       });
 
       expect(result.length).toBeGreaterThan(1);
       expect(result.every((index) => index.type === DatasetDataIndexTypeEnum.default)).toBe(true);
-      expectIndexesWithinTokenLimit(result, 12);
-      expect(result.map((index) => index.text).join('')).toBe(tokenHeavyText);
+      expectIndexesWithinTokenLimit(result, 70);
+      expect(mergeChunksByOverlap(result.map((index) => index.text))).toBe(tokenHeavyText);
     });
 
     it('should split prefixed default indexes by final embedding token size', async () => {
@@ -225,18 +278,18 @@ describe('DatasetDataIndexOperation', () => {
       const indexPrefix = '# LongTitle';
 
       const result = await operation.getSystemIndexes({
-        q: '𠮷'.repeat(6),
-        indexSize: 50,
-        maxIndexSize: 20,
+        q: tokenHeavyText,
+        indexSize: 100,
+        maxIndexSize: 70,
         indexPrefix
       });
 
       expect(result.length).toBeGreaterThan(1);
       expect(result.every((index) => index.text.startsWith(`${indexPrefix}\n`))).toBe(true);
-      expectIndexesWithinTokenLimit(result, 20);
-      expect(result.map((index) => index.text.replace(`${indexPrefix}\n`, '')).join('')).toBe(
-        '𠮷'.repeat(6)
-      );
+      expectIndexesWithinTokenLimit(result, 70);
+      expect(
+        mergeChunksByOverlap(result.map((index) => index.text.replace(`${indexPrefix}\n`, '')))
+      ).toBe(tokenHeavyText);
     });
 
     it('should fail fast when prefix leaves no room for index content', async () => {
@@ -250,6 +303,19 @@ describe('DatasetDataIndexOperation', () => {
           indexPrefix: '𠮷'.repeat(4)
         })
       ).rejects.toThrow('Dataset index prefix is too long for embedding token limit');
+    });
+
+    it('should fail fast when prefix leaves less than minimum index content budget', async () => {
+      const operation = new DatasetDataIndexOperation(embeddingModel);
+
+      await expect(
+        operation.getSystemIndexes({
+          q: 'abc',
+          indexSize: 50,
+          maxIndexSize: 20,
+          indexPrefix: '# LongTitle'
+        })
+      ).rejects.toThrow('Dataset index content token budget is smaller than minimum chunk size');
     });
 
     it('should not check prefix token budget when text is empty and only image index is generated', async () => {
@@ -442,7 +508,7 @@ describe('DatasetDataIndexOperation', () => {
         q: '',
         a: '',
         indexSize: 8,
-        maxIndexSize: 12,
+        maxIndexSize: 70,
         indexes: [
           {
             type: DatasetDataIndexTypeEnum.custom,
@@ -453,8 +519,8 @@ describe('DatasetDataIndexOperation', () => {
 
       expect(result.length).toBeGreaterThan(1);
       expect(result.every((index) => index.type === DatasetDataIndexTypeEnum.custom)).toBe(true);
-      expectIndexesWithinTokenLimit(result, 12);
-      expect(result.map((index) => index.text).join('')).toBe(tokenHeavyText);
+      expectIndexesWithinTokenLimit(result, 70);
+      expect(mergeChunksByOverlap(result.map((index) => index.text))).toBe(tokenHeavyText);
     });
 
     it('should keep short custom indexes unchanged before token split', async () => {
@@ -488,8 +554,8 @@ describe('DatasetDataIndexOperation', () => {
       const result = await operation.formatIndexes({
         q: '',
         a: '',
-        indexSize: 50,
-        maxIndexSize: 12,
+        indexSize: 100,
+        maxIndexSize: 70,
         indexes: [
           {
             type: DatasetDataIndexTypeEnum.custom,
@@ -500,18 +566,18 @@ describe('DatasetDataIndexOperation', () => {
 
       expect(result.length).toBeGreaterThan(1);
       expect(result.every((index) => index.type === DatasetDataIndexTypeEnum.custom)).toBe(true);
-      expectIndexesWithinTokenLimit(result, 12);
-      expect(result.map((index) => index.text).join('')).toBe(tokenHeavyText);
+      expectIndexesWithinTokenLimit(result, 70);
+      expect(mergeChunksByOverlap(result.map((index) => index.text))).toBe(tokenHeavyText);
     });
 
     it('should check default index token size after prefix is applied', async () => {
       const operation = new DatasetDataIndexOperation(embeddingModel);
 
       const result = await operation.formatIndexes({
-        q: '𠮷'.repeat(6),
+        q: tokenHeavyText,
         a: '',
-        indexSize: 10,
-        maxIndexSize: 20,
+        indexSize: 100,
+        maxIndexSize: 70,
         indexPrefix: '# LongTitle',
         indexes: []
       });
@@ -519,10 +585,10 @@ describe('DatasetDataIndexOperation', () => {
       expect(mockCountPromptTokens).toHaveBeenCalledWith('# LongTitle\n');
       expect(result.length).toBeGreaterThan(1);
       expect(result.every((index) => index.text.startsWith('# LongTitle\n'))).toBe(true);
-      expectIndexesWithinTokenLimit(result, 20);
-      expect(result.map((index) => index.text.replace('# LongTitle\n', '')).join('')).toBe(
-        '𠮷'.repeat(6)
-      );
+      expectIndexesWithinTokenLimit(result, 70);
+      expect(
+        mergeChunksByOverlap(result.map((index) => index.text.replace('# LongTitle\n', '')))
+      ).toBe(tokenHeavyText);
     });
 
     it('should keep image embedding indexes unsplit even when text looks too long', async () => {
@@ -990,7 +1056,7 @@ describe('DatasetDataIndexOperation', () => {
 
     it('should reject custom index text longer than model maxToken', async () => {
       const { dataItem } = await createData();
-      mockCountPromptTokens.mockResolvedValueOnce(13);
+      mockCountPromptTokens.mockResolvedValueOnce(129);
 
       await expect(
         createDatasetDataIndex({
@@ -1104,7 +1170,7 @@ describe('DatasetDataIndexOperation', () => {
     it('should use the resolved embedding model when only a model name is provided', () => {
       const operation = new DatasetDataIndexOperation('unknown-model');
 
-      expect(operation.maxToken).toBe(12);
+      expect(operation.maxToken).toBe(128);
     });
 
     it('keeps object id generation available for data fixtures', () => {

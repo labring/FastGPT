@@ -10,8 +10,8 @@ import path from 'node:path';
 export const text2Chunks = async (props: SplitProps) => {
   // Test env, not run worker
   if (isTestEnv) {
-    const { splitText2ChunksByLengthUnit } = await import('./text2Chunks/split');
-    return splitText2ChunksByLengthUnit(props);
+    const { splitText2Chunks } = await import('../common/string/textSplitter');
+    return splitText2Chunks(props);
   }
   return getWorkerController<SplitProps, SplitResponse>({
     name: WorkerNameEnum.text2Chunks,

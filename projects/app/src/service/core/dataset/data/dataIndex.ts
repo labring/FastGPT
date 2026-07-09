@@ -22,6 +22,7 @@ import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { uniqueDatasetDataMarkdownImageUrls } from '@fastgpt/service/core/dataset/data/utils';
 import { isDatasetDataSystemIndexType } from '@fastgpt/global/core/dataset/data/utils';
+import { minChunkSize } from '@fastgpt/global/core/dataset/training/utils';
 
 export type DatasetDataIndexDraft = Omit<DatasetDataIndexItemType, 'dataId'> & {
   dataId?: string;
@@ -65,9 +66,59 @@ const formatIndexTextWithPrefix = (text: string, indexPrefix?: string) => {
 };
 
 /**
+ * 按 embedding token 预算拆分索引正文，并给每个最终 chunk 补上集合前缀。
+ *
+ * 这个 helper 总是走 text2Chunks，避免绕过索引分块的文本规范化；调用方通过
+ * `indexSize` 控制期望索引粒度，通过 `maxToken` 控制 embedding provider 硬上限。
+ * indexSize 下限沿用知识库分块最小值，避免 prefix 挤压后传入过小 token 预算。
+ */
+const splitIndexTextByTokenLimit = async ({
+  text,
+  indexSize,
+  maxToken,
+  indexPrefix
+}: {
+  text: string;
+  indexSize: number;
+  maxToken: number;
+  indexPrefix?: string;
+}) => {
+  const trimmedText = text.trim();
+  if (!trimmedText) return [];
+
+  const prefixTokens = indexPrefix ? await countPromptTokens(`${indexPrefix}\n`) : 0;
+  const maxContentTokens = maxToken - prefixTokens;
+
+  if (maxContentTokens <= 0) {
+    throw new Error('Dataset index prefix is too long for embedding token limit');
+  }
+  if (maxContentTokens < minChunkSize) {
+    throw new Error('Dataset index content token budget is smaller than minimum chunk size');
+  }
+  const normalizedIndexSize = Math.max(indexSize, minChunkSize);
+  const chunkTokenLimit = Math.min(normalizedIndexSize, maxContentTokens);
+
+  // 入库索引和 query 不一样：这里允许一条 index 拆成多条，以尽量保留原始内容。
+  // 每条最终文本都会拼上 indexPrefix，所以正文预算必须先扣掉前缀 token。
+  const chunks = (
+    await text2Chunks({
+      text: trimmedText,
+      chunkSize: chunkTokenLimit,
+      maxSize: chunkTokenLimit,
+      lengthUnit: 'token'
+    })
+  ).chunks;
+
+  return chunks
+    .map((chunk) => formatIndexTextWithPrefix(chunk, indexPrefix))
+    .filter((item) => item.trim());
+};
+
+/**
  * 构建最终可写入 embedding 的索引文本。
- * 这里直接让 text2Chunks 按 token 计量切分；传入 indexPrefix 时，先扣掉前缀预算。
- * 空文本不会生成文本索引，也不应被文本前缀预算校验拦截。
+ *
+ * 默认保持旧语义：未超过 embedding 上限的既有索引不强行重分块，避免无谓重建向量。
+ * 超过上限时再按 `min(max(indexSize, 64), maxToken - prefixTokens)` 做 token-safe 二次拆分。
  */
 const buildEmbeddingSafeIndexTexts = async ({
   text,
@@ -88,27 +139,12 @@ const buildEmbeddingSafeIndexTexts = async ({
     return [formattedText];
   }
 
-  const prefixTokens = indexPrefix ? await countPromptTokens(`${indexPrefix}\n`) : 0;
-  const maxContentTokens = maxToken - prefixTokens;
-
-  if (maxContentTokens <= 0) {
-    throw new Error('Dataset index prefix is too long for embedding token limit');
-  }
-
-  // 入库索引和 query 不一样：这里允许一条 index 拆成多条，以尽量保留原始内容。
-  // 因为最终写入向量库的文本会带上 indexPrefix，所以正文预算要先扣掉前缀 token。
-  const chunks = (
-    await text2Chunks({
-      text: trimmedText,
-      chunkSize: Math.min(indexSize, maxContentTokens),
-      maxSize: maxContentTokens,
-      lengthUnit: 'token'
-    })
-  ).chunks;
-
-  return chunks
-    .map((chunk) => formatIndexTextWithPrefix(chunk, indexPrefix))
-    .filter((item) => item.trim());
+  return splitIndexTextByTokenLimit({
+    text: trimmedText,
+    indexSize,
+    maxToken,
+    indexPrefix
+  });
 };
 
 const isImageEmbeddingIndex = (index: DatasetDataIndexDraft) =>
@@ -207,14 +243,14 @@ export class DatasetDataIndexOperation {
     maxIndexSize?: number;
     indexPrefix?: string;
   }) {
-    const qIndexTexts = await buildEmbeddingSafeIndexTexts({
+    const qIndexTexts = await splitIndexTextByTokenLimit({
       text: q,
       indexSize,
       maxToken: maxIndexSize ?? this.maxToken,
       indexPrefix
     });
     const aIndexTexts = a
-      ? await buildEmbeddingSafeIndexTexts({
+      ? await splitIndexTextByTokenLimit({
           text: a,
           indexSize,
           maxToken: maxIndexSize ?? this.maxToken,
