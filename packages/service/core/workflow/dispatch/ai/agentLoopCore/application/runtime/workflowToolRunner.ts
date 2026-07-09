@@ -18,6 +18,7 @@ import type { AgentLoopCoreToolInfo, AgentLoopCoreToolRunResult } from '../../do
 import type { AgentLoopCoreToolRunFlowResponse } from '../../adapter/nodeResponse/toolRunCollector';
 import { normalizeAgentLoopCoreDatasetSearchResult } from './systemToolHelpers';
 import { cloneDeep } from 'lodash-es';
+import { filterAgentGeneratedToolParams } from '@fastgpt/global/core/app/formEdit/utils';
 
 export type AgentLoopCoreWorkflowToolRunResponse<TChildrenResponse = unknown> = {
   flowResponses: NonNullable<DispatchFlowResponse['flatNodeResponses']>;
@@ -59,14 +60,23 @@ export const updateAgentLoopCoreWorkflowToolInputValue = ({
   params: Record<string, any>;
   inputs: FlowNodeInputItemType[];
 }) => {
+  const agentGeneratedParams = filterAgentGeneratedToolParams({ params, inputs });
+
   /**
-   * Tool workflow 的输入 schema 来自原始节点；这里只覆盖本次 tool call 传入的参数。
+   * Tool workflow 的输入 schema 来自原始节点；这里只允许覆盖用户最终选择为 Agent 生成的参数。
    * 使用 ?? 保留 0/false/'' 这类有效值，只有 null/undefined 才回退到节点默认值。
    */
-  return inputs.map((input) => ({
-    ...input,
-    value: params[input.key] ?? input.value
-  }));
+  return inputs.map((input) => {
+    const hasAgentGeneratedValue = Object.prototype.hasOwnProperty.call(
+      agentGeneratedParams,
+      input.key
+    );
+
+    return {
+      ...input,
+      value: hasAgentGeneratedValue ? (agentGeneratedParams[input.key] ?? input.value) : input.value
+    };
+  });
 };
 
 export const formatAgentLoopCoreToolResponse = (toolResponses: any) => {

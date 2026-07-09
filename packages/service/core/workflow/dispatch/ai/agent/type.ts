@@ -23,6 +23,8 @@ export const SubAppRuntimeSchema = z.object({
   toolDescription: z.string().optional(),
   version: z.string().optional(),
   toolConfig: NodeToolConfigTypeSchema.optional(),
+  inputs: z.custom<RuntimeNodeItemType['inputs']>().optional(),
+  agentGeneratedInputKeys: z.array(z.string()).optional(),
   params: z.record(z.string(), z.any()).optional()
 });
 export type SubAppRuntimeType = z.infer<typeof SubAppRuntimeSchema>;

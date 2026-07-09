@@ -31,29 +31,59 @@ const agentGeneratedDenyRenderTypes = new Set<FlowNodeInputTypeEnum>([
   FlowNodeInputTypeEnum.settingDatasetQuotePrompt
 ]);
 
+type InputRenderTypeState = {
+  renderTypeList?: FlowNodeInputItemType['renderTypeList'];
+  selectedTypeIndex?: FlowNodeInputItemType['selectedTypeIndex'];
+};
+
 /**
  * 获取输入当前选中的渲染类型。
  * renderTypeList 表示可选类型，selectedTypeIndex 表示当前选择；历史数据缺少 index 时回退到第 0 项。
  */
-export const getSelectedInputRenderType = (
-  input: Pick<FlowNodeInputItemType, 'renderTypeList' | 'selectedTypeIndex'>
-) => input.renderTypeList[input.selectedTypeIndex ?? 0];
+export const getSelectedInputRenderType = (input: InputRenderTypeState) =>
+  input.renderTypeList?.[input.selectedTypeIndex ?? 0];
 
 /**
  * 判断工具入参当前最终类型是否为 Agent 生成。
  */
-export const isAgentGeneratedToolInput = (
-  input: Pick<FlowNodeInputItemType, 'renderTypeList' | 'selectedTypeIndex'>
-) => getSelectedInputRenderType(input) === FlowNodeInputTypeEnum.agentGenerated;
+export const isAgentGeneratedToolInput = (input: InputRenderTypeState) =>
+  getSelectedInputRenderType(input) === FlowNodeInputTypeEnum.agentGenerated;
 
 /**
  * 服务端 runtime schema 的安全边界：即使持久化数据被篡改，也只允许普通可生成字段进入模型 schema。
  */
 export const canInputBeAgentGenerated = (
-  input: Pick<FlowNodeInputItemType, 'key' | 'renderTypeList'>
+  input: Pick<FlowNodeInputItemType, 'key'> & {
+    renderTypeList?: FlowNodeInputItemType['renderTypeList'];
+  }
 ) => {
   if (input.key === NodeInputKeyEnum.systemInputConfig) return false;
+  if (!Array.isArray(input.renderTypeList)) return false;
   return !input.renderTypeList.some((type) => agentGeneratedDenyRenderTypes.has(type));
+};
+
+/**
+ * 从模型返回的参数中只保留当前协议允许 Agent 生成的字段。
+ * 运行时必须以用户最终选择的 selectedTypeIndex 为准，避免模型覆盖开发者手动配置的参数。
+ */
+export const filterAgentGeneratedToolParams = ({
+  params = {},
+  inputs,
+  additionalAllowedKeys = []
+}: {
+  params?: Record<string, any>;
+  inputs: (Pick<FlowNodeInputItemType, 'key'> & InputRenderTypeState)[];
+  additionalAllowedKeys?: string[];
+}) => {
+  const allowedKeys = new Set(additionalAllowedKeys);
+
+  inputs.forEach((input) => {
+    if (isAgentGeneratedToolInput(input) && canInputBeAgentGenerated(input)) {
+      allowedKeys.add(input.key);
+    }
+  });
+
+  return Object.fromEntries(Object.entries(params).filter(([key]) => allowedKeys.has(key)));
 };
 
 /**

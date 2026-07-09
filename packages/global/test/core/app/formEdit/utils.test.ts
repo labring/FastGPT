@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   validateToolConfiguration,
   checkNeedsUserConfiguration,
+  filterAgentGeneratedToolParams,
   getToolConfigStatus,
   initToolInputTypeByDefaultMode,
   isAgentGeneratedToolInput
@@ -909,6 +910,45 @@ describe('agent generated tool input helpers', () => {
     ]);
     expect(input.selectedTypeIndex).toBe(1);
     expect(isAgentGeneratedToolInput(input)).toBe(true);
+  });
+
+  it('should filter model params by final agent generated selection', () => {
+    const params = filterAgentGeneratedToolParams({
+      params: {
+        query: 'model query',
+        manualText: 'model text',
+        password: 'model secret',
+        schemaOnly: 'schema value',
+        [NodeInputKeyEnum.systemInputConfig]: 'model system config'
+      },
+      inputs: [
+        createMockInput({
+          key: 'query',
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
+          selectedTypeIndex: 1
+        }),
+        createMockInput({
+          key: 'manualText',
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
+          selectedTypeIndex: 0
+        }),
+        createMockInput({
+          key: 'password',
+          renderTypeList: [FlowNodeInputTypeEnum.password, FlowNodeInputTypeEnum.agentGenerated],
+          selectedTypeIndex: 1
+        }),
+        createMockInput({
+          key: NodeInputKeyEnum.systemInputConfig,
+          renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+        })
+      ],
+      additionalAllowedKeys: ['schemaOnly']
+    });
+
+    expect(params).toEqual({
+      query: 'model query',
+      schemaOnly: 'schema value'
+    });
   });
 
   it('should not initialize file fields as agent generated', () => {

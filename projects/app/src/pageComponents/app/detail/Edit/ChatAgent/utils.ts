@@ -40,6 +40,7 @@ import {
 import { getClientToolPreviewNode } from '@/web/core/app/api/tool';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { inheritToolInputConfig } from '../FormComponent/ToolSelector/utils';
 
 /* format app nodes to edit form */
 export const appWorkflow2AgentForm = ({
@@ -466,19 +467,12 @@ export const loadGeneratedTools = async ({
         }
 
         const generatedTool = generatedSelectedTools.find((item) => item.pluginId === toolId);
-        if (generatedTool) {
-          tool.inputs.forEach((input) => {
-            const generatedInput = generatedTool.inputs.find((topIn) => topIn.key === input.key);
-            if (generatedInput) {
-              input.value = generatedInput.value;
-            }
-          });
-        }
+        const inheritedTool = inheritToolInputConfig({ tool, sourceTool: generatedTool });
 
         return {
-          ...tool,
+          ...inheritedTool,
           id: toolId,
-          configStatus: getToolConfigStatus({ tool }).status
+          configStatus: getToolConfigStatus({ tool: inheritedTool }).status
         };
       })
     )
