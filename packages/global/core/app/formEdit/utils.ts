@@ -89,6 +89,8 @@ export const filterAgentGeneratedToolParams = ({
  */
 export const initToolInputTypeByDefaultMode = <T extends FlowNodeInputItemType>(input: T): T => {
   const selectedType = getSelectedInputRenderType(input);
+  const hasSelectedType =
+    input.selectedType !== undefined || input.selectedTypeIndex !== undefined;
   const inputWithSelectedType = (
     selectedType
       ? {
@@ -98,24 +100,31 @@ export const initToolInputTypeByDefaultMode = <T extends FlowNodeInputItemType>(
       : input
   ) as T;
 
+  if (hasSelectedType) return inputWithSelectedType;
   if (isAgentGeneratedToolInput(inputWithSelectedType)) return inputWithSelectedType;
 
   if (
     inputWithSelectedType.isToolParam !== true ||
-    !canInputBeAgentGenerated(inputWithSelectedType) ||
-    inputWithSelectedType.renderTypeList.includes(FlowNodeInputTypeEnum.agentGenerated)
+    !canInputBeAgentGenerated(inputWithSelectedType)
   ) {
     return inputWithSelectedType;
   }
 
+  const renderTypeList = input.renderTypeList.includes(FlowNodeInputTypeEnum.agentGenerated)
+    ? input.renderTypeList
+    : [
+        FlowNodeInputTypeEnum.agentGenerated,
+        ...input.renderTypeList.filter((type) => type !== FlowNodeInputTypeEnum.agentGenerated)
+      ];
+  const selectedTypeIndex = renderTypeList.findIndex(
+    (type) => type === FlowNodeInputTypeEnum.agentGenerated
+  );
+
   return {
     ...inputWithSelectedType,
     selectedType: FlowNodeInputTypeEnum.agentGenerated,
-    selectedTypeIndex: 0,
-    renderTypeList: [
-      FlowNodeInputTypeEnum.agentGenerated,
-      ...input.renderTypeList.filter((type) => type !== FlowNodeInputTypeEnum.agentGenerated)
-    ]
+    selectedTypeIndex: selectedTypeIndex >= 0 ? selectedTypeIndex : 0,
+    renderTypeList
   };
 };
 
