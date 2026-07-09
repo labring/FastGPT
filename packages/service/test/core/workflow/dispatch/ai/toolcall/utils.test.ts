@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { filterAgentLoopCoreToolResponseToPreview } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/assistantResponses/preview';
 import {
   formatAgentLoopCoreToolResponse,
@@ -10,13 +11,47 @@ import {
 
 describe('workflow tool runner utils', () => {
   describe('updateAgentLoopCoreWorkflowToolInputValue', () => {
-    it('should overwrite only params provided by tool call and preserve falsy valid values', () => {
+    it('should overwrite only agent generated params and preserve falsy valid values', () => {
       const sourceInputs = [
-        { key: 'query', value: 'old query' },
-        { key: 'limit', value: 10 },
-        { key: 'enabled', value: true },
-        { key: 'emptyText', value: 'fallback text' },
-        { key: 'nullish', value: 'default value' }
+        {
+          key: 'query',
+          value: 'old query',
+          renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+        },
+        {
+          key: 'limit',
+          value: 10,
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
+          selectedTypeIndex: 1
+        },
+        {
+          key: 'enabled',
+          value: true,
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
+          selectedTypeIndex: 1
+        },
+        {
+          key: 'manualText',
+          value: 'fixed value',
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
+          selectedTypeIndex: 0
+        },
+        {
+          key: 'password',
+          value: 'secret',
+          renderTypeList: [FlowNodeInputTypeEnum.password, FlowNodeInputTypeEnum.agentGenerated],
+          selectedTypeIndex: 1
+        },
+        {
+          key: 'emptyText',
+          value: 'fallback text',
+          renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+        },
+        {
+          key: 'nullish',
+          value: 'default value',
+          renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+        }
       ] as any[];
 
       const result = updateAgentLoopCoreWorkflowToolInputValue({
@@ -24,6 +59,8 @@ describe('workflow tool runner utils', () => {
           query: 'new query',
           limit: 0,
           enabled: false,
+          manualText: 'model value',
+          password: 'model secret',
           emptyText: '',
           nullish: null
         },
@@ -31,11 +68,45 @@ describe('workflow tool runner utils', () => {
       });
 
       expect(result).toEqual([
-        { key: 'query', value: 'new query' },
-        { key: 'limit', value: 0 },
-        { key: 'enabled', value: false },
-        { key: 'emptyText', value: '' },
-        { key: 'nullish', value: 'default value' }
+        {
+          key: 'query',
+          value: 'new query',
+          renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+        },
+        {
+          key: 'limit',
+          value: 0,
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
+          selectedTypeIndex: 1
+        },
+        {
+          key: 'enabled',
+          value: false,
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
+          selectedTypeIndex: 1
+        },
+        {
+          key: 'manualText',
+          value: 'fixed value',
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
+          selectedTypeIndex: 0
+        },
+        {
+          key: 'password',
+          value: 'secret',
+          renderTypeList: [FlowNodeInputTypeEnum.password, FlowNodeInputTypeEnum.agentGenerated],
+          selectedTypeIndex: 1
+        },
+        {
+          key: 'emptyText',
+          value: '',
+          renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+        },
+        {
+          key: 'nullish',
+          value: 'default value',
+          renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+        }
       ]);
       expect(result[0]).not.toBe(sourceInputs[0]);
       expect(sourceInputs[0].value).toBe('old query');
@@ -125,8 +196,16 @@ describe('workflow tool runner utils', () => {
           nodeId: 'entry',
           isEntry: false,
           inputs: [
-            { key: 'query', value: 'old query' },
-            { key: 'limit', value: 5 }
+            {
+              key: 'query',
+              value: 'old query',
+              renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+            },
+            {
+              key: 'limit',
+              value: 5,
+              renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+            }
           ]
         },
         {
@@ -145,8 +224,16 @@ describe('workflow tool runner utils', () => {
         nodeId: 'entry',
         isEntry: true,
         inputs: [
-          { key: 'query', value: 'new query' },
-          { key: 'limit', value: 0 }
+          {
+            key: 'query',
+            value: 'new query',
+            renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+          },
+          {
+            key: 'limit',
+            value: 0,
+            renderTypeList: [FlowNodeInputTypeEnum.agentGenerated]
+          }
         ]
       });
       expect(nodes[1]).toMatchObject({

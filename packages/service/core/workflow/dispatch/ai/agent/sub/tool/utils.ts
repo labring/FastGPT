@@ -537,6 +537,11 @@ export const getAgentRuntimeTools = async ({
     };
   };
 
+  const getSchemaParamKeys = (schema: ChatCompletionTool) =>
+    Object.keys(
+      (schema.function.parameters as { properties?: Record<string, unknown> })?.properties ?? {}
+    );
+
   return Promise.all(
     tools.map<Promise<SubAppInitType[]>>(async (tool) => {
       try {
@@ -612,6 +617,14 @@ export const getAgentRuntimeTools = async ({
         };
         const buildSubApp = (child: RuntimeNodeItemType, id = child.nodeId): SubAppInitType => {
           const inputs = initToolInputsTypeByDefaultMode(child.inputs);
+          const requestSchema = formatSchema({
+            toolId: id,
+            inputs,
+            name: child.name,
+            toolDescription: child.toolDescription,
+            intro: child.intro,
+            jsonSchema: child.jsonSchema
+          });
 
           return {
             type: 'tool',
@@ -620,16 +633,11 @@ export const getAgentRuntimeTools = async ({
             avatar: child.avatar,
             version: child.version,
             toolConfig: child.toolConfig,
+            inputs,
+            agentGeneratedInputKeys: getSchemaParamKeys(requestSchema),
             promptReference,
             params: tool.config,
-            requestSchema: formatSchema({
-              toolId: id,
-              inputs,
-              name: child.name,
-              toolDescription: child.toolDescription,
-              intro: child.intro,
-              jsonSchema: child.jsonSchema
-            })
+            requestSchema
           };
         };
 
@@ -693,6 +701,15 @@ export const getAgentRuntimeTools = async ({
         } else {
           // OpenAI function name 不能包含斜杠等字符，runtime map 也使用同一份清洗后的 id。
           const cleanedPluginId = pluginId.replace(/[^a-zA-Z0-9_-]/g, '');
+          const inputs = initToolInputsTypeByDefaultMode(toolNode.inputs);
+          const requestSchema = formatSchema({
+            toolId: cleanedPluginId,
+            inputs,
+            name: toolNode.name,
+            toolDescription: toolNode.toolDescription,
+            intro: toolNode.intro,
+            jsonSchema: toolNode.jsonSchema
+          });
 
           return [
             {
@@ -702,16 +719,11 @@ export const getAgentRuntimeTools = async ({
               avatar: toolNode.avatar,
               version: toolNode.version,
               toolConfig: toolNode.toolConfig,
+              inputs,
+              agentGeneratedInputKeys: getSchemaParamKeys(requestSchema),
               promptReference,
               params: tool.config,
-              requestSchema: formatSchema({
-                toolId: cleanedPluginId,
-                inputs: toolNode.inputs,
-                name: toolNode.name,
-                toolDescription: toolNode.toolDescription,
-                intro: toolNode.intro,
-                jsonSchema: toolNode.jsonSchema
-              })
+              requestSchema
             }
           ];
         }
