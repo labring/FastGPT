@@ -5,7 +5,10 @@ import type {
   CreateS3UploadAccessUrlParams,
   S3ProxyUploadPayload,
   S3VerifiedDownloadPayload,
-  S3UploadConstraints
+  S3UploadConstraints,
+  S3UploadExtensionRule,
+  S3UploadFileHint,
+  S3UploadPolicy
 } from './types';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -31,6 +34,14 @@ const assertDate = (value: unknown, code: S3AccessLinkErrorCode): Date => {
 
 const assertPositiveNumber = (value: unknown, code: S3AccessLinkErrorCode): number => {
   if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    throw new S3AccessLinkError(code);
+  }
+
+  return value;
+};
+
+const assertNonNegativeNumber = (value: unknown, code: S3AccessLinkErrorCode): number => {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
     throw new S3AccessLinkError(code);
   }
 
@@ -72,6 +83,94 @@ const assertUploadConstraints = (
   return {
     defaultContentType,
     ...(allowedExtensions ? { allowedExtensions } : {})
+  };
+};
+
+const assertStringArray = (value: unknown, code: S3AccessLinkErrorCode): string[] | undefined => {
+  if (value === undefined) return undefined;
+  if (
+    !Array.isArray(value) ||
+    value.some((item) => typeof item !== 'string' || item.length === 0)
+  ) {
+    throw new S3AccessLinkError(code);
+  }
+  return value;
+};
+
+const assertUploadPolicy = (
+  value: unknown,
+  code: S3AccessLinkErrorCode
+): S3UploadPolicy | undefined => {
+  if (value === undefined) return undefined;
+  if (!isRecord(value)) throw new S3AccessLinkError(code);
+
+  const base = assertUploadConstraints(value, code);
+  const allowedMimeTypes = assertStringArray(value.allowedMimeTypes, code);
+  const extensionRules = (() => {
+    if (value.extensionRules === undefined) return undefined;
+    if (!Array.isArray(value.extensionRules)) throw new S3AccessLinkError(code);
+
+    return value.extensionRules.map((rule) => {
+      if (!isRecord(rule)) throw new S3AccessLinkError(code);
+      const parsedRule: S3UploadExtensionRule = {
+        extension: assertNonEmptyString(rule.extension, code)
+      };
+
+      if (rule.source === 'builtin' || rule.source === 'custom') {
+        parsedRule.source = rule.source;
+      }
+      if (
+        rule.verification === 'content' ||
+        rule.verification === 'text' ||
+        rule.verification === 'opaque'
+      ) {
+        parsedRule.verification = rule.verification;
+      }
+
+      return parsedRule;
+    });
+  })();
+
+  return {
+    ...base,
+    ...(extensionRules ? { extensionRules } : {}),
+    ...(allowedMimeTypes ? { allowedMimeTypes } : {}),
+    ...(value.fallbackExtension !== undefined
+      ? { fallbackExtension: assertNonEmptyString(value.fallbackExtension, code) }
+      : {}),
+    ...(value.allowMissingExtension !== undefined
+      ? { allowMissingExtension: value.allowMissingExtension === true }
+      : {}),
+    ...(value.textFallbackExtension !== undefined
+      ? { textFallbackExtension: assertNonEmptyString(value.textFallbackExtension, code) }
+      : {})
+  };
+};
+
+const assertUploadFileHint = (
+  value: unknown,
+  code: S3AccessLinkErrorCode
+): S3UploadFileHint | undefined => {
+  if (value === undefined) return undefined;
+  if (!isRecord(value)) throw new S3AccessLinkError(code);
+
+  return {
+    filename: assertNonEmptyString(value.filename, code),
+    ...(value.contentType !== undefined
+      ? { contentType: assertNonEmptyString(value.contentType, code) }
+      : {}),
+    ...(value.declaredExtension !== undefined
+      ? { declaredExtension: assertNonEmptyString(value.declaredExtension, code) }
+      : {}),
+    ...(value.declaredFilename !== undefined
+      ? { declaredFilename: assertNonEmptyString(value.declaredFilename, code) }
+      : {}),
+    ...(value.source === 'local-file' ||
+    value.source === 'remote-url' ||
+    value.source === 'server-generated'
+      ? { source: value.source }
+      : {}),
+    ...(value.size !== undefined ? { size: assertNonNegativeNumber(value.size, code) } : {})
   };
 };
 
@@ -146,6 +245,19 @@ export const assertCreateUploadParams = (
       params.uploadConstraints,
       S3AccessLinkErrCode.uploadSessionNotFound
     ),
+    ...(params.uploadPolicy !== undefined
+      ? {
+          uploadPolicy: assertUploadPolicy(
+            params.uploadPolicy,
+            S3AccessLinkErrCode.uploadSessionNotFound
+          )
+        }
+      : {}),
+    ...(params.fileHint !== undefined
+      ? {
+          fileHint: assertUploadFileHint(params.fileHint, S3AccessLinkErrCode.uploadSessionNotFound)
+        }
+      : {}),
     ...(params.metadata !== undefined
       ? {
           metadata: assertStringRecord(params.metadata, S3AccessLinkErrCode.uploadSessionNotFound)
@@ -171,6 +283,22 @@ export const assertUploadPayload = (payload: S3ProxyUploadPayload): S3ProxyUploa
       payload.uploadConstraints,
       S3AccessLinkErrCode.uploadSessionNotFound
     ),
+    ...(payload.uploadPolicy !== undefined
+      ? {
+          uploadPolicy: assertUploadPolicy(
+            payload.uploadPolicy,
+            S3AccessLinkErrCode.uploadSessionNotFound
+          )
+        }
+      : {}),
+    ...(payload.fileHint !== undefined
+      ? {
+          fileHint: assertUploadFileHint(
+            payload.fileHint,
+            S3AccessLinkErrCode.uploadSessionNotFound
+          )
+        }
+      : {}),
     ...(payload.metadata !== undefined
       ? {
           metadata: assertStringRecord(payload.metadata, S3AccessLinkErrCode.uploadSessionNotFound)

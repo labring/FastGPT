@@ -27,6 +27,8 @@ const S3UploadSessionMongoSchema = new Schema({
     type: Object,
     required: true
   },
+  uploadPolicy: Object,
+  fileHint: Object,
   metadata: Object,
   createTime: {
     type: Date,

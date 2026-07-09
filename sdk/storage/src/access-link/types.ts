@@ -22,6 +22,29 @@ export type S3UploadConstraints = {
   allowedExtensions?: string[];
 };
 
+export type S3UploadExtensionRule = {
+  extension: string;
+  source?: 'builtin' | 'custom';
+  verification?: 'content' | 'text' | 'opaque';
+};
+
+export type S3UploadPolicy = S3UploadConstraints & {
+  extensionRules?: S3UploadExtensionRule[];
+  allowedMimeTypes?: string[];
+  fallbackExtension?: string;
+  allowMissingExtension?: boolean;
+  textFallbackExtension?: string;
+};
+
+export type S3UploadFileHint = {
+  filename: string;
+  contentType?: string;
+  declaredExtension?: string;
+  declaredFilename?: string;
+  source?: 'local-file' | 'remote-url' | 'server-generated';
+  size?: number;
+};
+
 export type S3DownloadAliasRecord = {
   aliasId: string;
   aliasKey: string;
@@ -85,6 +108,8 @@ export type S3UploadSessionRecord = {
   objectKey: string;
   maxSize: number;
   uploadConstraints: S3UploadConstraints;
+  uploadPolicy?: S3UploadPolicy;
+  fileHint?: S3UploadFileHint;
   metadata?: Record<string, string>;
   createTime: Date;
   expiresAt: Date;
@@ -102,6 +127,8 @@ export type CreateS3UploadAccessUrlParams = {
   expiredTime: Date;
   maxSize: number;
   uploadConstraints: S3UploadConstraints;
+  uploadPolicy?: S3UploadPolicy;
+  fileHint?: S3UploadFileHint;
   metadata?: Record<string, string>;
 };
 
@@ -110,6 +137,8 @@ export type S3ProxyUploadPayload = {
   objectKey: string;
   maxSize: number;
   uploadConstraints: S3UploadConstraints;
+  uploadPolicy?: S3UploadPolicy;
+  fileHint?: S3UploadFileHint;
   metadata?: Record<string, string>;
 };
 

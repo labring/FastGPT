@@ -93,18 +93,31 @@ export class S3ChatSource extends S3PrivateBucket {
       chatId,
       uId,
       filename,
+      contentType,
+      declaredExtension,
+      declaredFilename,
+      size,
       expiredTime,
       maxFileSize,
-      allowedExtensions
+      allowedExtensions,
+      extensionRules
     } = ChatFileUploadSchema.parse(params);
     const { fileKey } = getChatFileS3Key({ sourceType, sourceId, chatId, uId, filename });
     return await this.createPresignedPutUrl(
-      { rawKey: fileKey, filename },
+      {
+        rawKey: fileKey,
+        filename,
+        ...(contentType ? { contentType } : {}),
+        ...(declaredExtension ? { declaredExtension } : {}),
+        ...(declaredFilename ? { declaredFilename } : {}),
+        ...(size !== undefined ? { size } : {})
+      },
       {
         expiredHours: expiredTime ? differenceInHours(expiredTime, new Date()) : 1,
         maxFileSize,
         uploadConstraints: {
-          allowedExtensions
+          allowedExtensions,
+          extensionRules
         }
       }
     );

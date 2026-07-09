@@ -1,5 +1,10 @@
 import z from 'zod';
 import { Readable } from 'node:stream';
+import {
+  UploadExtensionRuleSchema,
+  UploadFileHintSchema,
+  UploadPolicySchema
+} from '../uploadPolicy/type';
 
 export const S3MetadataSchema = z.object({
   filename: z.string(),
@@ -14,15 +19,13 @@ export type S3Metadata = z.infer<typeof S3MetadataSchema>;
 export type ContentType = string;
 export type ExtensionType = `.${string}`;
 
-export const UploadConstraintsSchema = z.object({
-  defaultContentType: z.string().nonempty(),
-  allowedExtensions: z.array(z.string().nonempty()).optional()
-});
+export const UploadConstraintsSchema = UploadPolicySchema;
 export type UploadConstraints = z.infer<typeof UploadConstraintsSchema>;
 
 export const UploadConstraintsInputSchema = z.object({
   defaultContentType: z.string().nonempty().optional(),
-  allowedExtensions: z.array(z.string().nonempty()).optional()
+  allowedExtensions: z.array(z.string().nonempty()).optional(),
+  extensionRules: z.array(UploadExtensionRuleSchema).optional()
 });
 export type UploadConstraintsInput = z.infer<typeof UploadConstraintsInputSchema>;
 
@@ -39,6 +42,11 @@ export type DownloadMode = z.infer<typeof DownloadModeSchema>;
 export const CreatePostPresignedUrlParamsSchema = z.object({
   filename: z.string().min(1),
   rawKey: z.string().min(1),
+  contentType: UploadFileHintSchema.shape.contentType,
+  declaredExtension: UploadFileHintSchema.shape.declaredExtension,
+  declaredFilename: UploadFileHintSchema.shape.declaredFilename,
+  source: UploadFileHintSchema.shape.source,
+  size: UploadFileHintSchema.shape.size,
   metadata: z.record(z.string(), z.string()).optional()
 });
 export type CreatePostPresignedUrlParams = z.infer<typeof CreatePostPresignedUrlParamsSchema>;

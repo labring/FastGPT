@@ -2,7 +2,10 @@ import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import type { CreatePostPresignedUrlResponseType } from '@fastgpt/global/common/file/s3/type';
 import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
-import { getAllowedExtensionsFromFileSelectConfig } from '@fastgpt/service/common/s3/utils/uploadConstraints';
+import {
+  getAllowedExtensionsFromFileSelectConfig,
+  getUploadExtensionRulesFromFileSelectConfig
+} from '@fastgpt/service/common/s3/utils/uploadConstraints';
 import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
 import { authFrequencyLimit } from '@fastgpt/service/common/system/frequencyLimit/utils';
 import { addSeconds } from 'date-fns';
@@ -13,11 +16,21 @@ import { serviceEnv } from '@fastgpt/service/env';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps): Promise<CreatePostPresignedUrlResponseType> {
-  const { filename, sourceType, sourceId, chatId, fileSelectConfig, outLinkAuthData } =
-    parseApiInput({
-      req,
-      bodySchema: PresignChatFilePostUrlSchema
-    }).body;
+  const {
+    filename,
+    contentType,
+    declaredExtension,
+    declaredFilename,
+    size,
+    sourceType,
+    sourceId,
+    chatId,
+    fileSelectConfig,
+    outLinkAuthData
+  } = parseApiInput({
+    req,
+    bodySchema: PresignChatFilePostUrlSchema
+  }).body;
 
   const authRes = await authChatTargetCrud({
     req,
@@ -32,6 +45,7 @@ async function handler(req: ApiRequestProps): Promise<CreatePostPresignedUrlResp
 
   const planStatus = await getTeamPlanStatus({ teamId: authRes.teamId });
   const allowedExtensions = getAllowedExtensionsFromFileSelectConfig(fileSelectConfig);
+  const extensionRules = getUploadExtensionRulesFromFileSelectConfig(fileSelectConfig);
 
   if (!serviceEnv.SKIP_FILE_TYPE_CHECK && allowedExtensions.length === 0) {
     return Promise.reject(S3ErrEnum.fileUploadDisabled);
@@ -48,8 +62,13 @@ async function handler(req: ApiRequestProps): Promise<CreatePostPresignedUrlResp
     sourceId: resolvedSourceId,
     chatId,
     filename,
+    contentType,
+    declaredExtension,
+    declaredFilename,
+    size,
     uId: authRes.uid,
     allowedExtensions,
+    extensionRules,
     maxFileSize: planStatus.standard?.maxUploadFileSize ?? global.feConfigs.uploadFileMaxSize
   });
 }

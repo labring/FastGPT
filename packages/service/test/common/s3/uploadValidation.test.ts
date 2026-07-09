@@ -43,7 +43,7 @@ describe('validateUploadFile', () => {
           defaultContentType: 'image/png'
         }
       })
-    ).resolves.toEqual({
+    ).resolves.toMatchObject({
       filename: 'demo.png',
       contentType: 'image/png'
     });
@@ -71,7 +71,7 @@ describe('validateUploadFile', () => {
           allowedExtensions: ['.jpg', '.jpeg', '.png']
         }
       })
-    ).resolves.toEqual({
+    ).resolves.toMatchObject({
       filename: 'demo.png',
       contentType: 'image/png'
     });
@@ -86,7 +86,7 @@ describe('validateUploadFile', () => {
           defaultContentType: 'application/json'
         }
       })
-    ).resolves.toEqual({
+    ).resolves.toMatchObject({
       filename: 'demo.json',
       contentType: 'application/json'
     });
@@ -101,7 +101,7 @@ describe('validateUploadFile', () => {
           defaultContentType: 'application/octet-stream'
         }
       })
-    ).resolves.toEqual({
+    ).resolves.toMatchObject({
       filename: 'hello world.txt',
       contentType: 'text/plain'
     });
@@ -116,7 +116,7 @@ describe('validateUploadFile', () => {
           defaultContentType: 'application/octet-stream'
         }
       })
-    ).resolves.toEqual({
+    ).resolves.toMatchObject({
       filename: 'archive.custom',
       contentType: 'application/octet-stream'
     });
@@ -131,9 +131,181 @@ describe('validateUploadFile', () => {
           defaultContentType: 'application/octet-stream'
         }
       })
-    ).resolves.toEqual({
+    ).resolves.toMatchObject({
       filename: 'README',
       contentType: 'application/octet-stream'
+    });
+  });
+
+  it('accepts extensionless png content when png is allowed', async () => {
+    await expect(
+      validateUploadFile({
+        buffer: pngBuffer,
+        filename: 'image',
+        uploadConstraints: {
+          defaultContentType: 'application/octet-stream',
+          allowedExtensions: ['.png']
+        }
+      })
+    ).resolves.toMatchObject({
+      filename: 'image.png',
+      contentType: 'image/png',
+      extension: '.png',
+      detectionSource: 'magic',
+      correctedFilename: true
+    });
+  });
+
+  it('accepts extensionless docx content when docx is allowed', async () => {
+    await expect(
+      validateUploadFile({
+        buffer: docxBuffer,
+        filename: 'document',
+        uploadConstraints: {
+          defaultContentType: 'application/octet-stream',
+          allowedExtensions: ['.docx']
+        }
+      })
+    ).resolves.toMatchObject({
+      filename: 'document.docx',
+      contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      extension: '.docx'
+    });
+  });
+
+  it('rejects extensionless unknown binary when only opaque custom extension is allowed', async () => {
+    await expect(
+      validateUploadFile({
+        buffer: Buffer.from([0, 1, 2, 3]),
+        filename: 'data',
+        uploadConstraints: {
+          defaultContentType: 'application/octet-stream',
+          allowedExtensions: ['.dat'],
+          extensionRules: [
+            {
+              extension: '.dat',
+              source: 'custom',
+              verification: 'opaque'
+            }
+          ]
+        }
+      })
+    ).rejects.toThrow('InvalidUploadFileType');
+  });
+
+  it('accepts extensionless unknown binary with declared opaque extension', async () => {
+    await expect(
+      validateUploadFile({
+        buffer: Buffer.from([0, 1, 2, 3]),
+        filename: 'data',
+        fileHint: {
+          filename: 'data',
+          declaredExtension: '.dat',
+          source: 'remote-url'
+        },
+        uploadConstraints: {
+          defaultContentType: 'application/octet-stream',
+          allowedExtensions: ['.dat'],
+          extensionRules: [
+            {
+              extension: '.dat',
+              source: 'custom',
+              verification: 'opaque'
+            }
+          ]
+        }
+      })
+    ).resolves.toMatchObject({
+      filename: 'data.dat',
+      contentType: 'application/octet-stream',
+      extension: '.dat',
+      detectionSource: 'opaque-extension'
+    });
+  });
+
+  it('rejects extensionless unknown binary declared as content-verifiable image', async () => {
+    await expect(
+      validateUploadFile({
+        buffer: Buffer.from([0, 1, 2, 3]),
+        filename: 'image',
+        fileHint: {
+          filename: 'image',
+          declaredExtension: '.png',
+          source: 'remote-url'
+        },
+        uploadConstraints: {
+          defaultContentType: 'application/octet-stream',
+          allowedExtensions: ['.png']
+        }
+      })
+    ).rejects.toThrow('InvalidUploadFileType');
+  });
+
+  it('accepts custom opaque extension even when content has no stable magic', async () => {
+    await expect(
+      validateUploadFile({
+        buffer: Buffer.from('plain custom payload', 'utf8'),
+        filename: 'data.dat',
+        uploadConstraints: {
+          defaultContentType: 'application/octet-stream',
+          allowedExtensions: ['.dat'],
+          extensionRules: [
+            {
+              extension: '.dat',
+              source: 'custom',
+              verification: 'opaque'
+            }
+          ]
+        }
+      })
+    ).resolves.toMatchObject({
+      filename: 'data.dat',
+      contentType: 'application/octet-stream',
+      extension: '.dat',
+      detectionSource: 'opaque-extension'
+    });
+  });
+
+  it('accepts custom exe extension as opaque', async () => {
+    await expect(
+      validateUploadFile({
+        buffer: Buffer.from([0, 1, 2, 3]),
+        filename: 'tool.exe',
+        uploadConstraints: {
+          defaultContentType: 'application/octet-stream',
+          allowedExtensions: ['.exe'],
+          extensionRules: [
+            {
+              extension: '.exe',
+              source: 'custom',
+              verification: 'opaque'
+            }
+          ]
+        }
+      })
+    ).resolves.toMatchObject({
+      filename: 'tool.exe',
+      contentType: 'application/octet-stream',
+      extension: '.exe',
+      detectionSource: 'opaque-extension'
+    });
+  });
+
+  it('accepts extensionless text when text fallback is allowed', async () => {
+    await expect(
+      validateUploadFile({
+        buffer: Buffer.from('plain text body', 'utf8'),
+        filename: 'README',
+        uploadConstraints: {
+          defaultContentType: 'application/octet-stream',
+          allowedExtensions: ['.txt']
+        }
+      })
+    ).resolves.toMatchObject({
+      filename: 'README.txt',
+      contentType: 'text/plain',
+      extension: '.txt',
+      detectionSource: 'text'
     });
   });
 
@@ -173,7 +345,7 @@ describe('validateUploadFile', () => {
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         }
       })
-    ).resolves.toEqual({
+    ).resolves.toMatchObject({
       filename: 'demo.docx',
       contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     });
@@ -191,7 +363,7 @@ describe('validateUploadFile', () => {
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
         }
       })
-    ).resolves.toEqual({
+    ).resolves.toMatchObject({
       filename: 'demo.docx',
       contentType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
     });

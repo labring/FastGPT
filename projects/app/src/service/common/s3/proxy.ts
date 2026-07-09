@@ -12,6 +12,7 @@ import type {
   S3ProxyUploadPayload
 } from '@fastgpt/service/common/s3/accessLink';
 import type { UploadConstraints } from '@fastgpt/service/common/s3/contracts/type';
+import type { UploadFileHint, UploadPolicy } from '@fastgpt/service/common/s3/uploadPolicy/type';
 import {
   DEFAULT_CONTENT_TYPE,
   ensureTextContentTypeCharset
@@ -31,7 +32,8 @@ const logger = getLogger(LogCategories.INFRA.FILE);
 type GuardStreamOptions = {
   maxSize: number;
   uploadConstraints: UploadConstraints;
-  filename?: string;
+  uploadPolicy?: UploadPolicy;
+  fileHint: UploadFileHint;
 };
 
 type ValidatedUploadFile = Awaited<ReturnType<typeof validateUploadFile>>;
@@ -55,8 +57,14 @@ export const parseS3ProxyContentLength = (value: string | string[] | undefined) 
   return parsed;
 };
 
-const createUploadGuardStream = ({ maxSize, uploadConstraints, filename }: GuardStreamOptions) => {
-  const inspectBytes = getUploadInspectBytes(filename);
+const createUploadGuardStream = ({
+  maxSize,
+  uploadConstraints,
+  uploadPolicy,
+  fileHint
+}: GuardStreamOptions) => {
+  const policy = uploadPolicy || uploadConstraints;
+  const inspectBytes = getUploadInspectBytes({ hint: fileHint, policy });
   let uploadedBytes = 0;
   let bufferedBytes = 0;
   const chunks: Buffer[] = [];
@@ -95,8 +103,10 @@ const createUploadGuardStream = ({ maxSize, uploadConstraints, filename }: Guard
 
     const result = await validateUploadFile({
       buffer,
-      filename,
-      uploadConstraints
+      filename: fileHint.filename,
+      uploadConstraints,
+      uploadPolicy: policy,
+      fileHint
     });
 
     validatedFile = result;
@@ -187,6 +197,22 @@ export const buildS3UploadMetadata = ({
       type: 'attachment'
     }),
     originFilename: encodeURIComponent(filename)
+  };
+};
+
+const resolveProxyUploadFileHint = ({
+  objectKey,
+  metadata,
+  fileHint
+}: {
+  objectKey: string;
+  metadata?: Record<string, string>;
+  fileHint?: UploadFileHint;
+}): UploadFileHint => {
+  if (fileHint) return fileHint;
+
+  return {
+    filename: parseRequestFilename(metadata?.originFilename) || path.basename(objectKey) || 'file'
   };
 };
 
@@ -333,7 +359,8 @@ export const handleS3ProxyUpload = async ({
   req: NextApiRequest;
   payload: S3ProxyUploadPayload;
 }) => {
-  const { objectKey, bucketName, maxSize, uploadConstraints, metadata } = payload;
+  const { objectKey, bucketName, maxSize, uploadConstraints, uploadPolicy, fileHint, metadata } =
+    payload;
   const bucket = global.s3BucketMap[bucketName];
 
   if (!bucket) {
@@ -345,11 +372,12 @@ export const handleS3ProxyUpload = async ({
     throw new Error('EntityTooLarge');
   }
 
-  const filename = metadata?.originFilename;
+  const resolvedFileHint = resolveProxyUploadFileHint({ objectKey, metadata, fileHint });
   const { stream: guardStream, validatedUpload } = createUploadGuardStream({
     maxSize,
     uploadConstraints,
-    filename
+    uploadPolicy,
+    fileHint: resolvedFileHint
   });
 
   req.pipe(guardStream);

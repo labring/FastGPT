@@ -99,6 +99,8 @@ describe('presignChatFilePostUrl', () => {
     await expect(
       callHandler({
         filename,
+        contentType: 'image/png',
+        size: 1234,
         appId,
         chatId,
         fileSelectConfig: {
@@ -118,6 +120,8 @@ describe('presignChatFilePostUrl', () => {
         sourceId: appId,
         chatId,
         filename,
+        contentType: 'image/png',
+        size: 1234,
         uId: 'user-id',
         allowedExtensions: expect.arrayContaining([
           '.jpg',
@@ -126,7 +130,73 @@ describe('presignChatFilePostUrl', () => {
           '.gif',
           '.bmp',
           '.webp'
+        ]),
+        extensionRules: expect.arrayContaining([
+          expect.objectContaining({
+            extension: '.png',
+            source: 'builtin',
+            verification: 'content'
+          })
         ])
+      })
+    );
+  });
+
+  it('passes declared hints and opaque custom extension rules', async () => {
+    await expect(
+      callHandler({
+        filename: 'download',
+        declaredExtension: '.dat',
+        declaredFilename: 'download.dat',
+        appId,
+        chatId,
+        fileSelectConfig: {
+          canSelectCustomFileExtension: true,
+          customFileExtensionList: ['DAT']
+        }
+      })
+    ).resolves.toMatchObject({
+      url: 'https://example.com/upload-token'
+    });
+
+    expect(mocks.createUploadChatFileURL).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filename: 'download',
+        declaredExtension: '.dat',
+        declaredFilename: 'download.dat',
+        allowedExtensions: ['.dat'],
+        extensionRules: [
+          {
+            extension: '.dat',
+            source: 'custom',
+            verification: 'opaque'
+          }
+        ]
+      })
+    );
+  });
+
+  it('passes zero-size file hints because size is not a policy limit', async () => {
+    await expect(
+      callHandler({
+        filename: 'empty.txt',
+        contentType: 'text/plain',
+        size: 0,
+        appId,
+        chatId,
+        fileSelectConfig: {
+          canSelectFile: true
+        }
+      })
+    ).resolves.toMatchObject({
+      url: 'https://example.com/upload-token'
+    });
+
+    expect(mocks.createUploadChatFileURL).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filename: 'empty.txt',
+        contentType: 'text/plain',
+        size: 0
       })
     );
   });

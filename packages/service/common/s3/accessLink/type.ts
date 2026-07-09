@@ -1,5 +1,6 @@
 import z from 'zod';
 import { UploadConstraintsSchema } from '../contracts/type';
+import { UploadFileHintSchema, UploadPolicySchema } from '../uploadPolicy/type';
 
 const UrlSafeTokenSchema = z.string().regex(/^[A-Za-z0-9_-]+$/);
 const HexSha256Schema = z
@@ -75,6 +76,8 @@ export const S3UploadSessionSchema = z.object({
   objectKey: S3AccessObjectKeySchema,
   maxSize: z.number().positive(),
   uploadConstraints: UploadConstraintsSchema,
+  uploadPolicy: UploadPolicySchema.optional(),
+  fileHint: UploadFileHintSchema.optional(),
   metadata: z.record(z.string(), z.string()).optional(),
   createTime: z.coerce.date(),
   expiresAt: z.coerce.date(),
@@ -89,6 +92,8 @@ export const CreateS3UploadAccessUrlParamsSchema = z.object({
   expiredTime: z.coerce.date(),
   maxSize: z.number().positive(),
   uploadConstraints: UploadConstraintsSchema,
+  uploadPolicy: UploadPolicySchema.optional(),
+  fileHint: UploadFileHintSchema.optional(),
   metadata: z.record(z.string(), z.string()).optional()
 });
 export type CreateS3UploadAccessUrlParams = z.infer<typeof CreateS3UploadAccessUrlParamsSchema>;
@@ -98,6 +103,8 @@ export const S3ProxyUploadPayloadSchema = S3UploadSessionSchema.pick({
   objectKey: true,
   maxSize: true,
   uploadConstraints: true,
+  uploadPolicy: true,
+  fileHint: true,
   metadata: true
 });
 export type S3ProxyUploadPayload = z.infer<typeof S3ProxyUploadPayloadSchema>;

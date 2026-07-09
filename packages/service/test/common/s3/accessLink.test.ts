@@ -154,6 +154,23 @@ describe('s3 access link', () => {
         defaultContentType: 'text/plain',
         allowedExtensions: ['.txt']
       },
+      uploadPolicy: {
+        defaultContentType: 'text/plain',
+        allowedExtensions: ['.txt'],
+        extensionRules: [
+          {
+            extension: '.txt',
+            source: 'builtin',
+            verification: 'text'
+          }
+        ],
+        textFallbackExtension: '.txt'
+      },
+      fileHint: {
+        filename: 'file',
+        declaredExtension: '.txt',
+        source: 'remote-url'
+      },
       metadata: {
         originFilename: 'file.txt'
       }
@@ -173,7 +190,22 @@ describe('s3 access link', () => {
     await expect(verifyS3UploadSessionToken(token)).resolves.toMatchObject({
       bucketName: 'fastgpt-private',
       objectKey: 'chat/app/user/chat/file.txt',
-      maxSize: 1024
+      maxSize: 1024,
+      uploadPolicy: expect.objectContaining({
+        textFallbackExtension: '.txt',
+        extensionRules: [
+          {
+            extension: '.txt',
+            source: 'builtin',
+            verification: 'text'
+          }
+        ]
+      }),
+      fileHint: {
+        filename: 'file',
+        declaredExtension: '.txt',
+        source: 'remote-url'
+      }
     });
 
     const usedSession = await MongoS3UploadSession.findOne({

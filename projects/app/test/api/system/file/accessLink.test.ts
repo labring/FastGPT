@@ -543,4 +543,128 @@ describe('s3 short access link api', () => {
       })
     );
   });
+
+  it('uploads extensionless png content and fixes metadata filename', async () => {
+    const pngBuffer = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+      'base64'
+    );
+    const url = await createS3UploadAccessUrl({
+      bucketName: 'fastgpt-private',
+      objectKey: 'chat/app/user/chat/image',
+      expiredTime: getFutureDate(10),
+      maxSize: 1024,
+      uploadConstraints: {
+        defaultContentType: 'application/octet-stream',
+        allowedExtensions: ['.png']
+      },
+      uploadPolicy: {
+        defaultContentType: 'application/octet-stream',
+        allowedExtensions: ['.png'],
+        extensionRules: [
+          {
+            extension: '.png',
+            source: 'builtin',
+            verification: 'content'
+          }
+        ],
+        allowMissingExtension: true
+      },
+      fileHint: {
+        filename: 'image'
+      },
+      metadata: {
+        originFilename: encodeURIComponent('image')
+      }
+    });
+    const uploadObject = vi.fn().mockResolvedValue(undefined);
+    global.s3BucketMap = {
+      'fastgpt-private': {
+        client: {
+          uploadObject
+        }
+      }
+    } as any;
+
+    await uploadAccessHandler(
+      createUploadReq({
+        token: extractLastPathSegment(url),
+        contentLength: String(pngBuffer.length),
+        chunks: [pngBuffer]
+      }),
+      makeMockRes() as any
+    );
+
+    expect(uploadObject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: 'chat/app/user/chat/image',
+        contentType: 'image/png',
+        metadata: expect.objectContaining({
+          originFilename: 'image.png'
+        })
+      })
+    );
+  });
+
+  it('uploads declared opaque custom extension content', async () => {
+    const body = Buffer.from([0, 1, 2, 3]);
+    const url = await createS3UploadAccessUrl({
+      bucketName: 'fastgpt-private',
+      objectKey: 'chat/app/user/chat/data',
+      expiredTime: getFutureDate(10),
+      maxSize: 1024,
+      uploadConstraints: {
+        defaultContentType: 'application/octet-stream',
+        allowedExtensions: ['.dat']
+      },
+      uploadPolicy: {
+        defaultContentType: 'application/octet-stream',
+        allowedExtensions: ['.dat'],
+        extensionRules: [
+          {
+            extension: '.dat',
+            source: 'custom',
+            verification: 'opaque'
+          }
+        ],
+        allowMissingExtension: true,
+        fallbackExtension: '.dat'
+      },
+      fileHint: {
+        filename: 'data',
+        declaredExtension: '.dat',
+        source: 'remote-url'
+      },
+      metadata: {
+        originFilename: encodeURIComponent('data')
+      }
+    });
+    const uploadObject = vi.fn().mockResolvedValue(undefined);
+    global.s3BucketMap = {
+      'fastgpt-private': {
+        client: {
+          uploadObject
+        }
+      }
+    } as any;
+
+    await uploadAccessHandler(
+      createUploadReq({
+        token: extractLastPathSegment(url),
+        contentLength: String(body.length),
+        chunks: [body]
+      }),
+      makeMockRes() as any
+    );
+
+    expect(uploadObject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        key: 'chat/app/user/chat/data',
+        contentType: 'application/octet-stream',
+        metadata: expect.objectContaining({
+          originFilename: 'data.dat'
+        })
+      })
+    );
+  });
 });

@@ -8,6 +8,7 @@ const mockAddRawTextBuffer = vi.hoisted(() => vi.fn());
 const mockIsInternalAddress = vi.hoisted(() => vi.fn());
 const mockAxiosGet = vi.hoisted(() => vi.fn());
 const mockReadFileContentByBuffer = vi.hoisted(() => vi.fn());
+const mockVerifyS3DownloadAccess = vi.hoisted(() => vi.fn());
 
 vi.mock('@fastgpt/service/common/s3/sources/rawText', () => ({
   getS3RawTextSource: () => ({
@@ -61,6 +62,14 @@ vi.mock('@fastgpt/service/common/file/read/utils', async (importOriginal) => {
   return {
     ...mod,
     readFileContentByBuffer: mockReadFileContentByBuffer
+  };
+});
+
+vi.mock('@fastgpt/service/common/s3/accessLink', async (importOriginal) => {
+  const mod = await importOriginal<typeof import('@fastgpt/service/common/s3/accessLink')>();
+  return {
+    ...mod,
+    verifyS3DownloadAccess: mockVerifyS3DownloadAccess
   };
 });
 
@@ -225,6 +234,7 @@ describe('parseFileContentFromUrls (external fetch)', () => {
     mockGetRawTextBuffer.mockResolvedValue(undefined);
     mockIsInternalAddress.mockResolvedValue(false);
     mockReadFileContentByBuffer.mockResolvedValue({ rawText: 'parsed text' });
+    mockVerifyS3DownloadAccess.mockReset();
   });
 
   it('内部地址命中时返回失败结果和 PRIVATE_URL_TEXT', async () => {
@@ -318,6 +328,76 @@ describe('parseFileContentFromUrls (external fetch)', () => {
     });
   });
 
+  it('外部地址无后缀但 content-type 是 text/plain 时按 txt 解析并保留原文件名', async () => {
+    mockAxiosGet.mockResolvedValue({
+      data: Buffer.from('MIT License\n\nPermission is hereby granted', 'utf8'),
+      headers: {
+        'content-type': 'text/plain; charset=utf-8'
+      }
+    });
+
+    const result = await parseFileContentFromUrls({
+      urls: ['https://raw.githubusercontent.com/nodejs/node/master/LICENSE'],
+      maxFiles: 20,
+      teamId: 'team-1',
+      tmbId: 'tmb-1'
+    });
+
+    expect(mockReadFileContentByBuffer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        extension: 'txt',
+        encoding: 'utf-8'
+      })
+    );
+    expect(result[0]).toMatchObject({
+      success: true,
+      name: 'LICENSE',
+      url: 'https://raw.githubusercontent.com/nodejs/node/master/LICENSE'
+    });
+  });
+
+  it('外部地址无后缀且无 content-type 但内容像文本时按 txt fallback', async () => {
+    mockAxiosGet.mockResolvedValue({
+      data: Buffer.from('plain text without content type', 'utf8'),
+      headers: {}
+    });
+
+    await parseFileContentFromUrls({
+      urls: ['http://example.com/README'],
+      maxFiles: 20,
+      teamId: 'team-1',
+      tmbId: 'tmb-1'
+    });
+
+    expect(mockReadFileContentByBuffer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        extension: 'txt'
+      })
+    );
+  });
+
+  it('外部地址显式不支持后缀时不使用文本 fallback 放行', async () => {
+    mockAxiosGet.mockResolvedValue({
+      data: Buffer.from('{"ok":true}', 'utf8'),
+      headers: {
+        'content-type': 'text/plain'
+      }
+    });
+
+    await parseFileContentFromUrls({
+      urls: ['http://example.com/config.json'],
+      maxFiles: 20,
+      teamId: 'team-1',
+      tmbId: 'tmb-1'
+    });
+
+    expect(mockReadFileContentByBuffer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        extension: 'json'
+      })
+    );
+  });
+
   it('chat S3 key URL 走 S3ChatSource.parseChatUrl 解析路径', async () => {
     const chatUrl = 'http://example.com/fastgpt-private/chat/app1/u1/c1/abc123-doc.pdf';
     mockAxiosGet.mockResolvedValue({
@@ -339,6 +419,71 @@ describe('parseFileContentFromUrls (external fetch)', () => {
       success: true,
       name: 'abc123-doc.pdf',
       url: chatUrl
+    });
+  });
+
+  it('短链解析时使用 alias 记录里的文件名推断后缀，不把短链 token 当文件名', async () => {
+    const signedAlias = 'itmq831ey0kc0xmklk1rik.hp436.0rpC9RtnHmPy_CVri9pBq8';
+    const shortUrl = `/api/system/file/d/${signedAlias}`;
+    mockVerifyS3DownloadAccess.mockResolvedValue({
+      bucketName: 'fastgpt-private',
+      objectKey: 'chat/app/app1/u1/c1/random-key',
+      filename: 'report.pdf',
+      expiresAt: new Date('2099-01-01T00:00:00.000Z')
+    });
+    mockAxiosGet.mockResolvedValue({
+      data: Buffer.from('%PDF-1.7'),
+      headers: {
+        'content-type': 'application/octet-stream'
+      }
+    });
+
+    const result = await parseFileContentFromUrls({
+      urls: [shortUrl],
+      maxFiles: 20,
+      teamId: 'team-1',
+      tmbId: 'tmb-1'
+    });
+
+    expect(mockVerifyS3DownloadAccess).toHaveBeenCalledWith(signedAlias);
+    expect(mockReadFileContentByBuffer).toHaveBeenCalledWith(
+      expect.objectContaining({ extension: 'pdf' })
+    );
+    expect(result[0]).toMatchObject({
+      success: true,
+      name: 'report.pdf',
+      url: shortUrl
+    });
+  });
+
+  it('短链没有 filename 时回退到 objectKey 文件名推断后缀', async () => {
+    const signedAlias = 'abc123def456ghi789.hp436.abcdefghijklmnop';
+    const shortUrl = `http://localhost:3000/api/system/file/d/${signedAlias}`;
+    mockVerifyS3DownloadAccess.mockResolvedValue({
+      bucketName: 'fastgpt-private',
+      objectKey: 'chat/app/app1/u1/c1/readme.md',
+      expiresAt: new Date('2099-01-01T00:00:00.000Z')
+    });
+    mockAxiosGet.mockResolvedValue({
+      data: Buffer.from('# Readme', 'utf8'),
+      headers: {}
+    });
+
+    const result = await parseFileContentFromUrls({
+      urls: [shortUrl],
+      requestOrigin: 'http://localhost:3000',
+      maxFiles: 20,
+      teamId: 'team-1',
+      tmbId: 'tmb-1'
+    });
+
+    expect(mockReadFileContentByBuffer).toHaveBeenCalledWith(
+      expect.objectContaining({ extension: 'md' })
+    );
+    expect(result[0]).toMatchObject({
+      success: true,
+      name: 'readme.md',
+      url: '/api/system/file/d/abc123def456ghi789.hp436.abcdefghijklmnop'
     });
   });
 
@@ -388,6 +533,7 @@ describe('parseFileInfoFromUrls', () => {
     vi.clearAllMocks();
     mockGetRawTextBuffer.mockResolvedValue(undefined);
     mockIsInternalAddress.mockResolvedValue(false);
+    mockVerifyS3DownloadAccess.mockReset();
   });
 
   it('缓存命中时返回文件名，不下载文件内容', async () => {
@@ -443,6 +589,36 @@ describe('parseFileInfoFromUrls', () => {
         success: true,
         name: 'report.pdf',
         url: '/report.pdf'
+      }
+    ]);
+  });
+
+  it('短链读取文件信息时使用 alias 文件名，避免把 token 暴露给 read_file 工具', async () => {
+    const signedAlias = 'fileinfoalias01.hp436.abcdefghijklmnop';
+    const shortUrl = `/api/system/file/d/${signedAlias}`;
+    mockVerifyS3DownloadAccess.mockResolvedValue({
+      bucketName: 'fastgpt-private',
+      objectKey: 'chat/app/app1/u1/c1/random-key',
+      filename: 'analysis.csv',
+      expiresAt: new Date('2099-01-01T00:00:00.000Z')
+    });
+    mockAxiosGet.mockResolvedValue({
+      data: Buffer.from('a,b\n1,2', 'utf8'),
+      headers: {}
+    });
+
+    const result = await parseFileInfoFromUrls({
+      urls: [shortUrl],
+      maxFiles: 20,
+      teamId: 'team-1'
+    });
+
+    expect(mockVerifyS3DownloadAccess).toHaveBeenCalledWith(signedAlias);
+    expect(result).toEqual([
+      {
+        success: true,
+        name: 'analysis.csv',
+        url: shortUrl
       }
     ]);
   });

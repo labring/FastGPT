@@ -5,6 +5,7 @@ import {
   type createPreviewUrlParams,
   CreateGetPresignedUrlParamsSchema,
   CreatePostPresignedUrlOptionsSchema,
+  CreatePostPresignedUrlParamsSchema,
   type CreatePostPresignedUrlResult
 } from '../contracts/type';
 import {
@@ -180,45 +181,64 @@ export class S3BaseBucket {
         maxFileSize = getSystemMaxFileSize(),
         uploadConstraints
       } = CreatePostPresignedUrlOptionsSchema.parse(options);
+      const parsedParams = CreatePostPresignedUrlParamsSchema.parse(params);
       const formatMaxFileSize = maxFileSize * 1024 * 1024;
-      const filename = params.filename;
-      const resolvedUploadConstraints = createUploadConstraints({
+      const filename = parsedParams.filename;
+      const resolvedFilename = parsedParams.declaredFilename || filename;
+      const fileHint = {
         filename,
+        ...(parsedParams.contentType ? { contentType: parsedParams.contentType } : {}),
+        ...(parsedParams.declaredExtension
+          ? { declaredExtension: parsedParams.declaredExtension }
+          : {}),
+        ...(parsedParams.declaredFilename
+          ? { declaredFilename: parsedParams.declaredFilename }
+          : {}),
+        ...(parsedParams.source ? { source: parsedParams.source } : {}),
+        ...(parsedParams.size !== undefined ? { size: parsedParams.size } : {})
+      };
+      const resolvedUploadPolicy = createUploadConstraints({
+        ...fileHint,
         uploadConstraints
       });
       const expiredSeconds = differenceInSeconds(addMinutes(new Date(), 10), new Date());
       const metadata = {
-        contentDisposition: getContentDisposition({ filename, type: 'attachment' }),
-        originFilename: encodeURIComponent(filename),
+        contentDisposition: getContentDisposition({
+          filename: resolvedFilename,
+          type: 'attachment'
+        }),
+        originFilename: encodeURIComponent(resolvedFilename),
         uploadTime: new Date().toISOString(),
-        ...params.metadata
+        ...parsedParams.metadata
       };
 
       if (expiredHours) {
         await MongoS3TTL.create({
-          minioKey: params.rawKey,
+          minioKey: parsedParams.rawKey,
           bucketName: this.bucketName,
           expiredTime: addHours(new Date(), expiredHours)
         });
       }
 
       const { url: previewUrl } = await this.createExternalUrl({
-        key: params.rawKey,
+        key: parsedParams.rawKey,
         expiredHours
       });
 
       return {
         url: await createS3UploadAccessUrl({
-          objectKey: params.rawKey,
+          objectKey: parsedParams.rawKey,
           bucketName: this.bucketName,
           expiredTime: addMinutes(new Date(), Math.ceil(expiredSeconds / 60)),
           maxSize: formatMaxFileSize,
-          uploadConstraints: resolvedUploadConstraints,
+          uploadConstraints: resolvedUploadPolicy,
+          uploadPolicy: resolvedUploadPolicy,
+          fileHint,
           metadata
         }),
-        key: params.rawKey,
+        key: parsedParams.rawKey,
         headers: {
-          'content-type': resolvedUploadConstraints.defaultContentType
+          'content-type': resolvedUploadPolicy.defaultContentType
         },
         previewUrl,
         maxSize: formatMaxFileSize

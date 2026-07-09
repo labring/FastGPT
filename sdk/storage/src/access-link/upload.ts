@@ -26,6 +26,8 @@ export const createUploadUrlHandler =
       objectKey: parsed.objectKey,
       maxSize: parsed.maxSize,
       uploadConstraints: parsed.uploadConstraints,
+      uploadPolicy: parsed.uploadPolicy,
+      fileHint: parsed.fileHint,
       metadata: parsed.metadata,
       expiresAt: parsed.expiredTime,
       createTime: clock()
@@ -75,6 +77,8 @@ export const verifyUploadTokenHandler =
       objectKey: session.objectKey,
       maxSize: session.maxSize,
       uploadConstraints: session.uploadConstraints,
+      uploadPolicy: session.uploadPolicy,
+      fileHint: session.fileHint,
       metadata: session.metadata
     });
   };

@@ -144,6 +144,24 @@ describe('S3 access link SDK core', () => {
         defaultContentType: 'text/plain',
         allowedExtensions: ['.txt']
       },
+      uploadPolicy: {
+        defaultContentType: 'text/plain',
+        allowedExtensions: ['.txt'],
+        extensionRules: [
+          {
+            extension: '.txt',
+            source: 'builtin',
+            verification: 'text'
+          }
+        ],
+        textFallbackExtension: '.txt'
+      },
+      fileHint: {
+        filename: 'file',
+        declaredExtension: '.txt',
+        source: 'remote-url',
+        size: 0
+      },
       metadata: {
         originFilename: 'file.txt'
       }
@@ -164,6 +182,24 @@ describe('S3 access link SDK core', () => {
       uploadConstraints: {
         defaultContentType: 'text/plain',
         allowedExtensions: ['.txt']
+      },
+      uploadPolicy: {
+        defaultContentType: 'text/plain',
+        allowedExtensions: ['.txt'],
+        extensionRules: [
+          {
+            extension: '.txt',
+            source: 'builtin',
+            verification: 'text'
+          }
+        ],
+        textFallbackExtension: '.txt'
+      },
+      fileHint: {
+        filename: 'file',
+        declaredExtension: '.txt',
+        source: 'remote-url',
+        size: 0
       },
       metadata: {
         originFilename: 'file.txt'
