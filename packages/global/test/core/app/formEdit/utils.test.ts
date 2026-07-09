@@ -878,6 +878,22 @@ describe('agent generated tool input helpers', () => {
     expect(isAgentGeneratedToolInput(input)).toBe(false);
   });
 
+  it('should not materialize selectedType for inputs without a final type selection', () => {
+    const input = initToolInputTypeByDefaultMode(
+      createMockInput({
+        key: NodeInputKeyEnum.systemInputConfig,
+        renderTypeList: [FlowNodeInputTypeEnum.hidden]
+      })
+    );
+
+    expect(input).toEqual(
+      createMockInput({
+        key: NodeInputKeyEnum.systemInputConfig,
+        renderTypeList: [FlowNodeInputTypeEnum.hidden]
+      })
+    );
+  });
+
   it('should keep user-selected developer mode when agentGenerated is available', () => {
     const input = initToolInputTypeByDefaultMode(
       createMockInput({
