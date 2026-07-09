@@ -5,6 +5,10 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
+import {
+  getSelectedInputRenderType,
+  initToolInputTypeByDefaultMode
+} from '@fastgpt/global/core/app/formEdit/utils';
 import { getClientToolPreviewNode } from './tool/utils/client';
 import { authAppByTmbId } from '../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -20,7 +24,10 @@ import {
   type SelectedAgentSkillItemType
 } from '@fastgpt/global/core/app/formEdit/type';
 import { authSkillByTmbId } from '../../support/permission/skill/auth';
-import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
+import type {
+  FlowNodeInputItemType,
+  SelectedDatasetType
+} from '@fastgpt/global/core/workflow/type/io';
 import z from 'zod';
 
 /**
@@ -118,6 +125,43 @@ export async function rewriteAppWorkflowToDetail({
       };
     }
   };
+  type ToolInputSnapshot = Pick<FlowNodeInputItemType, 'key' | 'renderTypeList'> &
+    Partial<FlowNodeInputItemType>;
+
+  const mergeToolInputDetail = ({
+    previewInput,
+    savedInput
+  }: {
+    previewInput: FlowNodeInputItemType;
+    savedInput?: ToolInputSnapshot;
+  }) => {
+    const inputWithDefaultMode = initToolInputTypeByDefaultMode(previewInput);
+    const savedSelectedType =
+      savedInput?.selectedType ??
+      (savedInput?.selectedTypeIndex !== undefined
+        ? getSelectedInputRenderType(savedInput)
+        : undefined);
+    const selectedType =
+      savedSelectedType ??
+      inputWithDefaultMode.selectedType ??
+      getSelectedInputRenderType(inputWithDefaultMode);
+    const renderTypeList =
+      selectedType && !inputWithDefaultMode.renderTypeList.includes(selectedType)
+        ? [selectedType, ...inputWithDefaultMode.renderTypeList]
+        : inputWithDefaultMode.renderTypeList;
+    const selectedTypeIndex = selectedType
+      ? renderTypeList.findIndex((renderType) => renderType === selectedType)
+      : -1;
+    const hasSavedValue = !!savedInput && Object.prototype.hasOwnProperty.call(savedInput, 'value');
+
+    return {
+      ...inputWithDefaultMode,
+      value: hasSavedValue ? savedInput.value : inputWithDefaultMode.value,
+      renderTypeList,
+      selectedType,
+      selectedTypeIndex: selectedTypeIndex >= 0 ? selectedTypeIndex : undefined
+    };
+  };
   const formatSelectedDatasetValue = async (
     value?: SelectedDatasetSnapshot[] | SelectedDatasetSnapshot
   ): Promise<SelectedDatasetType[] | undefined> => {
@@ -198,25 +242,12 @@ export async function rewriteAppWorkflowToDetail({
             const inputsMap = new Map(node.inputs.map((item) => [item.key, item]));
             const outputsMap = new Map(node.outputs.map((item) => [item.key, item]));
 
-            node.inputs = preview.inputs.map((item) => {
-              const input = inputsMap.get(item.key);
-              const selectedRenderType =
-                input?.renderTypeList?.[input?.selectedTypeIndex ?? 0] ?? item.renderTypeList?.[0];
-              const selectedTypeIndex = selectedRenderType
-                ? item.renderTypeList.findIndex((renderType) => renderType === selectedRenderType)
-                : -1;
-
-              return {
-                ...item,
-                value: input?.value,
-                renderTypeList: input?.renderTypeList ?? item.renderTypeList,
-                selectedTypeIndex:
-                  selectedTypeIndex >= 0 &&
-                  (selectedTypeIndex > 0 || input?.selectedTypeIndex !== undefined)
-                    ? selectedTypeIndex
-                    : undefined
-              };
-            });
+            node.inputs = preview.inputs.map((item) =>
+              mergeToolInputDetail({
+                previewInput: item,
+                savedInput: inputsMap.get(item.key)
+              })
+            );
             node.outputs = preview.outputs.map((item) => {
               const output = outputsMap.get(item.key);
               return {
@@ -244,13 +275,23 @@ export async function rewriteAppWorkflowToDetail({
               if (result.success) {
                 const data = result.data!;
                 // Merge saved config back into inputs
-                const mergedInputs = data.inputs.map((input) => ({
-                  ...input,
-                  value:
-                    tool.config && tool.config[input.key] !== undefined
-                      ? tool.config[input.key] // Use saved config value
-                      : input.value // Keep default value
-                }));
+                const toolInputConfigMap = new Map(
+                  (tool.inputs ?? []).map((input) => [input.key, input])
+                );
+                const mergedInputs = data.inputs.map((input) => {
+                  const inputWithTypeConfig = mergeToolInputDetail({
+                    previewInput: input,
+                    savedInput: toolInputConfigMap.get(input.key)
+                  });
+
+                  return {
+                    ...inputWithTypeConfig,
+                    value:
+                      tool.config && tool.config[input.key] !== undefined
+                        ? tool.config[input.key] // Use saved config value
+                        : inputWithTypeConfig.value // Keep default value
+                  };
+                });
 
                 return {
                   ...data,

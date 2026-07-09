@@ -23,6 +23,7 @@ export const getSelectedRenderTypeState = ({
 
   return {
     renderTypeList: nextRenderTypeList,
+    selectedType,
     selectedTypeIndex: selectedTypeIndex >= 0 ? selectedTypeIndex : 0
   };
 };

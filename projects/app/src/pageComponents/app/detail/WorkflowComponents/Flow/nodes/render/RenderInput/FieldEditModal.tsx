@@ -19,7 +19,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import React, { useCallback, useMemo } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
 import { useMount } from 'ahooks';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
@@ -41,7 +41,7 @@ const FieldModal = ({
   const { toast } = useToast();
   const isEdit = !!defaultInput.key;
 
-  const { register, setValue, handleSubmit, watch } = useForm<FlowNodeInputItemType>({
+  const { register, setValue, handleSubmit, control } = useForm<FlowNodeInputItemType>({
     defaultValues: defaultInput
   });
   const inputType = FlowNodeInputTypeEnum.reference;
@@ -66,7 +66,7 @@ const FieldModal = ({
       customInputConfig.selectValueTypeList?.includes(item.value)
     );
   }, [customInputConfig.selectValueTypeList, t]);
-  const valueType = watch('valueType');
+  const valueType = useWatch({ control, name: 'valueType' });
   useMount(() => {
     if (
       customInputConfig.selectValueTypeList &&
@@ -104,7 +104,7 @@ const FieldModal = ({
     [defaultInput.key, isEdit, keys, onClose, onSubmit, toast, t]
   );
   const onSubmitError = useCallback(
-    (e: Object) => {
+    (e: object) => {
       for (const item of Object.values(e)) {
         if (item.message) {
           toast({
@@ -181,6 +181,7 @@ export default FieldModal;
 
 export const defaultInput: FlowNodeInputItemType = {
   renderTypeList: [FlowNodeInputTypeEnum.reference],
+  selectedType: FlowNodeInputTypeEnum.reference,
   valueType: WorkflowIOValueTypeEnum.string,
   canEdit: true,
   key: '',

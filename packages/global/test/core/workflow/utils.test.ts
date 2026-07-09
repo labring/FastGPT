@@ -1,6 +1,7 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   getHandleId,
+  getSelectedInputRenderType,
   nodeInputIsReference,
   getGuideModule,
   splitGuideModule,
@@ -87,6 +88,19 @@ describe('nodeInputIsReference', () => {
       renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
       selectedTypeIndex: 1
     };
+    expect(nodeInputIsReference(input)).toBe(true);
+  });
+
+  it('should prefer selectedType over selectedTypeIndex', () => {
+    const input: FlowNodeInputItemType = {
+      key: 'test',
+      label: 'Test',
+      renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+      selectedType: FlowNodeInputTypeEnum.reference,
+      selectedTypeIndex: 0
+    };
+
+    expect(getSelectedInputRenderType(input)).toBe(FlowNodeInputTypeEnum.reference);
     expect(nodeInputIsReference(input)).toBe(true);
   });
 

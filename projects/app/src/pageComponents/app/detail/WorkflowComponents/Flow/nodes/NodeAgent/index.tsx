@@ -51,6 +51,7 @@ import WorkflowSandboxConfig, {
 } from '../components/WorkflowSandboxConfig';
 import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
+import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
 
 const PromptEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea/PromptEditor'));
 const SkillSelectModal = dynamic(
@@ -65,7 +66,7 @@ const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSe
 
 /* ======== Helper: get current renderType of an input ======== */
 const getRenderType = (input: FlowNodeInputItemType) =>
-  input.renderTypeList?.[input.selectedTypeIndex || 0] || FlowNodeInputTypeEnum.custom;
+  getSelectedInputRenderType(input) || FlowNodeInputTypeEnum.custom;
 
 const agentModelSettingProps = {
   showMaxToken: false,

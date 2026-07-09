@@ -576,7 +576,22 @@ export const getAgentRuntimeTools = async ({
           toolNode.toolConfig = tool.toolConfig;
         }
 
-        toolNode.inputs = initToolInputsTypeByDefaultMode(toolNode.inputs);
+        const savedInputConfigMap = new Map((tool.inputs ?? []).map((input) => [input.key, input]));
+        toolNode.inputs = initToolInputsTypeByDefaultMode(
+          toolNode.inputs.map((input) => {
+            const savedInput = savedInputConfigMap.get(input.key);
+            if (!savedInput) return input;
+
+            return {
+              ...input,
+              renderTypeList: savedInput.renderTypeList,
+              selectedType: savedInput.selectedType,
+              selectedTypeIndex: savedInput.selectedTypeIndex,
+              isToolParam: savedInput.isToolParam ?? input.isToolParam,
+              toolDescription: savedInput.toolDescription ?? input.toolDescription
+            };
+          })
+        );
         // 合并用户在 Agent 工具面板里保存的配置；false/0/空字符串也是有效配置值。
         toolNode.inputs.forEach((input) => {
           if (Object.prototype.hasOwnProperty.call(tool.config, input.key)) {

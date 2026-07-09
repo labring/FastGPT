@@ -20,6 +20,7 @@ import {
   formatEditorVariablePickerIcon,
   getAppChatConfig,
   getHandleId,
+  getSelectedInputRenderType,
   isValidReferenceValueFormat,
   nodeInputIsReference
 } from '@fastgpt/global/core/workflow/utils';
@@ -92,6 +93,9 @@ export const adaptStoreNodeInputs = (storeNode: StoreNodeItemType): FlowNodeInpu
       label: i18nT('workflow:search_query'),
       value: isReferenceValue ? [input.value] : input.value,
       valueType: WorkflowIOValueTypeEnum.arrayString,
+      selectedType: isReferenceValue
+        ? FlowNodeInputTypeEnum.reference
+        : FlowNodeInputTypeEnum.input,
       selectedTypeIndex: isReferenceValue ? 0 : 1
     };
   });
@@ -203,6 +207,7 @@ export const storeNode2FlowNode = ({
           ...templateInput,
           debugLabel: t(templateInput.debugLabel ?? (storeInput.debugLabel as any)),
           toolDescription: t(templateInput.toolDescription ?? (storeInput.toolDescription as any)),
+          selectedType: getSelectedInputRenderType(storeInput) ?? templateInput.selectedType,
           selectedTypeIndex: storeInput.selectedTypeIndex ?? templateInput.selectedTypeIndex,
           value: storeInput.value
         };
@@ -740,6 +745,7 @@ export const compareSnapshot = (
           flowNodeType: node.data.flowNodeType,
           inputs: node.data.inputs.map((input: FlowNodeInputItemType) => ({
             key: input.key,
+            selectedType: getSelectedInputRenderType(input),
             selectedTypeIndex: input.selectedTypeIndex ?? 0,
             renderTypeLis: input.renderTypeList,
             // set to arrayAny for nestedInputArray to skip valueType comparison

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import type { RenderInputProps } from '../../type';
 import { Box, Flex, HStack, Input } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
@@ -24,6 +24,7 @@ import { WorkflowActionsContext } from '@/pageComponents/app/detail/WorkflowComp
 
 const defaultInput: FlowNodeInputItemType = {
   renderTypeList: [FlowNodeInputTypeEnum.reference],
+  selectedType: FlowNodeInputTypeEnum.reference,
   valueType: WorkflowIOValueTypeEnum.any,
   canEdit: true,
   key: '',

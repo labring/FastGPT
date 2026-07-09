@@ -842,6 +842,7 @@ describe('agent generated tool input helpers', () => {
       FlowNodeInputTypeEnum.input,
       FlowNodeInputTypeEnum.reference
     ]);
+    expect(input.selectedType).toBe(FlowNodeInputTypeEnum.agentGenerated);
     expect(input.selectedTypeIndex).toBe(0);
     expect(isAgentGeneratedToolInput(input)).toBe(true);
   });
@@ -891,6 +892,7 @@ describe('agent generated tool input helpers', () => {
       FlowNodeInputTypeEnum.input,
       FlowNodeInputTypeEnum.agentGenerated
     ]);
+    expect(input.selectedType).toBe(FlowNodeInputTypeEnum.input);
     expect(isAgentGeneratedToolInput(input)).toBe(false);
   });
 
@@ -908,7 +910,23 @@ describe('agent generated tool input helpers', () => {
       FlowNodeInputTypeEnum.input,
       FlowNodeInputTypeEnum.agentGenerated
     ]);
+    expect(input.selectedType).toBe(FlowNodeInputTypeEnum.agentGenerated);
     expect(input.selectedTypeIndex).toBe(1);
+    expect(isAgentGeneratedToolInput(input)).toBe(true);
+  });
+
+  it('should prefer selectedType over deprecated selectedTypeIndex', () => {
+    const input = initToolInputTypeByDefaultMode(
+      createMockInput({
+        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
+        selectedType: FlowNodeInputTypeEnum.agentGenerated,
+        selectedTypeIndex: 0,
+        toolDescription: 'Prompt to model',
+        isToolParam: true
+      })
+    );
+
+    expect(input.selectedType).toBe(FlowNodeInputTypeEnum.agentGenerated);
     expect(isAgentGeneratedToolInput(input)).toBe(true);
   });
 
@@ -916,6 +934,7 @@ describe('agent generated tool input helpers', () => {
     const params = filterAgentGeneratedToolParams({
       params: {
         query: 'model query',
+        indexOnly: 'model index value',
         manualText: 'model text',
         password: 'model secret',
         schemaOnly: 'schema value',
@@ -924,6 +943,12 @@ describe('agent generated tool input helpers', () => {
       inputs: [
         createMockInput({
           key: 'query',
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
+          selectedType: FlowNodeInputTypeEnum.agentGenerated,
+          selectedTypeIndex: 0
+        }),
+        createMockInput({
+          key: 'indexOnly',
           renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
           selectedTypeIndex: 1
         }),
@@ -947,6 +972,7 @@ describe('agent generated tool input helpers', () => {
 
     expect(params).toEqual({
       query: 'model query',
+      indexOnly: 'model index value',
       schemaOnly: 'schema value'
     });
   });

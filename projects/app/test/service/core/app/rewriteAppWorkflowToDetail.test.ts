@@ -186,12 +186,78 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
     expect(nodes[0].inputs[0]).toMatchObject({
       key: 'size',
       value: ['start', 'amount'],
+      selectedType: FlowNodeInputTypeEnum.reference,
       selectedTypeIndex: 1,
       renderTypeList: [FlowNodeInputTypeEnum.select, FlowNodeInputTypeEnum.reference],
       list: [
         { label: '1', value: '1' },
         { label: '2', value: '2' }
       ]
+    });
+  });
+
+  it('刷新最新工具节点时把旧输入协议升级为 selectedType 和 agentGenerated 默认态', async () => {
+    getClientToolPreviewNodeMock.mockResolvedValue({
+      id: 'mcp-app-1/search',
+      flowNodeType: FlowNodeTypeEnum.tool,
+      name: 'Search Tool',
+      avatar: 'new-avatar',
+      intro: '',
+      inputs: [
+        {
+          key: 'query',
+          label: 'Query',
+          valueType: WorkflowIOValueTypeEnum.string,
+          value: '',
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+          isToolParam: true,
+          toolDescription: 'Search query'
+        }
+      ],
+      outputs: [],
+      version: '',
+      versionLabel: 'latest',
+      isLatestVersion: true
+    });
+    authAppByTmbIdMock.mockResolvedValue({});
+
+    const nodes = [
+      {
+        nodeId: 'tool',
+        flowNodeType: FlowNodeTypeEnum.tool,
+        pluginId: 'mcp-app-1/search',
+        inputs: [
+          {
+            key: 'query',
+            label: 'Query',
+            valueType: WorkflowIOValueTypeEnum.string,
+            value: 'legacy value',
+            renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
+          }
+        ],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    expect(nodes[0].inputs[0]).toMatchObject({
+      key: 'query',
+      value: 'legacy value',
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.input,
+        FlowNodeInputTypeEnum.reference
+      ],
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      selectedTypeIndex: 0,
+      isToolParam: true,
+      toolDescription: 'Search query'
     });
   });
 
@@ -278,6 +344,86 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
         isRoot: true
       })
     );
+  });
+
+  it('刷新 Agent 工具时保留已保存的 input selectedType 配置', async () => {
+    const toolAppId = '507f1f77bcf86cd799439012';
+    getClientToolPreviewNodeMock.mockResolvedValue({
+      id: toolAppId,
+      flowNodeType: FlowNodeTypeEnum.tool,
+      name: 'Personal Tool',
+      avatar: '',
+      intro: '',
+      inputs: [
+        {
+          key: 'query',
+          label: 'Query',
+          valueType: WorkflowIOValueTypeEnum.string,
+          value: '',
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+          isToolParam: true,
+          toolDescription: 'Query'
+        }
+      ],
+      outputs: [],
+      version: 'v1'
+    });
+    authAppByTmbIdMock.mockResolvedValue({});
+
+    const toolInput = {
+      key: NodeInputKeyEnum.selectedTools,
+      value: [
+        {
+          id: toolAppId,
+          inputs: [
+            {
+              key: 'query',
+              renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.input],
+              selectedType: FlowNodeInputTypeEnum.input,
+              selectedTypeIndex: 1,
+              isToolParam: true,
+              toolDescription: 'Query'
+            }
+          ],
+          config: {
+            query: 'manual value'
+          }
+        }
+      ]
+    };
+    const nodes = [
+      {
+        nodeId: 'agent',
+        flowNodeType: FlowNodeTypeEnum.agent,
+        inputs: [toolInput],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    expect(toolInput.value).toMatchObject([
+      {
+        inputs: [
+          {
+            key: 'query',
+            value: 'manual value',
+            renderTypeList: [
+              FlowNodeInputTypeEnum.agentGenerated,
+              FlowNodeInputTypeEnum.input,
+              FlowNodeInputTypeEnum.reference
+            ],
+            selectedType: FlowNodeInputTypeEnum.input,
+            selectedTypeIndex: 1
+          }
+        ]
+      }
+    ]);
   });
 
   it('按当前语言展示调试工具 metadata 缺失错误', async () => {

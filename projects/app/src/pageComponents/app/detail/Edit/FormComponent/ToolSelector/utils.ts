@@ -31,6 +31,7 @@ export const inheritToolInputConfig = <T extends Pick<FlowNodeTemplateType, 'inp
         value: sourceInput.value,
         valueDesc: sourceInput.valueDesc,
         renderTypeList: sourceInput.renderTypeList,
+        selectedType: sourceInput.selectedType,
         selectedTypeIndex: sourceInput.selectedTypeIndex,
         isToolParam: sourceInput.isToolParam,
         toolDescription: sourceInput.toolDescription

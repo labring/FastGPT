@@ -15,6 +15,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
 
 const RenderList: Record<
   FlowNodeInputTypeEnum,
@@ -161,7 +162,7 @@ const RenderInput = ({
 
   const filterInputs = useMemoEnhance(() => {
     return filterProInputs.filter((input) => {
-      const renderType = input.renderTypeList?.[input.selectedTypeIndex || 0];
+      const renderType = getSelectedInputRenderType(input);
       const isDynamic = !!input.canEdit;
 
       if (renderType === FlowNodeInputTypeEnum.hidden || isDynamic) return false;
@@ -173,7 +174,7 @@ const RenderInput = ({
   return (
     <>
       {filterInputs.map((input) => {
-        const renderType = input.renderTypeList?.[input.selectedTypeIndex || 0];
+        const renderType = getSelectedInputRenderType(input) ?? FlowNodeInputTypeEnum.custom;
         const agentGeneratedDeveloperType =
           input.renderTypeList.find((type) => type !== FlowNodeInputTypeEnum.agentGenerated) ??
           FlowNodeInputTypeEnum.input;
