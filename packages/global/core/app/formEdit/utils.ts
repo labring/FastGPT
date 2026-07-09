@@ -89,10 +89,9 @@ export const filterAgentGeneratedToolParams = ({
  */
 export const initToolInputTypeByDefaultMode = <T extends FlowNodeInputItemType>(input: T): T => {
   const selectedType = getSelectedInputRenderType(input);
-  const hasSelectedType =
-    input.selectedType !== undefined || input.selectedTypeIndex !== undefined;
+  const hasSelectedType = input.selectedType !== undefined || input.selectedTypeIndex !== undefined;
   const inputWithSelectedType = (
-    selectedType
+    hasSelectedType && selectedType
       ? {
           ...input,
           selectedType
