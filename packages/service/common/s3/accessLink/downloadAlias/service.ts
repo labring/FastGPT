@@ -1,7 +1,7 @@
 import {
   CreateS3DownloadAccessUrlParamsSchema,
-  S3ProxyDownloadPayloadSchema,
-  type S3ProxyDownloadPayload
+  VerifiedS3DownloadAccessSchema,
+  type VerifiedS3DownloadAccess
 } from '../type';
 import { s3AccessLinkService } from '../accessLinkService';
 
@@ -24,8 +24,8 @@ export const createS3DownloadAccessUrl = async (params: unknown) => {
  */
 export const verifyS3DownloadAccess = async (
   signedAlias: string
-): Promise<S3ProxyDownloadPayload> => {
-  return S3ProxyDownloadPayloadSchema.parse(
+): Promise<VerifiedS3DownloadAccess> => {
+  return VerifiedS3DownloadAccessSchema.parse(
     await s3AccessLinkService.verifyDownloadAlias(signedAlias)
   );
 };

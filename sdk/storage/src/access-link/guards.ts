@@ -3,8 +3,8 @@ import { S3AccessLinkErrCode, S3AccessLinkError, type S3AccessLinkErrorCode } fr
 import type {
   CreateS3DownloadAccessUrlParams,
   CreateS3UploadAccessUrlParams,
-  S3ProxyDownloadPayload,
   S3ProxyUploadPayload,
+  S3VerifiedDownloadPayload,
   S3UploadConstraints
 } from './types';
 
@@ -104,12 +104,15 @@ export const assertSignedAliasFormat = (value: string) => {
   }
 };
 
-export const assertDownloadPayload = (payload: S3ProxyDownloadPayload): S3ProxyDownloadPayload => {
+export const assertDownloadPayload = (
+  payload: S3VerifiedDownloadPayload
+): S3VerifiedDownloadPayload => {
   if (!isRecord(payload)) throw new S3AccessLinkError(S3AccessLinkErrCode.downloadAliasNotFound);
 
   return {
     bucketName: assertNonEmptyString(payload.bucketName, S3AccessLinkErrCode.downloadAliasNotFound),
     objectKey: assertNonEmptyString(payload.objectKey, S3AccessLinkErrCode.downloadAliasNotFound),
+    expiresAt: assertDate(payload.expiresAt, S3AccessLinkErrCode.downloadAliasNotFound),
     ...(payload.filename !== undefined
       ? {
           filename: assertNonEmptyString(

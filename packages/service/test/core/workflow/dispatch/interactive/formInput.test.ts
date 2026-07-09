@@ -12,19 +12,23 @@ const { mockCreateGetChatFileURL } = vi.hoisted(() => ({
   mockCreateGetChatFileURL: vi.fn()
 }));
 
+type MockCreatePreviewOptions = {
+  expiredHours?: number;
+  mode?: 'short-proxy' | 'short-redirect' | 'presigned';
+};
+
 vi.mock('@fastgpt/service/common/s3/sources/chat', () => ({
   getS3ChatSource: () => ({
     createGetChatFileURL: mockCreateGetChatFileURL
   }),
-  createChatFilePreviewUrlGetter:
-    (options?: { expiredHours?: number; mode?: 'proxy' | 'presigned' }) => async (key: string) => {
-      const { url } = await mockCreateGetChatFileURL({
-        key,
-        external: true,
-        ...options
-      });
-      return url;
-    }
+  createChatFilePreviewUrlGetter: (options?: MockCreatePreviewOptions) => async (key: string) => {
+    const { url } = await mockCreateGetChatFileURL({
+      key,
+      external: true,
+      ...options
+    });
+    return url;
+  }
 }));
 
 describe('dispatchFormInput', () => {

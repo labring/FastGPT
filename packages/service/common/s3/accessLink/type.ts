@@ -61,6 +61,11 @@ export const S3ProxyDownloadPayloadSchema = z.object({
 });
 export type S3ProxyDownloadPayload = z.infer<typeof S3ProxyDownloadPayloadSchema>;
 
+export const VerifiedS3DownloadAccessSchema = S3ProxyDownloadPayloadSchema.extend({
+  expiresAt: z.coerce.date()
+});
+export type VerifiedS3DownloadAccess = z.infer<typeof VerifiedS3DownloadAccessSchema>;
+
 export const S3UploadTokenSchema = UrlSafeTokenSchema.min(20).max(64);
 export const S3UploadTokenHashSchema = HexSha256Schema;
 

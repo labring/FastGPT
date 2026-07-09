@@ -65,6 +65,10 @@ export type S3ProxyDownloadPayload = {
   responseContentType?: string;
 };
 
+export type S3VerifiedDownloadPayload = S3ProxyDownloadPayload & {
+  expiresAt: Date;
+};
+
 export type DeleteS3DownloadAliasByObjectParams = {
   bucketName: string;
   objectKey: string;
@@ -122,7 +126,7 @@ export type CreateS3AccessLinkServiceOptions = {
 
 export type S3AccessLinkService = {
   createDownloadUrl: (params: CreateS3DownloadAccessUrlParams) => Promise<string>;
-  verifyDownloadAlias: (signedAlias: string) => Promise<S3ProxyDownloadPayload>;
+  verifyDownloadAlias: (signedAlias: string) => Promise<S3VerifiedDownloadPayload>;
   revokeDownloadAlias: (aliasId: string) => Promise<void>;
   deleteDownloadAliasByObject: (params: DeleteS3DownloadAliasByObjectParams) => Promise<void>;
   deleteDownloadAliasByObjects: (params: DeleteS3DownloadAliasByObjectsParams) => Promise<void>;

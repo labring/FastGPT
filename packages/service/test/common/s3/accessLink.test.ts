@@ -75,12 +75,14 @@ describe('s3 access link', () => {
     expect(aliases[0]?.objectKey).toBe(params.objectKey);
     expect(aliases[0]?.purgeAt.getTime()).toBeGreaterThan(params.expiredTime.getTime());
 
-    await expect(verifyS3DownloadAccess(extractLastPathSegment(firstUrl))).resolves.toMatchObject({
+    const verified = await verifyS3DownloadAccess(extractLastPathSegment(firstUrl));
+    expect(verified).toMatchObject({
       bucketName: params.bucketName,
       objectKey: params.objectKey,
       filename: params.filename,
       responseContentType: params.responseContentType
     });
+    expect(verified.expiresAt).toBeInstanceOf(Date);
 
     const aliasId = extractLastPathSegment(firstUrl).split('.')[0] || '';
     await revokeS3DownloadAlias(aliasId);

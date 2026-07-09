@@ -15,6 +15,13 @@ import {
   signS3DownloadAlias
 } from '@fastgpt/service/common/s3/accessLink';
 
+const originalStorageEnv = {
+  STORAGE_DOWNLOAD_URL_MODE: process.env.STORAGE_DOWNLOAD_URL_MODE,
+  STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS: process.env.STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS,
+  STORAGE_EXTERNAL_ENDPOINT: process.env.STORAGE_EXTERNAL_ENDPOINT,
+  STORAGE_S3_CDN_ENDPOINT: process.env.STORAGE_S3_CDN_ENDPOINT
+};
+
 const makeMockRes = () => {
   const headers: Record<string, string | number> = {};
   const res = {
@@ -107,41 +114,54 @@ const createTranslator = () =>
     params ? `${key}:${JSON.stringify(params)}` : key
   );
 
-const setupJsonResMock = () => {
-  vi.mocked(jsonRes).mockImplementation((res: any, props: any = {}) => {
-    const { code = 200, data = null, error, message = '' } = props;
+const jsonResMockImplementation = (res: any, props: any = {}) => {
+  const { code = 200, data = null, error, message = '' } = props;
 
-    if (!error) {
-      return res.status(code).json({
-        code,
-        statusText: '',
-        message,
-        data
-      });
-    }
-
-    const errorKey = typeof error === 'string' ? error : error?.message;
-    const errorResponse = errorKey ? ERROR_RESPONSE[errorKey] : undefined;
-    const httpStatus = (() => {
-      if (errorKey === 'EntityTooLarge') return 413;
-      if (
-        typeof errorResponse?.code === 'number' &&
-        errorResponse.code >= 510000 &&
-        errorResponse.code < 511000
-      ) {
-        return 400;
-      }
-      if (typeof code === 'number' && code >= 400 && code <= 599) return code;
-      return 500;
-    })();
-
-    return res.status(httpStatus).json({
-      code: errorResponse?.code ?? code,
-      statusText: errorResponse?.statusText ?? 'error',
-      message: message || errorResponse?.message || errorKey || '请求错误',
-      data: errorResponse?.data ?? null
+  if (!error) {
+    return res.status(code).json({
+      code,
+      statusText: '',
+      message,
+      data
     });
+  }
+
+  const errorKey = typeof error === 'string' ? error : error?.message;
+  const errorResponse = errorKey ? ERROR_RESPONSE[errorKey] : undefined;
+  const httpStatus = (() => {
+    if (errorKey === 'EntityTooLarge') return 413;
+    if (
+      typeof errorResponse?.code === 'number' &&
+      errorResponse.code >= 510000 &&
+      errorResponse.code < 511000
+    ) {
+      return 400;
+    }
+    if (typeof code === 'number' && code >= 400 && code <= 599) return code;
+    return 500;
+  })();
+
+  return res.status(httpStatus).json({
+    code: errorResponse?.code ?? code,
+    statusText: errorResponse?.statusText ?? 'error',
+    message: message || errorResponse?.message || errorKey || '请求错误',
+    data: errorResponse?.data ?? null
   });
+};
+
+const setupJsonResMock = (targetJsonRes = jsonRes) => {
+  vi.mocked(targetJsonRes).mockImplementation(jsonResMockImplementation);
+};
+
+const setupDynamicResponseMock = () => {
+  vi.doMock('@fastgpt/service/common/response', () => ({
+    jsonRes: vi.fn(jsonResMockImplementation),
+    sseErrRes: vi.fn(),
+    responseWrite: vi.fn(),
+    responseWriteController: vi.fn(),
+    responseWriteNodeStatus: vi.fn(),
+    processError: vi.fn()
+  }));
 };
 
 describe('s3 short access link api', () => {
@@ -231,6 +251,132 @@ describe('s3 short access link api', () => {
     expect(res.headers['Content-Type']).toBe('text/markdown; charset=utf-8');
     expect(res.headers['Content-Length']).toBe(5);
     expect(stream.pipe).toHaveBeenCalledWith(res);
+  });
+
+  it('redirects a valid short download alias to a short-lived presigned S3 URL in short-redirect mode', async () => {
+    vi.stubEnv('STORAGE_DOWNLOAD_URL_MODE', 'short-redirect');
+    vi.stubEnv('STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS', '120');
+    vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', 'https://s3.example.com');
+    vi.stubEnv('STORAGE_S3_CDN_ENDPOINT', 'https://cdn.example.com/files');
+    vi.resetModules();
+    setupDynamicResponseMock();
+
+    try {
+      const [{ default: redirectDownloadAccessHandler }, { createS3DownloadAccessUrl }] =
+        await Promise.all([
+          import('@/pages/api/system/file/d/[signedAlias]'),
+          import('@fastgpt/service/common/s3/accessLink')
+        ]);
+      const url = await createS3DownloadAccessUrl({
+        bucketName: 'fastgpt-private',
+        objectKey: 'dataset/team/page.md',
+        expiredTime: getFutureDate(10),
+        filename: 'page.md',
+        responseContentType: 'text/markdown; charset=utf-8'
+      });
+      const signedAlias = extractLastPathSegment(url);
+      const generatePresignedGetUrl = vi.fn().mockResolvedValue({
+        bucket: 'fastgpt-private',
+        key: 'dataset/team/page.md',
+        url: 'https://s3.example.com/fastgpt-private/dataset/team/page.md?X-Amz-Signature=abc'
+      });
+      global.s3BucketMap = {
+        'fastgpt-private': {
+          isObjectExists: vi.fn().mockResolvedValue(true),
+          externalClient: {
+            generatePresignedGetUrl
+          }
+        }
+      } as any;
+      const res = makeMockRes() as any;
+
+      await redirectDownloadAccessHandler(createDownloadReq(signedAlias), res);
+
+      expect(res.statusCode).toBe(302);
+      expect(res.headers['Cache-Control']).toBe('no-store');
+      expect(res.headers.Location).toBe(
+        'https://cdn.example.com/files/fastgpt-private/dataset/team/page.md?X-Amz-Signature=abc'
+      );
+      expect(generatePresignedGetUrl).toHaveBeenCalledWith({
+        key: 'dataset/team/page.md',
+        expiredSeconds: 120,
+        responseContentType: 'text/markdown; charset=utf-8'
+      });
+    } finally {
+      vi.stubEnv('STORAGE_DOWNLOAD_URL_MODE', originalStorageEnv.STORAGE_DOWNLOAD_URL_MODE);
+      vi.stubEnv(
+        'STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS',
+        originalStorageEnv.STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS
+      );
+      vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', originalStorageEnv.STORAGE_EXTERNAL_ENDPOINT);
+      vi.stubEnv('STORAGE_S3_CDN_ENDPOINT', originalStorageEnv.STORAGE_S3_CDN_ENDPOINT);
+      vi.resetModules();
+    }
+  });
+
+  it('does not generate presigned URLs when a short-redirect alias is invalid or revoked', async () => {
+    vi.stubEnv('STORAGE_DOWNLOAD_URL_MODE', 'short-redirect');
+    vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', 'https://s3.example.com');
+    vi.resetModules();
+    setupDynamicResponseMock();
+
+    try {
+      const [
+        { default: redirectDownloadAccessHandler },
+        {
+          createS3DownloadAccessUrl,
+          encodeExpiresAtMinute,
+          revokeS3DownloadAlias,
+          signS3DownloadAlias
+        },
+        { jsonRes: freshJsonRes }
+      ] = await Promise.all([
+        import('@/pages/api/system/file/d/[signedAlias]'),
+        import('@fastgpt/service/common/s3/accessLink'),
+        import('@fastgpt/service/common/response')
+      ]);
+      setupJsonResMock(freshJsonRes);
+      const aliasId = 'R7mQG0Yh2kVxP9Za';
+      const expMinute36 = encodeExpiresAtMinute(getFutureDate(10));
+      const sig = signS3DownloadAlias({ aliasId, expMinute36 });
+      const tamperedExpMinute36 = (Number.parseInt(expMinute36, 36) + 60).toString(36);
+      const revokedUrl = await createS3DownloadAccessUrl({
+        bucketName: 'fastgpt-private',
+        objectKey: 'dataset/team/revoked.md',
+        expiredTime: getFutureDate(10),
+        filename: 'revoked.md'
+      });
+      const revokedAlias = extractLastPathSegment(revokedUrl);
+      await revokeS3DownloadAlias(revokedAlias.split('.')[0] || '');
+      const cases = [
+        buildSignedAlias({ expiresAt: getFutureDate(-10) }),
+        `${aliasId}.${tamperedExpMinute36}.${sig}`,
+        revokedAlias
+      ];
+      const generatePresignedGetUrl = vi.fn();
+      global.s3BucketMap = {
+        'fastgpt-private': {
+          isObjectExists: vi.fn().mockResolvedValue(true),
+          externalClient: {
+            generatePresignedGetUrl
+          }
+        }
+      } as any;
+
+      for (const signedAlias of cases) {
+        const res = makeMockRes() as any;
+
+        await redirectDownloadAccessHandler(createDownloadReq(signedAlias), res);
+
+        expect(res.statusCode).toBe(403);
+        expect(res.body.statusText).toBe(CommonErrEnum.unAuthFile);
+      }
+      expect(generatePresignedGetUrl).not.toHaveBeenCalled();
+    } finally {
+      vi.stubEnv('STORAGE_DOWNLOAD_URL_MODE', originalStorageEnv.STORAGE_DOWNLOAD_URL_MODE);
+      vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', originalStorageEnv.STORAGE_EXTERNAL_ENDPOINT);
+      vi.resetModules();
+    }
   });
 
   it('returns 403 for missing, expired, or revoked upload tokens', async () => {

@@ -21,7 +21,7 @@ import type {
   CreateS3DownloadAccessUrlParams,
   ParsedS3SignedDownloadAlias,
   ResolvedS3AccessLinkServiceOptions,
-  S3ProxyDownloadPayload
+  S3VerifiedDownloadPayload
 } from './types';
 
 const parseSignedS3DownloadAliasValue = (value: string): ParsedS3SignedDownloadAlias => {
@@ -133,9 +133,9 @@ export const verifyDownloadAliasHandler =
     crypto,
     stores
   }: ResolvedS3AccessLinkServiceOptions & { crypto: S3AccessLinkCrypto }) =>
-  async (signedAlias: string): Promise<S3ProxyDownloadPayload> => {
+  async (signedAlias: string): Promise<S3VerifiedDownloadPayload> => {
     const assertSignature = createDownloadAliasSignatureAssert({ clock, crypto });
-    const { aliasId } = assertSignature(signedAlias);
+    const { aliasId, expiresAt } = assertSignature(signedAlias);
     const alias = await stores.downloadAlias.findByAliasId(aliasId);
 
     if (!alias) {
@@ -149,6 +149,7 @@ export const verifyDownloadAliasHandler =
     return assertDownloadPayload({
       bucketName: alias.bucketName,
       objectKey: alias.objectKey,
+      expiresAt,
       filename: alias.filename,
       responseContentType: alias.responseContentType
     });

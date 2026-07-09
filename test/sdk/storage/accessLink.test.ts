@@ -63,12 +63,13 @@ describe('S3 access link SDK core', () => {
 
     const payload = await service.verifyDownloadAlias(extractLastPathSegment(firstUrl));
 
-    expect(payload).toEqual({
+    expect(payload).toMatchObject({
       bucketName: 'private',
       objectKey: 'dataset/team-1/file.png',
       filename: 'file.png',
       responseContentType: 'image/png'
     });
+    expect(payload.expiresAt).toBeInstanceOf(Date);
   });
 
   it('rejects expired download aliases before querying the store', async () => {

@@ -30,7 +30,10 @@ export const S3SourcesSchema = z.enum(['avatar', 'chat', 'dataset', 'temp', 'raw
 export const S3Sources = S3SourcesSchema.enum;
 export type S3SourceType = z.infer<typeof S3SourcesSchema>;
 
-export const DownloadModeSchema = z.enum(['proxy', 'presigned']);
+export const StorageDownloadUrlModeSchema = z.enum(['short-proxy', 'short-redirect', 'presigned']);
+export type StorageDownloadUrlMode = z.infer<typeof StorageDownloadUrlModeSchema>;
+
+export const DownloadModeSchema = StorageDownloadUrlModeSchema;
 export type DownloadMode = z.infer<typeof DownloadModeSchema>;
 
 export const CreatePostPresignedUrlParamsSchema = z.object({

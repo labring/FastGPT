@@ -8,7 +8,7 @@ import {
   type CreatePostPresignedUrlResult
 } from '../contracts/type';
 import {
-  storageDownloadMode,
+  storageDownloadUrlMode,
   getSystemMaxFileSize,
   replaceS3UrlWithCdnEndpoint
 } from '../config/constants';
@@ -261,7 +261,7 @@ export class S3BaseBucket {
     const { key, expiredHours, mode, responseContentType } = parsed;
     const expires = expiredHours ? expiredHours * 60 * 60 : 30 * 60; // expires 的单位是秒 默认 30 分钟
 
-    if ((mode || storageDownloadMode) === 'proxy') {
+    if ((mode ?? storageDownloadUrlMode) !== 'presigned') {
       return {
         bucket: this.bucketName,
         key,

@@ -6,11 +6,15 @@ import { createOutLinkChatTargetInputSchema, transformChatAuthTargetInput } from
 /* ============ chat file ============ */
 const withChatFileTarget = <T extends z.ZodRawShape>(shape: T) =>
   createOutLinkChatTargetInputSchema(shape).transform(transformChatAuthTargetInput);
+const ChatFileDownloadModeSchema = z
+  .enum(['short-proxy', 'short-redirect', 'presigned'])
+  .optional()
+  .describe('下载链接模式');
 
 export const PresignChatFileGetUrlRawSchema = createOutLinkChatTargetInputSchema({
   key: z.string().min(1).describe('文件key'),
   chatId: z.string().min(1).describe('对话ID'),
-  mode: z.enum(['proxy', 'presigned']).optional().describe('下载方式'),
+  mode: ChatFileDownloadModeSchema,
   outLinkAuthData: OutLinkChatAuthSchema.optional().describe('外链鉴权数据')
 }).meta({
   example: {
@@ -25,7 +29,7 @@ export const PresignChatFileGetUrlRawSchema = createOutLinkChatTargetInputSchema
 export const PresignChatFileGetUrlSchema = withChatFileTarget({
   key: z.string().min(1).describe('文件key'),
   chatId: z.string().min(1).describe('对话ID'),
-  mode: z.enum(['proxy', 'presigned']).optional().describe('下载方式'),
+  mode: ChatFileDownloadModeSchema,
   outLinkAuthData: OutLinkChatAuthSchema.optional().describe('外链鉴权数据')
 });
 export type PresignChatFileGetUrlParams = z.input<typeof PresignChatFileGetUrlSchema>;

@@ -17,6 +17,11 @@ import {
   ensureTextContentTypeCharset
 } from '@fastgpt/service/common/s3/utils/mime';
 import {
+  canUseStorageDownloadRedirect,
+  replaceS3UrlWithCdnEndpoint,
+  storageDownloadRedirectTtlSeconds
+} from '@fastgpt/service/common/s3/config/constants';
+import {
   getUploadInspectBytes,
   validateUploadFile
 } from '@fastgpt/service/common/s3/validation/upload';
@@ -261,6 +266,59 @@ export const handleS3ProxyDownload = async ({
   });
 
   stream.pipe(res);
+};
+
+const resolveS3RedirectExpiresSeconds = ({ expiresAt }: { expiresAt: Date }) => {
+  const remainingSeconds = Math.floor((expiresAt.getTime() - Date.now()) / 1000);
+
+  if (remainingSeconds <= 0) {
+    throw CommonErrEnum.unAuthFile;
+  }
+
+  return Math.min(storageDownloadRedirectTtlSeconds, remainingSeconds);
+};
+
+/**
+ * 校验后的短链 302 到短 TTL S3/CDN 预签名下载地址。
+ *
+ * 该函数不把 S3 presigned URL 写回业务数据，只作为当前 HTTP 响应的临时 Location。
+ */
+export const handleS3RedirectDownload = async ({
+  res,
+  payload,
+  expiresAt
+}: {
+  res: NextApiResponse;
+  payload: S3ProxyDownloadPayload;
+  expiresAt: Date;
+}) => {
+  if (!canUseStorageDownloadRedirect) {
+    throw new Error(
+      'S3 short redirect requires STORAGE_EXTERNAL_ENDPOINT or STORAGE_S3_CDN_ENDPOINT'
+    );
+  }
+
+  const { objectKey, bucketName } = payload;
+  const bucket = global.s3BucketMap[bucketName];
+
+  if (!bucket) {
+    throw new Error('S3 bucket not found');
+  }
+
+  const exists = await bucket.isObjectExists(objectKey);
+  if (!exists) {
+    throw CommonErrEnum.fileNotFound;
+  }
+
+  const result = await bucket.externalClient.generatePresignedGetUrl({
+    key: objectKey,
+    expiredSeconds: resolveS3RedirectExpiresSeconds({ expiresAt }),
+    ...(payload.responseContentType ? { responseContentType: payload.responseContentType } : {})
+  });
+
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('Location', replaceS3UrlWithCdnEndpoint(result.url));
+  res.status(302).end();
 };
 
 /**
