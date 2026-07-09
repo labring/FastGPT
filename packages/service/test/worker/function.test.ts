@@ -101,6 +101,28 @@ describe('worker/function', () => {
       expect(mockGetWorkerController).not.toHaveBeenCalled();
     });
 
+    it('test 环境下 token 模式长文本兜底分割仍不超过 maxSize', async () => {
+      const text = '𠮷'.repeat(400);
+      const chunkSize = 96;
+
+      const result = await text2Chunks({
+        text,
+        chunkSize,
+        maxSize: chunkSize,
+        overlapRatio: 0,
+        lengthUnit: 'token'
+      });
+
+      expect(countPromptTokensInWorker(text)).toBeGreaterThan(chunkSize * 10);
+      expect(result.chunks.length).toBeGreaterThan(10);
+      expect(result.chunks.every((chunk) => countPromptTokensInWorker(chunk) <= chunkSize)).toBe(
+        true
+      );
+      expect(result.chunks.join('')).toBe(text);
+      expect(mockRunWorker).not.toHaveBeenCalled();
+      expect(mockGetWorkerController).not.toHaveBeenCalled();
+    });
+
     it('token 模式无法放入单个字符时直接报错', async () => {
       await expect(
         text2Chunks({

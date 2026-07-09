@@ -52,6 +52,10 @@ const embeddingModel = {
 } as any;
 const originalMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
 const tokenHeavyText = Array.from({ length: 30 }, (_, index) => `𠮷${index}`).join('');
+const largeTokenHeavyText = Array.from(
+  { length: 320 },
+  (_, index) => `第${index}段𠮷内容${index}`
+).join('');
 
 const expectIndexesWithinTokenLimit = (
   indexes: Pick<DatasetDataIndexItemType, 'text'>[],
@@ -271,6 +275,31 @@ describe('DatasetDataIndexOperation', () => {
       expect(result.every((index) => index.type === DatasetDataIndexTypeEnum.default)).toBe(true);
       expectIndexesWithinTokenLimit(result, 70);
       expect(mergeChunksByOverlap(result.map((index) => index.text))).toBe(tokenHeavyText);
+    });
+
+    it('should split large default text indexes by indexSize when model limit is larger', async () => {
+      const indexSize = 96;
+      const operation = new DatasetDataIndexOperation({
+        ...embeddingModel,
+        maxToken: 512
+      });
+
+      const result = await operation.getSystemIndexes({
+        q: largeTokenHeavyText,
+        indexSize,
+        maxIndexSize: 512
+      });
+
+      expect(countPromptTokensInWorker(largeTokenHeavyText)).toBeGreaterThan(indexSize * 10);
+      expect(result.length).toBeGreaterThan(10);
+      expect(result.every((index) => index.type === DatasetDataIndexTypeEnum.default)).toBe(true);
+      expect(result.some((index) => countPromptTokensInWorker(index.text) > minChunkSize)).toBe(
+        true
+      );
+      expect(result.every((index) => countPromptTokensInWorker(index.text) <= indexSize)).toBe(
+        true
+      );
+      expect(mergeChunksByOverlap(result.map((index) => index.text))).toBe(largeTokenHeavyText);
     });
 
     it('should split prefixed default indexes by final embedding token size', async () => {
