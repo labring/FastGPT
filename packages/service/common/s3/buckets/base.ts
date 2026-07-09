@@ -16,7 +16,7 @@ import { S3ErrEnum } from '@fastgpt/global/common/error/code/s3';
 import { createUploadConstraints } from '../utils/uploadConstraints';
 import path from 'node:path';
 import { MongoS3TTL } from '../models/ttl';
-import { addHours, addMinutes, differenceInSeconds } from 'date-fns';
+import { addHours, addMinutes, differenceInHours, differenceInSeconds } from 'date-fns';
 import { getLogger, LogCategories } from '../../logger';
 import { addS3DelJob } from '../queue/delete';
 import { type UploadFileByBufferParams, UploadFileByBodySchema } from '../contracts/type';
@@ -314,7 +314,7 @@ export class S3BaseBucket {
       key,
       accessUrl: await this.createExternalUrl({
         key,
-        expiredHours: 2
+        expiredHours: Math.max(1, differenceInHours(expiredTime, new Date()))
       })
     };
   }
