@@ -2,7 +2,10 @@ import { NodeInputKeyEnum } from '../../workflow/constants';
 import { FlowNodeInputTypeEnum } from '../../workflow/node/constant';
 import type { FlowNodeInputItemType } from '../../workflow/type/io';
 import type { FlowNodeTemplateType } from '../../workflow/type/node';
+import { getSelectedInputRenderType } from '../../workflow/utils';
 import type { SelectedToolItemType } from './type';
+
+export { getSelectedInputRenderType } from '../../workflow/utils';
 
 const formRenderTypesMap: Record<string, boolean> = {
   [FlowNodeInputTypeEnum.input]: true,
@@ -33,15 +36,9 @@ const agentGeneratedDenyRenderTypes = new Set<FlowNodeInputTypeEnum>([
 
 type InputRenderTypeState = {
   renderTypeList?: FlowNodeInputItemType['renderTypeList'];
+  selectedType?: FlowNodeInputItemType['selectedType'];
   selectedTypeIndex?: FlowNodeInputItemType['selectedTypeIndex'];
 };
-
-/**
- * 获取输入当前选中的渲染类型。
- * renderTypeList 表示可选类型，selectedTypeIndex 表示当前选择；历史数据缺少 index 时回退到第 0 项。
- */
-export const getSelectedInputRenderType = (input: InputRenderTypeState) =>
-  input.renderTypeList?.[input.selectedTypeIndex ?? 0];
 
 /**
  * 判断工具入参当前最终类型是否为 Agent 生成。
@@ -64,7 +61,7 @@ export const canInputBeAgentGenerated = (
 
 /**
  * 从模型返回的参数中只保留当前协议允许 Agent 生成的字段。
- * 运行时必须以用户最终选择的 selectedTypeIndex 为准，避免模型覆盖开发者手动配置的参数。
+ * 运行时必须以用户最终选择的 selectedType 为准，避免模型覆盖开发者手动配置的参数。
  */
 export const filterAgentGeneratedToolParams = ({
   params = {},
@@ -87,22 +84,33 @@ export const filterAgentGeneratedToolParams = ({
 };
 
 /**
- * 工具首次加入工作流/Agent 时，将默认输入方式固化为 selectedTypeIndex。
+ * 工具首次加入工作流/Agent 时，将默认输入方式固化为 selectedType。
  * isToolParam 是插件/schema 声明的默认输入方式；toolDescription 只作为模型参数描述。
  */
 export const initToolInputTypeByDefaultMode = <T extends FlowNodeInputItemType>(input: T): T => {
-  if (isAgentGeneratedToolInput(input)) return input;
+  const selectedType = getSelectedInputRenderType(input);
+  const inputWithSelectedType = (
+    selectedType
+      ? {
+          ...input,
+          selectedType
+        }
+      : input
+  ) as T;
+
+  if (isAgentGeneratedToolInput(inputWithSelectedType)) return inputWithSelectedType;
 
   if (
-    input.isToolParam !== true ||
-    !canInputBeAgentGenerated(input) ||
-    input.renderTypeList.includes(FlowNodeInputTypeEnum.agentGenerated)
+    inputWithSelectedType.isToolParam !== true ||
+    !canInputBeAgentGenerated(inputWithSelectedType) ||
+    inputWithSelectedType.renderTypeList.includes(FlowNodeInputTypeEnum.agentGenerated)
   ) {
-    return input;
+    return inputWithSelectedType;
   }
 
   return {
-    ...input,
+    ...inputWithSelectedType,
+    selectedType: FlowNodeInputTypeEnum.agentGenerated,
     selectedTypeIndex: 0,
     renderTypeList: [
       FlowNodeInputTypeEnum.agentGenerated,

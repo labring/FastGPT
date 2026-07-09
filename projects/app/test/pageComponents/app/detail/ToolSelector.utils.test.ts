@@ -42,6 +42,7 @@ describe('ToolSelector utils', () => {
           value: 'manual value',
           valueDesc: 'manual desc',
           renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
+          selectedType: FlowNodeInputTypeEnum.input,
           selectedTypeIndex: 0,
           toolDescription: 'source description',
           isToolParam: false
@@ -56,6 +57,7 @@ describe('ToolSelector utils', () => {
         value: 'manual value',
         valueDesc: 'manual desc',
         renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
+        selectedType: FlowNodeInputTypeEnum.input,
         selectedTypeIndex: 0,
         toolDescription: 'source description',
         isToolParam: false,

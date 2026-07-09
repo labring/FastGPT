@@ -15,6 +15,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
 import { canInputBeAgentGenerated } from '@fastgpt/global/core/app/formEdit/utils';
+import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
 
 type Props = {
   nodeId: string;
@@ -28,8 +29,7 @@ const InputLabel = ({ nodeId, input, RightComponent, isTool }: Props) => {
 
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
-  const { description, required, label, selectedTypeIndex, renderTypeList, valueType, valueDesc } =
-    input;
+  const { description, required, label, renderTypeList, valueType, valueDesc } = input;
 
   const onChangeRenderType = useCallback(
     (e: string) => {
@@ -51,7 +51,8 @@ const InputLabel = ({ nodeId, input, RightComponent, isTool }: Props) => {
     },
     [input, nodeId, onChangeNode, renderTypeList]
   );
-  const renderType = renderTypeList?.[selectedTypeIndex || 0];
+  const renderType =
+    getSelectedInputRenderType(input) ?? renderTypeList?.[0] ?? FlowNodeInputTypeEnum.input;
   const displayRenderTypeList =
     isTool &&
     canInputBeAgentGenerated(input) &&

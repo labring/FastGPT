@@ -1,5 +1,6 @@
 import z from 'zod';
 import { NodeToolConfigTypeSchema } from '../../workflow/type/node';
+import { FlowNodeInputItemTypeSchema } from '../../workflow/type/io';
 import {
   AgentSkillSourceEnum,
   AgentSkillCategoryEnum,
@@ -174,10 +175,21 @@ export const SandboxInstanceSchema = z.object({
 });
 export type SandboxInstanceSchemaType = z.infer<typeof SandboxInstanceSchema>;
 
+export const SkillToolInputConfigSchema = FlowNodeInputItemTypeSchema.pick({
+  key: true,
+  renderTypeList: true,
+  selectedType: true,
+  selectedTypeIndex: true,
+  isToolParam: true,
+  toolDescription: true
+});
+export type SkillToolInputConfigType = z.infer<typeof SkillToolInputConfigSchema>;
+
 export const SkillToolSchema = z.object({
   id: z.string(),
   source: z.string().optional(),
   toolConfig: NodeToolConfigTypeSchema.optional(),
+  inputs: z.array(SkillToolInputConfigSchema).optional(),
   config: z.record(z.string(), z.any())
 });
 export type SkillToolType = z.infer<typeof SkillToolSchema>;

@@ -37,6 +37,7 @@ import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import {
   canInputBeAgentGenerated,
+  getSelectedInputRenderType,
   getToolConfigStatus,
   isAgentGeneratedToolInput,
   isToolInputValueConfigured
@@ -103,6 +104,7 @@ const buildConfigInputTypeState = ({
 
   return {
     renderTypeList,
+    selectedType: selectedRenderType,
     selectedTypeIndex: selectedTypeIndex >= 0 ? selectedTypeIndex : 0
   };
 };
@@ -110,10 +112,21 @@ const buildConfigInputTypeState = ({
 const normalizeInputSelectedTypeIndex = <T extends FlowNodeTemplateType['inputs'][number]>(
   input: T
 ): T => {
-  if (input.selectedTypeIndex === undefined || input.selectedTypeIndex >= 0) return input;
+  const selectedType = input.selectedType ?? getSelectedInputRenderType(input);
+  const normalizedInput = (
+    selectedType
+      ? {
+          ...input,
+          selectedType
+        }
+      : input
+  ) as T;
+
+  if (normalizedInput.selectedTypeIndex === undefined || normalizedInput.selectedTypeIndex >= 0)
+    return normalizedInput;
 
   return {
-    ...input,
+    ...normalizedInput,
     selectedTypeIndex: undefined
   };
 };
