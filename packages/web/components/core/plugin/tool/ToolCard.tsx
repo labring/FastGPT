@@ -7,6 +7,7 @@ import MyIcon from '../../../common/Icon';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
 import DebugToolTag from './DebugToolTag';
+import { normalizeToolCardTags } from './utils';
 
 const marketplaceOfficialSource = 'official';
 
@@ -62,7 +63,8 @@ const ToolCard = ({
 }) => {
   const { t, i18n } = useTranslation();
   const tagsContainerRef = useRef<HTMLDivElement>(null);
-  const [visibleTagsCount, setVisibleTagsCount] = useState(item.tags?.length || 0);
+  const displayTags = useMemo(() => normalizeToolCardTags(item.tags), [item.tags]);
+  const [visibleTagsCount, setVisibleTagsCount] = useState(displayTags.length);
   const isMarketplaceVariant = variant === 'marketplace';
   const showOfficialBadge =
     isMarketplaceVariant && (!item.source || item.source === marketplaceOfficialSource);
@@ -70,9 +72,16 @@ const ToolCard = ({
     isMarketplaceVariant && mode === 'admin' && item.installed && !showActionButton;
 
   useEffect(() => {
+    if (displayTags.length === 0) {
+      setVisibleTagsCount(0);
+      return;
+    }
+
+    setVisibleTagsCount(displayTags.length);
+
     const calculate = () => {
       const container = tagsContainerRef.current;
-      if (!container || !item.tags?.length) return;
+      if (!container) return;
 
       const containerWidth = container.offsetWidth;
       const tagElements = container.querySelectorAll('[data-tag-item]');
@@ -99,7 +108,7 @@ const ToolCard = ({
       clearTimeout(timer);
       observer.disconnect();
     };
-  }, [item.tags]);
+  }, [displayTags]);
 
   const statusLabel = useMemo(() => {
     if (mode === 'marketplace') return null;
@@ -305,7 +314,7 @@ const ToolCard = ({
         overflow={'hidden'}
         ref={tagsContainerRef}
       >
-        {item.tags?.slice(0, visibleTagsCount).map((tag) => {
+        {displayTags.slice(0, visibleTagsCount).map((tag) => {
           return (
             <Box
               key={tag}
@@ -325,7 +334,7 @@ const ToolCard = ({
             </Box>
           );
         })}
-        {item.tags && item.tags.length > visibleTagsCount && (
+        {displayTags.length > visibleTagsCount && (
           <Box
             px={isMarketplaceVariant ? '9px' : 2}
             py={isMarketplaceVariant ? '5px' : 1}
@@ -338,7 +347,7 @@ const ToolCard = ({
             color={isMarketplaceVariant ? '#383F50' : 'myGray.700'}
             flexShrink={0}
           >
-            +{item.tags.length - visibleTagsCount}
+            +{displayTags.length - visibleTagsCount}
           </Box>
         )}
       </Flex>
