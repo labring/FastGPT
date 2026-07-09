@@ -4,7 +4,7 @@
 
 - 任务前缀：`s3-refactor`
 - 文档文件名：`pr-split-plan.md`
-- 更新时间：2026-07-03
+- 更新时间：2026-07-09
 - 关联设计索引：`refactor-shortlink-upload-policy-chatbox-abort.md`
 - PR 1 设计：`shortlink-access-token.md`
 - PR 2 设计：`upload-policy-validation.md`
@@ -277,11 +277,12 @@ pnpm test projects/app/test/pages/api/core/chat/file/presignChatFilePostUrl.test
 
 ### 5.2 In Scope
 
-1. 文件项增加稳定 `uploadId`。
-2. `useFileUpload` 用 `uploadId` 管理 task map 和 AbortController。
-3. `FilePreview` 删除从 index 改为 uploadId。
+1. 新选择的文件增加稳定 `uploadId`，历史文件用 `uploadId ?? id` 兼容定位。
+2. `useFileUpload` 用 `uploadId` 管理 task map、AbortController 和写回 guard。
+3. `FilePreview` 删除从排序后的 index 改为按文件身份回调。
 4. `putFileToS3` 支持 `AbortSignal`。
 5. Chat 文件预签 API wrapper 支持传 cancel config。
+6. 主输入框和用户消息编辑态都接入同一套取消逻辑。
 
 ### 5.3 Out of Scope
 
@@ -293,42 +294,48 @@ pnpm test projects/app/test/pages/api/core/chat/file/presignChatFilePostUrl.test
 
 | 文件 | 类型 | 职责 |
 |---|---|---|
-| `projects/app/src/components/core/chat/ChatContainer/ChatBox/type.ts` | 修改 | `UserInputFileItemType` 增加 `uploadId` |
-| `projects/app/src/components/core/chat/ChatContainer/ChatBox/utils/uploadTask.ts` | 新增 | 上传任务纯函数 |
-| `projects/app/src/components/core/chat/ChatContainer/ChatBox/hooks/useFileUpload.tsx` | 修改 | upload task map、cancel、按 uploadId 写回 |
-| `projects/app/src/components/core/chat/ChatContainer/components/FilePreview.tsx` | 修改 | `onRemoveFile(uploadId)` |
-| `projects/app/src/components/core/chat/ChatContainer/ChatBox/Input/ChatInput.tsx` | 修改 | 传入 `cancelUploadFile` |
+| `projects/app/src/components/core/chat/ChatContainer/ChatBox/type.ts` | 修改 | `UserInputFileItemType` 增加可选 `uploadId` |
+| `projects/app/src/components/core/chat/ChatContainer/ChatBox/utils/uploadTask.ts` | 新增 | 上传任务 ID、定位、写回判断、abort 错误识别 |
+| `projects/app/src/components/core/chat/ChatContainer/ChatBox/hooks/useFileUpload.tsx` | 修改 | task map、cancel、按 uploadId 写回、卸载清理 |
+| `projects/app/src/components/core/chat/ChatContainer/components/FilePreview.tsx` | 修改 | 删除回调从 index 改为 file/effective upload id |
+| `projects/app/src/components/core/chat/ChatContainer/ChatBox/Input/ChatInput.tsx` | 修改 | 使用 `cancelUploadFile` 和 `clearFiles` |
+| `projects/app/src/components/core/chat/ChatContainer/ChatBox/components/HumanChatBubble/EditForm.tsx` | 修改 | 使用 `cancelUploadFile` |
 | `packages/web/common/file/utils.ts` | 修改 | `putFileToS3` 支持 `signal` |
 | `projects/app/src/web/common/file/api.ts` | 修改 | `getUploadChatFilePresignedUrl(params, config?)` |
+| `projects/app/test/components/core/chat/ChatContainer/ChatBox/uploadTask.test.ts` | 新增 | 上传任务纯函数测试 |
 
 ### 5.5 核心函数
 
 | 函数 | 文件 | 职责 |
 |---|---|---|
 | `createUploadId()` | `utils/uploadTask.ts` | 生成本地上传任务 ID |
+| `getFileUploadId(file)` | `utils/uploadTask.ts` | 返回 `file.uploadId ?? file.id`，兼容旧文件 |
 | `findFileIndexByUploadId(files, uploadId)` | `utils/uploadTask.ts` | 定位 field array index |
 | `canApplyUploadResult({ files, uploadId, canceled })` | `utils/uploadTask.ts` | 判断异步结果是否可写回 |
 | `isUploadAbortError(error)` | `utils/uploadTask.ts` | 识别取消错误 |
 | `registerUploadTask(uploadId)` | `useFileUpload.tsx` 局部函数 | 创建 AbortController |
 | `cancelUploadTask(uploadId)` | `useFileUpload.tsx` 局部函数 | 标记 canceled 并 abort |
 | `updateFileByUploadId(uploadId, patch)` | `useFileUpload.tsx` 局部函数 | 安全更新文件项 |
+| `clearFiles()` | `useFileUpload.tsx` 导出给 UI | 取消所有未完成任务并清空文件列表 |
 | `cancelUploadFile(uploadId)` | `useFileUpload.tsx` 导出给 UI | 取消请求并移除占位 |
 
 ### 5.6 Tasks
 
-- [ ] PR3-T1 `UserInputFileItemType` 增加 `uploadId`。
-- [ ] PR3-T2 新增 `utils/uploadTask.ts`，实现 uploadId 定位、写回判断、abort 错误识别。
-- [ ] PR3-T3 选择文件时生成 `uploadId`。
-- [ ] PR3-T4 `useFileUpload` 增加 upload task map。
-- [ ] PR3-T5 `useFileUpload` 增加 `cancelUploadFile(uploadId)`。
-- [ ] PR3-T6 `getUploadChatFilePresignedUrl` 支持 cancel config。
-- [ ] PR3-T7 `putFileToS3` 支持 `AbortSignal`。
-- [ ] PR3-T8 上传进度和完成回调改为按 `uploadId` 查找当前文件。
-- [ ] PR3-T9 取消后的 promise resolve/reject 不 toast、不写回。
-- [ ] PR3-T10 `FilePreview` 改为 `onRemoveFile(uploadId)`。
-- [ ] PR3-T11 `ChatInput` 传入 `cancelUploadFile`。
-- [ ] PR3-T12 补充上传任务纯函数测试。
-- [ ] PR3-T13 运行 PR3 局部测试并手测 ChatBox。
+- [x] PR3-T1 `UserInputFileItemType` 增加可选 `uploadId`。
+- [x] PR3-T2 新增 `utils/uploadTask.ts`，实现 uploadId 生成、兼容定位、写回判断、abort 错误识别。
+- [x] PR3-T3 选择文件时生成 `uploadId`。
+- [x] PR3-T4 `useFileUpload` 增加 upload task map 和 fileList ref。
+- [x] PR3-T5 `useFileUpload` 移除批量旧闭包 `replaceFiles(fileList.map(...))`，改为按 `uploadId` 单项更新。
+- [x] PR3-T6 `useFileUpload` 增加 `cancelUploadFile(uploadId)` 和 `clearFiles()`。
+- [x] PR3-T7 `getUploadChatFilePresignedUrl` 支持 cancel config。
+- [x] PR3-T8 `putFileToS3` 支持 `AbortSignal`，abort 错误不进入 S3 错误翻译。
+- [x] PR3-T9 上传进度、成功、失败回调改为按 `uploadId` 查找当前文件。
+- [x] PR3-T10 取消后的 promise resolve/reject 不 toast、不写回。
+- [x] PR3-T11 `FilePreview` 改为 `onRemoveFile(file)`，React key 改为稳定 ID。
+- [x] PR3-T12 `ChatInput` 使用 `cancelUploadFile` 和 `clearFiles`。
+- [x] PR3-T13 `HumanChatBubble/EditForm` 使用 `cancelUploadFile`。
+- [x] PR3-T14 补充上传任务纯函数测试。
+- [ ] PR3-T15 运行 PR3 局部测试并手测 ChatBox。
 
 ### 5.7 测试
 

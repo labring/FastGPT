@@ -13,11 +13,13 @@ import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workf
 
 export type UserInputFileItemType = {
   id: string;
+  /** 本地上传任务 ID，只用于前端取消、进度写回和删除定位。历史消息可能没有该字段。 */
+  uploadId?: string;
   rawFile?: File;
   type: `${ChatFileTypeEnum}`;
   name: string;
   icon: string; // img is base64
-  status: 0 | 1; // 0: uploading, 1: success
+  status: 0 | 1; // 0: 待上传，1: 上传中或已成功；是否成功以 url 为准
   url?: string;
   key?: string; // S3 key for the file
   process?: number;

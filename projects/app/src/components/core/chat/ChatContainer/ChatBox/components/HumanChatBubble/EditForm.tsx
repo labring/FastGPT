@@ -11,6 +11,7 @@ import { WorkflowRuntimeContext } from '../../../context/workflowRuntimeContext'
 import { ChatBoxContext } from '../../Provider';
 import type { ChatBoxInputFormType, ChatBoxInputType, UserInputFileItemType } from '../../type';
 import { useFileUpload } from '../../hooks/useFileUpload';
+import { getFileUploadId } from '../../utils/uploadTask';
 
 const textareaLineHeight = 24;
 const textareaVisibleRows = 4;
@@ -70,7 +71,7 @@ const HumanChatBubbleEditForm = ({
     showSelectVideo,
     showSelectAudio,
     showSelectCustomFileExtension,
-    removeFiles,
+    cancelUploadFile,
     hasFileUploading
   } = useFileUpload({
     fileSelectConfig,
@@ -122,7 +123,10 @@ const HumanChatBubbleEditForm = ({
         overflow={'hidden'}
       >
         <Box px={'12px'}>
-          <FilePreview fileList={fileList} removeFiles={removeFiles} />
+          <FilePreview
+            fileList={fileList}
+            onRemoveFile={(file) => cancelUploadFile(getFileUploadId(file))}
+          />
         </Box>
         <Textarea
           ref={textareaRef}

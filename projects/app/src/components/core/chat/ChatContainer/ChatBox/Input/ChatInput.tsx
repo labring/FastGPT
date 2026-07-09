@@ -22,6 +22,7 @@ import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
 import { documentFileType } from '@fastgpt/global/common/file/constants';
 import FilePreview from '../../components/FilePreview';
 import { useFileUpload } from '../hooks/useFileUpload';
+import { getFileUploadId } from '../utils/uploadTask';
 import ComplianceTip from '@/components/common/ComplianceTip/index';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import VoiceInput, { type VoiceInputComponentRef } from './VoiceInput';
@@ -134,8 +135,8 @@ const ChatInput = ({
     showSelectVideo,
     showSelectAudio,
     showSelectCustomFileExtension,
-    removeFiles,
-    replaceFiles,
+    cancelUploadFile,
+    clearFiles,
     hasFileUploading
   } = useFileUpload({
     fileSelectConfig,
@@ -179,9 +180,9 @@ const ChatInput = ({
         interactive: lastInteractive,
         clearInput: true
       });
-      replaceFiles([]);
+      clearFiles();
     },
-    [inputValue, lastInteractive, canSendMessage, fileList, onSendMessage, replaceFiles]
+    [inputValue, lastInteractive, canSendMessage, fileList, onSendMessage, clearFiles]
   );
   const { runAsync: handleStop, loading: isStopping } = useRequest(async () => {
     try {
@@ -347,7 +348,6 @@ const ChatInput = ({
       appNamePlaceholderParts.suffix,
       placeholderAppName,
       isPc,
-      t,
       inputValue,
       onFocus,
       offFocus,
@@ -568,7 +568,11 @@ const ChatInput = ({
           {/* file preview */}
           {(!mobilePreSpeak || isPc || inputValue) && (
             <Box>
-              <FilePreview fileList={fileList} removeFiles={removeFiles} pt={0} />
+              <FilePreview
+                fileList={fileList}
+                onRemoveFile={(file) => cancelUploadFile(getFileUploadId(file))}
+                pt={0}
+              />
             </Box>
           )}
 
@@ -583,7 +587,7 @@ const ChatInput = ({
                   autoTTSResponse,
                   clearInput: true
                 });
-                replaceFiles([]);
+                clearFiles();
               }}
               resetInputVal={(val) => {
                 setMobilePreSpeak(false);

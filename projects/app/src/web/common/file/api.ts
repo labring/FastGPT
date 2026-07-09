@@ -1,4 +1,4 @@
-import { POST, PUT } from '@/web/common/api/request';
+import { POST } from '@/web/common/api/request';
 import type {
   PresignChatFileGetUrlParams,
   PresignChatFilePostUrlParams
@@ -12,8 +12,15 @@ export const getUploadAvatarPresignedUrl = (params: {
   return POST<CreatePostPresignedUrlResponseType>('/common/file/presignAvatarPostUrl', params);
 };
 
-export const getUploadChatFilePresignedUrl = (params: PresignChatFilePostUrlParams) => {
-  return POST<CreatePostPresignedUrlResponseType>('/core/chat/file/presignChatFilePostUrl', params);
+export const getUploadChatFilePresignedUrl = (
+  params: PresignChatFilePostUrlParams,
+  config?: Parameters<typeof POST>[2]
+) => {
+  return POST<CreatePostPresignedUrlResponseType>(
+    '/core/chat/file/presignChatFilePostUrl',
+    params,
+    config
+  );
 };
 
 export const getPresignedChatFileGetUrl = (params: PresignChatFileGetUrlParams) => {
