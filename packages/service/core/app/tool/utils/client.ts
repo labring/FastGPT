@@ -355,6 +355,7 @@ export async function getClientToolPreviewNode({
           avatar: item.avatar,
           id: appId,
           name: tool.name,
+          intro: tool.description,
           templateType: FlowNodeTemplateTypeEnum.tools,
           workflow: {
             nodes: [
