@@ -1069,6 +1069,39 @@ it(`Test splitText2Chunks 15 - token mode should not append table header only ch
   expect(chunks.join('\n')).toContain('𠮷');
 });
 
+it(`Test splitText2Chunks 15.1 - should not create markdown table header-only chunk`, () => {
+  const { chunks, chars } = splitText2Chunks({
+    text: `| id | payload | note |
+| --- | --- | --- |`,
+    chunkSize: 40,
+    maxSize: 200,
+    overlapRatio: 0
+  });
+
+  expect(chunks).toEqual([]);
+  expect(chars).toBe(0);
+});
+
+it(`Test splitText2Chunks 15.2 - char mode should not append table header only chunk`, () => {
+  const header = `| id | payload |
+| --- | --- |
+`;
+  const text = `${header}| 1 | ${'a'.repeat(80)} |
+| 2 | normal |
+`;
+
+  const { chunks } = splitText2Chunks({
+    text,
+    chunkSize: header.length + 20,
+    maxSize: 200,
+    overlapRatio: 0
+  });
+
+  expect(chunks.length).toBeGreaterThan(0);
+  expect(chunks).not.toContain('| id | payload |\n| --- | --- |');
+  expect(chunks.join('\n')).toContain('| 1 |');
+});
+
 it(`Test splitText2Chunks 16 - token mode table chunks should include header within limit`, () => {
   const header = `| id | payload |
 | --- | --- |

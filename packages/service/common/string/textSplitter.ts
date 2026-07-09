@@ -240,6 +240,12 @@ ${mdSplitString}
 `;
   let chunk = defaultChunk;
 
+  // 只有表头和分隔行，没有数据行的 markdown table 不生成分块。
+  // 这种 chunk 没有可检索内容，继续入库只会生成空语义索引。
+  if (splitText2Lines.length === 2) {
+    return { chunks: [], chars: 0 };
+  }
+
   /**
    * token 模式下表格行拆分后还要补回表头；这里按“表头 + 内容”的最终文本
    * 做二分兜底，避免只按行内容拆分后，拼回表头又超过 embedding 上限。
@@ -316,7 +322,9 @@ ${mdSplitString}
           text: chunk.replace(defaultChunk, '').trim()
         }).chunks;
         chunks.push(...newChunks);
-      } else {
+      } else if (chunk !== defaultChunk) {
+        // 第一条表格数据行就超过 chunkSize 时，chunk 仍然只有表头。
+        // 这时不能先推出 header-only chunk，否则会生成没有可检索内容的分块。
         chunks.push(chunk);
       }
 

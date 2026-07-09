@@ -78,12 +78,12 @@ const PreviewData = () => {
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
-      <Flex flex={'1 0 0'} border={'base'} borderRadius={'md'}>
-        <Flex flexDirection={'column'} flex={'1 0 0'} borderRight={'base'}>
+      <Flex flex={'1 0 0'} minW={0} overflow={'hidden'} border={'base'} borderRadius={'md'}>
+        <Flex flexDirection={'column'} flex={'0 0 50%'} maxW={'50%'} minW={0} borderRight={'base'}>
           <FormLabel fontSize={'md'} py={4} px={5} borderBottom={'base'}>
             {t('dataset:file_list')}
           </FormLabel>
-          <Box flex={'1 0 0'} overflowY={'auto'} px={5} py={3}>
+          <Box flex={'1 0 0'} minW={0} overflowY={'auto'} px={5} py={3}>
             {sources.map((source) => (
               <HStack
                 key={source.id}
@@ -114,22 +114,22 @@ const PreviewData = () => {
                 }}
               >
                 <MyIcon name={source.icon as any} w={'1.25rem'} />
-                <Box ml={1} flex={'1 0 0'} wordBreak={'break-all'} fontSize={'sm'}>
+                <Box ml={1} flex={'1 1 0'} minW={0} wordBreak={'break-all'} fontSize={'sm'}>
                   {source.sourceName}
                 </Box>
               </HStack>
             ))}
           </Box>
         </Flex>
-        <Flex flexDirection={'column'} flex={'1 0 0'}>
+        <Flex flexDirection={'column'} flex={'0 0 50%'} maxW={'50%'} minW={0}>
           <Flex py={4} px={5} borderBottom={'base'} justifyContent={'space-between'}>
             <FormLabel fontSize={'md'}>{t('dataset:preview_chunk')}</FormLabel>
             <Box fontSize={'xs'} color={'myGray.500'}>
               {t('dataset:preview_chunk_intro', { total: data.total })}
             </Box>
           </Flex>
-          <MyBox isLoading={isLoading} flex={'1 0 0'} h={0}>
-            <Box h={'100%'} overflowY={'auto'} px={5} py={3}>
+          <MyBox isLoading={isLoading} flex={'1 0 0'} h={0} minW={0}>
+            <Box h={'100%'} minW={0} overflowY={'auto'} overflowX={'auto'} px={5} py={3}>
               {previewFile ? (
                 <>
                   {data.chunks.map((item, index) => (
