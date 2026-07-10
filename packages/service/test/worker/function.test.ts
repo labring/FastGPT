@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { WorkerNameEnum } from '@fastgpt/service/worker/utils';
+import { countPromptTokensInWorker } from '@fastgpt/service/worker/countGptMessagesTokens/count';
 
 // hoisted: 这些 mock 必须在 vi.mock 工厂里可见
 const { mockRun, mockGetWorkerController, mockRunWorker, mockUploadImage2S3Bucket, mockEnv } =
@@ -81,6 +82,79 @@ describe('worker/function', () => {
     it('空文本返回空 chunks 列表', async () => {
       const result = await text2Chunks({ text: '', chunkSize: 100, maxSize: 200 });
       expect(result.chunks).toEqual([]);
+    });
+
+    it('test 环境下 token 模式按 token 上限切分文本', async () => {
+      const text = '𠮷'.repeat(8);
+
+      const result = await text2Chunks({
+        text,
+        chunkSize: 12,
+        maxSize: 12,
+        lengthUnit: 'token'
+      });
+
+      expect(result.chunks.length).toBeGreaterThan(1);
+      expect(result.chunks.every((chunk) => countPromptTokensInWorker(chunk) <= 12)).toBe(true);
+      expect(result.chunks.join('')).toBe(text);
+      expect(mockRunWorker).not.toHaveBeenCalled();
+      expect(mockGetWorkerController).not.toHaveBeenCalled();
+    });
+
+    it('test 环境下 token 模式长文本兜底分割仍不超过 maxSize', async () => {
+      const text = '𠮷'.repeat(400);
+      const chunkSize = 96;
+
+      const result = await text2Chunks({
+        text,
+        chunkSize,
+        maxSize: chunkSize,
+        overlapRatio: 0,
+        lengthUnit: 'token'
+      });
+
+      expect(countPromptTokensInWorker(text)).toBeGreaterThan(chunkSize * 10);
+      expect(result.chunks.length).toBeGreaterThan(10);
+      expect(result.chunks.every((chunk) => countPromptTokensInWorker(chunk) <= chunkSize)).toBe(
+        true
+      );
+      expect(result.chunks.join('')).toBe(text);
+      expect(mockRunWorker).not.toHaveBeenCalled();
+      expect(mockGetWorkerController).not.toHaveBeenCalled();
+    });
+
+    it('token 模式无法放入单个字符时直接报错', async () => {
+      await expect(
+        text2Chunks({
+          text: '𠮷',
+          chunkSize: 1,
+          maxSize: 1,
+          lengthUnit: 'token'
+        })
+      ).rejects.toThrow('Text contains a character that exceeds the token length limit');
+      expect(mockRunWorker).not.toHaveBeenCalled();
+      expect(mockGetWorkerController).not.toHaveBeenCalled();
+    });
+
+    it('token 模式拆分 markdown 表格时每个最终分块都包含表头且不超过上限', async () => {
+      const header = `| id | payload |
+| --- | --- |
+`;
+      const text = `${header}| 1 | ${'𠮷'.repeat(20)} |
+`;
+      const result = await text2Chunks({
+        text,
+        chunkSize: 28,
+        maxSize: 28,
+        lengthUnit: 'token'
+      });
+
+      expect(result.chunks.length).toBeGreaterThan(1);
+      expect(result.chunks.every((chunk) => chunk.startsWith(header))).toBe(true);
+      expect(result.chunks.every((chunk) => countPromptTokensInWorker(chunk) <= 28)).toBe(true);
+      expect(result.chunks.join('\n')).toContain('𠮷');
+      expect(mockRunWorker).not.toHaveBeenCalled();
+      expect(mockGetWorkerController).not.toHaveBeenCalled();
     });
   });
 

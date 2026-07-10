@@ -22,6 +22,7 @@ import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { uniqueDatasetDataMarkdownImageUrls } from '@fastgpt/service/core/dataset/data/utils';
 import { isDatasetDataSystemIndexType } from '@fastgpt/global/core/dataset/data/utils';
+import { minChunkSize } from '@fastgpt/global/core/dataset/training/utils';
 
 export type DatasetDataIndexDraft = Omit<DatasetDataIndexItemType, 'dataId'> & {
   dataId?: string;
@@ -62,6 +63,88 @@ const formatIndexTextWithPrefix = (text: string, indexPrefix?: string) => {
     return `${indexPrefix}\n${text}`;
   }
   return text;
+};
+
+/**
+ * 按 embedding token 预算拆分索引正文，并给每个最终 chunk 补上集合前缀。
+ *
+ * 这个 helper 总是走 text2Chunks，避免绕过索引分块的文本规范化；调用方通过
+ * `indexSize` 控制期望索引粒度，通过 `maxToken` 控制 embedding provider 硬上限。
+ * indexSize 下限沿用知识库分块最小值，避免 prefix 挤压后传入过小 token 预算。
+ */
+const splitIndexTextByTokenLimit = async ({
+  text,
+  indexSize,
+  maxToken,
+  indexPrefix
+}: {
+  text: string;
+  indexSize: number;
+  maxToken: number;
+  indexPrefix?: string;
+}) => {
+  const trimmedText = text.trim();
+  if (!trimmedText) return [];
+
+  const prefixTokens = indexPrefix ? await countPromptTokens(`${indexPrefix}\n`) : 0;
+  const maxContentTokens = maxToken - prefixTokens;
+
+  if (maxContentTokens <= 0) {
+    throw new Error('Dataset index prefix is too long for embedding token limit');
+  }
+  if (maxContentTokens < minChunkSize) {
+    throw new Error('Dataset index content token budget is smaller than minimum chunk size');
+  }
+  const normalizedIndexSize = Math.max(indexSize, minChunkSize);
+  const chunkTokenLimit = Math.min(normalizedIndexSize, maxContentTokens);
+
+  // 入库索引和 query 不一样：这里允许一条 index 拆成多条，以尽量保留原始内容。
+  // 每条最终文本都会拼上 indexPrefix，所以正文预算必须先扣掉前缀 token。
+  const chunks = (
+    await text2Chunks({
+      text: trimmedText,
+      chunkSize: chunkTokenLimit,
+      maxSize: chunkTokenLimit,
+      lengthUnit: 'token'
+    })
+  ).chunks;
+
+  return chunks
+    .map((chunk) => formatIndexTextWithPrefix(chunk, indexPrefix))
+    .filter((item) => item.trim());
+};
+
+/**
+ * 构建最终可写入 embedding 的索引文本。
+ *
+ * 默认保持旧语义：未超过 embedding 上限的既有索引不强行重分块，避免无谓重建向量。
+ * 超过上限时再按 `min(max(indexSize, 64), maxToken - prefixTokens)` 做 token-safe 二次拆分。
+ */
+const buildEmbeddingSafeIndexTexts = async ({
+  text,
+  indexSize,
+  maxToken,
+  indexPrefix
+}: {
+  text: string;
+  indexSize: number;
+  maxToken: number;
+  indexPrefix?: string;
+}) => {
+  const trimmedText = text.trim();
+  if (!trimmedText) return [];
+
+  const formattedText = formatIndexTextWithPrefix(text, indexPrefix);
+  if ((await countPromptTokens(formattedText)) <= maxToken) {
+    return [formattedText];
+  }
+
+  return splitIndexTextByTokenLimit({
+    text: trimmedText,
+    indexSize,
+    maxToken,
+    indexPrefix
+  });
 };
 
 const isImageEmbeddingIndex = (index: DatasetDataIndexDraft) =>
@@ -160,30 +243,28 @@ export class DatasetDataIndexOperation {
     maxIndexSize?: number;
     indexPrefix?: string;
   }) {
-    const qChunks = (
-      await text2Chunks({
-        text: q,
-        chunkSize: indexSize,
-        maxSize: maxIndexSize ?? this.maxToken
-      })
-    ).chunks;
-    const aChunks = a
-      ? (
-          await text2Chunks({
-            text: a,
-            chunkSize: indexSize,
-            maxSize: maxIndexSize ?? this.maxToken
-          })
-        ).chunks
+    const qIndexTexts = await splitIndexTextByTokenLimit({
+      text: q,
+      indexSize,
+      maxToken: maxIndexSize ?? this.maxToken,
+      indexPrefix
+    });
+    const aIndexTexts = a
+      ? await splitIndexTextByTokenLimit({
+          text: a,
+          indexSize,
+          maxToken: maxIndexSize ?? this.maxToken,
+          indexPrefix
+        })
       : [];
 
     return [
-      ...qChunks.map((text) => ({
-        text: formatIndexTextWithPrefix(text, indexPrefix),
+      ...qIndexTexts.map((text) => ({
+        text,
         type: DatasetDataIndexTypeEnum.default
       })),
-      ...aChunks.map((text) => ({
-        text: formatIndexTextWithPrefix(text, indexPrefix),
+      ...aIndexTexts.map((text) => ({
+        text,
         type: DatasetDataIndexTypeEnum.default
       })),
       ...this.getImageEmbeddingSources({
@@ -284,17 +365,21 @@ export class DatasetDataIndexOperation {
           if (item.type === DatasetDataIndexTypeEnum.imageEmbedding) {
             return item;
           }
+          // 系统文本索引刚由 getSystemIndexes 按最终 prefix 和 token 上限生成，
+          // 这里直接复用，避免在同一入库请求内再次投递 token worker 计数。
+          if (isDatasetDataSystemIndexType(item.type)) {
+            return item;
+          }
 
-          const tokens = await countPromptTokens(item.text);
-          if (tokens > (maxIndexSize ?? this.maxToken)) {
-            const splitText = (
-              await text2Chunks({
-                text: item.text,
-                chunkSize: indexSize,
-                maxSize: maxIndexSize ?? this.maxToken
-              })
-            ).chunks;
-            return splitText.map((text) => ({
+          const indexTexts = await buildEmbeddingSafeIndexTexts({
+            text: item.text,
+            indexSize,
+            maxToken: maxIndexSize ?? this.maxToken,
+            indexPrefix: item.type === DatasetDataIndexTypeEnum.default ? indexPrefix : undefined
+          });
+
+          if (indexTexts.length > 1 || indexTexts[0] !== item.text) {
+            return indexTexts.map((text) => ({
               text,
               type: item.type
             }));
@@ -307,21 +392,7 @@ export class DatasetDataIndexOperation {
       .flat()
       .filter((item) => !!item.text.trim());
 
-    return indexPrefix
-      ? checkedIndexes.map((index) => {
-          // 自定义索引与图片向量索引不需要添加前缀
-          if (
-            index.type === DatasetDataIndexTypeEnum.custom ||
-            index.type === DatasetDataIndexTypeEnum.imageEmbedding
-          ) {
-            return index;
-          }
-          return {
-            ...index,
-            text: formatIndexTextWithPrefix(index.text, indexPrefix)
-          };
-        })
-      : checkedIndexes;
+    return checkedIndexes;
   }
 
   /**

@@ -1,8 +1,4 @@
-import {
-  splitText2Chunks,
-  type SplitProps,
-  type SplitResponse
-} from '@fastgpt/global/common/string/textSplitter';
+import type { SplitProps, SplitResponse } from '../common/string/textSplitter';
 import { getWorkerController, WorkerNameEnum } from './utils';
 import type { ReadFileResponse } from './readFile/type';
 import { isTestEnv } from '@fastgpt/global/common/system/constants';
@@ -11,9 +7,10 @@ import { uploadImage2S3Bucket } from '../common/s3/utils';
 import { normalizeMimeType, resolveMimeType } from '../common/s3/utils/mime';
 import path from 'node:path';
 
-export const text2Chunks = (props: SplitProps) => {
+export const text2Chunks = async (props: SplitProps) => {
   // Test env, not run worker
   if (isTestEnv) {
+    const { splitText2Chunks } = await import('../common/string/textSplitter');
     return splitText2Chunks(props);
   }
   return getWorkerController<SplitProps, SplitResponse>({

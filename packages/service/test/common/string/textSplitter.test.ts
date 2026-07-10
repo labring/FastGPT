@@ -1,5 +1,10 @@
 import { it, expect } from 'vitest'; // 必须显式导入
-import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
+import {
+  getMaxPrefixByLength,
+  getMaxSuffixByLength,
+  splitText2Chunks
+} from '@fastgpt/service/common/string/textSplitter';
+import { countPromptTokensInWorker } from '@fastgpt/service/worker/countGptMessagesTokens/count';
 import fs from 'fs';
 
 const simpleChunks = (chunks: string[]) => {
@@ -1041,4 +1046,223 @@ it(`Test splitText2Chunks 14 - lastText not lost when strategies exhausted`, () 
   chunks.forEach((chunk) => {
     expect(chunk.length).toBeGreaterThan(0);
   });
+});
+
+it(`Test splitText2Chunks 15 - token mode should not append table header only chunk`, () => {
+  const header = `| id | payload |
+| --- | --- |
+`;
+  const text = `${header}| 1 | ${'𠮷'.repeat(20)} |
+`;
+  const chunkSize = countPromptTokensInWorker(header) + 8;
+
+  const { chunks } = splitText2Chunks({
+    text,
+    chunkSize,
+    maxSize: chunkSize,
+    overlapRatio: 0,
+    lengthUnit: 'token'
+  });
+
+  expect(chunks.length).toBeGreaterThan(0);
+  expect(chunks).not.toContain('| id | payload |\n| --- | --- |');
+  expect(chunks.join('\n')).toContain('𠮷');
+});
+
+it(`Test splitText2Chunks 15.1 - should not create markdown table header-only chunk`, () => {
+  const { chunks, chars } = splitText2Chunks({
+    text: `| id | payload | note |
+| --- | --- | --- |`,
+    chunkSize: 40,
+    maxSize: 200,
+    overlapRatio: 0
+  });
+
+  expect(chunks).toEqual([]);
+  expect(chars).toBe(0);
+});
+
+it(`Test splitText2Chunks 15.2 - char mode should not append table header only chunk`, () => {
+  const header = `| id | payload |
+| --- | --- |
+`;
+  const text = `${header}| 1 | ${'a'.repeat(80)} |
+| 2 | normal |
+`;
+
+  const { chunks } = splitText2Chunks({
+    text,
+    chunkSize: header.length + 20,
+    maxSize: 200,
+    overlapRatio: 0
+  });
+
+  expect(chunks.length).toBeGreaterThan(0);
+  expect(chunks).not.toContain('| id | payload |\n| --- | --- |');
+  expect(chunks.join('\n')).toContain('| 1 |');
+});
+
+it(`Test splitText2Chunks 16 - token mode table chunks should include header within limit`, () => {
+  const header = `| id | payload |
+| --- | --- |
+`;
+  const text = `${header}| 1 | ${'a'.repeat(40)} |
+`;
+  const chunkSize = countPromptTokensInWorker(header) + 4;
+
+  const { chunks } = splitText2Chunks({
+    text,
+    chunkSize,
+    maxSize: chunkSize,
+    overlapRatio: 0,
+    lengthUnit: 'token'
+  });
+
+  expect(chunks.length).toBeGreaterThan(1);
+  expect(chunks.every((chunk) => chunk.includes('| id | payload |'))).toBe(true);
+  expect(chunks.every((chunk) => countPromptTokensInWorker(chunk) <= chunkSize)).toBe(true);
+});
+
+it(`Test splitText2Chunks 17 - token mode table should fail when header has no content budget`, () => {
+  const text = `| id | payload |
+| --- | --- |
+| 1 | a |
+`;
+
+  expect(() =>
+    splitText2Chunks({
+      text,
+      chunkSize: 5,
+      maxSize: 5,
+      overlapRatio: 0,
+      lengthUnit: 'token'
+    })
+  ).toThrow('Markdown table header exceeds token chunk size');
+});
+
+it(`Test getMaxPrefixByLength - returns the longest prefix within custom length limit`, () => {
+  const countLength = (text: string) => Array.from(text).length;
+
+  expect(
+    getMaxPrefixByLength({
+      text: 'A𠮷BC',
+      maxLength: 2,
+      countLength
+    })
+  ).toBe('A𠮷');
+
+  expect(
+    getMaxPrefixByLength({
+      text: 'A𠮷BC',
+      maxLength: 10,
+      countLength
+    })
+  ).toBe('A𠮷BC');
+});
+
+it(`Test getMaxPrefixByLength - returns empty when no code point fits`, () => {
+  const countLength = (text: string) => Array.from(text).length * 2;
+
+  expect(
+    getMaxPrefixByLength({
+      text: '𠮷',
+      maxLength: 1,
+      countLength
+    })
+  ).toBe('');
+});
+
+it(`Test getMaxSuffixByLength - returns the longest suffix within custom length limit`, () => {
+  const countLength = (text: string) => Array.from(text).length;
+
+  expect(
+    getMaxSuffixByLength({
+      text: 'AB𠮷C',
+      maxLength: 2,
+      countLength
+    })
+  ).toBe('𠮷C');
+
+  expect(
+    getMaxSuffixByLength({
+      text: 'AB𠮷C',
+      maxLength: 10,
+      countLength
+    })
+  ).toBe('AB𠮷C');
+});
+
+it(`Test getMaxSuffixByLength - returns empty when overlap budget is unavailable`, () => {
+  const countLength = (text: string) => Array.from(text).length;
+
+  expect(
+    getMaxSuffixByLength({
+      text: 'AB𠮷C',
+      maxLength: 0,
+      countLength
+    })
+  ).toBe('');
+});
+
+it(`Test getMaxPrefixByLength - does not tokenize the complete remainder for a small limit`, () => {
+  const measuredLengths: number[] = [];
+
+  const result = getMaxPrefixByLength({
+    text: 'a'.repeat(10_000),
+    maxLength: 10,
+    countLength: (text) => {
+      measuredLengths.push(text.length);
+      return text.length;
+    }
+  });
+
+  expect(result).toBe('a'.repeat(10));
+  expect(Math.max(...measuredLengths)).toBeLessThanOrEqual(20);
+});
+
+it.each(['|', 'prefix|', '|suffix', 'prefix||suffix'])(
+  'Test splitText2Chunks - rejects empty custom separators: %s',
+  (customReg) => {
+    expect(() =>
+      splitText2Chunks({
+        text: 'safe text',
+        chunkSize: 64,
+        customReg: [customReg]
+      })
+    ).toThrow('Custom split separators cannot be empty');
+  }
+);
+
+it('Test splitText2Chunks - rejects an overlap ratio that cannot advance', () => {
+  expect(() =>
+    splitText2Chunks({
+      text: 'a'.repeat(100),
+      chunkSize: 64,
+      maxSize: 64,
+      overlapRatio: 1
+    })
+  ).toThrow('Overlap ratio must be greater than or equal to 0 and less than 1');
+});
+
+it('Test splitText2Chunks - rejects work beyond the configured chunk limit', () => {
+  expect(() =>
+    splitText2Chunks({
+      text: 'a'.repeat(1_000),
+      chunkSize: 64,
+      maxSize: 64,
+      overlapRatio: 0,
+      maxChunks: 5
+    })
+  ).toThrow('Text split exceeds the maximum chunk count of 5');
+});
+
+it('Test splitText2Chunks - rejects high-frequency custom separators before splitting', () => {
+  expect(() =>
+    splitText2Chunks({
+      text: 'a'.repeat(100_000),
+      chunkSize: 64,
+      customReg: ['a'],
+      maxChunks: 5
+    })
+  ).toThrow('Text split exceeds the maximum chunk count of 5');
 });

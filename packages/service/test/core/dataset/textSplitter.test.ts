@@ -405,3 +405,36 @@ it('should preserve escaped pipe in markdown table cells when splitting', async 
 
   expect(data.map((chunk) => chunk.q).join('\n')).toContain('投资回报率 \\| abcd');
 });
+
+it('should skip markdown table header-only chunks when building dataset chunks', async () => {
+  const data = await rawText2Chunks({
+    rawText: `| id | payload | note |
+| --- | --- | --- |`,
+    chunkTriggerType: ChunkTriggerConfigTypeEnum.forceChunk,
+    chunkTriggerMinSize: 10,
+    maxSize: 10000,
+    chunkSize: 40,
+    backupParse: false
+  });
+
+  expect(data).toEqual([]);
+});
+
+it('should not create header-only chunk for markdown table with a long first row', async () => {
+  const data = await rawText2Chunks({
+    rawText: `| id | payload | note |
+| --- | --- | --- |
+| 1 | ${'𠮷'.repeat(3000)} | old split keeps this single markdown table row as one index chunk |`,
+    chunkTriggerType: ChunkTriggerConfigTypeEnum.forceChunk,
+    chunkTriggerMinSize: 10,
+    maxSize: 10000,
+    chunkSize: 512,
+    backupParse: false
+  });
+
+  expect(data.length).toBeGreaterThan(0);
+  expect(data.map((chunk) => chunk.q)).not.toContain(
+    '| id | payload | note |\n| --- | --- | --- |'
+  );
+  expect(data.map((chunk) => chunk.q).join('\n')).toContain('| 1 |');
+});

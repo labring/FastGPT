@@ -124,7 +124,8 @@ vi.mock('@fastgpt/service/core/ai/model', async (importOriginal) => {
     ...actual,
     getEmbeddingModel: vi.fn().mockReturnValue({
       model: 'text-embedding-ada-002',
-      name: 'text-embedding-ada-002'
+      name: 'text-embedding-ada-002',
+      maxToken: 100
     })
   };
 });

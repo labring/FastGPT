@@ -1,65 +1,33 @@
-import { DatasetSourceReadTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { rawText2Chunks, readDatasetSourceRawText } from '@fastgpt/service/core/dataset/read';
 import { NextAPI } from '@/service/middleware/entry';
 import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { authDatasetFileKey } from '@fastgpt/service/support/permission/auth/file';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import { isAuthorizedDatasetFileS3Key } from '@fastgpt/service/common/s3/sources/dataset/key';
+import { rawText2Chunks } from '@fastgpt/service/core/dataset/read';
 import {
   computedCollectionChunkSettings,
   getLLMMaxChunkSize,
   maxPreviewChunkCount
 } from '@fastgpt/global/core/dataset/training/utils';
-import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { getEmbeddingModel, getLLMModel } from '@fastgpt/service/core/ai/model';
 import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
 import { addDays } from 'date-fns';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
-  GetPreviewChunksBodySchema,
+  GetRawTextPreviewChunksBodySchema,
   GetPreviewChunksResponseSchema,
-  type GetPreviewChunksBody,
-  type GetPreviewChunksResponse
+  type GetRawTextPreviewChunksBody,
+  type GetRawTextPreviewChunksResponse
 } from '@fastgpt/global/openapi/core/dataset/file/api';
 
 async function handler(
-  req: ApiRequestProps<GetPreviewChunksBody>
-): Promise<GetPreviewChunksResponse> {
-  const {
-    type,
-    sourceId,
-    customPdfParse = false,
-    overlapRatio,
-    selector,
-    datasetId,
-    externalFileId,
-    ...chunkSettings
-  } = parseApiInput({ req, bodySchema: GetPreviewChunksBodySchema }).body;
+  req: ApiRequestProps<GetRawTextPreviewChunksBody>
+): Promise<GetRawTextPreviewChunksResponse> {
+  const { datasetId, rawText, overlapRatio, ...chunkSettings } = parseApiInput({
+    req,
+    bodySchema: GetRawTextPreviewChunksBodySchema
+  }).body;
 
-  if (!sourceId) {
-    throw new Error('sourceId is empty');
-  }
-
-  if (
-    type === DatasetSourceReadTypeEnum.fileLocal &&
-    !isAuthorizedDatasetFileS3Key({ key: sourceId, datasetId })
-  ) {
-    return Promise.reject(CommonErrEnum.unAuthFile);
-  }
-
-  const fileAuthRes =
-    type === DatasetSourceReadTypeEnum.fileLocal
-      ? await authDatasetFileKey({
-          req,
-          authToken: true,
-          authApiKey: true,
-          fileId: sourceId,
-          per: WritePermissionVal
-        })
-      : undefined;
-
-  const { dataset, teamId, tmbId } = await authDataset({
+  const { dataset } = await authDataset({
     req,
     authApiKey: true,
     authToken: true,
@@ -67,26 +35,10 @@ async function handler(
     per: WritePermissionVal
   });
 
-  if (fileAuthRes && String(fileAuthRes.tmbId) !== String(tmbId) && !fileAuthRes.isRoot) {
-    return Promise.reject(CommonErrEnum.unAuthFile);
-  }
-
   const formatChunkSettings = computedCollectionChunkSettings({
     ...chunkSettings,
     llmModel: getLLMModel(dataset.agentModel),
     vectorModel: getEmbeddingModel(dataset.vectorModel)
-  });
-
-  const { rawText } = await readDatasetSourceRawText({
-    teamId,
-    tmbId,
-    type,
-    sourceId,
-    selector,
-    externalFileId,
-    customPdfParse,
-    apiDatasetServer: dataset.apiDatasetServer,
-    datasetId
   });
 
   const chunks = await rawText2Chunks({
@@ -112,5 +64,13 @@ async function handler(
     total: chunks.length
   });
 }
+
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb'
+    }
+  }
+};
 
 export default NextAPI(handler);
