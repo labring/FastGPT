@@ -45,7 +45,7 @@ const nextConfig: NextConfig = {
   },
   i18n: {
     defaultLocale: 'en',
-    locales: ['en', 'zh-CN', 'zh-Hant'],
+    locales: ['en', 'zh-CN', 'zh-Hant', 'ko'],
     localeDetection: false
   },
   output: 'standalone',

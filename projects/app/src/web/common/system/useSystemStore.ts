@@ -223,7 +223,9 @@ export const useSystemStore = create<State>()(
           if (!provider) {
             return defaultProvider;
           }
-          return get().modelProviderMap[language as langType][provider] ?? {};
+          // Locales without a pre-built provider name/avatar map (e.g. those not covered by
+          // langType) fall back to the default provider info instead of throwing.
+          return get().modelProviderMap[language as langType]?.[provider] ?? defaultProvider;
         },
         initStaticData(res) {
           set((state) => {
