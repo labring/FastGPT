@@ -34,7 +34,13 @@ import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
-
+import { AssignedAnswerModule } from '@fastgpt/global/core/workflow/template/system/assignedAnswer';
+import {
+  DatasetConcatModule,
+  getOneQuoteInputTemplate
+} from '@fastgpt/global/core/workflow/template/system/datasetConcat';
+import { HttpNode468 } from '@fastgpt/global/core/workflow/template/system/http468';
+import { LoopStartNode } from '@fastgpt/global/core/workflow/template/system/loop/loopStart';
 describe('nodeTemplate2FlowNode', () => {
   it('should initialize template text once before formatting the instance name', () => {
     const template: FlowNodeTemplateType = {
@@ -426,6 +432,208 @@ describe('checkWorkflowNodeIssues', () => {
     expect(result.toolCall.map((issue) => issue.code)).toContain('tool_call_empty');
   });
 
+  /**
+   * 使用 packages/global 真实节点模板构造 inputs，避免手写 valueType 掩盖模板默认值。
+   */
+  describe('real node template default validation', () => {
+    const makeNodeWithTemplateInputs = (
+      nodeId: string,
+      flowNodeType: FlowNodeTypeEnum,
+      templateInputs: FlowNodeTemplateType['inputs']
+    ) =>
+      makeNode(nodeId, flowNodeType, {
+        inputs: templateInputs.map((input) => ({ ...input }))
+      });
+
+    const runCheck = (node: Node<FlowNodeItemType>, extraNodes: Node<FlowNodeItemType>[] = []) =>
+      checkWorkflowNodeIssues({
+        nodes: [startNode, ...extraNodes, node],
+        edges: [
+          { id: 'e-start', source: 'start', target: node.data.nodeId, type: EDGE_TYPE },
+          ...extraNodes.map((extraNode, index) => ({
+            id: `e-extra-${index}`,
+            source: 'start',
+            target: extraNode.data.nodeId,
+            type: EDGE_TYPE
+          }))
+        ]
+      });
+
+    it('AssignedAnswerModule keeps required answerText with valueType any (template contract)', () => {
+      const answerInput = AssignedAnswerModule.inputs.find(
+        (input) => input.key === NodeInputKeyEnum.answerText
+      );
+
+      expect(answerInput?.required).toBe(true);
+      expect(answerInput?.valueType).toBe(WorkflowIOValueTypeEnum.any);
+      expect(answerInput?.value).toBeUndefined();
+    });
+
+    it('answerNode template default: empty required answerText reports required_input_empty', () => {
+      const node = makeNodeWithTemplateInputs(
+        'answer',
+        FlowNodeTypeEnum.answerNode,
+        AssignedAnswerModule.inputs
+      );
+
+      const result = runCheck(node);
+      const answerIssues =
+        result.answer?.filter((issue) => issue.inputKey === NodeInputKeyEnum.answerText) ?? [];
+
+      expect(answerIssues.map((issue) => issue.code)).toContain('required_input_empty');
+    });
+
+    it('answerNode with filled content does not report required_input_empty', () => {
+      const node = makeNodeWithTemplateInputs('answer-ok', FlowNodeTypeEnum.answerNode, [
+        {
+          ...AssignedAnswerModule.inputs[0],
+          value: 'hello'
+        }
+      ]);
+
+      const result = runCheck(node);
+      const answerIssues =
+        result['answer-ok']?.filter((issue) => issue.code === 'required_input_empty') ?? [];
+
+      expect(answerIssues).toEqual([]);
+    });
+
+    it('answerNode contrast: same field with valueType string reports required_input_empty', () => {
+      const templateInput = AssignedAnswerModule.inputs.find(
+        (input) => input.key === NodeInputKeyEnum.answerText
+      );
+      expect(templateInput).toBeDefined();
+
+      const node = makeNode('answer-string', FlowNodeTypeEnum.answerNode, {
+        inputs: [
+          {
+            ...templateInput!,
+            valueType: WorkflowIOValueTypeEnum.string,
+            value: ''
+          }
+        ]
+      });
+
+      const result = runCheck(node);
+      const answerIssues =
+        result['answer-string']?.filter(
+          (issue) => issue.inputKey === NodeInputKeyEnum.answerText
+        ) ?? [];
+
+      expect(answerIssues.map((issue) => issue.code)).toContain('required_input_empty');
+    });
+
+    it('DatasetConcatModule default: empty quote list reports required_input_empty', () => {
+      const node = makeNodeWithTemplateInputs(
+        'concat',
+        FlowNodeTypeEnum.datasetConcatNode,
+        DatasetConcatModule.inputs
+      );
+
+      expect(node.data.inputs.filter((input) => input.canEdit)).toHaveLength(0);
+
+      const result = runCheck(node);
+
+      expect(result.concat?.map((issue) => issue.code)).toContain('required_input_empty');
+      expect(result.concat?.[0]?.inputKey).toBe(NodeInputKeyEnum.datasetQuoteList);
+    });
+
+    it('datasetConcat added quote without reference reports required_input_empty', () => {
+      const quoteTemplate = getOneQuoteInputTemplate({ index: 1 });
+      const node = makeNodeWithTemplateInputs('concat-one', FlowNodeTypeEnum.datasetConcatNode, [
+        ...DatasetConcatModule.inputs,
+        quoteTemplate
+      ]);
+
+      expect(quoteTemplate.required).toBe(true);
+
+      const result = runCheck(node);
+      const quoteIssues =
+        result['concat-one']?.filter((issue) => issue.code === 'required_input_empty') ?? [];
+
+      expect(quoteIssues.length).toBeGreaterThan(0);
+    });
+
+    it('datasetConcat with valid quote reference does not report required_input_empty', () => {
+      const datasetNode = makeNode('dataset', FlowNodeTypeEnum.datasetSearchNode, {
+        outputs: [
+          {
+            id: NodeOutputKeyEnum.datasetQuoteQA,
+            key: NodeOutputKeyEnum.datasetQuoteQA,
+            label: 'quote',
+            type: FlowNodeOutputTypeEnum.static,
+            valueType: WorkflowIOValueTypeEnum.datasetQuote
+          }
+        ]
+      });
+      const quoteKey = 'quote-1';
+      const node = makeNodeWithTemplateInputs('concat-ok', FlowNodeTypeEnum.datasetConcatNode, [
+        ...DatasetConcatModule.inputs,
+        {
+          ...getOneQuoteInputTemplate({ key: quoteKey, index: 1 }),
+          value: ['dataset', NodeOutputKeyEnum.datasetQuoteQA]
+        }
+      ]);
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [startNode, datasetNode, node],
+        edges: [
+          { id: 'e1', source: 'start', target: 'dataset', type: EDGE_TYPE },
+          { id: 'e2', source: 'start', target: 'concat-ok', type: EDGE_TYPE }
+        ]
+      });
+
+      const requiredIssues =
+        result['concat-ok']?.filter((issue) => issue.code === 'required_input_empty') ?? [];
+      expect(requiredIssues).toEqual([]);
+    });
+
+    it('HttpNode468 template default: empty httpReqUrl reports http_url_empty via node rule', () => {
+      const node = makeNodeWithTemplateInputs(
+        'http',
+        FlowNodeTypeEnum.httpRequest468,
+        HttpNode468.inputs
+      );
+      const urlInput = node.data.inputs.find((input) => input.key === NodeInputKeyEnum.httpReqUrl);
+
+      expect(urlInput?.required).toBe(true);
+      expect(urlInput?.value).toBeUndefined();
+
+      const result = runCheck(node);
+      expect(result.http?.map((issue) => issue.code)).toContain('http_url_empty');
+      expect(result.http?.[0]?.inputKey).toBe(NodeInputKeyEnum.httpReqUrl);
+      expect(result.http?.map((issue) => issue.code)).not.toContain('required_input_empty');
+    });
+
+    it('HttpNode468 with request url does not report http_url_empty', () => {
+      const node = makeNodeWithTemplateInputs(
+        'http-ok',
+        FlowNodeTypeEnum.httpRequest468,
+        HttpNode468.inputs.map((input) =>
+          input.key === NodeInputKeyEnum.httpReqUrl
+            ? { ...input, value: 'https://example.com/api' }
+            : input
+        )
+      );
+
+      const result = runCheck(node);
+      expect(result['http-ok']?.map((issue) => issue.code) ?? []).not.toContain('http_url_empty');
+    });
+
+    it('loopStart hidden required any does not false-positive required_input_empty', () => {
+      const node = makeNodeWithTemplateInputs(
+        'loop-start',
+        FlowNodeTypeEnum.nestedStart,
+        LoopStartNode.inputs
+      );
+
+      const result = runCheck(node);
+      expect(result['loop-start']?.map((issue) => issue.code) ?? []).not.toContain(
+        'required_input_empty'
+      );
+    });
+  });
+
   it('returns invalid reference message with input name', () => {
     const node = makeNode('ref', FlowNodeTypeEnum.answerNode, {
       inputs: [
@@ -473,6 +681,93 @@ describe('checkWorkflowNodeIssues', () => {
       const issueCodes = result[node.id]?.map((issue) => issue.code) ?? [];
       expect(issueCodes).toContain('required_input_empty');
       expect(issueCodes).not.toContain('invalid_reference');
+    });
+  });
+
+  /**
+   * 修复后 list.tsx 默认：无 userFiles output 时不注入 fileUrlList；datasetSearchInput 仅含 userChatInput。
+   */
+  describe('new node default refs should not false-positive invalid_reference without userFiles output', () => {
+    const workflowStartWithoutUserFiles = startNode;
+
+    const newNodeDefaultFileUrlListValue = undefined;
+
+    const newNodeDefaultDatasetSearchInputValue = [
+      ['start', NodeOutputKeyEnum.userChatInput]
+    ] as const;
+
+    it('AI chat fileUrlList: default from list.tsx must not report invalid file link reference', () => {
+      const chatNode = makeNode('chat', FlowNodeTypeEnum.chatNode, {
+        inputs: [
+          {
+            key: NodeInputKeyEnum.fileUrlList,
+            label: 'app:workflow.user_file_input',
+            valueType: WorkflowIOValueTypeEnum.arrayString,
+            renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input],
+            selectedTypeIndex: 0,
+            value: newNodeDefaultFileUrlListValue
+          }
+        ]
+      });
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [workflowStartWithoutUserFiles, chatNode],
+        edges: [{ id: 'e1', source: 'start', target: 'chat', type: EDGE_TYPE }]
+      });
+
+      const fileLinkIssues =
+        result.chat?.filter((issue) => issue.inputKey === NodeInputKeyEnum.fileUrlList) ?? [];
+      expect(fileLinkIssues).toEqual([]);
+    });
+
+    it('tool call fileUrlList: default from list.tsx must not report invalid file link reference', () => {
+      const toolCallNode = makeNode('toolCall', FlowNodeTypeEnum.toolCall, {
+        inputs: [
+          {
+            key: NodeInputKeyEnum.fileUrlList,
+            label: 'app:workflow.user_file_input',
+            valueType: WorkflowIOValueTypeEnum.arrayString,
+            renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input],
+            selectedTypeIndex: 0,
+            value: newNodeDefaultFileUrlListValue
+          }
+        ]
+      });
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [workflowStartWithoutUserFiles, toolCallNode],
+        edges: [{ id: 'e1', source: 'start', target: 'toolCall', type: EDGE_TYPE }]
+      });
+
+      const fileLinkIssues =
+        result.toolCall?.filter((issue) => issue.inputKey === NodeInputKeyEnum.fileUrlList) ?? [];
+      expect(fileLinkIssues).toEqual([]);
+    });
+
+    it('dataset search datasetSearchInput: default from list.tsx must not report invalid search content reference', () => {
+      const datasetSearchNode = makeNode('datasetSearch', FlowNodeTypeEnum.datasetSearchNode, {
+        inputs: [
+          {
+            key: NodeInputKeyEnum.datasetSearchInput,
+            label: 'workflow:search_query',
+            valueType: WorkflowIOValueTypeEnum.arrayString,
+            renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
+            selectedTypeIndex: 0,
+            value: newNodeDefaultDatasetSearchInputValue
+          }
+        ]
+      });
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [workflowStartWithoutUserFiles, datasetSearchNode],
+        edges: [{ id: 'e1', source: 'start', target: 'datasetSearch', type: EDGE_TYPE }]
+      });
+
+      const searchContentIssues =
+        result.datasetSearch?.filter(
+          (issue) => issue.inputKey === NodeInputKeyEnum.datasetSearchInput
+        ) ?? [];
+      expect(searchContentIssues).toEqual([]);
     });
   });
 
@@ -548,8 +843,10 @@ describe('checkWorkflowNodeIssues', () => {
         {
           key: 'customVar',
           label: '',
-          renderTypeList: [FlowNodeInputTypeEnum.input],
-          value: ''
+          canEdit: true,
+          renderTypeList: [FlowNodeInputTypeEnum.reference],
+          valueType: WorkflowIOValueTypeEnum.any,
+          value: undefined
         }
       ]
     });

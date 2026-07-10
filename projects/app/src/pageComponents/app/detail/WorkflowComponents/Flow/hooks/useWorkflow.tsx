@@ -944,7 +944,10 @@ export const useWorkflow = () => {
         node.flowNodeType === FlowNodeTypeEnum.appModule
       ) {
         const input = node.inputs.find((i) => i.key === NodeInputKeyEnum.fileUrlList);
-        if (input && (!input?.value || input.value.length === 0)) {
+        const hasUserFilesOutput = workflowStartNode?.outputs.some(
+          (output) => output.id === NodeOutputKeyEnum.userFiles
+        );
+        if (input && hasUserFilesOutput && (!input?.value || input.value.length === 0)) {
           if (!workflowStartNode) return;
           onChangeNode({
             nodeId: node.nodeId,

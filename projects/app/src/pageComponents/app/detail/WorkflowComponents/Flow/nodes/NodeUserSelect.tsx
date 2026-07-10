@@ -140,9 +140,11 @@ const OptionItem = ({
 }) => {
   const { t } = useTranslation();
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
+  const onDelEdge = useContextSelector(WorkflowActionsContext, (v) => v.onDelEdge);
   const { key: optionKey, value, ...props } = itemValue;
   const options = value as UserSelectOptionItemType[];
 
+  /* eslint-disable react-hooks/refs -- @hello-pangea/dnd passes refs via render props */
   return (
     <Box
       mb={4}
@@ -172,6 +174,10 @@ const OptionItem = ({
                   key: optionKey,
                   value: options.filter((input) => input.key !== item.key)
                 }
+              });
+              onDelEdge({
+                nodeId,
+                sourceHandle: getHandleId(nodeId, 'source', item.key)
               });
             }}
           />

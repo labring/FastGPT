@@ -9,6 +9,7 @@ import {
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { type Node } from 'reactflow';
 import { WorkflowBufferDataContext } from '../context/workflowInitContext';
+import { WorkflowActionsContext } from '../context/workflowActionsContext';
 import { useMemoizedFn } from 'ahooks';
 import NodeTemplateListHeader from './components/NodeTemplates/header';
 import NodeTemplateList from './components/NodeTemplates/list';
@@ -22,6 +23,10 @@ const NodeTemplatesPopover = () => {
   const { handleParams, setHandleParams } = useContextSelector(WorkflowModalContext, (v) => v);
 
   const { setNodes, setEdges } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const onRefreshSingleNodeWorkflowCheckIssues = useContextSelector(
+    WorkflowActionsContext,
+    (v) => v.onRefreshSingleNodeWorkflowCheckIssues
+  );
 
   const {
     templateType,
@@ -88,6 +93,12 @@ const NodeTemplatesPopover = () => {
     });
 
     setHandleParams(null);
+
+    setTimeout(() => {
+      newNodes.forEach((node) => {
+        onRefreshSingleNodeWorkflowCheckIssues(node.data.nodeId);
+      });
+    }, 0);
   });
 
   if (!handleParams) return null;

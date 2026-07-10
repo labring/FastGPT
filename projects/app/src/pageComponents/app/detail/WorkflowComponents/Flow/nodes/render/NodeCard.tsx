@@ -359,11 +359,11 @@ const NodeCard = (props: Props) => {
 
   return (
     <Flex
-      flexDirection={'column'}
-      alignItems={'stretch'}
+      position={'relative'}
       outline={selected && (presentationMode || isFolded) ? '16px solid' : undefined}
       outlineColor={'rgba(17, 24, 36, 0.05)'}
       borderRadius={isFolded ? 26 : 'lg'}
+      boxShadow={'0 24px 40px 0 rgba(0, 0, 0, 0.05)'}
       {...customStyle}
     >
       <Flex
@@ -384,7 +384,6 @@ const NodeCard = (props: Props) => {
         outline={outlineWidth}
         outlineColor={outlineColor}
         borderRadius={isFolded ? 26 : 'lg'}
-        boxShadow={'0 24px 40px 0 rgba(0, 0, 0, 0.05)'}
         _hover={{
           boxShadow: '0 24px 40px 0 rgba(0, 0, 0, 0.08)',
           '& .controller-menu': {
@@ -506,7 +505,11 @@ const NodeCard = (props: Props) => {
           />
         )}
       </Flex>
-      {!isFolded && errorIssues.length > 0 && <NodeWorkflowCheckIssues issues={errorIssues} />}
+      {!isFolded && errorIssues.length > 0 && (
+        <Box position={'absolute'} top={'100%'} left={0} w={'100%'}>
+          <NodeWorkflowCheckIssues issues={errorIssues} />
+        </Box>
+      )}
     </Flex>
   );
 };

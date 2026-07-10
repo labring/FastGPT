@@ -7,9 +7,9 @@ import { Box } from '@chakra-ui/react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useMemoizedFn } from 'ahooks';
 import React from 'react';
-import { XYPosition } from 'reactflow';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowBufferDataContext } from '../context/workflowInitContext';
+import { WorkflowActionsContext } from '../context/workflowActionsContext';
 
 type ModuleTemplateListProps = {
   isOpen: boolean;
@@ -20,6 +20,10 @@ export const sliderWidth = 460;
 
 const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
   const setNodes = useContextSelector(WorkflowBufferDataContext, (v) => v.setNodes);
+  const onRefreshSingleNodeWorkflowCheckIssues = useContextSelector(
+    WorkflowActionsContext,
+    (v) => v.onRefreshSingleNodeWorkflowCheckIssues
+  );
 
   const {
     templateType,
@@ -47,6 +51,11 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
         .concat(newNodes);
       return newState;
     });
+
+    // 新增节点后立即同步下方待完善提示，不依赖 10s 定时扫描或用户首次编辑。
+    setTimeout(() => {
+      onRefreshSingleNodeWorkflowCheckIssues(newNodes[0]?.data.nodeId ?? '');
+    }, 0);
   });
 
   return (

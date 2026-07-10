@@ -27,7 +27,8 @@ export const getOneQuoteInputTemplate = ({
   label: `${i18nT('workflow:quote_num')}-${index}`,
   debugLabel: i18nT('workflow:knowledge_base_reference'),
   canEdit: true,
-  valueType: WorkflowIOValueTypeEnum.datasetQuote
+  valueType: WorkflowIOValueTypeEnum.datasetQuote,
+  required: true
 });
 
 export const DatasetConcatModule: FlowNodeTemplateType = {

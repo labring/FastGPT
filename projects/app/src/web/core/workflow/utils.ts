@@ -54,6 +54,7 @@ import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
 import { ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
+import { getToolConfigStatus } from '@fastgpt/global/core/app/formEdit/utils';
 
 /* ====== node ======= */
 /**
@@ -665,6 +666,48 @@ const workflowCheckSkipConnectionTypes = new Set<FlowNodeTypeEnum>([
   FlowNodeTypeEnum.emptyNode
 ]);
 
+/**
+ * 多分支节点的 sourceHandle 必须与当前 options/agents 中的 key 一致；
+ * 删除分支后残留的悬空 edge 不应计入有效连线。
+ */
+const isWorkflowEdgeSourceHandleValid = (
+  sourceNode: Node<FlowNodeItemType, string | undefined> | undefined,
+  sourceHandle: string | null | undefined
+) => {
+  if (!sourceNode) return false;
+
+  const { nodeId, flowNodeType, inputs } = sourceNode.data;
+
+  if (flowNodeType === FlowNodeTypeEnum.userSelect) {
+    if (!sourceHandle) return false;
+
+    const options = inputs?.find((input) => input.key === NodeInputKeyEnum.userSelectOptions)
+      ?.value as Array<{ key?: string }> | undefined;
+
+    return (
+      Array.isArray(options) &&
+      options.some(
+        (option) => option.key && sourceHandle === getHandleId(nodeId, 'source', option.key)
+      )
+    );
+  }
+
+  if (flowNodeType === FlowNodeTypeEnum.classifyQuestion) {
+    if (!sourceHandle) return false;
+
+    const agents = inputs?.find((input) => input.key === NodeInputKeyEnum.agents)?.value as
+      | Array<{ key?: string }>
+      | undefined;
+
+    return (
+      Array.isArray(agents) &&
+      agents.some((agent) => agent.key && sourceHandle === getHandleId(nodeId, 'source', agent.key))
+    );
+  }
+
+  return true;
+};
+
 const workflowCheckStartTypes = new Set<FlowNodeTypeEnum>([
   FlowNodeTypeEnum.workflowStart,
   FlowNodeTypeEnum.pluginInput,
@@ -685,6 +728,18 @@ const isEmptyWorkflowInputValue = (value: unknown) =>
   value === null ||
   value === '' ||
   (Array.isArray(value) && value.length === 0);
+
+/** hidden / 非必填 any 不参与通用必填校验，避免系统 hidden 字段误报或与节点特判重复。 */
+const shouldSkipGenericRequiredInputCheck = (input: FlowNodeInputItemType) => {
+  const renderType = input.renderTypeList?.[input.selectedTypeIndex ?? 0];
+  if (renderType === FlowNodeInputTypeEnum.hidden) return true;
+  if (!input.valueType) return true;
+  if (input.valueType === WorkflowIOValueTypeEnum.boolean) return true;
+  if (input.valueType === WorkflowIOValueTypeEnum.any) {
+    return !input.required;
+  }
+  return false;
+};
 
 /** 优先取 label，空则取 debugLabel，并走 i18n 翻译，避免展示 quoteQA 等内部 key。 */
 const getInputLabel = (input: FlowNodeInputItemType, t?: TFunction) => {
@@ -738,6 +793,7 @@ const WORKFLOW_CHECK_ISSUE_MESSAGE_CODE_MAP: Record<string, WorkflowCheckMessage
   context_extract_empty: 'context_extract_empty',
   tool_call_empty: 'tool_call_empty',
   tool_inactive: 'tool_inactive',
+  tool_waiting_config: 'tool_inactive',
   tool_missing: 'tool_missing',
   tool_no_permission: 'tool_no_permission',
   tool_offline: 'tool_offline',
@@ -852,6 +908,11 @@ const createWorkflowCheckContext = ({
   });
 
   edges.forEach((edge) => {
+    const sourceNode = nodeMap.get(edge.source);
+    if (!isWorkflowEdgeSourceHandleValid(sourceNode, edge.sourceHandle)) {
+      return;
+    }
+
     outgoingEdgesMap.get(edge.source)?.push(edge);
     incomingEdgesMap.get(edge.target)?.push(edge);
   });
@@ -925,6 +986,42 @@ const isEmptyReferenceInputValue = (value: unknown, isArrayType: boolean) => {
     return !Array.isArray(value) || value.length === 0;
   }
   return isUnsetReferenceValue(value);
+};
+
+/** 变量更新节点「变量/值」字段展示名，与 NodeVariableUpdate FormLabel 对齐。 */
+const getVariableUpdateFieldLabel = (field: 'variable' | 'value', t?: TFunction) =>
+  field === 'variable'
+    ? t
+      ? t('common:core.workflow.variable' as any)
+      : '变量'
+    : t
+      ? t('common:value' as any)
+      : '值';
+
+const isVariableUpdateTargetEmpty = (
+  variable: unknown,
+  nodeIds: string[],
+  context: WorkflowCheckContext
+) =>
+  !isValidReferenceValue(variable, nodeIds) ||
+  !referenceValueIsLive(variable as ReferenceItemValueType, context);
+
+const isVariableUpdateValueEmpty = (item: TUpdateListItem, context: WorkflowCheckContext) => {
+  if (item.renderType === FlowNodeInputTypeEnum.reference) {
+    if (isValidReferenceValueFormat(item.value)) {
+      return !referenceValueIsLive(item.value as ReferenceItemValueType, context);
+    }
+    return (
+      !Array.isArray(item.value) ||
+      item.value.length === 0 ||
+      (item.value as ReferenceItemValueType[]).some((v) => !referenceValueIsLive(v, context))
+    );
+  }
+
+  if (item.arrayMode === 'clear') return false;
+  if (item.booleanMode) return false;
+  const inputVal = item.value?.[1];
+  return inputVal === undefined || inputVal === null || inputVal === '';
 };
 
 /**
@@ -1004,6 +1101,19 @@ export const checkWorkflowNodeIssues = ({
       });
     }
 
+    // 工具调用下游工具：与 NodeSecret / getToolConfigStatus 共用「尚未激活」判定。
+    if (isToolNode) {
+      const configStatus = getToolConfigStatus({ tool: data });
+      if (configStatus.status === 'waitingForConfig') {
+        addIssue({
+          node,
+          code: 'tool_waiting_config',
+          message: getWorkflowCheckIssueMessage('tool_waiting_config', t),
+          inputKey: NodeInputKeyEnum.systemInputConfig
+        });
+      }
+    }
+
     if (!workflowCheckSkipNodeRuleTypes.has(data.flowNodeType)) {
       if (data.flowNodeType === FlowNodeTypeEnum.ifElseNode) {
         const ifElseList = inputMap.get(NodeInputKeyEnum.ifElseList)?.value as
@@ -1063,6 +1173,20 @@ export const checkWorkflowNodeIssues = ({
         }
       }
 
+      if (data.flowNodeType === FlowNodeTypeEnum.datasetConcatNode) {
+        const quoteInputs = inputs.filter((input) => input.canEdit);
+        if (quoteInputs.length === 0) {
+          addIssue({
+            node,
+            code: 'required_input_empty',
+            message: getWorkflowCheckIssueMessage('required_input_empty', t, {
+              inputName: t ? t('common:core.workflow.Dataset quote' as any) : '知识库引用'
+            }),
+            inputKey: NodeInputKeyEnum.datasetQuoteList
+          });
+        }
+      }
+
       if (data.flowNodeType === FlowNodeTypeEnum.classifyQuestion) {
         const agents = inputMap.get(NodeInputKeyEnum.agents)?.value as
           | Array<{ value?: string; key?: string }>
@@ -1074,7 +1198,7 @@ export const checkWorkflowNodeIssues = ({
             message: getWorkflowCheckIssueMessage('classify_question_empty', t),
             inputKey: NodeInputKeyEnum.agents
           });
-        } else if (agents.some((item) => !item.value && !item.key)) {
+        } else if (agents.some((item) => !item.value)) {
           addIssue({
             node,
             code: 'classify_question_value_empty',
@@ -1095,7 +1219,10 @@ export const checkWorkflowNodeIssues = ({
           ) {
             return false;
           }
-          return !input.key || !input.label;
+          if (!input.canEdit) {
+            return false;
+          }
+          return !input.key || !input.label || isUnsetReferenceValue(input.value);
         });
         if (hasIncompleteDynamicInput) {
           addIssue({
@@ -1173,44 +1300,29 @@ export const checkWorkflowNodeIssues = ({
         const updateList = inputMap.get(NodeInputKeyEnum.updateList)?.value as
           | TUpdateListItem[]
           | undefined;
-        const updateListInvalid =
-          !updateList ||
-          updateList.length === 0 ||
-          updateList.some((item) => {
-            if (
-              !isValidReferenceValue(item.variable, nodeIds) ||
-              !referenceValueIsLive(item.variable, context)
-            ) {
-              return true;
-            }
 
-            if (item.renderType === FlowNodeInputTypeEnum.reference) {
-              // 接受单引用 [ref] 与引用数组 [[ref], ...]，与 dispatcher 对齐。
-              if (isValidReferenceValueFormat(item.value)) {
-                return !referenceValueIsLive(item.value as ReferenceItemValueType, context);
-              }
-              return (
-                !Array.isArray(item.value) ||
-                item.value.length === 0 ||
-                (item.value as ReferenceItemValueType[]).some(
-                  (v) => !referenceValueIsLive(v, context)
-                )
-              );
-            }
-
-            // input 模式：clear / boolean 由模式字段决定，不读 value。
-            if (item.arrayMode === 'clear') return false;
-            if (item.booleanMode) return false;
-            const inputVal = item.value?.[1];
-            return inputVal === undefined || inputVal === null || inputVal === '';
-          });
-
-        if (updateListInvalid) {
+        const addVariableUpdateRequiredIssue = (field: 'variable' | 'value') => {
           addIssue({
             node,
-            code: 'variable_update_incomplete',
-            message: getWorkflowCheckIssueMessage('variable_update_incomplete', t),
+            code: 'required_input_empty',
+            message: getWorkflowCheckIssueMessage('required_input_empty', t, {
+              inputName: getVariableUpdateFieldLabel(field, t)
+            }),
             inputKey: NodeInputKeyEnum.updateList
+          });
+        };
+
+        if (!updateList || updateList.length === 0) {
+          addVariableUpdateRequiredIssue('variable');
+          addVariableUpdateRequiredIssue('value');
+        } else {
+          updateList.forEach((item) => {
+            if (isVariableUpdateTargetEmpty(item.variable, nodeIds, context)) {
+              addVariableUpdateRequiredIssue('variable');
+            }
+            if (isVariableUpdateValueEmpty(item, context)) {
+              addVariableUpdateRequiredIssue('value');
+            }
           });
         }
       }
@@ -1228,10 +1340,7 @@ export const checkWorkflowNodeIssues = ({
           }
         }
 
-        if (
-          !input.valueType ||
-          [WorkflowIOValueTypeEnum.any, WorkflowIOValueTypeEnum.boolean].includes(input.valueType)
-        ) {
+        if (shouldSkipGenericRequiredInputCheck(input)) {
           return;
         }
 
@@ -1245,7 +1354,11 @@ export const checkWorkflowNodeIssues = ({
           ? isEmptyReferenceInputValue(input.value, isArrayReference)
           : isEmptyWorkflowInputValue(input.value);
 
-        if (input.required && inputValueIsEmpty) {
+        if (
+          input.required &&
+          inputValueIsEmpty &&
+          !(data.flowNodeType === FlowNodeTypeEnum.code && input.canEdit)
+        ) {
           addIssue({
             node,
             code: 'required_input_empty',
@@ -1445,6 +1558,12 @@ export const checkWorkflowNodeAndConnection = ({
         return [data.nodeId];
       }
     }
+    if (data.flowNodeType === FlowNodeTypeEnum.datasetConcatNode) {
+      const quoteInputs = inputs.filter((input) => input.canEdit);
+      if (quoteInputs.length === 0) {
+        return [data.nodeId];
+      }
+    }
     if (data.flowNodeType === FlowNodeTypeEnum.loopRun) {
       const mode = inputs.find((input) => input.key === NodeInputKeyEnum.loopRunMode)?.value as
         | LoopRunModeEnum
@@ -1532,10 +1651,7 @@ export const checkWorkflowNodeAndConnection = ({
             return false;
           }
         }
-        if (
-          !input.valueType ||
-          [WorkflowIOValueTypeEnum.any, WorkflowIOValueTypeEnum.boolean].includes(input.valueType)
-        ) {
+        if (shouldSkipGenericRequiredInputCheck(input)) {
           return false;
         }
         if (isToolNode && input.toolDescription) {
@@ -1543,10 +1659,18 @@ export const checkWorkflowNodeAndConnection = ({
         }
 
         if (input.required) {
-          if (input.value === undefined && input.valueType !== WorkflowIOValueTypeEnum.boolean) {
+          if (nodeInputIsReference(input)) {
+            // reference required checks below
+          } else if (isEmptyWorkflowInputValue(input.value)) {
+            return true;
+          } else if (
+            input.value === undefined &&
+            input.valueType !== WorkflowIOValueTypeEnum.boolean
+          ) {
+            return true;
+          } else if (Array.isArray(input.value) && input.value.length === 0) {
             return true;
           }
-          if (Array.isArray(input.value) && input.value.length === 0) return true;
         }
         if (nodeInputIsReference(input)) {
           const checkValueValid = (value: ReferenceItemValueType) => {

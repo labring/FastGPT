@@ -56,6 +56,7 @@ import CatchError from '../render/RenderOutput/CatchError';
 import { useMemoEnhance } from '@fastgpt/web/hooks/useMemoEnhance';
 import { WorkflowUtilsContext } from '../../../context/workflowUtilsContext';
 import { WorkflowActionsContext } from '../../../context/workflowActionsContext';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 const CurlImportModal = dynamic(() => import('./CurlImportModal'));
 const HeaderAuthConfig = dynamic(() => import('@/components/common/secret/HeaderAuthConfig'));
@@ -192,9 +193,9 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
   return (
     <Box>
       <Box mb={2} display={'flex'} justifyContent={'space-between'}>
-        <Box fontWeight={'medium'} color={'myGray.600'}>
+        <FormLabel required={requestUrl?.required} fontWeight={'medium'} color={'myGray.600'}>
           {t('common:core.module.Http request settings')}
-        </Box>
+        </FormLabel>
         <Button variant={'link'} onClick={onOpenCurl}>
           {t('common:core.module.http.curl import')}
         </Button>
@@ -501,6 +502,7 @@ const RenderForm = ({
   const [shouldUpdateNode, setShouldUpdateNode] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync local list when external input.value changes
     setList(input.value || []);
   }, [input.value]);
 
@@ -515,6 +517,7 @@ const RenderForm = ({
           value: list
         }
       });
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset flag after persisting list to node
       setShouldUpdateNode(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

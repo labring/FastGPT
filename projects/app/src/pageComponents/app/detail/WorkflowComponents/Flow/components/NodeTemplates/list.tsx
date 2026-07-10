@@ -42,7 +42,7 @@ import { LoopEndNode } from '@fastgpt/global/core/workflow/template/system/loop/
 import { LoopRunStartNode } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRunStart';
 import { useReactFlow } from 'reactflow';
 import type { Node } from 'reactflow';
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
@@ -235,7 +235,7 @@ const NodeTemplateList = ({
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
   const { computedNewNodeName } = useWorkflowUtils();
-  const { getNodeList, getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const { getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const handleParams = useContextSelector(WorkflowModalContext, (v) => v.handleParams);
   const { getIntersectingNodes } = useReactFlow();
 
@@ -287,28 +287,6 @@ const NodeTemplateList = ({
             return Promise.reject(e);
           }
         })();
-
-        const defaultValueMap: Record<string, any> = {
-          [NodeInputKeyEnum.userChatInput]: undefined,
-          [NodeInputKeyEnum.datasetSearchInput]: undefined,
-          [NodeInputKeyEnum.fileUrlList]: undefined
-        };
-
-        getNodeList().forEach((node) => {
-          if (node.flowNodeType === FlowNodeTypeEnum.workflowStart) {
-            defaultValueMap[NodeInputKeyEnum.userChatInput] = [
-              node.nodeId,
-              NodeOutputKeyEnum.userChatInput
-            ];
-            defaultValueMap[NodeInputKeyEnum.fileUrlList] = [
-              [node.nodeId, NodeOutputKeyEnum.userFiles]
-            ];
-            defaultValueMap[NodeInputKeyEnum.datasetSearchInput] = [
-              [node.nodeId, NodeOutputKeyEnum.userChatInput],
-              [node.nodeId, NodeOutputKeyEnum.userFiles]
-            ];
-          }
-        });
 
         const currentNode = getNodeById(handleParams?.nodeId);
 
@@ -366,7 +344,7 @@ const NodeTemplateList = ({
               .filter((input) => input.deprecated !== true)
               .map((input) => ({
                 ...input,
-                value: defaultValueMap[input.key] ?? input.value ?? input.defaultValue,
+                value: input.value ?? input.defaultValue,
                 valueDesc: input.valueDesc ? t(input.valueDesc as any) : undefined,
                 label: t(input.label as any),
                 description: input.description ? t(input.description as any) : undefined,
@@ -441,16 +419,7 @@ const NodeTemplateList = ({
         console.error('Failed to create node template:', error);
       }
     },
-    [
-      computedNewNodeName,
-      getNodeById,
-      handleParams,
-      getNodeList,
-      getIntersectingNodes,
-      onAddNode,
-      t,
-      toast
-    ]
+    [computedNewNodeName, getNodeById, handleParams, getIntersectingNodes, onAddNode, t, toast]
   );
 
   const formatTemplatesArrayData = useMemo(() => {
