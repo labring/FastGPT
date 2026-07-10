@@ -36,7 +36,6 @@
     "cookie": "^0.7.1",
     "date-fns": "catalog:",
     "dayjs": "catalog:",
-    "decompress": "^4.2.1",
     "domino-ext": "^2.1.4",
     "encoding": "^0.1.13",
     "file-type": "catalog:",
@@ -77,12 +76,12 @@
     "undici": "catalog:",
     "winston": "^3.17.0",
     "xlsx": "0.18.5",
+    "yauzl": "^3.4.0",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@types/async-retry": "^1.4.9",
     "@types/cookie": "^0.5.2",
-    "@types/decompress": "^4.2.7",
     "@types/jsonwebtoken": "catalog:",
     "@types/lodash": "catalog:",
     "@types/mime-types": "catalog:",
@@ -94,6 +93,7 @@
     "@types/proxy-addr": "catalog:",
     "@types/proxy-from-env": "^1.0.4",
     "@types/tunnel": "^0.0.4",
-    "@types/turndown": "^5.0.4"
+    "@types/turndown": "^5.0.4",
+    "@types/yauzl": "^2.10.3"
   }
 }
