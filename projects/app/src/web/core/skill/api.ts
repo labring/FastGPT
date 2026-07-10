@@ -4,7 +4,7 @@ import { downloadFetch } from '@/web/common/system/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { EventStreamContentType, fetchEventSource } from '@fortaine/fetch-event-source';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { SseResponseEventEnum } from '@fastgpt/global/core/chat/stream/constants';
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
 import type {
   ListSkillsQuery,

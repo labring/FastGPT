@@ -7,7 +7,11 @@
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { EDIT_DEBUG_SANDBOX_CHAT_ID } from '../../skill/edit/config';
 import { getRunningSandboxId } from '../utils/id';
-import type { SandboxClientQuery } from '../application/runtime/client';
+import type { SandboxClient, SandboxClientQuery } from '../application/runtime/client';
+import type { BuiltinSkillSource } from '@fastgpt/global/core/ai/skill/runtime/builtin';
+import type { SandboxPrepareContext } from '../application/runtime/prepare';
+import { resolveSandboxHome } from '../application/runtime/home';
+import { getBuiltinSkillsRootPath, syncBuiltinSkillsToSandbox } from '../application/runtime/skill';
 
 export {
   checkSandboxRuntimeInstanceExists,
@@ -48,6 +52,55 @@ export {
 } from '../application/runtime/skill';
 
 type SandboxClientQueryWithId = SandboxClientQuery & { sandboxId: string };
+
+export type AgentSandboxPrepareContext = SandboxPrepareContext & {
+  sandboxClient: SandboxClient;
+  skillScanDirectories: string[];
+};
+
+export type AgentSandboxPrepareAction = (
+  context: AgentSandboxPrepareContext
+) => Promise<AgentSandboxPrepareContext>;
+
+/**
+ * 创建“同步内置 Skill 到当前 sandbox”的 prepare action。
+ *
+ * 调用方只提供内置 Skill 文件来源；具体同步位置、HOME 解析和后续扫描目录登记
+ * 都在 sandbox prepare 生命周期内完成，避免 API 层感知 sandbox 细节。
+ */
+export const createBuiltinSkillPrepareAction =
+  ({
+    getSources,
+    injectToSandbox = syncBuiltinSkillsToSandbox
+  }: {
+    getSources: () => Promise<BuiltinSkillSource[]>;
+    injectToSandbox?: typeof syncBuiltinSkillsToSandbox;
+  }): AgentSandboxPrepareAction =>
+  async (context) => {
+    const sources = await getSources();
+    if (sources.length === 0) return context;
+
+    const homeDirectory = await resolveSandboxHome(context.sandbox);
+    if (!homeDirectory) {
+      throw new Error('Failed to resolve sandbox HOME for builtin skill sync');
+    }
+
+    await injectToSandbox({
+      sandbox: context.sandbox,
+      homeDirectory,
+      sources
+    });
+
+    const builtinSkillsRootPath = getBuiltinSkillsRootPath(homeDirectory);
+
+    return {
+      ...context,
+      skillScanDirectories: [
+        ...context.skillScanDirectories,
+        ...sources.map((source) => `${builtinSkillsRootPath}/${source.name}`)
+      ]
+    };
+  };
 
 /**
  * 将标准 chat source 映射为 sandbox runtime client 的物理寻址参数。

@@ -9,7 +9,7 @@ import {
   initSkillEditRuntimeSandbox
 } from '@fastgpt/service/core/ai/sandbox/interface/skillEdit';
 import { SkillRuntimeBodySchema } from '@fastgpt/global/core/ai/skill/api';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { SseResponseEventEnum } from '@fastgpt/global/core/chat/stream/constants';
 import type { SandboxStatusItemType } from '@fastgpt/global/core/chat/type';
 import { isValidObjectId } from 'mongoose';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';

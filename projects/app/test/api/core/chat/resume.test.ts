@@ -12,7 +12,7 @@ import {
   StreamResumePhaseEvent,
   StreamResumeUnavailableEvent,
   StreamResumeUnavailableReasonEnum
-} from '@fastgpt/global/core/workflow/runtime/constants';
+} from '@fastgpt/global/core/chat/stream/constants';
 import handler from '@/pages/api/core/chat/resume';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { authChatTargetCrud } from '@/service/support/permission/auth/chat';

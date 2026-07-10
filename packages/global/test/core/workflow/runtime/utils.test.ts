@@ -10,7 +10,6 @@ import {
   filterWorkflowEdges,
   getReferenceVariableValue as baseGetReferenceVariableValue,
   formatVariableValByType,
-  textAdaptGptResponse,
   rewriteNodeOutputByHistories
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import {
@@ -1496,58 +1495,6 @@ describe('formatVariableValByType', () => {
     const obj = { a: 1 };
     expect(formatVariableValByType(obj, WorkflowIOValueTypeEnum.object)).toBe(obj);
     expect(formatVariableValByType(obj, WorkflowIOValueTypeEnum.datasetQuote)).toBe(obj);
-  });
-});
-
-describe('textAdaptGptResponse', () => {
-  it('should create GPT response format with text', () => {
-    const result = textAdaptGptResponse({ text: 'Hello' });
-    expect(result).toEqual({
-      id: '',
-      object: '',
-      created: 0,
-      model: '',
-      choices: [
-        {
-          delta: {
-            role: 'assistant',
-            content: 'Hello'
-          },
-          index: 0,
-          finish_reason: null
-        }
-      ]
-    });
-  });
-
-  it('should include reasoning_content when provided', () => {
-    const result = textAdaptGptResponse({ text: 'Hello', reasoning_content: 'Thinking...' });
-    expect(result.choices[0].delta.reasoning_content).toBe('Thinking...');
-  });
-
-  it('should include model when provided', () => {
-    const result = textAdaptGptResponse({ text: 'Hello', model: 'gpt-4' });
-    expect(result.model).toBe('gpt-4');
-  });
-
-  it('should include finish_reason when provided', () => {
-    const result = textAdaptGptResponse({ text: 'Hello', finish_reason: 'stop' });
-    expect(result.choices[0].finish_reason).toBe('stop');
-  });
-
-  it('should include extraData when provided', () => {
-    const result = textAdaptGptResponse({ text: 'Hello', extraData: { custom: 'data' } });
-    expect((result as any).custom).toBe('data');
-  });
-
-  it('should handle null text', () => {
-    const result = textAdaptGptResponse({ text: null });
-    expect(result.choices[0].delta.content).toBe(null);
-  });
-
-  it('should handle undefined text', () => {
-    const result = textAdaptGptResponse({});
-    expect(result.choices[0].delta.content).toBeUndefined();
   });
 });
 

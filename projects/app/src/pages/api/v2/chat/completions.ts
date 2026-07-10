@@ -6,7 +6,7 @@ import {
   ChatSourceEnum,
   ChatSourceTypeEnum
 } from '@fastgpt/global/core/chat/constants';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { SseResponseEventEnum } from '@fastgpt/global/core/chat/stream/constants';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import {
   getWorkflowEntryNodeIds,
@@ -15,7 +15,7 @@ import {
   storeNodes2RuntimeNodes,
   getLastInteractiveValue
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
+import { streamSseEvent } from '@fastgpt/global/core/chat/stream/sse';
 import { GPTMessages2Chats, chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import {
@@ -449,10 +449,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       await titleSender.send();
       titleSender.close();
 
-      streamResponseContext.responseWrite(workflowSseEvent.answerStop());
+      streamResponseContext.responseWrite(streamSseEvent.answerStop());
 
       streamResponseContext.responseWrite(
-        workflowSseEvent.done(detail ? SseResponseEventEnum.answer : undefined)
+        streamSseEvent.done(detail ? SseResponseEventEnum.answer : undefined)
       );
 
       await streamResponseContext.flushResume();

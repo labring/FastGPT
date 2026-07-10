@@ -3,19 +3,21 @@ import type {
   ChatHistoryItemResType
 } from '@fastgpt/global/core/chat/type';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
-import type { AgentLoopEvent, AgentLoopRuntime } from '../../../../../ai/llm/agentLoop';
-import { AgentNodeResponseDisplay } from '../../../../../ai/llm/agentLoop/constants';
+import {
+  createAgentLoopCallNodeResponse,
+  createAgentLoopMessageCompressNodeResponse,
+  type AgentLoopEvent,
+  type AgentLoopRuntime
+} from '../../../../../ai/llm/agentLoop';
 import { getExecuteTool, type ToolDispatchContext } from '../utils';
-import type { WorkflowResponseType } from '../../../type';
+import type { StreamResponseType } from '../../../type';
 import { createWorkflowAgentLoopEventMapper } from './eventMapper';
 import {
   createWorkflowAgentLoopToolCatalog,
   getWorkflowAgentLoopInternalToolNames
 } from './toolCatalog';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { useToolNodeResponse } from './useToolNodeResponse';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 type WorkflowAgentLoopRuntimeContext = ToolDispatchContext & {
   node: {
@@ -31,7 +33,6 @@ type WorkflowAgentLoopRuntimeArtifacts = {
 
 type LLMRequestEndEvent = Extract<AgentLoopEvent, { type: 'llm_request_end' }>;
 type AfterMessageCompressEvent = Extract<AgentLoopEvent, { type: 'after_message_compress' }>;
-type MessageCompressNodeResponseInput = Omit<AfterMessageCompressEvent, 'type'>;
 
 /**
  * 将 workflow dispatch 上下文适配成通用 AgentLoopRuntime。
@@ -55,7 +56,7 @@ export const createWorkflowAgentLoopRuntime = ({
 }: {
   context: WorkflowAgentLoopRuntimeContext;
   usagePush: (usages: ChatNodeUsageType[]) => void;
-  workflowStreamResponse?: WorkflowResponseType;
+  workflowStreamResponse?: StreamResponseType;
   assistantResponses?: AIChatItemValueItemType[];
   nodeResponses?: ChatHistoryItemResType[];
   appendNodeResponse?: (nodeResponse: ChatHistoryItemResType) => void;
@@ -104,50 +105,25 @@ export const createWorkflowAgentLoopRuntime = ({
   // 即使本轮没有文本、reasoning 或工具调用，也保留 requestId 和 usage，方便排查空响应与计费。
   // 被 stop gate 打回的 assistant message 会在 agentLoop 内从最终 assistantMessages 移除，
   // 但这里仍保留它对应的 nodeResponse，方便前端完整展示模型中间过程。
-  const appendAgentCallNodeResponse = (event: LLMRequestEndEvent) => {
-    const agentResponse: ChatHistoryItemResType = {
-      id: `${context.node.nodeId}-${event.requestIndex}-${event.requestId}`,
-      nodeId: `${context.node.nodeId}-main_agent-${event.requestIndex}`,
-      moduleName: AgentNodeResponseDisplay.master.moduleName,
-      moduleType: context.node.flowNodeType,
-      moduleLogo: AgentNodeResponseDisplay.master.moduleLogo,
-      runningTime: event.seconds,
-      model: event.modelName,
-      llmRequestIds: [event.requestId],
-      inputTokens: event.usage?.inputTokens,
-      outputTokens: event.usage?.outputTokens,
-      totalPoints: event.usage?.totalPoints,
-      finishReason: event.finishReason || (event.error ? 'error' : undefined),
-      textOutput: event.answerText,
-      reasoningText: event.reasoningText,
-      ...(event.error ? { errorText: getErrText(event.error) } : {})
-    };
-    appendNodeResponse(agentResponse);
-  };
+  const appendAgentCallNodeResponse = (event: LLMRequestEndEvent) =>
+    appendNodeResponse(
+      createAgentLoopCallNodeResponse({
+        event,
+        node: {
+          nodeId: context.node.nodeId,
+          moduleType: context.node.flowNodeType
+        }
+      })
+    );
 
   // Message 压缩是独立内部 LLM 调用，需要作为顶层运行详情展示。
-  const createMessageCompressNodeResponse = (
-    event: MessageCompressNodeResponseInput
-  ): ChatHistoryItemResType => {
-    const requestIds = event.requestIds.filter((requestId): requestId is string => !!requestId);
-    const responseId = requestIds[0] || getNanoid();
-
-    return {
-      id: responseId,
-      nodeId: responseId,
-      moduleName: AgentNodeResponseDisplay.contextCompress.moduleName,
-      moduleType: context.node.flowNodeType,
-      moduleLogo: AgentNodeResponseDisplay.contextCompress.moduleLogo,
-      runningTime: event.seconds,
-      model: event.usage?.model,
-      llmRequestIds: requestIds.length ? requestIds : undefined,
-      inputTokens: event.usage?.inputTokens,
-      outputTokens: event.usage?.outputTokens,
-      totalPoints: event.usage?.totalPoints
-    };
-  };
-  const appendMessageCompressNodeResponse = (event: MessageCompressNodeResponseInput) => {
-    appendNodeResponse(createMessageCompressNodeResponse(event));
+  const appendMessageCompressNodeResponse = (event: AfterMessageCompressEvent) => {
+    appendNodeResponse(
+      createAgentLoopMessageCompressNodeResponse({
+        event,
+        moduleType: context.node.flowNodeType
+      })
+    );
   };
 
   return {

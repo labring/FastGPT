@@ -1,9 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
-import { handleSkillDebugChat } from '@fastgpt/service/core/ai/skill/debugChat';
+import { handleSkillEditChat } from '@fastgpt/service/core/ai/auxiliaryGeneration/skillEdit/handler';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
-  await handleSkillDebugChat(req, res);
+  await handleSkillEditChat(req, res);
 }
 
 export default NextAPI(handler);

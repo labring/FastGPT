@@ -1,5 +1,5 @@
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
+import { streamSseEvent } from '@fastgpt/global/core/chat/stream/sse';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
@@ -19,7 +19,7 @@ export const dispatchAnswer = (props: Record<string, any>): AnswerResponse => {
   const formatText = typeof text === 'string' ? text : JSON.stringify(text, null, 2);
   const responseText = `\n${formatText}`;
 
-  workflowStreamResponse?.(workflowSseEvent.fastAnswerDelta(responseText));
+  workflowStreamResponse?.(streamSseEvent.fastAnswerDelta(responseText));
 
   return {
     data: {

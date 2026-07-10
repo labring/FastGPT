@@ -1,9 +1,9 @@
 import type { UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
-import type { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
-import type { WorkflowTypedSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
+import type { SseResponseEventEnum } from '@fastgpt/global/core/chat/stream/constants';
+import { streamSseEvent } from '@fastgpt/global/core/chat/stream/sse';
+import type { StreamTypedSseEvent } from '@fastgpt/global/core/chat/stream/sse';
 import { withTimeout } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../../common/logger';
 import { createLLMResponse } from '../ai/llm/request';
@@ -273,7 +273,7 @@ export const createGeneratedChatTitleSender = ({
   titleGeneration?: Promise<GeneratedChatTitleResult | undefined>;
   stream: boolean;
   detail: boolean;
-  writeChatTitle?: (payload: WorkflowTypedSseEvent<SseResponseEventEnum.chatTitle>) => void;
+  writeChatTitle?: (payload: StreamTypedSseEvent<SseResponseEventEnum.chatTitle>) => void;
 }) => {
   const titleResultPromise = titleGeneration?.catch(() => undefined);
   let titleEventWritten = false;
@@ -303,7 +303,7 @@ export const createGeneratedChatTitleSender = ({
         const { title } = titleResult;
 
         if (stream && detail && !titleEventWritten && !closed) {
-          writeChatTitle?.(workflowSseEvent.chatTitle(title));
+          writeChatTitle?.(streamSseEvent.chatTitle(title));
           titleEventWritten = true;
         }
 

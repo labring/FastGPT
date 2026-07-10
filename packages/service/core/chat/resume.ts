@@ -3,7 +3,7 @@ import { getLogger, LogCategories } from '../../common/logger';
 import { FASTGPT_REDIS_PREFIX, getGlobalRedisConnection } from '../../common/redis';
 import type { NextApiResponse } from 'next';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { StreamResumeUnavailableReasonEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { StreamResumeUnavailableReasonEnum } from '@fastgpt/global/core/chat/stream/constants';
 
 const logger = getLogger(LogCategories.MODULE.CHAT.RESUME);
 

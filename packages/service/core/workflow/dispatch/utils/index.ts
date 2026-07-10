@@ -13,10 +13,8 @@ import {
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { responseWrite } from '../../../../common/response';
 import { type NextApiResponse } from 'next';
-import {
-  DispatchNodeResponseKeyEnum,
-  SseResponseEventEnum
-} from '@fastgpt/global/core/workflow/runtime/constants';
+import { SseResponseEventEnum } from '@fastgpt/global/core/chat/stream/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { type SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { getMCPToolRuntimeNode } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import {
@@ -29,7 +27,7 @@ import { getMCPChildren } from '../../../app/mcp';
 import { getSystemToolRunTimeNodeFromSystemToolset } from '../../utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/type';
-import type { WorkflowResponseType } from '../type';
+import type { StreamResponseType } from '../type';
 import { getLogger, LogCategories } from '../../../../common/logger';
 import { parsetMcpToolConfig } from '@fastgpt/global/core/app/tool/mcpTool/utils';
 import { getMcpToolsets } from '../../../app/tool/mcpTool/entity';
@@ -245,7 +243,7 @@ export const getWorkflowResponseWrite = ({
     });
   };
 
-  const fn: WorkflowResponseType = ({ id, event, data }) => {
+  const fn: StreamResponseType = ({ id, event, data }) => {
     if (typeof data === 'string') {
       writeStreamChunk({ event, data });
       return;
@@ -293,10 +291,10 @@ export const getWorkflowChildResponseWrite = ({
   fn
 }: {
   id: string;
-  fn?: WorkflowResponseType;
-}): WorkflowResponseType | undefined => {
+  fn?: StreamResponseType;
+}): StreamResponseType | undefined => {
   if (!fn) return;
-  return (e: Parameters<WorkflowResponseType>[0]) => {
+  return (e: Parameters<StreamResponseType>[0]) => {
     return fn({
       ...e,
       id: e.id || id

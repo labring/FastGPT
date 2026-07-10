@@ -13,7 +13,7 @@ import type {
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
+import { streamSseEvent } from '@fastgpt/global/core/chat/stream/sse';
 import { normalizeAIChatValue } from '@fastgpt/global/core/chat/adapt';
 import type {
   ChatDispatchProps,
@@ -60,7 +60,8 @@ import { validateFileUrlDomain } from '../../../common/security/fileUrlValidator
 import { classifyEdgesByDFS, findSCCs, isNodeInCycle, getEdgeType } from '../utils/tarjan';
 import { observeWorkflowRun, observeWorkflowStep } from '../metrics';
 import { withActiveSpan } from '../../../common/tracing';
-import { delAgentRuntimeStopSign, shouldWorkflowStop } from './workflowStatus';
+import { delAgentRuntimeStopSign } from './workflowStatus';
+import { shouldAgentRuntimeStop } from '../../ai/runtimeStatus';
 import { runWithContext } from '../utils/context';
 import { createClientAbortTracker } from './utils/clientAbort';
 import type { IncomingMessage } from 'node:http';
@@ -235,7 +236,7 @@ export async function dispatchWorkFlow({
       ? setInterval(async () => {
           if (stopping) return;
 
-          const shouldStop = await shouldWorkflowStop({
+          const shouldStop = await shouldAgentRuntimeStop({
             ...chatSource,
             chatId
           });
@@ -802,7 +803,7 @@ export class WorkflowQueue {
           : getNanoid();
       // push run status messages
       if (node.showStatus && !this.data.isToolCall) {
-        this.data.workflowStreamResponse?.(workflowSseEvent.flowNodeStatus(node.name));
+        this.data.workflowStreamResponse?.(streamSseEvent.flowNodeStatus(node.name));
       }
       const startTime = Date.now();
       // get node running params
@@ -985,7 +986,7 @@ export class WorkflowQueue {
             });
 
         filteredResponses.forEach((item) => {
-          this.data.workflowStreamResponse?.(workflowSseEvent.flowNodeResponse(item));
+          this.data.workflowStreamResponse?.(streamSseEvent.flowNodeResponse(item));
         });
       }
 
@@ -1455,7 +1456,7 @@ export class WorkflowQueue {
 
     // Tool call, not need interactive response
     if (!this.data.isToolCall && this.isRootRuntime) {
-      this.data.workflowStreamResponse?.(workflowSseEvent.interactive(interactiveResult));
+      this.data.workflowStreamResponse?.(streamSseEvent.interactive(interactiveResult));
     }
 
     return {
@@ -1607,7 +1608,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
             workflowSpan.setStatus({ code: SpanStatusCode.OK });
 
             if (isRootRuntime) {
-              data.workflowStreamResponse?.(workflowSseEvent.workflowDuration(durationSeconds));
+              data.workflowStreamResponse?.(streamSseEvent.workflowDuration(durationSeconds));
             }
 
             return {

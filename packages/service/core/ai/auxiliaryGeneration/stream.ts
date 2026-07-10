@@ -6,9 +6,11 @@ import { getSseErrorResponse } from '../../../common/response';
 import { createSseStreamContext } from '../../../common/response/sse';
 import { clearCookie } from '../../../support/permission/auth/common';
 import { getStreamResumeMirror } from '../../chat/resume';
-import { createChatCompletionDeltaResponse } from '@fastgpt/global/core/ai/llm/utils';
+import { streamSseEvent } from '@fastgpt/global/core/chat/stream/sse';
+import { SseResponseEventEnum } from '@fastgpt/global/core/chat/stream/constants';
 
 export type AuxiliaryGenerationStreamWriter = (params: {
+  id?: string;
   event?: `${AuxiliaryGenerationEventEnum}` | string;
   data: string | object;
 }) => void;
@@ -56,16 +58,23 @@ export const createAuxiliaryGenerationStream = async ({
     streamResumeMirror: mirror,
     heartbeat: {
       write: (writer) => {
+        const heartbeatEvent = streamSseEvent.answerDelta('');
         writer({
-          event: AuxiliaryGenerationEventEnum.answer,
-          data: JSON.stringify(createChatCompletionDeltaResponse({ text: '' }))
+          ...heartbeatEvent,
+          data: JSON.stringify(heartbeatEvent.data)
         });
       }
     }
   });
 
-  const write: AuxiliaryGenerationStreamWriter = ({ event, data }) => {
-    const payload = typeof data === 'string' ? data : JSON.stringify(data);
+  const write: AuxiliaryGenerationStreamWriter = ({ id, event, data }) => {
+    const payload =
+      typeof data === 'string'
+        ? data
+        : JSON.stringify({
+            ...data,
+            ...(id ? { responseValueId: id } : {})
+          });
     sseContext.write({ event, data: payload });
   };
 
@@ -82,17 +91,7 @@ export const createAuxiliaryGenerationStream = async ({
       });
     },
     writeDone() {
-      write({
-        event: AuxiliaryGenerationEventEnum.answer,
-        data: createChatCompletionDeltaResponse({
-          text: null,
-          finishReason: 'stop'
-        })
-      });
-      write({
-        event: AuxiliaryGenerationEventEnum.answer,
-        data: '[DONE]'
-      });
+      write(streamSseEvent.done(SseResponseEventEnum.answer));
     },
     async flushResume() {
       await sseContext.flushResume();

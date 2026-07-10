@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { SseResponseEventEnum } from '@fastgpt/global/core/chat/stream/constants';
 import { createWorkflowAgentLoopEventMapper } from '@fastgpt/service/core/workflow/dispatch/ai/agent/adapter/eventMapper';
 
 const createPlan = () => ({

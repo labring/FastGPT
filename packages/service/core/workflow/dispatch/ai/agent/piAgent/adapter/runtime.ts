@@ -6,14 +6,14 @@ import type {
   ChatCompletionMessageToolCall,
   CompletionFinishReason
 } from '@fastgpt/global/core/ai/llm/type';
-import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
+import { streamSseEvent } from '@fastgpt/global/core/chat/stream/sse';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { AgentEvent, AgentMessage } from '@mariozechner/pi-agent-core';
 import type { AssistantMessage, Model, StopReason, ToolCall } from '@mariozechner/pi-ai';
 import { saveLLMRequestRecord, createLLMRequestId } from '../../../../../../ai/record/controller';
 import { getLLMModel } from '../../../../../../ai/model';
 import { formatModelChars2Points } from '../../../../../../../support/wallet/usage/utils';
-import type { WorkflowResponseType } from '../../../../type';
+import type { StreamResponseType } from '../../../../type';
 import type { DispatchAgentModuleProps } from '../..';
 import {
   AgentNodeResponseDisplay,
@@ -280,7 +280,7 @@ export const createPiAgentWorkflowRuntime = ({
   props: DispatchAgentModuleProps;
   nodeResponses: ChatHistoryItemResType[];
   appendNodeResponse?: (nodeResponse: ChatHistoryItemResType) => void;
-  workflowStreamResponse?: WorkflowResponseType;
+  workflowStreamResponse?: StreamResponseType;
   usagePush: DispatchAgentModuleProps['usagePush'];
   completionTools?: ChatCompletionTool[];
   saveLLMRequestRecordFn?: typeof saveLLMRequestRecord;
@@ -418,7 +418,7 @@ export const createPiAgentWorkflowRuntime = ({
       };
       pendingRequests.push(request);
 
-      workflowStreamResponse?.(workflowSseEvent.flowNodeStatus(request.modelName));
+      workflowStreamResponse?.(streamSseEvent.flowNodeStatus(request.modelName));
 
       return undefined;
     },
@@ -427,13 +427,13 @@ export const createPiAgentWorkflowRuntime = ({
         const assistantEvent = event.assistantMessageEvent;
         if (assistantEvent.type === 'text_delta') {
           answerText += assistantEvent.delta;
-          workflowStreamResponse?.(workflowSseEvent.answerDelta(assistantEvent.delta));
+          workflowStreamResponse?.(streamSseEvent.answerDelta(assistantEvent.delta));
           return;
         }
         if (assistantEvent.type === 'thinking_delta') {
           reasoningText += assistantEvent.delta;
           if (showReasoning) {
-            workflowStreamResponse?.(workflowSseEvent.reasoningDelta(assistantEvent.delta));
+            workflowStreamResponse?.(streamSseEvent.reasoningDelta(assistantEvent.delta));
           }
           return;
         }

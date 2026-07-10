@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { SseResponseEventEnum } from '@fastgpt/global/core/chat/stream/constants';
 import { useToolStreamResponse } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/hooks/useToolStreamResponse';
 
 const createCall = (overrides: Record<string, any> = {}) =>

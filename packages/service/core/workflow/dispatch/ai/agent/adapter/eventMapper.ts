@@ -2,9 +2,14 @@ import type {
   AIChatItemValueItemType,
   ToolModuleResponseItemType
 } from '@fastgpt/global/core/chat/type';
-import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
-import type { AgentLoopEvent } from '../../../../../ai/llm/agentLoop';
-import type { WorkflowResponseType } from '../../../type';
+import { streamSseEvent } from '@fastgpt/global/core/chat/stream/sse';
+import {
+  createAgentLoopControlToolResponseStore,
+  updateAgentLoopToolResponse,
+  upsertAgentLoopToolResponse,
+  type AgentLoopEvent
+} from '../../../../../ai/llm/agentLoop';
+import type { StreamResponseType } from '../../../type';
 import type { GetSubAppInfoFnType } from '../type';
 
 const AGENT_PLAN_STREAM_RESPONSE_ID = 'agent-plan-stream';
@@ -30,7 +35,7 @@ export const createWorkflowAgentLoopEventMapper = ({
   showReasoning = true,
   assistantResponses = []
 }: {
-  workflowStreamResponse?: WorkflowResponseType;
+  workflowStreamResponse?: StreamResponseType;
   getSubAppInfo: GetSubAppInfoFnType;
   internalToolNames: Set<string>;
   updatePlanToolName?: string;
@@ -41,146 +46,12 @@ export const createWorkflowAgentLoopEventMapper = ({
   const toolNameByCallId = new Map<string, string>();
   const isUpdatePlanTool = (name?: string) => !!name && name === updatePlanToolName;
   const isAskTool = (name?: string) => !!name && name === askToolName;
-
-  /**
-   * 根据 callId 找到已经持久化的工具运行卡片。
-   */
-  const findToolResponseIndex = (callId: string) =>
-    assistantResponses.findIndex((item) => item.tools?.some((tool) => tool.id === callId));
-
-  /**
-   * 在 tools 数组中按 id 覆盖已有工具；不存在时追加到末尾。
-   */
-  const replaceOrAppendTool = (
-    tools: ToolModuleResponseItemType[] | null | undefined,
-    tool: ToolModuleResponseItemType
-  ) => {
-    if (!tools?.length) return [tool];
-
-    const hasTool = tools.some((item) => item.id === tool.id);
-    return hasTool ? tools.map((item) => (item.id === tool.id ? tool : item)) : tools.concat(tool);
-  };
-
-  /**
-   * 新建或更新工具运行卡片。
-   * tool_call 到达时先创建卡片，后续 tool_params/tool_response 再按 callId 追加内容。
-   */
-  const upsertToolResponse = (tool: ToolModuleResponseItemType) => {
-    const responseIndex = findToolResponseIndex(tool.id);
-    if (responseIndex < 0) {
-      assistantResponses.push({
-        id: tool.id,
-        tools: [tool]
-      });
-      return;
-    }
-
-    const currentValue = assistantResponses[responseIndex];
-    assistantResponses[responseIndex] = {
-      ...currentValue,
-      tools: replaceOrAppendTool(currentValue.tools, tool)
-    };
-  };
-
-  /**
-   * 增量更新已持久化的工具卡片。
-   * 若事件顺序异常导致尚未创建卡片，则忽略该增量，避免生成缺少名称/参数的脏记录。
-   */
-  const updateToolResponse = (
-    callId: string,
-    updater: (tool: ToolModuleResponseItemType) => ToolModuleResponseItemType
-  ) => {
-    const responseIndex = findToolResponseIndex(callId);
-    if (responseIndex < 0) return;
-
-    const currentValue = assistantResponses[responseIndex];
-    const currentTool = currentValue.tools?.find((tool) => tool.id === callId);
-    if (!currentTool) return;
-
-    const nextTool = updater(currentTool);
-    assistantResponses[responseIndex] = {
-      ...currentValue,
-      tools: replaceOrAppendTool(currentValue.tools, nextTool)
-    };
-  };
-
-  const findAgentPlanUpdateIndex = (callId: string) =>
-    assistantResponses.findIndex((item) => item.agentPlanUpdate?.id === callId);
-
-  const upsertAgentPlanUpdate = (
-    update: NonNullable<AIChatItemValueItemType['agentPlanUpdate']>
-  ) => {
-    const responseIndex = findAgentPlanUpdateIndex(update.id);
-    if (responseIndex < 0) {
-      assistantResponses.push({
-        id: update.id,
-        agentPlanUpdate: update
-      });
-      return;
-    }
-
-    assistantResponses[responseIndex] = {
-      ...assistantResponses[responseIndex],
-      agentPlanUpdate: {
-        ...(assistantResponses[responseIndex].agentPlanUpdate || {}),
-        ...update
-      }
-    };
-  };
-
-  const updateAgentPlanUpdate = (
-    callId: string,
-    updater: (
-      update: NonNullable<AIChatItemValueItemType['agentPlanUpdate']>
-    ) => NonNullable<AIChatItemValueItemType['agentPlanUpdate']>
-  ) => {
-    const responseIndex = findAgentPlanUpdateIndex(callId);
-    const currentValue = responseIndex >= 0 ? assistantResponses[responseIndex] : undefined;
-    if (!currentValue?.agentPlanUpdate) return;
-
-    assistantResponses[responseIndex] = {
-      ...currentValue,
-      agentPlanUpdate: updater(currentValue.agentPlanUpdate)
-    };
-  };
-
-  const findAgentAskIndex = (callId: string) =>
-    assistantResponses.findIndex((item) => item.agentAsk?.id === callId);
-
-  const upsertAgentAsk = (ask: NonNullable<AIChatItemValueItemType['agentAsk']>) => {
-    const responseIndex = findAgentAskIndex(ask.id);
-    if (responseIndex < 0) {
-      assistantResponses.push({
-        id: ask.id,
-        agentAsk: ask
-      });
-      return;
-    }
-
-    assistantResponses[responseIndex] = {
-      ...assistantResponses[responseIndex],
-      agentAsk: {
-        ...(assistantResponses[responseIndex].agentAsk || {}),
-        ...ask
-      }
-    };
-  };
-
-  const updateAgentAsk = (
-    callId: string,
-    updater: (
-      ask: NonNullable<AIChatItemValueItemType['agentAsk']>
-    ) => NonNullable<AIChatItemValueItemType['agentAsk']>
-  ) => {
-    const responseIndex = findAgentAskIndex(callId);
-    const currentValue = responseIndex >= 0 ? assistantResponses[responseIndex] : undefined;
-    if (!currentValue?.agentAsk) return;
-
-    assistantResponses[responseIndex] = {
-      ...currentValue,
-      agentAsk: updater(currentValue.agentAsk)
-    };
-  };
+  const {
+    upsertPlanUpdate: upsertAgentPlanUpdate,
+    updatePlanUpdate: updateAgentPlanUpdate,
+    upsertAsk: upsertAgentAsk,
+    updateAsk: updateAgentAsk
+  } = createAgentLoopControlToolResponseStore(assistantResponses);
 
   const insertAssistantTextBeforeRuntimeTools = ({
     toolCalls,
@@ -264,12 +135,16 @@ export const createWorkflowAgentLoopEventMapper = ({
     }
     if (!functionName || isInternalTool(functionName, internalToolNames)) return;
 
-    updateToolResponse(callId, (tool) => ({
-      ...tool,
-      params: `${tool.params || ''}${argsDelta}`
-    }));
+    updateAgentLoopToolResponse({
+      assistantResponses,
+      callId,
+      updater: (tool) => ({
+        ...tool,
+        params: `${tool.params || ''}${argsDelta}`
+      })
+    });
 
-    workflowStreamResponse?.(workflowSseEvent.toolParams({ id: callId, params: argsDelta }));
+    workflowStreamResponse?.(streamSseEvent.toolParams({ id: callId, params: argsDelta }));
   };
 
   const applyToolResponse = ({ callId, response }: { callId: string; response: string }) => {
@@ -283,12 +158,16 @@ export const createWorkflowAgentLoopEventMapper = ({
     }
     if (!functionName || isInternalTool(functionName, internalToolNames)) return;
 
-    updateToolResponse(callId, (tool) => ({
-      ...tool,
-      response: `${tool.response || ''}${response}`
-    }));
+    updateAgentLoopToolResponse({
+      assistantResponses,
+      callId,
+      updater: (tool) => ({
+        ...tool,
+        response: `${tool.response || ''}${response}`
+      })
+    });
 
-    workflowStreamResponse?.(workflowSseEvent.toolResponse({ id: callId, response }));
+    workflowStreamResponse?.(streamSseEvent.toolResponse({ id: callId, response }));
   };
 
   /**
@@ -297,17 +176,17 @@ export const createWorkflowAgentLoopEventMapper = ({
   const emitEvent = (event: AgentLoopEvent) => {
     switch (event.type) {
       case 'answer_delta': {
-        workflowStreamResponse?.(workflowSseEvent.answerDelta(event.text));
+        workflowStreamResponse?.(streamSseEvent.answerDelta(event.text));
         return;
       }
       case 'reasoning_delta': {
         if (!showReasoning) return;
 
-        workflowStreamResponse?.(workflowSseEvent.reasoningDelta(event.text));
+        workflowStreamResponse?.(streamSseEvent.reasoningDelta(event.text));
         return;
       }
       case 'llm_request_start': {
-        workflowStreamResponse?.(workflowSseEvent.flowNodeStatus(event.modelName));
+        workflowStreamResponse?.(streamSseEvent.flowNodeStatus(event.modelName));
         return;
       }
       case 'llm_request_end': {
@@ -375,9 +254,12 @@ export const createWorkflowAgentLoopEventMapper = ({
           functionName,
           params
         };
-        upsertToolResponse(tool);
+        upsertAgentLoopToolResponse({
+          assistantResponses,
+          tool
+        });
 
-        workflowStreamResponse?.(workflowSseEvent.toolCall(tool));
+        workflowStreamResponse?.(streamSseEvent.toolCall(tool));
         return;
       }
       case 'tool_params': {
@@ -409,7 +291,7 @@ export const createWorkflowAgentLoopEventMapper = ({
       }
       case 'plan_status': {
         workflowStreamResponse?.(
-          workflowSseEvent.planStatus({ status: event.status }, AGENT_PLAN_STREAM_RESPONSE_ID)
+          streamSseEvent.planStatus({ status: event.status }, AGENT_PLAN_STREAM_RESPONSE_ID)
         );
         return;
       }
@@ -429,7 +311,7 @@ export const createWorkflowAgentLoopEventMapper = ({
           assistantResponses.push(nextPlanValue);
         }
 
-        workflowStreamResponse?.(workflowSseEvent.plan(event.plan, AGENT_PLAN_STREAM_RESPONSE_ID));
+        workflowStreamResponse?.(streamSseEvent.plan(event.plan, AGENT_PLAN_STREAM_RESPONSE_ID));
         return;
       }
     }

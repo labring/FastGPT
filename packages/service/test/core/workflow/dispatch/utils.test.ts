@@ -19,11 +19,9 @@ import { responseWrite } from '@fastgpt/service/common/response';
 import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import { NodeOutputKeyEnum, VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
-import {
-  SseResponseEventEnum,
-  DispatchNodeResponseKeyEnum
-} from '@fastgpt/global/core/workflow/runtime/constants';
-import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
+import { SseResponseEventEnum } from '@fastgpt/global/core/chat/stream/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { streamSseEvent } from '@fastgpt/global/core/chat/stream/sse';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
@@ -69,15 +67,9 @@ describe('getWorkflowResponseWrite', () => {
     return res;
   };
 
-  it('should return a function', () => {
-    const fn = getWorkflowResponseWrite({ detail: true, streamResponse: true });
-    expect(typeof fn).toBe('function');
-  });
-
   it('should not write when res is undefined', () => {
     const fn = getWorkflowResponseWrite({ detail: true, streamResponse: true });
-    fn(workflowSseEvent.answerDelta('hi'));
-    // No error thrown
+    expect(() => fn(streamSseEvent.answerDelta('hi'))).not.toThrow();
   });
 
   it('should not write when res.closed is true', () => {
@@ -85,7 +77,7 @@ describe('getWorkflowResponseWrite', () => {
     res.closed = true;
     vi.mocked(responseWrite).mockClear();
     const fn = getWorkflowResponseWrite({ res, detail: true, streamResponse: true });
-    fn(workflowSseEvent.answerDelta('hi'));
+    fn(streamSseEvent.answerDelta('hi'));
     expect(responseWrite).not.toHaveBeenCalled();
   });
 
@@ -93,7 +85,7 @@ describe('getWorkflowResponseWrite', () => {
     const res = mockRes();
     vi.mocked(responseWrite).mockClear();
     const fn = getWorkflowResponseWrite({ res, detail: true, streamResponse: false });
-    fn(workflowSseEvent.answerDelta('hi'));
+    fn(streamSseEvent.answerDelta('hi'));
     expect(responseWrite).not.toHaveBeenCalled();
   });
 
@@ -101,7 +93,7 @@ describe('getWorkflowResponseWrite', () => {
     const res = mockRes();
     vi.mocked(responseWrite).mockClear();
     const fn = getWorkflowResponseWrite({ res, detail: false, streamResponse: true });
-    fn(workflowSseEvent.answerDelta('hi'));
+    fn(streamSseEvent.answerDelta('hi'));
     expect(responseWrite).toHaveBeenCalled();
   });
 
@@ -109,7 +101,7 @@ describe('getWorkflowResponseWrite', () => {
     const res = mockRes();
     vi.mocked(responseWrite).mockClear();
     const fn = getWorkflowResponseWrite({ res, detail: false, streamResponse: true });
-    fn(workflowSseEvent.fastAnswerDelta('hi'));
+    fn(streamSseEvent.fastAnswerDelta('hi'));
     expect(responseWrite).toHaveBeenCalled();
   });
 
@@ -117,7 +109,7 @@ describe('getWorkflowResponseWrite', () => {
     const res = mockRes();
     vi.mocked(responseWrite).mockClear();
     const fn = getWorkflowResponseWrite({ res, detail: false, streamResponse: true });
-    fn(workflowSseEvent.flowNodeStatus('test node'));
+    fn(streamSseEvent.flowNodeStatus('test node'));
     expect(responseWrite).not.toHaveBeenCalled();
   });
 
@@ -130,7 +122,7 @@ describe('getWorkflowResponseWrite', () => {
       streamResponse: true,
       showNodeStatus: false
     });
-    fn(workflowSseEvent.flowNodeStatus('test node'));
+    fn(streamSseEvent.flowNodeStatus('test node'));
     expect(responseWrite).not.toHaveBeenCalled();
   });
 
@@ -144,7 +136,7 @@ describe('getWorkflowResponseWrite', () => {
       showNodeStatus: false
     });
     fn(
-      workflowSseEvent.toolCall({
+      streamSseEvent.toolCall({
         id: 'tool-call-id',
         toolName: 'tool',
         toolAvatar: '',
@@ -164,7 +156,7 @@ describe('getWorkflowResponseWrite', () => {
       streamResponse: true,
       id: 'test-id'
     });
-    fn(workflowSseEvent.answerDelta('hi', 'rid'));
+    fn(streamSseEvent.answerDelta('hi', 'rid'));
     expect(responseWrite).toHaveBeenCalledWith(
       expect.objectContaining({
         res,
@@ -179,7 +171,7 @@ describe('getWorkflowResponseWrite', () => {
     const res = mockRes();
     vi.mocked(responseWrite).mockClear();
     const fn = getWorkflowResponseWrite({ res, detail: false, streamResponse: true });
-    fn(workflowSseEvent.answerDelta('hi'));
+    fn(streamSseEvent.answerDelta('hi'));
     expect(responseWrite).toHaveBeenCalledWith(expect.objectContaining({ event: undefined }));
   });
 
@@ -187,7 +179,7 @@ describe('getWorkflowResponseWrite', () => {
     const res = mockRes();
     vi.mocked(responseWrite).mockClear();
     const fn = getWorkflowResponseWrite({ res, detail: false, streamResponse: true });
-    fn(workflowSseEvent.chatTitle('Generated Title'));
+    fn(streamSseEvent.chatTitle('Generated Title'));
     expect(responseWrite).toHaveBeenCalledWith(
       expect.objectContaining({
         event: SseResponseEventEnum.chatTitle
@@ -233,7 +225,7 @@ describe('getWorkflowChildResponseWrite', () => {
       fn: mockFn as any
     });
     expect(wrapped).toBeDefined();
-    wrapped!(workflowSseEvent.answerDelta('hi'));
+    wrapped!(streamSseEvent.answerDelta('hi'));
     expect(mockFn).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'child-id',
@@ -250,7 +242,7 @@ describe('getWorkflowChildResponseWrite', () => {
     });
 
     wrapped!(
-      workflowSseEvent.toolParams({
+      streamSseEvent.toolParams({
         id: 'tool-call-id',
         params: 'delta'
       })

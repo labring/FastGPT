@@ -4,7 +4,7 @@ import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/
 import { type SelectAppItemType } from '@fastgpt/global/core/workflow/template/system/abandoned/runApp/type';
 import { runWorkflow } from '../index';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
+import { streamSseEvent } from '@fastgpt/global/core/chat/stream/sse';
 import {
   getWorkflowEntryNodeIds,
   storeEdges2RuntimeEdges,
@@ -51,7 +51,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
     per: ReadPermissionVal
   });
 
-  workflowStreamResponse?.(workflowSseEvent.fastAnswerDelta('\n'));
+  workflowStreamResponse?.(streamSseEvent.fastAnswerDelta('\n'));
 
   const chatHistories = getHistories(history, histories);
   const { files } = chatValue2RuntimePrompt(query);

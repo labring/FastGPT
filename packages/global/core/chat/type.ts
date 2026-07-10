@@ -350,6 +350,7 @@ export const ResponseTagItemSchema = z.object({
   useAgentSandbox: z.boolean().optional(),
   totalQuoteList: z.array(SearchDataResponseQuoteListItemSchema).optional(),
   toolCiteLinks: z.array(ToolCiteLinksSchema).optional(),
+  totalPoints: z.number().optional(),
   errorText: ErrorTextItemSchema.optional(),
   llmModuleAccount: z.number().optional().meta({ deprecated: true }),
   historyPreviewLength: z.number().optional().meta({ deprecated: true })

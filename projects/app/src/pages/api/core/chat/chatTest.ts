@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { sseErrRes } from '@fastgpt/service/common/response';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { SseResponseEventEnum } from '@fastgpt/global/core/chat/stream/constants';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
@@ -23,7 +23,7 @@ import {
   rewriteNodeOutputByHistories,
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
+import { streamSseEvent } from '@fastgpt/global/core/chat/stream/sse';
 import { WORKFLOW_MAX_RUN_TIMES } from '@fastgpt/service/core/workflow/constants';
 import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/tool/workflowTool/utils';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
@@ -262,8 +262,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       }
     });
 
-    streamResponseContext.responseWrite(workflowSseEvent.answerStop());
-    streamResponseContext.responseWrite(workflowSseEvent.done(SseResponseEventEnum.answer));
+    streamResponseContext.responseWrite(streamSseEvent.answerStop());
+    streamResponseContext.responseWrite(streamSseEvent.done(SseResponseEventEnum.answer));
 
     const aiResponse: AIChatItemType & { dataId?: string } = {
       dataId: responseChatItemId,

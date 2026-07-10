@@ -6,7 +6,7 @@ import {
   ChatSourceEnum,
   ChatSourceTypeEnum
 } from '@fastgpt/global/core/chat/constants';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { SseResponseEventEnum } from '@fastgpt/global/core/chat/stream/constants';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import {
   getWorkflowEntryNodeIds,
@@ -15,7 +15,7 @@ import {
   storeNodes2RuntimeNodes,
   getLastInteractiveValue
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
+import { streamSseEvent } from '@fastgpt/global/core/chat/stream/sse';
 import { GPTMessages2Chats, chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import {
@@ -439,20 +439,18 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       await titleSender.send();
       titleSender.close();
 
-      workflowResponseWrite(workflowSseEvent.answerStop());
+      workflowResponseWrite(streamSseEvent.answerStop());
       // 特殊输配(data 不是{})
       if (detail) {
         workflowResponseWrite(
-          workflowSseEvent.raw({
+          streamSseEvent.raw({
             event: SseResponseEventEnum.flowResponses,
             data: JSON.stringify(feResponseData)
           })
         );
       }
 
-      workflowResponseWrite(
-        workflowSseEvent.done(detail ? SseResponseEventEnum.answer : undefined)
-      );
+      workflowResponseWrite(streamSseEvent.done(detail ? SseResponseEventEnum.answer : undefined));
     } else {
       const generatedTitle = await titleSender.send();
       const formatResponseContent = removeAIResponseCite(assistantResponses, retainDatasetCite);

@@ -21,7 +21,7 @@ import {
   appendNodeResponseByParent,
   mergeNodeResponseDataByIdAndParent
 } from '@fastgpt/global/core/chat/utils/mergeNode';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { SseResponseEventEnum } from '@fastgpt/global/core/chat/stream/constants';
 import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useSystemStore } from '@/web/common/system/useSystemStore';

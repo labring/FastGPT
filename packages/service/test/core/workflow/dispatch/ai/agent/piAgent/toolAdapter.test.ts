@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { SseResponseEventEnum } from '@fastgpt/global/core/chat/stream/constants';
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import {
   buildAgentTools,

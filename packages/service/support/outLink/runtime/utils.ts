@@ -23,7 +23,7 @@ import { preChatRound, type PreChatRoundResult } from '../../../core/chat/utils/
 import { updateChatGenerateStatus } from '../../../core/chat/chatGenerateStatus';
 import { dispatchWorkFlow } from '../../../core/workflow/dispatch';
 import { getRunningUserInfoByTmbId } from '../../../support/user/team/utils';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { SseResponseEventEnum } from '@fastgpt/global/core/chat/stream/constants';
 import { authOutLinkLimit } from './auth';
 import { addOutLinkUsage } from '../../../support/outLink/tools';
 import { getLogger, LogCategories } from '../../../common/logger';

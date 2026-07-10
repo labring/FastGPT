@@ -1,7 +1,7 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
+import { streamSseEvent } from '@fastgpt/global/core/chat/stream/sse';
 import {
   type DispatchNodeResultType,
   type ModuleDispatchProps
@@ -160,8 +160,8 @@ export const dispatchRunTool = async (props: RunToolProps): Promise<RunToolRespo
           answerText += content;
           workflowStreamResponse(
             type === 'fastAnswer'
-              ? workflowSseEvent.fastAnswerDelta(content)
-              : workflowSseEvent.answerDelta(content)
+              ? streamSseEvent.fastAnswerDelta(content)
+              : streamSseEvent.answerDelta(content)
           );
         }
       });

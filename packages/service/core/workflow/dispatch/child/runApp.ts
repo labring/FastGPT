@@ -2,7 +2,7 @@ import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
 import { runWorkflow } from '../index';
 import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
+import { streamSseEvent } from '@fastgpt/global/core/chat/stream/sse';
 import {
   getWorkflowEntryNodeIds,
   storeEdges2RuntimeEdges,
@@ -93,7 +93,7 @@ export const dispatchRunAppNode = async (props: Props): Promise<Response> => {
     const childStreamResponse = system_forbid_stream ? false : props.stream;
     // Auto line
     if (childStreamResponse) {
-      workflowStreamResponse?.(workflowSseEvent.answerDelta('\n'));
+      workflowStreamResponse?.(streamSseEvent.answerDelta('\n'));
     }
 
     const chatHistories = getHistories(history, histories);

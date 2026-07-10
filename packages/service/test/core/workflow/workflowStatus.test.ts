@@ -3,10 +3,12 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
   setAgentRuntimeStop,
   delAgentRuntimeStopSign,
-  shouldWorkflowStop,
-  waitForWorkflowComplete,
-  getRuntimeStatusKey
+  waitForWorkflowComplete
 } from '@fastgpt/service/core/workflow/dispatch/workflowStatus';
+import {
+  getAgentRuntimeStatusKey,
+  shouldAgentRuntimeStop
+} from '@fastgpt/service/core/ai/runtimeStatus';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 describe('Workflow Status Redis Functions', () => {
@@ -24,12 +26,12 @@ describe('Workflow Status Redis Functions', () => {
   });
 
   test('should include source type in runtime status key', () => {
-    expect(getRuntimeStatusKey(statusParams)).toBe(
+    expect(getAgentRuntimeStatusKey(statusParams)).toBe(
       `agent_runtime_stopping:${ChatSourceTypeEnum.app}:${testAppId}:${testChatId}`
     );
 
     expect(
-      getRuntimeStatusKey({
+      getAgentRuntimeStatusKey({
         sourceType: ChatSourceTypeEnum.skillEdit,
         sourceId: testAppId,
         chatId: testChatId
@@ -39,25 +41,25 @@ describe('Workflow Status Redis Functions', () => {
 
   test('should set stopping sign', async () => {
     await setAgentRuntimeStop(statusParams);
-    const shouldStop = await shouldWorkflowStop(statusParams);
+    const shouldStop = await shouldAgentRuntimeStop(statusParams);
     expect(shouldStop).toBe(true);
   });
 
   test('should return false for non-existent status', async () => {
-    const shouldStop = await shouldWorkflowStop(statusParams);
+    const shouldStop = await shouldAgentRuntimeStop(statusParams);
     expect(shouldStop).toBe(false);
   });
 
   test('should detect stopping status', async () => {
     await setAgentRuntimeStop(statusParams);
-    const shouldStop = await shouldWorkflowStop(statusParams);
+    const shouldStop = await shouldAgentRuntimeStop(statusParams);
     expect(shouldStop).toBe(true);
   });
 
   test('should return false after deleting stop sign', async () => {
     await setAgentRuntimeStop(statusParams);
     await delAgentRuntimeStopSign(statusParams);
-    const shouldStop = await shouldWorkflowStop(statusParams);
+    const shouldStop = await shouldAgentRuntimeStop(statusParams);
     expect(shouldStop).toBe(false);
   });
 
@@ -77,7 +79,7 @@ describe('Workflow Status Redis Functions', () => {
     });
 
     // 验证停止标志已被删除
-    const shouldStop = await shouldWorkflowStop(statusParams);
+    const shouldStop = await shouldAgentRuntimeStop(statusParams);
     expect(shouldStop).toBe(false);
   });
 
@@ -91,14 +93,14 @@ describe('Workflow Status Redis Functions', () => {
     });
 
     // 验证停止标志仍然存在
-    const shouldStop = await shouldWorkflowStop(statusParams);
+    const shouldStop = await shouldAgentRuntimeStop(statusParams);
     expect(shouldStop).toBe(true);
   });
 
   test('should delete workflow stop sign', async () => {
     await setAgentRuntimeStop(statusParams);
     await delAgentRuntimeStopSign(statusParams);
-    const shouldStop = await shouldWorkflowStop(statusParams);
+    const shouldStop = await shouldAgentRuntimeStop(statusParams);
     expect(shouldStop).toBe(false);
   });
 
@@ -107,7 +109,7 @@ describe('Workflow Status Redis Functions', () => {
     await Promise.all([setAgentRuntimeStop(statusParams), setAgentRuntimeStop(statusParams)]);
 
     // 停止标志应该存在
-    const shouldStop = await shouldWorkflowStop(statusParams);
+    const shouldStop = await shouldAgentRuntimeStop(statusParams);
     expect(shouldStop).toBe(true);
   });
 });

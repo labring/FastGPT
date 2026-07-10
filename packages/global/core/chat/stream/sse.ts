@@ -3,31 +3,31 @@ import type {
   SandboxStatusItemType,
   SkillModuleResponseItemType,
   ToolModuleResponseItemType
-} from '../../chat/type';
+} from '../type';
 import type { AgentPlanStatusType, AgentPlanType } from '../../ai/agent/type';
-import type { WorkflowInteractiveResponseType } from '../template/system/interactive/type';
+import type { WorkflowInteractiveResponseType } from '../../workflow/template/system/interactive/type';
 import { SseResponseEventEnum } from './constants';
-import { textAdaptGptResponse } from './utils';
+import { createChatCompletionDeltaResponse } from '../../ai/llm/utils';
 
-export type WorkflowAnswerChunk = ReturnType<typeof textAdaptGptResponse>;
+export type StreamAnswerChunk = ReturnType<typeof createChatCompletionDeltaResponse>;
 
-export type WorkflowToolDeltaType = Pick<ToolModuleResponseItemType, 'id'> &
+export type StreamToolDeltaType = Pick<ToolModuleResponseItemType, 'id'> &
   Partial<Omit<ToolModuleResponseItemType, 'id'>>;
 
-export type WorkflowSsePayloadMap = {
+export type StreamSsePayloadMap = {
   [SseResponseEventEnum.error]: Record<string, any>;
   [SseResponseEventEnum.workflowDuration]: { durationSeconds: number };
   [SseResponseEventEnum.chatTitle]: { title: string };
-  [SseResponseEventEnum.answer]: WorkflowAnswerChunk;
-  [SseResponseEventEnum.fastAnswer]: WorkflowAnswerChunk;
+  [SseResponseEventEnum.answer]: StreamAnswerChunk;
+  [SseResponseEventEnum.fastAnswer]: StreamAnswerChunk;
   [SseResponseEventEnum.flowNodeStatus]: {
     status: 'running';
     name: string;
   };
   [SseResponseEventEnum.flowNodeResponse]: ChatHistoryItemResType;
   [SseResponseEventEnum.toolCall]: { tool: ToolModuleResponseItemType };
-  [SseResponseEventEnum.toolParams]: { tool: WorkflowToolDeltaType };
-  [SseResponseEventEnum.toolResponse]: { tool: WorkflowToolDeltaType };
+  [SseResponseEventEnum.toolParams]: { tool: StreamToolDeltaType };
+  [SseResponseEventEnum.toolResponse]: { tool: StreamToolDeltaType };
   [SseResponseEventEnum.flowResponses]: Record<string, any>;
   [SseResponseEventEnum.updateVariables]: Record<string, any>;
   [SseResponseEventEnum.interactive]: { interactive: WorkflowInteractiveResponseType };
@@ -37,22 +37,22 @@ export type WorkflowSsePayloadMap = {
   [SseResponseEventEnum.skillCall]: { skill: SkillModuleResponseItemType };
 };
 
-export type WorkflowTypedSseEvent<
-  Event extends keyof WorkflowSsePayloadMap = keyof WorkflowSsePayloadMap
+export type StreamTypedSseEvent<
+  Event extends keyof StreamSsePayloadMap = keyof StreamSsePayloadMap
 > = {
   id?: string;
   event: Event;
-  data: WorkflowSsePayloadMap[Event];
+  data: StreamSsePayloadMap[Event];
 };
 
-export type WorkflowRawSseEvent = {
+export type StreamRawSseEvent = {
   id?: string;
   event?: SseResponseEventEnum;
   data: string;
 };
 
-export type WorkflowResponseItemType = WorkflowTypedSseEvent | WorkflowRawSseEvent;
-export type WorkflowResponseType = (event: WorkflowResponseItemType) => void;
+export type StreamResponseItemType = StreamTypedSseEvent | StreamRawSseEvent;
+export type StreamResponseType = (event: StreamResponseItemType) => void;
 
 type AnswerEventParams = {
   text?: string | null;
@@ -68,48 +68,45 @@ const answerEvent = ({
   finishReason,
   event = SseResponseEventEnum.answer,
   id
-}: AnswerEventParams): WorkflowTypedSseEvent<
+}: AnswerEventParams): StreamTypedSseEvent<
   SseResponseEventEnum.answer | SseResponseEventEnum.fastAnswer
 > => ({
   ...(id && { id }),
   event,
-  data: textAdaptGptResponse({
+  data: createChatCompletionDeltaResponse({
     text,
-    reasoning_content: reasoningContent,
-    finish_reason: finishReason
+    reasoningContent,
+    finishReason
   })
 });
 
-export const workflowSseEvent = {
+export const streamSseEvent = {
   /**
    * 输出标准答案文本增量，对应主回答气泡的逐字追加内容。
    */
-  answerDelta(text: string, id?: string): WorkflowTypedSseEvent<SseResponseEventEnum.answer> {
-    return answerEvent({ text, id }) as WorkflowTypedSseEvent<SseResponseEventEnum.answer>;
+  answerDelta(text: string, id?: string): StreamTypedSseEvent<SseResponseEventEnum.answer> {
+    return answerEvent({ text, id }) as StreamTypedSseEvent<SseResponseEventEnum.answer>;
   },
 
   /**
-   * 输出快速回答文本增量，用于 workflow 正式执行结果之外的即时提示内容。
+   * 输出快速回答文本增量，用于 stream 正式执行结果之外的即时提示内容。
    */
-  fastAnswerDelta(
-    text: string,
-    id?: string
-  ): WorkflowTypedSseEvent<SseResponseEventEnum.fastAnswer> {
+  fastAnswerDelta(text: string, id?: string): StreamTypedSseEvent<SseResponseEventEnum.fastAnswer> {
     return answerEvent({
       text,
       id,
       event: SseResponseEventEnum.fastAnswer
-    }) as WorkflowTypedSseEvent<SseResponseEventEnum.fastAnswer>;
+    }) as StreamTypedSseEvent<SseResponseEventEnum.fastAnswer>;
   },
 
   /**
    * 输出模型思考内容增量，复用 answer 事件承载 reasoning_content。
    */
-  reasoningDelta(text: string, id?: string): WorkflowTypedSseEvent<SseResponseEventEnum.answer> {
+  reasoningDelta(text: string, id?: string): StreamTypedSseEvent<SseResponseEventEnum.answer> {
     return answerEvent({
       reasoningContent: text,
       id
-    }) as WorkflowTypedSseEvent<SseResponseEventEnum.answer>;
+    }) as StreamTypedSseEvent<SseResponseEventEnum.answer>;
   },
 
   /**
@@ -119,7 +116,7 @@ export const workflowSseEvent = {
     event:
       | SseResponseEventEnum.answer
       | SseResponseEventEnum.fastAnswer = SseResponseEventEnum.answer
-  ): WorkflowTypedSseEvent<SseResponseEventEnum.answer | SseResponseEventEnum.fastAnswer> {
+  ): StreamTypedSseEvent<SseResponseEventEnum.answer | SseResponseEventEnum.fastAnswer> {
     return answerEvent({
       text: null,
       finishReason: 'stop',
@@ -130,7 +127,7 @@ export const workflowSseEvent = {
   /**
    * 输出 SSE 完成标记，data 固定为 [DONE] 以兼容现有前端和 OpenAI 风格流。
    */
-  done(event?: SseResponseEventEnum): WorkflowRawSseEvent {
+  done(event?: SseResponseEventEnum): StreamRawSseEvent {
     return {
       event,
       data: '[DONE]'
@@ -140,7 +137,7 @@ export const workflowSseEvent = {
   /**
    * 输出已经序列化好的底层事件，用于动态事件名或必须保持旧 wire 格式的兼容场景。
    */
-  raw({ event, data, id }: WorkflowRawSseEvent): WorkflowRawSseEvent {
+  raw({ event, data, id }: StreamRawSseEvent): StreamRawSseEvent {
     return {
       ...(id && { id }),
       event,
@@ -151,7 +148,7 @@ export const workflowSseEvent = {
   /**
    * 输出工作流节点运行状态，前端据此展示当前正在执行的节点名称。
    */
-  flowNodeStatus(name: string): WorkflowTypedSseEvent<SseResponseEventEnum.flowNodeStatus> {
+  flowNodeStatus(name: string): StreamTypedSseEvent<SseResponseEventEnum.flowNodeStatus> {
     return {
       event: SseResponseEventEnum.flowNodeStatus,
       data: {
@@ -166,7 +163,7 @@ export const workflowSseEvent = {
    */
   flowNodeResponse(
     nodeResponse: ChatHistoryItemResType
-  ): WorkflowTypedSseEvent<SseResponseEventEnum.flowNodeResponse> {
+  ): StreamTypedSseEvent<SseResponseEventEnum.flowNodeResponse> {
     return {
       event: SseResponseEventEnum.flowNodeResponse,
       data: nodeResponse
@@ -176,7 +173,7 @@ export const workflowSseEvent = {
   /**
    * 输出工具调用开始事件，需要包含完整工具展示信息用于初始化工具运行卡片。
    */
-  toolCall(tool: ToolModuleResponseItemType): WorkflowTypedSseEvent<SseResponseEventEnum.toolCall> {
+  toolCall(tool: ToolModuleResponseItemType): StreamTypedSseEvent<SseResponseEventEnum.toolCall> {
     return {
       id: tool.id,
       event: SseResponseEventEnum.toolCall,
@@ -187,7 +184,7 @@ export const workflowSseEvent = {
   /**
    * 输出工具参数增量，只要求携带工具 id 和本次变化字段，前端按 id 合并。
    */
-  toolParams(tool: WorkflowToolDeltaType): WorkflowTypedSseEvent<SseResponseEventEnum.toolParams> {
+  toolParams(tool: StreamToolDeltaType): StreamTypedSseEvent<SseResponseEventEnum.toolParams> {
     return {
       id: tool.id,
       event: SseResponseEventEnum.toolParams,
@@ -198,9 +195,7 @@ export const workflowSseEvent = {
   /**
    * 输出工具响应增量，只要求携带工具 id 和本次响应片段，前端按 id 合并。
    */
-  toolResponse(
-    tool: WorkflowToolDeltaType
-  ): WorkflowTypedSseEvent<SseResponseEventEnum.toolResponse> {
+  toolResponse(tool: StreamToolDeltaType): StreamTypedSseEvent<SseResponseEventEnum.toolResponse> {
     return {
       id: tool.id,
       event: SseResponseEventEnum.toolResponse,
@@ -209,11 +204,11 @@ export const workflowSseEvent = {
   },
 
   /**
-   * 输出完整 workflow 响应集合，通常用于请求结束前同步最终节点响应列表。
+   * 输出完整 stream 响应集合，通常用于请求结束前同步最终节点响应列表。
    */
   flowResponses(
     data: Record<string, any>
-  ): WorkflowTypedSseEvent<SseResponseEventEnum.flowResponses> {
+  ): StreamTypedSseEvent<SseResponseEventEnum.flowResponses> {
     return {
       event: SseResponseEventEnum.flowResponses,
       data
@@ -221,11 +216,11 @@ export const workflowSseEvent = {
   },
 
   /**
-   * 输出变量更新结果，前端据此刷新 workflow 运行后产生的变量值。
+   * 输出变量更新结果，前端据此刷新 stream 运行后产生的变量值。
    */
   updateVariables(
     variables: Record<string, any>
-  ): WorkflowTypedSseEvent<SseResponseEventEnum.updateVariables> {
+  ): StreamTypedSseEvent<SseResponseEventEnum.updateVariables> {
     return {
       event: SseResponseEventEnum.updateVariables,
       data: variables
@@ -237,7 +232,7 @@ export const workflowSseEvent = {
    */
   interactive(
     interactive: WorkflowInteractiveResponseType
-  ): WorkflowTypedSseEvent<SseResponseEventEnum.interactive> {
+  ): StreamTypedSseEvent<SseResponseEventEnum.interactive> {
     return {
       event: SseResponseEventEnum.interactive,
       data: { interactive }
@@ -249,7 +244,7 @@ export const workflowSseEvent = {
    */
   workflowDuration(
     durationSeconds: number
-  ): WorkflowTypedSseEvent<SseResponseEventEnum.workflowDuration> {
+  ): StreamTypedSseEvent<SseResponseEventEnum.workflowDuration> {
     return {
       event: SseResponseEventEnum.workflowDuration,
       data: { durationSeconds }
@@ -259,7 +254,7 @@ export const workflowSseEvent = {
   /**
    * 输出 Agent 计划内容，使用固定 id 时前端会替换同一条计划展示。
    */
-  plan(plan: AgentPlanType, id?: string): WorkflowTypedSseEvent<SseResponseEventEnum.plan> {
+  plan(plan: AgentPlanType, id?: string): StreamTypedSseEvent<SseResponseEventEnum.plan> {
     return {
       ...(id && { id }),
       event: SseResponseEventEnum.plan,
@@ -273,7 +268,7 @@ export const workflowSseEvent = {
   planStatus(
     planStatus: AgentPlanStatusType,
     id?: string
-  ): WorkflowTypedSseEvent<SseResponseEventEnum.planStatus> {
+  ): StreamTypedSseEvent<SseResponseEventEnum.planStatus> {
     return {
       ...(id && { id }),
       event: SseResponseEventEnum.planStatus,
@@ -286,7 +281,7 @@ export const workflowSseEvent = {
    */
   sandboxStatus(
     sandboxStatus: SandboxStatusItemType
-  ): WorkflowTypedSseEvent<SseResponseEventEnum.sandboxStatus> {
+  ): StreamTypedSseEvent<SseResponseEventEnum.sandboxStatus> {
     return {
       event: SseResponseEventEnum.sandboxStatus,
       data: sandboxStatus
@@ -298,7 +293,7 @@ export const workflowSseEvent = {
    */
   skillCall(
     skill: SkillModuleResponseItemType
-  ): WorkflowTypedSseEvent<SseResponseEventEnum.skillCall> {
+  ): StreamTypedSseEvent<SseResponseEventEnum.skillCall> {
     return {
       event: SseResponseEventEnum.skillCall,
       data: { skill }
@@ -308,7 +303,7 @@ export const workflowSseEvent = {
   /**
    * 输出自动生成的聊天标题，前端收到后更新当前会话标题。
    */
-  chatTitle(title: string): WorkflowTypedSseEvent<SseResponseEventEnum.chatTitle> {
+  chatTitle(title: string): StreamTypedSseEvent<SseResponseEventEnum.chatTitle> {
     return {
       event: SseResponseEventEnum.chatTitle,
       data: { title }
@@ -316,9 +311,9 @@ export const workflowSseEvent = {
   },
 
   /**
-   * 输出 workflow 业务错误对象；已序列化错误字符串应使用 raw 保持原格式。
+   * 输出 stream 业务错误对象；已序列化错误字符串应使用 raw 保持原格式。
    */
-  error(data: Record<string, any>): WorkflowTypedSseEvent<SseResponseEventEnum.error> {
+  error(data: Record<string, any>): StreamTypedSseEvent<SseResponseEventEnum.error> {
     return {
       event: SseResponseEventEnum.error,
       data

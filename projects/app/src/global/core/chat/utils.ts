@@ -64,6 +64,7 @@ export const chatItemResponsePreviewProjection = {
   'data.parentId': 1,
   'data.moduleType': 1,
   'data.moduleName': 1,
+  'data.totalPoints': 1,
   'data.quoteList.id': 1,
   'data.quoteList.collectionId': 1,
   'data.quoteList.datasetId': 1,
@@ -117,7 +118,8 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemMiniType) {
     historyItem.useAgentSandbox === true || hasSandboxToolInChatValue(historyItem);
   const hasResolvedTags =
     historyItem.totalQuoteList !== undefined || historyItem.toolCiteLinks !== undefined;
-  if (hasResolvedTags || !historyItem.responseData)
+  const hasResolvedPoints = historyItem.totalPoints !== undefined;
+  if ((hasResolvedTags && hasResolvedPoints) || !historyItem.responseData)
     return withUseAgentSandbox(historyItem, useAgentSandbox);
 
   // Flat children
@@ -130,9 +132,12 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemMiniType) {
     historyPreviewLength,
     totalQuoteList,
     toolCiteLinks,
+    totalPoints,
     errorText
   } = flatResData.reduce(
     (acc, item) => {
+      acc.totalPoints += item.totalPoints || 0;
+
       // LLM
       if (isLLMNode(item)) {
         acc.llmModuleAccount = acc.llmModuleAccount + 1;
@@ -180,6 +185,7 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemMiniType) {
       toolCiteLinks: [] as ToolCiteLinksType[],
       linkDedupe: new Set<string>(),
       errorText: undefined as ErrorTextItemType | undefined,
+      totalPoints: 0,
       llmModuleAccount: 0,
       historyPreviewLength: undefined as number | undefined
     }
@@ -201,6 +207,7 @@ export function addStatisticalDataToHistoryItem(historyItem: ChatItemMiniType) {
     useAgentSandbox: resolvedUseAgentSandbox,
     totalQuoteList: filteredQuoteList,
     ...(toolCiteLinks.length ? { toolCiteLinks } : {}),
+    ...(totalPoints > 0 ? { totalPoints } : {}),
     ...(errorText ? { errorText } : {}),
 
     /** @deprecated */
