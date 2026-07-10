@@ -13,26 +13,30 @@ import { countPromptTokens } from '../../../common/string/tiktoken/index';
 export const truncateTextByFormattedTokenLimit = async ({
   text,
   maxToken,
-  formatText = (text) => text
+  formatText = (text) => text,
+  currentTokens
 }: {
   text: string;
   maxToken: number;
   formatText?: (text: string) => string;
+  currentTokens?: number;
 }) => {
   const trimmedText = text.trim();
   if (!Number.isFinite(maxToken) || maxToken <= 0) return trimmedText;
 
-  if (!trimmedText || (await countPromptTokens(formatText(trimmedText))) <= maxToken) {
+  const formattedTokens = currentTokens ?? (await countPromptTokens(formatText(trimmedText)));
+  if (!trimmedText || formattedTokens <= maxToken) {
     return trimmedText;
   }
 
+  const textChars = Array.from(trimmedText);
   let left = 1;
-  let right = trimmedText.length;
+  let right = textChars.length;
   let bestEnd = 0;
 
   while (left <= right) {
     const mid = Math.floor((left + right) / 2);
-    const candidate = trimmedText.slice(0, mid).trim();
+    const candidate = textChars.slice(0, mid).join('').trim();
     if (!candidate) {
       left = mid + 1;
       continue;
@@ -46,5 +50,5 @@ export const truncateTextByFormattedTokenLimit = async ({
     }
   }
 
-  return trimmedText.slice(0, bestEnd).trim();
+  return textChars.slice(0, bestEnd).join('').trim();
 };

@@ -5,7 +5,8 @@ import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { rawText2Chunks } from '@fastgpt/service/core/dataset/read';
 import {
   computedCollectionChunkSettings,
-  getLLMMaxChunkSize
+  getLLMMaxChunkSize,
+  maxPreviewChunkCount
 } from '@fastgpt/global/core/dataset/training/utils';
 import { getEmbeddingModel, getLLMModel } from '@fastgpt/service/core/ai/model';
 import { replaceS3KeyToPreviewUrl } from '@fastgpt/service/core/dataset/utils';
@@ -13,7 +14,7 @@ import { addDays } from 'date-fns';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetRawTextPreviewChunksBodySchema,
-  GetRawTextPreviewChunksResponseSchema,
+  GetPreviewChunksResponseSchema,
   type GetRawTextPreviewChunksBody,
   type GetRawTextPreviewChunksResponse
 } from '@fastgpt/global/openapi/core/dataset/file/api';
@@ -49,7 +50,8 @@ async function handler(
     paragraphChunkMinSize: formatChunkSettings.paragraphChunkMinSize,
     maxSize: getLLMMaxChunkSize(getLLMModel(dataset.agentModel)),
     overlapRatio,
-    customReg: formatChunkSettings.chunkSplitter ? [formatChunkSettings.chunkSplitter] : []
+    customReg: formatChunkSettings.chunkSplitter ? [formatChunkSettings.chunkSplitter] : [],
+    maxChunks: maxPreviewChunkCount
   });
 
   const chunksWithJWT = chunks.slice(0, 10).map((chunk) => ({
@@ -57,7 +59,7 @@ async function handler(
     a: replaceS3KeyToPreviewUrl(chunk.a, addDays(new Date(), 1))
   }));
 
-  return GetRawTextPreviewChunksResponseSchema.parse({
+  return GetPreviewChunksResponseSchema.parse({
     chunks: chunksWithJWT,
     total: chunks.length
   });

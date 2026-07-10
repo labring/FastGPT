@@ -277,6 +277,22 @@ describe('DatasetDataIndexOperation', () => {
       expect(mergeChunksByOverlap(result.map((index) => index.text))).toBe(tokenHeavyText);
     });
 
+    it('should split an overlong answer into token-safe default indexes', async () => {
+      const operation = new DatasetDataIndexOperation(embeddingModel);
+
+      const result = await operation.getSystemIndexes({
+        q: '',
+        a: tokenHeavyText,
+        indexSize: 100,
+        maxIndexSize: 70
+      });
+
+      expect(result.length).toBeGreaterThan(1);
+      expect(result.every((index) => index.type === DatasetDataIndexTypeEnum.default)).toBe(true);
+      expectIndexesWithinTokenLimit(result, 70);
+      expect(mergeChunksByOverlap(result.map((index) => index.text))).toBe(tokenHeavyText);
+    });
+
     it('should split large default text indexes by indexSize when model limit is larger', async () => {
       const indexSize = 96;
       const operation = new DatasetDataIndexOperation({

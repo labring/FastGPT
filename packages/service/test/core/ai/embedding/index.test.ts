@@ -7,11 +7,15 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 // We control the embeddings.create implementation per-test via `mockCreate`.
 const mockCreate = vi.fn();
 const mockCountPromptTokens = vi.hoisted(() => vi.fn(async (text: string) => text.length));
+const mockCountPromptTokensBatch = vi.hoisted(() =>
+  vi.fn(async (texts: string[]) => texts.map((text) => text.length))
+);
 
 // getVectors 在缺少 usage 时会回退本地 token 计数；测试里只验证回退路径生效，
 // 不启动真实 worker，避免 service 包单测依赖 app/pro 的 worker 构建目录。
 vi.mock('@fastgpt/service/common/string/tiktoken/index', () => ({
-  countPromptTokens: mockCountPromptTokens
+  countPromptTokens: mockCountPromptTokens,
+  countPromptTokensBatch: mockCountPromptTokensBatch
 }));
 
 vi.mock('@fastgpt/service/core/ai/config', () => ({
@@ -378,7 +382,12 @@ describe('getVectors function test', () => {
 
   beforeEach(() => {
     mockCreate.mockReset();
+    mockCountPromptTokens.mockClear();
+    mockCountPromptTokensBatch.mockClear();
     mockCountPromptTokens.mockImplementation(async (text: string) => text.length);
+    mockCountPromptTokensBatch.mockImplementation(async (texts: string[]) =>
+      texts.map((text) => text.length)
+    );
   });
 
   const buildModel = (overrides: Partial<EmbeddingModelItemType> = {}): EmbeddingModelItemType =>
@@ -448,6 +457,23 @@ describe('getVectors function test', () => {
 
       expect(mockCreate).toHaveBeenCalledTimes(1);
       expect(mockCreate.mock.calls[0][0].input).toEqual(['abcdefghijkl']);
+    });
+
+    it('should keep astral Unicode characters well formed when truncating', async () => {
+      mockCreate.mockResolvedValue(
+        makeResponse([[0.1, 0.2, 0.3, 0.4]], { usage: { total_tokens: 1 } })
+      );
+      mockCountPromptTokens.mockImplementation(async (text: string) => text.length);
+      mockCountPromptTokensBatch.mockResolvedValueOnce([3]);
+
+      await getVectors({
+        model: buildModel({ maxToken: 2 }),
+        inputs: [textInput('a𠮷')]
+      });
+
+      const providerInput = mockCreate.mock.calls[0][0].input[0] as string;
+      expect(providerInput).toBe('a');
+      expect(providerInput).not.toMatch(/[\uD800-\uDFFF]/u);
     });
   });
 
@@ -572,6 +598,7 @@ describe('getVectors function test', () => {
       ]);
       expect(result.tokens).toBe(6);
       expect(result.vectors).toHaveLength(2);
+      expect(mockCountPromptTokensBatch).not.toHaveBeenCalled();
     });
 
     it('should build mixed text and image input parts in order', async () => {

@@ -1203,3 +1203,66 @@ it(`Test getMaxSuffixByLength - returns empty when overlap budget is unavailable
     })
   ).toBe('');
 });
+
+it(`Test getMaxPrefixByLength - does not tokenize the complete remainder for a small limit`, () => {
+  const measuredLengths: number[] = [];
+
+  const result = getMaxPrefixByLength({
+    text: 'a'.repeat(10_000),
+    maxLength: 10,
+    countLength: (text) => {
+      measuredLengths.push(text.length);
+      return text.length;
+    }
+  });
+
+  expect(result).toBe('a'.repeat(10));
+  expect(Math.max(...measuredLengths)).toBeLessThanOrEqual(20);
+});
+
+it.each(['|', 'prefix|', '|suffix', 'prefix||suffix'])(
+  'Test splitText2Chunks - rejects empty custom separators: %s',
+  (customReg) => {
+    expect(() =>
+      splitText2Chunks({
+        text: 'safe text',
+        chunkSize: 64,
+        customReg: [customReg]
+      })
+    ).toThrow('Custom split separators cannot be empty');
+  }
+);
+
+it('Test splitText2Chunks - rejects an overlap ratio that cannot advance', () => {
+  expect(() =>
+    splitText2Chunks({
+      text: 'a'.repeat(100),
+      chunkSize: 64,
+      maxSize: 64,
+      overlapRatio: 1
+    })
+  ).toThrow('Overlap ratio must be greater than or equal to 0 and less than 1');
+});
+
+it('Test splitText2Chunks - rejects work beyond the configured chunk limit', () => {
+  expect(() =>
+    splitText2Chunks({
+      text: 'a'.repeat(1_000),
+      chunkSize: 64,
+      maxSize: 64,
+      overlapRatio: 0,
+      maxChunks: 5
+    })
+  ).toThrow('Text split exceeds the maximum chunk count of 5');
+});
+
+it('Test splitText2Chunks - rejects high-frequency custom separators before splitting', () => {
+  expect(() =>
+    splitText2Chunks({
+      text: 'a'.repeat(100_000),
+      chunkSize: 64,
+      customReg: ['a'],
+      maxChunks: 5
+    })
+  ).toThrow('Text split exceeds the maximum chunk count of 5');
+});

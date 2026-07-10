@@ -8,7 +8,8 @@ import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { isAuthorizedDatasetFileS3Key } from '@fastgpt/service/common/s3/sources/dataset/key';
 import {
   computedCollectionChunkSettings,
-  getLLMMaxChunkSize
+  getLLMMaxChunkSize,
+  maxPreviewChunkCount
 } from '@fastgpt/global/core/dataset/training/utils';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { getEmbeddingModel, getLLMModel } from '@fastgpt/service/core/ai/model';
@@ -97,7 +98,8 @@ async function handler(
     paragraphChunkMinSize: formatChunkSettings.paragraphChunkMinSize,
     maxSize: getLLMMaxChunkSize(getLLMModel(dataset.agentModel)),
     overlapRatio,
-    customReg: formatChunkSettings.chunkSplitter ? [formatChunkSettings.chunkSplitter] : []
+    customReg: formatChunkSettings.chunkSplitter ? [formatChunkSettings.chunkSplitter] : [],
+    maxChunks: maxPreviewChunkCount
   });
 
   const chunksWithJWT = chunks.slice(0, 10).map((chunk) => ({

@@ -33,7 +33,9 @@ vi.mock('@fastgpt/global/core/dataset/training/utils', () => ({
     paragraphChunkMinSize: 100,
     chunkSplitter: ''
   })),
-  getLLMMaxChunkSize: vi.fn(() => 1000)
+  getLLMMaxChunkSize: vi.fn(() => 1000),
+  minChunkSize: 64,
+  maxPreviewChunkCount: 50_000
 }));
 
 vi.mock('@fastgpt/service/core/dataset/utils', () => ({
@@ -96,8 +98,61 @@ describe('getRawTextPreviewChunks', () => {
       expect.objectContaining({
         rawText: 'hello world',
         chunkSize: 500,
-        overlapRatio: 0.2
+        overlapRatio: 0.2,
+        maxChunks: 50_000
       })
     );
+  });
+
+  it('stops before chunking when dataset write permission is denied', async () => {
+    mocks.authDataset.mockRejectedValueOnce(new Error('forbidden'));
+
+    await expect(
+      callHandler({
+        datasetId,
+        rawText: 'hello world',
+        overlapRatio: 0.2,
+        chunkSize: 500
+      })
+    ).rejects.toThrow('forbidden');
+
+    expect(mocks.rawText2Chunks).not.toHaveBeenCalled();
+  });
+
+  it.each(['|', 'prefix|', '|suffix', 'prefix||suffix'])(
+    'rejects empty custom chunk separators: %s',
+    async (chunkSplitter) => {
+      await expect(
+        callHandler({
+          datasetId,
+          rawText: 'hello world',
+          overlapRatio: 0.2,
+          chunkSize: 500,
+          chunkSplitter
+        })
+      ).rejects.toBeDefined();
+
+      expect(mocks.authDataset).not.toHaveBeenCalled();
+      expect(mocks.rawText2Chunks).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each([
+    { overlapRatio: -0.1, chunkSize: 500 },
+    { overlapRatio: 0.41, chunkSize: 500 },
+    { overlapRatio: 1, chunkSize: 500 },
+    { overlapRatio: 0.2, chunkSize: 63 },
+    { overlapRatio: 0.2, chunkSize: 64.5 }
+  ])('rejects unsafe numeric chunk settings: %o', async (settings) => {
+    await expect(
+      callHandler({
+        datasetId,
+        rawText: 'hello world',
+        ...settings
+      })
+    ).rejects.toBeDefined();
+
+    expect(mocks.authDataset).not.toHaveBeenCalled();
+    expect(mocks.rawText2Chunks).not.toHaveBeenCalled();
   });
 });

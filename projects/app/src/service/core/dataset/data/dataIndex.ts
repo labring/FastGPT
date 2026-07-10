@@ -365,6 +365,11 @@ export class DatasetDataIndexOperation {
           if (item.type === DatasetDataIndexTypeEnum.imageEmbedding) {
             return item;
           }
+          // 系统文本索引刚由 getSystemIndexes 按最终 prefix 和 token 上限生成，
+          // 这里直接复用，避免在同一入库请求内再次投递 token worker 计数。
+          if (isDatasetDataSystemIndexType(item.type)) {
+            return item;
+          }
 
           const indexTexts = await buildEmbeddingSafeIndexTexts({
             text: item.text,

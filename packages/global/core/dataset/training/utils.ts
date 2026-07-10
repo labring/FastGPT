@@ -10,6 +10,7 @@ import type { ChunkSettingsType } from '../type';
 import { cloneDeep } from 'lodash';
 
 export const minChunkSize = 64; // min index and chunk size
+export const maxPreviewChunkCount = 50_000;
 
 // Chunk size
 export const chunkAutoChunkSize = 1000;

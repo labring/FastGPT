@@ -42,7 +42,9 @@ vi.mock('@fastgpt/global/core/dataset/training/utils', () => ({
     paragraphChunkMinSize: 100,
     chunkSplitter: ''
   })),
-  getLLMMaxChunkSize: vi.fn(() => 1000)
+  getLLMMaxChunkSize: vi.fn(() => 1000),
+  minChunkSize: 64,
+  maxPreviewChunkCount: 50_000
 }));
 
 vi.mock('@fastgpt/service/core/dataset/utils', () => ({

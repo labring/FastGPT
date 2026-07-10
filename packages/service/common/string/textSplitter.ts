@@ -17,6 +17,7 @@ export type SplitProps = {
   overlapRatio?: number;
   customReg?: string[];
   lengthUnit?: 'char' | 'token';
+  maxChunks?: number;
 };
 export type TextSplitProps = Omit<SplitProps, 'text' | 'chunkSize'> & {
   chunkSize?: number;
@@ -33,18 +34,121 @@ type SplitTextByLengthLimit = (props: {
   maxLength: number;
   stepLength: number;
   countLength: TextLengthCounter;
+  maxChunks?: number;
 }) => string[];
 
-const splitTextByCharLengthLimit: SplitTextByLengthLimit = ({ text, maxLength, stepLength }) => {
+const assertChunkLimit = (count: number, maxChunks?: number) => {
+  if (maxChunks !== undefined && count > maxChunks) {
+    throw new Error(`Text split exceeds the maximum chunk count of ${maxChunks}`);
+  }
+};
+
+const pushChunks = (target: string[], items: string[], maxChunks?: number) => {
+  assertChunkLimit(target.length + items.length, maxChunks);
+  target.push(...items);
+};
+
+const countOccurrencesUpTo = (text: string, search: string, limit: number) => {
+  let count = 0;
+  let start = 0;
+
+  while (start <= text.length) {
+    const index = text.indexOf(search, start);
+    if (index === -1) return count;
+    count++;
+    if (count >= limit) return count;
+    start = index + search.length;
+  }
+
+  return count;
+};
+
+const countRegexMatchesUpTo = (text: string, expression: RegExp, limit: number) => {
+  const regex = new RegExp(expression.source, expression.flags);
+  let count = 0;
+
+  if (!regex.global) {
+    return regex.test(text) ? 1 : 0;
+  }
+
+  while (count < limit) {
+    const match = regex.exec(text);
+    if (!match) return count;
+
+    count++;
+    if (match[0].length === 0) regex.lastIndex++;
+  }
+
+  return count;
+};
+
+const splitTextByCharLengthLimit: SplitTextByLengthLimit = ({
+  text,
+  maxLength,
+  stepLength,
+  maxChunks
+}) => {
   const chunks: string[] = [];
   const chunkLength = Math.max(1, Math.floor(maxLength));
   const chunkStep = Math.max(1, Math.floor(stepLength));
+  assertChunkLimit(Math.ceil(text.length / chunkStep), maxChunks);
 
   for (let i = 0; i < text.length; i += chunkStep) {
     chunks.push(text.slice(i, i + chunkLength));
   }
 
   return chunks;
+};
+
+const getMaxPrefixEndByLength = ({
+  textChars,
+  start,
+  maxLength,
+  countLength
+}: {
+  textChars: string[];
+  start: number;
+  maxLength: number;
+  countLength: TextLengthCounter;
+}) => {
+  if (start >= textChars.length || maxLength <= 0) return start;
+
+  let bestEnd = start;
+  let probeEnd = Math.min(textChars.length, start + Math.max(1, Math.floor(maxLength)));
+  let exceeded = false;
+
+  while (probeEnd <= textChars.length) {
+    const candidate = textChars.slice(start, probeEnd).join('');
+    if (countLength(candidate) > maxLength) {
+      exceeded = true;
+      break;
+    }
+
+    bestEnd = probeEnd;
+    if (probeEnd === textChars.length) return probeEnd;
+
+    const currentSpan = probeEnd - start;
+    probeEnd = Math.min(textChars.length, start + currentSpan * 2);
+  }
+
+  if (!exceeded) return bestEnd;
+
+  let left = bestEnd + 1;
+  let right = probeEnd - 1;
+
+  while (left <= right) {
+    const mid = Math.floor((left + right) / 2);
+    const candidate = textChars.slice(start, mid).join('');
+
+    if (countLength(candidate) <= maxLength) {
+      bestEnd = mid;
+      left = mid + 1;
+    } else {
+      right = mid - 1;
+    }
+  }
+
+  return bestEnd;
 };
 
 /**
@@ -65,24 +169,13 @@ export const getMaxPrefixByLength = ({
   maxLength: number;
   countLength: TextLengthCounter;
 }) => {
-  if (!text || countLength(text) <= maxLength) return text;
-
   const textChars = Array.from(text);
-  let left = 1;
-  let right = textChars.length;
-  let bestEnd = 0;
-
-  while (left <= right) {
-    const mid = Math.floor((left + right) / 2);
-    const candidate = textChars.slice(0, mid).join('');
-
-    if (countLength(candidate) <= maxLength) {
-      bestEnd = mid;
-      left = mid + 1;
-    } else {
-      right = mid - 1;
-    }
-  }
+  const bestEnd = getMaxPrefixEndByLength({
+    textChars,
+    start: 0,
+    maxLength,
+    countLength
+  });
 
   return textChars.slice(0, bestEnd).join('');
 };
@@ -132,33 +225,35 @@ const splitTextByCounterLengthLimit: SplitTextByLengthLimit = ({
   text,
   maxLength,
   stepLength,
-  countLength
+  countLength,
+  maxChunks
 }) => {
   if (!text) return [];
   if (!Number.isFinite(maxLength) || maxLength <= 0) return [text];
 
   const chunks: string[] = [];
-  let restText = text;
+  const textChars = Array.from(text);
+  let start = 0;
   // token 模式下 overlap 也必须按同一个计数器计算，不能退回字符长度。
   const overlapLength = Math.max(0, maxLength - Math.max(1, stepLength));
 
-  while (restText) {
-    // 这里用二分找“当前剩余文本中最长的安全前缀”，用于兜底拆分超长片段。
-    // 和 embedding 的 query 截断不同，这里会继续处理剩余文本并返回多条 chunk。
-    const safeText = getMaxPrefixByLength({
-      text: restText,
+  while (start < textChars.length) {
+    // 指针只在当前 chunk 附近做指数探测和二分，不再重复 tokenize 完整剩余文本。
+    const end = getMaxPrefixEndByLength({
+      textChars,
+      start,
       maxLength,
       countLength
     });
+    const safeText = textChars.slice(start, end).join('');
     if (!safeText) {
       throw new Error('Text contains a character that exceeds the token length limit');
     }
 
-    chunks.push(safeText);
-    if (safeText.length >= restText.length) break;
+    pushChunks(chunks, [safeText], maxChunks);
+    if (end >= textChars.length) break;
 
-    const nextRestWithoutOverlap = restText.slice(safeText.length);
-    let nextRestText = nextRestWithoutOverlap;
+    let nextStart = end;
 
     if (overlapLength > 0) {
       const overlapText = getMaxSuffixByLength({
@@ -166,11 +261,11 @@ const splitTextByCounterLengthLimit: SplitTextByLengthLimit = ({
         maxLength: overlapLength,
         countLength
       });
-      nextRestText = `${overlapText}${nextRestWithoutOverlap}`;
+      nextStart = end - Array.from(overlapText).length;
     }
 
     // 极端情况下 overlap 可能导致没有推进，直接丢弃 overlap 保证循环收敛。
-    restText = nextRestText.length >= restText.length ? nextRestWithoutOverlap : nextRestText;
+    start = nextStart <= start ? end : nextStart;
   }
 
   return chunks;
@@ -220,7 +315,7 @@ const strIsMdTable = (str: string) => {
   return true;
 };
 const markdownTableSplit = (props: SplitProps): SplitResponse => {
-  const { text = '', chunkSize, maxSize = defaultMaxChunkSize } = props;
+  const { text = '', chunkSize, maxSize = defaultMaxChunkSize, maxChunks } = props;
   const countLength = getTextLengthCounter(props);
 
   // split by rows
@@ -277,7 +372,7 @@ ${mdSplitString}
       }
 
       const safeText = restChars.slice(0, bestEnd).join('');
-      result.push(`${defaultChunk}${safeText}`);
+      pushChunks(result, [`${defaultChunk}${safeText}`], maxChunks);
       restText = restText.slice(safeText.length);
     }
 
@@ -305,10 +400,10 @@ ${mdSplitString}
 
     if (props.lengthUnit === 'token' && defaultChunkLength + nextLineLength > chunkSize) {
       if (chunk !== defaultChunk) {
-        chunks.push(chunk);
+        pushChunks(chunks, [chunk], maxChunks);
       }
 
-      chunks.push(...splitTableLineWithHeader(splitText2Lines[i]));
+      pushChunks(chunks, splitTableLineWithHeader(splitText2Lines[i]), maxChunks);
       chunk = defaultChunk;
       continue;
     }
@@ -321,11 +416,11 @@ ${mdSplitString}
           ...props,
           text: chunk.replace(defaultChunk, '').trim()
         }).chunks;
-        chunks.push(...newChunks);
+        pushChunks(chunks, newChunks, maxChunks);
       } else if (chunk !== defaultChunk) {
         // 第一条表格数据行就超过 chunkSize 时，chunk 仍然只有表头。
         // 这时不能先推出 header-only chunk，否则会生成没有可检索内容的分块。
-        chunks.push(chunk);
+        pushChunks(chunks, [chunk], maxChunks);
       }
 
       chunk = defaultChunk;
@@ -334,7 +429,7 @@ ${mdSplitString}
   }
 
   if (chunk && (chunk !== defaultChunk || chunks.length === 0)) {
-    chunks.push(chunk);
+    pushChunks(chunks, [chunk], maxChunks);
   }
 
   return {
@@ -358,8 +453,30 @@ const commonSplit = (props: SplitProps): SplitResponse => {
     paragraphChunkMinSize = 100,
     maxSize = defaultMaxChunkSize,
     overlapRatio = 0.15,
-    customReg = []
+    customReg = [],
+    maxChunks
   } = props;
+
+  if (!Number.isFinite(chunkSize) || chunkSize <= 0) {
+    throw new Error('Chunk size must be a positive finite number');
+  }
+  if (!Number.isFinite(overlapRatio) || overlapRatio < 0 || overlapRatio >= 1) {
+    throw new Error('Overlap ratio must be greater than or equal to 0 and less than 1');
+  }
+  if (maxChunks !== undefined && (!Number.isInteger(maxChunks) || maxChunks <= 0)) {
+    throw new Error('Maximum chunk count must be a positive integer');
+  }
+
+  customReg.forEach((reg) => {
+    if (
+      reg
+        .replace(/\\n/g, '\n')
+        .split('|')
+        .some((item) => item.length === 0)
+    ) {
+      throw new Error('Custom split separators cannot be empty');
+    }
+  });
   const countLength = getTextLengthCounter(props);
   const splitTextByLengthLimit = getSplitTextByLengthLimit(props);
   let text = rawText;
@@ -454,6 +571,11 @@ const commonSplit = (props: SplitProps): SplitResponse => {
       if (typeof reg === 'string') {
         let tmpText = text;
         reg.split('|').forEach((itemReg) => {
+          if (maxChunks !== undefined) {
+            const occurrenceCount = countOccurrencesUpTo(tmpText, itemReg, maxChunks);
+            assertChunkLimit(occurrenceCount + 1, maxChunks);
+          }
+
           tmpText = tmpText.replaceAll(
             itemReg,
             (() => {
@@ -466,6 +588,12 @@ const commonSplit = (props: SplitProps): SplitResponse => {
         return tmpText;
       }
 
+      if (maxChunks !== undefined) {
+        const markersPerMatch = splitAround ? 2 : 1;
+        const matchCount = countRegexMatchesUpTo(text, reg, Math.ceil(maxChunks / markersPerMatch));
+        assertChunkLimit(matchCount * markersPerMatch + 1, maxChunks);
+      }
+
       return text.replace(
         reg,
         (() => {
@@ -476,6 +604,11 @@ const commonSplit = (props: SplitProps): SplitResponse => {
         })()
       );
     })();
+
+    if (maxChunks !== undefined) {
+      const markerCount = countOccurrencesUpTo(replaceText, splitMarker, maxChunks);
+      assertChunkLimit(markerCount + 1, maxChunks);
+    }
 
     const splitTexts = replaceText.split(splitMarker).filter((part) => part.trim());
 
@@ -555,7 +688,8 @@ const commonSplit = (props: SplitProps): SplitResponse => {
         text: combinedText,
         maxLength: chunkSize,
         stepLength: chunkSize - overlapLen,
-        countLength
+        countLength,
+        maxChunks
       });
     }
 
@@ -577,7 +711,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
       // 代码块独立处理，避免“前面正文 + 代码块”被 maxSize 合成超大分块。
       if (strIsCodeBlock(currentText)) {
         if (lastTextLen > 0) {
-          chunks.push(lastText);
+          pushChunks(chunks, [lastText], maxChunks);
           lastText = '';
           lastTextIsOverlap = false;
         }
@@ -585,16 +719,19 @@ const commonSplit = (props: SplitProps): SplitResponse => {
         if (countLength(currentText) > maxLen) {
           const restoredCodeBlock = currentText.replaceAll(codeBlockMarker, '\n');
 
-          chunks.push(
-            ...splitTextByLengthLimit({
+          pushChunks(
+            chunks,
+            splitTextByLengthLimit({
               text: restoredCodeBlock,
               maxLength: chunkSize,
               stepLength: chunkSize,
-              countLength
-            })
+              countLength,
+              maxChunks
+            }),
+            maxChunks
           );
         } else {
-          chunks.push(currentText);
+          pushChunks(chunks, [currentText], maxChunks);
         }
         continue;
       }
@@ -602,7 +739,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
       // split the current table if it will exceed after adding
       if (strIsMdTable(currentText) && newTextLen > maxLen) {
         if (lastTextLen > 0) {
-          chunks.push(lastText);
+          pushChunks(chunks, [lastText], maxChunks);
           lastText = '';
           lastTextIsOverlap = false;
         }
@@ -611,10 +748,11 @@ const commonSplit = (props: SplitProps): SplitResponse => {
           text: currentText,
           chunkSize: props.lengthUnit === 'token' ? chunkSize : chunkSize * 1.2,
           maxSize,
-          lengthUnit: props.lengthUnit
+          lengthUnit: props.lengthUnit,
+          maxChunks
         });
 
-        chunks.push(...tableChunks);
+        pushChunks(chunks, tableChunks, maxChunks);
         continue;
       }
       // Markdown 模式下，会强制向下拆分最小块，并再最后一个标题深度，给小块都补充上所有标题（包含父级标题）
@@ -629,16 +767,18 @@ const commonSplit = (props: SplitProps): SplitResponse => {
 
         // 只有标题，没有内容。
         if (innerChunks.length === 0) {
-          chunks.push(`${parentTitle}${item.title}`);
+          pushChunks(chunks, [`${parentTitle}${item.title}`], maxChunks);
           continue;
         }
 
         // 在合并最深级标题时，需要补充标题
-        chunks.push(
-          ...innerChunks.map(
+        pushChunks(
+          chunks,
+          innerChunks.map(
             (chunk) =>
               step === markdownIndex + customRegLen ? `${parentTitle}${item.title}${chunk}` : chunk // 合并进 Markdown 分块时，需要补标题
-          )
+          ),
+          maxChunks
         );
 
         continue;
@@ -651,14 +791,14 @@ const commonSplit = (props: SplitProps): SplitResponse => {
 
         // 新文本没有非常大，直接认为它是一个新的块
         if (newTextLen < maxChunkLen && (props.lengthUnit !== 'token' || newTextLen <= maxSize)) {
-          chunks.push(newText);
+          pushChunks(chunks, [newText], maxChunks);
           lastText = getOneTextOverlapText({ text: newText, step }); // next chunk will start with overlayText
           lastTextIsOverlap = true;
           continue;
         }
         // 上一个文本块已经挺大的，单独做一个块
         if (lastTextLen > minChunkLen) {
-          chunks.push(lastText);
+          pushChunks(chunks, [lastText], maxChunks);
 
           lastText = getOneTextOverlapText({ text: lastText, step }); // next chunk will start with overlayText
           lastTextIsOverlap = true;
@@ -682,14 +822,14 @@ const commonSplit = (props: SplitProps): SplitResponse => {
 
         // last chunk is too small, concat it to lastText(next chunk start)
         if (countLength(lastChunk) < minChunkLen) {
-          chunks.push(...innerChunks.slice(0, -1));
+          pushChunks(chunks, innerChunks.slice(0, -1), maxChunks);
           lastText = lastChunk;
           lastTextIsOverlap = false;
           continue;
         }
 
         // Last chunk is large enough
-        chunks.push(...innerChunks);
+        pushChunks(chunks, innerChunks, maxChunks);
         // compute new overlapText
         lastText = getOneTextOverlapText({
           text: lastChunk,
@@ -703,7 +843,7 @@ const commonSplit = (props: SplitProps): SplitResponse => {
 
       // Not overlap
       if (forbidConcat) {
-        chunks.push(currentText);
+        pushChunks(chunks, [currentText], maxChunks);
         continue;
       }
 
@@ -726,11 +866,11 @@ const commonSplit = (props: SplitProps): SplitResponse => {
       ) {
         chunks[chunks.length - 1] = lastChunk + lastText;
       } else {
-        chunks.push(lastText);
+        pushChunks(chunks, [lastText], maxChunks);
       }
     } else if (lastText && chunks.length === 0) {
       // 只分出一个很小的块，则直接追加到末尾（如果大于 1 个块，说明这个小块内容已经被上一个块拿到了）
-      chunks.push(lastText);
+      pushChunks(chunks, [lastText], maxChunks);
     }
 
     return chunks;
@@ -763,7 +903,11 @@ const commonSplit = (props: SplitProps): SplitResponse => {
  * markdown
  */
 export const splitText2Chunks = (props: SplitProps): SplitResponse => {
-  const { text = '' } = props;
+  const { text = '', maxChunks } = props;
+  if (maxChunks !== undefined) {
+    const customSignCount = countOccurrencesUpTo(text, CUSTOM_SPLIT_SIGN, maxChunks);
+    assertChunkLimit(customSignCount + 1, maxChunks);
+  }
   const splitWithCustomSign = text.split(CUSTOM_SPLIT_SIGN);
 
   const splitResult = splitWithCustomSign.map((item) => {
@@ -774,11 +918,14 @@ export const splitText2Chunks = (props: SplitProps): SplitResponse => {
     return commonSplit({ ...props, text: item });
   });
 
+  const chunks = splitResult
+    .map((item) => item.chunks)
+    .flat()
+    .map((chunk) => simpleText(chunk));
+  assertChunkLimit(chunks.length, maxChunks);
+
   return {
-    chunks: splitResult
-      .map((item) => item.chunks)
-      .flat()
-      .map((chunk) => simpleText(chunk)),
+    chunks,
     chars: splitResult.reduce((sum, item) => sum + item.chars, 0)
   };
 };

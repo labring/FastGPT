@@ -6,7 +6,6 @@ import {
   GetPreviewChunksBodySchema,
   GetPreviewChunksResponseSchema,
   GetRawTextPreviewChunksBodySchema,
-  GetRawTextPreviewChunksResponseSchema,
   PresignDatasetFilePostUrlBodySchema,
   PresignDatasetFilePostUrlResponseSchema,
   PresignSearchTestImageBodySchema,
@@ -55,7 +54,7 @@ export const DatasetFilePath: OpenAPIPath = {
           description: '成功返回预览分块列表及总数',
           content: {
             'application/json': {
-              schema: GetRawTextPreviewChunksResponseSchema
+              schema: GetPreviewChunksResponseSchema
             }
           }
         }

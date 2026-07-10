@@ -1,6 +1,6 @@
 import { type EmbeddingModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { getAIApi } from '../config';
-import { countPromptTokens } from '../../../common/string/tiktoken/index';
+import { countPromptTokens, countPromptTokensBatch } from '../../../common/string/tiktoken/index';
 import { EmbeddingTypeEnm } from '@fastgpt/global/core/ai/constants';
 import { retryFn } from '@fastgpt/global/common/system/utils';
 import { getLogger, LogCategories } from '../../../common/logger';
@@ -44,26 +44,42 @@ const countInputTokens = async (input: GetVectorInputItem) => {
 };
 
 export async function getVectors({ model, inputs: rawInputs, type, headers }: GetVectorsProps) {
+  const validatedInputs = z
+    .array(InputItemSchema)
+    .parse(rawInputs)
+    .map((item) => ({
+      ...item,
+      input: item.input.trim()
+    }));
+  if (validatedInputs.length === 0 || validatedInputs.some((item) => !item.input)) {
+    return Promise.reject({
+      code: 500,
+      message: 'input is empty'
+    });
+  }
+  const textInputs = validatedInputs
+    .filter((item) => item.type === 'text')
+    .map((item) => item.input);
+  const textTokenCounts = textInputs.length > 0 ? await countPromptTokensBatch(textInputs) : [];
+  let textIndex = 0;
   const inputs = await Promise.all(
-    z
-      .array(InputItemSchema)
-      .parse(rawInputs)
-      .map(async (item) => {
-        const input = item.input.trim();
+    validatedInputs.map(async (item) => {
+      const currentTokens = item.type === 'text' ? textTokenCounts[textIndex++] : undefined;
 
-        // getVectors 是所有 embedding 请求的最后入口。这里仅对 text 做单条截断兜底，
-        // 不做拆分；知识库入库这类需要保留完整内容的场景，应在上游先拆成多条 index。
-        return {
-          ...item,
-          input:
-            item.type === 'text'
-              ? await truncateTextByFormattedTokenLimit({
-                  text: input,
-                  maxToken: model.maxToken
-                })
-              : input
-        };
-      })
+      // getVectors 是所有 embedding 请求的最后入口。这里仅对 text 做单条截断兜底，
+      // 不做拆分；知识库入库这类需要保留完整内容的场景，应在上游先拆成多条 index。
+      return {
+        ...item,
+        input:
+          item.type === 'text'
+            ? await truncateTextByFormattedTokenLimit({
+                text: item.input,
+                maxToken: model.maxToken,
+                currentTokens
+              })
+            : item.input
+      };
+    })
   );
   if (inputs.length === 0 || inputs.some((item) => !item.input)) {
     return Promise.reject({
