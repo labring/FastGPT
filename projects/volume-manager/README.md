@@ -68,14 +68,14 @@ DELETE /v1/volumes/:sessionId
 | `VM_VOLUME_NAME_PREFIX` | | `fastgpt-session` | 卷名前缀 |
 | `VM_DOCKER_SOCKET` | | `/var/run/docker.sock` | Docker socket 路径（docker 模式） |
 | `VM_K8S_NAMESPACE` | | `opensandbox` | PVC 所在命名空间（k8s 模式） |
-| `VM_K8S_PVC_STORAGE_CLASS` | | `standard` | PVC StorageClass（k8s 模式） |
+| `VM_K8S_PVC_STORAGE_CLASS` | | `''` | PVC StorageClass（k8s 模式） |
 | `VM_K8S_PVC_STORAGE_SIZE` | | `1Gi` | PVC 容量（k8s 模式） |
 
 ## Kubernetes 部署要求
 
 ### StorageClass
 
-volume-manager 默认使用 StorageClass `fastgpt-local`（可通过 `VM_K8S_PVC_STORAGE_CLASS` 覆盖）。参考配置：
+volume-manager 默认将 `storageClassName` 置为空字符串；如需指定 StorageClass，可通过 `VM_K8S_PVC_STORAGE_CLASS` 覆盖。参考配置：
 
 ```yaml
 apiVersion: storage.k8s.io/v1
@@ -112,7 +112,7 @@ volume-manager 使用集群内 ServiceAccount 认证，无需挂载外部 kubeco
 ### 部署检查清单
 
 - [ ] 命名空间 `opensandbox`（或自定义值）已存在
-- [ ] StorageClass `fastgpt-local`（或自定义值）已创建并可用
+- [ ] 如配置 `VM_K8S_PVC_STORAGE_CLASS`，对应 StorageClass 已创建并可用
 - [ ] ServiceAccount + Role + RoleBinding 已创建
 - [ ] Secret 中包含有效的 `VM_AUTH_TOKEN`
 
