@@ -10,11 +10,8 @@ import type {
   UserChatItemValueItemType
 } from '@fastgpt/global/core/chat/type';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
-import { parseUrlToChatFileType } from '../../../chat/fileContext';
-import {
-  getSafeSandboxInputFilename,
-  type DeployedSkillInfo
-} from '../../sandbox/interface/runtime';
+import { getAgentMultimodalChatFiles, parseAgentInputFiles } from '../../agent/userContext';
+import type { DeployedSkillInfo } from '../../sandbox/interface/runtime';
 import { buildSkillEditUserReminderInput, type SkillEditInputFileType } from './utils';
 
 export const SKILL_EDIT_MAX_FILES = 10;
@@ -33,43 +30,12 @@ export const parseSkillEditInputFiles = ({
   requestOrigin?: string;
   maxFiles?: number;
 }): SkillEditInputFileType[] => {
-  const normalizeFileUrl = (url: string) => {
-    const normalizedUrl = url.trim();
-    const validPrefixList = ['/', 'http', 'ws'];
-    if (!validPrefixList.some((prefix) => normalizedUrl.startsWith(prefix))) return '';
-
-    if (requestOrigin && normalizedUrl.startsWith(requestOrigin)) {
-      return normalizedUrl.replace(requestOrigin, '');
-    }
-    return normalizedUrl;
-  };
-  const uniqueFiles = Array.from(
-    files
-      .reduce((map, file) => {
-        const url = normalizeFileUrl(file.url);
-        if (url && !map.has(url)) {
-          map.set(url, { file, url });
-        }
-        return map;
-      }, new Map<string, { file: UserChatItemFileItemType; url: string }>())
-      .values()
-  );
-  const usedNames = new Map<string, number>();
-
-  return uniqueFiles
-    .slice(0, maxFiles)
-    .map(({ file, url }, index) => {
-      const parsedFile = parseUrlToChatFileType({ url });
-      if (!parsedFile) return;
-
-      return {
-        id: `${prefixId}-${index}`,
-        name: getSafeSandboxInputFilename(file.name || parsedFile.name || url, index, usedNames),
-        type: file.type && file.type !== ChatFileTypeEnum.file ? file.type : parsedFile.type,
-        url
-      };
-    })
-    .filter((file): file is SkillEditInputFileType => !!file);
+  return parseAgentInputFiles({
+    files: files.map((file) => ({ ...file, url: file.url.trim() })),
+    prefixId,
+    requestOrigin,
+    maxFiles
+  });
 };
 
 /**
@@ -100,13 +66,11 @@ export const buildSkillEditUserContext = ({
   currentTime: string;
 }): {
   messages: ChatCompletionMessageParam[];
+  resumeFileMessages: ChatCompletionMessageParam[];
   filesMap: Record<string, string>;
 } => {
   const filesMap: Record<string, string> = {};
-  const getMultimodalFiles = (files: SkillEditInputFileType[]) =>
-    files
-      .filter((file) => file.type !== ChatFileTypeEnum.file)
-      .map(({ name, type, url }) => ({ name, type, url }));
+  let resumeFileMessages: ChatCompletionMessageParam[] = [];
   const registerDocumentFiles = (files: SkillEditInputFileType[]) => {
     files.forEach((file) => {
       if (file.type === ChatFileTypeEnum.file) {
@@ -137,19 +101,29 @@ export const buildSkillEditUserContext = ({
     });
     registerDocumentFiles(inputFiles);
     const isCurrentMessage = index === currentMessageIndex;
-
-    return {
-      ...message,
-      value: runtimePrompt2ChatsValue({
-        files: getMultimodalFiles(inputFiles),
+    const buildMessageValue = (query: string) =>
+      runtimePrompt2ChatsValue({
+        files: getAgentMultimodalChatFiles(inputFiles),
         text: buildSkillEditUserReminderInput({
-          query: text,
+          query,
           filesInfo: inputFiles,
           skillInfos: isCurrentMessage ? skillInfos : [],
           currentWorkingDirectory: isCurrentMessage ? currentWorkingDirectory : undefined,
           currentTime: isCurrentMessage ? currentTime : undefined
         })
-      })
+      });
+
+    if (isCurrentMessage && inputFiles.length > 0) {
+      resumeFileMessages = chats2GPTMessages({
+        messages: [{ ...message, value: buildMessageValue('') }],
+        reserveId: false,
+        reserveTool: true
+      }).filter((message) => message.role !== 'system');
+    }
+
+    return {
+      ...message,
+      value: buildMessageValue(text)
     };
   });
 
@@ -159,6 +133,7 @@ export const buildSkillEditUserContext = ({
       reserveId: false,
       reserveTool: true
     }).filter((message) => message.role !== 'system'),
+    resumeFileMessages,
     filesMap
   };
 };

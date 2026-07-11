@@ -59,7 +59,7 @@ describe('createAuxiliaryGenerationStream', () => {
     });
   });
 
-  it('keeps raw string payloads unchanged', async () => {
+  it('writes the DONE marker without JSON encoding', async () => {
     const streamContext = await createAuxiliaryGenerationStream({
       req: {
         headers: {}
@@ -71,11 +71,7 @@ describe('createAuxiliaryGenerationStream', () => {
       chatId: 'chat-id'
     });
 
-    streamContext.write({
-      id: 'ignored-for-raw',
-      event: SseResponseEventEnum.answer,
-      data: '[DONE]'
-    });
+    streamContext.writeDone();
 
     expect(streamMocks.sseWrite).toHaveBeenCalledWith({
       event: SseResponseEventEnum.answer,

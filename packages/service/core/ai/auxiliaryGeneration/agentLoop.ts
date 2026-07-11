@@ -31,6 +31,7 @@ type RunAuxiliaryGenerationAgentLoopParams = {
   batchToolSize?: number;
   pendingMainContext?: PendingMainContext;
   userAnswer?: string;
+  resumeMessages?: ChatCompletionMessageParam[];
 };
 
 /**
@@ -57,7 +58,8 @@ export async function runAuxiliaryGenerationAgentLoop({
   streamAnswerDelta = true,
   batchToolSize,
   pendingMainContext,
-  userAnswer
+  userAnswer,
+  resumeMessages
 }: RunAuxiliaryGenerationAgentLoopParams) {
   const resolvedToolCatalog =
     toolCatalog ??
@@ -103,7 +105,8 @@ export async function runAuxiliaryGenerationAgentLoop({
       systemPrompt,
       messages,
       pendingMainContext,
-      userAnswer
+      userAnswer,
+      resumeMessages
     }
   });
 

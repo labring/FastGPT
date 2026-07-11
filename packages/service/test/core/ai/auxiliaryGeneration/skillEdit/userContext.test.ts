@@ -81,6 +81,13 @@ describe('skillEdit user context', () => {
             url: '/files/diagram.png'
           }
         },
+        {
+          file: {
+            type: ChatFileTypeEnum.video,
+            name: 'demo.mp4',
+            url: '/files/demo.mp4'
+          }
+        },
         { text: { content: 'summarize this' } }
       ],
       currentDataId: 'current-id',
@@ -116,15 +123,22 @@ describe('skillEdit user context', () => {
           image_url: { url: '/files/diagram.png' }
         }),
         expect.objectContaining({
+          type: 'file_url',
+          name: 'demo.mp4',
+          url: '/files/demo.mp4',
+          fileType: ChatFileTypeEnum.video
+        }),
+        expect.objectContaining({
           type: 'text',
           text: expect.stringContaining('<id>current-id-0</id>')
         })
       ])
     );
-    expect(JSON.stringify(currentMessage.content)).not.toContain('"type":"file_url"');
-    expect(JSON.stringify(currentMessage.content)).toContain(
-      '/workspace/skills/test-skill/SKILL.md'
-    );
-    expect(JSON.stringify(currentMessage.content)).toContain('2026-07-10 12:00:00');
+    expect(JSON.stringify(currentMessage.content)).not.toContain('"fileType":"file"');
+    expect(JSON.stringify(currentMessage.content)).toContain('不会自动进入 sandbox 或 workspace');
+    expect(result.resumeFileMessages).toHaveLength(1);
+    expect(JSON.stringify(result.resumeFileMessages)).toContain('/files/demo.mp4');
+    expect(JSON.stringify(result.resumeFileMessages)).toContain('<id>current-id-0</id>');
+    expect(JSON.stringify(result.resumeFileMessages)).not.toContain('summarize this');
   });
 });

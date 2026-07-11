@@ -1,4 +1,3 @@
-import { describe, expect, it } from 'vitest';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
   buildSkillEditAgentLoopMemories,
@@ -6,9 +5,10 @@ import {
   getSkillEditAgentLoopMemoryKey,
   readSkillEditAgentLoopMemory
 } from '@fastgpt/service/core/ai/auxiliaryGeneration/skillEdit/utils';
+import { describe, expect, it } from 'vitest';
 
 describe('skillEdit agent loop memory helpers', () => {
-  it('keeps the upstream skill debug node id when storing and restoring pending context', () => {
+  it('keeps the stable node id when storing and restoring pending context', () => {
     const memoryKey = getSkillEditAgentLoopMemoryKey();
     const pendingMainContext = {
       messages: [],
@@ -34,7 +34,7 @@ describe('skillEdit agent loop memory helpers', () => {
     ).toEqual({ pendingMainContext });
   });
 
-  it('clears completed memory and keeps usage id on ask interactions', () => {
+  it('clears completed memory and keeps the usage id on ask interactions', () => {
     expect(buildSkillEditAgentLoopMemories({})).toEqual({
       [getSkillEditAgentLoopMemoryKey()]: undefined
     });

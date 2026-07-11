@@ -13,12 +13,12 @@ type AfterMessageCompressEvent = Extract<AgentLoopEvent, { type: 'after_message_
 type ToolResponseEvent = Extract<AgentLoopEvent, { type: 'tool_response' }>;
 type ToolResponseCompressEvent = NonNullable<ToolResponseEvent['toolResponseCompress']>;
 
-export type AgentLoopNodeResponseBase = {
+type AgentLoopNodeResponseBase = {
   nodeId: string;
   moduleType: FlowNodeTypeEnum;
 };
 
-export const getAgentLoopUsageTotalPoints = (usages: ChatNodeUsageType[] = []) =>
+const getAgentLoopUsageTotalPoints = (usages: ChatNodeUsageType[] = []) =>
   usages.reduce((sum, item) => sum + (item.totalPoints ?? 0), 0);
 
 /**

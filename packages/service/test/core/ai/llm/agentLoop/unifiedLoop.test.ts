@@ -823,7 +823,18 @@ describe('runUnifiedAgentLoop', () => {
           ],
           askToolCallId: 'call_ask'
         },
-        userAnswer: ''
+        userAnswer: '',
+        resumeMessages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: [
+              {
+                type: 'video_url',
+                video_url: { url: 'data:video/mp4;base64,dmlkZW8=' }
+              }
+            ]
+          }
+        ]
       }
     });
 
@@ -831,6 +842,15 @@ describe('runUnifiedAgentLoop', () => {
       role: 'tool',
       tool_call_id: 'call_ask',
       content: 'none'
+    });
+    expect(createLLMResponseMock.mock.calls[0][0].body.messages).toContainEqual({
+      role: 'user',
+      content: [
+        {
+          type: 'video_url',
+          video_url: { url: 'data:video/mp4;base64,dmlkZW8=' }
+        }
+      ]
     });
   });
 

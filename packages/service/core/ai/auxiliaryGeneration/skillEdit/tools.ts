@@ -1,7 +1,6 @@
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
-import { getFileContentByUrl } from '../../../chat/fileContext';
+import { readAgentFiles } from '../../agent/service';
 import { parseJsonArgs } from '../../utils';
 import { z } from 'zod';
 
@@ -13,7 +12,8 @@ export const skillEditReadFilesTool: ChatCompletionTool = {
   type: 'function',
   function: {
     name: SubAppIds.readFiles,
-    description: '读取指定文件的内容',
+    description:
+      '读取 Skill Detail 对话上传的文档内容；文件不在虚拟机中，必须传入对话文件列表里的 id',
     parameters: {
       type: 'object',
       properties: {
@@ -22,7 +22,7 @@ export const skillEditReadFilesTool: ChatCompletionTool = {
           items: {
             type: 'string'
           },
-          description: '文件 ID'
+          description: 'Skill Detail 对话文件列表中的文档 ID'
         }
       },
       required: ['ids']
@@ -57,26 +57,13 @@ export const runSkillEditReadFiles = async ({
     const url = filesMap[id];
     return url ? [{ id, url }] : [];
   });
-  const result = await Promise.all(
-    files.map(async ({ id, url }) => {
-      try {
-        const { name, content } = await getFileContentByUrl({
-          url,
-          teamId,
-          tmbId,
-          customPdfParse,
-          usageId
-        });
-        return { id, name, content };
-      } catch (error) {
-        return {
-          id,
-          name: '',
-          content: getErrText(error, 'Load file error')
-        };
-      }
-    })
-  );
+  const result = await readAgentFiles({
+    files,
+    teamId,
+    tmbId,
+    customPdfParse,
+    usageId
+  });
 
   return JSON.stringify(result);
 };

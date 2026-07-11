@@ -21,7 +21,7 @@ import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants'
 import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
 import { streamSseEvent } from '@fastgpt/global/core/chat/stream/sse';
 import { SANDBOX_TOOLS } from '@fastgpt/global/core/ai/sandbox/tools';
-import { SANDBOX_SYSTEM_PROMPT } from '@fastgpt/global/core/ai/sandbox/constants';
+import { SKILL_EDIT_SANDBOX_SYSTEM_PROMPT } from '@fastgpt/global/core/ai/sandbox/constants';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import {
   createAskAgentTool,
@@ -74,7 +74,6 @@ import {
 } from '../../sandbox/interface/runtime';
 
 const logger = getLogger(LogCategories.MODULE.AGENT_SKILLS);
-
 type SkillEditProcessorData = {
   model: string;
   systemPrompt: string;
@@ -182,13 +181,7 @@ export async function handleSkillEditChat(
     }
 
     const getPreviewUrl = createChatFilePreviewUrlGetter();
-    await Promise.all([
-      addPreviewUrlToChatItems(newHistories, 'chatFlow'),
-      ...queryFiles.map(async (file) => {
-        if (!file.key) return;
-        file.url = await getPreviewUrl(file.key);
-      })
-    ]);
+    await addPreviewUrlToChatItems(newHistories, 'chatFlow');
     const interactive = getLastInteractiveValue(newHistories);
     const preparedRound = await preChatRound({
       ...chatSource,
@@ -200,6 +193,13 @@ export async function handleSkillEditChat(
       responseChatItemId: responseChatItemIdFromBody,
       interactive
     });
+    // preChatRound 会清理待持久化消息中的临时 URL；运行时需在其后按 key 重新生成。
+    await Promise.all(
+      queryFiles.map(async (file) => {
+        if (!file.key) return;
+        file.url = await getPreviewUrl(file.key);
+      })
+    );
     const runningChatId = preparedRound.chatId;
     const finalResponseChatItemId = preparedRound.responseChatItemId;
     roundState.preparedRound = preparedRound;
@@ -289,13 +289,19 @@ export async function handleSkillEditChat(
           toolCatalog,
           lang
         });
-        const restoredMemory = readSkillEditAgentLoopMemory({ histories });
+        const restoredMemory = readSkillEditAgentLoopMemory({
+          histories: concatHistories(histories, data.contextMessages)
+        });
+        const pendingMainContext =
+          interactive?.type === 'agentPlanAskQuery' ? restoredMemory.pendingMainContext : undefined;
 
         const loopResult = await runAuxiliaryGenerationAgentLoop({
           teamId: user.teamId,
           userKey: data.userKey,
           model: data.model,
-          systemPrompt: [data.systemPrompt, SANDBOX_SYSTEM_PROMPT].filter(Boolean).join('\n\n'),
+          systemPrompt: [data.systemPrompt, SKILL_EDIT_SANDBOX_SYSTEM_PROMPT]
+            .filter(Boolean)
+            .join('\n\n'),
           messages: userContext.messages,
           useVision: modelData.vision,
           useAudio: modelData.audio,
@@ -304,8 +310,12 @@ export async function handleSkillEditChat(
           checkIsStopping,
           usageSink,
           toolCatalog,
-          pendingMainContext: restoredMemory.pendingMainContext,
-          userAnswer: restoredMemory.pendingMainContext ? query : undefined,
+          pendingMainContext,
+          userAnswer: pendingMainContext ? query : undefined,
+          resumeMessages:
+            pendingMainContext && queryFiles.length > 0
+              ? userContext.resumeFileMessages
+              : undefined,
           executeTool: async ({ call }) => {
             const response = await (async () => {
               if (call.function.name === skillEditReadFilesTool.function.name) {

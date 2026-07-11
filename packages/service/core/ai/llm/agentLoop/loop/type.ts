@@ -137,6 +137,8 @@ export type UnifiedAgentLoopInput = {
   activePlan?: AgentPlanType;
   pendingMainContext?: PendingMainContext;
   userAnswer?: string;
+  /** 用户回答 ask_agent 时同轮新增的文件消息；纯文本答案仍只写入 tool response。 */
+  resumeMessages?: ChatCompletionMessageParam[];
 };
 
 export type UnifiedAgentLoopResult = {

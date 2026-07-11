@@ -173,7 +173,7 @@ export const runUnifiedAgentLoop = async ({
   };
 
   // ask_agent 暂停时会把当时的 LLM messages 保存到 pendingMainContext。
-  // 恢复时追加用户回答作为对应 ask tool 的 Tool message，延续同一条消息链。
+  // 恢复时先追加 ask tool response；同轮新上传的文件再作为 user message 接入。
   const messages =
     input.pendingMainContext && input.userAnswer !== undefined
       ? [
@@ -182,7 +182,8 @@ export const runUnifiedAgentLoop = async ({
             role: ChatCompletionRequestMessageRoleEnum.Tool,
             tool_call_id: input.pendingMainContext.askToolCallId,
             content: normalizeToolResponseContent(input.userAnswer)
-          } as ChatCompletionMessageParam
+          } as ChatCompletionMessageParam,
+          ...(input.resumeMessages ?? [])
         ]
       : buildInitialMessages({ input, hasRuntimeTools });
   const askToolName = runtime.toolCatalog.askTool?.function.name;

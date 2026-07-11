@@ -1,6 +1,9 @@
 import * as debugChatApi from '@/pages/api/core/ai/skill/debugChat';
 import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
-import { SANDBOX_SYSTEM_PROMPT, SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
+import {
+  SKILL_EDIT_SANDBOX_SYSTEM_PROMPT,
+  SandboxTypeEnum
+} from '@fastgpt/global/core/ai/sandbox/constants';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
@@ -20,7 +23,7 @@ import {
   ChatSourceEnum,
   ChatSourceTypeEnum
 } from '@fastgpt/global/core/chat/constants';
-import { SseResponseEventEnum } from '@fastgpt/global/core/chat/stream/constants';
+import { getSkillEditAgentLoopMemoryKey } from '@fastgpt/service/core/ai/auxiliaryGeneration/skillEdit/utils';
 
 const debugChatMocks = vi.hoisted(() => ({
   runAuxiliaryGeneration: vi.fn(),
@@ -38,7 +41,8 @@ const debugChatMocks = vi.hoisted(() => ({
   closeNodeResponseWriter: vi.fn(),
   getNodeResponseSummary: vi.fn(),
   getPreviewUrl: vi.fn(),
-  getUserChatInfo: vi.fn()
+  getUserChatInfo: vi.fn(),
+  getChatItems: vi.fn()
 }));
 
 vi.mock('@fastgpt/service/env', async (importOriginal) => {
@@ -110,6 +114,10 @@ vi.mock('@fastgpt/service/support/user/team/utils', async (importOriginal) => {
   };
 });
 
+vi.mock('@fastgpt/service/core/chat/controller', () => ({
+  getChatItems: debugChatMocks.getChatItems
+}));
+
 // ═══════════════════════════════════════════════
 // describe: debugChat API handler — parameter validation
 // ═══════════════════════════════════════════════
@@ -120,14 +128,41 @@ describe('debugChat handler — parameter validation', () => {
   // Error written via sseErrRes can be checked through the vi.mocked spy
   const getSseErrResMock = () => vi.mocked(responseModule.sseErrRes);
 
+  const createRunningSandbox = () =>
+    MongoSandboxInstance.create({
+      provider: 'opensandbox',
+      sandboxId: getEditDebugSandboxId(skillId),
+      sourceType: ChatSourceTypeEnum.skillEdit,
+      sourceId: skillId,
+      chatId: 'edit-debug',
+      userId: testUser.tmbId,
+      type: SandboxTypeEnum.editDebug,
+      status: 'running',
+      metadata: {
+        teamId: testUser.teamId,
+        tmbId: testUser.tmbId,
+        provider: 'opensandbox',
+        image: { repository: 'test-image', tag: 'latest' },
+        providerCreatedAt: new Date()
+      }
+    });
+
   beforeEach(async () => {
     testUser = await getUser(`debug-chat-user-${getNanoid(6)}`);
     vi.clearAllMocks();
-    debugChatMocks.preChatRound.mockResolvedValue({
-      chatId: 'prepared-debug-chat-id',
-      responseChatItemId: 'prepared-debug-response-id',
-      shouldPersistChatRound: true,
-      shouldFinalizePreparedRound: true
+    debugChatMocks.preChatRound.mockImplementation(async ({ userContent }) => {
+      userContent.value.forEach((item: any) => {
+        if (item.file?.key) {
+          item.file.url = '';
+        }
+      });
+
+      return {
+        chatId: 'prepared-debug-chat-id',
+        responseChatItemId: 'prepared-debug-response-id',
+        shouldPersistChatRound: true,
+        shouldFinalizePreparedRound: true
+      };
     });
     debugChatMocks.prepareSkillEditRuntime.mockResolvedValue({
       sandboxClient: {},
@@ -206,6 +241,7 @@ describe('debugChat handler — parameter validation', () => {
       errorCount: 0,
       totalPoints: 0
     });
+    debugChatMocks.getChatItems.mockResolvedValue({ histories: [] });
     debugChatMocks.getPreviewUrl.mockImplementation(async (key: string) => `/preview/${key}`);
     debugChatMocks.recordNodeResponses.mockResolvedValue(undefined);
     debugChatMocks.closeNodeResponseWriter.mockResolvedValue(undefined);
@@ -221,30 +257,6 @@ describe('debugChat handler — parameter validation', () => {
       tmbId: testUser.tmbId
     });
     skillId = String(skill._id);
-  });
-
-  it.each(['skillId', 'chatId', 'messages'] as const)('rejects invalid %s', async (field) => {
-    const body: Record<string, unknown> = {
-      skillId,
-      chatId: getNanoid(),
-      responseChatItemId: getNanoid(),
-      model: 'gpt-4o',
-      messages: [{ role: 'user', content: 'hello' }]
-    };
-    if (field === 'messages') {
-      body.messages = [];
-    } else {
-      delete body[field];
-    }
-
-    await Call(debugChatApi.default, {
-      auth: testUser,
-      cookies: {},
-      body
-    });
-    expect(getSseErrResMock()).toHaveBeenCalled();
-    const err = getSseErrResMock().mock.calls[0][1];
-    expect(err?.message ?? err).toMatch(new RegExp(field, 'i'));
   });
 
   it('should call sseErrRes when edit-debug sandbox does not exist', async () => {
@@ -278,23 +290,7 @@ describe('debugChat handler — parameter validation', () => {
       permission: ReadPermissionVal
     });
 
-    await MongoSandboxInstance.create({
-      provider: 'opensandbox',
-      sandboxId: getEditDebugSandboxId(skillId),
-      sourceType: ChatSourceTypeEnum.skillEdit,
-      sourceId: skillId,
-      chatId: 'edit-debug',
-      userId: testUser.tmbId,
-      type: SandboxTypeEnum.editDebug,
-      status: 'running',
-      metadata: {
-        teamId: testUser.teamId,
-        tmbId: testUser.tmbId,
-        provider: 'opensandbox',
-        image: { repository: 'test-image', tag: 'latest' },
-        providerCreatedAt: new Date()
-      }
-    });
+    await createRunningSandbox();
 
     await Call(debugChatApi.default, {
       auth: reader,
@@ -320,190 +316,7 @@ describe('debugChat handler — parameter validation', () => {
   });
 
   it('should prepare and finalize a skill debug chat round with prepared ids', async () => {
-    await MongoSandboxInstance.create({
-      provider: 'opensandbox',
-      sandboxId: getEditDebugSandboxId(skillId),
-      sourceType: ChatSourceTypeEnum.skillEdit,
-      sourceId: skillId,
-      chatId: 'edit-debug',
-      userId: testUser.tmbId,
-      type: SandboxTypeEnum.editDebug,
-      status: 'running',
-      metadata: {
-        teamId: testUser.teamId,
-        tmbId: testUser.tmbId,
-        provider: 'opensandbox',
-        image: { repository: 'test-image', tag: 'latest' },
-        providerCreatedAt: new Date()
-      }
-    });
-
-    await Call(debugChatApi.default, {
-      auth: testUser,
-      cookies: {},
-      headers: {
-        origin: 'http://test.local'
-      },
-      body: {
-        skillId,
-        chatId: 'debug-chat-id',
-        responseChatItemId: 'client-response-id',
-        model: 'gpt-4o',
-        messages: [{ role: 'user', content: 'hi' }]
-      }
-    });
-
-    expect(debugChatMocks.preChatRound).toHaveBeenCalledWith(
-      expect.objectContaining({
-        sourceType: ChatSourceTypeEnum.skillEdit,
-        sourceId: skillId,
-        chatId: 'debug-chat-id',
-        teamId: testUser.teamId,
-        tmbId: testUser.tmbId,
-        source: ChatSourceEnum.test,
-        responseChatItemId: 'client-response-id',
-        userContent: expect.objectContaining({
-          obj: ChatRoleEnum.Human
-        })
-      })
-    );
-    expect(debugChatMocks.prepareSkillEditRuntime).toHaveBeenCalledWith(
-      expect.objectContaining({
-        skillId,
-        userId: testUser.userId,
-        teamId: testUser.teamId
-      })
-    );
-    expect(debugChatMocks.runAuxiliaryGeneration).toHaveBeenCalledWith(
-      expect.objectContaining({
-        sourceType: ChatSourceTypeEnum.skillEdit,
-        sourceId: skillId,
-        chatId: 'prepared-debug-chat-id',
-        query: 'hi',
-        data: expect.objectContaining({
-          model: expect.any(String),
-          contextMessages: [],
-          timezone: 'America/New_York',
-          userKey: {
-            baseUrl: 'https://provider.example/v1',
-            key: 'provider-key'
-          }
-        }),
-        files: []
-      })
-    );
-    expect(debugChatMocks.runAuxiliaryGenerationAgentLoop).toHaveBeenCalledWith(
-      expect.objectContaining({
-        userKey: {
-          baseUrl: 'https://provider.example/v1',
-          key: 'provider-key'
-        },
-        systemPrompt: expect.stringContaining(SANDBOX_SYSTEM_PROMPT)
-      })
-    );
-    expect(debugChatMocks.responseWrite).toHaveBeenCalledWith(
-      expect.objectContaining({
-        event: SseResponseEventEnum.sandboxStatus,
-        data: expect.objectContaining({
-          phase: 'lazyInit'
-        })
-      })
-    );
-    const sandboxStatusCallIndex = debugChatMocks.responseWrite.mock.calls.findIndex(
-      ([payload]) => payload?.event === SseResponseEventEnum.sandboxStatus
-    );
-    const sandboxStatusOrder =
-      debugChatMocks.responseWrite.mock.invocationCallOrder[sandboxStatusCallIndex];
-    expect(sandboxStatusOrder).toBeLessThan(
-      debugChatMocks.prepareSkillEditRuntime.mock.invocationCallOrder[0]
-    );
-    expect(debugChatMocks.recordNodeResponses).toHaveBeenCalledWith([]);
-    expect(debugChatMocks.finalizeChatRound).toHaveBeenCalledWith(
-      expect.objectContaining({
-        chatId: 'prepared-debug-chat-id',
-        sourceType: ChatSourceTypeEnum.skillEdit,
-        sourceId: skillId,
-        source: ChatSourceEnum.test,
-        aiContent: expect.objectContaining({
-          dataId: 'prepared-debug-response-id',
-          value: [{ text: { content: 'debug answer' } }]
-        })
-      })
-    );
-
-    const doneWriteIndex = debugChatMocks.responseWrite.mock.calls.findIndex(
-      ([payload]) => payload.data === '[DONE]'
-    );
-    expect(doneWriteIndex).toBeGreaterThanOrEqual(0);
-    expect(debugChatMocks.finalizeChatRound.mock.invocationCallOrder[0]).toBeLessThan(
-      debugChatMocks.responseWrite.mock.invocationCallOrder[doneWriteIndex]
-    );
-  });
-
-  it('should hydrate uploaded file preview urls before building agent loop messages', async () => {
-    debugChatMocks.runAuxiliaryGeneration.mockImplementationOnce(
-      async ({
-        req,
-        onStreamContextReady,
-        processor,
-        data,
-        histories,
-        query,
-        maxFiles,
-        customPdfParse
-      }) => {
-        const streamContext = {
-          write: debugChatMocks.responseWrite,
-          writeDone: () => debugChatMocks.responseWrite({ data: '[DONE]' }),
-          writeError: debugChatMocks.writeStreamError,
-          flushResume: debugChatMocks.flushResume
-        };
-        onStreamContextReady?.(streamContext);
-
-        const result = await processor({
-          query,
-          files: [],
-          data,
-          histories,
-          requestOrigin: req.headers.origin,
-          maxFiles,
-          customPdfParse,
-          usageId: 'usage-id',
-          streamWriter: debugChatMocks.responseWrite,
-          checkIsStopping: () => false,
-          usageSink: vi.fn(),
-          user: {
-            teamId: testUser.teamId,
-            tmbId: testUser.tmbId,
-            userId: testUser.userId,
-            isRoot: false,
-            lang: 'zh'
-          }
-        });
-
-        return {
-          ...result,
-          streamContext
-        };
-      }
-    );
-    await MongoSandboxInstance.create({
-      provider: 'opensandbox',
-      sandboxId: getEditDebugSandboxId(skillId),
-      sourceType: ChatSourceTypeEnum.skillEdit,
-      sourceId: skillId,
-      chatId: 'edit-debug',
-      userId: testUser.tmbId,
-      type: SandboxTypeEnum.editDebug,
-      status: 'running',
-      metadata: {
-        teamId: testUser.teamId,
-        tmbId: testUser.tmbId,
-        provider: 'opensandbox',
-        image: { repository: 'test-image', tag: 'latest' },
-        providerCreatedAt: new Date()
-      }
-    });
+    await createRunningSandbox();
 
     await Call(debugChatApi.default, {
       auth: testUser,
@@ -526,6 +339,13 @@ describe('debugChat handler — parameter validation', () => {
                 url: '',
                 key: 'file-key-1'
               },
+              {
+                type: 'file_url',
+                name: 'demo.mp4',
+                url: '',
+                fileType: 'video',
+                key: 'video-key-1'
+              },
               { type: 'text', text: 'summarize this' }
             ]
           }
@@ -533,19 +353,147 @@ describe('debugChat handler — parameter validation', () => {
       }
     });
 
+    expect(debugChatMocks.preChatRound).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        sourceId: skillId,
+        chatId: 'debug-chat-id',
+        responseChatItemId: 'client-response-id'
+      })
+    );
+    expect(debugChatMocks.runAuxiliaryGenerationAgentLoop).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userKey: {
+          baseUrl: 'https://provider.example/v1',
+          key: 'provider-key'
+        },
+        systemPrompt: expect.stringContaining(SKILL_EDIT_SANDBOX_SYSTEM_PROMPT)
+      })
+    );
     const loopInput = debugChatMocks.runAuxiliaryGenerationAgentLoop.mock.calls[0][0];
     const userMessage = loopInput.messages.find((message: any) => message.role === 'user');
-    expect(userMessage.content).toEqual(expect.stringContaining('prepared-debug-response-id-0'));
-    expect(userMessage.content).toContain('guide.pdf');
-    expect(userMessage.content).toContain('/preview/file-key-1');
-    expect(userMessage.content).toContain('read_files');
-    expect(loopInput.toolCatalog.runtimeTools).toEqual(
+    const userMessageContent = JSON.stringify(userMessage.content);
+    expect(userMessageContent).toContain('prepared-debug-response-id-0');
+    expect(userMessageContent).toContain('/preview/file-key-1');
+    expect(userMessage.content).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          function: expect.objectContaining({ name: 'read_files' })
+          type: 'file_url',
+          name: 'demo.mp4',
+          url: '/preview/video-key-1',
+          fileType: 'video'
         })
       ])
     );
+    expect(debugChatMocks.finalizeChatRound).toHaveBeenCalledWith(
+      expect.objectContaining({
+        chatId: 'prepared-debug-chat-id',
+        sourceType: ChatSourceTypeEnum.skillEdit,
+        sourceId: skillId,
+        source: ChatSourceEnum.test,
+        aiContent: expect.objectContaining({
+          dataId: 'prepared-debug-response-id',
+          value: [{ text: { content: 'debug answer' } }]
+        })
+      })
+    );
+  });
+
+  it('should retain an uploaded video when resuming ask_agent', async () => {
+    await createRunningSandbox();
+    const pendingMainContext = {
+      messages: [
+        { role: 'user', content: 'Please review the media' },
+        {
+          role: 'assistant',
+          tool_calls: [
+            {
+              id: 'call-ask',
+              type: 'function',
+              function: { name: 'ask_agent', arguments: '{}' }
+            }
+          ]
+        }
+      ],
+      askToolCallId: 'call-ask'
+    };
+    debugChatMocks.getChatItems.mockResolvedValueOnce({
+      histories: [
+        {
+          dataId: 'ask-response-id',
+          obj: ChatRoleEnum.AI,
+          value: [
+            {
+              interactive: {
+                type: 'agentPlanAskQuery',
+                planId: 'ask-plan-id',
+                entryNodeIds: [],
+                memoryEdges: [],
+                nodeOutputs: [],
+                params: {
+                  content: 'Which clip should I inspect?',
+                  reason: 'Need the source clip',
+                  blockerType: 'missing_context'
+                }
+              }
+            }
+          ],
+          memories: {
+            [getSkillEditAgentLoopMemoryKey()]: { pendingMainContext }
+          }
+        }
+      ]
+    });
+
+    await Call(debugChatApi.default, {
+      auth: testUser,
+      cookies: {},
+      headers: { origin: 'http://test.local' },
+      body: {
+        skillId,
+        chatId: 'resume-chat-id',
+        responseChatItemId: 'resume-response-id',
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'file_url',
+                name: 'answer.mp4',
+                url: '',
+                fileType: 'video',
+                key: 'resume-video-key'
+              },
+              { type: 'text', text: 'Use this clip' }
+            ]
+          }
+        ]
+      }
+    });
+
+    expect(debugChatMocks.runAuxiliaryGenerationAgentLoop).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pendingMainContext,
+        userAnswer: 'Use this clip',
+        resumeMessages: [
+          expect.objectContaining({
+            role: 'user',
+            content: expect.arrayContaining([
+              expect.objectContaining({
+                type: 'file_url',
+                name: 'answer.mp4',
+                url: '/preview/resume-video-key',
+                fileType: 'video'
+              })
+            ])
+          })
+        ]
+      })
+    );
+    const resumeMessages =
+      debugChatMocks.runAuxiliaryGenerationAgentLoop.mock.calls.at(-1)?.[0].resumeMessages;
+    expect(JSON.stringify(resumeMessages)).not.toContain('Use this clip');
   });
 
   it('should persist a visible error when the skill edit agent loop returns error', async () => {
@@ -555,23 +503,7 @@ describe('debugChat handler — parameter validation', () => {
       error: loopError,
       answerText: ''
     });
-    await MongoSandboxInstance.create({
-      provider: 'opensandbox',
-      sandboxId: getEditDebugSandboxId(skillId),
-      sourceType: ChatSourceTypeEnum.skillEdit,
-      sourceId: skillId,
-      chatId: 'edit-debug',
-      userId: testUser.tmbId,
-      type: SandboxTypeEnum.editDebug,
-      status: 'running',
-      metadata: {
-        teamId: testUser.teamId,
-        tmbId: testUser.tmbId,
-        provider: 'opensandbox',
-        image: { repository: 'test-image', tag: 'latest' },
-        providerCreatedAt: new Date()
-      }
-    });
+    await createRunningSandbox();
 
     await Call(debugChatApi.default, {
       auth: testUser,

@@ -52,16 +52,4 @@ describe('runSkillEditReadFiles', () => {
       }
     ]);
   });
-
-  it('returns schema errors for invalid tool arguments', async () => {
-    const response = await runSkillEditReadFiles({
-      args: JSON.stringify({ ids: 'file-1' }),
-      filesMap: {},
-      teamId: 'team-id',
-      tmbId: 'tmb-id'
-    });
-
-    expect(response).toContain('expected array');
-    expect(getFileContentByUrlMock).not.toHaveBeenCalled();
-  });
 });

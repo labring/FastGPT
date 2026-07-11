@@ -8,7 +8,6 @@ const {
   prepareSandboxRuntimeMirrorsMock,
   readSandboxPwdMock,
   runAgentSandboxEntrypointMock,
-  resolveSandboxHomeMock,
   injectAgentSkillFilesToSandboxMock,
   syncBuiltinSkillsToSandboxMock,
   runAgentSkillVersionEntrypointsMock,
@@ -22,7 +21,6 @@ const {
   prepareSandboxRuntimeMirrorsMock: vi.fn(),
   readSandboxPwdMock: vi.fn(),
   runAgentSandboxEntrypointMock: vi.fn(),
-  resolveSandboxHomeMock: vi.fn(),
   injectAgentSkillFilesToSandboxMock: vi.fn(),
   syncBuiltinSkillsToSandboxMock: vi.fn(),
   runAgentSkillVersionEntrypointsMock: vi.fn(),
@@ -64,7 +62,6 @@ vi.mock('@fastgpt/service/core/ai/sandbox/interface/runtime', async (importOrigi
       return context;
     },
   withAgentSandboxInitLease: withAgentSandboxInitLeaseMock,
-  resolveSandboxHome: resolveSandboxHomeMock,
   getAgentSkillInfos: getAgentSkillInfosMock,
   getBuiltinSkillsRootPath: (homeDirectory: string) => `${homeDirectory}/.fastgpt/skills`,
   injectAgentSkillFilesToSandbox: injectAgentSkillFilesToSandboxMock,
@@ -89,7 +86,6 @@ describe('ensureAgentSandboxRuntime', () => {
       workDirectory: '/workspace'
     });
     readSandboxPwdMock.mockResolvedValue('/workspace');
-    resolveSandboxHomeMock.mockResolvedValue('/home/sandbox');
     injectAgentSkillFilesToSandboxMock.mockResolvedValue([
       {
         versionId: 'version_1',
@@ -278,41 +274,6 @@ describe('ensureAgentSandboxRuntime', () => {
     expect(injectAgentSkillFilesToSandboxMock).not.toHaveBeenCalled();
     expect(runAgentSandboxEntrypointMock).not.toHaveBeenCalled();
     expect(runAgentSkillVersionEntrypointsMock).not.toHaveBeenCalled();
-  });
-
-  it('creates builtin skill prepare action with lazy source loading', async () => {
-    const { createBuiltinSkillPrepareAction } =
-      await import('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/sandbox/prepare');
-    const builtinSkillSources = [
-      {
-        name: 'skill-creator',
-        files: [
-          {
-            relativePath: 'SKILL.md',
-            content: Buffer.from('# Skill Creator')
-          }
-        ]
-      }
-    ];
-    const getSources = vi.fn(async () => builtinSkillSources);
-
-    const result = await createBuiltinSkillPrepareAction({ getSources })({
-      sandbox: sandboxProviderMock,
-      sandboxClient: sandboxClientMock,
-      workDirectory: '/workspace',
-      deployedSkillVersions: [],
-      skillInfos: [],
-      skillScanDirectories: []
-    });
-
-    expect(getSources).toHaveBeenCalledTimes(1);
-    expect(resolveSandboxHomeMock).toHaveBeenCalledWith(sandboxProviderMock);
-    expect(syncBuiltinSkillsToSandboxMock).toHaveBeenCalledWith({
-      sandbox: sandboxProviderMock,
-      homeDirectory: '/home/sandbox',
-      sources: builtinSkillSources
-    });
-    expect(result.skillScanDirectories).toEqual(['/home/sandbox/.fastgpt/skills/skill-creator']);
   });
 
   it('returns empty skill infos when sandbox runtime is not needed', async () => {

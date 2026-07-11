@@ -16,17 +16,6 @@ vi.mock('@fastgpt/service/core/ai/llm/agentLoop', () => ({
         properties: {}
       }
     }
-  }),
-  createAskAgentTool: () => ({
-    type: 'function',
-    function: {
-      name: 'ask_agent',
-      description: 'Ask user',
-      parameters: {
-        type: 'object',
-        properties: {}
-      }
-    }
   })
 }));
 
@@ -70,7 +59,7 @@ describe('runAuxiliaryGenerationAgentLoop', () => {
     ).rejects.toThrow('Auxiliary generation runtime tools require executeTool');
   });
 
-  it('forwards one tool catalog with BYOK and pending ask context', async () => {
+  it('forwards provider credentials and ask resume messages', async () => {
     const pendingMainContext = {
       messages: [],
       askToolCallId: 'call_ask'
@@ -79,35 +68,12 @@ describe('runAuxiliaryGenerationAgentLoop', () => {
       baseUrl: 'https://provider.example/v1',
       key: 'provider-key'
     } as any;
-    const executeTool = vi.fn();
-    const toolCatalog = {
-      runtimeTools: [
-        {
-          type: 'function',
-          function: {
-            name: 'read_file',
-            description: 'Read file',
-            parameters: { type: 'object', properties: {} }
-          }
-        }
-      ],
-      updatePlanTool: {
-        type: 'function',
-        function: {
-          name: 'update_plan',
-          description: 'Update plan',
-          parameters: { type: 'object', properties: {} }
-        }
-      },
-      askTool: {
-        type: 'function',
-        function: {
-          name: 'ask_agent',
-          description: 'Ask user',
-          parameters: { type: 'object', properties: {} }
-        }
+    const resumeMessages = [
+      {
+        role: 'user',
+        content: 'new file context'
       }
-    } as any;
+    ] as any;
 
     await runAuxiliaryGenerationAgentLoop({
       teamId: 'team-id',
@@ -115,23 +81,21 @@ describe('runAuxiliaryGenerationAgentLoop', () => {
       model: 'gpt-4o',
       systemPrompt: 'system',
       messages: [],
-      toolCatalog,
-      executeTool,
       pendingMainContext,
-      userAnswer: 'answer'
+      userAnswer: 'answer',
+      resumeMessages
     });
 
     expect(runUnifiedAgentLoopMock).toHaveBeenCalledWith(
       expect.objectContaining({
         runtime: expect.objectContaining({
-          userKey,
-          toolCatalog,
-          executeTool
+          userKey
         }),
         input: expect.objectContaining({
           systemPrompt: 'system',
           pendingMainContext,
-          userAnswer: 'answer'
+          userAnswer: 'answer',
+          resumeMessages
         })
       })
     );

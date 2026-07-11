@@ -1,21 +1,17 @@
 import type { AgentInputFile } from '../../adapter/userContext';
-import type { BuiltinSkillSource } from '@fastgpt/global/core/ai/skill/runtime/builtin';
 import type { SelectedAgentSkillItemType } from '@fastgpt/global/core/app/formEdit/type';
 import {
   type DeployedSkillInfo,
   type DeployedSkillVersion,
   getAgentSkillInfos,
-  getBuiltinSkillsRootPath,
   injectAgentSkillFilesToSandbox,
   injectCurrentInputFiles,
   prepareAgentSandboxRuntime,
   preparePackageMirrors,
   prepareSandbox,
   readCurrentWorkingDirectory,
-  resolveSandboxHome,
   runAgentSkillVersionEntrypoints,
   runSandboxEntrypoint,
-  syncBuiltinSkillsToSandbox,
   withAgentSandboxInitLease,
   type SandboxClient,
   type SandboxPrepareContext,
@@ -130,46 +126,6 @@ export async function ensureAgentSandboxRuntime({
     skillInfos: preparedContext.skillInfos
   };
 }
-
-/**
- * 创建“同步内置 Skill 到当前 sandbox”的 prepare action。
- *
- * 调用方只提供内置 Skill 文件来源；具体同步位置、HOME 解析和后续扫描目录登记
- * 都在 sandbox prepare 生命周期内完成，避免 API 层感知 sandbox 细节。
- */
-export const createBuiltinSkillPrepareAction =
-  ({
-    getSources,
-    injectToSandbox = syncBuiltinSkillsToSandbox
-  }: {
-    getSources: () => Promise<BuiltinSkillSource[]>;
-    injectToSandbox?: typeof syncBuiltinSkillsToSandbox;
-  }): AgentSandboxPrepareAction =>
-  async (context) => {
-    const sources = await getSources();
-    if (sources.length === 0) return context;
-
-    const homeDirectory = await resolveSandboxHome(context.sandbox);
-    if (!homeDirectory) {
-      throw new Error('Failed to resolve sandbox HOME for builtin skill sync');
-    }
-
-    await injectToSandbox({
-      sandbox: context.sandbox,
-      homeDirectory,
-      sources
-    });
-
-    const builtinSkillsRootPath = getBuiltinSkillsRootPath(homeDirectory);
-
-    return {
-      ...context,
-      skillScanDirectories: [
-        ...context.skillScanDirectories,
-        ...sources.map((source) => `${builtinSkillsRootPath}/${source.name}`)
-      ]
-    };
-  };
 
 const scanEditDebugSkillInfos = (): AgentSandboxPrepareStep => async (context) => ({
   ...context,

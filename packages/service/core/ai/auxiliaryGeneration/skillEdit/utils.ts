@@ -1,18 +1,20 @@
 import type { DeployedSkillInfo } from '../../sandbox/interface/runtime';
-import { SANDBOX_READ_FILE_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
+import {
+  SANDBOX_READ_FILE_TOOL_NAME,
+  SANDBOX_SEARCH_TOOL_NAME,
+  SANDBOX_SHELL_TOOL_NAME
+} from '@fastgpt/global/core/ai/sandbox/tools';
+import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import type { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { PendingMainContext, PlanAskPayload } from '../../llm/agentLoop';
-
-const escapeXml = (value: string) =>
-  value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
+import {
+  buildAgentInputFilesPrompt,
+  buildAgentSandboxFileWriteBoundaryPrompt,
+  buildAgentSkillsPrompt,
+  type AgentInputFile
+} from '../../agent/userContext';
 
 export const SKILL_EDIT_AGENT_NODE_ID = 'skill-debug-agent';
 
@@ -80,12 +82,7 @@ export const createSkillEditAskInteractive = ({
   }
 });
 
-export type SkillEditInputFileType = {
-  id: string;
-  name: string;
-  type: ChatFileTypeEnum;
-  url: string;
-};
+export type SkillEditInputFileType = AgentInputFile;
 
 /** 构造当前 Human message 的 Skill、文件、sandbox 边界和时区 reminder。 */
 export const buildSkillEditUserReminderInput = ({
@@ -101,62 +98,19 @@ export const buildSkillEditUserReminderInput = ({
   currentWorkingDirectory?: string;
   currentTime?: string;
 }) => {
-  const buildSkillsPrompt = () => {
-    if (skillInfos.length === 0) return '';
-
-    return `## 技能
-你可以使用可复用的技能。每个技能都提供针对特定任务的操作说明。当用户任务与某个技能的描述匹配时，先读取该技能的 SKILL.md 路径，然后再继续执行。不要仅凭技能描述推断完整工作流。
-当技能引用相对路径文件时，应以该技能的 SKILL.md 所在目录作为基准目录进行解析。
-你可以通过 ${SANDBOX_READ_FILE_TOOL_NAME} 工具来读取完整的技能。
-下面是可用的技能：
-
-${skillInfos
-  .map((info) =>
-    [
-      '<skill>',
-      `<name>${escapeXml(info.name)}</name>`,
-      `<description>${escapeXml(info.description)}</description>`,
-      `<directory>${escapeXml(info.directory)}</directory>`,
-      `<path>${escapeXml(info.skillMdPath)}</path>`,
-      '</skill>'
-    ].join('\n')
-  )
-  .join('\n')}`;
-  };
-  const buildInputFilesPrompt = () => {
-    if (filesInfo.length === 0) return '';
-
-    return `## 对话文件
-用户本次对话上传的文件，用途：
-1. 普通文档可通过 read_files 读取内容。
-2. url 可作为其他工具的模型参数。
-
-${filesInfo
-  .map(
-    (file) => `<file>
-<id>${escapeXml(file.id)}</id>
-<name>${escapeXml(file.name)}</name>
-<type>${escapeXml(file.type)}</type>
-<url>${escapeXml(file.url)}</url>
-</file>`
-  )
-  .join('\n')}`;
-  };
-  const buildSandboxFileWriteBoundaryPrompt = () => {
-    if (!currentWorkingDirectory) return '';
-
-    return `## Sandbox 文件写入边界
-生成或修改文件时，必须严格区分系统目录和用户产物目录：
-- 用户 Skill 产物根目录：${currentWorkingDirectory}/skills
-- 如果任务需要创建或修改用户 Skill，只能写入：${currentWorkingDirectory}/skills/<skill-name>/
-- 用户 Skill 主文件必须是：${currentWorkingDirectory}/skills/<skill-name>/SKILL.md
-- 禁止写入：${currentWorkingDirectory}/<skill-name>/ 或 ${currentWorkingDirectory}/SKILL.md
-- 禁止写入：/home/sandbox/.fastgpt/skills/、~/.fastgpt/skills/ 或任何 .fastgpt/skills/ 路径；这些路径只用于系统内置 Skill。`;
-  };
   const reminder = [
-    buildSkillsPrompt(),
-    buildSandboxFileWriteBoundaryPrompt(),
-    buildInputFilesPrompt(),
+    buildAgentSkillsPrompt(skillInfos),
+    buildAgentSandboxFileWriteBoundaryPrompt({ currentWorkingDirectory }),
+    buildAgentInputFilesPrompt({
+      files: filesInfo,
+      description: '用户在 Skill Detail 对话上传的文件不会自动进入 sandbox 或 workspace。',
+      instructions: [
+        `读取普通文档内容必须调用 ${SubAppIds.readFiles}，并传入下方对应的 <id>。`,
+        '图片、音频和视频在当前模型支持对应能力时已作为多模态输入提供，应直接分析，不要在 sandbox 或 workspace 中查找。',
+        `如果必须在 sandbox 中处理媒体文件，使用下方 <url> 显式下载后再处理，不要通过 ${SANDBOX_READ_FILE_TOOL_NAME}、${SANDBOX_SEARCH_TOOL_NAME} 或 ${SANDBOX_SHELL_TOOL_NAME} 猜测本地路径。`,
+        'url 也可作为其他工具的模型参数。'
+      ]
+    }),
     currentTime || currentWorkingDirectory
       ? `## 背景信息${currentTime ? `\n当前时间: ${currentTime}` : ''}${
           currentWorkingDirectory ? `\n当前 sandbox 工作目录: ${currentWorkingDirectory}` : ''

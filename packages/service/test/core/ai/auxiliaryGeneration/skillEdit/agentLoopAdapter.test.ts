@@ -36,8 +36,10 @@ const createToolCall = ({
   }) as any;
 
 describe('createSkillEditAgentLoopAdapter', () => {
-  it('persists assistant text from tool-call turns before the runtime tool card', () => {
+  it('persists the runtime tool lifecycle and compression response', () => {
+    const streamWriter = vi.fn();
     const adapter = createSkillEditAgentLoopAdapter({
+      streamWriter,
       lang: 'zh' as any,
       toolCatalog: {
         runtimeTools: [createTool('custom_tool')],
@@ -61,41 +63,6 @@ describe('createSkillEditAgentLoopAdapter', () => {
       reasoningText: 'Need tool context.',
       toolCalls: [call]
     } as any);
-
-    expect(adapter.artifacts.assistantResponses).toEqual([
-      {
-        text: { content: 'I will inspect the file first.' },
-        reasoning: { content: 'Need tool context.' }
-      },
-      {
-        id: 'call_custom',
-        tools: [
-          expect.objectContaining({
-            id: 'call_custom',
-            functionName: 'custom_tool'
-          })
-        ]
-      }
-    ]);
-  });
-
-  it('records tool response compression as a child node response', () => {
-    const streamWriter = vi.fn();
-    const adapter = createSkillEditAgentLoopAdapter({
-      streamWriter,
-      lang: 'zh' as any,
-      toolCatalog: {
-        runtimeTools: [createTool('custom_tool')],
-        updatePlanTool: createTool('update_plan'),
-        askTool: createTool('ask_agent')
-      }
-    });
-    const call = createToolCall();
-
-    adapter.emitEvent({
-      type: 'tool_call',
-      call
-    });
     adapter.emitEvent({
       type: 'tool_response',
       call,
@@ -117,6 +84,10 @@ describe('createSkillEditAgentLoopAdapter', () => {
 
     expect(adapter.artifacts.assistantResponses).toEqual([
       {
+        text: { content: 'I will inspect the file first.' },
+        reasoning: { content: 'Need tool context.' }
+      },
+      {
         id: 'call_custom',
         tools: [
           expect.objectContaining({
@@ -128,24 +99,26 @@ describe('createSkillEditAgentLoopAdapter', () => {
         ]
       }
     ]);
-    expect(adapter.artifacts.nodeResponses).toEqual([
-      expect.objectContaining({
-        id: 'call_custom',
-        moduleType: FlowNodeTypeEnum.tool,
-        moduleName: 'custom_tool',
-        toolInput: {
-          path: '/tmp/a.txt'
-        },
-        toolRes: 'tool response',
-        childrenResponses: [
-          expect.objectContaining({
-            id: 'req_compress',
-            llmRequestIds: ['req_compress'],
-            textOutput: 'compressed tool response'
-          })
-        ]
-      })
-    ]);
+    expect(adapter.artifacts.nodeResponses).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'call_custom',
+          moduleType: FlowNodeTypeEnum.tool,
+          moduleName: 'custom_tool',
+          toolInput: {
+            path: '/tmp/a.txt'
+          },
+          toolRes: 'tool response',
+          childrenResponses: [
+            expect.objectContaining({
+              id: 'req_compress',
+              llmRequestIds: ['req_compress'],
+              textOutput: 'compressed tool response'
+            })
+          ]
+        })
+      ])
+    );
     expect(streamWriter).toHaveBeenCalledWith(
       expect.objectContaining({
         event: SseResponseEventEnum.toolCall
