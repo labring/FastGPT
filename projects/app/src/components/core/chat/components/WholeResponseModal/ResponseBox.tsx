@@ -1,6 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Box, Flex, useDisclosure } from '@chakra-ui/react';
-import { useSize } from 'ahooks';
 import dynamic from 'next/dynamic';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
@@ -74,9 +73,6 @@ export const ResponseBox = React.memo(function ResponseBox({
     onClose: onCloseMobileModal
   } = useDisclosure();
 
-  const contentPanelRef = useRef<HTMLDivElement>(null);
-  const contentPanelSize = useSize(contentPanelRef);
-
   return (
     <>
       {isPc && !useMobile ? (
@@ -104,12 +100,11 @@ export const ResponseBox = React.memo(function ResponseBox({
               onChange={setCurrentNodeId}
             />
           </Box>
-          <Box ref={contentPanelRef} flex={'1 0 0'} w={0} h={'100%'} minH={0} overflow={'hidden'}>
+          <Box flex={'1 0 0'} w={0} h={'100%'} minH={0} overflow={'hidden'}>
             <WholeResponseContent
               dataId={dataId}
               activeModule={activeModule}
               hideTabs={hideTabs}
-              contentHeight={contentPanelSize?.height}
               onOpenRequestIdDetail={handleOpenRequestIdDetail}
             />
           </Box>
@@ -178,12 +173,11 @@ export const ResponseBox = React.memo(function ResponseBox({
                   {t(activeModule.moduleName as any, activeModule.moduleNameArgs)}
                 </Box>
               </Flex>
-              <Box ref={contentPanelRef} flex={'1 1 0'} minH={0} overflowY={'auto'}>
+              <Box flex={'1 1 0'} minH={0} overflowY={'auto'}>
                 <WholeResponseContent
                   dataId={dataId}
                   activeModule={activeModule}
                   hideTabs={true}
-                  contentHeight={contentPanelSize?.height}
                   onOpenRequestIdDetail={handleOpenRequestIdDetail}
                 />
               </Box>

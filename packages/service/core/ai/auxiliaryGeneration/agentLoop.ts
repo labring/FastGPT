@@ -1,5 +1,5 @@
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
-import { runUnifiedAgentLoop, createUpdatePlanTool } from '../llm/agentLoop';
+import { runAgentLoop } from '../llm/agentLoop/interface';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { AuxiliaryGenerationStreamWriter } from './stream';
 import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
@@ -36,17 +36,21 @@ export async function runAuxiliaryGenerationAgentLoop({
   checkIsStopping,
   usageSink
 }: RunAuxiliaryGenerationAgentLoopParams) {
-  const result = await runUnifiedAgentLoop({
+  const result = await runAgentLoop({
     runtime: {
       teamId,
-      model,
-      stream: true,
-      useVision,
-      useAudio,
-      useVideo,
+      llmParams: {
+        model,
+        stream: true,
+        useVision,
+        useAudio,
+        useVideo
+      },
+      systemTools: {
+        plan: { enabled: true }
+      },
       toolCatalog: {
-        runtimeTools: [],
-        updatePlanTool: createUpdatePlanTool()
+        runtimeTools: []
       },
       executeTool: async () => {
         throw new Error('Auxiliary generation does not support runtime tools');
@@ -60,7 +64,7 @@ export async function runAuxiliaryGenerationAgentLoop({
           });
         }
       },
-      usageSink
+      usagePush: usageSink
     },
     input: {
       systemPrompt,
@@ -68,9 +72,22 @@ export async function runAuxiliaryGenerationAgentLoop({
     }
   });
 
+  const visibleAssistantMessages = result.assistantMessages.filter(
+    (message) => message.role === 'assistant' && !message.tool_calls?.length
+  );
+  const answerText = visibleAssistantMessages
+    .map((message) => {
+      if (typeof message.content === 'string') return message.content;
+      return message.content?.map((item) => (item.type === 'text' ? item.text : '')).join('') ?? '';
+    })
+    .join('');
+  const reasoningText = visibleAssistantMessages
+    .map((message) => message.reasoning_content ?? '')
+    .join('');
+
   return {
     status: result.status,
-    answerText: result.answerText ?? '',
-    reasoningText: result.reasoningText
+    answerText,
+    reasoningText
   };
 }

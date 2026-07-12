@@ -804,10 +804,14 @@ describe('getLastInteractiveValue', () => {
   it('should return interactive for agentPlanAskQuery', () => {
     const interactive = {
       type: 'agentPlanAskQuery',
+      askId: 'call_ask',
       entryNodeIds: ['node1'],
       memoryEdges: [],
       nodeOutputs: [],
-      params: { content: 'What do you want?' }
+      params: {
+        content: 'What do you want?',
+        options: ['Use repo', 'Use docs', 'Use defaults']
+      }
     } as WorkflowInteractiveResponseType;
 
     const histories: ChatItemMiniType[] = [
@@ -822,11 +826,13 @@ describe('getLastInteractiveValue', () => {
   it('should return undefined for answered agentPlanAskQuery', () => {
     const interactive = {
       type: 'agentPlanAskQuery',
+      askId: 'call_ask',
       entryNodeIds: ['node1'],
       memoryEdges: [],
       nodeOutputs: [],
       params: {
         content: 'What do you want?',
+        options: ['Use repo', 'Use docs', 'Use defaults'],
         answer: 'Use the current repository.'
       }
     } as WorkflowInteractiveResponseType;

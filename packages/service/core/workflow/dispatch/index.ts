@@ -938,7 +938,7 @@ export class WorkflowQueue {
       const currentNodeChildResponseCount =
         getNodeResponseChildResponseCount(childResponsesForWrite);
       // format response data. Add modulename and module type
-      const formatResponseData: ChatHistoryItemResType | undefined = (() => {
+      const formatCurrentNodeResponse: ChatHistoryItemResType | undefined = (() => {
         if (!nodeResponse) return undefined;
         const val = {
           moduleName: node.name,
@@ -957,6 +957,15 @@ export class WorkflowQueue {
         nodeResponsesForWrite.push(val);
         return val;
       })();
+      // 如果节点已经返回内部明细，则由内部明细完整表达运行过程；只有没有内部明细时，
+      // dispatch 才使用当前节点 responseData 作为运行详情兜底，避免 workflow agent 失败时出现外层重复节点。
+      const formatResponseData =
+        childResponsesForWrite.length > 0 ? undefined : formatCurrentNodeResponse;
+      const streamResponses = childResponsesForWrite.length
+        ? childResponsesForWrite
+        : formatResponseData
+          ? [formatResponseData]
+          : [];
 
       // 写库和 SSE 需要完整节点响应；writer 落库后，队列只继续保留摘要信号。
       const persistedNodeResponses = this.data.nodeResponseWriter
@@ -976,11 +985,16 @@ export class WorkflowQueue {
       const shouldDropPersistedNodeResponses = !!this.data.nodeResponseWriter;
 
       // Response node response
-      if (this.data.apiVersion === 'v2' && persistedNodeResponses.length > 0) {
+      if (
+        this.data.apiVersion === 'v2' &&
+        !this.data.isToolCall &&
+        this.isRootRuntime &&
+        streamResponses.length > 0
+      ) {
         const filteredResponses = this.data.responseAllData
-          ? persistedNodeResponses
+          ? streamResponses
           : filterNodeResponseTreeData({
-              nodeResponses: persistedNodeResponses,
+              nodeResponses: streamResponses,
               responseDetail: this.data.responseDetail
             });
 
@@ -1459,7 +1473,7 @@ export class WorkflowQueue {
     }
 
     return {
-      planId: interactiveResult.planId,
+      askId: interactiveResult.askId,
       interactive: interactiveResult
     };
   }
@@ -1640,9 +1654,56 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
     {
       getRunTimes: (result) => result[DispatchNodeResponseKeyEnum.runTimes]
     }
-  ).finally(() => {
-    if (data.workflowDispatchDeep === currentWorkflowDispatchDeep) {
-      data.workflowDispatchDeep = previousWorkflowDispatchDeep;
+  );
+};
+
+/**
+ * 合并连续的纯文本 assistant value，减少普通 answer 片段在页面上分裂展示。
+ *
+ * 带 reasoning、工具、交互、计划等结构化信息的 value 必须保留独立边界；否则连续
+ * AI 节点的第二段 reasoning 会在合并 text 时被吞掉，刷新历史后页面看不到对应思考。
+ */
+export const mergeAssistantResponseAnswerText = (response: AIChatItemValueItemType[]) => {
+  const result: AIChatItemValueItemType[] = [];
+
+  const isPlainTextValue = (item: AIChatItemValueItemType) =>
+    !!item.text &&
+    !item.id &&
+    !item.askId &&
+    !item.reasoning &&
+    !item.tools &&
+    !item.skills &&
+    !item.interactive &&
+    !item.plan &&
+    !item.planStatus &&
+    !item.agentPlanUpdate &&
+    !item.agentAsk &&
+    !item.agentStopGate &&
+    !item.contextCheckpoint &&
+    !item.tool &&
+    !item.hideReason &&
+    !item.hideInUI;
+
+  // 合并连续的text
+  for (let i = 0; i < response.length; i++) {
+    const item = response[i];
+    if (isPlainTextValue(item)) {
+      const text = item.text?.content || '';
+      const lastItem = result[result.length - 1];
+      if (lastItem && isPlainTextValue(lastItem) && lastItem.text?.content) {
+        lastItem.text.content += text;
+        continue;
+      }
     }
-  });
+    result.push(item);
+  }
+
+  // If result is empty, auto add a text message
+  if (result.length === 0) {
+    result.push({
+      text: { content: '' }
+    });
+  }
+
+  return result;
 };

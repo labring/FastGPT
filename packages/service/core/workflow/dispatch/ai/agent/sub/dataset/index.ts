@@ -22,10 +22,12 @@ import { parseJsonArgs } from '../../../../../../ai/utils';
 import type { OpenaiAccountType } from '@fastgpt/global/support/user/team/type';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import {
+  createImageCaptionChildNodeResponse,
   createChunkSelectionChildNodeResponse,
   createQueryExtensionChildNodeResponse
 } from '../../../../dataset/nodeResponse';
 import { filterDatasetsByTmbId } from '../../../../../../dataset/utils';
+import { normalizeDatasetSearchInput } from '../../../../dataset/utils';
 const logger = getLogger(LogCategories.MODULE.AI.AGENT);
 
 type DatasetSearchParams = {
@@ -184,12 +186,13 @@ export const dispatchAgentDatasetSearch = async ({
   }
 
   const queries = toolParams.data.query;
-  if (queries.length === 0) {
+  const { textQueries, imageQueries } = normalizeDatasetSearchInput(queries);
+  if (textQueries.length === 0 && imageQueries.length === 0) {
     return {
       response: 'Query is empty'
     };
   }
-  const query = queries.join('\n');
+  const query = textQueries.join('\n');
 
   logger.debug('[Agent Dataset Search] Starting', {
     queries,
@@ -211,17 +214,18 @@ export const dispatchAgentDatasetSearch = async ({
     }
 
     // Get vector model
-    const vectorModel = getEmbeddingModel(
-      (await MongoDataset.findById(datasetIds[0], 'vectorModel').lean())?.vectorModel
-    );
+    const dataset = await MongoDataset.findById(datasetIds[0], 'vectorModel vlmModel').lean();
+    const vectorModel = getEmbeddingModel(dataset?.vectorModel);
     // Get Rerank Model
     const rerankModelData = getRerankModel(datasetParams.rerankModel);
 
     const searchData: DefaultSearchDatasetDataProps = {
       histories: [],
       teamId,
-      textQueries: queries,
+      textQueries,
+      imageQueries,
       model: vectorModel.model,
+      vlmModel: dataset?.vlmModel,
       similarity: datasetParams.similarity ?? 0.4,
       limit: datasetParams.limit || 5000,
       datasetIds,
@@ -241,7 +245,8 @@ export const dispatchAgentDatasetSearch = async ({
       reRankInputTokens,
       usingSimilarityFilter,
       usingReRank: searchUsingReRank,
-      queryExtensionResult
+      queryExtensionResult,
+      imageCaptionResult
     } = await defaultSearchDatasetData(searchData);
 
     // count bill results
@@ -288,6 +293,30 @@ export const dispatchAgentDatasetSearch = async ({
           outputTokens: 0
         });
       }
+
+      if (imageCaptionResult) {
+        const { totalPoints, modelName } = formatModelChars2Points({
+          model: imageCaptionResult.model,
+          inputTokens: imageCaptionResult.inputTokens,
+          outputTokens: imageCaptionResult.outputTokens
+        });
+        const imageCaptionUsage: ChatNodeUsageType = {
+          totalPoints: imageCaptionResult.usedUserOpenAIKey ? 0 : totalPoints,
+          moduleName: i18nT('account_usage:image_parse'),
+          model: modelName,
+          inputTokens: imageCaptionResult.inputTokens,
+          outputTokens: imageCaptionResult.outputTokens
+        };
+        usages.push(imageCaptionUsage);
+        childrenResponses.push(
+          createImageCaptionChildNodeResponse({
+            requestIds: imageCaptionResult.requestIds,
+            usage: imageCaptionUsage,
+            seconds: imageCaptionResult.seconds,
+            queries: imageCaptionResult.queries
+          })
+        );
+      }
     }
 
     {
@@ -320,8 +349,11 @@ export const dispatchAgentDatasetSearch = async ({
     }
 
     // LLM Pick Chunks (compress search results if too long)
+    const selectionQuery = [query, ...(imageCaptionResult?.queries ?? [])]
+      .filter(Boolean)
+      .join('\n');
     const pickResults = await selectRelevantChunksByLLM({
-      query,
+      query: selectionQuery,
       chunks: searchRes,
       model: llmModel,
       userKey,
@@ -349,7 +381,7 @@ export const dispatchAgentDatasetSearch = async ({
     const nodeResponse: DispatchSubAppResponse['nodeResponse'] = {
       moduleType: FlowNodeTypeEnum.datasetSearchNode,
       moduleName: i18nT('chat:dataset_search'),
-      datasetQueries: queries,
+      datasetQueries: [...textQueries, ...imageQueries],
       embeddingModel: vectorModel.name,
       embeddingTokens,
       similarity: usingSimilarityFilter ? searchData.similarity : undefined,

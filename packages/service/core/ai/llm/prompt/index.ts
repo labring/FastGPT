@@ -1,4 +1,4 @@
-import { ReadFileTooData } from '../../../workflow/dispatch/ai/toolcall/tools/file';
+import { READ_FILES_TOOL_NAME } from '../agentLoop/interface';
 
 /**
  * 将本轮上传文件整理为文本上下文，包含文件名、沙盒路径和可选文件内容。
@@ -9,7 +9,7 @@ export const getUserFilesPrompt = (
   if (files.length === 0) return '';
   return `## 对话文件
 用户本次对话上传的文件，用途：
-1. 可通过 ${ReadFileTooData.id} 读取文档内容。
+1. 可通过 ${READ_FILES_TOOL_NAME} 读取文档内容。
 2. 可把 url 作为模型参数。
 
 ${files

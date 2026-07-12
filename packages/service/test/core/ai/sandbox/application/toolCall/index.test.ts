@@ -75,31 +75,20 @@ describe('sandbox toolCall index', () => {
     s3Mock.createGetChatFileURL.mockResolvedValue({ url: 'signed-url' });
   });
 
-  it('executes known tools through a fetched sandbox client', async () => {
+  it('executes known tools through a prepared sandbox client', async () => {
+    const sandboxClient = createSandboxInstance();
     await expect(
       runSandboxTools({
-        ...appSource,
-        userId: 'user',
-        chatId: 'chat',
         toolName: SANDBOX_SHELL_TOOL_NAME,
-        args: JSON.stringify({ command: 'pwd' })
+        args: JSON.stringify({ command: 'pwd' }),
+        sandboxClient
       })
     ).resolves.toMatchObject({
       success: true,
       input: { command: 'pwd' },
       response: JSON.stringify({ stdout: 'out', stderr: '', exitCode: 0 })
     });
-
-    expect(runtimeMock.getSandboxClient).toHaveBeenCalledWith(
-      {
-        sandboxId: generateSandboxId('app', 'user', 'chat'),
-        sourceType: ChatSourceTypeEnum.app,
-        sourceId: 'app',
-        userId: 'user',
-        chatId: 'chat'
-      },
-      { failedArchivePolicy: 'clearAndContinue' }
-    );
+    expect(runtimeMock.getSandboxClient).not.toHaveBeenCalled();
   });
 
   it('reports unknown tools and invalid arguments', async () => {

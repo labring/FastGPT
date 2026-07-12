@@ -195,7 +195,7 @@ export const mergeAssistantFieldMessages = (messages: ChatCompletionMessageParam
 const isPureTextAiValue = (item: AIChatItemValueItemType) =>
   !!item.text &&
   !item.id &&
-  !item.planId &&
+  !item.askId &&
   !item.reasoning &&
   !item.tools &&
   !item.skills &&
@@ -336,8 +336,8 @@ export const chats2GPTMessages = ({
     } else if (item.obj === ChatRoleEnum.Human) {
       const value = item.value
         // Agent 追问的用户答案会通过当轮 pendingMainContext 恢复为 ask_agent 的 tool response。
-        // 带 planId 的历史用户消息只作为 UI 记录保存，不再重复塞进普通对话上下文。
-        .filter((item) => !item.planId)
+        // 带 askId 的历史用户消息只作为 UI 记录保存，不再重复塞进普通对话上下文。
+        .filter((item) => !item.askId)
         .map((item) => {
           if (item.text) {
             return {
@@ -378,14 +378,14 @@ export const chats2GPTMessages = ({
     } else {
       const aiResults: ChatCompletionMessageParam[] = [];
       const agentAskAnswerMap = new Map<string, string>();
-      // agentAsk 的用户回答以交互记录形式存在，需要按 planId 恢复为 ask_agent tool response。
+      // agentAsk 的用户回答以交互记录形式存在，需要按 askId 恢复为 ask_agent tool response。
       item.value.forEach((value) => {
         if (
           value.interactive?.type === 'agentPlanAskQuery' &&
-          value.interactive.planId &&
+          value.interactive.askId &&
           typeof value.interactive.params.answer === 'string'
         ) {
-          agentAskAnswerMap.set(value.interactive.planId, value.interactive.params.answer);
+          agentAskAnswerMap.set(value.interactive.askId, value.interactive.params.answer);
         }
       });
 
@@ -393,15 +393,11 @@ export const chats2GPTMessages = ({
         id,
         functionName,
         params,
-        assistantText,
-        reasoningText,
         hideInUI
       }: {
         id: string;
         functionName: string;
         params: string;
-        assistantText?: string;
-        reasoningText?: string;
         hideInUI?: boolean;
       }) => {
         const normalizedToolContext = normalizeChatToolContext({
@@ -411,10 +407,8 @@ export const chats2GPTMessages = ({
           response: ''
         });
 
-        if (reasoningText) appendAssistantReasoning(reasoningText, hideInUI);
-        if (assistantText) appendAssistantText(assistantText, hideInUI);
         if (!normalizedToolContext) {
-          // tool 元数据不完整时，保留前置 assistantText/reasoning，丢弃非法 tool_call。
+          // tool 元数据不完整时丢弃非法 tool_call；assistant 输出由独立 value 保存。
           return false;
         }
 
@@ -498,8 +492,6 @@ export const chats2GPTMessages = ({
             id: value.agentPlanUpdate.id,
             functionName: value.agentPlanUpdate.functionName,
             params: value.agentPlanUpdate.params,
-            assistantText: value.agentPlanUpdate.assistantText,
-            reasoningText: value.agentPlanUpdate.reasoningText,
             hideInUI: value.hideInUI
           });
           if (appendedToolCall && typeof value.agentPlanUpdate.response === 'string') {
@@ -516,12 +508,10 @@ export const chats2GPTMessages = ({
             id: value.agentAsk.id,
             functionName: value.agentAsk.functionName,
             params: value.agentAsk.params,
-            assistantText: value.agentAsk.assistantText,
-            reasoningText: value.agentAsk.reasoningText,
             hideInUI: value.hideInUI
           });
-          const answer = value.agentAsk.planId
-            ? agentAskAnswerMap.get(value.agentAsk.planId)
+          const answer = value.agentAsk.askId
+            ? agentAskAnswerMap.get(value.agentAsk.askId)
             : undefined;
           if (appendedToolCall && typeof answer === 'string') {
             appendToolMessage({
@@ -533,10 +523,6 @@ export const chats2GPTMessages = ({
 
         // Stop tool
         if (reserveTool && value.agentStopGate) {
-          if (value.agentStopGate.reasoningText)
-            appendAssistantReasoning(value.agentStopGate.reasoningText, value.hideInUI);
-          if (value.agentStopGate.assistantText)
-            appendAssistantText(value.agentStopGate.assistantText, value.hideInUI);
           aiResults.push({
             dataId,
             role: ChatCompletionRequestMessageRoleEnum.User,

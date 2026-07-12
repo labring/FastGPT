@@ -127,7 +127,7 @@ describe('useToolMessages', () => {
     ]);
   });
 
-  it('uses the default max files and skips the latest input during entry interactive resume', async () => {
+  it('keeps the pending tool history and skips only the new user input during interactive resume', async () => {
     const result = await useToolMessages({
       chatHistories: [
         {
@@ -137,7 +137,20 @@ describe('useToolMessages', () => {
         },
         {
           obj: ChatRoleEnum.AI,
-          value: [{ text: { content: 'interrupted answer' } }]
+          value: [
+            {
+              tools: [
+                {
+                  id: 'call_1',
+                  toolName: 'Select',
+                  toolAvatar: '',
+                  functionName: 'select_project',
+                  params: '{"scope":"active"}',
+                  response: 'waiting for selection'
+                }
+              ]
+            }
+          ]
         }
       ],
       responseChatItemId: 'response_1',
@@ -162,15 +175,25 @@ describe('useToolMessages', () => {
         dataId: 'history_1',
         obj: ChatRoleEnum.Human,
         value: 'formatted:history question:history_1-0'
-      }
-    ]);
-    expect(result.currentInputFiles).toEqual([
+      },
       {
-        id: 'history_1-0',
-        name: 'a.pdf',
-        url: 'https://files/a.pdf',
-        sandboxPath: undefined
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            tools: [
+              {
+                id: 'call_1',
+                toolName: 'Select',
+                toolAvatar: '',
+                functionName: 'select_project',
+                params: '{"scope":"active"}',
+                response: 'waiting for selection'
+              }
+            ]
+          }
+        ]
       }
     ]);
+    expect(result.currentInputFiles).toEqual([]);
   });
 });

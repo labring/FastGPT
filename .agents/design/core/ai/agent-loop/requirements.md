@@ -1,119 +1,280 @@
-# Agent Loop 需求文档
+# Agent Loop 统一化需求文档
 
-状态：收口版  
-日期：2026-05-11
+状态：实现验收中
+日期：2026-07-13
+关联设计：[Agent Loop 统一化技术设计](./technical-design.md)
 
-## 背景
+## 1. 文档目的
 
-AgentV2 早期方案包含多层 agent、`stepCall`、`continue plan`、独立 stop verifier 等概念，导致上下文拼接、运行详情、流式输出、前端恢复和测试边界都比较复杂。
+本文重新收敛 Workflow Agent 与 ToolCall 的 agent-loop 改造需求，作为后续开发、代码 review、测试和验收的唯一需求基线。
 
-本轮目标是把 agent loop 收敛为一条可复用的主循环：
+本需求不是简单抽取公共 helper，而是统一两条执行链路：
 
-- workflow agent 节点只负责适配 workflow 上下文、工具、回调和持久化；
-- 通用 loop 放在 `packages/service/core/ai/llm/agentLoop`；
-- 模型在同一个主 loop 内完成计划维护、工具调用、追问用户和最终回答；
-- 前端只展示新的 plan card、工具卡、思考和最终答案，不再兼容旧 `stepCall` UI。
+- Workflow Agent 是完整 Agent，支持 plan、ask 和业务工具。
+- ToolCall 是简化 Agent，关闭 plan、ask，保留相同的循环、上下文、工具事件、交互恢复、计费和持久化规则。
+- 两者只允许在工具定义、工具执行和最终节点输出包装上存在差异。
 
-## 目标
+## 2. 背景与问题
 
-1. 简化 loop 架构，去掉多层 agent 嵌套和独立 `continue plan`。
-2. 保证上下文连续，用户追问恢复和工具结果回灌都发生在同一条 message 链路中。
-3. 支持模型通过 `update_plan` 维护计划，并由本地 stop gate 保证计划完成后才能 final。
-4. 支持 `ask_agent` 在必要时追问用户，用户回答后继续原上下文，而不是重新生成一份独立计划。
-5. 完整保存 thinking、tool call、tool result、plan、answer、requestId、tokens 和 usage。
-6. SSE 事件完整覆盖 workflow 和普通对话，计划生成前需要有可感知的 loading 状态，最终答案需要保持流式输出。
-7. 运行详情按 agent/tool 调用线性展示，AI 请求都能关联 requestId。
+Workflow Agent 与 ToolCall 都要处理多轮模型调用、工具执行、SSE、上下文恢复和计费，但历史实现分别维护 adapter，导致同一种行为有多套事实来源。
 
-## 范围
+### 2.1 事件重复或缺失
 
-### 必须支持
+- sandbox、read file 曾使用专属事件，Workflow Agent 客户端收不到与普通工具一致的 SSE。
+- 为补 SSE 又同时发出通用 tool 事件，可能出现工具卡片和 nodeResponse 重复。
+- plan、ask 同时耦合在 LLM/tool 事件和独立事件中，恢复与展示职责不清。
 
-- 直接回答：简单问题不创建 plan，直接流式输出 answer。
-- 显式计划：用户明确要求规划、复杂调研、比较、方案设计等场景，需要先创建 plan。
-- 执行计划：plan steps 必须非空；步骤状态可批量更新。
-- 工具调用：runtime tools 正常执行并展示；工具结果需要回灌给模型。
-- 工具后计划更新：调用 runtime tool 后，模型必须用 `update_plan` 记录证据或结果，才能最终回答。
-- 用户追问：缺少必要输入时使用 `ask_agent`，暂停当前 loop 并保存 pending context。
-- 追问恢复：用户回答后，把回答作为 ask tool response 追加回原 messages，继续执行。
-- 刷新恢复：历史记录恢复后，plan、thinking、tools、interactive、answer 都应完整展示。
-- 工作流适配：workflow 节点通过 adapter 调用通用 agent loop，所有 workflow 专属能力通过参数和接口注入。
-- 运行详情：每次 LLM 请求都需要记录 requestId、tokens、model、完成原因；runtime tools 作为对应 agent 调用下的工具展示。
+### 2.2 assistantResponses 重复
 
-### 不再支持
+- Workflow Agent 按事件维护一份 `assistantResponses`。
+- ToolCall 或最终结果又可能从 messages 转换一份。
+- 子 workflow 的 assistant 内容还可能由工具结果再次追加。
+- 多个来源同时落库后，同一轮 assistant 文本或工具结果可能保存两次。
 
-- 不再写入旧 `stepCall` 字段。
-- 不再保留旧 stepCall 前端 UI。
-- 不再使用独立 `plan_agent` tool。
-- 不再使用独立 LLM stop verifier。
-- 不再把历史 plan 伪造成 tool call 注入上下文。
-- 不再保留 HTML 预览文档。
+### 2.3 上下文恢复不一致
 
-## 用户体验需求
+- ask 回答、child interactive、plan 恢复分别携带不同快照或关联字段。
+- ask 曾错误复用 `planId`；实际应由必填 `askId` 独立关联。
+- child interactive 曾携带 `memoryRequestMessages`，与从 chat history 重建上下文形成双来源。
+- 上下文压缩后的恢复边界不统一，可能把压缩前消息重新发给模型。
 
-### Plan Card
+### 2.4 分层边界不清
 
-- 进入 plan 模式但 plan 尚未生成时，展示 plan loading skeleton 和中文提示文案。
-- plan card 默认最小宽度为消息最大宽度的 50%，避免 loading 过窄。
-- plan step 用颜色表达状态：
-  - 蓝色：进行中，并带轻量动效；
-  - 绿色：完成；
-  - 灰色：待处理；
-  - 黄色/红色：阻塞或需要调整。
-- 不展示冗余的 `Running/Pending` 英文状态标签。
-- `update_plan` 完成后只更新状态、证据和必要内容，不额外插入 step summary 气泡。
-- 右侧 step 数量展示可去掉，降低噪音。
+- provider 可能感知 workflow/chat/SSE 类型。
+- Workflow Agent 与 ToolCall 分别理解底层 provider 的事件和结果细节。
+- 计费数据同时存在于回调、事件和最终 result，容易重复扣费。
 
-### 流式输出
+## 3. 目标
 
-- plan 生成期间不能让用户长时间无反馈。
-- 模型输出过程需要实时透传给前端，包括 stop gate 最终拒绝的草稿 answer。
-- stop gate 只影响最终可持久化的 answer，不负责缓存、撤回或延迟推送 `answer_delta`。
-- 前端看到的是模型执行过程流；刷新恢复时只恢复最终保留在 assistantMessages 中的 answer。
+### 3.1 统一执行入口
 
-### 运行详情
+1. 底层统一通过 `runAgentLoop({ provider, input, runtime })` 执行 provider。
+2. workflow dispatch 统一通过 `runAgentLoopCore` 调用底层循环。
+3. Workflow Agent 和 ToolCall 都调用 `runAgentLoopCore`，不得继续维护旧 assistant/event adapter。
+4. provider 私有入口不得从 agent-loop 根模块 re-export。
 
-- 顶层展示 AI 调用节点，例如主 Agent、任务规划等，使用旧版对应 name 和 icon。
-- runtime tool 作为所属 AI 调用下的子项展示。
-- 每个 AI 调用都需要能看到 requestId、tokens、模型和完成原因。
-- 开头或结尾空 nodeResponse 不应展示。
+### 3.2 统一 Agent 能力模型
 
-## 验收清单
-
-| 编号 | 场景 | 验收点 | 状态 |
-| --- | --- | --- | --- |
-| A1 | 基础直接回答 | 无 plan、无 tool 时直接流式输出，刷新后 answer 恢复 | 已通过 |
-| A2 | 显式计划模式 | 用户要求 plan 时必须先 `update_plan(set_plan)`，不能直接 final | 已通过 |
-| A3 | 复杂任务 plan | 生成 plan card，steps 非空，可持久化恢复 | 已通过 |
-| A4 | plan 批量更新 | 一次 `update_plan` 可提交多个 step update | 已通过 |
-| A5 | stop gate 未完成拦截 | pending/in_progress/needsReplan/blocked 无 blocker 时不能 final | 已通过 |
-| A6 | runtime tool 后 plan 记录 | runtime tool 后必须再 `update_plan` 记录结果才能 final | 已通过 |
-| A7 | ask_agent 追问 | 缺少强阻塞输入时返回 interactive ask | 已通过 |
-| A8 | ask_agent resume | 用户回答后沿 pendingMainContext 继续，不重建独立 planner | 已通过 |
-| A9 | ask 前 runtime tool 状态 | resume 后仍要求把 ask 前 runtime tool 结果写回 plan | 已通过 |
-| A10 | 无效 ask_agent 参数 | 不返回空 answer，模型可继续修正 | 已通过 |
-| A11 | replace_plan | 保留当前 planId，不重复生成 plan 卡；保留已完成证据 | 已通过 |
-| A12 | runtime 工具冲突 | runtime tool 同名 `ask_agent/update_plan` 会被过滤 | 已通过 |
-| A13 | SSE plan loading | update_plan 开始前出现 plan skeleton，成功后替换为 plan card | 已通过 |
-| A14 | SSE answer 流式 | stop gate 拒绝的草稿和最终 answer 都按过程实时透传，刷新后只恢复最终 answer | 已通过 |
-| A15 | responseNode | 主链路 LLM request 写入 nodeResponse，包含 tokens 和 requestId | 已通过 |
-| A16 | records 恢复 | plan、toolcall、thinking、answer 刷新后可恢复 | 已通过 |
-| A17 | 旧 stepCall | 新链路不写旧 stepCall 字段，前端不依赖旧 UI | 已通过 |
-| A18 | App request 基础 | 前端 request 单测仍通过 | 已通过 |
-
-## 仍需专项确认
-
-| 编号 | 场景 | 说明 |
+| 能力 | Workflow Agent | ToolCall |
 | --- | --- | --- |
-| R1 | dataset query extension requestId | 仍需确认 query extension requestId 透传到运行详情的完整链路 |
-| R2 | Pro 计费 | 本地 OSS 无法覆盖真实扣费路径，需要在 Pro 环境专项验收 |
-| R3 | 外部 OpenAI account | 需要确认内部 LLM 调用也走外部 key |
-| R4 | 无效 update_plan UI 收尾 | plan skeleton 失败态仍可进一步优化 |
+| 多轮 LLM 循环 | 开启 | 开启 |
+| 通用工具事件 | 开启 | 开启 |
+| sandbox/read file/dataset search | 按配置开启 | 按配置开启 |
+| child interactive | 开启 | 开启 |
+| plan | 按配置开启 | 关闭 |
+| ask | 按配置开启 | 关闭 |
+| 工具来源 | selected tools/sub apps | tool nodes/runtime graph |
+| 最终输出包装 | Agent 节点语义 | ToolCall 节点语义 |
 
-## 推荐回归
+### 3.3 统一工具分类
 
-```bash
-corepack pnpm --filter @fastgpt/service exec vitest run -c vitest.config.ts test/core/ai/llm/agentLoop test/core/workflow/dispatch/ai/agent/adapter
-corepack pnpm --filter @fastgpt/global exec vitest run -c vitest.config.ts test/core/chat/adapt.test.ts test/core/chat/type.test.ts test/core/workflow/runtime/utils.test.ts
-corepack pnpm --filter @fastgpt/app exec vitest run -c vitest.config.ts test/web/common/api/request.test.ts
-git diff --check
-```
+工具分为三类：
+
+1. **业务工具**：selected tool、sub app、tool node。
+2. **普通系统工具**：sandbox、read file、dataset search。
+3. **控制系统工具**：plan、ask。
+
+业务工具和普通系统工具必须完全使用通用 tool 事件。sandbox 和 read file 不再拥有独立事件协议。
+
+plan 和 ask 必须使用独立事件，不能出现在普通工具 SSE、普通工具卡片或普通工具 nodeResponse 中。
+
+### 3.4 统一 assistantResponses
+
+1. `assistantResponses` 必须只有一个维护入口：agentLoopCore 的标准事件 collector。
+2. assistant 普通文本和 reasoning 独立保存，不能挂在 plan 或 ask 上。
+3. 普通工具保存 call、参数和最终 response。
+4. `agentPlanUpdate` 只保存恢复 plan tool call 所需内容。
+5. `agentAsk` 只保存恢复 ask tool call 所需内容及 `askId`。
+6. `plan_status`、`plan_update` 只服务 UI/SSE，不进入 `assistantResponses`。
+7. 子 workflow 产生的 assistant messages 通过 `tool_run_end.assistantMessages` 进入同一 collector。
+8. 最终 result 只能用于补齐事件未覆盖的数据，不能成为第二套完整写入源。
+9. `assistantResponses` 不保存完整 nodeResponse；运行详情独立存储。
+
+### 3.5 统一 nodeResponse
+
+Workflow adapter 根据以下终态事件追加运行详情：
+
+- `llm_request_end`：一次模型请求详情。
+- `tool_run_end`：一次普通工具执行详情。
+- `plan_operation`：一次可恢复的 plan 操作详情。
+- `ask_start`：一次收集问题详情。
+- `after_message_compress`：一次上下文压缩详情。
+
+同一个 call/request 只能追加一次。`tool_run_start` 不产生 nodeResponse。
+
+### 3.6 统一 SSE
+
+- answer/reasoning 增量按原有流式事件推送。
+- 普通工具使用 `tool_call`、`tool_params` 和 `tool_run_end` 推送。
+- sandbox/read file/dataset search 与业务工具表现一致。
+- plan 使用 `plan_status`、`plan_update` 推送。
+- ask 使用独立交互结构，不生成普通工具卡片。
+- nodeResponse 收集与 SSE 推送相互独立，不能通过重复发事件补另一侧数据。
+
+### 3.7 统一暂停和恢复
+
+底层 agent-loop 只表达两种暂停：
+
+- `ask`：包含 `askId` 与问题内容。
+- `tool_child`：包含 `toolCallId` 与 children response。
+
+要求：
+
+1. `askId` 和 `toolCallId` 都是必填关联键。
+2. agent-loop 不依赖 workflow 的 interactive schema。
+3. agentLoopCore 将底层 `paused` 映射为 workflow `interactive`。
+4. ask 用户回答通过 `askId` 恢复为 ask tool response。
+5. 带 `askId` 的 human value 是 UI-only 回答，不能再作为普通 user message 注入上下文。
+6. child interactive 新数据只保存 `toolCallId` 与 children response，不保存 `memoryRequestMessages`。
+7. 恢复上下文统一从 chat history 经 `chats2GPTMessages` 重建。
+8. fastAgent 和 piAgent 都必须通过 `executeInteractiveTool` 恢复子工具并继续循环。
+
+### 3.8 统一上下文压缩
+
+- 压缩结果通过 `contextCheckpoint` 持久化。
+- 恢复时只使用最新 checkpoint。
+- checkpoint 之前的原始消息不得再次进入模型请求。
+- checkpoint 本身作为隐藏上下文参与恢复，不作为用户可见聊天内容。
+
+### 3.9 统一计费
+
+1. `runtime.usagePush` 是唯一产生账单副作用的入口。
+2. `result.usages` 是只读汇总数据，用于 points/token 统计和节点输出。
+3. event 中的 usages 只用于 trace、nodeResponse 和展示。
+4. 任何 adapter、collector 或 summary 都不得再次调用计费逻辑。
+5. 每次模型、压缩和计费工具产生的 usage 只能推送一次。
+
+### 3.10 统一底层返回值
+
+agent-loop result 必须始终返回：
+
+- `status`
+- `completeMessages`
+- `assistantMessages`
+- `requestIds`
+- `usages`
+- `finishReason`
+
+可选返回：
+
+- `activePlan`
+- `providerState`
+- `contextCheckpoint`
+- `pause`
+- `error`
+
+`answerText`、`reasoningText` 不作为 result 的独立字段；多轮最终文本由 `assistantMessages` 派生。
+
+## 4. plan 与 ask 约束
+
+### 4.1 plan
+
+plan 只允许三个操作：
+
+- `set_plan`：创建或重置计划。
+- `add_steps`：追加计划步骤。
+- `update_steps`：更新指定步骤的状态或备注。
+
+步骤状态只允许：
+
+- `pending`
+- `in_progress`
+- `done`
+- `blocked`
+- `skipped`
+
+不保留 `acceptanceCriteria`、`evidence`、`outputSummary`、`blocker`、`needsReplan` 等扩展字段。不需要执行的步骤直接更新为 `skipped`。
+
+### 4.2 ask
+
+- ask 与 plan 完全独立，不使用 planId。
+- `ask_start` 负责记录可恢复调用和“收集问题”运行详情。
+- `ask` 表示进入暂停。
+- `ask_resume` 表示用户答案已重新接入循环。
+- ask 的 UI 不展示额外“状态”“反问问题”字段。
+
+## 5. 分层边界
+
+### 5.1 agent-loop 可感知
+
+- 标准 LLM messages 与模型参数。
+- providerState。
+- 标准工具 schema、工具执行回调和系统工具开关。
+- 标准事件、usage 和 pause。
+
+### 5.2 agent-loop 不可感知
+
+- Workflow node、ChatItem、nodeResponse、SSE schema。
+- 数据库存储和前端交互结构。
+- appId/userId/chatId 等 sandbox 单次调用参数。
+- `agentPlanAskQuery`、`toolChildrenInteractive`。
+
+### 5.3 节点外壳保留差异
+
+- 上下文和权限准备。
+- 工具发现与 ToolProvider 实现。
+- sandbox client 初始化。
+- provider、plan、ask 配置。
+- 节点输出字段与运行详情包装。
+
+## 6. 非目标
+
+- 不统一 Workflow Agent 与 ToolCall 的工具发现逻辑。
+- 不要求 fastAgent 与 piAgent 使用相同内部 memory 格式。
+- 不在底层 agent-loop 中引入 workflow/chat 类型。
+- 不删除已有历史数据兼容读取逻辑。
+- 不要求内存长期保存子 workflow 的全部 nodeResponses；完整详情可由 writer 直接落库。
+- 不改变现有前端聊天数据结构之外的业务协议。
+
+## 7. 兼容和迁移要求
+
+- 删除旧 adapter 和旧 re-export 后，所有 import 必须直接指向新模块。
+- 旧 child interactive 的 `memoryRequestMessages` 允许只读兼容，新写入不得继续产生。
+- piAgent 旧 raw messages memory 可保留兼容读取，新增统一状态写入走 providerState。
+- 数据库已有 `agentPlanUpdate`、`agentAsk` 和 context checkpoint 必须仍可恢复。
+- 迁移期不得同时运行旧、新 assistantResponses collector。
+
+## 8. 验收标准
+
+| 编号 | 验收项 | 验证方式 |
+| --- | --- | --- |
+| AC-01 | Workflow Agent 与 ToolCall 都调用 `runAgentLoopCore` | 边界测试与依赖搜索 |
+| AC-02 | agent-loop 根入口不 re-export provider 私有函数 | export 边界测试 |
+| AC-03 | 底层 agent-loop 不依赖 workflow/chat/SSE | import 边界测试 |
+| AC-04 | sandbox/read file 只有通用工具事件、一次 SSE、一次 nodeResponse | provider + core 事件测试 |
+| AC-05 | plan/ask 不产生普通工具卡片 | SSE/assistant collector 测试 |
+| AC-06 | assistant 文本/reasoning 不写入 plan/ask | assistantResponses 结构测试 |
+| AC-07 | Workflow Agent 数据库无重复 assistant response | dispatch 集成测试 |
+| AC-08 | 子 workflow assistant 通过 tool end 只追加一次 | child tool 集成测试 |
+| AC-09 | ask 回答不会重复注入 user message | chats2GPTMessages 测试 |
+| AC-10 | child interactive 恢复不需要新 `memoryRequestMessages` | fast/pi provider 恢复测试 |
+| AC-11 | 最新 checkpoint 正确截断上下文 | chat 转换与 core 测试 |
+| AC-12 | usage 只通过 `usagePush` 计费一次 | 精确调用次数测试 |
+| AC-13 | 所有 result 分支都含必填字段和合法 finishReason | provider contract 测试 |
+| AC-14 | ToolCall 关闭 plan/ask，其他能力与 Workflow Agent 一致 | 两入口对照测试 |
+| AC-15 | 无旧 adapter、旧 re-export 和旧 import 残留 | `rg` + TypeScript 检查 |
+
+## 9. 完成定义
+
+本需求只有在以下条件同时成立时才算完成：
+
+1. 上述验收项都有自动化测试或明确的静态检查证据。
+2. fastAgent、piAgent、agentLoopCore、Workflow Agent、ToolCall、chat 转换局部测试通过。
+3. TypeScript 检查、格式检查及全量测试通过。
+4. 旧实现和无用兼容代码已删除，不存在双写路径。
+5. 代码行为与本需求及技术设计一致；发现偏差时先更新设计决策，再修改实现。
+
+## 10. 当前实施证据
+
+截至 2026-07-13，已完成以下验证：
+
+- Workflow Agent 与 ToolCall 均通过 `runAgentLoopCoreWithSummary` 调用共享内核。
+- fastAgent 与 piAgent 已覆盖普通工具成功、异常、stop、child interactive 和恢复路径。
+- plan/ask 独立事件、普通工具事件、SSE、assistantResponses 和 nodeResponse 已分别测试。
+- `usagePush` 精确调用次数及 `result.usages` 只读汇总已测试；ToolCall 不重复统计子工具积分。
+- `chats2GPTMessages` 的 askId、plan、普通工具和最新 checkpoint 恢复测试通过。
+- 数据库保存测试覆盖 ask 回答回填和 child interactive 工具卡片合并，无第二份工具卡片写入。
+- agent-loop 相关 service 回归共 65 个测试文件、332 项测试通过；global chat 转换 114 项、app ask 交互 13 项测试通过。
+- 仓库全量 `pnpm test` 的 4 个 workspace 全部通过；app 154 个测试文件/1081 项测试、service 255 个测试文件/3184 项测试通过，global 与 admin workspace 通过。
+
+尚待完成：评审确认。应用 TypeScript 检查中与本需求相关的错误已清零；仓库当前仍有一处不属于本需求的 `WholeResponseContent` `contentHeight` 属性类型错误。

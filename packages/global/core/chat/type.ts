@@ -161,7 +161,7 @@ export type ChatFileStoreValue =
     };
 
 export const UserChatItemValueItemSchema = z.object({
-  planId: z.string().nullish(),
+  askId: z.string().nullish(),
   text: z
     .object({
       content: z.string()
@@ -210,7 +210,7 @@ export type ContextCheckpointValueType = z.infer<typeof ContextCheckpointValueSc
 
 export const AIChatItemValueSchema = z.object({
   id: z.string().nullish(),
-  planId: z.string().nullish(),
+  askId: z.string().nullish(),
   text: z
     .object({
       content: z.string()

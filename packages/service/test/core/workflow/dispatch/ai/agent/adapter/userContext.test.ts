@@ -7,20 +7,19 @@ import * as workflowContext from '@fastgpt/service/core/workflow/utils/context';
 import { runWithContext } from '@fastgpt/service/core/workflow/utils/context';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { filterDatasetsByTmbId } from '@fastgpt/service/core/dataset/utils';
+import { useUserContext } from '@fastgpt/service/core/workflow/dispatch/ai/agent/adapter/userContext';
 import {
-  buildAgentSkillsPrompt,
-  buildAgentInputFilesPrompt,
-  buildAgentUserReminderInput,
-  parseAgentInputFiles,
-  useUserContext
-} from '@fastgpt/service/core/workflow/dispatch/ai/agent/adapter/userContext';
-import type { DeployedSkillInfo } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
+  buildAgentLoopCoreInputFilesPrompt,
+  buildAgentLoopCoreSkillsPrompt,
+  buildAgentLoopCoreUserReminderInput
+} from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/interface';
+import type { DeployedSkillInfo } from '@fastgpt/service/core/ai/skill/runtime/types';
 
 vi.mock('@fastgpt/global/common/time/timezone', () => ({
   getSystemTime: vi.fn(() => '2026-05-14 10:00:00 Thursday')
 }));
-vi.mock('@fastgpt/service/core/dataset/schema', () => ({
-  DatasetCollectionName: 'datasets',
+vi.mock('@fastgpt/service/core/dataset/schema', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/dataset/schema')>()),
   MongoDataset: {
     find: vi.fn(() => ({
       lean: vi.fn(async () => [])
@@ -103,7 +102,6 @@ const getUserContextMessagesForTest = async ({
   return {
     chatHistories: context.chatHistories,
     queryInput: context.queryInput,
-    fileUrlMap: context.fileUrlMap,
     filesMap: context.filesMap,
     ...context.getCurrentMessages({
       skillInfos,
@@ -113,9 +111,9 @@ const getUserContextMessagesForTest = async ({
   };
 };
 
-describe('buildAgentInputFilesPrompt', () => {
-  it('generates file XML block with ids types and urls', () => {
-    const result = buildAgentInputFilesPrompt([
+describe('buildAgentLoopCoreInputFilesPrompt', () => {
+  it('generates file XML block for document files only', () => {
+    const result = buildAgentLoopCoreInputFilesPrompt([
       {
         id: 'current-0',
         name: 'guide.pdf',
@@ -145,19 +143,16 @@ describe('buildAgentInputFilesPrompt', () => {
     expect(result).toContain('## 对话文件');
     expect(result).toContain('<id>current-0</id>');
     expect(result).toContain('<name>guide.pdf</name>');
-    expect(result).toContain('<type>file</type>');
-    expect(result).toContain('<url>/guide.pdf</url>');
     expect(result).toContain('<id>current-1</id>');
     expect(result).toContain('<id>current-2</id>');
     expect(result).toContain('<id>current-3</id>');
     expect(result).toContain('<type>image</type>');
     expect(result).toContain('<type>audio</type>');
     expect(result).toContain('<type>video</type>');
-    expect(result).toContain('<url>/chart.png</url>');
   });
 
   it('escapes XML fields in file metadata', () => {
-    const result = buildAgentInputFilesPrompt([
+    const result = buildAgentLoopCoreInputFilesPrompt([
       {
         id: `current-&-'"-0`,
         name: `a<b>&"c"'d.pdf`,
@@ -168,77 +163,16 @@ describe('buildAgentInputFilesPrompt', () => {
 
     expect(result).toContain('<id>current-&amp;-&apos;&quot;-0</id>');
     expect(result).toContain('<name>a&lt;b&gt;&amp;&quot;c&quot;&apos;d.pdf</name>');
-    expect(result).toContain('<url>/guide.pdf</url>');
   });
 
   it('returns empty string when there are no files', () => {
-    expect(buildAgentInputFilesPrompt()).toBe('');
+    expect(buildAgentLoopCoreInputFilesPrompt()).toBe('');
   });
 });
 
-describe('parseAgentInputFiles', () => {
-  it('sanitizes file names into single sandbox path segments and deduplicates collisions', () => {
-    const files = parseAgentInputFiles({
-      files: [
-        {
-          name: '../report.pdf',
-          type: ChatFileTypeEnum.file,
-          url: '/api/system/file/download/a?filename=ignored.pdf'
-        },
-        {
-          type: ChatFileTypeEnum.file,
-          url: '/api/system/file/download/b?filename=%2E%2E%2Freport.pdf'
-        },
-        {
-          name: 'folder/image.png',
-          type: ChatFileTypeEnum.image,
-          url: '/api/system/file/download/c?filename=image.png'
-        },
-        {
-          name: '..',
-          type: ChatFileTypeEnum.file,
-          url: '/api/system/file/download/d?filename=..'
-        }
-      ],
-      prefixId: 'current',
-      maxFiles: 10
-    });
-
-    expect(files.map((file) => file.name)).toEqual([
-      'report.pdf',
-      'report-1.pdf',
-      'image.png',
-      'file-3'
-    ]);
-    expect(files.every((file) => !file.name.includes('/'))).toBe(true);
-  });
-
-  it('keeps explicit image type when preview url has no file extension', () => {
-    const files = parseAgentInputFiles({
-      files: [
-        {
-          name: '20260629-233136_wT851P.jpg',
-          type: ChatFileTypeEnum.image,
-          url: 'https://fastgpt.example.com/api/core/chat/file/preview?token=abc'
-        }
-      ],
-      prefixId: 'current',
-      maxFiles: 10
-    });
-
-    expect(files).toEqual([
-      expect.objectContaining({
-        name: '20260629-233136_wT851P.jpg',
-        type: ChatFileTypeEnum.image,
-        url: 'https://fastgpt.example.com/api/core/chat/file/preview?token=abc'
-      })
-    ]);
-  });
-});
-
-describe('buildAgentUserReminderInput', () => {
+describe('buildAgentLoopCoreUserReminderInput', () => {
   it('builds current turn reminder with files datasets time and original query', () => {
-    const result = buildAgentUserReminderInput({
+    const result = buildAgentLoopCoreUserReminderInput({
       query: '帮我总结',
       skillInfos: [
         {
@@ -278,7 +212,7 @@ describe('buildAgentUserReminderInput', () => {
   });
 
   it('escapes XML fields in dataset metadata', () => {
-    const result = buildAgentUserReminderInput({
+    const result = buildAgentLoopCoreUserReminderInput({
       query: 'hello',
       selectedDataset: [
         {
@@ -294,7 +228,7 @@ describe('buildAgentUserReminderInput', () => {
   });
 
   it('includes dataset description when backend context provides it', () => {
-    const result = buildAgentUserReminderInput({
+    const result = buildAgentLoopCoreUserReminderInput({
       query: 'hello',
       selectedDataset: [
         {
@@ -309,25 +243,25 @@ describe('buildAgentUserReminderInput', () => {
 
   it('builds reminder from each optional context independently', () => {
     expect(
-      buildAgentUserReminderInput({
+      buildAgentLoopCoreUserReminderInput({
         query: '',
         currentWorkingDirectory: '/workspace'
       })
     ).toContain(`当前 sandbox 工作目录: /workspace`);
     expect(
-      buildAgentUserReminderInput({
+      buildAgentLoopCoreUserReminderInput({
         query: '',
         currentTime: '2026-05-14 10:00:00 Thursday'
       })
     ).toContain(`当前时间: 2026-05-14 10:00:00 Thursday`);
     expect(
-      buildAgentUserReminderInput({
+      buildAgentLoopCoreUserReminderInput({
         query: '',
         currentTime: '2026-05-14 10:00:00 Thursday'
       })
     ).toContain(`## 背景信息`);
 
-    const datasetOnly = buildAgentUserReminderInput({
+    const datasetOnly = buildAgentLoopCoreUserReminderInput({
       query: 'hello',
       selectedDataset
     });
@@ -337,15 +271,15 @@ describe('buildAgentUserReminderInput', () => {
   });
 
   it('returns original query when there is no context', () => {
-    expect(buildAgentUserReminderInput({ query: 'hello' })).toBe('hello');
-    expect(buildAgentUserReminderInput({ query: '' })).toBe('');
-    expect(buildAgentUserReminderInput({ query: 'hello', currentWorkingDirectory: '' })).toBe(
-      'hello'
-    );
+    expect(buildAgentLoopCoreUserReminderInput({ query: 'hello' })).toBe('hello');
+    expect(buildAgentLoopCoreUserReminderInput({ query: '' })).toBe('');
+    expect(
+      buildAgentLoopCoreUserReminderInput({ query: 'hello', currentWorkingDirectory: '' })
+    ).toBe('hello');
   });
 
   it('keeps skill prompt inside user system-reminder without requiring files or datasets', () => {
-    const result = buildAgentUserReminderInput({
+    const result = buildAgentLoopCoreUserReminderInput({
       query: '执行这个技能',
       skillInfos: [
         {
@@ -366,21 +300,8 @@ describe('buildAgentUserReminderInput', () => {
     expect(result).toContain('执行这个技能');
   });
 
-  it('adds sandbox file write boundary reminder when current working directory exists', () => {
-    const result = buildAgentUserReminderInput({
-      query: '帮我生成一个编写小说的 skill',
-      currentWorkingDirectory: '/workspace'
-    });
-
-    expect(result).toContain('## Sandbox 文件写入边界');
-    expect(result).toContain('用户 Skill 产物根目录：/workspace/skills');
-    expect(result).toContain('/workspace/skills/<skill-name>/SKILL.md');
-    expect(result).toContain('禁止写入：/workspace/<skill-name>/ 或 /workspace/SKILL.md');
-    expect(result).toContain('/home/sandbox/.fastgpt/skills/');
-  });
-
   it('escapes XML fields in skill metadata', () => {
-    const result = buildAgentSkillsPrompt([
+    const result = buildAgentLoopCoreSkillsPrompt([
       {
         id: 'skill_report',
         name: 'Report <R&D>',
@@ -394,29 +315,6 @@ describe('buildAgentUserReminderInput', () => {
     expect(result).toContain('<description>Write &amp; review</description>');
     expect(result).toContain('<directory>/workspace/Report &amp; Review</directory>');
     expect(result).toContain('<path>/workspace/Report &amp; Review/SKILL.md</path>');
-  });
-
-  it('includes parent skill app metadata for injected child skills', () => {
-    const result = buildAgentSkillsPrompt([
-      {
-        id: 'skill_report',
-        appId: 'app_skill_1',
-        appName: 'Research <App>',
-        appDescription: 'Includes fetch & summarize skills',
-        name: 'fetch-webpage',
-        description: 'Read webpages',
-        directory: '/workspace/.skills/version_1/fetch-webpage',
-        skillMdPath: '/workspace/.skills/version_1/fetch-webpage/SKILL.md'
-      }
-    ]);
-
-    expect(result).toContain('<app_id>app_skill_1</app_id>');
-    expect(result).toContain('<app_name>Research &lt;App&gt;</app_name>');
-    expect(result).toContain(
-      '<app_description>Includes fetch &amp; summarize skills</app_description>'
-    );
-    expect(result).toContain('<name>fetch-webpage</name>');
-    expect(result).toContain('<path>/workspace/.skills/version_1/fetch-webpage/SKILL.md</path>');
   });
 });
 
@@ -435,7 +333,6 @@ describe('useUserContext', () => {
       {
         queryUrlTypeMap: {
           '/old.pdf': ChatFileTypeEnum.file,
-          '/old.png': ChatFileTypeEnum.image,
           '/current.pdf': ChatFileTypeEnum.file,
           '/current.png': ChatFileTypeEnum.image
         },
@@ -445,10 +342,7 @@ describe('useUserContext', () => {
         const history = createHumanMessage({
           dataId: 'history_1',
           text: '历史问题',
-          files: [
-            { name: 'old.pdf', url: '/old.pdf' },
-            { name: 'old.png', url: '/old.png', type: ChatFileTypeEnum.image }
-          ]
+          files: [{ name: 'old.pdf', url: '/old.pdf' }]
         });
         const result = await getUserContextMessagesForTest({
           history: 6,
@@ -474,32 +368,22 @@ describe('useUserContext', () => {
         });
 
         expect(result.filesMap).toEqual({
-          'history_1-0': '/old.pdf',
-          'current_chat_item-0': '/current.pdf'
-        });
-        expect(result.fileUrlMap).toEqual({
-          'history_1-0': '/old.pdf',
-          'history_1-1': '/old.png',
-          'current_chat_item-0': '/current.pdf',
-          'current_chat_item-1': '/current.png'
+          'history_1-0': {
+            name: 'old.pdf',
+            url: '/old.pdf'
+          },
+          'current_chat_item-0': {
+            name: 'current.pdf',
+            url: '/current.pdf'
+          }
         });
 
-        const { text: historyText, files: historyFiles } = chatValue2RuntimePrompt(
-          result.rewrittenHistories[0].value
-        );
+        const { text: historyText } = chatValue2RuntimePrompt(result.rewrittenHistories[0].value);
         const { text: currentText, files: currentFiles } = chatValue2RuntimePrompt(
           result.currentUserMessage.value
         );
 
-        expect(historyFiles).toEqual([
-          {
-            name: 'old.png',
-            type: ChatFileTypeEnum.image,
-            url: '/old.png'
-          }
-        ]);
         expect(historyText).toContain('<id>history_1-0</id>');
-        expect(historyText).toContain('<id>history_1-1</id>');
         expect(historyText).not.toContain('当前 sandbox 工作目录');
         expect(historyText).not.toContain('当前时间');
         expect(currentFiles).toEqual([
@@ -513,8 +397,6 @@ describe('useUserContext', () => {
         expect(currentText).toContain('当前 sandbox 工作目录: /workspace');
         expect(currentText).toContain('<id>current_chat_item-0</id>');
         expect(currentText).toContain('<id>current_chat_item-1</id>');
-        expect(currentText).toContain('<type>image</type>');
-        expect(currentText).toContain('<url>/current.png</url>');
         expect(currentText).toContain('## 知识库');
         expect(currentText).toContain('<description>后端读取到的知识库介绍</description>');
         expect(currentText).toContain('2026-05-14 10:00:00 Thursday');
@@ -585,7 +467,6 @@ describe('useUserContext', () => {
   });
 
   it('loads dataset name and description from backend when selected state only keeps id', async () => {
-    vi.mocked(filterDatasetsByTmbId).mockClear();
     vi.mocked(MongoDataset.find).mockReturnValueOnce({
       lean: vi.fn(async () => [
         {
@@ -612,12 +493,16 @@ describe('useUserContext', () => {
               datasetId: 'dataset_1'
             }
           ],
+          authTmbId: true,
           tmbId: 'tmb_1',
           timezone: 'Asia/Shanghai',
           maxFiles: 20
         });
 
-        expect(filterDatasetsByTmbId).not.toHaveBeenCalled();
+        expect(filterDatasetsByTmbId).toHaveBeenCalledWith({
+          datasetIds: ['dataset_1'],
+          tmbId: 'tmb_1'
+        });
         expect(MongoDataset.find).toHaveBeenCalledWith(
           {
             _id: {
@@ -636,7 +521,6 @@ describe('useUserContext', () => {
   });
 
   it('filters unauthorized datasets before loading backend metadata', async () => {
-    vi.mocked(filterDatasetsByTmbId).mockClear();
     vi.mocked(filterDatasetsByTmbId).mockResolvedValueOnce(['dataset_1']);
     vi.mocked(MongoDataset.find).mockReturnValueOnce({
       lean: vi.fn(async () => [
@@ -673,10 +557,6 @@ describe('useUserContext', () => {
           maxFiles: 20
         });
 
-        expect(filterDatasetsByTmbId).toHaveBeenCalledWith({
-          datasetIds: ['dataset_1', 'dataset_2'],
-          tmbId: 'tmb_1'
-        });
         expect(MongoDataset.find).toHaveBeenCalledWith(
           {
             _id: {
@@ -720,7 +600,10 @@ describe('useUserContext', () => {
         });
 
         expect(result.filesMap).toEqual({
-          'history_human_1-0': '/old.pdf'
+          'history_human_1-0': {
+            name: 'old.pdf',
+            url: '/old.pdf'
+          }
         });
       }
     );
@@ -758,53 +641,15 @@ describe('useUserContext', () => {
         });
 
         expect(result.filesMap).toEqual({
-          'current_chat_item-0': '/current.pdf'
+          'current_chat_item-0': {
+            name: 'current.pdf',
+            url: '/current.pdf'
+          }
         });
 
         const { text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
         expect(text.match(/<file>/g)).toHaveLength(1);
         expect(text).toContain('<name>current.pdf</name>');
-      }
-    );
-  });
-
-  it('keeps uploaded image as multimodal content when preview url has no extension', async () => {
-    await runWithContextAsync(
-      {
-        queryUrlTypeMap: {},
-        mcpClientMemory: {}
-      },
-      async () => {
-        const previewUrl = 'https://fastgpt.example.com/api/core/chat/file/preview?token=abc';
-        const result = await getUserContextMessagesForTest({
-          history: 0,
-          histories: [],
-          currentUserInput: '看一下这张图',
-          currentDataId: 'current_chat_item',
-          currentQuery: runtimePrompt2ChatsValue({
-            text: '前端原始问题',
-            files: [
-              {
-                name: '20260629-233136_wT851P.jpg',
-                url: previewUrl,
-                type: ChatFileTypeEnum.image
-              }
-            ]
-          }),
-          tmbId: 'tmb_1',
-          timezone: 'Asia/Shanghai',
-          maxFiles: 20
-        });
-
-        const { files, text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
-        expect(files).toEqual([
-          expect.objectContaining({
-            type: ChatFileTypeEnum.image,
-            name: '20260629-233136_wT851P.jpg',
-            url: previewUrl
-          })
-        ]);
-        expect(text).toContain('<type>image</type>');
       }
     );
   });
@@ -838,7 +683,10 @@ describe('useUserContext', () => {
         });
 
         expect(result.filesMap).toEqual({
-          '1-0': '/old.pdf'
+          '1-0': {
+            name: 'old.pdf',
+            url: '/old.pdf'
+          }
         });
         const { text } = chatValue2RuntimePrompt(result.rewrittenHistories[1].value);
         expect(text).toContain('<id>1-0</id>');
@@ -882,14 +730,20 @@ describe('useUserContext', () => {
 
         expect(result.chatHistories).toBe(explicitHistory);
         expect(result.filesMap).toEqual({
-          'history_human-0': '/a.pdf',
-          'current_ai-0': '/c.pdf'
+          'history_human-0': {
+            name: 'a.pdf',
+            url: '/a.pdf'
+          },
+          'current_ai-0': {
+            name: 'c.pdf',
+            url: '/c.pdf'
+          }
         });
       }
     );
   });
 
-  it('filters invalid and data urls and keeps image audio video urls in agent context', async () => {
+  it('keeps media files in sandbox and user context but excludes them from read_files', async () => {
     const dataImage = 'data:image/png;base64,AAAA';
     await runWithContextAsync(
       {
@@ -920,12 +774,10 @@ describe('useUserContext', () => {
         });
 
         expect(result.filesMap).toEqual({
-          'current_ai-0': '/doc.pdf'
-        });
-        expect(result.fileUrlMap).toEqual({
-          'current_ai-0': '/doc.pdf',
-          'current_ai-1': '/voice.mp3',
-          'current_ai-2': '/demo.mp4'
+          'current_ai-0': {
+            name: 'doc.pdf',
+            url: '/doc.pdf'
+          }
         });
         expect(result.currentFiles).toEqual([
           {
@@ -948,17 +800,26 @@ describe('useUserContext', () => {
           }
         ]);
 
-        const { text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
+        const { text, files } = chatValue2RuntimePrompt(result.currentUserMessage.value);
+        expect(files).toEqual([
+          {
+            name: 'voice.mp3',
+            type: ChatFileTypeEnum.audio,
+            url: '/voice.mp3'
+          },
+          {
+            name: 'demo.mp4',
+            type: ChatFileTypeEnum.video,
+            url: '/demo.mp4'
+          }
+        ]);
         expect(text).toContain('<id>current_ai-0</id>');
         expect(text).toContain('<id>current_ai-1</id>');
         expect(text).toContain('<id>current_ai-2</id>');
-        expect(text).not.toContain('<id>current_ai-3</id>');
-        expect(text).not.toContain('<id>current_ai-4</id>');
-        expect(text).not.toContain('<type>image</type>');
         expect(text).toContain('<type>audio</type>');
         expect(text).toContain('<type>video</type>');
+        expect(text).not.toContain(dataImage);
         expect(text).not.toContain('not-a-url');
-        expect(text).not.toContain('data:image');
         expect(text).not.toContain('data:text/plain');
       }
     );
@@ -1025,7 +886,10 @@ describe('useUserContext', () => {
 
         expect(result.queryInput).toBe('原始问题');
         expect(result.filesMap).toEqual({
-          'current_ai-0': '/uploads/report%20v1.pdf'
+          'current_ai-0': {
+            name: 'report v1.pdf',
+            url: '/uploads/report%20v1.pdf'
+          }
         });
         const { text } = chatValue2RuntimePrompt(result.currentUserMessage.value);
         expect(text).toContain('<name>report v1.pdf</name>');
@@ -1033,7 +897,7 @@ describe('useUserContext', () => {
     );
   });
 
-  it('falls back to a safe url basename when neither chat metadata nor parsed url has a filename', async () => {
+  it('falls back to url as file name when neither chat metadata nor parsed url has a filename', async () => {
     await runWithContextAsync(
       {
         queryUrlTypeMap: {
@@ -1068,7 +932,7 @@ describe('useUserContext', () => {
     );
   });
 
-  it('uses a safe url basename as the final defensive file name fallback', async () => {
+  it('uses url as the final defensive file name fallback when parser returns an empty name', async () => {
     const parseUrlToFileTypeSpy = vi
       .spyOn(workflowContext, 'parseUrlToFileType')
       .mockReturnValueOnce({

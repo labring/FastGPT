@@ -584,7 +584,14 @@ describe('getFlatAppResponses', () => {
 describe('checkInteractiveResponseStatus', () => {
   it('should return query for agentPlanAskQuery type', () => {
     const result = checkInteractiveResponseStatus({
-      interactive: { type: 'agentPlanAskQuery' },
+      interactive: {
+        type: 'agentPlanAskQuery',
+        askId: 'call_ask',
+        params: {
+          content: 'What do you want?',
+          options: ['Use repo', 'Use docs', 'Use defaults']
+        }
+      },
       input: 'any input'
     });
 

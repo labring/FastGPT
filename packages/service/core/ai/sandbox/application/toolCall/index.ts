@@ -40,25 +40,17 @@ export type SandboxToolCallResult = {
 /**
  * 执行一次 sandbox 工具调用。
  *
- * 这里负责解析 LLM 传入的 JSON 参数、按工具 schema 校验，并复用已有 SandboxClient；
- * 未传入 client 时会按 app/user/chat 获取运行态 sandbox。
+ * 这里负责解析 LLM 传入的 JSON 参数、按工具 schema 校验，并复用准备阶段创建的
+ * SandboxClient。source/user/chat 上下文由 client 自身持有，单次工具调用不再重复传递。
  */
 export const runSandboxTools = async ({
-  sourceType,
-  sourceId,
-  userId,
-  chatId,
   toolName,
   args,
   sandboxClient
 }: {
-  sourceType: ChatSourceTypeEnum;
-  sourceId: string;
-  userId: string;
-  chatId: string;
   toolName: string;
   args: string;
-  sandboxClient?: SandboxClient;
+  sandboxClient: SandboxClient;
 }): Promise<SandboxToolCallResult> => {
   const startTime = Date.now();
   const getDuration = () => +((Date.now() - startTime) / 1000).toFixed(2);
@@ -84,32 +76,8 @@ export const runSandboxTools = async ({
     };
   }
 
-  const sandboxId = getRunningSandboxId({
-    sourceType,
-    sourceId,
-    userId,
-    chatId
-  });
-  const instance =
-    sandboxClient ??
-    (await getSandboxClient(
-      {
-        sandboxId,
-        sourceType,
-        sourceId,
-        userId: sourceType === ChatSourceTypeEnum.app ? userId : '',
-        chatId
-      },
-      {
-        failedArchivePolicy: 'clearAndContinue'
-      }
-    ));
   const result = await tool.execute({
-    sourceType,
-    sourceId,
-    userId,
-    chatId,
-    sandboxInstance: instance,
+    sandboxInstance: sandboxClient,
     params: parsedArgs.data as any
   });
 

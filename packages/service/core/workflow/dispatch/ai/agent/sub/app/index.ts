@@ -10,7 +10,7 @@ import {
   storeEdges2RuntimeEdges,
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
+import { chats2GPTMessages, chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
@@ -21,7 +21,7 @@ import type { RunWorkflowProps } from '../../../../../../../core/workflow/dispat
 import { anyValueDecrypt } from '../../../../../../../common/secret/utils';
 import { WorkflowVariableState } from '../../../../utils/variables';
 import { getRuntimeNodeResponseSummary } from '../../../../utils';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 type Props = Pick<
   RunWorkflowProps,
@@ -44,6 +44,7 @@ type Props = Pick<
   | 'nodeResponseWriter'
   | 'nodeResponseParentId'
   | 'variableState'
+  | 'lastInteractive'
 > & {
   app: {
     name: string;
@@ -104,7 +105,12 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
   );
   const runtimeEdges = storeEdges2RuntimeEdges(edges);
 
-  const { assistantResponses, flowUsages, runtimeNodeResponseSummary } = await runWorkflow({
+  const {
+    assistantResponses,
+    flowUsages,
+    runtimeNodeResponseSummary,
+    workflowInteractiveResponse
+  } = await runWorkflow({
     ...data,
     runningAppInfo: {
       sourceType: ChatSourceTypeEnum.app,
@@ -138,7 +144,18 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
 
   return {
     response: text,
+    assistantMessages: chats2GPTMessages({
+      messages: [
+        {
+          obj: ChatRoleEnum.AI,
+          value: assistantResponses
+        }
+      ],
+      reserveId: false,
+      reserveTool: true
+    }),
     usages: flowUsages,
+    interactive: workflowInteractiveResponse,
     nodeResponse: {
       moduleType: FlowNodeTypeEnum.appModule,
       moduleName: app.name,
@@ -244,7 +261,12 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
         return acc;
       }, {}) ?? {};
 
-  const { flowUsages, runtimeNodeResponseSummary } = await runWorkflow({
+  const {
+    assistantResponses = [],
+    flowUsages,
+    runtimeNodeResponseSummary,
+    workflowInteractiveResponse
+  } = await runWorkflow({
     ...data,
     runningAppInfo: {
       sourceType: ChatSourceTypeEnum.app,
@@ -276,6 +298,7 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
     runtimeNodeResponseSummary
   });
   const pluginOutput = runtimeSummary.pluginOutput;
+  const { text: assistantText } = chatValue2RuntimePrompt(assistantResponses);
   const response = pluginOutput
     ? JSON.stringify(
         Object.keys(pluginOutput)
@@ -285,11 +308,24 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
             return acc;
           }, {})
       )
-    : 'Run workflow tool failed';
+    : workflowInteractiveResponse
+      ? assistantText
+      : 'Run workflow tool failed';
 
   return {
     response,
+    assistantMessages: chats2GPTMessages({
+      messages: [
+        {
+          obj: ChatRoleEnum.AI,
+          value: assistantResponses
+        }
+      ],
+      reserveId: false,
+      reserveTool: true
+    }),
     usages: flowUsages,
+    interactive: workflowInteractiveResponse,
     nodeResponse: {
       moduleType: FlowNodeTypeEnum.pluginModule,
       moduleName: app.name,

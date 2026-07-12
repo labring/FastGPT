@@ -1,8 +1,4 @@
-import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
-import type {
-  AIChatItemValueItemType,
-  UserChatItemValueItemType
-} from '@fastgpt/global/core/chat/type';
+import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
@@ -12,26 +8,6 @@ import type { ToolNodeItemType } from './toolcall/type';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { replaceVariable } from '../../../../common/string/replaceVariable';
-
-// Assistant process
-export const filterToolResponseToPreview = (response: AIChatItemValueItemType[]) => {
-  return response.map((item) => {
-    if (item.tools) {
-      const formatTools = item.tools?.map((tool) => {
-        return {
-          ...tool,
-          response: sliceStrStartEnd(tool.response, 500, 500)
-        };
-      });
-      return {
-        ...item,
-        tools: formatTools
-      };
-    }
-
-    return item;
-  });
-};
 
 export const filterMemoryMessages = (messages: ChatCompletionMessageParam[]) => {
   return messages.filter((item) => item.role !== ChatCompletionRequestMessageRoleEnum.System);

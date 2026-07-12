@@ -46,7 +46,8 @@ export const ToolCallChildrenInteractiveSchema = z.object({
   params: z.object({
     childrenResponse: z.any(),
     toolParams: z.object({
-      memoryRequestMessages: z.array(ChatCompletionMessageParamSchema), // 这轮工具中，产生的新的 messages
+      // 兼容旧历史：新交互不再持久化完整 messages 快照，恢复时由 chat history 重建。
+      memoryRequestMessages: z.array(ChatCompletionMessageParamSchema).optional(),
       toolCallId: z.string() // 记录对应 tool 的id，用于后续交互节点可以替换掉 tool 的 response
     })
   })
@@ -96,6 +97,7 @@ export type AgentPlanAskOption = z.infer<typeof AgentPlanAskOptionSchema>;
 
 export const AgentPlanAskQueryInteractiveSchema = z.object({
   type: z.literal('agentPlanAskQuery'),
+  askId: z.string().min(1),
   params: z.object({
     content: z.string(),
     reason: z.string().optional(),
@@ -174,7 +176,7 @@ export const InteractiveNodeResponseTypeSchema = z.intersection(
     AgentPlanAskQueryInteractiveSchema
   ]),
   z.object({
-    planId: z.string().optional()
+    askId: z.string().nullish()
   })
 );
 export type InteractiveNodeResponseType = z.infer<typeof InteractiveNodeResponseTypeSchema>;

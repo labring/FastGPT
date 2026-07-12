@@ -107,7 +107,7 @@ const ProcessingPreviewBody = React.memo(function ProcessingPreviewBody({
 export const getProcessingPreviewLabelKey = (value: AIChatItemValueItemType) => {
   const tool = value.tools?.[value.tools.length - 1] || value.tool;
   if (tool) return tool.toolName;
-  if ((value.reasoning?.content || value.agentPlanUpdate?.reasoningText) && !value.hideReason) {
+  if (value.reasoning?.content && !value.hideReason) {
     return i18nT('chat:history_generating');
   }
 
@@ -122,7 +122,7 @@ const RenderProcessingPreview = React.memo(function RenderProcessingPreview({
   showAnimation: boolean;
 }) {
   const tool = value.tools?.[value.tools.length - 1] || value.tool;
-  const reasoningContent = value.reasoning?.content || value.agentPlanUpdate?.reasoningText || '';
+  const reasoningContent = value.reasoning?.content || '';
   const previewContent = useMemo(() => {
     if (tool) return formatPreviewValue(tool.params);
     return reasoningContent;

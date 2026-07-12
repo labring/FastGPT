@@ -56,11 +56,11 @@ System / 固定提示词
 - `packages/service/core/ai/llm/compress/index.ts`
   - `compressRequestMessages`
   - 当前返回 `messages: ChatCompletionMessageParam[]`
-- `packages/service/core/ai/llm/agentLoop/loop/base.ts`
+- `packages/service/core/ai/llm/agentLoop/providers/fastAgent/loop/base.ts`
   - `onCompressContext`
   - 每轮 Agent LLM 请求前调用压缩
   - 压缩结果会覆盖 `requestMessages`
-- `packages/service/core/ai/llm/agentLoop/loop/unified.ts`
+- `packages/service/core/ai/llm/agentLoop/providers/fastAgent/loop/index.ts`
   - 交互式 ask 场景会把 `pendingMainContext.messages` 持久化到 workflow memory，用于恢复
 
 需要保留的现有能力：
@@ -446,7 +446,7 @@ Agent 节点当前主要保存最终 `assistantResponses`，不会把 `result.co
 - [x] 将 request message 压缩 prompt 改为 checkpoint string 输出：`packages/service/core/ai/llm/compress/prompt.ts`
 - [x] 改造 `compressRequestMessages` 为 `system + checkpoint`
 - [x] 扩展 `AIChatItemValueSchema`，增加 `contextCheckpoint`
-- [x] 在 `runAgentLoop` / `runUnifiedAgentLoop` 返回最新 checkpoint text
+- [x] 在底层 base loop / `runFastAgentMainLoop` 返回最新 checkpoint text
 - [x] 在 `dispatchRunAgent` 正常完成和 ask 暂停时把 checkpoint 作为隐藏 AI value 写入 history
 - [x] 新增 Agent 入口 checkpoint-aware history 选择逻辑，避免先按最近 N 轮裁掉 checkpoint
 - [x] 改造 `chats2GPTMessages`，从最新 checkpoint value 开始解析，插入 checkpoint message 并跳过同 value 其他字段

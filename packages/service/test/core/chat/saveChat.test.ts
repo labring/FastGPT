@@ -237,24 +237,18 @@ describe('pushChatRecords', () => {
         id: 'call_update_plan',
         functionName: 'update_plan',
         params: '{"updates":[]}',
-        response: 'ok',
-        assistantText: 'draft while updating plan',
-        reasoningText: 'planning'
+        response: 'ok'
       };
       const agentAsk = {
         id: 'call_ask_agent',
         functionName: 'ask_agent',
         params: '{"question":"请补充目标"}',
-        planId: 'plan_1',
-        assistantText: 'need more input',
-        reasoningText: 'asking'
+        askId: 'call_ask_agent'
       };
       const agentStopGate = {
         id: 'stop_gate_2_req_too_early',
         reason: 'Active plan is not complete.',
-        feedback: '<stop_gate_feedback>Continue the active plan.</stop_gate_feedback>',
-        assistantText: 'too early',
-        reasoningText: 'checking'
+        feedback: '<stop_gate_feedback>Continue the active plan.</stop_gate_feedback>'
       };
       const props = createMockProps(
         {
@@ -1186,7 +1180,7 @@ describe('pushChatRecords', () => {
           {
             interactive: {
               type: 'agentPlanAskQuery',
-              planId: 'plan_1',
+              askId: 'call_ask_agent',
               params: {
                 content: '请补充目标',
                 reason: '需要用户明确任务目标',
@@ -1214,7 +1208,7 @@ describe('pushChatRecords', () => {
 
       const interactive = {
         type: 'agentPlanAskQuery' as const,
-        planId: 'plan_1',
+        askId: 'call_ask_agent',
         params: {
           content: '请补充目标',
           reason: '需要用户明确任务目标',
@@ -1244,7 +1238,7 @@ describe('pushChatRecords', () => {
           {
             interactive: {
               type: 'agentPlanAskQuery',
-              planId: 'plan_1',
+              askId: 'call_ask_agent',
               params: {
                 content: '请补充目标',
                 reason: '需要用户明确任务目标',
@@ -1317,7 +1311,7 @@ describe('pushChatRecords', () => {
 
       const interactive = {
         type: 'agentPlanAskQuery' as const,
-        planId: 'plan_1',
+        askId: 'call_ask_agent',
         params: {
           content: '请补充目标',
           reason: '需要用户明确任务目标',
@@ -1370,10 +1364,148 @@ describe('pushChatRecords', () => {
         obj: ChatRoleEnum.Human,
         dataId: 'prepared-round-data-id'
       });
-      expect(finalizedHumanItem?.value[0].planId).toBe('plan_1');
+      expect(finalizedHumanItem?.value[0].askId).toBe('call_ask_agent');
       expect(finalizedAiItem?.value[0].text?.content).toBe(
         'Rust 系统编程方向包括所有权、并发和 unsafe 边界。'
       );
+    });
+
+    it('should merge child interactive tool response back to existing tool card', async () => {
+      await MongoChatItem.create({
+        chatId: 'test-chat-id',
+        teamId: testTeamId,
+        tmbId: testTmbId,
+        sourceType: ChatSourceTypeEnum.app,
+        appId: testAppId,
+        obj: ChatRoleEnum.AI,
+        dataId: 'tool-child-data-id',
+        value: [
+          {
+            tools: [
+              {
+                id: 'call_select_1',
+                toolName: '收集问题',
+                toolAvatar: 'core/workflow/template/userSelect',
+                functionName: 'select_tool',
+                params: '{"reason":"need selection"}',
+                response: 'none'
+              }
+            ]
+          },
+          {
+            interactive: {
+              type: 'toolChildrenInteractive',
+              params: {
+                childrenResponse: {
+                  type: 'userSelect',
+                  params: {
+                    description: '请选择',
+                    userSelectOptions: [
+                      { key: 'A', value: 'Option A' },
+                      { key: 'B', value: 'Option B' }
+                    ]
+                  },
+                  entryNodeIds: [],
+                  memoryEdges: [],
+                  nodeOutputs: []
+                },
+                toolParams: {
+                  toolCallId: 'call_select_1'
+                }
+              }
+            }
+          }
+        ]
+      });
+
+      const props = createMockProps(
+        {
+          userContent: {
+            obj: ChatRoleEnum.Human,
+            value: [
+              {
+                text: { content: 'A' }
+              }
+            ]
+          },
+          aiContent: {
+            obj: ChatRoleEnum.AI,
+            value: [
+              {
+                tools: [
+                  {
+                    id: 'call_select_1',
+                    toolName: '',
+                    toolAvatar: '',
+                    functionName: '',
+                    params: '',
+                    response: 'A'
+                  }
+                ]
+              },
+              {
+                text: {
+                  content: '已继续执行'
+                }
+              }
+            ],
+            responseData: []
+          }
+        },
+        { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+      );
+
+      const interactive = {
+        type: 'toolChildrenInteractive' as const,
+        params: {
+          childrenResponse: {
+            type: 'userSelect' as const,
+            params: {
+              description: '请选择',
+              userSelectOptions: [
+                { key: 'A', value: 'Option A' },
+                { key: 'B', value: 'Option B' }
+              ]
+            },
+            entryNodeIds: [],
+            memoryEdges: [],
+            nodeOutputs: []
+          },
+          toolParams: {
+            toolCallId: 'call_select_1'
+          }
+        },
+        entryNodeIds: [],
+        memoryEdges: [],
+        nodeOutputs: []
+      };
+
+      await updateInteractiveChat({ interactive, ...props });
+
+      const chatItem = await MongoChatItem.findOne({
+        appId: testAppId,
+        chatId: props.chatId,
+        obj: ChatRoleEnum.AI,
+        dataId: 'tool-child-data-id'
+      });
+
+      if (chatItem?.obj !== ChatRoleEnum.AI) {
+        throw new Error('chatItem does not have AI value');
+      }
+
+      expect(chatItem.value[0].tools?.[0]).toEqual(
+        expect.objectContaining({
+          id: 'call_select_1',
+          toolName: '收集问题',
+          functionName: 'select_tool',
+          response: 'A'
+        })
+      );
+      expect(chatItem.value).toHaveLength(3);
+      expect(chatItem.value.filter((item) => item.tools?.[0]?.id === 'call_select_1')).toHaveLength(
+        1
+      );
+      expect(chatItem.value[2].text?.content).toBe('已继续执行');
     });
 
     it('should remove paymentPause interactive value', async () => {

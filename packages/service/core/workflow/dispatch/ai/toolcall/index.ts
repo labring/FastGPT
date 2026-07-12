@@ -5,14 +5,26 @@ import { getLLMModel } from '../../../../ai/model';
 import { getNodeErrResponse, getHistories } from '../../utils';
 import { runToolCall } from './toolCall';
 import { type DispatchToolModuleProps } from './type';
-import { GPTMessages2Chats, chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
-import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
-import { filterToolResponseToPreview } from './utils';
 import { postTextCensor } from '../../../../chat/postTextCensor';
 import { useToolNodeList } from './hooks/useToolNodeList';
 import { useToolMessages } from './hooks/useToolMessages';
 import { checkTeamSandboxPermission } from '../../../../../support/permission/teamLimit';
-import { createAgentSandboxPermissionDeniedError } from '../../../../ai/sandbox/interface/runtime';
+import { prepareSandboxToolRuntime } from '../../../../ai/sandbox/interface/toolCall';
+import {
+  createAgentSandboxPermissionDeniedError,
+  getRunningSandboxId,
+  getSandboxRuntimeProfile,
+  runAgentSandboxEntrypoint,
+  withAgentSandboxInitLease
+} from '../../../../ai/sandbox/interface/runtime';
+import {
+  buildAgentLoopCoreRequestMessages,
+  createAgentLoopCoreToolCallNodeResponse,
+  createAgentLoopCoreChildInteractiveParams,
+  filterAgentLoopCoreToolResponseToPreview,
+  getAgentLoopCorePersistedTextOutput,
+  summarizeAgentLoopCoreToolRunFlowResponses
+} from '../agentLoopCore/interface';
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
@@ -49,7 +61,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
   if (useAgentSandbox && global.feConfigs?.show_agent_sandbox) {
     try {
       await checkTeamSandboxPermission(runningUserInfo.teamId);
-    } catch {
+    } catch (err) {
       throw createAgentSandboxPermissionDeniedError();
     }
   }
@@ -100,6 +112,39 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       useSandbox
     });
 
+    // 初始化沙盒
+    const sandboxClient = useSandbox
+      ? await withAgentSandboxInitLease({
+          sandboxId: getRunningSandboxId({
+            sourceType: props.runningAppInfo.sourceType,
+            sourceId: props.runningAppInfo.sourceId,
+            userId: props.uid,
+            chatId: props.chatId
+          }),
+          fn: async () => {
+            const runtime = await prepareSandboxToolRuntime({
+              sourceType: props.runningAppInfo.sourceType,
+              sourceId: props.runningAppInfo.sourceId,
+              userId: props.uid,
+              chatId: props.chatId,
+              files: currentInputFiles.map((file) => ({
+                path: file.sandboxPath!,
+                url: file.url
+              }))
+            });
+            const effectiveEntrypoint = sandboxEntrypoint?.trim();
+            if (effectiveEntrypoint) {
+              await runAgentSandboxEntrypoint({
+                sandbox: runtime.provider,
+                sandboxEntrypoint: effectiveEntrypoint,
+                workDirectory: getSandboxRuntimeProfile().workDirectory
+              });
+            }
+            return runtime;
+          }
+        })
+      : undefined;
+
     // 未配置独立模型密钥时，沿用系统文本审核逻辑。
     if (toolModel.censor && !externalProvider.openaiAccount?.key) {
       await postTextCensor({
@@ -111,9 +156,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
 
     const {
       toolWorkflowInteractiveResponse,
-      runtimeNodeResponseSummary: toolRuntimeSummary, // 工具子流程运行期摘要；完整详情由 writer 持久化。
-      toolTotalPoints,
-      runTimes,
+      toolDispatchFlowResponses, // 工具子流程运行详情
       toolCallInputTokens,
       toolCallOutputTokens,
       toolCallTotalPoints,
@@ -123,47 +166,47 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       error,
       requestIds
     } = await (async () => {
-      const adaptMessages = chats2GPTMessages({
+      const adaptMessages = buildAgentLoopCoreRequestMessages({
         messages,
-        reserveId: false,
-        reserveTool: true
+        removeSystemMessages: false
       });
 
       return runToolCall({
         ...props,
         allFiles,
         currentInputFiles,
+        sandboxClient,
         runtimeNodes,
         runtimeEdges,
         toolNodes,
         toolModel,
         messages: adaptMessages,
-        childrenInteractiveParams:
-          lastInteractive?.type === 'toolChildrenInteractive' ? lastInteractive.params : undefined
+        childrenInteractiveParams: createAgentLoopCoreChildInteractiveParams({
+          lastInteractive
+        })
       });
     })();
 
-    const historyPreview = getHistoryPreview(
-      GPTMessages2Chats({ messages: completeMessages, reserveTool: false }),
-      10000,
-      useVision
-    );
-
+    const { runTimes, toolDetail, toolTotalPoints } =
+      summarizeAgentLoopCoreToolRunFlowResponses(toolDispatchFlowResponses);
     const modelName = toolModel.name;
     const modelTotalPoints = toolCallTotalPoints;
     const totalPointsUsage = modelTotalPoints + toolTotalPoints;
-    const previewAssistantResponses = filterToolResponseToPreview(assistantResponses);
-    const nodeResponse: Record<string, any> = {
+    const previewAssistantResponses = filterAgentLoopCoreToolResponseToPreview(assistantResponses);
+    const nodeResponse = createAgentLoopCoreToolCallNodeResponse({
       totalPoints: totalPointsUsage,
       toolCallInputTokens,
       toolCallOutputTokens,
-      childResponseCount: toolRuntimeSummary.childResponseCount,
-      model: modelName,
+      toolTotalPoints,
+      modelName,
       query: userChatInput,
-      historyPreview,
-      finishReason: finish_reason,
-      llmRequestIds: requestIds
-    };
+      completeMessages,
+      useVision,
+      toolDetail,
+      nodeId,
+      finishReason: finish_reason || 'stop',
+      requestIds
+    });
 
     if (error) {
       return getNodeErrResponse({
@@ -173,12 +216,21 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       });
     }
 
+    if (toolWorkflowInteractiveResponse) {
+      return {
+        [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
+        [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText
+          ? previewAssistantResponses
+          : undefined,
+        [DispatchNodeResponseKeyEnum.nodeResponse]: nodeResponse,
+        [DispatchNodeResponseKeyEnum.interactive]: toolWorkflowInteractiveResponse
+      };
+    }
+
     return {
       data: {
-        [NodeOutputKeyEnum.answerText]: previewAssistantResponses
-          .filter((item) => item.text?.content)
-          .map((item) => item.text?.content || '')
-          .join('')
+        [NodeOutputKeyEnum.answerText]:
+          getAgentLoopCorePersistedTextOutput(previewAssistantResponses)
       },
       [DispatchNodeResponseKeyEnum.runTimes]: runTimes,
       [DispatchNodeResponseKeyEnum.assistantResponses]: isResponseAnswerText

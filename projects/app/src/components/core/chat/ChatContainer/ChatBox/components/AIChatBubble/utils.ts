@@ -12,7 +12,6 @@ export const hasAiProcessingContent = (item: AIChatItemValueItemType) => {
   const tools = item.tools || (item.tool ? [item.tool] : undefined);
   return Boolean(
     (item.reasoning?.content && !item.hideReason) ||
-    (item.agentPlanUpdate?.reasoningText && !item.hideReason) ||
     tools?.length ||
     item.skills?.length ||
     item.plan ||
@@ -24,11 +23,7 @@ export const hasAiFoldableProcessingContent = (item: AIChatItemValueItemType) =>
   if (item.hideInUI) return false;
 
   const tools = item.tools || (item.tool ? [item.tool] : undefined);
-  return Boolean(
-    (item.reasoning?.content && !item.hideReason) ||
-    (item.agentPlanUpdate?.reasoningText && !item.hideReason) ||
-    tools?.length
-  );
+  return Boolean((item.reasoning?.content && !item.hideReason) || tools?.length);
 };
 
 export const hasAiStandaloneProcessingContent = (item: AIChatItemValueItemType) => {

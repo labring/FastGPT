@@ -34,7 +34,10 @@ vi.mock('@fastgpt/service/core/app/tool/workflowTool/utils', () => ({
   serverGetWorkflowToolRunUserQuery: (args: any) => mocks.serverGetWorkflowToolRunUserQuery(args)
 }));
 
-import { dispatchPlugin } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/app';
+import {
+  dispatchApp,
+  dispatchPlugin
+} from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/app';
 
 const createVariableState = () =>
   WorkflowVariableState.create({
@@ -159,5 +162,181 @@ describe('agent sub app dispatchPlugin', () => {
         })
       })
     );
+  });
+
+  it('returns plugin child interactive state and forwards lastInteractive on resume', async () => {
+    const previousInteractive = {
+      type: 'userSelect',
+      entryNodeIds: ['select_1']
+    };
+    const nextInteractive = {
+      type: 'userInput',
+      entryNodeIds: ['input_2']
+    };
+    mocks.authAppByTmbId.mockResolvedValue({
+      app: {
+        _id: 'child-plugin',
+        name: 'Child Plugin',
+        teamId: 'child-team',
+        tmbId: 'child-member'
+      }
+    });
+    mocks.getAppVersionById.mockResolvedValue({
+      nodes: [],
+      edges: [],
+      chatConfig: { variables: [] }
+    });
+    mocks.runWorkflow.mockResolvedValue({
+      assistantResponses: [{ text: { content: 'waiting for plugin input' } }],
+      flowUsages: [],
+      runtimeNodeResponseSummary: undefined,
+      workflowInteractiveResponse: nextInteractive
+    });
+
+    const result = await dispatchPlugin({
+      app: {
+        id: 'child-plugin',
+        name: 'Child Plugin'
+      },
+      runningAppInfo: {
+        sourceType: 'app',
+        sourceId: 'parent-app',
+        teamId: 'team',
+        tmbId: 'member',
+        name: 'parent'
+      },
+      runningUserInfo: {
+        teamId: 'team',
+        tmbId: 'member'
+      },
+      customAppVariables: {},
+      userChatInput: '',
+      timezone: 'Asia/Shanghai',
+      uid: 'user',
+      chatId: 'chat',
+      responseChatItemId: 'response',
+      variableState: await createVariableState(),
+      checkIsStopping: vi.fn(() => false),
+      maxRunTimes: 20,
+      workflowDispatchDeep: 0,
+      lastInteractive: previousInteractive
+    } as any);
+
+    expect(mocks.runWorkflow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lastInteractive: previousInteractive
+      })
+    );
+    expect(result).toMatchObject({
+      response: 'waiting for plugin input',
+      interactive: nextInteractive,
+      assistantMessages: [
+        expect.objectContaining({
+          role: 'assistant',
+          content: 'waiting for plugin input'
+        })
+      ]
+    });
+  });
+});
+
+describe('agent sub app dispatchApp', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.authAppByTmbId.mockResolvedValue({
+      app: {
+        _id: 'child-app',
+        name: 'Child App',
+        teamId: 'child-team',
+        tmbId: 'child-member'
+      }
+    });
+    mocks.getAppVersionById.mockResolvedValue({
+      nodes: [],
+      edges: [],
+      chatConfig: {
+        variables: []
+      }
+    });
+  });
+
+  it('returns child assistant messages and interactive state to the agent-loop tool provider', async () => {
+    const previousInteractive = {
+      type: 'userSelect',
+      entryNodeIds: ['select_1']
+    };
+    const nextInteractive = {
+      type: 'userInput',
+      entryNodeIds: ['input_2']
+    };
+    mocks.runWorkflow.mockResolvedValue({
+      assistantResponses: [
+        { text: { content: 'child answer' } },
+        {
+          tools: [
+            {
+              id: 'call_nested',
+              toolName: 'Nested tool',
+              toolAvatar: '',
+              functionName: 'nested_tool',
+              params: '{}',
+              response: 'nested result'
+            }
+          ]
+        }
+      ],
+      flowUsages: [],
+      runtimeNodeResponseSummary: undefined,
+      workflowInteractiveResponse: nextInteractive
+    });
+
+    const result = await dispatchApp({
+      app: {
+        id: 'child-app',
+        name: 'Child App'
+      },
+      runningAppInfo: {
+        sourceType: 'app',
+        sourceId: 'parent-app',
+        teamId: 'team',
+        tmbId: 'member',
+        name: 'parent'
+      },
+      runningUserInfo: {
+        teamId: 'team',
+        tmbId: 'member'
+      },
+      customAppVariables: {},
+      userChatInput: 'hello',
+      timezone: 'Asia/Shanghai',
+      uid: 'user',
+      chatId: 'chat',
+      responseChatItemId: 'response',
+      variableState: await createVariableState(),
+      checkIsStopping: vi.fn(() => false),
+      maxRunTimes: 20,
+      workflowDispatchDeep: 0,
+      lastInteractive: previousInteractive
+    } as any);
+
+    expect(mocks.runWorkflow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        lastInteractive: previousInteractive
+      })
+    );
+    expect(result.response).toBe('child answer');
+    expect(result.assistantMessages).toEqual([
+      expect.objectContaining({
+        role: 'assistant',
+        content: 'child answer',
+        tool_calls: [expect.objectContaining({ id: 'call_nested' })]
+      }),
+      {
+        role: 'tool',
+        tool_call_id: 'call_nested',
+        content: 'nested result'
+      }
+    ]);
+    expect(result.interactive).toBe(nextInteractive);
   });
 });

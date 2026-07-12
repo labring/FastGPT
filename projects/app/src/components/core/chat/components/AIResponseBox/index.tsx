@@ -60,7 +60,7 @@ const AIResponseBox = ({
   const tools = value.tools || (value.tool ? [value.tool] : undefined);
   const disableStreamingInteraction = isChatting && isLastChild;
   const skills = value.skills;
-  const reasoningContent = value.reasoning?.content || value.agentPlanUpdate?.reasoningText || '';
+  const reasoningContent = value.reasoning?.content || '';
   const textContent = value.text?.content || '';
 
   if (value.hideInUI) return null;

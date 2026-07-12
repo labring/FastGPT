@@ -326,9 +326,10 @@ describe('prepare chat round', () => {
       ...params,
       interactive: {
         type: 'agentPlanAskQuery',
-        planId: 'plan-id',
+        askId: 'call_ask',
         params: {
-          query: 'Need more input'
+          content: 'Need more input',
+          options: ['Use repo', 'Use docs', 'Use defaults']
         }
       } as any
     });

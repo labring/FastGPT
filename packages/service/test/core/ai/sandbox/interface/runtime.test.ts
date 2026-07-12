@@ -4,7 +4,7 @@ import {
   getAgentSkillInfos,
   injectAgentSkillFilesToSandbox
 } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
-import { buildAgentSkillsPrompt } from '@fastgpt/service/core/workflow/dispatch/ai/agent/adapter/userContext';
+import { buildAgentLoopCoreSkillsPrompt } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/interface';
 import {
   SANDBOX_EDIT_FILE_TOOL_NAME,
   SANDBOX_GET_FILE_URL_TOOL_NAME,
@@ -1005,7 +1005,7 @@ describe('sandbox and skill module separation', () => {
   });
 
   it('keeps sandbox input files outside skill prompt', () => {
-    const skillPrompt = buildAgentSkillsPrompt([
+    const skillPrompt = buildAgentLoopCoreSkillsPrompt([
       {
         id: 'skill_1',
         name: 'Skill',

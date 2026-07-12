@@ -22,7 +22,8 @@ vi.mock('@fastgpt/service/core/dataset/search', () => ({
   defaultSearchDatasetData: defaultSearchDatasetDataMock
 }));
 
-vi.mock('@fastgpt/service/core/dataset/schema', () => ({
+vi.mock('@fastgpt/service/core/dataset/schema', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/dataset/schema')>()),
   MongoDataset: {
     findById: findDatasetByIdMock
   }
@@ -70,7 +71,8 @@ describe('dispatchAgentDatasetSearch', () => {
     vi.clearAllMocks();
     findDatasetByIdMock.mockReturnValue({
       lean: vi.fn().mockResolvedValue({
-        vectorModel: 'embedding-model'
+        vectorModel: 'embedding-model',
+        vlmModel: 'vlm-model'
       })
     });
     filterDatasetsByTmbIdMock.mockImplementation(async ({ datasetIds }) => datasetIds);
@@ -392,5 +394,72 @@ describe('dispatchAgentDatasetSearch', () => {
     });
     expect(findDatasetByIdMock).not.toHaveBeenCalled();
     expect(defaultSearchDatasetDataMock).not.toHaveBeenCalled();
+  });
+
+  it('splits image urls from dataset search input and records image caption child response', async () => {
+    defaultSearchDatasetDataMock.mockResolvedValue({
+      searchRes: [],
+      embeddingTokens: 3,
+      reRankInputTokens: 0,
+      usingSimilarityFilter: true,
+      usingReRank: false,
+      imageCaptionResult: {
+        model: 'vlm-model',
+        inputTokens: 8,
+        outputTokens: 4,
+        requestIds: ['req_image_caption'],
+        seconds: 0.7,
+        usedUserOpenAIKey: false,
+        queries: ['image caption']
+      }
+    });
+
+    const result = await dispatchAgentDatasetSearch({
+      args: JSON.stringify({
+        query: ['red shoes', 'https://files.example.com/product.png']
+      }),
+      teamId: 'team_1',
+      tmbId: 'tmb_1',
+      llmModel: 'gpt-main',
+      datasetParams: {
+        datasets: [{ datasetId: 'dataset_1' }],
+        searchMode: DatasetSearchModeEnum.embedding
+      } as any
+    });
+
+    expect(defaultSearchDatasetDataMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        textQueries: ['red shoes'],
+        imageQueries: ['https://files.example.com/product.png'],
+        vlmModel: 'vlm-model'
+      })
+    );
+    expect(result.nodeResponse?.datasetQueries).toEqual([
+      'red shoes',
+      'https://files.example.com/product.png'
+    ]);
+    expect(result.nodeResponse?.childrenResponses).toEqual([
+      expect.objectContaining({
+        id: 'req_image_caption',
+        moduleName: 'account_usage:image_parse',
+        llmRequestIds: ['req_image_caption'],
+        totalPoints: 0.12,
+        textOutput: 'image caption'
+      }),
+      expect.objectContaining({
+        id: 'req_chunk_selection',
+        moduleName: 'account_usage:dataset_chunk_selection',
+        llmRequestIds: ['req_chunk_selection'],
+        totalPoints: 0.09
+      })
+    ]);
+    expect(result.usages).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          moduleName: 'account_usage:image_parse',
+          totalPoints: 0.12
+        })
+      ])
+    );
   });
 });

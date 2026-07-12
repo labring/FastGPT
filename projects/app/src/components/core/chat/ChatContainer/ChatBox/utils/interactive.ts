@@ -11,7 +11,7 @@ import { normalizeFormInputResultFile } from '../../../components/FormInputResul
 import type { ChatSiteItemType } from '../type';
 
 /**
- * 用户选择规划 Agent 选项后，前端会立即追加 Human/AI 占位消息。
+ * 用户回答 Agent 收集问题后，前端会立即追加 Human/AI 占位消息。
  * 这里把答案乐观写回对应的 agentPlanAskQuery，避免旧消息在失去 isLastChild 后丢失选中态。
  */
 export const persistAgentPlanAskAnswerToHistories = ({
@@ -28,7 +28,7 @@ export const persistAgentPlanAskAnswerToHistories = ({
     return histories;
   }
 
-  const targetPlanId = sourceInteractive.planId;
+  const targetAskId = sourceInteractive.askId;
   let hasUpdated = false;
 
   const nextHistories = histories.map((item) => {
@@ -42,7 +42,7 @@ export const persistAgentPlanAskAnswerToHistories = ({
       if (finalInteractive.type !== 'agentPlanAskQuery') return val;
       if (finalInteractive.params.answer) return val;
 
-      if (targetPlanId && finalInteractive.planId && finalInteractive.planId !== targetPlanId) {
+      if (finalInteractive.askId !== targetAskId) {
         return val;
       }
 

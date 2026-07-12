@@ -1,4 +1,9 @@
-import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type';
+import type {
+  AIChatItemType,
+  AIChatItemValueItemType,
+  ToolModuleResponseItemType,
+  UserChatItemType
+} from '@fastgpt/global/core/chat/type';
 import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import {
   ChatGenerateStatusEnum,
@@ -270,6 +275,7 @@ export const finalizeChatRound = async (props: Props) => {
     errorMsg,
     nodeResponseSummary: props.nodeResponseSummary
   });
+
   const processedContent = [userContent, aiResponse];
   // dataId 来自 prepareChatRound 预创建的 Human/AI 占位 item，用它定位并补全本轮记录。
   const { humanDataId, aiDataId } = await getPreparedRoundDataIds({
@@ -750,6 +756,9 @@ export const updateInteractiveChat = async ({
     }
 
     if (finalInteractive.type === 'agentPlanAskQuery') {
+      if (!finalInteractive.askId) {
+        throw new Error(`Agent ask interactive askId is required: ${chatId}`);
+      }
       finalInteractive.params.answer = userInteractiveVal;
 
       const interactiveChatItem = await MongoChatItem.findOne({
@@ -772,7 +781,7 @@ export const updateInteractiveChat = async ({
       await interactiveChatItem.save();
 
       props.userContent.value.forEach((item) => {
-        item.planId = finalInteractive.planId;
+        item.askId = finalInteractive.askId;
       });
     }
 
@@ -792,6 +801,64 @@ export const updateInteractiveChat = async ({
     errorMsg,
     nodeResponseSummary: props.nodeResponseSummary
   });
+
+  /**
+   * child interactive 恢复时，上一轮已经保存了 assistant tool_call 卡片，本轮只会产生
+   * 对应 tool response。这里按 toolCallId 回填旧卡片，避免历史恢复时继续读到中断前的
+   * placeholder response。
+   */
+  const mergeExistingToolResponses = (
+    value: AIChatItemValueItemType[]
+  ): AIChatItemValueItemType[] => {
+    const updateExistingTool = (incomingTool: ToolModuleResponseItemType) => {
+      if (!incomingTool.id) return false;
+
+      for (const item of chatItem.value) {
+        const existingTool = item.tools?.find((tool) => tool.id === incomingTool.id);
+        if (existingTool) {
+          existingTool.response = incomingTool.response;
+          existingTool.toolName = existingTool.toolName || incomingTool.toolName;
+          existingTool.toolAvatar = existingTool.toolAvatar || incomingTool.toolAvatar;
+          existingTool.functionName = existingTool.functionName || incomingTool.functionName;
+          existingTool.params = existingTool.params || incomingTool.params;
+          return true;
+        }
+
+        if (item.tool?.id === incomingTool.id) {
+          item.tool.response = incomingTool.response;
+          item.tool.toolName = item.tool.toolName || incomingTool.toolName;
+          item.tool.toolAvatar = item.tool.toolAvatar || incomingTool.toolAvatar;
+          item.tool.functionName = item.tool.functionName || incomingTool.functionName;
+          item.tool.params = item.tool.params || incomingTool.params;
+          return true;
+        }
+      }
+
+      return false;
+    };
+
+    const hasOnlyTools = (item: AIChatItemValueItemType) => {
+      return Object.entries(item).every(([key, itemValue]) => {
+        if (key === 'tools') return true;
+        return itemValue === undefined || itemValue === null;
+      });
+    };
+
+    return value.flatMap((item) => {
+      if (!item.tools?.length) return [item];
+
+      const unmergedTools = item.tools.filter((tool) => !updateExistingTool(tool));
+      if (unmergedTools.length === item.tools.length) return [item];
+      if (unmergedTools.length === 0 && hasOnlyTools(item)) return [];
+
+      return [
+        {
+          ...item,
+          tools: unmergedTools.length ? unmergedTools : undefined
+        }
+      ];
+    });
+  };
 
   /*
     在原来 chat_items 上更新。
@@ -858,7 +925,10 @@ export const updateInteractiveChat = async ({
         : aiContent.customFeedbacks;
     }
     if (aiContent.value) {
-      chatItem.value = chatItem.value ? [...chatItem.value, ...aiContent.value] : aiContent.value;
+      const mergedAiContentValue = mergeExistingToolResponses(aiContent.value);
+      chatItem.value = chatItem.value
+        ? [...chatItem.value, ...mergedAiContentValue]
+        : mergedAiContentValue;
     }
     if (aiResponse.citeCollectionIds) {
       chatItem.citeCollectionIds = chatItem.citeCollectionIds
