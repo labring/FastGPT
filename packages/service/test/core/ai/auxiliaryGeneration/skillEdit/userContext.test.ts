@@ -135,7 +135,6 @@ describe('skillEdit user context', () => {
       ])
     );
     expect(JSON.stringify(currentMessage.content)).not.toContain('"fileType":"file"');
-    expect(JSON.stringify(currentMessage.content)).toContain('不会自动进入 sandbox 或 workspace');
     expect(result.resumeFileMessages).toHaveLength(1);
     expect(JSON.stringify(result.resumeFileMessages)).toContain('/files/demo.mp4');
     expect(JSON.stringify(result.resumeFileMessages)).toContain('<id>current-id-0</id>');

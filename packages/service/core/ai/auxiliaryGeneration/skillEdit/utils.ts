@@ -1,10 +1,4 @@
 import type { DeployedSkillInfo } from '../../sandbox/interface/runtime';
-import {
-  SANDBOX_READ_FILE_TOOL_NAME,
-  SANDBOX_SEARCH_TOOL_NAME,
-  SANDBOX_SHELL_TOOL_NAME
-} from '@fastgpt/global/core/ai/sandbox/tools';
-import { SubAppIds } from '@fastgpt/global/core/workflow/node/agent/constants';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
@@ -101,16 +95,7 @@ export const buildSkillEditUserReminderInput = ({
   const reminder = [
     buildAgentSkillsPrompt(skillInfos),
     buildAgentSandboxFileWriteBoundaryPrompt({ currentWorkingDirectory }),
-    buildAgentInputFilesPrompt({
-      files: filesInfo,
-      description: '用户在 Skill Detail 对话上传的文件不会自动进入 sandbox 或 workspace。',
-      instructions: [
-        `读取普通文档内容必须调用 ${SubAppIds.readFiles}，并传入下方对应的 <id>。`,
-        '图片、音频和视频在当前模型支持对应能力时已作为多模态输入提供，应直接分析，不要在 sandbox 或 workspace 中查找。',
-        `如果必须在 sandbox 中处理媒体文件，使用下方 <url> 显式下载后再处理，不要通过 ${SANDBOX_READ_FILE_TOOL_NAME}、${SANDBOX_SEARCH_TOOL_NAME} 或 ${SANDBOX_SHELL_TOOL_NAME} 猜测本地路径。`,
-        'url 也可作为其他工具的模型参数。'
-      ]
-    }),
+    buildAgentInputFilesPrompt(filesInfo),
     currentTime || currentWorkingDirectory
       ? `## 背景信息${currentTime ? `\n当前时间: ${currentTime}` : ''}${
           currentWorkingDirectory ? `\n当前 sandbox 工作目录: ${currentWorkingDirectory}` : ''

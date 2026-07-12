@@ -139,21 +139,14 @@ ${skillInfos
   .join('\n')}`;
 }
 
-/** 构造对话文件元数据；调用场景通过说明文本声明具体读取策略。 */
-export const buildAgentInputFilesPrompt = ({
-  files = [],
-  description = '用户本次对话上传的文件，用途：',
-  instructions = [`可通过 ${SubAppIds.readFiles} 读取文档内容。`, '可把 url 作为模型参数。']
-}: {
-  files?: AgentInputFile[];
-  description?: string;
-  instructions?: string[];
-}) => {
+/** 构造 Agent 对话文件提示，保持模型可见文本与原 workflow 链路一致。 */
+export const buildAgentInputFilesPrompt = (files: AgentInputFile[] = []) => {
   if (files.length === 0) return '';
 
   return `## 对话文件
-${description}
-${instructions.map((instruction, index) => `${index + 1}. ${instruction}`).join('\n')}
+用户本次对话上传的文件，用途：
+1. 可通过 ${SubAppIds.readFiles} 读取文档内容。
+2. 图片、音频和视频已作为当前消息的多模态输入提供，应直接分析其内容；url 也可作为模型参数。
 
 ${files
   .map(

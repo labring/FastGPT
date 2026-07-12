@@ -127,7 +127,7 @@ export const loadAgentDatasetContext = async (
 /* Prompt */
 export { buildAgentSkillsPrompt };
 export const buildAgentInputFilesPrompt = (files: AgentInputFile[] = []) =>
-  buildSharedAgentInputFilesPrompt({ files });
+  buildSharedAgentInputFilesPrompt(files);
 const buildAgentInputDatasetsPrompt = (selectedDataset: AgentSelectedDatasetContext[] = []) => {
   if (selectedDataset.length === 0) return '';
 

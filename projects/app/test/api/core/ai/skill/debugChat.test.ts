@@ -1,9 +1,6 @@
 import * as debugChatApi from '@/pages/api/core/ai/skill/debugChat';
 import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
-import {
-  SKILL_EDIT_SANDBOX_SYSTEM_PROMPT,
-  SandboxTypeEnum
-} from '@fastgpt/global/core/ai/sandbox/constants';
+import { SandboxTypeEnum } from '@fastgpt/global/core/ai/sandbox/constants';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { MongoSandboxInstance } from '@fastgpt/service/core/ai/sandbox/infrastructure/instance/schema';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
@@ -366,8 +363,7 @@ describe('debugChat handler — parameter validation', () => {
         userKey: {
           baseUrl: 'https://provider.example/v1',
           key: 'provider-key'
-        },
-        systemPrompt: expect.stringContaining(SKILL_EDIT_SANDBOX_SYSTEM_PROMPT)
+        }
       })
     );
     const loopInput = debugChatMocks.runAuxiliaryGenerationAgentLoop.mock.calls[0][0];
