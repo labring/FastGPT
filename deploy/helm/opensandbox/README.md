@@ -144,7 +144,7 @@ The following table lists the configurable parameters of the chart and their def
 |-----------|-------------|---------|
 | `server.enabled` | Enable server deployment | `true` |
 | `server.image.repository` | Server image repository | `opensandbox/server` |
-| `server.image.tag` | Server image tag | `v0.1.0` |
+| `server.image.tag` | Server image tag | `v0.2.1` |
 | `server.image.pullPolicy` | Image pull policy | `Never` |
 | `server.replicas` | Number of server replicas | `1` |
 | `server.resources.limits.cpu` | CPU limit | `1` |
@@ -156,7 +156,7 @@ The following table lists the configurable parameters of the chart and their def
 | `server.config.server.logLevel` | Log level (INFO/DEBUG/WARNING/ERROR) | `INFO` |
 | `server.config.server.apiKey` | Optional API key for authentication | `""` |
 | `server.config.runtime.type` | Runtime type (kubernetes/docker) | `kubernetes` |
-| `server.config.runtime.execdImage` | execd image for non-pool mode | `opensandbox/execd:v1.0.5` |
+| `server.config.runtime.execdImage` | execd image for non-pool mode | `opensandbox/execd:v1.0.21` |
 | `server.config.kubernetes.workloadProvider` | Workload provider type | `batchsandbox` |
 | `server.service.type` | Service type (ClusterIP/NodePort/LoadBalancer) | `ClusterIP` |
 | `server.service.port` | Service port | `8080` |

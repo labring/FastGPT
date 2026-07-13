@@ -106,7 +106,7 @@ server:
   # Server image configuration
   image:
     repository: opensandbox/server
-    tag: "v0.1.9"
+    tag: "v0.2.1"
     pullPolicy: Never
 
   # Number of replicas
@@ -177,7 +177,7 @@ server:
 
     runtime:
       type: "kubernetes"
-      execdImage: "opensandbox/execd:v1.0.5"
+      execdImage: "opensandbox/execd:v1.0.21"
 
     kubernetes:
       # workloadProvider: batchsandbox (use Pool) or agent-sandbox
@@ -360,7 +360,7 @@ pools:
         # Init Container: Install execd (required for SDK scenario)
         initContainers:
         - name: execd-installer
-          image: opensandbox/execd:v1.0.5
+          image: opensandbox/execd:v1.0.21
           imagePullPolicy: Never
           command: ["/bin/sh", "-c"]
           args:

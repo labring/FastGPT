@@ -20,7 +20,7 @@ If Agent Sandbox is enabled, also add the following environment variables to `fa
 # Shared with fastgpt-agent-sandbox-proxy. In production, replace it with a random secret longer than 32 characters.
 AGENT_SANDBOX_PROXY_SECRET=replace_with_32_chars_random_secret
 # Browser-accessible WebSocket URL for agent-sandbox-proxy. Use wss:// if it is proxied through an HTTPS domain.
-AGENT_SANDBOX_PROXY_URL=ws://{{host}}:1006
+AGENT_SANDBOX_PROXY_URL=ws://{{host}}:3006
 ```
 
 ### 2. Image Changes
@@ -43,7 +43,7 @@ fastgpt-agent-sandbox-proxy:
   container_name: fastgpt-agent-sandbox-proxy
   restart: always
   ports:
-    - 1006:1006
+    - 3006:1006
   networks:
     - fastgpt
   environment:

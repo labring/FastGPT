@@ -20,7 +20,7 @@ INVOKE_TOKEN_SECRET=32 位以上密钥，反向调用接口 jwt 密钥
 # 与 fastgpt-agent-sandbox-proxy 共用，生产环境请改为 32 位以上随机密钥
 AGENT_SANDBOX_PROXY_SECRET=replace_with_32_chars_random_secret
 # 浏览器可访问的 agent-sandbox-proxy WebSocket 地址；如已通过 HTTPS 域名代理，请使用 wss://
-AGENT_SANDBOX_PROXY_URL=ws://{{host}}:1006
+AGENT_SANDBOX_PROXY_URL=ws://{{host}}:3006
 ```
 
 ### 2. 镜像变更
@@ -43,7 +43,7 @@ fastgpt-agent-sandbox-proxy:
   container_name: fastgpt-agent-sandbox-proxy
   restart: always
   ports:
-    - 1006:1006
+    - 3006:1006
   networks:
     - fastgpt
   environment:

@@ -17,7 +17,7 @@ x-no-proxy-config: &x-no-proxy-config
 
 services:
   fastgpt-opensandbox-server:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/opensandbox-server:v0.1.9
+    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/server:v0.2.1
     container_name: fastgpt-opensandbox-server
     restart: always
     networks:
@@ -76,12 +76,12 @@ services:
       - prepull
 
   opensandbox-execd-image:
-    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/execd:v1.0.6
+    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/execd:v1.0.21
     profiles:
       - prepull
 
   opensandbox-egress-image:
-    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress:v1.0.1
+    image: sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress:v1.1.4
     profiles:
       - prepull
 
@@ -96,10 +96,10 @@ configs:
 
       [runtime]
       type = "docker"
-      execd_image = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/execd:v1.0.6"
+      execd_image = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/execd:v1.0.21"
 
       [egress]
-      image = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress:v1.0.1"
+      image = "sandbox-registry.cn-zhangjiakou.cr.aliyuncs.com/opensandbox/egress:v1.1.4"
 
       [docker]
       network_mode = "bridge"

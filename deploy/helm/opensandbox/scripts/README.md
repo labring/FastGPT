@@ -37,7 +37,7 @@ cd scripts
 IMAGE_REPO=myregistry.com/controller \
 IMAGE_TAG=v1.0.0 \
 SERVER_IMAGE_REPO=myregistry.com/server \
-SERVER_IMAGE_TAG=v0.1.0 \
+SERVER_IMAGE_TAG=v0.2.1 \
 ./install.sh
 ```
 
@@ -101,9 +101,9 @@ cd scripts
 **Prerequisites:**
 - Required Docker images must be loaded:
   - opensandbox/controller:dev
-  - opensandbox/server:v0.1.0
+  - opensandbox/server:v0.2.1
   - opensandbox/task-executor:dev
-  - opensandbox/execd:v1.0.5
+  - opensandbox/execd:v1.0.21
   - nginx:latest
 - Python SDK installed (using uv)
 - Cluster has sufficient resources to run test Pods

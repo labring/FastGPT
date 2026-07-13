@@ -188,7 +188,7 @@ kubectl get pods -l batchsandbox=basic-batch-sandbox -n opensandbox
 # ❌ Does not support custom entrypoint
 initContainers:
 - name: execd-installer
-  image: opensandbox/execd:v1.0.5
+  image: opensandbox/execd:v1.0.21
 containers:
 - name: sandbox-container
   command: ["/opt/opensandbox/bin/bootstrap.sh", "nginx", "-g", "daemon off;"]
@@ -216,7 +216,7 @@ spec:
   shareProcessNamespace: true  # Required by task-executor
   initContainers:
   - name: execd-installer
-    image: opensandbox/execd:v1.0.5
+    image: opensandbox/execd:v1.0.21
   containers:
   - name: sandbox-container
     command: ["/opt/opensandbox/bin/bootstrap.sh", "sleep", "infinity"]
