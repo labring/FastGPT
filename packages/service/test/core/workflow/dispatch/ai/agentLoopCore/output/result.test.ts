@@ -51,7 +51,7 @@ describe('summarizeAgentLoopCoreResult', () => {
     );
   });
 
-  it('turns error and aborted statuses into final text', () => {
+  it('turns errors into final text and treats aborts as normal finishes', () => {
     expect(
       summarizeAgentLoopCoreResult({
         status: 'error',
@@ -75,23 +75,23 @@ describe('summarizeAgentLoopCoreResult', () => {
       })
     );
 
-    expect(
-      summarizeAgentLoopCoreResult({
-        status: 'aborted',
-        requestIds: [],
-        completeMessages: [],
-        assistantMessages: [],
-        assistantResponses: [],
-        finishReason: 'stop',
-        usages: []
-      })
-    ).toEqual(
+    const abortedResult = summarizeAgentLoopCoreResult({
+      status: 'aborted',
+      requestIds: [],
+      completeMessages: [],
+      assistantMessages: [],
+      assistantResponses: [],
+      finishReason: 'stop',
+      usages: []
+    });
+
+    expect(abortedResult).toEqual(
       expect.objectContaining({
-        status: 'aborted',
-        errorText: 'chat:completion_finish_error',
-        finalText: 'chat:completion_finish_error'
+        status: 'aborted'
       })
     );
+    expect(abortedResult.errorText).toBeUndefined();
+    expect(abortedResult.finalText).toBeUndefined();
   });
 
   it('builds ask interactive and keeps provider state for workflow adapter wrapping', () => {

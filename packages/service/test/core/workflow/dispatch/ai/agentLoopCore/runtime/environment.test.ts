@@ -59,12 +59,19 @@ describe('createAgentLoopCoreRuntimeEnvironment', () => {
       message: 'plan ok',
       id: 'call_plan',
       params: '{"action":"set_plan"}',
-      seconds: 0.1
+      seconds: 0.1,
+      plan: {
+        planId: 'plan_1',
+        name: 'Implementation plan',
+        description: null,
+        steps: [{ id: 'step_1', name: 'Implement plan events', status: 'pending' }]
+      }
     });
 
     expect(workflowStreamResponse.mock.calls.map(([event]) => event.id)).toEqual([
       'call_search',
-      'call_search'
+      'call_search',
+      'agent-plan-stream'
     ]);
     expect(nodeResponses).toEqual([
       expect.objectContaining({
@@ -74,9 +81,9 @@ describe('createAgentLoopCoreRuntimeEnvironment', () => {
       }),
       expect.objectContaining({
         id: 'agent_node-plan-call_plan',
-        moduleName: 'chat:plan_agent',
+        moduleName: 'chat:plan_update',
         agentPlanStatus: 'set_plan',
-        textOutput: 'plan ok'
+        agentPlanResult: 'plan ok'
       })
     ]);
   });

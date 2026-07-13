@@ -231,7 +231,19 @@ describe('runAgentLoopCore', () => {
         success: true,
         message: 'plan created',
         id: 'call_plan',
-        params: '{"action":"set_plan"}'
+        params: '{"action":"set_plan"}',
+        plan: {
+          planId: 'plan_1',
+          name: 'Implementation plan',
+          description: null,
+          steps: [
+            {
+              id: 'step_1',
+              name: 'Implement plan events',
+              status: 'pending'
+            }
+          ]
+        }
       });
 
       return {
@@ -290,6 +302,20 @@ describe('runAgentLoopCore', () => {
             response: 'tool result'
           }
         ]
+      },
+      {
+        plan: {
+          planId: 'plan_1',
+          name: 'Implementation plan',
+          description: null,
+          steps: [
+            {
+              id: 'step_1',
+              name: 'Implement plan events',
+              status: 'pending'
+            }
+          ]
+        }
       },
       {
         id: 'call_plan',

@@ -143,7 +143,13 @@ describe('createAgentLoopCoreNodeResponseEventCollector', () => {
       success: true,
       message: 'plan created',
       id: 'call_plan',
-      seconds: 0.2
+      seconds: 0.2,
+      plan: {
+        planId: 'plan_1',
+        name: 'Implementation plan',
+        description: null,
+        steps: [{ id: 'step_1', name: 'Implement plan events', status: 'pending' }]
+      }
     });
     collector.emitEvent({
       type: 'plan_operation',
@@ -151,7 +157,13 @@ describe('createAgentLoopCoreNodeResponseEventCollector', () => {
       success: true,
       message: 'plan created again',
       id: 'call_plan',
-      seconds: 0.3
+      seconds: 0.3,
+      plan: {
+        planId: 'plan_1',
+        name: 'Implementation plan',
+        description: null,
+        steps: [{ id: 'step_1', name: 'Implement plan events', status: 'pending' }]
+      }
     });
     collector.emitEvent({
       type: 'ask_start',
@@ -169,8 +181,8 @@ describe('createAgentLoopCoreNodeResponseEventCollector', () => {
     expect(nodeResponses).toEqual([
       expect.objectContaining({
         id: 'agent_node-plan-call_plan',
-        moduleName: 'chat:plan_agent',
-        textOutput: 'plan created',
+        moduleName: 'chat:plan_update',
+        agentPlanResult: 'plan created',
         agentPlanStatus: 'set_plan'
       }),
       expect.objectContaining({
@@ -179,5 +191,6 @@ describe('createAgentLoopCoreNodeResponseEventCollector', () => {
         textOutput: 'Confirm?'
       })
     ]);
+    expect(nodeResponses[0].textOutput).toBeUndefined();
   });
 });

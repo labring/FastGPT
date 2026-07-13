@@ -122,7 +122,36 @@ describe('createAgentLoopCoreAssistantEventCollector', () => {
     ]);
   });
 
-  it('persists plan metadata only from its dedicated event', () => {
+  it('persists failed plan operations without creating a plan snapshot', () => {
+    const collector = createAgentLoopCoreAssistantEventCollector({
+      metaEventNames: {
+        updatePlanToolName: 'update_plan'
+      }
+    });
+
+    collector.emitEvent({
+      type: 'plan_operation',
+      operation: 'set_plan',
+      success: false,
+      message: 'plan creation failed',
+      id: 'call_plan',
+      params: '{"action":"set_plan"}'
+    });
+
+    expect(collector.assistantResponses).toEqual([
+      {
+        id: 'call_plan',
+        agentPlanUpdate: {
+          id: 'call_plan',
+          functionName: 'update_plan',
+          params: '{"action":"set_plan"}',
+          response: 'plan creation failed'
+        }
+      }
+    ]);
+  });
+
+  it('persists a complete plan snapshot and operation record from one successful event', () => {
     const collector = createAgentLoopCoreAssistantEventCollector({
       metaEventNames: {
         updatePlanToolName: 'update_plan'
@@ -135,10 +164,36 @@ describe('createAgentLoopCoreAssistantEventCollector', () => {
       success: true,
       message: 'plan created',
       id: 'call_plan',
-      params: '{"action":"set_plan"}'
+      params: '{"action":"set_plan"}',
+      plan: {
+        planId: 'plan_1',
+        name: 'Implementation plan',
+        description: null,
+        steps: [
+          {
+            id: 'step_1',
+            name: 'Implement persistence',
+            status: 'in_progress'
+          }
+        ]
+      }
     });
 
     expect(collector.assistantResponses).toEqual([
+      {
+        plan: {
+          planId: 'plan_1',
+          name: 'Implementation plan',
+          description: null,
+          steps: [
+            {
+              id: 'step_1',
+              name: 'Implement persistence',
+              status: 'in_progress'
+            }
+          ]
+        }
+      },
       {
         id: 'call_plan',
         agentPlanUpdate: {

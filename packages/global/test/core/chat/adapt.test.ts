@@ -1780,15 +1780,14 @@ describe('chats2GPTMessages', () => {
           {
             plan: {
               planId: 'plan-1',
-              task: 'Search for information',
+              name: 'Search for information',
               description: 'Search the web for relevant data',
-              background: 'User needs current information',
               steps: [
-                { id: 'step-1', title: 'Step 1: Search' },
-                { id: 'step-2', title: 'Step 2: Analyze' }
+                { id: 'step-1', name: 'Step 1: Search', status: 'done' },
+                { id: 'step-2', name: 'Step 2: Analyze', status: 'done' }
               ]
             }
-          } as any,
+          },
           {
             id: 'step-1',
             text: { content: 'Search results here' }

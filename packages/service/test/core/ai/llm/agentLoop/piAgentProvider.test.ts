@@ -318,6 +318,53 @@ describe('runPiAgentLoop', () => {
     ]);
   });
 
+  it('emits one successful plan operation with the complete plan', async () => {
+    const events: any[] = [];
+    agentToolToExecute.value = {
+      name: 'update_plan',
+      callId: 'call_plan',
+      args: {
+        action: 'set_plan',
+        name: 'Implementation plan',
+        description: null,
+        steps: [{ name: 'Merge plan events', description: null }]
+      }
+    };
+
+    await runPiAgentLoop({
+      input: {
+        messages: [{ role: 'user', content: 'Create a plan' }]
+      },
+      runtime: {
+        llmParams: {
+          model: 'gpt-5'
+        },
+        systemTools: {
+          plan: { enabled: true }
+        },
+        toolCatalog: {
+          runtimeTools: []
+        },
+        executeTool: vi.fn(),
+        checkIsStopping: vi.fn(() => false),
+        emitEvent: (event) => events.push(event)
+      }
+    });
+
+    expect(events.filter((event) => event.type === 'plan_operation')).toEqual([
+      expect.objectContaining({
+        type: 'plan_operation',
+        operation: 'set_plan',
+        success: true,
+        id: 'call_plan',
+        plan: expect.objectContaining({
+          name: 'Implementation plan',
+          steps: [expect.objectContaining({ name: 'Merge plan events' })]
+        })
+      })
+    ]);
+  });
+
   it('filters runtime tools that conflict with enabled system tool names', async () => {
     await runPiAgentLoop({
       input: {

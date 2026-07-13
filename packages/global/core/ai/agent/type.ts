@@ -49,6 +49,32 @@ export const AgentPlanSchema = z.object({
 });
 export type AgentPlanType = z.infer<typeof AgentPlanSchema>;
 
+/**
+ * 读取持久化计划时兼容旧版 task/title 字段，并统一输出当前计划结构。
+ * 新计划的生成与更新仍使用 AgentPlanSchema，避免旧字段继续进入写入链路。
+ */
+export const AgentPlanReadSchema = z.preprocess((value) => {
+  const isRecord = (input: unknown): input is Record<string, unknown> =>
+    typeof input === 'object' && input !== null && !Array.isArray(input);
+
+  if (!isRecord(value)) return value;
+
+  return {
+    ...value,
+    name: value.name ?? value.task,
+    steps: Array.isArray(value.steps)
+      ? value.steps.map((step) =>
+          isRecord(step)
+            ? {
+                ...step,
+                name: step.name ?? step.title
+              }
+            : step
+        )
+      : value.steps
+  };
+}, AgentPlanSchema);
+
 export const AgentLoopPlanUpdateSchema = z
   .object({
     id: z.string().meta({ description: 'update_plan 工具调用 ID' }),

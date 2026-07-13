@@ -1370,7 +1370,7 @@ describe('pushChatRecords', () => {
       );
     });
 
-    it('should merge child interactive tool response back to existing tool card', async () => {
+    it('should merge child interactive tool response and plan snapshot into existing values', async () => {
       await MongoChatItem.create({
         chatId: 'test-chat-id',
         teamId: testTeamId,
@@ -1391,6 +1391,20 @@ describe('pushChatRecords', () => {
                 response: 'none'
               }
             ]
+          },
+          {
+            plan: {
+              planId: 'plan_1',
+              name: 'Interactive plan',
+              description: null,
+              steps: [
+                {
+                  id: 'step_1',
+                  name: 'Wait for selection',
+                  status: 'in_progress'
+                }
+              ]
+            }
           },
           {
             interactive: {
@@ -1442,6 +1456,21 @@ describe('pushChatRecords', () => {
                     response: 'A'
                   }
                 ]
+              },
+              {
+                plan: {
+                  planId: 'plan_1',
+                  name: 'Interactive plan',
+                  description: null,
+                  steps: [
+                    {
+                      id: 'step_1',
+                      name: 'Wait for selection',
+                      status: 'done',
+                      note: 'Selected A'
+                    }
+                  ]
+                }
               },
               {
                 text: {
@@ -1501,11 +1530,19 @@ describe('pushChatRecords', () => {
           response: 'A'
         })
       );
-      expect(chatItem.value).toHaveLength(3);
+      expect(chatItem.value).toHaveLength(4);
       expect(chatItem.value.filter((item) => item.tools?.[0]?.id === 'call_select_1')).toHaveLength(
         1
       );
-      expect(chatItem.value[2].text?.content).toBe('已继续执行');
+      expect(chatItem.value.filter((item) => item.plan?.planId === 'plan_1')).toHaveLength(1);
+      expect(chatItem.value[1].plan?.steps[0]).toEqual(
+        expect.objectContaining({
+          id: 'step_1',
+          status: 'done',
+          note: 'Selected A'
+        })
+      );
+      expect(chatItem.value[3].text?.content).toBe('已继续执行');
     });
 
     it('should remove paymentPause interactive value', async () => {

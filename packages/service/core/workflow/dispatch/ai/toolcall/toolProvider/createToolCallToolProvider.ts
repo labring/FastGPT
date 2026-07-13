@@ -64,9 +64,9 @@ export const createToolCallToolProvider = async ({
     useAgentSandbox,
     lang
   });
-  const datasetSearchNode = toolNodes.find(
-    (toolNode) => toolNode.flowNodeType === FlowNodeTypeEnum.datasetSearchNode
-  );
+  const datasetSearchNodeIds = toolNodes
+    .filter((toolNode) => toolNode.flowNodeType === FlowNodeTypeEnum.datasetSearchNode)
+    .map((toolNode) => toolNode.nodeId);
   const runWorkflowTool: CreateAgentLoopCoreWorkflowToolRunnerParams<WorkflowInteractiveResponseType>['runWorkflowTool'] =
     async ({ runtimeNodes, runtimeEdges, lastInteractive }) => {
       const result = await runWorkflow({
@@ -137,13 +137,15 @@ export const createToolCallToolProvider = async ({
       params: AgentLoopInteractiveToolExecuteParams<WorkflowInteractiveResponseType>
     ) => runInteractiveTool(params),
     readFileExecutor,
-    datasetSearchExecutor: datasetSearchNode
-      ? createAgentLoopCoreWorkflowSystemToolExecutor({
-          runtimeNodes,
-          runtimeEdges,
-          entryNodeId: datasetSearchNode.nodeId,
-          runWorkflowTool
-        })
-      : undefined
+    datasetSearchExecutor:
+      datasetSearchNodeIds.length > 0
+        ? createAgentLoopCoreWorkflowSystemToolExecutor({
+            runtimeNodes,
+            runtimeEdges,
+            entryNodeIds: datasetSearchNodeIds,
+            runWorkflowTool,
+            cacheToolFlowResponse
+          })
+        : undefined
   };
 };

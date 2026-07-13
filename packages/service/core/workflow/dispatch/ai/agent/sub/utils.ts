@@ -32,17 +32,22 @@ export const getSubapps = async ({
 }): Promise<{
   completionTools: ChatCompletionTool[];
   subAppsMap: Map<string, SubAppRuntimeType>;
+  promptToolReferenceInfoMap: Map<string, string>;
 }> => {
   const completionTools: ChatCompletionTool[] = [];
 
   /* User tools */
   const subAppsMap = new Map<string, SubAppRuntimeType>();
+  const promptToolReferenceInfoMap = new Map<string, string>();
   const formatTools = await getAgentRuntimeTools({
     tools,
     tmbId,
     lang
   });
   formatTools.forEach((tool) => {
+    if (tool.promptReference) {
+      promptToolReferenceInfoMap.set(tool.promptReference.id, tool.promptReference.name);
+    }
     completionTools.push(tool.requestSchema);
     subAppsMap.set(tool.id, {
       type: tool.type,
@@ -57,7 +62,8 @@ export const getSubapps = async ({
 
   return {
     completionTools,
-    subAppsMap
+    subAppsMap,
+    promptToolReferenceInfoMap
   };
 };
 

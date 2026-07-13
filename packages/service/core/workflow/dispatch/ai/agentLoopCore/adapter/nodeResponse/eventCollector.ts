@@ -139,7 +139,7 @@ export const createAgentLoopCoreNodeResponseEventCollector = ({
         moduleType: node.flowNodeType,
         moduleLogo: AgentNodeResponseDisplay.plan.moduleLogo,
         runningTime: event.seconds,
-        textOutput: event.message,
+        agentPlanResult: event.message,
         agentPlanStatus: getPlanOperationStatus(event)
       })
     );

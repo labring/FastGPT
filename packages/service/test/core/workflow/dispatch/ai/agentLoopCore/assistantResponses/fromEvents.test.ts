@@ -2,7 +2,7 @@ import { appendAgentLoopCoreAssistantResponseFromEvent } from '@fastgpt/service/
 import { describe, expect, it } from 'vitest';
 
 describe('appendAgentLoopCoreAssistantResponseFromEvent', () => {
-  it('stores plan operations as update_plan assistant responses', () => {
+  it('stores only the latest complete plan snapshot by planId', () => {
     const assistantResponses: any[] = [];
 
     appendAgentLoopCoreAssistantResponseFromEvent({
@@ -11,6 +11,73 @@ describe('appendAgentLoopCoreAssistantResponseFromEvent', () => {
         type: 'plan_operation',
         operation: 'set_plan',
         success: true,
+        message: 'plan created',
+        plan: {
+          planId: 'plan_1',
+          name: 'Research FastGPT',
+          description: 'Collect and summarize architecture details',
+          steps: [
+            {
+              id: 'step_1',
+              name: 'Collect context',
+              status: 'in_progress'
+            }
+          ]
+        }
+      }
+    });
+    appendAgentLoopCoreAssistantResponseFromEvent({
+      assistantResponses,
+      event: {
+        type: 'plan_operation',
+        operation: 'update_steps',
+        success: true,
+        message: 'plan updated',
+        plan: {
+          planId: 'plan_1',
+          name: 'Research FastGPT',
+          description: 'Collect and summarize architecture details',
+          steps: [
+            {
+              id: 'step_1',
+              name: 'Collect context',
+              status: 'done',
+              note: 'Architecture collected'
+            }
+          ]
+        }
+      }
+    });
+
+    expect(assistantResponses).toEqual([
+      {
+        plan: {
+          planId: 'plan_1',
+          name: 'Research FastGPT',
+          description: 'Collect and summarize architecture details',
+          steps: [
+            {
+              id: 'step_1',
+              name: 'Collect context',
+              status: 'done',
+              note: 'Architecture collected'
+            }
+          ]
+        },
+        planStatus: undefined
+      }
+    ]);
+  });
+
+  it('stores plan operations as update_plan assistant responses', () => {
+    const assistantResponses: any[] = [];
+
+    appendAgentLoopCoreAssistantResponseFromEvent({
+      assistantResponses,
+      event: {
+        type: 'plan_operation',
+        operation: 'set_plan',
+        success: false,
         message: 'plan created',
         id: 'call_plan',
         params: '{"action":"set_plan"}'
@@ -24,7 +91,7 @@ describe('appendAgentLoopCoreAssistantResponseFromEvent', () => {
       event: {
         type: 'plan_operation',
         operation: 'update_steps',
-        success: true,
+        success: false,
         message: 'plan updated',
         id: 'call_plan',
         params: '{"action":"update_steps"}'

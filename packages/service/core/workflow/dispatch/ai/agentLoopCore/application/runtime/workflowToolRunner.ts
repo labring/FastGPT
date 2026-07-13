@@ -1,5 +1,6 @@
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import type {
   ChatCompletionMessageParam,
   ChatCompletionMessageToolCall
@@ -16,6 +17,7 @@ import { parseJsonArgs } from '../../../../../../ai/utils';
 import type { AgentLoopCoreToolInfo, AgentLoopCoreToolRunResult } from '../../domain/toolProvider';
 import type { AgentLoopCoreToolRunFlowResponse } from '../../adapter/nodeResponse/toolRunCollector';
 import { normalizeAgentLoopCoreDatasetSearchResult } from './systemToolHelpers';
+import { cloneDeep } from 'lodash';
 
 export type AgentLoopCoreWorkflowToolRunResponse<TChildrenResponse = unknown> = {
   flowResponses: NonNullable<DispatchFlowResponse['flatNodeResponses']>;
@@ -45,8 +47,9 @@ export type CreateAgentLoopCoreWorkflowToolRunnerParams<TChildrenResponse = unkn
 export type CreateAgentLoopCoreWorkflowSystemToolExecutorParams<TChildrenResponse = unknown> = {
   runtimeNodes: RuntimeNodeItemType[];
   runtimeEdges: RuntimeEdgeItemType[];
-  entryNodeId: string;
+  entryNodeIds: string[];
   runWorkflowTool: CreateAgentLoopCoreWorkflowToolRunnerParams<TChildrenResponse>['runWorkflowTool'];
+  cacheToolFlowResponse?: CreateAgentLoopCoreWorkflowToolRunnerParams<TChildrenResponse>['cacheToolFlowResponse'];
 };
 
 export const updateAgentLoopCoreWorkflowToolInputValue = ({
@@ -154,6 +157,39 @@ const toToolRunResult = <TChildrenResponse = unknown>(
   flowResponse: toFlowResponse(toolRunResponse)
 });
 
+/** 合并每个知识库节点的独立 toolResponse，避免 workflow 只保留最后一个结果。 */
+const formatDatasetSearchToolResponses = ({
+  entryNodeIds,
+  toolRunResponses
+}: {
+  entryNodeIds: string[];
+  toolRunResponses: AgentLoopCoreWorkflowToolRunResponse[];
+}) => {
+  if (toolRunResponses.length === 1) {
+    return formatAgentLoopCoreToolResponse(toolRunResponses[0].toolResponses);
+  }
+
+  return formatAgentLoopCoreToolResponse(
+    toolRunResponses.map((toolRunResponse, index) => ({
+      datasetNodeId: entryNodeIds[index],
+      result: toolRunResponse.toolResponses
+    }))
+  );
+};
+
+/** 用首个知识库响应作为展示父节点，其余知识库保留为可展开的子运行详情。 */
+const mergeDatasetSearchNodeResponses = (
+  nodeResponses: ChatHistoryItemResType[]
+): ChatHistoryItemResType | undefined => {
+  const [firstResponse, ...remainingResponses] = nodeResponses;
+  if (!firstResponse || remainingResponses.length === 0) return firstResponse;
+
+  return {
+    ...firstResponse,
+    childrenResponses: [...(firstResponse.childrenResponses ?? []), ...remainingResponses]
+  };
+};
+
 /**
  * 创建以 workflow runtime node 为入口的 system tool executor。
  *
@@ -164,8 +200,9 @@ const toToolRunResult = <TChildrenResponse = unknown>(
 export const createAgentLoopCoreWorkflowSystemToolExecutor = <TChildrenResponse = unknown>({
   runtimeNodes,
   runtimeEdges,
-  entryNodeId,
-  runWorkflowTool
+  entryNodeIds,
+  runWorkflowTool,
+  cacheToolFlowResponse
 }: CreateAgentLoopCoreWorkflowSystemToolExecutorParams<TChildrenResponse>) => {
   const execute: AgentLoopDatasetSearchExecutor = async ({ call }) => {
     const params = parseJsonArgs<Record<string, unknown>>(call.function.arguments) ?? {};
@@ -175,26 +212,48 @@ export const createAgentLoopCoreWorkflowSystemToolExecutor = <TChildrenResponse 
         ? [params.query]
         : [];
 
-    initAgentLoopCoreWorkflowToolNodes(runtimeNodes, [entryNodeId], {
-      ...params,
-      [NodeInputKeyEnum.datasetSearchInput]: query,
-      [NodeInputKeyEnum.userChatInput]: ''
-    });
-    initAgentLoopCoreWorkflowToolEdges(runtimeEdges, [entryNodeId]);
-
     const startTime = Date.now();
-    const toolRunResponse = await runWorkflowTool({
-      runtimeNodes,
-      runtimeEdges
+    const toolRunResponses = await Promise.all(
+      entryNodeIds.map(async (entryNodeId) => {
+        // 每个知识库使用隔离的 workflow 状态，避免入口标记和边状态互相污染。
+        const isolatedRuntimeNodes = cloneDeep(runtimeNodes);
+        const isolatedRuntimeEdges = cloneDeep(runtimeEdges);
+        initAgentLoopCoreWorkflowToolNodes(isolatedRuntimeNodes, [entryNodeId], {
+          ...params,
+          [NodeInputKeyEnum.datasetSearchInput]: query,
+          [NodeInputKeyEnum.userChatInput]: ''
+        });
+        initAgentLoopCoreWorkflowToolEdges(isolatedRuntimeEdges, [entryNodeId]);
+
+        return runWorkflowTool({
+          runtimeNodes: isolatedRuntimeNodes,
+          runtimeEdges: isolatedRuntimeEdges
+        });
+      })
+    );
+    const flowResponses = toolRunResponses.map(toFlowResponse);
+    const mergedFlowResponse: AgentLoopCoreToolRunFlowResponse = {
+      flowResponses: flowResponses.flatMap((item) => item.flowResponses),
+      flowUsages: flowResponses.flatMap((item) => item.flowUsages),
+      runTimes: flowResponses.reduce((sum, item) => sum + (item.runTimes ?? 0), 0)
+    };
+    cacheToolFlowResponse?.({
+      callId: call.id,
+      flowResponse: mergedFlowResponse
     });
-    const result = toToolRunResult<TChildrenResponse>(toolRunResponse).result;
+    const datasetNodeResponses = mergedFlowResponse.flowResponses.filter((item) =>
+      entryNodeIds.includes(item.nodeId)
+    );
 
     return normalizeAgentLoopCoreDatasetSearchResult({
       callId: call.id,
       startTime,
-      response: result.response,
-      usages: result.usages,
-      nodeResponse: toFlowResponse(toolRunResponse).flowResponses?.[0]
+      response: formatDatasetSearchToolResponses({
+        entryNodeIds,
+        toolRunResponses
+      }),
+      usages: mergedFlowResponse.flowUsages,
+      nodeResponse: mergeDatasetSearchNodeResponses(datasetNodeResponses)
     });
   };
 

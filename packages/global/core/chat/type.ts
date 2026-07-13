@@ -17,7 +17,7 @@ import {
   AgentLoopAskSchema,
   AgentLoopPlanUpdateSchema,
   AgentLoopStopGateSchema,
-  AgentPlanSchema,
+  AgentPlanReadSchema,
   AgentPlanStatusSchema
 } from '../ai/agent/type';
 import { ObjectIdSchema } from '../../common/type/mongo';
@@ -224,7 +224,7 @@ export const AIChatItemValueSchema = z.object({
   tools: z.array(ToolModuleResponseItemSchema).nullish(),
   skills: z.array(SkillModuleResponseItemSchema).nullish(),
   interactive: WorkflowInteractiveResponseTypeSchema.optional(),
-  plan: AgentPlanSchema.nullish(),
+  plan: AgentPlanReadSchema.nullish(),
   planStatus: AgentPlanStatusSchema.nullish(),
   agentPlanUpdate: AgentLoopPlanUpdateSchema.nullish(),
   agentAsk: AgentLoopAskSchema.nullish(),

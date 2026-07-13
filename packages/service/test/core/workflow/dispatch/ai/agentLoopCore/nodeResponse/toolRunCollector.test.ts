@@ -84,6 +84,7 @@ describe('createAgentLoopCoreToolRunResponseCollector', () => {
 
     expect(collector.toolRunResponses).toEqual([
       expect.objectContaining({
+        runTimes: 0,
         flowResponses: [
           expect.objectContaining({
             id: 'prepare'
@@ -150,6 +151,7 @@ describe('createAgentLoopCoreToolRunResponseCollector', () => {
 
     expect(collector.toolRunResponses).toEqual([
       expect.objectContaining({
+        runTimes: 0,
         flowResponses: [
           expect.objectContaining({
             id: 'call_search',
@@ -236,6 +238,7 @@ describe('createAgentLoopCoreToolRunResponseCollector', () => {
 
     expect(collector.toolRunResponses[0]).toEqual(
       expect.objectContaining({
+        runTimes: 0,
         flowResponses: [
           expect.objectContaining({
             id: 'call_search',

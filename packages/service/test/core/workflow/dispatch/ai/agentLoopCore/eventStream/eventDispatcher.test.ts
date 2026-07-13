@@ -228,4 +228,46 @@ describe('createAgentLoopCoreEventDispatcher', () => {
       })
     ]);
   });
+
+  it('streams a complete plan only for successful plan operations', () => {
+    const workflowStreamResponse = vi.fn();
+    const eventStream = createAgentLoopCoreEventStream({
+      workflowStreamResponse,
+      getToolInfo: () => ({ name: 'Search' })
+    });
+    const dispatcher = createAgentLoopCoreEventDispatcher({ eventStream });
+    const plan = {
+      planId: 'plan_1',
+      name: 'Implementation plan',
+      description: null,
+      steps: [
+        {
+          id: 'step_1',
+          name: 'Implement event merge',
+          status: 'in_progress' as const
+        }
+      ]
+    };
+
+    dispatcher.emitEvent({
+      type: 'plan_operation',
+      operation: 'set_plan',
+      success: true,
+      message: 'plan created',
+      plan
+    });
+    dispatcher.emitEvent({
+      type: 'plan_operation',
+      operation: 'update_steps',
+      success: false,
+      message: 'plan update failed'
+    });
+
+    expect(workflowStreamResponse).toHaveBeenCalledTimes(1);
+    expect(workflowStreamResponse).toHaveBeenCalledWith({
+      id: 'agent-plan-stream',
+      event: SseResponseEventEnum.plan,
+      data: { plan }
+    });
+  });
 });

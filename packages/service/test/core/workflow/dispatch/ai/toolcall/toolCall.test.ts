@@ -749,7 +749,8 @@ describe('runToolCall compression node responses', () => {
       })
     );
 
-    expect(runtimeNodes[0]).toEqual(
+    const workflowCall = runWorkflowMock.mock.calls[0][0];
+    expect(workflowCall.runtimeNodes[0]).toEqual(
       expect.objectContaining({
         nodeId: 'dataset_node',
         isEntry: true,
@@ -765,16 +766,15 @@ describe('runToolCall compression node responses', () => {
         ])
       })
     );
-    expect(runtimeEdges[0]).toEqual({
+    expect(workflowCall.runtimeEdges[0]).toEqual({
       target: 'dataset_node',
       status: 'active'
     });
-    expect(runWorkflowMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        runtimeNodes,
-        isToolCall: true
-      })
-    );
+    expect(workflowCall).toEqual(expect.objectContaining({ isToolCall: true }));
+    expect(workflowCall.runtimeNodes).not.toBe(runtimeNodes);
+    expect(workflowCall.runtimeEdges).not.toBe(runtimeEdges);
+    expect(runtimeNodes[0]).not.toHaveProperty('isEntry');
+    expect(runtimeEdges[0]).toEqual({ target: 'dataset_node' });
     expect(result.toolDispatchFlowResponses[0].flowResponses[0]).toEqual(
       expect.objectContaining({
         moduleName: 'Dataset search',

@@ -1,5 +1,6 @@
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
+import { AgentPlanReadSchema } from '@fastgpt/global/core/ai/agent/type';
 import type { AgentLoopProviderName } from '../../../../../../ai/llm/agentLoop/interface';
 
 export type AgentLoopCoreMemoryKeys = {
@@ -49,6 +50,7 @@ export const getAgentLoopCorePiAgentMemoryProviderState = (providerState: unknow
 /**
  * 从上一条 AI history 中恢复 agent-loop providerState。
  * 只恢复 AI 轮次写入的 memories，避免把用户轮次误当成可继续执行的 loop 状态。
+ * 升级前的 fastAgent memory 直接保存 pendingMainContext，这里只读包装并迁移旧计划结构。
  */
 export const readAgentLoopCoreProviderStateMemory = ({
   histories,
@@ -63,9 +65,29 @@ export const readAgentLoopCoreProviderStateMemory = ({
     return {};
   }
 
-  return (
-    (lastHistory.memories?.[keys.memoryKey] as AgentLoopCoreProviderStateMemory | undefined) || {}
-  );
+  const storedMemory = lastHistory.memories?.[keys.memoryKey];
+  if (!isObjectRecord(storedMemory)) return {};
+
+  if (storedMemory.providerState !== undefined) {
+    return {
+      providerState: storedMemory.providerState
+    };
+  }
+
+  const pendingMainContext = readObject(storedMemory.pendingMainContext);
+  if (!Object.keys(pendingMainContext).length) return {};
+
+  const activePlan = AgentPlanReadSchema.safeParse(pendingMainContext.activePlan);
+  return {
+    providerState: {
+      pendingMainContext: {
+        ...pendingMainContext,
+        ...(pendingMainContext.activePlan === undefined
+          ? {}
+          : { activePlan: activePlan.success ? activePlan.data : undefined })
+      }
+    }
+  };
 };
 
 /**

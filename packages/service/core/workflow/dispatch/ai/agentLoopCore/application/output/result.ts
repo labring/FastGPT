@@ -1,5 +1,4 @@
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { InteractiveNodeResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { AgentUsageModuleName } from '../../../../../../ai/llm/agentLoop/interface';
@@ -72,12 +71,8 @@ export const summarizeAgentLoopCoreResult = <TChildrenResponse = unknown>(
         }
       }
     : undefined;
-  const errorText =
-    result.status === 'error'
-      ? getErrText(result.error)
-      : result.status === 'aborted'
-        ? i18nT('chat:completion_finish_error')
-        : undefined;
+  // abort 既用于用户主动停止，也可能是 provider 结束暂停轮次的控制信号，不应展示为错误。
+  const errorText = result.status === 'error' ? getErrText(result.error) : undefined;
 
   return {
     status: result.status,

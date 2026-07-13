@@ -733,7 +733,13 @@ describe('createWorkflowAgentLoopRuntime', () => {
       message: 'plan updated',
       id: 'call_update_plan',
       params: '{}',
-      seconds: 0.05
+      seconds: 0.05,
+      plan: {
+        planId: 'plan_1',
+        name: 'Implementation plan',
+        description: null,
+        steps: [{ id: 'step_1', name: 'Implement plan events', status: 'done' }]
+      }
     });
 
     expect(artifacts.nodeResponses).toEqual([
@@ -745,10 +751,10 @@ describe('createWorkflowAgentLoopRuntime', () => {
       }),
       expect.objectContaining({
         id: 'agent_node-plan-call_update_plan',
-        moduleName: 'chat:plan_agent',
+        moduleName: 'chat:plan_update',
         runningTime: 0.05,
         agentPlanStatus: 'update_plan',
-        textOutput: 'plan updated'
+        agentPlanResult: 'plan updated'
       })
     ]);
   });

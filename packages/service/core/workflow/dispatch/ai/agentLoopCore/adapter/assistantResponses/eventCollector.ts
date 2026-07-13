@@ -52,7 +52,7 @@ const isPlainAssistantOutput = (value?: AIChatItemValueItemType) =>
  * 创建 agent-loop 事件到 assistantResponses 的增量收集器。
  *
  * 这个 collector 只负责可持久化聊天上下文，不处理 SSE 和 nodeResponse。
- * plan_update / plan_status 是 UI 状态事件，不会写入 assistantResponses。
+ * 成功的 plan_operation 保存最新完整计划供 UI 刷新恢复；plan_status 仍是纯流式状态。
  */
 export const createAgentLoopCoreAssistantEventCollector = ({
   assistantResponses = [],
@@ -235,7 +235,9 @@ export const createAgentLoopCoreAssistantEventCollector = ({
   const appendMetaAssistantResponse = (
     event: Extract<
       AgentLoopEvent,
-      { type: 'after_message_compress' | 'plan_operation' | 'ask_start' | 'stop_gate' }
+      {
+        type: 'after_message_compress' | 'plan_operation' | 'ask_start' | 'stop_gate';
+      }
     >
   ) => {
     currentAssistantTextIndex = undefined;
@@ -397,7 +399,6 @@ export const createAgentLoopCoreAssistantEventCollector = ({
         appendMetaAssistantResponse(event);
         return;
       case 'plan_status':
-      case 'plan_update':
         return;
     }
   };

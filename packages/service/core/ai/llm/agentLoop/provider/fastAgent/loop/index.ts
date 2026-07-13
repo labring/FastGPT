@@ -437,21 +437,26 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
           activePlan = updateResult.plan;
           runtimeToolCalledSinceLastPlanUpdate = false;
           emitAgentLoopEvent(runtime, {
-            type: 'plan_update',
-            plan: activePlan
+            type: 'plan_operation',
+            operation: getPlanOperationFromArgs(args),
+            success: true,
+            message: updateResult.message,
+            id: call.id,
+            params: call.function.arguments,
+            seconds: 0,
+            plan: updateResult.plan
+          });
+        } else {
+          emitAgentLoopEvent(runtime, {
+            type: 'plan_operation',
+            operation: getPlanOperationFromArgs(args),
+            success: false,
+            message: updateResult.message,
+            id: call.id,
+            params: call.function.arguments,
+            seconds: 0
           });
         }
-
-        emitAgentLoopEvent(runtime, {
-          type: 'plan_operation',
-          operation: getPlanOperationFromArgs(args),
-          success: updateResult.success,
-          message: updateResult.message,
-          id: call.id,
-          params: call.function.arguments,
-          seconds: 0,
-          plan: updateResult.success ? updateResult.plan : undefined
-        });
 
         return createToolResponse(updateResult.message, { skipResponseCompress: true });
       }

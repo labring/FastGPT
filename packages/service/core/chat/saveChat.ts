@@ -803,11 +803,11 @@ export const updateInteractiveChat = async ({
   });
 
   /**
-   * child interactive 恢复时，上一轮已经保存了 assistant tool_call 卡片，本轮只会产生
-   * 对应 tool response。这里按 toolCallId 回填旧卡片，避免历史恢复时继续读到中断前的
-   * placeholder response。
+   * child interactive 恢复时合并需要原位更新的展示数据：
+   * 1. 按 toolCallId 回填上一轮的 tool response。
+   * 2. 按 planId 覆盖完整计划快照，保证刷新后只展示最新计划。
    */
-  const mergeExistingToolResponses = (
+  const mergeExistingAssistantResponses = (
     value: AIChatItemValueItemType[]
   ): AIChatItemValueItemType[] => {
     const updateExistingTool = (incomingTool: ToolModuleResponseItemType) => {
@@ -837,6 +837,20 @@ export const updateInteractiveChat = async ({
       return false;
     };
 
+    const updateExistingPlan = (incomingPlan: NonNullable<AIChatItemValueItemType['plan']>) => {
+      const existingPlanIndex = chatItem.value.findIndex(
+        (item) => item.plan?.planId === incomingPlan.planId
+      );
+      if (existingPlanIndex < 0) return false;
+
+      chatItem.value[existingPlanIndex] = {
+        ...chatItem.value[existingPlanIndex],
+        plan: incomingPlan,
+        planStatus: undefined
+      };
+      return true;
+    };
+
     const hasOnlyTools = (item: AIChatItemValueItemType) => {
       return Object.entries(item).every(([key, itemValue]) => {
         if (key === 'tools') return true;
@@ -845,6 +859,16 @@ export const updateInteractiveChat = async ({
     };
 
     return value.flatMap((item) => {
+      if (item.plan && updateExistingPlan(item.plan)) {
+        const { plan: _plan, ...restItem } = item;
+        const hasRemainingValue = Object.values(restItem).some(
+          (itemValue) => itemValue !== undefined && itemValue !== null
+        );
+
+        if (!hasRemainingValue) return [];
+        item = restItem;
+      }
+
       if (!item.tools?.length) return [item];
 
       const unmergedTools = item.tools.filter((tool) => !updateExistingTool(tool));
@@ -925,7 +949,7 @@ export const updateInteractiveChat = async ({
         : aiContent.customFeedbacks;
     }
     if (aiContent.value) {
-      const mergedAiContentValue = mergeExistingToolResponses(aiContent.value);
+      const mergedAiContentValue = mergeExistingAssistantResponses(aiContent.value);
       chatItem.value = chatItem.value
         ? [...chatItem.value, ...mergedAiContentValue]
         : mergedAiContentValue;

@@ -31,6 +31,7 @@ import type { WorkflowNodeResponseWriter } from '../../../../chat/nodeResponseSt
 import type { RuntimeNodeResponseSummary } from '../../type';
 import { createAgentNodeResponseCollector } from './nodeResponseCollector';
 import { createAgentSandboxPermissionDeniedError } from '../../../../ai/sandbox/interface/runtime';
+import { replaceAgentPromptToolReferences } from './adapter/prompt';
 import {
   buildAgentLoopCoreInput,
   buildAgentLoopCoreAskMemories,
@@ -229,25 +230,30 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       messages: requestMessages,
       removeSystemMessages: true
     });
-    // system message 由 getMainAgentSystemPrompt 统一注入；历史里的 system 只作为外部噪音过滤掉。
-    // 用户配置 prompt 和 sandbox prompt 作为 Main Agent 的 system 背景输入。
-    const formatedSystemPrompt = buildAgentLoopCoreSystemPrompt({
-      userSystemPrompt: systemPrompt,
-      runtimePrompts: sandboxClient ? [SANDBOX_SYSTEM_PROMPT] : []
-    });
-
     // 汇总用户选择工具和知识库 runtime tool。
     // plan/ask/sandbox/readFile 由 agentLoop provider 根据 systemTools 注入，不混入业务 completionTools。
-    const { completionTools: agentCompletionTools, subAppsMap: agentSubAppsMap } = await getSubapps(
-      {
-        tools: selectedTools,
-        tmbId: runningAppInfo.tmbId,
-        lang
-      }
-    );
+    const {
+      completionTools: agentCompletionTools,
+      subAppsMap: agentSubAppsMap,
+      promptToolReferenceInfoMap
+    } = await getSubapps({
+      tools: selectedTools,
+      tmbId: runningAppInfo.tmbId,
+      lang
+    });
     const { getSubAppInfo, getSubApp } = createAgentSubAppLookup({
       subAppsMap: agentSubAppsMap,
       lang
+    });
+    // system message 由 getMainAgentSystemPrompt 统一注入；历史里的 system 只作为外部噪音过滤掉。
+    // PromptEditor 保存的是工具 ID，进入主 Agent 前转换为具体名称，避免模型看到不可调用的 ID。
+    const formatedSystemPrompt = buildAgentLoopCoreSystemPrompt({
+      userSystemPrompt: replaceAgentPromptToolReferences({
+        text: systemPrompt,
+        resolveName: (id) =>
+          promptToolReferenceInfoMap.get(id) || getSubAppInfo(id).name || undefined
+      }),
+      runtimePrompts: sandboxClient ? [SANDBOX_SYSTEM_PROMPT] : []
     });
 
     // 2. 创建 workflow adapter。

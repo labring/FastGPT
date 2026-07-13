@@ -11,7 +11,7 @@ export const AgentNodeResponseDisplay = {
     moduleLogo: 'core/app/type/agentFill'
   },
   plan: {
-    moduleName: i18nT('chat:plan_agent'),
+    moduleName: i18nT('chat:plan_update'),
     moduleLogo: 'core/app/agent/child/plan'
   },
   ask: {

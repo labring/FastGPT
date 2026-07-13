@@ -161,18 +161,27 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
         const result = applyPlanUpdate({ plan: getActivePlan(), update: toolArgs });
         if (result.success) {
           setActivePlan(result.plan);
-          runtime.emitEvent?.({ type: 'plan_update', plan: result.plan });
+          runtime.emitEvent?.({
+            type: 'plan_operation',
+            operation: getPlanOperationFromArgs(toolArgs),
+            success: true,
+            message: result.message,
+            id: callId,
+            params,
+            seconds: 0,
+            plan: result.plan
+          });
+        } else {
+          runtime.emitEvent?.({
+            type: 'plan_operation',
+            operation: getPlanOperationFromArgs(toolArgs),
+            success: false,
+            message: result.message,
+            id: callId,
+            params,
+            seconds: 0
+          });
         }
-        runtime.emitEvent?.({
-          type: 'plan_operation',
-          operation: getPlanOperationFromArgs(toolArgs),
-          success: result.success,
-          message: result.message,
-          id: callId,
-          params,
-          seconds: 0,
-          plan: result.success ? result.plan : undefined
-        });
         onToolResult({
           call: createToolCall({ id: callId, name: planTool.function.name, args: toolArgs }),
           response: result.message

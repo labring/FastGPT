@@ -176,6 +176,7 @@ export const DispatchNodeResponseSchema = z
     agentPlanStatus: AgentPlanNodeStatusSchema.optional().meta({
       description: 'Agent 计划节点状态'
     }),
+    agentPlanResult: z.string().optional().meta({ description: 'Agent 计划操作结果' }),
 
     error: z
       .union([z.record(z.string(), z.any()), z.string()])

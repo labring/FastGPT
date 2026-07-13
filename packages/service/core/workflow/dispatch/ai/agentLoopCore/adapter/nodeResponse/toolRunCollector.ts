@@ -47,10 +47,7 @@ type ToolResponseCompressRecord = {
 export const summarizeAgentLoopCoreToolRunFlowResponses = (
   responses: AgentLoopCoreToolRunFlowResponse[]
 ): AgentLoopCoreToolRunFlowResponsesSummary => ({
-  runTimes: responses.reduce(
-    (sum, item) => sum + (item.runTimes || item.runtimeNodeResponseSummary?.runningTime || 0),
-    0
-  ),
+  runTimes: responses.reduce((sum, item) => sum + (item.runTimes ?? 0), 0),
   toolDetail: responses.flatMap((item) => item.flowResponses),
   toolTotalPoints: responses
     .flatMap((item) => item.flowUsages)
@@ -145,7 +142,7 @@ const getFallbackToolFlowResponse = ({
     }
   ],
   flowUsages: [],
-  runTimes: seconds
+  runTimes: 0
 });
 
 /**
@@ -227,14 +224,14 @@ export const createAgentLoopCoreToolRunResponseCollector = ({
 
     const pendingFlowResponse = pendingToolFlowResponseMap.get(call.id);
     const baseFlowResponse =
+      pendingFlowResponse ||
       (nodeResponse
         ? {
             flowResponses: [nodeResponse],
             flowUsages: usages || [],
-            runTimes: seconds
+            runTimes: 0
           }
         : undefined) ||
-      pendingFlowResponse ||
       (() => {
         const toolNode = getToolInfo(call.function.name);
 

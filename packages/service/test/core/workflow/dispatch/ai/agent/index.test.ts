@@ -18,6 +18,7 @@ const {
   sandboxWriteFilesMock,
   sandboxClientExecMock,
   axiosGetMock,
+  getAgentRuntimeToolsMock,
   getAgentSkillInfosMock,
   injectAgentSkillFilesToSandboxMock,
   checkTeamSandboxPermissionMock
@@ -37,6 +38,7 @@ const {
   sandboxWriteFilesMock: vi.fn(),
   sandboxClientExecMock: vi.fn(),
   axiosGetMock: vi.fn(),
+  getAgentRuntimeToolsMock: vi.fn(),
   getAgentSkillInfosMock: vi.fn(),
   injectAgentSkillFilesToSandboxMock: vi.fn(),
   checkTeamSandboxPermissionMock: vi.fn()
@@ -56,7 +58,7 @@ vi.mock('@fastgpt/service/core/ai/llm/agentLoop/interface', async (importOrigina
 });
 
 vi.mock('@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool/utils', () => ({
-  getAgentRuntimeTools: vi.fn(async () => [])
+  getAgentRuntimeTools: getAgentRuntimeToolsMock
 }));
 
 vi.mock('@fastgpt/service/core/ai/skill/runtime', async (importOriginal) => {
@@ -271,6 +273,7 @@ describe('dispatchRunAgent user context', () => {
     axiosGetMock.mockResolvedValue({
       data: new ArrayBuffer(1)
     });
+    getAgentRuntimeToolsMock.mockResolvedValue([]);
     getSandboxClientMock.mockResolvedValue({
       provider: {
         writeFiles: sandboxWriteFilesMock,
@@ -340,6 +343,52 @@ describe('dispatchRunAgent user context', () => {
     expect(currentText).toContain('## 知识库');
     expect(currentText).toContain('## 背景信息');
     expect(currentText).toContain('当前问题');
+  });
+
+  it('resolves PromptEditor tool references before building the agent system prompt', async () => {
+    getAgentRuntimeToolsMock.mockResolvedValueOnce([
+      {
+        type: 'tool',
+        id: 'runtime_search',
+        name: 'Search documentation',
+        avatar: 'search.svg',
+        params: {},
+        promptReference: {
+          id: 'mcp-app_1/search',
+          name: 'Search documentation'
+        },
+        requestSchema: {
+          type: 'function',
+          function: {
+            name: 'runtime_search',
+            description: 'Search documentation',
+            parameters: {
+              type: 'object'
+            }
+          }
+        }
+      }
+    ]);
+    const props = createProps();
+    props.params.systemPrompt = '优先使用 {{@mcp-app_1/search@}}';
+    props.params.agent_selectedTools = [{ id: 'mcp-app_1/search', config: {} }];
+
+    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    let resultPromise: Promise<any>;
+    runWithContext(
+      {
+        queryUrlTypeMap: {},
+        mcpClientMemory: {}
+      },
+      () => {
+        resultPromise = dispatchRunAgent(props);
+      }
+    );
+    await resultPromise!;
+
+    const systemPrompt = runAgentLoopMock.mock.calls[0][0].input.systemPrompt;
+    expect(systemPrompt).toContain('{{Search documentation}}');
+    expect(systemPrompt).not.toContain('{{@mcp-app_1/search@}}');
   });
 
   it('injects sandbox input files before starting the agent loop', async () => {
@@ -625,6 +674,85 @@ describe('dispatchRunAgent user context', () => {
         ]
       })
     );
+  });
+
+  it('restores legacy fastAgent ask memory and resumes with the user answer', async () => {
+    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    const props = createProps();
+    props.lastInteractive = {
+      type: 'agentPlanAskQuery',
+      askId: 'legacy-plan',
+      params: {
+        content: 'Need confirmation'
+      }
+    };
+    props.histories[props.histories.length - 1].memories = {
+      'agentLoopMemory-agent_node': {
+        pendingMainContext: {
+          askToolCallId: 'call_ask',
+          messages: [
+            {
+              role: 'assistant',
+              tool_calls: [
+                {
+                  id: 'call_ask',
+                  type: 'function',
+                  function: {
+                    name: 'ask_agent',
+                    arguments: '{}'
+                  }
+                }
+              ]
+            }
+          ],
+          activePlan: {
+            planId: 'legacy-plan',
+            task: 'Legacy plan',
+            description: 'Legacy description',
+            steps: [{ id: 'step_1', title: 'Legacy step', status: 'in_progress' }]
+          }
+        }
+      }
+    };
+    runAgentLoopMock.mockResolvedValueOnce({
+      status: 'done',
+      completeMessages: [],
+      assistantMessages: [{ role: 'assistant', content: 'continued answer' }],
+      requestIds: []
+    });
+
+    let resultPromise: Promise<any>;
+    runWithContext(
+      {
+        queryUrlTypeMap: {},
+        mcpClientMemory: {}
+      },
+      () => {
+        resultPromise = dispatchRunAgent(props);
+      }
+    );
+    const result = await resultPromise!;
+
+    expect(runAgentLoopMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        provider: 'fastAgent',
+        input: expect.objectContaining({
+          userAnswer: '前端原始问题',
+          providerState: {
+            pendingMainContext: expect.objectContaining({
+              askToolCallId: 'call_ask',
+              activePlan: {
+                planId: 'legacy-plan',
+                name: 'Legacy plan',
+                description: 'Legacy description',
+                steps: [{ id: 'step_1', name: 'Legacy step', status: 'in_progress' }]
+              }
+            })
+          }
+        })
+      })
+    );
+    expect(result.data.answerText).toBe('continued answer');
   });
 
   it('restores pi providerState from unified memory and resumes ask with user answer', async () => {

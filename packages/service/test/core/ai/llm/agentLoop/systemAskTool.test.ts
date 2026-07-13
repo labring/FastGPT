@@ -60,6 +60,30 @@ describe('agent loop system ask tool', () => {
     expect(result.error).toContain('options');
   });
 
+  it('follows the upstream three-to-five option contract', () => {
+    const result = parseAgentAskToolCall({
+      id: 'call_ask',
+      type: 'function',
+      function: {
+        name: 'ask_agent',
+        arguments: JSON.stringify({
+          reason: 'Need a choice',
+          blockerType: 'ambiguous_goal',
+          question: 'Which output should I create?',
+          options: ['Document', 'Spreadsheet']
+        })
+      }
+    });
+
+    expect(result.success).toBe(false);
+
+    const parameters = createAskAgentTool().function.parameters as any;
+    expect(parameters.properties.options).toMatchObject({
+      minItems: 3,
+      maxItems: 5
+    });
+  });
+
   it('creates internal tool schemas without workflow dependencies', () => {
     expect(createAskAgentTool().function.name).toBe('ask_agent');
     expect(createUpdatePlanTool().function.name).toBe('update_plan');

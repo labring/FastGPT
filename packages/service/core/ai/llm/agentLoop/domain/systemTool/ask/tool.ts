@@ -5,7 +5,7 @@ export const AgentAskPayloadSchema = z.object({
   reason: z.string(),
   blockerType: z.enum(['missing_required_input', 'tool_unavailable', 'ambiguous_goal']),
   question: z.string(),
-  options: z.array(z.string().trim().min(1)).min(2).max(5)
+  options: z.array(z.string().trim().min(1)).min(3).max(5)
 });
 export type AgentAskPayload = z.infer<typeof AgentAskPayloadSchema>;
 
@@ -36,10 +36,10 @@ export const createAskAgentTool = (name = 'ask_agent'): ChatCompletionTool => ({
         },
         options: {
           type: 'array',
-          minItems: 2,
+          minItems: 3,
           maxItems: 5,
           description:
-            'Concise answer choices the user can select directly. The client always supports free-form input.',
+            'Three to five concise answer choices the user can select directly. Each item must be a complete answer.',
           items: {
             type: 'string'
           }

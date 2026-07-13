@@ -14,6 +14,26 @@ export type AgentLoopToolResponseCompress = {
   seconds: number;
 };
 
+type AgentLoopPlanOperationEvent = {
+  type: 'plan_operation';
+  operation: 'set_plan' | 'add_steps' | 'update_steps';
+  message: string;
+  id?: string;
+  params?: string;
+  seconds?: number;
+} & (
+  | {
+      success: true;
+      plan: AgentPlanType;
+      error?: never;
+    }
+  | {
+      success: false;
+      plan?: never;
+      error?: unknown;
+    }
+);
+
 export type AgentLoopEvent =
   | {
       type: 'llm_request_start';
@@ -79,21 +99,7 @@ export type AgentLoopEvent =
       type: 'plan_status';
       status: 'generating' | 'updating';
     }
-  | {
-      type: 'plan_update';
-      plan: AgentPlanType;
-    }
-  | {
-      type: 'plan_operation';
-      operation: 'set_plan' | 'add_steps' | 'update_steps';
-      success: boolean;
-      message: string;
-      id?: string;
-      params?: string;
-      seconds?: number;
-      plan?: AgentPlanType;
-      error?: unknown;
-    }
+  | AgentLoopPlanOperationEvent
   | {
       type: 'ask_start';
       ask: AgentAskPayload;

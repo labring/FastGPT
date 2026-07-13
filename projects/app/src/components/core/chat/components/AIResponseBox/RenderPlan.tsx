@@ -55,11 +55,6 @@ const RenderPlan = React.memo(function RenderPlan({ plan }: { plan: AgentPlanTyp
                       {step.description}
                     </Box>
                   )}
-                  {step.note && (
-                    <Box fontSize="xs" mt={1} color="myGray.500">
-                      {step.note}
-                    </Box>
-                  )}
                 </Box>
               </Flex>
             );

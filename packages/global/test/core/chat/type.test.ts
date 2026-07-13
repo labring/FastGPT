@@ -307,6 +307,73 @@ describe('AIChatItemValueSchema', () => {
     expect(ContextCheckpointValueSchema.safeParse({ content: 'bad' }).success).toBe(false);
   });
 
+  it('should migrate legacy plan names and strip legacy fields', () => {
+    const result = AIChatItemValueSchema.parse({
+      plan: {
+        planId: 'legacy-plan',
+        task: 'Legacy plan',
+        description: 'Legacy description',
+        background: 'Legacy background',
+        steps: [
+          {
+            id: 'legacy-step',
+            title: 'Legacy step',
+            description: 'Legacy step description',
+            status: 'done',
+            acceptanceCriteria: ['Legacy criterion'],
+            outputSummary: 'Legacy output'
+          }
+        ]
+      }
+    });
+
+    expect(result.plan).toEqual({
+      planId: 'legacy-plan',
+      name: 'Legacy plan',
+      description: 'Legacy description',
+      steps: [
+        {
+          id: 'legacy-step',
+          name: 'Legacy step',
+          description: 'Legacy step description',
+          status: 'done'
+        }
+      ]
+    });
+  });
+
+  it('should prefer current plan names when legacy fields coexist', () => {
+    const result = AIChatItemValueSchema.parse({
+      plan: {
+        planId: 'current-plan',
+        name: 'Current plan',
+        task: 'Legacy plan',
+        description: null,
+        steps: [
+          {
+            id: 'current-step',
+            name: 'Current step',
+            title: 'Legacy step',
+            status: 'pending'
+          }
+        ]
+      }
+    });
+
+    expect(result.plan).toEqual({
+      planId: 'current-plan',
+      name: 'Current plan',
+      description: null,
+      steps: [
+        {
+          id: 'current-step',
+          name: 'Current step',
+          status: 'pending'
+        }
+      ]
+    });
+  });
+
   it('should strip legacy stepId from AI chat value', () => {
     const result = AIChatItemValueSchema.safeParse({
       stepId: 'step-1',

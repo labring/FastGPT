@@ -85,7 +85,7 @@ plan 和 ask 必须使用独立事件，不能出现在普通工具 SSE、普通
 3. 普通工具保存 call、参数和最终 response。
 4. `agentPlanUpdate` 只保存恢复 plan tool call 所需内容。
 5. `agentAsk` 只保存恢复 ask tool call 所需内容及 `askId`。
-6. `plan_status`、`plan_update` 只服务 UI/SSE，不进入 `assistantResponses`。
+6. `plan_status` 只服务 UI/SSE，不进入 `assistantResponses`；成功的 `plan_operation` 携带后端计算完成的完整计划，并按 `planId` 覆盖保存到 `assistantResponses`，供刷新后恢复展示。
 7. 子 workflow 产生的 assistant messages 通过 `tool_run_end.assistantMessages` 进入同一 collector。
 8. 最终 result 只能用于补齐事件未覆盖的数据，不能成为第二套完整写入源。
 9. `assistantResponses` 不保存完整 nodeResponse；运行详情独立存储。
@@ -107,7 +107,7 @@ Workflow adapter 根据以下终态事件追加运行详情：
 - answer/reasoning 增量按原有流式事件推送。
 - 普通工具使用 `tool_call`、`tool_params` 和 `tool_run_end` 推送。
 - sandbox/read file/dataset search 与业务工具表现一致。
-- plan 使用 `plan_status`、`plan_update` 推送。
+- plan 内部只使用 `plan_status`、`plan_operation`；成功的 `plan_operation` 由 adapter 转换为完整 plan SSE。
 - ask 使用独立交互结构，不生成普通工具卡片。
 - nodeResponse 收集与 SSE 推送相互独立，不能通过重复发事件补另一侧数据。
 
@@ -222,17 +222,29 @@ plan 只允许三个操作：
 - 不统一 Workflow Agent 与 ToolCall 的工具发现逻辑。
 - 不要求 fastAgent 与 piAgent 使用相同内部 memory 格式。
 - 不在底层 agent-loop 中引入 workflow/chat 类型。
-- 不删除已有历史数据兼容读取逻辑。
+- 本版本不做历史数据物理迁移；保留一次版本窗口的只读兼容，下一版本按“兼容窗口结束条件”移除。
 - 不要求内存长期保存子 workflow 的全部 nodeResponses；完整详情可由 writer 直接落库。
 - 不改变现有前端聊天数据结构之外的业务协议。
 
 ## 7. 兼容和迁移要求
 
 - 删除旧 adapter 和旧 re-export 后，所有 import 必须直接指向新模块。
+- 历史 ask 的 `agentAsk.planId`、`agentPlanAskQuery.planId` 和 Human value `planId`
+  必须在聊天读取边界统一映射为 `askId`，响应和新写入不得继续输出 `planId`。
+- 旧 Workflow Agent memory `{ pendingMainContext }` 必须只读兼容为
+  `{ providerState: { pendingMainContext } }`，使升级前暂停的 ask 可以提交答案并继续原消息链。
 - 旧 child interactive 的 `memoryRequestMessages` 允许只读兼容，新写入不得继续产生。
 - piAgent 旧 raw messages memory 可保留兼容读取，新增统一状态写入走 providerState。
 - 数据库已有 `agentPlanUpdate`、`agentAsk` 和 context checkpoint 必须仍可恢复。
 - 迁移期不得同时运行旧、新 assistantResponses collector。
+
+本次历史兼容是临时迁移措施，不是新的持久化协议：
+
+- 当前版本继续兼容读取旧 `planId` ask、旧 `{ pendingMainContext }` memory、旧 plan 字段和旧
+  `memoryRequestMessages`。
+- 所有新写入只使用 `askId`、统一 `providerState` 和当前 plan 字段，不得重新产生旧字段。
+- 下一版本在确认兼容窗口结束后移除上述读取分支及对应测试；若仍有未迁移数据，应先完成离线迁移，
+  不通过继续延长运行时兼容来掩盖数据问题。
 
 ## 8. 验收标准
 
@@ -250,9 +262,11 @@ plan 只允许三个操作：
 | AC-10 | child interactive 恢复不需要新 `memoryRequestMessages` | fast/pi provider 恢复测试 |
 | AC-11 | 最新 checkpoint 正确截断上下文 | chat 转换与 core 测试 |
 | AC-12 | usage 只通过 `usagePush` 计费一次 | 精确调用次数测试 |
-| AC-13 | 所有 result 分支都含必填字段和合法 finishReason | provider contract 测试 |
-| AC-14 | ToolCall 关闭 plan/ask，其他能力与 Workflow Agent 一致 | 两入口对照测试 |
-| AC-15 | 无旧 adapter、旧 re-export 和旧 import 残留 | `rg` + TypeScript 检查 |
+| AC-13 | 完整 plan 快照可刷新恢复，历史 task/title 字段读取为新结构，且不进入模型消息 | assistant collector、历史读取、交互保存与 chats2GPTMessages 测试 |
+| AC-14 | 所有 result 分支都含必填字段和合法 finishReason | provider contract 测试 |
+| AC-15 | ToolCall 关闭 plan/ask，其他能力与 Workflow Agent 一致 | 两入口对照测试 |
+| AC-16 | 无旧 adapter、旧 re-export 和旧 import 残留 | `rg` + TypeScript 检查 |
+| AC-17 | 历史 planId ask 卡片按 askId 返回，旧 pendingMainContext 可提交答案并续跑 | 历史读取与 providerState memory 测试 |
 
 ## 9. 完成定义
 

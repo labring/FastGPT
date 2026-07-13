@@ -2,7 +2,7 @@ import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/co
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { createToolCallToolProvider } from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/toolProvider';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { runWorkflowMock } = vi.hoisted(() => ({
   runWorkflowMock: vi.fn()
@@ -71,6 +71,11 @@ const createProvider = (overrides: Record<string, any> = {}) =>
   });
 
 describe('createToolCallToolProvider', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    runWorkflowMock.mockReset();
+  });
+
   it('exposes ToolCall runtime tools and tool info through the core provider protocol', async () => {
     const provider = await createProvider({
       toolNodes: [
@@ -157,25 +162,49 @@ describe('createToolCallToolProvider', () => {
     );
   });
 
-  it('creates dataset search system executor from dataset search tool node', async () => {
-    runWorkflowMock.mockResolvedValue({
-      toolResponse: 'dataset ok',
-      assistantResponses: [],
-      flowUsages: [{ moduleName: 'Dataset search', totalPoints: 2 }],
-      flatNodeResponses: [
-        {
-          id: 'dataset_node',
-          nodeId: 'dataset_node',
-          moduleType: FlowNodeTypeEnum.datasetSearchNode,
-          moduleName: 'Dataset search'
-        }
-      ],
-      runtimeNodeResponseSummary: { hasToolStop: false, runningTime: 0 },
-      workflowInteractiveResponse: undefined
+  it('runs every connected dataset search node and merges their citations', async () => {
+    runWorkflowMock.mockImplementation(async ({ runtimeNodes }) => {
+      const entryNode = runtimeNodes.find((node: any) => node.isEntry);
+      const index = entryNode.nodeId.endsWith('_1') ? 1 : 2;
+
+      return {
+        toolResponse: {
+          prompt: 'Use the citations',
+          cites: [
+            {
+              id: `quote_${index}`,
+              sourceName: `Dataset ${index}`,
+              content: `Answer ${index}`
+            }
+          ]
+        },
+        assistantResponses: [],
+        flowUsages: [{ moduleName: `Dataset search ${index}`, totalPoints: 1 }],
+        flatNodeResponses: [
+          {
+            id: entryNode.nodeId,
+            nodeId: entryNode.nodeId,
+            moduleType: FlowNodeTypeEnum.datasetSearchNode,
+            moduleName: `Dataset search ${index}`
+          }
+        ],
+        runTimes: 1,
+        runtimeNodeResponseSummary: { hasToolStop: false, runningTime: 0 },
+        workflowInteractiveResponse: undefined
+      };
     });
     const runtimeNodes = [
       {
-        nodeId: 'dataset_node',
+        nodeId: 'dataset_node_1',
+        inputs: [
+          {
+            key: NodeInputKeyEnum.datasetSearchInput,
+            value: []
+          }
+        ]
+      },
+      {
+        nodeId: 'dataset_node_2',
         inputs: [
           {
             key: NodeInputKeyEnum.datasetSearchInput,
@@ -186,18 +215,27 @@ describe('createToolCallToolProvider', () => {
     ] as any;
     const runtimeEdges = [
       {
-        target: 'dataset_node'
+        target: 'dataset_node_1'
+      },
+      {
+        target: 'dataset_node_2'
       }
     ] as any;
+    const cacheToolFlowResponse = vi.fn();
     const provider = await createProvider({
       toolNodes: [
         createToolNode({
-          nodeId: 'dataset_node',
+          nodeId: 'dataset_node_1',
+          flowNodeType: FlowNodeTypeEnum.datasetSearchNode
+        }),
+        createToolNode({
+          nodeId: 'dataset_node_2',
           flowNodeType: FlowNodeTypeEnum.datasetSearchNode
         })
       ],
       runtimeNodes,
-      runtimeEdges
+      runtimeEdges,
+      cacheToolFlowResponse
     });
 
     expect(provider.datasetSearchExecutor).toBeDefined();
@@ -216,41 +254,71 @@ describe('createToolCallToolProvider', () => {
       } as any
     });
 
-    expect(runtimeNodes[0]).toEqual(
-      expect.objectContaining({
-        isEntry: true,
-        inputs: [
-          {
-            key: NodeInputKeyEnum.datasetSearchInput,
-            value: ['FastGPT']
-          }
-        ]
-      })
-    );
-    expect(runtimeEdges[0]).toEqual({
-      target: 'dataset_node',
-      status: 'active'
-    });
-    expect(runWorkflowMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        runtimeNodes,
-        runtimeEdges,
-        isToolCall: true
-      })
-    );
+    expect(runWorkflowMock).toHaveBeenCalledTimes(2);
+    expect(
+      runWorkflowMock.mock.calls.map(([call]) => ({
+        entryNode: call.runtimeNodes.find((node: any) => node.isEntry),
+        activeEdge: call.runtimeEdges.find((edge: any) => edge.status === 'active')
+      }))
+    ).toEqual([
+      {
+        entryNode: expect.objectContaining({
+          nodeId: 'dataset_node_1',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.datasetSearchInput,
+              value: ['FastGPT']
+            }
+          ]
+        }),
+        activeEdge: expect.objectContaining({ target: 'dataset_node_1' })
+      },
+      {
+        entryNode: expect.objectContaining({
+          nodeId: 'dataset_node_2',
+          inputs: [
+            {
+              key: NodeInputKeyEnum.datasetSearchInput,
+              value: ['FastGPT']
+            }
+          ]
+        }),
+        activeEdge: expect.objectContaining({ target: 'dataset_node_2' })
+      }
+    ]);
     expect(result).toEqual(
       expect.objectContaining({
-        response: 'dataset ok',
-        usages: [{ moduleName: 'Dataset search', totalPoints: 2 }],
+        response: expect.stringContaining('quote_1'),
+        usages: [
+          { moduleName: 'Dataset search 1', totalPoints: 1 },
+          { moduleName: 'Dataset search 2', totalPoints: 1 }
+        ],
         metadata: expect.objectContaining({
           id: 'call_dataset',
           nodeId: 'call_dataset',
-          moduleName: 'Dataset search',
+          moduleName: 'Dataset search 1',
           moduleType: FlowNodeTypeEnum.datasetSearchNode,
+          childrenResponses: expect.arrayContaining([
+            expect.objectContaining({
+              nodeId: 'dataset_node_2',
+              moduleName: 'Dataset search 2'
+            })
+          ]),
           totalPoints: 2
         })
       })
     );
+    expect(result.response).toContain('quote_2');
+    expect(cacheToolFlowResponse).toHaveBeenCalledWith({
+      callId: 'call_dataset',
+      flowResponse: expect.objectContaining({
+        runTimes: 2,
+        flowResponses: expect.arrayContaining([
+          expect.objectContaining({ nodeId: 'dataset_node_1' }),
+          expect.objectContaining({ nodeId: 'dataset_node_2' })
+        ])
+      })
+    });
   });
 
   it('creates read file system executor from toolcall file context', async () => {

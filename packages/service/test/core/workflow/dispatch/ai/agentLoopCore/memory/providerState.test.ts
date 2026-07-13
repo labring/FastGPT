@@ -40,6 +40,82 @@ describe('agentLoopCore providerState memory', () => {
     expect(readAgentLoopCoreProviderStateMemory({ histories, nodeId: 'node_1' })).toEqual(memory);
   });
 
+  it('wraps legacy pendingMainContext as fastAgent providerState and migrates its plan', () => {
+    const histories = [
+      {
+        obj: ChatRoleEnum.AI,
+        value: [],
+        memories: {
+          'agentLoopMemory-node_1': {
+            pendingMainContext: {
+              askToolCallId: 'call_ask',
+              messages: [{ role: 'assistant', content: 'question' }],
+              activePlan: {
+                planId: 'legacy-plan',
+                task: 'Legacy plan',
+                description: 'Legacy description',
+                steps: [{ id: 'step_1', title: 'Legacy step', status: 'in_progress' }]
+              }
+            }
+          }
+        }
+      }
+    ] satisfies ChatItemMiniType[];
+
+    expect(readAgentLoopCoreProviderStateMemory({ histories, nodeId: 'node_1' })).toEqual({
+      providerState: {
+        pendingMainContext: {
+          askToolCallId: 'call_ask',
+          messages: [{ role: 'assistant', content: 'question' }],
+          activePlan: {
+            planId: 'legacy-plan',
+            name: 'Legacy plan',
+            description: 'Legacy description',
+            steps: [{ id: 'step_1', name: 'Legacy step', status: 'in_progress' }]
+          }
+        }
+      }
+    });
+  });
+
+  it('keeps a malformed legacy active plan from blocking ask resume', () => {
+    const histories = [
+      {
+        obj: ChatRoleEnum.AI,
+        value: [],
+        memories: {
+          'agentLoopMemory-node_1': {
+            pendingMainContext: {
+              askToolCallId: 'call_ask',
+              messages: [],
+              activePlan: { planId: 'broken', steps: [] }
+            }
+          }
+        }
+      }
+    ] satisfies ChatItemMiniType[];
+
+    const memory = readAgentLoopCoreProviderStateMemory({ histories, nodeId: 'node_1' });
+    expect(memory).toEqual({
+      providerState: {
+        pendingMainContext: {
+          askToolCallId: 'call_ask',
+          messages: [],
+          activePlan: undefined
+        }
+      }
+    });
+    expect(
+      prepareAgentLoopCoreProviderRunState({
+        provider: 'fastAgent',
+        restoredProviderState: memory.providerState,
+        histories,
+        nodeId: 'node_1',
+        hasLastInteractive: true
+      }).isAskResume
+    ).toBe(true);
+  });
+
   it('returns empty memory when the last history item is not AI', () => {
     const histories = [
       {

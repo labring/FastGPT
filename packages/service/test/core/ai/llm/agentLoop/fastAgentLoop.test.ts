@@ -455,13 +455,15 @@ describe('runFastAgentMainLoop', () => {
           status: 'generating'
         }),
         expect.objectContaining({
-          type: 'plan_update',
+          type: 'plan_operation',
+          success: true,
           plan: expect.objectContaining({
             name: 'Compare products'
           })
         }),
         expect.objectContaining({
-          type: 'plan_update',
+          type: 'plan_operation',
+          success: true,
           plan: expect.objectContaining({
             name: 'Compare products',
             steps: expect.arrayContaining([
@@ -586,13 +588,15 @@ describe('runFastAgentMainLoop', () => {
     expect(events).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          type: 'plan_update',
+          type: 'plan_operation',
+          success: true,
           plan: expect.objectContaining({
             name: '流式输出测试'
           })
         }),
         expect.objectContaining({
-          type: 'plan_update',
+          type: 'plan_operation',
+          success: true,
           plan: expect.objectContaining({
             name: '流式输出测试',
             steps: expect.arrayContaining([

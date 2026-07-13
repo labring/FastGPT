@@ -7,11 +7,13 @@ export const WholeResponseContent = ({
   activeModule,
   hideTabs,
   dataId,
+  contentHeight,
   onOpenRequestIdDetail
 }: {
   activeModule: ChatHistoryItemResType;
   hideTabs?: boolean;
   dataId?: string;
+  contentHeight?: number;
   onOpenRequestIdDetail?: (requestId: string) => void;
 }) => {
   const contentRef = useRef<HTMLDivElement>(null);
@@ -44,7 +46,7 @@ export const WholeResponseContent = ({
       <CommonInfoRows activeModule={activeModule} />
       <AiChatRows activeModule={activeModule} onOpenRequestIdDetail={onOpenRequestIdDetail} />
       <DatasetSearchRows activeModule={activeModule} dataId={dataId} />
-      <WorkflowResultRows activeModule={activeModule} />
+      <WorkflowResultRows activeModule={activeModule} contentHeight={contentHeight} />
     </Box>
   );
 };

@@ -102,12 +102,13 @@ export const createAgentLoopCoreEventDispatcher = ({
       case 'plan_status':
         eventStream.streamPlanStatus(event.status);
         return;
-      case 'plan_update':
-        eventStream.streamPlan(event.plan);
+      case 'plan_operation':
+        if (event.success) {
+          eventStream.streamPlan(event.plan);
+        }
         return;
       case 'llm_request_end':
       case 'stop_gate':
-      case 'plan_operation':
       case 'ask_start':
       case 'ask':
       case 'ask_resume':

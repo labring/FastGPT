@@ -22,4 +22,23 @@ describe('summarizeAgentLoopCoreToolRunFlowResponses', () => {
       toolTotalPoints: 3
     });
   });
+
+  it('keeps zero run times instead of falling back to elapsed seconds', () => {
+    expect(
+      summarizeAgentLoopCoreToolRunFlowResponses([
+        {
+          runTimes: 0,
+          runtimeNodeResponseSummary: {
+            runningTime: 12.5
+          },
+          flowResponses: [],
+          flowUsages: []
+        }
+      ])
+    ).toEqual({
+      runTimes: 0,
+      toolDetail: [],
+      toolTotalPoints: 0
+    });
+  });
 });
