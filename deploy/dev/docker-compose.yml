@@ -9,6 +9,7 @@
 #   - fastgpt-mcp-server: 3003
 #   - fastgpt-plugin: 3004（host network，由 PORT 指定）
 #   - fastgpt-volume-manager: 3005
+#   - fastgpt-agent-sandbox-proxy: 1006
 #   - opensandbox-server: 8090
 #   - fastgpt-aiproxy: 3010
 #   - fastgpt-aiproxy-pg: 5432
@@ -17,11 +18,13 @@
 # - 配置 opensandbox-config 的 host_ip 为宿主机 LAN IP，如 192.168.1.100
 
 # plugin auth token
-x-plugin-auth-token: &x-plugin-auth-token 'token'
+x-plugin-auth-token: &x-plugin-auth-token 'fastgpt-plugin-dev-token-12345678'
 # code sandbox token
 x-code-sandbox-token: &x-code-sandbox-token 'codesandbox'
 # volume manager auth token
 x-volume-manager-auth-token: &x-volume-manager-auth-token 'vmtoken'
+# agent sandbox proxy auth token
+x-agent-sandbox-proxy-secret: &x-agent-sandbox-proxy-secret 'default_fastgpt_agent_sandbox_proxy_secret'
 # aiproxy token
 x-aiproxy-token: &x-aiproxy-token 'token'
 # 数据库连接相关配置
@@ -50,8 +53,8 @@ x-log-config: &x-log-config
 # 容器运行环境可能会自动注入 HTTP_PROXY/HTTPS_PROXY。
 # 明确绕过 compose 内部服务，避免内部请求被代理劫持。
 x-no-proxy-config: &x-no-proxy-config
-  NO_PROXY: localhost,127.0.0.1,::1,fastgpt,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-minio,fastgpt-mongo,fastgpt-redis,fastgpt-pg,fastgpt-mcp-server,opensandbox-server,fastgpt-volume-manager,host.docker.internal,*.orb.internal,*.orb.local
-  no_proxy: localhost,127.0.0.1,::1,fastgpt,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-minio,fastgpt-mongo,fastgpt-redis,fastgpt-pg,fastgpt-mcp-server,opensandbox-server,fastgpt-volume-manager,host.docker.internal,*.orb.internal,*.orb.local
+  NO_PROXY: localhost,127.0.0.1,::1,fastgpt,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-agent-sandbox-proxy,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-minio,fastgpt-mongo,fastgpt-redis,fastgpt-pg,fastgpt-mcp-server,opensandbox-server,fastgpt-volume-manager,host.docker.internal,*.orb.internal,*.orb.local
+  no_proxy: localhost,127.0.0.1,::1,fastgpt,fastgpt-plugin,fastgpt-code-sandbox,fastgpt-agent-sandbox-proxy,fastgpt-aiproxy,fastgpt-aiproxy-pg,fastgpt-minio,fastgpt-mongo,fastgpt-redis,fastgpt-pg,fastgpt-mcp-server,opensandbox-server,fastgpt-volume-manager,host.docker.internal,*.orb.internal,*.orb.local
 
 services:
   # Vector DB
@@ -276,7 +279,7 @@ services:
   # runtime=docker 模式需要挂载 Docker socket
   # 配置 docker.host_ip 为宿主机 LAN IP（容器内访问宿主机服务用）
   opensandbox-server:
-    image: opensandbox/server:v0.1.9
+    image: opensandbox/server:v0.2.1
     container_name: fastgpt-opensandbox-server
     restart: always
     ports:
@@ -294,21 +297,50 @@ services:
       <<: [*x-no-proxy-config]
       SANDBOX_CONFIG_PATH: /etc/opensandbox/config.toml
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:8090/health']
+      test:
+        [
+          'CMD',
+          'python3',
+          '-c',
+          "import urllib.request; urllib.request.urlopen('http://localhost:8090/health').read()"
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # 浏览器与 OpenSandbox 之间的 WebSocket 鉴权代理
+  fastgpt-agent-sandbox-proxy:
+    image: ghcr.io/labring/fastgpt-agent-sandbox-proxy:v0.2.0
+    container_name: fastgpt-agent-sandbox-proxy
+    restart: always
+    ports:
+      - 1006:1006
+    networks:
+      - fastgpt
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    environment:
+      <<: [*x-no-proxy-config]
+      PORT: 1006
+      AGENT_SANDBOX_PROXY_SECRET: *x-agent-sandbox-proxy-secret
+      FASTGPT_APP_URL: http://host.docker.internal:3000
+      AGENT_SANDBOX_PROXY_REWRITE_HOST: opensandbox-server
+      RUST_LOG: info,fastgpt_agent_sandbox_proxy
+    depends_on:
+      opensandbox-server:
+        condition: service_healthy
+
   # Pre-pull only: not started by `docker compose up` (uses profile `prepull`).
   opensandbox-agent-sandbox-image:
     image: ghcr.io/labring/fastgpt-agent-sandbox:v0.2.0
     profiles:
       - prepull
   opensandbox-execd-image:
-    image: opensandbox/execd:v1.0.7
+    image: opensandbox/execd:v1.0.21
     profiles:
       - prepull
   opensandbox-egress-image:
-    image: opensandbox/egress:v1.0.3
+    image: opensandbox/egress:v1.1.4
     profiles:
       - prepull
   # 卷管理微服务：负责幂等创建/删除 Docker named volume 或 k8s PVC
@@ -408,13 +440,14 @@ configs:
       host = "0.0.0.0"
       port = 8090
       log_level = "INFO"
+      api_key = "my_secure_sandbox_key_123"
 
       [runtime]
       type = "docker"
-      execd_image = "opensandbox/execd:v1.0.7"
+      execd_image = "opensandbox/execd:v1.0.21"
 
       [egress]
-      image = "opensandbox/egress:v1.0.3"
+      image = "opensandbox/egress:v1.1.4"
 
       [docker]
       network_mode = "bridge"

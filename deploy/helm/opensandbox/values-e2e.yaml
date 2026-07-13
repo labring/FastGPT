@@ -71,7 +71,7 @@ pools:
         shareProcessNamespace: true
         initContainers:
         - name: execd-installer
-          image: opensandbox/execd:v1.0.5
+          image: opensandbox/execd:v1.0.21
           imagePullPolicy: Never
           command: ["/bin/sh", "-c"]
           args:

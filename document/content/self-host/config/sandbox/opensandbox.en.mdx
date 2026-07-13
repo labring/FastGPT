@@ -20,10 +20,10 @@ Use [opensandbox.yml](/deploy/sandbox_deploy/opensandbox.yml) as a reference. Ad
 
 The sample uses China Mainland image registries. For deployments outside China Mainland, replace them with:
 
-- `opensandbox/server:v0.1.9`
+- `opensandbox/server:v0.2.1`
 - `ghcr.io/labring/fastgpt-agent-sandbox:v0.2.0`
-- `opensandbox/execd:v1.0.6`
-- `opensandbox/egress:v1.0.1`
+- `opensandbox/execd:v1.0.21`
+- `opensandbox/egress:v1.1.4`
 - `ghcr.io/labring/fastgpt-agent-volume-manager:v0.2.0`
 
 ## 2. Update OpenSandbox variables
@@ -85,7 +85,7 @@ docker compose exec fastgpt-opensandbox-server python -c "import urllib.request;
 docker compose exec fastgpt-volume-manager node -e "fetch('http://localhost:3000/health').then(async r => { console.log(await r.text()); if (!r.ok) process.exit(1); })"
 ```
 
-OpenSandbox should return `OK`, and `fastgpt-volume-manager` should return a health JSON response. See [General Sandbox Configuration](./common) for Agent Sandbox Proxy verification.
+OpenSandbox should return `{"status":"healthy"}`, and `fastgpt-volume-manager` should return a health JSON response. See [General Sandbox Configuration](./common) for Agent Sandbox Proxy verification.
 
 4. Log in to FastGPT and open a scenario that supports Agent Sandbox, such as Agent V2 VM, Skill editing, or Skill debugging. Confirm that the sandbox can be created and that the file tree and terminal open normally.
 

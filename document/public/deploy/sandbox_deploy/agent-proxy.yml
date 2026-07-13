@@ -11,7 +11,7 @@ services:
     networks:
       - app
     ports:
-      - 3006:1006
+      - 1006:1006
     environment:
       PORT: 1006
       # Must exactly match AGENT_SANDBOX_PROXY_SECRET in fastgpt-app / fastgpt-pro.
