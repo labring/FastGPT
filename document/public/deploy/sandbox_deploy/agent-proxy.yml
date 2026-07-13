@@ -1,5 +1,5 @@
 # FastGPT Agent Sandbox Proxy standalone deployment.
-# After starting this file, set FastGPT AGENT_SANDBOX_PROXY_URL to ws://<host>:1006 or your wss:// domain.
+# After starting this file, set FastGPT AGENT_SANDBOX_PROXY_URL to ws://<host>:3006 or your wss:// domain.
 
 x-agent-sandbox-proxy-secret: &x-agent-sandbox-proxy-secret "default_fastgpt_agent_sandbox_proxy_secret"
 
@@ -11,7 +11,7 @@ services:
     networks:
       - app
     ports:
-      - 1006:1006
+      - 3006:1006
     environment:
       PORT: 1006
       # Must exactly match AGENT_SANDBOX_PROXY_SECRET in fastgpt-app / fastgpt-pro.
