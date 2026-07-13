@@ -15,7 +15,7 @@ const createTool = (inputs: FlowNodeTemplateType['inputs']) =>
 
 describe('ToolSelector utils', () => {
   describe('inheritToolInputConfig', () => {
-    it('should inherit value and final input source state from existing tool config', () => {
+    it('should inherit value and explicit input selection while keeping the current tool schema', () => {
       const tool = createTool([
         {
           key: 'query',
@@ -56,11 +56,11 @@ describe('ToolSelector utils', () => {
         label: 'Query',
         value: 'manual value',
         valueDesc: 'manual desc',
-        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.agentGenerated],
+        renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.input],
         selectedType: FlowNodeInputTypeEnum.input,
-        selectedTypeIndex: 0,
-        toolDescription: 'source description',
-        isToolParam: false,
+        selectedTypeIndex: 1,
+        toolDescription: 'new description',
+        isToolParam: true,
         required: true
       });
       expect(result.inputs[1]).toBe(tool.inputs[1]);

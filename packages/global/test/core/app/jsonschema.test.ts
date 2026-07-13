@@ -21,6 +21,7 @@ import {
   FlowNodeInputItemTypeSchema,
   InputConfigInputTypeEnum
 } from '@fastgpt/global/core/workflow/type/io';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 describe('parseToolParamJsonSchema', () => {
   it('should parse a recursively valid property schema', () => {
@@ -108,6 +109,30 @@ describe('jsonSchema2NodeInput', () => {
       isToolParam: true,
       required: true,
       renderTypeList: ['input', 'reference']
+    });
+  });
+
+  it('should render integer schema fields as number input', () => {
+    const result = jsonSchema2NodeInput({
+      schemaType: 'mcp',
+      jsonSchema: {
+        type: 'object',
+        properties: {
+          count: {
+            type: 'integer',
+            minimum: 1,
+            maximum: 10
+          }
+        }
+      }
+    });
+
+    expect(result[0]).toMatchObject({
+      key: 'count',
+      valueType: WorkflowIOValueTypeEnum.number,
+      renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference],
+      min: 1,
+      max: 10
     });
   });
 

@@ -220,7 +220,7 @@ const getNodeInputRenderTypeFromSchemaInputType = ({
       renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
     };
   }
-  if (type === 'number') {
+  if (type === 'number' || type === 'integer') {
     return {
       renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference],
       max: maximum,

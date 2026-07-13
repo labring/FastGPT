@@ -1,6 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import { getAgentRuntimeTools } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool/utils';
 import type { NodeToolConfigType } from '@fastgpt/global/core/workflow/type/node';
 
@@ -301,6 +304,38 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].requestSchema.function.description).toBe('search: Search docs');
     expect(tools[0].requestSchema.function.parameters).toEqual(mcpInputSchema);
     expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
+  });
+
+  it('upgrades legacy selectedTypeIndex 0 tool inputs to agent generated at runtime', async () => {
+    const tools = await getAgentRuntimeTools({
+      tmbId: 'tmb_1',
+      tools: [
+        {
+          id: 'mcp-mcp_app/search',
+          config: {},
+          inputs: [
+            {
+              key: 'query',
+              renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+              selectedTypeIndex: 0
+            }
+          ]
+        }
+      ]
+    });
+
+    expect(tools).toHaveLength(1);
+    expect(tools[0].inputs[0]).toMatchObject({
+      key: 'query',
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      selectedTypeIndex: 0,
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.input,
+        FlowNodeInputTypeEnum.reference
+      ]
+    });
+    expect(tools[0].requestSchema.function.parameters).toEqual(mcpInputSchema);
   });
 
   it('loads a selected MCP tool whose name starts with slash', async () => {

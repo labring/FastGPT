@@ -261,6 +261,69 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
     });
   });
 
+  it('刷新最新工具节点时忽略旧协议的默认 selectedTypeIndex 0', async () => {
+    getClientToolPreviewNodeMock.mockResolvedValue({
+      id: 'mcp-app-1/search',
+      flowNodeType: FlowNodeTypeEnum.tool,
+      name: 'Search Tool',
+      avatar: 'new-avatar',
+      intro: '',
+      inputs: [
+        {
+          key: 'query',
+          label: 'Query',
+          valueType: WorkflowIOValueTypeEnum.string,
+          value: '',
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+          isToolParam: true,
+          toolDescription: 'Search query'
+        }
+      ],
+      outputs: [],
+      version: '',
+      versionLabel: 'latest',
+      isLatestVersion: true
+    });
+    authAppByTmbIdMock.mockResolvedValue({});
+
+    const nodes = [
+      {
+        nodeId: 'tool',
+        flowNodeType: FlowNodeTypeEnum.tool,
+        pluginId: 'mcp-app-1/search',
+        inputs: [
+          {
+            key: 'query',
+            label: 'Query',
+            valueType: WorkflowIOValueTypeEnum.string,
+            value: '',
+            selectedTypeIndex: 0,
+            renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
+          }
+        ],
+        outputs: []
+      } as StoreNodeItemType
+    ];
+
+    await rewriteAppWorkflowToDetail({
+      nodes,
+      teamId: 'team-1',
+      ownerTmbId: 'tmb-1',
+      isRoot: false
+    });
+
+    expect(nodes[0].inputs[0]).toMatchObject({
+      key: 'query',
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      selectedTypeIndex: 0,
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.input,
+        FlowNodeInputTypeEnum.reference
+      ]
+    });
+  });
+
   it('保留 Agent 工具和 Skill 输入的引用模式值，不按选择列表重写', async () => {
     const toolReferenceValue = ['source-node', 'tools'];
     const skillReferenceValue = ['source-node', 'skills'];

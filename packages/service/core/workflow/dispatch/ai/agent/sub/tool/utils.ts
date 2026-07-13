@@ -35,6 +35,7 @@ import type { HttpToolConfigType } from '@fastgpt/global/core/app/tool/httpTool/
 import type { SubAppInitType } from '../type';
 import {
   canInputBeAgentGenerated,
+  getSavedToolInputSelectedType,
   getToolConfigStatus,
   initToolInputsTypeByDefaultMode,
   isAgentGeneratedToolInput
@@ -581,12 +582,27 @@ export const getAgentRuntimeTools = async ({
           toolNode.inputs.map((input) => {
             const savedInput = savedInputConfigMap.get(input.key);
             if (!savedInput) return input;
+            const selectedType = getSavedToolInputSelectedType({
+              savedInput,
+              defaultInput: input
+            });
+            const renderTypeList = selectedType
+              ? Array.from(
+                  new Set([selectedType, ...(savedInput.renderTypeList ?? input.renderTypeList)])
+                )
+              : (savedInput.renderTypeList ?? input.renderTypeList);
+            const selectedTypeIndex = selectedType
+              ? renderTypeList.findIndex((item) => item === selectedType)
+              : undefined;
 
             return {
               ...input,
-              renderTypeList: savedInput.renderTypeList,
-              selectedType: savedInput.selectedType,
-              selectedTypeIndex: savedInput.selectedTypeIndex,
+              renderTypeList,
+              selectedType,
+              selectedTypeIndex:
+                selectedTypeIndex !== undefined && selectedTypeIndex >= 0
+                  ? selectedTypeIndex
+                  : undefined,
               isToolParam: savedInput.isToolParam ?? input.isToolParam,
               toolDescription: savedInput.toolDescription ?? input.toolDescription
             };

@@ -1,4 +1,4 @@
-import { NodeInputKeyEnum } from '../../workflow/constants';
+import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '../../workflow/constants';
 import { FlowNodeInputTypeEnum } from '../../workflow/node/constant';
 import type { FlowNodeInputItemType } from '../../workflow/type/io';
 import type { FlowNodeTemplateType } from '../../workflow/type/node';
@@ -40,6 +40,22 @@ type InputRenderTypeState = {
   selectedTypeIndex?: FlowNodeInputItemType['selectedTypeIndex'];
 };
 
+type ToolInputTypeState = InputRenderTypeState &
+  Pick<Partial<FlowNodeInputItemType>, 'isToolParam' | 'list' | 'enums' | 'enum' | 'valueType'>;
+
+const manualInputRenderTypes = new Set<FlowNodeInputTypeEnum>([
+  FlowNodeInputTypeEnum.input,
+  FlowNodeInputTypeEnum.textarea,
+  FlowNodeInputTypeEnum.numberInput,
+  FlowNodeInputTypeEnum.switch,
+  FlowNodeInputTypeEnum.select,
+  FlowNodeInputTypeEnum.multipleSelect,
+  FlowNodeInputTypeEnum.JSONEditor,
+  FlowNodeInputTypeEnum.timePointSelect,
+  FlowNodeInputTypeEnum.timeRangeSelect,
+  FlowNodeInputTypeEnum.password
+]);
+
 /**
  * 判断工具入参当前最终类型是否为 Agent 生成。
  */
@@ -57,6 +73,93 @@ export const canInputBeAgentGenerated = (
   if (input.key === NodeInputKeyEnum.systemInputConfig) return false;
   if (!Array.isArray(input.renderTypeList)) return false;
   return !input.renderTypeList.some((type) => agentGeneratedDenyRenderTypes.has(type));
+};
+
+const getManualRenderTypeCandidates = (renderTypeList: FlowNodeInputTypeEnum[] = []) =>
+  renderTypeList.filter((type) => manualInputRenderTypes.has(type));
+
+const hasSelectOptions = (input: ToolInputTypeState) =>
+  !!input.list?.length || !!input.enums?.length || !!input.enum?.trim();
+
+const getValueTypePreferredManualType = (input: ToolInputTypeState) => {
+  if (hasSelectOptions(input)) {
+    return input.valueType && input.valueType.startsWith('array')
+      ? FlowNodeInputTypeEnum.multipleSelect
+      : FlowNodeInputTypeEnum.select;
+  }
+
+  switch (input.valueType) {
+    case WorkflowIOValueTypeEnum.number:
+      return FlowNodeInputTypeEnum.numberInput;
+    case WorkflowIOValueTypeEnum.boolean:
+      return FlowNodeInputTypeEnum.switch;
+    case WorkflowIOValueTypeEnum.object:
+    case WorkflowIOValueTypeEnum.arrayString:
+    case WorkflowIOValueTypeEnum.arrayNumber:
+    case WorkflowIOValueTypeEnum.arrayBoolean:
+    case WorkflowIOValueTypeEnum.arrayObject:
+    case WorkflowIOValueTypeEnum.arrayAny:
+    case WorkflowIOValueTypeEnum.any:
+      return FlowNodeInputTypeEnum.JSONEditor;
+    case WorkflowIOValueTypeEnum.string:
+    default:
+      return FlowNodeInputTypeEnum.input;
+  }
+};
+
+/**
+ * Agent 生成只是输入来源，切回手动输入时需要恢复真实编辑控件。
+ * 旧数据可能只剩 agentGenerated/input，这里按 valueType 和选项信息兜底恢复 number/select 等类型。
+ */
+export const getToolInputManualRenderType = (input: ToolInputTypeState) => {
+  const candidates = getManualRenderTypeCandidates(input.renderTypeList);
+  const selectedType = getSelectedInputRenderType(input);
+  const preferredType = getValueTypePreferredManualType(input);
+  const isGenericSelectedType =
+    selectedType === FlowNodeInputTypeEnum.input || selectedType === FlowNodeInputTypeEnum.textarea;
+
+  if (
+    selectedType &&
+    candidates.includes(selectedType) &&
+    !(isGenericSelectedType && preferredType !== FlowNodeInputTypeEnum.input)
+  ) {
+    return selectedType;
+  }
+
+  const hasGenericManualInput =
+    candidates.includes(FlowNodeInputTypeEnum.input) ||
+    candidates.includes(FlowNodeInputTypeEnum.textarea);
+  if (candidates.includes(preferredType) || hasGenericManualInput || candidates.length === 0) {
+    return preferredType;
+  }
+
+  return candidates[0] ?? FlowNodeInputTypeEnum.input;
+};
+
+/**
+ * 读取旧工具配置里的最终选择。
+ * 旧协议常带 selectedTypeIndex: 0；当旧列表没有 agentGenerated 且新版 schema 标记 isToolParam
+ * 时，0 只代表旧默认项，不代表用户明确选择了手动输入。
+ */
+export const getSavedToolInputSelectedType = ({
+  savedInput,
+  defaultInput
+}: {
+  savedInput?: InputRenderTypeState;
+  defaultInput: ToolInputTypeState;
+}) => {
+  if (!savedInput) return;
+  if (savedInput.selectedType) return savedInput.selectedType;
+  if (savedInput.selectedTypeIndex === undefined) return;
+
+  const selectedType = getSelectedInputRenderType(savedInput);
+  const isLegacyDefaultManualType =
+    defaultInput.isToolParam === true &&
+    savedInput.selectedTypeIndex === 0 &&
+    !savedInput.renderTypeList?.includes(FlowNodeInputTypeEnum.agentGenerated) &&
+    selectedType !== FlowNodeInputTypeEnum.reference;
+
+  return isLegacyDefaultManualType ? undefined : selectedType;
 };
 
 /**
@@ -94,7 +197,10 @@ export const initToolInputTypeByDefaultMode = <T extends FlowNodeInputItemType>(
     hasSelectedType && selectedType
       ? {
           ...input,
-          selectedType
+          selectedType,
+          selectedTypeIndex: input.renderTypeList.includes(selectedType)
+            ? input.renderTypeList.findIndex((type) => type === selectedType)
+            : undefined
         }
       : input
   ) as T;
