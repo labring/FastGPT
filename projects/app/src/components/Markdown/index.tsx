@@ -1,4 +1,4 @@
-import React, { useCallback, useContext, useMemo } from 'react';
+import React, { useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import 'katex/dist/katex.min.css';
 import RemarkMath from 'remark-math'; // Math syntax
@@ -15,7 +15,7 @@ import { CodeClassNameEnum, hideStreamingIncompleteMarkdownTail, mdTextFormat } 
 import type { AProps } from './A';
 import MarkdownTable from '@fastgpt/web/components/common/Markdown/MarkdownTable';
 import { MarkdownRendererRuntimeContext } from './runtimeContext';
-import { useStreamAnimatedRehypePlugin } from './rehypeStreamAnimated';
+import { getStreamingAppendLength, rehypeStreamAnimated } from './rehypeStreamAnimated';
 
 const CodeLight = dynamic(() => import('./codeBlock/CodeLight'), { ssr: false });
 const MermaidCodeBlock = dynamic(() => import('./img/MermaidCodeBlock'), { ssr: false });
@@ -25,6 +25,7 @@ const IframeCodeBlock = dynamic(() => import('./codeBlock/Iframe'), { ssr: false
 const IframeHtmlCodeBlock = dynamic(() => import('./codeBlock/iframe-html'), { ssr: false });
 const VideoBlock = dynamic(() => import('./codeBlock/Video'), { ssr: false });
 const AudioBlock = dynamic(() => import('./codeBlock/Audio'), { ssr: false });
+const useBrowserLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 
 const ChatGuide = dynamic(() => import('./chat/Guide'), { ssr: false });
 const QuestionGuide = dynamic(() => import('./chat/QuestionGuide'), { ssr: false });
@@ -67,12 +68,43 @@ function MarkdownLinkRenderer(props: any) {
   );
 }
 
+/** 仅让最新流式文本批次执行淡入；不支持 Web Animations API 时直接展示内容。 */
+function MarkdownStreamTailRenderer({ children }: any) {
+  const ref = useRef<HTMLSpanElement>(null);
+
+  useBrowserLayoutEffect(() => {
+    const element = ref.current;
+    if (!element?.animate) return;
+
+    const animation = element.animate(
+      [
+        { opacity: 0.25, filter: 'blur(1px)', transform: 'translateY(1px)' },
+        { opacity: 1, filter: 'blur(0)', transform: 'translateY(0)' }
+      ],
+      {
+        duration: 120,
+        easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+        fill: 'both'
+      }
+    );
+
+    return () => animation.cancel();
+  }, [children]);
+
+  return (
+    <span ref={ref} className="stream-tail">
+      {children}
+    </span>
+  );
+}
+
 const markdownComponents = {
   img: MarkdownImgRenderer,
   pre: RewritePre,
   code: MarkdownCodeRenderer,
   table: MarkdownTable as any,
-  a: MarkdownLinkRenderer
+  a: MarkdownLinkRenderer,
+  'stream-tail': MarkdownStreamTailRenderer
 };
 
 type Props = {
@@ -130,7 +162,24 @@ const MarkdownRender = ({
     return mdTextFormat(source);
   }, [forbidZhFormat, showAnimation, source]);
 
-  const streamAnimatedRehypePlugin = useStreamAnimatedRehypePlugin();
+  const previousFormatSourceRef = useRef('');
+  // ref 保存的是上一次已 commit 的 source，只用于计算本次流式 append 的尾部长度。
+  // eslint-disable-next-line react-hooks/refs
+  const previousFormatSource = previousFormatSourceRef.current;
+  const streamingTailLength = showAnimation
+    ? getStreamingAppendLength({
+        previousSource: previousFormatSource,
+        currentSource: formatSource
+      })
+    : 0;
+  useBrowserLayoutEffect(() => {
+    previousFormatSourceRef.current = formatSource;
+  }, [formatSource]);
+
+  const streamAnimatedRehypePlugin = useMemo(
+    () => [rehypeStreamAnimated, { tailLength: streamingTailLength }],
+    [streamingTailLength]
+  );
   const rehypePlugins = useMemo(
     () =>
       showAnimation
@@ -153,7 +202,7 @@ const MarkdownRender = ({
     `}
           remarkPlugins={[RemarkMath, [RemarkGfm, { singleTilde: false }], RemarkBreaks]}
           rehypePlugins={rehypePlugins as any}
-          components={markdownComponents}
+          components={markdownComponents as any}
           urlTransform={urlTransform}
         >
           {formatSource}

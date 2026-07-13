@@ -1,13 +1,7 @@
 .waitingAnimation {
-  :global(.stream-char) {
-    opacity: 0;
-    filter: blur(1px);
-    transform: translateY(1px);
-    animation: streamFadeIn 420ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  }
-
-  :global(.katex-display) :global(.katex-html) span {
-    animation: none !important;
+  :global(.stream-tail) {
+    display: inline;
+    will-change: opacity, filter, transform;
   }
 }
 
@@ -33,20 +27,6 @@
 
   50% {
     opacity: 1;
-  }
-}
-
-@keyframes streamFadeIn {
-  from {
-    opacity: 0;
-    filter: blur(1px);
-    transform: translateY(1px);
-  }
-
-  to {
-    opacity: 1;
-    filter: blur(0);
-    transform: translateY(0);
   }
 }
 
