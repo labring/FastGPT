@@ -257,7 +257,7 @@ services:
       AUTH_TOKEN: *x-plugin-auth-token
       PORT: 3004
       FASTGPT_BASE_URL: http://127.0.0.1:3000
-      MONGODB_URI: mongodb://myusername:mypassword@127.0.0.1:27017/fastgpt?authSource=admin
+      MONGODB_URI: mongodb://myusername:mypassword@127.0.0.1:27017/fastgpt?authSource=admin&directConnection=true
       REDIS_URL: redis://default:mypassword@127.0.0.1:6379
       STORAGE_S3_ENDPOINT: http://127.0.0.1:9000
       # 工具网络请求，最大请求和响应体
