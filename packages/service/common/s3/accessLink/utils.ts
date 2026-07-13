@@ -8,15 +8,11 @@ import {
 } from '@fastgpt-sdk/storage';
 import { serviceEnv } from '../../../env';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import {
-  S3_ACCESS_LINK_ROUTES,
-  S3_DOWNLOAD_ALIAS_ID_LENGTH,
-  S3_UPLOAD_TOKEN_LENGTH
-} from './constants';
+import { S3_DOWNLOAD_ALIAS_ID_LENGTH, S3_UPLOAD_TOKEN_LENGTH } from './constants';
 import { ParsedS3SignedDownloadAliasSchema, type ParsedS3SignedDownloadAlias } from './type';
 import { S3AccessLinkErrCode, S3AccessLinkError } from './error';
+import { buildS3AccessLinkDownloadUrl, buildS3AccessLinkUploadUrl } from './url';
 
-const endpointUrl = `${serviceEnv.FILE_DOMAIN || serviceEnv.FE_DOMAIN || ''}${serviceEnv.NEXT_PUBLIC_BASE_URL}`;
 const s3AccessLinkCrypto = createS3AccessLinkCrypto({ secret: serviceEnv.FILE_TOKEN_KEY });
 
 export const generateS3AliasId = () => getNanoid(S3_DOWNLOAD_ALIAS_ID_LENGTH);
@@ -93,11 +89,11 @@ export const assertS3DownloadAliasSignature = (value: string, now = new Date()) 
 };
 
 export const buildS3DownloadUrl = (signedAlias: string) => {
-  return `${endpointUrl}${S3_ACCESS_LINK_ROUTES.download}/${signedAlias}`;
+  return buildS3AccessLinkDownloadUrl(signedAlias);
 };
 
 export const buildS3UploadUrl = (token: string) => {
-  return `${endpointUrl}${S3_ACCESS_LINK_ROUTES.upload}/${token}`;
+  return buildS3AccessLinkUploadUrl(token);
 };
 
 export { decodeExpiresAtMinute, encodeExpiresAtMinute, resolveDownloadExpiresAt };

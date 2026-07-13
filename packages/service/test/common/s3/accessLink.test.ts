@@ -4,16 +4,25 @@ const strongFileTokenKey = '1234567890abcdef1234567890abcdef';
 const originalEnv = {
   FILE_TOKEN_KEY: process.env.FILE_TOKEN_KEY,
   FILE_DOMAIN: process.env.FILE_DOMAIN,
+  FILE_DOWNLOAD_PUBLIC_URL_PREFIX: process.env.FILE_DOWNLOAD_PUBLIC_URL_PREFIX,
   FE_DOMAIN: process.env.FE_DOMAIN,
   NEXT_PUBLIC_BASE_URL: process.env.NEXT_PUBLIC_BASE_URL
 };
 
-const loadAccessLinkModules = async () => {
+const loadAccessLinkModules = async (
+  env: {
+    fileDomain?: string;
+    fileDownloadPublicUrlPrefix?: string;
+    feDomain?: string;
+    nextPublicBaseUrl?: string;
+  } = {}
+) => {
   vi.resetModules();
   vi.stubEnv('FILE_TOKEN_KEY', strongFileTokenKey);
-  vi.stubEnv('FILE_DOMAIN', 'https://files.example.com/');
-  vi.stubEnv('FE_DOMAIN', undefined);
-  vi.stubEnv('NEXT_PUBLIC_BASE_URL', '/fastgpt');
+  vi.stubEnv('FILE_DOMAIN', env.fileDomain ?? 'https://files.example.com/');
+  vi.stubEnv('FILE_DOWNLOAD_PUBLIC_URL_PREFIX', env.fileDownloadPublicUrlPrefix);
+  vi.stubEnv('FE_DOMAIN', env.feDomain);
+  vi.stubEnv('NEXT_PUBLIC_BASE_URL', env.nextPublicBaseUrl ?? '/fastgpt');
 
   const [accessLink, downloadAliasSchema, uploadSessionSchema] = await Promise.all([
     import('@fastgpt/service/common/s3/accessLink'),
@@ -40,6 +49,7 @@ describe('s3 access link', () => {
   afterEach(() => {
     vi.stubEnv('FILE_TOKEN_KEY', originalEnv.FILE_TOKEN_KEY);
     vi.stubEnv('FILE_DOMAIN', originalEnv.FILE_DOMAIN);
+    vi.stubEnv('FILE_DOWNLOAD_PUBLIC_URL_PREFIX', originalEnv.FILE_DOWNLOAD_PUBLIC_URL_PREFIX);
     vi.stubEnv('FE_DOMAIN', originalEnv.FE_DOMAIN);
     vi.stubEnv('NEXT_PUBLIC_BASE_URL', originalEnv.NEXT_PUBLIC_BASE_URL);
     vi.restoreAllMocks();
@@ -89,6 +99,71 @@ describe('s3 access link', () => {
 
     await expect(verifyS3DownloadAccess(extractLastPathSegment(firstUrl))).rejects.toThrow(
       'DownloadAliasRevoked'
+    );
+  });
+
+  it('uses public download URL prefix without changing upload URLs', async () => {
+    const {
+      createS3DownloadAccessUrl,
+      createS3UploadAccessUrl,
+      verifyS3DownloadAccess,
+      MongoS3DownloadAlias
+    } = await loadAccessLinkModules({
+      fileDomain: 'https://app.example.com/',
+      fileDownloadPublicUrlPrefix: 'https://files.example.com/'
+    });
+    const downloadParams = {
+      bucketName: 'fastgpt-private',
+      objectKey: 'dataset/team-1/public-prefix.png',
+      expiredTime: getFutureDate(30),
+      filename: 'public-prefix.png'
+    };
+
+    const downloadUrl = await createS3DownloadAccessUrl(downloadParams);
+    const uploadUrl = await createS3UploadAccessUrl({
+      bucketName: 'fastgpt-private',
+      objectKey: 'chat/app/user/chat/public-prefix.txt',
+      expiredTime: getFutureDate(10),
+      maxSize: 1024,
+      uploadConstraints: {
+        defaultContentType: 'text/plain',
+        allowedExtensions: ['.txt']
+      }
+    });
+
+    expect(downloadUrl).toMatch(
+      /^https:\/\/files\.example\.com\/[A-Za-z0-9_-]{16}\.[0-9a-z]+\.[A-Za-z0-9_-]{22}$/
+    );
+    expect(uploadUrl).toMatch(
+      /^https:\/\/app\.example\.com\/fastgpt\/api\/system\/file\/u\/[A-Za-z0-9_-]{22}$/
+    );
+
+    await expect(
+      verifyS3DownloadAccess(extractLastPathSegment(downloadUrl))
+    ).resolves.toMatchObject({
+      bucketName: downloadParams.bucketName,
+      objectKey: downloadParams.objectKey
+    });
+
+    const aliases = await MongoS3DownloadAlias.find({ objectKey: downloadParams.objectKey }).lean();
+    expect(aliases).toHaveLength(1);
+  });
+
+  it('supports path based public download URL prefix', async () => {
+    const { createS3DownloadAccessUrl } = await loadAccessLinkModules({
+      fileDomain: 'https://app.example.com/',
+      fileDownloadPublicUrlPrefix: 'https://files.example.com/f/'
+    });
+
+    const downloadUrl = await createS3DownloadAccessUrl({
+      bucketName: 'fastgpt-private',
+      objectKey: 'dataset/team-1/path-prefix.png',
+      expiredTime: getFutureDate(30),
+      filename: 'path-prefix.png'
+    });
+
+    expect(downloadUrl).toMatch(
+      /^https:\/\/files\.example\.com\/f\/[A-Za-z0-9_-]{16}\.[0-9a-z]+\.[A-Za-z0-9_-]{22}$/
     );
   });
 

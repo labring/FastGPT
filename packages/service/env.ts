@@ -225,6 +225,10 @@ export const serviceEnv = createEnv({
       description:
         '文件域名（也指向 FastGPT 服务）；如需更高安全性可独立分配域名，避免高危文件读取到主域名内容'
     }),
+    FILE_DOWNLOAD_PUBLIC_URL_PREFIX: UrlSchema.optional().meta({
+      description:
+        '下载短链公开 URL 前缀。配置后下载链接生成为 {prefix}/{signedAlias}，通常由 nginx rewrite 到 FastGPT /api/system/file/d/{signedAlias}；仅影响下载，不影响上传'
+    }),
     NEXT_PUBLIC_BASE_URL: z.string().default(''),
 
     //==================== 安全配置 ====================
