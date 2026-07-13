@@ -456,6 +456,43 @@ describe('parseFileContentFromUrls (external fetch)', () => {
     });
   });
 
+  it('nginx 根路径短链解析时也使用 alias 文件名，不把签名最后一段当后缀', async () => {
+    const signedAlias = 'vju2QnTFBVFMZouC.hp9bi.febMBKFxSy5_u780dAPDnI';
+    const shortUrl = `http://localhost:8088/${signedAlias}`;
+    mockVerifyS3DownloadAccess.mockResolvedValue({
+      bucketName: 'fastgpt-private',
+      objectKey: 'chat/app/app1/u1/c1/license-key',
+      filename: 'LICENSE',
+      responseContentType: 'text/plain',
+      expiresAt: new Date('2099-01-01T00:00:00.000Z')
+    });
+    mockAxiosGet.mockResolvedValue({
+      data: Buffer.from('MIT License\n\nPermission is hereby granted', 'utf8'),
+      headers: {
+        'content-type': 'application/octet-stream'
+      }
+    });
+
+    const result = await parseFileContentFromUrls({
+      urls: [shortUrl],
+      maxFiles: 20,
+      teamId: 'team-1',
+      tmbId: 'tmb-1'
+    });
+
+    expect(mockVerifyS3DownloadAccess).toHaveBeenCalledWith(signedAlias);
+    expect(mockReadFileContentByBuffer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        extension: 'txt'
+      })
+    );
+    expect(result[0]).toMatchObject({
+      success: true,
+      name: 'LICENSE',
+      url: shortUrl
+    });
+  });
+
   it('短链没有 filename 时回退到 objectKey 文件名推断后缀', async () => {
     const signedAlias = 'abc123def456ghi789.hp436.abcdefghijklmnop';
     const shortUrl = `http://localhost:3000/api/system/file/d/${signedAlias}`;
@@ -596,6 +633,36 @@ describe('parseFileInfoFromUrls', () => {
   it('短链读取文件信息时使用 alias 文件名，避免把 token 暴露给 read_file 工具', async () => {
     const signedAlias = 'fileinfoalias01.hp436.abcdefghijklmnop';
     const shortUrl = `/api/system/file/d/${signedAlias}`;
+    mockVerifyS3DownloadAccess.mockResolvedValue({
+      bucketName: 'fastgpt-private',
+      objectKey: 'chat/app/app1/u1/c1/random-key',
+      filename: 'analysis.csv',
+      expiresAt: new Date('2099-01-01T00:00:00.000Z')
+    });
+    mockAxiosGet.mockResolvedValue({
+      data: Buffer.from('a,b\n1,2', 'utf8'),
+      headers: {}
+    });
+
+    const result = await parseFileInfoFromUrls({
+      urls: [shortUrl],
+      maxFiles: 20,
+      teamId: 'team-1'
+    });
+
+    expect(mockVerifyS3DownloadAccess).toHaveBeenCalledWith(signedAlias);
+    expect(result).toEqual([
+      {
+        success: true,
+        name: 'analysis.csv',
+        url: shortUrl
+      }
+    ]);
+  });
+
+  it('nginx 带路径前缀短链读取文件信息时使用 alias 文件名', async () => {
+    const signedAlias = 'fileinfoalias01.hp436.abcdefghijklmnop';
+    const shortUrl = `http://localhost:8088/f/${signedAlias}`;
     mockVerifyS3DownloadAccess.mockResolvedValue({
       bucketName: 'fastgpt-private',
       objectKey: 'chat/app/app1/u1/c1/random-key',

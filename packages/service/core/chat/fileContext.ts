@@ -66,11 +66,22 @@ const resolveSignedDownloadAliasFromUrl = (url: string) => {
     const parsedUrl = new URL(url, 'http://localhost:3000');
     const routePrefix = `${S3_ACCESS_LINK_ROUTES.download}/`;
     const routeIndex = parsedUrl.pathname.indexOf(routePrefix);
-    if (routeIndex < 0) return '';
 
-    const signedAlias = decodeURIComponent(
-      parsedUrl.pathname.slice(routeIndex + routePrefix.length).split('/')[0] || ''
-    );
+    const signedAlias = (() => {
+      if (routeIndex >= 0) {
+        return decodeURIComponent(
+          parsedUrl.pathname.slice(routeIndex + routePrefix.length).split('/')[0] || ''
+        );
+      }
+
+      // 支持 FILE_DOWNLOAD_PUBLIC_URL_PREFIX 暴露的 nginx 短路径:
+      //   /{signedAlias}
+      //   /f/{signedAlias}
+      // 这类 URL 的 path 不是文件名，最后一段只有通过短链格式和 HMAC 校验后才可信。
+      const lastPathSegment = parsedUrl.pathname.split('/').filter(Boolean).at(-1) || '';
+      return decodeURIComponent(lastPathSegment);
+    })();
+
     return S3SignedDownloadAliasValueSchema.safeParse(signedAlias).success ? signedAlias : '';
   } catch {
     return '';
