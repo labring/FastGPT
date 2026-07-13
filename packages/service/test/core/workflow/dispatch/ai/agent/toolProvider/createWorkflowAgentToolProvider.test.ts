@@ -290,4 +290,63 @@ describe('createWorkflowAgentToolProvider', () => {
       })
     );
   });
+
+  it('supports upstream main split dataset parameters', async () => {
+    dispatchAgentDatasetSearchMock.mockResolvedValue({
+      response: 'dataset content',
+      usages: []
+    });
+    const provider = createWorkflowAgentToolProvider({
+      context: createContext({
+        params: {
+          model: 'gpt-4',
+          datasets: [{ datasetId: 'dataset_legacy' }],
+          similarity: 0.55,
+          limit: 3000,
+          searchMode: 'embedding',
+          embeddingWeight: 0.7,
+          usingReRank: true,
+          rerankModel: 'rerank-model',
+          rerankWeight: 0.8,
+          datasetSearchUsingExtensionQuery: true,
+          datasetSearchExtensionModel: 'extension-model',
+          datasetSearchExtensionBg: 'background',
+          authTmbId: true
+        }
+      })
+    });
+
+    expect(provider.datasetSearchExecutor).toBeDefined();
+
+    await provider.datasetSearchExecutor!({
+      messages: [],
+      call: {
+        id: 'call_legacy_dataset',
+        type: 'function',
+        function: {
+          name: 'dataset_search',
+          arguments: '{"query":["FastGPT"]}'
+        }
+      } as any
+    });
+
+    expect(dispatchAgentDatasetSearchMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        datasetParams: {
+          datasets: [{ datasetId: 'dataset_legacy' }],
+          similarity: 0.55,
+          limit: 3000,
+          searchMode: 'embedding',
+          embeddingWeight: 0.7,
+          usingReRank: true,
+          rerankModel: 'rerank-model',
+          rerankWeight: 0.8,
+          datasetSearchUsingExtensionQuery: true,
+          datasetSearchExtensionModel: 'extension-model',
+          datasetSearchExtensionBg: 'background',
+          authTmbId: true
+        }
+      })
+    );
+  });
 });

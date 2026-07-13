@@ -9,7 +9,7 @@ import {
 } from '../../agentLoopCore/interface';
 import { dispatchAgentDatasetSearch } from '../sub/dataset';
 import { dispatchFileRead } from '../sub/file';
-import { getExecuteTool } from '../sub/utils';
+import { getAgentDatasetParams, getExecuteTool } from '../sub/utils';
 import type { WorkflowAgentToolProvider, WorkflowAgentToolProviderContext } from './type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 
@@ -28,13 +28,14 @@ export const createWorkflowAgentToolProvider = ({
   executeToolFactory?: typeof getExecuteTool;
 }): WorkflowAgentToolProvider => {
   const executeTool = executeToolFactory(context);
-  const datasetSearchExecutor: AgentLoopDatasetSearchExecutor | undefined = context.params
-    .agent_datasetParams?.datasets?.length
+  const datasetParams = getAgentDatasetParams(context.params);
+  const datasetSearchExecutor: AgentLoopDatasetSearchExecutor | undefined = datasetParams?.datasets
+    ?.length
     ? async ({ call }) => {
         const startTime = Date.now();
         const result = await dispatchAgentDatasetSearch({
           args: call.function.arguments,
-          datasetParams: context.params.agent_datasetParams,
+          datasetParams,
           teamId: context.runningUserInfo.teamId,
           tmbId: context.runningUserInfo.tmbId,
           llmModel: context.params.model,
