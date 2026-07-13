@@ -1,0 +1,49 @@
+---
+title: DaoXE 接入示例
+description: DaoXE 多协议网关接入 FastGPT 示例
+---
+
+[DaoXE](https://daoxe.com/?utm_source=github&utm_medium=organic&utm_campaign=fastgpt_docs) 是多模型、多协议 API 网关，提供 OpenAI 兼容的 Chat Completions / Responses，以及 Anthropic Messages（Claude 协议）等能力；图片等端点以账户可见目录为准。本文说明如何通过 **OpenAI 兼容渠道** 接入 FastGPT。
+
+在阅读本章之前，请先阅读[模型配置说明](./intro.mdx)。
+
+> **披露说明：** 本文由与 DaoXE 有关联的贡献者提交。DaoXE **不向中国大陆提供服务**。模型 ID 与可用性以账户实时目录为准，请从 DaoXE 控制台或鉴权后的 `GET /v1/models` 复制，不要写死公共清单。
+
+## 1. 获取 API Key
+
+1. 在 [DaoXE](https://daoxe.com) 登录（中国大陆地区不可用）。
+2. 进入控制台创建 API Key。
+3. 在 [模型与定价页](https://daoxe.com/pricing) 查看你的账户当前可用的精确模型 ID。
+
+## 2. 新增模型
+
+DaoXE 不会给第三方应用提供固定公开模型列表。在 FastGPT 中：
+
+1. 打开 **模型配置**。
+2. 按需 [手动添加自定义模型](./intro.mdx#新增自定义模型)（先加 LLM；embedding/rerank/TTS 仅在你的账户实际提供时再加）。
+3. 模型 ID 必须使用账户目录中的完整字符串。
+
+## 3. 新增模型渠道
+
+在 **模型渠道** 页新增渠道：
+
+- **协议类型：** **OpenAI**（Chat Completions 走 OpenAI 兼容路径）
+- **代理地址 / Base URL：** `https://daoxe.com/v1`
+- **API Key：** 你的 DaoXE 密钥
+- **模型：** 选择第 2 步添加的自定义模型
+
+Base URL 不要写成完整的 `/v1/chat/completions` 路径，只填 OpenAI 风格的 base。
+
+## 4. 可选：Anthropic Messages（Claude 协议）
+
+DaoXE 同时支持 `POST https://daoxe.com/v1/messages`。若你的 FastGPT / AI Proxy 版本提供 Anthropic 渠道类型，可将渠道指向 `https://daoxe.com`（或界面要求的 base 形态），使用同一 API Key 与账户内模型 ID。若只需 Chat Completions，优先使用上文的 OpenAI 渠道。
+
+## 5. 测试模型
+
+保存渠道后，在渠道列表中测试连通性，再在应用中选择 DaoXE 模型进行对话验证。
+
+## 参考
+
+- 官网：https://daoxe.com
+- 定价 / 目录：https://daoxe.com/pricing
+- 客户端示例：https://github.com/seven7763/DaoXE-AI/blob/main/CLIENT_SETUP.md

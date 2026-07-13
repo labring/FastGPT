@@ -1,0 +1,49 @@
+---
+title: DaoXE Integration Example
+description: DaoXE multi-protocol gateway integration example for FastGPT
+---
+
+[DaoXE](https://daoxe.com/?utm_source=github&utm_medium=organic&utm_campaign=fastgpt_docs) is a multi-model multi-protocol API gateway. It exposes OpenAI-compatible Chat Completions / Responses endpoints and Anthropic Messages (Claude protocol), plus image-compatible endpoints where available. This guide covers connecting FastGPT through the **OpenAI-compatible** channel path.
+
+Before reading this guide, make sure you've read the [Model Configuration Guide](./intro.en.mdx).
+
+> **Disclosure:** This page was contributed by someone affiliated with DaoXE. DaoXE is **not available in mainland China**. Model IDs and availability are account-scoped — always copy exact IDs from your DaoXE catalog / authenticated `GET /v1/models`, and do not hardcode a shared public list.
+
+## 1. Get an API Key
+
+1. Sign in at [DaoXE](https://daoxe.com) (outside mainland China).
+2. Open the dashboard and create an API key.
+3. On the [models and pricing page](https://daoxe.com/pricing), note exact model IDs currently available to **your** account.
+
+## 2. Add Models
+
+DaoXE does not ship a fixed public model list for third-party apps. In FastGPT:
+
+1. Open **Model Configuration**.
+2. [Add custom models](./intro.en.mdx#add-a-custom-model) for each DaoXE model ID you want to use (LLM first; add embedding/rerank/TTS only if your DaoXE account exposes them).
+3. Use the exact model ID string from your account catalog as the Model ID.
+
+## 3. Add a Model Channel
+
+On the **Model Channels** page, add a channel:
+
+- **Protocol type:** **OpenAI** (DaoXE’s Chat Completions path is OpenAI-compatible)
+- **Proxy URL / Base URL:** `https://daoxe.com/v1`
+- **API Key:** your DaoXE API key
+- **Models:** select the custom models you added in step 2
+
+Do **not** paste a full path like `/v1/chat/completions` into the base URL field — enter the OpenAI-style base only.
+
+## 4. Optional: Anthropic Messages (Claude protocol)
+
+DaoXE also speaks Anthropic Messages at `POST https://daoxe.com/v1/messages`. If your FastGPT / AI Proxy build exposes an Anthropic channel type, you can point that channel at host root `https://daoxe.com` (or the base URL form your UI expects) with the same API key and a model ID from your catalog. Prefer the OpenAI channel above when you only need Chat Completions.
+
+## 5. Test Models
+
+After saving the channel, use the channel test action in FastGPT, then attach a DaoXE model to a simple app chat.
+
+## References
+
+- DaoXE site: https://daoxe.com
+- Pricing / catalog discovery: https://daoxe.com/pricing
+- Client setup examples: https://github.com/seven7763/DaoXE-AI/blob/main/CLIENT_SETUP.md
