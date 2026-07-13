@@ -31,7 +31,10 @@ export const variableInputTypeToInputType = (
 
 // 节点输入类型（通常是一个 reference+一个 form input）
 export const nodeInputTypeToInputType = (inputTypes: FlowNodeInputTypeEnum[] = []) => {
-  const inputType = inputTypes?.find((item) => item !== FlowNodeInputTypeEnum.reference);
+  const inputType = inputTypes?.find(
+    (item) =>
+      item !== FlowNodeInputTypeEnum.reference && item !== FlowNodeInputTypeEnum.agentGenerated
+  );
 
   if (inputType === FlowNodeInputTypeEnum.input) return InputTypeEnum.input;
   if (inputType === FlowNodeInputTypeEnum.textarea) return InputTypeEnum.textarea;

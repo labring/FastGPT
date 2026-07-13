@@ -24,20 +24,17 @@ import InputRender from '@/components/core/app/formRender';
 import { nodeInputTypeToInputType } from '@/components/core/app/formRender/utils';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
-import SecretInputModal, {
+import {
   SecretInputForm,
   type ToolParamsFormType
 } from '@/pageComponents/app/tool/SecretInputModal';
-import {
-  SystemToolSecretInputTypeEnum,
-  SystemToolSecretInputTypeMap
-} from '@fastgpt/global/core/app/tool/systemTool/constants';
-import { useBoolean } from 'ahooks';
+import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import {
   canInputBeAgentGenerated,
   getSelectedInputRenderType,
+  getToolInputManualRenderType,
   getToolConfigStatus,
   isAgentGeneratedToolInput,
   isToolInputValueConfigured
@@ -64,46 +61,57 @@ type ToolSetListItemType = {
   description?: string;
 };
 
-const getDeveloperRenderTypeList = (renderTypeList: FlowNodeInputTypeEnum[]) => {
-  const list = renderTypeList.filter((type) => type !== FlowNodeInputTypeEnum.agentGenerated);
-  return list.length > 0 ? list : [FlowNodeInputTypeEnum.input];
-};
-
 const buildConfigRenderTypeList = ({
   developerInputType,
-  canAgentGenerated
+  canAgentGenerated,
+  renderTypeList
 }: {
   developerInputType?: FlowNodeInputTypeEnum;
   canAgentGenerated: boolean;
+  renderTypeList: FlowNodeInputTypeEnum[];
 }): FlowNodeInputTypeEnum[] => {
   const fallbackDeveloperType = developerInputType ?? FlowNodeInputTypeEnum.input;
+  const developerRenderTypeList = renderTypeList.filter(
+    (type) => type !== FlowNodeInputTypeEnum.agentGenerated
+  );
 
-  if (!canAgentGenerated) return [fallbackDeveloperType];
+  if (!canAgentGenerated) {
+    return Array.from(new Set([fallbackDeveloperType, ...developerRenderTypeList]));
+  }
 
-  return Array.from(new Set([FlowNodeInputTypeEnum.agentGenerated, fallbackDeveloperType]));
+  return Array.from(
+    new Set([
+      FlowNodeInputTypeEnum.agentGenerated,
+      fallbackDeveloperType,
+      ...developerRenderTypeList
+    ])
+  );
 };
 
 const buildConfigInputTypeState = ({
   selectedInputType,
   developerInputType,
-  canAgentGenerated
+  canAgentGenerated,
+  renderTypeList
 }: {
   selectedInputType?: FlowNodeInputTypeEnum;
   developerInputType?: FlowNodeInputTypeEnum;
   canAgentGenerated: boolean;
+  renderTypeList: FlowNodeInputTypeEnum[];
 }) => {
-  const renderTypeList = buildConfigRenderTypeList({
+  const finalRenderTypeList = buildConfigRenderTypeList({
     developerInputType,
-    canAgentGenerated
+    canAgentGenerated,
+    renderTypeList
   });
   const selectedRenderType =
     canAgentGenerated && selectedInputType === FlowNodeInputTypeEnum.agentGenerated
       ? FlowNodeInputTypeEnum.agentGenerated
       : (developerInputType ?? FlowNodeInputTypeEnum.input);
-  const selectedTypeIndex = renderTypeList.findIndex((type) => type === selectedRenderType);
+  const selectedTypeIndex = finalRenderTypeList.findIndex((type) => type === selectedRenderType);
 
   return {
-    renderTypeList,
+    renderTypeList: finalRenderTypeList,
     selectedType: selectedRenderType,
     selectedTypeIndex: selectedTypeIndex >= 0 ? selectedTypeIndex : 0
   };
@@ -147,7 +155,7 @@ const getSecretInput = (tool: FlowNodeTemplateType) =>
 const getConfigFormValues = (tool: FlowNodeTemplateType) =>
   tool.inputs.reduce(
     (acc, input) => {
-      const developerInputType = getDeveloperRenderTypeList(input.renderTypeList)[0];
+      const developerInputType = getToolInputManualRenderType(input);
       acc[input.key] = input.value ?? input.defaultValue;
       acc[inputTypeFormKey(input.key)] = isAgentGeneratedToolInput(input)
         ? FlowNodeInputTypeEnum.agentGenerated
@@ -191,8 +199,8 @@ const mergeConfiguredTool = ({
         ...buildConfigInputTypeState({
           selectedInputType: formValues[inputTypeFormKey(input.key)] ?? input.renderTypeList[0],
           developerInputType:
-            formValues[developerInputTypeFormKey(input.key)] ??
-            getDeveloperRenderTypeList(input.renderTypeList)[0],
+            formValues[developerInputTypeFormKey(input.key)] ?? getToolInputManualRenderType(input),
+          renderTypeList: input.renderTypeList,
           canAgentGenerated: canInputBeAgentGenerated(input)
         })
       };
@@ -411,20 +419,11 @@ const AgentGeneratedPlaceholder = () => {
 
 const ConfigValueInput = ({
   input,
-  control,
-  isOpenSecretModal,
-  setTrueSecretModal,
-  setFalseSecretModal,
-  configTool
+  control
 }: {
   input: FlowNodeTemplateType['inputs'][number];
   control: Control<Record<string, any>>;
-  isOpenSecretModal: boolean;
-  setTrueSecretModal: () => void;
-  setFalseSecretModal: () => void;
-  configTool: FlowNodeTemplateType;
 }) => {
-  const { t } = useSafeTranslation();
   const selectedInputType = useWatch({
     control,
     name: inputTypeFormKey(input.key)
@@ -439,65 +438,6 @@ const ConfigValueInput = ({
 
   if (isAgentGenerated) {
     return <AgentGeneratedPlaceholder />;
-  }
-
-  if (input.key === NodeInputKeyEnum.systemInputConfig && input.inputList) {
-    return (
-      <Controller
-        control={control}
-        name={input.key}
-        rules={{
-          required: true
-        }}
-        render={({ field: { onChange, value }, fieldState: { error } }) => (
-          <Box>
-            <FormLabel mb={1} required>
-              {t('common:secret_key')}
-            </FormLabel>
-            <Button
-              variant={'whiteBase'}
-              border={'base'}
-              borderRadius={'md'}
-              borderColor={error ? 'red.500' : 'borderColor.low'}
-              leftIcon={<Box w={'6px'} h={'6px'} bg={'primary.600'} borderRadius={'md'} />}
-              onClick={setTrueSecretModal}
-            >
-              {(() => {
-                const val = value as ToolParamsFormType;
-                if (!val) {
-                  return t('workflow:tool_active_config');
-                }
-
-                return t('workflow:tool_active_config_type', {
-                  type: t(SystemToolSecretInputTypeMap[val.type]?.text as any)
-                });
-              })()}
-            </Button>
-
-            {isOpenSecretModal && (
-              <SecretInputModal
-                isFolder={configTool?.isFolder}
-                inputConfig={{
-                  ...input,
-                  value: value as ToolParamsFormType
-                }}
-                hasSystemSecret={configTool?.hasSystemSecret}
-                secretCost={configTool?.systemKeyCost}
-                courseUrl={configTool?.courseUrl}
-                readmeUrl={configTool?.readmeUrl}
-                parentId={configTool?.pluginId}
-                source={configTool?.source}
-                onClose={setFalseSecretModal}
-                onSubmit={(data) => {
-                  onChange(data);
-                  setFalseSecretModal();
-                }}
-              />
-            )}
-          </Box>
-        )}
-      />
-    );
   }
 
   return (
@@ -529,19 +469,11 @@ const ConfigValueInput = ({
 const SecretInputControl = ({
   input,
   control,
-  isOpenSecretModal,
-  setTrueSecretModal,
-  setFalseSecretModal,
-  configTool,
-  variant
+  configTool
 }: {
   input: FlowNodeTemplateType['inputs'][number];
   control: Control<Record<string, any>>;
-  isOpenSecretModal: boolean;
-  setTrueSecretModal: () => void;
-  setFalseSecretModal: () => void;
   configTool: FlowNodeTemplateType;
-  variant: 'button' | 'card';
 }) => {
   const { t } = useSafeTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -564,51 +496,6 @@ const SecretInputControl = ({
           hasSystemSecret: configTool.hasSystemSecret,
           t
         });
-        const secretModal =
-          variant === 'button' && isOpenSecretModal ? (
-            <SecretInputModal
-              isFolder={configTool?.isFolder}
-              inputConfig={{
-                ...input,
-                value: val
-              }}
-              hasSystemSecret={configTool?.hasSystemSecret}
-              secretCost={configTool?.systemKeyCost}
-              courseUrl={configTool?.courseUrl}
-              readmeUrl={configTool?.readmeUrl}
-              parentId={configTool?.pluginId}
-              source={configTool?.source}
-              onClose={setFalseSecretModal}
-              onSubmit={(data) => {
-                onChange(data);
-                setFalseSecretModal();
-              }}
-            />
-          ) : null;
-
-        if (variant === 'button') {
-          return (
-            <>
-              <Button
-                variant={'whiteBase'}
-                border={'base'}
-                borderRadius={'8px'}
-                borderColor={error ? 'red.500' : 'myGray.250'}
-                h={'36px'}
-                px={4}
-                leftIcon={<Box w={'6px'} h={'6px'} bg={'primary.600'} borderRadius={'full'} />}
-                onClick={setTrueSecretModal}
-              >
-                {val
-                  ? t('workflow:tool_active_config_type', {
-                      type: t(SystemToolSecretInputTypeMap[val.type]?.text as any)
-                    })
-                  : t('workflow:tool_active_config')}
-              </Button>
-              {secretModal}
-            </>
-          );
-        }
 
         if (isExpanded) {
           return (
@@ -692,22 +579,14 @@ const SecretInputControl = ({
 
 const ConfigInputRow = ({
   input,
-  control,
-  isOpenSecretModal,
-  setTrueSecretModal,
-  setFalseSecretModal,
-  configTool
+  control
 }: {
   input: FlowNodeTemplateType['inputs'][number];
   control: Control<Record<string, any>>;
-  isOpenSecretModal: boolean;
-  setTrueSecretModal: () => void;
-  setFalseSecretModal: () => void;
-  configTool: FlowNodeTemplateType;
 }) => {
   const { t } = useSafeTranslation();
   const canAgentGenerated = canInputBeAgentGenerated(input);
-  const developerInputType = getDeveloperRenderTypeList(input.renderTypeList)[0];
+  const developerInputType = getToolInputManualRenderType(input);
   const selectableRenderTypeList = canAgentGenerated
     ? [FlowNodeInputTypeEnum.agentGenerated, developerInputType]
     : [developerInputType];
@@ -742,14 +621,7 @@ const ConfigInputRow = ({
       </Flex>
 
       <Box mt={1.5}>
-        <ConfigValueInput
-          input={input}
-          control={control}
-          isOpenSecretModal={isOpenSecretModal}
-          setTrueSecretModal={setTrueSecretModal}
-          setFalseSecretModal={setFalseSecretModal}
-          configTool={configTool}
-        />
+        <ConfigValueInput input={input} control={control} />
       </Box>
     </Box>
   );
@@ -779,16 +651,10 @@ const ConfigOutputRow = ({ output }: { output: FlowNodeTemplateType['outputs'][n
 const SecretConfigSection = ({
   input,
   control,
-  isOpenSecretModal,
-  setTrueSecretModal,
-  setFalseSecretModal,
   configTool
 }: {
   input?: FlowNodeTemplateType['inputs'][number];
   control: Control<Record<string, any>>;
-  isOpenSecretModal: boolean;
-  setTrueSecretModal: () => void;
-  setFalseSecretModal: () => void;
   configTool: FlowNodeTemplateType;
 }) => {
   const { t } = useSafeTranslation();
@@ -799,15 +665,7 @@ const SecretConfigSection = ({
     <CardSection>
       <Flex flexDirection={'column'} gap={4}>
         <SmallSectionLabel>{t('common:secret_key')}</SmallSectionLabel>
-        <SecretInputControl
-          input={input}
-          control={control}
-          isOpenSecretModal={isOpenSecretModal}
-          setTrueSecretModal={setTrueSecretModal}
-          setFalseSecretModal={setFalseSecretModal}
-          configTool={configTool}
-          variant={'card'}
-        />
+        <SecretInputControl input={input} control={control} configTool={configTool} />
       </Flex>
     </CardSection>
   );
@@ -881,24 +739,14 @@ const ToolSetListCard = ({ tool }: { tool: FlowNodeTemplateType }) => {
 
 const InputConfigSection = ({
   inputs,
-  secretInput,
-  control,
-  isOpenSecretModal,
-  setTrueSecretModal,
-  setFalseSecretModal,
-  configTool
+  control
 }: {
   inputs: FlowNodeTemplateType['inputs'];
-  secretInput?: FlowNodeTemplateType['inputs'][number];
   control: Control<Record<string, any>>;
-  isOpenSecretModal: boolean;
-  setTrueSecretModal: () => void;
-  setFalseSecretModal: () => void;
-  configTool: FlowNodeTemplateType;
 }) => {
   const { t } = useSafeTranslation();
 
-  if (inputs.length === 0 && !secretInput) return null;
+  if (inputs.length === 0) return null;
 
   return (
     <Box
@@ -908,33 +756,14 @@ const InputConfigSection = ({
       borderRadius={'8px'}
       p={4}
     >
-      <Flex alignItems={'center'} justifyContent={'space-between'} gap={3} mb={4}>
+      <Box mb={4}>
         <SectionTitle text={t('common:Input')} />
-        {secretInput && (
-          <SecretInputControl
-            input={secretInput}
-            control={control}
-            isOpenSecretModal={isOpenSecretModal}
-            setTrueSecretModal={setTrueSecretModal}
-            setFalseSecretModal={setFalseSecretModal}
-            configTool={configTool}
-            variant={'button'}
-          />
-        )}
-      </Flex>
+      </Box>
 
       {inputs.length > 0 && (
         <Flex flexDirection={'column'} gap={4}>
           {inputs.map((input) => (
-            <ConfigInputRow
-              key={input.key}
-              input={input}
-              control={control}
-              isOpenSecretModal={isOpenSecretModal}
-              setTrueSecretModal={setTrueSecretModal}
-              setFalseSecretModal={setFalseSecretModal}
-              configTool={configTool}
-            />
+            <ConfigInputRow key={input.key} input={input} control={control} />
           ))}
         </Flex>
       )}
@@ -1114,8 +943,6 @@ const ConfigToolModal = ({
   onAddTool: (tool: SelectedToolItemType) => void;
 }) => {
   const { t } = useSafeTranslation();
-  const [isOpenSecretModal, { setTrue: setTrueSecretModal, setFalse: setFalseSecretModal }] =
-    useBoolean(false);
   const [editingTool, setEditingTool] = useState(configTool);
 
   const visibleConfigInputs = useMemo(
@@ -1144,6 +971,7 @@ const ConfigToolModal = ({
           ...buildConfigInputTypeState({
             selectedInputType: data[inputTypeFormKey(input.key)],
             developerInputType: data[developerInputTypeFormKey(input.key)],
+            renderTypeList: input.renderTypeList,
             canAgentGenerated: canInputBeAgentGenerated(input)
           }),
           value: data[input.key] ?? input.value
@@ -1211,29 +1039,12 @@ const ConfigToolModal = ({
               getValues={getValues}
               onChangeTool={setEditingTool}
             />
+            <SecretConfigSection input={secretInput} control={control} configTool={editingTool} />
             {isToolSet ? (
-              <>
-                <SecretConfigSection
-                  input={secretInput}
-                  control={control}
-                  isOpenSecretModal={isOpenSecretModal}
-                  setTrueSecretModal={setTrueSecretModal}
-                  setFalseSecretModal={setFalseSecretModal}
-                  configTool={editingTool}
-                />
-                <ToolSetListCard tool={editingTool} />
-              </>
+              <ToolSetListCard tool={editingTool} />
             ) : (
               <>
-                <InputConfigSection
-                  inputs={visibleConfigInputs}
-                  secretInput={secretInput}
-                  control={control}
-                  isOpenSecretModal={isOpenSecretModal}
-                  setTrueSecretModal={setTrueSecretModal}
-                  setFalseSecretModal={setFalseSecretModal}
-                  configTool={editingTool}
-                />
+                <InputConfigSection inputs={visibleConfigInputs} control={control} />
                 <OutputConfigSection outputs={visibleOutputs} />
               </>
             )}

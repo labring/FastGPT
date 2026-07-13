@@ -3,12 +3,14 @@ import {
   validateToolConfiguration,
   checkNeedsUserConfiguration,
   filterAgentGeneratedToolParams,
+  getSavedToolInputSelectedType,
+  getToolInputManualRenderType,
   getToolConfigStatus,
   initToolInputTypeByDefaultMode,
   isAgentGeneratedToolInput
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 
@@ -892,6 +894,64 @@ describe('agent generated tool input helpers', () => {
         renderTypeList: [FlowNodeInputTypeEnum.hidden]
       })
     );
+  });
+
+  it('should treat legacy selectedTypeIndex 0 as default for new isToolParam inputs', () => {
+    const selectedType = getSavedToolInputSelectedType({
+      savedInput: createMockInput({
+        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+        selectedTypeIndex: 0
+      }),
+      defaultInput: createMockInput({
+        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+        isToolParam: true
+      })
+    });
+
+    expect(selectedType).toBeUndefined();
+  });
+
+  it('should preserve legacy non-zero selectedTypeIndex as an explicit selection', () => {
+    const selectedType = getSavedToolInputSelectedType({
+      savedInput: createMockInput({
+        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+        selectedTypeIndex: 1
+      }),
+      defaultInput: createMockInput({
+        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+        isToolParam: true
+      })
+    });
+
+    expect(selectedType).toBe(FlowNodeInputTypeEnum.reference);
+  });
+
+  it('should restore number input as manual type from valueType when render type was collapsed', () => {
+    const manualType = getToolInputManualRenderType(
+      createMockInput({
+        valueType: WorkflowIOValueTypeEnum.number,
+        renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.input],
+        selectedType: FlowNodeInputTypeEnum.agentGenerated
+      })
+    );
+
+    expect(manualType).toBe(FlowNodeInputTypeEnum.numberInput);
+  });
+
+  it('should restore number input when selected manual type degraded to textarea', () => {
+    const manualType = getToolInputManualRenderType(
+      createMockInput({
+        valueType: WorkflowIOValueTypeEnum.number,
+        renderTypeList: [
+          FlowNodeInputTypeEnum.agentGenerated,
+          FlowNodeInputTypeEnum.numberInput,
+          FlowNodeInputTypeEnum.textarea
+        ],
+        selectedType: FlowNodeInputTypeEnum.textarea
+      })
+    );
+
+    expect(manualType).toBe(FlowNodeInputTypeEnum.numberInput);
   });
 
   it('should keep user-selected developer mode when agentGenerated is available', () => {

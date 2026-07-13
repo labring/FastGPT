@@ -1,5 +1,7 @@
 import {
   canInputBeAgentGenerated,
+  getSavedToolInputSelectedType,
+  initToolInputTypeByDefaultMode,
   isAgentGeneratedToolInput
 } from '@fastgpt/global/core/app/formEdit/utils';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
@@ -26,15 +28,30 @@ export const inheritToolInputConfig = <T extends Pick<FlowNodeTemplateType, 'inp
       const sourceInput = sourceInputMap.get(input.key);
       if (!sourceInput) return input;
 
+      const normalizedInput = initToolInputTypeByDefaultMode(input);
+      const selectedType = getSavedToolInputSelectedType({
+        savedInput: sourceInput,
+        defaultInput: input
+      });
+      const renderTypeList =
+        selectedType && !normalizedInput.renderTypeList.includes(selectedType)
+          ? [selectedType, ...normalizedInput.renderTypeList]
+          : normalizedInput.renderTypeList;
+      const selectedTypeIndex =
+        selectedType !== undefined
+          ? renderTypeList.findIndex((item) => item === selectedType)
+          : normalizedInput.selectedTypeIndex;
+
       return {
-        ...input,
+        ...normalizedInput,
         value: sourceInput.value,
         valueDesc: sourceInput.valueDesc,
-        renderTypeList: sourceInput.renderTypeList,
-        selectedType: sourceInput.selectedType,
-        selectedTypeIndex: sourceInput.selectedTypeIndex,
-        isToolParam: sourceInput.isToolParam,
-        toolDescription: sourceInput.toolDescription
+        renderTypeList,
+        selectedType: selectedType ?? normalizedInput.selectedType,
+        selectedTypeIndex:
+          selectedTypeIndex !== undefined && selectedTypeIndex >= 0 ? selectedTypeIndex : undefined,
+        isToolParam: input.isToolParam,
+        toolDescription: input.toolDescription ?? sourceInput.toolDescription
       } satisfies FlowNodeInputItemType;
     })
   } as T;

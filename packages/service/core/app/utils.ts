@@ -6,7 +6,7 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { nodeInputIsReference } from '@fastgpt/global/core/workflow/utils';
 import {
-  getSelectedInputRenderType,
+  getSavedToolInputSelectedType,
   initToolInputTypeByDefaultMode
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { getClientToolPreviewNode } from './tool/utils/client';
@@ -136,15 +136,11 @@ export async function rewriteAppWorkflowToDetail({
     savedInput?: ToolInputSnapshot;
   }) => {
     const inputWithDefaultMode = initToolInputTypeByDefaultMode(previewInput);
-    const savedSelectedType =
-      savedInput?.selectedType ??
-      (savedInput?.selectedTypeIndex !== undefined
-        ? getSelectedInputRenderType(savedInput)
-        : undefined);
-    const selectedType =
-      savedSelectedType ??
-      inputWithDefaultMode.selectedType ??
-      getSelectedInputRenderType(inputWithDefaultMode);
+    const savedSelectedType = getSavedToolInputSelectedType({
+      savedInput,
+      defaultInput: previewInput
+    });
+    const selectedType = savedSelectedType ?? inputWithDefaultMode.selectedType;
     const renderTypeList =
       selectedType && !inputWithDefaultMode.renderTypeList.includes(selectedType)
         ? [selectedType, ...inputWithDefaultMode.renderTypeList]
