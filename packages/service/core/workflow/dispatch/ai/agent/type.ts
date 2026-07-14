@@ -1,16 +1,9 @@
-import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
-import type { JSONSchemaInputType } from '@fastgpt/global/core/app/jsonschema';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import z from 'zod';
 import { NodeToolConfigTypeSchema } from '@fastgpt/global/core/workflow/type/node';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
-
-export type ToolNodeItemType = RuntimeNodeItemType & {
-  toolParams: RuntimeNodeItemType['inputs'];
-  jsonSchema?: JSONSchemaInputType;
-};
 
 export type DispatchSubAppResponse = {
   response: string; // 返回给 LLM 的响应

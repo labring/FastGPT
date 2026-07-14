@@ -184,6 +184,7 @@ describe('createWorkflowAgentToolProvider', () => {
     });
     const provider = createWorkflowAgentToolProvider({
       context: createContext({
+        usageId: 'usage_1',
         filesMap: {
           file_1: {
             name: 'a.pdf',
@@ -211,7 +212,8 @@ describe('createWorkflowAgentToolProvider', () => {
       expect.objectContaining({
         files: [{ id: 'file_1', name: 'a.pdf', url: 'https://files/a.pdf' }],
         teamId: 'team_1',
-        tmbId: 'tmb_1'
+        tmbId: 'tmb_1',
+        usageId: 'usage_1'
       })
     );
     expect(result.metadata).toEqual(

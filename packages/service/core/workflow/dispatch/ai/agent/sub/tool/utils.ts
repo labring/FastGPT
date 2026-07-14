@@ -444,7 +444,6 @@ export const getAgentRuntimeTools = async ({
   const formatSchema = ({
     toolId,
     inputs,
-    flowNodeType,
     name,
     toolDescription,
     intro,
@@ -452,7 +451,6 @@ export const getAgentRuntimeTools = async ({
   }: {
     toolId: string;
     inputs: FlowNodeInputItemType[];
-    flowNodeType: FlowNodeTypeEnum;
     name: string;
     toolDescription?: string;
     intro?: string;
@@ -581,7 +579,6 @@ export const getAgentRuntimeTools = async ({
           requestSchema: formatSchema({
             toolId: id,
             inputs: child.inputs,
-            flowNodeType: child.flowNodeType,
             name: child.name,
             toolDescription: child.toolDescription,
             intro: child.intro,
@@ -663,7 +660,6 @@ export const getAgentRuntimeTools = async ({
               requestSchema: formatSchema({
                 toolId: cleanedPluginId,
                 inputs: toolNode.inputs,
-                flowNodeType: toolNode.flowNodeType,
                 name: toolNode.name,
                 toolDescription: toolNode.toolDescription,
                 intro: toolNode.intro,

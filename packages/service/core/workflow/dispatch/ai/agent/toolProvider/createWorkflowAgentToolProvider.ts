@@ -75,7 +75,8 @@ export const createWorkflowAgentToolProvider = ({
         files,
         teamId: context.runningUserInfo.teamId,
         tmbId: context.runningUserInfo.tmbId,
-        customPdfParse: context.chatConfig?.fileSelectConfig?.customPdfParse
+        customPdfParse: context.chatConfig?.fileSelectConfig?.customPdfParse,
+        usageId: context.usageId
       })
   });
 

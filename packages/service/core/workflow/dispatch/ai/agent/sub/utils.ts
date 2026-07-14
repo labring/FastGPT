@@ -159,7 +159,6 @@ export const getExecuteTool = ({
   getSubApp,
   fileUrlMap = {},
   checkIsStopping,
-  chatConfig,
   runningUserInfo,
   runningAppInfo,
   chatId,
