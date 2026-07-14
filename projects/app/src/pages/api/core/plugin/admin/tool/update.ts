@@ -20,7 +20,9 @@ const omitUndefinedFields = <T extends Record<string, unknown>>(fields: T) =>
     Object.entries(fields).filter(([, value]) => value !== undefined)
   ) as Partial<T>;
 
-async function handler(
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+export async function handler(
   req: ApiRequestProps<updateToolBody, updateToolQuery>,
   _res: ApiResponseType<any>
 ): Promise<updateToolResponse> {
@@ -70,6 +72,15 @@ async function handler(
       },
       { upsert: true, session }
     );
+
+    if ('secretsVal' in updateFields) {
+      // 工具集的系统密钥只由父工具维护，覆盖历史子工具记录，避免子工具残留旧密钥。
+      await MongoSystemTool.updateMany(
+        { pluginId: { $regex: `^${escapeRegExp(pluginId)}/` } },
+        { secretsVal: updateFields.secretsVal ?? null },
+        { session }
+      );
+    }
 
     // 如果有子工具，更新子工具
     for await (const tool of updateFields.children || []) {

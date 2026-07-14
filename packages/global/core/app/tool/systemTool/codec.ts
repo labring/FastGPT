@@ -5,6 +5,7 @@ import type { SystemPluginToolCollectionType } from '../../../plugin/tool/type';
 import { PluginStatusEnum } from '../../../plugin/type';
 import { SystemToolSystemSecretStatusEnum } from './constants';
 import type { SystemToolListItemType } from './type';
+import { isDebugToolSource } from '../utils';
 
 type SystemToolConfigLike = SystemPluginToolCollectionType & {
   toObject?: () => SystemPluginToolCollectionType;
@@ -87,13 +88,16 @@ export const SystemToolCodec = {
   attachToolConfig({
     tool,
     config,
-    lang
+    lang,
+    source
   }: {
     tool: ToolListItemType;
     config?: SystemPluginToolCollectionType;
     lang?: `${LangEnum}`;
+    source?: string;
   }): SystemToolListItemType {
-    const configuredSecretsVal = this.getConfiguredSecretsVal(config);
+    const isDebugSource = isDebugToolSource(source) || isDebugToolSource(tool.source);
+    const configuredSecretsVal = isDebugSource ? undefined : this.getConfiguredSecretsVal(config);
     const hasSystemSecret = !!configuredSecretsVal;
 
     return {

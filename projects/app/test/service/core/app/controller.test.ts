@@ -7,6 +7,7 @@ import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
+import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
@@ -16,6 +17,99 @@ import { getUser } from '@test/datas/users';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 
 describe('beforeUpdateAppFormat', () => {
+  it.each([SystemToolSecretInputTypeEnum.system, SystemToolSecretInputTypeEnum.team])(
+    '保存前清理 %s 类型中的临时密钥值',
+    (type) => {
+      const nodes = [
+        {
+          inputs: [
+            {
+              key: NodeInputKeyEnum.systemInputConfig,
+              value: {
+                type,
+                value: {
+                  apiKey: {
+                    value: 'temporary-secret',
+                    secret: ''
+                  }
+                }
+              },
+              inputList: [{ key: 'apiKey', inputType: 'secret' }]
+            }
+          ]
+        } as StoreNodeItemType
+      ];
+
+      beforeUpdateAppFormat({ nodes });
+
+      expect(nodes[0].inputs[0].value).toEqual({ type });
+    }
+  );
+
+  it('即使系统输入被标记为引用，也不能保留临时密钥值', () => {
+    const nodes = [
+      {
+        inputs: [
+          {
+            key: NodeInputKeyEnum.systemInputConfig,
+            selectedTypeIndex: 0,
+            renderTypeList: [FlowNodeInputTypeEnum.reference],
+            value: {
+              type: SystemToolSecretInputTypeEnum.system,
+              value: {
+                apiKey: {
+                  value: 'temporary-secret',
+                  secret: ''
+                }
+              }
+            },
+            inputList: [{ key: 'apiKey', inputType: 'secret' }]
+          }
+        ]
+      } as StoreNodeItemType
+    ];
+
+    beforeUpdateAppFormat({ nodes });
+
+    expect(nodes[0].inputs[0].value).toEqual({
+      type: SystemToolSecretInputTypeEnum.system
+    });
+  });
+
+  it('保存前仅加密 manual 类型的临时密钥值', () => {
+    const nodes = [
+      {
+        inputs: [
+          {
+            key: NodeInputKeyEnum.systemInputConfig,
+            value: {
+              type: SystemToolSecretInputTypeEnum.manual,
+              value: {
+                apiKey: {
+                  value: 'temporary-secret',
+                  secret: ''
+                },
+                region: 'cn'
+              }
+            },
+            inputList: [
+              { key: 'apiKey', inputType: 'secret' },
+              { key: 'region', inputType: 'input' }
+            ]
+          }
+        ]
+      } as StoreNodeItemType
+    ];
+
+    beforeUpdateAppFormat({ nodes });
+
+    const value = nodes[0].inputs[0].value as any;
+    expect(value.type).toBe(SystemToolSecretInputTypeEnum.manual);
+    expect(value.value.apiKey.value).toBe('');
+    expect(value.value.apiKey.secret).toEqual(expect.any(String));
+    expect(value.value.region).toBe('cn');
+  });
+
   it('保存前统一压缩知识库选择项，去掉编辑态删除标记和快照字段', () => {
     const nodes = [
       {

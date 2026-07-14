@@ -104,6 +104,9 @@ export const SecretInputForm = ({
 
   const changeConfigType = (type: SystemToolSecretInputTypeEnum) => {
     setValue('type', type);
+    if (type !== SystemToolSecretInputTypeEnum.manual) {
+      setValue('value', undefined);
+    }
     onTypeChange?.(type);
   };
 
@@ -365,7 +368,14 @@ export const SecretInputForm = ({
                                         {t('common:had_auth_value')}
                                       </Box>
                                     </Flex>
-                                    <IconButton name="edit" onClick={() => setEditIndex(i)} />
+                                    <IconButton
+                                      name="edit"
+                                      onClick={() => {
+                                        setEditIndex(i);
+                                        // 进入编辑态即表示替换该密钥，空提交需要清除旧密文。
+                                        setValue(`value.${item.key}.secret` as any, '');
+                                      }}
+                                    />
                                   </>
                                 )}
                               </Flex>
