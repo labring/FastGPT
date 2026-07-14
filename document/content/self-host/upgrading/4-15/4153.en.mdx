@@ -15,3 +15,24 @@ Starting with V4.15.3, `AGENT_ENGINE` uses new enum values. Update the environme
 | `pi`           | `piAgent`   |
 
 The previous values are no longer supported. Using `default` or `pi` will fail environment variable validation and prevent FastGPT from starting. If `AGENT_ENGINE` is not set, FastGPT uses `fastAgent` by default.
+
+## 🛠️ Code Improvements
+
+### ⚙️ Agent Loop Refactor
+
+1. Workflow Agent and ToolCall now use the same Agent Loop execution core. ToolCall disables plan and ask capabilities while sharing the same loop execution, context handling, tool events, interactive recovery, and billing rules as Workflow Agent.
+2. Standardized the Provider interface for `fastAgent` and `piAgent`. The execution engine can be selected with `AGENT_ENGINE`, and both providers now use the same input, runtime, and result contracts.
+3. Standardized the event lifecycle for plan, ask, sandbox, file reading, Knowledge Base search, and runtime tools so SSE events, execution details, and errors are handled consistently.
+4. Unified the generation and persistence of `assistantResponses`, node responses, Provider state, and context-compression checkpoints, and removed duplicate adapters from the legacy execution paths.
+5. Unified usage collection for model calls, context compression, and tool execution to prevent duplicate billing or usage aggregation.
+6. Improved tool scheduling by allowing safe tools to run in parallel while writing tool responses back in model-call order. Stateful tools such as plan and ask continue to run sequentially.
+
+### 🐛 Agent Loop Fixes
+
+1. Fixed unfinished interactive sessions failing to resume when `history=0`. Regular requests still exclude history. When the latest round contains an unfinished interaction, FastGPT retains the nearest Human/AI pair long enough to detect and restore the interaction, then filters the history as configured.
+2. Fixed ask answers in nested workflows not being restored as the matching tool response. New interaction records use `askId` to associate the ask call with the user's answer, while legacy `planId` records remain readable.
+3. Fixed duplicate tool responses and plan snapshots after resuming a child interaction. Tool results are updated in place by `toolCallId`, and plans are updated by `planId`, preventing duplicate tool cards or plans after a refresh.
+4. Fixed Agent Knowledge Base search not reading the split dataset parameters from the main workflow, adding compatibility with the latest Knowledge Base search parameter structure.
+5. Fixed later tools continuing to run after an ask in the same model response had already paused the loop, preventing additional tool side effects before the user answers.
+6. Fixed parent-node errors being hidden when a workflow node also produced child execution details. Parent errors are now preserved in SSE events, workflow results, and traces.
+7. Fixed `workflowDispatchDeep` not being restored when the workflow observer failed before dispatch started, preventing subsequent workflows from inheriting an incorrect nesting depth.

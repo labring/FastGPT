@@ -119,14 +119,6 @@ export const createWorkflowAgentLoopRuntime = ({
         reasoningEffort: context.params.aiChatReasoningEffort,
         userKey: context.externalProvider.openaiAccount,
         stream: context.stream,
-        temperature: context.params.temperature,
-        maxTokens: context.params.maxToken,
-        topP: context.params.aiChatTopP,
-        stop: context.params.aiChatStopSign,
-        responseFormat: {
-          type: context.params.aiChatResponseFormat,
-          json_schema: context.params.aiChatJsonSchema
-        },
         useVision: context.params.aiChatVision,
         useAudio: context.params.aiChatAudio,
         useVideo: context.params.aiChatVideo,

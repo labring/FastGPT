@@ -56,12 +56,6 @@ export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiChatExtractFiles]?: boolean;
   [NodeInputKeyEnum.aiChatReasoning]?: boolean;
   [NodeInputKeyEnum.aiChatReasoningEffort]?: ReasoningEffort;
-  [NodeInputKeyEnum.aiChatTemperature]?: number;
-  [NodeInputKeyEnum.aiChatMaxToken]?: number;
-  [NodeInputKeyEnum.aiChatTopP]?: number;
-  [NodeInputKeyEnum.aiChatStopSign]?: string;
-  [NodeInputKeyEnum.aiChatResponseFormat]?: string;
-  [NodeInputKeyEnum.aiChatJsonSchema]?: string;
   [NodeInputKeyEnum.fileUrlList]?: string[];
   [NodeInputKeyEnum.aiModel]: string;
   [NodeInputKeyEnum.aiSystemPrompt]: string;
