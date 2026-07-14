@@ -3,6 +3,18 @@ title: 'V4.15.2(进行中)'
 description: 'FastGPT V4.15.2 更新说明'
 ---
 
+## 📦 升级指南
+
+### OpenSandbox 镜像升级
+
+如果部署中启用了 OpenSandbox，请同步更新以下镜像：
+
+- `opensandbox/server:v0.2.1`
+- `opensandbox/execd:v1.0.21`
+- `opensandbox/egress:v1.1.4`
+
+升级后可修复中文文件名的文件无法下载的问题。完整配置请参考 [OpenSandbox 配置](../../config/sandbox/opensandbox)。
+
 ## 🚀 新增内容
 
 1. 企业认证/公司认证能力。
@@ -16,6 +28,7 @@ description: 'FastGPT V4.15.2 更新说明'
 4. 判断器节点采用唯一 ID 作为标识，而不是 index，实现删除、排序时，目标分支保持不变。
 5. 系统工具生成的文件不会 1 小时过期，改成长期，跟随会话一起删除。
 6. 同步模式下不显示注册用户按钮。
+7. 对话框流输出，淡入效果性能优化。
 
 ## 🐛 修复
 

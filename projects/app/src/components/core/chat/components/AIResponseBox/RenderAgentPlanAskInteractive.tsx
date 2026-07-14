@@ -19,7 +19,7 @@ const RenderAgentPlanAskInteractive = React.memo(function RenderAgentPlanAskInte
   isLastChild: boolean;
 }) {
   const { t } = useTranslation();
-  const { content, reason, options = [], answer } = interactive.params;
+  const { content, options = [], answer } = interactive.params;
   const [otherAnswer, setOtherAnswer] = React.useState('');
   const [isOtherSelected, setIsOtherSelected] = React.useState(false);
   const [submittedAnswer, setSubmittedAnswer] = React.useState('');
@@ -79,11 +79,6 @@ const RenderAgentPlanAskInteractive = React.memo(function RenderAgentPlanAskInte
       <Box fontWeight={'medium'} whiteSpace={'pre-wrap'}>
         {content}
       </Box>
-      {reason && (
-        <Box fontSize={'sm'} color={'myGray.600'} whiteSpace={'pre-wrap'}>
-          {reason}
-        </Box>
-      )}
       {normalizedOptions.length > 0 && (
         <Box>
           {selectedAnswerPlacement === 'above' && (

@@ -32,6 +32,7 @@
   "completion_finish_null": "未知",
   "completion_finish_stop": "正常完成",
   "completion_finish_tool_calls": "工具呼叫",
+  "collect_questions": "收集問題",
   "compress_llm_messages": "上下文壓縮",
   "confirm_clear_input_value": "確認清空表單內容？\n將會恢復默認值！",
   "confirm_to_clear_share_chat_history": "確認清空所有聊天記錄？",

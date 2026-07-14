@@ -32,6 +32,7 @@
   "completion_finish_null": "unknown",
   "completion_finish_stop": "Completed normally",
   "completion_finish_tool_calls": "Tool calls",
+  "collect_questions": "Collect questions",
   "compress_llm_messages": "Context compression",
   "confirm_clear_input_value": "Are you sure to clear the form content? \nDefault values ​​will be restored!",
   "confirm_to_clear_share_chat_history": "Are you sure you want to clear all chat history?",
