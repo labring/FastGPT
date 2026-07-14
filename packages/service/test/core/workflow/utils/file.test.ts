@@ -814,6 +814,50 @@ describe('formatUserQueryWithFiles', () => {
     expect(result).toBe(userQuery);
   });
 
+  it('短链图片会在文档解析前恢复为 image 类型，不再进入 read_file 文档解析', async () => {
+    const signedAlias = 'xWqlYoPSsRIoFtHP.hpagc.bpCySSj7HPRrPtWbcAlqxd';
+    const shortUrls = [`/api/system/file/d/${signedAlias}`, `http://localhost:8088/${signedAlias}`];
+    mockVerifyS3DownloadAccess.mockResolvedValue({
+      bucketName: 'fastgpt-private',
+      objectKey: 'chat/app/app1/u1/c1/photo.jpeg',
+      responseContentType: 'image/jpeg',
+      expiresAt: new Date('2099-01-01T00:00:00.000Z')
+    });
+
+    for (const shortUrl of shortUrls) {
+      mockVerifyS3DownloadAccess.mockClear();
+      const parseFileFn = vi.fn(async () => []);
+
+      const result = await formatUserQueryWithFiles({
+        userQuery: [
+          { text: { content: '图片内容' } },
+          {
+            file: {
+              type: ChatFileTypeEnum.file,
+              name: '',
+              url: shortUrl
+            }
+          }
+        ],
+        parseFileFn
+      });
+
+      expect(mockVerifyS3DownloadAccess).toHaveBeenCalledTimes(1);
+      expect(mockVerifyS3DownloadAccess).toHaveBeenCalledWith(signedAlias);
+      expect(parseFileFn).not.toHaveBeenCalled();
+      expect(result).toEqual([
+        { text: { content: '图片内容' } },
+        {
+          file: {
+            type: ChatFileTypeEnum.image,
+            name: 'photo.jpeg',
+            url: shortUrl
+          }
+        }
+      ]);
+    }
+  });
+
   it('把 parseFileFn 返回的 id、sandboxPath 和 content 注入到文本 prompt', async () => {
     const parseFileFn = vi.fn(async () => [
       {

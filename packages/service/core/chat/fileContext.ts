@@ -61,6 +61,33 @@ const resolveSupportedReadableExtension = (extension?: string) => {
   return readableFileExtensions.has(aliasExtension) ? aliasExtension : '';
 };
 
+const fileTypeIncludesExtension = (fileTypes: string, extension: string) =>
+  !!extension && fileTypes.split(',').some((item) => item.trim() === extension);
+
+const resolveMediaChatFileTypeFromFilename = (filename?: string) => {
+  const extension = path.extname(filename || '').toLowerCase();
+  if (fileTypeIncludesExtension(imageFileType, extension)) return ChatFileTypeEnum.image;
+  if (fileTypeIncludesExtension(audioFileType, extension)) return ChatFileTypeEnum.audio;
+  if (fileTypeIncludesExtension(videoFileType, extension)) return ChatFileTypeEnum.video;
+};
+
+const resolveMediaChatFileTypeFromContentType = (contentType?: string) => {
+  const normalizedContentType = normalizeMimeType(contentType, '');
+  if (normalizedContentType.startsWith('image/')) return ChatFileTypeEnum.image;
+  if (normalizedContentType.startsWith('audio/')) return ChatFileTypeEnum.audio;
+  if (normalizedContentType.startsWith('video/')) return ChatFileTypeEnum.video;
+};
+
+const resolveMediaChatFileTypeFromDownloadAccess = (access: VerifiedS3DownloadAccess) => {
+  const contentTypeFileType = resolveMediaChatFileTypeFromContentType(access.responseContentType);
+  if (contentTypeFileType) return contentTypeFileType;
+
+  return (
+    resolveMediaChatFileTypeFromFilename(access.filename) ||
+    resolveMediaChatFileTypeFromFilename(access.objectKey)
+  );
+};
+
 const resolveSignedDownloadAliasFromUrl = (url: string) => {
   try {
     const parsedUrl = new URL(url, 'http://localhost:3000');
@@ -99,6 +126,52 @@ const resolveShortDownloadAccessFromUrl = async (
   if (!signedAlias) return;
 
   return verifyS3DownloadAccess(signedAlias);
+};
+
+const resolveShortLinkMediaFileItem = async (file: UserChatItemFileItemType) => {
+  if (file.type !== ChatFileTypeEnum.file) return file;
+  if (!resolveSignedDownloadAliasFromUrl(file.url)) return file;
+
+  try {
+    const shortDownloadAccess = await resolveShortDownloadAccessFromUrl(file.url);
+    if (!shortDownloadAccess) return file;
+
+    const mediaType = resolveMediaChatFileTypeFromDownloadAccess(shortDownloadAccess);
+    if (!mediaType) return file;
+
+    return {
+      ...file,
+      type: mediaType,
+      name:
+        file.name ||
+        shortDownloadAccess.filename ||
+        path.basename(shortDownloadAccess.objectKey) ||
+        file.url
+    };
+  } catch {
+    return file;
+  }
+};
+
+const resolveShortLinkMediaFilesInUserQuery = async (userQuery: UserChatItemValueItemType[]) => {
+  let changed = false;
+
+  const normalizedUserQuery = await Promise.all(
+    userQuery.map(async (item) => {
+      if (!item.file) return item;
+
+      const file = await resolveShortLinkMediaFileItem(item.file);
+      if (file === item.file) return item;
+
+      changed = true;
+      return {
+        ...item,
+        file
+      };
+    })
+  );
+
+  return changed ? normalizedUserQuery : userQuery;
 };
 
 /**
@@ -245,22 +318,30 @@ export const formatUserQueryWithFiles = async ({
     }[]
   >;
 }): Promise<UserChatItemValueItemType[]> => {
-  const urls = userQuery
+  const hasShortLinkFile = userQuery.some(
+    (item) =>
+      item.file?.type === ChatFileTypeEnum.file &&
+      !!resolveSignedDownloadAliasFromUrl(item.file.url)
+  );
+  const normalizedUserQuery = hasShortLinkFile
+    ? await resolveShortLinkMediaFilesInUserQuery(userQuery)
+    : userQuery;
+  const urls = normalizedUserQuery
     .map((item) => (item.file?.type === ChatFileTypeEnum.file ? item.file.url : ''))
     .filter(Boolean);
 
   if (urls.length === 0) {
-    return userQuery;
+    return normalizedUserQuery;
   }
 
   const readFilesResult = await parseFileFn(urls);
 
   if (readFilesResult.length === 0) {
-    return userQuery;
+    return normalizedUserQuery;
   }
 
   // 把 file 和 text 合并成一个 text(实际上应该只会有一个 text+多个 files)
-  const text = userQuery.find((item) => item.text?.content)?.text?.content;
+  const text = normalizedUserQuery.find((item) => item.text?.content)?.text?.content;
   const fileQuery = getUserFilesPrompt(readFilesResult);
 
   const finalQuery = injectUserQueryPrompt({
