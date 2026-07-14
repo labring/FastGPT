@@ -6,7 +6,6 @@ import {
   buildAgentLoopCoreDoneMemories,
   buildAgentLoopCoreProviderStateMemories,
   getAgentLoopCoreMemoryKeys,
-  getAgentLoopCorePiMessagesMemoryKey,
   prepareAgentLoopCoreProviderRunState,
   readAgentLoopCoreProviderStateMemory
 } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/memory/providerState';
@@ -106,10 +105,7 @@ describe('agentLoopCore providerState memory', () => {
     });
     expect(
       prepareAgentLoopCoreProviderRunState({
-        provider: 'fastAgent',
         restoredProviderState: memory.providerState,
-        histories,
-        nodeId: 'node_1',
         hasLastInteractive: true
       }).isAskResume
     ).toBe(true);
@@ -171,7 +167,7 @@ describe('agentLoopCore providerState memory', () => {
     });
   });
 
-  it('detects fastAgent ask resume from pending main context', () => {
+  it('detects ask resume from pending main context', () => {
     const providerState = {
       pendingMainContext: {
         askToolCallId: 'call_ask'
@@ -180,110 +176,48 @@ describe('agentLoopCore providerState memory', () => {
 
     expect(
       prepareAgentLoopCoreProviderRunState({
-        provider: 'fastAgent',
         restoredProviderState: providerState,
-        histories: [],
-        nodeId: 'node_1',
         hasLastInteractive: true
       })
     ).toEqual({
-      piMessagesKey: 'piMessages-node_1',
       providerState,
       isAskResume: true
     });
   });
 
-  it('does not resume fastAgent ask without pending main context', () => {
+  it('does not resume ask without pending main context', () => {
     expect(
       prepareAgentLoopCoreProviderRunState({
-        provider: 'fastAgent',
         restoredProviderState: {},
-        histories: [],
-        nodeId: 'node_1',
         hasLastInteractive: true
       }).isAskResume
     ).toBe(false);
   });
 
-  it('restores piAgent raw messages from the legacy piMessages memory key', () => {
-    const piMessagesKey = getAgentLoopCorePiMessagesMemoryKey('node_1');
-    const piMessages = [{ role: 'assistant', content: 'question' }];
-    const histories = [
-      {
-        obj: ChatRoleEnum.AI,
-        value: [],
-        memories: {
-          [piMessagesKey]: piMessages
-        }
+  it('detects standard ask resume from pending main context', () => {
+    const providerState = {
+      pendingMainContext: {
+        askToolCallId: 'call_ask',
+        messages: [{ role: 'assistant', content: 'question' }]
       }
-    ] satisfies ChatItemMiniType[];
-
+    };
     expect(
       prepareAgentLoopCoreProviderRunState({
-        provider: 'piAgent',
-        restoredProviderState: {
-          pendingAsk: {
-            reason: 'need info',
-            blockerType: 'missing_required_input',
-            question: 'Which dataset should I use?',
-            options: ['Dataset A', 'Dataset B']
-          }
-        },
-        histories,
-        nodeId: 'node_1',
+        restoredProviderState: providerState,
         hasLastInteractive: true
       })
     ).toEqual({
-      piMessagesKey,
-      providerState: {
-        pendingAsk: {
-          reason: 'need info',
-          blockerType: 'missing_required_input',
-          question: 'Which dataset should I use?',
-          options: ['Dataset A', 'Dataset B']
-        },
-        piMessages
-      },
+      providerState,
       isAskResume: true
-    });
-  });
-
-  it('prefers unified piAgent providerState over legacy raw messages', () => {
-    const piMessagesKey = getAgentLoopCorePiMessagesMemoryKey('node_1');
-    const unifiedPiMessages: unknown[] = [];
-    const histories = [
-      {
-        obj: ChatRoleEnum.AI,
-        value: [],
-        memories: {
-          [piMessagesKey]: [{ role: 'assistant', content: 'legacy question' }]
-        }
-      }
-    ] satisfies ChatItemMiniType[];
-
-    expect(
-      prepareAgentLoopCoreProviderRunState({
-        provider: 'piAgent',
-        restoredProviderState: {
-          piMessages: unifiedPiMessages
-        },
-        histories,
-        nodeId: 'node_1',
-        hasLastInteractive: true
-      })
-    ).toEqual({
-      piMessagesKey,
-      providerState: {
-        piMessages: unifiedPiMessages
-      },
-      isAskResume: false
     });
   });
 
   it('writes complete piAgent state only to unified providerState memory on pause', () => {
     const providerState = {
-      pendingAskId: 'call_ask',
-      piMessages: [{ role: 'assistant', content: 'question' }]
+      pendingMainContext: {
+        askToolCallId: 'call_ask',
+        messages: [{ role: 'assistant', content: 'question' }]
+      }
     };
 
     expect(
@@ -298,16 +232,13 @@ describe('agentLoopCore providerState memory', () => {
     });
   });
 
-  it('clears providerState and piAgent raw messages on done', () => {
+  it('clears providerState on done', () => {
     expect(
       buildAgentLoopCoreDoneMemories({
-        provider: 'piAgent',
-        nodeId: 'node_1',
-        piMessagesKey: 'piMessages-node_1'
+        nodeId: 'node_1'
       })
     ).toEqual({
-      'agentLoopMemory-node_1': undefined,
-      'piMessages-node_1': undefined
+      'agentLoopMemory-node_1': undefined
     });
   });
 });

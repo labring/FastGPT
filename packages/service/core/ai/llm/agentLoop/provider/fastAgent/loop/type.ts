@@ -13,6 +13,7 @@ import type {
   AgentLoopChildrenInteractiveParams,
   AgentLoopEvent,
   AgentLoopInteractiveToolExecuteParams,
+  AgentLoopPendingMainContext,
   AgentLoopPause,
   AgentLoopReadFileExecutor,
   AgentLoopToolExecutionResult,
@@ -68,13 +69,7 @@ export type AgentLoopRuntime<TChildrenResponse = unknown> = {
   emitEvent?: (event: AgentLoopEvent) => void;
 };
 
-export type PendingMainContext = {
-  messages: ChatCompletionMessageParam[];
-  askToolCallId: string;
-  activePlan?: AgentPlanType;
-  requirePlan?: boolean;
-  runtimeToolCalledSinceLastPlanUpdate?: boolean;
-};
+export type PendingMainContext = AgentLoopPendingMainContext;
 
 export type FastAgentLoopInput<TChildrenResponse = unknown> = {
   messages: ChatCompletionMessageParam[];

@@ -96,7 +96,10 @@ describe('summarizeAgentLoopCoreResult', () => {
 
   it('builds ask interactive and keeps provider state for workflow adapter wrapping', () => {
     const providerState = {
-      pendingAskId: 'call_ask'
+      pendingMainContext: {
+        askToolCallId: 'call_ask',
+        messages: []
+      }
     };
     const ask = {
       reason: 'Need input',

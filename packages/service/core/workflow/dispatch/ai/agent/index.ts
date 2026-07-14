@@ -272,23 +272,17 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     });
 
     // providerState 统一保存 provider 内部恢复信息。
-    // fastAgent 的 ask_user 会在其中保存 pendingMainContext，用户回答后恢复同一条 messages。
+    // fastAgent/piAgent 的 ask_user 都在其中保存标准 pendingMainContext，用户回答后恢复同一条 messages。
     const restoredMemory = readAgentLoopCoreProviderStateMemory({
       histories: chatHistories,
       nodeId
     });
     const provider = getWorkflowAgentLoopProvider();
-    const {
-      piMessagesKey,
-      providerState: runtimeProviderState,
-      isAskResume
-    } = prepareAgentLoopCoreProviderRunState({
-      provider,
-      restoredProviderState: restoredMemory.providerState,
-      histories,
-      nodeId,
-      hasLastInteractive: !!lastInteractive
-    });
+    const { providerState: runtimeProviderState, isAskResume } =
+      prepareAgentLoopCoreProviderRunState({
+        restoredProviderState: restoredMemory.providerState,
+        hasLastInteractive: !!lastInteractive
+      });
     // 3. 运行单主 loop。
     // 如果上一轮因 ask_user 暂停，这里会把用户回答作为 ask tool response 接回原 messages。
     const { summary: outputSummary } = await runAgentLoopCoreWithSummary({
@@ -373,9 +367,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         }
       }),
       [DispatchNodeResponseKeyEnum.memories]: buildAgentLoopCoreDoneMemories({
-        provider,
-        nodeId,
-        piMessagesKey
+        nodeId
       }),
       [DispatchNodeResponseKeyEnum.assistantResponses]: finalOutput.assistantResponses,
       [DispatchNodeResponseKeyEnum.nodeResponses]: nodeResponseCollector.getNodeResponses(),

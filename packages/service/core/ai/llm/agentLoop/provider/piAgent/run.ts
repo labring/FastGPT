@@ -88,7 +88,8 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   let outputTokens = 0;
   let llmTotalPoints = 0;
   let finishReason: CompletionFinishReason = 'stop';
-  let activePlan = input.activePlan ?? state.activePlan;
+  const pendingMainContext = state.pendingMainContext;
+  let activePlan = input.activePlan ?? pendingMainContext?.activePlan ?? state.activePlan;
   let pendingAsk: AgentAskPayload | undefined;
   let pendingAskId: string | undefined;
   let pendingToolChild:
@@ -101,7 +102,6 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   let latestError: unknown;
   let latestContextCheckpoint: string | undefined;
   let reachedRunLimit = false;
-  const completeMessages: ChatCompletionMessageParam[] = [...input.messages];
   const assistantMessages: ChatCompletionMessageParam[] = [];
   const controlToolNames = new Set([askUserToolName, updatePlanToolName]);
   const emittedToolCallIds = new Set<string>();
@@ -205,16 +205,35 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   );
   const standardHistoryMessages =
     lastUserMessageIndex >= 0 ? requestMessages.slice(0, lastUserMessageIndex) : requestMessages;
-  const shouldRestoreRawState = !!input.childrenInteractiveParams || !!state.pendingAsk;
-  const shouldResumeAsk =
-    !input.childrenInteractiveParams && !!state.pendingAsk && input.userAnswer !== undefined;
-  const askResumeId = shouldResumeAsk ? state.pendingAskId : undefined;
+  const shouldResumeStandardAsk =
+    !input.childrenInteractiveParams && !!pendingMainContext && input.userAnswer !== undefined;
+  const shouldResumeAsk = shouldResumeStandardAsk;
+  const askResumeId = pendingMainContext?.askToolCallId;
+  const standardAskResumeMessages =
+    shouldResumeStandardAsk && askResumeId
+      ? [
+          ...pendingMainContext!.messages,
+          {
+            role: ChatCompletionRequestMessageRoleEnum.Tool,
+            tool_call_id: askResumeId,
+            content: normalizeToolResponseContent(input.userAnswer)
+          } as ChatCompletionMessageParam
+        ]
+      : undefined;
+  // ask resume follows the FastAgent contract: the new user input is represented by
+  // the matching tool response, not as another user message in the LLM context.
+  const completeMessages: ChatCompletionMessageParam[] = [
+    ...(standardAskResumeMessages ?? input.messages)
+  ];
+  const shouldRestoreRawState = !!input.childrenInteractiveParams;
   let initialPiMessages = normalizePiAgentMessages({
     messages:
       shouldRestoreRawState && state.piMessages?.length
         ? state.piMessages
         : convertChatMessagesToPiAgentMessages({
-            messages: input.childrenInteractiveParams ? input.messages : standardHistoryMessages,
+            messages:
+              standardAskResumeMessages ??
+              (input.childrenInteractiveParams ? input.messages : standardHistoryMessages),
             model: piModel
           }),
     completionTools: normalizationTools
@@ -338,23 +357,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   }
 
   if (shouldResumeAsk && askResumeId) {
-    const call = resolveInteractiveToolCall({
-      toolCallId: askResumeId,
-      messages: input.messages,
-      piMessages: initialPiMessages
-    });
     const answer = normalizeToolResponseContent(input.userAnswer);
-    initialPiMessages = replaceInteractiveToolResult({
-      messages: initialPiMessages,
-      call,
-      response: answer,
-      isError: false
-    });
-    recordToolResult({
-      call,
-      response: answer,
-      appendToAssistantMessages: false
-    });
     resumedAsk = true;
     runtime.emitEvent?.({
       type: 'ask_resume',
@@ -655,7 +658,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       const piPromptMessage =
         currentUserMessage?.role === ChatCompletionRequestMessageRoleEnum.User &&
         Array.isArray(currentUserMessage.content) &&
-        !state.pendingAsk
+        !shouldResumeAsk
           ? convertChatMessagesToPiAgentMessages({
               messages: [currentUserMessage],
               model: piModel
@@ -705,15 +708,25 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
           }
         ]
       : [];
-  const nextProviderState: PiAgentProviderState = {
-    piMessages: normalizePiAgentMessages({
-      messages: agent.state.messages,
-      completionTools: normalizationTools
-    }),
-    activePlan,
-    ...(pendingAsk ? { pendingAsk } : {}),
-    ...(resolvedPendingAskId ? { pendingAskId: resolvedPendingAskId } : {})
-  };
+  const pendingMainContextForAsk =
+    pendingAsk && resolvedPendingAskId
+      ? {
+          messages: completeMessages.filter(
+            (message) => !(message.role === 'tool' && message.tool_call_id === resolvedPendingAskId)
+          ),
+          askToolCallId: resolvedPendingAskId,
+          activePlan
+        }
+      : undefined;
+  const nextProviderState: PiAgentProviderState = pendingMainContextForAsk
+    ? { pendingMainContext: pendingMainContextForAsk }
+    : {
+        piMessages: normalizePiAgentMessages({
+          messages: agent.state.messages,
+          completionTools: normalizationTools
+        }),
+        activePlan
+      };
 
   if (pendingAsk && resolvedPendingAskId) {
     runtime.emitEvent?.({

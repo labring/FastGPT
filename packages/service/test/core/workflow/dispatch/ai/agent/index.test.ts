@@ -608,14 +608,6 @@ describe('dispatchRunAgent user context', () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     serviceEnvMock.AGENT_ENGINE = 'piAgent';
     const props = createProps();
-    props.histories[props.histories.length - 1].memories = {
-      'piMessages-agent_node': [
-        {
-          role: 'assistant',
-          content: 'previous pi message'
-        }
-      ]
-    };
     runAgentLoopMock.mockResolvedValueOnce({
       status: 'done',
       providerState: {
@@ -650,23 +642,13 @@ describe('dispatchRunAgent user context', () => {
 
     expect(runAgentLoopMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        provider: 'piAgent',
-        input: expect.objectContaining({
-          providerState: expect.objectContaining({
-            piMessages: expect.arrayContaining([
-              expect.objectContaining({
-                role: 'assistant',
-                content: 'previous pi message'
-              })
-            ])
-          })
-        })
+        provider: 'piAgent'
       })
     );
+    expect(runAgentLoopMock.mock.calls[0][0].input).not.toHaveProperty('providerState');
     expect(result.data.answerText).toBe('pi answer');
     expect(result[DispatchNodeResponseKeyEnum.memories]).toEqual({
-      'agentLoopMemory-agent_node': undefined,
-      'piMessages-agent_node': undefined
+      'agentLoopMemory-agent_node': undefined
     });
   });
 
@@ -763,24 +745,30 @@ describe('dispatchRunAgent user context', () => {
     props.histories[props.histories.length - 1].memories = {
       'agentLoopMemory-agent_node': {
         providerState: {
-          activePlan: {
-            planId: 'plan_1'
-          },
-          pendingAsk: {
-            reason: 'Need confirmation',
-            blockerType: 'missing_required_input',
-            question: 'Confirm?',
-            options: ['Yes', 'No']
-          },
-          pendingAskId: 'call_ask_1'
+          pendingMainContext: {
+            askToolCallId: 'call_ask_1',
+            activePlan: {
+              planId: 'plan_1'
+            },
+            messages: [
+              {
+                role: 'assistant',
+                content: null,
+                tool_calls: [
+                  {
+                    id: 'call_ask_1',
+                    type: 'function',
+                    function: {
+                      name: 'ask_user',
+                      arguments: '{}'
+                    }
+                  }
+                ]
+              }
+            ]
+          }
         }
-      },
-      'piMessages-agent_node': [
-        {
-          role: 'assistant',
-          content: 'previous pi message'
-        }
-      ]
+      }
     };
     runAgentLoopMock.mockResolvedValueOnce({
       status: 'paused',
@@ -795,22 +783,28 @@ describe('dispatchRunAgent user context', () => {
         }
       },
       providerState: {
-        activePlan: {
-          planId: 'plan_1'
-        },
-        pendingAsk: {
-          reason: 'Need another confirmation',
-          blockerType: 'missing_required_input',
-          question: 'Confirm again?',
-          options: ['Yes', 'No']
-        },
-        pendingAskId: 'call_ask_2',
-        piMessages: [
-          {
-            role: 'assistant',
-            content: 'saved pi message'
-          }
-        ]
+        pendingMainContext: {
+          activePlan: {
+            planId: 'plan_1'
+          },
+          askToolCallId: 'call_ask_2',
+          messages: [
+            {
+              role: 'assistant',
+              content: null,
+              tool_calls: [
+                {
+                  id: 'call_ask_2',
+                  type: 'function',
+                  function: {
+                    name: 'ask_user',
+                    arguments: '{}'
+                  }
+                }
+              ]
+            }
+          ]
+        }
       },
       completeMessages: [],
       assistantMessages: [],
@@ -835,19 +829,12 @@ describe('dispatchRunAgent user context', () => {
         input: expect.objectContaining({
           userAnswer: '前端原始问题',
           providerState: expect.objectContaining({
-            activePlan: {
-              planId: 'plan_1'
-            },
-            pendingAsk: expect.objectContaining({
-              question: 'Confirm?'
-            }),
-            pendingAskId: 'call_ask_1',
-            piMessages: expect.arrayContaining([
-              expect.objectContaining({
-                role: 'assistant',
-                content: 'previous pi message'
-              })
-            ])
+            pendingMainContext: expect.objectContaining({
+              activePlan: {
+                planId: 'plan_1'
+              },
+              askToolCallId: 'call_ask_1'
+            })
           })
         })
       })
@@ -855,22 +842,28 @@ describe('dispatchRunAgent user context', () => {
     expect(result[DispatchNodeResponseKeyEnum.memories]).toEqual({
       'agentLoopMemory-agent_node': {
         providerState: {
-          activePlan: {
-            planId: 'plan_1'
-          },
-          pendingAsk: {
-            reason: 'Need another confirmation',
-            blockerType: 'missing_required_input',
-            question: 'Confirm again?',
-            options: ['Yes', 'No']
-          },
-          pendingAskId: 'call_ask_2',
-          piMessages: [
-            {
-              role: 'assistant',
-              content: 'saved pi message'
-            }
-          ]
+          pendingMainContext: {
+            activePlan: {
+              planId: 'plan_1'
+            },
+            askToolCallId: 'call_ask_2',
+            messages: [
+              {
+                role: 'assistant',
+                content: null,
+                tool_calls: [
+                  {
+                    id: 'call_ask_2',
+                    type: 'function',
+                    function: {
+                      name: 'ask_user',
+                      arguments: '{}'
+                    }
+                  }
+                ]
+              }
+            ]
+          }
         }
       }
     });

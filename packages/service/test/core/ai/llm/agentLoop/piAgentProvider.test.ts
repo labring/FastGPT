@@ -1444,16 +1444,59 @@ describe('runPiAgentLoop', () => {
     );
   });
 
-  it('resumes pending ask by replacing its tool result without injecting a user prompt', async () => {
+  it('stores ask pause as standard pending context without pi messages', async () => {
+    agentToolToExecute.value = {
+      name: 'ask_user',
+      callId: 'call_ask_pause',
+      args: {
+        question: '请确认目标',
+        reason: '需要补充范围',
+        blockerType: 'missing_required_input',
+        options: ['目标 A', '目标 B', '目标 C']
+      }
+    };
+
+    const result = await runPiAgentLoop({
+      input: {
+        messages: [{ role: 'user', content: '分析销售数据' }]
+      },
+      runtime: {
+        llmParams: { model: 'gpt-5' },
+        toolCatalog: { runtimeTools: [] },
+        systemTools: { ask: { enabled: true } },
+        executeTool: vi.fn(),
+        checkIsStopping: vi.fn(() => false)
+      }
+    });
+
+    expect(result.status).toBe('paused');
+    expect(result.providerState).toEqual({
+      pendingMainContext: {
+        askToolCallId: 'call_ask_pause',
+        activePlan: undefined,
+        messages: [
+          { role: 'user', content: '分析销售数据' },
+          expect.objectContaining({
+            role: 'assistant',
+            tool_calls: [expect.objectContaining({ id: 'call_ask_pause' })]
+          })
+        ]
+      }
+    });
+    expect(result.providerState).not.toHaveProperty('piMessages');
+    expect(result.completeMessages).toContainEqual({
+      role: 'tool',
+      tool_call_id: 'call_ask_pause',
+      content: 'Waiting for user answer.'
+    });
+  });
+
+  it('resumes pending ask from standard pending context without injecting a user prompt', async () => {
     const events: any[] = [];
 
     const result = await runPiAgentLoop({
       input: {
         messages: [
-          {
-            role: 'user',
-            content: '分析销售数据前先确认目标'
-          },
           {
             role: 'assistant',
             content: null,
@@ -1467,63 +1510,34 @@ describe('runPiAgentLoop', () => {
                 }
               }
             ]
-          },
-          {
-            role: 'tool',
-            tool_call_id: 'call_ask',
-            content: 'Waiting for user answer.'
           }
         ],
         providerState: {
-          pendingAsk: {
-            question: '请补充目标',
-            reason: '需要确认需求范围'
-          },
-          pendingAskId: 'call_ask',
-          piMessages: [
-            {
-              role: 'assistant',
-              content: [
-                {
-                  type: 'toolCall',
-                  id: 'call_ask',
-                  name: 'ask_user',
-                  arguments: {
-                    question: '请补充目标',
-                    reason: '需要确认需求范围'
-                  }
-                }
-              ],
-              api: 'openai-completions',
-              provider: 'openai',
-              model: 'gpt-5',
-              usage: {
-                input: 0,
-                output: 0,
-                cacheRead: 0,
-                cacheWrite: 0,
-                totalTokens: 0,
-                cost: {
-                  input: 0,
-                  output: 0,
-                  cacheRead: 0,
-                  cacheWrite: 0,
-                  total: 0
-                }
-              },
-              stopReason: 'toolUse',
-              timestamp: 1
+          pendingMainContext: {
+            askToolCallId: 'call_ask',
+            activePlan: {
+              planId: 'plan_1',
+              name: '继续计划',
+              description: '恢复 ask 后继续执行',
+              steps: []
             },
-            {
-              role: 'toolResult',
-              toolCallId: 'call_ask',
-              toolName: 'ask_user',
-              content: [{ type: 'text', text: 'Waiting for user answer.' }],
-              details: {},
-              isError: false,
-              timestamp: 2
-            }
-          ]
+            messages: [
+              {
+                role: 'assistant',
+                content: null,
+                tool_calls: [
+                  {
+                    id: 'call_ask',
+                    type: 'function',
+                    function: {
+                      name: 'ask_user',
+                      arguments: '{"question":"请补充目标","reason":"需要确认需求范围"}'
+                    }
+                  }
+                ]
+              }
+            ]
+          }
         },
         userAnswer: '我要分析销售数据'
       },
@@ -1558,6 +1572,7 @@ describe('runPiAgentLoop', () => {
       tool_call_id: 'call_ask',
       content: '我要分析销售数据'
     });
+    expect(result.activePlan).toMatchObject({ planId: 'plan_1' });
     expect(result.assistantMessages).not.toContainEqual(
       expect.objectContaining({
         role: 'tool',
@@ -1575,11 +1590,9 @@ describe('runPiAgentLoop', () => {
       input: {
         messages: [{ role: 'user', content: '分析销售数据' }],
         providerState: {
-          pendingAsk: {
-            question: '请补充目标',
-            reason: '需要确认需求范围'
-          },
-          piMessages: []
+          pendingMainContext: {
+            messages: [{ role: 'assistant', content: null }]
+          }
         },
         userAnswer: '我要分析销售数据'
       },
