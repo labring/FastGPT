@@ -1,4 +1,4 @@
-import { type MutableRefObject, useEffect, useRef } from 'react';
+import { type MutableRefObject, useEffect, useMemo, useRef } from 'react';
 import { useContextSelector } from 'use-context-selector';
 import { useTranslation } from 'next-i18next';
 import { useMemoizedFn } from 'ahooks';
@@ -38,6 +38,7 @@ import {
 } from '../utils/interactive';
 import { shouldAppendResumeInteractive } from '../utils/resume';
 import { formatChatRequestVariables } from '../utils/requestVariables';
+import { createStreamRenderScheduler } from '../utils/streamRenderScheduler';
 import type { ChatSiteItemType, ChatBoxInputType, SendPromptFnType } from '../type';
 import type { StartChatFnProps, generatingMessageProps } from '../../type';
 import { cloneDeep } from 'lodash';
@@ -156,7 +157,6 @@ export const useChatGenerate = ({
   const generatingMessageQueueRef = useRef<
     Array<generatingMessageProps & { autoTTSResponse?: boolean }>
   >([]);
-  const generatingMessageFrameRef = useRef<number>();
 
   const applyGeneratingMessage = useMemoizedFn(
     (
@@ -524,14 +524,9 @@ export const useChatGenerate = ({
     }
   );
 
-  const flushGeneratingMessageQueue = useMemoizedFn(() => {
-    if (generatingMessageFrameRef.current !== undefined) {
-      window.cancelAnimationFrame(generatingMessageFrameRef.current);
-      generatingMessageFrameRef.current = undefined;
-    }
-
+  const commitGeneratingMessageQueue = useMemoizedFn(() => {
     const queue = generatingMessageQueueRef.current;
-    if (queue.length === 0) return;
+    if (queue.length === 0) return false;
 
     generatingMessageQueueRef.current = [];
     setChatRecords((state) =>
@@ -539,6 +534,21 @@ export const useChatGenerate = ({
     );
 
     generatingScroll(queue.some((message) => message.event === SseResponseEventEnum.interactive));
+    return true;
+  });
+  const streamRenderScheduler = useMemo(
+    () =>
+      createStreamRenderScheduler({
+        onFlush: commitGeneratingMessageQueue
+      }),
+    [commitGeneratingMessageQueue]
+  );
+  const flushGeneratingMessageQueue = useMemoizedFn(() => {
+    streamRenderScheduler.flush();
+  });
+  const cancelGeneratingMessageQueue = useMemoizedFn(() => {
+    streamRenderScheduler.cancel();
+    generatingMessageQueueRef.current = [];
   });
 
   const generatingMessage = useMemoizedFn(
@@ -561,24 +571,20 @@ export const useChatGenerate = ({
       }
 
       generatingMessageQueueRef.current.push(message);
-
-      if (generatingMessageFrameRef.current !== undefined) return;
-
-      generatingMessageFrameRef.current = window.requestAnimationFrame(flushGeneratingMessageQueue);
+      streamRenderScheduler.schedule();
     }
   );
 
   useEffect(() => {
     return () => {
-      if (generatingMessageFrameRef.current !== undefined) {
-        window.cancelAnimationFrame(generatingMessageFrameRef.current);
-      }
-      generatingMessageFrameRef.current = undefined;
-      generatingMessageQueueRef.current = [];
+      cancelGeneratingMessageQueue();
     };
-  }, []);
+  }, [cancelGeneratingMessageQueue]);
 
   const abortRequest = useMemoizedFn((reason: string = 'stop') => {
+    if (reason === 'leave') {
+      cancelGeneratingMessageQueue();
+    }
     chatControllerRef.current?.abort(new Error(reason));
     questionGuideControllerRef.current?.abort(new Error(reason));
     pluginControllerRef.current?.abort(new Error(reason));
@@ -858,6 +864,7 @@ export const useChatGenerate = ({
 
   return {
     abortRequest,
+    flushGeneratingMessages: flushGeneratingMessageQueue,
     generatingMessage,
     sendPrompt
   };

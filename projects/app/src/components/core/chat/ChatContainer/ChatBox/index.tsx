@@ -344,7 +344,7 @@ const ChatBox = ({
     generatingScroll
   });
 
-  const { abortRequest, generatingMessage, sendPrompt } = useChatGenerate({
+  const { abortRequest, flushGeneratingMessages, generatingMessage, sendPrompt } = useChatGenerate({
     onStartChat,
     isRoundPending,
     chatControllerRef: chatController,
@@ -460,6 +460,7 @@ const ChatBox = ({
     resumedChatTargetRef,
     resumeControllerRef: resumeController,
     generatingMessage,
+    flushGeneratingMessages,
     scrollToBottom,
     finishChatGenerateStatus
   });
