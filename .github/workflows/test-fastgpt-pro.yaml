@@ -35,7 +35,6 @@ jobs:
 
     permissions:
       contents: read
-      pull-requests: write
 
     steps:
       - uses: actions/checkout@v4
@@ -64,7 +63,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
 
       - uses: actions/setup-node@v4
         with:
@@ -76,9 +75,33 @@ jobs:
         env:
           INVOKE_TOKEN_SECRET: fastgpt_test_invoke_token_secret_32
         run: pnpm test:admin
-      - name: Report Coverage
+      - name: Upload Coverage
         if: always() && hashFiles('pro/admin/coverage/coverage-summary.json') != ''
-        uses: davelosert/vitest-coverage-report-action@v2
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-fastgpt-pro
+          path: |
+            pro/admin/coverage/coverage-final.json
+            pro/admin/coverage/coverage-summary.json
+          retention-days: 1
+
+  report-coverage:
+    needs: test
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Download Coverage
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-fastgpt-pro
+          path: pro/admin/coverage
+        continue-on-error: true
+      - name: Report Coverage
+        if: hashFiles('pro/admin/coverage/coverage-summary.json') != ''
+        uses: davelosert/vitest-coverage-report-action@3c054a2d2e2ca45446417ad5d6d5eb33092af8f1 # v2
         with:
           json-final-path: pro/admin/coverage/coverage-final.json
           json-summary-path: pro/admin/coverage/coverage-summary.json
