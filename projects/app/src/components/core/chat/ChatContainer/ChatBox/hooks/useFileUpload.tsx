@@ -6,7 +6,7 @@ import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
-import { clone } from 'lodash';
+import { clone } from 'lodash-es';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { type UseFieldArrayReturn } from 'react-hook-form';
 import { type ChatBoxInputFormType, type UserInputFileItemType } from '../type';

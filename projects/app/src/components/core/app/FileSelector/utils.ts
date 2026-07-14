@@ -1,7 +1,7 @@
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { imageFileType } from '@fastgpt/global/common/file/constants';
-import { isEqual } from 'lodash';
+import { isEqual } from 'lodash-es';
 import type {
   FileSelectorInputObjectItemType,
   FileSelectorInputItemType,

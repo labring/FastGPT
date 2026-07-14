@@ -123,9 +123,9 @@ catalogs:
     jsonwebtoken:
       specifier: ^9.0.3
       version: 9.0.3
-    lodash:
-      specifier: 4.17.23
-      version: 4.17.23
+    lodash-es:
+      specifier: ^4.17.21
+      version: 4.18.1
     mime:
       specifier: ^4.1.0
       version: 4.1.0
@@ -438,11 +438,8 @@ importers:
       json5:
         specifier: 'catalog:'
         version: 2.2.3
-      lodash:
-        specifier: 'catalog:'
-        version: 4.17.23
       lodash-es:
-        specifier: ^4.17.21
+        specifier: 'catalog:'
         version: 4.18.1
       nanoid:
         specifier: 'catalog:'
@@ -592,11 +589,8 @@ importers:
       jszip:
         specifier: ^3.10.1
         version: 3.10.1
-      lodash:
-        specifier: 'catalog:'
-        version: 4.17.23
       lodash-es:
-        specifier: ^4.17.21
+        specifier: 'catalog:'
         version: 4.18.1
       mammoth:
         specifier: ^1.11.0
@@ -803,9 +797,9 @@ importers:
       lexical:
         specifier: 0.12.6
         version: 0.12.6
-      lodash:
+      lodash-es:
         specifier: 'catalog:'
-        version: 4.17.23
+        version: 4.18.1
       next:
         specifier: 'catalog:'
         version: 16.2.6(@babel/core@7.26.10)(@opentelemetry/api@1.9.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(sass@1.85.1)
@@ -1011,9 +1005,9 @@ importers:
       katex:
         specifier: 0.16.22
         version: 0.16.22
-      lodash:
+      lodash-es:
         specifier: 'catalog:'
-        version: 4.17.23
+        version: 4.18.1
       mongoose:
         specifier: 'catalog:'
         version: 8.23.1(gcp-metadata@5.3.0(encoding@0.1.13))(socks@2.8.9)
@@ -1405,9 +1399,9 @@ importers:
       katex:
         specifier: 0.16.22
         version: 0.16.22
-      lodash:
+      lodash-es:
         specifier: 'catalog:'
-        version: 4.17.23
+        version: 4.18.1
       marked:
         specifier: ^17.0.6
         version: 17.0.6
@@ -1607,9 +1601,6 @@ importers:
       hono:
         specifier: 'catalog:'
         version: 4.12.25
-      lodash:
-        specifier: 'catalog:'
-        version: 4.17.23
       moment:
         specifier: ^2.30.1
         version: 2.30.1

@@ -28,7 +28,7 @@ import {
   AppLogKeysEnumMap,
   DefaultAppLogKeys
 } from '@fastgpt/global/core/app/logs/constants';
-import { isEqual } from 'lodash';
+import { isEqual } from 'lodash-es';
 import SyncLogKeysPopover from './SyncLogKeysPopover';
 import LogKeysConfigPopover from './LogKeysConfigPopover';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';

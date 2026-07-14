@@ -1,4 +1,5 @@
 import type { NextApiResponse } from 'next';
+import type { StreamResponseContract } from '../../type/contract';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { proxyError, ERROR_RESPONSE, ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { replaceSensitiveText } from '@fastgpt/global/common/string/tools';
@@ -188,7 +189,7 @@ export const jsonRes = <T = any>(
   });
 };
 
-export const sseErrRes = (res: NextApiResponse, error: any) => {
+export const sseErrRes = (res: StreamResponseContract, error: any) => {
   const { event, data, shouldClearCookie } = getSseErrorResponse(error);
   if (shouldClearCookie) {
     clearCookie(res);
@@ -251,7 +252,7 @@ export function responseWriteController({
   res,
   readStream
 }: {
-  res: NextApiResponse;
+  res: StreamResponseContract;
   readStream: Stream.Readable;
 }) {
   res.on('drain', () => {
@@ -271,7 +272,7 @@ export function responseWrite({
   event,
   data
 }: {
-  res?: NextApiResponse;
+  res?: StreamResponseContract;
   event?: string;
   data: string;
 }) {
@@ -288,7 +289,7 @@ export const responseWriteNodeStatus = ({
   status = 'running',
   name
 }: {
-  res?: NextApiResponse;
+  res?: StreamResponseContract;
   status?: 'running';
   name: string;
 }) => {

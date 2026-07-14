@@ -1,7 +1,7 @@
 import { initSystemConfig } from '.';
 import { createDatasetTrainingMongoWatch } from '@/service/core/dataset/training/utils';
 import { MongoSystemConfigs } from '@fastgpt/service/common/system/config/schema';
-import { debounce } from 'lodash';
+import { debounce } from 'lodash-es';
 import { MongoAppTemplate } from '@fastgpt/service/core/app/templates/templateSchema';
 import { getAppTemplatesAndLoadThem } from '@fastgpt/service/core/app/templates/register';
 import { watchSystemModelUpdate } from '@fastgpt/service/core/ai/config/utils';

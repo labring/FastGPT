@@ -2,7 +2,7 @@ import type { ReqHeaderAuthType } from '../type';
 import { type AuthModeType } from '../type';
 import { SERVICE_LOCAL_HOST } from '../../../common/system/tools';
 import { type ApiRequestProps } from '../../../type/next';
-import type { NextApiResponse } from 'next';
+import type { StreamResponseContract } from '../../../type/contract';
 import Cookie from 'cookie';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { authUserSession } from '../../../support/user/session';
@@ -175,7 +175,7 @@ export async function parseHeaderCert({
 
 /* set cookie */
 export const TokenName = 'fastgpt_token';
-export const setCookie = (res: NextApiResponse, token: string) => {
+export const setCookie = (res: StreamResponseContract, token: string) => {
   res.setHeader(
     'Set-Cookie',
     `${TokenName}=${token}; Path=/; HttpOnly; Max-Age=604800; Samesite=Strict;`
@@ -183,6 +183,6 @@ export const setCookie = (res: NextApiResponse, token: string) => {
 };
 
 /* clear cookie */
-export const clearCookie = (res: NextApiResponse) => {
+export const clearCookie = (res: StreamResponseContract) => {
   res.setHeader('Set-Cookie', `${TokenName}=; Path=/; Max-Age=0`);
 };

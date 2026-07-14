@@ -58,7 +58,7 @@ catalog:
   js-yaml: ^4.1.1
   json5: ^2.2.3
   jsonwebtoken: ^9.0.3
-  lodash: 4.17.23
+  lodash-es: ^4.17.21
   mime: ^4.1.0
   mime-types: 3.0.2
   minio: 8.0.7

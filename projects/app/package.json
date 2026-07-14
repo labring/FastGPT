@@ -72,7 +72,7 @@
     "jsonwebtoken": "catalog:",
     "jszip": "^3.10.1",
     "katex": "0.16.22",
-    "lodash": "catalog:",
+    "lodash-es": "catalog:",
     "marked": "^17.0.6",
     "mermaid": "^10.9.6",
     "mime": "catalog:",

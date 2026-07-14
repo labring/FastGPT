@@ -1,4 +1,3 @@
-import type { NextApiResponse } from 'next';
 import type { StreamResponseContract } from '../../type/contract';
 import { responseWrite } from './index';
 
@@ -11,7 +10,7 @@ export type SseStreamResumeMirror = {
 };
 
 type CreateSseStreamContextParams = {
-  res?: NextApiResponse | StreamResponseContract;
+  res?: StreamResponseContract;
   stream?: boolean;
   streamResumeMirror?: SseStreamResumeMirror;
   heartbeat?: {
@@ -22,7 +21,7 @@ type CreateSseStreamContextParams = {
   onError?: () => void;
 };
 
-const isResponseClosed = (res: NextApiResponse | StreamResponseContract) =>
+const isResponseClosed = (res: StreamResponseContract) =>
   !!(res.closed || res.writableEnded || res.destroyed);
 
 /**

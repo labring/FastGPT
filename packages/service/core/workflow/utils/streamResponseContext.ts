@@ -1,4 +1,5 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type { NextApiRequest } from 'next';
+import type { StreamResponseContract } from '../../../type/contract';
 import { getSseErrorResponse } from '../../../common/response';
 import { clearCookie } from '../../../support/permission/auth/common';
 import { STREAM_RESUME_REQUEST_HEADER } from '@fastgpt/global/core/chat/constants';
@@ -10,7 +11,7 @@ import { getWorkflowResponseWrite } from '../dispatch/utils';
 
 type CreateWorkflowStreamResponseContextBaseParams = {
   req: NextApiRequest | { headers?: Record<string, string | undefined> };
-  res: NextApiResponse | import('../../../type/contract').StreamResponseContract;
+  res: StreamResponseContract;
   stream: boolean;
   detail: boolean;
   teamId: string;
@@ -38,7 +39,7 @@ type WorkflowSseResponseController = {
 
 const workflowSseResponseControllerKey = '__fastgptWorkflowSseResponseController' as const;
 
-type WorkflowSseResponse = NextApiResponse & {
+type WorkflowSseResponse = StreamResponseContract & {
   [workflowSseResponseControllerKey]?: WorkflowSseResponseController;
 };
 
@@ -48,7 +49,7 @@ type WorkflowSseResponse = NextApiResponse & {
  * dispatchWorkFlow 依赖这个状态做前置校验，确保 SSE header、心跳和生命周期清理由
  * API 边界显式建立，而不是在 workflow 执行器内部隐式创建。
  */
-export const isWorkflowSseResponseInitialized = (res?: NextApiResponse): boolean => {
+export const isWorkflowSseResponseInitialized = (res?: StreamResponseContract): boolean => {
   if (!res) return false;
   return !!(res as WorkflowSseResponse)[workflowSseResponseControllerKey];
 };
@@ -66,7 +67,7 @@ export const initWorkflowSseResponse = ({
   responseWrite,
   onError
 }: {
-  res?: NextApiResponse | import('../../../type/contract').StreamResponseContract;
+  res?: StreamResponseContract;
   stream: boolean;
   responseWrite?: ReturnType<typeof getWorkflowResponseWrite>;
   onError?: () => void;

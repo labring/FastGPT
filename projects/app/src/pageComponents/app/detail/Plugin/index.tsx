@@ -8,7 +8,7 @@ import Header from './Header';
 import { Flex } from '@chakra-ui/react';
 import { workflowBoxStyles } from '../constants';
 import dynamic from 'next/dynamic';
-import { cloneDeep } from 'lodash';
+import { cloneDeep } from 'lodash-es';
 
 import Flow from '../WorkflowComponents/Flow';
 import { WorkflowUtilsContext } from '../WorkflowComponents/context/workflowUtilsContext';

@@ -12,7 +12,7 @@ import {
 } from '@fastgpt/global/core/workflow/runtime/type';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { responseWrite } from '../../../../common/response';
-import { type NextApiResponse } from 'next';
+import type { StreamResponseContract } from '../../../../type/contract';
 import {
   DispatchNodeResponseKeyEnum,
   SseResponseEventEnum
@@ -217,7 +217,7 @@ export const getWorkflowResponseWrite = ({
   showNodeStatus = true,
   streamResumeMirror
 }: {
-  res?: NextApiResponse;
+  res?: StreamResponseContract;
   detail: boolean;
   streamResponse: boolean;
   id?: string;

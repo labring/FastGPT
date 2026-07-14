@@ -33,7 +33,7 @@ import {
   upsertDatasetSyncJobScheduler
 } from '@fastgpt/service/core/dataset/datasetSync';
 import { delDatasetRelevantData } from '@fastgpt/service/core/dataset/controller';
-import { isEqual } from 'lodash';
+import { isEqual } from 'lodash-es';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';

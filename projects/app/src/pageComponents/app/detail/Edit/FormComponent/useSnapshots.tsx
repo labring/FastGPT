@@ -2,7 +2,7 @@ import { useMemoizedFn } from 'ahooks';
 import { useRef, useState } from 'react';
 import { formatTime2YMDHMS } from '@fastgpt/global/common/string/time';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
-import { isEqual } from 'lodash';
+import { isEqual } from 'lodash-es';
 
 export type SimpleAppSnapshotType = {
   title: string;

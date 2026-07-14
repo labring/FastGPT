@@ -15,12 +15,12 @@ export interface RequestContract {
 }
 
 export interface StreamResponseContract {
-  write(chunk: string): boolean;
+  write(chunk: string | Buffer): boolean;
   setHeader(name: string, value: string | number | readonly string[]): void;
-  getHeader(name: string): string | number | undefined;
-  on(event: 'close' | 'finish' | 'error', handler: () => void): void;
+  getHeader(name: string): string | number | string[] | undefined;
+  on(event: 'close' | 'finish' | 'error' | 'drain', handler: () => void): void;
   once(event: 'close' | 'finish', handler: () => void): void;
-  removeListener(event: 'close' | 'finish' | 'error'): void;
+  removeListener(event: 'close' | 'finish' | 'error' | 'drain', handler?: () => void): void;
   end(): void;
   /** true when SSE headers have been flushed */
   readonly headersSent: boolean;
