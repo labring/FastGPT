@@ -1,4 +1,4 @@
-import React, { useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import React, { useContext, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import 'katex/dist/katex.min.css';
 import RemarkMath from 'remark-math'; // Math syntax
@@ -16,6 +16,7 @@ import type { AProps } from './A';
 import MarkdownTable from '@fastgpt/web/components/common/Markdown/MarkdownTable';
 import { MarkdownRendererRuntimeContext } from './runtimeContext';
 import { getStreamingAppendLength, rehypeStreamAnimated } from './rehypeStreamAnimated';
+import { splitMarkdownBlocks } from './streamMarkdownBlocks';
 
 const CodeLight = dynamic(() => import('./codeBlock/CodeLight'), { ssr: false });
 const MermaidCodeBlock = dynamic(() => import('./img/MermaidCodeBlock'), { ssr: false });
@@ -28,6 +29,9 @@ const AudioBlock = dynamic(() => import('./codeBlock/Audio'), { ssr: false });
 const useBrowserLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 const STREAM_TAIL_FADE_DURATION_MS = 280;
 const STREAM_TAIL_FADE_EASING = 'cubic-bezier(0.33, 0, 0.67, 1)';
+const markdownRemarkPlugins = [RemarkMath, [RemarkGfm, { singleTilde: false }], RemarkBreaks];
+const markdownBaseRehypePlugins = [RehypeKatex, [RehypeExternalLinks, { target: '_blank' }]];
+const markdownUrlTransform = (val: string) => val;
 
 const ChatGuide = dynamic(() => import('./chat/Guide'), { ssr: false });
 const QuestionGuide = dynamic(() => import('./chat/QuestionGuide'), { ssr: false });
@@ -109,6 +113,39 @@ const markdownComponents = {
   'stream-tail': MarkdownStreamTailRenderer
 };
 
+type MarkdownStreamBlockProps = {
+  source: string;
+  tailLength: number;
+};
+
+/**
+ * 缓存已完成 Markdown block 的 React 子树。
+ *
+ * source 和 tailLength 都保持不变时，父级流式内容更新不会重新进入 react-markdown。
+ * 只有最后一个正在增长的 block 会重新解析，并继续使用现有的尾部淡入插件。
+ */
+const MarkdownStreamBlock = React.memo(({ source, tailLength }: MarkdownStreamBlockProps) => {
+  const rehypePlugins = useMemo(
+    () =>
+      tailLength > 0
+        ? [...markdownBaseRehypePlugins, [rehypeStreamAnimated, { tailLength }]]
+        : markdownBaseRehypePlugins,
+    [tailLength]
+  );
+
+  return (
+    <ReactMarkdown
+      remarkPlugins={markdownRemarkPlugins as any}
+      rehypePlugins={rehypePlugins as any}
+      components={markdownComponents as any}
+      urlTransform={markdownUrlTransform}
+    >
+      {source}
+    </ReactMarkdown>
+  );
+});
+MarkdownStreamBlock.displayName = 'MarkdownStreamBlock';
+
 type Props = {
   source?: string;
   showAnimation?: boolean;
@@ -186,37 +223,37 @@ const MarkdownRender = ({
     previousFormatSourceRef.current = formatSource;
   }, [formatSource, source]);
 
-  const streamAnimatedRehypePlugin = useMemo(
-    () => [rehypeStreamAnimated, { tailLength: streamingTailLength }],
-    [streamingTailLength]
+  const markdownBlocks = useMemo(
+    () => (showAnimation ? splitMarkdownBlocks(formatSource) : []),
+    [formatSource, showAnimation]
   );
-  const rehypePlugins = useMemo(
-    () =>
-      showAnimation
-        ? [RehypeKatex, [RehypeExternalLinks, { target: '_blank' }], streamAnimatedRehypePlugin]
-        : [RehypeKatex, [RehypeExternalLinks, { target: '_blank' }]],
-    [showAnimation, streamAnimatedRehypePlugin]
-  );
-
-  const urlTransform = useCallback((val: string) => {
-    return val;
-  }, []);
+  const markdownClassName = `markdown ${styles.markdown}
+      ${className || ''}
+      ${showAnimation ? `${formatSource ? styles.waitingAnimation : styles.animation}` : ''}
+    `;
 
   return (
     <MarkdownRendererRuntimeContext.Provider value={renderContextValue}>
-      <Box position={'relative'}>
-        <ReactMarkdown
-          className={`markdown ${styles.markdown}
-      ${className || ''}
-      ${showAnimation ? `${formatSource ? styles.waitingAnimation : styles.animation}` : ''}
-    `}
-          remarkPlugins={[RemarkMath, [RemarkGfm, { singleTilde: false }], RemarkBreaks]}
-          rehypePlugins={rehypePlugins as any}
-          components={markdownComponents as any}
-          urlTransform={urlTransform}
-        >
-          {formatSource}
-        </ReactMarkdown>
+      <Box position={'relative'} className={showAnimation ? markdownClassName : undefined}>
+        {showAnimation ? (
+          markdownBlocks.map((block, index) => (
+            <MarkdownStreamBlock
+              key={block.startOffset}
+              source={block.source}
+              tailLength={index === markdownBlocks.length - 1 ? streamingTailLength : 0}
+            />
+          ))
+        ) : (
+          <ReactMarkdown
+            className={markdownClassName}
+            remarkPlugins={markdownRemarkPlugins as any}
+            rehypePlugins={markdownBaseRehypePlugins as any}
+            components={markdownComponents as any}
+            urlTransform={markdownUrlTransform}
+          >
+            {formatSource}
+          </ReactMarkdown>
+        )}
         {isDisabled && (
           <Box position={'absolute'} top={0} right={0} left={0} bottom={0} zIndex={1} />
         )}

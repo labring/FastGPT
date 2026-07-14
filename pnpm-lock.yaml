@@ -1441,6 +1441,9 @@ importers:
       react-markdown:
         specifier: 'catalog:'
         version: 9.1.0(@types/react@18.3.1)(react@18.3.1)
+      remark-parse:
+        specifier: ^11.0.0
+        version: 11.0.0
       react-syntax-highlighter:
         specifier: ^15.5.0
         version: 15.6.1(react@18.3.1)
@@ -1474,6 +1477,9 @@ importers:
       undici:
         specifier: 'catalog:'
         version: 7.28.0
+      unified:
+        specifier: ^11.0.5
+        version: 11.0.5
       use-context-selector:
         specifier: ^1.4.4
         version: 1.4.4(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(scheduler@0.26.0)
