@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   getFastGPTSem,
   initFastGPTSemSourceDomain,
+  parseFastGPTSource,
   removeFastGPTSem
 } from '@/web/support/marketing/utils';
 
@@ -37,5 +38,25 @@ describe('marketing utils', () => {
     initFastGPTSemSourceDomain('https://example.com');
 
     expect(getFastGPTSem()?.sourceDomain).toBe('https://example.com');
+  });
+
+  it('should parse the source attribution object from the URL', () => {
+    expect(
+      parseFastGPTSource(
+        JSON.stringify({
+          visitor_id: 'visitor-1',
+          first_touch_source: 'ChatGPT',
+          is_paid: false
+        })
+      )
+    ).toMatchObject({
+      visitor_id: 'visitor-1',
+      first_touch_source: 'ChatGPT',
+      is_paid: false
+    });
+  });
+
+  it('should ignore an invalid source attribution object', () => {
+    expect(parseFastGPTSource('{invalid')).toBeUndefined();
   });
 });
