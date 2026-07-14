@@ -18,7 +18,7 @@ const isRunnableToolNode = (tool?: RuntimeNode): tool is RuntimeNode => {
   const configStatus = getToolConfigStatus({
     tool: {
       ...tool,
-      inputs: tool.inputs.map(initToolInputTypeByDefaultMode)
+      inputs: tool.inputs.map((input) => initToolInputTypeByDefaultMode(input))
     }
   });
   return configStatus.status !== 'invalid' && configStatus.status !== 'waitingForConfig';
@@ -43,7 +43,7 @@ export const useToolNodeList = ({
     .map((nodeId) => runtimeNodes.find((item) => item.nodeId === nodeId))
     .filter(isRunnableToolNode)
     .map<ToolNodeItemType>((tool) => {
-      const inputs = tool.inputs.map(initToolInputTypeByDefaultMode);
+      const inputs = tool.inputs.map((input) => initToolInputTypeByDefaultMode(input));
       const toolParams: FlowNodeInputItemType[] = [];
       let jsonSchema = tool.jsonSchema;
 

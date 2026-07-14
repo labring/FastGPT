@@ -60,17 +60,33 @@ describe('ToolSelector utils', () => {
         selectedType: FlowNodeInputTypeEnum.input,
         selectedTypeIndex: 1,
         toolDescription: 'new description',
-        isToolParam: true,
         required: true
       });
-      expect(result.inputs[1]).toBe(tool.inputs[1]);
+      expect(result.inputs[0]).not.toHaveProperty('isToolParam');
+      expect(result.inputs[1]).toMatchObject(tool.inputs[1]);
+      expect(result.inputs[1]).not.toHaveProperty('isToolParam');
       expect(result).not.toBe(tool);
     });
 
-    it('should return original tool when source config is missing', () => {
-      const tool = createTool([]);
+    it('should apply the default mode and omit isToolParam for a new tool', () => {
+      const tool = createTool([
+        {
+          key: 'query',
+          label: 'Query',
+          renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+          selectedType: FlowNodeInputTypeEnum.input,
+          selectedTypeIndex: 0,
+          isToolParam: true
+        }
+      ]);
 
-      expect(inheritToolInputConfig({ tool })).toBe(tool);
+      const result = inheritToolInputConfig({ tool });
+
+      expect(result.inputs[0]).toMatchObject({
+        selectedType: FlowNodeInputTypeEnum.agentGenerated,
+        selectedTypeIndex: 0
+      });
+      expect(result.inputs[0]).not.toHaveProperty('isToolParam');
     });
   });
 });

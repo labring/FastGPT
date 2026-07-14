@@ -51,6 +51,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { WorkflowModalContext } from '../../../context/workflowModalContext';
 import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
 import DebugToolTag from '@fastgpt/web/components/core/plugin/tool/DebugToolTag';
+import { initToolInputsTypeByDefaultMode } from '@fastgpt/global/core/app/formEdit/utils';
 
 export type TemplateListProps = {
   onAddNode: ({ newNodes }: { newNodes: Node<FlowNodeItemType>[] }) => void;
@@ -238,6 +239,7 @@ const NodeTemplateList = ({
   const { computedNewNodeName } = useWorkflowUtils();
   const { getNodeById } = useContextSelector(WorkflowBufferDataContext, (v) => v);
   const handleParams = useContextSelector(WorkflowModalContext, (v) => v.handleParams);
+  const isToolSelector = handleParams?.handleId === NodeOutputKeyEnum.selectedTools;
   const { getIntersectingNodes } = useReactFlow();
 
   const handleAddNode = useCallback(
@@ -374,7 +376,9 @@ const NodeTemplateList = ({
               pluginId: templateNode.pluginId
             }),
             intro: t(templateNode.intro as any),
-            inputs: inputsWithAutoFill,
+            inputs: initToolInputsTypeByDefaultMode(inputsWithAutoFill, {
+              forceDefaultMode: isToolSelector
+            }),
             outputs: templateNode.outputs
               .filter((output) => output.deprecated !== true)
               .map((output) => ({
@@ -434,7 +438,16 @@ const NodeTemplateList = ({
         console.error('Failed to create node template:', error);
       }
     },
-    [computedNewNodeName, getNodeById, handleParams, getIntersectingNodes, onAddNode, t, toast]
+    [
+      computedNewNodeName,
+      getNodeById,
+      handleParams,
+      isToolSelector,
+      getIntersectingNodes,
+      onAddNode,
+      t,
+      toast
+    ]
   );
 
   const formatTemplatesArrayData = useMemo(() => {

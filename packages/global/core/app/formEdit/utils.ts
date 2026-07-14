@@ -137,29 +137,30 @@ export const getToolInputManualRenderType = (input: ToolInputTypeState) => {
 };
 
 /**
- * 读取旧工具配置里的最终选择。
- * 旧协议常带 selectedTypeIndex: 0；当旧列表没有 agentGenerated 且新版 schema 标记 isToolParam
- * 时，0 只代表旧默认项，不代表用户明确选择了手动输入。
+ * 读取已保存工具配置里的最终选择。
+ * 只要存量数据保存了 selectedType 或 selectedTypeIndex，就优先保留用户选择；默认输入方式
+ * 仅由没有最终选择的工具输入使用。
  */
 export const getSavedToolInputSelectedType = ({
-  savedInput,
-  defaultInput
+  savedInput
 }: {
   savedInput?: InputRenderTypeState;
-  defaultInput: ToolInputTypeState;
 }) => {
   if (!savedInput) return;
   if (savedInput.selectedType) return savedInput.selectedType;
   if (savedInput.selectedTypeIndex === undefined) return;
 
-  const selectedType = getSelectedInputRenderType(savedInput);
-  const isLegacyDefaultManualType =
-    defaultInput.isToolParam === true &&
-    savedInput.selectedTypeIndex === 0 &&
-    !savedInput.renderTypeList?.includes(FlowNodeInputTypeEnum.agentGenerated) &&
-    selectedType !== FlowNodeInputTypeEnum.reference;
+  return getSelectedInputRenderType(savedInput);
+};
 
-  return isLegacyDefaultManualType ? undefined : selectedType;
+/**
+ * 删除工具定义携带的默认输入方式，避免把它当成用户在配置页的最终选择持久化。
+ */
+export const stripToolInputDefaultMode = <T extends FlowNodeInputItemType>(
+  input: T
+): Omit<T, 'isToolParam'> => {
+  const { isToolParam: _, ...inputWithoutDefaultMode } = input;
+  return inputWithoutDefaultMode;
 };
 
 /**
@@ -190,7 +191,10 @@ export const filterAgentGeneratedToolParams = ({
  * 工具首次加入工作流/Agent 时，将默认输入方式固化为 selectedType。
  * isToolParam 是插件/schema 声明的默认输入方式；toolDescription 只作为模型参数描述。
  */
-export const initToolInputTypeByDefaultMode = <T extends FlowNodeInputItemType>(input: T): T => {
+export const initToolInputTypeByDefaultMode = <T extends FlowNodeInputItemType>(
+  input: T,
+  { forceDefaultMode = false }: { forceDefaultMode?: boolean } = {}
+): T => {
   const selectedType = getSelectedInputRenderType(input);
   const hasSelectedType = input.selectedType !== undefined || input.selectedTypeIndex !== undefined;
   const inputWithSelectedType = (
@@ -205,8 +209,10 @@ export const initToolInputTypeByDefaultMode = <T extends FlowNodeInputItemType>(
       : input
   ) as T;
 
-  if (hasSelectedType) return inputWithSelectedType;
-  if (isAgentGeneratedToolInput(inputWithSelectedType)) return inputWithSelectedType;
+  if (hasSelectedType && !forceDefaultMode) return inputWithSelectedType;
+  if (!forceDefaultMode && isAgentGeneratedToolInput(inputWithSelectedType)) {
+    return inputWithSelectedType;
+  }
 
   if (
     inputWithSelectedType.isToolParam !== true ||
@@ -234,8 +240,9 @@ export const initToolInputTypeByDefaultMode = <T extends FlowNodeInputItemType>(
 };
 
 export const initToolInputsTypeByDefaultMode = <T extends FlowNodeInputItemType>(
-  inputs: T[]
-): T[] => inputs.map((input) => initToolInputTypeByDefaultMode(input));
+  inputs: T[],
+  options?: { forceDefaultMode?: boolean }
+): T[] => inputs.map((input) => initToolInputTypeByDefaultMode(input, options));
 
 /**
  * 判断开发者手动配置的工具入参是否已有有效值。

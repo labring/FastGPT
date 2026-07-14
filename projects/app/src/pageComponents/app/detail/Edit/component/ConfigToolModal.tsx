@@ -37,7 +37,8 @@ import {
   getToolInputManualRenderType,
   getToolConfigStatus,
   isAgentGeneratedToolInput,
-  isToolInputValueConfigured
+  isToolInputValueConfigured,
+  stripToolInputDefaultMode
 } from '@fastgpt/global/core/app/formEdit/utils';
 import Avatar from '@fastgpt/web/components/common/Avatar';
 import NodeInputSelect from '@fastgpt/web/components/core/workflow/NodeInputSelect';
@@ -476,7 +477,11 @@ const SecretInputControl = ({
   configTool: FlowNodeTemplateType;
 }) => {
   const { t } = useSafeTranslation();
-  const [isExpanded, setIsExpanded] = useState(false);
+  const hasSystemSecret = configTool.hasSystemSecret === true;
+  const [isExpanded, setIsExpanded] = useState(() => {
+    const initialValue = input.value as ToolParamsFormType | undefined;
+    return !hasSystemSecret || initialValue?.type === SystemToolSecretInputTypeEnum.manual;
+  });
 
   return (
     <Controller
@@ -493,28 +498,36 @@ const SecretInputControl = ({
         const val = value as ToolParamsFormType | undefined;
         const display = getSecretConfigDisplay({
           value: val,
-          hasSystemSecret: configTool.hasSystemSecret,
+          hasSystemSecret,
           t
         });
+
+        const secretInputForm = (
+          <SecretInputForm
+            isFolder={configTool?.isFolder}
+            inputConfig={{
+              ...input,
+              value: val
+            }}
+            hasSystemSecret={hasSystemSecret}
+            secretCost={configTool?.systemKeyCost}
+            courseUrl={configTool?.courseUrl}
+            readmeUrl={configTool?.readmeUrl}
+            parentId={configTool?.pluginId}
+            source={configTool?.source}
+            showTitle={false}
+            onChange={onChange}
+          />
+        );
+
+        if (!hasSystemSecret) {
+          return secretInputForm;
+        }
 
         if (isExpanded) {
           return (
             <>
-              <SecretInputForm
-                isFolder={configTool?.isFolder}
-                inputConfig={{
-                  ...input,
-                  value: val
-                }}
-                hasSystemSecret={configTool?.hasSystemSecret}
-                secretCost={configTool?.systemKeyCost}
-                courseUrl={configTool?.courseUrl}
-                readmeUrl={configTool?.readmeUrl}
-                parentId={configTool?.pluginId}
-                source={configTool?.source}
-                showTitle={false}
-                onChange={onChange}
-              />
+              {secretInputForm}
               <Button
                 mt={2}
                 size={'xs'}
@@ -964,9 +977,11 @@ const ConfigToolModal = ({
     onAddTool({
       ...editingTool,
       inputs: editingTool.inputs.map((input) => {
-        if (!shouldShowConfigInput(input)) return normalizeInputSelectedTypeIndex(input);
+        if (!shouldShowConfigInput(input)) {
+          return stripToolInputDefaultMode(normalizeInputSelectedTypeIndex(input));
+        }
 
-        return {
+        return stripToolInputDefaultMode({
           ...input,
           ...buildConfigInputTypeState({
             selectedInputType: data[inputTypeFormKey(input.key)],
@@ -975,7 +990,7 @@ const ConfigToolModal = ({
             canAgentGenerated: canInputBeAgentGenerated(input)
           }),
           value: data[input.key] ?? input.value
-        };
+        });
       })
     });
     onCloseConfigTool();

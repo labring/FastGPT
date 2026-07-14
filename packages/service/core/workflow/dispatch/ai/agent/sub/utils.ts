@@ -180,21 +180,25 @@ export const getExecuteTool = ({
       usages = [],
       interactive,
       stop = false,
-      nodeResponse
+      nodeResponse,
+      errorMessage
     } = await (async (): Promise<{
       response: string;
       assistantMessages?: DispatchSubAppResponse['assistantMessages'];
       usages?: ChatNodeUsageType[];
       interactive?: DispatchSubAppResponse['interactive'];
       stop?: boolean;
+      errorMessage?: string;
       nodeResponse?: DispatchSubAppResponse['nodeResponse'];
     }> => {
       try {
         // User Sub App
         const tool = getSubApp(toolId);
         if (!tool) {
+          const response = `Can't find the tool ${toolId}`;
           return {
-            response: `Can't find the tool ${toolId}`,
+            response,
+            errorMessage: response,
             usages: []
           };
         }
@@ -202,8 +206,10 @@ export const getExecuteTool = ({
         // Get params
         const toolCallParams = parseJsonArgs(args);
         if (args && !toolCallParams) {
+          const response = 'Params is not object';
           return {
-            response: 'Params is not object'
+            response,
+            errorMessage: response
           };
         }
         const agentGeneratedParams = filterAgentGeneratedToolParams({
@@ -217,7 +223,7 @@ export const getExecuteTool = ({
         };
 
         if (tool.type === 'tool') {
-          const { response, usages, nodeResponse } = await dispatchTool({
+          const { response, usages, nodeResponse, errorMessage } = await dispatchTool({
             tool: {
               name: tool.name,
               avatar: tool.avatar,
@@ -236,12 +242,13 @@ export const getExecuteTool = ({
           return {
             response,
             usages,
-            nodeResponse
+            nodeResponse,
+            errorMessage
           };
         } else if (tool.type === 'workflow') {
           const { userChatInput, ...params } = filterAgentWorkflowRuntimeParams(requestParams);
 
-          const { response, assistantMessages, usages, interactive, nodeResponse } =
+          const { response, assistantMessages, usages, interactive, nodeResponse, errorMessage } =
             await dispatchApp({
               app: {
                 name: tool.name,
@@ -275,7 +282,8 @@ export const getExecuteTool = ({
             assistantMessages,
             usages,
             interactive,
-            nodeResponse
+            nodeResponse,
+            errorMessage
           };
         } else if (tool.type === 'toolWorkflow' || tool.type === 'commercialTool') {
           const id = await (async () => {
@@ -296,7 +304,7 @@ export const getExecuteTool = ({
             return trueId;
           })();
           const customAppVariables = filterAgentWorkflowRuntimeParams(requestParams);
-          const { response, assistantMessages, usages, interactive, nodeResponse } =
+          const { response, assistantMessages, usages, interactive, nodeResponse, errorMessage } =
             await dispatchPlugin({
               app: {
                 name: tool.name,
@@ -330,16 +338,21 @@ export const getExecuteTool = ({
             assistantMessages,
             usages,
             interactive,
-            nodeResponse
+            nodeResponse,
+            errorMessage
           };
         } else {
+          const response = 'Invalid tool type';
           return {
-            response: 'Invalid tool type'
+            response,
+            errorMessage: response
           };
         }
       } catch (error) {
+        const response = `Tool error: ${getErrText(error)}`;
         return {
-          response: `Tool error: ${getErrText(error)}`
+          response,
+          errorMessage: response
         };
       }
     })();
@@ -372,6 +385,7 @@ export const getExecuteTool = ({
       usages,
       interactive,
       stop,
+      ...(errorMessage ? { errorMessage } : {}),
       nodeResponse: formatNodeResponse
     };
   };

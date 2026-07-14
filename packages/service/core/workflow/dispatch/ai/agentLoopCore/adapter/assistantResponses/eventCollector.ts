@@ -348,7 +348,24 @@ export const createAgentLoopCoreAssistantEventCollector = ({
 
         const functionName = toolNameByCallId.get(event.call.id) || event.call.function.name;
 
-        if (findToolResponseIndex(event.call.id) < 0) {
+        if (event.errorMessage) {
+          if (findToolResponseIndex(event.call.id) < 0) {
+            const toolInfo = getToolInfo?.(functionName);
+            upsertToolResponse({
+              id: event.call.id,
+              toolName: toolInfo?.name || functionName,
+              toolAvatar: toolInfo?.avatar || '',
+              functionName,
+              params: event.call.function.arguments ?? ''
+            });
+          } else {
+            updateToolResponse(event.call.id, (tool) => {
+              const toolWithoutResponse = { ...tool };
+              delete toolWithoutResponse.response;
+              return toolWithoutResponse;
+            });
+          }
+        } else if (findToolResponseIndex(event.call.id) < 0) {
           const toolInfo = getToolInfo?.(functionName);
           upsertToolResponse({
             id: event.call.id,

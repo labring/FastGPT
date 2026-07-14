@@ -65,7 +65,7 @@ export const JsonSchemaPropertiesItemSchema = z
     // 自定义扩展（FastGPT 专用）
     'x-tool-description': z.string().optional(), // 工具描述
     toolDescription: z.string().optional(), // 工具描述 for System Tool
-    isToolParam: z.boolean().optional(), // 是否作为工具调用参数由 Agent 生成
+    isToolParam: z.boolean().optional(), // 是否默认作为工具调用参数
     isSecret: z.boolean().optional() // System Tool
   })
   .catchall(z.any());

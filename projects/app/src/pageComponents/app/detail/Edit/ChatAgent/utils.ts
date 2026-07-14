@@ -313,7 +313,6 @@ export function agentForm2AppWorkflow(
                       renderTypeList: input.renderTypeList,
                       selectedType: getSelectedInputRenderType(input),
                       selectedTypeIndex: input.selectedTypeIndex,
-                      isToolParam: input.isToolParam,
                       toolDescription: input.toolDescription
                     })),
 

@@ -58,19 +58,21 @@ const FieldEditModal = ({
   const { toast } = useToast();
   const validateFieldName = useValidateFieldName();
   const onSubmitError = useSubmitErrorHandler();
+  const isEdit = !!defaultValue.key;
+  const showJsonEditor =
+    isEdit && defaultValue.renderTypeList.includes(FlowNodeInputTypeEnum.JSONEditor);
 
   // rawInputTypeList: full renderTypeList array, used for onTypeChange
   const rawInputTypeList = useMemo(
-    () => getPluginInputTypeRawList({ hasDynamicInput, showAgentGenerated }),
-    [hasDynamicInput, showAgentGenerated]
+    () => getPluginInputTypeRawList({ hasDynamicInput, showAgentGenerated, showJsonEditor }),
+    [hasDynamicInput, showAgentGenerated, showJsonEditor]
   );
   // inputTypeList: for InputTypeSelector display
   const inputTypeList = useMemo(
-    () => getPluginInputTypeList({ hasDynamicInput, showAgentGenerated }),
-    [hasDynamicInput, showAgentGenerated]
+    () => getPluginInputTypeList({ hasDynamicInput, showAgentGenerated, showJsonEditor }),
+    [hasDynamicInput, showAgentGenerated, showJsonEditor]
   );
 
-  const isEdit = !!defaultValue.key;
   const form = useForm({
     defaultValues: defaultValue
   });
