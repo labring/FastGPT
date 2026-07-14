@@ -162,19 +162,27 @@ const MarkdownRender = ({
     return mdTextFormat(source);
   }, [forbidZhFormat, showAnimation, source]);
 
+  const previousSourceRef = useRef('');
   const previousFormatSourceRef = useRef('');
-  // ref 保存的是上一次已 commit 的 source，只用于计算本次流式 append 的尾部长度。
+  // Markdown 尾部未闭合时会暂时隐藏；闭合后的首次 render 可能同时恢复整段文本，
+  // 此时无法从原始 source 长度准确区分控制符和可见内容，跳过这一帧的尾部动画。
+  // refs 保存的是上一次已 commit 的 raw/formatted source，只用于计算本次流式 append 的尾部长度。
+  // eslint-disable-next-line react-hooks/refs
+  const previousSource = previousSourceRef.current;
   // eslint-disable-next-line react-hooks/refs
   const previousFormatSource = previousFormatSourceRef.current;
+  const hasRevealedMarkdownTail = previousSource !== previousFormatSource;
   const streamingTailLength = showAnimation
     ? getStreamingAppendLength({
         previousSource: previousFormatSource,
-        currentSource: formatSource
+        currentSource: formatSource,
+        previousSourceWasHidden: hasRevealedMarkdownTail
       })
     : 0;
   useBrowserLayoutEffect(() => {
+    previousSourceRef.current = source;
     previousFormatSourceRef.current = formatSource;
-  }, [formatSource]);
+  }, [formatSource, source]);
 
   const streamAnimatedRehypePlugin = useMemo(
     () => [rehypeStreamAnimated, { tailLength: streamingTailLength }],

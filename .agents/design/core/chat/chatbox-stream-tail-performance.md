@@ -57,6 +57,8 @@ ChatBox 在长内容流式输出时会持续掉帧。已确认本次需要：
 
 当前内容是上一次内容的 append 时，计算新增可见尾部的 Unicode code point 数；首尾空白和纯 Markdown 控制标记不产生动画，内容发生替换、缩短或不是 append 时，本次不添加尾部动画。单次最多标记 64 个 code point，避免异常大 chunk 生成过大的动画节点。
 
+如果上一帧存在因未闭合 Markdown 语法而被 `hideStreamingIncompleteMarkdownTail` 隐藏的尾部，闭合后的首次 render 跳过尾部动画，避免把控制符长度误算为旧文本的新增长度；下一次普通文本增量恢复淡入。
+
 ```ts
 tailLength = min(codePoints(visibleAppend(currentSource - previousSource)), 64)
 ```
@@ -155,9 +157,10 @@ transform: translateY(1px) -> translateY(0)
 4. 不跨过 code/table/svg/katex 回退动画旧文本。
 5. 跳过的 block 位于 blockquote/list 等容器内时同样不回退动画旧文本。
 6. 首尾空白和纯 Markdown 控制标记 append 不重复动画旧文本。
-7. `tailLength=0` 不修改 tree。
-8. 正确处理 emoji。
-9. append length 支持首次内容、普通 append、非 append、上限和 Unicode。
+7. 未闭合 Markdown 尾部闭合时跳过一次动画，不把控制符算入旧文本。
+8. `tailLength=0` 不修改 tree。
+9. 正确处理 emoji。
+10. append length 支持首次内容、普通 append、非 append、上限和 Unicode。
 
 ### 6.2 scheduler
 
@@ -194,9 +197,9 @@ transform: translateY(1px) -> translateY(0)
 
 ## 8. 验证记录
 
-1. 新增 rehype/scheduler 测试：31 项通过（rehype 23 项、scheduler 8 项），包含真实
+1. 新增 rehype/scheduler 测试：32 项通过（rehype 24 项、scheduler 8 项），包含真实
    `react-markdown` 自定义组件映射。
-2. Markdown utils 与 ChatBox 回归测试：12 个文件、114 项通过。
+2. Markdown utils 与 ChatBox 回归测试：12 个文件、115 项通过。
 3. 改动 TypeScript/测试文件 ESLint：0 error；ChatBox/index.tsx 保留 11 条 upstream 原有
    warning，未由本次改动引入。
 4. `@fastgpt/app` typecheck：通过。

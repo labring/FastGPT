@@ -62,6 +62,16 @@ describe('getStreamingAppendLength', () => {
     ).toBe(64);
   });
 
+  it('should skip the frame that reveals a previously hidden markdown tail', () => {
+    expect(
+      getStreamingAppendLength({
+        previousSource: 'before ',
+        currentSource: 'before **bold**',
+        previousSourceWasHidden: true
+      })
+    ).toBe(0);
+  });
+
   it('should ignore whitespace-only appends', () => {
     expect(getStreamingAppendLength({ previousSource: 'hello', currentSource: 'hello\n' })).toBe(0);
     expect(getStreamingAppendLength({ previousSource: 'hello', currentSource: 'hello   ' })).toBe(

@@ -30,18 +30,22 @@ type HastRoot = {
  * 计算相对上一次已提交 Markdown 新增可见尾部的 Unicode code point 数量。
  *
  * 只接受纯 append，避免 Markdown 尾部隐藏、内容替换或会话切换时把旧正文误判为新增内容。
- * 首尾空白和纯 Markdown 控制标记不产生可见动画，返回值有上限，保证单次大 chunk 也只
- * 创建固定规模的动画节点。
+ * 首尾空白和纯 Markdown 控制标记不产生可见动画。若上一帧存在被隐藏的未闭合 Markdown
+ * 尾部，闭合时无法仅凭 source 长度区分控制符和可见内容，因此跳过这一帧的尾部动画。
+ * 返回值有上限，保证单次大 chunk 也只创建固定规模的动画节点。
  */
 export const getStreamingAppendLength = ({
   previousSource,
   currentSource,
+  previousSourceWasHidden = false,
   maxLength = DEFAULT_STREAMING_TAIL_MAX_LENGTH
 }: {
   previousSource: string;
   currentSource: string;
+  previousSourceWasHidden?: boolean;
   maxLength?: number;
 }) => {
+  if (previousSourceWasHidden) return 0;
   if (!currentSource.startsWith(previousSource)) return 0;
 
   const appendedSource = currentSource.slice(previousSource.length).trim();
