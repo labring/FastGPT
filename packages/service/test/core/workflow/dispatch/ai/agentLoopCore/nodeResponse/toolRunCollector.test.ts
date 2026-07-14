@@ -151,25 +151,6 @@ describe('createAgentLoopCoreToolRunResponseCollector', () => {
 
     expect(collector.toolRunResponses).toEqual([
       expect.objectContaining({
-        runTimes: 0,
-        flowResponses: [
-          expect.objectContaining({
-            id: 'call_search',
-            nodeId: 'call_search',
-            moduleType: FlowNodeTypeEnum.tool,
-            moduleName: 'unknown',
-            toolId: 'unknown',
-            toolInput: {
-              q: 'FastGPT'
-            },
-            toolRes: 'failed',
-            errorText: 'failed',
-            runningTime: 0.6,
-            totalPoints: 0
-          })
-        ]
-      }),
-      expect.objectContaining({
         flowResponses: [
           expect.objectContaining({
             id: expect.stringMatching(/^[a-zA-Z0-9]+$/),

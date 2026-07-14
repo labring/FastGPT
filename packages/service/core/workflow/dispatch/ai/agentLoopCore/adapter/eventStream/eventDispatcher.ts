@@ -83,7 +83,7 @@ export const createAgentLoopCoreEventDispatcher = ({
         completedToolCallIds.add(event.call.id);
 
         const functionName = event.call.function.name;
-        if (shouldStreamTool(functionName)) {
+        if (!event.errorMessage && shouldStreamTool(functionName)) {
           eventStream.streamToolResponse({
             toolCallId: event.call.id,
             response: event.response

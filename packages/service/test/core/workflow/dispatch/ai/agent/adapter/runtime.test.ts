@@ -494,6 +494,39 @@ describe('createWorkflowAgentLoopRuntime', () => {
     expect(usagePush).toHaveBeenCalledTimes(1);
   });
 
+  it('forwards tool errors to the loop without creating a visible node response', async () => {
+    const executeTool = vi.fn(async () => ({
+      response: 'secret error text',
+      errorMessage: 'Tool error: secret error text',
+      usages: [],
+      nodeResponse: {
+        moduleType: FlowNodeTypeEnum.tool,
+        moduleName: 'Failed tool'
+      }
+    }));
+    const { runtime, artifacts } = createWorkflowAgentLoopRuntime({
+      context: createContext(),
+      usagePush: vi.fn(),
+      executeToolFactory: vi.fn(() => executeTool)
+    });
+
+    const result = await runtime.executeTool({
+      messages: [],
+      call: toolCall({ id: 'call_failed', name: 'search' })
+    });
+
+    expect(result.errorMessage).toBe('Tool error: secret error text');
+    runtime.emitEvent?.({
+      type: 'tool_run_end',
+      call: toolCall({ id: 'call_failed', name: 'search' }),
+      rawResponse: 'secret error text',
+      response: 'secret error text',
+      errorMessage: result.errorMessage,
+      seconds: 0.1
+    });
+    expect(artifacts.nodeResponses).toEqual([]);
+  });
+
   it('collects LLM request ids from lifecycle events', () => {
     const workflowStreamResponse = vi.fn();
     const { runtime, artifacts } = createWorkflowAgentLoopRuntime({

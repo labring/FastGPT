@@ -80,6 +80,7 @@ export const dispatchTool = async ({
     const response = getErrText(error, 'Call tool error');
     return {
       response,
+      errorMessage: response,
       nodeResponse: getNodeResponse({
         response
       })
@@ -291,6 +292,7 @@ export const dispatchTool = async ({
 
       if (errorMsg) {
         return {
+          errorMessage: errorMsg,
           nodeResponse: getNodeResponse({
             response: errorMsg
           }),

@@ -161,7 +161,9 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
         inputs: [
           {
             key: 'q',
-            value: 'old'
+            value: 'old',
+            renderTypeList: ['input', 'agentGenerated'],
+            selectedType: 'agentGenerated'
           }
         ]
       }
@@ -240,6 +242,8 @@ describe('createAgentLoopCoreWorkflowToolRunner', () => {
       inputs: [
         {
           key: 'q',
+          renderTypeList: ['input', 'agentGenerated'],
+          selectedType: 'agentGenerated',
           value: 'FastGPT'
         }
       ]

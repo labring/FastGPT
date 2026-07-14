@@ -261,7 +261,7 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
     });
   });
 
-  it('刷新最新工具节点时忽略旧协议的默认 selectedTypeIndex 0', async () => {
+  it('刷新最新工具节点时保留旧协议的 selectedTypeIndex 0', async () => {
     getClientToolPreviewNodeMock.mockResolvedValue({
       id: 'mcp-app-1/search',
       flowNodeType: FlowNodeTypeEnum.tool,
@@ -314,8 +314,8 @@ describe('rewriteAppWorkflowToDetail - agent skills', () => {
 
     expect(nodes[0].inputs[0]).toMatchObject({
       key: 'query',
-      selectedType: FlowNodeInputTypeEnum.agentGenerated,
-      selectedTypeIndex: 0,
+      selectedType: FlowNodeInputTypeEnum.input,
+      selectedTypeIndex: 1,
       renderTypeList: [
         FlowNodeInputTypeEnum.agentGenerated,
         FlowNodeInputTypeEnum.input,

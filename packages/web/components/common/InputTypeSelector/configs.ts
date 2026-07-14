@@ -107,8 +107,13 @@ export const getFormInputTypeList = (): InputTypeConfigItem[][] => {
 export const getPluginInputTypeRawList = (options?: {
   hasDynamicInput?: boolean;
   showAgentGenerated?: boolean;
+  showJsonEditor?: boolean;
 }): PluginInputTypeConfigItem[][] => {
-  const { hasDynamicInput = false, showAgentGenerated = true } = options || {};
+  const {
+    hasDynamicInput = false,
+    showAgentGenerated = true,
+    showJsonEditor = false
+  } = options || {};
 
   const baseInputTypes: PluginInputTypeConfigItem[] = [
     ...(showAgentGenerated
@@ -164,12 +169,16 @@ export const getPluginInputTypeRawList = (options?: {
       value: [FlowNodeInputTypeEnum.switch, FlowNodeInputTypeEnum.reference],
       defaultValueType: WorkflowIOValueTypeEnum.boolean
     },
-    {
-      icon: 'core/workflow/inputType/JSONEditor',
-      label: i18nT('common:core.workflow.inputType.JSON editor'),
-      value: [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference],
-      defaultValueType: WorkflowIOValueTypeEnum.object
-    },
+    ...(showJsonEditor
+      ? [
+          {
+            icon: 'core/workflow/inputType/JSONEditor',
+            label: i18nT('common:core.workflow.inputType.JSON editor'),
+            value: [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference],
+            defaultValueType: WorkflowIOValueTypeEnum.object
+          }
+        ]
+      : []),
     {
       icon: 'core/workflow/inputType/timePointSelect',
       label: i18nT('common:core.workflow.inputType.timePointSelect'),
@@ -237,6 +246,7 @@ export const getPluginInputTypeRawList = (options?: {
 export const getPluginInputTypeList = (options?: {
   hasDynamicInput?: boolean;
   showAgentGenerated?: boolean;
+  showJsonEditor?: boolean;
 }): InputTypeConfigItem[][] => {
   const rawList = getPluginInputTypeRawList(options);
 

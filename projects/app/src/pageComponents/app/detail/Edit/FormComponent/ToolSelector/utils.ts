@@ -2,7 +2,8 @@ import {
   canInputBeAgentGenerated,
   getSavedToolInputSelectedType,
   initToolInputTypeByDefaultMode,
-  isAgentGeneratedToolInput
+  isAgentGeneratedToolInput,
+  stripToolInputDefaultMode
 } from '@fastgpt/global/core/app/formEdit/utils';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
@@ -18,21 +19,18 @@ export const inheritToolInputConfig = <T extends Pick<FlowNodeTemplateType, 'inp
   tool: T;
   sourceTool?: Pick<FlowNodeTemplateType, 'inputs'>;
 }): T => {
-  if (!sourceTool) return tool;
-
-  const sourceInputMap = new Map(sourceTool.inputs.map((input) => [input.key, input]));
+  const sourceInputMap = new Map(sourceTool?.inputs.map((input) => [input.key, input]));
 
   return {
     ...tool,
     inputs: tool.inputs.map((input) => {
       const sourceInput = sourceInputMap.get(input.key);
-      if (!sourceInput) return input;
-
-      const normalizedInput = initToolInputTypeByDefaultMode(input);
-      const selectedType = getSavedToolInputSelectedType({
-        savedInput: sourceInput,
-        defaultInput: input
+      const selectedType = getSavedToolInputSelectedType({ savedInput: sourceInput });
+      const normalizedInput = initToolInputTypeByDefaultMode(input, {
+        forceDefaultMode: selectedType === undefined
       });
+      if (!sourceInput) return stripToolInputDefaultMode(normalizedInput);
+
       const renderTypeList =
         selectedType && !normalizedInput.renderTypeList.includes(selectedType)
           ? [selectedType, ...normalizedInput.renderTypeList]
@@ -42,7 +40,7 @@ export const inheritToolInputConfig = <T extends Pick<FlowNodeTemplateType, 'inp
           ? renderTypeList.findIndex((item) => item === selectedType)
           : normalizedInput.selectedTypeIndex;
 
-      return {
+      return stripToolInputDefaultMode({
         ...normalizedInput,
         value: sourceInput.value,
         valueDesc: sourceInput.valueDesc,
@@ -50,9 +48,8 @@ export const inheritToolInputConfig = <T extends Pick<FlowNodeTemplateType, 'inp
         selectedType: selectedType ?? normalizedInput.selectedType,
         selectedTypeIndex:
           selectedTypeIndex !== undefined && selectedTypeIndex >= 0 ? selectedTypeIndex : undefined,
-        isToolParam: input.isToolParam,
         toolDescription: input.toolDescription ?? sourceInput.toolDescription
-      } satisfies FlowNodeInputItemType;
+      } satisfies FlowNodeInputItemType);
     })
   } as T;
 };

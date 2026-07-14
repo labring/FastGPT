@@ -6,7 +6,8 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   dispatchWorkFlow,
   runWorkflow,
-  WorkflowQueue
+  WorkflowQueue,
+  filterToolCallNodeResponses
 } from '@fastgpt/service/core/workflow/dispatch/index';
 import { getWorkflowNodeRunParams } from '@fastgpt/service/core/workflow/dispatch/utils/runtime';
 import { createClientAbortTracker } from '@fastgpt/service/core/workflow/dispatch/utils/clientAbort';
@@ -58,6 +59,51 @@ const createWorkflowVariableState = (
   toRuntimeRecord: () => ({ ...variables }),
   toStoreRecord: () => ({ ...variables }),
   clone: () => createWorkflowVariableState({ ...variables })
+});
+
+describe('filterToolCallNodeResponses', () => {
+  it('hides tool errors and their descendants while keeping successful responses', () => {
+    const responses = filterToolCallNodeResponses([
+      {
+        id: 'success',
+        nodeId: 'success',
+        moduleType: FlowNodeTypeEnum.tool,
+        moduleName: 'Success'
+      },
+      {
+        id: 'failed',
+        nodeId: 'failed',
+        moduleType: FlowNodeTypeEnum.tool,
+        moduleName: 'Failed',
+        errorText: 'tool failed'
+      },
+      {
+        id: 'failed-child',
+        nodeId: 'failed-child',
+        parentId: 'failed',
+        moduleType: FlowNodeTypeEnum.tool,
+        moduleName: 'Failed child'
+      },
+      {
+        id: 'nested',
+        nodeId: 'nested',
+        moduleType: FlowNodeTypeEnum.tool,
+        moduleName: 'Nested',
+        childrenResponses: [
+          {
+            id: 'nested-error',
+            nodeId: 'nested-error',
+            moduleType: FlowNodeTypeEnum.tool,
+            moduleName: 'Nested error',
+            error: 'nested failed'
+          }
+        ]
+      }
+    ] as any);
+
+    expect(responses.map((response) => response.id)).toEqual(['success', 'nested']);
+    expect(responses[1]).not.toHaveProperty('childrenResponses');
+  });
 });
 
 describe('dispatchWorkFlow SSE initialization guard', () => {

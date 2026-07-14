@@ -784,7 +784,7 @@ describe('runToolCall compression node responses', () => {
     );
   });
 
-  it('records a fallback failed tool node response when tool execution throws before returning flowResponse', async () => {
+  it('hides a failed tool node response when tool execution throws before returning flowResponse', async () => {
     runWorkflowMock.mockRejectedValueOnce(new Error('network failed'));
     runAgentLoopMock.mockImplementation(async (options) => {
       const call = {
@@ -827,26 +827,6 @@ describe('runToolCall compression node responses', () => {
       })
     );
 
-    expect(result.toolDispatchFlowResponses).toEqual([
-      expect.objectContaining({
-        flowResponses: [
-          expect.objectContaining({
-            id: 'call_search',
-            nodeId: 'call_search',
-            moduleType: FlowNodeTypeEnum.tool,
-            moduleName: 'Search',
-            moduleLogo: 'tool-avatar',
-            toolId: 'search',
-            toolInput: {
-              query: 'FastGPT'
-            },
-            toolRes: 'Tool error: network failed',
-            errorText: 'Tool error: network failed',
-            runningTime: 0.56,
-            totalPoints: 0
-          })
-        ]
-      })
-    ]);
+    expect(result.toolDispatchFlowResponses).toEqual([]);
   });
 });

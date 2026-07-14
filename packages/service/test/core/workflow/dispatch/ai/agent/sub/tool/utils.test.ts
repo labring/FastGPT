@@ -306,13 +306,15 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools[0].toolConfig?.mcpTool?.toolId).toBe('mcp-mcp_app/search');
   });
 
-  it('upgrades legacy selectedTypeIndex 0 tool inputs to agent generated at runtime', async () => {
+  it('preserves legacy selectedTypeIndex 0 tool inputs at runtime', async () => {
     const tools = await getAgentRuntimeTools({
       tmbId: 'tmb_1',
       tools: [
         {
           id: 'mcp-mcp_app/search',
-          config: {},
+          config: {
+            query: 'manual value'
+          },
           inputs: [
             {
               key: 'query',
@@ -327,15 +329,15 @@ describe('getAgentRuntimeTools schema loading', () => {
     expect(tools).toHaveLength(1);
     expect(tools[0].inputs[0]).toMatchObject({
       key: 'query',
-      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      selectedType: FlowNodeInputTypeEnum.input,
       selectedTypeIndex: 0,
-      renderTypeList: [
-        FlowNodeInputTypeEnum.agentGenerated,
-        FlowNodeInputTypeEnum.input,
-        FlowNodeInputTypeEnum.reference
-      ]
+      renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
     });
-    expect(tools[0].requestSchema.function.parameters).toEqual(mcpInputSchema);
+    expect(tools[0].requestSchema.function.parameters).toEqual({
+      type: 'object',
+      properties: {},
+      required: []
+    });
   });
 
   it('loads a selected MCP tool whose name starts with slash', async () => {

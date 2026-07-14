@@ -7,7 +7,8 @@ import {
   getToolInputManualRenderType,
   getToolConfigStatus,
   initToolInputTypeByDefaultMode,
-  isAgentGeneratedToolInput
+  isAgentGeneratedToolInput,
+  stripToolInputDefaultMode
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
@@ -849,6 +850,30 @@ describe('agent generated tool input helpers', () => {
     expect(isAgentGeneratedToolInput(input)).toBe(true);
   });
 
+  it('should force the default mode over a preview input selection', () => {
+    const input = initToolInputTypeByDefaultMode(
+      createMockInput({
+        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
+        selectedType: FlowNodeInputTypeEnum.input,
+        selectedTypeIndex: 0,
+        isToolParam: true
+      }),
+      { forceDefaultMode: true }
+    );
+
+    expect(input.selectedType).toBe(FlowNodeInputTypeEnum.agentGenerated);
+    expect(input.selectedTypeIndex).toBe(0);
+    expect(isAgentGeneratedToolInput(input)).toBe(true);
+  });
+
+  it('should remove isToolParam from a persisted tool input', () => {
+    const input = createMockInput({ isToolParam: true });
+    const persistedInput = stripToolInputDefaultMode(input);
+
+    expect(persistedInput).not.toHaveProperty('isToolParam');
+    expect(input.isToolParam).toBe(true);
+  });
+
   it('should keep developer-configured input when isToolParam is not true', () => {
     const input = initToolInputTypeByDefaultMode(
       createMockInput({
@@ -896,19 +921,15 @@ describe('agent generated tool input helpers', () => {
     );
   });
 
-  it('should treat legacy selectedTypeIndex 0 as default for new isToolParam inputs', () => {
+  it('should preserve legacy selectedTypeIndex 0 as the saved final type', () => {
     const selectedType = getSavedToolInputSelectedType({
       savedInput: createMockInput({
         renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
         selectedTypeIndex: 0
-      }),
-      defaultInput: createMockInput({
-        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-        isToolParam: true
       })
     });
 
-    expect(selectedType).toBeUndefined();
+    expect(selectedType).toBe(FlowNodeInputTypeEnum.input);
   });
 
   it('should preserve legacy non-zero selectedTypeIndex as an explicit selection', () => {
@@ -916,10 +937,6 @@ describe('agent generated tool input helpers', () => {
       savedInput: createMockInput({
         renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
         selectedTypeIndex: 1
-      }),
-      defaultInput: createMockInput({
-        renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference],
-        isToolParam: true
       })
     });
 

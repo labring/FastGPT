@@ -138,6 +138,7 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
         chatConfig,
         histories: [],
         variableState: childrenVariableState,
+        isToolCall: true,
         query: [
           {
             text: {
@@ -158,6 +159,9 @@ export const dispatchApp = async (props: Props): Promise<DispatchSubAppResponse>
 
   return {
     response: text,
+    ...(runtimeSummary.hasError
+      ? { errorMessage: runtimeSummary.errorText || 'Run workflow failed' }
+      : {}),
     assistantMessages: chats2GPTMessages({
       messages: [
         {
@@ -320,6 +324,7 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
         chatConfig,
         histories: [],
         variableState: childrenVariableState,
+        isToolCall: true,
         query: serverGetWorkflowToolRunUserQuery({
           pluginInputs: getWorkflowToolInputsFromStoreNodes(nodes),
           variables: {
@@ -353,6 +358,9 @@ export const dispatchPlugin = async (props: Props): Promise<DispatchSubAppRespon
 
   return {
     response,
+    ...(runtimeSummary.hasError || !pluginOutput
+      ? { errorMessage: runtimeSummary.errorText || 'Run workflow tool failed' }
+      : {}),
     assistantMessages: chats2GPTMessages({
       messages: [
         {

@@ -154,18 +154,25 @@ const toToolRunResult = <TChildrenResponse = unknown>(
 ): {
   result: AgentLoopCoreToolRunResult<TChildrenResponse>;
   flowResponse: AgentLoopCoreToolRunFlowResponse;
-} => ({
-  result: {
-    response: formatAgentLoopCoreToolResponse(toolRunResponse.toolResponses),
-    assistantMessages: getAssistantMessages(toolRunResponse.assistantResponses),
-    usages: toolRunResponse.flowUsages,
-    interactive: toolRunResponse.workflowInteractiveResponse as TChildrenResponse | undefined,
-    stop:
-      !!toolRunResponse.runtimeNodeResponseSummary?.hasToolStop ||
-      toolRunResponse.flowResponses.some((item) => item.toolStop)
-  },
-  flowResponse: toFlowResponse(toolRunResponse)
-});
+} => {
+  const errorMessage = toolRunResponse.runtimeNodeResponseSummary?.hasError
+    ? toolRunResponse.runtimeNodeResponseSummary.errorText || 'Tool execution failed'
+    : undefined;
+
+  return {
+    result: {
+      response: formatAgentLoopCoreToolResponse(toolRunResponse.toolResponses),
+      ...(errorMessage ? { errorMessage } : {}),
+      assistantMessages: getAssistantMessages(toolRunResponse.assistantResponses),
+      usages: toolRunResponse.flowUsages,
+      interactive: toolRunResponse.workflowInteractiveResponse as TChildrenResponse | undefined,
+      stop:
+        !!toolRunResponse.runtimeNodeResponseSummary?.hasToolStop ||
+        toolRunResponse.flowResponses.some((item) => item.toolStop)
+    },
+    flowResponse: toFlowResponse(toolRunResponse)
+  };
+};
 
 /** 合并每个知识库节点的独立 toolResponse，避免 workflow 只保留最后一个结果。 */
 const formatDatasetSearchToolResponses = ({
@@ -233,6 +240,19 @@ export const createAgentLoopCoreWorkflowSystemToolExecutor = <TChildrenResponse 
           [NodeInputKeyEnum.datasetSearchInput]: query,
           [NodeInputKeyEnum.userChatInput]: ''
         });
+        const datasetNode = isolatedRuntimeNodes.find((node) => node.nodeId === entryNodeId);
+        if (datasetNode) {
+          // dataset_search 的系统参数由 agent-loop 直接生成，不受工具输入最终类型过滤影响。
+          datasetNode.inputs = datasetNode.inputs.map((input) => {
+            if (input.key === NodeInputKeyEnum.datasetSearchInput) {
+              return { ...input, value: query };
+            }
+            if (input.key === NodeInputKeyEnum.userChatInput) {
+              return { ...input, value: '' };
+            }
+            return input;
+          });
+        }
         initAgentLoopCoreWorkflowToolEdges(isolatedRuntimeEdges, [entryNodeId]);
 
         return runWorkflowTool({
