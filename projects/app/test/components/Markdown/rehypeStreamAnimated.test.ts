@@ -43,11 +43,11 @@ const getElementsByTagName = (node: TestNode, tagName: string): TestNode[] => {
 };
 
 describe('getStreamingAppendLength', () => {
-  it('should return the appended Unicode code point count', () => {
+  it('should return the appended visible Unicode code point count', () => {
     expect(getStreamingAppendLength({ previousSource: '', currentSource: 'hello' })).toBe(5);
     expect(
       getStreamingAppendLength({ previousSource: 'hello', currentSource: 'hello world' })
-    ).toBe(6);
+    ).toBe(5);
     expect(getStreamingAppendLength({ previousSource: 'hello', currentSource: 'hello😀' })).toBe(1);
   });
 
@@ -60,6 +60,22 @@ describe('getStreamingAppendLength', () => {
         maxLength: 64
       })
     ).toBe(64);
+  });
+
+  it('should ignore whitespace-only appends', () => {
+    expect(getStreamingAppendLength({ previousSource: 'hello', currentSource: 'hello\n' })).toBe(0);
+    expect(getStreamingAppendLength({ previousSource: 'hello', currentSource: 'hello   ' })).toBe(
+      0
+    );
+    expect(getStreamingAppendLength({ previousSource: 'hello', currentSource: 'hello\n>' })).toBe(
+      0
+    );
+    expect(getStreamingAppendLength({ previousSource: 'hello', currentSource: 'hello\n**' })).toBe(
+      0
+    );
+    expect(
+      getStreamingAppendLength({ previousSource: 'hello', currentSource: 'hello world  ' })
+    ).toBe(5);
   });
 });
 

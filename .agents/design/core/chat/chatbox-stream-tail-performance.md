@@ -55,10 +55,10 @@ ChatBox 在长内容流式输出时会持续掉帧。已确认本次需要：
 
 `MarkdownRender` 保存上一次已经 commit 的 `formatSource`。
 
-当前内容是上一次内容的 append 时，计算新增 Unicode code point 数；内容发生替换、缩短或不是 append 时，本次不添加尾部动画。单次最多标记 64 个 code point，避免异常大 chunk 生成过大的动画节点。
+当前内容是上一次内容的 append 时，计算新增可见尾部的 Unicode code point 数；首尾空白和纯 Markdown 控制标记不产生动画，内容发生替换、缩短或不是 append 时，本次不添加尾部动画。单次最多标记 64 个 code point，避免异常大 chunk 生成过大的动画节点。
 
 ```ts
-tailLength = min(codePoints(currentSource - previousSource), 64)
+tailLength = min(codePoints(visibleAppend(currentSource - previousSource)), 64)
 ```
 
 `previousSourceRef` 只在 layout effect 中更新，表示上一次已经提交到 DOM 的 source，不在 render 中改写 ref。
@@ -109,7 +109,7 @@ transform: translateY(1px) -> translateY(0)
 2. 等待达到 50ms 后，再用一个 rAF 对齐浏览器 paint。
 3. 多次 `schedule()` 共享同一个 timer/frame。
 4. `flush()`：取消 timer/frame 并立即提交，用于完成和异常收尾。
-5. `cancel()`：取消 timer/frame，不提交，用于组件卸载或离开会话。
+5. `cancel()`：取消 timer/frame、重置节流时间，不提交，用于组件卸载或离开会话。
 
 首次增量不等待完整 50ms，直接进入下一个 animation frame。之后普通文本增量最多 20 次/秒。
 
@@ -121,7 +121,8 @@ transform: translateY(1px) -> translateY(0)
 
 - queue 非空后调用 scheduler `schedule()`。
 - 普通请求完成或 catch 时调用 scheduler `flush()`。
-- hook cleanup 时调用 scheduler `cancel()` 并清空 queue。
+- `abortRequest('leave')` 和 hook cleanup 时调用 scheduler `cancel()` 并清空 queue，避免旧会话
+  buffer 写入新会话。
 - 对外返回 `flushGeneratingMessages`。
 
 `useChatResume`：
@@ -153,9 +154,10 @@ transform: translateY(1px) -> translateY(0)
 3. 支持粗体、链接等嵌套 inline node。
 4. 不跨过 code/table/svg/katex 回退动画旧文本。
 5. 跳过的 block 位于 blockquote/list 等容器内时同样不回退动画旧文本。
-6. `tailLength=0` 不修改 tree。
-7. 正确处理 emoji。
-8. append length 支持首次内容、普通 append、非 append、上限和 Unicode。
+6. 首尾空白和纯 Markdown 控制标记 append 不重复动画旧文本。
+7. `tailLength=0` 不修改 tree。
+8. 正确处理 emoji。
+9. append length 支持首次内容、普通 append、非 append、上限和 Unicode。
 
 ### 6.2 scheduler
 
@@ -166,7 +168,9 @@ transform: translateY(1px) -> translateY(0)
 3. 下一次 flush 不早于 50ms。
 4. `flush()` 取消待执行任务并立即提交。
 5. `cancel()` 只取消、不提交。
-6. timer 已触发但 frame 未执行时仍不会重复 schedule。
+6. cancel 后下一轮重新从最近一帧开始调度。
+7. 空 flush 不消耗下一轮 50ms 窗口。
+8. timer 已触发但 frame 未执行时仍不会重复 schedule。
 
 ### 6.3 回归验证
 
@@ -190,10 +194,9 @@ transform: translateY(1px) -> translateY(0)
 
 ## 8. 验证记录
 
-1. 新增 rehype/scheduler 测试：28 项通过（rehype 22 项、scheduler 6 项），包含真实
+1. 新增 rehype/scheduler 测试：31 项通过（rehype 23 项、scheduler 8 项），包含真实
    `react-markdown` 自定义组件映射。
-2. Markdown utils 与 ChatBox 回归测试：12 个文件、109 项通过；Vitest 汇总后受仓库既有未
-   关闭句柄影响，需要手动结束进程，但测试项均已完成且通过。
+2. Markdown utils 与 ChatBox 回归测试：12 个文件、114 项通过。
 3. 改动 TypeScript/测试文件 ESLint：0 error；ChatBox/index.tsx 保留 11 条 upstream 原有
    warning，未由本次改动引入。
 4. `@fastgpt/app` typecheck：通过。

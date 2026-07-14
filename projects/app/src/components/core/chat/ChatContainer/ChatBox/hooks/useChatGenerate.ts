@@ -526,7 +526,7 @@ export const useChatGenerate = ({
 
   const commitGeneratingMessageQueue = useMemoizedFn(() => {
     const queue = generatingMessageQueueRef.current;
-    if (queue.length === 0) return;
+    if (queue.length === 0) return false;
 
     generatingMessageQueueRef.current = [];
     setChatRecords((state) =>
@@ -534,6 +534,7 @@ export const useChatGenerate = ({
     );
 
     generatingScroll(queue.some((message) => message.event === SseResponseEventEnum.interactive));
+    return true;
   });
   const streamRenderScheduler = useMemo(
     () =>
@@ -544,6 +545,10 @@ export const useChatGenerate = ({
   );
   const flushGeneratingMessageQueue = useMemoizedFn(() => {
     streamRenderScheduler.flush();
+  });
+  const cancelGeneratingMessageQueue = useMemoizedFn(() => {
+    streamRenderScheduler.cancel();
+    generatingMessageQueueRef.current = [];
   });
 
   const generatingMessage = useMemoizedFn(
@@ -572,12 +577,14 @@ export const useChatGenerate = ({
 
   useEffect(() => {
     return () => {
-      streamRenderScheduler.cancel();
-      generatingMessageQueueRef.current = [];
+      cancelGeneratingMessageQueue();
     };
-  }, [streamRenderScheduler]);
+  }, [cancelGeneratingMessageQueue]);
 
   const abortRequest = useMemoizedFn((reason: string = 'stop') => {
+    if (reason === 'leave') {
+      cancelGeneratingMessageQueue();
+    }
     chatControllerRef.current?.abort(new Error(reason));
     questionGuideControllerRef.current?.abort(new Error(reason));
     pluginControllerRef.current?.abort(new Error(reason));

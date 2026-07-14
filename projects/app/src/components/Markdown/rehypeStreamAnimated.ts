@@ -2,6 +2,7 @@ const STREAM_ANIMATED_BLOCK_TAGS = new Set(['p', 'h1', 'h2', 'h3', 'h4', 'h5', '
 const STREAM_ANIMATED_SKIP_TAGS = new Set(['pre', 'code', 'table', 'svg']);
 const DEFAULT_STREAMING_TAIL_MAX_LENGTH = 64;
 const DEFAULT_STREAMING_TAIL_TAG_NAME = 'stream-tail';
+const STREAMING_MARKDOWN_SYNTAX_CHARS = new Set('*_~`[]()>#+-|\\');
 
 type HastElement = {
   type: 'element';
@@ -26,10 +27,11 @@ type HastRoot = {
 };
 
 /**
- * 计算相对上一次已提交 Markdown 新增的 Unicode code point 数量。
+ * 计算相对上一次已提交 Markdown 新增可见尾部的 Unicode code point 数量。
  *
  * 只接受纯 append，避免 Markdown 尾部隐藏、内容替换或会话切换时把旧正文误判为新增内容。
- * 返回值有上限，保证单次大 chunk 也只创建固定规模的动画节点。
+ * 首尾空白和纯 Markdown 控制标记不产生可见动画，返回值有上限，保证单次大 chunk 也只
+ * 创建固定规模的动画节点。
  */
 export const getStreamingAppendLength = ({
   previousSource,
@@ -42,7 +44,15 @@ export const getStreamingAppendLength = ({
 }) => {
   if (!currentSource.startsWith(previousSource)) return 0;
 
-  return Math.min(Array.from(currentSource.slice(previousSource.length)).length, maxLength);
+  const appendedSource = currentSource.slice(previousSource.length).trim();
+  if (!appendedSource) return 0;
+
+  const appendedCodePoints = Array.from(appendedSource);
+  if (appendedCodePoints.every((codePoint) => STREAMING_MARKDOWN_SYNTAX_CHARS.has(codePoint))) {
+    return 0;
+  }
+
+  return Math.min(appendedCodePoints.length, maxLength);
 };
 
 /**

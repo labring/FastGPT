@@ -123,6 +123,32 @@ describe('createStreamRenderScheduler', () => {
     expect(onFlush).not.toHaveBeenCalled();
   });
 
+  it('should reset the interval after canceling a completed stream', () => {
+    const fake = createFakeRuntime();
+    const onFlush = vi.fn();
+    const scheduler = createStreamRenderScheduler({ onFlush, runtime: fake.runtime });
+
+    scheduler.schedule();
+    fake.runNextTimer();
+    fake.runNextFrame();
+    fake.setNow(110);
+    scheduler.cancel();
+    scheduler.schedule();
+
+    expect([...fake.timers.values()].map((item) => item.delay)).toEqual([0]);
+  });
+
+  it('should not throttle after an empty flush', () => {
+    const fake = createFakeRuntime();
+    const onFlush = vi.fn(() => false);
+    const scheduler = createStreamRenderScheduler({ onFlush, runtime: fake.runtime });
+
+    scheduler.flush();
+    scheduler.schedule();
+
+    expect([...fake.timers.values()].map((item) => item.delay)).toEqual([0]);
+  });
+
   it('should not schedule another timer while a frame is pending', () => {
     const fake = createFakeRuntime();
     const scheduler = createStreamRenderScheduler({ onFlush: vi.fn(), runtime: fake.runtime });

@@ -27,7 +27,7 @@ export const createStreamRenderScheduler = ({
   intervalMs = STREAM_RENDER_INTERVAL_MS,
   runtime = browserRuntime
 }: {
-  onFlush: () => void;
+  onFlush: () => boolean | void;
   intervalMs?: number;
   runtime?: StreamRenderSchedulerRuntime;
 }) => {
@@ -36,6 +36,7 @@ export const createStreamRenderScheduler = ({
   let frameId: number | undefined;
 
   const cancel = () => {
+    lastFlushAt = Number.NEGATIVE_INFINITY;
     if (timerId !== undefined) {
       runtime.clearTimer(timerId);
       timerId = undefined;
@@ -47,8 +48,10 @@ export const createStreamRenderScheduler = ({
   };
 
   const commit = () => {
-    lastFlushAt = runtime.now();
-    onFlush();
+    // 空 flush 只负责清理待执行任务，不应阻塞下一轮流式输出的首次提交。
+    if (onFlush() !== false) {
+      lastFlushAt = runtime.now();
+    }
   };
 
   const schedule = () => {
