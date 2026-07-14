@@ -441,6 +441,9 @@ importers:
       lodash:
         specifier: 'catalog:'
         version: 4.17.23
+      lodash-es:
+        specifier: ^4.17.21
+        version: 4.18.1
       nanoid:
         specifier: 'catalog:'
         version: 5.1.5
@@ -592,6 +595,9 @@ importers:
       lodash:
         specifier: 'catalog:'
         version: 4.17.23
+      lodash-es:
+        specifier: ^4.17.21
+        version: 4.18.1
       mammoth:
         specifier: ^1.11.0
         version: 1.11.0

@@ -8,7 +8,7 @@ import {
   type STTModelType,
   type RerankModelItemType
 } from '@fastgpt/global/core/ai/model.schema';
-import { debounce } from 'lodash';
+import { debounce } from 'lodash-es';
 import { getModelProvider } from '../../../core/app/provider/controller';
 import { findModelFromAlldata } from '../model';
 import {

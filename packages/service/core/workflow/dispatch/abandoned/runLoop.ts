@@ -8,7 +8,7 @@ import {
 import { runWorkflow } from '..';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { type AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { cloneDeep } from 'lodash';
+import { cloneDeep } from 'lodash-es';
 import { type WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { storeEdges2RuntimeEdges } from '@fastgpt/global/core/workflow/runtime/utils';
 import { serviceEnv } from '../../../../env';

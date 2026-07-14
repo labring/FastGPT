@@ -1,4 +1,4 @@
-import { cloneDeep, isEqual } from 'lodash';
+import { cloneDeep, isEqual } from 'lodash-es';
 import type {
   RuntimeNodeItemType,
   WorkflowVariableStateLike

@@ -53,6 +53,7 @@
     "jsonwebtoken": "catalog:",
     "jszip": "^3.10.1",
     "lodash": "catalog:",
+    "lodash-es": "^4.17.21",
     "mammoth": "^1.11.0",
     "mime": "catalog:",
     "mime-types": "catalog:",

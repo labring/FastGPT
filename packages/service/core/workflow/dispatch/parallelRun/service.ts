@@ -1,4 +1,4 @@
-import { cloneDeep } from 'lodash';
+import { cloneDeep } from 'lodash-es';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { ParallelRunStatusEnum } from '@fastgpt/global/core/workflow/constants';
 import {
