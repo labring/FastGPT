@@ -107,7 +107,7 @@ jobs:
           repository: ${{ github.event.pull_request.head.repo.full_name ||
             github.repository }}
 
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: pnpm/action-setup@v4
 
       - uses: actions/setup-node@v4
         with:
@@ -141,7 +141,7 @@ jobs:
           repository: ${{ github.event.pull_request.head.repo.full_name ||
             github.repository }}
 
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: pnpm/action-setup@v4
 
       - uses: actions/setup-node@v4
         with:
@@ -175,7 +175,7 @@ jobs:
           repository: ${{ github.event.pull_request.head.repo.full_name ||
             github.repository }}
 
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
+      - uses: pnpm/action-setup@v4
 
       - uses: actions/setup-node@v4
         with:
