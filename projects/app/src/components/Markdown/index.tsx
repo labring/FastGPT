@@ -26,6 +26,8 @@ const IframeHtmlCodeBlock = dynamic(() => import('./codeBlock/iframe-html'), { s
 const VideoBlock = dynamic(() => import('./codeBlock/Video'), { ssr: false });
 const AudioBlock = dynamic(() => import('./codeBlock/Audio'), { ssr: false });
 const useBrowserLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
+const STREAM_TAIL_FADE_DURATION_MS = 280;
+const STREAM_TAIL_FADE_EASING = 'cubic-bezier(0.33, 0, 0.67, 1)';
 
 const ChatGuide = dynamic(() => import('./chat/Guide'), { ssr: false });
 const QuestionGuide = dynamic(() => import('./chat/QuestionGuide'), { ssr: false });
@@ -68,7 +70,7 @@ function MarkdownLinkRenderer(props: any) {
   );
 }
 
-/** 仅让最新流式文本批次执行淡入；不支持 Web Animations API 时直接展示内容。 */
+/** 仅让最新流式文本批次执行淡入；CSS 会为不支持 Web Animations API 的浏览器兜底。 */
 function MarkdownStreamTailRenderer({ children }: any) {
   const ref = useRef<HTMLSpanElement>(null);
 
@@ -78,12 +80,12 @@ function MarkdownStreamTailRenderer({ children }: any) {
 
     const animation = element.animate(
       [
-        { opacity: 0.25, filter: 'blur(1px)', transform: 'translateY(1px)' },
-        { opacity: 1, filter: 'blur(0)', transform: 'translateY(0)' }
+        { opacity: 0, transform: 'translateY(1px)' },
+        { opacity: 1, transform: 'translateY(0)' }
       ],
       {
-        duration: 120,
-        easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+        duration: STREAM_TAIL_FADE_DURATION_MS,
+        easing: STREAM_TAIL_FADE_EASING,
         fill: 'both'
       }
     );
