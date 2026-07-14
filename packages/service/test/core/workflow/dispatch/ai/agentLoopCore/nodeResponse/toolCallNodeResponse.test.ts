@@ -1,5 +1,5 @@
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import { createAgentLoopCoreToolCallNodeResponse } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/interface';
+import { createAgentLoopCoreToolCallNodeResponse } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/nodeResponse/toolCallNodeResponse';
 import { describe, expect, it } from 'vitest';
 
 describe('createAgentLoopCoreToolCallNodeResponse', () => {

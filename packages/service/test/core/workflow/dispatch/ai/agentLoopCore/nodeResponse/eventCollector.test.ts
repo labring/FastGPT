@@ -1,5 +1,5 @@
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { createAgentLoopCoreNodeResponseEventCollector } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/interface';
+import { createAgentLoopCoreNodeResponseEventCollector } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/nodeResponse/eventCollector';
 import { describe, expect, it } from 'vitest';
 
 const toolCall = ({ id, name, args = '{}' }: { id: string; name: string; args?: string }) =>
@@ -132,6 +132,28 @@ describe('createAgentLoopCoreNodeResponseEventCollector', () => {
         ]
       })
     ]);
+  });
+
+  it('deduplicates context compression responses by checkpoint without request ids', () => {
+    const { collector, nodeResponses } = createCollector();
+    const event = {
+      type: 'after_message_compress',
+      usages: [
+        {
+          moduleName: 'account_usage:compress_llm_messages',
+          model: 'GPT-4',
+          totalPoints: 0.2
+        }
+      ],
+      requestIds: [],
+      seconds: 0.1,
+      contextCheckpoint: '<context_checkpoint>same</context_checkpoint>'
+    } as const;
+
+    collector.emitEvent(event);
+    collector.emitEvent({ ...event, seconds: 0.2 });
+
+    expect(nodeResponses).toHaveLength(1);
   });
 
   it('records plan and ask control node responses once', () => {

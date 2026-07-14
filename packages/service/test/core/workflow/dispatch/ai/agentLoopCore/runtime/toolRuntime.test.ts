@@ -1,4 +1,4 @@
-import { createAgentLoopCoreToolRuntime } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/interface';
+import { createAgentLoopCoreToolRuntime } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/runtime/toolRuntime';
 import { describe, expect, it, vi } from 'vitest';
 
 const createCall = (overrides: Record<string, any> = {}) =>

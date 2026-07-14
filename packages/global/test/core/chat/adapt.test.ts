@@ -2314,6 +2314,75 @@ describe('chats2GPTMessages', () => {
     ]);
   });
 
+  it('should restore a nested agent ask answer as a tool response without duplicating the human answer', () => {
+    const messages: ChatItemMiniType[] = [
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            agentAsk: {
+              id: 'call_nested_ask',
+              askId: 'call_nested_ask',
+              functionName: 'ask_agent',
+              params: '{"question":"Choose one"}'
+            }
+          },
+          {
+            interactive: {
+              type: 'toolChildrenInteractive',
+              params: {
+                toolParams: {
+                  toolCallId: 'outer_tool'
+                },
+                childrenResponse: {
+                  type: 'childrenInteractive',
+                  params: {
+                    childrenId: 'child_1',
+                    childrenResponse: {
+                      type: 'agentPlanAskQuery',
+                      askId: 'call_nested_ask',
+                      params: {
+                        content: 'Choose one',
+                        answer: 'Choice A'
+                      }
+                    }
+                  }
+                }
+              }
+            } as any
+          }
+        ]
+      },
+      {
+        obj: ChatRoleEnum.Human,
+        value: [{ text: { content: 'Choice A' }, askId: 'call_nested_ask' }]
+      }
+    ];
+
+    expect(chats2GPTMessages({ messages, reserveId: false, reserveTool: true })).toEqual([
+      {
+        dataId: undefined,
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        tool_calls: [
+          {
+            id: 'call_nested_ask',
+            type: 'function',
+            function: {
+              name: 'ask_agent',
+              arguments: '{"question":"Choose one"}'
+            }
+          }
+        ]
+      },
+      {
+        dataId: undefined,
+        role: ChatCompletionRequestMessageRoleEnum.Tool,
+        tool_call_id: 'call_nested_ask',
+        content: 'Choice A'
+      }
+    ]);
+  });
+
   it('should restore multiple ask_agent responses by askId without sharing plan context', () => {
     const messages: ChatItemMiniType[] = [
       {

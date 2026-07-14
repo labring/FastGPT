@@ -7,6 +7,7 @@ import { parseJsonArgs } from '../../../../../../ai/utils';
 import type { DispatchFlowResponse } from '../../../../type';
 import { withAgentLoopCoreChildTotalPoints } from './children';
 import { createAgentLoopCoreCompressNodeResponse } from './compress';
+import type { AgentLoopCoreToolDisplayInfo } from '../../domain/toolInfo';
 
 export type AgentLoopCoreToolRunFlowResponse = {
   flowResponses: NonNullable<DispatchFlowResponse['flatNodeResponses']>;
@@ -19,11 +20,6 @@ export type AgentLoopCoreToolRunFlowResponsesSummary = {
   runTimes: number;
   toolDetail: NonNullable<DispatchFlowResponse['flatNodeResponses']>;
   toolTotalPoints: number;
-};
-
-export type AgentLoopCoreToolRunInfo = {
-  name: string;
-  avatar?: string;
 };
 
 type ToolResponseCompress = {
@@ -184,7 +180,7 @@ export const createAgentLoopCoreToolRunResponseCollector = ({
   getToolInfo
 }: {
   moduleType: FlowNodeTypeEnum;
-  getToolInfo: (name: string) => AgentLoopCoreToolRunInfo | undefined;
+  getToolInfo: (name: string) => AgentLoopCoreToolDisplayInfo | undefined;
 }) => {
   const toolRunResponses: AgentLoopCoreToolRunFlowResponse[] = [];
   const pendingToolFlowResponseMap = new Map<string, AgentLoopCoreToolRunFlowResponse>();
@@ -265,13 +261,15 @@ export const createAgentLoopCoreToolRunResponseCollector = ({
   const appendContextCompressNodeResponse = ({
     usage,
     requestIds,
+    contextCheckpoint,
     seconds
   }: {
     usage: ChatNodeUsageType;
     requestIds: string[];
+    contextCheckpoint?: string;
     seconds: number;
   }) => {
-    const requestKey = requestIds.join(',');
+    const requestKey = requestIds.join(',') || contextCheckpoint;
     if (requestKey && appendedContextCompressKeys.has(requestKey)) return;
     if (requestKey) appendedContextCompressKeys.add(requestKey);
 

@@ -4,7 +4,7 @@ import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/glob
 import type { ChatItemMiniType, UserChatItemFileItemType } from '@fastgpt/global/core/chat/type';
 import { parseUrlToFileType } from '../../../../utils/context';
 import { getLogger, LogCategories } from '../../../../../../common/logger';
-import { getHistories } from '../../../utils';
+import { getAgentLoopHistories } from '../../../utils';
 import { MongoDataset } from '../../../../../dataset/schema';
 import { filterDatasetsByTmbId } from '../../../../../dataset/utils';
 import type { DeployedSkillInfo } from '../../../../../ai/sandbox/interface/runtime';
@@ -247,7 +247,7 @@ export const useUserContext = async ({
   tmbId: string;
   timezone: string;
 }): Promise<UseUserContextResult> => {
-  const chatHistories = getHistories(history, histories);
+  const chatHistories = getAgentLoopHistories(history, histories);
   const fileUrlMap: Record<string, string> = {};
   // filesMap 只给 read_files 使用，因此只登记 document 类型文件。
   const filesMap: UseUserContextResult['filesMap'] = {};

@@ -24,6 +24,9 @@ import {
 import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
+import type { WorkflowResponseType } from '@fastgpt/global/core/workflow/runtime/sse';
+import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
 const makeInput = ({
   key,
@@ -185,7 +188,11 @@ const createLoopRunWorkflow = (loopItems = ['alpha', 'beta']) => {
 };
 
 describe('runWorkflow node response persistence', () => {
-  const mockTextEditorWithModuleChildResponses = () => {
+  const mockTextEditorWithModuleChildResponses = (
+    parentNodeResponse: Partial<ChatHistoryItemResType> = {
+      textOutput: 'parent output'
+    }
+  ) => {
     const originalTextEditorDispatch = callbackMap[FlowNodeTypeEnum.textEditor];
     callbackMap[FlowNodeTypeEnum.textEditor] = vi.fn(async () => ({
       data: {
@@ -201,9 +208,7 @@ describe('runWorkflow node response persistence', () => {
           totalPoints: 2
         }
       ],
-      [DispatchNodeResponseKeyEnum.nodeResponse]: {
-        textOutput: 'parent output'
-      }
+      [DispatchNodeResponseKeyEnum.nodeResponse]: parentNodeResponse
     }));
 
     return () => {
@@ -216,13 +221,15 @@ describe('runWorkflow node response persistence', () => {
     chatId,
     responseChatItemId,
     persistToDb = true,
-    retainInMemory = false
+    retainInMemory = false,
+    workflowStreamResponse
   }: {
     apiVersion: 'v1' | 'v2';
     chatId: string;
     responseChatItemId: string;
     persistToDb?: boolean;
     retainInMemory?: boolean;
+    workflowStreamResponse?: WorkflowResponseType;
   }) => {
     const appId = '67e0d5535c02d1d5cdede721';
     const runtimeNodes: RuntimeNodeItemType[] = [
@@ -297,6 +304,7 @@ describe('runWorkflow node response persistence', () => {
       responseAllData: true,
       responseDetail: true,
       nodeResponseWriter,
+      workflowStreamResponse,
       checkIsStopping: () => false
     } as any);
 
@@ -338,6 +346,45 @@ describe('runWorkflow node response persistence', () => {
           moduleName: 'Module Child'
         })
       ]);
+    } finally {
+      restoreTextEditorDispatch();
+    }
+  });
+
+  it('streams the parent error together with module child nodeResponses', async () => {
+    const restoreTextEditorDispatch = mockTextEditorWithModuleChildResponses({
+      error: 'parent agent failed'
+    });
+
+    try {
+      const streamedNodeResponses: ChatHistoryItemResType[] = [];
+      await runTextEditorWorkflowWithModuleChild({
+        apiVersion: 'v2',
+        chatId: 'workflow-module-child-error-chat',
+        responseChatItemId: 'workflow-module-child-error-ai-item',
+        workflowStreamResponse: (event) => {
+          if (
+            event.event === SseResponseEventEnum.flowNodeResponse &&
+            typeof event.data !== 'string'
+          ) {
+            streamedNodeResponses.push(event.data);
+          }
+        }
+      });
+
+      expect(streamedNodeResponses).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: 'module-child-response',
+            moduleName: 'Module Child'
+          }),
+          expect.objectContaining({
+            nodeId: 'parent_text_editor',
+            error: 'parent agent failed',
+            childResponseCount: 1
+          })
+        ])
+      );
     } finally {
       restoreTextEditorDispatch();
     }

@@ -10,11 +10,7 @@ import {
   createAgentLoopCoreToolRunResponseCollector,
   type AgentLoopCoreToolRunFlowResponse
 } from '../../adapter/nodeResponse/toolRunCollector';
-
-type AgentLoopCoreRuntimeEnvironmentToolInfo = {
-  name: string;
-  avatar?: string;
-};
+import type { AgentLoopCoreToolDisplayInfo } from '../../domain/toolInfo';
 
 export type CreateAgentLoopCoreRuntimeEnvironmentParams = {
   node: {
@@ -25,7 +21,7 @@ export type CreateAgentLoopCoreRuntimeEnvironmentParams = {
   streamAnswer?: boolean;
   streamReasoning?: boolean;
   sliceToolResponse?: boolean;
-  getToolInfo: (name: string) => AgentLoopCoreRuntimeEnvironmentToolInfo | undefined;
+  getToolInfo: (name: string) => AgentLoopCoreToolDisplayInfo | undefined;
   shouldStreamTool?: (name: string) => boolean;
   /**
    * Workflow Agent 使用 nodeResponses 记录平铺运行详情；ToolCall 不传该数组，

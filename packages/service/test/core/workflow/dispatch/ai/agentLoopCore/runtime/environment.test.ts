@@ -1,5 +1,5 @@
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { createAgentLoopCoreRuntimeEnvironment } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/interface';
+import { createAgentLoopCoreRuntimeEnvironment } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/runtime/environment';
 import { describe, expect, it, vi } from 'vitest';
 
 const toolCall = ({ id = 'call_search', name = 'search', args = '{}' } = {}) =>

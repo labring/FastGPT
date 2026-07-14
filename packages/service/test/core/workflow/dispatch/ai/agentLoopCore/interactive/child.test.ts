@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createAgentLoopCoreChildInteractiveParams } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/interface';
+import { createAgentLoopCoreChildInteractiveParams } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/interactive';
 
 describe('agentLoopCore child interactive', () => {
   it('keeps only toolCallId for new child interactive resume', () => {

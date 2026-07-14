@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createAgentLoopCoreAskInteractive } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/interface';
+import { createAgentLoopCoreAskInteractive } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/interactive';
 
 describe('agentLoopCore ask interactive', () => {
   it('converts ask payload to workflow interactive response', () => {

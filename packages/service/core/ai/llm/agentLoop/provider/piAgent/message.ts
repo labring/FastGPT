@@ -1,5 +1,12 @@
 import type { AgentMessage } from '@mariozechner/pi-agent-core';
-import type { AssistantMessage, StopReason, ToolCall } from '@mariozechner/pi-ai';
+import type {
+  AssistantMessage,
+  ImageContent,
+  Model,
+  StopReason,
+  TextContent,
+  ToolCall
+} from '@mariozechner/pi-ai';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import type {
@@ -8,7 +15,6 @@ import type {
   ChatCompletionTool,
   CompletionFinishReason
 } from '@fastgpt/global/core/ai/llm/type';
-import type { AgentAskPayload } from '../../domain/systemTool/ask';
 
 /** 将工具参数稳定序列化；不可序列化值回退为空对象，避免中断事件链。 */
 export const stringifyJson = (value: unknown) => {
@@ -48,6 +54,198 @@ const getMessageText = (message?: ChatCompletionMessageParam) => {
   return message.content.map((item) => (item.type === 'text' ? item.text : '')).join('');
 };
 
+const EMPTY_PI_USAGE = {
+  input: 0,
+  output: 0,
+  cacheRead: 0,
+  cacheWrite: 0,
+  totalTokens: 0,
+  cost: {
+    input: 0,
+    output: 0,
+    cacheRead: 0,
+    cacheWrite: 0,
+    total: 0
+  }
+};
+
+const parseToolArguments = (value: string) => {
+  try {
+    return normalizeToolArgs(JSON.parse(value));
+  } catch {
+    return {};
+  }
+};
+
+const getContentText = (
+  content:
+    | string
+    | null
+    | Array<{ type: 'text'; text: string } | { type: 'refusal'; refusal: string }>
+    | undefined
+) => {
+  if (!content) return '';
+  if (typeof content === 'string') return content;
+  return content.map((item) => (item.type === 'text' ? item.text : item.refusal)).join('');
+};
+
+/**
+ * 将 Workflow 侧标准消息转换为 pi-agent-core 可恢复的上下文。
+ * system/developer 由 Agent 的 systemPrompt 单独承载；其余消息保持 tool call/result 关联。
+ */
+export const convertChatMessagesToPiAgentMessages = ({
+  messages,
+  model
+}: {
+  messages: ChatCompletionMessageParam[];
+  model: Model<any>;
+}): AgentMessage[] => {
+  const toolNames = new Map<string, string>();
+
+  return messages.flatMap((message): AgentMessage[] => {
+    if (message.role === ChatCompletionRequestMessageRoleEnum.User) {
+      if (typeof message.content === 'string') {
+        return [{ role: 'user', content: message.content, timestamp: Date.now() }];
+      }
+
+      const content: Array<TextContent | ImageContent> = [];
+      message.content.forEach((item) => {
+        if (item.type === 'text') {
+          content.push({ type: 'text', text: item.text });
+          return;
+        }
+        if (item.type === 'image_url') {
+          const match = item.image_url.url.match(/^data:([^;]+);base64,(.+)$/);
+          if (match) {
+            content.push({ type: 'image', mimeType: match[1], data: match[2] });
+            return;
+          }
+          content.push({ type: 'text', text: `[Image: ${item.image_url.url}]` });
+          return;
+        }
+        if (item.type === 'video_url') {
+          content.push({ type: 'text', text: `[Video: ${item.video_url.url}]` });
+          return;
+        }
+        if (item.type === 'file_url') {
+          content.push({
+            type: 'text',
+            text: `[File: ${item.name ?? item.url}] ${item.url}`
+          });
+        }
+      });
+
+      return [{ role: 'user', content, timestamp: Date.now() }];
+    }
+
+    if (message.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
+      const toolCalls = message.tool_calls ?? [];
+      toolCalls.forEach((call) => toolNames.set(call.id, call.function.name));
+      const content: AssistantMessage['content'] = [
+        ...(message.reasoning_content
+          ? [{ type: 'thinking' as const, thinking: message.reasoning_content }]
+          : []),
+        ...(getContentText(message.content)
+          ? [{ type: 'text' as const, text: getContentText(message.content) }]
+          : []),
+        ...toolCalls.map((call) => ({
+          type: 'toolCall' as const,
+          id: call.id,
+          name: call.function.name,
+          arguments: parseToolArguments(call.function.arguments)
+        }))
+      ];
+
+      return [
+        {
+          role: 'assistant',
+          content,
+          api: model.api,
+          provider: model.provider,
+          model: model.id,
+          usage: EMPTY_PI_USAGE,
+          stopReason: toolCalls.length > 0 ? 'toolUse' : 'stop',
+          timestamp: Date.now()
+        }
+      ];
+    }
+
+    if (message.role === ChatCompletionRequestMessageRoleEnum.Tool) {
+      return [
+        {
+          role: 'toolResult',
+          toolCallId: message.tool_call_id,
+          toolName: message.name ?? toolNames.get(message.tool_call_id) ?? '',
+          content: [{ type: 'text', text: getContentText(message.content) }],
+          details: {},
+          isError: false,
+          timestamp: Date.now()
+        }
+      ];
+    }
+
+    if (message.role === ChatCompletionRequestMessageRoleEnum.Function) {
+      return [
+        {
+          role: 'user',
+          content: `[Function ${message.name} result]\n${message.content ?? ''}`,
+          timestamp: Date.now()
+        }
+      ];
+    }
+
+    return [];
+  });
+};
+
+/** 将 pi-agent-core 上下文转换回标准消息，供统一 checkpoint 压缩器消费。 */
+export const convertPiAgentMessagesToChatMessages = (
+  messages: AgentMessage[]
+): ChatCompletionMessageParam[] =>
+  messages.flatMap((message): ChatCompletionMessageParam[] => {
+    if (message.role === 'user') {
+      const content =
+        typeof message.content === 'string'
+          ? message.content
+          : message.content.map((item) =>
+              item.type === 'text'
+                ? item
+                : {
+                    type: 'image_url' as const,
+                    image_url: {
+                      url: `data:${item.mimeType};base64,${item.data}`
+                    }
+                  }
+            );
+      return [{ role: 'user', content }];
+    }
+
+    if (isAssistantMessage(message)) {
+      const { answerText, reasoningText, toolCalls } = readAssistantMessage(message);
+      return [
+        {
+          role: 'assistant',
+          content: answerText || null,
+          ...(reasoningText ? { reasoning_content: reasoningText } : {}),
+          ...(toolCalls.length > 0 ? { tool_calls: toolCalls } : {})
+        }
+      ];
+    }
+
+    if (message.role === 'toolResult') {
+      return [
+        {
+          role: 'tool',
+          tool_call_id: message.toolCallId,
+          name: message.toolName,
+          content: message.content.map((item) => (item.type === 'text' ? item.text : '')).join('')
+        }
+      ];
+    }
+
+    return [];
+  });
+
 const getPromptFromMessages = (messages: ChatCompletionMessageParam[]) => {
   for (let index = messages.length - 1; index >= 0; index--) {
     const message = messages[index];
@@ -56,28 +254,9 @@ const getPromptFromMessages = (messages: ChatCompletionMessageParam[]) => {
   return '';
 };
 
-/** 在 ask 恢复时生成明确的继续指令；普通调用直接使用最后一条用户消息。 */
-export const getPiAgentPrompt = ({
-  messages,
-  pendingAsk,
-  userAnswer
-}: {
-  messages: ChatCompletionMessageParam[];
-  pendingAsk?: AgentAskPayload;
-  userAnswer?: string;
-}) => {
-  if (!pendingAsk || userAnswer === undefined) return getPromptFromMessages(messages);
-
-  return [
-    'Continue the previous pending ask_user with the user answer below.',
-    '',
-    `<ask_user_question>${pendingAsk.question}</ask_user_question>`,
-    pendingAsk.reason ? `<ask_user_reason>${pendingAsk.reason}</ask_user_reason>` : '',
-    `<user_answer>${userAnswer}</user_answer>`
-  ]
-    .filter(Boolean)
-    .join('\n');
-};
+/** 普通调用从标准消息中读取最后一条用户文本；交互恢复不创建新的 user prompt。 */
+export const getPiAgentPrompt = (messages: ChatCompletionMessageParam[]) =>
+  getPromptFromMessages(messages);
 
 /** 从统一消息或 pi providerState 中恢复发生交互暂停的原始工具调用。 */
 export const resolveInteractiveToolCall = ({

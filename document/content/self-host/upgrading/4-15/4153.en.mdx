@@ -1,0 +1,17 @@
+---
+title: 'V4.15.3 (In Progress)'
+description: 'FastGPT V4.15.3 Release Notes'
+---
+
+## 📦 Upgrade Guide
+
+### AGENT_ENGINE environment variable values
+
+Starting with V4.15.3, `AGENT_ENGINE` uses new enum values. Update the environment variable before upgrading:
+
+| Previous value | New value   |
+| -------------- | ----------- |
+| `default`      | `fastAgent` |
+| `pi`           | `piAgent`   |
+
+The previous values are no longer supported. Using `default` or `pi` will fail environment variable validation and prevent FastGPT from starting. If `AGENT_ENGINE` is not set, FastGPT uses `fastAgent` by default.

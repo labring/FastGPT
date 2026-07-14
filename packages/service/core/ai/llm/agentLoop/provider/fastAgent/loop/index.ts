@@ -143,28 +143,45 @@ const buildInitialMessages = ({
 const buildAskPendingContext = ({
   messages,
   call,
+  assistantMessage,
   activePlan,
   requirePlan,
   runtimeToolCalledSinceLastPlanUpdate
 }: {
   messages: ChatCompletionMessageParam[];
   call: ChatCompletionMessageToolCall;
+  assistantMessage?: ChatCompletionMessageParam;
   activePlan?: AgentPlanType;
   requirePlan?: boolean;
   runtimeToolCalledSinceLastPlanUpdate?: boolean;
-}): PendingMainContext => ({
-  messages: [
-    ...messages,
-    {
-      role: ChatCompletionRequestMessageRoleEnum.Assistant,
-      tool_calls: [call]
-    }
-  ],
-  askToolCallId: call.id,
-  activePlan,
-  requirePlan,
-  runtimeToolCalledSinceLastPlanUpdate
-});
+}): PendingMainContext => {
+  const assistantFields =
+    assistantMessage?.role === ChatCompletionRequestMessageRoleEnum.Assistant
+      ? {
+          ...(('content' in assistantMessage && assistantMessage.content
+            ? { content: assistantMessage.content }
+            : {}) as Pick<typeof assistantMessage, 'content'>),
+          ...(assistantMessage.reasoning_content
+            ? { reasoning_content: assistantMessage.reasoning_content }
+            : {})
+        }
+      : {};
+
+  return {
+    messages: [
+      ...messages,
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        ...assistantFields,
+        tool_calls: [call]
+      }
+    ],
+    askToolCallId: call.id,
+    activePlan,
+    requirePlan,
+    runtimeToolCalledSinceLastPlanUpdate
+  };
+};
 
 /**
  * 单主 Agent Loop。
@@ -393,7 +410,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
         metadata
       });
     },
-    onRunTool: async ({ call, messages }) => {
+    onRunTool: async ({ call, messages, assistantMessage }) => {
       // 先处理会改变 agent-loop 本地状态的内置工具，再落到外部 runtime tool。
       if (call.function.name === askToolName) {
         const parsed = parseAgentAskToolCall(call);
@@ -414,6 +431,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
           context: buildAskPendingContext({
             messages,
             call,
+            assistantMessage,
             activePlan,
             requirePlan,
             runtimeToolCalledSinceLastPlanUpdate
@@ -545,7 +563,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
             'Interactive tool is not supported in fastAgent loop yet.'
           );
     },
-    onStopCandidate: async ({ requestIndex, requestId, requestMessages }) => {
+    onStopCandidate: async ({ requestIndex, requestId }) => {
       if (!updatePlanToolName) {
         return { allowStop: true };
       }

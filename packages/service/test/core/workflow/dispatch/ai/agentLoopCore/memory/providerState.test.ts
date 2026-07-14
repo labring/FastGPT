@@ -2,15 +2,14 @@ import { describe, expect, it } from 'vitest';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import {
-  buildAgentLoopCoreAskMemories,
+  buildAgentLoopCorePausedMemories,
   buildAgentLoopCoreDoneMemories,
   buildAgentLoopCoreProviderStateMemories,
   getAgentLoopCoreMemoryKeys,
-  getAgentLoopCorePiAgentMemoryProviderState,
   getAgentLoopCorePiMessagesMemoryKey,
   prepareAgentLoopCoreProviderRunState,
   readAgentLoopCoreProviderStateMemory
-} from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/interface';
+} from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/memory/providerState';
 
 describe('agentLoopCore providerState memory', () => {
   it('reads memory only from the last AI history item', () => {
@@ -249,52 +248,66 @@ describe('agentLoopCore providerState memory', () => {
     });
   });
 
-  it('keeps piAgent raw messages out of providerState memory', () => {
+  it('prefers unified piAgent providerState over legacy raw messages', () => {
+    const piMessagesKey = getAgentLoopCorePiMessagesMemoryKey('node_1');
+    const unifiedPiMessages: unknown[] = [];
+    const histories = [
+      {
+        obj: ChatRoleEnum.AI,
+        value: [],
+        memories: {
+          [piMessagesKey]: [{ role: 'assistant', content: 'legacy question' }]
+        }
+      }
+    ] satisfies ChatItemMiniType[];
+
     expect(
-      getAgentLoopCorePiAgentMemoryProviderState({
-        pendingAskId: 'call_ask',
-        piMessages: [{ role: 'assistant', content: 'question' }]
+      prepareAgentLoopCoreProviderRunState({
+        provider: 'piAgent',
+        restoredProviderState: {
+          piMessages: unifiedPiMessages
+        },
+        histories,
+        nodeId: 'node_1',
+        hasLastInteractive: true
       })
     ).toEqual({
-      pendingAskId: 'call_ask'
+      piMessagesKey,
+      providerState: {
+        piMessages: unifiedPiMessages
+      },
+      isAskResume: false
     });
   });
 
-  it('builds ask memories with split piAgent providerState and raw messages', () => {
+  it('writes complete piAgent state only to unified providerState memory on pause', () => {
+    const providerState = {
+      pendingAskId: 'call_ask',
+      piMessages: [{ role: 'assistant', content: 'question' }]
+    };
+
     expect(
-      buildAgentLoopCoreAskMemories({
-        provider: 'piAgent',
+      buildAgentLoopCorePausedMemories({
         nodeId: 'node_1',
-        providerState: {
-          pendingAskId: 'call_ask',
-          piMessages: [{ role: 'assistant', content: 'question' }]
-        },
-        piMessagesKey: 'piMessages-node_1'
+        providerState
       })
     ).toEqual({
       'agentLoopMemory-node_1': {
-        providerState: {
-          pendingAskId: 'call_ask'
-        }
-      },
-      'piMessages-node_1': [{ role: 'assistant', content: 'question' }]
+        providerState
+      }
     });
   });
 
-  it('clears providerState on done while preserving piAgent raw messages', () => {
+  it('clears providerState and piAgent raw messages on done', () => {
     expect(
       buildAgentLoopCoreDoneMemories({
         provider: 'piAgent',
         nodeId: 'node_1',
-        providerState: {
-          pendingAskId: 'call_ask',
-          piMessages: [{ role: 'assistant', content: 'final' }]
-        },
         piMessagesKey: 'piMessages-node_1'
       })
     ).toEqual({
       'agentLoopMemory-node_1': undefined,
-      'piMessages-node_1': [{ role: 'assistant', content: 'final' }]
+      'piMessages-node_1': undefined
     });
   });
 });

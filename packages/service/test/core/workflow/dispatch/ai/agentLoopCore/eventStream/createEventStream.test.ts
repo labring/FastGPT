@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { createAgentLoopCoreEventStream } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/interface';
+import { createAgentLoopCoreEventStream } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/eventStream';
 
 const createCall = (overrides: Record<string, any> = {}) =>
   ({

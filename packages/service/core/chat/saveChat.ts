@@ -851,12 +851,12 @@ export const updateInteractiveChat = async ({
       return true;
     };
 
-    const hasOnlyTools = (item: AIChatItemValueItemType) => {
-      return Object.entries(item).every(([key, itemValue]) => {
-        if (key === 'tools') return true;
-        return itemValue === undefined || itemValue === null;
+    const hasRemainingSemanticValue = (item: AIChatItemValueItemType) =>
+      Object.entries(item).some(([key, itemValue]) => {
+        // id 只是工具容器的关联键，不能单独构成一条可持久化的 assistant value。
+        if (key === 'id' || key === 'tools') return false;
+        return itemValue !== undefined && itemValue !== null;
       });
-    };
 
     return value.flatMap((item) => {
       if (item.plan && updateExistingPlan(item.plan)) {
@@ -873,14 +873,14 @@ export const updateInteractiveChat = async ({
 
       const unmergedTools = item.tools.filter((tool) => !updateExistingTool(tool));
       if (unmergedTools.length === item.tools.length) return [item];
-      if (unmergedTools.length === 0 && hasOnlyTools(item)) return [];
 
-      return [
-        {
-          ...item,
-          tools: unmergedTools.length ? unmergedTools : undefined
-        }
-      ];
+      const mergedItem = {
+        ...item,
+        tools: unmergedTools.length ? unmergedTools : undefined
+      };
+      if (unmergedTools.length === 0 && !hasRemainingSemanticValue(mergedItem)) return [];
+
+      return [mergedItem];
     });
   };
 

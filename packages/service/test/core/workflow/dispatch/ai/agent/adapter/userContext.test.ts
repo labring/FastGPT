@@ -12,7 +12,7 @@ import {
   buildAgentLoopCoreInputFilesPrompt,
   buildAgentLoopCoreSkillsPrompt,
   buildAgentLoopCoreUserReminderInput
-} from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/interface';
+} from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/context/reminder';
 import type { DeployedSkillInfo } from '@fastgpt/service/core/ai/skill/runtime/types';
 
 vi.mock('@fastgpt/global/common/time/timezone', () => ({
@@ -1041,6 +1041,59 @@ describe('useUserContext', () => {
         expect(text).toContain('当前时间');
         expect(text).toContain('只问一个问题');
         expect(text).not.toContain('## 对话文件');
+      }
+    );
+  });
+
+  it('keeps the last pending interactive round when history is 0', async () => {
+    await runWithContextAsync(
+      {
+        queryUrlTypeMap: {},
+        mcpClientMemory: {}
+      },
+      async () => {
+        const histories: ChatItemMiniType[] = [
+          createHumanMessage({
+            dataId: 'question_1',
+            text: 'Need a choice'
+          }),
+          {
+            obj: ChatRoleEnum.AI,
+            memories: {
+              'agentLoopMemory-agent_1': {
+                providerState: {
+                  pendingMainContext: {
+                    messages: []
+                  }
+                }
+              }
+            },
+            value: [
+              {
+                interactive: {
+                  type: 'agentPlanAskQuery',
+                  askId: 'ask_1',
+                  params: {
+                    content: 'Choose one',
+                    options: ['A', 'B', 'C']
+                  }
+                }
+              }
+            ]
+          }
+        ];
+
+        const result = await getUserContextMessagesForTest({
+          history: 0,
+          histories,
+          currentUserInput: 'A',
+          tmbId: 'tmb_1',
+          timezone: 'Asia/Shanghai',
+          maxFiles: 20
+        });
+
+        expect(result.chatHistories).toEqual(histories);
+        expect(result.rewrittenHistories).toEqual(histories);
       }
     );
   });

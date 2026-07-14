@@ -8,7 +8,7 @@ import {
   buildAgentLoopCoreSystemPrompt,
   buildAgentLoopCoreUserReminderInput,
   parseAgentLoopCoreUserSystemPrompt
-} from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/interface';
+} from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/context';
 import { describe, expect, it } from 'vitest';
 
 describe('buildAgentLoopCoreRequestMessages', () => {

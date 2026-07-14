@@ -2,7 +2,7 @@ import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/co
 import {
   runAgentLoopCore,
   runAgentLoopCoreWithSummary
-} from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/interface';
+} from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/run';
 import { describe, expect, it, vi } from 'vitest';
 
 const { runAgentLoopMock } = vi.hoisted(() => ({

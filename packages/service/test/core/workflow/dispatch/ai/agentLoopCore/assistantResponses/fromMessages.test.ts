@@ -1,5 +1,5 @@
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import { buildAgentLoopCoreAssistantResponsesFromMessages } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/interface';
+import { buildAgentLoopCoreAssistantResponsesFromMessages } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/assistantResponses/fromMessages';
 import { describe, expect, it } from 'vitest';
 
 describe('buildAgentLoopCoreAssistantResponsesFromMessages', () => {

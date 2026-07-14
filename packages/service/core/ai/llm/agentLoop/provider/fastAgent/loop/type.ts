@@ -85,7 +85,7 @@ export type FastAgentLoopInput<TChildrenResponse = unknown> = {
   childrenInteractiveParams?: AgentLoopChildrenInteractiveParams<TChildrenResponse>;
 };
 
-export type FastAgentLoopResultBase<TChildrenResponse = unknown> = {
+export type FastAgentLoopResultBase = {
   activePlan?: AgentPlanType;
   pendingMainContext?: PendingMainContext;
   completeMessages: ChatCompletionMessageParam[];
@@ -99,22 +99,22 @@ export type FastAgentLoopResultBase<TChildrenResponse = unknown> = {
 };
 
 export type FastAgentLoopResult<TChildrenResponse = unknown> =
-  | (FastAgentLoopResultBase<TChildrenResponse> & {
+  | (FastAgentLoopResultBase & {
       status: 'done';
       pause?: never;
       error?: never;
     })
-  | (FastAgentLoopResultBase<TChildrenResponse> & {
+  | (FastAgentLoopResultBase & {
       status: 'paused';
       pause: AgentLoopPause<TChildrenResponse>;
       error?: never;
     })
-  | (FastAgentLoopResultBase<TChildrenResponse> & {
+  | (FastAgentLoopResultBase & {
       status: 'aborted';
       pause?: never;
       error?: unknown;
     })
-  | (FastAgentLoopResultBase<TChildrenResponse> & {
+  | (FastAgentLoopResultBase & {
       status: 'error';
       pause?: never;
       error: unknown;

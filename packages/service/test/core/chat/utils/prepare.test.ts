@@ -339,6 +339,39 @@ describe('prepare chat round', () => {
     expect(await MongoChatItem.countDocuments({ appId: testAppId, chatId: params.chatId })).toBe(2);
   });
 
+  it('should treat an agentPlanAskQuery nested in a child tool as a new round', async () => {
+    const params = createPreChatRoundParams(
+      {
+        responseChatItemId: 'nested-agent-query-data-id'
+      },
+      { appId: testAppId, teamId: testTeamId, tmbId: testTmbId }
+    );
+
+    const result = await preChatRound({
+      ...params,
+      interactive: {
+        type: 'toolChildrenInteractive',
+        params: {
+          toolParams: {
+            toolCallId: 'tool_1'
+          },
+          childrenResponse: {
+            type: 'agentPlanAskQuery',
+            askId: 'call_ask',
+            params: {
+              content: 'Need more input',
+              options: ['Use repo', 'Use docs', 'Use defaults']
+            }
+          }
+        }
+      } as any
+    });
+
+    expect(result.responseChatItemId).toBe('nested-agent-query-data-id');
+    expect(result.shouldFinalizePreparedRound).toBe(true);
+    expect(await MongoChatItem.countDocuments({ appId: testAppId, chatId: params.chatId })).toBe(2);
+  });
+
   it('should prepare chat and placeholders in generating status', async () => {
     const responseChatItemId = 'prepared-ai-item';
     const params = createPrepareParams(

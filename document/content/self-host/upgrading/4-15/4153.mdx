@@ -1,0 +1,17 @@
+---
+title: 'V4.15.3(进行中)'
+description: 'FastGPT V4.15.3 更新说明'
+---
+
+## 📦 升级指南
+
+### AGENT_ENGINE 环境变量值调整
+
+V4.15.3 起，`AGENT_ENGINE` 使用新的枚举值。升级前，请按下表修改部署环境变量：
+
+| 旧值      | 新值        |
+| --------- | ----------- |
+| `default` | `fastAgent` |
+| `pi`      | `piAgent`   |
+
+旧值不再兼容。继续使用 `default` 或 `pi` 会导致环境变量校验失败，FastGPT 无法启动。未配置 `AGENT_ENGINE` 时，系统默认使用 `fastAgent`。

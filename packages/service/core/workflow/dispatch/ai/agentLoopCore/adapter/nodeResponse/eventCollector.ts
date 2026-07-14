@@ -10,6 +10,7 @@ import {
   withAgentLoopCoreChildTotalPoints
 } from './children';
 import { createAgentLoopCoreCompressNodeResponse } from './compress';
+import type { AgentLoopCoreToolDisplayInfo } from '../../domain/toolInfo';
 
 type ToolRunEndEvent = Extract<AgentLoopEvent, { type: 'tool_run_end' }>;
 type PlanOperationEvent = Extract<AgentLoopEvent, { type: 'plan_operation' }>;
@@ -22,11 +23,6 @@ type PendingToolResult = {
   nodeResponse?: ChatHistoryItemResType;
 };
 
-export type AgentLoopCoreNodeResponseToolInfo = {
-  name: string;
-  avatar?: string;
-};
-
 export type CreateAgentLoopCoreNodeResponseEventCollectorParams = {
   node: {
     nodeId: string;
@@ -34,7 +30,7 @@ export type CreateAgentLoopCoreNodeResponseEventCollectorParams = {
   };
   nodeResponses?: ChatHistoryItemResType[];
   appendNodeResponse?: (nodeResponse: ChatHistoryItemResType) => void;
-  getToolInfo: (name: string) => AgentLoopCoreNodeResponseToolInfo;
+  getToolInfo: (name: string) => AgentLoopCoreToolDisplayInfo;
 };
 
 const getUsageTotalPoints = (usages: ChatNodeUsageType[] = []) =>
@@ -192,7 +188,7 @@ export const createAgentLoopCoreNodeResponseEventCollector = ({
   const appendMessageCompressNodeResponse = (
     event: Extract<AgentLoopEvent, { type: 'after_message_compress' }>
   ) => {
-    const requestKey = event.requestIds.join(',');
+    const requestKey = event.requestIds.join(',') || event.contextCheckpoint;
     if (requestKey && appendedCompressRequestKeys.has(requestKey)) return;
     if (requestKey) appendedCompressRequestKeys.add(requestKey);
 

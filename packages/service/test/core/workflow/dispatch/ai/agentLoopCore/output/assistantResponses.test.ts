@@ -3,7 +3,7 @@ import {
   appendAgentLoopCoreFinalAssistantResponse,
   buildAgentLoopCoreFinalAssistantOutput,
   getAgentLoopCorePersistedTextOutput
-} from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/interface';
+} from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/output/assistantResponses';
 
 describe('agentLoopCore output assistantResponses helpers', () => {
   it('extracts persisted text and appends only missing final text', () => {

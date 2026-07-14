@@ -664,16 +664,10 @@ describe('dispatchRunAgent user context', () => {
       })
     );
     expect(result.data.answerText).toBe('pi answer');
-    expect(result[DispatchNodeResponseKeyEnum.memories]).toEqual(
-      expect.objectContaining({
-        'piMessages-agent_node': [
-          {
-            role: 'assistant',
-            content: 'saved pi message'
-          }
-        ]
-      })
-    );
+    expect(result[DispatchNodeResponseKeyEnum.memories]).toEqual({
+      'agentLoopMemory-agent_node': undefined,
+      'piMessages-agent_node': undefined
+    });
   });
 
   it('restores legacy fastAgent ask memory and resumes with the user answer', async () => {
@@ -858,24 +852,28 @@ describe('dispatchRunAgent user context', () => {
         })
       })
     );
-    expect(result[DispatchNodeResponseKeyEnum.memories]).toEqual(
-      expect.objectContaining({
-        'agentLoopMemory-agent_node': {
-          providerState: expect.objectContaining({
-            pendingAsk: expect.objectContaining({
-              question: 'Confirm again?'
-            }),
-            pendingAskId: 'call_ask_2'
-          })
-        },
-        'piMessages-agent_node': [
-          {
-            role: 'assistant',
-            content: 'saved pi message'
-          }
-        ]
-      })
-    );
+    expect(result[DispatchNodeResponseKeyEnum.memories]).toEqual({
+      'agentLoopMemory-agent_node': {
+        providerState: {
+          activePlan: {
+            planId: 'plan_1'
+          },
+          pendingAsk: {
+            reason: 'Need another confirmation',
+            blockerType: 'missing_required_input',
+            question: 'Confirm again?',
+            options: ['Yes', 'No']
+          },
+          pendingAskId: 'call_ask_2',
+          piMessages: [
+            {
+              role: 'assistant',
+              content: 'saved pi message'
+            }
+          ]
+        }
+      }
+    });
     expect(result[DispatchNodeResponseKeyEnum.interactive]).toEqual(
       expect.objectContaining({
         askId: 'call_ask_2'

@@ -117,9 +117,7 @@ packages/service/core/ai/llm/agentLoop/
 
 packages/service/core/workflow/dispatch/ai/agentLoopCore/
   interface/
-    index.ts                       # Workflow Agent 与 ToolCall 唯一公共入口
-    run.ts                         # 统一运行 API
-    environment.ts                 # context/runtime 组装 API
+    index.ts                       # Workflow Agent 与 ToolCall 的最小公共入口，仅导出节点外壳所需契约
   domain/
     result.ts                      # workflow core result/status 协议
     toolProvider.ts                # 公共 ToolProvider 端口
@@ -151,6 +149,9 @@ packages/service/core/workflow/dispatch/ai/toolcall/
   toolProvider/                    # runtime graph ToolProvider
   tools/                           # ToolCall 专属工具适配
 ```
+
+`interface/index.ts` 不转导 collector、参数解析、计分等内部 helper。内部单元测试直接引用
+对应的 application、adapter 或 domain 模块，避免测试需求扩大节点外壳的公共依赖面。
 
 ## 4. 底层公共协议
 

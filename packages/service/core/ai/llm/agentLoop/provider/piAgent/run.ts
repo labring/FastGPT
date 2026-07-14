@@ -7,11 +7,16 @@ import type {
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { removeDatasetCiteText } from '@fastgpt/global/core/ai/llm/utils';
+import {
+  normalizeToolResponseContent,
+  removeDatasetCiteText
+} from '@fastgpt/global/core/ai/llm/utils';
+import { loadRequestMessages } from '../../../utils';
 import { formatModelChars2Points } from '../../../../../../support/wallet/usage/utils';
 import { getLLMModel } from '../../../../model';
 import { AgentUsageModuleName } from '../../domain/usage';
-import type { AgentAskPayload } from '../../domain/systemTool/ask';
+import { askUserToolName, type AgentAskPayload } from '../../domain/systemTool/ask';
+import { updatePlanToolName } from '../../domain/systemTool/plan';
 import {
   normalizeAgentLoopUsages,
   type AgentLoopInput,
@@ -24,14 +29,18 @@ import { mergePiAgentPayload } from './payload';
 import { buildPiAgentTools } from './tool/build';
 import { getPiAgentNormalizationTools } from './tool/catalog';
 import type { PiAgentProviderState } from './type';
+import { compressRequestMessages } from '../../../compress';
 import {
+  convertChatMessagesToPiAgentMessages,
+  convertPiAgentMessagesToChatMessages,
   getPiAgentPrompt,
   isAssistantMessage,
   mapStopReason,
   normalizePiAgentMessages,
   readAssistantMessage,
   replaceInteractiveToolResult,
-  resolveInteractiveToolCall
+  resolveInteractiveToolCall,
+  stringifyJson
 } from './message';
 
 const readPiAgentProviderState = (providerState: unknown): PiAgentProviderState => {
@@ -57,6 +66,20 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   const state = readPiAgentProviderState(input.providerState);
   const modelName = runtime.llmParams.model;
   const modelData = getLLMModel(modelName);
+  const piModel = buildPiModel(
+    modelName,
+    runtime.llmParams.useVision,
+    runtime.llmParams.userKey,
+    runtime.llmParams.maxTokens
+  );
+  const requestMessages = await loadRequestMessages({
+    messages: input.messages,
+    useVision: runtime.llmParams.useVision && modelData.vision,
+    useAudio: runtime.llmParams.useAudio && modelData.audio,
+    useVideo: runtime.llmParams.useVideo && modelData.video,
+    extractFiles: runtime.llmParams.extractFiles,
+    supportReason: modelData.reasoning
+  });
   const requestIds: string[] = [];
   let requestIndex = 0;
   let answerText = '';
@@ -76,18 +99,83 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     | undefined;
   let pendingToolStop = false;
   let latestError: unknown;
+  let latestContextCheckpoint: string | undefined;
+  let reachedRunLimit = false;
   const completeMessages: ChatCompletionMessageParam[] = [...input.messages];
   const assistantMessages: ChatCompletionMessageParam[] = [];
+  const controlToolNames = new Set([askUserToolName, updatePlanToolName]);
+  const emittedToolCallIds = new Set<string>();
+  const emittedToolParamIds = new Set<string>();
+
+  /** 统一工具调用入口，兼容流式事件、非流式 message_end 和直接执行三种路径。 */
+  const emitOrdinaryToolCall = (call: ChatCompletionMessageToolCall) => {
+    if (
+      !call.id ||
+      !call.function.name ||
+      controlToolNames.has(call.function.name) ||
+      emittedToolCallIds.has(call.id)
+    ) {
+      return;
+    }
+
+    emittedToolCallIds.add(call.id);
+    runtime.emitEvent?.({
+      type: 'tool_call',
+      call: {
+        ...call,
+        function: {
+          ...call.function,
+          arguments: ''
+        }
+      }
+    });
+  };
+
+  /** 记录普通工具参数增量，供执行阶段判断是否需要补发完整参数。 */
+  const emitOrdinaryToolParams = ({
+    callId,
+    toolName,
+    argsDelta
+  }: {
+    callId: string;
+    toolName: string;
+    argsDelta: string;
+  }) => {
+    if (!callId || !toolName || controlToolNames.has(toolName) || !emittedToolCallIds.has(callId)) {
+      return;
+    }
+
+    emittedToolParamIds.add(callId);
+    runtime.emitEvent?.({
+      type: 'tool_params',
+      callId,
+      argsDelta
+    });
+  };
+
+  /** 没有流式参数事件时，在工具执行前补发一次完整参数。 */
+  const emitOrdinaryToolExecution = (call: ChatCompletionMessageToolCall) => {
+    emitOrdinaryToolCall(call);
+    if (emittedToolParamIds.has(call.id)) return;
+
+    emitOrdinaryToolParams({
+      callId: call.id,
+      toolName: call.function.name,
+      argsDelta: call.function.arguments ?? ''
+    });
+  };
 
   /** 将工具结果写入标准 transcript；恢复交互时覆盖旧占位 response，避免同 id 重复。 */
   const recordToolResult = ({
     call,
     response,
-    childAssistantMessages = []
+    childAssistantMessages = [],
+    appendToAssistantMessages = true
   }: {
     call: ChatCompletionMessageToolCall;
     response: string;
     childAssistantMessages?: ChatCompletionMessageParam[];
+    appendToAssistantMessages?: boolean;
   }) => {
     const toolMessage: ChatCompletionMessageParam = {
       role: ChatCompletionRequestMessageRoleEnum.Tool,
@@ -103,18 +191,50 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       completeMessages.push(toolMessage);
     }
     completeMessages.push(...childAssistantMessages);
-    assistantMessages.push(toolMessage, ...childAssistantMessages);
+    if (appendToAssistantMessages) {
+      assistantMessages.push(toolMessage, ...childAssistantMessages);
+    }
   };
   const abortCurrentRunRef: {
     current?: () => void;
   } = {};
   const normalizationTools = getPiAgentNormalizationTools(runtime);
   const retainDatasetCite = runtime.responseParams?.retainDatasetCite ?? true;
+  const lastUserMessageIndex = requestMessages.findLastIndex(
+    (message) => message.role === ChatCompletionRequestMessageRoleEnum.User
+  );
+  const standardHistoryMessages =
+    lastUserMessageIndex >= 0 ? requestMessages.slice(0, lastUserMessageIndex) : requestMessages;
+  const shouldRestoreRawState = !!input.childrenInteractiveParams || !!state.pendingAsk;
+  const shouldResumeAsk =
+    !input.childrenInteractiveParams && !!state.pendingAsk && input.userAnswer !== undefined;
+  const askResumeId = shouldResumeAsk ? state.pendingAskId : undefined;
   let initialPiMessages = normalizePiAgentMessages({
-    messages: state.piMessages ?? [],
+    messages:
+      shouldRestoreRawState && state.piMessages?.length
+        ? state.piMessages
+        : convertChatMessagesToPiAgentMessages({
+            messages: input.childrenInteractiveParams ? input.messages : standardHistoryMessages,
+            model: piModel
+          }),
     completionTools: normalizationTools
   });
   let resumedInteractiveTool = false;
+  let resumedAsk = false;
+
+  if (shouldResumeAsk && !askResumeId) {
+    return {
+      status: 'error',
+      activePlan,
+      providerState: state,
+      completeMessages,
+      assistantMessages,
+      requestIds,
+      finishReason: 'error',
+      usages: [],
+      error: new Error('Pending piAgent ask id is missing.')
+    };
+  }
 
   if (input.childrenInteractiveParams) {
     if (!runtime.executeInteractiveTool) {
@@ -155,12 +275,13 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         };
       }
     })();
+    const normalizedResponse = normalizeToolResponseContent(result.response);
     pushAgentLoopUsages(runtime, result.usages);
     runtime.emitEvent?.({
       type: 'tool_run_end',
       call,
       rawResponse: result.response,
-      response: result.response,
+      response: normalizedResponse,
       assistantMessages: result.assistantMessages,
       usages: result.usages,
       errorMessage: result.errorMessage,
@@ -170,7 +291,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     initialPiMessages = replaceInteractiveToolResult({
       messages: initialPiMessages,
       call,
-      response: result.response,
+      response: normalizedResponse,
       isError: !!result.errorMessage
     });
 
@@ -181,7 +302,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     };
     recordToolResult({
       call,
-      response: result.response,
+      response: normalizedResponse,
       childAssistantMessages: result.assistantMessages
     });
     if (result.interactive) {
@@ -216,10 +337,28 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     resumedInteractiveTool = true;
   }
 
-  if (input.userAnswer !== undefined) {
+  if (shouldResumeAsk && askResumeId) {
+    const call = resolveInteractiveToolCall({
+      toolCallId: askResumeId,
+      messages: input.messages,
+      piMessages: initialPiMessages
+    });
+    const answer = normalizeToolResponseContent(input.userAnswer);
+    initialPiMessages = replaceInteractiveToolResult({
+      messages: initialPiMessages,
+      call,
+      response: answer,
+      isError: false
+    });
+    recordToolResult({
+      call,
+      response: answer,
+      appendToAssistantMessages: false
+    });
+    resumedAsk = true;
     runtime.emitEvent?.({
       type: 'ask_resume',
-      answer: input.userAnswer
+      answer
     });
   }
 
@@ -243,6 +382,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       abortCurrentRunRef.current?.();
     },
     getMessages: () => completeMessages,
+    onToolCall: emitOrdinaryToolExecution,
     onToolResult: ({ call, response, assistantMessages }) => {
       recordToolResult({
         call,
@@ -253,21 +393,24 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   });
 
   const pendingRequests: Array<{ requestId: string; requestIndex: number; startedAt: number }> = [];
+  const maxRunAgentTimes = Math.max(1, runtime.maxRunAgentTimes ?? 100);
   const agent = new Agent({
     initialState: {
       systemPrompt: input.systemPrompt || '',
-      model: buildPiModel(
-        modelName,
-        runtime.llmParams.useVision,
-        runtime.llmParams.userKey,
-        runtime.llmParams.maxTokens
-      ),
+      model: piModel,
       thinkingLevel: getPiThinkingLevel(modelName, runtime.llmParams.reasoningEffort),
       tools,
       messages: initialPiMessages
     },
+    // pi-agent-core 只提供 parallel/sequential 两档。统一使用串行，确保不超过 runtime 的并发上限，
+    // 同时避免 plan/ask 和普通工具在同一轮并行修改状态。
+    toolExecution: 'sequential',
     getApiKey: () => getModelApiKey(modelName, runtime.llmParams.userKey),
     onPayload: (payload) => {
+      if (requestIndex >= maxRunAgentTimes) {
+        reachedRunLimit = true;
+        throw new Error(`Agent loop reached max run times: ${maxRunAgentTimes}`);
+      }
       const requestId = `pi_${getNanoid(12)}`;
       const nextRequest = {
         requestId,
@@ -286,15 +429,74 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         runtime
       });
     },
-    transformContext: async (messages) =>
-      normalizePiAgentMessages({
-        messages,
-        completionTools: normalizationTools
-      })
+    transformContext: async (messages) => {
+      const startTime = Date.now();
+      try {
+        const standardMessages = convertPiAgentMessagesToChatMessages(messages);
+        const result = await compressRequestMessages({
+          checkIsStopping: runtime.checkIsStopping,
+          messages: standardMessages,
+          model: modelData,
+          reasoningEffort: runtime.llmParams.reasoningEffort,
+          tools: normalizationTools,
+          userKey: runtime.llmParams.userKey,
+          teamId: runtime.teamId
+        });
+        const usages = normalizeAgentLoopUsages([result.usage]);
+        if (usages.length > 0) {
+          pushAgentLoopUsages(runtime, usages);
+        }
+
+        const hasCompressionResult =
+          usages.length > 0 || !!result.contextCheckpoint || (result.requestIds?.length ?? 0) > 0;
+        if (hasCompressionResult) {
+          runtime.emitEvent?.({
+            type: 'after_message_compress',
+            usages,
+            requestIds: result.requestIds ?? [],
+            seconds: +((Date.now() - startTime) / 1000).toFixed(2),
+            contextCheckpoint: result.contextCheckpoint
+          });
+        }
+
+        if (!result.contextCheckpoint) {
+          return normalizePiAgentMessages({ messages, completionTools: normalizationTools });
+        }
+
+        const compressedPiMessages = normalizePiAgentMessages({
+          messages: convertChatMessagesToPiAgentMessages({
+            messages: result.messages,
+            model: piModel
+          }),
+          completionTools: normalizationTools
+        });
+
+        // pi-agent-core 不会持久化 transformContext 的返回值，需要同步当前请求和 Agent 状态。
+        messages.splice(0, messages.length, ...compressedPiMessages);
+        agent.state.messages = compressedPiMessages;
+        latestContextCheckpoint = result.contextCheckpoint;
+        return messages;
+      } catch {
+        // pi-agent-core 要求 transformContext 不抛错；压缩异常时保留原上下文继续运行。
+        return normalizePiAgentMessages({ messages, completionTools: normalizationTools });
+      }
+    }
   });
   abortCurrentRunRef.current = () => agent.abort();
 
   agent.subscribe((event: AgentEvent) => {
+    if (event.type === 'tool_execution_start') {
+      emitOrdinaryToolExecution({
+        id: event.toolCallId,
+        type: 'function',
+        function: {
+          name: event.toolName,
+          arguments: stringifyJson(event.args)
+        }
+      });
+      return;
+    }
+
     if (event.type === 'message_update') {
       const assistantEvent = event.assistantMessageEvent;
       if (assistantEvent.type === 'text_delta') {
@@ -311,6 +513,32 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
           type: 'reasoning_delta',
           text: assistantEvent.delta
         });
+        return;
+      }
+      if (assistantEvent.type === 'toolcall_start' || assistantEvent.type === 'toolcall_delta') {
+        const toolCall = assistantEvent.partial.content[assistantEvent.contentIndex];
+        if (toolCall?.type !== 'toolCall') return;
+
+        emitOrdinaryToolCall({
+          id: toolCall.id,
+          type: 'function',
+          function: {
+            name: toolCall.name,
+            arguments: ''
+          }
+        });
+        if (
+          assistantEvent.type === 'toolcall_delta' &&
+          assistantEvent.delta &&
+          emittedToolCallIds.has(toolCall.id) &&
+          !controlToolNames.has(toolCall.name)
+        ) {
+          emitOrdinaryToolParams({
+            callId: toolCall.id,
+            toolName: toolCall.name,
+            argsDelta: assistantEvent.delta
+          });
+        }
       }
       return;
     }
@@ -333,6 +561,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
         ? normalizedMessage
         : event.message;
       const messageData = readAssistantMessage(assistantMessage);
+      messageData.toolCalls.forEach(emitOrdinaryToolCall);
       if (!answerText && messageData.answerText) {
         answerText = messageData.answerText;
       }
@@ -418,21 +647,49 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   }, 200);
 
   try {
-    if (resumedInteractiveTool) {
+    if (resumedInteractiveTool || resumedAsk) {
       await agent.continue();
     } else {
-      await agent.prompt(
-        getPiAgentPrompt({
-          messages: input.messages,
-          pendingAsk: state.pendingAsk,
-          userAnswer: input.userAnswer
-        })
-      );
+      const prompt = getPiAgentPrompt(requestMessages);
+      const currentUserMessage = requestMessages[lastUserMessageIndex];
+      const piPromptMessage =
+        currentUserMessage?.role === ChatCompletionRequestMessageRoleEnum.User &&
+        Array.isArray(currentUserMessage.content) &&
+        !state.pendingAsk
+          ? convertChatMessagesToPiAgentMessages({
+              messages: [currentUserMessage],
+              model: piModel
+            })[0]
+          : undefined;
+
+      if (piPromptMessage) {
+        await agent.prompt(piPromptMessage);
+      } else {
+        await agent.prompt(prompt);
+      }
     }
   } catch (error) {
     latestError = error;
   } finally {
     clearInterval(stopPoller);
+  }
+
+  if (pendingRequests.length > 0) {
+    const requestError = latestError || agent.state.errorMessage || 'Agent request interrupted';
+    const requestFinishReason = runtime.checkIsStopping?.() ? 'close' : 'error';
+    finishReason = requestFinishReason;
+    pendingRequests.splice(0).forEach((request) => {
+      runtime.emitEvent?.({
+        type: 'llm_request_end',
+        requestIndex: request.requestIndex,
+        modelName: modelData.name,
+        requestId: request.requestId,
+        finishReason: requestFinishReason,
+        usages: [],
+        seconds: +((Date.now() - request.startedAt) / 1000).toFixed(2),
+        error: requestError
+      });
+    });
   }
 
   const resolvedPendingAskId = pendingAsk ? pendingAskId || `pi_ask_${getNanoid(8)}` : undefined;
@@ -477,6 +734,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       completeMessages,
       assistantMessages,
       requestIds,
+      contextCheckpoint: latestContextCheckpoint,
       finishReason,
       usages: resultUsages
     };
@@ -494,6 +752,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       completeMessages,
       assistantMessages,
       requestIds,
+      contextCheckpoint: latestContextCheckpoint,
       finishReason,
       usages: resultUsages
     };
@@ -507,6 +766,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       completeMessages,
       assistantMessages,
       requestIds,
+      contextCheckpoint: latestContextCheckpoint,
       finishReason,
       usages: resultUsages
     };
@@ -520,6 +780,21 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       completeMessages,
       assistantMessages,
       requestIds,
+      contextCheckpoint: latestContextCheckpoint,
+      finishReason,
+      usages: resultUsages
+    };
+  }
+
+  if (reachedRunLimit) {
+    return {
+      status: 'done',
+      activePlan,
+      providerState: nextProviderState,
+      completeMessages,
+      assistantMessages,
+      requestIds,
+      contextCheckpoint: latestContextCheckpoint,
       finishReason,
       usages: resultUsages
     };
@@ -533,6 +808,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       completeMessages,
       assistantMessages,
       requestIds,
+      contextCheckpoint: latestContextCheckpoint,
       finishReason,
       usages: resultUsages,
       error: latestError || agent.state.errorMessage
@@ -546,6 +822,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
     completeMessages,
     assistantMessages,
     requestIds,
+    contextCheckpoint: latestContextCheckpoint,
     finishReason,
     usages: resultUsages
   };

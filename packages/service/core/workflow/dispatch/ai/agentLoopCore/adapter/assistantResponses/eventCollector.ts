@@ -8,16 +8,12 @@ import {
   type AgentLoopCoreAssistantMetaEventNames
 } from './fromEvents';
 import { buildAgentLoopCoreAssistantResponsesFromMessages } from './fromMessages';
-
-export type AgentLoopCoreAssistantEventCollectorToolInfo = {
-  name: string;
-  avatar?: string;
-};
+import type { AgentLoopCoreToolDisplayInfo } from '../../domain/toolInfo';
 
 export type CreateAgentLoopCoreAssistantEventCollectorParams = {
   assistantResponses?: AIChatItemValueItemType[];
   showReasoning?: boolean;
-  getToolInfo?: (name: string) => AgentLoopCoreAssistantEventCollectorToolInfo | undefined;
+  getToolInfo?: (name: string) => AgentLoopCoreToolDisplayInfo | undefined;
   metaEventNames?: AgentLoopCoreAssistantMetaEventNames;
 };
 

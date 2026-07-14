@@ -1381,6 +1381,7 @@ describe('pushChatRecords', () => {
         dataId: 'tool-child-data-id',
         value: [
           {
+            id: 'call_select_1',
             tools: [
               {
                 id: 'call_select_1',
@@ -1446,6 +1447,7 @@ describe('pushChatRecords', () => {
             obj: ChatRoleEnum.AI,
             value: [
               {
+                id: 'call_select_1',
                 tools: [
                   {
                     id: 'call_select_1',
@@ -1534,6 +1536,16 @@ describe('pushChatRecords', () => {
       expect(chatItem.value.filter((item) => item.tools?.[0]?.id === 'call_select_1')).toHaveLength(
         1
       );
+      expect(
+        chatItem.value.some(
+          (item) =>
+            item.id === 'call_select_1' &&
+            !item.tools?.length &&
+            !item.text &&
+            !item.plan &&
+            !item.interactive
+        )
+      ).toBe(false);
       expect(chatItem.value.filter((item) => item.plan?.planId === 'plan_1')).toHaveLength(1);
       expect(chatItem.value[1].plan?.steps[0]).toEqual(
         expect.objectContaining({

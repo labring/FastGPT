@@ -34,14 +34,13 @@ import { createAgentSandboxPermissionDeniedError } from '../../../../ai/sandbox/
 import { replaceAgentPromptToolReferences } from './adapter/prompt';
 import {
   buildAgentLoopCoreInput,
-  buildAgentLoopCoreAskMemories,
+  buildAgentLoopCorePausedMemories,
   buildAgentLoopCoreDoneMemories,
   buildAgentLoopCoreFinalAssistantOutput,
   buildAgentLoopCoreProviderStateMemories,
   buildAgentLoopCoreRequestMessages,
   buildAgentLoopCoreSystemPrompt,
   createAgentLoopCoreChildInteractiveParams,
-  getAgentLoopCoreMemoryKeys,
   prepareAgentLoopCoreProviderRunState,
   readAgentLoopCoreProviderStateMemory,
   runAgentLoopCoreWithSummary
@@ -340,11 +339,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         [DispatchNodeResponseKeyEnum.nodeResponses]: nodeResponseCollector.getNodeResponses(),
         runtimeNodeResponseSummary: nodeResponseCollector.getRuntimeNodeResponseSummary(),
         [DispatchNodeResponseKeyEnum.assistantResponses]: outputAssistantResponses,
-        [DispatchNodeResponseKeyEnum.memories]: buildAgentLoopCoreAskMemories({
-          provider,
+        [DispatchNodeResponseKeyEnum.memories]: buildAgentLoopCorePausedMemories({
           nodeId,
-          providerState: outputSummary.providerState,
-          piMessagesKey
+          providerState: outputSummary.providerState
         }),
         [DispatchNodeResponseKeyEnum.interactive]: outputSummary.interactive
       };
@@ -355,11 +352,9 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         [DispatchNodeResponseKeyEnum.nodeResponses]: nodeResponseCollector.getNodeResponses(),
         runtimeNodeResponseSummary: nodeResponseCollector.getRuntimeNodeResponseSummary(),
         [DispatchNodeResponseKeyEnum.assistantResponses]: outputAssistantResponses,
-        [DispatchNodeResponseKeyEnum.memories]: buildAgentLoopCoreDoneMemories({
-          provider,
+        [DispatchNodeResponseKeyEnum.memories]: buildAgentLoopCorePausedMemories({
           nodeId,
-          providerState: outputSummary.providerState,
-          piMessagesKey
+          providerState: outputSummary.providerState
         }),
         [DispatchNodeResponseKeyEnum.interactive]: outputSummary.interactive
       };
@@ -386,7 +381,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       [DispatchNodeResponseKeyEnum.memories]: buildAgentLoopCoreDoneMemories({
         provider,
         nodeId,
-        providerState: outputSummary.providerState,
         piMessagesKey
       }),
       [DispatchNodeResponseKeyEnum.assistantResponses]: finalOutput.assistantResponses,

@@ -1,13 +1,9 @@
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
-
-export type AgentLoopCoreAssistantToolInfo = {
-  name: string;
-  avatar?: string;
-};
+import type { AgentLoopCoreToolDisplayInfo } from '../../domain/toolInfo';
 
 export type BuildAgentLoopCoreAssistantResponsesFromMessagesParams = {
   messages: ChatCompletionMessageParam[];
   reserveTool?: boolean;
   reserveReason?: boolean;
-  getToolInfo?: (name: string) => AgentLoopCoreAssistantToolInfo | undefined;
+  getToolInfo?: (name: string) => AgentLoopCoreToolDisplayInfo | undefined;
 };

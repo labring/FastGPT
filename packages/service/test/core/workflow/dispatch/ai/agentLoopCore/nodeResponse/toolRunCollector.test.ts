@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { createAgentLoopCoreToolRunResponseCollector } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/interface';
+import { createAgentLoopCoreToolRunResponseCollector } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/nodeResponse/toolRunCollector';
 
 const createCall = ({
   id = 'call_search',
@@ -254,5 +254,32 @@ describe('createAgentLoopCoreToolRunResponseCollector', () => {
       })
     );
     expect(collector.toolRunResponses[1]).toBe(emptyFlowResponse);
+  });
+
+  it('deduplicates context compression without request ids by checkpoint', () => {
+    const collector = createAgentLoopCoreToolRunResponseCollector({
+      moduleType: FlowNodeTypeEnum.toolCall,
+      getToolInfo: () => undefined
+    });
+    const usage = {
+      moduleName: 'account_usage:compress_llm_messages',
+      model: 'GPT-4',
+      totalPoints: 0.2
+    };
+
+    collector.appendContextCompressNodeResponse({
+      usage,
+      requestIds: [],
+      contextCheckpoint: '<context_checkpoint>same</context_checkpoint>',
+      seconds: 0.1
+    });
+    collector.appendContextCompressNodeResponse({
+      usage,
+      requestIds: [],
+      contextCheckpoint: '<context_checkpoint>same</context_checkpoint>',
+      seconds: 0.2
+    });
+
+    expect(collector.toolRunResponses).toHaveLength(1);
   });
 });

@@ -291,4 +291,4 @@ plan 只允许三个操作：
 - agent-loop 相关 service 回归共 65 个测试文件、332 项测试通过；global chat 转换 114 项、app ask 交互 13 项测试通过。
 - 仓库全量 `pnpm test` 的 4 个 workspace 全部通过；app 154 个测试文件/1081 项测试、service 255 个测试文件/3184 项测试通过，global 与 admin workspace 通过。
 
-尚待完成：评审确认。应用 TypeScript 检查中与本需求相关的错误已清零；仓库当前仍有一处不属于本需求的 `WholeResponseContent` `contentHeight` 属性类型错误。
+尚待完成：评审确认。应用 TypeScript 检查已通过。

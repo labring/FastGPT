@@ -37,17 +37,6 @@ export const readAgentLoopCorePiAgentProviderState = (
 ): AgentLoopCorePiAgentProviderState => readObject(providerState);
 
 /**
- * piAgent raw messages 过渡期兼容：统一 providerState 中不重复保存完整 raw messages，
- * 旧 key 仍作为单独 memory 写入和恢复。
- */
-export const getAgentLoopCorePiAgentMemoryProviderState = (providerState: unknown) => {
-  const state = readAgentLoopCorePiAgentProviderState(providerState);
-  const { piMessages: _piMessages, ...memoryState } = state;
-
-  return Object.keys(memoryState).length > 0 ? memoryState : undefined;
-};
-
-/**
  * 从上一条 AI history 中恢复 agent-loop providerState。
  * 只恢复 AI 轮次写入的 memories，避免把用户轮次误当成可继续执行的 loop 状态。
  * 升级前的 fastAgent memory 直接保存 pendingMainContext，这里只读包装并迁移旧计划结构。
@@ -135,7 +124,7 @@ export const prepareAgentLoopCoreProviderRunState = ({
     ...(provider === 'piAgent' && lastHistory?.obj === ChatRoleEnum.AI
       ? {
           piMessages:
-            piAgentState.piMessages ||
+            piAgentState.piMessages ??
             (lastHistory.memories?.[piMessagesKey] as unknown[] | undefined)
         }
       : {})
@@ -153,51 +142,34 @@ export const prepareAgentLoopCoreProviderRunState = ({
 };
 
 /**
- * ask 暂停态 memory：非 piAgent 保存完整 providerState；piAgent 额外兼容写 raw messages 旧 key。
+ * 暂停态 memory 统一保存完整 providerState。
+ * piAgent 的 raw messages 属于 provider 私有状态，新写入不得再拆到旧 `piMessages-${nodeId}` key。
  */
-export const buildAgentLoopCoreAskMemories = ({
-  provider,
+export const buildAgentLoopCorePausedMemories = ({
   nodeId,
-  providerState,
-  piMessagesKey
+  providerState
 }: {
-  provider: AgentLoopProviderName;
   nodeId: string;
   providerState: unknown;
-  piMessagesKey: string;
-}) => {
-  if (provider !== 'piAgent') {
-    return buildAgentLoopCoreProviderStateMemories({
-      nodeId,
-      memory: {
-        providerState
-      }
-    });
-  }
-
-  return {
-    ...buildAgentLoopCoreProviderStateMemories({
-      nodeId,
-      memory: {
-        providerState: getAgentLoopCorePiAgentMemoryProviderState(providerState)
-      }
-    }),
-    [piMessagesKey]: readAgentLoopCorePiAgentProviderState(providerState).piMessages
-  };
-};
+}) =>
+  buildAgentLoopCoreProviderStateMemories({
+    nodeId,
+    memory: {
+      providerState
+    }
+  });
 
 /**
- * 完成态 memory：清理统一 providerState；piAgent 继续写 raw messages 旧 key 供下一轮兼容恢复。
+ * 完成态 memory：统一清理 providerState 和 pi raw messages。
+ * 新一轮必须从受 history/checkpoint 约束的标准聊天历史重建上下文。
  */
 export const buildAgentLoopCoreDoneMemories = ({
   provider,
   nodeId,
-  providerState,
   piMessagesKey
 }: {
   provider: AgentLoopProviderName;
   nodeId: string;
-  providerState: unknown;
   piMessagesKey: string;
 }) => {
   if (provider !== 'piAgent') {
@@ -212,6 +184,6 @@ export const buildAgentLoopCoreDoneMemories = ({
       nodeId,
       memory: {}
     }),
-    [piMessagesKey]: readAgentLoopCorePiAgentProviderState(providerState).piMessages
+    [piMessagesKey]: undefined
   };
 };

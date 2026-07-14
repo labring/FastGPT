@@ -6,7 +6,7 @@ import {
   normalizeAgentLoopCoreDatasetSearchResult,
   parseAgentLoopCoreReadFileCall,
   sumAgentLoopCoreUsagePoints
-} from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/interface';
+} from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/runtime/systemToolHelpers';
 import { describe, expect, it, vi } from 'vitest';
 
 describe('agentLoopCore system tool helpers', () => {

@@ -566,8 +566,6 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
             };
           }
         })();
-        const toolRunSeconds = +((Date.now() - toolStartTime) / 1000).toFixed(2);
-
         // Compress tool response
         const { toolFinalResponse, toolResponseCompress } = await (async () => {
           if (skipResponseCompress) {
@@ -669,6 +667,12 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           });
           await appendToolRunResults([result]);
           toolIndex++;
+
+          // 交互或 stop 工具已经决定暂停当前 loop，不能再执行同一轮中排在后面的工具，
+          // 否则会在用户回答前产生额外副作用，且恢复上下文无法准确反映实际执行顺序。
+          if (toolChildPause || stopAgentLoop || isAborted?.()) {
+            break;
+          }
           continue;
         }
 
@@ -692,6 +696,11 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           safeBatchToolSize
         );
         await appendToolRunResults(toolRunResults);
+
+        // 同一并发批次已经启动的工具无法撤回，但后续批次不应在暂停信号后继续调度。
+        if (toolChildPause || stopAgentLoop || isAborted?.()) {
+          break;
+        }
       }
     }
 

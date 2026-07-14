@@ -2,7 +2,7 @@ import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workfl
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getLLMModel } from '../../../../ai/model';
-import { getNodeErrResponse, getHistories } from '../../utils';
+import { getAgentLoopHistories, getNodeErrResponse } from '../../utils';
 import { runToolCall } from './toolCall';
 import { type DispatchToolModuleProps } from './type';
 import { postTextCensor } from '../../../../chat/postTextCensor';
@@ -61,7 +61,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
   if (useAgentSandbox && global.feConfigs?.show_agent_sandbox) {
     try {
       await checkTeamSandboxPermission(runningUserInfo.teamId);
-    } catch (err) {
+    } catch {
       throw createAgentSandboxPermissionDeniedError();
     }
   }
@@ -73,7 +73,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     const useVision = aiChatVision && toolModel.vision;
     const useAudio = aiChatAudio && toolModel.audio;
     const useVideo = aiChatVideo && toolModel.video;
-    const chatHistories = getHistories(history, histories);
+    const chatHistories = getAgentLoopHistories(history, histories);
     const fileUrlInput = inputs.find((item) => item.key === NodeInputKeyEnum.fileUrlList);
     const fileLinks =
       !fileUrlInput || !fileUrlInput.value || fileUrlInput.value.length === 0

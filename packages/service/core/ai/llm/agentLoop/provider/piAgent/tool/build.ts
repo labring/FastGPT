@@ -1,6 +1,7 @@
 import type { AgentTool } from '@mariozechner/pi-agent-core';
 import { Type } from '@mariozechner/pi-ai';
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
+import { normalizeToolResponseContent } from '@fastgpt/global/core/ai/llm/utils';
 import type {
   ChatCompletionMessageParam,
   ChatCompletionMessageToolCall
@@ -57,6 +58,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
   onToolChildPending,
   onToolStop,
   getMessages,
+  onToolCall,
   onToolResult
 }: {
   runtime: AgentLoopRuntime<TChildrenResponse>;
@@ -67,6 +69,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
   onToolChildPending?: (pause: { childrenResponse: TChildrenResponse; toolCallId: string }) => void;
   onToolStop?: () => void;
   getMessages: () => ChatCompletionMessageParam[];
+  onToolCall: (call: ChatCompletionMessageToolCall) => void;
   onToolResult: (params: {
     call: ChatCompletionMessageToolCall;
     response: string;
@@ -92,7 +95,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
     }>;
   }) => {
     const startedAt = Date.now();
-    runtime.emitEvent?.({ type: 'tool_call', call });
+    onToolCall(call);
     runtime.emitEvent?.({ type: 'tool_run_start', call });
 
     const result = await (async () => {
@@ -103,6 +106,7 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
         return { response: errorMessage, assistantMessages: [], usages: [], errorMessage };
       }
     })();
+    const normalizedResponse = normalizeToolResponseContent(result.response);
     const assistantMessages = result.assistantMessages ?? [];
     const usages = normalizeAgentLoopUsages(result.usages);
     pushAgentLoopUsages(runtime, usages);
@@ -110,15 +114,15 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
       type: 'tool_run_end',
       call,
       rawResponse: result.response,
-      response: result.response,
+      response: normalizedResponse,
       assistantMessages,
       usages,
       errorMessage: result.errorMessage,
       metadata: result.metadata,
       seconds: +((Date.now() - startedAt) / 1000).toFixed(2)
     });
-    onToolResult({ call, response: result.response, assistantMessages });
-    return { ...result, assistantMessages, usages };
+    onToolResult({ call, response: normalizedResponse, assistantMessages });
+    return { ...result, response: normalizedResponse, assistantMessages, usages };
   };
 
   for (const tool of getPiAgentRuntimeTools(runtime)) {

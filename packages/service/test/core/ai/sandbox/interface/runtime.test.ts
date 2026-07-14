@@ -4,7 +4,7 @@ import {
   getAgentSkillInfos,
   injectAgentSkillFilesToSandbox
 } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
-import { buildAgentLoopCoreSkillsPrompt } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/interface';
+import { buildAgentLoopCoreSkillsPrompt } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/context/reminder';
 import {
   SANDBOX_EDIT_FILE_TOOL_NAME,
   SANDBOX_GET_FILE_URL_TOOL_NAME,

@@ -1,4 +1,4 @@
-import { createAgentLoopCoreSystemTools } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/interface';
+import { createAgentLoopCoreSystemTools } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/runtime/systemTools';
 import { describe, expect, it, vi } from 'vitest';
 
 describe('createAgentLoopCoreSystemTools', () => {

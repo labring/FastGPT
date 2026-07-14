@@ -1,4 +1,4 @@
-import { normalizeAgentLoopCoreToolRunResult } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/interface';
+import { normalizeAgentLoopCoreToolRunResult } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/domain/toolProvider';
 import { describe, expect, it } from 'vitest';
 
 describe('normalizeAgentLoopCoreToolRunResult', () => {

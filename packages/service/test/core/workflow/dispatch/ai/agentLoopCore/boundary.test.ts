@@ -46,6 +46,24 @@ describe('workflow agent-loop core boundary', () => {
   it('removes legacy root entries instead of forwarding them', () => {
     expect(() => readSource('core/ai/llm/agentLoop/index.ts')).toThrow();
     expect(() => readSource('core/workflow/dispatch/ai/agentLoopCore/index.ts')).toThrow();
+    expect(() => readSource('core/workflow/dispatch/ai/agentLoopCore/interface/run.ts')).toThrow();
+  });
+
+  it('keeps internal collectors and helpers out of the public core interface', () => {
+    const source = readSource('core/workflow/dispatch/ai/agentLoopCore/interface/index.ts');
+    const internalExports = [
+      'createAgentLoopCoreAssistantEventCollector',
+      'createAgentLoopCoreEventDispatcher',
+      'createAgentLoopCoreNodeResponseEventCollector',
+      'createAgentLoopCoreToolRunResponseCollector',
+      'normalizeAgentLoopCoreToolRunResult',
+      'parseAgentLoopCoreReadFileCall',
+      'sumAgentLoopCoreUsagePoints'
+    ];
+
+    for (const exportName of internalExports) {
+      expect(source, `${exportName} must stay internal`).not.toContain(exportName);
+    }
   });
 
   it('keeps domain independent and outer nodes on the public interface', () => {

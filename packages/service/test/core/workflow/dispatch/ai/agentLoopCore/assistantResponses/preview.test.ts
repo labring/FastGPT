@@ -1,5 +1,5 @@
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { filterAgentLoopCoreToolResponseToPreview } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/interface';
+import { filterAgentLoopCoreToolResponseToPreview } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/assistantResponses/preview';
 import { describe, expect, it } from 'vitest';
 
 describe('filterAgentLoopCoreToolResponseToPreview', () => {

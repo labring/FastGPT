@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   createAgentLoopCoreEventDispatcher,
-  createAgentLoopCoreEventStream,
-  createAgentLoopCoreToolRunResponseCollector
-} from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/interface';
+  createAgentLoopCoreEventStream
+} from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/eventStream';
+import { createAgentLoopCoreToolRunResponseCollector } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/nodeResponse';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
@@ -227,6 +227,39 @@ describe('createAgentLoopCoreEventDispatcher', () => {
         ]
       })
     ]);
+  });
+
+  it('passes context checkpoints to compression records when request ids are absent', () => {
+    const eventStream = createAgentLoopCoreEventStream({
+      workflowStreamResponse: vi.fn(),
+      getToolInfo: () => ({ name: 'Search' })
+    });
+    const toolRunCollector = createAgentLoopCoreToolRunResponseCollector({
+      moduleType: FlowNodeTypeEnum.toolCall,
+      getToolInfo: () => ({ name: 'Search' })
+    });
+    const dispatcher = createAgentLoopCoreEventDispatcher({
+      eventStream,
+      toolRunCollector
+    });
+    const event = {
+      type: 'after_message_compress' as const,
+      usages: [
+        {
+          moduleName: 'account_usage:compress_llm_messages',
+          model: 'GPT-4',
+          totalPoints: 0.2
+        }
+      ],
+      requestIds: [],
+      seconds: 0.1,
+      contextCheckpoint: '<context_checkpoint>same</context_checkpoint>'
+    };
+
+    dispatcher.emitEvent(event);
+    dispatcher.emitEvent({ ...event, seconds: 0.2 });
+
+    expect(toolRunCollector.toolRunResponses).toHaveLength(1);
   });
 
   it('streams a complete plan only for successful plan operations', () => {

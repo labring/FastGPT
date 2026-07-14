@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { filterAgentLoopCoreToolResponseToPreview } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/interface';
+import { filterAgentLoopCoreToolResponseToPreview } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/assistantResponses/preview';
 import {
   formatAgentLoopCoreToolResponse,
   initAgentLoopCoreWorkflowToolEdges,
   initAgentLoopCoreWorkflowToolNodes,
   updateAgentLoopCoreWorkflowToolInputValue
-} from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/interface';
+} from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/runtime/workflowToolRunner';
 
 describe('workflow tool runner utils', () => {
   describe('updateAgentLoopCoreWorkflowToolInputValue', () => {

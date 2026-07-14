@@ -1,4 +1,4 @@
-import { summarizeAgentLoopCoreToolRunFlowResponses } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/interface';
+import { summarizeAgentLoopCoreToolRunFlowResponses } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/nodeResponse/toolRunCollector';
 import { describe, expect, it } from 'vitest';
 
 describe('summarizeAgentLoopCoreToolRunFlowResponses', () => {

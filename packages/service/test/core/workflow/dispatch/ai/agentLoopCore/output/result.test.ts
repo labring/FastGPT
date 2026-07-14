@@ -1,4 +1,4 @@
-import { summarizeAgentLoopCoreResult } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/interface';
+import { summarizeAgentLoopCoreResult } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/output/result';
 import { describe, expect, it } from 'vitest';
 
 describe('summarizeAgentLoopCoreResult', () => {

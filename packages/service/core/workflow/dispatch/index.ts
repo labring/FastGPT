@@ -957,12 +957,16 @@ export class WorkflowQueue {
         nodeResponsesForWrite.push(val);
         return val;
       })();
-      // 如果节点已经返回内部明细，则由内部明细完整表达运行过程；只有没有内部明细时，
-      // dispatch 才使用当前节点 responseData 作为运行详情兜底，避免 workflow agent 失败时出现外层重复节点。
+      const currentNodeError =
+        formatCurrentNodeResponse?.errorText ?? formatCurrentNodeResponse?.error;
+      // 内部明细通常已能完整表达运行过程，因此省略无错误的父响应以避免重复节点。
+      // 父节点错误属于自身终态，不能被子明细替代，必须继续进入 SSE 和队列结果。
       const formatResponseData =
-        childResponsesForWrite.length > 0 ? undefined : formatCurrentNodeResponse;
+        childResponsesForWrite.length === 0 || currentNodeError !== undefined
+          ? formatCurrentNodeResponse
+          : undefined;
       const streamResponses = childResponsesForWrite.length
-        ? childResponsesForWrite
+        ? [...childResponsesForWrite, ...(formatResponseData ? [formatResponseData] : [])]
         : formatResponseData
           ? [formatResponseData]
           : [];
@@ -1013,23 +1017,23 @@ export class WorkflowQueue {
       }
 
       // Error
-      if (formatResponseData?.error) {
+      if (currentNodeError !== undefined) {
         if (stepSpan) {
           stepSpan.setAttribute('fastgpt.workflow.step.error', true);
           stepSpan.setStatus({
             code: SpanStatusCode.ERROR,
-            message: String(formatResponseData.error)
+            message: String(currentNodeError)
           });
         }
-        logger.warn('Workflow node returned error', { error: formatResponseData.error });
+        logger.warn('Workflow node returned error', { error: currentNodeError });
       } else if (stepSpan) {
         stepSpan.setStatus({ code: SpanStatusCode.OK });
       }
 
-      if (stepSpan && formatResponseData?.runningTime !== undefined) {
+      if (stepSpan && formatCurrentNodeResponse?.runningTime !== undefined) {
         stepSpan.setAttribute(
           'fastgpt.workflow.step.running_time_seconds',
-          formatResponseData.runningTime
+          formatCurrentNodeResponse.runningTime
         );
       }
 
@@ -1654,56 +1658,9 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
     {
       getRunTimes: (result) => result[DispatchNodeResponseKeyEnum.runTimes]
     }
-  );
-};
-
-/**
- * 合并连续的纯文本 assistant value，减少普通 answer 片段在页面上分裂展示。
- *
- * 带 reasoning、工具、交互、计划等结构化信息的 value 必须保留独立边界；否则连续
- * AI 节点的第二段 reasoning 会在合并 text 时被吞掉，刷新历史后页面看不到对应思考。
- */
-export const mergeAssistantResponseAnswerText = (response: AIChatItemValueItemType[]) => {
-  const result: AIChatItemValueItemType[] = [];
-
-  const isPlainTextValue = (item: AIChatItemValueItemType) =>
-    !!item.text &&
-    !item.id &&
-    !item.askId &&
-    !item.reasoning &&
-    !item.tools &&
-    !item.skills &&
-    !item.interactive &&
-    !item.plan &&
-    !item.planStatus &&
-    !item.agentPlanUpdate &&
-    !item.agentAsk &&
-    !item.agentStopGate &&
-    !item.contextCheckpoint &&
-    !item.tool &&
-    !item.hideReason &&
-    !item.hideInUI;
-
-  // 合并连续的text
-  for (let i = 0; i < response.length; i++) {
-    const item = response[i];
-    if (isPlainTextValue(item)) {
-      const text = item.text?.content || '';
-      const lastItem = result[result.length - 1];
-      if (lastItem && isPlainTextValue(lastItem) && lastItem.text?.content) {
-        lastItem.text.content += text;
-        continue;
-      }
+  ).finally(() => {
+    if (data.workflowDispatchDeep === currentWorkflowDispatchDeep) {
+      data.workflowDispatchDeep = previousWorkflowDispatchDeep;
     }
-    result.push(item);
-  }
-
-  // If result is empty, auto add a text message
-  if (result.length === 0) {
-    result.push({
-      text: { content: '' }
-    });
-  }
-
-  return result;
+  });
 };

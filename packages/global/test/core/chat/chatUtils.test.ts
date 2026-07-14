@@ -597,6 +597,59 @@ describe('checkInteractiveResponseStatus', () => {
 
     expect(result).toBe('query');
   });
+
+  it('should return query for an agent ask nested inside child interactive wrappers', () => {
+    const result = checkInteractiveResponseStatus({
+      interactive: {
+        type: 'toolChildrenInteractive',
+        params: {
+          toolParams: {
+            toolCallId: 'tool_1'
+          },
+          childrenResponse: {
+            type: 'childrenInteractive',
+            params: {
+              childrenId: 'child_1',
+              childrenResponse: {
+                type: 'agentPlanAskQuery',
+                askId: 'ask_1',
+                params: {
+                  content: 'Choose one',
+                  options: ['A', 'B', 'C']
+                }
+              }
+            }
+          }
+        }
+      } as any,
+      input: 'A'
+    });
+
+    expect(result).toBe('query');
+  });
+
+  it('should keep non-ask nested interactive responses as submit', () => {
+    const result = checkInteractiveResponseStatus({
+      interactive: {
+        type: 'toolChildrenInteractive',
+        params: {
+          toolParams: {
+            toolCallId: 'tool_1'
+          },
+          childrenResponse: {
+            type: 'userSelect',
+            params: {
+              description: 'Choose one',
+              userSelectOptions: []
+            }
+          }
+        }
+      } as any,
+      input: 'A'
+    });
+
+    expect(result).toBe('submit');
+  });
 });
 
 describe('removeAIResponseCite', () => {

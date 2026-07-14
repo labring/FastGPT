@@ -1,4 +1,4 @@
-import { createAgentLoopCoreRuntime } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/interface';
+import { createAgentLoopCoreRuntime } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/runtime/createRuntime';
 import { describe, expect, it, vi } from 'vitest';
 
 const createProvider = () => ({

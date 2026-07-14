@@ -350,10 +350,7 @@ export const WorkflowResultRows = ({
     : undefined;
   const isPlanOperation =
     activeModule.agentPlanStatus === 'set_plan' || activeModule.agentPlanStatus === 'update_plan';
-  // 旧记录将计划操作结果持久化在 textOutput，展示时迁移到专用字段。
-  const planResult = isPlanOperation
-    ? (activeModule.agentPlanResult ?? activeModule.textOutput)
-    : undefined;
+  const planResult = isPlanOperation ? activeModule.agentPlanResult : undefined;
 
   return (
     <>

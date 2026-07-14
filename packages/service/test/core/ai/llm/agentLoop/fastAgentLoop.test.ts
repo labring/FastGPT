@@ -772,6 +772,7 @@ describe('runFastAgentMainLoop', () => {
       toolCall({
         id: 'call_ask',
         name: 'ask_user',
+        reasoning: 'Need to ask before planning can continue.',
         args: {
           reason: 'Need private repository path',
           blockerType: 'missing_required_input',
@@ -810,6 +811,7 @@ describe('runFastAgentMainLoop', () => {
     expect(result.pendingMainContext?.askToolCallId).toBe('call_ask');
     expect(result.pendingMainContext?.messages.at(-1)).toEqual({
       role: 'assistant',
+      reasoning_content: 'Need to ask before planning can continue.',
       tool_calls: [
         {
           id: 'call_ask',
@@ -823,6 +825,73 @@ describe('runFastAgentMainLoop', () => {
       ]
     });
     expect(compressToolResponseMock).not.toHaveBeenCalled();
+  });
+
+  it('does not run later tools after ask_user pauses the loop', async () => {
+    const executeTool = vi.fn(async () => ({
+      response: 'should not run',
+      assistantMessages: [],
+      usages: []
+    }));
+
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      {
+        requestId: 'req_ask_before_tool',
+        finishReason: 'tool_calls',
+        toolCalls: [
+          {
+            id: 'call_ask_first',
+            type: 'function',
+            function: {
+              name: 'ask_user',
+              arguments: JSON.stringify({
+                reason: 'Need confirmation before changing data',
+                blockerType: 'missing_required_input',
+                question: 'Should I continue with the data change?',
+                options: ['Continue', 'Cancel', 'Review the proposed change first']
+              })
+            }
+          },
+          {
+            id: 'call_search_after_ask',
+            type: 'function',
+            function: {
+              name: 'search',
+              arguments: JSON.stringify({ q: 'must not execute before the answer' })
+            }
+          }
+        ],
+        inputTokens: 100,
+        outputTokens: 20
+      }
+    ]);
+
+    const result = await runFastAgentMainLoop({
+      runtime: createRuntime({ executeTool }),
+      input: {
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'Ask before changing anything'
+          }
+        ]
+      }
+    });
+
+    expect(result.status).toBe('paused');
+    expect(result.pause).toEqual(
+      expect.objectContaining({
+        type: 'ask',
+        askId: 'call_ask_first'
+      })
+    );
+    expect(executeTool).not.toHaveBeenCalled();
+    expect(result.assistantMessages).not.toContainEqual(
+      expect.objectContaining({
+        role: 'tool',
+        tool_call_id: 'call_search_after_ask'
+      })
+    );
   });
 
   it('continues the loop instead of returning an empty answer for invalid ask_agent args', async () => {

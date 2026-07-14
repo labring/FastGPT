@@ -20,6 +20,7 @@ import type {
 } from '../ai/llm/type';
 import { ChatCompletionRequestMessageRoleEnum } from '../../core/ai/constants';
 import { normalizeToolResponseContent } from '../ai/llm/utils';
+import { extractDeepestInteractive } from '../workflow/runtime/utils';
 
 type FileUrlChatFileType = ChatFileTypeEnum.file | ChatFileTypeEnum.audio | ChatFileTypeEnum.video;
 type FileUrlContentPart = Extract<ChatCompletionContentPart, { type: 'file_url' }>;
@@ -380,12 +381,15 @@ export const chats2GPTMessages = ({
       const agentAskAnswerMap = new Map<string, string>();
       // agentAsk 的用户回答以交互记录形式存在，需要按 askId 恢复为 ask_agent tool response。
       item.value.forEach((value) => {
+        const finalInteractive = value.interactive
+          ? extractDeepestInteractive(value.interactive)
+          : undefined;
         if (
-          value.interactive?.type === 'agentPlanAskQuery' &&
-          value.interactive.askId &&
-          typeof value.interactive.params.answer === 'string'
+          finalInteractive?.type === 'agentPlanAskQuery' &&
+          finalInteractive.askId &&
+          typeof finalInteractive.params.answer === 'string'
         ) {
-          agentAskAnswerMap.set(value.interactive.askId, value.interactive.params.answer);
+          agentAskAnswerMap.set(finalInteractive.askId, finalInteractive.params.answer);
         }
       });
 

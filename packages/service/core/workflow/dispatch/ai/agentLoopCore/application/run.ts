@@ -5,12 +5,10 @@ import type {
   AgentLoopRuntime
 } from '../../../../../ai/llm/agentLoop/interface';
 import { runAgentLoop } from '../../../../../ai/llm/agentLoop/interface';
-import {
-  createAgentLoopCoreAssistantEventCollector,
-  type AgentLoopCoreAssistantEventCollectorToolInfo
-} from '../adapter/assistantResponses';
+import { createAgentLoopCoreAssistantEventCollector } from '../adapter/assistantResponses';
 import { summarizeAgentLoopCoreResult, type AgentLoopCoreOutputSummary } from './output/result';
 import type { AgentLoopCoreResult } from '../domain/result';
+import type { AgentLoopCoreToolDisplayInfo } from '../domain/toolInfo';
 
 export type RunAgentLoopCoreParams<TChildrenResponse = unknown> = {
   provider?: AgentLoopProviderName;
@@ -20,7 +18,7 @@ export type RunAgentLoopCoreParams<TChildrenResponse = unknown> = {
     extraResponses?: AIChatItemValueItemType[];
     eventTarget?: AIChatItemValueItemType[];
     showReasoning?: boolean;
-    getEventToolInfo?: (name: string) => AgentLoopCoreAssistantEventCollectorToolInfo | undefined;
+    getEventToolInfo?: (name: string) => AgentLoopCoreToolDisplayInfo | undefined;
     metaEventNames?: {
       updatePlanToolName?: string;
       askToolName?: string;

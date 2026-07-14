@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { SANDBOX_SHELL_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
 import { READ_FILES_TOOL_NAME } from '@fastgpt/service/core/ai/llm/agentLoop/interface';
 import { DATASET_SEARCH_TOOL_NAME } from '@fastgpt/service/core/ai/llm/agentLoop/interface';
-import { getAgentLoopCoreSystemToolInfo } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/interface';
+import { getAgentLoopCoreSystemToolInfo } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/toolInfo';
 
 const { getSandboxToolInfoMock } = vi.hoisted(() => ({
   getSandboxToolInfoMock: vi.fn()

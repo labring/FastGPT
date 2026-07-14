@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import {
   appendAgentLoopCoreChildNodeResponses,
-  createAgentLoopCoreCompressNodeResponse,
   withAgentLoopCoreChildTotalPoints
-} from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/interface';
+} from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/nodeResponse/children';
+import { createAgentLoopCoreCompressNodeResponse } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/nodeResponse/compress';
 
 describe('createAgentLoopCoreCompressNodeResponse', () => {
   it('creates a shared compress node response with request ids and usage', () => {

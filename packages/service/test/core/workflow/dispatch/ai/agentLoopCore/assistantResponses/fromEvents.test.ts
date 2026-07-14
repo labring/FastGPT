@@ -1,4 +1,4 @@
-import { appendAgentLoopCoreAssistantResponseFromEvent } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/interface';
+import { appendAgentLoopCoreAssistantResponseFromEvent } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/assistantResponses/fromEvents';
 import { describe, expect, it } from 'vitest';
 
 describe('appendAgentLoopCoreAssistantResponseFromEvent', () => {

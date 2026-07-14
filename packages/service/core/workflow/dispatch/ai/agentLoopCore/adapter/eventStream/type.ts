@@ -1,17 +1,13 @@
 import type { ChatCompletionMessageToolCall } from '@fastgpt/global/core/ai/llm/type';
 import type { WorkflowResponseType } from '../../../../type';
-
-export type AgentLoopCoreStreamToolInfo = {
-  name: string;
-  avatar?: string;
-};
+import type { AgentLoopCoreToolDisplayInfo } from '../../domain/toolInfo';
 
 export type CreateAgentLoopCoreEventStreamParams = {
   workflowStreamResponse?: WorkflowResponseType;
   streamAnswer?: boolean;
   streamReasoning?: boolean;
   sliceToolResponse?: boolean;
-  getToolInfo: (name: string) => AgentLoopCoreStreamToolInfo | undefined;
+  getToolInfo: (name: string) => AgentLoopCoreToolDisplayInfo | undefined;
 };
 
 export type AgentLoopCoreEventStream = {

@@ -35,6 +35,7 @@ import { parsetMcpToolConfig } from '@fastgpt/global/core/app/tool/mcpTool/utils
 import { getMcpToolsets } from '../../../app/tool/mcpTool/entity';
 import { getHttpToolsets } from '../../../app/tool/httpTool/entity';
 import { getHTTPToolList } from '../../../app/http';
+import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
 
 /**
  * 创建 runtime nodeResponse 的轻量汇总对象。
@@ -410,6 +411,32 @@ export const getHistories = (
   const filterHistories = chatHistories.slice(-(history * 2));
 
   return [...systemHistories, ...filterHistories];
+};
+
+/**
+ * Agent loop 的交互恢复上下文不能被 history=0 一并裁掉。
+ *
+ * 普通请求仍严格遵守 history 配置；仅当零历史窗口的最后一轮确实包含未完成交互时，
+ * 临时保留最近一轮，让 provider 能读取 providerState 或恢复原 tool call。
+ */
+export const getAgentLoopHistories = (
+  history?: ChatItemMiniType[] | number,
+  histories: ChatItemMiniType[] = []
+) => {
+  const filteredHistories = getHistories(history, histories);
+  if (history !== 0 || filteredHistories.length > 0) return filteredHistories;
+
+  const lastAIIndex = histories.findLastIndex((item) => item.obj === ChatRoleEnum.AI);
+  if (lastAIIndex < 0) return filteredHistories;
+
+  const lastAIMessage = histories[lastAIIndex];
+  if (!getLastInteractiveValue([lastAIMessage])) return filteredHistories;
+
+  const lastHumanIndex = histories
+    .slice(0, lastAIIndex)
+    .findLastIndex((item) => item.obj === ChatRoleEnum.Human);
+
+  return lastHumanIndex < 0 ? [lastAIMessage] : [histories[lastHumanIndex], lastAIMessage];
 };
 
 /**
