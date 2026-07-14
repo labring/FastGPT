@@ -79,6 +79,26 @@ export const beforeUpdateAppFormat = ({ nodes }: { nodes?: StoreNodeItemType[] }
 
     // Format header secret
     node.inputs.forEach((input) => {
+      if (
+        input.key === NodeInputKeyEnum.systemInputConfig &&
+        typeof input.value === 'object' &&
+        input.value !== null
+      ) {
+        if (input.value?.type !== SystemToolSecretInputTypeEnum.manual) {
+          // system/team 只保存来源类型，禁止把临时密钥值带入应用节点。
+          delete input.value.value;
+        } else {
+          const secretValues = input.value.value;
+          if (secretValues && typeof secretValues === 'object' && !Array.isArray(secretValues)) {
+            input.inputList?.forEach((inputItem) => {
+              if (inputItem.inputType === 'secret') {
+                secretValues[inputItem.key] = encryptSecretValue(secretValues[inputItem.key]);
+              }
+            });
+          }
+        }
+      }
+
       if (nodeInputIsReference(input)) return;
 
       // 敏感信息
@@ -88,18 +108,6 @@ export const beforeUpdateAppFormat = ({ nodes }: { nodes?: StoreNodeItemType[] }
       if (input.renderTypeList?.includes(FlowNodeInputTypeEnum.password)) {
         input.value = encryptSecretValue(input.value);
       }
-      if (input.key === NodeInputKeyEnum.systemInputConfig && typeof input.value === 'object') {
-        input.inputList?.forEach((inputItem) => {
-          if (
-            inputItem.inputType === 'secret' &&
-            input.value?.type === SystemToolSecretInputTypeEnum.manual &&
-            input.value?.value
-          ) {
-            input.value.value[inputItem.key] = encryptSecretValue(input.value.value[inputItem.key]);
-          }
-        });
-      }
-
       // 知识库
       if (isDatasetNode) {
         // Agent

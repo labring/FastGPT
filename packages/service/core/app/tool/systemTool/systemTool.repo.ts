@@ -314,7 +314,8 @@ export class SystemToolRepo {
       const item = SystemToolCodec.attachToolConfig({
         tool,
         config: getFirstSystemToolConfig(DBPluginsMap, tool.pluginId),
-        lang
+        lang,
+        source: tool.source
       });
 
       return {
@@ -479,8 +480,16 @@ export class SystemToolRepo {
       childPluginId ? child!.outputSchema : tool.outputSchema
     );
     const secrets = jsonSchema2SecretInput({ jsonSchema: secretSchema });
-    const configuredSecretsVal = SystemToolCodec.getConfiguredSecretsVal(dbTool);
-    const hasSystemSecret = !!configuredSecretsVal;
+    const parentDbTool = await getParentSystemToolConfig({
+      pluginId,
+      idSource,
+      parentPluginId
+    });
+    const secretConfig = parentDbTool ?? dbTool;
+    const configuredSecretsVal = isDebugSource
+      ? undefined
+      : SystemToolCodec.getConfiguredSecretsVal(secretConfig);
+    const hasSystemSecret = !isDebugSource && !!configuredSecretsVal;
 
     const toolDetail: SystemToolDetailType = {
       id: pluginId,
@@ -786,7 +795,9 @@ export class SystemToolRepo {
         version: tool.version,
         currentCost: dbTool?.currentCost ?? 0,
         systemKeyCost: dbTool?.systemKeyCost ?? 0,
-        secretsVal: isDebugSource ? undefined : SystemToolCodec.getConfiguredSecretsVal(dbTool),
+        secretsVal: isDebugSource
+          ? undefined
+          : SystemToolCodec.getConfiguredSecretsVal(parentDbTool ?? dbTool),
         permissions: tool.permission
       };
     }
@@ -796,7 +807,9 @@ export class SystemToolRepo {
       version,
       currentCost: dbTool.currentCost ?? 0,
       systemKeyCost: dbTool.systemKeyCost ?? 0,
-      secretsVal: SystemToolCodec.getConfiguredSecretsVal(dbTool)
+      secretsVal: isDebugSource
+        ? undefined
+        : SystemToolCodec.getConfiguredSecretsVal(parentDbTool ?? dbTool)
     };
   };
 
