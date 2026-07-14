@@ -39,7 +39,7 @@ import { format } from 'date-fns/format';
 import OrgTags from '@/components/support/user/team/OrgTags';
 import SearchInput from '@fastgpt/web/components/common/Input/SearchInput';
 import { useCallback, useState, useMemo } from 'react';
-import { downloadFetch } from '@/web/common/system/utils';
+import { downloadFetch, getIsMemberSyncMode } from '@/web/common/system/utils';
 import { type TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -59,7 +59,7 @@ function MemberTable({ Tabs }: { Tabs: React.ReactNode }) {
   const { toast } = useToast();
   const { userInfo, initUserInfo } = useUserStore();
   const { feConfigs } = useSystemStore();
-  const isSyncMode = feConfigs?.register_method?.includes('sync');
+  const isSyncMode = getIsMemberSyncMode(feConfigs);
 
   const { myTeams, onSwitchTeam } = useContextSelector(TeamContext, (v) => v);
 

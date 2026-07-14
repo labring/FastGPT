@@ -23,6 +23,10 @@ export type ExternalProviderWorkflowVarType = {
   url?: string;
 };
 
+export type FastGPTRegisterMethodType = 'email' | 'phone';
+export type FastGPTRegisterMethodCompatType = FastGPTRegisterMethodType | 'sync';
+export type FastGPTTeamModeType = 'multi' | 'single' | 'sync';
+
 /* fastgpt main */
 export type FastGPTConfigFileType = {
   feConfigs: FastGPTFeConfigsType;
@@ -42,10 +46,14 @@ export type FastGPTFeConfigsType = {
   show_emptyChat?: boolean;
   isPlus?: boolean;
   hideChatCopyrightSetting?: boolean;
-  register_method?: ['email' | 'phone' | 'sync'];
-  login_method?: ['email' | 'phone']; // Attention: login method is different with oauth
-  find_password_method?: ['email' | 'phone'];
-  bind_notification_method?: ['email' | 'phone'];
+  /**
+   * 用户自助注册方式。兼容期允许读取旧配置中的 sync，但新配置不再写入 sync。
+   */
+  register_method?: FastGPTRegisterMethodCompatType[];
+  teamMode?: FastGPTTeamModeType;
+  login_method?: FastGPTRegisterMethodType[]; // Attention: login method is different with oauth
+  find_password_method?: FastGPTRegisterMethodType[];
+  bind_notification_method?: FastGPTRegisterMethodType[];
   googleClientVerKey?: string;
   /**
    * @deprecated MCP SSE 代理地址已迁移到环境变量 SSE_MCP_SERVER_PROXY_ENDPOINT。
