@@ -100,7 +100,11 @@ const workflowToolNodes2JsonSchema = ({ nodes }: { nodes: StoreNodeItemType[] })
   const pluginOutput = nodes.find((node) => node.flowNodeType === FlowNodeTypeEnum.pluginOutput);
 
   return {
-    inputSchema: nodeInputs2JsonSchema({ inputs: pluginInput?.inputs ?? [] }),
+    inputSchema: nodeInputs2JsonSchema({
+      inputs: pluginInput?.inputs ?? [],
+      includeNodeMetadata: true,
+      filterInternalInputs: true
+    }),
     outputSchema: nodeOutputs2JsonSchema({
       outputs:
         pluginOutput?.inputs.map((item) => ({
@@ -110,8 +114,13 @@ const workflowToolNodes2JsonSchema = ({ nodes }: { nodes: StoreNodeItemType[] })
           valueType: item.valueType,
           label: item.label || item.key,
           description: item.description,
-          required: item.required
-        })) ?? []
+          required: item.required,
+          valueDesc: item.valueDesc,
+          defaultValue: item.defaultValue,
+          customFieldConfig: item.customInputConfig,
+          deprecated: item.deprecated
+        })) ?? [],
+      includeNodeMetadata: true
     })
   };
 };

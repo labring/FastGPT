@@ -1,9 +1,44 @@
 import { describe, expect, it } from 'vitest';
-import { getWorkflowToolInputsFromStoreNodes } from '@fastgpt/global/core/app/tool/workflowTool/utils';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  getWorkflowToolInputsFromStoreNodes,
+  getWorkflowToolUnsupportedInputTypes
+} from '@fastgpt/global/core/app/tool/workflowTool/utils';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 
 describe('workflowTool utils', () => {
+  describe('getWorkflowToolUnsupportedInputTypes', () => {
+    it('returns special input types and ignores internal variables', () => {
+      const result = getWorkflowToolUnsupportedInputTypes([
+        { renderTypeList: [FlowNodeInputTypeEnum.fileSelect] },
+        { renderTypeList: [FlowNodeInputTypeEnum.selectDataset] },
+        { renderTypeList: [FlowNodeInputTypeEnum.selectLLMModel] },
+        { renderTypeList: [FlowNodeInputTypeEnum.addInputParam] },
+        { renderTypeList: [FlowNodeInputTypeEnum.hidden] }
+      ]);
+
+      expect(result).toEqual([
+        FlowNodeInputTypeEnum.fileSelect,
+        FlowNodeInputTypeEnum.selectDataset,
+        FlowNodeInputTypeEnum.selectLLMModel,
+        FlowNodeInputTypeEnum.addInputParam
+      ]);
+    });
+
+    it('returns an empty list for supported input types', () => {
+      expect(
+        getWorkflowToolUnsupportedInputTypes([
+          { renderTypeList: [FlowNodeInputTypeEnum.input] },
+          { renderTypeList: [FlowNodeInputTypeEnum.agentGenerated] },
+          { renderTypeList: [FlowNodeInputTypeEnum.hidden] }
+        ])
+      ).toEqual([]);
+    });
+  });
+
   describe('getWorkflowToolInputsFromStoreNodes', () => {
     it('should return inputs from pluginInput node', () => {
       const expectedInputs = [

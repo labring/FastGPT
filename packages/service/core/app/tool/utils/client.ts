@@ -202,7 +202,8 @@ export async function getClientSystemToolPreviewNode({
     hasSystemSecret: toolDetail.hasSystemSecret,
     isFolder: !isWorkflowTool && toolDetail.isToolSet,
     status: toolDetail.status,
-    inputs: initToolInputsTypeByDefaultMode(inputs),
+    // 工具预览是首次加入工作流/Agent，使用 schema 声明的默认输入方式。
+    inputs: initToolInputsTypeByDefaultMode(inputs, { forceDefaultMode: true }),
 
     outputs: schemaOutputs
       ? schemaOutputs.some((item) => item.type === FlowNodeOutputTypeEnum.error)
