@@ -92,15 +92,14 @@ type ResponseQueueItemType =
   | ChatAgentConfigQueueItem;
 
 const STREAM_TYPING_QUEUE_COUNT_WHILE_STREAMING = 1;
-const STREAM_TYPING_QUEUE_COUNT_AFTER_FINISH = 20;
 
 /**
  * 控制客户端流式文本的打字机消费速度。
  *
  * 流仍在持续返回时保持稳定慢吐，避免模型输出快或网络批量到达时一次性渲染太多字符；
- * 服务端已 close 后加速清空队列，避免请求已经结束但 UI 还长时间补字。
+ * 服务端已 close 后一次性清空队列，使最后一批内容在同一次 UI 提交中完整显示。
  */
-const getStreamTypingQueueConsumeCount = ({
+export const getStreamTypingQueueConsumeCount = ({
   queueLength,
   finished
 }: {
@@ -109,10 +108,7 @@ const getStreamTypingQueueConsumeCount = ({
 }) => {
   if (queueLength <= 0) return 0;
 
-  return Math.min(
-    queueLength,
-    finished ? STREAM_TYPING_QUEUE_COUNT_AFTER_FINISH : STREAM_TYPING_QUEUE_COUNT_WHILE_STREAMING
-  );
+  return finished ? queueLength : Math.min(queueLength, STREAM_TYPING_QUEUE_COUNT_WHILE_STREAMING);
 };
 
 type HandleEventSourceDataParams = {
