@@ -295,7 +295,7 @@ describe('buildAgentLoopCoreUserReminderInput', () => {
       ]
     });
 
-    expect(result).toContain('以下技能为特定任务提供专门的操作说明。');
+    expect(result).toContain('以下技能为特定任务提供专门的操作说明：');
     expect(result).toContain('先使用 sandbox_read_file 读取完整的技能文件');
     expect(result).toContain('<available_skills>');
     expect(result).toContain('</available_skills>');

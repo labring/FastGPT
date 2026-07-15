@@ -38,10 +38,15 @@ vi.mock('@fastgpt/service/core/ai/model', () => ({
   )
 }));
 
-vi.mock('@fastgpt/service/core/ai/llm/compress', () => ({
-  compressRequestMessages: compressRequestMessagesMock,
-  compressToolResponse: compressToolResponseMock
-}));
+vi.mock('@fastgpt/service/core/ai/llm/compress', async (importOriginal) => {
+  const original = await importOriginal<typeof import('@fastgpt/service/core/ai/llm/compress')>();
+
+  return {
+    ...original,
+    compressRequestMessages: compressRequestMessagesMock,
+    compressToolResponse: compressToolResponseMock
+  };
+});
 
 vi.mock('@fastgpt/service/core/ai/llm/utils', () => ({
   filterGPTMessageByMaxContext: vi.fn(async ({ messages }) => messages)
