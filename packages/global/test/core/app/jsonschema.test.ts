@@ -21,7 +21,11 @@ import {
   FlowNodeInputItemTypeSchema,
   InputConfigInputTypeEnum
 } from '@fastgpt/global/core/workflow/type/io';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import type { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeOutputTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 
 describe('parseToolParamJsonSchema', () => {
   it('should parse a recursively valid property schema', () => {
@@ -910,6 +914,161 @@ describe('nodeInputs2JsonSchema', () => {
       }
     });
   });
+
+  it('should preserve workflow node input metadata when requested', () => {
+    const input = {
+      key: 'count',
+      label: 'Count',
+      valueType: WorkflowIOValueTypeEnum.number,
+      required: true,
+      defaultValue: 2,
+      value: 8,
+      description: 'UI description',
+      toolDescription: 'Tool description',
+      isToolParam: true,
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.numberInput,
+        FlowNodeInputTypeEnum.reference
+      ],
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      selectedTypeIndex: 0,
+      valueDesc: 'Generated count',
+      min: 1,
+      max: 10,
+      precision: 2,
+      canEdit: false
+    } satisfies FlowNodeInputItemType;
+
+    const jsonSchema = nodeInputs2JsonSchema({
+      inputs: [input],
+      includeNodeMetadata: true
+    });
+    const restored = jsonSchema2NodeInput({
+      jsonSchema,
+      schemaType: 'systemTool'
+    });
+
+    expect(jsonSchema.properties?.count).toMatchObject({
+      type: 'number',
+      minimum: 1,
+      maximum: 10,
+      toolDescription: 'Tool description',
+      isToolParam: true,
+      'x-fastgpt-node-input': {
+        valueType: WorkflowIOValueTypeEnum.number,
+        renderTypeList: [
+          FlowNodeInputTypeEnum.agentGenerated,
+          FlowNodeInputTypeEnum.numberInput,
+          FlowNodeInputTypeEnum.reference
+        ],
+        selectedType: FlowNodeInputTypeEnum.agentGenerated,
+        selectedTypeIndex: 0,
+        valueDesc: 'Generated count',
+        min: 1,
+        max: 10,
+        precision: 2,
+        description: 'UI description',
+        canEdit: false,
+        defaultValue: 2
+      }
+    });
+    expect(jsonSchema.properties?.count?.['x-fastgpt-node-input']).not.toHaveProperty('value');
+    expect(restored[0]).toMatchObject({
+      key: 'count',
+      valueType: WorkflowIOValueTypeEnum.number,
+      description: 'UI description',
+      toolDescription: 'Tool description',
+      isToolParam: true,
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.numberInput,
+        FlowNodeInputTypeEnum.reference
+      ],
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      selectedTypeIndex: 0,
+      defaultValue: 2,
+      valueDesc: 'Generated count',
+      min: 1,
+      max: 10,
+      precision: 2,
+      canEdit: false
+    });
+  });
+
+  it('should preserve supported workflow input types and ignore special types', () => {
+    const supportedRenderTypes = [
+      FlowNodeInputTypeEnum.reference,
+      FlowNodeInputTypeEnum.input,
+      FlowNodeInputTypeEnum.password,
+      FlowNodeInputTypeEnum.numberInput,
+      FlowNodeInputTypeEnum.select,
+      FlowNodeInputTypeEnum.multipleSelect,
+      FlowNodeInputTypeEnum.switch,
+      FlowNodeInputTypeEnum.timePointSelect,
+      FlowNodeInputTypeEnum.timeRangeSelect,
+      FlowNodeInputTypeEnum.customVariable
+    ];
+    const supportedValueTypes = [
+      WorkflowIOValueTypeEnum.string,
+      WorkflowIOValueTypeEnum.string,
+      WorkflowIOValueTypeEnum.string,
+      WorkflowIOValueTypeEnum.number,
+      WorkflowIOValueTypeEnum.string,
+      WorkflowIOValueTypeEnum.arrayString,
+      WorkflowIOValueTypeEnum.boolean,
+      WorkflowIOValueTypeEnum.string,
+      WorkflowIOValueTypeEnum.arrayString,
+      WorkflowIOValueTypeEnum.string
+    ];
+    const ignoredRenderTypes = [
+      FlowNodeInputTypeEnum.fileSelect,
+      FlowNodeInputTypeEnum.selectLLMModel,
+      FlowNodeInputTypeEnum.selectDataset,
+      FlowNodeInputTypeEnum.addInputParam
+    ];
+    const inputs = [
+      ...supportedRenderTypes.map((renderType, index) => ({
+        key: `supported_${index}`,
+        label: renderType,
+        valueType: supportedValueTypes[index],
+        renderTypeList: [renderType],
+        selectedType: renderType
+      })),
+      ...ignoredRenderTypes.map((renderType, index) => ({
+        key: `ignored_${index}`,
+        label: renderType,
+        valueType: WorkflowIOValueTypeEnum.string,
+        renderTypeList: [renderType]
+      })),
+      {
+        key: 'internal',
+        label: 'internal',
+        valueType: WorkflowIOValueTypeEnum.string,
+        renderTypeList: [FlowNodeInputTypeEnum.hidden]
+      }
+    ] as FlowNodeInputItemType[];
+
+    const jsonSchema = nodeInputs2JsonSchema({
+      inputs,
+      includeNodeMetadata: true,
+      filterInternalInputs: true
+    });
+    const restored = jsonSchema2NodeInput({
+      jsonSchema,
+      schemaType: 'systemTool'
+    });
+
+    expect(
+      restored.slice(0, supportedRenderTypes.length).map((input) => input.renderTypeList)
+    ).toEqual(supportedRenderTypes.map((renderType) => [renderType]));
+    ignoredRenderTypes.forEach((_, index) => {
+      expect(jsonSchema.properties?.[`ignored_${index}`]).not.toHaveProperty(
+        'x-fastgpt-node-input'
+      );
+    });
+    expect(jsonSchema.properties?.internal).toBeUndefined();
+  });
 });
 
 describe('nodeOutputs2JsonSchema', () => {
@@ -960,6 +1119,55 @@ describe('nodeOutputs2JsonSchema', () => {
       items: { type: 'object' },
       title: 'Items',
       description: 'Object list'
+    });
+  });
+
+  it('should preserve workflow node output metadata when requested', () => {
+    const output = {
+      id: 'quote',
+      key: 'quote',
+      label: 'Quote',
+      type: FlowNodeOutputTypeEnum.dynamic,
+      valueType: WorkflowIOValueTypeEnum.datasetQuote,
+      valueDesc: 'Dataset quote',
+      defaultValue: [],
+      customFieldConfig: {
+        showDescription: true
+      },
+      deprecated: true,
+      required: true
+    };
+
+    const jsonSchema = nodeOutputs2JsonSchema({
+      outputs: [output],
+      includeNodeMetadata: true
+    });
+    const restored = jsonSchema2NodeOutput({ jsonSchema });
+
+    expect(jsonSchema.properties?.quote).toMatchObject({
+      'x-fastgpt-node-output': {
+        type: FlowNodeOutputTypeEnum.dynamic,
+        valueType: WorkflowIOValueTypeEnum.datasetQuote,
+        valueDesc: 'Dataset quote',
+        defaultValue: [],
+        customFieldConfig: {
+          showDescription: true
+        },
+        deprecated: true
+      }
+    });
+    expect(restored[0]).toMatchObject({
+      id: 'quote',
+      key: 'quote',
+      type: FlowNodeOutputTypeEnum.dynamic,
+      valueType: WorkflowIOValueTypeEnum.datasetQuote,
+      valueDesc: 'Dataset quote',
+      defaultValue: [],
+      customFieldConfig: {
+        showDescription: true
+      },
+      deprecated: true,
+      required: true
     });
   });
 });

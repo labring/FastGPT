@@ -129,6 +129,57 @@ describe('getClientSystemToolPreviewNode', () => {
     expect(result.versionLabel).toBeUndefined();
   });
 
+  it('restores workflow tool input metadata before applying its default mode', async () => {
+    mocks.getSystemToolDetail.mockResolvedValueOnce({
+      id: 'systemTool-workflow',
+      version: '1.0.0',
+      status: 1,
+      source: 'system',
+      isToolSet: false,
+      associatedPluginId: 'workflow-app',
+      avatar: 'workflow.svg',
+      name: 'Workflow tool',
+      intro: 'Workflow tool',
+      author: 'FastGPT',
+      tags: [],
+      toolDescription: 'Workflow tool',
+      currentCost: 0,
+      systemKeyCost: 0,
+      hasTokenFee: false,
+      hasSystemSecret: false,
+      inputSchema: {
+        type: 'object',
+        properties: {
+          count: {
+            type: 'number',
+            title: 'Count',
+            isToolParam: true,
+            'x-fastgpt-node-input': {
+              valueType: 'number',
+              renderTypeList: ['numberInput', 'reference'],
+              selectedType: 'numberInput',
+              selectedTypeIndex: 0
+            }
+          }
+        }
+      }
+    });
+
+    const result = await getClientSystemToolPreviewNode({
+      pluginId: 'systemTool-workflow',
+      versionId: '1.0.0',
+      lang: 'en'
+    });
+
+    expect(result.inputs.find((item) => item.key === 'count')).toMatchObject({
+      valueType: 'number',
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      selectedTypeIndex: 0,
+      renderTypeList: [FlowNodeInputTypeEnum.agentGenerated, FlowNodeInputTypeEnum.numberInput, 'reference'],
+      isToolParam: true
+    });
+  });
+
   it('returns latest version id when requested explicitly', async () => {
     mocks.getSystemToolDetail.mockResolvedValueOnce({
       id: 'systemTool-weather',
