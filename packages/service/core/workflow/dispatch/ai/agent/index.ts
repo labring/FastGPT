@@ -123,7 +123,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     responseChatItemId,
     timezone,
     params: {
-      systemPrompt,
+      systemPrompt = '',
       userChatInput,
       history = 6,
       agent_selectedTools: selectedTools = [],

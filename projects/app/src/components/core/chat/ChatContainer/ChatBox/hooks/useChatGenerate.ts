@@ -39,6 +39,12 @@ import {
 import { shouldAppendResumeInteractive } from '../utils/resume';
 import { formatChatRequestVariables } from '../utils/requestVariables';
 import { createStreamRenderScheduler } from '../utils/streamRenderScheduler';
+import {
+  createToolParamsStreamBuffer,
+  getToolParamsPreview,
+  TOOL_PARAMS_PREVIEW_INTERVAL_MS,
+  type ToolParamsStreamUpdate
+} from '../utils/toolParamsStreamBuffer';
 import type { ChatSiteItemType, ChatBoxInputType, SendPromptFnType } from '../type';
 import type { StartChatFnProps, generatingMessageProps } from '../../type';
 import { cloneDeep } from 'lodash';
@@ -73,6 +79,11 @@ type FinishChatGenerateStatus = (params: {
 const STREAM_RENDER_MIN_INTERVAL_MS = 50;
 const STREAM_RENDER_MAX_INTERVAL_MS = 96;
 const STREAM_RENDER_TARGET_TAIL_LENGTH = 256;
+
+type QueuedGeneratingMessage = generatingMessageProps & {
+  autoTTSResponse?: boolean;
+  replaceToolParams?: boolean;
+};
 
 type UseChatGenerateProps = {
   onStartChat?: (e: StartChatFnProps) => Promise<{ responseText: string; isNewChat?: boolean }>;
@@ -158,9 +169,8 @@ export const useChatGenerate = ({
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
   const chatAuthTarget = useChatAuthApiTarget({ sourceTarget, outLinkAuthData });
 
-  const generatingMessageQueueRef = useRef<
-    Array<generatingMessageProps & { autoTTSResponse?: boolean }>
-  >([]);
+  const generatingMessageQueueRef = useRef<QueuedGeneratingMessage[]>([]);
+  const toolParamsStreamBufferRef = useRef(createToolParamsStreamBuffer());
 
   const applyGeneratingMessage = useMemoizedFn(
     (
@@ -181,8 +191,9 @@ export const useChatGenerate = ({
         variables,
         nodeResponse,
         durationSeconds,
-        autoTTSResponse
-      }: generatingMessageProps & { autoTTSResponse?: boolean }
+        autoTTSResponse,
+        replaceToolParams
+      }: QueuedGeneratingMessage
     ) => {
       const histories = nodeResponse?.formInputResult
         ? refreshSubmittedFormInteractiveValues({
@@ -396,9 +407,15 @@ export const useChatGenerate = ({
         }
         if (event === SseResponseEventEnum.toolParams && tool && updateValue.tools) {
           if (tool.params) {
-            updateValue.tools = updateValue.tools.map((item) =>
-              item.id === tool.id ? { ...item, params: `${item.params || ''}${tool.params}` } : item
-            );
+            const nextParams = tool.params;
+            updateValue.tools = updateValue.tools.map((item) => {
+              if (item.id !== tool.id) return item;
+
+              return {
+                ...item,
+                params: replaceToolParams ? nextParams : `${item.params || ''}${nextParams}`
+              };
+            });
             return {
               ...item,
               value: [
@@ -572,10 +589,38 @@ export const useChatGenerate = ({
       }),
     [commitGeneratingMessageQueue, getStreamRenderInterval]
   );
+  const enqueueToolParamsReplacement = useMemoizedFn((update: ToolParamsStreamUpdate) => {
+    generatingMessageQueueRef.current.push({
+      event: SseResponseEventEnum.toolParams,
+      responseValueId: update.responseValueId,
+      tool: update.tool,
+      replaceToolParams: true
+    });
+  });
+  const publishToolParamsPreviews = useMemoizedFn(() => {
+    const updates = toolParamsStreamBufferRef.current.takePreviewUpdates();
+    if (updates.length === 0) return false;
+
+    updates.forEach(enqueueToolParamsReplacement);
+    streamRenderScheduler.schedule();
+    return true;
+  });
+  const toolParamsPreviewScheduler = useMemo(
+    () =>
+      createStreamRenderScheduler({
+        onFlush: publishToolParamsPreviews,
+        intervalMs: TOOL_PARAMS_PREVIEW_INTERVAL_MS
+      }),
+    [publishToolParamsPreviews]
+  );
   const flushGeneratingMessageQueue = useMemoizedFn(() => {
+    toolParamsPreviewScheduler.cancel();
+    toolParamsStreamBufferRef.current.flush().forEach(enqueueToolParamsReplacement);
     streamRenderScheduler.flush();
   });
   const cancelGeneratingMessageQueue = useMemoizedFn(() => {
+    toolParamsPreviewScheduler.cancel();
+    toolParamsStreamBufferRef.current.clear();
     streamRenderScheduler.cancel();
     generatingMessageQueueRef.current = [];
   });
@@ -596,6 +641,40 @@ export const useChatGenerate = ({
           targetSourceKey: sourceKey,
           targetChatId: chatId
         });
+        return;
+      }
+
+      if (message.event === SseResponseEventEnum.toolCall && message.tool?.params) {
+        toolParamsStreamBufferRef.current.append({
+          responseValueId: message.responseValueId,
+          tool: {
+            id: message.tool.id,
+            params: message.tool.params
+          }
+        });
+        generatingMessageQueueRef.current.push({
+          ...message,
+          tool: {
+            ...message.tool,
+            params: getToolParamsPreview(message.tool.params)
+          }
+        });
+        streamRenderScheduler.schedule();
+        return;
+      }
+
+      if (
+        message.event === SseResponseEventEnum.toolParams &&
+        message.tool?.params &&
+        toolParamsStreamBufferRef.current.append({
+          responseValueId: message.responseValueId,
+          tool: {
+            id: message.tool.id,
+            params: message.tool.params
+          }
+        })
+      ) {
+        toolParamsPreviewScheduler.schedule();
         return;
       }
 

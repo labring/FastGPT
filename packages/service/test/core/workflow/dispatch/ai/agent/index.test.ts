@@ -391,6 +391,27 @@ describe('dispatchRunAgent user context', () => {
     expect(systemPrompt).not.toContain('{{@mcp-app_1/search@}}');
   });
 
+  it('uses an empty system prompt when the parameter is omitted', async () => {
+    const props = createProps();
+    delete props.params.systemPrompt;
+
+    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    let resultPromise: Promise<any>;
+    runWithContext(
+      {
+        queryUrlTypeMap: {},
+        mcpClientMemory: {}
+      },
+      () => {
+        resultPromise = dispatchRunAgent(props);
+      }
+    );
+    const result = await resultPromise!;
+
+    expect(result.error).toBeUndefined();
+    expect(runAgentLoopMock.mock.calls[0][0].input.systemPrompt).toBe('');
+  });
+
   it('injects sandbox input files before starting the agent loop', async () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const props = createProps();

@@ -1,40 +1,8 @@
-import Markdown from '@/components/Markdown';
 import { Box } from '@chakra-ui/react';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { useSize } from 'ahooks';
 import React, { useEffect, useMemo, useRef } from 'react';
-
-const previewTypography = {
-  fontSize: '14px',
-  fontStyle: 'normal',
-  fontWeight: 400,
-  lineHeight: '20px',
-  letterSpacing: '0.25px'
-};
-
-const isEmptyPreviewValue = (value: unknown): boolean => {
-  if (value === null || value === undefined) return true;
-  if (typeof value === 'string') return value.trim() === '';
-  if (Array.isArray(value)) return value.every(isEmptyPreviewValue);
-  if (typeof value === 'object') return Object.values(value).every(isEmptyPreviewValue);
-
-  return false;
-};
-
-const formatPreviewValue = (value?: string | null) => {
-  if (isEmptyPreviewValue(value)) return '';
-  const rawValue = value ?? '';
-
-  try {
-    const parsedValue = JSON.parse(rawValue);
-    if (isEmptyPreviewValue(parsedValue)) return '';
-
-    return JSON.stringify(parsedValue, null, 2);
-  } catch {
-    return rawValue;
-  }
-};
+import { getToolParamsPreview } from '../../ChatContainer/ChatBox/utils/toolParamsStreamBuffer';
 
 const ProcessingPreviewBody = React.memo(function ProcessingPreviewBody({
   content,
@@ -43,19 +11,19 @@ const ProcessingPreviewBody = React.memo(function ProcessingPreviewBody({
   content: string;
   showAnimation: boolean;
 }) {
-  const previewRef = useRef<HTMLDivElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
-  const contentSize = useSize(contentRef);
-  const contentOverflow = (contentSize?.height || 0) > 80;
+  const previewRef = useRef<HTMLPreElement>(null);
+  const shouldFollowOutputRef = useRef(true);
 
   useEffect(() => {
-    if (!showAnimation || !contentOverflow) return;
+    if (!showAnimation || !shouldFollowOutputRef.current) return;
 
-    previewRef.current?.scrollTo({
-      top: previewRef.current.scrollHeight,
-      behavior: 'smooth'
+    const frameId = window.requestAnimationFrame(() => {
+      const preview = previewRef.current;
+      if (preview) preview.scrollTop = preview.scrollHeight;
     });
-  }, [content, contentOverflow, showAnimation]);
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [content, showAnimation]);
 
   if (!content) return null;
 
@@ -63,20 +31,24 @@ const ProcessingPreviewBody = React.memo(function ProcessingPreviewBody({
     <Box position={'relative'} mt={2}>
       <Box
         ref={previewRef}
+        as="pre"
         maxH={'80px'}
+        m={0}
         overflowY={'auto'}
         color={'myGray.500'}
+        fontFamily={'mono'}
+        fontSize={'13px'}
+        fontWeight={400}
+        lineHeight={'20px'}
+        letterSpacing={0}
+        whiteSpace={'pre-wrap'}
+        overflowWrap={'anywhere'}
+        onScroll={(event: React.UIEvent<HTMLPreElement>) => {
+          const target = event.currentTarget;
+          shouldFollowOutputRef.current =
+            target.scrollHeight - target.scrollTop - target.clientHeight <= 8;
+        }}
         sx={{
-          '.markdown': {
-            ...previewTypography,
-            wordBreak: 'normal',
-            overflowWrap: 'anywhere'
-          },
-          '.markdown *': {
-            letterSpacing: previewTypography.letterSpacing,
-            wordBreak: 'normal',
-            overflowWrap: 'anywhere'
-          },
           '&::-webkit-scrollbar': {
             display: 'none'
           }
@@ -85,21 +57,8 @@ const ProcessingPreviewBody = React.memo(function ProcessingPreviewBody({
           scrollbarWidth: 'none'
         }}
       >
-        <Box ref={contentRef}>
-          <Markdown source={content} showAnimation={showAnimation} />
-        </Box>
+        {content}
       </Box>
-      {contentOverflow && (
-        <Box
-          position={'absolute'}
-          left={0}
-          right={0}
-          bottom={0}
-          h={'32px'}
-          bgGradient={'linear(to-b, rgba(255,255,255,0), rgba(255,255,255,1.0))'}
-          pointerEvents={'none'}
-        />
-      )}
     </Box>
   );
 });
@@ -123,10 +82,10 @@ const RenderProcessingPreview = React.memo(function RenderProcessingPreview({
 }) {
   const tool = value.tools?.[value.tools.length - 1] || value.tool;
   const reasoningContent = value.reasoning?.content || '';
-  const previewContent = useMemo(() => {
-    if (tool) return formatPreviewValue(tool.params);
-    return reasoningContent;
-  }, [tool, reasoningContent]);
+  const previewContent = useMemo(
+    () => getToolParamsPreview(tool ? tool.params : reasoningContent),
+    [tool, reasoningContent]
+  );
 
   if (tool && !previewContent) return null;
   if (!tool && (!reasoningContent || value.hideReason)) return null;
