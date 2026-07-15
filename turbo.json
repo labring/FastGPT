@@ -19,6 +19,7 @@
       "outputs": []
     },
     "test": {
+      "passThroughEnv": ["FASTGPT_TEST_MONGODB_URI", "FASTGPT_TEST_MAX_WORKERS"],
       "outputs": ["coverage/**", "test-results.json"]
     },
     "test:integration": {
