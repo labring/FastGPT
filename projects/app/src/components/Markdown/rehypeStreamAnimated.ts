@@ -1,16 +1,11 @@
 const STREAM_ANIMATED_BLOCK_TAGS = new Set(['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li']);
 const STREAM_ANIMATED_SKIP_TAGS = new Set(['pre', 'code', 'table', 'svg']);
-const DEFAULT_STREAMING_TAIL_MAX_LENGTH = 64;
-const DEFAULT_STREAMING_TAIL_TAG_NAME = 'stream-tail';
-const DEFAULT_STREAMING_CHAR_TAG_NAME = 'stream-char';
-const STREAMING_CHAR_STAGGER_MS = 1;
-const STREAMING_MARKDOWN_SYNTAX_CHARS = new Set('*_~`[]()>#+-|\\');
 
 type HastElement = {
   type: 'element';
   tagName: string;
   properties?: Record<string, any>;
-  children?: HastNode[];
+  children: HastNode[];
 };
 type HastText = {
   type: 'text';
@@ -28,65 +23,46 @@ type HastRoot = {
   children?: HastNode[];
 };
 
-/**
- * 计算相对上一次已提交 Markdown 新增可见尾部的 Unicode code point 数量。
- *
- * 只接受纯 append，避免 Markdown 尾部隐藏、内容替换或会话切换时把旧正文误判为新增内容。
- * 首尾空白和纯 Markdown 控制标记不产生可见动画。若上一帧存在被隐藏的未闭合 Markdown
- * 尾部，闭合时无法仅凭 source 长度区分控制符和可见内容，因此跳过这一帧的尾部动画。
- * 返回值有上限，保证单次大 chunk 也只创建固定规模的动画节点。
- */
-export const getStreamingAppendLength = ({
-  previousSource,
-  currentSource,
-  previousSourceWasHidden = false,
-  maxLength = DEFAULT_STREAMING_TAIL_MAX_LENGTH
-}: {
-  previousSource: string;
-  currentSource: string;
-  previousSourceWasHidden?: boolean;
-  maxLength?: number;
-}) => {
-  if (previousSourceWasHidden) return 0;
-  if (!currentSource.startsWith(previousSource)) return 0;
-
-  const appendedSource = currentSource.slice(previousSource.length).trim();
-  if (!appendedSource) return 0;
-
-  const appendedCodePoints = Array.from(appendedSource);
-  if (appendedCodePoints.every((codePoint) => STREAMING_MARKDOWN_SYNTAX_CHARS.has(codePoint))) {
-    return 0;
-  }
-
-  return Math.min(appendedCodePoints.length, maxLength);
+export type StreamAnimatedRuntime = {
+  births: number[];
+  /**
+   * 字符首次渲染时冻结的 style。后续 block 重渲染不能改写 animation-delay，
+   * 否则浏览器会重新启动正在执行的淡入动画。
+   */
+  styles: Array<string | null | undefined>;
 };
 
+type RehypeStreamAnimatedOptions = {
+  fadeDuration: number;
+  nowMs?: number;
+  revealed?: boolean;
+  runtime?: StreamAnimatedRuntime;
+};
+
+export const getStreamAnimationNow = () =>
+  typeof performance === 'undefined' || typeof performance.now !== 'function'
+    ? Date.now()
+    : performance.now();
+
 /**
- * 只包装最后一个 Markdown 文本块的最新尾部，供流式淡入 renderer 使用。
+ * 为流式 Markdown block 建立稳定的字符 DOM 时间线。
  *
- * 与原字符级实现不同，本插件不会重写累计全文。它从最后一个可见 block 的末尾向前消费
- * `tailLength` 个 code point，并在一个 bounded tail element 内生成对应的字符节点。代码、
- * 表格、SVG 和 KaTeX 是边界；遇到这些节点后不会继续向前包装旧正文。
+ * 每个可见字符从 block 起点获得固定下标，旧 span 会在 append 更新中保持位置和 style，
+ * 只有新增字符会追加节点并执行淡入。列表项会作为一个 block 递归处理，避免 `li` 内的
+ * paragraph 再次包装；代码、表格、SVG 和 KaTeX 保持原始 DOM。
  */
 export const rehypeStreamAnimated = ({
-  tailLength = 0,
-  tailTagName = DEFAULT_STREAMING_TAIL_TAG_NAME,
-  charTagName = DEFAULT_STREAMING_CHAR_TAG_NAME,
-  getTailLength
-}: {
-  tailLength?: number;
-  tailTagName?: string;
-  charTagName?: string;
-  getTailLength?: () => number;
-}) => {
+  fadeDuration,
+  nowMs,
+  revealed = false,
+  runtime
+}: RehypeStreamAnimatedOptions) => {
   return (tree: HastRoot) => {
-    const resolvedTailLength = getTailLength?.() ?? tailLength;
-    if (resolvedTailLength <= 0) return;
+    let globalCharIndex = 0;
+    const now = nowMs ?? getStreamAnimationNow();
 
     const isHastElement = (node: HastNode): node is HastElement =>
       node.type === 'element' && typeof (node as HastElement).tagName === 'string';
-    const isHastText = (node: HastNode): node is HastText =>
-      node.type === 'text' && typeof (node as HastText).value === 'string';
     const hasClass = (node: HastElement, cls: string) => {
       const className = node.properties?.className;
       if (Array.isArray(className)) return className.some((item) => String(item).includes(cls));
@@ -95,95 +71,74 @@ export const rehypeStreamAnimated = ({
     };
     const shouldSkip = (node: HastElement) =>
       STREAM_ANIMATED_SKIP_TAGS.has(node.tagName) || hasClass(node, 'katex');
-    const hasRenderableText = (node: HastElement): boolean => {
-      if (shouldSkip(node)) return false;
 
-      return !!node.children?.some((child) => {
-        if (isHastText(child)) return child.value.length > 0;
-        return isHastElement(child) && hasRenderableText(child);
-      });
+    const resolveStyle = (index: number): string | null => {
+      if (!runtime) return null;
+
+      const cachedStyle = runtime.styles[index];
+      if (cachedStyle !== undefined) return cachedStyle;
+
+      const birthTime = runtime.births[index];
+      const style = (() => {
+        if (birthTime === undefined) return null;
+
+        const elapsed = now - birthTime;
+        if (elapsed >= fadeDuration) return null;
+
+        // 负 delay 表示从已流逝的位置继续动画，正 delay 表示同一 commit 内的错峰字符。
+        return `animation-delay:${-elapsed}ms`;
+      })();
+      runtime.styles[index] = style;
+      return style;
     };
-    let lastTextBlock: HastElement | undefined;
-    const findLastTextBlock = (node: HastNode, activeTextBlock?: HastElement) => {
-      if (!isHastElement(node)) return;
-      if (shouldSkip(node)) {
-        // 最近候选是当前文本块本身时，跳过节点可能只是行内内容；若候选来自嵌套 block，
-        // 同级代码、表格或公式则表示尾部已越过候选，不能回退动画更早正文。
-        if (lastTextBlock !== activeTextBlock) lastTextBlock = undefined;
-        return;
-      }
 
-      const renderableText = hasRenderableText(node);
-      const isTextBlock = STREAM_ANIMATED_BLOCK_TAGS.has(node.tagName) && renderableText;
-      if (isTextBlock) {
-        lastTextBlock = node;
-      }
-      const nextActiveTextBlock = isTextBlock ? node : activeTextBlock;
-      node.children?.forEach((child) => findLastTextBlock(child, nextActiveTextBlock));
+    const buildCharacter = (value: string): HastElement => {
+      const style = resolveStyle(globalCharIndex);
+      const className =
+        revealed || style === null ? 'stream-char stream-char-revealed' : 'stream-char';
+      const properties: Record<string, any> = { className };
+      if (style !== null) properties.style = style;
+      globalCharIndex++;
+
+      return {
+        type: 'element',
+        tagName: 'span',
+        properties,
+        children: [{ type: 'text', value }]
+      };
     };
-    tree.children?.forEach((child) => findLastTextBlock(child));
-    if (!lastTextBlock) return;
 
-    let remainingLength = resolvedTailLength;
-    let animatedCharsFromEnd = 0;
-    const animateCharacters = lastTextBlock.tagName !== 'li';
+    const wrapText = (node: HastElement) => {
+      const children: HastNode[] = [];
 
-    /** 从尾部反向包装；false 表示遇到不可跨越的渲染边界。 */
-    const wrapTail = (node: HastElement): boolean => {
-      if (!node.children) return true;
-
-      for (let index = node.children.length - 1; index >= 0 && remainingLength > 0; index--) {
-        const child = node.children[index];
-
-        if (isHastText(child)) {
-          const codePoints = Array.from(child.value);
-          if (codePoints.length === 0) continue;
-
-          const animatedLength = Math.min(codePoints.length, remainingLength);
-          const stableText = codePoints.slice(0, -animatedLength).join('');
-          const nextChildren: HastNode[] = [];
-
-          if (stableText) {
-            nextChildren.push({ type: 'text', value: stableText });
+      for (const child of node.children) {
+        if (child.type === 'text' && typeof child.value === 'string') {
+          for (const character of child.value) {
+            children.push(buildCharacter(character));
           }
-
-          const animatedText = codePoints.slice(-animatedLength).join('');
-          const animatedChildren = animateCharacters
-            ? codePoints.slice(-animatedLength).map((value, charIndex) => {
-                // The newest character starts immediately; older characters in this bounded batch
-                // receive a short stagger so the fade remains visible at a 20Hz commit rate.
-                const delay =
-                  (animatedCharsFromEnd + animatedLength - charIndex - 1) *
-                  STREAMING_CHAR_STAGGER_MS;
-                return {
-                  type: 'element' as const,
-                  tagName: charTagName,
-                  properties: delay > 0 ? { 'data-stream-char-delay': delay } : {},
-                  children: [{ type: 'text' as const, value }]
-                };
-              })
-            : [{ type: 'text' as const, value: animatedText }];
-          nextChildren.push({
-            type: 'element',
-            tagName: tailTagName,
-            properties: animateCharacters ? {} : { 'data-stream-tail-mode': 'text' },
-            children: animatedChildren
-          });
-
-          node.children.splice(index, 1, ...nextChildren);
-          remainingLength -= animatedLength;
-          animatedCharsFromEnd += animatedLength;
           continue;
         }
 
-        if (!isHastElement(child)) continue;
-        if (shouldSkip(child)) return false;
-        if (!wrapTail(child)) return false;
+        if (isHastElement(child) && !shouldSkip(child)) {
+          wrapText(child);
+        }
+        children.push(child);
       }
 
-      return true;
+      node.children = children;
     };
 
-    wrapTail(lastTextBlock);
+    const visit = (node: HastNode) => {
+      if (!isHastElement(node) || shouldSkip(node)) return;
+
+      if (STREAM_ANIMATED_BLOCK_TAGS.has(node.tagName)) {
+        wrapText(node);
+        return;
+      }
+
+      node.children.forEach(visit);
+    };
+
+    tree.children?.forEach(visit);
   };
 };

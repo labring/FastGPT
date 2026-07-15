@@ -38,33 +38,27 @@ describe('CachedMarkdown', () => {
     expect(normalizeHtml(actual)).toBe(normalizeHtml(expected));
   });
 
-  it('should render bounded stream characters through custom components', () => {
+  it('should render stable stream characters with a cached processor', () => {
     const html = renderToStaticMarkup(
       React.createElement(CachedMarkdown, {
         source: 'hello',
         remarkPlugins,
-        rehypePlugins: [...baseRehypePlugins, [rehypeStreamAnimated, { tailLength: 2 }]],
-        components: {
-          'stream-tail': ({ children }: { children?: React.ReactNode }) =>
-            React.createElement('span', { 'data-stream-tail': true }, children),
-          'stream-char': ({
-            children,
-            'data-stream-char-delay': delay
-          }: {
-            children?: React.ReactNode;
-            'data-stream-char-delay'?: number;
-          }) =>
-            React.createElement(
-              'span',
-              { style: delay ? { animationDelay: `${delay}ms` } : undefined },
-              children
-            )
-        } as any
+        rehypePlugins: [
+          ...baseRehypePlugins,
+          [
+            rehypeStreamAnimated,
+            {
+              fadeDuration: 180,
+              nowMs: 100,
+              runtime: { births: [100, 102, 104, 106, 108], styles: [] }
+            }
+          ]
+        ]
       })
     );
 
-    expect(html).toContain('data-stream-tail="true"');
-    expect(html).toContain('animation-delay:1ms');
-    expect(html).toContain('<span>o</span>');
+    expect(html).toContain('class="stream-char"');
+    expect(html).toContain('animation-delay:8ms');
+    expect(html).not.toContain('stream-tail');
   });
 });

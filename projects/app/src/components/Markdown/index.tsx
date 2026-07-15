@@ -1,6 +1,7 @@
-import React, { useContext, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+/* eslint-disable react-hooks/refs -- 流式字符时间线必须在 render 中幂等扩展，rehype 才能同步读取本次 commit。 */
+import React, { useContext, useMemo, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { useMemoizedFn } from 'ahooks';
+import type { PluggableList } from 'unified';
 import 'katex/dist/katex.min.css';
 import RemarkMath from 'remark-math'; // Math syntax
 import RemarkBreaks from 'remark-breaks'; // Line break
@@ -16,9 +17,15 @@ import { CodeClassNameEnum, hideStreamingIncompleteMarkdownTail, mdTextFormat } 
 import type { AProps } from './A';
 import MarkdownTable from '@fastgpt/web/components/common/Markdown/MarkdownTable';
 import { MarkdownRendererRuntimeContext } from './runtimeContext';
-import { getStreamingAppendLength, rehypeStreamAnimated } from './rehypeStreamAnimated';
 import { splitMarkdownBlocks } from './streamMarkdownBlocks';
 import { CachedMarkdown } from './CachedMarkdown';
+import {
+  getStreamAnimationNow,
+  resolveStreamBlockPlugins,
+  updateStreamBlockAnimations,
+  type StreamBlockRuntime,
+  type StreamPluginsCacheEntry
+} from './streamAnimationRuntime';
 
 const CodeLight = dynamic(() => import('./codeBlock/CodeLight'), { ssr: false });
 const MermaidCodeBlock = dynamic(() => import('./img/MermaidCodeBlock'), { ssr: false });
@@ -28,9 +35,15 @@ const IframeCodeBlock = dynamic(() => import('./codeBlock/Iframe'), { ssr: false
 const IframeHtmlCodeBlock = dynamic(() => import('./codeBlock/iframe-html'), { ssr: false });
 const VideoBlock = dynamic(() => import('./codeBlock/Video'), { ssr: false });
 const AudioBlock = dynamic(() => import('./codeBlock/Audio'), { ssr: false });
-const useBrowserLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
-const markdownRemarkPlugins = [RemarkMath, [RemarkGfm, { singleTilde: false }], RemarkBreaks];
-const markdownBaseRehypePlugins = [RehypeKatex, [RehypeExternalLinks, { target: '_blank' }]];
+const markdownRemarkPlugins: PluggableList = [
+  RemarkMath,
+  [RemarkGfm, { singleTilde: false }],
+  RemarkBreaks
+];
+const markdownBaseRehypePlugins: PluggableList = [
+  RehypeKatex,
+  [RehypeExternalLinks, { target: '_blank' }]
+];
 const markdownUrlTransform = (val: string) => val;
 
 const ChatGuide = dynamic(() => import('./chat/Guide'), { ssr: false });
@@ -74,55 +87,26 @@ function MarkdownLinkRenderer(props: any) {
   );
 }
 
-/** 保留尾部边界；实际淡入由其下的有限数量 `stream-char` 节点完成。 */
-function MarkdownStreamTailRenderer({ children, 'data-stream-tail-mode': mode }: any) {
-  return (
-    <span className={`stream-tail ${mode === 'text' ? 'stream-tail-text' : ''}`}>{children}</span>
-  );
-}
-
-function MarkdownStreamCharRenderer({ children, 'data-stream-char-delay': delay }: any) {
-  return (
-    <span
-      className="stream-char"
-      style={delay ? { animationDelay: `${Number(delay)}ms` } : undefined}
-    >
-      {children}
-    </span>
-  );
-}
-
 const markdownComponents = {
   img: MarkdownImgRenderer,
   pre: RewritePre,
   code: MarkdownCodeRenderer,
   table: MarkdownTable as any,
-  a: MarkdownLinkRenderer,
-  'stream-tail': MarkdownStreamTailRenderer,
-  'stream-char': MarkdownStreamCharRenderer
+  a: MarkdownLinkRenderer
 };
 
 type MarkdownStreamBlockProps = {
+  rehypePlugins: PluggableList;
   source: string;
-  tailLength: number;
 };
 
 /**
  * 缓存已完成 Markdown block 的 React 子树。
  *
- * source 和 tailLength 都保持不变时，父级流式内容更新不会重新进入 react-markdown。
- * 只有最后一个正在增长的 block 会重新解析，并继续使用现有的尾部淡入插件。
+ * source 和 rehypePlugins 都保持不变时，父级流式内容更新不会重新解析该 block。
+ * 活动 block 复用同一个 processor 和字符动画 runtime，已完成 block 则回到普通 DOM。
  */
-const MarkdownStreamBlock = React.memo(({ source, tailLength }: MarkdownStreamBlockProps) => {
-  const getStreamTailLength = useMemoizedFn(() => tailLength);
-  const rehypePlugins = useMemo(
-    () => [
-      ...markdownBaseRehypePlugins,
-      [rehypeStreamAnimated, { getTailLength: getStreamTailLength }]
-    ],
-    [getStreamTailLength]
-  );
-
+const MarkdownStreamBlock = React.memo(({ source, rehypePlugins }: MarkdownStreamBlockProps) => {
   return (
     <CachedMarkdown
       source={source}
@@ -189,32 +173,22 @@ const MarkdownRender = ({
     return mdTextFormat(source);
   }, [forbidZhFormat, showAnimation, source]);
 
-  const previousSourceRef = useRef('');
-  const previousFormatSourceRef = useRef('');
-  // Markdown 尾部未闭合时会暂时隐藏；闭合后的首次 render 可能同时恢复整段文本，
-  // 此时无法从原始 source 长度准确区分控制符和可见内容，跳过这一帧的尾部动画。
-  // refs 保存的是上一次已 commit 的 raw/formatted source，只用于计算本次流式 append 的尾部长度。
-  // eslint-disable-next-line react-hooks/refs
-  const previousSource = previousSourceRef.current;
-  // eslint-disable-next-line react-hooks/refs
-  const previousFormatSource = previousFormatSourceRef.current;
-  const hasRevealedMarkdownTail = previousSource !== previousFormatSource;
-  const streamingTailLength = showAnimation
-    ? getStreamingAppendLength({
-        previousSource: previousFormatSource,
-        currentSource: formatSource,
-        previousSourceWasHidden: hasRevealedMarkdownTail
-      })
-    : 0;
-  useBrowserLayoutEffect(() => {
-    previousSourceRef.current = source;
-    previousFormatSourceRef.current = formatSource;
-  }, [formatSource, source]);
-
   const markdownBlocks = useMemo(
     () => (showAnimation ? splitMarkdownBlocks(formatSource) : []),
     [formatSource, showAnimation]
   );
+  const streamRuntimesRef = useRef<Map<number, StreamBlockRuntime>>(new Map());
+  const streamPluginsCacheRef = useRef<Map<number, StreamPluginsCacheEntry>>(new Map());
+  const revealClockRef = useRef({ lastTime: 0 });
+  const streamAnimationMeta = showAnimation
+    ? updateStreamBlockAnimations({
+        blocks: markdownBlocks,
+        pluginsCache: streamPluginsCacheRef.current,
+        renderNow: getStreamAnimationNow(),
+        revealClock: revealClockRef.current,
+        runtimes: streamRuntimesRef.current
+      })
+    : new Map();
   const markdownClassName = `markdown ${styles.markdown}
       ${className || ''}
       ${showAnimation ? `${formatSource ? styles.waitingAnimation : styles.animation}` : ''}
@@ -224,13 +198,26 @@ const MarkdownRender = ({
     <MarkdownRendererRuntimeContext.Provider value={renderContextValue}>
       <Box position={'relative'} className={showAnimation ? markdownClassName : undefined}>
         {showAnimation ? (
-          markdownBlocks.map((block, index) => (
-            <MarkdownStreamBlock
-              key={block.startOffset}
-              source={block.source}
-              tailLength={index === markdownBlocks.length - 1 ? streamingTailLength : 0}
-            />
-          ))
+          markdownBlocks.map((block) => {
+            const meta = streamAnimationMeta.get(block.startOffset);
+            const rehypePlugins =
+              !meta || meta.settled
+                ? markdownBaseRehypePlugins
+                : resolveStreamBlockPlugins({
+                    basePlugins: markdownBaseRehypePlugins,
+                    pluginsCache: streamPluginsCacheRef.current,
+                    runtime: meta.runtime,
+                    startOffset: block.startOffset
+                  });
+
+            return (
+              <MarkdownStreamBlock
+                key={block.startOffset}
+                source={block.source}
+                rehypePlugins={rehypePlugins}
+              />
+            );
+          })
         ) : (
           <ReactMarkdown
             className={markdownClassName}
