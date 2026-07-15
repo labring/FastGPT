@@ -376,7 +376,7 @@ export const resolveUploadFile = ({
 
     const resolvedExtension = explicitExtension
       ? explicitExtension
-      : matchedAllowedExtension || evidence.officeExtension || evidence.detectedExtension;
+      : matchedAllowedExtension || evidence.officeExtension || evidence.detectedExtension || '';
     return {
       filename: resolveAcceptedFilename({ filename, extension: resolvedExtension }),
       contentType: evidence.detectedMime,

@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   authDataset: vi.fn(),
   rawText2Chunks: vi.fn(),
-  replaceS3KeyToPreviewUrl: vi.fn((value: string) => value)
+  replaceS3KeyToPreviewUrl: vi.fn(async (value: string) => value)
 }));
 
 vi.mock('@/service/middleware/entry', () => ({
