@@ -12,7 +12,6 @@ import { parseAgentAskToolCall, type AgentAskPayload } from '../../../domain/sys
 import { applyPlanUpdate } from '../../../domain/systemTool/plan';
 import type { AgentLoopEvent } from './type';
 import { normalizeAgentLoopUsages, type AgentLoopUsage } from '../../../domain';
-import { runStopGate } from '../stop';
 import { getToolsForFastAgentLoop, normalizeToolCatalog } from '../tools';
 import { toSandboxToolName } from '../../../domain/systemTool/sandbox';
 import { patchDatasetSearchParams } from '../../../domain/systemTool/datasetSearch';
@@ -24,19 +23,8 @@ import type {
   FastAgentLoopResult,
   PendingMainContext
 } from './type';
-import { shouldRequirePlanFromMessages } from '../../../domain/systemTool/plan';
 import { runSandboxTools } from '../../../../../sandbox/interface/toolCall';
 import { normalizeToolResponseContent } from '@fastgpt/global/core/ai/llm/utils';
-
-/**
- * 将单条 LLM message 的多模态文本片段归一成纯文本。
- * 当前主要用于 stop gate 反馈，保证反馈消息不依赖 content 的具体存储形态。
- */
-const getMessageText = (message?: ChatCompletionMessageParam) => {
-  if (!message || !('content' in message) || !message.content) return '';
-  if (typeof message.content === 'string') return message.content;
-  return message.content.map((item) => (item.type === 'text' ? item.text : '')).join('');
-};
 
 /**
  * 创建工具执行结果的最小结构。
@@ -144,16 +132,12 @@ const buildAskPendingContext = ({
   messages,
   call,
   assistantMessage,
-  activePlan,
-  requirePlan,
-  runtimeToolCalledSinceLastPlanUpdate
+  activePlan
 }: {
   messages: ChatCompletionMessageParam[];
   call: ChatCompletionMessageToolCall;
   assistantMessage?: ChatCompletionMessageParam;
   activePlan?: AgentPlanType;
-  requirePlan?: boolean;
-  runtimeToolCalledSinceLastPlanUpdate?: boolean;
 }): PendingMainContext => {
   const assistantFields =
     assistantMessage?.role === ChatCompletionRequestMessageRoleEnum.Assistant
@@ -177,17 +161,14 @@ const buildAskPendingContext = ({
       }
     ],
     askToolCallId: call.id,
-    activePlan,
-    requirePlan,
-    runtimeToolCalledSinceLastPlanUpdate
+    activePlan
   };
 };
 
 /**
  * 单主 Agent Loop。
  * Main Agent 在同一条消息链中直接使用 runtime tools、ask_user 和 update_plan；
- * plan 是否完成由本地 stop gate 在每轮无工具调用后兜底检查。
- * answer/reasoning delta 始终实时透传给前端；stop gate 只影响最终可持久化的 assistantMessages。
+ * answer/reasoning delta 和 plan 状态始终实时透传给前端。
  */
 export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
   runtime,
@@ -213,23 +194,6 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
         context: PendingMainContext;
       }
     | undefined;
-  let runtimeToolCalledSinceLastPlanUpdate =
-    input.pendingMainContext?.runtimeToolCalledSinceLastPlanUpdate ?? false;
-  let stopGateRejections = 0;
-  const maxStopGateRejections = runtime.maxStopGateRejections ?? 2;
-  const requirePlan =
-    input.pendingMainContext?.requirePlan ?? shouldRequirePlanFromMessages(input.messages);
-
-  // 计划已满足 stop gate 后，本轮只允许模型输出答案，不再继续选择工具。
-  const canForceFinalAnswerOnly = () => {
-    if (!activePlan) return false;
-
-    return runStopGate({
-      activePlan,
-      requirePlan,
-      runtimeToolCalledSinceLastPlanUpdate
-    }).allowStop;
-  };
 
   // ask_user 暂停时会把当时的 LLM messages 保存到 pendingMainContext。
   // 恢复时追加用户回答作为对应 ask tool 的 Tool message，延续同一条消息链。
@@ -292,13 +256,6 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
     teamId: runtime.teamId,
     userKey: runtime.userKey,
     isAborted: runtime.checkIsStopping,
-    getRequestControl: () => {
-      const forceFinalAnswerOnly = canForceFinalAnswerOnly();
-
-      return {
-        toolChoice: forceFinalAnswerOnly ? 'none' : 'auto'
-      };
-    },
     // 内置工具会修改本地状态或依赖串行上下文，不能参与普通 runtime tool 的批量并发。
     canBatchTool: (call) => !internalToolNames.has(call.function.name),
     onReasoning: ({ text }) => runtime.emitEvent?.({ type: 'reasoning_delta', text }),
@@ -432,9 +389,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
             messages,
             call,
             assistantMessage,
-            activePlan,
-            requirePlan,
-            runtimeToolCalledSinceLastPlanUpdate
+            activePlan
           })
         };
 
@@ -453,7 +408,6 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
 
         if (updateResult.success) {
           activePlan = updateResult.plan;
-          runtimeToolCalledSinceLastPlanUpdate = false;
           emitAgentLoopEvent(runtime, {
             type: 'plan_operation',
             operation: getPlanOperationFromArgs(args),
@@ -547,8 +501,6 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
         });
       }
 
-      // 外部业务工具执行后，需要重新经过 plan 更新或 stop gate 检查，不能直接结束。
-      runtimeToolCalledSinceLastPlanUpdate = true;
       const toolResult = await runtime.executeTool({
         call,
         messages
@@ -562,43 +514,6 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
         : createToolResponse<TChildrenResponse>(
             'Interactive tool is not supported in fastAgent loop yet.'
           );
-    },
-    onStopCandidate: async ({ requestIndex, requestId }) => {
-      if (!updatePlanToolName) {
-        return { allowStop: true };
-      }
-
-      const gate = runStopGate({
-        activePlan,
-        requirePlan,
-        runtimeToolCalledSinceLastPlanUpdate
-      });
-
-      if (gate.allowStop) {
-        return { allowStop: true };
-      }
-
-      stopGateRejections++;
-      if (stopGateRejections > maxStopGateRejections) {
-        return {
-          allowStop: false,
-          error: `Active plan is not complete after ${stopGateRejections} stop checks.`
-        };
-      }
-
-      // 拒绝停止时把反馈作为隐藏 assistant 事件发出，让前端和恢复链路能看到模型被要求继续的原因。
-      const stopGateId = `stop_gate_${requestIndex}_${requestId}`;
-      runtime.emitEvent?.({
-        type: 'stop_gate',
-        id: stopGateId,
-        reason: gate.reason,
-        feedback: getMessageText(gate.feedbackMessage)
-      });
-
-      return {
-        allowStop: false,
-        feedbackMessage: gate.feedbackMessage
-      };
     }
   });
 

@@ -245,11 +245,6 @@ describe('pushChatRecords', () => {
         params: '{"question":"请补充目标"}',
         askId: 'call_ask_agent'
       };
-      const agentStopGate = {
-        id: 'stop_gate_2_req_too_early',
-        reason: 'Active plan is not complete.',
-        feedback: '<stop_gate_feedback>Continue the active plan.</stop_gate_feedback>'
-      };
       const props = createMockProps(
         {
           aiContent: {
@@ -266,9 +261,6 @@ describe('pushChatRecords', () => {
               },
               {
                 agentAsk
-              },
-              {
-                agentStopGate
               }
             ]
           }
@@ -285,7 +277,7 @@ describe('pushChatRecords', () => {
       }).lean();
 
       expect(aiItem?.value).toEqual(
-        expect.arrayContaining([{ plan }, { agentPlanUpdate }, { agentAsk }, { agentStopGate }])
+        expect.arrayContaining([{ plan }, { agentPlanUpdate }, { agentAsk }])
       );
     });
 

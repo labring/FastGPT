@@ -4,7 +4,7 @@ import type { AgentLoopEvent } from '../../../../../../ai/llm/agentLoop/interfac
 type AgentLoopCoreAssistantMetaEvent = Extract<
   AgentLoopEvent,
   {
-    type: 'after_message_compress' | 'plan_operation' | 'ask_start' | 'stop_gate';
+    type: 'after_message_compress' | 'plan_operation' | 'ask_start';
   }
 >;
 
@@ -93,36 +93,12 @@ const upsertAgentAsk = ({
   };
 };
 
-const upsertAssistantValueById = ({
-  assistantResponses,
-  value
-}: {
-  assistantResponses: AIChatItemValueItemType[];
-  value: AIChatItemValueItemType;
-}) => {
-  if (!value.id) {
-    assistantResponses.push(value);
-    return;
-  }
-
-  const responseIndex = assistantResponses.findIndex((item) => item.id === value.id);
-  if (responseIndex < 0) {
-    assistantResponses.push(value);
-    return;
-  }
-
-  assistantResponses[responseIndex] = {
-    ...assistantResponses[responseIndex],
-    ...value
-  };
-};
-
 /**
  * 将 agent-loop 元事件写入 FastGPT assistantResponses。
  *
  * 这里保存两类结构化数据：
  * 1. 成功 plan_operation 的完整计划快照，仅供聊天 UI 刷新恢复。
- * 2. transcript 无法直接表达、但恢复 agent-loop 需要的 plan/ask/stop/checkpoint 记录。
+ * 2. transcript 无法直接表达、但恢复 agent-loop 需要的 plan/ask/checkpoint 记录。
  */
 export const appendAgentLoopCoreAssistantResponseFromEvent = ({
   assistantResponses,
@@ -170,21 +146,6 @@ export const appendAgentLoopCoreAssistantResponseFromEvent = ({
           askId: event.id,
           functionName: names.askToolName || 'ask_user',
           params: event.params || ''
-        }
-      });
-      return;
-    }
-    case 'stop_gate': {
-      upsertAssistantValueById({
-        assistantResponses,
-        value: {
-          id: event.id,
-          agentStopGate: {
-            id: event.id,
-            reason: event.reason,
-            feedback: event.feedback
-          },
-          hideInUI: true
         }
       });
       return;

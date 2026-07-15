@@ -55,29 +55,6 @@ type RunAgentCallProps<TChildrenResponse = unknown> = {
     messages: ChatCompletionMessageParam[];
     assistantMessage?: ChatCompletionMessageParam;
   }) => Promise<AgentLoopToolExecutionResult<TChildrenResponse>>;
-  // 模型准备以无工具调用结束时的本地停止检查。
-  // 返回 feedbackMessage 时会把消息追加回同一个 loop，而不是让外层重新开一层循环。
-  onStopCandidate?: (e: {
-    requestIndex: number;
-    requestId: string;
-    requestMessages: ChatCompletionMessageParam[];
-    assistantMessages: ChatCompletionMessageParam[];
-    answerText: string;
-  }) => Promise<
-    | {
-        allowStop: true;
-      }
-    | {
-        allowStop: false;
-        feedbackMessage?: ChatCompletionMessageParam;
-        error?: unknown;
-      }
-  >;
-  // 每轮 LLM 请求前动态调整流式策略和工具选择。
-  // 当上层已经确认本轮只能是最终回答时，可强制 tool_choice=none。
-  getRequestControl?: (e: { runTimes: number; requestMessages: ChatCompletionMessageParam[] }) => {
-    toolChoice?: CreateLLMResponseProps['body']['tool_choice'];
-  };
   // 返回 false 的工具会按 toolCalls 顺序串行执行，用于 update_plan/ask_user 这类有状态内部工具。
   canBatchTool?: (call: ChatCompletionMessageToolCall) => boolean;
   // 每次 createLLMResponse 的生命周期回调。
@@ -222,8 +199,6 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
   onToolRunStart,
   onToolRunEnd,
   onRunTool,
-  onStopCandidate,
-  getRequestControl,
   canBatchTool = () => true,
   onLLMRequestStart,
   onLLMRequestEnd,
@@ -422,12 +397,8 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       }
     }
 
-    // 拷贝一份 requestMessages 用于后续操作
+    // 工具执行使用本轮请求快照，工具结果随后单独追加到 requestMessages。
     const cloneRequestMessages = requestMessages.slice();
-    const requestControl = getRequestControl?.({
-      runTimes,
-      requestMessages: cloneRequestMessages
-    });
 
     // 2. Request LLM
     const requestStartTime = Date.now();
@@ -452,8 +423,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
         max_tokens,
         model: modelData,
         messages: requestMessages,
-        tool_choice:
-          requestControl?.toolChoice ?? (consecutiveRequestToolTimes > 5 ? 'none' : 'auto'),
+        tool_choice: consecutiveRequestToolTimes > 5 ? 'none' : 'auto',
         toolCallMode: modelData.toolChoice ? 'toolChoice' : 'prompt',
         parallel_tool_calls: body.parallel_tool_calls ?? true
       },
@@ -700,43 +670,6 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
         // 同一并发批次已经启动的工具无法撤回，但后续批次不应在暂停信号后继续调度。
         if (toolChildPause || stopAgentLoop || isAborted?.()) {
           break;
-        }
-      }
-    }
-
-    /**
-     * 检查是否 loop 结束
-     * 1. 没有工具调用
-     * 2. 有交互工具
-     * 3. 特殊的工具，要求结束当前 loop
-     * 4. 用户主动暂停
-     */
-    if (toolCalls.length === 0 && !toolChildPause && !stopAgentLoop && !isAborted?.()) {
-      const stopResult = await onStopCandidate?.({
-        requestIndex: runTimes,
-        requestId,
-        requestMessages,
-        assistantMessages,
-        answerText: answer
-      });
-
-      if (stopResult && !stopResult.allowStop) {
-        if (stopResult.error) {
-          requestError = stopResult.error;
-          break;
-        }
-        if (stopResult.feedbackMessage) {
-          // 被 stop gate 打回的这次 assistant 从最终 assistantMessages 移除；
-          // 若它已经通过流式事件写入 assistantResponses，则仍按“客户端可见即可恢复”持久化。
-          // requestMessages 保留它和 feedback，方便模型理解为何需要继续。
-          if (
-            llmAssistantMessage &&
-            assistantMessages[assistantMessages.length - 1] === llmAssistantMessage
-          ) {
-            assistantMessages.pop();
-          }
-          await appendRequestMessages(stopResult.feedbackMessage);
-          continue;
         }
       }
     }

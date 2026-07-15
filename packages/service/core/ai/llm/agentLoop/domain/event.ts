@@ -115,10 +115,4 @@ export type AgentLoopEvent =
   | {
       type: 'ask_resume';
       answer: string;
-    }
-  | {
-      type: 'stop_gate';
-      id: string;
-      reason: string;
-      feedback: string;
     };

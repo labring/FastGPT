@@ -11,6 +11,4 @@ export type AgentLoopPendingMainContext = {
   messages: ChatCompletionMessageParam[];
   askToolCallId: string;
   activePlan?: AgentPlanType;
-  requirePlan?: boolean;
-  runtimeToolCalledSinceLastPlanUpdate?: boolean;
 };

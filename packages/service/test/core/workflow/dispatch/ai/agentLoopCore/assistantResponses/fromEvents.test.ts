@@ -148,7 +148,7 @@ describe('appendAgentLoopCoreAssistantResponseFromEvent', () => {
     ]);
   });
 
-  it('stores checkpoint and upserts stop_gate values by id', () => {
+  it('stores context checkpoints', () => {
     const assistantResponses: any[] = [];
 
     appendAgentLoopCoreAssistantResponseFromEvent({
@@ -160,37 +160,9 @@ describe('appendAgentLoopCoreAssistantResponseFromEvent', () => {
         contextCheckpoint: '<context_checkpoint>compressed</context_checkpoint>'
       }
     });
-    appendAgentLoopCoreAssistantResponseFromEvent({
-      assistantResponses,
-      event: {
-        type: 'stop_gate',
-        id: 'stop_gate',
-        reason: 'not done',
-        feedback: 'keep going'
-      }
-    });
-    appendAgentLoopCoreAssistantResponseFromEvent({
-      assistantResponses,
-      event: {
-        type: 'stop_gate',
-        id: 'stop_gate',
-        reason: 'still not done',
-        feedback: 'keep going'
-      }
-    });
-
     expect(assistantResponses).toEqual([
       {
         contextCheckpoint: '<context_checkpoint>compressed</context_checkpoint>',
-        hideInUI: true
-      },
-      {
-        id: 'stop_gate',
-        agentStopGate: {
-          id: 'stop_gate',
-          reason: 'still not done',
-          feedback: 'keep going'
-        },
         hideInUI: true
       }
     ]);

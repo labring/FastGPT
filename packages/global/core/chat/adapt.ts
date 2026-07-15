@@ -205,7 +205,6 @@ const isPureTextAiValue = (item: AIChatItemValueItemType) =>
   !item.planStatus &&
   !item.agentPlanUpdate &&
   !item.agentAsk &&
-  !item.agentStopGate &&
   !item.contextCheckpoint &&
   !item.tool &&
   !item.hideReason &&
@@ -469,7 +468,6 @@ export const chats2GPTMessages = ({
           Boolean(value.contextCheckpoint) ||
           Boolean(value.agentPlanUpdate) ||
           Boolean(value.agentAsk) ||
-          Boolean(value.agentStopGate) ||
           typeof value.reasoning?.content === 'string' ||
           typeof value.text?.content === 'string';
 
@@ -523,15 +521,6 @@ export const chats2GPTMessages = ({
               response: answer
             });
           }
-        }
-
-        // Stop tool
-        if (reserveTool && value.agentStopGate) {
-          aiResults.push({
-            dataId,
-            role: ChatCompletionRequestMessageRoleEnum.User,
-            content: value.agentStopGate.feedback
-          });
         }
 
         if (typeof value.reasoning?.content === 'string') {

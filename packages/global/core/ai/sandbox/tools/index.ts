@@ -1,6 +1,6 @@
 import type { I18nStringType } from '../../../../common/i18n/type';
 import type { ChatCompletionTool } from '../../llm/type';
-import { SANDBOX_ICON, SANDBOX_NAME } from './common';
+import { SANDBOX_ICON } from './common';
 import {
   SANDBOX_EDIT_FILE_NAME,
   SANDBOX_EDIT_FILE_TOOL,
@@ -17,7 +17,7 @@ import {
   SANDBOX_READ_FILE_TOOL_NAME
 } from './readFile';
 import { SANDBOX_SEARCH_NAME, SANDBOX_SEARCH_TOOL, SANDBOX_SEARCH_TOOL_NAME } from './search';
-import { SANDBOX_SHELL_TOOL, SANDBOX_SHELL_TOOL_NAME } from './shell';
+import { SANDBOX_SHELL_NAME, SANDBOX_SHELL_TOOL, SANDBOX_SHELL_TOOL_NAME } from './shell';
 import {
   SANDBOX_WRITE_FILE_NAME,
   SANDBOX_WRITE_FILE_TOOL,
@@ -41,7 +41,7 @@ export {
   SANDBOX_READ_FILE_TOOL_NAME
 } from './readFile';
 export { SANDBOX_SEARCH_NAME, SANDBOX_SEARCH_TOOL, SANDBOX_SEARCH_TOOL_NAME } from './search';
-export { SANDBOX_SHELL_TOOL, SANDBOX_SHELL_TOOL_NAME } from './shell';
+export { SANDBOX_SHELL_NAME, SANDBOX_SHELL_TOOL, SANDBOX_SHELL_TOOL_NAME } from './shell';
 export {
   SANDBOX_WRITE_FILE_NAME,
   SANDBOX_WRITE_FILE_TOOL,
@@ -54,7 +54,7 @@ export const sandboxToolMap: Record<
 > = {
   [SANDBOX_SHELL_TOOL_NAME]: {
     schema: SANDBOX_SHELL_TOOL,
-    name: SANDBOX_NAME,
+    name: SANDBOX_SHELL_NAME,
     avatar: SANDBOX_ICON,
     toolDescription: SANDBOX_SHELL_TOOL.function.description!
   },

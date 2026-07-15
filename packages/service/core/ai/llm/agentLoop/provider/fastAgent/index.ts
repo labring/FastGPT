@@ -1,4 +1,3 @@
-import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { runFastAgentMainLoop } from './loop';
 import type {
   AgentLoopInput,
@@ -83,7 +82,6 @@ export const runFastAgentLoop = async <TChildrenResponse = unknown>({
     extractFiles: runtime.llmParams.extractFiles,
     lang: runtime.lang,
     maxRunAgentTimes: runtime.maxRunAgentTimes,
-    maxStopGateRejections: runtime.maxStopGateRejections,
     batchToolSize: runtime.toolCatalog.batchToolSize,
     checkIsStopping: runtime.checkIsStopping,
     toolCatalog: {
@@ -199,8 +197,3 @@ export const fastAgentProvider: AgentLoopProvider = {
   name: 'fastAgent',
   run: runFastAgentLoop
 };
-
-export const createFastAgentStopGateFeedbackMessage = (feedback: string) => ({
-  role: ChatCompletionRequestMessageRoleEnum.User,
-  content: feedback
-});

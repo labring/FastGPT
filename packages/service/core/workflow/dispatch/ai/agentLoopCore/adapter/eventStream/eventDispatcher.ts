@@ -109,7 +109,6 @@ export const createAgentLoopCoreEventDispatcher = ({
         }
         return;
       case 'llm_request_end':
-      case 'stop_gate':
       case 'ask_start':
       case 'ask':
       case 'ask_resume':

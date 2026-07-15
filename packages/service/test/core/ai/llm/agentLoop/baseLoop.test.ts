@@ -321,65 +321,6 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     ]);
   });
 
-  it('uses request control tool choice while streaming immediately', async () => {
-    const streamed: string[] = [];
-    const order: string[] = [];
-    const requestEvents: Array<Record<string, unknown>> = [];
-    const content = 'safe final answer';
-
-    mockCreateLLMResponseQueue(createLLMResponseMock, [text({ requestId: 'req_final', content })]);
-
-    await runAgentLoop({
-      maxRunAgentTimes: 5,
-      body: {
-        model: 'gpt-4',
-        stream: true,
-        messages: [
-          {
-            role: ChatCompletionRequestMessageRoleEnum.User,
-            content: 'finish with live streaming'
-          }
-        ],
-        tools: [searchTool]
-      },
-      isAborted: () => false,
-      onRunTool: vi.fn(),
-      onRunInteractiveTool: vi.fn(),
-      onStopCandidate: vi.fn(async () => {
-        order.push('stop_check');
-        expect(streamed.join('')).toBe(content);
-        return { allowStop: true };
-      }),
-      getRequestControl: () => ({
-        toolChoice: 'none'
-      }),
-      onLLMRequestStart: (event) => requestEvents.push({ type: 'start', ...event }),
-      onLLMRequestEnd: (event) => requestEvents.push({ type: 'end', ...event }),
-      onStreaming: ({ text }) => {
-        order.push('stream');
-        streamed.push(text);
-      }
-    });
-
-    expect(streamed).toEqual([content]);
-    expect(order).toEqual(['stream', 'stop_check']);
-    expect(createLLMResponseMock.mock.calls[0][0].body.tool_choice).toBe('none');
-    expect(requestEvents).toEqual([
-      expect.objectContaining({
-        type: 'start',
-        requestIndex: 1,
-        modelName: 'GPT-4'
-      }),
-      expect.objectContaining({
-        type: 'end',
-        requestIndex: 1,
-        modelName: 'GPT-4',
-        requestId: 'req_final',
-        finishReason: 'stop'
-      })
-    ]);
-  });
-
   it('executes a tool call and feeds the tool response into the next LLM request', async () => {
     const onRunTool = vi.fn(async () => ({
       response: 'search result',
@@ -1079,61 +1020,5 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
       tool_call_id: 'call_search',
       content: 'Tool error: network failed'
     });
-  });
-
-  it('continues the same loop when stop candidate returns feedback', async () => {
-    const streamed: string[] = [];
-    const onStopCandidate = vi
-      .fn()
-      .mockResolvedValueOnce({
-        allowStop: false,
-        feedbackMessage: {
-          role: ChatCompletionRequestMessageRoleEnum.User,
-          content: 'Plan is not complete. Continue.'
-        }
-      })
-      .mockResolvedValueOnce({
-        allowStop: true
-      });
-
-    mockCreateLLMResponseQueue(createLLMResponseMock, [
-      text({ requestId: 'req_too_early', content: 'done too early' }),
-      text({ requestId: 'req_final', content: 'final answer' })
-    ]);
-
-    const result = await runAgentLoop({
-      maxRunAgentTimes: 5,
-      body: {
-        model: 'gpt-4',
-        stream: true,
-        messages: [
-          {
-            role: ChatCompletionRequestMessageRoleEnum.User,
-            content: 'finish plan'
-          }
-        ],
-        tools: []
-      },
-      isAborted: () => false,
-      onRunTool: vi.fn(),
-      onRunInteractiveTool: vi.fn(),
-      onStopCandidate,
-      onStreaming: ({ text }) => streamed.push(text)
-    });
-
-    expect(createLLMResponseMock).toHaveBeenCalledTimes(2);
-    expect(onStopCandidate).toHaveBeenCalledTimes(2);
-    expect(createLLMResponseMock.mock.calls[1][0].body.messages).toContainEqual({
-      role: 'user',
-      content: 'Plan is not complete. Continue.'
-    });
-    expect(result.requestIds).toEqual(['req_too_early', 'req_final']);
-    expect(result.assistantMessages).toEqual([
-      {
-        role: 'assistant',
-        content: 'final answer'
-      }
-    ]);
-    expect(streamed).toEqual(['done too early', 'final answer']);
   });
 });

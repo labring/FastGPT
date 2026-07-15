@@ -16,7 +16,6 @@ import z from 'zod';
 import {
   AgentLoopAskSchema,
   AgentLoopPlanUpdateSchema,
-  AgentLoopStopGateSchema,
   AgentPlanReadSchema,
   AgentPlanStatusSchema
 } from '../ai/agent/type';
@@ -228,7 +227,6 @@ export const AIChatItemValueSchema = z.object({
   planStatus: AgentPlanStatusSchema.nullish(),
   agentPlanUpdate: AgentLoopPlanUpdateSchema.nullish(),
   agentAsk: AgentLoopAskSchema.nullish(),
-  agentStopGate: AgentLoopStopGateSchema.nullish(),
   contextCheckpoint: ContextCheckpointValueSchema.nullish(),
   tool: ToolModuleResponseItemSchema.nullish().meta({ deprecated: true }),
   hideReason: z.boolean().optional(),

@@ -40,7 +40,6 @@ export type AgentLoopRuntime<TChildrenResponse = unknown> = {
   lang?: localeType;
   systemTools?: AgentLoopSystemTools;
   maxRunAgentTimes?: number;
-  maxStopGateRejections?: number;
   checkIsStopping?: () => boolean;
   toolCatalog: AgentLoopToolCatalog;
   executeTool: (

@@ -318,7 +318,6 @@ export const useChatGenerate = ({
               !latestValue.planStatus &&
               !latestValue.agentPlanUpdate &&
               !latestValue.agentAsk &&
-              !latestValue.agentStopGate &&
               !latestValue.contextCheckpoint
             ) {
               return latestIndex;

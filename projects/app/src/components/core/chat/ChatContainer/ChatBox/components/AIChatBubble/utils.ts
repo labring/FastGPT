@@ -46,7 +46,6 @@ export const shouldFilterAiValue = (item: AIChatItemValueItemType) => {
     item.planStatus ||
     item.agentPlanUpdate ||
     item.agentAsk ||
-    item.agentStopGate ||
     item.contextCheckpoint
   );
 };

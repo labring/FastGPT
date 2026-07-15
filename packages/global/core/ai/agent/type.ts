@@ -96,12 +96,3 @@ export const AgentLoopAskSchema = z
     description: 'Agent loop 内部 ask_agent 调用记录，用于恢复用户追问上下文和后续 UI 展示'
   });
 export type AgentLoopAskType = z.infer<typeof AgentLoopAskSchema>;
-
-export const AgentLoopStopGateSchema = z
-  .object({
-    id: z.string().meta({ description: 'Stop gate 记录 ID，用于前端稳定渲染和状态更新' }),
-    reason: z.string().meta({ description: 'Stop gate 拒绝结束的原因' }),
-    feedback: z.string().meta({ description: 'Stop gate 注入给模型的隐藏 user feedback' })
-  })
-  .meta({ description: 'Agent loop stop gate 隐藏反馈记录，用于恢复模型上下文' });
-export type AgentLoopStopGateType = z.infer<typeof AgentLoopStopGateSchema>;

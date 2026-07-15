@@ -170,6 +170,11 @@ describe('sandbox toolCall index', () => {
   });
 
   it('returns localized tool info for known sandbox tools', () => {
+    expect(getSandboxToolInfo(SANDBOX_SHELL_TOOL_NAME, 'zh-CN')).toMatchObject({
+      name: '虚拟机/执行命令',
+      avatar: expect.any(String),
+      toolDescription: expect.any(String)
+    });
     expect(getSandboxToolInfo(SANDBOX_WRITE_FILE_TOOL_NAME)).toMatchObject({
       avatar: expect.any(String),
       toolDescription: expect.any(String)

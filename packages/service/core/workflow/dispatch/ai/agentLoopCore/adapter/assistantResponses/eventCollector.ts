@@ -40,7 +40,6 @@ const isPlainAssistantOutput = (value?: AIChatItemValueItemType) =>
   !value.planStatus &&
   !value.agentPlanUpdate &&
   !value.agentAsk &&
-  !value.agentStopGate &&
   !value.contextCheckpoint &&
   !value.tool;
 
@@ -232,7 +231,7 @@ export const createAgentLoopCoreAssistantEventCollector = ({
     event: Extract<
       AgentLoopEvent,
       {
-        type: 'after_message_compress' | 'plan_operation' | 'ask_start' | 'stop_gate';
+        type: 'after_message_compress' | 'plan_operation' | 'ask_start';
       }
     >
   ) => {
@@ -385,9 +384,6 @@ export const createAgentLoopCoreAssistantEventCollector = ({
         }
         return;
       }
-      case 'stop_gate':
-        appendMetaAssistantResponse(event);
-        return;
       case 'plan_operation':
         appendMetaAssistantResponse(event);
         return;
