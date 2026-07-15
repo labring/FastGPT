@@ -356,6 +356,12 @@ export const resolveUploadFile = ({
     const detectedMatchesExpected =
       expectedMime !== DEFAULT_CONTENT_TYPE &&
       mimesMatchForUpload(expectedMime, evidence.detectedMime);
+
+    // 显式的可验证后缀必须与内容一致，不能因为检测出的另一种类型也在白名单中就静默改名。
+    if (explicitExtension && !detectedMatchesExpected) {
+      throw new Error(S3ErrEnum.uploadFileTypeMismatch);
+    }
+
     const detectedMatchesPolicy = (() => {
       if (!allowedExtensions.length) {
         return expectedMime === DEFAULT_CONTENT_TYPE || detectedMatchesExpected;
@@ -368,11 +374,9 @@ export const resolveUploadFile = ({
       throw new Error(S3ErrEnum.uploadFileTypeMismatch);
     }
 
-    const resolvedExtension =
-      matchedAllowedExtension ||
-      evidence.officeExtension ||
-      evidence.detectedExtension ||
-      explicitExtension;
+    const resolvedExtension = explicitExtension
+      ? explicitExtension
+      : matchedAllowedExtension || evidence.officeExtension || evidence.detectedExtension;
     return {
       filename: resolveAcceptedFilename({ filename, extension: resolvedExtension }),
       contentType: evidence.detectedMime,
@@ -385,8 +389,10 @@ export const resolveUploadFile = ({
   if (evidence.isTextLike) {
     const textExtension = (() => {
       if (explicitExtension) {
-        const explicitRule = resolveExtensionRule({ extension: explicitExtension, policy });
         if (explicitRule?.verification === 'text') return explicitExtension;
+
+        // 文本只能匹配显式声明的文本类型；fallback 仅用于真正缺少后缀的输入。
+        throw new Error(S3ErrEnum.uploadFileTypeMismatch);
       }
 
       if (policy.textFallbackExtension) return policy.textFallbackExtension;

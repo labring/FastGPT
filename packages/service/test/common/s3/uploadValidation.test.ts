@@ -61,7 +61,7 @@ describe('validateUploadFile', () => {
     ).rejects.toThrow('UploadFileTypeMismatch');
   });
 
-  it('accepts mismatched binary content when detected type is also allowed', async () => {
+  it('rejects mismatched binary content when detected type is also allowed', async () => {
     await expect(
       validateUploadFile({
         buffer: pngBuffer,
@@ -71,10 +71,7 @@ describe('validateUploadFile', () => {
           allowedExtensions: ['.jpg', '.jpeg', '.png']
         }
       })
-    ).resolves.toMatchObject({
-      filename: 'demo.png',
-      contentType: 'image/png'
-    });
+    ).rejects.toThrow('UploadFileTypeMismatch');
   });
 
   it('accepts text-like files without binary signature', async () => {
@@ -332,7 +329,20 @@ describe('validateUploadFile', () => {
           allowedExtensions: ['.png']
         }
       })
-    ).rejects.toThrow('InvalidUploadFileType');
+    ).rejects.toThrow('UploadFileTypeMismatch');
+  });
+
+  it('rejects PHP text content renamed as png', async () => {
+    await expect(
+      validateUploadFile({
+        buffer: Buffer.from('<?php echo "not an image"; ?>', 'utf8'),
+        filename: 'sample.png',
+        uploadConstraints: {
+          defaultContentType: 'image/png',
+          allowedExtensions: ['.txt', '.png']
+        }
+      })
+    ).rejects.toThrow('UploadFileTypeMismatch');
   });
 
   it('accepts OOXML files even when detection falls back to zip container', async () => {
