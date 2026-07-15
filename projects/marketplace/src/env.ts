@@ -1,6 +1,7 @@
 import { createEnv } from '@t3-oss/env-core';
 import z from 'zod';
 import { BoolSchema, IntSchema } from '@fastgpt/global/common/zod';
+import { mongoIndexSyncModeList } from '@fastgpt/global/common/system/constants';
 
 const LogLevelSchema = z.enum(['trace', 'debug', 'info', 'warning', 'error', 'fatal']);
 const StorageVendorSchema = z.enum(['minio', 'aws-s3', 'cos', 'oss']);
@@ -15,7 +16,7 @@ export const marketplaceEnv = createEnv({
     COMMUNITY_AUTH_TOKEN: z.string().optional(),
     MONGODB_URI: z.string().optional().default(''),
     DB_MAX_LINK: IntSchema.default(20),
-    SYNC_INDEX: BoolSchema.default(true),
+    MONGO_INDEX_SYNC_MODE: z.enum(mongoIndexSyncModeList).default('create'),
 
     // 对象存储。保持与主项目 packages/service/env.ts 同名,并兼容 marketplace 旧 S3_* 变量。
     STORAGE_VENDOR: StorageVendorSchema.default('minio'),

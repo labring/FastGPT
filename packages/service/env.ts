@@ -1,6 +1,9 @@
 import { createEnv } from '@t3-oss/env-core';
 import z from 'zod';
-import { isPhaseProductionBuild } from '@fastgpt/global/common/system/constants';
+import {
+  isPhaseProductionBuild,
+  mongoIndexSyncModeList
+} from '@fastgpt/global/common/system/constants';
 import { DEFAULT_MAX_FOLDER_DEPTH } from '@fastgpt/global/common/parentFolder/depth';
 import { BoolSchema, IntSchema, NumSchema, UrlSchema } from '@fastgpt/global/common/zod';
 import { agentSandboxProviderList } from '@fastgpt/global/core/ai/sandbox/constants';
@@ -29,7 +32,7 @@ export const serviceEnv = createEnv({
   server: {
     // ==================== 基础配置 ====================
     DB_MAX_LINK: IntSchema.min(1).default(5),
-    SYNC_INDEX: BoolSchema.default(true),
+    MONGO_INDEX_SYNC_MODE: z.enum(mongoIndexSyncModeList).default('create'),
 
     // ==================== 密钥 ====================
     ROOT_KEY: z

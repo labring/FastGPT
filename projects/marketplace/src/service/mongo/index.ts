@@ -2,12 +2,12 @@ import type { Model, Schema } from 'mongoose';
 import { Mongoose } from 'mongoose';
 import { getLogger, LogCategories } from '../logger';
 import { marketplaceEnv } from '../../env';
+import { runMongoIndexSyncForModel } from '@fastgpt/service/common/mongo/indexManager';
 
 export const MONGO_URL = marketplaceEnv.MONGODB_URI;
 const maxConnecting = Math.max(30, marketplaceEnv.DB_MAX_LINK);
 
 const logger = getLogger(LogCategories.INFRA.MONGO);
-const syncIndex = marketplaceEnv.SYNC_INDEX;
 
 declare global {
   var mongodb: Mongoose | undefined;
@@ -32,12 +32,23 @@ export const getMongoModel = <T extends Schema>(name: string, schema: T) => {
 };
 
 const syncMongoIndex = async (model: Model<any>) => {
-  if (syncIndex && process.env.NODE_ENV !== 'test') {
-    try {
-      model.syncIndexes({ background: true });
-    } catch (error: any) {
-      logger.error('Create index error', { error });
-    }
+  if (process.env.NODE_ENV === 'test' || !MONGO_URL) {
+    return;
+  }
+
+  try {
+    await runMongoIndexSyncForModel({
+      model,
+      mode: marketplaceEnv.MONGO_INDEX_SYNC_MODE,
+      logger
+    });
+  } catch (error: any) {
+    logger.error('Failed to ensure MongoDB indexes', {
+      modelName: model.modelName,
+      collectionName: model.collection.collectionName,
+      mode: marketplaceEnv.MONGO_INDEX_SYNC_MODE,
+      error
+    });
   }
 };
 

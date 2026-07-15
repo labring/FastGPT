@@ -12,3 +12,6 @@ export const isTestEnv = process.env.NODE_ENV === 'test';
 export const isPhaseProductionBuild = process.env.NEXT_PHASE === 'phase-production-build';
 
 export const FASTGPT_PRO_TOKEN_HEADER = 'x-fastgpt-pro-token';
+
+export const mongoIndexSyncModeList = ['off', 'create', 'dryRun'] as const;
+export type MongoIndexSyncMode = (typeof mongoIndexSyncModeList)[number];
