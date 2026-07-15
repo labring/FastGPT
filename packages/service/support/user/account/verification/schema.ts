@@ -1,0 +1,49 @@
+import { AccountVerificationMaterialTypeEnum } from '@fastgpt/global/support/user/account/verification/constants';
+import { connectionMongo, getMongoModel } from '../../../../common/mongo';
+
+const { Schema } = connectionMongo;
+
+export type AccountVerificationMaterialSchemaType = {
+  key: string;
+  type: `${AccountVerificationMaterialTypeEnum}`;
+  code?: string;
+  openid?: string;
+  createTime: Date;
+  expiredTime: Date;
+};
+
+const AccountVerificationMaterialSchema = new Schema<AccountVerificationMaterialSchemaType>({
+  key: {
+    type: String,
+    required: true
+  },
+  code: {
+    type: String,
+    minLength: 6,
+    maxLength: 6
+  },
+  openid: String,
+  type: {
+    type: String,
+    enum: Object.values(AccountVerificationMaterialTypeEnum),
+    required: true
+  },
+  createTime: {
+    type: Date,
+    required: true
+  },
+  expiredTime: {
+    type: Date,
+    required: true
+  }
+});
+
+// 唯一索引需在生产重复数据清理后单独上线，本轮先保持兼容索引。
+AccountVerificationMaterialSchema.index({ key: 1, type: 1 });
+AccountVerificationMaterialSchema.index({ expiredTime: 1 }, { expireAfterSeconds: 0 });
+
+export const MongoAccountVerificationMaterial =
+  getMongoModel<AccountVerificationMaterialSchemaType>(
+    'auth_codes',
+    AccountVerificationMaterialSchema
+  );

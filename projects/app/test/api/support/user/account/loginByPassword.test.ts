@@ -4,7 +4,6 @@ import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
-import { authCode } from '@fastgpt/service/support/user/auth/controller';
 import { setCookie } from '@fastgpt/service/support/permission/auth/common';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
@@ -12,11 +11,13 @@ import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import type { LoginByPasswordBodyType } from '@fastgpt/global/openapi/support/user/account/login/api';
 import { Call } from '@test/utils/request';
 import { initTeamFreePlan } from '@fastgpt/service/support/wallet/sub/utils';
+import { passwordAccountVerification } from '@fastgpt/service/support/user/account/verification/password/service';
 
 describe('loginByPassword API', () => {
   let testUser: any;
   let testTeam: any;
   let testTmb: any;
+  let preLoginCode: string;
 
   beforeEach(async () => {
     testUser = await MongoUser.create({
@@ -44,6 +45,7 @@ describe('loginByPassword API', () => {
     await MongoUser.findByIdAndUpdate(testUser._id, {
       lastLoginTmbId: testTmb._id
     });
+    preLoginCode = (await passwordAccountVerification.create({ username: 'testuser' })).code;
 
     vi.clearAllMocks();
   });
@@ -53,7 +55,7 @@ describe('loginByPassword API', () => {
       body: {
         username: 'testuser',
         password: 'testpassword',
-        code: '123456',
+        code: preLoginCode,
         language: 'zh-CN'
       }
     });
@@ -68,11 +70,6 @@ describe('loginByPassword API', () => {
     expect(typeof res.data.token).toBe('string');
     expect(res.data.token.length).toBeGreaterThan(0);
 
-    expect(authCode).toHaveBeenCalledWith({
-      key: 'testuser',
-      code: '123456',
-      type: expect.any(String)
-    });
     expect(setCookie).toHaveBeenCalled();
     expect(pushTrack.login).toHaveBeenCalledWith({
       type: 'password',
@@ -88,7 +85,7 @@ describe('loginByPassword API', () => {
       body: {
         username: '',
         password: 'testpassword',
-        code: '123456',
+        code: preLoginCode,
         language: 'zh-CN'
       }
     });
@@ -101,7 +98,7 @@ describe('loginByPassword API', () => {
       body: {
         username: 'testuser',
         password: '',
-        code: '123456',
+        code: preLoginCode,
         language: 'zh-CN'
       }
     });
@@ -112,8 +109,6 @@ describe('loginByPassword API', () => {
   });
 
   it('should reject login when auth code verification fails', async () => {
-    vi.mocked(authCode).mockRejectedValueOnce(new Error('Invalid code'));
-
     const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
       body: {
         username: 'testuser',
@@ -128,11 +123,12 @@ describe('loginByPassword API', () => {
   });
 
   it('should reject login when user does not exist', async () => {
+    const { code } = await passwordAccountVerification.create({ username: 'nonexistentuser' });
     const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
       body: {
         username: 'nonexistentuser',
         password: 'testpassword',
-        code: '123456',
+        code,
         language: 'zh-CN'
       }
     });
@@ -150,7 +146,7 @@ describe('loginByPassword API', () => {
       body: {
         username: 'testuser',
         password: 'testpassword',
-        code: '123456',
+        code: preLoginCode,
         language: 'zh-CN'
       }
     });
@@ -164,7 +160,7 @@ describe('loginByPassword API', () => {
       body: {
         username: 'testuser',
         password: 'wrongpassword',
-        code: '123456',
+        code: preLoginCode,
         language: 'zh-CN'
       }
     });
@@ -178,7 +174,7 @@ describe('loginByPassword API', () => {
       body: {
         username: 'testuser',
         password: 'testpassword',
-        code: '123456',
+        code: preLoginCode,
         language: 'en'
       }
     });
@@ -195,7 +191,7 @@ describe('loginByPassword API', () => {
       body: {
         username: 'testuser',
         password: 'testpassword',
-        code: '123456',
+        code: preLoginCode,
         fastgpt_sem: {
           visitor_id: 'visitor-1'
         },
@@ -218,7 +214,7 @@ describe('loginByPassword API', () => {
       body: {
         username: 'testuser',
         password: 'testpassword',
-        code: '123456',
+        code: preLoginCode,
         fastgpt_sem: {
           visitor_id: 'incoming-visitor'
         },
@@ -258,12 +254,13 @@ describe('loginByPassword API', () => {
     await MongoUser.findByIdAndUpdate(rootUser._id, {
       lastLoginTmbId: rootTmb._id
     });
+    const { code } = await passwordAccountVerification.create({ username: 'root' });
 
     const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
       body: {
         username: 'root',
         password: 'rootpassword',
-        code: '123456',
+        code,
         language: 'zh-CN'
       }
     });

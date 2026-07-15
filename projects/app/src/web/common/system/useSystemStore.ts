@@ -1,6 +1,6 @@
 import { create, devtools, persist, immer } from '@fastgpt/web/common/zustand';
 import axios from 'axios';
-import type { OAuthEnum } from '@fastgpt/global/support/user/constant';
+import type { OAuthAccountVerificationProvider } from '@fastgpt/global/support/user/account/verification/type';
 import type {
   TTSModelType,
   LLMModelItemType,
@@ -22,7 +22,13 @@ import {
 } from '@fastgpt/global/core/ai/provider';
 import { getMyModels, getOperationalAd } from './api';
 
-type LoginStoreType = { provider: OAuthEnum; lastRoute: string; state: string; lastTmbId?: string };
+type LoginStoreType = {
+  provider: OAuthAccountVerificationProvider;
+  lastRoute: string;
+  state: string;
+  callbackUrl: string;
+  lastTmbId?: string;
+};
 
 export type NotSufficientModalType =
   | TeamErrEnum.datasetSizeNotEnough

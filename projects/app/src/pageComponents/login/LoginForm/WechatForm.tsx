@@ -1,4 +1,4 @@
-import React, { type Dispatch } from 'react';
+import React, { type Dispatch, useEffect } from 'react';
 import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import { Box, Center } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
@@ -31,14 +31,27 @@ const WechatForm = ({ setPageType, loginSuccess }: Props) => {
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
 
-  const { data: wechatInfo } = useQuery(['getWXLoginQR'], getWXLoginQR, {
-    onError(err) {
-      toast({
-        status: 'warning',
-        title: getErrText(err, t('common:get_QR_failed'))
-      });
+  const { data: wechatInfo, refetch: refetchWechatInfo } = useQuery(
+    ['getWXLoginQR'],
+    getWXLoginQR,
+    {
+      onError(err) {
+        toast({
+          status: 'warning',
+          title: getErrText(err, t('common:get_QR_failed'))
+        });
+      }
     }
-  });
+  );
+
+  useEffect(() => {
+    if (!wechatInfo?.expiredAt) return;
+    const remainingMs = Math.max(new Date(wechatInfo.expiredAt).getTime() - Date.now(), 0);
+    const timer = window.setTimeout(() => {
+      void refetchWechatInfo();
+    }, remainingMs);
+    return () => window.clearTimeout(timer);
+  }, [refetchWechatInfo, wechatInfo?.expiredAt]);
 
   useQuery(
     ['getWXLoginResult', wechatInfo?.code, i18n.language],
