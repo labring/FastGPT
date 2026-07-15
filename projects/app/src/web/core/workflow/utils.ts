@@ -49,8 +49,7 @@ import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 /* ====== node ======= */
 /**
  * 适配从数据库读取出的节点输入。
- * 旧知识库搜索节点使用 userChatInput；当前节点改为 datasetSearchInput 数组。
- * 这里仅处理旧字段到新字段的 key 和 valueType 迁移。
+ * 处理节点输入结构升级，并保证旧工作流加载后符合当前模板约束。
  */
 export const adaptStoreNodeInputs = (storeNode: StoreNodeItemType): FlowNodeInputItemType[] => {
   if (storeNode.flowNodeType === FlowNodeTypeEnum.ifElseNode) {
@@ -60,6 +59,24 @@ export const adaptStoreNodeInputs = (storeNode: StoreNodeItemType): FlowNodeInpu
       return {
         ...input,
         value: normalizeIfElseList(input.value as IfElseListItemType[])
+      };
+    });
+  }
+
+  if (storeNode.flowNodeType === FlowNodeTypeEnum.agent) {
+    return storeNode.inputs.map((input) => {
+      const isManualSelectionInput = [
+        NodeInputKeyEnum.skills,
+        NodeInputKeyEnum.selectedTools,
+        NodeInputKeyEnum.datasetSelectList
+      ].includes(input.key as NodeInputKeyEnum);
+      if (!isManualSelectionInput) return input;
+
+      // Agent 资源已取消变量引用；旧引用值无法转为资源对象，加载时清空并切回手动选择。
+      return {
+        ...input,
+        selectedTypeIndex: 0,
+        value: nodeInputIsReference(input) ? [] : input.value
       };
     });
   }
