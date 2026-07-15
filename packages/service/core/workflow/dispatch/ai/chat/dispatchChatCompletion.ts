@@ -3,7 +3,7 @@ import { getQuoteTemplate } from '@fastgpt/global/core/ai/prompt/AIChat';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
+import { streamSseEvent } from '@fastgpt/global/core/chat/stream/sse';
 import { getLLMModel } from '../../../../ai/model';
 import { createLLMResponse } from '../../../../ai/llm/request';
 import { computedMaxToken } from '../../../../ai/utils';
@@ -170,11 +170,11 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       isAborted: checkIsStopping,
       onReasoning({ text }) {
         if (!aiChatReasoning) return;
-        workflowStreamResponse?.(workflowSseEvent.reasoningDelta(text));
+        workflowStreamResponse?.(streamSseEvent.reasoningDelta(text));
       },
       onStreaming({ text }) {
         if (!isResponseAnswerText) return;
-        workflowStreamResponse?.(workflowSseEvent.answerDelta(text));
+        workflowStreamResponse?.(streamSseEvent.answerDelta(text));
       }
     });
 

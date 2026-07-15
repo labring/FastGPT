@@ -69,13 +69,16 @@ const AIChatBubbleActions = ({
   const showPoints = useContextSelector(ChatItemContext, (v) => v.showPoints ?? false);
 
   const totalPoints = useMemo(() => {
+    if (historyItem.obj === ChatRoleEnum.AI && historyItem.totalPoints !== undefined) {
+      return historyItem.totalPoints;
+    }
     if (!responseData) return 0;
     const flatResData = getFlatAppResponses(responseData);
     return flatResData.reduce(
       (sum: number, item: ChatHistoryItemResType) => sum + (item.totalPoints || 0),
       0
     );
-  }, [responseData]);
+  }, [historyItem, responseData]);
   const showTotalPoints = showPoints && totalPoints > 0;
   const badFeedback = historyItem.obj === ChatRoleEnum.AI ? historyItem.userBadFeedback : undefined;
   const isFeedbackRead =

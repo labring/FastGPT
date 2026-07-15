@@ -12,7 +12,7 @@ import {
   StreamResumePhaseEnum,
   StreamResumePhaseEvent,
   StreamResumeUnavailableEvent
-} from '@fastgpt/global/core/workflow/runtime/constants';
+} from '@fastgpt/global/core/chat/stream/constants';
 import {
   STREAM_RESUME_TTL_SECONDS,
   catchUpAllHistoryItems,

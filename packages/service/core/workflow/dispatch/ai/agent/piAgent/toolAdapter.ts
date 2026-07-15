@@ -3,7 +3,7 @@ import type {
   ChatHistoryItemResType,
   ToolModuleResponseItemType
 } from '@fastgpt/global/core/chat/type';
-import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
+import { streamSseEvent } from '@fastgpt/global/core/chat/stream/sse';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { DispatchAgentModuleProps } from '..';
 import { getExecuteTool, type ToolDispatchContext } from '../utils';
@@ -171,13 +171,13 @@ export const createPiAgentToolEventHandler = ({
       };
       upsertAssistantTool(assistantResponses, assistantTool);
 
-      ctx.streamResponseFn?.(workflowSseEvent.toolCall(assistantTool));
+      ctx.streamResponseFn?.(streamSseEvent.toolCall(assistantTool));
     }
 
     const latestTool = findAssistantTool(assistantResponses, callId);
     if (argStr && !latestTool?.params) {
       appendAssistantToolParams(assistantResponses, callId, argStr);
-      ctx.streamResponseFn?.(workflowSseEvent.toolParams({ id: callId, params: argStr }));
+      ctx.streamResponseFn?.(streamSseEvent.toolParams({ id: callId, params: argStr }));
     }
   };
 
@@ -243,7 +243,7 @@ export const createPiAgentToolEventHandler = ({
       if (response && !currentTool?.response) {
         appendAssistantToolResponse(assistantResponses, event.toolCallId, response);
         ctx.streamResponseFn?.(
-          workflowSseEvent.toolResponse({
+          streamSseEvent.toolResponse({
             id: event.toolCallId,
             response
           })
@@ -317,7 +317,7 @@ export async function buildAgentTools({
       if (usages.length > 0) usagePush(usages);
       appendAssistantToolResponse(assistantResponses, callId, response);
 
-      ctx.streamResponseFn?.(workflowSseEvent.toolResponse({ id: callId, response }));
+      ctx.streamResponseFn?.(streamSseEvent.toolResponse({ id: callId, response }));
 
       return { content: [{ type: 'text' as const, text: response }], details: {} };
     };
@@ -336,12 +336,12 @@ export async function buildAgentTools({
         };
         upsertAssistantTool(assistantResponses, assistantTool);
 
-        ctx.streamResponseFn?.(workflowSseEvent.toolCall(assistantTool));
+        ctx.streamResponseFn?.(streamSseEvent.toolCall(assistantTool));
       }
 
       if (argStr && !findAssistantTool(assistantResponses, callId)?.params) {
         appendAssistantToolParams(assistantResponses, callId, argStr);
-        ctx.streamResponseFn?.(workflowSseEvent.toolParams({ id: callId, params: argStr }));
+        ctx.streamResponseFn?.(streamSseEvent.toolParams({ id: callId, params: argStr }));
       }
 
       return execute(callId, args, argStr);

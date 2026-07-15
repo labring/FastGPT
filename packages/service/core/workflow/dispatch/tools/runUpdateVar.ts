@@ -2,7 +2,7 @@ import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { VARIABLE_NODE_ID, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
+import { streamSseEvent } from '@fastgpt/global/core/chat/stream/sse';
 import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
 import { type TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
@@ -170,7 +170,7 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
   }
 
   if (!runningAppInfo.isChildApp) {
-    workflowStreamResponse?.(workflowSseEvent.updateVariables(variableState.toStoreRecord()));
+    workflowStreamResponse?.(streamSseEvent.updateVariables(variableState.toStoreRecord()));
   }
 
   return {

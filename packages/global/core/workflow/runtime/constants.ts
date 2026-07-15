@@ -1,46 +1,5 @@
 import { FlowNodeInputTypeEnum } from '../node/constant';
 
-export enum SseResponseEventEnum {
-  error = 'error',
-  workflowDuration = 'workflowDuration', // workflow duration
-  chatTitle = 'chatTitle', // generated chat title
-  answer = 'answer', // animation stream
-  fastAnswer = 'fastAnswer', // direct answer text, not animation
-  flowNodeStatus = 'flowNodeStatus', // update node status
-  flowNodeResponse = 'flowNodeResponse', // node response
-
-  toolCall = 'toolCall', // tool start
-  toolParams = 'toolParams', // tool params return
-  toolResponse = 'toolResponse', // tool response return
-
-  flowResponses = 'flowResponses', // sse response request
-  updateVariables = 'updateVariables',
-
-  interactive = 'interactive',
-
-  // Agent
-  plan = 'plan', // plan response
-  planStatus = 'planStatus', // plan lifecycle status
-
-  // Sandbox lifecycle
-  sandboxStatus = 'sandboxStatus', // sandbox lifecycle phase notification
-  skillCall = 'skillCall' // skill invocation announce (when SKILL.md is loaded)
-}
-
-export const StreamResumePhaseEvent = 'resumePhase';
-export const StreamResumeCompletedEvent = 'resumeCompleted';
-export const StreamResumeUnavailableEvent = 'resumeUnavailable';
-
-export enum StreamResumePhaseEnum {
-  catchup = 'catchup',
-  live = 'live'
-}
-
-export enum StreamResumeUnavailableReasonEnum {
-  memoryPressure = 'memoryPressure',
-  mirrorUnavailable = 'mirrorUnavailable'
-}
-
 export enum DispatchNodeResponseKeyEnum {
   answerText = 'answerText', // answer text
   reasoningText = 'reasoningText', // reasoning text

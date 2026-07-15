@@ -1,7 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import type { AIChatItemValueItemType, ChatItemDBSchemaType } from '@fastgpt/global/core/chat/type';
+import type {
+  AIChatItemValueItemType,
+  ChatHistoryItemResType,
+  ChatItemMiniType
+} from '@fastgpt/global/core/chat/type';
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import type { AuxiliaryGenerationChatFileType } from '@fastgpt/global/core/ai/auxiliaryGeneration/type';
@@ -19,23 +23,21 @@ export type AuxiliaryGenerationProcessorParams<T = unknown> = {
   query: string;
   files: AuxiliaryGenerationChatFileType[];
   data: T;
-  histories: ChatItemDBSchemaType[];
-  streamWriter?: AuxiliaryGenerationStreamWriter;
+  histories: ChatItemMiniType[];
+  streamWriter: AuxiliaryGenerationStreamWriter;
   requestOrigin?: string;
   maxFiles?: number;
   customPdfParse?: boolean;
-  checkIsStopping?: () => boolean;
-  usageSink?: (usages: ChatNodeUsageType[]) => void;
+  checkIsStopping: () => boolean;
+  usageSink: (usages: ChatNodeUsageType[]) => void;
+  usageId: string;
   user: AuxiliaryGenerationUser;
 };
 
 export type AuxiliaryGenerationProcessorResponse = {
   aiResponse: AIChatItemValueItemType[];
-  usage: {
-    model: string;
-    inputTokens: number;
-    outputTokens: number;
-  };
+  nodeResponses?: ChatHistoryItemResType[];
+  memories?: Record<string, any>;
 };
 
 export type AuxiliaryGenerationRunParams<T = unknown> = {
@@ -53,8 +55,10 @@ export type AuxiliaryGenerationRunParams<T = unknown> = {
   query: string;
   files: AuxiliaryGenerationChatFileType[];
   data: T;
-  histories: ChatItemDBSchemaType[];
+  histories: ChatItemMiniType[];
   usageSource: UsageSourceEnum;
+  /** 交互续答复用上一轮 usage，避免把一次逻辑调用拆成多条计费记录。 */
+  usageId?: string;
   processor: (
     params: AuxiliaryGenerationProcessorParams<T>
   ) => Promise<AuxiliaryGenerationProcessorResponse>;
@@ -62,8 +66,9 @@ export type AuxiliaryGenerationRunParams<T = unknown> = {
   customPdfParse?: boolean;
   /** SSE 创建后立即暴露给路由层，用于失败时写 error 和 flush resume。 */
   onStreamContextReady?: (streamContext: AuxiliaryGenerationStreamContext) => void;
-};
-
-export type AuxiliaryGenerationRunResult = AuxiliaryGenerationProcessorResponse & {
-  durationSeconds: number;
+  /** 公共层写结束事件前的业务收尾，例如持久化本轮聊天。 */
+  onBeforeStreamDone?: (params: {
+    result: AuxiliaryGenerationProcessorResponse;
+    durationSeconds: number;
+  }) => Promise<void> | void;
 };

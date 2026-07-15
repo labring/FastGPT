@@ -17,7 +17,7 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { parseJsonArgs } from '../../../../ai/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { dispatchTool } from './sub/tool';
-import type { WorkflowResponseItemType } from '../../type';
+import type { StreamResponseItemType } from '../../type';
 import { dispatchApp, dispatchPlugin } from './sub/app';
 import type { SandboxClient } from '../../../../ai/sandbox/interface/runtime';
 import { SystemToolRepo } from '../../../../app/tool/systemTool/systemTool.repo';
@@ -131,7 +131,7 @@ export type ToolDispatchContext = Pick<
   fileUrlMap?: Record<string, string>;
   filesMap: Record<string, string>;
   sandboxClient?: SandboxClient;
-  streamResponseFn?: (args: WorkflowResponseItemType) => void | undefined;
+  streamResponseFn?: (args: StreamResponseItemType) => void | undefined;
 };
 
 /**

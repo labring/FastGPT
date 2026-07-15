@@ -6,6 +6,10 @@ import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/typ
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
+const axiosMocks = vi.hoisted(() => ({
+  internalGet: vi.fn()
+}));
+
 // Mock external dependencies
 vi.mock('@fastgpt/service/common/string/tiktoken/index', () => {
   const countGptMessagesTokens = vi.fn();
@@ -28,12 +32,23 @@ vi.mock('@fastgpt/service/common/system/log', () => ({
   }
 }));
 
-vi.mock('@fastgpt/service/common/api/axios', () => ({
-  axios: {
+vi.mock('@fastgpt/service/common/api/axios', () => {
+  const axios = {
     head: vi.fn(),
     get: vi.fn()
-  }
-}));
+  };
+
+  return {
+    axios,
+    pickOutboundAxios: vi.fn((url: string) =>
+      url.startsWith('/')
+        ? {
+            get: axiosMocks.internalGet
+          }
+        : axios
+    )
+  };
+});
 
 import { countGptMessagesTokens } from '@fastgpt/service/common/string/tiktoken/index';
 import { getImageBase64 } from '@fastgpt/service/common/file/image/utils';
@@ -634,6 +649,50 @@ describe('loadRequestMessages function tests', () => {
         responseType: 'arraybuffer',
         timeout: 10000
       });
+    });
+
+    it('should load a relative video URL through the internal axios client', async () => {
+      const videoUrl = '/api/system/file/download/video-token?filename=demo.mp4';
+      axiosMocks.internalGet.mockResolvedValue({
+        data: Buffer.from('relative video bytes')
+      });
+      const messages: ChatCompletionMessageParam[] = [
+        {
+          role: ChatCompletionRequestMessageRoleEnum.User,
+          content: [
+            {
+              type: 'file_url',
+              name: 'demo.mp4',
+              url: videoUrl,
+              fileType: 'video'
+            }
+          ]
+        }
+      ];
+
+      const result = await loadRequestMessages({
+        messages,
+        useVideo: true
+      });
+
+      expect(result).toEqual([
+        {
+          role: ChatCompletionRequestMessageRoleEnum.User,
+          content: [
+            {
+              type: 'video_url',
+              video_url: {
+                url: `data:;base64,${Buffer.from('relative video bytes').toString('base64')}`
+              }
+            }
+          ]
+        }
+      ]);
+      expect(axiosMocks.internalGet).toHaveBeenCalledWith(videoUrl, {
+        responseType: 'arraybuffer',
+        timeout: 10000
+      });
+      expect(mockAxiosGet).not.toHaveBeenCalled();
     });
 
     it('should ignore file keys and normalize audio and video file_url from existing urls', async () => {

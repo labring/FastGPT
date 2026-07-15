@@ -6,7 +6,10 @@ import {
   SANDBOX_SHELL_TOOL_NAME
 } from '@fastgpt/global/core/ai/sandbox/tools';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { addStatisticalDataToHistoryItem } from '@/global/core/chat/utils';
+import {
+  addStatisticalDataToHistoryItem,
+  transformPreviewHistories
+} from '@/global/core/chat/utils';
 
 describe('addStatisticalDataToHistoryItem', () => {
   it('marks sandbox usage from streaming tool call cards before responseData is loaded', () => {
@@ -428,5 +431,41 @@ describe('addStatisticalDataToHistoryItem', () => {
     };
 
     expect(addStatisticalDataToHistoryItem(historyItem).totalQuoteList).toHaveLength(1);
+  });
+
+  it('keeps preview total points after responseData is stripped', () => {
+    const historyItem: ChatItemMiniType = {
+      obj: ChatRoleEnum.AI,
+      value: [
+        {
+          text: {
+            content: 'done'
+          }
+        }
+      ],
+      responseData: [
+        {
+          id: 'agent-response',
+          nodeId: 'agent-node',
+          moduleName: 'Agent',
+          moduleType: FlowNodeTypeEnum.agent,
+          totalPoints: 1.5,
+          childrenResponses: [
+            {
+              id: 'tool-response',
+              nodeId: 'tool-node',
+              moduleName: 'Tool',
+              moduleType: FlowNodeTypeEnum.tool,
+              totalPoints: 0.7
+            }
+          ]
+        }
+      ]
+    };
+
+    const [previewItem] = transformPreviewHistories([historyItem], true);
+
+    expect(previewItem.responseData).toBeUndefined();
+    expect(previewItem.totalPoints).toBeCloseTo(2.2);
   });
 });

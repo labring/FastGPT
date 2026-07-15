@@ -5,7 +5,7 @@ import {
   StreamResumePhaseEvent,
   StreamResumeUnavailableEvent,
   StreamResumeUnavailableReasonEnum
-} from '@fastgpt/global/core/workflow/runtime/constants';
+} from '@fastgpt/global/core/chat/stream/constants';
 import {
   ChatSourceTypeEnum,
   STREAM_RESUME_REQUEST_HEADER,
@@ -23,7 +23,7 @@ import { formatTime2YMDHMW } from '@fastgpt/global/common/string/time';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import type { OnOptimizePromptProps } from '@/components/common/PromptEditor/OptimizerPopover';
 import type { OnOptimizeCodeProps } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeCode/Copilot';
-import type { WorkflowSsePayloadMap } from '@fastgpt/global/core/workflow/runtime/sse';
+import type { StreamSsePayloadMap } from '@fastgpt/global/core/chat/stream/sse';
 import type { ChatAgentConfigFormDataType } from '@fastgpt/global/core/ai/auxiliaryGeneration/type';
 import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 import type { StreamNoNeedToBeResumeType } from '@fastgpt/global/openapi/core/ai/api';
@@ -75,7 +75,7 @@ type WorkflowQueueEvent =
   | SseResponseEventEnum.skillCall
   | SseResponseEventEnum.chatTitle;
 type WorkflowQueueItem<Event extends WorkflowQueueEvent> = Event extends WorkflowQueueEvent
-  ? CommonResponseType & { event: Event } & WorkflowSsePayloadMap[Event]
+  ? CommonResponseType & { event: Event } & StreamSsePayloadMap[Event]
   : never;
 type AnswerQueueItem = CommonResponseType & {
   event: SseResponseEventEnum.fastAnswer | SseResponseEventEnum.answer;

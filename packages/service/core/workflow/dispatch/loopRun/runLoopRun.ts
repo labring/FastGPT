@@ -2,7 +2,7 @@ import { cloneDeep } from 'lodash';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
+import { streamSseEvent } from '@fastgpt/global/core/chat/stream/sse';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type {
   DispatchNodeResultType,
@@ -256,7 +256,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
         );
         if (props.apiVersion === 'v2') {
           recordedWrappers.forEach((item) => {
-            props.workflowStreamResponse?.(workflowSseEvent.flowNodeResponse(item));
+            props.workflowStreamResponse?.(streamSseEvent.flowNodeResponse(item));
           });
         }
       }

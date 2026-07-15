@@ -53,6 +53,18 @@ describe('getErrText', () => {
     expect(getErrText(err)).toBe('Sandbox is not configured');
   });
 
+  it('should prefer system_error_text and resolve it from nested errors', () => {
+    expect(
+      getErrText({
+        system_error_text: 'Sandbox is missing',
+        errorText: 'Fallback error'
+      })
+    ).toBe('Sandbox is missing');
+    expect(getErrText({ error: { system_error_text: 'Nested sandbox error' } })).toBe(
+      'Nested sandbox error'
+    );
+  });
+
   it('should use localized reason when locale is provided', () => {
     const err = {
       response: {

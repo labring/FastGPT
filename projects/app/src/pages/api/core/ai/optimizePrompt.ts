@@ -1,6 +1,6 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { SseResponseEventEnum } from '@fastgpt/global/core/chat/stream/constants';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { sseErrRes } from '@fastgpt/service/common/response';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';

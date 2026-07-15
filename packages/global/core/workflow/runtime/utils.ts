@@ -2,7 +2,6 @@ import json5 from 'json5';
 import { ChatRoleEnum } from '../../../core/chat/constants';
 import type { ChatItemMiniType } from '../../../core/chat/type';
 import type { NodeOutputItemType } from './type';
-import { createChatCompletionDeltaResponse } from '../../ai/llm/utils';
 import {
   NodeInputKeyEnum,
   NodeOutputKeyEnum,
@@ -358,28 +357,6 @@ export const formatVariableValByType = (val: any, valueType?: WorkflowIOValueTyp
     return undefined;
 
   return val;
-};
-
-export const textAdaptGptResponse = ({
-  text,
-  reasoning_content,
-  model = '',
-  finish_reason = null,
-  extraData = {}
-}: {
-  model?: string;
-  text?: string | null;
-  reasoning_content?: string | null;
-  finish_reason?: null | 'stop';
-  extraData?: object;
-}) => {
-  return createChatCompletionDeltaResponse({
-    text,
-    reasoningContent: reasoning_content,
-    model,
-    finishReason: finish_reason,
-    extraData
-  });
 };
 
 /* Update runtimeNode's outputs with interactive data from history */

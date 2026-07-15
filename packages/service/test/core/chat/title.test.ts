@@ -12,7 +12,7 @@ import {
   createGeneratedChatTitleSender,
   syncGeneratedChatTitleFromUserContent
 } from '@fastgpt/service/core/chat/title';
-import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { SseResponseEventEnum } from '@fastgpt/global/core/chat/stream/constants';
 
 const createLLMResponseMock = vi.hoisted(() => vi.fn());
 const getDefaultChatTitleModelMock = vi.hoisted(() => vi.fn());

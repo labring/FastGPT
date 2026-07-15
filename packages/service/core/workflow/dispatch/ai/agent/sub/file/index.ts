@@ -2,7 +2,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
 import type { DispatchSubAppResponse } from '../../type';
-import { getFileContentByUrl } from '../../../../../../chat/fileContext';
+import { readAgentFiles } from '../../../../../../ai/agent/service';
 
 type FileReadParams = {
   files: { id: string; url: string }[];
@@ -21,31 +21,13 @@ export const dispatchFileRead = async ({
   usageId
 }: FileReadParams): Promise<DispatchSubAppResponse> => {
   try {
-    const readFilesResult = await Promise.all(
-      files.map(async ({ id, url }) => {
-        try {
-          const { name, content } = await getFileContentByUrl({
-            url,
-            teamId,
-            tmbId,
-            customPdfParse,
-            usageId
-          });
-
-          return {
-            id,
-            name,
-            content
-          };
-        } catch (error) {
-          return {
-            id,
-            name: '',
-            content: getErrText(error, 'Load file error')
-          };
-        }
-      })
-    );
+    const readFilesResult = await readAgentFiles({
+      files,
+      teamId,
+      tmbId,
+      customPdfParse,
+      usageId
+    });
 
     return {
       response: JSON.stringify(readFilesResult),

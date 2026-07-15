@@ -1,7 +1,7 @@
 import type { ChatCompletionMessageToolCall } from '@fastgpt/global/core/ai/llm/type';
-import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
+import { streamSseEvent } from '@fastgpt/global/core/chat/stream/sse';
 import { sliceStrStartEnd } from '@fastgpt/global/common/string/tools';
-import type { WorkflowResponseType } from '../../../type';
+import type { StreamResponseType } from '../../../type';
 import type { ToolInfo } from './useToolCatalog';
 
 export const useToolStreamResponse = ({
@@ -10,19 +10,19 @@ export const useToolStreamResponse = ({
   aiChatReasoning,
   getToolInfo
 }: {
-  workflowStreamResponse?: WorkflowResponseType;
+  workflowStreamResponse?: StreamResponseType;
   isResponseAnswerText?: boolean;
   aiChatReasoning?: boolean;
   getToolInfo: (name: string) => ToolInfo | undefined;
 }) => {
   const streamReasoning = (text: string) => {
     if (!aiChatReasoning) return;
-    workflowStreamResponse?.(workflowSseEvent.reasoningDelta(text));
+    workflowStreamResponse?.(streamSseEvent.reasoningDelta(text));
   };
 
   const streamAnswer = (text: string) => {
     if (!isResponseAnswerText) return;
-    workflowStreamResponse?.(workflowSseEvent.answerDelta(text));
+    workflowStreamResponse?.(streamSseEvent.answerDelta(text));
   };
 
   const streamToolCall = (call: ChatCompletionMessageToolCall) => {
@@ -31,7 +31,7 @@ export const useToolStreamResponse = ({
     if (!toolNode) return;
 
     workflowStreamResponse?.(
-      workflowSseEvent.toolCall({
+      streamSseEvent.toolCall({
         id: call.id,
         toolName: toolNode.name,
         toolAvatar: toolNode.avatar ?? '',
@@ -50,7 +50,7 @@ export const useToolStreamResponse = ({
   }) => {
     if (!isResponseAnswerText) return;
     workflowStreamResponse?.(
-      workflowSseEvent.toolParams({
+      streamSseEvent.toolParams({
         id: call.id,
         toolName: '',
         toolAvatar: '',
@@ -72,7 +72,7 @@ export const useToolStreamResponse = ({
      * SSE 只给聊天气泡做轻量预览；完整工具响应与压缩 child 保存在 nodeResponse。
      */
     workflowStreamResponse?.(
-      workflowSseEvent.toolResponse({
+      streamSseEvent.toolResponse({
         id: toolCallId,
         toolName: '',
         toolAvatar: '',

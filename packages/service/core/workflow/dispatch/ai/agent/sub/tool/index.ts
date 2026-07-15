@@ -11,7 +11,7 @@ import type {
   ChatDispatchProps,
   RuntimeNodeItemType
 } from '@fastgpt/global/core/workflow/runtime/type';
-import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
+import { streamSseEvent } from '@fastgpt/global/core/chat/stream/sse';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { pushTrack } from '../../../../../../../common/middle/tracks/utils';
@@ -174,8 +174,8 @@ export const dispatchTool = async ({
           answerText += content;
           workflowStreamResponse(
             type === 'fastAnswer'
-              ? workflowSseEvent.fastAnswerDelta(content)
-              : workflowSseEvent.answerDelta(content)
+              ? streamSseEvent.fastAnswerDelta(content)
+              : streamSseEvent.answerDelta(content)
           );
         }
       });

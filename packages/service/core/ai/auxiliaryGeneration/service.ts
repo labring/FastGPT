@@ -1,7 +1,8 @@
 import { createAuxiliaryGenerationStream } from './stream';
 import { createAuxiliaryGenerationUsage } from './usage';
-import { clearAuxiliaryGenerationStop, shouldAuxiliaryGenerationStop } from './stop';
-import type { AuxiliaryGenerationRunParams, AuxiliaryGenerationRunResult } from './type';
+import type { AuxiliaryGenerationProcessorResponse, AuxiliaryGenerationRunParams } from './type';
+import { streamSseEvent } from '@fastgpt/global/core/chat/stream/sse';
+import { clearAgentRuntimeStop, shouldAgentRuntimeStop } from '../runtimeStatus';
 
 /**
  * 执行一次辅助生成。
@@ -26,17 +27,22 @@ export const runAuxiliaryGeneration = async <T>({
   data,
   histories,
   usageSource,
+  usageId,
   processor,
   maxFiles,
   customPdfParse,
-  onStreamContextReady
+  onStreamContextReady,
+  onBeforeStreamDone
 }: AuxiliaryGenerationRunParams<T>): Promise<
-  AuxiliaryGenerationRunResult & {
+  AuxiliaryGenerationProcessorResponse & {
     streamContext: Awaited<ReturnType<typeof createAuxiliaryGenerationStream>>;
   }
 > => {
   let stopping = false;
+  let stopCheckRunning = false;
+  let stopCheckTimer: ReturnType<typeof setInterval> | undefined;
   const startedAt = Date.now();
+  const runtimeStatusParams = { sourceType, sourceId, chatId };
   const streamContext = await createAuxiliaryGenerationStream({
     req,
     res,
@@ -45,28 +51,37 @@ export const runAuxiliaryGeneration = async <T>({
     sourceId,
     chatId
   });
-  onStreamContextReady?.(streamContext);
-
-  const usageContext = await createAuxiliaryGenerationUsage({
-    teamId,
-    tmbId,
-    appName,
-    sourceType,
-    sourceId,
-    usageSource
-  });
-  await clearAuxiliaryGenerationStop({ sourceType, sourceId, chatId });
-
-  res.once('close', () => {
-    stopping = true;
-  });
-
-  const stopCheckTimer = setInterval(async () => {
-    if (stopping) return;
-    stopping = await shouldAuxiliaryGenerationStop({ sourceType, sourceId, chatId });
-  }, 100);
 
   try {
+    onStreamContextReady?.(streamContext);
+    const usageContext = await createAuxiliaryGenerationUsage({
+      teamId,
+      tmbId,
+      appName,
+      sourceType,
+      sourceId,
+      usageSource,
+      usageId
+    });
+    await clearAgentRuntimeStop(runtimeStatusParams).catch(() => undefined);
+
+    res.once('close', () => {
+      stopping = true;
+    });
+
+    stopCheckTimer = setInterval(async () => {
+      if (stopping || stopCheckRunning) return;
+
+      stopCheckRunning = true;
+      try {
+        if (await shouldAgentRuntimeStop(runtimeStatusParams)) {
+          stopping = true;
+        }
+      } finally {
+        stopCheckRunning = false;
+      }
+    }, 100);
+
     const result = await processor({
       query,
       files,
@@ -76,6 +91,7 @@ export const runAuxiliaryGeneration = async <T>({
       streamWriter: streamContext.write,
       checkIsStopping: () => stopping,
       usageSink: usageContext.pushUsage,
+      usageId: usageContext.usageId,
       maxFiles,
       customPdfParse,
       user: {
@@ -87,15 +103,25 @@ export const runAuxiliaryGeneration = async <T>({
       }
     });
 
+    const durationSeconds = +((Date.now() - startedAt) / 1000).toFixed(2);
+    streamContext.write(streamSseEvent.workflowDuration(durationSeconds));
+    streamContext.write(streamSseEvent.answerStop());
+
+    await onBeforeStreamDone?.({
+      result,
+      durationSeconds
+    });
+
     streamContext.writeDone();
 
     return {
       ...result,
-      durationSeconds: +((Date.now() - startedAt) / 1000).toFixed(2),
       streamContext
     };
   } finally {
-    clearInterval(stopCheckTimer);
-    await clearAuxiliaryGenerationStop({ sourceType, sourceId, chatId });
+    if (stopCheckTimer) {
+      clearInterval(stopCheckTimer);
+    }
+    await clearAgentRuntimeStop(runtimeStatusParams).catch(() => undefined);
   }
 };

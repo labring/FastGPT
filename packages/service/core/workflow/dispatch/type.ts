@@ -6,9 +6,9 @@ import type {
 import type { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type {
-  WorkflowResponseItemType,
-  WorkflowResponseType
-} from '@fastgpt/global/core/workflow/runtime/sse';
+  StreamResponseItemType,
+  StreamResponseType
+} from '@fastgpt/global/core/chat/stream/sse';
 import type {
   InteractiveNodeResponseType,
   WorkflowInteractiveResponseType
@@ -17,7 +17,7 @@ import { type RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edg
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { NodeResponseWriteSummary } from '../../chat/nodeResponseStorage';
 
-export type { WorkflowResponseItemType, WorkflowResponseType };
+export type { StreamResponseItemType, StreamResponseType };
 
 /**
  * workflow 内部运行期使用的 nodeResponse 摘要。

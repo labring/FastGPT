@@ -10,7 +10,7 @@ import type {
   ChatCompletionMessageParam
 } from '@fastgpt/global/core/ai/llm/type';
 import { audioFileType, imageFileType, videoFileType } from '@fastgpt/global/common/file/constants';
-import { axios } from '../../../common/api/axios';
+import { axios, pickOutboundAxios } from '../../../common/api/axios';
 
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';
@@ -197,7 +197,7 @@ export const loadRequestMessages = async ({
    * 用于供应商不能访问内部文件或模型配置要求 base64 的媒体输入。
    */
   const loadUrlAsBase64Data = async (url: string) => {
-    const response = await axios.get<ArrayBuffer>(url, {
+    const response = await pickOutboundAxios(url).get<ArrayBuffer>(url, {
       responseType: 'arraybuffer',
       timeout: 10000
     });
@@ -335,6 +335,12 @@ export const loadRequestMessages = async ({
     return [...mediaParts, { type: 'text', text: input }];
   };
 
+  const removeContentPartKey = <T extends { key?: string }>(item: T): Omit<T, 'key'> => {
+    const result = { ...item };
+    delete result.key;
+    return result;
+  };
+
   /**
    * 归一化图片输入：内部文件转 base64，远程图片先做可访问性校验。
    * 返回 undefined 表示图片不可访问，需要从请求消息中过滤。
@@ -342,7 +348,7 @@ export const loadRequestMessages = async ({
   const normalizeImageContentPart = async (
     item: Extract<ChatCompletionContentPart, { type: 'image_url' }>
   ): Promise<ChatCompletionContentPart | undefined> => {
-    const { key: _key, ...imageItem } = item;
+    const imageItem = removeContentPartKey(item);
     const imgUrl = imageItem.image_url.url;
 
     if (imgUrl.startsWith('data:image/')) {
@@ -390,7 +396,7 @@ export const loadRequestMessages = async ({
   const normalizeAudioContentPart = async (
     item: Extract<ChatCompletionContentPart, { type: 'input_audio' }>
   ): Promise<ChatCompletionContentPart | undefined> => {
-    const { key: _key, ...audioItem } = item;
+    const audioItem = removeContentPartKey(item);
     const audioData = audioItem.input_audio.data;
     if (audioData.startsWith('data:')) {
       return audioItem;
@@ -417,7 +423,7 @@ export const loadRequestMessages = async ({
   const normalizeVideoContentPart = async (
     item: Extract<ChatCompletionContentPart, { type: 'video_url' }>
   ): Promise<ChatCompletionContentPart | undefined> => {
-    const { key: _key, ...videoItem } = item;
+    const videoItem = removeContentPartKey(item);
     const videoUrl = videoItem.video_url.url;
     if (videoUrl.startsWith('data:')) {
       return videoItem;
@@ -443,7 +449,7 @@ export const loadRequestMessages = async ({
   const normalizeFileUrlContentPart = async (
     item: Extract<ChatCompletionContentPart, { type: 'file_url' }>
   ): Promise<ChatCompletionContentPart | undefined> => {
-    const { key: _key, ...fileItem } = item;
+    const fileItem = removeContentPartKey(item);
     const fileType = fileItem.fileType || getFileTypeFromUrl(fileItem.url);
 
     // 上传文件会先以 FastGPT 内部的 file_url 存在，发给模型前需要转成供应商支持的

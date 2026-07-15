@@ -1,5 +1,5 @@
-import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
-import type { WorkflowResponseType } from '../../../../type';
+import { streamSseEvent } from '@fastgpt/global/core/chat/stream/sse';
+import type { StreamResponseType } from '../../../../type';
 import { getRunningSandboxId } from '../../../../../../ai/sandbox/interface/runtime';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 
@@ -15,7 +15,7 @@ export const streamAgentSandboxInitStatus = ({
   userId,
   chatId
 }: {
-  workflowStreamResponse?: WorkflowResponseType;
+  workflowStreamResponse?: StreamResponseType;
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
   userId: string;
@@ -29,7 +29,7 @@ export const streamAgentSandboxInitStatus = ({
   });
 
   workflowStreamResponse?.(
-    workflowSseEvent.sandboxStatus({
+    streamSseEvent.sandboxStatus({
       sandboxId: effectiveSandboxId,
       phase: 'lazyInit'
     })

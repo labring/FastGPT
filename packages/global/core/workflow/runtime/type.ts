@@ -15,7 +15,7 @@ import type { NextApiResponse } from 'next';
 import type { AppSchemaType } from '../../app/type';
 import type { RuntimeEdgeItemType } from '../type/edge';
 import { ReadFileNodeResponseSchema } from '../template/system/readFiles/type';
-import type { WorkflowResponseType } from './sse';
+import type { StreamResponseType } from '../../chat/stream/sse';
 import type { AiChatQuoteRoleType } from '../template/system/aiChat/type';
 import type { OpenaiAccountType } from '../../../support/user/team/type';
 import { CompletionFinishReasonSchema } from '../../ai/llm/type';
@@ -102,7 +102,7 @@ export type ChatDispatchProps = {
   showSkillReferences?: boolean;
   maxRunTimes: number;
   isToolCall?: boolean;
-  workflowStreamResponse?: WorkflowResponseType;
+  workflowStreamResponse?: StreamResponseType;
   apiVersion?: 'v1' | 'v2';
 
   workflowDispatchDeep: number;
