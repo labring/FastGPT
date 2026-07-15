@@ -117,7 +117,7 @@
     "@types/archiver": "^6.0.2",
     "@types/js-yaml": "catalog:",
     "@types/jsonwebtoken": "catalog:",
-    "@types/lodash": "catalog:",
+    "@types/lodash-es": "catalog:",
     "@types/node": "catalog:",
     "@types/nprogress": "^0.2.0",
     "@types/qrcode": "^1.5.5",

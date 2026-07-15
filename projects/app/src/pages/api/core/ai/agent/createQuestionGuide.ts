@@ -69,7 +69,8 @@ async function authChatCert(props: AuthModeType): Promise<{
   outLinkUid?: string;
 }> {
   const { shareId, outLinkUid } =
-    (props.req.body as { outLinkAuthData?: OutLinkChatAuthProps }).outLinkAuthData || {};
+    ((props.req as ApiRequestProps).body as { outLinkAuthData?: OutLinkChatAuthProps })
+      .outLinkAuthData || {};
 
   if (shareId && outLinkUid) {
     const { outLinkConfig } = await authOutLinkValid({ shareId });

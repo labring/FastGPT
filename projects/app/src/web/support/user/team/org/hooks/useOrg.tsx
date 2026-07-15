@@ -10,7 +10,6 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getOrgList, getOrgMembers } from '../api';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import { getTeamMembers } from '../../api';
-import _ from 'lodash-es';
 import { useDebounce } from 'ahooks';
 
 function useOrg({ withPermission = true }: { withPermission?: boolean } = {}) {

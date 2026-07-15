@@ -57,9 +57,9 @@ catalogs:
     '@types/jsonwebtoken':
       specifier: ^9.0.3
       version: 9.0.9
-    '@types/lodash':
+    '@types/lodash-es':
       specifier: ^4
-      version: 4.17.16
+      version: 4.17.12
     '@types/mime-types':
       specifier: ^3.0.1
       version: 3.0.1
@@ -466,9 +466,9 @@ importers:
       '@types/js-yaml':
         specifier: 'catalog:'
         version: 4.0.9
-      '@types/lodash':
+      '@types/lodash-es':
         specifier: 'catalog:'
-        version: 4.17.16
+        version: 4.17.12
       '@types/node':
         specifier: 'catalog:'
         version: 20.17.24
@@ -677,9 +677,9 @@ importers:
       '@types/jsonwebtoken':
         specifier: 'catalog:'
         version: 9.0.9
-      '@types/lodash':
+      '@types/lodash-es':
         specifier: 'catalog:'
-        version: 4.17.16
+        version: 4.17.12
       '@types/mime-types':
         specifier: 'catalog:'
         version: 3.0.1
@@ -852,9 +852,9 @@ importers:
       '@types/js-cookie':
         specifier: ^3.0.6
         version: 3.0.6
-      '@types/lodash':
+      '@types/lodash-es':
         specifier: 'catalog:'
-        version: 4.17.16
+        version: 4.17.12
       '@types/papaparse':
         specifier: ^5.3.7
         version: 5.3.7
@@ -1099,9 +1099,9 @@ importers:
       '@types/jsonwebtoken':
         specifier: 'catalog:'
         version: 9.0.9
-      '@types/lodash':
+      '@types/lodash-es':
         specifier: 'catalog:'
-        version: 4.17.16
+        version: 4.17.12
       '@types/node':
         specifier: 'catalog:'
         version: 20.17.24
@@ -1523,9 +1523,9 @@ importers:
       '@types/jsonwebtoken':
         specifier: 'catalog:'
         version: 9.0.9
-      '@types/lodash':
+      '@types/lodash-es':
         specifier: 'catalog:'
-        version: 4.17.16
+        version: 4.17.12
       '@types/node':
         specifier: 'catalog:'
         version: 20.17.24
@@ -1620,6 +1620,9 @@ importers:
       '@vitest/coverage-v8':
         specifier: 'catalog:'
         version: 4.1.5(vitest@4.1.5)
+      lodash:
+        specifier: 4.17.23
+        version: 4.17.23
       tsdown:
         specifier: 'catalog:'
         version: 0.21.10(typescript@6.0.3)
@@ -6763,6 +6766,9 @@ packages:
 
   '@types/katex@0.16.7':
     resolution: {integrity: sha512-HMwFiRujE5PjrgwHQ25+bsLJgowjGjm5Z8FVSf0N6PwgJrwxH0QxzHYDcKsTfV3wva0vzrpqMTJS2jXPr5BMEQ==}
+
+  '@types/lodash-es@4.17.12':
+    resolution: {integrity: sha512-0NgftHUcV4v34VhXm8QBSftKVXtbkBG3ViCjs6+eJ5a6y6Mi/jiFGPc1sC7QK+9BFhWrURE3EOggmWaSxL9OzQ==}
 
   '@types/lodash.mergewith@4.6.7':
     resolution: {integrity: sha512-3m+lkO5CLRRYU0fhGRp7zbsGi6+BZj0uTVSwvcKU+nSlhjA9/QRNfuSGnD2mX6hQA7ZbmcCkzk5h4ZYGOtk14A==}
@@ -21197,6 +21203,10 @@ snapshots:
 
   '@types/katex@0.16.7': {}
 
+  '@types/lodash-es@4.17.12':
+    dependencies:
+      '@types/lodash': 4.17.16
+
   '@types/lodash.mergewith@4.6.7':
     dependencies:
       '@types/lodash': 4.17.16
@@ -22706,7 +22716,8 @@ snapshots:
 
   commander@14.0.3: {}
 
-  commander@2.20.3: {}
+  commander@2.20.3:
+    optional: true
 
   commander@4.1.1: {}
 

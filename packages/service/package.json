@@ -83,7 +83,7 @@
     "@types/async-retry": "^1.4.9",
     "@types/cookie": "^0.5.2",
     "@types/jsonwebtoken": "catalog:",
-    "@types/lodash": "catalog:",
+    "@types/lodash-es": "catalog:",
     "@types/mime-types": "catalog:",
     "@types/multer": "^1.4.10",
     "@types/node": "catalog:",

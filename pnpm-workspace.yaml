@@ -33,7 +33,7 @@ catalog:
   '@tanstack/react-query': ^4.24.10
   '@types/js-yaml': ^4.0.9
   '@types/jsonwebtoken': ^9.0.3
-  '@types/lodash': ^4
+  '@types/lodash-es': ^4
   '@types/mime-types': ^3.0.1
   '@types/node': ^20
   '@types/proxy-addr': 2.0.3
