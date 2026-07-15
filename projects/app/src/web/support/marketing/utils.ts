@@ -82,6 +82,25 @@ export const parseFastGPTSource = (source?: string | string[]) => {
   }
 };
 
+export const getFastGPTSemForLogin = () => {
+  const fastgptSem = getFastGPTSem();
+  if (!fastgptSem?.firstsource) return fastgptSem;
+
+  const { firstsource, ...rest } = fastgptSem;
+  return {
+    ...rest,
+    lastsource: firstsource
+  };
+};
+
+export const onFastGPTLoginSuccess = async <T>(
+  loginSuccess: (result: T) => void | Promise<void>,
+  result: T
+) => {
+  await loginSuccess(result);
+  removeFastGPTSem();
+};
+
 export const setFastGPTSem = (fastgptSem?: TrackRegisterParams['fastgpt_sem']) => {
   if (!fastgptSem) return;
 

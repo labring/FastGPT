@@ -12,10 +12,10 @@ import { useTranslation } from 'next-i18next';
 import { OAuthEnum } from '@fastgpt/global/support/user/constant';
 import {
   getBdVId,
-  getFastGPTSem,
+  getFastGPTSemForLogin,
   getInviterId,
   getMsclkid,
-  removeFastGPTSem
+  onFastGPTLoginSuccess
 } from '@/web/support/marketing/utils';
 import { postAcceptInvitationLink } from '@/web/support/user/team/api';
 import { retryFn } from '@fastgpt/global/common/system/utils';
@@ -89,7 +89,7 @@ const provider = () => {
           inviterId: getInviterId(),
           bd_vid: getBdVId(),
           msclkid: getMsclkid(),
-          fastgpt_sem: getFastGPTSem(),
+          fastgpt_sem: getFastGPTSemForLogin(),
           language: i18n.language as LangEnum
         });
 
@@ -103,8 +103,7 @@ const provider = () => {
           }, 1000);
         }
 
-        removeFastGPTSem();
-        await loginSuccess(res);
+        await onFastGPTLoginSuccess(loginSuccess, res);
       } catch (error) {
         toast({
           status: 'warning',

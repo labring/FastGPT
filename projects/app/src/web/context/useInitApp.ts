@@ -179,12 +179,13 @@ export const useInitApp = () => {
           ...sourceObject,
           ...(fastgpt_source ? { fastgpt_source } : {})
         }
-      : fastgpt_source;
+      : undefined;
 
     setFastGPTSem({
       keyword: k,
       search,
-      source: sourceValue,
+      source: fastgpt_source,
+      firstsource: sourceValue,
       ...utmParams
     });
 

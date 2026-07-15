@@ -34,7 +34,9 @@ export type FastGPTSourceType = z.infer<typeof FastGPTSourceSchema>;
 export const FastGPT_SEM_Schema = ShortUrlSchema.extend({
   keyword: z.string().optional(),
   search: z.string().optional(),
-  source: z.union([z.string(), FastGPTSourceSchema]).optional(),
+  source: z.string().optional(),
+  firstsource: FastGPTSourceSchema.optional(),
+  lastsource: FastGPTSourceSchema.optional(),
   sourceDomain: z.string().optional()
 });
 export type FastGPTSemType = z.infer<typeof FastGPT_SEM_Schema>;

@@ -11,10 +11,10 @@ import Loading from '@fastgpt/web/components/common/MyLoading';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import {
   getBdVId,
-  getFastGPTSem,
+  getFastGPTSemForLogin,
   getMsclkid,
-  removeFastGPTSem,
-  getInviterId
+  getInviterId,
+  onFastGPTLoginSuccess
 } from '@/web/support/marketing/utils';
 import PolicyTip from './PolicyTip';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
@@ -48,7 +48,7 @@ const WechatForm = ({ setPageType, loginSuccess }: Props) => {
         code: wechatInfo?.code || '',
         bd_vid: getBdVId(),
         msclkid: getMsclkid(),
-        fastgpt_sem: getFastGPTSem(),
+        fastgpt_sem: getFastGPTSemForLogin(),
         language: i18n.language as LangEnum
       }),
     {
@@ -56,8 +56,7 @@ const WechatForm = ({ setPageType, loginSuccess }: Props) => {
       enabled: !!wechatInfo?.code,
       async onSuccess(data: LoginSuccessResponseType | undefined) {
         if (data) {
-          removeFastGPTSem();
-          await loginSuccess(data);
+          await onFastGPTLoginSuccess(loginSuccess, data);
         }
       }
     }

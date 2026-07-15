@@ -1,9 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   getFastGPTSem,
+  getFastGPTSemForLogin,
   initFastGPTSemSourceDomain,
+  onFastGPTLoginSuccess,
   parseFastGPTSource,
-  removeFastGPTSem
+  removeFastGPTSem,
+  setFastGPTSem
 } from '@/web/support/marketing/utils';
 
 const storageMock = () => {
@@ -58,5 +61,35 @@ describe('marketing utils', () => {
 
   it('should ignore an invalid source attribution object', () => {
     expect(parseFastGPTSource('{invalid')).toBeUndefined();
+  });
+
+  it('should send firstsource as lastsource for login', () => {
+    setFastGPTSem({
+      source: 'home_hero_trial',
+      firstsource: {
+        visitor_id: 'visitor-1',
+        first_touch_source: 'ChatGPT'
+      }
+    });
+
+    expect(getFastGPTSemForLogin()).toEqual({
+      source: 'home_hero_trial',
+      lastsource: {
+        visitor_id: 'visitor-1',
+        first_touch_source: 'ChatGPT'
+      }
+    });
+  });
+
+  it('should clear pending marketing data after login succeeds', async () => {
+    setFastGPTSem({
+      firstsource: { visitor_id: 'visitor-1' }
+    });
+    const loginSuccess = vi.fn();
+
+    await onFastGPTLoginSuccess(loginSuccess, { ok: true });
+
+    expect(loginSuccess).toHaveBeenCalledWith({ ok: true });
+    expect(getFastGPTSem()).toBeUndefined();
   });
 });

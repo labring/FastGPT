@@ -15,6 +15,7 @@ import type { LangEnum } from '@fastgpt/global/common/i18n/type';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 import PolicyTip from './PolicyTip';
 import { getRegisterMethods } from '@/web/common/system/utils';
+import { getFastGPTSemForLogin, onFastGPTLoginSuccess } from '@/web/support/marketing/utils';
 
 type LoginSuccessHandler = (res: LoginSuccessResponseType) => void | Promise<void>;
 
@@ -50,9 +51,10 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
         username,
         password,
         code,
+        fastgpt_sem: getFastGPTSemForLogin(),
         language: i18n.language as LangEnum
       });
-      await loginSuccess(loginResponse);
+      await onFastGPTLoginSuccess(loginSuccess, loginResponse);
     },
     {
       refreshDeps: [loginSuccess],

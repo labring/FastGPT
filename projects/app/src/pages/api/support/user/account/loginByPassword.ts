@@ -26,7 +26,7 @@ async function handler(
   req: ApiRequestProps<LoginByPasswordBodyType>,
   res: ApiResponseType
 ): Promise<LoginSuccessResponseType> {
-  const { username, password, code, language } = parseApiInput({
+  const { username, password, code, language, fastgpt_sem } = parseApiInput({
     req,
     bodySchema: LoginByPasswordBodySchema
   }).body;
@@ -64,6 +64,12 @@ async function handler(
 
   user.lastLoginTmbId = userDetail.team.tmbId;
   user.language = language;
+  if (fastgpt_sem?.lastsource) {
+    user.fastgpt_sem = {
+      ...(user.fastgpt_sem || {}),
+      lastsource: fastgpt_sem.lastsource
+    };
+  }
   await user.save();
 
   const token = await createUserSession({
