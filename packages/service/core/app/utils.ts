@@ -136,7 +136,10 @@ export async function rewriteAppWorkflowToDetail({
     savedInput?: ToolInputSnapshot;
   }) => {
     const inputWithDefaultMode = initToolInputTypeByDefaultMode(previewInput);
-    const savedSelectedType = getSavedToolInputSelectedType({ savedInput });
+    const savedSelectedType = getSavedToolInputSelectedType({
+      savedInput,
+      defaultInput: previewInput
+    });
     const selectedType = savedSelectedType ?? inputWithDefaultMode.selectedType;
     const renderTypeList =
       selectedType && !inputWithDefaultMode.renderTypeList.includes(selectedType)

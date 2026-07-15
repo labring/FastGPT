@@ -33,9 +33,11 @@ import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import type { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/node';
 import {
   canInputBeAgentGenerated,
+  canInputBeManuallyConfigured,
   getSelectedInputRenderType,
   getToolInputManualRenderType,
   getToolConfigStatus,
+  initToolInputTypeByDefaultMode,
   isAgentGeneratedToolInput,
   isToolInputValueConfigured,
   stripToolInputDefaultMode
@@ -71,21 +73,22 @@ const buildConfigRenderTypeList = ({
   canAgentGenerated: boolean;
   renderTypeList: FlowNodeInputTypeEnum[];
 }): FlowNodeInputTypeEnum[] => {
-  const fallbackDeveloperType = developerInputType ?? FlowNodeInputTypeEnum.input;
+  const canManuallyConfigure = canInputBeManuallyConfigured({ renderTypeList });
   const developerRenderTypeList = renderTypeList.filter(
     (type) => type !== FlowNodeInputTypeEnum.agentGenerated
   );
+  const configDeveloperRenderTypeList = canManuallyConfigure
+    ? Array.from(
+        new Set([...(developerInputType ? [developerInputType] : []), ...developerRenderTypeList])
+      )
+    : developerRenderTypeList;
 
   if (!canAgentGenerated) {
-    return Array.from(new Set([fallbackDeveloperType, ...developerRenderTypeList]));
+    return configDeveloperRenderTypeList;
   }
 
   return Array.from(
-    new Set([
-      FlowNodeInputTypeEnum.agentGenerated,
-      fallbackDeveloperType,
-      ...developerRenderTypeList
-    ])
+    new Set([FlowNodeInputTypeEnum.agentGenerated, ...configDeveloperRenderTypeList])
   );
 };
 
@@ -105,10 +108,15 @@ const buildConfigInputTypeState = ({
     canAgentGenerated,
     renderTypeList
   });
+  const canManuallyConfigure = canInputBeManuallyConfigured({ renderTypeList });
   const selectedRenderType =
     canAgentGenerated && selectedInputType === FlowNodeInputTypeEnum.agentGenerated
       ? FlowNodeInputTypeEnum.agentGenerated
-      : (developerInputType ?? FlowNodeInputTypeEnum.input);
+      : canManuallyConfigure
+        ? (developerInputType ?? finalRenderTypeList[0])
+        : canAgentGenerated
+          ? FlowNodeInputTypeEnum.agentGenerated
+          : finalRenderTypeList[0];
   const selectedTypeIndex = finalRenderTypeList.findIndex((type) => type === selectedRenderType);
 
   return {
@@ -156,11 +164,15 @@ const getSecretInput = (tool: FlowNodeTemplateType) =>
 const getConfigFormValues = (tool: FlowNodeTemplateType) =>
   tool.inputs.reduce(
     (acc, input) => {
-      const developerInputType = getToolInputManualRenderType(input);
+      const normalizedInput = initToolInputTypeByDefaultMode(input);
+      const canManuallyConfigure = canInputBeManuallyConfigured(normalizedInput);
+      const developerInputType = canManuallyConfigure
+        ? getToolInputManualRenderType(normalizedInput)
+        : undefined;
       acc[input.key] = input.value ?? input.defaultValue;
-      acc[inputTypeFormKey(input.key)] = isAgentGeneratedToolInput(input)
+      acc[inputTypeFormKey(input.key)] = isAgentGeneratedToolInput(normalizedInput)
         ? FlowNodeInputTypeEnum.agentGenerated
-        : developerInputType;
+        : (developerInputType ?? getSelectedInputRenderType(normalizedInput));
       acc[developerInputTypeFormKey(input.key)] = developerInputType;
       return acc;
     },
@@ -599,10 +611,13 @@ const ConfigInputRow = ({
 }) => {
   const { t } = useSafeTranslation();
   const canAgentGenerated = canInputBeAgentGenerated(input);
-  const developerInputType = getToolInputManualRenderType(input);
+  const canManuallyConfigure = canInputBeManuallyConfigured(input);
+  const developerInputType = canManuallyConfigure ? getToolInputManualRenderType(input) : undefined;
   const selectableRenderTypeList = canAgentGenerated
-    ? [FlowNodeInputTypeEnum.agentGenerated, developerInputType]
-    : [developerInputType];
+    ? [FlowNodeInputTypeEnum.agentGenerated, ...(developerInputType ? [developerInputType] : [])]
+    : developerInputType
+      ? [developerInputType]
+      : [];
 
   return (
     <Box w={'full'}>

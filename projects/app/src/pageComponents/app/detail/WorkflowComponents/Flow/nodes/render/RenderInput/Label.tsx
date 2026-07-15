@@ -16,6 +16,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { WorkflowActionsContext } from '../../../../context/workflowActionsContext';
 import {
   canInputBeAgentGenerated,
+  canInputBeManuallyConfigured,
   getToolInputManualRenderType
 } from '@fastgpt/global/core/app/formEdit/utils';
 import { getSelectedInputRenderType } from '@fastgpt/global/core/workflow/utils';
@@ -33,19 +34,24 @@ const InputLabel = ({ nodeId, input, RightComponent, isTool }: Props) => {
   const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
 
   const { description, required, label, renderTypeList, valueType, valueDesc } = input;
+  const canManuallyConfigure = canInputBeManuallyConfigured(input);
   const renderType =
-    getSelectedInputRenderType(input) ?? renderTypeList?.[0] ?? FlowNodeInputTypeEnum.input;
-  const manualRenderType = getToolInputManualRenderType(input);
+    isTool && canInputBeAgentGenerated(input) && !canManuallyConfigure
+      ? FlowNodeInputTypeEnum.agentGenerated
+      : (getSelectedInputRenderType(input) ?? renderTypeList?.[0] ?? FlowNodeInputTypeEnum.input);
+  const manualRenderType = canManuallyConfigure ? getToolInputManualRenderType(input) : undefined;
   const displayRenderTypeList = useMemo(
     () =>
       isTool && canInputBeAgentGenerated(input)
-        ? Array.from(
-            new Set([
-              FlowNodeInputTypeEnum.agentGenerated,
-              manualRenderType,
-              ...renderTypeList.filter((type) => type !== FlowNodeInputTypeEnum.agentGenerated)
-            ])
-          )
+        ? manualRenderType
+          ? Array.from(
+              new Set([
+                FlowNodeInputTypeEnum.agentGenerated,
+                manualRenderType,
+                ...renderTypeList.filter((type) => type !== FlowNodeInputTypeEnum.agentGenerated)
+              ])
+            )
+          : [FlowNodeInputTypeEnum.agentGenerated]
         : renderTypeList,
     [input, isTool, manualRenderType, renderTypeList]
   );

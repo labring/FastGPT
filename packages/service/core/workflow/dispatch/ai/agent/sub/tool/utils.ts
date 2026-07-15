@@ -582,7 +582,10 @@ export const getAgentRuntimeTools = async ({
           toolNode.inputs.map((input) => {
             const savedInput = savedInputConfigMap.get(input.key);
             if (!savedInput) return input;
-            const selectedType = getSavedToolInputSelectedType({ savedInput });
+            const selectedType = getSavedToolInputSelectedType({
+              savedInput,
+              defaultInput: input
+            });
             const renderTypeList = selectedType
               ? Array.from(
                   new Set([selectedType, ...(savedInput.renderTypeList ?? input.renderTypeList)])
