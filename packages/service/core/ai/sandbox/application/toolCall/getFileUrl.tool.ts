@@ -1,15 +1,17 @@
 /**
  * 沙盒业务层：定义 sandbox 文件临时下载链接工具。
  *
- * 只负责把 sandbox 文件流转存到 chat S3 临时对象，不处理运行态生命周期。
+ * 只负责确认 workspace 文件存在并返回 agent-proxy 直连链接，不处理运行态生命周期。
  */
 import z from 'zod';
 import path from 'path';
-import { Readable } from 'stream';
-import { addHours } from 'date-fns';
 import { defineTool } from './type';
-import { getS3ChatSource } from '../../../../../common/s3/sources/chat';
 import { SANDBOX_GET_FILE_URL_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
+import {
+  buildSandboxPreviewFileUrl,
+  createSandboxPreviewTicket,
+  resolveSandboxPreviewPath
+} from '../preview';
 
 const SandboxGetFileUrlToolSchema = z.object({
   paths: z.array(z.string())
@@ -17,34 +19,32 @@ const SandboxGetFileUrlToolSchema = z.object({
 
 export const sandboxGetFileUrlTool = defineTool({
   zodSchema: SandboxGetFileUrlToolSchema,
-  execute: async ({ sourceType, sourceId, userId, chatId, sandboxInstance, params }) => {
-    const result = await Promise.all(
-      params.paths.map(async (filePath) => {
-        const filename = path.basename(filePath);
-        const stream = sandboxInstance.provider.readFileStream(filePath);
-        const readable = Readable.from(stream);
-
-        const chatBucket = getS3ChatSource();
-        const expiredTime = addHours(new Date(), 2);
-        const { key } = await chatBucket.uploadChatFile({
-          sourceType,
-          sourceId,
-          chatId,
-          uId: userId,
-          filename,
-          body: readable,
-          expiredTime
-        });
-        const { url: fileUrl } = await chatBucket.createGetChatFileURL({
-          key,
-          expiredHours: 2,
-          external: true,
-          mode: 'presigned'
-        });
-
-        return { fileUrl, filename };
-      })
+  execute: async ({ sourceType, sourceId, userId, chatId, teamId, sandboxInstance, params }) => {
+    const files = params.paths.map((filePath) => ({
+      filePath,
+      ...resolveSandboxPreviewPath(filePath)
+    }));
+    const fileInfoMap = await sandboxInstance.provider.getFileInfo(
+      files.map(({ providerPath }) => providerPath)
     );
+    for (const { providerPath } of files) {
+      const fileInfo = fileInfoMap.get(providerPath);
+      if (!fileInfo || fileInfo.isDirectory) {
+        throw new Error(`Sandbox preview file not found: ${providerPath}`);
+      }
+    }
+
+    const ticket = createSandboxPreviewTicket({
+      sourceType,
+      sourceId,
+      userId,
+      chatId,
+      teamId
+    });
+    const result = files.map(({ filePath, relativePath }) => ({
+      fileUrl: buildSandboxPreviewFileUrl({ ticket, filePath }),
+      filename: path.posix.basename(relativePath)
+    }));
 
     return { response: JSON.stringify(result) };
   }

@@ -48,6 +48,7 @@ export const runSandboxTools = async ({
   sourceId,
   userId,
   chatId,
+  teamId,
   toolName,
   args,
   sandboxClient
@@ -56,6 +57,7 @@ export const runSandboxTools = async ({
   sourceId: string;
   userId: string;
   chatId: string;
+  teamId: string;
   toolName: string;
   args: string;
   sandboxClient?: SandboxClient;
@@ -109,6 +111,7 @@ export const runSandboxTools = async ({
     sourceId,
     userId,
     chatId,
+    teamId,
     sandboxInstance: instance,
     params: parsedArgs.data as any
   });

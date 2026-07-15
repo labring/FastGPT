@@ -16,13 +16,19 @@ import {
 import { serviceEnv } from '@fastgpt/service/env';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { buildSandboxClientQueryFromChatSource } from '@/service/core/sandbox/auth';
+import {
+  SANDBOX_PREVIEW_CHANNEL,
+  SandboxPreviewTicketClaimsSchema
+} from '@fastgpt/service/core/ai/sandbox/application/preview';
 
 const DEFAULT_IDE_AGENT_PORT = 1318;
+const DEFAULT_IDE_AGENT_PREVIEW_PORT = 1319;
 const IDE_AGENT_PASSWORD_READ_COMMAND = 'sh -c "cat ~/.fastgpt-ide-agent-password"';
 
 const VerifyTicketQuerySchema = z.object({
-  ticket: z.string()
+  ticket: z.string().min(1).optional()
 });
+const SANDBOX_TICKET_HEADER = 'x-sandbox-ticket';
 
 const SandboxVerifyTicketResponseSchema = z.object({
   sandbox_url: z.string().min(1),
@@ -45,13 +51,22 @@ const SandboxTicketClaimsSchema = BaseSandboxTicketClaimsSchema.extend({
   sourceType: z.enum(ChatSourceTypeEnum),
   sourceId: z.string()
 });
+const SandboxProxyTicketClaimsSchema = z.union([
+  SandboxTicketClaimsSchema,
+  SandboxPreviewTicketClaimsSchema
+]);
 
-const getIdeAgentPort = () => {
-  const bindAddr = serviceEnv.IDE_AGENT_BIND_ADDR;
-  if (!bindAddr) return DEFAULT_IDE_AGENT_PORT;
+/** 根据 ticket 通道选择 IDE Agent 的内部监听端口。 */
+const getIdeAgentPort = (channel: z.infer<typeof SandboxProxyTicketClaimsSchema>['channel']) => {
+  const isPreview = channel === SANDBOX_PREVIEW_CHANNEL;
+  const bindAddr = isPreview
+    ? serviceEnv.IDE_AGENT_PREVIEW_BIND_ADDR
+    : serviceEnv.IDE_AGENT_BIND_ADDR;
+  const defaultPort = isPreview ? DEFAULT_IDE_AGENT_PREVIEW_PORT : DEFAULT_IDE_AGENT_PORT;
+  if (!bindAddr) return defaultPort;
 
   const port = parseInt(bindAddr.split(':').pop() || '', 10);
-  return Number.isFinite(port) ? port : DEFAULT_IDE_AGENT_PORT;
+  return Number.isFinite(port) ? port : defaultPort;
 };
 
 async function readIdeAgentPassword(sandbox: SandboxClient) {
@@ -87,14 +102,19 @@ async function readIdeAgentPassword(sandbox: SandboxClient) {
 async function handler(req: ApiRequestProps): Promise<SandboxVerifyTicketResponse> {
   const secret = authAgentSandboxProxy(req);
 
-  const { ticket } = parseApiInput({
+  const { ticket: queryTicket } = parseApiInput({
     req,
     querySchema: VerifyTicketQuerySchema
   }).query;
+  const headerTicket = req.headers[SANDBOX_TICKET_HEADER];
+  const ticket = z
+    .string()
+    .min(1)
+    .parse((typeof headerTicket === 'string' ? headerTicket : undefined) ?? queryTicket);
 
-  let decoded: z.infer<typeof SandboxTicketClaimsSchema>;
+  let decoded: z.infer<typeof SandboxProxyTicketClaimsSchema>;
   try {
-    decoded = SandboxTicketClaimsSchema.parse(jwt.verify(ticket, secret));
+    decoded = SandboxProxyTicketClaimsSchema.parse(jwt.verify(ticket, secret));
   } catch (err: any) {
     throw new Error('Invalid ticket signature: ' + err.message);
   }
@@ -111,7 +131,7 @@ async function handler(req: ApiRequestProps): Promise<SandboxVerifyTicketRespons
   );
   const agentPassword = await readIdeAgentPassword(sandbox);
 
-  const endpoint = await sandbox.provider.getEndpoint(getIdeAgentPort());
+  const endpoint = await sandbox.provider.getEndpoint(getIdeAgentPort(decoded.channel));
 
   return SandboxVerifyTicketResponseSchema.parse({
     sandbox_url: endpoint.url,

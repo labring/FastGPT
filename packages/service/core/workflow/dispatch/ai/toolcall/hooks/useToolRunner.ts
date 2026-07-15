@@ -144,6 +144,7 @@ export const useToolRunner = ({
           sourceId: workflowProps.runningAppInfo.sourceId,
           userId: workflowProps.uid,
           chatId: workflowProps.chatId,
+          teamId: workflowProps.runningUserInfo.teamId,
           ...(sandboxClient ? { sandboxClient } : {})
         };
         const { input, response, durationSeconds } = await runSandboxTools(sandboxToolParams);

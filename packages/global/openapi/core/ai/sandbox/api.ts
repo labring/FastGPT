@@ -116,12 +116,21 @@ export type SandboxGetTicketResponse = z.infer<typeof SandboxGetTicketResponseSc
  */
 export const SandboxGetHtmlPreviewLinkBodyRawSchema = createOutLinkChatTargetInputSchema({
   ...SandboxBaseShape,
-  filePath: z.string().describe('文件路径')
+  filePath: z.string().meta({
+    example: 'dist/index.html',
+    description: 'HTML 文件路径，相对于沙盒 workspace 根目录'
+  })
 });
 export const SandboxGetHtmlPreviewLinkBodySchema = withSandboxTarget({
-  filePath: z.string().describe('文件路径')
+  filePath: z.string().meta({
+    example: 'dist/index.html',
+    description: 'HTML 文件路径，相对于沙盒 workspace 根目录'
+  })
 });
-export const SandboxGetHtmlPreviewLinkResponseSchema = z.string().describe('HTML 预览链接');
+export const SandboxGetHtmlPreviewLinkResponseSchema = z.string().url().meta({
+  example: 'https://agent-proxy.example.com/preview/token/dist/index.html',
+  description: '由 agent-proxy 直接读取 sandbox workspace 的短期 HTML 预览链接'
+});
 export type SandboxGetHtmlPreviewLinkBody = z.input<typeof SandboxGetHtmlPreviewLinkBodySchema>;
 export type SandboxGetHtmlPreviewLinkRuntimeBody = z.output<
   typeof SandboxGetHtmlPreviewLinkBodySchema

@@ -263,6 +263,7 @@ export const getExecuteTool = ({
             sourceId: runningAppInfo.sourceId,
             userId: uid,
             chatId,
+            teamId: runningUserInfo.teamId,
             lang,
             sandboxClient
           });

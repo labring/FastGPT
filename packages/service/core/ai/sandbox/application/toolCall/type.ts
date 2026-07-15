@@ -12,6 +12,7 @@ type ToolExecuteContext<P> = {
   sourceId: string;
   userId: string;
   chatId: string;
+  teamId: string;
   sandboxInstance: SandboxClient;
   params: P;
 };
