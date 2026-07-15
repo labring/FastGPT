@@ -11,20 +11,21 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { checkPasswordRule } from '@fastgpt/global/common/string/password';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
+import { AccountContactUsernameSchema } from '@fastgpt/global/support/user/account/verification/type';
 
 type LoginSuccessHandler = (res: LoginSuccessResponseType) => void | Promise<void>;
 
-interface Props {
+type Props = {
   setPageType: Dispatch<`${LoginPageTypeEnum}`>;
   loginSuccess: LoginSuccessHandler;
-}
+};
 
-interface RegisterType {
+type RegisterType = {
   username: string;
   code: string;
   password: string;
   password2: string;
-}
+};
 
 const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
   const { toast } = useToast();
@@ -107,11 +108,9 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
             placeholder={placeholder}
             {...register('username', {
               required: t('user:password.email_phone_void'),
-              pattern: {
-                value:
-                  /(^1[3456789]\d{9}$)|(^[A-Za-z0-9]+([_\.][A-Za-z0-9]+)*@([A-Za-z0-9\-]+\.)+[A-Za-z]{2,6}$)/,
-                message: t('user:password.email_phone_error')
-              }
+              validate: (value) =>
+                AccountContactUsernameSchema.safeParse(value).success ||
+                t('user:password.email_phone_error')
             })}
           ></Input>
         </FormControl>

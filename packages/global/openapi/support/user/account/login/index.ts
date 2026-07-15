@@ -5,6 +5,8 @@ import {
   PreLoginQuerySchema,
   PreLoginResponseSchema,
   OauthLoginBodySchema,
+  CreateOauthLoginBodySchema,
+  CreateOauthLoginResponseSchema,
   FastLoginBodySchema,
   WxLoginBodySchema,
   GetWXLoginQRResponseSchema,
@@ -92,6 +94,30 @@ export const LoginPath: OpenAPIPath = {
           content: {
             'application/json': {
               schema: LoginSuccessResponseSchema
+            }
+          }
+        }
+      }
+    }
+  },
+  '/proApi/support/user/account/login/oauth/create': {
+    post: {
+      summary: '创建 OAuth 登录流程',
+      description: '由服务端创建一次性 state 并返回 Provider 授权地址',
+      tags: [DevApiTagsMap.userLogin],
+      requestBody: {
+        content: {
+          'application/json': {
+            schema: CreateOauthLoginBodySchema
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: 'OAuth 登录流程创建成功',
+          content: {
+            'application/json': {
+              schema: CreateOauthLoginResponseSchema
             }
           }
         }

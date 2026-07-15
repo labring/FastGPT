@@ -9,7 +9,6 @@ import Loading from '@fastgpt/web/components/common/MyLoading';
 import { serviceSideProps } from '@/web/common/i18n/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useTranslation } from 'next-i18next';
-import { OAuthEnum } from '@fastgpt/global/support/user/constant';
 import {
   getBdVId,
   getFastGPTSem,
@@ -31,7 +30,12 @@ const provider = () => {
   const { initd, loginStore, setLoginStore } = useSystemStore();
   const { setUserInfo } = useUserStore();
   const router = useRouter();
-  const { state, error, ...props } = router.query as Record<string, string>;
+  const { state, error, code, ...rawProps } = router.query;
+  const callbackProps = Object.fromEntries(
+    Object.entries(rawProps).filter(
+      (entry): entry is [string, string] => typeof entry[1] === 'string'
+    )
+  );
   const { toast } = useToast();
   const resolveLoginRedirect = useLoginRedirectAfterLogin();
 
@@ -79,13 +83,24 @@ const provider = () => {
     [lastRoute, lastTmbId, resolveLoginRedirect, router, setUserInfo, t, toast]
   );
 
-  const authProps = useCallback(
-    async (props: Record<string, string>) => {
+  const completeOauthLogin = useCallback(
+    async ({
+      code,
+      state,
+      props
+    }: {
+      code: string;
+      state: string;
+      props: Record<string, string>;
+    }) => {
+      if (!loginStore) return;
       try {
         const res = await oauthLogin({
-          type: loginStore?.provider || OAuthEnum.sso,
+          provider: loginStore.provider,
+          code,
+          state,
           props,
-          callbackUrl: `${location.origin}/login/provider`,
+          callbackUrl: loginStore.callbackUrl,
           inviterId: getInviterId(),
           bd_vid: getBdVId(),
           msclkid: getMsclkid(),
@@ -98,9 +113,10 @@ const provider = () => {
             status: 'warning',
             title: t('common:support.user.login.error')
           });
-          return setTimeout(() => {
+          setTimeout(() => {
             router.replace(errorRedirectPage);
           }, 1000);
+          return;
         }
 
         await onFastGPTLoginSuccess(loginSuccess, res);
@@ -112,19 +128,11 @@ const provider = () => {
         setTimeout(() => {
           router.replace(errorRedirectPage);
         }, 1000);
+      } finally {
+        setLoginStore(undefined);
       }
-      setLoginStore(undefined);
     },
-    [
-      errorRedirectPage,
-      i18n.language,
-      loginStore?.provider,
-      loginSuccess,
-      router,
-      setLoginStore,
-      t,
-      toast
-    ]
+    [errorRedirectPage, i18n.language, loginStore, loginSuccess, router, setLoginStore, t, toast]
   );
 
   useEffect(() => {
@@ -137,17 +145,21 @@ const provider = () => {
       return;
     }
 
-    if (!props || !initd) return;
+    if (!router.isReady || !initd) return;
 
     if (isOauthLogging) return;
 
     isOauthLogging = true;
 
     (async () => {
-      await retryFn(async () => clearToken());
-      router.prefetch('/dashboard/agent');
-
-      if (loginStore && loginStore.provider !== 'sso' && state !== loginStore.state) {
+      const currentCallbackUrl = `${location.origin}/login/provider`;
+      if (
+        !loginStore ||
+        typeof state !== 'string' ||
+        typeof code !== 'string' ||
+        state !== loginStore.state ||
+        loginStore.callbackUrl !== currentCallbackUrl
+      ) {
         toast({
           status: 'warning',
           title: t('common:support.user.login.security_failed')
@@ -155,12 +167,28 @@ const provider = () => {
         setTimeout(() => {
           router.replace(errorRedirectPage);
         }, 1000);
+        setLoginStore(undefined);
         return;
-      } else {
-        authProps(props);
       }
+
+      await retryFn(async () => clearToken());
+      router.prefetch('/dashboard/agent');
+      await completeOauthLogin({ code, state, props: callbackProps });
     })();
-  }, [initd, authProps, error, loginStore, router, state, t, toast, props, errorRedirectPage]);
+  }, [
+    callbackProps,
+    code,
+    completeOauthLogin,
+    error,
+    errorRedirectPage,
+    initd,
+    loginStore,
+    router,
+    setLoginStore,
+    state,
+    t,
+    toast
+  ]);
 
   return <Loading />;
 };

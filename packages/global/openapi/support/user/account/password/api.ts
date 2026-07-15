@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { LanguageSchema } from '../../../../../common/i18n/type';
+import { AccountContactUsernameSchema } from '../../../../../support/user/account/verification/type';
 
 // ===== Update password by old password =====
 export const UpdatePasswordByOldBodySchema = z
@@ -53,12 +54,14 @@ export const ResetExpiredPswResponseSchema = z.undefined().meta({
 export type ResetExpiredPswResponseType = z.infer<typeof ResetExpiredPswResponseSchema>;
 
 // ===== Find Password (update by code) =====
-export const UpdatePasswordByCodeBodySchema = z.object({
-  username: z.string().trim().min(1).meta({ description: '用户名' }),
-  code: z.string().meta({ description: '验证码' }),
-  password: z.string().trim().min(1).meta({ description: '新密码' }),
-  tmbId: z.string().optional().meta({ description: '团队成员 ID（可选）' }),
-  language: LanguageSchema.optional().meta({ description: '语言' })
-});
+export const UpdatePasswordByCodeBodySchema = z
+  .object({
+    username: AccountContactUsernameSchema.meta({ description: '用户名（邮箱或手机号）' }),
+    code: z.string().length(6).meta({ description: '验证码' }),
+    password: z.string().trim().min(1).max(512).meta({ description: '新密码' }),
+    tmbId: z.string().optional().meta({ description: '团队成员 ID（可选）' }),
+    language: LanguageSchema.optional().meta({ description: '语言' })
+  })
+  .strict();
 
 export type UpdatePasswordByCodeBodyType = z.infer<typeof UpdatePasswordByCodeBodySchema>;
