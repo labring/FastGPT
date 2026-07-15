@@ -837,17 +837,31 @@ export const updateInteractiveChat = async ({
       return false;
     };
 
-    const updateExistingPlan = (incomingPlan: NonNullable<AIChatItemValueItemType['plan']>) => {
-      const existingPlanIndex = chatItem.value.findIndex(
-        (item) => item.plan?.planId === incomingPlan.planId
+    const updateExistingPlan = (incomingPlan: AIChatItemValueItemType['plan']) => {
+      const existingPlanIndex = chatItem.value.findLastIndex(
+        (item) => Object.prototype.hasOwnProperty.call(item, 'plan') && item.plan !== undefined
       );
       if (existingPlanIndex < 0) return false;
 
-      chatItem.value[existingPlanIndex] = {
-        ...chatItem.value[existingPlanIndex],
-        plan: incomingPlan,
-        planStatus: undefined
-      };
+      chatItem.value = chatItem.value.flatMap((item, index) => {
+        if (!Object.prototype.hasOwnProperty.call(item, 'plan') || item.plan === undefined) {
+          return [item];
+        }
+
+        const itemWithoutPlan = Object.fromEntries(
+          Object.entries(item).filter(
+            ([key, itemValue]) => key !== 'plan' && itemValue !== undefined && itemValue !== null
+          )
+        ) as AIChatItemValueItemType;
+        if (index === existingPlanIndex) {
+          return [{ ...itemWithoutPlan, plan: incomingPlan }];
+        }
+
+        const hasRemainingValue = Object.entries(itemWithoutPlan).some(
+          ([key, itemValue]) => key !== 'id' && itemValue !== undefined && itemValue !== null
+        );
+        return hasRemainingValue ? [itemWithoutPlan] : [];
+      });
       return true;
     };
 
@@ -859,8 +873,11 @@ export const updateInteractiveChat = async ({
       });
 
     return value.flatMap((item) => {
-      if (item.plan && updateExistingPlan(item.plan)) {
-        const { plan: _plan, ...restItem } = item;
+      const hasPlan = Object.prototype.hasOwnProperty.call(item, 'plan') && item.plan !== undefined;
+      if (hasPlan && updateExistingPlan(item.plan)) {
+        const restItem = Object.fromEntries(
+          Object.entries(item).filter(([key]) => key !== 'plan')
+        ) as AIChatItemValueItemType;
         const hasRemainingValue = Object.values(restItem).some(
           (itemValue) => itemValue !== undefined && itemValue !== null
         );

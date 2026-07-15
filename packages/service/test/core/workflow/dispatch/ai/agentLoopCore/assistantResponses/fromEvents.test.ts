@@ -2,7 +2,7 @@ import { appendAgentLoopCoreAssistantResponseFromEvent } from '@fastgpt/service/
 import { describe, expect, it } from 'vitest';
 
 describe('appendAgentLoopCoreAssistantResponseFromEvent', () => {
-  it('stores only the latest complete plan snapshot by planId', () => {
+  it('updates the standalone plan snapshot while retaining tool history', () => {
     const assistantResponses: any[] = [];
 
     appendAgentLoopCoreAssistantResponseFromEvent({
@@ -12,6 +12,8 @@ describe('appendAgentLoopCoreAssistantResponseFromEvent', () => {
         operation: 'set_plan',
         success: true,
         message: 'plan created',
+        id: 'call_plan_create',
+        params: '{"action":"set_plan"}',
         plan: {
           planId: 'plan_1',
           name: 'Research FastGPT',
@@ -33,9 +35,11 @@ describe('appendAgentLoopCoreAssistantResponseFromEvent', () => {
         operation: 'update_steps',
         success: true,
         message: 'plan updated',
+        id: 'call_plan_update',
+        params: '{"action":"update_steps"}',
         plan: {
-          planId: 'plan_1',
-          name: 'Research FastGPT',
+          planId: 'plan_2',
+          name: 'Publish FastGPT research',
           description: 'Collect and summarize architecture details',
           steps: [
             {
@@ -51,20 +55,28 @@ describe('appendAgentLoopCoreAssistantResponseFromEvent', () => {
 
     expect(assistantResponses).toEqual([
       {
-        plan: {
-          planId: 'plan_1',
-          name: 'Research FastGPT',
-          description: 'Collect and summarize architecture details',
-          steps: [
-            {
-              id: 'step_1',
-              name: 'Collect context',
-              status: 'done',
-              note: 'Architecture collected'
-            }
-          ]
-        },
-        planStatus: undefined
+        plan: expect.objectContaining({
+          planId: 'plan_2',
+          steps: [expect.objectContaining({ status: 'done' })]
+        })
+      },
+      {
+        id: 'call_plan_create',
+        agentPlanUpdate: {
+          id: 'call_plan_create',
+          functionName: 'update_plan',
+          params: '{"action":"set_plan"}',
+          response: 'plan created'
+        }
+      },
+      {
+        id: 'call_plan_update',
+        agentPlanUpdate: {
+          id: 'call_plan_update',
+          functionName: 'update_plan',
+          params: '{"action":"update_steps"}',
+          response: 'plan updated'
+        }
       }
     ]);
   });

@@ -123,7 +123,7 @@ export const buildAgentLoopCorePausedMemories = ({
 
 /**
  * 完成态 memory：统一清理未完成的 providerState。
- * 新一轮必须从受 history/checkpoint 约束的标准聊天历史重建上下文。
+ * 新一轮的 active plan 从 ChatItem history 恢复，不在 memory 中建立第二份状态。
  */
 export const buildAgentLoopCoreDoneMemories = ({ nodeId }: { nodeId: string }) => {
   return buildAgentLoopCoreProviderStateMemories({

@@ -5,6 +5,7 @@ export {
 } from '../application/run';
 
 export { buildAgentLoopCoreInput } from '../application/context/input';
+export { readAgentLoopCoreActivePlan } from '../application/context/activePlan';
 export { buildAgentLoopCoreRequestMessages } from '../application/context/messages';
 export { buildAgentLoopCoreSystemPrompt } from '../application/context/prompt';
 export {

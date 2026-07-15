@@ -673,6 +673,60 @@ describe('dispatchRunAgent user context', () => {
     });
   });
 
+  it('restores the latest unfinished plan from full histories without memory', async () => {
+    const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
+    const props = createProps();
+    props.histories[props.histories.length - 1].value.push({
+      plan: {
+        planId: 'plan_resume',
+        name: 'Resume after failure',
+        steps: [
+          {
+            id: 'step_resume',
+            name: 'Continue unfinished work',
+            status: 'in_progress'
+          }
+        ]
+      }
+    });
+    runAgentLoopMock.mockResolvedValueOnce({
+      status: 'done',
+      completeMessages: [],
+      assistantMessages: [{ role: 'assistant', content: 'continued' }],
+      requestIds: []
+    });
+
+    let resultPromise: Promise<any>;
+    runWithContext(
+      {
+        queryUrlTypeMap: {},
+        mcpClientMemory: {}
+      },
+      () => {
+        resultPromise = dispatchRunAgent(props);
+      }
+    );
+    await resultPromise!;
+
+    expect(runAgentLoopMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        input: expect.objectContaining({
+          activePlan: {
+            planId: 'plan_resume',
+            name: 'Resume after failure',
+            steps: [
+              {
+                id: 'step_resume',
+                name: 'Continue unfinished work',
+                status: 'in_progress'
+              }
+            ]
+          }
+        })
+      })
+    );
+  });
+
   it('restores legacy fastAgent ask memory and resumes with the user answer', async () => {
     const { dispatchRunAgent } = await import('@fastgpt/service/core/workflow/dispatch/ai/agent');
     const props = createProps();

@@ -41,10 +41,7 @@ const upsertAgentPlanUpdate = ({
   };
 };
 
-/**
- * 按 planId 保存最新完整计划快照。
- * 该快照仅用于聊天记录刷新后的 UI 恢复，不参与模型消息转换。
- */
+/** 将 plan_operation 的最新完整状态收敛为独立 plan 快照。 */
 const upsertPlanSnapshot = ({
   assistantResponses,
   plan
@@ -52,7 +49,9 @@ const upsertPlanSnapshot = ({
   assistantResponses: AIChatItemValueItemType[];
   plan: NonNullable<AIChatItemValueItemType['plan']>;
 }) => {
-  const responseIndex = assistantResponses.findIndex((item) => item.plan?.planId === plan.planId);
+  const responseIndex = assistantResponses.findIndex(
+    (item) => Object.prototype.hasOwnProperty.call(item, 'plan') && item.plan !== undefined
+  );
   if (responseIndex < 0) {
     assistantResponses.push({ plan });
     return;
@@ -96,9 +95,8 @@ const upsertAgentAsk = ({
 /**
  * 将 agent-loop 元事件写入 FastGPT assistantResponses。
  *
- * 这里保存两类结构化数据：
- * 1. 成功 plan_operation 的完整计划快照，仅供聊天 UI 刷新恢复。
- * 2. transcript 无法直接表达、但恢复 agent-loop 需要的 plan/ask/checkpoint 记录。
+ * plan 快照用于恢复 agent-loop 运行时状态；agentPlanUpdate 只用于还原工具调用历史。
+ * agent-loop 输出层会只保留最后一条 plan 快照，并把完成态收敛成 null 终止标记。
  */
 export const appendAgentLoopCoreAssistantResponseFromEvent = ({
   assistantResponses,

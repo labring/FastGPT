@@ -207,8 +207,8 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
           } as ChatCompletionMessageParam
         ]
       : buildInitialMessages({ input, hasRuntimeTools, promptMode: runtime.promptMode });
-  // active plan 只属于当前 loop；普通新轮次不会从历史 checkpoint 恢复。
-  // 只有 ask_user 暂停恢复时，pendingMainContext 才会携带可继续执行的 plan。
+  // 普通续轮通过 input.activePlan 恢复结构化 plan；ask_user 续跑则优先使用暂停时的完整快照。
+  // 历史 checkpoint 只负责给模型提供上下文，不再作为运行时状态的反序列化来源。
   let activePlan = input.pendingMainContext?.activePlan ?? input.activePlan;
   // control 工具只影响 Agent 内部状态，不作为普通工具卡片向前端展示。
   // read_files/sandbox 是内置执行器，但需要走普通工具事件链路供前端和运行详情展示。

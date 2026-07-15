@@ -42,6 +42,7 @@ import {
   buildAgentLoopCoreSystemPrompt,
   createAgentLoopCoreChildInteractiveParams,
   prepareAgentLoopCoreProviderRunState,
+  readAgentLoopCoreActivePlan,
   readAgentLoopCoreProviderStateMemory,
   runAgentLoopCoreWithSummary
 } from '../agentLoopCore/interface';
@@ -277,6 +278,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       histories: chatHistories,
       nodeId
     });
+    const activePlan = readAgentLoopCoreActivePlan({ histories });
     const provider = getWorkflowAgentLoopProvider();
     const { providerState: runtimeProviderState, isAskResume } =
       prepareAgentLoopCoreProviderRunState({
@@ -291,6 +293,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       input: buildAgentLoopCoreInput({
         messages: loopMessages,
         systemPrompt: formatedSystemPrompt,
+        activePlan,
         providerState: runtimeProviderState,
         userAnswer: isAskResume ? queryInput || userChatInput : undefined,
         childrenInteractiveParams: createAgentLoopCoreChildInteractiveParams({

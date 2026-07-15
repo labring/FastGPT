@@ -220,16 +220,14 @@ describe('pushChatRecords', () => {
     it('should persist agent loop control values in AI chat item value', async () => {
       const plan = {
         planId: 'plan_1',
-        task: 'Compare products',
+        name: 'Compare products',
         description: 'Compare FastGPT and Dify',
         steps: [
           {
             id: 's1',
-            title: 'Compare positioning',
+            name: 'Compare positioning',
             description: 'Compare product positioning',
-            acceptanceCriteria: ['Positioning is clear'],
-            status: 'pending' as const,
-            evidence: []
+            status: 'pending' as const
           }
         ]
       };
@@ -1452,18 +1450,15 @@ describe('pushChatRecords', () => {
                 ]
               },
               {
-                plan: {
-                  planId: 'plan_1',
-                  name: 'Interactive plan',
-                  description: null,
-                  steps: [
-                    {
-                      id: 'step_1',
-                      name: 'Wait for selection',
-                      status: 'done',
-                      note: 'Selected A'
-                    }
-                  ]
+                plan: null
+              },
+              {
+                id: 'call_plan_done',
+                agentPlanUpdate: {
+                  id: 'call_plan_done',
+                  functionName: 'update_plan',
+                  params: '{"action":"update_steps"}',
+                  response: 'completed'
                 }
               },
               {
@@ -1524,7 +1519,7 @@ describe('pushChatRecords', () => {
           response: 'A'
         })
       );
-      expect(chatItem.value).toHaveLength(4);
+      expect(chatItem.value).toHaveLength(5);
       expect(chatItem.value.filter((item) => item.tools?.[0]?.id === 'call_select_1')).toHaveLength(
         1
       );
@@ -1538,15 +1533,17 @@ describe('pushChatRecords', () => {
             !item.interactive
         )
       ).toBe(false);
-      expect(chatItem.value.filter((item) => item.plan?.planId === 'plan_1')).toHaveLength(1);
-      expect(chatItem.value[1].plan?.steps[0]).toEqual(
+      expect(chatItem.value.find((item) => 'plan' in item)?.plan).toBeNull();
+      const completedPlanUpdate = chatItem.value.find(
+        (item) => item.agentPlanUpdate?.id === 'call_plan_done'
+      )?.agentPlanUpdate;
+      expect(completedPlanUpdate).toEqual(
         expect.objectContaining({
-          id: 'step_1',
-          status: 'done',
-          note: 'Selected A'
+          id: 'call_plan_done',
+          response: 'completed'
         })
       );
-      expect(chatItem.value[3].text?.content).toBe('已继续执行');
+      expect(chatItem.value[4].text?.content).toBe('已继续执行');
     });
 
     it('should remove paymentPause interactive value', async () => {

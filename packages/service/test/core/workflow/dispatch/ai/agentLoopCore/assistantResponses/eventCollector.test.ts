@@ -151,7 +151,7 @@ describe('createAgentLoopCoreAssistantEventCollector', () => {
     ]);
   });
 
-  it('persists a complete plan snapshot and operation record from one successful event', () => {
+  it('persists the complete plan as a standalone snapshot', () => {
     const collector = createAgentLoopCoreAssistantEventCollector({
       metaEventNames: {
         updatePlanToolName: 'update_plan'

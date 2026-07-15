@@ -168,6 +168,74 @@ describe('runFastAgentLoop', () => {
     expect(toolNames.some((name: string) => name.startsWith('sandbox_'))).toBe(true);
   });
 
+  it('initializes runtime plan from history without changing request messages', async () => {
+    const activePlan = {
+      planId: 'plan_resume',
+      name: 'Resume plan',
+      steps: [
+        {
+          id: 'step_resume',
+          name: 'Continue unfinished work',
+          status: 'in_progress' as const
+        }
+      ]
+    };
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      toolCall({
+        id: 'call_update_resumed_plan',
+        name: 'update_plan',
+        args: {
+          action: 'update_steps',
+          steps: [{ id: 'step_resume', status: 'done' }]
+        }
+      }),
+      text({
+        requestId: 'req_resumed_plan_done',
+        content: 'continued'
+      })
+    ]);
+
+    const result = await runFastAgentLoop({
+      input: {
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'continue'
+          }
+        ],
+        activePlan
+      },
+      runtime: createRuntime({
+        systemTools: {
+          plan: { enabled: true }
+        }
+      })
+    });
+
+    expect(result.activePlan?.steps[0]).toMatchObject({
+      id: 'step_resume',
+      status: 'done'
+    });
+    expect(compressRequestMessagesMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        activePlan: expect.objectContaining({
+          planId: 'plan_resume'
+        })
+      })
+    );
+    const firstRequestMessages = createLLMResponseMock.mock.calls[0][0].body.messages;
+    expect(firstRequestMessages).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          content: expect.stringContaining('<active_plan>')
+        })
+      ])
+    );
+    expect(firstRequestMessages).toEqual(
+      expect.arrayContaining([expect.objectContaining({ content: 'continue' })])
+    );
+  });
+
   it('runs readFile with internal execution while emitting runtime tool card events', async () => {
     const events: any[] = [];
     const usagePush = vi.fn();

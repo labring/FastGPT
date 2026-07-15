@@ -7,6 +7,7 @@ import type {
 import { runAgentLoop } from '../../../../../ai/llm/agentLoop/interface';
 import { createAgentLoopCoreAssistantEventCollector } from '../adapter/assistantResponses';
 import { summarizeAgentLoopCoreResult, type AgentLoopCoreOutputSummary } from './output/result';
+import { compactAgentLoopCorePlanSnapshots } from './output/assistantResponses';
 import type { AgentLoopCoreResult } from '../domain/result';
 import type { AgentLoopCoreToolDisplayInfo } from '../domain/toolInfo';
 
@@ -58,10 +59,10 @@ export const runAgentLoopCore = async <TChildrenResponse = unknown>({
     input,
     runtime: wrappedRuntime
   });
-  const assistantResponseValues = [
+  const assistantResponseValues = compactAgentLoopCorePlanSnapshots([
     ...(assistantResponses?.extraResponses ?? []),
     ...eventAssistantResponses
-  ];
+  ]);
 
   if (result.status === 'paused') {
     return {

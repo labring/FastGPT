@@ -1,4 +1,38 @@
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { hasUnfinishedAgentPlan } from '@fastgpt/global/core/ai/agent/utils';
+
+/**
+ * 将 agent-loop 生成的多个 plan 快照收敛为最后状态。
+ * 完成计划只保留 null 终止标记，避免下一轮恢复更早的未完成计划。
+ */
+export const compactAgentLoopCorePlanSnapshots = (
+  assistantResponses: AIChatItemValueItemType[]
+): AIChatItemValueItemType[] => {
+  const lastPlanIndex = assistantResponses.findLastIndex(
+    (value) => Object.prototype.hasOwnProperty.call(value, 'plan') && value.plan !== undefined
+  );
+  if (lastPlanIndex < 0) return assistantResponses;
+
+  return assistantResponses.flatMap((value, index) => {
+    const hasPlan = Object.prototype.hasOwnProperty.call(value, 'plan') && value.plan !== undefined;
+    if (!hasPlan) return [value];
+
+    const valueWithoutPlan = Object.fromEntries(
+      Object.entries(value).filter(
+        ([key, itemValue]) => key !== 'plan' && itemValue !== undefined && itemValue !== null
+      )
+    ) as AIChatItemValueItemType;
+    if (index === lastPlanIndex) {
+      const plan = value.plan === null || !hasUnfinishedAgentPlan(value.plan) ? null : value.plan;
+      return [{ ...valueWithoutPlan, plan }];
+    }
+
+    const hasSemanticValue = Object.entries(valueWithoutPlan).some(
+      ([key, itemValue]) => key !== 'id' && itemValue !== undefined && itemValue !== null
+    );
+    return hasSemanticValue ? [valueWithoutPlan] : [];
+  });
+};
 
 /**
  * 从结构化 assistantResponses 中提取纯文本节点输出。
