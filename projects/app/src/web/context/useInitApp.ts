@@ -185,7 +185,7 @@ export const useInitApp = () => {
       keyword: k,
       search,
       source: fastgpt_source,
-      firstsource: sourceValue,
+      home_source: sourceValue,
       ...utmParams
     });
 

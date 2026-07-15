@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   getFastGPTSem,
-  getFastGPTSemForLogin,
   initFastGPTSemSourceDomain,
   onFastGPTLoginSuccess,
   parseFastGPTSource,
@@ -63,27 +62,42 @@ describe('marketing utils', () => {
     expect(parseFastGPTSource('{invalid')).toBeUndefined();
   });
 
-  it('should send firstsource as lastsource for login', () => {
+  it('should keep home source independent from first and last source', () => {
     setFastGPTSem({
       source: 'home_hero_trial',
-      firstsource: {
+      home_source: {
         visitor_id: 'visitor-1',
         first_touch_source: 'ChatGPT'
       }
     });
 
-    expect(getFastGPTSemForLogin()).toEqual({
+    expect(getFastGPTSem()).toEqual({
       source: 'home_hero_trial',
-      lastsource: {
+      home_source: {
         visitor_id: 'visitor-1',
         first_touch_source: 'ChatGPT'
       }
     });
   });
 
+  it('should not send persisted first and last source fields from the client', () => {
+    localStorage.setItem(
+      'fastgpt_sem',
+      JSON.stringify({
+        home_source: { visitor_id: 'visitor-current' },
+        firstsource: { visitor_id: 'visitor-first' },
+        lastsource: { visitor_id: 'visitor-last' }
+      })
+    );
+
+    expect(getFastGPTSem()).toEqual({
+      home_source: { visitor_id: 'visitor-current' }
+    });
+  });
+
   it('should clear pending marketing data after login succeeds', async () => {
     setFastGPTSem({
-      firstsource: { visitor_id: 'visitor-1' }
+      home_source: { visitor_id: 'visitor-1' }
     });
     const loginSuccess = vi.fn();
 

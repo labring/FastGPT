@@ -31,20 +31,28 @@ export const FastGPTSourceSchema = z
   .passthrough();
 export type FastGPTSourceType = z.infer<typeof FastGPTSourceSchema>;
 
-export const FastGPT_SEM_Schema = ShortUrlSchema.extend({
+const FastGPTSemBaseSchema = ShortUrlSchema.extend({
   keyword: z.string().optional(),
   search: z.string().optional(),
   source: z.string().optional(),
-  firstsource: FastGPTSourceSchema.optional(),
-  lastsource: FastGPTSourceSchema.optional(),
   sourceDomain: z.string().optional()
 });
+
+export const FastGPT_SEM_Schema = FastGPTSemBaseSchema.extend({
+  firstsource: FastGPTSourceSchema.optional(),
+  lastsource: FastGPTSourceSchema.optional()
+});
 export type FastGPTSemType = z.infer<typeof FastGPT_SEM_Schema>;
+
+export const FastGPTTrackSemSchema = FastGPTSemBaseSchema.extend({
+  home_source: FastGPTSourceSchema.optional()
+});
+export type FastGPTTrackSemType = z.infer<typeof FastGPTTrackSemSchema>;
 
 export const TrackRegisterParamsSchema = z.object({
   inviterId: z.string().optional(),
   bd_vid: z.string().optional(),
   msclkid: z.string().optional(),
-  fastgpt_sem: FastGPT_SEM_Schema.optional()
+  fastgpt_sem: FastGPTTrackSemSchema.optional()
 });
 export type TrackRegisterParams = z.infer<typeof TrackRegisterParamsSchema>;

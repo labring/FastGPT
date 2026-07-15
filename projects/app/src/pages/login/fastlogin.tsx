@@ -12,7 +12,7 @@ import { validateRedirectUrl } from '@/web/common/utils/uri';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 import { useLoginRedirectAfterLogin } from '@/web/support/user/loginRedirect';
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
-import { getFastGPTSemForLogin, onFastGPTLoginSuccess } from '@/web/support/marketing/utils';
+import { getFastGPTSem, onFastGPTLoginSuccess } from '@/web/support/marketing/utils';
 
 const FastLogin = ({
   code,
@@ -56,7 +56,7 @@ const FastLogin = ({
         const res = await postFastLogin({
           code,
           token,
-          fastgpt_sem: getFastGPTSemForLogin(),
+          fastgpt_sem: getFastGPTSem(),
           language: i18n.language as LangEnum
         });
         if (!res) {

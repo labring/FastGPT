@@ -64,10 +64,10 @@ async function handler(
 
   user.lastLoginTmbId = userDetail.team.tmbId;
   user.language = language;
-  if (fastgpt_sem?.lastsource) {
+  if (fastgpt_sem?.home_source) {
     user.fastgpt_sem = {
       ...(user.fastgpt_sem || {}),
-      lastsource: fastgpt_sem.lastsource
+      lastsource: fastgpt_sem.home_source
     };
   }
   await user.save();

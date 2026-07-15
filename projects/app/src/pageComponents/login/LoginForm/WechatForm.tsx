@@ -11,7 +11,7 @@ import Loading from '@fastgpt/web/components/common/MyLoading';
 import MyImage from '@fastgpt/web/components/common/Image/MyImage';
 import {
   getBdVId,
-  getFastGPTSemForLogin,
+  getFastGPTSem,
   getMsclkid,
   getInviterId,
   onFastGPTLoginSuccess
@@ -48,7 +48,7 @@ const WechatForm = ({ setPageType, loginSuccess }: Props) => {
         code: wechatInfo?.code || '',
         bd_vid: getBdVId(),
         msclkid: getMsclkid(),
-        fastgpt_sem: getFastGPTSemForLogin(),
+        fastgpt_sem: getFastGPTSem(),
         language: i18n.language as LangEnum
       }),
     {

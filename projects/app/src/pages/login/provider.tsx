@@ -12,7 +12,7 @@ import { useTranslation } from 'next-i18next';
 import { OAuthEnum } from '@fastgpt/global/support/user/constant';
 import {
   getBdVId,
-  getFastGPTSemForLogin,
+  getFastGPTSem,
   getInviterId,
   getMsclkid,
   onFastGPTLoginSuccess
@@ -89,7 +89,7 @@ const provider = () => {
           inviterId: getInviterId(),
           bd_vid: getBdVId(),
           msclkid: getMsclkid(),
-          fastgpt_sem: getFastGPTSemForLogin(),
+          fastgpt_sem: getFastGPTSem(),
           language: i18n.language as LangEnum
         });
 
