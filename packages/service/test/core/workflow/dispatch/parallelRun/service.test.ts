@@ -489,12 +489,13 @@ describe('parallelRun/service', () => {
       expect(responseDetails[0].childrenResponses).toBeUndefined();
     });
 
-    it('wrapper.runningTime 为子节点 runningTime 之和（精确到百分位）', () => {
+    it('wrapper.runningTime 使用任务自身耗时，不累加子节点耗时', () => {
       const withTimings: ParallelTaskResult = {
         success: true,
         index: 0,
         data: 'ok',
         totalPoints: 0,
+        runningTime: 1.23,
         response: makeDispatchFlowResponse({
           nodeResponses: [
             { id: 'a', runningTime: 0.33 } as any,
@@ -504,7 +505,7 @@ describe('parallelRun/service', () => {
         })
       };
       const { responseDetails } = agg([withTimings]);
-      expect(responseDetails[0].runningTime).toBe(1);
+      expect(responseDetails[0].runningTime).toBe(1.23);
     });
 
     it('全部成功 → fullResultsArray 每项 {success:true, message:"", data}', () => {

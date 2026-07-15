@@ -1283,7 +1283,7 @@ describe('summarizeRuntimeNodeResponses', () => {
 
     expect(nextSummary.responseIds).toEqual(['repeat', 'next']);
     expect(nextSummary.finishedNodeIds).toEqual(['repeat-node', 'next-node']);
-    expect(nextSummary.runningTime).toBe(4);
+    expect(nextSummary).not.toHaveProperty('runningTime');
     expect(nextSummary.childTotalPoints).toBe(6);
     expect(nextSummary.childResponseCount).toBe(2);
   });

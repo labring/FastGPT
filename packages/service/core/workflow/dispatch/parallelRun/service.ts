@@ -111,6 +111,7 @@ export type ParallelTaskResult =
       data: any;
       response: DispatchFlowResponse;
       totalPoints: number;
+      runningTime?: number;
       taskResponseId?: string;
     }
   | {
@@ -119,6 +120,7 @@ export type ParallelTaskResult =
       error?: string;
       response?: DispatchFlowResponse;
       totalPoints: number;
+      runningTime?: number;
       taskResponseId?: string;
     };
 
@@ -225,7 +227,6 @@ const buildParallelTaskWrapper = ({
   const runtimeSummary = result.response
     ? getRuntimeNodeResponseSummary(result.response)
     : undefined;
-  const runningTime = runtimeSummary?.runningTime || 0;
   const taskNodeId = result.taskResponseId || `${parentNodeId}_task_${result.index}`;
 
   return {
@@ -234,7 +235,7 @@ const buildParallelTaskWrapper = ({
     moduleType: FlowNodeTypeEnum.parallelRun,
     moduleName: i18nT('workflow:parallel_task'),
     moduleNameArgs: { index: result.index + 1 },
-    runningTime: Math.round(runningTime * 100) / 100,
+    runningTime: result.runningTime,
     totalPoints: result.totalPoints,
     loopInputValue: input,
     loopOutputValue: result.success ? result.data : undefined,

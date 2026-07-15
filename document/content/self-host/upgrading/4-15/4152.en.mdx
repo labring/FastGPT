@@ -24,6 +24,7 @@ description: 'FastGPT V4.15.2 Release Notes'
 3. Custom chunk delimiters now reject a single `|` or consecutive `||` to prevent incorrect parsing of large numbers of chunks.
 4. Improved automatic license purchase logic for WeCom edition customers after payment to prevent duplicate or missing license purchases.
 5. Fixed empty Tag labels in the Plugin Marketplace.
+6. Fixed runtime calculations for LoopRun iterations and ParallelRun tasks so each item reports its own elapsed time instead of summing the runtimes of its child steps.
 
 ## 🛠️ Code Improvements
 

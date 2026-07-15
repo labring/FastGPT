@@ -166,6 +166,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
     const isResumeIteration = !!interactiveData && iteration === resumeIteration;
     const loopRunNodeResponseId = props.nodeResponseParentId || node.nodeId;
     const iterationResponseId = `${loopRunNodeResponseId}:iter:${iteration}`;
+    const iterationStartTime = Date.now();
 
     if (isResumeIteration) {
       isolatedNodes.forEach((n) => {
@@ -208,7 +209,7 @@ export const dispatchLoopRun = async (props: Props): Promise<Response> => {
       response
     });
     const iterationChildResponseCount = wrapperSummary.childResponseCount;
-    const iterationRunningTime = wrapperSummary.runningTime;
+    const iterationRunningTime = +((Date.now() - iterationStartTime) / 1000).toFixed(2);
     assistantResponses.push(...response.assistantResponses);
     const iterationTotalPoints = pushSubWorkflowUsage({
       usagePush: props.usagePush,

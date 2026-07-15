@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
@@ -118,6 +118,10 @@ describe('dispatchParallelRun', () => {
     runWorkflowMock.mockReset();
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('共用 nodeResponseWriter 时写入任务包装节点，父响应只保留轻量统计', async () => {
     const nodeResponseWriter = {
       recordWithParent: vi.fn().mockResolvedValue([])
@@ -162,6 +166,34 @@ describe('dispatchParallelRun', () => {
     expect(nodeResponse.totalPoints).toBe(3);
     expect(nodeResponse.childTotalPoints).toBeUndefined();
     expect(nodeResponse.parallelDetail).toBeUndefined();
+  });
+
+  it('任务包装节点独立计时，不累加子节点 runningTime', async () => {
+    vi.spyOn(Date, 'now').mockReturnValueOnce(1000).mockReturnValue(2250);
+    const nodeResponseWriter = {
+      recordWithParent: vi.fn().mockResolvedValue([])
+    };
+    runWorkflowMock.mockResolvedValue(
+      makeDispatchFlowResponse({
+        nodeResponses: [
+          makeResponseItem('chatNode', { runningTime: 10 }),
+          makeResponseItem('nestedEnd', {
+            moduleType: FlowNodeTypeEnum.nestedEnd,
+            runningTime: 20,
+            loopOutputValue: 'done'
+          })
+        ]
+      })
+    );
+
+    await dispatchParallelRun(
+      makeProps({
+        nodeResponseWriter,
+        nodeResponseParentId: 'parallel-parent-response'
+      })
+    );
+
+    expect(nodeResponseWriter.recordWithParent.mock.calls[0][0][0].runningTime).toBe(1.25);
   });
 
   it('重试成功时保留失败 attempt 详情并写入最终成功 attempt', async () => {
@@ -313,7 +345,6 @@ describe('dispatchParallelRun', () => {
   });
 
   it('成功任务会把变量更新写到外部节点的 output 同步回父运行态', async () => {
-    let unchangedExternalNode: RuntimeNodeItemType | undefined;
     runWorkflowMock.mockImplementation((args: any) => {
       const externalNode = args.runtimeNodes.find((node: any) => node.nodeId === 'externalText');
       externalNode.outputs[0].value = `updated-${args.nodeResponseParentId}`;
@@ -373,7 +404,7 @@ describe('dispatchParallelRun', () => {
         }
       ]
     });
-    unchangedExternalNode = props.runtimeNodes.find(
+    const unchangedExternalNode = props.runtimeNodes.find(
       (node: RuntimeNodeItemType) => node.nodeId === 'unchangedExternal'
     );
 
