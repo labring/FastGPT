@@ -454,6 +454,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
         }
 
         const sandboxResult = await runSandboxTools({
+          teamId: runtime.teamId,
           toolName: sandboxToolName,
           args: call.function.arguments ?? '',
           sandboxClient: runtime.sandboxToolContext.client

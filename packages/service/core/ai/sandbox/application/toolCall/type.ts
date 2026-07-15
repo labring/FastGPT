@@ -8,6 +8,7 @@ import type { SandboxClient } from '../runtime/client';
 import type { SandboxFileRef } from '@fastgpt/global/core/ai/sandbox/type';
 
 type ToolExecuteContext<P> = {
+  teamId: string;
   sandboxInstance: SandboxClient;
   params: P;
 };

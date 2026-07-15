@@ -59,10 +59,12 @@ export type SandboxToolCallResult = {
  * SandboxClient。source/user/chat 上下文由 client 自身持有，单次工具调用不再重复传递。
  */
 export const runSandboxTools = async ({
+  teamId,
   toolName,
   args,
   sandboxClient
 }: {
+  teamId: string;
   toolName: string;
   args: string;
   sandboxClient: SandboxClient;
@@ -92,6 +94,7 @@ export const runSandboxTools = async ({
   }
 
   const result = await tool.execute({
+    teamId,
     sandboxInstance: sandboxClient,
     params: parsedArgs.data as any
   });

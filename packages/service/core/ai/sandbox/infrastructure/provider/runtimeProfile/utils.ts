@@ -57,12 +57,14 @@ export function buildBaseSandboxRuntimeEnv({
   sessionId,
   workDirectory,
   ideAgentBindAddr,
+  ideAgentPreviewBindAddr,
   ideAgentMaxFileBytes,
   ideAgentWsLimits
 }: {
   sessionId: string;
   workDirectory: string;
   ideAgentBindAddr: string;
+  ideAgentPreviewBindAddr: string;
   ideAgentMaxFileBytes: number;
   ideAgentWsLimits: {
     maxMessageBytes: number;
@@ -74,6 +76,7 @@ export function buildBaseSandboxRuntimeEnv({
     FASTGPT_WORKDIR: workDirectory,
     IDE_AGENT_ENABLED: 'true',
     IDE_AGENT_BIND_ADDR: ideAgentBindAddr,
+    IDE_AGENT_PREVIEW_BIND_ADDR: ideAgentPreviewBindAddr,
     FASTGPT_IDE_MAX_FILE_BYTES: String(ideAgentMaxFileBytes),
     FASTGPT_IDE_WS_MAX_MESSAGE_BYTES: String(ideAgentWsLimits.maxMessageBytes),
     FASTGPT_IDE_WS_MAX_FRAME_BYTES: String(ideAgentWsLimits.maxFrameBytes)

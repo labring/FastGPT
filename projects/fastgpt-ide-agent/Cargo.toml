@@ -7,6 +7,8 @@ rust-version = "1.95"
 [dependencies]
 tokio = { version = "1.52.3", features = ["macros", "rt-multi-thread", "net", "time", "sync", "fs", "io-util", "process"] }
 tokio-tungstenite = { version = "0.29.0", default-features = false, features = ["handshake"] }
+tokio-util = { version = "0.7.18", features = ["io"] }
+axum = { version = "0.8.9", default-features = false, features = ["http1", "tokio"] }
 portable-pty = "0.9.0"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.150"
@@ -16,6 +18,8 @@ path-security = "0.2.0"
 notify = "9.0.0-rc.4"
 notify-debouncer-full = "0.8.0-rc.2"
 sha2 = "0.10.9"
+mime_guess = "2.0.5"
 
 [dev-dependencies]
 tempfile = "3.27.0"
+tower = { version = "0.5.3", features = ["util"] }

@@ -5,6 +5,7 @@ use tokio::net::TcpListener;
 mod connection;
 mod fs;
 mod password;
+mod preview;
 mod protocol;
 mod terminal;
 mod workspace;
@@ -35,26 +36,45 @@ async fn main() {
 
     let bind_addr =
         std::env::var("IDE_AGENT_BIND_ADDR").unwrap_or_else(|_| "0.0.0.0:1318".to_string());
-    let listener = TcpListener::bind(&bind_addr)
+    let ws_listener = TcpListener::bind(&bind_addr)
         .await
         .unwrap_or_else(|_| panic!("Failed to bind to {}", bind_addr));
     println!("FastGPT IDE Agent listening on {}", bind_addr);
 
-    loop {
-        match listener.accept().await {
-            Ok((stream, _)) => {
-                let expected_password = Arc::clone(&password);
-                tokio::spawn(async move {
-                    handle_connection(stream, expected_password).await;
-                });
-            }
-            Err(e) => {
-                eprintln!(
-                    "Accept connection error: {:?}. Temporary pause for 50ms...",
-                    e
-                );
-                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    let preview_bind_addr =
+        std::env::var("IDE_AGENT_PREVIEW_BIND_ADDR").unwrap_or_else(|_| "0.0.0.0:1319".to_string());
+    let preview_listener = TcpListener::bind(&preview_bind_addr)
+        .await
+        .unwrap_or_else(|_| panic!("Failed to bind to {}", preview_bind_addr));
+    println!(
+        "FastGPT IDE Agent preview server listening on {}",
+        preview_bind_addr
+    );
+
+    let serve_ws = async {
+        loop {
+            match ws_listener.accept().await {
+                Ok((stream, _)) => {
+                    let expected_password = Arc::clone(&password);
+                    tokio::spawn(async move {
+                        handle_connection(stream, expected_password).await;
+                    });
+                }
+                Err(e) => {
+                    eprintln!(
+                        "Accept connection error: {:?}. Temporary pause for 50ms...",
+                        e
+                    );
+                    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+                }
             }
         }
-    }
+    };
+
+    tokio::select! {
+        _ = serve_ws => {}
+        result = preview::serve_preview(preview_listener, Arc::clone(&password)) => {
+            panic!("Preview server stopped unexpectedly: {result:?}");
+        }
+    };
 }

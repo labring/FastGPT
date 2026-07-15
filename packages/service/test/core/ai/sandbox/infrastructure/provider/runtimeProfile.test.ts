@@ -101,6 +101,7 @@ describe('sandbox runtime profile', () => {
           sessionId: 'session-1',
           workDirectory: runtimeProfile.workDirectory,
           ideAgentBindAddr: '0.0.0.0:1318',
+          ideAgentPreviewBindAddr: '0.0.0.0:1319',
           ideAgentMaxFileBytes: 10 * 1024 * 1024,
           ideAgentWsLimits: {
             maxMessageBytes: 64 * 1024 * 1024,
@@ -119,6 +120,7 @@ describe('sandbox runtime profile', () => {
         FASTGPT_WORKDIR: '/custom/devbox/workspace',
         IDE_AGENT_ENABLED: 'true',
         IDE_AGENT_BIND_ADDR: '0.0.0.0:1318',
+        IDE_AGENT_PREVIEW_BIND_ADDR: '0.0.0.0:1319',
         FASTGPT_IDE_MAX_FILE_BYTES: '10485760',
         FASTGPT_IDE_WS_MAX_MESSAGE_BYTES: '67108864',
         FASTGPT_IDE_WS_MAX_FRAME_BYTES: '16777216'

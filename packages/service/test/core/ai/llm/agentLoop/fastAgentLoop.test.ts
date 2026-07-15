@@ -105,6 +105,7 @@ const tool = (name: string): ChatCompletionTool => ({
 });
 
 const createRuntime = (overrides?: Partial<AgentLoopRuntime>): AgentLoopRuntime => ({
+  teamId: 'team-1',
   model: 'gpt-4',
   stream: true,
   toolCatalog: {
@@ -325,6 +326,7 @@ describe('runFastAgentMainLoop', () => {
     expect(getFinalAssistantText(result)).toBe('done');
     expect(runSandboxToolsMock).toHaveBeenCalledWith(
       expect.objectContaining({
+        teamId: 'team-1',
         toolName: 'sandbox_shell',
         args: '{"command":"pwd"}',
         sandboxClient: expect.anything()

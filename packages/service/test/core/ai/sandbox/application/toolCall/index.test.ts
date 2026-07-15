@@ -18,11 +18,6 @@ const mirrorMock = vi.hoisted(() => ({
   prepareSandboxRuntimeMirrors: vi.fn()
 }));
 
-const s3Mock = vi.hoisted(() => ({
-  uploadChatFile: vi.fn(),
-  createGetChatFileURL: vi.fn()
-}));
-
 vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/client', () => ({
   getSandboxClient: runtimeMock.getSandboxClient
 }));
@@ -37,13 +32,6 @@ vi.mock('@fastgpt/service/core/ai/sandbox/application/runtime/mirrors', () => ({
 
 vi.mock('@fastgpt/service/core/ai/sandbox/infrastructure/provider/runtimeProfile', () => ({
   getSandboxRuntimeProfile: () => ({ workDirectory: '/workspace' })
-}));
-
-vi.mock('@fastgpt/service/common/s3/sources/chat', () => ({
-  getS3ChatSource: () => ({
-    uploadChatFile: s3Mock.uploadChatFile,
-    createGetChatFileURL: s3Mock.createGetChatFileURL
-  })
 }));
 
 import {
@@ -79,14 +67,13 @@ describe('sandbox toolCall index', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     runtimeMock.getSandboxClient.mockResolvedValue(createSandboxInstance());
-    s3Mock.uploadChatFile.mockResolvedValue({ key: 'chat/file.txt' });
-    s3Mock.createGetChatFileURL.mockResolvedValue({ url: 'signed-url' });
   });
 
   it('executes known tools through a prepared sandbox client', async () => {
     const sandboxClient = createSandboxInstance();
     await expect(
       runSandboxTools({
+        teamId: 'team',
         toolName: SANDBOX_SHELL_TOOL_NAME,
         args: JSON.stringify({ command: 'pwd' }),
         sandboxClient
@@ -104,6 +91,7 @@ describe('sandbox toolCall index', () => {
 
     await expect(
       runSandboxTools({
+        teamId: 'team',
         ...appSource,
         userId: 'user',
         chatId: 'chat',
@@ -118,6 +106,7 @@ describe('sandbox toolCall index', () => {
 
     await expect(
       runSandboxTools({
+        teamId: 'team',
         ...appSource,
         userId: 'user',
         chatId: 'chat',
@@ -135,6 +124,7 @@ describe('sandbox toolCall index', () => {
 
     await expect(
       runSandboxTools({
+        teamId: 'team',
         ...appSource,
         userId: 'user',
         chatId: 'chat',

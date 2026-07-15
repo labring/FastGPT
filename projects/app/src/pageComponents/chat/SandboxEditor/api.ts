@@ -112,7 +112,7 @@ export const checkSandboxExist = async (data: SandboxCheckExistClientBody) =>
   POST<SandboxCheckExistResponse>('/core/ai/sandbox/checkExist', normalizeSandboxRequest(data));
 
 /**
- * 获取 HTML 预览链接 (S3 托管)
+ * 获取 HTML 预览链接（agent-proxy 直连 sandbox workspace）
  */
 export const getHtmlPreviewLink = (data: SandboxGetHtmlPreviewLinkClientBody) =>
   POST<SandboxGetHtmlPreviewLinkResponse>(

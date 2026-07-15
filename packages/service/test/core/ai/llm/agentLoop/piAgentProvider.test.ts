@@ -1312,6 +1312,7 @@ describe('runPiAgentLoop', () => {
         messages: [{ role: 'user', content: 'hello' }]
       },
       runtime: {
+        teamId: 'team-1',
         llmParams: {
           model: 'gpt-5'
         },
@@ -1338,6 +1339,7 @@ describe('runPiAgentLoop', () => {
     const result = await sandboxTool.execute('call_sandbox', { command: 'pwd' });
     expect(runSandboxToolsMock).toHaveBeenCalledWith(
       expect.objectContaining({
+        teamId: 'team-1',
         toolName: 'sandbox_shell',
         args: '{"command":"pwd"}',
         sandboxClient: expect.anything()
