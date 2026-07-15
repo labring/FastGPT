@@ -60,7 +60,7 @@ describe('agent loop system ask tool', () => {
     expect(result.error).toContain('options');
   });
 
-  it('follows the upstream three-to-five option contract', () => {
+  it('supports a two-option user choice', () => {
     const result = parseAgentAskToolCall({
       id: 'call_ask',
       type: 'function',
@@ -68,20 +68,30 @@ describe('agent loop system ask tool', () => {
         name: 'ask_agent',
         arguments: JSON.stringify({
           reason: 'Need a choice',
-          blockerType: 'ambiguous_goal',
+          blockerType: 'user_choice',
           question: 'Which output should I create?',
           options: ['Document', 'Spreadsheet']
         })
       }
     });
 
-    expect(result.success).toBe(false);
+    expect(result).toEqual({
+      success: true,
+      ask: {
+        reason: 'Need a choice',
+        blockerType: 'user_choice',
+        question: 'Which output should I create?',
+        options: ['Document', 'Spreadsheet']
+      }
+    });
 
     const parameters = createAskAgentTool().function.parameters as any;
     expect(parameters.properties.options).toMatchObject({
-      minItems: 3,
+      minItems: 2,
       maxItems: 5
     });
+    expect(parameters.properties.blockerType.enum).toContain('user_choice');
+    expect(createAskAgentTool().function.description).toContain('task or a Skill');
   });
 
   it('creates internal tool schemas without workflow dependencies', () => {

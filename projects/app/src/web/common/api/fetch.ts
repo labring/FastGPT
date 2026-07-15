@@ -23,8 +23,6 @@ import { formatTime2YMDHMW } from '@fastgpt/global/common/string/time';
 import { getWebReqUrl } from '@fastgpt/web/common/system/utils';
 import type { OnOptimizePromptProps } from '@/components/common/PromptEditor/OptimizerPopover';
 import type { OnOptimizeCodeProps } from '@/pageComponents/app/detail/WorkflowComponents/Flow/nodes/NodeCode/Copilot';
-import type { WorkflowSsePayloadMap } from '@fastgpt/global/core/workflow/runtime/sse';
-import type { ChatAgentConfigFormDataType } from '@fastgpt/global/core/ai/auxiliaryGeneration/type';
 import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 import type { StreamNoNeedToBeResumeType } from '@fastgpt/global/openapi/core/ai/api';
 
@@ -65,31 +63,11 @@ const shouldSendStreamResumeHeader = (url: string) =>
 type CommonResponseType = {
   responseValueId?: string;
 };
-type WorkflowQueueEvent =
-  | SseResponseEventEnum.interactive
-  | SseResponseEventEnum.toolCall
-  | SseResponseEventEnum.toolParams
-  | SseResponseEventEnum.toolResponse
-  | SseResponseEventEnum.plan
-  | SseResponseEventEnum.planStatus
-  | SseResponseEventEnum.skillCall
-  | SseResponseEventEnum.chatTitle;
-type WorkflowQueueItem<Event extends WorkflowQueueEvent> = Event extends WorkflowQueueEvent
-  ? CommonResponseType & { event: Event } & WorkflowSsePayloadMap[Event]
-  : never;
 type AnswerQueueItem = CommonResponseType & {
   event: SseResponseEventEnum.fastAnswer | SseResponseEventEnum.answer;
   text?: string;
   reasoningText?: string;
 };
-type ChatAgentConfigQueueItem = CommonResponseType & {
-  event: AuxiliaryGenerationEventEnum.chatAgentConfig;
-  data: ChatAgentConfigFormDataType;
-};
-type ResponseQueueItemType =
-  | AnswerQueueItem
-  | WorkflowQueueItem<WorkflowQueueEvent>
-  | ChatAgentConfigQueueItem;
 
 const STREAM_TYPING_QUEUE_COUNT_WHILE_STREAMING = 1;
 
@@ -115,11 +93,12 @@ type HandleEventSourceDataParams = {
   event: string;
   data: string;
   onmessage: StartChatFnProps['generatingMessage'];
-  enqueue: (data: ResponseQueueItemType) => void;
+  enqueue: (data: AnswerQueueItem) => void;
   onerror: (err: string) => void;
   splitAnswerTextByCharacter?: boolean;
 };
-function handleEventSourceData(params: HandleEventSourceDataParams) {
+/** 解析单条 SSE 数据；只有回答文本进入打字队列，其他事件立即派发。 */
+export function handleEventSourceData(params: HandleEventSourceDataParams) {
   const { event, data, onmessage, enqueue, onerror, splitAnswerTextByCharacter = true } = params;
 
   if (data === '[DONE]') {
@@ -140,7 +119,7 @@ function handleEventSourceData(params: HandleEventSourceDataParams) {
       case SseResponseEventEnum.plan:
       case SseResponseEventEnum.planStatus:
       case SseResponseEventEnum.skillCall: {
-        enqueue({ responseValueId, event, ...obj });
+        onmessage({ responseValueId, event, ...obj });
         break;
       }
 
@@ -260,9 +239,23 @@ function $ssefetch(params: SSEFetchParams) {
 
     let responseText = '';
     let title: string | undefined;
-    let responseQueue: ResponseQueueItemType[] = [];
+    let responseQueue: AnswerQueueItem[] = [];
     let error: string | undefined;
     let finished = false;
+
+    const applyAnswerItem = (item: AnswerQueueItem) => {
+      onmessage(item);
+      if (item.text) responseText += item.text;
+    };
+    const flushAnswerQueue = () => {
+      responseQueue.forEach(applyAnswerItem);
+      responseQueue = [];
+    };
+    const dispatchNonAnswerMessage: StartChatFnProps['generatingMessage'] = (message) => {
+      // 控制事件是顺序屏障：先补齐此前收到的文本，再立即更新工具或状态。
+      flushAnswerQueue();
+      onmessage(message);
+    };
 
     const onfailed = (err?: any) => {
       finished = true;
@@ -277,18 +270,9 @@ function $ssefetch(params: SSEFetchParams) {
       return resolve({ responseText, title });
     };
 
-    const isAnswerEvent = (event: string) => {
-      return event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer;
-    };
-
     function animateResponseLoop() {
       if (signal.aborted) {
-        responseQueue.forEach((item) => {
-          onmessage(item);
-          if (isAnswerEvent(item.event) && 'text' in item && item.text) {
-            responseText += item.text;
-          }
-        });
+        flushAnswerQueue();
 
         return onfinish();
       }
@@ -299,11 +283,7 @@ function $ssefetch(params: SSEFetchParams) {
           finished
         });
         for (let i = 0; i < fetchCount; i++) {
-          const item = responseQueue[i];
-          onmessage(item);
-          if (isAnswerEvent(item.event) && 'text' in item && item.text) {
-            responseText += item.text;
-          }
+          applyAnswerItem(responseQueue[i]);
         }
 
         responseQueue = responseQueue.slice(fetchCount);
@@ -318,7 +298,7 @@ function $ssefetch(params: SSEFetchParams) {
 
     animateResponseLoop();
 
-    const enqueue = (data: ResponseQueueItemType) => {
+    const enqueue = (data: AnswerQueueItem) => {
       responseQueue.push(data);
 
       if (document.hidden) {
@@ -359,7 +339,7 @@ function $ssefetch(params: SSEFetchParams) {
           handleEventSourceData({
             event,
             data,
-            onmessage,
+            onmessage: dispatchNonAnswerMessage,
             enqueue,
             onerror: (err) => void (error = err)
           });
@@ -408,7 +388,7 @@ function $resumefetch({ url, onmessage, onResumeUnavailable, controller }: Resum
 
     let responseText = '';
     let title: string | undefined;
-    let responseQueue: ResponseQueueItemType[] = [];
+    let responseQueue: AnswerQueueItem[] = [];
     let error: string | undefined;
     let finished = false;
     let resumePhase: StreamResumePhaseEnum = StreamResumePhaseEnum.catchup;
@@ -436,15 +416,18 @@ function $resumefetch({ url, onmessage, onResumeUnavailable, controller }: Resum
       } satisfies ResumeStreamErrorType);
     };
 
-    const isAnswerEvent = (event: string) => {
-      return event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer;
-    };
-
-    const applyMessageItem = (item: ResponseQueueItemType) => {
+    const applyAnswerItem = (item: AnswerQueueItem) => {
       onmessage(item);
-      if (isAnswerEvent(item.event) && 'text' in item && item.text) {
-        responseText += item.text;
-      }
+      if (item.text) responseText += item.text;
+    };
+    const flushAnswerQueue = () => {
+      responseQueue.forEach(applyAnswerItem);
+      responseQueue = [];
+    };
+    const dispatchNonAnswerMessage: StartChatFnProps['generatingMessage'] = (message) => {
+      // 恢复直播同样以控制事件为屏障，避免工具状态越过尚未展示的回答。
+      flushAnswerQueue();
+      onmessage(message);
     };
 
     function animateResponseLoop() {
@@ -459,7 +442,7 @@ function $resumefetch({ url, onmessage, onResumeUnavailable, controller }: Resum
         });
         for (let i = 0; i < fetchCount; i++) {
           const item = responseQueue[i];
-          applyMessageItem(item);
+          applyAnswerItem(item);
         }
 
         responseQueue = responseQueue.slice(fetchCount);
@@ -474,11 +457,11 @@ function $resumefetch({ url, onmessage, onResumeUnavailable, controller }: Resum
 
     animateResponseLoop();
 
-    const enqueue = (data: ResponseQueueItemType) => {
+    const enqueue = (data: AnswerQueueItem) => {
       if (signal.aborted) return;
 
       if (resumePhase === StreamResumePhaseEnum.catchup) {
-        applyMessageItem(data);
+        applyAnswerItem(data);
         return;
       }
 
@@ -557,7 +540,7 @@ function $resumefetch({ url, onmessage, onResumeUnavailable, controller }: Resum
           handleEventSourceData({
             event,
             data,
-            onmessage: onmessage,
+            onmessage: dispatchNonAnswerMessage,
             enqueue: enqueue,
             onerror: (e) => void (error = e),
             splitAnswerTextByCharacter: resumePhase === StreamResumePhaseEnum.live

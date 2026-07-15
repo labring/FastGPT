@@ -1,4 +1,10 @@
+import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+
 export const STREAM_RENDER_INTERVAL_MS = 50;
+
+/** 只有回复文本需要经过流式渲染调度，工具和状态事件应立即提交。 */
+export const shouldScheduleStreamRender = (event: string) =>
+  event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer;
 
 export type StreamRenderSchedulerRuntime = {
   now: () => number;

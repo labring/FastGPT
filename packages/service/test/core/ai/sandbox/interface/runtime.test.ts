@@ -1015,10 +1015,10 @@ describe('sandbox and skill module separation', () => {
       }
     ]);
 
-    expect(skillPrompt).toContain('## 技能');
-    expect(skillPrompt).toContain('<path>/workspace/Skill/SKILL.md</path>');
-    expect(skillPrompt).not.toContain('<location>');
-    expect(skillPrompt).toContain('<directory>/workspace/Skill</directory>');
+    expect(skillPrompt).toContain('<available_skills>');
+    expect(skillPrompt).toContain('<location>/workspace/Skill/SKILL.md</location>');
+    expect(skillPrompt).not.toContain('<directory>');
+    expect(skillPrompt).not.toContain('<path>');
     expect(skillPrompt).not.toContain('<sandbox_input_files>');
     expect(skillPrompt).not.toContain('sandbox_fetch_user_file');
   });

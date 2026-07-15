@@ -11,6 +11,17 @@ export const CONTEXT_CHECKPOINT_START_TAG = '<context_checkpoint>';
 export const CONTEXT_CHECKPOINT_END_TAG = '</context_checkpoint>';
 
 /**
+ * Agent active plan 的起始标签。
+ * active plan 由运行时根据结构化 plan 状态生成，不由上下文压缩模型生成。
+ */
+export const ACTIVE_PLAN_START_TAG = '<active_plan>';
+
+/**
+ * Agent active plan 的结束标签。
+ */
+export const ACTIVE_PLAN_END_TAG = '</active_plan>';
+
+/**
  * token 预算转字符预算时使用的近似换算比例。
  * 用于 compress/index.ts 的本地 head-tail 截断、二分缩短和内容分块。
  */

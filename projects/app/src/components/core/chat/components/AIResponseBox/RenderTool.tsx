@@ -15,7 +15,6 @@ import Avatar from '@fastgpt/web/components/common/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useMemo, useState } from 'react';
-import { getToolParamsPreview } from '../../ChatContainer/ChatBox/utils/toolParamsStreamBuffer';
 import { accordionButtonStyle } from './constants';
 
 const RICH_TOOL_CONTENT_MAX_LENGTH = 32768;
@@ -59,8 +58,8 @@ const ToolDetail = ({
   showAnimation: boolean;
   tool: ToolModuleResponseItemType;
 }) => {
-  const params = showAnimation ? getToolParamsPreview(tool.params) : tool.params;
-  const response = showAnimation ? getToolParamsPreview(tool.response || '') : tool.response || '';
+  const params = tool.params;
+  const response = tool.response || '';
   const usePlainText =
     showAnimation ||
     params.length > RICH_TOOL_CONTENT_MAX_LENGTH ||

@@ -102,9 +102,9 @@ export const AgentPlanAskQueryInteractiveSchema = z.object({
     content: z.string(),
     reason: z.string().optional(),
     blockerType: z
-      .enum(['missing_required_input', 'tool_unavailable', 'ambiguous_goal'])
+      .enum(['missing_required_input', 'tool_unavailable', 'ambiguous_goal', 'user_choice'])
       .optional(),
-    options: z.array(AgentPlanAskOptionSchema).min(3).max(5),
+    options: z.array(AgentPlanAskOptionSchema).min(2).max(5),
     answer: z.string().optional()
   })
 });

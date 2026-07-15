@@ -22,6 +22,7 @@ import type {
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { normalizeToolResponseContent } from '@fastgpt/global/core/ai/llm/utils';
+import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 
 type RunAgentCallProps<TChildrenResponse = unknown> = {
   maxRunAgentTimes: number;
@@ -38,6 +39,8 @@ type RunAgentCallProps<TChildrenResponse = unknown> = {
   teamId: string;
 
   childrenInteractiveParams?: AgentLoopChildrenInteractiveParams<TChildrenResponse>;
+  /** 每轮压缩时读取最新 plan，避免传入 loop 启动时的过期快照。 */
+  getActivePlan?: () => AgentPlanType | undefined;
   // LLM 压缩后回调
   onAfterCompressContext?: (e: {
     usage?: AgentLoopUsage;
@@ -123,6 +126,7 @@ type RunAgentResponse<TChildrenResponse = unknown> = {
  * 上下文压缩，内部会判断是否需要压缩
  */
 export const onCompressContext = async ({
+  activePlan,
   isAborted,
   messageTokens,
   requestMessages,
@@ -132,6 +136,7 @@ export const onCompressContext = async ({
   userKey,
   teamId
 }: {
+  activePlan?: AgentPlanType;
   isAborted: RunAgentCallProps['isAborted'];
   messageTokens?: number;
   requestMessages: ChatCompletionMessageParam[];
@@ -143,6 +148,7 @@ export const onCompressContext = async ({
 }) => {
   const compressStartTime = Date.now();
   const result = await compressRequestMessages({
+    activePlan,
     checkIsStopping: isAborted,
     messageTokens,
     messages: requestMessages,
@@ -191,6 +197,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
   isAborted,
 
   onAfterCompressContext,
+  getActivePlan,
   childrenInteractiveParams,
   onRunInteractiveTool,
 
@@ -373,6 +380,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
     // 1. Compress request messages
     {
       const compressResult = await onCompressContext({
+        activePlan: getActivePlan?.(),
         isAborted,
         messageTokens: requestMessagesTokenCount,
         requestMessages,

@@ -553,9 +553,9 @@ describe('dispatchRunAgent user context', () => {
 
     const loopInput = runAgentLoopMock.mock.calls[0][0].input;
     const currentText = getMessageTextForTest(loopInput.messages.at(-1)?.content);
-    expect(currentText).toContain('## 技能');
+    expect(currentText).toContain('<available_skills>');
     expect(currentText).toContain('<name>Edit Skill</name>');
-    expect(currentText).toContain('<path>./SKILL.md</path>');
+    expect(currentText).toContain('<location>./SKILL.md</location>');
   });
 
   it('returns the final answer as assistant response', async () => {

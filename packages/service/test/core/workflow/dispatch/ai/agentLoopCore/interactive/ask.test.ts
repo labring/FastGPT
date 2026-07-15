@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { AgentPlanAskQueryInteractiveSchema } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { createAgentLoopCoreAskInteractive } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/interactive';
 
 describe('agentLoopCore ask interactive', () => {
@@ -23,5 +24,20 @@ describe('agentLoopCore ask interactive', () => {
         options: ['Yes', 'No', 'Not sure']
       }
     });
+  });
+
+  it('accepts a two-option choice requested by a skill', () => {
+    expect(
+      AgentPlanAskQueryInteractiveSchema.safeParse({
+        type: 'agentPlanAskQuery',
+        askId: 'call_skill_choice',
+        params: {
+          content: 'Which presentation style should I use?',
+          reason: 'The selected Skill requires the user to choose a style.',
+          blockerType: 'user_choice',
+          options: ['Editorial', 'Swiss']
+        }
+      }).success
+    ).toBe(true);
   });
 });

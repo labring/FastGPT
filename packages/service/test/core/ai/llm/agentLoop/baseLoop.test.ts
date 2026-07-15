@@ -3,6 +3,7 @@ import {
   ModelTypeEnum
 } from '@fastgpt/global/core/ai/constants';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
+import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mockCreateLLMResponseQueue, text, toolCall } from './_mocks/llmQueue';
@@ -143,6 +144,50 @@ describe('runAgentLoop with mocked createLLMResponse', () => {
     expect(result.inputTokens).toBe(100);
     expect(result.outputTokens).toBe(30);
     expect(result.llmTotalPoints).toBe(1);
+  });
+
+  it('reads the current active plan when checking context compression', async () => {
+    const activePlan = {
+      planId: 'plan_current',
+      name: 'Current plan',
+      steps: [
+        {
+          id: 'step_current',
+          name: 'Current step',
+          status: 'in_progress'
+        }
+      ]
+    } satisfies AgentPlanType;
+    const getActivePlan = vi.fn(() => activePlan);
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      text({ requestId: 'req_direct', content: 'direct answer' })
+    ]);
+
+    await runAgentLoop({
+      maxRunAgentTimes: 5,
+      body: {
+        model: 'gpt-4',
+        stream: true,
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'hello'
+          }
+        ],
+        tools: []
+      },
+      getActivePlan,
+      isAborted: () => false,
+      onRunTool: vi.fn(),
+      onRunInteractiveTool: vi.fn()
+    });
+
+    expect(getActivePlan).toHaveBeenCalledTimes(1);
+    expect(compressRequestMessagesMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        activePlan
+      })
+    );
   });
 
   it('returns context checkpoint generated during request message compression', async () => {

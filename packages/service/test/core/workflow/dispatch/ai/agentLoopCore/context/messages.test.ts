@@ -189,7 +189,8 @@ describe('agentLoopCore reminder helpers', () => {
 
     expect(skillPrompt).toContain('<name>Report &lt;R&amp;D&gt;</name>');
     expect(skillPrompt).toContain('<description>Write &amp; review</description>');
-    expect(skillPrompt).toContain('<path>/workspace/Report &amp; Review/SKILL.md</path>');
+    expect(skillPrompt).toContain('<available_skills>');
+    expect(skillPrompt).toContain('<location>/workspace/Report &amp; Review/SKILL.md</location>');
   });
 
   it('builds current user reminder in stable section order', () => {

@@ -160,6 +160,42 @@ checkpoint 使用可读 Markdown，并用 XML-like 标签包裹：
 5. 不引入原文不存在的事实；允许概括，但必须表达不确定性。
 6. 为提高 prompt cache 命中率，固定 system prompt 不包含 histories；动态 histories 由单独 user message 通过 `<histories>...</histories>` 注入。
 
+#### Active Plan 组合协议
+
+Agent 存在 active plan 时，压缩结果由两种不同来源的内容组成：
+
+1. `<active_plan>` 由运行时直接序列化当前结构化 plan，保留 `planId` 和步骤的 `id/name/description/status/note`。
+2. `<context_checkpoint>` 仍由压缩模型生成，只负责历史事实、决策、结果和后续上下文。
+3. 两个标签合并在同一条隐藏 `user` message 中，`active_plan` 固定放在 `context_checkpoint` 前面。
+
+```xml
+<active_plan>
+{
+  "planId": "plan_1",
+  "name": "Current plan",
+  "steps": [
+    {
+      "id": "step_1",
+      "name": "Inspect context compression",
+      "status": "in_progress"
+    }
+  ]
+}
+</active_plan>
+<context_checkpoint>
+# Context Checkpoint
+...
+</context_checkpoint>
+```
+
+运行约束：
+
+1. 压缩模型只输出 `<context_checkpoint>`，不得生成、复制或改写 `<active_plan>`。
+2. `compressRequestMessages` 在模型输出校验完成后读取最新 active plan 并确定性拼接。
+3. 再次压缩时优先使用运行时传入的最新 plan；跨轮缺少运行时 plan 时，允许从合法的隐藏组合 checkpoint 中恢复。
+4. 普通可见 user 文本中的 `<active_plan>` 不得用于恢复运行时状态。
+5. `contextCheckpoint` history value 保存完整组合文本，历史恢复后仍只生成一条隐藏 `user` message。
+
 ### 4. 增量压缩
 
 压缩应支持旧 checkpoint 继续滚动更新：
@@ -188,7 +224,7 @@ checkpoint 使用可读 Markdown，并用 XML-like 标签包裹：
 2. `chats2GPTMessages` 本来就是 history 到 LLM messages 的统一入口，在这里处理 checkpoint 可以避免各节点重复注入。
 3. checkpoint 作为专用 value 字段，不会被误当作普通 assistant answer，也可以通过 `hideInUI` 控制展示。
 
-新增 AI value 字段，只存 checkpoint 文本：
+AI value 仍使用 `contextCheckpoint` 字段；无 active plan 时保存纯 checkpoint，有 active plan 时保存组合文本：
 
 ```ts
 export const ContextCheckpointValueSchema = z.string();
@@ -201,7 +237,7 @@ export const AIChatItemValueSchema = z.object({
 
 写入时机：
 
-1. `compressRequestMessages` 生成新 checkpoint 后，将 checkpoint text 返回给 `runAgentLoop`。
+1. `compressRequestMessages` 生成新 checkpoint 并拼接 active plan 后，将组合文本返回给 `runAgentLoop`。
 2. `runAgentLoop` 在结果中返回最新 `contextCheckpoint`。
 3. `dispatchRunAgent` 把它追加到本轮 AI `assistantResponses` 中，形成一个隐藏的结构化 value：
 
@@ -452,6 +488,8 @@ Agent 节点当前主要保存最终 `assistantResponses`，不会把 `result.co
 - [x] 改造 `chats2GPTMessages`，从最新 checkpoint value 开始解析，插入 checkpoint message 并跳过同 value 其他字段
 - [x] checkpoint 存储收敛为纯 string，不再依赖 history `dataId` 生成元信息
 - [x] `filterGPTMessageByMaxContext` 保留 leading checkpoint，避免二次上下文裁剪丢失 summary
+- [x] 将运行时 active plan 确定性拼接到 checkpoint 前部，并支持跨轮恢复
+- [x] 限制 active plan 只能从合法隐藏组合 checkpoint 恢复，避免可见用户文本注入 plan 状态
 - [x] 补充 `packages/service/test/core/ai/llm/compress` 单元测试
 - [x] 补充 global chat schema/adapt、LLM utils、base loop、unified loop 传播测试
 - [x] 运行局部测试：global chat + service compress/utils/agentLoop

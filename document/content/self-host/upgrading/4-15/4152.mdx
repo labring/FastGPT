@@ -1,5 +1,5 @@
 ---
-title: 'V4.15.2(进行中)'
+title: 'V4.15.2'
 description: 'FastGPT V4.15.2 更新说明'
 ---
 
@@ -14,6 +14,17 @@ description: 'FastGPT V4.15.2 更新说明'
 - `opensandbox/egress:v1.1.4`
 
 升级后可修复中文文件名的文件无法下载的问题。完整配置请参考 [OpenSandbox 配置](../../config/sandbox/opensandbox)。
+
+### AGENT_ENGINE 环境变量值调整
+
+V4.15.2 起，`AGENT_ENGINE` 使用新的枚举值。升级前，请按下表修改部署环境变量：
+
+| 旧值      | 新值        |
+| --------- | ----------- |
+| `default` | `fastAgent` |
+| `pi`      | `piAgent`   |
+
+旧值不再兼容。继续使用 `default` 或 `pi` 会导致环境变量校验失败，FastGPT 无法启动。未配置 `AGENT_ENGINE` 时，系统默认使用 `fastAgent`。
 
 ## 🚀 新增内容
 
@@ -38,9 +49,21 @@ description: 'FastGPT V4.15.2 更新说明'
 4. 企微版本客户付款后自动购买 license 判断逻辑优化，避免重复购买/少购买的情况
 5. 插件市场空 Tag 标签问题
 6. 修复循环运行节点的迭代项和并行运行节点的任务项耗时计算错误，改为分别记录每个子项的实际运行时间，不再累加子节点耗时。
+7. Agent Loop 部分边界情况优化。
 
 ## 🛠️ 代码优化
+
+### 常规代码优化
 
 1. Agent V2 辅助生成/ChatAgentHelper 重构，复用对话框。
 2. 保存包含超长 base64/data URL 的 AI 请求记录时可能触发栈溢出，提前进行截断。
 3. SSE 事件统一封装，强化类型提示。
+
+### Agent Loop 重构
+
+1. Workflow Agent 与 ToolCall 统一接入共享的 Agent Loop 执行内核。ToolCall 关闭 plan 和 ask 能力，其他循环执行、上下文处理、工具事件、交互恢复及计费规则与 Workflow Agent 保持一致。
+2. 统一 `fastAgent` 和 `piAgent` 的 Provider 接口，可通过 `AGENT_ENGINE` 切换执行引擎，并共用标准化的输入、运行时和返回结果协议。
+3. 统一 plan、ask、sandbox、文件读取、知识库搜索和业务工具的事件生命周期，使 SSE、运行详情和错误信息保持一致。
+4. 统一 `assistantResponses`、节点响应、Provider 状态和上下文压缩快照的生成及持久化流程，移除旧执行链路中的重复适配层。
+5. 统一模型调用、上下文压缩和工具执行的 usage 收集入口，避免同一笔用量被重复计费或统计。
+6. 优化工具调度：允许安全工具批量并行执行，并保持工具响应按模型调用顺序写回；plan、ask 等有状态工具继续串行执行。

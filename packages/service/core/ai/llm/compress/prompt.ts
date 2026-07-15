@@ -177,6 +177,7 @@ export const getCompressRequestMessagesPrompt = async () => {
 3. 旧工具调用只总结关键输入、关键结果和失败原因；不要保留 tool_call_id，不伪造工具执行。
 4. 所有小节都可以为空，但不要删除小节标题，便于后续机器读取。
 5. 原文主要是中文就用中文输出，原文主要是英文就用英文输出；不要翻译名称、字段、ID、路径、URL、错误码、代码和工具参数。
+6. histories 中可能包含运行时注入的 <active_plan>；不要输出、复制或改写 <active_plan>，最新计划会由程序在压缩完成后重新注入。
 
 ## 必须保留的信息
 

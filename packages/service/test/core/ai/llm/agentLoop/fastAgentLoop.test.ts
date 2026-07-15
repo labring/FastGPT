@@ -11,11 +11,13 @@ const {
   createLLMResponseMock,
   compressRequestMessagesMock,
   compressToolResponseMock,
+  extractActivePlanFromMessagesMock,
   runSandboxToolsMock
 } = vi.hoisted(() => ({
   createLLMResponseMock: vi.fn(),
   compressRequestMessagesMock: vi.fn(),
   compressToolResponseMock: vi.fn(),
+  extractActivePlanFromMessagesMock: vi.fn(),
   runSandboxToolsMock: vi.fn()
 }));
 
@@ -42,7 +44,8 @@ vi.mock('@fastgpt/service/core/ai/model', () => ({
 
 vi.mock('@fastgpt/service/core/ai/llm/compress', () => ({
   compressRequestMessages: compressRequestMessagesMock,
-  compressToolResponse: compressToolResponseMock
+  compressToolResponse: compressToolResponseMock,
+  extractActivePlanFromMessages: extractActivePlanFromMessagesMock
 }));
 
 vi.mock('@fastgpt/service/core/ai/llm/utils', () => ({
@@ -122,6 +125,7 @@ const createRuntime = (overrides?: Partial<AgentLoopRuntime>): AgentLoopRuntime 
 describe('runFastAgentMainLoop', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    extractActivePlanFromMessagesMock.mockReturnValue(undefined);
     compressRequestMessagesMock.mockImplementation(async ({ messages }) => ({
       messages
     }));
@@ -156,9 +160,11 @@ describe('runFastAgentMainLoop', () => {
     expect(getFinalAssistantReasoning(result)).toBe('direct reasoning');
     expect(result.activePlan).toBeUndefined();
     expect(createLLMResponseMock).toHaveBeenCalledTimes(1);
-    expect(createLLMResponseMock.mock.calls[0][0].body.messages[0].content).toContain(
-      '你是 FastGPT Main Agent'
-    );
+    const mainAgentPrompt = createLLMResponseMock.mock.calls[0][0].body.messages[0].content;
+    expect(mainAgentPrompt).toContain('你是 Work Agent');
+    expect(mainAgentPrompt).toContain('任务或 Skill 明确需要通过选项向用户收集信息');
+    expect(mainAgentPrompt).toContain('Skill 要求向用户收集选项信息时');
+    expect(mainAgentPrompt).toContain('options：2 到 5 个');
   });
 
   it('passes context checkpoint from base loop to fastAgent result', async () => {
@@ -342,7 +348,6 @@ describe('runFastAgentMainLoop', () => {
         }
       ]
     };
-
     mockCreateLLMResponseQueue(createLLMResponseMock, [
       text({
         requestId: 'req_final',
@@ -580,5 +585,66 @@ describe('runFastAgentMainLoop', () => {
       tool_call_id: 'call_ask',
       content: 'none'
     });
+  });
+
+  it('restores active plan state from a compressed context', async () => {
+    const activePlan = {
+      planId: 'plan_restored',
+      name: 'Restored plan',
+      steps: [
+        {
+          id: 'step_restored',
+          name: 'Resume work',
+          status: 'in_progress' as const
+        }
+      ]
+    };
+    extractActivePlanFromMessagesMock.mockReturnValue(activePlan);
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      toolCall({
+        id: 'call_update_restored_plan',
+        name: 'update_plan',
+        args: {
+          action: 'update_steps',
+          steps: [
+            {
+              id: 'step_restored',
+              status: 'done',
+              note: 'Restored state updated successfully.'
+            }
+          ]
+        }
+      }),
+      text({
+        requestId: 'req_after_restored_plan',
+        content: 'restored plan completed'
+      })
+    ]);
+
+    const result = await runFastAgentMainLoop({
+      runtime: createRuntime(),
+      input: {
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: `<active_plan>\n${JSON.stringify(activePlan)}\n</active_plan>\n<context_checkpoint>continue the plan</context_checkpoint>`,
+            hideInUI: true
+          }
+        ]
+      }
+    });
+
+    expect(result.activePlan?.steps[0]).toMatchObject({
+      id: 'step_restored',
+      status: 'done',
+      note: 'Restored state updated successfully.'
+    });
+    expect(compressRequestMessagesMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        activePlan: expect.objectContaining({
+          planId: 'plan_restored'
+        })
+      })
+    );
   });
 });

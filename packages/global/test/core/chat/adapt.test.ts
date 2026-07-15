@@ -1121,6 +1121,32 @@ describe('chats2GPTMessages', () => {
     ]);
   });
 
+  it('should restore active plan and checkpoint as one hidden user message', () => {
+    const compressedContext =
+      '<active_plan>\n{"planId":"plan_1","name":"Plan","steps":[{"id":"step_1","name":"Step","status":"in_progress"}]}\n</active_plan>\n<context_checkpoint>compressed history</context_checkpoint>';
+    const messages: ChatItemMiniType[] = [
+      {
+        dataId: 'compressed-context',
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            contextCheckpoint: compressedContext,
+            hideInUI: true
+          }
+        ]
+      }
+    ];
+
+    expect(chats2GPTMessages({ messages, reserveId: true })).toEqual([
+      {
+        dataId: 'compressed-context',
+        role: ChatCompletionRequestMessageRoleEnum.User,
+        content: compressedContext,
+        hideInUI: true
+      }
+    ]);
+  });
+
   it('should ignore values before the checkpoint in the same AI history item', () => {
     const messages: ChatItemMiniType[] = [
       {

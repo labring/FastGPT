@@ -437,6 +437,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       try {
         const standardMessages = convertPiAgentMessagesToChatMessages(messages);
         const result = await compressRequestMessages({
+          activePlan,
           checkIsStopping: runtime.checkIsStopping,
           messages: standardMessages,
           model: modelData,

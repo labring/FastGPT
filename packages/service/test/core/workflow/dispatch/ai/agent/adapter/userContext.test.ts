@@ -197,9 +197,9 @@ describe('buildAgentLoopCoreUserReminderInput', () => {
     });
 
     expect(result).toContain('<system-reminder>');
-    expect(result).toContain('## 技能');
-    expect(result).toContain('<path>/workspace/Skill/SKILL.md</path>');
-    expect(result.indexOf('## 技能')).toBeLessThan(result.indexOf('## 对话文件'));
+    expect(result).toContain('<available_skills>');
+    expect(result).toContain('<location>/workspace/Skill/SKILL.md</location>');
+    expect(result.indexOf('<available_skills>')).toBeLessThan(result.indexOf('## 对话文件'));
     expect(result.indexOf('## 对话文件')).toBeLessThan(result.indexOf('## 知识库'));
     expect(result.indexOf('## 知识库')).toBeLessThan(result.indexOf('## 背景信息'));
     expect(result).toContain('## 对话文件');
@@ -287,16 +287,25 @@ describe('buildAgentLoopCoreUserReminderInput', () => {
           name: 'Report',
           description: 'Write reports',
           directory: '/workspace/Report',
-          skillMdPath: '/workspace/Report/SKILL.md'
+          skillMdPath: '/workspace/Report/SKILL.md',
+          appId: 'platform_skill_1',
+          appName: 'Platform report skill',
+          appDescription: 'Platform skill description'
         }
       ]
     });
 
-    expect(result).toContain('## 技能');
+    expect(result).toContain('以下技能为特定任务提供专门的操作说明。');
+    expect(result).toContain('先使用 sandbox_read_file 读取完整的技能文件');
+    expect(result).toContain('<available_skills>');
+    expect(result).toContain('</available_skills>');
     expect(result).toContain('<name>Report</name>');
     expect(result).toContain('<description>Write reports</description>');
-    expect(result).toContain('<directory>/workspace/Report</directory>');
-    expect(result).toContain('<path>/workspace/Report/SKILL.md</path>');
+    expect(result).toContain('<location>/workspace/Report/SKILL.md</location>');
+    expect(result).not.toContain('<app_id>');
+    expect(result).not.toContain('<app_name>');
+    expect(result).not.toContain('<app_description>');
+    expect(result).not.toContain('Platform report skill');
     expect(result).toContain('执行这个技能');
   });
 
@@ -313,8 +322,7 @@ describe('buildAgentLoopCoreUserReminderInput', () => {
 
     expect(result).toContain('<name>Report &lt;R&amp;D&gt;</name>');
     expect(result).toContain('<description>Write &amp; review</description>');
-    expect(result).toContain('<directory>/workspace/Report &amp; Review</directory>');
-    expect(result).toContain('<path>/workspace/Report &amp; Review/SKILL.md</path>');
+    expect(result).toContain('<location>/workspace/Report &amp; Review/SKILL.md</location>');
   });
 });
 
@@ -458,9 +466,9 @@ describe('useUserContext', () => {
         const { text: currentText } = chatValue2RuntimePrompt(result.currentUserMessage.value);
 
         expect(historyText).toContain('## 对话文件');
-        expect(historyText).not.toContain('## 技能');
-        expect(currentText).toContain('## 技能');
-        expect(currentText).toContain('<path>/workspace/Report/SKILL.md</path>');
+        expect(historyText).not.toContain('<available_skills>');
+        expect(currentText).toContain('<available_skills>');
+        expect(currentText).toContain('<location>/workspace/Report/SKILL.md</location>');
         expect(currentText).toContain('当前问题');
       }
     );

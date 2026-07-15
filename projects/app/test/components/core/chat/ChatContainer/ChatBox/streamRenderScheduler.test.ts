@@ -1,9 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   createStreamRenderScheduler,
+  shouldScheduleStreamRender,
   STREAM_RENDER_INTERVAL_MS,
   type StreamRenderSchedulerRuntime
 } from '@/components/core/chat/ChatContainer/ChatBox/utils/streamRenderScheduler';
+import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
 const createFakeRuntime = () => {
   let now = 100;
@@ -56,6 +58,17 @@ const createFakeRuntime = () => {
     }
   };
 };
+
+describe('shouldScheduleStreamRender', () => {
+  it('should schedule only reply text events', () => {
+    expect(shouldScheduleStreamRender(SseResponseEventEnum.answer)).toBe(true);
+    expect(shouldScheduleStreamRender(SseResponseEventEnum.fastAnswer)).toBe(true);
+    expect(shouldScheduleStreamRender(SseResponseEventEnum.toolCall)).toBe(false);
+    expect(shouldScheduleStreamRender(SseResponseEventEnum.toolParams)).toBe(false);
+    expect(shouldScheduleStreamRender(SseResponseEventEnum.toolResponse)).toBe(false);
+    expect(shouldScheduleStreamRender(SseResponseEventEnum.flowNodeStatus)).toBe(false);
+  });
+});
 
 describe('createStreamRenderScheduler', () => {
   it('should align the first flush to the next frame without waiting a full interval', () => {
