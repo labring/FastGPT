@@ -96,6 +96,27 @@ describe('createStreamRenderScheduler', () => {
     expect(onFlush).toHaveBeenCalledTimes(2);
   });
 
+  it('should resolve a dynamic interval when scheduling the next flush', () => {
+    const fake = createFakeRuntime();
+    const onFlush = vi.fn();
+    let interval = 80;
+    const scheduler = createStreamRenderScheduler({
+      onFlush,
+      intervalMs: () => interval,
+      runtime: fake.runtime
+    });
+
+    scheduler.schedule();
+    fake.runNextTimer();
+    fake.runNextFrame();
+
+    fake.setNow(110);
+    interval = 96;
+    scheduler.schedule();
+
+    expect([...fake.timers.values()].map((item) => item.delay)).toEqual([86]);
+  });
+
   it('should flush immediately and cancel pending work', () => {
     const fake = createFakeRuntime();
     const onFlush = vi.fn();

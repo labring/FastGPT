@@ -2,6 +2,8 @@ const STREAM_ANIMATED_BLOCK_TAGS = new Set(['p', 'h1', 'h2', 'h3', 'h4', 'h5', '
 const STREAM_ANIMATED_SKIP_TAGS = new Set(['pre', 'code', 'table', 'svg']);
 const DEFAULT_STREAMING_TAIL_MAX_LENGTH = 64;
 const DEFAULT_STREAMING_TAIL_TAG_NAME = 'stream-tail';
+const DEFAULT_STREAMING_CHAR_TAG_NAME = 'stream-char';
+const STREAMING_CHAR_STAGGER_MS = 1;
 const STREAMING_MARKDOWN_SYNTAX_CHARS = new Set('*_~`[]()>#+-|\\');
 
 type HastElement = {
@@ -63,18 +65,23 @@ export const getStreamingAppendLength = ({
  * 只包装最后一个 Markdown 文本块的最新尾部，供流式淡入 renderer 使用。
  *
  * 与原字符级实现不同，本插件不会重写累计全文。它从最后一个可见 block 的末尾向前消费
- * `tailLength` 个 code point，一个原始 text node 最多生成一个 tail element。代码、表格、
- * SVG 和 KaTeX 是边界；遇到这些节点后不会继续向前包装旧正文。
+ * `tailLength` 个 code point，并在一个 bounded tail element 内生成对应的字符节点。代码、
+ * 表格、SVG 和 KaTeX 是边界；遇到这些节点后不会继续向前包装旧正文。
  */
 export const rehypeStreamAnimated = ({
-  tailLength,
-  tailTagName = DEFAULT_STREAMING_TAIL_TAG_NAME
+  tailLength = 0,
+  tailTagName = DEFAULT_STREAMING_TAIL_TAG_NAME,
+  charTagName = DEFAULT_STREAMING_CHAR_TAG_NAME,
+  getTailLength
 }: {
-  tailLength: number;
+  tailLength?: number;
   tailTagName?: string;
+  charTagName?: string;
+  getTailLength?: () => number;
 }) => {
   return (tree: HastRoot) => {
-    if (tailLength <= 0) return;
+    const resolvedTailLength = getTailLength?.() ?? tailLength;
+    if (resolvedTailLength <= 0) return;
 
     const isHastElement = (node: HastNode): node is HastElement =>
       node.type === 'element' && typeof (node as HastElement).tagName === 'string';
@@ -117,7 +124,9 @@ export const rehypeStreamAnimated = ({
     tree.children?.forEach((child) => findLastTextBlock(child));
     if (!lastTextBlock) return;
 
-    let remainingLength = tailLength;
+    let remainingLength = resolvedTailLength;
+    let animatedCharsFromEnd = 0;
+    const animateCharacters = lastTextBlock.tagName !== 'li';
 
     /** 从尾部反向包装；false 表示遇到不可跨越的渲染边界。 */
     const wrapTail = (node: HastElement): boolean => {
@@ -132,21 +141,38 @@ export const rehypeStreamAnimated = ({
 
           const animatedLength = Math.min(codePoints.length, remainingLength);
           const stableText = codePoints.slice(0, -animatedLength).join('');
-          const animatedText = codePoints.slice(-animatedLength).join('');
           const nextChildren: HastNode[] = [];
 
           if (stableText) {
             nextChildren.push({ type: 'text', value: stableText });
           }
+
+          const animatedText = codePoints.slice(-animatedLength).join('');
+          const animatedChildren = animateCharacters
+            ? codePoints.slice(-animatedLength).map((value, charIndex) => {
+                // The newest character starts immediately; older characters in this bounded batch
+                // receive a short stagger so the fade remains visible at a 20Hz commit rate.
+                const delay =
+                  (animatedCharsFromEnd + animatedLength - charIndex - 1) *
+                  STREAMING_CHAR_STAGGER_MS;
+                return {
+                  type: 'element' as const,
+                  tagName: charTagName,
+                  properties: delay > 0 ? { 'data-stream-char-delay': delay } : {},
+                  children: [{ type: 'text' as const, value }]
+                };
+              })
+            : [{ type: 'text' as const, value: animatedText }];
           nextChildren.push({
             type: 'element',
             tagName: tailTagName,
-            properties: {},
-            children: [{ type: 'text', value: animatedText }]
+            properties: animateCharacters ? {} : { 'data-stream-tail-mode': 'text' },
+            children: animatedChildren
           });
 
           node.children.splice(index, 1, ...nextChildren);
           remainingLength -= animatedLength;
+          animatedCharsFromEnd += animatedLength;
           continue;
         }
 

@@ -30,8 +30,38 @@ const element = (tagName: string, children: TestNode[], properties?: Record<stri
   ...(properties ? { properties } : {}),
   children
 });
-const streamTail = (children: TestNode[]) => element('stream-tail', children, {});
+const streamTail = (children: TestNode[]) =>
+  element(
+    'stream-tail',
+    children.flatMap((child) =>
+      child.type === 'text'
+        ? Array.from(child.value, (value) => element('stream-char', [text(value)], {}))
+        : [child]
+    ),
+    {}
+  );
 const root = (children: TestNode[]) => ({ type: 'root' as const, children });
+
+const stripCharAnimationDelays = (node: TestNode): TestNode => {
+  if (node.type === 'text') return node;
+
+  if (node.type === 'element') {
+    if (!node.children) return node;
+
+    return {
+      ...node,
+      ...(node.tagName === 'stream-char' ? { properties: {} } : {}),
+      children: node.children.map(stripCharAnimationDelays)
+    };
+  }
+
+  if (!('children' in node) || !node.children) return node;
+
+  return {
+    ...node,
+    children: node.children.map(stripCharAnimationDelays)
+  };
+};
 
 const getElementsByTagName = (node: TestNode, tagName: string): TestNode[] => {
   if (node.type === 'text' || !('children' in node) || !Array.isArray(node.children)) return [];
@@ -98,14 +128,28 @@ describe('rehypeStreamAnimated', () => {
           rehypePlugins: [[rehypeStreamAnimated, { tailLength: 2 }]],
           components: {
             'stream-tail': ({ children }: { children?: React.ReactNode }) =>
-              React.createElement('span', { 'data-stream-tail': true }, children)
+              React.createElement('span', { 'data-stream-tail': true }, children),
+            'stream-char': ({
+              children,
+              'data-stream-char-delay': delay
+            }: {
+              children?: React.ReactNode;
+              'data-stream-char-delay'?: number;
+            }) =>
+              React.createElement(
+                'span',
+                { style: delay ? { animationDelay: `${delay}ms` } : undefined },
+                children
+              )
           } as any
         },
         'hello'
       )
     );
 
-    expect(html).toBe('<p>hel<span data-stream-tail="true">lo</span></p>');
+    expect(html).toBe(
+      '<p>hel<span data-stream-tail="true"><span style="animation-delay:1ms">l</span><span>o</span></span></p>'
+    );
   });
 
   it('should only wrap the latest tail in the last text block', () => {
@@ -113,7 +157,7 @@ describe('rehypeStreamAnimated', () => {
 
     rehypeStreamAnimated({ tailLength: 5 })(tree as any);
 
-    expect(tree).toEqual(
+    expect(stripCharAnimationDelays(tree)).toEqual(
       root([
         element('p', [text('first block')]),
         element('p', [text('hello '), streamTail([text('world')])])
@@ -127,7 +171,7 @@ describe('rehypeStreamAnimated', () => {
     rehypeStreamAnimated({ tailLength: 64 })(tree as any);
 
     expect(getElementsByTagName(tree, 'stream-tail')).toHaveLength(1);
-    expect(tree).toEqual(
+    expect(stripCharAnimationDelays(tree)).toEqual(
       root([element('p', [text('a'.repeat(20_000 - 64)), streamTail([text('a'.repeat(64))])])])
     );
   });
@@ -139,7 +183,7 @@ describe('rehypeStreamAnimated', () => {
 
     rehypeStreamAnimated({ tailLength: 7 })(tree as any);
 
-    expect(tree).toEqual(
+    expect(stripCharAnimationDelays(tree)).toEqual(
       root([
         element('p', [
           text('before '),
@@ -155,8 +199,25 @@ describe('rehypeStreamAnimated', () => {
 
     rehypeStreamAnimated({ tailLength: 2 })(tree as any);
 
-    expect(tree).toEqual(
+    expect(stripCharAnimationDelays(tree)).toEqual(
       root([element('p', [element('strong', [text('bo'), streamTail([text('ld')])])])])
+    );
+  });
+
+  it('should keep list item tails as one text element to avoid list reflow', () => {
+    const tree = root([element('ul', [element('li', [text('hello')])])]);
+
+    rehypeStreamAnimated({ tailLength: 2 })(tree as any);
+
+    expect(stripCharAnimationDelays(tree)).toEqual(
+      root([
+        element('ul', [
+          element('li', [
+            text('hel'),
+            element('stream-tail', [text('lo')], { 'data-stream-tail-mode': 'text' })
+          ])
+        ])
+      ])
     );
   });
 
@@ -172,7 +233,9 @@ describe('rehypeStreamAnimated', () => {
     rehypeStreamAnimated({ tailLength: 3 })(tree as any);
 
     expect(getElementsByTagName(tree, 'stream-tail')).toHaveLength(0);
-    expect(tree).toEqual(root([element('p', [text('old'), skippedTail])]));
+    expect(stripCharAnimationDelays(tree)).toEqual(
+      root([element('p', [text('old'), skippedTail])])
+    );
   });
 
   it.each([
@@ -185,7 +248,9 @@ describe('rehypeStreamAnimated', () => {
     rehypeStreamAnimated({ tailLength: 3 })(tree as any);
 
     expect(getElementsByTagName(tree, 'stream-tail')).toHaveLength(0);
-    expect(tree).toEqual(root([element('p', [text('old')]), skippedBlock]));
+    expect(stripCharAnimationDelays(tree)).toEqual(
+      root([element('p', [text('old')]), skippedBlock])
+    );
   });
 
   it('should not fall back across a skipped block nested in a container', () => {
@@ -199,7 +264,7 @@ describe('rehypeStreamAnimated', () => {
     rehypeStreamAnimated({ tailLength: 3 })(tree as any);
 
     expect(getElementsByTagName(tree, 'stream-tail')).toHaveLength(0);
-    expect(tree).toEqual(
+    expect(stripCharAnimationDelays(tree)).toEqual(
       root([
         element('blockquote', [
           element('p', [text('old')]),
@@ -222,7 +287,7 @@ describe('rehypeStreamAnimated', () => {
     rehypeStreamAnimated({ tailLength: 3 })(tree as any);
 
     expect(getElementsByTagName(tree, 'stream-tail')).toHaveLength(0);
-    expect(tree).toEqual(
+    expect(stripCharAnimationDelays(tree)).toEqual(
       root([
         element('ul', [
           element('li', [
@@ -239,7 +304,7 @@ describe('rehypeStreamAnimated', () => {
 
     rehypeStreamAnimated({ tailLength: 4 })(tree as any);
 
-    expect(tree).toEqual(
+    expect(stripCharAnimationDelays(tree)).toEqual(
       root([element('p', [element('code', [text('code')]), streamTail([text(' new')])])])
     );
   });
@@ -249,7 +314,7 @@ describe('rehypeStreamAnimated', () => {
 
     rehypeStreamAnimated({ tailLength: 0 })(tree as any);
 
-    expect(tree).toEqual(root([element('p', [text('hello')])]));
+    expect(stripCharAnimationDelays(tree)).toEqual(root([element('p', [text('hello')])]));
   });
 
   it('should not split an emoji surrogate pair', () => {
@@ -257,7 +322,9 @@ describe('rehypeStreamAnimated', () => {
 
     rehypeStreamAnimated({ tailLength: 1 })(tree as any);
 
-    expect(tree).toEqual(root([element('p', [text('hello'), streamTail([text('😀')])])]));
+    expect(stripCharAnimationDelays(tree)).toEqual(
+      root([element('p', [text('hello'), streamTail([text('😀')])])])
+    );
   });
 
   it('should ignore trees without a renderable text block', () => {
@@ -287,7 +354,7 @@ describe('rehypeStreamAnimated', () => {
 
     rehypeStreamAnimated({ tailLength: 2 })(tree as any);
 
-    expect(tree).toEqual(
+    expect(stripCharAnimationDelays(tree)).toEqual(
       root([
         element('p', [
           text('hel'),

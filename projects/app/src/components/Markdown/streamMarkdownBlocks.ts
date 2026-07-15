@@ -1,73 +1,72 @@
-import RemarkMath from 'remark-math';
-import RemarkGfm from 'remark-gfm';
-import remarkParse from 'remark-parse';
-import { unified } from 'unified';
-
-type MarkdownNodePosition = {
-  start: { offset?: number };
-  end: { offset?: number };
-};
-
-type MarkdownRoot = {
-  children: Array<{
-    type?: string;
-    position?: MarkdownNodePosition;
-  }>;
-};
+import { marked, type Token } from 'marked';
 
 export type MarkdownBlock = {
   source: string;
   startOffset: number;
 };
 
-// Reuse the parser across renders; only the current source still needs to be parsed.
-const markdownBlockParser = unified()
-  .use(remarkParse)
-  .use(RemarkMath)
-  .use(RemarkGfm, { singleTilde: false });
+const markdownReferenceDefinitionPattern = /^\s{0,3}(?:\[[^\]]+\]:|\[\^[^\]]+\]:)/m;
 
-/**
- * 按 Markdown 根级 block 的源码范围切分流式内容。
- *
- * 根级节点的 position 可以保留代码块、表格、列表和引用的完整语法，避免用空行
- * 切分破坏 Markdown 上下文。startOffset 用作 React key；追加输出时，已经完成的
- * block 会保持稳定，只有最后一个仍在增长的 block 需要重新渲染。
- */
-export const splitMarkdownBlocks = (source: string): MarkdownBlock[] => {
-  const root = markdownBlockParser.parse(source) as MarkdownRoot;
+const hasDocumentWideDefinitions = (source: string, tokens: Token[]) =>
+  tokens.some((token) => token.type === 'def') || markdownReferenceDefinitionPattern.test(source);
 
-  // Reference links and GFM footnotes resolve against the complete document. Splitting
-  // them into independent ReactMarkdown instances would make a definition invisible to
-  // a paragraph in another block, so keep these messages on the original full-document path.
-  if (
-    root.children.some((node) => node.type === 'definition' || node.type === 'footnoteDefinition')
-  ) {
-    return source ? [{ source, startOffset: 0 }] : [];
+const normalizeLineEndings = (source: string) => {
+  let normalizedSource = '';
+  const sourceOffsets = [0];
+
+  for (let index = 0; index < source.length; index++) {
+    if (source[index] === '\r') {
+      if (source[index + 1] === '\n') index++;
+      normalizedSource += '\n';
+    } else {
+      normalizedSource += source[index];
+    }
+    sourceOffsets.push(index + 1);
   }
 
-  const blocks = root.children.flatMap((node) => {
-    const startOffset = node.position?.start.offset;
-    const endOffset = node.position?.end.offset;
+  return { normalizedSource, sourceOffsets };
+};
 
-    if (
-      typeof startOffset !== 'number' ||
-      typeof endOffset !== 'number' ||
-      endOffset <= startOffset
-    ) {
-      return [];
-    }
+/**
+ * 按 Markdown 根级 block 的原始 token 范围切分流式内容。
+ *
+ * marked lexer 只做词法切分，比每次构造并遍历 unified AST 更轻；根级 token 的 raw
+ * 字符串可以保留代码块、表格、列表和引用的完整语法。引用定义和脚注会跨 block
+ * 解析，因此遇到这些文档级定义时仍回退到完整 source，保持 ReactMarkdown 的语义。
+ */
+export const splitMarkdownBlocks = (source: string): MarkdownBlock[] => {
+  if (!source) return [];
 
-    return [
-      {
-        source: source.slice(startOffset, endOffset),
-        startOffset
-      }
-    ];
-  });
+  const { normalizedSource, sourceOffsets } = normalizeLineEndings(source);
+  const tokens = marked.lexer(normalizedSource, { gfm: true, breaks: true });
+  if (hasDocumentWideDefinitions(source, tokens)) {
+    return [{ source, startOffset: 0 }];
+  }
 
-  // A non-empty source can contain only whitespace, which the parser omits.
+  const blocks: MarkdownBlock[] = [];
+  let searchOffset = 0;
+
+  for (const token of tokens) {
+    const tokenSource = token.raw;
+    if (!tokenSource) continue;
+
+    const normalizedStartOffset = normalizedSource.indexOf(tokenSource, searchOffset);
+    if (normalizedStartOffset < 0) continue;
+
+    searchOffset = normalizedStartOffset + tokenSource.length;
+    if (token.type === 'space') continue;
+
+    const blockSourceLength = tokenSource.replace(/\n+$/, '').length;
+    if (!blockSourceLength) continue;
+
+    const startOffset = sourceOffsets[normalizedStartOffset];
+    const endOffset = sourceOffsets[normalizedStartOffset + blockSourceLength];
+    blocks.push({ source: source.slice(startOffset, endOffset), startOffset });
+  }
+
+  // A non-empty source can contain only whitespace, which the lexer omits.
   // Keep one fallback block so the renderer preserves the existing empty-state behavior.
-  if (blocks.length === 0 && source) {
+  if (blocks.length === 0) {
     return [{ source, startOffset: 0 }];
   }
 

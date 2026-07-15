@@ -1363,6 +1363,9 @@ importers:
       framer-motion:
         specifier: 9.1.7
         version: 9.1.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      hast-util-to-jsx-runtime:
+        specifier: ^2.3.6
+        version: 2.3.6
       hyperdown:
         specifier: ^2.4.29
         version: 2.4.29
@@ -1396,6 +1399,9 @@ importers:
       lodash:
         specifier: 'catalog:'
         version: 4.17.23
+      marked:
+        specifier: ^17.0.6
+        version: 17.0.6
       mermaid:
         specifier: ^10.9.6
         version: 10.9.6
@@ -1444,6 +1450,9 @@ importers:
       remark-parse:
         specifier: ^11.0.0
         version: 11.0.0
+      remark-rehype:
+        specifier: ^11.1.1
+        version: 11.1.1
       react-syntax-highlighter:
         specifier: ^15.5.0
         version: 15.6.1(react@18.3.1)
@@ -1486,6 +1495,9 @@ importers:
       vaul:
         specifier: 'catalog:'
         version: 1.1.2(@types/react-dom@18.3.0)(@types/react@18.3.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      vfile:
+        specifier: ^6.0.3
+        version: 6.0.3
       zod:
         specifier: 'catalog:'
         version: 4.1.12
@@ -10921,6 +10933,11 @@ packages:
 
   markdown-table@3.0.4:
     resolution: {integrity: sha512-wiYz4+JrLyb/DqW2hkFJxP7Vd7JuTDm77fvbM8VfEQdmSMqcImWeeRbHwZjBjIFki/VaMK2BhFi7oUUZeM5bqw==}
+
+  marked@17.0.6:
+    resolution: {integrity: sha512-gB0gkNafnonOw0obSTEGZTT86IuhILt2Wfx0mWH/1Au83kybTayroZ/V6nS25mN7u8ASy+5fMhgB3XPNrOZdmA==}
+    engines: {node: '>= 20'}
+    hasBin: true
 
   matchmediaquery@0.4.2:
     resolution: {integrity: sha512-wrZpoT50ehYOudhDjt/YvUJc6eUzcdFPdmbizfgvswCKNHD1/OBOHYJpHie+HXpu6bSkEGieFMYk6VuutaiRfA==}
@@ -26226,6 +26243,8 @@ snapshots:
       repeat-string: 1.6.1
 
   markdown-table@3.0.4: {}
+
+  marked@17.0.6: {}
 
   matchmediaquery@0.4.2:
     dependencies:

@@ -28,7 +28,7 @@ export const createStreamRenderScheduler = ({
   runtime = browserRuntime
 }: {
   onFlush: () => boolean | void;
-  intervalMs?: number;
+  intervalMs?: number | (() => number);
   runtime?: StreamRenderSchedulerRuntime;
 }) => {
   let lastFlushAt = Number.NEGATIVE_INFINITY;
@@ -58,7 +58,9 @@ export const createStreamRenderScheduler = ({
     if (timerId !== undefined || frameId !== undefined) return;
 
     const elapsed = runtime.now() - lastFlushAt;
-    const delay = Number.isFinite(elapsed) ? Math.max(intervalMs - elapsed, 0) : 0;
+    const nextInterval = typeof intervalMs === 'function' ? intervalMs() : intervalMs;
+    const normalizedInterval = Number.isFinite(nextInterval) ? Math.max(nextInterval, 0) : 0;
+    const delay = Number.isFinite(elapsed) ? Math.max(normalizedInterval - elapsed, 0) : 0;
 
     timerId = runtime.setTimer(() => {
       timerId = undefined;

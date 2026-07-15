@@ -70,6 +70,10 @@ type FinishChatGenerateStatus = (params: {
   }) => boolean;
 }) => void;
 
+const STREAM_RENDER_MIN_INTERVAL_MS = 50;
+const STREAM_RENDER_MAX_INTERVAL_MS = 96;
+const STREAM_RENDER_TARGET_TAIL_LENGTH = 256;
+
 type UseChatGenerateProps = {
   onStartChat?: (e: StartChatFnProps) => Promise<{ responseText: string; isNewChat?: boolean }>;
   isRoundPending: boolean;
@@ -536,12 +540,38 @@ export const useChatGenerate = ({
     generatingScroll(queue.some((message) => message.event === SseResponseEventEnum.interactive));
     return true;
   });
+  const getStreamRenderInterval = useMemoizedFn(() => {
+    const queuedTextLength = generatingMessageQueueRef.current.reduce(
+      (length, message) =>
+        length + (message.text?.length || 0) + (message.reasoningText?.length || 0),
+      0
+    );
+    const lastChatRecord = chatRecords[chatRecords.length - 1];
+    const currentText =
+      lastChatRecord?.obj === ChatRoleEnum.AI
+        ? formatChatValue2InputType(lastChatRecord.value).text || ''
+        : '';
+    const lastBlockStart = currentText.lastIndexOf('\n\n');
+    const activeTailLength = currentText.length - (lastBlockStart >= 0 ? lastBlockStart + 2 : 0);
+    const renderLoad = Math.min(
+      Math.max(activeTailLength, queuedTextLength),
+      STREAM_RENDER_TARGET_TAIL_LENGTH
+    );
+
+    // 长 block 的 parse/layout 成本更高，逐步降低提交频率；短文本仍保持约 20Hz。
+    return Math.round(
+      STREAM_RENDER_MIN_INTERVAL_MS +
+        (renderLoad / STREAM_RENDER_TARGET_TAIL_LENGTH) *
+          (STREAM_RENDER_MAX_INTERVAL_MS - STREAM_RENDER_MIN_INTERVAL_MS)
+    );
+  });
   const streamRenderScheduler = useMemo(
     () =>
       createStreamRenderScheduler({
-        onFlush: commitGeneratingMessageQueue
+        onFlush: commitGeneratingMessageQueue,
+        intervalMs: getStreamRenderInterval
       }),
-    [commitGeneratingMessageQueue]
+    [commitGeneratingMessageQueue, getStreamRenderInterval]
   );
   const flushGeneratingMessageQueue = useMemoizedFn(() => {
     streamRenderScheduler.flush();

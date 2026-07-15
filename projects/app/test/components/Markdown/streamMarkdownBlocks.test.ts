@@ -70,6 +70,16 @@ describe('splitMarkdownBlocks', () => {
     expect(blocks[1]).toEqual({ source: 'second', startOffset: source.indexOf('second') });
   });
 
+  it('should preserve CRLF source slices and offsets', () => {
+    const source = '# title\r\n\r\nparagraph\r\n\r\nsecond';
+
+    expect(splitMarkdownBlocks(source)).toEqual([
+      { source: '# title', startOffset: 0 },
+      { source: 'paragraph', startOffset: source.indexOf('paragraph') },
+      { source: 'second', startOffset: source.indexOf('second') }
+    ]);
+  });
+
   it('should preserve rendered HTML when stable blocks are rendered independently', () => {
     const source =
       '# title\n\nparagraph with [link](https://example.com)\n\n```ts\nconst value = 1;\n```\n\n| key | value |\n| --- | --- |\n| a | b |';

@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { useMemoizedFn } from 'ahooks';
 import 'katex/dist/katex.min.css';
 import RemarkMath from 'remark-math'; // Math syntax
 import RemarkBreaks from 'remark-breaks'; // Line break
@@ -17,6 +18,7 @@ import MarkdownTable from '@fastgpt/web/components/common/Markdown/MarkdownTable
 import { MarkdownRendererRuntimeContext } from './runtimeContext';
 import { getStreamingAppendLength, rehypeStreamAnimated } from './rehypeStreamAnimated';
 import { splitMarkdownBlocks } from './streamMarkdownBlocks';
+import { CachedMarkdown } from './CachedMarkdown';
 
 const CodeLight = dynamic(() => import('./codeBlock/CodeLight'), { ssr: false });
 const MermaidCodeBlock = dynamic(() => import('./img/MermaidCodeBlock'), { ssr: false });
@@ -27,8 +29,6 @@ const IframeHtmlCodeBlock = dynamic(() => import('./codeBlock/iframe-html'), { s
 const VideoBlock = dynamic(() => import('./codeBlock/Video'), { ssr: false });
 const AudioBlock = dynamic(() => import('./codeBlock/Audio'), { ssr: false });
 const useBrowserLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
-const STREAM_TAIL_FADE_DURATION_MS = 280;
-const STREAM_TAIL_FADE_EASING = 'cubic-bezier(0.33, 0, 0.67, 1)';
 const markdownRemarkPlugins = [RemarkMath, [RemarkGfm, { singleTilde: false }], RemarkBreaks];
 const markdownBaseRehypePlugins = [RehypeKatex, [RehypeExternalLinks, { target: '_blank' }]];
 const markdownUrlTransform = (val: string) => val;
@@ -74,31 +74,19 @@ function MarkdownLinkRenderer(props: any) {
   );
 }
 
-/** 仅让最新流式文本批次执行淡入；CSS 会为不支持 Web Animations API 的浏览器兜底。 */
-function MarkdownStreamTailRenderer({ children }: any) {
-  const ref = useRef<HTMLSpanElement>(null);
-
-  useBrowserLayoutEffect(() => {
-    const element = ref.current;
-    if (!element?.animate) return;
-
-    const animation = element.animate(
-      [
-        { opacity: 0, transform: 'translateY(1px)' },
-        { opacity: 1, transform: 'translateY(0)' }
-      ],
-      {
-        duration: STREAM_TAIL_FADE_DURATION_MS,
-        easing: STREAM_TAIL_FADE_EASING,
-        fill: 'both'
-      }
-    );
-
-    return () => animation.cancel();
-  }, [children]);
-
+/** 保留尾部边界；实际淡入由其下的有限数量 `stream-char` 节点完成。 */
+function MarkdownStreamTailRenderer({ children, 'data-stream-tail-mode': mode }: any) {
   return (
-    <span ref={ref} className="stream-tail">
+    <span className={`stream-tail ${mode === 'text' ? 'stream-tail-text' : ''}`}>{children}</span>
+  );
+}
+
+function MarkdownStreamCharRenderer({ children, 'data-stream-char-delay': delay }: any) {
+  return (
+    <span
+      className="stream-char"
+      style={delay ? { animationDelay: `${Number(delay)}ms` } : undefined}
+    >
       {children}
     </span>
   );
@@ -110,7 +98,8 @@ const markdownComponents = {
   code: MarkdownCodeRenderer,
   table: MarkdownTable as any,
   a: MarkdownLinkRenderer,
-  'stream-tail': MarkdownStreamTailRenderer
+  'stream-tail': MarkdownStreamTailRenderer,
+  'stream-char': MarkdownStreamCharRenderer
 };
 
 type MarkdownStreamBlockProps = {
@@ -125,23 +114,22 @@ type MarkdownStreamBlockProps = {
  * 只有最后一个正在增长的 block 会重新解析，并继续使用现有的尾部淡入插件。
  */
 const MarkdownStreamBlock = React.memo(({ source, tailLength }: MarkdownStreamBlockProps) => {
+  const getStreamTailLength = useMemoizedFn(() => tailLength);
   const rehypePlugins = useMemo(
-    () =>
-      tailLength > 0
-        ? [...markdownBaseRehypePlugins, [rehypeStreamAnimated, { tailLength }]]
-        : markdownBaseRehypePlugins,
-    [tailLength]
+    () => [
+      ...markdownBaseRehypePlugins,
+      [rehypeStreamAnimated, { getTailLength: getStreamTailLength }]
+    ],
+    [getStreamTailLength]
   );
 
   return (
-    <ReactMarkdown
+    <CachedMarkdown
+      source={source}
       remarkPlugins={markdownRemarkPlugins as any}
       rehypePlugins={rehypePlugins as any}
       components={markdownComponents as any}
-      urlTransform={markdownUrlTransform}
-    >
-      {source}
-    </ReactMarkdown>
+    />
   );
 });
 MarkdownStreamBlock.displayName = 'MarkdownStreamBlock';
