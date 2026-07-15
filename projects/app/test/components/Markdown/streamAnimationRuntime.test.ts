@@ -50,7 +50,7 @@ describe('updateStreamBlockAnimations', () => {
     expect(state.runtimes.get(0)?.births).toHaveLength(3);
   });
 
-  it('should reset births and frozen styles after a block shrinks', () => {
+  it('should truncate only the removed tail when a processed block shrinks', () => {
     const state = createState();
     updateStreamBlockAnimations({
       blocks: [block('hello')],
@@ -58,6 +58,7 @@ describe('updateStreamBlockAnimations', () => {
       ...state
     });
     const runtime = state.runtimes.get(0)!;
+    const firstBirths = [...runtime.births];
     runtime.styles[0] = 'animation-delay:-10ms';
 
     updateStreamBlockAnimations({
@@ -67,14 +68,21 @@ describe('updateStreamBlockAnimations', () => {
     });
 
     expect(runtime.rawSource).toBe('hi');
-    expect(runtime.styles).toEqual([]);
-    expect(runtime.births[0]).toBe(200);
+    expect(runtime.styles).toEqual(['animation-delay:-10ms', undefined]);
+    expect(runtime.births).toEqual(firstBirths.slice(0, 2));
   });
 
-  it('should preserve the timeline when a repaired bold suffix moves with the stream tail', () => {
+  it.each([
+    ['- **a**', '- **ab**'],
+    ['- ***a***', '- ***ab**'],
+    ['- ___a___', '- ___ab__'],
+    ['- ~~a~~', '- ~~ab~'],
+    ['- `a`', '- `ab`'],
+    ['- $$a$$', '- $$ab$']
+  ])('should preserve the timeline when a repaired suffix moves: %s -> %s', (first, second) => {
     const state = createState();
     updateStreamBlockAnimations({
-      blocks: [block('- **a**')],
+      blocks: [block(first)],
       renderNow: 100,
       ...state
     });
@@ -83,14 +91,15 @@ describe('updateStreamBlockAnimations', () => {
     runtime.styles[0] = 'animation-delay:-10ms';
 
     updateStreamBlockAnimations({
-      blocks: [block('- **ab**')],
+      blocks: [block(second)],
       renderNow: 150,
       ...state
     });
 
-    expect(runtime.births.slice(0, firstBirths.length)).toEqual(firstBirths);
+    const preservedCount = Math.min(firstBirths.length, [...second].length);
+    expect(runtime.births.slice(0, preservedCount)).toEqual(firstBirths.slice(0, preservedCount));
     expect(runtime.styles[0]).toBe('animation-delay:-10ms');
-    expect(runtime.rawSource).toBe('- **ab**');
+    expect(runtime.rawSource).toBe(second);
   });
 
   it('should settle completed blocks and keep the active tail animated', () => {

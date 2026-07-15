@@ -76,9 +76,13 @@ export const rehypeStreamAnimated = ({
       if (!runtime) return null;
 
       const cachedStyle = runtime.styles[index];
+      const birthTime = runtime.births[index];
+      if (birthTime !== undefined && now - birthTime >= fadeDuration) {
+        runtime.styles[index] = null;
+        return null;
+      }
       if (cachedStyle !== undefined) return cachedStyle;
 
-      const birthTime = runtime.births[index];
       const style = (() => {
         if (birthTime === undefined) return null;
 

@@ -96,6 +96,21 @@ describe('rehypeStreamAnimated', () => {
     expect(runtime.styles).toEqual(['animation-delay:-20ms', 'animation-delay:-10ms']);
   });
 
+  it('should permanently reveal a cached character after its fade completes', () => {
+    const runtime = createRuntime([100]);
+    rehypeStreamAnimated({ fadeDuration: 180, nowMs: 120, runtime })(
+      root([element('p', [text('a')])]) as any
+    );
+
+    const tree = root([element('p', [text('a')])]);
+    rehypeStreamAnimated({ fadeDuration: 180, nowMs: 300, runtime })(tree as any);
+
+    expect(runtime.styles).toEqual([null]);
+    expect(getStreamCharacters(tree)[0]).toMatchObject({
+      properties: { className: 'stream-char stream-char-revealed' }
+    });
+  });
+
   it('should render characters that already finished fading without animation', () => {
     const tree = root([element('p', [text('done')])]);
 

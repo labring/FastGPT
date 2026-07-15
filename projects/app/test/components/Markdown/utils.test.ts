@@ -110,10 +110,19 @@ describe('Markdown utils', () => {
       );
     });
 
-    it('should keep incomplete plain link text visible', () => {
-      const text = 'before [doc';
+    it('should delay a potential link label until its structure is known', () => {
+      expect(hideStreamingIncompleteMarkdownTail('before [doc')).toBe('before ');
+      expect(hideStreamingIncompleteMarkdownTail('before [doc]')).toBe('before ');
+      expect(hideStreamingIncompleteMarkdownTail('before [doc] and text')).toBe(
+        'before [doc] and text'
+      );
+    });
 
-      expect(hideStreamingIncompleteMarkdownTail(text)).toBe(text);
+    it('should delay an incomplete angle-bracket link', () => {
+      expect(hideStreamingIncompleteMarkdownTail('before <https://example.com')).toBe('before ');
+      expect(hideStreamingIncompleteMarkdownTail('before <https://example.com>')).toBe(
+        'before <https://example.com>'
+      );
     });
 
     it('should hide incomplete cite markdown at the streaming tail', () => {
@@ -207,17 +216,101 @@ describe('Markdown utils', () => {
     it('should keep list and bold inputs stable before and after the closing marker arrives', () => {
       expect(prepareStreamingMarkdown('- **粗')).toBe('- **粗**');
       expect(prepareStreamingMarkdown('- **粗体')).toBe('- **粗体**');
+      expect(prepareStreamingMarkdown('- **粗体*')).toBe('- **粗体**');
       expect(prepareStreamingMarkdown('- **粗体**')).toBe('- **粗体**');
       expect(prepareStreamingMarkdown(`- **${'a'.repeat(60)}`)).toBe(`- **${'a'.repeat(60)}**`);
     });
 
-    it('should continue hiding incomplete images and links', () => {
-      expect(prepareStreamingMarkdown('- ![alt](https://example.com/a.png')).toBe('- ');
-      expect(prepareStreamingMarkdown('- [doc](https://example.com/page')).toBe('- ');
+    it.each([
+      ['- *斜体', '- *斜体*'],
+      ['- _斜体', '- _斜体_'],
+      ['- ***粗斜体', '- ***粗斜体***'],
+      ['- ***粗斜体*', '- ***粗斜体***'],
+      ['- ***粗斜体**', '- ***粗斜体***'],
+      ['- ___粗斜体', '- ___粗斜体___'],
+      ['- ___粗斜体_', '- ___粗斜体___'],
+      ['- ___粗斜体__', '- ___粗斜体___'],
+      ['- ~~删除', '- ~~删除~~'],
+      ['- ~~删除~', '- ~~删除~~'],
+      ['- `代码', '- `代码`'],
+      ['- $$x^2', '- $$x^2$$']
+    ])('should complete streaming inline syntax %s', (source, expected) => {
+      expect(prepareStreamingMarkdown(source)).toBe(expected);
     });
 
-    it('should preserve one trailing space so list and inline structure does not regress', () => {
-      expect(prepareStreamingMarkdown('- ')).toBe('- ');
+    it.each([
+      ['- **粗体 *斜体', '- **粗体 *斜体***'],
+      ['- **粗体 *斜体*', '- **粗体 *斜体***'],
+      ['- **粗体 *斜体**', '- **粗体 *斜体***'],
+      ['- *斜体 **粗体', '- *斜体 **粗体***'],
+      ['- ~~删除 **粗体', '- ~~删除 **粗体**~~']
+    ])(
+      'should preserve nested emphasis while the closing suffix arrives: %s',
+      (source, expected) => {
+        expect(prepareStreamingMarkdown(source)).toBe(expected);
+      }
+    );
+
+    it('should delay unresolved block control markers and task items', () => {
+      [
+        '-',
+        '- ',
+        '* ',
+        '1',
+        '1.',
+        '1. ',
+        '> ',
+        '# ',
+        '**',
+        '~~',
+        '$$',
+        '`',
+        '``',
+        '- [',
+        '- [ ]',
+        '- [x] ',
+        '- **',
+        '- `'
+      ].forEach((source) => {
+        expect(prepareStreamingMarkdown(source)).toBe('');
+      });
+
+      expect(prepareStreamingMarkdown('- item')).toBe('- item');
+      expect(prepareStreamingMarkdown('> quote')).toBe('> quote');
+      expect(prepareStreamingMarkdown('# title')).toBe('# title');
+      expect(prepareStreamingMarkdown('- [ ] task')).toBe('- [ ] task');
+    });
+
+    it('should delay a potential table until its delimiter row is complete', () => {
+      expect(prepareStreamingMarkdown('|')).toBe('');
+      expect(prepareStreamingMarkdown('| key')).toBe('');
+      expect(prepareStreamingMarkdown('| key |')).toBe('');
+      expect(prepareStreamingMarkdown('| key | value |')).toBe('');
+      expect(prepareStreamingMarkdown('| key | value |\n| -')).toBe('');
+      expect(prepareStreamingMarkdown('| key | value |\n| --- | --- |')).toBe(
+        '| key | value |\n| --- | --- |'
+      );
+      expect(prepareStreamingMarkdown('| key | value |\nplain')).toBe('| key | value |\nplain');
+    });
+
+    it('should not repair markdown inside inline or fenced code', () => {
+      expect(prepareStreamingMarkdown('`**code')).toBe('`**code`');
+      expect(prepareStreamingMarkdown('`` **code')).toBe('`` **code``');
+      expect(prepareStreamingMarkdown('`` $code')).toBe('`` $code``');
+      expect(prepareStreamingMarkdown('`` `**code`')).toBe('`` `**code` ``');
+      expect(prepareStreamingMarkdown('```md\n**code')).toBe('```md\n**code');
+      expect(prepareStreamingMarkdown('```md\n- ')).toBe('```md\n- ');
+      expect(prepareStreamingMarkdown('before\n\n```md\n| code')).toBe('before\n\n```md\n| code');
+      expect(prepareStreamingMarkdown('~~~md\n**code')).toBe('~~~md\n**code');
+    });
+
+    it('should continue hiding incomplete images and links', () => {
+      expect(prepareStreamingMarkdown('- ![alt](https://example.com/a.png')).toBe('');
+      expect(prepareStreamingMarkdown('- [doc](https://example.com/page')).toBe('');
+    });
+
+    it('should preserve one trailing space after visible content', () => {
+      expect(prepareStreamingMarkdown('- ')).toBe('');
       expect(prepareStreamingMarkdown('- **bold ')).toBe('- **bold** ');
       expect(prepareStreamingMarkdown('text  ')).toBe('text  ');
     });

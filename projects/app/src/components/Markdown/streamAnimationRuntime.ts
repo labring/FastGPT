@@ -76,15 +76,6 @@ export const updateStreamBlockAnimations = ({
       runtimes.set(block.startOffset, runtime);
     }
 
-    // remend 会把临时闭合标记持续移动到流式尾部，因此增长中的 processed source
-    // 不满足 startsWith。只有 block 实际缩短时才在这里重置；整段 source 的非 append
-    // 重写由 MarkdownRender 在进入 runtime 前统一清空缓存。
-    if (block.source.length < runtime.rawSource.length) {
-      runtime.births.length = 0;
-      runtime.styles.length = 0;
-      runtime.settled = false;
-    }
-
     if (runtime.rawSource !== block.source) {
       runtime.rawSource = block.source;
       runtime.charCount = countChars(block.source);
