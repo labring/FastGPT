@@ -14,8 +14,10 @@ export const compactAgentLoopCorePlanSnapshots = (
   if (lastPlanIndex < 0) return assistantResponses;
 
   return assistantResponses.flatMap((value, index) => {
-    const hasPlan = Object.prototype.hasOwnProperty.call(value, 'plan') && value.plan !== undefined;
-    if (!hasPlan) return [value];
+    const currentPlan = value.plan;
+    if (!Object.prototype.hasOwnProperty.call(value, 'plan') || currentPlan === undefined) {
+      return [value];
+    }
 
     const valueWithoutPlan = Object.fromEntries(
       Object.entries(value).filter(
@@ -23,7 +25,8 @@ export const compactAgentLoopCorePlanSnapshots = (
       )
     ) as AIChatItemValueItemType;
     if (index === lastPlanIndex) {
-      const plan = value.plan === null || !hasUnfinishedAgentPlan(value.plan) ? null : value.plan;
+      const plan =
+        currentPlan === null || !hasUnfinishedAgentPlan(currentPlan) ? null : currentPlan;
       return [{ ...valueWithoutPlan, plan }];
     }
 
