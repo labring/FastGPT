@@ -15,7 +15,10 @@ import type {
   WorkflowCheckNodeIssueMap
 } from '@fastgpt/global/core/workflow/type/node';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { checkWorkflowNodeIssues } from '@/web/core/workflow/utils';
+import {
+  checkWorkflowNodeIssues,
+  collectWorkflowStartAutoFillRevertPatches
+} from '@/web/core/workflow/utils';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 
 type FlowNodeChangeProps = { nodeId: string } & (
@@ -150,6 +153,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
   const singleNodeCheckTimerRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   const edgeCheckTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isFirstEdgesEffectRef = useRef(true);
+  const prevEdgesRef = useRef(edges);
 
   // 连接状态
   const [connectingEdge, setConnectingEdge] = useState<OnConnectStartParams>();
@@ -285,11 +289,49 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
   useEffect(() => {
     if (isFirstEdgesEffectRef.current) {
       isFirstEdgesEffectRef.current = false;
+      prevEdgesRef.current = edges;
       return;
     }
 
+    const prevEdges = prevEdgesRef.current;
+    const removedEdges = prevEdges.filter(
+      (prevEdge) => !edges.some((edge) => edge.id === prevEdge.id)
+    );
+    prevEdgesRef.current = edges;
+
+    if (removedEdges.length > 0) {
+      const getNodeDataById = (nodeId: string) =>
+        getNodes().find((node) => node.data.nodeId === nodeId)?.data;
+
+      const patches = collectWorkflowStartAutoFillRevertPatches({
+        removedEdges,
+        remainingEdges: edges,
+        getNodeById: getNodeDataById
+      });
+
+      if (patches.length > 0) {
+        setNodes((nodes) =>
+          nodes.map((node) => {
+            const nodePatches = patches.filter((patch) => patch.nodeId === node.data.nodeId);
+            if (nodePatches.length === 0) return node;
+
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                inputs: node.data.inputs.map((input) => {
+                  const patch = nodePatches.find((item) => item.key === input.key);
+                  return patch ? patch.value : input;
+                })
+              }
+            };
+          })
+        );
+      }
+    }
+
     scheduleWorkflowCheckOnEdgeChange();
-  }, [edges, scheduleWorkflowCheckOnEdgeChange]);
+  }, [edges, scheduleWorkflowCheckOnEdgeChange, getNodes, setNodes]);
 
   useEffect(() => {
     const timers = singleNodeCheckTimerRef.current;

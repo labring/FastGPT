@@ -1,28 +1,33 @@
-import MyBox from '@fastgpt/web/components/common/MyBox';
-import React from 'react';
-import { useContextSelector } from 'use-context-selector';
+import { applyWorkflowStartInputAutoFill } from '@/web/core/workflow/utils';
+import { Popover, PopoverBody, PopoverContent } from '@chakra-ui/react';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {
   EDGE_TYPE,
   FlowNodeTypeEnum,
   isNestedChildSystemNodeType
 } from '@fastgpt/global/core/workflow/node/constant';
 import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
-import { type Node } from 'reactflow';
-import { WorkflowBufferDataContext } from '../context/workflowInitContext';
-import { WorkflowActionsContext } from '../context/workflowActionsContext';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useMemoizedFn } from 'ahooks';
+import React from 'react';
+import { type Node } from 'reactflow';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowActionsContext } from '../context/workflowActionsContext';
+import { WorkflowBufferDataContext } from '../context/workflowInitContext';
+import { WorkflowModalContext } from '../context/workflowModalContext';
 import NodeTemplateListHeader from './components/NodeTemplates/header';
 import NodeTemplateList from './components/NodeTemplates/list';
-import { Popover, PopoverContent, PopoverBody } from '@chakra-ui/react';
 import { useNodeTemplates } from './components/NodeTemplates/useNodeTemplates';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { popoverHeight, popoverWidth } from './hooks/useWorkflow';
-import { WorkflowModalContext } from '../context/workflowModalContext';
 
 const NodeTemplatesPopover = () => {
   const { handleParams, setHandleParams } = useContextSelector(WorkflowModalContext, (v) => v);
 
-  const { setNodes, setEdges } = useContextSelector(WorkflowBufferDataContext, (v) => v);
+  const { setNodes, setEdges, getNodeById } = useContextSelector(
+    WorkflowBufferDataContext,
+    (v) => v
+  );
+  const onChangeNode = useContextSelector(WorkflowActionsContext, (v) => v.onChangeNode);
   const onRefreshSingleNodeWorkflowCheckIssues = useContextSelector(
     WorkflowActionsContext,
     (v) => v.onRefreshSingleNodeWorkflowCheckIssues
@@ -91,6 +96,29 @@ const NodeTemplatesPopover = () => {
       const newState = state.concat(newEdges);
       return newState;
     });
+
+    const sourceNode = getNodeById(handleParams.nodeId);
+    if (sourceNode?.flowNodeType === FlowNodeTypeEnum.workflowStart) {
+      newNodes.forEach((node) => {
+        const nextInputs = applyWorkflowStartInputAutoFill({
+          inputs: node.data.inputs,
+          workflowStartNodeId: sourceNode.nodeId,
+          workflowStartOutputs: sourceNode.outputs
+        });
+
+        nextInputs.forEach((input) => {
+          const prevInput = node.data.inputs.find((item) => item.key === input.key);
+          if (prevInput && prevInput.value !== input.value) {
+            onChangeNode({
+              nodeId: node.data.nodeId,
+              type: 'updateInput',
+              key: input.key,
+              value: input
+            });
+          }
+        });
+      });
+    }
 
     setHandleParams(null);
 

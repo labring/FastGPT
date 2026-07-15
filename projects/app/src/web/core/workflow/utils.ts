@@ -1024,6 +1024,186 @@ const isVariableUpdateValueEmpty = (item: TUpdateListItem, context: WorkflowChec
   return inputVal === undefined || inputVal === null || inputVal === '';
 };
 
+/** 根据流程开始节点输出，计算目标 input 的默认引用值；无匹配规则时返回 undefined。 */
+const getWorkflowStartAutoFillValue = ({
+  inputKey,
+  workflowStartNodeId,
+  hasUserFilesOutput
+}: {
+  inputKey: string;
+  workflowStartNodeId: string;
+  hasUserFilesOutput: boolean;
+}): ReferenceValueType | undefined => {
+  if (inputKey === NodeInputKeyEnum.userChatInput) {
+    return [workflowStartNodeId, NodeOutputKeyEnum.userChatInput];
+  }
+
+  if (inputKey === NodeInputKeyEnum.datasetSearchInput) {
+    const refs: ReferenceItemValueType[] = [[workflowStartNodeId, NodeOutputKeyEnum.userChatInput]];
+    if (hasUserFilesOutput) {
+      refs.push([workflowStartNodeId, NodeOutputKeyEnum.userFiles]);
+    }
+    return refs;
+  }
+
+  if (inputKey === NodeInputKeyEnum.fileUrlList) {
+    if (!hasUserFilesOutput) return undefined;
+    return [[workflowStartNodeId, NodeOutputKeyEnum.userFiles]];
+  }
+
+  return undefined;
+};
+
+/**
+ * 为空白引用输入自动填充「流程开始」上游输出引用。
+ * 仅处理引用类输入且 value 尚未配置的场景，不覆盖已有合法手动引用。
+ */
+export const applyWorkflowStartInputAutoFill = ({
+  inputs,
+  workflowStartNodeId,
+  workflowStartOutputs
+}: {
+  inputs: FlowNodeInputItemType[];
+  workflowStartNodeId: string;
+  workflowStartOutputs: FlowNodeOutputItemType[];
+}): FlowNodeInputItemType[] => {
+  const hasUserFilesOutput = workflowStartOutputs.some(
+    (output) => output.id === NodeOutputKeyEnum.userFiles
+  );
+
+  return inputs.map((input) => {
+    if (!nodeInputIsReference(input) || !isUnsetReferenceValue(input.value)) {
+      return input;
+    }
+
+    const autoFillValue = getWorkflowStartAutoFillValue({
+      inputKey: input.key,
+      workflowStartNodeId,
+      hasUserFilesOutput
+    });
+
+    if (autoFillValue === undefined) {
+      return input;
+    }
+
+    return {
+      ...input,
+      value: autoFillValue
+    };
+  });
+};
+
+/** 判断 input.value 是否为流程开始自动填充产生的引用，用于断线回滚时避免误清手动配置。 */
+const isWorkflowStartAutoFilledValue = ({
+  inputKey,
+  value,
+  workflowStartNodeId,
+  hasUserFilesOutput
+}: {
+  inputKey: string;
+  value: unknown;
+  workflowStartNodeId: string;
+  hasUserFilesOutput: boolean;
+}) => {
+  const autoFillValue = getWorkflowStartAutoFillValue({
+    inputKey,
+    workflowStartNodeId,
+    hasUserFilesOutput
+  });
+  if (autoFillValue === undefined) return false;
+  return isEqual(value, autoFillValue);
+};
+
+/**
+ * 断开与流程开始的连线后，回滚此前自动写入的引用值。
+ * 仅清除与自动填充结果完全一致的 value，保留手动配置或其他上游引用。
+ */
+export const revertWorkflowStartInputAutoFill = ({
+  inputs,
+  workflowStartNodeId,
+  workflowStartOutputs
+}: {
+  inputs: FlowNodeInputItemType[];
+  workflowStartNodeId: string;
+  workflowStartOutputs: FlowNodeOutputItemType[];
+}): FlowNodeInputItemType[] => {
+  const hasUserFilesOutput = workflowStartOutputs.some(
+    (output) => output.id === NodeOutputKeyEnum.userFiles
+  );
+
+  return inputs.map((input) => {
+    if (
+      !isWorkflowStartAutoFilledValue({
+        inputKey: input.key,
+        value: input.value,
+        workflowStartNodeId,
+        hasUserFilesOutput
+      })
+    ) {
+      return input;
+    }
+
+    return {
+      ...input,
+      value: undefined
+    };
+  });
+};
+
+/** 根据被删除的连线，收集需要回滚的流程开始自动填充补丁。 */
+export const collectWorkflowStartAutoFillRevertPatches = ({
+  removedEdges,
+  remainingEdges,
+  getNodeById
+}: {
+  removedEdges: Array<Pick<Edge, 'id' | 'source' | 'target'>>;
+  remainingEdges: Array<Pick<Edge, 'id' | 'source' | 'target'>>;
+  getNodeById: (nodeId: string) => FlowNodeItemType | undefined;
+}): Array<{ nodeId: string; key: string; value: FlowNodeInputItemType }> => {
+  const patches: Array<{ nodeId: string; key: string; value: FlowNodeInputItemType }> = [];
+  const processedTargets = new Set<string>();
+
+  removedEdges.forEach((removedEdge) => {
+    const sourceNode = getNodeById(removedEdge.source);
+    const targetNode = getNodeById(removedEdge.target);
+    if (sourceNode?.flowNodeType !== FlowNodeTypeEnum.workflowStart || !targetNode) {
+      return;
+    }
+    if (processedTargets.has(targetNode.nodeId)) {
+      return;
+    }
+
+    const hasOtherIncomingFromStart = remainingEdges.some(
+      (edge) =>
+        edge.target === removedEdge.target &&
+        getNodeById(edge.source)?.flowNodeType === FlowNodeTypeEnum.workflowStart
+    );
+    if (hasOtherIncomingFromStart) {
+      return;
+    }
+
+    processedTargets.add(targetNode.nodeId);
+    const nextInputs = revertWorkflowStartInputAutoFill({
+      inputs: targetNode.inputs,
+      workflowStartNodeId: sourceNode.nodeId,
+      workflowStartOutputs: sourceNode.outputs
+    });
+
+    nextInputs.forEach((input) => {
+      const prevInput = targetNode.inputs.find((item) => item.key === input.key);
+      if (prevInput && prevInput.value !== input.value) {
+        patches.push({
+          nodeId: targetNode.nodeId,
+          key: input.key,
+          value: input
+        });
+      }
+    });
+  });
+
+  return patches;
+};
+
 /**
  * 结构化校验工作流节点和连线。
  * 函数只读取入参并返回每个节点的错误列表，调用方负责写入 React state、toast 或定位画布。

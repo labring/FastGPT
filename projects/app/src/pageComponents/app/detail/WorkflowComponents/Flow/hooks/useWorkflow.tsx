@@ -26,7 +26,8 @@ import { useTranslation } from 'next-i18next';
 import { useKeyboard } from './useKeyboard';
 import { useContextSelector } from 'use-context-selector';
 import { type THelperLine } from '@/web/core/workflow/type';
-import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { applyWorkflowStartInputAutoFill } from '@/web/core/workflow/utils';
 import { useDebounceEffect, useMemoizedFn } from 'ahooks';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import {
@@ -933,35 +934,32 @@ export const useWorkflow = () => {
         )
       );
 
-      // Add default input
       const node = getNodeById(connect.target);
       if (!node) return;
 
-      // 1. Add file input
-      if (
-        node.flowNodeType === FlowNodeTypeEnum.chatNode ||
-        node.flowNodeType === FlowNodeTypeEnum.toolCall ||
-        node.flowNodeType === FlowNodeTypeEnum.appModule
-      ) {
-        const input = node.inputs.find((i) => i.key === NodeInputKeyEnum.fileUrlList);
-        const hasUserFilesOutput = workflowStartNode?.outputs.some(
-          (output) => output.id === NodeOutputKeyEnum.userFiles
-        );
-        if (input && hasUserFilesOutput && (!input?.value || input.value.length === 0)) {
-          if (!workflowStartNode) return;
-          onChangeNode({
-            nodeId: node.nodeId,
-            type: 'updateInput',
-            key: NodeInputKeyEnum.fileUrlList,
-            value: {
-              ...input,
-              value: [[workflowStartNode.nodeId, NodeOutputKeyEnum.userFiles]]
-            }
-          });
-        }
+      // 从流程开始连线到目标节点时，为空白引用输入自动填充上游输出。
+      const sourceNode = getNodeById(connect.source);
+      if (sourceNode?.flowNodeType === FlowNodeTypeEnum.workflowStart) {
+        const nextInputs = applyWorkflowStartInputAutoFill({
+          inputs: node.inputs,
+          workflowStartNodeId: sourceNode.nodeId,
+          workflowStartOutputs: sourceNode.outputs
+        });
+
+        nextInputs.forEach((input) => {
+          const prevInput = node.inputs.find((item) => item.key === input.key);
+          if (prevInput && prevInput.value !== input.value) {
+            onChangeNode({
+              nodeId: node.nodeId,
+              type: 'updateInput',
+              key: input.key,
+              value: input
+            });
+          }
+        });
       }
     },
-    [setEdges, getNodeById, workflowStartNode, onChangeNode]
+    [setEdges, getNodeById, onChangeNode]
   );
   const customOnConnect = useCallback(
     (connect: Connection) => {

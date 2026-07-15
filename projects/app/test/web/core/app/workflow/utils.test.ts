@@ -26,7 +26,10 @@ import {
   checkWorkflowNodeAndConnection,
   checkWorkflowHasError,
   checkWorkflowBeforeRunOrPublish,
-  getWorkflowCheckErrorNodeIds
+  getWorkflowCheckErrorNodeIds,
+  applyWorkflowStartInputAutoFill,
+  revertWorkflowStartInputAutoFill,
+  collectWorkflowStartAutoFillRevertPatches
 } from '@/web/core/workflow/utils';
 import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { NodeOutputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
@@ -41,6 +44,11 @@ import {
 } from '@fastgpt/global/core/workflow/template/system/datasetConcat';
 import { HttpNode468 } from '@fastgpt/global/core/workflow/template/system/http468';
 import { LoopStartNode } from '@fastgpt/global/core/workflow/template/system/loop/loopStart';
+import { AiChatModule } from '@fastgpt/global/core/workflow/template/system/aiChat';
+import { DatasetSearchModule } from '@fastgpt/global/core/workflow/template/system/datasetSearch';
+import { ClassifyQuestionModule } from '@fastgpt/global/core/workflow/template/system/classifyQuestion';
+import { ToolCallNode } from '@fastgpt/global/core/workflow/template/system/toolCall';
+import { userFilesInput } from '@fastgpt/global/core/workflow/template/system/workflowStart';
 describe('nodeTemplate2FlowNode', () => {
   it('should initialize template text once before formatting the instance name', () => {
     const template: FlowNodeTemplateType = {
@@ -684,17 +692,199 @@ describe('checkWorkflowNodeIssues', () => {
     });
   });
 
+  describe('auto-fill input variables after connecting from workflow start', () => {
+    const makeFreshConnectedNode = (
+      nodeId: string,
+      template: FlowNodeTemplateType
+    ): Node<FlowNodeItemType> =>
+      makeNode(nodeId, template.flowNodeType, {
+        inputs: template.inputs.map((input) => ({
+          ...input,
+          value: input.value ?? input.defaultValue
+        })),
+        outputs: template.outputs
+      });
+
+    const startNodeWithFiles = makeNode('start', FlowNodeTypeEnum.workflowStart, {
+      outputs: [...startNode.data.outputs, userFilesInput]
+    });
+
+    const applyStartAutoFill = (targetNode: Node<FlowNodeItemType>, workflowStart = startNode) => {
+      targetNode.data.inputs = applyWorkflowStartInputAutoFill({
+        inputs: targetNode.data.inputs,
+        workflowStartNodeId: workflowStart.data.nodeId,
+        workflowStartOutputs: workflowStart.data.outputs
+      });
+    };
+
+    const expectInputValue = (
+      node: Node<FlowNodeItemType>,
+      inputKey: NodeInputKeyEnum,
+      expectedValue: unknown
+    ) => {
+      expect(
+        node.data.inputs.find((input) => input.key === inputKey)?.value,
+        `${node.data.name || node.id}.${inputKey} should auto reference workflow start output after connection`
+      ).toEqual(expectedValue);
+    };
+
+    it.each([
+      [
+        'AI 对话',
+        AiChatModule,
+        'ai-chat',
+        NodeInputKeyEnum.userChatInput,
+        ['start', NodeOutputKeyEnum.userChatInput]
+      ],
+      [
+        '知识库搜索',
+        DatasetSearchModule,
+        'dataset-search',
+        NodeInputKeyEnum.datasetSearchInput,
+        [['start', NodeOutputKeyEnum.userChatInput]]
+      ],
+      [
+        '问题分类',
+        ClassifyQuestionModule,
+        'classify',
+        NodeInputKeyEnum.userChatInput,
+        ['start', NodeOutputKeyEnum.userChatInput]
+      ],
+      [
+        '工具调用',
+        ToolCallNode,
+        'tool-call',
+        NodeInputKeyEnum.userChatInput,
+        ['start', NodeOutputKeyEnum.userChatInput]
+      ]
+    ] as const)(
+      '%s 节点连线后应自动填充用户问题引用',
+      (_nodeName, template, nodeId, inputKey, expectedValue) => {
+        const targetNode = makeFreshConnectedNode(nodeId, template);
+        applyStartAutoFill(targetNode);
+
+        const result = checkWorkflowNodeIssues({
+          nodes: [startNode, targetNode],
+          edges: [{ id: `e-start-${nodeId}`, source: 'start', target: nodeId, type: EDGE_TYPE }]
+        });
+
+        expectInputValue(targetNode, inputKey, expectedValue);
+        expect(
+          result[nodeId]
+            ?.filter((issue) => issue.inputKey === inputKey)
+            .map((issue) => issue.code) ?? []
+        ).not.toContain('required_input_empty');
+      }
+    );
+
+    it('AI 对话节点连线且开启文件上传后应自动填充文件链接引用', () => {
+      const targetNode = makeFreshConnectedNode('ai-chat', AiChatModule);
+      applyStartAutoFill(targetNode, startNodeWithFiles);
+
+      expectInputValue(targetNode, NodeInputKeyEnum.fileUrlList, [
+        ['start', NodeOutputKeyEnum.userFiles]
+      ]);
+      expect(
+        workflowReferenceValueIsSelectable({
+          value: targetNode.data.inputs.find((input) => input.key === NodeInputKeyEnum.fileUrlList)
+            ?.value as any,
+          sourceNodes: [
+            {
+              nodeId: startNodeWithFiles.data.nodeId,
+              outputs: startNodeWithFiles.data.outputs
+            }
+          ],
+          valueType: WorkflowIOValueTypeEnum.arrayString
+        })
+      ).toBe(true);
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [startNodeWithFiles, targetNode],
+        edges: [{ id: 'e-start-ai-chat', source: 'start', target: 'ai-chat', type: EDGE_TYPE }]
+      });
+      const fileLinkIssues =
+        result['ai-chat']?.filter((issue) => issue.inputKey === NodeInputKeyEnum.fileUrlList) ?? [];
+      expect(fileLinkIssues).toEqual([]);
+    });
+
+    it('合法手动配置的用户问题引用不应被连线自动填充覆盖', () => {
+      const targetNode = makeFreshConnectedNode('ai-chat', AiChatModule);
+      const manualReference = [VARIABLE_NODE_ID, 'customQuestion'];
+      targetNode.data.inputs = targetNode.data.inputs.map((input) =>
+        input.key === NodeInputKeyEnum.userChatInput ? { ...input, value: manualReference } : input
+      );
+
+      applyStartAutoFill(targetNode);
+
+      expectInputValue(targetNode, NodeInputKeyEnum.userChatInput, manualReference);
+    });
+
+    it('未从流程开始连线时不应自动填充，应提示用户问题必填', () => {
+      const targetNode = makeFreshConnectedNode('ai-chat', AiChatModule);
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [startNode, targetNode],
+        edges: []
+      });
+
+      expectInputValue(targetNode, NodeInputKeyEnum.userChatInput, undefined);
+      expect(
+        result['ai-chat']
+          ?.filter((issue) => issue.inputKey === NodeInputKeyEnum.userChatInput)
+          .map((issue) => issue.code) ?? []
+      ).toContain('required_input_empty');
+    });
+
+    it('断开流程开始连线后应回滚自动填充并重新提示用户问题必填', () => {
+      const targetNode = makeFreshConnectedNode('ai-chat', AiChatModule);
+      applyStartAutoFill(targetNode);
+
+      const patches = collectWorkflowStartAutoFillRevertPatches({
+        removedEdges: [{ id: 'e1', source: 'start', target: 'ai-chat' }],
+        remainingEdges: [],
+        getNodeById: (nodeId) => {
+          if (nodeId === 'start') return startNode.data;
+          if (nodeId === 'ai-chat') return targetNode.data;
+          return undefined;
+        }
+      });
+
+      expect(patches.map((patch) => patch.key)).toContain(NodeInputKeyEnum.userChatInput);
+      targetNode.data.inputs = targetNode.data.inputs.map((input) => {
+        const patch = patches.find((item) => item.key === input.key);
+        return patch ? patch.value : input;
+      });
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [startNode, targetNode],
+        edges: []
+      });
+
+      expectInputValue(targetNode, NodeInputKeyEnum.userChatInput, undefined);
+      expect(
+        result['ai-chat']
+          ?.filter((issue) => issue.inputKey === NodeInputKeyEnum.userChatInput)
+          .map((issue) => issue.code) ?? []
+      ).toContain('required_input_empty');
+    });
+  });
+
   /**
    * 修复后 list.tsx 默认：无 userFiles output 时不注入 fileUrlList；datasetSearchInput 仅含 userChatInput。
    */
   describe('new node default refs should not false-positive invalid_reference without userFiles output', () => {
     const workflowStartWithoutUserFiles = startNode;
 
-    const newNodeDefaultFileUrlListValue = undefined;
+    const buildAutoFilledInputs = (template: FlowNodeTemplateType, inputKey: NodeInputKeyEnum) => {
+      const input = template.inputs.find((item) => item.key === inputKey);
+      expect(input).toBeDefined();
 
-    const newNodeDefaultDatasetSearchInputValue = [
-      ['start', NodeOutputKeyEnum.userChatInput]
-    ] as const;
+      return applyWorkflowStartInputAutoFill({
+        inputs: [{ ...input!, value: input?.value ?? input?.defaultValue }],
+        workflowStartNodeId: workflowStartWithoutUserFiles.data.nodeId,
+        workflowStartOutputs: workflowStartWithoutUserFiles.data.outputs
+      })[0]?.value;
+    };
 
     it('AI chat fileUrlList: default from list.tsx must not report invalid file link reference', () => {
       const chatNode = makeNode('chat', FlowNodeTypeEnum.chatNode, {
@@ -705,7 +895,7 @@ describe('checkWorkflowNodeIssues', () => {
             valueType: WorkflowIOValueTypeEnum.arrayString,
             renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input],
             selectedTypeIndex: 0,
-            value: newNodeDefaultFileUrlListValue
+            value: buildAutoFilledInputs(AiChatModule, NodeInputKeyEnum.fileUrlList)
           }
         ]
       });
@@ -729,7 +919,7 @@ describe('checkWorkflowNodeIssues', () => {
             valueType: WorkflowIOValueTypeEnum.arrayString,
             renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.input],
             selectedTypeIndex: 0,
-            value: newNodeDefaultFileUrlListValue
+            value: buildAutoFilledInputs(ToolCallNode, NodeInputKeyEnum.fileUrlList)
           }
         ]
       });
@@ -753,7 +943,7 @@ describe('checkWorkflowNodeIssues', () => {
             valueType: WorkflowIOValueTypeEnum.arrayString,
             renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
             selectedTypeIndex: 0,
-            value: newNodeDefaultDatasetSearchInputValue
+            value: buildAutoFilledInputs(DatasetSearchModule, NodeInputKeyEnum.datasetSearchInput)
           }
         ]
       });

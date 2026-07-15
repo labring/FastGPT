@@ -42,8 +42,8 @@ import { LoopEndNode } from '@fastgpt/global/core/workflow/template/system/loop/
 import { LoopRunStartNode } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRunStart';
 import { useReactFlow } from 'reactflow';
 import type { Node } from 'reactflow';
+import { nodeTemplate2FlowNode, applyWorkflowStartInputAutoFill } from '@/web/core/workflow/utils';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -337,29 +337,43 @@ const NodeTemplateList = ({
           }
         }
 
+        const preparedInputs = templateNode.inputs
+          .filter((input) => input.deprecated !== true)
+          .map((input) => ({
+            ...input,
+            value: input.value ?? input.defaultValue,
+            valueDesc: input.valueDesc ? t(input.valueDesc as any) : undefined,
+            label: t(input.label as any),
+            description: input.description ? t(input.description as any) : undefined,
+            placeholder: input.placeholder ? t(input.placeholder as any) : undefined,
+            debugLabel: input.debugLabel ? t(input.debugLabel as any) : undefined,
+            toolDescription: input.toolDescription ? t(input.toolDescription as any) : undefined,
+            list: Array.isArray(input.list)
+              ? input.list.map((opt: any) => ({
+                  ...opt,
+                  label: opt?.label ? t(opt.label as any) : opt?.label
+                }))
+              : input.list
+          }));
+        const inputsWithAutoFill =
+          currentNode?.flowNodeType === FlowNodeTypeEnum.workflowStart
+            ? applyWorkflowStartInputAutoFill({
+                inputs: preparedInputs,
+                workflowStartNodeId: currentNode.nodeId,
+                workflowStartOutputs: currentNode.outputs
+              })
+            : preparedInputs;
+
         const newNode = nodeTemplate2FlowNode({
           template: {
             ...templateNode,
-            inputs: templateNode.inputs
-              .filter((input) => input.deprecated !== true)
-              .map((input) => ({
-                ...input,
-                value: input.value ?? input.defaultValue,
-                valueDesc: input.valueDesc ? t(input.valueDesc as any) : undefined,
-                label: t(input.label as any),
-                description: input.description ? t(input.description as any) : undefined,
-                placeholder: input.placeholder ? t(input.placeholder as any) : undefined,
-                debugLabel: input.debugLabel ? t(input.debugLabel as any) : undefined,
-                toolDescription: input.toolDescription
-                  ? t(input.toolDescription as any)
-                  : undefined,
-                list: Array.isArray(input.list)
-                  ? input.list.map((opt: any) => ({
-                      ...opt,
-                      label: opt?.label ? t(opt.label as any) : opt?.label
-                    }))
-                  : input.list
-              })),
+            name: computedNewNodeName({
+              templateName: t(templateNode.name as any),
+              flowNodeType: templateNode.flowNodeType,
+              pluginId: templateNode.pluginId
+            }),
+            intro: t(templateNode.intro as any),
+            inputs: inputsWithAutoFill,
             outputs: templateNode.outputs
               .filter((output) => output.deprecated !== true)
               .map((output) => ({
