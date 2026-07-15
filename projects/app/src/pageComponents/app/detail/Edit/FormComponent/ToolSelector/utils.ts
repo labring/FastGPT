@@ -25,7 +25,10 @@ export const inheritToolInputConfig = <T extends Pick<FlowNodeTemplateType, 'inp
     ...tool,
     inputs: tool.inputs.map((input) => {
       const sourceInput = sourceInputMap.get(input.key);
-      const selectedType = getSavedToolInputSelectedType({ savedInput: sourceInput });
+      const selectedType = getSavedToolInputSelectedType({
+        savedInput: sourceInput,
+        defaultInput: input
+      });
       const normalizedInput = initToolInputTypeByDefaultMode(input, {
         forceDefaultMode: selectedType === undefined
       });

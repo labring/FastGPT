@@ -34,6 +34,7 @@ import { getMcpToolsets } from '../../../app/tool/mcpTool/entity';
 import { getHttpToolsets } from '../../../app/tool/httpTool/entity';
 import { getHTTPToolList } from '../../../app/http';
 import { getLastInteractiveValue } from '@fastgpt/global/core/workflow/runtime/utils';
+import { initToolInputsTypeByDefaultMode } from '@fastgpt/global/core/app/formEdit/utils';
 
 /**
  * 创建 runtime nodeResponse 的轻量汇总对象。
@@ -504,6 +505,21 @@ export const rewriteRuntimeWorkFlow = async ({
   edges: RuntimeEdgeItemType[];
   lang?: localeType;
 }) => {
+  /**
+   * ToolSet 展开后的子工具统一由 Agent 生成参数。这里仅修改 runtime 临时节点，
+   * 不回写工作流配置，避免把 isToolParam 变成用户配置字段。
+   */
+  const initToolSetChildNode = (node: RuntimeNodeItemType): RuntimeNodeItemType => ({
+    ...node,
+    inputs: initToolInputsTypeByDefaultMode(
+      node.inputs.map((input) => ({
+        ...input,
+        isToolParam: true
+      })),
+      { forceDefaultMode: true }
+    )
+  });
+
   /* ToolSet 展开 */
   // TODO: 待性能优化
   const parseToolset = async () => {
@@ -539,8 +555,9 @@ export const rewriteRuntimeWorkFlow = async ({
             lang
           });
           children.forEach((node) => {
-            nodes.push(node);
-            pushEdges(node.nodeId);
+            const runtimeNode = initToolSetChildNode(node);
+            nodes.push(runtimeNode);
+            pushEdges(runtimeNode.nodeId);
           });
         } else if (mcpToolsetVal) {
           const app = await MongoApp.findOne({ _id: toolSetNode.pluginId }).lean();
@@ -550,13 +567,15 @@ export const rewriteRuntimeWorkFlow = async ({
           // mcpToolsetVal.toolId: 旧版 MCP
           const toolSetId = mcpToolsetVal.toolId || toolSetNode.pluginId;
           toolList.forEach((tool, index) => {
-            const newToolNode = getMCPToolRuntimeNode({
-              nodeId: `${toolSetNode.nodeId}${index}`,
-              toolSetId,
-              toolsetName: toolSetNode.name,
-              avatar: toolSetNode.avatar,
-              tool
-            });
+            const newToolNode = initToolSetChildNode(
+              getMCPToolRuntimeNode({
+                nodeId: `${toolSetNode.nodeId}${index}`,
+                toolSetId,
+                toolsetName: toolSetNode.name,
+                avatar: toolSetNode.avatar,
+                tool
+              })
+            );
             nodes.push(newToolNode);
             pushEdges(newToolNode.nodeId);
           });
@@ -567,13 +586,15 @@ export const rewriteRuntimeWorkFlow = async ({
           const toolList = await getHTTPToolList(app);
 
           toolList.forEach((tool: HttpToolConfigType, index: number) => {
-            const newToolNode = getHTTPToolRuntimeNode({
-              tool,
-              nodeId: `${toolSetNode.nodeId}${index}`,
-              avatar: toolSetNode.avatar,
-              toolSetId: toolSetNode.pluginId!,
-              toolsetName: toolSetNode.name
-            });
+            const newToolNode = initToolSetChildNode(
+              getHTTPToolRuntimeNode({
+                tool,
+                nodeId: `${toolSetNode.nodeId}${index}`,
+                avatar: toolSetNode.avatar,
+                toolSetId: toolSetNode.pluginId!,
+                toolsetName: toolSetNode.name
+              })
+            );
             nodes.push(newToolNode);
             pushEdges(newToolNode.nodeId);
           });

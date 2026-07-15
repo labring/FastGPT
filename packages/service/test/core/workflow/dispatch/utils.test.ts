@@ -25,7 +25,10 @@ import {
   DispatchNodeResponseKeyEnum
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 
@@ -1010,7 +1013,10 @@ describe('rewriteRuntimeWorkFlow', () => {
       makeEdge('parent', 'ts20', { sourceHandle: 'selectedTools', targetHandle: 'selectedTools' })
     ];
 
-    const fullSchema = { type: 'object', properties: { city: { type: 'string' } } };
+    const fullSchema = {
+      type: 'object',
+      properties: { city: { type: 'string', isToolParam: false } }
+    };
     mockMongoAppFindOne.mockReturnValue({
       lean: vi.fn().mockResolvedValue({ _id: 'mcp-app-1', name: 'TestApp' })
     });
@@ -1022,6 +1028,16 @@ describe('rewriteRuntimeWorkFlow', () => {
     const filteredEdges = filterOrphanEdges({ nodes, edges, workflowId: 'workflow-app' });
 
     expect(nodes.find((n) => n.nodeId === 'ts20')?.jsonSchema).toEqual(fullSchema);
+    expect(nodes.find((n) => n.nodeId === 'ts20')?.inputs[0]).toMatchObject({
+      key: 'city',
+      selectedType: FlowNodeInputTypeEnum.agentGenerated,
+      selectedTypeIndex: 0,
+      renderTypeList: [
+        FlowNodeInputTypeEnum.agentGenerated,
+        FlowNodeInputTypeEnum.input,
+        FlowNodeInputTypeEnum.reference
+      ]
+    });
     expect(filteredEdges).toHaveLength(1);
     expect(filteredEdges[0].target).toBe('ts20');
   });
