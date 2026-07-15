@@ -49,6 +49,10 @@ const DashboardContainer = ({
     const path = router.asPath.split('?')[0]; // 移除查询参数
     const segments = path.split('/').filter(Boolean); // 过滤空字符串
 
+    if (segments[0] === 'dashboard') {
+      return (segments[1] as TabEnumType) || TabEnum.agent;
+    }
+
     return (segments.pop() as TabEnumType) || TabEnum.agent;
   }, [router.asPath]);
 

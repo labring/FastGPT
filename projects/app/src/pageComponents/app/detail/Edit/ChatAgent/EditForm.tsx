@@ -33,6 +33,8 @@ import SandboxConfigButton from '../../components/SandboxConfigButton';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
+import { useContextSelector } from 'use-context-selector';
+import { AppContext } from '../../context';
 import { useAgentSkillSelect } from './hooks/useAgentSkillSelect';
 import { RechargeModal } from '@/components/support/wallet/NotSufficientModal';
 import DatasetCard from '@/components/core/app/DatasetCard';
@@ -65,6 +67,9 @@ const EditForm = ({
   const showSandbox = feConfigs.show_agent_sandbox;
 
   const selectDatasets = useMemo(() => appForm?.dataset?.datasets, [appForm]);
+
+  const { appDetail, appId: contextAppId } = useContextSelector(AppContext, (v) => v);
+  const associateAppId = contextAppId || appDetail._id;
 
   const {
     selectedAgentSkills,
@@ -402,6 +407,7 @@ const EditForm = ({
               onAddSkill={onAddAgentSkill}
               onRemoveSkill={onRemoveAgentSkill}
               onClose={onCloseSkillSelect}
+              associateAppId={associateAppId}
             />
           )}
         </Box>

@@ -2,10 +2,25 @@ import React from 'react';
 import { Box } from '@chakra-ui/react';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import type { IconNameType } from '@fastgpt/web/components/common/Icon/type';
 import { useTranslation } from 'next-i18next';
 
-const ListCreateCard = ({ onClick, label }: { onClick: () => void; label?: string }) => {
+const ListCreateCard = ({
+  onClick,
+  label,
+  icon = 'common/addLight',
+  accentColor = '#7895FE',
+  hoverBg = 'primary.50'
+}: {
+  onClick: () => void;
+  label?: string;
+  icon?: IconNameType;
+  /** 虚线框与加号颜色，技能页使用 #86EFAC */
+  accentColor?: string;
+  hoverBg?: string;
+}) => {
   const { t } = useTranslation();
+  const dashedBorderSvg = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100%25' height='100%25' viewBox='0 0 330 56' preserveAspectRatio='none'%3E%3Crect x='0.5' y='0.5' width='329' height='55' rx='12' fill='none' stroke='${encodeURIComponent(accentColor)}' stroke-width='1' stroke-dasharray='6 6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`;
 
   return (
     <MyBox
@@ -47,7 +62,7 @@ const ListCreateCard = ({ onClick, label }: { onClick: () => void; label?: strin
           left={'1px'}
           right={'1px'}
           bottom={'1px'}
-          bg={'primary.50'}
+          bg={hoverBg}
           borderRadius={'14px'}
         />
         <Box
@@ -57,11 +72,11 @@ const ListCreateCard = ({ onClick, label }: { onClick: () => void; label?: strin
           alignItems={'center'}
           justifyContent={'center'}
           sx={{
-            background: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100%25' height='100%25' viewBox='0 0 330 56' preserveAspectRatio='none'%3E%3Crect x='0.5' y='0.5' width='329' height='55' rx='12' fill='none' stroke='%237895FE' stroke-width='1' stroke-dasharray='6 6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat center`,
+            background: `${dashedBorderSvg} no-repeat center`,
             backgroundSize: '100% 100%'
           }}
         >
-          <MyIcon name={'common/addLight'} w={8} color={'#7895FE'} zIndex={1} />
+          <MyIcon name={icon} w={8} color={accentColor} zIndex={1} />
         </Box>
       </Box>
     </MyBox>

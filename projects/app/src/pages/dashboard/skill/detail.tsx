@@ -1,13 +1,14 @@
 'use client';
 import React from 'react';
-import { serviceSideProps } from '@/web/common/i18n/utils';
+import DashboardContainer from '@/pageComponents/dashboard/Container';
 import SkillDetailPage from '@/pageComponents/dashboard/skill/detail/SkillDetailPage';
+import { serviceSideProps } from '@/web/common/i18n/utils';
 
-const SkillDetail = () => {
-  return <SkillDetailPage />;
+const DashboardSkillDetail = () => {
+  return <DashboardContainer>{() => <SkillDetailPage />}</DashboardContainer>;
 };
 
-export default SkillDetail;
+export default DashboardSkillDetail;
 
 export async function getServerSideProps(content: any) {
   return {
