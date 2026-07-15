@@ -19,10 +19,10 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { ChatItemContext } from '@/web/core/chat/context/chatItemContext';
-import { documentFileType } from '@fastgpt/global/common/file/constants';
 import FilePreview from '../../components/FilePreview';
 import { useFileUpload } from '../hooks/useFileUpload';
 import { getFileUploadId } from '../utils/uploadTask';
+import { isChatFileAllowedBySelectConfig } from '../utils/file';
 import ComplianceTip from '@/components/common/ComplianceTip/index';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import VoiceInput, { type VoiceInputComponentRef } from './VoiceInput';
@@ -32,13 +32,6 @@ import { ChatGenerateStatusEnum, ChatSourceTypeEnum } from '@fastgpt/global/core
 
 const InputGuideBox = dynamic(() => import('./InputGuideBox'));
 const PLACEHOLDER_APP_NAME_TOKEN = '__APP_NAME__';
-
-const fileTypeFilter = (file: File) => {
-  return (
-    file.type.includes('image') ||
-    documentFileType.split(',').some((type) => file.name.endsWith(type.trim()))
-  );
-};
 
 type ChatInputProps = BoxProps & {
   lastInteractive?: WorkflowInteractiveResponseType;
@@ -153,6 +146,10 @@ const ChatInput = ({
     showSelectVideo ||
     showSelectAudio ||
     showSelectCustomFileExtension;
+  const isFileTypeAllowed = useCallback(
+    (file: File) => isChatFileAllowedBySelectConfig({ file, fileSelectConfig }),
+    [fileSelectConfig]
+  );
   const canUseInputGuide =
     enableInputGuide &&
     sourceTarget.sourceType === ChatSourceTypeEnum.app &&
@@ -293,7 +290,7 @@ const ChatInput = ({
                 const files = Array.from(items)
                   .map((item) => (item.kind === 'file' ? item.getAsFile() : undefined))
                   .filter((file) => {
-                    return file && fileTypeFilter(file);
+                    return file && isFileTypeAllowed(file);
                   }) as File[];
                 onSelectFile({ files });
 
@@ -354,6 +351,7 @@ const ChatInput = ({
       setValue,
       handleSend,
       canUploadFile,
+      isFileTypeAllowed,
       onSelectFile
     ]
   );
@@ -509,15 +507,20 @@ const ChatInput = ({
         if (!canUploadFile) return;
         const files = Array.from(e.dataTransfer.files);
 
-        const droppedFiles = files.filter((file) => fileTypeFilter(file));
+        const droppedFiles: File[] = [];
+        const invalidFiles: File[] = [];
+        files.forEach((file) => {
+          if (isFileTypeAllowed(file)) {
+            droppedFiles.push(file);
+          } else {
+            invalidFiles.push(file);
+          }
+        });
         if (droppedFiles.length > 0) {
           onSelectFile({ files: droppedFiles });
         }
 
-        const invalidFileName = files
-          .filter((file) => !fileTypeFilter(file))
-          .map((file) => file.name)
-          .join(', ');
+        const invalidFileName = invalidFiles.map((file) => file.name).join(', ');
         if (invalidFileName) {
           toast({
             status: 'warning',
