@@ -100,6 +100,7 @@
     "remark-breaks": "^4.0.0",
     "remark-gfm": "catalog:",
     "remark-math": "^6.0.0",
+    "remend": "catalog:",
     "sass": "^1.58.3",
     "undici": "catalog:",
     "unified": "^11.0.5",

@@ -13,7 +13,7 @@ import styles from './index.module.scss';
 import dynamic from 'next/dynamic';
 
 import { Box } from '@chakra-ui/react';
-import { CodeClassNameEnum, hideStreamingIncompleteMarkdownTail, mdTextFormat } from './utils';
+import { CodeClassNameEnum, mdTextFormat, prepareStreamingMarkdown } from './utils';
 import type { AProps } from './A';
 import MarkdownTable from '@fastgpt/web/components/common/Markdown/MarkdownTable';
 import { MarkdownRendererRuntimeContext } from './runtimeContext';
@@ -168,7 +168,7 @@ const MarkdownRender = ({
   );
 
   const formatSource = useMemo(() => {
-    if (showAnimation) return hideStreamingIncompleteMarkdownTail(source);
+    if (showAnimation) return prepareStreamingMarkdown(source);
     if (forbidZhFormat) return source;
     return mdTextFormat(source);
   }, [forbidZhFormat, showAnimation, source]);
@@ -180,6 +180,13 @@ const MarkdownRender = ({
   const streamRuntimesRef = useRef<Map<number, StreamBlockRuntime>>(new Map());
   const streamPluginsCacheRef = useRef<Map<number, StreamPluginsCacheEntry>>(new Map());
   const revealClockRef = useRef({ lastTime: 0 });
+  const previousStreamingSourceRef = useRef('');
+  if (showAnimation && !source.startsWith(previousStreamingSourceRef.current)) {
+    streamRuntimesRef.current.clear();
+    streamPluginsCacheRef.current.clear();
+    revealClockRef.current.lastTime = 0;
+  }
+  previousStreamingSourceRef.current = source;
   const streamAnimationMeta = showAnimation
     ? updateStreamBlockAnimations({
         blocks: markdownBlocks,

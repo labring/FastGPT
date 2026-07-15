@@ -10,6 +10,7 @@ import { describe, expect, it } from 'vitest';
 
 import { CachedMarkdown } from '@/components/Markdown/CachedMarkdown';
 import { rehypeStreamAnimated } from '@/components/Markdown/rehypeStreamAnimated';
+import { prepareStreamingMarkdown } from '@/components/Markdown/utils';
 
 const remarkPlugins = [RemarkMath, [RemarkGfm, { singleTilde: false }], RemarkBreaks];
 const baseRehypePlugins = [RehypeKatex, [RehypeExternalLinks, { target: '_blank' }]];
@@ -60,5 +61,19 @@ describe('CachedMarkdown', () => {
     expect(html).toContain('class="stream-char"');
     expect(html).toContain('animation-delay:8ms');
     expect(html).not.toContain('stream-tail');
+  });
+
+  it('should keep list and bold element structure stable across streaming frames', () => {
+    const frames = ['- **粗', '- **粗体', '- **粗体**'];
+    const htmlFrames = frames.map((source) =>
+      renderToStaticMarkup(
+        React.createElement(ReactMarkdown, null, prepareStreamingMarkdown(source))
+      )
+    );
+
+    htmlFrames.forEach((html) => {
+      expect(html).toMatch(/^<ul>\n<li><strong>.*<\/strong><\/li>\n<\/ul>$/);
+      expect(html).not.toContain('**');
+    });
   });
 });

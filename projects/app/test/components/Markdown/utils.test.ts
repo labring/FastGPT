@@ -2,7 +2,8 @@ import { describe, it, expect } from 'vitest';
 import {
   mdTextFormat,
   CodeClassNameEnum,
-  hideStreamingIncompleteMarkdownTail
+  hideStreamingIncompleteMarkdownTail,
+  prepareStreamingMarkdown
 } from '@/components/Markdown/utils';
 
 describe('Markdown utils', () => {
@@ -147,6 +148,17 @@ describe('Markdown utils', () => {
       expect(hideStreamingIncompleteMarkdownTail('before `code')).toBe('before ');
     });
 
+    it('should keep incomplete text formatting when only media tails need hiding', () => {
+      expect(
+        hideStreamingIncompleteMarkdownTail('before **bold', { hideTextFormatting: false })
+      ).toBe('before **bold');
+      expect(
+        hideStreamingIncompleteMarkdownTail('before ![alt](https://example.com/a.png', {
+          hideTextFormatting: false
+        })
+      ).toBe('before ');
+    });
+
     it('should keep complete text style markdown unchanged', () => {
       const text =
         'before **bold** and __strong__ and *italic* and _em_ and ~~deleted~~ and `code`';
@@ -188,6 +200,26 @@ describe('Markdown utils', () => {
 
       expect(hideStreamingIncompleteMarkdownTail(inlineCode)).toBe(inlineCode);
       expect(hideStreamingIncompleteMarkdownTail(fencedCode)).toBe(fencedCode);
+    });
+  });
+
+  describe('prepareStreamingMarkdown', () => {
+    it('should keep list and bold inputs stable before and after the closing marker arrives', () => {
+      expect(prepareStreamingMarkdown('- **粗')).toBe('- **粗**');
+      expect(prepareStreamingMarkdown('- **粗体')).toBe('- **粗体**');
+      expect(prepareStreamingMarkdown('- **粗体**')).toBe('- **粗体**');
+      expect(prepareStreamingMarkdown(`- **${'a'.repeat(60)}`)).toBe(`- **${'a'.repeat(60)}**`);
+    });
+
+    it('should continue hiding incomplete images and links', () => {
+      expect(prepareStreamingMarkdown('- ![alt](https://example.com/a.png')).toBe('- ');
+      expect(prepareStreamingMarkdown('- [doc](https://example.com/page')).toBe('- ');
+    });
+
+    it('should preserve one trailing space so list and inline structure does not regress', () => {
+      expect(prepareStreamingMarkdown('- ')).toBe('- ');
+      expect(prepareStreamingMarkdown('- **bold ')).toBe('- **bold** ');
+      expect(prepareStreamingMarkdown('text  ')).toBe('text  ');
     });
   });
 });

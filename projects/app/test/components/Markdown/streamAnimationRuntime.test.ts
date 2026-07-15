@@ -50,7 +50,7 @@ describe('updateStreamBlockAnimations', () => {
     expect(state.runtimes.get(0)?.births).toHaveLength(3);
   });
 
-  it('should reset births and frozen styles after a non-append rewrite', () => {
+  it('should reset births and frozen styles after a block shrinks', () => {
     const state = createState();
     updateStreamBlockAnimations({
       blocks: [block('hello')],
@@ -61,14 +61,36 @@ describe('updateStreamBlockAnimations', () => {
     runtime.styles[0] = 'animation-delay:-10ms';
 
     updateStreamBlockAnimations({
-      blocks: [block('world')],
+      blocks: [block('hi')],
       renderNow: 200,
       ...state
     });
 
-    expect(runtime.rawSource).toBe('world');
+    expect(runtime.rawSource).toBe('hi');
     expect(runtime.styles).toEqual([]);
     expect(runtime.births[0]).toBe(200);
+  });
+
+  it('should preserve the timeline when a repaired bold suffix moves with the stream tail', () => {
+    const state = createState();
+    updateStreamBlockAnimations({
+      blocks: [block('- **a**')],
+      renderNow: 100,
+      ...state
+    });
+    const runtime = state.runtimes.get(0)!;
+    const firstBirths = [...runtime.births];
+    runtime.styles[0] = 'animation-delay:-10ms';
+
+    updateStreamBlockAnimations({
+      blocks: [block('- **ab**')],
+      renderNow: 150,
+      ...state
+    });
+
+    expect(runtime.births.slice(0, firstBirths.length)).toEqual(firstBirths);
+    expect(runtime.styles[0]).toBe('animation-delay:-10ms');
+    expect(runtime.rawSource).toBe('- **ab**');
   });
 
   it('should settle completed blocks and keep the active tail animated', () => {

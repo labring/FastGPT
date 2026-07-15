@@ -1,3 +1,5 @@
+import remend, { type RemendOptions } from 'remend';
+
 export enum CodeClassNameEnum {
   guide = 'guide',
   questionguide = 'questionguide',
@@ -27,6 +29,21 @@ const streamingIncompleteTextMarkdownTailMarkers = ['**', '__', '~~'] as const;
 const streamingIncompleteItalicMarkdownTailMarkers = ['*', '_'] as const;
 const STREAMING_INCOMPLETE_MEDIA_MARKDOWN_TAIL_MAX_HIDE_LENGTH = 100;
 const STREAMING_INCOMPLETE_TEXT_MARKDOWN_TAIL_MAX_HIDE_LENGTH = 50;
+const streamingRemendOptions = {
+  bold: true,
+  boldItalic: true,
+  comparisonOperators: false,
+  htmlTags: false,
+  images: false,
+  inlineCode: true,
+  inlineKatex: false,
+  italic: true,
+  katex: false,
+  links: false,
+  setextHeadings: false,
+  singleTilde: false,
+  strikethrough: true
+} satisfies RemendOptions;
 
 /**
  * 流式输出时隐藏尾部尚未闭合的 Markdown 片段。
@@ -35,7 +52,10 @@ const STREAMING_INCOMPLETE_TEXT_MARKDOWN_TAIL_MAX_HIDE_LENGTH = 50;
  * 不完整 Markdown。这样图片不会因为半截 URL 被提前请求；如果后续输出出现空白、
  * 换行等打断符，或候选片段过长，候选语法会按原文重新显示。
  */
-export const hideStreamingIncompleteMarkdownTail = (text: string) => {
+export const hideStreamingIncompleteMarkdownTail = (
+  text: string,
+  { hideTextFormatting = true }: { hideTextFormatting?: boolean } = {}
+) => {
   const isEscapedAt = (text: string, index: number) => {
     let slashCount = 0;
 
@@ -191,12 +211,33 @@ export const hideStreamingIncompleteMarkdownTail = (text: string) => {
     return text.slice(0, startIndex);
   }
 
+  if (!hideTextFormatting) return text;
+
   const textMarkdownStartIndex = getStreamingIncompleteTextMarkdownTailStart(text);
   if (textMarkdownStartIndex !== undefined) {
     return text.slice(0, textMarkdownStartIndex);
   }
 
   return text;
+};
+
+/**
+ * 为流式 Markdown 提供稳定的解析输入。
+ *
+ * 图片、链接和引用仍延迟到语法完整后再显示，避免请求半截 URL；粗体、斜体、删除线和
+ * 行内代码则临时补齐尾部标记，使同一段文本从首次出现起就保持一致的 AST 结构。
+ */
+export const prepareStreamingMarkdown = (text: string) => {
+  const sourceWithoutIncompleteMedia = hideStreamingIncompleteMarkdownTail(text, {
+    hideTextFormatting: false
+  });
+  const shouldRestoreTrailingSpace =
+    sourceWithoutIncompleteMedia.endsWith(' ') && !sourceWithoutIncompleteMedia.endsWith('  ');
+  const repairedSource = remend(sourceWithoutIncompleteMedia, streamingRemendOptions);
+
+  // remend 会移除单个尾随空格；列表 marker `- ` 因此可能暂时退化为普通文本 `-`。
+  // 恢复该空格可保持 list AST 稳定，粗体尾随空格也会自然落在临时闭合标记外。
+  return shouldRestoreTrailingSpace ? `${repairedSource} ` : repairedSource;
 };
 
 export const mdTextFormat = (text: string) => {
