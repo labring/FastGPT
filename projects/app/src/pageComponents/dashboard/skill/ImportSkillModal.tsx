@@ -32,7 +32,7 @@ type ValidImportSkillFormType = ImportSkillFormType & {
 type Props = {
   parentId?: string | null;
   onClose: () => void;
-  onSuccess?: () => void;
+  onSuccess?: (skillId: string) => void;
 };
 
 const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
@@ -77,8 +77,8 @@ const ImportSkillModal = ({ parentId, onClose, onSuccess }: Props) => {
       });
     },
     {
-      onSuccess() {
-        onSuccess?.();
+      onSuccess(skillId) {
+        onSuccess?.(skillId);
         onClose();
       },
       successToast: t('common:import_success'),

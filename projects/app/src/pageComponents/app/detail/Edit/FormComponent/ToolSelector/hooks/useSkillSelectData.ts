@@ -17,13 +17,18 @@ export const useSkillSelectData = () => {
   const [searchKey, setSearchKey] = useState('');
   const [navStack, setNavStack] = useState<SkillSelectNavItemType[]>([]);
 
-  const parentId = navStack.length > 0 ? navStack[navStack.length - 1].id : '';
+  const fetchParentId = navStack.length > 0 ? navStack[navStack.length - 1].id : '';
+  const parentId: ParentIdType = fetchParentId || null;
 
-  const { data: skillList = [], loading: isLoadingSkillList } = useRequest(
+  const {
+    data: skillList = [],
+    loading: isLoadingSkillList,
+    refreshAsync: refreshSkillList
+  } = useRequest(
     async () => {
       const { list } = await getSkillList({
         source: 'mine',
-        parentId,
+        parentId: fetchParentId,
         searchKey: searchKey || undefined,
         withAppCount: false
       });
@@ -31,7 +36,7 @@ export const useSkillSelectData = () => {
     },
     {
       manual: false,
-      refreshDeps: [parentId, searchKey],
+      refreshDeps: [fetchParentId, searchKey],
       throttleWait: 300
     }
   );
@@ -64,6 +69,8 @@ export const useSkillSelectData = () => {
     searchKey,
     setSearchKey,
     paths,
+    parentId,
+    refreshSkillList,
     onEnterFolder,
     onUpdateParentId
   };

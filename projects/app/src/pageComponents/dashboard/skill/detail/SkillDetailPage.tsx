@@ -1,0 +1,56 @@
+import React from 'react';
+import { Box, Flex } from '@chakra-ui/react';
+import { useContextSelector } from 'use-context-selector';
+import SkillDetailContextProvider, { SkillDetailContext } from './context';
+import { HeaderProvider, LeftHeader, HeaderDialogs } from './Header';
+import Content from './Content';
+import SkillPreview from './preview/SkillPreview';
+
+const MainLayout = () => {
+  const chatId = useContextSelector(SkillDetailContext, (v) => v.chatId);
+
+  if (!chatId) return null;
+
+  return (
+    <HeaderProvider>
+      <Flex h={'100%'} bg={'myGray.25'} overflow={'hidden'}>
+        {/* 左栏: 预览对话区域，默认占 1/3，最小 488px */}
+        <Flex
+          flex={1}
+          minW={'488px'}
+          direction={'column'}
+          h={'100%'}
+          sx={{
+            '& .app-chat-main': {
+              bg: 'transparent !important'
+            },
+            '& div[class*="my-box"]': {
+              bg: 'transparent !important'
+            }
+          }}
+        >
+          <LeftHeader />
+          <Box flex={1} minH={0} overflow={'hidden'}>
+            <SkillPreview />
+          </Box>
+        </Flex>
+
+        {/* 右栏: 文件树 + 编辑器区域 */}
+        <Box flex={2} minW={0} h={'100%'} overflow={'hidden'}>
+          <Content />
+        </Box>
+      </Flex>
+      <HeaderDialogs />
+    </HeaderProvider>
+  );
+};
+
+const SkillDetailPage = () => {
+  return (
+    <SkillDetailContextProvider>
+      <MainLayout />
+    </SkillDetailContextProvider>
+  );
+};
+
+export default SkillDetailPage;

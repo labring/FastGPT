@@ -656,6 +656,7 @@ const NodeAgent = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                     });
                   }}
                   onClose={onCloseSkillSelect}
+                  associateAppId={appDetail._id}
                 />
               )}
             </Box>

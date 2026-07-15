@@ -23,9 +23,25 @@ type FormType = {
 type Props = {
   parentId?: string | null;
   onClose: () => void;
+  onSuccess?: (skillId: string) => void | Promise<void>;
+  redirectToDetail?: boolean;
+  /** Agent 选择弹窗等场景：创建成功后新开标签页进入 skill 辅助生成页 */
+  openDetailInNewTab?: boolean;
+  /** 空态创建成功后跳转 Skill Dashboard（先创建再跳转） */
+  redirectToDashboard?: boolean;
+  /** 创建流程全部结束后的回调，如关闭外层选择弹窗 */
+  onCreateComplete?: () => void;
 };
 
-const CreateSkillModal = ({ parentId, onClose }: Props) => {
+const CreateSkillModal = ({
+  parentId,
+  onClose,
+  onSuccess,
+  redirectToDetail = true,
+  openDetailInNewTab = false,
+  redirectToDashboard = false,
+  onCreateComplete
+}: Props) => {
   const { t } = useTranslation();
   const router = useRouter();
 
@@ -56,9 +72,23 @@ const CreateSkillModal = ({ parentId, onClose }: Props) => {
       });
     },
     {
-      onSuccess(skillId) {
+      onSuccess: async (skillId) => {
+        await onSuccess?.(skillId);
         onClose();
-        router.push(`/skill/detail?skillId=${skillId}`);
+        if (redirectToDashboard) {
+          await router.push('/dashboard/skill');
+        }
+        if (!redirectToDetail) {
+          onCreateComplete?.();
+          return;
+        }
+        if (openDetailInNewTab) {
+          window.open(`/skill/detail?skillId=${skillId}`, '_blank', 'noopener,noreferrer');
+          onCreateComplete?.();
+          return;
+        }
+        await router.push(`/dashboard/skill/detail?skillId=${skillId}`);
+        onCreateComplete?.();
       },
       errorToast: t('common:create_failed')
     }
