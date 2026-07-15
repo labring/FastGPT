@@ -25,7 +25,6 @@ import type {
 } from './type';
 import { runSandboxTools } from '../../../../../sandbox/interface/toolCall';
 import { normalizeToolResponseContent } from '@fastgpt/global/core/ai/llm/utils';
-import { extractActivePlanFromMessages } from '../../../../compress';
 
 /**
  * 创建工具执行结果的最小结构。
@@ -208,11 +207,9 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
           } as ChatCompletionMessageParam
         ]
       : buildInitialMessages({ input, hasRuntimeTools, promptMode: runtime.promptMode });
-  // 正常跨轮恢复时 providerState 不保存已完成 loop；从组合 checkpoint 中恢复 plan executor 状态。
-  let activePlan =
-    input.pendingMainContext?.activePlan ??
-    input.activePlan ??
-    extractActivePlanFromMessages(messages);
+  // active plan 只属于当前 loop；普通新轮次不会从历史 checkpoint 恢复。
+  // 只有 ask_user 暂停恢复时，pendingMainContext 才会携带可继续执行的 plan。
+  let activePlan = input.pendingMainContext?.activePlan ?? input.activePlan;
   // control 工具只影响 Agent 内部状态，不作为普通工具卡片向前端展示。
   // read_files/sandbox 是内置执行器，但需要走普通工具事件链路供前端和运行详情展示。
   const askToolName = runtime.toolCatalog.askTool?.function.name;

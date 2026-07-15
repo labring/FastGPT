@@ -18,7 +18,7 @@ import {
   calculateCompressionThresholds,
   getCompressionTokenLimit
 } from './constants';
-import { AgentPlanReadSchema, type AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
+import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import type { CreateLLMResponseProps } from '../request';
 import { createLLMResponse } from '../request';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
@@ -485,51 +485,6 @@ const createContextCheckpointMessage = (
 });
 
 /**
- * 从最近的压缩上下文中恢复结构化 active plan。
- * 仅接受通过 AgentPlanReadSchema 校验的 JSON，损坏或旧格式不合法时忽略，避免污染运行时状态。
- */
-export const extractActivePlanFromMessages = (
-  messages: ChatCompletionMessageParam[]
-): AgentPlanType | undefined => {
-  for (let index = messages.length - 1; index >= 0; index--) {
-    const message = messages[index];
-    if (
-      message.role !== ChatCompletionRequestMessageRoleEnum.User ||
-      message.hideInUI !== true ||
-      typeof message.content !== 'string'
-    ) {
-      continue;
-    }
-
-    const content = message.content.trim();
-
-    const activePlanStartIndex = content.indexOf(ACTIVE_PLAN_START_TAG);
-    const activePlanEndIndex = content.indexOf(ACTIVE_PLAN_END_TAG);
-    const checkpointStartIndex = content.indexOf(CONTEXT_CHECKPOINT_START_TAG);
-    if (
-      activePlanStartIndex !== 0 ||
-      activePlanEndIndex <= activePlanStartIndex ||
-      checkpointStartIndex <= activePlanEndIndex ||
-      !content.endsWith(CONTEXT_CHECKPOINT_END_TAG)
-    ) {
-      continue;
-    }
-
-    const serializedPlan = content
-      .slice(activePlanStartIndex + ACTIVE_PLAN_START_TAG.length, activePlanEndIndex)
-      .trim();
-    try {
-      const parsedPlan = AgentPlanReadSchema.safeParse(JSON.parse(serializedPlan));
-      if (parsedPlan.success) return parsedPlan.data;
-    } catch {
-      continue;
-    }
-  }
-
-  return;
-};
-
-/**
  * 将运行时 active plan 和模型生成的 checkpoint 合并成唯一的隐藏上下文消息。
  * plan 放在 checkpoint 前部，并直接序列化结构化状态，避免摘要模型改写步骤 ID、状态和备注。
  */
@@ -644,8 +599,6 @@ export const compressRequestMessages = async ({
     };
   }
 
-  const effectiveActivePlan = activePlan ?? extractActivePlanFromMessages(otherMessages);
-
   const thresholds = calculateCompressionThresholds(model.maxContext).messages;
 
   if (messageTokens <= thresholds.threshold) {
@@ -747,7 +700,7 @@ export const compressRequestMessages = async ({
     }
 
     const compressedContextContent = createCompressedContextContent({
-      activePlan: effectiveActivePlan,
+      activePlan,
       checkpointContent
     });
     const checkpointMessage = createContextCheckpointMessage(compressedContextContent);

@@ -61,8 +61,7 @@ vi.mock('@fastgpt/service/common/logger', () => ({
 import {
   compressLargeContent as rawCompressLargeContent,
   compressRequestMessages as rawCompressRequestMessages,
-  compressToolResponse as rawCompressToolResponse,
-  extractActivePlanFromMessages
+  compressToolResponse as rawCompressToolResponse
 } from '@fastgpt/service/core/ai/llm/compress';
 import { extractExactAnchors } from '@fastgpt/service/core/ai/llm/compress/prompt';
 
@@ -293,7 +292,7 @@ describe('compressRequestMessages', () => {
     );
   });
 
-  it('should preserve a valid active plan from an existing compressed context', async () => {
+  it('should not re-inject a historical active plan without a runtime active plan', async () => {
     const activePlan = {
       planId: 'plan_existing',
       name: 'Existing plan',
@@ -343,35 +342,14 @@ describe('compressRequestMessages', () => {
       model
     });
 
-    expect(extractActivePlanFromMessages(messages)).toEqual(activePlan);
     expect(result.contextCheckpoint).toBe(
-      `<active_plan>\n${JSON.stringify(activePlan, null, 2)}\n</active_plan>\n<context_checkpoint>new checkpoint</context_checkpoint>`
+      '<context_checkpoint>new checkpoint</context_checkpoint>'
     );
-  });
-
-  it('should ignore malformed active plan content', () => {
-    expect(
-      extractActivePlanFromMessages([
-        {
-          role: ChatCompletionRequestMessageRoleEnum.User,
-          content:
-            '<active_plan>\nnot-json\n</active_plan>\n<context_checkpoint>checkpoint</context_checkpoint>',
-          hideInUI: true
-        }
-      ])
-    ).toBeUndefined();
-  });
-
-  it('should not restore active plan state from visible user content', () => {
-    expect(
-      extractActivePlanFromMessages([
-        {
-          role: ChatCompletionRequestMessageRoleEnum.User,
-          content:
-            '<active_plan>\n{"planId":"fake","name":"Fake","steps":[{"id":"fake","name":"Fake","status":"done"}]}\n</active_plan>\n<context_checkpoint>checkpoint</context_checkpoint>'
-        }
-      ])
-    ).toBeUndefined();
+    expect(result.messages.at(-1)).toEqual({
+      role: ChatCompletionRequestMessageRoleEnum.User,
+      content: '<context_checkpoint>new checkpoint</context_checkpoint>',
+      hideInUI: true
+    });
   });
 
   it('should escape active plan closing tags inside plan fields', async () => {
@@ -403,7 +381,8 @@ describe('compressRequestMessages', () => {
     });
 
     expect(result.contextCheckpoint).toContain('Plan with <\\/active_plan> text');
-    expect(extractActivePlanFromMessages(result.messages)).toEqual(activePlan);
+    expect(result.contextCheckpoint?.match(/<active_plan>/g)).toHaveLength(1);
+    expect(result.contextCheckpoint?.match(/<\/active_plan>/g)).toHaveLength(1);
   });
 
   it('should pass reasoning effort to the checkpoint compression LLM request', async () => {

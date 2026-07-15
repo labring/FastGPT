@@ -11,13 +11,11 @@ const {
   createLLMResponseMock,
   compressRequestMessagesMock,
   compressToolResponseMock,
-  extractActivePlanFromMessagesMock,
   runSandboxToolsMock
 } = vi.hoisted(() => ({
   createLLMResponseMock: vi.fn(),
   compressRequestMessagesMock: vi.fn(),
   compressToolResponseMock: vi.fn(),
-  extractActivePlanFromMessagesMock: vi.fn(),
   runSandboxToolsMock: vi.fn()
 }));
 
@@ -44,8 +42,7 @@ vi.mock('@fastgpt/service/core/ai/model', () => ({
 
 vi.mock('@fastgpt/service/core/ai/llm/compress', () => ({
   compressRequestMessages: compressRequestMessagesMock,
-  compressToolResponse: compressToolResponseMock,
-  extractActivePlanFromMessages: extractActivePlanFromMessagesMock
+  compressToolResponse: compressToolResponseMock
 }));
 
 vi.mock('@fastgpt/service/core/ai/llm/utils', () => ({
@@ -125,7 +122,6 @@ const createRuntime = (overrides?: Partial<AgentLoopRuntime>): AgentLoopRuntime 
 describe('runFastAgentMainLoop', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    extractActivePlanFromMessagesMock.mockReturnValue(undefined);
     compressRequestMessagesMock.mockImplementation(async ({ messages }) => ({
       messages
     }));
@@ -587,7 +583,7 @@ describe('runFastAgentMainLoop', () => {
     });
   });
 
-  it('restores active plan state from a compressed context', async () => {
+  it('does not restore active plan state from a compressed context in a new turn', async () => {
     const activePlan = {
       planId: 'plan_restored',
       name: 'Restored plan',
@@ -599,7 +595,6 @@ describe('runFastAgentMainLoop', () => {
         }
       ]
     };
-    extractActivePlanFromMessagesMock.mockReturnValue(activePlan);
     mockCreateLLMResponseQueue(createLLMResponseMock, [
       toolCall({
         id: 'call_update_restored_plan',
@@ -634,15 +629,85 @@ describe('runFastAgentMainLoop', () => {
       }
     });
 
+    expect(result.activePlan).toBeUndefined();
+    expect(compressRequestMessagesMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        activePlan: undefined
+      })
+    );
+  });
+
+  it('restores active plan state when resuming an interactive turn', async () => {
+    const activePlan = {
+      planId: 'plan_interactive',
+      name: 'Interactive plan',
+      steps: [
+        {
+          id: 'step_interactive',
+          name: 'Resume interactive work',
+          status: 'in_progress' as const
+        }
+      ]
+    };
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      toolCall({
+        id: 'call_update_interactive_plan',
+        name: 'update_plan',
+        args: {
+          action: 'update_steps',
+          steps: [
+            {
+              id: 'step_interactive',
+              status: 'done'
+            }
+          ]
+        }
+      }),
+      text({
+        requestId: 'req_after_interactive_plan',
+        content: 'interactive plan completed'
+      })
+    ]);
+
+    const result = await runFastAgentMainLoop({
+      runtime: createRuntime(),
+      input: {
+        messages: [],
+        pendingMainContext: {
+          messages: [
+            {
+              role: ChatCompletionRequestMessageRoleEnum.User,
+              content: 'Need clarification'
+            },
+            {
+              role: ChatCompletionRequestMessageRoleEnum.Assistant,
+              tool_calls: [
+                {
+                  id: 'call_ask',
+                  type: 'function',
+                  function: {
+                    name: 'ask_user',
+                    arguments: '{}'
+                  }
+                }
+              ]
+            }
+          ],
+          askToolCallId: 'call_ask',
+          activePlan
+        },
+        userAnswer: 'Continue'
+      }
+    });
+
     expect(result.activePlan?.steps[0]).toMatchObject({
-      id: 'step_restored',
-      status: 'done',
-      note: 'Restored state updated successfully.'
+      id: 'step_interactive',
+      status: 'done'
     });
     expect(compressRequestMessagesMock).toHaveBeenCalledWith(
       expect.objectContaining({
         activePlan: expect.objectContaining({
-          planId: 'plan_restored'
+          planId: 'plan_interactive'
         })
       })
     );
