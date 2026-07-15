@@ -56,14 +56,11 @@ import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getAppChatSourceKey } from '@/web/core/chat/utils';
 import { useAppChatGenerateStatusSync } from './useAppChatGenerateStatusSync';
 import { postMarkChatRead } from '@/web/core/chat/history/api';
+import { homeChatFileSelectConfig } from '@fastgpt/global/core/chat/setting/constants';
 
 const defaultFileSelectConfig: AppFileSelectConfigType = {
-  maxFiles: 20,
-  canSelectFile: true,
-  canSelectImg: false,
-  canSelectVideo: false,
-  canSelectAudio: false,
-  canSelectCustomFileExtension: false
+  ...homeChatFileSelectConfig,
+  canSelectImg: false
 };
 
 const defaultWhisperConfig: AppWhisperConfigType = {

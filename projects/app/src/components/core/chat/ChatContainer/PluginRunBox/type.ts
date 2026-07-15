@@ -10,6 +10,7 @@ export type PluginRunBoxProps = {
   appId: string;
   chatId: string;
   outLinkAuthData?: OutLinkChatAuthProps;
+  fileUploadMode?: 'runtime' | 'draft';
 
   onStartChat?: onStartChatType;
   onNewChat?: () => void;

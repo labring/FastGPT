@@ -1,7 +1,8 @@
 import { POST } from '@/web/common/api/request';
 import type {
   PresignChatFileGetUrlParams,
-  PresignChatFilePostUrlParams
+  PresignChatFilePostUrlParams,
+  PresignDraftChatFilePostUrlParams
 } from '@fastgpt/global/openapi/core/chat/file/api';
 import type { CreatePostPresignedUrlResponseType } from '@fastgpt/global/common/file/s3/type';
 
@@ -18,6 +19,17 @@ export const getUploadChatFilePresignedUrl = (
 ) => {
   return POST<CreatePostPresignedUrlResponseType>(
     '/core/chat/file/presignChatFilePostUrl',
+    params,
+    config
+  );
+};
+
+export const getUploadDraftChatFilePresignedUrl = (
+  params: PresignDraftChatFilePostUrlParams,
+  config?: Parameters<typeof POST>[2]
+) => {
+  return POST<CreatePostPresignedUrlResponseType>(
+    '/core/chat/file/presignDraftChatFilePostUrl',
     params,
     config
   );

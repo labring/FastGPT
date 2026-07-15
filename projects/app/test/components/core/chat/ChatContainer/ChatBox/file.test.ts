@@ -1,9 +1,55 @@
 import { describe, expect, it } from 'vitest';
-import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatFileTypeEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import {
   getUploadChatFileType,
-  isChatFileAllowedBySelectConfig
+  isChatFileAllowedBySelectConfig,
+  resolveChatFileUploadMode
 } from '@/components/core/chat/ChatContainer/ChatBox/utils/file';
+import { ChatTypeEnum } from '@/components/core/chat/ChatContainer/ChatBox/constants';
+
+describe('resolveChatFileUploadMode', () => {
+  it('uses draft mode for App tests and Skill Edit', () => {
+    expect(
+      resolveChatFileUploadMode({
+        chatType: ChatTypeEnum.test,
+        sourceType: ChatSourceTypeEnum.app
+      })
+    ).toBe('draft');
+    expect(
+      resolveChatFileUploadMode({
+        chatType: ChatTypeEnum.test,
+        sourceType: ChatSourceTypeEnum.skillEdit
+      })
+    ).toBe('draft');
+  });
+
+  it('keeps runtime mode for regular chats, Home Chat, shares and ChatAgentHelper', () => {
+    expect(
+      resolveChatFileUploadMode({
+        chatType: ChatTypeEnum.chat,
+        sourceType: ChatSourceTypeEnum.app
+      })
+    ).toBe('runtime');
+    expect(
+      resolveChatFileUploadMode({
+        chatType: ChatTypeEnum.home,
+        sourceType: ChatSourceTypeEnum.app
+      })
+    ).toBe('runtime');
+    expect(
+      resolveChatFileUploadMode({
+        chatType: ChatTypeEnum.share,
+        sourceType: ChatSourceTypeEnum.app
+      })
+    ).toBe('runtime');
+    expect(
+      resolveChatFileUploadMode({
+        chatType: ChatTypeEnum.test,
+        sourceType: ChatSourceTypeEnum.chatAgentHelper
+      })
+    ).toBe('runtime');
+  });
+});
 
 describe('getUploadChatFileType', () => {
   it('detects image, audio and video mime types', () => {

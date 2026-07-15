@@ -11,6 +11,7 @@ type WorkflowRuntimeContextType = {
   /** 前端运行时状态隔离 key：`${sourceType}:${sourceId}`。 */
   sourceKey: string;
   chatId: string;
+  fileUploadMode: 'runtime' | 'draft';
 
   fileUploading: boolean;
   setFileUploadingCount: React.Dispatch<React.SetStateAction<number>>;
@@ -24,6 +25,7 @@ export const WorkflowRuntimeContext = createContext<WorkflowRuntimeContextType>(
   },
   sourceKey: '',
   chatId: '',
+  fileUploadMode: 'runtime',
   fileUploading: false,
   setFileUploadingCount: () => {}
 });
@@ -32,11 +34,13 @@ export const WorkflowRuntimeContextProvider = ({
   sourceTarget,
   chatId,
   outLinkAuthData,
+  fileUploadMode,
   children
 }: {
   sourceTarget: ChatSourceTarget;
   chatId: string;
   outLinkAuthData: OutLinkChatAuthProps;
+  fileUploadMode: WorkflowRuntimeContextType['fileUploadMode'];
   children: React.ReactNode;
 }) => {
   const [fileUploadingCount, setFileUploadingCount] = useState<number>(0);
@@ -49,10 +53,19 @@ export const WorkflowRuntimeContextProvider = ({
       sourceTarget,
       sourceKey,
       chatId,
+      fileUploadMode,
       fileUploading,
       setFileUploadingCount
     }),
-    [outLinkAuthData, sourceTarget, sourceKey, chatId, fileUploading, setFileUploadingCount]
+    [
+      outLinkAuthData,
+      sourceTarget,
+      sourceKey,
+      chatId,
+      fileUploadMode,
+      fileUploading,
+      setFileUploadingCount
+    ]
   );
 
   return (

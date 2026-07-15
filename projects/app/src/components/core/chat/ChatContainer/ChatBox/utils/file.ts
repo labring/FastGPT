@@ -1,6 +1,23 @@
-import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatFileTypeEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getUploadFileType } from '@fastgpt/global/core/app/constants';
 import type { AppFileSelectConfigType } from '@fastgpt/global/core/app/type/config.schema';
+import { ChatTypeEnum } from '../constants';
+
+/**
+ * 决定 Chat 文件上传使用正式策略还是客户端草稿策略。
+ * 只有编辑态测试使用临时配置；Home Chat 和 Helper 都是服务端授权的正式运行态。
+ */
+export const resolveChatFileUploadMode = ({
+  chatType,
+  sourceType
+}: {
+  chatType: ChatTypeEnum;
+  sourceType: ChatSourceTypeEnum;
+}): 'runtime' | 'draft' => {
+  if (sourceType === ChatSourceTypeEnum.chatAgentHelper) return 'runtime';
+  if (chatType === ChatTypeEnum.test) return 'draft';
+  return 'runtime';
+};
 
 export const getUploadChatFileType = (file: File) => {
   if (file.type.includes('image')) return ChatFileTypeEnum.image;

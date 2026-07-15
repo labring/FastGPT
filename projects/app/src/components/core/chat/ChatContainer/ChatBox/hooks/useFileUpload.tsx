@@ -14,7 +14,10 @@ import { type AppFileSelectConfigType } from '@fastgpt/global/core/app/type/conf
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { type OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import { getUploadChatFilePresignedUrl } from '@/web/common/file/api';
+import {
+  getUploadChatFilePresignedUrl,
+  getUploadDraftChatFilePresignedUrl
+} from '@/web/common/file/api';
 import { getUploadFileType } from '@fastgpt/global/core/app/constants';
 import { putFileToS3 } from '@fastgpt/web/common/file/utils';
 import { getUploadChatFileType } from '../utils/file';
@@ -26,6 +29,8 @@ import {
   getFileUploadId,
   isUploadAbortError
 } from '../utils/uploadTask';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowRuntimeContext } from '../../context/workflowRuntimeContext';
 
 type UseFileUploadOptions = {
   fileSelectConfig: AppFileSelectConfigType;
@@ -46,6 +51,7 @@ type UploadTaskState = {
 
 export const useFileUpload = (props: UseFileUploadOptions) => {
   const { fileSelectConfig, fileCtrl, outLinkAuthData, sourceTarget, chatId } = props;
+  const fileUploadMode = useContextSelector(WorkflowRuntimeContext, (v) => v.fileUploadMode);
   const chatAuthTarget = useChatAuthApiTarget({ sourceTarget, outLinkAuthData });
   const { toast } = useToast();
   const { t } = useTranslation();
@@ -324,17 +330,25 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
           }
 
           // Get Upload Post Presigned URL
-          const { url, key, headers, maxSize, previewUrl } = await getUploadChatFilePresignedUrl(
-            {
-              filename: rawFile.name,
-              contentType: rawFile.type || undefined,
-              size: rawFile.size,
-              ...chatAuthTarget,
-              chatId,
-              fileSelectConfig
-            },
-            { cancelToken: task.controller }
-          );
+          const uploadParams = {
+            filename: rawFile.name,
+            contentType: rawFile.type || undefined,
+            size: rawFile.size,
+            ...chatAuthTarget,
+            chatId
+          };
+          const { url, key, headers, maxSize, previewUrl } =
+            fileUploadMode === 'draft'
+              ? await getUploadDraftChatFilePresignedUrl(
+                  {
+                    ...uploadParams,
+                    fileSelectConfig
+                  },
+                  { cancelToken: task.controller }
+                )
+              : await getUploadChatFilePresignedUrl(uploadParams, {
+                  cancelToken: task.controller
+                });
 
           task.key = key;
           if (
@@ -391,6 +405,7 @@ export const useFileUpload = (props: UseFileUploadOptions) => {
     chatId,
     cleanupUploadTask,
     fileSelectConfig,
+    fileUploadMode,
     registerUploadTask,
     removeFileByUploadId,
     t,
