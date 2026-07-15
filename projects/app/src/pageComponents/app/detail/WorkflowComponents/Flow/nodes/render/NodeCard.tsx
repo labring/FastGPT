@@ -209,11 +209,11 @@ const NodeCard = (props: Props) => {
           whiteSpace={'nowrap'}
           maxW={'80%'}
         >
-          {t(name as any)}
+          {name}
         </Box>
       </Flex>
     );
-  }, [isFolded, avatar, avatarLinear, name, handleDoubleClick, t]);
+  }, [isFolded, avatar, avatarLinear, name, handleDoubleClick]);
 
   const { outlineColor, outlineWidth } = useMemo(() => {
     // error mode
@@ -563,14 +563,9 @@ const NodeTitleSection = React.memo<{
 
   const renderDisplay = useCallback(
     (val: string) => (
-      <HighlightText
-        rawText={t(val as any)}
-        matchText={searchedText ?? ''}
-        mode={'bg'}
-        color={'#ffe82d'}
-      />
+      <HighlightText rawText={val} matchText={searchedText ?? ''} mode={'bg'} color={'#ffe82d'} />
     ),
-    [searchedText, t]
+    [searchedText]
   );
 
   return (
@@ -646,7 +641,6 @@ const NodeIntro = React.memo(function NodeIntro({
         minH={'20px'}
         py={'3px'}
         px={'6px'}
-        noOfLines={1}
       />
     </Box>
   );
@@ -1205,7 +1199,6 @@ const PresentationModeOverlay = React.memo(function PresentationModeOverlay({
   isLoopNode: boolean;
   onDoubleClick: () => void;
 }) {
-  const { t } = useTranslation();
   const [presentationHeight, setPresentationHeight] = useState<number>(0);
 
   const presentationOverlayRef = useCallback((node: HTMLDivElement | null) => {
@@ -1271,7 +1264,7 @@ const PresentationModeOverlay = React.memo(function PresentationModeOverlay({
             whiteSpace={'nowrap'}
             maxW={'80%'}
           >
-            {t(name as any)}
+            {name}
           </Box>
         )}
         {intro && presentationHeight > 320 && (
@@ -1284,7 +1277,7 @@ const PresentationModeOverlay = React.memo(function PresentationModeOverlay({
             whiteSpace={'nowrap'}
             maxW={'80%'}
           >
-            {t(intro as any)}
+            {intro}
           </Box>
         )}
       </Flex>

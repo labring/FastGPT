@@ -84,13 +84,18 @@ export const adaptStoreNodeInputs = (storeNode: StoreNodeItemType): FlowNodeInpu
   });
 };
 
+/**
+ * 将节点模板转换为画布节点，并按创建时语言初始化可编辑文本。
+ * `formatName` 在翻译完成后执行，用于基于实例名称追加重名序号。
+ */
 export const nodeTemplate2FlowNode = ({
   template,
   position,
   selected,
   parentNodeId,
   zIndex,
-  t
+  t,
+  formatName
 }: {
   template: FlowNodeTemplateType;
   position: XYPosition;
@@ -98,11 +103,15 @@ export const nodeTemplate2FlowNode = ({
   parentNodeId?: string;
   zIndex?: number;
   t: TFunction;
+  formatName?: (name: string) => string;
 }): Node<FlowNodeItemType> => {
+  const name = t(template.name as any);
+
   // replace item data
   const moduleItem: FlowNodeItemType = {
     ...template,
-    name: t(template.name as any),
+    name: formatName?.(name) ?? name,
+    intro: template.intro ? t(template.intro as any) : template.intro,
     nodeId: getNanoid(),
     parentNodeId
   };
@@ -126,6 +135,11 @@ export const nodeTemplate2FlowNode = ({
     zIndex
   };
 };
+
+/**
+ * 将持久化节点恢复为画布节点，并在加载时实体化历史 i18n 文本。
+ * 名称或描述命中翻译 key 时使用当前语言文本，后续保存会写回实体文本。
+ */
 export const storeNode2FlowNode = ({
   item: storeNode,
   selected = false,
@@ -160,6 +174,8 @@ export const storeNode2FlowNode = ({
     parentNodeId,
     ...template,
     ...storeNode,
+    name: t(storeNode.name as any),
+    intro: storeNode.intro ? t(storeNode.intro as any) : storeNode.intro,
     avatar: template.avatar ?? storeNode.avatar,
     version: template.version || storeNode.version,
     catchError: storeNode.catchError ?? template.catchError,
