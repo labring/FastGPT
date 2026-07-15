@@ -28,8 +28,8 @@ export const getEmptyAppsTemplate = (t: any) => {
       nodes: [
         {
           nodeId: 'userGuide',
-          name: i18nT('common:core.module.template.system_config'),
-          intro: i18nT('common:core.module.template.config_params'),
+          name: t(i18nT('common:core.module.template.system_config')),
+          intro: t(i18nT('common:core.module.template.config_params')),
           avatar: 'core/workflow/template/systemConfig',
           flowNodeType: FlowNodeTypeEnum.systemConfig,
           position: {
@@ -93,7 +93,7 @@ export const getEmptyAppsTemplate = (t: any) => {
         },
         {
           nodeId: '448745',
-          name: i18nT('common:core.module.template.work_start'),
+          name: t(i18nT('common:core.module.template.work_start')),
           intro: '',
           avatar: 'core/workflow/template/workflowStart',
           flowNodeType: FlowNodeTypeEnum.workflowStart,
@@ -124,8 +124,8 @@ export const getEmptyAppsTemplate = (t: any) => {
         },
         {
           nodeId: 'loOvhld2ZTKa',
-          name: i18nT('common:core.module.template.ai_chat'),
-          intro: i18nT('common:core.module.template.ai_chat_intro'),
+          name: t(i18nT('common:core.module.template.ai_chat')),
+          intro: t(i18nT('common:core.module.template.ai_chat_intro')),
           avatar: 'core/workflow/template/aiChat',
           flowNodeType: FlowNodeTypeEnum.chatNode,
           showStatus: true,
@@ -264,8 +264,8 @@ export const getEmptyAppsTemplate = (t: any) => {
       nodes: [
         {
           nodeId: 'userGuide',
-          name: i18nT('common:core.module.template.system_config'),
-          intro: i18nT('common:core.module.template.system_config_info'),
+          name: t(i18nT('common:core.module.template.system_config')),
+          intro: t(i18nT('common:core.module.template.system_config_info')),
           avatar: 'core/workflow/template/systemConfig',
           flowNodeType: FlowNodeTypeEnum.systemConfig,
           position: {
@@ -329,7 +329,7 @@ export const getEmptyAppsTemplate = (t: any) => {
         },
         {
           nodeId: '448745',
-          name: i18nT('common:core.module.template.work_start'),
+          name: t(i18nT('common:core.module.template.work_start')),
           intro: '',
           avatar: 'core/workflow/template/workflowStart',
           flowNodeType: FlowNodeTypeEnum.workflowStart,
@@ -368,7 +368,7 @@ export const getEmptyAppsTemplate = (t: any) => {
       nodes: [
         {
           nodeId: 'pluginInput',
-          name: i18nT('workflow:template.plugin_start'),
+          name: t(i18nT('workflow:template.plugin_start')),
           avatar: 'core/workflow/template/workflowStart',
           flowNodeType: FlowNodeTypeEnum.pluginInput,
           showStatus: false,
@@ -382,7 +382,7 @@ export const getEmptyAppsTemplate = (t: any) => {
         },
         {
           nodeId: 'pluginOutput',
-          name: i18nT('common:core.module.template.self_output'),
+          name: t(i18nT('common:core.module.template.self_output')),
           avatar: '/imgs/workflow/output.png',
           flowNodeType: FlowNodeTypeEnum.pluginOutput,
           showStatus: false,
@@ -396,7 +396,7 @@ export const getEmptyAppsTemplate = (t: any) => {
         },
         {
           nodeId: 'pluginConfig',
-          name: i18nT('common:core.module.template.system_config'),
+          name: t(i18nT('common:core.module.template.system_config')),
           intro: '',
           avatar: 'core/workflow/template/systemConfig',
           flowNodeType: FlowNodeTypeEnum.pluginConfig,

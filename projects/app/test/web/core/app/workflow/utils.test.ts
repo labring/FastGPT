@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import type {
   FlowNodeItemType,
   FlowNodeTemplateType,
@@ -27,22 +27,31 @@ import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/
 import { NodeOutputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 
 describe('nodeTemplate2FlowNode', () => {
-  it('should convert template to flow node', () => {
+  it('should initialize template text once before formatting the instance name', () => {
     const template: FlowNodeTemplateType = {
       id: 'template1',
       templateType: 'formInput',
-      name: 'Test Node',
+      name: 'workflow:template_name',
+      intro: 'workflow:template_intro',
       flowNodeType: FlowNodeTypeEnum.formInput,
       inputs: [],
       outputs: []
     };
+    const t = vi.fn(
+      (key: string) =>
+        ({
+          'workflow:template_name': 'Template Name',
+          'workflow:template_intro': 'Template Intro'
+        })[key] ?? key
+    );
 
     const result = nodeTemplate2FlowNode({
       template,
       position: { x: 100, y: 100 },
       selected: true,
       parentNodeId: 'parent1',
-      t: ((key: any) => key) as any
+      t: t as any,
+      formatName: (name) => `${name} 2`
     });
 
     expect(result).toMatchObject({
@@ -50,38 +59,52 @@ describe('nodeTemplate2FlowNode', () => {
       position: { x: 100, y: 100 },
       selected: true,
       data: {
-        name: 'Test Node',
+        name: 'Template Name 2',
+        intro: 'Template Intro',
         flowNodeType: FlowNodeTypeEnum.formInput,
         parentNodeId: 'parent1'
       }
     });
     expect(result.id).toBeDefined();
+    expect(t.mock.calls.map(([key]) => key)).toEqual([
+      'workflow:template_name',
+      'workflow:template_intro'
+    ]);
   });
 });
 
 describe('storeNode2FlowNode', () => {
-  it('should convert store node to flow node', () => {
+  it('should materialize stored editable text when it matches an i18n key', () => {
     const storeNode: StoreNodeItemType = {
       nodeId: 'node1',
       flowNodeType: FlowNodeTypeEnum.formInput,
       position: { x: 100, y: 100 },
       inputs: [],
       outputs: [],
-      name: 'Test Node',
+      name: 'workflow:stored_name',
+      intro: 'workflow:stored_intro',
       version: '1.0'
     };
 
     const result = storeNode2FlowNode({
       item: storeNode,
       selected: true,
-      t: ((key: any) => key) as any
+      t: ((key: string) =>
+        ({
+          'workflow:stored_name': 'Stored Name',
+          'workflow:stored_intro': 'Stored Intro'
+        })[key] ?? key) as any
     });
 
     expect(result).toMatchObject({
       id: 'node1',
       type: FlowNodeTypeEnum.formInput,
       position: { x: 100, y: 100 },
-      selected: true
+      selected: true,
+      data: {
+        name: 'Stored Name',
+        intro: 'Stored Intro'
+      }
     });
   });
 

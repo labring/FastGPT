@@ -362,12 +362,6 @@ const NodeTemplateList = ({
         const newNode = nodeTemplate2FlowNode({
           template: {
             ...templateNode,
-            name: computedNewNodeName({
-              templateName: t(templateNode.name as any),
-              flowNodeType: templateNode.flowNodeType,
-              pluginId: templateNode.pluginId
-            }),
-            intro: t(templateNode.intro as any),
             inputs: templateNode.inputs
               .filter((input) => input.deprecated !== true)
               .map((input) => ({
@@ -400,7 +394,13 @@ const NodeTemplateList = ({
           position,
           selected: true,
           parentNodeId: effectiveParentNodeId,
-          t
+          t,
+          formatName: (templateName) =>
+            computedNewNodeName({
+              templateName,
+              flowNodeType: templateNode.flowNodeType,
+              pluginId: templateNode.pluginId
+            })
         });
 
         const newNodes = [newNode];

@@ -45,8 +45,7 @@ const SearchButton = (props: ButtonProps) => {
       }
 
       const searchResult = nodes.filter((node) => {
-        const nodeName = t(node.data.name as any);
-        return nodeName.toLowerCase().includes(keyword.toLowerCase());
+        return node.data.name.toLowerCase().includes(keyword.toLowerCase());
       });
 
       if (searchResult.length === 0) {
