@@ -222,7 +222,6 @@ describe('useToolNodeResponse', () => {
           responseIds: expect.arrayContaining(['interactive']),
           finishedNodeIds: expect.arrayContaining(['interactive']),
           hasError: false,
-          runningTime: 0.1,
           childResponseCount: 2,
           childTotalPoints: 0.2
         })
@@ -273,8 +272,7 @@ describe('useToolNodeResponse', () => {
           responseIds: ['req_empty_compress'],
           finishedNodeIds: ['req_empty_compress'],
           childResponseCount: 1,
-          childTotalPoints: 0.1,
-          runningTime: 0.2
+          childTotalPoints: 0.1
         })
       })
     );

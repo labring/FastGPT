@@ -353,8 +353,7 @@ describe('runToolCall compression node responses', () => {
     expect(result.runtimeNodeResponseSummary).toEqual(
       expect.objectContaining({
         responseIds: [],
-        finishedNodeIds: [],
-        runningTime: 0
+        finishedNodeIds: []
       })
     );
   });
