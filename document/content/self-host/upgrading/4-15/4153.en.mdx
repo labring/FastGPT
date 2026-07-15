@@ -36,3 +36,12 @@ The previous values are no longer supported. Using `default` or `pi` will fail e
 5. Fixed later tools continuing to run after an ask in the same model response had already paused the loop, preventing additional tool side effects before the user answers.
 6. Fixed parent-node errors being hidden when a workflow node also produced child execution details. Parent errors are now preserved in SSE events, workflow results, and traces.
 7. Fixed `workflowDispatchDeep` not being restored when the workflow observer failed before dispatch started, preventing subsequent workflows from inheriting an incorrect nesting depth.
+
+## ⚙️ Improvements
+
+### 💬 Streaming Markdown Rendering Improvements
+
+1. Reduced streaming render updates to 20 frames per second. Completed Markdown blocks are cached, while active blocks reuse their parser and animation runtime, reducing repeated parsing, DOM updates, and frame drops during long responses.
+2. Moved fade-in effects to a stable character timeline. Characters that are already visible no longer restart their animation when later Markdown is parsed; only newly appended characters fade in.
+3. Temporarily completes streaming tails for bold, italic, bold italic, strikethrough, nested emphasis, inline code, and block math so delimiter characters arriving one at a time do not change the DOM structure of existing content.
+4. Defers lists, task items, blockquotes, headings, code fences, tables, links, images, and citation markers until their structure is known. This prevents control markers from flashing and avoids previously rendered content disappearing and then reappearing.
