@@ -229,7 +229,6 @@ describe('callMcpServerTool', () => {
         hasLoopRunBreak: false,
         hasToolStop: false,
         hasNestedEnd: false,
-        runningTime: 0,
         pluginOutput: {
           result: 'plugin output value'
         }

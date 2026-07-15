@@ -93,6 +93,8 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
           maxRetryAttempts > 0
             ? `${taskResponseIdPrefix}_task_${index}_attempt_${attempt}`
             : `${taskResponseIdPrefix}_task_${index}`;
+        const startTime = Date.now();
+        const getRunningTime = () => +((Date.now() - startTime) / 1000).toFixed(2);
 
         try {
           const taskVariableState = props.variableState.clone();
@@ -108,6 +110,7 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
             runtimeNodes: taskRuntimeNodes,
             runtimeEdges: taskRuntimeEdges
           });
+          const runningTime = getRunningTime();
 
           // Push usage per attempt (resources were consumed regardless of success)
           const attemptPoints = pushSubWorkflowUsage({
@@ -132,6 +135,7 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
           const attemptResult = {
             ...result,
             taskResponseId,
+            runningTime,
             totalPoints: attemptPoints
           };
           attemptResults.push(attemptResult);
@@ -139,19 +143,26 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
             return {
               ...result,
               taskResponseId,
+              runningTime,
               totalPoints: accumulatedPoints
             };
           }
 
           // Non-retryable: interactive response will never succeed on retry
           if (response.workflowInteractiveResponse)
-            return { ...result, taskResponseId, totalPoints: accumulatedPoints };
+            return { ...result, taskResponseId, runningTime, totalPoints: accumulatedPoints };
 
-          lastResult = { ...result, taskResponseId, totalPoints: accumulatedPoints };
+          lastResult = {
+            ...result,
+            taskResponseId,
+            runningTime,
+            totalPoints: accumulatedPoints
+          };
         } catch (err) {
           const attemptResult = {
             ...parseTaskError(index, err),
             taskResponseId,
+            runningTime: getRunningTime(),
             totalPoints: 0
           };
           attemptResults.push(attemptResult);

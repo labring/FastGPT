@@ -51,8 +51,6 @@ export type RuntimeNodeResponseSummary = {
   nestedEndOutput?: any;
   /** pluginOutput 输出值。插件调用用它替代从完整 nodeResponse 列表里查 pluginOutput 节点。 */
   pluginOutput?: Record<string, any>;
-  /** 子 workflow 节点运行时间总和。parallel/loopRun 虚拟包装节点展示用。 */
-  runningTime: number;
   /** 子 workflow 顶层节点自身 totalPoints 总和。当前主要用于兜底统计。 */
   totalPoints?: number;
   /** 子 workflow 所有响应的积分总和，仅作为运行期费用聚合中间态，不写入 responseData。 */

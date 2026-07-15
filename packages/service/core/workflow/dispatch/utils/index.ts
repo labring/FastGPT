@@ -48,15 +48,14 @@ export const createRuntimeNodeResponseSummary = (): RuntimeNodeResponseSummary =
   hasError: false,
   hasLoopRunBreak: false,
   hasToolStop: false,
-  hasNestedEnd: false,
-  runningTime: 0
+  hasNestedEnd: false
 });
 
 /**
  * 增量更新父 workflow 运行控制需要的临时字段。
  *
  * 完整 nodeResponse 会由 writer 及时落库并释放；父节点只需要这些信号来判断
- * nestedEnd 输出、错误、loop break、tool stop、完成节点、耗时和 child 统计。
+ * nestedEnd 输出、错误、loop break、tool stop、完成节点和 child 统计。
  * 调用方每处理完一批 nodeResponse，就把当前 summary 和本批响应传进来，返回新的
  * summary，避免重新保存或扫描完整 nodeResponse 列表。
  */
@@ -78,7 +77,7 @@ export const summarizeRuntimeNodeResponses = (
       .filter((parentId): parentId is string => !!parentId)
   );
   // 已进入 currentSummary 的 response id 不能再次计入统计，避免重复事件或分批更新导致
-  // runningTime/points/responseCount 被累加两次。
+  // points/responseCount 被累加两次。
   const countedIds = new Set(initialSummary.responseIds);
 
   const addResponseToSummary = (
@@ -115,8 +114,6 @@ export const summarizeRuntimeNodeResponses = (
     if (response.moduleType === FlowNodeTypeEnum.pluginOutput && response.pluginOutput) {
       summary.pluginOutput = response.pluginOutput;
     }
-
-    summary.runningTime += typeof response.runningTime === 'number' ? response.runningTime : 0;
 
     const children = getChildrenResponses(response);
     const hasConcreteChild =
@@ -167,7 +164,6 @@ export const mergeRuntimeNodeResponseSummary = (
     if (summary.pluginOutput !== undefined) {
       merged.pluginOutput = summary.pluginOutput;
     }
-    merged.runningTime += summary.runningTime;
     merged.totalPoints = (merged.totalPoints || 0) + (summary.totalPoints || 0);
     merged.childTotalPoints = (merged.childTotalPoints || 0) + (summary.childTotalPoints || 0);
     merged.childResponseCount =

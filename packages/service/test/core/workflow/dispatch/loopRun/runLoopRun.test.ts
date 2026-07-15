@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
@@ -201,6 +201,10 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     runWorkflowMock.mockReset();
   });
 
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('array mode 数组正常跑完 → loopHistory 全 success, data 含最后一轮快照', async () => {
     // Each iteration returns a clean response that writes a new value to chatNode
     runWorkflowMock.mockImplementation((args: any) => {
@@ -309,8 +313,6 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
   });
 
   it('循环体内变量更新外部节点输出后，每轮成功结束会同步到父运行态', async () => {
-    let unchangedExternalNode: RuntimeNodeItemType | undefined;
-    let props: any;
     let iteration = 0;
 
     runWorkflowMock.mockImplementation((args: any) => {
@@ -345,7 +347,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
       );
     });
 
-    props = makeProps({
+    const props = makeProps({
       [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.array,
       [NodeInputKeyEnum.loopRunInputArray]: ['first', 'second']
     });
@@ -394,7 +396,7 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
         }
       ]
     });
-    unchangedExternalNode = props.runtimeNodes.find(
+    const unchangedExternalNode = props.runtimeNodes.find(
       (node: RuntimeNodeItemType) => node.nodeId === 'unchangedExternal'
     );
     props.runtimeNodes.push({
@@ -1025,6 +1027,33 @@ describe('runLoopRun (integration with mocked runWorkflow)', () => {
     expect(nodeResponse.loopRunDetail).toBeUndefined();
     expect(nodeResponse.totalPoints).toBe(3);
     expect(nodeResponse.childTotalPoints).toBeUndefined();
+  });
+
+  it('每轮包装节点独立计时，不累加子节点 runningTime', async () => {
+    vi.spyOn(Date, 'now').mockReturnValueOnce(1000).mockReturnValue(2400);
+    const nodeResponseWriter = {
+      recordWithParent: vi.fn().mockResolvedValue([])
+    };
+    runWorkflowMock.mockResolvedValue(
+      makeDispatchFlowResponse({
+        nodeResponses: [
+          makeResponseItem('startNode', { runningTime: 5 }),
+          makeResponseItem('chatNode', { runningTime: 6 })
+        ]
+      })
+    );
+
+    await dispatchLoopRun({
+      ...makeProps({
+        [NodeInputKeyEnum.loopRunMode]: LoopRunModeEnum.array,
+        [NodeInputKeyEnum.loopRunInputArray]: ['a'],
+        [NodeInputKeyEnum.childrenNodeIdList]: ['startNode', 'chatNode']
+      }),
+      nodeResponseWriter,
+      nodeResponseParentId: 'loop-parent-response'
+    });
+
+    expect(nodeResponseWriter.recordWithParent.mock.calls[0][0][0].runningTime).toBe(1.4);
   });
 
   it('失败轮不内嵌 loopRunDetail，父响应保留错误和 child 统计', async () => {
