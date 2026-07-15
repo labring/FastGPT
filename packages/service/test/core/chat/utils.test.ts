@@ -302,4 +302,53 @@ describe('addPreviewUrlToChatItems', () => {
       external: true
     });
   });
+
+  it('重新签发 Sandbox 工具文件链接并隐藏内部 fileRefs', async () => {
+    const oldUrl = 'https://old.example.com/file-token';
+    const newUrl = 'https://new.example.com/file-token';
+    mockCreateGetChatFileURL.mockResolvedValueOnce({ url: newUrl });
+    const histories = [
+      {
+        obj: 'AI',
+        value: [
+          {
+            tools: [
+              {
+                id: 'call_file',
+                toolName: 'Sandbox/Get File URL',
+                toolAvatar: '',
+                functionName: 'sandbox_get_file_url',
+                params: '{}',
+                response: JSON.stringify([{ fileUrl: oldUrl, filename: 'report.csv' }]),
+                fileRefs: [
+                  {
+                    key: 'chat/app/app-1/user-1/chat-1/report.csv',
+                    filename: 'report.csv',
+                    url: oldUrl
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            text: {
+              content: `[report.csv](${oldUrl})`
+            }
+          }
+        ]
+      }
+    ];
+
+    await addPreviewUrlToChatItems(histories as any, 'chatFlow');
+
+    expect(JSON.parse(histories[0].value[0].tools[0].response)).toEqual([
+      { fileUrl: newUrl, filename: 'report.csv' }
+    ]);
+    expect(histories[0].value[0].tools[0]).not.toHaveProperty('fileRefs');
+    expect(histories[0].value[1].text.content).toBe(`[report.csv](${newUrl})`);
+    expect(mockCreateGetChatFileURL).toHaveBeenCalledWith({
+      key: 'chat/app/app-1/user-1/chat-1/report.csv',
+      external: true
+    });
+  });
 });

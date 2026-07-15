@@ -22,6 +22,7 @@ import { getSandboxRuntimeProfile } from '../../infrastructure/provider/runtimeP
 import { preparePackageMirrors, prepareSandbox } from '../runtime/prepare';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getRunningSandboxId } from '../../utils/id';
+import type { SandboxFileRef } from '@fastgpt/global/core/ai/sandbox/type';
 
 const ToolMap = {
   ...editFileToolMap,
@@ -38,6 +39,7 @@ export type SandboxToolCallResult = {
   success: boolean;
   input: Record<string, any>;
   response: string;
+  fileRefs?: SandboxFileRef[];
   durationSeconds: number;
 };
 
@@ -89,6 +91,7 @@ export const runSandboxTools = async ({
     success: true,
     input: parsedArgs.data,
     response: result.response,
+    ...(result.fileRefs?.length ? { fileRefs: result.fileRefs } : {}),
     durationSeconds: getDuration()
   };
 };

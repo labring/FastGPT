@@ -20,6 +20,7 @@ import {
   AgentPlanStatusSchema
 } from '../ai/agent/type';
 import { ObjectIdSchema } from '../../common/type/mongo';
+import { SandboxFileRefSchema } from '../ai/sandbox/type';
 
 export const ChatHistoryItemResSchema = DispatchNodeResponseSchema.extend({
   nodeId: z.string(),
@@ -40,7 +41,8 @@ export const ToolModuleResponseItemSchema = z.object({
   toolAvatar: z.string(),
   params: z.string(),
   response: z.string().nullish(),
-  functionName: z.string()
+  functionName: z.string(),
+  fileRefs: z.array(SandboxFileRefSchema).optional()
 });
 export type ToolModuleResponseItemType = z.infer<typeof ToolModuleResponseItemSchema>;
 

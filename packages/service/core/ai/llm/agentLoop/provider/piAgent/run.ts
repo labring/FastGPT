@@ -305,6 +305,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
       assistantMessages: result.assistantMessages,
       usages: result.usages,
       errorMessage: result.errorMessage,
+      fileRefs: result.fileRefs,
       metadata: result.metadata,
       seconds: +((Date.now() - startedAt) / 1000).toFixed(2)
     });

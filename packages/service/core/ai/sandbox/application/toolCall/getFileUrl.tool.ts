@@ -44,15 +44,20 @@ export const sandboxGetFileUrlTool = defineTool({
         const { url: fileUrl } = await chatBucket.createGetChatFileURL({
           key,
           expiredHours: 2,
-          external: true,
-          mode: 'presigned'
+          external: true
         });
 
-        return { fileUrl, filename };
+        return {
+          responseFile: { fileUrl, filename },
+          fileRef: { key, filename, url: fileUrl }
+        };
       })
     );
 
-    return { response: JSON.stringify(result) };
+    return {
+      response: JSON.stringify(result.map((item) => item.responseFile)),
+      fileRefs: result.map((item) => item.fileRef)
+    };
   }
 });
 
