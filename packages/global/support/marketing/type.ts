@@ -10,7 +10,6 @@ export type ShortUrlParams = z.infer<typeof ShortUrlSchema>;
 export const FastGPT_SEM_Schema = ShortUrlSchema.extend({
   keyword: z.string().optional(),
   search: z.string().optional(),
-  source: z.string().optional(),
   sourceDomain: z.string().optional(),
   visitor_id: z.string().optional()
 });

@@ -43,12 +43,10 @@ describe('marketing utils', () => {
 
   it('should persist visitor_id without source attribution fields', () => {
     setFastGPTSem({
-      source: 'home_hero_trial',
       visitor_id: 'visitor-1'
     });
 
     expect(getFastGPTSem()).toEqual({
-      source: 'home_hero_trial',
       visitor_id: 'visitor-1'
     });
   });

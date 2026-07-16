@@ -50,7 +50,6 @@ describe('user api', () => {
       msclkid: 'click123',
       fastgpt_sem: {
         keyword: 'sem123',
-        source: 'home_hero_trial',
         visitor_id: 'visitor-1',
         sourceDomain: 'https://example.com'
       }

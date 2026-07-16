@@ -197,7 +197,6 @@ describe('loginByPassword API', () => {
         password: 'testpassword',
         code: '123456',
         fastgpt_sem: {
-          source: 'home_hero_trial',
           visitor_id: 'visitor-1'
         },
         language: 'zh-CN'
