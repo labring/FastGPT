@@ -1,4 +1,4 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/types';
 import { NextAPI } from '@/service/middleware/entry';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -8,7 +8,7 @@ const logger = getLogger(LogCategories.MODULE.USER.TEAM);
 
 export type checkUsageQuery = { key: string };
 
-export type checkUsageBody = {};
+export type checkUsageBody = Record<string, never>;
 
 export type checkUsageResponse =
   | {
@@ -18,8 +18,7 @@ export type checkUsageResponse =
   | undefined;
 
 async function handler(
-  req: ApiRequestProps<checkUsageBody, checkUsageQuery>,
-  res: ApiResponseType<any>
+  req: ApiRequestProps<checkUsageBody, checkUsageQuery>
 ): Promise<checkUsageResponse> {
   try {
     const { key } = req.query;

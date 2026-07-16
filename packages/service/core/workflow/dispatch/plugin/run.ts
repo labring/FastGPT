@@ -8,13 +8,13 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
+
 import {
   getWorkflowEntryNodeIds,
   storeEdges2RuntimeEdges,
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
+import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import { authWorkflowToolByTmbId } from '../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { computedAppToolUsage } from '../../../app/tool/runtime/utils';

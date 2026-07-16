@@ -1,5 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/types';
 import type {
   InvokeUserInfoBodyType,
   InvokeUserInfoQueryType,
@@ -9,7 +9,7 @@ import { InvokeProcessor } from '@fastgpt/service/support/invoke/invoke';
 
 async function handler(
   req: ApiRequestProps<InvokeUserInfoBodyType, InvokeUserInfoQueryType>,
-  res: ApiResponseType<InvokeUserInfoResponseType>
+  _res: ApiResponseType<InvokeUserInfoResponseType>
 ): Promise<InvokeUserInfoResponseType> {
   // const body = InvokeUserInfoBodySchema.parse(req.body);
   // const query = InvokeUserInfoQuerySchema.parse(req.query);

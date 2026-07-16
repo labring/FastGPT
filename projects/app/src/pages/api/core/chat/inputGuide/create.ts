@@ -1,6 +1,6 @@
 import type { NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/types';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { MongoChatInputGuide } from '@fastgpt/service/core/chat/inputGuide/schema';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';

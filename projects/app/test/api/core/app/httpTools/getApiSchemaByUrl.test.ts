@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/types';
 import type { GetApiSchemaByUrlBodyType } from '@fastgpt/global/openapi/core/app/httpTools/api';
 
 const mocks = vi.hoisted(() => ({

@@ -1,9 +1,6 @@
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import type {
-  DispatchNodeResultType,
-  ModuleDispatchProps
-} from '@fastgpt/global/core/workflow/runtime/type';
+import type { DispatchNodeResultType, ModuleDispatchProps } from '../../../types/runtime';
 import type {
   AIChatItemValueItemType,
   ChatHistoryItemResType,

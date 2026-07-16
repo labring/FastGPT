@@ -1,5 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/types';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
@@ -19,13 +19,13 @@ import {
 
 export type AdminGetSystemToolsQuery = GetAdminSystemToolsQueryType;
 
-export type AdminGetSystemToolsBody = {};
+export type AdminGetSystemToolsBody = Record<string, never>;
 
 export type AdminGetSystemToolsResponse = AdminSystemToolListItemType[];
 
 export async function handler(
   req: ApiRequestProps<AdminGetSystemToolsBody, AdminGetSystemToolsQuery>,
-  res: ApiResponseType<any>
+  _res: ApiResponseType<any>
 ): Promise<GetAdminSystemToolsResponseType> {
   const { searchKey } = GetAdminSystemToolsQuery.parse(req.query);
   const searchRegex = getSearchRegex(searchKey);

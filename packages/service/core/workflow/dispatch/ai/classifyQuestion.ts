@@ -5,13 +5,13 @@ import type { ClassifyQuestionAgentItemType } from '@fastgpt/global/core/workflo
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
+
 import { getCQSystemPrompt } from '@fastgpt/global/core/ai/prompt/agent';
 import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { getLLMModel } from '../../../ai/model';
 import { getHistories } from '../utils';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
-import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
+import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { createLLMResponse } from '../../../ai/llm/request';
 import { getLogger, LogCategories } from '../../../../common/logger';

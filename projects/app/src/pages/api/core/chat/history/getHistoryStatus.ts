@@ -2,7 +2,7 @@ import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { NextAPI } from '@/service/middleware/entry';
-import { type ApiRequestProps, type ApiResponseType } from '@fastgpt/service/type/next';
+import { type ApiRequestProps, type ApiResponseType } from '@fastgpt/next/types';
 import {
   GetHistoryStatusBodySchema,
   GetHistoryStatusResponseSchema,

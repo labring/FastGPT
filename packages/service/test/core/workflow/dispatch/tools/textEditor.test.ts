@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { dispatchTextEditor } from '@fastgpt/service/core/workflow/dispatch/tools/textEditor';
-import type { WorkflowVariableStateLike } from '@fastgpt/global/core/workflow/runtime/type';
+import type { WorkflowVariableStateLike } from '@fastgpt/service/core/workflow/types/runtime';
 
 const createVariableState = (
   variables: Record<string, unknown> = {}

@@ -1,4 +1,4 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/types';
 import { NextAPI } from '@/service/middleware/entry';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -9,7 +9,7 @@ import { SystemCacheKeyEnum } from '@fastgpt/service/common/cache/type';
 export type GetMyModelsQuery = {
   versionKey: string;
 };
-export type GetMyModelsBody = {};
+export type GetMyModelsBody = Record<string, never>;
 export type GetMyModelsResponse =
   | {
       models: string[];
@@ -22,7 +22,7 @@ export type GetMyModelsResponse =
 
 async function handler(
   req: ApiRequestProps<GetMyModelsBody, GetMyModelsQuery>,
-  res: ApiResponseType<any>
+  _res: ApiResponseType<any>
 ): Promise<GetMyModelsResponse> {
   const { teamId, tmbId, isRoot, tmb } = await authUserPer({
     req,

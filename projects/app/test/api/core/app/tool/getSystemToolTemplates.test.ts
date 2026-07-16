@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/types';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 
 const mocks = vi.hoisted(() => ({

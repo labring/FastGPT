@@ -1,10 +1,8 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/types';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 
 export type OutLinkFeishuQuery = any;
 export type OutLinkFeishuBody = any;
-export type OutLinkFeishuResponse = {};
-
 async function handler(
   req: ApiRequestProps<OutLinkFeishuBody, OutLinkFeishuQuery>,
   res: ApiResponseType<any>

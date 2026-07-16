@@ -2,7 +2,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { SystemToolRepo } from '@fastgpt/service/core/app/tool/systemTool/systemTool.repo';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/types';
 import {
   GetTeamToolVersionsQuerySchema,
   GetTeamToolVersionsResponseSchema,

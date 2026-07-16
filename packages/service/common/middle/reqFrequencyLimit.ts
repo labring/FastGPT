@@ -1,10 +1,9 @@
-import { type ApiRequestProps } from '../../type/next';
 import { authFrequencyLimit } from '../system/frequencyLimit/utils';
 import { addSeconds } from 'date-fns';
-import { type NextApiResponse } from 'next';
 import { jsonRes } from '../response';
 import { serviceEnv } from '../../env';
 import { getClientIpFromRequest } from '../security/clientIp';
+import type { NodeApiResponse, NodeHttpRequest } from '../../types/http';
 
 // unit: times/s
 // how to use?
@@ -20,7 +19,7 @@ export function useIPFrequencyLimit({
   limit: number;
   force?: boolean;
 }) {
-  return async (req: ApiRequestProps, res: NextApiResponse) => {
+  return async (req: NodeHttpRequest, res: NodeApiResponse) => {
     if (!serviceEnv.USE_IP_LIMIT && !force) {
       return;
     }

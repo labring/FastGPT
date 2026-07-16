@@ -238,7 +238,7 @@ export const UpdateLogKeysBodySchema = z.object({
 ```typescript
 import type { NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/types/next';
 import {
   GetAppChatLogsBodySchema,
   GetAppChatLogsResponseSchema,
@@ -272,7 +272,7 @@ export default NextAPI(handler);
 
 ```typescript
 import type { NextApiResponse } from 'next';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/types/next';
 import { NextAPI } from '@/service/middleware/entry';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import {
@@ -417,7 +417,7 @@ export type createUserResponseType = z.infer<typeof CreateUserResponseSchema>;
 ```typescript
 import type { NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/types/next';
 import { MongoUser } from '@fastgpt/service/core/user/schema';
 import {
   CreateUserBodySchema,

@@ -13,7 +13,7 @@ import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { createResourceDefaultCollaborators } from '@fastgpt/service/support/permission/controller';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/next/types';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { checkTeamAppTypeLimit } from '@fastgpt/service/support/permission/teamLimit';

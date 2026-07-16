@@ -6,16 +6,12 @@ import {
   PerResourceTypeEnum,
   ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/types';
 import {
   UpdateDatasetBodySchema,
   type UpdateDatasetBody
 } from '@fastgpt/global/openapi/core/dataset/api';
-import {
-  DatasetCollectionTypeEnum,
-  DatasetTypeEnum,
-  TrainingModeEnum
-} from '@fastgpt/global/core/dataset/constants';
+import { DatasetTypeEnum, TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { type ClientSession } from 'mongoose';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
@@ -149,8 +145,6 @@ async function handler(req: ApiRequestProps<UpdateDatasetBody>) {
       isFolderType: (type) => type === DatasetTypeEnum.folder
     });
   }
-
-  const isFolder = dataset.type === DatasetTypeEnum.folder;
 
   updateTraining({
     teamId: dataset.teamId,

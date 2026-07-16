@@ -1,7 +1,7 @@
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
 import { NextAPI } from '@/service/middleware/entry';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/next/types';
 import {
   DeleteChatRecordBodySchema,
   DeleteChatRecordResponseSchema,

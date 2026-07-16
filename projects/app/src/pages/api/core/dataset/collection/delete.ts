@@ -8,7 +8,7 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/types';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   DeleteCollectionBodySchema,

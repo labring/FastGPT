@@ -1,4 +1,4 @@
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/types';
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { authOutLinkCrud } from '@fastgpt/service/support/permission/publish/authLink';

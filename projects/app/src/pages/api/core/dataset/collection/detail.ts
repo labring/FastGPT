@@ -12,7 +12,7 @@ import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { Types } from '@fastgpt/service/common/mongo';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/types';
 import type { GetCollectionDetailResponseType } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {

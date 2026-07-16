@@ -8,7 +8,7 @@ import { AgentSkillTypeEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/types';
 import {
   packageSkillEditWorkspace,
   SKILL_EDIT_SANDBOX_NOT_RUNNING_ERROR

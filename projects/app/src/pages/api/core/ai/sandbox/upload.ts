@@ -1,5 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/next/types';
 import {
   authSandboxSession,
   buildSandboxClientQueryFromChatSource

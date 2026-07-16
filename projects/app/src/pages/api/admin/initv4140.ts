@@ -1,4 +1,4 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/types';
 import { NextAPI } from '@/service/middleware/entry';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoPluginToolTag } from '@fastgpt/service/core/plugin/tool/tagSchema';
@@ -24,7 +24,7 @@ const { Schema } = connectionMongo;
     2. templateType -> tags
     3. defaultInstalled: false
  */
-async function handler(req: ApiRequestProps<any, any>, res: ApiResponseType<any>) {
+async function handler(req: ApiRequestProps<any, any>, _res: ApiResponseType<any>) {
   await authCert({ req, authRoot: true });
 
   logger.info('[initv4140] 开始执行 v4.14.0 数据迁移');

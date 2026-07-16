@@ -6,13 +6,11 @@ import { getChildrenResponses } from '@fastgpt/global/core/chat/utils/mergeNode'
 import type { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { DispatchFlowResponse, RuntimeNodeResponseSummary } from '../type';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import {
-  type RuntimeNodeItemType,
-  type SystemVariablesType
-} from '@fastgpt/global/core/workflow/runtime/type';
+import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import type { SystemVariablesType } from '../../types/runtime';
 import type { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { responseWrite } from '../../../../common/response';
-import type { StreamResponseContract } from '../../../../type/contract';
+import type { NodeHttpResponse } from '../../../../types/http';
 import {
   DispatchNodeResponseKeyEnum,
   SseResponseEventEnum
@@ -217,7 +215,7 @@ export const getWorkflowResponseWrite = ({
   showNodeStatus = true,
   streamResumeMirror
 }: {
-  res?: StreamResponseContract;
+  res?: NodeHttpResponse;
   detail: boolean;
   streamResponse: boolean;
   id?: string;

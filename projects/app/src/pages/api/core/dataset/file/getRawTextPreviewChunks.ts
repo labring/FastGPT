@@ -1,5 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/types';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { rawText2Chunks } from '@fastgpt/service/core/dataset/read';

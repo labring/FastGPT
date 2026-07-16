@@ -1,4 +1,4 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/types';
 import { NextAPI } from '@/service/middleware/entry';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
@@ -11,7 +11,7 @@ export type updateBody = {
   metadata?: Record<string, any>;
 };
 
-async function handler(req: ApiRequestProps<updateBody>, res: ApiResponseType<any>) {
+async function handler(req: ApiRequestProps<updateBody>, _res: ApiResponseType<any>) {
   await authSystemAdmin({ req });
 
   const metadata = req.body.metadata;

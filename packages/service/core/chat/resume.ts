@@ -1,7 +1,7 @@
 import { serviceEnv } from '../../env';
 import { getLogger, LogCategories } from '../../common/logger';
 import { FASTGPT_REDIS_PREFIX, getGlobalRedisConnection } from '../../common/redis';
-import type { NextApiResponse } from 'next';
+import type { NodeHttpResponse } from '../../types/http';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { StreamResumeUnavailableReasonEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
@@ -184,7 +184,7 @@ export const resetStreamResumeMirrorGuardForTest = () => {
   lastLoggedMemoryPressureState = undefined;
 };
 
-const isResponseClosed = (res: NextApiResponse) =>
+const isResponseClosed = (res: NodeHttpResponse) =>
   !!(res.closed || res.writableEnded || res.destroyed);
 
 const touchStreamResumeTTL = async ({ keyOfStream }: StreamResumeKeys) => {
@@ -369,7 +369,7 @@ const writeRedisStreamFields = ({
   res,
   fields
 }: {
-  res: NextApiResponse;
+  res: NodeHttpResponse;
   fields: RedisStreamFields;
 }) => {
   if (isResponseClosed(res)) return;
@@ -388,7 +388,7 @@ const writeRedisStreamFields = ({
 };
 
 type ResumeBaseParams = StreamResumeRedisKeysParams & {
-  res: NextApiResponse;
+  res: NodeHttpResponse;
 };
 
 type XRangeResponse = [string, string[]][];

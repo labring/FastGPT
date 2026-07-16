@@ -1,6 +1,6 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/next/types';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';

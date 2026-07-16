@@ -5,11 +5,7 @@ import type {
   ChatHistoryItemResType,
   ToolRunResponseItemType
 } from '@fastgpt/global/core/chat/type';
-import type {
-  NodeEdgeGroups,
-  NodeEdgeGroupsMap,
-  NodeOutputItemType
-} from '@fastgpt/global/core/workflow/runtime/type';
+import type { NodeOutputItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -18,8 +14,10 @@ import { normalizeAIChatValue } from '@fastgpt/global/core/chat/adapt';
 import type {
   ChatDispatchProps,
   DispatchNodeResultType,
-  ModuleDispatchProps
-} from '@fastgpt/global/core/workflow/runtime/type';
+  ModuleDispatchProps,
+  NodeEdgeGroups,
+  NodeEdgeGroupsMap
+} from '../types/runtime';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
 import { filterNodeResponseTreeData } from '@fastgpt/global/core/chat/utils';

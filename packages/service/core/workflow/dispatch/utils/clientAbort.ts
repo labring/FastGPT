@@ -1,5 +1,4 @@
-import type { NextApiResponse } from 'next';
-import type { IncomingMessage } from 'node:http';
+import type { NodeHttpRequest, NodeHttpResponse } from '../../../../types/http';
 
 const getErrorCode = (error: unknown) => {
   if (typeof error !== 'object' || error === null || !('code' in error)) {
@@ -18,8 +17,8 @@ export const createClientAbortTracker = ({
   req,
   res
 }: {
-  req?: IncomingMessage;
-  res?: NextApiResponse;
+  req?: NodeHttpRequest;
+  res?: NodeHttpResponse;
 }) => {
   let clientAborted = false;
   let requestAborted = !!req?.aborted;

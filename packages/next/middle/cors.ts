@@ -1,11 +1,18 @@
 import type { NextApiResponse, NextApiRequest } from 'next';
 import NextCors from 'nextjs-cors';
-import { serviceEnv } from '../../env';
 
-export async function withNextCors(req: NextApiRequest, res: NextApiResponse) {
+/** 为 Next Pages API 请求应用 CORS，并允许应用层传入来源白名单。 */
+export async function withNextCors({
+  req,
+  res,
+  allowedOrigins
+}: {
+  req: NextApiRequest;
+  res: NextApiResponse;
+  allowedOrigins?: string[];
+}) {
   const methods = ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE'];
 
-  const allowedOrigins = serviceEnv.ALLOWED_ORIGINS?.split(',');
   const origin = req.headers.origin;
 
   await NextCors(req, res, {

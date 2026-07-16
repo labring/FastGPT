@@ -1,7 +1,7 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/types';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import type { AnyBulkWriteOperation, Model } from '@fastgpt/service/common/mongo';
@@ -180,7 +180,7 @@ const ValidationIssueSchema = z.object({
   received: z.unknown().optional().meta({ description: '实际类型' }),
   actualValue: z.unknown().optional().meta({ description: '压缩后的实际值' })
 });
-const ValidationErrorRecordSchema = z.object({
+const _ValidationErrorRecordSchema = z.object({
   collectionName: z.string().meta({ description: '集合名' }),
   fieldName: z.string().meta({ description: '工作流字段名' }),
   documentId: z.string().optional().meta({ description: '文档 ID' }),
@@ -297,7 +297,7 @@ type DocumentContext = {
 };
 type EnumExpressionEntry = z.infer<typeof EnumExpressionEntrySchema>;
 type ValidationIssue = z.infer<typeof ValidationIssueSchema>;
-type ValidationErrorRecord = z.infer<typeof ValidationErrorRecordSchema>;
+type ValidationErrorRecord = z.infer<typeof _ValidationErrorRecordSchema>;
 type FormatChangeTracker = {
   count: number;
 };

@@ -2,13 +2,13 @@ import type { NextApiResponse } from 'next';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ClearChatHistoriesSchema } from '@fastgpt/global/openapi/core/chat/history/api';
 import { NextAPI } from '@/service/middleware/entry';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/next/types';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { buildClearChatHistoriesMatch } from '@/service/core/chat/history';
 
 /* clear all chat histories of an app */
-export async function handler(req: ApiRequestProps, res: NextApiResponse) {
+export async function handler(req: ApiRequestProps, _res: NextApiResponse) {
   const { query } = parseApiInput({ req, querySchema: ClearChatHistoriesSchema });
   const { sourceType, sourceId, outLinkAuthData } = query;
 

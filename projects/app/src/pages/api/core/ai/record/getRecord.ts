@@ -1,4 +1,4 @@
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/types';
 import { NextAPI } from '@/service/middleware/entry';
 import type { LLMRequestRecordSchemaType } from '@fastgpt/global/openapi/core/ai/api';
 import { getLLMRequestRecord } from '@fastgpt/service/core/ai/record/controller';

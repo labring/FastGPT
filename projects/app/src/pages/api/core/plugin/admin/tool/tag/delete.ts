@@ -1,7 +1,7 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoPluginToolTag } from '@fastgpt/service/core/plugin/tool/tagSchema';
 import { MongoSystemTool } from '@fastgpt/service/core/plugin/tool/systemToolSchema';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/types';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import type { DeletePluginToolTagQuery } from '@fastgpt/global/openapi/core/plugin/admin/tool/tag/api';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';

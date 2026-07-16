@@ -1,8 +1,7 @@
-import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
 import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/type/io';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
+import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import { getEmbeddingModel, getRerankModel } from '../../../ai/model';
 import { deepRagSearch, defaultSearchDatasetData } from '../../../dataset/search';
 import type { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';

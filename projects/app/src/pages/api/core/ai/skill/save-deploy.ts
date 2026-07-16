@@ -13,7 +13,7 @@ import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/aud
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { isValidObjectId } from 'mongoose';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/types';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 /**

@@ -42,6 +42,7 @@
     "@fastgpt-sdk/sandbox-adapter": "workspace:*",
     "@fastgpt-sdk/storage": "workspace:*",
     "@fastgpt/global": "workspace:*",
+    "@fastgpt/next": "workspace:*",
     "@fastgpt/service": "workspace:*",
     "@fastgpt/web": "workspace:*",
     "@fortaine/fetch-event-source": "^3.0.6",

@@ -3,12 +3,11 @@ import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/col
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/next/types';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { removeS3TTL } from '@fastgpt/service/common/s3/utils';
 import {
   CreateTextCollectionBodySchema,
-  CreateCollectionWithResultResponseSchema,
   type CreateCollectionWithResultResponseType
 } from '@fastgpt/global/openapi/core/dataset/collection/createApi';
 import { checkDatasetIndexLimit } from '@fastgpt/service/support/permission/teamLimit';

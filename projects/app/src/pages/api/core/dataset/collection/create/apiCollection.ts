@@ -1,7 +1,7 @@
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/next/types';
 import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
 import { createApiDatasetCollection } from './apiCollectionV2';
 import { CreateApiCollectionBodySchema } from '@fastgpt/global/openapi/core/dataset/collection/createApi';

@@ -1,4 +1,4 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/types';
 import { NextAPI } from '@/service/middleware/entry';
 import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -11,8 +11,8 @@ import {
 } from '@fastgpt/global/openapi/support/user/account/login/api';
 
 async function handler(
-  req: ApiRequestProps<{}, PreLoginQueryType>,
-  res: ApiResponseType<any>
+  req: ApiRequestProps<Record<string, never>, PreLoginQueryType>,
+  _res: ApiResponseType<any>
 ): Promise<PreLoginResponseType> {
   const { username } = PreLoginQuerySchema.parse(req.query);
 

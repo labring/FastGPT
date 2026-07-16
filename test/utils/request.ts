@@ -1,4 +1,4 @@
-import type { NextApiHandler } from '@fastgpt/service/common/middle/entry';
+import type { NextApiHandler } from '@fastgpt/next/types';
 import type { MockReqType } from '../mocks/request';
 import { vi } from 'vitest';
 
@@ -14,7 +14,7 @@ export async function Call<B = any, Q = any, R = any>(
       raw = data;
     }),
     end: vi.fn(),
-    on: vi.fn((event: string, callback: Function) => {
+    on: vi.fn((event: string) => {
       if (event === 'drain') {
         // 模拟 drain 事件
       }
@@ -51,14 +51,12 @@ export async function StreamCall<B = any, Q = any, R = any>(
 
   // Create a promise that resolves when stream ends
   let resolveStream: () => void;
-  let rejectStream: (err: any) => void;
-  const streamEndPromise = new Promise<void>((resolve, reject) => {
+  const streamEndPromise = new Promise<void>((resolve) => {
     resolveStream = resolve;
-    rejectStream = reject;
   });
 
   let statusCode = 200;
-  const eventListeners: Record<string, Function[]> = {};
+  const eventListeners: Record<string, Array<(...args: unknown[]) => unknown>> = {};
 
   const res: any = {
     setHeader: vi.fn((key: string, value: string) => {
@@ -75,7 +73,7 @@ export async function StreamCall<B = any, Q = any, R = any>(
       // Resolve the promise when stream ends
       resolveStream();
     }),
-    on: vi.fn((event: string, callback: Function) => {
+    on: vi.fn((event: string, callback: (...args: unknown[]) => unknown) => {
       // Store event listeners for potential triggering
       if (!eventListeners[event]) {
         eventListeners[event] = [];

@@ -10,7 +10,7 @@ import { getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { addDatasetDeleteJob } from '@fastgpt/service/core/dataset/delete';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { deleteDatasetsImmediate } from '@fastgpt/service/core/dataset/delete/processor';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/types';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps) {

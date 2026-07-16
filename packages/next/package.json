@@ -1,0 +1,17 @@
+{
+  "name": "@fastgpt/next",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit --pretty",
+    "lint": "eslint ."
+  },
+  "engines": {
+    "node": ">=20.19.0",
+    "pnpm": "10.x"
+  },
+  "dependencies": {
+    "next": "catalog:",
+    "nextjs-cors": "2.2.1"
+  }
+}

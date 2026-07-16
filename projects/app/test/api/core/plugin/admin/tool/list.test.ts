@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/types';
 import { SystemToolSystemSecretStatusEnum } from '@fastgpt/global/core/app/tool/systemTool/constants';
 
 const mocks = vi.hoisted(() => ({
@@ -87,7 +87,7 @@ describe('admin system tool list handler', () => {
     const result = await handler(
       {
         query: {}
-      } as ApiRequestProps<{}, {}>,
+      } as ApiRequestProps<Record<string, never>, Record<string, never>>,
       {} as ApiResponseType<any>
     );
 
@@ -141,7 +141,7 @@ describe('admin system tool list handler', () => {
     const result = await handler(
       {
         query: {}
-      } as ApiRequestProps<{}, {}>,
+      } as ApiRequestProps<Record<string, never>, Record<string, never>>,
       {} as ApiResponseType<any>
     );
 

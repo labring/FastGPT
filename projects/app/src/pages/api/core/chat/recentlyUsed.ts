@@ -1,4 +1,4 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/types';
 import { NextAPI } from '@/service/middleware/entry';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { MongoAppRecord } from '@fastgpt/service/core/app/record/schema';
@@ -6,7 +6,7 @@ import { MongoApp } from '@fastgpt/service/core/app/schema';
 import type { GetRecentlyUsedAppsResponseType } from '@fastgpt/global/openapi/core/chat/api';
 
 async function handler(
-  req: ApiRequestProps<{}, {}>,
+  req: ApiRequestProps<Record<string, never>, Record<string, never>>,
   _res: ApiResponseType
 ): Promise<GetRecentlyUsedAppsResponseType> {
   const { tmbId } = await authUserPer({

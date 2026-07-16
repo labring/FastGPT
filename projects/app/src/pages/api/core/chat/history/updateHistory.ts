@@ -2,14 +2,14 @@ import type { NextApiResponse } from 'next';
 import { UpdateHistoryBodySchema } from '@fastgpt/global/openapi/core/chat/history/api';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { NextAPI } from '@/service/middleware/entry';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/next/types';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { buildChatHistoryMatch } from '@/service/core/chat/history';
 
 /* update chat history: title, customTitle, top */
-export async function handler(req: ApiRequestProps, res: NextApiResponse) {
+export async function handler(req: ApiRequestProps, _res: NextApiResponse) {
   const { sourceType, sourceId, chatId, title, customTitle, top, outLinkAuthData } = parseApiInput({
     req,
     bodySchema: UpdateHistoryBodySchema

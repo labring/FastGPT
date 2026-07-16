@@ -7,7 +7,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getTrainingModeByCollection } from '@fastgpt/service/core/dataset/collection/utils';
 import { getDatasetImageIndexCapability } from '@fastgpt/service/core/dataset/utils';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/types';
 import {
   PushDataBodySchema,
   type PushDataResponseType

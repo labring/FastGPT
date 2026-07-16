@@ -1,6 +1,6 @@
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getUserDetail } from '@fastgpt/service/support/user/controller';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/types';
 import { NextAPI } from '@/service/middleware/entry';
 import { pushTrack } from '@fastgpt/service/common/middle/tracks/utils';
 import type { UserType } from '@fastgpt/global/support/user/type';

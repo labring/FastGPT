@@ -3,7 +3,7 @@ import { createCollectionAndInsertData } from '@fastgpt/service/core/dataset/col
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/next/types';
 import {
   CreateLinkCollectionBodySchema,
   type CreateCollectionWithResultResponseType

@@ -1,7 +1,7 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/next/types';
 import { MongoAgentSkillsVersion } from '@fastgpt/service/core/ai/skill/version/schema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';

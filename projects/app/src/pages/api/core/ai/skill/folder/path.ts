@@ -3,7 +3,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { authSkill } from '@fastgpt/service/support/permission/skill/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getSkillFolderPath } from '@fastgpt/service/core/ai/skill/manage';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/types';
 import {
   GetSkillFolderPathQuerySchema,
   type GetSkillFolderPathQuery

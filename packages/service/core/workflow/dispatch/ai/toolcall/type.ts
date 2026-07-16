@@ -1,6 +1,6 @@
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/llm/type';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
+import type { ModuleDispatchProps } from '../../../types/runtime';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
 import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';

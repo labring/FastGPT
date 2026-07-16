@@ -1,7 +1,7 @@
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/types';
 import { NextAPI } from '@/service/middleware/entry';
 import { OpenApiErrEnum } from '@fastgpt/global/common/error/code/openapi';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';

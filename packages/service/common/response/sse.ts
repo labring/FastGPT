@@ -1,4 +1,4 @@
-import type { StreamResponseContract } from '../../type/contract';
+import type { NodeHttpResponse } from '../../types/http';
 import { responseWrite } from './index';
 
 export type SseStreamWriter = (params: { event?: string; data: string }) => void;
@@ -10,7 +10,7 @@ export type SseStreamResumeMirror = {
 };
 
 type CreateSseStreamContextParams = {
-  res?: StreamResponseContract;
+  res?: NodeHttpResponse;
   stream?: boolean;
   streamResumeMirror?: SseStreamResumeMirror;
   heartbeat?: {
@@ -21,7 +21,7 @@ type CreateSseStreamContextParams = {
   onError?: () => void;
 };
 
-const isResponseClosed = (res: StreamResponseContract) =>
+const isResponseClosed = (res: NodeHttpResponse) =>
   !!(res.closed || res.writableEnded || res.destroyed);
 
 /**

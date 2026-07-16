@@ -22,7 +22,7 @@ import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import type { WorkflowVariableStateLike } from '@fastgpt/global/core/workflow/runtime/type';
+import type { WorkflowVariableStateLike } from '@fastgpt/service/core/workflow/types/runtime';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { callbackMap } from '@fastgpt/service/core/workflow/dispatch/constants';
 

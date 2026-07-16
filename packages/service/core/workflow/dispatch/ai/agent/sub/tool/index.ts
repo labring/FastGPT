@@ -7,10 +7,8 @@ import {
   isDebugToolSource
 } from '@fastgpt/global/core/app/tool/utils';
 import { getSecretValue } from '../../../../../../../common/secret/utils';
-import type {
-  ChatDispatchProps,
-  RuntimeNodeItemType
-} from '@fastgpt/global/core/workflow/runtime/type';
+import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import type { ChatDispatchProps } from '../../../../../types/runtime';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';

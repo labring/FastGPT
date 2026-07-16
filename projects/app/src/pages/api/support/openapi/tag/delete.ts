@@ -8,7 +8,7 @@ import {
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { deleteOpenApiTag } from '@fastgpt/service/support/openapi/tag/service';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/types';
 
 async function handler(
   req: ApiRequestProps<Record<string, never>, DeleteOpenApiTagQueryType>

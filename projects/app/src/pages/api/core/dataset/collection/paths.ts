@@ -6,7 +6,7 @@ import type {
 } from '@fastgpt/global/common/parentFolder/type';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { NextAPI } from '@/service/middleware/entry';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/types';
 import {
   GetCollectionPathsQuerySchema,
   GetCollectionPathsResponseSchema,

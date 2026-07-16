@@ -1,4 +1,4 @@
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/types';
 import { NextAPI } from '@/service/middleware/entry';
 import type { CreatePostPresignedUrlResponseType } from '@fastgpt/global/common/file/s3/type';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';

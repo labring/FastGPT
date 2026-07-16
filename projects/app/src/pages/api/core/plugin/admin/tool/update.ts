@@ -1,6 +1,6 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoSystemTool } from '@fastgpt/service/core/plugin/tool/systemToolSchema';
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/types';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import {
@@ -9,11 +9,11 @@ import {
 } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
-export type updateToolQuery = {};
+export type updateToolQuery = Record<string, never>;
 
 export type updateToolBody = UpdateSystemToolBodyType;
 
-export type updateToolResponse = {};
+export type updateToolResponse = Record<string, never>;
 
 const omitUndefinedFields = <T extends Record<string, unknown>>(fields: T) =>
   Object.fromEntries(
@@ -22,7 +22,7 @@ const omitUndefinedFields = <T extends Record<string, unknown>>(fields: T) =>
 
 async function handler(
   req: ApiRequestProps<updateToolBody, updateToolQuery>,
-  res: ApiResponseType<any>
+  _res: ApiResponseType<any>
 ): Promise<updateToolResponse> {
   await authSystemAdmin({ req });
   const {

@@ -10,7 +10,7 @@ import { WritePermissionVal } from '@fastgpt/global/support/permission/constant'
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { addAuditLog, getI18nDatasetType } from '@fastgpt/service/support/user/audit/util';
 import { authDatasetData } from '@fastgpt/service/support/permission/dataset/auth';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/types';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 
 async function handler(req: ApiRequestProps): Promise<DatasetDataIndexResponse> {

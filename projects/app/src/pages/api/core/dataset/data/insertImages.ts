@@ -1,4 +1,4 @@
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/types';
 import { NextAPI } from '@/service/middleware/entry';
 import { authFrequencyLimit } from '@fastgpt/service/common/system/frequencyLimit/utils';
 import { addDays, addSeconds } from 'date-fns';

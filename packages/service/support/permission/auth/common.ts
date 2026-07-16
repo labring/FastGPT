@@ -1,8 +1,7 @@
 import type { ReqHeaderAuthType } from '../type';
 import { type AuthModeType } from '../type';
 import { SERVICE_LOCAL_HOST } from '../../../common/system/tools';
-import { type ApiRequestProps } from '../../../type/next';
-import type { StreamResponseContract } from '../../../type/contract';
+import type { NodeHttpRequest, NodeHttpResponse } from '../../../types/http';
 import Cookie from 'cookie';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { authUserSession } from '../../../support/user/session';
@@ -21,7 +20,7 @@ export const authCert = async (props: AuthModeType) => {
 };
 
 /* auth the request from local service */
-export const authRequestFromLocal = ({ req }: { req: ApiRequestProps }) => {
+export const authRequestFromLocal = ({ req }: { req: NodeHttpRequest }) => {
   if (req.headers.host !== SERVICE_LOCAL_HOST) {
     return Promise.reject('Invalid request');
   }
@@ -175,7 +174,7 @@ export async function parseHeaderCert({
 
 /* set cookie */
 export const TokenName = 'fastgpt_token';
-export const setCookie = (res: StreamResponseContract, token: string) => {
+export const setCookie = (res: NodeHttpResponse, token: string) => {
   res.setHeader(
     'Set-Cookie',
     `${TokenName}=${token}; Path=/; HttpOnly; Max-Age=604800; Samesite=Strict;`
@@ -183,6 +182,6 @@ export const setCookie = (res: StreamResponseContract, token: string) => {
 };
 
 /* clear cookie */
-export const clearCookie = (res: StreamResponseContract) => {
+export const clearCookie = (res: NodeHttpResponse) => {
   res.setHeader('Set-Cookie', `${TokenName}=; Path=/; Max-Age=0`);
 };

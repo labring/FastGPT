@@ -5,38 +5,40 @@ import { MongoGroupMemberModel } from '@fastgpt/service/support/permission/membe
 import { getTmbInfoByTmbId } from '@fastgpt/service/support/user/team/controller';
 import { vi } from 'vitest';
 
-vi.mock('@fastgpt/service/common/middle/entry', async (importOriginal) => {
+vi.mock('@fastgpt/service/common/http/entry', async (importOriginal) => {
   const mod = (await importOriginal()) as any;
-  const NextEntry = vi.fn(({ beforeCallback = [] }: { beforeCallback?: Promise<any>[] }) => {
-    return (...args: any) => {
-      return async function api(req: any, res: any) {
-        try {
-          await Promise.all([...beforeCallback]);
-          let response = null;
-          for await (const handler of args) {
-            response = await handler(req, res);
-            if (res.writableFinished) {
-              break;
+  const createApiEntry = vi.fn(
+    ({ beforeCallback = [] }: { beforeCallback?: ((req: any, res: any) => Promise<any>)[] }) => {
+      return (...args: any) => {
+        return async function api(req: any, res: any) {
+          try {
+            await Promise.all(beforeCallback.map((callback) => callback(req, res)));
+            let response = null;
+            for await (const handler of args) {
+              response = await handler(req, res);
+              if (res.writableFinished) {
+                break;
+              }
             }
+            return {
+              code: 200,
+              data: response
+            };
+          } catch (error) {
+            return {
+              code: 500,
+              error,
+              url: req.url
+            };
           }
-          return {
-            code: 200,
-            data: response
-          };
-        } catch (error) {
-          return {
-            code: 500,
-            error,
-            url: req.url
-          };
-        }
+        };
       };
-    };
-  });
+    }
+  );
 
   return {
     ...mod,
-    NextEntry
+    createApiEntry
   };
 });
 
@@ -67,10 +69,7 @@ vi.mock('@fastgpt/service/support/permission/auth/common', async (importOriginal
   const mod = (await importOriginal()) as any;
   const parseHeaderCert = vi.fn(
     ({
-      req,
-      authToken = false,
-      authRoot = false,
-      authApiKey = false
+      req
     }: {
       req: MockReqType;
       authToken?: boolean;
@@ -109,10 +108,7 @@ vi.mock('@fastgpt/service/support/permission/memberGroup/controllers', async (im
   const mod = (await importOriginal()) as any;
   const parseHeaderCert = vi.fn(
     ({
-      req,
-      authToken = false,
-      authRoot = false,
-      authApiKey = false
+      req
     }: {
       req: MockReqType;
       authToken?: boolean;

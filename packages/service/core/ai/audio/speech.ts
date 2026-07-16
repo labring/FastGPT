@@ -1,4 +1,4 @@
-import type { NextApiResponse } from 'next';
+import type { NodeHttpResponse } from '../../../types/http';
 import { getAIApi } from '../config';
 import { getTTSModel } from '../model';
 import { Readable } from 'stream';
@@ -12,7 +12,7 @@ export async function text2Speech({
   voice,
   speed = 1
 }: {
-  res: NextApiResponse;
+  res: NodeHttpResponse;
   onSuccess: (e: { model: string; buffer: Buffer }) => void;
   onError: (e: any) => void;
   input: string;

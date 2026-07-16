@@ -6,7 +6,7 @@ import { readFromSecondary } from '@fastgpt/service/common/mongo/utils';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/types';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import {
   GetLogUsersBodySchema,

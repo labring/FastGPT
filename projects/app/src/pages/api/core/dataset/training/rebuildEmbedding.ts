@@ -14,7 +14,7 @@ import {
 } from '@fastgpt/service/core/dataset/utils';
 import { uniqueDatasetDataMarkdownImageUrls } from '@fastgpt/service/core/dataset/data/utils';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/next/types';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {

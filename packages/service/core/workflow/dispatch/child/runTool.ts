@@ -2,10 +2,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
-import {
-  type DispatchNodeResultType,
-  type ModuleDispatchProps
-} from '@fastgpt/global/core/workflow/runtime/type';
+import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { assertMCPUrlNotInternal, MCPClient } from '../../../app/mcp';
 import { getSecretValue } from '../../../../common/secret/utils';

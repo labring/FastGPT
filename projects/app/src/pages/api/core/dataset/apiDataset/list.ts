@@ -2,7 +2,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/types';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetApiDatasetFileListBodySchema,

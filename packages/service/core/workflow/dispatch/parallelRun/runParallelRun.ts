@@ -3,10 +3,7 @@ import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
-import {
-  type DispatchNodeResultType,
-  type ModuleDispatchProps
-} from '@fastgpt/global/core/workflow/runtime/type';
+import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 
 import { serviceEnv } from '../../../../env';
 import { runWorkflow } from '..';

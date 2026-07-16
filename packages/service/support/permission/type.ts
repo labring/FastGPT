@@ -1,9 +1,8 @@
 import type { Permission } from '@fastgpt/global/support/permission/controller';
-import type { ApiRequestProps } from '../../type/next';
 import type { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import type { RequireAtLeastOne } from '@fastgpt/global/common/type/utils';
 import type { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
-import type { RequestContract } from '../../type/contract';
+import type { NodeHttpRequest } from '../../types/http';
 
 export type ReqHeaderAuthType = {
   cookie?: string;
@@ -15,7 +14,7 @@ export type ReqHeaderAuthType = {
 };
 
 type authModeType = {
-  req: ApiRequestProps | RequestContract;
+  req: NodeHttpRequest;
   authToken?: boolean;
   authRoot?: boolean;
   authApiKey?: boolean;

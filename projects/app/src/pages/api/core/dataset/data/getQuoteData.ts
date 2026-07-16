@@ -3,7 +3,7 @@ import { authChatTargetCrud, authCollectionInChat } from '@/service/support/perm
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authDatasetData } from '@fastgpt/service/support/permission/dataset/auth';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/next/types';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { i18nT } from '@fastgpt/global/common/i18n/utils';

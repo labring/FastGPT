@@ -1,10 +1,10 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/types';
 import { NextAPI } from '@/service/middleware/entry';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 import type { CreatePostPresignedUrlResponseType } from '@fastgpt/global/common/file/s3/type';
 
-export type updateAvatarQuery = {};
+export type updateAvatarQuery = Record<string, never>;
 
 export type updateAvatarBody = {
   filename: string;

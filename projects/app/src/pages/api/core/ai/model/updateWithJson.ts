@@ -1,4 +1,4 @@
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/types';
 import { NextAPI } from '@/service/middleware/entry';
 import { type SystemModelSchemaType } from '@fastgpt/service/core/ai/type';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';

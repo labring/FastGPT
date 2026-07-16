@@ -1,6 +1,6 @@
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({

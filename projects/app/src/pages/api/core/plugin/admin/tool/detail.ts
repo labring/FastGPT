@@ -1,5 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/types';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import type {
@@ -12,13 +12,13 @@ import { AdminSystemToolDetailSchema } from '@fastgpt/global/core/app/tool/syste
 
 export type getSystemToolDetailQuery = GetAdminSystemToolDetailQueryType;
 
-export type getSystemToolDetailBody = {};
+export type getSystemToolDetailBody = Record<string, never>;
 
 export type getSystemToolsResponse = GetAdminSystemToolDetailResponseType;
 
 async function handler(
   req: ApiRequestProps<getSystemToolDetailBody, getSystemToolDetailQuery>,
-  res: ApiResponseType<any>
+  _res: ApiResponseType<any>
 ): Promise<getSystemToolsResponse> {
   const { toolId, version } = req.query;
   const lang = getLocale(req);
