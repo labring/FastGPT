@@ -530,7 +530,6 @@ const SystemToolConfigModal = ({
           h={9}
           borderColor={'myGray.200'}
           isDisabled={isToolOffline}
-          type={item.inputType === 'secret' ? 'password' : 'text'}
           {...register(`secretsVal.${item.key}`, {
             required: item.required
           })}
