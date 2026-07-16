@@ -37,7 +37,7 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "lodash": "4.17.23",
+    "lodash": "4.18.1",
     "tsdown": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:",
