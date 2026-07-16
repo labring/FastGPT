@@ -17,6 +17,13 @@ import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { PluginStatusEnum, type PluginStatusType } from '@fastgpt/global/core/plugin/type';
 import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';
 import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
+import {
+  assertTeamPluginInstalled,
+  getRawPluginIdFromSystemToolId,
+  getTeamPluginPolicyMap,
+  resolveTeamPluginList
+} from '@fastgpt/service/core/plugin/teamPluginPolicy';
+import { TeamPluginRegistrySourceEnum } from '@fastgpt/global/core/plugin/schema/type';
 
 export type GetSystemPluginTemplatesBody = GetSystemToolTemplatesBodyType;
 
@@ -40,12 +47,13 @@ export async function handler(
   // const tools = await getSystemToolsWithInstalled({ teamId, isRoot, userTags });
   const systemToolRepo = SystemToolRepo.getInstance();
   if (parentId) {
-    const parentSource = isDebugToolSource(source)
-      ? await getActiveDebugSource({
-          tmbId,
-          source
-        })
-      : source;
+    if (source === TeamPluginRegistrySourceEnum.team) {
+      await assertTeamPluginInstalled({
+        teamId,
+        pluginId: getRawPluginIdFromSystemToolId(parentId)
+      });
+    }
+    const parentSource = await getQuerySource({ source, teamId, tmbId });
     const parent = await systemToolRepo.getSystemToolDisplayInfoWithChildIcons({
       pluginId: parentId,
       lang,
@@ -69,7 +77,10 @@ export async function handler(
           intro: child.description,
           toolDescription: child.toolDescription,
           id: `${parentId}/${child.id}`,
-          source: parent.source,
+          source:
+            source === TeamPluginRegistrySourceEnum.team || parent.source === teamId
+              ? TeamPluginRegistrySourceEnum.team
+              : parent.source,
           avatar: child.icon ?? parent.avatar,
           currentCost: child.currentCost,
           systemKeyCost: child.systemKeyCost,
@@ -83,15 +94,23 @@ export async function handler(
   }
   // no parentId, get all tools
   const debugSource = await getActiveDebugSource({ tmbId });
-  const tools = await systemToolRepo.getSystemToolList({
-    lang,
-    op: 'or',
-    // 调试状态下追加 debug source，Agent/Workflow 仍保留生产环境插件可选。
-    sources: ['system', teamId, ...(debugSource ? [debugSource] : [])],
-    tags
-  });
+  const [tools, policyMap] = await Promise.all([
+    systemToolRepo.getSystemToolList({
+      lang,
+      op: 'or',
+      // 调试状态下追加 debug source，Agent/Workflow 仍保留生产环境插件可选。
+      sources: ['system', teamId, ...(debugSource ? [debugSource] : [])],
+      tags
+    }),
+    getTeamPluginPolicyMap(teamId)
+  ]);
 
-  const templates = tools
+  const templates = resolveTeamPluginList({
+    teamId,
+    tools,
+    policyMap,
+    canManage: false
+  })
     .sort((a, b) => Number(isDebugToolSource(b.source)) - Number(isDebugToolSource(a.source)))
     .filter((item) => {
       if (!isSelectableToolStatus(item.status)) return false;
@@ -126,6 +145,22 @@ async function getActiveDebugSource({ tmbId, source }: { tmbId: string; source?:
   ) {
     return status.source;
   }
+}
+
+async function getQuerySource({
+  source,
+  teamId,
+  tmbId
+}: {
+  source?: string;
+  teamId: string;
+  tmbId: string;
+}) {
+  if (source === TeamPluginRegistrySourceEnum.team) return teamId;
+  if (isDebugToolSource(source)) {
+    return getActiveDebugSource({ tmbId, source });
+  }
+  return source;
 }
 
 export default NextAPI(handler);

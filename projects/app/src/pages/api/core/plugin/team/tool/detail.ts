@@ -11,6 +11,11 @@ import {
 import { SystemToolRepo } from '@fastgpt/service/core/app/tool/systemTool/systemTool.repo';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
+import {
+  assertTeamPluginInstalled,
+  getRawPluginIdFromSystemToolId,
+  normalizeTeamPluginStatus
+} from '@fastgpt/service/core/plugin/teamPluginPolicy';
 
 export type detailQuery = GetTeamToolDetailQueryType;
 
@@ -28,6 +33,12 @@ async function handler(req: ApiRequestProps<detailBody, detailQuery>): Promise<d
   const lang = getLocale(req);
 
   const { teamId } = await authCert({ req, authToken: true });
+  if (source === 'team') {
+    await assertTeamPluginInstalled({
+      teamId,
+      pluginId: getRawPluginIdFromSystemToolId(toolId)
+    });
+  }
 
   const systemToolRepo = SystemToolRepo.getInstance();
 
@@ -38,7 +49,10 @@ async function handler(req: ApiRequestProps<detailBody, detailQuery>): Promise<d
     version
   });
 
-  return TeamToolDetailSchema.parse(tool);
+  return TeamToolDetailSchema.parse({
+    ...tool,
+    status: source === 'team' ? normalizeTeamPluginStatus(tool.status) : tool.status
+  });
 }
 
 export default NextAPI(handler);

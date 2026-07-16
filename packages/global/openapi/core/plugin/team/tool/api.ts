@@ -1,10 +1,28 @@
 import z from 'zod';
+import { BoolSchema } from '../../../../../common/zod';
 import {
   SystemToolChildDetailSchema,
   SystemToolDetailSchema,
   SystemToolListItemSchema
 } from '../../../../../core/app/tool/systemTool/type';
 import { SystemToolVersionSchema } from '../../../../../core/app/tool/systemTool/type/base';
+import {
+  TeamPluginInstallSourceSchema,
+  TeamPluginPolicyStatusSchema,
+  TeamPluginRegistrySourceSchema
+} from '../../../../../core/plugin/schema/type';
+
+const TeamTagIdsQuerySchema = z
+  .preprocess((value) => {
+    if (!value) return undefined;
+    if (Array.isArray(value)) return value;
+    if (typeof value === 'string') return value.split(',').filter(Boolean);
+    return value;
+  }, z.array(z.string()).optional())
+  .meta({
+    example: ['internal'],
+    description: '团队自定义插件标签 ID 列表'
+  });
 
 /* ============================================================================
  * API: 获取团队插件列表
@@ -14,12 +32,69 @@ import { SystemToolVersionSchema } from '../../../../../core/app/tool/systemTool
  * Tags: ['团队插件管理', 'Read']
  * ============================================================================ */
 
-export const GetTeamSystemPluginListQuerySchema = z.object({});
+export const GetTeamSystemPluginListQuerySchema = z.object({
+  includeHidden: BoolSchema.optional().meta({
+    example: true,
+    description: '是否包含团队隐藏的系统插件'
+  }),
+  includeDeleted: BoolSchema.optional().meta({
+    example: true,
+    description: '是否包含团队已删除插件记录'
+  }),
+  includeDebug: BoolSchema.optional().meta({
+    example: false,
+    description: '是否包含当前调试插件 source'
+  }),
+  source: z.enum(['all', 'system', 'team']).optional().meta({
+    example: 'team',
+    description: '按插件注册来源筛选'
+  }),
+  teamTagIds: TeamTagIdsQuerySchema
+});
 
 export type GetTeamSystemPluginListQueryType = z.infer<typeof GetTeamSystemPluginListQuerySchema>;
 
 export const TeamSystemPluginListItemSchema = SystemToolListItemSchema.extend({
-  isPromoted: z.boolean().optional()
+  isPromoted: z.boolean().optional(),
+  registrySource: TeamPluginRegistrySourceSchema.optional().meta({
+    example: 'team',
+    description: '插件注册来源'
+  }),
+  installSource: TeamPluginInstallSourceSchema.optional().meta({
+    example: 'marketplace',
+    description: '团队安装来源'
+  }),
+  teamInstallStatus: z
+    .union([TeamPluginPolicyStatusSchema, z.literal('system')])
+    .optional()
+    .meta({
+      example: 'installed',
+      description: '当前团队视角下的插件策略状态'
+    }),
+  teamHidden: z.boolean().optional().meta({
+    example: false,
+    description: '当前团队是否隐藏该系统插件'
+  }),
+  teamTagIds: z.array(z.string()).optional().meta({
+    example: ['tag_xxx'],
+    description: '团队自定义标签 ID 列表'
+  }),
+  confirmedPermissions: z.array(z.string()).optional().meta({
+    example: ['userInfo:read'],
+    description: '安装时确认过的权限清单'
+  }),
+  installedVersion: z.string().optional().meta({
+    example: '1.0.0',
+    description: '团队安装版本'
+  }),
+  installedEtag: z.string().optional().meta({
+    example: 'sha256:xxx',
+    description: '团队安装包 etag'
+  }),
+  canManage: z.boolean().optional().meta({
+    example: true,
+    description: '当前成员是否可管理团队插件'
+  })
 });
 
 export const GetTeamPluginListResponseSchema = z.array(TeamSystemPluginListItemSchema);
@@ -87,3 +162,67 @@ export type GetTeamToolVersionsQueryType = z.infer<typeof GetTeamToolVersionsQue
 
 export const GetTeamToolVersionsResponseSchema = z.array(SystemToolVersionSchema);
 export type GetTeamToolVersionsResponseType = z.infer<typeof GetTeamToolVersionsResponseSchema>;
+
+/* ============================================================================
+ * API: 隐藏或取消隐藏团队视角下的系统插件
+ * Route: POST /api/core/plugin/team/tool/hide
+ * Method: POST
+ * Description: 团队隐藏系统预装插件，仅影响新增入口，不影响已有工作流运行
+ * Tags: ['团队插件管理', 'Write']
+ * ============================================================================ */
+
+export const HideTeamSystemToolBodySchema = z.object({
+  pluginId: z.string().meta({
+    example: 'systemTool-weather',
+    description: '系统插件 ID，支持带 systemTool- 前缀'
+  }),
+  hidden: z.boolean().meta({
+    example: true,
+    description: '是否隐藏'
+  })
+});
+export type HideTeamSystemToolBodyType = z.infer<typeof HideTeamSystemToolBodySchema>;
+
+/* ============================================================================
+ * API: 删除团队安装插件
+ * Route: POST /api/core/plugin/team/tool/delete
+ * Method: POST
+ * Description: 删除当前团队 source 下的插件包，并把团队账本收敛为 deleted
+ * Tags: ['团队插件管理', 'Delete']
+ * ============================================================================ */
+
+export const DeleteTeamToolBodySchema = z.object({
+  pluginId: z.string().meta({
+    example: 'systemTool-weather',
+    description: '团队插件 ID，支持带 systemTool- 前缀'
+  }),
+  version: z.string().optional().meta({
+    example: '1.0.0',
+    description: '插件版本；为空时使用团队账本记录的版本'
+  })
+});
+export type DeleteTeamToolBodyType = z.infer<typeof DeleteTeamToolBodySchema>;
+
+/* ============================================================================
+ * API: 更新团队插件标签绑定
+ * Route: PUT /api/core/plugin/team/tool/tag/update
+ * Method: PUT
+ * Description: 给系统插件或团队安装插件绑定团队自定义标签
+ * Tags: ['团队插件管理', 'Write']
+ * ============================================================================ */
+
+export const UpdateTeamToolTagsBodySchema = z.object({
+  pluginId: z.string().meta({
+    example: 'systemTool-weather',
+    description: '插件 ID，支持带 systemTool- 前缀'
+  }),
+  registrySource: TeamPluginRegistrySourceSchema.meta({
+    example: 'system',
+    description: '插件注册来源'
+  }),
+  teamTagIds: z.array(z.string()).meta({
+    example: ['tag_xxx'],
+    description: '团队标签 ID 列表'
+  })
+});
+export type UpdateTeamToolTagsBodyType = z.infer<typeof UpdateTeamToolTagsBodySchema>;

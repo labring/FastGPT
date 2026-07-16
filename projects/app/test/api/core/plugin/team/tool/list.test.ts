@@ -1,20 +1,25 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { Call } from '@test/utils/request';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
+import {
+  TeamPluginPolicyStatusEnum,
+  TeamPluginRegistrySourceEnum
+} from '@fastgpt/global/core/plugin/schema/type';
 
 const mocks = vi.hoisted(() => ({
-  authCert: vi.fn(),
+  authUserPer: vi.fn(),
   getLocale: vi.fn(),
   getUserDetail: vi.fn(),
   getSystemToolList: vi.fn(),
   getInstance: vi.fn(),
+  getTeamPluginPolicyMap: vi.fn(),
   pluginClient: {
     getDebugSessionStatus: vi.fn()
   }
 }));
 
-vi.mock('@fastgpt/service/support/permission/auth/common', () => ({
-  authCert: mocks.authCert
+vi.mock('@fastgpt/service/support/permission/user/auth', () => ({
+  authUserPer: mocks.authUserPer
 }));
 
 vi.mock('@fastgpt/service/common/middle/i18n', () => ({
@@ -35,20 +40,31 @@ vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin', () => ({
   pluginClient: mocks.pluginClient
 }));
 
+vi.mock('@fastgpt/service/core/plugin/teamPluginPolicy', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/plugin/teamPluginPolicy')>()),
+  getTeamPluginPolicyMap: mocks.getTeamPluginPolicyMap
+}));
+
 import handler from '@/pages/api/core/plugin/team/tool/list';
 
 describe('team system plugin list handler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.authCert.mockResolvedValue({
+    mocks.authUserPer.mockResolvedValue({
       teamId: 'team-1',
-      tmbId: 'tmb-1'
+      tmbId: 'tmb-1',
+      permission: {
+        hasPluginManagePer: false,
+        hasManagePer: false,
+        isOwner: false
+      }
     });
     mocks.getLocale.mockReturnValue('zh');
     mocks.getUserDetail.mockResolvedValue({ tags: [] });
     mocks.getInstance.mockReturnValue({
       getSystemToolList: mocks.getSystemToolList
     });
+    mocks.getTeamPluginPolicyMap.mockResolvedValue(new Map());
     mocks.pluginClient.getDebugSessionStatus.mockResolvedValue({
       tmbId: 'tmb-1',
       source: 'debug:tmbId:tmb-1',
@@ -157,7 +173,6 @@ describe('team system plugin list handler', () => {
         hasSystemSecret: false
       }
     ]);
-
     const res = await Call(handler, {
       query: {},
       auth: {
@@ -168,5 +183,80 @@ describe('team system plugin list handler', () => {
 
     expect(res.code).toBe(200);
     expect(res.data.map((tool) => tool.id)).toEqual(['system-tool']);
+  });
+
+  it('filters team hidden system plugins from default list', async () => {
+    mocks.getTeamPluginPolicyMap.mockResolvedValueOnce(
+      new Map([
+        [
+          'system:system-tool',
+          {
+            teamId: 'team-1',
+            pluginId: 'system-tool',
+            pluginType: 'tool',
+            registrySource: TeamPluginRegistrySourceEnum.system,
+            status: TeamPluginPolicyStatusEnum.hidden,
+            hidden: true,
+            installed: true
+          }
+        ]
+      ])
+    );
+
+    const res = await Call(handler, {
+      query: {},
+      auth: {
+        teamId: 'team-1',
+        tmbId: 'tmb-1'
+      } as any
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data).toEqual([]);
+  });
+
+  it('returns deleted team plugin placeholders when requested', async () => {
+    mocks.getTeamPluginPolicyMap.mockResolvedValueOnce(
+      new Map([
+        [
+          'team:team-tool',
+          {
+            teamId: 'team-1',
+            pluginId: 'team-tool',
+            pluginType: 'tool',
+            registrySource: TeamPluginRegistrySourceEnum.team,
+            installSource: 'marketplace',
+            status: TeamPluginPolicyStatusEnum.deleted,
+            installed: false,
+            hidden: false,
+            version: '1.0.0',
+            etag: 'etag-1'
+          }
+        ]
+      ])
+    );
+
+    const res = await Call(handler, {
+      query: {
+        includeDeleted: true,
+        source: 'team'
+      },
+      auth: {
+        teamId: 'team-1',
+        tmbId: 'tmb-1'
+      } as any
+    });
+
+    expect(res.code).toBe(200);
+    expect(res.data).toEqual([
+      expect.objectContaining({
+        id: 'systemTool-team-tool',
+        source: 'team',
+        registrySource: 'team',
+        teamInstallStatus: TeamPluginPolicyStatusEnum.deleted,
+        installedVersion: '1.0.0',
+        installedEtag: 'etag-1'
+      })
+    ]);
   });
 });

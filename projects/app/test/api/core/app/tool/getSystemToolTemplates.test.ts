@@ -11,6 +11,8 @@ const mocks = vi.hoisted(() => ({
   getSystemToolDisplayInfo: vi.fn(),
   getSystemToolDisplayInfoWithChildIcons: vi.fn(),
   getInstance: vi.fn(),
+  getTeamPluginPolicyMap: vi.fn(),
+  assertTeamPluginInstalled: vi.fn(),
   pluginClient: {
     getDebugSessionStatus: vi.fn()
   }
@@ -38,6 +40,12 @@ vi.mock('@fastgpt/service/thirdProvider/fastgptPlugin', () => ({
   pluginClient: mocks.pluginClient
 }));
 
+vi.mock('@fastgpt/service/core/plugin/teamPluginPolicy', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@fastgpt/service/core/plugin/teamPluginPolicy')>()),
+  getTeamPluginPolicyMap: mocks.getTeamPluginPolicyMap,
+  assertTeamPluginInstalled: mocks.assertTeamPluginInstalled
+}));
+
 import {
   handler,
   type GetSystemPluginTemplatesBody
@@ -59,6 +67,8 @@ describe('get system tool templates handler', () => {
       getSystemToolDisplayInfo: mocks.getSystemToolDisplayInfo,
       getSystemToolDisplayInfoWithChildIcons: mocks.getSystemToolDisplayInfoWithChildIcons
     });
+    mocks.getTeamPluginPolicyMap.mockResolvedValue(new Map());
+    mocks.assertTeamPluginInstalled.mockResolvedValue({});
     mocks.pluginClient.getDebugSessionStatus.mockResolvedValue({
       tmbId: 'tmb-1',
       status: 'revoked',

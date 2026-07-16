@@ -58,6 +58,12 @@ import { SystemToolRepo } from '../../../../../../app/tool/systemTool/systemTool
 import { Output_Template_Error_Message } from '@fastgpt/global/core/workflow/template/output';
 import type { NodeToolConfigType } from '@fastgpt/global/core/workflow/type/node';
 import { getMCPChildren } from '../../../../../../app/mcp';
+import { getTmbInfoByTmbId } from '../../../../../../../support/user/team/controller';
+import { TeamPluginRegistrySourceEnum } from '@fastgpt/global/core/plugin/schema/type';
+import {
+  assertTeamPluginInstalled,
+  getRawPluginIdFromSystemToolId
+} from '../../../../../../plugin/teamPluginPolicy';
 
 type AgentRuntimeNode = RuntimeNodeItemType & {
   currentCost?: number;
@@ -82,6 +88,8 @@ export const getAgentRuntimeTools = async ({
   tmbId: string;
   lang?: localeType;
 }): Promise<SubAppInitType[]> => {
+  const { teamId } = await getTmbInfoByTmbId({ tmbId });
+
   // Agent 工具执行需要统一的错误输出口，方便 workflow runtime 收敛失败结果。
   const appendErrorOutput = (outputs: RuntimeNodeItemType['outputs'] = []) => {
     return outputs.some((item) => item.type === FlowNodeOutputTypeEnum.error)
@@ -126,12 +134,29 @@ export const getAgentRuntimeTools = async ({
     versionId?: string;
   }): Promise<AgentRuntimeNode> => {
     const systemToolRepo = SystemToolRepo.getInstance();
-    const toolConfigSource = isDebugToolSource(runtimeSource) ? runtimeSource : undefined;
+    const toolConfigSource = (() => {
+      if (isDebugToolSource(runtimeSource)) return runtimeSource;
+      if (runtimeSource === TeamPluginRegistrySourceEnum.team) {
+        return TeamPluginRegistrySourceEnum.team;
+      }
+    })();
+    const detailSource = await (async () => {
+      if (runtimeSource !== TeamPluginRegistrySourceEnum.team) {
+        return toolConfigSource ?? (idSource === AppToolSourceEnum.commercial ? idSource : 'system');
+      }
+
+      await assertTeamPluginInstalled({
+        teamId,
+        pluginId: getRawPluginIdFromSystemToolId(toolId)
+      });
+
+      return teamId;
+    })();
     const toolDetail = await systemToolRepo.getSystemToolDetail({
       pluginId: toolId,
       version: versionId || undefined,
       lang,
-      source: toolConfigSource ?? (idSource === AppToolSourceEnum.commercial ? idSource : 'system')
+      source: detailSource
     });
     const isWorkflowTool = !!toolDetail.associatedPluginId;
     const secrets = jsonSchema2SecretInput({ jsonSchema: toolDetail.secretSchema });
@@ -669,6 +694,7 @@ export const getAgentRuntimeTools = async ({
                 nodeId: pluginId,
                 version: toolNode.version
               },
+              teamId,
               lang
             });
 

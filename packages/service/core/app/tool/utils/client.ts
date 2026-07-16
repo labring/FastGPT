@@ -55,6 +55,12 @@ import type {
 } from '@fastgpt/global/core/workflow/type';
 import type { PluginStatusType } from '@fastgpt/global/core/plugin/type';
 import type { UserTagsType } from '@fastgpt/global/support/user/type';
+import { TeamPluginRegistrySourceEnum } from '@fastgpt/global/core/plugin/schema/type';
+import {
+  assertTeamPluginInstalled,
+  getRawPluginIdFromSystemToolId,
+  normalizeTeamPluginStatus
+} from '../../../plugin/teamPluginPolicy';
 
 type AppToolType = WorkflowTemplateType & {
   status?: PluginStatusType;
@@ -133,20 +139,33 @@ export async function getClientSystemToolPreviewNode({
   versionId,
   getLatestVersion,
   lang = 'en',
-  source: toolSource = 'system'
+  source: toolSource = 'system',
+  teamId
 }: {
   pluginId: string;
   versionId?: string;
   getLatestVersion?: boolean;
   lang?: localeType;
   source?: string;
+  teamId?: string;
 }): Promise<FlowNodeTemplateType> {
   const systemToolRepo = SystemToolRepo.getInstance();
+  const runtimeSource = await (async () => {
+    if (toolSource !== TeamPluginRegistrySourceEnum.team) return toolSource;
+    if (!teamId) return Promise.reject('plugin.team_id_required');
+
+    await assertTeamPluginInstalled({
+      teamId,
+      pluginId: getRawPluginIdFromSystemToolId(pluginId)
+    });
+
+    return teamId;
+  })();
   const toolDetail = await systemToolRepo.getSystemToolDetail({
     pluginId,
     version: versionId || undefined,
     lang,
-    source: toolSource
+    source: runtimeSource
   });
   const shouldReturnVersion = versionId ? true : versionId === undefined && getLatestVersion;
   const secrets = jsonSchema2SecretInput({ jsonSchema: toolDetail.secretSchema });
@@ -170,7 +189,14 @@ export async function getClientSystemToolPreviewNode({
       : []),
     ...(isWorkflowTool ? schemaInputs.map(projectExternalVariableInput) : schemaInputs)
   ];
-  const toolConfigSource = isDebugToolSource(toolSource) ? toolSource : undefined;
+  const toolConfigSource =
+    isDebugToolSource(toolSource) || toolSource === TeamPluginRegistrySourceEnum.team
+      ? toolSource
+      : undefined;
+  const displayStatus =
+    toolSource === TeamPluginRegistrySourceEnum.team
+      ? normalizeTeamPluginStatus(toolDetail.status)
+      : toolDetail.status;
 
   return {
     id: getNanoid(),
@@ -203,7 +229,7 @@ export async function getClientSystemToolPreviewNode({
     hasTokenFee: toolDetail.hasTokenFee,
     hasSystemSecret: toolDetail.hasSystemSecret,
     isFolder: !isWorkflowTool && toolDetail.isToolSet,
-    status: toolDetail.status,
+    status: displayStatus,
     // 工具预览是首次加入工作流/Agent，使用 schema 声明的默认输入方式。
     inputs: initToolInputsTypeByDefaultMode(inputs, { forceDefaultMode: true }),
 
@@ -252,13 +278,15 @@ export async function getClientToolPreviewNode({
   versionId,
   getLatestVersion,
   lang = 'en',
-  source: toolSource = 'system'
+  source: toolSource = 'system',
+  teamId
 }: {
   appId: string;
   versionId?: string;
   getLatestVersion?: boolean;
   lang?: localeType;
   source?: string;
+  teamId?: string;
 }): Promise<FlowNodeTemplateType> {
   const { source: idSource, pluginId } = splitCombineToolId(appId);
 
@@ -269,7 +297,8 @@ export async function getClientToolPreviewNode({
         versionId,
         getLatestVersion,
         lang,
-        source: toolSource
+        source: toolSource,
+        teamId
       });
     }
 
@@ -500,7 +529,10 @@ export async function getClientToolPreviewNode({
     return {
       id: getNanoid(),
       pluginId: app.id,
-      source: isDebugToolSource(toolSource) ? toolSource : undefined,
+      source:
+        isDebugToolSource(toolSource) || toolSource === TeamPluginRegistrySourceEnum.team
+          ? toolSource
+          : undefined,
       flowNodeType,
       avatar: app.avatar,
       name: parseI18nString(app.name, lang),

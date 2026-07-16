@@ -7,6 +7,11 @@ import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { SystemToolRepo } from '../../app/tool/systemTool/systemTool.repo';
 import { jsonSchema2NodeInput, jsonSchema2NodeOutput } from '@fastgpt/global/core/app/jsonschema';
 import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
+import { TeamPluginRegistrySourceEnum } from '@fastgpt/global/core/plugin/schema/type';
+import {
+  assertTeamPluginInstalled,
+  getRawPluginIdFromSystemToolId
+} from '../../plugin/teamPluginPolicy';
 
 /* filter search result */
 export const filterSearchResultsByMaxChars = async (
@@ -37,17 +42,33 @@ export const filterSearchResultsByMaxChars = async (
  */
 export async function getSystemToolRunTimeNodeFromSystemToolset({
   toolSetNode,
+  teamId,
   lang = 'en'
 }: {
   toolSetNode: Pick<RuntimeNodeItemType, 'toolConfig' | 'inputs' | 'nodeId' | 'version'>;
+  teamId?: string;
   lang?: localeType;
 }): Promise<RuntimeNodeItemType[]> {
   const systemToolId = toolSetNode.toolConfig?.systemToolSet?.toolId!;
-  const systemToolSource = (() => {
+  const toolConfigSource = (() => {
     const toolConfigSource = toolSetNode.toolConfig?.systemToolSet?.source;
     if (isDebugToolSource(toolConfigSource)) return toolConfigSource;
+    if (toolConfigSource === TeamPluginRegistrySourceEnum.team) {
+      return TeamPluginRegistrySourceEnum.team;
+    }
 
     return 'system';
+  })();
+  const systemToolSource = await (async () => {
+    if (toolConfigSource !== TeamPluginRegistrySourceEnum.team) return toolConfigSource;
+    if (!teamId) return Promise.reject('plugin.team_id_required');
+
+    await assertTeamPluginInstalled({
+      teamId,
+      pluginId: getRawPluginIdFromSystemToolId(systemToolId)
+    });
+
+    return teamId;
   })();
   const selectedTools = toolSetNode.toolConfig?.systemToolSet?.toolList ?? [];
   if (!selectedTools.length) return [];
@@ -101,7 +122,10 @@ export async function getSystemToolRunTimeNodeFromSystemToolset({
       toolConfig: {
         systemTool: {
           toolId: pluginId,
-          ...(isDebugToolSource(systemToolSource) ? { source: systemToolSource } : {})
+          ...(isDebugToolSource(toolConfigSource) ||
+          toolConfigSource === TeamPluginRegistrySourceEnum.team
+            ? { source: toolConfigSource }
+            : {})
         }
       },
       pluginId

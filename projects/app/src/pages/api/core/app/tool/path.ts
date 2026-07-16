@@ -11,12 +11,18 @@ import {
   type GetToolPathResponseType
 } from '@fastgpt/global/openapi/core/app/tool/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { TeamPluginRegistrySourceEnum } from '@fastgpt/global/core/plugin/schema/type';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
+import {
+  assertTeamPluginInstalled,
+  getRawPluginIdFromSystemToolId
+} from '@fastgpt/service/core/plugin/teamPluginPolicy';
 
 export type pathQuery = GetToolPathQueryType;
 
 export type pathBody = Record<string, never>;
 
-export type pathResponse = Promise<GetToolPathResponseType>;
+export type pathResponse = GetToolPathResponseType;
 
 export async function handler(req: ApiRequestProps<pathBody, pathQuery>): Promise<pathResponse> {
   const {
@@ -26,6 +32,10 @@ export async function handler(req: ApiRequestProps<pathBody, pathQuery>): Promis
     querySchema: GetToolPathQuerySchema
   });
   const lang = getLocale(req);
+  const { teamId } =
+    source === TeamPluginRegistrySourceEnum.team
+      ? await authCert({ req, authToken: true })
+      : { teamId: undefined };
 
   if (!pluginId) return GetToolPathResponseSchema.parse([]);
 
@@ -40,7 +50,9 @@ export async function handler(req: ApiRequestProps<pathBody, pathQuery>): Promis
   }
 
   return GetToolPathResponseSchema.parse(
-    await Promise.all(pathToolIds.map((toolId) => getToolPathItem({ toolId, source, lang })))
+    await Promise.all(
+      pathToolIds.map((toolId) => getToolPathItem({ toolId, source, teamId, lang }))
+    )
   );
 }
 
@@ -69,21 +81,33 @@ function getParentToolId({ toolId, source }: { toolId: string; source?: string }
 async function getToolPathItem({
   toolId,
   source,
+  teamId,
   lang
 }: {
   toolId: string;
   source?: string;
+  teamId?: string;
   lang: ReturnType<typeof getLocale>;
 }): Promise<GetToolPathResponseType[number]> {
   const systemToolRepo = SystemToolRepo.getInstance();
   const idSource = isDebugToolSource(source)
     ? parseToolIdForPath(toolId).idSource
     : splitCombineToolId(toolId).source;
-  const toolSource = isDebugToolSource(source)
-    ? source
-    : idSource === AppToolSourceEnum.commercial
-      ? AppToolSourceEnum.commercial
-      : 'system';
+  const toolSource = await (async () => {
+    if (source === TeamPluginRegistrySourceEnum.team) {
+      if (!teamId) return Promise.reject('plugin.team_id_required');
+
+      await assertTeamPluginInstalled({
+        teamId,
+        pluginId: getRawPluginIdFromSystemToolId(toolId)
+      });
+
+      return teamId;
+    }
+
+    if (isDebugToolSource(source)) return source;
+    return idSource === AppToolSourceEnum.commercial ? AppToolSourceEnum.commercial : 'system';
+  })();
   const tool = await systemToolRepo.getSystemToolDisplayInfo({
     pluginId: toolId,
     lang,

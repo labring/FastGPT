@@ -11,6 +11,10 @@ import {
 } from '@fastgpt/global/openapi/core/plugin/team/tool/api';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { isDebugToolSource } from '@fastgpt/global/core/app/tool/utils';
+import {
+  assertTeamPluginInstalled,
+  getRawPluginIdFromSystemToolId
+} from '@fastgpt/service/core/plugin/teamPluginPolicy';
 
 export type getSystemToolVersionsQuery = GetTeamToolVersionsQueryType;
 
@@ -30,6 +34,12 @@ async function handler(
   const lang = getLocale(req);
 
   const { teamId } = await authCert({ req, authToken: true });
+  if (source === 'team') {
+    await assertTeamPluginInstalled({
+      teamId,
+      pluginId: getRawPluginIdFromSystemToolId(toolId)
+    });
+  }
 
   const systemToolRepo = SystemToolRepo.getInstance();
   const versions = await systemToolRepo.getVersions({

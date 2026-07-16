@@ -27,6 +27,11 @@ import { getLogger, LogCategories } from '../../../../../../../common/logger';
 import { authAppByTmbId } from '../../../../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getWorkflowAppId } from '../../../../utils/source';
+import { TeamPluginRegistrySourceEnum } from '@fastgpt/global/core/plugin/schema/type';
+import {
+  assertTeamPluginInstalled,
+  getRawPluginIdFromSystemToolId
+} from '../../../../../../plugin/teamPluginPolicy';
 
 type SystemInputConfigType = {
   type: SystemToolSecretInputTypeEnum;
@@ -91,8 +96,28 @@ export const dispatchTool = async ({
   const getSystemToolSource = () => {
     const toolConfigSource = toolConfig?.systemTool?.source;
     if (isDebugToolSource(toolConfigSource)) return toolConfigSource;
+    if (toolConfigSource === TeamPluginRegistrySourceEnum.team) {
+      return TeamPluginRegistrySourceEnum.team;
+    }
 
     return 'system';
+  };
+
+  const resolveSystemToolRuntimeSource = async ({
+    source,
+    toolId
+  }: {
+    source: string;
+    toolId: string;
+  }) => {
+    if (source !== TeamPluginRegistrySourceEnum.team) return source;
+
+    await assertTeamPluginInstalled({
+      teamId: String(runningUserInfo.teamId),
+      pluginId: getRawPluginIdFromSystemToolId(toolId)
+    });
+
+    return String(runningUserInfo.teamId);
   };
 
   try {
@@ -110,10 +135,14 @@ export const dispatchTool = async ({
 
     if (toolConfig?.systemTool?.toolId) {
       const toolSource = getSystemToolSource();
+      const runtimeToolSource = await resolveSystemToolRuntimeSource({
+        source: toolSource,
+        toolId: toolConfig.systemTool.toolId
+      });
       const systemToolRepo = SystemToolRepo.getInstance();
       const tool = await systemToolRepo.getSystemToolRuntime({
         pluginId: toolConfig.systemTool.toolId,
-        source: toolSource,
+        source: runtimeToolSource,
         version
       });
       const inputConfigParams = await (async () => {
@@ -126,7 +155,7 @@ export const dispatchTool = async ({
             });
           case SystemToolSecretInputTypeEnum.system:
           default:
-            if (isDebugToolSource(toolSource)) return {};
+            if (isDebugToolSource(runtimeToolSource)) return {};
             return tool.secretsVal ?? {};
         }
       })();
@@ -151,7 +180,7 @@ export const dispatchTool = async ({
         pluginId: formatToolId,
         ...(childId ? { childId } : {}),
         version: tool.version ?? version ?? '',
-        source: toolSource,
+        source: runtimeToolSource,
         input: Object.fromEntries(Object.entries(params)),
         secrets: inputConfigParams,
         systemVar: {

@@ -9,12 +9,14 @@ import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { isDebugToolSource, splitCombineToolId } from '@fastgpt/global/core/app/tool/utils';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   GetPreviewNodeQuerySchema,
   GetPreviewNodeResponseSchema,
   type GetPreviewNodeQuery
 } from '@fastgpt/global/openapi/core/app/tool/api';
+import { TeamPluginRegistrySourceEnum } from '@fastgpt/global/core/plugin/schema/type';
 
 async function handler(
   req: ApiRequestProps<Record<string, never>, GetPreviewNodeQuery>
@@ -26,10 +28,13 @@ async function handler(
     querySchema: GetPreviewNodeQuerySchema
   });
 
+  const { teamId } = await authCert({ req, authToken: true });
   const { authAppId } = splitCombineToolId(appId);
   if (authAppId) {
     await authApp({ req, authToken: true, appId: authAppId, per: ReadPermissionVal });
   }
+  const previewSource =
+    isDebugToolSource(source) || source === TeamPluginRegistrySourceEnum.team ? source : undefined;
 
   return GetPreviewNodeResponseSchema.parse(
     await getClientToolPreviewNode({
@@ -37,7 +42,8 @@ async function handler(
       versionId,
       getLatestVersion,
       lang: getLocale(req),
-      source: isDebugToolSource(source) ? source : undefined
+      source: previewSource,
+      teamId
     })
   );
 }
