@@ -178,6 +178,8 @@ export const iconPaths = {
   'core/app/type/workflow': () => import('./icons/core/app/type/workflow.svg'),
   'core/app/type/workflowFill': () => import('./icons/core/app/type/workflowFill.svg'),
   'core/app/variable/input': () => import('./icons/core/app/variable/input.svg'),
+  'core/app/workflow/checkPendingImprove': () =>
+    import('./icons/core/app/workflow/checkPendingImprove.svg'),
   'core/chat/QGFill': () => import('./icons/core/chat/QGFill.svg'),
   'core/chat/backText': () => import('./icons/core/chat/backText.svg'),
   'core/chat/chatFill': () => import('./icons/core/chat/chatFill.svg'),
