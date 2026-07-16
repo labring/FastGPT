@@ -309,6 +309,34 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
     }
   }
 
+  private isNotFoundError(error: unknown): boolean {
+    let current: unknown = error;
+    while (current && typeof current === 'object') {
+      const value = current as {
+        status?: unknown;
+        statusCode?: unknown;
+        code?: unknown;
+        message?: unknown;
+        error?: { code?: unknown; message?: unknown };
+        cause?: unknown;
+      };
+      const code = String(value.code ?? value.error?.code ?? '').toLowerCase();
+      const message = String(value.message ?? value.error?.message ?? '').toLowerCase();
+      const status = Number(value.status ?? value.statusCode);
+      if (
+        status === 404 ||
+        code.includes('not_found') ||
+        code.includes('notfound') ||
+        code === '404' ||
+        message.includes('not found')
+      ) {
+        return true;
+      }
+      current = value.cause;
+    }
+    return false;
+  }
+
   async ensureRunning(): Promise<void> {
     const sandbox = await this.getSandboxBySessionId();
 
@@ -476,6 +504,11 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
       }
       this._status = { state: 'Stopped' };
     } catch (error) {
+      if (this.isNotFoundError(error)) {
+        this.sandbox = undefined;
+        this._status = { state: 'Stopped' };
+        return;
+      }
       const message = error instanceof SandboxException ? error.error.message : undefined;
 
       if (message?.includes('already paused')) {
@@ -526,6 +559,11 @@ export class OpenSandboxAdapter extends BaseSandboxAdapter {
       }
       this._status = { state: 'UnExist' };
     } catch (error) {
+      if (this.isNotFoundError(error)) {
+        this.sandbox = undefined;
+        this._status = { state: 'UnExist' };
+        return;
+      }
       throw new CommandExecutionError(
         'Failed to delete sandbox',
         'delete',

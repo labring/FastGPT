@@ -6,7 +6,7 @@
  */
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { EDIT_DEBUG_SANDBOX_CHAT_ID } from '../../skill/edit/config';
-import { getRunningSandboxId } from '../utils/id';
+import { getRunningSandboxId, getSandboxUserId } from '../utils/id';
 import type { SandboxClientQuery } from '../application/runtime/client';
 
 export {
@@ -65,11 +65,11 @@ export function buildSandboxClientQueryFromChatSource({
   userId: string;
   chatId: string;
 }): SandboxClientQueryWithId {
+  const sandboxUserId = getSandboxUserId({ sourceType, userId });
   const sandboxId = getRunningSandboxId({
     sourceType,
     sourceId,
-    userId,
-    chatId
+    userId: sandboxUserId
   });
 
   if (sourceType === ChatSourceTypeEnum.app) {
@@ -77,7 +77,7 @@ export function buildSandboxClientQueryFromChatSource({
       sandboxId,
       sourceType,
       sourceId,
-      userId,
+      userId: sandboxUserId,
       chatId
     };
   }
@@ -91,7 +91,7 @@ export function buildSandboxClientQueryFromChatSource({
       sandboxId,
       sourceType,
       sourceId,
-      userId: '',
+      userId: sandboxUserId,
       chatId
     };
   }

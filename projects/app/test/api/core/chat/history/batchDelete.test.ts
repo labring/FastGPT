@@ -9,21 +9,13 @@ import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { MongoChatItemResponse } from '@fastgpt/service/core/chat/chatItemResponseSchema';
 import { getUser } from '@test/datas/users';
 import { Call } from '@test/utils/request';
-import { describe, expect, it, beforeEach, vi } from 'vitest';
+import { describe, expect, it, beforeEach } from 'vitest';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { AppReadChatLogPerVal } from '@fastgpt/global/support/permission/app/constant';
 import { AuthUserTypeEnum, PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoAgentSkills } from '@fastgpt/service/core/ai/skill/model/schema';
 import { AgentSkillSourceEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-
-const mocks = vi.hoisted(() => ({
-  deleteAppChatRuntimeSandboxes: vi.fn()
-}));
-
-vi.mock('@fastgpt/service/core/ai/sandbox/interface/resource', () => ({
-  deleteAppChatRuntimeSandboxes: mocks.deleteAppChatRuntimeSandboxes
-}));
 
 type EmptyQuery = Record<string, never>;
 
@@ -33,8 +25,6 @@ describe('batchDelete api test', () => {
   let chatIds: string[];
 
   beforeEach(async () => {
-    vi.clearAllMocks();
-    mocks.deleteAppChatRuntimeSandboxes.mockResolvedValue(undefined);
     testUser = await getUser('test-user-batch-delete');
 
     // Create test app
@@ -125,10 +115,6 @@ describe('batchDelete api test', () => {
 
     expect(res.code).toBe(200);
     expect(res.error).toBeUndefined();
-    expect(mocks.deleteAppChatRuntimeSandboxes).toHaveBeenCalledWith({
-      appId,
-      chatIds: deleteIds
-    });
 
     // Verify that chats were deleted
     const remainingChats = await MongoChat.find({
@@ -219,7 +205,6 @@ describe('batchDelete api test', () => {
 
     expect(res.code).toBe(200);
     expect(res.error).toBeUndefined();
-    expect(mocks.deleteAppChatRuntimeSandboxes).not.toHaveBeenCalled();
     expect(
       await MongoChat.countDocuments({
         sourceType: ChatSourceTypeEnum.skillEdit,
@@ -286,7 +271,6 @@ describe('batchDelete api test', () => {
     });
 
     expect(res.code).toBe(200);
-    expect(mocks.deleteAppChatRuntimeSandboxes).not.toHaveBeenCalled();
     expect(
       await MongoChat.countDocuments({
         sourceType: ChatSourceTypeEnum.chatAgentHelper,

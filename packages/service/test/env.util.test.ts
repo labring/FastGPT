@@ -101,11 +101,10 @@ describe('env util', () => {
     ]);
   });
 
-  it('does not require opensandbox volume manager env for other providers', () => {
+  it('does not require sandbox env for an unsupported provider', () => {
     expect(
       getAgentSandboxMissingRequiredEnvKeys({
-        AGENT_SANDBOX_PROVIDER: 'e2b',
-        AGENT_SANDBOX_E2B_API_KEY: 'e2b-key'
+        AGENT_SANDBOX_PROVIDER: 'unsupported'
       } as NodeJS.ProcessEnv)
     ).toEqual([]);
   });

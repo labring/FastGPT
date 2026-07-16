@@ -10,12 +10,12 @@ import {
   SANDBOX_WRITE_FILE_TOOL_NAME
 } from './tools';
 import type { SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
+import type { ChatSourceTypeEnum } from '../../chat/constants';
 
 // ---- 沙盒提供方 ----
 export const agentSandboxProviderList = [
   'sealosdevbox',
-  'opensandbox',
-  'e2b'
+  'opensandbox'
 ] as const satisfies readonly SandboxProviderType[];
 
 // ---- 沙盒状态 ----
@@ -36,9 +36,16 @@ export enum SandboxTypeEnum {
 export const SANDBOX_SUSPEND_MINUTES = 10;
 
 // ---- sandboxId 生成 ----
-export const generateSandboxId = (appId: string, userId: string, chatId: string): string => {
-  return hashStr(`${String(appId)}-${String(userId)}-${String(chatId)}`).slice(0, 16);
-};
+/** 为 v2 Sandbox 生成带 sourceType 前缀的稳定物理资源 ID。 */
+export const generateSandboxId = ({
+  sourceType,
+  sourceId,
+  userId
+}: {
+  sourceType: ChatSourceTypeEnum;
+  sourceId: string;
+  userId: string;
+}): string => `${sourceType}-${hashStr(`${sourceId}-${userId}`).slice(0, 16)}`;
 
 // Prompt
 export const SANDBOX_USER_FILES_PATH = 'user_files/';

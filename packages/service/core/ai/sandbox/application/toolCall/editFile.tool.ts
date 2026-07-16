@@ -23,7 +23,7 @@ export const sandboxEditFileTool = defineTool({
     await sandboxInstance.ensureAvailable();
     await sandboxInstance.provider.replaceContent(
       params.entries.map((entry) => ({
-        path: entry.path,
+        path: sandboxInstance.resolveRuntimePath(entry.path, { allowAbsolutePath: true }),
         oldContent: entry.oldContent,
         newContent: entry.newContent
       }))

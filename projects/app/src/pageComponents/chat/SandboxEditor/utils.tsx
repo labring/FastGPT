@@ -1,4 +1,53 @@
 import type { IconNameType } from '@fastgpt/web/components/common/Icon/type';
+import { shellQuote } from '@fastgpt/global/common/string/utils';
+
+/** 将服务端返回的 session 绝对目录换算为 IDE Agent 接受的 workspace 相对路径。 */
+export const getSandboxIdeSessionRoot = (workspaceRoot: string, sessionWorkDirectory: string) => {
+  const normalizedWorkspaceRoot = workspaceRoot.replace(/\/+$/, '');
+  const normalizedSessionRoot = sessionWorkDirectory.replace(/\/+$/, '');
+
+  if (normalizedSessionRoot === normalizedWorkspaceRoot) return '.';
+  if (!normalizedSessionRoot.startsWith(`${normalizedWorkspaceRoot}/`)) {
+    throw new Error('Sandbox session directory is outside workspace');
+  }
+
+  return normalizedSessionRoot.slice(normalizedWorkspaceRoot.length + 1);
+};
+
+const joinSandboxIdePath = (root: string, path: string) => {
+  if (root === '.') return path;
+  if (!path || path === '.' || path === './') return root;
+  return `${root}/${path.replace(/^\.\//, '')}`;
+};
+
+/** 给 IDE Agent RPC 参数附加当前 Chat 的相对目录，不改变编辑器内部的相对路径模型。 */
+export const scopeSandboxIdeRpcParams = (method: string, params: unknown, sessionRoot: string) => {
+  if (sessionRoot === '.' || !params || typeof params !== 'object') return params;
+  const value = params as Record<string, unknown>;
+
+  if (method === 'fs/move') {
+    return {
+      ...value,
+      from: joinSandboxIdePath(sessionRoot, String(value.from ?? '')),
+      to: joinSandboxIdePath(sessionRoot, String(value.to ?? ''))
+    };
+  }
+  if (method === 'fs/exec') {
+    const quotedRoot = shellQuote(sessionRoot);
+    return {
+      ...value,
+      command: `mkdir -p ${quotedRoot} && cd ${quotedRoot} && ${String(value.command ?? '')}`
+    };
+  }
+  if (method.startsWith('fs/') && typeof value.path === 'string') {
+    return {
+      ...value,
+      path: joinSandboxIdePath(sessionRoot, value.path)
+    };
+  }
+
+  return params;
+};
 
 export const getSafeSandboxCommandPath = (path: string) => {
   const normalizedPath = path.replace(/^\.\//, '');

@@ -11,14 +11,18 @@ import type {
   SandboxRuntimeProfile,
   SandboxRuntimeScenario
 } from '../../infrastructure/provider/runtimeProfile';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { getRunningSandboxId } from '../../utils/id';
+import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { getRunningSandboxId, getSandboxUserId } from '../../utils/id';
 import type { SandboxProviderType } from '../../type';
+import { getSandboxRuntimePaths } from '../../utils';
 
 export type { SandboxRuntimeProfile, SandboxRuntimeScenario };
 
 export type AgentSandboxRuntimeContext = {
   sandboxClient: SandboxClient;
+  /** Sandbox 共享根目录，用于 App entrypoint 和共享 Skill。 */
+  workspaceRoot: string;
+  /** 当前 prepare step 的默认目录；App 为 session，Skill Edit 为 workspaceRoot。 */
   workDirectory: string;
 };
 
@@ -57,28 +61,29 @@ export async function prepareAgentSandboxRuntime({
     throw createAgentSandboxPermissionDeniedError();
   }
 
+  const sandboxUserId = getSandboxUserId({ sourceType, userId });
   const sandboxId = getRunningSandboxId({
     sourceType,
     sourceId,
-    userId,
+    userId: sandboxUserId
+  });
+  const sandboxClient = await getSandboxClient({
+    sandboxId,
+    sourceType,
+    sourceId,
+    userId: sandboxUserId,
     chatId
   });
-  const sandboxClient = await getSandboxClient(
-    {
-      sandboxId,
-      sourceType,
-      sourceId,
-      userId: sourceType === ChatSourceTypeEnum.app ? userId : '',
-      chatId
-    },
-    {
-      failedArchivePolicy: 'clearAndContinue'
-    }
-  );
   const runtimeProfile = getSandboxRuntimeProfile();
+  const runtimePaths = getSandboxRuntimePaths({
+    sourceType,
+    workDirectory: runtimeProfile.workDirectory,
+    chatId
+  });
 
   return {
     sandboxClient,
-    workDirectory: runtimeProfile.workDirectory
+    workspaceRoot: runtimePaths.workspaceRoot,
+    workDirectory: runtimePaths.sessionWorkDirectory
   };
 }

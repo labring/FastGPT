@@ -457,7 +457,7 @@ describe('dispatchRunAgent user context', () => {
     expect(sandboxReadyBeforeLoop).toBe(true);
     const writeFiles = sandboxWriteFilesMock.mock.calls[0][0];
     expect(writeFiles.map((file: { path: string }) => file.path)).toEqual([
-      'user_files/current.pdf'
+      '/workspace/user_files/current.pdf'
     ]);
     const loopInput = runAgentLoopMock.mock.calls[0][0].input;
     expect(loopInput.systemPrompt).not.toContain('pwd: /workspace');

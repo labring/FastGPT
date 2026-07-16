@@ -18,10 +18,9 @@ import { toolMap as writeFileToolMap } from './writeFile.tool';
 import { getSandboxClient, type SandboxClient } from '../runtime/client';
 import { parseJsonArgs } from '../../../utils';
 import { writeUrlFilesToSandbox } from '../file';
-import { getSandboxRuntimeProfile } from '../../infrastructure/provider/runtimeProfile';
 import { preparePackageMirrors, prepareSandbox } from '../runtime/prepare';
-import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { getRunningSandboxId } from '../../utils/id';
+import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { getRunningSandboxId, getSandboxUserId } from '../../utils/id';
 import type { SandboxFileRef } from '@fastgpt/global/core/ai/sandbox/type';
 
 const ToolMap = {
@@ -115,34 +114,36 @@ export const prepareSandboxToolRuntime = async ({
   chatId: string;
   files: { path: string; url: string }[];
 }) => {
+  const sandboxUserId = getSandboxUserId({ sourceType, userId });
   const sandboxId = getRunningSandboxId({
     sourceType,
     sourceId,
-    userId,
+    userId: sandboxUserId
+  });
+  const instance = await getSandboxClient({
+    sandboxId,
+    sourceType,
+    sourceId,
+    userId: sandboxUserId,
     chatId
   });
-  const instance = await getSandboxClient(
-    {
-      sandboxId,
-      sourceType,
-      sourceId,
-      userId: sourceType === ChatSourceTypeEnum.app ? userId : '',
-      chatId
-    },
-    {
-      failedArchivePolicy: 'clearAndContinue'
-    }
-  );
-  const runtimeProfile = getSandboxRuntimeProfile();
+  const runtimePaths = instance.getRuntimePaths();
   await prepareSandbox(
     {
       sandbox: instance.provider,
       sandboxClient: instance,
-      workDirectory: runtimeProfile.workDirectory
+      workDirectory: runtimePaths.sessionWorkDirectory,
+      workspaceRoot: runtimePaths.workspaceRoot
     },
     preparePackageMirrors()
   );
-  await writeUrlFilesToSandbox(instance.provider, files);
+  await writeUrlFilesToSandbox(
+    instance.provider,
+    files.map((file) => ({
+      ...file,
+      path: instance.resolveRuntimePath(file.path, { allowAbsolutePath: true })
+    }))
+  );
   return instance;
 };
 

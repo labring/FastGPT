@@ -70,8 +70,7 @@ const agentSandboxProviderRequiredEnvKeys = {
     'AGENT_SANDBOX_OPENSANDBOX_API_KEY',
     'AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_URL',
     'AGENT_SANDBOX_OPENSANDBOX_VOLUME_MANAGER_TOKEN'
-  ],
-  e2b: ['AGENT_SANDBOX_E2B_API_KEY']
+  ]
 } satisfies Record<SandboxProviderType, readonly string[]>;
 
 export const isAgentSandboxProvider = (

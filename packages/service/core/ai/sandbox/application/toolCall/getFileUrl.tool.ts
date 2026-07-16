@@ -27,7 +27,10 @@ export const sandboxGetFileUrlTool = defineTool({
     const result = await Promise.all(
       params.paths.map(async (filePath) => {
         const filename = path.basename(filePath);
-        const stream = sandboxInstance.provider.readFileStream(filePath);
+        const providerPath = sandboxInstance.resolveRuntimePath(filePath, {
+          allowAbsolutePath: true
+        });
+        const stream = sandboxInstance.provider.readFileStream(providerPath);
         const readable = Readable.from(stream);
 
         const chatBucket = getS3ChatSource();

@@ -3,8 +3,9 @@
  *
  * 负责 ensureAvailable、执行命令和文件读写等运行态用例，不承载工具调用或 Skill 部署编排。
  */
-import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { shellQuote } from '@fastgpt/global/common/string/utils';
 import { getLogger, LogCategories } from '../../../../../common/logger';
 import {
   type ExecuteResult,
@@ -21,15 +22,37 @@ import { getConfiguredSandboxProvider } from '../../infrastructure/provider/conf
 import { ensureConnectedSandboxRunning } from '../../infrastructure/provider/lifecycle';
 import { deleteSandboxResource, stopSandboxResource } from '../resource';
 import {
+  advanceSandboxOperation,
+  claimSandboxOperation,
+  completeSandboxOperation,
+  createSandboxProvisioningInstance,
   existsSandboxInstanceBySandboxId,
-  upsertRunningSandboxInstance
+  findSandboxInstanceBySource,
+  markSandboxOperationFailed,
+  touchRunningSandboxInstance,
+  type SandboxResourceDoc
 } from '../../infrastructure/instance/repository';
-import type { SandboxProviderType } from '../../type';
 import {
-  assertSandboxNotArchivedOrBusy,
-  SandboxArchiveStateError,
+  SandboxInstanceStatusEnum,
+  SandboxOperationTypeEnum,
+  type SandboxProviderType
+} from '../../type';
+import { getSandboxRuntimeProfile } from '../../infrastructure/provider/runtimeProfile';
+import {
+  getSandboxRuntimePaths,
+  resolveSandboxRuntimePath,
+  type SandboxRuntimePaths
+} from '../../utils';
+import {
+  assertSandboxRuntimeUsableWithoutRestore,
+  SandboxLifecycleStateError,
   restoreArchivedSandboxBeforeUse
 } from '../archive';
+import { migrateSandboxProviderBeforeUse } from '../providerMigration';
+import { withSandboxLifecycleLease, withSandboxSourceMutationLease } from '../lease';
+import { assertSandboxSourceActive } from '../sourceGuard';
+import { isRedisLeaseError } from '../../../../../common/redis/lock';
+import { createAgentSandboxInitializingError } from '../../error';
 
 const logger = getLogger(LogCategories.MODULE.AI.SANDBOX);
 
@@ -37,7 +60,7 @@ export type SandboxClientQuery = {
   sandboxId: string;
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
-  userId?: string;
+  userId: string;
   chatId?: string;
 };
 
@@ -45,7 +68,7 @@ type SandboxClientProps = {
   sandboxId: string;
   sourceType: ChatSourceTypeEnum;
   sourceId: string;
-  userId?: string;
+  userId: string;
   chatId?: string;
 };
 
@@ -55,8 +78,11 @@ type SandboxClientOptions = {
   vmConfig?: VolumeManagerResult | undefined;
   createConfig?: SandboxCreateSpec;
   restoreArchived?: boolean;
-  failedArchivePolicy?: 'throw' | 'clearAndContinue';
+  allowCreate?: boolean;
+  sourceGuard?: typeof assertSandboxSourceActive;
 };
+
+const SANDBOX_PROVISIONING_STALE_MS = 15 * 60 * 1000;
 
 /**
  * 当前会话运行态 sandbox client。
@@ -67,10 +93,11 @@ type SandboxClientOptions = {
 export class SandboxClient {
   private sourceType: ChatSourceTypeEnum;
   private sourceId: string;
-  private userId?: string;
+  private userId: string;
   private chatId?: string;
   private sandboxId: string;
   private providerName: SandboxProviderType;
+  private runtimePaths: SandboxRuntimePaths;
   readonly provider: ISandbox;
 
   constructor(
@@ -84,6 +111,11 @@ export class SandboxClient {
     this.chatId = props.chatId;
 
     this.providerName = opts.providerName ?? getConfiguredSandboxProvider();
+    this.runtimePaths = getSandboxRuntimePaths({
+      sourceType: this.sourceType,
+      workDirectory: getSandboxRuntimeProfile(this.providerName).workDirectory,
+      chatId: this.chatId
+    });
     this.provider = buildRuntimeSandboxAdapter(this.providerName, this.sandboxId, opts);
   }
 
@@ -94,15 +126,14 @@ export class SandboxClient {
    * 历史资源 stop/delete 必须走 resource service，避免误创建已失效资源。
    */
   async ensureAvailable() {
-    // 先写 running 记录是有意设计：运行态入口需要先占位并暴露资源归属，
-    // 后续 provider ready 检查失败时会由调用方返回错误，后台兜底检查/cron 再修正不可用实例。
-    const instance = await upsertRunningSandboxInstance({
+    const sourceGuard = this.opts.sourceGuard ?? assertSandboxSourceActive;
+    await sourceGuard({ sourceType: this.sourceType, sourceId: this.sourceId });
+    const instanceParams = {
       provider: this.providerName,
       sandboxId: this.sandboxId,
       sourceType: this.sourceType,
       sourceId: this.sourceId,
       userId: this.userId,
-      chatId: this.chatId,
       storage: this.opts?.vmConfig?.storage,
       ...(this.opts?.resourceLimits && {
         limit: {
@@ -114,15 +145,151 @@ export class SandboxClient {
       metadata: {
         volumeEnabled: !!this.opts?.vmConfig
       }
-    });
-    if (!instance) {
-      await assertSandboxNotArchivedOrBusy({
+    };
+    const touched = await touchRunningSandboxInstance(instanceParams);
+    if (touched) {
+      await ensureConnectedSandboxRunning(this.provider);
+      return;
+    }
+
+    if (this.opts.allowCreate === false) {
+      await assertSandboxRuntimeUsableWithoutRestore({
         provider: this.providerName,
         sandboxId: this.sandboxId
       });
-      throw new SandboxArchiveStateError('archiving');
+      throw new Error('Sandbox runtime instance is not running');
     }
-    await ensureConnectedSandboxRunning(this.provider);
+
+    const runProvisioning = async (assertLeaseValid: () => void, allowRecordCreate: boolean) => {
+      await sourceGuard({ sourceType: this.sourceType, sourceId: this.sourceId });
+      assertLeaseValid();
+      let current = await findSandboxInstanceBySource({
+        sourceType: this.sourceType,
+        sourceId: this.sourceId,
+        userId: this.userId
+      });
+      let createdHere = false;
+      if (!current) {
+        if (!allowRecordCreate) {
+          throw new Error('Sandbox record disappeared before lifecycle operation was claimed');
+        }
+        const created = await createSandboxProvisioningInstance(instanceParams);
+        current = created.instance;
+        createdHere = created.created;
+      }
+      if (!current) throw new Error('Sandbox provisioning record was not created');
+      if (current.provider !== this.providerName) {
+        throw new Error(`Sandbox belongs to provider ${current.provider}`);
+      }
+      if (current.status === SandboxInstanceStatusEnum.running) {
+        await touchRunningSandboxInstance(instanceParams);
+        await ensureConnectedSandboxRunning(this.provider);
+        return;
+      }
+
+      let claimed: SandboxResourceDoc | null = null;
+      if (current.status === SandboxInstanceStatusEnum.stopped) {
+        claimed = await claimSandboxOperation({
+          resource: current,
+          status: SandboxInstanceStatusEnum.provisioning,
+          type: SandboxOperationTypeEnum.provision
+        });
+      } else if (current.status === SandboxInstanceStatusEnum.provisioning) {
+        const operation = current.metadata?.operation;
+        const stale =
+          operation?.heartbeatAt &&
+          operation.heartbeatAt.getTime() < Date.now() - SANDBOX_PROVISIONING_STALE_MS;
+        if (!createdHere && !stale) {
+          throw new SandboxLifecycleStateError(current.status);
+        }
+        claimed = createdHere
+          ? current
+          : await claimSandboxOperation({
+              resource: current,
+              status: SandboxInstanceStatusEnum.provisioning,
+              type: SandboxOperationTypeEnum.provision,
+              previousStatus: operation?.previousStatus
+            });
+      } else {
+        throw new SandboxLifecycleStateError(current.status);
+      }
+      if (!claimed?.metadata?.operation?.id) {
+        throw new Error('Sandbox provisioning operation was not claimed');
+      }
+
+      const operationId = claimed.metadata.operation.id;
+      let phase = claimed.metadata.operation.phase;
+      try {
+        await sourceGuard({ sourceType: this.sourceType, sourceId: this.sourceId });
+        if (phase === 'claimed') {
+          assertLeaseValid();
+          await ensureConnectedSandboxRunning(this.provider);
+          assertLeaseValid();
+          const ensured = await advanceSandboxOperation({
+            resource: claimed,
+            operationId,
+            status: SandboxInstanceStatusEnum.provisioning,
+            phase: 'providerEnsured'
+          });
+          if (!ensured) {
+            throw new Error('Sandbox provisioning lost ownership after provider ensure');
+          }
+          phase = 'providerEnsured';
+        }
+        if (phase !== 'providerEnsured') {
+          throw new Error(`Unsupported sandbox provisioning phase: ${phase}`);
+        }
+        const completed = await completeSandboxOperation({
+          resource: claimed,
+          operationId,
+          fromStatus: SandboxInstanceStatusEnum.provisioning,
+          status: SandboxInstanceStatusEnum.running,
+          touchActive: true
+        });
+        if (!completed) throw new Error('Sandbox provisioning lost ownership before commit');
+      } catch (error) {
+        await markSandboxOperationFailed({
+          resource: claimed,
+          operationId,
+          status: SandboxInstanceStatusEnum.provisioning,
+          error: getErrText(error)
+        }).catch(() => undefined);
+        throw error;
+      }
+    };
+
+    const existing = await findSandboxInstanceBySource({
+      sourceType: this.sourceType,
+      sourceId: this.sourceId,
+      userId: this.userId
+    });
+    if (existing) {
+      await withSandboxLifecycleLease({
+        sandboxId: this.sandboxId,
+        label: `provision-existing-sandbox:${this.sandboxId}`,
+        fn: ({ assertValid }) => runProvisioning(assertValid, false)
+      });
+      return;
+    }
+
+    await withSandboxSourceMutationLease({
+      sourceType: this.sourceType,
+      sourceId: this.sourceId,
+      label: `provision-new-sandbox:${this.sandboxId}`,
+      fn: async (sourceLease) => {
+        await sourceGuard({ sourceType: this.sourceType, sourceId: this.sourceId });
+        sourceLease.assertValid();
+        await withSandboxLifecycleLease({
+          sandboxId: this.sandboxId,
+          label: `provision-new-sandbox-lifecycle:${this.sandboxId}`,
+          fn: ({ assertValid }) =>
+            runProvisioning(() => {
+              sourceLease.assertValid();
+              assertValid();
+            }, true)
+        });
+      }
+    });
   }
 
   getSandboxId() {
@@ -136,6 +303,15 @@ export class SandboxClient {
       userId: this.userId,
       chatId: this.chatId
     };
+  }
+
+  getRuntimePaths() {
+    return this.runtimePaths;
+  }
+
+  /** 将调用方文件路径解析到当前会话目录，绝对路径仅允许落在 workspace 内。 */
+  resolveRuntimePath(path?: string, options: { allowAbsolutePath?: boolean } = {}) {
+    return resolveSandboxRuntimePath(path, this.runtimePaths, options);
   }
 
   /**
@@ -155,8 +331,15 @@ export class SandboxClient {
       };
     }
 
+    const runtimeCommand =
+      this.sourceType === ChatSourceTypeEnum.app
+        ? `mkdir -p ${shellQuote(this.runtimePaths.sessionWorkDirectory)} && cd ${shellQuote(
+            this.runtimePaths.sessionWorkDirectory
+          )} && ${command}`
+        : command;
+
     return await this.provider
-      .execute(command, {
+      .execute(runtimeCommand, {
         timeoutMs: timeout ? timeout * 1000 : undefined
       })
       .catch((err: unknown) => {
@@ -172,16 +355,11 @@ export class SandboxClient {
   /**
    * 删除当前运行态 client 对应的资源记录和远端资源。
    */
-  async delete({ keepArchive = false }: { keepArchive?: boolean } = {}) {
-    await deleteSandboxResource(
-      {
-        provider: this.providerName,
-        sandboxId: this.sandboxId
-      },
-      {
-        keepArchive
-      }
-    );
+  async delete() {
+    await deleteSandboxResource({
+      provider: this.providerName,
+      sandboxId: this.sandboxId
+    });
   }
 
   /**
@@ -243,44 +421,64 @@ export const getSandboxClient = async (
   props: SandboxClientQuery,
   opts: Omit<SandboxClientOptions, 'vmConfig'> = {}
 ) => {
-  const sandboxClientProps = resolveSandboxClientProps(props);
-  const { sandboxId, userId, chatId } = sandboxClientProps;
-  const providerName = opts.providerName ?? getConfiguredSandboxProvider();
-  let vmConfig: VolumeManagerResult | undefined;
+  try {
+    const sandboxClientProps = resolveSandboxClientProps(props);
+    const { sandboxId, userId } = sandboxClientProps;
+    const providerName = opts.providerName ?? getConfiguredSandboxProvider();
+    const sourceGuard = opts.sourceGuard ?? assertSandboxSourceActive;
+    let vmConfig: VolumeManagerResult | undefined;
 
-  if (opts.restoreArchived === false) {
-    await assertSandboxNotArchivedOrBusy({
-      provider: providerName,
-      sandboxId
-    });
-  } else {
-    vmConfig = providerName === 'opensandbox' ? await getSessionVolumeConfig(sandboxId) : undefined;
-    await restoreArchivedSandboxBeforeUse({
-      provider: providerName,
-      sandboxId,
+    await sourceGuard({
       sourceType: sandboxClientProps.sourceType,
-      sourceId: sandboxClientProps.sourceId,
-      userId,
-      chatId,
-      resourceLimit: opts.resourceLimits
-        ? {
-            cpuCount: opts.resourceLimits.cpuCount,
-            memoryMiB: opts.resourceLimits.memoryMiB,
-            diskGiB: opts.resourceLimits.diskGiB
-          }
-        : undefined,
-      vmConfig: vmConfig ?? null,
-      storage: vmConfig?.storage,
-      createConfig: opts.createConfig,
-      failedArchivePolicy: opts.failedArchivePolicy ?? 'throw'
+      sourceId: sandboxClientProps.sourceId
     });
+
+    if (opts.restoreArchived === false) {
+      await assertSandboxRuntimeUsableWithoutRestore({
+        provider: providerName,
+        sandboxId
+      });
+    } else {
+      await migrateSandboxProviderBeforeUse({
+        provider: providerName,
+        sandboxId,
+        sourceType: sandboxClientProps.sourceType,
+        sourceId: sandboxClientProps.sourceId,
+        userId
+      });
+      vmConfig =
+        providerName === 'opensandbox' ? await getSessionVolumeConfig(sandboxId) : undefined;
+      await restoreArchivedSandboxBeforeUse({
+        provider: providerName,
+        sandboxId,
+        sourceType: sandboxClientProps.sourceType,
+        sourceId: sandboxClientProps.sourceId,
+        userId,
+        resourceLimit: opts.resourceLimits
+          ? {
+              cpuCount: opts.resourceLimits.cpuCount,
+              memoryMiB: opts.resourceLimits.memoryMiB,
+              diskGiB: opts.resourceLimits.diskGiB
+            }
+          : undefined,
+        vmConfig: vmConfig ?? null,
+        storage: vmConfig?.storage,
+        createConfig: opts.createConfig
+      });
+    }
+    vmConfig ??=
+      providerName === 'opensandbox' ? await getSessionVolumeConfig(sandboxId) : undefined;
+    const sandbox = new SandboxClient(sandboxClientProps, {
+      ...opts,
+      providerName,
+      vmConfig,
+      sourceGuard,
+      allowCreate: opts.allowCreate ?? opts.restoreArchived !== false
+    });
+    await sandbox.ensureAvailable();
+    return sandbox;
+  } catch (error) {
+    if (isRedisLeaseError(error)) throw createAgentSandboxInitializingError();
+    throw error;
   }
-  vmConfig ??= providerName === 'opensandbox' ? await getSessionVolumeConfig(sandboxId) : undefined;
-  const sandbox = new SandboxClient(sandboxClientProps, {
-    ...opts,
-    providerName,
-    vmConfig
-  });
-  await sandbox.ensureAvailable();
-  return sandbox;
 };

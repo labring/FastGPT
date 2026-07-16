@@ -131,6 +131,21 @@ describe('OpenSandboxAdapter', () => {
       expect(adapter.status.state).toBe('UnExist');
     });
 
+    it('should treat a raced not-found kill as an idempotent delete', async () => {
+      const adapter = makeAdapter();
+      const killSandbox = vi.fn(async () => {
+        throw { code: 404, message: 'sandbox not found' };
+      });
+      const close = vi.fn(async () => undefined);
+      vi.spyOn(SandboxManager, 'create').mockReturnValue({
+        killSandbox,
+        close
+      } as unknown as SandboxManager);
+
+      await expect(adapter.delete('missing-instance')).resolves.toBeUndefined();
+      expect(adapter.status.state).toBe('UnExist');
+    });
+
     it('should delete an unbound sandbox by looking up the connection session id', async () => {
       const adapter = makeAdapter({ sessionId: 'session-1' });
       const listSandboxInfos = vi.fn(async () => ({

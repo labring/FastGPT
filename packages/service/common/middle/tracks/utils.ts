@@ -253,5 +253,38 @@ export const pushTrack = {
       event: TrackEnum.sandboxArchive,
       data
     });
+  },
+  userSandboxMigration: (
+    data: {
+      runId: string;
+      dryRun: boolean;
+    } & (
+      | { phase: 'started' }
+      | {
+          phase: 'failure';
+          sandboxId: string;
+          step:
+            | 'prepare_app_target'
+            | 'migrate_skill'
+            | 'migrate_app'
+            | 'delete_sandbox'
+            | 'delete_volume'
+            | 'delete_archive'
+            | 'delete_legacy_record'
+            | 'stop_failed_legacy';
+          error: string;
+        }
+      | {
+          phase: 'completed';
+          successCount: number;
+          failureCount: number;
+          durationMs: number;
+        }
+    )
+  ) => {
+    return createTrack({
+      event: TrackEnum.userSandboxMigration,
+      data
+    });
   }
 };

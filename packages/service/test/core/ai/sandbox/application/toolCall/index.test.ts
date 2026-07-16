@@ -56,6 +56,14 @@ const createSandboxInstance = () =>
   ({
     ensureAvailable: vi.fn(async () => undefined),
     exec: vi.fn(async () => ({ stdout: 'out', stderr: '', exitCode: 0 })),
+    getRuntimePaths: vi.fn(() => ({
+      workspaceRoot: '/workspace',
+      runtimeSkillsRoot: '/workspace/projects',
+      sessionWorkDirectory: '/workspace/sessions/chat'
+    })),
+    resolveRuntimePath: vi.fn((path: string) =>
+      path.startsWith('/') ? path : `/workspace/sessions/chat/${path}`
+    ),
     provider: {
       readFiles: vi.fn(async () => [{ content: 'a\nb\nc' }]),
       deleteFiles: vi.fn(async () => [])

@@ -184,8 +184,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         workflowStreamResponse,
         sourceType: runningAppInfo.sourceType,
         sourceId: runningAppInfo.sourceId,
-        userId: uid,
-        chatId
+        userId: uid
       });
     }
 

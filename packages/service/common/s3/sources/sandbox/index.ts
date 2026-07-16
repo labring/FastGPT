@@ -49,6 +49,20 @@ export class S3SandboxSource extends S3PrivateBucket {
       key: getWorkspaceArchiveKey(params.sandboxId)
     });
   }
+
+  /** 同步删除 Workspace 归档，返回前保证对象已经不存在。 */
+  async deleteWorkspaceArchiveNow(params: { sandboxId: string }) {
+    const key = getWorkspaceArchiveKey(params.sandboxId);
+    await this.removeObject(key);
+    if (await this.isObjectExists(key)) {
+      throw new Error(`Failed to delete sandbox archive: ${params.sandboxId}`);
+    }
+  }
+
+  /** 检查指定 Sandbox 的 Workspace 归档是否存在。 */
+  isWorkspaceArchiveExists(params: { sandboxId: string }) {
+    return this.isObjectExists(getWorkspaceArchiveKey(params.sandboxId));
+  }
 }
 
 export function getS3SandboxSource() {
