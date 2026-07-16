@@ -9,7 +9,7 @@ import type { NodeHttpRequest } from '../../types/http';
  */
 export const getLocale = (req: NodeHttpRequest): localeType => {
   const locale = Cookie.parse(req.headers.cookie ?? '').NEXT_LOCALE;
-  console.log(locale, 232323);
+
   if (locale && LocaleList.includes(locale as localeType)) {
     return locale as localeType;
   }
