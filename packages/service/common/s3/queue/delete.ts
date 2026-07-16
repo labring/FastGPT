@@ -2,6 +2,7 @@ import { getQueue, getWorker, QueueNames } from '../../bullmq';
 import { getLogger, LogCategories } from '../../logger';
 import path from 'path';
 import { batchRun } from '@fastgpt/global/common/system/utils';
+import { deleteS3DownloadAliasByObjects } from '../accessLink';
 
 const logger = getLogger(LogCategories.INFRA.S3);
 
@@ -63,6 +64,17 @@ export const executeS3DeleteJob = async ({ prefix, bucketName, key, keys }: S3MQ
       | { keys?: string[] }
       | undefined;
     assertNoFailedKeys(result?.keys, 'keys');
+
+    deleteS3DownloadAliasByObjects({
+      bucketName,
+      objectKeys: keys
+    }).catch((error) => {
+      logger.warn('S3 download alias cleanup failed after delete job', {
+        bucketName,
+        count: keys?.length,
+        error
+      });
+    });
 
     await batchRun(keys, async (key) => {
       if (key.includes('-parsed/')) return;

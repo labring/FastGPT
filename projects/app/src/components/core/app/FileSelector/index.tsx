@@ -29,7 +29,11 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import MyAvatar from '@fastgpt/web/components/common/Avatar';
 import z from 'zod';
-import { getPresignedChatFileGetUrl, getUploadChatFilePresignedUrl } from '@/web/common/file/api';
+import {
+  getPresignedChatFileGetUrl,
+  getUploadChatFilePresignedUrl,
+  getUploadDraftChatFilePresignedUrl
+} from '@/web/common/file/api';
 import { useContextSelector } from 'use-context-selector';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
@@ -188,6 +192,7 @@ const FileSelector = ({
   const chatTarget = useChatApiTarget(sourceTarget);
   const chatId = useContextSelector(WorkflowRuntimeContext, (v) => v.chatId);
   const outLinkAuthData = useContextSelector(WorkflowRuntimeContext, (v) => v.outLinkAuthData);
+  const fileUploadMode = useContextSelector(WorkflowRuntimeContext, (v) => v.fileUploadMode);
   const chatAuthTarget = useMemo(
     () => getChatAuthTargetInput({ ...chatTarget, outLinkAuthData }),
     [chatTarget, outLinkAuthData]
@@ -380,12 +385,20 @@ const FileSelector = ({
 
           try {
             // Get Upload Post Presigned URL
-            const { url, key, headers, previewUrl } = await getUploadChatFilePresignedUrl({
+            const uploadParams = {
               filename: file.rawFile.name,
+              contentType: file.rawFile.type || undefined,
+              size: file.rawFile.size,
               ...chatAuthTarget,
-              chatId,
-              fileSelectConfig
-            });
+              chatId
+            };
+            const { url, key, headers, previewUrl } =
+              fileUploadMode === 'draft'
+                ? await getUploadDraftChatFilePresignedUrl({
+                    ...uploadParams,
+                    fileSelectConfig
+                  })
+                : await getUploadChatFilePresignedUrl(uploadParams);
 
             await putFileToS3({
               url,
@@ -426,7 +439,16 @@ const FileSelector = ({
         })
       );
     },
-    [handleChangeFiles, setFileUploadingCount, chatAuthTarget, chatId, fileSelectConfig, t, maxSize]
+    [
+      handleChangeFiles,
+      setFileUploadingCount,
+      chatAuthTarget,
+      chatId,
+      fileSelectConfig,
+      fileUploadMode,
+      t,
+      maxSize
+    ]
   );
 
   // Selector props

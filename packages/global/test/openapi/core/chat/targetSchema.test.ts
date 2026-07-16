@@ -18,7 +18,11 @@ import { ResumeStreamParamsSchema } from '../../../../openapi/core/ai/api';
 import { ChatSourceTypeEnum } from '../../../../core/chat/constants';
 import { StopV2ChatSchema } from '../../../../openapi/core/chat/controler/api';
 import { InitOutLinkChatQuerySchema } from '../../../../openapi/core/chat/outLink/api';
-import { PresignChatFileGetUrlSchema } from '../../../../openapi/core/chat/file/api';
+import {
+  PresignChatFileGetUrlSchema,
+  PresignChatFilePostUrlSchema,
+  PresignDraftChatFilePostUrlSchema
+} from '../../../../openapi/core/chat/file/api';
 import { SandboxCheckExistBodySchema } from '../../../../openapi/core/ai/sandbox/api';
 import { CreateQuestionGuideV2BodySchema } from '../../../../openapi/core/ai/agent/api';
 import { ExportCollectionBodySchema } from '../../../../openapi/core/dataset/collection/api';
@@ -257,6 +261,61 @@ describe('openapi/core/chat target schema', () => {
       },
       chatId: 'chat-1'
     });
+  });
+
+  it('strips client file policy from runtime uploads and keeps it for internal drafts', () => {
+    const runtimeUpload = PresignChatFilePostUrlSchema.parse({
+      appId,
+      chatId: 'chat-1',
+      filename: 'tool.exe',
+      fileSelectConfig: {
+        canSelectCustomFileExtension: true,
+        customFileExtensionList: ['.exe']
+      }
+    });
+
+    expect(runtimeUpload).toMatchObject({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
+      chatId: 'chat-1',
+      filename: 'tool.exe'
+    });
+    expect('fileSelectConfig' in runtimeUpload).toBe(false);
+
+    const draftUpload = PresignDraftChatFilePostUrlSchema.parse({
+      appId,
+      chatId: 'chat-1',
+      filename: 'tool.exe',
+      fileSelectConfig: {
+        canSelectCustomFileExtension: true,
+        customFileExtensionList: ['.exe']
+      }
+    });
+
+    expect(draftUpload).toMatchObject({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: appId,
+      fileSelectConfig: {
+        canSelectCustomFileExtension: true,
+        customFileExtensionList: ['.exe']
+      }
+    });
+  });
+
+  it('rejects external-link-only targets from draft uploads', () => {
+    expect(() =>
+      PresignDraftChatFilePostUrlSchema.parse({
+        chatId: 'chat-1',
+        filename: 'notes.txt',
+        fileSelectConfig: {
+          canSelectFile: true
+        },
+        outLinkAuthData: {
+          shareId,
+          outLinkUid
+        }
+      })
+    ).toThrow();
   });
 
   it('parses outLink init query string auth data for GET requests', () => {

@@ -59,7 +59,7 @@ import { classifyEdgesByDFS, findSCCs, isNodeInCycle, getEdgeType } from '../uti
 import { observeWorkflowRun, observeWorkflowStep } from '../metrics';
 import { withActiveSpan } from '../../../common/tracing';
 import { delAgentRuntimeStopSign, shouldWorkflowStop } from './workflowStatus';
-import { runWithContext } from '../utils/context';
+import { buildQueryUrlFileMap, buildQueryUrlTypeMap, runWithContext } from '../utils/context';
 import { createClientAbortTracker } from './utils/clientAbort';
 import type { IncomingMessage } from 'node:http';
 import type { WorkflowNodeResponseWriter } from '../../chat/nodeResponseStorage';
@@ -205,6 +205,10 @@ export async function dispatchWorkFlow({
   const clientAbortTracker =
     apiVersion === 'v1' ? createClientAbortTracker({ req: data.req, res }) : undefined;
 
+  // 私有文件已恢复为无后缀短链；进入节点调度前保留类型和原始文件名等媒体元数据。
+  const queryUrlTypeMap = buildQueryUrlTypeMap(query);
+  const queryUrlFileMap = buildQueryUrlFileMap(query);
+
   const variableState = await WorkflowVariableState.create({
     timezone,
     runningAppInfo,
@@ -256,7 +260,8 @@ export async function dispatchWorkFlow({
   return new Promise((resolve, reject) => {
     runWithContext(
       {
-        queryUrlTypeMap: {},
+        queryUrlTypeMap,
+        queryUrlFileMap,
         mcpClientMemory: {}
       },
       (ctx) => {

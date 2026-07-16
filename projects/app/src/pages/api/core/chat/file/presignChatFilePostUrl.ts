@@ -1,23 +1,34 @@
 import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import type { CreatePostPresignedUrlResponseType } from '@fastgpt/global/common/file/s3/type';
-import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
-import { getAllowedExtensionsFromFileSelectConfig } from '@fastgpt/service/common/s3/utils/uploadConstraints';
 import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
-import { authFrequencyLimit } from '@fastgpt/service/common/system/frequencyLimit/utils';
-import { addSeconds } from 'date-fns';
 import { PresignChatFilePostUrlSchema } from '@fastgpt/global/openapi/core/chat/file/api';
-import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
-import { S3ErrEnum } from '@fastgpt/global/common/error/code/s3';
-import { serviceEnv } from '@fastgpt/service/env';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { getAppLatestVersion } from '@fastgpt/service/core/app/version/controller';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { chatAgentHelperFileSelectConfig } from '@fastgpt/global/core/ai/auxiliaryGeneration/chatAgentHelper';
+import { createAuthorizedChatFileUploadUrl } from '@/service/core/chat/file/upload';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { homeChatFileSelectConfig } from '@fastgpt/global/core/chat/setting/constants';
+import { MongoChatSetting } from '@fastgpt/service/core/chat/setting/schema';
 
 async function handler(req: ApiRequestProps): Promise<CreatePostPresignedUrlResponseType> {
-  const { filename, sourceType, sourceId, chatId, fileSelectConfig, outLinkAuthData } =
-    parseApiInput({
-      req,
-      bodySchema: PresignChatFilePostUrlSchema
-    }).body;
+  const {
+    filename,
+    contentType,
+    declaredExtension,
+    declaredFilename,
+    size,
+    sourceType,
+    sourceId,
+    chatId,
+    outLinkAuthData
+  } = parseApiInput({
+    req,
+    bodySchema: PresignChatFilePostUrlSchema
+  }).body;
 
   const authRes = await authChatTargetCrud({
     req,
@@ -28,29 +39,48 @@ async function handler(req: ApiRequestProps): Promise<CreatePostPresignedUrlResp
     chatId,
     outLinkAuthData
   });
-  const resolvedSourceId = authRes.sourceId;
 
-  const planStatus = await getTeamPlanStatus({ teamId: authRes.teamId });
-  const allowedExtensions = getAllowedExtensionsFromFileSelectConfig(fileSelectConfig);
+  const fileSelectConfig = await (async () => {
+    if (authRes.sourceType === ChatSourceTypeEnum.app) {
+      const app = await MongoApp.findById(authRes.sourceId).lean();
+      if (!app) return Promise.reject(AppErrEnum.unExist);
 
-  if (!serviceEnv.SKIP_FILE_TYPE_CHECK && allowedExtensions.length === 0) {
-    return Promise.reject(S3ErrEnum.fileUploadDisabled);
-  }
+      if (app.type === AppTypeEnum.hidden) {
+        const isHomeApp = await MongoChatSetting.exists({
+          teamId: authRes.teamId,
+          appId: authRes.sourceId
+        });
+        if (isHomeApp) return homeChatFileSelectConfig;
+      }
 
-  await authFrequencyLimit({
-    eventId: `${authRes.uid}-uploadfile`,
-    maxAmount: planStatus.standard?.maxUploadFileCount || global.feConfigs.uploadFileMaxAmount,
-    expiredTime: addSeconds(new Date(), 30) // 30s
-  });
+      const { chatConfig } = await getAppLatestVersion(authRes.sourceId, app);
+      return chatConfig.fileSelectConfig;
+    }
 
-  return await getS3ChatSource().createUploadChatFileURL({
-    sourceType,
-    sourceId: resolvedSourceId,
+    if (authRes.sourceType === ChatSourceTypeEnum.chatAgentHelper) {
+      return chatAgentHelperFileSelectConfig;
+    }
+
+    if (authRes.sourceType === ChatSourceTypeEnum.skillEdit) {
+      return undefined;
+    }
+
+    const exhaustiveCheck: never = authRes.sourceType;
+    throw new Error(`Unsupported chat source type: ${exhaustiveCheck}`);
+  })();
+
+  return createAuthorizedChatFileUploadUrl({
+    sourceType: authRes.sourceType,
+    sourceId: authRes.sourceId,
     chatId,
+    teamId: authRes.teamId,
+    uid: authRes.uid,
+    fileSelectConfig,
     filename,
-    uId: authRes.uid,
-    allowedExtensions,
-    maxFileSize: planStatus.standard?.maxUploadFileSize ?? global.feConfigs.uploadFileMaxSize
+    contentType,
+    declaredExtension,
+    declaredFilename,
+    size
   });
 }
 

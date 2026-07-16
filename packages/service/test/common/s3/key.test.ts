@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   isAuthorizedChatFileS3Key,
+  isChatFileS3KeyForChat,
   parseChatFileS3Key
 } from '@fastgpt/service/common/s3/sources/chat/key';
 import {
@@ -104,6 +105,22 @@ describe('authorized S3 object key helpers', () => {
         sourceType: 'skillEdit',
         sourceId: 'skill-1',
         uid: 'user-1',
+        chatId: 'chat-2'
+      })
+    ).toBe(false);
+    expect(
+      isChatFileS3KeyForChat({
+        key: skillKey,
+        sourceType: 'skillEdit',
+        sourceId: 'skill-1',
+        chatId: 'chat-1'
+      })
+    ).toBe(true);
+    expect(
+      isChatFileS3KeyForChat({
+        key: skillKey,
+        sourceType: 'skillEdit',
+        sourceId: 'skill-1',
         chatId: 'chat-2'
       })
     ).toBe(false);

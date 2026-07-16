@@ -120,11 +120,23 @@ export function createVitestStorageMock(params: CreateVitestStorageMockParams): 
   });
 
   const downloadObject = vi.fn(async (p: DownloadObjectParams): Promise<DownloadObjectResult> => {
+    p.abortSignal?.throwIfAborted();
+
     const obj = objects.get(p.key);
     if (!obj) {
       throw new Error(`Object not found: ${p.key}`);
     }
-    return { bucket: bucketName, key: p.key, body: bufferToReadable(obj.body) };
+    const body = bufferToReadable(obj.body);
+    const abortDownload = () => {
+      body.destroy();
+    };
+
+    p.abortSignal?.addEventListener('abort', abortDownload, { once: true });
+    body.once('close', () => {
+      p.abortSignal?.removeEventListener('abort', abortDownload);
+    });
+
+    return { bucket: bucketName, key: p.key, body };
   });
 
   const deleteObject = vi.fn(async (p: DeleteObjectParams): Promise<DeleteObjectResult> => {

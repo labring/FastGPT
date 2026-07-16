@@ -848,4 +848,58 @@ describe('runToolCall compression node responses', () => {
       })
     ]);
   });
+
+  it('attaches internal Sandbox file refs to the persisted tool response', async () => {
+    const call = {
+      id: 'call_file',
+      type: 'function',
+      function: {
+        name: 'sandbox_get_file_url',
+        arguments: '{"paths":["report.csv"]}'
+      }
+    };
+    const fileRefs = [
+      {
+        key: 'chat/app/app_1/user_1/chat_1/report.csv',
+        filename: 'report.csv',
+        url: 'https://files/report'
+      }
+    ];
+    runAgentLoopMock.mockImplementation(async (options) => {
+      options.runtime.emitEvent({
+        type: 'tool_run_end',
+        call,
+        rawResponse: '[{"fileUrl":"https://files/report","filename":"report.csv"}]',
+        response: '[{"fileUrl":"https://files/report","filename":"report.csv"}]',
+        seconds: 0.1,
+        fileRefs
+      });
+
+      return {
+        ...createLoopResult(),
+        assistantMessages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.Assistant,
+            content: null,
+            tool_calls: [call]
+          },
+          {
+            role: ChatCompletionRequestMessageRoleEnum.Tool,
+            tool_call_id: call.id,
+            content: '[{"fileUrl":"https://files/report","filename":"report.csv"}]'
+          }
+        ]
+      };
+    });
+
+    const result = await runToolCall(createProps());
+
+    expect(result.assistantResponses[0].tools?.[0]).toEqual(
+      expect.objectContaining({
+        id: call.id,
+        functionName: call.function.name,
+        fileRefs
+      })
+    );
+  });
 });

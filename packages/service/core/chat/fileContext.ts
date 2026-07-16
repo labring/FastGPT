@@ -23,6 +23,18 @@ import { replaceS3KeyToPreviewUrl } from '../dataset/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { getUserFilesPrompt, injectUserQueryPrompt } from '../ai/llm/prompt';
 import { getAxiosHeaderValue } from '@fastgpt/global/common/axios/utils';
+import {
+  DEFAULT_CONTENT_TYPE,
+  normalizeMimeType,
+  resolveMimeExtension
+} from '../../common/s3/utils/mime';
+import { isLikelyTextBuffer } from '../../common/file/read/text';
+import {
+  S3_ACCESS_LINK_ROUTES,
+  S3SignedDownloadAliasValueSchema,
+  verifyS3DownloadAccess,
+  type VerifiedS3DownloadAccess
+} from '../../common/s3/accessLink';
 
 type GetFileProps = {
   requestOrigin?: string;
@@ -31,6 +43,172 @@ type GetFileProps = {
   teamId: string;
   tmbId: string;
   usageId?: string;
+};
+
+const readableFileExtensions = new Set(['txt', 'md', 'html', 'pdf', 'docx', 'pptx', 'csv', 'xlsx']);
+
+const normalizeReadableExtension = (extension?: string) =>
+  extension?.trim().toLowerCase().replace(/^\./, '') || '';
+
+const resolveSupportedReadableExtension = (extension?: string) => {
+  const normalizedExtension = normalizeReadableExtension(extension);
+  const aliasExtension = (() => {
+    if (normalizedExtension === 'markdown') return 'md';
+    if (normalizedExtension === 'htm') return 'html';
+    return normalizedExtension;
+  })();
+
+  return readableFileExtensions.has(aliasExtension) ? aliasExtension : '';
+};
+
+const fileTypeIncludesExtension = (fileTypes: string, extension: string) =>
+  !!extension && fileTypes.split(',').some((item) => item.trim() === extension);
+
+const resolveMediaChatFileTypeFromFilename = (filename?: string) => {
+  const extension = path.extname(filename || '').toLowerCase();
+  if (fileTypeIncludesExtension(imageFileType, extension)) return ChatFileTypeEnum.image;
+  if (fileTypeIncludesExtension(audioFileType, extension)) return ChatFileTypeEnum.audio;
+  if (fileTypeIncludesExtension(videoFileType, extension)) return ChatFileTypeEnum.video;
+};
+
+const resolveMediaChatFileTypeFromContentType = (contentType?: string) => {
+  const normalizedContentType = normalizeMimeType(contentType, '');
+  if (normalizedContentType.startsWith('image/')) return ChatFileTypeEnum.image;
+  if (normalizedContentType.startsWith('audio/')) return ChatFileTypeEnum.audio;
+  if (normalizedContentType.startsWith('video/')) return ChatFileTypeEnum.video;
+};
+
+const resolveMediaChatFileTypeFromDownloadAccess = (access: VerifiedS3DownloadAccess) => {
+  const contentTypeFileType = resolveMediaChatFileTypeFromContentType(access.responseContentType);
+  if (contentTypeFileType) return contentTypeFileType;
+
+  return (
+    resolveMediaChatFileTypeFromFilename(access.filename) ||
+    resolveMediaChatFileTypeFromFilename(access.objectKey)
+  );
+};
+
+const resolveSignedDownloadAliasFromUrl = (url: string) => {
+  try {
+    const parsedUrl = new URL(url, 'http://localhost:3000');
+    const routePrefix = `${S3_ACCESS_LINK_ROUTES.download}/`;
+    const routeIndex = parsedUrl.pathname.indexOf(routePrefix);
+
+    const signedAlias = (() => {
+      if (routeIndex >= 0) {
+        return decodeURIComponent(
+          parsedUrl.pathname.slice(routeIndex + routePrefix.length).split('/')[0] || ''
+        );
+      }
+
+      // 支持 FILE_DOWNLOAD_PUBLIC_URL_PREFIX 暴露的 nginx 短路径:
+      //   /{signedAlias}
+      //   /f/{signedAlias}
+      // 这类 URL 的 path 不是文件名，最后一段只有通过短链格式和 HMAC 校验后才可信。
+      const lastPathSegment = parsedUrl.pathname.split('/').filter(Boolean).at(-1) || '';
+      return decodeURIComponent(lastPathSegment);
+    })();
+
+    return S3SignedDownloadAliasValueSchema.safeParse(signedAlias).success ? signedAlias : '';
+  } catch {
+    return '';
+  }
+};
+
+/**
+ * 短链 path 只携带 alias/expiry/signature，不能当作文件名或后缀。
+ * 文件解析需要先把短链还原成真实对象，再用 alias 记录中的 filename/objectKey 推断类型。
+ */
+const resolveShortDownloadAccessFromUrl = async (
+  url: string
+): Promise<VerifiedS3DownloadAccess | undefined> => {
+  const signedAlias = resolveSignedDownloadAliasFromUrl(url);
+  if (!signedAlias) return;
+
+  return verifyS3DownloadAccess(signedAlias);
+};
+
+const resolveShortLinkMediaFileItem = async (file: UserChatItemFileItemType) => {
+  if (file.type !== ChatFileTypeEnum.file) return file;
+  if (!resolveSignedDownloadAliasFromUrl(file.url)) return file;
+
+  try {
+    const shortDownloadAccess = await resolveShortDownloadAccessFromUrl(file.url);
+    if (!shortDownloadAccess) return file;
+
+    const mediaType = resolveMediaChatFileTypeFromDownloadAccess(shortDownloadAccess);
+    if (!mediaType) return file;
+
+    return {
+      ...file,
+      type: mediaType,
+      name:
+        file.name ||
+        shortDownloadAccess.filename ||
+        path.basename(shortDownloadAccess.objectKey) ||
+        file.url
+    };
+  } catch {
+    return file;
+  }
+};
+
+const resolveShortLinkMediaFilesInUserQuery = async (userQuery: UserChatItemValueItemType[]) => {
+  let changed = false;
+
+  const normalizedUserQuery = await Promise.all(
+    userQuery.map(async (item) => {
+      if (!item.file) return item;
+
+      const file = await resolveShortLinkMediaFileItem(item.file);
+      if (file === item.file) return item;
+
+      changed = true;
+      return {
+        ...item,
+        file
+      };
+    })
+  );
+
+  return changed ? normalizedUserQuery : userQuery;
+};
+
+/**
+ * 解析文件读取 worker 使用的扩展名。外部 URL 可能没有后缀，例如 GitHub raw LICENSE；
+ * 这时允许从响应 Content-Type 或文本内容推断为 txt，但显式存在的不支持后缀仍交给 worker 报错。
+ */
+const resolveReadFileExtension = ({
+  extension,
+  contentType,
+  buffer
+}: {
+  extension: string;
+  contentType?: string;
+  buffer: Buffer;
+}) => {
+  const normalizedExtension = normalizeReadableExtension(extension);
+  const supportedExtension = resolveSupportedReadableExtension(normalizedExtension);
+  if (supportedExtension) return supportedExtension;
+
+  if (normalizedExtension) return normalizedExtension;
+
+  const normalizedContentType = normalizeMimeType(contentType, '');
+  const mimeExtension = resolveSupportedReadableExtension(
+    resolveMimeExtension(normalizedContentType)
+  );
+  if (mimeExtension) return mimeExtension;
+
+  if (normalizedContentType.startsWith('text/')) return 'txt';
+
+  if (
+    (!normalizedContentType || normalizedContentType === DEFAULT_CONTENT_TYPE) &&
+    isLikelyTextBuffer(buffer)
+  ) {
+    return 'txt';
+  }
+
+  return '';
 };
 
 /**
@@ -140,22 +318,30 @@ export const formatUserQueryWithFiles = async ({
     }[]
   >;
 }): Promise<UserChatItemValueItemType[]> => {
-  const urls = userQuery
+  const hasShortLinkFile = userQuery.some(
+    (item) =>
+      item.file?.type === ChatFileTypeEnum.file &&
+      !!resolveSignedDownloadAliasFromUrl(item.file.url)
+  );
+  const normalizedUserQuery = hasShortLinkFile
+    ? await resolveShortLinkMediaFilesInUserQuery(userQuery)
+    : userQuery;
+  const urls = normalizedUserQuery
     .map((item) => (item.file?.type === ChatFileTypeEnum.file ? item.file.url : ''))
     .filter(Boolean);
 
   if (urls.length === 0) {
-    return userQuery;
+    return normalizedUserQuery;
   }
 
   const readFilesResult = await parseFileFn(urls);
 
   if (readFilesResult.length === 0) {
-    return userQuery;
+    return normalizedUserQuery;
   }
 
   // 把 file 和 text 合并成一个 text(实际上应该只会有一个 text+多个 files)
-  const text = userQuery.find((item) => item.text?.content)?.text?.content;
+  const text = normalizedUserQuery.find((item) => item.text?.content)?.text?.content;
   const fileQuery = getUserFilesPrompt(readFilesResult);
 
   const finalQuery = injectUserQueryPrompt({
@@ -258,19 +444,48 @@ export const normalizeReadableFileUrl = ({
 };
 
 export const getFileInfoFromUrl = async ({ teamId, url }: { teamId: string; url: string }) => {
+  const shortDownloadAccess = await resolveShortDownloadAccessFromUrl(url);
   const response = await pickOutboundAxios(url).get(url, {
     responseType: 'arraybuffer'
   });
 
   const urlObj = new URL(url, 'http://localhost:3000');
-  const isChatExternalUrl = !urlObj.pathname.startsWith(`/${S3Buckets.private}/${S3Sources.chat}/`);
+  const isShortChatFile =
+    shortDownloadAccess?.bucketName === S3Buckets.private &&
+    shortDownloadAccess.objectKey.startsWith(`${S3Sources.chat}/`);
+  const isChatExternalUrl =
+    !isShortChatFile && !urlObj.pathname.startsWith(`/${S3Buckets.private}/${S3Sources.chat}/`);
 
   // Get file name
   const { filename, extension, imageParsePrefix } = (() => {
+    if (isShortChatFile && shortDownloadAccess) {
+      const parsedChatUrl = S3ChatSource.parseChatUrl(
+        new URL(
+          `/${shortDownloadAccess.bucketName}/${shortDownloadAccess.objectKey}`,
+          'http://localhost:3000'
+        )
+      );
+      const filename =
+        shortDownloadAccess.filename ||
+        parsedChatUrl.filename ||
+        path.basename(shortDownloadAccess.objectKey);
+
+      return {
+        filename,
+        extension: path.extname(filename).replace('.', '') || parsedChatUrl.extension,
+        imageParsePrefix: parsedChatUrl.imageParsePrefix
+      };
+    }
+
     if (isChatExternalUrl) {
       const contentDisposition = getAxiosHeaderValue(response.headers['content-disposition']) || '';
       const matchFilename = parseContentDispositionFilename(contentDisposition);
-      const filename = matchFilename || urlObj.pathname.split('/').pop() || 'file';
+      const filename =
+        shortDownloadAccess?.filename ||
+        matchFilename ||
+        (shortDownloadAccess?.objectKey ? path.basename(shortDownloadAccess.objectKey) : '') ||
+        urlObj.pathname.split('/').pop() ||
+        'file';
       const extension = path.extname(filename).replace('.', '');
 
       return {
@@ -288,7 +503,9 @@ export const getFileInfoFromUrl = async ({ teamId, url }: { teamId: string; url:
     filename,
     extension,
     imageParsePrefix,
-    contentType: getAxiosHeaderValue(response.headers['content-type']),
+    contentType:
+      shortDownloadAccess?.responseContentType ||
+      getAxiosHeaderValue(response.headers['content-type']),
     stream: response.data
   };
 };
@@ -336,8 +553,14 @@ export const getFileContentByUrl = async ({
     return detectFileEncoding(buffer);
   })();
 
-  const { rawText } = await readFileContentByBuffer({
+  const readExtension = resolveReadFileExtension({
     extension,
+    contentType,
+    buffer
+  });
+
+  const { rawText } = await readFileContentByBuffer({
+    extension: readExtension,
     teamId,
     tmbId,
     buffer,
@@ -354,7 +577,7 @@ export const getFileContentByUrl = async ({
     usageId
   });
 
-  const replacedText = replaceS3KeyToPreviewUrl(rawText, addDays(new Date(), 90));
+  const replacedText = await replaceS3KeyToPreviewUrl(rawText, addDays(new Date(), 90));
 
   // Add to buffer
   getS3RawTextSource().addRawTextBuffer({

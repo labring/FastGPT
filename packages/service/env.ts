@@ -172,6 +172,16 @@ export const serviceEnv = createEnv({
     STORAGE_REGION: z.string().default('us-east-1'),
     STORAGE_EXTERNAL_ENDPOINT: UrlSchema.optional(),
     STORAGE_S3_CDN_ENDPOINT: UrlSchema.optional(),
+    STORAGE_DOWNLOAD_URL_MODE: z
+      .enum(['short-proxy', 'short-redirect', 'presigned'])
+      .default('short-proxy')
+      .meta({
+        description:
+          '下载链接模式：short-proxy 返回 FastGPT 短链并由 app 代理；short-redirect 返回 FastGPT 短链并 302 到短 TTL S3 链接；presigned 直接返回 S3 预签名长链'
+      }),
+    STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS: IntSchema.min(1).default(300).meta({
+      description: 'short-redirect 模式下临时 S3 预签名下载链接 TTL（秒）'
+    }),
     STORAGE_S3_ENDPOINT: UrlSchema.default('http://localhost:9000'),
     STORAGE_PUBLIC_ACCESS_EXTRA_SUB_PATH: z.string().optional(),
     STORAGE_ACCESS_KEY_ID: z.string().default('minioadmin'),
@@ -214,6 +224,10 @@ export const serviceEnv = createEnv({
     FILE_DOMAIN: UrlSchema.optional().meta({
       description:
         '文件域名（也指向 FastGPT 服务）；如需更高安全性可独立分配域名，避免高危文件读取到主域名内容'
+    }),
+    FILE_DOWNLOAD_PUBLIC_URL_PREFIX: UrlSchema.optional().meta({
+      description:
+        '下载短链公开 URL 前缀。配置后下载链接生成为 {prefix}/{signedAlias}，通常由 nginx rewrite 到 FastGPT /api/system/file/d/{signedAlias}；仅影响下载，不影响上传'
     }),
     NEXT_PUBLIC_BASE_URL: z.string().default(''),
 

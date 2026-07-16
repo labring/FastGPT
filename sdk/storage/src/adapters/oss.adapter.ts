@@ -152,14 +152,30 @@ export class OssStorageAdapter implements IStorage {
   }
 
   async downloadObject(params: DownloadObjectParams): Promise<DownloadObjectResult> {
-    const { key } = params;
+    const { key, abortSignal } = params;
+
+    abortSignal?.throwIfAborted();
 
     const result = await this.client.getStream(key);
+    const stream = result.stream as Readable;
+    const abortDownload = () => {
+      stream.destroy();
+    };
+
+    if (abortSignal?.aborted) {
+      abortDownload();
+      abortSignal.throwIfAborted();
+    }
+
+    abortSignal?.addEventListener('abort', abortDownload, { once: true });
+    stream.once('close', () => {
+      abortSignal?.removeEventListener('abort', abortDownload);
+    });
 
     return {
       key,
       bucket: this.options.bucket,
-      body: result.stream as Readable
+      body: stream
     };
   }
 

@@ -5,10 +5,11 @@ import {
   type createPreviewUrlParams,
   CreateGetPresignedUrlParamsSchema,
   CreatePostPresignedUrlOptionsSchema,
+  CreatePostPresignedUrlParamsSchema,
   type CreatePostPresignedUrlResult
 } from '../contracts/type';
 import {
-  storageDownloadMode,
+  storageDownloadUrlMode,
   getSystemMaxFileSize,
   replaceS3UrlWithCdnEndpoint
 } from '../config/constants';
@@ -23,7 +24,11 @@ import { type UploadFileByBufferParams, UploadFileByBodySchema } from '../contra
 import type { createStorage } from '@fastgpt-sdk/storage';
 import { parseFileExtensionFromUrl } from '@fastgpt/global/common/string/tools';
 import { getContentDisposition } from '@fastgpt/global/common/file/tools';
-import { jwtSignS3DownloadToken, jwtSignS3UploadToken } from '../security/token';
+import {
+  createS3DownloadAccessUrl,
+  createS3UploadAccessUrl,
+  deleteS3DownloadAliasByObject
+} from '../accessLink';
 
 const logger = getLogger(LogCategories.INFRA.S3);
 
@@ -143,6 +148,17 @@ export class S3BaseBucket {
       });
       throw err;
     });
+
+    deleteS3DownloadAliasByObject({
+      bucketName: this.bucketName,
+      objectKey
+    }).catch((err) => {
+      logger.warn('S3 download alias cleanup failed after object delete', {
+        key: objectKey,
+        bucketName: this.bucketName,
+        error: err
+      });
+    });
   }
 
   addDeleteJob(params: Omit<Parameters<typeof addS3DelJob>[0], 'bucketName'>) {
@@ -165,45 +181,64 @@ export class S3BaseBucket {
         maxFileSize = getSystemMaxFileSize(),
         uploadConstraints
       } = CreatePostPresignedUrlOptionsSchema.parse(options);
+      const parsedParams = CreatePostPresignedUrlParamsSchema.parse(params);
       const formatMaxFileSize = maxFileSize * 1024 * 1024;
-      const filename = params.filename;
-      const resolvedUploadConstraints = createUploadConstraints({
+      const filename = parsedParams.filename;
+      const resolvedFilename = parsedParams.declaredFilename || filename;
+      const fileHint = {
         filename,
+        ...(parsedParams.contentType ? { contentType: parsedParams.contentType } : {}),
+        ...(parsedParams.declaredExtension
+          ? { declaredExtension: parsedParams.declaredExtension }
+          : {}),
+        ...(parsedParams.declaredFilename
+          ? { declaredFilename: parsedParams.declaredFilename }
+          : {}),
+        ...(parsedParams.source ? { source: parsedParams.source } : {}),
+        ...(parsedParams.size !== undefined ? { size: parsedParams.size } : {})
+      };
+      const resolvedUploadPolicy = createUploadConstraints({
+        ...fileHint,
         uploadConstraints
       });
       const expiredSeconds = differenceInSeconds(addMinutes(new Date(), 10), new Date());
       const metadata = {
-        contentDisposition: getContentDisposition({ filename, type: 'attachment' }),
-        originFilename: encodeURIComponent(filename),
+        contentDisposition: getContentDisposition({
+          filename: resolvedFilename,
+          type: 'attachment'
+        }),
+        originFilename: encodeURIComponent(resolvedFilename),
         uploadTime: new Date().toISOString(),
-        ...params.metadata
+        ...parsedParams.metadata
       };
 
       if (expiredHours) {
         await MongoS3TTL.create({
-          minioKey: params.rawKey,
+          minioKey: parsedParams.rawKey,
           bucketName: this.bucketName,
           expiredTime: addHours(new Date(), expiredHours)
         });
       }
 
       const { url: previewUrl } = await this.createExternalUrl({
-        key: params.rawKey,
+        key: parsedParams.rawKey,
         expiredHours
       });
 
       return {
-        url: jwtSignS3UploadToken({
-          objectKey: params.rawKey,
+        url: await createS3UploadAccessUrl({
+          objectKey: parsedParams.rawKey,
           bucketName: this.bucketName,
           expiredTime: addMinutes(new Date(), Math.ceil(expiredSeconds / 60)),
           maxSize: formatMaxFileSize,
-          uploadConstraints: resolvedUploadConstraints,
+          uploadConstraints: resolvedUploadPolicy,
+          uploadPolicy: resolvedUploadPolicy,
+          fileHint,
           metadata
         }),
-        key: params.rawKey,
+        key: parsedParams.rawKey,
         headers: {
-          'content-type': resolvedUploadConstraints.defaultContentType
+          'content-type': resolvedUploadPolicy.defaultContentType
         },
         previewUrl,
         maxSize: formatMaxFileSize
@@ -246,15 +281,16 @@ export class S3BaseBucket {
     const { key, expiredHours, mode, responseContentType } = parsed;
     const expires = expiredHours ? expiredHours * 60 * 60 : 30 * 60; // expires 的单位是秒 默认 30 分钟
 
-    if ((mode || storageDownloadMode) === 'proxy') {
+    if ((mode ?? storageDownloadUrlMode) !== 'presigned') {
       return {
         bucket: this.bucketName,
         key,
-        url: jwtSignS3DownloadToken({
+        url: await createS3DownloadAccessUrl({
           objectKey: key,
           bucketName: this.bucketName,
           expiredTime: addMinutes(new Date(), Math.ceil(expires / 60)),
-          filename: path.basename(key)
+          filename: path.basename(key),
+          responseContentType
         })
       };
     }
@@ -336,8 +372,11 @@ export class S3BaseBucket {
     };
   }
 
-  async getFileStream(key: string) {
-    const downloadResponse = await this.client.downloadObject({ key });
+  async getFileStream(key: string, options?: { abortSignal?: AbortSignal }) {
+    const downloadResponse = await this.client.downloadObject({
+      key,
+      ...(options?.abortSignal ? { abortSignal: options.abortSignal } : {})
+    });
     if (!downloadResponse) return;
 
     return downloadResponse.body;

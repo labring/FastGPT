@@ -2,6 +2,7 @@ import z from 'zod';
 import { ObjectIdSchema } from '@fastgpt/global/common/type/mongo';
 import { UploadFileByBodySchema } from '../../contracts/type';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { UploadExtensionRuleSchema, UploadFileHintSchema } from '../../uploadPolicy/type';
 
 export const ChatS3SourceTypeSchema = z.enum(ChatSourceTypeEnum);
 export type ChatS3SourceType = z.infer<typeof ChatS3SourceTypeSchema>;
@@ -12,9 +13,14 @@ export const ChatFileUploadSchema = z.object({
   chatId: z.string().nonempty(),
   uId: z.string().nonempty(),
   filename: z.string().nonempty(),
+  contentType: UploadFileHintSchema.shape.contentType,
+  declaredExtension: UploadFileHintSchema.shape.declaredExtension,
+  declaredFilename: UploadFileHintSchema.shape.declaredFilename,
+  size: UploadFileHintSchema.shape.size,
   expiredTime: z.coerce.date().optional(),
   maxFileSize: z.number().positive().optional(),
-  allowedExtensions: z.array(z.string().nonempty()).optional()
+  allowedExtensions: z.array(z.string().nonempty()).optional(),
+  extensionRules: z.array(UploadExtensionRuleSchema).optional()
 });
 export type CheckChatFileKeys = z.input<typeof ChatFileUploadSchema>;
 

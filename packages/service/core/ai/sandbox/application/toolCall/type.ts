@@ -5,6 +5,7 @@
  */
 import type { z } from 'zod';
 import type { SandboxClient } from '../runtime/client';
+import type { SandboxFileRef } from '@fastgpt/global/core/ai/sandbox/type';
 
 type ToolExecuteContext<P> = {
   sandboxInstance: SandboxClient;
@@ -18,7 +19,9 @@ type ToolExecuteContext<P> = {
  */
 export type ToolDefinition<S extends z.ZodTypeAny = z.ZodTypeAny> = {
   zodSchema: S;
-  execute: (ctx: ToolExecuteContext<z.infer<S>>) => Promise<{ response: string }>;
+  execute: (
+    ctx: ToolExecuteContext<z.infer<S>>
+  ) => Promise<{ response: string; fileRefs?: SandboxFileRef[] }>;
 };
 
 /**

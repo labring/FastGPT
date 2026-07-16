@@ -28,8 +28,8 @@ const createMockS3Bucket = (bucketName = 'mock-bucket') => {
     putObject: vi.fn(async (key: string, body: any) => {
       await client.uploadObject({ key, body });
     }),
-    getFileStream: vi.fn(async (key: string) => {
-      const res = await client.downloadObject({ key });
+    getFileStream: vi.fn(async (key: string, options?: { abortSignal?: AbortSignal }) => {
+      const res = await client.downloadObject({ key, abortSignal: options?.abortSignal });
       return res.body;
     }),
     statObject: vi.fn(async (key: string) => {

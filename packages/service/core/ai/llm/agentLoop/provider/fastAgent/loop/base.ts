@@ -23,6 +23,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { batchRun } from '@fastgpt/global/common/system/utils';
 import { normalizeToolResponseContent } from '@fastgpt/global/core/ai/llm/utils';
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
+import type { SandboxFileRef } from '@fastgpt/global/core/ai/sandbox/type';
 
 type RunAgentCallProps<TChildrenResponse = unknown> = {
   maxRunAgentTimes: number;
@@ -87,6 +88,7 @@ type RunAgentCallProps<TChildrenResponse = unknown> = {
     errorMessage?: string;
     seconds: number;
     usages?: AgentLoopUsage[];
+    fileRefs?: SandboxFileRef[];
     metadata?: unknown;
     toolResponseCompress?: {
       response: string;
@@ -290,6 +292,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       interactive,
       stop,
       errorMessage,
+      fileRefs,
       metadata
     } = await (async () => {
       try {
@@ -317,6 +320,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
       errorMessage: interactiveToolErrorMessage || errorMessage,
       seconds: +((Date.now() - toolStartTime) / 1000).toFixed(2),
       usages: toolUsages,
+      fileRefs,
       metadata
     });
 
@@ -526,6 +530,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
           stop: stopLoop,
           skipResponseCompress,
           errorMessage,
+          fileRefs,
           metadata
         } = await (async () => {
           try {
@@ -589,6 +594,7 @@ export const runAgentLoop = async <TChildrenResponse = unknown>({
             : {}),
           seconds: +((Date.now() - toolStartTime) / 1000).toFixed(2),
           usages: [...toolUsages, ...(toolResponseCompress ? [toolResponseCompress.usage] : [])],
+          fileRefs,
           toolResponseCompress,
           metadata
         });

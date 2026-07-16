@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
+  buildQueryUrlFileMap,
+  buildQueryUrlTypeMap,
   parseUrlToFileType,
   runWithContext,
   getWorkflowContext,
@@ -13,6 +15,135 @@ const createWorkflowContext = (queryUrlTypeMap: Record<string, ChatFileTypeEnum>
 });
 
 describe('WorkflowContext', () => {
+  describe('buildQueryUrlTypeMap', () => {
+    it('should preserve media types for opaque first-round file urls', () => {
+      const audioUrl = '/api/system/file/d/audio-token-without-extension';
+      const videoUrl = '/api/system/file/d/video-token-without-extension';
+      const imageUrl = '/api/system/file/d/image-token-without-extension';
+      const fileUrl = '/api/system/file/d/file-token-without-extension';
+
+      const queryUrlTypeMap = buildQueryUrlTypeMap([
+        {
+          file: {
+            type: ChatFileTypeEnum.audio,
+            name: 'sample.mp3',
+            url: audioUrl,
+            key: 'chat/sample.mp3'
+          }
+        },
+        {
+          file: {
+            type: ChatFileTypeEnum.video,
+            name: 'sample.mp4',
+            url: videoUrl,
+            key: 'chat/sample.mp4'
+          }
+        },
+        {
+          file: {
+            type: ChatFileTypeEnum.image,
+            name: 'sample.png',
+            url: imageUrl,
+            key: 'chat/sample.png'
+          }
+        },
+        {
+          file: {
+            type: ChatFileTypeEnum.file,
+            name: 'sample.pdf',
+            url: fileUrl,
+            key: 'chat/sample.pdf'
+          }
+        },
+        {
+          text: {
+            content: 'Describe these files'
+          }
+        }
+      ]);
+
+      expect(queryUrlTypeMap).toEqual({
+        [audioUrl]: ChatFileTypeEnum.audio,
+        [videoUrl]: ChatFileTypeEnum.video,
+        [imageUrl]: ChatFileTypeEnum.image,
+        [fileUrl]: ChatFileTypeEnum.file
+      });
+
+      runWithContext(createWorkflowContext(queryUrlTypeMap), () => {
+        expect(parseUrlToFileType(audioUrl)?.type).toBe(ChatFileTypeEnum.audio);
+        expect(parseUrlToFileType(videoUrl)?.type).toBe(ChatFileTypeEnum.video);
+        expect(parseUrlToFileType(imageUrl)?.type).toBe(ChatFileTypeEnum.image);
+        expect(parseUrlToFileType(fileUrl)?.type).toBe(ChatFileTypeEnum.file);
+      });
+    });
+
+    it('should ignore query items without a file url', () => {
+      expect(
+        buildQueryUrlTypeMap([
+          {
+            file: {
+              type: ChatFileTypeEnum.audio,
+              name: 'sample.mp3',
+              url: '',
+              key: 'chat/sample.mp3'
+            }
+          },
+          {
+            text: {
+              content: 'Describe this file'
+            }
+          }
+        ])
+      ).toEqual({});
+    });
+  });
+
+  describe('buildQueryUrlFileMap', () => {
+    it('should preserve the original filename for an opaque first-round audio url', () => {
+      const url = '/api/system/file/d/audio-token-without-extension';
+      const queryUrlFileMap = buildQueryUrlFileMap([
+        {
+          file: {
+            type: ChatFileTypeEnum.audio,
+            name: 'meeting.mp3',
+            url,
+            key: 'chat/meeting.mp3'
+          }
+        }
+      ]);
+
+      runWithContext(
+        {
+          ...createWorkflowContext({ [url]: ChatFileTypeEnum.audio }),
+          queryUrlFileMap
+        },
+        () => {
+          expect(parseUrlToFileType(url)).toEqual({
+            type: ChatFileTypeEnum.audio,
+            name: 'meeting.mp3',
+            url,
+            key: 'chat/meeting.mp3'
+          });
+        }
+      );
+    });
+
+    it('should ignore query items without a file url', () => {
+      expect(
+        buildQueryUrlFileMap([
+          {
+            file: {
+              type: ChatFileTypeEnum.audio,
+              name: 'meeting.mp3',
+              url: '',
+              key: 'chat/meeting.mp3'
+            }
+          }
+        ])
+      ).toEqual({});
+    });
+  });
+
   describe('runWithContext / getWorkflowContext', () => {
     it('should provide context inside callback', () => {
       const ctx = createWorkflowContext({

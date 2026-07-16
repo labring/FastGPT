@@ -5,6 +5,7 @@ import type {
   IStorageOptions
 } from '@fastgpt-sdk/storage';
 import { serviceEnv } from '../../../env';
+import { StorageDownloadUrlModeSchema } from '../contracts/type';
 
 export const S3Buckets = {
   public: serviceEnv.STORAGE_PUBLIC_BUCKET,
@@ -22,10 +23,19 @@ type BucketStorageOptions = {
 };
 
 const storageRegion = serviceEnv.STORAGE_REGION;
+const storageVendor = serviceEnv.STORAGE_VENDOR;
 const storageExternalEndpoint = serviceEnv.STORAGE_EXTERNAL_ENDPOINT;
 export const storageS3CdnEndpoint = serviceEnv.STORAGE_S3_CDN_ENDPOINT;
 const storageS3Endpoint = serviceEnv.STORAGE_S3_ENDPOINT;
-export const storageDownloadMode = serviceEnv.STORAGE_EXTERNAL_ENDPOINT ? 'presigned' : 'proxy';
+export const storageDownloadUrlMode = StorageDownloadUrlModeSchema.parse(
+  serviceEnv.STORAGE_DOWNLOAD_URL_MODE
+);
+export const storageDownloadRedirectTtlSeconds = serviceEnv.STORAGE_DOWNLOAD_REDIRECT_TTL_SECONDS;
+const needExplicitExternalEndpointForRedirect =
+  storageVendor === 'minio' || storageVendor === 'aws-s3';
+export const canUseStorageDownloadRedirect =
+  !needExplicitExternalEndpointForRedirect ||
+  Boolean(storageExternalEndpoint || storageS3CdnEndpoint);
 const storagePublicAccessExtraSubPath = serviceEnv.STORAGE_PUBLIC_ACCESS_EXTRA_SUB_PATH;
 
 const bucketStorageOptions = {

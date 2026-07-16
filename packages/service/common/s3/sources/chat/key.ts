@@ -65,10 +65,36 @@ export function isAuthorizedChatFileS3Key({
   const parsedKey = parseChatFileS3Key(key);
 
   return (
+    isChatFileS3KeyForChat({ key, sourceType, sourceId, chatId }) &&
+    !!parsedKey &&
+    String(parsedKey.uid) === String(uid)
+  );
+}
+
+/**
+ * 判断聊天文件 key 是否属于指定的 Chat。
+ *
+ * 该校验不限制 uid，供服务端生成文件在 Chat 保存阶段认领临时 TTL；调用方仍需确保
+ * key 来自可信的内部工具元数据。面向用户的文件访问鉴权应继续使用
+ * isAuthorizedChatFileS3Key，同时校验 uid。
+ */
+export function isChatFileS3KeyForChat({
+  key,
+  sourceType,
+  sourceId,
+  chatId
+}: {
+  key: string;
+  sourceType: ChatS3SourceType;
+  sourceId: string;
+  chatId?: string;
+}) {
+  const parsedKey = parseChatFileS3Key(key);
+
+  return (
     !!parsedKey &&
     parsedKey.sourceType === sourceType &&
     String(parsedKey.sourceId) === String(sourceId) &&
-    String(parsedKey.uid) === String(uid) &&
     (chatId === undefined || String(parsedKey.chatId) === String(chatId))
   );
 }

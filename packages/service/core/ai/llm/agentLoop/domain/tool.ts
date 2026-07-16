@@ -6,6 +6,7 @@ import type {
 import type { SandboxClient } from '../../../sandbox/interface/runtime';
 import type { AgentLoopDatasetSearchExecutor } from './systemTool/datasetSearch';
 import type { AgentLoopUsage } from './usage';
+import type { SandboxFileRef } from '@fastgpt/global/core/ai/sandbox/type';
 
 export type AgentLoopToolCatalog = {
   runtimeTools: ChatCompletionTool[];
@@ -30,6 +31,7 @@ export type AgentLoopToolExecutionResult<TChildrenResponse = unknown> = {
   stop?: boolean;
   skipResponseCompress?: boolean;
   errorMessage?: string;
+  fileRefs?: SandboxFileRef[];
   /** 由调用方透传并在 agent-loop 外部解释的工具运行元数据。 */
   metadata?: unknown;
 };

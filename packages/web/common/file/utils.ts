@@ -7,7 +7,7 @@ import { parseS3UploadError } from '@fastgpt/global/common/error/s3';
 export const loadFile2Buffer = ({ file, onError }: { file: File; onError?: (err: any) => void }) =>
   new Promise<ArrayBuffer>((resolve, reject) => {
     try {
-      let reader = new FileReader();
+      const reader = new FileReader();
       reader.readAsArrayBuffer(file);
       reader.onload = async ({ target }) => {
         if (!target?.result) {
@@ -43,7 +43,7 @@ export const readFileRawText = ({
 }) => {
   return new Promise<string>((resolve, reject) => {
     try {
-      let reader = new FileReader();
+      const reader = new FileReader();
       reader.onload = async ({ target }) => {
         if (!target?.result) {
           onError?.('Load file error');
@@ -88,7 +88,7 @@ async function detectFileEncoding(file: File): Promise<string> {
   const buffer = await loadFile2Buffer({ file });
   const encoding = (() => {
     const encodings = ['utf-8', 'iso-8859-1', 'windows-1252'];
-    for (let encoding of encodings) {
+    for (const encoding of encodings) {
       try {
         const decoder = new TextDecoder(encoding, { fatal: true });
         decoder.decode(buffer);
@@ -130,6 +130,7 @@ export const putFileToS3 = async ({
   file,
   onSuccess,
   onUploadProgress,
+  signal,
   maxSize,
   t
 }: {
@@ -138,6 +139,7 @@ export const putFileToS3 = async ({
   file: File;
   onSuccess?: () => void;
   onUploadProgress?: (progressEvent: AxiosProgressEvent) => void;
+  signal?: AbortSignal;
   maxSize?: number;
   t: any;
 }) => {
@@ -147,12 +149,24 @@ export const putFileToS3 = async ({
         ...headers
       },
       onUploadProgress,
+      signal,
       timeout: 5 * 60 * 1000
     });
     if (res.status === 200) {
       onSuccess?.();
     }
   } catch (error) {
+    if (
+      axios.isCancel(error) ||
+      (typeof error === 'object' &&
+        error !== null &&
+        ((error as { name?: string }).name === 'AbortError' ||
+          (error as { name?: string }).name === 'CanceledError' ||
+          (error as { code?: string }).code === 'ERR_CANCELED'))
+    ) {
+      return Promise.reject(error);
+    }
+
     return Promise.reject(parseS3UploadError({ t, error, maxSize }));
   }
 };

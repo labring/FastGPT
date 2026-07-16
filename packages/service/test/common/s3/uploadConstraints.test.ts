@@ -4,6 +4,7 @@ import {
   createUploadConstraints,
   datasetAllowedExtensions,
   getAllowedExtensionsFromFileSelectConfig,
+  getUploadExtensionRulesFromFileSelectConfig,
   normalizeAllowedExtensions,
   parseAllowedExtensions
 } from '@fastgpt/service/common/s3/utils/uploadConstraints';
@@ -22,7 +23,7 @@ describe('parseAllowedExtensions', () => {
 
 describe('createUploadConstraints', () => {
   it('derives the default content type from the filename', () => {
-    expect(createUploadConstraints({ filename: 'demo.pdf' })).toEqual({
+    expect(createUploadConstraints({ filename: 'demo.pdf' })).toMatchObject({
       defaultContentType: 'application/pdf'
     });
   });
@@ -35,9 +36,24 @@ describe('createUploadConstraints', () => {
           allowedExtensions: ['.png', '.jpg']
         }
       })
-    ).toEqual({
+    ).toMatchObject({
       defaultContentType: 'image/png',
       allowedExtensions: ['.png', '.jpg']
+    });
+  });
+
+  it('does not reject missing extension during policy creation', () => {
+    expect(
+      createUploadConstraints({
+        filename: 'avatar',
+        uploadConstraints: {
+          allowedExtensions: ['.png', '.jpg']
+        }
+      })
+    ).toMatchObject({
+      defaultContentType: 'application/octet-stream',
+      allowedExtensions: ['.png', '.jpg'],
+      allowMissingExtension: true
     });
   });
 
@@ -69,6 +85,49 @@ describe('getAllowedExtensionsFromFileSelectConfig', () => {
 
   it('returns empty list when upload is disabled', () => {
     expect(getAllowedExtensionsFromFileSelectConfig()).toEqual([]);
+  });
+});
+
+describe('getUploadExtensionRulesFromFileSelectConfig', () => {
+  it('keeps custom extensions as opaque rules', () => {
+    expect(
+      getUploadExtensionRulesFromFileSelectConfig({
+        canSelectImg: true,
+        canSelectCustomFileExtension: true,
+        customFileExtensionList: ['DAT']
+      })
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          extension: '.png',
+          source: 'builtin',
+          verification: 'content'
+        }),
+        expect.objectContaining({
+          extension: '.dat',
+          source: 'custom',
+          verification: 'opaque'
+        })
+      ])
+    );
+  });
+
+  it('does not let custom duplicate extensions override builtin content rules', () => {
+    expect(
+      getUploadExtensionRulesFromFileSelectConfig({
+        canSelectImg: true,
+        canSelectCustomFileExtension: true,
+        customFileExtensionList: ['PNG']
+      })
+    ).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          extension: '.png',
+          source: 'builtin',
+          verification: 'content'
+        })
+      ])
+    );
   });
 });
 

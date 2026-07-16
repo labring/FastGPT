@@ -176,6 +176,7 @@ export const useChatTest = ({
         <PluginRunBox
           appId={appId}
           chatId={chatId}
+          fileUploadMode="draft"
           onNewChat={restartChat}
           onStartChat={startChat}
         />

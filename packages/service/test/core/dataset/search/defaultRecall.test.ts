@@ -17,6 +17,11 @@ const mockCountPromptTokens = vi.hoisted(() => vi.fn(async (prompt: string) => p
 const mockCountPromptTokensBatch = vi.hoisted(() =>
   vi.fn(async (prompts: string[]) => prompts.map((prompt) => prompt.length))
 );
+const mockCreateS3DownloadAccessUrls = vi.hoisted(() =>
+  vi.fn(async (params: Array<{ objectKey: string }>) =>
+    params.map(({ objectKey }) => `https://files.test/${objectKey}`)
+  )
+);
 
 const originalMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
 
@@ -40,7 +45,12 @@ vi.mock('@fastgpt/service/core/ai/llm/request', () => ({
 }));
 
 vi.mock('@fastgpt/service/common/file/image/utils', () => ({
-  getImageBase64: mockGetImageBase64
+  getImageBase64: mockGetImageBase64,
+  addEndpointToImageUrl: (text: string) => text
+}));
+
+vi.mock('@fastgpt/service/common/s3/accessLink', () => ({
+  createS3DownloadAccessUrls: mockCreateS3DownloadAccessUrls
 }));
 
 // defaultRecall 的结果过滤只关心 token 数的相对大小，测试里用稳定 mock
@@ -367,5 +377,70 @@ describe('default recall dataset search', () => {
     expect(mockGetVectors).not.toHaveBeenCalled();
     expect(mockMongoDatasetDataTextAggregate).not.toHaveBeenCalled();
     expect(result.searchRes).toEqual([]);
+  });
+
+  it('should only batch-sign S3 keys from results that survive score filtering', async () => {
+    mockGetLLMModel.mockReturnValue(undefined);
+    mockIsImageEmbeddingModel.mockReturnValue(false);
+    mockGetVectors.mockResolvedValueOnce({
+      tokens: 5,
+      vectors: [[0.1, 0.2]]
+    });
+    mockRecallFromVectorStore.mockResolvedValueOnce({
+      results: [
+        { id: 'index-keep', collectionId: 'collection-1', score: 0.9 },
+        { id: 'index-filtered', collectionId: 'collection-1', score: 0.1 }
+      ]
+    });
+    mockMongoDatasetCollectionFind.mockImplementation((query: Record<string, any>) => {
+      if (query?.forbid) return [];
+      return {
+        lean: vi.fn().mockResolvedValue([{ _id: 'collection-1', name: 'Source' }])
+      };
+    });
+    mockMongoDatasetDataFind.mockReturnValueOnce({
+      lean: vi.fn().mockResolvedValue([
+        {
+          _id: 'data-keep',
+          datasetId: 'dataset-1',
+          collectionId: 'collection-1',
+          updateTime: new Date('2026-01-01'),
+          q: 'Keep ![image](dataset/team/keep.png)',
+          a: '',
+          chunkIndex: 0,
+          indexes: [{ dataId: 'index-keep' }]
+        },
+        {
+          _id: 'data-filtered',
+          datasetId: 'dataset-1',
+          collectionId: 'collection-1',
+          updateTime: new Date('2026-01-01'),
+          q: 'Filtered ![image](dataset/team/filtered.png)',
+          a: '',
+          chunkIndex: 1,
+          indexes: [{ dataId: 'index-filtered' }]
+        }
+      ])
+    });
+
+    const result = await searchDatasetData({
+      histories: [],
+      teamId: 'team-1',
+      model: 'mock-embedding-model',
+      datasetIds: ['dataset-1'],
+      reRankQuery: 'query',
+      textQueries: ['query'],
+      limit: 5000,
+      similarity: 0.5,
+      searchMode: DatasetSearchModeEnum.embedding,
+      usingReRank: false
+    });
+
+    expect(result.searchRes).toHaveLength(1);
+    expect(result.searchRes[0]?.q).toContain('https://files.test/dataset/team/keep.png');
+    expect(mockCreateS3DownloadAccessUrls).toHaveBeenCalledTimes(1);
+    expect(mockCreateS3DownloadAccessUrls.mock.calls[0][0].map((item) => item.objectKey)).toEqual([
+      'dataset/team/keep.png'
+    ]);
   });
 });

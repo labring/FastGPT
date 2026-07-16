@@ -3,6 +3,7 @@
   "compilerOptions": {
     "paths": {
       "@/*": ["../../../projects/app/src/*"],
+      "@fastgpt-sdk/storage/access-link": ["../../../sdk/storage/src/access-link/index.ts"],
       "@fastgpt-sdk/storage": ["../../../sdk/storage/src/index.ts"],
       "@fastgpt-sdk/otel": ["../../../sdk/otel/src/index.ts"],
       "@fastgpt-sdk/otel/logger": ["../../../sdk/otel/src/logger-entry.ts"],

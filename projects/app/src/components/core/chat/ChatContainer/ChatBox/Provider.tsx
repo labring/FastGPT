@@ -33,6 +33,7 @@ import {
   toChatAuthApiTarget
 } from '@/web/core/chat/utils';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { resolveChatFileUploadMode } from './utils/file';
 
 export type ChatProviderProps = {
   /** 标准内部 chat target。ChatBox 不再接收 appId/skillId raw 形态。 */
@@ -195,6 +196,10 @@ const Provider = ({
     ChatItemContext,
     (v) => v.chatBoxData?.app?.chatConfig?.fileSelectConfig ?? defaultAppSelectFileConfig
   );
+  const fileUploadMode = resolveChatFileUploadMode({
+    chatType,
+    sourceType: sourceTarget.sourceType
+  });
 
   const chatRecords = useContextSelector(ChatRecordContext, (v) => v.chatRecords);
   const setChatRecords = useContextSelector(ChatRecordContext, (v) => v.setChatRecords);
@@ -301,6 +306,7 @@ const Provider = ({
       sourceTarget={sourceTarget}
       chatId={chatId}
       outLinkAuthData={formatOutLinkAuth}
+      fileUploadMode={fileUploadMode}
     >
       <ChatBoxContext.Provider value={value}>{children}</ChatBoxContext.Provider>
     </WorkflowRuntimeContextProvider>
