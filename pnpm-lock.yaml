@@ -34,8 +34,8 @@ catalogs:
       specifier: ^11
       version: 11.11.0
     '@llamaindex/liteparse':
-      specifier: 2.0.5
-      version: 2.0.5
+      specifier: 2.0.8
+      version: 2.0.8
     '@modelcontextprotocol/sdk':
       specifier: ^1
       version: 1.26.0
@@ -498,7 +498,7 @@ importers:
         version: link:../global
       '@llamaindex/liteparse':
         specifier: 'catalog:'
-        version: 2.0.5
+        version: 2.0.8
       '@mariozechner/pi-agent-core':
         specifier: ^0.67.3
         version: 0.67.3(@modelcontextprotocol/sdk@1.26.0(zod@4.1.12))(bufferutil@4.1.0)(utf-8-validate@5.0.10)(ws@8.20.0(bufferutil@4.1.0)(utf-8-validate@5.0.10))(zod@4.1.12)
@@ -1320,7 +1320,7 @@ importers:
         version: 3.0.6
       '@llamaindex/liteparse':
         specifier: 'catalog:'
-        version: 2.0.5
+        version: 2.0.8
       '@modelcontextprotocol/sdk':
         specifier: 'catalog:'
         version: 1.26.0(zod@4.1.12)
@@ -4177,46 +4177,46 @@ packages:
   '@lezer/yaml@1.0.3':
     resolution: {integrity: sha512-GuBLekbw9jDBDhGur82nuwkxKQ+a3W5H0GfaAthDXcAu+XdpS43VlnxA9E9hllkpSP5ellRDKjLLj7Lu9Wr6xA==}
 
-  '@llamaindex/liteparse-darwin-arm64@2.0.5':
-    resolution: {integrity: sha512-Z6gO+2Anwx7baBDXNUMHl8QYWuaDmLQZCZ4NKBgMXGlBaESL6OWsShigFMtPWRlNw5EsP/r+tn7uJmPxy2z2tg==}
+  '@llamaindex/liteparse-darwin-arm64@2.0.8':
+    resolution: {integrity: sha512-gVY6NrQmkKXpPvORDmmEMpVGYu7/2lMgQ4wC3GNmIaYGEt77zeMptQEo+igcsA86UskGSyHiCeDGzUYJGG0Bvw==}
     cpu: [arm64]
     os: [darwin]
 
-  '@llamaindex/liteparse-darwin-x64@2.0.5':
-    resolution: {integrity: sha512-vK+BWVPrMId90sTCg5D/5I7ei2DLuy9Zt0mmByphKAGhiEb906X/hQJELKf4a6pBm1QhS0rb8sPDoHhQTY9aEA==}
+  '@llamaindex/liteparse-darwin-x64@2.0.8':
+    resolution: {integrity: sha512-+Rx6DNG3Cy3nPtk/CCh6cXZkH2iCkV5iB5a4GpHP83slgEf5tYqBSYigLtOEiL4geHs3XnNN/R98hJGEjIdW/Q==}
     cpu: [x64]
     os: [darwin]
 
-  '@llamaindex/liteparse-linux-arm64-gnu@2.0.5':
-    resolution: {integrity: sha512-CKClEmHFf1iEwMp7SHqfcpa12D1Esr+JkxxE3pWS0fTXoTEkDOrjRQP1AEbXczGqb+pVVhCxWYcp5DsiXwC5aQ==}
+  '@llamaindex/liteparse-linux-arm64-gnu@2.0.8':
+    resolution: {integrity: sha512-hxbZizKLnn0vMvUH+Szgg3EBzyl8kktAY4/JATycab06sRamx7M1+kDSZ9MOq7StvDWH/s2f+ZteHUAZJDxEtg==}
     cpu: [arm64]
     os: [linux]
     libc: [glibc]
 
-  '@llamaindex/liteparse-linux-x64-gnu@2.0.5':
-    resolution: {integrity: sha512-3FBSjROuqleSLOhXFPEoG6Rq0mFGVxGuN45d1x3fxqUfDig753rTdAqisJnyLYLDiEUjK9llPP3rmuuFBVBFBg==}
+  '@llamaindex/liteparse-linux-x64-gnu@2.0.8':
+    resolution: {integrity: sha512-Kvck+S+V06J5UgyGgaHsPqdBN++hgthEwXsLoQnGc8RSJMn05VomAl+6rmcHKTX+iZk63uD42bSVrhBOW/Gm1A==}
     cpu: [x64]
     os: [linux]
     libc: [glibc]
 
-  '@llamaindex/liteparse-linux-x64-musl@2.0.5':
-    resolution: {integrity: sha512-arucwQ/pqetqtno+wngn3ho+oof7zJwCaNkJ63YaTk9xyxxWUQ9h8Dl4IdI1tCprgPx0U9DOWtKfJzcASXteUA==}
+  '@llamaindex/liteparse-linux-x64-musl@2.0.8':
+    resolution: {integrity: sha512-aIqGQFlhAfHDy6wPLmMZb4K8pm1qhWWWv4aXz+8bFeni/41Chj7ZHlmkET7cOqNIlexRhSwXflZCwoMwtFnXdw==}
     cpu: [x64]
     os: [linux]
     libc: [musl]
 
-  '@llamaindex/liteparse-win32-arm64-msvc@2.0.5':
-    resolution: {integrity: sha512-0yT8qm7tkvZv/LW/zS8WuWA7ixLmkuFI9DjSO1dcIZpq/RgyvP/jyZsNSZEqR3IfR1GsViFmplTp9MjW7KV+1Q==}
+  '@llamaindex/liteparse-win32-arm64-msvc@2.0.8':
+    resolution: {integrity: sha512-aeM2nCrvd+W16/oMO5WYckGM1JAAmddxPo09mY8ltMhb24ym9zH61zC4L69TBeVyK9xX2x1KrceCRvpcz2qjBw==}
     cpu: [arm64]
     os: [win32]
 
-  '@llamaindex/liteparse-win32-x64-msvc@2.0.5':
-    resolution: {integrity: sha512-htxyLATNuWJdTVHCM73jkDBNJZrvzz7gptUpGsVjhYOc7WvTBNCPsoSeOo07NonBH4mwEZfOU3XjuEwwjYGDWQ==}
+  '@llamaindex/liteparse-win32-x64-msvc@2.0.8':
+    resolution: {integrity: sha512-v+j2HsZJkVo2dYgc15Fe9xmALb66m91cegjiNKOwqyOW4JLnR+q26x5j0YdHAGkymWqCezOEAzmEpCWskrykEA==}
     cpu: [x64]
     os: [win32]
 
-  '@llamaindex/liteparse@2.0.5':
-    resolution: {integrity: sha512-EQN2hYKRSDqhl5SAr8kqJZFn3pzh6DXAhhtng2zRlqvg/rslaroaBAbvzKep+ElljrmfYNZYjJqavgDK1IM1TQ==}
+  '@llamaindex/liteparse@2.0.8':
+    resolution: {integrity: sha512-53xwfAkUeBAIPx3M9Y0s1JoHgwMApApxd3cM8nWOGarYdFl92t+8bgxxswnXOl43MnSx7AaeUS8AtiwbMly37A==}
     engines: {node: '>=18.0.0'}
     hasBin: true
 
@@ -18155,38 +18155,38 @@ snapshots:
       '@lezer/highlight': 1.2.1
       '@lezer/lr': 1.4.2
 
-  '@llamaindex/liteparse-darwin-arm64@2.0.5':
+  '@llamaindex/liteparse-darwin-arm64@2.0.8':
     optional: true
 
-  '@llamaindex/liteparse-darwin-x64@2.0.5':
+  '@llamaindex/liteparse-darwin-x64@2.0.8':
     optional: true
 
-  '@llamaindex/liteparse-linux-arm64-gnu@2.0.5':
+  '@llamaindex/liteparse-linux-arm64-gnu@2.0.8':
     optional: true
 
-  '@llamaindex/liteparse-linux-x64-gnu@2.0.5':
+  '@llamaindex/liteparse-linux-x64-gnu@2.0.8':
     optional: true
 
-  '@llamaindex/liteparse-linux-x64-musl@2.0.5':
+  '@llamaindex/liteparse-linux-x64-musl@2.0.8':
     optional: true
 
-  '@llamaindex/liteparse-win32-arm64-msvc@2.0.5':
+  '@llamaindex/liteparse-win32-arm64-msvc@2.0.8':
     optional: true
 
-  '@llamaindex/liteparse-win32-x64-msvc@2.0.5':
+  '@llamaindex/liteparse-win32-x64-msvc@2.0.8':
     optional: true
 
-  '@llamaindex/liteparse@2.0.5':
+  '@llamaindex/liteparse@2.0.8':
     dependencies:
       commander: 12.1.0
     optionalDependencies:
-      '@llamaindex/liteparse-darwin-arm64': 2.0.5
-      '@llamaindex/liteparse-darwin-x64': 2.0.5
-      '@llamaindex/liteparse-linux-arm64-gnu': 2.0.5
-      '@llamaindex/liteparse-linux-x64-gnu': 2.0.5
-      '@llamaindex/liteparse-linux-x64-musl': 2.0.5
-      '@llamaindex/liteparse-win32-arm64-msvc': 2.0.5
-      '@llamaindex/liteparse-win32-x64-msvc': 2.0.5
+      '@llamaindex/liteparse-darwin-arm64': 2.0.8
+      '@llamaindex/liteparse-darwin-x64': 2.0.8
+      '@llamaindex/liteparse-linux-arm64-gnu': 2.0.8
+      '@llamaindex/liteparse-linux-x64-gnu': 2.0.8
+      '@llamaindex/liteparse-linux-x64-musl': 2.0.8
+      '@llamaindex/liteparse-win32-arm64-msvc': 2.0.8
+      '@llamaindex/liteparse-win32-x64-msvc': 2.0.8
 
   '@logtape/logtape@2.0.2': {}
 
