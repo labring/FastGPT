@@ -1,4 +1,9 @@
-import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type';
+import type {
+  AIChatItemType,
+  AIChatItemValueItemType,
+  ToolModuleResponseItemType,
+  UserChatItemType
+} from '@fastgpt/global/core/chat/type';
 import type { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import {
   ChatGenerateStatusEnum,
@@ -270,6 +275,7 @@ export const finalizeChatRound = async (props: Props) => {
     errorMsg,
     nodeResponseSummary: props.nodeResponseSummary
   });
+
   const processedContent = [userContent, aiResponse];
   // dataId 来自 prepareChatRound 预创建的 Human/AI 占位 item，用它定位并补全本轮记录。
   const { humanDataId, aiDataId } = await getPreparedRoundDataIds({
@@ -750,6 +756,9 @@ export const updateInteractiveChat = async ({
     }
 
     if (finalInteractive.type === 'agentPlanAskQuery') {
+      if (!finalInteractive.askId) {
+        throw new Error(`Agent ask interactive askId is required: ${chatId}`);
+      }
       finalInteractive.params.answer = userInteractiveVal;
 
       const interactiveChatItem = await MongoChatItem.findOne({
@@ -772,7 +781,7 @@ export const updateInteractiveChat = async ({
       await interactiveChatItem.save();
 
       props.userContent.value.forEach((item) => {
-        item.planId = finalInteractive.planId;
+        item.askId = finalInteractive.askId;
       });
     }
 
@@ -792,6 +801,105 @@ export const updateInteractiveChat = async ({
     errorMsg,
     nodeResponseSummary: props.nodeResponseSummary
   });
+
+  /**
+   * child interactive 恢复时合并需要原位更新的展示数据：
+   * 1. 按 toolCallId 回填上一轮的 tool response。
+   * 2. 按 planId 覆盖完整计划快照，保证刷新后只展示最新计划。
+   */
+  const mergeExistingAssistantResponses = (
+    value: AIChatItemValueItemType[]
+  ): AIChatItemValueItemType[] => {
+    const updateExistingTool = (incomingTool: ToolModuleResponseItemType) => {
+      if (!incomingTool.id) return false;
+
+      for (const item of chatItem.value) {
+        const existingTool = item.tools?.find((tool) => tool.id === incomingTool.id);
+        if (existingTool) {
+          existingTool.response = incomingTool.response;
+          existingTool.toolName = existingTool.toolName || incomingTool.toolName;
+          existingTool.toolAvatar = existingTool.toolAvatar || incomingTool.toolAvatar;
+          existingTool.functionName = existingTool.functionName || incomingTool.functionName;
+          existingTool.params = existingTool.params || incomingTool.params;
+          return true;
+        }
+
+        if (item.tool?.id === incomingTool.id) {
+          item.tool.response = incomingTool.response;
+          item.tool.toolName = item.tool.toolName || incomingTool.toolName;
+          item.tool.toolAvatar = item.tool.toolAvatar || incomingTool.toolAvatar;
+          item.tool.functionName = item.tool.functionName || incomingTool.functionName;
+          item.tool.params = item.tool.params || incomingTool.params;
+          return true;
+        }
+      }
+
+      return false;
+    };
+
+    const updateExistingPlan = (incomingPlan: AIChatItemValueItemType['plan']) => {
+      const existingPlanIndex = chatItem.value.findLastIndex(
+        (item) => Object.prototype.hasOwnProperty.call(item, 'plan') && item.plan !== undefined
+      );
+      if (existingPlanIndex < 0) return false;
+
+      chatItem.value = chatItem.value.flatMap((item, index) => {
+        if (!Object.prototype.hasOwnProperty.call(item, 'plan') || item.plan === undefined) {
+          return [item];
+        }
+
+        const itemWithoutPlan = Object.fromEntries(
+          Object.entries(item).filter(
+            ([key, itemValue]) => key !== 'plan' && itemValue !== undefined && itemValue !== null
+          )
+        ) as AIChatItemValueItemType;
+        if (index === existingPlanIndex) {
+          return [{ ...itemWithoutPlan, plan: incomingPlan }];
+        }
+
+        const hasRemainingValue = Object.entries(itemWithoutPlan).some(
+          ([key, itemValue]) => key !== 'id' && itemValue !== undefined && itemValue !== null
+        );
+        return hasRemainingValue ? [itemWithoutPlan] : [];
+      });
+      return true;
+    };
+
+    const hasRemainingSemanticValue = (item: AIChatItemValueItemType) =>
+      Object.entries(item).some(([key, itemValue]) => {
+        // id 只是工具容器的关联键，不能单独构成一条可持久化的 assistant value。
+        if (key === 'id' || key === 'tools') return false;
+        return itemValue !== undefined && itemValue !== null;
+      });
+
+    return value.flatMap((item) => {
+      const hasPlan = Object.prototype.hasOwnProperty.call(item, 'plan') && item.plan !== undefined;
+      if (hasPlan && updateExistingPlan(item.plan)) {
+        const restItem = Object.fromEntries(
+          Object.entries(item).filter(([key]) => key !== 'plan')
+        ) as AIChatItemValueItemType;
+        const hasRemainingValue = Object.values(restItem).some(
+          (itemValue) => itemValue !== undefined && itemValue !== null
+        );
+
+        if (!hasRemainingValue) return [];
+        item = restItem;
+      }
+
+      if (!item.tools?.length) return [item];
+
+      const unmergedTools = item.tools.filter((tool) => !updateExistingTool(tool));
+      if (unmergedTools.length === item.tools.length) return [item];
+
+      const mergedItem = {
+        ...item,
+        tools: unmergedTools.length ? unmergedTools : undefined
+      };
+      if (unmergedTools.length === 0 && !hasRemainingSemanticValue(mergedItem)) return [];
+
+      return [mergedItem];
+    });
+  };
 
   /*
     在原来 chat_items 上更新。
@@ -858,7 +966,10 @@ export const updateInteractiveChat = async ({
         : aiContent.customFeedbacks;
     }
     if (aiContent.value) {
-      chatItem.value = chatItem.value ? [...chatItem.value, ...aiContent.value] : aiContent.value;
+      const mergedAiContentValue = mergeExistingAssistantResponses(aiContent.value);
+      chatItem.value = chatItem.value
+        ? [...chatItem.value, ...mergedAiContentValue]
+        : mergedAiContentValue;
     }
     if (aiResponse.citeCollectionIds) {
       chatItem.citeCollectionIds = chatItem.citeCollectionIds

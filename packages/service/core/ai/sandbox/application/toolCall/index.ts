@@ -8,9 +8,11 @@ import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { LangEnum } from '@fastgpt/global/common/i18n/type';
 import { toolMap as editFileToolMap } from './editFile.tool';
+import { toolMap as findToolMap } from './find.tool';
 import { toolMap as getFileUrlToolMap } from './getFileUrl.tool';
+import { toolMap as grepToolMap } from './grep.tool';
+import { toolMap as lsToolMap } from './ls.tool';
 import { toolMap as readFileToolMap } from './readFile.tool';
-import { toolMap as searchToolMap } from './search.tool';
 import { toolMap as shellToolMap } from './shell.tool';
 import { toolMap as writeFileToolMap } from './writeFile.tool';
 import { getSandboxClient, type SandboxClient } from '../runtime/client';
@@ -23,9 +25,11 @@ import { getRunningSandboxId } from '../../utils/id';
 
 const ToolMap = {
   ...editFileToolMap,
+  ...findToolMap,
   ...getFileUrlToolMap,
+  ...grepToolMap,
+  ...lsToolMap,
   ...readFileToolMap,
-  ...searchToolMap,
   ...writeFileToolMap,
   ...shellToolMap
 };
@@ -40,25 +44,17 @@ export type SandboxToolCallResult = {
 /**
  * 执行一次 sandbox 工具调用。
  *
- * 这里负责解析 LLM 传入的 JSON 参数、按工具 schema 校验，并复用已有 SandboxClient；
- * 未传入 client 时会按 app/user/chat 获取运行态 sandbox。
+ * 这里负责解析 LLM 传入的 JSON 参数、按工具 schema 校验，并复用准备阶段创建的
+ * SandboxClient。source/user/chat 上下文由 client 自身持有，单次工具调用不再重复传递。
  */
 export const runSandboxTools = async ({
-  sourceType,
-  sourceId,
-  userId,
-  chatId,
   toolName,
   args,
   sandboxClient
 }: {
-  sourceType: ChatSourceTypeEnum;
-  sourceId: string;
-  userId: string;
-  chatId: string;
   toolName: string;
   args: string;
-  sandboxClient?: SandboxClient;
+  sandboxClient: SandboxClient;
 }): Promise<SandboxToolCallResult> => {
   const startTime = Date.now();
   const getDuration = () => +((Date.now() - startTime) / 1000).toFixed(2);
@@ -84,32 +80,8 @@ export const runSandboxTools = async ({
     };
   }
 
-  const sandboxId = getRunningSandboxId({
-    sourceType,
-    sourceId,
-    userId,
-    chatId
-  });
-  const instance =
-    sandboxClient ??
-    (await getSandboxClient(
-      {
-        sandboxId,
-        sourceType,
-        sourceId,
-        userId: sourceType === ChatSourceTypeEnum.app ? userId : '',
-        chatId
-      },
-      {
-        failedArchivePolicy: 'clearAndContinue'
-      }
-    ));
   const result = await tool.execute({
-    sourceType,
-    sourceId,
-    userId,
-    chatId,
-    sandboxInstance: instance,
+    sandboxInstance: sandboxClient,
     params: parsedArgs.data as any
   });
 

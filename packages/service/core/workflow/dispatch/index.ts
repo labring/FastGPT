@@ -938,7 +938,7 @@ export class WorkflowQueue {
       const currentNodeChildResponseCount =
         getNodeResponseChildResponseCount(childResponsesForWrite);
       // format response data. Add modulename and module type
-      const formatResponseData: ChatHistoryItemResType | undefined = (() => {
+      const formatCurrentNodeResponse: ChatHistoryItemResType | undefined = (() => {
         if (!nodeResponse) return undefined;
         const val = {
           moduleName: node.name,
@@ -957,6 +957,19 @@ export class WorkflowQueue {
         nodeResponsesForWrite.push(val);
         return val;
       })();
+      const currentNodeError =
+        formatCurrentNodeResponse?.errorText ?? formatCurrentNodeResponse?.error;
+      // 内部明细通常已能完整表达运行过程，因此省略无错误的父响应以避免重复节点。
+      // 父节点错误属于自身终态，不能被子明细替代，必须继续进入 SSE 和队列结果。
+      const formatResponseData =
+        childResponsesForWrite.length === 0 || currentNodeError !== undefined
+          ? formatCurrentNodeResponse
+          : undefined;
+      const streamResponses = childResponsesForWrite.length
+        ? [...childResponsesForWrite, ...(formatResponseData ? [formatResponseData] : [])]
+        : formatResponseData
+          ? [formatResponseData]
+          : [];
 
       // 写库和 SSE 需要完整节点响应；writer 落库后，队列只继续保留摘要信号。
       const persistedNodeResponses = this.data.nodeResponseWriter
@@ -976,11 +989,16 @@ export class WorkflowQueue {
       const shouldDropPersistedNodeResponses = !!this.data.nodeResponseWriter;
 
       // Response node response
-      if (this.data.apiVersion === 'v2' && persistedNodeResponses.length > 0) {
+      if (
+        this.data.apiVersion === 'v2' &&
+        !this.data.isToolCall &&
+        this.isRootRuntime &&
+        streamResponses.length > 0
+      ) {
         const filteredResponses = this.data.responseAllData
-          ? persistedNodeResponses
+          ? streamResponses
           : filterNodeResponseTreeData({
-              nodeResponses: persistedNodeResponses,
+              nodeResponses: streamResponses,
               responseDetail: this.data.responseDetail
             });
 
@@ -999,23 +1017,23 @@ export class WorkflowQueue {
       }
 
       // Error
-      if (formatResponseData?.error) {
+      if (currentNodeError !== undefined) {
         if (stepSpan) {
           stepSpan.setAttribute('fastgpt.workflow.step.error', true);
           stepSpan.setStatus({
             code: SpanStatusCode.ERROR,
-            message: String(formatResponseData.error)
+            message: String(currentNodeError)
           });
         }
-        logger.warn('Workflow node returned error', { error: formatResponseData.error });
+        logger.warn('Workflow node returned error', { error: currentNodeError });
       } else if (stepSpan) {
         stepSpan.setStatus({ code: SpanStatusCode.OK });
       }
 
-      if (stepSpan && formatResponseData?.runningTime !== undefined) {
+      if (stepSpan && formatCurrentNodeResponse?.runningTime !== undefined) {
         stepSpan.setAttribute(
           'fastgpt.workflow.step.running_time_seconds',
-          formatResponseData.runningTime
+          formatCurrentNodeResponse.runningTime
         );
       }
 
@@ -1459,7 +1477,7 @@ export class WorkflowQueue {
     }
 
     return {
-      planId: interactiveResult.planId,
+      askId: interactiveResult.askId,
       interactive: interactiveResult
     };
   }

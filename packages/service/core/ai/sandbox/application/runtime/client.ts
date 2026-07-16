@@ -129,6 +129,15 @@ export class SandboxClient {
     return this.sandboxId;
   }
 
+  getContext() {
+    return {
+      sourceType: this.sourceType,
+      sourceId: this.sourceId,
+      userId: this.userId,
+      chatId: this.chatId
+    };
+  }
+
   /**
    * 在可用 sandbox 中执行命令。
    *

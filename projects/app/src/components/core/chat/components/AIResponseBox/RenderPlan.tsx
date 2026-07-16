@@ -10,7 +10,7 @@ const RenderPlan = React.memo(function RenderPlan({ plan }: { plan: AgentPlanTyp
       <Flex alignItems={'center'} px={4} py={3} bg={'myGray.50'} borderBottom={'base'}>
         <MyIcon name={'common/list'} w={'1rem'} mr={2} color={'myGray.600'} />
         <Box fontWeight={'bold'} fontSize={'sm'} flex={1}>
-          {plan.task || '-'}
+          {plan.name || '-'}
         </Box>
       </Flex>
       <Box px={4} py={4}>
@@ -48,7 +48,7 @@ const RenderPlan = React.memo(function RenderPlan({ plan }: { plan: AgentPlanTyp
 
                 <Box flex={1} pb={index < plan.steps.length - 1 ? 4 : 0} minW={0}>
                   <Box fontSize="sm" fontWeight="medium" color="myGray.900">
-                    {step.title}
+                    {step.name}
                   </Box>
                   {step.description && (
                     <Box fontSize="xs" mt={1} color="myGray.500">

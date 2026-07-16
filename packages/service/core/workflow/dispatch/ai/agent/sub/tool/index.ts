@@ -133,7 +133,6 @@ export const dispatchTool = async ({
       })();
 
       const formatToolId = getToolRawId(tool.id);
-      let answerText = '';
       const appId = getWorkflowAppId(runningAppInfo);
 
       const invokeToken = appId
@@ -171,7 +170,6 @@ export const dispatchTool = async ({
         onMessage: ({ type, content }) => {
           if (!workflowStreamResponse || !content || !isPluginAnswerType(type)) return;
 
-          answerText += content;
           workflowStreamResponse(
             type === 'fastAnswer'
               ? workflowSseEvent.fastAnswerDelta(content)

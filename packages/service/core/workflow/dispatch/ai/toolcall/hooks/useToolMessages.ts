@@ -48,19 +48,26 @@ export const useToolMessages = async ({
   const concatenateSystemPrompt = [defaultSystemPrompt, systemPrompt]
     .filter(Boolean)
     .join('\n\n-----\n\n');
+  const isInteractiveResume = !!lastInteractive && !!isEntry;
   const value: ChatItemMiniType[] = [
     ...getSystemPrompt_ChatItemType(concatenateSystemPrompt),
     ...chatHistories,
-    {
-      dataId: responseChatItemId,
-      obj: ChatRoleEnum.Human,
-      value: runtimePrompt2ChatsValue({
-        text: userChatInput,
-        files: userFiles
-      })
-    }
+    // child interactive 的用户输入由子 workflow 消费，不作为父模型的新 user message。
+    // 历史中的上一条 AI tool_call 必须保留，provider 依赖它恢复原 call 名称和参数。
+    ...(!isInteractiveResume
+      ? [
+          {
+            dataId: responseChatItemId,
+            obj: ChatRoleEnum.Human,
+            value: runtimePrompt2ChatsValue({
+              text: userChatInput,
+              files: userFiles
+            })
+          } as ChatItemMiniType
+        ]
+      : [])
   ];
-  const runtimeMessages = lastInteractive && isEntry ? value.slice(0, -2) : value;
+  const runtimeMessages = value;
   const maxFiles = chatConfig?.fileSelectConfig?.maxFiles || 20;
 
   /**

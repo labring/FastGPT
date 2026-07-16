@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
-import { formatToolResponse } from '@fastgpt/service/core/workflow/dispatch/ai/utils';
+import { filterAgentLoopCoreToolResponseToPreview } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/adapter/assistantResponses/preview';
 import {
-  filterToolResponseToPreview,
-  initToolCallEdges,
-  initToolNodes,
-  updateToolInputValue
-} from '@fastgpt/service/core/workflow/dispatch/ai/toolcall/utils';
+  formatAgentLoopCoreToolResponse,
+  initAgentLoopCoreWorkflowToolEdges,
+  initAgentLoopCoreWorkflowToolNodes,
+  updateAgentLoopCoreWorkflowToolInputValue
+} from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/runtime/workflowToolRunner';
 
-describe('toolcall utils', () => {
-  describe('updateToolInputValue', () => {
+describe('workflow tool runner utils', () => {
+  describe('updateAgentLoopCoreWorkflowToolInputValue', () => {
     it('should overwrite only params provided by tool call and preserve falsy valid values', () => {
       const sourceInputs = [
         { key: 'query', value: 'old query' },
@@ -19,7 +19,7 @@ describe('toolcall utils', () => {
         { key: 'nullish', value: 'default value' }
       ] as any[];
 
-      const result = updateToolInputValue({
+      const result = updateAgentLoopCoreWorkflowToolInputValue({
         params: {
           query: 'new query',
           limit: 0,
@@ -42,7 +42,7 @@ describe('toolcall utils', () => {
     });
   });
 
-  describe('filterToolResponseToPreview', () => {
+  describe('filterAgentLoopCoreToolResponseToPreview', () => {
     it('should keep non-tool items and trim long tool responses to head and tail preview', () => {
       const longResponse = `${'a'.repeat(510)}middle${'z'.repeat(510)}`;
       const response = [
@@ -73,7 +73,7 @@ describe('toolcall utils', () => {
         }
       ] as AIChatItemValueItemType[];
 
-      const result = filterToolResponseToPreview(response);
+      const result = filterAgentLoopCoreToolResponseToPreview(response);
 
       expect(result[0]).toBe(response[0]);
       expect(result[1].tools?.[0].response).toContain('...[hide 26 chars]...');
@@ -84,23 +84,23 @@ describe('toolcall utils', () => {
     });
   });
 
-  describe('formatToolResponse', () => {
+  describe('formatAgentLoopCoreToolResponse', () => {
     it('should stringify object responses with indentation', () => {
-      expect(formatToolResponse({ answer: 'ok', list: [1, 2] })).toBe(
+      expect(formatAgentLoopCoreToolResponse({ answer: 'ok', list: [1, 2] })).toBe(
         JSON.stringify({ answer: 'ok', list: [1, 2] }, null, 2)
       );
     });
 
     it('should convert primitive responses and normalize empty primitive responses', () => {
-      expect(formatToolResponse(123)).toBe('123');
-      expect(formatToolResponse(true)).toBe('true');
-      expect(formatToolResponse('')).toBe('none');
-      expect(formatToolResponse(undefined)).toBe('none');
-      expect(formatToolResponse(null)).toBe('null');
+      expect(formatAgentLoopCoreToolResponse(123)).toBe('123');
+      expect(formatAgentLoopCoreToolResponse(true)).toBe('true');
+      expect(formatAgentLoopCoreToolResponse('')).toBe('none');
+      expect(formatAgentLoopCoreToolResponse(undefined)).toBe('none');
+      expect(formatAgentLoopCoreToolResponse(null)).toBe('null');
     });
   });
 
-  describe('initToolCallEdges', () => {
+  describe('initAgentLoopCoreWorkflowToolEdges', () => {
     it('should activate only edges targeting entry nodes', () => {
       const edges = [
         { target: 'entry', status: 'waiting' },
@@ -108,7 +108,7 @@ describe('toolcall utils', () => {
         { target: 'secondEntry' }
       ] as any[];
 
-      initToolCallEdges(edges, ['entry', 'secondEntry']);
+      initAgentLoopCoreWorkflowToolEdges(edges, ['entry', 'secondEntry']);
 
       expect(edges).toEqual([
         { target: 'entry', status: 'active' },
@@ -118,7 +118,7 @@ describe('toolcall utils', () => {
     });
   });
 
-  describe('initToolNodes', () => {
+  describe('initAgentLoopCoreWorkflowToolNodes', () => {
     it('should mark entry nodes and inject start params only into entry inputs', () => {
       const nodes = [
         {
@@ -136,7 +136,7 @@ describe('toolcall utils', () => {
         }
       ] as any[];
 
-      initToolNodes(nodes, ['entry'], {
+      initAgentLoopCoreWorkflowToolNodes(nodes, ['entry'], {
         query: 'new query',
         limit: 0
       });
@@ -165,7 +165,7 @@ describe('toolcall utils', () => {
         }
       ] as any[];
 
-      initToolNodes(nodes, ['entry']);
+      initAgentLoopCoreWorkflowToolNodes(nodes, ['entry']);
 
       expect(nodes[0].isEntry).toBe(true);
       expect(nodes[0].inputs).toBe(inputs);

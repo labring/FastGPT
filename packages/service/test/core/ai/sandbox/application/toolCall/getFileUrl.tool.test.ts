@@ -18,6 +18,12 @@ import { sandboxGetFileUrlTool } from '@fastgpt/service/core/ai/sandbox/applicat
 
 const createSandboxInstance = () =>
   ({
+    getContext: () => ({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app',
+      userId: 'user',
+      chatId: 'chat'
+    }),
     provider: {
       readFileStream: vi.fn(() => Readable.from(['file-content']))
     }

@@ -16,8 +16,7 @@ import z from 'zod';
 import {
   AgentLoopAskSchema,
   AgentLoopPlanUpdateSchema,
-  AgentLoopStopGateSchema,
-  AgentPlanSchema,
+  AgentPlanReadSchema,
   AgentPlanStatusSchema
 } from '../ai/agent/type';
 import { ObjectIdSchema } from '../../common/type/mongo';
@@ -161,7 +160,7 @@ export type ChatFileStoreValue =
     };
 
 export const UserChatItemValueItemSchema = z.object({
-  planId: z.string().nullish(),
+  askId: z.string().nullish(),
   text: z
     .object({
       content: z.string()
@@ -210,7 +209,7 @@ export type ContextCheckpointValueType = z.infer<typeof ContextCheckpointValueSc
 
 export const AIChatItemValueSchema = z.object({
   id: z.string().nullish(),
-  planId: z.string().nullish(),
+  askId: z.string().nullish(),
   text: z
     .object({
       content: z.string()
@@ -224,11 +223,10 @@ export const AIChatItemValueSchema = z.object({
   tools: z.array(ToolModuleResponseItemSchema).nullish(),
   skills: z.array(SkillModuleResponseItemSchema).nullish(),
   interactive: WorkflowInteractiveResponseTypeSchema.optional(),
-  plan: AgentPlanSchema.nullish(),
+  plan: AgentPlanReadSchema.nullish(),
   planStatus: AgentPlanStatusSchema.nullish(),
   agentPlanUpdate: AgentLoopPlanUpdateSchema.nullish(),
   agentAsk: AgentLoopAskSchema.nullish(),
-  agentStopGate: AgentLoopStopGateSchema.nullish(),
   contextCheckpoint: ContextCheckpointValueSchema.nullish(),
   tool: ToolModuleResponseItemSchema.nullish().meta({ deprecated: true }),
   hideReason: z.boolean().optional(),

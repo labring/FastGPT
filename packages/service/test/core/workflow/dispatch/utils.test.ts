@@ -5,6 +5,7 @@ import {
   getWorkflowChildResponseWrite,
   filterOrphanEdges,
   filterToolNodeIdByEdges,
+  getAgentLoopHistories,
   getHistories,
   checkQuoteQAValue,
   filterSystemVariables,
@@ -537,6 +538,98 @@ describe('getHistories', () => {
 
   it('should return empty array when history is 0', () => {
     expect(getHistories(0, MockHistories)).toEqual([]);
+  });
+
+  it('keeps only the pending interactive round when agent history is 0', () => {
+    const pendingRound: ChatItemMiniType[] = [
+      ...MockHistories,
+      {
+        obj: ChatRoleEnum.Human,
+        value: [{ text: { content: 'need a choice' } }]
+      },
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            interactive: {
+              type: 'agentPlanAskQuery',
+              askId: 'ask_1',
+              params: {
+                content: 'Choose one',
+                options: ['A', 'B', 'C']
+              }
+            }
+          }
+        ]
+      }
+    ];
+
+    expect(getAgentLoopHistories(0, pendingRound)).toEqual(pendingRound.slice(-2));
+  });
+
+  it('keeps only the pending child-tool round when agent history is 0', () => {
+    const pendingRound: ChatItemMiniType[] = [
+      {
+        obj: ChatRoleEnum.Human,
+        value: [{ text: { content: 'run the tool' } }]
+      },
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            interactive: {
+              type: 'toolChildrenInteractive',
+              params: {
+                toolParams: {
+                  toolCallId: 'tool_1'
+                },
+                childrenResponse: {
+                  type: 'userSelect',
+                  params: {
+                    description: 'Choose one',
+                    userSelectOptions: []
+                  }
+                }
+              }
+            } as any
+          }
+        ]
+      }
+    ];
+
+    expect(getAgentLoopHistories(0, pendingRound)).toEqual(pendingRound);
+  });
+
+  it('does not retain completed or non-interactive history when agent history is 0', () => {
+    const completedRound: ChatItemMiniType[] = [
+      {
+        obj: ChatRoleEnum.Human,
+        value: [{ text: { content: 'need a choice' } }]
+      },
+      {
+        obj: ChatRoleEnum.AI,
+        value: [
+          {
+            interactive: {
+              type: 'agentPlanAskQuery',
+              askId: 'ask_1',
+              params: {
+                content: 'Choose one',
+                options: ['A', 'B', 'C'],
+                answer: 'A'
+              }
+            }
+          }
+        ]
+      }
+    ];
+
+    expect(getAgentLoopHistories(0, completedRound)).toEqual([]);
+    expect(getAgentLoopHistories(0, MockHistories)).toEqual([]);
+  });
+
+  it('keeps configured agent history unchanged when history is not 0', () => {
+    expect(getAgentLoopHistories(1, MockHistories)).toEqual(getHistories(1, MockHistories));
   });
 
   it('should use default empty histories', () => {

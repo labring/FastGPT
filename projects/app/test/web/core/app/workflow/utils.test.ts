@@ -15,6 +15,7 @@ import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRun';
 import {
+  adaptStoreNodeInputs,
   nodeTemplate2FlowNode,
   storeNode2FlowNode,
   getNodeAllSource,
@@ -70,6 +71,78 @@ describe('nodeTemplate2FlowNode', () => {
       'workflow:template_name',
       'workflow:template_intro'
     ]);
+  });
+});
+
+describe('adaptStoreNodeInputs', () => {
+  const createAgentNode = (inputs: StoreNodeItemType['inputs']): StoreNodeItemType => ({
+    nodeId: 'agent-node',
+    flowNodeType: FlowNodeTypeEnum.agent,
+    name: 'Agent',
+    inputs,
+    outputs: []
+  });
+
+  it('should reset legacy Agent resource references to manual selection', () => {
+    const inputs: StoreNodeItemType['inputs'] = [
+      {
+        key: NodeInputKeyEnum.skills,
+        label: 'Skills',
+        renderTypeList: [FlowNodeInputTypeEnum.selectSkill, FlowNodeInputTypeEnum.reference],
+        selectedTypeIndex: 1,
+        value: ['source-node', 'skills']
+      },
+      {
+        key: NodeInputKeyEnum.selectedTools,
+        label: 'Tools',
+        renderTypeList: [FlowNodeInputTypeEnum.selectTool, FlowNodeInputTypeEnum.reference],
+        selectedTypeIndex: 1,
+        value: ['source-node', 'tools']
+      },
+      {
+        key: NodeInputKeyEnum.datasetSelectList,
+        label: 'Datasets',
+        renderTypeList: [FlowNodeInputTypeEnum.selectDataset, FlowNodeInputTypeEnum.reference],
+        selectedTypeIndex: 1,
+        value: ['source-node', 'datasets']
+      }
+    ];
+
+    const result = adaptStoreNodeInputs(createAgentNode(inputs));
+
+    expect(result).toEqual(
+      inputs.map((input) => ({
+        ...input,
+        selectedTypeIndex: 0,
+        value: []
+      }))
+    );
+  });
+
+  it('should preserve manually selected Agent resources and unrelated inputs', () => {
+    const selectedSkills = [{ skillId: 'skill-1', name: 'Skill 1' }];
+    const promptReference = ['source-node', 'prompt'];
+    const inputs: StoreNodeItemType['inputs'] = [
+      {
+        key: NodeInputKeyEnum.skills,
+        label: 'Skills',
+        renderTypeList: [FlowNodeInputTypeEnum.selectSkill, FlowNodeInputTypeEnum.reference],
+        selectedTypeIndex: 0,
+        value: selectedSkills
+      },
+      {
+        key: NodeInputKeyEnum.aiSystemPrompt,
+        label: 'Prompt',
+        renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
+        selectedTypeIndex: 1,
+        value: promptReference
+      }
+    ];
+
+    const result = adaptStoreNodeInputs(createAgentNode(inputs));
+
+    expect(result[0]).toMatchObject({ selectedTypeIndex: 0, value: selectedSkills });
+    expect(result[1]).toBe(inputs[1]);
   });
 });
 

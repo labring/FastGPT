@@ -10,29 +10,18 @@ import type {
   ChatItemMiniType
 } from '@fastgpt/global/core/chat/type';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
-import { getSystemToolInfo } from '@fastgpt/global/core/workflow/node/agent/constants';
 import { SANDBOX_SYSTEM_PROMPT } from '@fastgpt/global/core/ai/sandbox/constants';
 import type { SkillToolType } from '@fastgpt/global/core/ai/skill/type';
 import type { ReasoningEffort } from '@fastgpt/global/core/ai/llm/type';
 import type { SelectedAgentSkillItemType } from '@fastgpt/global/core/app/formEdit/type';
-import { getAgentDatasetParams, getSubapps } from './utils';
-import { parseUserSystemPrompt } from './adapter/prompt';
+import { getAgentDatasetParams, getSubapps } from './sub/utils';
 import { useUserContext } from './adapter/userContext';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { getLogger, LogCategories } from '../../../../../common/logger';
-import { serviceEnv } from '../../../../../env';
-import { dispatchPiAgent } from './piAgent';
 import { getLLMModel } from '../../../../ai/model';
-import { runUnifiedAgentLoop, type PlanAskPayload } from '../../../../ai/llm/agentLoop';
-import {
-  buildWorkflowAgentLoopMemories,
-  createWorkflowAgentLoopRuntime,
-  getWorkflowAgentLoopMemoryKeys,
-  readWorkflowAgentLoopMemory
-} from './adapter';
+import { createWorkflowAgentLoopRuntime } from './adapter/runtime';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import type { InteractiveNodeResponseType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
+import { createAgentSubAppLookup, getWorkflowAgentLoopProvider } from './utils';
 import {
   ensureAgentSandboxRuntime,
   streamAgentSandboxInitStatus,
@@ -42,6 +31,21 @@ import type { WorkflowNodeResponseWriter } from '../../../../chat/nodeResponseSt
 import type { RuntimeNodeResponseSummary } from '../../type';
 import { createAgentNodeResponseCollector } from './nodeResponseCollector';
 import { createAgentSandboxPermissionDeniedError } from '../../../../ai/sandbox/interface/runtime';
+import { replaceAgentPromptToolReferences } from './adapter/prompt';
+import {
+  buildAgentLoopCoreInput,
+  buildAgentLoopCorePausedMemories,
+  buildAgentLoopCoreDoneMemories,
+  buildAgentLoopCoreFinalAssistantOutput,
+  buildAgentLoopCoreProviderStateMemories,
+  buildAgentLoopCoreRequestMessages,
+  buildAgentLoopCoreSystemPrompt,
+  createAgentLoopCoreChildInteractiveParams,
+  prepareAgentLoopCoreProviderRunState,
+  readAgentLoopCoreActivePlan,
+  readAgentLoopCoreProviderStateMemory,
+  runAgentLoopCoreWithSummary
+} from '../agentLoopCore/interface';
 
 export type DispatchAgentModuleProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.history]?: ChatItemMiniType[];
@@ -88,44 +92,18 @@ type Response = DispatchNodeResultType<{
 };
 
 /**
- * 将主 loop 的 ask_agent 追问转换成 workflow interactive 响应，交给前端展示并等待用户回答。
- */
-const createAskInteractive = ({
-  planId,
-  ask
-}: {
-  planId: string;
-  ask: PlanAskPayload;
-}): InteractiveNodeResponseType => ({
-  type: 'agentPlanAskQuery',
-  planId,
-  params: {
-    content: ask.question,
-    reason: ask.reason,
-    blockerType: ask.blockerType,
-    options: ask.options
-  }
-});
-
-/**
  * Agent 节点入口。
- * 负责准备历史、文件、工具、能力插件和持久化 memory，然后把实际循环执行交给通用 unified agent loop。
+ * 负责准备历史、文件、工具、能力插件和持久化 memory，然后把实际循环执行交给统一 agentLoop 入口。
  */
 export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise<Response> => {
-  // 按环境配置选择 pi-agent-core 分支；默认使用 unified agent loop。
-  if (serviceEnv.AGENT_ENGINE === 'pi') {
-    return dispatchPiAgent(props);
-  }
-
-  // assistantResponses 仍按原逻辑累计给 chat.value；nodeResponses 在 writer 模式下不再累计，
-  // 由 collector 即时写库并只向外返回 runtimeNodeResponseSummary。
+  // 这些数组会贯穿整轮 dispatch，并由 adapter 持续写入。
+  // 最终统一作为 workflow 节点的 assistantResponses 和 nodeResponses 返回。
   const assistantResponses: AIChatItemValueItemType[] = [];
-  const childResponses: ChatHistoryItemResType[] = [];
+  const childNodeResponses: ChatHistoryItemResType[] = [];
   const nodeResponseCollector = createAgentNodeResponseCollector({
     nodeResponseWriter: props.nodeResponseWriter,
-    // Agent 节点本身不返回当前节点 nodeResponse；内部模型/工具详情按旧语义作为 root 展示。
     nodeResponseParentId: undefined,
-    nodeResponses: childResponses
+    nodeResponses: childNodeResponses
   });
 
   const {
@@ -146,7 +124,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     responseChatItemId,
     timezone,
     params: {
-      systemPrompt,
+      systemPrompt = '',
       userChatInput,
       history = 6,
       agent_selectedTools: selectedTools = [],
@@ -234,7 +212,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       currentFiles: skipSandboxInputFiles ? [] : userContext.currentFiles
     });
     // 获取请求上下文
-    const { chatHistories, queryInput, filesMap, fileUrlMap } = userContext;
+    const { chatHistories, queryInput, fileUrlMap, filesMap } = userContext;
     const { rewrittenHistories, currentUserMessage } = userContext.getCurrentMessages({
       skillInfos,
       currentWorkingDirectory
@@ -242,16 +220,12 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
 
     // 转化成请求的 messages
     const requestMessages = [...rewrittenHistories, currentUserMessage];
-    const historiesMessages = chats2GPTMessages({
+    const loopMessages = buildAgentLoopCoreRequestMessages({
       messages: requestMessages,
-      reserveId: false,
-      reserveTool: true
+      removeSystemMessages: true
     });
-    // system message 由 getMainAgentSystemPrompt 统一注入；历史里的 system 只作为外部噪音过滤掉。
-    const loopMessages = historiesMessages.filter((message) => message.role !== 'system');
-
-    // 汇总用户选择工具、内置系统工具、知识库/文件工具和 sandbox tools。
-    // completionTools 只描述给模型看，subAppsMap 则供 runtime 执行工具时定位真实实现。
+    // 汇总用户选择工具和知识库 runtime tool。
+    // plan/ask/sandbox/readFile 由 agentLoop provider 根据 systemTools 注入，不混入业务 completionTools。
     const {
       completionTools: agentCompletionTools,
       subAppsMap: agentSubAppsMap,
@@ -259,56 +233,26 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
     } = await getSubapps({
       tools: selectedTools,
       tmbId: runningAppInfo.tmbId,
-      lang,
-      hasDataset: datasetParams && datasetParams.datasets.length > 0,
-      hasFiles: !!chatConfig?.fileSelectConfig?.canSelectFile,
-      useAgentSandbox: !!sandboxClient
+      lang
     });
-
-    // runtime 运行详情和工具卡需要根据 function name 反查展示名、头像和描述。
-    // 用户工具与系统工具的 id 形态不完全一致，这里统一归一化查询。
-    const getSubAppInfo = (id: string) => {
-      const formatId = id.startsWith('t') ? id.slice(1) : id;
-      const userToolNode = agentSubAppsMap.get(id) || agentSubAppsMap.get(formatId);
-      if (userToolNode) {
-        return {
-          name: userToolNode.name || '',
-          avatar: userToolNode.avatar || '',
-          toolDescription: userToolNode.toolDescription || userToolNode.name || ''
-        };
-      }
-
-      const systemToolNode = getSystemToolInfo(id, lang) || getSystemToolInfo(formatId, lang);
-      return {
-        name: systemToolNode?.name || '',
-        avatar: systemToolNode?.avatar || '',
-        toolDescription: systemToolNode?.toolDescription || systemToolNode?.name || ''
-      };
-    };
-    const getSubApp = (id: string) => {
-      const formatId = id.slice(1);
-      return agentSubAppsMap.get(id) || agentSubAppsMap.get(formatId);
-    };
-    const resolvePromptToolReferenceName = (id: string) => {
-      const formatId = id.startsWith('t') ? id.slice(1) : id;
-      return (
-        promptToolReferenceInfoMap.get(id) ||
-        promptToolReferenceInfoMap.get(formatId) ||
-        getSystemToolInfo(id, lang)?.name ||
-        getSystemToolInfo(formatId, lang)?.name
-      );
-    };
-    // 用户配置 prompt 和 sandbox prompt 作为 Main Agent 的 system 背景输入。
-    const formatedSystemPrompt = parseUserSystemPrompt({
-      userSystemPrompt: [systemPrompt, sandboxClient ? SANDBOX_SYSTEM_PROMPT : '']
-        .filter(Boolean)
-        .join('\n\n'),
-      resolvePromptToolReferenceName
+    const { getSubAppInfo, getSubApp } = createAgentSubAppLookup({
+      subAppsMap: agentSubAppsMap,
+      lang
+    });
+    // system message 由 getMainAgentSystemPrompt 统一注入；历史里的 system 只作为外部噪音过滤掉。
+    // PromptEditor 保存的是工具 ID，进入主 Agent 前转换为具体名称，避免模型看到不可调用的 ID。
+    const formatedSystemPrompt = buildAgentLoopCoreSystemPrompt({
+      userSystemPrompt: replaceAgentPromptToolReferences({
+        text: systemPrompt,
+        resolveName: (id) =>
+          promptToolReferenceInfoMap.get(id) || getSubAppInfo(id).name || undefined
+      }),
+      runtimePrompts: sandboxClient ? [SANDBOX_SYSTEM_PROMPT] : []
     });
 
     // 2. 创建 workflow adapter。
     // 通用 agent loop 不感知 workflow；工具执行、SSE、usage、nodeResponse 都通过 runtime 参数回调进来。
-    const { runtime } = createWorkflowAgentLoopRuntime({
+    const { runtime, artifacts } = createWorkflowAgentLoopRuntime({
       context: {
         ...props,
         systemPrompt: formatedSystemPrompt,
@@ -317,116 +261,119 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
         completionTools: agentCompletionTools,
         fileUrlMap,
         filesMap,
+        currentFiles: userContext.currentFiles,
         sandboxClient,
         streamResponseFn: workflowStreamResponse
       },
       usagePush,
       workflowStreamResponse,
       assistantResponses,
-      nodeResponses: childResponses,
+      nodeResponses: childNodeResponses,
       appendNodeResponse: nodeResponseCollector.appendNodeResponse
     });
 
-    // ask_agent 追问会把 pendingMainContext 写入 memory。
-    // 用户回答后从这里恢复同一条 messages，而不是重新生成一份独立 plan 上下文。
-    const restoredMemory = readWorkflowAgentLoopMemory({
+    // providerState 统一保存 provider 内部恢复信息。
+    // fastAgent/piAgent 的 ask_user 都在其中保存标准 pendingMainContext，用户回答后恢复同一条 messages。
+    const restoredMemory = readAgentLoopCoreProviderStateMemory({
       histories: chatHistories,
       nodeId
     });
+    const activePlan = readAgentLoopCoreActivePlan({ histories });
+    const provider = getWorkflowAgentLoopProvider();
+    const { providerState: runtimeProviderState, isAskResume } =
+      prepareAgentLoopCoreProviderRunState({
+        restoredProviderState: restoredMemory.providerState,
+        hasLastInteractive: !!lastInteractive
+      });
     // 3. 运行单主 loop。
-    // 如果上一轮因 ask_agent 暂停，这里会把用户回答作为 ask tool response 接回原 messages。
-    const result = await runUnifiedAgentLoop({
+    // 如果上一轮因 ask_user 暂停，这里会把用户回答作为 ask tool response 接回原 messages。
+    const { summary: outputSummary } = await runAgentLoopCoreWithSummary({
+      provider,
       runtime,
-      input: {
+      input: buildAgentLoopCoreInput({
         messages: loopMessages,
         systemPrompt: formatedSystemPrompt,
-        pendingMainContext: restoredMemory.pendingMainContext,
-        userAnswer:
-          restoredMemory.pendingMainContext && lastInteractive
-            ? queryInput || userChatInput
-            : undefined
-      }
-    });
-
-    if (result.status === 'ask') {
-      if (!result.ask) {
-        throw new Error('Agent loop returned ask status without ask payload.');
-      }
-
-      // ask 状态不产出最终 answer，只返回 interactive + memory。
-      // memory 会在用户下一次回复时恢复，保证上下文连续和缓存命中。
-      const interactive = createAskInteractive({
-        // saveChat 会把该 planId 回写到用户答案上，后续 chats2GPTMessages 据此跳过这条 UI-only 回答。
-        planId:
-          result.pendingMainContext?.activePlan?.planId ||
-          getWorkflowAgentLoopMemoryKeys(nodeId).memoryKey,
-        ask: result.ask
-      });
-      for (let index = assistantResponses.length - 1; index >= 0; index--) {
-        const askValue = assistantResponses[index];
-        if (askValue.agentAsk && !askValue.agentAsk.planId) {
-          askValue.agentAsk.planId = interactive.planId;
-          break;
+        activePlan,
+        providerState: runtimeProviderState,
+        userAnswer: isAskResume ? queryInput || userChatInput : undefined,
+        childrenInteractiveParams: createAgentLoopCoreChildInteractiveParams({
+          lastInteractive
+        })
+      }),
+      assistantResponses: {
+        // Workflow Agent 的文本、普通工具和 plan/ask 元事件由 core 按事件统一维护。
+        eventTarget: assistantResponses,
+        showReasoning: aiChatReasoning !== false,
+        getEventToolInfo: (name) => {
+          const subApp = getSubAppInfo(name);
+          return {
+            name: subApp.name || name,
+            avatar: subApp.avatar
+          };
+        },
+        metaEventNames: {
+          setPlanToolName: artifacts.setPlanToolName,
+          updatePlanToolName: artifacts.updatePlanToolName,
+          askToolName: artifacts.askToolName
         }
       }
+    });
+    const outputAssistantResponses = outputSummary.assistantResponses;
 
+    if (
+      outputSummary.status === 'interactive' &&
+      outputSummary.interactive?.type === 'agentPlanAskQuery'
+    ) {
+      // ask 暂停不产出最终 answer，只返回 interactive + memory。
+      // memory 会在用户下一次回复时恢复，保证上下文连续和缓存命中。
+      // saveChat 会把该 askId 回写到用户答案上，后续 chats2GPTMessages 据此跳过这条 UI-only 回答。
       return {
         [DispatchNodeResponseKeyEnum.nodeResponses]: nodeResponseCollector.getNodeResponses(),
         runtimeNodeResponseSummary: nodeResponseCollector.getRuntimeNodeResponseSummary(),
-        [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
-        [DispatchNodeResponseKeyEnum.memories]: buildWorkflowAgentLoopMemories({
+        [DispatchNodeResponseKeyEnum.assistantResponses]: outputAssistantResponses,
+        [DispatchNodeResponseKeyEnum.memories]: buildAgentLoopCorePausedMemories({
           nodeId,
-          memory: {
-            pendingMainContext: result.pendingMainContext
-          }
+          providerState: outputSummary.providerState
         }),
-        [DispatchNodeResponseKeyEnum.interactive]: interactive
+        [DispatchNodeResponseKeyEnum.interactive]: outputSummary.interactive
+      };
+    }
+
+    if (outputSummary.status === 'interactive' && outputSummary.interactive) {
+      return {
+        [DispatchNodeResponseKeyEnum.nodeResponses]: nodeResponseCollector.getNodeResponses(),
+        runtimeNodeResponseSummary: nodeResponseCollector.getRuntimeNodeResponseSummary(),
+        [DispatchNodeResponseKeyEnum.assistantResponses]: outputAssistantResponses,
+        [DispatchNodeResponseKeyEnum.memories]: buildAgentLoopCorePausedMemories({
+          nodeId,
+          providerState: outputSummary.providerState
+        }),
+        [DispatchNodeResponseKeyEnum.interactive]: outputSummary.interactive
       };
     }
 
     // 4. 结束态归一化。
-    // done 正常落 answer；error 转成可见文本并保留 error 输出给 workflow。
-    // 用户主动停止属于正常结束，不写 error，避免前端按报错卡片展示。
-    const errorText = result.status === 'error' ? getErrText(result.error) : undefined;
-    const reasoningValue = result.reasoningText
-      ? {
-          reasoning: {
-            content: result.reasoningText
-          },
-          ...(aiChatReasoning === false ? { hideReason: true } : {})
-        }
-      : {};
-    const finalText = result.answerText || errorText;
-
-    if (finalText) {
-      assistantResponses.push({
-        ...reasoningValue,
-        text: {
-          content: finalText
-        }
-      });
-    }
-
-    // workflow 节点输出需要一个纯文本 answerText；前端展示则继续使用结构化 assistantResponses。
-    const answerText = assistantResponses
-      .filter((item) => item.text?.content)
-      .map((item) => item.text!.content)
-      .join('');
+    // done 正常落 answer；error/aborted 转成可见文本，同时保留 error 输出给 workflow。
+    const finalOutput = buildAgentLoopCoreFinalAssistantOutput({
+      assistantResponses: outputAssistantResponses,
+      finalText: outputSummary.finalText,
+      reasoningText: outputSummary.reasoningText,
+      hideReason: aiChatReasoning === false
+    });
 
     return {
       data: {
-        [NodeOutputKeyEnum.answerText]: answerText
+        [NodeOutputKeyEnum.answerText]: finalOutput.answerText
       },
-      ...(errorText && {
+      ...(outputSummary.errorText && {
         error: {
-          [NodeOutputKeyEnum.errorText]: errorText
+          [NodeOutputKeyEnum.errorText]: outputSummary.errorText
         }
       }),
-      [DispatchNodeResponseKeyEnum.memories]: buildWorkflowAgentLoopMemories({
-        nodeId,
-        memory: {}
+      [DispatchNodeResponseKeyEnum.memories]: buildAgentLoopCoreDoneMemories({
+        nodeId
       }),
-      [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
+      [DispatchNodeResponseKeyEnum.assistantResponses]: finalOutput.assistantResponses,
       [DispatchNodeResponseKeyEnum.nodeResponses]: nodeResponseCollector.getNodeResponses(),
       runtimeNodeResponseSummary: nodeResponseCollector.getRuntimeNodeResponseSummary()
     };
@@ -436,7 +383,6 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       error
     });
     const errorText = getErrText(error);
-
     return {
       error: {
         [NodeOutputKeyEnum.errorText]: errorText
@@ -444,7 +390,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
       [DispatchNodeResponseKeyEnum.toolResponse]: {
         error: errorText
       },
-      [DispatchNodeResponseKeyEnum.memories]: buildWorkflowAgentLoopMemories({
+      [DispatchNodeResponseKeyEnum.memories]: buildAgentLoopCoreProviderStateMemories({
         nodeId,
         memory: {}
       }),

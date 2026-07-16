@@ -98,9 +98,16 @@ type Props = {
   flowInputList: FlowNodeInputItemType[];
   nodeId: string;
   CustomComponent?: Record<string, (e: FlowNodeInputItemType) => React.ReactNode>;
+  settingLLMModelProps?: RenderInputProps['settingLLMModelProps'];
   mb?: number;
 };
-const RenderInput = ({ flowInputList, nodeId, CustomComponent, mb = 5 }: Props) => {
+const RenderInput = ({
+  flowInputList,
+  nodeId,
+  CustomComponent,
+  settingLLMModelProps,
+  mb = 5
+}: Props) => {
   const { feConfigs } = useSystemStore();
 
   const filterProInputs = useMemoEnhance(() => {
@@ -139,7 +146,12 @@ const RenderInput = ({ flowInputList, nodeId, CustomComponent, mb = 5 }: Props) 
 
           return {
             Component: (
-              <RenderItem.Component inputs={filterProInputs} item={input} nodeId={nodeId} />
+              <RenderItem.Component
+                inputs={filterProInputs}
+                item={input}
+                nodeId={nodeId}
+                settingLLMModelProps={settingLLMModelProps}
+              />
             ),
             LableRightComponent: RenderItem.LableRightComponent ? (
               <RenderItem.LableRightComponent

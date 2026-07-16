@@ -11,6 +11,7 @@ import { sliceStrStartEnd } from '../../common/string/tools';
 import { PublishChannelEnum } from '../../support/outLink/constant';
 import { removeDatasetCiteText } from '../ai/llm/utils';
 import type { WorkflowInteractiveResponseType } from '../workflow/template/system/interactive/type';
+import { extractDeepestInteractive } from '../workflow/runtime/utils';
 import { childrenResponseFields, getChildrenResponses } from './utils/mergeNode';
 
 // Concat 2 -> 1, and sort by role
@@ -306,10 +307,10 @@ export const getFlatAppResponses = (res: ChatHistoryItemResType[]): ChatHistoryI
 export const checkInteractiveResponseStatus = ({
   interactive
 }: {
-  interactive: { type: WorkflowInteractiveResponseType['type'] };
+  interactive: WorkflowInteractiveResponseType;
   input: string;
 }): 'submit' | 'query' => {
-  if (interactive.type === 'agentPlanAskQuery') {
+  if (extractDeepestInteractive(interactive).type === 'agentPlanAskQuery') {
     return 'query';
   }
   return 'submit';

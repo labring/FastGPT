@@ -5,7 +5,7 @@ import type { DispatchSubAppResponse } from '../../type';
 import { getFileContentByUrl } from '../../../../../../chat/fileContext';
 
 type FileReadParams = {
-  files: { id: string; url: string }[];
+  files: { id: string; name?: string; url: string }[];
 
   teamId: string;
   tmbId: string;
@@ -13,6 +13,9 @@ type FileReadParams = {
   usageId?: string;
 };
 
+/**
+ * 使用聊天文件的统一读取链路解析 Agent 文件，并保留用户上传时的文件名用于响应展示。
+ */
 export const dispatchFileRead = async ({
   files,
   teamId,
@@ -22,7 +25,7 @@ export const dispatchFileRead = async ({
 }: FileReadParams): Promise<DispatchSubAppResponse> => {
   try {
     const readFilesResult = await Promise.all(
-      files.map(async ({ id, url }) => {
+      files.map(async ({ id, url, name: inputName }) => {
         try {
           const { name, content } = await getFileContentByUrl({
             url,
@@ -34,13 +37,13 @@ export const dispatchFileRead = async ({
 
           return {
             id,
-            name,
+            name: inputName ?? name,
             content
           };
         } catch (error) {
           return {
             id,
-            name: '',
+            name: inputName ?? '',
             content: getErrText(error, 'Load file error')
           };
         }
@@ -52,7 +55,11 @@ export const dispatchFileRead = async ({
       usages: [],
       nodeResponse: {
         moduleType: FlowNodeTypeEnum.readFiles,
-        moduleName: i18nT('chat:read_file')
+        moduleName: i18nT('chat:read_file'),
+        readFiles: files.map((file, index) => ({
+          name: readFilesResult[index]!.name,
+          url: file.url
+        }))
       }
     };
   } catch (error) {

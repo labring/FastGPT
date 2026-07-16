@@ -20,6 +20,7 @@ const HumanChatBubbleContent = ({ chatValue }: HumanChatBubbleContentProps) => {
       w={'fit-content'}
       maxW={'100%'}
     >
+      {files.length > 0 && <FilesBlock files={files} singleColumn imageVariant={'chatBubble'} />}
       {text && (
         <Box
           fontSize={'inherit'}
@@ -31,7 +32,6 @@ const HumanChatBubbleContent = ({ chatValue }: HumanChatBubbleContentProps) => {
           {text}
         </Box>
       )}
-      {files.length > 0 && <FilesBlock files={files} singleColumn imageVariant={'chatBubble'} />}
     </Flex>
   );
 };

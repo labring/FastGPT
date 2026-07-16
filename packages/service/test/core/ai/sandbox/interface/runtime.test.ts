@@ -4,12 +4,14 @@ import {
   getAgentSkillInfos,
   injectAgentSkillFilesToSandbox
 } from '@fastgpt/service/core/ai/sandbox/interface/runtime';
-import { buildAgentSkillsPrompt } from '@fastgpt/service/core/workflow/dispatch/ai/agent/adapter/userContext';
+import { buildAgentLoopCoreSkillsPrompt } from '@fastgpt/service/core/workflow/dispatch/ai/agentLoopCore/application/context/reminder';
 import {
   SANDBOX_EDIT_FILE_TOOL_NAME,
   SANDBOX_GET_FILE_URL_TOOL_NAME,
   SANDBOX_READ_FILE_TOOL_NAME,
-  SANDBOX_SEARCH_TOOL_NAME,
+  SANDBOX_FIND_TOOL_NAME,
+  SANDBOX_GREP_TOOL_NAME,
+  SANDBOX_LS_TOOL_NAME,
   SANDBOX_SHELL_TOOL_NAME,
   SANDBOX_TOOLS,
   SANDBOX_WRITE_FILE_TOOL_NAME
@@ -997,7 +999,9 @@ describe('sandbox and skill module separation', () => {
       SANDBOX_READ_FILE_TOOL_NAME,
       SANDBOX_WRITE_FILE_TOOL_NAME,
       SANDBOX_EDIT_FILE_TOOL_NAME,
-      SANDBOX_SEARCH_TOOL_NAME,
+      SANDBOX_GREP_TOOL_NAME,
+      SANDBOX_FIND_TOOL_NAME,
+      SANDBOX_LS_TOOL_NAME,
       SANDBOX_GET_FILE_URL_TOOL_NAME
     ]);
     expect(toolNames).not.toContain('sandbox_execute');
@@ -1005,7 +1009,7 @@ describe('sandbox and skill module separation', () => {
   });
 
   it('keeps sandbox input files outside skill prompt', () => {
-    const skillPrompt = buildAgentSkillsPrompt([
+    const skillPrompt = buildAgentLoopCoreSkillsPrompt([
       {
         id: 'skill_1',
         name: 'Skill',
@@ -1015,10 +1019,10 @@ describe('sandbox and skill module separation', () => {
       }
     ]);
 
-    expect(skillPrompt).toContain('## 技能');
-    expect(skillPrompt).toContain('<path>/workspace/Skill/SKILL.md</path>');
-    expect(skillPrompt).not.toContain('<location>');
-    expect(skillPrompt).toContain('<directory>/workspace/Skill</directory>');
+    expect(skillPrompt).toContain('<available_skills>');
+    expect(skillPrompt).toContain('<location>/workspace/Skill/SKILL.md</location>');
+    expect(skillPrompt).not.toContain('<directory>');
+    expect(skillPrompt).not.toContain('<path>');
     expect(skillPrompt).not.toContain('<sandbox_input_files>');
     expect(skillPrompt).not.toContain('sandbox_fetch_user_file');
   });

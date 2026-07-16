@@ -38,18 +38,12 @@ describe('sandboxReadFileTool', () => {
       }
     });
 
-    expect(JSON.parse(result.response)).toEqual({
-      path: 'notes.txt',
-      startLine: 1,
-      endLine: 3,
-      totalLines: 3,
-      content: 'line 1\nline 2\nline 3'
-    });
+    expect(result.response).toBe('line 1\nline 2\nline 3');
     expect(sandboxInstance.ensureAvailable).toHaveBeenCalledTimes(1);
     expect(sandboxInstance.provider.readFiles).toHaveBeenCalledWith(['notes.txt']);
   });
 
-  it('reads an inclusive line range', async () => {
+  it('reads a line range and returns a continuation hint', async () => {
     const sandboxInstance = createSandboxInstance('line 1\nline 2\nline 3\nline 4');
 
     const result = await sandboxReadFileTool.execute({
@@ -60,21 +54,17 @@ describe('sandboxReadFileTool', () => {
       sandboxInstance,
       params: {
         path: 'notes.txt',
-        startLine: 2,
-        endLine: 3
+        offset: 2,
+        limit: 2
       }
     });
 
-    expect(JSON.parse(result.response)).toEqual({
-      path: 'notes.txt',
-      startLine: 2,
-      endLine: 3,
-      totalLines: 4,
-      content: 'line 2\nline 3'
-    });
+    expect(result.response).toBe(
+      'line 2\nline 3\n\n[1 more lines in file. Use offset=4 to continue.]'
+    );
   });
 
-  it('decodes non-binary file content and clamps the returned end line', async () => {
+  it('decodes non-binary file content', async () => {
     const sandboxInstance = createSandboxInstance('plain text');
     sandboxInstance.provider.readFiles.mockResolvedValueOnce([
       {
@@ -91,17 +81,11 @@ describe('sandboxReadFileTool', () => {
       sandboxInstance,
       params: {
         path: 'notes.txt',
-        endLine: 10
+        limit: 10
       }
     });
 
-    expect(JSON.parse(result.response)).toEqual({
-      path: 'notes.txt',
-      startLine: 1,
-      endLine: 1,
-      totalLines: 1,
-      content: '12345'
-    });
+    expect(result.response).toBe('12345');
   });
 
   it('decodes nullish file content as an empty string', async () => {
@@ -118,13 +102,65 @@ describe('sandboxReadFileTool', () => {
       }
     });
 
-    expect(JSON.parse(result.response)).toEqual({
-      path: 'empty.txt',
-      startLine: 1,
-      endLine: 1,
-      totalLines: 1,
-      content: ''
+    expect(result.response).toBe('');
+  });
+
+  it('rejects an offset beyond the end of the file', async () => {
+    const sandboxInstance = createSandboxInstance('line 1\nline 2');
+
+    await expect(
+      sandboxReadFileTool.execute({
+        sourceType: ChatSourceTypeEnum.app,
+        sourceId: 'app_1',
+        userId: 'user_1',
+        chatId: 'chat_1',
+        sandboxInstance,
+        params: {
+          path: 'notes.txt',
+          offset: 3
+        }
+      })
+    ).rejects.toThrow('Offset 3 is beyond end of file (2 lines total)');
+  });
+
+  it('returns an actionable message when the first selected line exceeds the byte limit', async () => {
+    const sandboxInstance = createSandboxInstance('a'.repeat(50 * 1024 + 1));
+
+    const result = await sandboxReadFileTool.execute({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app_1',
+      userId: 'user_1',
+      chatId: 'chat_1',
+      sandboxInstance,
+      params: {
+        path: 'large.txt'
+      }
     });
+
+    expect(result.response).toContain('exceeds 51200 byte limit');
+    expect(result.response).toContain("sed -n '1p' large.txt | head -c 51200");
+  });
+
+  it('truncates a long file and returns the next offset', async () => {
+    const sandboxInstance = createSandboxInstance(
+      Array.from({ length: 2001 }, (_, index) => `line ${index + 1}`).join('\n')
+    );
+
+    const result = await sandboxReadFileTool.execute({
+      sourceType: ChatSourceTypeEnum.app,
+      sourceId: 'app_1',
+      userId: 'user_1',
+      chatId: 'chat_1',
+      sandboxInstance,
+      params: {
+        path: 'large.txt'
+      }
+    });
+
+    expect(result.response).toContain('line 1\nline 2');
+    expect(result.response).toContain(
+      '[Showing lines 1-2000 of 2001. Use offset=2001 to continue.]'
+    );
   });
 
   it('throws when provider returns no readable file', async () => {

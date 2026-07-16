@@ -1,4 +1,5 @@
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
+import { AgentPlanReadSchema } from '@fastgpt/global/core/ai/agent/type';
 import { MongoChatItem } from './chatItemSchema';
 import { MongoChat } from './chatSchema';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -72,6 +73,80 @@ export async function getChatItems({
   hasMorePrev: boolean;
   hasMoreNext: boolean;
 }> {
+  /**
+   * 只在读取边界迁移历史 Agent 数据，避免回写数据库或让旧字段扩散到客户端。
+   * 旧 ask 使用 planId 关联卡片、调用和回答；兼容读取后统一输出 askId。
+   */
+  const normalizePersistedAgentData = (histories: ChatItemMiniType[]) => {
+    const isObjectRecord = (value: unknown): value is Record<string, unknown> =>
+      !!value && typeof value === 'object' && !Array.isArray(value);
+
+    const normalizeLegacyAskId = (value: unknown) => {
+      if (!isObjectRecord(value)) return;
+
+      const askId =
+        typeof value.askId === 'string' && value.askId
+          ? value.askId
+          : typeof value.planId === 'string' && value.planId
+            ? value.planId
+            : undefined;
+      if (askId) {
+        value.askId = askId;
+      }
+      delete value.planId;
+    };
+
+    const normalizeInteractiveAsk = (interactive: unknown) => {
+      let current = isObjectRecord(interactive) ? interactive : undefined;
+      let depth = 0;
+
+      while (current && depth < 100) {
+        const params = isObjectRecord(current.params) ? current.params : undefined;
+        const childrenResponse = isObjectRecord(params?.childrenResponse)
+          ? params.childrenResponse
+          : undefined;
+        if (!childrenResponse) break;
+
+        current = childrenResponse;
+        depth++;
+      }
+
+      if (current?.type === 'agentPlanAskQuery') {
+        normalizeLegacyAskId(current);
+      }
+    };
+
+    histories.forEach((item) => {
+      if (!item.value) return;
+
+      if (item.obj === ChatRoleEnum.Human) {
+        item.value.forEach(normalizeLegacyAskId);
+        return;
+      }
+
+      if (item.obj !== ChatRoleEnum.AI) return;
+
+      item.value.forEach((value) => {
+        normalizeLegacyAskId(value.agentAsk);
+        normalizeInteractiveAsk(value.interactive);
+
+        if (!value.plan) return;
+
+        const parsedPlan = AgentPlanReadSchema.safeParse(value.plan);
+        if (parsedPlan.success) {
+          value.plan = parsedPlan.data;
+          return;
+        }
+
+        logger.warn('Failed to parse persisted agent plan', {
+          planId: value.plan.planId,
+          issues: parsedPlan.error.issues
+        });
+        value.plan = undefined;
+      });
+    });
+  };
+
   if (!chatId) {
     return { histories: [], total: 0, hasMorePrev: false, hasMoreNext: false };
   }
@@ -198,6 +273,8 @@ export async function getChatItems({
       };
     }
   })();
+
+  normalizePersistedAgentData(histories);
 
   if (shouldReadNodeResponse !== 'none' && histories.length > 0) {
     const chatItemDataIds = histories

@@ -6,6 +6,7 @@ import type { WorkflowInteractiveResponseType } from '@fastgpt/global/core/workf
 import type { ChatSiteItemType } from '@/components/core/chat/ChatContainer/ChatBox/type';
 import {
   getInteractiveByHistories,
+  persistAgentPlanAskAnswerToHistories,
   resolveInteractiveResponseChatItemId,
   rewriteHistoriesByInteractiveResponse
 } from '@/components/core/chat/ChatContainer/ChatBox/utils/interactive';
@@ -139,6 +140,7 @@ describe('getInteractiveByHistories', () => {
     const interactive = {
       ...baseInteractive,
       type: 'agentPlanAskQuery',
+      askId: 'ask-1',
       params: {
         content: 'Need more detail',
         options: ['A', 'B', 'C']
@@ -204,6 +206,7 @@ describe('rewriteHistoriesByInteractiveResponse', () => {
     const interactive = {
       ...baseInteractive,
       type: 'agentPlanAskQuery',
+      askId: 'ask-1',
       params: {
         content: 'Need more detail',
         options: ['A', 'B', 'C']
@@ -228,8 +231,8 @@ describe('rewriteHistoriesByInteractiveResponse', () => {
   it('persists agentPlanAskQuery answer on the previous AI message for query responses', () => {
     const interactive = {
       ...baseInteractive,
-      planId: 'plan-1',
       type: 'agentPlanAskQuery',
+      askId: 'ask-1',
       params: {
         content: 'Need more detail',
         options: ['A', 'B', 'C']
@@ -248,6 +251,36 @@ describe('rewriteHistoriesByInteractiveResponse', () => {
       ...histories[2],
       status: ChatStatusEnum.loading
     });
+  });
+
+  it('only persists an agent ask answer to the matching askId', () => {
+    const firstAsk = {
+      ...baseInteractive,
+      type: 'agentPlanAskQuery',
+      askId: 'ask-1',
+      params: {
+        content: 'First question',
+        options: ['A', 'B', 'C']
+      }
+    } as WorkflowInteractiveResponseType;
+    const secondAsk = {
+      ...baseInteractive,
+      type: 'agentPlanAskQuery',
+      askId: 'ask-2',
+      params: {
+        content: 'Second question',
+        options: ['A', 'B', 'C']
+      }
+    } as WorkflowInteractiveResponseType;
+
+    const result = persistAgentPlanAskAnswerToHistories({
+      histories: [createAiRecord(firstAsk), createAiRecord(secondAsk, { id: 'ai-2' })],
+      interactive: secondAsk,
+      answer: 'B'
+    });
+
+    expect((result[0].value[0] as any).interactive.params.answer).toBeUndefined();
+    expect((result[1].value[0] as any).interactive.params.answer).toBe('B');
   });
 });
 
@@ -273,6 +306,7 @@ describe('resolveInteractiveResponseChatItemId', () => {
     const interactive = {
       ...baseInteractive,
       type: 'agentPlanAskQuery',
+      askId: 'ask-1',
       params: {
         content: 'Need more detail',
         options: ['A', 'B', 'C']

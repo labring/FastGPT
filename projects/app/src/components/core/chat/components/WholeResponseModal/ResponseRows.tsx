@@ -348,6 +348,9 @@ export const WorkflowResultRows = ({
         } as CSSProperties
       }
     : undefined;
+  const isPlanOperation =
+    activeModule.agentPlanStatus === 'set_plan' || activeModule.agentPlanStatus === 'update_plan';
+  const planResult = isPlanOperation ? activeModule.agentPlanResult : undefined;
 
   return (
     <>
@@ -371,8 +374,13 @@ export const WorkflowResultRows = ({
       <Row label={t('chat:response.tool_input')} value={activeModule.toolInput} />
       <Row label={t('chat:response.tool_output')} value={activeModule.pluginOutput} />
       <Row
+        label={t('chat:response.plan_result')}
+        value={planResult}
+        contentBoxProps={codeBlockContentBoxProps}
+      />
+      <Row
         label={t('chat:response.text_output')}
-        value={activeModule.textOutput}
+        value={isPlanOperation ? undefined : activeModule.textOutput}
         contentBoxProps={codeBlockContentBoxProps}
       />
       <Row
