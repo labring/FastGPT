@@ -1,4 +1,5 @@
 export const S3AccessLinkErrCode = {
+  invalidDownloadBatch: 'InvalidDownloadBatch',
   invalidSignedAlias: 'InvalidSignedAlias',
   expiredSignedAlias: 'ExpiredSignedAlias',
   invalidSignedAliasSignature: 'InvalidSignedAliasSignature',

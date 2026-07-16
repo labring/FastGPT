@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   S3AccessLinkErrCode,
+  S3AccessLinkError,
+  S3_DOWNLOAD_URL_BATCH_MAX_SIZE,
   createMemoryS3AccessLinkStores,
   createS3AccessLinkCrypto,
   createS3AccessLinkService,
@@ -72,6 +74,110 @@ describe('S3 access link SDK core', () => {
     expect(payload.expiresAt).toBeInstanceOf(Date);
   });
 
+  it('batches alias lookup and creation while preserving input order and duplicate URLs', async () => {
+    const stores = createMemoryS3AccessLinkStores();
+    const findByAliasKeys = vi.fn(stores.downloadAliasStore.findByAliasKeys);
+    const createMany = vi.fn(stores.downloadAliasStore.createMany);
+    const onDownloadUrlTiming = vi.fn();
+    const { service } = createDeterministicService({
+      stores: {
+        downloadAlias: {
+          ...stores.downloadAliasStore,
+          findByAliasKeys,
+          createMany
+        },
+        uploadSession: stores.uploadSessionStore
+      },
+      onDownloadUrlTiming
+    });
+    const first = {
+      bucketName: 'private',
+      objectKey: 'dataset/team-1/first.png',
+      expiredTime: getFutureDate(10)
+    };
+    const second = {
+      bucketName: 'private',
+      objectKey: 'dataset/team-1/second.png',
+      expiredTime: getFutureDate(10)
+    };
+
+    const urls = await service.createDownloadUrls([first, second, first]);
+
+    expect(urls).toHaveLength(3);
+    expect(urls[0]).toBe(urls[2]);
+    expect(urls[0]).not.toBe(urls[1]);
+    expect(findByAliasKeys).toHaveBeenCalledTimes(1);
+    expect(findByAliasKeys.mock.calls[0]?.[0]).toHaveLength(2);
+    expect(createMany).toHaveBeenCalledTimes(1);
+    expect(createMany.mock.calls[0]?.[0]).toHaveLength(2);
+    expect(stores.downloadAliases.size).toBe(2);
+    expect(onDownloadUrlTiming).toHaveBeenCalledWith(
+      expect.objectContaining({
+        inputCount: 3,
+        uniqueAliasCount: 2,
+        reusedAliasCount: 0,
+        createdAliasCount: 2,
+        leaseTouchedCount: 0
+      })
+    );
+  });
+
+  it('batch re-queries aliases after a concurrent duplicate insert', async () => {
+    const stores = createMemoryS3AccessLinkStores();
+    const findByAliasKeys = vi.fn(stores.downloadAliasStore.findByAliasKeys);
+    const createMany = vi.fn(async (records) => {
+      await stores.downloadAliasStore.createMany(records);
+      throw new S3AccessLinkError(S3AccessLinkErrCode.duplicateAliasKey);
+    });
+    const { service } = createDeterministicService({
+      stores: {
+        downloadAlias: {
+          ...stores.downloadAliasStore,
+          findByAliasKeys,
+          createMany
+        },
+        uploadSession: stores.uploadSessionStore
+      }
+    });
+
+    await expect(
+      service.createDownloadUrls([
+        {
+          bucketName: 'private',
+          objectKey: 'dataset/team-1/race.png',
+          expiredTime: getFutureDate(10)
+        }
+      ])
+    ).resolves.toHaveLength(1);
+    expect(findByAliasKeys).toHaveBeenCalledTimes(2);
+    expect(stores.downloadAliases.size).toBe(1);
+  });
+
+  it('rejects oversized download URL batches before querying the store', async () => {
+    const stores = createMemoryS3AccessLinkStores();
+    const findByAliasKeys = vi.fn(stores.downloadAliasStore.findByAliasKeys);
+    const { service } = createDeterministicService({
+      stores: {
+        downloadAlias: {
+          ...stores.downloadAliasStore,
+          findByAliasKeys
+        },
+        uploadSession: stores.uploadSessionStore
+      }
+    });
+
+    await expect(
+      service.createDownloadUrls(
+        Array.from({ length: S3_DOWNLOAD_URL_BATCH_MAX_SIZE + 1 }, (_, index) => ({
+          bucketName: 'private',
+          objectKey: `dataset/team-1/${index}.png`,
+          expiredTime: getFutureDate(10)
+        }))
+      )
+    ).rejects.toMatchObject({ code: S3AccessLinkErrCode.invalidDownloadBatch });
+    expect(findByAliasKeys).not.toHaveBeenCalled();
+  });
+
   it('reports download URL HMAC and store timing without affecting issuance', async () => {
     const onDownloadUrlTiming = vi.fn();
     const { service } = createDeterministicService({ onDownloadUrlTiming });
@@ -113,7 +219,7 @@ describe('S3 access link SDK core', () => {
 
   it('refreshes an alias lease only when it approaches the requested expiry', async () => {
     const stores = createMemoryS3AccessLinkStores();
-    const touchLease = vi.fn(stores.downloadAliasStore.touchLease);
+    const touchLeases = vi.fn(stores.downloadAliasStore.touchLeases);
     const onDownloadUrlTiming = vi.fn();
     let now = new Date(baseNow);
     const { service } = createDeterministicService({
@@ -121,7 +227,7 @@ describe('S3 access link SDK core', () => {
       stores: {
         downloadAlias: {
           ...stores.downloadAliasStore,
-          touchLease
+          touchLeases
         },
         uploadSession: stores.uploadSessionStore
       },
@@ -141,7 +247,7 @@ describe('S3 access link SDK core', () => {
       expiredTime: new Date(now.getTime() + 10 * 60_000)
     });
 
-    expect(touchLease).not.toHaveBeenCalled();
+    expect(touchLeases).not.toHaveBeenCalled();
 
     now = new Date(baseNow.getTime() + 23 * 60 * 60_000);
     await service.createDownloadUrl({
@@ -149,7 +255,8 @@ describe('S3 access link SDK core', () => {
       expiredTime: new Date(now.getTime() + 10 * 60_000)
     });
 
-    expect(touchLease).toHaveBeenCalledTimes(1);
+    expect(touchLeases).toHaveBeenCalledTimes(1);
+    expect(touchLeases.mock.calls[0]?.[0]).toHaveLength(1);
     expect(onDownloadUrlTiming).toHaveBeenLastCalledWith(
       expect.objectContaining({
         aliasReused: true,

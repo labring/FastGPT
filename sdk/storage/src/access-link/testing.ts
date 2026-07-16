@@ -39,42 +39,54 @@ export const createMemoryS3AccessLinkStores = (): MemoryS3AccessLinkStores => {
   const uploadSessions = new Map<string, S3UploadSessionRecord>();
 
   const downloadAliasStore: S3DownloadAliasStore = {
-    findByAliasKey: async (aliasKey) => {
-      const record = Array.from(downloadAliases.values()).find(
-        (item) => item.aliasKey === aliasKey
-      );
-      return record ? cloneDownloadAlias(record) : null;
+    findByAliasKeys: async (aliasKeys) => {
+      const aliasKeySet = new Set(aliasKeys);
+      return Array.from(downloadAliases.values())
+        .filter((item) => aliasKeySet.has(item.aliasKey))
+        .map(cloneDownloadAlias);
     },
     findByAliasId: async (aliasId) => {
       const record = downloadAliases.get(aliasId);
       return record ? cloneDownloadAlias(record) : null;
     },
-    create: async (record: CreateS3DownloadAliasRecord) => {
-      const hasAliasKey = Array.from(downloadAliases.values()).some(
-        (item) => item.aliasKey === record.aliasKey
+    createMany: async (records: CreateS3DownloadAliasRecord[]) => {
+      const existingAliasKeys = new Set(
+        Array.from(downloadAliases.values()).map((item) => item.aliasKey)
       );
-
-      if (hasAliasKey) {
+      const inputAliasKeys = new Set<string>();
+      if (
+        records.some((record) => {
+          if (existingAliasKeys.has(record.aliasKey) || inputAliasKeys.has(record.aliasKey)) {
+            return true;
+          }
+          inputAliasKeys.add(record.aliasKey);
+          return false;
+        })
+      ) {
         throw new S3AccessLinkError(S3AccessLinkErrCode.duplicateAliasKey);
       }
 
       const now = new Date();
-      const nextRecord: S3DownloadAliasRecord = {
-        ...record,
-        createTime: record.createTime ?? now,
-        updateTime: record.updateTime ?? now
-      };
-      downloadAliases.set(nextRecord.aliasId, cloneDownloadAlias(nextRecord));
-      return cloneDownloadAlias(nextRecord);
+      return records.map((record) => {
+        const nextRecord: S3DownloadAliasRecord = {
+          ...record,
+          createTime: record.createTime ?? now,
+          updateTime: record.updateTime ?? now
+        };
+        downloadAliases.set(nextRecord.aliasId, cloneDownloadAlias(nextRecord));
+        return cloneDownloadAlias(nextRecord);
+      });
     },
-    touchLease: async ({ aliasId, purgeAt, lastIssuedAt }) => {
-      const record = downloadAliases.get(aliasId);
-      if (!record) return;
-      downloadAliases.set(aliasId, {
-        ...record,
-        purgeAt: record.purgeAt.getTime() > purgeAt.getTime() ? record.purgeAt : purgeAt,
-        lastIssuedAt,
-        updateTime: lastIssuedAt
+    touchLeases: async (params) => {
+      params.forEach(({ aliasId, purgeAt, lastIssuedAt }) => {
+        const record = downloadAliases.get(aliasId);
+        if (!record) return;
+        downloadAliases.set(aliasId, {
+          ...record,
+          purgeAt: record.purgeAt.getTime() > purgeAt.getTime() ? record.purgeAt : purgeAt,
+          lastIssuedAt,
+          updateTime: lastIssuedAt
+        });
       });
     },
     disableByAliasId: async ({ aliasId, disabledAt }) => {

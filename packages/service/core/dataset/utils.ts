@@ -6,9 +6,114 @@ import { getLogger, LogCategories } from '../../common/logger';
 import { S3Buckets } from '../../common/s3/config/constants';
 import { getVlmModelList, isImageEmbeddingModel } from '../ai/model';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { createS3DownloadAccessUrl } from '../../common/s3/accessLink';
+import { S3_DOWNLOAD_URL_BATCH_MAX_SIZE } from '@fastgpt-sdk/storage/access-link';
+import { createS3DownloadAccessUrls } from '../../common/s3/accessLink';
 
 const logger = getLogger(LogCategories.MODULE.DATASET.FILE);
+const previewUrlS3Sources = ['dataset', 'chat', 'temp'] as const;
+
+const createS3MarkdownKeyRegex = () => {
+  const pattern = Object.values(S3Sources)
+    .map((prefix) => `${prefix}\\/[^)]+?`)
+    .join('|');
+
+  return new RegExp(String.raw`(!?)\[([^\]]*)\]\(\s*(?!https?:\/\/)(${pattern})\s*\)`, 'g');
+};
+
+const isPreviewUrlS3ObjectKey = (objectKey: string) =>
+  previewUrlS3Sources.some((source) => isS3ObjectKey(objectKey, source));
+
+/**
+ * 从多段 Markdown 中提取允许签发预览链接的 S3 对象键，并按首次出现顺序去重。
+ */
+export const getS3ObjectKeysFromMarkdownTexts = (texts: Array<string | undefined>) => {
+  const objectKeys = new Set<string>();
+
+  for (const text of texts) {
+    if (!text || typeof text !== 'string') continue;
+
+    for (const match of text.matchAll(createS3MarkdownKeyRegex())) {
+      const objectKey = match[3];
+      if (objectKey && isPreviewUrlS3ObjectKey(objectKey)) {
+        objectKeys.add(objectKey);
+      }
+    }
+  }
+
+  return Array.from(objectKeys);
+};
+
+/**
+ * 为一批 S3 对象键创建预览 URL 映射。
+ *
+ * 输入会先去重，并按 SDK 的批量上限分片，避免调用方因结果规模变化退化成逐条 Mongo 查询。
+ */
+export const createS3KeysPreviewUrlMap = async ({
+  objectKeys,
+  expiredTime
+}: {
+  objectKeys: string[];
+  expiredTime: Date;
+}) => {
+  const uniqueObjectKeys = Array.from(new Set(objectKeys));
+  const previewUrlMap = new Map<string, string>();
+
+  for (let index = 0; index < uniqueObjectKeys.length; index += S3_DOWNLOAD_URL_BATCH_MAX_SIZE) {
+    const batchKeys = uniqueObjectKeys.slice(index, index + S3_DOWNLOAD_URL_BATCH_MAX_SIZE);
+    const urls = await createS3DownloadAccessUrls(
+      batchKeys.map((objectKey) => ({
+        objectKey,
+        bucketName: S3Buckets.private,
+        expiredTime
+      }))
+    );
+
+    batchKeys.forEach((objectKey, batchIndex) => {
+      previewUrlMap.set(objectKey, urls[batchIndex]!);
+    });
+  }
+
+  return previewUrlMap;
+};
+
+/** 使用已签发的 URL 映射替换 Markdown 中的 S3 对象键，不产生额外存储 IO。 */
+export const replaceS3KeysWithPreviewUrlMap = (
+  documentQuoteText: string,
+  previewUrlMap: ReadonlyMap<string, string>
+) => {
+  if (!documentQuoteText || typeof documentQuoteText !== 'string') {
+    return documentQuoteText as string;
+  }
+
+  const matches = Array.from(documentQuoteText.matchAll(createS3MarkdownKeyRegex()));
+  let content = documentQuoteText;
+
+  for (const match of matches.slice().reverse()) {
+    const [full, bang, alt, objectKey] = match;
+    const previewUrl = objectKey ? previewUrlMap.get(objectKey) : undefined;
+
+    if (previewUrl) {
+      const replacement = `${bang}[${alt}](${previewUrl})`;
+      content =
+        content.slice(0, match.index) + replacement + content.slice(match.index + full.length);
+    }
+  }
+
+  return content;
+};
+
+/** 批量替换多段 Markdown 中的 S3 对象键，所有唯一 key 共用批量签发请求。 */
+export const replaceS3KeysToPreviewUrls = async (
+  documentQuoteTexts: string[],
+  expiredTime: Date
+) => {
+  const previewUrlMap = await createS3KeysPreviewUrlMap({
+    objectKeys: getS3ObjectKeysFromMarkdownTexts(documentQuoteTexts),
+    expiredTime
+  });
+
+  return documentQuoteTexts.map((text) => replaceS3KeysWithPreviewUrlMap(text, previewUrlMap));
+};
 
 // TODO: 需要优化成批量获取权限
 export const filterDatasetsByTmbId = async ({
@@ -55,35 +160,8 @@ export const filterDatasetsByTmbId = async ({
  * ```
  */
 export async function replaceS3KeyToPreviewUrl(documentQuoteText: string, expiredTime: Date) {
-  if (!documentQuoteText || typeof documentQuoteText !== 'string')
-    return documentQuoteText as string;
-
-  const prefixes = Object.values(S3Sources);
-  const pattern = prefixes.map((p) => `${p}\\/[^)]+`).join('|');
-  const regex = new RegExp(String.raw`(!?)\[([^\]]*)\]\(\s*(?!https?:\/\/)(${pattern})\s*\)`, 'g');
-
-  const matches = Array.from(documentQuoteText.matchAll(regex));
-  let content = documentQuoteText;
-
-  for (const match of matches.slice().reverse()) {
-    const [full, bang, alt, objectKey] = match;
-
-    const allowedKeys: (keyof typeof S3Sources)[] = ['dataset', 'chat', 'temp'];
-    const allowedKeysGuard = allowedKeys.some((key) => isS3ObjectKey(objectKey, key));
-
-    if (allowedKeysGuard) {
-      const url = await createS3DownloadAccessUrl({
-        objectKey,
-        bucketName: S3Buckets.private,
-        expiredTime
-      });
-      const replacement = `${bang}[${alt}](${url})`;
-      content =
-        content.slice(0, match.index) + replacement + content.slice(match.index + full.length);
-    }
-  }
-
-  return content;
+  const [content] = await replaceS3KeysToPreviewUrls([documentQuoteText], expiredTime);
+  return content!;
 }
 
 const getAvailableDatasetVlmModel = (vlmModel?: string) => {

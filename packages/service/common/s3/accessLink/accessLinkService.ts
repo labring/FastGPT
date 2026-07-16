@@ -26,6 +26,11 @@ export const s3AccessLinkService = createS3AccessLinkService({
   },
   onDownloadUrlTiming: (timing) => {
     logger.debug('S3 short download URL issued', {
+      inputCount: timing.inputCount,
+      uniqueAliasCount: timing.uniqueAliasCount,
+      reusedAliasCount: timing.reusedAliasCount,
+      createdAliasCount: timing.createdAliasCount,
+      leaseTouchedCount: timing.leaseTouchedCount,
       totalDurationMs: roundDurationMs(timing.totalDurationMs),
       hmacDurationMs: roundDurationMs(timing.hmacDurationMs),
       aliasKeyHmacDurationMs: roundDurationMs(timing.aliasKeyHmacDurationMs),

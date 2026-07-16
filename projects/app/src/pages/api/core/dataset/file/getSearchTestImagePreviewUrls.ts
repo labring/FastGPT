@@ -6,7 +6,7 @@ import { addHours } from 'date-fns';
 import { S3Buckets } from '@fastgpt/service/common/s3/config/constants';
 import { isAuthorizedTempFileS3Key } from '@fastgpt/service/common/s3/sources/temp/key';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
-import { createS3DownloadAccessUrl } from '@fastgpt/service/common/s3/accessLink';
+import { createS3DownloadAccessUrls } from '@fastgpt/service/common/s3/accessLink';
 import {
   GetSearchTestImagePreviewUrlsBodySchema,
   GetSearchTestImagePreviewUrlsResponseSchema,
@@ -29,18 +29,20 @@ async function handler(
     authApiKey: true
   });
 
-  const result = await Promise.all(
-    keys
-      .filter((key) => isAuthorizedTempFileS3Key({ key, teamId }))
-      .map(async (key) => ({
-        key,
-        previewUrl: await createS3DownloadAccessUrl({
-          objectKey: key,
-          bucketName: S3Buckets.private,
-          expiredTime: addHours(new Date(), 1)
-        })
-      }))
+  const authorizedKeys = Array.from(
+    new Set(keys.filter((key) => isAuthorizedTempFileS3Key({ key, teamId })))
   );
+  const previewUrls = await createS3DownloadAccessUrls(
+    authorizedKeys.map((key) => ({
+      objectKey: key,
+      bucketName: S3Buckets.private,
+      expiredTime: addHours(new Date(), 1)
+    }))
+  );
+  const result = authorizedKeys.map((key, index) => ({
+    key,
+    previewUrl: previewUrls[index]!
+  }));
 
   return GetSearchTestImagePreviewUrlsResponseSchema.parse(result);
 }

@@ -1,5 +1,6 @@
 import {
   CreateS3DownloadAccessUrlParamsSchema,
+  CreateS3DownloadAccessUrlsParamsSchema,
   VerifiedS3DownloadAccessSchema,
   type VerifiedS3DownloadAccess
 } from '../type';
@@ -14,6 +15,16 @@ import { s3AccessLinkService } from '../accessLinkService';
 export const createS3DownloadAccessUrl = async (params: unknown) => {
   const parsed = CreateS3DownloadAccessUrlParamsSchema.parse(params);
   return s3AccessLinkService.createDownloadUrl(parsed);
+};
+
+/**
+ * 批量创建或复用下载 alias，并按输入顺序返回短 URL。
+ *
+ * 调用方仍需在进入该函数前完成所有 objectKey 的业务归属校验。
+ */
+export const createS3DownloadAccessUrls = async (params: unknown) => {
+  const parsed = CreateS3DownloadAccessUrlsParamsSchema.parse(params);
+  return s3AccessLinkService.createDownloadUrls(parsed);
 };
 
 /**

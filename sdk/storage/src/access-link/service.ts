@@ -1,5 +1,6 @@
 import { createDefaultIdGenerator, createS3AccessLinkCrypto } from './crypto';
 import {
+  createDownloadUrlsHandler,
   createDownloadUrlHandler,
   deleteDownloadAliasByObjectHandler,
   deleteDownloadAliasByObjectsHandler,
@@ -52,6 +53,7 @@ export const createS3AccessLinkService = (
 
   return {
     createDownloadUrl: createDownloadUrlHandler(deps),
+    createDownloadUrls: createDownloadUrlsHandler(deps),
     verifyDownloadAlias: verifyDownloadAliasHandler(deps),
     revokeDownloadAlias: revokeDownloadAliasHandler(deps),
     deleteDownloadAliasByObject: deleteDownloadAliasByObjectHandler(deps),

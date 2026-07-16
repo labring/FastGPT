@@ -12,26 +12,31 @@ const isMongoDuplicateKeyError = (error: unknown) =>
 const toAliasRecord = (record: S3DownloadAliasType) => record;
 
 export const mongoS3DownloadAliasStore: S3DownloadAliasStore = {
-  findByAliasKey: async (aliasKey) => {
-    const record = await MongoS3DownloadAlias.findOne({ aliasKey }).lean();
-    return record ? toAliasRecord(record) : null;
+  findByAliasKeys: async (aliasKeys) => {
+    if (aliasKeys.length === 0) return [];
+
+    const records = await MongoS3DownloadAlias.find({ aliasKey: { $in: aliasKeys } }).lean();
+    return records.map(toAliasRecord);
   },
   findByAliasId: async (aliasId) => {
     const record = await MongoS3DownloadAlias.findOne({ aliasId }).lean();
     return record ? toAliasRecord(record) : null;
   },
-  create: async (data) => {
+  createMany: async (records) => {
+    if (records.length === 0) return [];
+
     try {
       const now = new Date();
-      const [created] = await MongoS3DownloadAlias.create([
-        {
-          ...data,
-          createTime: data.createTime ?? now,
-          updateTime: data.updateTime ?? now
-        }
-      ]);
+      const created = await MongoS3DownloadAlias.insertMany(
+        records.map((record) => ({
+          ...record,
+          createTime: record.createTime ?? now,
+          updateTime: record.updateTime ?? now
+        })),
+        { ordered: false }
+      );
 
-      return toAliasRecord(created.toObject() as S3DownloadAliasType);
+      return created.map((item) => toAliasRecord(item.toObject() as S3DownloadAliasType));
     } catch (error) {
       if (isMongoDuplicateKeyError(error)) {
         throw new S3AccessLinkError(S3AccessLinkErrCode.duplicateAliasKey, { cause: error });
@@ -40,18 +45,25 @@ export const mongoS3DownloadAliasStore: S3DownloadAliasStore = {
       throw error;
     }
   },
-  touchLease: async ({ aliasId, purgeAt, lastIssuedAt }) => {
-    await MongoS3DownloadAlias.updateOne(
-      { aliasId },
-      {
-        $set: {
-          updateTime: lastIssuedAt,
-          lastIssuedAt
-        },
-        $max: {
-          purgeAt
+  touchLeases: async (params) => {
+    if (params.length === 0) return;
+
+    await MongoS3DownloadAlias.bulkWrite(
+      params.map(({ aliasId, purgeAt, lastIssuedAt }) => ({
+        updateOne: {
+          filter: { aliasId },
+          update: {
+            $set: {
+              updateTime: lastIssuedAt,
+              lastIssuedAt
+            },
+            $max: {
+              purgeAt
+            }
+          }
         }
-      }
+      })),
+      { ordered: false }
     );
   },
   disableByAliasId: async ({ aliasId, disabledAt }) => {

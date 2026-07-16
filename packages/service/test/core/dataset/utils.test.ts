@@ -1,7 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
+  createS3KeysPreviewUrlMap,
   getDatasetImageIndexCapability,
   getDatasetImageTrainingMode,
+  getS3ObjectKeysFromMarkdownTexts,
+  replaceS3KeysToPreviewUrls,
   replaceS3KeyToPreviewUrl
 } from '@fastgpt/service/core/dataset/utils';
 import {
@@ -15,6 +18,14 @@ import {
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 
+const mockCreateS3DownloadAccessUrls = vi.hoisted(() =>
+  vi.fn(async (params: Array<{ objectKey: string }>) =>
+    params.map(
+      ({ objectKey }) => `https://example.com/api/system/file/d/mock-short-link-${objectKey}`
+    )
+  )
+);
+
 vi.mock('@fastgpt/service/common/s3/utils', () => ({
   isS3ObjectKey: vi.fn((key: string, source: string) => {
     if (!key) return false;
@@ -23,9 +34,7 @@ vi.mock('@fastgpt/service/common/s3/utils', () => ({
 }));
 
 vi.mock('@fastgpt/service/common/s3/accessLink', () => ({
-  createS3DownloadAccessUrl: vi.fn(async ({ objectKey }: { objectKey: string }) => {
-    return `https://example.com/api/system/file/d/mock-short-link-${objectKey}`;
-  })
+  createS3DownloadAccessUrls: mockCreateS3DownloadAccessUrls
 }));
 
 vi.mock('@fastgpt/service/common/s3/contracts/type', () => ({
@@ -453,6 +462,51 @@ describe('replaceS3KeyToPreviewUrl', () => {
       expect(result).toContain('https://google.com');
       expect(result).toContain('# 标题');
     });
+  });
+});
+
+describe('批量 S3 预览 URL 格式化', () => {
+  const expiredTime = new Date('2025-12-31');
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('应跨多段文本按首次出现顺序提取并去重 key', () => {
+    expect(
+      getS3ObjectKeysFromMarkdownTexts([
+        '![a](dataset/team/a.png) ![a2](dataset/team/a.png)',
+        '[b](chat/app/b.pdf) ![external](https://example.com/c.png)',
+        '![avatar](avatar/team/avatar.png)'
+      ])
+    ).toEqual(['dataset/team/a.png', 'chat/app/b.pdf']);
+  });
+
+  it('多段文本中的重复 key 应只进入一次批量签发并保持文本顺序', async () => {
+    const result = await replaceS3KeysToPreviewUrls(
+      ['first ![a](dataset/team/a.png)', 'second [same](dataset/team/a.png) [b](chat/app/b.pdf)'],
+      expiredTime
+    );
+
+    expect(mockCreateS3DownloadAccessUrls).toHaveBeenCalledTimes(1);
+    expect(mockCreateS3DownloadAccessUrls.mock.calls[0][0].map((item) => item.objectKey)).toEqual([
+      'dataset/team/a.png',
+      'chat/app/b.pdf'
+    ]);
+    expect(result).toEqual([
+      'first ![a](https://example.com/api/system/file/d/mock-short-link-dataset/team/a.png)',
+      'second [same](https://example.com/api/system/file/d/mock-short-link-dataset/team/a.png) [b](https://example.com/api/system/file/d/mock-short-link-chat/app/b.pdf)'
+    ]);
+  });
+
+  it('超过批量上限时应分片且完整返回映射', async () => {
+    const objectKeys = Array.from({ length: 501 }, (_, index) => `dataset/team/${index}.png`);
+    const result = await createS3KeysPreviewUrlMap({ objectKeys, expiredTime });
+
+    expect(mockCreateS3DownloadAccessUrls).toHaveBeenCalledTimes(2);
+    expect(mockCreateS3DownloadAccessUrls.mock.calls[0][0]).toHaveLength(500);
+    expect(mockCreateS3DownloadAccessUrls.mock.calls[1][0]).toHaveLength(1);
+    expect(result.get('dataset/team/500.png')).toContain('mock-short-link-dataset/team/500.png');
   });
 });
 

@@ -7,7 +7,7 @@ import type {
   DatasetDataSchemaType,
   SearchDataResponseItemType
 } from '@fastgpt/global/core/dataset/type';
-import { formatDatasetDataValue } from '../../data/controller';
+import { formatDatasetDataTextValue } from '../../data/controller';
 
 /**
  * 把召回命中的 data 与 collection 统一整理成搜索结果。
@@ -23,23 +23,26 @@ export const buildSearchResultItem = ({
   collection: DatasetCollectionSchemaType;
   score: SearchDataResponseItemType['score'];
   includeIndexes?: boolean;
-}): Promise<SearchDataResponseItemType> =>
-  formatDatasetDataValue({
+}): SearchDataResponseItemType => {
+  const formattedValue = formatDatasetDataTextValue({
     q: data.q,
     a: data.a,
-    imageId: data.imageId,
     imageDescMap: data.imageDescMap
-  }).then((formattedValue) => ({
+  });
+
+  return {
     id: String(data._id),
     updateTime: data.updateTime,
     ...formattedValue,
+    imageId: data.imageId,
     chunkIndex: data.chunkIndex,
     ...(includeIndexes ? { indexes: data.indexes } : {}),
     datasetId: String(data.datasetId),
     collectionId: String(data.collectionId),
     ...getCollectionSourceData(collection),
     score
-  }));
+  };
+};
 
 export const concatRecallLists = (lists: SearchDataResponseItemType[][], limit: number) => {
   return datasetSearchResultConcat(lists.map((list) => ({ weight: 1, list }))).slice(0, limit);

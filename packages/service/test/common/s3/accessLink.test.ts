@@ -102,6 +102,58 @@ describe('s3 access link', () => {
     );
   });
 
+  it('uses one Mongo batch lookup and insert for unique download aliases', async () => {
+    const { createS3DownloadAccessUrls, MongoS3DownloadAlias } = await loadAccessLinkModules();
+    const findSpy = vi.spyOn(MongoS3DownloadAlias, 'find');
+    const insertManySpy = vi.spyOn(MongoS3DownloadAlias, 'insertMany');
+    const firstParams = {
+      bucketName: 'fastgpt-private',
+      objectKey: 'dataset/team-1/batch-first.png',
+      expiredTime: getFutureDate(30)
+    };
+    const secondParams = {
+      bucketName: 'fastgpt-private',
+      objectKey: 'dataset/team-1/batch-second.png',
+      expiredTime: getFutureDate(30)
+    };
+
+    const urls = await createS3DownloadAccessUrls([firstParams, secondParams, firstParams]);
+
+    expect(urls).toHaveLength(3);
+    expect(urls[0]).toBe(urls[2]);
+    expect(findSpy).toHaveBeenCalledTimes(1);
+    expect(findSpy).toHaveBeenCalledWith({
+      aliasKey: {
+        $in: expect.arrayContaining([expect.any(String), expect.any(String)])
+      }
+    });
+    expect(insertManySpy).toHaveBeenCalledTimes(1);
+    expect(insertManySpy.mock.calls[0]?.[0]).toHaveLength(2);
+    expect(insertManySpy.mock.calls[0]?.[1]).toEqual({ ordered: false });
+  });
+
+  it('uses one Mongo bulk write when a batch of reused aliases needs lease renewal', async () => {
+    const { createS3DownloadAccessUrls, MongoS3DownloadAlias } = await loadAccessLinkModules();
+    const params = ['first', 'second'].map((name) => ({
+      bucketName: 'fastgpt-private',
+      objectKey: `dataset/team-1/renew-${name}.png`,
+      expiredTime: getFutureDate(10)
+    }));
+    await createS3DownloadAccessUrls(params);
+    const bulkWriteSpy = vi.spyOn(MongoS3DownloadAlias, 'bulkWrite');
+
+    await createS3DownloadAccessUrls(
+      params.map((item) => ({
+        ...item,
+        expiredTime: getFutureDate(60 * 48)
+      }))
+    );
+
+    expect(bulkWriteSpy).toHaveBeenCalledTimes(1);
+    expect(bulkWriteSpy.mock.calls[0]?.[0]).toHaveLength(2);
+    expect(bulkWriteSpy.mock.calls[0]?.[1]).toEqual({ ordered: false });
+  });
+
   it('uses public download URL prefix without changing upload URLs', async () => {
     const {
       createS3DownloadAccessUrl,

@@ -6,10 +6,10 @@ import type {
 } from './types';
 
 export type S3DownloadAliasStore = {
-  findByAliasKey: (aliasKey: string) => Promise<S3DownloadAliasRecord | null>;
+  findByAliasKeys: (aliasKeys: string[]) => Promise<S3DownloadAliasRecord[]>;
   findByAliasId: (aliasId: string) => Promise<S3DownloadAliasRecord | null>;
-  create: (record: CreateS3DownloadAliasRecord) => Promise<S3DownloadAliasRecord>;
-  touchLease: (params: { aliasId: string; purgeAt: Date; lastIssuedAt: Date }) => Promise<void>;
+  createMany: (records: CreateS3DownloadAliasRecord[]) => Promise<S3DownloadAliasRecord[]>;
+  touchLeases: (params: { aliasId: string; purgeAt: Date; lastIssuedAt: Date }[]) => Promise<void>;
   disableByAliasId: (params: { aliasId: string; disabledAt: Date }) => Promise<void>;
   deleteByObject: (params: { bucketName: string; objectKey: string }) => Promise<void>;
   deleteByObjects: (params: { bucketName: string; objectKeys: string[] }) => Promise<void>;

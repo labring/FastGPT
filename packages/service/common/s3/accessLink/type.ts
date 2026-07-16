@@ -1,6 +1,7 @@
 import z from 'zod';
 import { UploadConstraintsSchema } from '../contracts/type';
 import { UploadFileHintSchema, UploadPolicySchema } from '../uploadPolicy/type';
+import { S3_DOWNLOAD_URL_BATCH_MAX_SIZE } from '@fastgpt-sdk/storage/access-link';
 
 const UrlSafeTokenSchema = z.string().regex(/^[A-Za-z0-9_-]+$/);
 const HexSha256Schema = z
@@ -46,6 +47,9 @@ export const CreateS3DownloadAccessUrlParamsSchema = z.object({
   responseContentType: z.string().min(1).optional()
 });
 export type CreateS3DownloadAccessUrlParams = z.infer<typeof CreateS3DownloadAccessUrlParamsSchema>;
+export const CreateS3DownloadAccessUrlsParamsSchema = z
+  .array(CreateS3DownloadAccessUrlParamsSchema)
+  .max(S3_DOWNLOAD_URL_BATCH_MAX_SIZE);
 
 export const ParsedS3SignedDownloadAliasSchema = z.object({
   aliasId: S3DownloadAliasIdSchema,

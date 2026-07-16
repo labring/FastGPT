@@ -2,11 +2,10 @@ import {
   DatasetSearchModeEnum,
   DatasetSearchModeMap
 } from '@fastgpt/global/core/dataset/constants';
-import { addDays } from 'date-fns';
 import { getDefaultRerankModel } from '../../../ai/model';
 import { pushTrack } from '../../../../common/middle/tracks/utils';
-import { replaceS3KeyToPreviewUrl } from '../../../../core/dataset/utils';
 import type { SearchDatasetDataProps, SearchDatasetDataResponse } from '../type';
+import { formatDatasetDataValues } from '../../data/controller';
 import { getImageCaptionQueries } from './imageCaption';
 import { multiQueryRecall } from './multiQueryRecall';
 import { reRankSearchResults } from './rerank';
@@ -169,14 +168,19 @@ export async function searchDatasetData(
   });
 
   const filterMaxTokensResult = await filterDatasetDataByMaxTokens(scoreFilter, maxTokens);
-  // Step 8: 返回前把 q 中的内部图片 key 转为可预览 URL。
-  // 只在最终结果处理，避免中间召回和去重阶段混入带过期时间的动态 URL。
-  const finalResult = await Promise.all(
-    filterMaxTokensResult.map(async (item) => {
-      item.q = await replaceS3KeyToPreviewUrl(item.q, addDays(new Date(), 90));
-      return item;
-    })
+  // Step 8: 返回前一次收集最终结果中的 q、a、imageId，并批量签发唯一对象 key。
+  // 被前面过滤掉的候选不会产生 alias 查询；最终输出也不暴露仅供格式化使用的 imageId。
+  const formattedValues = await formatDatasetDataValues(
+    filterMaxTokensResult.map(({ q, a, imageId }) => ({ q, a, imageId }))
   );
+  const finalResult = filterMaxTokensResult.map((item, index) => {
+    const result = { ...item };
+    delete result.imageId;
+    return {
+      ...result,
+      ...formattedValues[index]!
+    };
+  });
 
   pushTrack.datasetSearch({ datasetIds, teamId });
 

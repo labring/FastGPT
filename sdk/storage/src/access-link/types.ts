@@ -146,6 +146,11 @@ export type UploadSessionUsePolicy = 'allow-retry' | 'mark-used' | 'reject-used'
 
 /** 短下载链接签发各阶段耗时，供运行时接入日志或指标系统。 */
 export type S3DownloadUrlTiming = {
+  inputCount: number;
+  uniqueAliasCount: number;
+  reusedAliasCount: number;
+  createdAliasCount: number;
+  leaseTouchedCount: number;
   totalDurationMs: number;
   hmacDurationMs: number;
   aliasKeyHmacDurationMs: number;
@@ -171,6 +176,7 @@ export type CreateS3AccessLinkServiceOptions = {
 
 export type S3AccessLinkService = {
   createDownloadUrl: (params: CreateS3DownloadAccessUrlParams) => Promise<string>;
+  createDownloadUrls: (params: CreateS3DownloadAccessUrlParams[]) => Promise<string[]>;
   verifyDownloadAlias: (signedAlias: string) => Promise<S3VerifiedDownloadPayload>;
   revokeDownloadAlias: (aliasId: string) => Promise<void>;
   deleteDownloadAliasByObject: (params: DeleteS3DownloadAliasByObjectParams) => Promise<void>;
