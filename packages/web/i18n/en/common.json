@@ -667,6 +667,7 @@
   "core.workflow.check.tool_call_empty": "Configure a tool or enable virtual machine",
   "core.workflow.check.tool_inactive": "This tool is not activated yet, please activate it",
   "core.workflow.check.tool_missing": "This tool does not exist, please delete it",
+  "core.workflow.check.tool_load_failed": "Failed to load this tool, please try again later",
   "core.workflow.check.tool_no_permission": "Current account has no permission to access this resource",
   "core.workflow.check.tool_offline": "This tool has been deactivated, please delete it",
   "core.workflow.Check Failed": "Workflow verification failed, please check whether the value is missing, and whether the connection is normal.",

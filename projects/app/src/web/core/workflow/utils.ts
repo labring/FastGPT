@@ -772,6 +772,7 @@ type WorkflowCheckMessageCode =
   | 'tool_call_empty'
   | 'tool_inactive'
   | 'tool_missing'
+  | 'tool_load_failed'
   | 'tool_no_permission'
   | 'tool_offline';
 
@@ -795,36 +796,18 @@ const WORKFLOW_CHECK_ISSUE_MESSAGE_CODE_MAP: Record<string, WorkflowCheckMessage
   tool_inactive: 'tool_inactive',
   tool_waiting_config: 'tool_inactive',
   tool_missing: 'tool_missing',
+  tool_load_failed: 'tool_load_failed',
   tool_no_permission: 'tool_no_permission',
   tool_offline: 'tool_offline',
   loop_run_missing_break: 'if_else_incomplete',
   variable_update_incomplete: 'code_input_incomplete'
 };
 
-const WORKFLOW_CHECK_MESSAGE_I18N_KEY_MAP: Record<WorkflowCheckMessageCode, string> = {
-  required_input_empty: 'common:core.workflow.check.required_input_empty',
-  no_upstream: 'common:core.workflow.check.no_upstream',
-  invalid_reference: 'common:core.workflow.check.invalid_reference',
-  if_else_incomplete: 'common:core.workflow.check.if_else_incomplete',
-  user_select_empty: 'common:core.workflow.check.user_select_empty',
-  user_select_value_empty: 'common:core.workflow.check.user_select_value_empty',
-  form_input_empty: 'common:core.workflow.check.form_input_empty',
-  classify_question_empty: 'common:core.workflow.check.classify_question_empty',
-  classify_question_value_empty: 'common:core.workflow.check.classify_question_value_empty',
-  code_input_incomplete: 'common:core.workflow.check.code_input_incomplete',
-  http_url_empty: 'common:core.workflow.check.http_url_empty',
-  context_extract_empty: 'common:core.workflow.check.context_extract_empty',
-  tool_call_empty: 'common:core.workflow.check.tool_call_empty',
-  tool_inactive: 'common:core.workflow.check.tool_inactive',
-  tool_missing: 'common:core.workflow.check.tool_missing',
-  tool_no_permission: 'common:core.workflow.check.tool_no_permission',
-  tool_offline: 'common:core.workflow.check.tool_offline'
-};
-
-/** 待处理：引用无效、工具不存在、工具已停用。其余均为待完善。 */
+/** 待处理：引用无效、工具不可访问或加载失败。其余均为待完善。 */
 export const WORKFLOW_CHECK_PENDING_HANDLE_CODES = new Set<string>([
   'invalid_reference',
   'tool_missing',
+  'tool_load_failed',
   'tool_no_permission',
   'tool_offline'
 ]);
@@ -854,6 +837,7 @@ const workflowCheckMessageFallback: Record<
   tool_call_empty: () => '需配置工具或开启虚拟机',
   tool_inactive: () => '该工具尚未激活，请激活使用',
   tool_missing: () => '该工具不存在，请删除',
+  tool_load_failed: () => '工具加载失败，请稍后重试',
   tool_no_permission: () => '当前账号无权限访问该资源',
   tool_offline: () => '该工具已停用，请删除'
 };
@@ -886,11 +870,59 @@ const resolvePluginDataErrorIssueCode = (error: string): WorkflowCheckMessageCod
     return 'tool_missing';
   }
 
-  return 'tool_missing';
+  return 'tool_load_failed';
 };
 
 const resolveWorkflowCheckMessageCode = (issueCode: string): WorkflowCheckMessageCode | undefined =>
   WORKFLOW_CHECK_ISSUE_MESSAGE_CODE_MAP[issueCode];
+
+/**
+ * 使用显式分支保留所有翻译 key 的静态字面量引用，避免 i18n 清理脚本误删动态 key。
+ */
+const translateWorkflowCheckIssueMessage = (
+  messageCode: WorkflowCheckMessageCode,
+  t: TFunction,
+  params?: { inputName?: string }
+) => {
+  switch (messageCode) {
+    case 'required_input_empty':
+      return t('common:core.workflow.check.required_input_empty', params);
+    case 'no_upstream':
+      return t('common:core.workflow.check.no_upstream', params);
+    case 'invalid_reference':
+      return t('common:core.workflow.check.invalid_reference', params);
+    case 'if_else_incomplete':
+      return t('common:core.workflow.check.if_else_incomplete', params);
+    case 'user_select_empty':
+      return t('common:core.workflow.check.user_select_empty', params);
+    case 'user_select_value_empty':
+      return t('common:core.workflow.check.user_select_value_empty', params);
+    case 'form_input_empty':
+      return t('common:core.workflow.check.form_input_empty', params);
+    case 'classify_question_empty':
+      return t('common:core.workflow.check.classify_question_empty', params);
+    case 'classify_question_value_empty':
+      return t('common:core.workflow.check.classify_question_value_empty', params);
+    case 'code_input_incomplete':
+      return t('common:core.workflow.check.code_input_incomplete', params);
+    case 'http_url_empty':
+      return t('common:core.workflow.check.http_url_empty', params);
+    case 'context_extract_empty':
+      return t('common:core.workflow.check.context_extract_empty', params);
+    case 'tool_call_empty':
+      return t('common:core.workflow.check.tool_call_empty', params);
+    case 'tool_inactive':
+      return t('common:core.workflow.check.tool_inactive', params);
+    case 'tool_missing':
+      return t('common:core.workflow.check.tool_missing', params);
+    case 'tool_load_failed':
+      return t('common:core.workflow.check.tool_load_failed', params);
+    case 'tool_no_permission':
+      return t('common:core.workflow.check.tool_no_permission', params);
+    case 'tool_offline':
+      return t('common:core.workflow.check.tool_offline', params);
+  }
+};
 
 /** 根据 issue.code 返回设计稿固定提示文案，不自由拼接或生成表外文案。 */
 export const getWorkflowCheckIssueMessage = (
@@ -902,7 +934,7 @@ export const getWorkflowCheckIssueMessage = (
   if (!messageCode) return '';
 
   if (t) {
-    return t(WORKFLOW_CHECK_MESSAGE_I18N_KEY_MAP[messageCode] as any, params);
+    return translateWorkflowCheckIssueMessage(messageCode, t, params);
   }
   return workflowCheckMessageFallback[messageCode](params);
 };

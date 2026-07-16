@@ -294,7 +294,7 @@ describe('checkWorkflowNodeIssues', () => {
     expect(result.ref.map((issue) => issue.code)).toContain('invalid_reference');
   });
 
-  it('reports plugin errors on node issues', () => {
+  it('reports generic plugin load errors without telling users to delete the tool', () => {
     const node = makeNode('tool', FlowNodeTypeEnum.appModule, {
       pluginData: {
         error: 'not found'
@@ -306,8 +306,8 @@ describe('checkWorkflowNodeIssues', () => {
       edges: [{ id: 'e1', source: 'start', target: 'tool', type: EDGE_TYPE }]
     });
 
-    expect(result.tool.map((issue) => issue.code)).toContain('tool_missing');
-    expect(result.tool[0]?.message).toBe('该工具不存在，请删除');
+    expect(result.tool.map((issue) => issue.code)).toContain('tool_load_failed');
+    expect(result.tool[0]?.message).toBe('工具加载失败，请稍后重试');
   });
 
   it('reports permission error when pluginData error is unAuthApp', () => {

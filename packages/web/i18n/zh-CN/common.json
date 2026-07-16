@@ -667,6 +667,7 @@
   "core.workflow.check.tool_call_empty": "需配置工具或开启虚拟机",
   "core.workflow.check.tool_inactive": "该工具尚未激活，请激活使用",
   "core.workflow.check.tool_missing": "该工具不存在，请删除",
+  "core.workflow.check.tool_load_failed": "工具加载失败，请稍后重试",
   "core.workflow.check.tool_no_permission": "当前账号无权限访问该资源",
   "core.workflow.check.tool_offline": "该工具已停用，请删除",
   "core.workflow.Check Failed": "工作流校验失败，请检查是否缺失、缺值，连线是否正常",

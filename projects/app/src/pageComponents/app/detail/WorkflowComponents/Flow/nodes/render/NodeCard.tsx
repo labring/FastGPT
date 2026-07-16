@@ -590,10 +590,11 @@ const NodeWorkflowCheckIssues = React.memo(function NodeWorkflowCheckIssues({
     <Flex flexDirection={'column'} alignItems={'flex-start'} gap={'8px'} mt={2}>
       {issues.map((issue, index) => {
         const status = getWorkflowCheckIssueUIStatus(issue.code);
-        const statusPrefixKey =
+        // 显式保留静态 key，避免 i18n 清理脚本误删状态前缀文案。
+        const statusPrefixText =
           status === 'pending_handle'
-            ? 'common:core.workflow.check.status.pending_handle'
-            : 'common:core.workflow.check.status.pending_improve';
+            ? t('common:core.workflow.check.status.pending_handle')
+            : t('common:core.workflow.check.status.pending_improve');
 
         return (
           <Flex
@@ -611,7 +612,7 @@ const NodeWorkflowCheckIssues = React.memo(function NodeWorkflowCheckIssues({
           >
             <WorkflowCheckIssueStatusIcon status={status} />
             <Box as={'span'} flexShrink={0} {...workflowCheckIssueTextStyle}>
-              {t(statusPrefixKey)}:
+              {statusPrefixText}:
             </Box>
             <Box
               as={'span'}
