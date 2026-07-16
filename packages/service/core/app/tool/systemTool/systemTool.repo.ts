@@ -39,6 +39,11 @@ import type { AppToolRuntimeType } from '@fastgpt/global/core/app/tool/type';
 import type { PluginPermissionEnumType } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { Types } from '../../../../common/mongo';
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/node';
+import {
+  decryptSystemToolSecrets,
+  getSystemToolSecretKeys,
+  maskSystemToolSecrets
+} from './secrets';
 
 type SystemToolRuntimeType = {
   id: string;
@@ -346,13 +351,15 @@ export class SystemToolRepo {
     version,
     source: toolSource = 'system',
     lang,
-    fallbackLatestVersion = false
+    fallbackLatestVersion = false,
+    maskSecrets = false
   }: {
     pluginId: string;
     version?: string;
     source?: string;
     lang?: `${LangEnum}`;
     fallbackLatestVersion?: boolean;
+    maskSecrets?: boolean;
   }): Promise<SystemToolDetailType> => {
     const isDebugSource = isDebugToolSource(toolSource);
     const { pluginId: rawPluginId, source: idSource } = parseSystemToolId({
@@ -480,6 +487,7 @@ export class SystemToolRepo {
       childPluginId ? child!.outputSchema : tool.outputSchema
     );
     const secrets = jsonSchema2SecretInput({ jsonSchema: secretSchema });
+    const secretKeys = getSystemToolSecretKeys(secrets);
     const parentDbTool = await getParentSystemToolConfig({
       pluginId,
       idSource,
@@ -490,6 +498,13 @@ export class SystemToolRepo {
       ? undefined
       : SystemToolCodec.getConfiguredSecretsVal(secretConfig);
     const hasSystemSecret = !isDebugSource && !!configuredSecretsVal;
+    const visibleSecretsVal =
+      maskSecrets && !isDebugSource
+        ? maskSystemToolSecrets({
+            secretsVal: configuredSecretsVal,
+            secretKeys
+          })
+        : configuredSecretsVal;
 
     const toolDetail: SystemToolDetailType = {
       id: pluginId,
@@ -501,7 +516,7 @@ export class SystemToolRepo {
         hasSecret: !!secrets?.length,
         hasSystemSecret
       }),
-      secretsVal: configuredSecretsVal,
+      secretsVal: visibleSecretsVal,
       hasTokenFee: dbTool?.hasTokenFee ?? false,
       intro:
         dbTool?.customConfig?.intro ??
@@ -797,7 +812,9 @@ export class SystemToolRepo {
         systemKeyCost: dbTool?.systemKeyCost ?? 0,
         secretsVal: isDebugSource
           ? undefined
-          : SystemToolCodec.getConfiguredSecretsVal(parentDbTool ?? dbTool),
+          : decryptSystemToolSecrets(
+              SystemToolCodec.getConfiguredSecretsVal(parentDbTool ?? dbTool)
+            ),
         permissions: tool.permission
       };
     }
@@ -809,7 +826,7 @@ export class SystemToolRepo {
       systemKeyCost: dbTool.systemKeyCost ?? 0,
       secretsVal: isDebugSource
         ? undefined
-        : SystemToolCodec.getConfiguredSecretsVal(parentDbTool ?? dbTool)
+        : decryptSystemToolSecrets(SystemToolCodec.getConfiguredSecretsVal(parentDbTool ?? dbTool))
     };
   };
 
