@@ -3,6 +3,7 @@ import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 export type AgentLoopToolCatalog = {
   runtimeTools: ChatCompletionTool[];
   askTool?: ChatCompletionTool;
+  setPlanTool?: ChatCompletionTool;
   updatePlanTool?: ChatCompletionTool;
   sandboxTools?: ChatCompletionTool[];
   readFileTool?: ChatCompletionTool;
@@ -22,6 +23,7 @@ export const normalizeToolCatalog = (catalog: AgentLoopToolCatalog): AgentLoopTo
   const internalToolNames = new Set(
     [
       catalog.askTool,
+      catalog.setPlanTool,
       catalog.updatePlanTool,
       catalog.readFileTool,
       catalog.datasetSearchTool,
@@ -51,6 +53,7 @@ export const getToolsForFastAgentLoop = ({
   return [
     ...normalized.runtimeTools,
     ...(normalized.askTool ? [normalized.askTool] : []),
+    ...(normalized.setPlanTool ? [normalized.setPlanTool] : []),
     ...(normalized.updatePlanTool ? [normalized.updatePlanTool] : []),
     ...(normalized.sandboxTools ?? []),
     ...(normalized.readFileTool ? [normalized.readFileTool] : []),

@@ -287,8 +287,8 @@ describe('compressRequestMessages', () => {
       content: expectedContent,
       hideInUI: true
     });
-    expect(createLLMResponseMock.mock.calls[0][0].body.messages[0].content).toContain(
-      '不要输出、复制或改写 <active_plan>'
+    expect(createLLMResponseMock.mock.calls[0][0].body.messages[0].content).not.toContain(
+      'active_plan'
     );
   });
 

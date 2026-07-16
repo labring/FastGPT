@@ -169,11 +169,12 @@ agent-loop result 必须始终返回：
 
 ### 4.1 plan
 
-plan 只允许三个操作：
+plan 对模型暴露两个扁平工具，避免单个工具使用 `action + oneOf` 产生复杂嵌套参数：
 
-- `set_plan`：创建或重置计划。
-- `add_steps`：追加计划步骤。
-- `update_steps`：更新指定步骤的状态或备注。
+- `set_plan({ name, steps: string[] })`：创建或重置计划。
+- `update_plan({ updates?, add_steps? })`：更新指定步骤的状态/备注，或追加字符串步骤；至少提供一个字段。
+
+内部 plan 事件仍使用 `set_plan`、`add_steps`、`update_steps` 三种 operation，供 UI 和持久化区分变更类型；它们不是模型工具的 `action` 参数。
 
 步骤状态只允许：
 

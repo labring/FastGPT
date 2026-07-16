@@ -69,6 +69,7 @@ vi.mock('@fastgpt/service/core/ai/sandbox/interface/toolCall', () => ({
 
 import {
   createAskUserAgentTool,
+  createSetPlanAgentTool,
   createUpdatePlanAgentTool
 } from '@fastgpt/service/core/ai/llm/agentLoop/interface';
 import { createAgentLoopSandboxTools } from '@fastgpt/service/core/ai/llm/agentLoop/domain/systemTool/sandbox';
@@ -109,6 +110,7 @@ const createRuntime = (overrides?: Partial<AgentLoopRuntime>): AgentLoopRuntime 
   toolCatalog: {
     runtimeTools: [tool('search')],
     askTool: createAskUserAgentTool(),
+    setPlanTool: createSetPlanAgentTool(),
     updatePlanTool: createUpdatePlanAgentTool()
   },
   executeTool: vi.fn(async () => ({
@@ -161,6 +163,54 @@ describe('runFastAgentMainLoop', () => {
     expect(mainAgentPrompt).toContain('任务或 Skill 明确需要通过选项向用户收集信息');
     expect(mainAgentPrompt).toContain('Skill 要求向用户收集选项信息时');
     expect(mainAgentPrompt).toContain('options：2 到 5 个');
+  });
+
+  it('creates an active plan through set_plan', async () => {
+    const events: any[] = [];
+    mockCreateLLMResponseQueue(createLLMResponseMock, [
+      toolCall({
+        id: 'call_set_plan',
+        name: 'set_plan',
+        args: {
+          name: 'Implementation plan',
+          steps: ['Inspect code', 'Run tests']
+        }
+      }),
+      text({
+        requestId: 'req_after_set_plan',
+        content: 'plan created'
+      })
+    ]);
+
+    const result = await runFastAgentMainLoop({
+      runtime: createRuntime({
+        emitEvent: (event) => events.push(event)
+      }),
+      input: {
+        messages: [
+          {
+            role: ChatCompletionRequestMessageRoleEnum.User,
+            content: 'Create an implementation plan'
+          }
+        ]
+      }
+    });
+
+    expect(result.activePlan).toMatchObject({
+      name: 'Implementation plan',
+      steps: [
+        expect.objectContaining({ name: 'Inspect code', status: 'pending' }),
+        expect.objectContaining({ name: 'Run tests', status: 'pending' })
+      ]
+    });
+    expect(events).toContainEqual(
+      expect.objectContaining({
+        type: 'plan_operation',
+        operation: 'set_plan',
+        success: true,
+        id: 'call_set_plan'
+      })
+    );
   });
 
   it('passes context checkpoint from base loop to fastAgent result', async () => {
@@ -299,12 +349,21 @@ describe('runFastAgentMainLoop', () => {
     );
   });
 
-  it('skips tool response compression for update_plan', async () => {
+  it.each([
+    {
+      name: 'set_plan',
+      args: { name: 'Implementation plan', steps: ['Inspect code'] }
+    },
+    {
+      name: 'update_plan',
+      args: { add_steps: ['Run tests'] }
+    }
+  ])('skips tool response compression for $name', async ({ name, args }) => {
     mockCreateLLMResponseQueue(createLLMResponseMock, [
       toolCall({
-        id: 'call_update_plan',
-        name: 'update_plan',
-        args: {}
+        id: `call_${name}`,
+        name,
+        args
       }),
       text({
         requestId: 'req_after_plan',
@@ -600,8 +659,7 @@ describe('runFastAgentMainLoop', () => {
         id: 'call_update_restored_plan',
         name: 'update_plan',
         args: {
-          action: 'update_steps',
-          steps: [
+          updates: [
             {
               id: 'step_restored',
               status: 'done',
@@ -654,8 +712,7 @@ describe('runFastAgentMainLoop', () => {
         id: 'call_update_interactive_plan',
         name: 'update_plan',
         args: {
-          action: 'update_steps',
-          steps: [
+          updates: [
             {
               id: 'step_interactive',
               status: 'done'

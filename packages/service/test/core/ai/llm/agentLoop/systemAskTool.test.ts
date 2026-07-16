@@ -1,11 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
   createAskUserAgentTool,
+  createSetPlanAgentTool,
   createUpdatePlanAgentTool
 } from '@fastgpt/service/core/ai/llm/agentLoop/interface';
 import { parseAgentAskToolCall } from '@fastgpt/service/core/ai/llm/agentLoop/domain/systemTool/ask';
 import { createAskAgentTool } from '@fastgpt/service/core/ai/llm/agentLoop/domain/systemTool/ask/tool';
-import { createUpdatePlanTool } from '@fastgpt/service/core/ai/llm/agentLoop/domain/systemTool/plan/updateTool';
+import {
+  createSetPlanTool,
+  createUpdatePlanTool
+} from '@fastgpt/service/core/ai/llm/agentLoop/domain/systemTool/plan/updateTool';
 
 describe('agent loop system ask tool', () => {
   it('parses ask_agent tool call arguments', () => {
@@ -96,28 +100,31 @@ describe('agent loop system ask tool', () => {
 
   it('creates internal tool schemas without workflow dependencies', () => {
     expect(createAskAgentTool().function.name).toBe('ask_agent');
+    expect(createSetPlanTool().function.name).toBe('set_plan');
     expect(createUpdatePlanTool().function.name).toBe('update_plan');
     expect(createAskUserAgentTool().function.name).toBe('ask_user');
+    expect(createSetPlanAgentTool().function.name).toBe('set_plan');
     expect(createUpdatePlanAgentTool().function.name).toBe('update_plan');
-    const planSchema = createUpdatePlanTool().function.parameters as any;
-    expect(planSchema.oneOf).toHaveLength(3);
-    expect(planSchema.oneOf[0].properties.action.enum).toEqual(['set_plan']);
-    expect(planSchema.oneOf[0].properties.steps.items.properties).not.toHaveProperty('id');
-    expect(planSchema.oneOf[1].properties.action.enum).toEqual(['add_steps']);
-    expect(planSchema.oneOf[1].properties.steps.items.properties).not.toHaveProperty('id');
-    expect(planSchema.oneOf[2].properties.action.enum).toEqual(['update_steps']);
-    expect(planSchema.oneOf[2].properties.steps.items.properties).toHaveProperty('id');
-    expect(planSchema.oneOf[2].properties.steps.items.properties).toHaveProperty('status');
+    const setPlanSchema = createSetPlanTool().function.parameters as any;
+    const updatePlanSchema = createUpdatePlanTool().function.parameters as any;
+    expect(setPlanSchema).not.toHaveProperty('oneOf');
+    expect(setPlanSchema.properties.steps.items).toEqual({ type: 'string' });
+    expect(setPlanSchema.required).toEqual(['name', 'steps']);
+    expect(createSetPlanTool().function.description).toContain(
+      'before any sandbox or runtime tool'
+    );
+    expect(createSetPlanTool().function.description).toContain('use update_plan instead');
+    expect(updatePlanSchema).not.toHaveProperty('oneOf');
+    expect(updatePlanSchema).not.toHaveProperty('properties.action');
+    expect(updatePlanSchema.properties.add_steps.items).toEqual({ type: 'string' });
+    expect(updatePlanSchema.properties.updates.items.required).toEqual(['id', 'status']);
   });
 
-  it('exposes only the three supported update_plan actions', () => {
-    const parameters = createUpdatePlanTool().function.parameters as any;
+  it('keeps plan tool arguments flat for model compatibility', () => {
+    const setParameters = createSetPlanTool().function.parameters as any;
+    const updateParameters = createUpdatePlanTool().function.parameters as any;
 
-    expect(parameters).not.toHaveProperty('properties.updates');
-    expect(parameters.oneOf.map((schema: any) => schema.properties.action.enum[0])).toEqual([
-      'set_plan',
-      'add_steps',
-      'update_steps'
-    ]);
+    expect(Object.keys(setParameters.properties)).toEqual(['name', 'steps']);
+    expect(Object.keys(updateParameters.properties)).toEqual(['updates', 'add_steps']);
   });
 });

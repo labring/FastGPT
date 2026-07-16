@@ -10,5 +10,11 @@ export {
   type AgentLoopDatasetSearchExecutionResult,
   type AgentLoopDatasetSearchExecuteParams
 } from './datasetSearch';
-export { updatePlanToolName, createUpdatePlanAgentTool } from './plan';
+export {
+  createPlanAgentTools,
+  createSetPlanAgentTool,
+  createUpdatePlanAgentTool,
+  setPlanToolName,
+  updatePlanToolName
+} from './plan';
 export { READ_FILES_TOOL_NAME, ReadFilesToolParamsSchema } from './readFile';

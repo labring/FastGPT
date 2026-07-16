@@ -1,9 +1,11 @@
 import { hashStr } from '../../../common/string/tools';
 import {
   SANDBOX_EDIT_FILE_TOOL_NAME,
+  SANDBOX_FIND_TOOL_NAME,
   SANDBOX_GET_FILE_URL_TOOL_NAME,
+  SANDBOX_GREP_TOOL_NAME,
+  SANDBOX_LS_TOOL_NAME,
   SANDBOX_READ_FILE_TOOL_NAME,
-  SANDBOX_SEARCH_TOOL_NAME,
   SANDBOX_SHELL_TOOL_NAME,
   SANDBOX_WRITE_FILE_TOOL_NAME
 } from './tools';
@@ -46,9 +48,11 @@ export const SANDBOX_SYSTEM_PROMPT = `## 沙盒能力
 - 系统预装：bash / python3 / node / bun / git / curl
 - 用户对话上传的文件存储在 ${SANDBOX_USER_FILES_PATH} 目录下
 - 使用 ${SANDBOX_SHELL_TOOL_NAME} 执行命令、运行代码和安装依赖（apt / pip / npm）
-- 使用 ${SANDBOX_READ_FILE_TOOL_NAME} 读取文本文件内容，可读取全文或指定行号范围
+- 使用 ${SANDBOX_READ_FILE_TOOL_NAME} 读取文本文件内容，可通过 offset/limit 分段读取
 - 使用 ${SANDBOX_WRITE_FILE_TOOL_NAME} 创建或覆盖文本文件
 - 使用 ${SANDBOX_EDIT_FILE_TOOL_NAME} 对已有文件做精确查找替换
-- 使用 ${SANDBOX_SEARCH_TOOL_NAME} 搜索沙盒内的文件路径
+- 使用 ${SANDBOX_GREP_TOOL_NAME} 搜索文件内容，优先于通过 shell 调用 grep/rg
+- 使用 ${SANDBOX_FIND_TOOL_NAME} 按 glob 搜索文件路径，优先于通过 shell 调用 find
+- 使用 ${SANDBOX_LS_TOOL_NAME} 列出目录内容，优先于通过 shell 调用 ls
 - 默认将生成文件保存在当前 sandbox 工作目录；若本轮 system-reminder 指定了更具体的产物目录或禁止目录，必须优先遵守
 - 若需要将生成的文件链接，可使用 ${SANDBOX_GET_FILE_URL_TOOL_NAME} 获取临时访问链接`;

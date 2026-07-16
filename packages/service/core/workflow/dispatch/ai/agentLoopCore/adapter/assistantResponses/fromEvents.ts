@@ -9,6 +9,7 @@ type AgentLoopCoreAssistantMetaEvent = Extract<
 >;
 
 export type AgentLoopCoreAssistantMetaEventNames = {
+  setPlanToolName?: string;
   updatePlanToolName?: string;
   askToolName?: string;
 };
@@ -128,7 +129,10 @@ export const appendAgentLoopCoreAssistantResponseFromEvent = ({
         assistantResponses,
         update: {
           id: event.id,
-          functionName: names.updatePlanToolName || 'update_plan',
+          functionName:
+            event.operation === 'set_plan'
+              ? names.setPlanToolName || 'set_plan'
+              : names.updatePlanToolName || 'update_plan',
           params: event.params || '',
           response: event.message
         }

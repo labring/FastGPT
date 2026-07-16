@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import { AgentPlanSchema } from '@fastgpt/global/core/ai/agent/type';
-import { applyPlanUpdate } from '@fastgpt/service/core/ai/llm/agentLoop/domain/systemTool/plan';
+import {
+  applyPlanUpdate,
+  applySetPlan
+} from '@fastgpt/service/core/ai/llm/agentLoop/domain/systemTool/plan';
 
 const createPlan = (): AgentPlanType =>
   AgentPlanSchema.parse({
     planId: 'plan_1',
     name: 'Test plan',
-    description: 'Test description',
     steps: [
       {
         id: 's1',
@@ -18,38 +20,25 @@ const createPlan = (): AgentPlanType =>
       {
         id: 's2',
         name: 'Write summary',
-        description: 'Write final summary',
         status: 'pending'
       }
     ]
   });
 
-describe('applyPlanUpdate', () => {
-  it('creates an active plan with set_plan', () => {
-    const result = applyPlanUpdate({
-      update: {
-        action: 'set_plan',
+describe('plan state tools', () => {
+  it('creates an active plan from a name and string steps', () => {
+    const result = applySetPlan({
+      input: {
         name: 'New plan',
-        description: 'New description',
-        steps: [
-          {
-            name: 'Step 1',
-            description: 'Do step 1'
-          },
-          {
-            name: 'Step 2'
-          }
-        ]
+        steps: ['Step 1', 'Step 2']
       }
     });
 
     expect(result.success).toBe(true);
     expect(result.plan.name).toBe('New plan');
-    expect(result.plan.description).toBe('New description');
     expect(result.plan.steps).toHaveLength(2);
     expect(result.plan.steps[0]).toMatchObject({
       name: 'Step 1',
-      description: 'Do step 1',
       status: 'pending'
     });
     expect(result.plan.steps[0].id).toBeTruthy();
@@ -59,22 +48,26 @@ describe('applyPlanUpdate', () => {
     });
     expect(result.message).toContain('Set active plan');
     expect(result.message).toContain(`${result.plan.steps[0].id}: Step 1`);
-    expect(result.message).toContain(`${result.plan.steps[1].id}: Step 2`);
   });
 
-  it('appends steps with generated ids', () => {
-    const plan = createPlan();
+  it('rejects invalid set_plan arguments', () => {
+    const result = applySetPlan({
+      input: {
+        name: 'Missing steps'
+      }
+    });
 
+    expect(result.success).toBe(false);
+    expect(result.plan.name).toBe('Invalid plan');
+    expect(result.message).toContain('Invalid set_plan arguments');
+  });
+
+  it('appends string steps with generated ids', () => {
+    const plan = createPlan();
     const result = applyPlanUpdate({
       plan,
       update: {
-        action: 'add_steps',
-        steps: [
-          {
-            name: 'Inspect tests',
-            description: 'Read related tests'
-          }
-        ]
+        add_steps: ['Inspect tests']
       }
     });
 
@@ -86,47 +79,15 @@ describe('applyPlanUpdate', () => {
       'Inspect tests'
     ]);
     expect(result.plan.steps[2].id).toBeTruthy();
-    expect(result.plan.steps[2].id).not.toBe('s1');
-    expect(result.message).toContain(`${result.plan.steps[2].id}: Inspect tests`);
+    expect(result.message).toContain('Added plan step: "Inspect tests"');
   });
 
-  it('updates step status and note without changing content', () => {
+  it('updates multiple step statuses and notes atomically', () => {
     const plan = createPlan();
-
     const result = applyPlanUpdate({
       plan,
       update: {
-        action: 'update_steps',
-        steps: [
-          {
-            id: 's1',
-            status: 'done',
-            note: 'Located the agent entry'
-          }
-        ]
-      }
-    });
-
-    expect(result.success).toBe(true);
-    expect(result.plan).not.toBe(plan);
-    expect(plan.steps[0].status).toBe('pending');
-    expect(result.plan.steps[0]).toMatchObject({
-      id: 's1',
-      name: 'Read code',
-      description: 'Read code files',
-      status: 'done',
-      note: 'Located the agent entry'
-    });
-  });
-
-  it('updates multiple step statuses from one call', () => {
-    const plan = createPlan();
-
-    const result = applyPlanUpdate({
-      plan,
-      update: {
-        action: 'update_steps',
-        steps: [
+        updates: [
           {
             id: 's1',
             status: 'done',
@@ -142,8 +103,11 @@ describe('applyPlanUpdate', () => {
     });
 
     expect(result.success).toBe(true);
+    expect(plan.steps.map((step) => step.status)).toEqual(['pending', 'pending']);
     expect(result.plan.steps[0]).toMatchObject({
       id: 's1',
+      name: 'Read code',
+      description: 'Read code files',
       status: 'done',
       note: 'Read code'
     });
@@ -153,19 +117,57 @@ describe('applyPlanUpdate', () => {
       note: 'No summary needed'
     });
     expect(result.message).toContain('Updated 2 plan steps');
-    expect(result.message).toContain('s1: Read code | status=done | note=Read code');
-    expect(result.message).toContain('s2: Write summary | status=skipped | note=No summary needed');
   });
 
-  it('rejects add_steps when no active plan exists', () => {
+  it('updates statuses and appends steps in one call', () => {
+    const result = applyPlanUpdate({
+      plan: createPlan(),
+      update: {
+        updates: [{ id: 's1', status: 'done' }],
+        add_steps: ['Run regression tests', 'Write release note']
+      }
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.plan.steps[0].status).toBe('done');
+    expect(result.plan.steps.slice(-2).map((step) => step.name)).toEqual([
+      'Run regression tests',
+      'Write release note'
+    ]);
+    expect(result.message).toContain('Updated 1 plan step. Added plan steps');
+  });
+
+  it('rejects completed as an invalid step status', () => {
+    const plan = createPlan();
+    const result = applyPlanUpdate({
+      plan,
+      update: {
+        updates: [{ id: 's1', status: 'completed' }]
+      }
+    });
+
+    expect(result.success).toBe(false);
+    expect(result.plan).toBe(plan);
+    expect(result.plan.steps[0].status).toBe('pending');
+    expect(result.message).toContain('Invalid update_plan arguments');
+  });
+
+  it('treats a null note as an explicit empty note', () => {
+    const result = applyPlanUpdate({
+      plan: createPlan(),
+      update: {
+        updates: [{ id: 's1', status: 'in_progress', note: null }]
+      }
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.plan.steps[0].note).toBeNull();
+  });
+
+  it('rejects update_plan when no active plan exists', () => {
     const result = applyPlanUpdate({
       update: {
-        action: 'add_steps',
-        steps: [
-          {
-            name: 'Step 1'
-          }
-        ]
+        add_steps: ['Step 1']
       }
     });
 
@@ -174,104 +176,35 @@ describe('applyPlanUpdate', () => {
     expect(result.message).toContain('Use set_plan first');
   });
 
-  it('returns an error and keeps the plan unchanged for unknown step ids', () => {
+  it('rejects empty update_plan arguments', () => {
     const plan = createPlan();
-
     const result = applyPlanUpdate({
       plan,
-      update: {
-        action: 'update_steps',
-        steps: [
-          {
-            id: 'missing',
-            status: 'done',
-            note: 'No-op'
-          }
-        ]
-      }
+      update: {}
     });
 
     expect(result.success).toBe(false);
     expect(result.plan).toBe(plan);
-    expect(result.message).toContain('Unknown plan step');
+    expect(result.message).toContain('Invalid update_plan arguments');
   });
 
-  it('does not apply partial status updates when one step is unknown', () => {
+  it('keeps the original plan when any update id is unknown', () => {
     const plan = createPlan();
-
     const result = applyPlanUpdate({
       plan,
       update: {
-        action: 'update_steps',
-        steps: [
-          {
-            id: 's1',
-            status: 'done',
-            note: 'Would be done'
-          },
-          {
-            id: 'missing',
-            status: 'done',
-            note: 'Invalid'
-          }
-        ]
+        updates: [
+          { id: 's1', status: 'done' },
+          { id: 'missing', status: 'done' }
+        ],
+        add_steps: ['Must not be appended']
       }
     });
 
     expect(result.success).toBe(false);
     expect(result.plan).toBe(plan);
     expect(plan.steps.map((step) => step.status)).toEqual(['pending', 'pending']);
-  });
-
-  it('treats null optional fields as omitted', () => {
-    const created = applyPlanUpdate({
-      update: {
-        action: 'set_plan',
-        name: 'New plan',
-        description: null,
-        steps: [
-          {
-            name: 'Step 1',
-            description: null
-          }
-        ]
-      }
-    });
-
-    expect(created.success).toBe(true);
-    expect(created.plan.description).toBeNull();
-    expect(created.plan.steps[0].description).toBeNull();
-
-    const updated = applyPlanUpdate({
-      plan: created.plan,
-      update: {
-        action: 'update_steps',
-        steps: [
-          {
-            id: created.plan.steps[0].id,
-            status: 'done',
-            note: null
-          }
-        ]
-      }
-    });
-
-    expect(updated.success).toBe(true);
-    expect(updated.plan.steps[0].note).toBeNull();
-  });
-
-  it('rejects invalid update_plan arguments', () => {
-    const plan = createPlan();
-
-    const result = applyPlanUpdate({
-      plan,
-      update: {
-        action: 'unknown_action'
-      }
-    });
-
-    expect(result.success).toBe(false);
-    expect(result.plan).toBe(plan);
-    expect(result.message).toContain('Invalid update_plan arguments');
+    expect(result.plan.steps.map((step) => step.name)).not.toContain('Must not be appended');
+    expect(result.message).toContain('Unknown plan step');
   });
 });

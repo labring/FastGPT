@@ -125,6 +125,7 @@ describe('createAgentLoopCoreAssistantEventCollector', () => {
   it('persists failed plan operations without creating a plan snapshot', () => {
     const collector = createAgentLoopCoreAssistantEventCollector({
       metaEventNames: {
+        setPlanToolName: 'set_plan',
         updatePlanToolName: 'update_plan'
       }
     });
@@ -143,7 +144,7 @@ describe('createAgentLoopCoreAssistantEventCollector', () => {
         id: 'call_plan',
         agentPlanUpdate: {
           id: 'call_plan',
-          functionName: 'update_plan',
+          functionName: 'set_plan',
           params: '{"action":"set_plan"}',
           response: 'plan creation failed'
         }
@@ -154,6 +155,7 @@ describe('createAgentLoopCoreAssistantEventCollector', () => {
   it('persists the complete plan as a standalone snapshot', () => {
     const collector = createAgentLoopCoreAssistantEventCollector({
       metaEventNames: {
+        setPlanToolName: 'set_plan',
         updatePlanToolName: 'update_plan'
       }
     });
@@ -198,7 +200,7 @@ describe('createAgentLoopCoreAssistantEventCollector', () => {
         id: 'call_plan',
         agentPlanUpdate: {
           id: 'call_plan',
-          functionName: 'update_plan',
+          functionName: 'set_plan',
           params: '{"action":"set_plan"}',
           response: 'plan created'
         }

@@ -8,9 +8,11 @@ import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import { LangEnum } from '@fastgpt/global/common/i18n/type';
 import { toolMap as editFileToolMap } from './editFile.tool';
+import { toolMap as findToolMap } from './find.tool';
 import { toolMap as getFileUrlToolMap } from './getFileUrl.tool';
+import { toolMap as grepToolMap } from './grep.tool';
+import { toolMap as lsToolMap } from './ls.tool';
 import { toolMap as readFileToolMap } from './readFile.tool';
-import { toolMap as searchToolMap } from './search.tool';
 import { toolMap as shellToolMap } from './shell.tool';
 import { toolMap as writeFileToolMap } from './writeFile.tool';
 import { getSandboxClient, type SandboxClient } from '../runtime/client';
@@ -23,9 +25,11 @@ import { getRunningSandboxId } from '../../utils/id';
 
 const ToolMap = {
   ...editFileToolMap,
+  ...findToolMap,
   ...getFileUrlToolMap,
+  ...grepToolMap,
+  ...lsToolMap,
   ...readFileToolMap,
-  ...searchToolMap,
   ...writeFileToolMap,
   ...shellToolMap
 };

@@ -312,6 +312,7 @@ export const dispatchRunAgent = async (props: DispatchAgentModuleProps): Promise
           };
         },
         metaEventNames: {
+          setPlanToolName: artifacts.setPlanToolName,
           updatePlanToolName: artifacts.updatePlanToolName,
           askToolName: artifacts.askToolName
         }

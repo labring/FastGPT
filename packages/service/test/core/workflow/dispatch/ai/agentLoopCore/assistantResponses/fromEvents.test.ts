@@ -13,7 +13,7 @@ describe('appendAgentLoopCoreAssistantResponseFromEvent', () => {
         success: true,
         message: 'plan created',
         id: 'call_plan_create',
-        params: '{"action":"set_plan"}',
+        params: '{"name":"Research FastGPT","steps":["Collect context"]}',
         plan: {
           planId: 'plan_1',
           name: 'Research FastGPT',
@@ -36,7 +36,7 @@ describe('appendAgentLoopCoreAssistantResponseFromEvent', () => {
         success: true,
         message: 'plan updated',
         id: 'call_plan_update',
-        params: '{"action":"update_steps"}',
+        params: '{"updates":[{"id":"step_1","status":"done"}]}',
         plan: {
           planId: 'plan_2',
           name: 'Publish FastGPT research',
@@ -64,8 +64,8 @@ describe('appendAgentLoopCoreAssistantResponseFromEvent', () => {
         id: 'call_plan_create',
         agentPlanUpdate: {
           id: 'call_plan_create',
-          functionName: 'update_plan',
-          params: '{"action":"set_plan"}',
+          functionName: 'set_plan',
+          params: '{"name":"Research FastGPT","steps":["Collect context"]}',
           response: 'plan created'
         }
       },
@@ -74,14 +74,14 @@ describe('appendAgentLoopCoreAssistantResponseFromEvent', () => {
         agentPlanUpdate: {
           id: 'call_plan_update',
           functionName: 'update_plan',
-          params: '{"action":"update_steps"}',
+          params: '{"updates":[{"id":"step_1","status":"done"}]}',
           response: 'plan updated'
         }
       }
     ]);
   });
 
-  it('stores plan operations as update_plan assistant responses', () => {
+  it('stores plan operations with their actual tool names', () => {
     const assistantResponses: any[] = [];
 
     appendAgentLoopCoreAssistantResponseFromEvent({
@@ -95,6 +95,7 @@ describe('appendAgentLoopCoreAssistantResponseFromEvent', () => {
         params: '{"action":"set_plan"}'
       },
       names: {
+        setPlanToolName: 'agent_set_plan',
         updatePlanToolName: 'agent_update_plan'
       }
     });
@@ -109,6 +110,7 @@ describe('appendAgentLoopCoreAssistantResponseFromEvent', () => {
         params: '{"action":"update_steps"}'
       },
       names: {
+        setPlanToolName: 'agent_set_plan',
         updatePlanToolName: 'agent_update_plan'
       }
     });

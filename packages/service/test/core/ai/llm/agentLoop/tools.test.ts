@@ -20,6 +20,7 @@ const tool = (name: string): ChatCompletionTool => ({
 const createCatalog = () => ({
   runtimeTools: [tool('search'), tool('read_file')],
   askTool: tool('ask_agent'),
+  setPlanTool: tool('set_plan'),
   updatePlanTool: tool('update_plan'),
   sandboxTools: [tool('sandbox_shell')],
   datasetSearchTool: tool('dataset_search')
@@ -35,6 +36,7 @@ describe('agent loop tool catalog', () => {
       'search',
       'read_file',
       'ask_agent',
+      'set_plan',
       'update_plan',
       'sandbox_shell',
       'dataset_search'
@@ -47,6 +49,7 @@ describe('agent loop tool catalog', () => {
       runtimeTools: [
         tool('search'),
         tool('ask_agent'),
+        tool('set_plan'),
         tool('update_plan'),
         tool('sandbox_shell'),
         tool('dataset_search')

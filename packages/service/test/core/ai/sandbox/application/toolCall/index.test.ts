@@ -5,7 +5,6 @@ import {
   SANDBOX_WRITE_FILE_TOOL_NAME
 } from '@fastgpt/global/core/ai/sandbox/tools';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { generateSandboxId } from '@fastgpt/global/core/ai/sandbox/constants';
 
 const runtimeMock = vi.hoisted(() => ({
   getSandboxClient: vi.fn()
@@ -58,7 +57,8 @@ const createSandboxInstance = () =>
     ensureAvailable: vi.fn(async () => undefined),
     exec: vi.fn(async () => ({ stdout: 'out', stderr: '', exitCode: 0 })),
     provider: {
-      readFiles: vi.fn(async () => [{ content: 'a\nb\nc' }])
+      readFiles: vi.fn(async () => [{ content: 'a\nb\nc' }]),
+      deleteFiles: vi.fn(async () => [])
     }
   }) as any;
 
@@ -86,7 +86,7 @@ describe('sandbox toolCall index', () => {
     ).resolves.toMatchObject({
       success: true,
       input: { command: 'pwd' },
-      response: JSON.stringify({ stdout: 'out', stderr: '', exitCode: 0 })
+      response: 'out'
     });
     expect(runtimeMock.getSandboxClient).not.toHaveBeenCalled();
   });
@@ -114,7 +114,7 @@ describe('sandbox toolCall index', () => {
         userId: 'user',
         chatId: 'chat',
         toolName: SANDBOX_READ_FILE_TOOL_NAME,
-        args: JSON.stringify({ path: '/workspace/a.txt', startLine: 3, endLine: 1 }),
+        args: JSON.stringify({ path: '/workspace/a.txt', offset: 0 }),
         sandboxClient: sandbox
       })
     ).resolves.toMatchObject({
@@ -139,7 +139,10 @@ describe('sandbox toolCall index', () => {
     });
 
     expect(runtimeMock.getSandboxClient).not.toHaveBeenCalled();
-    expect(sandbox.exec).toHaveBeenCalledWith('pwd', undefined);
+    expect(sandbox.exec).toHaveBeenCalledWith(
+      expect.stringMatching(/^\/bin\/bash -c 'pwd' > '\/tmp\/fastgpt-bash-[^']+\.log' 2>&1/),
+      undefined
+    );
   });
 
   it('injects sandbox files into the session sandbox', async () => {

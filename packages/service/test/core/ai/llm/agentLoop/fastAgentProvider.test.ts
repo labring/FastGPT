@@ -164,7 +164,9 @@ describe('runFastAgentLoop', () => {
     const toolNames = createLLMResponseMock.mock.calls[1][0].body.tools.map(
       (item: ChatCompletionTool) => item.function.name
     );
-    expect(toolNames).toEqual(expect.arrayContaining(['search', 'ask_user', 'update_plan']));
+    expect(toolNames).toEqual(
+      expect.arrayContaining(['search', 'ask_user', 'set_plan', 'update_plan'])
+    );
     expect(toolNames.some((name: string) => name.startsWith('sandbox_'))).toBe(true);
   });
 
@@ -185,8 +187,7 @@ describe('runFastAgentLoop', () => {
         id: 'call_update_resumed_plan',
         name: 'update_plan',
         args: {
-          action: 'update_steps',
-          steps: [{ id: 'step_resume', status: 'done' }]
+          updates: [{ id: 'step_resume', status: 'done' }]
         }
       }),
       text({

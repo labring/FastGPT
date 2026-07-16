@@ -1,6 +1,6 @@
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import { createAskUserAgentTool } from '../../../domain/systemTool/ask';
-import { createUpdatePlanAgentTool } from '../../../domain/systemTool/plan';
+import { createPlanAgentTools } from '../../../domain/systemTool/plan';
 import { createReadFilesTool } from '../../../domain/systemTool/readFile';
 import { createAgentLoopSandboxTools } from '../../../domain/systemTool/sandbox';
 import { createDatasetSearchTool } from '../../../domain/systemTool/datasetSearch';
@@ -9,7 +9,7 @@ import type { AgentLoopRuntime } from '../../../domain';
 const getPiAgentSystemTools = <TChildrenResponse = unknown>(
   runtime: AgentLoopRuntime<TChildrenResponse>
 ): ChatCompletionTool[] => [
-  ...(runtime.systemTools?.plan?.enabled ? [createUpdatePlanAgentTool()] : []),
+  ...(runtime.systemTools?.plan?.enabled ? createPlanAgentTools() : []),
   ...(runtime.systemTools?.ask?.enabled ? [createAskUserAgentTool()] : []),
   ...(runtime.systemTools?.sandbox?.enabled && runtime.systemTools.sandbox.client
     ? createAgentLoopSandboxTools()

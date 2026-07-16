@@ -231,7 +231,7 @@ describe('runAgentLoopCore', () => {
         success: true,
         message: 'plan created',
         id: 'call_plan',
-        params: '{"action":"set_plan"}',
+        params: '{"name":"Implementation plan","steps":["Implement plan events"]}',
         plan: {
           planId: 'plan_1',
           name: 'Implementation plan',
@@ -279,6 +279,7 @@ describe('runAgentLoopCore', () => {
           avatar: 'search-avatar'
         }),
         metaEventNames: {
+          setPlanToolName: 'agent_set_plan',
           updatePlanToolName: 'agent_update_plan'
         }
       }
@@ -321,8 +322,8 @@ describe('runAgentLoopCore', () => {
         id: 'call_plan',
         agentPlanUpdate: {
           id: 'call_plan',
-          functionName: 'agent_update_plan',
-          params: '{"action":"set_plan"}',
+          functionName: 'agent_set_plan',
+          params: '{"name":"Implementation plan","steps":["Implement plan events"]}',
           response: 'plan created'
         }
       }

@@ -7,8 +7,7 @@ import {
   AccordionPanel,
   Box,
   Flex,
-  HStack,
-  Textarea
+  HStack
 } from '@chakra-ui/react';
 import type { ToolModuleResponseItemType } from '@fastgpt/global/core/chat/type';
 import Avatar from '@fastgpt/web/components/common/Avatar';
@@ -16,8 +15,6 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSafeTranslation } from '@fastgpt/web/hooks/useSafeTranslation';
 import React, { useMemo, useState } from 'react';
 import { accordionButtonStyle } from './constants';
-
-const RICH_TOOL_CONTENT_MAX_LENGTH = 32768;
 
 const formatJson = (value: string) => {
   try {
@@ -32,12 +29,13 @@ const PlainTextContent = ({ label, value }: { label: string; value: string }) =>
     <Box mb={1} color={'myGray.600'} fontSize={'12px'} fontWeight={500} lineHeight={'18px'}>
       {label}
     </Box>
-    <Textarea
-      value={value}
-      readOnly
-      resize={'vertical'}
-      minH={'120px'}
+    <Box
+      as="pre"
+      m={0}
+      p={3}
       maxH={'360px'}
+      overflow={'auto'}
+      border={'1px solid'}
       borderColor={'myGray.200'}
       borderRadius={'sm'}
       bg={'myGray.50'}
@@ -46,34 +44,33 @@ const PlainTextContent = ({ label, value }: { label: string; value: string }) =>
       fontSize={'12px'}
       lineHeight={'18px'}
       letterSpacing={0}
-      whiteSpace={'pre'}
-    />
+      whiteSpace={'pre-wrap'}
+      overflowWrap={'anywhere'}
+    >
+      {value}
+    </Box>
   </Box>
 );
 
 const ToolDetail = ({
-  showAnimation,
+  isToolGenerating,
   tool
 }: {
-  showAnimation: boolean;
+  isToolGenerating: boolean;
   tool: ToolModuleResponseItemType;
 }) => {
   const params = tool.params;
   const response = tool.response || '';
-  const usePlainText =
-    showAnimation ||
-    params.length > RICH_TOOL_CONTENT_MAX_LENGTH ||
-    response.length > RICH_TOOL_CONTENT_MAX_LENGTH;
   const formattedParams = useMemo(
-    () => (usePlainText ? params : formatJson(params)),
-    [params, usePlainText]
+    () => (isToolGenerating ? params : formatJson(params)),
+    [isToolGenerating, params]
   );
   const formattedResponse = useMemo(
-    () => (usePlainText ? response : formatJson(response)),
-    [response, usePlainText]
+    () => (isToolGenerating ? response : formatJson(response)),
+    [isToolGenerating, response]
   );
 
-  if (usePlainText) {
+  if (isToolGenerating) {
     return (
       <>
         {formattedParams && formattedParams !== '{}' && (
@@ -113,6 +110,7 @@ const RenderTool = React.memo(function RenderTool({
 }) {
   const { t } = useSafeTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
+  const isToolGenerating = showAnimation && tool.response === undefined;
 
   return (
     <Accordion
@@ -156,9 +154,7 @@ const RenderTool = React.memo(function RenderTool({
               {t(tool.toolName)}
             </Box>
           </HStack>
-          {showAnimation && tool.response === undefined && (
-            <MyIcon name={'common/loading'} w={'14px'} color="myGray.500" />
-          )}
+          {isToolGenerating && <MyIcon name={'common/loading'} w={'14px'} color="myGray.500" />}
           <AccordionIcon ml={1} w={'16px'} h={'16px'} color={'myGray.500'} />
         </AccordionButton>
         {isExpanded && (
@@ -171,7 +167,7 @@ const RenderTool = React.memo(function RenderTool({
             maxH={'500px'}
             overflowY={'auto'}
           >
-            <ToolDetail showAnimation={showAnimation} tool={tool} />
+            <ToolDetail isToolGenerating={isToolGenerating} tool={tool} />
           </AccordionPanel>
         )}
       </AccordionItem>

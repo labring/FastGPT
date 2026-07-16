@@ -13,7 +13,8 @@ export const SANDBOX_READ_FILE_TOOL: ChatCompletionTool = {
   type: 'function',
   function: {
     name: SANDBOX_READ_FILE_TOOL_NAME,
-    description: '读取虚拟机中的文本文件内容，支持读取全文或按 1-based 行号范围读取',
+    description:
+      '读取虚拟机中的文本文件内容。输出最多 2000 行或 50KB，可通过 offset/limit 分段读取',
     parameters: {
       type: 'object',
       properties: {
@@ -21,15 +22,15 @@ export const SANDBOX_READ_FILE_TOOL: ChatCompletionTool = {
           type: 'string',
           description: '文件路径，例如: src/index.ts 或 /home/sandbox/workspace/src/index.ts'
         },
-        startLine: {
+        offset: {
           type: 'number',
           description: '起始行号，1-based，可选。不传则从文件开头读取',
-          min: 1
+          minimum: 1
         },
-        endLine: {
+        limit: {
           type: 'number',
-          description: '结束行号，1-based，包含该行，可选。不传则读取到文件末尾',
-          min: 1
+          description: '最大读取行数，可选。不传则读取到文件末尾或输出上限',
+          minimum: 1
         }
       },
       required: ['path']

@@ -302,7 +302,15 @@ describe('runPiAgentLoop', () => {
     });
 
     expect(agentPromptMock).toHaveBeenCalledWith('hello');
-    expect(agentConstructorArgs[0].initialState.systemPrompt).toBe('system prompt');
+    expect(agentConstructorArgs[0].initialState.systemPrompt).toContain(
+      '<user_background>\nsystem prompt\n</user_background>'
+    );
+    expect(agentConstructorArgs[0].initialState.systemPrompt).toContain(
+      'set_plan，参数格式为 {"name":"简短计划名","steps":["步骤一","步骤二"]}'
+    );
+    expect(agentConstructorArgs[0].initialState.systemPrompt).toContain(
+      'update_plan，参数格式为 {"updates":[{"id":"已有步骤 id","status":"done","note":"简短结果"}]}'
+    );
     expect(agentConstructorArgs[0].toolExecution).toBe('sequential');
     expect(agentConstructorArgs[0].initialState.messages).toEqual([]);
     expect(result).toMatchObject({
@@ -639,6 +647,7 @@ describe('runPiAgentLoop', () => {
     });
 
     expect(agentConstructorArgs.at(-1).initialState.tools.map((tool: any) => tool.name)).toEqual([
+      'set_plan',
       'update_plan',
       'ask_user',
       'dataset_search'
@@ -648,13 +657,11 @@ describe('runPiAgentLoop', () => {
   it('emits one successful plan operation with the complete plan', async () => {
     const events: any[] = [];
     agentToolToExecute.value = {
-      name: 'update_plan',
+      name: 'set_plan',
       callId: 'call_plan',
       args: {
-        action: 'set_plan',
         name: 'Implementation plan',
-        description: null,
-        steps: [{ name: 'Merge plan events', description: null }]
+        steps: ['Merge plan events']
       }
     };
 
@@ -718,6 +725,14 @@ describe('runPiAgentLoop', () => {
             {
               type: 'function',
               function: {
+                name: 'set_plan',
+                description: 'conflicting set plan tool',
+                parameters: {}
+              }
+            },
+            {
+              type: 'function',
+              function: {
                 name: 'update_plan',
                 description: 'conflicting plan tool',
                 parameters: {}
@@ -763,6 +778,7 @@ describe('runPiAgentLoop', () => {
     });
 
     const toolNames = agentConstructorArgs.at(-1).initialState.tools.map((tool: any) => tool.name);
+    expect(toolNames.filter((name: string) => name === 'set_plan')).toHaveLength(1);
     expect(toolNames.filter((name: string) => name === 'update_plan')).toHaveLength(1);
     expect(toolNames.filter((name: string) => name === 'ask_user')).toHaveLength(1);
     expect(toolNames.filter((name: string) => name === 'read_files')).toHaveLength(1);

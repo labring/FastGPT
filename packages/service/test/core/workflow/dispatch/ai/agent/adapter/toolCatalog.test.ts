@@ -22,6 +22,7 @@ describe('createWorkflowAgentLoopToolCatalog', () => {
 
     expect(catalog.runtimeTools.map((item) => item.function.name)).toEqual(['search']);
     expect(catalog.askTool?.function.name).toBe('ask_user');
+    expect(catalog.setPlanTool?.function.name).toBe('set_plan');
     expect(catalog.updatePlanTool?.function.name).toBe('update_plan');
   });
 
@@ -31,6 +32,7 @@ describe('createWorkflowAgentLoopToolCatalog', () => {
     });
 
     expect(catalog.runtimeTools).toEqual([]);
+    expect(catalog.setPlanTool?.function.name).toBe('set_plan');
     expect(catalog.updatePlanTool?.function.name).toBe('update_plan');
   });
 

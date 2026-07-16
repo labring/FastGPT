@@ -11,12 +11,14 @@ import {
   SANDBOX_GET_FILE_URL_TOOL,
   SANDBOX_GET_FILE_URL_TOOL_NAME
 } from './getFileUrl';
+import { SANDBOX_GREP_NAME, SANDBOX_GREP_TOOL, SANDBOX_GREP_TOOL_NAME } from './grep';
+import { SANDBOX_FIND_NAME, SANDBOX_FIND_TOOL, SANDBOX_FIND_TOOL_NAME } from './find';
+import { SANDBOX_LS_NAME, SANDBOX_LS_TOOL, SANDBOX_LS_TOOL_NAME } from './ls';
 import {
   SANDBOX_READ_FILE_NAME,
   SANDBOX_READ_FILE_TOOL,
   SANDBOX_READ_FILE_TOOL_NAME
 } from './readFile';
-import { SANDBOX_SEARCH_NAME, SANDBOX_SEARCH_TOOL, SANDBOX_SEARCH_TOOL_NAME } from './search';
 import { SANDBOX_SHELL_NAME, SANDBOX_SHELL_TOOL, SANDBOX_SHELL_TOOL_NAME } from './shell';
 import {
   SANDBOX_WRITE_FILE_NAME,
@@ -35,12 +37,14 @@ export {
   SANDBOX_GET_FILE_URL_TOOL,
   SANDBOX_GET_FILE_URL_TOOL_NAME
 } from './getFileUrl';
+export { SANDBOX_GREP_NAME, SANDBOX_GREP_TOOL, SANDBOX_GREP_TOOL_NAME } from './grep';
+export { SANDBOX_FIND_NAME, SANDBOX_FIND_TOOL, SANDBOX_FIND_TOOL_NAME } from './find';
+export { SANDBOX_LS_NAME, SANDBOX_LS_TOOL, SANDBOX_LS_TOOL_NAME } from './ls';
 export {
   SANDBOX_READ_FILE_NAME,
   SANDBOX_READ_FILE_TOOL,
   SANDBOX_READ_FILE_TOOL_NAME
 } from './readFile';
-export { SANDBOX_SEARCH_NAME, SANDBOX_SEARCH_TOOL, SANDBOX_SEARCH_TOOL_NAME } from './search';
 export { SANDBOX_SHELL_NAME, SANDBOX_SHELL_TOOL, SANDBOX_SHELL_TOOL_NAME } from './shell';
 export {
   SANDBOX_WRITE_FILE_NAME,
@@ -76,11 +80,23 @@ export const sandboxToolMap: Record<
     avatar: SANDBOX_ICON,
     toolDescription: SANDBOX_EDIT_FILE_TOOL.function.description!
   },
-  [SANDBOX_SEARCH_TOOL_NAME]: {
-    schema: SANDBOX_SEARCH_TOOL,
-    name: SANDBOX_SEARCH_NAME,
+  [SANDBOX_GREP_TOOL_NAME]: {
+    schema: SANDBOX_GREP_TOOL,
+    name: SANDBOX_GREP_NAME,
     avatar: SANDBOX_ICON,
-    toolDescription: SANDBOX_SEARCH_TOOL.function.description!
+    toolDescription: SANDBOX_GREP_TOOL.function.description!
+  },
+  [SANDBOX_FIND_TOOL_NAME]: {
+    schema: SANDBOX_FIND_TOOL,
+    name: SANDBOX_FIND_NAME,
+    avatar: SANDBOX_ICON,
+    toolDescription: SANDBOX_FIND_TOOL.function.description!
+  },
+  [SANDBOX_LS_TOOL_NAME]: {
+    schema: SANDBOX_LS_TOOL,
+    name: SANDBOX_LS_NAME,
+    avatar: SANDBOX_ICON,
+    toolDescription: SANDBOX_LS_TOOL.function.description!
   },
   [SANDBOX_GET_FILE_URL_TOOL_NAME]: {
     schema: SANDBOX_GET_FILE_URL_TOOL,

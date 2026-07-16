@@ -8,7 +8,7 @@ import type {
 } from '../../domain';
 import type { AgentLoopRuntime as FastAgentInternalRuntime } from './loop/type';
 import { createAskUserAgentTool } from '../../domain/systemTool/ask';
-import { createUpdatePlanAgentTool } from '../../domain/systemTool/plan';
+import { createSetPlanAgentTool, createUpdatePlanAgentTool } from '../../domain/systemTool/plan';
 import { createReadFilesTool } from '../../domain/systemTool/readFile';
 import { createAgentLoopSandboxTools } from '../../domain/systemTool/sandbox';
 import { createDatasetSearchTool } from '../../domain/systemTool/datasetSearch';
@@ -88,7 +88,10 @@ export const runFastAgentLoop = async <TChildrenResponse = unknown>({
       runtimeTools: runtime.toolCatalog.runtimeTools,
       ...(runtime.systemTools?.ask?.enabled ? { askTool: createAskUserAgentTool() } : {}),
       ...(runtime.systemTools?.plan?.enabled
-        ? { updatePlanTool: createUpdatePlanAgentTool() }
+        ? {
+            setPlanTool: createSetPlanAgentTool(),
+            updatePlanTool: createUpdatePlanAgentTool()
+          }
         : {}),
       ...(runtime.systemTools?.sandbox?.enabled && runtime.systemTools.sandbox.client
         ? { sandboxTools: createAgentLoopSandboxTools() }

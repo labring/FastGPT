@@ -6,6 +6,9 @@
 import z from 'zod';
 import { defineTool } from './type';
 import { SANDBOX_SHELL_TOOL_NAME } from '@fastgpt/global/core/ai/sandbox/tools';
+import { shellQuote } from '@fastgpt/global/common/string/utils';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { truncateSandboxToolOutput } from './utils';
 
 const SandboxShellToolSchema = z.object({
   command: z.string(),
@@ -15,13 +18,36 @@ const SandboxShellToolSchema = z.object({
 export const sandboxShellTool = defineTool({
   zodSchema: SandboxShellToolSchema,
   execute: async ({ sandboxInstance, params }) => {
-    const result = await sandboxInstance.exec(params.command, params.timeout);
+    const fullOutputPath = `/tmp/fastgpt-bash-${getNanoid(12)}.log`;
+    const result = await sandboxInstance.exec(
+      [
+        `/bin/bash -c ${shellQuote(params.command)} > ${shellQuote(fullOutputPath)} 2>&1`,
+        'exit_code=$?',
+        `cat ${shellQuote(fullOutputPath)}`,
+        'exit "$exit_code"'
+      ].join('\n'),
+      params.timeout
+    );
+    const rawOutput = [result.stdout, result.stderr].filter(Boolean).join('\n');
+    const output = truncateSandboxToolOutput({ content: rawOutput, direction: 'tail' });
+    const truncationNotice = (() => {
+      if (!output.truncated && !result.truncated) return '';
+      if (output.truncatedBy === 'lines') {
+        return `[Showing last ${output.outputLines} of ${output.totalLines} lines. Full output: ${fullOutputPath}]`;
+      }
+      return `[Showing last ${output.outputBytes} bytes of output. Full output: ${fullOutputPath}]`;
+    })();
+    const exitNotice =
+      result.exitCode === 0 || result.exitCode === null
+        ? ''
+        : `Command exited with code ${result.exitCode}`;
+
+    if (!output.truncated && !result.truncated) {
+      await sandboxInstance.provider.deleteFiles([fullOutputPath]).catch(() => {});
+    }
+
     return {
-      response: JSON.stringify({
-        stdout: result.stdout,
-        stderr: result.stderr,
-        exitCode: result.exitCode
-      })
+      response: [output.content, truncationNotice, exitNotice].filter(Boolean).join('\n\n')
     };
   }
 });

@@ -1,12 +1,14 @@
 import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 import {
   createAskUserAgentTool,
+  createSetPlanAgentTool,
   createUpdatePlanAgentTool
 } from '../../../../../ai/llm/agentLoop/interface';
 
 export type WorkflowAgentLoopToolCatalog = {
   runtimeTools: ChatCompletionTool[];
   askTool: ChatCompletionTool;
+  setPlanTool: ChatCompletionTool;
   updatePlanTool: ChatCompletionTool;
 };
 
@@ -22,6 +24,7 @@ export const createWorkflowAgentLoopToolCatalog = ({
   return {
     runtimeTools: completionTools,
     askTool: createAskUserAgentTool(),
+    setPlanTool: createSetPlanAgentTool(),
     updatePlanTool: createUpdatePlanAgentTool()
   };
 };

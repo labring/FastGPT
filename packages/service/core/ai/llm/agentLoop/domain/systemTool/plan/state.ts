@@ -4,9 +4,9 @@ import z from 'zod';
 
 const toolStringSchema = z.string().nullish();
 
-const NewPlanStepSchema = z.object({
+const SetPlanArgsSchema = z.object({
   name: z.string(),
-  description: toolStringSchema
+  steps: z.array(z.string()).min(1)
 });
 
 const UpdatePlanStepSchema = z.object({
@@ -15,30 +15,17 @@ const UpdatePlanStepSchema = z.object({
   note: toolStringSchema
 });
 
-const SetPlanArgsSchema = z.object({
-  action: z.literal('set_plan'),
-  name: z.string(),
-  description: toolStringSchema,
-  steps: z.array(NewPlanStepSchema).min(1)
-});
+const UpdatePlanArgsSchema = z
+  .object({
+    updates: z.array(UpdatePlanStepSchema).min(1).optional(),
+    add_steps: z.array(z.string()).min(1).optional()
+  })
+  .refine((args) => args.updates || args.add_steps, {
+    message: 'Provide updates, add_steps, or both.'
+  });
 
-const AddStepsArgsSchema = z.object({
-  action: z.literal('add_steps'),
-  steps: z.array(NewPlanStepSchema).min(1)
-});
-
-const UpdateStepsArgsSchema = z.object({
-  action: z.literal('update_steps'),
-  steps: z.array(UpdatePlanStepSchema).min(1)
-});
-
-const UpdatePlanArgsSchema = z.discriminatedUnion('action', [
-  SetPlanArgsSchema,
-  AddStepsArgsSchema,
-  UpdateStepsArgsSchema
-]);
+type SetPlanArgs = z.infer<typeof SetPlanArgsSchema>;
 type UpdatePlanArgs = z.infer<typeof UpdatePlanArgsSchema>;
-type NewPlanStepArgs = z.infer<typeof NewPlanStepSchema>;
 type UpdatePlanStepArgs = z.infer<typeof UpdatePlanStepSchema>;
 
 type UpdatePlanStateResult = {
@@ -49,16 +36,13 @@ type UpdatePlanStateResult = {
   success: boolean;
 };
 
-const createPlanStep = (step: NewPlanStepArgs): AgentStepItemType =>
+const createPlanStep = (name: string): AgentStepItemType =>
   AgentPlanSchema.shape.steps.element.parse({
-    name: step.name,
-    description: step.description,
+    name,
     status: 'pending'
   });
 
-/**
- * 生成简短的 plan 进度摘要，作为 update_plan 的 tool response 返回给模型。
- */
+/** 生成简短的 plan 进度摘要，作为 plan tool response 返回给模型。 */
 const buildPlanProgressSummary = (plan: AgentPlanType) => {
   const counts = plan.steps.reduce<Record<AgentStepItemType['status'], number>>(
     (acc, step) => {
@@ -98,9 +82,9 @@ const createFallbackPlan = (name: string) =>
       {
         id: 'invalid_update',
         name: 'Invalid plan update',
-        description: 'The model called update_plan with invalid or incomplete arguments.',
+        description: 'The model called a plan tool with invalid or incomplete arguments.',
         status: 'blocked',
-        note: 'Invalid update_plan arguments.'
+        note: 'Invalid plan tool arguments.'
       }
     ]
   });
@@ -108,14 +92,11 @@ const createFallbackPlan = (name: string) =>
 const formatStepNameList = (steps: AgentStepItemType[]) =>
   steps.map((step) => `"${step.name}"`).join(', ');
 
-/**
- * 创建或重置 active plan。set_plan 是唯一允许设置 plan name/description 的入口。
- */
-const setPlan = (args: Extract<UpdatePlanArgs, { action: 'set_plan' }>): UpdatePlanStateResult => {
+/** 创建或重置 active plan。 */
+const setPlan = (args: SetPlanArgs): UpdatePlanStateResult => {
   const steps = args.steps.map(createPlanStep);
   const plan = AgentPlanSchema.parse({
     name: args.name,
-    description: args.description,
     steps
   });
 
@@ -127,40 +108,6 @@ const setPlan = (args: Extract<UpdatePlanArgs, { action: 'set_plan' }>): UpdateP
     message: buildPlanToolResponse(
       plan,
       `Set active plan "${plan.name}" with ${steps.length} step${steps.length > 1 ? 's' : ''}.`
-    )
-  };
-};
-
-const addSteps = ({
-  plan,
-  args
-}: {
-  plan?: AgentPlanType;
-  args: Extract<UpdatePlanArgs, { action: 'add_steps' }>;
-}): UpdatePlanStateResult => {
-  if (!plan) {
-    return {
-      plan: createFallbackPlan('Missing active plan'),
-      success: false,
-      warnings: [],
-      message: 'Cannot add plan steps because no active plan exists. Use set_plan first.'
-    };
-  }
-
-  const steps = args.steps.map(createPlanStep);
-  const nextPlan: AgentPlanType = {
-    ...plan,
-    steps: [...plan.steps, ...steps]
-  };
-
-  return {
-    plan: nextPlan,
-    changedStep: steps[steps.length - 1],
-    success: true,
-    warnings: [],
-    message: buildPlanToolResponse(
-      nextPlan,
-      `Added plan step${steps.length > 1 ? 's' : ''}: ${formatStepNameList(steps)}.`
     )
   };
 };
@@ -193,25 +140,52 @@ const applyStepStatus = ({
   };
 };
 
-const updateSteps = ({
+/** 创建 plan tool 的入口。 */
+export const applySetPlan = ({ input }: { input: unknown }): UpdatePlanStateResult => {
+  const parsed = SetPlanArgsSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      plan: createFallbackPlan('Invalid plan'),
+      success: false,
+      warnings: [],
+      message: `Invalid set_plan arguments: ${parsed.error.message}`
+    };
+  }
+
+  return setPlan(parsed.data);
+};
+
+/** 更新 plan tool 的入口；状态更新保持原子性，校验失败时不追加新步骤。 */
+export const applyPlanUpdate = ({
   plan,
-  args
+  update
 }: {
   plan?: AgentPlanType;
-  args: Extract<UpdatePlanArgs, { action: 'update_steps' }>;
+  update: unknown;
 }): UpdatePlanStateResult => {
+  const parsed = UpdatePlanArgsSchema.safeParse(update);
+  if (!parsed.success) {
+    return {
+      plan: plan ?? createFallbackPlan('Invalid plan'),
+      success: false,
+      warnings: [],
+      message: `Invalid update_plan arguments: ${parsed.error.message}`
+    };
+  }
+
   if (!plan) {
     return {
       plan: createFallbackPlan('Missing active plan'),
       success: false,
       warnings: [],
-      message: 'Cannot update plan steps because no active plan exists. Use set_plan first.'
+      message: 'Cannot update plan because no active plan exists. Use set_plan first.'
     };
   }
 
+  const args: UpdatePlanArgs = parsed.data;
   let nextPlan = plan;
   let changedStep: AgentStepItemType | undefined;
-  for (const stepPatch of args.steps) {
+  for (const stepPatch of args.updates ?? []) {
     const result = applyStepStatus({
       plan: nextPlan,
       stepPatch
@@ -230,47 +204,29 @@ const updateSteps = ({
     changedStep = result.changedStep;
   }
 
+  const addedSteps = (args.add_steps ?? []).map(createPlanStep);
+  if (addedSteps.length > 0) {
+    nextPlan = {
+      ...nextPlan,
+      steps: [...nextPlan.steps, ...addedSteps]
+    };
+    changedStep = addedSteps[addedSteps.length - 1];
+  }
+
+  const messages = [
+    ...(args.updates?.length
+      ? [`Updated ${args.updates.length} plan step${args.updates.length > 1 ? 's' : ''}.`]
+      : []),
+    ...(addedSteps.length
+      ? [`Added plan step${addedSteps.length > 1 ? 's' : ''}: ${formatStepNameList(addedSteps)}.`]
+      : [])
+  ];
+
   return {
     plan: nextPlan,
     changedStep,
     success: true,
     warnings: [],
-    message: buildPlanToolResponse(
-      nextPlan,
-      `Updated ${args.steps.length} plan step${args.steps.length > 1 ? 's' : ''}.`
-    )
+    message: buildPlanToolResponse(nextPlan, messages.join(' '))
   };
-};
-
-/**
- * 应用单主 loop 的 update_plan 工具参数。
- * 新结构只允许 set_plan、add_steps、update_steps：新增步骤由系统生成 id，更新步骤只修改 status/note。
- */
-export const applyPlanUpdate = ({
-  plan,
-  update
-}: {
-  plan?: AgentPlanType;
-  update: unknown;
-}): UpdatePlanStateResult => {
-  const parsed = UpdatePlanArgsSchema.safeParse(update);
-  if (!parsed.success) {
-    return {
-      plan: plan ?? createFallbackPlan('Invalid plan'),
-      success: false,
-      warnings: [],
-      message: `Invalid update_plan arguments: ${parsed.error.message}`
-    };
-  }
-
-  const args = parsed.data;
-  if (args.action === 'set_plan') {
-    return setPlan(args);
-  }
-
-  if (args.action === 'add_steps') {
-    return addSteps({ plan, args });
-  }
-
-  return updateSteps({ plan, args });
 };

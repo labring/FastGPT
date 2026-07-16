@@ -58,7 +58,7 @@ type RunAgentCallProps<TChildrenResponse = unknown> = {
     messages: ChatCompletionMessageParam[];
     assistantMessage?: ChatCompletionMessageParam;
   }) => Promise<AgentLoopToolExecutionResult<TChildrenResponse>>;
-  // 返回 false 的工具会按 toolCalls 顺序串行执行，用于 update_plan/ask_user 这类有状态内部工具。
+  // 返回 false 的工具会按 toolCalls 顺序串行执行，用于 plan/ask_user 这类有状态内部工具。
   canBatchTool?: (call: ChatCompletionMessageToolCall) => boolean;
   // 每次 createLLMResponse 的生命周期回调。
   // workflow adapter 用它向客户端展示模型运行状态，并增量收集 requestId。

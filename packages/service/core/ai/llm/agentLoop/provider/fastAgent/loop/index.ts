@@ -7,9 +7,9 @@ import type { AgentPlanType } from '@fastgpt/global/core/ai/agent/type';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { parseJsonArgs } from '../../../../../utils';
 import { runAgentLoop } from './base';
-import { getMainAgentSystemPrompt } from '../prompt/mainPrompt';
+import { getMainAgentSystemPrompt } from '../../../domain/mainPrompt';
 import { parseAgentAskToolCall, type AgentAskPayload } from '../../../domain/systemTool/ask';
-import { applyPlanUpdate } from '../../../domain/systemTool/plan';
+import { applyPlanUpdate, applySetPlan } from '../../../domain/systemTool/plan';
 import type { AgentLoopEvent } from './type';
 import { normalizeAgentLoopUsages, type AgentLoopUsage } from '../../../domain';
 import { getToolsForFastAgentLoop, normalizeToolCatalog } from '../tools';
@@ -52,16 +52,14 @@ type PlanOperationEvent = Extract<AgentLoopEvent, { type: 'plan_operation' }>;
 
 /**
  * 从 update_plan 参数中提取前端可展示的粗粒度 plan 操作类型。
- * 参数异常或缺失时按步骤更新处理，保证 plan_operation 事件仍有稳定 operation。
+ * 同时存在 updates/add_steps 时按步骤更新展示，避免一次调用产生两条 plan 卡片。
  */
 const getPlanOperationFromArgs = (args: unknown): PlanOperationEvent['operation'] => {
-  const action = args && typeof args === 'object' && 'action' in args ? args.action : undefined;
-
-  if (action === 'set_plan' || action === 'add_steps' || action === 'update_steps') {
-    return action;
+  if (args && typeof args === 'object' && 'updates' in args && Array.isArray(args.updates)) {
+    return 'update_steps';
   }
 
-  return 'update_steps';
+  return 'add_steps';
 };
 
 /**
@@ -167,7 +165,7 @@ const buildAskPendingContext = ({
 
 /**
  * 单主 Agent Loop。
- * Main Agent 在同一条消息链中直接使用 runtime tools、ask_user 和 update_plan；
+ * Main Agent 在同一条消息链中直接使用 runtime tools、ask_user、set_plan 和 update_plan；
  * answer/reasoning delta 和 plan 状态始终实时透传给前端。
  */
 export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
@@ -213,16 +211,20 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
   // control 工具只影响 Agent 内部状态，不作为普通工具卡片向前端展示。
   // read_files/sandbox 是内置执行器，但需要走普通工具事件链路供前端和运行详情展示。
   const askToolName = runtime.toolCatalog.askTool?.function.name;
+  const setPlanToolName = runtime.toolCatalog.setPlanTool?.function.name;
   const updatePlanToolName = runtime.toolCatalog.updatePlanTool?.function.name;
   const readFileToolName = runtime.toolCatalog.readFileTool?.function.name;
   const datasetSearchToolName = runtime.toolCatalog.datasetSearchTool?.function.name;
   const sandboxToolNames = new Set(
     (runtime.toolCatalog.sandboxTools ?? []).map((tool) => tool.function.name)
   );
-  const controlToolNames = new Set([askToolName, updatePlanToolName].filter(Boolean));
+  const controlToolNames = new Set(
+    [askToolName, setPlanToolName, updatePlanToolName].filter(Boolean)
+  );
   const internalToolNames = new Set(
     [
       askToolName,
+      setPlanToolName,
       updatePlanToolName,
       readFileToolName,
       datasetSearchToolName,
@@ -316,10 +318,10 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
       });
     },
     onToolCall: ({ call }) => {
-      if (call.function.name === updatePlanToolName) {
+      if (call.function.name === setPlanToolName || call.function.name === updatePlanToolName) {
         emitAgentLoopEvent(runtime, {
           type: 'plan_status',
-          status: activePlan ? 'updating' : 'generating'
+          status: call.function.name === setPlanToolName ? 'generating' : 'updating'
         });
       }
 
@@ -402,18 +404,23 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
         });
       }
 
-      if (call.function.name === updatePlanToolName) {
+      if (call.function.name === setPlanToolName || call.function.name === updatePlanToolName) {
         const args = parseJsonArgs(call.function.arguments);
-        const updateResult = applyPlanUpdate({
-          plan: activePlan,
-          update: args
-        });
+        const updateResult =
+          call.function.name === setPlanToolName
+            ? applySetPlan({ input: args })
+            : applyPlanUpdate({
+                plan: activePlan,
+                update: args
+              });
+        const operation =
+          call.function.name === setPlanToolName ? 'set_plan' : getPlanOperationFromArgs(args);
 
         if (updateResult.success) {
           activePlan = updateResult.plan;
           emitAgentLoopEvent(runtime, {
             type: 'plan_operation',
-            operation: getPlanOperationFromArgs(args),
+            operation,
             success: true,
             message: updateResult.message,
             id: call.id,
@@ -424,7 +431,7 @@ export const runFastAgentMainLoop = async <TChildrenResponse = unknown>({
         } else {
           emitAgentLoopEvent(runtime, {
             type: 'plan_operation',
-            operation: getPlanOperationFromArgs(args),
+            operation,
             success: false,
             message: updateResult.message,
             id: call.id,

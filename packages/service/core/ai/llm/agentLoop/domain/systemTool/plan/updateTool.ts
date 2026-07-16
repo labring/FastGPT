@@ -2,108 +2,80 @@ import type { ChatCompletionTool } from '@fastgpt/global/core/ai/llm/type';
 
 const stepStatusSchema = {
   type: 'string',
-  enum: ['pending', 'in_progress', 'done', 'blocked', 'skipped']
+  enum: ['pending', 'in_progress', 'done', 'blocked', 'skipped'],
+  description: 'New step status. Use done instead of completed.'
 };
 
-const newStepSchema = {
-  type: 'object',
-  properties: {
-    name: {
-      type: 'string',
-      description: 'Step name.'
-    },
-    description: {
-      type: 'string',
-      description: 'Step description.'
-    }
-  },
-  required: ['name']
-};
-
-const stepStatusPatchSchema = {
+const stepUpdateSchema = {
   type: 'object',
   properties: {
     id: {
       type: 'string',
-      description: 'Existing step id.'
+      description: 'Existing step id returned by set_plan or update_plan.'
     },
-    status: {
-      ...stepStatusSchema,
-      description: 'New step status.'
-    },
+    status: stepStatusSchema,
     note: {
       type: 'string',
-      description: 'Short note for progress, completion result, blocker, or skip reason.'
+      description: 'Short progress, completion, blocker, or skip note.'
     }
   },
   required: ['id', 'status']
 };
 
-const planInfoProperties = {
-  name: {
-    type: 'string',
-    description: 'Plan name.'
-  },
-  description: {
-    type: 'string',
-    description: 'Plan description.'
+/** 创建或重置 active plan。步骤使用字符串数组，降低模型生成嵌套参数的出错率。 */
+export const createSetPlanTool = (name = 'set_plan'): ChatCompletionTool => ({
+  type: 'function',
+  function: {
+    name,
+    description:
+      'Create the active plan for a complex task. When planning is required, call this before any sandbox or runtime tool; do not inspect context first. Do not call it when continuing an existing active plan: use update_plan instead.',
+    parameters: {
+      type: 'object',
+      properties: {
+        name: {
+          type: 'string',
+          description: 'Short plan name.'
+        },
+        steps: {
+          type: 'array',
+          minItems: 1,
+          items: {
+            type: 'string'
+          },
+          description:
+            'Ordered step names. Each item must be a concise executable step name, not a detailed paragraph.'
+        }
+      },
+      required: ['name', 'steps']
+    }
   }
-};
-
-const stepsArraySchema = (items: typeof newStepSchema | typeof stepStatusPatchSchema) => ({
-  type: 'array',
-  minItems: 1,
-  items
 });
 
-/**
- * 创建单主 loop 使用的计划维护工具。
- * Main Agent 通过它创建计划、追加步骤、更新步骤状态；工具调用由 loop 内部消费，不进入业务工具执行器。
- */
+/** 更新 active plan：可更新已有步骤状态，也可用字符串数组追加新步骤。 */
 export const createUpdatePlanTool = (name = 'update_plan'): ChatCompletionTool => ({
   type: 'function',
   function: {
     name,
     description:
-      'Maintain the active plan for complex tasks. Use set_plan to create/reset a plan, add_steps to append steps, and update_steps to update step status and note.',
+      'Maintain an existing active plan. Provide updates to change existing step statuses, add_steps to append new step names, or both. At least one field is required.',
     parameters: {
       type: 'object',
-      oneOf: [
-        {
-          type: 'object',
-          properties: {
-            action: {
-              type: 'string',
-              enum: ['set_plan']
-            },
-            ...planInfoProperties,
-            steps: stepsArraySchema(newStepSchema)
-          },
-          required: ['action', 'name', 'steps']
+      properties: {
+        updates: {
+          type: 'array',
+          minItems: 1,
+          items: stepUpdateSchema,
+          description: 'Status updates for existing step ids.'
         },
-        {
-          type: 'object',
-          properties: {
-            action: {
-              type: 'string',
-              enum: ['add_steps']
-            },
-            steps: stepsArraySchema(newStepSchema)
+        add_steps: {
+          type: 'array',
+          minItems: 1,
+          items: {
+            type: 'string'
           },
-          required: ['action', 'steps']
-        },
-        {
-          type: 'object',
-          properties: {
-            action: {
-              type: 'string',
-              enum: ['update_steps']
-            },
-            steps: stepsArraySchema(stepStatusPatchSchema)
-          },
-          required: ['action', 'steps']
+          description: 'New step names to append to the current plan.'
         }
-      ]
+      }
     }
   }
 });

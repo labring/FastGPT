@@ -21,6 +21,7 @@ export type RunAgentLoopCoreParams<TChildrenResponse = unknown> = {
     showReasoning?: boolean;
     getEventToolInfo?: (name: string) => AgentLoopCoreToolDisplayInfo | undefined;
     metaEventNames?: {
+      setPlanToolName?: string;
       updatePlanToolName?: string;
       askToolName?: string;
     };

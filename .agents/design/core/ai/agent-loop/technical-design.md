@@ -249,13 +249,14 @@ sequenceDiagram
 
 ### 5.2 plan
 
-plan reducer 仅支持：
+模型侧 plan 工具协议：
 
-- `set_plan`
-- `add_steps`
-- `update_steps`
+- `set_plan({ name, steps: string[] })`
+- `update_plan({ updates?: Array<{ id, status, note? }>, add_steps?: string[] })`
 
-系统生成 step id。步骤只包含执行描述、状态和可选备注；无须执行的步骤设为 `skipped`。
+两个工具均使用扁平 object schema，不使用 `action` 或 `oneOf`。系统生成 step id。步骤只包含执行描述、状态和可选备注；无须执行的步骤设为 `skipped`。
+
+plan reducer 对外仍产生 `set_plan`、`add_steps`、`update_steps` 三种 operation。一次 `update_plan` 同时包含 `updates` 和 `add_steps` 时归类为 `update_steps`，但完整 plan 始终随终态事件输出。
 
 事件分工：
 
@@ -451,7 +452,7 @@ flowchart TD
   ALL --> CVT
   CVT --> TXT["text/reasoning -> assistant"]
   CVT --> TOOL["tools -> assistant tool_calls + tool responses"]
-  CVT --> PLAN["agentPlanUpdate -> update_plan tool_call + response"]
+  CVT --> PLAN["agentPlanUpdate -> set_plan/update_plan tool_call + response"]
   CVT --> ASK["agentAsk + askId answer -> ask tool_call + response"]
   CVT --> STOP["agentStopGate -> hidden user feedback"]
   TXT --> MERGE["按合法消息顺序合并"]

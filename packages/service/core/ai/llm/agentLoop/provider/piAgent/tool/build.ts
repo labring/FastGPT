@@ -12,7 +12,12 @@ import {
   createAskUserAgentTool,
   type AgentAskPayload
 } from '../../../domain/systemTool/ask';
-import { applyPlanUpdate, createUpdatePlanAgentTool } from '../../../domain/systemTool/plan';
+import {
+  applyPlanUpdate,
+  applySetPlan,
+  createPlanAgentTools,
+  setPlanToolName
+} from '../../../domain/systemTool/plan';
 import { createReadFilesTool } from '../../../domain/systemTool/readFile';
 import { createAgentLoopSandboxTools, toSandboxToolName } from '../../../domain/systemTool/sandbox';
 import {
@@ -31,10 +36,18 @@ import { getPiAgentRuntimeTools } from './catalog';
 
 type PlanOperationEvent = Extract<AgentLoopEvent, { type: 'plan_operation' }>;
 
-const getPlanOperationFromArgs = (args: unknown): PlanOperationEvent['operation'] => {
-  const action = args && typeof args === 'object' && 'action' in args ? args.action : undefined;
-  if (action === 'set_plan' || action === 'add_steps' || action === 'update_steps') return action;
-  return 'update_steps';
+const getPlanOperation = ({
+  toolName,
+  args
+}: {
+  toolName: string;
+  args: unknown;
+}): PlanOperationEvent['operation'] => {
+  if (toolName === setPlanToolName) return 'set_plan';
+  if (args && typeof args === 'object' && 'updates' in args && Array.isArray(args.updates)) {
+    return 'update_steps';
+  }
+  return 'add_steps';
 };
 
 const pushAgentLoopUsages = <TChildrenResponse = unknown>(
@@ -149,50 +162,60 @@ export const buildPiAgentTools = async <TChildrenResponse = unknown>({
   }
 
   if (runtime.systemTools?.plan?.enabled) {
-    const planTool = createUpdatePlanAgentTool();
-    tools.push({
-      name: planTool.function.name,
-      label: planTool.function.name,
-      description: planTool.function.description || '',
-      parameters: Type.Unsafe<any>((planTool.function.parameters as Record<string, unknown>) ?? {}),
-      execute: async (callId: string, args: unknown) => {
-        const toolArgs = normalizeToolArgs(args);
-        const params = stringifyJson(toolArgs);
-        runtime.emitEvent?.({
-          type: 'plan_status',
-          status: getActivePlan() ? 'updating' : 'generating'
-        });
-        const result = applyPlanUpdate({ plan: getActivePlan(), update: toolArgs });
-        if (result.success) {
-          setActivePlan(result.plan);
+    for (const planTool of createPlanAgentTools()) {
+      tools.push({
+        name: planTool.function.name,
+        label: planTool.function.name,
+        description: planTool.function.description || '',
+        parameters: Type.Unsafe<any>(
+          (planTool.function.parameters as Record<string, unknown>) ?? {}
+        ),
+        execute: async (callId: string, args: unknown) => {
+          const toolArgs = normalizeToolArgs(args);
+          const params = stringifyJson(toolArgs);
+          const isSetPlan = planTool.function.name === setPlanToolName;
           runtime.emitEvent?.({
-            type: 'plan_operation',
-            operation: getPlanOperationFromArgs(toolArgs),
-            success: true,
-            message: result.message,
-            id: callId,
-            params,
-            seconds: 0,
-            plan: result.plan
+            type: 'plan_status',
+            status: isSetPlan ? 'generating' : 'updating'
           });
-        } else {
-          runtime.emitEvent?.({
-            type: 'plan_operation',
-            operation: getPlanOperationFromArgs(toolArgs),
-            success: false,
-            message: result.message,
-            id: callId,
-            params,
-            seconds: 0
+          const result = isSetPlan
+            ? applySetPlan({ input: toolArgs })
+            : applyPlanUpdate({ plan: getActivePlan(), update: toolArgs });
+          const operation = getPlanOperation({
+            toolName: planTool.function.name,
+            args: toolArgs
           });
+          if (result.success) {
+            setActivePlan(result.plan);
+            runtime.emitEvent?.({
+              type: 'plan_operation',
+              operation,
+              success: true,
+              message: result.message,
+              id: callId,
+              params,
+              seconds: 0,
+              plan: result.plan
+            });
+          } else {
+            runtime.emitEvent?.({
+              type: 'plan_operation',
+              operation,
+              success: false,
+              message: result.message,
+              id: callId,
+              params,
+              seconds: 0
+            });
+          }
+          onToolResult({
+            call: createToolCall({ id: callId, name: planTool.function.name, args: toolArgs }),
+            response: result.message
+          });
+          return { content: [{ type: 'text' as const, text: result.message }], details: {} };
         }
-        onToolResult({
-          call: createToolCall({ id: callId, name: planTool.function.name, args: toolArgs }),
-          response: result.message
-        });
-        return { content: [{ type: 'text' as const, text: result.message }], details: {} };
-      }
-    });
+      });
+    }
   }
 
   if (runtime.systemTools?.ask?.enabled) {

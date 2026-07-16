@@ -30,6 +30,7 @@ type WorkflowAgentLoopRuntimeContext = ToolDispatchContext & {
 type WorkflowAgentLoopRuntimeArtifacts = {
   assistantResponses: AIChatItemValueItemType[];
   nodeResponses: ChatHistoryItemResType[];
+  setPlanToolName?: string;
   updatePlanToolName?: string;
   askToolName?: string;
 };
@@ -72,6 +73,7 @@ export const createWorkflowAgentLoopRuntime = ({
   const artifacts: WorkflowAgentLoopRuntimeArtifacts = {
     assistantResponses,
     nodeResponses,
+    setPlanToolName: toolCatalog.setPlanTool?.function.name,
     updatePlanToolName: toolCatalog.updatePlanTool?.function.name,
     askToolName: toolCatalog.askTool?.function.name
   };

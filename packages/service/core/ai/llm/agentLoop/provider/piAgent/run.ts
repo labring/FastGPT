@@ -15,8 +15,9 @@ import { loadRequestMessages } from '../../../utils';
 import { formatModelChars2Points } from '../../../../../../support/wallet/usage/utils';
 import { getLLMModel } from '../../../../model';
 import { AgentUsageModuleName } from '../../domain/usage';
+import { getMainAgentSystemPrompt } from '../../domain/mainPrompt';
 import { askUserToolName, type AgentAskPayload } from '../../domain/systemTool/ask';
-import { updatePlanToolName } from '../../domain/systemTool/plan';
+import { setPlanToolName, updatePlanToolName } from '../../domain/systemTool/plan';
 import {
   normalizeAgentLoopUsages,
   type AgentLoopInput,
@@ -103,7 +104,7 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
   let latestContextCheckpoint: string | undefined;
   let reachedRunLimit = false;
   const assistantMessages: ChatCompletionMessageParam[] = [];
-  const controlToolNames = new Set([askUserToolName, updatePlanToolName]);
+  const controlToolNames = new Set([askUserToolName, setPlanToolName, updatePlanToolName]);
   const emittedToolCallIds = new Set<string>();
   const emittedToolParamIds = new Set<string>();
 
@@ -397,9 +398,16 @@ export const runPiAgentLoop = async <TChildrenResponse = unknown>({
 
   const pendingRequests: Array<{ requestId: string; requestIndex: number; startedAt: number }> = [];
   const maxRunAgentTimes = Math.max(1, runtime.maxRunAgentTimes ?? 100);
+  const systemPrompt =
+    runtime.llmParams.promptMode === 'raw'
+      ? input.systemPrompt || ''
+      : getMainAgentSystemPrompt({
+          systemPrompt: input.systemPrompt,
+          hasRuntimeTools: runtime.toolCatalog.runtimeTools.length > 0
+        });
   const agent = new Agent({
     initialState: {
-      systemPrompt: input.systemPrompt || '',
+      systemPrompt,
       model: piModel,
       thinkingLevel: getPiThinkingLevel(modelName, runtime.llmParams.reasoningEffort),
       tools,
