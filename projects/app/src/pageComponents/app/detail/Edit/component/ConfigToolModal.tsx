@@ -290,15 +290,6 @@ const isSecretInputConfigValid = ({
   });
 };
 
-const SectionTitle = ({ text }: { text: string }) => (
-  <Flex alignItems={'center'} gap={2}>
-    <Box w={'4px'} h={'14px'} bg={'primary.600'} borderRadius={'full'} />
-    <Box fontSize={'md'} fontWeight={'500'} color={'myGray.900'}>
-      {text}
-    </Box>
-  </Flex>
-);
-
 const CardSection = ({ children }: { children: React.ReactNode }) => (
   <Box bg={'white'} border={'1px solid'} borderColor={'myGray.150'} borderRadius={'8px'} p={4}>
     {children}
@@ -777,25 +768,16 @@ const InputConfigSection = ({
   if (inputs.length === 0) return null;
 
   return (
-    <Box
-      bg={'myGray.25'}
-      border={'1px solid'}
-      borderColor={'myGray.150'}
-      borderRadius={'8px'}
-      p={4}
-    >
-      <Box mb={4}>
-        <SectionTitle text={t('common:Input')} />
-      </Box>
-
-      {inputs.length > 0 && (
+    <CardSection>
+      <Flex flexDirection={'column'} gap={4}>
+        <SmallSectionLabel>{t('common:Input')}</SmallSectionLabel>
         <Flex flexDirection={'column'} gap={4}>
           {inputs.map((input) => (
             <ConfigInputRow key={input.key} input={input} control={control} />
           ))}
         </Flex>
-      )}
-    </Box>
+      </Flex>
+    </CardSection>
   );
 };
 
@@ -805,20 +787,16 @@ const OutputConfigSection = ({ outputs }: { outputs: FlowNodeTemplateType['outpu
   if (outputs.length === 0) return null;
 
   return (
-    <Box
-      bg={'myGray.25'}
-      border={'1px solid'}
-      borderColor={'myGray.150'}
-      borderRadius={'8px'}
-      p={4}
-    >
-      <SectionTitle text={t('common:Output')} />
-      <Flex mt={4} flexDirection={'column'} gap={4}>
-        {outputs.map((output) => (
-          <ConfigOutputRow key={output.key} output={output} />
-        ))}
+    <CardSection>
+      <Flex flexDirection={'column'} gap={4}>
+        <SmallSectionLabel>{t('common:Output')}</SmallSectionLabel>
+        <Flex flexDirection={'column'} gap={4}>
+          {outputs.map((output) => (
+            <ConfigOutputRow key={output.key} output={output} />
+          ))}
+        </Flex>
       </Flex>
-    </Box>
+    </CardSection>
   );
 };
 
