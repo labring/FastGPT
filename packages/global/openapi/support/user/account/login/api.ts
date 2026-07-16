@@ -90,7 +90,13 @@ export const LoginByPasswordBodySchema = TrackRegisterParamsSchema.extend({
   .strict();
 export type LoginByPasswordBodyType = z.infer<typeof LoginByPasswordBodySchema>;
 
-// ===== OAuth Login V2 =====
+/* ============================================================================
+ * API: 创建 OAuth 登录
+ * Route: POST /proApi/support/user/account/login/oauth/create
+ * Method: POST
+ * Description: 创建 OAuth/SSO 登录 state 并返回 Provider 授权地址
+ * Tags: ['Account Verification', 'User', 'Write']
+ * ============================================================================ */
 export const CreateOauthLoginBodySchema = z
   .object({
     provider: OAuthAccountVerificationProviderSchema.meta({ description: 'OAuth Provider' }),
@@ -111,6 +117,10 @@ export const CreateOauthLoginResponseSchema = z
 export type CreateOauthLoginResponseType = z.infer<typeof CreateOauthLoginResponseSchema>;
 
 const reservedOAuthCallbackProps = new Set(['method', 'username', 'state', 'code', 'callbackUrl']);
+
+const OAuthStateSchema = z.string().min(32).max(128).meta({
+  description: '服务端生成的一次性 OAuth state；仅旧 SSO 回调可以省略'
+});
 
 export const OAuthCallbackPropsSchema = z
   .record(
@@ -139,14 +149,32 @@ export const OAuthCallbackPropsSchema = z
     }
   });
 
-export const OauthLoginBodySchema = TrackRegisterParamsSchema.extend({
-  provider: OAuthAccountVerificationProviderSchema.meta({ description: 'OAuth Provider' }),
+const OauthLoginCommonBodySchema = TrackRegisterParamsSchema.extend({
   callbackUrl: z.url().max(2048).meta({ description: '登录回调 URL' }),
-  state: z.string().min(32).max(128).meta({ description: '服务端生成的一次性 OAuth state' }),
   code: z.string().min(1).max(4096).meta({ description: 'Provider 返回的授权 Code' }),
   props: OAuthCallbackPropsSchema.optional().meta({ description: 'SSO 回调附加属性' }),
   language: LanguageSchema.optional().meta({ description: '语言' })
-}).strict();
+});
+
+/* ============================================================================
+ * API: 消费 OAuth 登录回调
+ * Route: POST /proApi/support/user/account/login/oauth
+ * Method: POST
+ * Description: 校验 OAuth state，或兼容旧 SSO 的无 state code-only 回调，并完成登录
+ * Tags: ['Account Verification', 'User', 'Write']
+ * ============================================================================ */
+export const OauthLoginBodySchema = z.discriminatedUnion('provider', [
+  OauthLoginCommonBodySchema.extend({
+    provider: z.literal('sso').meta({ description: '旧 SSO 兼容 Provider' }),
+    state: OAuthStateSchema.optional()
+  }).strict(),
+  OauthLoginCommonBodySchema.extend({
+    provider: OAuthAccountVerificationProviderSchema.exclude(['sso']).meta({
+      description: '必须校验 state 的 OAuth Provider'
+    }),
+    state: OAuthStateSchema
+  }).strict()
+]);
 export type OauthLoginBodyType = z.infer<typeof OauthLoginBodySchema>;
 
 // ===== Fast Login =====

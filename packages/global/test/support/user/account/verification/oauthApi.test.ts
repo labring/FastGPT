@@ -5,7 +5,7 @@ import {
 } from '@fastgpt/global/openapi/support/user/account/login/api';
 
 describe('OAuth login API contracts', () => {
-  it('accepts only OAuth V2 providers and a callback URL', () => {
+  it('accepts only supported OAuth providers and a callback URL', () => {
     expect(
       CreateOauthLoginBodySchema.parse({
         provider: 'github',
@@ -24,7 +24,7 @@ describe('OAuth login API contracts', () => {
     ).toBe(false);
   });
 
-  it('requires provider, code and server-generated state when consuming OAuth', () => {
+  it('requires state for direct OAuth providers and allows legacy SSO without it', () => {
     const state = 'abcdefghijklmnopqrstuvwxyz0123456789ABCDEFG';
     expect(
       OauthLoginBodySchema.safeParse({
@@ -32,6 +32,20 @@ describe('OAuth login API contracts', () => {
         callbackUrl: 'https://fastgpt.example.com/login/provider',
         code: 'provider-code',
         state
+      }).success
+    ).toBe(true);
+    expect(
+      OauthLoginBodySchema.safeParse({
+        provider: 'github',
+        callbackUrl: 'https://fastgpt.example.com/login/provider',
+        code: 'provider-code'
+      }).success
+    ).toBe(false);
+    expect(
+      OauthLoginBodySchema.safeParse({
+        provider: 'sso',
+        callbackUrl: 'https://fastgpt.example.com/login/provider',
+        code: 'provider-code'
       }).success
     ).toBe(true);
     expect(

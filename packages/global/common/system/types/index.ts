@@ -110,7 +110,6 @@ export type FastGPTFeConfigsType = {
     url?: string;
     autoLogin?: boolean;
   };
-  oauthVerificationV2?: boolean;
   oauth?: {
     github?: string;
     google?: string;
