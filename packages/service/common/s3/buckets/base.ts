@@ -372,8 +372,11 @@ export class S3BaseBucket {
     };
   }
 
-  async getFileStream(key: string) {
-    const downloadResponse = await this.client.downloadObject({ key });
+  async getFileStream(key: string, options?: { abortSignal?: AbortSignal }) {
+    const downloadResponse = await this.client.downloadObject({
+      key,
+      ...(options?.abortSignal ? { abortSignal: options.abortSignal } : {})
+    });
     if (!downloadResponse) return;
 
     return downloadResponse.body;

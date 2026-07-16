@@ -50,3 +50,19 @@ describe('CosStorageAdapter.generatePresignedGetUrl', () => {
     );
   });
 });
+
+describe('CosStorageAdapter.downloadObject', () => {
+  it('destroys the output stream when the caller aborts the download', async () => {
+    const adapter = createAdapter();
+    (adapter as any).client.getObject = vi.fn();
+    const controller = new AbortController();
+
+    const { body } = await adapter.downloadObject({
+      key: 'dataset/team/file.txt',
+      abortSignal: controller.signal
+    });
+    controller.abort(new Error('client aborted'));
+
+    expect(body.destroyed).toBe(true);
+  });
+});

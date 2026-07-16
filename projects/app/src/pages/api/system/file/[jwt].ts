@@ -2,18 +2,14 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
-import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { isS3ObjectKey } from '@fastgpt/service/common/s3/utils';
-import { ensureTextContentTypeCharset } from '@fastgpt/service/common/s3/utils/mime';
 import { getS3ChatSource } from '@fastgpt/service/common/s3/sources/chat';
-import { getContentDisposition } from '@fastgpt/global/common/file/tools';
-import path from 'path';
 import {
   verifyToken,
   type S3ObjectKeyTokenPayload,
   isS3ObjectKeyTokenPayload
 } from '@fastgpt/service/common/s3/security/token';
-const logger = getLogger(LogCategories.INFRA.FILE);
+import { handleS3ProxyDownload, handleS3ProxyRouteError } from '@/service/common/s3/proxy';
 
 /* ==================== 旧版 objectKey token 兼容 ==================== */
 export function jwtVerifyS3ObjectKey(token: string) {
@@ -31,67 +27,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (isS3ObjectKey(objectKey, 'dataset') || isS3ObjectKey(objectKey, 'chat')) {
       try {
-        const [stream, metadata] = await Promise.all(
-          (() => {
-            if (isS3ObjectKey(objectKey, 'dataset')) {
-              return [
-                s3DatasetSource.getFileStream(objectKey),
-                s3DatasetSource.getFileMetadata(objectKey)
-              ];
-            } else {
-              return [
-                s3ChatSource.getFileStream(objectKey),
-                s3ChatSource.getFileMetadata(objectKey)
-              ];
-            }
-          })()
-        );
+        const bucket = isS3ObjectKey(objectKey, 'dataset') ? s3DatasetSource : s3ChatSource;
 
-        if (!stream) {
-          return jsonRes(res, {
-            code: 404,
-            error: 'File not found'
-          });
-        }
-
-        if (metadata?.contentType) {
-          res.setHeader(
-            'Content-Type',
-            ensureTextContentTypeCharset({
-              contentType: metadata.contentType,
-              filename: metadata.filename
-            })
-          );
-        }
-        if (metadata?.contentLength) {
-          res.setHeader('Content-Length', metadata.contentLength);
-        }
-        const filename = metadata?.filename || path.basename(objectKey) || 'file';
-        res.setHeader('Content-Disposition', getContentDisposition({ filename, type: 'inline' }));
-        res.setHeader('Cache-Control', 'public, max-age=31536000');
-
-        stream.pipe(res);
-
-        stream.on('error', (error) => {
-          logger.error('Error reading dataset file', { error });
-          if (!res.headersSent) {
-            return jsonRes(res, {
-              code: 500,
-              error
-            });
+        return await handleS3ProxyDownload({
+          req,
+          res,
+          payload: {
+            objectKey,
+            bucketName: bucket.bucketName
           }
         });
-
-        stream.on('end', () => {
-          res.end();
-        });
-
-        return;
       } catch (error) {
-        return jsonRes(res, {
-          code: 500,
-          error
-        });
+        return handleS3ProxyRouteError({ res, error });
       }
     }
 

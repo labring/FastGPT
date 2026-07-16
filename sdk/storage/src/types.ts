@@ -126,6 +126,8 @@ export type UploadObjectResult = {
 export type DownloadObjectParams = {
   /** 对象 key。 */
   key: StorageObjectKey;
+  /** 调用方停止消费时用于取消底层下载请求并释放连接。 */
+  abortSignal?: AbortSignal;
 };
 
 /**

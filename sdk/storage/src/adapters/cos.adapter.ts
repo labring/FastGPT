@@ -199,7 +199,17 @@ export class CosStorageAdapter implements IStorage {
   }
 
   async downloadObject(params: DownloadObjectParams): Promise<DownloadObjectResult> {
+    params.abortSignal?.throwIfAborted();
+
     const passThrough = new PassThrough();
+    const abortDownload = () => {
+      passThrough.destroy();
+    };
+
+    params.abortSignal?.addEventListener('abort', abortDownload, { once: true });
+    passThrough.once('close', () => {
+      params.abortSignal?.removeEventListener('abort', abortDownload);
+    });
 
     this.client.getObject(
       {

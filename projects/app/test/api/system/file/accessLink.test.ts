@@ -1,4 +1,5 @@
-import { Readable } from 'node:stream';
+import { EventEmitter } from 'node:events';
+import { Readable, Writable } from 'node:stream';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ERROR_RESPONSE } from '@fastgpt/global/common/error/errorCode';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
@@ -24,51 +25,61 @@ const originalStorageEnv = {
 
 const makeMockRes = () => {
   const headers: Record<string, string | number> = {};
-  const res = {
+  const chunks: Buffer[] = [];
+  const res = new Writable({
+    write(chunk, _encoding, callback) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      callback();
+    }
+  }) as Writable & {
+    headers: typeof headers;
+    statusCode: number;
+    headersSent: boolean;
+    body: any;
+    chunks: Buffer[];
+    setHeader: ReturnType<typeof vi.fn>;
+    getHeader: ReturnType<typeof vi.fn>;
+    status: ReturnType<typeof vi.fn>;
+    json: ReturnType<typeof vi.fn>;
+  };
+
+  Object.assign(res, {
     headers,
     statusCode: 200,
     headersSent: false,
-    writableFinished: false,
-    body: undefined as any,
+    body: undefined,
+    chunks,
     setHeader: vi.fn((key: string, value: string | number) => {
       headers[key] = value;
     }),
     getHeader: vi.fn((key: string) => headers[key]),
-    once: vi.fn(() => res),
     status: vi.fn((statusCode: number) => {
       res.statusCode = statusCode;
       return res;
     }),
-    end: vi.fn(() => {
-      res.writableFinished = true;
-      res.headersSent = true;
-    }),
     json: vi.fn((body: any) => {
       res.body = body;
-      res.writableFinished = true;
       res.headersSent = true;
+      res.end();
       return res;
-    }),
-    destroy: vi.fn()
-  };
+    })
+  });
+
   return res;
 };
 
-const makeMockStream = () => {
-  const stream = {
-    pipe: vi.fn(),
-    on: vi.fn(() => stream)
-  };
-  return stream;
-};
+const makeMockStream = () => Readable.from([Buffer.from('hello')]);
 
-const createDownloadReq = (signedAlias: string) =>
-  ({
+const createDownloadReq = (signedAlias: string) => {
+  const req = new EventEmitter();
+  return Object.assign(req, {
     method: 'GET',
     url: `/api/system/file/d/${signedAlias}`,
     headers: {},
-    query: { signedAlias }
+    query: { signedAlias },
+    aborted: false
   }) as any;
+};
 
 const createUploadReq = ({
   token,
@@ -250,7 +261,7 @@ describe('s3 short access link api', () => {
 
     expect(res.headers['Content-Type']).toBe('text/markdown; charset=utf-8');
     expect(res.headers['Content-Length']).toBe(5);
-    expect(stream.pipe).toHaveBeenCalledWith(res);
+    expect(Buffer.concat(res.chunks).toString()).toBe('hello');
   });
 
   it('redirects a valid short download alias to a short-lived presigned S3 URL in short-redirect mode', async () => {

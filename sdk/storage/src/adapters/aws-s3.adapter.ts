@@ -166,13 +166,14 @@ export class AwsS3StorageAdapter implements IStorage {
   }
 
   async downloadObject(params: DownloadObjectParams): Promise<DownloadObjectResult> {
-    const { key } = params;
+    const { key, abortSignal } = params;
 
     const result = await this.client.send(
       new GetObjectCommand({
         Bucket: this.options.bucket,
         Key: key
-      })
+      }),
+      { abortSignal }
     );
 
     if (!result.Body) {

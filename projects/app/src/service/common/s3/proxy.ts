@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { Transform } from 'node:stream';
+import { pipeline } from 'node:stream/promises';
 import path from 'node:path';
 import { getContentDisposition } from '@fastgpt/global/common/file/tools';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
@@ -37,6 +38,56 @@ type GuardStreamOptions = {
 };
 
 type ValidatedUploadFile = Awaited<ReturnType<typeof validateUploadFile>>;
+
+/**
+ * 把 HTTP 客户端断开转换为可透传给存储 SDK 和 stream pipeline 的取消信号。
+ * 响应正常完成后的 close 不属于取消；调用方结束时必须执行 cleanup。
+ */
+export const createS3DownloadAbortContext = ({
+  req,
+  res
+}: {
+  req: NextApiRequest;
+  res: NextApiResponse;
+}) => {
+  const controller = new AbortController();
+  let clientAborted = false;
+  let responseCompleted = !!(res.writableEnded || res.writableFinished);
+
+  const abortClientDownload = () => {
+    if (responseCompleted || clientAborted) return;
+
+    clientAborted = true;
+    controller.abort(new Error('S3ProxyDownloadClientAborted'));
+  };
+  const markResponseCompleted = () => {
+    responseCompleted = true;
+  };
+  const handleResponseClose = () => {
+    if (!responseCompleted) abortClientDownload();
+  };
+
+  req.once('aborted', abortClientDownload);
+  res.once('finish', markResponseCompleted);
+  res.once('close', handleResponseClose);
+
+  if (req.aborted || res.destroyed) {
+    abortClientDownload();
+  }
+
+  return {
+    signal: controller.signal,
+    isClientAborted: () => clientAborted,
+    abort: (error?: unknown) => {
+      if (!controller.signal.aborted) controller.abort(error);
+    },
+    cleanup: () => {
+      req.off('aborted', abortClientDownload);
+      res.off('finish', markResponseCompleted);
+      res.off('close', handleResponseClose);
+    }
+  };
+};
 
 const parseRequestFilename = (filename?: string) => {
   if (!filename) return '';
@@ -237,61 +288,74 @@ export const handleS3ProxyDownload = async ({
     throw new Error('S3 bucket not found');
   }
 
-  const [stream, metadata] = await Promise.all([
-    bucket.getFileStream(objectKey),
-    bucket.getFileMetadata(objectKey)
-  ]);
+  const abortContext = createS3DownloadAbortContext({ req, res });
+  let stream: Awaited<ReturnType<typeof bucket.getFileStream>>;
 
-  if (!stream) {
-    throw CommonErrEnum.fileNotFound;
-  }
+  const setResponseHeaders = (metadata: Awaited<ReturnType<typeof bucket.getFileMetadata>>) => {
+    const filename =
+      parseRequestFilename(payload.filename) ||
+      metadata?.filename ||
+      path.basename(objectKey) ||
+      'file';
+    const contentType =
+      payload.responseContentType || metadata?.contentType || DEFAULT_CONTENT_TYPE;
 
-  const filename =
-    parseRequestFilename(payload.filename) ||
-    metadata?.filename ||
-    path.basename(objectKey) ||
-    'file';
-  const contentType = payload.responseContentType || metadata?.contentType || DEFAULT_CONTENT_TYPE;
-  res.setHeader(
-    'Content-Type',
-    ensureTextContentTypeCharset({
-      contentType,
-      filename
-    })
-  );
-  if (metadata?.contentLength) {
-    res.setHeader('Content-Length', metadata.contentLength);
-  }
-  res.setHeader('Content-Disposition', getContentDisposition({ filename, type: 'inline' }));
-  res.setHeader('Cache-Control', 'public, max-age=31536000');
+    res.setHeader(
+      'Content-Type',
+      ensureTextContentTypeCharset({
+        contentType,
+        filename
+      })
+    );
+    if (metadata?.contentLength) {
+      res.setHeader('Content-Length', metadata.contentLength);
+    }
+    res.setHeader('Content-Disposition', getContentDisposition({ filename, type: 'inline' }));
+    res.setHeader('Cache-Control', 'public, max-age=31536000');
+  };
 
-  if (req.method === 'HEAD') {
-    res.status(200).end();
-    return;
-  }
-
-  stream.on('error', (error) => {
-    logger.error('Error reading proxy download stream', {
-      objectKey,
-      bucketName,
-      error
-    });
-
-    if (!res.headersSent) {
-      jsonRes(res, {
-        code: 500,
-        error
-      });
+  try {
+    if (req.method === 'HEAD') {
+      const metadata = await bucket.getFileMetadata(objectKey);
+      setResponseHeaders(metadata);
+      res.status(200).end();
       return;
     }
 
-    res.destroy(error);
-  });
-  stream.on('end', () => {
-    res.end();
-  });
+    const [downloadStream, metadata] = await Promise.all([
+      bucket.getFileStream(objectKey, { abortSignal: abortContext.signal }).then((value) => {
+        stream = value;
+        value?.once('error', (error) => {
+          if (!abortContext.isClientAborted() && !req.aborted && !res.destroyed) {
+            logger.error('Error reading proxy download stream', { objectKey, bucketName, error });
+          }
+        });
+        return value;
+      }),
+      bucket.getFileMetadata(objectKey)
+    ]);
 
-  stream.pipe(res);
+    if (!downloadStream) {
+      throw CommonErrEnum.fileNotFound;
+    }
+
+    setResponseHeaders(metadata);
+    await pipeline(downloadStream, res, { signal: abortContext.signal });
+  } catch (error) {
+    if (abortContext.isClientAborted() || req.aborted || res.destroyed) {
+      abortContext.abort(error);
+      if (stream && !stream.destroyed) stream.destroy();
+      return;
+    }
+
+    abortContext.abort(error);
+    if (stream && !stream.destroyed) {
+      stream.destroy(error instanceof Error ? error : undefined);
+    }
+    throw error;
+  } finally {
+    abortContext.cleanup();
+  }
 };
 
 const resolveS3RedirectExpiresSeconds = ({ expiresAt }: { expiresAt: Date }) => {
