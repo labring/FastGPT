@@ -99,7 +99,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
   const startTime = Date.now();
   const originIp = getIpFromRequest(req);
-  let streamResponseContext: WorkflowStreamResponseContext<false> | undefined;
+  let streamResponseContext: WorkflowStreamResponseContext | undefined;
   let titleSender: ReturnType<typeof createGeneratedChatTitleSender> | undefined;
   const roundState = {
     preparedRound: undefined as PreChatRoundResult | undefined,

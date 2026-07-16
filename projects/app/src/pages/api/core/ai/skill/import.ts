@@ -20,7 +20,7 @@ import fs from 'fs/promises';
 import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { getAgentSandboxSkillMaxBytes } from '@fastgpt/service/core/ai/sandbox/interface/config';

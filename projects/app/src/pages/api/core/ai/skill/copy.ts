@@ -18,7 +18,7 @@ import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/aud
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { copyAvatarImage } from '@fastgpt/service/common/file/image/controller';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import {
   CopySkillBodySchema,
   type CopySkillBody,

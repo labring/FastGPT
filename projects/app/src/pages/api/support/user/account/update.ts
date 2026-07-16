@@ -3,15 +3,15 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { type UserUpdateParams } from '@/types/user';
 
 /* update user info */
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { getS3AvatarSource } from '@fastgpt/service/common/s3/sources/avatar';
 
-export type UserAccountUpdateQuery = {};
+export type UserAccountUpdateQuery = Record<string, never>;
 export type UserAccountUpdateBody = UserUpdateParams;
-export type UserAccountUpdateResponse = {};
+export type UserAccountUpdateResponse = Record<string, never>;
 
 async function handler(
   req: ApiRequestProps<UserAccountUpdateBody, UserAccountUpdateQuery>,

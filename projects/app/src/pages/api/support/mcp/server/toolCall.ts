@@ -1,17 +1,17 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { type toolCallProps } from '@/service/support/mcp/type';
 import { callMcpServerTool } from '@/service/support/mcp/utils';
 
-export type toolCallQuery = {};
+export type toolCallQuery = Record<string, never>;
 
 export type toolCallBody = toolCallProps;
 
-export type toolCallResponse = {};
+export type toolCallResponse = string;
 
 async function handler(
   req: ApiRequestProps<toolCallBody, toolCallQuery>,
-  res: ApiResponseType<any>
+  _res: ApiResponseType<any>
 ): Promise<toolCallResponse> {
   return callMcpServerTool(req.body);
 }

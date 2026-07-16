@@ -1,8 +1,6 @@
-import { cloneDeep, isEqual } from 'lodash';
-import type {
-  RuntimeNodeItemType,
-  WorkflowVariableStateLike
-} from '@fastgpt/global/core/workflow/runtime/type';
+import { cloneDeep, isEqual } from 'lodash-es';
+import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import type { WorkflowVariableStateLike } from '../../types/runtime';
 
 type ExternalOutputSnapshot = Map<string, unknown>;
 type VariableSnapshot = Map<string, unknown>;

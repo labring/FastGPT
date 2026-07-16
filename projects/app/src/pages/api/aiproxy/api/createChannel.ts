@@ -1,4 +1,4 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import { axiosWithoutSSRF } from '@fastgpt/service/common/api/axios';
 import { getErrText } from '@fastgpt/global/common/error/utils';

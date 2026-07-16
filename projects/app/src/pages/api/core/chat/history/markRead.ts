@@ -2,7 +2,7 @@ import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MarkChatReadBodySchema } from '@fastgpt/global/openapi/core/chat/history/api';
 import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
 import { NextAPI } from '@/service/middleware/entry';
-import { type ApiRequestProps, type ApiResponseType } from '@fastgpt/service/type/next';
+import { type ApiRequestProps, type ApiResponseType } from '@fastgpt/next/type';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';

@@ -1,5 +1,5 @@
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
+import type { DispatchNodeResultType } from '../../types/runtime';
 
 type Response = DispatchNodeResultType<Record<string, never>>;
 

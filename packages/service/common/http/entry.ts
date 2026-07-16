@@ -1,7 +1,5 @@
 import { jsonRes } from '../response';
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { withNextCors } from './cors';
-import { type ApiRequestProps } from '../../type/next';
+import type { NodeApiRequest, NodeApiResponse } from '../../types/http';
 import { getLogger, LogCategories, withContext } from '../logger';
 import { setSpanError, withActiveSpan } from '../tracing';
 import { ZodError } from 'zod';
@@ -9,9 +7,13 @@ import { randomUUID } from 'crypto';
 import { getClientIpFromRequest } from '../security/clientIp';
 import { ApiRequestInputParseError, getZodParseErrorInputSource } from '../zod/requestParseError';
 
-export type NextApiHandler<T = any> = (
-  req: ApiRequestProps,
-  res: NextApiResponse<T>
+export type ApiHandler<
+  T = any,
+  Request extends NodeApiRequest = NodeApiRequest,
+  Response extends NodeApiResponse = NodeApiResponse<T>
+> = (
+  req: Omit<Request, 'body' | 'query'> & NodeApiRequest,
+  res: Response
 ) => unknown | Promise<unknown>;
 
 function isIdLikeRouteSegment(segment: string) {
@@ -45,13 +47,23 @@ function getRequestRoute(url: string) {
     .join('/');
 }
 
-export const NextEntry = ({
+/**
+ * 创建与 Web 框架无关的 API handler 管线，统一处理日志、追踪、错误和默认 JSON 响应。
+ * 框架适配器通过 beforeCallback 注入 CORS 等运行时能力。
+ */
+export const createApiEntry = <
+  Request extends NodeApiRequest = NodeApiRequest,
+  Response extends NodeApiResponse = NodeApiResponse
+>({
   beforeCallback = []
 }: {
-  beforeCallback?: ((req: NextApiRequest, res: NextApiResponse) => Promise<any>)[];
+  beforeCallback?: ((req: Request, res: Response) => Promise<unknown>)[];
 }) => {
-  return (...args: NextApiHandler[]): NextApiHandler => {
-    return async function api(req: ApiRequestProps, res: NextApiResponse) {
+  return (...args: ApiHandler<any, Request, Response>[]): ApiHandler<any, Request, Response> => {
+    return async function api(
+      req: Omit<Request, 'body' | 'query'> & NodeApiRequest,
+      res: Response
+    ) {
       const start = Date.now();
       const requestId = randomUUID();
       res.setHeader('x-request-id', requestId);
@@ -109,10 +121,7 @@ export const NextEntry = ({
             res.once('close', () => logResponse('request-close'));
 
             try {
-              await Promise.all([
-                withNextCors(req, res),
-                ...beforeCallback.map((item) => item(req, res))
-              ]);
+              await Promise.all(beforeCallback.map((item) => item(req as Request, res)));
 
               let response = null;
               for await (const handler of args) {

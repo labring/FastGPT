@@ -4,11 +4,12 @@ import {
   getLocationFromIp,
   clearCleanupInterval,
   initGeo,
-  getIpFromRequest,
-  type NextApiRequest
+  getIpFromRequest
 } from '@fastgpt/service/common/geo';
+import type { NodeHttpRequest } from '@fastgpt/service/types/http';
 import { cleanupIntervalMs } from '@fastgpt/service/common/geo/constants';
 import { serviceEnv } from '@fastgpt/service/env';
+import fs from 'node:fs';
 
 const originalTrustedProxyEnable = serviceEnv.TRUSTED_PROXY_ENABLE;
 
@@ -149,15 +150,13 @@ describe('initGeo', () => {
   });
 
   it('should throw and clear interval when loadGeoDB fails', () => {
-    const fs = require('node:fs');
-    const originalReadFileSync = fs.readFileSync;
-    fs.readFileSync = () => {
+    const readFileSyncSpy = vi.spyOn(fs, 'readFileSync').mockImplementation(() => {
       throw new Error('File not found');
-    };
+    });
 
     expect(() => initGeo()).toThrow('File not found');
 
-    fs.readFileSync = originalReadFileSync;
+    readFileSyncSpy.mockRestore();
   });
 });
 
@@ -167,7 +166,7 @@ describe('getIpFromRequest', () => {
       headers: {},
       connection: {},
       socket: {}
-    } as unknown as NextApiRequest;
+    } as unknown as NodeHttpRequest;
 
     const ip = getIpFromRequest(req);
     expect(ip).toBe('127.0.0.1');
@@ -178,7 +177,7 @@ describe('getIpFromRequest', () => {
       headers: { 'x-forwarded-for': '::1' },
       connection: {},
       socket: {}
-    } as unknown as NextApiRequest;
+    } as unknown as NodeHttpRequest;
 
     const ip = getIpFromRequest(req);
     expect(ip).toBe('127.0.0.1');
@@ -191,7 +190,7 @@ describe('getIpFromRequest', () => {
       headers: { 'x-forwarded-for': '203.0.113.50' },
       connection: {},
       socket: { remoteAddress: '127.0.0.1' }
-    } as unknown as NextApiRequest;
+    } as unknown as NodeHttpRequest;
 
     const ip = getIpFromRequest(req);
     expect(ip).toBe('203.0.113.50');
@@ -204,7 +203,7 @@ describe('getIpFromRequest', () => {
       headers: { 'x-real-ip': '198.51.100.10' },
       connection: {},
       socket: { remoteAddress: '127.0.0.1' }
-    } as unknown as NextApiRequest;
+    } as unknown as NodeHttpRequest;
 
     const ip = getIpFromRequest(req);
     expect(ip).toBe('198.51.100.10');
@@ -217,7 +216,7 @@ describe('getIpFromRequest', () => {
       headers: { 'x-forwarded-for': '203.0.113.50', 'x-real-ip': '198.51.100.10' },
       connection: {},
       socket: { remoteAddress: '192.0.2.20' }
-    } as unknown as NextApiRequest;
+    } as unknown as NodeHttpRequest;
 
     const ip = getIpFromRequest(req);
     expect(ip).toBe('192.0.2.20');

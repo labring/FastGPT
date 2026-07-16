@@ -191,7 +191,11 @@ describe('createWorkflowStreamResponseContext', () => {
 
     context.responseWrite(workflowSseEvent.done(SseResponseEventEnum.answer));
 
-    expect(context).not.toHaveProperty('flushResume');
+    // flushResume is now always present (no-op when resume disabled)
+    expect(context).toHaveProperty('flushResume');
+    expect(typeof context.flushResume).toBe('function');
+    await context.flushResume();
+    // no-op should not interact with Redis when resume is disabled
     expect(redis.info).not.toHaveBeenCalled();
     expect(redis.call).not.toHaveBeenCalled();
   });

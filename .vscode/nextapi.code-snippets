@@ -11,7 +11,7 @@
 		"prefix": "nextapi",
 		"body": [
       "import { NextAPI } from '@/service/middleware/entry';",
-      "import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';",
+      "import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/types/next';",
       "",
       "async function handler(",
       "  req: ApiRequestProps,",

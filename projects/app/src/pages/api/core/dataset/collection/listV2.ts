@@ -10,7 +10,7 @@ import { type DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/t
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   activeTrainingExpr,

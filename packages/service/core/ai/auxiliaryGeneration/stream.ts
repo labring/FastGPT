@@ -1,4 +1,4 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type { NodeHttpRequest, NodeHttpResponse } from '../../../types/http';
 import { AuxiliaryGenerationEventEnum } from '@fastgpt/global/core/ai/auxiliaryGeneration/constants';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { STREAM_RESUME_REQUEST_HEADER } from '@fastgpt/global/core/chat/constants';
@@ -14,8 +14,8 @@ export type AuxiliaryGenerationStreamWriter = (params: {
 }) => void;
 
 type CreateAuxiliaryGenerationStreamParams = {
-  req: NextApiRequest;
-  res: NextApiResponse;
+  req: NodeHttpRequest;
+  res: NodeHttpResponse;
   teamId: string;
   sourceType: ChatSourceTypeEnum;
   sourceId: string;

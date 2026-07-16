@@ -1,21 +1,21 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { MongoSystemTool } from '@fastgpt/service/core/plugin/tool/systemToolSchema';
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import type { CreateAppToolBodyType } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
 import { AppToolSourceEnum } from '@fastgpt/global/core/app/tool/constants';
 
-export type createPluginQuery = {};
+export type createPluginQuery = Record<string, never>;
 
 export type createPluginBody = CreateAppToolBodyType;
 
-export type createPluginResponse = {};
+export type createPluginResponse = Record<string, never>;
 
 async function handler(
   req: ApiRequestProps<createPluginBody, createPluginQuery>,
-  res: ApiResponseType<any>
+  _res: ApiResponseType<any>
 ): Promise<createPluginResponse> {
   await authSystemAdmin({ req });
   const {

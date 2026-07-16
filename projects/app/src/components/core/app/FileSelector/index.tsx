@@ -47,7 +47,7 @@ import {
   markFileSelectorUploadSuccess,
   sanitizeFileSelectValue
 } from './utils';
-import { isEqual } from 'lodash';
+import { isEqual } from 'lodash-es';
 import {
   getChatAuthTargetInput,
   hasChatTargetInput,

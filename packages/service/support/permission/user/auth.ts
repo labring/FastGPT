@@ -7,7 +7,7 @@ import { TeamPermission } from '@fastgpt/global/support/permission/user/controll
 import { authCert, parseHeaderCert } from '../auth/common';
 import { MongoUser } from '../../user/schema';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
-import { type ApiRequestProps } from '../../../type/next';
+import type { NodeHttpRequest } from '../../../types/http';
 
 /* auth user role  */
 export async function authUserPer(props: AuthModeType): Promise<
@@ -38,7 +38,7 @@ export async function authUserPer(props: AuthModeType): Promise<
   };
 }
 
-export const authSystemAdmin = async ({ req }: { req: ApiRequestProps }) => {
+export const authSystemAdmin = async ({ req }: { req: NodeHttpRequest }) => {
   try {
     const result = await authCert({ req, authToken: true });
     const user = await MongoUser.findOne({

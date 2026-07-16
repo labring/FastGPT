@@ -18,7 +18,6 @@ import { getTeamMembers } from '@/web/support/user/team/api';
 import { type TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import { type PaginationResponse } from '@fastgpt/global/openapi/api';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
-import _ from 'lodash';
 import MemberItemCard from '@/components/support/permission/MemberManager/MemberItemCard';
 
 export type GroupFormType = {

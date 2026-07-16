@@ -12,11 +12,11 @@ import {
   type UpdatePasswordByOldBodyType,
   type UpdatePasswordByOldResponseType
 } from '@fastgpt/global/openapi/support/user/account/password/api';
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 
 async function handler(
   req: ApiRequestProps<UpdatePasswordByOldBodyType>,
-  res: ApiResponseType<any>
+  _res: ApiResponseType<any>
 ): Promise<UpdatePasswordByOldResponseType> {
   const { oldPsw, newPsw } = UpdatePasswordByOldBodySchema.parse(req.body);
 

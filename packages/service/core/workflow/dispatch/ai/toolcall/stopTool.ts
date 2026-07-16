@@ -1,6 +1,6 @@
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
-import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
+
+import type { DispatchNodeResultType, ModuleDispatchProps } from '../../../types/runtime';
 
 export type AnswerProps = ModuleDispatchProps<Record<string, never>>;
 export type AnswerResponse = DispatchNodeResultType<Record<string, never>>;

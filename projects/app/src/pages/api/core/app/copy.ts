@@ -3,7 +3,7 @@ import { WritePermissionVal } from '@fastgpt/global/support/permission/constant'
 import { TeamAppCreatePermissionVal } from '@fastgpt/global/support/permission/user/constant';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { onCreateApp } from './create';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';

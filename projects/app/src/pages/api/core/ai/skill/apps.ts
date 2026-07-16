@@ -6,7 +6,7 @@ import {
   ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/next/type';
 import { AppFolderTypeList } from '@fastgpt/global/core/app/constants';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { getGroupsByTmbId } from '@fastgpt/service/support/permission/memberGroup/controllers';

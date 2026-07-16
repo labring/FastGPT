@@ -2,10 +2,7 @@ import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import type {
-  DispatchNodeResultType,
-  ModuleDispatchProps
-} from '@fastgpt/global/core/workflow/runtime/type';
+import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import { createChatFilePreviewUrlGetter } from '../../../../common/s3/sources/chat';
 
 export type PluginInputProps = ModuleDispatchProps<{

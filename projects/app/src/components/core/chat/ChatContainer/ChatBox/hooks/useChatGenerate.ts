@@ -44,7 +44,7 @@ import {
 } from '../utils/streamRenderScheduler';
 import type { ChatSiteItemType, ChatBoxInputType, SendPromptFnType } from '../type';
 import type { StartChatFnProps, generatingMessageProps } from '../../type';
-import { cloneDeep } from 'lodash';
+import { cloneDeep } from 'lodash-es';
 import type { ChatAuthTargetInput } from '@/web/core/chat/utils';
 import { useChatAuthApiTarget } from '@/web/core/chat/utils';
 

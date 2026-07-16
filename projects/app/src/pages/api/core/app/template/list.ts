@@ -2,7 +2,7 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { NextAPI } from '@/service/middleware/entry';
 import { getAppTemplatesAndLoadThem } from '@fastgpt/service/core/app/templates/register';
 import { ToolTypeList, type AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/next/type';
 import { getUserDetail } from '@fastgpt/service/support/user/controller';
 import { getLogger, LogCategories } from '@fastgpt/service/common/logger';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';

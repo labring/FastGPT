@@ -5,13 +5,12 @@ import { MongoGroupMemberModel } from '@fastgpt/service/support/permission/membe
 import { getTmbInfoByTmbId } from '@fastgpt/service/support/user/team/controller';
 import { vi } from 'vitest';
 
-vi.mock('@fastgpt/service/common/middle/entry', async (importOriginal) => {
+vi.mock('@fastgpt/service/common/http/entry', async (importOriginal) => {
   const mod = (await importOriginal()) as any;
-  const NextEntry = vi.fn(({ beforeCallback = [] }: { beforeCallback?: Promise<any>[] }) => {
+  const createApiEntry = vi.fn(() => {
     return (...args: any) => {
       return async function api(req: any, res: any) {
         try {
-          await Promise.all([...beforeCallback]);
           let response = null;
           for await (const handler of args) {
             response = await handler(req, res);
@@ -36,7 +35,7 @@ vi.mock('@fastgpt/service/common/middle/entry', async (importOriginal) => {
 
   return {
     ...mod,
-    NextEntry
+    createApiEntry
   };
 });
 
@@ -67,10 +66,7 @@ vi.mock('@fastgpt/service/support/permission/auth/common', async (importOriginal
   const mod = (await importOriginal()) as any;
   const parseHeaderCert = vi.fn(
     ({
-      req,
-      authToken = false,
-      authRoot = false,
-      authApiKey = false
+      req
     }: {
       req: MockReqType;
       authToken?: boolean;
@@ -109,10 +105,7 @@ vi.mock('@fastgpt/service/support/permission/memberGroup/controllers', async (im
   const mod = (await importOriginal()) as any;
   const parseHeaderCert = vi.fn(
     ({
-      req,
-      authToken = false,
-      authRoot = false,
-      authApiKey = false
+      req
     }: {
       req: MockReqType;
       authToken?: boolean;

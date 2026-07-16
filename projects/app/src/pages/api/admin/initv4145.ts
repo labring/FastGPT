@@ -1,5 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
@@ -41,7 +41,7 @@ async function migrateOutLinkData(): Promise<{
     updated: number;
   }>;
 }> {
-  let totalUpdated = 0;
+  const totalUpdated = 0;
   const updateResults: Array<{
     operation: string;
     updated: number;

@@ -2,10 +2,7 @@ import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import type {
-  DispatchNodeResultType,
-  ModuleDispatchProps
-} from '@fastgpt/global/core/workflow/runtime/type';
+import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import type { UserInputFormItemType } from '@fastgpt/global/core/workflow/template/system/interactive/type';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { anyValueDecrypt } from '../../../../common/secret/utils';

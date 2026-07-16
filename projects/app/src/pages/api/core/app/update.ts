@@ -9,7 +9,7 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/next/type';
 import {
   syncChildrenPermission,
   syncCollaborators

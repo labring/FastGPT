@@ -1,5 +1,5 @@
 import type { NextApiResponse } from 'next';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
@@ -22,7 +22,7 @@ export type InitDateResponse = {
 
 async function handler(
   req: ApiRequestProps<Record<string, never>, { bufferId?: string }>,
-  res: NextApiResponse
+  _res: NextApiResponse
 ): Promise<InitDateResponse> {
   const { bufferId } = req.query;
 
@@ -47,7 +47,7 @@ async function handler(
       modelProviders: global.ModelProviderRawCache,
       aiproxyChannels: global.aiproxyChannelsCache
     };
-  } catch (error) {
+  } catch {
     const referer = req.headers.referer;
     if (referer?.includes('/price')) {
       return {

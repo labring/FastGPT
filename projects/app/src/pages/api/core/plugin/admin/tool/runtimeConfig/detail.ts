@@ -1,5 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import type {
   GetToolRuntimeConfigQueryType,
@@ -11,13 +11,13 @@ import { getToolRawId } from '@fastgpt/global/core/app/tool/utils';
 
 export type getToolRuntimeConfigQuery = GetToolRuntimeConfigQueryType;
 
-export type getToolRuntimeConfigBody = {};
+export type getToolRuntimeConfigBody = Record<string, never>;
 
 export type getToolRuntimeConfigResponse = GetToolRuntimeConfigResponseType;
 
 async function handler(
   req: ApiRequestProps<getToolRuntimeConfigBody, getToolRuntimeConfigQuery>,
-  res: ApiResponseType<any>
+  _res: ApiResponseType<any>
 ): Promise<getToolRuntimeConfigResponse> {
   await authSystemAdmin({ req });
 

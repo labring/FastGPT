@@ -1,6 +1,6 @@
 import { Box, Flex } from '@chakra-ui/react';
 import React from 'react';
-import { isEqual } from 'lodash';
+import { isEqual } from 'lodash-es';
 import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { formatChatValue2InputType } from '../../utils/chatValue';
 import FilesBlock from '../FilesBox';

@@ -17,7 +17,7 @@ import { parseJsonArgs } from '../../../../../../ai/utils';
 import type { AgentLoopCoreToolInfo, AgentLoopCoreToolRunResult } from '../../domain/toolProvider';
 import type { AgentLoopCoreToolRunFlowResponse } from '../../adapter/nodeResponse/toolRunCollector';
 import { normalizeAgentLoopCoreDatasetSearchResult } from './systemToolHelpers';
-import { cloneDeep } from 'lodash';
+import { cloneDeep } from 'lodash-es';
 
 export type AgentLoopCoreWorkflowToolRunResponse<TChildrenResponse = unknown> = {
   flowResponses: NonNullable<DispatchFlowResponse['flatNodeResponses']>;

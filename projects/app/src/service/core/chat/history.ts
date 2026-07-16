@@ -3,7 +3,7 @@ import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { ChatSourceEnum, ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { AuthUserTypeEnum, ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import type { PermissionValueType } from '@fastgpt/global/support/permission/type';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { buildChatSourceQuery } from '@fastgpt/service/core/chat/source';
 import { authChatTargetCrud } from '../../support/permission/auth/chat';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';

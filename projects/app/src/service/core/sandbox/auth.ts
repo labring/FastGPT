@@ -1,6 +1,6 @@
 import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { checkTeamSandboxPermission } from '@fastgpt/service/support/permission/teamLimit';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';

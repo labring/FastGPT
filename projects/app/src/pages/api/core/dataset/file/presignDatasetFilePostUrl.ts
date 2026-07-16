@@ -1,4 +1,4 @@
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { getS3DatasetSource } from '@fastgpt/service/common/s3/sources/dataset';
 import { authFrequencyLimit } from '@fastgpt/service/common/system/frequencyLimit/utils';

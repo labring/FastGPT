@@ -24,7 +24,6 @@ import { type Omit } from '@fastgpt/web/components/common/DndDrag';
 import { getTeamMembers } from '@/web/support/user/team/api';
 import { type PaginationResponse } from '@fastgpt/global/openapi/api';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
-import _ from 'lodash';
 
 export function ChangeOwnerModal({
   group,

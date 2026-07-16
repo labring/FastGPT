@@ -1,4 +1,4 @@
-import type { NextApiResponse } from 'next';
+import type { NodeApiResponse, NodeHttpResponse } from '../../types/http';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { proxyError, ERROR_RESPONSE, ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { replaceSensitiveText } from '@fastgpt/global/common/string/tools';
@@ -146,7 +146,7 @@ export function processError(params: {
 }
 
 export const jsonRes = <T = any>(
-  res: NextApiResponse,
+  res: NodeApiResponse,
   props?: {
     code?: number;
     message?: string;
@@ -188,7 +188,7 @@ export const jsonRes = <T = any>(
   });
 };
 
-export const sseErrRes = (res: NextApiResponse, error: any) => {
+export const sseErrRes = (res: NodeHttpResponse, error: any) => {
   const { event, data, shouldClearCookie } = getSseErrorResponse(error);
   if (shouldClearCookie) {
     clearCookie(res);
@@ -251,7 +251,7 @@ export function responseWriteController({
   res,
   readStream
 }: {
-  res: NextApiResponse;
+  res: NodeHttpResponse;
   readStream: Stream.Readable;
 }) {
   res.on('drain', () => {
@@ -271,7 +271,7 @@ export function responseWrite({
   event,
   data
 }: {
-  res?: NextApiResponse;
+  res?: NodeHttpResponse;
   event?: string;
   data: string;
 }) {
@@ -279,7 +279,9 @@ export function responseWrite({
 
   if (!Write) return;
 
-  event && Write(`event: ${event}\n`);
+  if (event) {
+    Write(`event: ${event}\n`);
+  }
   Write(`data: ${data}\n\n`);
 }
 
@@ -288,7 +290,7 @@ export const responseWriteNodeStatus = ({
   status = 'running',
   name
 }: {
-  res?: NextApiResponse;
+  res?: NodeHttpResponse;
   status?: 'running';
   name: string;
 }) => {

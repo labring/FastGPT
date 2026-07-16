@@ -1,4 +1,4 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type { NodeApiRequest, NodeApiResponse } from '../../../../types/http';
 import {
   DispatchNodeResponseKeyEnum,
   SseResponseEventEnum
@@ -68,8 +68,8 @@ const skillDebugFileSelectConfig: AppFileSelectConfigType = {
  * workflow 调度和 SSE 收尾逻辑。
  */
 export async function handleSkillDebugChat(
-  req: NextApiRequest,
-  res: NextApiResponse,
+  req: NodeApiRequest,
+  res: NodeApiResponse,
   options: {
     agentSandboxPrepareActions?: AgentSandboxPrepareAction[];
   } = {}

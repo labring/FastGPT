@@ -2,7 +2,7 @@ import type { NextApiResponse } from 'next';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { NextAPI } from '@/service/middleware/entry';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/next/type';
 import {
   authSandboxSession,
   buildSandboxClientQueryFromChatSource

@@ -1,7 +1,7 @@
 /* 基于 Team 的限流 */
 import { getGlobalRedisConnection } from '../../common/redis';
 import { jsonRes } from '../../common/response';
-import type { NextApiResponse } from 'next';
+import type { NodeApiResponse } from '../../types/http';
 import { teamQPM } from '../../support/wallet/sub/utils';
 import z from 'zod';
 import { getLogger, LogCategories } from '../logger';
@@ -12,13 +12,13 @@ export enum LimitTypeEnum {
   chat = 'chat'
 }
 
-const FrequencyLimitOptionSchema = z.union([
+const _FrequencyLimitOptionSchema = z.union([
   z.object({
     type: z.literal(LimitTypeEnum.chat),
     teamId: z.string()
   })
 ]);
-type FrequencyLimitOption = z.infer<typeof FrequencyLimitOptionSchema>;
+type FrequencyLimitOption = z.infer<typeof _FrequencyLimitOptionSchema>;
 
 const getLimitData = async (data: FrequencyLimitOption) => {
   if (data.type === LimitTypeEnum.chat) {
@@ -43,7 +43,7 @@ export const teamFrequencyLimit = async ({
   teamId,
   type,
   res
-}: FrequencyLimitOption & { res: NextApiResponse }) => {
+}: FrequencyLimitOption & { res: NodeApiResponse }) => {
   const data = await getLimitData({ type, teamId });
   if (!data) return true;
 

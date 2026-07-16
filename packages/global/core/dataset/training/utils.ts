@@ -7,7 +7,7 @@ import {
   ParagraphChunkAIModeEnum
 } from '../constants';
 import type { ChunkSettingsType } from '../type';
-import { cloneDeep } from 'lodash';
+import { cloneDeep } from 'lodash-es';
 
 export const minChunkSize = 64; // min index and chunk size
 export const maxPreviewChunkCount = 50_000;

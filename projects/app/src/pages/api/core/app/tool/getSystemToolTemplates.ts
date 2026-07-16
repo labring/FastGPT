@@ -1,6 +1,6 @@
 import { type NodeTemplateListItemType } from '@fastgpt/global/core/workflow/type/node';
 import { NextAPI } from '@/service/middleware/entry';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/next/type';
 import { getLocale } from '@fastgpt/service/common/middle/i18n';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';

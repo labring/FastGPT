@@ -1,10 +1,8 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { plusRequest } from '@fastgpt/service/common/api/plusRequest';
 
 export type OutLinkWecomQuery = any;
 export type OutLinkWecomBody = any;
-export type OutLinkWecomResponse = {};
-
 async function handler(
   req: ApiRequestProps<OutLinkWecomBody, OutLinkWecomQuery>,
   res: ApiResponseType<any>

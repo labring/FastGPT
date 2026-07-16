@@ -1,6 +1,6 @@
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { NextAPI } from '@/service/middleware/entry';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { isValidObjectId } from 'mongoose';

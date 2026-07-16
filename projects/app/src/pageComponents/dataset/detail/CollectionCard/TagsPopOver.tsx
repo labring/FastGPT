@@ -12,7 +12,7 @@ import {
   type DatasetCollectionItemType,
   type DatasetTagType
 } from '@fastgpt/global/core/dataset/type';
-import { isEqual } from 'lodash';
+import { isEqual } from 'lodash-es';
 import { type DatasetCollectionsListItemType } from '@fastgpt/global/openapi/core/dataset/collection/api';
 
 const TagsPopOver = ({

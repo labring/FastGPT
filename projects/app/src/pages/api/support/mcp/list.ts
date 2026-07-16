@@ -1,4 +1,4 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { MongoMcpKey } from '@fastgpt/service/support/mcp/schema';
@@ -9,7 +9,7 @@ import {
 
 async function handler(
   req: ApiRequestProps,
-  res: ApiResponseType<any>
+  _res: ApiResponseType<any>
 ): Promise<McpListResponseType> {
   const { teamId, tmbId, permission } = await authUserPer({
     req,

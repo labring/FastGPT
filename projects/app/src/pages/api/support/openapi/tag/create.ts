@@ -8,7 +8,7 @@ import {
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { createOpenApiTag } from '@fastgpt/service/support/openapi/tag/service';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 
 async function handler(
   req: ApiRequestProps<CreateOpenApiTagBodyType>

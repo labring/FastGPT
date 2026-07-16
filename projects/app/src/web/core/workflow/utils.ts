@@ -40,7 +40,7 @@ import { LoopRunModeEnum } from '@fastgpt/global/core/workflow/template/system/l
 import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import { type TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
 import { type AppChatConfigType } from '@fastgpt/global/core/app/type';
-import { cloneDeep, isEqual } from 'lodash';
+import { cloneDeep, isEqual } from 'lodash-es';
 import { workflowSystemVariables } from '../app/utils';
 import type { WorkflowDataContextType } from '@/pageComponents/app/detail/WorkflowComponents/context/workflowInitContext';
 import { useSystemStore } from '@/web/common/system/useSystemStore';

@@ -1,10 +1,7 @@
 import type { VariableItemType } from '@fastgpt/global/core/app/type';
 import type { ChatFileStoreValue } from '@fastgpt/global/core/chat/type';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
-import type {
-  ChatDispatchProps,
-  WorkflowVariableStateLike
-} from '@fastgpt/global/core/workflow/runtime/type';
+import type { ChatDispatchProps, WorkflowVariableStateLike } from '../../types/runtime';
 import { valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
 import { encryptSecret } from '../../../../common/secret/aes256gcm';

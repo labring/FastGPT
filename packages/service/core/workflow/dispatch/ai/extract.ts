@@ -9,7 +9,7 @@ import {
   valueTypeJsonSchemaMap
 } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/runtime/type';
+
 import { sliceJsonStr } from '@fastgpt/global/common/string/tools';
 import { type LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 import { getNodeErrResponse, getHistories } from '../utils';
@@ -19,7 +19,7 @@ import json5 from 'json5';
 import { getLogger, LogCategories } from '../../../../common/logger';
 
 const logger = getLogger(LogCategories.MODULE.WORKFLOW.AI);
-import { type DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
+import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 import { getExtractJsonPrompt } from '@fastgpt/global/core/ai/prompt/agent';
 import { createLLMResponse } from '../../../ai/llm/request';
 import type { JsonSchemaPropertiesItemType } from '@fastgpt/global/core/app/jsonschema';

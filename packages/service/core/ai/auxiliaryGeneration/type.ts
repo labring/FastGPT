@@ -1,4 +1,4 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type { NodeHttpRequest, NodeHttpResponse } from '../../../types/http';
 import type { localeType } from '@fastgpt/global/common/i18n/type';
 import type { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
 import type { AIChatItemValueItemType, ChatItemDBSchemaType } from '@fastgpt/global/core/chat/type';
@@ -39,8 +39,8 @@ export type AuxiliaryGenerationProcessorResponse = {
 };
 
 export type AuxiliaryGenerationRunParams<T = unknown> = {
-  req: NextApiRequest;
-  res: NextApiResponse;
+  req: NodeHttpRequest;
+  res: NodeHttpResponse;
   teamId: string;
   tmbId: string;
   userId: string;

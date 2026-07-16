@@ -1,6 +1,6 @@
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import type { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
+import type { DispatchNodeResultType } from '../../../types/runtime';
 import { getLLMModel } from '../../../../ai/model';
 import { getAgentLoopHistories, getNodeErrResponse } from '../../utils';
 import { runToolCall } from './toolCall';

@@ -8,7 +8,7 @@ import {
   type SkillRuntimeStatusResponse
 } from '@fastgpt/global/core/ai/skill/api';
 import { isValidObjectId } from 'mongoose';
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 import { AgentSkillCreationStatusEnum } from '@fastgpt/global/core/ai/skill/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';

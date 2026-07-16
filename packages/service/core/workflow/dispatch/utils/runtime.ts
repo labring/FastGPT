@@ -3,10 +3,8 @@ import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
-import type {
-  RuntimeNodeItemType,
-  WorkflowVariableStateLike
-} from '@fastgpt/global/core/workflow/runtime/type';
+import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import type { WorkflowVariableStateLike } from '../../types/runtime';
 import {
   getReferenceVariableValue,
   valueTypeFormat

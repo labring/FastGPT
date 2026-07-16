@@ -1,4 +1,4 @@
-import type { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { authChatTargetCrud } from '@/service/support/permission/auth/chat';

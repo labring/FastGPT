@@ -1,4 +1,4 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type { NodeHttpRequest, NodeHttpResponse } from '../../../types/http';
 import { getSseErrorResponse } from '../../../common/response';
 import { clearCookie } from '../../../support/permission/auth/common';
 import { STREAM_RESUME_REQUEST_HEADER } from '@fastgpt/global/core/chat/constants';
@@ -9,8 +9,8 @@ import { getStreamResumeMirror } from '../../chat/resume';
 import { getWorkflowResponseWrite } from '../dispatch/utils';
 
 type CreateWorkflowStreamResponseContextBaseParams = {
-  req: NextApiRequest;
-  res: NextApiResponse;
+  req: NodeHttpRequest;
+  res: NodeHttpResponse;
   stream: boolean;
   detail: boolean;
   teamId: string;
@@ -25,31 +25,12 @@ type CreateWorkflowStreamResponseContextParams = CreateWorkflowStreamResponseCon
   enableStreamResume?: boolean;
 };
 
-type CreateWorkflowStreamResponseContextWithResumeParams =
-  CreateWorkflowStreamResponseContextBaseParams & {
-    enableStreamResume?: true;
-  };
-
-type CreateWorkflowStreamResponseContextWithoutResumeParams =
-  CreateWorkflowStreamResponseContextBaseParams & {
-    enableStreamResume: false;
-  };
-
-type WorkflowStreamResponseContextBase = {
+export type WorkflowStreamResponseContext = {
   responseWrite: ReturnType<typeof getWorkflowResponseWrite>;
   writeStreamError: (error: unknown) => void;
-};
-
-export type WorkflowStreamResponseContextWithResume = WorkflowStreamResponseContextBase & {
+  /** always present — no-op when stream resume is disabled */
   flushResume: () => Promise<void>;
 };
-
-export type WorkflowStreamResponseContextWithoutResume = WorkflowStreamResponseContextBase;
-
-export type WorkflowStreamResponseContext<EnableStreamResume extends boolean = true> =
-  EnableStreamResume extends false
-    ? WorkflowStreamResponseContextWithoutResume
-    : WorkflowStreamResponseContextWithResume;
 
 type WorkflowSseResponseController = {
   cleanup: () => void;
@@ -57,7 +38,7 @@ type WorkflowSseResponseController = {
 
 const workflowSseResponseControllerKey = '__fastgptWorkflowSseResponseController' as const;
 
-type WorkflowSseResponse = NextApiResponse & {
+type WorkflowSseResponse = NodeHttpResponse & {
   [workflowSseResponseControllerKey]?: WorkflowSseResponseController;
 };
 
@@ -67,7 +48,7 @@ type WorkflowSseResponse = NextApiResponse & {
  * dispatchWorkFlow 依赖这个状态做前置校验，确保 SSE header、心跳和生命周期清理由
  * API 边界显式建立，而不是在 workflow 执行器内部隐式创建。
  */
-export const isWorkflowSseResponseInitialized = (res?: NextApiResponse): boolean => {
+export const isWorkflowSseResponseInitialized = (res?: NodeHttpResponse): boolean => {
   if (!res) return false;
   return !!(res as WorkflowSseResponse)[workflowSseResponseControllerKey];
 };
@@ -85,7 +66,7 @@ export const initWorkflowSseResponse = ({
   responseWrite,
   onError
 }: {
-  res?: NextApiResponse;
+  res?: NodeHttpResponse;
   stream: boolean;
   responseWrite?: ReturnType<typeof getWorkflowResponseWrite>;
   onError?: () => void;
@@ -129,14 +110,8 @@ export const initWorkflowSseResponse = ({
  * 非流式请求仍会返回 writer，但不会创建 resume mirror；调用方需要自行处理 JSON 错误响应。
  */
 export function createWorkflowStreamResponseContext(
-  params: CreateWorkflowStreamResponseContextWithoutResumeParams
-): Promise<WorkflowStreamResponseContext<false>>;
-export function createWorkflowStreamResponseContext(
-  params: CreateWorkflowStreamResponseContextWithResumeParams
-): Promise<WorkflowStreamResponseContext>;
-export function createWorkflowStreamResponseContext(
   params: CreateWorkflowStreamResponseContextParams
-): Promise<WorkflowStreamResponseContext | WorkflowStreamResponseContext<false>>;
+): Promise<WorkflowStreamResponseContext>;
 export async function createWorkflowStreamResponseContext({
   req,
   res,
@@ -149,9 +124,7 @@ export async function createWorkflowStreamResponseContext({
   responseId,
   showNodeStatus = true,
   enableStreamResume = true
-}: CreateWorkflowStreamResponseContextParams): Promise<
-  WorkflowStreamResponseContext | WorkflowStreamResponseContext<false>
-> {
+}: CreateWorkflowStreamResponseContextParams): Promise<WorkflowStreamResponseContext> {
   const shouldEnableStreamResume = enableStreamResume !== false;
   const mirror =
     stream && shouldEnableStreamResume
@@ -179,7 +152,7 @@ export async function createWorkflowStreamResponseContext({
     responseWrite
   });
 
-  const context: WorkflowStreamResponseContextWithoutResume = {
+  const context: Omit<WorkflowStreamResponseContext, 'flushResume'> = {
     responseWrite,
     writeStreamError(error: unknown) {
       if (!stream) return;
@@ -196,7 +169,12 @@ export async function createWorkflowStreamResponseContext({
   };
 
   if (!shouldEnableStreamResume) {
-    return context;
+    return {
+      ...context,
+      async flushResume() {
+        // no-op — stream resume is disabled
+      }
+    };
   }
 
   return {

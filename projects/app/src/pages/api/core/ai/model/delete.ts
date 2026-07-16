@@ -1,4 +1,4 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoSystemModel } from '@fastgpt/service/core/ai/config/schema';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
@@ -9,13 +9,13 @@ export type deleteQuery = {
   model: string;
 };
 
-export type deleteBody = {};
+export type deleteBody = Record<string, never>;
 
-export type deleteResponse = {};
+export type deleteResponse = Record<string, never>;
 
 async function handler(
   req: ApiRequestProps<deleteBody, deleteQuery>,
-  res: ApiResponseType<any>
+  _res: ApiResponseType<any>
 ): Promise<deleteResponse> {
   await authSystemAdmin({ req });
 

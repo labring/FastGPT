@@ -1,4 +1,4 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import type { ModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
@@ -34,7 +34,7 @@ export type listResponse = {
 
 async function handler(
   req: ApiRequestProps<listBody, listQuery>,
-  res: ApiResponseType<any>
+  _res: ApiResponseType<any>
 ): Promise<listResponse> {
   await authSystemAdmin({ req });
 

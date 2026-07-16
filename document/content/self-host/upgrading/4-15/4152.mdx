@@ -1,5 +1,5 @@
 ---
-title: 'V4.15.2'
+title: 'V4.15.2(进行中)'
 description: 'FastGPT V4.15.2 更新说明'
 ---
 
@@ -58,6 +58,7 @@ V4.15.2 起，`AGENT_ENGINE` 使用新的枚举值。升级前，请按下表修
 1. Agent V2 辅助生成/ChatAgentHelper 重构，复用对话框。
 2. 保存包含超长 base64/data URL 的 AI 请求记录时可能触发栈溢出，提前进行截断。
 3. SSE 事件统一封装，强化类型提示。
+4. packages/service 和 packages/global 移除 next 依赖。
 
 ### Agent Loop 重构
 

@@ -3,7 +3,7 @@ import { authCollectionInChat } from '@/service/support/permission/auth/chat';
 import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
 import { type DatasetDataSchemaType } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { type ApiRequestProps } from '@fastgpt/service/type/next';
+import { type ApiRequestProps } from '@fastgpt/next/type';
 import { type FilterQuery, Types } from 'mongoose';
 import { quoteDataFieldSelector } from '@/service/core/chat/constants';
 import { processChatTimeFilter } from '@/service/core/chat/utils';

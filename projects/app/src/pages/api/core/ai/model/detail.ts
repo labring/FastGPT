@@ -1,4 +1,4 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { type SystemModelItemType } from '@fastgpt/service/core/ai/type';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
@@ -8,13 +8,13 @@ export type detailQuery = {
   model: string;
 };
 
-export type detailBody = {};
+export type detailBody = Record<string, never>;
 
 export type detailResponse = SystemModelItemType;
 
 async function handler(
   req: ApiRequestProps<detailBody, detailQuery>,
-  res: ApiResponseType<any>
+  _res: ApiResponseType<any>
 ): Promise<detailResponse> {
   await authSystemAdmin({ req });
 
