@@ -58,7 +58,7 @@ docker compose up -d
   可以使用[Docker](https://doc.fastgpt.io/self-host/deploy/docker)快速部署，也可以使用[Sealos Cloud](https://doc.fastgpt.io/self-host/deploy/sealos) 来一键部署FastGPT。
 
 - **商业版**  
-  如果你需要更完整的功能，或深度的服务支持，可以选择我们的[商业版](https://doc.fastgpt.io/guide/version/commercial)。我们除了提供完整的软件外，还提供相应的场景落地辅导，具体可提交[商业咨询](https://fael3z0zfze.feishu.cn/share/base/form/shrcnjJWtKqjOI9NbQTzhNyzljc)
+  如果你需要更完整的功能，或深度的服务支持，可以选择我们的[商业版](https://doc.fastgpt.io/guide/version/commercial)。我们除了提供完整的软件外，还提供相应的场景落地辅导，具体可提交[商业咨询](https://fael3z0zfze.feishu.cn/share/base/form/shrcnjJWtKqjOI9NbQTzhNyzljc?prefill_S=git&hide_S=1)
 
 ## 💡 核心功能
 

@@ -58,7 +58,7 @@ docker compose up -d
   [Docker](https://doc.fastgpt.io/self-host/deploy/docker) で素早くデプロイするか、[Sealos Cloud](https://doc.fastgpt.io/self-host/deploy/sealos) でワンクリックデプロイが可能です。
 
 - **商用版**  
-  より完全な機能や深いサービスサポートが必要な場合は、[商用版](https://doc.fastgpt.io/guide/version/commercial)をお選びいただけます。完全なソフトウェアの提供に加え、シナリオに応じた導入ガイダンスも提供しています。[商用相談](https://fael3z0zfze.feishu.cn/share/base/form/shrcnjJWtKqjOI9NbQTzhNyzljc)からお問い合わせください。
+  より完全な機能や深いサービスサポートが必要な場合は、[商用版](https://doc.fastgpt.io/guide/version/commercial)をお選びいただけます。完全なソフトウェアの提供に加え、シナリオに応じた導入ガイダンスも提供しています。[商用相談](https://fael3z0zfze.feishu.cn/share/base/form/shrcnjJWtKqjOI9NbQTzhNyzljc?prefill_S=git&hide_S=1)からお問い合わせください。
 
 ## 💡 コア機能
 

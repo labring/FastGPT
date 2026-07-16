@@ -14,7 +14,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import dayjs from 'dayjs';
 import { getAuthLoginRedirectPath } from '@/web/support/user/loginRedirect/url';
 
-interface ConfigType {
+type ConfigType = {
   headers?: { [key: string]: string };
   timeout?: number;
   onUploadProgress?: (progressEvent: AxiosProgressEvent) => void;
@@ -22,12 +22,14 @@ interface ConfigType {
   maxQuantity?: number; // The maximum number of simultaneous requests, usually used to cancel old requests
   withCredentials?: boolean;
   dataAsBody?: boolean;
-}
-interface ResponseDataType {
+  // 仅复用内容相同的进行中请求；请求结束后不会缓存结果。
+  deduplicate?: boolean;
+};
+type ResponseDataType = {
   code: number;
   message: string;
   data: any;
-}
+};
 
 export const AUTH_ERROR_EVENT_NAME = 'fastgpt:auth-error';
 export type AuthErrorEventDetail = {
@@ -44,6 +46,46 @@ const maxQuantityMap: Record<
       sign: AbortController;
     }[]
 > = {};
+const deduplicatedRequestMap = new Map<string, Promise<any>>();
+
+/**
+ * 稳定序列化请求参数，确保对象字段顺序不同但内容相同的请求可以共享结果。
+ */
+function stringifyRequestData(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(stringifyRequestData).join(',')}]`;
+  }
+
+  if (value && typeof value === 'object') {
+    const prototype = Object.getPrototypeOf(value);
+    if (prototype === Object.prototype || prototype === null) {
+      const data = value as Record<string, unknown>;
+      return `{${Object.keys(data)
+        .sort()
+        .map((key) => `${JSON.stringify(key)}:${stringifyRequestData(data[key])}`)
+        .join(',')}}`;
+    }
+  }
+
+  return JSON.stringify(value) ?? String(value);
+}
+
+/**
+ * 生成并发请求去重键。会影响请求响应的配置需参与计算，避免复用非同构请求。
+ */
+function getDeduplicatedRequestKey({
+  method,
+  url,
+  data,
+  config
+}: {
+  method: Method;
+  url: string;
+  data: unknown;
+  config: Pick<ConfigType, 'headers' | 'timeout' | 'withCredentials' | 'dataAsBody'>;
+}) {
+  return stringifyRequestData({ method: method.toUpperCase(), url, data, config });
+}
 
 /*
   Every request generates a unique sign
@@ -196,7 +238,7 @@ instance.interceptors.response.use(responseSuccess, (err) => Promise.reject(err)
 function request(
   url: string,
   data: any,
-  { cancelToken, maxQuantity, withCredentials, dataAsBody, ...config }: ConfigType,
+  { cancelToken, maxQuantity, withCredentials, dataAsBody, deduplicate, ...config }: ConfigType,
   method: Method
 ): any {
   /* 去空 */
@@ -211,8 +253,25 @@ function request(
 
   const { id: signId, abortSignal } = checkMaxQuantity({ url, maxQuantity });
   const shouldSendBody = ['POST', 'PUT'].includes(method) || dataAsBody;
+  // 共享请求不接管取消语义，避免一个调用方取消所有等待者。
+  const deduplicatedRequestKey =
+    deduplicate && !cancelToken && !maxQuantity
+      ? getDeduplicatedRequestKey({
+          method,
+          url,
+          data,
+          config: { headers: config.headers, timeout: config.timeout, withCredentials, dataAsBody }
+        })
+      : undefined;
+  const existingRequest = deduplicatedRequestKey
+    ? deduplicatedRequestMap.get(deduplicatedRequestKey)
+    : undefined;
 
-  return instance
+  if (existingRequest) {
+    return existingRequest;
+  }
+
+  const requestPromise = instance
     .request({
       baseURL: getWebReqUrl('/api'),
       url,
@@ -225,7 +284,21 @@ function request(
     })
     .then((res) => checkRes(res.data))
     .catch((err) => responseError(err))
-    .finally(() => requestFinish({ signId, url }));
+    .finally(() => {
+      requestFinish({ signId, url });
+      if (
+        deduplicatedRequestKey &&
+        deduplicatedRequestMap.get(deduplicatedRequestKey) === requestPromise
+      ) {
+        deduplicatedRequestMap.delete(deduplicatedRequestKey);
+      }
+    });
+
+  if (deduplicatedRequestKey) {
+    deduplicatedRequestMap.set(deduplicatedRequestKey, requestPromise);
+  }
+
+  return requestPromise;
 }
 
 /**
@@ -253,6 +326,7 @@ export function DELETE<T = undefined>(url: string, data = {}, config: ConfigType
 
 export {
   maxQuantityMap,
+  deduplicatedRequestMap,
   checkMaxQuantity,
   requestFinish,
   startInterceptors,

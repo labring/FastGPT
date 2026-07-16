@@ -48,7 +48,7 @@ export default async function Layout({
     {
       icon: <Handshake className={iconClass} />,
       title: t('common:businessConsultation', lang),
-      url: 'https://fael3z0zfze.feishu.cn/share/base/form/shrcnjJWtKqjOI9NbQTzhNyzljc'
+      url: 'https://fael3z0zfze.feishu.cn/share/base/form/shrcnjJWtKqjOI9NbQTzhNyzljc?prefill_S=doc&hide_S=1'
     }
   ];
 

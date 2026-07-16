@@ -22,7 +22,7 @@ export const updateModelCollaborators = (props: UpdateClbPermissionProps & { mod
   POST('/proApi/system/model/collaborator/update', props);
 
 export const getMyModels = (props: GetMyModelsQuery) =>
-  GET<GetMyModelsResponse>('/core/ai/model/getMyModels', props);
+  GET<GetMyModelsResponse>('/core/ai/model/getMyModels', props, { deduplicate: true });
 
 /* 活动 banner */
 export const getOperationalAd = () =>

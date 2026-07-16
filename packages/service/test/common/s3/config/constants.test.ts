@@ -52,7 +52,8 @@ describe('s3 storage constants', () => {
     );
   });
 
-  it('keeps short proxy download mode but enables redirect when CDN endpoint is configured', async () => {
+  it('rewrites external URLs with the CDN endpoint', async () => {
+    vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', 'https://s3.example.com');
     vi.stubEnv('STORAGE_S3_CDN_ENDPOINT', 'https://cdn.example.com/files');
 
     const { storageDownloadUrlMode, canUseStorageDownloadRedirect, replaceS3UrlWithCdnEndpoint } =
@@ -93,7 +94,17 @@ describe('s3 storage constants', () => {
     expect(canUseStorageDownloadRedirect).toBe(true);
   });
 
+  it('allows AWS S3 redirect without an explicit external endpoint', async () => {
+    vi.stubEnv('STORAGE_VENDOR', 'aws-s3');
+    vi.stubEnv('STORAGE_DOWNLOAD_URL_MODE', 'short-redirect');
+
+    const { canUseStorageDownloadRedirect } = await loadConstants();
+
+    expect(canUseStorageDownloadRedirect).toBe(true);
+  });
+
   it('rewrites external presigned URLs from S3BaseBucket', async () => {
+    vi.stubEnv('STORAGE_EXTERNAL_ENDPOINT', 'https://s3.example.com');
     vi.stubEnv('STORAGE_S3_CDN_ENDPOINT', 'https://cdn.example.com');
 
     const { S3BaseBucket } = await vi.importActual<
