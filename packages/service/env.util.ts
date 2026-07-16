@@ -1,6 +1,8 @@
 import type { SandboxProviderType } from '@fastgpt-sdk/sandbox-adapter';
 import { agentSandboxProviderList } from '@fastgpt/global/core/ai/sandbox/constants';
 import z from 'zod';
+import type { StorageDownloadUrlMode } from './common/s3/contracts/type';
+import type { StorageVendorSchema } from './env.const';
 
 const TEST_INVOKE_TOKEN_SECRET = 'fastgpt_test_invoke_token_secret_32';
 const TEST_PRO_TOKEN = 'fastgpt_test_pro_token_32_chars_min';
@@ -20,6 +22,39 @@ export const getRuntimeEnv = (): NodeJS.ProcessEnv => ({
     process.env.PRO_TOKEN ??
     (process.env.VITEST === 'true' || process.env.NODE_ENV === 'test' ? TEST_PRO_TOKEN : undefined)
 });
+
+/* ===== S3 ===== */
+type S3Env = {
+  STORAGE_VENDOR: z.infer<typeof StorageVendorSchema>;
+  STORAGE_DOWNLOAD_URL_MODE: StorageDownloadUrlMode;
+  STORAGE_EXTERNAL_ENDPOINT?: string;
+  STORAGE_S3_CDN_ENDPOINT?: string;
+};
+
+/**
+ * 校验对象存储下载模式依赖的公网访问地址。
+ * MinIO/AWS S3 的直连模式必须显式提供外部地址；CDN 只负责改写已签名 URL，不能替代外部地址。
+ */
+export const validateS3Env = (env: S3Env): void => {
+  if (env.STORAGE_S3_CDN_ENDPOINT && !env.STORAGE_EXTERNAL_ENDPOINT) {
+    throw new Error(
+      'Invalid S3 environment variables: STORAGE_EXTERNAL_ENDPOINT is required when STORAGE_S3_CDN_ENDPOINT is configured.'
+    );
+  }
+
+  const requiresExternalEndpoint =
+    (env.STORAGE_VENDOR === 'minio' || env.STORAGE_VENDOR === 'aws-s3') &&
+    (env.STORAGE_DOWNLOAD_URL_MODE === 'short-redirect' ||
+      env.STORAGE_DOWNLOAD_URL_MODE === 'presigned');
+
+  if (!requiresExternalEndpoint || env.STORAGE_EXTERNAL_ENDPOINT) {
+    return;
+  }
+
+  throw new Error(
+    `Invalid S3 environment variables: STORAGE_EXTERNAL_ENDPOINT is required when STORAGE_VENDOR is ${env.STORAGE_VENDOR} and STORAGE_DOWNLOAD_URL_MODE is ${env.STORAGE_DOWNLOAD_URL_MODE}.`
+  );
+};
 
 /* ===== sandbox ===== */
 export const AgentSandboxProxyUrlSchema = z.string().refine((url) => /^wss?:\/\//.test(url), {

@@ -8,7 +8,8 @@ import {
   AgentSandboxProxyUrlSchema,
   getAgentSandboxMissingRequiredEnvKeys,
   getRuntimeEnv,
-  isAgentSandboxProvider
+  isAgentSandboxProvider,
+  validateS3Env
 } from './env.util';
 import {
   LogLevelSchema,
@@ -370,6 +371,8 @@ if (serviceEnv.WORKFLOW_PARALLEL_MAX_CONCURRENCY > serviceEnv.WORKFLOW_MAX_LOOP_
 }
 
 if (!isPhaseProductionBuild) {
+  validateS3Env(serviceEnv);
+
   if (serviceEnv.PRO_URL && !serviceEnv.PRO_TOKEN) {
     throw new Error(
       'Invalid environment configuration: PRO_TOKEN is required when PRO_URL is configured.'

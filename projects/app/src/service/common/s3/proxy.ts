@@ -383,9 +383,7 @@ export const handleS3RedirectDownload = async ({
   expiresAt: Date;
 }) => {
   if (!canUseStorageDownloadRedirect) {
-    throw new Error(
-      'S3 short redirect requires STORAGE_EXTERNAL_ENDPOINT or STORAGE_S3_CDN_ENDPOINT'
-    );
+    throw new Error('S3 short redirect requires STORAGE_EXTERNAL_ENDPOINT');
   }
 
   const { objectKey, bucketName } = payload;

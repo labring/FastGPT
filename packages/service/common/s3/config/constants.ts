@@ -34,8 +34,7 @@ export const storageDownloadRedirectTtlSeconds = serviceEnv.STORAGE_DOWNLOAD_RED
 const needExplicitExternalEndpointForRedirect =
   storageVendor === 'minio' || storageVendor === 'aws-s3';
 export const canUseStorageDownloadRedirect =
-  !needExplicitExternalEndpointForRedirect ||
-  Boolean(storageExternalEndpoint || storageS3CdnEndpoint);
+  !needExplicitExternalEndpointForRedirect || Boolean(storageExternalEndpoint);
 const storagePublicAccessExtraSubPath = serviceEnv.STORAGE_PUBLIC_ACCESS_EXTRA_SUB_PATH;
 
 const bucketStorageOptions = {
