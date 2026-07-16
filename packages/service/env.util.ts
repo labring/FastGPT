@@ -33,7 +33,8 @@ type S3Env = {
 
 /**
  * 校验对象存储下载模式依赖的公网访问地址。
- * MinIO/AWS S3 的直连模式必须显式提供外部地址；CDN 只负责改写已签名 URL，不能替代外部地址。
+ * CDN 仅用于替换已生成的外部 URL，因此必须同时配置外部地址。
+ * 除此之外，仅 MinIO 的直连模式需要显式提供客户端可访问的外部地址。
  */
 export const validateS3Env = (env: S3Env): void => {
   if (env.STORAGE_S3_CDN_ENDPOINT && !env.STORAGE_EXTERNAL_ENDPOINT) {
@@ -43,7 +44,7 @@ export const validateS3Env = (env: S3Env): void => {
   }
 
   const requiresExternalEndpoint =
-    (env.STORAGE_VENDOR === 'minio' || env.STORAGE_VENDOR === 'aws-s3') &&
+    env.STORAGE_VENDOR === 'minio' &&
     (env.STORAGE_DOWNLOAD_URL_MODE === 'short-redirect' ||
       env.STORAGE_DOWNLOAD_URL_MODE === 'presigned');
 
@@ -52,7 +53,7 @@ export const validateS3Env = (env: S3Env): void => {
   }
 
   throw new Error(
-    `Invalid S3 environment variables: STORAGE_EXTERNAL_ENDPOINT is required when STORAGE_VENDOR is ${env.STORAGE_VENDOR} and STORAGE_DOWNLOAD_URL_MODE is ${env.STORAGE_DOWNLOAD_URL_MODE}.`
+    `Invalid S3 environment variables: STORAGE_EXTERNAL_ENDPOINT is required when STORAGE_VENDOR is minio and STORAGE_DOWNLOAD_URL_MODE is ${env.STORAGE_DOWNLOAD_URL_MODE}.`
   );
 };
 
