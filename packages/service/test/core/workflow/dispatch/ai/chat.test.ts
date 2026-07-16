@@ -1,11 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatFileTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import type { ChatItemMiniType } from '@fastgpt/global/core/chat/type';
+import { chats2GPTMessages, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   getAIChatFileContextConfig,
+  getInputFiles,
   rewriteChatMessagesWithFiles
 } from '../../../../../core/workflow/dispatch/ai/chat';
+import { runWithContext } from '../../../../../core/workflow/utils/context';
+import { loadRequestMessages } from '../../../../../core/ai/llm/utils';
+import { serviceEnv } from '../../../../../env';
 
 const createHumanMessage = ({
   text,
@@ -72,6 +77,64 @@ describe('getAIChatFileContextConfig', () => {
       fileLinks: ['/current.pdf'],
       parseHistoryFiles: true
     });
+  });
+});
+
+describe('getInputFiles', () => {
+  it('keeps the original audio filename when the first-round url has no extension', async () => {
+    const url = 'https://files.example.com/opaque-short-token';
+    let userFiles = [] as ReturnType<typeof getInputFiles>;
+
+    runWithContext(
+      {
+        queryUrlTypeMap: { [url]: ChatFileTypeEnum.audio },
+        queryUrlFileMap: {
+          [url]: {
+            type: ChatFileTypeEnum.audio,
+            name: 'meeting.mp3',
+            url,
+            key: 'chat/meeting.mp3'
+          }
+        },
+        mcpClientMemory: {}
+      },
+      () => {
+        userFiles = getInputFiles({ fileLinks: [url] });
+      }
+    );
+
+    expect(userFiles).toEqual([
+      {
+        type: ChatFileTypeEnum.audio,
+        name: 'meeting.mp3',
+        url,
+        key: 'chat/meeting.mp3'
+      }
+    ]);
+
+    const messages = chats2GPTMessages({
+      messages: [
+        {
+          obj: ChatRoleEnum.Human,
+          value: runtimePrompt2ChatsValue({ files: userFiles })
+        }
+      ]
+    });
+    const previousMultipleDataToBase64 = serviceEnv.MULTIPLE_DATA_TO_BASE64;
+    serviceEnv.MULTIPLE_DATA_TO_BASE64 = false;
+    const requestMessages = await loadRequestMessages({ messages, useAudio: true }).finally(() => {
+      serviceEnv.MULTIPLE_DATA_TO_BASE64 = previousMultipleDataToBase64;
+    });
+
+    expect(requestMessages[0]?.content).toEqual([
+      {
+        type: 'input_audio',
+        input_audio: {
+          data: url,
+          format: 'mp3'
+        }
+      }
+    ]);
   });
 });
 

@@ -1,5 +1,8 @@
 import type { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
-import type { UserChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import type {
+  UserChatItemFileItemType,
+  UserChatItemValueItemType
+} from '@fastgpt/global/core/chat/type';
 import { parseUrlToChatFileType } from '../../chat/fileContext';
 
 import { AsyncLocalStorage } from 'async_hooks';
@@ -7,6 +10,7 @@ import type { MCPClient } from '../../app/mcp';
 
 type ContextType = {
   queryUrlTypeMap: Record<string, ChatFileTypeEnum>;
+  queryUrlFileMap?: Record<string, UserChatItemFileItemType>;
   mcpClientMemory: Record<string, MCPClient>;
 };
 
@@ -47,9 +51,34 @@ export const buildQueryUrlTypeMap = (query: UserChatItemValueItemType[]) =>
     return map;
   }, {});
 
-/** 结合 workflow 运行态 URL 类型映射，将 URL 解析成 ChatBox 文件结构。 */
-export const parseUrlToFileType = (url: string) =>
-  parseUrlToChatFileType({
+/**
+ * 从当前轮用户输入建立 URL 到完整文件元数据的映射。
+ *
+ * 音频模型协议需要从原始文件名获取 mp3/wav 等 format；无后缀短链只能表达访问地址，
+ * 因此除类型外还必须保留文件名和 key，避免第一轮媒体输入在出站时被过滤。
+ */
+export const buildQueryUrlFileMap = (query: UserChatItemValueItemType[]) =>
+  query.reduce<Record<string, UserChatItemFileItemType>>((map, item) => {
+    if (item.file?.url) {
+      map[item.file.url] = item.file;
+    }
+    return map;
+  }, {});
+
+/** 结合 workflow 运行态文件元数据，将 URL 解析成 ChatBox 文件结构。 */
+export const parseUrlToFileType = (url: string) => {
+  const context = getWorkflowContext();
+  const queryFile = context?.queryUrlFileMap?.[url];
+
+  if (queryFile) {
+    return {
+      ...queryFile,
+      url
+    };
+  }
+
+  return parseUrlToChatFileType({
     url,
-    urlTypeMap: getWorkflowContext()?.queryUrlTypeMap
+    urlTypeMap: context?.queryUrlTypeMap
   });
+};

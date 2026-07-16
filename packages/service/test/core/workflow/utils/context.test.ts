@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  buildQueryUrlFileMap,
   buildQueryUrlTypeMap,
   parseUrlToFileType,
   runWithContext,
@@ -90,6 +91,52 @@ describe('WorkflowContext', () => {
           {
             text: {
               content: 'Describe this file'
+            }
+          }
+        ])
+      ).toEqual({});
+    });
+  });
+
+  describe('buildQueryUrlFileMap', () => {
+    it('should preserve the original filename for an opaque first-round audio url', () => {
+      const url = '/api/system/file/d/audio-token-without-extension';
+      const queryUrlFileMap = buildQueryUrlFileMap([
+        {
+          file: {
+            type: ChatFileTypeEnum.audio,
+            name: 'meeting.mp3',
+            url,
+            key: 'chat/meeting.mp3'
+          }
+        }
+      ]);
+
+      runWithContext(
+        {
+          ...createWorkflowContext({ [url]: ChatFileTypeEnum.audio }),
+          queryUrlFileMap
+        },
+        () => {
+          expect(parseUrlToFileType(url)).toEqual({
+            type: ChatFileTypeEnum.audio,
+            name: 'meeting.mp3',
+            url,
+            key: 'chat/meeting.mp3'
+          });
+        }
+      );
+    });
+
+    it('should ignore query items without a file url', () => {
+      expect(
+        buildQueryUrlFileMap([
+          {
+            file: {
+              type: ChatFileTypeEnum.audio,
+              name: 'meeting.mp3',
+              url: '',
+              key: 'chat/meeting.mp3'
             }
           }
         ])
