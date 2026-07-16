@@ -1,4 +1,4 @@
-import type { ParsedPage, TextItem } from '@llamaindex/liteparse';
+import type { ParsedPage, TextItem } from '../../type';
 
 const CJK_RE = /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff]/;
 const CJK_END_RE = /[\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff）》】」』”]$/;

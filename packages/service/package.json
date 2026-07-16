@@ -19,7 +19,7 @@
     "@fastgpt-sdk/sandbox-adapter": "workspace:*",
     "@fastgpt-sdk/storage": "workspace:*",
     "@fastgpt/global": "workspace:*",
-    "@llamaindex/liteparse": "catalog:",
+    "@llamaindex/liteparse-wasm": "catalog:",
     "@mariozechner/pi-agent-core": "^0.67.3",
     "@mariozechner/pi-ai": "^0.67.3",
     "@maxmind/geoip2-node": "^6.3.4",

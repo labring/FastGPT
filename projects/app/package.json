@@ -46,7 +46,7 @@
     "@fastgpt/service": "workspace:*",
     "@fastgpt/web": "workspace:*",
     "@fortaine/fetch-event-source": "^3.0.6",
-    "@llamaindex/liteparse": "catalog:",
+    "@llamaindex/liteparse-wasm": "catalog:",
     "@modelcontextprotocol/sdk": "catalog:",
     "@monaco-editor/react": "^4.7.0",
     "@node-rs/jieba": "catalog:",

@@ -269,7 +269,7 @@ export const serviceEnv = createEnv({
     WECHAT_CHANNEL_CONCURRENCY: IntSchema.min(10).default(1000).meta({
       description: '微信渠道 poll worker 并发数'
     }),
-    PARSE_FILE_WORKERS: IntSchema.min(1).max(1000).default(10).meta({
+    PARSE_FILE_WORKERS: IntSchema.min(1).max(1000).default(5).meta({
       description: '文件解析 worker 常驻线程数'
     }),
     HTML_TO_MARKDOWN_WORKERS: IntSchema.min(1).max(1000).default(10).meta({

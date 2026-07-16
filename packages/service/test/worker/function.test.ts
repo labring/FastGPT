@@ -12,7 +12,7 @@ const { mockRun, mockGetWorkerController, mockRunWorker, mockUploadImage2S3Bucke
       mockRunWorker: vi.fn(),
       mockUploadImage2S3Bucket: vi.fn(),
       mockEnv: {
-        PARSE_FILE_WORKERS: 10,
+        PARSE_FILE_WORKERS: 5,
         HTML_TO_MARKDOWN_WORKERS: 10,
         TEXT_TO_CHUNKS_WORKERS: 10,
         PARSE_FILE_TIMEOUT_SECONDS: 300
@@ -161,7 +161,7 @@ describe('worker/function', () => {
   describe('readRawContentFromBuffer', () => {
     afterEach(() => {
       // 防止 env 跨用例污染
-      mockEnv.PARSE_FILE_WORKERS = 10;
+      mockEnv.PARSE_FILE_WORKERS = 5;
       mockEnv.PARSE_FILE_TIMEOUT_SECONDS = 300;
     });
 
@@ -184,7 +184,7 @@ describe('worker/function', () => {
       expect(mockGetWorkerController).toHaveBeenCalledTimes(1);
       const poolCfg = mockGetWorkerController.mock.calls[0][0];
       expect(poolCfg.name).toBe(WorkerNameEnum.readFile);
-      expect(poolCfg.maxReservedThreads).toBe(10); // 默认值
+      expect(poolCfg.maxReservedThreads).toBe(5); // 默认值
       expect(poolCfg.taskTimeoutMs).toBe(5 * 60 * 1000);
       expect(poolCfg.maxTasksPerWorker).toBe(100);
 

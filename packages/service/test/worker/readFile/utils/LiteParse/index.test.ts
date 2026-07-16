@@ -1,15 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { mockLiteParseParse, mockLiteParseConstructor } = vi.hoisted(() => ({
-  mockLiteParseParse: vi.fn(),
-  mockLiteParseConstructor: vi.fn()
-}));
+const { mockLiteParseInit, mockLiteParseParse, mockLiteParseFree, mockLiteParseConstructor } =
+  vi.hoisted(() => ({
+    mockLiteParseInit: vi.fn(),
+    mockLiteParseParse: vi.fn(),
+    mockLiteParseFree: vi.fn(),
+    mockLiteParseConstructor: vi.fn()
+  }));
 
-vi.mock('@llamaindex/liteparse', () => ({
+vi.mock('@llamaindex/liteparse-wasm', () => ({
+  default: mockLiteParseInit,
   LiteParse: vi.fn(function MockLiteParse(config) {
     mockLiteParseConstructor(config);
     return {
-      parse: mockLiteParseParse
+      parse: mockLiteParseParse,
+      free: mockLiteParseFree
     };
   })
 }));
@@ -68,10 +73,27 @@ describe('readPdfByLiteParse', () => {
 
     expect(result.rawText).toBe('人工智能正在快速发展并进入规模化落地阶段并推动产业升级。\n');
     expect(mockLiteParseParse).toHaveBeenCalledTimes(3);
+    expect(mockLiteParseInit).toHaveBeenCalledTimes(1);
+    expect(mockLiteParseFree).toHaveBeenCalledTimes(3);
     expect(mockLiteParseConstructor.mock.calls.map(([config]) => config.targetPages)).toEqual([
       '1-100',
       '101-200',
       '201-300'
     ]);
+  });
+
+  it('WASM 解析失败时仍释放 parser', async () => {
+    const error = new Error('invalid PDF');
+    mockLiteParseParse.mockRejectedValueOnce(error);
+
+    await expect(
+      readPdfByLiteParse({
+        extension: 'pdf',
+        encoding: 'utf-8',
+        buffer: Buffer.from('invalid pdf')
+      })
+    ).rejects.toThrow(error);
+
+    expect(mockLiteParseFree).toHaveBeenCalledTimes(1);
   });
 });

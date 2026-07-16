@@ -25,7 +25,7 @@ catalog:
   '@dnd-kit/core': ^6.3.1
   '@emotion/react': ^11
   '@emotion/styled': ^11
-  '@llamaindex/liteparse': 2.0.8
+  '@llamaindex/liteparse-wasm': 2.0.8
   '@modelcontextprotocol/sdk': ^1
   '@node-rs/jieba': 2.0.1
   '@svgr/webpack': ^6.5.1

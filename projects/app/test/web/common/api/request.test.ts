@@ -1,11 +1,14 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import {
   maxQuantityMap,
+  deduplicatedRequestMap,
   checkMaxQuantity,
   requestFinish,
   checkRes,
   responseError,
-  AUTH_ERROR_EVENT_NAME
+  AUTH_ERROR_EVENT_NAME,
+  GET,
+  instance
 } from '../../../../src/web/common/api/request';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { TOKEN_ERROR_CODE } from '@fastgpt/global/common/error/errorCode';
@@ -48,8 +51,79 @@ describe('request utils', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     Object.keys(maxQuantityMap).forEach((key) => delete maxQuantityMap[key]);
+    deduplicatedRequestMap.clear();
     mockLocation.pathname = '/test';
     dispatchEventMock.mockReturnValue(true);
+  });
+
+  describe('deduplicate request', () => {
+    it('should share an in-flight request with the same params', async () => {
+      let resolveRequest: ((value: any) => void) | undefined;
+      const axiosRequest = new Promise((resolve) => {
+        resolveRequest = resolve;
+      });
+      const requestSpy = vi.spyOn(instance, 'request').mockReturnValue(axiosRequest);
+
+      const firstRequest = GET('/test', { versionKey: '1', type: 'llm' }, { deduplicate: true });
+      const secondRequest = GET('/test', { type: 'llm', versionKey: '1' }, { deduplicate: true });
+
+      expect(firstRequest).toBe(secondRequest);
+      expect(requestSpy).toHaveBeenCalledTimes(1);
+
+      resolveRequest?.({ data: { code: 200, data: 'shared result', message: 'success' } });
+      await expect(firstRequest).resolves.toBe('shared result');
+      await expect(secondRequest).resolves.toBe('shared result');
+      expect(deduplicatedRequestMap.size).toBe(0);
+    });
+
+    it('should start a new request after the previous request finishes', async () => {
+      const requestSpy = vi.spyOn(instance, 'request').mockResolvedValue({
+        data: { code: 200, data: 'result', message: 'success' }
+      });
+
+      await GET('/test', {}, { deduplicate: true });
+      await GET('/test', {}, { deduplicate: true });
+
+      expect(requestSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it('should clear the shared request after it fails', async () => {
+      const requestSpy = vi.spyOn(instance, 'request').mockRejectedValueOnce('request failed');
+
+      await expect(GET('/test', {}, { deduplicate: true })).rejects.toEqual({
+        message: 'request failed'
+      });
+      expect(deduplicatedRequestMap.size).toBe(0);
+
+      requestSpy.mockResolvedValueOnce({
+        data: { code: 200, data: 'result', message: 'success' }
+      });
+      await expect(GET('/test', {}, { deduplicate: true })).resolves.toBe('result');
+      expect(requestSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it('should not share requests with different params', async () => {
+      const requestSpy = vi.spyOn(instance, 'request').mockResolvedValue({
+        data: { code: 200, data: 'result', message: 'success' }
+      });
+
+      await Promise.all([
+        GET('/test', { versionKey: '1' }, { deduplicate: true }),
+        GET('/test', { versionKey: '2' }, { deduplicate: true })
+      ]);
+
+      expect(requestSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it('should not share requests when deduplication is disabled', async () => {
+      const requestSpy = vi.spyOn(instance, 'request').mockResolvedValue({
+        data: { code: 200, data: 'result', message: 'success' }
+      });
+
+      await Promise.all([GET('/test'), GET('/test')]);
+
+      expect(requestSpy).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe('checkMaxQuantity', () => {
