@@ -91,6 +91,11 @@ const shouldUseAgentGeneratedOnly = (
   canInputBeAgentGenerated(input) &&
   !canInputBeManuallyConfigured(input);
 
+/** 普通 App 作为工具时，当前会话问题由外层 Agent 提供。 */
+const shouldDefaultToAgentGenerated = (input: ToolInputTypeState) =>
+  (input.key === NodeInputKeyEnum.userChatInput && input.isToolParam !== false) ||
+  input.isToolParam === true;
+
 const getManualRenderTypeCandidates = (renderTypeList: FlowNodeInputTypeEnum[] = []) =>
   renderTypeList.filter((type) => manualInputRenderTypes.has(type));
 
@@ -158,7 +163,8 @@ export const getToolInputManualRenderType = (input: ToolInputTypeState) => {
 /**
  * 读取已保存工具配置里的最终选择。
  * 旧协议的 selectedTypeIndex: 0 只是旧默认项；当新 schema 声明该字段默认作为工具参数时，
- * 需要继续应用新的 Agent 生成默认值。显式 selectedType 和非零索引保留，reference-only 输入统一转为 Agent 生成。
+ * 需要继续应用新的 Agent 生成默认值。显式 selectedType 和非零索引保留；普通 App 的旧 userChatInput
+ * reference 默认状态也继续转为 Agent 生成。
  */
 export const getSavedToolInputSelectedType = ({
   savedInput,
@@ -171,10 +177,20 @@ export const getSavedToolInputSelectedType = ({
   if (shouldUseAgentGeneratedOnly(defaultInput)) {
     return FlowNodeInputTypeEnum.agentGenerated;
   }
+  const selectedType =
+    savedInput.selectedType ??
+    (savedInput.selectedTypeIndex === undefined
+      ? undefined
+      : getSelectedInputRenderType(savedInput));
+  const isLegacyUserChatInputDefault =
+    defaultInput.key === NodeInputKeyEnum.userChatInput &&
+    defaultInput.isToolParam !== false &&
+    selectedType === FlowNodeInputTypeEnum.reference &&
+    !savedInput.renderTypeList?.includes(FlowNodeInputTypeEnum.agentGenerated);
+  if (isLegacyUserChatInputDefault) return;
   if (savedInput.selectedType) return savedInput.selectedType;
   if (savedInput.selectedTypeIndex === undefined) return;
 
-  const selectedType = getSelectedInputRenderType(savedInput);
   const isLegacyDefaultManualType =
     defaultInput.isToolParam === true &&
     savedInput.selectedTypeIndex === 0 &&
@@ -266,7 +282,7 @@ export const initToolInputTypeByDefaultMode = <T extends FlowNodeInputItemType>(
   }
 
   if (
-    inputWithSelectedType.isToolParam !== true ||
+    !shouldDefaultToAgentGenerated(inputWithSelectedType) ||
     !canInputBeAgentGenerated(inputWithSelectedType)
   ) {
     return inputWithSelectedType;

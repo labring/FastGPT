@@ -947,6 +947,53 @@ describe('agent generated tool input helpers', () => {
     expect(isAgentGeneratedToolInput(input)).toBe(false);
   });
 
+  it('should initialize built-in user chat input as agent generated in tool context', () => {
+    const input = initToolInputTypeByDefaultMode(
+      createMockInput({
+        key: NodeInputKeyEnum.userChatInput,
+        renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
+        toolDescription: 'User question'
+      })
+    );
+
+    expect(input.selectedType).toBe(FlowNodeInputTypeEnum.agentGenerated);
+    expect(input.selectedTypeIndex).toBe(0);
+    expect(isAgentGeneratedToolInput(input)).toBe(true);
+  });
+
+  it('should keep explicit false isToolParam for user chat input', () => {
+    const input = initToolInputTypeByDefaultMode(
+      createMockInput({
+        key: NodeInputKeyEnum.userChatInput,
+        renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
+        isToolParam: false
+      })
+    );
+
+    expect(input.renderTypeList).toEqual([
+      FlowNodeInputTypeEnum.reference,
+      FlowNodeInputTypeEnum.textarea
+    ]);
+    expect(isAgentGeneratedToolInput(input)).toBe(false);
+  });
+
+  it('should migrate legacy user chat input reference selection to agent generated', () => {
+    const selectedType = getSavedToolInputSelectedType({
+      savedInput: createMockInput({
+        key: NodeInputKeyEnum.userChatInput,
+        renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea],
+        selectedType: FlowNodeInputTypeEnum.reference,
+        selectedTypeIndex: 0
+      }),
+      defaultInput: createMockInput({
+        key: NodeInputKeyEnum.userChatInput,
+        renderTypeList: [FlowNodeInputTypeEnum.reference, FlowNodeInputTypeEnum.textarea]
+      })
+    });
+
+    expect(selectedType).toBeUndefined();
+  });
+
   it('should not materialize selectedType for inputs without a final type selection', () => {
     const input = initToolInputTypeByDefaultMode(
       createMockInput({
