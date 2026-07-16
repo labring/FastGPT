@@ -12,7 +12,7 @@ import { TTSTypeEnum } from '@/web/core/app/constants';
 import NodeCard from './render/NodeCard';
 import ScheduledTriggerConfig from '@/components/core/app/ScheduledTriggerConfig';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowBufferDataContext } from '../../context/workflowInitContext';
+import { WorkflowBufferDataContext, WorkflowInitContext } from '../../context/workflowInitContext';
 import {
   type AppChatConfigType,
   type AppDetailType,
@@ -26,6 +26,7 @@ import { userFilesInput } from '@fastgpt/global/core/workflow/template/system/wo
 import Container from '../components/Container';
 import AutoExecConfig from '@/components/core/app/AutoExecConfig';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
+import { collectWorkflowStartInputAutoFillPatches } from '@/web/core/workflow/utils';
 
 type ComponentProps = {
   chatConfig: AppChatConfigType;
@@ -250,6 +251,8 @@ function FileSelectConfig({ chatConfig: { fileSelectConfig }, setAppDetail }: Co
     WorkflowBufferDataContext,
     (v) => v.workflowStartNode
   );
+  const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
+  const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
 
   if (!workflowStartNode) return null;
 
@@ -274,12 +277,29 @@ function FileSelectConfig({ chatConfig: { fileSelectConfig }, setAppDetail }: Co
           e.canSelectCustomFileExtension;
         const repeatKey = workflowStartNode.outputs.find((item) => item.key === userFilesInput.key);
         if (canUploadFiles) {
-          !repeatKey &&
-            onChangeNode({
-              nodeId: workflowStartNode.nodeId,
-              type: 'addOutput',
-              value: userFilesInput
-            });
+          const patches = collectWorkflowStartInputAutoFillPatches({
+            nodes,
+            edges,
+            workflowStartNode: {
+              ...workflowStartNode,
+              outputs: repeatKey
+                ? workflowStartNode.outputs
+                : [...workflowStartNode.outputs, userFilesInput]
+            }
+          });
+
+          onChangeNode([
+            ...(!repeatKey
+              ? [
+                  {
+                    nodeId: workflowStartNode.nodeId,
+                    type: 'addOutput' as const,
+                    value: userFilesInput
+                  }
+                ]
+              : []),
+            ...patches.map((patch) => ({ ...patch, type: 'updateInput' as const }))
+          ]);
         } else {
           repeatKey &&
             onChangeNode({

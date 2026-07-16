@@ -27,7 +27,7 @@ import { useKeyboard } from './useKeyboard';
 import { useContextSelector } from 'use-context-selector';
 import { type THelperLine } from '@/web/core/workflow/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { applyWorkflowStartInputAutoFill } from '@/web/core/workflow/utils';
+import { collectWorkflowStartInputAutoFillPatches } from '@/web/core/workflow/utils';
 import { useDebounceEffect, useMemoizedFn } from 'ahooks';
 import { type FlowNodeItemType } from '@fastgpt/global/core/workflow/type/node';
 import {
@@ -924,6 +924,14 @@ export const useWorkflow = () => {
   }, [setConnectingEdge]);
   const onConnect = useCallback(
     ({ connect }: { connect: Connection }) => {
+      const nextEdges = addEdge(
+        {
+          ...connect,
+          type: EDGE_TYPE
+        },
+        edges
+      );
+
       setEdges((state) =>
         addEdge(
           {
@@ -934,32 +942,19 @@ export const useWorkflow = () => {
         )
       );
 
-      const node = getNodeById(connect.target);
-      if (!node) return;
+      if (!workflowStartNode) return;
 
-      // 从流程开始连线到目标节点时，为空白引用输入自动填充上游输出。
-      const sourceNode = getNodeById(connect.source);
-      if (sourceNode?.flowNodeType === FlowNodeTypeEnum.workflowStart) {
-        const nextInputs = applyWorkflowStartInputAutoFill({
-          inputs: node.inputs,
-          workflowStartNodeId: sourceNode.nodeId,
-          workflowStartOutputs: sourceNode.outputs
-        });
+      const patches = collectWorkflowStartInputAutoFillPatches({
+        nodes,
+        edges: nextEdges,
+        workflowStartNode
+      });
 
-        nextInputs.forEach((input) => {
-          const prevInput = node.inputs.find((item) => item.key === input.key);
-          if (prevInput && prevInput.value !== input.value) {
-            onChangeNode({
-              nodeId: node.nodeId,
-              type: 'updateInput',
-              key: input.key,
-              value: input
-            });
-          }
-        });
+      if (patches.length > 0) {
+        onChangeNode(patches.map((patch) => ({ ...patch, type: 'updateInput' as const })));
       }
     },
-    [setEdges, getNodeById, onChangeNode]
+    [edges, nodes, onChangeNode, setEdges, workflowStartNode]
   );
   const customOnConnect = useCallback(
     (connect: Connection) => {

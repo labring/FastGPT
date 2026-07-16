@@ -1,4 +1,4 @@
-import { applyWorkflowStartInputAutoFill } from '@/web/core/workflow/utils';
+import { collectWorkflowStartInputAutoFillPatches } from '@/web/core/workflow/utils';
 import { Popover, PopoverBody, PopoverContent } from '@chakra-ui/react';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {
@@ -13,7 +13,7 @@ import React from 'react';
 import { type Node } from 'reactflow';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowActionsContext } from '../context/workflowActionsContext';
-import { WorkflowBufferDataContext } from '../context/workflowInitContext';
+import { WorkflowBufferDataContext, WorkflowInitContext } from '../context/workflowInitContext';
 import { WorkflowModalContext } from '../context/workflowModalContext';
 import NodeTemplateListHeader from './components/NodeTemplates/header';
 import NodeTemplateList from './components/NodeTemplates/list';
@@ -23,7 +23,8 @@ import { popoverHeight, popoverWidth } from './hooks/useWorkflow';
 const NodeTemplatesPopover = () => {
   const { handleParams, setHandleParams } = useContextSelector(WorkflowModalContext, (v) => v);
 
-  const { setNodes, setEdges, getNodeById } = useContextSelector(
+  const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
+  const { edges, setNodes, setEdges, workflowStartNode } = useContextSelector(
     WorkflowBufferDataContext,
     (v) => v
   );
@@ -97,27 +98,16 @@ const NodeTemplatesPopover = () => {
       return newState;
     });
 
-    const sourceNode = getNodeById(handleParams.nodeId);
-    if (sourceNode?.flowNodeType === FlowNodeTypeEnum.workflowStart) {
-      newNodes.forEach((node) => {
-        const nextInputs = applyWorkflowStartInputAutoFill({
-          inputs: node.data.inputs,
-          workflowStartNodeId: sourceNode.nodeId,
-          workflowStartOutputs: sourceNode.outputs
-        });
-
-        nextInputs.forEach((input) => {
-          const prevInput = node.data.inputs.find((item) => item.key === input.key);
-          if (prevInput && prevInput.value !== input.value) {
-            onChangeNode({
-              nodeId: node.data.nodeId,
-              type: 'updateInput',
-              key: input.key,
-              value: input
-            });
-          }
-        });
+    if (workflowStartNode) {
+      const patches = collectWorkflowStartInputAutoFillPatches({
+        nodes: nodes.concat(newNodes),
+        edges: edges.concat(newEdges),
+        workflowStartNode
       });
+
+      if (patches.length > 0) {
+        onChangeNode(patches.map((patch) => ({ ...patch, type: 'updateInput' as const })));
+      }
     }
 
     setHandleParams(null);

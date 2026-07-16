@@ -29,6 +29,7 @@ import {
   getWorkflowCheckErrorNodeIds,
   applyWorkflowStartInputAutoFill,
   revertWorkflowStartInputAutoFill,
+  collectWorkflowStartInputAutoFillPatches,
   collectWorkflowStartAutoFillRevertPatches
 } from '@/web/core/workflow/utils';
 import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
@@ -807,6 +808,46 @@ describe('checkWorkflowNodeIssues', () => {
       expect(fileLinkIssues).toEqual([]);
     });
 
+    it('收集自动填充补丁时，同一个节点的文件链接和用户问题应同时返回', () => {
+      const targetNode = makeFreshConnectedNode('ai-chat', AiChatModule);
+
+      const patches = collectWorkflowStartInputAutoFillPatches({
+        nodes: [startNodeWithFiles, targetNode],
+        edges: [{ id: 'e-start-ai-chat', source: 'start', target: 'ai-chat', type: EDGE_TYPE }],
+        workflowStartNode: startNodeWithFiles.data
+      });
+
+      expect(
+        patches
+          .filter((patch) => patch.nodeId === 'ai-chat')
+          .map((patch) => patch.key)
+          .sort()
+      ).toEqual([NodeInputKeyEnum.fileUrlList, NodeInputKeyEnum.userChatInput].sort());
+    });
+
+    it('流程开始节点可达的间接下游节点也应自动填充用户问题引用', () => {
+      const aiNode = makeFreshConnectedNode('ai-chat', AiChatModule);
+      const toolNode = makeFreshConnectedNode('tool-call', ToolCallNode);
+
+      const patches = collectWorkflowStartInputAutoFillPatches({
+        nodes: [startNode, aiNode, toolNode],
+        edges: [
+          { id: 'e-start-ai', source: 'start', target: 'ai-chat', type: EDGE_TYPE },
+          { id: 'e-ai-tool', source: 'ai-chat', target: 'tool-call', type: EDGE_TYPE }
+        ],
+        workflowStartNode: startNode.data
+      });
+
+      const toolUserQuestionPatch = patches.find(
+        (patch) => patch.nodeId === 'tool-call' && patch.key === NodeInputKeyEnum.userChatInput
+      );
+
+      expect(toolUserQuestionPatch?.value.value).toEqual([
+        'start',
+        NodeOutputKeyEnum.userChatInput
+      ]);
+    });
+
     it('合法手动配置的用户问题引用不应被连线自动填充覆盖', () => {
       const targetNode = makeFreshConnectedNode('ai-chat', AiChatModule);
       const manualReference = [VARIABLE_NODE_ID, 'customQuestion'];
@@ -866,6 +907,162 @@ describe('checkWorkflowNodeIssues', () => {
           ?.filter((issue) => issue.inputKey === NodeInputKeyEnum.userChatInput)
           .map((issue) => issue.code) ?? []
       ).toContain('required_input_empty');
+    });
+
+    it('断开流程开始主链路后应回滚整条下游链的自动填充并恢复必填校验', () => {
+      const aiNode = makeFreshConnectedNode('ai-chat', AiChatModule);
+      const datasetNode = makeFreshConnectedNode('dataset-search', DatasetSearchModule);
+      const classifyNode = makeFreshConnectedNode('classify', ClassifyQuestionModule);
+      const toolNode = makeFreshConnectedNode('tool-call', ToolCallNode);
+      const nodes = [startNodeWithFiles, aiNode, datasetNode, classifyNode, toolNode];
+      const previousEdges: Edge[] = [
+        { id: 'e-start-ai', source: 'start', target: 'ai-chat', type: EDGE_TYPE },
+        { id: 'e-ai-dataset', source: 'ai-chat', target: 'dataset-search', type: EDGE_TYPE },
+        { id: 'e-ai-classify', source: 'ai-chat', target: 'classify', type: EDGE_TYPE },
+        { id: 'e-classify-tool', source: 'classify', target: 'tool-call', type: EDGE_TYPE }
+      ];
+
+      const autoFillPatches = collectWorkflowStartInputAutoFillPatches({
+        nodes,
+        edges: previousEdges,
+        workflowStartNode: startNodeWithFiles.data
+      });
+
+      nodes.forEach((node) => {
+        node.data.inputs = node.data.inputs.map((input) => {
+          const patch = autoFillPatches.find(
+            (item) => item.nodeId === node.data.nodeId && item.key === input.key
+          );
+          return patch ? patch.value : input;
+        });
+      });
+
+      const revertPatches = collectWorkflowStartAutoFillRevertPatches({
+        removedEdges: [{ id: 'e-start-ai', source: 'start', target: 'ai-chat' }],
+        remainingEdges: previousEdges.filter((edge) => edge.id !== 'e-start-ai'),
+        getNodeById: (nodeId) => nodes.find((node) => node.data.nodeId === nodeId)?.data
+      });
+
+      expect(revertPatches.map((patch) => `${patch.nodeId}:${patch.key}`).sort()).toEqual(
+        [
+          `ai-chat:${NodeInputKeyEnum.fileUrlList}`,
+          `ai-chat:${NodeInputKeyEnum.userChatInput}`,
+          `dataset-search:${NodeInputKeyEnum.datasetSearchInput}`,
+          `classify:${NodeInputKeyEnum.userChatInput}`,
+          `tool-call:${NodeInputKeyEnum.fileUrlList}`,
+          `tool-call:${NodeInputKeyEnum.userChatInput}`
+        ].sort()
+      );
+
+      nodes.forEach((node) => {
+        node.data.inputs = node.data.inputs.map((input) => {
+          const patch = revertPatches.find(
+            (item) => item.nodeId === node.data.nodeId && item.key === input.key
+          );
+          return patch ? patch.value : input;
+        });
+      });
+
+      const result = checkWorkflowNodeIssues({
+        nodes,
+        edges: previousEdges.filter((edge) => edge.id !== 'e-start-ai')
+      });
+
+      expect(
+        result['ai-chat']
+          ?.filter((issue) => issue.inputKey === NodeInputKeyEnum.userChatInput)
+          .map((issue) => issue.code) ?? []
+      ).toContain('required_input_empty');
+      expect(
+        result['dataset-search']
+          ?.filter((issue) => issue.inputKey === NodeInputKeyEnum.datasetSearchInput)
+          .map((issue) => issue.code) ?? []
+      ).toContain('required_input_empty');
+      expect(
+        result['tool-call']
+          ?.filter((issue) => issue.inputKey === NodeInputKeyEnum.userChatInput)
+          .map((issue) => issue.code) ?? []
+      ).toContain('required_input_empty');
+    });
+
+    it('断开中间连线后应只回滚失去流程开始可达性的下游节点自动填充', () => {
+      const aiNode = makeFreshConnectedNode('ai-chat', AiChatModule);
+      const datasetNode = makeFreshConnectedNode('dataset-search', DatasetSearchModule);
+      const classifyNode = makeFreshConnectedNode('classify', ClassifyQuestionModule);
+      const toolNode = makeFreshConnectedNode('tool-call', ToolCallNode);
+      const nodes = [startNodeWithFiles, aiNode, datasetNode, classifyNode, toolNode];
+      const previousEdges: Edge[] = [
+        { id: 'e-start-ai', source: 'start', target: 'ai-chat', type: EDGE_TYPE },
+        { id: 'e-ai-dataset', source: 'ai-chat', target: 'dataset-search', type: EDGE_TYPE },
+        { id: 'e-ai-classify', source: 'ai-chat', target: 'classify', type: EDGE_TYPE },
+        { id: 'e-classify-tool', source: 'classify', target: 'tool-call', type: EDGE_TYPE }
+      ];
+
+      const autoFillPatches = collectWorkflowStartInputAutoFillPatches({
+        nodes,
+        edges: previousEdges,
+        workflowStartNode: startNodeWithFiles.data
+      });
+
+      nodes.forEach((node) => {
+        node.data.inputs = node.data.inputs.map((input) => {
+          const patch = autoFillPatches.find(
+            (item) => item.nodeId === node.data.nodeId && item.key === input.key
+          );
+          return patch ? patch.value : input;
+        });
+      });
+
+      const remainingEdges = previousEdges.filter((edge) => edge.id !== 'e-ai-classify');
+      const revertPatches = collectWorkflowStartAutoFillRevertPatches({
+        removedEdges: [{ id: 'e-ai-classify', source: 'ai-chat', target: 'classify' }],
+        remainingEdges,
+        getNodeById: (nodeId) => nodes.find((node) => node.data.nodeId === nodeId)?.data
+      });
+
+      expect(revertPatches.map((patch) => `${patch.nodeId}:${patch.key}`).sort()).toEqual(
+        [
+          `classify:${NodeInputKeyEnum.userChatInput}`,
+          `tool-call:${NodeInputKeyEnum.fileUrlList}`,
+          `tool-call:${NodeInputKeyEnum.userChatInput}`
+        ].sort()
+      );
+      expect(
+        revertPatches.some(
+          (patch) =>
+            patch.nodeId === 'dataset-search' && patch.key === NodeInputKeyEnum.datasetSearchInput
+        )
+      ).toBe(false);
+
+      nodes.forEach((node) => {
+        node.data.inputs = node.data.inputs.map((input) => {
+          const patch = revertPatches.find(
+            (item) => item.nodeId === node.data.nodeId && item.key === input.key
+          );
+          return patch ? patch.value : input;
+        });
+      });
+
+      const result = checkWorkflowNodeIssues({
+        nodes,
+        edges: remainingEdges
+      });
+
+      expect(
+        result['classify']
+          ?.filter((issue) => issue.inputKey === NodeInputKeyEnum.userChatInput)
+          .map((issue) => issue.code) ?? []
+      ).toContain('required_input_empty');
+      expect(
+        result['tool-call']
+          ?.filter((issue) => issue.inputKey === NodeInputKeyEnum.userChatInput)
+          .map((issue) => issue.code) ?? []
+      ).toContain('required_input_empty');
+      expect(
+        result['dataset-search']
+          ?.filter((issue) => issue.inputKey === NodeInputKeyEnum.datasetSearchInput)
+          .map((issue) => issue.code) ?? []
+      ).not.toContain('required_input_empty');
     });
   });
 

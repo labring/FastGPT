@@ -1093,6 +1093,83 @@ export const applyWorkflowStartInputAutoFill = ({
   });
 };
 
+type WorkflowStartAutoFillPatch = {
+  nodeId: string;
+  key: string;
+  value: FlowNodeInputItemType;
+};
+
+const collectWorkflowReachableNodeIds = ({
+  startNodeId,
+  edges
+}: {
+  startNodeId: string;
+  edges: Array<Pick<Edge, 'source' | 'target'>>;
+}) => {
+  const reachableNodeIds = new Set<string>();
+  const queue = [startNodeId];
+
+  while (queue.length > 0) {
+    const sourceNodeId = queue.shift();
+    if (!sourceNodeId) continue;
+
+    edges.forEach((edge) => {
+      if (edge.source !== sourceNodeId || reachableNodeIds.has(edge.target)) return;
+      reachableNodeIds.add(edge.target);
+      queue.push(edge.target);
+    });
+  }
+
+  return reachableNodeIds;
+};
+
+/**
+ * 收集从流程开始节点可达的下游节点自动填充补丁。
+ * 文件上传等系统输入可能在连线之后才开启，因此这里按当前 edge 图整体扫描，
+ * 只补空白引用输入，避免覆盖用户已经手动选择的变量。
+ */
+export const collectWorkflowStartInputAutoFillPatches = ({
+  nodes,
+  edges,
+  workflowStartNode
+}: {
+  nodes: Node<FlowNodeItemType, string | undefined>[];
+  edges: Array<Pick<Edge, 'source' | 'target'>>;
+  workflowStartNode: FlowNodeItemType;
+}): WorkflowStartAutoFillPatch[] => {
+  const nodeMap = new Map(nodes.map((node) => [node.data.nodeId, node.data]));
+  const reachableNodeIds = collectWorkflowReachableNodeIds({
+    startNodeId: workflowStartNode.nodeId,
+    edges
+  });
+
+  const patches: WorkflowStartAutoFillPatch[] = [];
+
+  reachableNodeIds.forEach((nodeId) => {
+    const targetNode = nodeMap.get(nodeId);
+    if (!targetNode) return;
+
+    const nextInputs = applyWorkflowStartInputAutoFill({
+      inputs: targetNode.inputs,
+      workflowStartNodeId: workflowStartNode.nodeId,
+      workflowStartOutputs: workflowStartNode.outputs
+    });
+
+    nextInputs.forEach((input) => {
+      const prevInput = targetNode.inputs.find((item) => item.key === input.key);
+      if (prevInput && !isEqual(prevInput.value, input.value)) {
+        patches.push({
+          nodeId: targetNode.nodeId,
+          key: input.key,
+          value: input
+        });
+      }
+    });
+  });
+
+  return patches;
+};
+
 /** 判断 input.value 是否为流程开始自动填充产生的引用，用于断线回滚时避免误清手动配置。 */
 const isWorkflowStartAutoFilledValue = ({
   inputKey,
@@ -1150,7 +1227,11 @@ export const revertWorkflowStartInputAutoFill = ({
   });
 };
 
-/** 根据被删除的连线，收集需要回滚的流程开始自动填充补丁。 */
+/**
+ * 根据被删除的连线，收集需要回滚的流程开始自动填充补丁。
+ * 任意位置断线都可能让部分下游节点失去流程开始可达性，因此这里比较删除前后
+ * 每个流程开始节点的可达集合，只清理「删除前可达、删除后不可达」节点上的自动填充值。
+ */
 export const collectWorkflowStartAutoFillRevertPatches = ({
   removedEdges,
   remainingEdges,
@@ -1161,43 +1242,52 @@ export const collectWorkflowStartAutoFillRevertPatches = ({
   getNodeById: (nodeId: string) => FlowNodeItemType | undefined;
 }): Array<{ nodeId: string; key: string; value: FlowNodeInputItemType }> => {
   const patches: Array<{ nodeId: string; key: string; value: FlowNodeInputItemType }> = [];
-  const processedTargets = new Set<string>();
+  const processedNodes = new Set<string>();
+  const previousEdges = remainingEdges.concat(removedEdges);
+  const workflowStartNodes = Array.from(
+    new Map(
+      previousEdges
+        .map((edge) => getNodeById(edge.source))
+        .filter((node): node is FlowNodeItemType => {
+          return node?.flowNodeType === FlowNodeTypeEnum.workflowStart;
+        })
+        .map((node) => [node.nodeId, node])
+    ).values()
+  );
 
-  removedEdges.forEach((removedEdge) => {
-    const sourceNode = getNodeById(removedEdge.source);
-    const targetNode = getNodeById(removedEdge.target);
-    if (sourceNode?.flowNodeType !== FlowNodeTypeEnum.workflowStart || !targetNode) {
-      return;
-    }
-    if (processedTargets.has(targetNode.nodeId)) {
-      return;
-    }
-
-    const hasOtherIncomingFromStart = remainingEdges.some(
-      (edge) =>
-        edge.target === removedEdge.target &&
-        getNodeById(edge.source)?.flowNodeType === FlowNodeTypeEnum.workflowStart
-    );
-    if (hasOtherIncomingFromStart) {
-      return;
-    }
-
-    processedTargets.add(targetNode.nodeId);
-    const nextInputs = revertWorkflowStartInputAutoFill({
-      inputs: targetNode.inputs,
-      workflowStartNodeId: sourceNode.nodeId,
-      workflowStartOutputs: sourceNode.outputs
+  workflowStartNodes.forEach((sourceNode) => {
+    const previousReachableNodeIds = collectWorkflowReachableNodeIds({
+      startNodeId: sourceNode.nodeId,
+      edges: previousEdges
+    });
+    const nextReachableNodeIds = collectWorkflowReachableNodeIds({
+      startNodeId: sourceNode.nodeId,
+      edges: remainingEdges
     });
 
-    nextInputs.forEach((input) => {
-      const prevInput = targetNode.inputs.find((item) => item.key === input.key);
-      if (prevInput && prevInput.value !== input.value) {
-        patches.push({
-          nodeId: targetNode.nodeId,
-          key: input.key,
-          value: input
-        });
-      }
+    previousReachableNodeIds.forEach((nodeId) => {
+      if (nextReachableNodeIds.has(nodeId) || processedNodes.has(nodeId)) return;
+
+      const targetNode = getNodeById(nodeId);
+      if (!targetNode) return;
+
+      processedNodes.add(nodeId);
+      const nextInputs = revertWorkflowStartInputAutoFill({
+        inputs: targetNode.inputs,
+        workflowStartNodeId: sourceNode.nodeId,
+        workflowStartOutputs: sourceNode.outputs
+      });
+
+      nextInputs.forEach((input) => {
+        const prevInput = targetNode.inputs.find((item) => item.key === input.key);
+        if (prevInput && !isEqual(prevInput.value, input.value)) {
+          patches.push({
+            nodeId: targetNode.nodeId,
+            key: input.key,
+            value: input
+          });
+        }
+      });
     });
   });
 

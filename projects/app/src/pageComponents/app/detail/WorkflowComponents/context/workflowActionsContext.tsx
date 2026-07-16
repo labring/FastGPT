@@ -411,108 +411,115 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
     (props: FlowNodeChangeProps | FlowNodeChangeProps[]) => {
       const updateData = Array.isArray(props) ? props : [props];
       const nodeIdsToRecheck = new Set(updateData.map((item) => item.nodeId));
+      const updatesByNodeId = updateData.reduce((map, item) => {
+        map.set(item.nodeId, [...(map.get(item.nodeId) ?? []), item]);
+        return map;
+      }, new Map<string, FlowNodeChangeProps[]>());
 
       setNodes((nodes) => {
         return nodes.map((node) => {
-          const updateItem = updateData.find((item) => item.nodeId === node.data.nodeId);
-          if (!updateItem) return node;
-          const { nodeId, type } = updateItem;
+          const updateItems = updatesByNodeId.get(node.data.nodeId);
+          if (!updateItems?.length) return node;
 
           // ✅ 使用结构共享，只拷贝变化的部分
           let updateObj = node.data;
 
-          if (type === 'attr') {
-            // 浅拷贝 + 更新单个属性
-            updateObj = {
-              ...node.data,
-              [updateItem.key]: updateItem.value
-            };
-          } else if (type === 'updateInput') {
-            // 只拷贝inputs数组
-            updateObj = {
-              ...node.data,
-              inputs: node.data.inputs.map((item) =>
-                item.key === updateItem.key ? updateItem.value : item
-              )
-            };
-          } else if (type === 'replaceInput') {
-            const existingIndex = node.data.inputs.findIndex((item) => item.key === updateItem.key);
+          updateItems.forEach((updateItem) => {
+            const { nodeId, type } = updateItem;
 
-            updateObj = {
-              ...node.data,
-              inputs:
-                existingIndex === -1
-                  ? [...node.data.inputs, updateItem.value]
-                  : node.data.inputs.map((item) =>
-                      item.key === updateItem.key ? updateItem.value : item
-                    )
-            };
-          } else if (type === 'addInput') {
-            const hasInput = node.data.inputs.some((input) => input.key === updateItem.value.key);
-            if (hasInput) {
-              toast({
-                status: 'warning',
-                title: t('common:key_repetition')
-              });
-              updateObj = node.data; // 不修改
-            } else {
+            if (type === 'attr') {
+              // 浅拷贝 + 更新单个属性
               updateObj = {
-                ...node.data,
-                inputs: [...node.data.inputs, updateItem.value]
+                ...updateObj,
+                [updateItem.key]: updateItem.value
               };
-            }
-          } else if (type === 'delInput') {
-            updateObj = {
-              ...node.data,
-              inputs: node.data.inputs.filter((item) => item.key !== updateItem.key)
-            };
-          } else if (type === 'updateOutput') {
-            updateObj = {
-              ...node.data,
-              outputs: node.data.outputs.map((item) =>
-                item.key === updateItem.key ? updateItem.value : item
-              )
-            };
-          } else if (type === 'replaceOutput') {
-            onDelEdge({ nodeId, sourceHandle: getHandleId(nodeId, 'source', updateItem.key) });
-            updateObj = {
-              ...node.data,
-              outputs: node.data.outputs.map((item) =>
-                item.key === updateItem.key ? updateItem.value : item
-              )
-            };
-          } else if (type === 'addOutput') {
-            const hasOutput = node.data.outputs.some(
-              (output) => output.key === updateItem.value.key
-            );
-            if (hasOutput) {
-              toast({
-                status: 'warning',
-                title: t('common:key_repetition')
-              });
-              updateObj = node.data; // 不修改
-            } else {
-              if (updateItem.index !== undefined) {
-                const outputs = [...node.data.outputs];
-                outputs.splice(updateItem.index, 0, updateItem.value);
-                updateObj = {
-                  ...node.data,
-                  outputs
-                };
+            } else if (type === 'updateInput') {
+              // 批量自动填充会同时更新同一节点的多个 input，需基于上一次变更继续叠加。
+              updateObj = {
+                ...updateObj,
+                inputs: updateObj.inputs.map((item) =>
+                  item.key === updateItem.key ? updateItem.value : item
+                )
+              };
+            } else if (type === 'replaceInput') {
+              const existingIndex = updateObj.inputs.findIndex(
+                (item) => item.key === updateItem.key
+              );
+
+              updateObj = {
+                ...updateObj,
+                inputs:
+                  existingIndex === -1
+                    ? [...updateObj.inputs, updateItem.value]
+                    : updateObj.inputs.map((item) =>
+                        item.key === updateItem.key ? updateItem.value : item
+                      )
+              };
+            } else if (type === 'addInput') {
+              const hasInput = updateObj.inputs.some((input) => input.key === updateItem.value.key);
+              if (hasInput) {
+                toast({
+                  status: 'warning',
+                  title: t('common:key_repetition')
+                });
               } else {
                 updateObj = {
-                  ...node.data,
-                  outputs: [...node.data.outputs, updateItem.value]
+                  ...updateObj,
+                  inputs: [...updateObj.inputs, updateItem.value]
                 };
               }
+            } else if (type === 'delInput') {
+              updateObj = {
+                ...updateObj,
+                inputs: updateObj.inputs.filter((item) => item.key !== updateItem.key)
+              };
+            } else if (type === 'updateOutput') {
+              updateObj = {
+                ...updateObj,
+                outputs: updateObj.outputs.map((item) =>
+                  item.key === updateItem.key ? updateItem.value : item
+                )
+              };
+            } else if (type === 'replaceOutput') {
+              onDelEdge({ nodeId, sourceHandle: getHandleId(nodeId, 'source', updateItem.key) });
+              updateObj = {
+                ...updateObj,
+                outputs: updateObj.outputs.map((item) =>
+                  item.key === updateItem.key ? updateItem.value : item
+                )
+              };
+            } else if (type === 'addOutput') {
+              const hasOutput = updateObj.outputs.some(
+                (output) => output.key === updateItem.value.key
+              );
+              if (hasOutput) {
+                toast({
+                  status: 'warning',
+                  title: t('common:key_repetition')
+                });
+              } else {
+                if (updateItem.index !== undefined) {
+                  const outputs = [...updateObj.outputs];
+                  outputs.splice(updateItem.index, 0, updateItem.value);
+                  updateObj = {
+                    ...updateObj,
+                    outputs
+                  };
+                } else {
+                  updateObj = {
+                    ...updateObj,
+                    outputs: [...updateObj.outputs, updateItem.value]
+                  };
+                }
+              }
+            } else if (type === 'delOutput') {
+              onDelEdge({ nodeId, sourceHandle: getHandleId(nodeId, 'source', updateItem.key) });
+              updateObj = {
+                ...updateObj,
+                outputs: updateObj.outputs.filter((item) => item.key !== updateItem.key)
+              };
             }
-          } else if (type === 'delOutput') {
-            onDelEdge({ nodeId, sourceHandle: getHandleId(nodeId, 'source', updateItem.key) });
-            updateObj = {
-              ...node.data,
-              outputs: node.data.outputs.filter((item) => item.key !== updateItem.key)
-            };
-          }
+          });
 
           updateObj.outputs = updateObj.outputs.map((output) => {
             return {
