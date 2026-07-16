@@ -42,7 +42,8 @@ import { LoopEndNode } from '@fastgpt/global/core/workflow/template/system/loop/
 import { LoopRunStartNode } from '@fastgpt/global/core/workflow/template/system/loopRun/loopRunStart';
 import { useReactFlow } from 'reactflow';
 import type { Node } from 'reactflow';
-import { nodeTemplate2FlowNode, applyWorkflowStartInputAutoFill } from '@/web/core/workflow/utils';
+import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
+import { applyWorkflowStartInputAutoFill } from '@/web/core/workflow/workflowStartAutoFill';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';

@@ -15,10 +15,8 @@ import type {
   WorkflowCheckNodeIssueMap
 } from '@fastgpt/global/core/workflow/type/node';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import {
-  checkWorkflowNodeIssues,
-  collectWorkflowStartAutoFillRevertPatches
-} from '@/web/core/workflow/utils';
+import { checkWorkflowNodeIssues } from '@/web/core/workflow/workflowCheck';
+import { collectWorkflowStartAutoFillRevertPatches } from '@/web/core/workflow/workflowStartAutoFill';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.schema';
 
 type FlowNodeChangeProps = { nodeId: string } & (

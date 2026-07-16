@@ -21,17 +21,20 @@ import {
   getNodeAllSource,
   filterWorkflowNodeOutputsByType,
   filterSelectableWorkflowNodeOutputs,
-  workflowReferenceValueIsSelectable,
+  workflowReferenceValueIsSelectable
+} from '@/web/core/workflow/utils';
+import {
   checkWorkflowNodeIssues,
   checkWorkflowHasError,
   checkWorkflowBeforeRunOrPublish,
-  getWorkflowCheckErrorNodeIds,
+  getWorkflowCheckErrorNodeIds
+} from '@/web/core/workflow/workflowCheck';
+import {
   applyWorkflowStartInputAutoFill,
-  revertWorkflowStartInputAutoFill,
   collectWorkflowStartInputAutoFillPatches,
   collectWorkflowStartAutoFillRevertPatches,
   collectWorkflowStartOutputAutoFillRevertPatches
-} from '@/web/core/workflow/utils';
+} from '@/web/core/workflow/workflowStartAutoFill';
 import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { NodeOutputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import { PluginStatusEnum } from '@fastgpt/global/core/plugin/type';

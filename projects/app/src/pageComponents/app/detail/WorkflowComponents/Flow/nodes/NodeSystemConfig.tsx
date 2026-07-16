@@ -29,7 +29,7 @@ import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 import {
   collectWorkflowStartInputAutoFillPatches,
   collectWorkflowStartOutputAutoFillRevertPatches
-} from '@/web/core/workflow/utils';
+} from '@/web/core/workflow/workflowStartAutoFill';
 
 type ComponentProps = {
   chatConfig: AppChatConfigType;

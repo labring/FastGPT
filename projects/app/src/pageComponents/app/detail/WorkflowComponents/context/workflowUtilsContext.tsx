@@ -5,12 +5,14 @@ import { useReactFlow } from 'reactflow';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import {
-  checkWorkflowBeforeRunOrPublish,
-  checkWorkflowNodeIssues,
   adaptCatchError,
   storeNode2FlowNode,
   storeEdge2RenderEdge
 } from '@/web/core/workflow/utils';
+import {
+  checkWorkflowBeforeRunOrPublish,
+  checkWorkflowNodeIssues
+} from '@/web/core/workflow/workflowCheck';
 import { uiWorkflow2StoreWorkflow } from '../utils';
 import {
   FlowNodeOutputTypeEnum,

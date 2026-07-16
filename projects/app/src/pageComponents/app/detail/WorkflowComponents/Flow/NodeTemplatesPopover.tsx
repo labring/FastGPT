@@ -1,4 +1,4 @@
-import { collectWorkflowStartInputAutoFillPatches } from '@/web/core/workflow/utils';
+import { collectWorkflowStartInputAutoFillPatches } from '@/web/core/workflow/workflowStartAutoFill';
 import { Popover, PopoverBody, PopoverContent } from '@chakra-ui/react';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {

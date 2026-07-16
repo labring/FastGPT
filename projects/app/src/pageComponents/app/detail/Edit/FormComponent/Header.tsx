@@ -28,11 +28,8 @@ import type { AppVersionSchemaType } from '@fastgpt/global/core/app/version/type
 import { useBeforeunload } from '@fastgpt/web/hooks/useBeforeunload';
 import { isProduction } from '@fastgpt/global/common/system/constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import {
-  checkWorkflowBeforeRunOrPublish,
-  storeEdge2RenderEdge,
-  storeNode2FlowNode
-} from '@/web/core/workflow/utils';
+import { storeEdge2RenderEdge, storeNode2FlowNode } from '@/web/core/workflow/utils';
+import { checkWorkflowBeforeRunOrPublish } from '@/web/core/workflow/workflowCheck';
 import type { AppForm2WorkflowFnType, Form2WorkflowFnType } from './type';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { useUserStore } from '@/web/support/user/useUserStore';

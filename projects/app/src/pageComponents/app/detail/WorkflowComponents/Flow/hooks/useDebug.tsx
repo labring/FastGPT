@@ -6,7 +6,8 @@ import {
 } from '@fastgpt/global/core/workflow/type/edge';
 import { useCallback, useState, useMemo } from 'react';
 import { useReactFlow } from 'reactflow';
-import { checkWorkflowBeforeRunOrPublish, getNodeAllSource } from '@/web/core/workflow/utils';
+import { getNodeAllSource } from '@/web/core/workflow/utils';
+import { checkWorkflowBeforeRunOrPublish } from '@/web/core/workflow/workflowCheck';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { uiWorkflow2StoreWorkflow } from '../../utils';
 import { type RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
