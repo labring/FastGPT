@@ -190,13 +190,7 @@ describe('loginByPassword API', () => {
     expect(updatedUser?.lastLoginTmbId).toEqual(testTmb._id);
   });
 
-  it('should persist home_source as lastsource on successful login', async () => {
-    const homeSource = {
-      visitor_id: 'visitor-1',
-      last_touch_channel: 'search',
-      last_touch_source: 'Google'
-    };
-
+  it('should persist visitor_id on successful login', async () => {
     const res = await Call<LoginByPasswordBodyType, Record<string, never>, any>(loginApi.default, {
       body: {
         username: 'testuser',
@@ -204,7 +198,7 @@ describe('loginByPassword API', () => {
         code: '123456',
         fastgpt_sem: {
           source: 'home_hero_trial',
-          home_source: homeSource
+          visitor_id: 'visitor-1'
         },
         language: 'zh-CN'
       }
@@ -213,7 +207,7 @@ describe('loginByPassword API', () => {
     expect(res.code).toBe(200);
 
     const updatedUser = await MongoUser.findById(testUser._id).lean();
-    expect(updatedUser?.fastgpt_sem).toMatchObject({ lastsource: homeSource });
+    expect(updatedUser?.fastgpt_sem).toMatchObject({ visitor_id: 'visitor-1' });
   });
 
   it('should handle root user login correctly', async () => {

@@ -3,7 +3,6 @@ import {
   getFastGPTSem,
   initFastGPTSemSourceDomain,
   onFastGPTLoginSuccess,
-  parseFastGPTSource,
   removeFastGPTSem,
   setFastGPTSem
 } from '@/web/support/marketing/utils';
@@ -42,62 +41,35 @@ describe('marketing utils', () => {
     expect(getFastGPTSem()?.sourceDomain).toBe('https://example.com');
   });
 
-  it('should parse the source attribution object from the URL', () => {
-    expect(
-      parseFastGPTSource(
-        JSON.stringify({
-          visitor_id: 'visitor-1',
-          first_touch_source: 'ChatGPT',
-          is_paid: false
-        })
-      )
-    ).toMatchObject({
-      visitor_id: 'visitor-1',
-      first_touch_source: 'ChatGPT',
-      is_paid: false
-    });
-  });
-
-  it('should ignore an invalid source attribution object', () => {
-    expect(parseFastGPTSource('{invalid')).toBeUndefined();
-  });
-
-  it('should keep home source independent from first and last source', () => {
+  it('should persist visitor_id without source attribution fields', () => {
     setFastGPTSem({
       source: 'home_hero_trial',
-      home_source: {
-        visitor_id: 'visitor-1',
-        first_touch_source: 'ChatGPT'
-      }
+      visitor_id: 'visitor-1'
     });
 
     expect(getFastGPTSem()).toEqual({
       source: 'home_hero_trial',
-      home_source: {
-        visitor_id: 'visitor-1',
-        first_touch_source: 'ChatGPT'
-      }
+      visitor_id: 'visitor-1'
     });
   });
 
-  it('should not send persisted first and last source fields from the client', () => {
+  it('should discard unknown marketing fields', () => {
     localStorage.setItem(
       'fastgpt_sem',
       JSON.stringify({
-        home_source: { visitor_id: 'visitor-current' },
-        firstsource: { visitor_id: 'visitor-first' },
-        lastsource: { visitor_id: 'visitor-last' }
+        visitor_id: 'visitor-current',
+        unknown_field: 'discarded'
       })
     );
 
     expect(getFastGPTSem()).toEqual({
-      home_source: { visitor_id: 'visitor-current' }
+      visitor_id: 'visitor-current'
     });
   });
 
   it('should clear pending marketing data after login succeeds', async () => {
     setFastGPTSem({
-      home_source: { visitor_id: 'visitor-1' }
+      visitor_id: 'visitor-1'
     });
     const loginSuccess = vi.fn();
 

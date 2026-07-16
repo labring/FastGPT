@@ -51,10 +51,7 @@ describe('user api', () => {
       fastgpt_sem: {
         keyword: 'sem123',
         source: 'home_hero_trial',
-        home_source: {
-          visitor_id: 'visitor-1',
-          first_touch_source: 'ChatGPT'
-        },
+        visitor_id: 'visitor-1',
         sourceDomain: 'https://example.com'
       }
     };

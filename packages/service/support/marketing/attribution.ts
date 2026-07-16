@@ -1,4 +1,3 @@
-import type { FastGPTSourceType } from '@fastgpt/global/support/marketing/type';
 import { axios } from '../../common/api/axios';
 import { getLogger, LogCategories } from '../../common/logger';
 import { serviceEnv } from '../../env';
@@ -6,7 +5,7 @@ import { serviceEnv } from '../../env';
 const logger = getLogger(LogCategories.MODULE.USER.ACCOUNT);
 
 type ReportCRMVisitorIdentityProps = {
-  source?: FastGPTSourceType;
+  visitorId?: string;
   userId: string;
   username: string;
   contact?: string;
@@ -23,13 +22,13 @@ const getEmail = (username: string, contact?: string) => {
  * 上报失败只记日志，不能影响注册或登录结果。
  */
 export const reportCRMVisitorIdentity = async ({
-  source,
+  visitorId: rawVisitorId,
   userId,
   username,
   contact
 }: ReportCRMVisitorIdentityProps): Promise<void> => {
   const crmApiUrl = serviceEnv.CRM_API_URL?.replace(/\/$/, '');
-  const visitorId = source?.visitor_id?.trim();
+  const visitorId = rawVisitorId?.trim();
 
   if (!crmApiUrl || !visitorId) return;
   if (!serviceEnv.CRM_API_KEY) {

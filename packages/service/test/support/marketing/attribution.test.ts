@@ -33,7 +33,7 @@ describe('reportCRMVisitorIdentity', () => {
 
   it('skips reporting when CRM_API_URL is not configured', async () => {
     await reportCRMVisitorIdentity({
-      source: { visitor_id: 'visitor-1' },
+      visitorId: 'visitor-1',
       userId: 'user-1',
       username: 'user@example.com'
     });
@@ -46,7 +46,6 @@ describe('reportCRMVisitorIdentity', () => {
     mocks.serviceEnv.CRM_API_KEY = 'crm-key';
 
     await reportCRMVisitorIdentity({
-      source: {},
       userId: 'user-1',
       username: 'user@example.com'
     });
@@ -59,7 +58,7 @@ describe('reportCRMVisitorIdentity', () => {
     mocks.serviceEnv.CRM_API_KEY = 'crm-key';
 
     await reportCRMVisitorIdentity({
-      source: { visitor_id: 'visitor/1' },
+      visitorId: 'visitor/1',
       userId: 'user-1',
       username: '13800138000',
       contact: 'user@example.com'
@@ -88,7 +87,7 @@ describe('reportCRMVisitorIdentity', () => {
 
     await expect(
       reportCRMVisitorIdentity({
-        source: { visitor_id: 'visitor-1' },
+        visitorId: 'visitor-1',
         userId: 'user-1',
         username: 'user@example.com'
       })

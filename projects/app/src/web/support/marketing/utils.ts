@@ -1,6 +1,5 @@
 import {
-  FastGPTSourceSchema,
-  FastGPTTrackSemSchema,
+  FastGPT_SEM_Schema,
   type ShortUrlParams,
   type TrackRegisterParams
 } from '@fastgpt/global/support/marketing/type';
@@ -66,19 +65,7 @@ export const getFastGPTSem = (): TrackRegisterParams['fastgpt_sem'] => {
     const value = localStorage.getItem('fastgpt_sem');
     if (!value) return undefined;
 
-    const result = FastGPTTrackSemSchema.safeParse(JSON.parse(value));
-    return result.success ? result.data : undefined;
-  } catch {
-    return undefined;
-  }
-};
-
-export const parseFastGPTSource = (source?: string | string[]) => {
-  const sourceValue = Array.isArray(source) ? source[0] : source;
-  if (!sourceValue) return undefined;
-
-  try {
-    const result = FastGPTSourceSchema.safeParse(JSON.parse(sourceValue));
+    const result = FastGPT_SEM_Schema.safeParse(JSON.parse(value));
     return result.success ? result.data : undefined;
   } catch {
     return undefined;

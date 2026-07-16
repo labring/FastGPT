@@ -22,6 +22,7 @@ import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { getClientIpFromRequest } from '@fastgpt/service/common/security/clientIp';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { reportCRMVisitorIdentity } from '@fastgpt/service/support/marketing/attribution';
+import { FastGPT_SEM_Schema } from '@fastgpt/global/support/marketing/type';
 
 async function handler(
   req: ApiRequestProps<LoginByPasswordBodyType>,
@@ -65,10 +66,11 @@ async function handler(
 
   user.lastLoginTmbId = userDetail.team.tmbId;
   user.language = language;
-  if (fastgpt_sem?.home_source) {
+  if (fastgpt_sem?.visitor_id) {
+    const storedFastgptSem = FastGPT_SEM_Schema.safeParse(user.fastgpt_sem);
     user.fastgpt_sem = {
-      ...(user.fastgpt_sem || {}),
-      lastsource: fastgpt_sem.home_source
+      ...(storedFastgptSem.success ? storedFastgptSem.data : {}),
+      visitor_id: fastgpt_sem.visitor_id
     };
   }
   await user.save();
@@ -84,7 +86,7 @@ async function handler(
   setCookie(res, token);
 
   await reportCRMVisitorIdentity({
-    source: fastgpt_sem?.home_source,
+    visitorId: fastgpt_sem?.visitor_id,
     userId: String(user._id),
     username: user.username,
     contact: user.contact

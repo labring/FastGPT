@@ -11,7 +11,6 @@ import {
   setBdVId,
   setFastGPTSem,
   initFastGPTSemSourceDomain,
-  parseFastGPTSource,
   setInviterId,
   setMsclkid,
   setUtmParams,
@@ -27,7 +26,7 @@ type MarketingQueryParams = {
   msclkid?: string;
   k?: string;
   search?: string;
-  source?: string;
+  visitor_id?: string;
   fastgpt_source?: string;
   sourceDomain?: string;
   utm_source?: string;
@@ -42,7 +41,7 @@ const MARKETING_PARAMS: (keyof MarketingQueryParams)[] = [
   'bd_vid',
   'msclkid',
   'k',
-  'source',
+  'visitor_id',
   'fastgpt_source',
   'sourceDomain',
   'utm_source',
@@ -60,7 +59,7 @@ export const useInitApp = () => {
     msclkid,
     k,
     search,
-    source,
+    visitor_id,
     fastgpt_source,
     sourceDomain,
     utm_source,
@@ -161,31 +160,20 @@ export const useInitApp = () => {
     setUtmWorkflow(utm_workflow);
     initFastGPTSemSourceDomain(sourceDomain);
 
-    const sourceObject = parseFastGPTSource(source);
-    const sourceUtmSource = utm_source || sourceObject?.utm_source;
-    const sourceUtmMedium = utm_medium || sourceObject?.utm_medium;
-    const sourceUtmContent = utm_content || sourceObject?.utm_content;
     const utmParams: ShortUrlParams = {
-      ...(sourceUtmSource && { shortUrlSource: sourceUtmSource }),
-      ...(sourceUtmMedium && { shortUrlMedium: sourceUtmMedium }),
-      ...(sourceUtmContent && { shortUrlContent: sourceUtmContent })
+      ...(utm_source && { shortUrlSource: utm_source }),
+      ...(utm_medium && { shortUrlMedium: utm_medium }),
+      ...(utm_content && { shortUrlContent: utm_content })
     };
     if (utm_workflow) {
       setUtmParams(utmParams);
     }
 
-    const sourceValue = sourceObject
-      ? {
-          ...sourceObject,
-          ...(fastgpt_source ? { fastgpt_source } : {})
-        }
-      : undefined;
-
     setFastGPTSem({
       keyword: k,
       search,
       source: fastgpt_source,
-      home_source: sourceValue,
+      visitor_id,
       ...utmParams
     });
 
