@@ -1,4 +1,4 @@
-import { Readable } from 'node:stream';
+import { PassThrough, Readable } from 'node:stream';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import proxyDownloadHandler from '@/pages/api/system/file/download/[token]';
 import proxyUploadHandler from '@/pages/api/system/file/upload/[token]';
@@ -29,37 +29,36 @@ vi.mock('@fastgpt/service/common/s3/sources/chat', () => ({
 }));
 
 const makeMockStream = () => {
-  const stream = {
-    pipe: vi.fn(),
-    on: vi.fn(() => stream)
-  };
+  const stream = Readable.from([Buffer.from('mock file content')]);
+  vi.spyOn(stream, 'pipe');
   return stream;
 };
 
+const makeMockReq = (overrides: Record<string, unknown>) => ({
+  aborted: false,
+  once: vi.fn(),
+  off: vi.fn(),
+  ...overrides
+});
+
 const makeMockRes = () => {
   const headers: Record<string, string | number> = {};
-  const res = {
+  const res = Object.assign(new PassThrough(), {
     headers,
     statusCode: 200,
     headersSent: false,
-    writableFinished: false,
     setHeader: vi.fn((key: string, value: string | number) => {
       headers[key] = value;
     }),
     getHeader: vi.fn((key: string) => headers[key]),
-    once: vi.fn(() => res),
     status: vi.fn((statusCode: number) => {
       res.statusCode = statusCode;
       return res;
     }),
-    end: vi.fn(() => {
-      res.writableFinished = true;
-    }),
     json: vi.fn(() => {
-      res.writableFinished = true;
-    }),
-    destroy: vi.fn()
-  };
+      res.end();
+    })
+  });
   return res;
 };
 
@@ -88,19 +87,19 @@ describe('system file response content type', () => {
       type: 'download'
     });
 
-    const req = {
+    const req = makeMockReq({
       method: 'GET',
       url: '/api/system/file/download/token',
       headers: {},
       query: { token: 'token' }
-    } as any;
+    }) as any;
     const res = makeMockRes() as any;
 
     await proxyDownloadHandler(req, res);
 
     expect(res.headers['Content-Type']).toBe('text/markdown; charset=utf-8');
     expect(res.headers['Content-Length']).toBe(32);
-    expect(stream.pipe).toHaveBeenCalledWith(res);
+    expect(stream.pipe).toHaveBeenCalledWith(res, expect.any(Object));
   });
 
   it('keeps binary content type unchanged in proxy download mode', async () => {
@@ -122,12 +121,12 @@ describe('system file response content type', () => {
       type: 'download'
     });
 
-    const req = {
+    const req = makeMockReq({
       method: 'GET',
       url: '/api/system/file/download/token',
       headers: {},
       query: { token: 'token' }
-    } as any;
+    }) as any;
     const res = makeMockRes() as any;
 
     await proxyDownloadHandler(req, res);
@@ -193,6 +192,7 @@ describe('system file response content type', () => {
   it('adds utf-8 charset for text files in legacy file entry', async () => {
     const stream = makeMockStream();
     const datasetSource = {
+      bucketName: 'fastgpt-private',
       getFileStream: vi.fn().mockResolvedValue(stream),
       getFileMetadata: vi.fn().mockResolvedValue({
         filename: 'page.html',
@@ -200,18 +200,21 @@ describe('system file response content type', () => {
         contentLength: 128
       })
     };
+    (global as any).s3BucketMap = {
+      'fastgpt-private': datasetSource
+    };
     vi.mocked(getS3DatasetSource).mockReturnValue(datasetSource as any);
     vi.mocked(getS3ChatSource).mockReturnValue({} as any);
     vi.mocked(verifyToken).mockResolvedValue({
       objectKey: 'dataset/team/page.html'
     });
 
-    const req = { query: { jwt: 'jwt' } } as any;
+    const req = makeMockReq({ query: { jwt: 'jwt' } }) as any;
     const res = makeMockRes() as any;
 
     await legacyFileHandler(req, res);
 
     expect(res.headers['Content-Type']).toBe('text/html; charset=utf-8');
-    expect(stream.pipe).toHaveBeenCalledWith(res);
+    expect(stream.pipe).toHaveBeenCalledWith(res, expect.any(Object));
   });
 });

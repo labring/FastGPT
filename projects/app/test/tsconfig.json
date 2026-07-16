@@ -25,7 +25,7 @@
       "@fastgpt/*": ["../../../packages/*"],
       "@test/*": ["../../../test/*"],
 
-      "#fastgpt/app/test/*": ["./*"],
+      "#fastgpt/app/test/*": ["./*"]
     }
   },
   "include": ["**/*.test.ts", "../../../packages/service/**/*.d.ts"],

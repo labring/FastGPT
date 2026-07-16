@@ -866,8 +866,10 @@ describe('runToolCall compression node responses', () => {
       }
     ];
     runAgentLoopMock.mockImplementation(async (options) => {
-      options.onAfterToolCall({
+      options.runtime.emitEvent({
+        type: 'tool_run_end',
         call,
+        rawResponse: '[{"fileUrl":"https://files/report","filename":"report.csv"}]',
         response: '[{"fileUrl":"https://files/report","filename":"report.csv"}]',
         seconds: 0.1,
         fileRefs
