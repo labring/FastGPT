@@ -198,6 +198,7 @@ describe('useToolRunner', () => {
       sourceId: 'app_1',
       userId: 'user_1',
       chatId: 'chat_1',
+      teamId: 'team_1',
       sandboxClient
     });
     expect(result).toEqual({
