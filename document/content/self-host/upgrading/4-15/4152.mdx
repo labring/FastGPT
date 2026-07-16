@@ -26,11 +26,30 @@ V4.15.2 起，`AGENT_ENGINE` 使用新的枚举值。升级前，请按下表修
 
 旧值不再兼容。继续使用 `default` 或 `pi` 会导致环境变量校验失败，FastGPT 无法启动。未配置 `AGENT_ENGINE` 时，可正常启动，系统默认使用 `fastAgent`。
 
+### 修改文件下载模式变量
+
+V4.15.2 新增 `STORAGE_DOWNLOAD_URL_MODE` 环境变量，默认值为 `short-proxy`。
+
+- `short-proxy`：返回 FastGPT 短链，由 FastGPT App 代理文件下载。
+- `short-redirect`：返回 FastGPT 短链，校验后跳转到临时 S3/CDN 地址。
+- `presigned`：直接返回 S3 预签名链接，与此前配置了 `STORAGE_EXTERNAL_ENDPOINT` 时的行为一致。
+
+如果现有部署依赖 S3/CDN 直连下载，请显式配置：
+
+`STORAGE_DOWNLOAD_URL_MODE=presigned`
+
+如需使用短链但不希望文件流量经过 FastGPT App，可配置：
+
+`STORAGE_DOWNLOAD_URL_MODE=short-redirect`
+
+使用 `short-redirect` 时，还需要配置
+`STORAGE_EXTERNAL_ENDPOINT` 或 `STORAGE_S3_CDN_ENDPOINT`。
+
 ## 🚀 新增内容
 
 1. 企业认证/公司认证能力。
 2. 门户页支持选择 AgentV2 应用进行对话。
-3. 文件/图片链接使用短链，降低模型输出异常情况。
+3. 文件上传、下载链接改用短访问链接，减少长链接占用上下文及模型输出异常；已签发的旧版链接仍保持兼容。
 4. 针对无明确后缀的文件链接，进行 buffer 推测后缀，提高文件解析成功率。
 
 ## ⚙️ 优化
@@ -54,6 +73,8 @@ V4.15.2 起，`AGENT_ENGINE` 使用新的枚举值。升级前，请按下表修
 5. 插件市场空 Tag 标签问题
 6. 修复循环运行节点的迭代项和并行运行节点的任务项耗时计算错误，改为分别记录每个子项的实际运行时间，不再累加子节点耗时。
 7. Agent Loop 部分边界情况优化。
+8. 删除正在上传的对话文件时，会同步中止预签名和上传请求，避免已删除文件重新出现或错误更新其他文件。
+9. 修复调用上传、草稿上传及首轮媒体消息场景下，文件持久化、类型或元数据可能丢失的问题。
 
 ## 🛠️ 代码优化
 

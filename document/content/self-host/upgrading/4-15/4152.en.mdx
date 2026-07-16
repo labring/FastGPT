@@ -26,11 +26,30 @@ Starting with V4.15.2, `AGENT_ENGINE` uses new enum values. Update the environme
 
 The previous values are no longer supported. Using `default` or `pi` will fail environment variable validation and prevent FastGPT from starting. If `AGENT_ENGINE` is not set, FastGPT uses `fastAgent` by default.
 
+### Configure the File Download URL Mode
+
+V4.15.2 introduces the `STORAGE_DOWNLOAD_URL_MODE` environment variable, which defaults to `short-proxy`.
+
+- `short-proxy`: Returns a FastGPT short URL and proxies file downloads through the FastGPT App.
+- `short-redirect`: Returns a FastGPT short URL that redirects to a temporary S3/CDN URL after validation.
+- `presigned`: Returns an S3 presigned URL directly, matching the previous behavior when `STORAGE_EXTERNAL_ENDPOINT` was configured.
+
+If your existing deployment relies on direct S3/CDN downloads, explicitly set:
+
+`STORAGE_DOWNLOAD_URL_MODE=presigned`
+
+To use short URLs without routing file traffic through the FastGPT App, set:
+
+`STORAGE_DOWNLOAD_URL_MODE=short-redirect`
+
+When using `short-redirect`, you must also configure
+`STORAGE_EXTERNAL_ENDPOINT` or `STORAGE_S3_CDN_ENDPOINT`.
+
 ## 🚀 New Features
 
 1. Enterprise verification / company verification.
 2. The portal page now supports selecting Agent V2 apps for conversations.
-3. File and image URLs now use short links to reduce malformed model output.
+3. File upload and download URLs now use short access URLs, reducing the context consumed by long URLs and the risk of malformed model output. Previously issued URLs remain supported.
 4. For file URLs without a recognizable extension, FastGPT now infers the file type from the buffer to improve parsing success rates.
 
 ## ⚙️ Improvements
@@ -64,6 +83,8 @@ The previous values are no longer supported. Using `default` or `pi` will fail e
 4. Improved automatic license purchase logic for WeCom edition customers after payment to prevent duplicate or missing license purchases.
 5. Fixed empty Tag labels in the Plugin Marketplace.
 6. Fixed runtime calculations for LoopRun iterations and ParallelRun tasks so each item reports its own elapsed time instead of summing the runtimes of its child steps.
+7. Deleting a chat file while it is uploading now also aborts the presign and upload requests, preventing deleted files from reappearing or incorrectly updating other files.
+8. Fixed cases where file persistence, type, or metadata could be lost during uploads, draft uploads, and first-turn media messages.
 
 ### Agent Loop Fixes
 
