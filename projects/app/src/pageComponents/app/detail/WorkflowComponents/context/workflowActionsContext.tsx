@@ -552,9 +552,21 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
         });
       });
 
-      nodeIdsToRecheck.forEach((nodeId) => scheduleSingleNodeWorkflowCheck(nodeId));
+      if (updateData.length > 1) {
+        scheduleWorkflowCheckOnEdgeChange();
+      } else {
+        nodeIdsToRecheck.forEach((nodeId) => scheduleSingleNodeWorkflowCheck(nodeId));
+      }
     },
-    [setNodes, toast, t, onDelEdge, llmModelMap, scheduleSingleNodeWorkflowCheck]
+    [
+      setNodes,
+      toast,
+      t,
+      onDelEdge,
+      llmModelMap,
+      scheduleSingleNodeWorkflowCheck,
+      scheduleWorkflowCheckOnEdgeChange
+    ]
   );
 
   const contextValue = useMemo(() => {

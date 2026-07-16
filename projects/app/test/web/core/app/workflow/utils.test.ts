@@ -29,7 +29,8 @@ import {
   applyWorkflowStartInputAutoFill,
   revertWorkflowStartInputAutoFill,
   collectWorkflowStartInputAutoFillPatches,
-  collectWorkflowStartAutoFillRevertPatches
+  collectWorkflowStartAutoFillRevertPatches,
+  collectWorkflowStartOutputAutoFillRevertPatches
 } from '@/web/core/workflow/utils';
 import type { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { NodeOutputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
@@ -828,6 +829,74 @@ describe('checkWorkflowNodeIssues', () => {
           .map((patch) => patch.key)
           .sort()
       ).toEqual([NodeInputKeyEnum.fileUrlList, NodeInputKeyEnum.userChatInput].sort());
+    });
+
+    it('开启文件上传后再关闭，应清理自动写入的 userFiles 引用', () => {
+      const aiNode = makeFreshConnectedNode('ai-chat', AiChatModule);
+      const datasetNode = makeFreshConnectedNode('dataset-search', DatasetSearchModule);
+      const edges: Edge[] = [
+        { id: 'e-start-ai', source: 'start', target: 'ai-chat', type: EDGE_TYPE },
+        { id: 'e-ai-dataset', source: 'ai-chat', target: 'dataset-search', type: EDGE_TYPE }
+      ];
+      const nodes = [startNodeWithFiles, aiNode, datasetNode];
+
+      const autoFillPatches = collectWorkflowStartInputAutoFillPatches({
+        nodes,
+        edges,
+        workflowStartNode: startNodeWithFiles.data
+      });
+
+      nodes.forEach((node) => {
+        node.data.inputs = node.data.inputs.map((input) => {
+          const patch = autoFillPatches.find(
+            (item) => item.nodeId === node.data.nodeId && item.key === input.key
+          );
+          return patch ? patch.value : input;
+        });
+      });
+
+      const revertPatches = collectWorkflowStartOutputAutoFillRevertPatches({
+        nodes,
+        edges,
+        workflowStartNode: startNodeWithFiles.data,
+        outputKey: userFilesInput.key
+      });
+
+      expect(revertPatches.map((patch) => `${patch.nodeId}:${patch.key}`).sort()).toEqual(
+        [
+          `ai-chat:${NodeInputKeyEnum.fileUrlList}`,
+          `dataset-search:${NodeInputKeyEnum.datasetSearchInput}`
+        ].sort()
+      );
+
+      nodes.forEach((node) => {
+        node.data.inputs = node.data.inputs.map((input) => {
+          const patch = revertPatches.find(
+            (item) => item.nodeId === node.data.nodeId && item.key === input.key
+          );
+          return patch ? patch.value : input;
+        });
+      });
+
+      expectInputValue(aiNode, NodeInputKeyEnum.fileUrlList, undefined);
+      expectInputValue(datasetNode, NodeInputKeyEnum.datasetSearchInput, [
+        ['start', NodeOutputKeyEnum.userChatInput]
+      ]);
+
+      const result = checkWorkflowNodeIssues({
+        nodes: [startNode, aiNode, datasetNode],
+        edges
+      });
+      expect(
+        result['ai-chat']
+          ?.filter((issue) => issue.inputKey === NodeInputKeyEnum.fileUrlList)
+          .map((issue) => issue.code) ?? []
+      ).not.toContain('invalid_reference');
+      expect(
+        result['dataset-search']
+          ?.filter((issue) => issue.inputKey === NodeInputKeyEnum.datasetSearchInput)
+          .map((issue) => issue.code) ?? []
+      ).not.toContain('invalid_reference');
     });
 
     it('流程开始节点可达的间接下游节点也应自动填充用户问题引用', () => {

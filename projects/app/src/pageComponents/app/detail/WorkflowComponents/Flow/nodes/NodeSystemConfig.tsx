@@ -26,7 +26,10 @@ import { userFilesInput } from '@fastgpt/global/core/workflow/template/system/wo
 import Container from '../components/Container';
 import AutoExecConfig from '@/components/core/app/AutoExecConfig';
 import { WorkflowActionsContext } from '../../context/workflowActionsContext';
-import { collectWorkflowStartInputAutoFillPatches } from '@/web/core/workflow/utils';
+import {
+  collectWorkflowStartInputAutoFillPatches,
+  collectWorkflowStartOutputAutoFillRevertPatches
+} from '@/web/core/workflow/utils';
 
 type ComponentProps = {
   chatConfig: AppChatConfigType;
@@ -300,13 +303,22 @@ function FileSelectConfig({ chatConfig: { fileSelectConfig }, setAppDetail }: Co
               : []),
             ...patches.map((patch) => ({ ...patch, type: 'updateInput' as const }))
           ]);
-        } else {
-          repeatKey &&
-            onChangeNode({
+        } else if (repeatKey) {
+          const patches = collectWorkflowStartOutputAutoFillRevertPatches({
+            nodes,
+            edges,
+            workflowStartNode,
+            outputKey: userFilesInput.key
+          });
+
+          onChangeNode([
+            ...patches.map((patch) => ({ ...patch, type: 'updateInput' as const })),
+            {
               nodeId: workflowStartNode.nodeId,
               type: 'delOutput',
               key: userFilesInput.key
-            });
+            }
+          ]);
         }
       }}
     />

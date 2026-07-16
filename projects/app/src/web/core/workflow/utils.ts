@@ -1336,6 +1336,73 @@ export const collectWorkflowStartAutoFillRevertPatches = ({
 };
 
 /**
+ * 删除流程开始节点的某个输出前，回滚由自动填充写入的对应引用。
+ * 保留仍然有效的自动填充引用，例如关闭文件上传后 datasetSearchInput 仍保留用户问题引用。
+ */
+export const collectWorkflowStartOutputAutoFillRevertPatches = ({
+  nodes,
+  edges,
+  workflowStartNode,
+  outputKey
+}: {
+  nodes: Node<FlowNodeItemType, string | undefined>[];
+  edges: Array<Pick<Edge, 'source' | 'target'>>;
+  workflowStartNode: FlowNodeItemType;
+  outputKey: string;
+}): WorkflowStartAutoFillPatch[] => {
+  if (outputKey !== NodeOutputKeyEnum.userFiles) return [];
+
+  const nodeMap = new Map(nodes.map((node) => [node.data.nodeId, node.data]));
+  const reachableNodeIds = collectWorkflowReachableNodeIds({
+    startNodeId: workflowStartNode.nodeId,
+    edges
+  });
+  const nextWorkflowStartOutputs = workflowStartNode.outputs.filter(
+    (output) => output.key !== outputKey && output.id !== outputKey
+  );
+  const patches: WorkflowStartAutoFillPatch[] = [];
+
+  reachableNodeIds.forEach((nodeId) => {
+    const targetNode = nodeMap.get(nodeId);
+    if (!targetNode) return;
+
+    targetNode.inputs.forEach((input) => {
+      if (
+        !isWorkflowStartAutoFilledValue({
+          inputKey: input.key,
+          value: input.value,
+          workflowStartNodeId: workflowStartNode.nodeId,
+          hasUserFilesOutput: true
+        })
+      ) {
+        return;
+      }
+
+      const nextValue = getWorkflowStartAutoFillValue({
+        inputKey: input.key,
+        workflowStartNodeId: workflowStartNode.nodeId,
+        hasUserFilesOutput: nextWorkflowStartOutputs.some(
+          (output) => output.id === NodeOutputKeyEnum.userFiles
+        )
+      });
+
+      if (isEqual(input.value, nextValue)) return;
+
+      patches.push({
+        nodeId: targetNode.nodeId,
+        key: input.key,
+        value: {
+          ...input,
+          value: nextValue
+        }
+      });
+    });
+  });
+
+  return patches;
+};
+
+/**
  * 结构化校验工作流节点和连线。
  * 函数只读取入参并返回每个节点的错误列表，调用方负责写入 React state、toast 或定位画布。
  */
