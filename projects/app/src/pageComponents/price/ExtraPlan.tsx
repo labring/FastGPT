@@ -1,4 +1,4 @@
-import { Box, Flex, Grid, Button, VStack, HStack } from '@chakra-ui/react';
+import { Box, Flex, Grid, Button, VStack, HStack, type BoxProps } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import React, { useState } from 'react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -16,6 +16,10 @@ import { formatNumberWithUnit } from '@fastgpt/global/common/string/tools';
 import { formatActivityExpirationTime } from './utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { StandardSubLevelEnum } from '@fastgpt/global/support/wallet/sub/constants';
+
+const PLAN_CARD_MAX_WIDTH = '483px';
+const DUAL_CARD_GAP = '20px';
+const DUAL_CARD_CONTAINER_MAX_WIDTH = `calc(${PLAN_CARD_MAX_WIDTH} * 2 + ${DUAL_CARD_GAP})`;
 
 const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
   const { t, i18n } = useTranslation();
@@ -119,21 +123,34 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
     subPlans?.activityExpirationTime
   );
 
+  const planCardProps = {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    w: ['100%', PLAN_CARD_MAX_WIDTH],
+    h: ['auto', '488px'],
+    p: ['16px', '24px 32px'],
+    flexShrink: 0,
+    bg: 'white',
+    borderRadius: 'xl',
+    borderWidth: '1px',
+    borderColor: 'myGray.200',
+    boxShadow: '1.5',
+    overflow: 'hidden'
+  } satisfies BoxProps;
+
   return (
-    <VStack>
-      <Grid gridTemplateColumns={['1fr', '1fr 1fr']} gap={5} w={['100%', 'auto']}>
-        <Box
-          position={'relative'}
-          bg={'white'}
-          w={'100%'}
-          px={[4, 8]}
-          py={[4, 6]}
-          borderRadius={'16px'}
-          borderWidth={'1px'}
-          borderColor={'myGray.200'}
-          boxShadow={'0 1px 2px 0 rgba(19, 51, 107, 0.10), 0 0 1px 0 rgba(19, 51, 107, 0.15)'}
-          overflow={'hidden'}
-        >
+    <VStack w={'100%'} alignItems={'center'}>
+      <Flex
+        w={['100%', DUAL_CARD_CONTAINER_MAX_WIDTH]}
+        maxW={['100%', DUAL_CARD_CONTAINER_MAX_WIDTH]}
+        h={['auto', '488px']}
+        justifyContent={'center'}
+        alignItems={'flex-start'}
+        gap={['16px', DUAL_CARD_GAP]}
+        flexWrap={['wrap', 'nowrap']}
+      >
+        <Box position={'relative'} {...planCardProps}>
           {subPlans?.activityExpirationTime && (
             <>
               <Box
@@ -174,6 +191,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
           <Box
             position={'relative'}
             zIndex={1}
+            w={'100%'}
             fontSize={'18px'}
             fontWeight={'500'}
             color={'primary.700'}
@@ -189,10 +207,12 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
           <Grid
             position={'relative'}
             zIndex={1}
+            w={'100%'}
             gridTemplateColumns={['repeat(2, 1fr)', 'repeat(3, 1fr)']}
             gap={[2, 3]}
             py={[3, 4]}
             minHeight={['180px', '220px']}
+            flex={'1 0 auto'}
           >
             {extraPointsPackages.map((pkg, index) => (
               <Flex
@@ -256,6 +276,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
           <Flex
             position={'relative'}
             zIndex={1}
+            w={'100%'}
             justifyContent={'space-between'}
             alignItems={'center'}
           >
@@ -280,6 +301,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
           <Flex
             position={'relative'}
             zIndex={1}
+            w={'100%'}
             justifyContent={'space-between'}
             alignItems={'center'}
           >
@@ -332,7 +354,14 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
             {t('common:support.wallet.Buy')}
           </Button>
 
-          <HStack position={'relative'} zIndex={1} color={'blue.700'} mt={[4, 6]} spacing={[2, 0]}>
+          <HStack
+            position={'relative'}
+            zIndex={1}
+            w={'100%'}
+            color={'blue.700'}
+            mt={[4, 6]}
+            spacing={[2, 0]}
+          >
             <MyIcon name={'infoRounded'} w={['16px', '18px']} />
             <Box fontSize={['12px', '14px']} fontWeight={'medium'} lineHeight={['1.4', 'normal']}>
               {t('common:support.wallet.subscription.Update extra ai points tips')}
@@ -340,21 +369,15 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
           </HStack>
         </Box>
 
-        {/* dataset */}
-        <Flex
-          bg={'white'}
-          w={'100%'}
-          px={[4, 8]}
-          py={[4, 6]}
-          borderRadius={'16px'}
-          borderColor={'myGray.200'}
-          boxShadow={'0 1px 2px 0 rgba(19, 51, 107, 0.10), 0 0 1px 0 rgba(19, 51, 107, 0.15)'}
-          flexDir="column"
-          borderWidth={'1px'}
-          gap={2}
-        >
-          <Flex borderBottomWidth={'1px'} borderBottomColor={'myGray.200'} pb={[2, 4]}>
-            <Flex flexDir="column" gap={[2, 3]} flex={'1 0 0'}>
+        <Flex position={'relative'} gap={'8px'} {...planCardProps}>
+          <Flex
+            borderBottomWidth={'1px'}
+            borderBottomColor={'myGray.200'}
+            pb={[2, 4]}
+            position={'relative'}
+            w={'100%'}
+          >
+            <Flex flexDir="column" gap={[2, 3]} flex={'1 0 0'} pr={[0, '120px']}>
               <Box fontSize={['16px', '18px', 'lg']} fontWeight={'500'} color={'primary.700'}>
                 {t('common:support.wallet.subscription.Extra dataset size')}
               </Box>
@@ -376,13 +399,17 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
                 {t('common:support.wallet.subscription.Extra dataset description')}
               </Box>
             </Flex>
-            <MyIcon
+            <Box
+              as={'img'}
               display={['none', 'block']}
-              mt={['-20px', '-30px']}
-              transform={['translateX(10px)', 'translateX(20px)']}
-              name={'support/bill/extraDatasetsize'}
-              fill={'none'}
-              w={['60px', 'auto']}
+              position={'absolute'}
+              top={'-30px'}
+              right={0}
+              src={'/imgs/price/extraDatasetIcon.svg'}
+              alt=""
+              w={'152px'}
+              h={'152px'}
+              pointerEvents={'none'}
             />
           </Flex>
 
@@ -471,7 +498,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
             </Flex>
           </Flex>
 
-          <Box mt={['auto', 4]}>
+          <Box mt={['auto', 4]} w={'100%'}>
             <Button
               w={'100%'}
               h={['40px', '44px']}
@@ -500,7 +527,7 @@ const ExtraPlan = ({ onPaySuccess }: { onPaySuccess?: () => void }) => {
             </Flex>
           </Box>
         </Flex>
-      </Grid>
+      </Flex>
 
       {!!qrPayData && (
         <QRCodePayModal
