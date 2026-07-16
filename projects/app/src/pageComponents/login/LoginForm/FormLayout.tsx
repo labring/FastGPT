@@ -46,11 +46,10 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
   const isWecomWorkTerminal = checkIsWecomTerminal();
   const canWecomTerminalAutoRedirect =
     !isWecomWorkTerminal || feConfigs?.wecomLoginAutoRedirect === true;
-  const oauthVerificationV2 = feConfigs?.oauthVerificationV2 === true;
 
   const oAuthList = useMemo<OAuthItem[]>(
     () => [
-      ...(oauthVerificationV2 && feConfigs?.sso?.url
+      ...(feConfigs?.sso?.url
         ? [
             {
               label: feConfigs.sso.title || 'Unknown',
@@ -79,7 +78,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
             }
           ]
         : []),
-      ...(oauthVerificationV2 && feConfigs?.oauth?.google
+      ...(feConfigs?.oauth?.google
         ? [
             {
               label: t('common:support.user.login.Google'),
@@ -88,7 +87,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
             }
           ]
         : []),
-      ...(oauthVerificationV2 && feConfigs?.oauth?.github
+      ...(feConfigs?.oauth?.github
         ? [
             {
               label: t('common:support.user.login.Github'),
@@ -97,7 +96,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
             }
           ]
         : []),
-      ...(oauthVerificationV2 && feConfigs?.oauth?.microsoft
+      ...(feConfigs?.oauth?.microsoft
         ? [
             {
               label:
@@ -109,7 +108,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
           ]
         : [])
     ],
-    [feConfigs, oauthVerificationV2, pageType, t]
+    [feConfigs, pageType, t]
   );
 
   const show_oauth = oAuthList.length > 0;
@@ -156,12 +155,7 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
       void onClickOauth(sso);
       return;
     }
-    if (
-      oauthVerificationV2 &&
-      feConfigs.oauth?.wecom &&
-      isWecomWorkTerminal &&
-      canWecomTerminalAutoRedirect
-    ) {
+    if (feConfigs.oauth?.wecom && isWecomWorkTerminal && canWecomTerminalAutoRedirect) {
       void onClickOauth({
         label: 'Wecom',
         provider: 'wecom',
@@ -172,7 +166,6 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
     rootLogin,
     canWecomTerminalAutoRedirect,
     feConfigs?.sso?.autoLogin,
-    oauthVerificationV2,
     isWecomWorkTerminal,
     onClickOauth,
     oAuthList,

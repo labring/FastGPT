@@ -22,6 +22,10 @@ import { validateRedirectUrl } from '@/web/common/utils/uri';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
 import { useLoginRedirectAfterLogin } from '@/web/support/user/loginRedirect';
 import type { LangEnum } from '@fastgpt/global/common/i18n/type';
+import {
+  resolveOAuthLoginCallback,
+  type ResolvedOAuthLoginCallback
+} from '@/web/support/user/account/verification/oauth';
 
 let isOauthLogging = false;
 
@@ -85,20 +89,16 @@ const provider = () => {
 
   const completeOauthLogin = useCallback(
     async ({
-      code,
-      state,
+      callback,
       props
     }: {
-      code: string;
-      state: string;
+      callback: ResolvedOAuthLoginCallback;
       props: Record<string, string>;
     }) => {
       if (!loginStore) return;
       try {
         const res = await oauthLogin({
-          provider: loginStore.provider,
-          code,
-          state,
+          ...callback,
           props,
           callbackUrl: loginStore.callbackUrl,
           inviterId: getInviterId(),
@@ -153,13 +153,13 @@ const provider = () => {
 
     (async () => {
       const currentCallbackUrl = `${location.origin}/login/provider`;
-      if (
-        !loginStore ||
-        typeof state !== 'string' ||
-        typeof code !== 'string' ||
-        state !== loginStore.state ||
-        loginStore.callbackUrl !== currentCallbackUrl
-      ) {
+      const callback = resolveOAuthLoginCallback({
+        loginStore,
+        code,
+        state,
+        currentCallbackUrl
+      });
+      if (!callback) {
         toast({
           status: 'warning',
           title: t('common:support.user.login.security_failed')
@@ -173,7 +173,7 @@ const provider = () => {
 
       await retryFn(async () => clearToken());
       router.prefetch('/dashboard/agent');
-      await completeOauthLogin({ code, state, props: callbackProps });
+      await completeOauthLogin({ callback, props: callbackProps });
     })();
   }, [
     callbackProps,
