@@ -21,12 +21,13 @@ import {
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { getClientIpFromRequest } from '@fastgpt/service/common/security/clientIp';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
+import { reportCRMVisitorIdentity } from '@fastgpt/service/support/marketing/attribution';
 
 async function handler(
   req: ApiRequestProps<LoginByPasswordBodyType>,
   res: ApiResponseType
 ): Promise<LoginSuccessResponseType> {
-  const { username, password, code, language } = parseApiInput({
+  const { username, password, code, language, fastgpt_sem } = parseApiInput({
     req,
     bodySchema: LoginByPasswordBodySchema
   }).body;
@@ -64,6 +65,12 @@ async function handler(
 
   user.lastLoginTmbId = userDetail.team.tmbId;
   user.language = language;
+  if (fastgpt_sem?.home_source) {
+    user.fastgpt_sem = {
+      ...(user.fastgpt_sem || {}),
+      lastsource: fastgpt_sem.home_source
+    };
+  }
   await user.save();
 
   const token = await createUserSession({
@@ -75,6 +82,13 @@ async function handler(
   });
 
   setCookie(res, token);
+
+  await reportCRMVisitorIdentity({
+    source: fastgpt_sem?.home_source,
+    userId: String(user._id),
+    username: user.username,
+    contact: user.contact
+  });
 
   pushTrack.login({
     type: 'password',

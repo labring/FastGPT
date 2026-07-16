@@ -1,4 +1,6 @@
 import {
+  FastGPTSourceSchema,
+  FastGPTTrackSemSchema,
   type ShortUrlParams,
   type TrackRegisterParams
 } from '@fastgpt/global/support/marketing/type';
@@ -59,15 +61,38 @@ export const removeUtmParams = () => {
   localStorage.removeItem('utm_params');
 };
 
-export const getFastGPTSem = () => {
+export const getFastGPTSem = (): TrackRegisterParams['fastgpt_sem'] => {
   try {
-    return localStorage.getItem('fastgpt_sem')
-      ? JSON.parse(localStorage.getItem('fastgpt_sem')!)
-      : undefined;
+    const value = localStorage.getItem('fastgpt_sem');
+    if (!value) return undefined;
+
+    const result = FastGPTTrackSemSchema.safeParse(JSON.parse(value));
+    return result.success ? result.data : undefined;
   } catch {
     return undefined;
   }
 };
+
+export const parseFastGPTSource = (source?: string | string[]) => {
+  const sourceValue = Array.isArray(source) ? source[0] : source;
+  if (!sourceValue) return undefined;
+
+  try {
+    const result = FastGPTSourceSchema.safeParse(JSON.parse(sourceValue));
+    return result.success ? result.data : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+export const onFastGPTLoginSuccess = async <T>(
+  loginSuccess: (result: T) => void | Promise<void>,
+  result: T
+) => {
+  await loginSuccess(result);
+  removeFastGPTSem();
+};
+
 export const setFastGPTSem = (fastgptSem?: TrackRegisterParams['fastgpt_sem']) => {
   if (!fastgptSem) return;
 

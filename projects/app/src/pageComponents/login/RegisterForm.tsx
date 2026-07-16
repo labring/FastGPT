@@ -13,7 +13,7 @@ import {
   getFastGPTSem,
   getInviterId,
   getMsclkid,
-  removeFastGPTSem
+  onFastGPTLoginSuccess
 } from '@/web/support/marketing/utils';
 import { checkPasswordRule } from '@fastgpt/global/common/string/password';
 import type { LoginSuccessResponseType } from '@fastgpt/global/openapi/support/user/account/login/api';
@@ -64,8 +64,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
         fastgpt_sem: getFastGPTSem(),
         language: i18n.language as LangEnum
       });
-      await loginSuccess(loginResponse);
-      removeFastGPTSem();
+      await onFastGPTLoginSuccess(loginSuccess, loginResponse);
 
       toast({
         status: 'success',

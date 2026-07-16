@@ -60,6 +60,10 @@ export const serviceEnv = createEnv({
     PRO_URL: UrlSchema.optional(),
     PRO_TOKEN: z.string().min(32, 'PRO_TOKEN must be at least 32 characters').optional(),
 
+    // 官网访客归因 CRM；未配置地址时不进行身份上报
+    CRM_API_URL: UrlSchema.optional(),
+    CRM_API_KEY: z.string().optional(),
+
     // Agent sandbox proxy
     AGENT_SANDBOX_PROXY_SECRET: z
       .string()
