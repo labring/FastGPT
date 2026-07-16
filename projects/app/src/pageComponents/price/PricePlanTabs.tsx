@@ -1,20 +1,22 @@
 import React from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 
-type PricePlanTabItem<T extends string> = {
+export type PriceTabType = 'standard' | 'extra';
+
+type PricePlanTabItem = {
   label: string;
-  value: T;
+  value: PriceTabType;
 };
 
 /** 购买套餐页 Tab，按设计稿使用灰底容器和选中白底 pill 样式 */
-const PricePlanTabs = <T extends string>({
+const PricePlanTabs = ({
   list,
   value,
   onChange
 }: {
-  list: PricePlanTabItem<T>[];
-  value: T;
-  onChange: (value: T) => void;
+  list: PricePlanTabItem[];
+  value: PriceTabType;
+  onChange: (value: PriceTabType) => void;
 }) => {
   return (
     <Flex

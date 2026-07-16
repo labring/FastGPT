@@ -16,17 +16,11 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MyLoading from '@fastgpt/web/components/common/MyLoading';
 import PricePlanTabs from '@/pageComponents/price/PricePlanTabs';
 import { SubModeEnum } from '@fastgpt/global/support/wallet/sub/constants';
+import { isPriceTabType, type PriceTabType } from '@/web/support/wallet/sub/constants';
 
-type PriceTabType = 'standard' | 'extra';
-
-const EXTRA_PLAN_HASH = 'extra-plan';
-
-/** 根据 URL hash 解析默认 Tab（如账户页「购买额外套餐」跳转 /price#extra-plan） */
+/** 根据 URL hash 解析 Tab（如账户页「购买额外套餐」跳转 /price#extra） */
 const getTabFromHash = (hash: string): PriceTabType | undefined => {
-  if (hash === EXTRA_PLAN_HASH) {
-    return 'extra';
-  }
-  return undefined;
+  return isPriceTabType(hash) ? hash : undefined;
 };
 
 const PriceBox = () => {
@@ -112,15 +106,15 @@ const PriceBox = () => {
   const isWecomTeam = useMemo(() => !!userInfo?.team?.isWecomTeam, [userInfo?.team?.isWecomTeam]);
   const isLoading = userInfoLoading || teamSubPlanLoading;
 
-  const tabList = useMemo(
+  const tabList = useMemo<Array<{ label: string; value: PriceTabType }>>(
     () => [
       {
         label: t('common:support.wallet.subscription.Basic plan tab'),
-        value: 'standard' as const
+        value: 'standard'
       },
       {
         label: t('common:support.wallet.subscription.Extra points and dataset tab'),
-        value: 'extra' as const
+        value: 'extra'
       }
     ],
     [t]
@@ -183,10 +177,10 @@ const PriceBox = () => {
               </Box>
 
               <Box mt={'32px'}>
-                <PricePlanTabs
+                <PricePlanTabs<PriceTabType>
                   list={tabList}
                   value={activeTab}
-                  onChange={(value) => handleTabChange(value as PriceTabType)}
+                  onChange={handleTabChange}
                 />
               </Box>
 
@@ -198,7 +192,7 @@ const PriceBox = () => {
 
               {activeTab !== 'standard' && (
                 <Box
-                  id={'extra-plan'}
+                  id={'extra'}
                   mt={'16px'}
                   color={'#485264'}
                   fontFamily={'Inter, sans-serif'}
