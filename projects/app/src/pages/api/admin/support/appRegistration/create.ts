@@ -3,7 +3,7 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoAppRegistration } from '@fastgpt/service/support/appRegistration/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import type { ApiRequestProps } from '@fastgpt/next/types';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { getTeamPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
 
 type CreateAppRegistrationBody = {

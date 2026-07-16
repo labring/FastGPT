@@ -2,7 +2,7 @@ import type { NextApiResponse } from 'next';
 import { UpdateHistoryBodySchema } from '@fastgpt/global/openapi/core/chat/history/api';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { NextAPI } from '@/service/middleware/entry';
-import { type ApiRequestProps } from '@fastgpt/next/types';
+import { type ApiRequestProps } from '@fastgpt/next/type';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';

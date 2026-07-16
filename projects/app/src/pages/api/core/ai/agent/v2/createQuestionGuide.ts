@@ -2,7 +2,7 @@ import type { NextApiResponse } from 'next';
 import { pushQuestionGuideUsage } from '@/service/support/wallet/usage/push';
 import { createQuestionGuide } from '@fastgpt/service/core/ai/functions/createQuestionGuide';
 import { authChatTargetCrud } from '@/service/support/permission/auth/chat';
-import { type ApiRequestProps } from '@fastgpt/next/types';
+import { type ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';

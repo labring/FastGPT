@@ -2,7 +2,7 @@ import { getToolList } from '@/service/tool/data';
 import type { PaginationProps, PaginationResponse } from '@fastgpt/global/openapi/api';
 import { type ToolListItemType } from '@fastgpt/global/sdk/fastgpt-plugin';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/types';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { getPkgdownloadURL } from '@/service/s3';
 import {

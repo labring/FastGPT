@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import type { ApiRequestProps } from '@fastgpt/next/types';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { getLogger, LogCategories } from '../logger';
 
 const logger = getLogger(LogCategories.MODULE.API);

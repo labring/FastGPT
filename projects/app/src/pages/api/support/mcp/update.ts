@@ -1,4 +1,4 @@
-import type { ApiRequestProps } from '@fastgpt/next/types';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { authMcp } from '@fastgpt/service/support/permission/mcp/auth';
 import { ReadPermissionVal, WritePermissionVal } from '@fastgpt/global/support/permission/constant';

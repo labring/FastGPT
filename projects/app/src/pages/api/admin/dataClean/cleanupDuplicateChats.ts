@@ -2,7 +2,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import type { ApiRequestProps } from '@fastgpt/next/types';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { BoolSchema, IntSchema } from '@fastgpt/global/common/zod';
 import z from 'zod';
 

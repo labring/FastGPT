@@ -1,7 +1,7 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { MongoSystemTool } from '@fastgpt/service/core/plugin/tool/systemToolSchema';
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/types';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import {
   UpdateWorkflowToolBodySchema,

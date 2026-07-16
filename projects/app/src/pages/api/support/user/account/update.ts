@@ -3,7 +3,7 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { type UserUpdateParams } from '@/types/user';
 
 /* update user info */
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/types';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';

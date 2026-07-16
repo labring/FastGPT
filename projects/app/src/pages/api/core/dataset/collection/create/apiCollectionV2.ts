@@ -12,7 +12,7 @@ import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import type { ApiRequestProps } from '@fastgpt/next/types';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { getApiDatasetRequest } from '@fastgpt/service/core/dataset/apiDataset';
 import type { APIFileItemType } from '@fastgpt/global/core/dataset/apiDataset/type';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';

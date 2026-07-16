@@ -1,6 +1,6 @@
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
-import type { ApiRequestProps } from '@fastgpt/next/types';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { getOpenApiTagMap } from '@fastgpt/service/support/openapi/tag/service';

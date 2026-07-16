@@ -7,34 +7,31 @@ import { vi } from 'vitest';
 
 vi.mock('@fastgpt/service/common/http/entry', async (importOriginal) => {
   const mod = (await importOriginal()) as any;
-  const createApiEntry = vi.fn(
-    ({ beforeCallback = [] }: { beforeCallback?: ((req: any, res: any) => Promise<any>)[] }) => {
-      return (...args: any) => {
-        return async function api(req: any, res: any) {
-          try {
-            await Promise.all(beforeCallback.map((callback) => callback(req, res)));
-            let response = null;
-            for await (const handler of args) {
-              response = await handler(req, res);
-              if (res.writableFinished) {
-                break;
-              }
+  const createApiEntry = vi.fn(() => {
+    return (...args: any) => {
+      return async function api(req: any, res: any) {
+        try {
+          let response = null;
+          for await (const handler of args) {
+            response = await handler(req, res);
+            if (res.writableFinished) {
+              break;
             }
-            return {
-              code: 200,
-              data: response
-            };
-          } catch (error) {
-            return {
-              code: 500,
-              error,
-              url: req.url
-            };
           }
-        };
+          return {
+            code: 200,
+            data: response
+          };
+        } catch (error) {
+          return {
+            code: 500,
+            error,
+            url: req.url
+          };
+        }
       };
-    }
-  );
+    };
+  });
 
   return {
     ...mod,

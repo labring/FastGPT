@@ -1,4 +1,4 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/types';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { pluginTagList } from '@fastgpt/global/sdk/fastgpt-plugin';
 import type { SystemPluginToolTagType } from '@fastgpt/global/core/plugin/type';

@@ -4,7 +4,7 @@ import {
   codeSandbox,
   type SanndboxPackagesResponse
 } from '@fastgpt/service/thirdProvider/codeSandbox';
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/types';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 
 export type ResponseType = SanndboxPackagesResponse;
 

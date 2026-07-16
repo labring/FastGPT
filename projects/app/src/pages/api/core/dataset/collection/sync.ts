@@ -1,7 +1,7 @@
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { type ApiRequestProps } from '@fastgpt/next/types';
+import { type ApiRequestProps } from '@fastgpt/next/type';
 import { syncCollection } from '@fastgpt/service/core/dataset/collection/utils';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {

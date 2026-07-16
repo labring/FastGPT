@@ -5,7 +5,7 @@ import {
   authDatasetCollection
 } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
-import { type ApiRequestProps } from '@fastgpt/next/types';
+import { type ApiRequestProps } from '@fastgpt/next/type';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import {
   UpdateTrainingDataBodySchema,

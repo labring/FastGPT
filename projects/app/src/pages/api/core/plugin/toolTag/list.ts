@@ -1,6 +1,6 @@
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoPluginToolTag } from '@fastgpt/service/core/plugin/tool/tagSchema';
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/types';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { type GetPluginTagListResponse } from '@fastgpt/global/openapi/core/plugin/toolTag/api';
 

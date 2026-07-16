@@ -1,4 +1,4 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/types';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { plusRequest } from '@fastgpt/service/common/api/plusRequest';
 
 export type OutLinkOffiAccountQuery = any;

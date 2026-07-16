@@ -12,7 +12,7 @@ import {
   CollectionTrainingStatusEnum,
   DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import { type ApiRequestProps } from '@fastgpt/next/types';
+import { type ApiRequestProps } from '@fastgpt/next/type';
 import { type PaginationResponse } from '@fastgpt/global/openapi/api';
 import type { DatasetCollectionsListItemType } from '@fastgpt/global/openapi/core/dataset/collection/api';
 import { parsePaginationRequest } from '@fastgpt/service/common/api/pagination';

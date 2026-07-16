@@ -3,7 +3,7 @@ import type { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { NextAPI } from '@/service/middleware/entry';
-import type { ApiRequestProps } from '@fastgpt/next/types';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import {
   GetDatasetPathsQuerySchema,
   GetDatasetPathsResponseSchema,

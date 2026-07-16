@@ -12,7 +12,7 @@ import {
   type UpdatePasswordByOldBodyType,
   type UpdatePasswordByOldResponseType
 } from '@fastgpt/global/openapi/support/user/account/password/api';
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/types';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 
 async function handler(
   req: ApiRequestProps<UpdatePasswordByOldBodyType>,

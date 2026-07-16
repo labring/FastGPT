@@ -1,5 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { type ApiRequestProps } from '@fastgpt/next/types';
+import { type ApiRequestProps } from '@fastgpt/next/type';
 import { keepaliveSandboxSession } from '@fastgpt/service/core/ai/sandbox/interface/session';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import { z } from 'zod';

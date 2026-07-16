@@ -1,5 +1,5 @@
 import { serviceEnv } from '@fastgpt/service/env';
-import type { ApiRequestProps } from '@fastgpt/next/types';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 
 const getHeaderValue = (value?: string | string[]) => (Array.isArray(value) ? value[0] : value);
 

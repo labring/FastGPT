@@ -1,5 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
-import type { ApiRequestProps } from '@fastgpt/next/types';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { assertMCPUrlNotInternal, MCPClient } from '@fastgpt/service/core/app/mcp';
 import { getSecretValue } from '@fastgpt/service/common/secret/utils';
 import {

@@ -1,4 +1,4 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/types';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';

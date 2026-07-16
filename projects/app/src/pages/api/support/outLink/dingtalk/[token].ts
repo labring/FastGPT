@@ -1,4 +1,4 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/types';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 import { NextAPI } from '@/service/middleware/entry';
 

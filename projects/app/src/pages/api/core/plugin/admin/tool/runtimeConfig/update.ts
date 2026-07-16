@@ -1,5 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/types';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { authSystemAdmin } from '@fastgpt/service/support/permission/user/auth';
 import type { UpdateToolRuntimeConfigBodyType } from '@fastgpt/global/openapi/core/plugin/admin/tool/api';
 import { pluginClient } from '@fastgpt/service/thirdProvider/fastgptPlugin';

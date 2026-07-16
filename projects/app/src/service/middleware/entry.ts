@@ -1,5 +1,5 @@
 import { withNextCors } from '@fastgpt/next/middle/cors';
-import type { NextApiRequest, NextApiResponse } from '@fastgpt/next/types';
+import type { NextApiRequest, NextApiResponse } from '@fastgpt/next/type';
 import { createApiEntry } from '@fastgpt/service/common/http/entry';
 import { serviceEnv } from '@fastgpt/service/env';
 

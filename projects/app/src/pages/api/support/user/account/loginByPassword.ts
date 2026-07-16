@@ -18,7 +18,7 @@ import {
   type LoginByPasswordBodyType,
   type LoginSuccessResponseType
 } from '@fastgpt/global/openapi/support/user/account/login/api';
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/types';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { getClientIpFromRequest } from '@fastgpt/service/common/security/clientIp';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 

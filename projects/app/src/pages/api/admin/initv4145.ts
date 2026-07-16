@@ -1,5 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/types';
+import type { ApiRequestProps, ApiResponseType } from '@fastgpt/next/type';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';

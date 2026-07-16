@@ -12,7 +12,7 @@ import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant'
 import { addAuditLog, getI18nSkillType } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';
 import { isValidObjectId } from 'mongoose';
-import type { ApiRequestProps } from '@fastgpt/next/types';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { SkillErrEnum } from '@fastgpt/global/common/error/code/skill';
 
 async function handler(req: ApiRequestProps<Record<string, never>, DeleteSkillQuery>) {

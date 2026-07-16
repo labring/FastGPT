@@ -1,7 +1,7 @@
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import { authOpenApiKeyCrud } from '@fastgpt/service/support/permission/auth/openapi';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import type { ApiRequestProps } from '@fastgpt/next/types';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { addAuditLog } from '@fastgpt/service/support/user/audit/util';
 import { AuditEventEnum } from '@fastgpt/global/support/user/audit/constants';

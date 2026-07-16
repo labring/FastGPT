@@ -1,4 +1,4 @@
-import type { ApiRequestProps } from '@fastgpt/next/types';
+import type { ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { UserError } from '@fastgpt/global/common/error/utils';

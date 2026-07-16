@@ -2,7 +2,7 @@ import type { NextApiResponse } from 'next';
 
 import { pushQuestionGuideUsage } from '@/service/support/wallet/usage/push';
 import { createQuestionGuide } from '@fastgpt/service/core/ai/functions/createQuestionGuide';
-import { type ApiRequestProps } from '@fastgpt/next/types';
+import { type ApiRequestProps } from '@fastgpt/next/type';
 import { NextAPI } from '@/service/middleware/entry';
 import { type AuthModeType } from '@fastgpt/service/support/permission/type';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
