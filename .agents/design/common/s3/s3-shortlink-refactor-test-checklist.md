@@ -28,7 +28,7 @@ P0 测试用例
 - 预期：
   - 只创建 1 条 alias 文档。
   - 多次签发返回同一个 aliasId。
-  - lastIssuedAt 会更新。
+  - 只有进入 lease 刷新安全窗口时，lastIssuedAt 才会随低频续租更新。
   - purgeAt 只会往后延，不会被更短过期时间缩短。
 
 3. 下载短链变体隔离

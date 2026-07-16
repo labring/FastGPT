@@ -72,6 +72,109 @@ describe('S3 access link SDK core', () => {
     expect(payload.expiresAt).toBeInstanceOf(Date);
   });
 
+  it('reports download URL HMAC and store timing without affecting issuance', async () => {
+    const onDownloadUrlTiming = vi.fn();
+    const { service } = createDeterministicService({ onDownloadUrlTiming });
+    const params = {
+      bucketName: 'private',
+      objectKey: 'dataset/team-1/file.png',
+      filename: 'file.png',
+      responseContentType: 'image/png',
+      expiredTime: getFutureDate(10)
+    };
+
+    await service.createDownloadUrl(params);
+    await service.createDownloadUrl(params);
+
+    expect(onDownloadUrlTiming).toHaveBeenCalledTimes(2);
+    expect(onDownloadUrlTiming).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        aliasReused: false,
+        duplicateAliasRetry: false,
+        leaseTouched: false,
+        totalDurationMs: expect.any(Number),
+        hmacDurationMs: expect.any(Number),
+        storeIoDurationMs: expect.any(Number),
+        storeTouchLeaseDurationMs: 0
+      })
+    );
+    expect(onDownloadUrlTiming).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        aliasReused: true,
+        duplicateAliasRetry: false,
+        leaseTouched: false,
+        storeCreateDurationMs: 0,
+        storeTouchLeaseDurationMs: 0
+      })
+    );
+  });
+
+  it('refreshes an alias lease only when it approaches the requested expiry', async () => {
+    const stores = createMemoryS3AccessLinkStores();
+    const touchLease = vi.fn(stores.downloadAliasStore.touchLease);
+    const onDownloadUrlTiming = vi.fn();
+    let now = new Date(baseNow);
+    const { service } = createDeterministicService({
+      clock: () => now,
+      stores: {
+        downloadAlias: {
+          ...stores.downloadAliasStore,
+          touchLease
+        },
+        uploadSession: stores.uploadSessionStore
+      },
+      onDownloadUrlTiming
+    });
+    const params = {
+      bucketName: 'private',
+      objectKey: 'dataset/team-1/file.png'
+    };
+
+    await service.createDownloadUrl({
+      ...params,
+      expiredTime: new Date(now.getTime() + 10 * 60_000)
+    });
+    await service.createDownloadUrl({
+      ...params,
+      expiredTime: new Date(now.getTime() + 10 * 60_000)
+    });
+
+    expect(touchLease).not.toHaveBeenCalled();
+
+    now = new Date(baseNow.getTime() + 23 * 60 * 60_000);
+    await service.createDownloadUrl({
+      ...params,
+      expiredTime: new Date(now.getTime() + 10 * 60_000)
+    });
+
+    expect(touchLease).toHaveBeenCalledTimes(1);
+    expect(onDownloadUrlTiming).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        aliasReused: true,
+        leaseTouched: true,
+        storeTouchLeaseDurationMs: expect.any(Number)
+      })
+    );
+  });
+
+  it('does not fail download URL issuance when the timing callback throws', async () => {
+    const { service } = createDeterministicService({
+      onDownloadUrlTiming: () => {
+        throw new Error('telemetry unavailable');
+      }
+    });
+
+    await expect(
+      service.createDownloadUrl({
+        bucketName: 'private',
+        objectKey: 'dataset/team-1/file.png',
+        expiredTime: getFutureDate(10)
+      })
+    ).resolves.toContain('https://file.example.com/d/');
+  });
+
   it('rejects expired download aliases before querying the store', async () => {
     const findByAliasId = vi.fn<S3DownloadAliasStore['findByAliasId']>();
     const stores = createMemoryS3AccessLinkStores();

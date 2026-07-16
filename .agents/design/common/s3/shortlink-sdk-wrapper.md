@@ -167,7 +167,7 @@ export const createS3AccessLinkService = (options: CreateS3AccessLinkServiceOpti
   -> store.findByAliasKey(aliasKey)
   -> 不存在则 store.create(aliasId, aliasKey, payload, purgeAt)
      -> 遇到 duplicate_alias_key 则重新 findByAliasKey(aliasKey)
-  -> store.touchLease(aliasId, purgeAt, lastIssuedAt)
+  -> 仅当现有 purgeAt 不足以覆盖新链接过期时间与安全窗口时 store.touchLease(...)
   -> sig = HMAC(secret, `s3-download:v1:${aliasId}:${expMinute36}`).slice(0, signatureLength)
   -> routes.buildDownloadUrl(`${aliasId}.${expMinute36}.${sig}`)
 ```

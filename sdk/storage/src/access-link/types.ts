@@ -144,6 +144,21 @@ export type S3ProxyUploadPayload = {
 
 export type UploadSessionUsePolicy = 'allow-retry' | 'mark-used' | 'reject-used';
 
+/** 短下载链接签发各阶段耗时，供运行时接入日志或指标系统。 */
+export type S3DownloadUrlTiming = {
+  totalDurationMs: number;
+  hmacDurationMs: number;
+  aliasKeyHmacDurationMs: number;
+  signatureHmacDurationMs: number;
+  storeIoDurationMs: number;
+  storeFindDurationMs: number;
+  storeCreateDurationMs: number;
+  storeTouchLeaseDurationMs: number;
+  aliasReused: boolean;
+  duplicateAliasRetry: boolean;
+  leaseTouched: boolean;
+};
+
 export type CreateS3AccessLinkServiceOptions = {
   secret: string;
   routes: S3AccessLinkRoutes;
@@ -151,6 +166,7 @@ export type CreateS3AccessLinkServiceOptions = {
   clock?: S3AccessLinkClock;
   idGenerator?: Partial<S3AccessLinkIdGenerator>;
   uploadSessionUsePolicy?: UploadSessionUsePolicy;
+  onDownloadUrlTiming?: (timing: S3DownloadUrlTiming) => void;
 };
 
 export type S3AccessLinkService = {

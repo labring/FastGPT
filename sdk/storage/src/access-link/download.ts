@@ -1,5 +1,6 @@
 import {
   S3_ACCESS_LINK_PURGE_GRACE_HOURS,
+  S3_DOWNLOAD_ALIAS_LEASE_REFRESH_MARGIN_MS,
   S3_DOWNLOAD_ALIAS_ID_LENGTH,
   S3_DOWNLOAD_SIGNATURE_LENGTH
 } from './constants';
@@ -21,8 +22,21 @@ import type {
   CreateS3DownloadAccessUrlParams,
   ParsedS3SignedDownloadAlias,
   ResolvedS3AccessLinkServiceOptions,
+  S3DownloadUrlTiming,
   S3VerifiedDownloadPayload
 } from './types';
+
+/** 可观测性回调不能影响短链签发结果。 */
+const emitDownloadUrlTiming = (
+  callback: ResolvedS3AccessLinkServiceOptions['onDownloadUrlTiming'],
+  timing: S3DownloadUrlTiming
+) => {
+  try {
+    callback?.(timing);
+  } catch {
+    // Ignore telemetry callback failures.
+  }
+};
 
 const parseSignedS3DownloadAliasValue = (value: string): ParsedS3SignedDownloadAlias => {
   assertSignedAliasFormat(value);
@@ -78,53 +92,108 @@ export const createDownloadUrlHandler =
     clock,
     crypto,
     idGenerator,
+    onDownloadUrlTiming,
     routes,
     stores
   }: ResolvedS3AccessLinkServiceOptions & { crypto: S3AccessLinkCrypto }) =>
   async (params: CreateS3DownloadAccessUrlParams) => {
+    const totalStartedAt = performance.now();
+    let storeFindDurationMs = 0;
+    let storeCreateDurationMs = 0;
+    let storeTouchLeaseDurationMs = 0;
+    let duplicateAliasRetry = false;
+    let leaseTouched = false;
+
+    const findByAliasKey = async (aliasKey: string) => {
+      const startedAt = performance.now();
+      try {
+        return await stores.downloadAlias.findByAliasKey(aliasKey);
+      } finally {
+        storeFindDurationMs += performance.now() - startedAt;
+      }
+    };
+
     const parsed = assertCreateDownloadParams(params);
     const now = clock();
     const expiresAt = resolveDownloadExpiresAt(parsed.expiredTime, now);
     const expMinute36 = encodeExpiresAtMinute(expiresAt);
     const purgeAt = addHours(expiresAt, S3_ACCESS_LINK_PURGE_GRACE_HOURS);
+    const aliasKeyHmacStartedAt = performance.now();
     const aliasKey = crypto.buildDownloadAliasKey(parsed);
-    const existingAlias = await stores.downloadAlias.findByAliasKey(aliasKey);
+    const aliasKeyHmacDurationMs = performance.now() - aliasKeyHmacStartedAt;
+    const existingAlias = await findByAliasKey(aliasKey);
     const alias =
       existingAlias ??
-      (await stores.downloadAlias
-        .create({
-          aliasId: idGenerator.aliasId(),
-          aliasKey,
-          bucketName: parsed.bucketName,
-          objectKey: parsed.objectKey,
-          filename: parsed.filename,
-          responseContentType: parsed.responseContentType,
-          lastIssuedAt: now,
-          purgeAt
-        })
-        .catch(async (error) => {
-          if (isS3AccessLinkError(error) && error.code === S3AccessLinkErrCode.duplicateAliasKey) {
-            return stores.downloadAlias.findByAliasKey(aliasKey);
-          }
-          throw error;
-        }));
+      (await (async () => {
+        const startedAt = performance.now();
+        try {
+          return await stores.downloadAlias.create({
+            aliasId: idGenerator.aliasId(),
+            aliasKey,
+            bucketName: parsed.bucketName,
+            objectKey: parsed.objectKey,
+            filename: parsed.filename,
+            responseContentType: parsed.responseContentType,
+            lastIssuedAt: now,
+            purgeAt
+          });
+        } finally {
+          storeCreateDurationMs += performance.now() - startedAt;
+        }
+      })().catch(async (error) => {
+        if (isS3AccessLinkError(error) && error.code === S3AccessLinkErrCode.duplicateAliasKey) {
+          duplicateAliasRetry = true;
+          return findByAliasKey(aliasKey);
+        }
+        throw error;
+      }));
 
     if (!alias) {
       throw new S3AccessLinkError(S3AccessLinkErrCode.downloadAliasNotFound);
     }
 
-    await stores.downloadAlias.touchLease({
-      aliasId: alias.aliasId,
-      purgeAt,
-      lastIssuedAt: now
-    });
+    // create 已写入 24 小时 grace；复用时消费这段余量，只在接近链接有效期边界时低频续租。
+    const leaseRefreshThreshold = expiresAt.getTime() + S3_DOWNLOAD_ALIAS_LEASE_REFRESH_MARGIN_MS;
+    if (alias.purgeAt.getTime() <= leaseRefreshThreshold) {
+      const touchLeaseStartedAt = performance.now();
+      try {
+        await stores.downloadAlias.touchLease({
+          aliasId: alias.aliasId,
+          purgeAt,
+          lastIssuedAt: now
+        });
+        leaseTouched = true;
+      } finally {
+        storeTouchLeaseDurationMs += performance.now() - touchLeaseStartedAt;
+      }
+    }
 
+    const signatureHmacStartedAt = performance.now();
     const sig = crypto.signDownloadAlias({
       aliasId: alias.aliasId,
       expMinute36
     });
+    const signatureHmacDurationMs = performance.now() - signatureHmacStartedAt;
+    const url = routes.buildDownloadUrl(`${alias.aliasId}.${expMinute36}.${sig}`);
+    const hmacDurationMs = aliasKeyHmacDurationMs + signatureHmacDurationMs;
+    const storeIoDurationMs =
+      storeFindDurationMs + storeCreateDurationMs + storeTouchLeaseDurationMs;
 
-    return routes.buildDownloadUrl(`${alias.aliasId}.${expMinute36}.${sig}`);
+    emitDownloadUrlTiming(onDownloadUrlTiming, {
+      totalDurationMs: performance.now() - totalStartedAt,
+      hmacDurationMs,
+      aliasKeyHmacDurationMs,
+      signatureHmacDurationMs,
+      storeIoDurationMs,
+      storeFindDurationMs,
+      storeCreateDurationMs,
+      storeTouchLeaseDurationMs,
+      aliasReused: Boolean(existingAlias),
+      duplicateAliasRetry,
+      leaseTouched
+    });
+
+    return url;
   };
 
 export const verifyDownloadAliasHandler =
