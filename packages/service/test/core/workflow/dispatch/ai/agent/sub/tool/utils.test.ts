@@ -4,6 +4,7 @@ import {
   FlowNodeInputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { getAgentRuntimeTools } from '@fastgpt/service/core/workflow/dispatch/ai/agent/sub/tool/utils';
 import type { NodeToolConfigType } from '@fastgpt/global/core/workflow/type/node';
 
@@ -175,6 +176,26 @@ const createToolsetApp = ({
   chatConfig: {}
 });
 
+const createPersonalApp = ({
+  id,
+  type
+}: {
+  id: string;
+  type: AppTypeEnum.simple | AppTypeEnum.chatAgent | AppTypeEnum.workflow;
+}) => ({
+  _id: id,
+  teamId: 'team_1',
+  tmbId: 'tmb_1',
+  type,
+  name: `${id} name`,
+  avatar: `${id}.png`,
+  intro: `${id} intro`,
+  updateTime: new Date(),
+  modules: [],
+  edges: [],
+  chatConfig: {}
+});
+
 describe('getAgentRuntimeTools schema loading', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -271,8 +292,33 @@ describe('getAgentRuntimeTools schema loading', () => {
           toolList: [httpToolWithLeadingSlash]
         }
       }
-    })
+    }),
+    simple_app: createPersonalApp({ id: 'simple_app', type: AppTypeEnum.simple }),
+    chat_agent_app: createPersonalApp({
+      id: 'chat_agent_app',
+      type: AppTypeEnum.chatAgent
+    }),
+    workflow_app: createPersonalApp({ id: 'workflow_app', type: AppTypeEnum.workflow })
   };
+
+  it.each(['simple_app', 'chat_agent_app', 'workflow_app'] as const)(
+    'loads %s as a callable tool with agent-generated user input',
+    async (appId) => {
+      const tools = await getAgentRuntimeTools({
+        tmbId: 'tmb_1',
+        tools: [{ id: appId, config: {} }]
+      });
+
+      expect(tools).toHaveLength(1);
+      expect(tools[0].requestSchema.function.parameters).toMatchObject({
+        type: 'object',
+        properties: {
+          [NodeInputKeyEnum.userChatInput]: expect.any(Object)
+        }
+      });
+      expect(tools[0].agentGeneratedInputKeys).toContain(NodeInputKeyEnum.userChatInput);
+    }
+  );
 
   it('loads MCP toolset children with their input schema', async () => {
     const tools = await getAgentRuntimeTools({
