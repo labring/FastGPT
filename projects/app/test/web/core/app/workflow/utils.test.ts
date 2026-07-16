@@ -23,7 +23,6 @@ import {
   filterSelectableWorkflowNodeOutputs,
   workflowReferenceValueIsSelectable,
   checkWorkflowNodeIssues,
-  checkWorkflowNodeAndConnection,
   checkWorkflowHasError,
   checkWorkflowBeforeRunOrPublish,
   getWorkflowCheckErrorNodeIds,
@@ -388,24 +387,30 @@ describe('checkWorkflowNodeIssues', () => {
     expect(requiredResult.required[0]?.message).toBe('需填写必填项 answer');
   });
 
-  it('reports inactive and offline tools', () => {
-    const inactiveNode = makeNode('inactive', FlowNodeTypeEnum.appModule, {
+  it('does not treat non-latest tool versions as inactive', () => {
+    const nonLatestNode = makeNode('non-latest', FlowNodeTypeEnum.appModule, {
       pluginData: {} as any,
       isLatestVersion: false
     });
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, nonLatestNode],
+      edges: [{ id: 'e1', source: 'start', target: 'non-latest', type: EDGE_TYPE }]
+    });
+
+    expect(result['non-latest']?.map((issue) => issue.code) ?? []).not.toContain('tool_inactive');
+  });
+
+  it('reports offline tools', () => {
     const offlineNode = makeNode('offline', FlowNodeTypeEnum.appModule, {
       status: PluginStatusEnum.Offline
     });
 
     const result = checkWorkflowNodeIssues({
-      nodes: [startNode, inactiveNode, offlineNode],
-      edges: [
-        { id: 'e1', source: 'start', target: 'inactive', type: EDGE_TYPE },
-        { id: 'e2', source: 'start', target: 'offline', type: EDGE_TYPE }
-      ]
+      nodes: [startNode, offlineNode],
+      edges: [{ id: 'e1', source: 'start', target: 'offline', type: EDGE_TYPE }]
     });
 
-    expect(result.inactive.map((issue) => issue.code)).toContain('tool_inactive');
     expect(result.offline.map((issue) => issue.code)).toContain('tool_offline');
   });
 
@@ -1202,6 +1207,68 @@ describe('checkWorkflowNodeIssues', () => {
     );
   });
 
+  it('checks only the requested node while preserving graph context', () => {
+    const requiredNode = makeNode('required', FlowNodeTypeEnum.answerNode, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.answerText,
+          label: 'answer',
+          required: true,
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.input],
+          value: ''
+        }
+      ]
+    });
+    const validNode = makeNode('valid', FlowNodeTypeEnum.answerNode);
+
+    const result = checkWorkflowNodeIssues({
+      nodes: [startNode, requiredNode, validNode],
+      edges: [
+        { id: 'e1', source: 'start', target: 'required', type: EDGE_TYPE },
+        { id: 'e2', source: 'start', target: 'valid', type: EDGE_TYPE }
+      ],
+      nodeId: 'valid'
+    });
+
+    expect(result.required).toBeUndefined();
+    expect(result.valid).toBeUndefined();
+  });
+
+  it('returns all error node ids from the structured run/publish check', () => {
+    const firstNode = makeNode('first', FlowNodeTypeEnum.answerNode, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.answerText,
+          label: 'answer',
+          required: true,
+          valueType: WorkflowIOValueTypeEnum.string,
+          renderTypeList: [FlowNodeInputTypeEnum.input],
+          value: ''
+        }
+      ]
+    });
+    const secondNode = makeNode('second', FlowNodeTypeEnum.formInput, {
+      inputs: [
+        {
+          key: NodeInputKeyEnum.userInputForms,
+          renderTypeList: [FlowNodeInputTypeEnum.custom],
+          value: []
+        }
+      ]
+    });
+    const nodes = [startNode, firstNode, secondNode];
+    const edges = [
+      { id: 'e1', source: 'start', target: 'first', type: EDGE_TYPE },
+      { id: 'e2', source: 'start', target: 'second', type: EDGE_TYPE }
+    ];
+
+    const result = checkWorkflowBeforeRunOrPublish({ nodes, edges });
+
+    expect(result.errorNodeIds).toEqual(['first', 'second']);
+    expect(result.firstErrorNodeId).toBe('first');
+  });
+
   it('reports specific node configuration errors for ifElse, classify, code and extract', () => {
     const ifElseNode = makeNode('ifElse', FlowNodeTypeEnum.ifElseNode, {
       inputs: [
@@ -1875,9 +1942,20 @@ describe('getNodeAllSource', () => {
   });
 });
 
-describe('checkWorkflowNodeAndConnection', () => {
+describe('checkWorkflowBeforeRunOrPublish', () => {
+  const getErrorNodeIds = ({
+    nodes,
+    edges
+  }: {
+    nodes: Node<FlowNodeItemType, string | undefined>[];
+    edges: Edge[];
+  }) => {
+    const { errorNodeIds } = checkWorkflowBeforeRunOrPublish({ nodes, edges });
+    return errorNodeIds.length > 0 ? errorNodeIds : undefined;
+  };
+
   it('should validate nodes and connections', () => {
-    const nodes: Node[] = [
+    const nodes: Node<FlowNodeItemType>[] = [
       {
         id: 'node1',
         type: FlowNodeTypeEnum.formInput,
@@ -1907,12 +1985,12 @@ describe('checkWorkflowNodeAndConnection', () => {
       }
     ];
 
-    const result = checkWorkflowNodeAndConnection({ nodes, edges });
+    const result = getErrorNodeIds({ nodes, edges });
     expect(result).toEqual(['node1']);
   });
 
   it('should handle empty nodes and edges', () => {
-    const result = checkWorkflowNodeAndConnection({ nodes: [], edges: [] });
+    const result = getErrorNodeIds({ nodes: [], edges: [] });
     expect(result).toBeUndefined();
   });
 
@@ -1996,7 +2074,7 @@ describe('checkWorkflowNodeAndConnection', () => {
         makeLoopRunNode(LoopRunModeEnum.conditional, ['start1']),
         makeChild('start1', FlowNodeTypeEnum.loopRunStart)
       ];
-      const result = checkWorkflowNodeAndConnection({
+      const result = getErrorNodeIds({
         nodes,
         edges: [wsToLoop, stubEdge('start1')]
       });
@@ -2016,7 +2094,7 @@ describe('checkWorkflowNodeAndConnection', () => {
         target: 'break1',
         type: EDGE_TYPE
       };
-      const result = checkWorkflowNodeAndConnection({
+      const result = getErrorNodeIds({
         nodes,
         edges: [wsToLoop, startToBreak]
       });
@@ -2030,11 +2108,11 @@ describe('checkWorkflowNodeAndConnection', () => {
         makeChild('start1', FlowNodeTypeEnum.loopRunStart),
         makeChild('break1', FlowNodeTypeEnum.loopRunBreak) // 属于别的 loopRun
       ];
-      const result = checkWorkflowNodeAndConnection({
+      const result = getErrorNodeIds({
         nodes,
         edges: [wsToLoop, stubEdge('start1'), stubEdge('break1')]
       });
-      expect(result).toEqual(['loop1']);
+      expect(result).toEqual(['loop1', 'break1']);
     });
 
     it('数组模式不强制要求 loopRunBreak', () => {
@@ -2043,7 +2121,7 @@ describe('checkWorkflowNodeAndConnection', () => {
       const arrInput = loop.data.inputs.find((i) => i.key === NodeInputKeyEnum.loopRunInputArray)!;
       arrInput.value = [[VARIABLE_NODE_ID, 'bar']];
       const nodes = [workflowStart, loop, makeChild('start1', FlowNodeTypeEnum.loopRunStart)];
-      const result = checkWorkflowNodeAndConnection({
+      const result = getErrorNodeIds({
         nodes,
         edges: [wsToLoop, stubEdge('start1')]
       });
@@ -2065,7 +2143,7 @@ describe('checkWorkflowNodeAndConnection', () => {
         target: 'break1',
         type: EDGE_TYPE
       };
-      const result = checkWorkflowNodeAndConnection({
+      const result = getErrorNodeIds({
         nodes,
         edges: [wsToLoop, startToBreak]
       });
@@ -2116,7 +2194,7 @@ describe('checkWorkflowNodeAndConnection', () => {
     const connectedEdges: Edge[] = [{ id: 'e1', source: 's1', target: 'u1', type: EDGE_TYPE }];
 
     const run = (updateList: any[]) =>
-      checkWorkflowNodeAndConnection({
+      getErrorNodeIds({
         nodes: [startNode, makeVarUpdateNode(updateList)],
         edges: connectedEdges
       });

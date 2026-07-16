@@ -29,7 +29,7 @@ import { useBeforeunload } from '@fastgpt/web/hooks/useBeforeunload';
 import { isProduction } from '@fastgpt/global/common/system/constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import {
-  checkWorkflowNodeAndConnection,
+  checkWorkflowBeforeRunOrPublish,
   storeEdge2RenderEdge,
   storeNode2FlowNode
 } from '@/web/core/workflow/utils';
@@ -290,15 +290,15 @@ const Header = ({
                     const nodes = storeNodes.map((item) => storeNode2FlowNode({ item, t }));
                     const edges = storeEdges.map((item) => storeEdge2RenderEdge({ edge: item }));
 
-                    const checkResults = checkWorkflowNodeAndConnection({ nodes, edges });
+                    const checkResults = checkWorkflowBeforeRunOrPublish({ nodes, edges, t });
 
-                    if (checkResults) {
+                    if (checkResults.hasError) {
                       toast({
                         title: t('app:app.error.publish_unExist_app'),
                         status: 'warning'
                       });
                     }
-                    return !checkResults;
+                    return !checkResults.hasError;
                   }}
                 />
               </>

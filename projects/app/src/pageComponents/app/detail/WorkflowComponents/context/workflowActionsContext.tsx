@@ -107,10 +107,8 @@ export const WorkflowActionsContext = createContext<WorkflowActionsContextValue>
     void args;
     throw new Error('Function not implemented.');
   },
-  onRefreshSingleNodeWorkflowCheckIssues: (
-    ...args: Parameters<WorkflowActionsContextValue['onRefreshSingleNodeWorkflowCheckIssues']>
-  ) => {
-    void args;
+  onRefreshSingleNodeWorkflowCheckIssues: (nodeId: string) => {
+    void nodeId;
     throw new Error('Function not implemented.');
   },
   onRemoveError: () => {
@@ -179,7 +177,7 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
     [setEdges]
   );
 
-  // 更新节点错误状态；标红时仅保留一个节点的 isError，与原版 fail-fast 行为一致。
+  // 更新节点错误状态；标红时仅保留一个节点的 isError，避免多个节点同时进入选中错误态。
   const onUpdateNodeError = useCallback(
     (nodeId: string, isError: boolean) => {
       setNodes((state) =>
@@ -240,15 +238,32 @@ export const WorkflowActionsProvider = ({ children }: { children: React.ReactNod
 
   /** 单节点配置变更后防抖重校验，仅同步问题文案，不自动标红。 */
   const onRefreshSingleNodeWorkflowCheckIssues = useCallback(
-    (
-      ...args: Parameters<WorkflowActionsContextValue['onRefreshSingleNodeWorkflowCheckIssues']>
-    ) => {
-      void args;
+    (nodeId: string) => {
       const nodes = getNodes();
-      const issueMap = checkWorkflowNodeIssues({ nodes, edges, t });
-      onSyncWorkflowCheckIssues(issueMap);
+      const issueMap = checkWorkflowNodeIssues({ nodes, edges, nodeId, t });
+
+      setNodes((state) =>
+        state.map((item) => {
+          if (item.data.nodeId !== nodeId) return item;
+
+          const issues = issueMap[nodeId];
+          const nextIssues = issues?.length ? issues : undefined;
+
+          if (JSON.stringify(item.data.workflowCheckIssues) === JSON.stringify(nextIssues)) {
+            return item;
+          }
+
+          return {
+            ...item,
+            data: {
+              ...item.data,
+              workflowCheckIssues: nextIssues
+            }
+          };
+        })
+      );
     },
-    [edges, getNodes, onSyncWorkflowCheckIssues, t]
+    [edges, getNodes, setNodes, t]
   );
 
   /** 节点配置变更后防抖触发单节点重新校验，避免每次输入都同步扫描。 */
