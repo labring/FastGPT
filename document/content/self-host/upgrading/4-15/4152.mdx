@@ -32,18 +32,12 @@ V4.15.2 新增 `STORAGE_DOWNLOAD_URL_MODE` 环境变量，默认值为 `short-pr
 
 - `short-proxy`：返回 FastGPT 短链，由 FastGPT App 代理文件下载。
 - `short-redirect`：返回 FastGPT 短链，校验后跳转到临时 S3/CDN 地址。
-- `presigned`：直接返回 S3 预签名链接，与此前配置了 `STORAGE_EXTERNAL_ENDPOINT` 时的行为一致。
-
-如果现有部署依赖 S3/CDN 直连下载，请显式配置：
-
-`STORAGE_DOWNLOAD_URL_MODE=presigned`
 
 如需使用短链但不希望文件流量经过 FastGPT App，可配置：
 
 `STORAGE_DOWNLOAD_URL_MODE=short-redirect`
 
-使用 `short-redirect` 时，还需要配置
-`STORAGE_EXTERNAL_ENDPOINT` 或 `STORAGE_S3_CDN_ENDPOINT`。
+使用 `short-redirect` 时，必须配置 `STORAGE_EXTERNAL_ENDPOINT`。
 
 ## 🚀 新增内容
 

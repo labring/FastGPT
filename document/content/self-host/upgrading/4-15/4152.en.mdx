@@ -32,18 +32,12 @@ V4.15.2 introduces the `STORAGE_DOWNLOAD_URL_MODE` environment variable, which d
 
 - `short-proxy`: Returns a FastGPT short URL and proxies file downloads through the FastGPT App.
 - `short-redirect`: Returns a FastGPT short URL that redirects to a temporary S3/CDN URL after validation.
-- `presigned`: Returns an S3 presigned URL directly, matching the previous behavior when `STORAGE_EXTERNAL_ENDPOINT` was configured.
-
-If your existing deployment relies on direct S3/CDN downloads, explicitly set:
-
-`STORAGE_DOWNLOAD_URL_MODE=presigned`
 
 To use short URLs without routing file traffic through the FastGPT App, set:
 
 `STORAGE_DOWNLOAD_URL_MODE=short-redirect`
 
-When using `short-redirect`, you must also configure
-`STORAGE_EXTERNAL_ENDPOINT` or `STORAGE_S3_CDN_ENDPOINT`.
+When using `short-redirect`, you must configure `STORAGE_EXTERNAL_ENDPOINT`.
 
 ## 🚀 New Features
 
