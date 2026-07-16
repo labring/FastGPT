@@ -31,7 +31,7 @@ const getTabFromHash = (hash: string): PriceTabType | undefined => {
 
 const PriceBox = () => {
   const { initUserInfo } = useUserStore();
-  const { t } = useTranslation();
+  const { t } = useTranslation(['common', 'user']);
   const { subPlans } = useSystemStore();
   const router = useRouter();
 

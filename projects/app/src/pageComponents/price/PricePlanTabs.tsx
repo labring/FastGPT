@@ -6,7 +6,7 @@ type PricePlanTabItem<T extends string> = {
   value: T;
 };
 
-/** 购买套餐页 Tab，选中项为圆角 pill 白底样式 */
+/** 购买套餐页 Tab，按设计稿使用灰底容器和选中白底 pill 样式 */
 const PricePlanTabs = <T extends string>({
   list,
   value,
@@ -23,7 +23,7 @@ const PricePlanTabs = <T extends string>({
       alignItems={'flex-start'}
       gap={'8px'}
       borderRadius={'full'}
-      bg={'#F5F6F8'}
+      bg={'myGray.150'}
     >
       {list.map((item) => {
         const isActive = value === item.value;
@@ -50,7 +50,7 @@ const PricePlanTabs = <T extends string>({
             }}
           >
             <Box
-              color={'#475569'}
+              color={isActive ? 'myGray.900' : '#475569'}
               textAlign={'center'}
               fontFamily={'Inter, sans-serif'}
               fontSize={'14px'}
