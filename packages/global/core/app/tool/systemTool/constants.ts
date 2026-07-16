@@ -32,3 +32,6 @@ export enum SystemToolSystemSecretStatusEnum {
   configured = 'configured',
   unconfigured = 'unconfigured'
 }
+
+/** 管理员配置页使用的 write-only 标记，表示该字段已有系统密钥但不回显密文。 */
+export const SystemToolSecretMaskedValue = '__FASTGPT_SYSTEM_SECRET_MASKED__';
