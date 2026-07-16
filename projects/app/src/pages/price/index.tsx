@@ -18,11 +18,6 @@ import PricePlanTabs from '@/pageComponents/price/PricePlanTabs';
 import { SubModeEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import { isPriceTabType, type PriceTabType } from '@/web/support/wallet/sub/constants';
 
-/** 根据 URL hash 解析 Tab（如账户页「购买额外套餐」跳转 /price#extra） */
-const getTabFromHash = (hash: string): PriceTabType | undefined => {
-  return isPriceTabType(hash) ? hash : undefined;
-};
-
 const PriceBox = () => {
   const { initUserInfo } = useUserStore();
   const { t } = useTranslation(['common', 'user']);
@@ -33,7 +28,8 @@ const PriceBox = () => {
   const [isButtonInView, setIsButtonInView] = useState(true);
   const [userActiveTab, setUserActiveTab] = useState<PriceTabType>(() => {
     if (typeof window === 'undefined') return 'standard';
-    return getTabFromHash(window.location.hash.slice(1)) ?? 'standard';
+    const hash = window.location.hash.slice(1);
+    return isPriceTabType(hash) ? hash : 'standard';
   });
   const [userSubMode, setUserSubMode] = useState<`${SubModeEnum}`>(SubModeEnum.month);
 
@@ -48,7 +44,8 @@ const PriceBox = () => {
 
   const hashTab = useMemo(() => {
     if (!router.isReady) return undefined;
-    return getTabFromHash(router.asPath.split('#')[1] ?? '');
+    const hash = router.asPath.split('#')[1] ?? '';
+    return isPriceTabType(hash) ? hash : undefined;
   }, [router.isReady, router.asPath]);
 
   const activeTab = hashTab ?? userActiveTab;
@@ -177,11 +174,7 @@ const PriceBox = () => {
               </Box>
 
               <Box mt={'32px'}>
-                <PricePlanTabs<PriceTabType>
-                  list={tabList}
-                  value={activeTab}
-                  onChange={handleTabChange}
-                />
+                <PricePlanTabs list={tabList} value={activeTab} onChange={handleTabChange} />
               </Box>
 
               {activeTab === 'standard' && !isWecomTeam && (

@@ -1,7 +1,6 @@
 import React from 'react';
 import { Box, Flex } from '@chakra-ui/react';
-
-export type PriceTabType = 'standard' | 'extra';
+import type { PriceTabType } from '@/web/support/wallet/sub/constants';
 
 type PricePlanTabItem = {
   label: string;
