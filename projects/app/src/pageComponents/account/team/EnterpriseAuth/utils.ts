@@ -1,7 +1,7 @@
 import { TeamEnterpriseAuthTaskStatusEnum } from '@fastgpt/global/support/user/team/enterpriseAuth/constant';
 
 export const enterpriseAuthContactBusinessUrl =
-  'https://fael3z0zfze.feishu.cn/share/base/form/shrcnjJWtKqjOI9NbQTzhNyzljc?prefill_S=C2&hide_S=1&from=navigation';
+  'https://fael3z0zfze.feishu.cn/share/base/form/shrcnjJWtKqjOI9NbQTzhNyzljc?prefill_S=xtbd&hide_S=1';
 
 /**
  * 判断金额输入框下方是否展示“金额错误”。

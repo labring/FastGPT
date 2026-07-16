@@ -58,7 +58,7 @@ If you encounter any issues, you can [view the complete Docker deployment tutori
   You can quickly deploy using [Docker](https://doc.fastgpt.io/self-host/deploy/docker) or use [Sealos Cloud](https://doc.fastgpt.io/self-host/deploy/sealos) to deploy FastGPT with one click.
 
 - **Commercial Version**  
-  If you need more complete features or in-depth service support, you can choose our [Commercial Version](https://doc.fastgpt.io/guide/version/commercial). In addition to providing complete software, we also offer implementation guidance for specific scenarios. You can submit a [commercial consultation](https://fael3z0zfze.feishu.cn/share/base/form/shrcnjJWtKqjOI9NbQTzhNyzljc).
+  If you need more complete features or in-depth service support, you can choose our [Commercial Version](https://doc.fastgpt.io/guide/version/commercial). In addition to providing complete software, we also offer implementation guidance for specific scenarios. You can submit a [commercial consultation](https://fael3z0zfze.feishu.cn/share/base/form/shrcnjJWtKqjOI9NbQTzhNyzljc?prefill_S=git&hide_S=1?prefill_S=git&hide_S=1).
 
 ## 💡 Core Features
 
