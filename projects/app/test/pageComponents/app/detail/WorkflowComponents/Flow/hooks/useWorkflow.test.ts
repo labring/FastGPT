@@ -9,7 +9,7 @@ vi.mock('katex/dist/katex.min.css', () => ({}));
 import {
   createBoundedMaxHeap,
   collectNearestNodes,
-  computeHelperLines,
+  computeHelperLines as computeHelperLinesWithNode,
   popoverWidth,
   popoverHeight
 } from '@/pageComponents/app/detail/WorkflowComponents/Flow/hooks/useWorkflow';
@@ -42,6 +42,14 @@ const buildPositionChange = (
     position,
     dragging
   }) as NodePositionChange;
+
+const computeHelperLines = (change: NodePositionChange, nodes: Node[], distance?: number) =>
+  computeHelperLinesWithNode({
+    change,
+    node: nodes.find((node) => node.id === change.id),
+    nodes,
+    distance
+  });
 
 describe('createBoundedMaxHeap', () => {
   it('should start empty', () => {
@@ -218,6 +226,22 @@ describe('collectNearestNodes', () => {
 });
 
 describe('computeHelperLines', () => {
+  it('should inspect each node exactly once when filtering candidates', () => {
+    const change = buildPositionChange('a', { x: 0, y: 0 });
+    const nodes = [buildNode('a', 0, 0), buildNode('b', 0, 100), buildNode('c', 500, 500)];
+    const isCandidate = vi.fn((node: Node) => node.id !== 'c');
+
+    const result = computeHelperLinesWithNode({
+      change,
+      node: nodes[0],
+      nodes,
+      isCandidate
+    });
+
+    expect(isCandidate).toHaveBeenCalledTimes(nodes.length);
+    expect(result.snapPosition.x).toBe(0);
+  });
+
   it('should return default when change target node not found', () => {
     const change = buildPositionChange('missing', { x: 0, y: 0 });
     const nodes: Node[] = [buildNode('a', 0, 0)];

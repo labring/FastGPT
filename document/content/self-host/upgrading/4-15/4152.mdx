@@ -41,10 +41,12 @@ V4.15.2 新增 `STORAGE_DOWNLOAD_URL_MODE` 环境变量，默认值为 `short-pr
 
 ## 🚀 新增内容
 
-1. 企业认证/公司认证能力。
-2. 门户页支持选择 AgentV2 应用进行对话。
+1. 工作流节点增加实时错误提示。
+2. 自定义工具参数节点，支持手动输入 jsonschema，同时支持必填选项。
 3. 文件上传、下载链接改用短访问链接，减少长链接占用上下文及模型输出异常；已签发的旧版链接仍保持兼容。
 4. 针对无明确后缀的文件链接，进行 buffer 推测后缀，提高文件解析成功率。
+5. 企业认证/公司认证能力。
+6. 门户页支持选择 AgentV2 应用进行对话。
 
 ## ⚙️ 优化
 
@@ -57,6 +59,7 @@ V4.15.2 新增 `STORAGE_DOWNLOAD_URL_MODE` 环境变量，默认值为 `short-pr
 7. 对话框流输出，淡入效果性能优化。
 8. 升级 `LiteParse` 版本，解决并发解析 PDF 报错问题；文件解析 worker 默认数量由 10 调整为 5，仍可通过 `PARSE_FILE_WORKERS` 配置。
 9. 前端请求增加并发去重能力，模型列表和沙盒依赖接口的相同请求会复用进行中的结果，减少工作流节点和选择器重复触发的请求。
+10. 工作流 SSE 返回 nodeResponse。
 
 ## 🐛 修复
 
@@ -78,6 +81,7 @@ V4.15.2 新增 `STORAGE_DOWNLOAD_URL_MODE` 环境变量，默认值为 `short-pr
 2. 保存包含超长 base64/data URL 的 AI 请求记录时可能触发栈溢出，提前进行截断。
 3. SSE 事件统一封装，强化类型提示。
 4. packages/service 和 packages/global 移除 next 依赖。
+5. 新增 `AUTH_COOKIE_SECURE` 环境变量，启用后登录 Cookie 将添加 `Secure` 属性，仅通过 HTTPS 传输。
 
 ### Agent Loop 重构
 

@@ -22,7 +22,6 @@ import { getAppVersionById } from '../../../app/version/controller';
 import { parseUrlToFileType } from '../../utils/context';
 import { getUserChatInfo } from '../../../../support/user/team/utils';
 import { getRunningUserInfoByTmbId } from '../../../../support/user/team/utils';
-import type { WorkflowNodeResponseWriter } from '../../../chat/nodeResponseStorage';
 import { getRuntimeNodeResponseSummary } from '../utils';
 
 type Props = ModuleDispatchProps<{
@@ -31,9 +30,7 @@ type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.fileUrlList]?: string[];
   [NodeInputKeyEnum.forbidStream]?: boolean;
   [NodeInputKeyEnum.fileUrlList]?: string[];
-}> & {
-  nodeResponseWriter?: WorkflowNodeResponseWriter;
-};
+}>;
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.answerText]: string;
   [NodeOutputKeyEnum.history]: ChatItemMiniType[];

@@ -5,6 +5,7 @@ import type { Translations } from 'fumadocs-ui/i18n';
 import CustomSearchDialog from '@/components/CustomSearchDialog';
 import Script from 'next/script';
 import type { Metadata } from 'next';
+import { getFastGPTDocsOrigin } from '@/lib/fastgpt-home-url';
 
 const zh_CN: Partial<Translations> = {
   search: '搜索',
@@ -46,8 +47,7 @@ export async function generateMetadata({
   params: Promise<{ lang: string }>;
 }): Promise<Metadata> {
   const { lang } = await params;
-  const homeDomain = process.env.FASTGPT_HOME_DOMAIN ?? 'https://fastgpt.io';
-  const domain = homeDomain.replace('https://', 'https://doc.');
+  const domain = getFastGPTDocsOrigin();
 
   const title = lang === 'zh-CN' ? 'FastGPT 文档 - 快速开始' : 'FastGPT Documentation - Getting Started';
   const description =

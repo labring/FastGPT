@@ -1,13 +1,10 @@
 import React from 'react';
-import { Box, Flex, HStack } from '@chakra-ui/react';
 import Markdown from '@/components/Markdown';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import { getFileIcon } from '@fastgpt/global/common/file/icon';
 
 /**
  * 表单输入结果中的单个文件项。
  * 工作流 `formInputResult` 里 fileSelect 字段可能存 URL 字符串或 `{ name, url }` 对象，
- * 归一化后统一为该结构，便于 UI 展示与跨模块复用（流恢复回填、响应详情等）。
+ * 归一化后统一为该结构，供流恢复和表单交互回填复用。
  */
 export type FormInputResultFileItem = {
   name: string;
@@ -70,64 +67,13 @@ export const normalizeFormInputResultFile = (
   };
 };
 
-/**
- * 只读展示用户提交的表单输入结果（`formInputResult`）。
- *
- * `value` 为字段 key -> 字段值的映射。每个字段按值类型分支渲染：
- * - 值为文件 URL 数组：渲染可点击的文件 chip（新窗口打开下载链接）；
- * - 其他类型：以 JSON 代码块展示，便于查看文本、数字、嵌套结构等非文件字段。
- *
- * 文件数组元素经 {@link normalizeFormInputResultFile} 归一化，跳过无法识别的项。
- */
+/** 将用户提交的完整表单结果统一展示为格式化 JSON。 */
 const FormInputResult = React.memo(function FormInputResult({
   value
 }: {
   value: Record<string, unknown>;
 }) {
-  return (
-    <Flex flexDirection={'column'} gap={3}>
-      {Object.entries(value).map(([key, inputValue]) => {
-        // 仅当字段值为数组时尝试按文件列表解析；非数组走 JSON 展示分支
-        const files = Array.isArray(inputValue)
-          ? inputValue
-              .map(normalizeFormInputResultFile)
-              .filter((file): file is FormInputResultFileItem => Boolean(file))
-          : [];
-
-        return (
-          <Box key={key}>
-            <Box fontSize={'12px'} color={'myGray.900'} fontWeight={500} mb={1}>
-              {key}
-            </Box>
-            {files.length > 0 ? (
-              <Flex flexWrap={'wrap'} gap={2}>
-                {files.map((file, index) => (
-                  <HStack
-                    key={`${file.url}-${index}`}
-                    bg={'myGray.50'}
-                    border={'1px solid'}
-                    borderColor={'myGray.200'}
-                    borderRadius={'sm'}
-                    py={1}
-                    px={2}
-                    maxW={'100%'}
-                    cursor={'pointer'}
-                    onClick={() => window.open(file.url, '_blank')}
-                  >
-                    <MyIcon name={getFileIcon(file.name) as any} w={'1rem'} flexShrink={0} />
-                    <Box className={'textEllipsis'}>{file.name}</Box>
-                  </HStack>
-                ))}
-              </Flex>
-            ) : (
-              // 非文件字段或空数组：Markdown JSON 块，保持与聊天消息区一致的代码高亮样式
-              <Markdown source={`~~~json\n${JSON.stringify(inputValue, null, 2)}`} />
-            )}
-          </Box>
-        );
-      })}
-    </Flex>
-  );
+  return <Markdown source={`~~~json\n${JSON.stringify(value, null, 2)}`} />;
 });
 
 export default FormInputResult;

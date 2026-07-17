@@ -41,7 +41,7 @@ type Props = Pick<
   | 'workflowDispatchDeep'
   | 'responseAllData'
   | 'responseDetail'
-  | 'nodeResponseWriter'
+  | 'nodeResponseSink'
   | 'nodeResponseParentId'
   | 'variableState'
   | 'lastInteractive'

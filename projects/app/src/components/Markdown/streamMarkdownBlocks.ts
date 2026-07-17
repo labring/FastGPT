@@ -5,6 +5,12 @@ export type MarkdownBlock = {
   startOffset: number;
 };
 
+/** 转换每个 block 的渲染源码，同时保留基于原文计算的稳定 offset。 */
+export const mapMarkdownBlockSources = (
+  blocks: MarkdownBlock[],
+  transformSource: (source: string) => string
+) => blocks.map((block) => ({ ...block, source: transformSource(block.source) }));
+
 const markdownReferenceDefinitionPattern = /^\s{0,3}(?:\[[^\]]+\]:|\[\^[^\]]+\]:)/m;
 
 const hasDocumentWideDefinitions = (source: string, tokens: Token[]) =>
@@ -50,17 +56,30 @@ export const splitMarkdownBlocks = (source: string): MarkdownBlock[] => {
     const tokenSource = token.raw;
     if (!tokenSource) continue;
 
-    const normalizedStartOffset = normalizedSource.indexOf(tokenSource, searchOffset);
+    const tokenSourceWithoutTrailingLineBreaks = tokenSource.replace(/\n+$/, '');
+    const exactStartOffset = normalizedSource.indexOf(tokenSource, searchOffset);
+    // marked 会把列表尾部的单个空格规范化成换行，此时 raw 无法与原 source 精确匹配。
+    const normalizedStartOffset =
+      exactStartOffset >= 0
+        ? exactStartOffset
+        : normalizedSource.indexOf(tokenSourceWithoutTrailingLineBreaks, searchOffset);
     if (normalizedStartOffset < 0) continue;
 
-    searchOffset = normalizedStartOffset + tokenSource.length;
+    searchOffset =
+      normalizedStartOffset +
+      (exactStartOffset >= 0 ? tokenSource.length : tokenSourceWithoutTrailingLineBreaks.length);
     if (token.type === 'space') continue;
 
-    const blockSourceLength = tokenSource.replace(/\n+$/, '').length;
-    if (!blockSourceLength) continue;
+    if (!tokenSourceWithoutTrailingLineBreaks) continue;
+
+    let normalizedEndOffset = normalizedStartOffset + tokenSourceWithoutTrailingLineBreaks.length;
+    // token.raw 丢失的同行尾随空格仍属于当前 block，不能让流式帧暂时删除该 block。
+    while (/^[ \t]$/.test(normalizedSource[normalizedEndOffset] ?? '')) {
+      normalizedEndOffset += 1;
+    }
 
     const startOffset = sourceOffsets[normalizedStartOffset];
-    const endOffset = sourceOffsets[normalizedStartOffset + blockSourceLength];
+    const endOffset = sourceOffsets[normalizedEndOffset];
     blocks.push({ source: source.slice(startOffset, endOffset), startOffset });
   }
 

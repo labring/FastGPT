@@ -225,7 +225,6 @@ const A = ({
     (props.href?.startsWith('CITE') || props.href?.startsWith('QUOTE')) &&
     typeof content === 'string'
   ) {
-    console.log(allowedCitationIds, allowedCitationIds?.has(content));
     if (allowedCitationIds && !allowedCitationIds.has(content)) {
       return null;
     }

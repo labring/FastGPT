@@ -1,5 +1,7 @@
 const STREAM_ANIMATED_BLOCK_TAGS = new Set(['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li']);
 const STREAM_ANIMATED_SKIP_TAGS = new Set(['pre', 'code', 'table', 'svg']);
+const MAX_RETAINED_SEGMENTS = 14;
+const MAX_ANIMATED_SEGMENT_LENGTH = 64;
 
 type HastElement = {
   type: 'element';
@@ -23,20 +25,21 @@ type HastRoot = {
   children?: HastNode[];
 };
 
+export type StreamAnimationSegment = {
+  start: number;
+  end: number;
+  bornAt: number;
+};
+
 export type StreamAnimatedRuntime = {
-  births: number[];
-  /**
-   * 字符首次渲染时冻结的 style。后续 block 重渲染不能改写 animation-delay，
-   * 否则浏览器会重新启动正在执行的淡入动画。
-   */
-  styles: Array<string | null | undefined>;
+  segments: StreamAnimationSegment[];
+  visibleText: string;
 };
 
 type RehypeStreamAnimatedOptions = {
   fadeDuration: number;
   nowMs?: number;
-  revealed?: boolean;
-  runtime?: StreamAnimatedRuntime;
+  runtime: StreamAnimatedRuntime;
 };
 
 export const getStreamAnimationNow = () =>
@@ -45,24 +48,71 @@ export const getStreamAnimationNow = () =>
     : performance.now();
 
 /**
- * 为流式 Markdown block 建立稳定的字符 DOM 时间线。
+ * 按可见文本维护固定数量的淡入区间。
  *
- * 每个可见字符从 block 起点获得固定下标，旧 span 会在 append 更新中保持位置和 style，
- * 只有新增字符会追加节点并执行淡入。列表项会作为一个 block 递归处理，避免 `li` 内的
- * paragraph 再次包装；代码、表格、SVG 和 KaTeX 保持原始 DOM。
+ * AST 因加粗闭合、列表追加等原因重建时，旧区间保留原 bornAt，只以负 delay 继续动画；
+ * 可见文本发生修正时保留公共前缀，仅把改变后的后缀视为新内容。
+ */
+const syncVisibleSegments = ({
+  fadeDuration,
+  now,
+  runtime,
+  visibleText
+}: {
+  fadeDuration: number;
+  now: number;
+  runtime: StreamAnimatedRuntime;
+  visibleText: string;
+}) => {
+  const previousCharacters = [...runtime.visibleText];
+  const currentCharacters = [...visibleText];
+  let commonPrefixLength = 0;
+
+  while (
+    commonPrefixLength < previousCharacters.length &&
+    commonPrefixLength < currentCharacters.length &&
+    previousCharacters[commonPrefixLength] === currentCharacters[commonPrefixLength]
+  ) {
+    commonPrefixLength += 1;
+  }
+
+  const retainedSegments = runtime.segments
+    .filter((segment) => now - segment.bornAt < fadeDuration && segment.start < commonPrefixLength)
+    .map((segment) => ({
+      ...segment,
+      end: Math.min(segment.end, commonPrefixLength)
+    }))
+    .filter((segment) => segment.end > segment.start);
+
+  if (currentCharacters.length > commonPrefixLength) {
+    retainedSegments.push({
+      bornAt: now,
+      end: currentCharacters.length,
+      start: Math.max(commonPrefixLength, currentCharacters.length - MAX_ANIMATED_SEGMENT_LENGTH)
+    });
+  }
+
+  runtime.visibleText = visibleText;
+  runtime.segments = retainedSegments.slice(-MAX_RETAINED_SEGMENTS);
+};
+
+/**
+ * 只包装最近新增的可见文本区间。
+ *
+ * 一个流式提交最多新增一个 segment，DOM 中最多保留固定数量的动画 span。代码、表格、
+ * SVG 和 KaTeX 不参与动画；列表项作为动画 block 处理，新增下一项不会重置上一项 bornAt。
  */
 export const rehypeStreamAnimated = ({
   fadeDuration,
   nowMs,
-  revealed = false,
   runtime
 }: RehypeStreamAnimatedOptions) => {
   return (tree: HastRoot) => {
-    let globalCharIndex = 0;
     const now = nowMs ?? getStreamAnimationNow();
-
     const isHastElement = (node: HastNode): node is HastElement =>
       node.type === 'element' && typeof (node as HastElement).tagName === 'string';
+    const isHastText = (node: HastNode): node is HastText =>
+      node.type === 'text' && typeof (node as HastText).value === 'string';
     const hasClass = (node: HastElement, cls: string) => {
       const className = node.properties?.className;
       if (Array.isArray(className)) return className.some((item) => String(item).includes(cls));
@@ -72,77 +122,72 @@ export const rehypeStreamAnimated = ({
     const shouldSkip = (node: HastElement) =>
       STREAM_ANIMATED_SKIP_TAGS.has(node.tagName) || hasClass(node, 'katex');
 
-    const resolveStyle = (index: number): string | null => {
-      if (!runtime) return null;
-
-      const cachedStyle = runtime.styles[index];
-      const birthTime = runtime.births[index];
-      if (birthTime !== undefined && now - birthTime >= fadeDuration) {
-        runtime.styles[index] = null;
-        return null;
-      }
-      if (cachedStyle !== undefined) return cachedStyle;
-
-      const style = (() => {
-        if (birthTime === undefined) return null;
-
-        const elapsed = now - birthTime;
-        if (elapsed >= fadeDuration) return null;
-
-        // 负 delay 表示从已流逝的位置继续动画，正 delay 表示同一 commit 内的错峰字符。
-        return `animation-delay:${-elapsed}ms`;
-      })();
-      runtime.styles[index] = style;
-      return style;
-    };
-
-    const buildCharacter = (value: string): HastElement => {
-      const style = resolveStyle(globalCharIndex);
-      const className =
-        revealed || style === null ? 'stream-char stream-char-revealed' : 'stream-char';
-      const properties: Record<string, any> = { className };
-      if (style !== null) properties.style = style;
-      globalCharIndex++;
-
-      return {
-        type: 'element',
-        tagName: 'span',
-        properties,
-        children: [{ type: 'text', value }]
-      };
-    };
-
-    const wrapText = (node: HastElement) => {
-      const children: HastNode[] = [];
-
-      for (const child of node.children) {
-        if (child.type === 'text' && typeof child.value === 'string') {
-          for (const character of child.value) {
-            children.push(buildCharacter(character));
-          }
-          continue;
-        }
-
-        if (isHastElement(child) && !shouldSkip(child)) {
-          wrapText(child);
-        }
-        children.push(child);
-      }
-
-      node.children = children;
-    };
-
-    const visit = (node: HastNode) => {
+    const animatedBlocks: HastElement[] = [];
+    const collectAnimatedBlocks = (node: HastNode) => {
       if (!isHastElement(node) || shouldSkip(node)) return;
-
       if (STREAM_ANIMATED_BLOCK_TAGS.has(node.tagName)) {
-        wrapText(node);
+        animatedBlocks.push(node);
         return;
       }
+      node.children.forEach(collectAnimatedBlocks);
+    };
+    tree.children?.forEach(collectAnimatedBlocks);
 
-      node.children.forEach(visit);
+    const collectText = (node: HastNode): string => {
+      if (isHastText(node)) return node.value;
+      if (!isHastElement(node) || shouldSkip(node)) return '';
+      return node.children.map(collectText).join('');
+    };
+    const visibleText = animatedBlocks.map(collectText).join('');
+    syncVisibleSegments({ fadeDuration, now, runtime, visibleText });
+    if (runtime.segments.length === 0) return;
+
+    let visibleOffset = 0;
+    const wrapTextNode = (node: HastText): HastNode[] => {
+      const characters = [...node.value];
+      const nodeStart = visibleOffset;
+      const nodeEnd = nodeStart + characters.length;
+      visibleOffset = nodeEnd;
+
+      const boundaries = new Set([nodeStart, nodeEnd]);
+      runtime.segments.forEach((segment) => {
+        if (segment.end <= nodeStart || segment.start >= nodeEnd) return;
+        boundaries.add(Math.max(segment.start, nodeStart));
+        boundaries.add(Math.min(segment.end, nodeEnd));
+      });
+      const sortedBoundaries = [...boundaries].sort((a, b) => a - b);
+
+      return sortedBoundaries.slice(0, -1).map((start, index) => {
+        const end = sortedBoundaries[index + 1];
+        const value = characters.slice(start - nodeStart, end - nodeStart).join('');
+        const segment = runtime.segments.find((item) => item.start <= start && item.end >= end);
+        if (!segment) return { type: 'text', value };
+
+        const elapsed = Math.max(now - segment.bornAt, 0);
+        return {
+          type: 'element',
+          tagName: 'span',
+          properties: {
+            className: 'stream-tail',
+            style: `animation-delay:${elapsed === 0 ? 0 : -elapsed}ms`
+          },
+          children: [{ type: 'text', value }]
+        };
+      });
     };
 
-    tree.children?.forEach(visit);
+    const wrapVisibleText = (node: HastElement) => {
+      const children: HastNode[] = [];
+      node.children.forEach((child) => {
+        if (isHastText(child)) {
+          children.push(...wrapTextNode(child));
+        } else {
+          if (isHastElement(child) && !shouldSkip(child)) wrapVisibleText(child);
+          children.push(child);
+        }
+      });
+      node.children = children;
+    };
+    animatedBlocks.forEach(wrapVisibleText);
   };
 };

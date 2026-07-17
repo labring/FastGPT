@@ -37,6 +37,7 @@ async function handler(req: ApiRequestProps): Promise<GetLogUsersResponse> {
   const { teamId } = await authApp({
     req,
     authToken: true,
+    authApiKey: true,
     appId,
     per: AppReadChatLogPerVal
   });

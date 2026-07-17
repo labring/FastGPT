@@ -1,5 +1,5 @@
-/* eslint-disable react-hooks/refs -- 流式字符时间线必须在 render 中幂等扩展，rehype 才能同步读取本次 commit。 */
-import React, { useContext, useMemo, useRef } from 'react';
+/* eslint-disable react-hooks/refs -- 流式分段时间线必须在 render 中幂等扩展，rehype 才能同步读取本次 commit。 */
+import React, { useContext, useEffect, useMemo, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import type { PluggableList } from 'unified';
 import 'katex/dist/katex.min.css';
@@ -17,14 +17,14 @@ import { CodeClassNameEnum, mdTextFormat, prepareStreamingMarkdown } from './uti
 import type { AProps } from './A';
 import MarkdownTable from '@fastgpt/web/components/common/Markdown/MarkdownTable';
 import { MarkdownRendererRuntimeContext } from './runtimeContext';
-import { splitMarkdownBlocks } from './streamMarkdownBlocks';
+import { mapMarkdownBlockSources, splitMarkdownBlocks } from './streamMarkdownBlocks';
 import { CachedMarkdown } from './CachedMarkdown';
 import {
   getStreamAnimationNow,
+  resolveStreamRenderMode,
   resolveStreamBlockPlugins,
   updateStreamBlockAnimations,
-  type StreamBlockRuntime,
-  type StreamPluginsCacheEntry
+  type StreamBlockRuntime
 } from './streamAnimationRuntime';
 
 const CodeLight = dynamic(() => import('./codeBlock/CodeLight'), { ssr: false });
@@ -45,6 +45,23 @@ const markdownBaseRehypePlugins: PluggableList = [
   [RehypeExternalLinks, { target: '_blank' }]
 ];
 const markdownUrlTransform = (val: string) => val;
+
+const isMarkdownStreamDebugEnabled = process.env.NODE_ENV !== 'production';
+let markdownDebugInstanceId = 0;
+
+/** 输出可直接复制的流式 Markdown 生命周期日志，不在生产环境产生额外开销。 */
+const logMarkdownStreamDebug = (event: string, payload: Record<string, unknown>) => {
+  if (!isMarkdownStreamDebugEnabled) return;
+  console.log(`[MarkdownStreamDebug] ${event}`, JSON.stringify(payload));
+};
+
+const getMarkdownDebugInstanceId = () => ++markdownDebugInstanceId;
+
+/** 保留 source 尾部即可判断流式追加关系，避免调试日志输出整段对话。 */
+const getSourceDebugInfo = (source: string) => ({
+  sourceLength: source.length,
+  sourceTail: source.slice(-80)
+});
 
 const ChatGuide = dynamic(() => import('./chat/Guide'), { ssr: false });
 const QuestionGuide = dynamic(() => import('./chat/QuestionGuide'), { ssr: false });
@@ -96,6 +113,9 @@ const markdownComponents = {
 };
 
 type MarkdownStreamBlockProps = {
+  animated: boolean;
+  blockId: string;
+  blockOffset: number;
   rehypePlugins: PluggableList;
   source: string;
 };
@@ -104,18 +124,59 @@ type MarkdownStreamBlockProps = {
  * 缓存已完成 Markdown block 的 React 子树。
  *
  * source 和 rehypePlugins 都保持不变时，父级流式内容更新不会重新解析该 block。
- * 活动 block 复用同一个 processor 和字符动画 runtime，已完成 block 则回到普通 DOM。
+ * blockId 在一次追加流中按顺序保持稳定，格式化导致源码 offset 改变时不会重新挂载。
  */
-const MarkdownStreamBlock = React.memo(({ source, rehypePlugins }: MarkdownStreamBlockProps) => {
-  return (
-    <CachedMarkdown
-      source={source}
-      remarkPlugins={markdownRemarkPlugins as any}
-      rehypePlugins={rehypePlugins as any}
-      components={markdownComponents as any}
-    />
-  );
-});
+const MarkdownStreamBlock = React.memo(
+  ({ animated, blockId, blockOffset, source, rehypePlugins }: MarkdownStreamBlockProps) => {
+    const instanceIdRef = useRef<number>();
+    if (instanceIdRef.current === undefined) {
+      instanceIdRef.current = getMarkdownDebugInstanceId();
+    }
+
+    useEffect(() => {
+      const instanceId = instanceIdRef.current;
+      logMarkdownStreamDebug('block-mount', {
+        at: Date.now(),
+        animated,
+        blockId,
+        blockOffset,
+        instanceId,
+        ...getSourceDebugInfo(source)
+      });
+
+      return () => {
+        logMarkdownStreamDebug('block-unmount', {
+          at: Date.now(),
+          blockId,
+          blockOffset,
+          instanceId
+        });
+      };
+      // 只记录真实挂载和卸载；source 变化由下面的 commit effect 单独记录。
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    useEffect(() => {
+      logMarkdownStreamDebug('block-commit', {
+        at: Date.now(),
+        animated,
+        blockId,
+        blockOffset,
+        instanceId: instanceIdRef.current,
+        ...getSourceDebugInfo(source)
+      });
+    }, [animated, blockId, blockOffset, source]);
+
+    return (
+      <CachedMarkdown
+        source={source}
+        remarkPlugins={markdownRemarkPlugins as any}
+        rehypePlugins={rehypePlugins as any}
+        components={markdownComponents as any}
+      />
+    );
+  }
+);
 MarkdownStreamBlock.displayName = 'MarkdownStreamBlock';
 
 type Props = {
@@ -148,6 +209,11 @@ const MarkdownRender = ({
   allowedCitationIds,
   onOpenCiteModal
 }: Props) => {
+  const instanceIdRef = useRef<number>();
+  if (instanceIdRef.current === undefined) {
+    instanceIdRef.current = getMarkdownDebugInstanceId();
+  }
+
   const renderContextValue = useMemo(
     () => ({
       showAnimation,
@@ -167,59 +233,99 @@ const MarkdownRender = ({
     ]
   );
 
-  const formatSource = useMemo(() => {
-    if (showAnimation) return prepareStreamingMarkdown(source);
-    if (forbidZhFormat) return source;
-    return mdTextFormat(source);
-  }, [forbidZhFormat, showAnimation, source]);
+  const hasStreamedRef = useRef(false);
+  const renderStreamBlocks = resolveStreamRenderMode({
+    hasStreamed: hasStreamedRef.current,
+    showAnimation
+  });
+  hasStreamedRef.current = renderStreamBlocks;
 
-  const markdownBlocks = useMemo(
-    () => (showAnimation ? splitMarkdownBlocks(formatSource) : []),
-    [formatSource, showAnimation]
+  const sourceForBlocks = useMemo(
+    () => (showAnimation ? prepareStreamingMarkdown(source) : source),
+    [showAnimation, source]
   );
+  const markdownBlocks = useMemo(() => {
+    if (!renderStreamBlocks) return [];
+
+    const blocks = splitMarkdownBlocks(sourceForBlocks);
+    if (showAnimation || forbidZhFormat) return blocks;
+
+    // 完成态在分块后格式化，避免前面插入字符导致后续 block key 整体偏移。
+    return mapMarkdownBlockSources(blocks, mdTextFormat);
+  }, [forbidZhFormat, renderStreamBlocks, showAnimation, sourceForBlocks]);
   const streamRuntimesRef = useRef<Map<number, StreamBlockRuntime>>(new Map());
-  const streamPluginsCacheRef = useRef<Map<number, StreamPluginsCacheEntry>>(new Map());
-  const revealClockRef = useRef({ lastTime: 0 });
+  const streamVersionRef = useRef(0);
   const previousStreamingSourceRef = useRef('');
-  if (showAnimation && !source.startsWith(previousStreamingSourceRef.current)) {
-    streamRuntimesRef.current.clear();
-    streamPluginsCacheRef.current.clear();
-    revealClockRef.current.lastTime = 0;
+  if (showAnimation) {
+    if (!source.startsWith(previousStreamingSourceRef.current)) {
+      streamVersionRef.current += 1;
+      streamRuntimesRef.current.clear();
+    }
+    previousStreamingSourceRef.current = source;
   }
-  previousStreamingSourceRef.current = source;
   const streamAnimationMeta = showAnimation
     ? updateStreamBlockAnimations({
         blocks: markdownBlocks,
-        pluginsCache: streamPluginsCacheRef.current,
         renderNow: getStreamAnimationNow(),
-        revealClock: revealClockRef.current,
         runtimes: streamRuntimesRef.current
       })
     : new Map();
+  const formatSource = useMemo(
+    () => (forbidZhFormat ? source : mdTextFormat(source)),
+    [forbidZhFormat, source]
+  );
   const markdownClassName = `markdown ${styles.markdown}
       ${className || ''}
-      ${showAnimation ? `${formatSource ? styles.waitingAnimation : styles.animation}` : ''}
+      ${showAnimation ? `${sourceForBlocks ? styles.waitingAnimation : styles.animation}` : ''}
     `;
+
+  useEffect(() => {
+    const instanceId = instanceIdRef.current;
+    logMarkdownStreamDebug('mount', { at: Date.now(), instanceId });
+
+    return () => {
+      logMarkdownStreamDebug('unmount', { at: Date.now(), instanceId });
+    };
+  }, []);
+
+  useEffect(() => {
+    logMarkdownStreamDebug('commit', {
+      at: Date.now(),
+      blocks: markdownBlocks.map((block) => ({
+        length: block.source.length,
+        offset: block.startOffset,
+        tail: block.source.slice(-40)
+      })),
+      instanceId: instanceIdRef.current,
+      renderStreamBlocks,
+      showAnimation: !!showAnimation,
+      streamVersion: streamVersionRef.current,
+      ...getSourceDebugInfo(source)
+    });
+  }, [markdownBlocks, renderStreamBlocks, showAnimation, source]);
 
   return (
     <MarkdownRendererRuntimeContext.Provider value={renderContextValue}>
-      <Box position={'relative'} className={showAnimation ? markdownClassName : undefined}>
-        {showAnimation ? (
-          markdownBlocks.map((block) => {
-            const meta = streamAnimationMeta.get(block.startOffset);
+      <Box position={'relative'} className={renderStreamBlocks ? markdownClassName : undefined}>
+        {renderStreamBlocks ? (
+          markdownBlocks.map((block, blockIndex) => {
+            const blockId = `${streamVersionRef.current}:${blockIndex}`;
+            const meta = streamAnimationMeta.get(blockIndex);
+            const animated = !!showAnimation && !!meta?.shouldAnimate;
             const rehypePlugins =
-              !meta || meta.settled
-                ? markdownBaseRehypePlugins
-                : resolveStreamBlockPlugins({
+              animated && meta
+                ? resolveStreamBlockPlugins({
                     basePlugins: markdownBaseRehypePlugins,
-                    pluginsCache: streamPluginsCacheRef.current,
-                    runtime: meta.runtime,
-                    startOffset: block.startOffset
-                  });
+                    runtime: meta.runtime
+                  })
+                : markdownBaseRehypePlugins;
 
             return (
               <MarkdownStreamBlock
-                key={block.startOffset}
+                animated={animated}
+                blockId={blockId}
+                blockOffset={block.startOffset}
+                key={blockId}
                 source={block.source}
                 rehypePlugins={rehypePlugins}
               />

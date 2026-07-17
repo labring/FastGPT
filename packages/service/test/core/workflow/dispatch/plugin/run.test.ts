@@ -60,7 +60,7 @@ describe('dispatchRunPlugin', () => {
     getSystemToolWorkflowRuntimeMock.mockReset();
   });
 
-  it('系统级 workflow tool 不把外层 nodeResponseWriter 传给 child workflow', async () => {
+  it('系统级 workflow tool 不把外层 nodeResponseSink 传给 child workflow', async () => {
     getSystemToolWorkflowRuntimeMock.mockResolvedValue({
       id: 'commercial-system-workflow',
       name: 'System Workflow',
@@ -121,7 +121,7 @@ describe('dispatchRunPlugin', () => {
         }
       ])
     });
-    const nodeResponseWriter = { record: vi.fn() } as any;
+    const nodeResponseSink = { publish: vi.fn() } as any;
 
     const result = await dispatchRunPlugin({
       node: {
@@ -147,7 +147,7 @@ describe('dispatchRunPlugin', () => {
       chatId: 'chat',
       responseChatItemId: 'response',
       variableState: await createVariableState(),
-      nodeResponseWriter,
+      nodeResponseSink,
       usagePush: vi.fn(),
       runtimeNodes: [],
       runtimeNodesMap: new Map(),
@@ -156,7 +156,7 @@ describe('dispatchRunPlugin', () => {
 
     expect(runWorkflowMock).toHaveBeenCalledTimes(1);
     const childWorkflowProps = runWorkflowMock.mock.calls[0][0];
-    expect(childWorkflowProps.nodeResponseWriter).toBeUndefined();
+    expect(childWorkflowProps.nodeResponseSink).toBeUndefined();
     expect(childWorkflowProps.chatConfig.variables).toHaveLength(1);
     expect(childWorkflowProps.variableState.get('counter')).toBe(0);
     expect(result[DispatchNodeResponseKeyEnum.nodeResponse]).toMatchObject({

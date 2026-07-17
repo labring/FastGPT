@@ -34,6 +34,15 @@ vi.mock('@fastgpt/service/env', () => ({
 
 import { dispatchParallelRun } from '@fastgpt/service/core/workflow/dispatch/parallelRun/runParallelRun';
 
+const createNodeResponseSinkMock = () => ({
+  publish: vi.fn(async (inputs: Array<{ response: ChatHistoryItemResType; parentId?: string }>) =>
+    inputs.map(({ response, parentId }) => ({
+      ...response,
+      ...(parentId && !response.parentId ? { parentId } : {})
+    }))
+  )
+});
+
 const makeNode = (): RuntimeNodeItemType =>
   ({
     nodeId: 'parallelRun1',
@@ -122,10 +131,8 @@ describe('dispatchParallelRun', () => {
     vi.restoreAllMocks();
   });
 
-  it('共用 nodeResponseWriter 时写入任务包装节点，父响应只保留轻量统计', async () => {
-    const nodeResponseWriter = {
-      recordWithParent: vi.fn().mockResolvedValue([])
-    };
+  it('共用 nodeResponseSink 时发布任务包装节点，父响应只保留轻量统计', async () => {
+    const nodeResponseSink = createNodeResponseSinkMock();
     runWorkflowMock.mockResolvedValue(
       makeDispatchFlowResponse({
         nodeResponses: [
@@ -142,7 +149,7 @@ describe('dispatchParallelRun', () => {
 
     const result: any = await dispatchParallelRun(
       makeProps({
-        nodeResponseWriter,
+        nodeResponseSink,
         nodeResponseParentId: 'parallel-parent-response'
       })
     );
@@ -153,16 +160,14 @@ describe('dispatchParallelRun', () => {
     expect(runWorkflowMock.mock.calls[0][0].nodeResponseParentId).toBe(
       'parallel-parent-response_task_0'
     );
-    expect(nodeResponseWriter.recordWithParent).toHaveBeenCalledTimes(1);
-    expect(nodeResponseWriter.recordWithParent.mock.calls[0][1]).toBe('parallel-parent-response');
-    expect(nodeResponseWriter.recordWithParent.mock.calls[0][0][0]).toMatchObject({
+    expect(nodeResponseSink.publish).toHaveBeenCalledTimes(1);
+    expect(nodeResponseSink.publish.mock.calls[0][0][0].parentId).toBe('parallel-parent-response');
+    expect(nodeResponseSink.publish.mock.calls[0][0][0].response).toMatchObject({
       id: 'parallel-parent-response_task_0',
       childResponseCount: 2,
       childrenResponses: undefined
     });
-    expect(
-      nodeResponseWriter.recordWithParent.mock.calls[0][0][0].childTotalPoints
-    ).toBeUndefined();
+    expect(nodeResponseSink.publish.mock.calls[0][0][0].response.childTotalPoints).toBeUndefined();
     expect(nodeResponse.totalPoints).toBe(3);
     expect(nodeResponse.childTotalPoints).toBeUndefined();
     expect(nodeResponse.parallelDetail).toBeUndefined();
@@ -170,9 +175,7 @@ describe('dispatchParallelRun', () => {
 
   it('任务包装节点独立计时，不累加子节点 runningTime', async () => {
     vi.spyOn(Date, 'now').mockReturnValueOnce(1000).mockReturnValue(2250);
-    const nodeResponseWriter = {
-      recordWithParent: vi.fn().mockResolvedValue([])
-    };
+    const nodeResponseSink = createNodeResponseSinkMock();
     runWorkflowMock.mockResolvedValue(
       makeDispatchFlowResponse({
         nodeResponses: [
@@ -188,18 +191,16 @@ describe('dispatchParallelRun', () => {
 
     await dispatchParallelRun(
       makeProps({
-        nodeResponseWriter,
+        nodeResponseSink,
         nodeResponseParentId: 'parallel-parent-response'
       })
     );
 
-    expect(nodeResponseWriter.recordWithParent.mock.calls[0][0][0].runningTime).toBe(1.25);
+    expect(nodeResponseSink.publish.mock.calls[0][0][0].response.runningTime).toBe(1.25);
   });
 
   it('重试成功时保留失败 attempt 详情并写入最终成功 attempt', async () => {
-    const nodeResponseWriter = {
-      recordWithParent: vi.fn().mockResolvedValue([])
-    };
+    const nodeResponseSink = createNodeResponseSinkMock();
     runWorkflowMock
       .mockResolvedValueOnce(
         makeDispatchFlowResponse({
@@ -233,7 +234,7 @@ describe('dispatchParallelRun', () => {
           [NodeInputKeyEnum.parallelRunMaxConcurrency]: 1,
           [NodeInputKeyEnum.parallelRunMaxRetryTimes]: 1
         },
-        nodeResponseWriter,
+        nodeResponseSink,
         nodeResponseParentId: 'parallel-parent-response'
       })
     );
@@ -242,16 +243,16 @@ describe('dispatchParallelRun', () => {
       'parallel-parent-response_task_0_attempt_0',
       'parallel-parent-response_task_0_attempt_1'
     ]);
-    expect(nodeResponseWriter.recordWithParent).toHaveBeenCalledTimes(2);
-    expect(nodeResponseWriter.recordWithParent.mock.calls.map((call) => call[0][0].id)).toEqual([
+    expect(nodeResponseSink.publish).toHaveBeenCalledTimes(2);
+    expect(nodeResponseSink.publish.mock.calls.map((call) => call[0][0].response.id)).toEqual([
       'parallel-parent-response_task_0_attempt_0',
       'parallel-parent-response_task_0_attempt_1'
     ]);
-    expect(nodeResponseWriter.recordWithParent.mock.calls[0][0][0]).toMatchObject({
+    expect(nodeResponseSink.publish.mock.calls[0][0][0].response).toMatchObject({
       id: 'parallel-parent-response_task_0_attempt_0',
       error: expect.any(String)
     });
-    expect(nodeResponseWriter.recordWithParent.mock.calls[1][0][0]).toMatchObject({
+    expect(nodeResponseSink.publish.mock.calls[1][0][0].response).toMatchObject({
       id: 'parallel-parent-response_task_0_attempt_1',
       loopOutputValue: 'done'
     });

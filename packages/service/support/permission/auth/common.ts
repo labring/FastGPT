@@ -172,16 +172,36 @@ export async function parseHeaderCert({
   };
 }
 
-/* set cookie */
 export const TokenName = 'fastgpt_token';
+
+/** 统一生成登录 Cookie 属性，确保写入与清理行为一致。 */
+const getAuthCookieOptions = () => ({
+  path: '/',
+  httpOnly: true,
+  sameSite: 'strict' as const,
+  secure: serviceEnv.AUTH_COOKIE_SECURE
+});
+
+/**
+ * 写入登录凭证 Cookie；启用 AUTH_COOKIE_SECURE 后，浏览器只会通过 HTTPS 发送凭证。
+ */
 export const setCookie = (res: NodeHttpResponse, token: string) => {
   res.setHeader(
     'Set-Cookie',
-    `${TokenName}=${token}; Path=/; HttpOnly; Max-Age=604800; Samesite=Strict;`
+    Cookie.serialize(TokenName, token, {
+      ...getAuthCookieOptions(),
+      maxAge: 604800
+    })
   );
 };
 
-/* clear cookie */
+/** 清理登录凭证 Cookie，并复用写入时的路径与安全属性。 */
 export const clearCookie = (res: NodeHttpResponse) => {
-  res.setHeader('Set-Cookie', `${TokenName}=; Path=/; Max-Age=0`);
+  res.setHeader(
+    'Set-Cookie',
+    Cookie.serialize(TokenName, '', {
+      ...getAuthCookieOptions(),
+      maxAge: 0
+    })
+  );
 };

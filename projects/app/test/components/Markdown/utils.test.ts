@@ -314,5 +314,16 @@ describe('Markdown utils', () => {
       expect(prepareStreamingMarkdown('- **bold ')).toBe('- **bold** ');
       expect(prepareStreamingMarkdown('text  ')).toBe('text  ');
     });
+
+    it('should preserve a populated list item that ends with one trailing space', () => {
+      const source = [
+        '好的，我来为你详细介绍 FastGPT。',
+        'FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，它将智能对话与可视化编排完美结合，让 AI 应用开发变得简单自然，无论是开发者还是业务人员都能轻松打造专属的 AI 应用[69db8e1aa2409f01b117897e](CITE)。',
+        '### FastGPT 的优势',
+        '*   **简单灵活，像搭积木一样简单 🧱**：FastGPT 提供了丰富的功能模块，通过简单拖拽就能搭建出个性化的 '
+      ].join('\n\n');
+
+      expect(prepareStreamingMarkdown(source)).toBe(source);
+    });
   });
 });

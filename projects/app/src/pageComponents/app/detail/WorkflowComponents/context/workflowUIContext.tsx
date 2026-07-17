@@ -7,6 +7,8 @@ import { AppContext } from '@/pageComponents/app/detail/context';
 import { WorkflowBufferDataContext } from './workflowInitContext';
 import { useWorkflowDemoTrack } from '@/web/common/middle/tracks/workflowDemoTrack';
 
+type MousePosition = { x: number; y: number };
+
 // 创建 Context
 type WorkflowUIContextValue = {
   /** 悬停的节点 ID */
@@ -24,8 +26,8 @@ type WorkflowUIContextValue = {
   /** 鼠标是否在 Canvas 中 */
   mouseInCanvas: boolean;
 
-  /** 鼠标在 Canvas 中的屏幕位置 */
-  mousePosition: { x: number; y: number } | null;
+  /** 获取鼠标在 Canvas 中的最新屏幕位置 */
+  getMousePosition: () => MousePosition | null;
 
   /** ReactFlow 包装器 callback ref */
   reactFlowWrapperCallback: (node: HTMLDivElement | null) => void;
@@ -56,7 +58,7 @@ export const WorkflowUIContext = createContext<WorkflowUIContextValue>({
     throw new Error('Function not implemented.');
   },
   mouseInCanvas: false,
-  mousePosition: null,
+  getMousePosition: () => null,
   reactFlowWrapperCallback: function (_node: HTMLDivElement | null): void {
     throw new Error('Function not implemented.');
   },
@@ -81,10 +83,13 @@ export const WorkflowUIProvider: React.FC<PropsWithChildren> = ({ children }) =>
 
   // Canvas 交互
   const [mouseInCanvas, setMouseInCanvas] = useState(false);
-  const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
+  const mousePositionRef = useRef<MousePosition | null>(null);
   // 使用 ref 来存储 wrapper 引用和 cleanup 函数
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const cleanupRef = useRef<(() => void) | null>(null);
+
+  /** 读取最新鼠标坐标，避免 mousemove 触发 Context 更新。 */
+  const getMousePosition = useCallback(() => mousePositionRef.current, []);
 
   const reactFlowWrapperCallback = useCallback((node: HTMLDivElement | null) => {
     // 先清理旧的事件监听器
@@ -101,10 +106,10 @@ export const WorkflowUIProvider: React.FC<PropsWithChildren> = ({ children }) =>
       };
       const handleMouseOutCanvas = () => {
         setMouseInCanvas(false);
-        setMousePosition(null);
+        mousePositionRef.current = null;
       };
       const handleMouseMove = (e: MouseEvent) => {
-        setMousePosition({ x: e.clientX, y: e.clientY });
+        mousePositionRef.current = { x: e.clientX, y: e.clientY };
       };
 
       node.addEventListener('mouseenter', handleMouseInCanvas);
@@ -117,7 +122,7 @@ export const WorkflowUIProvider: React.FC<PropsWithChildren> = ({ children }) =>
         node.removeEventListener('mouseleave', handleMouseOutCanvas);
         node.removeEventListener('mousemove', handleMouseMove);
         setMouseInCanvas(false);
-        setMousePosition(null);
+        mousePositionRef.current = null;
       };
     } else {
       (reactFlowWrapper as any).current = null;
@@ -160,7 +165,7 @@ export const WorkflowUIProvider: React.FC<PropsWithChildren> = ({ children }) =>
       hoverEdgeId,
       setHoverEdgeId,
       mouseInCanvas,
-      mousePosition,
+      getMousePosition,
       reactFlowWrapperCallback,
       workflowControlMode,
       setWorkflowControlMode,
@@ -173,7 +178,7 @@ export const WorkflowUIProvider: React.FC<PropsWithChildren> = ({ children }) =>
     hoverNodeId,
     hoverEdgeId,
     mouseInCanvas,
-    mousePosition,
+    getMousePosition,
     reactFlowWrapperCallback,
     workflowControlMode,
     setWorkflowControlMode,

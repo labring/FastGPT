@@ -1,12 +1,20 @@
 'use client';
 
 import React, { useMemo } from 'react';
+import {
+  buildFastGPTHomeUrl,
+  type DocsUtmCampaign,
+  type FastGPTSite
+} from '@/lib/fastgpt-home-url';
 
 type FastGPTLinkProps = {
   children: React.ReactNode;
   className?: string;
   style?: React.CSSProperties;
   onClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void;
+  campaign: DocsUtmCampaign;
+  content: string;
+  site?: FastGPTSite;
 };
 
 const defaultStyles: React.CSSProperties = {
@@ -20,10 +28,20 @@ const hoverStyles: React.CSSProperties = {
   textDecoration: 'underline'
 };
 
-const FastGPTLink = ({ children, className, style, onClick, ...props }: FastGPTLinkProps) => {
-  const href = useMemo(() => {
-    return process.env.FASTGPT_HOME_DOMAIN ?? 'https://fastgpt.io';
-  }, []);
+const FastGPTLink = ({
+  children,
+  className,
+  style,
+  onClick,
+  campaign,
+  content,
+  site = 'configured',
+  ...props
+}: FastGPTLinkProps) => {
+  const href = useMemo(
+    () => buildFastGPTHomeUrl({ campaign, content, site }),
+    [campaign, content, site]
+  );
 
   const [isHovered, setIsHovered] = React.useState(false);
 

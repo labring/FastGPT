@@ -13,7 +13,6 @@ import type { WorkflowResponseItemType } from '../../../type';
 import { dispatchApp, dispatchPlugin } from './app';
 import { SystemToolRepo } from '../../../../../app/tool/systemTool/systemTool.repo';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import type { WorkflowNodeResponseWriter } from '../../../../../chat/nodeResponseStorage';
 import type { AppFormEditFormType } from '@fastgpt/global/core/app/formEdit/type';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 
@@ -88,8 +87,8 @@ export type ToolDispatchContext = Pick<
   | 'workflowDispatchDeep'
   | 'params'
   | 'stream'
+  | 'nodeResponseSink'
 > & {
-  nodeResponseWriter?: WorkflowNodeResponseWriter;
   nodeResponseParentId?: string;
   systemPrompt?: string;
   getSubAppInfo: GetSubAppInfoFnType;
@@ -174,7 +173,7 @@ export const getExecuteTool = ({
   retainDatasetCite,
   maxRunTimes,
   workflowDispatchDeep,
-  nodeResponseWriter
+  nodeResponseSink
 }: ToolDispatchContext) => {
   /**
    * 执行单次工具调用，并补齐节点响应的 id、运行时间和计费信息。
@@ -280,7 +279,7 @@ export const getExecuteTool = ({
               retainDatasetCite,
               maxRunTimes,
               workflowDispatchDeep,
-              nodeResponseWriter,
+              nodeResponseSink,
               nodeResponseParentId: callId,
               variableState,
               lastInteractive
@@ -335,7 +334,7 @@ export const getExecuteTool = ({
               retainDatasetCite,
               maxRunTimes,
               workflowDispatchDeep,
-              nodeResponseWriter,
+              nodeResponseSink,
               nodeResponseParentId: callId,
               variableState,
               lastInteractive

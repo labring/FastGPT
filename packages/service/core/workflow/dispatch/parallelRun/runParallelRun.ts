@@ -2,12 +2,10 @@ import { batchRun } from '@fastgpt/global/common/system/utils';
 import type { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { workflowSseEvent } from '@fastgpt/global/core/workflow/runtime/sse';
 import type { DispatchNodeResultType, ModuleDispatchProps } from '../../types/runtime';
 
 import { serviceEnv } from '../../../../env';
 import { runWorkflow } from '..';
-import type { WorkflowNodeResponseWriter } from '../../../chat/nodeResponseStorage';
 import { getNodeResponseChildResponseCount } from '../../../chat/nodeResponseStorage';
 import {
   clampParallelConcurrency,
@@ -27,10 +25,7 @@ type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.childrenNodeIdList]: string[];
   [NodeInputKeyEnum.parallelRunMaxConcurrency]?: number;
   [NodeInputKeyEnum.parallelRunMaxRetryTimes]?: number;
-}> & {
-  nodeResponseWriter?: WorkflowNodeResponseWriter;
-  nodeResponseParentId?: string;
-};
+}>;
 
 type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.parallelSuccessResults]: Array<any>;
@@ -190,24 +185,19 @@ export const dispatchParallelRun = async (props: Props): Promise<Response> => {
       attemptResults
     }
   );
-  // 任务包装节点只通过 writer/event 输出；父 parallelRun 只保留轻量统计和业务摘要。
+  // 任务包装节点只通过 sink 输出；父 parallelRun 只保留轻量统计和业务摘要。
   const rootChildResponseCount = getNodeResponseChildResponseCount(attemptResponseDetails);
-  if (props.nodeResponseWriter) {
+  if (props.nodeResponseSink) {
     for (const detail of attemptResponseDetails) {
-      const recordedWrappers = await props.nodeResponseWriter.recordWithParent(
-        [
-          {
+      await props.nodeResponseSink.publish([
+        {
+          response: {
             ...detail,
             childrenResponses: undefined
-          }
-        ],
-        props.nodeResponseParentId
-      );
-      if (props.apiVersion === 'v2') {
-        recordedWrappers.forEach((item) => {
-          props.workflowStreamResponse?.(workflowSseEvent.flowNodeResponse(item));
-        });
-      }
+          },
+          parentId: props.nodeResponseParentId
+        }
+      ]);
     }
   }
 

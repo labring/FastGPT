@@ -1,25 +1,28 @@
 .waitingAnimation {
-  :global(.stream-char) {
+  :global(.stream-tail) {
     display: inline;
     opacity: 0;
     animation-name: streamCharFadeIn;
-    animation-duration: 180ms;
-    animation-timing-function: cubic-bezier(0.33, 0, 0.67, 1);
+    animation-duration: 500ms;
+    animation-timing-function: linear;
     animation-fill-mode: forwards;
-  }
-
-  :global(.stream-char-revealed) {
-    opacity: 1;
-    animation: none;
   }
 }
 
 @keyframes streamCharFadeIn {
-  from {
+  0% {
     opacity: 0;
   }
 
-  to {
+  35% {
+    opacity: 0.15;
+  }
+
+  70% {
+    opacity: 0.65;
+  }
+
+  100% {
     opacity: 1;
   }
 }

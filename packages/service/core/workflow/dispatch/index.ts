@@ -20,7 +20,6 @@ import type {
 } from '../types/runtime';
 import type { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getErrText, UserError } from '@fastgpt/global/common/error/utils';
-import { filterNodeResponseTreeData } from '@fastgpt/global/core/chat/utils';
 import { filterWorkflowEdges, valueTypeFormat } from '@fastgpt/global/core/workflow/runtime/utils';
 import type {
   InteractiveNodeResponseType,
@@ -62,10 +61,9 @@ import { delAgentRuntimeStopSign, shouldWorkflowStop } from './workflowStatus';
 import { buildQueryUrlFileMap, buildQueryUrlTypeMap, runWithContext } from '../utils/context';
 import { createClientAbortTracker } from './utils/clientAbort';
 import type { IncomingMessage } from 'node:http';
-import type { WorkflowNodeResponseWriter } from '../../chat/nodeResponseStorage';
 import { getNodeResponseChildResponseCount } from '../../chat/nodeResponseStorage';
 import {
-  createWorkflowEntryNodeResponseWriter,
+  createWorkflowEntryNodeResponseSink,
   type WorkflowNodeResponseWriteConfig
 } from './utils/entry';
 import { ChatSourceTypeEnum } from '@fastgpt/global/core/chat/constants';
@@ -247,13 +245,17 @@ export async function dispatchWorkFlow({
         }, 100)
       : undefined;
 
-  const { nodeResponseWriter } = await createWorkflowEntryNodeResponseWriter({
+  const nodeResponseSink = await createWorkflowEntryNodeResponseSink({
     teamId: data.runningAppInfo.teamId,
     sourceType: data.runningAppInfo.sourceType,
     sourceId: data.runningAppInfo.sourceId,
     chatId,
     chatItemDataId: responseChatItemId,
-    nodeResponseWriteConfig: data.nodeResponseWriteConfig
+    nodeResponseWriteConfig: data.nodeResponseWriteConfig,
+    apiVersion: data.apiVersion,
+    responseAllData: data.responseAllData,
+    responseDetail: data.responseDetail,
+    workflowStreamResponse: data.workflowStreamResponse
   });
 
   // Init some props
@@ -268,7 +270,7 @@ export async function dispatchWorkFlow({
         runWorkflow({
           ...data,
           responseChatItemId,
-          nodeResponseWriter,
+          nodeResponseSink,
           checkIsStopping,
           query,
           histories,
@@ -280,19 +282,19 @@ export async function dispatchWorkFlow({
           concatUsage
         })
           .then(async (result) => {
-            await nodeResponseWriter.close();
+            await nodeResponseSink.close();
             resolve({
               ...result,
-              nodeResponseSummary: nodeResponseWriter.getSummary(),
+              nodeResponseSummary: nodeResponseSink.getSummary(),
               ...(data.nodeResponseWriteConfig.retainInMemory
                 ? {
-                    flatNodeResponses: nodeResponseWriter.getFlatNodeResponses()
+                    flatNodeResponses: nodeResponseSink.getFlatNodeResponses()
                   }
                 : {})
             });
           })
           .catch(async (error) => {
-            await nodeResponseWriter.close();
+            await nodeResponseSink.close();
             reject(error);
           })
           .finally(async () => {
@@ -322,7 +324,6 @@ export type RunWorkflowProps = ChatDispatchProps & {
   runtimeEdges: RuntimeEdgeItemType[];
   defaultSkipNodeQueue?: WorkflowDebugResponse['skipNodeQueue'];
   concatUsage?: (points: number) => any;
-  nodeResponseWriter?: WorkflowNodeResponseWriter;
 };
 /*
   工作流队列控制
@@ -931,7 +932,7 @@ export class WorkflowQueue {
       const childResponses = dispatchRes[DispatchNodeResponseKeyEnum.nodeResponses] || [];
       const nodeResponse = dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse];
       const childResponsesForWrite =
-        this.data.nodeResponseWriter && !!nodeResponse
+        this.data.nodeResponseSink && !!nodeResponse
           ? childResponses.map((response) => ({
               ...response,
               parentId: response.parentId || nodeResponseId
@@ -968,47 +969,34 @@ export class WorkflowQueue {
         childResponsesForWrite.length === 0 || currentNodeError !== undefined
           ? formatCurrentNodeResponse
           : undefined;
-      const streamResponses = childResponsesForWrite.length
-        ? [...childResponsesForWrite, ...(formatResponseData ? [formatResponseData] : [])]
-        : formatResponseData
-          ? [formatResponseData]
-          : [];
 
-      // 写库和 SSE 需要完整节点响应；writer 落库后，队列只继续保留摘要信号。
-      const persistedNodeResponses = this.data.nodeResponseWriter
-        ? await this.data.nodeResponseWriter.record(nodeResponsesForWrite)
+      // 子节点只产出响应；请求级 sink 统一负责写库、V2 实时发布和 Share 字段裁剪。
+      const persistedNodeResponses = this.data.nodeResponseSink
+        ? await this.data.nodeResponseSink.publish([
+            ...childResponsesForWrite.map((response) => ({ response })),
+            ...(formatCurrentNodeResponse
+              ? [
+                  {
+                    response: formatCurrentNodeResponse,
+                    // 有内部明细时，父节点只作为树结构和统计信息入库，避免重复展示。
+                    emit: !!formatResponseData
+                  }
+                ]
+              : [])
+          ])
         : nodeResponsesForWrite;
       const formatResponseDataForQueue =
-        formatResponseData && this.data.nodeResponseWriter
+        formatResponseData && this.data.nodeResponseSink
           ? persistedNodeResponses.find((item) => item.id === formatResponseData.id) ||
             formatResponseData
           : formatResponseData;
-      const childResponsesForQueue = this.data.nodeResponseWriter
+      const childResponsesForQueue = this.data.nodeResponseSink
         ? childResponsesForWrite.map(
             (item) =>
               persistedNodeResponses.find((persistedItem) => persistedItem.id === item.id) || item
           )
         : childResponses;
-      const shouldDropPersistedNodeResponses = !!this.data.nodeResponseWriter;
-
-      // Response node response
-      if (
-        this.data.apiVersion === 'v2' &&
-        !this.data.isToolCall &&
-        this.isRootRuntime &&
-        streamResponses.length > 0
-      ) {
-        const filteredResponses = this.data.responseAllData
-          ? streamResponses
-          : filterNodeResponseTreeData({
-              nodeResponses: streamResponses,
-              responseDetail: this.data.responseDetail
-            });
-
-        filteredResponses.forEach((item) => {
-          this.data.workflowStreamResponse?.(workflowSseEvent.flowNodeResponse(item));
-        });
-      }
+      const shouldDropPersistedNodeResponses = !!this.data.nodeResponseSink;
 
       // Add output default value
       if (dispatchRes.data) {
@@ -1550,7 +1538,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
         },
         async (workflowSpan) => {
           const startTime = Date.now();
-          const nodeResponseWriter = data.nodeResponseWriter;
+          const nodeResponseSink = data.nodeResponseSink;
           try {
             await rewriteRuntimeWorkFlow({
               teamId: data.runningAppInfo.teamId,
@@ -1649,7 +1637,7 @@ export const runWorkflow = async (data: RunWorkflowProps): Promise<DispatchFlowR
                 workflowQueue.customFeedbackList.length > 0
                   ? workflowQueue.customFeedbackList
                   : undefined,
-              nodeResponseSummary: nodeResponseWriter?.getSummary(),
+              nodeResponseSummary: nodeResponseSink?.getSummary?.(),
               runtimeNodeResponseSummary: workflowQueue.runtimeNodeResponseSummary,
               durationSeconds
             };

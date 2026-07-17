@@ -45,6 +45,7 @@ When using `short-redirect`, you must configure `STORAGE_EXTERNAL_ENDPOINT`.
 2. The portal page now supports selecting Agent V2 apps for conversations.
 3. File upload and download URLs now use short access URLs, reducing the context consumed by long URLs and the risk of malformed model output. Previously issued URLs remain supported.
 4. For file URLs without a recognizable extension, FastGPT now infers the file type from the buffer to improve parsing success rates.
+5. The Custom Tool Parameters node now supports manually entering a JSON Schema and marking parameters as required.
 
 ## ⚙️ Improvements
 
@@ -59,6 +60,7 @@ When using `short-redirect`, you must configure `STORAGE_EXTERNAL_ENDPOINT`.
 7. Improved the performance of the fade-in effect for streaming output in chat dialogs.
 8. Upgraded `LiteParse` to fix PDF parsing errors under concurrent workloads. The default file parsing worker count is now 5 instead of 10 and remains configurable through `PARSE_FILE_WORKERS`.
 9. Added in-flight request deduplication for the model list and sandbox package endpoints. Identical concurrent requests now share the same result, reducing duplicate requests triggered by workflow nodes and selectors.
+10. Workflow node responses are now included in SSE streams.
 
 ### Streaming Markdown Rendering Improvements
 
@@ -97,6 +99,7 @@ When using `short-redirect`, you must configure `STORAGE_EXTERNAL_ENDPOINT`.
 1. Refactored Agent V2 assisted generation / ChatAgentHelper to reuse the dialog.
 2. AI request records that contain very long base64/data URLs are truncated before saving to prevent possible stack overflows.
 3. Unified SSE event wrapping for stronger type hints.
+4. Added the `AUTH_COOKIE_SECURE` environment variable. When enabled, login cookies use the `Secure` attribute and are sent only over HTTPS.
 
 ### Agent Loop Refactor
 

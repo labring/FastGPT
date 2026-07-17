@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useRef, useEffect } from 'react';
+import React, { useCallback, useRef, useEffect, type MutableRefObject } from 'react';
 import {
   type Connection,
   type NodeChange,
@@ -42,10 +42,11 @@ import { WorkflowActionsContext } from '../../context/workflowActionsContext';
 import { WorkflowUIContext } from '../../context/workflowUIContext';
 import { WorkflowModalContext } from '../../context/workflowModalContext';
 import { WorkflowLayoutContext } from '../../context/workflowComputeContext';
+import { type HelperLinesController } from '../components/HelperLines';
 
 /*
-  限定容量的最大堆,根为当前最大距离。用于 Top-K 最近邻筛选,
-  避免 O(n log n) 全排序,改为 O(n log k)。
+  限定容量的最大堆,根为当前最大距离。保留为通用最近邻筛选工具,
+  辅助线拖动热路径不再依赖该结构。
 */
 export const createBoundedMaxHeap = <T,>(capacity: number) => {
   const data: Array<{ value: T; key: number }> = [];
@@ -93,10 +94,7 @@ export const createBoundedMaxHeap = <T,>(capacity: number) => {
   };
 };
 
-/*
-  从 rawNodes 中筛出距 dragPos 曼哈顿距离最近的前 k 个,
-  同时排除在任一轴上超过 limit 的节点。
-*/
+/** 筛选限定范围内曼哈顿距离最近的前 k 个节点。 */
 export const collectNearestNodes = (
   rawNodes: Node[],
   dragPos: XYPosition,
@@ -117,23 +115,32 @@ export const collectNearestNodes = (
   Compute helper lines for snapping nodes to each other
   Refer: https://reactflow.dev/examples/interaction/helper-lines
 */
-type GetHelperLinesResult = {
+export type GetHelperLinesResult = {
   horizontal?: THelperLine;
   vertical?: THelperLine;
   snapPosition: Partial<XYPosition>;
 };
-export const computeHelperLines = (
-  change: NodePositionChange,
-  nodes: Node[],
-  distance = 8 // distance to snap
-): GetHelperLinesResult => {
-  const nodeA = nodes.find((node) => node.id === change.id);
+
+type CreateHelperLineScannerParams = {
+  change: NodePositionChange;
+  node?: Node;
+  distance?: number;
+};
+
+/** 创建单次扫描器，调用方可在遍历节点的同时完成其他拖动计算。 */
+export const createHelperLineScanner = ({
+  change,
+  node: nodeA,
+  distance = 8
+}: CreateHelperLineScannerParams) => {
+  const result: GetHelperLinesResult = {
+    snapPosition: { x: undefined, y: undefined }
+  };
 
   if (!nodeA || !change.position) {
     return {
-      horizontal: undefined,
-      vertical: undefined,
-      snapPosition: { x: undefined, y: undefined }
+      scanNode: (_node: Node) => {},
+      getResult: () => result
     };
   }
 
@@ -151,201 +158,221 @@ export const computeHelperLines = (
   let horizontalDistance = distance;
   let verticalDistance = distance;
 
-  return nodes
-    .filter((node) => node.id !== nodeA.id)
-    .reduce<GetHelperLinesResult>(
-      (result, nodeB) => {
-        if (!result.vertical) {
-          result.vertical = {
-            position: nodeABounds.centerX,
-            nodes: []
-          };
-        }
+  const scanNode = (nodeB: Node) => {
+    if (nodeB.id === nodeA.id) return;
 
-        if (!result.horizontal) {
-          result.horizontal = {
-            position: nodeABounds.centerY,
-            nodes: []
-          };
-        }
+    if (!result.vertical) {
+      result.vertical = {
+        position: nodeABounds.centerX,
+        nodes: []
+      };
+    }
 
-        const nodeBBounds = {
-          left: nodeB.position.x,
-          right: nodeB.position.x + (nodeB.width ?? 0),
-          top: nodeB.position.y,
-          bottom: nodeB.position.y + (nodeB.height ?? 0),
-          width: nodeB.width ?? 0,
-          height: nodeB.height ?? 0,
-          centerX: nodeB.position.x + (nodeB.width ?? 0) / 2,
-          centerY: nodeB.position.y + (nodeB.height ?? 0) / 2
-        };
+    if (!result.horizontal) {
+      result.horizontal = {
+        position: nodeABounds.centerY,
+        nodes: []
+      };
+    }
 
-        const distanceLeftLeft = Math.abs(nodeABounds.left - nodeBBounds.left);
-        const distanceRightRight = Math.abs(nodeABounds.right - nodeBBounds.right);
-        const distanceLeftRight = Math.abs(nodeABounds.left - nodeBBounds.right);
-        const distanceRightLeft = Math.abs(nodeABounds.right - nodeBBounds.left);
-        const distanceTopTop = Math.abs(nodeABounds.top - nodeBBounds.top);
-        const distanceBottomTop = Math.abs(nodeABounds.bottom - nodeBBounds.top);
-        const distanceBottomBottom = Math.abs(nodeABounds.bottom - nodeBBounds.bottom);
-        const distanceTopBottom = Math.abs(nodeABounds.top - nodeBBounds.bottom);
-        const distanceCenterXCenterX = Math.abs(nodeABounds.centerX - nodeBBounds.centerX);
-        const distanceCenterYCenterY = Math.abs(nodeABounds.centerY - nodeBBounds.centerY);
+    const nodeBBounds = {
+      left: nodeB.position.x,
+      right: nodeB.position.x + (nodeB.width ?? 0),
+      top: nodeB.position.y,
+      bottom: nodeB.position.y + (nodeB.height ?? 0),
+      width: nodeB.width ?? 0,
+      height: nodeB.height ?? 0,
+      centerX: nodeB.position.x + (nodeB.width ?? 0) / 2,
+      centerY: nodeB.position.y + (nodeB.height ?? 0) / 2
+    };
 
-        //  |‾‾‾‾‾‾‾‾‾‾‾|
-        //  |     A     |
-        //  |___________|
-        //  |
-        //  |
-        //  |‾‾‾‾‾‾‾‾‾‾‾|
-        //  |     B     |
-        //  |___________|
-        if (distanceLeftLeft < verticalDistance) {
-          result.snapPosition.x = nodeBBounds.left;
-          result.vertical.position = nodeBBounds.left;
-          result.vertical.nodes = [nodeABounds, nodeBBounds];
-          verticalDistance = distanceLeftLeft;
-        } else if (distanceLeftLeft === verticalDistance) {
-          result.vertical.nodes.push(nodeBBounds);
-        }
+    const distanceLeftLeft = Math.abs(nodeABounds.left - nodeBBounds.left);
+    const distanceRightRight = Math.abs(nodeABounds.right - nodeBBounds.right);
+    const distanceLeftRight = Math.abs(nodeABounds.left - nodeBBounds.right);
+    const distanceRightLeft = Math.abs(nodeABounds.right - nodeBBounds.left);
+    const distanceTopTop = Math.abs(nodeABounds.top - nodeBBounds.top);
+    const distanceBottomTop = Math.abs(nodeABounds.bottom - nodeBBounds.top);
+    const distanceBottomBottom = Math.abs(nodeABounds.bottom - nodeBBounds.bottom);
+    const distanceTopBottom = Math.abs(nodeABounds.top - nodeBBounds.bottom);
+    const distanceCenterXCenterX = Math.abs(nodeABounds.centerX - nodeBBounds.centerX);
+    const distanceCenterYCenterY = Math.abs(nodeABounds.centerY - nodeBBounds.centerY);
 
-        //  |‾‾‾‾‾‾‾‾‾‾‾|
-        //  |     A     |
-        //  |___________|
-        //              |
-        //              |
-        //  |‾‾‾‾‾‾‾‾‾‾‾|
-        //  |     B     |
-        //  |___________|
-        if (distanceRightRight < verticalDistance) {
-          result.snapPosition.x = nodeBBounds.right - nodeABounds.width;
-          result.vertical.position = nodeBBounds.right;
-          result.vertical.nodes = [nodeABounds, nodeBBounds];
-          verticalDistance = distanceRightRight;
-        } else if (distanceRightRight === verticalDistance) {
-          result.vertical.nodes.push(nodeBBounds);
-        }
+    //  |‾‾‾‾‾‾‾‾‾‾‾|
+    //  |     A     |
+    //  |___________|
+    //  |
+    //  |
+    //  |‾‾‾‾‾‾‾‾‾‾‾|
+    //  |     B     |
+    //  |___________|
+    if (distanceLeftLeft < verticalDistance) {
+      result.snapPosition.x = nodeBBounds.left;
+      result.vertical.position = nodeBBounds.left;
+      result.vertical.nodes = [nodeABounds, nodeBBounds];
+      verticalDistance = distanceLeftLeft;
+    } else if (distanceLeftLeft === verticalDistance) {
+      result.vertical.nodes.push(nodeBBounds);
+    }
 
-        //              |‾‾‾‾‾‾‾‾‾‾‾|
-        //              |     A     |
-        //              |___________|
-        //              |
-        //              |
-        //  |‾‾‾‾‾‾‾‾‾‾‾|
-        //  |     B     |
-        //  |___________|
-        if (distanceLeftRight < verticalDistance) {
-          result.snapPosition.x = nodeBBounds.right;
-          result.vertical.position = nodeBBounds.right;
-          result.vertical.nodes = [nodeABounds, nodeBBounds];
-          verticalDistance = distanceLeftRight;
-        } else if (distanceLeftRight === verticalDistance) {
-          result.vertical.nodes.push(nodeBBounds);
-        }
+    //  |‾‾‾‾‾‾‾‾‾‾‾|
+    //  |     A     |
+    //  |___________|
+    //              |
+    //              |
+    //  |‾‾‾‾‾‾‾‾‾‾‾|
+    //  |     B     |
+    //  |___________|
+    if (distanceRightRight < verticalDistance) {
+      result.snapPosition.x = nodeBBounds.right - nodeABounds.width;
+      result.vertical.position = nodeBBounds.right;
+      result.vertical.nodes = [nodeABounds, nodeBBounds];
+      verticalDistance = distanceRightRight;
+    } else if (distanceRightRight === verticalDistance) {
+      result.vertical.nodes.push(nodeBBounds);
+    }
 
-        //  |‾‾‾‾‾‾‾‾‾‾‾|
-        //  |     A     |
-        //  |___________|
-        //              |
-        //              |
-        //              |‾‾‾‾‾‾‾‾‾‾‾|
-        //              |     B     |
-        //              |___________|
-        if (distanceRightLeft < verticalDistance) {
-          result.snapPosition.x = nodeBBounds.left - nodeABounds.width;
-          result.vertical.position = nodeBBounds.left;
-          result.vertical.nodes = [nodeABounds, nodeBBounds];
-          verticalDistance = distanceRightLeft;
-        } else if (distanceRightLeft === verticalDistance) {
-          result.vertical.nodes.push(nodeBBounds);
-        }
+    //              |‾‾‾‾‾‾‾‾‾‾‾|
+    //              |     A     |
+    //              |___________|
+    //              |
+    //              |
+    //  |‾‾‾‾‾‾‾‾‾‾‾|
+    //  |     B     |
+    //  |___________|
+    if (distanceLeftRight < verticalDistance) {
+      result.snapPosition.x = nodeBBounds.right;
+      result.vertical.position = nodeBBounds.right;
+      result.vertical.nodes = [nodeABounds, nodeBBounds];
+      verticalDistance = distanceLeftRight;
+    } else if (distanceLeftRight === verticalDistance) {
+      result.vertical.nodes.push(nodeBBounds);
+    }
 
-        //  |‾‾‾‾‾‾‾‾‾‾‾|‾‾‾‾‾|‾‾‾‾‾‾‾‾‾‾‾|
-        //  |     A     |     |     B     |
-        //  |___________|     |___________|
-        if (distanceTopTop < horizontalDistance) {
-          result.snapPosition.y = nodeBBounds.top;
-          result.horizontal.position = nodeBBounds.top;
-          result.horizontal.nodes = [nodeABounds, nodeBBounds];
-          horizontalDistance = distanceTopTop;
-        } else if (distanceTopTop === horizontalDistance) {
-          result.horizontal.nodes.push(nodeBBounds);
-        }
+    //  |‾‾‾‾‾‾‾‾‾‾‾|
+    //  |     A     |
+    //  |___________|
+    //              |
+    //              |
+    //              |‾‾‾‾‾‾‾‾‾‾‾|
+    //              |     B     |
+    //              |___________|
+    if (distanceRightLeft < verticalDistance) {
+      result.snapPosition.x = nodeBBounds.left - nodeABounds.width;
+      result.vertical.position = nodeBBounds.left;
+      result.vertical.nodes = [nodeABounds, nodeBBounds];
+      verticalDistance = distanceRightLeft;
+    } else if (distanceRightLeft === verticalDistance) {
+      result.vertical.nodes.push(nodeBBounds);
+    }
 
-        //  |‾‾‾‾‾‾‾‾‾‾‾|
-        //  |     A     |
-        //  |___________|_________________
-        //                    |           |
-        //                    |     B     |
-        //                    |___________|
-        if (distanceBottomTop < horizontalDistance) {
-          result.snapPosition.y = nodeBBounds.top - nodeABounds.height;
-          result.horizontal.position = nodeBBounds.top;
-          result.horizontal.nodes = [nodeABounds, nodeBBounds];
-          horizontalDistance = distanceBottomTop;
-        } else if (distanceBottomTop === horizontalDistance) {
-          result.horizontal.nodes.push(nodeBBounds);
-        }
+    //  |‾‾‾‾‾‾‾‾‾‾‾|‾‾‾‾‾|‾‾‾‾‾‾‾‾‾‾‾|
+    //  |     A     |     |     B     |
+    //  |___________|     |___________|
+    if (distanceTopTop < horizontalDistance) {
+      result.snapPosition.y = nodeBBounds.top;
+      result.horizontal.position = nodeBBounds.top;
+      result.horizontal.nodes = [nodeABounds, nodeBBounds];
+      horizontalDistance = distanceTopTop;
+    } else if (distanceTopTop === horizontalDistance) {
+      result.horizontal.nodes.push(nodeBBounds);
+    }
 
-        //  |‾‾‾‾‾‾‾‾‾‾‾|     |‾‾‾‾‾‾‾‾‾‾‾|
-        //  |     A     |     |     B     |
-        //  |___________|_____|___________|
-        if (distanceBottomBottom < horizontalDistance) {
-          result.snapPosition.y = nodeBBounds.bottom - nodeABounds.height;
-          result.horizontal.position = nodeBBounds.bottom;
-          result.horizontal.nodes = [nodeABounds, nodeBBounds];
-          horizontalDistance = distanceBottomBottom;
-        } else if (distanceBottomBottom === horizontalDistance) {
-          result.horizontal.nodes.push(nodeBBounds);
-        }
+    //  |‾‾‾‾‾‾‾‾‾‾‾|
+    //  |     A     |
+    //  |___________|_________________
+    //                    |           |
+    //                    |     B     |
+    //                    |___________|
+    if (distanceBottomTop < horizontalDistance) {
+      result.snapPosition.y = nodeBBounds.top - nodeABounds.height;
+      result.horizontal.position = nodeBBounds.top;
+      result.horizontal.nodes = [nodeABounds, nodeBBounds];
+      horizontalDistance = distanceBottomTop;
+    } else if (distanceBottomTop === horizontalDistance) {
+      result.horizontal.nodes.push(nodeBBounds);
+    }
 
-        //                    |‾‾‾‾‾‾‾‾‾‾‾|
-        //                    |     B     |
-        //                    |           |
-        //  |‾‾‾‾‾‾‾‾‾‾‾|‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
-        //  |     A     |
-        //  |___________|
-        if (distanceTopBottom < horizontalDistance) {
-          result.snapPosition.y = nodeBBounds.bottom;
-          result.horizontal.position = nodeBBounds.bottom;
-          result.horizontal.nodes = [nodeABounds, nodeBBounds];
-          horizontalDistance = distanceTopBottom;
-        } else if (distanceTopBottom === horizontalDistance) {
-          result.horizontal.nodes.push(nodeBBounds);
-        }
+    //  |‾‾‾‾‾‾‾‾‾‾‾|     |‾‾‾‾‾‾‾‾‾‾‾|
+    //  |     A     |     |     B     |
+    //  |___________|_____|___________|
+    if (distanceBottomBottom < horizontalDistance) {
+      result.snapPosition.y = nodeBBounds.bottom - nodeABounds.height;
+      result.horizontal.position = nodeBBounds.bottom;
+      result.horizontal.nodes = [nodeABounds, nodeBBounds];
+      horizontalDistance = distanceBottomBottom;
+    } else if (distanceBottomBottom === horizontalDistance) {
+      result.horizontal.nodes.push(nodeBBounds);
+    }
 
-        //  |‾‾‾‾‾‾‾‾‾‾‾|
-        //  |     A     |
-        //  |___________|
-        //        |
-        //        |
-        //  |‾‾‾‾‾‾‾‾‾‾‾|
-        //  |     B     |
-        //  |___________|
-        if (distanceCenterXCenterX < verticalDistance) {
-          result.snapPosition.x = nodeBBounds.centerX - nodeABounds.width / 2;
-          result.vertical.position = nodeBBounds.centerX;
-          result.vertical.nodes = [nodeABounds, nodeBBounds];
-          verticalDistance = distanceCenterXCenterX;
-        } else if (distanceCenterXCenterX === verticalDistance) {
-          result.vertical.nodes.push(nodeBBounds);
-        }
+    //                    |‾‾‾‾‾‾‾‾‾‾‾|
+    //                    |     B     |
+    //                    |           |
+    //  |‾‾‾‾‾‾‾‾‾‾‾|‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+    //  |     A     |
+    //  |___________|
+    if (distanceTopBottom < horizontalDistance) {
+      result.snapPosition.y = nodeBBounds.bottom;
+      result.horizontal.position = nodeBBounds.bottom;
+      result.horizontal.nodes = [nodeABounds, nodeBBounds];
+      horizontalDistance = distanceTopBottom;
+    } else if (distanceTopBottom === horizontalDistance) {
+      result.horizontal.nodes.push(nodeBBounds);
+    }
 
-        //  |‾‾‾‾‾‾‾‾‾‾‾|    |‾‾‾‾‾‾‾‾‾‾‾|
-        //  |     A     |----|     B     |
-        //  |___________|    |___________|
-        if (distanceCenterYCenterY < horizontalDistance) {
-          result.snapPosition.y = nodeBBounds.centerY - nodeABounds.height / 2;
-          result.horizontal.position = nodeBBounds.centerY;
-          result.horizontal.nodes = [nodeABounds, nodeBBounds];
-          horizontalDistance = distanceCenterYCenterY;
-        } else if (distanceCenterYCenterY === horizontalDistance) {
-          result.horizontal.nodes.push(nodeBBounds);
-        }
+    //  |‾‾‾‾‾‾‾‾‾‾‾|
+    //  |     A     |
+    //  |___________|
+    //        |
+    //        |
+    //  |‾‾‾‾‾‾‾‾‾‾‾|
+    //  |     B     |
+    //  |___________|
+    if (distanceCenterXCenterX < verticalDistance) {
+      result.snapPosition.x = nodeBBounds.centerX - nodeABounds.width / 2;
+      result.vertical.position = nodeBBounds.centerX;
+      result.vertical.nodes = [nodeABounds, nodeBBounds];
+      verticalDistance = distanceCenterXCenterX;
+    } else if (distanceCenterXCenterX === verticalDistance) {
+      result.vertical.nodes.push(nodeBBounds);
+    }
 
-        return result;
-      },
-      { snapPosition: { x: undefined, y: undefined } } as GetHelperLinesResult
-    );
+    //  |‾‾‾‾‾‾‾‾‾‾‾|    |‾‾‾‾‾‾‾‾‾‾‾|
+    //  |     A     |----|     B     |
+    //  |___________|    |___________|
+    if (distanceCenterYCenterY < horizontalDistance) {
+      result.snapPosition.y = nodeBBounds.centerY - nodeABounds.height / 2;
+      result.horizontal.position = nodeBBounds.centerY;
+      result.horizontal.nodes = [nodeABounds, nodeBBounds];
+      horizontalDistance = distanceCenterYCenterY;
+    } else if (distanceCenterYCenterY === horizontalDistance) {
+      result.horizontal.nodes.push(nodeBBounds);
+    }
+  };
+
+  return {
+    scanNode,
+    getResult: () => result
+  };
+};
+
+type ComputeHelperLinesParams = CreateHelperLineScannerParams & {
+  nodes: Node[];
+  isCandidate?: (node: Node) => boolean;
+};
+
+/** 单次遍历候选节点并计算吸附位置及辅助线。 */
+export const computeHelperLines = ({
+  change,
+  node,
+  nodes,
+  isCandidate,
+  distance
+}: ComputeHelperLinesParams): GetHelperLinesResult => {
+  const scanner = createHelperLineScanner({ change, node, distance });
+  for (const candidate of nodes) {
+    if (!isCandidate || isCandidate(candidate)) scanner.scanNode(candidate);
+  }
+  return scanner.getResult();
 };
 
 export const useRAF = () => {
@@ -378,81 +405,27 @@ export const useRAF = () => {
     [resetParentNodeSizeAndPosition]
   );
 
-  // Helper line RAF 节流相关
-  const helperLineRafIdRef = useRef<number>();
-  const pendingHelperLineRef = useRef<{
-    change: NodeChange;
-    nodes: Node[];
-    setHorizontal: (line?: THelperLine) => void;
-    setVertical: (line?: THelperLine) => void;
-  } | null>(null);
-
-  const scheduleHelperLineUpdate = useCallback(
-    (
-      change: NodeChange,
-      nodes: Node[],
-      setHorizontal: (line?: THelperLine) => void,
-      setVertical: (line?: THelperLine) => void
-    ) => {
-      // 记录待更新的辅助线信息
-      pendingHelperLineRef.current = { change, nodes, setHorizontal, setVertical };
-
-      // 如果已有待执行的 RAF,不重复请求
-      if (helperLineRafIdRef.current) return;
-
-      // 请求下一帧执行更新
-      helperLineRafIdRef.current = requestAnimationFrame(() => {
-        helperLineRafIdRef.current = undefined;
-
-        if (pendingHelperLineRef.current) {
-          const { change, nodes, setHorizontal, setVertical } = pendingHelperLineRef.current;
-          pendingHelperLineRef.current = null;
-
-          // 执行实际的辅助线计算
-          const positionChange = change.type === 'position' && change.dragging ? change : undefined;
-
-          if (positionChange?.position) {
-            // Top-K 堆替代全量排序,O(n log k) 替代 O(n log n)
-            const filterNodes = collectNearestNodes(nodes, positionChange.position, 3000, 15);
-
-            const helperLines = computeHelperLines(positionChange, filterNodes);
-
-            positionChange.position.x = helperLines.snapPosition.x ?? positionChange.position.x;
-            positionChange.position.y = helperLines.snapPosition.y ?? positionChange.position.y;
-
-            setHorizontal(helperLines.horizontal);
-            setVertical(helperLines.vertical);
-          } else {
-            setHorizontal(undefined);
-            setVertical(undefined);
-          }
-        }
-      });
-    },
-    []
-  );
-
   useEffect(() => {
     return () => {
       if (childRafIdRef.current) {
         cancelAnimationFrame(childRafIdRef.current);
       }
-      if (helperLineRafIdRef.current) {
-        cancelAnimationFrame(helperLineRafIdRef.current);
-      }
     };
   }, []);
 
   return {
-    scheduleParentSizeUpdate,
-    scheduleHelperLineUpdate
+    scheduleParentSizeUpdate
   };
 };
 
 export const popoverWidth = 400;
 export const popoverHeight = 600;
 
-export const useWorkflow = () => {
+type UseWorkflowParams = {
+  helperLinesRef: MutableRefObject<HelperLinesController | null>;
+};
+
+export const useWorkflow = ({ helperLinesRef }: UseWorkflowParams) => {
   const { toast } = useToast();
   const { t } = useTranslation();
 
@@ -482,31 +455,19 @@ export const useWorkflow = () => {
   const { getIntersectingNodes, flowToScreenPosition, getZoom } = useReactFlow();
   const { isDowningCtrl } = useKeyboard();
 
-  const { scheduleParentSizeUpdate, scheduleHelperLineUpdate } = useRAF();
+  const { scheduleParentSizeUpdate } = useRAF();
 
-  /* helper line */
-  const [helperLineHorizontal, setHelperLineHorizontal] = useState<THelperLine>();
-  const [helperLineVertical, setHelperLineVertical] = useState<THelperLine>();
+  /** 同步应用吸附结果，并命令式绘制当前帧辅助线。 */
+  const applyHelperLineResult = useMemoizedFn(
+    (change: NodePositionChange, helperLines: GetHelperLinesResult) => {
+      if (!change.dragging || !change.position) {
+        helperLinesRef.current?.clear();
+        return;
+      }
 
-  const checkNodeHelpLine = useCallback(
-    (change: NodeChange, nodes: Node[]) => {
-      scheduleHelperLineUpdate(change, nodes, setHelperLineHorizontal, setHelperLineVertical);
-    },
-    [scheduleHelperLineUpdate]
-  );
-
-  // 同步计算并应用辅助线吸附。父节点拖动场景下,子节点的 delta 依赖 change.position,
-  // 必须在 delta 计算前完成吸附,不能走 RAF 异步突变。
-  // 调用方需传入已按距离筛选过的 Top-K 节点,避免与其他遍历重复扫全量节点。
-  const applyHelperLineSnapSync = useMemoizedFn(
-    (change: NodePositionChange, nearestNodes: Node[]) => {
-      if (!change.dragging || !change.position) return;
-
-      const helperLines = computeHelperLines(change, nearestNodes);
       change.position.x = helperLines.snapPosition.x ?? change.position.x;
       change.position.y = helperLines.snapPosition.y ?? change.position.y;
-      setHelperLineHorizontal(helperLines.horizontal);
-      setHelperLineVertical(helperLines.vertical);
+      helperLinesRef.current?.draw(helperLines);
     }
   );
 
@@ -697,8 +658,17 @@ export const useWorkflow = () => {
       // 场景1: 子节点拖拽 - 在父节点内移动
       if (node.data.parentNodeId) {
         const parentId = node.data.parentNodeId;
-        const childNodes = nodes.filter((n) => n.data.parentNodeId === parentId);
-        checkNodeHelpLine(change, childNodes);
+        if (change.dragging && change.position) {
+          const helperLines = computeHelperLines({
+            change,
+            node,
+            nodes,
+            isCandidate: (candidate) => candidate.data.parentNodeId === parentId
+          });
+          applyHelperLineResult(change, helperLines);
+        } else {
+          helperLinesRef.current?.clear();
+        }
 
         // 使用 RAF 节流的更新
         scheduleParentSizeUpdate(parentId);
@@ -708,30 +678,26 @@ export const useWorkflow = () => {
       // 场景2: Loop 父节点拖拽 - 联动子节点
       if (isNestedParentNodeType(node.data.flowNodeType)) {
         const parentId = node.id;
-        const dragPos = change.position;
-        const shouldSnap = !!change.dragging && !!dragPos;
+        const helperLineScanner =
+          change.dragging && change.position
+            ? createHelperLineScanner({ change, node })
+            : undefined;
 
-        // 一次遍历同时完成三件事:
-        //   1) 收集子节点 (后续应用 delta)
-        //   2) 过滤 3000px 范围内的顶层节点
-        //   3) Top-K 堆维护最近 15 个候选,免掉全量排序
+        // 一次遍历同时收集子节点并扫描顶层吸附候选。
         const childNodes: Node[] = [];
-        const topKHeap = createBoundedMaxHeap<Node>(15);
         for (const n of nodes) {
           if (n.data.parentNodeId === parentId) {
             childNodes.push(n);
-          } else if (!n.data.parentNodeId && shouldSnap && dragPos) {
-            const dx = Math.abs(n.position.x - dragPos.x);
-            const dy = Math.abs(n.position.y - dragPos.y);
-            if (dx <= 3000 && dy <= 3000) {
-              topKHeap.tryAdd(n, dx + dy);
-            }
+          } else if (!n.data.parentNodeId) {
+            helperLineScanner?.scanNode(n);
           }
         }
 
-        // 同步吸附辅助线:父拖动场景下,子节点 delta 依赖 change.position,
-        // 若走 RAF 异步会与父节点吸附结果错位,子节点每次吸附都会偏移并最终跳出父节点
-        applyHelperLineSnapSync(change, topKHeap.values());
+        if (helperLineScanner) {
+          applyHelperLineResult(change, helperLineScanner.getResult());
+        } else {
+          helperLinesRef.current?.clear();
+        }
 
         // 计算子节点的位置变化 (此处 change.position 已是吸附后值)
         if (childNodes.length > 0) {
@@ -764,10 +730,17 @@ export const useWorkflow = () => {
       }
 
       // 场景3: 普通节点拖拽 - 显示对齐辅助线
-      checkNodeHelpLine(
-        change,
-        nodes.filter((node) => !node.data.parentNodeId)
-      );
+      if (change.dragging && change.position) {
+        const helperLines = computeHelperLines({
+          change,
+          node,
+          nodes,
+          isCandidate: (candidate) => !candidate.data.parentNodeId
+        });
+        applyHelperLineResult(change, helperLines);
+      } else {
+        helperLinesRef.current?.clear();
+      }
 
       return [];
     }
@@ -853,11 +826,10 @@ export const useWorkflow = () => {
 
   const onNodeDragStop = useCallback(
     (_: any, node: Node) => {
-      setHelperLineHorizontal(undefined);
-      setHelperLineVertical(undefined);
+      helperLinesRef.current?.clear();
       checkNodeOverLoopNode(node);
     },
-    [checkNodeOverLoopNode]
+    [checkNodeOverLoopNode, helperLinesRef]
   );
 
   /* connect */
@@ -1046,8 +1018,6 @@ export const useWorkflow = () => {
     customOnConnect,
     onEdgeMouseEnter,
     onEdgeMouseLeave,
-    helperLineHorizontal,
-    helperLineVertical,
     onNodeDragStop,
     onPaneContextMenu,
     onPaneClick

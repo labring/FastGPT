@@ -33,15 +33,12 @@ import { getAppVersionById } from '../../../app/version/controller';
 import { parseI18nString } from '@fastgpt/global/common/i18n/utils';
 import { WorkflowVariableState } from '../utils/variables';
 import { SystemToolRepo } from '../../../app/tool/systemTool/systemTool.repo';
-import type { WorkflowNodeResponseWriter } from '../../../chat/nodeResponseStorage';
 import { getRuntimeNodeResponseSummary } from '../utils';
 
 type RunPluginProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.forbidStream]?: boolean;
   [key: string]: any;
-}> & {
-  nodeResponseWriter?: WorkflowNodeResponseWriter;
-};
+}>;
 type RunPluginResponse = DispatchNodeResultType<
   {
     [key: string]: any;
@@ -227,7 +224,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     } = await runWorkflow({
       ...props,
       // 系统级 workflow tool 只保留工具节点自身的响应，不展开保存其内部 workflow 详情。
-      ...(shouldStoreChildNodeResponses ? {} : { nodeResponseWriter: undefined }),
+      ...(shouldStoreChildNodeResponses ? {} : { nodeResponseSink: undefined }),
       // Rewrite stream mode
       ...(system_forbid_stream
         ? {

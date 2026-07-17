@@ -66,7 +66,9 @@ import { ChatGenerateStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { parseApiInput } from '@fastgpt/service/common/zod/requestParseError';
 import {
   filterWorkflowFinalResponseData,
-  getWorkflowFinalResponseData
+  getWorkflowDatasetCiteRetention,
+  getWorkflowFinalResponseData,
+  shouldRetainWorkflowNodeResponses
 } from '@/service/core/workflow/nodeResponse';
 import { formatCompletionResponseContent } from '@/service/core/chat/utils';
 import {
@@ -92,7 +94,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     metadata,
     authProxy
   } = completionBody;
-  let { detail, retainDatasetCite, variables } = completionBody;
+  const { retainDatasetCite } = completionBody;
+  let { detail, variables } = completionBody;
   const shareId = outLinkAuthData?.shareId;
   const outLinkUid = outLinkAuthData?.outLinkUid;
 
@@ -185,7 +188,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     pushTrack.teamChatQPM({ teamId });
 
-    retainDatasetCite = retainDatasetCite && !!showCite;
+    const { workflowRetainDatasetCite, jsonRetainDatasetCite } = getWorkflowDatasetCiteRetention({
+      requestedRetainDatasetCite: retainDatasetCite,
+      showCite: !!showCite,
+      isShare: !!shareId
+    });
     const finalShowSkillReferences =
       (showSkillReferences ?? authShowSkillReferences ?? false) && !!showRunningStatus;
     const isPlugin = app.type === AppTypeEnum.workflowTool;
@@ -311,12 +318,17 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       responseId: saveChatId,
       showNodeStatus: showRunningStatus
     });
-    const shouldCollectFinalResponseData = (!stream && detail) || !!shareId;
+    const shouldCollectFinalResponseData = shouldRetainWorkflowNodeResponses({
+      apiVersion: 'v2',
+      stream,
+      detail,
+      isShare: !!shareId
+    });
     titleSender = createGeneratedChatTitleSender({
       titleGeneration: preparedRound.titleGeneration,
       stream,
       detail,
-      writeChatTitle: (payload) => streamResponseContext?.responseWrite(payload)
+      writeChatTitle: streamResponseContext.responseWrite
     });
     if (stream) {
       void titleSender.start();
@@ -360,7 +372,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       chatConfig,
       histories: newHistories,
       stream,
-      retainDatasetCite,
+      retainDatasetCite: workflowRetainDatasetCite,
       showSkillReferences: finalShowSkillReferences,
       maxRunTimes: WORKFLOW_MAX_RUN_TIMES,
       workflowStreamResponse: streamResponseContext.responseWrite,
@@ -458,7 +470,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       await streamResponseContext.flushResume();
     } else {
       const generatedTitle = await titleSender.send();
-      const formatResponseContent = removeAIResponseCite(assistantResponses, retainDatasetCite);
+      const formatResponseContent = removeAIResponseCite(assistantResponses, jsonRetainDatasetCite);
       const formattdResponse = formatCompletionResponseContent({
         responseContent: formatResponseContent,
         detail
