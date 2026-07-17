@@ -222,6 +222,85 @@ export const ToolParamJsonSchemaSchema: z.ZodType<JsonSchemaPropertiesItemType> 
   })
 );
 
+type JsonSchemaValue = {
+  type?: unknown;
+  enum?: unknown;
+  const?: unknown;
+  items?: unknown;
+  anyOf?: unknown;
+  oneOf?: unknown;
+};
+
+const isJsonSchemaValue = (value: unknown): value is JsonSchemaValue =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const getJsonSchemaUnionBranches = (schema: unknown): JsonSchemaValue[] => {
+  if (!isJsonSchemaValue(schema)) return [];
+
+  return [
+    ...(Array.isArray(schema.anyOf) ? schema.anyOf : []),
+    ...(Array.isArray(schema.oneOf) ? schema.oneOf : [])
+  ].filter(isJsonSchemaValue);
+};
+
+const getJsonSchemaPrimitiveType = (value: unknown) => {
+  if (value === null) return 'null';
+  if (Array.isArray(value)) return 'array';
+
+  switch (typeof value) {
+    case 'string':
+      return 'string';
+    case 'number':
+      return 'number';
+    case 'boolean':
+      return 'boolean';
+    case 'object':
+      return 'object';
+    default:
+      return undefined;
+  }
+};
+
+/** 读取联合 schema 的共同基础类型；不同基础类型继续交给 any 处理。 */
+const getJsonSchemaType = (schema: unknown): string | undefined => {
+  if (!isJsonSchemaValue(schema)) return undefined;
+  if (typeof schema.type === 'string') return schema.type;
+  if (Object.prototype.hasOwnProperty.call(schema, 'const')) {
+    return getJsonSchemaPrimitiveType(schema.const);
+  }
+
+  const enumTypes = Array.isArray(schema.enum)
+    ? new Set(schema.enum.map(getJsonSchemaPrimitiveType).filter(Boolean))
+    : new Set<string>();
+  if (enumTypes.size === 1) return [...enumTypes][0];
+
+  const unionTypes = getJsonSchemaUnionBranches(schema)
+    .map(getJsonSchemaType)
+    .filter((type): type is string => Boolean(type));
+  const uniqueUnionTypes = new Set(unionTypes);
+  return uniqueUnionTypes.size === 1 ? [...uniqueUnionTypes][0] : undefined;
+};
+
+const getJsonSchemaEnumValues = (schema: unknown): unknown[] | undefined => {
+  if (!isJsonSchemaValue(schema)) return undefined;
+  if (Array.isArray(schema.enum) && schema.enum.length > 0) return schema.enum;
+  if (Object.prototype.hasOwnProperty.call(schema, 'const')) return [schema.const];
+
+  const enumValues = getJsonSchemaUnionBranches(schema).flatMap(
+    (branch) => getJsonSchemaEnumValues(branch) ?? []
+  );
+  return enumValues.length > 0 ? Array.from(new Set(enumValues)) : undefined;
+};
+
+const isJsonSchemaEnumOnly = (schema: unknown): boolean => {
+  if (!isJsonSchemaValue(schema)) return false;
+  if (Array.isArray(schema.enum) && schema.enum.length > 0) return true;
+  if (Object.prototype.hasOwnProperty.call(schema, 'const')) return true;
+
+  const branches = getJsonSchemaUnionBranches(schema);
+  return branches.length > 0 && branches.every(isJsonSchemaEnumOnly);
+};
+
 export const JSONSchemaInputTypeSchema = z
   .object({
     type: z.any().optional(),
@@ -242,24 +321,29 @@ export type JSONSchemaOutputType = z.infer<typeof JSONSchemaOutputTypeSchema>;
 
 export const getNodeInputTypeFromSchemaInputType = ({
   type,
-  arrayItems
+  arrayItems,
+  schema
 }: {
   type: string | undefined;
-  arrayItems?: { type: string };
+  arrayItems?: unknown;
+  schema?: unknown;
 }) => {
-  // 如果 type 为 undefined，返回 any 类型（处理 anyOf/oneOf 等联合类型）
-  if (!type) return WorkflowIOValueTypeEnum.any;
+  const schemaType = type ?? getJsonSchemaType(schema);
 
-  if (type === 'string') return WorkflowIOValueTypeEnum.string;
-  if (type === 'number' || type === 'integer') return WorkflowIOValueTypeEnum.number;
-  if (type === 'boolean') return WorkflowIOValueTypeEnum.boolean;
-  if (type === 'object') return WorkflowIOValueTypeEnum.object;
+  // 无法从联合分支归一出共同类型时，交给 any 处理。
+  if (!schemaType) return WorkflowIOValueTypeEnum.any;
+
+  if (schemaType === 'string') return WorkflowIOValueTypeEnum.string;
+  if (schemaType === 'number' || schemaType === 'integer') return WorkflowIOValueTypeEnum.number;
+  if (schemaType === 'boolean') return WorkflowIOValueTypeEnum.boolean;
+  if (schemaType === 'object') return WorkflowIOValueTypeEnum.object;
 
   // Array
-  if (type !== 'array') return WorkflowIOValueTypeEnum.any;
-  if (!arrayItems) return WorkflowIOValueTypeEnum.arrayAny;
+  if (schemaType !== 'array') return WorkflowIOValueTypeEnum.any;
+  const resolvedArrayItems = arrayItems ?? (isJsonSchemaValue(schema) ? schema.items : undefined);
+  if (!resolvedArrayItems) return WorkflowIOValueTypeEnum.arrayAny;
 
-  const itemType = arrayItems.type;
+  const itemType = getJsonSchemaType(resolvedArrayItems);
   if (itemType === 'string') return WorkflowIOValueTypeEnum.arrayString;
   if (itemType === 'number' || itemType === 'integer') return WorkflowIOValueTypeEnum.arrayNumber;
   if (itemType === 'boolean') return WorkflowIOValueTypeEnum.arrayBoolean;
@@ -286,45 +370,77 @@ export const parseToolParamJsonSchema = (schemaString: string) => {
   };
 };
 
-const getNodeInputRenderTypeFromSchemaInputType = ({
-  type,
-  items,
-  enum: enumList,
-  minimum,
-  maximum
-}: JsonSchemaPropertiesItemType) => {
-  if (type === 'array' && items?.enum && items.enum.length > 0) {
+const getNodeInputRenderTypeFromSchemaInputType = (schema: JsonSchemaPropertiesItemType) => {
+  const type = getJsonSchemaType(schema);
+  const enumSchema = type === 'array' ? schema.items : schema;
+  const enumValues = getJsonSchemaEnumValues(enumSchema);
+  const enumList = enumValues?.map(formatJsonSchemaEnumOption);
+  const isStrictEnum = isJsonSchemaEnumOnly(enumSchema);
+  const hasCandidateOptions = Boolean(enumList?.length) && !isStrictEnum;
+  const candidateOptions = enumList?.length ? { list: enumList } : {};
+
+  if (type === 'array' && isStrictEnum && enumList?.length) {
     return {
       value: [],
       renderTypeList: [FlowNodeInputTypeEnum.multipleSelect, FlowNodeInputTypeEnum.reference],
-      list: items.enum.map(formatJsonSchemaEnumOption)
+      list: enumList
     };
   }
-  if (enumList && enumList.length > 0) {
+
+  if (isStrictEnum && enumList?.length) {
     return {
-      value: String(enumList[0]),
+      value: String(enumValues?.[0]),
       renderTypeList: [FlowNodeInputTypeEnum.select, FlowNodeInputTypeEnum.reference],
-      list: enumList.map(formatJsonSchemaEnumOption)
+      list: enumList
     };
   }
+
   if (type === 'string') {
     return {
-      renderTypeList: [FlowNodeInputTypeEnum.input, FlowNodeInputTypeEnum.reference]
+      ...candidateOptions,
+      renderTypeList: [
+        FlowNodeInputTypeEnum.input,
+        ...(hasCandidateOptions ? [FlowNodeInputTypeEnum.select] : []),
+        FlowNodeInputTypeEnum.reference
+      ]
     };
   }
   if (type === 'number' || type === 'integer') {
     return {
-      renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference],
-      max: maximum,
-      min: minimum
+      ...candidateOptions,
+      renderTypeList: [
+        FlowNodeInputTypeEnum.numberInput,
+        ...(hasCandidateOptions ? [FlowNodeInputTypeEnum.select] : []),
+        FlowNodeInputTypeEnum.reference
+      ],
+      max: schema.maximum,
+      min: schema.minimum
     };
   }
   if (type === 'boolean') {
     return {
-      renderTypeList: [FlowNodeInputTypeEnum.switch, FlowNodeInputTypeEnum.reference]
+      ...candidateOptions,
+      renderTypeList: [
+        FlowNodeInputTypeEnum.switch,
+        ...(hasCandidateOptions ? [FlowNodeInputTypeEnum.select] : []),
+        FlowNodeInputTypeEnum.reference
+      ]
     };
   }
-  return { renderTypeList: [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference] };
+  if (type === 'array') {
+    return {
+      ...candidateOptions,
+      renderTypeList: [
+        FlowNodeInputTypeEnum.JSONEditor,
+        ...(hasCandidateOptions ? [FlowNodeInputTypeEnum.multipleSelect] : []),
+        FlowNodeInputTypeEnum.reference
+      ]
+    };
+  }
+  return {
+    ...candidateOptions,
+    renderTypeList: [FlowNodeInputTypeEnum.JSONEditor, FlowNodeInputTypeEnum.reference]
+  };
 };
 
 /** 将 JSON Schema enum 值规范成节点输入选项，避免响应 schema 因非字符串 value 解析失败。 */
@@ -344,7 +460,8 @@ export const jsonSchema2NodeInput = ({
   return Object.entries(jsonSchema?.properties || {}).map(([key, value]) => {
     const valueType = getNodeInputTypeFromSchemaInputType({
       type: value.type,
-      arrayItems: value.items
+      arrayItems: value.items,
+      schema: value
     });
     const nodeMetadata =
       schemaType === 'systemTool' ? value[JsonSchemaNodeInputMetadataKey] : undefined;
@@ -376,7 +493,8 @@ export const jsonSchema2NodeOutput = ({
   return Object.entries(jsonSchema?.properties || {}).map(([key, value]) => {
     const valueType = getNodeInputTypeFromSchemaInputType({
       type: value.type,
-      arrayItems: value.items
+      arrayItems: value.items,
+      schema: value
     });
     const nodeMetadata = value[JsonSchemaNodeOutputMetadataKey];
 
@@ -498,19 +616,18 @@ export const jsonSchema2SecretInput = ({
 }): InputConfigType[] | undefined => {
   if (!jsonSchema) return undefined;
   return Object.entries(jsonSchema?.properties || {}).map(([key, value]) => {
-    const enumValues: unknown[] | undefined =
-      value.enum ??
-      (value.items && typeof value.items === 'object' && Array.isArray(value.items.enum)
-        ? value.items.enum
-        : undefined);
+    const enumSchema = value.type === 'array' ? value.items : value;
+    const enumValues = getJsonSchemaEnumValues(enumSchema);
+    const isStrictEnum = isJsonSchemaEnumOnly(enumSchema);
     const workflowInputType = getNodeInputTypeFromSchemaInputType({
       type: value.type,
-      arrayItems: value.items
+      arrayItems: value.items,
+      schema: value
     });
     // inputType => inputConfig 里面的 inputType
     const inputType = (() => {
       if (value?.isSecret === true) return InputConfigInputTypeEnum.secret;
-      if (enumValues?.length) return InputConfigInputTypeEnum.select;
+      if (isStrictEnum && enumValues?.length) return InputConfigInputTypeEnum.select;
       switch (workflowInputType) {
         case WorkflowIOValueTypeEnum.string:
           return InputConfigInputTypeEnum.input;
@@ -594,8 +711,16 @@ const getJsonSchemaPropertyFromValueType = (
 };
 
 const getEnumValuesFromNodeInput = (input: FlowNodeInputItemType) => {
+  const selectedRenderType =
+    input.selectedType ?? input.renderTypeList?.[input.selectedTypeIndex ?? 0];
+  const hasStrictEnumRenderType =
+    selectedRenderType !== undefined &&
+    [FlowNodeInputTypeEnum.select, FlowNodeInputTypeEnum.multipleSelect].includes(
+      selectedRenderType
+    );
+
   return [
-    input.list?.map((item) => item.value).filter(Boolean),
+    hasStrictEnumRenderType ? input.list?.map((item) => item.value).filter(Boolean) : undefined,
     input.enums?.map((item) => item.value).filter(Boolean),
     input.enum?.split('\n').filter(Boolean)
   ].find((enumValues) => enumValues && enumValues.length > 0);

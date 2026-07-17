@@ -3,7 +3,7 @@ import { SystemToolSecretInputTypeEnum } from '@fastgpt/global/core/app/tool/sys
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
 import { useTranslation } from 'next-i18next';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import type { FlowNodeInputItemType, InputConfigType } from '@fastgpt/global/core/workflow/type/io';
@@ -36,6 +36,10 @@ type SecretInputFormProps = {
   formId?: string;
   showTitle?: boolean;
   onChange?: (data: ToolParamsFormType) => void;
+  onTypeChange?: (type: SystemToolSecretInputTypeEnum) => void;
+  showExpandControl?: boolean;
+  isExpanded?: boolean;
+  onToggleExpand?: (isExpanded: boolean) => void;
   onSubmit?: (data: ToolParamsFormType) => void;
 };
 
@@ -51,6 +55,10 @@ export const SecretInputForm = ({
   formId,
   showTitle = true,
   onChange,
+  onTypeChange,
+  showExpandControl = false,
+  isExpanded = true,
+  onToggleExpand,
   onSubmit
 }: SecretInputFormProps) => {
   const { t } = useTranslation();
@@ -94,12 +102,124 @@ export const SecretInputForm = ({
     }
   );
 
-  const hasCost = useMemo(() => {
-    if (isFolder) {
-      return childTools.some((item) => (item.systemKeyCost || 0) > 0);
+  const changeConfigType = (type: SystemToolSecretInputTypeEnum) => {
+    setValue('type', type);
+    onTypeChange?.(type);
+  };
+
+  const isCardExpanded = (type: SystemToolSecretInputTypeEnum) =>
+    configType === type && isExpanded;
+
+  const expandCard = (type: SystemToolSecretInputTypeEnum) => {
+    if (configType !== type) {
+      changeConfigType(type);
     }
-    return secretCost > 0;
-  }, [isFolder, childTools, secretCost]);
+    onToggleExpand?.(true);
+  };
+
+  const renderExpandButton = (type: SystemToolSecretInputTypeEnum) => {
+    if (!showExpandControl || isCardExpanded(type)) return null;
+
+    return (
+      <Button
+        flexShrink={0}
+        size={'xs'}
+        h={'24px'}
+        variant={'transparentBase'}
+        color={'myGray.600'}
+        leftIcon={<MyIcon name={'core/chat/chevronDown'} w={'12px'} color={'myGray.600'} />}
+        px={2}
+        onClick={(e) => {
+          e.stopPropagation();
+          expandCard(type);
+        }}
+      >
+        {t('workflow:Unfold')}
+      </Button>
+    );
+  };
+
+  const renderCollapseButton = () => {
+    if (!showExpandControl) return null;
+
+    return (
+      <Button
+        size={'xs'}
+        h={'24px'}
+        variant={'transparentBase'}
+        color={'myGray.600'}
+        leftIcon={<MyIcon name={'core/chat/chevronUp'} w={'12px'} color={'myGray.600'} />}
+        px={2}
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleExpand?.(false);
+        }}
+      >
+        {t('workflow:Fold')}
+      </Button>
+    );
+  };
+
+  const renderSecretTitle = ({
+    type,
+    title
+  }: {
+    type: SystemToolSecretInputTypeEnum;
+    title: React.ReactNode;
+  }) => (
+    <Flex alignItems={'center'} justifyContent={'space-between'} gap={2} w={'full'} minW={0}>
+      <Box minW={0} flex={1}>
+        {title}
+      </Box>
+      {type === SystemToolSecretInputTypeEnum.manual &&
+        (isCardExpanded(type) ? renderCollapseButton() : renderExpandButton(type))}
+    </Flex>
+  );
+
+  const systemCostContent = (
+    <Box w={'full'}>
+      <Flex alignItems={'center'} justifyContent={'space-between'} gap={2}>
+        {isFolder ? (
+          <HStack flex={1} minW={0}>
+            <MyIcon name={'common/info'} w={'1.1rem'} color={'primary.600'} />
+            <Box fontSize={'sm'}>
+              {t('app:tool_active_system_config_price_desc_folder')}
+            </Box>
+          </HStack>
+        ) : (
+          <HStack flex={1} minW={0}>
+            <MyIcon name={'common/info'} w={'1.1rem'} color={'primary.600'} />
+            <Box fontSize={'sm'}>
+              {t('app:tool_active_system_config_price_desc', {
+                price: secretCost
+              })}
+            </Box>
+          </HStack>
+        )}
+        {isFolder && (
+          <IconButton
+            name={isSystemCostOpen ? 'core/chat/chevronUp' : 'core/chat/chevronDown'}
+            w={'16px'}
+            color={'myGray.500'}
+            aria-label={t(isSystemCostOpen ? 'workflow:Fold' : 'workflow:Unfold')}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleSystemCost();
+            }}
+          />
+        )}
+      </Flex>
+      {isFolder && isSystemCostOpen && (
+        <Box fontSize={'sm'} pl={6} mt={2}>
+          {childTools.map((tool) => (
+            <Box key={tool.id} fontSize={'sm'} mb={1}>
+              {t(tool.name as any)}: {tool.systemKeyCost || 0} 积分/次
+            </Box>
+          ))}
+        </Box>
+      )}
+    </Box>
+  );
 
   useEffect(() => {
     if (!onChange) return;
@@ -128,105 +248,68 @@ export const SecretInputForm = ({
               ...(hasSystemSecret
                 ? [
                     {
-                      title: t('app:system_secret'),
+                      title: renderSecretTitle({
+                        type: SystemToolSecretInputTypeEnum.system,
+                        title: <Box fontSize={'sm'}>{t('app:system_secret')}</Box>
+                      }),
                       desc: t('app:tool_active_system_config_desc'),
                       value: SystemToolSecretInputTypeEnum.system,
                       children:
-                        configType === SystemToolSecretInputTypeEnum.system && hasCost ? (
-                          <Box>
-                            {isFolder ? (
-                              <>
-                                <Flex
-                                  alignItems={'center'}
-                                  cursor={'pointer'}
-                                  onClick={onToggleSystemCost}
-                                  _hover={{ color: 'primary.600' }}
-                                >
-                                  <MyIcon name={'common/info'} w={'1.1rem'} color={'primary.600'} />
-                                  <Box fontSize={'sm'} ml={2}>
-                                    {t('app:tool_active_system_config_price_desc_folder')}
-                                  </Box>
-                                  <MyIcon
-                                    name={
-                                      isSystemCostOpen
-                                        ? 'core/chat/chevronUp'
-                                        : 'core/chat/chevronDown'
-                                    }
-                                    w={'1rem'}
-                                    ml={'auto'}
-                                    color={'myGray.500'}
-                                  />
-                                </Flex>
-                                {isSystemCostOpen && (
-                                  <Box fontSize={'sm'} pl={6} mt={2}>
-                                    {childTools.map((tool) => (
-                                      <Box key={tool.id} fontSize={'sm'} mb={1}>
-                                        {t(tool.name as any)}: {tool.systemKeyCost || 0} 积分/次
-                                      </Box>
-                                    ))}
-                                  </Box>
-                                )}
-                              </>
-                            ) : (
-                              <HStack>
-                                <MyIcon name={'common/info'} w={'1.1rem'} color={'primary.600'} />
-                                <Box fontSize={'sm'}>
-                                  {t('app:tool_active_system_config_price_desc', {
-                                    price: secretCost
-                                  })}
-                                </Box>
-                              </HStack>
-                            )}
-                          </Box>
-                        ) : null
+                        configType === SystemToolSecretInputTypeEnum.system
+                          ? systemCostContent
+                          : null
                     }
                   ]
                 : []),
               {
-                title:
-                  courseUrl || readmeUrl ? (
-                    <HStack
-                      spacing={2}
-                      color={'myGray.900'}
-                      fontWeight={'500'}
-                      whiteSpace={'nowrap'}
-                      fontSize={'sm'}
-                      lineHeight={1}
-                    >
-                      <Box>{t('app:manual_secret')}</Box>
-                      <UseGuideModal
-                        title={t('app:manual_secret')}
-                        iconSrc="key"
-                        link={courseUrl}
-                        readmeUrl={readmeUrl}
+                title: renderSecretTitle({
+                  type: SystemToolSecretInputTypeEnum.manual,
+                  title:
+                    courseUrl || readmeUrl ? (
+                      <HStack
+                        spacing={2}
+                        color={'myGray.900'}
+                        fontWeight={'500'}
+                        whiteSpace={'nowrap'}
+                        fontSize={'sm'}
+                        lineHeight={1}
                       >
-                        {({ onClick }) => (
-                          <HStack
-                            spacing={1}
-                            color={'primary.600'}
-                            justifyContent={'flex-end'}
-                            _hover={{
-                              textDecoration: 'underline',
-                              cursor: 'pointer'
-                            }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onClick();
-                            }}
-                          >
-                            <MyIcon name={'book'} w={'14px'} />
-                            <Box fontSize={'sm'}>{t('app:secret_get_course')}</Box>
-                          </HStack>
-                        )}
-                      </UseGuideModal>
-                    </HStack>
-                  ) : (
-                    t('app:manual_secret')
-                  ),
+                        <Box>{t('app:manual_secret')}</Box>
+                        <UseGuideModal
+                          title={t('app:manual_secret')}
+                          iconSrc="key"
+                          link={courseUrl}
+                          readmeUrl={readmeUrl}
+                        >
+                          {({ onClick }) => (
+                            <HStack
+                              spacing={1}
+                              color={'primary.600'}
+                              justifyContent={'flex-end'}
+                              _hover={{
+                                textDecoration: 'underline',
+                                cursor: 'pointer'
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onClick();
+                              }}
+                            >
+                              <MyIcon name={'book'} w={'14px'} />
+                              <Box fontSize={'sm'}>{t('app:secret_get_course')}</Box>
+                            </HStack>
+                          )}
+                        </UseGuideModal>
+                      </HStack>
+                    ) : (
+                      <Box fontSize={'sm'}>{t('app:manual_secret')}</Box>
+                    )
+                }),
                 desc: t('app:tool_active_manual_config_desc'),
                 value: SystemToolSecretInputTypeEnum.manual,
                 children:
-                  configType === SystemToolSecretInputTypeEnum.manual ? (
+                  configType === SystemToolSecretInputTypeEnum.manual &&
+                  (!showExpandControl || isExpanded) ? (
                     <>
                       {inputList.map((item, i) => {
                         const inputKey = `value.${item.key}.value` as any;
@@ -348,7 +431,7 @@ export const SecretInputForm = ({
               }
             ]}
             value={configType}
-            onChange={(e) => setValue('type', e)}
+            onChange={changeConfigType}
           />
         </Box>
       </>
