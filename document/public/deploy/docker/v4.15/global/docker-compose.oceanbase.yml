@@ -33,8 +33,7 @@ x-share-db-config: &x-share-db-config
   STORAGE_SECRET_ACCESS_KEY: minioadmin
   STORAGE_PUBLIC_BUCKET: fastgpt-public
   STORAGE_PRIVATE_BUCKET: fastgpt-private
-  STORAGE_EXTERNAL_ENDPOINT: http://192.168.0.2:9000 # 一个服务器和客户端均可访问到存储桶的地址，可以是固定的宿主机 IP 或者域名，注意不要填写成 127.0.0.1 或者 localhost 等本地回环地址(因为容器里无法使用)
-  STORAGE_S3_CDN_ENDPOINT:
+  STORAGE_DOWNLOAD_URL_MODE: short-proxy # short-proxy | short-redirect
   STORAGE_S3_ENDPOINT: http://fastgpt-minio:9000 # 协议://域名(IP):端口
   STORAGE_S3_FORCE_PATH_STYLE: true
   STORAGE_S3_MAX_RETRIES: 3
@@ -124,6 +123,7 @@ x-service-env-config: &x-service-env-config
   MULTIPLE_DATA_TO_BASE64: true
   USE_IP_LIMIT: false
   CHECK_INTERNAL_IP: false
+  AUTH_COOKIE_SECURE: false
   TRUSTED_PROXY_ENABLE: false
   TRUSTED_PROXY_IPS:
   PASSWORD_LOGIN_LOCK_SECONDS:
@@ -304,7 +304,7 @@ services:
 
   fastgpt-app:
     container_name: fastgpt-app
-    image: ghcr.io/labring/fastgpt:v4.15.1
+    image: ghcr.io/labring/fastgpt:v4.15.2
     ports:
       - 3000:3000
     networks:
@@ -412,7 +412,7 @@ services:
       <<: [*x-log-config, *x-no-proxy-config]
       FASTGPT_ENDPOINT: http://fastgpt-app:3000
   fastgpt-plugin:
-    image: ghcr.io/labring/fastgpt-plugin:v1.0.1
+    image: ghcr.io/labring/fastgpt-plugin:v1.0.2
     container_name: fastgpt-plugin
     restart: always
     networks:

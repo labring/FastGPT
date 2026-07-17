@@ -5,7 +5,7 @@ description: 'FastGPT V4.15.2 更新说明'
 
 ## 📦 升级指南
 
-### OpenSandbox 镜像升级
+### 1. OpenSandbox 镜像升级
 
 如果部署中启用了 OpenSandbox，请同步更新以下镜像：
 
@@ -15,7 +15,7 @@ description: 'FastGPT V4.15.2 更新说明'
 
 升级后可修复中文文件名的文件无法下载的问题。完整配置请参考 [OpenSandbox 配置](../../config/sandbox/opensandbox)。
 
-### AGENT_ENGINE 环境变量值调整
+### 2. AGENT_ENGINE 环境变量值调整
 
 V4.15.2 起，`AGENT_ENGINE` 使用新的枚举值。升级前，请按下表修改部署环境变量：
 
@@ -26,7 +26,7 @@ V4.15.2 起，`AGENT_ENGINE` 使用新的枚举值。升级前，请按下表修
 
 旧值不再兼容。继续使用 `default` 或 `pi` 会导致环境变量校验失败，FastGPT 无法启动。未配置 `AGENT_ENGINE` 时，可正常启动，系统默认使用 `fastAgent`。
 
-### 修改文件下载模式变量
+### 3. 修改文件下载模式变量
 
 V4.15.2 新增 `STORAGE_DOWNLOAD_URL_MODE` 环境变量，默认值为 `short-proxy`。
 
@@ -38,6 +38,12 @@ V4.15.2 新增 `STORAGE_DOWNLOAD_URL_MODE` 环境变量，默认值为 `short-pr
 `STORAGE_DOWNLOAD_URL_MODE=short-redirect`
 
 使用 `short-redirect` 时，必须配置 `STORAGE_EXTERNAL_ENDPOINT`。
+
+### 4. 镜像变更
+
+- 更新 fastgpt-app(fastgpt 主服务) 镜像 tag: v4.15.2
+- 更新 fastgpt-pro(fastgpt 商业版) 镜像 tag: v4.15.2
+- 更新 fastgpt-plugin 镜像 tag: v1.0.2
 
 ## 🚀 新增内容
 

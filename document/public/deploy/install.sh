@@ -550,7 +550,11 @@ select_address() {
             return
         fi
 
-        echo "错误: 未检测到可用 IP 地址。请设置 FASTGPT_S3_ENDPOINT 和 FASTGPT_MCP_ENDPOINT 后重试。" >&2
+        if [ "$NEEDS_S3_EXTERNAL_ENDPOINT" = true ]; then
+            echo "错误: 未检测到可用 IP 地址。请设置 FASTGPT_S3_ENDPOINT 和 FASTGPT_MCP_ENDPOINT 后重试。" >&2
+        else
+            echo "错误: 未检测到可用 IP 地址。请设置 FASTGPT_MCP_ENDPOINT 后重试。" >&2
+        fi
         exit 1
     fi
 
@@ -582,10 +586,20 @@ select_address() {
     fi
 }
 
-# ========== 6. 选择 S3 访问地址 (端口 9000) ==========
-select_address "请选择 S3 访问地址 - 客户端和容器均需可访问 (↑↓ 选择, 回车确认, 通常默认第一个即可):" 9000 "$FASTGPT_S3_ENDPOINT"
-S3_ADDR="$SELECTED_ADDR"
-S3_CUSTOM=$SELECTED_CUSTOM
+# v4.14 使用旧版 MinIO 下载链路；本地 Compose 则以实际配置决定是否需要外部地址。
+NEEDS_S3_EXTERNAL_ENDPOINT=false
+if [ "$DEPLOY_VERSION" == "v4.14" ]; then
+    NEEDS_S3_EXTERNAL_ENDPOINT=true
+elif [ "$DEPLOY_VERSION" == "$LOCAL_DEPLOY_VERSION" ] && LC_ALL=C grep -q "STORAGE_EXTERNAL_ENDPOINT" "$LOCAL_COMPOSE_PATH"; then
+    NEEDS_S3_EXTERNAL_ENDPOINT=true
+fi
+
+if [ "$NEEDS_S3_EXTERNAL_ENDPOINT" = true ]; then
+    # ========== 6. 选择 S3 访问地址 (端口 9000) ==========
+    select_address "请选择 S3 访问地址 - 客户端和容器均需可访问 (↑↓ 选择, 回车确认, 通常默认第一个即可):" 9000 "$FASTGPT_S3_ENDPOINT"
+    S3_ADDR="$SELECTED_ADDR"
+    S3_CUSTOM=$SELECTED_CUSTOM
+fi
 
 # ========== 7. 选择 SSE MCP 访问地址 (端口 3003) ==========
 select_address "请选择 SSE MCP 访问地址 - 客户端和容器均需可访问 (↑↓ 选择, 回车确认, 通常默认第一个即可):" 3003 "$FASTGPT_MCP_ENDPOINT"
@@ -601,7 +615,7 @@ if [ "$REGION" == "global" ]; then
 fi
 
 # 构建显示地址
-if [ -n "$S3_ADDR" ]; then
+if [ "$NEEDS_S3_EXTERNAL_ENDPOINT" = true ] && [ -n "$S3_ADDR" ]; then
     if $S3_CUSTOM; then
         S3_DISPLAY="$S3_ADDR"
     else
@@ -635,7 +649,9 @@ else
     echo "  镜像源:       $REGION_LABEL"
     echo "  向量数据库:   $VECTOR"
 fi
-echo "  S3 地址:      $S3_DISPLAY"
+if [ "$NEEDS_S3_EXTERNAL_ENDPOINT" = true ]; then
+    echo "  S3 地址:      $S3_DISPLAY"
+fi
 echo "  MCP 地址:     $MCP_DISPLAY"
 echo "  密钥处理:     $CREDENTIALS_LABEL"
 echo "=============================="
@@ -748,7 +764,7 @@ else
 fi
 
 # ========== 替换 S3 访问地址 ==========
-if [ -n "$S3_ADDR" ]; then
+if [ "$NEEDS_S3_EXTERNAL_ENDPOINT" = true ] && [ -n "$S3_ADDR" ]; then
     if $S3_CUSTOM; then
         # 自定义输入：解析 scheme / host / port，整体替换模板中的完整地址
         S3_RAW="$S3_ADDR"
@@ -796,7 +812,7 @@ if [ -n "$S3_ADDR" ]; then
     else
         echo "警告: 替换 S3 地址失败，请手动编辑 docker-compose.yml 中的 http://192.168.0.2:9000"
     fi
-else
+elif [ "$NEEDS_S3_EXTERNAL_ENDPOINT" = true ]; then
     echo "警告: 未设置 S3 地址，请手动编辑 docker-compose.yml 中的 http://192.168.0.2:9000"
 fi
 
@@ -911,13 +927,21 @@ fi
 if LC_ALL=C grep -q "opensandbox-agent-sandbox-image" docker-compose.yml; then
     echo "  1. 预热沙盒:   docker compose --profile prepull pull opensandbox-agent-sandbox-image opensandbox-execd-image opensandbox-egress-image"
     echo "  2. 启动服务:   docker compose up -d"
-    echo "  3. 开放端口:   3000, 9000, 3003"
+    if [ "$NEEDS_S3_EXTERNAL_ENDPOINT" = true ]; then
+        echo "  3. 开放端口:   3000, 9000, 3003"
+    else
+        echo "  3. 开放端口:   3000, 3003"
+    fi
     echo "  4. 访问服务:   http://localhost:3000"
     echo "  5. 登录服务:   默认账号为 'root', 密码为: '$ROOT_LOGIN_PASSWORD'"
     echo "  6. 配置模型:   在 '账号-模型提供商' 页面，进行模型配置"
 else
     echo "  1. 启动服务:   docker compose up -d"
-    echo "  2. 开放端口:   3000, 9000, 3003"
+    if [ "$NEEDS_S3_EXTERNAL_ENDPOINT" = true ]; then
+        echo "  2. 开放端口:   3000, 9000, 3003"
+    else
+        echo "  2. 开放端口:   3000, 3003"
+    fi
     echo "  3. 访问服务:   http://localhost:3000"
     echo "  4. 登录服务:   默认账号为 'root', 密码为: '$ROOT_LOGIN_PASSWORD'"
     echo "  5. 配置模型:   在 '账号-模型提供商' 页面，进行模型配置"
