@@ -1,5 +1,5 @@
-const STREAM_ANIMATED_BLOCK_TAGS = new Set(['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li']);
-const STREAM_ANIMATED_SKIP_TAGS = new Set(['pre', 'code', 'table', 'svg']);
+const STREAM_ANIMATED_BLOCK_TAGS = new Set(['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6']);
+const STREAM_ANIMATED_SKIP_TAGS = new Set(['pre', 'code', 'table', 'svg', 'ul', 'ol']);
 
 type HastElement = {
   type: 'element';
@@ -85,7 +85,6 @@ const syncVisibleTextTimeline = ({
   ) {
     commonPrefixLength += 1;
   }
-
   if (commonPrefixLength < previousCharacters.length) {
     runtime.births.length = commonPrefixLength;
     runtime.styles.length = commonPrefixLength;
@@ -132,7 +131,6 @@ export const rehypeStreamAnimated = ({
   return (tree: HastRoot) => {
     let globalCharIndex = 0;
     const now = nowMs ?? getStreamAnimationNow();
-
     const isHastElement = (node: HastNode): node is HastElement =>
       node.type === 'element' && typeof (node as HastElement).tagName === 'string';
     const hasClass = (node: HastElement, cls: string) => {

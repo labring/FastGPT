@@ -100,6 +100,7 @@ describe('rehypeStreamAnimated', () => {
 
     rehypeStreamAnimated({ fadeDuration: 180, nowMs: 120, runtime })(firstTree as any);
     const firstStyles = [...runtime.styles];
+
     rehypeStreamAnimated({ fadeDuration: 180, nowMs: 170, runtime })(secondTree as any);
 
     expect(runtime.styles).toEqual(firstStyles);
@@ -139,7 +140,7 @@ describe('rehypeStreamAnimated', () => {
     });
   });
 
-  it('should keep list character positions stable without double wrapping nested paragraphs', () => {
+  it('should skip list subtrees to prevent completed items from replaying their animation', () => {
     const tree = root([
       element('ul', [
         element('li', [text('first')]),
@@ -153,11 +154,27 @@ describe('rehypeStreamAnimated', () => {
       runtime: createRuntime(Array.from({ length: 11 }, () => 100))
     })(tree as any);
 
-    const spans = getStreamCharacters(tree);
-    expect(spans).toHaveLength(11);
-    expect(spans.map(getText).join('')).toBe('firstsecond');
-    expect(getElementsByTagName(spans[0], 'span')).toHaveLength(1);
+    expect(getStreamCharacters(tree)).toHaveLength(0);
+    expect(getText(tree)).toBe('firstsecond');
   });
+
+  it.each(['ul', 'ol'])(
+    'should keep %s items visible when the next item starts rendering',
+    (tag) => {
+      const runtime = createRuntime();
+      rehypeStreamAnimated({ fadeDuration: 180, nowMs: 100, runtime })(
+        root([element(tag, [element('li', [text('first')])])]) as any
+      );
+
+      const nextTree = root([
+        element(tag, [element('li', [text('first')]), element('li', [text('second')])])
+      ]);
+      rehypeStreamAnimated({ fadeDuration: 180, nowMs: 120, runtime })(nextTree as any);
+
+      expect(getStreamCharacters(nextTree)).toHaveLength(0);
+      expect(getText(nextTree)).toBe('firstsecond');
+    }
+  );
 
   it('should preserve inline markup while assigning one global character index', () => {
     const tree = root([element('p', [text('a'), element('strong', [text('bc')]), text('d')])]);
@@ -174,7 +191,7 @@ describe('rehypeStreamAnimated', () => {
     ]);
   });
 
-  it('should allocate the timeline from visible list text instead of repaired markdown syntax', () => {
+  it('should allocate the timeline from visible text instead of repaired markdown syntax', () => {
     const runtime = createRuntime();
     const render = (source: string, nowMs: number) =>
       renderToStaticMarkup(
@@ -187,18 +204,18 @@ describe('rehypeStreamAnimated', () => {
         )
       );
 
-    render('- **粗', 100);
+    render('**粗', 100);
     expect(runtime.visibleText).toBe('粗');
     expect(runtime.births).toHaveLength(1);
 
     const firstBirth = runtime.births[0];
-    render('- **粗体', 150);
+    render('**粗体', 150);
     expect(runtime.visibleText).toBe('粗体');
     expect(runtime.births).toHaveLength(2);
     expect(runtime.births[0]).toBe(firstBirth);
     expect(runtime.births[1]).toBeGreaterThanOrEqual(150);
 
-    render('- **粗体**', 200);
+    render('**粗体**', 200);
     expect(runtime.visibleText).toBe('粗体');
     expect(runtime.births).toHaveLength(2);
   });

@@ -23,6 +23,15 @@ export type StreamPluginsCacheEntry = {
   value: PluggableList;
 };
 
+/** 流式实例结束后继续使用 block 渲染，避免完成态切换渲染器导致整棵 DOM 重建。 */
+export const resolveStreamRenderMode = ({
+  hasStreamed,
+  showAnimation
+}: {
+  hasStreamed: boolean;
+  showAnimation?: boolean;
+}) => hasStreamed || !!showAnimation;
+
 type UpdateStreamBlockAnimationsParams = {
   blocks: MarkdownBlock[];
   renderNow: number;

@@ -9,6 +9,7 @@ import RehypeExternalLinks from 'rehype-external-links';
 import RehypeKatex from 'rehype-katex';
 
 import { splitMarkdownBlocks } from '@/components/Markdown/streamMarkdownBlocks';
+import { prepareStreamingMarkdown } from '@/components/Markdown/utils';
 
 describe('splitMarkdownBlocks', () => {
   it('should return no blocks for empty source', () => {
@@ -79,6 +80,36 @@ describe('splitMarkdownBlocks', () => {
       { source: 'second', startOffset: source.indexOf('second') }
     ]);
   });
+
+  it('should keep an active list block when a streaming frame ends with one space', () => {
+    const prefix = [
+      '好的，我来为你详细介绍 FastGPT。',
+      'FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，它将智能对话与可视化编排完美结合，让 AI 应用开发变得简单自然，无论是开发者还是业务人员都能轻松打造专属的 AI 应用[69db8e1aa2409f01b117897e](CITE)。',
+      '### FastGPT 的优势'
+    ].join('\n\n');
+    const listFrames = [
+      '*   **简单灵活，像搭积木一样简单 🧱**：FastGPT 提供了丰富的功能模块，通过简单拖拽就能搭建',
+      '*   **简单灵活，像搭积木一样简单 🧱**：FastGPT 提供了丰富的功能模块，通过简单拖拽就能搭建出个性化的 ',
+      '*   **简单灵活，像搭积木一样简单 🧱**：FastGPT 提供了丰富的功能模块，通过简单拖拽就能搭建出个性化的 AI 应用'
+    ];
+
+    for (const listFrame of listFrames) {
+      const source = `${prefix}\n\n${listFrame}`;
+      const blocks = splitMarkdownBlocks(prepareStreamingMarkdown(source));
+
+      expect(blocks.at(-1)).toEqual({
+        source: listFrame,
+        startOffset: source.indexOf(listFrame)
+      });
+    }
+  });
+
+  it.each(['- item ', '* item ', '1. item '])(
+    'should preserve a trailing space in list block %s',
+    (source) => {
+      expect(splitMarkdownBlocks(source)).toEqual([{ source, startOffset: 0 }]);
+    }
+  );
 
   it('should preserve rendered HTML when stable blocks are rendered independently', () => {
     const source =

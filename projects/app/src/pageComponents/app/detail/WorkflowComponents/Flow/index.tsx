@@ -12,7 +12,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { WorkflowInitContext, WorkflowBufferDataContext } from '../context/workflowInitContext';
 import ContextMenu from './components/ContextMenu';
 import FlowController from './components/FlowController';
-import HelperLines from './components/HelperLines';
+import HelperLines, { type HelperLinesController } from './components/HelperLines';
 import { useWorkflow } from './hooks/useWorkflow';
 import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import type { NodeProps } from 'reactflow';
@@ -76,6 +76,7 @@ const edgeTypes = {
 const Workflow = () => {
   const nodes = useContextSelector(WorkflowInitContext, (v) => v.nodes);
   const edges = useContextSelector(WorkflowBufferDataContext, (v) => v.edges);
+  const helperLinesRef = useRef<HelperLinesController>(null);
   const { reactFlowWrapperCallback, workflowControlMode, menu } = useContextSelector(
     WorkflowUIContext,
     (v) => v
@@ -89,12 +90,10 @@ const Workflow = () => {
     customOnConnect,
     onEdgeMouseEnter,
     onEdgeMouseLeave,
-    helperLineHorizontal,
-    helperLineVertical,
     onNodeDragStop,
     onPaneContextMenu,
     onPaneClick
-  } = useWorkflow();
+  } = useWorkflow({ helperLinesRef });
 
   const {
     isOpen: isOpenTemplate,
@@ -212,7 +211,7 @@ const Workflow = () => {
         >
           {!!menu && <ContextMenu />}
           <FlowController />
-          <HelperLines horizontal={helperLineHorizontal} vertical={helperLineVertical} />
+          <HelperLines ref={helperLinesRef} />
         </ReactFlow>
       </Box>
     </>

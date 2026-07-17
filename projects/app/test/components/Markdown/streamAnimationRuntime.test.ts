@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  resolveStreamRenderMode,
   resolveStreamBlockPlugins,
   updateStreamBlockAnimations,
   type StreamBlockRuntime,
@@ -59,6 +60,14 @@ describe('updateStreamBlockAnimations', () => {
 
     expect(state.runtimes.has(7)).toBe(false);
     expect(state.pluginsCache.has(7)).toBe(false);
+  });
+});
+
+describe('resolveStreamRenderMode', () => {
+  it('should keep block rendering after a streamed response completes', () => {
+    expect(resolveStreamRenderMode({ hasStreamed: false, showAnimation: false })).toBe(false);
+    expect(resolveStreamRenderMode({ hasStreamed: false, showAnimation: true })).toBe(true);
+    expect(resolveStreamRenderMode({ hasStreamed: true, showAnimation: false })).toBe(true);
   });
 });
 
